@@ -62,6 +62,18 @@
           <span class="powerup-icon">🎯</span>
           <span class="powerup-count">0</span>
         </button>
+        <button class="powerup-btn challenge-only" data-powerup="freeze" title="Freeze Timer (15s)" disabled>
+          <span class="powerup-icon">⏸️</span>
+          <span class="powerup-count">0</span>
+        </button>
+        <button class="powerup-btn challenge-only" data-powerup="xray" title="X-Ray (reveal mines in 5x5)" disabled>
+          <span class="powerup-icon">🔬</span>
+          <span class="powerup-count">0</span>
+        </button>
+        <button class="powerup-btn challenge-only" data-powerup="luckyGuess" title="Lucky Guess (defuse random mine)" disabled>
+          <span class="powerup-icon">🍀</span>
+          <span class="powerup-count">0</span>
+        </button>
       </div>
 
       <div id="board-container">
@@ -252,6 +264,9 @@
             <p>🔍 <strong>Reveal Safe</strong> — reveals a random safe cell</p>
             <p>🛡️ <strong>Shield</strong> — survive one mine click</p>
             <p>🎯 <strong>Scan</strong> — shows mine count in a row/column</p>
+            <p>⏸️ <strong>Freeze</strong> — pauses timer for 15 seconds</p>
+            <p>🔬 <strong>X-Ray</strong> — reveals mines in a 5&times;5 area</p>
+            <p>🍀 <strong>Lucky Guess</strong> — defuses a random mine</p>
             <p>Earn power-ups by winning games!</p>
           </div>
           <div class="help-section">
@@ -264,7 +279,7 @@
           <div class="help-section">
             <h3>Keyboard Shortcuts</h3>
             <p><strong>R</strong> — restart game</p>
-            <p><strong>1 / 2 / 3</strong> — use power-ups</p>
+            <p><strong>1–6</strong> — use power-ups</p>
             <p><strong>Esc</strong> — close modal</p>
           </div>
         </div>
@@ -328,7 +343,7 @@
     </div>
   </div>
 
-  <script type="module" src="src/main.js?v=1.3"></script>
+  <script type="module" src="src/main.js?v=1.4"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js').catch(() => {});

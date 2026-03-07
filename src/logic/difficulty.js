@@ -1,15 +1,34 @@
-// Normal mode — progressive difficulty
-const LEVELS = [
-  { rows: 10, cols: 10, mines: 10, timeLimit: 120 },   // Level 1
-  { rows: 11, cols: 11, mines: 14, timeLimit: 140 },   // Level 2
-  { rows: 12, cols: 12, mines: 19, timeLimit: 160 },   // Level 3
-  { rows: 13, cols: 13, mines: 24, timeLimit: 190 },   // Level 4
-  { rows: 14, cols: 14, mines: 30, timeLimit: 220 },   // Level 5
-  { rows: 15, cols: 15, mines: 37, timeLimit: 260 },   // Level 6
-  { rows: 16, cols: 16, mines: 44, timeLimit: 300 },   // Level 7
-  { rows: 17, cols: 17, mines: 52, timeLimit: 350 },   // Level 8
-  { rows: 18, cols: 18, mines: 60, timeLimit: 400 },   // Level 9
-  { rows: 19, cols: 19, mines: 68, timeLimit: 460 },   // Level 10
+// Challenge mode — 20 levels of progressive difficulty
+// Board capped at 12×12 to prevent fat-finger issues on mobile.
+// Difficulty increases via mine density (~12% at L1 → ~35% at L20).
+const CHALLENGE_LEVELS = [
+  // Learning (L1–5): 8×8 → 10×10, density 12–16%
+  { rows: 8,  cols: 8,  mines: 8,  timeLimit: 90  },   // L1  — 12.5%
+  { rows: 8,  cols: 8,  mines: 10, timeLimit: 90  },   // L2  — 15.6%
+  { rows: 9,  cols: 9,  mines: 11, timeLimit: 100 },   // L3  — 13.6%
+  { rows: 9,  cols: 9,  mines: 13, timeLimit: 110 },   // L4  — 16.0%
+  { rows: 10, cols: 10, mines: 16, timeLimit: 120 },   // L5  — 16.0%
+
+  // Intermediate (L6–10): 10×10 → 11×11, density 18–25%
+  { rows: 10, cols: 10, mines: 18, timeLimit: 130 },   // L6  — 18.0%
+  { rows: 10, cols: 10, mines: 20, timeLimit: 140 },   // L7  — 20.0%
+  { rows: 11, cols: 11, mines: 24, timeLimit: 160 },   // L8  — 19.8%
+  { rows: 11, cols: 11, mines: 27, timeLimit: 180 },   // L9  — 22.3%
+  { rows: 11, cols: 11, mines: 30, timeLimit: 200 },   // L10 — 24.8%
+
+  // Advanced (L11–15): 11×11 → 12×12, density 25–30%
+  { rows: 11, cols: 11, mines: 33, timeLimit: 220 },   // L11 — 27.3%
+  { rows: 12, cols: 12, mines: 36, timeLimit: 240 },   // L12 — 25.0%
+  { rows: 12, cols: 12, mines: 39, timeLimit: 260 },   // L13 — 27.1%
+  { rows: 12, cols: 12, mines: 42, timeLimit: 280 },   // L14 — 29.2%
+  { rows: 12, cols: 12, mines: 44, timeLimit: 300 },   // L15 — 30.6%
+
+  // Expert (L16–20): 12×12, density 30–35% (nearly impossible)
+  { rows: 12, cols: 12, mines: 45, timeLimit: 320 },   // L16 — 31.3%
+  { rows: 12, cols: 12, mines: 47, timeLimit: 340 },   // L17 — 32.6%
+  { rows: 12, cols: 12, mines: 48, timeLimit: 360 },   // L18 — 33.3%
+  { rows: 12, cols: 12, mines: 49, timeLimit: 380 },   // L19 — 34.0%
+  { rows: 12, cols: 12, mines: 50, timeLimit: 400 },   // L20 — 34.7%
 ];
 
 // Timed mode — classic Minesweeper sizes (Beginner, Intermediate, Expert)
@@ -19,9 +38,12 @@ const TIMED_LEVELS = [
   { rows: 16, cols: 30, mines: 99,  timeLimit: 600, label: 'Expert' },
 ];
 
+// Fog of War mode — uses same curve as Challenge for progressive difficulty
+// (Fog effects ramp separately via fogOfWar.js)
+
 export function getDifficultyForLevel(level) {
-  const capped = Math.min(Math.max(level, 1), LEVELS.length);
-  return { ...LEVELS[capped - 1] };
+  const capped = Math.min(Math.max(level, 1), CHALLENGE_LEVELS.length);
+  return { ...CHALLENGE_LEVELS[capped - 1] };
 }
 
 export function getTimedDifficulty(level) {
@@ -29,5 +51,13 @@ export function getTimedDifficulty(level) {
   return { ...TIMED_LEVELS[capped - 1] };
 }
 
-export const MAX_LEVEL = LEVELS.length;
+// Anti-zero-cluster thresholds per level
+export function getMaxZeroCluster(level) {
+  if (level <= 4) return Infinity;  // No restriction for early levels
+  if (level <= 9) return 8;
+  if (level <= 14) return 6;
+  return 4;                          // L15+: very tight
+}
+
+export const MAX_LEVEL = CHALLENGE_LEVELS.length;
 export const MAX_TIMED_LEVEL = TIMED_LEVELS.length;

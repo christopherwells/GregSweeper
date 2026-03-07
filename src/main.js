@@ -1,24 +1,24 @@
-import { generateBoard, createEmptyBoard, calculateAdjacency } from './logic/boardGenerator.js?v=1.3';
-import { floodFillReveal, checkWin, revealAllMines, chordReveal } from './logic/boardSolver.js?v=1.3';
-import { getDifficultyForLevel, getTimedDifficulty, MAX_LEVEL, MAX_TIMED_LEVEL } from './logic/difficulty.js?v=1.3';
-import { computeVisibleCells } from './logic/fogOfWar.js?v=1.3';
-import { findSafeCell, scanRowCol, defuseMine } from './logic/powerUps.js?v=1.3';
-import { createDailyRNG } from './logic/seededRandom.js?v=1.3';
+import { generateBoard, createEmptyBoard, calculateAdjacency } from './logic/boardGenerator.js?v=1.4';
+import { floodFillReveal, checkWin, revealAllMines, chordReveal } from './logic/boardSolver.js?v=1.4';
+import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, MAX_LEVEL, MAX_TIMED_LEVEL } from './logic/difficulty.js?v=1.4';
+import { computeVisibleCells } from './logic/fogOfWar.js?v=1.4';
+import { findSafeCell, scanRowCol, defuseMine, xRayScan, luckyGuess } from './logic/powerUps.js?v=1.4';
+import { createDailyRNG } from './logic/seededRandom.js?v=1.4';
 import {
   loadStats, saveGameResult, resetStats,
   loadDailyLeaderboard, addDailyLeaderboardEntry,
   loadTheme, saveTheme,
   loadModePowerUps, saveModePowerUps,
-} from './storage/statsStorage.js?v=1.3';
+} from './storage/statsStorage.js?v=1.4';
 import {
   playReveal, playFlag, playUnflag, playExplosion,
   playCascade, playWin, playPowerUp, playShieldBreak,
   playLevelUp, isMuted, setMuted, loadMuted,
-} from './audio/sounds.js?v=1.3';
+} from './audio/sounds.js?v=1.4';
 import {
   getAchievementState, getTotalScore, checkNewUnlocks,
   getHighestTier, getAllTierNames, getTierIcon, getTierColor,
-} from './logic/achievements.js?v=1.3';
+} from './logic/achievements.js?v=1.4';
 
 // ── Theme Unlock Progression ──────────────────────────
 // Themes unlock based on highest level ever beaten (permanent).
@@ -125,6 +125,8 @@ const state = {
   powerUps: { revealSafe: 0, shield: 0, scanRowCol: 0, freeze: 0, xray: 0, luckyGuess: 0 },
   shieldActive: false,
   scanMode: false,
+  xrayMode: false,
+  freezeActive: false,
   usedPowerUps: false,  // track for purist achievement
 
   fogOfWarEnabled: false,
@@ -188,7 +190,10 @@ function updateCell(r, c) {
   }
 
   if (cell.isRevealed) {
-    if (cell.isMine) {
+    if (cell.isLucky) {
+      cellEl.className = 'cell revealed lucky';
+      cellEl.textContent = '🍀';
+    } else if (cell.isMine) {
       const isHit = state.hitMine && state.hitMine.row === r && state.hitMine.col === c;
       cellEl.className = `cell revealed mine${isHit ? ' mine-hit' : ''}`;
       cellEl.textContent = '💣';
@@ -281,9 +286,10 @@ function updateHeader() {
 function updatePowerUpBar() {
   const totalPowerUps = Object.values(state.powerUps).reduce((a, b) => a + b, 0);
   const powerUpBar = $('#powerup-bar');
+  const isChallenge = state.gameMode === 'normal';
 
   // Hide entire bar when no power-ups available
-  if (totalPowerUps === 0 && !state.shieldActive && !state.scanMode) {
+  if (totalPowerUps === 0 && !state.shieldActive && !state.scanMode && !state.xrayMode) {
     powerUpBar.classList.add('hidden');
   } else {
     powerUpBar.classList.remove('hidden');
@@ -292,13 +298,21 @@ function updatePowerUpBar() {
   for (const btn of $$('.powerup-btn')) {
     const type = btn.dataset.powerup;
     const count = state.powerUps[type] || 0;
+
+    // Show/hide challenge-only buttons
+    if (btn.classList.contains('challenge-only')) {
+      btn.style.display = isChallenge ? '' : 'none';
+    }
+
     btn.querySelector('.powerup-count').textContent = count;
     btn.disabled = count === 0 || state.status === 'won' || state.status === 'lost';
     btn.classList.toggle('active-powerup', type === 'shield' && state.shieldActive);
     btn.classList.toggle('scan-active', type === 'scanRowCol' && state.scanMode);
+    btn.classList.toggle('xray-active', type === 'xray' && state.xrayMode);
   }
   // Board state classes
   boardEl.classList.toggle('scan-mode', state.scanMode);
+  boardEl.classList.toggle('xray-mode', state.xrayMode);
   boardEl.classList.toggle('shield-active', state.shieldActive);
 }
 
@@ -426,6 +440,8 @@ function newGame() {
   state.timeLimit = state.gameMode === 'timed' ? (diff.timeLimit || 120) : 0;
   state.shieldActive = false;
   state.scanMode = false;
+  state.xrayMode = false;
+  state.freezeActive = false;
   state.usedPowerUps = false;
   state.shaking = false;
   state.showParticles = false;
@@ -497,10 +513,18 @@ function revealCell(row, col) {
     return;
   }
 
+  // X-Ray mode intercept
+  if (state.xrayMode) {
+    performXRay(row, col);
+    return;
+  }
+
   // First click — generate board
   if (state.firstClick) {
     const rng = state.dailySeed ? createDailyRNG(state.dailySeed) : undefined;
-    state.board = generateBoard(state.rows, state.cols, state.totalMines, row, col, rng);
+    const maxZC = (state.gameMode === 'normal' || state.gameMode === 'fogOfWar')
+      ? getMaxZeroCluster(state.currentLevel) : Infinity;
+    state.board = generateBoard(state.rows, state.cols, state.totalMines, row, col, rng, { maxZeroCluster: maxZC });
     state.firstClick = false;
     state.status = 'playing';
     startTimer();
@@ -805,18 +829,160 @@ function performScan(row, col) {
   updatePowerUpBar();
 }
 
-function awardPowerUps(stats) {
-  const types = ['revealSafe', 'shield', 'scanRowCol'];
-  const labels = { revealSafe: '🔍 Reveal Safe', shield: '🛡️ Shield', scanRowCol: '🎯 Scan' };
-  const pick = types[Math.floor(Math.random() * types.length)];
-  state.powerUps[pick]++;
+// ── Freeze Power-Up ──────────────────────────────────
+function useFreeze() {
+  if (state.powerUps.freeze <= 0 || state.status === 'won' || state.status === 'lost') return;
+  if (state.freezeActive) return; // Already frozen
+  playPowerUp();
+  state.powerUps.freeze--;
+  state.usedPowerUps = true;
+  state.freezeActive = true;
+  saveModePowerUps(state.gameMode, state.powerUps);
 
+  // Pause the timer for 15 seconds
+  const wasTimerId = state.timerId;
+  stopTimer();
+
+  // Show icy overlay
+  const overlay = document.createElement('div');
+  overlay.className = 'freeze-overlay';
+  document.getElementById('board-container').appendChild(overlay);
+
+  scanToast.textContent = '⏸️ Timer frozen for 15s!';
+  scanToast.classList.remove('hidden');
+
+  setTimeout(() => {
+    overlay.remove();
+    scanToast.classList.add('hidden');
+    state.freezeActive = false;
+    // Resume timer only if still playing
+    if (state.status === 'playing') {
+      startTimer();
+    }
+  }, 15000);
+
+  updatePowerUpBar();
+}
+
+// ── X-Ray Power-Up ──────────────────────────────────
+function activateXRay() {
+  if (state.powerUps.xray <= 0 || state.status === 'won' || state.status === 'lost') return;
+  playPowerUp();
+  state.usedPowerUps = true;
+  state.xrayMode = !state.xrayMode;
+  updatePowerUpBar();
+}
+
+function performXRay(row, col) {
+  state.powerUps.xray--;
+  state.xrayMode = false;
+  saveModePowerUps(state.gameMode, state.powerUps);
+
+  const mines = xRayScan(state.board, row, col);
+
+  // Highlight the 5×5 area
+  for (let dr = -2; dr <= 2; dr++) {
+    for (let dc = -2; dc <= 2; dc++) {
+      const nr = row + dr;
+      const nc = col + dc;
+      if (nr >= 0 && nr < state.rows && nc >= 0 && nc < state.cols) {
+        const el = boardEl.children[nr * state.cols + nc];
+        if (el) el.classList.add('xray-area');
+      }
+    }
+  }
+
+  // Highlight mines with pulsing red glow
+  for (const mine of mines) {
+    const el = boardEl.children[mine.row * state.cols + mine.col];
+    if (el) el.classList.add('xray-mine');
+  }
+
+  scanToast.textContent = `🔬 X-Ray: ${mines.length} mine${mines.length !== 1 ? 's' : ''} in area`;
+  scanToast.classList.remove('hidden');
+
+  setTimeout(() => {
+    scanToast.classList.add('hidden');
+    for (const el of $$('.xray-area')) el.classList.remove('xray-area');
+    for (const el of $$('.xray-mine')) el.classList.remove('xray-mine');
+  }, 3000);
+
+  updatePowerUpBar();
+}
+
+// ── Lucky Guess Power-Up ────────────────────────────
+function useLuckyGuess() {
+  if (state.powerUps.luckyGuess <= 0 || state.status === 'won' || state.status === 'lost') return;
+  playPowerUp();
+  state.powerUps.luckyGuess--;
+  state.usedPowerUps = true;
+  saveModePowerUps(state.gameMode, state.powerUps);
+
+  const cell = luckyGuess(state.board);
+  if (!cell) return;
+
+  state.revealedCount++;
+  state.totalMines--; // One fewer mine now
+
+  // Pop animation on the defused cell
+  const cellEl = boardEl.children[cell.row * state.cols + cell.col];
+  if (cellEl) {
+    cellEl.classList.add('lucky-reveal');
+  }
+
+  if (state.fogOfWarEnabled) {
+    state.visibleCells = computeVisibleCells(getRevealedCells(), state.fogRadius, state.rows, state.cols);
+  }
+
+  updateAllCells();
+  updateHeader();
+  updatePowerUpBar();
+  if (checkWin(state.board)) handleWin();
+}
+
+function awardPowerUps(stats) {
+  // Determine available power-up types based on mode
+  const isChallenge = state.gameMode === 'normal';
+  const isFogOfWar = state.gameMode === 'fogOfWar';
+
+  const baseTypes = ['revealSafe', 'shield', 'scanRowCol'];
+  const challengeTypes = [...baseTypes, 'freeze', 'xray', 'luckyGuess'];
+  const fogTypes = [...baseTypes];
+
+  const types = isChallenge ? challengeTypes : isFogOfWar ? fogTypes : baseTypes;
+  const labels = {
+    revealSafe: '🔍 Reveal Safe', shield: '🛡️ Shield', scanRowCol: '🎯 Scan',
+    freeze: '⏸️ Freeze', xray: '🔬 X-Ray', luckyGuess: '🍀 Lucky Guess',
+  };
+
+  // Scale rewards by level (Challenge mode)
+  const level = state.currentLevel;
+  let numAwards;
+  if (isChallenge) {
+    if (level <= 3) numAwards = 3;
+    else if (level <= 6) numAwards = 2;
+    else numAwards = 1;
+  } else if (isFogOfWar) {
+    numAwards = 1; // +1 of each per win is handled elsewhere; this adds a bonus random
+  } else {
+    numAwards = 1;
+  }
+
+  const awarded = [];
+  for (let i = 0; i < numAwards; i++) {
+    const pick = types[Math.floor(Math.random() * types.length)];
+    state.powerUps[pick]++;
+    awarded.push(labels[pick]);
+  }
+
+  // Streak bonus every 3 wins
   if (stats.currentStreak > 0 && stats.currentStreak % 3 === 0) {
     const bonus = types[Math.floor(Math.random() * types.length)];
     state.powerUps[bonus]++;
-    return `${labels[pick]} + bonus ${labels[bonus]}!`;
+    awarded.push(`bonus ${labels[bonus]}`);
   }
-  return labels[pick];
+
+  return awarded.join(' + ') + (awarded.length > 1 ? '!' : '');
 }
 
 // ── Effects ────────────────────────────────────────────
@@ -1372,6 +1538,9 @@ for (const btn of $$('.powerup-btn')) {
     if (type === 'revealSafe') useRevealSafe();
     else if (type === 'shield') useShield();
     else if (type === 'scanRowCol') activateScan();
+    else if (type === 'freeze') useFreeze();
+    else if (type === 'xray') activateXRay();
+    else if (type === 'luckyGuess') useLuckyGuess();
   });
 }
 
@@ -1505,6 +1674,9 @@ document.addEventListener('keydown', (e) => {
   if (e.key === '1') useRevealSafe();
   else if (e.key === '2') useShield();
   else if (e.key === '3') activateScan();
+  else if (e.key === '4') useFreeze();
+  else if (e.key === '5') activateXRay();
+  else if (e.key === '6') useLuckyGuess();
 });
 
 // ── Level Up Toast ─────────────────────────────────────
