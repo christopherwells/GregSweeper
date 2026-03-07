@@ -20,24 +20,26 @@ import {
 } from './logic/achievements.js?v=0.8';
 
 // ── Theme Unlock Progression ──────────────────────────
+// Themes unlock based on highest level ever beaten (permanent).
+// Dying in normal mode resets current level to 1 but keeps unlocks.
 const THEME_UNLOCKS = {
-  classic:  { winsRequired: 0,  displayName: 'Classic' },
-  dark:     { winsRequired: 0,  displayName: 'Dark' },
-  ocean:    { winsRequired: 1,  displayName: 'Ocean' },
-  sunset:   { winsRequired: 3,  displayName: 'Sunset' },
-  candy:    { winsRequired: 5,  displayName: 'Candy' },
-  neon:     { winsRequired: 8,  displayName: 'Neon' },
-  midnight: { winsRequired: 12, displayName: 'Midnight' },
-  aurora:   { winsRequired: 18, displayName: 'Aurora' },
-  galaxy:   { winsRequired: 25, displayName: 'Galaxy' },
+  classic:  { levelRequired: 0,  displayName: 'Classic' },
+  dark:     { levelRequired: 0,  displayName: 'Dark' },
+  ocean:    { levelRequired: 2,  displayName: 'Ocean' },
+  sunset:   { levelRequired: 3,  displayName: 'Sunset' },
+  candy:    { levelRequired: 4,  displayName: 'Candy' },
+  neon:     { levelRequired: 5,  displayName: 'Neon' },
+  midnight: { levelRequired: 6,  displayName: 'Midnight' },
+  aurora:   { levelRequired: 8,  displayName: 'Aurora' },
+  galaxy:   { levelRequired: 10, displayName: 'Galaxy' },
 };
 
 function getUnlockedThemes() {
   const stats = loadStats();
-  const wins = stats.wins || 0;
+  const maxLevel = stats.maxLevelReached || 1;
   const unlocked = {};
   for (const [theme, info] of Object.entries(THEME_UNLOCKS)) {
-    unlocked[theme] = wins >= info.winsRequired;
+    unlocked[theme] = maxLevel >= info.levelRequired;
   }
   return unlocked;
 }
@@ -62,10 +64,10 @@ function updateThemeSwatches() {
   }
 }
 
-function checkThemeUnlocks(prevWins, currentWins) {
+function checkThemeUnlocks(prevMaxLevel, currentMaxLevel) {
   const newlyUnlocked = [];
   for (const [theme, info] of Object.entries(THEME_UNLOCKS)) {
-    if (info.winsRequired > 0 && prevWins < info.winsRequired && currentWins >= info.winsRequired) {
+    if (info.levelRequired > 0 && prevMaxLevel < info.levelRequired && currentMaxLevel >= info.levelRequired) {
       newlyUnlocked.push({ theme, displayName: info.displayName });
     }
   }
@@ -353,10 +355,20 @@ function handleTimedLoss() {
   triggerShake();
   saveGameResult(false, state.elapsedTime, state.currentLevel);
 
+  // Death penalty: reset to level 1 in normal mode
+  const lostLevel = state.currentLevel;
+  if (state.gameMode === 'normal' && state.currentLevel > 1) {
+    state.currentLevel = 1;
+  }
+
   const gameoverTitle = $('#gameover-title');
   const gameoverTime = $('#gameover-time');
   gameoverTitle.textContent = 'Time\'s Up!';
-  gameoverTime.textContent = `You ran out of time!`;
+  if (lostLevel > 1 && state.gameMode === 'normal') {
+    gameoverTime.textContent = `You ran out of time! Reset to Level 1`;
+  } else {
+    gameoverTime.textContent = `You ran out of time!`;
+  }
   $('#gameover-record').classList.add('hidden');
   $('#gameover-nextlevel').classList.add('hidden');
   $('#gameover-submit-daily').classList.add('hidden');
@@ -530,7 +542,7 @@ function handleWin() {
   resetBtn.textContent = '😎';
 
   const prevStats = loadStats();
-  const prevWins = prevStats.wins;
+  const prevMaxLevel = prevStats.maxLevelReached || 1;
 
   const isDaily = state.gameMode === 'daily';
   const stats = saveGameResult(true, state.elapsedTime, state.currentLevel, {
@@ -543,7 +555,7 @@ function handleWin() {
   showParticles();
 
   // Check for newly unlocked themes
-  const newThemes = checkThemeUnlocks(prevWins, stats.wins);
+  const newThemes = checkThemeUnlocks(prevMaxLevel, stats.maxLevelReached || 1);
   if (newThemes.length > 0) {
     showThemeUnlockToasts(newThemes);
   }
@@ -628,10 +640,20 @@ function handleLoss(mineRow, mineCol) {
   triggerShake();
   saveGameResult(false, state.elapsedTime, state.currentLevel);
 
+  // Death penalty: reset to level 1 in normal mode
+  const lostLevel = state.currentLevel;
+  if (state.gameMode === 'normal' && state.currentLevel > 1) {
+    state.currentLevel = 1;
+  }
+
   const gameoverTitle = $('#gameover-title');
   const gameoverTime = $('#gameover-time');
   gameoverTitle.textContent = 'Game Over';
-  gameoverTime.textContent = `Time: ${state.elapsedTime}s`;
+  if (lostLevel > 1 && state.gameMode === 'normal') {
+    gameoverTime.textContent = `Time: ${state.elapsedTime}s · Reset to Level 1`;
+  } else {
+    gameoverTime.textContent = `Time: ${state.elapsedTime}s`;
+  }
   $('#gameover-record').classList.add('hidden');
   $('#gameover-nextlevel').classList.add('hidden');
   $('#gameover-submit-daily').classList.add('hidden');
@@ -1299,10 +1321,10 @@ function init() {
   let activeTheme = theme;
   if (unlocked[theme] === false) {
     const stats = loadStats();
-    const wins = stats.wins || 0;
+    const maxLevel = stats.maxLevelReached || 1;
     const sortedThemes = Object.entries(THEME_UNLOCKS)
-      .filter(([, info]) => wins >= info.winsRequired)
-      .sort((a, b) => b[1].winsRequired - a[1].winsRequired);
+      .filter(([, info]) => maxLevel >= info.levelRequired)
+      .sort((a, b) => b[1].levelRequired - a[1].levelRequired);
     activeTheme = sortedThemes.length > 0 ? sortedThemes[0][0] : 'classic';
     saveTheme(activeTheme);
   }
