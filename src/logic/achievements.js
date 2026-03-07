@@ -1,68 +1,80 @@
-// Achievement definitions and checker
-const ACHIEVEMENTS = [
-  { id: 'first_win',      icon: '🏅', name: 'First Victory',     desc: 'Win your first game',              check: (s) => s.wins >= 1 },
-  { id: 'win_5',          icon: '⭐', name: 'Getting Good',       desc: 'Win 5 games',                      check: (s) => s.wins >= 5 },
-  { id: 'win_25',         icon: '🌟', name: 'Veteran',            desc: 'Win 25 games',                     check: (s) => s.wins >= 25 },
-  { id: 'win_100',        icon: '💎', name: 'GregSweeper Master', desc: 'Win 100 games',                    check: (s) => s.wins >= 100 },
-  { id: 'streak_3',       icon: '🔥', name: 'On Fire',            desc: 'Win 3 games in a row',             check: (s) => s.bestStreak >= 3 },
-  { id: 'streak_5',       icon: '🔥', name: 'Unstoppable',        desc: 'Win 5 games in a row',             check: (s) => s.bestStreak >= 5 },
-  { id: 'streak_10',      icon: '💥', name: 'Legendary Streak',   desc: 'Win 10 games in a row',            check: (s) => s.bestStreak >= 10 },
-  { id: 'speed_30',       icon: '⚡', name: 'Speed Demon',        desc: 'Win in under 30 seconds',          check: (s) => hasTimedWin(s, 30) },
-  { id: 'speed_15',       icon: '🚀', name: 'Lightning Fast',     desc: 'Win in under 15 seconds',          check: (s) => hasTimedWin(s, 15) },
-  { id: 'level_5',        icon: '📈', name: 'Climbing Up',        desc: 'Reach level 5',                    check: (s) => s.maxLevelReached >= 5 },
-  { id: 'level_10',       icon: '👑', name: 'Summit',             desc: 'Reach level 10',                   check: (s) => s.maxLevelReached >= 10 },
-  { id: 'daily_1',        icon: '📅', name: 'Daily Player',       desc: 'Complete a daily challenge',       check: (s) => s.dailiesCompleted >= 1 },
-  { id: 'daily_7',        icon: '📆', name: 'Weekly Warrior',     desc: 'Complete 7 daily challenges',      check: (s) => s.dailiesCompleted >= 7 },
-  { id: 'play_50',        icon: '🎮', name: 'Dedicated',          desc: 'Play 50 games',                    check: (s) => s.totalGames >= 50 },
-  { id: 'no_powerup_win', icon: '💪', name: 'Purist',             desc: 'Win without using any power-ups',  check: (s) => s.puristWins >= 1 },
+// Tiered rank system — progression based on total wins
+const TIERS = [
+  { id: 'bronze',   icon: '🥉', name: 'Bronze',   winsRequired: 1,   color: '#cd7f32' },
+  { id: 'silver',   icon: '🥈', name: 'Silver',   winsRequired: 5,   color: '#c0c0c0' },
+  { id: 'gold',     icon: '🥇', name: 'Gold',     winsRequired: 15,  color: '#ffd700' },
+  { id: 'platinum', icon: '💎', name: 'Platinum', winsRequired: 30,  color: '#e5e4e2' },
+  { id: 'emerald',  icon: '💚', name: 'Emerald',  winsRequired: 50,  color: '#50c878' },
+  { id: 'diamond',  icon: '👑', name: 'Diamond',  winsRequired: 100, color: '#b9f2ff' },
 ];
 
-function hasTimedWin(stats, threshold) {
-  return stats.recentGames.some(g => g.won && g.time <= threshold);
-}
-
-const ACHIEVEMENTS_KEY = 'minesweeper_achievements';
-
-export function loadUnlocked() {
-  try {
-    return JSON.parse(localStorage.getItem(ACHIEVEMENTS_KEY)) || [];
-  } catch { return []; }
-}
-
-function saveUnlocked(list) {
-  localStorage.setItem(ACHIEVEMENTS_KEY, JSON.stringify(list));
+/**
+ * Get the current tier based on total wins.
+ * Returns null if no tier reached yet.
+ */
+export function getCurrentTier(stats) {
+  let current = null;
+  for (const tier of TIERS) {
+    if (stats.wins >= tier.winsRequired) {
+      current = tier;
+    }
+  }
+  return current;
 }
 
 /**
- * Check stats and return any newly unlocked achievements.
+ * Get the next tier to unlock.
+ * Returns null if already at max tier.
  */
-export function checkAchievements(stats) {
-  const unlocked = loadUnlocked();
-  const newlyUnlocked = [];
-
-  for (const ach of ACHIEVEMENTS) {
-    if (unlocked.includes(ach.id)) continue;
-    if (ach.check(stats)) {
-      unlocked.push(ach.id);
-      newlyUnlocked.push(ach);
+export function getNextTier(stats) {
+  for (const tier of TIERS) {
+    if (stats.wins < tier.winsRequired) {
+      return tier;
     }
   }
+  return null;
+}
 
-  if (newlyUnlocked.length > 0) {
-    saveUnlocked(unlocked);
+/**
+ * Get all tier definitions.
+ */
+export function getAllTiers() {
+  return TIERS;
+}
+
+/**
+ * Check if a tier-up happened between previous and current wins.
+ * Returns the newly reached tier, or null.
+ */
+export function checkTierUp(prevWins, currentWins) {
+  let latest = null;
+  for (const tier of TIERS) {
+    if (prevWins < tier.winsRequired && currentWins >= tier.winsRequired) {
+      latest = tier;
+    }
+  }
+  return latest;
+}
+
+/**
+ * Get progress info toward next tier.
+ */
+export function getTierProgress(stats) {
+  const current = getCurrentTier(stats);
+  const next = getNextTier(stats);
+
+  if (!next) {
+    return { current, next: null, progress: 1, winsToNext: 0 };
   }
 
-  return newlyUnlocked;
-}
+  const prevThreshold = current ? current.winsRequired : 0;
+  const range = next.winsRequired - prevThreshold;
+  const progress = (stats.wins - prevThreshold) / range;
 
-export function getAllAchievements() {
-  return ACHIEVEMENTS;
-}
-
-export function getUnlockedCount() {
-  return loadUnlocked().length;
-}
-
-export function getTotalCount() {
-  return ACHIEVEMENTS.length;
+  return {
+    current,
+    next,
+    progress: Math.min(1, Math.max(0, progress)),
+    winsToNext: next.winsRequired - stats.wins,
+  };
 }

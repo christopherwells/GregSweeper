@@ -189,17 +189,17 @@
       </div>
     </div>
 
-    <!-- Achievements Modal -->
+    <!-- Achievements / Rank Modal -->
     <div id="achievements-modal" class="modal hidden">
       <div class="modal-content achievements-content">
         <div class="modal-header">
-          <h2>Achievements</h2>
+          <h2>Rank</h2>
           <button class="modal-close">&times;</button>
         </div>
         <div class="modal-body">
           <div id="achievement-progress" class="achievement-progress-bar">
             <div id="achievement-progress-fill" class="achievement-progress-fill"></div>
-            <span id="achievement-progress-text" class="achievement-progress-text">0 / 16</span>
+            <span id="achievement-progress-text" class="achievement-progress-text">0 wins</span>
           </div>
           <div id="achievements-grid" class="achievements-grid"></div>
         </div>
@@ -322,7 +322,7 @@
     </div>
   </div>
 
-  <script type="module" src="src/main.js?v=0.8"></script>
+  <script type="module" src="src/main.js?v=0.9"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js').catch(() => {});

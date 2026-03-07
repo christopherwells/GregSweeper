@@ -1,3 +1,4 @@
+// Normal mode — progressive difficulty
 const LEVELS = [
   { rows: 10, cols: 10, mines: 10, timeLimit: 120 },   // Level 1
   { rows: 11, cols: 11, mines: 14, timeLimit: 140 },   // Level 2
@@ -11,9 +12,22 @@ const LEVELS = [
   { rows: 19, cols: 19, mines: 68, timeLimit: 460 },   // Level 10
 ];
 
+// Timed mode — classic Minesweeper sizes (Beginner, Intermediate, Expert)
+const TIMED_LEVELS = [
+  { rows: 9,  cols: 9,  mines: 10,  timeLimit: 90,  label: 'Beginner' },
+  { rows: 16, cols: 16, mines: 40,  timeLimit: 300, label: 'Intermediate' },
+  { rows: 16, cols: 30, mines: 99,  timeLimit: 600, label: 'Expert' },
+];
+
 export function getDifficultyForLevel(level) {
   const capped = Math.min(Math.max(level, 1), LEVELS.length);
   return { ...LEVELS[capped - 1] };
 }
 
+export function getTimedDifficulty(level) {
+  const capped = Math.min(Math.max(level, 1), TIMED_LEVELS.length);
+  return { ...TIMED_LEVELS[capped - 1] };
+}
+
 export const MAX_LEVEL = LEVELS.length;
+export const MAX_TIMED_LEVEL = TIMED_LEVELS.length;

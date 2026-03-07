@@ -1,23 +1,23 @@
-import { generateBoard, createEmptyBoard, calculateAdjacency } from './logic/boardGenerator.js?v=0.8';
-import { floodFillReveal, checkWin, revealAllMines, chordReveal } from './logic/boardSolver.js?v=0.8';
-import { getDifficultyForLevel, MAX_LEVEL } from './logic/difficulty.js?v=0.8';
-import { computeVisibleCells } from './logic/fogOfWar.js?v=0.8';
-import { findSafeCell, scanRowCol, defuseMine } from './logic/powerUps.js?v=0.8';
-import { createDailyRNG } from './logic/seededRandom.js?v=0.8';
+import { generateBoard, createEmptyBoard, calculateAdjacency } from './logic/boardGenerator.js?v=0.9';
+import { floodFillReveal, checkWin, revealAllMines, chordReveal } from './logic/boardSolver.js?v=0.9';
+import { getDifficultyForLevel, getTimedDifficulty, MAX_LEVEL, MAX_TIMED_LEVEL } from './logic/difficulty.js?v=0.9';
+import { computeVisibleCells } from './logic/fogOfWar.js?v=0.9';
+import { findSafeCell, scanRowCol, defuseMine } from './logic/powerUps.js?v=0.9';
+import { createDailyRNG } from './logic/seededRandom.js?v=0.9';
 import {
   loadStats, saveGameResult,
   loadDailyLeaderboard, addDailyLeaderboardEntry,
   loadTheme, saveTheme,
-} from './storage/statsStorage.js?v=0.8';
+} from './storage/statsStorage.js?v=0.9';
 import {
   playReveal, playFlag, playUnflag, playExplosion,
   playCascade, playWin, playPowerUp, playShieldBreak,
   playLevelUp, isMuted, setMuted, loadMuted,
-} from './audio/sounds.js?v=0.8';
+} from './audio/sounds.js?v=0.9';
 import {
-  checkAchievements, getAllAchievements, loadUnlocked,
-  getUnlockedCount, getTotalCount,
-} from './logic/achievements.js?v=0.8';
+  getCurrentTier, getNextTier, getAllTiers,
+  checkTierUp, getTierProgress,
+} from './logic/achievements.js?v=0.9';
 
 // ── Theme Unlock Progression ──────────────────────────
 // Themes unlock based on highest level ever beaten (permanent).
@@ -226,7 +226,14 @@ function updateHeader() {
     mineCounterEl.textContent = String(remaining).padStart(3, '0');
   }
   updateTimerDisplay();
-  levelDisplay.textContent = `Level ${state.currentLevel}`;
+
+  // Level display — show timed labels like "Beginner" if available
+  if (state.gameMode === 'timed') {
+    const tdiff = getTimedDifficulty(state.currentLevel);
+    levelDisplay.textContent = tdiff.label || `Level ${state.currentLevel}`;
+  } else {
+    levelDisplay.textContent = `Level ${state.currentLevel}`;
+  }
 
   if (state.gameMode === 'daily') {
     const dateStr = new Date().toISOString().slice(0, 10);
@@ -352,7 +359,9 @@ function handleTimedLoss() {
   stopTimer();
   resetBtn.textContent = '😵';
   playExplosion();
-  triggerShake();
+  triggerHeavyShake();
+  showRedFlash();
+  haptic([100, 40, 100, 40, 200]);
   saveGameResult(false, state.elapsedTime, state.currentLevel);
 
   // Death penalty: reset to level 1 in normal mode
@@ -385,7 +394,9 @@ function handleTimedLoss() {
 
 function newGame() {
   stopTimer();
-  const diff = getDifficultyForLevel(state.currentLevel);
+  const diff = state.gameMode === 'timed'
+    ? getTimedDifficulty(state.currentLevel)
+    : getDifficultyForLevel(state.currentLevel);
   const prevRows = state.rows;
   const prevCols = state.cols;
 
@@ -410,6 +421,7 @@ function newGame() {
   state.dailySeed = state.gameMode === 'daily' ? new Date().toISOString().slice(0, 10) : null;
 
   hideAllModals();
+  adjustCellSize();
   renderBoard();
   updateAllCells();
   updateHeader();
@@ -425,9 +437,19 @@ function newGame() {
 
   // Show level info toast on new game (except first load)
   if (state._initialized && (state.gameMode === 'normal' || state.gameMode === 'timed')) {
-    showLevelInfoToast(state.currentLevel, diff);
+    const label = diff.label ? `${diff.label}` : null;
+    showLevelInfoToast(state.currentLevel, diff, label);
   }
   state._initialized = true;
+}
+
+// Dynamically adjust cell size to fit the board on screen
+function adjustCellSize() {
+  const maxWidth = Math.min(window.innerWidth * 0.88, 520);
+  const gapSpace = (state.cols - 1) * 2 + 8; // grid gaps + padding
+  const maxCellSize = Math.floor((maxWidth - gapSpace) / state.cols);
+  const cellSize = Math.min(40, Math.max(16, maxCellSize));
+  document.documentElement.style.setProperty('--cell-size', cellSize + 'px');
 }
 
 function revealCell(row, col) {
@@ -543,6 +565,7 @@ function handleWin() {
 
   const prevStats = loadStats();
   const prevMaxLevel = prevStats.maxLevelReached || 1;
+  const prevWins = prevStats.wins || 0;
 
   const isDaily = state.gameMode === 'daily';
   const stats = saveGameResult(true, state.elapsedTime, state.currentLevel, {
@@ -552,7 +575,8 @@ function handleWin() {
   const earnedPowerUp = awardPowerUps(stats);
 
   playWin();
-  showParticles();
+  showCelebration();
+  haptic([50, 30, 50, 30, 80]);
 
   // Check for newly unlocked themes
   const newThemes = checkThemeUnlocks(prevMaxLevel, stats.maxLevelReached || 1);
@@ -560,8 +584,8 @@ function handleWin() {
     showThemeUnlockToasts(newThemes);
   }
 
-  // Check achievements
-  const newAchievements = checkAchievements(stats);
+  // Check tier-up
+  const newTier = checkTierUp(prevWins, stats.wins);
 
   const gameoverTitle = $('#gameover-title');
   const gameoverTime = $('#gameover-time');
@@ -590,24 +614,23 @@ function handleWin() {
     powerupEarned.classList.add('hidden');
   }
 
-  // Show newly unlocked achievements in game over
-  if (newAchievements.length > 0) {
+  // Show tier-up badge in game over
+  if (newTier) {
     achievementsDiv.innerHTML = '';
-    for (const ach of newAchievements) {
-      const badge = document.createElement('div');
-      badge.className = 'gameover-achievement-badge';
-      badge.innerHTML = `<span>${ach.icon}</span><span>${ach.name}</span>`;
-      achievementsDiv.appendChild(badge);
-    }
+    const badge = document.createElement('div');
+    badge.className = 'gameover-achievement-badge tier-up-badge';
+    badge.innerHTML = `<span>${newTier.icon}</span><span>Rank Up: ${newTier.name}!</span>`;
+    achievementsDiv.appendChild(badge);
     achievementsDiv.classList.remove('hidden');
 
-    // Show achievement toasts sequentially
-    showAchievementToasts(newAchievements);
+    // Show tier-up toast
+    showTierUpToast(newTier);
   } else {
     achievementsDiv.classList.add('hidden');
   }
 
-  if (state.currentLevel < MAX_LEVEL && state.gameMode !== 'daily') {
+  const maxLevel = state.gameMode === 'timed' ? MAX_TIMED_LEVEL : MAX_LEVEL;
+  if (state.currentLevel < maxLevel && state.gameMode !== 'daily') {
     nextLevelBtn.classList.remove('hidden');
   } else {
     nextLevelBtn.classList.add('hidden');
@@ -633,11 +656,14 @@ function handleLoss(mineRow, mineCol) {
   resetBtn.textContent = '😵';
 
   state.hitMine = { row: mineRow, col: mineCol };
-  revealAllMines(state.board);
-  updateAllCells();
+
+  // Chain explosion: reveal mines in expanding rings from the hit
+  chainRevealMines(mineRow, mineCol);
 
   playExplosion();
-  triggerShake();
+  triggerHeavyShake();
+  showRedFlash();
+  haptic([100, 40, 100, 40, 200]);
   saveGameResult(false, state.elapsedTime, state.currentLevel);
 
   // Death penalty: reset to level 1 in normal mode
@@ -661,7 +687,7 @@ function handleLoss(mineRow, mineCol) {
   $('#gameover-share').classList.add('hidden');
   $('#gameover-achievements').classList.add('hidden');
 
-  setTimeout(() => showModal('gameover-overlay'), 600);
+  setTimeout(() => showModal('gameover-overlay'), 900);
   updatePowerUpBar();
   updateStreakBorder();
 }
@@ -756,7 +782,72 @@ function triggerShake() {
   setTimeout(() => shakeWrapper.classList.remove('shaking'), 450);
 }
 
-function showParticles() {
+function triggerHeavyShake() {
+  shakeWrapper.classList.add('heavy-shaking');
+  setTimeout(() => shakeWrapper.classList.remove('heavy-shaking'), 700);
+}
+
+function haptic(pattern) {
+  if (navigator.vibrate) {
+    navigator.vibrate(pattern);
+  }
+}
+
+function showRedFlash() {
+  const flash = document.createElement('div');
+  flash.className = 'red-flash';
+  document.getElementById('app').appendChild(flash);
+  setTimeout(() => flash.remove(), 600);
+}
+
+function showGreenFlash() {
+  const flash = document.createElement('div');
+  flash.className = 'green-flash';
+  document.getElementById('app').appendChild(flash);
+  setTimeout(() => flash.remove(), 500);
+}
+
+// Chain-reveal mines outward from hit point for dramatic effect
+function chainRevealMines(hitRow, hitCol) {
+  revealAllMines(state.board);
+
+  // Find all mine cells and sort by distance from hit
+  const mineCells = [];
+  for (let r = 0; r < state.rows; r++) {
+    for (let c = 0; c < state.cols; c++) {
+      if (state.board[r][c].isMine) {
+        const dist = Math.abs(r - hitRow) + Math.abs(c - hitCol);
+        mineCells.push({ r, c, dist });
+      }
+    }
+  }
+  mineCells.sort((a, b) => a.dist - b.dist);
+
+  // Reveal immediately — add staggered explosion animation
+  updateAllCells();
+  for (let i = 0; i < mineCells.length; i++) {
+    const { r, c } = mineCells[i];
+    const cellEl = boardEl.children[r * state.cols + c];
+    if (cellEl) {
+      cellEl.style.animationDelay = `${i * 50}ms`;
+      cellEl.classList.add('mine-chain');
+    }
+  }
+}
+
+// ── Celebration Effects ─────────────────────────────────
+
+function showCelebration() {
+  showGreenFlash();
+
+  // Multi-burst confetti
+  showConfettiBurst(0.5, 0.5, 200);
+  setTimeout(() => showConfettiBurst(0.2, 0.3, 100), 300);
+  setTimeout(() => showConfettiBurst(0.8, 0.3, 100), 500);
+  setTimeout(() => showConfettiBurst(0.5, 0.2, 80), 700);
+}
+
+function showConfettiBurst(originX, originY, count) {
   const canvas = particleCanvas;
   const ctx = canvas.getContext('2d');
   const rect = boardEl.getBoundingClientRect();
@@ -768,44 +859,48 @@ function showParticles() {
 
   // Themed particle colors
   const themeColors = {
-    classic: ['#ff4444', '#4488ff', '#44cc44', '#ffdd44', '#ff44ff', '#ffd700'],
-    dark: ['#e94560', '#53a8ff', '#00d4aa', '#ffd93d', '#c084fc', '#ff6b6b'],
-    neon: ['#00ff88', '#ff0066', '#00ccff', '#ffff00', '#ff6600', '#cc44ff'],
-    ocean: ['#64d2ff', '#5eead4', '#fbbf24', '#34d399', '#a78bfa', '#ff6b6b'],
-    sunset: ['#ff6b6b', '#ffa07a', '#ffc107', '#ff8a65', '#bb86fc', '#87d68d'],
-    candy: ['#ff69b4', '#e040fb', '#7c4dff', '#ffd740', '#69f0ae', '#ff4081'],
-    midnight: ['#cc88ff', '#7c4dff', '#80b0ff', '#ffd740', '#69f0ae', '#80ffb0'],
-    aurora: ['#00e5a0', '#00bcd4', '#b388ff', '#69f0ae', '#00e5ff', '#ff4488'],
-    galaxy: ['#ea80fc', '#d050ff', '#82b1ff', '#ff80ab', '#b9f6ca', '#ffab40'],
+    classic: ['#ff4444', '#4488ff', '#44cc44', '#ffdd44', '#ff44ff', '#ffd700', '#ff8800', '#00ccff'],
+    dark: ['#e94560', '#53a8ff', '#00d4aa', '#ffd93d', '#c084fc', '#ff6b6b', '#ff8800', '#00ff88'],
+    neon: ['#00ff88', '#ff0066', '#00ccff', '#ffff00', '#ff6600', '#cc44ff', '#00ffcc', '#ff3399'],
+    ocean: ['#64d2ff', '#5eead4', '#fbbf24', '#34d399', '#a78bfa', '#ff6b6b', '#00e5ff', '#80ffea'],
+    sunset: ['#ff6b6b', '#ffa07a', '#ffc107', '#ff8a65', '#bb86fc', '#87d68d', '#ff4444', '#ffdd44'],
+    candy: ['#ff69b4', '#e040fb', '#7c4dff', '#ffd740', '#69f0ae', '#ff4081', '#ea80fc', '#80d8ff'],
+    midnight: ['#cc88ff', '#7c4dff', '#80b0ff', '#ffd740', '#69f0ae', '#80ffb0', '#b388ff', '#ff80ab'],
+    aurora: ['#00e5a0', '#00bcd4', '#b388ff', '#69f0ae', '#00e5ff', '#ff4488', '#a7ffeb', '#ea80fc'],
+    galaxy: ['#ea80fc', '#d050ff', '#82b1ff', '#ff80ab', '#b9f6ca', '#ffab40', '#ce93d8', '#80d8ff'],
   };
   const colors = themeColors[state.theme] || themeColors.classic;
 
-  // Themed particle shapes
   const isNeon = state.theme === 'neon' || state.theme === 'aurora';
   const isCandy = state.theme === 'candy';
   const isGalaxy = state.theme === 'galaxy';
 
+  const shapes = ['rect', 'circle', 'triangle', 'star'];
+  if (isNeon) shapes.push('spark', 'spark');
+  if (isCandy) shapes.push('circle', 'circle');
+
   const particles = [];
-  const count = 120;
   for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 4 + Math.random() * 12;
     particles.push({
-      x: canvas.width / 2 + (Math.random() - 0.5) * 40,
-      y: canvas.height / 2,
-      vx: (Math.random() - 0.5) * 14,
-      vy: (Math.random() - 0.5) * 14 - 5,
-      gravity: 0.12,
+      x: canvas.width * originX + (Math.random() - 0.5) * 30,
+      y: canvas.height * originY,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 4,
+      gravity: 0.1 + Math.random() * 0.05,
       life: 1,
-      decay: 0.006 + Math.random() * 0.008,
+      decay: 0.004 + Math.random() * 0.006,
       color: colors[Math.floor(Math.random() * colors.length)],
-      size: isCandy ? 4 + Math.random() * 6 : 2.5 + Math.random() * 4,
+      size: 3 + Math.random() * 6,
       rotation: Math.random() * Math.PI * 2,
-      rotationSpeed: (Math.random() - 0.5) * 0.2,
-      shape: isNeon ? 'spark' : (isCandy || isGalaxy ? 'circle' : 'rect'),
+      rotationSpeed: (Math.random() - 0.5) * 0.3,
+      shape: shapes[Math.floor(Math.random() * shapes.length)],
     });
   }
 
   function animate() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Don't clear — allow bursts to layer
     let alive = false;
 
     for (const p of particles) {
@@ -814,6 +909,7 @@ function showParticles() {
       p.x += p.vx;
       p.y += p.vy;
       p.vy += p.gravity;
+      p.vx *= 0.99;
       p.life -= p.decay;
       p.rotation += p.rotationSpeed;
 
@@ -825,24 +921,31 @@ function showParticles() {
       ctx.rotate(p.rotation);
 
       if (p.shape === 'spark') {
-        // Neon sparks — elongated lines
         ctx.strokeStyle = p.color;
         ctx.lineWidth = 2;
         ctx.shadowColor = p.color;
-        ctx.shadowBlur = 6;
+        ctx.shadowBlur = 8;
         ctx.beginPath();
         ctx.moveTo(-p.size, 0);
         ctx.lineTo(p.size, 0);
         ctx.stroke();
         ctx.shadowBlur = 0;
       } else if (p.shape === 'circle') {
-        // Candy circles
         ctx.beginPath();
         ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
         ctx.fill();
+      } else if (p.shape === 'triangle') {
+        ctx.beginPath();
+        ctx.moveTo(0, -p.size / 2);
+        ctx.lineTo(-p.size / 2, p.size / 2);
+        ctx.lineTo(p.size / 2, p.size / 2);
+        ctx.closePath();
+        ctx.fill();
+      } else if (p.shape === 'star') {
+        drawStar(ctx, 0, 0, 5, p.size / 2, p.size / 4);
+        ctx.fill();
       } else {
-        // Default rectangles
-        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
       }
 
       ctx.restore();
@@ -860,34 +963,38 @@ function showParticles() {
   requestAnimationFrame(animate);
 }
 
+function drawStar(ctx, cx, cy, spikes, outerRadius, innerRadius) {
+  let rot = (Math.PI / 2) * 3;
+  const step = Math.PI / spikes;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - outerRadius);
+  for (let i = 0; i < spikes; i++) {
+    ctx.lineTo(cx + Math.cos(rot) * outerRadius, cy + Math.sin(rot) * outerRadius);
+    rot += step;
+    ctx.lineTo(cx + Math.cos(rot) * innerRadius, cy + Math.sin(rot) * innerRadius);
+    rot += step;
+  }
+  ctx.lineTo(cx, cy - outerRadius);
+  ctx.closePath();
+}
+
 // ── Achievements ───────────────────────────────────────
 
-function showAchievementToasts(achievements) {
+function showTierUpToast(tier) {
   const toast = $('#achievement-toast');
-  let index = 0;
+  toast.querySelector('.achievement-toast-icon').textContent = tier.icon;
+  toast.querySelector('.achievement-toast-title').textContent = 'Rank Up!';
+  toast.querySelector('.achievement-toast-name').textContent = tier.name;
+  toast.classList.remove('hidden', 'hiding');
 
-  function showNext() {
-    if (index >= achievements.length) return;
-    const ach = achievements[index];
-    toast.querySelector('.achievement-toast-icon').textContent = ach.icon;
-    toast.querySelector('.achievement-toast-name').textContent = ach.name;
-    toast.classList.remove('hidden', 'hiding');
-
+  setTimeout(() => {
+    toast.classList.add('hiding');
     setTimeout(() => {
-      toast.classList.add('hiding');
-      setTimeout(() => {
-        toast.classList.add('hidden');
-        toast.classList.remove('hiding');
-        index++;
-        if (index < achievements.length) {
-          setTimeout(showNext, 200);
-        }
-      }, 300);
-    }, 2500);
-  }
-
-  // Delay first toast slightly to let game over show first
-  setTimeout(showNext, 600);
+      toast.classList.add('hidden');
+      toast.classList.remove('hiding');
+      toast.querySelector('.achievement-toast-title').textContent = 'Achievement Unlocked!';
+    }, 300);
+  }, 3500);
 }
 
 function updateAchievementsDisplay() {
@@ -895,24 +1002,65 @@ function updateAchievementsDisplay() {
   const progressFill = $('#achievement-progress-fill');
   const progressText = $('#achievement-progress-text');
 
-  const all = getAllAchievements();
-  const unlocked = loadUnlocked();
-  const unlockedCount = unlocked.length;
-  const totalCount = all.length;
+  const stats = loadStats();
+  const tiers = getAllTiers();
+  const { current, next, progress, winsToNext } = getTierProgress(stats);
 
-  progressFill.style.width = `${(unlockedCount / totalCount) * 100}%`;
-  progressText.textContent = `${unlockedCount} / ${totalCount}`;
+  // Update progress bar
+  const unlockedCount = tiers.filter(t => stats.wins >= t.winsRequired).length;
+  progressFill.style.width = `${(unlockedCount / tiers.length) * 100}%`;
+  progressText.textContent = `${stats.wins} wins`;
 
+  // Current rank display
   grid.innerHTML = '';
-  for (const ach of all) {
-    const isUnlocked = unlocked.includes(ach.id);
+
+  // Big current rank card
+  const currentCard = document.createElement('div');
+  currentCard.className = 'rank-current-card';
+  if (current) {
+    currentCard.innerHTML = `
+      <div class="rank-current-icon">${current.icon}</div>
+      <div class="rank-current-name">${current.name}</div>
+      <div class="rank-current-subtitle">${stats.wins} wins</div>
+    `;
+  } else {
+    currentCard.innerHTML = `
+      <div class="rank-current-icon">🎮</div>
+      <div class="rank-current-name">Unranked</div>
+      <div class="rank-current-subtitle">Win a game to earn your rank!</div>
+    `;
+  }
+  grid.appendChild(currentCard);
+
+  // Next rank progress
+  if (next) {
+    const nextCard = document.createElement('div');
+    nextCard.className = 'rank-next-card';
+    nextCard.innerHTML = `
+      <div class="rank-next-header">Next: ${next.icon} ${next.name}</div>
+      <div class="rank-next-progress-bar">
+        <div class="rank-next-progress-fill" style="width: ${progress * 100}%"></div>
+      </div>
+      <div class="rank-next-text">${winsToNext} win${winsToNext !== 1 ? 's' : ''} to go</div>
+    `;
+    grid.appendChild(nextCard);
+  } else {
+    const maxCard = document.createElement('div');
+    maxCard.className = 'rank-next-card rank-max';
+    maxCard.innerHTML = `<div class="rank-next-header">Maximum Rank Achieved!</div>`;
+    grid.appendChild(maxCard);
+  }
+
+  // All tiers list
+  for (const tier of tiers) {
+    const isUnlocked = stats.wins >= tier.winsRequired;
     const item = document.createElement('div');
     item.className = `achievement-item ${isUnlocked ? 'unlocked' : 'locked'}`;
     item.innerHTML = `
-      <div class="achievement-icon">${ach.icon}</div>
+      <div class="achievement-icon">${tier.icon}</div>
       <div class="achievement-info">
-        <div class="achievement-name">${ach.name}</div>
-        <div class="achievement-desc">${ach.desc}</div>
+        <div class="achievement-name">${tier.name}</div>
+        <div class="achievement-desc">${tier.winsRequired} win${tier.winsRequired !== 1 ? 's' : ''}</div>
       </div>
       <div class="achievement-check">${isUnlocked ? '✅' : '🔒'}</div>
     `;
@@ -925,21 +1073,34 @@ function updateAchievementsDisplay() {
 function generateShareCard() {
   const level = state.currentLevel;
   const time = state.elapsedTime;
-  const diff = getDifficultyForLevel(level);
+  const diff = state.gameMode === 'timed'
+    ? getTimedDifficulty(level)
+    : getDifficultyForLevel(level);
   const mode = state.gameMode;
   const modeLabel = { normal: 'Normal', timed: 'Timed', fogOfWar: 'Fog of War', daily: 'Daily' }[mode] || 'Normal';
 
   const stats = loadStats();
   const streakText = stats.currentStreak > 1 ? ` | 🔥 ${stats.currentStreak} streak` : '';
+  const tier = getCurrentTier(stats);
+  const tierText = tier ? ` | ${tier.icon} ${tier.name}` : '';
 
   let dateStr = '';
   if (mode === 'daily') {
     dateStr = ` (${new Date().toISOString().slice(0, 10)})`;
   }
 
-  return `💣 GregSweeper — ${modeLabel}${dateStr}\n` +
-         `Level ${level} (${diff.rows}x${diff.cols}) in ${time}s${streakText}\n\n` +
-         `gregsweeper.com`;
+  const levelLabel = diff.label || `Level ${level}`;
+
+  if (mode === 'daily') {
+    return `💣 GregSweeper — Daily Challenge${dateStr}\n` +
+           `⏱️ ${time}s (${diff.rows}x${diff.cols})${tierText}\n` +
+           `Can you beat my time?\n\n` +
+           `https://christopherwells.github.io/GregSweeper/`;
+  }
+
+  return `💣 GregSweeper — ${modeLabel}\n` +
+         `${levelLabel} (${diff.rows}x${diff.cols}) in ${time}s${streakText}${tierText}\n\n` +
+         `https://christopherwells.github.io/GregSweeper/`;
 }
 
 function handleShare() {
@@ -1077,8 +1238,12 @@ function escapeHtml(str) {
 
 let longPressTimer = null;
 let longPressTriggered = false;
+let lastTouchTime = 0;  // Guard against touch + synthetic mouse double-fire
 
 boardEl.addEventListener('mousedown', (e) => {
+  // Skip synthetic mouse events fired after touch
+  if (Date.now() - lastTouchTime < 500) return;
+
   const cellEl = e.target.closest('.cell');
   if (!cellEl) return;
   const row = parseInt(cellEl.dataset.row);
@@ -1104,15 +1269,14 @@ boardEl.addEventListener('contextmenu', (e) => {
 });
 
 // Touch support: tap to reveal, long press to flag
+// CSS touch-action: manipulation handles double-tap zoom; touchstart is passive for native feedback
 let touchedCellRow = null;
 let touchedCellCol = null;
 
 boardEl.addEventListener('touchstart', (e) => {
-  // Use touch point coordinates to find the cell element
   const touch = e.touches[0];
   const cellEl = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.cell');
   if (!cellEl) return;
-  e.preventDefault();  // Prevent browser context menu and double-tap zoom
   longPressTriggered = false;
   touchedCellRow = parseInt(cellEl.dataset.row);
   touchedCellCol = parseInt(cellEl.dataset.col);
@@ -1123,9 +1287,10 @@ boardEl.addEventListener('touchstart', (e) => {
       toggleFlag(touchedCellRow, touchedCellCol);
     }
   }, 500);
-}, { passive: false });
+}, { passive: true });
 
 boardEl.addEventListener('touchend', (e) => {
+  lastTouchTime = Date.now();
   if (longPressTimer) {
     clearTimeout(longPressTimer);
     longPressTimer = null;
@@ -1134,9 +1299,11 @@ boardEl.addEventListener('touchend', (e) => {
     longPressTriggered = false;
     touchedCellRow = null;
     touchedCellCol = null;
+    e.preventDefault();
     return;
   }
   if (touchedCellRow == null || touchedCellCol == null) return;
+  e.preventDefault();  // Block synthetic mousedown
   const row = touchedCellRow;
   const col = touchedCellCol;
   touchedCellRow = null;
@@ -1239,9 +1406,11 @@ for (const modeBtn of $$('.mode-btn')) {
 // Game over actions
 $('#gameover-retry').addEventListener('click', () => newGame());
 $('#gameover-nextlevel').addEventListener('click', () => {
-  if (state.currentLevel < MAX_LEVEL) state.currentLevel++;
+  const maxLevel = state.gameMode === 'timed' ? MAX_TIMED_LEVEL : MAX_LEVEL;
+  if (state.currentLevel < maxLevel) state.currentLevel++;
   playLevelUp();
   showLevelUpToast(state.currentLevel);
+  showCelebration();
   newGame();
 });
 $('#gameover-submit-daily').addEventListener('click', () => {
@@ -1289,13 +1458,14 @@ function showLevelUpToast(level) {
 
 // ── Level Info Toast ───────────────────────────────────
 
-function showLevelInfoToast(level, diff) {
+function showLevelInfoToast(level, diff, label) {
   const toast = document.createElement('div');
   toast.className = 'level-info-toast';
   const sizeLabel = `${diff.rows}×${diff.cols}`;
   const mineLabel = `${diff.mines} mines`;
   const timeLabel = state.gameMode === 'timed' ? ` · ${diff.timeLimit}s` : '';
-  toast.innerHTML = `<strong>Level ${level}</strong><br><span class="level-info-details">${sizeLabel} · ${mineLabel}${timeLabel}</span>`;
+  const title = label ? `${label}` : `Level ${level}`;
+  toast.innerHTML = `<strong>${title}</strong><br><span class="level-info-details">${sizeLabel} · ${mineLabel}${timeLabel}</span>`;
   document.getElementById('app').appendChild(toast);
   setTimeout(() => toast.remove(), 2500);
 }
