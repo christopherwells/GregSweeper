@@ -1,23 +1,24 @@
-import { generateBoard, createEmptyBoard, calculateAdjacency } from './logic/boardGenerator.js?v=1.2';
-import { floodFillReveal, checkWin, revealAllMines, chordReveal } from './logic/boardSolver.js?v=1.2';
-import { getDifficultyForLevel, getTimedDifficulty, MAX_LEVEL, MAX_TIMED_LEVEL } from './logic/difficulty.js?v=1.2';
-import { computeVisibleCells } from './logic/fogOfWar.js?v=1.2';
-import { findSafeCell, scanRowCol, defuseMine } from './logic/powerUps.js?v=1.2';
-import { createDailyRNG } from './logic/seededRandom.js?v=1.2';
+import { generateBoard, createEmptyBoard, calculateAdjacency } from './logic/boardGenerator.js?v=1.3';
+import { floodFillReveal, checkWin, revealAllMines, chordReveal } from './logic/boardSolver.js?v=1.3';
+import { getDifficultyForLevel, getTimedDifficulty, MAX_LEVEL, MAX_TIMED_LEVEL } from './logic/difficulty.js?v=1.3';
+import { computeVisibleCells } from './logic/fogOfWar.js?v=1.3';
+import { findSafeCell, scanRowCol, defuseMine } from './logic/powerUps.js?v=1.3';
+import { createDailyRNG } from './logic/seededRandom.js?v=1.3';
 import {
   loadStats, saveGameResult, resetStats,
   loadDailyLeaderboard, addDailyLeaderboardEntry,
   loadTheme, saveTheme,
-} from './storage/statsStorage.js?v=1.2';
+  loadModePowerUps, saveModePowerUps,
+} from './storage/statsStorage.js?v=1.3';
 import {
   playReveal, playFlag, playUnflag, playExplosion,
   playCascade, playWin, playPowerUp, playShieldBreak,
   playLevelUp, isMuted, setMuted, loadMuted,
-} from './audio/sounds.js?v=1.2';
+} from './audio/sounds.js?v=1.3';
 import {
   getAchievementState, getTotalScore, checkNewUnlocks,
   getHighestTier, getAllTierNames, getTierIcon, getTierColor,
-} from './logic/achievements.js?v=1.2';
+} from './logic/achievements.js?v=1.3';
 
 // ── Theme Unlock Progression ──────────────────────────
 // Themes unlock based on highest level ever beaten (permanent).
@@ -121,7 +122,7 @@ const state = {
   gameMode: 'normal',   // normal | timed | fogOfWar | daily
   dailySeed: null,
 
-  powerUps: { revealSafe: 0, shield: 0, scanRowCol: 0 },
+  powerUps: { revealSafe: 0, shield: 0, scanRowCol: 0, freeze: 0, xray: 0, luckyGuess: 0 },
   shieldActive: false,
   scanMode: false,
   usedPowerUps: false,  // track for purist achievement
@@ -374,7 +375,8 @@ function handleTimedLoss() {
   triggerHeavyShake();
   showRedFlash();
   haptic([100, 40, 100, 40, 200]);
-  saveGameResult(false, state.elapsedTime, state.currentLevel);
+  saveGameResult(false, state.elapsedTime, state.currentLevel, { gameMode: state.gameMode });
+  saveModePowerUps(state.gameMode, state.powerUps);
 
   // Death penalty: reset to level 1 in normal mode
   const lostLevel = state.currentLevel;
@@ -431,6 +433,25 @@ function newGame() {
   state.visibleCells = new Set();
   state.fogOfWarEnabled = state.gameMode === 'fogOfWar';
   state.dailySeed = state.gameMode === 'daily' ? new Date().toISOString().slice(0, 10) : null;
+
+  // Load per-mode power-ups
+  const modePU = loadModePowerUps(state.gameMode);
+  if (state.gameMode === 'timed') {
+    // Timed mode: no power-ups
+    state.powerUps = { revealSafe: 0, shield: 0, scanRowCol: 0, freeze: 0, xray: 0, luckyGuess: 0 };
+  } else if (state.gameMode === 'daily') {
+    // Daily mode: fixed set, not persisted
+    state.powerUps = { revealSafe: 0, shield: 0, scanRowCol: 0, freeze: 0, xray: 0, luckyGuess: 0 };
+  } else {
+    state.powerUps = {
+      revealSafe: modePU.revealSafe || 0,
+      shield: modePU.shield || 0,
+      scanRowCol: modePU.scanRowCol || 0,
+      freeze: modePU.freeze || 0,
+      xray: modePU.xray || 0,
+      luckyGuess: modePU.luckyGuess || 0,
+    };
+  }
 
   hideAllModals();
   adjustCellSize();
@@ -582,8 +603,12 @@ function handleWin() {
   const stats = saveGameResult(true, state.elapsedTime, state.currentLevel, {
     isDaily,
     usedPowerUps: state.usedPowerUps,
+    gameMode: state.gameMode,
   });
   const earnedPowerUp = awardPowerUps(stats);
+
+  // Persist power-ups after win (award changes them)
+  saveModePowerUps(state.gameMode, state.powerUps);
 
   playWin();
   showCelebration();
@@ -677,7 +702,10 @@ function handleLoss(mineRow, mineCol) {
   triggerHeavyShake();
   showRedFlash();
   haptic([100, 40, 100, 40, 200]);
-  saveGameResult(false, state.elapsedTime, state.currentLevel);
+  saveGameResult(false, state.elapsedTime, state.currentLevel, { gameMode: state.gameMode });
+
+  // Power-ups persist on loss within same mode
+  saveModePowerUps(state.gameMode, state.powerUps);
 
   // Death penalty: reset to level 1 in normal mode
   const lostLevel = state.currentLevel;
@@ -714,6 +742,7 @@ function useRevealSafe() {
   playPowerUp();
   state.powerUps.revealSafe--;
   state.usedPowerUps = true;
+  saveModePowerUps(state.gameMode, state.powerUps);
   cell.isRevealed = true;
   cell.revealAnimDelay = 0;
   state.revealedCount++;
@@ -737,6 +766,7 @@ function useShield() {
   state.powerUps.shield--;
   state.usedPowerUps = true;
   state.shieldActive = true;
+  saveModePowerUps(state.gameMode, state.powerUps);
   updatePowerUpBar();
 }
 
@@ -751,6 +781,7 @@ function activateScan() {
 function performScan(row, col) {
   state.powerUps.scanRowCol--;
   state.scanMode = false;
+  saveModePowerUps(state.gameMode, state.powerUps);
   const result = scanRowCol(state.board, row, col);
 
   // Highlight the row and column
@@ -1423,7 +1454,7 @@ $('#btn-reset-profile').addEventListener('click', () => {
     updateThemeSwatches();
     // Reset game state
     state.currentLevel = 1;
-    state.powerUps = { revealSafe: 0, shield: 0, scanRowCol: 0 };
+    state.powerUps = { revealSafe: 0, shield: 0, scanRowCol: 0, freeze: 0, xray: 0, luckyGuess: 0 };
     updatePowerUpBar();
     newGame();
     // Close settings modal
