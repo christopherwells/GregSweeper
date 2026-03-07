@@ -1,0 +1,66 @@
+/* Ocean theme — deep sea blues with coral accents */
+[data-theme="ocean"] {
+  --color-bg: #1b3a4b;
+  --color-app-bg: #0d2137;
+  --color-cell-hidden: #1e4a5f;
+  --color-cell-hidden-hover: #245a72;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #225568, #1a4555);
+  --color-cell-revealed: #0f2e42;
+  --color-cell-border-light: #2a6580;
+  --color-cell-border-dark: #0a1e2e;
+  --color-mine: #ff6b6b;
+  --color-mine-hit: #ff4444;
+  --color-flag: #ff6b6b;
+  --color-text: #e0f0ff;
+  --color-text-secondary: #7eb8d4;
+
+  --color-num-1: #64d2ff;
+  --color-num-2: #5eead4;
+  --color-num-3: #ff6b6b;
+  --color-num-4: #a78bfa;
+  --color-num-5: #fbbf24;
+  --color-num-6: #34d399;
+  --color-num-7: #f0f0f0;
+  --color-num-8: #6b8fa0;
+
+  --color-header-bg: #1b3a4b;
+  --color-header-gradient: linear-gradient(180deg, #1e4a5f, #163a4f);
+  --color-lcd-bg: #051520;
+  --color-lcd-text: #64d2ff;
+  --color-modal-bg: #152e3f;
+  --color-modal-overlay: rgba(0, 10, 20, 0.8);
+  --color-btn-bg: #1e4a5f;
+  --color-btn-hover: #245a72;
+  --color-btn-gradient: linear-gradient(180deg, #245a72, #1e4a5f);
+  --color-border: #2a6580;
+  --color-fog: rgba(5, 15, 25, 0.92);
+  --color-scan-highlight: rgba(100, 210, 255, 0.2);
+  --color-golden: #fbbf24;
+  --color-accent: #00b4d8;
+  --color-accent-hover: #0096c7;
+  --color-accent-glow: rgba(0, 180, 216, 0.3);
+  --color-win: #34d399;
+  --color-loss: #ff6b6b;
+  --color-surface: rgba(255, 255, 255, 0.04);
+}
+
+[data-theme="ocean"] #app {
+  box-shadow: 0 8px 40px rgba(0, 20, 40, 0.5), inset 0 1px 0 rgba(100, 210, 255, 0.05);
+}
+
+[data-theme="ocean"] .lcd-display {
+  text-shadow: 0 0 8px rgba(100, 210, 255, 0.4);
+}
+
+[data-theme="ocean"] #game-title {
+  text-shadow: 0 0 12px rgba(0, 180, 216, 0.3);
+}
+
+[data-theme="ocean"] .modal-close:hover {
+  background: rgba(100, 210, 255, 0.1);
+}
+
+[data-theme="ocean"] #board {
+  border-color: #2a6580;
+  box-shadow: 0 4px 16px rgba(0, 20, 40, 0.4);
+}

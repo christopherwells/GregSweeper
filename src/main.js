@@ -1,19 +1,23 @@
-import { generateBoard, createEmptyBoard, calculateAdjacency } from './logic/boardGenerator.js?v=0.5';
-import { floodFillReveal, checkWin, revealAllMines, chordReveal } from './logic/boardSolver.js?v=0.5';
-import { getDifficultyForLevel, MAX_LEVEL } from './logic/difficulty.js?v=0.5';
-import { computeVisibleCells } from './logic/fogOfWar.js?v=0.5';
-import { findSafeCell, scanRowCol, defuseMine } from './logic/powerUps.js?v=0.5';
-import { createDailyRNG } from './logic/seededRandom.js?v=0.5';
+import { generateBoard, createEmptyBoard, calculateAdjacency } from './logic/boardGenerator.js?v=0.7';
+import { floodFillReveal, checkWin, revealAllMines, chordReveal } from './logic/boardSolver.js?v=0.7';
+import { getDifficultyForLevel, MAX_LEVEL } from './logic/difficulty.js?v=0.7';
+import { computeVisibleCells } from './logic/fogOfWar.js?v=0.7';
+import { findSafeCell, scanRowCol, defuseMine } from './logic/powerUps.js?v=0.7';
+import { createDailyRNG } from './logic/seededRandom.js?v=0.7';
 import {
   loadStats, saveGameResult,
   loadDailyLeaderboard, addDailyLeaderboardEntry,
   loadTheme, saveTheme,
-} from './storage/statsStorage.js?v=0.5';
+} from './storage/statsStorage.js?v=0.7';
 import {
   playReveal, playFlag, playUnflag, playExplosion,
   playCascade, playWin, playPowerUp, playShieldBreak,
   playLevelUp, isMuted, setMuted, loadMuted,
-} from './audio/sounds.js?v=0.5';
+} from './audio/sounds.js?v=0.7';
+import {
+  checkAchievements, getAllAchievements, loadUnlocked,
+  getUnlockedCount, getTotalCount,
+} from './logic/achievements.js?v=0.7';
 
 // ── State ──────────────────────────────────────────────
 
@@ -37,6 +41,7 @@ const state = {
   powerUps: { revealSafe: 1, shield: 1, scanRowCol: 1 },
   shieldActive: false,
   scanMode: false,
+  usedPowerUps: false,  // track for purist achievement
 
   fogOfWarEnabled: false,
   visibleCells: new Set(),
@@ -64,6 +69,7 @@ const particleCanvas = $('#particle-canvas');
 const scanToast = $('#scan-toast');
 const muteBtn = $('#btn-mute');
 const bestTimeDisplay = $('#best-time-display');
+const streakBorder = $('#streak-border');
 
 // ── Board Rendering ────────────────────────────────────
 
@@ -183,6 +189,24 @@ function updatePowerUpBar() {
   boardEl.classList.toggle('shield-active', state.shieldActive);
 }
 
+// ── Streak Fire Effect ─────────────────────────────────
+
+function updateStreakBorder() {
+  if (!streakBorder) return;
+  const stats = loadStats();
+  const streak = stats.currentStreak || 0;
+
+  streakBorder.classList.remove('active', 'streak-1', 'streak-2', 'streak-3');
+
+  if (streak >= 5) {
+    streakBorder.classList.add('active', 'streak-3');
+  } else if (streak >= 3) {
+    streakBorder.classList.add('active', 'streak-2');
+  } else if (streak >= 2) {
+    streakBorder.classList.add('active', 'streak-1');
+  }
+}
+
 // ── Timer ──────────────────────────────────────────────
 
 function getDisplayTime() {
@@ -246,9 +270,12 @@ function handleTimedLoss() {
   $('#gameover-nextlevel').classList.add('hidden');
   $('#gameover-submit-daily').classList.add('hidden');
   $('#gameover-powerup-earned').classList.add('hidden');
+  $('#gameover-share').classList.add('hidden');
+  $('#gameover-achievements').classList.add('hidden');
 
   setTimeout(() => showModal('gameover-overlay'), 400);
   updatePowerUpBar();
+  updateStreakBorder();
 }
 
 // ── Game Actions ───────────────────────────────────────
@@ -256,6 +283,9 @@ function handleTimedLoss() {
 function newGame() {
   stopTimer();
   const diff = getDifficultyForLevel(state.currentLevel);
+  const prevRows = state.rows;
+  const prevCols = state.cols;
+
   state.rows = diff.rows;
   state.cols = diff.cols;
   state.totalMines = diff.mines;
@@ -268,6 +298,7 @@ function newGame() {
   state.timeLimit = state.gameMode === 'timed' ? (diff.timeLimit || 120) : 0;
   state.shieldActive = false;
   state.scanMode = false;
+  state.usedPowerUps = false;
   state.shaking = false;
   state.showParticles = false;
   state.hitMine = null;
@@ -281,6 +312,13 @@ function newGame() {
   updateHeader();
   updateTimerDisplay();
   updatePowerUpBar();
+  updateStreakBorder();
+
+  // Board transition animation when size changes
+  if (state._initialized && (prevRows !== state.rows || prevCols !== state.cols)) {
+    boardEl.classList.add('board-transition');
+    setTimeout(() => boardEl.classList.remove('board-transition'), 600);
+  }
 
   // Show level info toast on new game (except first load)
   if (state._initialized && (state.gameMode === 'normal' || state.gameMode === 'timed')) {
@@ -400,11 +438,18 @@ function handleWin() {
   stopTimer();
   resetBtn.textContent = '😎';
 
-  const stats = saveGameResult(true, state.elapsedTime, state.currentLevel);
+  const isDaily = state.gameMode === 'daily';
+  const stats = saveGameResult(true, state.elapsedTime, state.currentLevel, {
+    isDaily,
+    usedPowerUps: state.usedPowerUps,
+  });
   const earnedPowerUp = awardPowerUps(stats);
 
   playWin();
   showParticles();
+
+  // Check achievements
+  const newAchievements = checkAchievements(stats);
 
   const gameoverTitle = $('#gameover-title');
   const gameoverTime = $('#gameover-time');
@@ -412,13 +457,15 @@ function handleWin() {
   const nextLevelBtn = $('#gameover-nextlevel');
   const submitDailyBtn = $('#gameover-submit-daily');
   const powerupEarned = $('#gameover-powerup-earned');
+  const shareBtn = $('#gameover-share');
+  const achievementsDiv = $('#gameover-achievements');
 
   gameoverTitle.textContent = 'You Win!';
   gameoverTime.textContent = `Time: ${state.elapsedTime}s`;
 
   const bestKey = `level${state.currentLevel}`;
   if (stats.bestTimes[bestKey] === state.elapsedTime) {
-    gameoverRecord.textContent = 'New Record!';
+    gameoverRecord.textContent = '🎉 New Record!';
     gameoverRecord.classList.remove('hidden');
   } else {
     gameoverRecord.classList.add('hidden');
@@ -431,20 +478,41 @@ function handleWin() {
     powerupEarned.classList.add('hidden');
   }
 
+  // Show newly unlocked achievements in game over
+  if (newAchievements.length > 0) {
+    achievementsDiv.innerHTML = '';
+    for (const ach of newAchievements) {
+      const badge = document.createElement('div');
+      badge.className = 'gameover-achievement-badge';
+      badge.innerHTML = `<span>${ach.icon}</span><span>${ach.name}</span>`;
+      achievementsDiv.appendChild(badge);
+    }
+    achievementsDiv.classList.remove('hidden');
+
+    // Show achievement toasts sequentially
+    showAchievementToasts(newAchievements);
+  } else {
+    achievementsDiv.classList.add('hidden');
+  }
+
   if (state.currentLevel < MAX_LEVEL && state.gameMode !== 'daily') {
     nextLevelBtn.classList.remove('hidden');
   } else {
     nextLevelBtn.classList.add('hidden');
   }
 
-  if (state.gameMode === 'daily') {
+  if (isDaily) {
     submitDailyBtn.classList.remove('hidden');
   } else {
     submitDailyBtn.classList.add('hidden');
   }
 
+  // Always show share button on win
+  shareBtn.classList.remove('hidden');
+
   showModal('gameover-overlay');
   updatePowerUpBar();
+  updateStreakBorder();
 }
 
 function handleLoss(mineRow, mineCol) {
@@ -468,9 +536,12 @@ function handleLoss(mineRow, mineCol) {
   $('#gameover-nextlevel').classList.add('hidden');
   $('#gameover-submit-daily').classList.add('hidden');
   $('#gameover-powerup-earned').classList.add('hidden');
+  $('#gameover-share').classList.add('hidden');
+  $('#gameover-achievements').classList.add('hidden');
 
   setTimeout(() => showModal('gameover-overlay'), 600);
   updatePowerUpBar();
+  updateStreakBorder();
 }
 
 // ── Power-Ups ──────────────────────────────────────────
@@ -481,6 +552,7 @@ function useRevealSafe() {
   if (!cell) return;
   playPowerUp();
   state.powerUps.revealSafe--;
+  state.usedPowerUps = true;
   cell.isRevealed = true;
   cell.revealAnimDelay = 0;
   state.revealedCount++;
@@ -502,6 +574,7 @@ function useShield() {
   if (state.powerUps.shield <= 0 || state.status !== 'playing') return;
   playPowerUp();
   state.powerUps.shield--;
+  state.usedPowerUps = true;
   state.shieldActive = true;
   updatePowerUpBar();
 }
@@ -509,6 +582,7 @@ function useShield() {
 function activateScan() {
   if (state.powerUps.scanRowCol <= 0 || state.status !== 'playing') return;
   playPowerUp();
+  state.usedPowerUps = true;
   state.scanMode = !state.scanMode;
   updatePowerUpBar();
 }
@@ -557,7 +631,7 @@ function awardPowerUps(stats) {
 
 function triggerShake() {
   shakeWrapper.classList.add('shaking');
-  setTimeout(() => shakeWrapper.classList.remove('shaking'), 400);
+  setTimeout(() => shakeWrapper.classList.remove('shaking'), 450);
 }
 
 function showParticles() {
@@ -570,25 +644,38 @@ function showParticles() {
   canvas.style.height = rect.height + 'px';
   canvas.classList.add('active');
 
+  // Themed particle colors
   const themeColors = {
-    classic: ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#ffd700'],
-    dark: ['#e94560', '#53a8ff', '#00d4aa', '#ffd93d', '#c084fc'],
-    neon: ['#00ff88', '#ff0066', '#00ccff', '#ffff00', '#ff6600'],
+    classic: ['#ff4444', '#4488ff', '#44cc44', '#ffdd44', '#ff44ff', '#ffd700'],
+    dark: ['#e94560', '#53a8ff', '#00d4aa', '#ffd93d', '#c084fc', '#ff6b6b'],
+    neon: ['#00ff88', '#ff0066', '#00ccff', '#ffff00', '#ff6600', '#cc44ff'],
+    ocean: ['#64d2ff', '#5eead4', '#fbbf24', '#34d399', '#a78bfa', '#ff6b6b'],
+    sunset: ['#ff6b6b', '#ffa07a', '#ffc107', '#ff8a65', '#bb86fc', '#87d68d'],
+    candy: ['#ff69b4', '#e040fb', '#7c4dff', '#ffd740', '#69f0ae', '#ff4081'],
+    midnight: ['#cc88ff', '#7c4dff', '#80b0ff', '#ffd740', '#69f0ae', '#80ffb0'],
   };
   const colors = themeColors[state.theme] || themeColors.classic;
 
+  // Themed particle shapes
+  const isNeon = state.theme === 'neon';
+  const isCandy = state.theme === 'candy';
+
   const particles = [];
-  for (let i = 0; i < 100; i++) {
+  const count = 120;
+  for (let i = 0; i < count; i++) {
     particles.push({
-      x: canvas.width / 2,
+      x: canvas.width / 2 + (Math.random() - 0.5) * 40,
       y: canvas.height / 2,
-      vx: (Math.random() - 0.5) * 12,
-      vy: (Math.random() - 0.5) * 12 - 4,
-      gravity: 0.15,
+      vx: (Math.random() - 0.5) * 14,
+      vy: (Math.random() - 0.5) * 14 - 5,
+      gravity: 0.12,
       life: 1,
-      decay: 0.008 + Math.random() * 0.008,
+      decay: 0.006 + Math.random() * 0.008,
       color: colors[Math.floor(Math.random() * colors.length)],
-      size: 3 + Math.random() * 4,
+      size: isCandy ? 4 + Math.random() * 6 : 2.5 + Math.random() * 4,
+      rotation: Math.random() * Math.PI * 2,
+      rotationSpeed: (Math.random() - 0.5) * 0.2,
+      shape: isNeon ? 'spark' : (isCandy ? 'circle' : 'rect'),
     });
   }
 
@@ -603,10 +690,37 @@ function showParticles() {
       p.y += p.vy;
       p.vy += p.gravity;
       p.life -= p.decay;
+      p.rotation += p.rotationSpeed;
 
       ctx.globalAlpha = Math.max(0, p.life);
       ctx.fillStyle = p.color;
-      ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rotation);
+
+      if (p.shape === 'spark') {
+        // Neon sparks — elongated lines
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = 2;
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.moveTo(-p.size, 0);
+        ctx.lineTo(p.size, 0);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      } else if (p.shape === 'circle') {
+        // Candy circles
+        ctx.beginPath();
+        ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // Default rectangles
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+      }
+
+      ctx.restore();
     }
 
     ctx.globalAlpha = 1;
@@ -619,6 +733,123 @@ function showParticles() {
   }
 
   requestAnimationFrame(animate);
+}
+
+// ── Achievements ───────────────────────────────────────
+
+function showAchievementToasts(achievements) {
+  const toast = $('#achievement-toast');
+  let index = 0;
+
+  function showNext() {
+    if (index >= achievements.length) return;
+    const ach = achievements[index];
+    toast.querySelector('.achievement-toast-icon').textContent = ach.icon;
+    toast.querySelector('.achievement-toast-name').textContent = ach.name;
+    toast.classList.remove('hidden', 'hiding');
+
+    setTimeout(() => {
+      toast.classList.add('hiding');
+      setTimeout(() => {
+        toast.classList.add('hidden');
+        toast.classList.remove('hiding');
+        index++;
+        if (index < achievements.length) {
+          setTimeout(showNext, 200);
+        }
+      }, 300);
+    }, 2500);
+  }
+
+  // Delay first toast slightly to let game over show first
+  setTimeout(showNext, 600);
+}
+
+function updateAchievementsDisplay() {
+  const grid = $('#achievements-grid');
+  const progressFill = $('#achievement-progress-fill');
+  const progressText = $('#achievement-progress-text');
+
+  const all = getAllAchievements();
+  const unlocked = loadUnlocked();
+  const unlockedCount = unlocked.length;
+  const totalCount = all.length;
+
+  progressFill.style.width = `${(unlockedCount / totalCount) * 100}%`;
+  progressText.textContent = `${unlockedCount} / ${totalCount}`;
+
+  grid.innerHTML = '';
+  for (const ach of all) {
+    const isUnlocked = unlocked.includes(ach.id);
+    const item = document.createElement('div');
+    item.className = `achievement-item ${isUnlocked ? 'unlocked' : 'locked'}`;
+    item.innerHTML = `
+      <div class="achievement-icon">${ach.icon}</div>
+      <div class="achievement-info">
+        <div class="achievement-name">${ach.name}</div>
+        <div class="achievement-desc">${ach.desc}</div>
+      </div>
+      <div class="achievement-check">${isUnlocked ? '✅' : '🔒'}</div>
+    `;
+    grid.appendChild(item);
+  }
+}
+
+// ── Share Card ─────────────────────────────────────────
+
+function generateShareCard() {
+  const level = state.currentLevel;
+  const time = state.elapsedTime;
+  const diff = getDifficultyForLevel(level);
+  const mode = state.gameMode;
+  const modeLabel = { normal: 'Normal', timed: 'Timed', fogOfWar: 'Fog of War', daily: 'Daily' }[mode] || 'Normal';
+
+  const stats = loadStats();
+  const streakText = stats.currentStreak > 1 ? ` | 🔥 ${stats.currentStreak} streak` : '';
+
+  let dateStr = '';
+  if (mode === 'daily') {
+    dateStr = ` (${new Date().toISOString().slice(0, 10)})`;
+  }
+
+  return `💣 GregSweeper — ${modeLabel}${dateStr}\n` +
+         `Level ${level} (${diff.rows}x${diff.cols}) in ${time}s${streakText}\n\n` +
+         `gregsweeper.com`;
+}
+
+function handleShare() {
+  const text = generateShareCard();
+
+  if (navigator.share) {
+    navigator.share({ text }).catch(() => {
+      copyToClipboard(text);
+    });
+  } else {
+    copyToClipboard(text);
+  }
+}
+
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    showShareCopiedToast();
+  }).catch(() => {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showShareCopiedToast();
+  });
+}
+
+function showShareCopiedToast() {
+  const toast = document.createElement('div');
+  toast.className = 'share-copied-toast';
+  toast.textContent = '📋 Copied to clipboard!';
+  document.getElementById('app').appendChild(toast);
+  setTimeout(() => toast.remove(), 2000);
 }
 
 // ── Helpers ────────────────────────────────────────────
@@ -813,12 +1044,16 @@ $('#btn-stats').addEventListener('click', () => {
   updateStatsDisplay();
   showModal('stats-modal');
 });
+$('#btn-achievements').addEventListener('click', () => {
+  updateAchievementsDisplay();
+  showModal('achievements-modal');
+});
 $('#btn-leaderboard').addEventListener('click', () => {
   updateLeaderboardDisplay();
   showModal('leaderboard-modal');
 });
 $('#btn-help').addEventListener('click', () => showModal('help-modal'));
-$('#game-title').addEventListener('click', () => showModal('about-modal'));
+$('#title-bar').addEventListener('click', () => showModal('about-modal'));
 
 // Close modals
 for (const closeBtn of $$('.modal-close')) {
@@ -872,6 +1107,7 @@ $('#gameover-submit-daily').addEventListener('click', () => {
     $('#gameover-submit-daily').classList.add('hidden');
   }
 });
+$('#gameover-share').addEventListener('click', () => handleShare());
 
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {

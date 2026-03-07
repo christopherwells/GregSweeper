@@ -1,0 +1,106 @@
+/* Midnight theme — deep purples and indigo with starlight accents */
+[data-theme="midnight"] {
+  --color-bg: #1a1040;
+  --color-app-bg: #0e0825;
+  --color-cell-hidden: #221555;
+  --color-cell-hidden-hover: #2c1d68;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #281a60, #1e1248);
+  --color-cell-revealed: #140e35;
+  --color-cell-border-light: #3d2580;
+  --color-cell-border-dark: #0a0620;
+  --color-mine: #ff4466;
+  --color-mine-hit: #ff2244;
+  --color-flag: #ff4466;
+  --color-text: #e8e0ff;
+  --color-text-secondary: #9080cc;
+
+  --color-num-1: #80b0ff;
+  --color-num-2: #80ffb0;
+  --color-num-3: #ff6688;
+  --color-num-4: #cc88ff;
+  --color-num-5: #ffaa66;
+  --color-num-6: #66ffdd;
+  --color-num-7: #e8e0ff;
+  --color-num-8: #706090;
+
+  --color-header-bg: #1a1040;
+  --color-header-gradient: linear-gradient(180deg, #221555, #1a1040);
+  --color-lcd-bg: #050310;
+  --color-lcd-text: #cc88ff;
+  --color-modal-bg: #1a1040;
+  --color-modal-overlay: rgba(5, 2, 15, 0.85);
+  --color-btn-bg: #221555;
+  --color-btn-hover: #2c1d68;
+  --color-btn-gradient: linear-gradient(180deg, #2c1d68, #221555);
+  --color-border: #3d2580;
+  --color-fog: rgba(5, 2, 15, 0.94);
+  --color-scan-highlight: rgba(204, 136, 255, 0.15);
+  --color-golden: #ffd740;
+  --color-accent: #7c4dff;
+  --color-accent-hover: #651fff;
+  --color-accent-glow: rgba(124, 77, 255, 0.3);
+  --color-win: #69f0ae;
+  --color-loss: #ff4466;
+  --color-surface: rgba(255, 255, 255, 0.04);
+}
+
+[data-theme="midnight"] #app {
+  background: linear-gradient(180deg, #1e1250, #1a1040, #140d35);
+  box-shadow: 0 8px 40px rgba(10, 5, 30, 0.6), inset 0 1px 0 rgba(124, 77, 255, 0.05);
+}
+
+[data-theme="midnight"] #game-title {
+  background: linear-gradient(135deg, #cc88ff, #7c4dff, #80b0ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: none;
+}
+
+[data-theme="midnight"] #title-subtitle {
+  color: #9080cc;
+}
+
+[data-theme="midnight"] .lcd-display {
+  text-shadow: 0 0 10px rgba(204, 136, 255, 0.5);
+  border-color: rgba(124, 77, 255, 0.3);
+}
+
+[data-theme="midnight"] .cell.unrevealed {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), inset 0 0 2px rgba(124, 77, 255, 0.05);
+}
+
+[data-theme="midnight"] .cell.unrevealed:hover {
+  box-shadow: 0 0 10px rgba(124, 77, 255, 0.2);
+}
+
+[data-theme="midnight"] .cell.revealed.num-1 { text-shadow: 0 0 6px rgba(128, 176, 255, 0.3); }
+[data-theme="midnight"] .cell.revealed.num-2 { text-shadow: 0 0 6px rgba(128, 255, 176, 0.3); }
+[data-theme="midnight"] .cell.revealed.num-3 { text-shadow: 0 0 6px rgba(255, 102, 136, 0.3); }
+[data-theme="midnight"] .cell.revealed.num-4 { text-shadow: 0 0 6px rgba(204, 136, 255, 0.3); }
+
+[data-theme="midnight"] #board {
+  border-color: #3d2580;
+  box-shadow: 0 4px 20px rgba(10, 5, 30, 0.5), 0 0 20px rgba(124, 77, 255, 0.05);
+}
+
+[data-theme="midnight"] .smiley-btn {
+  border: 1px solid rgba(124, 77, 255, 0.3);
+}
+
+[data-theme="midnight"] .nav-btn {
+  border-color: rgba(124, 77, 255, 0.2);
+}
+
+[data-theme="midnight"] .nav-btn:hover {
+  box-shadow: 0 0 10px rgba(124, 77, 255, 0.15);
+}
+
+[data-theme="midnight"] .modal-content {
+  border: 1px solid rgba(124, 77, 255, 0.15);
+  box-shadow: 0 8px 32px rgba(5, 2, 15, 0.6);
+}
+
+[data-theme="midnight"] .modal-close:hover {
+  background: rgba(124, 77, 255, 0.1);
+}

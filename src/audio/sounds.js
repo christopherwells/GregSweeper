@@ -2,6 +2,11 @@
 let audioCtx = null;
 let muted = false;
 
+// Haptic feedback (mobile)
+function vibrate(pattern) {
+  if (!muted && navigator.vibrate) navigator.vibrate(pattern);
+}
+
 const MUTE_KEY = 'minesweeper_muted';
 
 function getCtx() {
@@ -49,6 +54,7 @@ export function playReveal() {
 }
 
 export function playFlag() {
+  vibrate(15);
   playTone(800, 0.08, 'triangle', 0.1);
   setTimeout(() => playTone(1000, 0.06, 'triangle', 0.08), 50);
 }
@@ -58,6 +64,7 @@ export function playUnflag() {
 }
 
 export function playExplosion() {
+  vibrate([50, 30, 100]);
   if (muted) return;
   resumeCtx();
   const ctx = getCtx();
@@ -84,6 +91,7 @@ export function playCascade(count) {
 }
 
 export function playWin() {
+  vibrate([30, 50, 30, 50, 100]);
   if (muted) return;
   const notes = [523, 659, 784, 1047]; // C5, E5, G5, C6
   notes.forEach((freq, i) => {

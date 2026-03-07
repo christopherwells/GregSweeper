@@ -1,0 +1,74 @@
+/* Sunset theme — warm oranges, pinks, and golden hues */
+[data-theme="sunset"] {
+  --color-bg: #2d1b2e;
+  --color-app-bg: #1a0f1f;
+  --color-cell-hidden: #3d2240;
+  --color-cell-hidden-hover: #4d2c50;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #482a4c, #362040);
+  --color-cell-revealed: #231428;
+  --color-cell-border-light: #5a3360;
+  --color-cell-border-dark: #1a0f1f;
+  --color-mine: #ff4444;
+  --color-mine-hit: #ff2222;
+  --color-flag: #ff6b6b;
+  --color-text: #ffe0e8;
+  --color-text-secondary: #c08090;
+
+  --color-num-1: #ffb347;
+  --color-num-2: #87d68d;
+  --color-num-3: #ff6b6b;
+  --color-num-4: #bb86fc;
+  --color-num-5: #ff8a65;
+  --color-num-6: #4dd0e1;
+  --color-num-7: #f0f0f0;
+  --color-num-8: #888888;
+
+  --color-header-bg: #2d1b2e;
+  --color-header-gradient: linear-gradient(180deg, #3d2240, #2d1b2e);
+  --color-lcd-bg: #0a0508;
+  --color-lcd-text: #ff6b6b;
+  --color-modal-bg: #2d1b2e;
+  --color-modal-overlay: rgba(10, 5, 10, 0.8);
+  --color-btn-bg: #3d2240;
+  --color-btn-hover: #4d2c50;
+  --color-btn-gradient: linear-gradient(180deg, #4d2c50, #3d2240);
+  --color-border: #5a3360;
+  --color-fog: rgba(10, 5, 10, 0.92);
+  --color-scan-highlight: rgba(255, 179, 71, 0.2);
+  --color-golden: #ffc107;
+  --color-accent: #ff6b6b;
+  --color-accent-hover: #ff4444;
+  --color-accent-glow: rgba(255, 107, 107, 0.3);
+  --color-win: #87d68d;
+  --color-loss: #ff4444;
+  --color-surface: rgba(255, 255, 255, 0.04);
+}
+
+[data-theme="sunset"] #app {
+  background: linear-gradient(180deg, #3d2240, #2d1b2e, #1f1525);
+  box-shadow: 0 8px 40px rgba(20, 10, 25, 0.6);
+}
+
+[data-theme="sunset"] #game-title {
+  background: linear-gradient(135deg, #ff6b6b, #ffa07a, #ffc107);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+[data-theme="sunset"] #title-subtitle {
+  color: #c08090;
+}
+
+[data-theme="sunset"] .lcd-display {
+  text-shadow: 0 0 8px rgba(255, 107, 107, 0.4);
+}
+
+[data-theme="sunset"] .modal-close:hover {
+  background: rgba(255, 107, 107, 0.1);
+}
+
+[data-theme="sunset"] #board {
+  border-color: #5a3360;
+  box-shadow: 0 4px 16px rgba(20, 10, 25, 0.5);
+}

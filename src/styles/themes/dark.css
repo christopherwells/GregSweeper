@@ -1,35 +1,51 @@
+/* Dark theme — deep midnight blues with vibrant accents */
 [data-theme="dark"] {
   --color-bg: #1a1a2e;
   --color-app-bg: #0f0f1a;
-  --color-cell-hidden: #16213e;
-  --color-cell-hidden-hover: #1a2744;
-  --color-cell-revealed: #0f3460;
+  --color-cell-hidden: #1e2745;
+  --color-cell-hidden-hover: #263052;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #243050, #1a2540);
+  --color-cell-revealed: #0d1b3a;
   --color-cell-border-light: #2a3a5e;
   --color-cell-border-dark: #0a0a1a;
   --color-mine: #e94560;
-  --color-mine-hit: #e94560;
+  --color-mine-hit: #ff1744;
   --color-flag: #e94560;
-  --color-text: #eaeaea;
-  --color-text-secondary: #8899aa;
+  --color-text: #e8e8f0;
+  --color-text-secondary: #8899bb;
 
-  --color-num-1: #53a8ff;
-  --color-num-2: #00d4aa;
-  --color-num-3: #e94560;
-  --color-num-4: #7c83ff;
-  --color-num-5: #ff8c42;
-  --color-num-6: #00bcd4;
-  --color-num-7: #c0c0c0;
-  --color-num-8: #666666;
+  --color-num-1: #64b5f6;
+  --color-num-2: #66bb6a;
+  --color-num-3: #ef5350;
+  --color-num-4: #9575cd;
+  --color-num-5: #ff8a65;
+  --color-num-6: #4dd0e1;
+  --color-num-7: #e0e0e0;
+  --color-num-8: #78909c;
 
   --color-header-bg: #16213e;
-  --color-lcd-bg: #0a0a1a;
+  --color-header-gradient: linear-gradient(180deg, #1e2d50, #162040);
+  --color-lcd-bg: #060612;
   --color-lcd-text: #e94560;
   --color-modal-bg: #1a1a2e;
-  --color-modal-overlay: rgba(0, 0, 0, 0.7);
-  --color-btn-bg: #16213e;
-  --color-btn-hover: #1a2744;
+  --color-modal-overlay: rgba(0, 0, 0, 0.75);
+  --color-btn-bg: #1e2745;
+  --color-btn-hover: #263052;
+  --color-btn-gradient: linear-gradient(180deg, #263052, #1e2745);
   --color-border: #2a3a5e;
-  --color-fog: rgba(0, 0, 0, 0.9);
+  --color-fog: rgba(0, 0, 0, 0.92);
+  --color-scan-highlight: rgba(255, 215, 0, 0.2);
+  --color-golden: #ffc107;
   --color-accent: #e94560;
   --color-accent-hover: #d63851;
+  --color-accent-glow: rgba(233, 69, 96, 0.3);
+  --color-surface: rgba(255, 255, 255, 0.04);
+}
+
+[data-theme="dark"] #app {
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.03);
+}
+
+[data-theme="dark"] .modal-close:hover {
+  background: rgba(255,255,255,0.08);
 }

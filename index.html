@@ -4,16 +4,31 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>GregSweeper</title>
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1a1a2e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="GregSweeper">
+  <link rel="apple-touch-icon" href="assets/icon-192.png">
+  <link rel="icon" type="image/svg+xml" href="assets/icon.svg">
   <link rel="stylesheet" href="src/styles/global.css">
   <link rel="stylesheet" href="src/styles/animations.css">
   <link rel="stylesheet" href="src/styles/themes/classic.css">
   <link rel="stylesheet" href="src/styles/themes/dark.css">
   <link rel="stylesheet" href="src/styles/themes/neon.css">
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="src/styles/themes/ocean.css">
+  <link rel="stylesheet" href="src/styles/themes/sunset.css">
+  <link rel="stylesheet" href="src/styles/themes/candy.css">
+  <link rel="stylesheet" href="src/styles/themes/midnight.css">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700;900&family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
   <div id="app">
-    <h1 id="game-title" style="cursor: pointer" title="About GregSweeper">GregSweeper</h1>
+    <div id="title-bar">
+      <h1 id="game-title" title="About GregSweeper">GregSweeper</h1>
+      <div id="title-subtitle">Modern Minesweeper</div>
+    </div>
     <div id="screen-shake-wrapper">
       <header id="game-header">
         <div class="header-left">
@@ -47,6 +62,7 @@
       </div>
 
       <div id="board-container">
+        <div id="streak-border"></div>
         <div id="board"></div>
         <canvas id="particle-canvas"></canvas>
         <div id="scan-toast" class="hidden"></div>
@@ -56,6 +72,7 @@
     <nav id="bottom-nav">
       <button id="btn-settings" class="nav-btn" title="Settings">⚙️</button>
       <button id="btn-stats" class="nav-btn" title="Stats">📊</button>
+      <button id="btn-achievements" class="nav-btn" title="Achievements">🏅</button>
       <button id="btn-leaderboard" class="nav-btn" title="Daily Leaderboard">🏆</button>
       <button id="btn-help" class="nav-btn" title="How to Play">❓</button>
       <button id="btn-mute" class="nav-btn" title="Mute">🔊</button>
@@ -73,16 +90,32 @@
             <h3>Theme</h3>
             <div id="theme-options" class="theme-swatches">
               <button class="theme-swatch active" data-theme="classic">
-                <span class="swatch-color" style="background: #c0c0c0"></span>
+                <span class="swatch-color" style="background: linear-gradient(135deg, #c0c0c0, #e0e0e0)"></span>
                 Classic
               </button>
               <button class="theme-swatch" data-theme="dark">
-                <span class="swatch-color" style="background: #1a1a2e"></span>
+                <span class="swatch-color" style="background: linear-gradient(135deg, #1a1a2e, #16213e)"></span>
                 Dark
               </button>
               <button class="theme-swatch" data-theme="neon">
                 <span class="swatch-color" style="background: #0a0a0a; border: 1px solid #00ff88"></span>
                 Neon
+              </button>
+              <button class="theme-swatch" data-theme="ocean">
+                <span class="swatch-color" style="background: linear-gradient(135deg, #0077b6, #00b4d8)"></span>
+                Ocean
+              </button>
+              <button class="theme-swatch" data-theme="sunset">
+                <span class="swatch-color" style="background: linear-gradient(135deg, #ff6b6b, #ffa07a)"></span>
+                Sunset
+              </button>
+              <button class="theme-swatch" data-theme="candy">
+                <span class="swatch-color" style="background: linear-gradient(135deg, #ff69b4, #dda0dd)"></span>
+                Candy
+              </button>
+              <button class="theme-swatch" data-theme="midnight">
+                <span class="swatch-color" style="background: linear-gradient(135deg, #191970, #483d8b)"></span>
+                Midnight
               </button>
             </div>
           </div>
@@ -137,6 +170,23 @@
       </div>
     </div>
 
+    <!-- Achievements Modal -->
+    <div id="achievements-modal" class="modal hidden">
+      <div class="modal-content achievements-content">
+        <div class="modal-header">
+          <h2>Achievements</h2>
+          <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div id="achievement-progress" class="achievement-progress-bar">
+            <div id="achievement-progress-fill" class="achievement-progress-fill"></div>
+            <span id="achievement-progress-text" class="achievement-progress-text">0 / 16</span>
+          </div>
+          <div id="achievements-grid" class="achievements-grid"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- Leaderboard Modal -->
     <div id="leaderboard-modal" class="modal hidden">
       <div class="modal-content">
@@ -182,7 +232,7 @@
           <div class="help-section">
             <h3>Game Modes</h3>
             <p><strong>Normal</strong> — classic Minesweeper</p>
-            <p><strong>Timed</strong> — race for best time</p>
+            <p><strong>Timed</strong> — race against the clock</p>
             <p><strong>Fog of War</strong> — only see near revealed cells</p>
             <p><strong>Daily</strong> — same board for everyone today</p>
           </div>
@@ -224,15 +274,31 @@
         <p id="gameover-time"></p>
         <p id="gameover-record" class="hidden"></p>
         <p id="gameover-powerup-earned" class="hidden"></p>
+        <div id="gameover-achievements" class="gameover-achievements hidden"></div>
         <div class="gameover-actions">
           <button id="gameover-retry" class="action-btn">Play Again</button>
           <button id="gameover-nextlevel" class="action-btn primary hidden">Next Level</button>
           <button id="gameover-submit-daily" class="action-btn hidden">Submit Score</button>
+          <button id="gameover-share" class="action-btn share-btn hidden">📋 Share</button>
         </div>
+      </div>
+    </div>
+
+    <!-- Achievement Toast -->
+    <div id="achievement-toast" class="achievement-toast hidden">
+      <div class="achievement-toast-icon"></div>
+      <div class="achievement-toast-text">
+        <div class="achievement-toast-title">Achievement Unlocked!</div>
+        <div class="achievement-toast-name"></div>
       </div>
     </div>
   </div>
 
-  <script type="module" src="src/main.js?v=0.5"></script>
+  <script type="module" src="src/main.js?v=0.7"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+  </script>
 </body>
 </html>

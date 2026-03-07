@@ -23,13 +23,21 @@ const DEFAULT_STATS = {
   bestStreak: 0,
   bestTimes: {},
   recentGames: [],
+  maxLevelReached: 1,
+  dailiesCompleted: 0,
+  puristWins: 0,
 };
 
 export function loadStats() {
-  return getJSON(STATS_KEY, { ...DEFAULT_STATS });
+  const stats = getJSON(STATS_KEY, { ...DEFAULT_STATS });
+  // Backfill new fields for existing saves
+  if (stats.maxLevelReached == null) stats.maxLevelReached = 1;
+  if (stats.dailiesCompleted == null) stats.dailiesCompleted = 0;
+  if (stats.puristWins == null) stats.puristWins = 0;
+  return stats;
 }
 
-export function saveGameResult(won, time, level) {
+export function saveGameResult(won, time, level, { isDaily = false, usedPowerUps = false } = {}) {
   const stats = loadStats();
   stats.totalGames++;
   if (won) {
@@ -41,6 +49,15 @@ export function saveGameResult(won, time, level) {
     const key = `level${level}`;
     if (!stats.bestTimes[key] || time < stats.bestTimes[key]) {
       stats.bestTimes[key] = time;
+    }
+    if (level > stats.maxLevelReached) {
+      stats.maxLevelReached = level;
+    }
+    if (isDaily) {
+      stats.dailiesCompleted++;
+    }
+    if (!usedPowerUps) {
+      stats.puristWins++;
     }
   } else {
     stats.losses++;
