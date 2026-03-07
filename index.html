@@ -147,6 +147,11 @@
               <button class="mode-btn" data-mode="daily">Daily Challenge</button>
             </div>
           </div>
+          <div class="setting-group reset-group">
+            <h3>Data</h3>
+            <button id="btn-reset-profile" class="reset-profile-btn">🗑️ Reset Profile</button>
+            <p class="reset-hint">Erases all stats, achievements, and leaderboard data.</p>
+          </div>
         </div>
       </div>
     </div>
@@ -322,7 +327,7 @@
     </div>
   </div>
 
-  <script type="module" src="src/main.js?v=0.9"></script>
+  <script type="module" src="src/main.js?v=1.0"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js').catch(() => {});

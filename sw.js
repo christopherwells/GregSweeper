@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v1.0';
+const CACHE_NAME = 'gregsweeper-v1.1';
 const ASSETS = [
   './',
   './index.html',
@@ -43,12 +43,20 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      // Network first for HTML (to get updates), cache first for assets
-      if (event.request.mode === 'navigate') {
-        return fetch(event.request).catch(() => cached);
-      }
-      return cached || fetch(event.request);
-    })
+    fetch(event.request)
+      .then((response) => {
+        // Cache a fresh copy for offline use
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, clone);
+          });
+        }
+        return response;
+      })
+      .catch(() => {
+        // Network failed — try cache (ignoreSearch so ?v=X still matches)
+        return caches.match(event.request, { ignoreSearch: true });
+      })
   );
 });

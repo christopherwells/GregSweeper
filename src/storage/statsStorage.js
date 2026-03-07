@@ -94,3 +94,8 @@ export function loadTheme() {
 export function saveTheme(theme) {
   localStorage.setItem(THEME_KEY, theme);
 }
+
+export function resetStats() {
+  setJSON(STATS_KEY, { ...DEFAULT_STATS });
+  localStorage.removeItem(LEADERBOARD_KEY);
+}

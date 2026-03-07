@@ -1,23 +1,23 @@
-import { generateBoard, createEmptyBoard, calculateAdjacency } from './logic/boardGenerator.js?v=0.9';
-import { floodFillReveal, checkWin, revealAllMines, chordReveal } from './logic/boardSolver.js?v=0.9';
-import { getDifficultyForLevel, getTimedDifficulty, MAX_LEVEL, MAX_TIMED_LEVEL } from './logic/difficulty.js?v=0.9';
-import { computeVisibleCells } from './logic/fogOfWar.js?v=0.9';
-import { findSafeCell, scanRowCol, defuseMine } from './logic/powerUps.js?v=0.9';
-import { createDailyRNG } from './logic/seededRandom.js?v=0.9';
+import { generateBoard, createEmptyBoard, calculateAdjacency } from './logic/boardGenerator.js?v=1.0';
+import { floodFillReveal, checkWin, revealAllMines, chordReveal } from './logic/boardSolver.js?v=1.0';
+import { getDifficultyForLevel, getTimedDifficulty, MAX_LEVEL, MAX_TIMED_LEVEL } from './logic/difficulty.js?v=1.0';
+import { computeVisibleCells } from './logic/fogOfWar.js?v=1.0';
+import { findSafeCell, scanRowCol, defuseMine } from './logic/powerUps.js?v=1.0';
+import { createDailyRNG } from './logic/seededRandom.js?v=1.0';
 import {
-  loadStats, saveGameResult,
+  loadStats, saveGameResult, resetStats,
   loadDailyLeaderboard, addDailyLeaderboardEntry,
   loadTheme, saveTheme,
-} from './storage/statsStorage.js?v=0.9';
+} from './storage/statsStorage.js?v=1.0';
 import {
   playReveal, playFlag, playUnflag, playExplosion,
   playCascade, playWin, playPowerUp, playShieldBreak,
   playLevelUp, isMuted, setMuted, loadMuted,
-} from './audio/sounds.js?v=0.9';
+} from './audio/sounds.js?v=1.0';
 import {
   getAchievementState, getTotalScore, checkNewUnlocks,
   getHighestTier, getAllTierNames, getTierIcon, getTierColor,
-} from './logic/achievements.js?v=0.9';
+} from './logic/achievements.js?v=1.0';
 
 // ── Theme Unlock Progression ──────────────────────────
 // Themes unlock based on highest level ever beaten (permanent).
@@ -1407,6 +1407,28 @@ for (const modeBtn of $$('.mode-btn')) {
     newGame();
   });
 }
+
+// Reset Profile
+$('#btn-reset-profile').addEventListener('click', () => {
+  if (confirm('Are you sure you want to reset your profile? This will erase ALL stats, achievements, and leaderboard data. This cannot be undone.')) {
+    resetStats();
+    // Reset theme to classic (since unlocks depend on stats)
+    state.theme = 'classic';
+    document.documentElement.setAttribute('data-theme', 'classic');
+    saveTheme('classic');
+    for (const s of $$('.theme-swatch')) s.classList.remove('active');
+    const classicSwatch = $('.theme-swatch[data-theme="classic"]');
+    if (classicSwatch) classicSwatch.classList.add('active');
+    updateThemeSwatches();
+    // Reset game state
+    state.currentLevel = 1;
+    state.powerUps = { revealSafe: 0, shield: 0, scanRowCol: 0 };
+    updatePowerUpBar();
+    newGame();
+    // Close settings modal
+    $('#settings-modal').classList.add('hidden');
+  }
+});
 
 // Game over actions
 $('#gameover-retry').addEventListener('click', () => newGame());
