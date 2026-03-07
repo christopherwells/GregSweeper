@@ -281,8 +281,13 @@ body {
 
 /* ── Board ──────────────────────────────────── */
 
+#screen-shake-wrapper {
+  width: 100%;
+}
+
 #board-container {
   position: relative;
+  width: 100%;
 }
 
 /* Scroll wrapper for zoom on large boards */
@@ -382,6 +387,8 @@ body {
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
+  margin: 0 auto;
+  width: fit-content;
 }
 
 #board.board-transition {

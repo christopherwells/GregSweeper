@@ -184,8 +184,20 @@ const boardScrollWrapper = $('#board-scroll-wrapper');
 
 // ── Board Rendering ────────────────────────────────────
 
+function resizeCells() {
+  const container = document.getElementById('board-container');
+  if (!container || !state.cols) return;
+  const gap = 2; // --grid-gap
+  const borderPad = 8; // 2px border + 2px padding on each side
+  const availableWidth = container.clientWidth - borderPad;
+  const cellSize = Math.floor((availableWidth - (state.cols - 1) * gap) / state.cols);
+  const capped = Math.min(50, Math.max(24, cellSize));
+  document.documentElement.style.setProperty('--cell-size', `${capped}px`);
+}
+
 function renderBoard() {
   boardEl.innerHTML = '';
+  resizeCells();
   boardEl.style.gridTemplateColumns = `repeat(${state.cols}, var(--cell-size))`;
   boardEl.style.gridTemplateRows = `repeat(${state.rows}, var(--cell-size))`;
 
@@ -2077,5 +2089,12 @@ function init() {
 
   newGame();
 }
+
+// Recalculate cell sizes on window resize
+window.addEventListener('resize', () => {
+  resizeCells();
+  boardEl.style.gridTemplateColumns = `repeat(${state.cols}, var(--cell-size))`;
+  boardEl.style.gridTemplateRows = `repeat(${state.rows}, var(--cell-size))`;
+});
 
 init();
