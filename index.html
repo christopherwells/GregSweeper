@@ -13,7 +13,7 @@
 </head>
 <body>
   <div id="app">
-    <h1 id="game-title">GregSweeper</h1>
+    <h1 id="game-title" style="cursor: pointer" title="About GregSweeper">GregSweeper</h1>
     <div id="screen-shake-wrapper">
       <header id="game-header">
         <div class="header-left">
@@ -196,6 +196,27 @@
       </div>
     </div>
 
+    <!-- About Modal -->
+    <div id="about-modal" class="modal hidden">
+      <div class="modal-content about-content">
+        <div class="modal-header">
+          <h2>About</h2>
+          <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body about-body">
+          <div class="about-photo-wrapper">
+            <img id="about-photo" src="assets/greg-dorris.jpg" alt="Greg Dorris" onerror="this.style.display='none'; document.getElementById('about-photo-fallback').style.display='flex';">
+            <div id="about-photo-fallback" class="about-photo-fallback">GD</div>
+          </div>
+          <div class="about-name">Greg Dorris</div>
+          <div class="about-role">Visionary</div>
+          <p class="about-tagline">The mind behind GregSweeper — reimagining a classic for a new generation.</p>
+          <div class="about-divider"></div>
+          <p class="about-credits">GregSweeper &copy; 2026</p>
+        </div>
+      </div>
+    </div>
+
     <!-- Game Over Overlay -->
     <div id="gameover-overlay" class="modal hidden">
       <div class="modal-content gameover-content">
@@ -212,6 +233,6 @@
     </div>
   </div>
 
-  <script type="module" src="src/main.js"></script>
+  <script type="module" src="src/main.js?v=0.5"></script>
 </body>
 </html>

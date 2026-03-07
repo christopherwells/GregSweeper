@@ -1,19 +1,19 @@
-import { generateBoard, createEmptyBoard, calculateAdjacency } from './logic/boardGenerator.js';
-import { floodFillReveal, checkWin, revealAllMines, chordReveal } from './logic/boardSolver.js';
-import { getDifficultyForLevel, MAX_LEVEL } from './logic/difficulty.js';
-import { computeVisibleCells } from './logic/fogOfWar.js';
-import { findSafeCell, scanRowCol, defuseMine } from './logic/powerUps.js';
-import { createDailyRNG } from './logic/seededRandom.js';
+import { generateBoard, createEmptyBoard, calculateAdjacency } from './logic/boardGenerator.js?v=0.5';
+import { floodFillReveal, checkWin, revealAllMines, chordReveal } from './logic/boardSolver.js?v=0.5';
+import { getDifficultyForLevel, MAX_LEVEL } from './logic/difficulty.js?v=0.5';
+import { computeVisibleCells } from './logic/fogOfWar.js?v=0.5';
+import { findSafeCell, scanRowCol, defuseMine } from './logic/powerUps.js?v=0.5';
+import { createDailyRNG } from './logic/seededRandom.js?v=0.5';
 import {
   loadStats, saveGameResult,
   loadDailyLeaderboard, addDailyLeaderboardEntry,
   loadTheme, saveTheme,
-} from './storage/statsStorage.js';
+} from './storage/statsStorage.js?v=0.5';
 import {
   playReveal, playFlag, playUnflag, playExplosion,
   playCascade, playWin, playPowerUp, playShieldBreak,
   playLevelUp, isMuted, setMuted, loadMuted,
-} from './audio/sounds.js';
+} from './audio/sounds.js?v=0.5';
 
 // ── State ──────────────────────────────────────────────
 
@@ -28,6 +28,7 @@ const state = {
   revealedCount: 0,
   elapsedTime: 0,
   timerId: null,
+  timeLimit: 0,         // countdown seconds for timed mode (0 = no limit)
 
   currentLevel: 1,
   gameMode: 'normal',   // normal | timed | fogOfWar | daily
@@ -135,15 +136,19 @@ function updateHeader() {
   } else {
     mineCounterEl.textContent = String(remaining).padStart(3, '0');
   }
-  timerEl.textContent = String(state.elapsedTime).padStart(3, '0');
+  updateTimerDisplay();
   levelDisplay.textContent = `Level ${state.currentLevel}`;
 
   if (state.gameMode === 'daily') {
     const dateStr = new Date().toISOString().slice(0, 10);
     modeDisplay.textContent = `Daily ${dateStr}`;
   } else {
-    const modeLabels = { normal: 'Normal', timed: 'Timed', fogOfWar: 'Fog of War' };
-    modeDisplay.textContent = modeLabels[state.gameMode] || 'Normal';
+    if (state.gameMode === 'timed' && state.timeLimit > 0) {
+      modeDisplay.textContent = `Timed (${state.timeLimit}s)`;
+    } else {
+      const modeLabels = { normal: 'Normal', fogOfWar: 'Fog of War' };
+      modeDisplay.textContent = modeLabels[state.gameMode] || 'Normal';
+    }
   }
 
   // Show best time for timed/normal mode
@@ -180,11 +185,40 @@ function updatePowerUpBar() {
 
 // ── Timer ──────────────────────────────────────────────
 
+function getDisplayTime() {
+  if (state.gameMode === 'timed' && state.timeLimit > 0) {
+    return Math.max(0, state.timeLimit - state.elapsedTime);
+  }
+  return Math.min(state.elapsedTime, 999);
+}
+
+function updateTimerDisplay() {
+  const display = getDisplayTime();
+  timerEl.textContent = String(display).padStart(3, '0');
+
+  // Urgency classes for timed mode countdown
+  if (state.gameMode === 'timed' && state.timeLimit > 0) {
+    const remaining = state.timeLimit - state.elapsedTime;
+    timerEl.classList.toggle('timer-critical', remaining <= 10 && remaining > 0);
+    timerEl.classList.toggle('timer-warning', remaining <= 30 && remaining > 10);
+  } else {
+    timerEl.classList.remove('timer-critical', 'timer-warning');
+  }
+}
+
 function startTimer() {
   if (state.timerId) return;
   state.timerId = setInterval(() => {
     state.elapsedTime++;
-    timerEl.textContent = String(Math.min(state.elapsedTime, 999)).padStart(3, '0');
+    updateTimerDisplay();
+
+    // Timed mode: check for time-out
+    if (state.gameMode === 'timed' && state.timeLimit > 0) {
+      const remaining = state.timeLimit - state.elapsedTime;
+      if (remaining <= 0) {
+        handleTimedLoss();
+      }
+    }
   }, 1000);
 }
 
@@ -193,6 +227,28 @@ function stopTimer() {
     clearInterval(state.timerId);
     state.timerId = null;
   }
+  timerEl.classList.remove('timer-critical', 'timer-warning');
+}
+
+function handleTimedLoss() {
+  state.status = 'lost';
+  stopTimer();
+  resetBtn.textContent = '😵';
+  playExplosion();
+  triggerShake();
+  saveGameResult(false, state.elapsedTime, state.currentLevel);
+
+  const gameoverTitle = $('#gameover-title');
+  const gameoverTime = $('#gameover-time');
+  gameoverTitle.textContent = 'Time\'s Up!';
+  gameoverTime.textContent = `You ran out of time!`;
+  $('#gameover-record').classList.add('hidden');
+  $('#gameover-nextlevel').classList.add('hidden');
+  $('#gameover-submit-daily').classList.add('hidden');
+  $('#gameover-powerup-earned').classList.add('hidden');
+
+  setTimeout(() => showModal('gameover-overlay'), 400);
+  updatePowerUpBar();
 }
 
 // ── Game Actions ───────────────────────────────────────
@@ -209,6 +265,7 @@ function newGame() {
   state.flagCount = 0;
   state.revealedCount = 0;
   state.elapsedTime = 0;
+  state.timeLimit = state.gameMode === 'timed' ? (diff.timeLimit || 120) : 0;
   state.shieldActive = false;
   state.scanMode = false;
   state.shaking = false;
@@ -222,7 +279,14 @@ function newGame() {
   renderBoard();
   updateAllCells();
   updateHeader();
+  updateTimerDisplay();
   updatePowerUpBar();
+
+  // Show level info toast on new game (except first load)
+  if (state._initialized && (state.gameMode === 'normal' || state.gameMode === 'timed')) {
+    showLevelInfoToast(state.currentLevel, diff);
+  }
+  state._initialized = true;
 }
 
 function revealCell(row, col) {
@@ -754,6 +818,7 @@ $('#btn-leaderboard').addEventListener('click', () => {
   showModal('leaderboard-modal');
 });
 $('#btn-help').addEventListener('click', () => showModal('help-modal'));
+$('#game-title').addEventListener('click', () => showModal('about-modal'));
 
 // Close modals
 for (const closeBtn of $$('.modal-close')) {
@@ -839,6 +904,19 @@ function showLevelUpToast(level) {
   toast.textContent = `Level ${level}!`;
   document.getElementById('app').appendChild(toast);
   setTimeout(() => toast.remove(), 2000);
+}
+
+// ── Level Info Toast ───────────────────────────────────
+
+function showLevelInfoToast(level, diff) {
+  const toast = document.createElement('div');
+  toast.className = 'level-info-toast';
+  const sizeLabel = `${diff.rows}×${diff.cols}`;
+  const mineLabel = `${diff.mines} mines`;
+  const timeLabel = state.gameMode === 'timed' ? ` · ${diff.timeLimit}s` : '';
+  toast.innerHTML = `<strong>Level ${level}</strong><br><span class="level-info-details">${sizeLabel} · ${mineLabel}${timeLabel}</span>`;
+  document.getElementById('app').appendChild(toast);
+  setTimeout(() => toast.remove(), 2500);
 }
 
 // ── Mute Toggle ────────────────────────────────────────
