@@ -57,7 +57,7 @@ const CATEGORIES = [
     name: 'Climber',
     icon: '📈',
     desc: 'Max level reached',
-    thresholds: [2, 4, 6, 8, 9, 10],
+    thresholds: [3, 6, 10, 14, 18, 20],
     getValue: (s) => s.maxLevelReached || 1,
     format: (v) => `Level ${v}`,
   },
@@ -87,6 +87,50 @@ const CATEGORIES = [
     thresholds: [1, 5, 15, 30, 50, 100],
     getValue: (s) => s.puristWins || 0,
     format: (v) => `${v} unaided win${v !== 1 ? 's' : ''}`,
+  },
+  // ── Mode-Specific Achievements ──────────────────────
+  {
+    id: 'challengeClimber',
+    name: 'Challenger',
+    icon: '🧗',
+    desc: 'Challenge level reached',
+    thresholds: [3, 6, 10, 14, 18, 20],
+    getValue: (s) => (s.modeStats?.challenge?.maxLevelReached) || (s.maxLevelReached || 1),
+    format: (v) => `Level ${v}`,
+  },
+  {
+    id: 'timedSpeed',
+    name: 'Speedrunner',
+    icon: '⏱️',
+    desc: 'Best timed win',
+    thresholds: [120, 90, 60, 40, 25, 15],
+    getValue: (s) => {
+      const timed = s.modeStats?.timed;
+      if (!timed) return Infinity;
+      const wins = (timed.recentGames || []).filter(g => g.won);
+      if (wins.length === 0) return Infinity;
+      return Math.min(...wins.map(g => g.time));
+    },
+    format: (v) => `Under ${v}s`,
+    inverted: true,
+  },
+  {
+    id: 'fogSurvivor',
+    name: 'Fog Navigator',
+    icon: '🌫️',
+    desc: 'Fog of War wins',
+    thresholds: [1, 5, 15, 30, 50, 100],
+    getValue: (s) => s.modeStats?.fogOfWar?.wins || 0,
+    format: (v) => `${v} win${v !== 1 ? 's' : ''}`,
+  },
+  {
+    id: 'dailyStreak',
+    name: 'Daily Devotee',
+    icon: '📆',
+    desc: 'Daily challenge streak',
+    thresholds: [3, 7, 14, 21, 30, 60],
+    getValue: (s) => s.modeStats?.daily?.bestDailyStreak || 0,
+    format: (v) => `${v} day${v !== 1 ? 's' : ''}`,
   },
 ];
 

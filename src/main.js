@@ -1,28 +1,28 @@
-import { generateBoard, createEmptyBoard, calculateAdjacency } from './logic/boardGenerator.js?v=1.6';
-import { floodFillReveal, checkWin, revealAllMines, chordReveal } from './logic/boardSolver.js?v=1.6';
-import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, MAX_LEVEL, MAX_TIMED_LEVEL } from './logic/difficulty.js?v=1.6';
+import { generateBoard, createEmptyBoard, calculateAdjacency } from './logic/boardGenerator.js?v=1.7';
+import { floodFillReveal, checkWin, revealAllMines, chordReveal } from './logic/boardSolver.js?v=1.7';
+import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, MAX_LEVEL, MAX_TIMED_LEVEL } from './logic/difficulty.js?v=1.7';
 import {
   computeVisibleCells, getHiddenNumberRate, applyHiddenNumbers,
   decodeAdjacentHidden, decodeAllHidden,
   getRefogTimeout, computeRefogCells,
-} from './logic/fogOfWar.js?v=1.6';
-import { findSafeCell, scanRowCol, defuseMine, xRayScan, luckyGuess } from './logic/powerUps.js?v=1.6';
-import { createDailyRNG } from './logic/seededRandom.js?v=1.6';
+} from './logic/fogOfWar.js?v=1.7';
+import { findSafeCell, scanRowCol, defuseMine, xRayScan, luckyGuess } from './logic/powerUps.js?v=1.7';
+import { createDailyRNG } from './logic/seededRandom.js?v=1.7';
 import {
   loadStats, saveGameResult, resetStats,
   loadDailyLeaderboard, addDailyLeaderboardEntry,
   loadTheme, saveTheme,
   loadModePowerUps, saveModePowerUps,
-} from './storage/statsStorage.js?v=1.6';
+} from './storage/statsStorage.js?v=1.7';
 import {
   playReveal, playFlag, playUnflag, playExplosion,
   playCascade, playWin, playPowerUp, playShieldBreak,
   playLevelUp, isMuted, setMuted, loadMuted,
-} from './audio/sounds.js?v=1.6';
+} from './audio/sounds.js?v=1.7';
 import {
   getAchievementState, getTotalScore, checkNewUnlocks,
   getHighestTier, getAllTierNames, getTierIcon, getTierColor,
-} from './logic/achievements.js?v=1.6';
+} from './logic/achievements.js?v=1.7';
 
 // ── Theme Unlock Progression ──────────────────────────
 // Themes unlock based on highest level ever beaten (permanent).
