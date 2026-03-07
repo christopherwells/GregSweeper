@@ -82,10 +82,6 @@
           <span class="powerup-icon">🔬</span>
           <span class="powerup-count">0</span>
         </button>
-        <button class="powerup-btn challenge-only" data-powerup="luckyGuess" title="Lucky Guess (defuse random mine)" disabled>
-          <span class="powerup-icon">🍀</span>
-          <span class="powerup-count">0</span>
-        </button>
         <button class="powerup-btn fog-only" data-powerup="decode" title="Decode all hidden ? cells" disabled>
           <span class="powerup-icon">🔓</span>
           <span class="powerup-count">0</span>
@@ -237,10 +233,10 @@
           <div class="setting-group">
             <h3>Game Mode</h3>
             <div id="mode-options" class="mode-buttons">
-              <button class="mode-btn active" data-mode="normal">Challenge</button>
-              <button class="mode-btn" data-mode="timed">Timed Challenge</button>
+              <button class="mode-btn" data-mode="normal">Challenge</button>
+              <button class="mode-btn" data-mode="timed">Timed</button>
               <button class="mode-btn" data-mode="fogOfWar">Fog of War</button>
-              <button class="mode-btn" data-mode="daily">Daily Challenge</button>
+              <button class="mode-btn active" data-mode="daily">Daily Challenge</button>
             </div>
             <div id="timed-difficulty" class="timed-difficulty hidden">
               <h4>Board Size</h4>
@@ -357,7 +353,6 @@
             <p>🎯 <strong>Scan</strong> — shows mine count in a row/column</p>
             <p>⏸️ <strong>Freeze</strong> — pauses timer for 15 seconds</p>
             <p>🔬 <strong>X-Ray</strong> — reveals mines in a 5&times;5 area</p>
-            <p>🍀 <strong>Lucky Guess</strong> — defuses a random mine</p>
             <p>🔓 <strong>Decode</strong> — reveals all hidden ? cells (Fog)</p>
             <p>Earn power-ups by winning games!</p>
           </div>

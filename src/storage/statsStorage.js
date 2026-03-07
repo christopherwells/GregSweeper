@@ -54,7 +54,7 @@ function createDefaultModeStats() {
 
 // Per-mode power-up pools
 const DEFAULT_POWERUPS = {
-  challenge: { revealSafe: 0, shield: 0, scanRowCol: 0, freeze: 0, xray: 0, luckyGuess: 0 },
+  challenge: { revealSafe: 0, shield: 0, scanRowCol: 0, freeze: 0, xray: 0 },
   fogOfWar:  { revealSafe: 3, shield: 3, scanRowCol: 3, decode: 0 },
   // timed: no power-ups
   // daily: fixed set (not persisted)

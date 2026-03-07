@@ -145,15 +145,6 @@ export function playXRay() {
   osc.stop(ctx.currentTime + 0.4);
 }
 
-export function playLuckyGuess() {
-  // Magical sparkle burst
-  if (muted) return;
-  const sparkle = [700, 1100, 880, 1300, 1047];
-  sparkle.forEach((freq, i) => {
-    setTimeout(() => playTone(freq, 0.08, 'sine', 0.06), i * 50);
-  });
-}
-
 export function playDecode() {
   // Quick cascading reveal
   if (muted) return;

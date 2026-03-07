@@ -6,7 +6,7 @@ import {
   decodeAdjacentHidden, decodeAllHidden,
   getRefogTimeout, computeRefogCells,
 } from './logic/fogOfWar.js?v=1.7';
-import { findSafeCell, scanRowCol, defuseMine, xRayScan, luckyGuess } from './logic/powerUps.js?v=1.7';
+import { findSafeCell, scanRowCol, defuseMine, xRayScan } from './logic/powerUps.js?v=1.7';
 import { createDailyRNG } from './logic/seededRandom.js?v=1.7';
 import {
   loadStats, saveGameResult, resetStats,
@@ -17,7 +17,7 @@ import {
 import {
   playReveal, playFlag, playUnflag, playExplosion,
   playCascade, playWin, playPowerUp, playShieldBreak,
-  playLevelUp, playFreeze, playXRay, playLuckyGuess,
+  playLevelUp, playFreeze, playXRay,
   playDecode, playTimeRecord, isMuted, setMuted, loadMuted,
 } from './audio/sounds.js?v=1.8';
 import {
@@ -136,11 +136,11 @@ const state = {
   timeLimit: 0,         // countdown seconds for timed mode (0 = no limit)
 
   currentLevel: 1,
-  gameMode: 'normal',   // normal | timed | fogOfWar | daily
+  gameMode: 'daily',    // normal | timed | fogOfWar | daily
   dailySeed: null,
   dailyBombHits: 0,
 
-  powerUps: { revealSafe: 0, shield: 0, scanRowCol: 0, freeze: 0, xray: 0, luckyGuess: 0, decode: 0 },
+  powerUps: { revealSafe: 0, shield: 0, scanRowCol: 0, freeze: 0, xray: 0, decode: 0 },
   shieldActive: false,
   scanMode: false,
   xrayMode: false,
@@ -226,10 +226,7 @@ function updateCell(r, c) {
   }
 
   if (cell.isRevealed) {
-    if (cell.isLucky) {
-      cellEl.className = 'cell revealed lucky';
-      cellEl.textContent = '🍀';
-    } else if (cell.isMine) {
+    if (cell.isMine) {
       const isHit = state.hitMine && state.hitMine.row === r && state.hitMine.col === c;
       cellEl.className = `cell revealed mine${isHit ? ' mine-hit' : ''}`;
       cellEl.textContent = '💣';
@@ -548,10 +545,10 @@ function newGame() {
   const modePU = loadModePowerUps(state.gameMode);
   if (state.gameMode === 'timed') {
     // Timed mode: no power-ups
-    state.powerUps = { revealSafe: 0, shield: 0, scanRowCol: 0, freeze: 0, xray: 0, luckyGuess: 0 };
+    state.powerUps = { revealSafe: 0, shield: 0, scanRowCol: 0, freeze: 0, xray: 0 };
   } else if (state.gameMode === 'daily') {
     // Daily mode: fixed set, not persisted
-    state.powerUps = { revealSafe: 0, shield: 0, scanRowCol: 0, freeze: 0, xray: 0, luckyGuess: 0 };
+    state.powerUps = { revealSafe: 0, shield: 0, scanRowCol: 0, freeze: 0, xray: 0 };
   } else {
     state.powerUps = {
       revealSafe: modePU.revealSafe || 0,
@@ -559,7 +556,6 @@ function newGame() {
       scanRowCol: modePU.scanRowCol || 0,
       freeze: modePU.freeze || 0,
       xray: modePU.xray || 0,
-      luckyGuess: modePU.luckyGuess || 0,
     };
   }
 
@@ -1174,47 +1170,6 @@ function performXRay(row, col) {
   updatePowerUpBar();
 }
 
-// ── Lucky Guess Power-Up ────────────────────────────
-function useLuckyGuess() {
-  if (state.powerUps.luckyGuess <= 0 || state.status === 'won' || state.status === 'lost') return;
-  playLuckyGuess();
-  state.powerUps.luckyGuess--;
-  state.usedPowerUps = true;
-  saveModePowerUps(state.gameMode, state.powerUps);
-
-  const cell = luckyGuess(state.board);
-  if (!cell) return;
-
-  state.revealedCount++;
-  state.totalMines--; // One fewer mine now
-
-  // Pop animation on the defused cell
-  const cellEl = boardEl.children[cell.row * state.cols + cell.col];
-  if (cellEl) {
-    cellEl.classList.add('lucky-reveal');
-
-    // Ripple ring expanding outward
-    const rect = cellEl.getBoundingClientRect();
-    const boardRect = boardEl.getBoundingClientRect();
-    const ripple = document.createElement('div');
-    ripple.className = 'lucky-ripple';
-    ripple.style.left = (rect.left - boardRect.left + rect.width / 2 - 5) + 'px';
-    ripple.style.top = (rect.top - boardRect.top + rect.height / 2 - 5) + 'px';
-    boardEl.style.position = 'relative';
-    boardEl.appendChild(ripple);
-    setTimeout(() => ripple.remove(), 900);
-  }
-
-  if (state.fogOfWarEnabled) {
-    state.visibleCells = computeVisibleCells(getRevealedCells(), state.fogRadius, state.rows, state.cols);
-  }
-
-  updateAllCells();
-  updateHeader();
-  updatePowerUpBar();
-  if (checkWin(state.board)) handleWin();
-}
-
 // ── Decode Power-Up (Fog of War) ─────────────────────
 function useDecode() {
   if (!state.powerUps.decode || state.powerUps.decode <= 0 || state.status === 'won' || state.status === 'lost') return;
@@ -1253,13 +1208,13 @@ function awardPowerUps(stats) {
   const isFogOfWar = state.gameMode === 'fogOfWar';
 
   const baseTypes = ['revealSafe', 'shield', 'scanRowCol'];
-  const challengeTypes = [...baseTypes, 'freeze', 'xray', 'luckyGuess'];
+  const challengeTypes = [...baseTypes, 'freeze', 'xray'];
   const fogTypes = [...baseTypes];
 
   const types = isChallenge ? challengeTypes : isFogOfWar ? fogTypes : baseTypes;
   const labels = {
     revealSafe: '🔍 Reveal Safe', shield: '🛡️ Shield', scanRowCol: '🎯 Scan',
-    freeze: '⏸️ Freeze', xray: '🔬 X-Ray', luckyGuess: '🍀 Lucky Guess',
+    freeze: '⏸️ Freeze', xray: '🔬 X-Ray',
     decode: '🔓 Decode',
   };
 
@@ -1856,7 +1811,6 @@ for (const btn of $$('.powerup-btn')) {
     else if (type === 'scanRowCol') activateScan();
     else if (type === 'freeze') useFreeze();
     else if (type === 'xray') activateXRay();
-    else if (type === 'luckyGuess') useLuckyGuess();
     else if (type === 'decode') useDecode();
   });
 }
@@ -1996,7 +1950,7 @@ $('#btn-reset-profile').addEventListener('click', () => {
     updateThemeSwatches();
     // Reset game state
     state.currentLevel = 1;
-    state.powerUps = { revealSafe: 0, shield: 0, scanRowCol: 0, freeze: 0, xray: 0, luckyGuess: 0 };
+    state.powerUps = { revealSafe: 0, shield: 0, scanRowCol: 0, freeze: 0, xray: 0 };
     updatePowerUpBar();
     newGame();
     // Close settings modal
@@ -2050,8 +2004,7 @@ document.addEventListener('keydown', (e) => {
   else if (e.key === '3') activateScan();
   else if (e.key === '4') useFreeze();
   else if (e.key === '5') activateXRay();
-  else if (e.key === '6') useLuckyGuess();
-  else if (e.key === '7') useDecode();
+  else if (e.key === '6') useDecode();
 });
 
 // ── Level Up Toast ─────────────────────────────────────

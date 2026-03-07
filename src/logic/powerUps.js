@@ -83,32 +83,3 @@ export function xRayScan(board, row, col) {
   return mines;
 }
 
-/**
- * Lucky Guess: Defuses a random unrevealed mine on the board.
- * Returns the defused cell, or null if no mines remain.
- * The cell displays 🍀 and adjacency is recalculated.
- */
-export function luckyGuess(board) {
-  const candidates = [];
-  for (const row of board) {
-    for (const cell of row) {
-      if (cell.isMine && !cell.isRevealed && !cell.isFlagged) {
-        candidates.push(cell);
-      }
-    }
-  }
-
-  if (candidates.length === 0) return null;
-  const target = candidates[Math.floor(Math.random() * candidates.length)];
-
-  // Defuse the mine
-  target.isMine = false;
-  target.isLucky = true; // Special marker for 🍀 display
-  target.isRevealed = true;
-  target.revealAnimDelay = 0;
-
-  // Recalculate adjacency around the defused cell
-  recalcAreaAdjacency(board, target.row, target.col);
-
-  return target;
-}
