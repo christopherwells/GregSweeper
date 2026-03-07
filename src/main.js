@@ -243,8 +243,8 @@ function updateHeader() {
     if (state.gameMode === 'timed' && state.timeLimit > 0) {
       modeDisplay.textContent = `Timed (${state.timeLimit}s)`;
     } else {
-      const modeLabels = { normal: 'Normal', fogOfWar: 'Fog of War' };
-      modeDisplay.textContent = modeLabels[state.gameMode] || 'Normal';
+      const modeLabels = { normal: 'Challenge', fogOfWar: 'Fog of War' };
+      modeDisplay.textContent = modeLabels[state.gameMode] || 'Challenge';
     }
   }
 
@@ -1047,7 +1047,7 @@ function generateShareCard() {
     ? getTimedDifficulty(level)
     : getDifficultyForLevel(level);
   const mode = state.gameMode;
-  const modeLabel = { normal: 'Normal', timed: 'Timed', fogOfWar: 'Fog of War', daily: 'Daily' }[mode] || 'Normal';
+  const modeLabel = { normal: 'Challenge', timed: 'Timed', fogOfWar: 'Fog of War', daily: 'Daily' }[mode] || 'Challenge';
 
   const stats = loadStats();
   const streakText = stats.currentStreak > 1 ? ` | 🔥 ${stats.currentStreak} streak` : '';
@@ -1372,7 +1372,10 @@ for (const closeBtn of $$('.modal-close')) {
 }
 for (const modal of $$('.modal')) {
   modal.addEventListener('click', (e) => {
-    if (e.target === modal) modal.classList.add('hidden');
+    // Don't dismiss game-over modal by clicking outside — require button press
+    if (e.target === modal && modal.id !== 'gameover-overlay') {
+      modal.classList.add('hidden');
+    }
   });
 }
 
@@ -1454,7 +1457,9 @@ document.addEventListener('keydown', (e) => {
   const anyModalOpen = [...$$('.modal')].some(m => !m.classList.contains('hidden'));
 
   if (e.key === 'Escape') {
-    hideAllModals();
+    // Don't let Escape dismiss game-over modal
+    const gameoverOpen = !$('#gameover-overlay').classList.contains('hidden');
+    if (!gameoverOpen) hideAllModals();
     return;
   }
 
