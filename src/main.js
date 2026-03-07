@@ -1,23 +1,23 @@
-import { generateBoard, createEmptyBoard, calculateAdjacency } from './logic/boardGenerator.js?v=1.1';
-import { floodFillReveal, checkWin, revealAllMines, chordReveal } from './logic/boardSolver.js?v=1.1';
-import { getDifficultyForLevel, getTimedDifficulty, MAX_LEVEL, MAX_TIMED_LEVEL } from './logic/difficulty.js?v=1.1';
-import { computeVisibleCells } from './logic/fogOfWar.js?v=1.1';
-import { findSafeCell, scanRowCol, defuseMine } from './logic/powerUps.js?v=1.1';
-import { createDailyRNG } from './logic/seededRandom.js?v=1.1';
+import { generateBoard, createEmptyBoard, calculateAdjacency } from './logic/boardGenerator.js?v=1.2';
+import { floodFillReveal, checkWin, revealAllMines, chordReveal } from './logic/boardSolver.js?v=1.2';
+import { getDifficultyForLevel, getTimedDifficulty, MAX_LEVEL, MAX_TIMED_LEVEL } from './logic/difficulty.js?v=1.2';
+import { computeVisibleCells } from './logic/fogOfWar.js?v=1.2';
+import { findSafeCell, scanRowCol, defuseMine } from './logic/powerUps.js?v=1.2';
+import { createDailyRNG } from './logic/seededRandom.js?v=1.2';
 import {
   loadStats, saveGameResult, resetStats,
   loadDailyLeaderboard, addDailyLeaderboardEntry,
   loadTheme, saveTheme,
-} from './storage/statsStorage.js?v=1.1';
+} from './storage/statsStorage.js?v=1.2';
 import {
   playReveal, playFlag, playUnflag, playExplosion,
   playCascade, playWin, playPowerUp, playShieldBreak,
   playLevelUp, isMuted, setMuted, loadMuted,
-} from './audio/sounds.js?v=1.1';
+} from './audio/sounds.js?v=1.2';
 import {
   getAchievementState, getTotalScore, checkNewUnlocks,
   getHighestTier, getAllTierNames, getTierIcon, getTierColor,
-} from './logic/achievements.js?v=1.1';
+} from './logic/achievements.js?v=1.2';
 
 // ── Theme Unlock Progression ──────────────────────────
 // Themes unlock based on highest level ever beaten (permanent).
@@ -1239,36 +1239,54 @@ boardEl.addEventListener('contextmenu', (e) => {
 });
 
 // Touch support: tap to reveal, long press to flag
-// CSS touch-action: manipulation handles double-tap zoom; touchstart is passive for native feedback
+// Non-passive touchstart so we can preventDefault to block browser scroll/gesture interference
 let touchedCellRow = null;
 let touchedCellCol = null;
 let touchStartX = 0;
 let touchStartY = 0;
+let touchedCellEl = null;
 
 boardEl.addEventListener('touchstart', (e) => {
   const touch = e.touches[0];
   const cellEl = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.cell');
   if (!cellEl) return;
+
+  // Prevent browser from hijacking touch for scrolling/gestures
+  e.preventDefault();
+
   longPressTriggered = false;
   touchedCellRow = parseInt(cellEl.dataset.row);
   touchedCellCol = parseInt(cellEl.dataset.col);
   touchStartX = touch.clientX;
   touchStartY = touch.clientY;
+  touchedCellEl = cellEl;
+
+  // Visual feedback — show the cell is being pressed
+  cellEl.classList.add('touch-holding');
 
   longPressTimer = setTimeout(() => {
     longPressTriggered = true;
+    if (touchedCellEl) {
+      touchedCellEl.classList.remove('touch-holding');
+      touchedCellEl = null;
+    }
     if (touchedCellRow != null && touchedCellCol != null) {
       toggleFlag(touchedCellRow, touchedCellCol);
       haptic([40]);
     }
-  }, 500);
-}, { passive: true });
+  }, 400);
+}, { passive: false });
 
 boardEl.addEventListener('touchend', (e) => {
   lastTouchTime = Date.now();
   if (longPressTimer) {
     clearTimeout(longPressTimer);
     longPressTimer = null;
+  }
+  // Remove hold visual
+  if (touchedCellEl) {
+    touchedCellEl.classList.remove('touch-holding');
+    touchedCellEl = null;
   }
   if (longPressTriggered) {
     longPressTriggered = false;
@@ -1293,14 +1311,18 @@ boardEl.addEventListener('touchend', (e) => {
 });
 
 boardEl.addEventListener('touchmove', (e) => {
-  // Only cancel long-press if finger moved more than 10px (prevents jitter cancellation)
+  // Only cancel long-press if finger moved more than 15px (prevents jitter cancellation)
   const touch = e.touches[0];
   const dx = Math.abs(touch.clientX - touchStartX);
   const dy = Math.abs(touch.clientY - touchStartY);
-  if (dx > 10 || dy > 10) {
+  if (dx > 15 || dy > 15) {
     if (longPressTimer) {
       clearTimeout(longPressTimer);
       longPressTimer = null;
+    }
+    if (touchedCellEl) {
+      touchedCellEl.classList.remove('touch-holding');
+      touchedCellEl = null;
     }
     touchedCellRow = null;
     touchedCellCol = null;
