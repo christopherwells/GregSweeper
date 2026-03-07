@@ -9,6 +9,11 @@ import {
   loadDailyLeaderboard, addDailyLeaderboardEntry,
   loadTheme, saveTheme,
 } from './storage/statsStorage.js';
+import {
+  playReveal, playFlag, playUnflag, playExplosion,
+  playCascade, playWin, playPowerUp, playShieldBreak,
+  playLevelUp, isMuted, setMuted, loadMuted,
+} from './audio/sounds.js';
 
 // ── State ──────────────────────────────────────────────
 
@@ -56,6 +61,8 @@ const modeDisplay = $('#mode-display');
 const shakeWrapper = $('#screen-shake-wrapper');
 const particleCanvas = $('#particle-canvas');
 const scanToast = $('#scan-toast');
+const muteBtn = $('#btn-mute');
+const bestTimeDisplay = $('#best-time-display');
 
 // ── Board Rendering ────────────────────────────────────
 
@@ -123,12 +130,34 @@ function updateAllCells() {
 
 function updateHeader() {
   const remaining = state.totalMines - state.flagCount;
-  mineCounterEl.textContent = String(Math.max(0, remaining)).padStart(3, '0');
+  if (remaining < 0) {
+    mineCounterEl.textContent = '-' + String(Math.abs(remaining)).padStart(2, '0');
+  } else {
+    mineCounterEl.textContent = String(remaining).padStart(3, '0');
+  }
   timerEl.textContent = String(state.elapsedTime).padStart(3, '0');
   levelDisplay.textContent = `Level ${state.currentLevel}`;
 
-  const modeLabels = { normal: 'Normal', timed: 'Timed', fogOfWar: 'Fog of War', daily: 'Daily' };
-  modeDisplay.textContent = modeLabels[state.gameMode] || 'Normal';
+  if (state.gameMode === 'daily') {
+    const dateStr = new Date().toISOString().slice(0, 10);
+    modeDisplay.textContent = `Daily ${dateStr}`;
+  } else {
+    const modeLabels = { normal: 'Normal', timed: 'Timed', fogOfWar: 'Fog of War' };
+    modeDisplay.textContent = modeLabels[state.gameMode] || 'Normal';
+  }
+
+  // Show best time for timed/normal mode
+  if (bestTimeDisplay) {
+    const stats = loadStats();
+    const bestKey = `level${state.currentLevel}`;
+    const best = stats.bestTimes[bestKey];
+    if (best != null && (state.gameMode === 'timed' || state.gameMode === 'normal')) {
+      bestTimeDisplay.textContent = `Best: ${best}s`;
+      bestTimeDisplay.classList.remove('hidden');
+    } else {
+      bestTimeDisplay.classList.add('hidden');
+    }
+  }
 
   if (state.status === 'won') resetBtn.textContent = '😎';
   else if (state.status === 'lost') resetBtn.textContent = '😵';
@@ -226,6 +255,7 @@ function revealCell(row, col) {
   if (currentCell.isMine) {
     if (state.shieldActive) {
       state.shieldActive = false;
+      playShieldBreak();
       defuseMine(state.board, row, col);
       currentCell.isRevealed = true;
       state.revealedCount++;
@@ -243,6 +273,7 @@ function revealCell(row, col) {
   if (currentCell.adjacentMines === 0) {
     const revealed = floodFillReveal(state.board, row, col);
     state.revealedCount += revealed.length;
+    playCascade(revealed.length);
 
     if (state.fogOfWarEnabled) {
       const allRevealed = getRevealedCells();
@@ -252,6 +283,7 @@ function revealCell(row, col) {
     currentCell.isRevealed = true;
     currentCell.revealAnimDelay = 0;
     state.revealedCount++;
+    playReveal();
 
     if (state.fogOfWarEnabled) {
       const allRevealed = getRevealedCells();
@@ -272,6 +304,7 @@ function toggleFlag(row, col) {
 
   cell.isFlagged = !cell.isFlagged;
   state.flagCount += cell.isFlagged ? 1 : -1;
+  if (cell.isFlagged) playFlag(); else playUnflag();
   updateCell(row, col);
   updateHeader();
 }
@@ -306,6 +339,7 @@ function handleWin() {
   const stats = saveGameResult(true, state.elapsedTime, state.currentLevel);
   const earnedPowerUp = awardPowerUps(stats);
 
+  playWin();
   showParticles();
 
   const gameoverTitle = $('#gameover-title');
@@ -333,7 +367,7 @@ function handleWin() {
     powerupEarned.classList.add('hidden');
   }
 
-  if (state.currentLevel < MAX_LEVEL) {
+  if (state.currentLevel < MAX_LEVEL && state.gameMode !== 'daily') {
     nextLevelBtn.classList.remove('hidden');
   } else {
     nextLevelBtn.classList.add('hidden');
@@ -358,6 +392,7 @@ function handleLoss(mineRow, mineCol) {
   revealAllMines(state.board);
   updateAllCells();
 
+  playExplosion();
   triggerShake();
   saveGameResult(false, state.elapsedTime, state.currentLevel);
 
@@ -380,6 +415,7 @@ function useRevealSafe() {
   if (state.powerUps.revealSafe <= 0 || state.status !== 'playing') return;
   const cell = findSafeCell(state.board);
   if (!cell) return;
+  playPowerUp();
   state.powerUps.revealSafe--;
   cell.isRevealed = true;
   cell.revealAnimDelay = 0;
@@ -400,6 +436,7 @@ function useRevealSafe() {
 
 function useShield() {
   if (state.powerUps.shield <= 0 || state.status !== 'playing') return;
+  playPowerUp();
   state.powerUps.shield--;
   state.shieldActive = true;
   updatePowerUpBar();
@@ -407,6 +444,7 @@ function useShield() {
 
 function activateScan() {
   if (state.powerUps.scanRowCol <= 0 || state.status !== 'playing') return;
+  playPowerUp();
   state.scanMode = !state.scanMode;
   updatePowerUpBar();
 }
@@ -560,13 +598,29 @@ function updateStatsDisplay() {
   // Recent games chart
   const chart = $('#recent-games-chart');
   chart.innerHTML = '';
-  const recent = stats.recentGames.slice(-10);
-  for (const game of recent) {
-    const bar = document.createElement('div');
-    bar.className = `game-bar ${game.won ? 'win' : 'loss'}`;
-    bar.style.height = game.won ? `${Math.min(100, (game.time / 300) * 100)}%` : '100%';
-    bar.title = game.won ? `Win: ${game.time}s` : 'Loss';
-    chart.appendChild(bar);
+  const recent = stats.recentGames.slice(-20);
+
+  if (recent.length === 0) {
+    chart.innerHTML = '<span class="chart-empty">Play some games to see your history!</span>';
+  } else {
+    // Find max time among wins for scaling
+    const winTimes = recent.filter(g => g.won).map(g => g.time);
+    const maxTime = winTimes.length > 0 ? Math.max(...winTimes, 30) : 30;
+
+    for (const game of recent) {
+      const bar = document.createElement('div');
+      bar.className = `game-bar ${game.won ? 'win' : 'loss'}`;
+      if (game.won) {
+        // Taller = faster (invert so fast wins are tall)
+        const pct = Math.max(15, 100 - (game.time / maxTime) * 70);
+        bar.style.height = `${pct}%`;
+        bar.title = `Win: ${game.time}s (Level ${game.level || '?'})`;
+      } else {
+        bar.style.height = '30%';
+        bar.title = 'Loss';
+      }
+      chart.appendChild(bar);
+    }
   }
 }
 
@@ -741,6 +795,8 @@ for (const modeBtn of $$('.mode-btn')) {
 $('#gameover-retry').addEventListener('click', () => newGame());
 $('#gameover-nextlevel').addEventListener('click', () => {
   if (state.currentLevel < MAX_LEVEL) state.currentLevel++;
+  playLevelUp();
+  showLevelUpToast(state.currentLevel);
   newGame();
 });
 $('#gameover-submit-daily').addEventListener('click', () => {
@@ -775,6 +831,27 @@ document.addEventListener('keydown', (e) => {
   else if (e.key === '3') activateScan();
 });
 
+// ── Level Up Toast ─────────────────────────────────────
+
+function showLevelUpToast(level) {
+  const toast = document.createElement('div');
+  toast.className = 'level-up-toast';
+  toast.textContent = `Level ${level}!`;
+  document.getElementById('app').appendChild(toast);
+  setTimeout(() => toast.remove(), 2000);
+}
+
+// ── Mute Toggle ────────────────────────────────────────
+
+if (muteBtn) {
+  muteBtn.addEventListener('click', () => {
+    const nowMuted = !isMuted();
+    setMuted(nowMuted);
+    muteBtn.textContent = nowMuted ? '🔇' : '🔊';
+    muteBtn.title = nowMuted ? 'Unmute' : 'Mute';
+  });
+}
+
 // ── Init ───────────────────────────────────────────────
 
 function init() {
@@ -785,6 +862,13 @@ function init() {
   if (activeSwatch) {
     for (const s of $$('.theme-swatch')) s.classList.remove('active');
     activeSwatch.classList.add('active');
+  }
+
+  // Load mute preference
+  const muted = loadMuted();
+  if (muteBtn) {
+    muteBtn.textContent = muted ? '🔇' : '🔊';
+    muteBtn.title = muted ? 'Unmute' : 'Mute';
   }
 
   newGame();
