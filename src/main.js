@@ -1,23 +1,23 @@
-import { generateBoard, createEmptyBoard, calculateAdjacency } from './logic/boardGenerator.js?v=1.0';
-import { floodFillReveal, checkWin, revealAllMines, chordReveal } from './logic/boardSolver.js?v=1.0';
-import { getDifficultyForLevel, getTimedDifficulty, MAX_LEVEL, MAX_TIMED_LEVEL } from './logic/difficulty.js?v=1.0';
-import { computeVisibleCells } from './logic/fogOfWar.js?v=1.0';
-import { findSafeCell, scanRowCol, defuseMine } from './logic/powerUps.js?v=1.0';
-import { createDailyRNG } from './logic/seededRandom.js?v=1.0';
+import { generateBoard, createEmptyBoard, calculateAdjacency } from './logic/boardGenerator.js?v=1.1';
+import { floodFillReveal, checkWin, revealAllMines, chordReveal } from './logic/boardSolver.js?v=1.1';
+import { getDifficultyForLevel, getTimedDifficulty, MAX_LEVEL, MAX_TIMED_LEVEL } from './logic/difficulty.js?v=1.1';
+import { computeVisibleCells } from './logic/fogOfWar.js?v=1.1';
+import { findSafeCell, scanRowCol, defuseMine } from './logic/powerUps.js?v=1.1';
+import { createDailyRNG } from './logic/seededRandom.js?v=1.1';
 import {
   loadStats, saveGameResult, resetStats,
   loadDailyLeaderboard, addDailyLeaderboardEntry,
   loadTheme, saveTheme,
-} from './storage/statsStorage.js?v=1.0';
+} from './storage/statsStorage.js?v=1.1';
 import {
   playReveal, playFlag, playUnflag, playExplosion,
   playCascade, playWin, playPowerUp, playShieldBreak,
   playLevelUp, isMuted, setMuted, loadMuted,
-} from './audio/sounds.js?v=1.0';
+} from './audio/sounds.js?v=1.1';
 import {
   getAchievementState, getTotalScore, checkNewUnlocks,
   getHighestTier, getAllTierNames, getTierIcon, getTierColor,
-} from './logic/achievements.js?v=1.0';
+} from './logic/achievements.js?v=1.1';
 
 // ── Theme Unlock Progression ──────────────────────────
 // Themes unlock based on highest level ever beaten (permanent).
@@ -152,6 +152,7 @@ const particleCanvas = $('#particle-canvas');
 const scanToast = $('#scan-toast');
 const muteBtn = $('#btn-mute');
 const bestTimeDisplay = $('#best-time-display');
+const maxLevelDisplay = $('#max-level-display');
 const streakBorder = $('#streak-border');
 
 // ── Board Rendering ────────────────────────────────────
@@ -248,8 +249,8 @@ function updateHeader() {
   }
 
   // Show best time for timed/normal mode
+  const stats = loadStats();
   if (bestTimeDisplay) {
-    const stats = loadStats();
     const bestKey = `level${state.currentLevel}`;
     const best = stats.bestTimes[bestKey];
     if (best != null && (state.gameMode === 'timed' || state.gameMode === 'normal')) {
@@ -257,6 +258,17 @@ function updateHeader() {
       bestTimeDisplay.classList.remove('hidden');
     } else {
       bestTimeDisplay.classList.add('hidden');
+    }
+  }
+
+  // Show max level reached in normal mode
+  if (maxLevelDisplay) {
+    const maxLevel = stats.maxLevelReached || 1;
+    if (state.gameMode === 'normal' && maxLevel > 1) {
+      maxLevelDisplay.textContent = `Peak: ${maxLevel}`;
+      maxLevelDisplay.classList.remove('hidden');
+    } else {
+      maxLevelDisplay.classList.add('hidden');
     }
   }
 
@@ -696,7 +708,7 @@ function handleLoss(mineRow, mineCol) {
 // ── Power-Ups ──────────────────────────────────────────
 
 function useRevealSafe() {
-  if (state.powerUps.revealSafe <= 0 || state.status !== 'playing') return;
+  if (state.powerUps.revealSafe <= 0 || state.status === 'won' || state.status === 'lost') return;
   const cell = findSafeCell(state.board);
   if (!cell) return;
   playPowerUp();
@@ -729,7 +741,7 @@ function useShield() {
 }
 
 function activateScan() {
-  if (state.powerUps.scanRowCol <= 0 || state.status !== 'playing') return;
+  if (state.powerUps.scanRowCol <= 0 || state.status === 'won' || state.status === 'lost') return;
   playPowerUp();
   state.usedPowerUps = true;
   state.scanMode = !state.scanMode;
@@ -841,11 +853,8 @@ function chainRevealMines(hitRow, hitCol) {
 function showCelebration() {
   showGreenFlash();
 
-  // Multi-burst confetti
-  showConfettiBurst(0.5, 0.5, 200);
-  setTimeout(() => showConfettiBurst(0.2, 0.3, 100), 300);
-  setTimeout(() => showConfettiBurst(0.8, 0.3, 100), 500);
-  setTimeout(() => showConfettiBurst(0.5, 0.2, 80), 700);
+  // Single lightweight confetti burst — 60 particles, simple shapes
+  showConfettiBurst(0.5, 0.4, 60);
 }
 
 function showConfettiBurst(originX, originY, count) {
@@ -860,48 +869,40 @@ function showConfettiBurst(originX, originY, count) {
 
   // Themed particle colors
   const themeColors = {
-    classic: ['#ff4444', '#4488ff', '#44cc44', '#ffdd44', '#ff44ff', '#ffd700', '#ff8800', '#00ccff'],
-    dark: ['#e94560', '#53a8ff', '#00d4aa', '#ffd93d', '#c084fc', '#ff6b6b', '#ff8800', '#00ff88'],
-    neon: ['#00ff88', '#ff0066', '#00ccff', '#ffff00', '#ff6600', '#cc44ff', '#00ffcc', '#ff3399'],
-    ocean: ['#64d2ff', '#5eead4', '#fbbf24', '#34d399', '#a78bfa', '#ff6b6b', '#00e5ff', '#80ffea'],
-    sunset: ['#ff6b6b', '#ffa07a', '#ffc107', '#ff8a65', '#bb86fc', '#87d68d', '#ff4444', '#ffdd44'],
-    candy: ['#ff69b4', '#e040fb', '#7c4dff', '#ffd740', '#69f0ae', '#ff4081', '#ea80fc', '#80d8ff'],
-    midnight: ['#cc88ff', '#7c4dff', '#80b0ff', '#ffd740', '#69f0ae', '#80ffb0', '#b388ff', '#ff80ab'],
-    aurora: ['#00e5a0', '#00bcd4', '#b388ff', '#69f0ae', '#00e5ff', '#ff4488', '#a7ffeb', '#ea80fc'],
-    galaxy: ['#ea80fc', '#d050ff', '#82b1ff', '#ff80ab', '#b9f6ca', '#ffab40', '#ce93d8', '#80d8ff'],
+    classic: ['#ff4444', '#4488ff', '#44cc44', '#ffdd44', '#ff44ff', '#ffd700'],
+    dark: ['#e94560', '#53a8ff', '#00d4aa', '#ffd93d', '#c084fc', '#ff6b6b'],
+    neon: ['#00ff88', '#ff0066', '#00ccff', '#ffff00', '#ff6600', '#cc44ff'],
+    ocean: ['#64d2ff', '#5eead4', '#fbbf24', '#34d399', '#a78bfa', '#00e5ff'],
+    sunset: ['#ff6b6b', '#ffa07a', '#ffc107', '#ff8a65', '#bb86fc', '#87d68d'],
+    candy: ['#ff69b4', '#e040fb', '#7c4dff', '#ffd740', '#69f0ae', '#ff4081'],
+    midnight: ['#cc88ff', '#7c4dff', '#80b0ff', '#ffd740', '#69f0ae', '#b388ff'],
+    aurora: ['#00e5a0', '#00bcd4', '#b388ff', '#69f0ae', '#00e5ff', '#a7ffeb'],
+    galaxy: ['#ea80fc', '#d050ff', '#82b1ff', '#ff80ab', '#b9f6ca', '#ce93d8'],
   };
   const colors = themeColors[state.theme] || themeColors.classic;
-
-  const isNeon = state.theme === 'neon' || state.theme === 'aurora';
-  const isCandy = state.theme === 'candy';
-  const isGalaxy = state.theme === 'galaxy';
-
-  const shapes = ['rect', 'circle', 'triangle', 'star'];
-  if (isNeon) shapes.push('spark', 'spark');
-  if (isCandy) shapes.push('circle', 'circle');
 
   const particles = [];
   for (let i = 0; i < count; i++) {
     const angle = Math.random() * Math.PI * 2;
-    const speed = 4 + Math.random() * 12;
+    const speed = 3 + Math.random() * 8;
     particles.push({
-      x: canvas.width * originX + (Math.random() - 0.5) * 30,
+      x: canvas.width * originX + (Math.random() - 0.5) * 20,
       y: canvas.height * originY,
       vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed - 4,
-      gravity: 0.1 + Math.random() * 0.05,
+      vy: Math.sin(angle) * speed - 3,
+      gravity: 0.12 + Math.random() * 0.05,
       life: 1,
-      decay: 0.004 + Math.random() * 0.006,
+      decay: 0.008 + Math.random() * 0.008,
       color: colors[Math.floor(Math.random() * colors.length)],
-      size: 3 + Math.random() * 6,
+      size: 3 + Math.random() * 5,
       rotation: Math.random() * Math.PI * 2,
-      rotationSpeed: (Math.random() - 0.5) * 0.3,
-      shape: shapes[Math.floor(Math.random() * shapes.length)],
+      rotationSpeed: (Math.random() - 0.5) * 0.2,
+      isCircle: Math.random() > 0.5,
     });
   }
 
   function animate() {
-    // Don't clear — allow bursts to layer
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     let alive = false;
 
     for (const p of particles) {
@@ -916,34 +917,13 @@ function showConfettiBurst(originX, originY, count) {
 
       ctx.globalAlpha = Math.max(0, p.life);
       ctx.fillStyle = p.color;
-
       ctx.save();
       ctx.translate(p.x, p.y);
       ctx.rotate(p.rotation);
 
-      if (p.shape === 'spark') {
-        ctx.strokeStyle = p.color;
-        ctx.lineWidth = 2;
-        ctx.shadowColor = p.color;
-        ctx.shadowBlur = 8;
-        ctx.beginPath();
-        ctx.moveTo(-p.size, 0);
-        ctx.lineTo(p.size, 0);
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-      } else if (p.shape === 'circle') {
+      if (p.isCircle) {
         ctx.beginPath();
         ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
-        ctx.fill();
-      } else if (p.shape === 'triangle') {
-        ctx.beginPath();
-        ctx.moveTo(0, -p.size / 2);
-        ctx.lineTo(-p.size / 2, p.size / 2);
-        ctx.lineTo(p.size / 2, p.size / 2);
-        ctx.closePath();
-        ctx.fill();
-      } else if (p.shape === 'star') {
-        drawStar(ctx, 0, 0, 5, p.size / 2, p.size / 4);
         ctx.fill();
       } else {
         ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
@@ -962,21 +942,6 @@ function showConfettiBurst(originX, originY, count) {
   }
 
   requestAnimationFrame(animate);
-}
-
-function drawStar(ctx, cx, cy, spikes, outerRadius, innerRadius) {
-  let rot = (Math.PI / 2) * 3;
-  const step = Math.PI / spikes;
-  ctx.beginPath();
-  ctx.moveTo(cx, cy - outerRadius);
-  for (let i = 0; i < spikes; i++) {
-    ctx.lineTo(cx + Math.cos(rot) * outerRadius, cy + Math.sin(rot) * outerRadius);
-    rot += step;
-    ctx.lineTo(cx + Math.cos(rot) * innerRadius, cy + Math.sin(rot) * innerRadius);
-    rot += step;
-  }
-  ctx.lineTo(cx, cy - outerRadius);
-  ctx.closePath();
 }
 
 // ── Achievements ───────────────────────────────────────
@@ -1277,6 +1242,8 @@ boardEl.addEventListener('contextmenu', (e) => {
 // CSS touch-action: manipulation handles double-tap zoom; touchstart is passive for native feedback
 let touchedCellRow = null;
 let touchedCellCol = null;
+let touchStartX = 0;
+let touchStartY = 0;
 
 boardEl.addEventListener('touchstart', (e) => {
   const touch = e.touches[0];
@@ -1285,11 +1252,14 @@ boardEl.addEventListener('touchstart', (e) => {
   longPressTriggered = false;
   touchedCellRow = parseInt(cellEl.dataset.row);
   touchedCellCol = parseInt(cellEl.dataset.col);
+  touchStartX = touch.clientX;
+  touchStartY = touch.clientY;
 
   longPressTimer = setTimeout(() => {
     longPressTriggered = true;
     if (touchedCellRow != null && touchedCellCol != null) {
       toggleFlag(touchedCellRow, touchedCellCol);
+      haptic([40]);
     }
   }, 500);
 }, { passive: true });
@@ -1322,13 +1292,19 @@ boardEl.addEventListener('touchend', (e) => {
   }
 });
 
-boardEl.addEventListener('touchmove', () => {
-  if (longPressTimer) {
-    clearTimeout(longPressTimer);
-    longPressTimer = null;
+boardEl.addEventListener('touchmove', (e) => {
+  // Only cancel long-press if finger moved more than 10px (prevents jitter cancellation)
+  const touch = e.touches[0];
+  const dx = Math.abs(touch.clientX - touchStartX);
+  const dy = Math.abs(touch.clientY - touchStartY);
+  if (dx > 10 || dy > 10) {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+    touchedCellRow = null;
+    touchedCellCol = null;
   }
-  touchedCellRow = null;
-  touchedCellCol = null;
 }, { passive: true });
 
 resetBtn.addEventListener('click', () => {

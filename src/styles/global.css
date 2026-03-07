@@ -1334,6 +1334,14 @@ body {
   letter-spacing: 0.5px;
 }
 
+#max-level-display {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  opacity: 0.7;
+  letter-spacing: 0.5px;
+}
+
 /* ── Level Up Toast ────────────────────────── */
 
 .level-up-toast {
