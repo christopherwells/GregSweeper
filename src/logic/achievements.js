@@ -81,12 +81,12 @@ const CATEGORIES = [
   },
   {
     id: 'purist',
-    name: 'Purist',
+    name: 'Fearless',
     icon: '💪',
     desc: 'Wins without power-ups',
     thresholds: [1, 5, 15, 30, 50, 100],
     getValue: (s) => s.puristWins || 0,
-    format: (v) => `${v} purist win${v !== 1 ? 's' : ''}`,
+    format: (v) => `${v} unaided win${v !== 1 ? 's' : ''}`,
   },
 ];
 

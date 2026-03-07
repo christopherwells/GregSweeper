@@ -280,7 +280,7 @@ function updatePowerUpBar() {
     const type = btn.dataset.powerup;
     const count = state.powerUps[type] || 0;
     btn.querySelector('.powerup-count').textContent = count;
-    btn.disabled = count === 0 || state.status !== 'playing';
+    btn.disabled = count === 0 || state.status === 'won' || state.status === 'lost';
     btn.classList.toggle('active-powerup', type === 'shield' && state.shieldActive);
     btn.classList.toggle('scan-active', type === 'scanRowCol' && state.scanMode);
   }
@@ -720,7 +720,7 @@ function useRevealSafe() {
 }
 
 function useShield() {
-  if (state.powerUps.shield <= 0 || state.status !== 'playing') return;
+  if (state.powerUps.shield <= 0 || state.status === 'won' || state.status === 'lost') return;
   playPowerUp();
   state.powerUps.shield--;
   state.usedPowerUps = true;
