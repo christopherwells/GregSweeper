@@ -1941,15 +1941,45 @@ for (const swatch of $$('.theme-swatch')) {
 }
 
 // Mode selection
+const timedDiffPanel = $('#timed-difficulty');
+
+function updateTimedDiffVisibility() {
+  if (timedDiffPanel) {
+    if (state.gameMode === 'timed') {
+      timedDiffPanel.classList.remove('hidden');
+    } else {
+      timedDiffPanel.classList.add('hidden');
+    }
+  }
+}
+
 for (const modeBtn of $$('.mode-btn')) {
   modeBtn.addEventListener('click', () => {
     const mode = modeBtn.dataset.mode;
     state.gameMode = mode;
-    state.currentLevel = 1;
+    if (mode !== 'timed') state.currentLevel = 1;
     for (const m of $$('.mode-btn')) m.classList.remove('active');
     modeBtn.classList.add('active');
+    updateTimedDiffVisibility();
     newGame();
   });
+}
+
+// Timed difficulty selection (Beginner / Intermediate / Expert)
+for (const diffBtn of $$('.timed-diff-btn')) {
+  diffBtn.addEventListener('click', () => {
+    const level = parseInt(diffBtn.dataset.level, 10);
+    state.currentLevel = level;
+    for (const d of $$('.timed-diff-btn')) d.classList.remove('active');
+    diffBtn.classList.add('active');
+    newGame();
+  });
+}
+
+function syncTimedDiffButtons() {
+  for (const d of $$('.timed-diff-btn')) {
+    d.classList.toggle('active', parseInt(d.dataset.level, 10) === state.currentLevel);
+  }
 }
 
 // Reset Profile
@@ -1982,6 +2012,7 @@ $('#gameover-nextlevel').addEventListener('click', () => {
   playLevelUp();
   showLevelUpToast(state.currentLevel);
   showCelebration();
+  syncTimedDiffButtons();
   newGame();
 });
 $('#gameover-submit-daily').addEventListener('click', () => {

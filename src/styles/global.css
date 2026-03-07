@@ -900,6 +900,64 @@ body {
   transform: translateY(-1px);
 }
 
+/* ── Timed Difficulty Picker ───────────────── */
+
+.timed-difficulty {
+  margin-top: 8px;
+}
+
+.timed-difficulty h4 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--color-muted);
+  margin: 0 0 6px 0;
+}
+
+.timed-diff-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.timed-diff-btn {
+  flex: 1;
+  padding: 8px 6px;
+  border: 2px solid var(--color-border);
+  background: var(--color-btn-bg);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transition: all 0.15s ease;
+}
+
+.timed-diff-btn span {
+  font-size: 10px;
+  font-weight: 400;
+  opacity: 0.6;
+}
+
+.timed-diff-btn.active {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #fff;
+  box-shadow: 0 2px 8px var(--color-accent-glow);
+}
+
+.timed-diff-btn.active span {
+  opacity: 0.85;
+}
+
+.timed-diff-btn:hover:not(.active) {
+  background: var(--color-btn-hover);
+  transform: translateY(-1px);
+}
+
 /* ── Reset Profile ─────────────────────────── */
 
 .reset-group {
