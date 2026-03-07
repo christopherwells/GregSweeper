@@ -74,6 +74,10 @@
           <span class="powerup-icon">🍀</span>
           <span class="powerup-count">0</span>
         </button>
+        <button class="powerup-btn fog-only" data-powerup="decode" title="Decode all hidden ? cells" disabled>
+          <span class="powerup-icon">🔓</span>
+          <span class="powerup-count">0</span>
+        </button>
       </div>
 
       <div id="board-container">
@@ -274,19 +278,20 @@
             <p>⏸️ <strong>Freeze</strong> — pauses timer for 15 seconds</p>
             <p>🔬 <strong>X-Ray</strong> — reveals mines in a 5&times;5 area</p>
             <p>🍀 <strong>Lucky Guess</strong> — defuses a random mine</p>
+            <p>🔓 <strong>Decode</strong> — reveals all hidden ? cells (Fog)</p>
             <p>Earn power-ups by winning games!</p>
           </div>
           <div class="help-section">
             <h3>Game Modes</h3>
             <p><strong>Challenge</strong> — progressive difficulty with power-ups</p>
             <p><strong>Timed</strong> — race against the clock</p>
-            <p><strong>Fog of War</strong> — only see near revealed cells</p>
+            <p><strong>Fog of War</strong> — limited vision, hidden numbers, creeping fog</p>
             <p><strong>Daily</strong> — same board for everyone today</p>
           </div>
           <div class="help-section">
             <h3>Keyboard Shortcuts</h3>
             <p><strong>R</strong> — restart game</p>
-            <p><strong>1–6</strong> — use power-ups</p>
+            <p><strong>1–7</strong> — use power-ups</p>
             <p><strong>Esc</strong> — close modal</p>
           </div>
         </div>
@@ -350,7 +355,7 @@
     </div>
   </div>
 
-  <script type="module" src="src/main.js?v=1.4"></script>
+  <script type="module" src="src/main.js?v=1.5"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js').catch(() => {});

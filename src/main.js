@@ -1,24 +1,28 @@
-import { generateBoard, createEmptyBoard, calculateAdjacency } from './logic/boardGenerator.js?v=1.4';
-import { floodFillReveal, checkWin, revealAllMines, chordReveal } from './logic/boardSolver.js?v=1.4';
-import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, MAX_LEVEL, MAX_TIMED_LEVEL } from './logic/difficulty.js?v=1.4';
-import { computeVisibleCells } from './logic/fogOfWar.js?v=1.4';
-import { findSafeCell, scanRowCol, defuseMine, xRayScan, luckyGuess } from './logic/powerUps.js?v=1.4';
-import { createDailyRNG } from './logic/seededRandom.js?v=1.4';
+import { generateBoard, createEmptyBoard, calculateAdjacency } from './logic/boardGenerator.js?v=1.5';
+import { floodFillReveal, checkWin, revealAllMines, chordReveal } from './logic/boardSolver.js?v=1.5';
+import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, MAX_LEVEL, MAX_TIMED_LEVEL } from './logic/difficulty.js?v=1.5';
+import {
+  computeVisibleCells, getHiddenNumberRate, applyHiddenNumbers,
+  decodeAdjacentHidden, decodeAllHidden,
+  getRefogTimeout, computeRefogCells,
+} from './logic/fogOfWar.js?v=1.5';
+import { findSafeCell, scanRowCol, defuseMine, xRayScan, luckyGuess } from './logic/powerUps.js?v=1.5';
+import { createDailyRNG } from './logic/seededRandom.js?v=1.5';
 import {
   loadStats, saveGameResult, resetStats,
   loadDailyLeaderboard, addDailyLeaderboardEntry,
   loadTheme, saveTheme,
   loadModePowerUps, saveModePowerUps,
-} from './storage/statsStorage.js?v=1.4';
+} from './storage/statsStorage.js?v=1.5';
 import {
   playReveal, playFlag, playUnflag, playExplosion,
   playCascade, playWin, playPowerUp, playShieldBreak,
   playLevelUp, isMuted, setMuted, loadMuted,
-} from './audio/sounds.js?v=1.4';
+} from './audio/sounds.js?v=1.5';
 import {
   getAchievementState, getTotalScore, checkNewUnlocks,
   getHighestTier, getAllTierNames, getTierIcon, getTierColor,
-} from './logic/achievements.js?v=1.4';
+} from './logic/achievements.js?v=1.5';
 
 // ── Theme Unlock Progression ──────────────────────────
 // Themes unlock based on highest level ever beaten (permanent).
@@ -122,7 +126,7 @@ const state = {
   gameMode: 'normal',   // normal | timed | fogOfWar | daily
   dailySeed: null,
 
-  powerUps: { revealSafe: 0, shield: 0, scanRowCol: 0, freeze: 0, xray: 0, luckyGuess: 0 },
+  powerUps: { revealSafe: 0, shield: 0, scanRowCol: 0, freeze: 0, xray: 0, luckyGuess: 0, decode: 0 },
   shieldActive: false,
   scanMode: false,
   xrayMode: false,
@@ -132,6 +136,8 @@ const state = {
   fogOfWarEnabled: false,
   visibleCells: new Set(),
   fogRadius: 1.5,
+  cellTimestamps: {},      // track last-activity per cell for creeping fog
+  refogTimerId: null,      // interval for creeping fog check
 
   shaking: false,
   showParticles: false,
@@ -202,8 +208,13 @@ function updateCell(r, c) {
       cellEl.className = `cell revealed mine${isHit ? ' mine-hit' : ''}`;
       cellEl.textContent = '💣';
     } else if (cell.adjacentMines > 0) {
-      cellEl.className = `cell revealed num-${cell.adjacentMines}`;
-      cellEl.textContent = cell.adjacentMines;
+      if (cell.isHiddenNumber) {
+        cellEl.className = 'cell revealed hidden-number';
+        cellEl.textContent = '?';
+      } else {
+        cellEl.className = `cell revealed num-${cell.adjacentMines}`;
+        cellEl.textContent = cell.adjacentMines;
+      }
     } else {
       cellEl.className = 'cell revealed empty';
       cellEl.textContent = '';
@@ -291,6 +302,7 @@ function updatePowerUpBar() {
   const totalPowerUps = Object.values(state.powerUps).reduce((a, b) => a + b, 0);
   const powerUpBar = $('#powerup-bar');
   const isChallenge = state.gameMode === 'normal';
+  const isFog = state.gameMode === 'fogOfWar';
 
   // Hide entire bar when no power-ups available
   if (totalPowerUps === 0 && !state.shieldActive && !state.scanMode && !state.xrayMode) {
@@ -303,9 +315,11 @@ function updatePowerUpBar() {
     const type = btn.dataset.powerup;
     const count = state.powerUps[type] || 0;
 
-    // Show/hide challenge-only buttons
+    // Show/hide mode-specific buttons
     if (btn.classList.contains('challenge-only')) {
       btn.style.display = isChallenge ? '' : 'none';
+    } else if (btn.classList.contains('fog-only')) {
+      btn.style.display = isFog ? '' : 'none';
     }
 
     btn.querySelector('.powerup-count').textContent = count;
@@ -383,6 +397,40 @@ function stopTimer() {
     state.timerId = null;
   }
   timerEl.classList.remove('timer-critical', 'timer-warning');
+  stopCreepingFog();
+}
+
+// ── Creeping Fog ──────────────────────────────────────
+
+function startCreepingFog() {
+  if (state.refogTimerId) return;
+  state.refogTimerId = setInterval(() => {
+    if (state.status !== 'playing' || !state.fogOfWarEnabled) return;
+
+    const timeout = getRefogTimeout(state.currentLevel);
+    const now = Date.now();
+    const toRefog = computeRefogCells(state.board, state.cellTimestamps, now, timeout);
+
+    if (toRefog.length > 0) {
+      for (const cell of toRefog) {
+        cell.isRevealed = false;
+        state.revealedCount = Math.max(0, state.revealedCount - 1);
+        delete state.cellTimestamps[`${cell.row},${cell.col}`];
+      }
+      // Recompute fog visibility
+      const allRevealed = getRevealedCells();
+      state.visibleCells = computeVisibleCells(allRevealed, state.fogRadius, state.rows, state.cols);
+      updateAllCells();
+      updateHeader();
+    }
+  }, 2000); // Check every 2 seconds
+}
+
+function stopCreepingFog() {
+  if (state.refogTimerId) {
+    clearInterval(state.refogTimerId);
+    state.refogTimerId = null;
+  }
 }
 
 function handleTimedLoss() {
@@ -452,6 +500,8 @@ function newGame() {
   state.hitMine = null;
   state.visibleCells = new Set();
   state.fogOfWarEnabled = state.gameMode === 'fogOfWar';
+  state.cellTimestamps = {};
+  if (state.refogTimerId) { clearInterval(state.refogTimerId); state.refogTimerId = null; }
   state.dailySeed = state.gameMode === 'daily' ? new Date().toISOString().slice(0, 10) : null;
 
   // Load per-mode power-ups
@@ -592,25 +642,54 @@ function revealCell(row, col) {
     return;
   }
 
+  let newlyRevealed = [];
   if (currentCell.adjacentMines === 0) {
     const revealed = floodFillReveal(state.board, row, col);
     state.revealedCount += revealed.length;
+    newlyRevealed = revealed;
     playCascade(revealed.length);
-
-    if (state.fogOfWarEnabled) {
-      const allRevealed = getRevealedCells();
-      state.visibleCells = computeVisibleCells(allRevealed, state.fogRadius, state.rows, state.cols);
-    }
   } else {
     currentCell.isRevealed = true;
     currentCell.revealAnimDelay = 0;
     state.revealedCount++;
+    newlyRevealed = [currentCell];
     playReveal();
+  }
 
-    if (state.fogOfWarEnabled) {
-      const allRevealed = getRevealedCells();
-      state.visibleCells = computeVisibleCells(allRevealed, state.fogRadius, state.rows, state.cols);
+  if (state.fogOfWarEnabled) {
+    // Apply hidden numbers to newly revealed cells
+    const hiddenRate = getHiddenNumberRate(state.currentLevel);
+    applyHiddenNumbers(newlyRevealed, hiddenRate);
+
+    // Decode adjacent hidden numbers (revealing a cell decodes its neighbors)
+    decodeAdjacentHidden(state.board, row, col);
+
+    // Update cell timestamps for creeping fog
+    const now = Date.now();
+    for (const c of newlyRevealed) {
+      state.cellTimestamps[`${c.row},${c.col}`] = now;
     }
+    // Also refresh timestamps for neighbors of newly revealed cells
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        const nr = row + dr;
+        const nc = col + dc;
+        if (nr >= 0 && nr < state.rows && nc >= 0 && nc < state.cols) {
+          const key = `${nr},${nc}`;
+          if (state.board[nr][nc].isRevealed) {
+            state.cellTimestamps[key] = now;
+          }
+        }
+      }
+    }
+
+    // Start creeping fog timer if not already running
+    if (!state.refogTimerId) {
+      startCreepingFog();
+    }
+
+    const allRevealed = getRevealedCells();
+    state.visibleCells = computeVisibleCells(allRevealed, state.fogRadius, state.rows, state.cols);
   }
 
   updateAllCells();
@@ -639,6 +718,36 @@ function handleChordReveal(row, col) {
   state.revealedCount += result.revealed.filter(c => !c.isMine).length;
 
   if (state.fogOfWarEnabled) {
+    // Apply hidden numbers to chord-revealed cells
+    const hiddenRate = getHiddenNumberRate(state.currentLevel);
+    applyHiddenNumbers(result.revealed.filter(c => !c.isMine), hiddenRate);
+
+    // Decode adjacent hidden numbers for the chord origin
+    decodeAdjacentHidden(state.board, row, col);
+
+    // Update cell timestamps for creeping fog
+    const now = Date.now();
+    for (const c of result.revealed) {
+      if (!c.isMine) state.cellTimestamps[`${c.row},${c.col}`] = now;
+    }
+    // Refresh timestamps for neighbors of origin
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        const nr = row + dr;
+        const nc = col + dc;
+        if (nr >= 0 && nr < state.rows && nc >= 0 && nc < state.cols) {
+          if (state.board[nr][nc].isRevealed) {
+            state.cellTimestamps[`${nr},${nc}`] = now;
+          }
+        }
+      }
+    }
+
+    // Start creeping fog timer if not already running
+    if (!state.refogTimerId) {
+      startCreepingFog();
+    }
+
     const allRevealed = getRevealedCells();
     state.visibleCells = computeVisibleCells(allRevealed, state.fogRadius, state.rows, state.cols);
   }
@@ -988,6 +1097,35 @@ function useLuckyGuess() {
   if (checkWin(state.board)) handleWin();
 }
 
+// ── Decode Power-Up (Fog of War) ─────────────────────
+function useDecode() {
+  if (!state.powerUps.decode || state.powerUps.decode <= 0 || state.status === 'won' || state.status === 'lost') return;
+  playPowerUp();
+  state.powerUps.decode--;
+  state.usedPowerUps = true;
+  saveModePowerUps(state.gameMode, state.powerUps);
+
+  const decoded = decodeAllHidden(state.board);
+  if (decoded.length > 0) {
+    // Wave animation on decoded cells
+    decoded.forEach((cell, i) => {
+      const el = boardEl.children[cell.row * state.cols + cell.col];
+      if (el) {
+        el.style.animationDelay = `${i * 30}ms`;
+        el.classList.add('decode-wave');
+        setTimeout(() => el.classList.remove('decode-wave'), 500 + i * 30);
+      }
+    });
+  }
+
+  scanToast.textContent = `🔓 Decoded ${decoded.length} cell${decoded.length !== 1 ? 's' : ''}!`;
+  scanToast.classList.remove('hidden');
+  setTimeout(() => scanToast.classList.add('hidden'), 2000);
+
+  updateAllCells();
+  updatePowerUpBar();
+}
+
 function awardPowerUps(stats) {
   // Determine available power-up types based on mode
   const isChallenge = state.gameMode === 'normal';
@@ -1001,6 +1139,7 @@ function awardPowerUps(stats) {
   const labels = {
     revealSafe: '🔍 Reveal Safe', shield: '🛡️ Shield', scanRowCol: '🎯 Scan',
     freeze: '⏸️ Freeze', xray: '🔬 X-Ray', luckyGuess: '🍀 Lucky Guess',
+    decode: '🔓 Decode',
   };
 
   // Scale rewards by level (Challenge mode)
@@ -1011,7 +1150,13 @@ function awardPowerUps(stats) {
     else if (level <= 6) numAwards = 2;
     else numAwards = 1;
   } else if (isFogOfWar) {
-    numAwards = 1; // +1 of each per win is handled elsewhere; this adds a bonus random
+    // Fog mode: +1 of each base type + 1 decode per win
+    for (const t of baseTypes) {
+      state.powerUps[t] = (state.powerUps[t] || 0) + 1;
+    }
+    state.powerUps.decode = (state.powerUps.decode || 0) + 1;
+    awarded.push('+1 each 🔍🛡️🎯🔓');
+    numAwards = 0; // skip random awards below
   } else {
     numAwards = 1;
   }
@@ -1589,6 +1734,7 @@ for (const btn of $$('.powerup-btn')) {
     else if (type === 'freeze') useFreeze();
     else if (type === 'xray') activateXRay();
     else if (type === 'luckyGuess') useLuckyGuess();
+    else if (type === 'decode') useDecode();
   });
 }
 
@@ -1751,6 +1897,7 @@ document.addEventListener('keydown', (e) => {
   else if (e.key === '4') useFreeze();
   else if (e.key === '5') activateXRay();
   else if (e.key === '6') useLuckyGuess();
+  else if (e.key === '7') useDecode();
 });
 
 // ── Level Up Toast ─────────────────────────────────────
