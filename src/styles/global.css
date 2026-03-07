@@ -219,6 +219,7 @@ body {
   justify-content: center;
   gap: 8px;
   padding: 4px 0;
+  flex-wrap: wrap;
 }
 
 #powerup-bar.hidden {
@@ -1718,13 +1719,18 @@ body {
     height: 42px;
   }
 
+  #powerup-bar {
+    gap: 4px;
+  }
+
   .powerup-btn {
-    padding: 6px 10px;
-    font-size: 12px;
+    padding: 5px 7px;
+    font-size: 11px;
+    gap: 3px;
   }
 
   .powerup-icon {
-    font-size: 16px;
+    font-size: 14px;
   }
 
   .modal-content {

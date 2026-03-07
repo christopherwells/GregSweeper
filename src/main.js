@@ -1245,6 +1245,9 @@ function useDecode() {
 }
 
 function awardPowerUps(stats) {
+  // Timed and Daily modes don't award power-ups
+  if (state.gameMode === 'timed' || state.gameMode === 'daily') return '';
+
   // Determine available power-up types based on mode
   const isChallenge = state.gameMode === 'normal';
   const isFogOfWar = state.gameMode === 'fogOfWar';
@@ -1259,6 +1262,8 @@ function awardPowerUps(stats) {
     freeze: '⏸️ Freeze', xray: '🔬 X-Ray', luckyGuess: '🍀 Lucky Guess',
     decode: '🔓 Decode',
   };
+
+  const awarded = [];
 
   // Scale rewards by level (Challenge mode)
   const level = state.currentLevel;
@@ -1279,7 +1284,6 @@ function awardPowerUps(stats) {
     numAwards = 1;
   }
 
-  const awarded = [];
   for (let i = 0; i < numAwards; i++) {
     const pick = types[Math.floor(Math.random() * types.length)];
     state.powerUps[pick]++;
