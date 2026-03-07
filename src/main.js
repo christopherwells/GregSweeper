@@ -15,8 +15,8 @@ import {
   playLevelUp, isMuted, setMuted, loadMuted,
 } from './audio/sounds.js?v=0.9';
 import {
-  getCurrentTier, getNextTier, getAllTiers,
-  checkTierUp, getTierProgress,
+  getAchievementState, getTotalScore, checkNewUnlocks,
+  getHighestTier, getAllTierNames, getTierIcon, getTierColor,
 } from './logic/achievements.js?v=0.9';
 
 // ── Theme Unlock Progression ──────────────────────────
@@ -565,7 +565,6 @@ function handleWin() {
 
   const prevStats = loadStats();
   const prevMaxLevel = prevStats.maxLevelReached || 1;
-  const prevWins = prevStats.wins || 0;
 
   const isDaily = state.gameMode === 'daily';
   const stats = saveGameResult(true, state.elapsedTime, state.currentLevel, {
@@ -584,8 +583,8 @@ function handleWin() {
     showThemeUnlockToasts(newThemes);
   }
 
-  // Check tier-up
-  const newTier = checkTierUp(prevWins, stats.wins);
+  // Check for newly unlocked achievement tiers
+  const newUnlocks = checkNewUnlocks(prevStats, stats);
 
   const gameoverTitle = $('#gameover-title');
   const gameoverTime = $('#gameover-time');
@@ -614,17 +613,19 @@ function handleWin() {
     powerupEarned.classList.add('hidden');
   }
 
-  // Show tier-up badge in game over
-  if (newTier) {
+  // Show newly unlocked achievement tiers in game over
+  if (newUnlocks.length > 0) {
     achievementsDiv.innerHTML = '';
-    const badge = document.createElement('div');
-    badge.className = 'gameover-achievement-badge tier-up-badge';
-    badge.innerHTML = `<span>${newTier.icon}</span><span>Rank Up: ${newTier.name}!</span>`;
-    achievementsDiv.appendChild(badge);
+    for (const unlock of newUnlocks) {
+      const badge = document.createElement('div');
+      badge.className = 'gameover-achievement-badge tier-up-badge';
+      badge.innerHTML = `<span>${unlock.categoryIcon}</span><span>${unlock.category} ${unlock.tierIcon} ${unlock.tier.charAt(0).toUpperCase() + unlock.tier.slice(1)}</span>`;
+      achievementsDiv.appendChild(badge);
+    }
     achievementsDiv.classList.remove('hidden');
 
-    // Show tier-up toast
-    showTierUpToast(newTier);
+    // Show achievement toasts
+    showAchievementToasts(newUnlocks);
   } else {
     achievementsDiv.classList.add('hidden');
   }
@@ -980,21 +981,34 @@ function drawStar(ctx, cx, cy, spikes, outerRadius, innerRadius) {
 
 // ── Achievements ───────────────────────────────────────
 
-function showTierUpToast(tier) {
+function showAchievementToasts(unlocks) {
   const toast = $('#achievement-toast');
-  toast.querySelector('.achievement-toast-icon').textContent = tier.icon;
-  toast.querySelector('.achievement-toast-title').textContent = 'Rank Up!';
-  toast.querySelector('.achievement-toast-name').textContent = tier.name;
-  toast.classList.remove('hidden', 'hiding');
+  let index = 0;
 
-  setTimeout(() => {
-    toast.classList.add('hiding');
+  function showNext() {
+    if (index >= unlocks.length) return;
+    const unlock = unlocks[index];
+    toast.querySelector('.achievement-toast-icon').textContent = unlock.categoryIcon;
+    toast.querySelector('.achievement-toast-title').textContent = 'Achievement Unlocked!';
+    toast.querySelector('.achievement-toast-name').textContent =
+      `${unlock.category} — ${unlock.tier.charAt(0).toUpperCase() + unlock.tier.slice(1)} ${unlock.tierIcon}`;
+    toast.classList.remove('hidden', 'hiding');
+
     setTimeout(() => {
-      toast.classList.add('hidden');
-      toast.classList.remove('hiding');
-      toast.querySelector('.achievement-toast-title').textContent = 'Achievement Unlocked!';
-    }, 300);
-  }, 3500);
+      toast.classList.add('hiding');
+      setTimeout(() => {
+        toast.classList.add('hidden');
+        toast.classList.remove('hiding');
+        index++;
+        if (index < unlocks.length) {
+          setTimeout(showNext, 200);
+        }
+      }, 300);
+    }, 2500);
+  }
+
+  // Delay first toast slightly to let game over show first
+  setTimeout(showNext, 600);
 }
 
 function updateAchievementsDisplay() {
@@ -1003,66 +1017,57 @@ function updateAchievementsDisplay() {
   const progressText = $('#achievement-progress-text');
 
   const stats = loadStats();
-  const tiers = getAllTiers();
-  const { current, next, progress, winsToNext } = getTierProgress(stats);
+  const achievements = getAchievementState(stats);
+  const { total, max } = getTotalScore(stats);
 
   // Update progress bar
-  const unlockedCount = tiers.filter(t => stats.wins >= t.winsRequired).length;
-  progressFill.style.width = `${(unlockedCount / tiers.length) * 100}%`;
-  progressText.textContent = `${stats.wins} wins`;
+  progressFill.style.width = `${(total / max) * 100}%`;
+  progressText.textContent = `${total} / ${max}`;
 
-  // Current rank display
   grid.innerHTML = '';
 
-  // Big current rank card
-  const currentCard = document.createElement('div');
-  currentCard.className = 'rank-current-card';
-  if (current) {
-    currentCard.innerHTML = `
-      <div class="rank-current-icon">${current.icon}</div>
-      <div class="rank-current-name">${current.name}</div>
-      <div class="rank-current-subtitle">${stats.wins} wins</div>
-    `;
-  } else {
-    currentCard.innerHTML = `
-      <div class="rank-current-icon">🎮</div>
-      <div class="rank-current-name">Unranked</div>
-      <div class="rank-current-subtitle">Win a game to earn your rank!</div>
-    `;
-  }
-  grid.appendChild(currentCard);
-
-  // Next rank progress
-  if (next) {
-    const nextCard = document.createElement('div');
-    nextCard.className = 'rank-next-card';
-    nextCard.innerHTML = `
-      <div class="rank-next-header">Next: ${next.icon} ${next.name}</div>
-      <div class="rank-next-progress-bar">
-        <div class="rank-next-progress-fill" style="width: ${progress * 100}%"></div>
-      </div>
-      <div class="rank-next-text">${winsToNext} win${winsToNext !== 1 ? 's' : ''} to go</div>
-    `;
-    grid.appendChild(nextCard);
-  } else {
-    const maxCard = document.createElement('div');
-    maxCard.className = 'rank-next-card rank-max';
-    maxCard.innerHTML = `<div class="rank-next-header">Maximum Rank Achieved!</div>`;
-    grid.appendChild(maxCard);
-  }
-
-  // All tiers list
-  for (const tier of tiers) {
-    const isUnlocked = stats.wins >= tier.winsRequired;
+  for (const ach of achievements) {
     const item = document.createElement('div');
-    item.className = `achievement-item ${isUnlocked ? 'unlocked' : 'locked'}`;
+    item.className = 'achievement-category-card';
+
+    // Tier badges row
+    const tierNames = getAllTierNames();
+    let tiersHtml = '<div class="tier-badges">';
+    for (let i = 0; i < tierNames.length; i++) {
+      const isUnlocked = i <= ach.tierIndex;
+      const tierName = tierNames[i];
+      const icon = getTierIcon(tierName);
+      const color = getTierColor(tierName);
+      tiersHtml += `<span class="tier-badge ${isUnlocked ? 'unlocked' : 'locked'}" title="${tierName}" style="${isUnlocked ? `color:${color}; text-shadow: 0 0 6px ${color}40` : ''}">${icon}</span>`;
+    }
+    tiersHtml += '</div>';
+
+    // Progress bar to next tier
+    let progressHtml = '';
+    if (ach.nextTier) {
+      progressHtml = `
+        <div class="ach-progress-row">
+          <div class="ach-progress-bar">
+            <div class="ach-progress-fill" style="width: ${ach.progress * 100}%"></div>
+          </div>
+          <span class="ach-progress-label">Next: ${ach.format(ach.nextValue)}</span>
+        </div>
+      `;
+    } else {
+      progressHtml = `<div class="ach-progress-label ach-maxed">Maxed Out!</div>`;
+    }
+
     item.innerHTML = `
-      <div class="achievement-icon">${tier.icon}</div>
-      <div class="achievement-info">
-        <div class="achievement-name">${tier.name}</div>
-        <div class="achievement-desc">${tier.winsRequired} win${tier.winsRequired !== 1 ? 's' : ''}</div>
+      <div class="ach-header">
+        <span class="ach-cat-icon">${ach.icon}</span>
+        <div class="ach-cat-info">
+          <div class="ach-cat-name">${ach.name}</div>
+          <div class="ach-cat-desc">${ach.desc}</div>
+        </div>
+        <span class="ach-current-tier">${ach.currentTierIcon}</span>
       </div>
-      <div class="achievement-check">${isUnlocked ? '✅' : '🔒'}</div>
+      ${tiersHtml}
+      ${progressHtml}
     `;
     grid.appendChild(item);
   }
@@ -1081,7 +1086,7 @@ function generateShareCard() {
 
   const stats = loadStats();
   const streakText = stats.currentStreak > 1 ? ` | 🔥 ${stats.currentStreak} streak` : '';
-  const tier = getCurrentTier(stats);
+  const tier = getHighestTier(stats);
   const tierText = tier ? ` | ${tier.icon} ${tier.name}` : '';
 
   let dateStr = '';

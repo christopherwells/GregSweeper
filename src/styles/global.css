@@ -857,130 +857,109 @@ body {
   gap: 8px;
 }
 
-/* Current rank card */
-.rank-current-card {
-  text-align: center;
-  padding: 20px 16px;
+/* Achievement category cards */
+.achievement-category-card {
+  padding: 14px;
   background: var(--color-surface);
-  border-radius: 16px;
-  border: 2px solid var(--color-golden);
-  box-shadow: 0 0 16px rgba(249, 168, 37, 0.15);
-}
-
-.rank-current-icon {
-  font-size: 56px;
-  margin-bottom: 6px;
-  animation: rankFloat 3s ease-in-out infinite;
-}
-
-@keyframes rankFloat {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
-}
-
-.rank-current-name {
-  font-family: var(--font-display);
-  font-size: 24px;
-  font-weight: 800;
-  letter-spacing: 2px;
-  margin-bottom: 4px;
-}
-
-.rank-current-subtitle {
-  font-size: 12px;
-  color: var(--color-text-secondary);
-  font-weight: 600;
-}
-
-/* Next rank progress */
-.rank-next-card {
-  padding: 14px 16px;
-  background: var(--color-surface);
-  border-radius: 12px;
+  border-radius: 14px;
   border: 1px solid rgba(0,0,0,0.04);
 }
 
-.rank-next-card.rank-max {
-  text-align: center;
-  border-color: var(--color-golden);
-}
-
-.rank-next-header {
-  font-size: 13px;
-  font-weight: 700;
-  margin-bottom: 8px;
-}
-
-.rank-next-progress-bar {
-  height: 10px;
-  background: rgba(0,0,0,0.08);
-  border-radius: 5px;
-  overflow: hidden;
-  margin-bottom: 6px;
-}
-
-.rank-next-progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--color-accent), var(--color-golden));
-  border-radius: 5px;
-  transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.rank-next-text {
-  font-size: 11px;
-  color: var(--color-text-secondary);
-  font-weight: 600;
-}
-
-/* Tier list items */
-.achievement-item {
+.ach-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: var(--color-surface);
-  border: 1px solid rgba(0,0,0,0.04);
-  transition: all var(--transition-fast);
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
-.achievement-item.locked {
-  opacity: 0.45;
-  filter: grayscale(0.8);
-}
-
-.achievement-item.unlocked {
-  opacity: 1;
-  border-color: var(--color-golden);
-  box-shadow: 0 0 0 1px rgba(249, 168, 37, 0.1);
-}
-
-.achievement-icon {
+.ach-cat-icon {
   font-size: 28px;
-  width: 40px;
-  text-align: center;
   flex-shrink: 0;
 }
 
-.achievement-info {
+.ach-cat-info {
   flex: 1;
   min-width: 0;
 }
 
-.achievement-name {
+.ach-cat-name {
   font-weight: 700;
   font-size: 14px;
-  margin-bottom: 2px;
 }
 
-.achievement-desc {
-  font-size: 12px;
+.ach-cat-desc {
+  font-size: 11px;
   color: var(--color-text-secondary);
 }
 
-.achievement-check {
-  font-size: 18px;
+.ach-current-tier {
+  font-size: 24px;
   flex-shrink: 0;
+}
+
+/* Tier badge row */
+.tier-badges {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.tier-badge {
+  font-size: 18px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(0,0,0,0.06);
+  transition: all var(--transition-fast);
+}
+
+.tier-badge.unlocked {
+  background: rgba(0,0,0,0.12);
+  transform: scale(1.05);
+}
+
+.tier-badge.locked {
+  opacity: 0.3;
+  filter: grayscale(1);
+}
+
+/* Progress bar within achievement card */
+.ach-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ach-progress-bar {
+  flex: 1;
+  height: 6px;
+  background: rgba(0,0,0,0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.ach-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-accent), var(--color-golden));
+  border-radius: 3px;
+  transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.ach-progress-label {
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ach-maxed {
+  text-align: center;
+  color: var(--color-golden);
+  font-weight: 700;
+  font-size: 11px;
 }
 
 /* Tier-up badge in game over */
