@@ -57,10 +57,32 @@
   box-shadow: 0 0 20px rgba(0, 255, 136, 0.15), 0 4px 24px rgba(0, 0, 0, 0.5);
 }
 
+[data-theme="neon"] .cell.revealed {
+  border-color: rgba(0, 255, 136, 0.2);
+}
+
+[data-theme="neon"] .cell.revealed.num-1 { text-shadow: 0 0 6px #00ccff; }
+[data-theme="neon"] .cell.revealed.num-2 { text-shadow: 0 0 6px #00ff88; }
+[data-theme="neon"] .cell.revealed.num-3 { text-shadow: 0 0 6px #ff0066; }
+[data-theme="neon"] .cell.revealed.num-4 { text-shadow: 0 0 6px #aa00ff; }
+[data-theme="neon"] .cell.revealed.num-5 { text-shadow: 0 0 6px #ff6600; }
+
+[data-theme="neon"] .cell.mine {
+  text-shadow: 0 0 10px #ff0066;
+}
+
+[data-theme="neon"] #game-title {
+  text-shadow: 0 0 12px rgba(0, 255, 136, 0.5);
+}
+
 [data-theme="neon"] .smiley-btn {
   border-color: #00ff88;
 }
 
 [data-theme="neon"] .nav-btn {
+  border-color: #00ff88;
+}
+
+[data-theme="neon"] .powerup-btn {
   border-color: #00ff88;
 }

@@ -294,6 +294,20 @@ body {
   background: var(--color-scan-highlight) !important;
 }
 
+/* Scan mode crosshair cursor */
+#board.scan-mode .cell.unrevealed {
+  cursor: crosshair;
+}
+
+/* Shield active glow on board */
+#board.shield-active {
+  box-shadow: inset 0 0 20px rgba(0, 200, 100, 0.2);
+}
+
+#board.shield-active .cell.unrevealed {
+  border-color: rgba(0, 200, 100, 0.4);
+}
+
 /* ── Scan Toast ─────────────────────────────── */
 
 #scan-toast {
@@ -481,6 +495,29 @@ body {
 
 .mode-btn:hover:not(.active) {
   background: var(--color-btn-hover);
+}
+
+/* ── Help ───────────────────────────────────── */
+
+.help-body {
+  font-size: 14px;
+}
+
+.help-section {
+  margin-bottom: 16px;
+}
+
+.help-section h3 {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--color-text-secondary);
+  margin-bottom: 6px;
+}
+
+.help-section p {
+  margin-bottom: 4px;
+  line-height: 1.5;
 }
 
 /* ── Stats ──────────────────────────────────── */

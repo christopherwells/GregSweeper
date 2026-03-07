@@ -56,6 +56,7 @@
       <button id="btn-settings" class="nav-btn" title="Settings">⚙️</button>
       <button id="btn-stats" class="nav-btn" title="Stats">📊</button>
       <button id="btn-leaderboard" class="nav-btn" title="Daily Leaderboard">🏆</button>
+      <button id="btn-help" class="nav-btn" title="How to Play">❓</button>
     </nav>
 
     <!-- Settings Modal -->
@@ -150,6 +151,45 @@
             <tbody id="leaderboard-body"></tbody>
           </table>
           <p id="leaderboard-empty" class="hidden">No entries yet. Complete today's daily challenge!</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div id="help-modal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>How to Play</h2>
+          <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body help-body">
+          <div class="help-section">
+            <h3>Basics</h3>
+            <p><strong>Left-click</strong> to reveal a cell</p>
+            <p><strong>Right-click</strong> to place/remove a flag</p>
+            <p><strong>Click a number</strong> to chord-reveal (if flags match)</p>
+            <p>Reveal all safe cells to win!</p>
+          </div>
+          <div class="help-section">
+            <h3>Power-Ups</h3>
+            <p>🔍 <strong>Reveal Safe</strong> — reveals a random safe cell</p>
+            <p>🛡️ <strong>Shield</strong> — survive one mine click</p>
+            <p>🎯 <strong>Scan</strong> — shows mine count in a row/column</p>
+            <p>Earn power-ups by winning games!</p>
+          </div>
+          <div class="help-section">
+            <h3>Game Modes</h3>
+            <p><strong>Normal</strong> — classic Minesweeper</p>
+            <p><strong>Timed</strong> — race for best time</p>
+            <p><strong>Fog of War</strong> — only see near revealed cells</p>
+            <p><strong>Daily</strong> — same board for everyone today</p>
+          </div>
+          <div class="help-section">
+            <h3>Keyboard Shortcuts</h3>
+            <p><strong>R</strong> — restart game</p>
+            <p><strong>1 / 2 / 3</strong> — use power-ups</p>
+            <p><strong>Esc</strong> — close modal</p>
+          </div>
         </div>
       </div>
     </div>

@@ -39,6 +39,7 @@ const state = {
   shaking: false,
   showParticles: false,
   theme: 'classic',
+  hitMine: null,  // {row, col} of the mine that killed you
 };
 
 // ── DOM References ─────────────────────────────────────
@@ -89,7 +90,8 @@ function updateCell(r, c) {
 
   if (cell.isRevealed) {
     if (cell.isMine) {
-      cellEl.className = 'cell revealed mine';
+      const isHit = state.hitMine && state.hitMine.row === r && state.hitMine.col === c;
+      cellEl.className = `cell revealed mine${isHit ? ' mine-hit' : ''}`;
       cellEl.textContent = '💣';
     } else if (cell.adjacentMines > 0) {
       cellEl.className = `cell revealed num-${cell.adjacentMines}`;
@@ -142,6 +144,9 @@ function updatePowerUpBar() {
     btn.classList.toggle('active-powerup', type === 'shield' && state.shieldActive);
     btn.classList.toggle('scan-active', type === 'scanRowCol' && state.scanMode);
   }
+  // Board state classes
+  boardEl.classList.toggle('scan-mode', state.scanMode);
+  boardEl.classList.toggle('shield-active', state.shieldActive);
 }
 
 // ── Timer ──────────────────────────────────────────────
@@ -179,6 +184,7 @@ function newGame() {
   state.scanMode = false;
   state.shaking = false;
   state.showParticles = false;
+  state.hitMine = null;
   state.visibleCells = new Set();
   state.fogOfWarEnabled = state.gameMode === 'fogOfWar';
   state.dailySeed = state.gameMode === 'daily' ? new Date().toISOString().slice(0, 10) : null;
@@ -348,10 +354,7 @@ function handleLoss(mineRow, mineCol) {
   stopTimer();
   resetBtn.textContent = '😵';
 
-  // Highlight the clicked mine
-  const clickedCell = boardEl.children[mineRow * state.cols + mineCol];
-  if (clickedCell) clickedCell.classList.add('mine-hit');
-
+  state.hitMine = { row: mineRow, col: mineCol };
   revealAllMines(state.board);
   updateAllCells();
 
@@ -696,6 +699,7 @@ $('#btn-leaderboard').addEventListener('click', () => {
   updateLeaderboardDisplay();
   showModal('leaderboard-modal');
 });
+$('#btn-help').addEventListener('click', () => showModal('help-modal'));
 
 // Close modals
 for (const closeBtn of $$('.modal-close')) {
