@@ -1,28 +1,28 @@
-import { generateBoard, createEmptyBoard, calculateAdjacency } from './logic/boardGenerator.js?v=1.5';
-import { floodFillReveal, checkWin, revealAllMines, chordReveal } from './logic/boardSolver.js?v=1.5';
-import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, MAX_LEVEL, MAX_TIMED_LEVEL } from './logic/difficulty.js?v=1.5';
+import { generateBoard, createEmptyBoard, calculateAdjacency } from './logic/boardGenerator.js?v=1.6';
+import { floodFillReveal, checkWin, revealAllMines, chordReveal } from './logic/boardSolver.js?v=1.6';
+import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, MAX_LEVEL, MAX_TIMED_LEVEL } from './logic/difficulty.js?v=1.6';
 import {
   computeVisibleCells, getHiddenNumberRate, applyHiddenNumbers,
   decodeAdjacentHidden, decodeAllHidden,
   getRefogTimeout, computeRefogCells,
-} from './logic/fogOfWar.js?v=1.5';
-import { findSafeCell, scanRowCol, defuseMine, xRayScan, luckyGuess } from './logic/powerUps.js?v=1.5';
-import { createDailyRNG } from './logic/seededRandom.js?v=1.5';
+} from './logic/fogOfWar.js?v=1.6';
+import { findSafeCell, scanRowCol, defuseMine, xRayScan, luckyGuess } from './logic/powerUps.js?v=1.6';
+import { createDailyRNG } from './logic/seededRandom.js?v=1.6';
 import {
   loadStats, saveGameResult, resetStats,
   loadDailyLeaderboard, addDailyLeaderboardEntry,
   loadTheme, saveTheme,
   loadModePowerUps, saveModePowerUps,
-} from './storage/statsStorage.js?v=1.5';
+} from './storage/statsStorage.js?v=1.6';
 import {
   playReveal, playFlag, playUnflag, playExplosion,
   playCascade, playWin, playPowerUp, playShieldBreak,
   playLevelUp, isMuted, setMuted, loadMuted,
-} from './audio/sounds.js?v=1.5';
+} from './audio/sounds.js?v=1.6';
 import {
   getAchievementState, getTotalScore, checkNewUnlocks,
   getHighestTier, getAllTierNames, getTierIcon, getTierColor,
-} from './logic/achievements.js?v=1.5';
+} from './logic/achievements.js?v=1.6';
 
 // ── Theme Unlock Progression ──────────────────────────
 // Themes unlock based on highest level ever beaten (permanent).
@@ -125,6 +125,7 @@ const state = {
   currentLevel: 1,
   gameMode: 'normal',   // normal | timed | fogOfWar | daily
   dailySeed: null,
+  dailyBombHits: 0,
 
   powerUps: { revealSafe: 0, shield: 0, scanRowCol: 0, freeze: 0, xray: 0, luckyGuess: 0, decode: 0 },
   shieldActive: false,
@@ -503,6 +504,20 @@ function newGame() {
   state.cellTimestamps = {};
   if (state.refogTimerId) { clearInterval(state.refogTimerId); state.refogTimerId = null; }
   state.dailySeed = state.gameMode === 'daily' ? new Date().toISOString().slice(0, 10) : null;
+  state.dailyBombHits = 0;
+
+  // Daily mode: vary board dimensions using the daily seed
+  if (state.gameMode === 'daily' && state.dailySeed) {
+    const dailyRng = createDailyRNG(state.dailySeed);
+    // Skip a few values (board gen will use its own RNG from the same seed)
+    const dimRng1 = dailyRng();
+    const dimRng2 = dailyRng();
+    const dimRng3 = dailyRng();
+    state.rows = 8 + Math.floor(dimRng1 * 5);    // 8–12
+    state.cols = 8 + Math.floor(dimRng2 * 5);    // 8–12
+    const density = 0.14 + dimRng3 * 0.16;        // 14%–30%
+    state.totalMines = Math.max(5, Math.round(state.rows * state.cols * density));
+  }
 
   // Load per-mode power-ups
   const modePU = loadModePowerUps(state.gameMode);
@@ -638,6 +653,11 @@ function revealCell(row, col) {
       if (checkWin(state.board)) handleWin();
       return;
     }
+    // Daily mode: bomb hit re-fogs instead of ending
+    if (state.gameMode === 'daily') {
+      handleDailyBombHit(row, col);
+      return;
+    }
     handleLoss(row, col);
     return;
   }
@@ -756,7 +776,12 @@ function handleChordReveal(row, col) {
   updateHeader();
 
   if (result.hitMine) {
-    handleLoss(result.revealed.find(c => c.isMine).row, result.revealed.find(c => c.isMine).col);
+    const mineCell = result.revealed.find(c => c.isMine);
+    if (state.gameMode === 'daily') {
+      handleDailyBombHit(mineCell.row, mineCell.col);
+    } else {
+      handleLoss(mineCell.row, mineCell.col);
+    }
   } else if (checkWin(state.board)) {
     handleWin();
   }
@@ -804,7 +829,10 @@ function handleWin() {
   const achievementsDiv = $('#gameover-achievements');
 
   gameoverTitle.textContent = 'You Win!';
-  gameoverTime.textContent = `Time: ${state.elapsedTime}s`;
+  const strikesInfo = state.gameMode === 'daily' && state.dailyBombHits > 0
+    ? ` | 💥 ${state.dailyBombHits} strike${state.dailyBombHits !== 1 ? 's' : ''}`
+    : '';
+  gameoverTime.textContent = `Time: ${state.elapsedTime}s${strikesInfo}`;
 
   const bestKey = `level${state.currentLevel}`;
   const isNewRecord = stats.bestTimes[bestKey] === state.elapsedTime;
@@ -912,6 +940,46 @@ function handleLoss(mineRow, mineCol) {
   setTimeout(() => showModal('gameover-overlay'), 900);
   updatePowerUpBar();
   updateStreakBorder();
+}
+
+// ── Daily Mode: Bomb Hit Re-Fog ─────────────────────────
+
+function handleDailyBombHit(mineRow, mineCol) {
+  state.dailyBombHits++;
+
+  // Defuse the hit mine so it won't kill again
+  defuseMine(state.board, mineRow, mineCol);
+  state.board[mineRow][mineCol].isRevealed = true;
+  state.totalMines--;
+
+  // Re-fog ALL non-mine revealed cells
+  let refogCount = 0;
+  for (let r = 0; r < state.rows; r++) {
+    for (let c = 0; c < state.cols; c++) {
+      const cell = state.board[r][c];
+      if (cell.isRevealed && !cell.isMine && !(r === mineRow && c === mineCol)) {
+        cell.isRevealed = false;
+        cell.isHiddenNumber = false;
+        refogCount++;
+      }
+    }
+  }
+  state.revealedCount = 1; // only the defused mine cell remains revealed
+
+  // Shake + muffled explosion effect
+  playExplosion();
+  triggerHeavyShake();
+  showRedFlash();
+  haptic([80, 30, 60]);
+
+  // Show strike toast
+  const strikes = state.dailyBombHits;
+  scanToast.textContent = `💥 Strike ${strikes} — Board re-fogged!`;
+  scanToast.classList.remove('hidden');
+  setTimeout(() => scanToast.classList.add('hidden'), 2500);
+
+  updateAllCells();
+  updateHeader();
 }
 
 // ── Power-Ups ──────────────────────────────────────────
@@ -1452,8 +1520,9 @@ function generateShareCard() {
   const levelLabel = diff.label || `Level ${level}`;
 
   if (mode === 'daily') {
-    return `💣 GregSweeper — Daily Challenge${dateStr}\n` +
-           `⏱️ ${time}s (${diff.rows}x${diff.cols})${tierText}\n` +
+    const strikesText = state.dailyBombHits > 0 ? ` | 💥 ${state.dailyBombHits} strike${state.dailyBombHits !== 1 ? 's' : ''}` : '';
+    return `💣 GregSweeper — Daily${dateStr}\n` +
+           `⏱️ ${time}s (${state.rows}×${state.cols})${strikesText}${tierText}\n` +
            `Can you beat my time?\n\n` +
            `https://christopherwells.github.io/GregSweeper/`;
   }
