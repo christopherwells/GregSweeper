@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>GregSweeper</title>
+  <link rel="stylesheet" href="src/styles/global.css">
+  <link rel="stylesheet" href="src/styles/animations.css">
+  <link rel="stylesheet" href="src/styles/themes/classic.css">
+  <link rel="stylesheet" href="src/styles/themes/dark.css">
+  <link rel="stylesheet" href="src/styles/themes/neon.css">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="app">
+    <h1 id="game-title">GregSweeper</h1>
+    <div id="screen-shake-wrapper">
+      <header id="game-header">
+        <div class="header-left">
+          <div id="mine-counter" class="lcd-display">010</div>
+        </div>
+        <button id="reset-btn" class="smiley-btn" aria-label="New Game">😊</button>
+        <div class="header-right">
+          <div id="timer-display" class="lcd-display">000</div>
+        </div>
+      </header>
+
+      <div id="game-info-bar">
+        <span id="level-display">Level 1</span>
+        <span id="mode-display">Normal</span>
+      </div>
+
+      <div id="powerup-bar">
+        <button class="powerup-btn" data-powerup="revealSafe" title="Reveal Safe Cell" disabled>
+          <span class="powerup-icon">🔍</span>
+          <span class="powerup-count">0</span>
+        </button>
+        <button class="powerup-btn" data-powerup="shield" title="Shield (survive one mine)" disabled>
+          <span class="powerup-icon">🛡️</span>
+          <span class="powerup-count">0</span>
+        </button>
+        <button class="powerup-btn" data-powerup="scanRowCol" title="Scan Row/Column" disabled>
+          <span class="powerup-icon">🎯</span>
+          <span class="powerup-count">0</span>
+        </button>
+      </div>
+
+      <div id="board-container">
+        <div id="board"></div>
+        <canvas id="particle-canvas"></canvas>
+      </div>
+
+      <div id="scan-toast" class="hidden"></div>
+    </div>
+
+    <nav id="bottom-nav">
+      <button id="btn-settings" class="nav-btn" title="Settings">⚙️</button>
+      <button id="btn-stats" class="nav-btn" title="Stats">📊</button>
+      <button id="btn-leaderboard" class="nav-btn" title="Daily Leaderboard">🏆</button>
+    </nav>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Settings</h2>
+          <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="setting-group">
+            <h3>Theme</h3>
+            <div id="theme-options" class="theme-swatches">
+              <button class="theme-swatch active" data-theme="classic">
+                <span class="swatch-color" style="background: #c0c0c0"></span>
+                Classic
+              </button>
+              <button class="theme-swatch" data-theme="dark">
+                <span class="swatch-color" style="background: #1a1a2e"></span>
+                Dark
+              </button>
+              <button class="theme-swatch" data-theme="neon">
+                <span class="swatch-color" style="background: #0a0a0a; border: 1px solid #00ff88"></span>
+                Neon
+              </button>
+            </div>
+          </div>
+          <div class="setting-group">
+            <h3>Game Mode</h3>
+            <div id="mode-options" class="mode-buttons">
+              <button class="mode-btn active" data-mode="normal">Normal</button>
+              <button class="mode-btn" data-mode="timed">Timed Challenge</button>
+              <button class="mode-btn" data-mode="fogOfWar">Fog of War</button>
+              <button class="mode-btn" data-mode="daily">Daily Challenge</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats Modal -->
+    <div id="stats-modal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Statistics</h2>
+          <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-value" id="stat-played">0</div>
+              <div class="stat-label">Played</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="stat-win-rate">0%</div>
+              <div class="stat-label">Win Rate</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="stat-streak">0</div>
+              <div class="stat-label">Current Streak</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="stat-best-streak">0</div>
+              <div class="stat-label">Best Streak</div>
+            </div>
+          </div>
+          <div class="stat-card wide">
+            <div class="stat-label">Best Time</div>
+            <div class="stat-value" id="stat-best-time">--</div>
+          </div>
+          <div class="recent-games">
+            <h3>Recent Games</h3>
+            <div id="recent-games-chart"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Leaderboard Modal -->
+    <div id="leaderboard-modal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Daily Leaderboard</h2>
+          <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p id="leaderboard-date"></p>
+          <table id="leaderboard-table">
+            <thead>
+              <tr><th>#</th><th>Name</th><th>Time</th></tr>
+            </thead>
+            <tbody id="leaderboard-body"></tbody>
+          </table>
+          <p id="leaderboard-empty" class="hidden">No entries yet. Complete today's daily challenge!</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Game Over Overlay -->
+    <div id="gameover-overlay" class="modal hidden">
+      <div class="modal-content gameover-content">
+        <h2 id="gameover-title"></h2>
+        <p id="gameover-time"></p>
+        <p id="gameover-record" class="hidden"></p>
+        <p id="gameover-powerup-earned" class="hidden"></p>
+        <div class="gameover-actions">
+          <button id="gameover-retry" class="action-btn">Play Again</button>
+          <button id="gameover-nextlevel" class="action-btn primary hidden">Next Level</button>
+          <button id="gameover-submit-daily" class="action-btn hidden">Submit Score</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

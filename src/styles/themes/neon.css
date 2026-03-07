@@ -1,0 +1,66 @@
+[data-theme="neon"] {
+  --font-family: 'Press Start 2P', monospace;
+  --border-radius: 0px;
+  --cell-size: 38px;
+
+  --color-bg: #0a0a0a;
+  --color-app-bg: #000000;
+  --color-cell-hidden: #1a1a1a;
+  --color-cell-hidden-hover: #2a2a2a;
+  --color-cell-revealed: #111111;
+  --color-cell-border-light: #00ff88;
+  --color-cell-border-dark: #003322;
+  --color-mine: #ff0066;
+  --color-mine-hit: #ff0066;
+  --color-flag: #ffff00;
+  --color-text: #00ff88;
+  --color-text-secondary: #00aa55;
+
+  --color-num-1: #00ccff;
+  --color-num-2: #00ff88;
+  --color-num-3: #ff0066;
+  --color-num-4: #aa00ff;
+  --color-num-5: #ff6600;
+  --color-num-6: #00ffcc;
+  --color-num-7: #ffffff;
+  --color-num-8: #666666;
+
+  --color-header-bg: #0a0a0a;
+  --color-lcd-bg: #000000;
+  --color-lcd-text: #00ff88;
+  --color-modal-bg: #111111;
+  --color-modal-overlay: rgba(0, 0, 0, 0.85);
+  --color-btn-bg: #1a1a1a;
+  --color-btn-hover: #2a2a2a;
+  --color-border: #00ff88;
+  --color-fog: rgba(0, 0, 0, 0.95);
+  --color-scan-highlight: rgba(0, 255, 136, 0.2);
+  --color-golden: #00ff88;
+  --color-accent: #ff0066;
+  --color-accent-hover: #cc0055;
+}
+
+[data-theme="neon"] .cell.unrevealed {
+  box-shadow: 0 0 4px rgba(0, 255, 136, 0.15);
+}
+
+[data-theme="neon"] .cell.unrevealed:hover {
+  box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+}
+
+[data-theme="neon"] .lcd-display {
+  text-shadow: 0 0 8px var(--color-lcd-text);
+}
+
+[data-theme="neon"] #app {
+  border: 1px solid #00ff88;
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.15), 0 4px 24px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="neon"] .smiley-btn {
+  border-color: #00ff88;
+}
+
+[data-theme="neon"] .nav-btn {
+  border-color: #00ff88;
+}

@@ -1,0 +1,35 @@
+[data-theme="dark"] {
+  --color-bg: #1a1a2e;
+  --color-app-bg: #0f0f1a;
+  --color-cell-hidden: #16213e;
+  --color-cell-hidden-hover: #1a2744;
+  --color-cell-revealed: #0f3460;
+  --color-cell-border-light: #2a3a5e;
+  --color-cell-border-dark: #0a0a1a;
+  --color-mine: #e94560;
+  --color-mine-hit: #e94560;
+  --color-flag: #e94560;
+  --color-text: #eaeaea;
+  --color-text-secondary: #8899aa;
+
+  --color-num-1: #53a8ff;
+  --color-num-2: #00d4aa;
+  --color-num-3: #e94560;
+  --color-num-4: #7c83ff;
+  --color-num-5: #ff8c42;
+  --color-num-6: #00bcd4;
+  --color-num-7: #c0c0c0;
+  --color-num-8: #666666;
+
+  --color-header-bg: #16213e;
+  --color-lcd-bg: #0a0a1a;
+  --color-lcd-text: #e94560;
+  --color-modal-bg: #1a1a2e;
+  --color-modal-overlay: rgba(0, 0, 0, 0.7);
+  --color-btn-bg: #16213e;
+  --color-btn-hover: #1a2744;
+  --color-border: #2a3a5e;
+  --color-fog: rgba(0, 0, 0, 0.9);
+  --color-accent: #e94560;
+  --color-accent-hover: #d63851;
+}
