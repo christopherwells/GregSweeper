@@ -116,3 +116,58 @@ export function playLevelUp() {
     setTimeout(() => playTone(freq, 0.15, 'square', 0.1), i * 100);
   });
 }
+
+// ── Dedicated Power-Up Sounds ────────────────────────
+
+export function playFreeze() {
+  // Crystalline descending shimmer
+  if (muted) return;
+  playTone(1200, 0.15, 'sine', 0.08);
+  setTimeout(() => playTone(900, 0.15, 'sine', 0.06), 60);
+  setTimeout(() => playTone(1400, 0.2, 'sine', 0.05), 120);
+}
+
+export function playXRay() {
+  // Electronic scan sweep
+  if (muted) return;
+  resumeCtx();
+  const ctx = getCtx();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(300, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.3);
+  gain.gain.setValueAtTime(0.08, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(ctx.currentTime);
+  osc.stop(ctx.currentTime + 0.4);
+}
+
+export function playLuckyGuess() {
+  // Magical sparkle burst
+  if (muted) return;
+  const sparkle = [700, 1100, 880, 1300, 1047];
+  sparkle.forEach((freq, i) => {
+    setTimeout(() => playTone(freq, 0.08, 'sine', 0.06), i * 50);
+  });
+}
+
+export function playDecode() {
+  // Quick cascading reveal
+  if (muted) return;
+  playTone(500, 0.06, 'triangle', 0.08);
+  setTimeout(() => playTone(700, 0.06, 'triangle', 0.06), 40);
+  setTimeout(() => playTone(900, 0.08, 'triangle', 0.05), 80);
+}
+
+export function playTimeRecord() {
+  // Triumphant fanfare
+  vibrate([30, 50, 30, 50, 100]);
+  if (muted) return;
+  const fanfare = [523, 659, 784, 1047, 1319];
+  fanfare.forEach((freq, i) => {
+    setTimeout(() => playTone(freq, 0.25, 'square', 0.1), i * 150);
+  });
+}

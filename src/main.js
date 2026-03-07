@@ -17,8 +17,9 @@ import {
 import {
   playReveal, playFlag, playUnflag, playExplosion,
   playCascade, playWin, playPowerUp, playShieldBreak,
-  playLevelUp, isMuted, setMuted, loadMuted,
-} from './audio/sounds.js?v=1.7';
+  playLevelUp, playFreeze, playXRay, playLuckyGuess,
+  playDecode, playTimeRecord, isMuted, setMuted, loadMuted,
+} from './audio/sounds.js?v=1.8';
 import {
   getAchievementState, getTotalScore, checkNewUnlocks,
   getHighestTier, getAllTierNames, getTierIcon, getTierColor,
@@ -856,6 +857,7 @@ function handleWin() {
 
     // Extra celebration for timed mode records
     if (state.gameMode === 'timed') {
+      playTimeRecord();
       setTimeout(() => showConfettiBurst(0.5, 0.3, 40), 200);
       setTimeout(() => showConfettiBurst(0.3, 0.5, 30), 500);
       setTimeout(() => showConfettiBurst(0.7, 0.5, 30), 800);
@@ -1070,7 +1072,7 @@ function performScan(row, col) {
 function useFreeze() {
   if (state.powerUps.freeze <= 0 || state.status === 'won' || state.status === 'lost') return;
   if (state.freezeActive) return; // Already frozen
-  playPowerUp();
+  playFreeze();
   state.powerUps.freeze--;
   state.usedPowerUps = true;
   state.freezeActive = true;
@@ -1113,6 +1115,7 @@ function activateXRay() {
 function performXRay(row, col) {
   state.powerUps.xray--;
   state.xrayMode = false;
+  playXRay();
   saveModePowerUps(state.gameMode, state.powerUps);
 
   const mines = xRayScan(state.board, row, col);
@@ -1129,11 +1132,23 @@ function performXRay(row, col) {
     }
   }
 
-  // Highlight mines with pulsing red glow
-  for (const mine of mines) {
-    const el = boardEl.children[mine.row * state.cols + mine.col];
-    if (el) el.classList.add('xray-mine');
+  // Add scan-line sweep across the X-Ray area
+  const centerEl = boardEl.children[row * state.cols + col];
+  if (centerEl) {
+    const scanLine = document.createElement('div');
+    scanLine.className = 'xray-scan-line';
+    boardEl.style.position = 'relative';
+    boardEl.appendChild(scanLine);
+    setTimeout(() => scanLine.remove(), 700);
   }
+
+  // Highlight mines with pulsing red glow (staggered for drama)
+  mines.forEach((mine, i) => {
+    setTimeout(() => {
+      const el = boardEl.children[mine.row * state.cols + mine.col];
+      if (el) el.classList.add('xray-mine');
+    }, 200 + i * 80);
+  });
 
   scanToast.textContent = `🔬 X-Ray: ${mines.length} mine${mines.length !== 1 ? 's' : ''} in area`;
   scanToast.classList.remove('hidden');
@@ -1150,7 +1165,7 @@ function performXRay(row, col) {
 // ── Lucky Guess Power-Up ────────────────────────────
 function useLuckyGuess() {
   if (state.powerUps.luckyGuess <= 0 || state.status === 'won' || state.status === 'lost') return;
-  playPowerUp();
+  playLuckyGuess();
   state.powerUps.luckyGuess--;
   state.usedPowerUps = true;
   saveModePowerUps(state.gameMode, state.powerUps);
@@ -1165,6 +1180,17 @@ function useLuckyGuess() {
   const cellEl = boardEl.children[cell.row * state.cols + cell.col];
   if (cellEl) {
     cellEl.classList.add('lucky-reveal');
+
+    // Ripple ring expanding outward
+    const rect = cellEl.getBoundingClientRect();
+    const boardRect = boardEl.getBoundingClientRect();
+    const ripple = document.createElement('div');
+    ripple.className = 'lucky-ripple';
+    ripple.style.left = (rect.left - boardRect.left + rect.width / 2 - 5) + 'px';
+    ripple.style.top = (rect.top - boardRect.top + rect.height / 2 - 5) + 'px';
+    boardEl.style.position = 'relative';
+    boardEl.appendChild(ripple);
+    setTimeout(() => ripple.remove(), 900);
   }
 
   if (state.fogOfWarEnabled) {
@@ -1180,7 +1206,7 @@ function useLuckyGuess() {
 // ── Decode Power-Up (Fog of War) ─────────────────────
 function useDecode() {
   if (!state.powerUps.decode || state.powerUps.decode <= 0 || state.status === 'won' || state.status === 'lost') return;
-  playPowerUp();
+  playDecode();
   state.powerUps.decode--;
   state.usedPowerUps = true;
   saveModePowerUps(state.gameMode, state.powerUps);
