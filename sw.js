@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v0.8';
+const CACHE_NAME = 'gregsweeper-v0.9';
 const ASSETS = [
   './',
   './index.html',
@@ -21,6 +21,8 @@ const ASSETS = [
   './src/styles/themes/sunset.css',
   './src/styles/themes/candy.css',
   './src/styles/themes/midnight.css',
+  './src/styles/themes/aurora.css',
+  './src/styles/themes/galaxy.css',
 ];
 
 self.addEventListener('install', (event) => {

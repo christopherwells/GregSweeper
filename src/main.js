@@ -1,23 +1,104 @@
-import { generateBoard, createEmptyBoard, calculateAdjacency } from './logic/boardGenerator.js?v=0.7';
-import { floodFillReveal, checkWin, revealAllMines, chordReveal } from './logic/boardSolver.js?v=0.7';
-import { getDifficultyForLevel, MAX_LEVEL } from './logic/difficulty.js?v=0.7';
-import { computeVisibleCells } from './logic/fogOfWar.js?v=0.7';
-import { findSafeCell, scanRowCol, defuseMine } from './logic/powerUps.js?v=0.7';
-import { createDailyRNG } from './logic/seededRandom.js?v=0.7';
+import { generateBoard, createEmptyBoard, calculateAdjacency } from './logic/boardGenerator.js?v=0.8';
+import { floodFillReveal, checkWin, revealAllMines, chordReveal } from './logic/boardSolver.js?v=0.8';
+import { getDifficultyForLevel, MAX_LEVEL } from './logic/difficulty.js?v=0.8';
+import { computeVisibleCells } from './logic/fogOfWar.js?v=0.8';
+import { findSafeCell, scanRowCol, defuseMine } from './logic/powerUps.js?v=0.8';
+import { createDailyRNG } from './logic/seededRandom.js?v=0.8';
 import {
   loadStats, saveGameResult,
   loadDailyLeaderboard, addDailyLeaderboardEntry,
   loadTheme, saveTheme,
-} from './storage/statsStorage.js?v=0.7';
+} from './storage/statsStorage.js?v=0.8';
 import {
   playReveal, playFlag, playUnflag, playExplosion,
   playCascade, playWin, playPowerUp, playShieldBreak,
   playLevelUp, isMuted, setMuted, loadMuted,
-} from './audio/sounds.js?v=0.7';
+} from './audio/sounds.js?v=0.8';
 import {
   checkAchievements, getAllAchievements, loadUnlocked,
   getUnlockedCount, getTotalCount,
-} from './logic/achievements.js?v=0.7';
+} from './logic/achievements.js?v=0.8';
+
+// ── Theme Unlock Progression ──────────────────────────
+const THEME_UNLOCKS = {
+  classic:  { winsRequired: 0,  displayName: 'Classic' },
+  dark:     { winsRequired: 0,  displayName: 'Dark' },
+  ocean:    { winsRequired: 1,  displayName: 'Ocean' },
+  sunset:   { winsRequired: 3,  displayName: 'Sunset' },
+  candy:    { winsRequired: 5,  displayName: 'Candy' },
+  neon:     { winsRequired: 8,  displayName: 'Neon' },
+  midnight: { winsRequired: 12, displayName: 'Midnight' },
+  aurora:   { winsRequired: 18, displayName: 'Aurora' },
+  galaxy:   { winsRequired: 25, displayName: 'Galaxy' },
+};
+
+function getUnlockedThemes() {
+  const stats = loadStats();
+  const wins = stats.wins || 0;
+  const unlocked = {};
+  for (const [theme, info] of Object.entries(THEME_UNLOCKS)) {
+    unlocked[theme] = wins >= info.winsRequired;
+  }
+  return unlocked;
+}
+
+function updateThemeSwatches() {
+  const unlocked = getUnlockedThemes();
+  for (const swatch of $$('.theme-swatch')) {
+    const theme = swatch.dataset.theme;
+    const isUnlocked = unlocked[theme] !== false;
+    const lockEl = swatch.querySelector('.swatch-lock');
+    const nameEl = swatch.querySelector('.swatch-name');
+
+    if (isUnlocked) {
+      swatch.classList.remove('locked');
+      if (lockEl) lockEl.classList.add('hidden');
+      if (nameEl) nameEl.classList.remove('hidden');
+    } else {
+      swatch.classList.add('locked');
+      if (lockEl) lockEl.classList.remove('hidden');
+      if (nameEl) nameEl.classList.add('hidden');
+    }
+  }
+}
+
+function checkThemeUnlocks(prevWins, currentWins) {
+  const newlyUnlocked = [];
+  for (const [theme, info] of Object.entries(THEME_UNLOCKS)) {
+    if (info.winsRequired > 0 && prevWins < info.winsRequired && currentWins >= info.winsRequired) {
+      newlyUnlocked.push({ theme, displayName: info.displayName });
+    }
+  }
+  return newlyUnlocked;
+}
+
+function showThemeUnlockToasts(unlocked) {
+  const toast = $('#theme-unlock-toast');
+  if (!toast) return;
+  let index = 0;
+
+  function showNext() {
+    if (index >= unlocked.length) return;
+    const item = unlocked[index];
+    toast.querySelector('.theme-unlock-toast-name').textContent = item.displayName;
+    toast.classList.remove('hidden', 'hiding');
+
+    setTimeout(() => {
+      toast.classList.add('hiding');
+      setTimeout(() => {
+        toast.classList.add('hidden');
+        toast.classList.remove('hiding');
+        index++;
+        if (index < unlocked.length) {
+          setTimeout(showNext, 200);
+        }
+      }, 300);
+    }, 3000);
+  }
+
+  // Delay to not overlap with achievement toasts
+  setTimeout(showNext, 1200);
+}
 
 // ── State ──────────────────────────────────────────────
 
@@ -38,7 +119,7 @@ const state = {
   gameMode: 'normal',   // normal | timed | fogOfWar | daily
   dailySeed: null,
 
-  powerUps: { revealSafe: 1, shield: 1, scanRowCol: 1 },
+  powerUps: { revealSafe: 0, shield: 0, scanRowCol: 0 },
   shieldActive: false,
   scanMode: false,
   usedPowerUps: false,  // track for purist achievement
@@ -176,6 +257,16 @@ function updateHeader() {
 }
 
 function updatePowerUpBar() {
+  const totalPowerUps = Object.values(state.powerUps).reduce((a, b) => a + b, 0);
+  const powerUpBar = $('#powerup-bar');
+
+  // Hide entire bar when no power-ups available
+  if (totalPowerUps === 0 && !state.shieldActive && !state.scanMode) {
+    powerUpBar.classList.add('hidden');
+  } else {
+    powerUpBar.classList.remove('hidden');
+  }
+
   for (const btn of $$('.powerup-btn')) {
     const type = btn.dataset.powerup;
     const count = state.powerUps[type] || 0;
@@ -438,6 +529,9 @@ function handleWin() {
   stopTimer();
   resetBtn.textContent = '😎';
 
+  const prevStats = loadStats();
+  const prevWins = prevStats.wins;
+
   const isDaily = state.gameMode === 'daily';
   const stats = saveGameResult(true, state.elapsedTime, state.currentLevel, {
     isDaily,
@@ -447,6 +541,12 @@ function handleWin() {
 
   playWin();
   showParticles();
+
+  // Check for newly unlocked themes
+  const newThemes = checkThemeUnlocks(prevWins, stats.wins);
+  if (newThemes.length > 0) {
+    showThemeUnlockToasts(newThemes);
+  }
 
   // Check achievements
   const newAchievements = checkAchievements(stats);
@@ -653,12 +753,15 @@ function showParticles() {
     sunset: ['#ff6b6b', '#ffa07a', '#ffc107', '#ff8a65', '#bb86fc', '#87d68d'],
     candy: ['#ff69b4', '#e040fb', '#7c4dff', '#ffd740', '#69f0ae', '#ff4081'],
     midnight: ['#cc88ff', '#7c4dff', '#80b0ff', '#ffd740', '#69f0ae', '#80ffb0'],
+    aurora: ['#00e5a0', '#00bcd4', '#b388ff', '#69f0ae', '#00e5ff', '#ff4488'],
+    galaxy: ['#ea80fc', '#d050ff', '#82b1ff', '#ff80ab', '#b9f6ca', '#ffab40'],
   };
   const colors = themeColors[state.theme] || themeColors.classic;
 
   // Themed particle shapes
-  const isNeon = state.theme === 'neon';
+  const isNeon = state.theme === 'neon' || state.theme === 'aurora';
   const isCandy = state.theme === 'candy';
+  const isGalaxy = state.theme === 'galaxy';
 
   const particles = [];
   const count = 120;
@@ -675,7 +778,7 @@ function showParticles() {
       size: isCandy ? 4 + Math.random() * 6 : 2.5 + Math.random() * 4,
       rotation: Math.random() * Math.PI * 2,
       rotationSpeed: (Math.random() - 0.5) * 0.2,
-      shape: isNeon ? 'spark' : (isCandy ? 'circle' : 'rect'),
+      shape: isNeon ? 'spark' : (isCandy || isGalaxy ? 'circle' : 'rect'),
     });
   }
 
@@ -979,18 +1082,26 @@ boardEl.addEventListener('contextmenu', (e) => {
 });
 
 // Touch support: tap to reveal, long press to flag
+let touchedCellRow = null;
+let touchedCellCol = null;
+
 boardEl.addEventListener('touchstart', (e) => {
-  const cellEl = e.target.closest('.cell');
+  // Use touch point coordinates to find the cell element
+  const touch = e.touches[0];
+  const cellEl = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.cell');
   if (!cellEl) return;
+  e.preventDefault();  // Prevent browser context menu and double-tap zoom
   longPressTriggered = false;
-  const row = parseInt(cellEl.dataset.row);
-  const col = parseInt(cellEl.dataset.col);
+  touchedCellRow = parseInt(cellEl.dataset.row);
+  touchedCellCol = parseInt(cellEl.dataset.col);
 
   longPressTimer = setTimeout(() => {
     longPressTriggered = true;
-    toggleFlag(row, col);
+    if (touchedCellRow != null && touchedCellCol != null) {
+      toggleFlag(touchedCellRow, touchedCellCol);
+    }
   }, 500);
-}, { passive: true });
+}, { passive: false });
 
 boardEl.addEventListener('touchend', (e) => {
   if (longPressTimer) {
@@ -999,14 +1110,15 @@ boardEl.addEventListener('touchend', (e) => {
   }
   if (longPressTriggered) {
     longPressTriggered = false;
-    e.preventDefault();
+    touchedCellRow = null;
+    touchedCellCol = null;
     return;
   }
-  const cellEl = e.target.closest('.cell');
-  if (!cellEl) return;
-  e.preventDefault();
-  const row = parseInt(cellEl.dataset.row);
-  const col = parseInt(cellEl.dataset.col);
+  if (touchedCellRow == null || touchedCellCol == null) return;
+  const row = touchedCellRow;
+  const col = touchedCellCol;
+  touchedCellRow = null;
+  touchedCellCol = null;
 
   const cell = state.board[row]?.[col];
   if (cell && cell.isRevealed && cell.adjacentMines > 0) {
@@ -1021,6 +1133,8 @@ boardEl.addEventListener('touchmove', () => {
     clearTimeout(longPressTimer);
     longPressTimer = null;
   }
+  touchedCellRow = null;
+  touchedCellCol = null;
 }, { passive: true });
 
 resetBtn.addEventListener('click', () => {
@@ -1039,7 +1153,10 @@ for (const btn of $$('.powerup-btn')) {
 }
 
 // Nav buttons
-$('#btn-settings').addEventListener('click', () => showModal('settings-modal'));
+$('#btn-settings').addEventListener('click', () => {
+  updateThemeSwatches();
+  showModal('settings-modal');
+});
 $('#btn-stats').addEventListener('click', () => {
   updateStatsDisplay();
   showModal('stats-modal');
@@ -1070,6 +1187,12 @@ for (const modal of $$('.modal')) {
 // Theme selection
 for (const swatch of $$('.theme-swatch')) {
   swatch.addEventListener('click', () => {
+    // Block if locked
+    if (swatch.classList.contains('locked')) {
+      swatch.classList.add('swatch-shake');
+      setTimeout(() => swatch.classList.remove('swatch-shake'), 400);
+      return;
+    }
     const theme = swatch.dataset.theme;
     state.theme = theme;
     document.documentElement.setAttribute('data-theme', theme);
@@ -1170,9 +1293,23 @@ if (muteBtn) {
 
 function init() {
   const theme = loadTheme();
-  state.theme = theme;
-  document.documentElement.setAttribute('data-theme', theme);
-  const activeSwatch = $(`.theme-swatch[data-theme="${theme}"]`);
+  const unlocked = getUnlockedThemes();
+
+  // If saved theme is locked, fall back to best unlocked theme
+  let activeTheme = theme;
+  if (unlocked[theme] === false) {
+    const stats = loadStats();
+    const wins = stats.wins || 0;
+    const sortedThemes = Object.entries(THEME_UNLOCKS)
+      .filter(([, info]) => wins >= info.winsRequired)
+      .sort((a, b) => b[1].winsRequired - a[1].winsRequired);
+    activeTheme = sortedThemes.length > 0 ? sortedThemes[0][0] : 'classic';
+    saveTheme(activeTheme);
+  }
+
+  state.theme = activeTheme;
+  document.documentElement.setAttribute('data-theme', activeTheme);
+  const activeSwatch = $(`.theme-swatch[data-theme="${activeTheme}"]`);
   if (activeSwatch) {
     for (const s of $$('.theme-swatch')) s.classList.remove('active');
     activeSwatch.classList.add('active');

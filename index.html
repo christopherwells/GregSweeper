@@ -21,6 +21,8 @@
   <link rel="stylesheet" href="src/styles/themes/sunset.css">
   <link rel="stylesheet" href="src/styles/themes/candy.css">
   <link rel="stylesheet" href="src/styles/themes/midnight.css">
+  <link rel="stylesheet" href="src/styles/themes/aurora.css">
+  <link rel="stylesheet" href="src/styles/themes/galaxy.css">
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700;900&family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -91,31 +93,48 @@
             <div id="theme-options" class="theme-swatches">
               <button class="theme-swatch active" data-theme="classic">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #c0c0c0, #e0e0e0)"></span>
-                Classic
+                <span class="swatch-name">Classic</span>
+                <span class="swatch-lock hidden"></span>
               </button>
               <button class="theme-swatch" data-theme="dark">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #1a1a2e, #16213e)"></span>
-                Dark
-              </button>
-              <button class="theme-swatch" data-theme="neon">
-                <span class="swatch-color" style="background: #0a0a0a; border: 1px solid #00ff88"></span>
-                Neon
+                <span class="swatch-name">Dark</span>
+                <span class="swatch-lock hidden"></span>
               </button>
               <button class="theme-swatch" data-theme="ocean">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #0077b6, #00b4d8)"></span>
-                Ocean
+                <span class="swatch-name">Ocean</span>
+                <span class="swatch-lock hidden">&#128274; 1 win</span>
               </button>
               <button class="theme-swatch" data-theme="sunset">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #ff6b6b, #ffa07a)"></span>
-                Sunset
+                <span class="swatch-name">Sunset</span>
+                <span class="swatch-lock hidden">&#128274; 3 wins</span>
               </button>
               <button class="theme-swatch" data-theme="candy">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #ff69b4, #dda0dd)"></span>
-                Candy
+                <span class="swatch-name">Candy</span>
+                <span class="swatch-lock hidden">&#128274; 5 wins</span>
+              </button>
+              <button class="theme-swatch" data-theme="neon">
+                <span class="swatch-color" style="background: #0a0a0a; border: 1px solid #00ff88"></span>
+                <span class="swatch-name">Neon</span>
+                <span class="swatch-lock hidden">&#128274; 8 wins</span>
               </button>
               <button class="theme-swatch" data-theme="midnight">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #191970, #483d8b)"></span>
-                Midnight
+                <span class="swatch-name">Midnight</span>
+                <span class="swatch-lock hidden">&#128274; 12 wins</span>
+              </button>
+              <button class="theme-swatch" data-theme="aurora">
+                <span class="swatch-color" style="background: linear-gradient(135deg, #00e5a0, #00bcd4, #b388ff)"></span>
+                <span class="swatch-name">Aurora</span>
+                <span class="swatch-lock hidden">&#128274; 18 wins</span>
+              </button>
+              <button class="theme-swatch" data-theme="galaxy">
+                <span class="swatch-color" style="background: linear-gradient(135deg, #d050ff, #82b1ff, #ff80ab)"></span>
+                <span class="swatch-name">Galaxy</span>
+                <span class="swatch-lock hidden">&#128274; 25 wins</span>
               </button>
             </div>
           </div>
@@ -292,9 +311,18 @@
         <div class="achievement-toast-name"></div>
       </div>
     </div>
+
+    <!-- Theme Unlock Toast -->
+    <div id="theme-unlock-toast" class="theme-unlock-toast hidden">
+      <div class="theme-unlock-toast-icon">&#127912;</div>
+      <div class="theme-unlock-toast-text">
+        <div class="theme-unlock-toast-title">Theme Unlocked!</div>
+        <div class="theme-unlock-toast-name"></div>
+      </div>
+    </div>
   </div>
 
-  <script type="module" src="src/main.js?v=0.7"></script>
+  <script type="module" src="src/main.js?v=0.8"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js').catch(() => {});

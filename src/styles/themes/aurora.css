@@ -1,0 +1,132 @@
+/* Aurora theme — Northern Lights over an arctic sky */
+[data-theme="aurora"] {
+  --font-display: 'Orbitron', 'Segoe UI', sans-serif;
+
+  --color-bg: #0b1628;
+  --color-app-bg: #060e1a;
+  --color-cell-hidden: #122040;
+  --color-cell-hidden-hover: #1a2e55;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #182a50, #10203e);
+  --color-cell-revealed: #0a1525;
+  --color-cell-border-light: #1e3a60;
+  --color-cell-border-dark: #040a14;
+  --color-mine: #ff4488;
+  --color-mine-hit: #ff2266;
+  --color-flag: #ff4488;
+  --color-text: #d0f0f0;
+  --color-text-secondary: #5aaa9a;
+
+  --color-num-1: #00e5ff;
+  --color-num-2: #69f0ae;
+  --color-num-3: #ff4488;
+  --color-num-4: #b388ff;
+  --color-num-5: #ffab40;
+  --color-num-6: #18ffff;
+  --color-num-7: #e0f0f0;
+  --color-num-8: #607a8a;
+
+  --color-header-bg: #0b1628;
+  --color-header-gradient: linear-gradient(180deg, #122040, #0b1628);
+  --color-lcd-bg: #030810;
+  --color-lcd-text: #00e5a0;
+  --color-modal-bg: #0d1a30;
+  --color-modal-overlay: rgba(3, 6, 14, 0.88);
+  --color-btn-bg: #122040;
+  --color-btn-hover: #1a2e55;
+  --color-btn-gradient: linear-gradient(180deg, #1a2e55, #122040);
+  --color-border: rgba(0, 229, 160, 0.25);
+  --color-fog: rgba(3, 6, 14, 0.94);
+  --color-scan-highlight: rgba(0, 229, 160, 0.18);
+  --color-golden: #00e5a0;
+  --color-accent: #00bfa5;
+  --color-accent-hover: #009688;
+  --color-accent-glow: rgba(0, 191, 165, 0.3);
+  --color-win: #69f0ae;
+  --color-loss: #ff4488;
+  --color-surface: rgba(0, 229, 160, 0.04);
+
+  --shadow-glow: 0 0 24px rgba(0, 229, 160, 0.1);
+}
+
+[data-theme="aurora"] #app {
+  background: linear-gradient(180deg, #0f1e38, #0b1628, #081020);
+  box-shadow: 0 8px 40px rgba(3, 6, 14, 0.7), inset 0 1px 0 rgba(0, 229, 160, 0.05);
+}
+
+[data-theme="aurora"] #game-title {
+  background: linear-gradient(135deg, #00e5a0, #00bcd4, #b388ff, #00e5a0);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: none;
+  animation: auroraShimmer 4s ease-in-out infinite;
+}
+
+@keyframes auroraShimmer {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+[data-theme="aurora"] #title-subtitle {
+  color: #5aaa9a;
+  text-shadow: 0 0 6px rgba(0, 229, 160, 0.2);
+}
+
+[data-theme="aurora"] .lcd-display {
+  text-shadow: 0 0 10px rgba(0, 229, 160, 0.5);
+  border-color: rgba(0, 229, 160, 0.25);
+}
+
+[data-theme="aurora"] .cell.unrevealed {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), inset 0 0 3px rgba(0, 229, 160, 0.04);
+}
+
+[data-theme="aurora"] .cell.unrevealed:hover {
+  box-shadow: 0 0 12px rgba(0, 229, 160, 0.2), 0 0 4px rgba(0, 191, 165, 0.15);
+}
+
+[data-theme="aurora"] .cell.revealed {
+  border-color: rgba(0, 229, 160, 0.1);
+}
+
+[data-theme="aurora"] .cell.revealed.num-1 { text-shadow: 0 0 6px rgba(0, 229, 255, 0.35); }
+[data-theme="aurora"] .cell.revealed.num-2 { text-shadow: 0 0 6px rgba(105, 240, 174, 0.35); }
+[data-theme="aurora"] .cell.revealed.num-3 { text-shadow: 0 0 6px rgba(255, 68, 136, 0.35); }
+[data-theme="aurora"] .cell.revealed.num-4 { text-shadow: 0 0 6px rgba(179, 136, 255, 0.35); }
+
+[data-theme="aurora"] #board {
+  border-color: rgba(0, 229, 160, 0.2);
+  box-shadow: 0 4px 20px rgba(3, 6, 14, 0.5), 0 0 20px rgba(0, 229, 160, 0.05);
+}
+
+[data-theme="aurora"] .smiley-btn {
+  border: 1px solid rgba(0, 229, 160, 0.25);
+  box-shadow: 0 0 6px rgba(0, 229, 160, 0.1);
+}
+
+[data-theme="aurora"] .nav-btn {
+  border-color: rgba(0, 229, 160, 0.2);
+}
+
+[data-theme="aurora"] .nav-btn:hover {
+  box-shadow: 0 0 10px rgba(0, 229, 160, 0.15);
+}
+
+[data-theme="aurora"] .powerup-btn {
+  border-color: rgba(0, 229, 160, 0.2);
+}
+
+[data-theme="aurora"] .modal-content {
+  border: 1px solid rgba(0, 229, 160, 0.12);
+  box-shadow: 0 8px 32px rgba(3, 6, 14, 0.6);
+}
+
+[data-theme="aurora"] .modal-close:hover {
+  background: rgba(0, 229, 160, 0.1);
+}
+
+[data-theme="aurora"] .achievement-item.unlocked {
+  border-color: rgba(0, 229, 160, 0.3);
+  box-shadow: 0 0 8px rgba(0, 229, 160, 0.1);
+}

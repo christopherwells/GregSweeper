@@ -1,0 +1,145 @@
+/* Galaxy theme — deep space nebula with cosmic accents */
+[data-theme="galaxy"] {
+  --font-display: 'Orbitron', 'Segoe UI', sans-serif;
+
+  --color-bg: #0a0015;
+  --color-app-bg: #050010;
+  --color-cell-hidden: #1a0838;
+  --color-cell-hidden-hover: #240e48;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #200c42, #160730);
+  --color-cell-revealed: #0d0420;
+  --color-cell-border-light: #3a1870;
+  --color-cell-border-dark: #04000a;
+  --color-mine: #ff2d78;
+  --color-mine-hit: #ff1060;
+  --color-flag: #ff2d78;
+  --color-text: #e8d8ff;
+  --color-text-secondary: #9070c0;
+
+  --color-num-1: #82b1ff;
+  --color-num-2: #b9f6ca;
+  --color-num-3: #ff80ab;
+  --color-num-4: #ea80fc;
+  --color-num-5: #ffcc80;
+  --color-num-6: #80d8ff;
+  --color-num-7: #e8d8ff;
+  --color-num-8: #604880;
+
+  --color-header-bg: #0a0015;
+  --color-header-gradient: linear-gradient(180deg, #1a0838, #0a0015);
+  --color-lcd-bg: #02000a;
+  --color-lcd-text: #ea80fc;
+  --color-modal-bg: #100025;
+  --color-modal-overlay: rgba(2, 0, 8, 0.9);
+  --color-btn-bg: #1a0838;
+  --color-btn-hover: #240e48;
+  --color-btn-gradient: linear-gradient(180deg, #240e48, #1a0838);
+  --color-border: rgba(180, 80, 255, 0.3);
+  --color-fog: rgba(2, 0, 8, 0.95);
+  --color-scan-highlight: rgba(234, 128, 252, 0.15);
+  --color-golden: #ffab40;
+  --color-accent: #d050ff;
+  --color-accent-hover: #b030e0;
+  --color-accent-glow: rgba(208, 80, 255, 0.35);
+  --color-win: #b9f6ca;
+  --color-loss: #ff2d78;
+  --color-surface: rgba(180, 80, 255, 0.05);
+
+  --shadow-glow: 0 0 30px rgba(180, 80, 255, 0.12);
+}
+
+[data-theme="galaxy"] #app {
+  background: linear-gradient(160deg, #12002a, #0a0015, #050020, #10002a);
+  background-size: 300% 300%;
+  animation: galaxyDrift 12s ease-in-out infinite;
+  box-shadow: 0 8px 50px rgba(2, 0, 8, 0.8), inset 0 1px 0 rgba(180, 80, 255, 0.06);
+}
+
+@keyframes galaxyDrift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+[data-theme="galaxy"] #game-title {
+  background: linear-gradient(135deg, #ea80fc, #d050ff, #82b1ff, #ff80ab);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: none;
+  animation: galaxyTitleShimmer 5s ease-in-out infinite;
+  filter: drop-shadow(0 0 12px rgba(208, 80, 255, 0.3));
+}
+
+@keyframes galaxyTitleShimmer {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+[data-theme="galaxy"] #title-subtitle {
+  color: #9070c0;
+  text-shadow: 0 0 8px rgba(208, 80, 255, 0.25);
+}
+
+[data-theme="galaxy"] .lcd-display {
+  text-shadow: 0 0 12px rgba(234, 128, 252, 0.6);
+  border-color: rgba(180, 80, 255, 0.3);
+}
+
+[data-theme="galaxy"] .cell.unrevealed {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4), inset 0 0 4px rgba(180, 80, 255, 0.05);
+}
+
+[data-theme="galaxy"] .cell.unrevealed:hover {
+  box-shadow: 0 0 14px rgba(208, 80, 255, 0.25), 0 0 6px rgba(130, 177, 255, 0.15);
+}
+
+[data-theme="galaxy"] .cell.revealed {
+  border-color: rgba(180, 80, 255, 0.1);
+}
+
+[data-theme="galaxy"] .cell.revealed.num-1 { text-shadow: 0 0 8px rgba(130, 177, 255, 0.4); }
+[data-theme="galaxy"] .cell.revealed.num-2 { text-shadow: 0 0 8px rgba(185, 246, 202, 0.4); }
+[data-theme="galaxy"] .cell.revealed.num-3 { text-shadow: 0 0 8px rgba(255, 128, 171, 0.4); }
+[data-theme="galaxy"] .cell.revealed.num-4 { text-shadow: 0 0 8px rgba(234, 128, 252, 0.4); }
+[data-theme="galaxy"] .cell.revealed.num-5 { text-shadow: 0 0 8px rgba(255, 204, 128, 0.4); }
+
+[data-theme="galaxy"] .cell.mine {
+  text-shadow: 0 0 14px rgba(255, 45, 120, 0.5);
+}
+
+[data-theme="galaxy"] #board {
+  border-color: rgba(180, 80, 255, 0.25);
+  box-shadow: 0 4px 24px rgba(2, 0, 8, 0.6), 0 0 24px rgba(180, 80, 255, 0.06);
+}
+
+[data-theme="galaxy"] .smiley-btn {
+  border: 1px solid rgba(180, 80, 255, 0.3);
+  box-shadow: 0 0 8px rgba(180, 80, 255, 0.12);
+}
+
+[data-theme="galaxy"] .nav-btn {
+  border-color: rgba(180, 80, 255, 0.2);
+}
+
+[data-theme="galaxy"] .nav-btn:hover {
+  box-shadow: 0 0 12px rgba(208, 80, 255, 0.2);
+}
+
+[data-theme="galaxy"] .powerup-btn {
+  border-color: rgba(180, 80, 255, 0.2);
+}
+
+[data-theme="galaxy"] .modal-content {
+  border: 1px solid rgba(180, 80, 255, 0.15);
+  box-shadow: 0 8px 40px rgba(2, 0, 8, 0.7), 0 0 20px rgba(180, 80, 255, 0.05);
+}
+
+[data-theme="galaxy"] .modal-close:hover {
+  background: rgba(208, 80, 255, 0.1);
+}
+
+[data-theme="galaxy"] .achievement-item.unlocked {
+  border-color: rgba(208, 80, 255, 0.3);
+  box-shadow: 0 0 10px rgba(208, 80, 255, 0.1);
+}

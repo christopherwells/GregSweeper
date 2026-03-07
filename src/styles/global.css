@@ -107,13 +107,12 @@ body {
 
 #game-title {
   font-family: var(--font-display);
-  font-size: 26px;
+  font-size: 28px;
   font-weight: 800;
   letter-spacing: 3px;
   text-align: center;
   color: var(--color-text);
   margin: 0;
-  text-transform: uppercase;
   transition: color var(--transition-fast), text-shadow var(--transition-fast);
 }
 
@@ -217,8 +216,13 @@ body {
 
 #powerup-bar {
   display: flex;
+  justify-content: center;
   gap: 8px;
   padding: 4px 0;
+}
+
+#powerup-bar.hidden {
+  display: none;
 }
 
 .powerup-btn {
@@ -628,6 +632,53 @@ body {
   box-shadow: var(--shadow-sm);
 }
 
+.swatch-name {
+  display: block;
+}
+
+.swatch-lock {
+  display: block;
+  font-size: 9px;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+.swatch-lock.hidden,
+.swatch-name.hidden {
+  display: none !important;
+}
+
+/* ── Locked Theme Swatch ─────────────────── */
+
+.theme-swatch.locked {
+  opacity: 0.4;
+  filter: grayscale(0.7);
+  cursor: not-allowed;
+}
+
+.theme-swatch.locked:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.theme-swatch.locked .swatch-color {
+  filter: grayscale(0.8) brightness(0.7);
+}
+
+.theme-swatch.swatch-shake {
+  animation: swatchShake 0.4s ease-out;
+}
+
+@keyframes swatchShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-3px); }
+  40% { transform: translateX(3px); }
+  60% { transform: translateX(-2px); }
+  80% { transform: translateX(2px); }
+}
+
 .mode-buttons {
   display: flex;
   flex-wrap: wrap;
@@ -903,6 +954,61 @@ body {
 }
 
 .achievement-toast-name {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+/* ── Theme Unlock Toast ──────────────────── */
+
+.theme-unlock-toast {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100%);
+  background: var(--color-modal-bg);
+  color: var(--color-text);
+  padding: 14px 24px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 300;
+  box-shadow: var(--shadow-lg), 0 0 0 2px var(--color-accent);
+  animation: themeUnlockSlideIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  border: 1px solid var(--color-accent);
+}
+
+.theme-unlock-toast.hidden {
+  display: none;
+}
+
+.theme-unlock-toast.hiding {
+  animation: themeUnlockSlideOut 0.3s ease-in forwards;
+}
+
+@keyframes themeUnlockSlideIn {
+  from { transform: translateX(-50%) translateY(100%); }
+  to { transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes themeUnlockSlideOut {
+  from { transform: translateX(-50%) translateY(0); opacity: 1; }
+  to { transform: translateX(-50%) translateY(100%); opacity: 0; }
+}
+
+.theme-unlock-toast-icon {
+  font-size: 32px;
+}
+
+.theme-unlock-toast-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+.theme-unlock-toast-name {
   font-size: 15px;
   font-weight: 700;
 }
