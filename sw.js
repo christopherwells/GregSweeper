@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v2.1';
+const CACHE_NAME = 'gregsweeper-v2.5';
 const ASSETS = [
   './',
   './index.html',
@@ -35,6 +35,17 @@ const ASSETS = [
   './src/styles/themes/royal.css',
   './src/styles/themes/prismatic.css',
   './src/styles/themes/void.css',
+  './src/styles/themes/arctic.css',
+  './src/styles/themes/jungle.css',
+  './src/styles/themes/obsidian.css',
+  './src/styles/themes/matrix.css',
+  './src/styles/themes/inferno.css',
+  './src/styles/themes/celestial.css',
+  './src/styles/themes/bloodmoon.css',
+  './src/styles/themes/synthwave.css',
+  './src/styles/themes/supernova.css',
+  './src/styles/themes/legendary.css',
+  './src/firebase/firebaseLeaderboard.js',
 ];
 
 self.addEventListener('install', (event) => {

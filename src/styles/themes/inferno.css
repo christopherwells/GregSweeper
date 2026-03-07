@@ -1,0 +1,149 @@
+/* Inferno theme — deep reds, flames, ember glow on scorched earth */
+@keyframes emberPulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(255, 80, 0, 0.15), 0 0 40px rgba(255, 40, 0, 0.08);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(255, 80, 0, 0.25), 0 0 60px rgba(255, 40, 0, 0.15);
+  }
+}
+
+[data-theme="inferno"] {
+  --font-family: 'Segoe UI', 'Arial Black', sans-serif;
+  --font-display: 'Segoe UI', 'Arial Black', sans-serif;
+  --border-radius: 4px;
+  --grid-gap: 2px;
+
+  --color-bg: #0d0000;
+  --color-app-bg: #1a0500;
+  --color-cell-hidden: #3d1008;
+  --color-cell-hidden-hover: #5a1a0c;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #4a1410, #2e0a05);
+  --color-cell-revealed: #1a0800;
+  --color-cell-border-light: #6b2010;
+  --color-cell-border-dark: #1a0500;
+  --color-mine: #ff4400;
+  --color-mine-hit: #ff0000;
+  --color-flag: #ff6600;
+  --color-text: #ffd0b0;
+  --color-text-secondary: #b07050;
+
+  --color-num-1: #ff8833;
+  --color-num-2: #ffcc00;
+  --color-num-3: #ff3300;
+  --color-num-4: #ff5500;
+  --color-num-5: #cc2200;
+  --color-num-6: #ffaa00;
+  --color-num-7: #ff9966;
+  --color-num-8: #885533;
+
+  --color-header-bg: #2a0800;
+  --color-header-gradient: linear-gradient(180deg, #3a1000, #1a0500);
+  --color-lcd-bg: #0a0000;
+  --color-lcd-text: #ff4400;
+  --color-modal-bg: #1a0800;
+  --color-modal-overlay: rgba(10, 0, 0, 0.92);
+  --color-btn-bg: #3d1008;
+  --color-btn-hover: #5a1a0c;
+  --color-btn-gradient: linear-gradient(180deg, #4a1410, #2e0a05);
+  --color-border: #6b2010;
+  --color-fog: rgba(10, 0, 0, 0.94);
+  --color-scan-highlight: rgba(255, 68, 0, 0.2);
+  --color-golden: #ffaa00;
+  --color-accent: #ff4400;
+  --color-accent-hover: #ff6600;
+  --color-accent-glow: rgba(255, 68, 0, 0.35);
+  --color-win: #ffcc00;
+  --color-loss: #ff0000;
+  --color-surface: rgba(255, 68, 0, 0.04);
+}
+
+[data-theme="inferno"] #app {
+  background: linear-gradient(180deg, #1a0500, #0d0000);
+  border: 1px solid rgba(255, 68, 0, 0.25);
+  box-shadow: 0 8px 32px rgba(255, 40, 0, 0.15), inset 0 1px 0 rgba(255, 100, 0, 0.06);
+}
+
+[data-theme="inferno"] #game-title {
+  background: linear-gradient(135deg, #ff4400, #ff8800, #ffcc00);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: none;
+}
+
+[data-theme="inferno"] #title-subtitle {
+  color: #ff6600;
+  text-shadow: 0 0 8px rgba(255, 68, 0, 0.4);
+}
+
+[data-theme="inferno"] #board {
+  border-color: rgba(255, 68, 0, 0.3);
+  animation: emberPulse 3s ease-in-out infinite;
+}
+
+[data-theme="inferno"] .cell.unrevealed {
+  background: linear-gradient(145deg, #4a1410, #2e0a05);
+  border-radius: 3px;
+  box-shadow: inset 0 1px 0 rgba(255, 100, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="inferno"] .cell.unrevealed:hover {
+  background: linear-gradient(145deg, #5a1a10, #3e1008);
+  box-shadow: 0 0 8px rgba(255, 68, 0, 0.3), inset 0 1px 0 rgba(255, 100, 0, 0.15);
+}
+
+[data-theme="inferno"] .cell.revealed {
+  background: #1a0800;
+  border-color: rgba(107, 32, 16, 0.4);
+}
+
+[data-theme="inferno"] .cell.revealed.num-1 { text-shadow: 0 0 6px rgba(255, 136, 51, 0.5); }
+[data-theme="inferno"] .cell.revealed.num-2 { text-shadow: 0 0 6px rgba(255, 204, 0, 0.5); }
+[data-theme="inferno"] .cell.revealed.num-3 { text-shadow: 0 0 6px rgba(255, 51, 0, 0.5); }
+
+[data-theme="inferno"] .cell.mine {
+  text-shadow: 0 0 10px rgba(255, 68, 0, 0.6);
+}
+
+[data-theme="inferno"] .smiley-btn {
+  border: 1px solid rgba(255, 68, 0, 0.3);
+  box-shadow: 0 0 8px rgba(255, 68, 0, 0.15);
+}
+
+[data-theme="inferno"] .lcd-display {
+  text-shadow: 0 0 8px rgba(255, 68, 0, 0.5), 0 0 16px rgba(255, 40, 0, 0.2);
+  border-color: rgba(255, 68, 0, 0.2);
+}
+
+[data-theme="inferno"] .nav-btn {
+  border-color: rgba(255, 68, 0, 0.2);
+}
+
+[data-theme="inferno"] .nav-btn:hover {
+  box-shadow: 0 0 10px rgba(255, 68, 0, 0.2);
+}
+
+[data-theme="inferno"] .powerup-btn {
+  border-color: rgba(255, 68, 0, 0.2);
+}
+
+[data-theme="inferno"] .modal-content {
+  border: 1px solid rgba(255, 68, 0, 0.2);
+  box-shadow: 0 0 40px rgba(255, 40, 0, 0.15);
+  background: #1a0800;
+}
+
+[data-theme="inferno"] .modal-close:hover {
+  background: rgba(255, 68, 0, 0.15);
+}
+
+[data-theme="inferno"] .game-header {
+  background: linear-gradient(180deg, #2a0800, #1a0500);
+  border-bottom: 1px solid rgba(255, 68, 0, 0.15);
+}
+
+[data-theme="inferno"] .achievement-item.unlocked {
+  border-color: rgba(255, 68, 0, 0.4);
+  box-shadow: 0 0 8px rgba(255, 68, 0, 0.1);
+}

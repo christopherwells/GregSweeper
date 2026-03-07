@@ -1,0 +1,149 @@
+/* Jungle theme — deep greens, vine borders, earthy organic tones */
+[data-theme="jungle"] {
+  --font-family: 'Georgia', 'Times New Roman', serif;
+  --font-display: 'Georgia', 'Times New Roman', serif;
+  --border-radius: 6px;
+  --grid-gap: 3px;
+
+  --color-bg: #0c1a0c;
+  --color-app-bg: #0e200e;
+  --color-cell-hidden: #1e3a1e;
+  --color-cell-hidden-hover: #2a4e2a;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #264826, #183018);
+  --color-cell-revealed: #142414;
+  --color-cell-border-light: #3a6830;
+  --color-cell-border-dark: #0c180c;
+  --color-mine: #cc4422;
+  --color-mine-hit: #ee3311;
+  --color-flag: #dd6633;
+  --color-text: #c8e0b0;
+  --color-text-secondary: #7ea068;
+
+  --color-num-1: #44bb44;
+  --color-num-2: #88cc22;
+  --color-num-3: #cc4422;
+  --color-num-4: #22aaaa;
+  --color-num-5: #cc8822;
+  --color-num-6: #44aa88;
+  --color-num-7: #d0c8a0;
+  --color-num-8: #6a8050;
+
+  --color-header-bg: #1a3018;
+  --color-header-gradient: linear-gradient(180deg, #223c20, #142a12);
+  --color-lcd-bg: #081008;
+  --color-lcd-text: #44cc44;
+  --color-modal-bg: #142814;
+  --color-modal-overlay: rgba(4, 10, 4, 0.9);
+  --color-btn-bg: #1e3a1e;
+  --color-btn-hover: #2a4e2a;
+  --color-btn-gradient: linear-gradient(180deg, #264826, #183018);
+  --color-border: #3a6830;
+  --color-fog: rgba(4, 10, 4, 0.92);
+  --color-scan-highlight: rgba(68, 204, 68, 0.15);
+  --color-golden: #ddaa22;
+  --color-accent: #44bb44;
+  --color-accent-hover: #33aa33;
+  --color-accent-glow: rgba(68, 187, 68, 0.25);
+  --color-win: #66dd44;
+  --color-loss: #cc4422;
+  --color-surface: rgba(68, 187, 68, 0.04);
+}
+
+[data-theme="jungle"] #app {
+  background: linear-gradient(180deg, #0e200e, #0c1a0c);
+  border: 2px solid #3a6830;
+  box-shadow: 0 8px 32px rgba(0, 20, 0, 0.4);
+}
+
+[data-theme="jungle"] #game-title {
+  background: linear-gradient(135deg, #44bb44, #88cc22, #ddaa22);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: none;
+}
+
+[data-theme="jungle"] #title-subtitle {
+  color: #7ea068;
+  font-style: italic;
+}
+
+/* Vine-like board border */
+[data-theme="jungle"] #board {
+  border: 3px solid #3a6830;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 20, 0, 0.3), inset 0 0 0 1px rgba(68, 187, 68, 0.08);
+  background: #0a1a0a;
+}
+
+[data-theme="jungle"] .cell.unrevealed {
+  border-radius: 4px;
+  box-shadow: inset 0 1px 0 rgba(68, 187, 68, 0.08), 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="jungle"] .cell.unrevealed:hover {
+  box-shadow: 0 0 6px rgba(68, 187, 68, 0.2), inset 0 1px 0 rgba(68, 187, 68, 0.12);
+}
+
+[data-theme="jungle"] .cell.revealed {
+  background: #142414;
+  border-color: rgba(58, 104, 48, 0.3);
+}
+
+[data-theme="jungle"] .cell.mine {
+  text-shadow: 0 0 8px rgba(204, 68, 34, 0.5);
+}
+
+[data-theme="jungle"] .smiley-btn {
+  border: 2px solid #3a6830;
+  box-shadow: 0 2px 4px rgba(0, 20, 0, 0.2);
+}
+
+[data-theme="jungle"] .lcd-display {
+  text-shadow: 0 0 8px rgba(68, 204, 68, 0.4);
+  border-color: #3a6830;
+  border-width: 2px;
+}
+
+[data-theme="jungle"] .nav-btn {
+  border-color: #3a6830;
+  border-width: 2px;
+}
+
+[data-theme="jungle"] .nav-btn:hover {
+  background: rgba(68, 187, 68, 0.1);
+}
+
+[data-theme="jungle"] .powerup-btn {
+  border-color: #3a6830;
+  border-width: 2px;
+}
+
+[data-theme="jungle"] .modal-content {
+  border: 2px solid #3a6830;
+  box-shadow: 0 8px 32px rgba(0, 20, 0, 0.4);
+  background: #142814;
+}
+
+[data-theme="jungle"] .modal-close:hover {
+  background: rgba(68, 187, 68, 0.12);
+}
+
+[data-theme="jungle"] .game-header {
+  background: linear-gradient(180deg, #1e3420, #142a12);
+  border-bottom: 2px solid #3a6830;
+}
+
+[data-theme="jungle"] .action-btn {
+  border: 2px solid #3a6830;
+  border-radius: 8px;
+}
+
+[data-theme="jungle"] .mode-btn {
+  border-radius: 8px;
+}
+
+[data-theme="jungle"] .achievement-item.unlocked {
+  border-color: #3a6830;
+  box-shadow: 0 0 8px rgba(68, 187, 68, 0.1);
+}

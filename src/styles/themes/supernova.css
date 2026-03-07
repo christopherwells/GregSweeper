@@ -1,0 +1,187 @@
+/* Supernova theme — explosive warm gradients, dynamic color shifting */
+@keyframes supernovaShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  25% {
+    background-position: 50% 100%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  75% {
+    background-position: 50% 0%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes supernovaPulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(255, 100, 0, 0.15), 0 0 40px rgba(255, 50, 100, 0.08);
+  }
+  33% {
+    box-shadow: 0 0 25px rgba(255, 200, 0, 0.18), 0 0 50px rgba(255, 100, 0, 0.1);
+  }
+  66% {
+    box-shadow: 0 0 22px rgba(255, 50, 100, 0.16), 0 0 45px rgba(255, 200, 0, 0.08);
+  }
+}
+
+@keyframes titleFlare {
+  0%, 100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.2);
+  }
+}
+
+[data-theme="supernova"] {
+  --font-family: 'Segoe UI', 'Trebuchet MS', sans-serif;
+  --font-display: 'Segoe UI', 'Trebuchet MS', sans-serif;
+  --border-radius: 6px;
+  --grid-gap: 2px;
+
+  --color-bg: #1a0808;
+  --color-app-bg: #200c0a;
+  --color-cell-hidden: #3a1810;
+  --color-cell-hidden-hover: #4e2418;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #442018, #30140c);
+  --color-cell-revealed: #1e0c08;
+  --color-cell-border-light: #6a3020;
+  --color-cell-border-dark: #140604;
+  --color-mine: #ffcc00;
+  --color-mine-hit: #ff3300;
+  --color-flag: #ff8800;
+  --color-text: #ffe0c8;
+  --color-text-secondary: #c08060;
+
+  --color-num-1: #ff8844;
+  --color-num-2: #ffcc00;
+  --color-num-3: #ff3344;
+  --color-num-4: #ff6600;
+  --color-num-5: #ee2200;
+  --color-num-6: #ffaa33;
+  --color-num-7: #ffe0c8;
+  --color-num-8: #885540;
+
+  --color-header-bg: #2a1010;
+  --color-header-gradient: linear-gradient(180deg, #341818, #200c0a);
+  --color-lcd-bg: #0c0402;
+  --color-lcd-text: #ff8800;
+  --color-modal-bg: #220e0a;
+  --color-modal-overlay: rgba(12, 4, 2, 0.92);
+  --color-btn-bg: #3a1810;
+  --color-btn-hover: #4e2418;
+  --color-btn-gradient: linear-gradient(180deg, #442018, #30140c);
+  --color-border: #6a3020;
+  --color-fog: rgba(12, 4, 2, 0.94);
+  --color-scan-highlight: rgba(255, 136, 0, 0.15);
+  --color-golden: #ffcc00;
+  --color-accent: #ff6600;
+  --color-accent-hover: #ff8800;
+  --color-accent-glow: rgba(255, 102, 0, 0.3);
+  --color-win: #ffcc00;
+  --color-loss: #ff2200;
+  --color-surface: rgba(255, 102, 0, 0.04);
+}
+
+/* Animated gradient background on the app */
+[data-theme="supernova"] #app {
+  background: linear-gradient(
+    135deg,
+    #200c0a, #2a1010, #1a0808, #2a1414, #200c0a
+  );
+  background-size: 300% 300%;
+  animation: supernovaShift 12s ease-in-out infinite;
+  border: 1px solid rgba(106, 48, 32, 0.5);
+  box-shadow: 0 8px 32px rgba(100, 20, 0, 0.2);
+}
+
+/* Explosive gradient title */
+[data-theme="supernova"] #game-title {
+  background: linear-gradient(90deg, #ff3300, #ff8800, #ffcc00, #ff8800, #ff3300);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: supernovaShift 4s ease-in-out infinite, titleFlare 3s ease-in-out infinite;
+}
+
+[data-theme="supernova"] #title-subtitle {
+  color: #ff8800;
+  text-shadow: 0 0 8px rgba(255, 136, 0, 0.4);
+}
+
+/* Pulsing board glow */
+[data-theme="supernova"] #board {
+  border: 2px solid rgba(106, 48, 32, 0.5);
+  border-radius: 8px;
+  animation: supernovaPulse 4s ease-in-out infinite;
+}
+
+[data-theme="supernova"] .cell.unrevealed {
+  box-shadow: inset 0 1px 0 rgba(255, 136, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="supernova"] .cell.unrevealed:hover {
+  box-shadow: 0 0 10px rgba(255, 102, 0, 0.25);
+  background: linear-gradient(145deg, #4e2418, #3a1810);
+}
+
+[data-theme="supernova"] .cell.revealed {
+  background: #1e0c08;
+  border-color: rgba(106, 48, 32, 0.25);
+}
+
+[data-theme="supernova"] .cell.revealed.num-1 { text-shadow: 0 0 8px rgba(255, 136, 68, 0.5); }
+[data-theme="supernova"] .cell.revealed.num-2 { text-shadow: 0 0 8px rgba(255, 204, 0, 0.5); }
+[data-theme="supernova"] .cell.revealed.num-3 { text-shadow: 0 0 8px rgba(255, 51, 68, 0.5); }
+
+[data-theme="supernova"] .cell.mine {
+  text-shadow: 0 0 12px rgba(255, 204, 0, 0.6);
+}
+
+[data-theme="supernova"] .smiley-btn {
+  border: 1px solid rgba(106, 48, 32, 0.5);
+  box-shadow: 0 0 8px rgba(255, 102, 0, 0.12);
+}
+
+[data-theme="supernova"] .lcd-display {
+  text-shadow: 0 0 8px rgba(255, 136, 0, 0.5), 0 0 16px rgba(255, 80, 0, 0.2);
+  border-color: rgba(106, 48, 32, 0.4);
+}
+
+[data-theme="supernova"] .nav-btn {
+  border-color: rgba(106, 48, 32, 0.4);
+}
+
+[data-theme="supernova"] .nav-btn:hover {
+  box-shadow: 0 0 10px rgba(255, 102, 0, 0.15);
+}
+
+[data-theme="supernova"] .powerup-btn {
+  border-color: rgba(106, 48, 32, 0.4);
+}
+
+[data-theme="supernova"] .modal-content {
+  border: 1px solid rgba(106, 48, 32, 0.4);
+  box-shadow: 0 8px 40px rgba(80, 10, 0, 0.4);
+  background: #220e0a;
+}
+
+[data-theme="supernova"] .modal-close:hover {
+  background: rgba(255, 102, 0, 0.1);
+}
+
+[data-theme="supernova"] .game-header {
+  background: linear-gradient(180deg, #2a1210, #200c0a);
+  border-bottom: 1px solid rgba(106, 48, 32, 0.3);
+}
+
+[data-theme="supernova"] .achievement-item.unlocked {
+  border-color: rgba(255, 102, 0, 0.35);
+  box-shadow: 0 0 8px rgba(255, 102, 0, 0.1);
+}

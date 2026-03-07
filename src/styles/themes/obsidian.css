@@ -1,0 +1,179 @@
+/* Obsidian theme — pure black, razor-thin white borders, ultra minimalist */
+@keyframes obsidianFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+[data-theme="obsidian"] {
+  --font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
+  --font-display: 'Segoe UI', 'Helvetica Neue', sans-serif;
+  --border-radius: 2px;
+  --grid-gap: 1px;
+
+  --color-bg: #000000;
+  --color-app-bg: #000000;
+  --color-cell-hidden: #111111;
+  --color-cell-hidden-hover: #1a1a1a;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #141414, #0c0c0c);
+  --color-cell-revealed: #080808;
+  --color-cell-border-light: #2a2a2a;
+  --color-cell-border-dark: #000000;
+  --color-mine: #ffffff;
+  --color-mine-hit: #ff2020;
+  --color-flag: #cccccc;
+  --color-text: #b0b0b0;
+  --color-text-secondary: #606060;
+
+  --color-num-1: #6688bb;
+  --color-num-2: #88aa88;
+  --color-num-3: #bb6666;
+  --color-num-4: #8866aa;
+  --color-num-5: #aa8855;
+  --color-num-6: #66aabb;
+  --color-num-7: #a0a0a0;
+  --color-num-8: #505050;
+
+  --color-header-bg: #080808;
+  --color-header-gradient: linear-gradient(180deg, #0c0c0c, #040404);
+  --color-lcd-bg: #000000;
+  --color-lcd-text: #a0a0a0;
+  --color-modal-bg: #0a0a0a;
+  --color-modal-overlay: rgba(0, 0, 0, 0.96);
+  --color-btn-bg: #111111;
+  --color-btn-hover: #1a1a1a;
+  --color-btn-gradient: linear-gradient(180deg, #141414, #0c0c0c);
+  --color-border: #222222;
+  --color-fog: rgba(0, 0, 0, 0.97);
+  --color-scan-highlight: rgba(255, 255, 255, 0.04);
+  --color-golden: #cccccc;
+  --color-accent: #888888;
+  --color-accent-hover: #aaaaaa;
+  --color-accent-glow: rgba(255, 255, 255, 0.06);
+  --color-win: #aaaaaa;
+  --color-loss: #ff2020;
+  --color-surface: rgba(255, 255, 255, 0.02);
+}
+
+[data-theme="obsidian"] #app {
+  background: #000000;
+  border: 1px solid #1a1a1a;
+  box-shadow: none;
+  border-radius: 2px;
+}
+
+[data-theme="obsidian"] #game-title {
+  color: #cccccc;
+  text-shadow: none;
+  font-weight: 300;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+}
+
+[data-theme="obsidian"] #title-subtitle {
+  color: #505050;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+/* Razor-thin grid */
+[data-theme="obsidian"] #board {
+  border: 1px solid #1a1a1a;
+  border-radius: 2px;
+  box-shadow: none;
+}
+
+[data-theme="obsidian"] .cell.unrevealed {
+  border: 1px solid #1a1a1a;
+  border-radius: 1px;
+  box-shadow: none;
+}
+
+[data-theme="obsidian"] .cell.unrevealed:hover {
+  background: #1a1a1a;
+  border-color: #333333;
+}
+
+[data-theme="obsidian"] .cell.revealed {
+  background: #080808;
+  border: 1px solid #141414;
+  border-radius: 1px;
+  animation: obsidianFadeIn 0.15s ease-out;
+}
+
+[data-theme="obsidian"] .smiley-btn {
+  border: 1px solid #222222;
+  border-radius: 2px;
+  box-shadow: none;
+}
+
+[data-theme="obsidian"] .lcd-display {
+  border: 1px solid #1a1a1a;
+  border-radius: 2px;
+  text-shadow: none;
+}
+
+[data-theme="obsidian"] .nav-btn {
+  border-color: #1a1a1a;
+  border-radius: 2px;
+}
+
+[data-theme="obsidian"] .nav-btn:hover {
+  background: #1a1a1a;
+  box-shadow: none;
+}
+
+[data-theme="obsidian"] .powerup-btn {
+  border-color: #1a1a1a;
+  border-radius: 2px;
+}
+
+[data-theme="obsidian"] .modal-content {
+  border: 1px solid #1a1a1a;
+  border-radius: 4px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  background: #0a0a0a;
+}
+
+[data-theme="obsidian"] .modal-close:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="obsidian"] .game-header {
+  background: #060606;
+  border-bottom: 1px solid #1a1a1a;
+}
+
+[data-theme="obsidian"] .action-btn {
+  border-radius: 2px;
+  border: 1px solid #222222;
+  letter-spacing: 1px;
+}
+
+[data-theme="obsidian"] .mode-btn {
+  border-radius: 2px;
+}
+
+[data-theme="obsidian"] .achievement-item.unlocked {
+  border-color: #333333;
+  box-shadow: none;
+}
+
+/* Minimal scrollbar */
+[data-theme="obsidian"] ::-webkit-scrollbar {
+  width: 4px;
+}
+
+[data-theme="obsidian"] ::-webkit-scrollbar-track {
+  background: #000000;
+}
+
+[data-theme="obsidian"] ::-webkit-scrollbar-thumb {
+  background: #222222;
+  border-radius: 2px;
+}

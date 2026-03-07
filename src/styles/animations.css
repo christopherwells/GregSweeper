@@ -61,13 +61,7 @@
   90% { transform: translate(-1px, 0px); }
 }
 
-/* ── Golden Reveal (Power-Up) ────────────── */
-
-@keyframes goldenPulse {
-  0% { box-shadow: 0 0 0 0 rgba(249, 168, 37, 0.7); transform: scale(0.8); }
-  40% { box-shadow: 0 0 24px 10px rgba(249, 168, 37, 0.4); transform: scale(1.12); }
-  100% { box-shadow: 0 0 0 0 rgba(249, 168, 37, 0); transform: scale(1); }
-}
+/* ── Golden Reveal — see global.css for enhanced version ── */
 
 /* ── Fog Lift ────────────────────────────── */
 

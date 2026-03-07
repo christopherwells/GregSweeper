@@ -1,0 +1,164 @@
+/* Matrix theme — green-on-black terminal, monospace, digital rain aesthetic */
+[data-theme="matrix"] {
+  --font-family: 'Courier New', 'Consolas', monospace;
+  --font-display: 'Courier New', 'Consolas', monospace;
+  --border-radius: 0px;
+  --grid-gap: 1px;
+
+  --color-bg: #000000;
+  --color-app-bg: #000a00;
+  --color-cell-hidden: #0a1a0a;
+  --color-cell-hidden-hover: #0f2a0f;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #0e220e, #061206);
+  --color-cell-revealed: #020802;
+  --color-cell-border-light: #00cc00;
+  --color-cell-border-dark: #003300;
+  --color-mine: #ff0000;
+  --color-mine-hit: #cc0000;
+  --color-flag: #00ff00;
+  --color-text: #00cc00;
+  --color-text-secondary: #008800;
+
+  --color-num-1: #00ff00;
+  --color-num-2: #00cc00;
+  --color-num-3: #ff0000;
+  --color-num-4: #00ff88;
+  --color-num-5: #ccaa00;
+  --color-num-6: #00ddaa;
+  --color-num-7: #00ff00;
+  --color-num-8: #006600;
+
+  --color-header-bg: #000a00;
+  --color-header-gradient: linear-gradient(180deg, #001a00, #000a00);
+  --color-lcd-bg: #000000;
+  --color-lcd-text: #00ff00;
+  --color-modal-bg: #000a00;
+  --color-modal-overlay: rgba(0, 0, 0, 0.95);
+  --color-btn-bg: #0a1a0a;
+  --color-btn-hover: #0f2a0f;
+  --color-btn-gradient: linear-gradient(180deg, #0e220e, #061206);
+  --color-border: rgba(0, 204, 0, 0.3);
+  --color-fog: rgba(0, 0, 0, 0.96);
+  --color-scan-highlight: rgba(0, 255, 0, 0.1);
+  --color-golden: #00ff00;
+  --color-accent: #00ff00;
+  --color-accent-hover: #00cc00;
+  --color-accent-glow: rgba(0, 255, 0, 0.2);
+  --color-win: #00ff00;
+  --color-loss: #ff0000;
+  --color-surface: rgba(0, 255, 0, 0.02);
+}
+
+[data-theme="matrix"] #app {
+  background: #000000;
+  border: 1px solid rgba(0, 204, 0, 0.3);
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.05);
+  border-radius: 0;
+}
+
+[data-theme="matrix"] #game-title {
+  color: #00ff00;
+  text-shadow: 0 0 10px rgba(0, 255, 0, 0.6), 0 0 20px rgba(0, 255, 0, 0.3);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+}
+
+[data-theme="matrix"] #title-subtitle {
+  color: #00aa00;
+  text-shadow: 0 0 6px rgba(0, 255, 0, 0.3);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+/* Terminal-style board */
+[data-theme="matrix"] #board {
+  border: 1px solid rgba(0, 204, 0, 0.3);
+  border-radius: 0;
+  box-shadow: 0 0 12px rgba(0, 255, 0, 0.06);
+}
+
+[data-theme="matrix"] .cell.unrevealed {
+  border-radius: 0;
+  border: 1px solid rgba(0, 204, 0, 0.15);
+}
+
+[data-theme="matrix"] .cell.unrevealed:hover {
+  background: #0f2a0f;
+  box-shadow: 0 0 6px rgba(0, 255, 0, 0.15);
+  border-color: rgba(0, 204, 0, 0.4);
+}
+
+[data-theme="matrix"] .cell.revealed {
+  border-radius: 0;
+  border: 1px solid rgba(0, 204, 0, 0.08);
+  background: #020802;
+}
+
+[data-theme="matrix"] .cell.revealed.num-1 { text-shadow: 0 0 6px rgba(0, 255, 0, 0.5); }
+[data-theme="matrix"] .cell.revealed.num-2 { text-shadow: 0 0 6px rgba(0, 204, 0, 0.5); }
+[data-theme="matrix"] .cell.revealed.num-3 { text-shadow: 0 0 6px rgba(255, 0, 0, 0.5); }
+[data-theme="matrix"] .cell.revealed.num-4 { text-shadow: 0 0 6px rgba(0, 255, 136, 0.5); }
+
+[data-theme="matrix"] .cell.mine {
+  text-shadow: 0 0 8px rgba(255, 0, 0, 0.6);
+}
+
+[data-theme="matrix"] .smiley-btn {
+  border: 1px solid rgba(0, 204, 0, 0.3);
+  border-radius: 0;
+  box-shadow: 0 0 6px rgba(0, 255, 0, 0.1);
+}
+
+[data-theme="matrix"] .lcd-display {
+  text-shadow: 0 0 8px rgba(0, 255, 0, 0.6), 0 0 16px rgba(0, 255, 0, 0.2);
+  border: 1px solid rgba(0, 204, 0, 0.3);
+  border-radius: 0;
+}
+
+[data-theme="matrix"] .nav-btn {
+  border-color: rgba(0, 204, 0, 0.2);
+  border-radius: 0;
+}
+
+[data-theme="matrix"] .nav-btn:hover {
+  box-shadow: 0 0 8px rgba(0, 255, 0, 0.15);
+}
+
+[data-theme="matrix"] .powerup-btn {
+  border-color: rgba(0, 204, 0, 0.2);
+  border-radius: 0;
+}
+
+[data-theme="matrix"] .modal-content {
+  border: 1px solid rgba(0, 204, 0, 0.3);
+  border-radius: 0;
+  box-shadow: 0 0 30px rgba(0, 255, 0, 0.08);
+  background: #000a00;
+}
+
+[data-theme="matrix"] .modal-close:hover {
+  background: rgba(0, 255, 0, 0.08);
+}
+
+[data-theme="matrix"] .game-header {
+  background: linear-gradient(180deg, #001200, #000a00);
+  border-bottom: 1px solid rgba(0, 204, 0, 0.2);
+}
+
+[data-theme="matrix"] .action-btn {
+  border-radius: 0;
+  border: 1px solid rgba(0, 204, 0, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+[data-theme="matrix"] .mode-btn {
+  border-radius: 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+[data-theme="matrix"] .achievement-item.unlocked {
+  border-color: rgba(0, 204, 0, 0.3);
+  box-shadow: 0 0 6px rgba(0, 255, 0, 0.06);
+}

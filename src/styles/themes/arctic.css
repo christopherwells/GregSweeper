@@ -1,0 +1,147 @@
+/* Arctic theme — frosted glass, pale blue ice, crystalline edges */
+[data-theme="arctic"] {
+  --font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
+  --font-display: 'Segoe UI', 'Helvetica Neue', sans-serif;
+  --border-radius: 8px;
+  --grid-gap: 2px;
+
+  --color-bg: #e8f0f8;
+  --color-app-bg: #dce8f4;
+  --color-cell-hidden: #c0d8f0;
+  --color-cell-hidden-hover: #d0e4f8;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #d0e4f8, #b0ccec);
+  --color-cell-revealed: #eaf2fa;
+  --color-cell-border-light: #d8e8f6;
+  --color-cell-border-dark: #90b0d0;
+  --color-mine: #3080cc;
+  --color-mine-hit: #1860aa;
+  --color-flag: #4090dd;
+  --color-text: #1a3050;
+  --color-text-secondary: #5080a0;
+
+  --color-num-1: #2070bb;
+  --color-num-2: #10806a;
+  --color-num-3: #c04050;
+  --color-num-4: #4848aa;
+  --color-num-5: #884420;
+  --color-num-6: #206880;
+  --color-num-7: #2a3e56;
+  --color-num-8: #7898b0;
+
+  --color-header-bg: #c0d8f0;
+  --color-header-gradient: linear-gradient(180deg, #d4e8f8, #b8d0ec);
+  --color-lcd-bg: #102838;
+  --color-lcd-text: #80d0ff;
+  --color-modal-bg: rgba(220, 232, 244, 0.92);
+  --color-modal-overlay: rgba(20, 40, 60, 0.35);
+  --color-btn-bg: #c0d8f0;
+  --color-btn-hover: #d0e4f8;
+  --color-btn-gradient: linear-gradient(180deg, #d0e4f8, #b0ccec);
+  --color-border: #90b0d0;
+  --color-fog: rgba(20, 40, 60, 0.8);
+  --color-scan-highlight: rgba(64, 144, 221, 0.15);
+  --color-golden: #e0a020;
+  --color-accent: #4090dd;
+  --color-accent-hover: #2878cc;
+  --color-accent-glow: rgba(64, 144, 221, 0.2);
+  --color-win: #40b888;
+  --color-loss: #c04050;
+  --color-surface: rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="arctic"] #app {
+  background: linear-gradient(180deg, #e8f0f8, #d0e0f0);
+  box-shadow: 0 8px 32px rgba(100, 140, 180, 0.2), 0 1px 0 rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="arctic"] #game-title {
+  background: linear-gradient(135deg, #4090dd, #80d0ff, #a0e0ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: none;
+}
+
+[data-theme="arctic"] #title-subtitle {
+  color: #4090dd;
+}
+
+/* Frosted glass modals */
+[data-theme="arctic"] .modal-content {
+  background: rgba(220, 232, 244, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(100, 140, 180, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+[data-theme="arctic"] .modal-close:hover {
+  background: rgba(64, 144, 221, 0.1);
+}
+
+/* Ice crystal cell borders */
+[data-theme="arctic"] .cell.unrevealed {
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 1px 2px rgba(100, 140, 180, 0.15);
+}
+
+[data-theme="arctic"] .cell.unrevealed:hover {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 0 8px rgba(64, 144, 221, 0.2);
+}
+
+[data-theme="arctic"] .cell.revealed {
+  background: #eaf2fa;
+  border: 1px solid rgba(144, 176, 208, 0.3);
+}
+
+[data-theme="arctic"] #board {
+  border-color: rgba(144, 176, 208, 0.5);
+  box-shadow: 0 4px 16px rgba(100, 140, 180, 0.15), inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+  border-radius: 12px;
+}
+
+[data-theme="arctic"] .smiley-btn {
+  border: 1px solid rgba(144, 176, 208, 0.5);
+  box-shadow: 0 2px 4px rgba(100, 140, 180, 0.15);
+}
+
+[data-theme="arctic"] .lcd-display {
+  text-shadow: 0 0 8px rgba(128, 208, 255, 0.4);
+  border-color: rgba(144, 176, 208, 0.4);
+}
+
+[data-theme="arctic"] .nav-btn {
+  border-color: rgba(144, 176, 208, 0.4);
+  background: rgba(255, 255, 255, 0.3);
+}
+
+[data-theme="arctic"] .nav-btn:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="arctic"] .powerup-btn {
+  border-color: rgba(144, 176, 208, 0.4);
+  background: rgba(255, 255, 255, 0.3);
+}
+
+[data-theme="arctic"] .game-header {
+  background: linear-gradient(180deg, rgba(208, 228, 248, 0.8), rgba(192, 216, 240, 0.8));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+[data-theme="arctic"] .action-btn {
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+[data-theme="arctic"] .mode-btn {
+  border-radius: 12px;
+}
+
+[data-theme="arctic"] .achievement-item.unlocked {
+  border-color: rgba(64, 144, 221, 0.3);
+  background: rgba(255, 255, 255, 0.4);
+}

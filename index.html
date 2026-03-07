@@ -35,7 +35,20 @@
   <link rel="stylesheet" href="src/styles/themes/royal.css">
   <link rel="stylesheet" href="src/styles/themes/prismatic.css">
   <link rel="stylesheet" href="src/styles/themes/void.css">
+  <link rel="stylesheet" href="src/styles/themes/arctic.css">
+  <link rel="stylesheet" href="src/styles/themes/jungle.css">
+  <link rel="stylesheet" href="src/styles/themes/obsidian.css">
+  <link rel="stylesheet" href="src/styles/themes/matrix.css">
+  <link rel="stylesheet" href="src/styles/themes/inferno.css">
+  <link rel="stylesheet" href="src/styles/themes/celestial.css">
+  <link rel="stylesheet" href="src/styles/themes/bloodmoon.css">
+  <link rel="stylesheet" href="src/styles/themes/synthwave.css">
+  <link rel="stylesheet" href="src/styles/themes/supernova.css">
+  <link rel="stylesheet" href="src/styles/themes/legendary.css">
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700;900&family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+  <!-- Firebase SDK (compat) for online daily leaderboard -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
 </head>
 <body>
   <div id="app">
@@ -228,6 +241,56 @@
                 <span class="swatch-name">Void</span>
                 <span class="swatch-lock hidden">&#128274; Level 20</span>
               </button>
+              <button class="theme-swatch" data-theme="arctic">
+                <span class="swatch-color" style="background: linear-gradient(135deg, #e8f4ff, #b8d8f0)"></span>
+                <span class="swatch-name">Arctic</span>
+                <span class="swatch-lock hidden">&#128274; Level 21</span>
+              </button>
+              <button class="theme-swatch" data-theme="jungle">
+                <span class="swatch-color" style="background: linear-gradient(135deg, #1a3a1a, #2d5a2d)"></span>
+                <span class="swatch-name">Jungle</span>
+                <span class="swatch-lock hidden">&#128274; Level 22</span>
+              </button>
+              <button class="theme-swatch" data-theme="obsidian">
+                <span class="swatch-color" style="background: #000; border: 1px solid #333"></span>
+                <span class="swatch-name">Obsidian</span>
+                <span class="swatch-lock hidden">&#128274; Level 23</span>
+              </button>
+              <button class="theme-swatch" data-theme="matrix">
+                <span class="swatch-color" style="background: #000; border: 1px solid #0a0"></span>
+                <span class="swatch-name">Matrix</span>
+                <span class="swatch-lock hidden">&#128274; Level 24</span>
+              </button>
+              <button class="theme-swatch" data-theme="inferno">
+                <span class="swatch-color" style="background: linear-gradient(135deg, #2a0a00, #8b2500)"></span>
+                <span class="swatch-name">Inferno</span>
+                <span class="swatch-lock hidden">&#128274; Level 25</span>
+              </button>
+              <button class="theme-swatch" data-theme="celestial">
+                <span class="swatch-color" style="background: linear-gradient(135deg, #0a0a2e, #1a1a4e); border: 1px solid #c8a030"></span>
+                <span class="swatch-name">Celestial</span>
+                <span class="swatch-lock hidden">&#128274; Level 26</span>
+              </button>
+              <button class="theme-swatch" data-theme="bloodmoon">
+                <span class="swatch-color" style="background: linear-gradient(135deg, #0c0204, #3a0810)"></span>
+                <span class="swatch-name">Blood Moon</span>
+                <span class="swatch-lock hidden">&#128274; Level 27</span>
+              </button>
+              <button class="theme-swatch" data-theme="synthwave">
+                <span class="swatch-color" style="background: linear-gradient(135deg, #0a0020, #2a0860, #ff2090)"></span>
+                <span class="swatch-name">Synthwave</span>
+                <span class="swatch-lock hidden">&#128274; Level 28</span>
+              </button>
+              <button class="theme-swatch" data-theme="supernova">
+                <span class="swatch-color" style="background: linear-gradient(135deg, #ff3300, #ff8800, #ffcc00)"></span>
+                <span class="swatch-name">Supernova</span>
+                <span class="swatch-lock hidden">&#128274; Level 29</span>
+              </button>
+              <button class="theme-swatch" data-theme="legendary">
+                <span class="swatch-color" style="background: linear-gradient(135deg, #140a22, #ffc830, #b060ff)"></span>
+                <span class="swatch-name">Legendary</span>
+                <span class="swatch-lock hidden">&#128274; Level 30</span>
+              </button>
             </div>
           </div>
           <div class="setting-group">
@@ -242,8 +305,8 @@
               <h4>Board Size</h4>
               <div class="timed-diff-buttons">
                 <button class="timed-diff-btn active" data-level="1">Beginner<span>9×9 · 10 mines</span></button>
-                <button class="timed-diff-btn" data-level="2">Intermediate<span>16×16 · 40 mines</span></button>
-                <button class="timed-diff-btn" data-level="3">Expert<span>16×30 · 99 mines</span></button>
+                <button class="timed-diff-btn" data-level="2">Intermediate<span>11×11 · 25 mines</span></button>
+                <button class="timed-diff-btn" data-level="3">Expert<span>13×13 · 40 mines</span></button>
               </div>
             </div>
           </div>
@@ -315,14 +378,14 @@
     <div id="leaderboard-modal" class="modal hidden">
       <div class="modal-content">
         <div class="modal-header">
-          <h2>Daily Leaderboard</h2>
+          <h2>Daily Leaderboard <span id="leaderboard-status" class="lb-status"></span></h2>
           <button class="modal-close">&times;</button>
         </div>
         <div class="modal-body">
           <p id="leaderboard-date"></p>
           <table id="leaderboard-table">
             <thead>
-              <tr><th>#</th><th>Name</th><th>Time</th></tr>
+              <tr><th>#</th><th>Name</th><th>Time</th><th>💥</th></tr>
             </thead>
             <tbody id="leaderboard-body"></tbody>
           </table>
@@ -342,31 +405,31 @@
           <div class="help-section">
             <h3>Basics</h3>
             <p><strong>Left-click</strong> to reveal a cell</p>
-            <p><strong>Right-click</strong> to place/remove a flag</p>
+            <p><strong>Right-click</strong> (or long-press) to place/remove a flag</p>
             <p><strong>Click a number</strong> to chord-reveal (if flags match)</p>
             <p>Reveal all safe cells to win!</p>
           </div>
           <div class="help-section">
-            <h3>Power-Ups</h3>
-            <p>🔍 <strong>Reveal Safe</strong> — reveals a random safe cell</p>
-            <p>🛡️ <strong>Shield</strong> — survive one mine click</p>
-            <p>🎯 <strong>Scan</strong> — shows mine count in a row/column</p>
-            <p>⏸️ <strong>Freeze</strong> — pauses timer for 15 seconds</p>
-            <p>🔬 <strong>X-Ray</strong> — reveals mines in a 5&times;5 area</p>
-            <p>🔓 <strong>Decode</strong> — reveals all hidden ? cells (Fog)</p>
+            <h3>Power-Ups (Challenge &amp; Fog)</h3>
+            <p>🔍 <strong>Reveal Safe</strong> (1) — reveals a random safe cell</p>
+            <p>🛡️ <strong>Shield</strong> (2) — blocks one mine, shows defused bomb</p>
+            <p>🎯 <strong>Scan</strong> (3) — shows mine count in a row/column</p>
+            <p>⏸️ <strong>Freeze</strong> (4) — pauses timer for 15 seconds</p>
+            <p>🔬 <strong>X-Ray</strong> (5) — reveals mines in a 5&times;5 area</p>
+            <p>🔓 <strong>Decode</strong> (6) — reveals all hidden ? cells (Fog)</p>
             <p>Earn power-ups by winning games!</p>
           </div>
           <div class="help-section">
             <h3>Game Modes</h3>
-            <p><strong>Challenge</strong> — progressive difficulty with power-ups</p>
-            <p><strong>Timed</strong> — race against the clock</p>
+            <p><strong>Challenge</strong> — 30 levels of increasing difficulty with power-ups</p>
+            <p><strong>Timed</strong> — pick a difficulty, race for your best time. Speed ratings: 💎 Diamond, 🥇 Gold, 🥈 Silver, 🥉 Bronze</p>
             <p><strong>Fog of War</strong> — limited vision, hidden numbers, creeping fog</p>
-            <p><strong>Daily</strong> — same board for everyone today</p>
+            <p><strong>Daily</strong> — same board for everyone today. Online leaderboard!</p>
           </div>
           <div class="help-section">
             <h3>Keyboard Shortcuts</h3>
             <p><strong>R</strong> — restart game</p>
-            <p><strong>1–7</strong> — use power-ups</p>
+            <p><strong>1</strong> Reveal &bull; <strong>2</strong> Shield &bull; <strong>3</strong> Scan &bull; <strong>4</strong> Freeze &bull; <strong>5</strong> X-Ray &bull; <strong>6</strong> Decode</p>
             <p><strong>Esc</strong> — close modal</p>
           </div>
         </div>

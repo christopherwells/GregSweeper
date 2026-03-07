@@ -34,6 +34,13 @@ export function defuseMine(board, row, col) {
   recalcAreaAdjacency(board, row, col);
 }
 
+/** Shield defuse: marks cell as defused (visual distinction from regular reveal) */
+export function shieldDefuse(board, row, col) {
+  board[row][col].isMine = false;
+  board[row][col].isDefused = true;
+  recalcAreaAdjacency(board, row, col);
+}
+
 // Recalculate adjacency counts in area around (centerRow, centerCol)
 function recalcAreaAdjacency(board, centerRow, centerCol) {
   const rows = board.length;

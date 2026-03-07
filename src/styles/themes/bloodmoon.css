@@ -1,0 +1,160 @@
+/* Bloodmoon theme — crimson and black, ominous pulsing red */
+@keyframes bloodPulse {
+  0%, 100% {
+    border-color: rgba(180, 0, 20, 0.4);
+    box-shadow: 0 0 16px rgba(180, 0, 20, 0.12), 0 4px 20px rgba(0, 0, 0, 0.4);
+  }
+  50% {
+    border-color: rgba(220, 0, 30, 0.6);
+    box-shadow: 0 0 28px rgba(220, 0, 30, 0.2), 0 4px 20px rgba(0, 0, 0, 0.4);
+  }
+}
+
+@keyframes bloodGlow {
+  0%, 100% {
+    text-shadow: 0 0 10px rgba(200, 0, 20, 0.5), 0 0 20px rgba(200, 0, 20, 0.2);
+  }
+  50% {
+    text-shadow: 0 0 16px rgba(220, 0, 30, 0.7), 0 0 32px rgba(220, 0, 30, 0.3);
+  }
+}
+
+[data-theme="bloodmoon"] {
+  --font-family: 'Segoe UI', 'Arial', sans-serif;
+  --font-display: 'Segoe UI', 'Arial', sans-serif;
+  --border-radius: 3px;
+  --grid-gap: 2px;
+
+  --color-bg: #080000;
+  --color-app-bg: #0c0204;
+  --color-cell-hidden: #2a0810;
+  --color-cell-hidden-hover: #3e0c16;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #320a12, #200608);
+  --color-cell-revealed: #100204;
+  --color-cell-border-light: #4a1020;
+  --color-cell-border-dark: #0a0002;
+  --color-mine: #cc0020;
+  --color-mine-hit: #ff0020;
+  --color-flag: #dd1030;
+  --color-text: #e0b0b8;
+  --color-text-secondary: #905060;
+
+  --color-num-1: #dd3040;
+  --color-num-2: #ff6060;
+  --color-num-3: #cc0020;
+  --color-num-4: #aa2040;
+  --color-num-5: #880018;
+  --color-num-6: #ee5050;
+  --color-num-7: #d0b0b8;
+  --color-num-8: #603040;
+
+  --color-header-bg: #180408;
+  --color-header-gradient: linear-gradient(180deg, #200810, #100204);
+  --color-lcd-bg: #060000;
+  --color-lcd-text: #dd1030;
+  --color-modal-bg: #120308;
+  --color-modal-overlay: rgba(6, 0, 0, 0.94);
+  --color-btn-bg: #2a0810;
+  --color-btn-hover: #3e0c16;
+  --color-btn-gradient: linear-gradient(180deg, #320a12, #200608);
+  --color-border: rgba(180, 0, 20, 0.35);
+  --color-fog: rgba(6, 0, 0, 0.95);
+  --color-scan-highlight: rgba(220, 0, 30, 0.15);
+  --color-golden: #ff4040;
+  --color-accent: #dd1030;
+  --color-accent-hover: #cc0020;
+  --color-accent-glow: rgba(220, 16, 48, 0.3);
+  --color-win: #ff4040;
+  --color-loss: #cc0020;
+  --color-surface: rgba(200, 0, 20, 0.04);
+}
+
+[data-theme="bloodmoon"] #app {
+  background: linear-gradient(180deg, #0c0204, #080000);
+  border: 1px solid rgba(180, 0, 20, 0.3);
+  box-shadow: 0 8px 32px rgba(100, 0, 10, 0.15);
+}
+
+[data-theme="bloodmoon"] #game-title {
+  background: linear-gradient(135deg, #cc0020, #ff3040, #dd1030);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: bloodGlow 3s ease-in-out infinite;
+}
+
+[data-theme="bloodmoon"] #title-subtitle {
+  color: #cc0020;
+  text-shadow: 0 0 6px rgba(200, 0, 20, 0.3);
+}
+
+/* Pulsing red board border */
+[data-theme="bloodmoon"] #board {
+  border: 2px solid rgba(180, 0, 20, 0.4);
+  animation: bloodPulse 4s ease-in-out infinite;
+  border-radius: 4px;
+}
+
+[data-theme="bloodmoon"] .cell.unrevealed {
+  box-shadow: inset 0 1px 0 rgba(200, 0, 20, 0.06), 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="bloodmoon"] .cell.unrevealed:hover {
+  background: #3e0c16;
+  box-shadow: 0 0 8px rgba(200, 0, 20, 0.25);
+}
+
+[data-theme="bloodmoon"] .cell.revealed {
+  background: #100204;
+  border-color: rgba(74, 16, 32, 0.3);
+}
+
+[data-theme="bloodmoon"] .cell.revealed.num-1 { text-shadow: 0 0 6px rgba(221, 48, 64, 0.5); }
+[data-theme="bloodmoon"] .cell.revealed.num-2 { text-shadow: 0 0 6px rgba(255, 96, 96, 0.5); }
+[data-theme="bloodmoon"] .cell.revealed.num-3 { text-shadow: 0 0 6px rgba(204, 0, 32, 0.5); }
+
+[data-theme="bloodmoon"] .cell.mine {
+  text-shadow: 0 0 10px rgba(255, 0, 32, 0.6);
+}
+
+[data-theme="bloodmoon"] .smiley-btn {
+  border: 1px solid rgba(180, 0, 20, 0.3);
+  box-shadow: 0 0 8px rgba(200, 0, 20, 0.1);
+}
+
+[data-theme="bloodmoon"] .lcd-display {
+  text-shadow: 0 0 8px rgba(221, 16, 48, 0.5), 0 0 16px rgba(200, 0, 20, 0.2);
+  border-color: rgba(180, 0, 20, 0.25);
+}
+
+[data-theme="bloodmoon"] .nav-btn {
+  border-color: rgba(180, 0, 20, 0.25);
+}
+
+[data-theme="bloodmoon"] .nav-btn:hover {
+  box-shadow: 0 0 8px rgba(200, 0, 20, 0.15);
+}
+
+[data-theme="bloodmoon"] .powerup-btn {
+  border-color: rgba(180, 0, 20, 0.25);
+}
+
+[data-theme="bloodmoon"] .modal-content {
+  border: 1px solid rgba(180, 0, 20, 0.3);
+  box-shadow: 0 8px 40px rgba(80, 0, 10, 0.4);
+  background: #120308;
+}
+
+[data-theme="bloodmoon"] .modal-close:hover {
+  background: rgba(200, 0, 20, 0.1);
+}
+
+[data-theme="bloodmoon"] .game-header {
+  background: linear-gradient(180deg, #1a0608, #100204);
+  border-bottom: 1px solid rgba(180, 0, 20, 0.2);
+}
+
+[data-theme="bloodmoon"] .achievement-item.unlocked {
+  border-color: rgba(200, 0, 20, 0.35);
+  box-shadow: 0 0 6px rgba(200, 0, 20, 0.1);
+}

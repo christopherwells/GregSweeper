@@ -1,12 +1,12 @@
 import { generateBoard, createEmptyBoard, calculateAdjacency } from './logic/boardGenerator.js?v=1.7';
 import { floodFillReveal, checkWin, revealAllMines, chordReveal } from './logic/boardSolver.js?v=1.7';
-import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, MAX_LEVEL, MAX_TIMED_LEVEL } from './logic/difficulty.js?v=1.7';
+import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL } from './logic/difficulty.js?v=2.5';
 import {
   computeVisibleCells, getHiddenNumberRate, applyHiddenNumbers,
   decodeAdjacentHidden, decodeAllHidden,
   getRefogTimeout, computeRefogCells,
 } from './logic/fogOfWar.js?v=1.7';
-import { findSafeCell, scanRowCol, defuseMine, xRayScan } from './logic/powerUps.js?v=1.7';
+import { findSafeCell, scanRowCol, defuseMine, shieldDefuse, xRayScan } from './logic/powerUps.js?v=2.5';
 import { createDailyRNG } from './logic/seededRandom.js?v=1.7';
 import {
   loadStats, saveGameResult, resetStats,
@@ -23,33 +23,46 @@ import {
 import {
   getAchievementState, getTotalScore, checkNewUnlocks,
   getHighestTier, getAllTierNames, getTierIcon, getTierColor,
-} from './logic/achievements.js?v=1.7';
+} from './logic/achievements.js?v=2.5';
+import {
+  initFirebase, isFirebaseOnline, submitOnlineScore, fetchOnlineLeaderboard,
+} from './firebase/firebaseLeaderboard.js?v=2.5';
 
 // ── Theme Unlock Progression ──────────────────────────
 // Themes unlock based on highest level ever beaten (permanent).
 // Dying in normal mode resets current level to 1 but keeps unlocks.
 const THEME_UNLOCKS = {
-  classic:          { levelRequired: 0,  displayName: 'Classic' },
-  dark:             { levelRequired: 0,  displayName: 'Dark' },
-  ocean:            { levelRequired: 2,  displayName: 'Ocean' },
-  sunset:           { levelRequired: 3,  displayName: 'Sunset' },
-  forest:           { levelRequired: 4,  displayName: 'Forest' },
-  candy:            { levelRequired: 5,  displayName: 'Candy' },
-  midnight:         { levelRequired: 6,  displayName: 'Midnight' },
-  stealth:          { levelRequired: 7,  displayName: 'Stealth' },
-  neon:             { levelRequired: 8,  displayName: 'Neon' },
-  'cherry-blossom': { levelRequired: 9,  displayName: 'Cherry Blossom' },
-  aurora:           { levelRequired: 10, displayName: 'Aurora' },
-  volcano:          { levelRequired: 11, displayName: 'Volcano' },
-  ice:              { levelRequired: 12, displayName: 'Ice' },
-  cyberpunk:        { levelRequired: 13, displayName: 'Cyberpunk' },
-  retro:            { levelRequired: 14, displayName: 'Retro' },
-  holographic:      { levelRequired: 15, displayName: 'Holographic' },
-  galaxy:           { levelRequired: 16, displayName: 'Galaxy' },
-  toxic:            { levelRequired: 17, displayName: 'Toxic' },
-  royal:            { levelRequired: 18, displayName: 'Royal' },
-  prismatic:        { levelRequired: 19, displayName: 'Prismatic' },
-  void:             { levelRequired: 20, displayName: 'Void' },
+  classic:          { levelRequired: 0,  displayName: 'Classic',        mine: '💣', flag: '🚩' },
+  dark:             { levelRequired: 0,  displayName: 'Dark',           mine: '💣', flag: '🚩' },
+  ocean:            { levelRequired: 2,  displayName: 'Ocean',          mine: '🐡', flag: '⚓' },
+  sunset:           { levelRequired: 3,  displayName: 'Sunset',         mine: '☀️', flag: '🌅' },
+  forest:           { levelRequired: 4,  displayName: 'Forest',         mine: '🍄', flag: '🌿' },
+  candy:            { levelRequired: 5,  displayName: 'Candy',          mine: '🍬', flag: '🍭' },
+  midnight:         { levelRequired: 6,  displayName: 'Midnight',       mine: '🌙', flag: '⭐' },
+  stealth:          { levelRequired: 7,  displayName: 'Stealth',        mine: '💣', flag: '🏴' },
+  neon:             { levelRequired: 8,  displayName: 'Neon',           mine: '⚡', flag: '🎯' },
+  'cherry-blossom': { levelRequired: 9,  displayName: 'Cherry Blossom', mine: '🌸', flag: '🎀' },
+  aurora:           { levelRequired: 10, displayName: 'Aurora',         mine: '❄️', flag: '🌌' },
+  volcano:          { levelRequired: 11, displayName: 'Volcano',        mine: '🌋', flag: '🔥' },
+  ice:              { levelRequired: 12, displayName: 'Ice',            mine: '🧊', flag: '❄️' },
+  cyberpunk:        { levelRequired: 13, displayName: 'Cyberpunk',      mine: '🤖', flag: '🔌' },
+  retro:            { levelRequired: 14, displayName: 'Retro',          mine: '👾', flag: '🕹️' },
+  holographic:      { levelRequired: 15, displayName: 'Holographic',    mine: '💠', flag: '🔮' },
+  galaxy:           { levelRequired: 16, displayName: 'Galaxy',         mine: '☄️', flag: '🛸' },
+  toxic:            { levelRequired: 17, displayName: 'Toxic',          mine: '☢️', flag: '🧪' },
+  royal:            { levelRequired: 18, displayName: 'Royal',          mine: '👑', flag: '⚔️' },
+  prismatic:        { levelRequired: 19, displayName: 'Prismatic',      mine: '🌈', flag: '✨' },
+  void:             { levelRequired: 20, displayName: 'Void',           mine: '🕳️', flag: '⚫' },
+  arctic:           { levelRequired: 21, displayName: 'Arctic',         mine: '🐻‍❄️', flag: '🏔️' },
+  jungle:           { levelRequired: 22, displayName: 'Jungle',         mine: '🐍', flag: '🦜' },
+  obsidian:         { levelRequired: 23, displayName: 'Obsidian',       mine: '🖤', flag: '⛓️' },
+  matrix:           { levelRequired: 24, displayName: 'Matrix',         mine: '🟢', flag: '🔴' },
+  inferno:          { levelRequired: 25, displayName: 'Inferno',        mine: '🔥', flag: '💀' },
+  celestial:        { levelRequired: 26, displayName: 'Celestial',      mine: '🌟', flag: '🌠' },
+  bloodmoon:        { levelRequired: 27, displayName: 'Blood Moon',     mine: '🩸', flag: '🌑' },
+  synthwave:        { levelRequired: 28, displayName: 'Synthwave',      mine: '🎹', flag: '🎧' },
+  supernova:        { levelRequired: 29, displayName: 'Supernova',      mine: '💥', flag: '🚀' },
+  legendary:        { levelRequired: 30, displayName: 'Legendary',      mine: '🐉', flag: '🏰' },
 };
 
 function getUnlockedThemes() {
@@ -212,6 +225,14 @@ function renderBoard() {
   }
 }
 
+function getThemeEmoji(type) {
+  const currentTheme = document.documentElement.getAttribute('data-theme') || 'classic';
+  const themeInfo = THEME_UNLOCKS[currentTheme];
+  if (type === 'mine') return themeInfo?.mine || '💣';
+  if (type === 'flag') return themeInfo?.flag || '🚩';
+  return '💣';
+}
+
 function updateCell(r, c) {
   const cell = state.board[r]?.[c];
   if (!cell) return;
@@ -226,10 +247,13 @@ function updateCell(r, c) {
   }
 
   if (cell.isRevealed) {
-    if (cell.isMine) {
+    if (cell.isDefused) {
+      cellEl.className = 'cell revealed defused';
+      cellEl.textContent = getThemeEmoji('mine');
+    } else if (cell.isMine) {
       const isHit = state.hitMine && state.hitMine.row === r && state.hitMine.col === c;
       cellEl.className = `cell revealed mine${isHit ? ' mine-hit' : ''}`;
-      cellEl.textContent = '💣';
+      cellEl.textContent = getThemeEmoji('mine');
     } else if (cell.adjacentMines > 0) {
       if (cell.isHiddenNumber) {
         cellEl.className = 'cell revealed hidden-number';
@@ -248,7 +272,7 @@ function updateCell(r, c) {
     }
   } else if (cell.isFlagged) {
     cellEl.className = 'cell unrevealed flagged';
-    cellEl.textContent = '🚩';
+    cellEl.textContent = getThemeEmoji('flag');
   } else {
     cellEl.className = 'cell unrevealed';
     cellEl.textContent = '';
@@ -283,22 +307,26 @@ function updateHeader() {
   if (state.gameMode === 'daily') {
     const dateStr = new Date().toISOString().slice(0, 10);
     modeDisplay.textContent = `Daily ${dateStr}`;
+  } else if (state.gameMode === 'timed') {
+    const tdiffLabel = getTimedDifficulty(state.currentLevel);
+    modeDisplay.textContent = `Timed · ${tdiffLabel.label || 'Classic'}`;
   } else {
-    if (state.gameMode === 'timed' && state.timeLimit > 0) {
-      modeDisplay.textContent = `Timed (${state.timeLimit}s)`;
-    } else {
-      const modeLabels = { normal: 'Challenge', fogOfWar: 'Fog of War' };
-      modeDisplay.textContent = modeLabels[state.gameMode] || 'Challenge';
-    }
+    const modeLabels = { normal: 'Challenge', fogOfWar: 'Fog of War' };
+    modeDisplay.textContent = modeLabels[state.gameMode] || 'Challenge';
   }
 
-  // Show best time for timed/normal mode
+  // Show best time for timed/normal mode (with speed rating for timed)
   const stats = loadStats();
   if (bestTimeDisplay) {
     const bestKey = `level${state.currentLevel}`;
     const best = stats.bestTimes[bestKey];
     if (best != null && (state.gameMode === 'timed' || state.gameMode === 'normal')) {
-      bestTimeDisplay.textContent = `Best: ${best}s`;
+      if (state.gameMode === 'timed') {
+        const rating = getSpeedRating(state.currentLevel, best);
+        bestTimeDisplay.textContent = `Best: ${best}s ${rating.icon}`;
+      } else {
+        bestTimeDisplay.textContent = `Best: ${best}s`;
+      }
       bestTimeDisplay.classList.remove('hidden');
     } else {
       bestTimeDisplay.classList.add('hidden');
@@ -378,24 +406,15 @@ function updateStreakBorder() {
 // ── Timer ──────────────────────────────────────────────
 
 function getDisplayTime() {
-  if (state.gameMode === 'timed' && state.timeLimit > 0) {
-    return Math.max(0, state.timeLimit - state.elapsedTime);
-  }
+  // Timed mode always counts up now (no countdown)
   return Math.min(state.elapsedTime, 999);
 }
 
 function updateTimerDisplay() {
   const display = getDisplayTime();
   timerEl.textContent = String(display).padStart(3, '0');
-
-  // Urgency classes for timed mode countdown
-  if (state.gameMode === 'timed' && state.timeLimit > 0) {
-    const remaining = state.timeLimit - state.elapsedTime;
-    timerEl.classList.toggle('timer-critical', remaining <= 10 && remaining > 0);
-    timerEl.classList.toggle('timer-warning', remaining <= 30 && remaining > 10);
-  } else {
-    timerEl.classList.remove('timer-critical', 'timer-warning');
-  }
+  // No urgency classes — timed mode counts up
+  timerEl.classList.remove('timer-critical', 'timer-warning');
 }
 
 function startTimer() {
@@ -403,14 +422,6 @@ function startTimer() {
   state.timerId = setInterval(() => {
     state.elapsedTime++;
     updateTimerDisplay();
-
-    // Timed mode: check for time-out
-    if (state.gameMode === 'timed' && state.timeLimit > 0) {
-      const remaining = state.timeLimit - state.elapsedTime;
-      if (remaining <= 0) {
-        handleTimedLoss();
-      }
-    }
   }, 1000);
 }
 
@@ -512,7 +523,7 @@ function newGame() {
   state.flagCount = 0;
   state.revealedCount = 0;
   state.elapsedTime = 0;
-  state.timeLimit = state.gameMode === 'timed' ? (diff.timeLimit || 120) : 0;
+  state.timeLimit = 0; // Timed mode now counts up — no countdown
   state.shieldActive = false;
   state.scanMode = false;
   state.xrayMode = false;
@@ -595,7 +606,7 @@ function adjustCellSize() {
 // ── Zoom (for Timed mode large boards) ────────────────
 
 function needsZoom() {
-  return state.gameMode === 'timed' && (state.cols > 12 || state.rows > 12);
+  return state.gameMode === 'timed' && (state.cols > 13 || state.rows > 13);
 }
 
 function updateZoom() {
@@ -660,14 +671,31 @@ function revealCell(row, col) {
 
   const currentCell = state.board[row][col];
 
+  // Shield deactivates after any click (consumed whether mine or safe)
+  if (state.shieldActive && !currentCell.isMine) {
+    state.shieldActive = false;
+    updatePowerUpBar();
+  }
+
   if (currentCell.isMine) {
     if (state.shieldActive) {
       state.shieldActive = false;
       playShieldBreak();
-      defuseMine(state.board, row, col);
+      shieldDefuse(state.board, row, col);
       currentCell.isRevealed = true;
       state.revealedCount++;
       state.totalMines--;
+
+      // Shield-break flash
+      const flash = document.createElement('div');
+      flash.className = 'shield-break-flash';
+      document.getElementById('app').appendChild(flash);
+      setTimeout(() => flash.remove(), 600);
+
+      // Defused cell pop animation
+      const cellEl = boardEl.children[row * state.cols + col];
+      if (cellEl) cellEl.classList.add('shield-defused-cell');
+
       updateAllCells();
       updateHeader();
       updatePowerUpBar();
@@ -853,14 +881,24 @@ function handleWin() {
   const strikesInfo = state.gameMode === 'daily' && state.dailyBombHits > 0
     ? ` | 💥 ${state.dailyBombHits} strike${state.dailyBombHits !== 1 ? 's' : ''}`
     : '';
-  gameoverTime.textContent = `Time: ${state.elapsedTime}s${strikesInfo}`;
+
+  // Timed mode: show speed rating
+  if (state.gameMode === 'timed') {
+    const rating = getSpeedRating(state.currentLevel, state.elapsedTime);
+    gameoverTime.textContent = `Time: ${state.elapsedTime}s — ${rating.icon} ${rating.name}!`;
+  } else {
+    gameoverTime.textContent = `Time: ${state.elapsedTime}s${strikesInfo}`;
+  }
 
   const bestKey = `level${state.currentLevel}`;
   const isNewRecord = stats.bestTimes[bestKey] === state.elapsedTime;
   if (isNewRecord) {
-    gameoverRecord.textContent = state.gameMode === 'timed'
-      ? `🏆 New Record: ${state.elapsedTime}s!`
-      : '🎉 New Record!';
+    if (state.gameMode === 'timed') {
+      const rating = getSpeedRating(state.currentLevel, state.elapsedTime);
+      gameoverRecord.textContent = `🏆 New Record: ${state.elapsedTime}s ${rating.icon}`;
+    } else {
+      gameoverRecord.textContent = '🎉 New Record!';
+    }
     gameoverRecord.classList.remove('hidden');
 
     // Extra celebration for timed mode records
@@ -1019,7 +1057,19 @@ function useRevealSafe() {
   state.revealedCount++;
 
   const cellEl = boardEl.children[cell.row * state.cols + cell.col];
-  if (cellEl) cellEl.classList.add('golden-reveal');
+  if (cellEl) {
+    cellEl.classList.add('golden-reveal');
+    // Golden ripple ring
+    const rect = cellEl.getBoundingClientRect();
+    const boardRect = boardEl.getBoundingClientRect();
+    const ripple = document.createElement('div');
+    ripple.className = 'golden-ripple';
+    ripple.style.left = (rect.left - boardRect.left + rect.width / 2) + 'px';
+    ripple.style.top = (rect.top - boardRect.top + rect.height / 2) + 'px';
+    boardEl.style.position = 'relative';
+    boardEl.appendChild(ripple);
+    setTimeout(() => ripple.remove(), 800);
+  }
 
   if (state.fogOfWarEnabled) {
     state.visibleCells = computeVisibleCells(getRevealedCells(), state.fogRadius, state.rows, state.cols);
@@ -1055,14 +1105,45 @@ function performScan(row, col) {
   saveModePowerUps(state.gameMode, state.powerUps);
   const result = scanRowCol(state.board, row, col);
 
-  // Highlight the row and column
+  // Add sweep line animations across the scanned row and column
+  boardEl.style.position = 'relative';
+  const clickedEl = boardEl.children[row * state.cols + col];
+  if (clickedEl) {
+    const rect = clickedEl.getBoundingClientRect();
+    const boardRect = boardEl.getBoundingClientRect();
+
+    // Horizontal sweep line across the row
+    const sweepH = document.createElement('div');
+    sweepH.className = 'scan-sweep-h';
+    sweepH.style.top = (rect.top - boardRect.top + rect.height / 2) + 'px';
+    boardEl.appendChild(sweepH);
+    setTimeout(() => sweepH.remove(), 600);
+
+    // Vertical sweep line down the column
+    const sweepV = document.createElement('div');
+    sweepV.className = 'scan-sweep-v';
+    sweepV.style.left = (rect.left - boardRect.left + rect.width / 2) + 'px';
+    boardEl.appendChild(sweepV);
+    setTimeout(() => sweepV.remove(), 600);
+  }
+
+  // Highlight the row with staggered delays outward from clicked cell
   for (let c = 0; c < state.cols; c++) {
     const el = boardEl.children[row * state.cols + c];
-    if (el) el.classList.add('scan-highlight');
+    if (el) {
+      const distance = Math.abs(c - col);
+      el.style.animationDelay = (distance * 40) + 'ms';
+      el.classList.add('scan-highlight');
+    }
   }
+  // Highlight the column with staggered delays outward from clicked cell
   for (let r = 0; r < state.rows; r++) {
     const el = boardEl.children[r * state.cols + col];
-    if (el) el.classList.add('scan-highlight');
+    if (el) {
+      const distance = Math.abs(r - row);
+      el.style.animationDelay = (distance * 40) + 'ms';
+      el.classList.add('scan-highlight');
+    }
   }
 
   scanToast.textContent = `Row ${row + 1}: ${result.rowMines} mine${result.rowMines !== 1 ? 's' : ''} | Col ${col + 1}: ${result.colMines} mine${result.colMines !== 1 ? 's' : ''}`;
@@ -1070,7 +1151,10 @@ function performScan(row, col) {
 
   setTimeout(() => {
     scanToast.classList.add('hidden');
-    for (const el of $$('.scan-highlight')) el.classList.remove('scan-highlight');
+    for (const el of $$('.scan-highlight')) {
+      el.classList.remove('scan-highlight');
+      el.style.animationDelay = '';
+    }
   }, 3000);
 
   updatePowerUpBar();
@@ -1158,11 +1242,14 @@ function performXRay(row, col) {
     }, 200 + i * 80);
   });
 
+  // Use top-positioned toast so it doesn't block the 5×5 highlight area
   scanToast.textContent = `🔬 X-Ray: ${mines.length} mine${mines.length !== 1 ? 's' : ''} in area`;
+  scanToast.classList.add('xray-toast-top');
   scanToast.classList.remove('hidden');
 
   setTimeout(() => {
     scanToast.classList.add('hidden');
+    scanToast.classList.remove('xray-toast-top');
     for (const el of $$('.xray-area')) el.classList.remove('xray-area');
     for (const el of $$('.xray-mine')) el.classList.remove('xray-mine');
   }, 3000);
@@ -1536,6 +1623,13 @@ function generateShareCard() {
            `https://christopherwells.github.io/GregSweeper/`;
   }
 
+  if (mode === 'timed') {
+    const rating = getSpeedRating(level, time);
+    return `💣 GregSweeper — Timed ${levelLabel}\n` +
+           `${rating.icon} ${rating.name} — ${time}s (${diff.rows}×${diff.cols})${tierText}\n\n` +
+           `https://christopherwells.github.io/GregSweeper/`;
+  }
+
   return `💣 GregSweeper — ${modeLabel}\n` +
          `${levelLabel} (${diff.rows}x${diff.cols}) in ${time}s${streakText}${tierText}\n\n` +
          `https://christopherwells.github.io/GregSweeper/`;
@@ -1643,12 +1737,34 @@ function updateStatsDisplay() {
   }
 }
 
-function updateLeaderboardDisplay() {
+async function updateLeaderboardDisplay() {
   const dateStr = new Date().toISOString().slice(0, 10);
   $('#leaderboard-date').textContent = `Date: ${dateStr}`;
-  const entries = loadDailyLeaderboard(dateStr);
+  const statusBadge = $('#leaderboard-status');
   const tbody = $('#leaderboard-body');
   tbody.innerHTML = '';
+
+  // Try online first, fall back to local
+  let entries = null;
+  let isOnline = false;
+
+  if (isFirebaseOnline()) {
+    entries = await fetchOnlineLeaderboard(dateStr);
+    if (entries !== null) {
+      isOnline = true;
+    }
+  }
+
+  // Fall back to local if online failed
+  if (entries === null) {
+    entries = loadDailyLeaderboard(dateStr);
+  }
+
+  // Update status badge
+  if (statusBadge) {
+    statusBadge.textContent = isOnline ? '🌐 Online' : '📱 Local';
+    statusBadge.className = `lb-status ${isOnline ? 'online' : 'offline'}`;
+  }
 
   if (entries.length === 0) {
     $('#leaderboard-table').classList.add('hidden');
@@ -1661,7 +1777,8 @@ function updateLeaderboardDisplay() {
 
   entries.forEach((entry, i) => {
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${i + 1}</td><td>${escapeHtml(entry.name)}</td><td>${entry.time}s</td>`;
+    const bombCol = entry.bombHits != null ? `<td>${entry.bombHits}</td>` : '<td>-</td>';
+    tr.innerHTML = `<td>${i + 1}</td><td>${escapeHtml(entry.name)}</td><td>${entry.time}s</td>${bombCol}`;
     tbody.appendChild(tr);
   });
 }
@@ -1969,11 +2086,15 @@ $('#gameover-nextlevel').addEventListener('click', () => {
   syncTimedDiffButtons();
   newGame();
 });
-$('#gameover-submit-daily').addEventListener('click', () => {
-  const name = prompt('Enter your name:');
+$('#gameover-submit-daily').addEventListener('click', async () => {
+  const name = prompt('Enter your name (max 20 chars):');
   if (name && name.trim()) {
+    const sanitized = name.trim().slice(0, 20);
     const dateStr = new Date().toISOString().slice(0, 10);
-    addDailyLeaderboardEntry(dateStr, name.trim(), state.elapsedTime);
+    // Save locally
+    addDailyLeaderboardEntry(dateStr, sanitized, state.elapsedTime);
+    // Also save to Firebase
+    await submitOnlineScore(dateStr, sanitized, state.elapsedTime, state.dailyBombHits || 0);
     $('#gameover-submit-daily').classList.add('hidden');
   }
 });
@@ -2024,7 +2145,7 @@ function showLevelInfoToast(level, diff, label) {
   toast.className = 'level-info-toast';
   const sizeLabel = `${diff.rows}×${diff.cols}`;
   const mineLabel = `${diff.mines} mines`;
-  const timeLabel = state.gameMode === 'timed' ? ` · ${diff.timeLimit}s` : '';
+  const timeLabel = ''; // Timed mode counts up now, no time limit to show
   const title = label ? `${label}` : `Level ${level}`;
   toast.innerHTML = `<strong>${title}</strong><br><span class="level-info-details">${sizeLabel} · ${mineLabel}${timeLabel}</span>`;
   document.getElementById('app').appendChild(toast);
@@ -2074,6 +2195,9 @@ function init() {
     muteBtn.textContent = muted ? '🔇' : '🔊';
     muteBtn.title = muted ? 'Unmute' : 'Mute';
   }
+
+  // Initialize Firebase for online leaderboard
+  initFirebase();
 
   newGame();
 }

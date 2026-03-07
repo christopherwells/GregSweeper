@@ -1,6 +1,6 @@
-// Challenge mode — 20 levels of progressive difficulty
+// Challenge mode — 30 levels of progressive difficulty
 // Board capped at 12×12 to prevent fat-finger issues on mobile.
-// Difficulty increases via mine density (~12% at L1 → ~35% at L20).
+// Difficulty increases via mine density (~12% at L1 → ~40% at L30).
 const CHALLENGE_LEVELS = [
   // Learning (L1–5): 8×8 → 10×10, density 12–16%
   { rows: 8,  cols: 8,  mines: 8,  timeLimit: 90  },   // L1  — 12.5%
@@ -23,19 +23,42 @@ const CHALLENGE_LEVELS = [
   { rows: 12, cols: 12, mines: 42, timeLimit: 280 },   // L14 — 29.2%
   { rows: 12, cols: 12, mines: 44, timeLimit: 300 },   // L15 — 30.6%
 
-  // Expert (L16–20): 12×12, density 30–35% (nearly impossible)
+  // Expert (L16–20): 12×12, density 30–35%
   { rows: 12, cols: 12, mines: 45, timeLimit: 320 },   // L16 — 31.3%
   { rows: 12, cols: 12, mines: 47, timeLimit: 340 },   // L17 — 32.6%
   { rows: 12, cols: 12, mines: 48, timeLimit: 360 },   // L18 — 33.3%
   { rows: 12, cols: 12, mines: 49, timeLimit: 380 },   // L19 — 34.0%
   { rows: 12, cols: 12, mines: 50, timeLimit: 400 },   // L20 — 34.7%
+
+  // Legendary (L21–30): 12×12, density 35–40%, tighter timers
+  { rows: 12, cols: 12, mines: 51, timeLimit: 380 },   // L21 — 35.4%
+  { rows: 12, cols: 12, mines: 52, timeLimit: 360 },   // L22 — 36.1%
+  { rows: 12, cols: 12, mines: 53, timeLimit: 340 },   // L23 — 36.8%
+  { rows: 12, cols: 12, mines: 54, timeLimit: 320 },   // L24 — 37.5%
+  { rows: 12, cols: 12, mines: 54, timeLimit: 300 },   // L25 — 37.5%
+  { rows: 12, cols: 12, mines: 55, timeLimit: 290 },   // L26 — 38.2%
+  { rows: 12, cols: 12, mines: 56, timeLimit: 280 },   // L27 — 38.9%
+  { rows: 12, cols: 12, mines: 56, timeLimit: 260 },   // L28 — 38.9%
+  { rows: 12, cols: 12, mines: 57, timeLimit: 250 },   // L29 — 39.6%
+  { rows: 12, cols: 12, mines: 58, timeLimit: 240 },   // L30 — 40.3%
 ];
 
-// Timed mode — classic Minesweeper sizes (Beginner, Intermediate, Expert)
+// Timed mode — mobile-friendly sizes, count UP (no countdown)
+// Difficulty via mine density, all boards fit on 375px screens.
 const TIMED_LEVELS = [
-  { rows: 9,  cols: 9,  mines: 10,  timeLimit: 90,  label: 'Beginner' },
-  { rows: 16, cols: 16, mines: 40,  timeLimit: 300, label: 'Intermediate' },
-  { rows: 16, cols: 30, mines: 99,  timeLimit: 600, label: 'Expert' },
+  { rows: 9,  cols: 9,  mines: 10,  label: 'Beginner' },     // 12.3%
+  { rows: 11, cols: 11, mines: 25,  label: 'Intermediate' },  // 20.7%
+  { rows: 13, cols: 13, mines: 40,  label: 'Expert' },        // 23.7%
+];
+
+// Speed ratings — thresholds in seconds per difficulty
+const SPEED_THRESHOLDS = [
+  // Beginner:     Diamond ≤30, Gold ≤60, Silver ≤120
+  { diamond: 30, gold: 60, silver: 120 },
+  // Intermediate: Diamond ≤60, Gold ≤120, Silver ≤240
+  { diamond: 60, gold: 120, silver: 240 },
+  // Expert:       Diamond ≤90, Gold ≤180, Silver ≤360
+  { diamond: 90, gold: 180, silver: 360 },
 ];
 
 // Fog of War mode — uses same curve as Challenge for progressive difficulty
@@ -56,7 +79,22 @@ export function getMaxZeroCluster(level) {
   if (level <= 4) return Infinity;  // No restriction for early levels
   if (level <= 9) return 8;
   if (level <= 14) return 6;
-  return 4;                          // L15+: very tight
+  if (level <= 20) return 4;        // L15–20: very tight
+  return 3;                          // L21+: extremely tight
+}
+
+/** Get speed rating for timed mode completion.
+ *  @param {number} level 1-based timed level
+ *  @param {number} time  completion time in seconds
+ *  @returns {{ icon: string, name: string, tier: number }} rating info
+ */
+export function getSpeedRating(level, time) {
+  const idx = Math.min(Math.max(level, 1), SPEED_THRESHOLDS.length) - 1;
+  const t = SPEED_THRESHOLDS[idx];
+  if (time <= t.diamond) return { icon: '💎', name: 'Diamond', tier: 4 };
+  if (time <= t.gold)    return { icon: '🥇', name: 'Gold',    tier: 3 };
+  if (time <= t.silver)  return { icon: '🥈', name: 'Silver',  tier: 2 };
+  return                          { icon: '🥉', name: 'Bronze',  tier: 1 };
 }
 
 export const MAX_LEVEL = CHALLENGE_LEVELS.length;

@@ -1,0 +1,160 @@
+/* Celestial theme — navy + gold, ethereal starlit glow */
+@keyframes celestialGlow {
+  0%, 100% {
+    text-shadow: 0 0 12px rgba(255, 215, 80, 0.6), 0 0 24px rgba(255, 215, 80, 0.3), 0 0 48px rgba(255, 215, 80, 0.1);
+  }
+  50% {
+    text-shadow: 0 0 18px rgba(255, 215, 80, 0.8), 0 0 36px rgba(255, 215, 80, 0.4), 0 0 64px rgba(255, 215, 80, 0.15);
+  }
+}
+
+@keyframes starTwinkle {
+  0%, 100% {
+    box-shadow: 0 8px 32px rgba(0, 10, 30, 0.5),
+      0 0 1px rgba(255, 215, 80, 0.3),
+      40px -20px 0 -1px rgba(255, 255, 200, 0.15),
+      -60px 30px 0 -1px rgba(255, 255, 200, 0.1),
+      80px 40px 0 -1px rgba(255, 255, 200, 0.12);
+  }
+  50% {
+    box-shadow: 0 8px 32px rgba(0, 10, 30, 0.5),
+      0 0 1px rgba(255, 215, 80, 0.3),
+      40px -20px 0 -1px rgba(255, 255, 200, 0.05),
+      -60px 30px 0 -1px rgba(255, 255, 200, 0.2),
+      80px 40px 0 -1px rgba(255, 255, 200, 0.05);
+  }
+}
+
+[data-theme="celestial"] {
+  --font-family: 'Palatino Linotype', 'Book Antiqua', serif;
+  --font-display: 'Palatino Linotype', 'Book Antiqua', serif;
+  --border-radius: 6px;
+  --grid-gap: 2px;
+
+  --color-bg: #080c1a;
+  --color-app-bg: #0a1028;
+  --color-cell-hidden: #182040;
+  --color-cell-hidden-hover: #222e58;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #1e2a50, #141c38);
+  --color-cell-revealed: #0c1224;
+  --color-cell-border-light: #2a3868;
+  --color-cell-border-dark: #080c1a;
+  --color-mine: #ffd750;
+  --color-mine-hit: #ffaa00;
+  --color-flag: #ffd750;
+  --color-text: #d0d8f0;
+  --color-text-secondary: #8090b8;
+
+  --color-num-1: #60a0ff;
+  --color-num-2: #ffd750;
+  --color-num-3: #ff6080;
+  --color-num-4: #a080ff;
+  --color-num-5: #ffaa44;
+  --color-num-6: #50cccc;
+  --color-num-7: #e0d8c8;
+  --color-num-8: #6070a0;
+
+  --color-header-bg: #101830;
+  --color-header-gradient: linear-gradient(180deg, #182040, #0e1628);
+  --color-lcd-bg: #040810;
+  --color-lcd-text: #ffd750;
+  --color-modal-bg: #0e1628;
+  --color-modal-overlay: rgba(4, 6, 14, 0.9);
+  --color-btn-bg: #182040;
+  --color-btn-hover: #222e58;
+  --color-btn-gradient: linear-gradient(180deg, #1e2a50, #141c38);
+  --color-border: #2a3868;
+  --color-fog: rgba(4, 6, 14, 0.94);
+  --color-scan-highlight: rgba(255, 215, 80, 0.12);
+  --color-golden: #ffd750;
+  --color-accent: #ffd750;
+  --color-accent-hover: #ffcc30;
+  --color-accent-glow: rgba(255, 215, 80, 0.25);
+  --color-win: #60dd88;
+  --color-loss: #ff4060;
+  --color-surface: rgba(255, 215, 80, 0.03);
+}
+
+[data-theme="celestial"] #app {
+  background: linear-gradient(180deg, #0a1028, #080c1a);
+  border: 1px solid rgba(42, 56, 104, 0.6);
+  animation: starTwinkle 4s ease-in-out infinite;
+}
+
+/* Gold-glow title */
+[data-theme="celestial"] #game-title {
+  background: linear-gradient(135deg, #ffd750, #ffeeaa, #ffd750);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: celestialGlow 3s ease-in-out infinite;
+}
+
+[data-theme="celestial"] #title-subtitle {
+  color: #ffd750;
+  text-shadow: 0 0 8px rgba(255, 215, 80, 0.3);
+}
+
+[data-theme="celestial"] #board {
+  border-color: rgba(42, 56, 104, 0.5);
+  box-shadow: 0 4px 20px rgba(0, 10, 30, 0.4);
+  border-radius: 8px;
+}
+
+[data-theme="celestial"] .cell.unrevealed {
+  box-shadow: inset 0 1px 0 rgba(255, 215, 80, 0.04), 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="celestial"] .cell.unrevealed:hover {
+  box-shadow: 0 0 8px rgba(255, 215, 80, 0.15), inset 0 1px 0 rgba(255, 215, 80, 0.06);
+}
+
+[data-theme="celestial"] .cell.revealed {
+  background: #0c1224;
+  border-color: rgba(42, 56, 104, 0.25);
+}
+
+[data-theme="celestial"] .cell.revealed.num-1 { text-shadow: 0 0 6px rgba(96, 160, 255, 0.4); }
+[data-theme="celestial"] .cell.revealed.num-2 { text-shadow: 0 0 6px rgba(255, 215, 80, 0.4); }
+
+[data-theme="celestial"] .smiley-btn {
+  border: 1px solid rgba(255, 215, 80, 0.25);
+  box-shadow: 0 0 8px rgba(255, 215, 80, 0.1);
+}
+
+[data-theme="celestial"] .lcd-display {
+  text-shadow: 0 0 8px rgba(255, 215, 80, 0.5), 0 0 16px rgba(255, 215, 80, 0.2);
+  border-color: rgba(255, 215, 80, 0.2);
+}
+
+[data-theme="celestial"] .nav-btn {
+  border-color: rgba(42, 56, 104, 0.5);
+}
+
+[data-theme="celestial"] .nav-btn:hover {
+  box-shadow: 0 0 8px rgba(255, 215, 80, 0.12);
+}
+
+[data-theme="celestial"] .powerup-btn {
+  border-color: rgba(42, 56, 104, 0.5);
+}
+
+[data-theme="celestial"] .modal-content {
+  border: 1px solid rgba(42, 56, 104, 0.4);
+  box-shadow: 0 8px 40px rgba(0, 10, 30, 0.5), 0 0 1px rgba(255, 215, 80, 0.15);
+  background: #0e1628;
+}
+
+[data-theme="celestial"] .modal-close:hover {
+  background: rgba(255, 215, 80, 0.08);
+}
+
+[data-theme="celestial"] .game-header {
+  background: linear-gradient(180deg, #141c38, #0e1628);
+  border-bottom: 1px solid rgba(42, 56, 104, 0.4);
+}
+
+[data-theme="celestial"] .achievement-item.unlocked {
+  border-color: rgba(255, 215, 80, 0.3);
+  box-shadow: 0 0 8px rgba(255, 215, 80, 0.08);
+}
