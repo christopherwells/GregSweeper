@@ -34,7 +34,7 @@ const state = {
 
   fogOfWarEnabled: false,
   visibleCells: new Set(),
-  fogRadius: 2.5,
+  fogRadius: 1.5,
 
   shaking: false,
   showParticles: false,
@@ -746,6 +746,29 @@ $('#gameover-submit-daily').addEventListener('click', () => {
     addDailyLeaderboardEntry(dateStr, name.trim(), state.elapsedTime);
     $('#gameover-submit-daily').classList.add('hidden');
   }
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  // Don't capture when a modal is open (except game over)
+  const anyModalOpen = [...$$('.modal')].some(m => !m.classList.contains('hidden'));
+
+  if (e.key === 'Escape') {
+    hideAllModals();
+    return;
+  }
+
+  if (e.key === 'r' || e.key === 'R') {
+    state.currentLevel = 1;
+    newGame();
+    return;
+  }
+
+  if (anyModalOpen) return;
+
+  if (e.key === '1') useRevealSafe();
+  else if (e.key === '2') useShield();
+  else if (e.key === '3') activateScan();
 });
 
 // ── Init ───────────────────────────────────────────────
