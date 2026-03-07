@@ -78,9 +78,16 @@
 
       <div id="board-container">
         <div id="streak-border"></div>
-        <div id="board"></div>
+        <div id="board-scroll-wrapper">
+          <div id="board"></div>
+        </div>
         <canvas id="particle-canvas"></canvas>
         <div id="scan-toast" class="hidden"></div>
+        <div id="zoom-controls" class="hidden">
+          <button id="zoom-out" class="zoom-btn" title="Zoom Out">−</button>
+          <span id="zoom-level">100%</span>
+          <button id="zoom-in" class="zoom-btn" title="Zoom In">+</button>
+        </div>
       </div>
     </div>
 

@@ -137,6 +137,7 @@ const state = {
   showParticles: false,
   theme: 'classic',
   hitMine: null,  // {row, col} of the mine that killed you
+  zoomLevel: 100,  // percentage (50–200)
 };
 
 // ── DOM References ─────────────────────────────────────
@@ -157,6 +158,9 @@ const muteBtn = $('#btn-mute');
 const bestTimeDisplay = $('#best-time-display');
 const maxLevelDisplay = $('#max-level-display');
 const streakBorder = $('#streak-border');
+const zoomControls = $('#zoom-controls');
+const zoomLevelDisplay = $('#zoom-level');
+const boardScrollWrapper = $('#board-scroll-wrapper');
 
 // ── Board Rendering ────────────────────────────────────
 
@@ -477,6 +481,7 @@ function newGame() {
   updateTimerDisplay();
   updatePowerUpBar();
   updateStreakBorder();
+  updateZoom();
 
   // Board transition animation when size changes
   if (state._initialized && (prevRows !== state.rows || prevCols !== state.cols)) {
@@ -499,6 +504,39 @@ function adjustCellSize() {
   const maxCellSize = Math.floor((maxWidth - gapSpace) / state.cols);
   const cellSize = Math.min(40, Math.max(16, maxCellSize));
   document.documentElement.style.setProperty('--cell-size', cellSize + 'px');
+}
+
+// ── Zoom (for Timed mode large boards) ────────────────
+
+function needsZoom() {
+  return state.gameMode === 'timed' && (state.cols > 12 || state.rows > 12);
+}
+
+function updateZoom() {
+  if (needsZoom()) {
+    zoomControls.classList.remove('hidden');
+    boardScrollWrapper.classList.add('zoomed');
+    const scale = state.zoomLevel / 100;
+    boardEl.style.transform = `scale(${scale})`;
+    boardEl.style.transformOrigin = 'top left';
+    zoomLevelDisplay.textContent = `${state.zoomLevel}%`;
+  } else {
+    zoomControls.classList.add('hidden');
+    boardScrollWrapper.classList.remove('zoomed');
+    boardEl.style.transform = '';
+    boardEl.style.transformOrigin = '';
+    state.zoomLevel = 100;
+  }
+}
+
+function zoomIn() {
+  state.zoomLevel = Math.min(200, state.zoomLevel + 25);
+  updateZoom();
+}
+
+function zoomOut() {
+  state.zoomLevel = Math.max(50, state.zoomLevel - 25);
+  updateZoom();
 }
 
 function revealCell(row, col) {
@@ -660,9 +698,19 @@ function handleWin() {
   gameoverTime.textContent = `Time: ${state.elapsedTime}s`;
 
   const bestKey = `level${state.currentLevel}`;
-  if (stats.bestTimes[bestKey] === state.elapsedTime) {
-    gameoverRecord.textContent = '🎉 New Record!';
+  const isNewRecord = stats.bestTimes[bestKey] === state.elapsedTime;
+  if (isNewRecord) {
+    gameoverRecord.textContent = state.gameMode === 'timed'
+      ? `🏆 New Record: ${state.elapsedTime}s!`
+      : '🎉 New Record!';
     gameoverRecord.classList.remove('hidden');
+
+    // Extra celebration for timed mode records
+    if (state.gameMode === 'timed') {
+      setTimeout(() => showConfettiBurst(0.5, 0.3, 40), 200);
+      setTimeout(() => showConfettiBurst(0.3, 0.5, 30), 500);
+      setTimeout(() => showConfettiBurst(0.7, 0.5, 30), 800);
+    }
   } else {
     gameoverRecord.classList.add('hidden');
   }
@@ -1543,6 +1591,32 @@ for (const btn of $$('.powerup-btn')) {
     else if (type === 'luckyGuess') useLuckyGuess();
   });
 }
+
+// Zoom controls
+$('#zoom-in').addEventListener('click', zoomIn);
+$('#zoom-out').addEventListener('click', zoomOut);
+
+// Pinch-to-zoom for touch devices
+let pinchStartDist = 0;
+let pinchStartZoom = 100;
+boardScrollWrapper.addEventListener('touchstart', (e) => {
+  if (e.touches.length === 2) {
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    pinchStartDist = Math.hypot(dx, dy);
+    pinchStartZoom = state.zoomLevel;
+  }
+}, { passive: true });
+boardScrollWrapper.addEventListener('touchmove', (e) => {
+  if (e.touches.length === 2 && needsZoom()) {
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    const dist = Math.hypot(dx, dy);
+    const ratio = dist / pinchStartDist;
+    state.zoomLevel = Math.round(Math.min(200, Math.max(50, pinchStartZoom * ratio)));
+    updateZoom();
+  }
+}, { passive: true });
 
 // Nav buttons
 $('#btn-settings').addEventListener('click', () => {
