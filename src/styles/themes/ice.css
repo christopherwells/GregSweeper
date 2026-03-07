@@ -1,0 +1,73 @@
+/* Ice theme — frozen crystalline blues with frost effects */
+[data-theme="ice"] {
+  --color-bg: #d8eaf5;
+  --color-app-bg: #e8f2fa;
+  --color-cell-hidden: #a8ceea;
+  --color-cell-hidden-hover: #b8d8f0;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #b2d4ee, #9ec6e4);
+  --color-cell-revealed: #dcedf8;
+  --color-cell-border-light: #c5e0f2;
+  --color-cell-border-dark: #7aacc8;
+  --color-mine: #cc4455;
+  --color-mine-hit: #bb2233;
+  --color-flag: #cc4455;
+  --color-text: #1e3a50;
+  --color-text-secondary: #5888a8;
+
+  --color-num-1: #3388cc;
+  --color-num-2: #44aa88;
+  --color-num-3: #cc4455;
+  --color-num-4: #7766bb;
+  --color-num-5: #bb8833;
+  --color-num-6: #339988;
+  --color-num-7: #1e3a50;
+  --color-num-8: #7aacc8;
+
+  --color-header-bg: #c0daf0;
+  --color-header-gradient: linear-gradient(180deg, #cce2f5, #b8d4ec);
+  --color-lcd-bg: #8ab8d8;
+  --color-lcd-text: #1a3048;
+  --color-modal-bg: #e4f0f8;
+  --color-modal-overlay: rgba(30, 58, 80, 0.35);
+  --color-btn-bg: #a8ceea;
+  --color-btn-hover: #b8d8f0;
+  --color-btn-gradient: linear-gradient(180deg, #b8d8f0, #a0c8e6);
+  --color-border: #90bcd8;
+  --color-fog: rgba(216, 234, 245, 0.92);
+  --color-scan-highlight: rgba(51, 136, 204, 0.15);
+  --color-golden: #bb8833;
+  --color-accent: #3388cc;
+  --color-accent-hover: #2278bb;
+  --color-accent-glow: rgba(51, 136, 204, 0.25);
+  --color-win: #44aa88;
+  --color-loss: #cc4455;
+  --color-surface: rgba(30, 58, 80, 0.04);
+}
+
+[data-theme="ice"] #app {
+  box-shadow: 0 8px 40px rgba(100, 150, 200, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="ice"] .lcd-display {
+  text-shadow: 0 0 8px rgba(26, 48, 72, 0.3);
+}
+
+[data-theme="ice"] #game-title {
+  text-shadow: 0 0 12px rgba(51, 136, 204, 0.3);
+}
+
+[data-theme="ice"] .modal-close:hover {
+  background: rgba(51, 136, 204, 0.1);
+}
+
+[data-theme="ice"] #board {
+  border-color: #90bcd8;
+  box-shadow:
+    0 4px 16px rgba(100, 150, 200, 0.2),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.4),
+    0 0 20px rgba(150, 200, 240, 0.15);
+}
+
+[data-theme="ice"] .cell.hidden {
+  border-color: rgba(200, 225, 245, 0.6);
+}

@@ -1,0 +1,91 @@
+/* Royal theme — gold and deep purple, ornate regal styling */
+[data-theme="royal"] {
+  --color-bg: #1e1038;
+  --color-app-bg: #140a28;
+  --color-cell-hidden: #2e1a55;
+  --color-cell-hidden-hover: #3a2268;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #342060, #2a1850);
+  --color-cell-revealed: #1a0e32;
+  --color-cell-border-light: #4a2e7a;
+  --color-cell-border-dark: #0e0618;
+  --color-mine: #dd3344;
+  --color-mine-hit: #cc1133;
+  --color-flag: #ffd700;
+  --color-text: #f0e8ff;
+  --color-text-secondary: #a888cc;
+
+  --color-num-1: #88aaff;
+  --color-num-2: #ffd700;
+  --color-num-3: #dd3344;
+  --color-num-4: #cc88ff;
+  --color-num-5: #ffaa44;
+  --color-num-6: #66ddaa;
+  --color-num-7: #f0e8ff;
+  --color-num-8: #6a4888;
+
+  --color-header-bg: #1e1038;
+  --color-header-gradient: linear-gradient(180deg, #2a1648, #1e1038);
+  --color-lcd-bg: #0a0414;
+  --color-lcd-text: #ffd700;
+  --color-modal-bg: #221240;
+  --color-modal-overlay: rgba(8, 4, 16, 0.88);
+  --color-btn-bg: #2e1a55;
+  --color-btn-hover: #3a2268;
+  --color-btn-gradient: linear-gradient(180deg, #3a2268, #2e1a55);
+  --color-border: #4a2e7a;
+  --color-fog: rgba(8, 4, 16, 0.93);
+  --color-scan-highlight: rgba(255, 215, 0, 0.12);
+  --color-golden: #ffd700;
+  --color-accent: #ffd700;
+  --color-accent-hover: #e6c200;
+  --color-accent-glow: rgba(255, 215, 0, 0.25);
+  --color-win: #ffd700;
+  --color-loss: #dd3344;
+  --color-surface: rgba(255, 215, 0, 0.03);
+}
+
+[data-theme="royal"] #app {
+  box-shadow:
+    0 8px 40px rgba(10, 4, 20, 0.6),
+    inset 0 1px 0 rgba(255, 215, 0, 0.08),
+    0 0 0 1px rgba(255, 215, 0, 0.1);
+}
+
+[data-theme="royal"] .lcd-display {
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+[data-theme="royal"] #game-title {
+  text-shadow: 0 0 14px rgba(255, 215, 0, 0.35), 0 0 28px rgba(255, 215, 0, 0.1);
+  background: linear-gradient(180deg, #ffd700, #e6b800, #ffd700);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+[data-theme="royal"] .modal-close:hover {
+  background: rgba(255, 215, 0, 0.1);
+}
+
+/* Ornate gold border on board */
+[data-theme="royal"] #board {
+  border: 2px solid;
+  border-image: linear-gradient(
+    135deg,
+    #b8860b, #ffd700, #ffec80, #ffd700, #b8860b
+  ) 1;
+  box-shadow:
+    0 4px 16px rgba(10, 4, 20, 0.5),
+    0 0 12px rgba(255, 215, 0, 0.08),
+    inset 0 0 8px rgba(255, 215, 0, 0.04);
+}
+
+/* Gold trim on header */
+[data-theme="royal"] .game-header {
+  border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+/* Regal cell borders */
+[data-theme="royal"] .cell.hidden {
+  border-color: rgba(255, 215, 0, 0.15);
+}

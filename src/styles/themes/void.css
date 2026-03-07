@@ -1,0 +1,89 @@
+/* Void theme — ultra-dark with subtle white sparks */
+[data-theme="void"] {
+  --color-bg: #080808;
+  --color-app-bg: #040404;
+  --color-cell-hidden: #0e0e0e;
+  --color-cell-hidden-hover: #1a1a1a;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #121212, #0a0a0a);
+  --color-cell-revealed: #060606;
+  --color-cell-border-light: #1a1a1a;
+  --color-cell-border-dark: #000000;
+  --color-mine: #ff2020;
+  --color-mine-hit: #ff0000;
+  --color-flag: #ff3333;
+  --color-text: #e8e8e8;
+  --color-text-secondary: #666666;
+
+  --color-num-1: #cccccc;
+  --color-num-2: #aaaaaa;
+  --color-num-3: #ff5555;
+  --color-num-4: #8888ff;
+  --color-num-5: #dddddd;
+  --color-num-6: #999999;
+  --color-num-7: #ffffff;
+  --color-num-8: #555555;
+
+  --color-header-bg: #0a0a0a;
+  --color-header-gradient: linear-gradient(180deg, #0e0e0e, #080808);
+  --color-lcd-bg: #000000;
+  --color-lcd-text: #ffffff;
+  --color-modal-bg: #0e0e0e;
+  --color-modal-overlay: rgba(0, 0, 0, 0.95);
+  --color-btn-bg: #141414;
+  --color-btn-hover: #1e1e1e;
+  --color-btn-gradient: linear-gradient(180deg, #1a1a1a, #0e0e0e);
+  --color-border: #222222;
+  --color-fog: rgba(0, 0, 0, 0.95);
+  --color-scan-highlight: rgba(255, 255, 255, 0.08);
+  --color-golden: #e0e0e0;
+  --color-accent: #ffffff;
+  --color-accent-hover: #cccccc;
+  --color-accent-glow: rgba(255, 255, 255, 0.15);
+  --color-win: #aaaaaa;
+  --color-loss: #ff3333;
+  --color-surface: rgba(255, 255, 255, 0.03);
+}
+
+[data-theme="void"] #app {
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+[data-theme="void"] .lcd-display {
+  text-shadow: 0 0 6px rgba(255, 255, 255, 0.5);
+  border-color: #1a1a1a;
+}
+
+[data-theme="void"] #game-title {
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.15);
+  animation: voidShimmer 4s ease-in-out infinite;
+}
+
+@keyframes voidShimmer {
+  0%, 100% { text-shadow: 0 0 20px rgba(255, 255, 255, 0.1); }
+  50% { text-shadow: 0 0 30px rgba(255, 255, 255, 0.25), 0 0 60px rgba(255, 255, 255, 0.05); }
+}
+
+[data-theme="void"] .modal-close:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="void"] #board {
+  border-color: #1a1a1a;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.6), inset 0 0 30px rgba(255, 255, 255, 0.01);
+  animation: voidSpark 6s ease-in-out infinite;
+}
+
+@keyframes voidSpark {
+  0%, 100% { box-shadow: 0 0 20px rgba(0, 0, 0, 0.6), inset 0 0 30px rgba(255, 255, 255, 0.01); }
+  25% { box-shadow: 0 0 20px rgba(0, 0, 0, 0.6), inset 0 0 30px rgba(255, 255, 255, 0.03); }
+  50% { box-shadow: 0 0 25px rgba(0, 0, 0, 0.6), inset 0 0 40px rgba(255, 255, 255, 0.02); }
+  75% { box-shadow: 0 0 20px rgba(0, 0, 0, 0.6), inset 0 0 30px rgba(255, 255, 255, 0.04); }
+}
+
+[data-theme="void"] .cell.unrevealed {
+  border-color: #1a1a1a;
+}
+
+[data-theme="void"] .cell.revealed {
+  border-color: rgba(255, 255, 255, 0.03);
+}

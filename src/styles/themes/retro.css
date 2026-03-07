@@ -1,0 +1,100 @@
+/* Retro theme — 80s synthwave purple and pink, scanlines and gradient drift */
+@keyframes bgDrift {
+  0% {
+    background-position: 0% 0%;
+  }
+  50% {
+    background-position: 100% 100%;
+  }
+  100% {
+    background-position: 0% 0%;
+  }
+}
+
+[data-theme="retro"] {
+  --color-bg: #1a0a2e;
+  --color-app-bg: #0f0620;
+  --color-cell-hidden: #3a1860;
+  --color-cell-hidden-hover: #482070;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #421e68, #341858);
+  --color-cell-revealed: #1e0c38;
+  --color-cell-border-light: #5a2888;
+  --color-cell-border-dark: #0a0416;
+  --color-mine: #ff3388;
+  --color-mine-hit: #ff1166;
+  --color-flag: #ff3388;
+  --color-text: #f0d0ff;
+  --color-text-secondary: #a070c0;
+
+  --color-num-1: #44ccff;
+  --color-num-2: #ff66aa;
+  --color-num-3: #ff3388;
+  --color-num-4: #bb66ff;
+  --color-num-5: #ffaa22;
+  --color-num-6: #44ffaa;
+  --color-num-7: #f0d0ff;
+  --color-num-8: #6a4088;
+
+  --color-header-bg: #1a0a2e;
+  --color-header-gradient: linear-gradient(180deg, #2a1248, #1a0a2e);
+  --color-lcd-bg: #080414;
+  --color-lcd-text: #ff66aa;
+  --color-modal-bg: #201040;
+  --color-modal-overlay: rgba(8, 2, 18, 0.88);
+  --color-btn-bg: #3a1860;
+  --color-btn-hover: #482070;
+  --color-btn-gradient: linear-gradient(180deg, #482070, #3a1860);
+  --color-border: #5a2888;
+  --color-fog: rgba(8, 2, 18, 0.93);
+  --color-scan-highlight: rgba(255, 102, 170, 0.15);
+  --color-golden: #ffaa22;
+  --color-accent: #ff66aa;
+  --color-accent-hover: #ff4499;
+  --color-accent-glow: rgba(255, 102, 170, 0.3);
+  --color-win: #44ffaa;
+  --color-loss: #ff1166;
+  --color-surface: rgba(255, 255, 255, 0.03);
+}
+
+[data-theme="retro"] #app {
+  box-shadow: 0 8px 40px rgba(10, 2, 20, 0.6), inset 0 1px 0 rgba(255, 102, 170, 0.05);
+  background-size: 200% 200%;
+  animation: bgDrift 12s ease-in-out infinite;
+  background-image: linear-gradient(135deg, #0f0620, #1a0a2e, #150828, #0f0620);
+}
+
+[data-theme="retro"] .lcd-display {
+  text-shadow: 0 0 10px rgba(255, 102, 170, 0.5);
+}
+
+[data-theme="retro"] #game-title {
+  text-shadow: 0 0 14px rgba(255, 51, 136, 0.4), 0 0 28px rgba(68, 204, 255, 0.15);
+}
+
+[data-theme="retro"] .modal-close:hover {
+  background: rgba(255, 102, 170, 0.1);
+}
+
+[data-theme="retro"] #board {
+  border-color: #5a2888;
+  box-shadow: 0 4px 16px rgba(10, 2, 20, 0.5);
+}
+
+/* Scanline overlay */
+[data-theme="retro"] #board::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.08) 2px,
+    rgba(0, 0, 0, 0.08) 4px
+  );
+  pointer-events: none;
+  z-index: 1;
+}

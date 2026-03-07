@@ -28,15 +28,27 @@ import {
 // Themes unlock based on highest level ever beaten (permanent).
 // Dying in normal mode resets current level to 1 but keeps unlocks.
 const THEME_UNLOCKS = {
-  classic:  { levelRequired: 0,  displayName: 'Classic' },
-  dark:     { levelRequired: 0,  displayName: 'Dark' },
-  ocean:    { levelRequired: 2,  displayName: 'Ocean' },
-  sunset:   { levelRequired: 3,  displayName: 'Sunset' },
-  candy:    { levelRequired: 4,  displayName: 'Candy' },
-  neon:     { levelRequired: 5,  displayName: 'Neon' },
-  midnight: { levelRequired: 6,  displayName: 'Midnight' },
-  aurora:   { levelRequired: 8,  displayName: 'Aurora' },
-  galaxy:   { levelRequired: 10, displayName: 'Galaxy' },
+  classic:          { levelRequired: 0,  displayName: 'Classic' },
+  dark:             { levelRequired: 0,  displayName: 'Dark' },
+  ocean:            { levelRequired: 2,  displayName: 'Ocean' },
+  sunset:           { levelRequired: 3,  displayName: 'Sunset' },
+  forest:           { levelRequired: 4,  displayName: 'Forest' },
+  candy:            { levelRequired: 5,  displayName: 'Candy' },
+  midnight:         { levelRequired: 6,  displayName: 'Midnight' },
+  stealth:          { levelRequired: 7,  displayName: 'Stealth' },
+  neon:             { levelRequired: 8,  displayName: 'Neon' },
+  'cherry-blossom': { levelRequired: 9,  displayName: 'Cherry Blossom' },
+  aurora:           { levelRequired: 10, displayName: 'Aurora' },
+  volcano:          { levelRequired: 11, displayName: 'Volcano' },
+  ice:              { levelRequired: 12, displayName: 'Ice' },
+  cyberpunk:        { levelRequired: 13, displayName: 'Cyberpunk' },
+  retro:            { levelRequired: 14, displayName: 'Retro' },
+  holographic:      { levelRequired: 15, displayName: 'Holographic' },
+  galaxy:           { levelRequired: 16, displayName: 'Galaxy' },
+  toxic:            { levelRequired: 17, displayName: 'Toxic' },
+  royal:            { levelRequired: 18, displayName: 'Royal' },
+  prismatic:        { levelRequired: 19, displayName: 'Prismatic' },
+  void:             { levelRequired: 20, displayName: 'Void' },
 };
 
 function getUnlockedThemes() {

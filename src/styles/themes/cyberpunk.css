@@ -1,0 +1,89 @@
+/* Cyberpunk theme — hot pink and cyan on dark, glitch text effect */
+@keyframes glitch {
+  0%, 100% {
+    text-shadow: 0 0 12px rgba(255, 0, 128, 0.4);
+    transform: translate(0);
+  }
+  20% {
+    text-shadow: -2px 0 #0ff, 2px 0 #f0f;
+    transform: translate(-1px, 1px);
+  }
+  40% {
+    text-shadow: 2px 0 #0ff, -2px 0 #f0f;
+    transform: translate(1px, -1px);
+  }
+  60% {
+    text-shadow: -1px 0 #f0f, 1px 0 #0ff;
+    transform: translate(0);
+  }
+  80% {
+    text-shadow: 1px 0 #f0f, -1px 0 #0ff;
+    transform: translate(-1px, 0);
+  }
+}
+
+[data-theme="cyberpunk"] {
+  --color-bg: #0a0a1a;
+  --color-app-bg: #06060f;
+  --color-cell-hidden: #1a1a3a;
+  --color-cell-hidden-hover: #252548;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #222244, #181838);
+  --color-cell-revealed: #0e0e20;
+  --color-cell-border-light: #3a2a5a;
+  --color-cell-border-dark: #06060f;
+  --color-mine: #ff0080;
+  --color-mine-hit: #ff0055;
+  --color-flag: #ff0080;
+  --color-text: #e0e0ff;
+  --color-text-secondary: #8888cc;
+
+  --color-num-1: #00ffff;
+  --color-num-2: #ff0080;
+  --color-num-3: #ff4444;
+  --color-num-4: #aa44ff;
+  --color-num-5: #ffcc00;
+  --color-num-6: #00ff88;
+  --color-num-7: #e0e0ff;
+  --color-num-8: #666699;
+
+  --color-header-bg: #0e0e22;
+  --color-header-gradient: linear-gradient(180deg, #151530, #0e0e22);
+  --color-lcd-bg: #040410;
+  --color-lcd-text: #00ffff;
+  --color-modal-bg: #121228;
+  --color-modal-overlay: rgba(4, 4, 16, 0.9);
+  --color-btn-bg: #1a1a3a;
+  --color-btn-hover: #252548;
+  --color-btn-gradient: linear-gradient(180deg, #252548, #1a1a3a);
+  --color-border: #3a2a5a;
+  --color-fog: rgba(4, 4, 16, 0.94);
+  --color-scan-highlight: rgba(0, 255, 255, 0.15);
+  --color-golden: #ffcc00;
+  --color-accent: #ff0080;
+  --color-accent-hover: #dd006a;
+  --color-accent-glow: rgba(255, 0, 128, 0.3);
+  --color-win: #00ff88;
+  --color-loss: #ff0055;
+  --color-surface: rgba(255, 255, 255, 0.03);
+}
+
+[data-theme="cyberpunk"] #app {
+  box-shadow: 0 8px 40px rgba(255, 0, 128, 0.1), 0 0 1px rgba(0, 255, 255, 0.3), inset 0 1px 0 rgba(0, 255, 255, 0.05);
+}
+
+[data-theme="cyberpunk"] .lcd-display {
+  text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+}
+
+[data-theme="cyberpunk"] #game-title {
+  animation: glitch 4s ease-in-out infinite;
+}
+
+[data-theme="cyberpunk"] .modal-close:hover {
+  background: rgba(0, 255, 255, 0.1);
+}
+
+[data-theme="cyberpunk"] #board {
+  border-color: #3a2a5a;
+  box-shadow: 0 4px 16px rgba(255, 0, 128, 0.1), 0 0 1px rgba(0, 255, 255, 0.2);
+}

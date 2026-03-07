@@ -1,0 +1,139 @@
+/* Prismatic theme — full rainbow cascade with shimmering everything */
+@keyframes prismaticShimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+[data-theme="prismatic"] {
+  --color-bg: #141420;
+  --color-app-bg: #0c0c18;
+  --color-cell-hidden: #222238;
+  --color-cell-hidden-hover: #2e2e48;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #2a2a42, #202036);
+  --color-cell-revealed: #161624;
+  --color-cell-border-light: #3e3e5e;
+  --color-cell-border-dark: #0a0a14;
+  --color-mine: #ff3366;
+  --color-mine-hit: #ff1144;
+  --color-flag: #ff3366;
+  --color-text: #f0f0ff;
+  --color-text-secondary: #9090bb;
+
+  --color-num-1: #ff4444;
+  --color-num-2: #ff8822;
+  --color-num-3: #ffcc00;
+  --color-num-4: #44ff66;
+  --color-num-5: #44aaff;
+  --color-num-6: #8844ff;
+  --color-num-7: #f0f0ff;
+  --color-num-8: #666688;
+
+  --color-header-bg: #181828;
+  --color-header-gradient: linear-gradient(180deg, #202036, #181828);
+  --color-lcd-bg: #060610;
+  --color-lcd-text: #44ddff;
+  --color-modal-bg: #1a1a2c;
+  --color-modal-overlay: rgba(6, 6, 12, 0.9);
+  --color-btn-bg: #222238;
+  --color-btn-hover: #2e2e48;
+  --color-btn-gradient: linear-gradient(180deg, #2e2e48, #222238);
+  --color-border: #3e3e5e;
+  --color-fog: rgba(6, 6, 12, 0.93);
+  --color-scan-highlight: rgba(68, 221, 255, 0.15);
+  --color-golden: #ffcc00;
+  --color-accent: #44ddff;
+  --color-accent-hover: #22ccee;
+  --color-accent-glow: rgba(68, 221, 255, 0.3);
+  --color-win: #44ff66;
+  --color-loss: #ff1144;
+  --color-surface: rgba(255, 255, 255, 0.03);
+}
+
+[data-theme="prismatic"] #app {
+  box-shadow: 0 8px 40px rgba(6, 6, 12, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+[data-theme="prismatic"] .lcd-display {
+  text-shadow: 0 0 10px rgba(68, 221, 255, 0.5);
+}
+
+/* Shimmering rainbow title */
+[data-theme="prismatic"] #game-title {
+  background: linear-gradient(
+    90deg,
+    #ff4444, #ff8822, #ffcc00, #44ff66, #44aaff, #8844ff, #ff4488, #ff4444
+  );
+  background-size: 400% 100%;
+  animation: prismaticShimmer 5s ease-in-out infinite;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+[data-theme="prismatic"] .modal-close:hover {
+  background: rgba(68, 221, 255, 0.1);
+}
+
+/* Animated rainbow header bar */
+[data-theme="prismatic"] .game-header {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 68, 68, 0.15),
+    rgba(255, 136, 34, 0.15),
+    rgba(255, 204, 0, 0.15),
+    rgba(68, 255, 102, 0.15),
+    rgba(68, 170, 255, 0.15),
+    rgba(136, 68, 255, 0.15),
+    rgba(255, 68, 68, 0.15)
+  );
+  background-size: 400% 100%;
+  animation: prismaticShimmer 6s ease-in-out infinite;
+}
+
+/* Rainbow gradient border on board */
+[data-theme="prismatic"] #board {
+  border: 2px solid transparent;
+  background-image:
+    linear-gradient(#161624, #161624),
+    linear-gradient(
+      90deg,
+      #ff4444, #ff8822, #ffcc00, #44ff66, #44aaff, #8844ff, #ff4488, #ff4444
+    );
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  background-size: 100% 100%, 400% 100%;
+  animation: prismaticShimmer 5s ease-in-out infinite;
+  box-shadow: 0 4px 16px rgba(6, 6, 12, 0.5);
+}
+
+/* Shimmering cell borders */
+[data-theme="prismatic"] .cell.hidden {
+  border-image: linear-gradient(
+    135deg,
+    rgba(255, 68, 68, 0.3),
+    rgba(255, 204, 0, 0.3),
+    rgba(68, 255, 102, 0.3),
+    rgba(68, 170, 255, 0.3),
+    rgba(136, 68, 255, 0.3)
+  ) 1;
+}
+
+/* Rainbow shimmer on buttons */
+[data-theme="prismatic"] .game-btn:hover {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 68, 68, 0.12),
+    rgba(255, 204, 0, 0.12),
+    rgba(68, 170, 255, 0.12),
+    rgba(136, 68, 255, 0.12)
+  );
+  background-size: 300% 100%;
+  animation: prismaticShimmer 3s ease-in-out infinite;
+}

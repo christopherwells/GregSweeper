@@ -1,0 +1,66 @@
+/* Cherry Blossom theme — soft pinks and whites, sakura-colored accents */
+[data-theme="cherry-blossom"] {
+  --color-bg: #f5e6ee;
+  --color-app-bg: #fdf0f5;
+  --color-cell-hidden: #f0c4d8;
+  --color-cell-hidden-hover: #f5d0e0;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #f2cede, #ebbdd2);
+  --color-cell-revealed: #faf0f4;
+  --color-cell-border-light: #f5d5e2;
+  --color-cell-border-dark: #dba8c0;
+  --color-mine: #d44a6a;
+  --color-mine-hit: #c0304a;
+  --color-flag: #d44a6a;
+  --color-text: #5a3045;
+  --color-text-secondary: #a06880;
+
+  --color-num-1: #d87a98;
+  --color-num-2: #7ab0a0;
+  --color-num-3: #d44a6a;
+  --color-num-4: #9878b8;
+  --color-num-5: #c89040;
+  --color-num-6: #60a88a;
+  --color-num-7: #5a3045;
+  --color-num-8: #b0889a;
+
+  --color-header-bg: #f0d4e2;
+  --color-header-gradient: linear-gradient(180deg, #f5dce8, #edd0de);
+  --color-lcd-bg: #e8b8cc;
+  --color-lcd-text: #8a3858;
+  --color-modal-bg: #faf0f5;
+  --color-modal-overlay: rgba(90, 48, 69, 0.4);
+  --color-btn-bg: #f0c4d8;
+  --color-btn-hover: #f5d0e0;
+  --color-btn-gradient: linear-gradient(180deg, #f5d0e0, #edbdd2);
+  --color-border: #e0aac5;
+  --color-fog: rgba(245, 230, 238, 0.92);
+  --color-scan-highlight: rgba(216, 122, 152, 0.15);
+  --color-golden: #c89040;
+  --color-accent: #d87a98;
+  --color-accent-hover: #c86888;
+  --color-accent-glow: rgba(216, 122, 152, 0.25);
+  --color-win: #60a88a;
+  --color-loss: #d44a6a;
+  --color-surface: rgba(90, 48, 69, 0.04);
+}
+
+[data-theme="cherry-blossom"] #app {
+  box-shadow: 0 8px 40px rgba(180, 120, 150, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="cherry-blossom"] .lcd-display {
+  text-shadow: 0 0 8px rgba(138, 56, 88, 0.3);
+}
+
+[data-theme="cherry-blossom"] #game-title {
+  text-shadow: 0 0 12px rgba(216, 122, 152, 0.3);
+}
+
+[data-theme="cherry-blossom"] .modal-close:hover {
+  background: rgba(216, 122, 152, 0.12);
+}
+
+[data-theme="cherry-blossom"] #board {
+  border-color: #e0aac5;
+  box-shadow: 0 4px 20px rgba(180, 120, 150, 0.15);
+}

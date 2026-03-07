@@ -1,0 +1,92 @@
+/* Toxic theme — radioactive green on black, hazard accents */
+@keyframes toxicPulse {
+  0%, 100% {
+    box-shadow: 0 4px 16px rgba(0, 255, 60, 0.15), 0 0 30px rgba(0, 255, 60, 0.05);
+  }
+  50% {
+    box-shadow: 0 4px 16px rgba(0, 255, 60, 0.3), 0 0 40px rgba(0, 255, 60, 0.12);
+  }
+}
+
+[data-theme="toxic"] {
+  --color-bg: #0a0f0a;
+  --color-app-bg: #060906;
+  --color-cell-hidden: #1a2a18;
+  --color-cell-hidden-hover: #223820;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #203020, #182818);
+  --color-cell-revealed: #0c140c;
+  --color-cell-border-light: #2a4a25;
+  --color-cell-border-dark: #040804;
+  --color-mine: #ff2222;
+  --color-mine-hit: #ee0000;
+  --color-flag: #ff2222;
+  --color-text: #ccffcc;
+  --color-text-secondary: #66aa60;
+
+  --color-num-1: #00ff3c;
+  --color-num-2: #aaff00;
+  --color-num-3: #ff2222;
+  --color-num-4: #88cc44;
+  --color-num-5: #ddcc00;
+  --color-num-6: #00dd88;
+  --color-num-7: #ccffcc;
+  --color-num-8: #446640;
+
+  --color-header-bg: #0e140e;
+  --color-header-gradient: linear-gradient(180deg, #142014, #0e140e);
+  --color-lcd-bg: #030603;
+  --color-lcd-text: #00ff3c;
+  --color-modal-bg: #101a10;
+  --color-modal-overlay: rgba(2, 4, 2, 0.9);
+  --color-btn-bg: #1a2a18;
+  --color-btn-hover: #223820;
+  --color-btn-gradient: linear-gradient(180deg, #223820, #1a2a18);
+  --color-border: #2a4a25;
+  --color-fog: rgba(2, 4, 2, 0.94);
+  --color-scan-highlight: rgba(0, 255, 60, 0.15);
+  --color-golden: #ddcc00;
+  --color-accent: #00ff3c;
+  --color-accent-hover: #00dd33;
+  --color-accent-glow: rgba(0, 255, 60, 0.3);
+  --color-win: #00ff3c;
+  --color-loss: #ff2222;
+  --color-surface: rgba(0, 255, 60, 0.03);
+}
+
+[data-theme="toxic"] #app {
+  box-shadow: 0 8px 40px rgba(0, 20, 5, 0.6), inset 0 1px 0 rgba(0, 255, 60, 0.04);
+}
+
+[data-theme="toxic"] .lcd-display {
+  text-shadow: 0 0 10px rgba(0, 255, 60, 0.6);
+}
+
+[data-theme="toxic"] #game-title {
+  text-shadow: 0 0 14px rgba(0, 255, 60, 0.4), 0 0 28px rgba(0, 255, 60, 0.15);
+}
+
+[data-theme="toxic"] .modal-close:hover {
+  background: rgba(0, 255, 60, 0.1);
+}
+
+/* Pulsing toxic glow on board */
+[data-theme="toxic"] #board {
+  border-color: #2a4a25;
+  animation: toxicPulse 3s ease-in-out infinite;
+}
+
+/* Hazard stripe accent on header */
+[data-theme="toxic"] .game-header {
+  border-bottom: 2px solid transparent;
+  background-image:
+    linear-gradient(#0e140e, #0e140e),
+    repeating-linear-gradient(
+      -45deg,
+      #ddcc00 0px,
+      #ddcc00 6px,
+      #1a1a00 6px,
+      #1a1a00 12px
+    );
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+}

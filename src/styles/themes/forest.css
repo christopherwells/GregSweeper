@@ -1,0 +1,66 @@
+/* Forest theme — earthy greens and warm browns */
+[data-theme="forest"] {
+  --color-bg: #2d3a2e;
+  --color-app-bg: #1a2618;
+  --color-cell-hidden: #3e5a3a;
+  --color-cell-hidden-hover: #4a6b44;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #476348, #365234);
+  --color-cell-revealed: #263822;
+  --color-cell-border-light: #5a7a52;
+  --color-cell-border-dark: #1a2618;
+  --color-mine: #e85d4a;
+  --color-mine-hit: #d43d2a;
+  --color-flag: #e8a44a;
+  --color-text: #dce8d4;
+  --color-text-secondary: #8aad7e;
+
+  --color-num-1: #7ec87e;
+  --color-num-2: #c4a265;
+  --color-num-3: #e85d4a;
+  --color-num-4: #9b8ed4;
+  --color-num-5: #d4a843;
+  --color-num-6: #5ebf8a;
+  --color-num-7: #e8dcc8;
+  --color-num-8: #7a8a6a;
+
+  --color-header-bg: #2d3a2e;
+  --color-header-gradient: linear-gradient(180deg, #3a4d38, #2d3a2e);
+  --color-lcd-bg: #0f1a0d;
+  --color-lcd-text: #7ec87e;
+  --color-modal-bg: #283828;
+  --color-modal-overlay: rgba(10, 18, 8, 0.85);
+  --color-btn-bg: #3e5a3a;
+  --color-btn-hover: #4a6b44;
+  --color-btn-gradient: linear-gradient(180deg, #4a6b44, #3e5a3a);
+  --color-border: #5a7a52;
+  --color-fog: rgba(10, 18, 8, 0.92);
+  --color-scan-highlight: rgba(126, 200, 126, 0.2);
+  --color-golden: #d4a843;
+  --color-accent: #6abf6a;
+  --color-accent-hover: #58a858;
+  --color-accent-glow: rgba(106, 191, 106, 0.3);
+  --color-win: #6abf6a;
+  --color-loss: #e85d4a;
+  --color-surface: rgba(255, 255, 255, 0.04);
+}
+
+[data-theme="forest"] #app {
+  box-shadow: 0 8px 40px rgba(10, 18, 8, 0.5), inset 0 1px 0 rgba(126, 200, 126, 0.05);
+}
+
+[data-theme="forest"] .lcd-display {
+  text-shadow: 0 0 8px rgba(126, 200, 126, 0.4);
+}
+
+[data-theme="forest"] #game-title {
+  text-shadow: 0 0 12px rgba(106, 191, 106, 0.3);
+}
+
+[data-theme="forest"] .modal-close:hover {
+  background: rgba(126, 200, 126, 0.1);
+}
+
+[data-theme="forest"] #board {
+  border-color: #5a7a52;
+  box-shadow: 0 4px 16px rgba(10, 18, 8, 0.4);
+}

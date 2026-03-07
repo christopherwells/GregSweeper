@@ -1,0 +1,112 @@
+/* Holographic theme — rainbow shifting iridescence */
+@keyframes rainbowShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+[data-theme="holographic"] {
+  --color-bg: #1a1a2a;
+  --color-app-bg: #101018;
+  --color-cell-hidden: #2a2a3e;
+  --color-cell-hidden-hover: #353550;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #303048, #262638);
+  --color-cell-revealed: #181824;
+  --color-cell-border-light: #4a4a68;
+  --color-cell-border-dark: #0e0e18;
+  --color-mine: #ff4488;
+  --color-mine-hit: #ff2266;
+  --color-flag: #ff4488;
+  --color-text: #e8e8f8;
+  --color-text-secondary: #9898bb;
+
+  --color-num-1: #44ddff;
+  --color-num-2: #44ff88;
+  --color-num-3: #ff4466;
+  --color-num-4: #bb66ff;
+  --color-num-5: #ffbb22;
+  --color-num-6: #22eebb;
+  --color-num-7: #e8e8f8;
+  --color-num-8: #7878a0;
+
+  --color-header-bg: #1e1e30;
+  --color-header-gradient: linear-gradient(180deg, #282842, #1e1e30);
+  --color-lcd-bg: #0a0a14;
+  --color-lcd-text: #44ddff;
+  --color-modal-bg: #1e1e30;
+  --color-modal-overlay: rgba(8, 8, 16, 0.88);
+  --color-btn-bg: #2a2a3e;
+  --color-btn-hover: #353550;
+  --color-btn-gradient: linear-gradient(180deg, #353550, #2a2a3e);
+  --color-border: #4a4a68;
+  --color-fog: rgba(8, 8, 16, 0.93);
+  --color-scan-highlight: rgba(68, 221, 255, 0.15);
+  --color-golden: #ffbb22;
+  --color-accent: #44ddff;
+  --color-accent-hover: #22ccee;
+  --color-accent-glow: rgba(68, 221, 255, 0.3);
+  --color-win: #44ff88;
+  --color-loss: #ff2266;
+  --color-surface: rgba(255, 255, 255, 0.03);
+}
+
+[data-theme="holographic"] #app {
+  box-shadow: 0 8px 40px rgba(8, 8, 16, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+[data-theme="holographic"] .lcd-display {
+  text-shadow: 0 0 10px rgba(68, 221, 255, 0.5);
+}
+
+[data-theme="holographic"] #game-title {
+  text-shadow: 0 0 14px rgba(68, 221, 255, 0.3), 0 0 28px rgba(255, 68, 136, 0.15);
+}
+
+[data-theme="holographic"] .modal-close:hover {
+  background: rgba(68, 221, 255, 0.1);
+}
+
+/* Animated rainbow header */
+[data-theme="holographic"] .game-header {
+  background: linear-gradient(
+    90deg,
+    #ff4466, #ffaa22, #44ff88, #44ddff, #bb66ff, #ff4466
+  );
+  background-size: 300% 100%;
+  animation: rainbowShift 6s ease-in-out infinite;
+  -webkit-background-clip: padding-box;
+}
+
+[data-theme="holographic"] #game-title {
+  background: linear-gradient(
+    90deg,
+    #ff4466, #ffaa22, #44ff88, #44ddff, #bb66ff, #ff4466
+  );
+  background-size: 300% 100%;
+  animation: rainbowShift 6s ease-in-out infinite;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Iridescent cell borders */
+[data-theme="holographic"] .cell.hidden {
+  border-image: linear-gradient(
+    135deg,
+    #ff4466, #ffaa22, #44ff88, #44ddff, #bb66ff
+  ) 1;
+}
+
+[data-theme="holographic"] #board {
+  border-color: #4a4a68;
+  box-shadow:
+    0 4px 16px rgba(8, 8, 16, 0.4),
+    0 0 1px rgba(68, 221, 255, 0.3),
+    0 0 1px rgba(255, 68, 136, 0.2);
+}

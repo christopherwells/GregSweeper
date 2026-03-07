@@ -1,0 +1,66 @@
+/* Stealth theme — monochrome gray and black, minimal and tight */
+[data-theme="stealth"] {
+  --color-bg: #1a1a1a;
+  --color-app-bg: #0e0e0e;
+  --color-cell-hidden: #2a2a2a;
+  --color-cell-hidden-hover: #333333;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #2e2e2e, #252525);
+  --color-cell-revealed: #181818;
+  --color-cell-border-light: #3a3a3a;
+  --color-cell-border-dark: #0a0a0a;
+  --color-mine: #cc3333;
+  --color-mine-hit: #ff2222;
+  --color-flag: #cc3333;
+  --color-text: #c8c8c8;
+  --color-text-secondary: #707070;
+
+  --color-num-1: #888888;
+  --color-num-2: #aaaaaa;
+  --color-num-3: #cc3333;
+  --color-num-4: #999999;
+  --color-num-5: #bbbbbb;
+  --color-num-6: #777777;
+  --color-num-7: #d0d0d0;
+  --color-num-8: #555555;
+
+  --color-header-bg: #1a1a1a;
+  --color-header-gradient: linear-gradient(180deg, #222222, #1a1a1a);
+  --color-lcd-bg: #080808;
+  --color-lcd-text: #888888;
+  --color-modal-bg: #1e1e1e;
+  --color-modal-overlay: rgba(0, 0, 0, 0.88);
+  --color-btn-bg: #2a2a2a;
+  --color-btn-hover: #353535;
+  --color-btn-gradient: linear-gradient(180deg, #333333, #2a2a2a);
+  --color-border: #333333;
+  --color-fog: rgba(5, 5, 5, 0.95);
+  --color-scan-highlight: rgba(136, 136, 136, 0.15);
+  --color-golden: #b0a060;
+  --color-accent: #808080;
+  --color-accent-hover: #999999;
+  --color-accent-glow: rgba(128, 128, 128, 0.2);
+  --color-win: #70a070;
+  --color-loss: #cc3333;
+  --color-surface: rgba(255, 255, 255, 0.02);
+}
+
+[data-theme="stealth"] #app {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+[data-theme="stealth"] .lcd-display {
+  text-shadow: 0 0 6px rgba(136, 136, 136, 0.3);
+}
+
+[data-theme="stealth"] #game-title {
+  text-shadow: none;
+}
+
+[data-theme="stealth"] .modal-close:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="stealth"] #board {
+  border-color: #2a2a2a;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
