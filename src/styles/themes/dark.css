@@ -49,3 +49,13 @@
 [data-theme="dark"] .modal-close:hover {
   background: rgba(255,255,255,0.08);
 }
+
+/* Cells fade in from darker shade */
+[data-theme="dark"] .cell.revealed.revealing {
+  animation: darkFade 0.3s ease-out;
+}
+
+@keyframes darkFade {
+  0% { opacity: 0; background: #060612; }
+  100% { opacity: 1; }
+}

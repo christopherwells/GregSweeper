@@ -1,68 +1,69 @@
-import { generateBoard, createEmptyBoard, calculateAdjacency } from './logic/boardGenerator.js?v=1.7';
-import { floodFillReveal, checkWin, revealAllMines, chordReveal } from './logic/boardSolver.js?v=1.7';
-import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL } from './logic/difficulty.js?v=2.5';
+import { generateBoard, createEmptyBoard, calculateAdjacency } from './logic/boardGenerator.js?v=0.6';
+import { floodFillReveal, checkWin, revealAllMines, chordReveal } from './logic/boardSolver.js?v=0.6';
+import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL } from './logic/difficulty.js?v=0.6';
 import {
   computeVisibleCells, getHiddenNumberRate, applyHiddenNumbers,
   decodeAdjacentHidden, decodeAllHidden,
   getRefogTimeout, computeRefogCells,
-} from './logic/fogOfWar.js?v=1.7';
-import { findSafeCell, scanRowCol, defuseMine, shieldDefuse, xRayScan } from './logic/powerUps.js?v=2.5';
-import { createDailyRNG } from './logic/seededRandom.js?v=1.7';
+} from './logic/fogOfWar.js?v=0.6';
+import { findSafeCell, scanRowCol, defuseMine, shieldDefuse, xRayScan } from './logic/powerUps.js?v=0.6';
+import { createDailyRNG } from './logic/seededRandom.js?v=0.6';
 import {
   loadStats, saveGameResult, resetStats,
   loadDailyLeaderboard, addDailyLeaderboardEntry,
   loadTheme, saveTheme,
   loadModePowerUps, saveModePowerUps,
-} from './storage/statsStorage.js?v=1.7';
+  loadModeLives, saveModeLives,
+} from './storage/statsStorage.js?v=0.7';
 import {
   playReveal, playFlag, playUnflag, playExplosion,
   playCascade, playWin, playPowerUp, playShieldBreak,
   playLevelUp, playFreeze, playXRay,
   playDecode, playTimeRecord, isMuted, setMuted, loadMuted,
-} from './audio/sounds.js?v=1.8';
+} from './audio/sounds.js?v=0.6';
 import {
   getAchievementState, getTotalScore, checkNewUnlocks,
   getHighestTier, getAllTierNames, getTierIcon, getTierColor,
-} from './logic/achievements.js?v=2.5';
+} from './logic/achievements.js?v=0.6';
 import {
   initFirebase, isFirebaseOnline, submitOnlineScore, fetchOnlineLeaderboard,
-} from './firebase/firebaseLeaderboard.js?v=2.5';
+} from './firebase/firebaseLeaderboard.js?v=0.6';
 
 // ── Theme Unlock Progression ──────────────────────────
 // Themes unlock based on highest level ever beaten (permanent).
 // Dying in normal mode resets current level to 1 but keeps unlocks.
 const THEME_UNLOCKS = {
-  classic:          { levelRequired: 0,  displayName: 'Classic',        mine: '💣', flag: '🚩' },
-  dark:             { levelRequired: 0,  displayName: 'Dark',           mine: '💣', flag: '🚩' },
-  ocean:            { levelRequired: 2,  displayName: 'Ocean',          mine: '🐡', flag: '⚓' },
-  sunset:           { levelRequired: 3,  displayName: 'Sunset',         mine: '☀️', flag: '🌅' },
-  forest:           { levelRequired: 4,  displayName: 'Forest',         mine: '🍄', flag: '🌿' },
-  candy:            { levelRequired: 5,  displayName: 'Candy',          mine: '🍬', flag: '🍭' },
-  midnight:         { levelRequired: 6,  displayName: 'Midnight',       mine: '🌙', flag: '⭐' },
-  stealth:          { levelRequired: 7,  displayName: 'Stealth',        mine: '💣', flag: '🏴' },
-  neon:             { levelRequired: 8,  displayName: 'Neon',           mine: '⚡', flag: '🎯' },
-  'cherry-blossom': { levelRequired: 9,  displayName: 'Cherry Blossom', mine: '🌸', flag: '🎀' },
-  aurora:           { levelRequired: 10, displayName: 'Aurora',         mine: '❄️', flag: '🌌' },
-  volcano:          { levelRequired: 11, displayName: 'Volcano',        mine: '🌋', flag: '🔥' },
-  ice:              { levelRequired: 12, displayName: 'Ice',            mine: '🧊', flag: '❄️' },
-  cyberpunk:        { levelRequired: 13, displayName: 'Cyberpunk',      mine: '🤖', flag: '🔌' },
-  retro:            { levelRequired: 14, displayName: 'Retro',          mine: '👾', flag: '🕹️' },
-  holographic:      { levelRequired: 15, displayName: 'Holographic',    mine: '💠', flag: '🔮' },
-  galaxy:           { levelRequired: 16, displayName: 'Galaxy',         mine: '☄️', flag: '🛸' },
-  toxic:            { levelRequired: 17, displayName: 'Toxic',          mine: '☢️', flag: '🧪' },
-  royal:            { levelRequired: 18, displayName: 'Royal',          mine: '👑', flag: '⚔️' },
-  prismatic:        { levelRequired: 19, displayName: 'Prismatic',      mine: '🌈', flag: '✨' },
-  void:             { levelRequired: 20, displayName: 'Void',           mine: '🕳️', flag: '⚫' },
-  arctic:           { levelRequired: 21, displayName: 'Arctic',         mine: '🐻‍❄️', flag: '🏔️' },
-  jungle:           { levelRequired: 22, displayName: 'Jungle',         mine: '🐍', flag: '🦜' },
-  obsidian:         { levelRequired: 23, displayName: 'Obsidian',       mine: '🖤', flag: '⛓️' },
-  matrix:           { levelRequired: 24, displayName: 'Matrix',         mine: '🟢', flag: '🔴' },
-  inferno:          { levelRequired: 25, displayName: 'Inferno',        mine: '🔥', flag: '💀' },
-  celestial:        { levelRequired: 26, displayName: 'Celestial',      mine: '🌟', flag: '🌠' },
-  bloodmoon:        { levelRequired: 27, displayName: 'Blood Moon',     mine: '🩸', flag: '🌑' },
-  synthwave:        { levelRequired: 28, displayName: 'Synthwave',      mine: '🎹', flag: '🎧' },
-  supernova:        { levelRequired: 29, displayName: 'Supernova',      mine: '💥', flag: '🚀' },
-  legendary:        { levelRequired: 30, displayName: 'Legendary',      mine: '🐉', flag: '🏰' },
+  classic:          { levelRequired: 0,  displayName: 'Classic',        mine: '💣', flag: '🚩', smiley: '😊', smileyWin: '😎', smileyLoss: '😵' },
+  dark:             { levelRequired: 0,  displayName: 'Dark',           mine: '💣', flag: '🚩', smiley: '😊', smileyWin: '😎', smileyLoss: '😵' },
+  ocean:            { levelRequired: 2,  displayName: 'Ocean',          mine: '🐡', flag: '⚓', smiley: '🐟', smileyWin: '🐬', smileyLoss: '🫧' },
+  sunset:           { levelRequired: 3,  displayName: 'Sunset',         mine: '☀️', flag: '🚩', smiley: '🌤️', smileyWin: '🌞', smileyLoss: '🌧️' },
+  forest:           { levelRequired: 4,  displayName: 'Forest',         mine: '🍄', flag: '🌿', smiley: '🌲', smileyWin: '🦉', smileyLoss: '🪵' },
+  candy:            { levelRequired: 5,  displayName: 'Candy',          mine: '🍬', flag: '🍭', smiley: '🧁', smileyWin: '🎂', smileyLoss: '🍩' },
+  midnight:         { levelRequired: 6,  displayName: 'Midnight',       mine: '🌙', flag: '⭐', smiley: '🦇', smileyWin: '🌕', smileyLoss: '🌑' },
+  stealth:          { levelRequired: 7,  displayName: 'Stealth',        mine: '💣', flag: '🏴', smiley: '🥷', smileyWin: '🕵️', smileyLoss: '💀' },
+  neon:             { levelRequired: 8,  displayName: 'Neon',           mine: '⚡', flag: '🎯', smiley: '💡', smileyWin: '🔆', smileyLoss: '💤' },
+  'cherry-blossom': { levelRequired: 9,  displayName: 'Cherry Blossom', mine: '🌸', flag: '🎀', smiley: '🌷', smileyWin: '🦋', smileyLoss: '🥀' },
+  aurora:           { levelRequired: 10, displayName: 'Aurora',         mine: '❄️', flag: '🌌', smiley: '🌀', smileyWin: '🌈', smileyLoss: '🌫️' },
+  volcano:          { levelRequired: 11, displayName: 'Volcano',        mine: '🌋', flag: '🔥', smiley: '🪨', smileyWin: '🏔️', smileyLoss: '💨' },
+  ice:              { levelRequired: 12, displayName: 'Ice',            mine: '🧊', flag: '❄️', smiley: '⛄', smileyWin: '🏔️', smileyLoss: '💧' },
+  cyberpunk:        { levelRequired: 13, displayName: 'Cyberpunk',      mine: '🤖', flag: '🔌', smiley: '🖥️', smileyWin: '🦾', smileyLoss: '⚠️' },
+  retro:            { levelRequired: 14, displayName: 'Retro',          mine: '👾', flag: '🕹️', smiley: '🎮', smileyWin: '🏆', smileyLoss: '👻' },
+  holographic:      { levelRequired: 15, displayName: 'Holographic',    mine: '💠', flag: '🔮', smiley: '🔮', smileyWin: '🪩', smileyLoss: '🫥' },
+  galaxy:           { levelRequired: 16, displayName: 'Galaxy',         mine: '☄️', flag: '🛸', smiley: '🪐', smileyWin: '🌟', smileyLoss: '🌑' },
+  toxic:            { levelRequired: 17, displayName: 'Toxic',          mine: '☢️', flag: '🧪', smiley: '🧫', smileyWin: '🧬', smileyLoss: '💀' },
+  royal:            { levelRequired: 18, displayName: 'Royal',          mine: '👑', flag: '⚔️', smiley: '🏰', smileyWin: '👑', smileyLoss: '⚰️' },
+  prismatic:        { levelRequired: 19, displayName: 'Prismatic',      mine: '🌈', flag: '✨', smiley: '💎', smileyWin: '🦄', smileyLoss: '🫧' },
+  void:             { levelRequired: 20, displayName: 'Void',           mine: '🕳️', flag: '⚫', smiley: '👁️', smileyWin: '🌀', smileyLoss: '💫' },
+  arctic:           { levelRequired: 21, displayName: 'Arctic',         mine: '🐻‍❄️', flag: '🏔️', smiley: '🦭', smileyWin: '🐧', smileyLoss: '🥶' },
+  jungle:           { levelRequired: 22, displayName: 'Jungle',         mine: '🐍', flag: '🦜', smiley: '🐒', smileyWin: '🦁', smileyLoss: '🦴' },
+  obsidian:         { levelRequired: 23, displayName: 'Obsidian',       mine: '🖤', flag: '⛓️', smiley: '🗿', smileyWin: '💎', smileyLoss: '🪦' },
+  matrix:           { levelRequired: 24, displayName: 'Matrix',         mine: '🟢', flag: '🔴', smiley: '👁️', smileyWin: '🔓', smileyLoss: '🔒' },
+  inferno:          { levelRequired: 25, displayName: 'Inferno',        mine: '🔥', flag: '💀', smiley: '😈', smileyWin: '👹', smileyLoss: '💀' },
+  celestial:        { levelRequired: 26, displayName: 'Celestial',      mine: '🌟', flag: '🌠', smiley: '🌙', smileyWin: '☀️', smileyLoss: '🌑' },
+  bloodmoon:        { levelRequired: 27, displayName: 'Blood Moon',     mine: '🩸', flag: '🌑', smiley: '🐺', smileyWin: '🦇', smileyLoss: '⚰️' },
+  synthwave:        { levelRequired: 28, displayName: 'Synthwave',      mine: '🎹', flag: '🎧', smiley: '🎛️', smileyWin: '🎶', smileyLoss: '📴' },
+  supernova:        { levelRequired: 29, displayName: 'Supernova',      mine: '💥', flag: '🚀', smiley: '🛰️', smileyWin: '⭐', smileyLoss: '🌑' },
+  legendary:        { levelRequired: 30, displayName: 'Legendary',      mine: '🐉', flag: '🏰', smiley: '⚔️', smileyWin: '🐉', smileyLoss: '💀' },
 };
 
 function getUnlockedThemes() {
@@ -77,6 +78,7 @@ function getUnlockedThemes() {
 
 function updateThemeSwatches() {
   const unlocked = getUnlockedThemes();
+  let lockedCount = 0;
   for (const swatch of $$('.theme-swatch')) {
     const theme = swatch.dataset.theme;
     const isUnlocked = unlocked[theme] !== false;
@@ -84,13 +86,30 @@ function updateThemeSwatches() {
     const nameEl = swatch.querySelector('.swatch-name');
 
     if (isUnlocked) {
-      swatch.classList.remove('locked');
+      swatch.classList.remove('locked', 'locked-collapsed');
       if (lockEl) lockEl.classList.add('hidden');
       if (nameEl) nameEl.classList.remove('hidden');
     } else {
       swatch.classList.add('locked');
+      // Collapse locked themes by default
+      const toggleBtn = $('#toggle-locked-themes');
+      if (toggleBtn && !toggleBtn.classList.contains('expanded')) {
+        swatch.classList.add('locked-collapsed');
+      }
       if (lockEl) lockEl.classList.remove('hidden');
       if (nameEl) nameEl.classList.add('hidden');
+      lockedCount++;
+    }
+  }
+  // Update toggle button
+  const toggleBtn = $('#toggle-locked-themes');
+  const countSpan = $('#locked-theme-count');
+  if (toggleBtn) {
+    if (lockedCount > 0) {
+      toggleBtn.classList.remove('hidden');
+      if (countSpan) countSpan.textContent = lockedCount;
+    } else {
+      toggleBtn.classList.add('hidden');
     }
   }
 }
@@ -171,6 +190,7 @@ const state = {
   theme: 'classic',
   hitMine: null,  // {row, col} of the mine that killed you
   zoomLevel: 100,  // percentage (50–200)
+  lives: 0,  // extra lives for retry-on-death
 };
 
 // ── DOM References ─────────────────────────────────────
@@ -183,7 +203,7 @@ const mineCounterEl = $('#mine-counter');
 const timerEl = $('#timer-display');
 const resetBtn = $('#reset-btn');
 const levelDisplay = $('#level-display');
-const modeDisplay = $('#mode-display');
+const livesDisplay = $('#lives-display');
 const shakeWrapper = $('#screen-shake-wrapper');
 const particleCanvas = $('#particle-canvas');
 const scanToast = $('#scan-toast');
@@ -214,12 +234,19 @@ function renderBoard() {
   boardEl.style.gridTemplateColumns = `repeat(${state.cols}, var(--cell-size))`;
   boardEl.style.gridTemplateRows = `repeat(${state.rows}, var(--cell-size))`;
 
+  const shouldAnimate = state._initialized;
   for (let r = 0; r < state.rows; r++) {
     for (let c = 0; c < state.cols; c++) {
       const cellEl = document.createElement('div');
       cellEl.className = 'cell unrevealed';
       cellEl.dataset.row = r;
       cellEl.dataset.col = c;
+      if (shouldAnimate) {
+        const delay = (r + c) * 12; // diagonal wave
+        cellEl.classList.add('cascade-in');
+        cellEl.style.animationDelay = `${delay}ms`;
+        setTimeout(() => cellEl.classList.remove('cascade-in'), 300 + delay);
+      }
       boardEl.appendChild(cellEl);
     }
   }
@@ -230,6 +257,9 @@ function getThemeEmoji(type) {
   const themeInfo = THEME_UNLOCKS[currentTheme];
   if (type === 'mine') return themeInfo?.mine || '💣';
   if (type === 'flag') return themeInfo?.flag || '🚩';
+  if (type === 'smiley') return themeInfo?.smiley || '😊';
+  if (type === 'smileyWin') return themeInfo?.smileyWin || '😎';
+  if (type === 'smileyLoss') return themeInfo?.smileyLoss || '😵';
   return '💣';
 }
 
@@ -261,6 +291,11 @@ function updateCell(r, c) {
       } else {
         cellEl.className = `cell revealed num-${cell.adjacentMines}`;
         cellEl.textContent = cell.adjacentMines;
+        // Pop-in animation for numbered cells during cascade reveals
+        if (cell.revealAnimDelay > 0) {
+          cellEl.classList.add('num-pop', 'number-glow');
+          cellEl.style.animationDelay = `${cell.revealAnimDelay}ms`;
+        }
       }
     } else {
       cellEl.className = 'cell revealed empty';
@@ -287,6 +322,21 @@ function updateAllCells() {
   }
 }
 
+function updateLivesDisplay() {
+  if (!livesDisplay) return;
+  if (state.gameMode === 'normal' || state.gameMode === 'fogOfWar') {
+    if (state.lives > 0) {
+      const hearts = state.lives <= 5 ? '❤️'.repeat(state.lives) : `❤️ ×${state.lives}`;
+      livesDisplay.textContent = hearts;
+    } else {
+      livesDisplay.textContent = '💔 0';
+    }
+    livesDisplay.classList.remove('hidden');
+  } else {
+    livesDisplay.classList.add('hidden');
+  }
+}
+
 function updateHeader() {
   const remaining = state.totalMines - state.flagCount;
   if (remaining < 0) {
@@ -304,16 +354,15 @@ function updateHeader() {
     levelDisplay.textContent = `Level ${state.currentLevel}`;
   }
 
-  if (state.gameMode === 'daily') {
-    const dateStr = new Date().toISOString().slice(0, 10);
-    modeDisplay.textContent = `Daily ${dateStr}`;
-  } else if (state.gameMode === 'timed') {
-    const tdiffLabel = getTimedDifficulty(state.currentLevel);
-    modeDisplay.textContent = `Timed · ${tdiffLabel.label || 'Classic'}`;
-  } else {
-    const modeLabels = { normal: 'Challenge', fogOfWar: 'Fog of War' };
-    modeDisplay.textContent = modeLabels[state.gameMode] || 'Challenge';
+  // Update mode pill active states
+  for (const pill of $$('.mode-pill')) {
+    pill.classList.toggle('active', pill.dataset.mode === state.gameMode);
   }
+  for (const btn of $$('.mode-btn')) {
+    btn.classList.toggle('active', btn.dataset.mode === state.gameMode);
+  }
+
+  updateLivesDisplay();
 
   // Show best time for timed/normal mode (with speed rating for timed)
   const stats = loadStats();
@@ -344,9 +393,9 @@ function updateHeader() {
     }
   }
 
-  if (state.status === 'won') resetBtn.textContent = '😎';
-  else if (state.status === 'lost') resetBtn.textContent = '😵';
-  else resetBtn.textContent = '😊';
+  if (state.status === 'won') resetBtn.textContent = getThemeEmoji('smileyWin');
+  else if (state.status === 'lost') resetBtn.textContent = getThemeEmoji('smileyLoss');
+  else resetBtn.textContent = getThemeEmoji('smiley');
 }
 
 function updatePowerUpBar() {
@@ -391,6 +440,7 @@ function updateStreakBorder() {
   if (!streakBorder) return;
   const stats = loadStats();
   const streak = stats.currentStreak || 0;
+  const prevStreak = streakBorder.dataset.prevStreak ? parseInt(streakBorder.dataset.prevStreak) : 0;
 
   streakBorder.classList.remove('active', 'streak-1', 'streak-2', 'streak-3');
 
@@ -401,6 +451,15 @@ function updateStreakBorder() {
   } else if (streak >= 2) {
     streakBorder.classList.add('active', 'streak-1');
   }
+
+  // Streak shake animation when streak increases
+  if (streak > prevStreak && streak >= 2) {
+    streakBorder.classList.remove('streak-shake');
+    void streakBorder.offsetWidth;
+    streakBorder.classList.add('streak-shake');
+    setTimeout(() => streakBorder.classList.remove('streak-shake'), 500);
+  }
+  streakBorder.dataset.prevStreak = streak;
 }
 
 // ── Timer ──────────────────────────────────────────────
@@ -422,6 +481,11 @@ function startTimer() {
   state.timerId = setInterval(() => {
     state.elapsedTime++;
     updateTimerDisplay();
+    // Timer tick pulse
+    timerEl.classList.remove('timer-tick');
+    void timerEl.offsetWidth;
+    timerEl.classList.add('timer-tick');
+    setTimeout(() => timerEl.classList.remove('timer-tick'), 300);
   }, 1000);
 }
 
@@ -470,7 +534,9 @@ function stopCreepingFog() {
 function handleTimedLoss() {
   state.status = 'lost';
   stopTimer();
-  resetBtn.textContent = '😵';
+  resetBtn.textContent = getThemeEmoji('smileyLoss');
+  resetBtn.classList.add('smiley-loss-shake');
+  setTimeout(() => resetBtn.classList.remove('smiley-loss-shake'), 500);
   playExplosion();
   triggerHeavyShake();
   showRedFlash();
@@ -542,7 +608,7 @@ function newGame() {
   // Daily mode: vary board dimensions using the daily seed
   if (state.gameMode === 'daily' && state.dailySeed) {
     const dailyRng = createDailyRNG(state.dailySeed);
-    // Skip a few values (board gen will use its own RNG from the same seed)
+    // Use first 3 RNG values for board dimensions
     const dimRng1 = dailyRng();
     const dimRng2 = dailyRng();
     const dimRng3 = dailyRng();
@@ -550,6 +616,15 @@ function newGame() {
     state.cols = 8 + Math.floor(dimRng2 * 5);    // 8–12
     const density = 0.14 + dimRng3 * 0.16;        // 14%–30%
     state.totalMines = Math.max(5, Math.round(state.rows * state.cols * density));
+
+    // Pre-generate the board NOW with a fixed exclude position (center)
+    // so EVERY player gets the exact same mine layout regardless of first click
+    const fixedRow = Math.floor(state.rows / 2);
+    const fixedCol = Math.floor(state.cols / 2);
+    const boardRng = createDailyRNG(state.dailySeed);
+    state.board = generateBoard(state.rows, state.cols, state.totalMines, fixedRow, fixedCol, boardRng);
+    state.firstClick = false;
+    state.status = 'idle'; // stays idle until actual first click
   }
 
   // Load per-mode power-ups
@@ -570,6 +645,13 @@ function newGame() {
     };
   }
 
+  // Load per-mode lives
+  if (state.gameMode === 'normal' || state.gameMode === 'fogOfWar') {
+    state.lives = loadModeLives(state.gameMode);
+  } else {
+    state.lives = 0;
+  }
+
   hideAllModals();
   adjustCellSize();
   renderBoard();
@@ -578,6 +660,7 @@ function newGame() {
   updateTimerDisplay();
   updatePowerUpBar();
   updateStreakBorder();
+  updateLivesDisplay();
   updateZoom();
 
   // Board transition animation when size changes
@@ -654,7 +737,7 @@ function revealCell(row, col) {
     return;
   }
 
-  // First click — generate board
+  // First click — generate board (or start pre-generated daily board)
   if (state.firstClick) {
     const rng = state.dailySeed ? createDailyRNG(state.dailySeed) : undefined;
     const maxZC = (state.gameMode === 'normal' || state.gameMode === 'fogOfWar')
@@ -667,6 +750,26 @@ function revealCell(row, col) {
     if (state.fogOfWarEnabled) {
       state.visibleCells = computeVisibleCells([{ row, col }], state.fogRadius, state.rows, state.cols);
     }
+  } else if (state.status === 'idle' && state.gameMode === 'daily') {
+    // Daily mode: board was pre-generated for consistency.
+    // If first click lands on a mine, relocate it to keep first-click-safe.
+    const clickedCell = state.board[row][col];
+    if (clickedCell.isMine) {
+      clickedCell.isMine = false;
+      // Find the first non-mine cell not adjacent to the click to place the mine
+      for (let r = 0; r < state.rows; r++) {
+        for (let c = 0; c < state.cols; c++) {
+          if (!state.board[r][c].isMine && (Math.abs(r - row) > 1 || Math.abs(c - col) > 1)) {
+            state.board[r][c].isMine = true;
+            r = state.rows; // break outer
+            break;
+          }
+        }
+      }
+      calculateAdjacency(state.board);
+    }
+    state.status = 'playing';
+    startTimer();
   }
 
   const currentCell = state.board[row][col];
@@ -772,10 +875,30 @@ function toggleFlag(row, col) {
   const cell = state.board[row][col];
   if (cell.isRevealed) return;
 
+  const wasFlagged = cell.isFlagged;
   cell.isFlagged = !cell.isFlagged;
   state.flagCount += cell.isFlagged ? 1 : -1;
   if (cell.isFlagged) playFlag(); else playUnflag();
   updateCell(row, col);
+  // Flag pop / unflag shrink animation
+  const cellEl = boardEl.children[row * state.cols + col];
+  if (cellEl) {
+    if (cell.isFlagged) {
+      cellEl.classList.add('flag-pop');
+      setTimeout(() => cellEl.classList.remove('flag-pop'), 350);
+    } else {
+      cellEl.classList.add('unflag-shrink');
+      setTimeout(() => cellEl.classList.remove('unflag-shrink'), 200);
+    }
+  }
+  // Mine counter bump
+  const mineCountEl = document.getElementById('mine-counter');
+  if (mineCountEl) {
+    mineCountEl.classList.remove('counter-bump');
+    void mineCountEl.offsetWidth; // force reflow
+    mineCountEl.classList.add('counter-bump');
+    setTimeout(() => mineCountEl.classList.remove('counter-bump'), 250);
+  }
   updateHeader();
 }
 
@@ -824,6 +947,25 @@ function handleChordReveal(row, col) {
   updateAllCells();
   updateHeader();
 
+  // Chord ripple animation on revealed cells
+  if (result.revealed && !result.hitMine) {
+    for (const c of result.revealed) {
+      if (!c.isMine) {
+        const idx = c.row * state.cols + c.col;
+        const cellEl = boardEl.children[idx];
+        if (cellEl) {
+          const dist = Math.abs(c.row - row) + Math.abs(c.col - col);
+          cellEl.classList.add('chord-ripple');
+          cellEl.style.animationDelay = `${dist * 40}ms`;
+          setTimeout(() => {
+            cellEl.classList.remove('chord-ripple');
+            cellEl.style.animationDelay = '';
+          }, 350 + dist * 40);
+        }
+      }
+    }
+  }
+
   if (result.hitMine) {
     const mineCell = result.revealed.find(c => c.isMine);
     if (state.gameMode === 'daily') {
@@ -839,7 +981,9 @@ function handleChordReveal(row, col) {
 function handleWin() {
   state.status = 'won';
   stopTimer();
-  resetBtn.textContent = '😎';
+  resetBtn.textContent = getThemeEmoji('smileyWin');
+  resetBtn.classList.add('smiley-win-bounce');
+  setTimeout(() => resetBtn.classList.remove('smiley-win-bounce'), 800);
 
   const prevStats = loadStats();
   const prevMaxLevel = prevStats.maxLevelReached || 1;
@@ -878,6 +1022,12 @@ function handleWin() {
   const achievementsDiv = $('#gameover-achievements');
 
   gameoverTitle.textContent = 'You Win!';
+  // Win title bounce animation
+  gameoverTitle.classList.remove('win-title-bounce');
+  void gameoverTitle.offsetWidth;
+  gameoverTitle.classList.add('win-title-bounce');
+  setTimeout(() => gameoverTitle.classList.remove('win-title-bounce'), 700);
+
   const strikesInfo = state.gameMode === 'daily' && state.dailyBombHits > 0
     ? ` | 💥 ${state.dailyBombHits} strike${state.dailyBombHits !== 1 ? 's' : ''}`
     : '';
@@ -889,6 +1039,13 @@ function handleWin() {
   } else {
     gameoverTime.textContent = `Time: ${state.elapsedTime}s${strikesInfo}`;
   }
+
+  // Stats cascade animation on time display
+  gameoverTime.classList.remove('stats-cascade');
+  void gameoverTime.offsetWidth;
+  gameoverTime.classList.add('stats-cascade');
+  gameoverTime.style.animationDelay = '0.1s';
+  setTimeout(() => gameoverTime.classList.remove('stats-cascade'), 500);
 
   const bestKey = `level${state.currentLevel}`;
   const isNewRecord = stats.bestTimes[bestKey] === state.elapsedTime;
@@ -915,8 +1072,28 @@ function handleWin() {
   if (earnedPowerUp) {
     powerupEarned.textContent = `Earned: ${earnedPowerUp}`;
     powerupEarned.classList.remove('hidden');
+    // Animate power-up buttons with earned bounce
+    setTimeout(() => {
+      for (const btn of $$('.powerup-btn')) {
+        const count = state.powerUps[btn.dataset.powerup] || 0;
+        if (count > 0) {
+          btn.classList.add('powerup-earned');
+          setTimeout(() => btn.classList.remove('powerup-earned'), 600);
+        }
+      }
+    }, 300);
   } else {
     powerupEarned.classList.add('hidden');
+  }
+
+  // Show life-earned preview for levels divisible by 3
+  const lifeEarnedEl = $('#gameover-life-earned');
+  const completedLevel = state.currentLevel;
+  if ((state.gameMode === 'normal' || state.gameMode === 'fogOfWar') && completedLevel % 3 === 0) {
+    lifeEarnedEl.textContent = '❤️ +1 Life earned! (Next Level to claim)';
+    lifeEarnedEl.classList.remove('hidden');
+  } else {
+    lifeEarnedEl.classList.add('hidden');
   }
 
   // Show newly unlocked achievement tiers in game over
@@ -960,7 +1137,9 @@ function handleWin() {
 function handleLoss(mineRow, mineCol) {
   state.status = 'lost';
   stopTimer();
-  resetBtn.textContent = '😵';
+  resetBtn.textContent = getThemeEmoji('smileyLoss');
+  resetBtn.classList.add('smiley-loss-shake');
+  setTimeout(() => resetBtn.classList.remove('smiley-loss-shake'), 500);
 
   state.hitMine = { row: mineRow, col: mineCol };
 
@@ -976,30 +1155,57 @@ function handleLoss(mineRow, mineCol) {
   // Power-ups persist on loss within same mode
   saveModePowerUps(state.gameMode, state.powerUps);
 
-  // Death penalty: reset to level 1 in normal mode
+  // Death penalty: lives-aware
   const lostLevel = state.currentLevel;
-  if (state.gameMode === 'normal' && state.currentLevel > 1) {
+  const isLevelMode = state.gameMode === 'normal' || state.gameMode === 'fogOfWar';
+  const hasLives = isLevelMode && state.lives > 0;
+
+  // Only reset to level 1 if no lives remain
+  if (isLevelMode && !hasLives && state.currentLevel > 1) {
     state.currentLevel = 1;
   }
 
   const gameoverTitle = $('#gameover-title');
   const gameoverTime = $('#gameover-time');
+  const useLifeBtn = $('#gameover-uselife');
+  const useLifeCount = $('#uselife-count');
+
   gameoverTitle.textContent = 'Game Over';
-  if (lostLevel > 1 && state.gameMode === 'normal') {
+  gameoverTitle.classList.remove('win-title-bounce');
+  void gameoverTitle.offsetWidth;
+  gameoverTitle.classList.add('win-title-bounce');
+  setTimeout(() => gameoverTitle.classList.remove('win-title-bounce'), 700);
+
+  if (hasLives) {
+    gameoverTime.textContent = `Time: ${state.elapsedTime}s · ❤️ ${state.lives} ${state.lives === 1 ? 'life' : 'lives'} remaining`;
+    useLifeBtn.classList.remove('hidden');
+    useLifeCount.textContent = state.lives;
+  } else if (lostLevel > 1 && isLevelMode) {
     gameoverTime.textContent = `Time: ${state.elapsedTime}s · Reset to Level 1`;
+    useLifeBtn.classList.add('hidden');
   } else {
     gameoverTime.textContent = `Time: ${state.elapsedTime}s`;
+    useLifeBtn.classList.add('hidden');
   }
+
+  // Stats cascade on loss
+  gameoverTime.classList.remove('stats-cascade');
+  void gameoverTime.offsetWidth;
+  gameoverTime.classList.add('stats-cascade');
+  gameoverTime.style.animationDelay = '0.1s';
+  setTimeout(() => gameoverTime.classList.remove('stats-cascade'), 500);
   $('#gameover-record').classList.add('hidden');
   $('#gameover-nextlevel').classList.add('hidden');
   $('#gameover-submit-daily').classList.add('hidden');
   $('#gameover-powerup-earned').classList.add('hidden');
+  $('#gameover-life-earned').classList.add('hidden');
   $('#gameover-share').classList.add('hidden');
   $('#gameover-achievements').classList.add('hidden');
 
   setTimeout(() => showModal('gameover-overlay'), 900);
   updatePowerUpBar();
   updateStreakBorder();
+  updateLivesDisplay();
 }
 
 // ── Daily Mode: Bomb Hit Re-Fog ─────────────────────────
@@ -1146,6 +1352,26 @@ function performScan(row, col) {
     }
   }
 
+  // Highlight mine cells in red (like x-ray) for better visibility
+  const minesInScan = [];
+  for (let c = 0; c < state.cols; c++) {
+    if (state.board[row][c].isMine && !state.board[row][c].isRevealed) {
+      const el = boardEl.children[row * state.cols + c];
+      if (el) minesInScan.push({ el, delay: Math.abs(c - col) * 40 });
+    }
+  }
+  for (let r = 0; r < state.rows; r++) {
+    if (state.board[r][col].isMine && !state.board[r][col].isRevealed) {
+      const el = boardEl.children[r * state.cols + col];
+      if (el && !minesInScan.some(m => m.el === el)) {
+        minesInScan.push({ el, delay: Math.abs(r - row) * 40 });
+      }
+    }
+  }
+  minesInScan.forEach(({ el, delay }) => {
+    setTimeout(() => el.classList.add('xray-mine'), 200 + delay);
+  });
+
   scanToast.textContent = `Row ${row + 1}: ${result.rowMines} mine${result.rowMines !== 1 ? 's' : ''} | Col ${col + 1}: ${result.colMines} mine${result.colMines !== 1 ? 's' : ''}`;
   scanToast.classList.remove('hidden');
 
@@ -1154,6 +1380,9 @@ function performScan(row, col) {
     for (const el of $$('.scan-highlight')) {
       el.classList.remove('scan-highlight');
       el.style.animationDelay = '';
+    }
+    for (const el of $$('.xray-mine')) {
+      el.classList.remove('xray-mine');
     }
   }, 3000);
 
@@ -1432,6 +1661,28 @@ function showConfettiBurst(originX, originY, count) {
     midnight: ['#cc88ff', '#7c4dff', '#80b0ff', '#ffd740', '#69f0ae', '#b388ff'],
     aurora: ['#00e5a0', '#00bcd4', '#b388ff', '#69f0ae', '#00e5ff', '#a7ffeb'],
     galaxy: ['#ea80fc', '#d050ff', '#82b1ff', '#ff80ab', '#b9f6ca', '#ce93d8'],
+    forest: ['#4a8a3a', '#7ec87e', '#d4a843', '#c4a265', '#8bc34a', '#ffd700'],
+    stealth: ['#707070', '#505050', '#909090', '#b0a060', '#888888', '#c0c0c0'],
+    'cherry-blossom': ['#ff91a4', '#ffb6c1', '#f8c8dc', '#f48fb1', '#ce93d8', '#a8e6cf'],
+    volcano: ['#ff6622', '#ff4420', '#ff9944', '#ffcc44', '#ff8830', '#ffd700'],
+    ice: ['#b3e5fc', '#e1f5fe', '#80deea', '#b2ebf2', '#e0f7fa', '#ffffff'],
+    cyberpunk: ['#ff0080', '#00ffff', '#ffcc00', '#aa44ff', '#ff4444', '#00ff88'],
+    retro: ['#e6a23c', '#33cc66', '#ff4444', '#4488ff', '#ffd700', '#cc8844'],
+    holographic: ['#ff9ff3', '#48dbfb', '#c8d6e5', '#a29bfe', '#55efc4', '#fd79a8'],
+    toxic: ['#76ff03', '#ffea00', '#ff6d00', '#aa00ff', '#00e676', '#eeff41'],
+    royal: ['#ffd700', '#4a0080', '#cc1133', '#fffff0', '#e6b800', '#800080'],
+    prismatic: ['#ff0000', '#ff8800', '#ffff00', '#00cc00', '#0066ff', '#8800ff'],
+    void: ['#4a0066', '#1a0033', '#808080', '#cccccc', '#660099', '#330066'],
+    arctic: ['#e0f0ff', '#80d0ff', '#a8e0ff', '#c0c0c0', '#b8d8f0', '#ffffff'],
+    jungle: ['#33aa33', '#cc4422', '#9933cc', '#ffcc00', '#88cc22', '#44bb44'],
+    obsidian: ['#c0c0c0', '#808080', '#b8860b', '#a9a9a9', '#d3d3d3', '#ffd700'],
+    matrix: ['#00ff00', '#33cc33', '#66ff66', '#00cc00', '#99ff99', '#00ff88'],
+    inferno: ['#ff6600', '#cc0000', '#ffcc00', '#ff4400', '#ff8800', '#ffd700'],
+    celestial: ['#ffd700', '#1a1a4e', '#e0e0ff', '#4488ff', '#ffec80', '#6666cc'],
+    bloodmoon: ['#8b0000', '#cc0000', '#660000', '#990000', '#4a0000', '#ff2222'],
+    synthwave: ['#ff0080', '#00ffff', '#8800ff', '#ff6600', '#ff44aa', '#00ccff'],
+    supernova: ['#ffffff', '#4488ff', '#ff8800', '#aa44ff', '#ffd700', '#ff4444'],
+    legendary: ['#ffd700', '#cc0000', '#8800aa', '#c0c0c0', '#ffec80', '#800080'],
   };
   const colors = themeColors[state.theme] || themeColors.classic;
 
@@ -1617,7 +1868,7 @@ function generateShareCard() {
 
   if (mode === 'daily') {
     const strikesText = state.dailyBombHits > 0 ? ` | 💥 ${state.dailyBombHits} strike${state.dailyBombHits !== 1 ? 's' : ''}` : '';
-    return `💣 GregSweeper — Daily${dateStr}\n` +
+    return `${getThemeEmoji('mine')} GregSweeper — Daily${dateStr}\n` +
            `⏱️ ${time}s (${state.rows}×${state.cols})${strikesText}${tierText}\n` +
            `Can you beat my time?\n\n` +
            `https://christopherwells.github.io/GregSweeper/`;
@@ -1625,12 +1876,12 @@ function generateShareCard() {
 
   if (mode === 'timed') {
     const rating = getSpeedRating(level, time);
-    return `💣 GregSweeper — Timed ${levelLabel}\n` +
+    return `${getThemeEmoji('mine')} GregSweeper — Timed ${levelLabel}\n` +
            `${rating.icon} ${rating.name} — ${time}s (${diff.rows}×${diff.cols})${tierText}\n\n` +
            `https://christopherwells.github.io/GregSweeper/`;
   }
 
-  return `💣 GregSweeper — ${modeLabel}\n` +
+  return `${getThemeEmoji('mine')} GregSweeper — ${modeLabel}\n` +
          `${levelLabel} (${diff.rows}x${diff.cols}) in ${time}s${streakText}${tierText}\n\n` +
          `https://christopherwells.github.io/GregSweeper/`;
 }
@@ -1859,7 +2110,7 @@ boardEl.addEventListener('touchstart', (e) => {
       toggleFlag(touchedCellRow, touchedCellCol);
       haptic([40]);
     }
-  }, 400);
+  }, 300);
 }, { passive: false });
 
 boardEl.addEventListener('touchend', (e) => {
@@ -1896,11 +2147,11 @@ boardEl.addEventListener('touchend', (e) => {
 });
 
 boardEl.addEventListener('touchmove', (e) => {
-  // Only cancel long-press if finger moved more than 15px (prevents jitter cancellation)
+  // Only cancel long-press if finger moved more than 20px (prevents jitter cancellation)
   const touch = e.touches[0];
   const dx = Math.abs(touch.clientX - touchStartX);
   const dy = Math.abs(touch.clientY - touchStartY);
-  if (dx > 15 || dy > 15) {
+  if (dx > 20 || dy > 20) {
     if (longPressTimer) {
       clearTimeout(longPressTimer);
       longPressTimer = null;
@@ -1915,6 +2166,8 @@ boardEl.addEventListener('touchmove', (e) => {
 }, { passive: true });
 
 resetBtn.addEventListener('click', () => {
+  resetBtn.classList.add('smiley-pressed');
+  setTimeout(() => resetBtn.classList.remove('smiley-pressed'), 150);
   state.currentLevel = 1;
   newGame();
 });
@@ -2008,6 +2261,32 @@ for (const swatch of $$('.theme-swatch')) {
     saveTheme(theme);
     for (const s of $$('.theme-swatch')) s.classList.remove('active');
     swatch.classList.add('active');
+    // Refresh themed emojis (smiley, flags, mines)
+    if (state.status === 'won') resetBtn.textContent = getThemeEmoji('smileyWin');
+    else if (state.status === 'lost') resetBtn.textContent = getThemeEmoji('smileyLoss');
+    else resetBtn.textContent = getThemeEmoji('smiley');
+    updateAllCells();
+  });
+}
+
+// Theme collapse toggle
+const toggleLockedBtn = $('#toggle-locked-themes');
+if (toggleLockedBtn) {
+  toggleLockedBtn.addEventListener('click', () => {
+    const isExpanded = toggleLockedBtn.classList.toggle('expanded');
+    for (const swatch of $$('.theme-swatch.locked')) {
+      swatch.classList.toggle('locked-collapsed', !isExpanded);
+    }
+    toggleLockedBtn.textContent = isExpanded ? '🔓 Hide locked themes' : '';
+    if (!isExpanded) {
+      const countSpan = document.createElement('span');
+      toggleLockedBtn.textContent = '🔒 Show ';
+      const s = document.createElement('span');
+      s.id = 'locked-theme-count';
+      s.textContent = $$('.theme-swatch.locked').length;
+      toggleLockedBtn.appendChild(s);
+      toggleLockedBtn.appendChild(document.createTextNode(' locked themes'));
+    }
   });
 }
 
@@ -2024,16 +2303,23 @@ function updateTimedDiffVisibility() {
   }
 }
 
+// Shared mode-switch logic
+function switchMode(mode) {
+  state.gameMode = mode;
+  if (mode !== 'timed') state.currentLevel = 1;
+  for (const m of $$('.mode-btn')) m.classList.toggle('active', m.dataset.mode === mode);
+  for (const p of $$('.mode-pill')) p.classList.toggle('active', p.dataset.mode === mode);
+  updateTimedDiffVisibility();
+  newGame();
+}
+
 for (const modeBtn of $$('.mode-btn')) {
-  modeBtn.addEventListener('click', () => {
-    const mode = modeBtn.dataset.mode;
-    state.gameMode = mode;
-    if (mode !== 'timed') state.currentLevel = 1;
-    for (const m of $$('.mode-btn')) m.classList.remove('active');
-    modeBtn.classList.add('active');
-    updateTimedDiffVisibility();
-    newGame();
-  });
+  modeBtn.addEventListener('click', () => switchMode(modeBtn.dataset.mode));
+}
+
+// Mode pill quick-switcher in info bar
+for (const pill of $$('.mode-pill')) {
+  pill.addEventListener('click', () => switchMode(pill.dataset.mode));
 }
 
 // Timed difficulty selection (Beginner / Intermediate / Expert)
@@ -2076,10 +2362,42 @@ $('#btn-reset-profile').addEventListener('click', () => {
 });
 
 // Game over actions
-$('#gameover-retry').addEventListener('click', () => newGame());
+$('#gameover-retry').addEventListener('click', () => {
+  // If player had lives but chose not to use one, reset to level 1 but keep lives
+  const isLevelMode = state.gameMode === 'normal' || state.gameMode === 'fogOfWar';
+  if (isLevelMode && state.status === 'lost' && state.lives > 0) {
+    state.currentLevel = 1;
+  }
+  newGame();
+});
+
+$('#gameover-uselife').addEventListener('click', () => {
+  if (state.lives <= 0) return;
+  state.lives--;
+  saveModeLives(state.gameMode, state.lives);
+  // Animate lives display
+  if (livesDisplay) {
+    livesDisplay.classList.remove('life-used');
+    void livesDisplay.offsetWidth;
+    livesDisplay.classList.add('life-used');
+    setTimeout(() => livesDisplay.classList.remove('life-used'), 500);
+  }
+  // currentLevel stays the same — retry at same level
+  newGame();
+});
+
 $('#gameover-nextlevel').addEventListener('click', () => {
   const maxLevel = state.gameMode === 'timed' ? MAX_TIMED_LEVEL : MAX_LEVEL;
+  const completedLevel = state.currentLevel;
   if (state.currentLevel < maxLevel) state.currentLevel++;
+
+  // Award a life every 3 completed levels (Challenge & Fog of War)
+  if ((state.gameMode === 'normal' || state.gameMode === 'fogOfWar') && completedLevel % 3 === 0) {
+    state.lives++;
+    saveModeLives(state.gameMode, state.lives);
+    showLifeEarnedToast(completedLevel);
+  }
+
   playLevelUp();
   showLevelUpToast(state.currentLevel);
   showCelebration();
@@ -2136,6 +2454,25 @@ function showLevelUpToast(level) {
   toast.textContent = `Level ${level}!`;
   document.getElementById('app').appendChild(toast);
   setTimeout(() => toast.remove(), 2000);
+}
+
+// ── Life Earned Toast ──────────────────────────────────
+
+function showLifeEarnedToast(completedLevel) {
+  const toast = document.createElement('div');
+  toast.className = 'level-up-toast';
+  toast.style.borderColor = 'var(--color-loss, #ff4444)';
+  toast.style.boxShadow = '0 4px 20px rgba(229, 57, 53, 0.3)';
+  toast.innerHTML = `❤️ +1 Life! <span style="font-size:11px; opacity:0.7">(Level ${completedLevel} clear)</span>`;
+  document.getElementById('app').appendChild(toast);
+  // Pulse lives display
+  if (livesDisplay) {
+    livesDisplay.classList.remove('life-pulse');
+    void livesDisplay.offsetWidth;
+    livesDisplay.classList.add('life-pulse');
+    setTimeout(() => livesDisplay.classList.remove('life-pulse'), 600);
+  }
+  setTimeout(() => toast.remove(), 3000);
 }
 
 // ── Level Info Toast ───────────────────────────────────

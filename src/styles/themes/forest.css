@@ -63,4 +63,10 @@
 [data-theme="forest"] #board {
   border-color: #5a7a52;
   box-shadow: 0 4px 16px rgba(10, 18, 8, 0.4);
+  animation: forestBreathe 5s ease-in-out infinite;
+}
+
+@keyframes forestBreathe {
+  0%, 100% { box-shadow: 0 4px 16px rgba(10, 18, 8, 0.4); }
+  50% { box-shadow: 0 4px 24px rgba(106, 191, 106, 0.15), 0 4px 16px rgba(10, 18, 8, 0.4); }
 }

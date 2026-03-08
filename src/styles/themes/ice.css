@@ -71,3 +71,27 @@
 [data-theme="ice"] .cell.hidden {
   border-color: rgba(200, 225, 245, 0.6);
 }
+
+/* Frost shimmer sweep across board */
+[data-theme="ice"] #board {
+  position: relative;
+  overflow: hidden;
+}
+
+[data-theme="ice"] #board::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), rgba(200, 230, 255, 0.1), transparent);
+  animation: frostShimmer 5s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 5;
+}
+
+@keyframes frostShimmer {
+  0%, 100% { left: -100%; }
+  50% { left: 150%; }
+}

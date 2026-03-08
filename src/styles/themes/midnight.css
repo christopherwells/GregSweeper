@@ -82,6 +82,31 @@
 [data-theme="midnight"] #board {
   border-color: #3d2580;
   box-shadow: 0 4px 20px rgba(10, 5, 30, 0.5), 0 0 20px rgba(124, 77, 255, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+[data-theme="midnight"] #board::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(1px 1px at 20% 30%, rgba(255, 255, 255, 0.5), transparent),
+              radial-gradient(1px 1px at 80% 60%, rgba(204, 136, 255, 0.4), transparent),
+              radial-gradient(1px 1px at 50% 15%, rgba(128, 176, 255, 0.4), transparent),
+              radial-gradient(1px 1px at 35% 80%, rgba(255, 255, 255, 0.3), transparent);
+  animation: starTwinkle 3s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes starTwinkle {
+  0%, 100% { opacity: 0.3; }
+  25% { opacity: 0.7; }
+  50% { opacity: 0.4; }
+  75% { opacity: 0.8; }
 }
 
 [data-theme="midnight"] .smiley-btn {

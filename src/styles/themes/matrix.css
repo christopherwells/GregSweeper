@@ -162,3 +162,24 @@
   border-color: rgba(0, 204, 0, 0.3);
   box-shadow: 0 0 6px rgba(0, 255, 0, 0.06);
 }
+
+/* Digital rain effect on board background */
+[data-theme="matrix"] #board::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    linear-gradient(180deg, transparent 0%, rgba(0, 255, 0, 0.03) 50%, transparent 100%);
+  background-size: 100% 30px;
+  animation: matrixRain 1.5s linear infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes matrixRain {
+  0% { background-position: 0 -30px; }
+  100% { background-position: 0 30px; }
+}

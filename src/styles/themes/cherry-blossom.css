@@ -63,4 +63,26 @@
 [data-theme="cherry-blossom"] #board {
   border-color: #e0aac5;
   box-shadow: 0 4px 20px rgba(180, 120, 150, 0.15);
+  position: relative;
+  overflow: hidden;
+}
+
+[data-theme="cherry-blossom"] #board::after {
+  content: '🌸';
+  position: absolute;
+  top: -20px;
+  right: -10px;
+  font-size: 16px;
+  opacity: 0.4;
+  animation: petalDrift 6s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes petalDrift {
+  0% { transform: translate(0, 0) rotate(0deg); opacity: 0; }
+  10% { opacity: 0.4; }
+  50% { transform: translate(-40px, 60px) rotate(180deg); opacity: 0.3; }
+  90% { opacity: 0.1; }
+  100% { transform: translate(-80px, 120px) rotate(360deg); opacity: 0; }
 }

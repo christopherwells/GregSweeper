@@ -2,6 +2,7 @@ const STATS_KEY = 'minesweeper_stats';
 const LEADERBOARD_KEY = 'minesweeper_daily_leaderboard';
 const THEME_KEY = 'minesweeper_theme';
 const POWERUPS_KEY = 'minesweeper_powerups';
+const LIVES_KEY = 'minesweeper_lives';
 
 function getJSON(key, fallback) {
   try {
@@ -238,10 +239,31 @@ export function saveTheme(theme) {
   localStorage.setItem(THEME_KEY, theme);
 }
 
+// ── Lives Persistence ─────────────────────────────────
+
+const DEFAULT_LIVES = { challenge: 0, fogOfWar: 0 };
+
+export function loadModeLives(gameMode) {
+  const modeKey = getModeKey(gameMode);
+  if (modeKey !== 'challenge' && modeKey !== 'fogOfWar') return 0;
+  const data = getJSON(LIVES_KEY, null);
+  if (!data) return 0;
+  return data[modeKey] || 0;
+}
+
+export function saveModeLives(gameMode, count) {
+  const modeKey = getModeKey(gameMode);
+  if (modeKey !== 'challenge' && modeKey !== 'fogOfWar') return;
+  const data = getJSON(LIVES_KEY, { ...DEFAULT_LIVES });
+  data[modeKey] = count;
+  setJSON(LIVES_KEY, data);
+}
+
 // ── Reset ─────────────────────────────────────────────
 
 export function resetStats() {
   setJSON(STATS_KEY, { ...DEFAULT_STATS, modeStats: createDefaultModeStats() });
   setJSON(POWERUPS_KEY, { ...DEFAULT_POWERUPS });
+  setJSON(LIVES_KEY, { ...DEFAULT_LIVES });
   localStorage.removeItem(LEADERBOARD_KEY);
 }

@@ -63,4 +63,12 @@
 [data-theme="ocean"] #board {
   border-color: #2a6580;
   box-shadow: 0 4px 16px rgba(0, 20, 40, 0.4);
+  animation: oceanWave 4s ease-in-out infinite;
+}
+
+@keyframes oceanWave {
+  0%, 100% { transform: translateY(0); border-color: #2a6580; }
+  25% { transform: translateY(-1px); border-color: #358098; }
+  50% { transform: translateY(1px); border-color: #2a6580; }
+  75% { transform: translateY(-0.5px); border-color: #307090; }
 }

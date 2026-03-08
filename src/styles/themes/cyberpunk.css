@@ -86,4 +86,27 @@
 [data-theme="cyberpunk"] #board {
   border-color: #3a2a5a;
   box-shadow: 0 4px 16px rgba(255, 0, 128, 0.1), 0 0 1px rgba(0, 255, 255, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Horizontal data-stream lines */
+[data-theme="cyberpunk"] #board::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.3), rgba(255, 0, 128, 0.2), transparent);
+  animation: dataStream 2s linear infinite;
+  pointer-events: none;
+  z-index: 5;
+}
+
+@keyframes dataStream {
+  0% { top: 0; opacity: 0; }
+  10% { opacity: 0.8; }
+  90% { opacity: 0.8; }
+  100% { top: 100%; opacity: 0; }
 }

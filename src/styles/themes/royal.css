@@ -89,3 +89,26 @@
 [data-theme="royal"] .cell.hidden {
   border-color: rgba(255, 215, 0, 0.15);
 }
+
+/* Gold shimmer sweep across header */
+[data-theme="royal"] .game-header {
+  position: relative;
+  overflow: hidden;
+}
+
+[data-theme="royal"] .game-header::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.08), rgba(255, 236, 128, 0.05), transparent);
+  animation: goldShimmer 5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes goldShimmer {
+  0%, 100% { left: -100%; }
+  50% { left: 150%; }
+}

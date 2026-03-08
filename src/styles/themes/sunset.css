@@ -50,10 +50,18 @@
 }
 
 [data-theme="sunset"] #game-title {
-  background: linear-gradient(135deg, #ff6b6b, #ffa07a, #ffc107);
+  background: linear-gradient(135deg, #ff6b6b, #ffa07a, #ffc107, #ff6b6b);
+  background-size: 300% 100%;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  animation: sunsetGradient 6s ease-in-out infinite;
+}
+
+@keyframes sunsetGradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
 [data-theme="sunset"] #title-subtitle {

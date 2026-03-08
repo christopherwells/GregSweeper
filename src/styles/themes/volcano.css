@@ -77,3 +77,15 @@
 [data-theme="volcano"] .cell.hidden {
   border-color: rgba(255, 80, 20, 0.25);
 }
+
+/* Lava flow gradient on app background */
+[data-theme="volcano"] #app {
+  background: linear-gradient(180deg, #3e1a0c, #2a1008, #1a0a04, #2a1008);
+  background-size: 100% 400%;
+  animation: lavaFlow 8s ease-in-out infinite;
+}
+
+@keyframes lavaFlow {
+  0%, 100% { background-position: 0% 0%; }
+  50% { background-position: 0% 100%; }
+}

@@ -63,4 +63,36 @@
 [data-theme="stealth"] #board {
   border-color: #2a2a2a;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Scan-line sweep effect */
+[data-theme="stealth"] #board::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(112, 160, 112, 0.4), transparent);
+  animation: stealthScan 3s linear infinite;
+  pointer-events: none;
+  z-index: 5;
+}
+
+@keyframes stealthScan {
+  0% { top: -2px; }
+  100% { top: 100%; }
+}
+
+[data-theme="stealth"] .cell.revealed {
+  animation: stealthFlicker 0.15s ease-out;
+}
+
+@keyframes stealthFlicker {
+  0% { opacity: 0; }
+  30% { opacity: 0.7; }
+  60% { opacity: 0.3; }
+  100% { opacity: 1; }
 }
