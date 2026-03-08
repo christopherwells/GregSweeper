@@ -7,6 +7,14 @@
 let firebaseReady = false;
 let db = null;
 
+// Client-side rate limiting: track last submission timestamp
+let _lastSubmitTime = 0;
+const SUBMIT_COOLDOWN_MS = 30000; // 30 seconds between submissions
+
+// Score validation bounds
+const MIN_VALID_TIME = 5;    // seconds — anything faster is impossible
+const MAX_VALID_TIME = 3600; // seconds — 1 hour cap
+
 /**
  * Initialize Firebase. Call once on app startup.
  * Config should be replaced with user's own Firebase project config.
@@ -63,6 +71,19 @@ export function isFirebaseOnline() {
 export async function submitOnlineScore(dateString, name, time, bombHits = 0) {
   if (!isFirebaseOnline()) return false;
 
+  // Client-side rate limiting: reject submissions too close together
+  const now = Date.now();
+  if (now - _lastSubmitTime < SUBMIT_COOLDOWN_MS) {
+    console.warn('Score submission rate-limited — please wait before submitting again');
+    return false;
+  }
+
+  // Basic score validation: reject impossible or unreasonable times
+  if (typeof time !== 'number' || time < MIN_VALID_TIME || time > MAX_VALID_TIME) {
+    console.warn(`Score rejected — time ${time}s is outside valid range (${MIN_VALID_TIME}–${MAX_VALID_TIME}s)`);
+    return false;
+  }
+
   try {
     const sanitizedName = String(name).slice(0, 20).trim();
     if (!sanitizedName) return false;
@@ -74,12 +95,22 @@ export async function submitOnlineScore(dateString, name, time, bombHits = 0) {
       bombHits,
       timestamp: firebase.database.ServerValue.TIMESTAMP,
     });
+
+    _lastSubmitTime = now;
     return true;
   } catch (err) {
     console.warn('Firebase submit failed:', err.message);
     return false;
   }
 }
+
+// NOTE: Client-side validation is not sufficient for security.
+// Firebase Security Rules should be configured to enforce:
+//   - Time range validation (5–3600 seconds)
+//   - Rate limiting per user/IP
+//   - Name length and content sanitization
+//   - Date string format validation
+// See: https://firebase.google.com/docs/database/security
 
 /**
  * Fetch the online daily leaderboard for a given date.

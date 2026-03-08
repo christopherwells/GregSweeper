@@ -40,14 +40,9 @@
   --color-accent-hover: #d63851;
   --color-accent-glow: rgba(233, 69, 96, 0.3);
   --color-surface: rgba(255, 255, 255, 0.04);
-}
 
-[data-theme="dark"] #app {
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.03);
-}
-
-[data-theme="dark"] .modal-close:hover {
-  background: rgba(255,255,255,0.08);
+  --shadow-app: 0 8px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.03);
+  --bg-modal-close-hover: rgba(255,255,255,0.08);
 }
 
 /* Cells fade in from darker shade */

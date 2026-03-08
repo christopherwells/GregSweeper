@@ -1,29 +1,15 @@
 /* Synthwave theme — 80s retro futurism, neon purple/pink/cyan, chrome glow */
 @keyframes synthSunset {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
 @keyframes neonFlicker {
-  0%, 95%, 100% {
-    opacity: 1;
-  }
-  96% {
-    opacity: 0.85;
-  }
-  97% {
-    opacity: 1;
-  }
-  98% {
-    opacity: 0.9;
-  }
+  0%, 95%, 100% { opacity: 1; }
+  96% { opacity: 0.85; }
+  97% { opacity: 1; }
+  98% { opacity: 0.9; }
 }
 
 [data-theme="synthwave"] {
@@ -74,12 +60,40 @@
   --color-win: #00ffaa;
   --color-loss: #ff0070;
   --color-surface: rgba(170, 68, 255, 0.04);
-}
 
-[data-theme="synthwave"] #app {
-  background: linear-gradient(180deg, #0e0030, #0a0020);
-  border: 1px solid rgba(170, 68, 255, 0.3);
-  box-shadow: 0 0 30px rgba(170, 68, 255, 0.1), 0 0 60px rgba(255, 32, 144, 0.05);
+  --bg-app: linear-gradient(180deg, #0e0030, #0a0020);
+  --border-app: 1px solid rgba(170, 68, 255, 0.3);
+  --shadow-app: 0 0 30px rgba(170, 68, 255, 0.1), 0 0 60px rgba(255, 32, 144, 0.05);
+  --text-shadow-subtitle: 0 0 8px rgba(0, 255, 238, 0.4);
+  --text-shadow-mine: 0 0 10px rgba(255, 32, 144, 0.6);
+
+  --shadow-cell-unrevealed: inset 0 1px 0 rgba(170, 68, 255, 0.08), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-cell-hover: 0 0 10px rgba(170, 68, 255, 0.25), inset 0 1px 0 rgba(170, 68, 255, 0.1);
+  --border-cell-revealed: 1px solid rgba(64, 32, 160, 0.2);
+  --text-shadow-num-1: 0 0 8px rgba(0, 221, 255, 0.5);
+  --text-shadow-num-2: 0 0 8px rgba(255, 32, 144, 0.5);
+  --text-shadow-num-3: 0 0 8px rgba(255, 221, 0, 0.5);
+  --text-shadow-num-4: 0 0 8px rgba(170, 68, 255, 0.5);
+
+  --border-board: 2px solid rgba(170, 68, 255, 0.4);
+  --shadow-board: 0 0 16px rgba(170, 68, 255, 0.1), 0 0 32px rgba(255, 32, 144, 0.06);
+  --border-radius-board: 4px;
+
+  --border-smiley: 1px solid rgba(170, 68, 255, 0.3);
+  --shadow-smiley: 0 0 8px rgba(170, 68, 255, 0.12);
+  --text-shadow-lcd: 0 0 8px rgba(0, 255, 238, 0.5), 0 0 16px rgba(0, 255, 238, 0.2);
+  --border-lcd: 1px solid rgba(0, 255, 238, 0.25);
+  --border-nav-btn: 1px solid rgba(170, 68, 255, 0.3);
+  --shadow-nav-btn-hover: 0 0 10px rgba(170, 68, 255, 0.2);
+  --border-powerup-btn: 1px solid rgba(170, 68, 255, 0.3);
+
+  --shadow-modal: 0 0 40px rgba(170, 68, 255, 0.1), 0 0 20px rgba(255, 32, 144, 0.06);
+  --border-modal: 1px solid rgba(170, 68, 255, 0.3);
+  --bg-modal-content: #100038;
+  --bg-modal-close-hover: rgba(170, 68, 255, 0.1);
+
+  --border-achievement-unlocked: rgba(170, 68, 255, 0.35);
+  --shadow-achievement-unlocked: 0 0 8px rgba(170, 68, 255, 0.08);
 }
 
 /* Retro gradient title with animation */
@@ -96,72 +110,13 @@
 
 [data-theme="synthwave"] #title-subtitle {
   color: #00ffee;
-  text-shadow: 0 0 8px rgba(0, 255, 238, 0.4);
   text-transform: uppercase;
   letter-spacing: 2px;
   animation: neonFlicker 8s ease-in-out infinite;
 }
 
-/* Neon horizon board */
-[data-theme="synthwave"] #board {
-  border: 2px solid rgba(170, 68, 255, 0.4);
-  box-shadow: 0 0 16px rgba(170, 68, 255, 0.1), 0 0 32px rgba(255, 32, 144, 0.06);
-  border-radius: 4px;
-}
-
-[data-theme="synthwave"] .cell.unrevealed {
-  box-shadow: inset 0 1px 0 rgba(170, 68, 255, 0.08), 0 1px 2px rgba(0, 0, 0, 0.3);
-}
-
 [data-theme="synthwave"] .cell.unrevealed:hover {
-  box-shadow: 0 0 10px rgba(170, 68, 255, 0.25), inset 0 1px 0 rgba(170, 68, 255, 0.1);
   border-color: rgba(170, 68, 255, 0.5);
-}
-
-[data-theme="synthwave"] .cell.revealed {
-  background: #0c0228;
-  border-color: rgba(64, 32, 160, 0.2);
-}
-
-[data-theme="synthwave"] .cell.revealed.num-1 { text-shadow: 0 0 8px rgba(0, 221, 255, 0.5); }
-[data-theme="synthwave"] .cell.revealed.num-2 { text-shadow: 0 0 8px rgba(255, 32, 144, 0.5); }
-[data-theme="synthwave"] .cell.revealed.num-3 { text-shadow: 0 0 8px rgba(255, 221, 0, 0.5); }
-[data-theme="synthwave"] .cell.revealed.num-4 { text-shadow: 0 0 8px rgba(170, 68, 255, 0.5); }
-
-[data-theme="synthwave"] .cell.mine {
-  text-shadow: 0 0 10px rgba(255, 32, 144, 0.6);
-}
-
-[data-theme="synthwave"] .smiley-btn {
-  border: 1px solid rgba(170, 68, 255, 0.3);
-  box-shadow: 0 0 8px rgba(170, 68, 255, 0.12);
-}
-
-[data-theme="synthwave"] .lcd-display {
-  text-shadow: 0 0 8px rgba(0, 255, 238, 0.5), 0 0 16px rgba(0, 255, 238, 0.2);
-  border-color: rgba(0, 255, 238, 0.25);
-}
-
-[data-theme="synthwave"] .nav-btn {
-  border-color: rgba(170, 68, 255, 0.3);
-}
-
-[data-theme="synthwave"] .nav-btn:hover {
-  box-shadow: 0 0 10px rgba(170, 68, 255, 0.2);
-}
-
-[data-theme="synthwave"] .powerup-btn {
-  border-color: rgba(170, 68, 255, 0.3);
-}
-
-[data-theme="synthwave"] .modal-content {
-  border: 1px solid rgba(170, 68, 255, 0.3);
-  box-shadow: 0 0 40px rgba(170, 68, 255, 0.1), 0 0 20px rgba(255, 32, 144, 0.06);
-  background: #100038;
-}
-
-[data-theme="synthwave"] .modal-close:hover {
-  background: rgba(170, 68, 255, 0.1);
 }
 
 [data-theme="synthwave"] .game-header {
@@ -181,9 +136,4 @@
 [data-theme="synthwave"] .mode-btn {
   text-transform: uppercase;
   letter-spacing: 1px;
-}
-
-[data-theme="synthwave"] .achievement-item.unlocked {
-  border-color: rgba(170, 68, 255, 0.35);
-  box-shadow: 0 0 8px rgba(170, 68, 255, 0.08);
 }

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>GregSweeper</title>
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
@@ -69,15 +69,22 @@
 
       <div id="game-info-bar">
         <span id="level-display">Level 1</span>
-        <span id="lives-display" class="hidden"></span>
+        <span id="checkpoint-display" class="hidden"></span>
+        <span id="streak-display" class="hidden"></span>
         <span id="max-level-display" class="hidden"></span>
         <span id="best-time-display" class="hidden"></span>
+        <span id="cells-remaining" class="hidden"></span>
         <div id="mode-switcher">
           <button class="mode-pill" data-mode="normal" title="Challenge">⚔️</button>
           <button class="mode-pill" data-mode="timed" title="Timed">⏱️</button>
           <button class="mode-pill" data-mode="fogOfWar" title="Fog of War">🌫️</button>
           <button class="mode-pill active" data-mode="daily" title="Daily Challenge">📅</button>
         </div>
+      </div>
+
+      <div id="progress-bar-container" class="hidden">
+        <div id="progress-bar-fill"></div>
+        <div id="progress-bar-markers"></div>
       </div>
 
       <div id="powerup-bar">
@@ -107,10 +114,17 @@
         </button>
       </div>
 
+      <div id="flag-mode-bar" class="hidden">
+        <button id="flag-mode-toggle" class="flag-toggle-btn" aria-label="Toggle flag mode">
+          <span id="flag-mode-icon">👆</span>
+          <span id="flag-mode-label">Tap to Reveal</span>
+        </button>
+      </div>
+
       <div id="board-container">
         <div id="streak-border"></div>
         <div id="board-scroll-wrapper">
-          <div id="board"></div>
+          <div id="board" role="grid" aria-label="Minesweeper board"></div>
         </div>
         <canvas id="particle-canvas"></canvas>
         <div id="scan-toast" class="hidden"></div>
@@ -132,7 +146,7 @@
     </nav>
 
     <!-- Settings Modal -->
-    <div id="settings-modal" class="modal hidden">
+    <div id="settings-modal" class="modal hidden" role="dialog" aria-modal="true">
       <div class="modal-content">
         <div class="modal-header">
           <h2>Settings</h2>
@@ -160,142 +174,142 @@
               <button class="theme-swatch" data-theme="sunset">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #ff6b6b, #ffa07a)"></span>
                 <span class="swatch-name">Sunset</span>
-                <span class="swatch-lock hidden">&#128274; Level 3</span>
+                <span class="swatch-lock hidden">&#128274; Level 4</span>
               </button>
               <button class="theme-swatch" data-theme="forest">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #2d5a27, #6abf6a)"></span>
                 <span class="swatch-name">Forest</span>
-                <span class="swatch-lock hidden">&#128274; Level 4</span>
+                <span class="swatch-lock hidden">&#128274; Level 6</span>
               </button>
               <button class="theme-swatch" data-theme="candy">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #ff69b4, #dda0dd)"></span>
                 <span class="swatch-name">Candy</span>
-                <span class="swatch-lock hidden">&#128274; Level 5</span>
+                <span class="swatch-lock hidden">&#128274; Level 8</span>
               </button>
               <button class="theme-swatch" data-theme="midnight">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #191970, #7c4dff)"></span>
                 <span class="swatch-name">Midnight</span>
-                <span class="swatch-lock hidden">&#128274; Level 6</span>
+                <span class="swatch-lock hidden">&#128274; Level 10</span>
               </button>
               <button class="theme-swatch" data-theme="stealth">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #333333, #555555)"></span>
                 <span class="swatch-name">Stealth</span>
-                <span class="swatch-lock hidden">&#128274; Level 7</span>
+                <span class="swatch-lock hidden">&#128274; Level 12</span>
               </button>
               <button class="theme-swatch" data-theme="neon">
                 <span class="swatch-color" style="background: #0a0a0a; border: 1px solid #00ff88"></span>
                 <span class="swatch-name">Neon</span>
-                <span class="swatch-lock hidden">&#128274; Level 8</span>
+                <span class="swatch-lock hidden">&#128274; Level 14</span>
               </button>
               <button class="theme-swatch" data-theme="cherry-blossom">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #f0c4d8, #fdf0f5)"></span>
                 <span class="swatch-name">Cherry Blossom</span>
-                <span class="swatch-lock hidden">&#128274; Level 9</span>
+                <span class="swatch-lock hidden">&#128274; Level 16</span>
               </button>
               <button class="theme-swatch" data-theme="aurora">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #00e5a0, #00bcd4, #b388ff)"></span>
                 <span class="swatch-name">Aurora</span>
-                <span class="swatch-lock hidden">&#128274; Level 10</span>
+                <span class="swatch-lock hidden">&#128274; Level 18</span>
               </button>
               <button class="theme-swatch" data-theme="volcano">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #ff4500, #5c2210)"></span>
                 <span class="swatch-name">Volcano</span>
-                <span class="swatch-lock hidden">&#128274; Level 11</span>
+                <span class="swatch-lock hidden">&#128274; Level 20</span>
               </button>
               <button class="theme-swatch" data-theme="ice">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #a8ceea, #e8f2fa)"></span>
                 <span class="swatch-name">Ice</span>
-                <span class="swatch-lock hidden">&#128274; Level 12</span>
+                <span class="swatch-lock hidden">&#128274; Level 22</span>
               </button>
               <button class="theme-swatch" data-theme="cyberpunk">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #ff0080, #00d4ff)"></span>
                 <span class="swatch-name">Cyberpunk</span>
-                <span class="swatch-lock hidden">&#128274; Level 13</span>
+                <span class="swatch-lock hidden">&#128274; Level 24</span>
               </button>
               <button class="theme-swatch" data-theme="retro">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #e040fb, #7c4dff)"></span>
                 <span class="swatch-name">Retro</span>
-                <span class="swatch-lock hidden">&#128274; Level 14</span>
+                <span class="swatch-lock hidden">&#128274; Level 26</span>
               </button>
               <button class="theme-swatch" data-theme="holographic">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #ff4488, #44ddff, #44ff88)"></span>
                 <span class="swatch-name">Holographic</span>
-                <span class="swatch-lock hidden">&#128274; Level 15</span>
+                <span class="swatch-lock hidden">&#128274; Level 28</span>
               </button>
               <button class="theme-swatch" data-theme="galaxy">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #d050ff, #82b1ff, #ff80ab)"></span>
                 <span class="swatch-name">Galaxy</span>
-                <span class="swatch-lock hidden">&#128274; Level 16</span>
+                <span class="swatch-lock hidden">&#128274; Level 30</span>
               </button>
               <button class="theme-swatch" data-theme="toxic">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #00ff3c, #0a0f0a)"></span>
                 <span class="swatch-name">Toxic</span>
-                <span class="swatch-lock hidden">&#128274; Level 17</span>
+                <span class="swatch-lock hidden">&#128274; Level 32</span>
               </button>
               <button class="theme-swatch" data-theme="royal">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #ffd700, #2e1a55)"></span>
                 <span class="swatch-name">Royal</span>
-                <span class="swatch-lock hidden">&#128274; Level 18</span>
+                <span class="swatch-lock hidden">&#128274; Level 34</span>
               </button>
               <button class="theme-swatch" data-theme="prismatic">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #ff0044, #ffaa00, #00ff88, #4488ff)"></span>
                 <span class="swatch-name">Prismatic</span>
-                <span class="swatch-lock hidden">&#128274; Level 19</span>
+                <span class="swatch-lock hidden">&#128274; Level 36</span>
               </button>
               <button class="theme-swatch" data-theme="void">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #080808, #1a1a1a); border: 1px solid #333"></span>
                 <span class="swatch-name">Void</span>
-                <span class="swatch-lock hidden">&#128274; Level 20</span>
+                <span class="swatch-lock hidden">&#128274; Level 38</span>
               </button>
               <button class="theme-swatch" data-theme="arctic">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #e8f4ff, #b8d8f0)"></span>
                 <span class="swatch-name">Arctic</span>
-                <span class="swatch-lock hidden">&#128274; Level 21</span>
+                <span class="swatch-lock hidden">&#128274; Level 40</span>
               </button>
               <button class="theme-swatch" data-theme="jungle">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #1a3a1a, #2d5a2d)"></span>
                 <span class="swatch-name">Jungle</span>
-                <span class="swatch-lock hidden">&#128274; Level 22</span>
+                <span class="swatch-lock hidden">&#128274; Level 42</span>
               </button>
               <button class="theme-swatch" data-theme="obsidian">
                 <span class="swatch-color" style="background: #000; border: 1px solid #333"></span>
                 <span class="swatch-name">Obsidian</span>
-                <span class="swatch-lock hidden">&#128274; Level 23</span>
+                <span class="swatch-lock hidden">&#128274; Level 43</span>
               </button>
               <button class="theme-swatch" data-theme="matrix">
                 <span class="swatch-color" style="background: #000; border: 1px solid #0a0"></span>
                 <span class="swatch-name">Matrix</span>
-                <span class="swatch-lock hidden">&#128274; Level 24</span>
+                <span class="swatch-lock hidden">&#128274; Level 44</span>
               </button>
               <button class="theme-swatch" data-theme="inferno">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #2a0a00, #8b2500)"></span>
                 <span class="swatch-name">Inferno</span>
-                <span class="swatch-lock hidden">&#128274; Level 25</span>
+                <span class="swatch-lock hidden">&#128274; Level 46</span>
               </button>
               <button class="theme-swatch" data-theme="celestial">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #0a0a2e, #1a1a4e); border: 1px solid #c8a030"></span>
                 <span class="swatch-name">Celestial</span>
-                <span class="swatch-lock hidden">&#128274; Level 26</span>
+                <span class="swatch-lock hidden">&#128274; Level 48</span>
               </button>
               <button class="theme-swatch" data-theme="bloodmoon">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #0c0204, #3a0810)"></span>
                 <span class="swatch-name">Blood Moon</span>
-                <span class="swatch-lock hidden">&#128274; Level 27</span>
+                <span class="swatch-lock hidden">&#128274; Level 45</span>
               </button>
               <button class="theme-swatch" data-theme="synthwave">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #0a0020, #2a0860, #ff2090)"></span>
                 <span class="swatch-name">Synthwave</span>
-                <span class="swatch-lock hidden">&#128274; Level 28</span>
+                <span class="swatch-lock hidden">&#128274; Level 47</span>
               </button>
               <button class="theme-swatch" data-theme="supernova">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #ff3300, #ff8800, #ffcc00)"></span>
                 <span class="swatch-name">Supernova</span>
-                <span class="swatch-lock hidden">&#128274; Level 29</span>
+                <span class="swatch-lock hidden">&#128274; Level 49</span>
               </button>
               <button class="theme-swatch" data-theme="legendary">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #140a22, #ffc830, #b060ff)"></span>
                 <span class="swatch-name">Legendary</span>
-                <span class="swatch-lock hidden">&#128274; Level 30</span>
+                <span class="swatch-lock hidden">&#128274; Level 50</span>
               </button>
             </div>
             <button id="toggle-locked-themes" class="toggle-locked-btn hidden">
@@ -329,7 +343,7 @@
     </div>
 
     <!-- Stats Modal -->
-    <div id="stats-modal" class="modal hidden">
+    <div id="stats-modal" class="modal hidden" role="dialog" aria-modal="true">
       <div class="modal-content">
         <div class="modal-header">
           <h2>Statistics</h2>
@@ -367,7 +381,7 @@
     </div>
 
     <!-- Achievements / Rank Modal -->
-    <div id="achievements-modal" class="modal hidden">
+    <div id="achievements-modal" class="modal hidden" role="dialog" aria-modal="true">
       <div class="modal-content achievements-content">
         <div class="modal-header">
           <h2>Achievements</h2>
@@ -384,7 +398,7 @@
     </div>
 
     <!-- Leaderboard Modal -->
-    <div id="leaderboard-modal" class="modal hidden">
+    <div id="leaderboard-modal" class="modal hidden" role="dialog" aria-modal="true">
       <div class="modal-content">
         <div class="modal-header">
           <h2>Daily Leaderboard <span id="leaderboard-status" class="lb-status"></span></h2>
@@ -404,7 +418,7 @@
     </div>
 
     <!-- Help Modal -->
-    <div id="help-modal" class="modal hidden">
+    <div id="help-modal" class="modal hidden" role="dialog" aria-modal="true">
       <div class="modal-content">
         <div class="modal-header">
           <h2>How to Play</h2>
@@ -430,7 +444,7 @@
           </div>
           <div class="help-section">
             <h3>Game Modes</h3>
-            <p><strong>Challenge</strong> — 30 levels of increasing difficulty with power-ups</p>
+            <p><strong>Challenge</strong> — 50 levels of increasing difficulty with power-ups</p>
             <p><strong>Timed</strong> — pick a difficulty, race for your best time. Speed ratings: 💎 Diamond, 🥇 Gold, 🥈 Silver, 🥉 Bronze</p>
             <p><strong>Fog of War</strong> — limited vision, hidden numbers, creeping fog</p>
             <p><strong>Daily</strong> — same board for everyone today. Online leaderboard!</p>
@@ -446,18 +460,14 @@
     </div>
 
     <!-- About Modal -->
-    <div id="about-modal" class="modal hidden">
+    <div id="about-modal" class="modal hidden" role="dialog" aria-modal="true">
       <div class="modal-content about-content">
         <div class="modal-header">
           <h2>About</h2>
           <button class="modal-close">&times;</button>
         </div>
         <div class="modal-body about-body">
-          <div class="about-photo-wrapper">
-            <img id="about-photo" src="greg.jpeg" alt="Greg Dorris" onerror="this.style.display='none'; document.getElementById('about-photo-fallback').style.display='flex';">
-            <div id="about-photo-fallback" class="about-photo-fallback">GD</div>
-          </div>
-          <div class="about-name">Greg Dorris</div>
+          <div class="about-name">Greg</div>
           <div class="about-role">Visionary</div>
           <p class="about-tagline">The mind behind GregSweeper — reimagining a classic for a new generation.</p>
           <div class="about-divider"></div>
@@ -467,23 +477,30 @@
     </div>
 
     <!-- Game Over Overlay -->
-    <div id="gameover-overlay" class="modal hidden">
+    <div id="gameover-overlay" class="modal hidden" role="dialog" aria-modal="true">
       <div class="modal-content gameover-content">
         <h2 id="gameover-title"></h2>
         <p id="gameover-time"></p>
+        <p id="gameover-encouragement" class="gameover-encouragement hidden"></p>
         <p id="gameover-record" class="hidden"></p>
         <p id="gameover-powerup-earned" class="hidden"></p>
-        <p id="gameover-life-earned" class="hidden"></p>
         <div id="gameover-achievements" class="gameover-achievements hidden"></div>
+        <div id="share-card-preview" class="share-card-preview hidden">
+          <div id="share-card-grid" class="share-card-grid"></div>
+        </div>
         <div class="gameover-actions">
-          <button id="gameover-uselife" class="action-btn life-btn hidden">❤️ Use Life (<span id="uselife-count">0</span> left)</button>
           <button id="gameover-retry" class="action-btn">Play Again</button>
           <button id="gameover-nextlevel" class="action-btn primary hidden">Next Level</button>
-          <button id="gameover-submit-daily" class="action-btn hidden">Submit Score</button>
+          <div id="daily-submit-form" class="daily-submit-form hidden">
+            <input id="daily-name-input" type="text" placeholder="Your name" maxlength="20" class="daily-name-input" autocomplete="off">
+            <button id="gameover-submit-daily" class="action-btn">Submit</button>
+          </div>
           <button id="gameover-share" class="action-btn share-btn hidden">📋 Share</button>
         </div>
       </div>
     </div>
+
+    <div id="toast-container" class="toast-container"></div>
 
     <!-- Achievement Toast -->
     <div id="achievement-toast" class="achievement-toast hidden">
@@ -502,9 +519,22 @@
         <div class="theme-unlock-toast-name"></div>
       </div>
     </div>
+
+    <!-- Onboarding Overlay -->
+    <div id="onboarding-overlay" class="modal hidden">
+      <div class="modal-content onboarding-content">
+        <h2>Welcome to GregSweeper! 👋</h2>
+        <p>Tap cells to reveal them. Numbers show adjacent mines.</p>
+        <p>Long-press (or right-click) to flag suspected mines.</p>
+        <p>Clear all safe cells to win!</p>
+        <div class="onboarding-actions">
+          <button id="onboarding-start" class="action-btn primary">Let's Play!</button>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <script type="module" src="src/main.js?v=0.6"></script>
+  <script type="module" src="src/main.js?v=0.8"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js').catch(() => {});

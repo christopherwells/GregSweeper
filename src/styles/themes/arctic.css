@@ -47,12 +47,33 @@
   --color-win: #40b888;
   --color-loss: #c04050;
   --color-surface: rgba(255, 255, 255, 0.5);
-}
 
-[data-theme="arctic"] #app {
-  background: linear-gradient(180deg, #e8f0f8, #d0e0f0);
-  box-shadow: 0 8px 32px rgba(100, 140, 180, 0.2), 0 1px 0 rgba(255, 255, 255, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  --bg-app: linear-gradient(180deg, #e8f0f8, #d0e0f0);
+  --shadow-app: 0 8px 32px rgba(100, 140, 180, 0.2), 0 1px 0 rgba(255, 255, 255, 0.6);
+  --border-app: 1px solid rgba(255, 255, 255, 0.5);
+
+  --shadow-cell-unrevealed: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 1px 2px rgba(100, 140, 180, 0.15);
+  --shadow-cell-hover: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 0 8px rgba(64, 144, 221, 0.2);
+  --border-cell-revealed: 1px solid rgba(144, 176, 208, 0.3);
+
+  --text-shadow-lcd: 0 0 8px rgba(128, 208, 255, 0.4);
+  --border-lcd: 1px solid rgba(144, 176, 208, 0.4);
+  --bg-modal-close-hover: rgba(64, 144, 221, 0.1);
+
+  --shadow-board: 0 4px 16px rgba(100, 140, 180, 0.15), inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+  --border-board: 2px solid rgba(144, 176, 208, 0.5);
+  --border-radius-board: 12px;
+
+  --border-smiley: 1px solid rgba(144, 176, 208, 0.5);
+  --shadow-smiley: 0 2px 4px rgba(100, 140, 180, 0.15);
+  --border-nav-btn: 1px solid rgba(144, 176, 208, 0.4);
+  --border-powerup-btn: 1px solid rgba(144, 176, 208, 0.4);
+
+  --shadow-modal: 0 8px 32px rgba(100, 140, 180, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  --border-modal: 1px solid rgba(255, 255, 255, 0.5);
+  --bg-modal-content: rgba(220, 232, 244, 0.85);
+
+  --border-achievement-unlocked: rgba(64, 144, 221, 0.3);
 }
 
 [data-theme="arctic"] #game-title {
@@ -63,57 +84,19 @@
   text-shadow: none;
 }
 
-[data-theme="arctic"] #title-subtitle {
-  color: #4090dd;
-}
-
 /* Frosted glass modals */
 [data-theme="arctic"] .modal-content {
-  background: rgba(220, 232, 244, 0.85);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.5);
   border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(100, 140, 180, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.4);
-}
-
-[data-theme="arctic"] .modal-close:hover {
-  background: rgba(64, 144, 221, 0.1);
 }
 
 /* Ice crystal cell borders */
 [data-theme="arctic"] .cell.unrevealed {
   border: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 1px 2px rgba(100, 140, 180, 0.15);
-}
-
-[data-theme="arctic"] .cell.unrevealed:hover {
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 0 8px rgba(64, 144, 221, 0.2);
-}
-
-[data-theme="arctic"] .cell.revealed {
-  background: #eaf2fa;
-  border: 1px solid rgba(144, 176, 208, 0.3);
-}
-
-[data-theme="arctic"] #board {
-  border-color: rgba(144, 176, 208, 0.5);
-  box-shadow: 0 4px 16px rgba(100, 140, 180, 0.15), inset 0 0 0 1px rgba(255, 255, 255, 0.3);
-  border-radius: 12px;
-}
-
-[data-theme="arctic"] .smiley-btn {
-  border: 1px solid rgba(144, 176, 208, 0.5);
-  box-shadow: 0 2px 4px rgba(100, 140, 180, 0.15);
-}
-
-[data-theme="arctic"] .lcd-display {
-  text-shadow: 0 0 8px rgba(128, 208, 255, 0.4);
-  border-color: rgba(144, 176, 208, 0.4);
 }
 
 [data-theme="arctic"] .nav-btn {
-  border-color: rgba(144, 176, 208, 0.4);
   background: rgba(255, 255, 255, 0.3);
 }
 
@@ -122,7 +105,6 @@
 }
 
 [data-theme="arctic"] .powerup-btn {
-  border-color: rgba(144, 176, 208, 0.4);
   background: rgba(255, 255, 255, 0.3);
 }
 
@@ -132,17 +114,7 @@
   -webkit-backdrop-filter: blur(8px);
 }
 
-[data-theme="arctic"] .action-btn {
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.4);
-}
-
-[data-theme="arctic"] .mode-btn {
-  border-radius: 12px;
-}
-
 [data-theme="arctic"] .achievement-item.unlocked {
-  border-color: rgba(64, 144, 221, 0.3);
   background: rgba(255, 255, 255, 0.4);
 }
 

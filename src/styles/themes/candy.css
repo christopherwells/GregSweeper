@@ -47,11 +47,23 @@
   --color-win: #69f0ae;
   --color-loss: #ff4081;
   --color-surface: rgba(255, 255, 255, 0.6);
+
+  --bg-app: linear-gradient(180deg, #fff0f5, #ffe0ec);
+  --shadow-app: 0 8px 32px rgba(255, 150, 180, 0.3), 0 2px 0 #f0a0b8;
+  --shadow-cell-unrevealed: 0 2px 0 rgba(240, 160, 184, 0.5);
+  --text-shadow-lcd: 0 0 8px rgba(255, 105, 180, 0.4);
+  --shadow-smiley: 0 3px 0 #f0a0b8, 0 3px 8px rgba(255, 100, 150, 0.2);
+  --border-modal: 2px solid #f0a0b8;
+  --bg-modal-close-hover: rgba(224, 64, 251, 0.1);
+  --border-radius-board: 14px;
 }
 
+/* Candy has extra border-radius on many elements */
 [data-theme="candy"] #app {
-  background: linear-gradient(180deg, #fff0f5, #ffe0ec);
-  box-shadow: 0 8px 32px rgba(255, 150, 180, 0.3), 0 2px 0 #f0a0b8;
+  border-radius: 24px;
+}
+
+[data-theme="candy"] .modal-content {
   border-radius: 24px;
 }
 
@@ -60,59 +72,6 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-}
-
-[data-theme="candy"] #title-subtitle {
-  color: #e040fb;
-}
-
-[data-theme="candy"] .smiley-btn {
-  border-radius: 50%;
-  box-shadow: 0 3px 0 #f0a0b8, 0 3px 8px rgba(255, 100, 150, 0.2);
-}
-
-[data-theme="candy"] .cell.unrevealed {
-  border-radius: 10px;
-  box-shadow: 0 2px 0 rgba(240, 160, 184, 0.5);
-}
-
-[data-theme="candy"] .cell.revealed {
-  border-radius: 10px;
-}
-
-[data-theme="candy"] #board {
-  border-radius: 14px;
-  border-color: #f0a0b8;
-}
-
-[data-theme="candy"] .nav-btn {
-  border-radius: 50%;
-}
-
-[data-theme="candy"] .powerup-btn {
-  border-radius: 20px;
-}
-
-[data-theme="candy"] .lcd-display {
-  border-radius: 10px;
-  text-shadow: 0 0 8px rgba(255, 105, 180, 0.4);
-}
-
-[data-theme="candy"] .modal-content {
-  border-radius: 24px;
-  border: 2px solid #f0a0b8;
-}
-
-[data-theme="candy"] .action-btn {
-  border-radius: 20px;
-}
-
-[data-theme="candy"] .mode-btn {
-  border-radius: 20px;
-}
-
-[data-theme="candy"] .modal-close:hover {
-  background: rgba(224, 64, 251, 0.1);
 }
 
 [data-theme="candy"] .cell.unrevealed:hover {

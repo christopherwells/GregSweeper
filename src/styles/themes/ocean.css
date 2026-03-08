@@ -42,27 +42,15 @@
   --color-win: #34d399;
   --color-loss: #ff6b6b;
   --color-surface: rgba(255, 255, 255, 0.04);
-}
 
-[data-theme="ocean"] #app {
-  box-shadow: 0 8px 40px rgba(0, 20, 40, 0.5), inset 0 1px 0 rgba(100, 210, 255, 0.05);
-}
-
-[data-theme="ocean"] .lcd-display {
-  text-shadow: 0 0 8px rgba(100, 210, 255, 0.4);
-}
-
-[data-theme="ocean"] #game-title {
-  text-shadow: 0 0 12px rgba(0, 180, 216, 0.3);
-}
-
-[data-theme="ocean"] .modal-close:hover {
-  background: rgba(100, 210, 255, 0.1);
+  --shadow-app: 0 8px 40px rgba(0, 20, 40, 0.5), inset 0 1px 0 rgba(100, 210, 255, 0.05);
+  --text-shadow-lcd: 0 0 8px rgba(100, 210, 255, 0.4);
+  --text-shadow-title: 0 0 12px rgba(0, 180, 216, 0.3);
+  --bg-modal-close-hover: rgba(100, 210, 255, 0.1);
+  --shadow-board: 0 4px 16px rgba(0, 20, 40, 0.4);
 }
 
 [data-theme="ocean"] #board {
-  border-color: #2a6580;
-  box-shadow: 0 4px 16px rgba(0, 20, 40, 0.4);
   animation: oceanWave 4s ease-in-out infinite;
 }
 

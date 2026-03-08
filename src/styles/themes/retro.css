@@ -1,14 +1,8 @@
 /* Retro theme — 80s synthwave purple and pink, scanlines and gradient drift */
 @keyframes bgDrift {
-  0% {
-    background-position: 0% 0%;
-  }
-  50% {
-    background-position: 100% 100%;
-  }
-  100% {
-    background-position: 0% 0%;
-  }
+  0% { background-position: 0% 0%; }
+  50% { background-position: 100% 100%; }
+  100% { background-position: 0% 0%; }
 }
 
 [data-theme="retro"] {
@@ -54,30 +48,18 @@
   --color-win: #44ffaa;
   --color-loss: #ff1166;
   --color-surface: rgba(255, 255, 255, 0.03);
+
+  --shadow-app: 0 8px 40px rgba(10, 2, 20, 0.6), inset 0 1px 0 rgba(255, 102, 170, 0.05);
+  --text-shadow-lcd: 0 0 10px rgba(255, 102, 170, 0.5);
+  --text-shadow-title: 0 0 14px rgba(255, 51, 136, 0.4), 0 0 28px rgba(68, 204, 255, 0.15);
+  --bg-modal-close-hover: rgba(255, 102, 170, 0.1);
+  --shadow-board: 0 4px 16px rgba(10, 2, 20, 0.5);
 }
 
 [data-theme="retro"] #app {
-  box-shadow: 0 8px 40px rgba(10, 2, 20, 0.6), inset 0 1px 0 rgba(255, 102, 170, 0.05);
   background-size: 200% 200%;
   animation: bgDrift 12s ease-in-out infinite;
   background-image: linear-gradient(135deg, #0f0620, #1a0a2e, #150828, #0f0620);
-}
-
-[data-theme="retro"] .lcd-display {
-  text-shadow: 0 0 10px rgba(255, 102, 170, 0.5);
-}
-
-[data-theme="retro"] #game-title {
-  text-shadow: 0 0 14px rgba(255, 51, 136, 0.4), 0 0 28px rgba(68, 204, 255, 0.15);
-}
-
-[data-theme="retro"] .modal-close:hover {
-  background: rgba(255, 102, 170, 0.1);
-}
-
-[data-theme="retro"] #board {
-  border-color: #5a2888;
-  box-shadow: 0 4px 16px rgba(10, 2, 20, 0.5);
 }
 
 /* Scanline overlay */

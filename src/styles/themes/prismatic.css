@@ -1,14 +1,8 @@
 /* Prismatic theme — full rainbow cascade with shimmering everything */
 @keyframes prismaticShimmer {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
 [data-theme="prismatic"] {
@@ -54,14 +48,11 @@
   --color-win: #44ff66;
   --color-loss: #ff1144;
   --color-surface: rgba(255, 255, 255, 0.03);
-}
 
-[data-theme="prismatic"] #app {
-  box-shadow: 0 8px 40px rgba(6, 6, 12, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-}
-
-[data-theme="prismatic"] .lcd-display {
-  text-shadow: 0 0 10px rgba(68, 221, 255, 0.5);
+  --shadow-app: 0 8px 40px rgba(6, 6, 12, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --text-shadow-lcd: 0 0 10px rgba(68, 221, 255, 0.5);
+  --bg-modal-close-hover: rgba(68, 221, 255, 0.1);
+  --shadow-board: 0 4px 16px rgba(6, 6, 12, 0.5);
 }
 
 /* Shimmering rainbow title */
@@ -75,10 +66,6 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-}
-
-[data-theme="prismatic"] .modal-close:hover {
-  background: rgba(68, 221, 255, 0.1);
 }
 
 /* Animated rainbow header bar */
@@ -110,7 +97,6 @@
   background-clip: padding-box, border-box;
   background-size: 100% 100%, 400% 100%;
   animation: prismaticShimmer 5s ease-in-out infinite;
-  box-shadow: 0 4px 16px rgba(6, 6, 12, 0.5);
 }
 
 /* Shimmering cell borders */

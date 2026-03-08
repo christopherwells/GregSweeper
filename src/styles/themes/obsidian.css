@@ -58,18 +58,43 @@
   --color-win: #aaaaaa;
   --color-loss: #ff2020;
   --color-surface: rgba(255, 255, 255, 0.02);
+
+  --bg-app: #000000;
+  --shadow-app: none;
+  --border-app: 1px solid #1a1a1a;
+
+  --shadow-cell-unrevealed: none;
+  --shadow-cell-hover: none;
+  --border-cell-revealed: 1px solid #141414;
+  --text-shadow-lcd: none;
+  --border-lcd: 1px solid #1a1a1a;
+  --text-shadow-title: none;
+
+  --shadow-board: none;
+  --border-board: 1px solid #1a1a1a;
+  --border-radius-board: 2px;
+
+  --border-smiley: 1px solid #222222;
+  --shadow-smiley: none;
+  --border-nav-btn: 1px solid #1a1a1a;
+  --shadow-nav-btn-hover: none;
+  --border-powerup-btn: 1px solid #1a1a1a;
+
+  --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.5);
+  --border-modal: 1px solid #1a1a1a;
+  --bg-modal-content: #0a0a0a;
+  --bg-modal-close-hover: rgba(255, 255, 255, 0.05);
+
+  --border-achievement-unlocked: #333333;
+  --shadow-achievement-unlocked: none;
 }
 
 [data-theme="obsidian"] #app {
-  background: #000000;
-  border: 1px solid #1a1a1a;
-  box-shadow: none;
   border-radius: 2px;
 }
 
 [data-theme="obsidian"] #game-title {
   color: #cccccc;
-  text-shadow: none;
   font-weight: 300;
   letter-spacing: 4px;
   text-transform: uppercase;
@@ -81,17 +106,9 @@
   text-transform: uppercase;
 }
 
-/* Razor-thin grid */
-[data-theme="obsidian"] #board {
-  border: 1px solid #1a1a1a;
-  border-radius: 2px;
-  box-shadow: none;
-}
-
 [data-theme="obsidian"] .cell.unrevealed {
   border: 1px solid #1a1a1a;
   border-radius: 1px;
-  box-shadow: none;
 }
 
 [data-theme="obsidian"] .cell.unrevealed:hover {
@@ -100,68 +117,21 @@
 }
 
 [data-theme="obsidian"] .cell.revealed {
-  background: #080808;
-  border: 1px solid #141414;
   border-radius: 1px;
   animation: obsidianFadeIn 0.15s ease-out;
 }
 
-[data-theme="obsidian"] .smiley-btn {
-  border: 1px solid #222222;
-  border-radius: 2px;
-  box-shadow: none;
-}
-
-[data-theme="obsidian"] .lcd-display {
-  border: 1px solid #1a1a1a;
-  border-radius: 2px;
-  text-shadow: none;
-}
-
-[data-theme="obsidian"] .nav-btn {
-  border-color: #1a1a1a;
-  border-radius: 2px;
-}
-
 [data-theme="obsidian"] .nav-btn:hover {
   background: #1a1a1a;
-  box-shadow: none;
-}
-
-[data-theme="obsidian"] .powerup-btn {
-  border-color: #1a1a1a;
-  border-radius: 2px;
 }
 
 [data-theme="obsidian"] .modal-content {
-  border: 1px solid #1a1a1a;
   border-radius: 4px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-  background: #0a0a0a;
-}
-
-[data-theme="obsidian"] .modal-close:hover {
-  background: rgba(255, 255, 255, 0.05);
 }
 
 [data-theme="obsidian"] .game-header {
   background: #060606;
   border-bottom: 1px solid #1a1a1a;
-}
-
-[data-theme="obsidian"] .action-btn {
-  border-radius: 2px;
-  border: 1px solid #222222;
-  letter-spacing: 1px;
-}
-
-[data-theme="obsidian"] .mode-btn {
-  border-radius: 2px;
-}
-
-[data-theme="obsidian"] .achievement-item.unlocked {
-  border-color: #333333;
-  box-shadow: none;
 }
 
 /* Minimal scrollbar */

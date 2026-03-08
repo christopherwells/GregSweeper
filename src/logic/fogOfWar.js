@@ -1,11 +1,20 @@
 export function computeVisibleCells(revealedCells, fogRadius, rows, cols) {
   const visible = new Set();
+  const reach = Math.ceil(fogRadius);
+  const radiusSq = fogRadius * fogRadius;
 
   for (const { row, col } of revealedCells) {
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const dist = Math.sqrt((r - row) ** 2 + (c - col) ** 2);
-        if (dist <= fogRadius) {
+    const rMin = Math.max(0, row - reach);
+    const rMax = Math.min(rows - 1, row + reach);
+    const cMin = Math.max(0, col - reach);
+    const cMax = Math.min(cols - 1, col + reach);
+
+    for (let r = rMin; r <= rMax; r++) {
+      for (let c = cMin; c <= cMax; c++) {
+        // Compare squared distances to avoid sqrt per cell
+        const dr = r - row;
+        const dc = c - col;
+        if (dr * dr + dc * dc <= radiusSq) {
           visible.add(`${r},${c}`);
         }
       }

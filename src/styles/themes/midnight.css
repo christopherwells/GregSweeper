@@ -42,11 +42,30 @@
   --color-win: #69f0ae;
   --color-loss: #ff4466;
   --color-surface: rgba(255, 255, 255, 0.04);
-}
 
-[data-theme="midnight"] #app {
-  background: linear-gradient(180deg, #1e1250, #1a1040, #140d35);
-  box-shadow: 0 8px 40px rgba(10, 5, 30, 0.6), inset 0 1px 0 rgba(124, 77, 255, 0.05);
+  --bg-app: linear-gradient(180deg, #1e1250, #1a1040, #140d35);
+  --shadow-app: 0 8px 40px rgba(10, 5, 30, 0.6), inset 0 1px 0 rgba(124, 77, 255, 0.05);
+
+  --text-shadow-lcd: 0 0 10px rgba(204, 136, 255, 0.5);
+  --border-lcd: 1px solid rgba(124, 77, 255, 0.3);
+
+  --shadow-cell-unrevealed: 0 1px 3px rgba(0, 0, 0, 0.3), inset 0 0 2px rgba(124, 77, 255, 0.05);
+  --shadow-cell-hover: 0 0 10px rgba(124, 77, 255, 0.2);
+
+  --text-shadow-num-1: 0 0 6px rgba(128, 176, 255, 0.3);
+  --text-shadow-num-2: 0 0 6px rgba(128, 255, 176, 0.3);
+  --text-shadow-num-3: 0 0 6px rgba(255, 102, 136, 0.3);
+  --text-shadow-num-4: 0 0 6px rgba(204, 136, 255, 0.3);
+
+  --shadow-board: 0 4px 20px rgba(10, 5, 30, 0.5), 0 0 20px rgba(124, 77, 255, 0.05);
+
+  --border-smiley: 1px solid rgba(124, 77, 255, 0.3);
+  --border-nav-btn: 1px solid rgba(124, 77, 255, 0.2);
+  --shadow-nav-btn-hover: 0 0 10px rgba(124, 77, 255, 0.15);
+
+  --shadow-modal: 0 8px 32px rgba(5, 2, 15, 0.6);
+  --border-modal: 1px solid rgba(124, 77, 255, 0.15);
+  --bg-modal-close-hover: rgba(124, 77, 255, 0.1);
 }
 
 [data-theme="midnight"] #game-title {
@@ -57,31 +76,7 @@
   text-shadow: none;
 }
 
-[data-theme="midnight"] #title-subtitle {
-  color: #9080cc;
-}
-
-[data-theme="midnight"] .lcd-display {
-  text-shadow: 0 0 10px rgba(204, 136, 255, 0.5);
-  border-color: rgba(124, 77, 255, 0.3);
-}
-
-[data-theme="midnight"] .cell.unrevealed {
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), inset 0 0 2px rgba(124, 77, 255, 0.05);
-}
-
-[data-theme="midnight"] .cell.unrevealed:hover {
-  box-shadow: 0 0 10px rgba(124, 77, 255, 0.2);
-}
-
-[data-theme="midnight"] .cell.revealed.num-1 { text-shadow: 0 0 6px rgba(128, 176, 255, 0.3); }
-[data-theme="midnight"] .cell.revealed.num-2 { text-shadow: 0 0 6px rgba(128, 255, 176, 0.3); }
-[data-theme="midnight"] .cell.revealed.num-3 { text-shadow: 0 0 6px rgba(255, 102, 136, 0.3); }
-[data-theme="midnight"] .cell.revealed.num-4 { text-shadow: 0 0 6px rgba(204, 136, 255, 0.3); }
-
 [data-theme="midnight"] #board {
-  border-color: #3d2580;
-  box-shadow: 0 4px 20px rgba(10, 5, 30, 0.5), 0 0 20px rgba(124, 77, 255, 0.05);
   position: relative;
   overflow: hidden;
 }
@@ -107,25 +102,4 @@
   25% { opacity: 0.7; }
   50% { opacity: 0.4; }
   75% { opacity: 0.8; }
-}
-
-[data-theme="midnight"] .smiley-btn {
-  border: 1px solid rgba(124, 77, 255, 0.3);
-}
-
-[data-theme="midnight"] .nav-btn {
-  border-color: rgba(124, 77, 255, 0.2);
-}
-
-[data-theme="midnight"] .nav-btn:hover {
-  box-shadow: 0 0 10px rgba(124, 77, 255, 0.15);
-}
-
-[data-theme="midnight"] .modal-content {
-  border: 1px solid rgba(124, 77, 255, 0.15);
-  box-shadow: 0 8px 32px rgba(5, 2, 15, 0.6);
-}
-
-[data-theme="midnight"] .modal-close:hover {
-  background: rgba(124, 77, 255, 0.1);
 }

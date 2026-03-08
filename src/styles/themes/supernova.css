@@ -1,20 +1,10 @@
 /* Supernova theme — explosive warm gradients, dynamic color shifting */
 @keyframes supernovaShift {
-  0% {
-    background-position: 0% 50%;
-  }
-  25% {
-    background-position: 50% 100%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  75% {
-    background-position: 50% 0%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
+  0% { background-position: 0% 50%; }
+  25% { background-position: 50% 100%; }
+  50% { background-position: 100% 50%; }
+  75% { background-position: 50% 0%; }
+  100% { background-position: 0% 50%; }
 }
 
 @keyframes supernovaPulse {
@@ -30,12 +20,8 @@
 }
 
 @keyframes titleFlare {
-  0%, 100% {
-    filter: brightness(1);
-  }
-  50% {
-    filter: brightness(1.2);
-  }
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.2); }
 }
 
 [data-theme="supernova"] {
@@ -86,18 +72,44 @@
   --color-win: #ffcc00;
   --color-loss: #ff2200;
   --color-surface: rgba(255, 102, 0, 0.04);
+
+  --bg-app: linear-gradient(135deg, #200c0a, #2a1010, #1a0808, #2a1414, #200c0a);
+  --border-app: 1px solid rgba(106, 48, 32, 0.5);
+  --shadow-app: 0 8px 32px rgba(100, 20, 0, 0.2);
+  --text-shadow-subtitle: 0 0 8px rgba(255, 136, 0, 0.4);
+  --text-shadow-mine: 0 0 12px rgba(255, 204, 0, 0.6);
+
+  --shadow-cell-unrevealed: inset 0 1px 0 rgba(255, 136, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-cell-hover: 0 0 10px rgba(255, 102, 0, 0.25);
+  --border-cell-revealed: 1px solid rgba(106, 48, 32, 0.25);
+  --text-shadow-num-1: 0 0 8px rgba(255, 136, 68, 0.5);
+  --text-shadow-num-2: 0 0 8px rgba(255, 204, 0, 0.5);
+  --text-shadow-num-3: 0 0 8px rgba(255, 51, 68, 0.5);
+
+  --border-board: 2px solid rgba(106, 48, 32, 0.5);
+  --border-radius-board: 8px;
+
+  --border-smiley: 1px solid rgba(106, 48, 32, 0.5);
+  --shadow-smiley: 0 0 8px rgba(255, 102, 0, 0.12);
+  --text-shadow-lcd: 0 0 8px rgba(255, 136, 0, 0.5), 0 0 16px rgba(255, 80, 0, 0.2);
+  --border-lcd: 1px solid rgba(106, 48, 32, 0.4);
+  --border-nav-btn: 1px solid rgba(106, 48, 32, 0.4);
+  --shadow-nav-btn-hover: 0 0 10px rgba(255, 102, 0, 0.15);
+  --border-powerup-btn: 1px solid rgba(106, 48, 32, 0.4);
+
+  --shadow-modal: 0 8px 40px rgba(80, 10, 0, 0.4);
+  --border-modal: 1px solid rgba(106, 48, 32, 0.4);
+  --bg-modal-content: #220e0a;
+  --bg-modal-close-hover: rgba(255, 102, 0, 0.1);
+
+  --border-achievement-unlocked: rgba(255, 102, 0, 0.35);
+  --shadow-achievement-unlocked: 0 0 8px rgba(255, 102, 0, 0.1);
 }
 
 /* Animated gradient background on the app */
 [data-theme="supernova"] #app {
-  background: linear-gradient(
-    135deg,
-    #200c0a, #2a1010, #1a0808, #2a1414, #200c0a
-  );
   background-size: 300% 300%;
   animation: supernovaShift 12s ease-in-out infinite;
-  border: 1px solid rgba(106, 48, 32, 0.5);
-  box-shadow: 0 8px 32px rgba(100, 20, 0, 0.2);
 }
 
 /* Explosive gradient title */
@@ -112,76 +124,14 @@
 
 [data-theme="supernova"] #title-subtitle {
   color: #ff8800;
-  text-shadow: 0 0 8px rgba(255, 136, 0, 0.4);
 }
 
 /* Pulsing board glow */
 [data-theme="supernova"] #board {
-  border: 2px solid rgba(106, 48, 32, 0.5);
-  border-radius: 8px;
   animation: supernovaPulse 4s ease-in-out infinite;
-}
-
-[data-theme="supernova"] .cell.unrevealed {
-  box-shadow: inset 0 1px 0 rgba(255, 136, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.2);
-}
-
-[data-theme="supernova"] .cell.unrevealed:hover {
-  box-shadow: 0 0 10px rgba(255, 102, 0, 0.25);
-  background: linear-gradient(145deg, #4e2418, #3a1810);
-}
-
-[data-theme="supernova"] .cell.revealed {
-  background: #1e0c08;
-  border-color: rgba(106, 48, 32, 0.25);
-}
-
-[data-theme="supernova"] .cell.revealed.num-1 { text-shadow: 0 0 8px rgba(255, 136, 68, 0.5); }
-[data-theme="supernova"] .cell.revealed.num-2 { text-shadow: 0 0 8px rgba(255, 204, 0, 0.5); }
-[data-theme="supernova"] .cell.revealed.num-3 { text-shadow: 0 0 8px rgba(255, 51, 68, 0.5); }
-
-[data-theme="supernova"] .cell.mine {
-  text-shadow: 0 0 12px rgba(255, 204, 0, 0.6);
-}
-
-[data-theme="supernova"] .smiley-btn {
-  border: 1px solid rgba(106, 48, 32, 0.5);
-  box-shadow: 0 0 8px rgba(255, 102, 0, 0.12);
-}
-
-[data-theme="supernova"] .lcd-display {
-  text-shadow: 0 0 8px rgba(255, 136, 0, 0.5), 0 0 16px rgba(255, 80, 0, 0.2);
-  border-color: rgba(106, 48, 32, 0.4);
-}
-
-[data-theme="supernova"] .nav-btn {
-  border-color: rgba(106, 48, 32, 0.4);
-}
-
-[data-theme="supernova"] .nav-btn:hover {
-  box-shadow: 0 0 10px rgba(255, 102, 0, 0.15);
-}
-
-[data-theme="supernova"] .powerup-btn {
-  border-color: rgba(106, 48, 32, 0.4);
-}
-
-[data-theme="supernova"] .modal-content {
-  border: 1px solid rgba(106, 48, 32, 0.4);
-  box-shadow: 0 8px 40px rgba(80, 10, 0, 0.4);
-  background: #220e0a;
-}
-
-[data-theme="supernova"] .modal-close:hover {
-  background: rgba(255, 102, 0, 0.1);
 }
 
 [data-theme="supernova"] .game-header {
   background: linear-gradient(180deg, #2a1210, #200c0a);
   border-bottom: 1px solid rgba(106, 48, 32, 0.3);
-}
-
-[data-theme="supernova"] .achievement-item.unlocked {
-  border-color: rgba(255, 102, 0, 0.35);
-  box-shadow: 0 0 8px rgba(255, 102, 0, 0.1);
 }

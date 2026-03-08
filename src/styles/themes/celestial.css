@@ -73,11 +73,40 @@
   --color-win: #60dd88;
   --color-loss: #ff4060;
   --color-surface: rgba(255, 215, 80, 0.03);
+
+  --bg-app: linear-gradient(180deg, #0a1028, #080c1a);
+  --border-app: 1px solid rgba(42, 56, 104, 0.6);
+  --text-shadow-subtitle: 0 0 8px rgba(255, 215, 80, 0.3);
+
+  --shadow-cell-unrevealed: inset 0 1px 0 rgba(255, 215, 80, 0.04), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-cell-hover: 0 0 8px rgba(255, 215, 80, 0.15), inset 0 1px 0 rgba(255, 215, 80, 0.06);
+  --border-cell-revealed: 1px solid rgba(42, 56, 104, 0.25);
+  --text-shadow-num-1: 0 0 6px rgba(96, 160, 255, 0.4);
+  --text-shadow-num-2: 0 0 6px rgba(255, 215, 80, 0.4);
+
+  --shadow-board: 0 4px 20px rgba(0, 10, 30, 0.4);
+  --border-board: 2px solid rgba(42, 56, 104, 0.5);
+  --border-radius-board: 8px;
+
+  --border-smiley: 1px solid rgba(255, 215, 80, 0.25);
+  --shadow-smiley: 0 0 8px rgba(255, 215, 80, 0.1);
+  --text-shadow-lcd: 0 0 8px rgba(255, 215, 80, 0.5), 0 0 16px rgba(255, 215, 80, 0.2);
+  --border-lcd: 1px solid rgba(255, 215, 80, 0.2);
+  --border-nav-btn: 1px solid rgba(42, 56, 104, 0.5);
+  --shadow-nav-btn-hover: 0 0 8px rgba(255, 215, 80, 0.12);
+  --border-powerup-btn: 1px solid rgba(42, 56, 104, 0.5);
+
+  --shadow-modal: 0 8px 40px rgba(0, 10, 30, 0.5), 0 0 1px rgba(255, 215, 80, 0.15);
+  --border-modal: 1px solid rgba(42, 56, 104, 0.4);
+  --bg-modal-content: #0e1628;
+  --bg-modal-close-hover: rgba(255, 215, 80, 0.08);
+
+  --border-achievement-unlocked: rgba(255, 215, 80, 0.3);
+  --shadow-achievement-unlocked: 0 0 8px rgba(255, 215, 80, 0.08);
 }
 
+/* Star twinkle animation on app */
 [data-theme="celestial"] #app {
-  background: linear-gradient(180deg, #0a1028, #080c1a);
-  border: 1px solid rgba(42, 56, 104, 0.6);
   animation: starTwinkle 4s ease-in-out infinite;
 }
 
@@ -92,69 +121,9 @@
 
 [data-theme="celestial"] #title-subtitle {
   color: #ffd750;
-  text-shadow: 0 0 8px rgba(255, 215, 80, 0.3);
-}
-
-[data-theme="celestial"] #board {
-  border-color: rgba(42, 56, 104, 0.5);
-  box-shadow: 0 4px 20px rgba(0, 10, 30, 0.4);
-  border-radius: 8px;
-}
-
-[data-theme="celestial"] .cell.unrevealed {
-  box-shadow: inset 0 1px 0 rgba(255, 215, 80, 0.04), 0 1px 2px rgba(0, 0, 0, 0.2);
-}
-
-[data-theme="celestial"] .cell.unrevealed:hover {
-  box-shadow: 0 0 8px rgba(255, 215, 80, 0.15), inset 0 1px 0 rgba(255, 215, 80, 0.06);
-}
-
-[data-theme="celestial"] .cell.revealed {
-  background: #0c1224;
-  border-color: rgba(42, 56, 104, 0.25);
-}
-
-[data-theme="celestial"] .cell.revealed.num-1 { text-shadow: 0 0 6px rgba(96, 160, 255, 0.4); }
-[data-theme="celestial"] .cell.revealed.num-2 { text-shadow: 0 0 6px rgba(255, 215, 80, 0.4); }
-
-[data-theme="celestial"] .smiley-btn {
-  border: 1px solid rgba(255, 215, 80, 0.25);
-  box-shadow: 0 0 8px rgba(255, 215, 80, 0.1);
-}
-
-[data-theme="celestial"] .lcd-display {
-  text-shadow: 0 0 8px rgba(255, 215, 80, 0.5), 0 0 16px rgba(255, 215, 80, 0.2);
-  border-color: rgba(255, 215, 80, 0.2);
-}
-
-[data-theme="celestial"] .nav-btn {
-  border-color: rgba(42, 56, 104, 0.5);
-}
-
-[data-theme="celestial"] .nav-btn:hover {
-  box-shadow: 0 0 8px rgba(255, 215, 80, 0.12);
-}
-
-[data-theme="celestial"] .powerup-btn {
-  border-color: rgba(42, 56, 104, 0.5);
-}
-
-[data-theme="celestial"] .modal-content {
-  border: 1px solid rgba(42, 56, 104, 0.4);
-  box-shadow: 0 8px 40px rgba(0, 10, 30, 0.5), 0 0 1px rgba(255, 215, 80, 0.15);
-  background: #0e1628;
-}
-
-[data-theme="celestial"] .modal-close:hover {
-  background: rgba(255, 215, 80, 0.08);
 }
 
 [data-theme="celestial"] .game-header {
   background: linear-gradient(180deg, #141c38, #0e1628);
   border-bottom: 1px solid rgba(42, 56, 104, 0.4);
-}
-
-[data-theme="celestial"] .achievement-item.unlocked {
-  border-color: rgba(255, 215, 80, 0.3);
-  box-shadow: 0 0 8px rgba(255, 215, 80, 0.08);
 }

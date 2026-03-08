@@ -65,32 +65,23 @@
   --color-win: #00ff88;
   --color-loss: #ff0055;
   --color-surface: rgba(255, 255, 255, 0.03);
-}
 
-[data-theme="cyberpunk"] #app {
-  box-shadow: 0 8px 40px rgba(255, 0, 128, 0.1), 0 0 1px rgba(0, 255, 255, 0.3), inset 0 1px 0 rgba(0, 255, 255, 0.05);
-}
-
-[data-theme="cyberpunk"] .lcd-display {
-  text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+  --shadow-app: 0 8px 40px rgba(255, 0, 128, 0.1), 0 0 1px rgba(0, 255, 255, 0.3), inset 0 1px 0 rgba(0, 255, 255, 0.05);
+  --text-shadow-lcd: 0 0 10px rgba(0, 255, 255, 0.5);
+  --bg-modal-close-hover: rgba(0, 255, 255, 0.1);
+  --shadow-board: 0 4px 16px rgba(255, 0, 128, 0.1), 0 0 1px rgba(0, 255, 255, 0.2);
 }
 
 [data-theme="cyberpunk"] #game-title {
   animation: glitch 4s ease-in-out infinite;
 }
 
-[data-theme="cyberpunk"] .modal-close:hover {
-  background: rgba(0, 255, 255, 0.1);
-}
-
+/* Horizontal data-stream lines */
 [data-theme="cyberpunk"] #board {
-  border-color: #3a2a5a;
-  box-shadow: 0 4px 16px rgba(255, 0, 128, 0.1), 0 0 1px rgba(0, 255, 255, 0.2);
   position: relative;
   overflow: hidden;
 }
 
-/* Horizontal data-stream lines */
 [data-theme="cyberpunk"] #board::before {
   content: '';
   position: absolute;

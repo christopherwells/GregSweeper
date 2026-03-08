@@ -51,27 +51,15 @@
   --color-win: #00ff3c;
   --color-loss: #ff2222;
   --color-surface: rgba(0, 255, 60, 0.03);
-}
 
-[data-theme="toxic"] #app {
-  box-shadow: 0 8px 40px rgba(0, 20, 5, 0.6), inset 0 1px 0 rgba(0, 255, 60, 0.04);
-}
-
-[data-theme="toxic"] .lcd-display {
-  text-shadow: 0 0 10px rgba(0, 255, 60, 0.6);
-}
-
-[data-theme="toxic"] #game-title {
-  text-shadow: 0 0 14px rgba(0, 255, 60, 0.4), 0 0 28px rgba(0, 255, 60, 0.15);
-}
-
-[data-theme="toxic"] .modal-close:hover {
-  background: rgba(0, 255, 60, 0.1);
+  --shadow-app: 0 8px 40px rgba(0, 20, 5, 0.6), inset 0 1px 0 rgba(0, 255, 60, 0.04);
+  --text-shadow-lcd: 0 0 10px rgba(0, 255, 60, 0.6);
+  --text-shadow-title: 0 0 14px rgba(0, 255, 60, 0.4), 0 0 28px rgba(0, 255, 60, 0.15);
+  --bg-modal-close-hover: rgba(0, 255, 60, 0.1);
 }
 
 /* Pulsing toxic glow on board */
 [data-theme="toxic"] #board {
-  border-color: #2a4a25;
   animation: toxicPulse 3s ease-in-out infinite;
 }
 

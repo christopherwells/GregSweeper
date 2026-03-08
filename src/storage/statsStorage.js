@@ -4,6 +4,9 @@ const THEME_KEY = 'minesweeper_theme';
 const POWERUPS_KEY = 'minesweeper_powerups';
 const LIVES_KEY = 'minesweeper_lives';
 
+// In-memory cache for stats to avoid repeated localStorage reads + JSON.parse
+let _statsCache = null;
+
 function getJSON(key, fallback) {
   try {
     const data = localStorage.getItem(key);
@@ -14,7 +17,12 @@ function getJSON(key, fallback) {
 }
 
 function setJSON(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (err) {
+    // QuotaExceededError or other storage errors — log but don't crash
+    console.warn(`localStorage write failed for "${key}":`, err.message);
+  }
 }
 
 const DEFAULT_STATS = {
@@ -62,6 +70,9 @@ const DEFAULT_POWERUPS = {
 };
 
 export function loadStats() {
+  // Return cached version if available
+  if (_statsCache) return _statsCache;
+
   const stats = getJSON(STATS_KEY, { ...DEFAULT_STATS });
   // Backfill new fields for existing saves
   if (stats.maxLevelReached == null) stats.maxLevelReached = 1;
@@ -92,6 +103,7 @@ export function loadStats() {
     }
   }
 
+  _statsCache = stats;
   return stats;
 }
 
@@ -176,6 +188,7 @@ export function saveGameResult(won, time, level, { isDaily = false, usedPowerUps
   }
 
   setJSON(STATS_KEY, stats);
+  _statsCache = stats; // Update cache
   return stats;
 }
 
@@ -259,11 +272,72 @@ export function saveModeLives(gameMode, count) {
   setJSON(LIVES_KEY, data);
 }
 
+// ── Checkpoint Storage ──────────────────────────────
+const CHECKPOINT_KEY = 'minesweeper_checkpoints';
+
+export function loadCheckpoint(gameMode) {
+  const data = getJSON(CHECKPOINT_KEY) || {};
+  return data[gameMode] || 1; // default checkpoint is level 1
+}
+
+export function saveCheckpoint(gameMode, level) {
+  const data = getJSON(CHECKPOINT_KEY) || {};
+  data[gameMode] = level;
+  setJSON(CHECKPOINT_KEY, data);
+}
+
+// ── Game State Persistence ──────────────────────────
+const GAME_STATE_KEY = 'minesweeper_game_state';
+
+export function saveGameState(gameState) {
+  setJSON(GAME_STATE_KEY, gameState);
+}
+
+export function loadGameState() {
+  return getJSON(GAME_STATE_KEY);
+}
+
+export function clearGameState() {
+  try {
+    localStorage.removeItem(GAME_STATE_KEY);
+  } catch (e) {
+    // ignore
+  }
+}
+
 // ── Reset ─────────────────────────────────────────────
 
 export function resetStats() {
-  setJSON(STATS_KEY, { ...DEFAULT_STATS, modeStats: createDefaultModeStats() });
+  const freshStats = { ...DEFAULT_STATS, modeStats: createDefaultModeStats() };
+  setJSON(STATS_KEY, freshStats);
+  _statsCache = freshStats; // Update cache with fresh stats
   setJSON(POWERUPS_KEY, { ...DEFAULT_POWERUPS });
   setJSON(LIVES_KEY, { ...DEFAULT_LIVES });
   localStorage.removeItem(LEADERBOARD_KEY);
+  localStorage.removeItem(CHECKPOINT_KEY);
+  localStorage.removeItem(GAME_STATE_KEY);
+}
+
+/**
+ * Invalidate the in-memory stats cache so the next loadStats()
+ * re-reads from localStorage. Use when external code modifies
+ * stats directly in localStorage.
+ */
+export function invalidateStatsCache() {
+  _statsCache = null;
+}
+
+// ── Onboarding ──────────────────────────────────────
+const ONBOARDING_KEY = 'minesweeper_onboarded';
+
+export function isOnboarded() {
+  return localStorage.getItem(ONBOARDING_KEY) === 'true';
+}
+
+export function setOnboarded() {
+  try {
+    localStorage.setItem(ONBOARDING_KEY, 'true');
+  } catch (e) {
+    // ignore
+  }
 }

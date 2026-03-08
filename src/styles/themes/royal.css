@@ -42,29 +42,25 @@
   --color-win: #ffd700;
   --color-loss: #dd3344;
   --color-surface: rgba(255, 215, 0, 0.03);
-}
 
-[data-theme="royal"] #app {
-  box-shadow:
+  --shadow-app:
     0 8px 40px rgba(10, 4, 20, 0.6),
     inset 0 1px 0 rgba(255, 215, 0, 0.08),
     0 0 0 1px rgba(255, 215, 0, 0.1);
-}
-
-[data-theme="royal"] .lcd-display {
-  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+  --text-shadow-lcd: 0 0 10px rgba(255, 215, 0, 0.5);
+  --text-shadow-title: 0 0 14px rgba(255, 215, 0, 0.35), 0 0 28px rgba(255, 215, 0, 0.1);
+  --bg-modal-close-hover: rgba(255, 215, 0, 0.1);
+  --shadow-board:
+    0 4px 16px rgba(10, 4, 20, 0.5),
+    0 0 12px rgba(255, 215, 0, 0.08),
+    inset 0 0 8px rgba(255, 215, 0, 0.04);
 }
 
 [data-theme="royal"] #game-title {
-  text-shadow: 0 0 14px rgba(255, 215, 0, 0.35), 0 0 28px rgba(255, 215, 0, 0.1);
   background: linear-gradient(180deg, #ffd700, #e6b800, #ffd700);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-}
-
-[data-theme="royal"] .modal-close:hover {
-  background: rgba(255, 215, 0, 0.1);
 }
 
 /* Ornate gold border on board */
@@ -74,15 +70,13 @@
     135deg,
     #b8860b, #ffd700, #ffec80, #ffd700, #b8860b
   ) 1;
-  box-shadow:
-    0 4px 16px rgba(10, 4, 20, 0.5),
-    0 0 12px rgba(255, 215, 0, 0.08),
-    inset 0 0 8px rgba(255, 215, 0, 0.04);
 }
 
 /* Gold trim on header */
 [data-theme="royal"] .game-header {
   border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+  position: relative;
+  overflow: hidden;
 }
 
 /* Regal cell borders */
@@ -91,11 +85,6 @@
 }
 
 /* Gold shimmer sweep across header */
-[data-theme="royal"] .game-header {
-  position: relative;
-  overflow: hidden;
-}
-
 [data-theme="royal"] .game-header::after {
   content: '';
   position: absolute;

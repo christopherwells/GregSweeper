@@ -1,3 +1,5 @@
+import { isBoardSolvable } from './boardSolver.js';
+
 export function createEmptyBoard(rows, cols) {
   const board = [];
   for (let r = 0; r < rows; r++) {
@@ -189,14 +191,32 @@ function redistributeMines(board, maxZeroCluster, excludeRow, excludeCol, rng = 
 }
 
 export function generateBoard(rows, cols, mines, excludeRow, excludeCol, rng, options = {}) {
+  const maxSolveAttempts = 50;
+
+  for (let attempt = 0; attempt < maxSolveAttempts; attempt++) {
+    const board = createEmptyBoard(rows, cols);
+    placeMines(board, mines, excludeRow, excludeCol, rng);
+    calculateAdjacency(board);
+
+    // Anti-zero-cluster redistribution
+    if (options.maxZeroCluster && options.maxZeroCluster < Infinity) {
+      redistributeMines(board, options.maxZeroCluster, excludeRow, excludeCol, rng || Math.random);
+    }
+
+    // Check solvability — skip on last attempt (accept whatever we have)
+    if (attempt < maxSolveAttempts - 1 &&
+        !isBoardSolvable(board, rows, cols, excludeRow, excludeCol)) {
+      // Advance RNG state so the next attempt produces a different layout
+      if (rng) rng();
+      continue;
+    }
+
+    return board;
+  }
+
+  // Fallback — should not reach here, but just in case
   const board = createEmptyBoard(rows, cols);
   placeMines(board, mines, excludeRow, excludeCol, rng);
   calculateAdjacency(board);
-
-  // Anti-zero-cluster redistribution
-  if (options.maxZeroCluster && options.maxZeroCluster < Infinity) {
-    redistributeMines(board, options.maxZeroCluster, excludeRow, excludeCol, rng || Math.random);
-  }
-
   return board;
 }

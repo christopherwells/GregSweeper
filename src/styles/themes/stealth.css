@@ -42,32 +42,21 @@
   --color-win: #70a070;
   --color-loss: #cc3333;
   --color-surface: rgba(255, 255, 255, 0.02);
+
+  --shadow-app: 0 4px 20px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  --text-shadow-lcd: 0 0 6px rgba(136, 136, 136, 0.3);
+  --text-shadow-title: none;
+  --bg-modal-close-hover: rgba(255, 255, 255, 0.05);
+  --shadow-board: 0 2px 8px rgba(0, 0, 0, 0.5);
+  --border-board: 2px solid #2a2a2a;
 }
 
-[data-theme="stealth"] #app {
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.02);
-}
-
-[data-theme="stealth"] .lcd-display {
-  text-shadow: 0 0 6px rgba(136, 136, 136, 0.3);
-}
-
-[data-theme="stealth"] #game-title {
-  text-shadow: none;
-}
-
-[data-theme="stealth"] .modal-close:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-
+/* Scan-line sweep effect */
 [data-theme="stealth"] #board {
-  border-color: #2a2a2a;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
   position: relative;
   overflow: hidden;
 }
 
-/* Scan-line sweep effect */
 [data-theme="stealth"] #board::before {
   content: '';
   position: absolute;

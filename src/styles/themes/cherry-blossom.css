@@ -42,33 +42,21 @@
   --color-win: #60a88a;
   --color-loss: #d44a6a;
   --color-surface: rgba(90, 48, 69, 0.04);
-}
 
-[data-theme="cherry-blossom"] #app {
-  box-shadow: 0 8px 40px rgba(180, 120, 150, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.6);
-}
-
-[data-theme="cherry-blossom"] .lcd-display {
-  text-shadow: 0 0 8px rgba(138, 56, 88, 0.3);
-}
-
-[data-theme="cherry-blossom"] #game-title {
-  text-shadow: 0 0 12px rgba(216, 122, 152, 0.3);
-}
-
-[data-theme="cherry-blossom"] .modal-close:hover {
-  background: rgba(216, 122, 152, 0.12);
+  --shadow-app: 0 8px 40px rgba(180, 120, 150, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  --text-shadow-lcd: 0 0 8px rgba(138, 56, 88, 0.3);
+  --text-shadow-title: 0 0 12px rgba(216, 122, 152, 0.3);
+  --bg-modal-close-hover: rgba(216, 122, 152, 0.12);
+  --shadow-board: 0 4px 20px rgba(180, 120, 150, 0.15);
 }
 
 [data-theme="cherry-blossom"] #board {
-  border-color: #e0aac5;
-  box-shadow: 0 4px 20px rgba(180, 120, 150, 0.15);
   position: relative;
   overflow: hidden;
 }
 
 [data-theme="cherry-blossom"] #board::after {
-  content: '🌸';
+  content: '\1F338';
   position: absolute;
   top: -20px;
   right: -10px;

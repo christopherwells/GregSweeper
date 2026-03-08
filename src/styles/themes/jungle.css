@@ -47,12 +47,35 @@
   --color-win: #66dd44;
   --color-loss: #cc4422;
   --color-surface: rgba(68, 187, 68, 0.04);
-}
 
-[data-theme="jungle"] #app {
-  background: linear-gradient(180deg, #0e200e, #0c1a0c);
-  border: 2px solid #3a6830;
-  box-shadow: 0 8px 32px rgba(0, 20, 0, 0.4);
+  --bg-app: linear-gradient(180deg, #0e200e, #0c1a0c);
+  --shadow-app: 0 8px 32px rgba(0, 20, 0, 0.4);
+  --border-app: 2px solid #3a6830;
+
+  --shadow-cell-unrevealed: inset 0 1px 0 rgba(68, 187, 68, 0.08), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-cell-hover: 0 0 6px rgba(68, 187, 68, 0.2), inset 0 1px 0 rgba(68, 187, 68, 0.12);
+  --border-cell-revealed: 1px solid rgba(58, 104, 48, 0.3);
+  --text-shadow-mine: 0 0 8px rgba(204, 68, 34, 0.5);
+
+  --text-shadow-lcd: 0 0 8px rgba(68, 204, 68, 0.4);
+  --border-lcd: 2px solid #3a6830;
+
+  --shadow-board: 0 4px 16px rgba(0, 20, 0, 0.3), inset 0 0 0 1px rgba(68, 187, 68, 0.08);
+  --border-board: 3px solid #3a6830;
+
+  --border-smiley: 2px solid #3a6830;
+  --shadow-smiley: 0 2px 4px rgba(0, 20, 0, 0.2);
+  --border-nav-btn: 2px solid #3a6830;
+  --shadow-nav-btn-hover: none;
+  --border-powerup-btn: 2px solid #3a6830;
+
+  --shadow-modal: 0 8px 32px rgba(0, 20, 0, 0.4);
+  --border-modal: 2px solid #3a6830;
+  --bg-modal-content: #142814;
+  --bg-modal-close-hover: rgba(68, 187, 68, 0.12);
+
+  --border-achievement-unlocked: #3a6830;
+  --shadow-achievement-unlocked: 0 0 8px rgba(68, 187, 68, 0.1);
 }
 
 [data-theme="jungle"] #game-title {
@@ -64,88 +87,24 @@
 }
 
 [data-theme="jungle"] #title-subtitle {
-  color: #7ea068;
   font-style: italic;
-}
-
-/* Vine-like board border */
-[data-theme="jungle"] #board {
-  border: 3px solid #3a6830;
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 20, 0, 0.3), inset 0 0 0 1px rgba(68, 187, 68, 0.08);
-  background: #0a1a0a;
-}
-
-[data-theme="jungle"] .cell.unrevealed {
-  border-radius: 4px;
-  box-shadow: inset 0 1px 0 rgba(68, 187, 68, 0.08), 0 1px 2px rgba(0, 0, 0, 0.2);
-}
-
-[data-theme="jungle"] .cell.unrevealed:hover {
-  box-shadow: 0 0 6px rgba(68, 187, 68, 0.2), inset 0 1px 0 rgba(68, 187, 68, 0.12);
-}
-
-[data-theme="jungle"] .cell.revealed {
-  background: #142414;
-  border-color: rgba(58, 104, 48, 0.3);
-}
-
-[data-theme="jungle"] .cell.mine {
-  text-shadow: 0 0 8px rgba(204, 68, 34, 0.5);
-}
-
-[data-theme="jungle"] .smiley-btn {
-  border: 2px solid #3a6830;
-  box-shadow: 0 2px 4px rgba(0, 20, 0, 0.2);
-}
-
-[data-theme="jungle"] .lcd-display {
-  text-shadow: 0 0 8px rgba(68, 204, 68, 0.4);
-  border-color: #3a6830;
-  border-width: 2px;
-}
-
-[data-theme="jungle"] .nav-btn {
-  border-color: #3a6830;
-  border-width: 2px;
 }
 
 [data-theme="jungle"] .nav-btn:hover {
   background: rgba(68, 187, 68, 0.1);
 }
 
-[data-theme="jungle"] .powerup-btn {
-  border-color: #3a6830;
-  border-width: 2px;
+[data-theme="jungle"] #board {
+  background: #0a1a0a;
 }
 
-[data-theme="jungle"] .modal-content {
-  border: 2px solid #3a6830;
-  box-shadow: 0 8px 32px rgba(0, 20, 0, 0.4);
-  background: #142814;
-}
-
-[data-theme="jungle"] .modal-close:hover {
-  background: rgba(68, 187, 68, 0.12);
+[data-theme="jungle"] .cell.unrevealed {
+  border-radius: 4px;
 }
 
 [data-theme="jungle"] .game-header {
   background: linear-gradient(180deg, #1e3420, #142a12);
   border-bottom: 2px solid #3a6830;
-}
-
-[data-theme="jungle"] .action-btn {
-  border: 2px solid #3a6830;
-  border-radius: 8px;
-}
-
-[data-theme="jungle"] .mode-btn {
-  border-radius: 8px;
-}
-
-[data-theme="jungle"] .achievement-item.unlocked {
-  border-color: #3a6830;
-  box-shadow: 0 0 8px rgba(68, 187, 68, 0.1);
 }
 
 /* Vine growth animation on board border */

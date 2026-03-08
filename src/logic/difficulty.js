@@ -1,6 +1,6 @@
-// Challenge mode — 30 levels of progressive difficulty
-// Board capped at 12×12 to prevent fat-finger issues on mobile.
-// Difficulty increases via mine density (~12% at L1 → ~40% at L30).
+// Challenge mode — 50 levels of progressive difficulty
+// Boards grow from 8×8 up to 14×14 at the highest levels.
+// Difficulty increases via mine density, grid size, time pressure, and zero-cluster limits.
 const CHALLENGE_LEVELS = [
   // Learning (L1–5): 8×8 → 10×10, density 12–16%
   { rows: 8,  cols: 8,  mines: 8,  timeLimit: 90  },   // L1  — 12.5%
@@ -41,6 +41,32 @@ const CHALLENGE_LEVELS = [
   { rows: 12, cols: 12, mines: 56, timeLimit: 260 },   // L28 — 38.9%
   { rows: 12, cols: 12, mines: 57, timeLimit: 250 },   // L29 — 39.6%
   { rows: 12, cols: 12, mines: 58, timeLimit: 240 },   // L30 — 40.3%
+
+  // Mythic (L31–37): 13×13 (169 cells), density 30–35%, tighter timers
+  { rows: 13, cols: 13, mines: 52, timeLimit: 240 },   // L31 — 30.8%
+  { rows: 13, cols: 13, mines: 54, timeLimit: 235 },   // L32 — 32.0%
+  { rows: 13, cols: 13, mines: 55, timeLimit: 230 },   // L33 — 32.5%
+  { rows: 13, cols: 13, mines: 57, timeLimit: 225 },   // L34 — 33.7%
+  { rows: 13, cols: 13, mines: 58, timeLimit: 220 },   // L35 — 34.3%
+  { rows: 13, cols: 13, mines: 59, timeLimit: 215 },   // L36 — 34.9%
+  { rows: 13, cols: 13, mines: 60, timeLimit: 210 },   // L37 — 35.5%
+
+  // Titan (L38–43): 14×14 (196 cells), density 32–36%, squeezed timers
+  { rows: 14, cols: 14, mines: 63, timeLimit: 210 },   // L38 — 32.1%
+  { rows: 14, cols: 14, mines: 65, timeLimit: 208 },   // L39 — 33.2%
+  { rows: 14, cols: 14, mines: 67, timeLimit: 205 },   // L40 — 34.2%
+  { rows: 14, cols: 14, mines: 68, timeLimit: 202 },   // L41 — 34.7%
+  { rows: 14, cols: 14, mines: 69, timeLimit: 200 },   // L42 — 35.2%
+  { rows: 14, cols: 14, mines: 70, timeLimit: 197 },   // L43 — 35.7%
+
+  // Immortal (L44–50): 14×14, density 36–38%, brutal time pressure
+  { rows: 14, cols: 14, mines: 71, timeLimit: 195 },   // L44 — 36.2%
+  { rows: 14, cols: 14, mines: 72, timeLimit: 192 },   // L45 — 36.7%
+  { rows: 14, cols: 14, mines: 73, timeLimit: 190 },   // L46 — 37.2%
+  { rows: 14, cols: 14, mines: 74, timeLimit: 188 },   // L47 — 37.8%
+  { rows: 14, cols: 14, mines: 74, timeLimit: 185 },   // L48 — 37.8%
+  { rows: 14, cols: 14, mines: 75, timeLimit: 182 },   // L49 — 38.3%
+  { rows: 14, cols: 14, mines: 75, timeLimit: 180 },   // L50 — 38.3%
 ];
 
 // Timed mode — mobile-friendly sizes, count UP (no countdown)
@@ -80,7 +106,8 @@ export function getMaxZeroCluster(level) {
   if (level <= 9) return 8;
   if (level <= 14) return 6;
   if (level <= 20) return 4;        // L15–20: very tight
-  return 3;                          // L21+: extremely tight
+  if (level <= 37) return 3;        // L21–37: extremely tight
+  return 2;                          // L38–50: near-zero openings
 }
 
 /** Get speed rating for timed mode completion.

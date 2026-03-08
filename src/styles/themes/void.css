@@ -42,19 +42,18 @@
   --color-win: #aaaaaa;
   --color-loss: #ff3333;
   --color-surface: rgba(255, 255, 255, 0.03);
-}
 
-[data-theme="void"] #app {
-  box-shadow: 0 0 60px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.02);
-}
-
-[data-theme="void"] .lcd-display {
-  text-shadow: 0 0 6px rgba(255, 255, 255, 0.5);
-  border-color: #1a1a1a;
+  --shadow-app: 0 0 60px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  --text-shadow-lcd: 0 0 6px rgba(255, 255, 255, 0.5);
+  --border-lcd: 1px solid #1a1a1a;
+  --text-shadow-title: 0 0 20px rgba(255, 255, 255, 0.15);
+  --bg-modal-close-hover: rgba(255, 255, 255, 0.05);
+  --shadow-board: 0 0 20px rgba(0, 0, 0, 0.6), inset 0 0 30px rgba(255, 255, 255, 0.01);
+  --border-board: 2px solid #1a1a1a;
+  --border-cell-revealed: 1px solid rgba(255, 255, 255, 0.03);
 }
 
 [data-theme="void"] #game-title {
-  text-shadow: 0 0 20px rgba(255, 255, 255, 0.15);
   animation: voidShimmer 4s ease-in-out infinite;
 }
 
@@ -63,13 +62,7 @@
   50% { text-shadow: 0 0 30px rgba(255, 255, 255, 0.25), 0 0 60px rgba(255, 255, 255, 0.05); }
 }
 
-[data-theme="void"] .modal-close:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-
 [data-theme="void"] #board {
-  border-color: #1a1a1a;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.6), inset 0 0 30px rgba(255, 255, 255, 0.01);
   animation: voidSpark 6s ease-in-out infinite;
 }
 
@@ -82,8 +75,4 @@
 
 [data-theme="void"] .cell.unrevealed {
   border-color: #1a1a1a;
-}
-
-[data-theme="void"] .cell.revealed {
-  border-color: rgba(255, 255, 255, 0.03);
 }

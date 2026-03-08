@@ -47,120 +47,68 @@
   --color-win: #00ff00;
   --color-loss: #ff0000;
   --color-surface: rgba(0, 255, 0, 0.02);
-}
 
-[data-theme="matrix"] #app {
-  background: #000000;
-  border: 1px solid rgba(0, 204, 0, 0.3);
-  box-shadow: 0 0 20px rgba(0, 255, 0, 0.05);
-  border-radius: 0;
+  --bg-app: #000000;
+  --shadow-app: 0 0 20px rgba(0, 255, 0, 0.05);
+  --border-app: 1px solid rgba(0, 204, 0, 0.3);
+
+  --shadow-cell-unrevealed: none;
+  --shadow-cell-hover: 0 0 6px rgba(0, 255, 0, 0.15);
+  --border-cell-revealed: 1px solid rgba(0, 204, 0, 0.08);
+  --text-shadow-title: 0 0 10px rgba(0, 255, 0, 0.6), 0 0 20px rgba(0, 255, 0, 0.3);
+  --text-shadow-subtitle: 0 0 6px rgba(0, 255, 0, 0.3);
+  --text-shadow-lcd: 0 0 8px rgba(0, 255, 0, 0.6), 0 0 16px rgba(0, 255, 0, 0.2);
+  --border-lcd: 1px solid rgba(0, 204, 0, 0.3);
+  --text-shadow-mine: 0 0 8px rgba(255, 0, 0, 0.6);
+
+  --text-shadow-num-1: 0 0 6px rgba(0, 255, 0, 0.5);
+  --text-shadow-num-2: 0 0 6px rgba(0, 204, 0, 0.5);
+  --text-shadow-num-3: 0 0 6px rgba(255, 0, 0, 0.5);
+  --text-shadow-num-4: 0 0 6px rgba(0, 255, 136, 0.5);
+
+  --shadow-board: 0 0 12px rgba(0, 255, 0, 0.06);
+  --border-board: 1px solid rgba(0, 204, 0, 0.3);
+  --border-radius-board: 0px;
+
+  --border-smiley: 1px solid rgba(0, 204, 0, 0.3);
+  --shadow-smiley: 0 0 6px rgba(0, 255, 0, 0.1);
+  --border-nav-btn: 1px solid rgba(0, 204, 0, 0.2);
+  --shadow-nav-btn-hover: 0 0 8px rgba(0, 255, 0, 0.15);
+  --border-powerup-btn: 1px solid rgba(0, 204, 0, 0.2);
+
+  --shadow-modal: 0 0 30px rgba(0, 255, 0, 0.08);
+  --border-modal: 1px solid rgba(0, 204, 0, 0.3);
+  --bg-modal-content: #000a00;
+  --bg-modal-close-hover: rgba(0, 255, 0, 0.08);
+
+  --border-achievement-unlocked: rgba(0, 204, 0, 0.3);
+  --shadow-achievement-unlocked: 0 0 6px rgba(0, 255, 0, 0.06);
 }
 
 [data-theme="matrix"] #game-title {
   color: #00ff00;
-  text-shadow: 0 0 10px rgba(0, 255, 0, 0.6), 0 0 20px rgba(0, 255, 0, 0.3);
   letter-spacing: 4px;
   text-transform: uppercase;
 }
 
 [data-theme="matrix"] #title-subtitle {
   color: #00aa00;
-  text-shadow: 0 0 6px rgba(0, 255, 0, 0.3);
   letter-spacing: 2px;
   text-transform: uppercase;
 }
 
-/* Terminal-style board */
-[data-theme="matrix"] #board {
-  border: 1px solid rgba(0, 204, 0, 0.3);
-  border-radius: 0;
-  box-shadow: 0 0 12px rgba(0, 255, 0, 0.06);
-}
-
 [data-theme="matrix"] .cell.unrevealed {
-  border-radius: 0;
   border: 1px solid rgba(0, 204, 0, 0.15);
 }
 
 [data-theme="matrix"] .cell.unrevealed:hover {
   background: #0f2a0f;
-  box-shadow: 0 0 6px rgba(0, 255, 0, 0.15);
   border-color: rgba(0, 204, 0, 0.4);
-}
-
-[data-theme="matrix"] .cell.revealed {
-  border-radius: 0;
-  border: 1px solid rgba(0, 204, 0, 0.08);
-  background: #020802;
-}
-
-[data-theme="matrix"] .cell.revealed.num-1 { text-shadow: 0 0 6px rgba(0, 255, 0, 0.5); }
-[data-theme="matrix"] .cell.revealed.num-2 { text-shadow: 0 0 6px rgba(0, 204, 0, 0.5); }
-[data-theme="matrix"] .cell.revealed.num-3 { text-shadow: 0 0 6px rgba(255, 0, 0, 0.5); }
-[data-theme="matrix"] .cell.revealed.num-4 { text-shadow: 0 0 6px rgba(0, 255, 136, 0.5); }
-
-[data-theme="matrix"] .cell.mine {
-  text-shadow: 0 0 8px rgba(255, 0, 0, 0.6);
-}
-
-[data-theme="matrix"] .smiley-btn {
-  border: 1px solid rgba(0, 204, 0, 0.3);
-  border-radius: 0;
-  box-shadow: 0 0 6px rgba(0, 255, 0, 0.1);
-}
-
-[data-theme="matrix"] .lcd-display {
-  text-shadow: 0 0 8px rgba(0, 255, 0, 0.6), 0 0 16px rgba(0, 255, 0, 0.2);
-  border: 1px solid rgba(0, 204, 0, 0.3);
-  border-radius: 0;
-}
-
-[data-theme="matrix"] .nav-btn {
-  border-color: rgba(0, 204, 0, 0.2);
-  border-radius: 0;
-}
-
-[data-theme="matrix"] .nav-btn:hover {
-  box-shadow: 0 0 8px rgba(0, 255, 0, 0.15);
-}
-
-[data-theme="matrix"] .powerup-btn {
-  border-color: rgba(0, 204, 0, 0.2);
-  border-radius: 0;
-}
-
-[data-theme="matrix"] .modal-content {
-  border: 1px solid rgba(0, 204, 0, 0.3);
-  border-radius: 0;
-  box-shadow: 0 0 30px rgba(0, 255, 0, 0.08);
-  background: #000a00;
-}
-
-[data-theme="matrix"] .modal-close:hover {
-  background: rgba(0, 255, 0, 0.08);
 }
 
 [data-theme="matrix"] .game-header {
   background: linear-gradient(180deg, #001200, #000a00);
   border-bottom: 1px solid rgba(0, 204, 0, 0.2);
-}
-
-[data-theme="matrix"] .action-btn {
-  border-radius: 0;
-  border: 1px solid rgba(0, 204, 0, 0.3);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-[data-theme="matrix"] .mode-btn {
-  border-radius: 0;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-[data-theme="matrix"] .achievement-item.unlocked {
-  border-color: rgba(0, 204, 0, 0.3);
-  box-shadow: 0 0 6px rgba(0, 255, 0, 0.06);
 }
 
 /* Digital rain effect on board background */

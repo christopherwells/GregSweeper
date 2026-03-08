@@ -1,7 +1,7 @@
 {
   "name": "GregSweeper",
   "short_name": "GregSweeper",
-  "description": "A modern Minesweeper reimagined by Greg Dorris",
+  "description": "A modern Minesweeper reimagined by Greg",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",

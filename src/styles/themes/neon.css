@@ -49,42 +49,45 @@
   --color-surface: rgba(0, 255, 136, 0.04);
 
   --shadow-glow: 0 0 20px rgba(0, 255, 136, 0.15);
-}
+  --shadow-app: 0 0 30px rgba(0, 255, 136, 0.1), 0 0 60px rgba(0, 255, 136, 0.05);
+  --border-app: 1px solid rgba(0, 255, 136, 0.4);
 
-[data-theme="neon"] #app {
-  border: 1px solid rgba(0, 255, 136, 0.4);
-  box-shadow: 0 0 30px rgba(0, 255, 136, 0.1), 0 0 60px rgba(0, 255, 136, 0.05);
-}
+  --shadow-cell-unrevealed: 0 0 4px rgba(0, 255, 136, 0.1), inset 0 0 2px rgba(0, 255, 136, 0.05);
+  --shadow-cell-hover: 0 0 12px rgba(0, 255, 136, 0.3), 0 0 4px rgba(0, 255, 136, 0.2);
+  --border-cell-revealed: 1px solid rgba(0, 255, 136, 0.15);
 
-[data-theme="neon"] .cell.unrevealed {
-  box-shadow: 0 0 4px rgba(0, 255, 136, 0.1), inset 0 0 2px rgba(0, 255, 136, 0.05);
-}
+  --text-shadow-lcd: 0 0 10px var(--color-lcd-text), 0 0 20px rgba(0, 255, 136, 0.3);
+  --border-lcd: 1px solid rgba(0, 255, 136, 0.3);
+  --text-shadow-title: 0 0 16px rgba(0, 255, 136, 0.5), 0 0 32px rgba(0, 255, 136, 0.2);
+  --text-shadow-subtitle: 0 0 8px rgba(0, 255, 136, 0.3);
+  --text-shadow-mine: 0 0 12px #ff0066;
 
-[data-theme="neon"] .cell.unrevealed:hover {
-  box-shadow: 0 0 12px rgba(0, 255, 136, 0.3), 0 0 4px rgba(0, 255, 136, 0.2);
-}
+  --text-shadow-num-1: 0 0 8px #00ccff;
+  --text-shadow-num-2: 0 0 8px #00ff88;
+  --text-shadow-num-3: 0 0 8px #ff0066;
+  --text-shadow-num-4: 0 0 8px #cc44ff;
+  --text-shadow-num-5: 0 0 8px #ff6600;
 
-[data-theme="neon"] .lcd-display {
-  text-shadow: 0 0 10px var(--color-lcd-text), 0 0 20px rgba(0, 255, 136, 0.3);
-  border-color: rgba(0, 255, 136, 0.3);
-}
+  --shadow-board: 0 0 16px rgba(0, 255, 136, 0.1);
+  --border-board: 2px solid rgba(0, 255, 136, 0.3);
 
-[data-theme="neon"] .cell.revealed {
-  border-color: rgba(0, 255, 136, 0.15);
-}
+  --border-smiley: 1px solid rgba(0, 255, 136, 0.4);
+  --shadow-smiley: 0 0 8px rgba(0, 255, 136, 0.15);
 
-[data-theme="neon"] .cell.revealed.num-1 { text-shadow: 0 0 8px #00ccff; }
-[data-theme="neon"] .cell.revealed.num-2 { text-shadow: 0 0 8px #00ff88; }
-[data-theme="neon"] .cell.revealed.num-3 { text-shadow: 0 0 8px #ff0066; }
-[data-theme="neon"] .cell.revealed.num-4 { text-shadow: 0 0 8px #cc44ff; }
-[data-theme="neon"] .cell.revealed.num-5 { text-shadow: 0 0 8px #ff6600; }
+  --border-nav-btn: 1px solid rgba(0, 255, 136, 0.3);
+  --shadow-nav-btn-hover: 0 0 12px rgba(0, 255, 136, 0.2);
 
-[data-theme="neon"] .cell.mine {
-  text-shadow: 0 0 12px #ff0066;
+  --border-powerup-btn: 1px solid rgba(0, 255, 136, 0.3);
+
+  --shadow-modal: 0 0 30px rgba(0, 255, 136, 0.1);
+  --border-modal: 1px solid rgba(0, 255, 136, 0.2);
+  --bg-modal-close-hover: rgba(0, 255, 136, 0.1);
+
+  --border-achievement-unlocked: rgba(0, 255, 136, 0.4);
+  --shadow-achievement-unlocked: 0 0 8px rgba(0, 255, 136, 0.1);
 }
 
 [data-theme="neon"] #game-title {
-  text-shadow: 0 0 16px rgba(0, 255, 136, 0.5), 0 0 32px rgba(0, 255, 136, 0.2);
   animation: neonFlicker 5s ease-in-out infinite;
 }
 
@@ -99,31 +102,7 @@
   54% { opacity: 1; text-shadow: 0 0 16px rgba(0, 255, 136, 0.5), 0 0 32px rgba(0, 255, 136, 0.2); }
 }
 
-[data-theme="neon"] #title-subtitle {
-  color: #00ff88;
-  text-shadow: 0 0 8px rgba(0, 255, 136, 0.3);
-}
-
-[data-theme="neon"] .smiley-btn {
-  border: 1px solid rgba(0, 255, 136, 0.4);
-  box-shadow: 0 0 8px rgba(0, 255, 136, 0.15);
-}
-
-[data-theme="neon"] .nav-btn {
-  border-color: rgba(0, 255, 136, 0.3);
-}
-
-[data-theme="neon"] .nav-btn:hover {
-  box-shadow: 0 0 12px rgba(0, 255, 136, 0.2);
-}
-
-[data-theme="neon"] .powerup-btn {
-  border-color: rgba(0, 255, 136, 0.3);
-}
-
 [data-theme="neon"] #board {
-  border-color: rgba(0, 255, 136, 0.3);
-  box-shadow: 0 0 16px rgba(0, 255, 136, 0.1);
   animation: neonBuzz 2s ease-in-out infinite;
 }
 
@@ -132,18 +111,4 @@
   25% { box-shadow: 0 0 20px rgba(0, 255, 136, 0.2), 0 0 4px rgba(255, 0, 102, 0.1); }
   50% { box-shadow: 0 0 16px rgba(0, 255, 136, 0.1); }
   75% { box-shadow: 0 0 22px rgba(0, 255, 136, 0.15), 0 0 6px rgba(0, 204, 255, 0.1); }
-}
-
-[data-theme="neon"] .modal-content {
-  border: 1px solid rgba(0, 255, 136, 0.2);
-  box-shadow: 0 0 30px rgba(0, 255, 136, 0.1);
-}
-
-[data-theme="neon"] .modal-close:hover {
-  background: rgba(0, 255, 136, 0.1);
-}
-
-[data-theme="neon"] .achievement-item.unlocked {
-  border-color: rgba(0, 255, 136, 0.4);
-  box-shadow: 0 0 8px rgba(0, 255, 136, 0.1);
 }

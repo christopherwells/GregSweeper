@@ -56,12 +56,38 @@
   --color-win: #ffcc00;
   --color-loss: #ff0000;
   --color-surface: rgba(255, 68, 0, 0.04);
-}
 
-[data-theme="inferno"] #app {
-  background: linear-gradient(180deg, #1a0500, #0d0000);
-  border: 1px solid rgba(255, 68, 0, 0.25);
-  box-shadow: 0 8px 32px rgba(255, 40, 0, 0.15), inset 0 1px 0 rgba(255, 100, 0, 0.06);
+  --bg-app: linear-gradient(180deg, #1a0500, #0d0000);
+  --border-app: 1px solid rgba(255, 68, 0, 0.25);
+  --shadow-app: 0 8px 32px rgba(255, 40, 0, 0.15), inset 0 1px 0 rgba(255, 100, 0, 0.06);
+
+  --shadow-cell-unrevealed: inset 0 1px 0 rgba(255, 100, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-cell-hover: 0 0 8px rgba(255, 68, 0, 0.3), inset 0 1px 0 rgba(255, 100, 0, 0.15);
+  --border-cell-revealed: 1px solid rgba(107, 32, 16, 0.4);
+  --text-shadow-subtitle: 0 0 8px rgba(255, 68, 0, 0.4);
+  --text-shadow-mine: 0 0 10px rgba(255, 68, 0, 0.6);
+  --text-shadow-num-1: 0 0 6px rgba(255, 136, 51, 0.5);
+  --text-shadow-num-2: 0 0 6px rgba(255, 204, 0, 0.5);
+  --text-shadow-num-3: 0 0 6px rgba(255, 51, 0, 0.5);
+
+  --border-board: 2px solid rgba(255, 68, 0, 0.3);
+  --border-radius-board: 4px;
+
+  --border-smiley: 1px solid rgba(255, 68, 0, 0.3);
+  --shadow-smiley: 0 0 8px rgba(255, 68, 0, 0.15);
+  --text-shadow-lcd: 0 0 8px rgba(255, 68, 0, 0.5), 0 0 16px rgba(255, 40, 0, 0.2);
+  --border-lcd: 1px solid rgba(255, 68, 0, 0.2);
+  --border-nav-btn: 1px solid rgba(255, 68, 0, 0.2);
+  --shadow-nav-btn-hover: 0 0 10px rgba(255, 68, 0, 0.2);
+  --border-powerup-btn: 1px solid rgba(255, 68, 0, 0.2);
+
+  --shadow-modal: 0 0 40px rgba(255, 40, 0, 0.15);
+  --border-modal: 1px solid rgba(255, 68, 0, 0.2);
+  --bg-modal-content: #1a0800;
+  --bg-modal-close-hover: rgba(255, 68, 0, 0.15);
+
+  --border-achievement-unlocked: rgba(255, 68, 0, 0.4);
+  --shadow-achievement-unlocked: 0 0 8px rgba(255, 68, 0, 0.1);
 }
 
 [data-theme="inferno"] #game-title {
@@ -74,76 +100,18 @@
 
 [data-theme="inferno"] #title-subtitle {
   color: #ff6600;
-  text-shadow: 0 0 8px rgba(255, 68, 0, 0.4);
 }
 
+/* Ember pulse animation on board */
 [data-theme="inferno"] #board {
-  border-color: rgba(255, 68, 0, 0.3);
   animation: emberPulse 3s ease-in-out infinite;
 }
 
 [data-theme="inferno"] .cell.unrevealed {
-  background: linear-gradient(145deg, #4a1410, #2e0a05);
   border-radius: 3px;
-  box-shadow: inset 0 1px 0 rgba(255, 100, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.3);
-}
-
-[data-theme="inferno"] .cell.unrevealed:hover {
-  background: linear-gradient(145deg, #5a1a10, #3e1008);
-  box-shadow: 0 0 8px rgba(255, 68, 0, 0.3), inset 0 1px 0 rgba(255, 100, 0, 0.15);
-}
-
-[data-theme="inferno"] .cell.revealed {
-  background: #1a0800;
-  border-color: rgba(107, 32, 16, 0.4);
-}
-
-[data-theme="inferno"] .cell.revealed.num-1 { text-shadow: 0 0 6px rgba(255, 136, 51, 0.5); }
-[data-theme="inferno"] .cell.revealed.num-2 { text-shadow: 0 0 6px rgba(255, 204, 0, 0.5); }
-[data-theme="inferno"] .cell.revealed.num-3 { text-shadow: 0 0 6px rgba(255, 51, 0, 0.5); }
-
-[data-theme="inferno"] .cell.mine {
-  text-shadow: 0 0 10px rgba(255, 68, 0, 0.6);
-}
-
-[data-theme="inferno"] .smiley-btn {
-  border: 1px solid rgba(255, 68, 0, 0.3);
-  box-shadow: 0 0 8px rgba(255, 68, 0, 0.15);
-}
-
-[data-theme="inferno"] .lcd-display {
-  text-shadow: 0 0 8px rgba(255, 68, 0, 0.5), 0 0 16px rgba(255, 40, 0, 0.2);
-  border-color: rgba(255, 68, 0, 0.2);
-}
-
-[data-theme="inferno"] .nav-btn {
-  border-color: rgba(255, 68, 0, 0.2);
-}
-
-[data-theme="inferno"] .nav-btn:hover {
-  box-shadow: 0 0 10px rgba(255, 68, 0, 0.2);
-}
-
-[data-theme="inferno"] .powerup-btn {
-  border-color: rgba(255, 68, 0, 0.2);
-}
-
-[data-theme="inferno"] .modal-content {
-  border: 1px solid rgba(255, 68, 0, 0.2);
-  box-shadow: 0 0 40px rgba(255, 40, 0, 0.15);
-  background: #1a0800;
-}
-
-[data-theme="inferno"] .modal-close:hover {
-  background: rgba(255, 68, 0, 0.15);
 }
 
 [data-theme="inferno"] .game-header {
   background: linear-gradient(180deg, #2a0800, #1a0500);
   border-bottom: 1px solid rgba(255, 68, 0, 0.15);
-}
-
-[data-theme="inferno"] .achievement-item.unlocked {
-  border-color: rgba(255, 68, 0, 0.4);
-  box-shadow: 0 0 8px rgba(255, 68, 0, 0.1);
 }

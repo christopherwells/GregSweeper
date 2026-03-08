@@ -1,33 +1,35 @@
-import { generateBoard, createEmptyBoard, calculateAdjacency } from './logic/boardGenerator.js?v=0.6';
-import { floodFillReveal, checkWin, revealAllMines, chordReveal } from './logic/boardSolver.js?v=0.6';
-import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL } from './logic/difficulty.js?v=0.6';
+import { generateBoard, createEmptyBoard, calculateAdjacency } from './logic/boardGenerator.js?v=0.8';
+import { floodFillReveal, checkWin, revealAllMines, chordReveal } from './logic/boardSolver.js?v=0.8';
+import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL } from './logic/difficulty.js?v=0.8';
 import {
   computeVisibleCells, getHiddenNumberRate, applyHiddenNumbers,
   decodeAdjacentHidden, decodeAllHidden,
   getRefogTimeout, computeRefogCells,
-} from './logic/fogOfWar.js?v=0.6';
-import { findSafeCell, scanRowCol, defuseMine, shieldDefuse, xRayScan } from './logic/powerUps.js?v=0.6';
-import { createDailyRNG } from './logic/seededRandom.js?v=0.6';
+} from './logic/fogOfWar.js?v=0.8';
+import { findSafeCell, scanRowCol, defuseMine, shieldDefuse, xRayScan } from './logic/powerUps.js?v=0.8';
+import { createDailyRNG } from './logic/seededRandom.js?v=0.8';
 import {
   loadStats, saveGameResult, resetStats,
   loadDailyLeaderboard, addDailyLeaderboardEntry,
   loadTheme, saveTheme,
   loadModePowerUps, saveModePowerUps,
-  loadModeLives, saveModeLives,
-} from './storage/statsStorage.js?v=0.7';
+  loadCheckpoint, saveCheckpoint,
+  saveGameState, loadGameState, clearGameState,
+  isOnboarded, setOnboarded,
+} from './storage/statsStorage.js?v=0.8';
 import {
   playReveal, playFlag, playUnflag, playExplosion,
   playCascade, playWin, playPowerUp, playShieldBreak,
   playLevelUp, playFreeze, playXRay,
   playDecode, playTimeRecord, isMuted, setMuted, loadMuted,
-} from './audio/sounds.js?v=0.6';
+} from './audio/sounds.js?v=0.8';
 import {
   getAchievementState, getTotalScore, checkNewUnlocks,
   getHighestTier, getAllTierNames, getTierIcon, getTierColor,
-} from './logic/achievements.js?v=0.6';
+} from './logic/achievements.js?v=0.8';
 import {
   initFirebase, isFirebaseOnline, submitOnlineScore, fetchOnlineLeaderboard,
-} from './firebase/firebaseLeaderboard.js?v=0.6';
+} from './firebase/firebaseLeaderboard.js?v=0.8';
 
 // ── Theme Unlock Progression ──────────────────────────
 // Themes unlock based on highest level ever beaten (permanent).
@@ -36,34 +38,34 @@ const THEME_UNLOCKS = {
   classic:          { levelRequired: 0,  displayName: 'Classic',        mine: '💣', flag: '🚩', smiley: '😊', smileyWin: '😎', smileyLoss: '😵' },
   dark:             { levelRequired: 0,  displayName: 'Dark',           mine: '💣', flag: '🚩', smiley: '😊', smileyWin: '😎', smileyLoss: '😵' },
   ocean:            { levelRequired: 2,  displayName: 'Ocean',          mine: '🐡', flag: '⚓', smiley: '🐟', smileyWin: '🐬', smileyLoss: '🫧' },
-  sunset:           { levelRequired: 3,  displayName: 'Sunset',         mine: '☀️', flag: '🚩', smiley: '🌤️', smileyWin: '🌞', smileyLoss: '🌧️' },
-  forest:           { levelRequired: 4,  displayName: 'Forest',         mine: '🍄', flag: '🌿', smiley: '🌲', smileyWin: '🦉', smileyLoss: '🪵' },
-  candy:            { levelRequired: 5,  displayName: 'Candy',          mine: '🍬', flag: '🍭', smiley: '🧁', smileyWin: '🎂', smileyLoss: '🍩' },
-  midnight:         { levelRequired: 6,  displayName: 'Midnight',       mine: '🌙', flag: '⭐', smiley: '🦇', smileyWin: '🌕', smileyLoss: '🌑' },
-  stealth:          { levelRequired: 7,  displayName: 'Stealth',        mine: '💣', flag: '🏴', smiley: '🥷', smileyWin: '🕵️', smileyLoss: '💀' },
-  neon:             { levelRequired: 8,  displayName: 'Neon',           mine: '⚡', flag: '🎯', smiley: '💡', smileyWin: '🔆', smileyLoss: '💤' },
-  'cherry-blossom': { levelRequired: 9,  displayName: 'Cherry Blossom', mine: '🌸', flag: '🎀', smiley: '🌷', smileyWin: '🦋', smileyLoss: '🥀' },
-  aurora:           { levelRequired: 10, displayName: 'Aurora',         mine: '❄️', flag: '🌌', smiley: '🌀', smileyWin: '🌈', smileyLoss: '🌫️' },
-  volcano:          { levelRequired: 11, displayName: 'Volcano',        mine: '🌋', flag: '🔥', smiley: '🪨', smileyWin: '🏔️', smileyLoss: '💨' },
-  ice:              { levelRequired: 12, displayName: 'Ice',            mine: '🧊', flag: '❄️', smiley: '⛄', smileyWin: '🏔️', smileyLoss: '💧' },
-  cyberpunk:        { levelRequired: 13, displayName: 'Cyberpunk',      mine: '🤖', flag: '🔌', smiley: '🖥️', smileyWin: '🦾', smileyLoss: '⚠️' },
-  retro:            { levelRequired: 14, displayName: 'Retro',          mine: '👾', flag: '🕹️', smiley: '🎮', smileyWin: '🏆', smileyLoss: '👻' },
-  holographic:      { levelRequired: 15, displayName: 'Holographic',    mine: '💠', flag: '🔮', smiley: '🔮', smileyWin: '🪩', smileyLoss: '🫥' },
-  galaxy:           { levelRequired: 16, displayName: 'Galaxy',         mine: '☄️', flag: '🛸', smiley: '🪐', smileyWin: '🌟', smileyLoss: '🌑' },
-  toxic:            { levelRequired: 17, displayName: 'Toxic',          mine: '☢️', flag: '🧪', smiley: '🧫', smileyWin: '🧬', smileyLoss: '💀' },
-  royal:            { levelRequired: 18, displayName: 'Royal',          mine: '👑', flag: '⚔️', smiley: '🏰', smileyWin: '👑', smileyLoss: '⚰️' },
-  prismatic:        { levelRequired: 19, displayName: 'Prismatic',      mine: '🌈', flag: '✨', smiley: '💎', smileyWin: '🦄', smileyLoss: '🫧' },
-  void:             { levelRequired: 20, displayName: 'Void',           mine: '🕳️', flag: '⚫', smiley: '👁️', smileyWin: '🌀', smileyLoss: '💫' },
-  arctic:           { levelRequired: 21, displayName: 'Arctic',         mine: '🐻‍❄️', flag: '🏔️', smiley: '🦭', smileyWin: '🐧', smileyLoss: '🥶' },
-  jungle:           { levelRequired: 22, displayName: 'Jungle',         mine: '🐍', flag: '🦜', smiley: '🐒', smileyWin: '🦁', smileyLoss: '🦴' },
-  obsidian:         { levelRequired: 23, displayName: 'Obsidian',       mine: '🖤', flag: '⛓️', smiley: '🗿', smileyWin: '💎', smileyLoss: '🪦' },
-  matrix:           { levelRequired: 24, displayName: 'Matrix',         mine: '🟢', flag: '🔴', smiley: '👁️', smileyWin: '🔓', smileyLoss: '🔒' },
-  inferno:          { levelRequired: 25, displayName: 'Inferno',        mine: '🔥', flag: '💀', smiley: '😈', smileyWin: '👹', smileyLoss: '💀' },
-  celestial:        { levelRequired: 26, displayName: 'Celestial',      mine: '🌟', flag: '🌠', smiley: '🌙', smileyWin: '☀️', smileyLoss: '🌑' },
-  bloodmoon:        { levelRequired: 27, displayName: 'Blood Moon',     mine: '🩸', flag: '🌑', smiley: '🐺', smileyWin: '🦇', smileyLoss: '⚰️' },
-  synthwave:        { levelRequired: 28, displayName: 'Synthwave',      mine: '🎹', flag: '🎧', smiley: '🎛️', smileyWin: '🎶', smileyLoss: '📴' },
-  supernova:        { levelRequired: 29, displayName: 'Supernova',      mine: '💥', flag: '🚀', smiley: '🛰️', smileyWin: '⭐', smileyLoss: '🌑' },
-  legendary:        { levelRequired: 30, displayName: 'Legendary',      mine: '🐉', flag: '🏰', smiley: '⚔️', smileyWin: '🐉', smileyLoss: '💀' },
+  sunset:           { levelRequired: 4,  displayName: 'Sunset',         mine: '☀️', flag: '🚩', smiley: '🌤️', smileyWin: '🌞', smileyLoss: '🌧️' },
+  forest:           { levelRequired: 6,  displayName: 'Forest',         mine: '🍄', flag: '🌿', smiley: '🌲', smileyWin: '🦉', smileyLoss: '🪵' },
+  candy:            { levelRequired: 8,  displayName: 'Candy',          mine: '🍬', flag: '🍭', smiley: '🧁', smileyWin: '🎂', smileyLoss: '🍩' },
+  midnight:         { levelRequired: 10, displayName: 'Midnight',       mine: '🌙', flag: '⭐', smiley: '🦇', smileyWin: '🌕', smileyLoss: '🌑' },
+  stealth:          { levelRequired: 12, displayName: 'Stealth',        mine: '💣', flag: '🏴', smiley: '🥷', smileyWin: '🕵️', smileyLoss: '💀' },
+  neon:             { levelRequired: 14, displayName: 'Neon',           mine: '⚡', flag: '🎯', smiley: '💡', smileyWin: '🔆', smileyLoss: '💤' },
+  'cherry-blossom': { levelRequired: 16, displayName: 'Cherry Blossom', mine: '🌸', flag: '🎀', smiley: '🌷', smileyWin: '🦋', smileyLoss: '🥀' },
+  aurora:           { levelRequired: 18, displayName: 'Aurora',         mine: '❄️', flag: '🌌', smiley: '🌀', smileyWin: '🌈', smileyLoss: '🌫️' },
+  volcano:          { levelRequired: 20, displayName: 'Volcano',        mine: '🌋', flag: '🔥', smiley: '🪨', smileyWin: '🏔️', smileyLoss: '💨' },
+  ice:              { levelRequired: 22, displayName: 'Ice',            mine: '🧊', flag: '❄️', smiley: '⛄', smileyWin: '🏔️', smileyLoss: '💧' },
+  cyberpunk:        { levelRequired: 24, displayName: 'Cyberpunk',      mine: '🤖', flag: '🔌', smiley: '🖥️', smileyWin: '🦾', smileyLoss: '⚠️' },
+  retro:            { levelRequired: 26, displayName: 'Retro',          mine: '👾', flag: '🕹️', smiley: '🎮', smileyWin: '🏆', smileyLoss: '👻' },
+  holographic:      { levelRequired: 28, displayName: 'Holographic',    mine: '💠', flag: '🔮', smiley: '🔮', smileyWin: '🪩', smileyLoss: '🫥' },
+  galaxy:           { levelRequired: 30, displayName: 'Galaxy',         mine: '☄️', flag: '🛸', smiley: '🪐', smileyWin: '🌟', smileyLoss: '🌑' },
+  toxic:            { levelRequired: 32, displayName: 'Toxic',          mine: '☢️', flag: '🧪', smiley: '🧫', smileyWin: '🧬', smileyLoss: '💀' },
+  royal:            { levelRequired: 34, displayName: 'Royal',          mine: '👑', flag: '⚔️', smiley: '🏰', smileyWin: '👑', smileyLoss: '⚰️' },
+  prismatic:        { levelRequired: 36, displayName: 'Prismatic',      mine: '🌈', flag: '✨', smiley: '💎', smileyWin: '🦄', smileyLoss: '🫧' },
+  void:             { levelRequired: 38, displayName: 'Void',           mine: '🕳️', flag: '⚫', smiley: '👁️', smileyWin: '🌀', smileyLoss: '💫' },
+  arctic:           { levelRequired: 40, displayName: 'Arctic',         mine: '🐻‍❄️', flag: '🏔️', smiley: '🦭', smileyWin: '🐧', smileyLoss: '🥶' },
+  jungle:           { levelRequired: 42, displayName: 'Jungle',         mine: '🐍', flag: '🦜', smiley: '🐒', smileyWin: '🦁', smileyLoss: '🦴' },
+  obsidian:         { levelRequired: 43, displayName: 'Obsidian',       mine: '🖤', flag: '⛓️', smiley: '🗿', smileyWin: '💎', smileyLoss: '🪦' },
+  matrix:           { levelRequired: 44, displayName: 'Matrix',         mine: '🟢', flag: '🔴', smiley: '👁️', smileyWin: '🔓', smileyLoss: '🔒' },
+  bloodmoon:        { levelRequired: 45, displayName: 'Blood Moon',     mine: '🩸', flag: '🌑', smiley: '🐺', smileyWin: '🦇', smileyLoss: '⚰️' },
+  inferno:          { levelRequired: 46, displayName: 'Inferno',        mine: '🔥', flag: '💀', smiley: '😈', smileyWin: '👹', smileyLoss: '💀' },
+  synthwave:        { levelRequired: 47, displayName: 'Synthwave',      mine: '🎹', flag: '🎧', smiley: '🎛️', smileyWin: '🎶', smileyLoss: '📴' },
+  celestial:        { levelRequired: 48, displayName: 'Celestial',      mine: '🌟', flag: '🌠', smiley: '🌙', smileyWin: '☀️', smileyLoss: '🌑' },
+  supernova:        { levelRequired: 49, displayName: 'Supernova',      mine: '💥', flag: '🚀', smiley: '🛰️', smileyWin: '⭐', smileyLoss: '🌑' },
+  legendary:        { levelRequired: 50, displayName: 'Legendary',      mine: '🐉', flag: '🏰', smiley: '⚔️', smileyWin: '🐉', smileyLoss: '💀' },
 };
 
 function getUnlockedThemes() {
@@ -190,7 +192,9 @@ const state = {
   theme: 'classic',
   hitMine: null,  // {row, col} of the mine that killed you
   zoomLevel: 100,  // percentage (50–200)
-  lives: 0,  // extra lives for retry-on-death
+  checkpoint: 1,   // last checkpoint level (every 5 levels)
+  flagMode: false, // flag-mode toggle for mobile
+  dirtyCells: new Set(), // track changed cells for targeted updates
 };
 
 // ── DOM References ─────────────────────────────────────
@@ -203,7 +207,16 @@ const mineCounterEl = $('#mine-counter');
 const timerEl = $('#timer-display');
 const resetBtn = $('#reset-btn');
 const levelDisplay = $('#level-display');
-const livesDisplay = $('#lives-display');
+const checkpointDisplay = $('#checkpoint-display');
+const streakDisplayEl = $('#streak-display');
+const cellsRemainingEl = $('#cells-remaining');
+const progressBarContainer = $('#progress-bar-container');
+const progressBarFill = $('#progress-bar-fill');
+const progressBarMarkers = $('#progress-bar-markers');
+const flagModeBar = $('#flag-mode-bar');
+const flagModeToggle = $('#flag-mode-toggle');
+const flagModeIcon = $('#flag-mode-icon');
+const flagModeLabel = $('#flag-mode-label');
 const shakeWrapper = $('#screen-shake-wrapper');
 const particleCanvas = $('#particle-canvas');
 const scanToast = $('#scan-toast');
@@ -214,6 +227,7 @@ const streakBorder = $('#streak-border');
 const zoomControls = $('#zoom-controls');
 const zoomLevelDisplay = $('#zoom-level');
 const boardScrollWrapper = $('#board-scroll-wrapper');
+const toastContainer = $('#toast-container');
 
 // ── Board Rendering ────────────────────────────────────
 
@@ -322,20 +336,115 @@ function updateAllCells() {
   }
 }
 
-function updateLivesDisplay() {
-  if (!livesDisplay) return;
-  if (state.gameMode === 'normal' || state.gameMode === 'fogOfWar') {
-    if (state.lives > 0) {
-      const hearts = state.lives <= 5 ? '❤️'.repeat(state.lives) : `❤️ ×${state.lives}`;
-      livesDisplay.textContent = hearts;
-    } else {
-      livesDisplay.textContent = '💔 0';
-    }
-    livesDisplay.classList.remove('hidden');
+// ── Checkpoint Display ─────────────────────────────────
+const CHECKPOINT_INTERVAL = 5;
+
+function getCheckpointForLevel(level) {
+  return Math.floor((level - 1) / CHECKPOINT_INTERVAL) * CHECKPOINT_INTERVAL + 1;
+}
+
+function updateCheckpointDisplay() {
+  if (!checkpointDisplay) return;
+  const isLevelMode = state.gameMode === 'normal' || state.gameMode === 'fogOfWar';
+  if (isLevelMode && state.checkpoint > 1) {
+    checkpointDisplay.textContent = `🏁 CP ${state.checkpoint}`;
+    checkpointDisplay.classList.remove('hidden');
   } else {
-    livesDisplay.classList.add('hidden');
+    checkpointDisplay.classList.add('hidden');
   }
 }
+
+function updateProgressBar() {
+  if (!progressBarContainer) return;
+  const isLevelMode = state.gameMode === 'normal' || state.gameMode === 'fogOfWar';
+  if (!isLevelMode) {
+    progressBarContainer.classList.add('hidden');
+    return;
+  }
+  progressBarContainer.classList.remove('hidden');
+  const pct = ((state.currentLevel - 1) / (MAX_LEVEL - 1)) * 100;
+  progressBarFill.style.width = `${pct}%`;
+
+  // Render checkpoint markers
+  if (progressBarMarkers) {
+    progressBarMarkers.innerHTML = '';
+    for (let cp = CHECKPOINT_INTERVAL + 1; cp <= MAX_LEVEL; cp += CHECKPOINT_INTERVAL) {
+      const marker = document.createElement('div');
+      marker.className = 'checkpoint-marker';
+      if (state.currentLevel >= cp) marker.classList.add('reached');
+      marker.style.left = `${((cp - 1) / (MAX_LEVEL - 1)) * 100}%`;
+      progressBarMarkers.appendChild(marker);
+    }
+  }
+}
+
+function updateCellsRemaining() {
+  if (!cellsRemainingEl) return;
+  if (state.status === 'playing') {
+    const totalSafe = state.rows * state.cols - state.totalMines;
+    const remaining = totalSafe - state.revealedCount;
+    if (remaining > 0) {
+      cellsRemainingEl.textContent = `${remaining} left`;
+      cellsRemainingEl.classList.remove('hidden');
+    } else {
+      cellsRemainingEl.classList.add('hidden');
+    }
+  } else {
+    cellsRemainingEl.classList.add('hidden');
+  }
+}
+
+function updateStreakDisplay() {
+  if (!streakDisplayEl) return;
+  const stats = loadStats();
+  const streak = stats.currentStreak || 0;
+  if (streak >= 2) {
+    streakDisplayEl.textContent = `🔥 ${streak}`;
+    streakDisplayEl.classList.remove('hidden');
+  } else {
+    streakDisplayEl.classList.add('hidden');
+  }
+}
+
+// ── Toast Queue ────────────────────────────────────────
+const _toastQueue = [];
+let _toastActive = false;
+
+function showToast(message, duration = 2000) {
+  _toastQueue.push({ message, duration });
+  if (!_toastActive) _processToastQueue();
+}
+
+function _processToastQueue() {
+  if (_toastQueue.length === 0) { _toastActive = false; return; }
+  _toastActive = true;
+  const { message, duration } = _toastQueue.shift();
+  const el = document.createElement('div');
+  el.className = 'queued-toast';
+  el.textContent = message;
+  if (toastContainer) toastContainer.appendChild(el);
+  setTimeout(() => {
+    el.classList.add('toast-exit');
+    setTimeout(() => {
+      el.remove();
+      _processToastQueue();
+    }, 250);
+  }, duration);
+}
+
+// ── Encouragement Lines ────────────────────────────────
+const ENCOURAGEMENT_LINES = [
+  'You got this! Try again 💪',
+  'Almost had it! One more try?',
+  'Even the best stumble sometimes.',
+  'Mines are sneaky — you\'ll get them!',
+  'Shake it off and sweep again! 🧹',
+  'Every loss makes you stronger.',
+  'That mine came out of nowhere!',
+  'Close one! Give it another shot.',
+  'Keep sweeping — glory awaits! ⚔️',
+  'The board fears your return.',
+];
 
 function updateHeader() {
   const remaining = state.totalMines - state.flagCount;
@@ -362,7 +471,10 @@ function updateHeader() {
     btn.classList.toggle('active', btn.dataset.mode === state.gameMode);
   }
 
-  updateLivesDisplay();
+  updateCheckpointDisplay();
+  updateProgressBar();
+  updateCellsRemaining();
+  updateStreakDisplay();
 
   // Show best time for timed/normal mode (with speed rating for timed)
   const stats = loadStats();
@@ -544,26 +656,39 @@ function handleTimedLoss() {
   saveGameResult(false, state.elapsedTime, state.currentLevel, { gameMode: state.gameMode });
   saveModePowerUps(state.gameMode, state.powerUps);
 
-  // Death penalty: reset to level 1 in normal mode
+  // Death penalty: reset to last checkpoint
   const lostLevel = state.currentLevel;
   if (state.gameMode === 'normal' && state.currentLevel > 1) {
-    state.currentLevel = 1;
+    state.currentLevel = state.checkpoint || 1;
   }
 
   const gameoverTitle = $('#gameover-title');
   const gameoverTime = $('#gameover-time');
   gameoverTitle.textContent = 'Time\'s Up!';
-  if (lostLevel > 1 && state.gameMode === 'normal') {
-    gameoverTime.textContent = `You ran out of time! Reset to Level 1`;
+  if (lostLevel > state.currentLevel && state.gameMode === 'normal') {
+    gameoverTime.textContent = `You ran out of time! Back to Level ${state.currentLevel}`;
   } else {
     gameoverTime.textContent = `You ran out of time!`;
   }
   $('#gameover-record').classList.add('hidden');
   $('#gameover-nextlevel').classList.add('hidden');
-  $('#gameover-submit-daily').classList.add('hidden');
+  const dailySubmitForm2 = $('#daily-submit-form');
+  if (dailySubmitForm2) dailySubmitForm2.classList.add('hidden');
   $('#gameover-powerup-earned').classList.add('hidden');
   $('#gameover-share').classList.add('hidden');
   $('#gameover-achievements').classList.add('hidden');
+  const sharePreview2 = $('#share-card-preview');
+  if (sharePreview2) sharePreview2.classList.add('hidden');
+
+  // Encouragement line
+  const encouragement2 = $('#gameover-encouragement');
+  if (encouragement2) {
+    encouragement2.textContent = ENCOURAGEMENT_LINES[Math.floor(Math.random() * ENCOURAGEMENT_LINES.length)];
+    encouragement2.classList.remove('hidden');
+  }
+
+  // Clear saved game state
+  clearGameState();
 
   setTimeout(() => showModal('gameover-overlay'), 400);
   updatePowerUpBar();
@@ -645,12 +770,16 @@ function newGame() {
     };
   }
 
-  // Load per-mode lives
+  // Load checkpoint
   if (state.gameMode === 'normal' || state.gameMode === 'fogOfWar') {
-    state.lives = loadModeLives(state.gameMode);
+    state.checkpoint = loadCheckpoint(state.gameMode);
   } else {
-    state.lives = 0;
+    state.checkpoint = 1;
   }
+
+  // Reset dirty cells tracking
+  state.dirtyCells = new Set();
+  state.flagMode = false;
 
   hideAllModals();
   adjustCellSize();
@@ -660,8 +789,15 @@ function newGame() {
   updateTimerDisplay();
   updatePowerUpBar();
   updateStreakBorder();
-  updateLivesDisplay();
+  updateCheckpointDisplay();
+  updateProgressBar();
+  updateCellsRemaining();
+  updateStreakDisplay();
+  updateFlagModeBar();
   updateZoom();
+
+  // Clear saved game state (new game = fresh start)
+  clearGameState();
 
   // Board transition animation when size changes
   if (state._initialized && (prevRows !== state.rows || prevCols !== state.cols)) {
@@ -866,6 +1002,7 @@ function revealCell(row, col) {
 
   updateAllCells();
   updateHeader();
+  updateCellsRemaining();
 
   if (checkWin(state.board)) handleWin();
 }
@@ -1016,7 +1153,6 @@ function handleWin() {
   const gameoverTime = $('#gameover-time');
   const gameoverRecord = $('#gameover-record');
   const nextLevelBtn = $('#gameover-nextlevel');
-  const submitDailyBtn = $('#gameover-submit-daily');
   const powerupEarned = $('#gameover-powerup-earned');
   const shareBtn = $('#gameover-share');
   const achievementsDiv = $('#gameover-achievements');
@@ -1086,15 +1222,12 @@ function handleWin() {
     powerupEarned.classList.add('hidden');
   }
 
-  // Show life-earned preview for levels divisible by 3
-  const lifeEarnedEl = $('#gameover-life-earned');
-  const completedLevel = state.currentLevel;
-  if ((state.gameMode === 'normal' || state.gameMode === 'fogOfWar') && completedLevel % 3 === 0) {
-    lifeEarnedEl.textContent = '❤️ +1 Life earned! (Next Level to claim)';
-    lifeEarnedEl.classList.remove('hidden');
-  } else {
-    lifeEarnedEl.classList.add('hidden');
-  }
+  // Hide encouragement (it's for losses)
+  const encouragementEl = $('#gameover-encouragement');
+  if (encouragementEl) encouragementEl.classList.add('hidden');
+
+  // Show visual share card (scrambled grid)
+  renderShareCardPreview();
 
   // Show newly unlocked achievement tiers in game over
   if (newUnlocks.length > 0) {
@@ -1120,14 +1253,20 @@ function handleWin() {
     nextLevelBtn.classList.add('hidden');
   }
 
-  if (isDaily) {
-    submitDailyBtn.classList.remove('hidden');
-  } else {
-    submitDailyBtn.classList.add('hidden');
+  const dailySubmitForm = $('#daily-submit-form');
+  if (isDaily && dailySubmitForm) {
+    dailySubmitForm.classList.remove('hidden');
+    const nameInput = $('#daily-name-input');
+    if (nameInput) nameInput.value = '';
+  } else if (dailySubmitForm) {
+    dailySubmitForm.classList.add('hidden');
   }
 
   // Always show share button on win
   shareBtn.classList.remove('hidden');
+
+  // Clear saved game state on win
+  clearGameState();
 
   showModal('gameover-overlay');
   updatePowerUpBar();
@@ -1155,20 +1294,18 @@ function handleLoss(mineRow, mineCol) {
   // Power-ups persist on loss within same mode
   saveModePowerUps(state.gameMode, state.powerUps);
 
-  // Death penalty: lives-aware
+  // Death penalty: checkpoint-aware
   const lostLevel = state.currentLevel;
   const isLevelMode = state.gameMode === 'normal' || state.gameMode === 'fogOfWar';
-  const hasLives = isLevelMode && state.lives > 0;
 
-  // Only reset to level 1 if no lives remain
-  if (isLevelMode && !hasLives && state.currentLevel > 1) {
-    state.currentLevel = 1;
+  // Reset to last checkpoint
+  if (isLevelMode && state.currentLevel > 1) {
+    state.currentLevel = state.checkpoint || 1;
   }
 
   const gameoverTitle = $('#gameover-title');
   const gameoverTime = $('#gameover-time');
-  const useLifeBtn = $('#gameover-uselife');
-  const useLifeCount = $('#uselife-count');
+  const encouragementEl = $('#gameover-encouragement');
 
   gameoverTitle.textContent = 'Game Over';
   gameoverTitle.classList.remove('win-title-bounce');
@@ -1176,16 +1313,17 @@ function handleLoss(mineRow, mineCol) {
   gameoverTitle.classList.add('win-title-bounce');
   setTimeout(() => gameoverTitle.classList.remove('win-title-bounce'), 700);
 
-  if (hasLives) {
-    gameoverTime.textContent = `Time: ${state.elapsedTime}s · ❤️ ${state.lives} ${state.lives === 1 ? 'life' : 'lives'} remaining`;
-    useLifeBtn.classList.remove('hidden');
-    useLifeCount.textContent = state.lives;
-  } else if (lostLevel > 1 && isLevelMode) {
-    gameoverTime.textContent = `Time: ${state.elapsedTime}s · Reset to Level 1`;
-    useLifeBtn.classList.add('hidden');
+  if (lostLevel > state.currentLevel && isLevelMode) {
+    gameoverTime.textContent = `Time: ${state.elapsedTime}s · Back to Level ${state.currentLevel}`;
   } else {
     gameoverTime.textContent = `Time: ${state.elapsedTime}s`;
-    useLifeBtn.classList.add('hidden');
+  }
+
+  // Show encouragement line
+  if (encouragementEl) {
+    const line = ENCOURAGEMENT_LINES[Math.floor(Math.random() * ENCOURAGEMENT_LINES.length)];
+    encouragementEl.textContent = line;
+    encouragementEl.classList.remove('hidden');
   }
 
   // Stats cascade on loss
@@ -1196,16 +1334,21 @@ function handleLoss(mineRow, mineCol) {
   setTimeout(() => gameoverTime.classList.remove('stats-cascade'), 500);
   $('#gameover-record').classList.add('hidden');
   $('#gameover-nextlevel').classList.add('hidden');
-  $('#gameover-submit-daily').classList.add('hidden');
+  const dailySubmitForm = $('#daily-submit-form');
+  if (dailySubmitForm) dailySubmitForm.classList.add('hidden');
   $('#gameover-powerup-earned').classList.add('hidden');
-  $('#gameover-life-earned').classList.add('hidden');
   $('#gameover-share').classList.add('hidden');
   $('#gameover-achievements').classList.add('hidden');
+  const sharePreview = $('#share-card-preview');
+  if (sharePreview) sharePreview.classList.add('hidden');
+
+  // Clear saved game state on loss
+  clearGameState();
 
   setTimeout(() => showModal('gameover-overlay'), 900);
   updatePowerUpBar();
   updateStreakBorder();
-  updateLivesDisplay();
+  updateCheckpointDisplay();
 }
 
 // ── Daily Mode: Bomb Hit Re-Fog ─────────────────────────
@@ -1525,7 +1668,7 @@ function awardPowerUps(stats) {
 
   const baseTypes = ['revealSafe', 'shield', 'scanRowCol'];
   const challengeTypes = [...baseTypes, 'freeze', 'xray'];
-  const fogTypes = [...baseTypes];
+  const fogTypes = [...baseTypes, 'decode'];
 
   const types = isChallenge ? challengeTypes : isFogOfWar ? fogTypes : baseTypes;
   const labels = {
@@ -1536,39 +1679,14 @@ function awardPowerUps(stats) {
 
   const awarded = [];
 
-  // Scale rewards by level (Challenge mode)
-  const level = state.currentLevel;
-  let numAwards;
-  if (isChallenge) {
-    if (level <= 3) numAwards = 3;
-    else if (level <= 6) numAwards = 2;
-    else numAwards = 1;
-  } else if (isFogOfWar) {
-    // Fog mode: +1 of each base type + 1 decode per win
-    for (const t of baseTypes) {
-      state.powerUps[t] = (state.powerUps[t] || 0) + 1;
-    }
-    state.powerUps.decode = (state.powerUps.decode || 0) + 1;
-    awarded.push('+1 each 🔍🛡️🎯🔓');
-    numAwards = 0; // skip random awards below
-  } else {
-    numAwards = 1;
-  }
-
-  for (let i = 0; i < numAwards; i++) {
+  // Flat 2 random power-ups per win
+  for (let i = 0; i < 2; i++) {
     const pick = types[Math.floor(Math.random() * types.length)];
-    state.powerUps[pick]++;
+    state.powerUps[pick] = (state.powerUps[pick] || 0) + 1;
     awarded.push(labels[pick]);
   }
 
-  // Streak bonus every 3 wins
-  if (stats.currentStreak > 0 && stats.currentStreak % 3 === 0) {
-    const bonus = types[Math.floor(Math.random() * types.length)];
-    state.powerUps[bonus]++;
-    awarded.push(`bonus ${labels[bonus]}`);
-  }
-
-  return awarded.join(' + ') + (awarded.length > 1 ? '!' : '');
+  return awarded.join(' + ');
 }
 
 // ── Effects ────────────────────────────────────────────
@@ -1871,7 +1989,7 @@ function generateShareCard() {
     return `${getThemeEmoji('mine')} GregSweeper — Daily${dateStr}\n` +
            `⏱️ ${time}s (${state.rows}×${state.cols})${strikesText}${tierText}\n` +
            `Can you beat my time?\n\n` +
-           `https://christopherwells.github.io/GregSweeper/`;
+           `https://christopherwells.github.io/GregSweeper/?mode=daily`;
   }
 
   if (mode === 'timed') {
@@ -1940,11 +2058,20 @@ function showModal(id) {
 }
 
 function hideModal(id) {
-  $(`#${id}`).classList.add('hidden');
+  const modal = $(`#${id}`);
+  if (!modal || modal.classList.contains('hidden')) return;
+  modal.classList.add('modal-closing');
+  setTimeout(() => {
+    modal.classList.add('hidden');
+    modal.classList.remove('modal-closing');
+  }, 250);
 }
 
 function hideAllModals() {
-  for (const modal of $$('.modal')) modal.classList.add('hidden');
+  for (const modal of $$('.modal')) {
+    modal.classList.add('hidden');
+    modal.classList.remove('modal-closing');
+  }
 }
 
 function updateStatsDisplay() {
@@ -2141,6 +2268,8 @@ boardEl.addEventListener('touchend', (e) => {
   const cell = state.board[row]?.[col];
   if (cell && cell.isRevealed && cell.adjacentMines > 0) {
     handleChordReveal(row, col);
+  } else if (state.flagMode && !cell?.isRevealed) {
+    toggleFlag(row, col);
   } else {
     revealCell(row, col);
   }
@@ -2182,6 +2311,14 @@ for (const btn of $$('.powerup-btn')) {
     else if (type === 'freeze') useFreeze();
     else if (type === 'xray') activateXRay();
     else if (type === 'decode') useDecode();
+  });
+}
+
+// Flag mode toggle
+if (flagModeToggle) {
+  flagModeToggle.addEventListener('click', () => {
+    state.flagMode = !state.flagMode;
+    updateFlagModeBar();
   });
 }
 
@@ -2231,17 +2368,18 @@ $('#btn-leaderboard').addEventListener('click', () => {
 $('#btn-help').addEventListener('click', () => showModal('help-modal'));
 $('#title-bar').addEventListener('click', () => showModal('about-modal'));
 
-// Close modals
+// Close modals (with exit animation)
 for (const closeBtn of $$('.modal-close')) {
   closeBtn.addEventListener('click', (e) => {
-    e.target.closest('.modal').classList.add('hidden');
+    const modal = e.target.closest('.modal');
+    if (modal) hideModal(modal.id);
   });
 }
 for (const modal of $$('.modal')) {
   modal.addEventListener('click', (e) => {
     // Don't dismiss game-over modal by clicking outside — require button press
     if (e.target === modal && modal.id !== 'gameover-overlay') {
-      modal.classList.add('hidden');
+      hideModal(modal.id);
     }
   });
 }
@@ -2363,26 +2501,6 @@ $('#btn-reset-profile').addEventListener('click', () => {
 
 // Game over actions
 $('#gameover-retry').addEventListener('click', () => {
-  // If player had lives but chose not to use one, reset to level 1 but keep lives
-  const isLevelMode = state.gameMode === 'normal' || state.gameMode === 'fogOfWar';
-  if (isLevelMode && state.status === 'lost' && state.lives > 0) {
-    state.currentLevel = 1;
-  }
-  newGame();
-});
-
-$('#gameover-uselife').addEventListener('click', () => {
-  if (state.lives <= 0) return;
-  state.lives--;
-  saveModeLives(state.gameMode, state.lives);
-  // Animate lives display
-  if (livesDisplay) {
-    livesDisplay.classList.remove('life-used');
-    void livesDisplay.offsetWidth;
-    livesDisplay.classList.add('life-used');
-    setTimeout(() => livesDisplay.classList.remove('life-used'), 500);
-  }
-  // currentLevel stays the same — retry at same level
   newGame();
 });
 
@@ -2391,11 +2509,15 @@ $('#gameover-nextlevel').addEventListener('click', () => {
   const completedLevel = state.currentLevel;
   if (state.currentLevel < maxLevel) state.currentLevel++;
 
-  // Award a life every 3 completed levels (Challenge & Fog of War)
-  if ((state.gameMode === 'normal' || state.gameMode === 'fogOfWar') && completedLevel % 3 === 0) {
-    state.lives++;
-    saveModeLives(state.gameMode, state.lives);
-    showLifeEarnedToast(completedLevel);
+  // Save checkpoint every 5 levels (Challenge & Fog of War)
+  const isLevelMode = state.gameMode === 'normal' || state.gameMode === 'fogOfWar';
+  if (isLevelMode) {
+    const newCheckpoint = getCheckpointForLevel(state.currentLevel);
+    if (newCheckpoint > state.checkpoint) {
+      state.checkpoint = newCheckpoint;
+      saveCheckpoint(state.gameMode, newCheckpoint);
+      showCheckpointToast(newCheckpoint);
+    }
   }
 
   playLevelUp();
@@ -2405,7 +2527,8 @@ $('#gameover-nextlevel').addEventListener('click', () => {
   newGame();
 });
 $('#gameover-submit-daily').addEventListener('click', async () => {
-  const name = prompt('Enter your name (max 20 chars):');
+  const nameInput = $('#daily-name-input');
+  const name = nameInput ? nameInput.value : '';
   if (name && name.trim()) {
     const sanitized = name.trim().slice(0, 20);
     const dateStr = new Date().toISOString().slice(0, 10);
@@ -2413,7 +2536,9 @@ $('#gameover-submit-daily').addEventListener('click', async () => {
     addDailyLeaderboardEntry(dateStr, sanitized, state.elapsedTime);
     // Also save to Firebase
     await submitOnlineScore(dateStr, sanitized, state.elapsedTime, state.dailyBombHits || 0);
-    $('#gameover-submit-daily').classList.add('hidden');
+    const dailySubmitForm = $('#daily-submit-form');
+    if (dailySubmitForm) dailySubmitForm.classList.add('hidden');
+    showToast('✅ Score submitted!');
   }
 });
 $('#gameover-share').addEventListener('click', () => handleShare());
@@ -2426,7 +2551,13 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     // Don't let Escape dismiss game-over modal
     const gameoverOpen = !$('#gameover-overlay').classList.contains('hidden');
-    if (!gameoverOpen) hideAllModals();
+    if (!gameoverOpen) {
+      // Find the topmost visible modal and close it with animation
+      const visibleModals = [...$$('.modal')].filter(m => !m.classList.contains('hidden'));
+      if (visibleModals.length > 0) {
+        hideModal(visibleModals[visibleModals.length - 1].id);
+      }
+    }
     return;
   }
 
@@ -2456,23 +2587,144 @@ function showLevelUpToast(level) {
   setTimeout(() => toast.remove(), 2000);
 }
 
-// ── Life Earned Toast ──────────────────────────────────
+// ── Checkpoint Toast ──────────────────────────────────
 
-function showLifeEarnedToast(completedLevel) {
+function showCheckpointToast(checkpointLevel) {
   const toast = document.createElement('div');
-  toast.className = 'level-up-toast';
-  toast.style.borderColor = 'var(--color-loss, #ff4444)';
-  toast.style.boxShadow = '0 4px 20px rgba(229, 57, 53, 0.3)';
-  toast.innerHTML = `❤️ +1 Life! <span style="font-size:11px; opacity:0.7">(Level ${completedLevel} clear)</span>`;
+  toast.className = 'checkpoint-toast';
+  toast.innerHTML = `🏁 Checkpoint! <span style="font-size:12px; opacity:0.8">Level ${checkpointLevel}</span>`;
   document.getElementById('app').appendChild(toast);
-  // Pulse lives display
-  if (livesDisplay) {
-    livesDisplay.classList.remove('life-pulse');
-    void livesDisplay.offsetWidth;
-    livesDisplay.classList.add('life-pulse');
-    setTimeout(() => livesDisplay.classList.remove('life-pulse'), 600);
+  setTimeout(() => toast.remove(), 2500);
+}
+
+// ── Flag Mode Toggle ──────────────────────────────────
+
+function updateFlagModeBar() {
+  if (!flagModeBar) return;
+  // Only show on touch devices during gameplay
+  const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  if (isTouchDevice && state.status !== 'won' && state.status !== 'lost') {
+    flagModeBar.classList.remove('hidden');
+  } else {
+    flagModeBar.classList.add('hidden');
   }
-  setTimeout(() => toast.remove(), 3000);
+  if (flagModeToggle) {
+    flagModeToggle.classList.toggle('flag-active', state.flagMode);
+  }
+  if (flagModeIcon) {
+    flagModeIcon.textContent = state.flagMode ? '🚩' : '👆';
+  }
+  if (flagModeLabel) {
+    flagModeLabel.textContent = state.flagMode ? 'Tap to Flag' : 'Tap to Reveal';
+  }
+}
+
+// ── Visual Share Card (Scrambled Grid) ────────────────
+
+function renderShareCardPreview() {
+  const preview = $('#share-card-preview');
+  const grid = $('#share-card-grid');
+  if (!preview || !grid) return;
+
+  // Build ratio of mine/safe/empty
+  const totalCells = state.rows * state.cols;
+  const mines = state.totalMines;
+  const revealed = state.revealedCount;
+  const unrevealed = totalCells - revealed - mines;
+
+  // Create cell list and scramble
+  const cells = [];
+  for (let i = 0; i < mines; i++) cells.push('mine');
+  for (let i = 0; i < revealed; i++) cells.push('safe');
+  for (let i = 0; i < unrevealed; i++) cells.push('empty');
+
+  // Shuffle (Fisher-Yates)
+  for (let i = cells.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [cells[i], cells[j]] = [cells[j], cells[i]];
+  }
+
+  // Render as a grid
+  grid.innerHTML = '';
+  grid.style.gridTemplateColumns = `repeat(${state.cols}, 10px)`;
+  cells.slice(0, state.rows * state.cols).forEach(type => {
+    const cell = document.createElement('div');
+    cell.className = `share-card-cell ${type}`;
+    grid.appendChild(cell);
+  });
+
+  preview.classList.remove('hidden');
+}
+
+// ── Game State Persistence ────────────────────────────
+
+function persistGameState() {
+  if (state.status !== 'playing') return;
+  const gs = {
+    board: state.board.map(row => row.map(c => ({
+      isMine: c.isMine, isRevealed: c.isRevealed, isFlagged: c.isFlagged,
+      adjacentMines: c.adjacentMines, isDefused: c.isDefused || false,
+      isHiddenNumber: c.isHiddenNumber || false,
+      row: c.row, col: c.col,
+    }))),
+    rows: state.rows, cols: state.cols, totalMines: state.totalMines,
+    flagCount: state.flagCount, revealedCount: state.revealedCount,
+    elapsedTime: state.elapsedTime, currentLevel: state.currentLevel,
+    gameMode: state.gameMode, powerUps: { ...state.powerUps },
+    shieldActive: state.shieldActive, checkpoint: state.checkpoint,
+    dailySeed: state.dailySeed, dailyBombHits: state.dailyBombHits,
+    fogOfWarEnabled: state.fogOfWarEnabled,
+  };
+  saveGameState(gs);
+}
+
+function tryResumeGame() {
+  const gs = loadGameState();
+  if (!gs || !gs.board || !gs.gameMode) return false;
+
+  state.board = gs.board;
+  state.rows = gs.rows;
+  state.cols = gs.cols;
+  state.totalMines = gs.totalMines;
+  state.flagCount = gs.flagCount;
+  state.revealedCount = gs.revealedCount;
+  state.elapsedTime = gs.elapsedTime;
+  state.currentLevel = gs.currentLevel;
+  state.gameMode = gs.gameMode;
+  state.powerUps = gs.powerUps || { revealSafe: 0, shield: 0, scanRowCol: 0, freeze: 0, xray: 0 };
+  state.shieldActive = gs.shieldActive || false;
+  state.checkpoint = gs.checkpoint || 1;
+  state.dailySeed = gs.dailySeed || null;
+  state.dailyBombHits = gs.dailyBombHits || 0;
+  state.fogOfWarEnabled = gs.fogOfWarEnabled || false;
+  state.status = 'playing';
+  state.firstClick = false;
+  state.hitMine = null;
+  state.scanMode = false;
+  state.xrayMode = false;
+  state.freezeActive = false;
+
+  if (state.fogOfWarEnabled) {
+    const allRevealed = getRevealedCells();
+    state.visibleCells = computeVisibleCells(allRevealed, state.fogRadius, state.rows, state.cols);
+  }
+
+  adjustCellSize();
+  renderBoard();
+  updateAllCells();
+  updateHeader();
+  updateTimerDisplay();
+  updatePowerUpBar();
+  updateStreakBorder();
+  updateCheckpointDisplay();
+  updateProgressBar();
+  updateCellsRemaining();
+  updateStreakDisplay();
+  updateFlagModeBar();
+  updateZoom();
+  startTimer();
+
+  return true;
 }
 
 // ── Level Info Toast ───────────────────────────────────
@@ -2536,7 +2788,34 @@ function init() {
   // Initialize Firebase for online leaderboard
   initFirebase();
 
-  newGame();
+  // Deep link: ?mode=daily routes to daily challenge
+  const urlParams = new URLSearchParams(window.location.search);
+  const deepLinkMode = urlParams.get('mode');
+  if (deepLinkMode === 'daily') {
+    state.gameMode = 'daily';
+  } else if (!isOnboarded()) {
+    // First-time player → default to Challenge mode
+    state.gameMode = 'normal';
+  }
+
+  // Try to resume a saved game
+  if (!tryResumeGame()) {
+    newGame();
+  }
+
+  // Onboarding for new players
+  if (!isOnboarded()) {
+    setOnboarded();
+    const onboarding = $('#onboarding-overlay');
+    if (onboarding) showModal('onboarding-overlay');
+    const startBtn = $('#onboarding-start');
+    if (startBtn) {
+      startBtn.addEventListener('click', () => hideModal('onboarding-overlay'));
+    }
+  }
+
+  // Auto-save game state periodically
+  setInterval(() => persistGameState(), 5000);
 }
 
 // Recalculate cell sizes on window resize

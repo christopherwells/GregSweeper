@@ -42,11 +42,12 @@
   --color-win: #87d68d;
   --color-loss: #ff4444;
   --color-surface: rgba(255, 255, 255, 0.04);
-}
 
-[data-theme="sunset"] #app {
-  background: linear-gradient(180deg, #3d2240, #2d1b2e, #1f1525);
-  box-shadow: 0 8px 40px rgba(20, 10, 25, 0.6);
+  --bg-app: linear-gradient(180deg, #3d2240, #2d1b2e, #1f1525);
+  --shadow-app: 0 8px 40px rgba(20, 10, 25, 0.6);
+  --text-shadow-lcd: 0 0 8px rgba(255, 107, 107, 0.4);
+  --bg-modal-close-hover: rgba(255, 107, 107, 0.1);
+  --shadow-board: 0 4px 16px rgba(20, 10, 25, 0.5);
 }
 
 [data-theme="sunset"] #game-title {
@@ -62,21 +63,4 @@
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
-}
-
-[data-theme="sunset"] #title-subtitle {
-  color: #c08090;
-}
-
-[data-theme="sunset"] .lcd-display {
-  text-shadow: 0 0 8px rgba(255, 107, 107, 0.4);
-}
-
-[data-theme="sunset"] .modal-close:hover {
-  background: rgba(255, 107, 107, 0.1);
-}
-
-[data-theme="sunset"] #board {
-  border-color: #5a3360;
-  box-shadow: 0 4px 16px rgba(20, 10, 25, 0.5);
 }

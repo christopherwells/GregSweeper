@@ -1,14 +1,8 @@
 /* Legendary theme — gold & purple regal majesty, rainbow title, dramatic shadows */
 @keyframes legendaryRainbow {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
 @keyframes goldShimmer {
@@ -21,12 +15,8 @@
 }
 
 @keyframes crownFloat {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-2px);
-  }
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
 }
 
 [data-theme="legendary"] {
@@ -77,11 +67,43 @@
   --color-win: #60dd88;
   --color-loss: #ff4040;
   --color-surface: rgba(255, 200, 48, 0.03);
+
+  --bg-app: linear-gradient(180deg, #140a22, #0e0618);
+  --border-app: 1px solid rgba(255, 200, 48, 0.2);
+  --text-shadow-subtitle: 0 0 8px rgba(255, 200, 48, 0.4);
+  --text-shadow-mine: 0 0 10px rgba(255, 200, 48, 0.6);
+
+  --shadow-cell-unrevealed: inset 0 1px 0 rgba(255, 200, 48, 0.06), 0 2px 4px rgba(0, 0, 0, 0.2);
+  --shadow-cell-hover: 0 0 10px rgba(255, 200, 48, 0.2), inset 0 1px 0 rgba(255, 200, 48, 0.08);
+  --border-cell-revealed: 1px solid rgba(68, 32, 104, 0.3);
+  --text-shadow-num-1: 0 0 6px rgba(96, 160, 255, 0.4);
+  --text-shadow-num-2: 0 0 6px rgba(255, 200, 48, 0.5);
+  --text-shadow-num-3: 0 0 6px rgba(255, 80, 80, 0.4);
+  --text-shadow-num-4: 0 0 6px rgba(176, 96, 255, 0.4);
+
+  --shadow-board: 0 4px 24px rgba(40, 10, 60, 0.4), 0 0 1px rgba(255, 200, 48, 0.2);
+  --border-board: 2px solid rgba(255, 200, 48, 0.3);
+  --border-radius-board: 8px;
+
+  --border-smiley: 2px solid rgba(255, 200, 48, 0.3);
+  --shadow-smiley: 0 0 8px rgba(255, 200, 48, 0.12), 0 2px 4px rgba(0, 0, 0, 0.2);
+  --text-shadow-lcd: 0 0 8px rgba(255, 200, 48, 0.5), 0 0 16px rgba(255, 200, 48, 0.2);
+  --border-lcd: 2px solid rgba(255, 200, 48, 0.2);
+  --border-nav-btn: 1px solid rgba(255, 200, 48, 0.2);
+  --shadow-nav-btn-hover: 0 0 10px rgba(255, 200, 48, 0.15);
+  --border-powerup-btn: 1px solid rgba(255, 200, 48, 0.2);
+
+  --shadow-modal: 0 8px 48px rgba(20, 5, 30, 0.5), 0 0 1px rgba(255, 200, 48, 0.15);
+  --border-modal: 2px solid rgba(255, 200, 48, 0.2);
+  --bg-modal-content: #180c28;
+  --bg-modal-close-hover: rgba(255, 200, 48, 0.08);
+
+  --border-achievement-unlocked: rgba(255, 200, 48, 0.3);
+  --shadow-achievement-unlocked: 0 0 8px rgba(255, 200, 48, 0.1);
 }
 
+/* Gold shimmer animation on app */
 [data-theme="legendary"] #app {
-  background: linear-gradient(180deg, #140a22, #0e0618);
-  border: 1px solid rgba(255, 200, 48, 0.2);
   animation: goldShimmer 4s ease-in-out infinite;
 }
 
@@ -101,73 +123,15 @@
 
 [data-theme="legendary"] #title-subtitle {
   color: #ffc830;
-  text-shadow: 0 0 8px rgba(255, 200, 48, 0.4);
   animation: crownFloat 3s ease-in-out infinite;
 }
 
-/* Gold-bordered board with dramatic shadow */
-[data-theme="legendary"] #board {
-  border: 2px solid rgba(255, 200, 48, 0.3);
-  border-radius: 8px;
-  box-shadow: 0 4px 24px rgba(40, 10, 60, 0.4), 0 0 1px rgba(255, 200, 48, 0.2);
-}
-
-[data-theme="legendary"] .cell.unrevealed {
-  box-shadow: inset 0 1px 0 rgba(255, 200, 48, 0.06), 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
 [data-theme="legendary"] .cell.unrevealed:hover {
-  box-shadow: 0 0 10px rgba(255, 200, 48, 0.2), inset 0 1px 0 rgba(255, 200, 48, 0.08);
   border-color: rgba(255, 200, 48, 0.35);
-}
-
-[data-theme="legendary"] .cell.revealed {
-  background: #140a20;
-  border-color: rgba(68, 32, 104, 0.3);
-}
-
-[data-theme="legendary"] .cell.revealed.num-1 { text-shadow: 0 0 6px rgba(96, 160, 255, 0.4); }
-[data-theme="legendary"] .cell.revealed.num-2 { text-shadow: 0 0 6px rgba(255, 200, 48, 0.5); }
-[data-theme="legendary"] .cell.revealed.num-3 { text-shadow: 0 0 6px rgba(255, 80, 80, 0.4); }
-[data-theme="legendary"] .cell.revealed.num-4 { text-shadow: 0 0 6px rgba(176, 96, 255, 0.4); }
-
-[data-theme="legendary"] .cell.mine {
-  text-shadow: 0 0 10px rgba(255, 200, 48, 0.6);
-}
-
-/* Gold-trimmed smiley */
-[data-theme="legendary"] .smiley-btn {
-  border: 2px solid rgba(255, 200, 48, 0.3);
-  box-shadow: 0 0 8px rgba(255, 200, 48, 0.12), 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-[data-theme="legendary"] .lcd-display {
-  text-shadow: 0 0 8px rgba(255, 200, 48, 0.5), 0 0 16px rgba(255, 200, 48, 0.2);
-  border-color: rgba(255, 200, 48, 0.2);
-  border-width: 2px;
-}
-
-[data-theme="legendary"] .nav-btn {
-  border-color: rgba(255, 200, 48, 0.2);
 }
 
 [data-theme="legendary"] .nav-btn:hover {
-  box-shadow: 0 0 10px rgba(255, 200, 48, 0.15);
   border-color: rgba(255, 200, 48, 0.35);
-}
-
-[data-theme="legendary"] .powerup-btn {
-  border-color: rgba(255, 200, 48, 0.2);
-}
-
-[data-theme="legendary"] .modal-content {
-  border: 2px solid rgba(255, 200, 48, 0.2);
-  box-shadow: 0 8px 48px rgba(20, 5, 30, 0.5), 0 0 1px rgba(255, 200, 48, 0.15);
-  background: #180c28;
-}
-
-[data-theme="legendary"] .modal-close:hover {
-  background: rgba(255, 200, 48, 0.08);
 }
 
 [data-theme="legendary"] .game-header {
@@ -181,9 +145,4 @@
 
 [data-theme="legendary"] .mode-btn {
   border: 1px solid rgba(255, 200, 48, 0.15);
-}
-
-[data-theme="legendary"] .achievement-item.unlocked {
-  border-color: rgba(255, 200, 48, 0.3);
-  box-shadow: 0 0 8px rgba(255, 200, 48, 0.1);
 }
