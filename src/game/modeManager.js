@@ -11,6 +11,9 @@ const skillTrainerContainer = $('#skill-trainer-container');
 const boardContainer = $('#board-container');
 const powerUpBar = $('#powerup-bar');
 const flagModeBar = $('#flag-mode-bar');
+const gameHeader = $('#game-header');
+const gameInfoBar = $('#game-info-bar');
+const progressBarContainer = $('#progress-bar-container');
 
 export function updateTimedDiffVisibility() {
   if (timedDiffPanel) {
@@ -30,12 +33,17 @@ function updateModeUI(mode) {
 
   // Skill trainer vs board visibility
   if (mode === 'skillTrainer') {
+    if (gameHeader) gameHeader.classList.add('hidden');
+    if (gameInfoBar) gameInfoBar.classList.add('hidden');
+    if (progressBarContainer) progressBarContainer.classList.add('hidden');
     if (boardContainer) boardContainer.classList.add('hidden');
     if (powerUpBar) powerUpBar.classList.add('hidden');
     if (flagModeBar) flagModeBar.classList.add('hidden');
     // Lazy-load skill trainer UI
     import('../ui/skillTrainerUI.js?v=0.9').then(m => m.showSkillTrainer());
   } else {
+    if (gameHeader) gameHeader.classList.remove('hidden');
+    if (gameInfoBar) gameInfoBar.classList.remove('hidden');
     if (boardContainer) boardContainer.classList.remove('hidden');
     if (skillTrainerContainer) skillTrainerContainer.classList.add('hidden');
     // Hide skill trainer if it was showing
