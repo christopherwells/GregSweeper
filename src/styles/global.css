@@ -1046,6 +1046,23 @@ body {
   display: none;
 }
 
+/* When #app is in modal-only mode, it becomes a transparent pass-through
+   so modals can render on top of the title screen */
+#app.modal-only {
+  display: block !important;
+  position: fixed;
+  inset: 0;
+  background: transparent;
+  pointer-events: none;
+  z-index: 1001; /* above title screen (z-index: 1000) */
+}
+#app.modal-only > *:not(.modal) {
+  display: none !important;
+}
+#app.modal-only > .modal {
+  pointer-events: auto;
+}
+
 .modal-content {
   background: var(--bg-modal-content);
   color: var(--color-text);
