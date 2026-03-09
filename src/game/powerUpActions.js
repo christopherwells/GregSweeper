@@ -4,7 +4,6 @@ import { updateAllCells } from '../ui/boardRenderer.js?v=0.9';
 import { updateHeader } from '../ui/headerRenderer.js?v=0.9';
 import { updatePowerUpBar } from '../ui/powerUpBar.js?v=0.9';
 import { findSafeCell, scanRowCol, shieldDefuse, xRayScan, magnetPull } from '../logic/powerUps.js?v=0.9';
-import { computeVisibleCells } from '../logic/fogOfWar.js?v=0.9';
 import { checkWin } from '../logic/boardSolver.js?v=0.9';
 import { saveModePowerUps } from '../storage/statsStorage.js?v=0.9';
 import {
@@ -40,10 +39,6 @@ export function useRevealSafe() {
     boardEl.style.position = 'relative';
     boardEl.appendChild(ripple);
     setTimeout(() => ripple.remove(), 800);
-  }
-
-  if (state.fogOfWarEnabled) {
-    state.visibleCells = computeVisibleCells(getRevealedCells(), state.fogRadius, state.rows, state.cols);
   }
 
   updateAllCells();

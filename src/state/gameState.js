@@ -14,7 +14,7 @@ export const state = {
   timeLimit: 0,         // countdown seconds for timed mode (0 = no limit)
 
   currentLevel: 1,
-  gameMode: 'daily',    // normal | timed | fogOfWar | daily
+  gameMode: 'daily',    // normal | timed | skillTrainer | daily
   dailySeed: null,
   dailyBombHits: 0,
 
@@ -25,12 +25,6 @@ export const state = {
   magnetMode: false,
   usedPowerUps: false,  // track for purist achievement
   suggestedMove: null,  // post-death analysis: {row, col} or null
-
-  fogOfWarEnabled: false,
-  visibleCells: new Set(),
-  fogRadius: 1.5,
-  cellTimestamps: {},      // track last-activity per cell for creeping fog
-  refogTimerId: null,      // interval for creeping fog check
 
   shaking: false,
   showParticles: false,

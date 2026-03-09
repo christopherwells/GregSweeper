@@ -61,7 +61,7 @@ const CATEGORIES = [
     getValue: (s) => {
       const ms = s.modeStats;
       if (!ms) return s.wins;
-      return (ms.challenge?.wins || 0) + (ms.timed?.wins || 0) + (ms.daily?.wins || 0) + (ms.fogOfWar?.wins || 0);
+      return (ms.challenge?.wins || 0) + (ms.timed?.wins || 0) + (ms.daily?.wins || 0);
     },
     format: (v) => `${v} total wins`,
   },

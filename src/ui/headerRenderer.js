@@ -19,7 +19,7 @@ export function getCheckpointForLevel(level) {
 
 export function updateCheckpointDisplay() {
   if (!checkpointDisplay) return;
-  const isLevelMode = state.gameMode === 'normal' || state.gameMode === 'fogOfWar';
+  const isLevelMode = state.gameMode === 'normal';
   if (isLevelMode && state.checkpoint > 1) {
     checkpointDisplay.textContent = `🏁 CP ${state.checkpoint}`;
     checkpointDisplay.classList.remove('hidden');
@@ -30,7 +30,7 @@ export function updateCheckpointDisplay() {
 
 export function updateProgressBar() {
   if (!progressBarContainer) return;
-  const isLevelMode = state.gameMode === 'normal' || state.gameMode === 'fogOfWar';
+  const isLevelMode = state.gameMode === 'normal';
   if (!isLevelMode) {
     progressBarContainer.classList.add('hidden');
     return;

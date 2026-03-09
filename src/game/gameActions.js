@@ -12,16 +12,12 @@ import {
 import { updatePowerUpBar } from '../ui/powerUpBar.js?v=0.9';
 import { hideAllModals } from '../ui/modalManager.js?v=0.9';
 import { showLevelInfoToast } from '../ui/toastManager.js?v=0.9';
-import { startTimer, stopTimer, startCreepingFog, startMineShift, updateTimerDisplay } from './timerManager.js?v=0.9';
+import { startTimer, stopTimer, startMineShift, updateTimerDisplay } from './timerManager.js?v=0.9';
 import { handleWin, handleLoss, handleDailyBombHit } from './winLossHandler.js?v=0.9';
 import { performScan, performXRay, performMagnet, tryLifeline } from './powerUpActions.js?v=0.9';
 import { generateBoard, createEmptyBoard, calculateAdjacency } from '../logic/boardGenerator.js?v=0.9';
 import { floodFillReveal, checkWin, chordReveal } from '../logic/boardSolver.js?v=0.9';
 import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster } from '../logic/difficulty.js?v=0.9';
-import {
-  computeVisibleCells, getHiddenNumberRate, applyHiddenNumbers,
-  decodeAdjacentHidden,
-} from '../logic/fogOfWar.js?v=0.9';
 import { shieldDefuse } from '../logic/powerUps.js?v=0.9';
 import { getGimmicksForLevel, applyGimmicks, isLockedCell, hasSeenGimmick, markGimmickSeen, getGimmickDef } from '../logic/gimmicks.js?v=0.9';
 import { createDailyRNG } from '../logic/seededRandom.js?v=0.9';
@@ -30,12 +26,14 @@ import {
 } from '../storage/statsStorage.js?v=0.9';
 import {
   playReveal, playFlag, playUnflag, playCascade, playShieldBreak,
+  startMusic, stopMusic, setMusicIntensity,
 } from '../audio/sounds.js?v=0.9';
 
 // ── Game Actions ───────────────────────────────────────
 
 export function newGame() {
   stopTimer();
+  stopMusic();
   const diff = state.gameMode === 'timed'
     ? getTimedDifficulty(state.currentLevel)
     : getDifficultyForLevel(state.currentLevel);
@@ -61,10 +59,6 @@ export function newGame() {
   state.showParticles = false;
   state.hitMine = null;
   state.suggestedMove = null;
-  state.visibleCells = new Set();
-  state.fogOfWarEnabled = state.gameMode === 'fogOfWar';
-  state.cellTimestamps = {};
-  if (state.refogTimerId) { clearInterval(state.refogTimerId); state.refogTimerId = null; }
   state.dailySeed = state.gameMode === 'daily' ? new Date().toISOString().slice(0, 10) : null;
   state.dailyBombHits = 0;
 
@@ -111,7 +105,7 @@ export function newGame() {
   state.gimmickData = {};
 
   // Load checkpoint
-  if (state.gameMode === 'normal' || state.gameMode === 'fogOfWar') {
+  if (state.gameMode === 'normal') {
     state.checkpoint = loadCheckpoint(state.gameMode);
   } else {
     state.checkpoint = 1;
@@ -189,7 +183,7 @@ export function revealCell(row, col) {
   // First click — generate board (or start pre-generated daily board)
   if (state.firstClick) {
     const rng = state.dailySeed ? createDailyRNG(state.dailySeed) : undefined;
-    const maxZC = (state.gameMode === 'normal' || state.gameMode === 'fogOfWar')
+    const maxZC = state.gameMode === 'normal'
       ? getMaxZeroCluster(state.currentLevel) : Infinity;
     state.board = generateBoard(state.rows, state.cols, state.totalMines, row, col, rng, { maxZeroCluster: maxZC });
 
@@ -223,10 +217,8 @@ export function revealCell(row, col) {
     state.firstClick = false;
     state.status = 'playing';
     startTimer();
+    startMusic();
 
-    if (state.fogOfWarEnabled) {
-      state.visibleCells = computeVisibleCells([{ row, col }], state.fogRadius, state.rows, state.cols);
-    }
   } else if (state.status === 'idle' && state.gameMode === 'daily') {
     // Daily mode: board was pre-generated for consistency.
     // If first click lands on a mine, relocate it to keep first-click-safe.
@@ -247,6 +239,7 @@ export function revealCell(row, col) {
     }
     state.status = 'playing';
     startTimer();
+    startMusic();
   }
 
   const currentCell = state.board[row][col];
@@ -307,45 +300,13 @@ export function revealCell(row, col) {
     playReveal();
   }
 
-  if (state.fogOfWarEnabled) {
-    // Apply hidden numbers to newly revealed cells
-    const hiddenRate = getHiddenNumberRate(state.currentLevel);
-    applyHiddenNumbers(newlyRevealed, hiddenRate);
-
-    // Decode adjacent hidden numbers (revealing a cell decodes its neighbors)
-    decodeAdjacentHidden(state.board, row, col);
-
-    // Update cell timestamps for creeping fog
-    const now = Date.now();
-    for (const c of newlyRevealed) {
-      state.cellTimestamps[`${c.row},${c.col}`] = now;
-    }
-    // Also refresh timestamps for neighbors of newly revealed cells
-    for (let dr = -1; dr <= 1; dr++) {
-      for (let dc = -1; dc <= 1; dc++) {
-        const nr = row + dr;
-        const nc = col + dc;
-        if (nr >= 0 && nr < state.rows && nc >= 0 && nc < state.cols) {
-          const key = `${nr},${nc}`;
-          if (state.board[nr][nc].isRevealed) {
-            state.cellTimestamps[key] = now;
-          }
-        }
-      }
-    }
-
-    // Start creeping fog timer if not already running
-    if (!state.refogTimerId) {
-      startCreepingFog();
-    }
-
-    const allRevealed = getRevealedCells();
-    state.visibleCells = computeVisibleCells(allRevealed, state.fogRadius, state.rows, state.cols);
-  }
-
   updateAllCells();
   updateHeader();
   updateCellsRemaining();
+
+  // Update music intensity based on board progress
+  const totalSafe = state.rows * state.cols - state.totalMines;
+  if (totalSafe > 0) setMusicIntensity(state.revealedCount / totalSafe);
 
   if (checkWin(state.board)) handleWin();
 }
@@ -388,41 +349,6 @@ export function handleChordReveal(row, col) {
   if (!result || !result.revealed) return;
 
   state.revealedCount += result.revealed.filter(c => !c.isMine).length;
-
-  if (state.fogOfWarEnabled) {
-    // Apply hidden numbers to chord-revealed cells
-    const hiddenRate = getHiddenNumberRate(state.currentLevel);
-    applyHiddenNumbers(result.revealed.filter(c => !c.isMine), hiddenRate);
-
-    // Decode adjacent hidden numbers for the chord origin
-    decodeAdjacentHidden(state.board, row, col);
-
-    // Update cell timestamps for creeping fog
-    const now = Date.now();
-    for (const c of result.revealed) {
-      if (!c.isMine) state.cellTimestamps[`${c.row},${c.col}`] = now;
-    }
-    // Refresh timestamps for neighbors of origin
-    for (let dr = -1; dr <= 1; dr++) {
-      for (let dc = -1; dc <= 1; dc++) {
-        const nr = row + dr;
-        const nc = col + dc;
-        if (nr >= 0 && nr < state.rows && nc >= 0 && nc < state.cols) {
-          if (state.board[nr][nc].isRevealed) {
-            state.cellTimestamps[`${nr},${nc}`] = now;
-          }
-        }
-      }
-    }
-
-    // Start creeping fog timer if not already running
-    if (!state.refogTimerId) {
-      startCreepingFog();
-    }
-
-    const allRevealed = getRevealedCells();
-    state.visibleCells = computeVisibleCells(allRevealed, state.fogRadius, state.rows, state.cols);
-  }
 
   updateAllCells();
   updateHeader();

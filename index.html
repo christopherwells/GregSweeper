@@ -61,7 +61,42 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
 </head>
 <body>
-  <div id="app">
+  <!-- Title Screen -->
+  <div id="title-screen" class="title-screen">
+    <div class="title-screen-header">
+      <h1 class="title-screen-logo">GregSweeper</h1>
+      <p class="title-screen-subtitle">Modern Minesweeper</p>
+    </div>
+    <div class="title-screen-modes">
+      <div class="mode-card" data-mode="normal">
+        <div class="mode-card-icon">⛏️</div>
+        <div class="mode-card-name">Challenge</div>
+        <div class="mode-card-progress" id="title-challenge-progress">Level 1</div>
+      </div>
+      <div class="mode-card" data-mode="timed">
+        <div class="mode-card-icon">⏱️</div>
+        <div class="mode-card-name">Timed</div>
+        <div class="mode-card-progress" id="title-timed-progress">Race the clock</div>
+      </div>
+      <div class="mode-card" data-mode="skillTrainer">
+        <div class="mode-card-icon">🎓</div>
+        <div class="mode-card-name">Skill Trainer</div>
+        <div class="mode-card-progress" id="title-skill-progress">Learn techniques</div>
+      </div>
+      <div class="mode-card" data-mode="daily">
+        <div class="mode-card-icon">📅</div>
+        <div class="mode-card-name">Daily</div>
+        <div class="mode-card-progress" id="title-daily-progress">Today's challenge</div>
+      </div>
+    </div>
+    <div class="title-screen-footer">
+      <button id="title-settings-btn" class="title-footer-btn">⚙️ Settings</button>
+      <button id="title-stats-btn" class="title-footer-btn">📊 Stats</button>
+      <button id="title-collection-btn" class="title-footer-btn">🎁 Collection</button>
+    </div>
+  </div>
+
+  <div id="app" class="hidden">
     <div id="title-bar">
       <h1 id="game-title" title="About GregSweeper">GregSweeper</h1>
       <div id="title-subtitle">Modern Minesweeper</div>
@@ -87,7 +122,7 @@
         <div id="mode-switcher">
           <button class="mode-pill" data-mode="normal" title="Challenge">⚔️</button>
           <button class="mode-pill" data-mode="timed" title="Timed">⏱️</button>
-          <button class="mode-pill" data-mode="fogOfWar" title="Fog of War">🌫️</button>
+          <button class="mode-pill" data-mode="skillTrainer" title="Skill Trainer">🎓</button>
           <button class="mode-pill active" data-mode="daily" title="Daily Challenge">📅</button>
         </div>
       </div>
@@ -131,6 +166,14 @@
         </button>
       </div>
 
+      <div id="timed-size-tabs" class="timed-size-tabs hidden">
+        <button class="timed-tab active" data-level="1">Beginner</button>
+        <button class="timed-tab" data-level="2">Intermediate</button>
+        <button class="timed-tab" data-level="3">Expert</button>
+      </div>
+
+      <div id="skill-trainer-container" class="skill-trainer-container hidden"></div>
+
       <div id="board-container">
         <div id="streak-border"></div>
         <div id="board-scroll-wrapper">
@@ -151,6 +194,7 @@
       <button id="btn-stats" class="nav-btn" title="Stats">📊</button>
       <button id="btn-achievements" class="nav-btn" title="Achievements">🏅</button>
       <button id="btn-leaderboard" class="nav-btn" title="Daily Leaderboard">🏆</button>
+      <button id="btn-collection" class="nav-btn" title="Collection">🎁</button>
       <button id="btn-help" class="nav-btn" title="How to Play">❓</button>
       <button id="btn-mute" class="nav-btn" title="Mute">🔊</button>
     </nav>
@@ -382,7 +426,7 @@
             <div id="mode-options" class="mode-buttons">
               <button class="mode-btn" data-mode="normal">Challenge</button>
               <button class="mode-btn" data-mode="timed">Timed</button>
-              <button class="mode-btn" data-mode="fogOfWar">Fog of War</button>
+              <button class="mode-btn" data-mode="skillTrainer">Skill Trainer</button>
               <button class="mode-btn active" data-mode="daily">Daily Challenge</button>
             </div>
             <div id="timed-difficulty" class="timed-difficulty hidden">
@@ -393,6 +437,11 @@
                 <button class="timed-diff-btn" data-level="3">Expert<span>13×13 · 40 mines</span></button>
               </div>
             </div>
+          </div>
+          <div class="setting-group">
+            <h3>Audio</h3>
+            <label class="volume-label">Music <input type="range" id="music-volume" min="0" max="100" value="50" class="volume-slider"></label>
+            <label class="volume-label">Sound Effects <input type="range" id="sfx-volume" min="0" max="100" value="100" class="volume-slider"></label>
           </div>
           <div class="setting-group reset-group">
             <h3>Data</h3>
@@ -466,14 +515,58 @@
           <button class="modal-close">&times;</button>
         </div>
         <div class="modal-body">
-          <p id="leaderboard-date"></p>
-          <table id="leaderboard-table">
-            <thead>
-              <tr><th>#</th><th>Name</th><th>Time</th><th>💥</th></tr>
-            </thead>
-            <tbody id="leaderboard-body"></tbody>
-          </table>
-          <p id="leaderboard-empty" class="hidden">No entries yet. Complete today's daily challenge!</p>
+          <div class="lb-tabs">
+            <button class="lb-tab active" data-tab="global">Global</button>
+            <button class="lb-tab" data-tab="room">My Room</button>
+          </div>
+          <div id="lb-global-panel">
+            <p id="leaderboard-date"></p>
+            <table id="leaderboard-table">
+              <thead>
+                <tr><th>#</th><th>Name</th><th>Time</th><th>💥</th></tr>
+              </thead>
+              <tbody id="leaderboard-body"></tbody>
+            </table>
+            <p id="leaderboard-empty" class="hidden">No entries yet. Complete today's daily challenge!</p>
+          </div>
+          <div id="lb-room-panel" class="hidden">
+            <div id="room-no-room">
+              <div class="room-form-section">
+                <h3>Create a Room</h3>
+                <input id="room-create-name" type="text" placeholder="Room name" maxlength="30" class="room-input" autocomplete="off">
+                <input id="room-create-code" type="text" placeholder="Code (4-8 letters/numbers)" maxlength="8" class="room-input" autocomplete="off">
+                <input id="room-create-player" type="text" placeholder="Your name" maxlength="20" class="room-input" autocomplete="off">
+                <button id="room-create-btn" class="action-btn">Create Room</button>
+              </div>
+              <div class="room-divider"><span>or</span></div>
+              <div class="room-form-section">
+                <h3>Join a Room</h3>
+                <input id="room-join-code" type="text" placeholder="Room code" maxlength="8" class="room-input" autocomplete="off">
+                <input id="room-join-player" type="text" placeholder="Your name" maxlength="20" class="room-input" autocomplete="off">
+                <button id="room-join-btn" class="action-btn">Join Room</button>
+              </div>
+            </div>
+            <div id="room-active" class="hidden">
+              <div class="room-header-info">
+                <div class="room-name-display" id="room-name-display"></div>
+                <div class="room-code-badge" id="room-code-badge" title="Click to copy"></div>
+              </div>
+              <div class="room-members" id="room-members-list"></div>
+              <h3>Today's Scores</h3>
+              <table id="room-leaderboard-table" class="room-table">
+                <thead>
+                  <tr><th>#</th><th>Name</th><th>Time</th><th>💥</th></tr>
+                </thead>
+                <tbody id="room-leaderboard-body"></tbody>
+              </table>
+              <p id="room-leaderboard-empty" class="hidden">No room scores yet today.</p>
+              <details class="room-history-details">
+                <summary>Past 7 Days</summary>
+                <div id="room-history-content"></div>
+              </details>
+              <button id="room-leave-btn" class="action-btn room-leave-btn">Leave Room</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -494,27 +587,63 @@
             <p>Reveal all safe cells to win!</p>
           </div>
           <div class="help-section">
-            <h3>Power-Ups (Challenge &amp; Fog)</h3>
+            <h3>Power-Ups (Challenge)</h3>
             <p>🔍 <strong>Reveal Safe</strong> (1) — reveals a random safe cell</p>
             <p>🛡️ <strong>Shield</strong> (2) — blocks one mine, shows defused bomb</p>
             <p>🎯 <strong>Scan</strong> (3) — shows mine count in a row/column</p>
-            <p>⏸️ <strong>Freeze</strong> (4) — pauses timer for 15 seconds</p>
+            <p>🧲 <strong>Magnet</strong> (4) — pulls mines out of a 3&times;3 area</p>
             <p>🔬 <strong>X-Ray</strong> (5) — reveals mines in a 5&times;5 area</p>
-            <p>🔓 <strong>Decode</strong> (6) — reveals all hidden ? cells (Fog)</p>
+            <p>❤️ <strong>Lifeline</strong> — auto-saves you from one mine hit</p>
             <p>Earn power-ups by winning games!</p>
           </div>
           <div class="help-section">
             <h3>Game Modes</h3>
-            <p><strong>Challenge</strong> — 50 levels of increasing difficulty with power-ups</p>
-            <p><strong>Timed</strong> — pick a difficulty, race for your best time. Speed ratings: 💎 Diamond, 🥇 Gold, 🥈 Silver, 🥉 Bronze</p>
-            <p><strong>Fog of War</strong> — limited vision, hidden numbers, creeping fog</p>
+            <p><strong>Challenge</strong> — 100 levels of increasing difficulty with gimmicks and power-ups</p>
+            <p><strong>Timed</strong> — pick a size, race for your best time. Speed ratings: 💎 Diamond, 🥇 Gold, 🥈 Silver, 🥉 Bronze</p>
+            <p><strong>Skill Trainer</strong> — learn minesweeper techniques through guided puzzles</p>
             <p><strong>Daily</strong> — same board for everyone today. Online leaderboard!</p>
           </div>
           <div class="help-section">
             <h3>Keyboard Shortcuts</h3>
             <p><strong>R</strong> — restart game</p>
-            <p><strong>1</strong> Reveal &bull; <strong>2</strong> Shield &bull; <strong>3</strong> Scan &bull; <strong>4</strong> Freeze &bull; <strong>5</strong> X-Ray &bull; <strong>6</strong> Decode</p>
+            <p><strong>1</strong> Reveal &bull; <strong>2</strong> Shield &bull; <strong>3</strong> Scan &bull; <strong>4</strong> Magnet &bull; <strong>5</strong> X-Ray</p>
             <p><strong>Esc</strong> — close modal</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Collection Modal -->
+    <div id="collection-modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-content collection-content">
+        <div class="modal-header">
+          <h2>Collection</h2>
+          <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="collection-tabs">
+            <button class="collection-tab active" data-tab="themes">Themes</button>
+            <button class="collection-tab" data-tab="emoji">Emoji</button>
+            <button class="collection-tab" data-tab="effects">Effects</button>
+            <button class="collection-tab" data-tab="titles">Titles</button>
+          </div>
+          <div id="collection-themes" class="collection-panel">
+            <div id="collection-theme-grid" class="theme-swatches"></div>
+          </div>
+          <div id="collection-emoji" class="collection-panel hidden">
+            <div id="emoji-pack-grid" class="emoji-pack-grid"></div>
+          </div>
+          <div id="collection-effects" class="collection-panel hidden">
+            <h3 class="collection-subheader">Win Particles</h3>
+            <div id="effects-particles" class="effects-grid"></div>
+            <h3 class="collection-subheader">Board Border</h3>
+            <div id="effects-borders" class="effects-grid"></div>
+            <h3 class="collection-subheader">Reveal Animation</h3>
+            <div id="effects-reveals" class="effects-grid"></div>
+          </div>
+          <div id="collection-titles" class="collection-panel hidden">
+            <div id="titles-grid" class="titles-grid"></div>
+            <div id="active-title-display" class="active-title-display"></div>
           </div>
         </div>
       </div>

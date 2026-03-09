@@ -1,9 +1,5 @@
 import { state } from '../state/gameState.js?v=0.9';
 import { timerEl, boardEl } from '../ui/domHelpers.js?v=0.9';
-import {
-  getRefogTimeout, computeRefogCells, computeVisibleCells,
-} from '../logic/fogOfWar.js?v=0.9';
-import { getRevealedCells } from '../state/gameState.js?v=0.9';
 import { updateAllCells } from '../ui/boardRenderer.js?v=0.9';
 import { updateHeader } from '../ui/headerRenderer.js?v=0.9';
 import { performMineShift } from '../logic/gimmicks.js?v=0.9';
@@ -41,41 +37,7 @@ export function stopTimer() {
     state.timerId = null;
   }
   timerEl.classList.remove('timer-critical', 'timer-warning');
-  stopCreepingFog();
   stopMineShift();
-}
-
-// ── Creeping Fog ──────────────────────────────────────
-
-export function startCreepingFog() {
-  if (state.refogTimerId) return;
-  state.refogTimerId = setInterval(() => {
-    if (state.status !== 'playing' || !state.fogOfWarEnabled) return;
-
-    const timeout = getRefogTimeout(state.currentLevel);
-    const now = Date.now();
-    const toRefog = computeRefogCells(state.board, state.cellTimestamps, now, timeout);
-
-    if (toRefog.length > 0) {
-      for (const cell of toRefog) {
-        cell.isRevealed = false;
-        state.revealedCount = Math.max(0, state.revealedCount - 1);
-        delete state.cellTimestamps[`${cell.row},${cell.col}`];
-      }
-      // Recompute fog visibility
-      const allRevealed = getRevealedCells();
-      state.visibleCells = computeVisibleCells(allRevealed, state.fogRadius, state.rows, state.cols);
-      updateAllCells();
-      updateHeader();
-    }
-  }, 2000); // Check every 2 seconds
-}
-
-export function stopCreepingFog() {
-  if (state.refogTimerId) {
-    clearInterval(state.refogTimerId);
-    state.refogTimerId = null;
-  }
 }
 
 // ── Mine Shift Timer ──────────────────────────────────

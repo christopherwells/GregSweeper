@@ -148,3 +148,355 @@ export async function fetchOnlineLeaderboard(dateString) {
     return null; // null signals to fall back to local
   }
 }
+
+// ── Room Code Helpers ──────────────────────────────────
+
+const ROOM_CODE_RE = /^[A-Za-z0-9]{4,8}$/;
+
+function validateRoomCode(code) {
+  return typeof code === 'string' && ROOM_CODE_RE.test(code);
+}
+
+/**
+ * Check if a room with the given code exists.
+ * @param {string} code 4-8 alphanumeric room code
+ * @returns {Promise<boolean>}
+ */
+export async function checkRoomExists(code) {
+  if (!isFirebaseOnline() || !validateRoomCode(code)) return false;
+  try {
+    const snap = await Promise.race([
+      db.ref(`rooms/${code.toUpperCase()}/name`).once('value'),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000)),
+    ]);
+    return snap.exists();
+  } catch (err) {
+    console.warn('checkRoomExists failed:', err.message);
+    return false;
+  }
+}
+
+/**
+ * Create a new room.
+ * @param {string} code 4-8 alphanumeric room code
+ * @param {string} roomName Display name for the room
+ * @param {string} creatorName Name of the person creating the room
+ * @returns {Promise<boolean>} true if created successfully
+ */
+export async function createRoom(code, roomName, creatorName) {
+  if (!isFirebaseOnline()) return false;
+  if (!validateRoomCode(code)) {
+    console.warn('Invalid room code — must be 4-8 alphanumeric characters');
+    return false;
+  }
+
+  const upperCode = code.toUpperCase();
+  const sanitizedName = String(roomName).slice(0, 30).trim();
+  const sanitizedCreator = String(creatorName).slice(0, 20).trim();
+  if (!sanitizedName || !sanitizedCreator) return false;
+
+  try {
+    // Check if room already exists
+    const exists = await checkRoomExists(upperCode);
+    if (exists) {
+      console.warn('Room already exists:', upperCode);
+      return false;
+    }
+
+    await db.ref(`rooms/${upperCode}`).set({
+      name: sanitizedName,
+      createdAt: firebase.database.ServerValue.TIMESTAMP,
+      createdBy: sanitizedCreator,
+    });
+
+    // Add creator as first member
+    await db.ref(`rooms/${upperCode}/members/${sanitizedCreator}`).set({
+      joinedAt: firebase.database.ServerValue.TIMESTAMP,
+    });
+
+    return true;
+  } catch (err) {
+    console.warn('createRoom failed:', err.message);
+    return false;
+  }
+}
+
+/**
+ * Join an existing room.
+ * @param {string} code Room code
+ * @param {string} playerName Player's display name
+ * @returns {Promise<boolean>} true if joined successfully
+ */
+export async function joinRoom(code, playerName) {
+  if (!isFirebaseOnline()) return false;
+  if (!validateRoomCode(code)) return false;
+
+  const upperCode = code.toUpperCase();
+  const sanitizedName = String(playerName).slice(0, 20).trim();
+  if (!sanitizedName) return false;
+
+  try {
+    const exists = await checkRoomExists(upperCode);
+    if (!exists) {
+      console.warn('Room does not exist:', upperCode);
+      return false;
+    }
+
+    await db.ref(`rooms/${upperCode}/members/${sanitizedName}`).set({
+      joinedAt: firebase.database.ServerValue.TIMESTAMP,
+    });
+    return true;
+  } catch (err) {
+    console.warn('joinRoom failed:', err.message);
+    return false;
+  }
+}
+
+/**
+ * Leave a room (remove member).
+ * @param {string} code Room code
+ * @param {string} playerName Player's display name
+ * @returns {Promise<boolean>}
+ */
+export async function leaveRoom(code, playerName) {
+  if (!isFirebaseOnline()) return false;
+  if (!validateRoomCode(code)) return false;
+
+  const upperCode = code.toUpperCase();
+  const sanitizedName = String(playerName).slice(0, 20).trim();
+  if (!sanitizedName) return false;
+
+  try {
+    await db.ref(`rooms/${upperCode}/members/${sanitizedName}`).remove();
+    return true;
+  } catch (err) {
+    console.warn('leaveRoom failed:', err.message);
+    return false;
+  }
+}
+
+/**
+ * Submit a score to a room's daily leaderboard.
+ * @param {string} code Room code
+ * @param {string} dateString YYYY-MM-DD
+ * @param {string} name Player name
+ * @param {number} time Completion time in seconds
+ * @param {number} bombHits Number of bomb hits
+ * @returns {Promise<boolean>}
+ */
+export async function submitRoomScore(code, dateString, name, time, bombHits = 0) {
+  if (!isFirebaseOnline()) return false;
+  if (!validateRoomCode(code)) return false;
+
+  if (typeof time !== 'number' || time < MIN_VALID_TIME || time > MAX_VALID_TIME) {
+    console.warn(`Room score rejected — time ${time}s outside valid range`);
+    return false;
+  }
+
+  const upperCode = code.toUpperCase();
+  const sanitizedName = String(name).slice(0, 20).trim();
+  if (!sanitizedName) return false;
+
+  try {
+    const ref = db.ref(`rooms/${upperCode}/scores/${dateString}`);
+    await ref.push({
+      name: sanitizedName,
+      time,
+      bombHits,
+      timestamp: firebase.database.ServerValue.TIMESTAMP,
+    });
+    return true;
+  } catch (err) {
+    console.warn('submitRoomScore failed:', err.message);
+    return false;
+  }
+}
+
+/**
+ * Fetch today's room leaderboard.
+ * @param {string} code Room code
+ * @param {string} dateString YYYY-MM-DD
+ * @returns {Promise<Array|null>} sorted entries or null on failure
+ */
+export async function fetchRoomLeaderboard(code, dateString) {
+  if (!isFirebaseOnline()) return null;
+  if (!validateRoomCode(code)) return null;
+
+  const upperCode = code.toUpperCase();
+
+  try {
+    const ref = db.ref(`rooms/${upperCode}/scores/${dateString}`);
+    const snapshot = await Promise.race([
+      ref.orderByChild('time').limitToFirst(50).once('value'),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000)),
+    ]);
+
+    if (!snapshot.exists()) return [];
+
+    const entries = [];
+    snapshot.forEach((child) => {
+      const val = child.val();
+      entries.push({
+        name: val.name || 'Anonymous',
+        time: val.time || 0,
+        bombHits: val.bombHits || 0,
+      });
+    });
+
+    entries.sort((a, b) => a.time - b.time);
+    return entries;
+  } catch (err) {
+    console.warn('fetchRoomLeaderboard failed:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Fetch past N days of room results.
+ * @param {string} code Room code
+ * @param {number} days Number of past days to fetch (default 7)
+ * @returns {Promise<Object|null>} { 'YYYY-MM-DD': [...entries] } or null
+ */
+export async function fetchRoomHistory(code, days = 7) {
+  if (!isFirebaseOnline()) return null;
+  if (!validateRoomCode(code)) return null;
+
+  const upperCode = code.toUpperCase();
+  const history = {};
+
+  try {
+    for (let i = 1; i <= days; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const ds = d.toISOString().slice(0, 10);
+
+      const ref = db.ref(`rooms/${upperCode}/scores/${ds}`);
+      const snapshot = await Promise.race([
+        ref.orderByChild('time').limitToFirst(50).once('value'),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000)),
+      ]);
+
+      if (snapshot.exists()) {
+        const entries = [];
+        snapshot.forEach((child) => {
+          const val = child.val();
+          entries.push({
+            name: val.name || 'Anonymous',
+            time: val.time || 0,
+            bombHits: val.bombHits || 0,
+          });
+        });
+        entries.sort((a, b) => a.time - b.time);
+        history[ds] = entries;
+      }
+    }
+
+    return history;
+  } catch (err) {
+    console.warn('fetchRoomHistory failed:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Get room members list.
+ * @param {string} code Room code
+ * @returns {Promise<string[]|null>} array of member names or null
+ */
+export async function getRoomMembers(code) {
+  if (!isFirebaseOnline()) return null;
+  if (!validateRoomCode(code)) return null;
+
+  const upperCode = code.toUpperCase();
+
+  try {
+    const snap = await Promise.race([
+      db.ref(`rooms/${upperCode}/members`).once('value'),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000)),
+    ]);
+
+    if (!snap.exists()) return [];
+
+    return Object.keys(snap.val());
+  } catch (err) {
+    console.warn('getRoomMembers failed:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Get room info (name, createdBy).
+ * @param {string} code Room code
+ * @returns {Promise<{name: string, createdBy: string}|null>}
+ */
+export async function getRoomInfo(code) {
+  if (!isFirebaseOnline()) return null;
+  if (!validateRoomCode(code)) return null;
+
+  const upperCode = code.toUpperCase();
+
+  try {
+    const snap = await Promise.race([
+      db.ref(`rooms/${upperCode}`).once('value'),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000)),
+    ]);
+
+    if (!snap.exists()) return null;
+
+    const val = snap.val();
+    return {
+      name: val.name || 'Unnamed Room',
+      createdBy: val.createdBy || 'Unknown',
+    };
+  } catch (err) {
+    console.warn('getRoomInfo failed:', err.message);
+    return null;
+  }
+}
+
+// ── Room localStorage Helpers ──────────────────────────
+
+const ROOM_STORAGE_KEY = 'minesweeper_room';
+
+/**
+ * Save room info to localStorage.
+ * @param {string} code Room code
+ * @param {string} playerName Player's display name in the room
+ */
+export function saveRoomInfo(code, playerName) {
+  try {
+    localStorage.setItem(ROOM_STORAGE_KEY, JSON.stringify({
+      code: code.toUpperCase(),
+      playerName: String(playerName).slice(0, 20).trim(),
+    }));
+  } catch (e) {
+    console.warn('saveRoomInfo failed:', e.message);
+  }
+}
+
+/**
+ * Load room info from localStorage.
+ * @returns {{code: string, playerName: string}|null}
+ */
+export function loadRoomInfo() {
+  try {
+    const raw = localStorage.getItem(ROOM_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.code && parsed.playerName) return parsed;
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Clear room info from localStorage.
+ */
+export function clearRoomInfo() {
+  try {
+    localStorage.removeItem(ROOM_STORAGE_KEY);
+  } catch (e) {
+    // ignore
+  }
+}

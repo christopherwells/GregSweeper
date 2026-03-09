@@ -56,13 +56,6 @@ export function updateCell(r, c) {
   const cellEl = boardEl.children[r * state.cols + c];
   if (!cellEl) return;
 
-  // Fog of war check
-  if (state.fogOfWarEnabled && !state.visibleCells.has(`${r},${c}`)) {
-    cellEl.className = 'cell fogged';
-    cellEl.textContent = '';
-    return;
-  }
-
   // Wall cells are always inert
   if (cell.isWall) {
     cellEl.className = 'cell wall';

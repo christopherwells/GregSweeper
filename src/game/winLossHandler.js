@@ -19,7 +19,7 @@ import {
   loadStats, saveGameResult, saveModePowerUps, clearGameState,
 } from '../storage/statsStorage.js?v=0.9';
 import {
-  playExplosion, playWin, playTimeRecord,
+  playExplosion, playWin, playTimeRecord, stopMusic,
 } from '../audio/sounds.js?v=0.9';
 import {
   checkNewUnlocks, getHighestTier, getTotalScore,
@@ -98,6 +98,7 @@ function renderShareCardPreview() {
 export function handleWin() {
   state.status = 'won';
   stopTimer();
+  stopMusic();
   resetBtn.textContent = getThemeEmoji('smileyWin');
   resetBtn.classList.add('smiley-win-bounce');
   setTimeout(() => resetBtn.classList.remove('smiley-win-bounce'), 800);
@@ -266,6 +267,7 @@ setHandleWin(handleWin);
 export function handleLoss(mineRow, mineCol) {
   state.status = 'lost';
   stopTimer();
+  stopMusic();
   resetBtn.textContent = getThemeEmoji('smileyLoss');
   resetBtn.classList.add('smiley-loss-shake');
   setTimeout(() => resetBtn.classList.remove('smiley-loss-shake'), 500);
@@ -306,7 +308,7 @@ export function handleLoss(mineRow, mineCol) {
 
   // Death penalty: checkpoint-aware
   const lostLevel = state.currentLevel;
-  const isLevelMode = state.gameMode === 'normal' || state.gameMode === 'fogOfWar';
+  const isLevelMode = state.gameMode === 'normal';
 
   // Reset to last checkpoint
   if (isLevelMode && state.currentLevel > 1) {
@@ -386,6 +388,7 @@ export function handleLoss(mineRow, mineCol) {
 export function handleTimedLoss() {
   state.status = 'lost';
   stopTimer();
+  stopMusic();
   resetBtn.textContent = getThemeEmoji('smileyLoss');
   resetBtn.classList.add('smiley-loss-shake');
   setTimeout(() => resetBtn.classList.remove('smiley-loss-shake'), 500);

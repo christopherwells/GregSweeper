@@ -57,7 +57,7 @@ function createDefaultModeStats() {
   return {
     challenge: createModeStats(),
     timed: createModeStats(),
-    fogOfWar: createModeStats(),
+    skillTrainer: createModeStats(),
     daily: { ...createModeStats(), dailyStreak: 0, bestDailyStreak: 0, dailiesCompleted: 0, bombHits: 0 },
   };
 }
@@ -65,7 +65,6 @@ function createDefaultModeStats() {
 // Per-mode power-up pools
 const DEFAULT_POWERUPS = {
   challenge: { revealSafe: 0, shield: 0, lifeline: 0, scanRowCol: 0, magnet: 0, xray: 0 },
-  fogOfWar:  { revealSafe: 3, shield: 3, lifeline: 0, scanRowCol: 3, magnet: 0, xray: 0 },
 };
 
 export function loadStats() {
@@ -257,11 +256,11 @@ export function saveTheme(theme) {
 
 // ── Lives Persistence ─────────────────────────────────
 
-const DEFAULT_LIVES = { challenge: 0, fogOfWar: 0 };
+const DEFAULT_LIVES = { challenge: 0 };
 
 export function loadModeLives(gameMode) {
   const modeKey = getModeKey(gameMode);
-  if (modeKey !== 'challenge' && modeKey !== 'fogOfWar') return 0;
+  if (modeKey !== 'challenge') return 0;
   const data = getJSON(LIVES_KEY, null);
   if (!data) return 0;
   return data[modeKey] || 0;
@@ -269,7 +268,7 @@ export function loadModeLives(gameMode) {
 
 export function saveModeLives(gameMode, count) {
   const modeKey = getModeKey(gameMode);
-  if (modeKey !== 'challenge' && modeKey !== 'fogOfWar') return;
+  if (modeKey !== 'challenge') return;
   const data = getJSON(LIVES_KEY, { ...DEFAULT_LIVES });
   data[modeKey] = count;
   setJSON(LIVES_KEY, data);
@@ -323,7 +322,7 @@ export function clearGameState(mode) {
     try { localStorage.removeItem(gameStateKey(mode)); } catch (e) { /* ignore */ }
   } else {
     // Clear all mode states (used by reset)
-    for (const m of ['challenge', 'timed', 'daily', 'fogOfWar', 'skillTrainer']) {
+    for (const m of ['challenge', 'timed', 'daily', 'skillTrainer']) {
       try { localStorage.removeItem(gameStateKey(m)); } catch (e) { /* ignore */ }
     }
     try { localStorage.removeItem(LEGACY_GAME_STATE_KEY); } catch (e) { /* ignore */ }
