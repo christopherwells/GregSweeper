@@ -1,0 +1,47 @@
+/* Coral theme — pink-coral reef colors, warm underwater feel */
+[data-theme="coral"] {
+  --color-bg: #1c100e;
+  --color-app-bg: #140c0a;
+  --color-cell-hidden: #b85848;
+  --color-cell-hidden-hover: #c86858;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #c06050, #a85040);
+  --color-cell-revealed: #241614;
+  --color-cell-border-light: #d88070;
+  --color-cell-border-dark: #301814;
+  --color-mine: #ff6070;
+  --color-mine-hit: #ff3848;
+  --color-flag: #ff9888;
+  --color-text: #ffe0d8;
+  --color-text-secondary: #c09080;
+  --color-num-1: #f0a088;
+  --color-num-2: #70c8b8;
+  --color-num-3: #ff6070;
+  --color-num-4: #a890c0;
+  --color-num-5: #e87860;
+  --color-num-6: #60b8b0;
+  --color-num-7: #ffe0d8;
+  --color-num-8: #887068;
+  --color-header-bg: #1c100e;
+  --color-header-gradient: linear-gradient(180deg, #2c1c18, #1c100e);
+  --color-lcd-bg: #0e0806;
+  --color-lcd-text: #f08878;
+  --color-modal-bg: #241614;
+  --color-modal-overlay: rgba(10, 4, 4, 0.88);
+  --color-btn-bg: #b85848;
+  --color-btn-hover: #c86858;
+  --color-btn-gradient: linear-gradient(180deg, #c86858, #b85848);
+  --color-border: #d88070;
+  --color-fog: rgba(10, 4, 4, 0.93);
+  --color-scan-highlight: rgba(255, 152, 136, 0.15);
+  --color-golden: #e8c060;
+  --color-accent: #f08070;
+  --color-accent-hover: #e06858;
+  --color-accent-glow: rgba(240, 128, 112, 0.3);
+  --color-win: #60c8a0;
+  --color-loss: #ff3848;
+  --color-surface: rgba(240, 128, 112, 0.04);
+  --shadow-app: 0 8px 40px rgba(10, 4, 4, 0.6), inset 0 1px 0 rgba(240, 128, 112, 0.06);
+  --text-shadow-lcd: 0 0 10px rgba(240, 136, 120, 0.5);
+  --text-shadow-title: 0 0 14px rgba(240, 128, 112, 0.4);
+  --bg-modal-close-hover: rgba(240, 128, 112, 0.12);
+}

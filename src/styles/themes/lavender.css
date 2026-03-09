@@ -1,0 +1,47 @@
+/* Lavender theme — soft purples and light blues, calming pastel palette */
+[data-theme="lavender"] {
+  --color-bg: #f0ecf8;
+  --color-app-bg: #f6f2fc;
+  --color-cell-hidden: #c8b8e0;
+  --color-cell-hidden-hover: #d4c8e8;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #d0c0e4, #c0b0d8);
+  --color-cell-revealed: #f4f0fa;
+  --color-cell-border-light: #e0d4f0;
+  --color-cell-border-dark: #a898c0;
+  --color-mine: #8860c0;
+  --color-mine-hit: #7040b0;
+  --color-flag: #a878d8;
+  --color-text: #3c2860;
+  --color-text-secondary: #8878a8;
+  --color-num-1: #7060b8;
+  --color-num-2: #6098a0;
+  --color-num-3: #c05878;
+  --color-num-4: #5878b8;
+  --color-num-5: #a06848;
+  --color-num-6: #5898a0;
+  --color-num-7: #3c2860;
+  --color-num-8: #a8a0b8;
+  --color-header-bg: #f0ecf8;
+  --color-header-gradient: linear-gradient(180deg, #f6f2fc, #f0ecf8);
+  --color-lcd-bg: #e8e0f4;
+  --color-lcd-text: #7050a8;
+  --color-modal-bg: #f4f0fa;
+  --color-modal-overlay: rgba(60, 40, 96, 0.25);
+  --color-btn-bg: #c8b8e0;
+  --color-btn-hover: #d4c8e8;
+  --color-btn-gradient: linear-gradient(180deg, #d4c8e8, #c8b8e0);
+  --color-border: #c0b0d8;
+  --color-fog: rgba(240, 236, 248, 0.93);
+  --color-scan-highlight: rgba(168, 120, 216, 0.12);
+  --color-golden: #c8a848;
+  --color-accent: #9870c8;
+  --color-accent-hover: #8860b8;
+  --color-accent-glow: rgba(152, 112, 200, 0.25);
+  --color-win: #70b068;
+  --color-loss: #c05060;
+  --color-surface: rgba(152, 112, 200, 0.04);
+  --shadow-app: 0 8px 40px rgba(60, 40, 96, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  --text-shadow-lcd: 0 0 10px rgba(112, 80, 168, 0.3);
+  --text-shadow-title: 0 0 14px rgba(152, 112, 200, 0.3);
+  --bg-modal-close-hover: rgba(152, 112, 200, 0.12);
+}

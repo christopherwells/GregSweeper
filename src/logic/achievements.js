@@ -6,9 +6,9 @@ const TIER_ICONS = {
   bronze:   '🥉',
   silver:   '🥈',
   gold:     '🥇',
-  platinum: '💎',
+  platinum: '⭐',
   emerald:  '💚',
-  diamond:  '👑',
+  diamond:  '💎',
 };
 const TIER_COLORS = {
   bronze:   '#cd7f32',
@@ -54,12 +54,16 @@ const CATEGORIES = [
   },
   {
     id: 'level',
-    name: 'Climber',
-    icon: '📈',
-    desc: 'Max level reached',
-    thresholds: [3, 8, 15, 20, 25, 30],
-    getValue: (s) => s.maxLevelReached || 1,
-    format: (v) => `Level ${v}`,
+    name: 'Survivor',
+    icon: '🛡️',
+    desc: 'Total wins across all modes',
+    thresholds: [10, 25, 75, 150, 300, 500],
+    getValue: (s) => {
+      const ms = s.modeStats;
+      if (!ms) return s.wins;
+      return (ms.challenge?.wins || 0) + (ms.timed?.wins || 0) + (ms.daily?.wins || 0) + (ms.fogOfWar?.wins || 0);
+    },
+    format: (v) => `${v} total wins`,
   },
   {
     id: 'daily',
@@ -92,9 +96,9 @@ const CATEGORIES = [
   {
     id: 'challengeClimber',
     name: 'Challenger',
-    icon: '🧗',
+    icon: '⛏️',
     desc: 'Challenge level reached',
-    thresholds: [3, 8, 15, 20, 25, 30],
+    thresholds: [10, 25, 50, 70, 85, 100],
     getValue: (s) => (s.modeStats?.challenge?.maxLevelReached) || (s.maxLevelReached || 1),
     format: (v) => `Level ${v}`,
   },
@@ -115,13 +119,13 @@ const CATEGORIES = [
     inverted: true,
   },
   {
-    id: 'fogSurvivor',
-    name: 'Fog Navigator',
-    icon: '🌫️',
-    desc: 'Fog of War wins',
+    id: 'gimmickMaster',
+    name: 'Gimmick Master',
+    icon: '🎪',
+    desc: 'Beat levels with gimmicks active',
     thresholds: [1, 5, 15, 30, 50, 100],
-    getValue: (s) => s.modeStats?.fogOfWar?.wins || 0,
-    format: (v) => `${v} win${v !== 1 ? 's' : ''}`,
+    getValue: (s) => s.gimmickWins || 0,
+    format: (v) => `${v} gimmick win${v !== 1 ? 's' : ''}`,
   },
   {
     id: 'dailyStreak',

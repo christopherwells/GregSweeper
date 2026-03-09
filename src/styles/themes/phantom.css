@@ -1,0 +1,47 @@
+/* Phantom theme — dark ghost-like theme, deep grays with eerie blue-green accents */
+[data-theme="phantom"] {
+  --color-bg: #101218;
+  --color-app-bg: #0a0c10;
+  --color-cell-hidden: #2c3040;
+  --color-cell-hidden-hover: #363c4c;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #323848, #282e3c);
+  --color-cell-revealed: #181a22;
+  --color-cell-border-light: #485060;
+  --color-cell-border-dark: #0c0e14;
+  --color-mine: #40c8b8;
+  --color-mine-hit: #30e0d0;
+  --color-flag: #58a8b8;
+  --color-text: #c0c8d8;
+  --color-text-secondary: #606878;
+  --color-num-1: #48b0b8;
+  --color-num-2: #68a898;
+  --color-num-3: #c06878;
+  --color-num-4: #7880a8;
+  --color-num-5: #a87868;
+  --color-num-6: #48a0a8;
+  --color-num-7: #c0c8d8;
+  --color-num-8: #484c58;
+  --color-header-bg: #101218;
+  --color-header-gradient: linear-gradient(180deg, #1a1c24, #101218);
+  --color-lcd-bg: #080a0e;
+  --color-lcd-text: #3ca8a0;
+  --color-modal-bg: #181a22;
+  --color-modal-overlay: rgba(4, 6, 8, 0.92);
+  --color-btn-bg: #2c3040;
+  --color-btn-hover: #363c4c;
+  --color-btn-gradient: linear-gradient(180deg, #363c4c, #2c3040);
+  --color-border: #3c4454;
+  --color-fog: rgba(4, 6, 8, 0.95);
+  --color-scan-highlight: rgba(64, 200, 184, 0.1);
+  --color-golden: #b8c058;
+  --color-accent: #40b0a8;
+  --color-accent-hover: #38a098;
+  --color-accent-glow: rgba(64, 176, 168, 0.25);
+  --color-win: #58c898;
+  --color-loss: #c04858;
+  --color-surface: rgba(64, 176, 168, 0.03);
+  --shadow-app: 0 8px 40px rgba(4, 6, 8, 0.7), inset 0 1px 0 rgba(64, 176, 168, 0.04);
+  --text-shadow-lcd: 0 0 10px rgba(60, 168, 160, 0.5);
+  --text-shadow-title: 0 0 14px rgba(64, 176, 168, 0.35);
+  --bg-modal-close-hover: rgba(64, 176, 168, 0.1);
+}

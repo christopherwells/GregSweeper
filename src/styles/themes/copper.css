@@ -1,0 +1,47 @@
+/* Copper theme — warm copper/bronze tones, metallic feel with brownish-orange cells */
+[data-theme="copper"] {
+  --color-bg: #1c1410;
+  --color-app-bg: #140e0a;
+  --color-cell-hidden: #8b5e3c;
+  --color-cell-hidden-hover: #9e6d48;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #9a6844, #7c5434);
+  --color-cell-revealed: #2a1e16;
+  --color-cell-border-light: #b87a50;
+  --color-cell-border-dark: #3a2618;
+  --color-mine: #e87040;
+  --color-mine-hit: #ff5522;
+  --color-flag: #d4944c;
+  --color-text: #f0dcc8;
+  --color-text-secondary: #a08068;
+  --color-num-1: #c8884c;
+  --color-num-2: #e8a860;
+  --color-num-3: #e87040;
+  --color-num-4: #b890a0;
+  --color-num-5: #d47838;
+  --color-num-6: #c89858;
+  --color-num-7: #f0dcc8;
+  --color-num-8: #6e5040;
+  --color-header-bg: #1c1410;
+  --color-header-gradient: linear-gradient(180deg, #2e2018, #1c1410);
+  --color-lcd-bg: #0e0a06;
+  --color-lcd-text: #d4944c;
+  --color-modal-bg: #221a12;
+  --color-modal-overlay: rgba(10, 6, 4, 0.88);
+  --color-btn-bg: #8b5e3c;
+  --color-btn-hover: #9e6d48;
+  --color-btn-gradient: linear-gradient(180deg, #9e6d48, #8b5e3c);
+  --color-border: #b87a50;
+  --color-fog: rgba(10, 6, 4, 0.93);
+  --color-scan-highlight: rgba(184, 122, 80, 0.2);
+  --color-golden: #e8c070;
+  --color-accent: #d4944c;
+  --color-accent-hover: #c8844c;
+  --color-accent-glow: rgba(212, 148, 76, 0.35);
+  --color-win: #e8c070;
+  --color-loss: #e85030;
+  --color-surface: rgba(184, 122, 80, 0.04);
+  --shadow-app: 0 8px 40px rgba(10, 6, 4, 0.6), inset 0 1px 0 rgba(212, 148, 76, 0.06);
+  --text-shadow-lcd: 0 0 10px rgba(212, 148, 76, 0.5);
+  --text-shadow-title: 0 0 14px rgba(184, 122, 80, 0.4);
+  --bg-modal-close-hover: rgba(212, 148, 76, 0.12);
+}

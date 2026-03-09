@@ -1,0 +1,47 @@
+/* Autumn theme — warm oranges, reds, browns, fall foliage feel */
+[data-theme="autumn"] {
+  --color-bg: #201810;
+  --color-app-bg: #181008;
+  --color-cell-hidden: #8c5828;
+  --color-cell-hidden-hover: #a06830;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #98602c, #805024);
+  --color-cell-revealed: #281c10;
+  --color-cell-border-light: #b87838;
+  --color-cell-border-dark: #2c1c0c;
+  --color-mine: #d84830;
+  --color-mine-hit: #e83020;
+  --color-flag: #e89840;
+  --color-text: #f0dcc0;
+  --color-text-secondary: #a88860;
+  --color-num-1: #d89840;
+  --color-num-2: #c87838;
+  --color-num-3: #d84830;
+  --color-num-4: #a08898;
+  --color-num-5: #b86028;
+  --color-num-6: #c8a040;
+  --color-num-7: #f0dcc0;
+  --color-num-8: #786048;
+  --color-header-bg: #201810;
+  --color-header-gradient: linear-gradient(180deg, #302418, #201810);
+  --color-lcd-bg: #100c04;
+  --color-lcd-text: #d89040;
+  --color-modal-bg: #281e10;
+  --color-modal-overlay: rgba(12, 8, 4, 0.88);
+  --color-btn-bg: #8c5828;
+  --color-btn-hover: #a06830;
+  --color-btn-gradient: linear-gradient(180deg, #a06830, #8c5828);
+  --color-border: #b87838;
+  --color-fog: rgba(12, 8, 4, 0.93);
+  --color-scan-highlight: rgba(232, 152, 64, 0.18);
+  --color-golden: #e8c848;
+  --color-accent: #d88838;
+  --color-accent-hover: #c87828;
+  --color-accent-glow: rgba(216, 136, 56, 0.3);
+  --color-win: #a0c048;
+  --color-loss: #d83820;
+  --color-surface: rgba(216, 136, 56, 0.04);
+  --shadow-app: 0 8px 40px rgba(12, 8, 4, 0.6), inset 0 1px 0 rgba(216, 136, 56, 0.06);
+  --text-shadow-lcd: 0 0 10px rgba(216, 144, 64, 0.5);
+  --text-shadow-title: 0 0 14px rgba(216, 136, 56, 0.4);
+  --bg-modal-close-hover: rgba(216, 136, 56, 0.12);
+}

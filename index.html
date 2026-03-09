@@ -10,7 +10,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="GregSweeper">
-  <link rel="apple-touch-icon" href="assets/icon-192.png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
   <link rel="icon" type="image/svg+xml" href="assets/icon.svg">
   <link rel="stylesheet" href="src/styles/global.css">
   <link rel="stylesheet" href="src/styles/animations.css">
@@ -45,6 +45,16 @@
   <link rel="stylesheet" href="src/styles/themes/synthwave.css">
   <link rel="stylesheet" href="src/styles/themes/supernova.css">
   <link rel="stylesheet" href="src/styles/themes/legendary.css">
+  <link rel="stylesheet" href="src/styles/themes/copper.css">
+  <link rel="stylesheet" href="src/styles/themes/sakura.css">
+  <link rel="stylesheet" href="src/styles/themes/deepspace.css">
+  <link rel="stylesheet" href="src/styles/themes/emerald.css">
+  <link rel="stylesheet" href="src/styles/themes/lavender.css">
+  <link rel="stylesheet" href="src/styles/themes/autumn.css">
+  <link rel="stylesheet" href="src/styles/themes/coral.css">
+  <link rel="stylesheet" href="src/styles/themes/slate.css">
+  <link rel="stylesheet" href="src/styles/themes/phantom.css">
+  <link rel="stylesheet" href="src/styles/themes/solar.css">
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700;900&family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
   <!-- Firebase SDK (compat) for online daily leaderboard -->
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -100,16 +110,16 @@
           <span class="powerup-icon">🎯</span>
           <span class="powerup-count">0</span>
         </button>
-        <button class="powerup-btn challenge-only" data-powerup="freeze" title="Freeze Timer (15s)" disabled>
-          <span class="powerup-icon">⏸️</span>
+        <button class="powerup-btn lifeline-indicator" data-powerup="lifeline" title="Lifeline (auto-saves from mine)" disabled>
+          <span class="powerup-icon">❤️</span>
           <span class="powerup-count">0</span>
         </button>
-        <button class="powerup-btn challenge-only" data-powerup="xray" title="X-Ray (reveal mines in 5x5)" disabled>
+        <button class="powerup-btn" data-powerup="magnet" title="Magnet (pull mines from 3x3 area)" disabled>
+          <span class="powerup-icon">🧲</span>
+          <span class="powerup-count">0</span>
+        </button>
+        <button class="powerup-btn" data-powerup="xray" title="X-Ray (reveal mines in 5x5)" disabled>
           <span class="powerup-icon">🔬</span>
-          <span class="powerup-count">0</span>
-        </button>
-        <button class="powerup-btn fog-only" data-powerup="decode" title="Decode all hidden ? cells" disabled>
-          <span class="powerup-icon">🔓</span>
           <span class="powerup-count">0</span>
         </button>
       </div>
@@ -166,150 +176,201 @@
                 <span class="swatch-name">Dark</span>
                 <span class="swatch-lock hidden"></span>
               </button>
+              <!-- Ordered by unlock level (coolest themes unlock last) -->
               <button class="theme-swatch" data-theme="ocean">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #0077b6, #00b4d8)"></span>
                 <span class="swatch-name">Ocean</span>
-                <span class="swatch-lock hidden">&#128274; Level 2</span>
+                <span class="swatch-lock hidden">&#128274; Level 3</span>
               </button>
               <button class="theme-swatch" data-theme="sunset">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #ff6b6b, #ffa07a)"></span>
                 <span class="swatch-name">Sunset</span>
-                <span class="swatch-lock hidden">&#128274; Level 4</span>
+                <span class="swatch-lock hidden">&#128274; Level 6</span>
               </button>
               <button class="theme-swatch" data-theme="forest">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #2d5a27, #6abf6a)"></span>
                 <span class="swatch-name">Forest</span>
-                <span class="swatch-lock hidden">&#128274; Level 6</span>
+                <span class="swatch-lock hidden">&#128274; Level 9</span>
               </button>
               <button class="theme-swatch" data-theme="candy">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #ff69b4, #dda0dd)"></span>
                 <span class="swatch-name">Candy</span>
-                <span class="swatch-lock hidden">&#128274; Level 8</span>
+                <span class="swatch-lock hidden">&#128274; Level 12</span>
               </button>
               <button class="theme-swatch" data-theme="midnight">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #191970, #7c4dff)"></span>
                 <span class="swatch-name">Midnight</span>
-                <span class="swatch-lock hidden">&#128274; Level 10</span>
+                <span class="swatch-lock hidden">&#128274; Level 15</span>
               </button>
               <button class="theme-swatch" data-theme="stealth">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #333333, #555555)"></span>
                 <span class="swatch-name">Stealth</span>
-                <span class="swatch-lock hidden">&#128274; Level 12</span>
+                <span class="swatch-lock hidden">&#128274; Level 18</span>
               </button>
               <button class="theme-swatch" data-theme="neon">
                 <span class="swatch-color" style="background: #0a0a0a; border: 1px solid #00ff88"></span>
                 <span class="swatch-name">Neon</span>
-                <span class="swatch-lock hidden">&#128274; Level 14</span>
+                <span class="swatch-lock hidden">&#128274; Level 21</span>
               </button>
               <button class="theme-swatch" data-theme="cherry-blossom">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #f0c4d8, #fdf0f5)"></span>
                 <span class="swatch-name">Cherry Blossom</span>
-                <span class="swatch-lock hidden">&#128274; Level 16</span>
+                <span class="swatch-lock hidden">&#128274; Level 24</span>
               </button>
               <button class="theme-swatch" data-theme="aurora">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #00e5a0, #00bcd4, #b388ff)"></span>
                 <span class="swatch-name">Aurora</span>
-                <span class="swatch-lock hidden">&#128274; Level 18</span>
+                <span class="swatch-lock hidden">&#128274; Level 27</span>
               </button>
               <button class="theme-swatch" data-theme="volcano">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #ff4500, #5c2210)"></span>
                 <span class="swatch-name">Volcano</span>
-                <span class="swatch-lock hidden">&#128274; Level 20</span>
+                <span class="swatch-lock hidden">&#128274; Level 30</span>
+              </button>
+              <button class="theme-swatch" data-theme="copper">
+                <span class="swatch-color" style="background: linear-gradient(135deg, #d4944c, #8b5e3c, #1c1410)"></span>
+                <span class="swatch-name">Copper</span>
+                <span class="swatch-lock hidden">&#128274; Level 33</span>
               </button>
               <button class="theme-swatch" data-theme="ice">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #a8ceea, #e8f2fa)"></span>
                 <span class="swatch-name">Ice</span>
-                <span class="swatch-lock hidden">&#128274; Level 22</span>
+                <span class="swatch-lock hidden">&#128274; Level 34</span>
+              </button>
+              <button class="theme-swatch" data-theme="sakura">
+                <span class="swatch-color" style="background: linear-gradient(135deg, #f5c6d0, #fdf0f4, #e8a0b8)"></span>
+                <span class="swatch-name">Sakura</span>
+                <span class="swatch-lock hidden">&#128274; Level 36</span>
               </button>
               <button class="theme-swatch" data-theme="cyberpunk">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #ff0080, #00d4ff)"></span>
                 <span class="swatch-name">Cyberpunk</span>
-                <span class="swatch-lock hidden">&#128274; Level 24</span>
-              </button>
-              <button class="theme-swatch" data-theme="retro">
-                <span class="swatch-color" style="background: linear-gradient(135deg, #e040fb, #7c4dff)"></span>
-                <span class="swatch-name">Retro</span>
-                <span class="swatch-lock hidden">&#128274; Level 26</span>
-              </button>
-              <button class="theme-swatch" data-theme="holographic">
-                <span class="swatch-color" style="background: linear-gradient(135deg, #ff4488, #44ddff, #44ff88)"></span>
-                <span class="swatch-name">Holographic</span>
-                <span class="swatch-lock hidden">&#128274; Level 28</span>
+                <span class="swatch-lock hidden">&#128274; Level 38</span>
               </button>
               <button class="theme-swatch" data-theme="galaxy">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #d050ff, #82b1ff, #ff80ab)"></span>
                 <span class="swatch-name">Galaxy</span>
-                <span class="swatch-lock hidden">&#128274; Level 30</span>
+                <span class="swatch-lock hidden">&#128274; Level 40</span>
+              </button>
+              <button class="theme-swatch" data-theme="retro">
+                <span class="swatch-color" style="background: linear-gradient(135deg, #e040fb, #7c4dff)"></span>
+                <span class="swatch-name">Retro</span>
+                <span class="swatch-lock hidden">&#128274; Level 42</span>
+              </button>
+              <button class="theme-swatch" data-theme="lavender">
+                <span class="swatch-color" style="background: linear-gradient(135deg, #c8b8e0, #f0ecf8, #9870c8)"></span>
+                <span class="swatch-name">Lavender</span>
+                <span class="swatch-lock hidden">&#128274; Level 44</span>
+              </button>
+              <button class="theme-swatch" data-theme="holographic">
+                <span class="swatch-color" style="background: linear-gradient(135deg, #ff4488, #44ddff, #44ff88)"></span>
+                <span class="swatch-name">Holographic</span>
+                <span class="swatch-lock hidden">&#128274; Level 46</span>
               </button>
               <button class="theme-swatch" data-theme="toxic">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #00ff3c, #0a0f0a)"></span>
                 <span class="swatch-name">Toxic</span>
-                <span class="swatch-lock hidden">&#128274; Level 32</span>
+                <span class="swatch-lock hidden">&#128274; Level 48</span>
+              </button>
+              <button class="theme-swatch" data-theme="autumn">
+                <span class="swatch-color" style="background: linear-gradient(135deg, #d88838, #8c5828, #201810)"></span>
+                <span class="swatch-name">Autumn</span>
+                <span class="swatch-lock hidden">&#128274; Level 52</span>
               </button>
               <button class="theme-swatch" data-theme="royal">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #ffd700, #2e1a55)"></span>
                 <span class="swatch-name">Royal</span>
-                <span class="swatch-lock hidden">&#128274; Level 34</span>
+                <span class="swatch-lock hidden">&#128274; Level 55</span>
+              </button>
+              <button class="theme-swatch" data-theme="coral">
+                <span class="swatch-color" style="background: linear-gradient(135deg, #f08070, #b85848, #1c100e)"></span>
+                <span class="swatch-name">Coral</span>
+                <span class="swatch-lock hidden">&#128274; Level 58</span>
+              </button>
+              <button class="theme-swatch" data-theme="emerald">
+                <span class="swatch-color" style="background: linear-gradient(135deg, #30c878, #18603c, #081c14)"></span>
+                <span class="swatch-name">Emerald</span>
+                <span class="swatch-lock hidden">&#128274; Level 61</span>
               </button>
               <button class="theme-swatch" data-theme="prismatic">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #ff0044, #ffaa00, #00ff88, #4488ff)"></span>
                 <span class="swatch-name">Prismatic</span>
-                <span class="swatch-lock hidden">&#128274; Level 36</span>
+                <span class="swatch-lock hidden">&#128274; Level 64</span>
+              </button>
+              <button class="theme-swatch" data-theme="slate">
+                <span class="swatch-color" style="background: linear-gradient(135deg, #6888b0, #4a5468, #1c2028)"></span>
+                <span class="swatch-name">Slate</span>
+                <span class="swatch-lock hidden">&#128274; Level 67</span>
               </button>
               <button class="theme-swatch" data-theme="void">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #080808, #1a1a1a); border: 1px solid #333"></span>
                 <span class="swatch-name">Void</span>
-                <span class="swatch-lock hidden">&#128274; Level 38</span>
+                <span class="swatch-lock hidden">&#128274; Level 70</span>
               </button>
               <button class="theme-swatch" data-theme="arctic">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #e8f4ff, #b8d8f0)"></span>
                 <span class="swatch-name">Arctic</span>
-                <span class="swatch-lock hidden">&#128274; Level 40</span>
+                <span class="swatch-lock hidden">&#128274; Level 73</span>
+              </button>
+              <button class="theme-swatch" data-theme="deepspace">
+                <span class="swatch-color" style="background: linear-gradient(135deg, #7868e0, #2a2050, #0a0818)"></span>
+                <span class="swatch-name">Deep Space</span>
+                <span class="swatch-lock hidden">&#128274; Level 76</span>
               </button>
               <button class="theme-swatch" data-theme="jungle">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #1a3a1a, #2d5a2d)"></span>
                 <span class="swatch-name">Jungle</span>
-                <span class="swatch-lock hidden">&#128274; Level 42</span>
+                <span class="swatch-lock hidden">&#128274; Level 78</span>
               </button>
               <button class="theme-swatch" data-theme="obsidian">
                 <span class="swatch-color" style="background: #000; border: 1px solid #333"></span>
                 <span class="swatch-name">Obsidian</span>
-                <span class="swatch-lock hidden">&#128274; Level 43</span>
+                <span class="swatch-lock hidden">&#128274; Level 80</span>
+              </button>
+              <button class="theme-swatch" data-theme="phantom">
+                <span class="swatch-color" style="background: linear-gradient(135deg, #40b0a8, #2c3040, #101218)"></span>
+                <span class="swatch-name">Phantom</span>
+                <span class="swatch-lock hidden">&#128274; Level 83</span>
               </button>
               <button class="theme-swatch" data-theme="matrix">
                 <span class="swatch-color" style="background: #000; border: 1px solid #0a0"></span>
                 <span class="swatch-name">Matrix</span>
-                <span class="swatch-lock hidden">&#128274; Level 44</span>
+                <span class="swatch-lock hidden">&#128274; Level 86</span>
               </button>
-              <button class="theme-swatch" data-theme="inferno">
-                <span class="swatch-color" style="background: linear-gradient(135deg, #2a0a00, #8b2500)"></span>
-                <span class="swatch-name">Inferno</span>
-                <span class="swatch-lock hidden">&#128274; Level 46</span>
-              </button>
-              <button class="theme-swatch" data-theme="celestial">
-                <span class="swatch-color" style="background: linear-gradient(135deg, #0a0a2e, #1a1a4e); border: 1px solid #c8a030"></span>
-                <span class="swatch-name">Celestial</span>
-                <span class="swatch-lock hidden">&#128274; Level 48</span>
+              <button class="theme-swatch" data-theme="solar">
+                <span class="swatch-color" style="background: linear-gradient(135deg, #e8c850, #d8a028, #fdf8ec)"></span>
+                <span class="swatch-name">Solar</span>
+                <span class="swatch-lock hidden">&#128274; Level 88</span>
               </button>
               <button class="theme-swatch" data-theme="bloodmoon">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #0c0204, #3a0810)"></span>
                 <span class="swatch-name">Blood Moon</span>
-                <span class="swatch-lock hidden">&#128274; Level 45</span>
+                <span class="swatch-lock hidden">&#128274; Level 90</span>
+              </button>
+              <button class="theme-swatch" data-theme="inferno">
+                <span class="swatch-color" style="background: linear-gradient(135deg, #2a0a00, #8b2500)"></span>
+                <span class="swatch-name">Inferno</span>
+                <span class="swatch-lock hidden">&#128274; Level 92</span>
               </button>
               <button class="theme-swatch" data-theme="synthwave">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #0a0020, #2a0860, #ff2090)"></span>
                 <span class="swatch-name">Synthwave</span>
-                <span class="swatch-lock hidden">&#128274; Level 47</span>
+                <span class="swatch-lock hidden">&#128274; Level 94</span>
+              </button>
+              <button class="theme-swatch" data-theme="celestial">
+                <span class="swatch-color" style="background: linear-gradient(135deg, #0a0a2e, #1a1a4e); border: 1px solid #c8a030"></span>
+                <span class="swatch-name">Celestial</span>
+                <span class="swatch-lock hidden">&#128274; Level 96</span>
               </button>
               <button class="theme-swatch" data-theme="supernova">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #ff3300, #ff8800, #ffcc00)"></span>
                 <span class="swatch-name">Supernova</span>
-                <span class="swatch-lock hidden">&#128274; Level 49</span>
+                <span class="swatch-lock hidden">&#128274; Level 98</span>
               </button>
               <button class="theme-swatch" data-theme="legendary">
                 <span class="swatch-color" style="background: linear-gradient(135deg, #140a22, #ffc830, #b060ff)"></span>
                 <span class="swatch-name">Legendary</span>
-                <span class="swatch-lock hidden">&#128274; Level 50</span>
+                <span class="swatch-lock hidden">&#128274; Level 100</span>
               </button>
             </div>
             <button id="toggle-locked-themes" class="toggle-locked-btn hidden">
@@ -488,8 +549,12 @@
         <div id="share-card-preview" class="share-card-preview hidden">
           <div id="share-card-grid" class="share-card-grid"></div>
         </div>
+        <div id="gameover-analysis" class="gameover-analysis hidden">
+          <span id="gameover-analysis-text"></span>
+        </div>
         <div class="gameover-actions">
           <button id="gameover-retry" class="action-btn">Play Again</button>
+          <button id="gameover-explore" class="action-btn hidden">Explore Board</button>
           <button id="gameover-nextlevel" class="action-btn primary hidden">Next Level</button>
           <div id="daily-submit-form" class="daily-submit-form hidden">
             <input id="daily-name-input" type="text" placeholder="Your name" maxlength="20" class="daily-name-input" autocomplete="off">
@@ -498,6 +563,10 @@
           <button id="gameover-share" class="action-btn share-btn hidden">📋 Share</button>
         </div>
       </div>
+    </div>
+
+    <div id="post-death-bar" class="post-death-bar hidden">
+      <button id="post-death-replay" class="action-btn primary">Play Again</button>
     </div>
 
     <div id="toast-container" class="toast-container"></div>
@@ -534,7 +603,7 @@
     </div>
   </div>
 
-  <script type="module" src="src/main.js?v=0.8"></script>
+  <script type="module" src="src/main.js?v=0.9"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js').catch(() => {});

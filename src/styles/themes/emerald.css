@@ -1,0 +1,47 @@
+/* Emerald theme — rich greens and teals, jewel tones, lush and vibrant */
+[data-theme="emerald"] {
+  --color-bg: #081c14;
+  --color-app-bg: #04140c;
+  --color-cell-hidden: #18603c;
+  --color-cell-hidden-hover: #1e7048;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #1c6842, #146038);
+  --color-cell-revealed: #0c2418;
+  --color-cell-border-light: #28905c;
+  --color-cell-border-dark: #061208;
+  --color-mine: #40d890;
+  --color-mine-hit: #20ff88;
+  --color-flag: #50e8a0;
+  --color-text: #c8f0dc;
+  --color-text-secondary: #60a880;
+  --color-num-1: #40c888;
+  --color-num-2: #68e0a0;
+  --color-num-3: #e06860;
+  --color-num-4: #60a0c8;
+  --color-num-5: #c87050;
+  --color-num-6: #30b878;
+  --color-num-7: #c8f0dc;
+  --color-num-8: #487860;
+  --color-header-bg: #081c14;
+  --color-header-gradient: linear-gradient(180deg, #102c1e, #081c14);
+  --color-lcd-bg: #041008;
+  --color-lcd-text: #30c878;
+  --color-modal-bg: #0c2418;
+  --color-modal-overlay: rgba(2, 8, 4, 0.9);
+  --color-btn-bg: #18603c;
+  --color-btn-hover: #1e7048;
+  --color-btn-gradient: linear-gradient(180deg, #1e7048, #18603c);
+  --color-border: #28905c;
+  --color-fog: rgba(2, 8, 4, 0.94);
+  --color-scan-highlight: rgba(80, 232, 160, 0.15);
+  --color-golden: #d0c850;
+  --color-accent: #30c878;
+  --color-accent-hover: #28b868;
+  --color-accent-glow: rgba(48, 200, 120, 0.3);
+  --color-win: #50e8a0;
+  --color-loss: #e04848;
+  --color-surface: rgba(48, 200, 120, 0.04);
+  --shadow-app: 0 8px 40px rgba(2, 8, 4, 0.6), inset 0 1px 0 rgba(48, 200, 120, 0.06);
+  --text-shadow-lcd: 0 0 10px rgba(48, 200, 120, 0.5);
+  --text-shadow-title: 0 0 14px rgba(40, 184, 104, 0.4);
+  --bg-modal-close-hover: rgba(48, 200, 120, 0.12);
+}

@@ -1,0 +1,476 @@
+import { state, ENCOURAGEMENT_LINES } from '../state/gameState.js?v=0.9';
+import { $, $$, boardEl, resetBtn, scanToast } from '../ui/domHelpers.js?v=0.9';
+import { getThemeEmoji, updateAllCells } from '../ui/boardRenderer.js?v=0.9';
+import { updateHeader, updateStreakBorder, updateCheckpointDisplay } from '../ui/headerRenderer.js?v=0.9';
+import { updatePowerUpBar } from '../ui/powerUpBar.js?v=0.9';
+import { showModal } from '../ui/modalManager.js?v=0.9';
+import {
+  triggerHeavyShake, showRedFlash, showGreenFlash,
+  haptic, chainRevealMines, showCelebration, showConfettiBurst,
+} from '../ui/effectsRenderer.js?v=0.9';
+import { showToast } from '../ui/toastManager.js?v=0.9';
+import { stopTimer } from './timerManager.js?v=0.9';
+import { awardPowerUps } from './powerUpActions.js?v=0.9';
+import { setHandleWin } from './powerUpActions.js?v=0.9';
+import { defuseMine } from '../logic/powerUps.js?v=0.9';
+import { findNextSafeMove } from '../logic/boardSolver.js?v=0.9';
+import { getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL } from '../logic/difficulty.js?v=0.9';
+import {
+  loadStats, saveGameResult, saveModePowerUps, clearGameState,
+} from '../storage/statsStorage.js?v=0.9';
+import {
+  playExplosion, playWin, playTimeRecord,
+} from '../audio/sounds.js?v=0.9';
+import {
+  checkNewUnlocks, getHighestTier, getTotalScore,
+  getAchievementState, getAllTierNames, getTierIcon, getTierColor,
+} from '../logic/achievements.js?v=0.9';
+import { checkThemeUnlocks, showThemeUnlockToasts } from '../ui/themeManager.js?v=0.9';
+
+// ── Achievements Display (for game over) ───────────────
+
+function showAchievementToasts(unlocks) {
+  const toast = $('#achievement-toast');
+  let index = 0;
+
+  function showNext() {
+    if (index >= unlocks.length) return;
+    const unlock = unlocks[index];
+    toast.querySelector('.achievement-toast-icon').textContent = unlock.categoryIcon;
+    toast.querySelector('.achievement-toast-title').textContent = 'Achievement Unlocked!';
+    toast.querySelector('.achievement-toast-name').textContent =
+      `${unlock.category} — ${unlock.tier.charAt(0).toUpperCase() + unlock.tier.slice(1)} ${unlock.tierIcon}`;
+    toast.classList.remove('hidden', 'hiding');
+
+    setTimeout(() => {
+      toast.classList.add('hiding');
+      setTimeout(() => {
+        toast.classList.add('hidden');
+        toast.classList.remove('hiding');
+        index++;
+        if (index < unlocks.length) {
+          setTimeout(showNext, 200);
+        }
+      }, 300);
+    }, 2500);
+  }
+
+  // Delay first toast slightly to let game over show first
+  setTimeout(showNext, 600);
+}
+
+// ── Share Card Preview ─────────────────────────────────
+
+function renderShareCardPreview() {
+  const preview = $('#share-card-preview');
+  const grid = $('#share-card-grid');
+  if (!preview || !grid) return;
+
+  const totalCells = state.rows * state.cols;
+  const mines = state.totalMines;
+  const revealed = state.revealedCount;
+  const unrevealed = totalCells - revealed - mines;
+
+  const cells = [];
+  for (let i = 0; i < mines; i++) cells.push('mine');
+  for (let i = 0; i < revealed; i++) cells.push('safe');
+  for (let i = 0; i < unrevealed; i++) cells.push('empty');
+
+  // Shuffle (Fisher-Yates)
+  for (let i = cells.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [cells[i], cells[j]] = [cells[j], cells[i]];
+  }
+
+  grid.innerHTML = '';
+  grid.style.gridTemplateColumns = `repeat(${state.cols}, 10px)`;
+  cells.slice(0, state.rows * state.cols).forEach(type => {
+    const cell = document.createElement('div');
+    cell.className = `share-card-cell ${type}`;
+    grid.appendChild(cell);
+  });
+
+  preview.classList.remove('hidden');
+}
+
+// ── Handle Win ─────────────────────────────────────────
+
+export function handleWin() {
+  state.status = 'won';
+  stopTimer();
+  resetBtn.textContent = getThemeEmoji('smileyWin');
+  resetBtn.classList.add('smiley-win-bounce');
+  setTimeout(() => resetBtn.classList.remove('smiley-win-bounce'), 800);
+
+  const prevStats = loadStats();
+  const prevMaxLevel = prevStats.maxLevelReached || 1;
+
+  const isDaily = state.gameMode === 'daily';
+  const stats = saveGameResult(true, state.elapsedTime, state.currentLevel, {
+    isDaily,
+    usedPowerUps: state.usedPowerUps,
+    gameMode: state.gameMode,
+    hadGimmicks: state.activeGimmicks && state.activeGimmicks.length > 0,
+  });
+  const earnedPowerUp = awardPowerUps(stats);
+
+  // Persist power-ups after win (award changes them)
+  saveModePowerUps(state.gameMode, state.powerUps);
+
+  playWin();
+  showCelebration();
+  haptic([50, 30, 50, 30, 80]);
+
+  // Check for newly unlocked themes
+  const newThemes = checkThemeUnlocks(prevMaxLevel, stats.maxLevelReached || 1);
+  if (newThemes.length > 0) {
+    showThemeUnlockToasts(newThemes);
+  }
+
+  // Check for newly unlocked achievement tiers
+  const newUnlocks = checkNewUnlocks(prevStats, stats);
+
+  const gameoverTitle = $('#gameover-title');
+  const gameoverTime = $('#gameover-time');
+  const gameoverRecord = $('#gameover-record');
+  const nextLevelBtn = $('#gameover-nextlevel');
+  const powerupEarned = $('#gameover-powerup-earned');
+  const shareBtn = $('#gameover-share');
+  const achievementsDiv = $('#gameover-achievements');
+
+  gameoverTitle.textContent = 'You Win!';
+  // Win title bounce animation
+  gameoverTitle.classList.remove('win-title-bounce');
+  void gameoverTitle.offsetWidth;
+  gameoverTitle.classList.add('win-title-bounce');
+  setTimeout(() => gameoverTitle.classList.remove('win-title-bounce'), 700);
+
+  const strikesInfo = state.gameMode === 'daily' && state.dailyBombHits > 0
+    ? ` | 💥 ${state.dailyBombHits} strike${state.dailyBombHits !== 1 ? 's' : ''}`
+    : '';
+
+  // Timed mode: show speed rating
+  if (state.gameMode === 'timed') {
+    const rating = getSpeedRating(state.currentLevel, state.elapsedTime);
+    gameoverTime.textContent = `Time: ${state.elapsedTime}s — ${rating.icon} ${rating.name}!`;
+  } else {
+    gameoverTime.textContent = `Time: ${state.elapsedTime}s${strikesInfo}`;
+  }
+
+  // Stats cascade animation on time display
+  gameoverTime.classList.remove('stats-cascade');
+  void gameoverTime.offsetWidth;
+  gameoverTime.classList.add('stats-cascade');
+  gameoverTime.style.animationDelay = '0.1s';
+  setTimeout(() => gameoverTime.classList.remove('stats-cascade'), 500);
+
+  const bestKey = `level${state.currentLevel}`;
+  const isNewRecord = stats.bestTimes[bestKey] === state.elapsedTime;
+  if (isNewRecord) {
+    if (state.gameMode === 'timed') {
+      const rating = getSpeedRating(state.currentLevel, state.elapsedTime);
+      gameoverRecord.textContent = `🏆 New Record: ${state.elapsedTime}s ${rating.icon}`;
+    } else {
+      gameoverRecord.textContent = '🎉 New Record!';
+    }
+    gameoverRecord.classList.remove('hidden');
+
+    // Extra celebration for timed mode records
+    if (state.gameMode === 'timed') {
+      playTimeRecord();
+      setTimeout(() => showConfettiBurst(0.5, 0.3, 40), 200);
+      setTimeout(() => showConfettiBurst(0.3, 0.5, 30), 500);
+      setTimeout(() => showConfettiBurst(0.7, 0.5, 30), 800);
+    }
+  } else {
+    gameoverRecord.classList.add('hidden');
+  }
+
+  if (earnedPowerUp) {
+    powerupEarned.textContent = `Earned: ${earnedPowerUp}`;
+    powerupEarned.classList.remove('hidden');
+    // Animate power-up buttons with earned bounce
+    setTimeout(() => {
+      for (const btn of $$('.powerup-btn')) {
+        const count = state.powerUps[btn.dataset.powerup] || 0;
+        if (count > 0) {
+          btn.classList.add('powerup-earned');
+          setTimeout(() => btn.classList.remove('powerup-earned'), 600);
+        }
+      }
+    }, 300);
+  } else {
+    powerupEarned.classList.add('hidden');
+  }
+
+  // Hide loss-specific elements
+  const encouragementEl = $('#gameover-encouragement');
+  if (encouragementEl) encouragementEl.classList.add('hidden');
+  const analysisEl = $('#gameover-analysis');
+  if (analysisEl) analysisEl.classList.add('hidden');
+  const exploreBtn = $('#gameover-explore');
+  if (exploreBtn) exploreBtn.classList.add('hidden');
+
+  // Show visual share card (scrambled grid)
+  renderShareCardPreview();
+
+  // Show newly unlocked achievement tiers in game over
+  if (newUnlocks.length > 0) {
+    achievementsDiv.innerHTML = '';
+    for (const unlock of newUnlocks) {
+      const badge = document.createElement('div');
+      badge.className = 'gameover-achievement-badge tier-up-badge';
+      badge.innerHTML = `<span>${unlock.categoryIcon}</span><span>${unlock.category} ${unlock.tierIcon} ${unlock.tier.charAt(0).toUpperCase() + unlock.tier.slice(1)}</span>`;
+      achievementsDiv.appendChild(badge);
+    }
+    achievementsDiv.classList.remove('hidden');
+
+    // Show achievement toasts
+    showAchievementToasts(newUnlocks);
+  } else {
+    achievementsDiv.classList.add('hidden');
+  }
+
+  const maxLevel = state.gameMode === 'timed' ? MAX_TIMED_LEVEL : MAX_LEVEL;
+  if (state.currentLevel < maxLevel && state.gameMode !== 'daily') {
+    nextLevelBtn.classList.remove('hidden');
+  } else {
+    nextLevelBtn.classList.add('hidden');
+  }
+
+  const dailySubmitForm = $('#daily-submit-form');
+  if (isDaily && dailySubmitForm) {
+    dailySubmitForm.classList.remove('hidden');
+    const nameInput = $('#daily-name-input');
+    if (nameInput) nameInput.value = '';
+  } else if (dailySubmitForm) {
+    dailySubmitForm.classList.add('hidden');
+  }
+
+  // Always show share button on win
+  shareBtn.classList.remove('hidden');
+
+  // Clear saved game state on win
+  clearGameState(state.gameMode);
+
+  showModal('gameover-overlay');
+  updatePowerUpBar();
+  updateStreakBorder();
+}
+
+// Register handleWin with powerUpActions to break circular dependency
+setHandleWin(handleWin);
+
+// ── Handle Loss ────────────────────────────────────────
+
+export function handleLoss(mineRow, mineCol) {
+  state.status = 'lost';
+  stopTimer();
+  resetBtn.textContent = getThemeEmoji('smileyLoss');
+  resetBtn.classList.add('smiley-loss-shake');
+  setTimeout(() => resetBtn.classList.remove('smiley-loss-shake'), 500);
+
+  state.hitMine = { row: mineRow, col: mineCol };
+
+  // Post-death analysis: mark wrong flags and find suggested safe move
+  let wrongFlagCount = 0;
+  for (let r = 0; r < state.rows; r++) {
+    for (let c = 0; c < state.cols; c++) {
+      const cell = state.board[r][c];
+      if (cell.isFlagged && !cell.isMine) {
+        cell.wrongFlag = true;
+        wrongFlagCount++;
+      }
+    }
+  }
+
+  // Find what the solver says was the correct next move
+  const suggestedMove = findNextSafeMove(state.board);
+  state.suggestedMove = suggestedMove;
+  if (suggestedMove) {
+    const cell = state.board[suggestedMove.row]?.[suggestedMove.col];
+    if (cell) cell.suggestedMove = true;
+  }
+
+  // Chain explosion: reveal mines in expanding rings from the hit
+  chainRevealMines(mineRow, mineCol);
+
+  playExplosion();
+  triggerHeavyShake();
+  showRedFlash();
+  haptic([100, 40, 100, 40, 200]);
+  saveGameResult(false, state.elapsedTime, state.currentLevel, { gameMode: state.gameMode });
+
+  // Power-ups persist on loss within same mode
+  saveModePowerUps(state.gameMode, state.powerUps);
+
+  // Death penalty: checkpoint-aware
+  const lostLevel = state.currentLevel;
+  const isLevelMode = state.gameMode === 'normal' || state.gameMode === 'fogOfWar';
+
+  // Reset to last checkpoint
+  if (isLevelMode && state.currentLevel > 1) {
+    state.currentLevel = state.checkpoint || 1;
+  }
+
+  const gameoverTitle = $('#gameover-title');
+  const gameoverTime = $('#gameover-time');
+  const encouragementEl = $('#gameover-encouragement');
+
+  gameoverTitle.textContent = 'Game Over';
+  gameoverTitle.classList.remove('win-title-bounce');
+  void gameoverTitle.offsetWidth;
+  gameoverTitle.classList.add('win-title-bounce');
+  setTimeout(() => gameoverTitle.classList.remove('win-title-bounce'), 700);
+
+  if (lostLevel > state.currentLevel && isLevelMode) {
+    gameoverTime.textContent = `Time: ${state.elapsedTime}s · Back to Level ${state.currentLevel}`;
+  } else {
+    gameoverTime.textContent = `Time: ${state.elapsedTime}s`;
+  }
+
+  // Show encouragement line
+  if (encouragementEl) {
+    const line = ENCOURAGEMENT_LINES[Math.floor(Math.random() * ENCOURAGEMENT_LINES.length)];
+    encouragementEl.textContent = line;
+    encouragementEl.classList.remove('hidden');
+  }
+
+  // Stats cascade on loss
+  gameoverTime.classList.remove('stats-cascade');
+  void gameoverTime.offsetWidth;
+  gameoverTime.classList.add('stats-cascade');
+  gameoverTime.style.animationDelay = '0.1s';
+  setTimeout(() => gameoverTime.classList.remove('stats-cascade'), 500);
+  $('#gameover-record').classList.add('hidden');
+  $('#gameover-nextlevel').classList.add('hidden');
+  const dailySubmitForm = $('#daily-submit-form');
+  if (dailySubmitForm) dailySubmitForm.classList.add('hidden');
+  $('#gameover-powerup-earned').classList.add('hidden');
+  $('#gameover-share').classList.add('hidden');
+  $('#gameover-achievements').classList.add('hidden');
+  const sharePreview = $('#share-card-preview');
+  if (sharePreview) sharePreview.classList.add('hidden');
+
+  // Show post-death analysis info
+  const analysisEl = $('#gameover-analysis');
+  const analysisText = $('#gameover-analysis-text');
+  if (analysisEl && analysisText) {
+    if (wrongFlagCount > 0 && suggestedMove) {
+      analysisText.textContent = `${wrongFlagCount} wrong flag${wrongFlagCount > 1 ? 's' : ''} · Safe move available`;
+    } else if (wrongFlagCount > 0) {
+      analysisText.textContent = `${wrongFlagCount} wrong flag${wrongFlagCount > 1 ? 's' : ''} · It was a 50/50`;
+    } else if (suggestedMove) {
+      analysisText.textContent = 'A safe move was available';
+    } else {
+      analysisText.textContent = 'It was a genuine 50/50';
+    }
+    analysisEl.classList.remove('hidden');
+  }
+
+  // Show explore button on loss
+  const exploreBtn = $('#gameover-explore');
+  if (exploreBtn) exploreBtn.classList.remove('hidden');
+
+  // Clear saved game state on loss
+  clearGameState(state.gameMode);
+
+  setTimeout(() => showModal('gameover-overlay'), 900);
+  updatePowerUpBar();
+  updateStreakBorder();
+  updateCheckpointDisplay();
+}
+
+// ── Handle Timed Loss ──────────────────────────────────
+
+export function handleTimedLoss() {
+  state.status = 'lost';
+  stopTimer();
+  resetBtn.textContent = getThemeEmoji('smileyLoss');
+  resetBtn.classList.add('smiley-loss-shake');
+  setTimeout(() => resetBtn.classList.remove('smiley-loss-shake'), 500);
+  playExplosion();
+  triggerHeavyShake();
+  showRedFlash();
+  haptic([100, 40, 100, 40, 200]);
+  saveGameResult(false, state.elapsedTime, state.currentLevel, { gameMode: state.gameMode });
+  saveModePowerUps(state.gameMode, state.powerUps);
+
+  // Death penalty: reset to last checkpoint
+  const lostLevel = state.currentLevel;
+  if (state.gameMode === 'normal' && state.currentLevel > 1) {
+    state.currentLevel = state.checkpoint || 1;
+  }
+
+  const gameoverTitle = $('#gameover-title');
+  const gameoverTime = $('#gameover-time');
+  gameoverTitle.textContent = 'Time\'s Up!';
+  if (lostLevel > state.currentLevel && state.gameMode === 'normal') {
+    gameoverTime.textContent = `You ran out of time! Back to Level ${state.currentLevel}`;
+  } else {
+    gameoverTime.textContent = `You ran out of time!`;
+  }
+  $('#gameover-record').classList.add('hidden');
+  $('#gameover-nextlevel').classList.add('hidden');
+  const dailySubmitForm2 = $('#daily-submit-form');
+  if (dailySubmitForm2) dailySubmitForm2.classList.add('hidden');
+  $('#gameover-powerup-earned').classList.add('hidden');
+  $('#gameover-share').classList.add('hidden');
+  $('#gameover-achievements').classList.add('hidden');
+  const sharePreview2 = $('#share-card-preview');
+  if (sharePreview2) sharePreview2.classList.add('hidden');
+
+  // Encouragement line
+  const encouragement2 = $('#gameover-encouragement');
+  if (encouragement2) {
+    encouragement2.textContent = ENCOURAGEMENT_LINES[Math.floor(Math.random() * ENCOURAGEMENT_LINES.length)];
+    encouragement2.classList.remove('hidden');
+  }
+
+  // Clear saved game state
+  clearGameState(state.gameMode);
+
+  setTimeout(() => showModal('gameover-overlay'), 400);
+  updatePowerUpBar();
+  updateStreakBorder();
+}
+
+// ── Daily Mode: Bomb Hit Re-Fog ─────────────────────────
+
+export function handleDailyBombHit(mineRow, mineCol) {
+  state.dailyBombHits++;
+
+  // Defuse the hit mine so it won't kill again
+  defuseMine(state.board, mineRow, mineCol);
+  state.board[mineRow][mineCol].isRevealed = true;
+  state.totalMines--;
+
+  // Re-fog ALL non-mine revealed cells
+  let refogCount = 0;
+  for (let r = 0; r < state.rows; r++) {
+    for (let c = 0; c < state.cols; c++) {
+      const cell = state.board[r][c];
+      if (cell.isRevealed && !cell.isMine && !(r === mineRow && c === mineCol)) {
+        cell.isRevealed = false;
+        cell.isHiddenNumber = false;
+        refogCount++;
+      }
+    }
+  }
+  state.revealedCount = 1; // only the defused mine cell remains revealed
+
+  // Shake + muffled explosion effect
+  playExplosion();
+  triggerHeavyShake();
+  showRedFlash();
+  haptic([80, 30, 60]);
+
+  // Show strike toast
+  const strikes = state.dailyBombHits;
+  scanToast.textContent = `💥 Strike ${strikes} — Board re-fogged!`;
+  scanToast.classList.remove('hidden');
+  setTimeout(() => scanToast.classList.add('hidden'), 2500);
+
+  updateAllCells();
+  updateHeader();
+}

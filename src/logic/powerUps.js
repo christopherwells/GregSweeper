@@ -67,7 +67,78 @@ function recalcAreaAdjacency(board, centerRow, centerCol) {
   }
 }
 
-// ── New Power-Ups (Challenge Mode) ────────────────────
+// ── Magnet Power-Up ──────────────────────────────────
+
+export function magnetPull(board, centerRow, centerCol) {
+  const rows = board.length;
+  const cols = board[0].length;
+  const movedMines = [];
+
+  // Find mines in the 3x3 area
+  const minesInArea = [];
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      const nr = centerRow + dr;
+      const nc = centerCol + dc;
+      if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+        if (board[nr][nc].isMine && !board[nr][nc].isFlagged && !board[nr][nc].isRevealed) {
+          minesInArea.push({ row: nr, col: nc });
+        }
+      }
+    }
+  }
+
+  if (minesInArea.length === 0) return { movedMines: [], affectedArea: [] };
+
+  // Find destinations: unrevealed non-mine non-flagged cells outside 3x3, prefer edges
+  const candidates = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (Math.abs(r - centerRow) <= 1 && Math.abs(c - centerCol) <= 1) continue;
+      if (board[r][c].isMine || board[r][c].isRevealed || board[r][c].isFlagged) continue;
+      const edgeScore = (r === 0 || r === rows - 1 ? 1 : 0) + (c === 0 || c === cols - 1 ? 1 : 0);
+      candidates.push({ row: r, col: c, score: edgeScore });
+    }
+  }
+  candidates.sort((a, b) => b.score - a.score);
+
+  // Relocate mines
+  for (let i = 0; i < minesInArea.length && i < candidates.length; i++) {
+    const from = minesInArea[i];
+    const to = candidates[i];
+    board[from.row][from.col].isMine = false;
+    board[to.row][to.col].isMine = true;
+    movedMines.push({ from, to });
+  }
+
+  // Full adjacency recalculation
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (board[r][c].isMine) { board[r][c].adjacentMines = 0; continue; }
+      let count = 0;
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue;
+          const nr = r + dr, nc = c + dc;
+          if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && board[nr][nc].isMine) count++;
+        }
+      }
+      board[r][c].adjacentMines = count;
+    }
+  }
+
+  const affectedArea = [];
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      const nr = centerRow + dr, nc = centerCol + dc;
+      if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) affectedArea.push({ row: nr, col: nc });
+    }
+  }
+
+  return { movedMines, affectedArea };
+}
+
+// ── X-Ray Power-Up ────────────────────────────────────
 
 /**
  * X-Ray Scan: Returns mine positions in a 5×5 area around (row, col).

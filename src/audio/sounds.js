@@ -119,12 +119,34 @@ export function playLevelUp() {
 
 // ── Dedicated Power-Up Sounds ────────────────────────
 
-export function playFreeze() {
-  // Crystalline descending shimmer
+export function playLifelineSave() {
+  // Dramatic rescue — ascending chord burst
+  vibrate([50, 30, 80]);
   if (muted) return;
-  playTone(1200, 0.15, 'sine', 0.08);
-  setTimeout(() => playTone(900, 0.15, 'sine', 0.06), 60);
-  setTimeout(() => playTone(1400, 0.2, 'sine', 0.05), 120);
+  playTone(400, 0.15, 'triangle', 0.1);
+  setTimeout(() => playTone(600, 0.15, 'triangle', 0.1), 80);
+  setTimeout(() => playTone(800, 0.2, 'sine', 0.08), 160);
+  setTimeout(() => playTone(1200, 0.25, 'sine', 0.06), 240);
+}
+
+export function playMagnet() {
+  // Magnetic hum — low pulse with ascending sweep
+  vibrate([30, 20, 60]);
+  if (muted) return;
+  resumeCtx();
+  const ctx = getCtx();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(100, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.3);
+  gain.gain.setValueAtTime(0.08, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(ctx.currentTime);
+  osc.stop(ctx.currentTime + 0.4);
+  setTimeout(() => playTone(600, 0.1, 'sine', 0.06), 250);
 }
 
 export function playXRay() {
@@ -145,13 +167,6 @@ export function playXRay() {
   osc.stop(ctx.currentTime + 0.4);
 }
 
-export function playDecode() {
-  // Quick cascading reveal
-  if (muted) return;
-  playTone(500, 0.06, 'triangle', 0.08);
-  setTimeout(() => playTone(700, 0.06, 'triangle', 0.06), 40);
-  setTimeout(() => playTone(900, 0.08, 'triangle', 0.05), 80);
-}
 
 export function playTimeRecord() {
   // Triumphant fanfare

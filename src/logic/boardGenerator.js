@@ -1,4 +1,4 @@
-import { isBoardSolvable } from './boardSolver.js';
+import { isBoardSolvable } from './boardSolver.js?v=0.9';
 
 export function createEmptyBoard(rows, cols) {
   const board = [];
@@ -70,9 +70,6 @@ export function calculateAdjacency(board) {
 }
 
 // ── Anti-Zero-Cluster Redistribution ──────────────────
-// Finds connected zero-cell clusters via BFS.
-// If any cluster exceeds maxZeroCluster, relocates mines from
-// dense areas into the zero region to break it up.
 
 function findZeroClusters(board) {
   const rows = board.length;
@@ -86,7 +83,6 @@ function findZeroClusters(board) {
       if (visited.has(key)) continue;
       if (board[r][c].isMine || board[r][c].adjacentMines !== 0) continue;
 
-      // BFS to find connected zero cells
       const cluster = [];
       const queue = [{ row: r, col: c }];
       visited.add(key);
@@ -131,31 +127,22 @@ function redistributeMines(board, maxZeroCluster, excludeRow, excludeCol, rng = 
     if (oversized.length === 0) break;
 
     for (const cluster of oversized) {
-      // Pick a cell near the center of the cluster to place a mine nearby
-      const center = cluster[Math.floor(cluster.length / 2)];
-
-      // Find a non-mine cell within/adjacent to the cluster to place a mine
       const candidates = [];
       for (const cell of cluster) {
-        // The zero-cell itself is a candidate (will split the cluster)
         if (Math.abs(cell.row - excludeRow) <= 1 && Math.abs(cell.col - excludeCol) <= 1) continue;
         candidates.push(cell);
       }
 
       if (candidates.length === 0) continue;
 
-      // Pick a random candidate from the cluster interior
       const target = candidates[Math.floor(rng() * candidates.length)];
 
-      // Find a mine from a "dense" area (cells with 3+ adjacent mines around it)
-      // to relocate into the cluster
       let sourceMine = null;
       const mineList = [];
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           if (board[r][c].isMine) {
             if (Math.abs(r - excludeRow) <= 1 && Math.abs(c - excludeCol) <= 1) continue;
-            // Count how many adjacent mines this mine has
             let adjMines = 0;
             for (let dr = -1; dr <= 1; dr++) {
               for (let dc = -1; dc <= 1; dc++) {
@@ -172,51 +159,119 @@ function redistributeMines(board, maxZeroCluster, excludeRow, excludeCol, rng = 
         }
       }
 
-      // Sort by density (most adjacent mines first) — relocate from dense areas
       mineList.sort((a, b) => b.adjMines - a.adjMines);
       if (mineList.length > 0) {
         sourceMine = mineList[0];
       }
 
       if (sourceMine) {
-        // Move the mine: remove from source, place at target
         board[sourceMine.row][sourceMine.col].isMine = false;
         board[target.row][target.col].isMine = true;
-
-        // Recalculate adjacency for the whole board
         calculateAdjacency(board);
       }
     }
   }
 }
 
+// ── Smarter retry: swap 1-3 mine positions instead of full regeneration ──
+
+function swapMines(board, swapCount, excludeRow, excludeCol, rng) {
+  const rows = board.length;
+  const cols = board[0].length;
+
+  const mines = [];
+  const safeCells = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (Math.abs(r - excludeRow) <= 1 && Math.abs(c - excludeCol) <= 1) continue;
+      if (board[r][c].isMine) mines.push({ row: r, col: c });
+      else safeCells.push({ row: r, col: c });
+    }
+  }
+
+  const swaps = Math.min(swapCount, mines.length, safeCells.length);
+  for (let i = 0; i < swaps; i++) {
+    const mi = Math.floor(rng() * mines.length);
+    const si = Math.floor(rng() * safeCells.length);
+    const mine = mines[mi];
+    const safe = safeCells[si];
+
+    board[mine.row][mine.col].isMine = false;
+    board[safe.row][safe.col].isMine = true;
+
+    mines[mi] = safe;
+    safeCells[si] = mine;
+  }
+
+  calculateAdjacency(board);
+}
+
 export function generateBoard(rows, cols, mines, excludeRow, excludeCol, rng, options = {}) {
-  const maxSolveAttempts = 50;
+  // Scale attempts based on mine density — higher density needs more tries
+  const density = mines / (rows * cols);
+  const maxSolveAttempts = density > 0.30 ? 200 : density > 0.25 ? 100 : 50;
+
+  // Accept boards with a small number of remaining unknowns.
+  // Higher density boards get more leeway since fully solvable boards
+  // become mathematically rare above ~30% density.
+  const maxAcceptableUnknowns = density > 0.35 ? 6 : density > 0.30 ? 4 : 2;
+
+  let bestBoard = null;
+  let bestUnknowns = Infinity;
 
   for (let attempt = 0; attempt < maxSolveAttempts; attempt++) {
-    const board = createEmptyBoard(rows, cols);
-    placeMines(board, mines, excludeRow, excludeCol, rng);
-    calculateAdjacency(board);
+    let board;
+
+    if (attempt === 0 || attempt % 5 === 0) {
+      // Full random generation every 5th attempt
+      board = createEmptyBoard(rows, cols);
+      placeMines(board, mines, excludeRow, excludeCol, rng);
+      calculateAdjacency(board);
+    } else if (bestBoard) {
+      // Smarter retry: clone best board and swap 1-3 mines
+      board = createEmptyBoard(rows, cols);
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          board[r][c].isMine = bestBoard[r][c].isMine;
+          board[r][c].adjacentMines = bestBoard[r][c].adjacentMines;
+        }
+      }
+      const swapCount = 1 + Math.floor(rng() * 3);
+      swapMines(board, swapCount, excludeRow, excludeCol, rng);
+    } else {
+      board = createEmptyBoard(rows, cols);
+      placeMines(board, mines, excludeRow, excludeCol, rng);
+      calculateAdjacency(board);
+    }
 
     // Anti-zero-cluster redistribution
     if (options.maxZeroCluster && options.maxZeroCluster < Infinity) {
       redistributeMines(board, options.maxZeroCluster, excludeRow, excludeCol, rng || Math.random);
     }
 
-    // Check solvability — skip on last attempt (accept whatever we have)
-    if (attempt < maxSolveAttempts - 1 &&
-        !isBoardSolvable(board, rows, cols, excludeRow, excludeCol)) {
-      // Advance RNG state so the next attempt produces a different layout
-      if (rng) rng();
-      continue;
+    const result = isBoardSolvable(board, rows, cols, excludeRow, excludeCol);
+
+    if (result.solvable) {
+      return board;
     }
 
-    return board;
+    if (result.remainingUnknowns < bestUnknowns) {
+      bestUnknowns = result.remainingUnknowns;
+      bestBoard = board;
+    }
+
+    if (result.remainingUnknowns <= maxAcceptableUnknowns) {
+      return board;
+    }
+
+    if (rng) rng();
   }
 
-  // Fallback — should not reach here, but just in case
-  const board = createEmptyBoard(rows, cols);
-  placeMines(board, mines, excludeRow, excludeCol, rng);
-  calculateAdjacency(board);
-  return board;
+  // Return best board found
+  return bestBoard || (() => {
+    const board = createEmptyBoard(rows, cols);
+    placeMines(board, mines, excludeRow, excludeCol, rng);
+    calculateAdjacency(board);
+    return board;
+  })();
 }

@@ -1,0 +1,47 @@
+/* Sakura theme — Japanese spring, soft pinks and whites, cherry blossom inspired */
+[data-theme="sakura"] {
+  --color-bg: #fdf0f4;
+  --color-app-bg: #fff5f8;
+  --color-cell-hidden: #f5c6d0;
+  --color-cell-hidden-hover: #f8d4dc;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #f8d0d8, #f0bcc8);
+  --color-cell-revealed: #fef8fa;
+  --color-cell-border-light: #fce0e8;
+  --color-cell-border-dark: #e0a8b8;
+  --color-mine: #d4506c;
+  --color-mine-hit: #c03050;
+  --color-flag: #e87090;
+  --color-text: #5c3040;
+  --color-text-secondary: #b07888;
+  --color-num-1: #c47090;
+  --color-num-2: #90a858;
+  --color-num-3: #d4506c;
+  --color-num-4: #8868a0;
+  --color-num-5: #c06040;
+  --color-num-6: #509088;
+  --color-num-7: #5c3040;
+  --color-num-8: #b0a0a8;
+  --color-header-bg: #fdf0f4;
+  --color-header-gradient: linear-gradient(180deg, #fff5f8, #fdf0f4);
+  --color-lcd-bg: #f8e4ec;
+  --color-lcd-text: #c04868;
+  --color-modal-bg: #fff2f6;
+  --color-modal-overlay: rgba(92, 48, 64, 0.3);
+  --color-btn-bg: #f5c6d0;
+  --color-btn-hover: #f8d4dc;
+  --color-btn-gradient: linear-gradient(180deg, #f8d4dc, #f5c6d0);
+  --color-border: #f0b8c8;
+  --color-fog: rgba(253, 240, 244, 0.93);
+  --color-scan-highlight: rgba(232, 112, 144, 0.15);
+  --color-golden: #e8a860;
+  --color-accent: #e87090;
+  --color-accent-hover: #d45878;
+  --color-accent-glow: rgba(232, 112, 144, 0.25);
+  --color-win: #90b858;
+  --color-loss: #c03050;
+  --color-surface: rgba(232, 112, 144, 0.04);
+  --shadow-app: 0 8px 40px rgba(92, 48, 64, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  --text-shadow-lcd: 0 0 10px rgba(192, 72, 104, 0.3);
+  --text-shadow-title: 0 0 14px rgba(232, 112, 144, 0.3);
+  --bg-modal-close-hover: rgba(232, 112, 144, 0.12);
+}

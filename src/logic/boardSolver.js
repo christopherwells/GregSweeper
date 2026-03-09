@@ -1,6 +1,13 @@
 // ── Solvability Checker ─────────────────────────────────────
-// Constraint-based solver that verifies a board can be completed
-// without guessing, using only logical deduction from the first click.
+// Multi-layer constraint solver that verifies a board can be completed
+// without guessing (or with at most minimal guessing).
+//
+// Layers:
+//   A. Simple constraint propagation (all-mine / all-safe rules)
+//   B. Pairwise subset/superset analysis
+//   C. Advanced solver (Gauss elimination + tank/partition enumeration)
+
+import { solveConstraints } from './constraintSolver.js?v=0.9';
 
 /**
  * Check if a Minesweeper board is solvable without guessing.
@@ -11,7 +18,7 @@
  * @param {number} cols                 - board width
  * @param {number} safeRow              - first click row
  * @param {number} safeCol              - first click column
- * @returns {boolean} true if every non-mine cell can be deduced
+ * @returns {{ solvable: boolean, remainingUnknowns: number }}
  */
 export function isBoardSolvable(board, rows, cols, safeRow, safeCol) {
   // Build a lightweight simulation grid:
@@ -37,27 +44,22 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol) {
   }
   let revealedCount = 0;
 
-  // Helper: get neighbor indices
-  function neighbors(r, c) {
-    const result = [];
-    for (let dr = -1; dr <= 1; dr++) {
-      for (let dc = -1; dc <= 1; dc++) {
-        if (dr === 0 && dc === 0) continue;
-        const nr = r + dr;
-        const nc = c + dc;
-        if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
-          result.push(idx(nr, nc));
-        }
-      }
-    }
-    return result;
-  }
-
   // Pre-compute neighbor lists for every cell
   const neighborCache = new Array(rows * cols);
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      neighborCache[idx(r, c)] = neighbors(r, c);
+      const nbrs = [];
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue;
+          const nr = r + dr;
+          const nc = c + dc;
+          if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+            nbrs.push(idx(nr, nc));
+          }
+        }
+      }
+      neighborCache[idx(r, c)] = nbrs;
     }
   }
 
@@ -68,7 +70,6 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol) {
     sim[i] = 1;
     revealedCount++;
     if (adjCount[i] === 0) {
-      // Flood-fill: queue all unrevealed neighbors
       for (const ni of neighborCache[i]) {
         if (sim[ni] === 0 && !isMine[ni]) {
           revealQueue.push(ni);
@@ -88,16 +89,15 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol) {
     revealCell(revealQueue.pop());
   }
 
-  if (revealedCount === totalSafe) return true;
+  if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0 };
 
-  // Step 2: Iterative constraint propagation with subset analysis
+  // Step 2: Iterative multi-layer constraint solving
   const MAX_ITERATIONS = 1000;
 
   for (let iter = 0; iter < MAX_ITERATIONS; iter++) {
     let progress = false;
 
     // ── Pass A: Simple constraint propagation ──
-    // For each revealed numbered cell, check its unrevealed neighbors.
     for (let i = 0; i < rows * cols; i++) {
       if (sim[i] !== 1 || adjCount[i] === 0) continue;
 
@@ -112,8 +112,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol) {
       const remaining = adjCount[i] - flagged;
 
       if (remaining < 0 || remaining > unknowns) {
-        // Inconsistent state — should not happen on a valid board
-        return false;
+        return { solvable: false, remainingUnknowns: totalSafe - revealedCount };
       }
 
       // Rule 1: All unknowns must be mines
@@ -134,39 +133,18 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol) {
             progress = true;
           }
         }
-        // Process flood-fill immediately
         while (revealQueue.length > 0) {
           revealCell(revealQueue.pop());
         }
       }
     }
 
-    if (revealedCount === totalSafe) return true;
-    if (progress) continue; // Simple rules made progress; loop again
+    if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0 };
+    if (progress) continue;
 
     // ── Pass B: Subset / superset constraint analysis ──
-    // Build constraints: for each revealed numbered cell, collect its
-    // set of unknown neighbor indices and the remaining mine count.
-    const constraints = [];
-    for (let i = 0; i < rows * cols; i++) {
-      if (sim[i] !== 1 || adjCount[i] === 0) continue;
+    const constraints = buildConstraints(sim, adjCount, neighborCache, rows * cols);
 
-      const nbrs = neighborCache[i];
-      const unknownSet = [];
-      let flagged = 0;
-      for (const ni of nbrs) {
-        if (sim[ni] === 0) unknownSet.push(ni);
-        else if (sim[ni] === 2) flagged++;
-      }
-      const remaining = adjCount[i] - flagged;
-      if (unknownSet.length > 0) {
-        // Sort for consistent comparison
-        unknownSet.sort((a, b) => a - b);
-        constraints.push({ unknowns: unknownSet, mines: remaining });
-      }
-    }
-
-    // Compare every pair of constraints looking for subset relationships
     let subsetProgress = false;
     for (let a = 0; a < constraints.length; a++) {
       for (let b = 0; b < constraints.length; b++) {
@@ -174,23 +152,17 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol) {
         const cA = constraints[a];
         const cB = constraints[b];
 
-        // Check if A's unknowns are a subset of B's unknowns
         if (cA.unknowns.length >= cB.unknowns.length) continue;
 
-        // Quick check: A must be smaller than B
         const setB = new Set(cB.unknowns);
         const isSubset = cA.unknowns.every(x => setB.has(x));
         if (!isSubset) continue;
 
-        // A is a subset of B.
-        // The cells in B but not in A (the "difference") must contain
-        // exactly (cB.mines - cA.mines) mines.
         const diff = cB.unknowns.filter(x => !cA.unknowns.includes(x));
         const diffMines = cB.mines - cA.mines;
 
         if (diffMines < 0 || diffMines > diff.length) continue;
 
-        // If diffMines === diff.length, all difference cells are mines
         if (diffMines === diff.length && diff.length > 0) {
           for (const di of diff) {
             if (sim[di] === 0) {
@@ -200,7 +172,6 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol) {
           }
         }
 
-        // If diffMines === 0, all difference cells are safe
         if (diffMines === 0 && diff.length > 0) {
           for (const di of diff) {
             if (sim[di] === 0) {
@@ -215,15 +186,140 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol) {
       }
     }
 
-    if (revealedCount === totalSafe) return true;
-    if (subsetProgress) continue; // Subset analysis found something; loop again
+    if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0 };
+    if (subsetProgress) continue;
 
-    // No progress from either pass — board requires guessing
-    return false;
+    // ── Pass C: Advanced solver (Gauss + Tank) ──
+    const freshConstraints = buildConstraints(sim, adjCount, neighborCache, rows * cols);
+    const solved = solveConstraints(freshConstraints);
+
+    let advancedProgress = false;
+
+    for (const cellIdx of solved.mines) {
+      if (sim[cellIdx] === 0) {
+        flagCell(cellIdx);
+        advancedProgress = true;
+      }
+    }
+
+    for (const cellIdx of solved.safe) {
+      if (sim[cellIdx] === 0) {
+        revealQueue.push(cellIdx);
+        advancedProgress = true;
+      }
+    }
+    while (revealQueue.length > 0) {
+      revealCell(revealQueue.pop());
+    }
+
+    if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0 };
+    if (advancedProgress) continue;
+
+    // No progress from any layer — board requires guessing
+    break;
   }
 
-  // Hit max iterations — treat as unsolvable to be safe
-  return false;
+  const remaining = totalSafe - revealedCount;
+  return { solvable: false, remainingUnknowns: remaining };
+}
+
+// ── Build constraints from current simulation state ──────────
+
+function buildConstraints(sim, adjCount, neighborCache, totalCells) {
+  const constraints = [];
+  for (let i = 0; i < totalCells; i++) {
+    if (sim[i] !== 1 || adjCount[i] === 0) continue;
+
+    const nbrs = neighborCache[i];
+    const unknownSet = [];
+    let flagged = 0;
+    for (const ni of nbrs) {
+      if (sim[ni] === 0) unknownSet.push(ni);
+      else if (sim[ni] === 2) flagged++;
+    }
+    const remaining = adjCount[i] - flagged;
+    if (unknownSet.length > 0 && remaining >= 0) {
+      unknownSet.sort((a, b) => a - b);
+      constraints.push({ unknowns: unknownSet, mines: remaining });
+    }
+  }
+  return constraints;
+}
+
+// ── Find Next Safe Move (for post-death analysis) ────────────
+// Analyzes the current board state and returns a deducible safe cell,
+// or null if the situation was a genuine 50/50.
+
+export function findNextSafeMove(board) {
+  const rows = board.length;
+  const cols = board[0].length;
+  const idx = (r, c) => r * cols + c;
+  const totalCells = rows * cols;
+
+  // Build simulation state from actual board
+  const sim = new Uint8Array(totalCells);
+  const adjCount = new Uint8Array(totalCells);
+  const isMineArr = new Uint8Array(totalCells);
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const i = idx(r, c);
+      const cell = board[r][c];
+      if (cell.isRevealed) sim[i] = 1;
+      else if (cell.isFlagged) sim[i] = 2;
+      if (cell.isMine) isMineArr[i] = 1;
+      adjCount[i] = cell.adjacentMines;
+    }
+  }
+
+  // Pre-compute neighbors
+  const neighborCache = new Array(totalCells);
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const nbrs = [];
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue;
+          const nr = r + dr;
+          const nc = c + dc;
+          if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) nbrs.push(idx(nr, nc));
+        }
+      }
+      neighborCache[idx(r, c)] = nbrs;
+    }
+  }
+
+  // Pass A: Simple rules — check for immediately deducible safe cells
+  for (let i = 0; i < totalCells; i++) {
+    if (sim[i] !== 1 || adjCount[i] === 0) continue;
+    const nbrs = neighborCache[i];
+    let unknowns = 0;
+    let flagged = 0;
+    for (const ni of nbrs) {
+      if (sim[ni] === 0) unknowns++;
+      else if (sim[ni] === 2) flagged++;
+    }
+    const remaining = adjCount[i] - flagged;
+    if (remaining === 0 && unknowns > 0) {
+      for (const ni of nbrs) {
+        if (sim[ni] === 0) {
+          return { row: Math.floor(ni / cols), col: ni % cols };
+        }
+      }
+    }
+  }
+
+  // Pass B: Build constraints and run full solver
+  const constraints = buildConstraints(sim, adjCount, neighborCache, totalCells);
+  const solved = solveConstraints(constraints);
+
+  // Return first safe cell
+  for (const cellIdx of solved.safe) {
+    return { row: Math.floor(cellIdx / cols), col: cellIdx % cols };
+  }
+
+  // No deducible safe move — genuine 50/50 situation
+  return null;
 }
 
 // ── Game-play reveal / chord functions ──────────────────────

@@ -1,1903 +1,130 @@
-import { generateBoard, createEmptyBoard, calculateAdjacency } from './logic/boardGenerator.js?v=0.8';
-import { floodFillReveal, checkWin, revealAllMines, chordReveal } from './logic/boardSolver.js?v=0.8';
-import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL } from './logic/difficulty.js?v=0.8';
+// ── GregSweeper Entry Point ────────────────────────────
+// All game logic and UI rendering is in modules.
+// This file handles imports, event wiring, and init.
+
+import { state } from './state/gameState.js?v=0.9';
+import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn } from './ui/domHelpers.js?v=0.9';
+import { resizeCells, updateAllCells, getThemeEmoji, needsZoom, updateZoom, zoomIn, zoomOut } from './ui/boardRenderer.js?v=0.9';
+import { updateHeader, updateStreakBorder, updateFlagModeBar, getCheckpointForLevel } from './ui/headerRenderer.js?v=0.9';
+import { updatePowerUpBar } from './ui/powerUpBar.js?v=0.9';
+import { showModal, hideModal, hideAllModals } from './ui/modalManager.js?v=0.9';
+import { showToast, showLevelUpToast, showCheckpointToast } from './ui/toastManager.js?v=0.9';
+import { showCelebration, haptic } from './ui/effectsRenderer.js?v=0.9';
+import { THEME_UNLOCKS, getUnlockedThemes, updateThemeSwatches } from './ui/themeManager.js?v=0.9';
+import { newGame, revealCell, toggleFlag, handleChordReveal } from './game/gameActions.js?v=0.9';
+import './game/winLossHandler.js?v=0.9'; // side-effect: registers handleWin with powerUpActions
+import { useRevealSafe, useShield, activateScan, activateXRay, activateMagnet } from './game/powerUpActions.js?v=0.9';
+import { switchMode, updateTimedDiffVisibility, syncTimedDiffButtons } from './game/modeManager.js?v=0.9';
+import { persistGameState, tryResumeGame } from './game/gamePersistence.js?v=0.9';
+import { getDifficultyForLevel, getTimedDifficulty, getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL } from './logic/difficulty.js?v=0.9';
 import {
-  computeVisibleCells, getHiddenNumberRate, applyHiddenNumbers,
-  decodeAdjacentHidden, decodeAllHidden,
-  getRefogTimeout, computeRefogCells,
-} from './logic/fogOfWar.js?v=0.8';
-import { findSafeCell, scanRowCol, defuseMine, shieldDefuse, xRayScan } from './logic/powerUps.js?v=0.8';
-import { createDailyRNG } from './logic/seededRandom.js?v=0.8';
-import {
-  loadStats, saveGameResult, resetStats,
+  loadStats, saveTheme, loadTheme, resetStats,
+  saveCheckpoint, loadCheckpoint,
   loadDailyLeaderboard, addDailyLeaderboardEntry,
-  loadTheme, saveTheme,
-  loadModePowerUps, saveModePowerUps,
-  loadCheckpoint, saveCheckpoint,
-  saveGameState, loadGameState, clearGameState,
+  saveModePowerUps,
   isOnboarded, setOnboarded,
-} from './storage/statsStorage.js?v=0.8';
+} from './storage/statsStorage.js?v=0.9';
 import {
-  playReveal, playFlag, playUnflag, playExplosion,
-  playCascade, playWin, playPowerUp, playShieldBreak,
-  playLevelUp, playFreeze, playXRay,
-  playDecode, playTimeRecord, isMuted, setMuted, loadMuted,
-} from './audio/sounds.js?v=0.8';
+  playLevelUp, isMuted, setMuted, loadMuted,
+} from './audio/sounds.js?v=0.9';
 import {
   getAchievementState, getTotalScore, checkNewUnlocks,
   getHighestTier, getAllTierNames, getTierIcon, getTierColor,
-} from './logic/achievements.js?v=0.8';
+} from './logic/achievements.js?v=0.9';
 import {
   initFirebase, isFirebaseOnline, submitOnlineScore, fetchOnlineLeaderboard,
-} from './firebase/firebaseLeaderboard.js?v=0.8';
+} from './firebase/firebaseLeaderboard.js?v=0.9';
 
-// ── Theme Unlock Progression ──────────────────────────
-// Themes unlock based on highest level ever beaten (permanent).
-// Dying in normal mode resets current level to 1 but keeps unlocks.
-const THEME_UNLOCKS = {
-  classic:          { levelRequired: 0,  displayName: 'Classic',        mine: '💣', flag: '🚩', smiley: '😊', smileyWin: '😎', smileyLoss: '😵' },
-  dark:             { levelRequired: 0,  displayName: 'Dark',           mine: '💣', flag: '🚩', smiley: '😊', smileyWin: '😎', smileyLoss: '😵' },
-  ocean:            { levelRequired: 2,  displayName: 'Ocean',          mine: '🐡', flag: '⚓', smiley: '🐟', smileyWin: '🐬', smileyLoss: '🫧' },
-  sunset:           { levelRequired: 4,  displayName: 'Sunset',         mine: '☀️', flag: '🚩', smiley: '🌤️', smileyWin: '🌞', smileyLoss: '🌧️' },
-  forest:           { levelRequired: 6,  displayName: 'Forest',         mine: '🍄', flag: '🌿', smiley: '🌲', smileyWin: '🦉', smileyLoss: '🪵' },
-  candy:            { levelRequired: 8,  displayName: 'Candy',          mine: '🍬', flag: '🍭', smiley: '🧁', smileyWin: '🎂', smileyLoss: '🍩' },
-  midnight:         { levelRequired: 10, displayName: 'Midnight',       mine: '🌙', flag: '⭐', smiley: '🦇', smileyWin: '🌕', smileyLoss: '🌑' },
-  stealth:          { levelRequired: 12, displayName: 'Stealth',        mine: '💣', flag: '🏴', smiley: '🥷', smileyWin: '🕵️', smileyLoss: '💀' },
-  neon:             { levelRequired: 14, displayName: 'Neon',           mine: '⚡', flag: '🎯', smiley: '💡', smileyWin: '🔆', smileyLoss: '💤' },
-  'cherry-blossom': { levelRequired: 16, displayName: 'Cherry Blossom', mine: '🌸', flag: '🎀', smiley: '🌷', smileyWin: '🦋', smileyLoss: '🥀' },
-  aurora:           { levelRequired: 18, displayName: 'Aurora',         mine: '❄️', flag: '🌌', smiley: '🌀', smileyWin: '🌈', smileyLoss: '🌫️' },
-  volcano:          { levelRequired: 20, displayName: 'Volcano',        mine: '🌋', flag: '🔥', smiley: '🪨', smileyWin: '🏔️', smileyLoss: '💨' },
-  ice:              { levelRequired: 22, displayName: 'Ice',            mine: '🧊', flag: '❄️', smiley: '⛄', smileyWin: '🏔️', smileyLoss: '💧' },
-  cyberpunk:        { levelRequired: 24, displayName: 'Cyberpunk',      mine: '🤖', flag: '🔌', smiley: '🖥️', smileyWin: '🦾', smileyLoss: '⚠️' },
-  retro:            { levelRequired: 26, displayName: 'Retro',          mine: '👾', flag: '🕹️', smiley: '🎮', smileyWin: '🏆', smileyLoss: '👻' },
-  holographic:      { levelRequired: 28, displayName: 'Holographic',    mine: '💠', flag: '🔮', smiley: '🔮', smileyWin: '🪩', smileyLoss: '🫥' },
-  galaxy:           { levelRequired: 30, displayName: 'Galaxy',         mine: '☄️', flag: '🛸', smiley: '🪐', smileyWin: '🌟', smileyLoss: '🌑' },
-  toxic:            { levelRequired: 32, displayName: 'Toxic',          mine: '☢️', flag: '🧪', smiley: '🧫', smileyWin: '🧬', smileyLoss: '💀' },
-  royal:            { levelRequired: 34, displayName: 'Royal',          mine: '👑', flag: '⚔️', smiley: '🏰', smileyWin: '👑', smileyLoss: '⚰️' },
-  prismatic:        { levelRequired: 36, displayName: 'Prismatic',      mine: '🌈', flag: '✨', smiley: '💎', smileyWin: '🦄', smileyLoss: '🫧' },
-  void:             { levelRequired: 38, displayName: 'Void',           mine: '🕳️', flag: '⚫', smiley: '👁️', smileyWin: '🌀', smileyLoss: '💫' },
-  arctic:           { levelRequired: 40, displayName: 'Arctic',         mine: '🐻‍❄️', flag: '🏔️', smiley: '🦭', smileyWin: '🐧', smileyLoss: '🥶' },
-  jungle:           { levelRequired: 42, displayName: 'Jungle',         mine: '🐍', flag: '🦜', smiley: '🐒', smileyWin: '🦁', smileyLoss: '🦴' },
-  obsidian:         { levelRequired: 43, displayName: 'Obsidian',       mine: '🖤', flag: '⛓️', smiley: '🗿', smileyWin: '💎', smileyLoss: '🪦' },
-  matrix:           { levelRequired: 44, displayName: 'Matrix',         mine: '🟢', flag: '🔴', smiley: '👁️', smileyWin: '🔓', smileyLoss: '🔒' },
-  bloodmoon:        { levelRequired: 45, displayName: 'Blood Moon',     mine: '🩸', flag: '🌑', smiley: '🐺', smileyWin: '🦇', smileyLoss: '⚰️' },
-  inferno:          { levelRequired: 46, displayName: 'Inferno',        mine: '🔥', flag: '💀', smiley: '😈', smileyWin: '👹', smileyLoss: '💀' },
-  synthwave:        { levelRequired: 47, displayName: 'Synthwave',      mine: '🎹', flag: '🎧', smiley: '🎛️', smileyWin: '🎶', smileyLoss: '📴' },
-  celestial:        { levelRequired: 48, displayName: 'Celestial',      mine: '🌟', flag: '🌠', smiley: '🌙', smileyWin: '☀️', smileyLoss: '🌑' },
-  supernova:        { levelRequired: 49, displayName: 'Supernova',      mine: '💥', flag: '🚀', smiley: '🛰️', smileyWin: '⭐', smileyLoss: '🌑' },
-  legendary:        { levelRequired: 50, displayName: 'Legendary',      mine: '🐉', flag: '🏰', smiley: '⚔️', smileyWin: '🐉', smileyLoss: '💀' },
-};
+// ── Stats Display ─────────────────────────────────────
 
-function getUnlockedThemes() {
+function updateStatsDisplay() {
   const stats = loadStats();
-  const maxLevel = stats.maxLevelReached || 1;
-  const unlocked = {};
-  for (const [theme, info] of Object.entries(THEME_UNLOCKS)) {
-    unlocked[theme] = maxLevel >= info.levelRequired;
-  }
-  return unlocked;
-}
-
-function updateThemeSwatches() {
-  const unlocked = getUnlockedThemes();
-  let lockedCount = 0;
-  for (const swatch of $$('.theme-swatch')) {
-    const theme = swatch.dataset.theme;
-    const isUnlocked = unlocked[theme] !== false;
-    const lockEl = swatch.querySelector('.swatch-lock');
-    const nameEl = swatch.querySelector('.swatch-name');
-
-    if (isUnlocked) {
-      swatch.classList.remove('locked', 'locked-collapsed');
-      if (lockEl) lockEl.classList.add('hidden');
-      if (nameEl) nameEl.classList.remove('hidden');
-    } else {
-      swatch.classList.add('locked');
-      // Collapse locked themes by default
-      const toggleBtn = $('#toggle-locked-themes');
-      if (toggleBtn && !toggleBtn.classList.contains('expanded')) {
-        swatch.classList.add('locked-collapsed');
-      }
-      if (lockEl) lockEl.classList.remove('hidden');
-      if (nameEl) nameEl.classList.add('hidden');
-      lockedCount++;
-    }
-  }
-  // Update toggle button
-  const toggleBtn = $('#toggle-locked-themes');
-  const countSpan = $('#locked-theme-count');
-  if (toggleBtn) {
-    if (lockedCount > 0) {
-      toggleBtn.classList.remove('hidden');
-      if (countSpan) countSpan.textContent = lockedCount;
-    } else {
-      toggleBtn.classList.add('hidden');
-    }
-  }
-}
-
-function checkThemeUnlocks(prevMaxLevel, currentMaxLevel) {
-  const newlyUnlocked = [];
-  for (const [theme, info] of Object.entries(THEME_UNLOCKS)) {
-    if (info.levelRequired > 0 && prevMaxLevel < info.levelRequired && currentMaxLevel >= info.levelRequired) {
-      newlyUnlocked.push({ theme, displayName: info.displayName });
-    }
-  }
-  return newlyUnlocked;
-}
-
-function showThemeUnlockToasts(unlocked) {
-  const toast = $('#theme-unlock-toast');
-  if (!toast) return;
-  let index = 0;
-
-  function showNext() {
-    if (index >= unlocked.length) return;
-    const item = unlocked[index];
-    toast.querySelector('.theme-unlock-toast-name').textContent = item.displayName;
-    toast.classList.remove('hidden', 'hiding');
-
-    setTimeout(() => {
-      toast.classList.add('hiding');
-      setTimeout(() => {
-        toast.classList.add('hidden');
-        toast.classList.remove('hiding');
-        index++;
-        if (index < unlocked.length) {
-          setTimeout(showNext, 200);
-        }
-      }, 300);
-    }, 3000);
-  }
-
-  // Delay to not overlap with achievement toasts
-  setTimeout(showNext, 1200);
-}
-
-// ── State ──────────────────────────────────────────────
-
-const state = {
-  board: [],
-  rows: 10,
-  cols: 10,
-  totalMines: 10,
-  status: 'idle',       // idle | playing | won | lost
-  firstClick: true,
-  flagCount: 0,
-  revealedCount: 0,
-  elapsedTime: 0,
-  timerId: null,
-  timeLimit: 0,         // countdown seconds for timed mode (0 = no limit)
-
-  currentLevel: 1,
-  gameMode: 'daily',    // normal | timed | fogOfWar | daily
-  dailySeed: null,
-  dailyBombHits: 0,
-
-  powerUps: { revealSafe: 0, shield: 0, scanRowCol: 0, freeze: 0, xray: 0, decode: 0 },
-  shieldActive: false,
-  scanMode: false,
-  xrayMode: false,
-  freezeActive: false,
-  usedPowerUps: false,  // track for purist achievement
-
-  fogOfWarEnabled: false,
-  visibleCells: new Set(),
-  fogRadius: 1.5,
-  cellTimestamps: {},      // track last-activity per cell for creeping fog
-  refogTimerId: null,      // interval for creeping fog check
-
-  shaking: false,
-  showParticles: false,
-  theme: 'classic',
-  hitMine: null,  // {row, col} of the mine that killed you
-  zoomLevel: 100,  // percentage (50–200)
-  checkpoint: 1,   // last checkpoint level (every 5 levels)
-  flagMode: false, // flag-mode toggle for mobile
-  dirtyCells: new Set(), // track changed cells for targeted updates
-};
-
-// ── DOM References ─────────────────────────────────────
-
-const $ = (sel) => document.querySelector(sel);
-const $$ = (sel) => document.querySelectorAll(sel);
-
-const boardEl = $('#board');
-const mineCounterEl = $('#mine-counter');
-const timerEl = $('#timer-display');
-const resetBtn = $('#reset-btn');
-const levelDisplay = $('#level-display');
-const checkpointDisplay = $('#checkpoint-display');
-const streakDisplayEl = $('#streak-display');
-const cellsRemainingEl = $('#cells-remaining');
-const progressBarContainer = $('#progress-bar-container');
-const progressBarFill = $('#progress-bar-fill');
-const progressBarMarkers = $('#progress-bar-markers');
-const flagModeBar = $('#flag-mode-bar');
-const flagModeToggle = $('#flag-mode-toggle');
-const flagModeIcon = $('#flag-mode-icon');
-const flagModeLabel = $('#flag-mode-label');
-const shakeWrapper = $('#screen-shake-wrapper');
-const particleCanvas = $('#particle-canvas');
-const scanToast = $('#scan-toast');
-const muteBtn = $('#btn-mute');
-const bestTimeDisplay = $('#best-time-display');
-const maxLevelDisplay = $('#max-level-display');
-const streakBorder = $('#streak-border');
-const zoomControls = $('#zoom-controls');
-const zoomLevelDisplay = $('#zoom-level');
-const boardScrollWrapper = $('#board-scroll-wrapper');
-const toastContainer = $('#toast-container');
-
-// ── Board Rendering ────────────────────────────────────
-
-function resizeCells() {
-  const container = document.getElementById('board-container');
-  if (!container || !state.cols) return;
-  const gap = 2; // --grid-gap
-  const borderPad = 8; // 2px border + 2px padding on each side
-  const availableWidth = container.clientWidth - borderPad;
-  const cellSize = Math.floor((availableWidth - (state.cols - 1) * gap) / state.cols);
-  const capped = Math.min(50, Math.max(24, cellSize));
-  document.documentElement.style.setProperty('--cell-size', `${capped}px`);
-}
-
-function renderBoard() {
-  boardEl.innerHTML = '';
-  resizeCells();
-  boardEl.style.gridTemplateColumns = `repeat(${state.cols}, var(--cell-size))`;
-  boardEl.style.gridTemplateRows = `repeat(${state.rows}, var(--cell-size))`;
-
-  const shouldAnimate = state._initialized;
-  for (let r = 0; r < state.rows; r++) {
-    for (let c = 0; c < state.cols; c++) {
-      const cellEl = document.createElement('div');
-      cellEl.className = 'cell unrevealed';
-      cellEl.dataset.row = r;
-      cellEl.dataset.col = c;
-      if (shouldAnimate) {
-        const delay = (r + c) * 12; // diagonal wave
-        cellEl.classList.add('cascade-in');
-        cellEl.style.animationDelay = `${delay}ms`;
-        setTimeout(() => cellEl.classList.remove('cascade-in'), 300 + delay);
-      }
-      boardEl.appendChild(cellEl);
-    }
-  }
-}
-
-function getThemeEmoji(type) {
-  const currentTheme = document.documentElement.getAttribute('data-theme') || 'classic';
-  const themeInfo = THEME_UNLOCKS[currentTheme];
-  if (type === 'mine') return themeInfo?.mine || '💣';
-  if (type === 'flag') return themeInfo?.flag || '🚩';
-  if (type === 'smiley') return themeInfo?.smiley || '😊';
-  if (type === 'smileyWin') return themeInfo?.smileyWin || '😎';
-  if (type === 'smileyLoss') return themeInfo?.smileyLoss || '😵';
-  return '💣';
-}
-
-function updateCell(r, c) {
-  const cell = state.board[r]?.[c];
-  if (!cell) return;
-  const cellEl = boardEl.children[r * state.cols + c];
-  if (!cellEl) return;
-
-  // Fog of war check
-  if (state.fogOfWarEnabled && !state.visibleCells.has(`${r},${c}`)) {
-    cellEl.className = 'cell fogged';
-    cellEl.textContent = '';
-    return;
-  }
-
-  if (cell.isRevealed) {
-    if (cell.isDefused) {
-      cellEl.className = 'cell revealed defused';
-      cellEl.textContent = getThemeEmoji('mine');
-    } else if (cell.isMine) {
-      const isHit = state.hitMine && state.hitMine.row === r && state.hitMine.col === c;
-      cellEl.className = `cell revealed mine${isHit ? ' mine-hit' : ''}`;
-      cellEl.textContent = getThemeEmoji('mine');
-    } else if (cell.adjacentMines > 0) {
-      if (cell.isHiddenNumber) {
-        cellEl.className = 'cell revealed hidden-number';
-        cellEl.textContent = '?';
-      } else {
-        cellEl.className = `cell revealed num-${cell.adjacentMines}`;
-        cellEl.textContent = cell.adjacentMines;
-        // Pop-in animation for numbered cells during cascade reveals
-        if (cell.revealAnimDelay > 0) {
-          cellEl.classList.add('num-pop', 'number-glow');
-          cellEl.style.animationDelay = `${cell.revealAnimDelay}ms`;
-        }
-      }
-    } else {
-      cellEl.className = 'cell revealed empty';
-      cellEl.textContent = '';
-    }
-    if (cell.revealAnimDelay > 0) {
-      cellEl.style.animationDelay = `${cell.revealAnimDelay}ms`;
-      cellEl.classList.add('revealing');
-    }
-  } else if (cell.isFlagged) {
-    cellEl.className = 'cell unrevealed flagged';
-    cellEl.textContent = getThemeEmoji('flag');
-  } else {
-    cellEl.className = 'cell unrevealed';
-    cellEl.textContent = '';
-  }
-}
-
-function updateAllCells() {
-  for (let r = 0; r < state.rows; r++) {
-    for (let c = 0; c < state.cols; c++) {
-      updateCell(r, c);
-    }
-  }
-}
-
-// ── Checkpoint Display ─────────────────────────────────
-const CHECKPOINT_INTERVAL = 5;
-
-function getCheckpointForLevel(level) {
-  return Math.floor((level - 1) / CHECKPOINT_INTERVAL) * CHECKPOINT_INTERVAL + 1;
-}
-
-function updateCheckpointDisplay() {
-  if (!checkpointDisplay) return;
-  const isLevelMode = state.gameMode === 'normal' || state.gameMode === 'fogOfWar';
-  if (isLevelMode && state.checkpoint > 1) {
-    checkpointDisplay.textContent = `🏁 CP ${state.checkpoint}`;
-    checkpointDisplay.classList.remove('hidden');
-  } else {
-    checkpointDisplay.classList.add('hidden');
-  }
-}
-
-function updateProgressBar() {
-  if (!progressBarContainer) return;
-  const isLevelMode = state.gameMode === 'normal' || state.gameMode === 'fogOfWar';
-  if (!isLevelMode) {
-    progressBarContainer.classList.add('hidden');
-    return;
-  }
-  progressBarContainer.classList.remove('hidden');
-  const pct = ((state.currentLevel - 1) / (MAX_LEVEL - 1)) * 100;
-  progressBarFill.style.width = `${pct}%`;
-
-  // Render checkpoint markers
-  if (progressBarMarkers) {
-    progressBarMarkers.innerHTML = '';
-    for (let cp = CHECKPOINT_INTERVAL + 1; cp <= MAX_LEVEL; cp += CHECKPOINT_INTERVAL) {
-      const marker = document.createElement('div');
-      marker.className = 'checkpoint-marker';
-      if (state.currentLevel >= cp) marker.classList.add('reached');
-      marker.style.left = `${((cp - 1) / (MAX_LEVEL - 1)) * 100}%`;
-      progressBarMarkers.appendChild(marker);
-    }
-  }
-}
-
-function updateCellsRemaining() {
-  if (!cellsRemainingEl) return;
-  if (state.status === 'playing') {
-    const totalSafe = state.rows * state.cols - state.totalMines;
-    const remaining = totalSafe - state.revealedCount;
-    if (remaining > 0) {
-      cellsRemainingEl.textContent = `${remaining} left`;
-      cellsRemainingEl.classList.remove('hidden');
-    } else {
-      cellsRemainingEl.classList.add('hidden');
-    }
-  } else {
-    cellsRemainingEl.classList.add('hidden');
-  }
-}
-
-function updateStreakDisplay() {
-  if (!streakDisplayEl) return;
-  const stats = loadStats();
-  const streak = stats.currentStreak || 0;
-  if (streak >= 2) {
-    streakDisplayEl.textContent = `🔥 ${streak}`;
-    streakDisplayEl.classList.remove('hidden');
-  } else {
-    streakDisplayEl.classList.add('hidden');
-  }
-}
-
-// ── Toast Queue ────────────────────────────────────────
-const _toastQueue = [];
-let _toastActive = false;
-
-function showToast(message, duration = 2000) {
-  _toastQueue.push({ message, duration });
-  if (!_toastActive) _processToastQueue();
-}
-
-function _processToastQueue() {
-  if (_toastQueue.length === 0) { _toastActive = false; return; }
-  _toastActive = true;
-  const { message, duration } = _toastQueue.shift();
-  const el = document.createElement('div');
-  el.className = 'queued-toast';
-  el.textContent = message;
-  if (toastContainer) toastContainer.appendChild(el);
-  setTimeout(() => {
-    el.classList.add('toast-exit');
-    setTimeout(() => {
-      el.remove();
-      _processToastQueue();
-    }, 250);
-  }, duration);
-}
-
-// ── Encouragement Lines ────────────────────────────────
-const ENCOURAGEMENT_LINES = [
-  'You got this! Try again 💪',
-  'Almost had it! One more try?',
-  'Even the best stumble sometimes.',
-  'Mines are sneaky — you\'ll get them!',
-  'Shake it off and sweep again! 🧹',
-  'Every loss makes you stronger.',
-  'That mine came out of nowhere!',
-  'Close one! Give it another shot.',
-  'Keep sweeping — glory awaits! ⚔️',
-  'The board fears your return.',
-];
-
-function updateHeader() {
-  const remaining = state.totalMines - state.flagCount;
-  if (remaining < 0) {
-    mineCounterEl.textContent = '-' + String(Math.abs(remaining)).padStart(2, '0');
-  } else {
-    mineCounterEl.textContent = String(remaining).padStart(3, '0');
-  }
-  updateTimerDisplay();
-
-  // Level display — show timed labels like "Beginner" if available
-  if (state.gameMode === 'timed') {
-    const tdiff = getTimedDifficulty(state.currentLevel);
-    levelDisplay.textContent = tdiff.label || `Level ${state.currentLevel}`;
-  } else {
-    levelDisplay.textContent = `Level ${state.currentLevel}`;
-  }
-
-  // Update mode pill active states
-  for (const pill of $$('.mode-pill')) {
-    pill.classList.toggle('active', pill.dataset.mode === state.gameMode);
-  }
-  for (const btn of $$('.mode-btn')) {
-    btn.classList.toggle('active', btn.dataset.mode === state.gameMode);
-  }
-
-  updateCheckpointDisplay();
-  updateProgressBar();
-  updateCellsRemaining();
-  updateStreakDisplay();
-
-  // Show best time for timed/normal mode (with speed rating for timed)
-  const stats = loadStats();
-  if (bestTimeDisplay) {
-    const bestKey = `level${state.currentLevel}`;
-    const best = stats.bestTimes[bestKey];
-    if (best != null && (state.gameMode === 'timed' || state.gameMode === 'normal')) {
-      if (state.gameMode === 'timed') {
-        const rating = getSpeedRating(state.currentLevel, best);
-        bestTimeDisplay.textContent = `Best: ${best}s ${rating.icon}`;
-      } else {
-        bestTimeDisplay.textContent = `Best: ${best}s`;
-      }
-      bestTimeDisplay.classList.remove('hidden');
-    } else {
-      bestTimeDisplay.classList.add('hidden');
-    }
-  }
-
-  // Show max level reached in normal mode
-  if (maxLevelDisplay) {
-    const maxLevel = stats.maxLevelReached || 1;
-    if (state.gameMode === 'normal' && maxLevel > 1) {
-      maxLevelDisplay.textContent = `Peak: ${maxLevel}`;
-      maxLevelDisplay.classList.remove('hidden');
-    } else {
-      maxLevelDisplay.classList.add('hidden');
-    }
-  }
-
-  if (state.status === 'won') resetBtn.textContent = getThemeEmoji('smileyWin');
-  else if (state.status === 'lost') resetBtn.textContent = getThemeEmoji('smileyLoss');
-  else resetBtn.textContent = getThemeEmoji('smiley');
-}
-
-function updatePowerUpBar() {
-  const totalPowerUps = Object.values(state.powerUps).reduce((a, b) => a + b, 0);
-  const powerUpBar = $('#powerup-bar');
-  const isChallenge = state.gameMode === 'normal';
-  const isFog = state.gameMode === 'fogOfWar';
-
-  // Hide entire bar when no power-ups available
-  if (totalPowerUps === 0 && !state.shieldActive && !state.scanMode && !state.xrayMode) {
-    powerUpBar.classList.add('hidden');
-  } else {
-    powerUpBar.classList.remove('hidden');
-  }
-
-  for (const btn of $$('.powerup-btn')) {
-    const type = btn.dataset.powerup;
-    const count = state.powerUps[type] || 0;
-
-    // Show/hide mode-specific buttons
-    if (btn.classList.contains('challenge-only')) {
-      btn.style.display = isChallenge ? '' : 'none';
-    } else if (btn.classList.contains('fog-only')) {
-      btn.style.display = isFog ? '' : 'none';
-    }
-
-    btn.querySelector('.powerup-count').textContent = count;
-    btn.disabled = count === 0 || state.status === 'won' || state.status === 'lost';
-    btn.classList.toggle('active-powerup', type === 'shield' && state.shieldActive);
-    btn.classList.toggle('scan-active', type === 'scanRowCol' && state.scanMode);
-    btn.classList.toggle('xray-active', type === 'xray' && state.xrayMode);
-  }
-  // Board state classes
-  boardEl.classList.toggle('scan-mode', state.scanMode);
-  boardEl.classList.toggle('xray-mode', state.xrayMode);
-  boardEl.classList.toggle('shield-active', state.shieldActive);
-}
-
-// ── Streak Fire Effect ─────────────────────────────────
-
-function updateStreakBorder() {
-  if (!streakBorder) return;
-  const stats = loadStats();
-  const streak = stats.currentStreak || 0;
-  const prevStreak = streakBorder.dataset.prevStreak ? parseInt(streakBorder.dataset.prevStreak) : 0;
-
-  streakBorder.classList.remove('active', 'streak-1', 'streak-2', 'streak-3');
-
-  if (streak >= 5) {
-    streakBorder.classList.add('active', 'streak-3');
-  } else if (streak >= 3) {
-    streakBorder.classList.add('active', 'streak-2');
-  } else if (streak >= 2) {
-    streakBorder.classList.add('active', 'streak-1');
-  }
-
-  // Streak shake animation when streak increases
-  if (streak > prevStreak && streak >= 2) {
-    streakBorder.classList.remove('streak-shake');
-    void streakBorder.offsetWidth;
-    streakBorder.classList.add('streak-shake');
-    setTimeout(() => streakBorder.classList.remove('streak-shake'), 500);
-  }
-  streakBorder.dataset.prevStreak = streak;
-}
-
-// ── Timer ──────────────────────────────────────────────
-
-function getDisplayTime() {
-  // Timed mode always counts up now (no countdown)
-  return Math.min(state.elapsedTime, 999);
-}
-
-function updateTimerDisplay() {
-  const display = getDisplayTime();
-  timerEl.textContent = String(display).padStart(3, '0');
-  // No urgency classes — timed mode counts up
-  timerEl.classList.remove('timer-critical', 'timer-warning');
-}
-
-function startTimer() {
-  if (state.timerId) return;
-  state.timerId = setInterval(() => {
-    state.elapsedTime++;
-    updateTimerDisplay();
-    // Timer tick pulse
-    timerEl.classList.remove('timer-tick');
-    void timerEl.offsetWidth;
-    timerEl.classList.add('timer-tick');
-    setTimeout(() => timerEl.classList.remove('timer-tick'), 300);
-  }, 1000);
-}
-
-function stopTimer() {
-  if (state.timerId) {
-    clearInterval(state.timerId);
-    state.timerId = null;
-  }
-  timerEl.classList.remove('timer-critical', 'timer-warning');
-  stopCreepingFog();
-}
-
-// ── Creeping Fog ──────────────────────────────────────
-
-function startCreepingFog() {
-  if (state.refogTimerId) return;
-  state.refogTimerId = setInterval(() => {
-    if (state.status !== 'playing' || !state.fogOfWarEnabled) return;
-
-    const timeout = getRefogTimeout(state.currentLevel);
-    const now = Date.now();
-    const toRefog = computeRefogCells(state.board, state.cellTimestamps, now, timeout);
-
-    if (toRefog.length > 0) {
-      for (const cell of toRefog) {
-        cell.isRevealed = false;
-        state.revealedCount = Math.max(0, state.revealedCount - 1);
-        delete state.cellTimestamps[`${cell.row},${cell.col}`];
-      }
-      // Recompute fog visibility
-      const allRevealed = getRevealedCells();
-      state.visibleCells = computeVisibleCells(allRevealed, state.fogRadius, state.rows, state.cols);
-      updateAllCells();
-      updateHeader();
-    }
-  }, 2000); // Check every 2 seconds
-}
-
-function stopCreepingFog() {
-  if (state.refogTimerId) {
-    clearInterval(state.refogTimerId);
-    state.refogTimerId = null;
-  }
-}
-
-function handleTimedLoss() {
-  state.status = 'lost';
-  stopTimer();
-  resetBtn.textContent = getThemeEmoji('smileyLoss');
-  resetBtn.classList.add('smiley-loss-shake');
-  setTimeout(() => resetBtn.classList.remove('smiley-loss-shake'), 500);
-  playExplosion();
-  triggerHeavyShake();
-  showRedFlash();
-  haptic([100, 40, 100, 40, 200]);
-  saveGameResult(false, state.elapsedTime, state.currentLevel, { gameMode: state.gameMode });
-  saveModePowerUps(state.gameMode, state.powerUps);
-
-  // Death penalty: reset to last checkpoint
-  const lostLevel = state.currentLevel;
-  if (state.gameMode === 'normal' && state.currentLevel > 1) {
-    state.currentLevel = state.checkpoint || 1;
-  }
-
-  const gameoverTitle = $('#gameover-title');
-  const gameoverTime = $('#gameover-time');
-  gameoverTitle.textContent = 'Time\'s Up!';
-  if (lostLevel > state.currentLevel && state.gameMode === 'normal') {
-    gameoverTime.textContent = `You ran out of time! Back to Level ${state.currentLevel}`;
-  } else {
-    gameoverTime.textContent = `You ran out of time!`;
-  }
-  $('#gameover-record').classList.add('hidden');
-  $('#gameover-nextlevel').classList.add('hidden');
-  const dailySubmitForm2 = $('#daily-submit-form');
-  if (dailySubmitForm2) dailySubmitForm2.classList.add('hidden');
-  $('#gameover-powerup-earned').classList.add('hidden');
-  $('#gameover-share').classList.add('hidden');
-  $('#gameover-achievements').classList.add('hidden');
-  const sharePreview2 = $('#share-card-preview');
-  if (sharePreview2) sharePreview2.classList.add('hidden');
-
-  // Encouragement line
-  const encouragement2 = $('#gameover-encouragement');
-  if (encouragement2) {
-    encouragement2.textContent = ENCOURAGEMENT_LINES[Math.floor(Math.random() * ENCOURAGEMENT_LINES.length)];
-    encouragement2.classList.remove('hidden');
-  }
-
-  // Clear saved game state
-  clearGameState();
-
-  setTimeout(() => showModal('gameover-overlay'), 400);
-  updatePowerUpBar();
-  updateStreakBorder();
-}
-
-// ── Game Actions ───────────────────────────────────────
-
-function newGame() {
-  stopTimer();
-  const diff = state.gameMode === 'timed'
-    ? getTimedDifficulty(state.currentLevel)
-    : getDifficultyForLevel(state.currentLevel);
-  const prevRows = state.rows;
-  const prevCols = state.cols;
-
-  state.rows = diff.rows;
-  state.cols = diff.cols;
-  state.totalMines = diff.mines;
-  state.board = createEmptyBoard(state.rows, state.cols);
-  state.status = 'idle';
-  state.firstClick = true;
-  state.flagCount = 0;
-  state.revealedCount = 0;
-  state.elapsedTime = 0;
-  state.timeLimit = 0; // Timed mode now counts up — no countdown
-  state.shieldActive = false;
-  state.scanMode = false;
-  state.xrayMode = false;
-  state.freezeActive = false;
-  state.usedPowerUps = false;
-  state.shaking = false;
-  state.showParticles = false;
-  state.hitMine = null;
-  state.visibleCells = new Set();
-  state.fogOfWarEnabled = state.gameMode === 'fogOfWar';
-  state.cellTimestamps = {};
-  if (state.refogTimerId) { clearInterval(state.refogTimerId); state.refogTimerId = null; }
-  state.dailySeed = state.gameMode === 'daily' ? new Date().toISOString().slice(0, 10) : null;
-  state.dailyBombHits = 0;
-
-  // Daily mode: vary board dimensions using the daily seed
-  if (state.gameMode === 'daily' && state.dailySeed) {
-    const dailyRng = createDailyRNG(state.dailySeed);
-    // Use first 3 RNG values for board dimensions
-    const dimRng1 = dailyRng();
-    const dimRng2 = dailyRng();
-    const dimRng3 = dailyRng();
-    state.rows = 8 + Math.floor(dimRng1 * 5);    // 8–12
-    state.cols = 8 + Math.floor(dimRng2 * 5);    // 8–12
-    const density = 0.14 + dimRng3 * 0.16;        // 14%–30%
-    state.totalMines = Math.max(5, Math.round(state.rows * state.cols * density));
-
-    // Pre-generate the board NOW with a fixed exclude position (center)
-    // so EVERY player gets the exact same mine layout regardless of first click
-    const fixedRow = Math.floor(state.rows / 2);
-    const fixedCol = Math.floor(state.cols / 2);
-    const boardRng = createDailyRNG(state.dailySeed);
-    state.board = generateBoard(state.rows, state.cols, state.totalMines, fixedRow, fixedCol, boardRng);
-    state.firstClick = false;
-    state.status = 'idle'; // stays idle until actual first click
-  }
-
-  // Load per-mode power-ups
-  const modePU = loadModePowerUps(state.gameMode);
-  if (state.gameMode === 'timed') {
-    // Timed mode: no power-ups
-    state.powerUps = { revealSafe: 0, shield: 0, scanRowCol: 0, freeze: 0, xray: 0 };
-  } else if (state.gameMode === 'daily') {
-    // Daily mode: fixed set, not persisted
-    state.powerUps = { revealSafe: 0, shield: 0, scanRowCol: 0, freeze: 0, xray: 0 };
-  } else {
-    state.powerUps = {
-      revealSafe: modePU.revealSafe || 0,
-      shield: modePU.shield || 0,
-      scanRowCol: modePU.scanRowCol || 0,
-      freeze: modePU.freeze || 0,
-      xray: modePU.xray || 0,
-    };
-  }
-
-  // Load checkpoint
-  if (state.gameMode === 'normal' || state.gameMode === 'fogOfWar') {
-    state.checkpoint = loadCheckpoint(state.gameMode);
-  } else {
-    state.checkpoint = 1;
-  }
-
-  // Reset dirty cells tracking
-  state.dirtyCells = new Set();
-  state.flagMode = false;
-
-  hideAllModals();
-  adjustCellSize();
-  renderBoard();
-  updateAllCells();
-  updateHeader();
-  updateTimerDisplay();
-  updatePowerUpBar();
-  updateStreakBorder();
-  updateCheckpointDisplay();
-  updateProgressBar();
-  updateCellsRemaining();
-  updateStreakDisplay();
-  updateFlagModeBar();
-  updateZoom();
-
-  // Clear saved game state (new game = fresh start)
-  clearGameState();
-
-  // Board transition animation when size changes
-  if (state._initialized && (prevRows !== state.rows || prevCols !== state.cols)) {
-    boardEl.classList.add('board-transition');
-    setTimeout(() => boardEl.classList.remove('board-transition'), 600);
-  }
-
-  // Show level info toast on new game (except first load)
-  if (state._initialized && (state.gameMode === 'normal' || state.gameMode === 'timed')) {
-    const label = diff.label ? `${diff.label}` : null;
-    showLevelInfoToast(state.currentLevel, diff, label);
-  }
-  state._initialized = true;
-}
-
-// Dynamically adjust cell size to fit the board on screen
-function adjustCellSize() {
-  const maxWidth = Math.min(window.innerWidth * 0.88, 520);
-  const gapSpace = (state.cols - 1) * 2 + 8; // grid gaps + padding
-  const maxCellSize = Math.floor((maxWidth - gapSpace) / state.cols);
-  const cellSize = Math.min(40, Math.max(16, maxCellSize));
-  document.documentElement.style.setProperty('--cell-size', cellSize + 'px');
-}
-
-// ── Zoom (for Timed mode large boards) ────────────────
-
-function needsZoom() {
-  return state.gameMode === 'timed' && (state.cols > 13 || state.rows > 13);
-}
-
-function updateZoom() {
-  if (needsZoom()) {
-    zoomControls.classList.remove('hidden');
-    boardScrollWrapper.classList.add('zoomed');
-    const scale = state.zoomLevel / 100;
-    boardEl.style.transform = `scale(${scale})`;
-    boardEl.style.transformOrigin = 'top left';
-    zoomLevelDisplay.textContent = `${state.zoomLevel}%`;
-  } else {
-    zoomControls.classList.add('hidden');
-    boardScrollWrapper.classList.remove('zoomed');
-    boardEl.style.transform = '';
-    boardEl.style.transformOrigin = '';
-    state.zoomLevel = 100;
-  }
-}
-
-function zoomIn() {
-  state.zoomLevel = Math.min(200, state.zoomLevel + 25);
-  updateZoom();
-}
-
-function zoomOut() {
-  state.zoomLevel = Math.max(50, state.zoomLevel - 25);
-  updateZoom();
-}
-
-function revealCell(row, col) {
-  if (state.status === 'won' || state.status === 'lost') return;
-
-  const cell = state.board[row][col];
-  if (cell.isRevealed || cell.isFlagged) return;
-
-  // Scan mode intercept
-  if (state.scanMode) {
-    performScan(row, col);
-    return;
-  }
-
-  // X-Ray mode intercept
-  if (state.xrayMode) {
-    performXRay(row, col);
-    return;
-  }
-
-  // First click — generate board (or start pre-generated daily board)
-  if (state.firstClick) {
-    const rng = state.dailySeed ? createDailyRNG(state.dailySeed) : undefined;
-    const maxZC = (state.gameMode === 'normal' || state.gameMode === 'fogOfWar')
-      ? getMaxZeroCluster(state.currentLevel) : Infinity;
-    state.board = generateBoard(state.rows, state.cols, state.totalMines, row, col, rng, { maxZeroCluster: maxZC });
-    state.firstClick = false;
-    state.status = 'playing';
-    startTimer();
-
-    if (state.fogOfWarEnabled) {
-      state.visibleCells = computeVisibleCells([{ row, col }], state.fogRadius, state.rows, state.cols);
-    }
-  } else if (state.status === 'idle' && state.gameMode === 'daily') {
-    // Daily mode: board was pre-generated for consistency.
-    // If first click lands on a mine, relocate it to keep first-click-safe.
-    const clickedCell = state.board[row][col];
-    if (clickedCell.isMine) {
-      clickedCell.isMine = false;
-      // Find the first non-mine cell not adjacent to the click to place the mine
-      for (let r = 0; r < state.rows; r++) {
-        for (let c = 0; c < state.cols; c++) {
-          if (!state.board[r][c].isMine && (Math.abs(r - row) > 1 || Math.abs(c - col) > 1)) {
-            state.board[r][c].isMine = true;
-            r = state.rows; // break outer
-            break;
-          }
-        }
-      }
-      calculateAdjacency(state.board);
-    }
-    state.status = 'playing';
-    startTimer();
-  }
-
-  const currentCell = state.board[row][col];
-
-  // Shield deactivates after any click (consumed whether mine or safe)
-  if (state.shieldActive && !currentCell.isMine) {
-    state.shieldActive = false;
-    updatePowerUpBar();
-  }
-
-  if (currentCell.isMine) {
-    if (state.shieldActive) {
-      state.shieldActive = false;
-      playShieldBreak();
-      shieldDefuse(state.board, row, col);
-      currentCell.isRevealed = true;
-      state.revealedCount++;
-      state.totalMines--;
-
-      // Shield-break flash
-      const flash = document.createElement('div');
-      flash.className = 'shield-break-flash';
-      document.getElementById('app').appendChild(flash);
-      setTimeout(() => flash.remove(), 600);
-
-      // Defused cell pop animation
-      const cellEl = boardEl.children[row * state.cols + col];
-      if (cellEl) cellEl.classList.add('shield-defused-cell');
-
-      updateAllCells();
-      updateHeader();
-      updatePowerUpBar();
-      if (checkWin(state.board)) handleWin();
-      return;
-    }
-    // Daily mode: bomb hit re-fogs instead of ending
-    if (state.gameMode === 'daily') {
-      handleDailyBombHit(row, col);
-      return;
-    }
-    handleLoss(row, col);
-    return;
-  }
-
-  let newlyRevealed = [];
-  if (currentCell.adjacentMines === 0) {
-    const revealed = floodFillReveal(state.board, row, col);
-    state.revealedCount += revealed.length;
-    newlyRevealed = revealed;
-    playCascade(revealed.length);
-  } else {
-    currentCell.isRevealed = true;
-    currentCell.revealAnimDelay = 0;
-    state.revealedCount++;
-    newlyRevealed = [currentCell];
-    playReveal();
-  }
-
-  if (state.fogOfWarEnabled) {
-    // Apply hidden numbers to newly revealed cells
-    const hiddenRate = getHiddenNumberRate(state.currentLevel);
-    applyHiddenNumbers(newlyRevealed, hiddenRate);
-
-    // Decode adjacent hidden numbers (revealing a cell decodes its neighbors)
-    decodeAdjacentHidden(state.board, row, col);
-
-    // Update cell timestamps for creeping fog
-    const now = Date.now();
-    for (const c of newlyRevealed) {
-      state.cellTimestamps[`${c.row},${c.col}`] = now;
-    }
-    // Also refresh timestamps for neighbors of newly revealed cells
-    for (let dr = -1; dr <= 1; dr++) {
-      for (let dc = -1; dc <= 1; dc++) {
-        const nr = row + dr;
-        const nc = col + dc;
-        if (nr >= 0 && nr < state.rows && nc >= 0 && nc < state.cols) {
-          const key = `${nr},${nc}`;
-          if (state.board[nr][nc].isRevealed) {
-            state.cellTimestamps[key] = now;
-          }
-        }
-      }
-    }
-
-    // Start creeping fog timer if not already running
-    if (!state.refogTimerId) {
-      startCreepingFog();
-    }
-
-    const allRevealed = getRevealedCells();
-    state.visibleCells = computeVisibleCells(allRevealed, state.fogRadius, state.rows, state.cols);
-  }
-
-  updateAllCells();
-  updateHeader();
-  updateCellsRemaining();
-
-  if (checkWin(state.board)) handleWin();
-}
-
-function toggleFlag(row, col) {
-  if (state.status !== 'playing' && state.status !== 'idle') return;
-  const cell = state.board[row][col];
-  if (cell.isRevealed) return;
-
-  const wasFlagged = cell.isFlagged;
-  cell.isFlagged = !cell.isFlagged;
-  state.flagCount += cell.isFlagged ? 1 : -1;
-  if (cell.isFlagged) playFlag(); else playUnflag();
-  updateCell(row, col);
-  // Flag pop / unflag shrink animation
-  const cellEl = boardEl.children[row * state.cols + col];
-  if (cellEl) {
-    if (cell.isFlagged) {
-      cellEl.classList.add('flag-pop');
-      setTimeout(() => cellEl.classList.remove('flag-pop'), 350);
-    } else {
-      cellEl.classList.add('unflag-shrink');
-      setTimeout(() => cellEl.classList.remove('unflag-shrink'), 200);
-    }
-  }
-  // Mine counter bump
-  const mineCountEl = document.getElementById('mine-counter');
-  if (mineCountEl) {
-    mineCountEl.classList.remove('counter-bump');
-    void mineCountEl.offsetWidth; // force reflow
-    mineCountEl.classList.add('counter-bump');
-    setTimeout(() => mineCountEl.classList.remove('counter-bump'), 250);
-  }
-  updateHeader();
-}
-
-function handleChordReveal(row, col) {
-  if (state.status !== 'playing') return;
-  const result = chordReveal(state.board, row, col);
-  if (!result || !result.revealed) return;
-
-  state.revealedCount += result.revealed.filter(c => !c.isMine).length;
-
-  if (state.fogOfWarEnabled) {
-    // Apply hidden numbers to chord-revealed cells
-    const hiddenRate = getHiddenNumberRate(state.currentLevel);
-    applyHiddenNumbers(result.revealed.filter(c => !c.isMine), hiddenRate);
-
-    // Decode adjacent hidden numbers for the chord origin
-    decodeAdjacentHidden(state.board, row, col);
-
-    // Update cell timestamps for creeping fog
-    const now = Date.now();
-    for (const c of result.revealed) {
-      if (!c.isMine) state.cellTimestamps[`${c.row},${c.col}`] = now;
-    }
-    // Refresh timestamps for neighbors of origin
-    for (let dr = -1; dr <= 1; dr++) {
-      for (let dc = -1; dc <= 1; dc++) {
-        const nr = row + dr;
-        const nc = col + dc;
-        if (nr >= 0 && nr < state.rows && nc >= 0 && nc < state.cols) {
-          if (state.board[nr][nc].isRevealed) {
-            state.cellTimestamps[`${nr},${nc}`] = now;
-          }
-        }
-      }
-    }
-
-    // Start creeping fog timer if not already running
-    if (!state.refogTimerId) {
-      startCreepingFog();
-    }
-
-    const allRevealed = getRevealedCells();
-    state.visibleCells = computeVisibleCells(allRevealed, state.fogRadius, state.rows, state.cols);
-  }
-
-  updateAllCells();
-  updateHeader();
-
-  // Chord ripple animation on revealed cells
-  if (result.revealed && !result.hitMine) {
-    for (const c of result.revealed) {
-      if (!c.isMine) {
-        const idx = c.row * state.cols + c.col;
-        const cellEl = boardEl.children[idx];
-        if (cellEl) {
-          const dist = Math.abs(c.row - row) + Math.abs(c.col - col);
-          cellEl.classList.add('chord-ripple');
-          cellEl.style.animationDelay = `${dist * 40}ms`;
-          setTimeout(() => {
-            cellEl.classList.remove('chord-ripple');
-            cellEl.style.animationDelay = '';
-          }, 350 + dist * 40);
-        }
-      }
-    }
-  }
-
-  if (result.hitMine) {
-    const mineCell = result.revealed.find(c => c.isMine);
-    if (state.gameMode === 'daily') {
-      handleDailyBombHit(mineCell.row, mineCell.col);
-    } else {
-      handleLoss(mineCell.row, mineCell.col);
-    }
-  } else if (checkWin(state.board)) {
-    handleWin();
-  }
-}
-
-function handleWin() {
-  state.status = 'won';
-  stopTimer();
-  resetBtn.textContent = getThemeEmoji('smileyWin');
-  resetBtn.classList.add('smiley-win-bounce');
-  setTimeout(() => resetBtn.classList.remove('smiley-win-bounce'), 800);
-
-  const prevStats = loadStats();
-  const prevMaxLevel = prevStats.maxLevelReached || 1;
-
-  const isDaily = state.gameMode === 'daily';
-  const stats = saveGameResult(true, state.elapsedTime, state.currentLevel, {
-    isDaily,
-    usedPowerUps: state.usedPowerUps,
-    gameMode: state.gameMode,
-  });
-  const earnedPowerUp = awardPowerUps(stats);
-
-  // Persist power-ups after win (award changes them)
-  saveModePowerUps(state.gameMode, state.powerUps);
-
-  playWin();
-  showCelebration();
-  haptic([50, 30, 50, 30, 80]);
-
-  // Check for newly unlocked themes
-  const newThemes = checkThemeUnlocks(prevMaxLevel, stats.maxLevelReached || 1);
-  if (newThemes.length > 0) {
-    showThemeUnlockToasts(newThemes);
-  }
-
-  // Check for newly unlocked achievement tiers
-  const newUnlocks = checkNewUnlocks(prevStats, stats);
-
-  const gameoverTitle = $('#gameover-title');
-  const gameoverTime = $('#gameover-time');
-  const gameoverRecord = $('#gameover-record');
-  const nextLevelBtn = $('#gameover-nextlevel');
-  const powerupEarned = $('#gameover-powerup-earned');
-  const shareBtn = $('#gameover-share');
-  const achievementsDiv = $('#gameover-achievements');
-
-  gameoverTitle.textContent = 'You Win!';
-  // Win title bounce animation
-  gameoverTitle.classList.remove('win-title-bounce');
-  void gameoverTitle.offsetWidth;
-  gameoverTitle.classList.add('win-title-bounce');
-  setTimeout(() => gameoverTitle.classList.remove('win-title-bounce'), 700);
-
-  const strikesInfo = state.gameMode === 'daily' && state.dailyBombHits > 0
-    ? ` | 💥 ${state.dailyBombHits} strike${state.dailyBombHits !== 1 ? 's' : ''}`
-    : '';
-
-  // Timed mode: show speed rating
-  if (state.gameMode === 'timed') {
-    const rating = getSpeedRating(state.currentLevel, state.elapsedTime);
-    gameoverTime.textContent = `Time: ${state.elapsedTime}s — ${rating.icon} ${rating.name}!`;
-  } else {
-    gameoverTime.textContent = `Time: ${state.elapsedTime}s${strikesInfo}`;
-  }
-
-  // Stats cascade animation on time display
-  gameoverTime.classList.remove('stats-cascade');
-  void gameoverTime.offsetWidth;
-  gameoverTime.classList.add('stats-cascade');
-  gameoverTime.style.animationDelay = '0.1s';
-  setTimeout(() => gameoverTime.classList.remove('stats-cascade'), 500);
+  $('#stat-played').textContent = stats.totalGames;
+  const rate = stats.totalGames > 0 ? Math.round((stats.wins / stats.totalGames) * 100) : 0;
+  $('#stat-win-rate').textContent = `${rate}%`;
+  $('#stat-streak').textContent = stats.currentStreak;
+  $('#stat-best-streak').textContent = stats.bestStreak;
 
   const bestKey = `level${state.currentLevel}`;
-  const isNewRecord = stats.bestTimes[bestKey] === state.elapsedTime;
-  if (isNewRecord) {
-    if (state.gameMode === 'timed') {
-      const rating = getSpeedRating(state.currentLevel, state.elapsedTime);
-      gameoverRecord.textContent = `🏆 New Record: ${state.elapsedTime}s ${rating.icon}`;
-    } else {
-      gameoverRecord.textContent = '🎉 New Record!';
-    }
-    gameoverRecord.classList.remove('hidden');
+  const best = stats.bestTimes[bestKey];
+  $('#stat-best-time').textContent = best != null ? `${best}s` : '--';
 
-    // Extra celebration for timed mode records
-    if (state.gameMode === 'timed') {
-      playTimeRecord();
-      setTimeout(() => showConfettiBurst(0.5, 0.3, 40), 200);
-      setTimeout(() => showConfettiBurst(0.3, 0.5, 30), 500);
-      setTimeout(() => showConfettiBurst(0.7, 0.5, 30), 800);
-    }
+  const chart = $('#recent-games-chart');
+  chart.innerHTML = '';
+  const recent = stats.recentGames.slice(-20);
+
+  if (recent.length === 0) {
+    chart.innerHTML = '<span class="chart-empty">Play some games to see your history!</span>';
   } else {
-    gameoverRecord.classList.add('hidden');
-  }
-
-  if (earnedPowerUp) {
-    powerupEarned.textContent = `Earned: ${earnedPowerUp}`;
-    powerupEarned.classList.remove('hidden');
-    // Animate power-up buttons with earned bounce
-    setTimeout(() => {
-      for (const btn of $$('.powerup-btn')) {
-        const count = state.powerUps[btn.dataset.powerup] || 0;
-        if (count > 0) {
-          btn.classList.add('powerup-earned');
-          setTimeout(() => btn.classList.remove('powerup-earned'), 600);
-        }
-      }
-    }, 300);
-  } else {
-    powerupEarned.classList.add('hidden');
-  }
-
-  // Hide encouragement (it's for losses)
-  const encouragementEl = $('#gameover-encouragement');
-  if (encouragementEl) encouragementEl.classList.add('hidden');
-
-  // Show visual share card (scrambled grid)
-  renderShareCardPreview();
-
-  // Show newly unlocked achievement tiers in game over
-  if (newUnlocks.length > 0) {
-    achievementsDiv.innerHTML = '';
-    for (const unlock of newUnlocks) {
-      const badge = document.createElement('div');
-      badge.className = 'gameover-achievement-badge tier-up-badge';
-      badge.innerHTML = `<span>${unlock.categoryIcon}</span><span>${unlock.category} ${unlock.tierIcon} ${unlock.tier.charAt(0).toUpperCase() + unlock.tier.slice(1)}</span>`;
-      achievementsDiv.appendChild(badge);
-    }
-    achievementsDiv.classList.remove('hidden');
-
-    // Show achievement toasts
-    showAchievementToasts(newUnlocks);
-  } else {
-    achievementsDiv.classList.add('hidden');
-  }
-
-  const maxLevel = state.gameMode === 'timed' ? MAX_TIMED_LEVEL : MAX_LEVEL;
-  if (state.currentLevel < maxLevel && state.gameMode !== 'daily') {
-    nextLevelBtn.classList.remove('hidden');
-  } else {
-    nextLevelBtn.classList.add('hidden');
-  }
-
-  const dailySubmitForm = $('#daily-submit-form');
-  if (isDaily && dailySubmitForm) {
-    dailySubmitForm.classList.remove('hidden');
-    const nameInput = $('#daily-name-input');
-    if (nameInput) nameInput.value = '';
-  } else if (dailySubmitForm) {
-    dailySubmitForm.classList.add('hidden');
-  }
-
-  // Always show share button on win
-  shareBtn.classList.remove('hidden');
-
-  // Clear saved game state on win
-  clearGameState();
-
-  showModal('gameover-overlay');
-  updatePowerUpBar();
-  updateStreakBorder();
-}
-
-function handleLoss(mineRow, mineCol) {
-  state.status = 'lost';
-  stopTimer();
-  resetBtn.textContent = getThemeEmoji('smileyLoss');
-  resetBtn.classList.add('smiley-loss-shake');
-  setTimeout(() => resetBtn.classList.remove('smiley-loss-shake'), 500);
-
-  state.hitMine = { row: mineRow, col: mineCol };
-
-  // Chain explosion: reveal mines in expanding rings from the hit
-  chainRevealMines(mineRow, mineCol);
-
-  playExplosion();
-  triggerHeavyShake();
-  showRedFlash();
-  haptic([100, 40, 100, 40, 200]);
-  saveGameResult(false, state.elapsedTime, state.currentLevel, { gameMode: state.gameMode });
-
-  // Power-ups persist on loss within same mode
-  saveModePowerUps(state.gameMode, state.powerUps);
-
-  // Death penalty: checkpoint-aware
-  const lostLevel = state.currentLevel;
-  const isLevelMode = state.gameMode === 'normal' || state.gameMode === 'fogOfWar';
-
-  // Reset to last checkpoint
-  if (isLevelMode && state.currentLevel > 1) {
-    state.currentLevel = state.checkpoint || 1;
-  }
-
-  const gameoverTitle = $('#gameover-title');
-  const gameoverTime = $('#gameover-time');
-  const encouragementEl = $('#gameover-encouragement');
-
-  gameoverTitle.textContent = 'Game Over';
-  gameoverTitle.classList.remove('win-title-bounce');
-  void gameoverTitle.offsetWidth;
-  gameoverTitle.classList.add('win-title-bounce');
-  setTimeout(() => gameoverTitle.classList.remove('win-title-bounce'), 700);
-
-  if (lostLevel > state.currentLevel && isLevelMode) {
-    gameoverTime.textContent = `Time: ${state.elapsedTime}s · Back to Level ${state.currentLevel}`;
-  } else {
-    gameoverTime.textContent = `Time: ${state.elapsedTime}s`;
-  }
-
-  // Show encouragement line
-  if (encouragementEl) {
-    const line = ENCOURAGEMENT_LINES[Math.floor(Math.random() * ENCOURAGEMENT_LINES.length)];
-    encouragementEl.textContent = line;
-    encouragementEl.classList.remove('hidden');
-  }
-
-  // Stats cascade on loss
-  gameoverTime.classList.remove('stats-cascade');
-  void gameoverTime.offsetWidth;
-  gameoverTime.classList.add('stats-cascade');
-  gameoverTime.style.animationDelay = '0.1s';
-  setTimeout(() => gameoverTime.classList.remove('stats-cascade'), 500);
-  $('#gameover-record').classList.add('hidden');
-  $('#gameover-nextlevel').classList.add('hidden');
-  const dailySubmitForm = $('#daily-submit-form');
-  if (dailySubmitForm) dailySubmitForm.classList.add('hidden');
-  $('#gameover-powerup-earned').classList.add('hidden');
-  $('#gameover-share').classList.add('hidden');
-  $('#gameover-achievements').classList.add('hidden');
-  const sharePreview = $('#share-card-preview');
-  if (sharePreview) sharePreview.classList.add('hidden');
-
-  // Clear saved game state on loss
-  clearGameState();
-
-  setTimeout(() => showModal('gameover-overlay'), 900);
-  updatePowerUpBar();
-  updateStreakBorder();
-  updateCheckpointDisplay();
-}
-
-// ── Daily Mode: Bomb Hit Re-Fog ─────────────────────────
-
-function handleDailyBombHit(mineRow, mineCol) {
-  state.dailyBombHits++;
-
-  // Defuse the hit mine so it won't kill again
-  defuseMine(state.board, mineRow, mineCol);
-  state.board[mineRow][mineCol].isRevealed = true;
-  state.totalMines--;
-
-  // Re-fog ALL non-mine revealed cells
-  let refogCount = 0;
-  for (let r = 0; r < state.rows; r++) {
-    for (let c = 0; c < state.cols; c++) {
-      const cell = state.board[r][c];
-      if (cell.isRevealed && !cell.isMine && !(r === mineRow && c === mineCol)) {
-        cell.isRevealed = false;
-        cell.isHiddenNumber = false;
-        refogCount++;
-      }
-    }
-  }
-  state.revealedCount = 1; // only the defused mine cell remains revealed
-
-  // Shake + muffled explosion effect
-  playExplosion();
-  triggerHeavyShake();
-  showRedFlash();
-  haptic([80, 30, 60]);
-
-  // Show strike toast
-  const strikes = state.dailyBombHits;
-  scanToast.textContent = `💥 Strike ${strikes} — Board re-fogged!`;
-  scanToast.classList.remove('hidden');
-  setTimeout(() => scanToast.classList.add('hidden'), 2500);
-
-  updateAllCells();
-  updateHeader();
-}
-
-// ── Power-Ups ──────────────────────────────────────────
-
-function useRevealSafe() {
-  if (state.powerUps.revealSafe <= 0 || state.status === 'won' || state.status === 'lost') return;
-  const cell = findSafeCell(state.board);
-  if (!cell) return;
-  playPowerUp();
-  state.powerUps.revealSafe--;
-  state.usedPowerUps = true;
-  saveModePowerUps(state.gameMode, state.powerUps);
-  cell.isRevealed = true;
-  cell.revealAnimDelay = 0;
-  state.revealedCount++;
-
-  const cellEl = boardEl.children[cell.row * state.cols + cell.col];
-  if (cellEl) {
-    cellEl.classList.add('golden-reveal');
-    // Golden ripple ring
-    const rect = cellEl.getBoundingClientRect();
-    const boardRect = boardEl.getBoundingClientRect();
-    const ripple = document.createElement('div');
-    ripple.className = 'golden-ripple';
-    ripple.style.left = (rect.left - boardRect.left + rect.width / 2) + 'px';
-    ripple.style.top = (rect.top - boardRect.top + rect.height / 2) + 'px';
-    boardEl.style.position = 'relative';
-    boardEl.appendChild(ripple);
-    setTimeout(() => ripple.remove(), 800);
-  }
-
-  if (state.fogOfWarEnabled) {
-    state.visibleCells = computeVisibleCells(getRevealedCells(), state.fogRadius, state.rows, state.cols);
-  }
-
-  updateAllCells();
-  updateHeader();
-  updatePowerUpBar();
-  if (checkWin(state.board)) handleWin();
-}
-
-function useShield() {
-  if (state.powerUps.shield <= 0 || state.status === 'won' || state.status === 'lost') return;
-  playPowerUp();
-  state.powerUps.shield--;
-  state.usedPowerUps = true;
-  state.shieldActive = true;
-  saveModePowerUps(state.gameMode, state.powerUps);
-  updatePowerUpBar();
-}
-
-function activateScan() {
-  if (state.powerUps.scanRowCol <= 0 || state.status === 'won' || state.status === 'lost') return;
-  playPowerUp();
-  state.usedPowerUps = true;
-  state.scanMode = !state.scanMode;
-  updatePowerUpBar();
-}
-
-function performScan(row, col) {
-  state.powerUps.scanRowCol--;
-  state.scanMode = false;
-  saveModePowerUps(state.gameMode, state.powerUps);
-  const result = scanRowCol(state.board, row, col);
-
-  // Add sweep line animations across the scanned row and column
-  boardEl.style.position = 'relative';
-  const clickedEl = boardEl.children[row * state.cols + col];
-  if (clickedEl) {
-    const rect = clickedEl.getBoundingClientRect();
-    const boardRect = boardEl.getBoundingClientRect();
-
-    // Horizontal sweep line across the row
-    const sweepH = document.createElement('div');
-    sweepH.className = 'scan-sweep-h';
-    sweepH.style.top = (rect.top - boardRect.top + rect.height / 2) + 'px';
-    boardEl.appendChild(sweepH);
-    setTimeout(() => sweepH.remove(), 600);
-
-    // Vertical sweep line down the column
-    const sweepV = document.createElement('div');
-    sweepV.className = 'scan-sweep-v';
-    sweepV.style.left = (rect.left - boardRect.left + rect.width / 2) + 'px';
-    boardEl.appendChild(sweepV);
-    setTimeout(() => sweepV.remove(), 600);
-  }
-
-  // Highlight the row with staggered delays outward from clicked cell
-  for (let c = 0; c < state.cols; c++) {
-    const el = boardEl.children[row * state.cols + c];
-    if (el) {
-      const distance = Math.abs(c - col);
-      el.style.animationDelay = (distance * 40) + 'ms';
-      el.classList.add('scan-highlight');
-    }
-  }
-  // Highlight the column with staggered delays outward from clicked cell
-  for (let r = 0; r < state.rows; r++) {
-    const el = boardEl.children[r * state.cols + col];
-    if (el) {
-      const distance = Math.abs(r - row);
-      el.style.animationDelay = (distance * 40) + 'ms';
-      el.classList.add('scan-highlight');
-    }
-  }
-
-  // Highlight mine cells in red (like x-ray) for better visibility
-  const minesInScan = [];
-  for (let c = 0; c < state.cols; c++) {
-    if (state.board[row][c].isMine && !state.board[row][c].isRevealed) {
-      const el = boardEl.children[row * state.cols + c];
-      if (el) minesInScan.push({ el, delay: Math.abs(c - col) * 40 });
-    }
-  }
-  for (let r = 0; r < state.rows; r++) {
-    if (state.board[r][col].isMine && !state.board[r][col].isRevealed) {
-      const el = boardEl.children[r * state.cols + col];
-      if (el && !minesInScan.some(m => m.el === el)) {
-        minesInScan.push({ el, delay: Math.abs(r - row) * 40 });
-      }
-    }
-  }
-  minesInScan.forEach(({ el, delay }) => {
-    setTimeout(() => el.classList.add('xray-mine'), 200 + delay);
-  });
-
-  scanToast.textContent = `Row ${row + 1}: ${result.rowMines} mine${result.rowMines !== 1 ? 's' : ''} | Col ${col + 1}: ${result.colMines} mine${result.colMines !== 1 ? 's' : ''}`;
-  scanToast.classList.remove('hidden');
-
-  setTimeout(() => {
-    scanToast.classList.add('hidden');
-    for (const el of $$('.scan-highlight')) {
-      el.classList.remove('scan-highlight');
-      el.style.animationDelay = '';
-    }
-    for (const el of $$('.xray-mine')) {
-      el.classList.remove('xray-mine');
-    }
-  }, 3000);
-
-  updatePowerUpBar();
-}
-
-// ── Freeze Power-Up ──────────────────────────────────
-function useFreeze() {
-  if (state.powerUps.freeze <= 0 || state.status === 'won' || state.status === 'lost') return;
-  if (state.freezeActive) return; // Already frozen
-  playFreeze();
-  state.powerUps.freeze--;
-  state.usedPowerUps = true;
-  state.freezeActive = true;
-  saveModePowerUps(state.gameMode, state.powerUps);
-
-  // Pause the timer for 15 seconds
-  const wasTimerId = state.timerId;
-  stopTimer();
-
-  // Show icy overlay
-  const overlay = document.createElement('div');
-  overlay.className = 'freeze-overlay';
-  document.getElementById('board-container').appendChild(overlay);
-
-  scanToast.textContent = '⏸️ Timer frozen for 15s!';
-  scanToast.classList.remove('hidden');
-
-  setTimeout(() => {
-    overlay.remove();
-    scanToast.classList.add('hidden');
-    state.freezeActive = false;
-    // Resume timer only if still playing
-    if (state.status === 'playing') {
-      startTimer();
-    }
-  }, 15000);
-
-  updatePowerUpBar();
-}
-
-// ── X-Ray Power-Up ──────────────────────────────────
-function activateXRay() {
-  if (state.powerUps.xray <= 0 || state.status === 'won' || state.status === 'lost') return;
-  playPowerUp();
-  state.usedPowerUps = true;
-  state.xrayMode = !state.xrayMode;
-  updatePowerUpBar();
-}
-
-function performXRay(row, col) {
-  state.powerUps.xray--;
-  state.xrayMode = false;
-  playXRay();
-  saveModePowerUps(state.gameMode, state.powerUps);
-
-  const mines = xRayScan(state.board, row, col);
-
-  // Highlight the 5×5 area
-  for (let dr = -2; dr <= 2; dr++) {
-    for (let dc = -2; dc <= 2; dc++) {
-      const nr = row + dr;
-      const nc = col + dc;
-      if (nr >= 0 && nr < state.rows && nc >= 0 && nc < state.cols) {
-        const el = boardEl.children[nr * state.cols + nc];
-        if (el) el.classList.add('xray-area');
-      }
-    }
-  }
-
-  // Add scan-line sweep across the X-Ray area
-  const centerEl = boardEl.children[row * state.cols + col];
-  if (centerEl) {
-    const scanLine = document.createElement('div');
-    scanLine.className = 'xray-scan-line';
-    boardEl.style.position = 'relative';
-    boardEl.appendChild(scanLine);
-    setTimeout(() => scanLine.remove(), 700);
-  }
-
-  // Highlight mines with pulsing red glow (staggered for drama)
-  mines.forEach((mine, i) => {
-    setTimeout(() => {
-      const el = boardEl.children[mine.row * state.cols + mine.col];
-      if (el) el.classList.add('xray-mine');
-    }, 200 + i * 80);
-  });
-
-  // Use top-positioned toast so it doesn't block the 5×5 highlight area
-  scanToast.textContent = `🔬 X-Ray: ${mines.length} mine${mines.length !== 1 ? 's' : ''} in area`;
-  scanToast.classList.add('xray-toast-top');
-  scanToast.classList.remove('hidden');
-
-  setTimeout(() => {
-    scanToast.classList.add('hidden');
-    scanToast.classList.remove('xray-toast-top');
-    for (const el of $$('.xray-area')) el.classList.remove('xray-area');
-    for (const el of $$('.xray-mine')) el.classList.remove('xray-mine');
-  }, 3000);
-
-  updatePowerUpBar();
-}
-
-// ── Decode Power-Up (Fog of War) ─────────────────────
-function useDecode() {
-  if (!state.powerUps.decode || state.powerUps.decode <= 0 || state.status === 'won' || state.status === 'lost') return;
-  playDecode();
-  state.powerUps.decode--;
-  state.usedPowerUps = true;
-  saveModePowerUps(state.gameMode, state.powerUps);
-
-  const decoded = decodeAllHidden(state.board);
-  if (decoded.length > 0) {
-    // Wave animation on decoded cells
-    decoded.forEach((cell, i) => {
-      const el = boardEl.children[cell.row * state.cols + cell.col];
-      if (el) {
-        el.style.animationDelay = `${i * 30}ms`;
-        el.classList.add('decode-wave');
-        setTimeout(() => el.classList.remove('decode-wave'), 500 + i * 30);
-      }
-    });
-  }
-
-  scanToast.textContent = `🔓 Decoded ${decoded.length} cell${decoded.length !== 1 ? 's' : ''}!`;
-  scanToast.classList.remove('hidden');
-  setTimeout(() => scanToast.classList.add('hidden'), 2000);
-
-  updateAllCells();
-  updatePowerUpBar();
-}
-
-function awardPowerUps(stats) {
-  // Timed and Daily modes don't award power-ups
-  if (state.gameMode === 'timed' || state.gameMode === 'daily') return '';
-
-  // Determine available power-up types based on mode
-  const isChallenge = state.gameMode === 'normal';
-  const isFogOfWar = state.gameMode === 'fogOfWar';
-
-  const baseTypes = ['revealSafe', 'shield', 'scanRowCol'];
-  const challengeTypes = [...baseTypes, 'freeze', 'xray'];
-  const fogTypes = [...baseTypes, 'decode'];
-
-  const types = isChallenge ? challengeTypes : isFogOfWar ? fogTypes : baseTypes;
-  const labels = {
-    revealSafe: '🔍 Reveal Safe', shield: '🛡️ Shield', scanRowCol: '🎯 Scan',
-    freeze: '⏸️ Freeze', xray: '🔬 X-Ray',
-    decode: '🔓 Decode',
-  };
-
-  const awarded = [];
-
-  // Flat 2 random power-ups per win
-  for (let i = 0; i < 2; i++) {
-    const pick = types[Math.floor(Math.random() * types.length)];
-    state.powerUps[pick] = (state.powerUps[pick] || 0) + 1;
-    awarded.push(labels[pick]);
-  }
-
-  return awarded.join(' + ');
-}
-
-// ── Effects ────────────────────────────────────────────
-
-function triggerShake() {
-  shakeWrapper.classList.add('shaking');
-  setTimeout(() => shakeWrapper.classList.remove('shaking'), 450);
-}
-
-function triggerHeavyShake() {
-  shakeWrapper.classList.add('heavy-shaking');
-  setTimeout(() => shakeWrapper.classList.remove('heavy-shaking'), 700);
-}
-
-function haptic(pattern) {
-  if (navigator.vibrate) {
-    navigator.vibrate(pattern);
-  }
-}
-
-function showRedFlash() {
-  const flash = document.createElement('div');
-  flash.className = 'red-flash';
-  document.getElementById('app').appendChild(flash);
-  setTimeout(() => flash.remove(), 600);
-}
-
-function showGreenFlash() {
-  const flash = document.createElement('div');
-  flash.className = 'green-flash';
-  document.getElementById('app').appendChild(flash);
-  setTimeout(() => flash.remove(), 500);
-}
-
-// Chain-reveal mines outward from hit point for dramatic effect
-function chainRevealMines(hitRow, hitCol) {
-  revealAllMines(state.board);
-
-  // Find all mine cells and sort by distance from hit
-  const mineCells = [];
-  for (let r = 0; r < state.rows; r++) {
-    for (let c = 0; c < state.cols; c++) {
-      if (state.board[r][c].isMine) {
-        const dist = Math.abs(r - hitRow) + Math.abs(c - hitCol);
-        mineCells.push({ r, c, dist });
-      }
-    }
-  }
-  mineCells.sort((a, b) => a.dist - b.dist);
-
-  // Reveal immediately — add staggered explosion animation
-  updateAllCells();
-  for (let i = 0; i < mineCells.length; i++) {
-    const { r, c } = mineCells[i];
-    const cellEl = boardEl.children[r * state.cols + c];
-    if (cellEl) {
-      cellEl.style.animationDelay = `${i * 50}ms`;
-      cellEl.classList.add('mine-chain');
-    }
-  }
-}
-
-// ── Celebration Effects ─────────────────────────────────
-
-function showCelebration() {
-  showGreenFlash();
-
-  // Single lightweight confetti burst — 60 particles, simple shapes
-  showConfettiBurst(0.5, 0.4, 60);
-}
-
-function showConfettiBurst(originX, originY, count) {
-  const canvas = particleCanvas;
-  const ctx = canvas.getContext('2d');
-  const rect = boardEl.getBoundingClientRect();
-  canvas.width = rect.width;
-  canvas.height = rect.height;
-  canvas.style.width = rect.width + 'px';
-  canvas.style.height = rect.height + 'px';
-  canvas.classList.add('active');
-
-  // Themed particle colors
-  const themeColors = {
-    classic: ['#ff4444', '#4488ff', '#44cc44', '#ffdd44', '#ff44ff', '#ffd700'],
-    dark: ['#e94560', '#53a8ff', '#00d4aa', '#ffd93d', '#c084fc', '#ff6b6b'],
-    neon: ['#00ff88', '#ff0066', '#00ccff', '#ffff00', '#ff6600', '#cc44ff'],
-    ocean: ['#64d2ff', '#5eead4', '#fbbf24', '#34d399', '#a78bfa', '#00e5ff'],
-    sunset: ['#ff6b6b', '#ffa07a', '#ffc107', '#ff8a65', '#bb86fc', '#87d68d'],
-    candy: ['#ff69b4', '#e040fb', '#7c4dff', '#ffd740', '#69f0ae', '#ff4081'],
-    midnight: ['#cc88ff', '#7c4dff', '#80b0ff', '#ffd740', '#69f0ae', '#b388ff'],
-    aurora: ['#00e5a0', '#00bcd4', '#b388ff', '#69f0ae', '#00e5ff', '#a7ffeb'],
-    galaxy: ['#ea80fc', '#d050ff', '#82b1ff', '#ff80ab', '#b9f6ca', '#ce93d8'],
-    forest: ['#4a8a3a', '#7ec87e', '#d4a843', '#c4a265', '#8bc34a', '#ffd700'],
-    stealth: ['#707070', '#505050', '#909090', '#b0a060', '#888888', '#c0c0c0'],
-    'cherry-blossom': ['#ff91a4', '#ffb6c1', '#f8c8dc', '#f48fb1', '#ce93d8', '#a8e6cf'],
-    volcano: ['#ff6622', '#ff4420', '#ff9944', '#ffcc44', '#ff8830', '#ffd700'],
-    ice: ['#b3e5fc', '#e1f5fe', '#80deea', '#b2ebf2', '#e0f7fa', '#ffffff'],
-    cyberpunk: ['#ff0080', '#00ffff', '#ffcc00', '#aa44ff', '#ff4444', '#00ff88'],
-    retro: ['#e6a23c', '#33cc66', '#ff4444', '#4488ff', '#ffd700', '#cc8844'],
-    holographic: ['#ff9ff3', '#48dbfb', '#c8d6e5', '#a29bfe', '#55efc4', '#fd79a8'],
-    toxic: ['#76ff03', '#ffea00', '#ff6d00', '#aa00ff', '#00e676', '#eeff41'],
-    royal: ['#ffd700', '#4a0080', '#cc1133', '#fffff0', '#e6b800', '#800080'],
-    prismatic: ['#ff0000', '#ff8800', '#ffff00', '#00cc00', '#0066ff', '#8800ff'],
-    void: ['#4a0066', '#1a0033', '#808080', '#cccccc', '#660099', '#330066'],
-    arctic: ['#e0f0ff', '#80d0ff', '#a8e0ff', '#c0c0c0', '#b8d8f0', '#ffffff'],
-    jungle: ['#33aa33', '#cc4422', '#9933cc', '#ffcc00', '#88cc22', '#44bb44'],
-    obsidian: ['#c0c0c0', '#808080', '#b8860b', '#a9a9a9', '#d3d3d3', '#ffd700'],
-    matrix: ['#00ff00', '#33cc33', '#66ff66', '#00cc00', '#99ff99', '#00ff88'],
-    inferno: ['#ff6600', '#cc0000', '#ffcc00', '#ff4400', '#ff8800', '#ffd700'],
-    celestial: ['#ffd700', '#1a1a4e', '#e0e0ff', '#4488ff', '#ffec80', '#6666cc'],
-    bloodmoon: ['#8b0000', '#cc0000', '#660000', '#990000', '#4a0000', '#ff2222'],
-    synthwave: ['#ff0080', '#00ffff', '#8800ff', '#ff6600', '#ff44aa', '#00ccff'],
-    supernova: ['#ffffff', '#4488ff', '#ff8800', '#aa44ff', '#ffd700', '#ff4444'],
-    legendary: ['#ffd700', '#cc0000', '#8800aa', '#c0c0c0', '#ffec80', '#800080'],
-  };
-  const colors = themeColors[state.theme] || themeColors.classic;
-
-  const particles = [];
-  for (let i = 0; i < count; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const speed = 3 + Math.random() * 8;
-    particles.push({
-      x: canvas.width * originX + (Math.random() - 0.5) * 20,
-      y: canvas.height * originY,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed - 3,
-      gravity: 0.12 + Math.random() * 0.05,
-      life: 1,
-      decay: 0.008 + Math.random() * 0.008,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      size: 3 + Math.random() * 5,
-      rotation: Math.random() * Math.PI * 2,
-      rotationSpeed: (Math.random() - 0.5) * 0.2,
-      isCircle: Math.random() > 0.5,
-    });
-  }
-
-  function animate() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    let alive = false;
-
-    for (const p of particles) {
-      if (p.life <= 0) continue;
-      alive = true;
-      p.x += p.vx;
-      p.y += p.vy;
-      p.vy += p.gravity;
-      p.vx *= 0.99;
-      p.life -= p.decay;
-      p.rotation += p.rotationSpeed;
-
-      ctx.globalAlpha = Math.max(0, p.life);
-      ctx.fillStyle = p.color;
-      ctx.save();
-      ctx.translate(p.x, p.y);
-      ctx.rotate(p.rotation);
-
-      if (p.isCircle) {
-        ctx.beginPath();
-        ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
-        ctx.fill();
+    const winTimes = recent.filter(g => g.won).map(g => g.time);
+    const maxTime = winTimes.length > 0 ? Math.max(...winTimes, 30) : 30;
+
+    for (const game of recent) {
+      const bar = document.createElement('div');
+      bar.className = `game-bar ${game.won ? 'win' : 'loss'}`;
+      if (game.won) {
+        const pct = Math.max(15, 100 - (game.time / maxTime) * 70);
+        bar.style.height = `${pct}%`;
+        bar.title = `Win: ${game.time}s (Level ${game.level || '?'})`;
       } else {
-        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+        bar.style.height = '30%';
+        bar.title = 'Loss';
       }
-
-      ctx.restore();
-    }
-
-    ctx.globalAlpha = 1;
-    if (alive) {
-      requestAnimationFrame(animate);
-    } else {
-      canvas.classList.remove('active');
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      chart.appendChild(bar);
     }
   }
-
-  requestAnimationFrame(animate);
 }
 
-// ── Achievements ───────────────────────────────────────
+// ── Leaderboard Display ───────────────────────────────
 
-function showAchievementToasts(unlocks) {
-  const toast = $('#achievement-toast');
-  let index = 0;
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
 
-  function showNext() {
-    if (index >= unlocks.length) return;
-    const unlock = unlocks[index];
-    toast.querySelector('.achievement-toast-icon').textContent = unlock.categoryIcon;
-    toast.querySelector('.achievement-toast-title').textContent = 'Achievement Unlocked!';
-    toast.querySelector('.achievement-toast-name').textContent =
-      `${unlock.category} — ${unlock.tier.charAt(0).toUpperCase() + unlock.tier.slice(1)} ${unlock.tierIcon}`;
-    toast.classList.remove('hidden', 'hiding');
+async function updateLeaderboardDisplay() {
+  const dateStr = new Date().toISOString().slice(0, 10);
+  $('#leaderboard-date').textContent = `Date: ${dateStr}`;
+  const statusBadge = $('#leaderboard-status');
+  const tbody = $('#leaderboard-body');
+  tbody.innerHTML = '';
 
-    setTimeout(() => {
-      toast.classList.add('hiding');
-      setTimeout(() => {
-        toast.classList.add('hidden');
-        toast.classList.remove('hiding');
-        index++;
-        if (index < unlocks.length) {
-          setTimeout(showNext, 200);
-        }
-      }, 300);
-    }, 2500);
+  let entries = null;
+  let isOnline = false;
+
+  if (isFirebaseOnline()) {
+    entries = await fetchOnlineLeaderboard(dateStr);
+    if (entries !== null) isOnline = true;
   }
 
-  // Delay first toast slightly to let game over show first
-  setTimeout(showNext, 600);
+  if (entries === null) {
+    entries = loadDailyLeaderboard(dateStr);
+  }
+
+  if (statusBadge) {
+    statusBadge.textContent = isOnline ? '🌐 Online' : '📱 Local';
+    statusBadge.className = `lb-status ${isOnline ? 'online' : 'offline'}`;
+  }
+
+  if (entries.length === 0) {
+    $('#leaderboard-table').classList.add('hidden');
+    $('#leaderboard-empty').classList.remove('hidden');
+    return;
+  }
+
+  $('#leaderboard-table').classList.remove('hidden');
+  $('#leaderboard-empty').classList.add('hidden');
+
+  entries.forEach((entry, i) => {
+    const tr = document.createElement('tr');
+    const bombCol = entry.bombHits != null ? `<td>${entry.bombHits}</td>` : '<td>-</td>';
+    tr.innerHTML = `<td>${i + 1}</td><td>${escapeHtml(entry.name)}</td><td>${entry.time}s</td>${bombCol}`;
+    tbody.appendChild(tr);
+  });
 }
+
+// ── Achievements Display ──────────────────────────────
 
 function updateAchievementsDisplay() {
   const grid = $('#achievements-grid');
@@ -1908,7 +135,6 @@ function updateAchievementsDisplay() {
   const achievements = getAchievementState(stats);
   const { total, max } = getTotalScore(stats);
 
-  // Update progress bar
   progressFill.style.width = `${(total / max) * 100}%`;
   progressText.textContent = `${total} / ${max}`;
 
@@ -1918,7 +144,6 @@ function updateAchievementsDisplay() {
     const item = document.createElement('div');
     item.className = 'achievement-category-card';
 
-    // Tier badges row
     const tierNames = getAllTierNames();
     let tiersHtml = '<div class="tier-badges">';
     for (let i = 0; i < tierNames.length; i++) {
@@ -1930,7 +155,6 @@ function updateAchievementsDisplay() {
     }
     tiersHtml += '</div>';
 
-    // Progress bar to next tier
     let progressHtml = '';
     if (ach.nextTier) {
       progressHtml = `
@@ -2006,11 +230,8 @@ function generateShareCard() {
 
 function handleShare() {
   const text = generateShareCard();
-
   if (navigator.share) {
-    navigator.share({ text }).catch(() => {
-      copyToClipboard(text);
-    });
+    navigator.share({ text }).catch(() => copyToClipboard(text));
   } else {
     copyToClipboard(text);
   }
@@ -2020,7 +241,6 @@ function copyToClipboard(text) {
   navigator.clipboard.writeText(text).then(() => {
     showShareCopiedToast();
   }).catch(() => {
-    // Fallback
     const ta = document.createElement('textarea');
     ta.value = text;
     document.body.appendChild(ta);
@@ -2039,144 +259,14 @@ function showShareCopiedToast() {
   setTimeout(() => toast.remove(), 2000);
 }
 
-// ── Helpers ────────────────────────────────────────────
-
-function getRevealedCells() {
-  const cells = [];
-  for (const row of state.board) {
-    for (const cell of row) {
-      if (cell.isRevealed) cells.push(cell);
-    }
-  }
-  return cells;
-}
-
-// ── Modals ─────────────────────────────────────────────
-
-function showModal(id) {
-  $(`#${id}`).classList.remove('hidden');
-}
-
-function hideModal(id) {
-  const modal = $(`#${id}`);
-  if (!modal || modal.classList.contains('hidden')) return;
-  modal.classList.add('modal-closing');
-  setTimeout(() => {
-    modal.classList.add('hidden');
-    modal.classList.remove('modal-closing');
-  }, 250);
-}
-
-function hideAllModals() {
-  for (const modal of $$('.modal')) {
-    modal.classList.add('hidden');
-    modal.classList.remove('modal-closing');
-  }
-}
-
-function updateStatsDisplay() {
-  const stats = loadStats();
-  $('#stat-played').textContent = stats.totalGames;
-  const rate = stats.totalGames > 0 ? Math.round((stats.wins / stats.totalGames) * 100) : 0;
-  $('#stat-win-rate').textContent = `${rate}%`;
-  $('#stat-streak').textContent = stats.currentStreak;
-  $('#stat-best-streak').textContent = stats.bestStreak;
-
-  const bestKey = `level${state.currentLevel}`;
-  const best = stats.bestTimes[bestKey];
-  $('#stat-best-time').textContent = best != null ? `${best}s` : '--';
-
-  // Recent games chart
-  const chart = $('#recent-games-chart');
-  chart.innerHTML = '';
-  const recent = stats.recentGames.slice(-20);
-
-  if (recent.length === 0) {
-    chart.innerHTML = '<span class="chart-empty">Play some games to see your history!</span>';
-  } else {
-    // Find max time among wins for scaling
-    const winTimes = recent.filter(g => g.won).map(g => g.time);
-    const maxTime = winTimes.length > 0 ? Math.max(...winTimes, 30) : 30;
-
-    for (const game of recent) {
-      const bar = document.createElement('div');
-      bar.className = `game-bar ${game.won ? 'win' : 'loss'}`;
-      if (game.won) {
-        // Taller = faster (invert so fast wins are tall)
-        const pct = Math.max(15, 100 - (game.time / maxTime) * 70);
-        bar.style.height = `${pct}%`;
-        bar.title = `Win: ${game.time}s (Level ${game.level || '?'})`;
-      } else {
-        bar.style.height = '30%';
-        bar.title = 'Loss';
-      }
-      chart.appendChild(bar);
-    }
-  }
-}
-
-async function updateLeaderboardDisplay() {
-  const dateStr = new Date().toISOString().slice(0, 10);
-  $('#leaderboard-date').textContent = `Date: ${dateStr}`;
-  const statusBadge = $('#leaderboard-status');
-  const tbody = $('#leaderboard-body');
-  tbody.innerHTML = '';
-
-  // Try online first, fall back to local
-  let entries = null;
-  let isOnline = false;
-
-  if (isFirebaseOnline()) {
-    entries = await fetchOnlineLeaderboard(dateStr);
-    if (entries !== null) {
-      isOnline = true;
-    }
-  }
-
-  // Fall back to local if online failed
-  if (entries === null) {
-    entries = loadDailyLeaderboard(dateStr);
-  }
-
-  // Update status badge
-  if (statusBadge) {
-    statusBadge.textContent = isOnline ? '🌐 Online' : '📱 Local';
-    statusBadge.className = `lb-status ${isOnline ? 'online' : 'offline'}`;
-  }
-
-  if (entries.length === 0) {
-    $('#leaderboard-table').classList.add('hidden');
-    $('#leaderboard-empty').classList.remove('hidden');
-    return;
-  }
-
-  $('#leaderboard-table').classList.remove('hidden');
-  $('#leaderboard-empty').classList.add('hidden');
-
-  entries.forEach((entry, i) => {
-    const tr = document.createElement('tr');
-    const bombCol = entry.bombHits != null ? `<td>${entry.bombHits}</td>` : '<td>-</td>';
-    tr.innerHTML = `<td>${i + 1}</td><td>${escapeHtml(entry.name)}</td><td>${entry.time}s</td>${bombCol}`;
-    tbody.appendChild(tr);
-  });
-}
-
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
-
 // ── Event Handlers ─────────────────────────────────────
 
 let longPressTimer = null;
 let longPressTriggered = false;
-let lastTouchTime = 0;  // Guard against touch + synthetic mouse double-fire
+let lastTouchTime = 0;
 
 boardEl.addEventListener('mousedown', (e) => {
-  // Skip synthetic mouse events fired after touch
   if (Date.now() - lastTouchTime < 500) return;
-
   const cellEl = e.target.closest('.cell');
   if (!cellEl) return;
   const row = parseInt(cellEl.dataset.row);
@@ -2202,7 +292,6 @@ boardEl.addEventListener('contextmenu', (e) => {
 });
 
 // Touch support: tap to reveal, long press to flag
-// Non-passive touchstart so we can preventDefault to block browser scroll/gesture interference
 let touchedCellRow = null;
 let touchedCellCol = null;
 let touchStartX = 0;
@@ -2213,8 +302,6 @@ boardEl.addEventListener('touchstart', (e) => {
   const touch = e.touches[0];
   const cellEl = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.cell');
   if (!cellEl) return;
-
-  // Prevent browser from hijacking touch for scrolling/gestures
   e.preventDefault();
 
   longPressTriggered = false;
@@ -2224,7 +311,6 @@ boardEl.addEventListener('touchstart', (e) => {
   touchStartY = touch.clientY;
   touchedCellEl = cellEl;
 
-  // Visual feedback — show the cell is being pressed
   cellEl.classList.add('touch-holding');
 
   longPressTimer = setTimeout(() => {
@@ -2242,15 +328,8 @@ boardEl.addEventListener('touchstart', (e) => {
 
 boardEl.addEventListener('touchend', (e) => {
   lastTouchTime = Date.now();
-  if (longPressTimer) {
-    clearTimeout(longPressTimer);
-    longPressTimer = null;
-  }
-  // Remove hold visual
-  if (touchedCellEl) {
-    touchedCellEl.classList.remove('touch-holding');
-    touchedCellEl = null;
-  }
+  if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+  if (touchedCellEl) { touchedCellEl.classList.remove('touch-holding'); touchedCellEl = null; }
   if (longPressTriggered) {
     longPressTriggered = false;
     touchedCellRow = null;
@@ -2259,7 +338,7 @@ boardEl.addEventListener('touchend', (e) => {
     return;
   }
   if (touchedCellRow == null || touchedCellCol == null) return;
-  e.preventDefault();  // Block synthetic mousedown
+  e.preventDefault();
   const row = touchedCellRow;
   const col = touchedCellCol;
   touchedCellRow = null;
@@ -2276,19 +355,12 @@ boardEl.addEventListener('touchend', (e) => {
 });
 
 boardEl.addEventListener('touchmove', (e) => {
-  // Only cancel long-press if finger moved more than 20px (prevents jitter cancellation)
   const touch = e.touches[0];
   const dx = Math.abs(touch.clientX - touchStartX);
   const dy = Math.abs(touch.clientY - touchStartY);
   if (dx > 20 || dy > 20) {
-    if (longPressTimer) {
-      clearTimeout(longPressTimer);
-      longPressTimer = null;
-    }
-    if (touchedCellEl) {
-      touchedCellEl.classList.remove('touch-holding');
-      touchedCellEl = null;
-    }
+    if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    if (touchedCellEl) { touchedCellEl.classList.remove('touch-holding'); touchedCellEl = null; }
     touchedCellRow = null;
     touchedCellCol = null;
   }
@@ -2308,9 +380,8 @@ for (const btn of $$('.powerup-btn')) {
     if (type === 'revealSafe') useRevealSafe();
     else if (type === 'shield') useShield();
     else if (type === 'scanRowCol') activateScan();
-    else if (type === 'freeze') useFreeze();
+    else if (type === 'magnet') activateMagnet();
     else if (type === 'xray') activateXRay();
-    else if (type === 'decode') useDecode();
   });
 }
 
@@ -2368,7 +439,7 @@ $('#btn-leaderboard').addEventListener('click', () => {
 $('#btn-help').addEventListener('click', () => showModal('help-modal'));
 $('#title-bar').addEventListener('click', () => showModal('about-modal'));
 
-// Close modals (with exit animation)
+// Close modals
 for (const closeBtn of $$('.modal-close')) {
   closeBtn.addEventListener('click', (e) => {
     const modal = e.target.closest('.modal');
@@ -2377,7 +448,6 @@ for (const closeBtn of $$('.modal-close')) {
 }
 for (const modal of $$('.modal')) {
   modal.addEventListener('click', (e) => {
-    // Don't dismiss game-over modal by clicking outside — require button press
     if (e.target === modal && modal.id !== 'gameover-overlay') {
       hideModal(modal.id);
     }
@@ -2387,7 +457,6 @@ for (const modal of $$('.modal')) {
 // Theme selection
 for (const swatch of $$('.theme-swatch')) {
   swatch.addEventListener('click', () => {
-    // Block if locked
     if (swatch.classList.contains('locked')) {
       swatch.classList.add('swatch-shake');
       setTimeout(() => swatch.classList.remove('swatch-shake'), 400);
@@ -2399,7 +468,6 @@ for (const swatch of $$('.theme-swatch')) {
     saveTheme(theme);
     for (const s of $$('.theme-swatch')) s.classList.remove('active');
     swatch.classList.add('active');
-    // Refresh themed emojis (smiley, flags, mines)
     if (state.status === 'won') resetBtn.textContent = getThemeEmoji('smileyWin');
     else if (state.status === 'lost') resetBtn.textContent = getThemeEmoji('smileyLoss');
     else resetBtn.textContent = getThemeEmoji('smiley');
@@ -2417,7 +485,6 @@ if (toggleLockedBtn) {
     }
     toggleLockedBtn.textContent = isExpanded ? '🔓 Hide locked themes' : '';
     if (!isExpanded) {
-      const countSpan = document.createElement('span');
       toggleLockedBtn.textContent = '🔒 Show ';
       const s = document.createElement('span');
       s.id = 'locked-theme-count';
@@ -2429,38 +496,14 @@ if (toggleLockedBtn) {
 }
 
 // Mode selection
-const timedDiffPanel = $('#timed-difficulty');
-
-function updateTimedDiffVisibility() {
-  if (timedDiffPanel) {
-    if (state.gameMode === 'timed') {
-      timedDiffPanel.classList.remove('hidden');
-    } else {
-      timedDiffPanel.classList.add('hidden');
-    }
-  }
-}
-
-// Shared mode-switch logic
-function switchMode(mode) {
-  state.gameMode = mode;
-  if (mode !== 'timed') state.currentLevel = 1;
-  for (const m of $$('.mode-btn')) m.classList.toggle('active', m.dataset.mode === mode);
-  for (const p of $$('.mode-pill')) p.classList.toggle('active', p.dataset.mode === mode);
-  updateTimedDiffVisibility();
-  newGame();
-}
-
 for (const modeBtn of $$('.mode-btn')) {
   modeBtn.addEventListener('click', () => switchMode(modeBtn.dataset.mode));
 }
-
-// Mode pill quick-switcher in info bar
 for (const pill of $$('.mode-pill')) {
   pill.addEventListener('click', () => switchMode(pill.dataset.mode));
 }
 
-// Timed difficulty selection (Beginner / Intermediate / Expert)
+// Timed difficulty selection
 for (const diffBtn of $$('.timed-diff-btn')) {
   diffBtn.addEventListener('click', () => {
     const level = parseInt(diffBtn.dataset.level, 10);
@@ -2471,17 +514,10 @@ for (const diffBtn of $$('.timed-diff-btn')) {
   });
 }
 
-function syncTimedDiffButtons() {
-  for (const d of $$('.timed-diff-btn')) {
-    d.classList.toggle('active', parseInt(d.dataset.level, 10) === state.currentLevel);
-  }
-}
-
 // Reset Profile
 $('#btn-reset-profile').addEventListener('click', () => {
   if (confirm('Are you sure you want to reset your profile? This will erase ALL stats, achievements, and leaderboard data. This cannot be undone.')) {
     resetStats();
-    // Reset theme to classic (since unlocks depend on stats)
     state.theme = 'classic';
     document.documentElement.setAttribute('data-theme', 'classic');
     saveTheme('classic');
@@ -2489,18 +525,32 @@ $('#btn-reset-profile').addEventListener('click', () => {
     const classicSwatch = $('.theme-swatch[data-theme="classic"]');
     if (classicSwatch) classicSwatch.classList.add('active');
     updateThemeSwatches();
-    // Reset game state
     state.currentLevel = 1;
-    state.powerUps = { revealSafe: 0, shield: 0, scanRowCol: 0, freeze: 0, xray: 0 };
+    state.powerUps = { revealSafe: 0, shield: 0, lifeline: 0, scanRowCol: 0, magnet: 0, xray: 0 };
     updatePowerUpBar();
     newGame();
-    // Close settings modal
     $('#settings-modal').classList.add('hidden');
   }
 });
 
 // Game over actions
 $('#gameover-retry').addEventListener('click', () => {
+  const postDeathBar = $('#post-death-bar');
+  if (postDeathBar) postDeathBar.classList.add('hidden');
+  newGame();
+});
+
+// Explore Board — dismiss modal, keep board visible for analysis
+$('#gameover-explore').addEventListener('click', () => {
+  hideModal('gameover-overlay');
+  const postDeathBar = $('#post-death-bar');
+  if (postDeathBar) postDeathBar.classList.remove('hidden');
+});
+
+// Post-death floating replay button
+$('#post-death-replay').addEventListener('click', () => {
+  const postDeathBar = $('#post-death-bar');
+  if (postDeathBar) postDeathBar.classList.add('hidden');
   newGame();
 });
 
@@ -2509,7 +559,6 @@ $('#gameover-nextlevel').addEventListener('click', () => {
   const completedLevel = state.currentLevel;
   if (state.currentLevel < maxLevel) state.currentLevel++;
 
-  // Save checkpoint every 5 levels (Challenge & Fog of War)
   const isLevelMode = state.gameMode === 'normal' || state.gameMode === 'fogOfWar';
   if (isLevelMode) {
     const newCheckpoint = getCheckpointForLevel(state.currentLevel);
@@ -2526,33 +575,30 @@ $('#gameover-nextlevel').addEventListener('click', () => {
   syncTimedDiffButtons();
   newGame();
 });
+
 $('#gameover-submit-daily').addEventListener('click', async () => {
   const nameInput = $('#daily-name-input');
   const name = nameInput ? nameInput.value : '';
   if (name && name.trim()) {
     const sanitized = name.trim().slice(0, 20);
     const dateStr = new Date().toISOString().slice(0, 10);
-    // Save locally
     addDailyLeaderboardEntry(dateStr, sanitized, state.elapsedTime);
-    // Also save to Firebase
     await submitOnlineScore(dateStr, sanitized, state.elapsedTime, state.dailyBombHits || 0);
     const dailySubmitForm = $('#daily-submit-form');
     if (dailySubmitForm) dailySubmitForm.classList.add('hidden');
     showToast('✅ Score submitted!');
   }
 });
+
 $('#gameover-share').addEventListener('click', () => handleShare());
 
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
-  // Don't capture when a modal is open (except game over)
   const anyModalOpen = [...$$('.modal')].some(m => !m.classList.contains('hidden'));
 
   if (e.key === 'Escape') {
-    // Don't let Escape dismiss game-over modal
     const gameoverOpen = !$('#gameover-overlay').classList.contains('hidden');
     if (!gameoverOpen) {
-      // Find the topmost visible modal and close it with animation
       const visibleModals = [...$$('.modal')].filter(m => !m.classList.contains('hidden'));
       if (visibleModals.length > 0) {
         hideModal(visibleModals[visibleModals.length - 1].id);
@@ -2572,174 +618,9 @@ document.addEventListener('keydown', (e) => {
   if (e.key === '1') useRevealSafe();
   else if (e.key === '2') useShield();
   else if (e.key === '3') activateScan();
-  else if (e.key === '4') useFreeze();
+  else if (e.key === '4') activateMagnet();
   else if (e.key === '5') activateXRay();
-  else if (e.key === '6') useDecode();
 });
-
-// ── Level Up Toast ─────────────────────────────────────
-
-function showLevelUpToast(level) {
-  const toast = document.createElement('div');
-  toast.className = 'level-up-toast';
-  toast.textContent = `Level ${level}!`;
-  document.getElementById('app').appendChild(toast);
-  setTimeout(() => toast.remove(), 2000);
-}
-
-// ── Checkpoint Toast ──────────────────────────────────
-
-function showCheckpointToast(checkpointLevel) {
-  const toast = document.createElement('div');
-  toast.className = 'checkpoint-toast';
-  toast.innerHTML = `🏁 Checkpoint! <span style="font-size:12px; opacity:0.8">Level ${checkpointLevel}</span>`;
-  document.getElementById('app').appendChild(toast);
-  setTimeout(() => toast.remove(), 2500);
-}
-
-// ── Flag Mode Toggle ──────────────────────────────────
-
-function updateFlagModeBar() {
-  if (!flagModeBar) return;
-  // Only show on touch devices during gameplay
-  const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-  if (isTouchDevice && state.status !== 'won' && state.status !== 'lost') {
-    flagModeBar.classList.remove('hidden');
-  } else {
-    flagModeBar.classList.add('hidden');
-  }
-  if (flagModeToggle) {
-    flagModeToggle.classList.toggle('flag-active', state.flagMode);
-  }
-  if (flagModeIcon) {
-    flagModeIcon.textContent = state.flagMode ? '🚩' : '👆';
-  }
-  if (flagModeLabel) {
-    flagModeLabel.textContent = state.flagMode ? 'Tap to Flag' : 'Tap to Reveal';
-  }
-}
-
-// ── Visual Share Card (Scrambled Grid) ────────────────
-
-function renderShareCardPreview() {
-  const preview = $('#share-card-preview');
-  const grid = $('#share-card-grid');
-  if (!preview || !grid) return;
-
-  // Build ratio of mine/safe/empty
-  const totalCells = state.rows * state.cols;
-  const mines = state.totalMines;
-  const revealed = state.revealedCount;
-  const unrevealed = totalCells - revealed - mines;
-
-  // Create cell list and scramble
-  const cells = [];
-  for (let i = 0; i < mines; i++) cells.push('mine');
-  for (let i = 0; i < revealed; i++) cells.push('safe');
-  for (let i = 0; i < unrevealed; i++) cells.push('empty');
-
-  // Shuffle (Fisher-Yates)
-  for (let i = cells.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [cells[i], cells[j]] = [cells[j], cells[i]];
-  }
-
-  // Render as a grid
-  grid.innerHTML = '';
-  grid.style.gridTemplateColumns = `repeat(${state.cols}, 10px)`;
-  cells.slice(0, state.rows * state.cols).forEach(type => {
-    const cell = document.createElement('div');
-    cell.className = `share-card-cell ${type}`;
-    grid.appendChild(cell);
-  });
-
-  preview.classList.remove('hidden');
-}
-
-// ── Game State Persistence ────────────────────────────
-
-function persistGameState() {
-  if (state.status !== 'playing') return;
-  const gs = {
-    board: state.board.map(row => row.map(c => ({
-      isMine: c.isMine, isRevealed: c.isRevealed, isFlagged: c.isFlagged,
-      adjacentMines: c.adjacentMines, isDefused: c.isDefused || false,
-      isHiddenNumber: c.isHiddenNumber || false,
-      row: c.row, col: c.col,
-    }))),
-    rows: state.rows, cols: state.cols, totalMines: state.totalMines,
-    flagCount: state.flagCount, revealedCount: state.revealedCount,
-    elapsedTime: state.elapsedTime, currentLevel: state.currentLevel,
-    gameMode: state.gameMode, powerUps: { ...state.powerUps },
-    shieldActive: state.shieldActive, checkpoint: state.checkpoint,
-    dailySeed: state.dailySeed, dailyBombHits: state.dailyBombHits,
-    fogOfWarEnabled: state.fogOfWarEnabled,
-  };
-  saveGameState(gs);
-}
-
-function tryResumeGame() {
-  const gs = loadGameState();
-  if (!gs || !gs.board || !gs.gameMode) return false;
-
-  state.board = gs.board;
-  state.rows = gs.rows;
-  state.cols = gs.cols;
-  state.totalMines = gs.totalMines;
-  state.flagCount = gs.flagCount;
-  state.revealedCount = gs.revealedCount;
-  state.elapsedTime = gs.elapsedTime;
-  state.currentLevel = gs.currentLevel;
-  state.gameMode = gs.gameMode;
-  state.powerUps = gs.powerUps || { revealSafe: 0, shield: 0, scanRowCol: 0, freeze: 0, xray: 0 };
-  state.shieldActive = gs.shieldActive || false;
-  state.checkpoint = gs.checkpoint || 1;
-  state.dailySeed = gs.dailySeed || null;
-  state.dailyBombHits = gs.dailyBombHits || 0;
-  state.fogOfWarEnabled = gs.fogOfWarEnabled || false;
-  state.status = 'playing';
-  state.firstClick = false;
-  state.hitMine = null;
-  state.scanMode = false;
-  state.xrayMode = false;
-  state.freezeActive = false;
-
-  if (state.fogOfWarEnabled) {
-    const allRevealed = getRevealedCells();
-    state.visibleCells = computeVisibleCells(allRevealed, state.fogRadius, state.rows, state.cols);
-  }
-
-  adjustCellSize();
-  renderBoard();
-  updateAllCells();
-  updateHeader();
-  updateTimerDisplay();
-  updatePowerUpBar();
-  updateStreakBorder();
-  updateCheckpointDisplay();
-  updateProgressBar();
-  updateCellsRemaining();
-  updateStreakDisplay();
-  updateFlagModeBar();
-  updateZoom();
-  startTimer();
-
-  return true;
-}
-
-// ── Level Info Toast ───────────────────────────────────
-
-function showLevelInfoToast(level, diff, label) {
-  const toast = document.createElement('div');
-  toast.className = 'level-info-toast';
-  const sizeLabel = `${diff.rows}×${diff.cols}`;
-  const mineLabel = `${diff.mines} mines`;
-  const timeLabel = ''; // Timed mode counts up now, no time limit to show
-  const title = label ? `${label}` : `Level ${level}`;
-  toast.innerHTML = `<strong>${title}</strong><br><span class="level-info-details">${sizeLabel} · ${mineLabel}${timeLabel}</span>`;
-  document.getElementById('app').appendChild(toast);
-  setTimeout(() => toast.remove(), 2500);
-}
 
 // ── Mute Toggle ────────────────────────────────────────
 
@@ -2758,7 +639,6 @@ function init() {
   const theme = loadTheme();
   const unlocked = getUnlockedThemes();
 
-  // If saved theme is locked, fall back to best unlocked theme
   let activeTheme = theme;
   if (unlocked[theme] === false) {
     const stats = loadStats();
@@ -2778,32 +658,26 @@ function init() {
     activeSwatch.classList.add('active');
   }
 
-  // Load mute preference
   const muted = loadMuted();
   if (muteBtn) {
     muteBtn.textContent = muted ? '🔇' : '🔊';
     muteBtn.title = muted ? 'Unmute' : 'Mute';
   }
 
-  // Initialize Firebase for online leaderboard
   initFirebase();
 
-  // Deep link: ?mode=daily routes to daily challenge
   const urlParams = new URLSearchParams(window.location.search);
   const deepLinkMode = urlParams.get('mode');
   if (deepLinkMode === 'daily') {
     state.gameMode = 'daily';
   } else if (!isOnboarded()) {
-    // First-time player → default to Challenge mode
     state.gameMode = 'normal';
   }
 
-  // Try to resume a saved game
   if (!tryResumeGame()) {
     newGame();
   }
 
-  // Onboarding for new players
   if (!isOnboarded()) {
     setOnboarded();
     const onboarding = $('#onboarding-overlay');
@@ -2814,7 +688,6 @@ function init() {
     }
   }
 
-  // Auto-save game state periodically
   setInterval(() => persistGameState(), 5000);
 }
 

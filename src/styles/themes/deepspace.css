@@ -1,0 +1,47 @@
+/* Deep Space theme — deep purples and blues, very dark, nebula-like atmosphere */
+[data-theme="deepspace"] {
+  --color-bg: #0a0818;
+  --color-app-bg: #060412;
+  --color-cell-hidden: #2a2050;
+  --color-cell-hidden-hover: #342860;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #302458, #241c48);
+  --color-cell-revealed: #100c24;
+  --color-cell-border-light: #4a3880;
+  --color-cell-border-dark: #0c0816;
+  --color-mine: #9060e0;
+  --color-mine-hit: #b040ff;
+  --color-flag: #6090ff;
+  --color-text: #c8c0e8;
+  --color-text-secondary: #7868a8;
+  --color-num-1: #6898e0;
+  --color-num-2: #a070d8;
+  --color-num-3: #e06088;
+  --color-num-4: #50a0c8;
+  --color-num-5: #c858a0;
+  --color-num-6: #5890d0;
+  --color-num-7: #c8c0e8;
+  --color-num-8: #484070;
+  --color-header-bg: #0a0818;
+  --color-header-gradient: linear-gradient(180deg, #141028, #0a0818);
+  --color-lcd-bg: #060410;
+  --color-lcd-text: #8070d0;
+  --color-modal-bg: #120e28;
+  --color-modal-overlay: rgba(4, 2, 10, 0.92);
+  --color-btn-bg: #2a2050;
+  --color-btn-hover: #342860;
+  --color-btn-gradient: linear-gradient(180deg, #342860, #2a2050);
+  --color-border: #4a3880;
+  --color-fog: rgba(4, 2, 10, 0.95);
+  --color-scan-highlight: rgba(96, 144, 255, 0.15);
+  --color-golden: #c8a840;
+  --color-accent: #7868e0;
+  --color-accent-hover: #6858d0;
+  --color-accent-glow: rgba(120, 104, 224, 0.3);
+  --color-win: #60c0a0;
+  --color-loss: #e04060;
+  --color-surface: rgba(120, 104, 224, 0.04);
+  --shadow-app: 0 8px 40px rgba(4, 2, 10, 0.7), inset 0 1px 0 rgba(120, 104, 224, 0.06);
+  --text-shadow-lcd: 0 0 10px rgba(128, 112, 208, 0.5);
+  --text-shadow-title: 0 0 14px rgba(120, 104, 224, 0.4);
+  --bg-modal-close-hover: rgba(120, 104, 224, 0.12);
+}

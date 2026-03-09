@@ -1,76 +1,124 @@
-// Challenge mode — 50 levels of progressive difficulty
-// Boards grow from 8×8 up to 14×14 at the highest levels.
-// Difficulty increases via mine density, grid size, time pressure, and zero-cluster limits.
+// Challenge mode — 100 levels of progressive difficulty
+// Boards grow from 5×5 up to 14×14. Timer is informational only (no countdown).
+// Difficulty increases via mine density, grid size, and zero-cluster limits.
+// Gimmicks are introduced at checkpoints starting at L11.
 const CHALLENGE_LEVELS = [
-  // Learning (L1–5): 8×8 → 10×10, density 12–16%
-  { rows: 8,  cols: 8,  mines: 8,  timeLimit: 90  },   // L1  — 12.5%
-  { rows: 8,  cols: 8,  mines: 10, timeLimit: 90  },   // L2  — 15.6%
-  { rows: 9,  cols: 9,  mines: 11, timeLimit: 100 },   // L3  — 13.6%
-  { rows: 9,  cols: 9,  mines: 13, timeLimit: 110 },   // L4  — 16.0%
-  { rows: 10, cols: 10, mines: 16, timeLimit: 120 },   // L5  — 16.0%
+  // Tutorial (L1–5): 5×5 → 7×7, very low density
+  { rows: 5,  cols: 5,  mines: 2  },  // L1  — 8.0%
+  { rows: 6,  cols: 6,  mines: 4  },  // L2  — 11.1%
+  { rows: 6,  cols: 6,  mines: 5  },  // L3  — 13.9%
+  { rows: 7,  cols: 7,  mines: 5  },  // L4  — 10.2%
+  { rows: 7,  cols: 7,  mines: 6  },  // L5  — 12.2%
 
-  // Intermediate (L6–10): 10×10 → 11×11, density 18–25%
-  { rows: 10, cols: 10, mines: 18, timeLimit: 130 },   // L6  — 18.0%
-  { rows: 10, cols: 10, mines: 20, timeLimit: 140 },   // L7  — 20.0%
-  { rows: 11, cols: 11, mines: 24, timeLimit: 160 },   // L8  — 19.8%
-  { rows: 11, cols: 11, mines: 27, timeLimit: 180 },   // L9  — 22.3%
-  { rows: 11, cols: 11, mines: 30, timeLimit: 200 },   // L10 — 24.8%
+  // Learning (L6–10): 7×7 → 9×9, density 14–16%
+  { rows: 7,  cols: 7,  mines: 7  },  // L6  — 14.3%
+  { rows: 8,  cols: 8,  mines: 8  },  // L7  — 12.5%
+  { rows: 8,  cols: 8,  mines: 10 },  // L8  — 15.6%
+  { rows: 9,  cols: 9,  mines: 11 },  // L9  — 13.6%
+  { rows: 9,  cols: 9,  mines: 13 },  // L10 — 16.0%
 
-  // Advanced (L11–15): 11×11 → 12×12, density 25–30%
-  { rows: 11, cols: 11, mines: 33, timeLimit: 220 },   // L11 — 27.3%
-  { rows: 12, cols: 12, mines: 36, timeLimit: 240 },   // L12 — 25.0%
-  { rows: 12, cols: 12, mines: 39, timeLimit: 260 },   // L13 — 27.1%
-  { rows: 12, cols: 12, mines: 42, timeLimit: 280 },   // L14 — 29.2%
-  { rows: 12, cols: 12, mines: 44, timeLimit: 300 },   // L15 — 30.6%
+  // Intermediate (L11–20): 10×10, density 15–22%
+  { rows: 10, cols: 10, mines: 16 },  // L11 — 16.0%
+  { rows: 10, cols: 10, mines: 17 },  // L12 — 17.0%
+  { rows: 10, cols: 10, mines: 18 },  // L13 — 18.0%
+  { rows: 10, cols: 10, mines: 19 },  // L14 — 19.0%
+  { rows: 10, cols: 10, mines: 20 },  // L15 — 20.0%
+  { rows: 10, cols: 10, mines: 20 },  // L16 — 20.0%
+  { rows: 10, cols: 10, mines: 21 },  // L17 — 21.0%
+  { rows: 10, cols: 10, mines: 21 },  // L18 — 21.0%
+  { rows: 10, cols: 10, mines: 22 },  // L19 — 22.0%
+  { rows: 10, cols: 10, mines: 22 },  // L20 — 22.0%
 
-  // Expert (L16–20): 12×12, density 30–35%
-  { rows: 12, cols: 12, mines: 45, timeLimit: 320 },   // L16 — 31.3%
-  { rows: 12, cols: 12, mines: 47, timeLimit: 340 },   // L17 — 32.6%
-  { rows: 12, cols: 12, mines: 48, timeLimit: 360 },   // L18 — 33.3%
-  { rows: 12, cols: 12, mines: 49, timeLimit: 380 },   // L19 — 34.0%
-  { rows: 12, cols: 12, mines: 50, timeLimit: 400 },   // L20 — 34.7%
+  // Advanced (L21–40): 11×11 → 12×12, density 22–30%
+  { rows: 11, cols: 11, mines: 27 },  // L21 — 22.3%
+  { rows: 11, cols: 11, mines: 28 },  // L22 — 23.1%
+  { rows: 11, cols: 11, mines: 29 },  // L23 — 24.0%
+  { rows: 11, cols: 11, mines: 30 },  // L24 — 24.8%
+  { rows: 11, cols: 11, mines: 31 },  // L25 — 25.6%
+  { rows: 11, cols: 11, mines: 32 },  // L26 — 26.4%
+  { rows: 11, cols: 11, mines: 33 },  // L27 — 27.3%
+  { rows: 11, cols: 11, mines: 34 },  // L28 — 28.1%
+  { rows: 11, cols: 11, mines: 35 },  // L29 — 28.9%
+  { rows: 11, cols: 11, mines: 36 },  // L30 — 29.8%
+  { rows: 12, cols: 12, mines: 36 },  // L31 — 25.0%
+  { rows: 12, cols: 12, mines: 37 },  // L32 — 25.7%
+  { rows: 12, cols: 12, mines: 38 },  // L33 — 26.4%
+  { rows: 12, cols: 12, mines: 39 },  // L34 — 27.1%
+  { rows: 12, cols: 12, mines: 40 },  // L35 — 27.8%
+  { rows: 12, cols: 12, mines: 41 },  // L36 — 28.5%
+  { rows: 12, cols: 12, mines: 42 },  // L37 — 29.2%
+  { rows: 12, cols: 12, mines: 43 },  // L38 — 29.9%
+  { rows: 12, cols: 12, mines: 43 },  // L39 — 29.9%
+  { rows: 12, cols: 12, mines: 44 },  // L40 — 30.6%
 
-  // Legendary (L21–30): 12×12, density 35–40%, tighter timers
-  { rows: 12, cols: 12, mines: 51, timeLimit: 380 },   // L21 — 35.4%
-  { rows: 12, cols: 12, mines: 52, timeLimit: 360 },   // L22 — 36.1%
-  { rows: 12, cols: 12, mines: 53, timeLimit: 340 },   // L23 — 36.8%
-  { rows: 12, cols: 12, mines: 54, timeLimit: 320 },   // L24 — 37.5%
-  { rows: 12, cols: 12, mines: 54, timeLimit: 300 },   // L25 — 37.5%
-  { rows: 12, cols: 12, mines: 55, timeLimit: 290 },   // L26 — 38.2%
-  { rows: 12, cols: 12, mines: 56, timeLimit: 280 },   // L27 — 38.9%
-  { rows: 12, cols: 12, mines: 56, timeLimit: 260 },   // L28 — 38.9%
-  { rows: 12, cols: 12, mines: 57, timeLimit: 250 },   // L29 — 39.6%
-  { rows: 12, cols: 12, mines: 58, timeLimit: 240 },   // L30 — 40.3%
+  // Expert (L41–60): 12×12 → 13×13, density 30–33%
+  { rows: 12, cols: 12, mines: 44 },  // L41 — 30.6%
+  { rows: 12, cols: 12, mines: 45 },  // L42 — 31.3%
+  { rows: 12, cols: 12, mines: 45 },  // L43 — 31.3%
+  { rows: 12, cols: 12, mines: 46 },  // L44 — 31.9%
+  { rows: 12, cols: 12, mines: 46 },  // L45 — 31.9%
+  { rows: 12, cols: 12, mines: 47 },  // L46 — 32.6%
+  { rows: 12, cols: 12, mines: 47 },  // L47 — 32.6%
+  { rows: 12, cols: 12, mines: 48 },  // L48 — 33.3%
+  { rows: 12, cols: 12, mines: 48 },  // L49 — 33.3%
+  { rows: 13, cols: 13, mines: 50 },  // L50 — 29.6%
+  { rows: 13, cols: 13, mines: 51 },  // L51 — 30.2%
+  { rows: 13, cols: 13, mines: 52 },  // L52 — 30.8%
+  { rows: 13, cols: 13, mines: 53 },  // L53 — 31.4%
+  { rows: 13, cols: 13, mines: 53 },  // L54 — 31.4%
+  { rows: 13, cols: 13, mines: 54 },  // L55 — 32.0%
+  { rows: 13, cols: 13, mines: 54 },  // L56 — 32.0%
+  { rows: 13, cols: 13, mines: 55 },  // L57 — 32.5%
+  { rows: 13, cols: 13, mines: 55 },  // L58 — 32.5%
+  { rows: 13, cols: 13, mines: 56 },  // L59 — 33.1%
+  { rows: 13, cols: 13, mines: 56 },  // L60 — 33.1%
 
-  // Mythic (L31–37): 13×13 (169 cells), density 30–35%, tighter timers
-  { rows: 13, cols: 13, mines: 52, timeLimit: 240 },   // L31 — 30.8%
-  { rows: 13, cols: 13, mines: 54, timeLimit: 235 },   // L32 — 32.0%
-  { rows: 13, cols: 13, mines: 55, timeLimit: 230 },   // L33 — 32.5%
-  { rows: 13, cols: 13, mines: 57, timeLimit: 225 },   // L34 — 33.7%
-  { rows: 13, cols: 13, mines: 58, timeLimit: 220 },   // L35 — 34.3%
-  { rows: 13, cols: 13, mines: 59, timeLimit: 215 },   // L36 — 34.9%
-  { rows: 13, cols: 13, mines: 60, timeLimit: 210 },   // L37 — 35.5%
+  // Legendary (L61–80): 13×13 → 14×14, density 30–36%
+  { rows: 13, cols: 13, mines: 57 },  // L61 — 33.7%
+  { rows: 13, cols: 13, mines: 57 },  // L62 — 33.7%
+  { rows: 13, cols: 13, mines: 58 },  // L63 — 34.3%
+  { rows: 13, cols: 13, mines: 58 },  // L64 — 34.3%
+  { rows: 13, cols: 13, mines: 59 },  // L65 — 34.9%
+  { rows: 13, cols: 13, mines: 59 },  // L66 — 34.9%
+  { rows: 13, cols: 13, mines: 60 },  // L67 — 35.5%
+  { rows: 13, cols: 13, mines: 60 },  // L68 — 35.5%
+  { rows: 14, cols: 14, mines: 60 },  // L69 — 30.6%
+  { rows: 14, cols: 14, mines: 61 },  // L70 — 31.1%
+  { rows: 14, cols: 14, mines: 62 },  // L71 — 31.6%
+  { rows: 14, cols: 14, mines: 63 },  // L72 — 32.1%
+  { rows: 14, cols: 14, mines: 64 },  // L73 — 32.7%
+  { rows: 14, cols: 14, mines: 65 },  // L74 — 33.2%
+  { rows: 14, cols: 14, mines: 65 },  // L75 — 33.2%
+  { rows: 14, cols: 14, mines: 66 },  // L76 — 33.7%
+  { rows: 14, cols: 14, mines: 66 },  // L77 — 33.7%
+  { rows: 14, cols: 14, mines: 67 },  // L78 — 34.2%
+  { rows: 14, cols: 14, mines: 67 },  // L79 — 34.2%
+  { rows: 14, cols: 14, mines: 68 },  // L80 — 34.7%
 
-  // Titan (L38–43): 14×14 (196 cells), density 32–36%, squeezed timers
-  { rows: 14, cols: 14, mines: 63, timeLimit: 210 },   // L38 — 32.1%
-  { rows: 14, cols: 14, mines: 65, timeLimit: 208 },   // L39 — 33.2%
-  { rows: 14, cols: 14, mines: 67, timeLimit: 205 },   // L40 — 34.2%
-  { rows: 14, cols: 14, mines: 68, timeLimit: 202 },   // L41 — 34.7%
-  { rows: 14, cols: 14, mines: 69, timeLimit: 200 },   // L42 — 35.2%
-  { rows: 14, cols: 14, mines: 70, timeLimit: 197 },   // L43 — 35.7%
-
-  // Immortal (L44–50): 14×14, density 36–38%, brutal time pressure
-  { rows: 14, cols: 14, mines: 71, timeLimit: 195 },   // L44 — 36.2%
-  { rows: 14, cols: 14, mines: 72, timeLimit: 192 },   // L45 — 36.7%
-  { rows: 14, cols: 14, mines: 73, timeLimit: 190 },   // L46 — 37.2%
-  { rows: 14, cols: 14, mines: 74, timeLimit: 188 },   // L47 — 37.8%
-  { rows: 14, cols: 14, mines: 74, timeLimit: 185 },   // L48 — 37.8%
-  { rows: 14, cols: 14, mines: 75, timeLimit: 182 },   // L49 — 38.3%
-  { rows: 14, cols: 14, mines: 75, timeLimit: 180 },   // L50 — 38.3%
+  // Mythic (L81–100): 14×14, density 34–38%
+  { rows: 14, cols: 14, mines: 68 },  // L81 — 34.7%
+  { rows: 14, cols: 14, mines: 69 },  // L82 — 35.2%
+  { rows: 14, cols: 14, mines: 69 },  // L83 — 35.2%
+  { rows: 14, cols: 14, mines: 70 },  // L84 — 35.7%
+  { rows: 14, cols: 14, mines: 70 },  // L85 — 35.7%
+  { rows: 14, cols: 14, mines: 71 },  // L86 — 36.2%
+  { rows: 14, cols: 14, mines: 71 },  // L87 — 36.2%
+  { rows: 14, cols: 14, mines: 72 },  // L88 — 36.7%
+  { rows: 14, cols: 14, mines: 72 },  // L89 — 36.7%
+  { rows: 14, cols: 14, mines: 73 },  // L90 — 37.2%
+  { rows: 14, cols: 14, mines: 73 },  // L91 — 37.2%
+  { rows: 14, cols: 14, mines: 73 },  // L92 — 37.2%
+  { rows: 14, cols: 14, mines: 74 },  // L93 — 37.8%
+  { rows: 14, cols: 14, mines: 74 },  // L94 — 37.8%
+  { rows: 14, cols: 14, mines: 74 },  // L95 — 37.8%
+  { rows: 14, cols: 14, mines: 75 },  // L96 — 38.3%
+  { rows: 14, cols: 14, mines: 75 },  // L97 — 38.3%
+  { rows: 14, cols: 14, mines: 75 },  // L98 — 38.3%
+  { rows: 14, cols: 14, mines: 75 },  // L99 — 38.3%
+  { rows: 14, cols: 14, mines: 75 },  // L100 — 38.3%
 ];
 
 // Timed mode — mobile-friendly sizes, count UP (no countdown)
-// Difficulty via mine density, all boards fit on 375px screens.
 const TIMED_LEVELS = [
   { rows: 9,  cols: 9,  mines: 10,  label: 'Beginner' },     // 12.3%
   { rows: 11, cols: 11, mines: 25,  label: 'Intermediate' },  // 20.7%
@@ -79,16 +127,10 @@ const TIMED_LEVELS = [
 
 // Speed ratings — thresholds in seconds per difficulty
 const SPEED_THRESHOLDS = [
-  // Beginner:     Diamond ≤30, Gold ≤60, Silver ≤120
   { diamond: 30, gold: 60, silver: 120 },
-  // Intermediate: Diamond ≤60, Gold ≤120, Silver ≤240
   { diamond: 60, gold: 120, silver: 240 },
-  // Expert:       Diamond ≤90, Gold ≤180, Silver ≤360
   { diamond: 90, gold: 180, silver: 360 },
 ];
-
-// Fog of War mode — uses same curve as Challenge for progressive difficulty
-// (Fog effects ramp separately via fogOfWar.js)
 
 export function getDifficultyForLevel(level) {
   const capped = Math.min(Math.max(level, 1), CHALLENGE_LEVELS.length);
@@ -102,19 +144,15 @@ export function getTimedDifficulty(level) {
 
 // Anti-zero-cluster thresholds per level
 export function getMaxZeroCluster(level) {
-  if (level <= 4) return Infinity;  // No restriction for early levels
-  if (level <= 9) return 8;
-  if (level <= 14) return 6;
-  if (level <= 20) return 4;        // L15–20: very tight
-  if (level <= 37) return 3;        // L21–37: extremely tight
-  return 2;                          // L38–50: near-zero openings
+  if (level <= 5) return Infinity;   // Tutorial: no restriction
+  if (level <= 10) return 10;
+  if (level <= 20) return 8;
+  if (level <= 30) return 6;
+  if (level <= 50) return 4;
+  if (level <= 70) return 3;
+  return 2;                          // L71–100: near-zero openings
 }
 
-/** Get speed rating for timed mode completion.
- *  @param {number} level 1-based timed level
- *  @param {number} time  completion time in seconds
- *  @returns {{ icon: string, name: string, tier: number }} rating info
- */
 export function getSpeedRating(level, time) {
   const idx = Math.min(Math.max(level, 1), SPEED_THRESHOLDS.length) - 1;
   const t = SPEED_THRESHOLDS[idx];

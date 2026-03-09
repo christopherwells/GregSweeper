@@ -1,0 +1,47 @@
+/* Solar theme — bright golden yellows and warm whites, sun-themed */
+[data-theme="solar"] {
+  --color-bg: #fdf8ec;
+  --color-app-bg: #fffcf2;
+  --color-cell-hidden: #e8c850;
+  --color-cell-hidden-hover: #ecd460;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #eacc58, #e0c048);
+  --color-cell-revealed: #fef8e8;
+  --color-cell-border-light: #f4dc78;
+  --color-cell-border-dark: #c8a830;
+  --color-mine: #d08820;
+  --color-mine-hit: #c06810;
+  --color-flag: #e8a030;
+  --color-text: #4a3810;
+  --color-text-secondary: #a09060;
+  --color-num-1: #c89830;
+  --color-num-2: #88a848;
+  --color-num-3: #d07030;
+  --color-num-4: #8878a8;
+  --color-num-5: #c06838;
+  --color-num-6: #58a088;
+  --color-num-7: #4a3810;
+  --color-num-8: #b0a888;
+  --color-header-bg: #fdf8ec;
+  --color-header-gradient: linear-gradient(180deg, #fffcf2, #fdf8ec);
+  --color-lcd-bg: #f4ecd0;
+  --color-lcd-text: #b88818;
+  --color-modal-bg: #fefaf0;
+  --color-modal-overlay: rgba(74, 56, 16, 0.25);
+  --color-btn-bg: #e8c850;
+  --color-btn-hover: #ecd460;
+  --color-btn-gradient: linear-gradient(180deg, #ecd460, #e8c850);
+  --color-border: #d8b840;
+  --color-fog: rgba(253, 248, 236, 0.93);
+  --color-scan-highlight: rgba(232, 160, 48, 0.15);
+  --color-golden: #d4a020;
+  --color-accent: #d8a028;
+  --color-accent-hover: #c89020;
+  --color-accent-glow: rgba(216, 160, 40, 0.3);
+  --color-win: #78b848;
+  --color-loss: #c85030;
+  --color-surface: rgba(232, 200, 80, 0.06);
+  --shadow-app: 0 8px 40px rgba(74, 56, 16, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  --text-shadow-lcd: 0 0 10px rgba(184, 136, 24, 0.35);
+  --text-shadow-title: 0 0 14px rgba(216, 160, 40, 0.3);
+  --bg-modal-close-hover: rgba(216, 160, 40, 0.12);
+}

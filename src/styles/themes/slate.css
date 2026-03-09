@@ -1,0 +1,47 @@
+/* Slate theme — cool grays and slate blues, professional/minimal look */
+[data-theme="slate"] {
+  --color-bg: #1c2028;
+  --color-app-bg: #161a20;
+  --color-cell-hidden: #4a5468;
+  --color-cell-hidden-hover: #566074;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #525c70, #44506c);
+  --color-cell-revealed: #222830;
+  --color-cell-border-light: #687890;
+  --color-cell-border-dark: #141820;
+  --color-mine: #7090c0;
+  --color-mine-hit: #5878b8;
+  --color-flag: #8098c0;
+  --color-text: #d0d8e4;
+  --color-text-secondary: #7888a0;
+  --color-num-1: #6890c0;
+  --color-num-2: #78a890;
+  --color-num-3: #c07080;
+  --color-num-4: #8080b8;
+  --color-num-5: #c08868;
+  --color-num-6: #68a0a0;
+  --color-num-7: #d0d8e4;
+  --color-num-8: #607080;
+  --color-header-bg: #1c2028;
+  --color-header-gradient: linear-gradient(180deg, #242a34, #1c2028);
+  --color-lcd-bg: #101418;
+  --color-lcd-text: #6888b0;
+  --color-modal-bg: #222830;
+  --color-modal-overlay: rgba(10, 12, 16, 0.88);
+  --color-btn-bg: #4a5468;
+  --color-btn-hover: #566074;
+  --color-btn-gradient: linear-gradient(180deg, #566074, #4a5468);
+  --color-border: #586878;
+  --color-fog: rgba(10, 12, 16, 0.93);
+  --color-scan-highlight: rgba(128, 152, 192, 0.12);
+  --color-golden: #c8b060;
+  --color-accent: #6888b0;
+  --color-accent-hover: #5878a0;
+  --color-accent-glow: rgba(104, 136, 176, 0.25);
+  --color-win: #68a888;
+  --color-loss: #c06070;
+  --color-surface: rgba(104, 136, 176, 0.04);
+  --shadow-app: 0 8px 40px rgba(10, 12, 16, 0.5), inset 0 1px 0 rgba(104, 136, 176, 0.06);
+  --text-shadow-lcd: 0 0 10px rgba(104, 136, 176, 0.4);
+  --text-shadow-title: 0 0 14px rgba(104, 136, 176, 0.3);
+  --bg-modal-close-hover: rgba(104, 136, 176, 0.12);
+}

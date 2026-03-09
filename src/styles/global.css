@@ -590,6 +590,36 @@ body {
   font-size: 18px;
 }
 
+/* Post-death analysis overlays */
+.cell.wrong-flag {
+  position: relative;
+  border: 2px solid #ff1744 !important;
+  background: rgba(255, 23, 68, 0.15) !important;
+}
+.cell.wrong-flag::after {
+  content: '\2716';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  color: #ff1744;
+  font-weight: bold;
+  text-shadow: 0 0 4px rgba(255, 23, 68, 0.5);
+}
+
+.cell.suggested-move {
+  border: 2px solid #00e676 !important;
+  box-shadow: 0 0 8px rgba(0, 230, 118, 0.4);
+  animation: pulse-suggest 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-suggest {
+  0%, 100% { box-shadow: 0 0 8px rgba(0, 230, 118, 0.3); }
+  50% { box-shadow: 0 0 16px rgba(0, 230, 118, 0.7); }
+}
+
 .cell.fogged {
   background: var(--color-fog);
   border: 1px solid rgba(0,0,0,0.3);
@@ -752,38 +782,36 @@ body {
 
 #scan-toast {
   position: absolute;
-  top: 50%;
+  bottom: -40px;
   left: 50%;
-  transform: translate(-50%, -50%);
+  transform: translateX(-50%);
   background: var(--color-modal-bg);
   color: var(--color-text);
-  padding: 14px 28px;
-  border-radius: 12px;
-  font-size: 14px;
+  padding: 10px 24px;
+  border-radius: 10px;
+  font-size: 13px;
   font-weight: bold;
   box-shadow: var(--shadow-lg);
   z-index: 100;
-  animation: fadeIn 0.2s ease-out;
+  animation: scanToastSlideUp 0.25s ease-out;
   pointer-events: none;
   border: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+@keyframes scanToastSlideUp {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
 #scan-toast.hidden {
   display: none;
 }
 
-/* X-Ray: reposition toast to top so it doesn't block the 5×5 area */
+/* X-Ray: styled variant for x-ray scan results */
 #scan-toast.xray-toast-top {
-  top: 8px;
-  transform: translateX(-50%);
   background: rgba(100, 149, 237, 0.95);
   border-color: rgba(100, 149, 237, 0.5);
-  animation: xrayToastSlide 0.3s ease-out;
-}
-
-@keyframes xrayToastSlide {
-  from { top: -30px; opacity: 0; }
-  to { top: 8px; opacity: 1; }
 }
 
 /* ── X-Ray Power-Up ────────────────────────── */
@@ -829,45 +857,126 @@ body {
   box-shadow: 0 0 8px rgba(100, 149, 237, 0.5);
 }
 
-/* ── Freeze Power-Up ───────────────────────── */
-.freeze-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(100, 200, 255, 0.08);
-  border: 2px solid rgba(100, 200, 255, 0.3);
-  border-radius: var(--border-radius);
+/* ── Lifeline Power-Up ─────────────────────── */
+.cell.lifeline-save {
+  animation: lifelinePulse 1.2s ease-out;
+  box-shadow: 0 0 12px rgba(255, 80, 80, 0.8), inset 0 0 6px rgba(255, 80, 80, 0.4);
+}
+
+@keyframes lifelinePulse {
+  0% { box-shadow: 0 0 20px rgba(255, 80, 80, 1), inset 0 0 10px rgba(255, 80, 80, 0.6); transform: scale(1.15); }
+  40% { box-shadow: 0 0 14px rgba(255, 80, 80, 0.6); transform: scale(1.05); }
+  100% { box-shadow: none; transform: scale(1); }
+}
+
+.lifeline-flash {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: radial-gradient(circle, rgba(255, 80, 80, 0.25), transparent 70%);
   pointer-events: none;
-  z-index: 50;
-  animation: freezeShimmer 2s ease-in-out infinite;
+  z-index: 200;
+  animation: lifelineFlashAnim 0.6s ease-out forwards;
 }
 
-@keyframes freezeShimmer {
-  0%, 100% { background: rgba(100, 200, 255, 0.06); border-color: rgba(100, 200, 255, 0.2); }
-  50% { background: rgba(100, 200, 255, 0.12); border-color: rgba(100, 200, 255, 0.4); }
+@keyframes lifelineFlashAnim {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
 }
 
-/* ── Hidden Number (Fog of War ? cells) ──── */
-.cell.hidden-number {
-  color: var(--color-text-secondary);
-  font-size: calc(var(--cell-size) * 0.55);
-  font-weight: 900;
-  font-style: italic;
-  background: var(--color-cell-revealed);
+.lifeline-indicator {
+  cursor: default !important;
   opacity: 0.85;
 }
 
-/* ── Decode Power-Up Wave ────────────────── */
-.cell.decode-wave {
-  animation: decodeFlip 0.4s ease-out both;
+/* ── Magnet Power-Up ──────────────────────── */
+.cell.magnet-area {
+  animation: magnetPulse 1.5s ease-out;
+  box-shadow: 0 0 10px rgba(180, 130, 255, 0.6);
 }
 
-@keyframes decodeFlip {
-  0% { transform: scaleY(0.3); opacity: 0.5; background: rgba(100, 200, 100, 0.3); }
-  50% { transform: scaleY(1.1); background: rgba(100, 200, 100, 0.15); }
-  100% { transform: scaleY(1); opacity: 1; background: var(--color-cell-revealed); }
+@keyframes magnetPulse {
+  0% { box-shadow: 0 0 16px rgba(180, 130, 255, 0.9); background: rgba(180, 130, 255, 0.25) !important; }
+  50% { box-shadow: 0 0 8px rgba(180, 130, 255, 0.4); background: rgba(180, 130, 255, 0.1) !important; }
+  100% { box-shadow: none; background: inherit !important; }
+}
+
+#board.magnet-mode .cell.unrevealed {
+  cursor: crosshair;
+}
+
+.powerup-btn.magnet-active {
+  background: rgba(180, 130, 255, 0.3) !important;
+  box-shadow: 0 0 8px rgba(180, 130, 255, 0.5);
+}
+
+/* ── Gimmick Cells ─────────────────────────── */
+
+/* Wall cells */
+.cell.wall {
+  background: var(--color-border) !important;
+  border-color: var(--color-border);
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* Mystery cells — revealed but showing '?' */
+.cell.mystery-cell {
+  color: var(--color-text-secondary);
+  font-weight: 900;
+  font-style: italic;
+  text-shadow: 0 0 4px rgba(255, 200, 50, 0.4);
+}
+
+/* Liar cells — display is off by ±1 */
+.cell.liar-cell {
+  border: 2px solid #e67e22 !important;
+  box-shadow: inset 0 0 4px rgba(230, 126, 34, 0.3);
+}
+
+/* Locked cells — padlock indicator */
+.cell.locked-cell::after {
+  content: '🔒';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: calc(var(--cell-size) * 0.45);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.cell.locked-cell {
+  position: relative;
+}
+
+/* Wormhole cells */
+.cell.wormhole-cell {
+  border: 2px solid #9b59b6 !important;
+  box-shadow: inset 0 0 6px rgba(155, 89, 182, 0.3);
+}
+
+.cell.wormhole-unrevealed {
+  border: 2px dashed rgba(155, 89, 182, 0.4) !important;
+}
+
+/* Mirror zone cells */
+.cell.mirror-cell {
+  border: 2px solid #3498db !important;
+  box-shadow: inset 0 0 6px rgba(52, 152, 219, 0.3);
+}
+
+.cell.mirror-unrevealed {
+  border: 2px dashed rgba(52, 152, 219, 0.3) !important;
+}
+
+/* Mine shift shimmer */
+.mine-shift-shimmer {
+  animation: mineShiftFlash 0.6s ease-out;
+}
+
+@keyframes mineShiftFlash {
+  0% { box-shadow: 0 0 12px rgba(255, 200, 50, 0.6); }
+  100% { box-shadow: none; }
 }
 
 /* ── Bottom Nav ─────────────────────────────── */
@@ -1743,12 +1852,38 @@ body {
   56% { transform: scale(1); }
 }
 
+.gameover-analysis {
+  margin: 10px 0 4px;
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
 .gameover-actions {
   display: flex;
   gap: 10px;
   justify-content: center;
   margin-top: 20px;
   flex-wrap: wrap;
+}
+
+/* Post-death floating bar */
+.post-death-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background: linear-gradient(transparent, rgba(0,0,0,0.8) 30%);
+  z-index: 100;
+}
+.post-death-bar .action-btn {
+  min-width: 160px;
 }
 
 .action-btn {

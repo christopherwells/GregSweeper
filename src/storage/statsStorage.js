@@ -36,6 +36,7 @@ const DEFAULT_STATS = {
   maxLevelReached: 1,
   dailiesCompleted: 0,
   puristWins: 0,
+  gimmickWins: 0,
 };
 
 // Per-mode stats structure
@@ -63,10 +64,8 @@ function createDefaultModeStats() {
 
 // Per-mode power-up pools
 const DEFAULT_POWERUPS = {
-  challenge: { revealSafe: 0, shield: 0, scanRowCol: 0, freeze: 0, xray: 0 },
-  fogOfWar:  { revealSafe: 3, shield: 3, scanRowCol: 3, decode: 0 },
-  // timed: no power-ups
-  // daily: fixed set (not persisted)
+  challenge: { revealSafe: 0, shield: 0, lifeline: 0, scanRowCol: 0, magnet: 0, xray: 0 },
+  fogOfWar:  { revealSafe: 3, shield: 3, lifeline: 0, scanRowCol: 3, magnet: 0, xray: 0 },
 };
 
 export function loadStats() {
@@ -78,6 +77,7 @@ export function loadStats() {
   if (stats.maxLevelReached == null) stats.maxLevelReached = 1;
   if (stats.dailiesCompleted == null) stats.dailiesCompleted = 0;
   if (stats.puristWins == null) stats.puristWins = 0;
+  if (stats.gimmickWins == null) stats.gimmickWins = 0;
 
   // Migrate: if no modeStats, seed challenge stats from existing global stats
   if (!stats.modeStats) {
@@ -113,7 +113,7 @@ function getModeKey(gameMode) {
   return gameMode;
 }
 
-export function saveGameResult(won, time, level, { isDaily = false, usedPowerUps = false, gameMode = 'normal' } = {}) {
+export function saveGameResult(won, time, level, { isDaily = false, usedPowerUps = false, gameMode = 'normal', hadGimmicks = false } = {}) {
   const stats = loadStats();
   const modeKey = getModeKey(gameMode);
   const modeStats = stats.modeStats[modeKey];
@@ -138,6 +138,9 @@ export function saveGameResult(won, time, level, { isDaily = false, usedPowerUps
     }
     if (!usedPowerUps) {
       stats.puristWins++;
+    }
+    if (hadGimmicks) {
+      stats.gimmickWins = (stats.gimmickWins || 0) + 1;
     }
   } else {
     stats.losses++;
@@ -286,22 +289,44 @@ export function saveCheckpoint(gameMode, level) {
   setJSON(CHECKPOINT_KEY, data);
 }
 
-// ── Game State Persistence ──────────────────────────
-const GAME_STATE_KEY = 'minesweeper_game_state';
+// ── Per-Mode Game State Persistence ─────────────────
+const GAME_STATE_PREFIX = 'minesweeper_game_state_';
+const LEGACY_GAME_STATE_KEY = 'minesweeper_game_state';
+
+function gameStateKey(mode) {
+  const modeKey = mode === 'normal' ? 'challenge' : mode;
+  return GAME_STATE_PREFIX + modeKey;
+}
 
 export function saveGameState(gameState) {
-  setJSON(GAME_STATE_KEY, gameState);
+  const key = gameStateKey(gameState.gameMode || 'normal');
+  setJSON(key, gameState);
 }
 
-export function loadGameState() {
-  return getJSON(GAME_STATE_KEY);
+export function loadGameState(mode) {
+  if (mode) {
+    return getJSON(gameStateKey(mode));
+  }
+  // No mode specified — try legacy key and migrate
+  const legacy = getJSON(LEGACY_GAME_STATE_KEY);
+  if (legacy) {
+    const m = legacy.gameMode || 'normal';
+    setJSON(gameStateKey(m), legacy);
+    try { localStorage.removeItem(LEGACY_GAME_STATE_KEY); } catch (e) { /* ignore */ }
+    return legacy;
+  }
+  return null;
 }
 
-export function clearGameState() {
-  try {
-    localStorage.removeItem(GAME_STATE_KEY);
-  } catch (e) {
-    // ignore
+export function clearGameState(mode) {
+  if (mode) {
+    try { localStorage.removeItem(gameStateKey(mode)); } catch (e) { /* ignore */ }
+  } else {
+    // Clear all mode states (used by reset)
+    for (const m of ['challenge', 'timed', 'daily', 'fogOfWar', 'skillTrainer']) {
+      try { localStorage.removeItem(gameStateKey(m)); } catch (e) { /* ignore */ }
+    }
+    try { localStorage.removeItem(LEGACY_GAME_STATE_KEY); } catch (e) { /* ignore */ }
   }
 }
 
@@ -315,7 +340,7 @@ export function resetStats() {
   setJSON(LIVES_KEY, { ...DEFAULT_LIVES });
   localStorage.removeItem(LEADERBOARD_KEY);
   localStorage.removeItem(CHECKPOINT_KEY);
-  localStorage.removeItem(GAME_STATE_KEY);
+  clearGameState(); // clears all mode states
 }
 
 /**
