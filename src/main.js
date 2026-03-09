@@ -474,6 +474,17 @@ function showShareCopiedToast() {
 
 // ── Event Handlers ─────────────────────────────────────
 
+// Track when a modal was opened from the title screen
+let _returnToTitle = false;
+
+function closeModalAndReturn(modalId) {
+  hideModal(modalId);
+  if (_returnToTitle) {
+    _returnToTitle = false;
+    showTitleScreen();
+  }
+}
+
 let longPressTimer = null;
 let longPressTriggered = false;
 let lastTouchTime = 0;
@@ -736,13 +747,13 @@ for (const tab of $$('.collection-tab')) {
 for (const closeBtn of $$('.modal-close')) {
   closeBtn.addEventListener('click', (e) => {
     const modal = e.target.closest('.modal');
-    if (modal) hideModal(modal.id);
+    if (modal) closeModalAndReturn(modal.id);
   });
 }
 for (const modal of $$('.modal')) {
   modal.addEventListener('click', (e) => {
     if (e.target === modal && modal.id !== 'gameover-overlay') {
-      hideModal(modal.id);
+      closeModalAndReturn(modal.id);
     }
   });
 }
@@ -853,11 +864,12 @@ for (const card of $$('.mode-card')) {
 }
 
 // Title screen footer buttons
-// Title screen footer buttons — modals overlay the title screen
-// so closing them returns to the title screen (no hideTitleScreen)
+// Title screen footer buttons — open modals then return to title on close
 const titleSettingsBtn = $('#title-settings-btn');
 if (titleSettingsBtn) {
   titleSettingsBtn.addEventListener('click', () => {
+    _returnToTitle = true;
+    hideTitleScreen();
     updateThemeSwatches();
     showModal('settings-modal');
   });
@@ -865,6 +877,8 @@ if (titleSettingsBtn) {
 const titleStatsBtn = $('#title-stats-btn');
 if (titleStatsBtn) {
   titleStatsBtn.addEventListener('click', () => {
+    _returnToTitle = true;
+    hideTitleScreen();
     updateStatsDisplay();
     showModal('stats-modal');
   });
@@ -872,6 +886,8 @@ if (titleStatsBtn) {
 const titleCollectionBtn = $('#title-collection-btn');
 if (titleCollectionBtn) {
   titleCollectionBtn.addEventListener('click', () => {
+    _returnToTitle = true;
+    hideTitleScreen();
     renderCollectionModal();
     showModal('collection-modal');
   });
@@ -880,6 +896,7 @@ if (titleCollectionBtn) {
 // Reset Profile
 $('#btn-reset-profile').addEventListener('click', () => {
   if (confirm('Are you sure you want to reset your profile? This will erase ALL stats, achievements, and leaderboard data. This cannot be undone.')) {
+    _returnToTitle = false; // Stay in game after reset
     resetStats();
     state.theme = 'classic';
     document.documentElement.setAttribute('data-theme', 'classic');
@@ -968,7 +985,7 @@ document.addEventListener('keydown', (e) => {
     if (!gameoverOpen) {
       const visibleModals = [...$$('.modal')].filter(m => !m.classList.contains('hidden'));
       if (visibleModals.length > 0) {
-        hideModal(visibleModals[visibleModals.length - 1].id);
+        closeModalAndReturn(visibleModals[visibleModals.length - 1].id);
       }
     }
     return;
