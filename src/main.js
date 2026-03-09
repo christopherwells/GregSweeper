@@ -853,10 +853,11 @@ for (const card of $$('.mode-card')) {
 }
 
 // Title screen footer buttons
+// Title screen footer buttons — modals overlay the title screen
+// so closing them returns to the title screen (no hideTitleScreen)
 const titleSettingsBtn = $('#title-settings-btn');
 if (titleSettingsBtn) {
   titleSettingsBtn.addEventListener('click', () => {
-    hideTitleScreen();
     updateThemeSwatches();
     showModal('settings-modal');
   });
@@ -864,14 +865,13 @@ if (titleSettingsBtn) {
 const titleStatsBtn = $('#title-stats-btn');
 if (titleStatsBtn) {
   titleStatsBtn.addEventListener('click', () => {
-    hideTitleScreen();
+    updateStatsDisplay();
     showModal('stats-modal');
   });
 }
 const titleCollectionBtn = $('#title-collection-btn');
 if (titleCollectionBtn) {
   titleCollectionBtn.addEventListener('click', () => {
-    hideTitleScreen();
     renderCollectionModal();
     showModal('collection-modal');
   });

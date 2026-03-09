@@ -81,11 +81,16 @@ const LESSONS = [
     description: 'When to place flags on mines.',
     explanation: 'If a number equals its hidden neighbor count, ALL those hidden cells must be mines. Flag them!',
     puzzles: [
-      buildPuzzle(4, 4, [[0,3]], allExcept(4,4,[[0,3],[3,0],[3,1]]), [], [[0,3,'flag']], 'The 1 at the top edge has only one hidden neighbor.'),
-      buildPuzzle(4, 4, [[3,0]], allExcept(4,4,[[3,0],[0,2],[0,3]]), [], [[3,0,'flag']], 'Look at the 1 in the bottom-left area.'),
-      buildPuzzle(4, 4, [[0,0],[0,1]], allExcept(4,4,[[0,0],[0,1],[3,2],[3,3]]), [], [[0,0,'flag'],[0,1,'flag']], 'The 2 has exactly 2 hidden neighbors — both must be mines.'),
-      buildPuzzle(4, 4, [[1,2]], allExcept(4,4,[[1,2],[0,0],[3,3]]), [], [[1,2,'flag']], 'Multiple numbers all point to the same hidden cell.'),
-      buildPuzzle(4, 4, [[0,3],[3,0]], allExcept(4,4,[[0,3],[3,0],[1,0],[2,3]]), [], [[0,3,'flag'],[3,0,'flag']], 'Find both mines using the corner numbers.'),
+      // 3×3: mine at corner, one distractor nearby. The edge 1 has one hidden neighbor.
+      buildPuzzle(3, 3, [[0,2]], allExcept(3,3,[[0,0],[0,2]]), [], [[0,2,'flag']], 'The 1 at (1,2) has only one hidden neighbor.'),
+      // 3×3: mine at bottom-left. The 1 at (1,0) has one hidden neighbor.
+      buildPuzzle(3, 3, [[2,0]], allExcept(3,3,[[2,0],[2,2]]), [], [[2,0,'flag']], 'The 1 at (1,0) has only one hidden neighbor.'),
+      // 3×3: two mines top row. The 2 has exactly 2 hidden neighbors — both mines.
+      buildPuzzle(3, 3, [[0,0],[0,1]], allExcept(3,3,[[0,0],[0,1]]), [], [[0,0,'flag'],[0,1,'flag']], 'The 2 has exactly 2 hidden neighbors — both must be mines.'),
+      // 3×3: center mine. Multiple 1s all point to it.
+      buildPuzzle(3, 3, [[1,1]], allExcept(3,3,[[1,1]]), [], [[1,1,'flag']], 'Every number points to the same hidden cell.'),
+      // 3×4: two mines at edges. Each edge 1 reveals one mine.
+      buildPuzzle(3, 4, [[0,0],[0,3]], allExcept(3,4,[[0,0],[0,3]]), [], [[0,0,'flag'],[0,3,'flag']], 'Each edge 1 has exactly one hidden neighbor.'),
     ],
   },
   {
@@ -95,11 +100,16 @@ const LESSONS = [
     description: 'Identify cells safe to reveal.',
     explanation: 'When all mines around a number are flagged, its remaining hidden neighbors are guaranteed safe. Reveal them!',
     puzzles: [
-      buildPuzzle(4, 4, [[0,0]], allExcept(4,4,[[0,0],[2,3]]), [[0,0]], [[2,3,'reveal']], 'The 1 has its mine flagged. Remaining hidden cells are safe.'),
-      buildPuzzle(4, 4, [[0,3]], allExcept(4,4,[[0,3],[3,0],[3,1]]), [[0,3]], [[3,0,'reveal'],[3,1,'reveal']], 'Mine flagged. Reveal all safe hidden cells.'),
-      buildPuzzle(4, 4, [[1,1]], allExcept(4,4,[[1,1],[0,0],[3,3]]), [[1,1]], [[0,0,'reveal'],[3,3,'reveal']], 'Mine flagged. Far corners are safe.'),
-      buildPuzzle(4, 4, [[0,0],[0,3]], allExcept(4,4,[[0,0],[0,3],[3,1],[3,2]]), [[0,0],[0,3]], [[3,1,'reveal'],[3,2,'reveal']], 'Both mines flagged. Reveal the safe cells.'),
-      buildPuzzle(4, 4, [[0,0],[1,3],[3,0]], allExcept(4,4,[[0,0],[1,3],[3,0],[0,3],[3,3]]), [[0,0],[1,3],[3,0]], [[0,3,'reveal'],[3,3,'reveal']], 'All mines flagged. Which remaining cells are safe?'),
+      // 3×3: mine flagged at corner, one safe cell left
+      buildPuzzle(3, 3, [[0,0]], allExcept(3,3,[[0,0],[0,2]]), [[0,0]], [[0,2,'reveal']], 'The mine is flagged. The other hidden cell must be safe.'),
+      // 3×3: mine flagged, two safe cells remain
+      buildPuzzle(3, 3, [[0,2]], allExcept(3,3,[[0,2],[2,0],[2,1]]), [[0,2]], [[2,0,'reveal'],[2,1,'reveal']], 'Mine flagged. Reveal the safe hidden cells.'),
+      // 3×4: mine flagged, safe cells at other end
+      buildPuzzle(3, 4, [[0,0]], allExcept(3,4,[[0,0],[0,3],[2,3]]), [[0,0]], [[0,3,'reveal'],[2,3,'reveal']], 'Mine is flagged. Remaining hidden cells are safe.'),
+      // 3×3: two mines flagged, one safe remains
+      buildPuzzle(3, 3, [[0,0],[0,2]], allExcept(3,3,[[0,0],[0,2],[2,1]]), [[0,0],[0,2]], [[2,1,'reveal']], 'Both mines flagged. The last hidden cell is safe.'),
+      // 3×4: two mines flagged, two safe cells remain
+      buildPuzzle(3, 4, [[0,0],[0,3]], allExcept(3,4,[[0,0],[0,3],[2,1],[2,2]]), [[0,0],[0,3]], [[2,1,'reveal'],[2,2,'reveal']], 'All mines flagged. Reveal the safe cells.'),
     ],
   },
   {
@@ -109,11 +119,16 @@ const LESSONS = [
     description: 'Reveal multiple cells at once.',
     explanation: 'When a number has all its mines flagged, clicking it reveals ALL remaining hidden neighbors. This is called chording — a big time saver!',
     puzzles: [
-      buildPuzzle(4, 4, [[1,0]], allExcept(4,4,[[1,0],[0,0],[2,0]]), [[1,0]], [[0,0,'reveal'],[2,0,'reveal']], 'The 1 is satisfied. Chord to reveal both neighbors.'),
-      buildPuzzle(4, 4, [[0,0]], allExcept(4,4,[[0,0],[1,1],[2,2]]), [[0,0]], [[1,1,'reveal'],[2,2,'reveal']], 'Mine flagged. Chord the adjacent 1 to reveal safe cells.'),
-      buildPuzzle(4, 4, [[0,0],[0,3]], allExcept(4,4,[[0,0],[0,3],[1,1]]), [[0,0],[0,3]], [[1,1,'reveal']], 'Both corners flagged. Chord to reveal the center.'),
-      buildPuzzle(4, 4, [[1,0],[1,3]], allExcept(4,4,[[1,0],[1,3],[0,0],[3,3]]), [[1,0],[1,3]], [[0,0,'reveal'],[3,3,'reveal']], 'Two mines flagged. Chord to clear the corners.'),
-      buildPuzzle(4, 4, [[1,1],[2,2]], allExcept(4,4,[[1,1],[2,2],[0,0],[3,3],[0,3]]), [[1,1],[2,2]], [[0,0,'reveal'],[3,3,'reveal'],[0,3,'reveal']], 'Multiple chord opportunities. Reveal all safe cells.'),
+      // 3×3: mine flagged on left edge, chord the 1 to reveal neighbors
+      buildPuzzle(3, 3, [[1,0]], allExcept(3,3,[[1,0],[0,0],[2,0]]), [[1,0]], [[0,0,'reveal'],[2,0,'reveal']], 'The 1 is satisfied. Chord to reveal both neighbors.'),
+      // 3×3: mine flagged at corner, chord to reveal diagonal
+      buildPuzzle(3, 3, [[0,0]], allExcept(3,3,[[0,0],[0,2],[2,0]]), [[0,0]], [[0,2,'reveal'],[2,0,'reveal']], 'Mine flagged. Chord the 1 to reveal safe cells.'),
+      // 3×4: two mines flagged, chord the 2 to reveal center
+      buildPuzzle(3, 4, [[0,0],[0,3]], allExcept(3,4,[[0,0],[0,3],[0,1],[0,2]]), [[0,0],[0,3]], [[0,1,'reveal'],[0,2,'reveal']], 'Both mines flagged. Chord the 2 to reveal safe cells.'),
+      // 3×3: mine flagged, chord to clear remaining
+      buildPuzzle(3, 3, [[0,2]], allExcept(3,3,[[0,2],[0,0],[2,2]]), [[0,2]], [[0,0,'reveal'],[2,2,'reveal']], 'Mine flagged. Chord to clear the remaining cells.'),
+      // 3×4: two mines flagged, multiple chords possible
+      buildPuzzle(3, 4, [[0,0],[2,3]], allExcept(3,4,[[0,0],[2,3],[0,2],[2,1]]), [[0,0],[2,3]], [[0,2,'reveal'],[2,1,'reveal']], 'Two mines flagged. Chord to reveal all safe cells.'),
     ],
   },
   {
@@ -123,11 +138,16 @@ const LESSONS = [
     description: 'Use board edges to your advantage.',
     explanation: 'Corner cells have only 3 neighbors, edge cells 5. Fewer neighbors = more constraining numbers = easier deductions!',
     puzzles: [
-      buildPuzzle(4, 4, [[0,1]], [[0,0],[1,0],[1,1],[1,2],[2,0],[2,1],[2,2],[2,3],[3,0],[3,1],[3,2],[3,3]], [], [[0,1,'flag']], 'The corner 1 has only 3 neighbors. Which is the mine?'),
-      buildPuzzle(4, 4, [[0,2]], [[0,0],[0,1],[0,3],[1,0],[1,1],[1,2],[1,3],[2,0],[2,1],[2,2],[2,3]], [], [[0,2,'flag']], 'The edge 1 points to one hidden cell.'),
-      buildPuzzle(4, 4, [[0,0],[1,0]], [[0,1],[1,1],[2,0],[2,1],[3,0],[3,1],[0,2],[0,3],[1,2],[1,3],[2,2],[2,3],[3,2],[3,3]], [], [[0,0,'flag'],[1,0,'flag']], 'The 2 has exactly 2 hidden corner neighbors.'),
-      buildPuzzle(5, 5, [[0,2]], [[0,0],[0,1],[0,3],[0,4],[1,0],[1,1],[1,2],[1,3],[1,4],[2,0],[2,1],[2,2],[2,3],[2,4]], [], [[0,2,'flag']], 'Use edge numbers to pinpoint the mine.'),
-      buildPuzzle(5, 5, [[0,0],[0,4]], [[0,1],[0,2],[0,3],[1,0],[1,1],[1,2],[1,3],[1,4],[2,0],[2,1],[2,2],[2,3],[2,4]], [], [[0,0,'flag'],[0,4,'flag']], 'Both corner 1s point to one hidden cell each.'),
+      // 3×3: mine on top edge, corner 1 constrains it
+      buildPuzzle(3, 3, [[0,1]], [[0,0],[1,0],[1,1],[1,2],[2,0],[2,1],[2,2]], [], [[0,1,'flag']], 'The corner 1 at (0,0) has only 3 neighbors.'),
+      // 3×4: mine on edge, numbers narrow it down
+      buildPuzzle(3, 4, [[0,2]], [[0,0],[0,1],[0,3],[1,0],[1,1],[1,2],[1,3],[2,0],[2,1],[2,2],[2,3]], [], [[0,2,'flag']], 'The edge 1 points to one hidden cell.'),
+      // 3×3: two mines in corner, the 2 constrains both
+      buildPuzzle(3, 3, [[0,0],[1,0]], [[0,1],[0,2],[1,1],[1,2],[2,0],[2,1],[2,2]], [], [[0,0,'flag'],[1,0,'flag']], 'The corner 2 has exactly 2 hidden neighbors.'),
+      // 3×4: mine on top edge, edge numbers pinpoint it
+      buildPuzzle(3, 4, [[0,2]], [[0,0],[0,1],[0,3],[1,0],[1,1],[1,2],[1,3],[2,0],[2,1],[2,2],[2,3]], [], [[0,2,'flag']], 'Edge numbers pinpoint the mine position.'),
+      // 3×4: two corner mines, each corner 1 constrains one
+      buildPuzzle(3, 4, [[0,0],[0,3]], [[0,1],[0,2],[1,0],[1,1],[1,2],[1,3],[2,0],[2,1],[2,2],[2,3]], [], [[0,0,'flag'],[0,3,'flag']], 'Both corner 1s point to one hidden cell each.'),
     ],
   },
 
@@ -195,11 +215,11 @@ const LESSONS = [
     description: 'Subtract known mines from constraints.',
     explanation: 'If a number has some mines flagged, subtract them. The remaining count applies to remaining hidden neighbors — often revealing new mines or safe cells.',
     puzzles: [
-      buildPuzzle(4, 4, [[0,0],[0,2]], allExcept(4,4,[[0,0],[0,2]]), [[0,0]], [[0,2,'flag']], 'The 2 has one flagged. It needs one more.'),
-      buildPuzzle(4, 5, [[0,0],[0,1],[0,3]], allExcept(4,5,[[0,0],[0,1],[0,3]]), [[0,0],[0,1]], [[0,3,'flag']], 'The 3 has 2 flagged. One more mine remains.'),
-      buildPuzzle(4, 4, [[0,0],[1,3]], allExcept(4,4,[[0,0],[1,3],[3,0]]), [[0,0]], [[3,0,'reveal']], 'After subtracting the flag, which cells are safe?'),
-      buildPuzzle(5, 5, [[0,0],[2,4]], allExcept(5,5,[[0,0],[2,4],[4,0]]), [[0,0]], [[4,0,'reveal']], 'Reduce constraints step by step.'),
-      buildPuzzle(5, 5, [[0,0],[0,4],[4,2]], allExcept(5,5,[[0,0],[0,4],[4,2]]), [[0,0],[0,4]], [[4,2,'flag']], 'Two flags placed. Find the last mine.'),
+      buildPuzzle(3, 3, [[0,0],[0,2]], allExcept(3,3,[[0,0],[0,2]]), [[0,0]], [[0,2,'flag']], 'The 2 has one flagged. It needs one more.'),
+      buildPuzzle(3, 4, [[0,0],[0,1],[0,3]], allExcept(3,4,[[0,0],[0,1],[0,3]]), [[0,0],[0,1]], [[0,3,'flag']], 'The 3 has 2 flagged. One more mine remains.'),
+      buildPuzzle(3, 4, [[0,0],[0,3]], allExcept(3,4,[[0,0],[0,3],[2,1]]), [[0,0]], [[2,1,'reveal']], 'After subtracting the flag, remaining cells are safe.'),
+      buildPuzzle(3, 4, [[0,0],[0,3]], allExcept(3,4,[[0,0],[0,3],[2,3]]), [[0,0]], [[2,3,'reveal']], 'Reduce constraints step by step.'),
+      buildPuzzle(3, 4, [[0,0],[0,3],[2,1]], allExcept(3,4,[[0,0],[0,3],[2,1]]), [[0,0],[0,3]], [[2,1,'flag']], 'Two flags placed. Find the last mine.'),
     ],
   },
 
