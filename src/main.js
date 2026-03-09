@@ -482,9 +482,6 @@ function closeModalAndReturn(modalId) {
   hideModal(modalId);
   if (_returnToTitle) {
     _returnToTitle = false;
-    // Remove modal-only overlay and restore #app to its hidden state
-    const app = $('#app');
-    if (app) app.classList.remove('modal-only');
     showTitleScreen();
   }
 }
@@ -867,13 +864,11 @@ for (const card of $$('.mode-card')) {
   });
 }
 
-// Title screen footer buttons — open modals ON TOP of title screen
-// Uses modal-only class: #app becomes transparent overlay so modals render
-// without hiding the title screen or showing game content behind them.
+// Title screen footer buttons — open modals on top of title screen
+// Settings/Stats/Collection modals live outside #app (in the HTML) so they
+// render regardless of #app's visibility, with z-index above the title screen.
 function showModalFromTitle(modalId) {
   _returnToTitle = true;
-  const app = $('#app');
-  if (app) app.classList.add('modal-only');
   showModal(modalId);
 }
 
@@ -903,8 +898,6 @@ if (titleCollectionBtn) {
 $('#btn-reset-profile').addEventListener('click', () => {
   if (confirm('Are you sure you want to reset your profile? This will erase ALL stats, achievements, and leaderboard data. This cannot be undone.')) {
     _returnToTitle = false; // Stay in game after reset
-    const app = $('#app');
-    if (app) app.classList.remove('modal-only');
     resetStats();
     state.theme = 'classic';
     document.documentElement.setAttribute('data-theme', 'classic');
