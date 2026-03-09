@@ -69,9 +69,9 @@ const LESSONS = [
     puzzles: [
       buildPuzzle(3, 3, [[0,2]], allExcept(3,3,[[0,2]]), [], [[0,2,'flag']], 'The 1 has only one hidden neighbor.'),
       buildPuzzle(3, 3, [[2,0]], allExcept(3,3,[[2,0]]), [], [[2,0,'flag']], 'Which hidden cell does the 1 point to?'),
-      buildPuzzle(4, 4, [[0,0],[3,3]], allExcept(4,4,[[0,0],[3,3]]), [], [[0,0,'flag'],[3,3,'flag']], 'Two 1s in opposite corners each point to one mine.'),
-      buildPuzzle(4, 4, [[0,3],[3,0]], allExcept(4,4,[[0,3],[3,0]]), [], [[0,3,'flag'],[3,0,'flag']], 'Edge 1s have fewer neighbors — easier to spot mines.'),
-      buildPuzzle(5, 5, [[0,4],[2,2],[4,0]], allExcept(5,5,[[0,4],[2,2],[4,0]]), [], [[0,4,'flag'],[2,2,'flag'],[4,0,'flag']], 'Find all three mines using the number clues.'),
+      buildPuzzle(3, 3, [[0,0],[2,2]], allExcept(3,3,[[0,0],[2,2]]), [], [[0,0,'flag'],[2,2,'flag']], 'Two 1s in opposite corners each point to one mine.'),
+      buildPuzzle(3, 4, [[0,3],[2,0]], allExcept(3,4,[[0,3],[2,0]]), [], [[0,3,'flag'],[2,0,'flag']], 'Edge 1s have fewer neighbors — easier to spot mines.'),
+      buildPuzzle(4, 4, [[0,3],[2,1],[3,0]], allExcept(4,4,[[0,3],[2,1],[3,0]]), [], [[0,3,'flag'],[2,1,'flag'],[3,0,'flag']], 'Find all three mines using the number clues.'),
     ],
   },
   {
@@ -84,8 +84,8 @@ const LESSONS = [
       buildPuzzle(4, 4, [[0,3]], allExcept(4,4,[[0,3],[3,0],[3,1]]), [], [[0,3,'flag']], 'The 1 at the top edge has only one hidden neighbor.'),
       buildPuzzle(4, 4, [[3,0]], allExcept(4,4,[[3,0],[0,2],[0,3]]), [], [[3,0,'flag']], 'Look at the 1 in the bottom-left area.'),
       buildPuzzle(4, 4, [[0,0],[0,1]], allExcept(4,4,[[0,0],[0,1],[3,2],[3,3]]), [], [[0,0,'flag'],[0,1,'flag']], 'The 2 has exactly 2 hidden neighbors — both must be mines.'),
-      buildPuzzle(5, 5, [[2,2]], allExcept(5,5,[[2,2],[0,0],[4,4],[0,4]]), [], [[2,2,'flag']], 'Multiple numbers all point to the same hidden cell.'),
-      buildPuzzle(5, 5, [[0,4],[4,0]], allExcept(5,5,[[0,4],[4,0],[2,0],[2,4]]), [], [[0,4,'flag'],[4,0,'flag']], 'Find both mines using the corner numbers.'),
+      buildPuzzle(4, 4, [[1,2]], allExcept(4,4,[[1,2],[0,0],[3,3]]), [], [[1,2,'flag']], 'Multiple numbers all point to the same hidden cell.'),
+      buildPuzzle(4, 4, [[0,3],[3,0]], allExcept(4,4,[[0,3],[3,0],[1,0],[2,3]]), [], [[0,3,'flag'],[3,0,'flag']], 'Find both mines using the corner numbers.'),
     ],
   },
   {
@@ -97,9 +97,9 @@ const LESSONS = [
     puzzles: [
       buildPuzzle(4, 4, [[0,0]], allExcept(4,4,[[0,0],[2,3]]), [[0,0]], [[2,3,'reveal']], 'The 1 has its mine flagged. Remaining hidden cells are safe.'),
       buildPuzzle(4, 4, [[0,3]], allExcept(4,4,[[0,3],[3,0],[3,1]]), [[0,3]], [[3,0,'reveal'],[3,1,'reveal']], 'Mine flagged. Reveal all safe hidden cells.'),
-      buildPuzzle(5, 5, [[2,2]], allExcept(5,5,[[2,2],[0,0],[4,4]]), [[2,2]], [[0,0,'reveal'],[4,4,'reveal']], 'Center mine flagged. Far corners are safe.'),
+      buildPuzzle(4, 4, [[1,1]], allExcept(4,4,[[1,1],[0,0],[3,3]]), [[1,1]], [[0,0,'reveal'],[3,3,'reveal']], 'Mine flagged. Far corners are safe.'),
       buildPuzzle(4, 4, [[0,0],[0,3]], allExcept(4,4,[[0,0],[0,3],[3,1],[3,2]]), [[0,0],[0,3]], [[3,1,'reveal'],[3,2,'reveal']], 'Both mines flagged. Reveal the safe cells.'),
-      buildPuzzle(5, 5, [[0,0],[2,4],[4,0]], allExcept(5,5,[[0,0],[2,4],[4,0],[0,4],[4,4]]), [[0,0],[2,4],[4,0]], [[0,4,'reveal'],[4,4,'reveal']], 'All mines flagged. Which remaining cells are safe?'),
+      buildPuzzle(4, 4, [[0,0],[1,3],[3,0]], allExcept(4,4,[[0,0],[1,3],[3,0],[0,3],[3,3]]), [[0,0],[1,3],[3,0]], [[0,3,'reveal'],[3,3,'reveal']], 'All mines flagged. Which remaining cells are safe?'),
     ],
   },
   {
@@ -111,9 +111,9 @@ const LESSONS = [
     puzzles: [
       buildPuzzle(4, 4, [[1,0]], allExcept(4,4,[[1,0],[0,0],[2,0]]), [[1,0]], [[0,0,'reveal'],[2,0,'reveal']], 'The 1 is satisfied. Chord to reveal both neighbors.'),
       buildPuzzle(4, 4, [[0,0]], allExcept(4,4,[[0,0],[1,1],[2,2]]), [[0,0]], [[1,1,'reveal'],[2,2,'reveal']], 'Mine flagged. Chord the adjacent 1 to reveal safe cells.'),
-      buildPuzzle(5, 5, [[0,0],[0,4]], allExcept(5,5,[[0,0],[0,4],[1,2]]), [[0,0],[0,4]], [[1,2,'reveal']], 'Both corners flagged. Chord to reveal the center.'),
-      buildPuzzle(5, 5, [[2,0],[2,4]], allExcept(5,5,[[2,0],[2,4],[0,0],[4,4]]), [[2,0],[2,4]], [[0,0,'reveal'],[4,4,'reveal']], 'Two mines flagged. Chord to clear the corners.'),
-      buildPuzzle(5, 5, [[1,1],[3,3]], allExcept(5,5,[[1,1],[3,3],[0,0],[4,4],[2,2]]), [[1,1],[3,3]], [[0,0,'reveal'],[4,4,'reveal'],[2,2,'reveal']], 'Multiple chord opportunities. Reveal all safe cells.'),
+      buildPuzzle(4, 4, [[0,0],[0,3]], allExcept(4,4,[[0,0],[0,3],[1,1]]), [[0,0],[0,3]], [[1,1,'reveal']], 'Both corners flagged. Chord to reveal the center.'),
+      buildPuzzle(4, 4, [[1,0],[1,3]], allExcept(4,4,[[1,0],[1,3],[0,0],[3,3]]), [[1,0],[1,3]], [[0,0,'reveal'],[3,3,'reveal']], 'Two mines flagged. Chord to clear the corners.'),
+      buildPuzzle(4, 4, [[1,1],[2,2]], allExcept(4,4,[[1,1],[2,2],[0,0],[3,3],[0,3]]), [[1,1],[2,2]], [[0,0,'reveal'],[3,3,'reveal'],[0,3,'reveal']], 'Multiple chord opportunities. Reveal all safe cells.'),
     ],
   },
   {

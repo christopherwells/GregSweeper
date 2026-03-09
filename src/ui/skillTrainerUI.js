@@ -267,11 +267,14 @@ function renderLesson(lessonId) {
     }
   }
 
-  // Feedback overlay (initially hidden)
+  // Feedback line (inline, non-blocking — appears below the board)
   const feedback = document.createElement('div');
   feedback.className = 'skill-feedback hidden';
   feedback.id = 'skill-feedback';
   container.appendChild(feedback);
+
+  // Add a sound-only correct indicator (no screen blocking)
+
 }
 
 // ── Puzzle Board Rendering ────────────────────────────
@@ -564,7 +567,7 @@ function renderLessonComplete(lessonId, mistakes) {
   actions.className = 'skill-complete-actions';
 
   const retryBtn = document.createElement('button');
-  retryBtn.className = 'skill-action-btn';
+  retryBtn.className = 'action-btn';
   retryBtn.type = 'button';
   retryBtn.textContent = 'Retry Lesson';
   retryBtn.addEventListener('click', () => {
@@ -576,7 +579,7 @@ function renderLessonComplete(lessonId, mistakes) {
   actions.appendChild(retryBtn);
 
   const backBtn = document.createElement('button');
-  backBtn.className = 'skill-action-btn primary';
+  backBtn.className = 'action-btn primary';
   backBtn.type = 'button';
   backBtn.textContent = 'Back to Lessons';
   backBtn.addEventListener('click', () => {

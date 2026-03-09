@@ -1,7 +1,7 @@
 import { state, getRevealedCells } from '../state/gameState.js?v=0.9';
 import { $, $$, boardEl, resetBtn } from '../ui/domHelpers.js?v=0.9';
 import {
-  renderBoard, updateCell, updateAllCells, getThemeEmoji,
+  renderBoard, updateCell, updateAllCells, updateCells, getThemeEmoji,
   adjustCellSize, updateZoom,
 } from '../ui/boardRenderer.js?v=0.9';
 import {
@@ -341,7 +341,7 @@ export function revealCell(row, col) {
     playReveal();
   }
 
-  updateAllCells();
+  updateCells(newlyRevealed);
   updateHeader();
   updateCellsRemaining();
 
@@ -387,7 +387,7 @@ export function handleChordReveal(row, col) {
 
   state.revealedCount += result.revealed.filter(c => !c.isMine).length;
 
-  updateAllCells();
+  updateCells(result.revealed);
   updateHeader();
 
   // Chord ripple animation on revealed cells

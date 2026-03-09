@@ -3,6 +3,23 @@ import { boardEl, zoomControls, zoomLevelDisplay, boardScrollWrapper } from './d
 import { THEME_UNLOCKS } from './themeManager.js?v=0.9';
 import { loadEmojiPack, getActiveEmojiPack } from './collectionManager.js?v=0.9';
 
+// ── Emoji Cache (avoid per-cell localStorage reads) ────
+let _emojiCache = null;
+let _emojiCacheValid = false;
+
+export function invalidateEmojiCache() {
+  _emojiCacheValid = false;
+}
+
+function getCachedEmoji() {
+  if (!_emojiCacheValid) {
+    const packId = loadEmojiPack();
+    _emojiCache = packId !== 'default' ? getActiveEmojiPack() : null;
+    _emojiCacheValid = true;
+  }
+  return _emojiCache;
+}
+
 // ── Board Rendering ────────────────────────────────────
 
 export function resizeCells() {
@@ -41,12 +58,10 @@ export function renderBoard() {
 }
 
 export function getThemeEmoji(type) {
-  // Check for active emoji pack override
-  const packId = loadEmojiPack();
-  if (packId !== 'default') {
-    const pack = getActiveEmojiPack();
-    if (pack && pack[type]) return pack[type];
-  }
+  // Check for active emoji pack override (cached to avoid per-cell localStorage reads)
+  const pack = getCachedEmoji();
+  if (pack && pack[type]) return pack[type];
+
   // Fall through to theme-based emoji
   const currentTheme = document.documentElement.getAttribute('data-theme') || 'classic';
   const themeInfo = THEME_UNLOCKS[currentTheme];
@@ -139,6 +154,13 @@ export function updateAllCells() {
     for (let c = 0; c < state.cols; c++) {
       updateCell(r, c);
     }
+  }
+}
+
+/** Update only the specified cells (array of {row, col} objects) */
+export function updateCells(cells) {
+  for (const c of cells) {
+    updateCell(c.row, c.col);
   }
 }
 

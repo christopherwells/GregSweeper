@@ -4,7 +4,7 @@
 
 import { state } from './state/gameState.js?v=0.9';
 import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn } from './ui/domHelpers.js?v=0.9';
-import { resizeCells, updateAllCells, getThemeEmoji, needsZoom, updateZoom, zoomIn, zoomOut } from './ui/boardRenderer.js?v=0.9';
+import { resizeCells, updateAllCells, getThemeEmoji, needsZoom, updateZoom, zoomIn, zoomOut, invalidateEmojiCache } from './ui/boardRenderer.js?v=0.9';
 import { updateHeader, updateStreakBorder, updateFlagModeBar, getCheckpointForLevel } from './ui/headerRenderer.js?v=0.9';
 import { updatePowerUpBar } from './ui/powerUpBar.js?v=0.9';
 import { showModal, hideModal, hideAllModals } from './ui/modalManager.js?v=0.9';
@@ -270,6 +270,7 @@ function renderCollectionModal() {
         return;
       }
       saveEmojiPack(packId);
+      invalidateEmojiCache();
       for (const c of emojiGrid.querySelectorAll('.emoji-pack-card')) c.classList.remove('active');
       card.classList.add('active');
       showToast(`Emoji pack: ${pack.name}`);
@@ -1067,7 +1068,14 @@ function init() {
     if (!tryResumeGame()) newGame();
   }
 
-  setInterval(() => persistGameState(), 5000);
+  // Persist game state periodically (only when actively playing)
+  let _lastPersistTime = 0;
+  setInterval(() => {
+    if (state.status === 'playing' && state.elapsedTime !== _lastPersistTime) {
+      _lastPersistTime = state.elapsedTime;
+      persistGameState();
+    }
+  }, 10000); // Every 10s instead of 5s to reduce serialization overhead
 }
 
 // Recalculate cell sizes on window resize
