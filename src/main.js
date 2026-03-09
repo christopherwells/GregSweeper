@@ -864,13 +864,23 @@ for (const card of $$('.mode-card')) {
   });
 }
 
-// Title screen footer buttons
 // Title screen footer buttons — open modals then return to title on close
+// Helper: ensure #app shows normal game view (not Skill Trainer) behind modals
+function prepareAppForModal() {
+  const stc = $('#skill-trainer-container');
+  if (stc) stc.classList.add('hidden');
+  const gh = $('#game-header');
+  if (gh) gh.classList.remove('hidden');
+  const bc = $('#board-container');
+  if (bc) bc.classList.remove('hidden');
+}
+
 const titleSettingsBtn = $('#title-settings-btn');
 if (titleSettingsBtn) {
   titleSettingsBtn.addEventListener('click', () => {
     _returnToTitle = true;
     hideTitleScreen();
+    prepareAppForModal();
     updateThemeSwatches();
     showModal('settings-modal');
   });
@@ -880,6 +890,7 @@ if (titleStatsBtn) {
   titleStatsBtn.addEventListener('click', () => {
     _returnToTitle = true;
     hideTitleScreen();
+    prepareAppForModal();
     updateStatsDisplay();
     showModal('stats-modal');
   });
@@ -889,6 +900,7 @@ if (titleCollectionBtn) {
   titleCollectionBtn.addEventListener('click', () => {
     _returnToTitle = true;
     hideTitleScreen();
+    prepareAppForModal();
     renderCollectionModal();
     showModal('collection-modal');
   });
