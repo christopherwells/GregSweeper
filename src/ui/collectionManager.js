@@ -3,7 +3,7 @@
  * Handles unlock logic and localStorage persistence.
  */
 
-import { loadStats } from '../storage/statsStorage.js?v=0.9';
+import { loadStats } from '../storage/statsStorage.js?v=0.9.1';
 
 // ── Emoji Packs ──────────────────────────────────────
 

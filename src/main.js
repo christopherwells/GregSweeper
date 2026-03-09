@@ -2,48 +2,48 @@
 // All game logic and UI rendering is in modules.
 // This file handles imports, event wiring, and init.
 
-import { state } from './state/gameState.js?v=0.9';
-import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn } from './ui/domHelpers.js?v=0.9';
-import { resizeCells, updateAllCells, getThemeEmoji, needsZoom, updateZoom, zoomIn, zoomOut, invalidateEmojiCache } from './ui/boardRenderer.js?v=0.9';
-import { updateHeader, updateStreakBorder, updateFlagModeBar, getCheckpointForLevel } from './ui/headerRenderer.js?v=0.9';
-import { updatePowerUpBar } from './ui/powerUpBar.js?v=0.9';
-import { showModal, hideModal, hideAllModals } from './ui/modalManager.js?v=0.9';
-import { showToast, showLevelUpToast, showCheckpointToast } from './ui/toastManager.js?v=0.9';
-import { showCelebration, haptic } from './ui/effectsRenderer.js?v=0.9';
-import { THEME_UNLOCKS, getUnlockedThemes, updateThemeSwatches } from './ui/themeManager.js?v=0.9';
-import { newGame, revealCell, toggleFlag, handleChordReveal } from './game/gameActions.js?v=0.9';
-import './game/winLossHandler.js?v=0.9'; // side-effect: registers handleWin with powerUpActions
-import { useRevealSafe, useShield, activateScan, activateXRay, activateMagnet } from './game/powerUpActions.js?v=0.9';
-import { switchMode } from './game/modeManager.js?v=0.9';
-import { persistGameState, tryResumeGame } from './game/gamePersistence.js?v=0.9';
-import { getDifficultyForLevel, getTimedDifficulty, getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL } from './logic/difficulty.js?v=0.9';
+import { state } from './state/gameState.js?v=0.9.1';
+import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn } from './ui/domHelpers.js?v=0.9.1';
+import { resizeCells, updateAllCells, getThemeEmoji, needsZoom, updateZoom, zoomIn, zoomOut, invalidateEmojiCache } from './ui/boardRenderer.js?v=0.9.1';
+import { updateHeader, updateStreakBorder, updateFlagModeBar, getCheckpointForLevel } from './ui/headerRenderer.js?v=0.9.1';
+import { updatePowerUpBar } from './ui/powerUpBar.js?v=0.9.1';
+import { showModal, hideModal, hideAllModals } from './ui/modalManager.js?v=0.9.1';
+import { showToast, showLevelUpToast, showCheckpointToast } from './ui/toastManager.js?v=0.9.1';
+import { showCelebration, haptic } from './ui/effectsRenderer.js?v=0.9.1';
+import { THEME_UNLOCKS, getUnlockedThemes, updateThemeSwatches } from './ui/themeManager.js?v=0.9.1';
+import { newGame, revealCell, toggleFlag, handleChordReveal } from './game/gameActions.js?v=0.9.1';
+import './game/winLossHandler.js?v=0.9.1'; // side-effect: registers handleWin with powerUpActions
+import { useRevealSafe, useShield, activateScan, activateXRay, activateMagnet } from './game/powerUpActions.js?v=0.9.1';
+import { switchMode } from './game/modeManager.js?v=0.9.1';
+import { persistGameState, tryResumeGame } from './game/gamePersistence.js?v=0.9.1';
+import { getDifficultyForLevel, getTimedDifficulty, getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL } from './logic/difficulty.js?v=0.9.1';
 import {
   loadStats, saveTheme, loadTheme, resetStats,
   saveCheckpoint, loadCheckpoint,
   loadDailyLeaderboard, addDailyLeaderboardEntry,
   saveModePowerUps,
   isOnboarded, setOnboarded,
-} from './storage/statsStorage.js?v=0.9';
+} from './storage/statsStorage.js?v=0.9.1';
 import {
   playLevelUp, isMuted, setMuted, loadMuted,
   setSFXVolume, getSFXVolume,
-} from './audio/sounds.js?v=0.9';
+} from './audio/sounds.js?v=0.9.1';
 import {
   getAchievementState, getTotalScore, checkNewUnlocks,
   getHighestTier, getAllTierNames, getTierIcon, getTierColor,
-} from './logic/achievements.js?v=0.9';
+} from './logic/achievements.js?v=0.9.1';
 import {
   initFirebase, isFirebaseOnline, submitOnlineScore, fetchOnlineLeaderboard,
   createRoom, joinRoom, leaveRoom, submitRoomScore,
   fetchRoomLeaderboard, fetchRoomHistory, getRoomMembers, getRoomInfo,
   saveRoomInfo, loadRoomInfo, clearRoomInfo,
-} from './firebase/firebaseLeaderboard.js?v=0.9';
+} from './firebase/firebaseLeaderboard.js?v=0.9.1';
 import {
   EMOJI_PACKS, EFFECTS, TITLES,
   loadEmojiPack, saveEmojiPack, getActiveEmojiPack, isPackUnlocked,
   isEffectUnlocked, isTitleUnlocked,
   loadEffects, saveEffects, loadTitle, saveTitle,
-} from './ui/collectionManager.js?v=0.9';
+} from './ui/collectionManager.js?v=0.9.1';
 
 // ── Stats Display ─────────────────────────────────────
 
