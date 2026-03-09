@@ -19,7 +19,7 @@ const MAX_VALID_TIME = 3600; // seconds — 1 hour cap
  * Initialize Firebase. Call once on app startup.
  * Config should be replaced with user's own Firebase project config.
  */
-export function initFirebase() {
+export async function initFirebase() {
   try {
     // Check if Firebase SDK is available (loaded via CDN)
     if (typeof firebase === 'undefined' || !firebase.initializeApp) {
@@ -30,13 +30,13 @@ export function initFirebase() {
     // Firebase project configuration
     // Replace with your own Firebase project config from console.firebase.google.com
     const firebaseConfig = {
-      apiKey: "AIzaSyCmYnIGt8EfOXnOPxWKCsBz5CU2Fg4wRrE",
-      authDomain: "gregsweeper.firebaseapp.com",
-      databaseURL: "https://gregsweeper-default-rtdb.firebaseio.com",
-      projectId: "gregsweeper",
-      storageBucket: "gregsweeper.firebasestorage.app",
-      messagingSenderId: "574027498253",
-      appId: "1:574027498253:web:5d2b2b4a0f8b4e5c6d7e8f"
+      apiKey: "AIzaSyBhiFPIUA0u021Yh7eA35N2nQOIUPVPtpo",
+      authDomain: "gregsweeper-66d02.firebaseapp.com",
+      databaseURL: "https://gregsweeper-66d02-default-rtdb.firebaseio.com",
+      projectId: "gregsweeper-66d02",
+      storageBucket: "gregsweeper-66d02.firebasestorage.app",
+      messagingSenderId: "381276018616",
+      appId: "1:381276018616:web:28a79187190dcf9caba14d"
     };
 
     // Only initialize if not already done
@@ -45,10 +45,26 @@ export function initFirebase() {
     }
 
     db = firebase.database();
+
+    // Test connectivity with a quick read
+    try {
+      await Promise.race([
+        db.ref('.info/connected').once('value'),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('connection timeout')), 5000)),
+      ]);
+    } catch (connErr) {
+      console.warn('Firebase connected but database may be unreachable:', connErr.message);
+      // Still mark as ready — individual operations have their own timeouts
+    }
+
     firebaseReady = true;
     console.log('Firebase leaderboard initialized');
   } catch (err) {
     console.warn('Firebase init failed — using local leaderboard:', err.message);
+    if (err.message?.includes('permission')) {
+      console.warn('Hint: Check Firebase Realtime Database Security Rules in the Firebase Console.');
+      console.warn('For testing, set rules to: { ".read": true, ".write": true }');
+    }
     firebaseReady = false;
   }
 }

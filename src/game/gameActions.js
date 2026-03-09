@@ -10,7 +10,7 @@ import {
   updateFlagModeBar,
 } from '../ui/headerRenderer.js?v=0.9';
 import { updatePowerUpBar } from '../ui/powerUpBar.js?v=0.9';
-import { hideAllModals } from '../ui/modalManager.js?v=0.9';
+import { hideAllModals, showModal, hideModal } from '../ui/modalManager.js?v=0.9';
 import { showLevelInfoToast } from '../ui/toastManager.js?v=0.9';
 import { startTimer, stopTimer, startMineShift, updateTimerDisplay } from './timerManager.js?v=0.9';
 import { handleWin, handleLoss, handleDailyBombHit } from './winLossHandler.js?v=0.9';
@@ -26,14 +26,50 @@ import {
 } from '../storage/statsStorage.js?v=0.9';
 import {
   playReveal, playFlag, playUnflag, playCascade, playShieldBreak,
-  startMusic, stopMusic, setMusicIntensity,
 } from '../audio/sounds.js?v=0.9';
+import { loadEffects } from '../ui/collectionManager.js?v=0.9';
+
+// ── Gimmick Intro Popup ───────────────────────────────
+
+function showGimmickIntros(gimmickDefs) {
+  let index = 0;
+  const iconEl = document.getElementById('gimmick-intro-icon');
+  const nameEl = document.getElementById('gimmick-intro-name');
+  const descEl = document.getElementById('gimmick-intro-desc');
+  const okBtn = document.getElementById('gimmick-intro-ok');
+  if (!iconEl || !nameEl || !descEl || !okBtn) return;
+
+  function showNext() {
+    if (index >= gimmickDefs.length) {
+      hideModal('gimmick-intro-overlay');
+      return;
+    }
+    const def = gimmickDefs[index];
+    iconEl.textContent = def.icon;
+    nameEl.textContent = `New Gimmick: ${def.name}`;
+    descEl.textContent = def.desc;
+    showModal('gimmick-intro-overlay');
+  }
+
+  // Remove old listener if any, add fresh one
+  const newBtn = okBtn.cloneNode(true);
+  okBtn.parentNode.replaceChild(newBtn, okBtn);
+  newBtn.addEventListener('click', () => {
+    index++;
+    if (index < gimmickDefs.length) {
+      showNext();
+    } else {
+      hideModal('gimmick-intro-overlay');
+    }
+  });
+
+  showNext();
+}
 
 // ── Game Actions ───────────────────────────────────────
 
 export function newGame() {
   stopTimer();
-  stopMusic();
   const diff = state.gameMode === 'timed'
     ? getTimedDifficulty(state.currentLevel)
     : getDifficultyForLevel(state.currentLevel);
@@ -130,6 +166,13 @@ export function newGame() {
   updateFlagModeBar();
   updateZoom();
 
+  // Apply board border effect from collection
+  const effects = loadEffects();
+  boardEl.classList.remove('border-glow', 'border-pulse', 'border-rainbow');
+  if (effects.borders && effects.borders !== 'none') {
+    boardEl.classList.add(`border-${effects.borders}`);
+  }
+
   // Clear saved game state for current mode (new game = fresh start)
   clearGameState(state.gameMode);
 
@@ -194,17 +237,17 @@ export function revealCell(row, col) {
       if (state.activeGimmicks.length > 0) {
         state.gimmickData = applyGimmicks(state.board, state.currentLevel, state.activeGimmicks, gimmickRng);
 
-        // Show first-encounter popups for new gimmicks
+        // Show first-encounter popup for new gimmicks
+        const newGimmicks = [];
         for (const g of state.activeGimmicks) {
           if (!hasSeenGimmick(g)) {
             markGimmickSeen(g);
             const def = getGimmickDef(g);
-            if (def) {
-              import('../ui/toastManager.js?v=0.9').then(m => {
-                m.showToast(`${def.icon} ${def.name}: ${def.desc}`, 4000);
-              });
-            }
+            if (def) newGimmicks.push(def);
           }
+        }
+        if (newGimmicks.length > 0) {
+          showGimmickIntros(newGimmicks);
         }
 
         // Start mine shift timer if active
@@ -217,7 +260,6 @@ export function revealCell(row, col) {
     state.firstClick = false;
     state.status = 'playing';
     startTimer();
-    startMusic();
 
   } else if (state.status === 'idle' && state.gameMode === 'daily') {
     // Daily mode: board was pre-generated for consistency.
@@ -239,7 +281,6 @@ export function revealCell(row, col) {
     }
     state.status = 'playing';
     startTimer();
-    startMusic();
   }
 
   const currentCell = state.board[row][col];
@@ -303,10 +344,6 @@ export function revealCell(row, col) {
   updateAllCells();
   updateHeader();
   updateCellsRemaining();
-
-  // Update music intensity based on board progress
-  const totalSafe = state.rows * state.cols - state.totalMines;
-  if (totalSafe > 0) setMusicIntensity(state.revealedCount / totalSafe);
 
   if (checkWin(state.board)) handleWin();
 }

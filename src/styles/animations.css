@@ -68,3 +68,54 @@
 .cell {
   transition: background-color 0.3s ease, opacity 0.3s ease, transform 0.15s ease;
 }
+
+/* ── Board Border Effects ──────────────── */
+
+#board.border-glow {
+  box-shadow: 0 0 15px var(--color-accent, #e94560), 0 0 30px var(--color-accent, #e94560)40;
+}
+
+#board.border-pulse {
+  animation: borderPulse 2s ease-in-out infinite;
+}
+
+@keyframes borderPulse {
+  0%, 100% { box-shadow: 0 0 8px var(--color-accent, #e94560)40; }
+  50% { box-shadow: 0 0 20px var(--color-accent, #e94560), 0 0 40px var(--color-accent, #e94560)60; }
+}
+
+#board.border-rainbow {
+  animation: borderRainbow 3s linear infinite;
+}
+
+@keyframes borderRainbow {
+  0% { box-shadow: 0 0 15px #ff000080, 0 0 30px #ff000030; }
+  16% { box-shadow: 0 0 15px #ff880080, 0 0 30px #ff880030; }
+  33% { box-shadow: 0 0 15px #ffff0080, 0 0 30px #ffff0030; }
+  50% { box-shadow: 0 0 15px #00ff0080, 0 0 30px #00ff0030; }
+  66% { box-shadow: 0 0 15px #0088ff80, 0 0 30px #0088ff30; }
+  83% { box-shadow: 0 0 15px #aa00ff80, 0 0 30px #aa00ff30; }
+  100% { box-shadow: 0 0 15px #ff000080, 0 0 30px #ff000030; }
+}
+
+/* ── Gimmick Intro Overlay ─────────────── */
+
+.gimmick-intro-content {
+  text-align: center;
+  padding: 24px 20px;
+}
+.gimmick-intro-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+.gimmick-intro-content h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+  color: var(--color-text, #eee);
+}
+.gimmick-intro-content p {
+  margin: 0 0 20px;
+  color: var(--color-text-secondary, #aaa);
+  font-size: 14px;
+  line-height: 1.5;
+}

@@ -190,6 +190,7 @@
     </div>
 
     <nav id="bottom-nav">
+      <button id="btn-home" class="nav-btn" title="Home">🏠</button>
       <button id="btn-settings" class="nav-btn" title="Settings">⚙️</button>
       <button id="btn-stats" class="nav-btn" title="Stats">📊</button>
       <button id="btn-achievements" class="nav-btn" title="Achievements">🏅</button>
@@ -440,7 +441,6 @@
           </div>
           <div class="setting-group">
             <h3>Audio</h3>
-            <label class="volume-label">Music <input type="range" id="music-volume" min="0" max="100" value="50" class="volume-slider"></label>
             <label class="volume-label">Sound Effects <input type="range" id="sfx-volume" min="0" max="100" value="100" class="volume-slider"></label>
           </div>
           <div class="setting-group reset-group">
@@ -715,6 +715,16 @@
       <div class="theme-unlock-toast-text">
         <div class="theme-unlock-toast-title">Theme Unlocked!</div>
         <div class="theme-unlock-toast-name"></div>
+      </div>
+    </div>
+
+    <!-- Gimmick Intro Overlay -->
+    <div id="gimmick-intro-overlay" class="modal hidden">
+      <div class="modal-content gimmick-intro-content">
+        <div id="gimmick-intro-icon" class="gimmick-intro-icon"></div>
+        <h2 id="gimmick-intro-name"></h2>
+        <p id="gimmick-intro-desc"></p>
+        <button id="gimmick-intro-ok" class="action-btn primary">Got it!</button>
       </div>
     </div>
 

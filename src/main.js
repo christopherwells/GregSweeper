@@ -26,8 +26,7 @@ import {
 } from './storage/statsStorage.js?v=0.9';
 import {
   playLevelUp, isMuted, setMuted, loadMuted,
-  startMusic, stopMusic, setMusicIntensity,
-  setMusicVolume, getMusicVolume, setSFXVolume, getSFXVolume,
+  setSFXVolume, getSFXVolume,
 } from './audio/sounds.js?v=0.9';
 import {
   getAchievementState, getTotalScore, checkNewUnlocks,
@@ -633,6 +632,9 @@ boardScrollWrapper.addEventListener('touchmove', (e) => {
 }, { passive: true });
 
 // Nav buttons
+$('#btn-home').addEventListener('click', () => {
+  showTitleScreen();
+});
 $('#btn-settings').addEventListener('click', () => {
   updateThemeSwatches();
   showModal('settings-modal');
@@ -873,6 +875,7 @@ const titleSettingsBtn = $('#title-settings-btn');
 if (titleSettingsBtn) {
   titleSettingsBtn.addEventListener('click', () => {
     hideTitleScreen();
+    updateThemeSwatches();
     showModal('settings-modal');
   });
 }
@@ -1018,13 +1021,7 @@ if (muteBtn) {
 
 // ── Audio Volume Controls ─────────────────────────────
 
-const musicSlider = $('#music-volume');
 const sfxSlider = $('#sfx-volume');
-
-if (musicSlider) {
-  musicSlider.value = getMusicVolume();
-  musicSlider.addEventListener('input', () => setMusicVolume(Number(musicSlider.value)));
-}
 if (sfxSlider) {
   sfxSlider.value = getSFXVolume();
   sfxSlider.addEventListener('input', () => setSFXVolume(Number(sfxSlider.value)));

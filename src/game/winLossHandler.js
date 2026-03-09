@@ -1,7 +1,7 @@
 import { state, ENCOURAGEMENT_LINES } from '../state/gameState.js?v=0.9';
 import { $, $$, boardEl, resetBtn, scanToast } from '../ui/domHelpers.js?v=0.9';
 import { getThemeEmoji, updateAllCells } from '../ui/boardRenderer.js?v=0.9';
-import { updateHeader, updateStreakBorder, updateCheckpointDisplay } from '../ui/headerRenderer.js?v=0.9';
+import { updateHeader, updateStreakBorder, updateCheckpointDisplay, getCheckpointForLevel } from '../ui/headerRenderer.js?v=0.9';
 import { updatePowerUpBar } from '../ui/powerUpBar.js?v=0.9';
 import { showModal } from '../ui/modalManager.js?v=0.9';
 import {
@@ -19,7 +19,7 @@ import {
   loadStats, saveGameResult, saveModePowerUps, clearGameState,
 } from '../storage/statsStorage.js?v=0.9';
 import {
-  playExplosion, playWin, playTimeRecord, stopMusic,
+  playExplosion, playWin, playTimeRecord,
 } from '../audio/sounds.js?v=0.9';
 import {
   checkNewUnlocks, getHighestTier, getTotalScore,
@@ -98,7 +98,6 @@ function renderShareCardPreview() {
 export function handleWin() {
   state.status = 'won';
   stopTimer();
-  stopMusic();
   resetBtn.textContent = getThemeEmoji('smileyWin');
   resetBtn.classList.add('smiley-win-bounce');
   setTimeout(() => resetBtn.classList.remove('smiley-win-bounce'), 800);
@@ -267,7 +266,6 @@ setHandleWin(handleWin);
 export function handleLoss(mineRow, mineCol) {
   state.status = 'lost';
   stopTimer();
-  stopMusic();
   resetBtn.textContent = getThemeEmoji('smileyLoss');
   resetBtn.classList.add('smiley-loss-shake');
   setTimeout(() => resetBtn.classList.remove('smiley-loss-shake'), 500);
@@ -310,9 +308,9 @@ export function handleLoss(mineRow, mineCol) {
   const lostLevel = state.currentLevel;
   const isLevelMode = state.gameMode === 'normal';
 
-  // Reset to last checkpoint
+  // Reset to the checkpoint for the CURRENT level range (not the highest-ever checkpoint)
   if (isLevelMode && state.currentLevel > 1) {
-    state.currentLevel = state.checkpoint || 1;
+    state.currentLevel = getCheckpointForLevel(state.currentLevel);
   }
 
   const gameoverTitle = $('#gameover-title');
@@ -388,7 +386,6 @@ export function handleLoss(mineRow, mineCol) {
 export function handleTimedLoss() {
   state.status = 'lost';
   stopTimer();
-  stopMusic();
   resetBtn.textContent = getThemeEmoji('smileyLoss');
   resetBtn.classList.add('smiley-loss-shake');
   setTimeout(() => resetBtn.classList.remove('smiley-loss-shake'), 500);
@@ -399,10 +396,10 @@ export function handleTimedLoss() {
   saveGameResult(false, state.elapsedTime, state.currentLevel, { gameMode: state.gameMode });
   saveModePowerUps(state.gameMode, state.powerUps);
 
-  // Death penalty: reset to last checkpoint
+  // Death penalty: reset to the checkpoint for the CURRENT level range
   const lostLevel = state.currentLevel;
   if (state.gameMode === 'normal' && state.currentLevel > 1) {
-    state.currentLevel = state.checkpoint || 1;
+    state.currentLevel = getCheckpointForLevel(state.currentLevel);
   }
 
   const gameoverTitle = $('#gameover-title');

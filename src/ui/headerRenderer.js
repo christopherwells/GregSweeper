@@ -11,7 +11,7 @@ import { getTimedDifficulty, getSpeedRating, MAX_LEVEL } from '../logic/difficul
 import { loadStats } from '../storage/statsStorage.js?v=0.9';
 
 // ── Checkpoint Display ─────────────────────────────────
-export const CHECKPOINT_INTERVAL = 10;
+export const CHECKPOINT_INTERVAL = 5;
 
 export function getCheckpointForLevel(level) {
   return Math.floor((level - 1) / CHECKPOINT_INTERVAL) * CHECKPOINT_INTERVAL + 1;

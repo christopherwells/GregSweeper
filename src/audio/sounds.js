@@ -26,9 +26,6 @@ export function isMuted() {
 export function setMuted(val) {
   muted = val;
   localStorage.setItem(MUTE_KEY, val ? '1' : '0');
-  // Propagate mute state to music and SFX gain nodes
-  updateMusicGainValue();
-  updateSFXGainValue();
 }
 
 export function loadMuted() {
@@ -181,283 +178,20 @@ export function playTimeRecord() {
   });
 }
 
-// ══════════════════════════════════════════════════════════
-// ── Dynamic Background Music System ─────────────────────
-// ══════════════════════════════════════════════════════════
+// ── SFX Volume Control ──────────────────────────────────
 
 const AUDIO_SETTINGS_KEY = 'minesweeper_audio_settings';
-
-// ── Volume state ─────────────────────────────────────────
-let musicVolume = 50;   // 0-100
-let sfxVolume   = 100;  // 0-100
-
-// ── Music state ──────────────────────────────────────────
-let musicGainNode    = null;
-let sfxGainNode      = null;
-let musicPlaying     = false;
-let musicSchedulerId = null;
-let currentIntensity = 0; // 0-1
-let activeLayers     = { melody: null, bass: null, harmony: null, percussion: null };
-
-// ── Note frequency lookup ────────────────────────────────
-const NOTE_FREQ = {
-  C3: 130.81, D3: 146.83, E3: 164.81, F3: 174.61, G3: 196.00, A3: 220.00, B3: 246.94,
-  C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, G4: 392.00, A4: 440.00, B4: 493.88,
-  C5: 523.25, D5: 587.33, E5: 659.25, G5: 783.99,
-};
-
-// ── Melody definition (~8 seconds, 4 bars at ~120 BPM) ──
-// Each note: [noteName, durationInBeats] — 1 beat = 0.5s
-const MELODY_PATTERN = [
-  ['E4', 1], ['G4', 1], ['C5', 1], ['B4', 0.5], ['A4', 0.5],
-  ['G4', 1], ['E4', 1], ['D4', 1], ['C4', 1],
-  ['E4', 1], ['G4', 1], ['A4', 1], ['G4', 0.5], ['E4', 0.5],
-  ['D4', 1], ['E4', 1], ['C4', 2],
-];
-
-const BASS_PATTERN = [
-  ['C3', 2], ['G3', 2],
-  ['A3', 2], ['E3', 2],
-  ['C3', 2], ['F3', 2],
-  ['G3', 2], ['C3', 2],
-];
-
-const HARMONY_PATTERN = [
-  ['G4', 2], ['E5', 2],
-  ['C5', 2], ['B4', 2],
-  ['G4', 2], ['A4', 2],
-  ['B4', 2], ['G4', 2],
-];
-
-// Percussion: [freq, durationBeats, type] — uses short noise-like tones
-const PERC_PATTERN = [
-  [200, 0.25], [null, 0.25], [800, 0.25], [null, 0.25],
-  [200, 0.25], [null, 0.25], [800, 0.25], [200, 0.25],
-  [200, 0.25], [null, 0.25], [800, 0.25], [null, 0.25],
-  [200, 0.25], [200, 0.25], [800, 0.25], [200, 0.25],
-];
-
-const BASE_BEAT_DURATION = 0.5; // seconds per beat at base tempo
-const LOOP_BEATS = 16;          // total beats in a loop
-
-// ── Gain node helpers ────────────────────────────────────
-
-function getMusicGain() {
-  if (!musicGainNode) {
-    const ctx = getCtx();
-    musicGainNode = ctx.createGain();
-    musicGainNode.connect(ctx.destination);
-  }
-  updateMusicGainValue();
-  return musicGainNode;
-}
-
-function getSFXGain() {
-  if (!sfxGainNode) {
-    const ctx = getCtx();
-    sfxGainNode = ctx.createGain();
-    sfxGainNode.connect(ctx.destination);
-  }
-  updateSFXGainValue();
-  return sfxGainNode;
-}
-
-function updateMusicGainValue() {
-  if (musicGainNode) {
-    const effective = muted ? 0 : (musicVolume / 100) * 0.12;
-    musicGainNode.gain.setTargetAtTime(effective, getCtx().currentTime, 0.05);
-  }
-}
-
-function updateSFXGainValue() {
-  if (sfxGainNode) {
-    const effective = muted ? 0 : (sfxVolume / 100);
-    sfxGainNode.gain.setTargetAtTime(effective, getCtx().currentTime, 0.05);
-  }
-}
-
-// ── Layer scheduling ─────────────────────────────────────
-
-function scheduleLayer(pattern, startTime, beatDur, destination, oscType, volume) {
-  const ctx = getCtx();
-  const nodes = [];
-  let t = startTime;
-
-  for (const entry of pattern) {
-    const isPerc = typeof entry[0] === 'number' || entry[0] === null;
-    const freq = isPerc ? entry[0] : (entry[0] ? NOTE_FREQ[entry[0]] : null);
-    const beats = isPerc ? entry[1] : entry[1];
-    const dur = beats * beatDur;
-
-    if (freq) {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = oscType;
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(volume, t);
-      gain.gain.setValueAtTime(volume, t + dur * 0.8);
-      gain.gain.linearRampToValueAtTime(0, t + dur * 0.95);
-      osc.connect(gain);
-      gain.connect(destination);
-      osc.start(t);
-      osc.stop(t + dur);
-      nodes.push(osc);
-    }
-    t += dur;
-  }
-  return nodes;
-}
-
-function schedulePercLayer(pattern, startTime, beatDur, destination) {
-  const ctx = getCtx();
-  const nodes = [];
-  let t = startTime;
-
-  for (const [freq, beats] of pattern) {
-    const dur = beats * beatDur;
-    if (freq) {
-      const bufferSize = ctx.sampleRate * 0.05;
-      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) {
-        data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
-      }
-
-      const noise = ctx.createBufferSource();
-      noise.buffer = buffer;
-
-      const bandpass = ctx.createBiquadFilter();
-      bandpass.type = 'bandpass';
-      bandpass.frequency.value = freq;
-      bandpass.Q.value = 1.5;
-
-      const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.3, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
-
-      noise.connect(bandpass);
-      bandpass.connect(gain);
-      gain.connect(destination);
-      noise.start(t);
-      noise.stop(t + 0.06);
-      nodes.push(noise);
-    }
-    t += dur;
-  }
-  return nodes;
-}
-
-// ── Core music loop scheduler ────────────────────────────
-
-function scheduleLoop() {
-  if (!musicPlaying) return;
-
-  resumeCtx();
-  const ctx = getCtx();
-  const dest = getMusicGain();
-  const tempoMultiplier = currentIntensity >= 0.75 ? 0.9 : 1.0;
-  const beatDur = BASE_BEAT_DURATION * tempoMultiplier;
-  const loopDuration = LOOP_BEATS * beatDur;
-  const startTime = ctx.currentTime + 0.05; // tiny buffer to avoid glitches
-
-  // Clean up previous layer references
-  activeLayers.melody = null;
-  activeLayers.bass = null;
-  activeLayers.harmony = null;
-  activeLayers.percussion = null;
-
-  // Layer 1: Melody (always on)
-  activeLayers.melody = scheduleLayer(
-    MELODY_PATTERN, startTime, beatDur, dest, 'square', 0.4
-  );
-
-  // Layer 2: Bass line (25%+)
-  if (currentIntensity >= 0.25) {
-    activeLayers.bass = scheduleLayer(
-      BASS_PATTERN, startTime, beatDur, dest, 'triangle', 0.3
-    );
-  }
-
-  // Layer 3: Harmony (50%+)
-  if (currentIntensity >= 0.50) {
-    activeLayers.harmony = scheduleLayer(
-      HARMONY_PATTERN, startTime, beatDur, dest, 'sine', 0.15
-    );
-  }
-
-  // Layer 4: Percussion (75%+)
-  if (currentIntensity >= 0.75) {
-    activeLayers.percussion = schedulePercLayer(
-      PERC_PATTERN, startTime, beatDur, dest
-    );
-  }
-
-  // Schedule next loop
-  const nextLoopMs = loopDuration * 1000;
-  musicSchedulerId = setTimeout(scheduleLoop, nextLoopMs - 100);
-}
-
-// ── Public API ───────────────────────────────────────────
-
-export function startMusic() {
-  if (musicPlaying) return;
-  musicPlaying = true;
-  currentIntensity = 0;
-  resumeCtx();
-  getMusicGain(); // ensure gain node exists
-  scheduleLoop();
-}
-
-export function stopMusic() {
-  musicPlaying = false;
-  if (musicSchedulerId !== null) {
-    clearTimeout(musicSchedulerId);
-    musicSchedulerId = null;
-  }
-  // Let any currently-playing oscillators finish naturally (they have stop times).
-  // Clear layer references.
-  activeLayers.melody = null;
-  activeLayers.bass = null;
-  activeLayers.harmony = null;
-  activeLayers.percussion = null;
-  currentIntensity = 0;
-}
-
-export function setMusicIntensity(progress) {
-  // Clamp 0-1
-  currentIntensity = Math.max(0, Math.min(1, progress));
-  // Layer changes take effect on the next scheduled loop iteration.
-}
-
-export function setMusicVolume(vol) {
-  musicVolume = Math.max(0, Math.min(100, vol));
-  updateMusicGainValue();
-  saveAudioSettings();
-}
-
-export function getMusicVolume() {
-  return musicVolume;
-}
+let sfxVolume = 100; // 0-100
 
 export function setSFXVolume(vol) {
   sfxVolume = Math.max(0, Math.min(100, vol));
-  updateSFXGainValue();
-  saveAudioSettings();
+  try {
+    localStorage.setItem(AUDIO_SETTINGS_KEY, JSON.stringify({ sfxVolume }));
+  } catch (_) { /* localStorage unavailable */ }
 }
 
 export function getSFXVolume() {
   return sfxVolume;
-}
-
-// ── Persistence ──────────────────────────────────────────
-
-function saveAudioSettings() {
-  try {
-    localStorage.setItem(AUDIO_SETTINGS_KEY, JSON.stringify({
-      musicVolume,
-      sfxVolume,
-    }));
-  } catch (_) { /* localStorage unavailable */ }
 }
 
 export function loadAudioSettings() {
@@ -465,8 +199,7 @@ export function loadAudioSettings() {
     const raw = localStorage.getItem(AUDIO_SETTINGS_KEY);
     if (raw) {
       const data = JSON.parse(raw);
-      if (typeof data.musicVolume === 'number') musicVolume = Math.max(0, Math.min(100, data.musicVolume));
-      if (typeof data.sfxVolume === 'number')   sfxVolume   = Math.max(0, Math.min(100, data.sfxVolume));
+      if (typeof data.sfxVolume === 'number') sfxVolume = Math.max(0, Math.min(100, data.sfxVolume));
     }
   } catch (_) { /* parse error or localStorage unavailable */ }
 }

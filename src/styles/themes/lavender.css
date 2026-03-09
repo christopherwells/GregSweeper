@@ -45,3 +45,12 @@
   --text-shadow-title: 0 0 14px rgba(152, 112, 200, 0.3);
   --bg-modal-close-hover: rgba(152, 112, 200, 0.12);
 }
+
+/* Soft pulsing glow effect */
+[data-theme="lavender"] #board {
+  animation: lavenderGlow 3s ease-in-out infinite;
+}
+@keyframes lavenderGlow {
+  0%, 100% { box-shadow: 0 0 10px rgba(160,120,200,0.15); }
+  50% { box-shadow: 0 0 25px rgba(160,120,200,0.35); }
+}

@@ -1,6 +1,7 @@
 import { state } from '../state/gameState.js?v=0.9';
 import { boardEl, zoomControls, zoomLevelDisplay, boardScrollWrapper } from './domHelpers.js?v=0.9';
 import { THEME_UNLOCKS } from './themeManager.js?v=0.9';
+import { loadEmojiPack, getActiveEmojiPack } from './collectionManager.js?v=0.9';
 
 // ── Board Rendering ────────────────────────────────────
 
@@ -40,6 +41,13 @@ export function renderBoard() {
 }
 
 export function getThemeEmoji(type) {
+  // Check for active emoji pack override
+  const packId = loadEmojiPack();
+  if (packId !== 'default') {
+    const pack = getActiveEmojiPack();
+    if (pack && pack[type]) return pack[type];
+  }
+  // Fall through to theme-based emoji
   const currentTheme = document.documentElement.getAttribute('data-theme') || 'classic';
   const themeInfo = THEME_UNLOCKS[currentTheme];
   if (type === 'mine') return themeInfo?.mine || '💣';
