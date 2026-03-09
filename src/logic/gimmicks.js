@@ -13,6 +13,29 @@ const GIMMICK_DEFS = {
 };
 
 const SEEN_KEY = 'minesweeper_seen_gimmicks';
+const POPUP_DISABLED_KEY = 'minesweeper_modifier_popup_disabled';
+
+// ── Daily-safe gimmick subset ──────────────────────────
+const DAILY_SAFE_GIMMICKS = ['mystery', 'locked', 'walls', 'liar'];
+
+// ── Modifier popup preference ──────────────────────────
+
+export function isModifierPopupDisabled() {
+  return localStorage.getItem(POPUP_DISABLED_KEY) === 'true';
+}
+
+export function setModifierPopupDisabled(disabled) {
+  localStorage.setItem(POPUP_DISABLED_KEY, disabled ? 'true' : 'false');
+}
+
+// ── Daily gimmick selection (seeded, ~35% of days) ─────
+
+export function getDailyGimmick(dailySeed, createRNG) {
+  const rng = createRNG(dailySeed + '-gimmick');
+  if (rng() > 0.35) return []; // 65% of days: no gimmick
+  const idx = Math.floor(rng() * DAILY_SAFE_GIMMICKS.length);
+  return [DAILY_SAFE_GIMMICKS[idx]];
+}
 
 // ── Which gimmicks are active for a given level ────────
 

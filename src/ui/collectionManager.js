@@ -49,7 +49,7 @@ export const TITLES = {
   mineWhisperer:  { name: 'Mine Whisperer',   unlock: { type: 'level', value: 10 } },
   bombDefuser:    { name: 'Bomb Defuser',     unlock: { type: 'level', value: 25 } },
   speedDemon:     { name: 'Speed Demon',      unlock: { type: 'level', value: 40 } },
-  gimmickMaster:  { name: 'Gimmick Master',   unlock: { type: 'level', value: 60 } },
+  gimmickMaster:  { name: 'Modifier Master',   unlock: { type: 'level', value: 60 } },
   gregsChampion:  { name: "Greg's Champion",  unlock: { type: 'level', value: 80 } },
   legendary:      { name: 'Legendary',        unlock: { type: 'level', value: 100 } },
 };

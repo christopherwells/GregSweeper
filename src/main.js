@@ -44,6 +44,7 @@ import {
   isEffectUnlocked, isTitleUnlocked,
   loadEffects, saveEffects, loadTitle, saveTitle,
 } from './ui/collectionManager.js?v=0.9.1';
+import { isModifierPopupDisabled, setModifierPopupDisabled } from './logic/gimmicks.js?v=0.9.1';
 
 // ── Stats Display ─────────────────────────────────────
 
@@ -1023,6 +1024,16 @@ const sfxSlider = $('#sfx-volume');
 if (sfxSlider) {
   sfxSlider.value = getSFXVolume();
   sfxSlider.addEventListener('input', () => setSFXVolume(Number(sfxSlider.value)));
+}
+
+// ── Modifier Popup Toggle ─────────────────────────────
+
+const modifierToggle = $('#modifier-popup-toggle');
+if (modifierToggle) {
+  modifierToggle.checked = !isModifierPopupDisabled();
+  modifierToggle.addEventListener('change', () => {
+    setModifierPopupDisabled(!modifierToggle.checked);
+  });
 }
 
 // ── Init ───────────────────────────────────────────────

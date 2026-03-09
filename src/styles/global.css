@@ -3666,6 +3666,38 @@ body {
   background: var(--color-accent, #e94560)15;
 }
 
+/* Modifier dismiss button in intro popup */
+.modifier-dismiss-btn {
+  display: block;
+  margin: 8px auto 0;
+  font-size: 12px;
+  opacity: 0.7;
+  background: transparent;
+  border: 1px solid var(--color-border, #444);
+  color: var(--color-text-secondary, #999);
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.modifier-dismiss-btn:hover {
+  opacity: 1;
+}
+
+/* Settings toggle label */
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--color-text, #eee);
+  cursor: pointer;
+}
+.toggle-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-accent, #e94560);
+}
+
 /* Modal headers — unified */
 .modal-header h2 {
   font-family: 'Fredoka', sans-serif;

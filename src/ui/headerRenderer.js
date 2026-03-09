@@ -89,8 +89,10 @@ export function updateHeader() {
   }
   updateTimerDisplayInHeader();
 
-  // Level display — show timed labels like "Beginner" if available
-  if (state.gameMode === 'timed') {
+  // Level display
+  if (state.gameMode === 'daily') {
+    levelDisplay.textContent = '📅 Daily';
+  } else if (state.gameMode === 'timed') {
     const tdiff = getTimedDifficulty(state.currentLevel);
     levelDisplay.textContent = tdiff.label || `Level ${state.currentLevel}`;
   } else {

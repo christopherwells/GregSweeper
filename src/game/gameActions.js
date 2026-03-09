@@ -19,7 +19,7 @@ import { generateBoard, createEmptyBoard, calculateAdjacency } from '../logic/bo
 import { floodFillReveal, checkWin, chordReveal } from '../logic/boardSolver.js?v=0.9.1';
 import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster } from '../logic/difficulty.js?v=0.9.1';
 import { shieldDefuse } from '../logic/powerUps.js?v=0.9.1';
-import { getGimmicksForLevel, applyGimmicks, isLockedCell, hasSeenGimmick, markGimmickSeen, getGimmickDef } from '../logic/gimmicks.js?v=0.9.1';
+import { getGimmicksForLevel, applyGimmicks, isLockedCell, hasSeenGimmick, markGimmickSeen, getGimmickDef, isModifierPopupDisabled, setModifierPopupDisabled, getDailyGimmick } from '../logic/gimmicks.js?v=0.9.1';
 import { createDailyRNG } from '../logic/seededRandom.js?v=0.9.1';
 import {
   loadModePowerUps, loadCheckpoint, clearGameState,
@@ -37,6 +37,7 @@ function showGimmickIntros(gimmickDefs) {
   const nameEl = document.getElementById('gimmick-intro-name');
   const descEl = document.getElementById('gimmick-intro-desc');
   const okBtn = document.getElementById('gimmick-intro-ok');
+  const dismissBtn = document.getElementById('gimmick-intro-dismiss');
   if (!iconEl || !nameEl || !descEl || !okBtn) return;
 
   function showNext() {
@@ -46,12 +47,12 @@ function showGimmickIntros(gimmickDefs) {
     }
     const def = gimmickDefs[index];
     iconEl.textContent = def.icon;
-    nameEl.textContent = `New Gimmick: ${def.name}`;
+    nameEl.textContent = `Modifier: ${def.name}`;
     descEl.textContent = def.desc;
     showModal('gimmick-intro-overlay');
   }
 
-  // Remove old listener if any, add fresh one
+  // Remove old listeners if any, add fresh ones
   const newBtn = okBtn.cloneNode(true);
   okBtn.parentNode.replaceChild(newBtn, okBtn);
   newBtn.addEventListener('click', () => {
@@ -62,6 +63,16 @@ function showGimmickIntros(gimmickDefs) {
       hideModal('gimmick-intro-overlay');
     }
   });
+
+  // "Don't show again" button
+  if (dismissBtn) {
+    const newDismissBtn = dismissBtn.cloneNode(true);
+    dismissBtn.parentNode.replaceChild(newDismissBtn, dismissBtn);
+    newDismissBtn.addEventListener('click', () => {
+      setModifierPopupDisabled(true);
+      hideModal('gimmick-intro-overlay');
+    });
+  }
 
   showNext();
 }
@@ -118,6 +129,15 @@ export function newGame() {
     state.board = generateBoard(state.rows, state.cols, state.totalMines, fixedRow, fixedCol, boardRng);
     state.firstClick = false;
     state.status = 'idle'; // stays idle until actual first click
+
+    // Apply daily modifiers (~35% of days)
+    const dailyGimmicks = getDailyGimmick(state.dailySeed, createDailyRNG);
+    if (dailyGimmicks.length > 0) {
+      state.activeGimmicks = dailyGimmicks;
+      // Use a separate seeded RNG for gimmick application
+      const gimmickApplyRng = createDailyRNG(state.dailySeed + '-gimmick-apply');
+      state.gimmickData = applyGimmicks(state.board, 1, state.activeGimmicks, gimmickApplyRng);
+    }
   }
 
   // Load per-mode power-ups
@@ -136,9 +156,11 @@ export function newGame() {
     };
   }
 
-  // Gimmicks (challenge mode only)
-  state.activeGimmicks = [];
-  state.gimmickData = {};
+  // Gimmicks / modifiers (set by challenge mode on first click, or daily mode above)
+  if (state.gameMode !== 'daily') {
+    state.activeGimmicks = [];
+    state.gimmickData = {};
+  }
 
   // Load checkpoint
   if (state.gameMode === 'normal') {
@@ -237,17 +259,19 @@ export function revealCell(row, col) {
       if (state.activeGimmicks.length > 0) {
         state.gimmickData = applyGimmicks(state.board, state.currentLevel, state.activeGimmicks, gimmickRng);
 
-        // Show first-encounter popup for new gimmicks
-        const newGimmicks = [];
-        for (const g of state.activeGimmicks) {
-          if (!hasSeenGimmick(g)) {
-            markGimmickSeen(g);
-            const def = getGimmickDef(g);
-            if (def) newGimmicks.push(def);
+        // Show first-encounter popup for new modifiers (unless disabled)
+        if (!isModifierPopupDisabled()) {
+          const newGimmicks = [];
+          for (const g of state.activeGimmicks) {
+            if (!hasSeenGimmick(g)) {
+              markGimmickSeen(g);
+              const def = getGimmickDef(g);
+              if (def) newGimmicks.push(def);
+            }
           }
-        }
-        if (newGimmicks.length > 0) {
-          showGimmickIntros(newGimmicks);
+          if (newGimmicks.length > 0) {
+            showGimmickIntros(newGimmicks);
+          }
         }
 
         // Start mine shift timer if active
@@ -281,6 +305,14 @@ export function revealCell(row, col) {
     }
     state.status = 'playing';
     startTimer();
+
+    // Show modifier intro popup for daily gimmicks (always show in Daily, not just unseen)
+    if (state.activeGimmicks.length > 0 && !isModifierPopupDisabled()) {
+      const defs = state.activeGimmicks.map(g => getGimmickDef(g)).filter(Boolean);
+      if (defs.length > 0) {
+        showGimmickIntros(defs);
+      }
+    }
   }
 
   const currentCell = state.board[row][col];

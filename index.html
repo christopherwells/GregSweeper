@@ -422,6 +422,13 @@
             <h3>Audio</h3>
             <label class="volume-label">Sound Effects <input type="range" id="sfx-volume" min="0" max="100" value="100" class="volume-slider"></label>
           </div>
+          <div class="setting-group">
+            <h3>Notifications</h3>
+            <label class="toggle-label">
+              <input type="checkbox" id="modifier-popup-toggle" checked>
+              Show new modifier popups
+            </label>
+          </div>
           <div class="setting-group reset-group">
             <h3>Data</h3>
             <button id="btn-reset-profile" class="reset-profile-btn">🗑️ Reset Profile</button>
@@ -584,7 +591,7 @@
           </div>
           <div class="help-section">
             <h3>Modes</h3>
-            <p><strong>Challenge</strong> — 100 levels with gimmicks &amp; power-ups</p>
+            <p><strong>Challenge</strong> — 100 levels with modifiers &amp; power-ups</p>
             <p><strong>Timed</strong> — race for speed ratings (💎🥇🥈🥉)</p>
             <p><strong>Skill Trainer</strong> — guided puzzles to learn techniques</p>
             <p><strong>Daily</strong> — same board for everyone, online leaderboard</p>
@@ -702,13 +709,14 @@
       </div>
     </div>
 
-    <!-- Gimmick Intro Overlay -->
+    <!-- Modifier Intro Overlay -->
     <div id="gimmick-intro-overlay" class="modal hidden">
       <div class="modal-content gimmick-intro-content">
         <div id="gimmick-intro-icon" class="gimmick-intro-icon"></div>
         <h2 id="gimmick-intro-name"></h2>
         <p id="gimmick-intro-desc"></p>
         <button id="gimmick-intro-ok" class="action-btn primary">Got it!</button>
+        <button id="gimmick-intro-dismiss" class="action-btn secondary modifier-dismiss-btn">Don't show again</button>
       </div>
     </div>
 

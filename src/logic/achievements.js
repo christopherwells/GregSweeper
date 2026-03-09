@@ -120,12 +120,12 @@ const CATEGORIES = [
   },
   {
     id: 'gimmickMaster',
-    name: 'Gimmick Master',
+    name: 'Modifier Master',
     icon: '🎪',
-    desc: 'Beat levels with gimmicks active',
+    desc: 'Beat levels with modifiers active',
     thresholds: [1, 5, 15, 30, 50, 100],
     getValue: (s) => s.gimmickWins || 0,
-    format: (v) => `${v} gimmick win${v !== 1 ? 's' : ''}`,
+    format: (v) => `${v} modifier win${v !== 1 ? 's' : ''}`,
   },
   {
     id: 'dailyStreak',
