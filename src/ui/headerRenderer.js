@@ -97,14 +97,6 @@ export function updateHeader() {
     levelDisplay.textContent = `Level ${state.currentLevel}`;
   }
 
-  // Update mode pill active states
-  for (const pill of $$('.mode-pill')) {
-    pill.classList.toggle('active', pill.dataset.mode === state.gameMode);
-  }
-  for (const btn of $$('.mode-btn')) {
-    btn.classList.toggle('active', btn.dataset.mode === state.gameMode);
-  }
-
   updateCheckpointDisplay();
   updateProgressBar();
   updateCellsRemaining();

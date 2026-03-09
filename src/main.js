@@ -14,7 +14,7 @@ import { THEME_UNLOCKS, getUnlockedThemes, updateThemeSwatches } from './ui/them
 import { newGame, revealCell, toggleFlag, handleChordReveal } from './game/gameActions.js?v=0.9';
 import './game/winLossHandler.js?v=0.9'; // side-effect: registers handleWin with powerUpActions
 import { useRevealSafe, useShield, activateScan, activateXRay, activateMagnet } from './game/powerUpActions.js?v=0.9';
-import { switchMode, updateTimedDiffVisibility, syncTimedDiffButtons } from './game/modeManager.js?v=0.9';
+import { switchMode } from './game/modeManager.js?v=0.9';
 import { persistGameState, tryResumeGame } from './game/gamePersistence.js?v=0.9';
 import { getDifficultyForLevel, getTimedDifficulty, getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL } from './logic/difficulty.js?v=0.9';
 import {
@@ -787,26 +787,7 @@ if (toggleLockedBtn) {
   });
 }
 
-// Mode selection
-for (const modeBtn of $$('.mode-btn')) {
-  modeBtn.addEventListener('click', () => switchMode(modeBtn.dataset.mode));
-}
-for (const pill of $$('.mode-pill')) {
-  pill.addEventListener('click', () => switchMode(pill.dataset.mode));
-}
-
-// Timed difficulty selection (settings modal)
-for (const diffBtn of $$('.timed-diff-btn')) {
-  diffBtn.addEventListener('click', () => {
-    const level = parseInt(diffBtn.dataset.level, 10);
-    state.currentLevel = level;
-    for (const d of $$('.timed-diff-btn')) d.classList.remove('active');
-    diffBtn.classList.add('active');
-    // Sync timed size tabs
-    for (const t of $$('.timed-tab')) t.classList.toggle('active', parseInt(t.dataset.level, 10) === level);
-    newGame();
-  });
-}
+// Mode selection handled by title screen mode cards (see below)
 
 // Timed size tabs (above board)
 for (const tab of $$('.timed-tab')) {
@@ -953,7 +934,6 @@ $('#gameover-nextlevel').addEventListener('click', () => {
   playLevelUp();
   showLevelUpToast(state.currentLevel);
   showCelebration();
-  syncTimedDiffButtons();
   newGame();
 });
 

@@ -59,9 +59,6 @@ export function switchMode(mode) {
 
   state.gameMode = mode;
   if (mode !== 'timed') state.currentLevel = 1;
-  for (const m of $$('.mode-btn')) m.classList.toggle('active', m.dataset.mode === mode);
-  for (const p of $$('.mode-pill')) p.classList.toggle('active', p.dataset.mode === mode);
-  updateTimedDiffVisibility();
   updateModeUI(mode);
 
   // Skill trainer doesn't use normal game flow
