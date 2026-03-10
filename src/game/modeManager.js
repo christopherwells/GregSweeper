@@ -1,7 +1,7 @@
-import { state } from '../state/gameState.js?v=0.9.2';
-import { $, $$ } from '../ui/domHelpers.js?v=0.9.2';
-import { newGame } from './gameActions.js?v=0.9.2';
-import { persistGameState, tryResumeGame } from './gamePersistence.js?v=0.9.2';
+import { state } from '../state/gameState.js?v=0.9.5';
+import { $, $$ } from '../ui/domHelpers.js?v=0.9.5';
+import { newGame } from './gameActions.js?v=0.9.5';
+import { persistGameState, tryResumeGame } from './gamePersistence.js?v=0.9.5';
 
 // ── Mode Manager ──────────────────────────────────────
 
@@ -40,14 +40,14 @@ function updateModeUI(mode) {
     if (powerUpBar) powerUpBar.classList.add('hidden');
     if (flagModeBar) flagModeBar.classList.add('hidden');
     // Lazy-load skill trainer UI
-    import('../ui/skillTrainerUI.js?v=0.9.2').then(m => m.showSkillTrainer());
+    import('../ui/skillTrainerUI.js?v=0.9.5').then(m => m.showSkillTrainer());
   } else {
     if (gameHeader) gameHeader.classList.remove('hidden');
     if (gameInfoBar) gameInfoBar.classList.remove('hidden');
     if (boardContainer) boardContainer.classList.remove('hidden');
     if (skillTrainerContainer) skillTrainerContainer.classList.add('hidden');
     // Hide skill trainer if it was showing
-    import('../ui/skillTrainerUI.js?v=0.9.2').then(m => m.hideSkillTrainer()).catch(() => {});
+    import('../ui/skillTrainerUI.js?v=0.9.5').then(m => m.hideSkillTrainer()).catch(() => {});
   }
 }
 

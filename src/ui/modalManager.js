@@ -1,4 +1,4 @@
-import { $, $$ } from './domHelpers.js?v=0.9.2';
+import { $, $$ } from './domHelpers.js?v=0.9.5';
 
 export function showModal(id) {
   $(`#${id}`).classList.remove('hidden');

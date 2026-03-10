@@ -4,6 +4,7 @@
   "description": "A modern Minesweeper reimagined by Greg",
   "start_url": ".",
   "scope": ".",
+  "id": "gregsweeper",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#1a1a2e",

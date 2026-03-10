@@ -1,14 +1,16 @@
-import { state, getRevealedCells } from '../state/gameState.js?v=0.9.2';
-import { $, $$, boardEl, scanToast } from '../ui/domHelpers.js?v=0.9.2';
-import { updateAllCells } from '../ui/boardRenderer.js?v=0.9.2';
-import { updateHeader } from '../ui/headerRenderer.js?v=0.9.2';
-import { updatePowerUpBar } from '../ui/powerUpBar.js?v=0.9.2';
-import { findSafeCell, scanRowCol, shieldDefuse, xRayScan, magnetPull } from '../logic/powerUps.js?v=0.9.2';
-import { checkWin } from '../logic/boardSolver.js?v=0.9.2';
-import { saveModePowerUps } from '../storage/statsStorage.js?v=0.9.2';
+import { state, getRevealedCells } from '../state/gameState.js?v=0.9.5';
+import { $, $$, boardEl, scanToast } from '../ui/domHelpers.js?v=0.9.5';
+import { updateAllCells } from '../ui/boardRenderer.js?v=0.9.5';
+import { showGreenFlash } from '../ui/effectsRenderer.js?v=0.9.5';
+import { showToast } from '../ui/toastManager.js?v=0.9.5';
+import { updateHeader } from '../ui/headerRenderer.js?v=0.9.5';
+import { updatePowerUpBar } from '../ui/powerUpBar.js?v=0.9.5';
+import { findSafeCell, scanRowCol, shieldDefuse, xRayScan, magnetPull } from '../logic/powerUps.js?v=0.9.5';
+import { checkWin } from '../logic/boardSolver.js?v=0.9.5';
+import { saveModePowerUps } from '../storage/statsStorage.js?v=0.9.5';
 import {
   playPowerUp, playShieldBreak, playXRay, playLifelineSave, playMagnet,
-} from '../audio/sounds.js?v=0.9.2';
+} from '../audio/sounds.js?v=0.9.5';
 
 // Forward declaration — set by winLossHandler to avoid circular import
 let _handleWin = null;
@@ -81,7 +83,13 @@ export function tryLifeline(row, col) {
   const flash = document.createElement('div');
   flash.className = 'lifeline-flash';
   document.getElementById('app').appendChild(flash);
-  setTimeout(() => flash.remove(), 600);
+  setTimeout(() => flash.remove(), 800);
+
+  // Green screen flash to signal "saved!"
+  showGreenFlash();
+
+  // Prominent toast so user knows lifeline was used
+  showToast('❤️ Lifeline saved you! Mine auto-flagged.');
 
   updateAllCells();
   updateHeader();

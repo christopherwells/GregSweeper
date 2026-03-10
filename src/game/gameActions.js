@@ -1,33 +1,33 @@
-import { state, getRevealedCells } from '../state/gameState.js?v=0.9.2';
-import { $, $$, boardEl, resetBtn } from '../ui/domHelpers.js?v=0.9.2';
+import { state, getRevealedCells } from '../state/gameState.js?v=0.9.5';
+import { $, $$, boardEl, resetBtn } from '../ui/domHelpers.js?v=0.9.5';
 import {
   renderBoard, updateCell, updateAllCells, updateCells, getThemeEmoji,
   adjustCellSize, updateZoom,
-} from '../ui/boardRenderer.js?v=0.9.2';
+} from '../ui/boardRenderer.js?v=0.9.5';
 import {
   updateHeader, updateCheckpointDisplay, updateProgressBar,
   updateCellsRemaining, updateStreakDisplay, updateStreakBorder,
   updateFlagModeBar,
-} from '../ui/headerRenderer.js?v=0.9.2';
-import { updatePowerUpBar } from '../ui/powerUpBar.js?v=0.9.2';
-import { hideAllModals, showModal, hideModal } from '../ui/modalManager.js?v=0.9.2';
-import { showLevelInfoToast } from '../ui/toastManager.js?v=0.9.2';
-import { startTimer, stopTimer, startMineShift, updateTimerDisplay } from './timerManager.js?v=0.9.2';
-import { handleWin, handleLoss, handleDailyBombHit } from './winLossHandler.js?v=0.9.2';
-import { performScan, performXRay, performMagnet, tryLifeline } from './powerUpActions.js?v=0.9.2';
-import { generateBoard, createEmptyBoard, calculateAdjacency } from '../logic/boardGenerator.js?v=0.9.2';
-import { floodFillReveal, checkWin, chordReveal } from '../logic/boardSolver.js?v=0.9.2';
-import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster } from '../logic/difficulty.js?v=0.9.2';
-import { shieldDefuse } from '../logic/powerUps.js?v=0.9.2';
-import { getGimmicksForLevel, applyGimmicks, isLockedCell, hasSeenGimmick, markGimmickSeen, getGimmickDef, isModifierPopupDisabled, setModifierPopupDisabled, getDailyGimmick } from '../logic/gimmicks.js?v=0.9.2';
-import { createDailyRNG } from '../logic/seededRandom.js?v=0.9.2';
+} from '../ui/headerRenderer.js?v=0.9.5';
+import { updatePowerUpBar } from '../ui/powerUpBar.js?v=0.9.5';
+import { hideAllModals, showModal, hideModal } from '../ui/modalManager.js?v=0.9.5';
+import { showLevelInfoToast } from '../ui/toastManager.js?v=0.9.5';
+import { startTimer, stopTimer, startMineShift, updateTimerDisplay } from './timerManager.js?v=0.9.5';
+import { handleWin, handleLoss, handleDailyBombHit } from './winLossHandler.js?v=0.9.5';
+import { performScan, performXRay, performMagnet, tryLifeline } from './powerUpActions.js?v=0.9.5';
+import { generateBoard, createEmptyBoard, calculateAdjacency } from '../logic/boardGenerator.js?v=0.9.5';
+import { floodFillReveal, checkWin, chordReveal } from '../logic/boardSolver.js?v=0.9.5';
+import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster } from '../logic/difficulty.js?v=0.9.5';
+import { shieldDefuse } from '../logic/powerUps.js?v=0.9.5';
+import { getGimmicksForLevel, applyGimmicks, isLockedCell, hasSeenGimmick, markGimmickSeen, getGimmickDef, isModifierPopupDisabled, setModifierPopupDisabled, getDailyGimmick } from '../logic/gimmicks.js?v=0.9.5';
+import { createDailyRNG } from '../logic/seededRandom.js?v=0.9.5';
 import {
   loadModePowerUps, loadCheckpoint, clearGameState,
-} from '../storage/statsStorage.js?v=0.9.2';
+} from '../storage/statsStorage.js?v=0.9.5';
 import {
   playReveal, playFlag, playUnflag, playCascade, playShieldBreak,
-} from '../audio/sounds.js?v=0.9.2';
-import { loadEffects } from '../ui/collectionManager.js?v=0.9.2';
+} from '../audio/sounds.js?v=0.9.5';
+import { loadEffects } from '../ui/collectionManager.js?v=0.9.5';
 
 // ── Gimmick Intro Popup ───────────────────────────────
 
@@ -225,7 +225,7 @@ export function revealCell(row, col) {
 
   // Locked cell check
   if (cell.isLocked && isLockedCell(state.board, row, col)) {
-    import('../ui/toastManager.js?v=0.9.2').then(m => {
+    import('../ui/toastManager.js?v=0.9.5').then(m => {
       m.showToast('🔒 Unlock neighbors first!', 1500);
     });
     return;
@@ -291,21 +291,32 @@ export function revealCell(row, col) {
 
   } else if (state.status === 'idle' && state.gameMode === 'daily') {
     // Daily mode: board was pre-generated for consistency.
-    // If first click lands on a mine, relocate it to keep first-click-safe.
+    // If first click lands on a mine, relocate it deterministically.
     const clickedCell = state.board[row][col];
     if (clickedCell.isMine) {
       clickedCell.isMine = false;
-      // Find the first non-mine cell not adjacent to the click to place the mine
+      // Use seeded RNG so relocation is deterministic for the same click position
+      const relocRng = createDailyRNG(state.dailySeed + '-reloc-' + row + '-' + col);
+      // Gather all valid relocation targets (non-mine, not adjacent to click)
+      const candidates = [];
       for (let r = 0; r < state.rows; r++) {
         for (let c = 0; c < state.cols; c++) {
-          if (!state.board[r][c].isMine && (Math.abs(r - row) > 1 || Math.abs(c - col) > 1)) {
-            state.board[r][c].isMine = true;
-            r = state.rows; // break outer
-            break;
+          if (!state.board[r][c].isMine && !state.board[r][c].isWall &&
+              (Math.abs(r - row) > 1 || Math.abs(c - col) > 1)) {
+            candidates.push({ r, c });
           }
         }
       }
+      if (candidates.length > 0) {
+        const pick = candidates[Math.floor(relocRng() * candidates.length)];
+        state.board[pick.r][pick.c].isMine = true;
+      }
       calculateAdjacency(state.board);
+      // Re-apply gimmicks that depend on adjacency (liar, wormhole, mirror)
+      if (state.activeGimmicks.length > 0) {
+        const gimmickApplyRng = createDailyRNG(state.dailySeed + '-gimmick-apply');
+        state.gimmickData = applyGimmicks(state.board, 1, state.activeGimmicks, gimmickApplyRng);
+      }
     }
     state.status = 'playing';
     startTimer();
@@ -365,10 +376,16 @@ export function revealCell(row, col) {
 
   let newlyRevealed = [];
   if (currentCell.adjacentMines === 0) {
+    state.inputLocked = true;
     const revealed = floodFillReveal(state.board, row, col);
     state.revealedCount += revealed.length;
     newlyRevealed = revealed;
     playCascade(revealed.length);
+    // Unlock after the longest animation delay + buffer
+    const maxDelay = revealed.length > 0
+      ? Math.max(...revealed.map(c => c.revealAnimDelay || 0))
+      : 0;
+    setTimeout(() => { state.inputLocked = false; }, maxDelay + 100);
   } else {
     currentCell.isRevealed = true;
     currentCell.revealAnimDelay = 0;
@@ -386,6 +403,7 @@ export function revealCell(row, col) {
 
 export function toggleFlag(row, col) {
   if (state.status !== 'playing' && state.status !== 'idle') return;
+  if (state.inputLocked) return;
   const cell = state.board[row][col];
   if (cell.isRevealed) return;
 
@@ -418,6 +436,10 @@ export function toggleFlag(row, col) {
 
 export function handleChordReveal(row, col) {
   if (state.status !== 'playing') return;
+  if (state.inputLocked) return;
+  const now = Date.now();
+  if (now - _lastInputTime < 50) return;
+  _lastInputTime = now;
   const result = chordReveal(state.board, row, col);
   if (!result || !result.revealed) return;
 
@@ -425,6 +447,13 @@ export function handleChordReveal(row, col) {
 
   updateCells(result.revealed);
   updateHeader();
+
+  // Lock input during chord animation
+  if (result.revealed && result.revealed.length > 1 && !result.hitMine) {
+    state.inputLocked = true;
+    const maxDist = Math.max(...result.revealed.map(c => Math.abs(c.row - row) + Math.abs(c.col - col)));
+    setTimeout(() => { state.inputLocked = false; }, 350 + maxDist * 40 + 50);
+  }
 
   // Chord ripple animation on revealed cells
   if (result.revealed && !result.hitMine) {

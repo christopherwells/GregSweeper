@@ -1,5 +1,5 @@
-import { state } from '../state/gameState.js?v=0.9.2';
-import { $, $$, boardEl } from './domHelpers.js?v=0.9.2';
+import { state } from '../state/gameState.js?v=0.9.5';
+import { $, $$, boardEl } from './domHelpers.js?v=0.9.5';
 
 export function updatePowerUpBar() {
   const totalPowerUps = Object.values(state.powerUps).reduce((a, b) => a + b, 0);

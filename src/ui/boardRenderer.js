@@ -1,7 +1,7 @@
-import { state } from '../state/gameState.js?v=0.9.2';
-import { boardEl, zoomControls, zoomLevelDisplay, boardScrollWrapper } from './domHelpers.js?v=0.9.2';
-import { THEME_UNLOCKS } from './themeManager.js?v=0.9.2';
-import { loadEmojiPack, getActiveEmojiPack } from './collectionManager.js?v=0.9.2';
+import { state } from '../state/gameState.js?v=0.9.5';
+import { boardEl, zoomControls, zoomLevelDisplay, boardScrollWrapper } from './domHelpers.js?v=0.9.5';
+import { THEME_UNLOCKS } from './themeManager.js?v=0.9.5';
+import { loadEmojiPack, getActiveEmojiPack } from './collectionManager.js?v=0.9.5';
 
 // ── Emoji Cache (avoid per-cell localStorage reads) ────
 let _emojiCache = null;
@@ -169,7 +169,7 @@ export function adjustCellSize() {
   const maxWidth = Math.min(window.innerWidth * 0.88, 520);
   const gapSpace = (state.cols - 1) * 2 + 8; // grid gaps + padding
   const maxCellSize = Math.floor((maxWidth - gapSpace) / state.cols);
-  const cellSize = Math.min(40, Math.max(16, maxCellSize));
+  const cellSize = Math.min(40, Math.max(24, maxCellSize));
   document.documentElement.style.setProperty('--cell-size', cellSize + 'px');
 }
 

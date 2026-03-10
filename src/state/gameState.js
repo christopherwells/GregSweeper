@@ -39,6 +39,7 @@ export const state = {
   activeGimmicks: [],    // ['mystery', 'walls', ...]
   gimmickData: {},       // per-gimmick applied data
   mineShiftTimerId: null,
+  inputLocked: false,    // true during cascade/chord animations
 };
 
 // ── Encouragement Lines ────────────────────────────────

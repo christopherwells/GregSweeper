@@ -1,3 +1,4 @@
+import { safeGet, safeSet, safeRemove, safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js?v=0.9.5';
 /**
  * Firebase Online Daily Leaderboard
  * Uses Firebase Realtime Database (compat SDK loaded via CDN in index.html).
@@ -481,10 +482,10 @@ const ROOM_STORAGE_KEY = 'minesweeper_room';
  */
 export function saveRoomInfo(code, playerName) {
   try {
-    localStorage.setItem(ROOM_STORAGE_KEY, JSON.stringify({
+    safeSetJSON(ROOM_STORAGE_KEY, {
       code: code.toUpperCase(),
       playerName: String(playerName).slice(0, 20).trim(),
-    }));
+    });
   } catch (e) {
     console.warn('saveRoomInfo failed:', e.message);
   }
@@ -496,7 +497,7 @@ export function saveRoomInfo(code, playerName) {
  */
 export function loadRoomInfo() {
   try {
-    const raw = localStorage.getItem(ROOM_STORAGE_KEY);
+    const raw = safeGet(ROOM_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (parsed && parsed.code && parsed.playerName) return parsed;
@@ -511,7 +512,7 @@ export function loadRoomInfo() {
  */
 export function clearRoomInfo() {
   try {
-    localStorage.removeItem(ROOM_STORAGE_KEY);
+    safeRemove(ROOM_STORAGE_KEY);
   } catch (e) {
     // ignore
   }

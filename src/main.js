@@ -2,21 +2,21 @@
 // All game logic and UI rendering is in modules.
 // This file handles imports, event wiring, and init.
 
-import { state } from './state/gameState.js?v=0.9.2';
-import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn } from './ui/domHelpers.js?v=0.9.2';
-import { resizeCells, updateAllCells, getThemeEmoji, needsZoom, updateZoom, zoomIn, zoomOut, invalidateEmojiCache } from './ui/boardRenderer.js?v=0.9.2';
-import { updateHeader, updateStreakBorder, updateFlagModeBar, getCheckpointForLevel } from './ui/headerRenderer.js?v=0.9.2';
-import { updatePowerUpBar } from './ui/powerUpBar.js?v=0.9.2';
-import { showModal, hideModal, hideAllModals } from './ui/modalManager.js?v=0.9.2';
-import { showToast, showLevelUpToast, showCheckpointToast } from './ui/toastManager.js?v=0.9.2';
-import { showCelebration, haptic } from './ui/effectsRenderer.js?v=0.9.2';
-import { THEME_UNLOCKS, getUnlockedThemes } from './ui/themeManager.js?v=0.9.2';
-import { newGame, revealCell, toggleFlag, handleChordReveal } from './game/gameActions.js?v=0.9.2';
-import './game/winLossHandler.js?v=0.9.2'; // side-effect: registers handleWin with powerUpActions
-import { useRevealSafe, useShield, activateScan, activateXRay, activateMagnet } from './game/powerUpActions.js?v=0.9.2';
-import { switchMode } from './game/modeManager.js?v=0.9.2';
-import { persistGameState, tryResumeGame } from './game/gamePersistence.js?v=0.9.2';
-import { getDifficultyForLevel, getTimedDifficulty, getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL } from './logic/difficulty.js?v=0.9.2';
+import { state } from './state/gameState.js?v=0.9.5';
+import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn } from './ui/domHelpers.js?v=0.9.5';
+import { resizeCells, updateAllCells, getThemeEmoji, needsZoom, updateZoom, zoomIn, zoomOut, invalidateEmojiCache } from './ui/boardRenderer.js?v=0.9.5';
+import { updateHeader, updateStreakBorder, updateFlagModeBar, getCheckpointForLevel } from './ui/headerRenderer.js?v=0.9.5';
+import { updatePowerUpBar } from './ui/powerUpBar.js?v=0.9.5';
+import { showModal, hideModal, hideAllModals } from './ui/modalManager.js?v=0.9.5';
+import { showToast, showLevelUpToast, showCheckpointToast } from './ui/toastManager.js?v=0.9.5';
+import { showCelebration, haptic } from './ui/effectsRenderer.js?v=0.9.5';
+import { THEME_UNLOCKS, getUnlockedThemes, loadThemeCSS } from './ui/themeManager.js?v=0.9.5';
+import { newGame, revealCell, toggleFlag, handleChordReveal } from './game/gameActions.js?v=0.9.5';
+import './game/winLossHandler.js?v=0.9.5'; // side-effect: registers handleWin with powerUpActions
+import { useRevealSafe, useShield, activateScan, activateXRay, activateMagnet } from './game/powerUpActions.js?v=0.9.5';
+import { switchMode } from './game/modeManager.js?v=0.9.5';
+import { persistGameState, tryResumeGame } from './game/gamePersistence.js?v=0.9.5';
+import { getDifficultyForLevel, getTimedDifficulty, getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL } from './logic/difficulty.js?v=0.9.5';
 import {
   loadStats, saveTheme, loadTheme, resetStats,
   saveCheckpoint, loadCheckpoint,
@@ -24,28 +24,31 @@ import {
   saveModePowerUps,
   isOnboarded, setOnboarded,
   isDailyCompleted,
-} from './storage/statsStorage.js?v=0.9.2';
+  getDailyStreak,
+} from './storage/statsStorage.js?v=0.9.5';
 import {
   playLevelUp, isMuted, setMuted, loadMuted,
   setSFXVolume, getSFXVolume,
-} from './audio/sounds.js?v=0.9.2';
+} from './audio/sounds.js?v=0.9.5';
 import {
   getAchievementState, getTotalScore, checkNewUnlocks,
   getHighestTier, getAllTierNames, getTierIcon, getTierColor,
-} from './logic/achievements.js?v=0.9.2';
+} from './logic/achievements.js?v=0.9.5';
 import {
   initFirebase, isFirebaseOnline, submitOnlineScore, fetchOnlineLeaderboard,
   createRoom, joinRoom, leaveRoom, submitRoomScore,
   fetchRoomLeaderboard, fetchRoomHistory, getRoomMembers, getRoomInfo,
   saveRoomInfo, loadRoomInfo, clearRoomInfo,
-} from './firebase/firebaseLeaderboard.js?v=0.9.2';
+} from './firebase/firebaseLeaderboard.js?v=0.9.5';
 import {
   EMOJI_PACKS, EFFECTS, TITLES,
   loadEmojiPack, saveEmojiPack, getActiveEmojiPack, isPackUnlocked,
   isEffectUnlocked, isTitleUnlocked,
   loadEffects, saveEffects, loadTitle, saveTitle,
-} from './ui/collectionManager.js?v=0.9.2';
-import { isModifierPopupDisabled, setModifierPopupDisabled } from './logic/gimmicks.js?v=0.9.2';
+} from './ui/collectionManager.js?v=0.9.5';
+import { isModifierPopupDisabled, setModifierPopupDisabled } from './logic/gimmicks.js?v=0.9.5';
+import { isStorageFailing } from './storage/storageAdapter.js?v=0.9.5';
+import { pauseTimer, resumeTimer } from './game/timerManager.js?v=0.9.5';
 
 // ── Stats Display ─────────────────────────────────────
 
@@ -238,6 +241,7 @@ function renderCollectionModal() {
         return;
       }
       state.theme = theme;
+      loadThemeCSS(theme);
       document.documentElement.setAttribute('data-theme', theme);
       saveTheme(theme);
       for (const s of themeGrid.querySelectorAll('.theme-swatch')) s.classList.remove('active');
@@ -793,12 +797,12 @@ function updateTitleProgress() {
   if (dailyEl) {
     const today = new Date().toISOString().slice(0, 10);
     const dailyCard = $('.mode-card[data-mode="daily"]');
+    const { streak } = getDailyStreak();
     if (isDailyCompleted(today)) {
-      dailyEl.textContent = 'Completed today!';
+      dailyEl.textContent = streak > 0 ? `Completed! 🔥 ${streak} day streak` : 'Completed today!';
       if (dailyCard) dailyCard.classList.add('daily-completed');
     } else {
-      const dStreak = stats.modeStats?.daily?.dailyStreak || 0;
-      dailyEl.textContent = dStreak > 0 ? `${dStreak} day streak` : "Today's challenge";
+      dailyEl.textContent = streak > 0 ? `🔥 ${streak} day streak` : "Today's challenge";
       if (dailyCard) dailyCard.classList.remove('daily-completed');
     }
   }
@@ -1043,6 +1047,7 @@ function init() {
   }
 
   state.theme = activeTheme;
+  loadThemeCSS(activeTheme);
   document.documentElement.setAttribute('data-theme', activeTheme);
 
   const muted = loadMuted();
@@ -1052,6 +1057,11 @@ function init() {
   }
 
   initFirebase();
+
+  // Warn if localStorage is broken (private browsing, quota, etc.)
+  if (isStorageFailing()) {
+    showToast('⚠️ Playing in temporary mode — progress won\'t be saved', 5000);
+  }
 
   const urlParams = new URLSearchParams(window.location.search);
   const deepLinkMode = urlParams.get('mode');
@@ -1090,10 +1100,17 @@ function init() {
   }, 10000); // Every 10s instead of 5s to reduce serialization overhead
 }
 
-// Persist game state when app loses focus or closes
+// Pause timer + persist when app loses focus; resume when visible
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'hidden' && state.status === 'playing') {
-    persistGameState();
+  if (document.visibilityState === 'hidden') {
+    if (state.status === 'playing') {
+      pauseTimer();
+      persistGameState();
+    }
+  } else {
+    if (state.status === 'playing') {
+      resumeTimer();
+    }
   }
 });
 window.addEventListener('beforeunload', () => {

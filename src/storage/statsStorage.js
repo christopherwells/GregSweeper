@@ -1,28 +1,20 @@
+import { safeGet, safeSet, safeRemove, safeGetJSON, safeSetJSON } from './storageAdapter.js?v=0.9.5';
+
 const STATS_KEY = 'minesweeper_stats';
 const LEADERBOARD_KEY = 'minesweeper_daily_leaderboard';
 const THEME_KEY = 'minesweeper_theme';
 const POWERUPS_KEY = 'minesweeper_powerups';
 const LIVES_KEY = 'minesweeper_lives';
 
-// In-memory cache for stats to avoid repeated localStorage reads + JSON.parse
+// In-memory cache for stats to avoid repeated reads + JSON.parse
 let _statsCache = null;
 
 function getJSON(key, fallback) {
-  try {
-    const data = localStorage.getItem(key);
-    return data ? JSON.parse(data) : fallback;
-  } catch {
-    return fallback;
-  }
+  return safeGetJSON(key, fallback);
 }
 
 function setJSON(key, value) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch (err) {
-    // QuotaExceededError or other storage errors — log but don't crash
-    console.warn(`localStorage write failed for "${key}":`, err.message);
-  }
+  safeSetJSON(key, value);
 }
 
 const DEFAULT_STATS = {
@@ -58,7 +50,7 @@ function createDefaultModeStats() {
     challenge: createModeStats(),
     timed: createModeStats(),
     skillTrainer: createModeStats(),
-    daily: { ...createModeStats(), dailyStreak: 0, bestDailyStreak: 0, dailiesCompleted: 0, bombHits: 0 },
+    daily: { ...createModeStats(), dailyStreak: 0, bestDailyStreak: 0, dailiesCompleted: 0, bombHits: 0, lastDailyCompletedDate: null },
   };
 }
 
@@ -167,10 +159,28 @@ export function saveGameResult(won, time, level, { isDaily = false, usedPowerUps
       if (level > modeStats.maxLevelReached) {
         modeStats.maxLevelReached = level;
       }
-      // Daily-specific
+      // Daily-specific: consecutive-day streak validation
       if (modeKey === 'daily') {
         modeStats.dailiesCompleted = (modeStats.dailiesCompleted || 0) + 1;
-        modeStats.dailyStreak = (modeStats.dailyStreak || 0) + 1;
+        const today = new Date().toISOString().slice(0, 10);
+        const lastDate = modeStats.lastDailyCompletedDate;
+        if (lastDate) {
+          const last = new Date(lastDate + 'T00:00:00');
+          const now = new Date(today + 'T00:00:00');
+          const diffDays = Math.round((now - last) / 86400000);
+          if (diffDays === 1) {
+            // Consecutive day — increment streak
+            modeStats.dailyStreak = (modeStats.dailyStreak || 0) + 1;
+          } else if (diffDays === 0) {
+            // Same day — don't change streak (already counted)
+          } else {
+            // Gap — reset streak
+            modeStats.dailyStreak = 1;
+          }
+        } else {
+          modeStats.dailyStreak = 1;
+        }
+        modeStats.lastDailyCompletedDate = today;
         if (modeStats.dailyStreak > (modeStats.bestDailyStreak || 0)) {
           modeStats.bestDailyStreak = modeStats.dailyStreak;
         }
@@ -178,9 +188,6 @@ export function saveGameResult(won, time, level, { isDaily = false, usedPowerUps
     } else {
       modeStats.losses++;
       modeStats.currentStreak = 0;
-      if (modeKey === 'daily') {
-        modeStats.dailyStreak = 0;
-      }
     }
 
     modeStats.recentGames.push({ won, time, level, date: new Date().toISOString() });
@@ -247,11 +254,11 @@ export function addDailyLeaderboardEntry(dateString, name, time) {
 // ── Theme ─────────────────────────────────────────────
 
 export function loadTheme() {
-  return localStorage.getItem(THEME_KEY) || 'classic';
+  return safeGet(THEME_KEY) || 'classic';
 }
 
 export function saveTheme(theme) {
-  localStorage.setItem(THEME_KEY, theme);
+  safeSet(THEME_KEY, theme);
 }
 
 // ── Lives Persistence ─────────────────────────────────
@@ -311,7 +318,7 @@ export function loadGameState(mode) {
   if (legacy) {
     const m = legacy.gameMode || 'normal';
     setJSON(gameStateKey(m), legacy);
-    try { localStorage.removeItem(LEGACY_GAME_STATE_KEY); } catch (e) { /* ignore */ }
+    safeRemove(LEGACY_GAME_STATE_KEY);
     return legacy;
   }
   return null;
@@ -319,13 +326,13 @@ export function loadGameState(mode) {
 
 export function clearGameState(mode) {
   if (mode) {
-    try { localStorage.removeItem(gameStateKey(mode)); } catch (e) { /* ignore */ }
+    safeRemove(gameStateKey(mode));
   } else {
     // Clear all mode states (used by reset)
     for (const m of ['challenge', 'timed', 'daily', 'skillTrainer']) {
-      try { localStorage.removeItem(gameStateKey(m)); } catch (e) { /* ignore */ }
+      safeRemove(gameStateKey(m));
     }
-    try { localStorage.removeItem(LEGACY_GAME_STATE_KEY); } catch (e) { /* ignore */ }
+    safeRemove(LEGACY_GAME_STATE_KEY);
   }
 }
 
@@ -337,8 +344,8 @@ export function resetStats() {
   _statsCache = freshStats; // Update cache with fresh stats
   setJSON(POWERUPS_KEY, { ...DEFAULT_POWERUPS });
   setJSON(LIVES_KEY, { ...DEFAULT_LIVES });
-  localStorage.removeItem(LEADERBOARD_KEY);
-  localStorage.removeItem(CHECKPOINT_KEY);
+  safeRemove(LEADERBOARD_KEY);
+  safeRemove(CHECKPOINT_KEY);
   clearGameState(); // clears all mode states
 }
 
@@ -355,28 +362,40 @@ export function invalidateStatsCache() {
 const DAILY_COMPLETED_KEY = 'minesweeper_daily_completed_date';
 
 export function isDailyCompleted(dateStr) {
-  return localStorage.getItem(DAILY_COMPLETED_KEY) === dateStr;
+  return safeGet(DAILY_COMPLETED_KEY) === dateStr;
 }
 
 export function markDailyCompleted(dateStr) {
-  try {
-    localStorage.setItem(DAILY_COMPLETED_KEY, dateStr);
-  } catch (e) {
-    // ignore
-  }
+  safeSet(DAILY_COMPLETED_KEY, dateStr);
 }
 
 // ── Onboarding ──────────────────────────────────────
 const ONBOARDING_KEY = 'minesweeper_onboarded';
 
 export function isOnboarded() {
-  return localStorage.getItem(ONBOARDING_KEY) === 'true';
+  return safeGet(ONBOARDING_KEY) === 'true';
 }
 
 export function setOnboarded() {
-  try {
-    localStorage.setItem(ONBOARDING_KEY, 'true');
-  } catch (e) {
-    // ignore
+  safeSet(ONBOARDING_KEY, 'true');
+}
+
+// ── Daily Streak ──────────────────────────────────────
+export function getDailyStreak() {
+  const stats = loadStats();
+  const daily = stats.modeStats?.daily;
+  if (!daily) return { streak: 0, best: 0 };
+  // Validate streak is still active (last completed was today or yesterday)
+  const today = new Date().toISOString().slice(0, 10);
+  const lastDate = daily.lastDailyCompletedDate;
+  if (lastDate) {
+    const last = new Date(lastDate + 'T00:00:00');
+    const now = new Date(today + 'T00:00:00');
+    const diffDays = Math.round((now - last) / 86400000);
+    if (diffDays > 1) {
+      // Streak has lapsed
+      return { streak: 0, best: daily.bestDailyStreak || 0 };
+    }
   }
+  return { streak: daily.dailyStreak || 0, best: daily.bestDailyStreak || 0 };
 }

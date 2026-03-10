@@ -1,7 +1,7 @@
-import { state } from '../state/gameState.js?v=0.9.2';
-import { timerEl, boardEl } from '../ui/domHelpers.js?v=0.9.2';
-import { updateAllCells } from '../ui/boardRenderer.js?v=0.9.2';
-import { performMineShift } from '../logic/gimmicks.js?v=0.9.2';
+import { state } from '../state/gameState.js?v=0.9.5';
+import { timerEl, boardEl } from '../ui/domHelpers.js?v=0.9.5';
+import { updateAllCells } from '../ui/boardRenderer.js?v=0.9.5';
+import { performMineShift } from '../logic/gimmicks.js?v=0.9.5';
 
 // ── Timer ──────────────────────────────────────────────
 
@@ -44,9 +44,37 @@ export function stopTimer() {
   stopMineShift();
 }
 
+// ── Pause / Resume (visibility change) ────────────────
+
+let _mineShiftInterval = null; // stored so we can restart on resume
+
+export function pauseTimer() {
+  if (state.timerId) {
+    clearInterval(state.timerId);
+    state.timerId = null;
+  }
+  if (state.mineShiftTimerId) {
+    clearInterval(state.mineShiftTimerId);
+    state.mineShiftTimerId = null;
+  }
+}
+
+export function resumeTimer() {
+  if (state.status !== 'playing') return;
+  // Restart game timer if not already running
+  if (!state.timerId) {
+    startTimer();
+  }
+  // Restart mine shift if it was active
+  if (!state.mineShiftTimerId && _mineShiftInterval) {
+    startMineShift(_mineShiftInterval);
+  }
+}
+
 // ── Mine Shift Timer ──────────────────────────────────
 
 export function startMineShift(intervalSeconds) {
+  _mineShiftInterval = intervalSeconds; // remember for resume
   if (state.mineShiftTimerId) return;
   state.mineShiftTimerId = setInterval(() => {
     if (state.status !== 'playing') return;
@@ -69,4 +97,5 @@ export function stopMineShift() {
     clearInterval(state.mineShiftTimerId);
     state.mineShiftTimerId = null;
   }
+  _mineShiftInterval = null;
 }

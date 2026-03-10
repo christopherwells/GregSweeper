@@ -1,9 +1,10 @@
+import { safeGet, safeSet, safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js?v=0.9.5';
 /**
  * Collection Manager — emoji packs, effects, and titles
  * Handles unlock logic and localStorage persistence.
  */
 
-import { loadStats } from '../storage/statsStorage.js?v=0.9.2';
+import { loadStats } from '../storage/statsStorage.js?v=0.9.5';
 
 // ── Emoji Packs ──────────────────────────────────────
 
@@ -86,12 +87,12 @@ export function isTitleUnlocked(titleId) {
 
 export function loadEmojiPack() {
   try {
-    return localStorage.getItem('minesweeper_emoji_pack') || 'default';
+    return safeGet('minesweeper_emoji_pack') || 'default';
   } catch { return 'default'; }
 }
 
 export function saveEmojiPack(packId) {
-  try { localStorage.setItem('minesweeper_emoji_pack', packId); } catch {}
+  safeSet('minesweeper_emoji_pack', packId);
 }
 
 export function getActiveEmojiPack() {
@@ -105,7 +106,7 @@ const DEFAULT_EFFECTS = { particles: 'confetti', borders: 'none', reveals: 'pop'
 
 export function loadEffects() {
   try {
-    const raw = localStorage.getItem('minesweeper_effects');
+    const raw = safeGet('minesweeper_effects');
     if (!raw) return { ...DEFAULT_EFFECTS };
     const parsed = JSON.parse(raw);
     return { ...DEFAULT_EFFECTS, ...parsed };
@@ -113,17 +114,17 @@ export function loadEffects() {
 }
 
 export function saveEffects(effects) {
-  try { localStorage.setItem('minesweeper_effects', JSON.stringify(effects)); } catch {}
+  safeSetJSON('minesweeper_effects', effects);
 }
 
 // ── Title Persistence ────────────────────────────────
 
 export function loadTitle() {
   try {
-    return localStorage.getItem('minesweeper_title') || 'rookie';
+    return safeGet('minesweeper_title') || 'rookie';
   } catch { return 'rookie'; }
 }
 
 export function saveTitle(titleId) {
-  try { localStorage.setItem('minesweeper_title', titleId); } catch {}
+  safeSet('minesweeper_title', titleId);
 }

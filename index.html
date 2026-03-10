@@ -16,45 +16,7 @@
   <link rel="stylesheet" href="src/styles/animations.css">
   <link rel="stylesheet" href="src/styles/themes/classic.css">
   <link rel="stylesheet" href="src/styles/themes/dark.css">
-  <link rel="stylesheet" href="src/styles/themes/neon.css">
-  <link rel="stylesheet" href="src/styles/themes/ocean.css">
-  <link rel="stylesheet" href="src/styles/themes/sunset.css">
-  <link rel="stylesheet" href="src/styles/themes/candy.css">
-  <link rel="stylesheet" href="src/styles/themes/midnight.css">
-  <link rel="stylesheet" href="src/styles/themes/aurora.css">
-  <link rel="stylesheet" href="src/styles/themes/galaxy.css">
-  <link rel="stylesheet" href="src/styles/themes/forest.css">
-  <link rel="stylesheet" href="src/styles/themes/stealth.css">
-  <link rel="stylesheet" href="src/styles/themes/cherry-blossom.css">
-  <link rel="stylesheet" href="src/styles/themes/volcano.css">
-  <link rel="stylesheet" href="src/styles/themes/ice.css">
-  <link rel="stylesheet" href="src/styles/themes/cyberpunk.css">
-  <link rel="stylesheet" href="src/styles/themes/retro.css">
-  <link rel="stylesheet" href="src/styles/themes/holographic.css">
-  <link rel="stylesheet" href="src/styles/themes/toxic.css">
-  <link rel="stylesheet" href="src/styles/themes/royal.css">
-  <link rel="stylesheet" href="src/styles/themes/prismatic.css">
-  <link rel="stylesheet" href="src/styles/themes/void.css">
-  <link rel="stylesheet" href="src/styles/themes/arctic.css">
-  <link rel="stylesheet" href="src/styles/themes/jungle.css">
-  <link rel="stylesheet" href="src/styles/themes/obsidian.css">
-  <link rel="stylesheet" href="src/styles/themes/matrix.css">
-  <link rel="stylesheet" href="src/styles/themes/inferno.css">
-  <link rel="stylesheet" href="src/styles/themes/celestial.css">
-  <link rel="stylesheet" href="src/styles/themes/bloodmoon.css">
-  <link rel="stylesheet" href="src/styles/themes/synthwave.css">
-  <link rel="stylesheet" href="src/styles/themes/supernova.css">
-  <link rel="stylesheet" href="src/styles/themes/legendary.css">
-  <link rel="stylesheet" href="src/styles/themes/copper.css">
-  <link rel="stylesheet" href="src/styles/themes/sakura.css">
-  <link rel="stylesheet" href="src/styles/themes/deepspace.css">
-  <link rel="stylesheet" href="src/styles/themes/emerald.css">
-  <link rel="stylesheet" href="src/styles/themes/lavender.css">
-  <link rel="stylesheet" href="src/styles/themes/autumn.css">
-  <link rel="stylesheet" href="src/styles/themes/coral.css">
-  <link rel="stylesheet" href="src/styles/themes/slate.css">
-  <link rel="stylesheet" href="src/styles/themes/phantom.css">
-  <link rel="stylesheet" href="src/styles/themes/solar.css">
+  <!-- Other themes loaded on-demand by themeManager.js -->
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700;900&family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
   <!-- Firebase SDK (compat) for online daily leaderboard -->
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -527,7 +489,23 @@
   <script type="module" src="src/main.js?v=0.9.2"></script>
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js').catch(() => {});
+      navigator.serviceWorker.register('./sw.js').then(reg => {
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
+                const banner = document.createElement('div');
+                banner.id = 'sw-update-banner';
+                banner.innerHTML = 'A new version is available! <button onclick="location.reload()">Refresh</button>';
+                banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#1a1a2e;color:#fff;padding:12px 16px;text-align:center;z-index:99999;font-size:14px;display:flex;align-items:center;justify-content:center;gap:10px;';
+                banner.querySelector('button').style.cssText = 'background:#6c5ce7;color:#fff;border:none;padding:6px 16px;border-radius:4px;cursor:pointer;font-size:14px;';
+                document.body.appendChild(banner);
+              }
+            });
+          }
+        });
+      }).catch(() => {});
     }
   </script>
 </body>

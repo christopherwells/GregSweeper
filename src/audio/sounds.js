@@ -1,3 +1,4 @@
+import { safeGet, safeSet, safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js?v=0.9.5';
 // Web Audio API sound engine — no audio files needed
 let audioCtx = null;
 let muted = false;
@@ -25,11 +26,11 @@ export function isMuted() {
 
 export function setMuted(val) {
   muted = val;
-  localStorage.setItem(MUTE_KEY, val ? '1' : '0');
+  safeSet(MUTE_KEY, val ? '1' : '0');
 }
 
 export function loadMuted() {
-  muted = localStorage.getItem(MUTE_KEY) === '1';
+  muted = safeGet(MUTE_KEY) === '1';
   return muted;
 }
 
@@ -186,7 +187,7 @@ let sfxVolume = 100; // 0-100
 export function setSFXVolume(vol) {
   sfxVolume = Math.max(0, Math.min(100, vol));
   try {
-    localStorage.setItem(AUDIO_SETTINGS_KEY, JSON.stringify({ sfxVolume }));
+    safeSetJSON(AUDIO_SETTINGS_KEY, { sfxVolume });
   } catch (_) { /* localStorage unavailable */ }
 }
 
@@ -196,10 +197,9 @@ export function getSFXVolume() {
 
 export function loadAudioSettings() {
   try {
-    const raw = localStorage.getItem(AUDIO_SETTINGS_KEY);
-    if (raw) {
-      const data = JSON.parse(raw);
-      if (typeof data.sfxVolume === 'number') sfxVolume = Math.max(0, Math.min(100, data.sfxVolume));
+    const data = safeGetJSON(AUDIO_SETTINGS_KEY, null);
+    if (data && typeof data.sfxVolume === 'number') {
+      sfxVolume = Math.max(0, Math.min(100, data.sfxVolume));
     }
   } catch (_) { /* parse error or localStorage unavailable */ }
 }

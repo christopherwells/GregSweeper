@@ -1,32 +1,32 @@
-import { state, ENCOURAGEMENT_LINES } from '../state/gameState.js?v=0.9.2';
-import { $, $$, boardEl, resetBtn, scanToast } from '../ui/domHelpers.js?v=0.9.2';
-import { getThemeEmoji, updateAllCells } from '../ui/boardRenderer.js?v=0.9.2';
-import { updateHeader, updateStreakBorder, updateCheckpointDisplay, getCheckpointForLevel } from '../ui/headerRenderer.js?v=0.9.2';
-import { updatePowerUpBar } from '../ui/powerUpBar.js?v=0.9.2';
-import { showModal } from '../ui/modalManager.js?v=0.9.2';
+import { state, ENCOURAGEMENT_LINES } from '../state/gameState.js?v=0.9.5';
+import { $, $$, boardEl, resetBtn, scanToast } from '../ui/domHelpers.js?v=0.9.5';
+import { getThemeEmoji, updateAllCells } from '../ui/boardRenderer.js?v=0.9.5';
+import { updateHeader, updateStreakBorder, updateCheckpointDisplay, getCheckpointForLevel } from '../ui/headerRenderer.js?v=0.9.5';
+import { updatePowerUpBar } from '../ui/powerUpBar.js?v=0.9.5';
+import { showModal } from '../ui/modalManager.js?v=0.9.5';
 import {
   triggerHeavyShake, showRedFlash, showGreenFlash,
   haptic, chainRevealMines, showCelebration, showConfettiBurst,
-} from '../ui/effectsRenderer.js?v=0.9.2';
-import { showToast } from '../ui/toastManager.js?v=0.9.2';
-import { stopTimer } from './timerManager.js?v=0.9.2';
-import { awardPowerUps } from './powerUpActions.js?v=0.9.2';
-import { setHandleWin } from './powerUpActions.js?v=0.9.2';
-import { defuseMine } from '../logic/powerUps.js?v=0.9.2';
-import { findNextSafeMove } from '../logic/boardSolver.js?v=0.9.2';
-import { getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL } from '../logic/difficulty.js?v=0.9.2';
+} from '../ui/effectsRenderer.js?v=0.9.5';
+import { showToast } from '../ui/toastManager.js?v=0.9.5';
+import { stopTimer } from './timerManager.js?v=0.9.5';
+import { awardPowerUps } from './powerUpActions.js?v=0.9.5';
+import { setHandleWin } from './powerUpActions.js?v=0.9.5';
+import { defuseMine } from '../logic/powerUps.js?v=0.9.5';
+import { findNextSafeMove } from '../logic/boardSolver.js?v=0.9.5';
+import { getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL } from '../logic/difficulty.js?v=0.9.5';
 import {
   loadStats, saveGameResult, saveModePowerUps, clearGameState,
-  markDailyCompleted,
-} from '../storage/statsStorage.js?v=0.9.2';
+  markDailyCompleted, getDailyStreak,
+} from '../storage/statsStorage.js?v=0.9.5';
 import {
   playExplosion, playWin, playTimeRecord,
-} from '../audio/sounds.js?v=0.9.2';
+} from '../audio/sounds.js?v=0.9.5';
 import {
   checkNewUnlocks, getHighestTier, getTotalScore,
   getAchievementState, getAllTierNames, getTierIcon, getTierColor,
-} from '../logic/achievements.js?v=0.9.2';
-import { checkThemeUnlocks, showThemeUnlockToasts } from '../ui/themeManager.js?v=0.9.2';
+} from '../logic/achievements.js?v=0.9.5';
+import { checkThemeUnlocks, showThemeUnlockToasts } from '../ui/themeManager.js?v=0.9.5';
 
 // ── Achievements Display (for game over) ───────────────
 
@@ -161,6 +161,13 @@ export function handleWin() {
     gameoverTime.textContent = `Time: ${state.elapsedTime}s — ${rating.icon} ${rating.name}!`;
   } else {
     gameoverTime.textContent = `Time: ${state.elapsedTime}s${strikesInfo}`;
+    // Show daily streak if applicable
+    if (state.gameMode === 'daily') {
+      const { streak } = getDailyStreak();
+      if (streak > 0) {
+        gameoverTime.textContent += ` | \u{1F525} ${streak} day streak`;
+      }
+    }
   }
 
   // Stats cascade animation on time display
@@ -255,6 +262,13 @@ export function handleWin() {
 
   // Always show share button on win
   shareBtn.classList.remove('hidden');
+
+  // Hide "Play Again" for daily mode (can't replay today's daily)
+  const retryBtn = $('#gameover-retry');
+  if (retryBtn) {
+    if (isDaily) retryBtn.classList.add('hidden');
+    else retryBtn.classList.remove('hidden');
+  }
 
   // Clear saved game state on win
   clearGameState(state.gameMode);
@@ -378,6 +392,10 @@ export function handleLoss(mineRow, mineCol) {
   const exploreBtn = $('#gameover-explore');
   if (exploreBtn) exploreBtn.classList.remove('hidden');
 
+  // Ensure "Play Again" is visible on loss
+  const lossRetryBtn = $('#gameover-retry');
+  if (lossRetryBtn) lossRetryBtn.classList.remove('hidden');
+
   // Clear saved game state on loss
   clearGameState(state.gameMode);
 
@@ -446,6 +464,9 @@ export function handleTimedLoss() {
 export function handleDailyBombHit(mineRow, mineCol) {
   state.dailyBombHits++;
 
+  // Time penalty: +10s per strike
+  state.elapsedTime += 10;
+
   // Defuse the hit mine so it won't kill again
   defuseMine(state.board, mineRow, mineCol);
   state.board[mineRow][mineCol].isRevealed = true;
@@ -473,7 +494,7 @@ export function handleDailyBombHit(mineRow, mineCol) {
 
   // Show strike toast
   const strikes = state.dailyBombHits;
-  scanToast.textContent = `💥 Strike ${strikes} — Board re-fogged!`;
+  scanToast.textContent = `💥 Strike ${strikes} — +10s penalty! Board re-fogged!`;
   scanToast.classList.remove('hidden');
   setTimeout(() => scanToast.classList.add('hidden'), 2500);
 

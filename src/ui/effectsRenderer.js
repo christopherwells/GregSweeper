@@ -1,16 +1,22 @@
-import { state } from '../state/gameState.js?v=0.9.2';
-import { boardEl, shakeWrapper, particleCanvas } from './domHelpers.js?v=0.9.2';
-import { revealAllMines } from '../logic/boardSolver.js?v=0.9.2';
-import { updateAllCells } from './boardRenderer.js?v=0.9.2';
+import { state } from '../state/gameState.js?v=0.9.5';
+import { boardEl, shakeWrapper, particleCanvas } from './domHelpers.js?v=0.9.5';
+import { revealAllMines } from '../logic/boardSolver.js?v=0.9.5';
+import { updateAllCells } from './boardRenderer.js?v=0.9.5';
+
+// ── Reduced Motion Detection ────────────────────────────
+const prefersReducedMotion = () =>
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // ── Effects ────────────────────────────────────────────
 
 export function triggerShake() {
+  if (prefersReducedMotion()) return;
   shakeWrapper.classList.add('shaking');
   setTimeout(() => shakeWrapper.classList.remove('shaking'), 450);
 }
 
 export function triggerHeavyShake() {
+  if (prefersReducedMotion()) return;
   shakeWrapper.classList.add('heavy-shaking');
   setTimeout(() => shakeWrapper.classList.remove('heavy-shaking'), 700);
 }
@@ -53,12 +59,14 @@ export function chainRevealMines(hitRow, hitCol) {
 
   // Reveal immediately — add staggered explosion animation
   updateAllCells();
-  for (let i = 0; i < mineCells.length; i++) {
-    const { r, c } = mineCells[i];
-    const cellEl = boardEl.children[r * state.cols + c];
-    if (cellEl) {
-      cellEl.style.animationDelay = `${i * 50}ms`;
-      cellEl.classList.add('mine-chain');
+  if (!prefersReducedMotion()) {
+    for (let i = 0; i < mineCells.length; i++) {
+      const { r, c } = mineCells[i];
+      const cellEl = boardEl.children[r * state.cols + c];
+      if (cellEl) {
+        cellEl.style.animationDelay = `${i * 50}ms`;
+        cellEl.classList.add('mine-chain');
+      }
     }
   }
 }
@@ -67,6 +75,7 @@ export function chainRevealMines(hitRow, hitCol) {
 
 export function showCelebration() {
   showGreenFlash();
+  if (prefersReducedMotion()) return;
   // Single lightweight confetti burst — 60 particles, simple shapes
   showConfettiBurst(0.5, 0.4, 60);
 }

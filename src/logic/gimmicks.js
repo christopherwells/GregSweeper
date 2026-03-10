@@ -2,6 +2,8 @@
 // 7 gimmicks introduced at checkpoints after L10.
 // Each gimmick has: apply (board setup), render hints, solver adjustments.
 
+import { safeGet, safeSet, safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js?v=0.9.5';
+
 const GIMMICK_DEFS = {
   mystery: {
     intro: 11, name: 'Mystery Cells', icon: '❓',
@@ -56,11 +58,11 @@ const DAILY_SAFE_GIMMICKS = ['mystery', 'locked', 'walls', 'liar'];
 // ── Modifier popup preference ──────────────────────────
 
 export function isModifierPopupDisabled() {
-  return localStorage.getItem(POPUP_DISABLED_KEY) === 'true';
+  return safeGet(POPUP_DISABLED_KEY) === 'true';
 }
 
 export function setModifierPopupDisabled(disabled) {
-  localStorage.setItem(POPUP_DISABLED_KEY, disabled ? 'true' : 'false');
+  safeSet(POPUP_DISABLED_KEY, disabled ? 'true' : 'false');
 }
 
 // ── Daily gimmick selection (seeded, ~35% of days) ─────
@@ -440,20 +442,16 @@ export function isLockedCell(board, row, col) {
 // ── First-encounter popup tracking ─────────────────────
 
 export function hasSeenGimmick(gimmick) {
-  try {
-    const seen = JSON.parse(localStorage.getItem(SEEN_KEY) || '[]');
-    return seen.includes(gimmick);
-  } catch { return false; }
+  const seen = safeGetJSON(SEEN_KEY, []);
+  return seen.includes(gimmick);
 }
 
 export function markGimmickSeen(gimmick) {
-  try {
-    const seen = JSON.parse(localStorage.getItem(SEEN_KEY) || '[]');
-    if (!seen.includes(gimmick)) {
-      seen.push(gimmick);
-      localStorage.setItem(SEEN_KEY, JSON.stringify(seen));
-    }
-  } catch { /* ignore */ }
+  const seen = safeGetJSON(SEEN_KEY, []);
+  if (!seen.includes(gimmick)) {
+    seen.push(gimmick);
+    safeSetJSON(SEEN_KEY, seen);
+  }
 }
 
 export function getGimmickDef(gimmick) {

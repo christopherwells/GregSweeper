@@ -1,5 +1,20 @@
-import { $, $$ } from './domHelpers.js?v=0.9.2';
-import { loadStats } from '../storage/statsStorage.js?v=0.9.2';
+import { $, $$ } from './domHelpers.js?v=0.9.5';
+import { loadStats } from '../storage/statsStorage.js?v=0.9.5';
+
+// ── Lazy Theme CSS Loading ────────────────────────────
+// classic + dark are eagerly loaded in index.html.
+// All other themes are loaded on-demand here.
+const EAGER_THEMES = new Set(['classic', 'dark']);
+const _loadedThemes = new Set(['classic', 'dark']);
+
+export function loadThemeCSS(themeName) {
+  if (EAGER_THEMES.has(themeName) || _loadedThemes.has(themeName)) return;
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = 'src/styles/themes/' + themeName + '.css';
+  document.head.appendChild(link);
+  _loadedThemes.add(themeName);
+}
 
 // ── Theme Unlock Progression ──────────────────────────
 // Themes unlock based on highest level ever beaten (permanent).
