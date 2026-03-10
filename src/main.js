@@ -2,49 +2,50 @@
 // All game logic and UI rendering is in modules.
 // This file handles imports, event wiring, and init.
 
-import { state } from './state/gameState.js?v=0.9.1';
-import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn } from './ui/domHelpers.js?v=0.9.1';
-import { resizeCells, updateAllCells, getThemeEmoji, needsZoom, updateZoom, zoomIn, zoomOut, invalidateEmojiCache } from './ui/boardRenderer.js?v=0.9.1';
-import { updateHeader, updateStreakBorder, updateFlagModeBar, getCheckpointForLevel } from './ui/headerRenderer.js?v=0.9.1';
-import { updatePowerUpBar } from './ui/powerUpBar.js?v=0.9.1';
-import { showModal, hideModal, hideAllModals } from './ui/modalManager.js?v=0.9.1';
-import { showToast, showLevelUpToast, showCheckpointToast } from './ui/toastManager.js?v=0.9.1';
-import { showCelebration, haptic } from './ui/effectsRenderer.js?v=0.9.1';
-import { THEME_UNLOCKS, getUnlockedThemes, updateThemeSwatches } from './ui/themeManager.js?v=0.9.1';
-import { newGame, revealCell, toggleFlag, handleChordReveal } from './game/gameActions.js?v=0.9.1';
-import './game/winLossHandler.js?v=0.9.1'; // side-effect: registers handleWin with powerUpActions
-import { useRevealSafe, useShield, activateScan, activateXRay, activateMagnet } from './game/powerUpActions.js?v=0.9.1';
-import { switchMode } from './game/modeManager.js?v=0.9.1';
-import { persistGameState, tryResumeGame } from './game/gamePersistence.js?v=0.9.1';
-import { getDifficultyForLevel, getTimedDifficulty, getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL } from './logic/difficulty.js?v=0.9.1';
+import { state } from './state/gameState.js?v=0.9.2';
+import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn } from './ui/domHelpers.js?v=0.9.2';
+import { resizeCells, updateAllCells, getThemeEmoji, needsZoom, updateZoom, zoomIn, zoomOut, invalidateEmojiCache } from './ui/boardRenderer.js?v=0.9.2';
+import { updateHeader, updateStreakBorder, updateFlagModeBar, getCheckpointForLevel } from './ui/headerRenderer.js?v=0.9.2';
+import { updatePowerUpBar } from './ui/powerUpBar.js?v=0.9.2';
+import { showModal, hideModal, hideAllModals } from './ui/modalManager.js?v=0.9.2';
+import { showToast, showLevelUpToast, showCheckpointToast } from './ui/toastManager.js?v=0.9.2';
+import { showCelebration, haptic } from './ui/effectsRenderer.js?v=0.9.2';
+import { THEME_UNLOCKS, getUnlockedThemes } from './ui/themeManager.js?v=0.9.2';
+import { newGame, revealCell, toggleFlag, handleChordReveal } from './game/gameActions.js?v=0.9.2';
+import './game/winLossHandler.js?v=0.9.2'; // side-effect: registers handleWin with powerUpActions
+import { useRevealSafe, useShield, activateScan, activateXRay, activateMagnet } from './game/powerUpActions.js?v=0.9.2';
+import { switchMode } from './game/modeManager.js?v=0.9.2';
+import { persistGameState, tryResumeGame } from './game/gamePersistence.js?v=0.9.2';
+import { getDifficultyForLevel, getTimedDifficulty, getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL } from './logic/difficulty.js?v=0.9.2';
 import {
   loadStats, saveTheme, loadTheme, resetStats,
   saveCheckpoint, loadCheckpoint,
   loadDailyLeaderboard, addDailyLeaderboardEntry,
   saveModePowerUps,
   isOnboarded, setOnboarded,
-} from './storage/statsStorage.js?v=0.9.1';
+  isDailyCompleted,
+} from './storage/statsStorage.js?v=0.9.2';
 import {
   playLevelUp, isMuted, setMuted, loadMuted,
   setSFXVolume, getSFXVolume,
-} from './audio/sounds.js?v=0.9.1';
+} from './audio/sounds.js?v=0.9.2';
 import {
   getAchievementState, getTotalScore, checkNewUnlocks,
   getHighestTier, getAllTierNames, getTierIcon, getTierColor,
-} from './logic/achievements.js?v=0.9.1';
+} from './logic/achievements.js?v=0.9.2';
 import {
   initFirebase, isFirebaseOnline, submitOnlineScore, fetchOnlineLeaderboard,
   createRoom, joinRoom, leaveRoom, submitRoomScore,
   fetchRoomLeaderboard, fetchRoomHistory, getRoomMembers, getRoomInfo,
   saveRoomInfo, loadRoomInfo, clearRoomInfo,
-} from './firebase/firebaseLeaderboard.js?v=0.9.1';
+} from './firebase/firebaseLeaderboard.js?v=0.9.2';
 import {
   EMOJI_PACKS, EFFECTS, TITLES,
   loadEmojiPack, saveEmojiPack, getActiveEmojiPack, isPackUnlocked,
   isEffectUnlocked, isTitleUnlocked,
   loadEffects, saveEffects, loadTitle, saveTitle,
-} from './ui/collectionManager.js?v=0.9.1';
-import { isModifierPopupDisabled, setModifierPopupDisabled } from './logic/gimmicks.js?v=0.9.1';
+} from './ui/collectionManager.js?v=0.9.2';
+import { isModifierPopupDisabled, setModifierPopupDisabled } from './logic/gimmicks.js?v=0.9.2';
 
 // ── Stats Display ─────────────────────────────────────
 
@@ -241,10 +242,6 @@ function renderCollectionModal() {
       saveTheme(theme);
       for (const s of themeGrid.querySelectorAll('.theme-swatch')) s.classList.remove('active');
       btn.classList.add('active');
-      // Sync settings modal swatches
-      for (const s of $$('.theme-swatch')) s.classList.remove('active');
-      const settingsSwatch = $(`.theme-swatch[data-theme="${theme}"]`);
-      if (settingsSwatch) settingsSwatch.classList.add('active');
       updateAllCells();
     });
     themeGrid.appendChild(btn);
@@ -594,7 +591,11 @@ boardEl.addEventListener('touchmove', (e) => {
 resetBtn.addEventListener('click', () => {
   resetBtn.classList.add('smiley-pressed');
   setTimeout(() => resetBtn.classList.remove('smiley-pressed'), 150);
-  state.currentLevel = 1;
+  if (state.gameMode === 'normal') {
+    state.currentLevel = state.checkpoint || loadCheckpoint(state.gameMode) || 1;
+  } else {
+    state.currentLevel = 1;
+  }
   newGame();
 });
 
@@ -649,7 +650,6 @@ $('#btn-home').addEventListener('click', () => {
   showTitleScreen();
 });
 $('#btn-settings').addEventListener('click', () => {
-  updateThemeSwatches();
   showModal('settings-modal');
 });
 $('#btn-stats').addEventListener('click', () => {
@@ -759,47 +759,6 @@ for (const modal of $$('.modal')) {
   });
 }
 
-// Theme selection
-for (const swatch of $$('.theme-swatch')) {
-  swatch.addEventListener('click', () => {
-    if (swatch.classList.contains('locked')) {
-      swatch.classList.add('swatch-shake');
-      setTimeout(() => swatch.classList.remove('swatch-shake'), 400);
-      return;
-    }
-    const theme = swatch.dataset.theme;
-    state.theme = theme;
-    document.documentElement.setAttribute('data-theme', theme);
-    saveTheme(theme);
-    for (const s of $$('.theme-swatch')) s.classList.remove('active');
-    swatch.classList.add('active');
-    if (state.status === 'won') resetBtn.textContent = getThemeEmoji('smileyWin');
-    else if (state.status === 'lost') resetBtn.textContent = getThemeEmoji('smileyLoss');
-    else resetBtn.textContent = getThemeEmoji('smiley');
-    updateAllCells();
-  });
-}
-
-// Theme collapse toggle
-const toggleLockedBtn = $('#toggle-locked-themes');
-if (toggleLockedBtn) {
-  toggleLockedBtn.addEventListener('click', () => {
-    const isExpanded = toggleLockedBtn.classList.toggle('expanded');
-    for (const swatch of $$('.theme-swatch.locked')) {
-      swatch.classList.toggle('locked-collapsed', !isExpanded);
-    }
-    toggleLockedBtn.textContent = isExpanded ? '🔓 Hide locked themes' : '';
-    if (!isExpanded) {
-      toggleLockedBtn.textContent = '🔒 Show ';
-      const s = document.createElement('span');
-      s.id = 'locked-theme-count';
-      s.textContent = $$('.theme-swatch.locked').length;
-      toggleLockedBtn.appendChild(s);
-      toggleLockedBtn.appendChild(document.createTextNode(' locked themes'));
-    }
-  });
-}
-
 // Mode selection handled by title screen mode cards (see below)
 
 // Timed size tabs (above board)
@@ -832,8 +791,16 @@ function updateTitleProgress() {
     timedEl.textContent = tWins > 0 ? `${tWins} wins` : 'Race the clock';
   }
   if (dailyEl) {
-    const dStreak = stats.modeStats?.daily?.dailyStreak || 0;
-    dailyEl.textContent = dStreak > 0 ? `${dStreak} day streak` : "Today's challenge";
+    const today = new Date().toISOString().slice(0, 10);
+    const dailyCard = $('.mode-card[data-mode="daily"]');
+    if (isDailyCompleted(today)) {
+      dailyEl.textContent = 'Completed today!';
+      if (dailyCard) dailyCard.classList.add('daily-completed');
+    } else {
+      const dStreak = stats.modeStats?.daily?.dailyStreak || 0;
+      dailyEl.textContent = dStreak > 0 ? `${dStreak} day streak` : "Today's challenge";
+      if (dailyCard) dailyCard.classList.remove('daily-completed');
+    }
   }
 }
 
@@ -859,8 +826,16 @@ function hideTitleScreen() {
 // Title screen mode cards
 for (const card of $$('.mode-card')) {
   card.addEventListener('click', () => {
+    const mode = card.dataset.mode;
+    if (mode === 'daily') {
+      const today = new Date().toISOString().slice(0, 10);
+      if (isDailyCompleted(today)) {
+        showToast("You've already completed today's daily!");
+        return;
+      }
+    }
     hideTitleScreen();
-    switchMode(card.dataset.mode);
+    switchMode(mode);
   });
 }
 
@@ -875,7 +850,6 @@ function showModalFromTitle(modalId) {
 const titleSettingsBtn = $('#title-settings-btn');
 if (titleSettingsBtn) {
   titleSettingsBtn.addEventListener('click', () => {
-    updateThemeSwatches();
     showModalFromTitle('settings-modal');
   });
 }
@@ -893,6 +867,20 @@ if (titleCollectionBtn) {
     showModalFromTitle('collection-modal');
   });
 }
+const titleAchievementsBtn = $('#title-achievements-btn');
+if (titleAchievementsBtn) {
+  titleAchievementsBtn.addEventListener('click', () => {
+    updateAchievementsDisplay();
+    showModalFromTitle('achievements-modal');
+  });
+}
+const titleLeaderboardBtn = $('#title-leaderboard-btn');
+if (titleLeaderboardBtn) {
+  titleLeaderboardBtn.addEventListener('click', () => {
+    updateLeaderboardDisplay();
+    showModalFromTitle('leaderboard-modal');
+  });
+}
 
 // Reset Profile
 $('#btn-reset-profile').addEventListener('click', () => {
@@ -902,10 +890,6 @@ $('#btn-reset-profile').addEventListener('click', () => {
     state.theme = 'classic';
     document.documentElement.setAttribute('data-theme', 'classic');
     saveTheme('classic');
-    for (const s of $$('.theme-swatch')) s.classList.remove('active');
-    const classicSwatch = $('.theme-swatch[data-theme="classic"]');
-    if (classicSwatch) classicSwatch.classList.add('active');
-    updateThemeSwatches();
     state.currentLevel = 1;
     state.powerUps = { revealSafe: 0, shield: 0, lifeline: 0, scanRowCol: 0, magnet: 0, xray: 0 };
     updatePowerUpBar();
@@ -994,7 +978,11 @@ document.addEventListener('keydown', (e) => {
   }
 
   if (e.key === 'r' || e.key === 'R') {
-    state.currentLevel = 1;
+    if (state.gameMode === 'normal') {
+      state.currentLevel = state.checkpoint || loadCheckpoint(state.gameMode) || 1;
+    } else {
+      state.currentLevel = 1;
+    }
     newGame();
     return;
   }
@@ -1056,11 +1044,6 @@ function init() {
 
   state.theme = activeTheme;
   document.documentElement.setAttribute('data-theme', activeTheme);
-  const activeSwatch = $(`.theme-swatch[data-theme="${activeTheme}"]`);
-  if (activeSwatch) {
-    for (const s of $$('.theme-swatch')) s.classList.remove('active');
-    activeSwatch.classList.add('active');
-  }
 
   const muted = loadMuted();
   if (muteBtn) {
@@ -1106,6 +1089,18 @@ function init() {
     }
   }, 10000); // Every 10s instead of 5s to reduce serialization overhead
 }
+
+// Persist game state when app loses focus or closes
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden' && state.status === 'playing') {
+    persistGameState();
+  }
+});
+window.addEventListener('beforeunload', () => {
+  if (state.status === 'playing') {
+    persistGameState();
+  }
+});
 
 // Recalculate cell sizes on window resize
 window.addEventListener('resize', () => {

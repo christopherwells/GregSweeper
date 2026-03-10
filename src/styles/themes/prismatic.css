@@ -56,7 +56,8 @@
 }
 
 /* Shimmering rainbow title */
-[data-theme="prismatic"] #game-title {
+[data-theme="prismatic"] #game-title,
+[data-theme="prismatic"] .title-screen-logo {
   background: linear-gradient(
     90deg,
     #ff4444, #ff8822, #ffcc00, #44ff66, #44aaff, #8844ff, #ff4488, #ff4444

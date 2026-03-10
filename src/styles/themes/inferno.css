@@ -90,7 +90,8 @@
   --shadow-achievement-unlocked: 0 0 8px rgba(255, 68, 0, 0.1);
 }
 
-[data-theme="inferno"] #game-title {
+[data-theme="inferno"] #game-title,
+[data-theme="inferno"] .title-screen-logo {
   background: linear-gradient(135deg, #ff4400, #ff8800, #ffcc00);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -98,7 +99,8 @@
   text-shadow: none;
 }
 
-[data-theme="inferno"] #title-subtitle {
+[data-theme="inferno"] #title-subtitle,
+[data-theme="inferno"] .title-screen-subtitle {
   color: #ff6600;
 }
 

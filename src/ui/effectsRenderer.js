@@ -1,7 +1,7 @@
-import { state } from '../state/gameState.js?v=0.9.1';
-import { boardEl, shakeWrapper, particleCanvas } from './domHelpers.js?v=0.9.1';
-import { revealAllMines } from '../logic/boardSolver.js?v=0.9.1';
-import { updateAllCells } from './boardRenderer.js?v=0.9.1';
+import { state } from '../state/gameState.js?v=0.9.2';
+import { boardEl, shakeWrapper, particleCanvas } from './domHelpers.js?v=0.9.2';
+import { revealAllMines } from '../logic/boardSolver.js?v=0.9.2';
+import { updateAllCells } from './boardRenderer.js?v=0.9.2';
 
 // ── Effects ────────────────────────────────────────────
 

@@ -67,7 +67,8 @@
   border-radius: 24px;
 }
 
-[data-theme="candy"] #game-title {
+[data-theme="candy"] #game-title,
+[data-theme="candy"] .title-screen-logo {
   background: linear-gradient(135deg, #ff69b4, #e040fb, #7c4dff);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;

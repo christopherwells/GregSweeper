@@ -68,7 +68,8 @@
   --bg-modal-close-hover: rgba(124, 77, 255, 0.1);
 }
 
-[data-theme="midnight"] #game-title {
+[data-theme="midnight"] #game-title,
+[data-theme="midnight"] .title-screen-logo {
   background: linear-gradient(135deg, #cc88ff, #7c4dff, #80b0ff);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;

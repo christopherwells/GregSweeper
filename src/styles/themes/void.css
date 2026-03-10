@@ -53,7 +53,8 @@
   --border-cell-revealed: 1px solid rgba(255, 255, 255, 0.03);
 }
 
-[data-theme="void"] #game-title {
+[data-theme="void"] #game-title,
+[data-theme="void"] .title-screen-logo {
   animation: voidShimmer 4s ease-in-out infinite;
 }
 

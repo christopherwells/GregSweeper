@@ -50,7 +50,8 @@
   --shadow-board: 0 4px 16px rgba(20, 10, 25, 0.5);
 }
 
-[data-theme="sunset"] #game-title {
+[data-theme="sunset"] #game-title,
+[data-theme="sunset"] .title-screen-logo {
   background: linear-gradient(135deg, #ff6b6b, #ffa07a, #ffc107, #ff6b6b);
   background-size: 300% 100%;
   -webkit-background-clip: text;

@@ -2785,7 +2785,7 @@ body {
   text-align: center;
 }
 .title-screen-logo {
-  font-family: 'Orbitron', sans-serif;
+  font-family: var(--font-display, 'Orbitron'), sans-serif;
   font-size: clamp(28px, 8vw, 48px);
   font-weight: 900;
   background: linear-gradient(135deg, var(--color-accent, #e94560), #ff6b6b, #ffa07a);
@@ -2838,9 +2838,19 @@ body {
   color: var(--color-text-secondary, #888);
 }
 
+.mode-card.daily-completed {
+  opacity: 0.6;
+  position: relative;
+}
+.mode-card.daily-completed .mode-card-progress {
+  color: var(--color-accent, #4caf50);
+}
+
 .title-screen-footer {
   display: flex;
-  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
 }
 .title-footer-btn {
   padding: 10px 20px;
@@ -2904,19 +2914,58 @@ body {
   gap: 16px;
 }
 
-.skill-category {
-  background: var(--color-cell-hidden, #2a2a4a);
-  border-radius: 12px;
-  padding: 12px;
-  border: 1px solid var(--color-border, #333);
+.skill-category-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
-.skill-category h3 {
-  font-size: 14px;
-  font-weight: 700;
+.skill-category-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 18px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #333);
+  background: var(--color-cell-hidden, #2a2a4a);
   color: var(--color-text, #eee);
-  margin-bottom: 8px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--color-border, #333);
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+.skill-category-card:hover, .skill-category-card:active {
+  border-color: var(--color-accent, #e94560);
+  background: var(--color-cell-hover, rgba(255,255,255,0.05));
+}
+.skill-category-card.all-complete {
+  border-color: #4caf50;
+}
+.skill-category-card-icon {
+  font-size: 28px;
+  flex-shrink: 0;
+}
+.skill-category-card-info {
+  flex: 1;
+}
+.skill-category-card-name {
+  font-size: 16px;
+  font-weight: 700;
+}
+.skill-category-card-progress {
+  font-size: 12px;
+  color: var(--color-text-secondary, #888);
+  margin-top: 2px;
+}
+.skill-category-card-arrow {
+  font-size: 24px;
+  color: var(--color-text-secondary, #888);
+  flex-shrink: 0;
+}
+
+.skill-lesson-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .skill-lesson-card {
@@ -3589,7 +3638,7 @@ body {
   margin-bottom: 32px;
 }
 .title-screen-logo {
-  font-family: 'Fredoka', sans-serif;
+  font-family: var(--font-display, 'Fredoka'), sans-serif;
   font-size: clamp(28px, 7vw, 44px);
   font-weight: 700;
   background: linear-gradient(135deg, var(--color-accent, #e94560), #ff8a65);
@@ -3635,7 +3684,7 @@ body {
   margin-bottom: 6px;
 }
 .mode-card-name {
-  font-family: 'Fredoka', sans-serif;
+  font-family: var(--font-display, 'Fredoka'), sans-serif;
   font-weight: 600;
   font-size: 15px;
   margin-bottom: 4px;
@@ -3681,6 +3730,84 @@ body {
 }
 .modifier-dismiss-btn:hover {
   opacity: 1;
+}
+
+/* Gimmick intro example grid */
+#gimmick-intro-example {
+  margin: 12px auto 8px;
+  text-align: center;
+}
+.gimmick-example-grid {
+  display: inline-grid;
+  gap: 2px;
+  margin: 0 auto;
+}
+.ge-cell {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 4px;
+  border: 1px solid var(--color-border, #444);
+}
+.ge-cell.unrevealed {
+  background: var(--color-cell-hidden, #2a2a4a);
+}
+.ge-cell.revealed {
+  background: var(--color-cell-revealed, #1a1a2e);
+  color: var(--color-text, #eee);
+}
+.ge-mystery {
+  color: #a855f7;
+  font-size: 18px;
+}
+.ge-locked {
+  font-size: 16px;
+}
+.ge-liar {
+  border: 2px solid #f59e0b !important;
+  color: #f59e0b;
+}
+.ge-wall {
+  background: #555 !important;
+  font-size: 16px;
+}
+.ge-wormhole {
+  color: #38bdf8;
+  font-size: 12px;
+}
+.ge-mirror {
+  color: #c084fc;
+  font-size: 12px;
+}
+.ge-mine-shift {
+  font-size: 11px;
+  color: #fb923c;
+}
+.ge-mine-dest {
+  background: var(--color-cell-hidden, #2a2a4a);
+  border: 1px dashed #fb923c !important;
+}
+.ge-caption {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--color-text-secondary, #999);
+  font-style: italic;
+}
+
+/* Gimmick intro content sizing */
+.gimmick-intro-content {
+  text-align: center;
+  max-width: 340px;
+}
+.gimmick-intro-content p {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-text-secondary, #ccc);
+  margin-bottom: 4px;
 }
 
 /* Settings toggle label */

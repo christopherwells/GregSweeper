@@ -1,14 +1,14 @@
-import { state } from '../state/gameState.js?v=0.9.1';
+import { state } from '../state/gameState.js?v=0.9.2';
 import {
   $, $$, mineCounterEl, levelDisplay, checkpointDisplay,
   streakDisplayEl, cellsRemainingEl, progressBarContainer,
   progressBarFill, progressBarMarkers, bestTimeDisplay,
   maxLevelDisplay, resetBtn, streakBorder,
   flagModeBar, flagModeToggle, flagModeIcon, flagModeLabel,
-} from './domHelpers.js?v=0.9.1';
-import { getThemeEmoji } from './boardRenderer.js?v=0.9.1';
-import { getTimedDifficulty, getSpeedRating, MAX_LEVEL } from '../logic/difficulty.js?v=0.9.1';
-import { loadStats } from '../storage/statsStorage.js?v=0.9.1';
+} from './domHelpers.js?v=0.9.2';
+import { getThemeEmoji } from './boardRenderer.js?v=0.9.2';
+import { getTimedDifficulty, getSpeedRating, MAX_LEVEL } from '../logic/difficulty.js?v=0.9.2';
+import { loadStats } from '../storage/statsStorage.js?v=0.9.2';
 
 // ── Checkpoint Display ─────────────────────────────────
 export const CHECKPOINT_INTERVAL = 5;

@@ -111,7 +111,8 @@
 }
 
 /* Gold-glow title */
-[data-theme="celestial"] #game-title {
+[data-theme="celestial"] #game-title,
+[data-theme="celestial"] .title-screen-logo {
   background: linear-gradient(135deg, #ffd750, #ffeeaa, #ffd750);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -119,7 +120,8 @@
   animation: celestialGlow 3s ease-in-out infinite;
 }
 
-[data-theme="celestial"] #title-subtitle {
+[data-theme="celestial"] #title-subtitle,
+[data-theme="celestial"] .title-screen-subtitle {
   color: #ffd750;
 }
 

@@ -72,7 +72,8 @@
   --shadow-board: 0 4px 16px rgba(255, 0, 128, 0.1), 0 0 1px rgba(0, 255, 255, 0.2);
 }
 
-[data-theme="cyberpunk"] #game-title {
+[data-theme="cyberpunk"] #game-title,
+[data-theme="cyberpunk"] .title-screen-logo {
   animation: glitch 4s ease-in-out infinite;
 }
 

@@ -1,17 +1,17 @@
-import { state } from '../state/gameState.js?v=0.9.1';
+import { state } from '../state/gameState.js?v=0.9.2';
 import {
   saveGameState, loadGameState,
-} from '../storage/statsStorage.js?v=0.9.1';
+} from '../storage/statsStorage.js?v=0.9.2';
 import {
   adjustCellSize, renderBoard, updateAllCells, updateZoom,
-} from '../ui/boardRenderer.js?v=0.9.1';
+} from '../ui/boardRenderer.js?v=0.9.2';
 import {
   updateHeader, updateCheckpointDisplay, updateProgressBar,
   updateCellsRemaining, updateStreakDisplay, updateStreakBorder,
   updateFlagModeBar,
-} from '../ui/headerRenderer.js?v=0.9.1';
-import { updatePowerUpBar } from '../ui/powerUpBar.js?v=0.9.1';
-import { startTimer, updateTimerDisplay } from './timerManager.js?v=0.9.1';
+} from '../ui/headerRenderer.js?v=0.9.2';
+import { updatePowerUpBar } from '../ui/powerUpBar.js?v=0.9.2';
+import { startTimer, updateTimerDisplay } from './timerManager.js?v=0.9.2';
 
 // ── Game State Persistence ────────────────────────────
 
@@ -46,6 +46,12 @@ export function persistGameState() {
 export function tryResumeGame(mode) {
   const gs = loadGameState(mode || state.gameMode);
   if (!gs || !gs.board || !gs.gameMode) return false;
+
+  // Stale daily check: if saved daily seed does not match today, discard
+  if (gs.gameMode === 'daily' && gs.dailySeed) {
+    const today = new Date().toISOString().slice(0, 10);
+    if (gs.dailySeed !== today) return false;
+  }
 
   state.board = gs.board;
   state.rows = gs.rows;

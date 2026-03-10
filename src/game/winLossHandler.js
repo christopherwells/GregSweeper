@@ -1,31 +1,32 @@
-import { state, ENCOURAGEMENT_LINES } from '../state/gameState.js?v=0.9.1';
-import { $, $$, boardEl, resetBtn, scanToast } from '../ui/domHelpers.js?v=0.9.1';
-import { getThemeEmoji, updateAllCells } from '../ui/boardRenderer.js?v=0.9.1';
-import { updateHeader, updateStreakBorder, updateCheckpointDisplay, getCheckpointForLevel } from '../ui/headerRenderer.js?v=0.9.1';
-import { updatePowerUpBar } from '../ui/powerUpBar.js?v=0.9.1';
-import { showModal } from '../ui/modalManager.js?v=0.9.1';
+import { state, ENCOURAGEMENT_LINES } from '../state/gameState.js?v=0.9.2';
+import { $, $$, boardEl, resetBtn, scanToast } from '../ui/domHelpers.js?v=0.9.2';
+import { getThemeEmoji, updateAllCells } from '../ui/boardRenderer.js?v=0.9.2';
+import { updateHeader, updateStreakBorder, updateCheckpointDisplay, getCheckpointForLevel } from '../ui/headerRenderer.js?v=0.9.2';
+import { updatePowerUpBar } from '../ui/powerUpBar.js?v=0.9.2';
+import { showModal } from '../ui/modalManager.js?v=0.9.2';
 import {
   triggerHeavyShake, showRedFlash, showGreenFlash,
   haptic, chainRevealMines, showCelebration, showConfettiBurst,
-} from '../ui/effectsRenderer.js?v=0.9.1';
-import { showToast } from '../ui/toastManager.js?v=0.9.1';
-import { stopTimer } from './timerManager.js?v=0.9.1';
-import { awardPowerUps } from './powerUpActions.js?v=0.9.1';
-import { setHandleWin } from './powerUpActions.js?v=0.9.1';
-import { defuseMine } from '../logic/powerUps.js?v=0.9.1';
-import { findNextSafeMove } from '../logic/boardSolver.js?v=0.9.1';
-import { getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL } from '../logic/difficulty.js?v=0.9.1';
+} from '../ui/effectsRenderer.js?v=0.9.2';
+import { showToast } from '../ui/toastManager.js?v=0.9.2';
+import { stopTimer } from './timerManager.js?v=0.9.2';
+import { awardPowerUps } from './powerUpActions.js?v=0.9.2';
+import { setHandleWin } from './powerUpActions.js?v=0.9.2';
+import { defuseMine } from '../logic/powerUps.js?v=0.9.2';
+import { findNextSafeMove } from '../logic/boardSolver.js?v=0.9.2';
+import { getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL } from '../logic/difficulty.js?v=0.9.2';
 import {
   loadStats, saveGameResult, saveModePowerUps, clearGameState,
-} from '../storage/statsStorage.js?v=0.9.1';
+  markDailyCompleted,
+} from '../storage/statsStorage.js?v=0.9.2';
 import {
   playExplosion, playWin, playTimeRecord,
-} from '../audio/sounds.js?v=0.9.1';
+} from '../audio/sounds.js?v=0.9.2';
 import {
   checkNewUnlocks, getHighestTier, getTotalScore,
   getAchievementState, getAllTierNames, getTierIcon, getTierColor,
-} from '../logic/achievements.js?v=0.9.1';
-import { checkThemeUnlocks, showThemeUnlockToasts } from '../ui/themeManager.js?v=0.9.1';
+} from '../logic/achievements.js?v=0.9.2';
+import { checkThemeUnlocks, showThemeUnlockToasts } from '../ui/themeManager.js?v=0.9.2';
 
 // ── Achievements Display (for game over) ───────────────
 
@@ -113,6 +114,11 @@ export function handleWin() {
     hadGimmicks: state.activeGimmicks && state.activeGimmicks.length > 0,
   });
   const earnedPowerUp = awardPowerUps(stats);
+
+  // Mark daily as completed so it cannot be replayed today
+  if (isDaily) {
+    markDailyCompleted(new Date().toISOString().slice(0, 10));
+  }
 
   // Persist power-ups after win (award changes them)
   saveModePowerUps(state.gameMode, state.powerUps);

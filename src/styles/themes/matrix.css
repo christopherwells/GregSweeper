@@ -85,13 +85,15 @@
   --shadow-achievement-unlocked: 0 0 6px rgba(0, 255, 0, 0.06);
 }
 
-[data-theme="matrix"] #game-title {
+[data-theme="matrix"] #game-title,
+[data-theme="matrix"] .title-screen-logo {
   color: #00ff00;
   letter-spacing: 4px;
   text-transform: uppercase;
 }
 
-[data-theme="matrix"] #title-subtitle {
+[data-theme="matrix"] #title-subtitle,
+[data-theme="matrix"] .title-screen-subtitle {
   color: #00aa00;
   letter-spacing: 2px;
   text-transform: uppercase;

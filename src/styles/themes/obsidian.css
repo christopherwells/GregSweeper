@@ -93,14 +93,16 @@
   border-radius: 2px;
 }
 
-[data-theme="obsidian"] #game-title {
+[data-theme="obsidian"] #game-title,
+[data-theme="obsidian"] .title-screen-logo {
   color: #cccccc;
   font-weight: 300;
   letter-spacing: 4px;
   text-transform: uppercase;
 }
 
-[data-theme="obsidian"] #title-subtitle {
+[data-theme="obsidian"] #title-subtitle,
+[data-theme="obsidian"] .title-screen-subtitle {
   color: #505050;
   letter-spacing: 2px;
   text-transform: uppercase;

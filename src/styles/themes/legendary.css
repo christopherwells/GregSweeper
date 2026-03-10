@@ -19,6 +19,27 @@
   50% { transform: translateY(-2px); }
 }
 
+@keyframes legendaryBorder {
+  0% { border-color: rgba(255, 64, 64, 0.4); box-shadow: 0 0 16px rgba(255, 64, 64, 0.1); }
+  14% { border-color: rgba(255, 136, 48, 0.4); box-shadow: 0 0 16px rgba(255, 136, 48, 0.1); }
+  28% { border-color: rgba(255, 200, 48, 0.5); box-shadow: 0 0 20px rgba(255, 200, 48, 0.15); }
+  42% { border-color: rgba(96, 221, 136, 0.4); box-shadow: 0 0 16px rgba(96, 221, 136, 0.1); }
+  56% { border-color: rgba(96, 160, 255, 0.4); box-shadow: 0 0 16px rgba(96, 160, 255, 0.1); }
+  70% { border-color: rgba(176, 96, 255, 0.4); box-shadow: 0 0 16px rgba(176, 96, 255, 0.1); }
+  84% { border-color: rgba(255, 64, 64, 0.4); box-shadow: 0 0 16px rgba(255, 64, 64, 0.1); }
+  100% { border-color: rgba(255, 64, 64, 0.4); box-shadow: 0 0 16px rgba(255, 64, 64, 0.1); }
+}
+
+@keyframes goldSparkle {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes legendaryTextPulse {
+  0%, 100% { text-shadow: 0 0 8px rgba(255, 200, 48, 0.4), 0 0 16px rgba(255, 200, 48, 0.15); }
+  50% { text-shadow: 0 0 14px rgba(255, 200, 48, 0.6), 0 0 28px rgba(255, 200, 48, 0.25), 0 0 48px rgba(255, 200, 48, 0.1); }
+}
+
 [data-theme="legendary"] {
   --font-family: 'Palatino Linotype', 'Book Antiqua', 'Georgia', serif;
   --font-display: 'Palatino Linotype', 'Book Antiqua', 'Georgia', serif;
@@ -108,7 +129,8 @@
 }
 
 /* Rainbow gradient title */
-[data-theme="legendary"] #game-title {
+[data-theme="legendary"] #game-title,
+[data-theme="legendary"] .title-screen-logo {
   background: linear-gradient(
     90deg,
     #ff4040, #ff8830, #ffc830, #60dd88, #60a0ff, #b060ff, #ff4040
@@ -121,9 +143,14 @@
   font-weight: bold;
 }
 
-[data-theme="legendary"] #title-subtitle {
+[data-theme="legendary"] #title-subtitle,
+[data-theme="legendary"] .title-screen-subtitle {
   color: #ffc830;
   animation: crownFloat 3s ease-in-out infinite;
+}
+
+[data-theme="legendary"] .title-screen {
+  animation: goldShimmer 4s ease-in-out infinite;
 }
 
 [data-theme="legendary"] .cell.unrevealed:hover {
@@ -145,4 +172,27 @@
 
 [data-theme="legendary"] .mode-btn {
   border: 1px solid rgba(255, 200, 48, 0.15);
+}
+
+/* Rainbow cycling board border */
+[data-theme="legendary"] #board {
+  animation: legendaryBorder 8s linear infinite;
+}
+
+/* Gold sparkle on unrevealed cells */
+[data-theme="legendary"] .cell.unrevealed {
+  border-color: rgba(255, 200, 48, 0.15);
+}
+[data-theme="legendary"] .cell.unrevealed:hover {
+  box-shadow: 0 0 12px rgba(255, 200, 48, 0.25), inset 0 0 4px rgba(255, 200, 48, 0.08);
+}
+
+/* Static gold glow on revealed numbers */
+[data-theme="legendary"] .cell.revealed {
+  text-shadow: 0 0 8px rgba(255, 200, 48, 0.4), 0 0 16px rgba(255, 200, 48, 0.15);
+}
+
+/* Gold glow on LCD displays */
+[data-theme="legendary"] .lcd-display {
+  animation: goldSparkle 3s ease-in-out infinite;
 }

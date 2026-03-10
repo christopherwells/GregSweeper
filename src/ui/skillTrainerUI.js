@@ -10,10 +10,10 @@ import {
   saveSkillProgress,
   markPuzzleCompleted,
   getLessonStars,
-} from '../logic/skillTrainer.js?v=0.9.1';
+} from '../logic/skillTrainer.js?v=0.9.2';
 
-import { $, $$ } from './domHelpers.js?v=0.9.1';
-import { playReveal, playWin, playFlag } from '../audio/sounds.js?v=0.9.1';
+import { $, $$ } from './domHelpers.js?v=0.9.2';
+import { playReveal, playWin, playFlag } from '../audio/sounds.js?v=0.9.2';
 
 // ── Constants ─────────────────────────────────────────
 
@@ -33,6 +33,7 @@ const CATEGORIES = ['Beginner', 'Intermediate', 'Advanced'];
 // ── Module State ──────────────────────────────────────
 
 let currentLessonId = null;
+let currentCategory = null;
 let currentPuzzleIndex = 0;
 let mistakeCount = 0;
 let completedMoves = new Set();
@@ -95,6 +96,8 @@ export function getSkillTrainerCompletedCount() {
 
 // ── Category Picker ───────────────────────────────────
 
+const CATEGORY_ICONS = { Beginner: '🟢', Intermediate: '🟡', Advanced: '🔴' };
+
 function renderCategoryPicker() {
   const container = getContainer();
   if (!container) return;
@@ -106,75 +109,131 @@ function renderCategoryPicker() {
   heading.textContent = 'Skill Trainer';
   container.appendChild(heading);
 
-  const columnsWrapper = document.createElement('div');
-  columnsWrapper.className = 'skill-category-columns';
+  const cardsWrapper = document.createElement('div');
+  cardsWrapper.className = 'skill-category-cards';
+
+  const progress = loadSkillProgress();
 
   for (const category of CATEGORIES) {
-    const column = document.createElement('div');
-    column.className = 'skill-category';
-
-    const catTitle = document.createElement('h3');
-    catTitle.className = 'skill-category-title';
-    catTitle.textContent = category;
-    column.appendChild(catTitle);
-
     const lessons = getLessonsByCategory(category);
-    const progress = loadSkillProgress();
-
+    let completed = 0;
     for (const lesson of lessons) {
-      const card = document.createElement('button');
-      card.className = 'skill-lesson-card';
-      card.type = 'button';
-
-      const stars = getLessonStars(lesson.id, progress);
-      if (stars > 0) {
-        card.classList.add('completed');
-      }
-
-      // Lesson name
-      const nameEl = document.createElement('div');
-      nameEl.className = 'skill-lesson-name';
-      nameEl.textContent = lesson.name;
-
-      // Lesson description
-      const descEl = document.createElement('div');
-      descEl.className = 'skill-lesson-desc';
-      descEl.textContent = lesson.description;
-
-      // Status indicator
-      const statusEl = document.createElement('div');
-      statusEl.className = 'skill-lesson-status';
-
-      if (stars > 0) {
-        statusEl.textContent = buildStarDisplay(stars);
-      } else {
-        // Check if any puzzles have been started
-        const lessonProgress = progress[lesson.id];
-        if (lessonProgress && lessonProgress.completedPuzzles && lessonProgress.completedPuzzles.length > 0) {
-          statusEl.textContent = 'In Progress';
-          statusEl.classList.add('in-progress');
-        }
-      }
-
-      card.appendChild(nameEl);
-      card.appendChild(descEl);
-      card.appendChild(statusEl);
-
-      card.addEventListener('click', () => {
-        currentLessonId = lesson.id;
-        currentPuzzleIndex = 0;
-        mistakeCount = 0;
-        completedMoves = new Set();
-        renderLesson(lesson.id);
-      });
-
-      column.appendChild(card);
+      if (getLessonStars(lesson.id, progress) > 0) completed++;
     }
 
-    columnsWrapper.appendChild(column);
+    const card = document.createElement('button');
+    card.className = 'skill-category-card';
+    card.type = 'button';
+
+    const icon = document.createElement('div');
+    icon.className = 'skill-category-card-icon';
+    icon.textContent = CATEGORY_ICONS[category] || '📚';
+
+    const info = document.createElement('div');
+    info.className = 'skill-category-card-info';
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'skill-category-card-name';
+    nameEl.textContent = category;
+
+    const progressEl = document.createElement('div');
+    progressEl.className = 'skill-category-card-progress';
+    progressEl.textContent = `${completed}/${lessons.length} completed`;
+
+    info.appendChild(nameEl);
+    info.appendChild(progressEl);
+
+    const arrow = document.createElement('div');
+    arrow.className = 'skill-category-card-arrow';
+    arrow.textContent = '›';
+
+    card.appendChild(icon);
+    card.appendChild(info);
+    card.appendChild(arrow);
+
+    if (completed === lessons.length && lessons.length > 0) {
+      card.classList.add('all-complete');
+    }
+
+    card.addEventListener('click', () => {
+      renderCategoryLessons(category);
+    });
+
+    cardsWrapper.appendChild(card);
   }
 
-  container.appendChild(columnsWrapper);
+  container.appendChild(cardsWrapper);
+}
+
+function renderCategoryLessons(category) {
+  currentCategory = category;
+  const container = getContainer();
+  if (!container) return;
+  container.innerHTML = '';
+  clearFeedbackTimeout();
+
+  const backBtn = document.createElement('button');
+  backBtn.className = 'skill-back-btn';
+  backBtn.type = 'button';
+  backBtn.textContent = '← Back';
+  backBtn.addEventListener('click', () => renderCategoryPicker());
+  container.appendChild(backBtn);
+
+  const heading = document.createElement('h2');
+  heading.className = 'skill-trainer-heading';
+  heading.textContent = `${CATEGORY_ICONS[category] || ''} ${category}`;
+  container.appendChild(heading);
+
+  const lessons = getLessonsByCategory(category);
+  const progress = loadSkillProgress();
+
+  const lessonList = document.createElement('div');
+  lessonList.className = 'skill-lesson-list';
+
+  for (const lesson of lessons) {
+    const card = document.createElement('button');
+    card.className = 'skill-lesson-card';
+    card.type = 'button';
+
+    const stars = getLessonStars(lesson.id, progress);
+    if (stars > 0) card.classList.add('completed');
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'skill-lesson-name';
+    nameEl.textContent = lesson.name;
+
+    const descEl = document.createElement('div');
+    descEl.className = 'skill-lesson-desc';
+    descEl.textContent = lesson.description;
+
+    const statusEl = document.createElement('div');
+    statusEl.className = 'skill-lesson-status';
+    if (stars > 0) {
+      statusEl.textContent = buildStarDisplay(stars);
+    } else {
+      const lessonProgress = progress[lesson.id];
+      if (lessonProgress && lessonProgress.completedPuzzles && lessonProgress.completedPuzzles.length > 0) {
+        statusEl.textContent = 'In Progress';
+        statusEl.classList.add('in-progress');
+      }
+    }
+
+    card.appendChild(nameEl);
+    card.appendChild(descEl);
+    card.appendChild(statusEl);
+
+    card.addEventListener('click', () => {
+      currentLessonId = lesson.id;
+      currentPuzzleIndex = 0;
+      mistakeCount = 0;
+      completedMoves = new Set();
+      renderLesson(lesson.id);
+    });
+
+    lessonList.appendChild(card);
+  }
+
+  container.appendChild(lessonList);
 }
 
 function buildStarDisplay(stars) {
@@ -203,7 +262,11 @@ function renderLesson(lessonId) {
   backBtn.textContent = '\u2190 Back';
   backBtn.addEventListener('click', () => {
     currentLessonId = null;
-    renderCategoryPicker();
+    if (currentCategory) {
+      renderCategoryLessons(currentCategory);
+    } else {
+      renderCategoryPicker();
+    }
   });
   container.appendChild(backBtn);
 
@@ -584,7 +647,11 @@ function renderLessonComplete(lessonId, mistakes) {
   backBtn.textContent = 'Back to Lessons';
   backBtn.addEventListener('click', () => {
     currentLessonId = null;
-    renderCategoryPicker();
+    if (currentCategory) {
+      renderCategoryLessons(currentCategory);
+    } else {
+      renderCategoryPicker();
+    }
   });
   actions.appendChild(backBtn);
 

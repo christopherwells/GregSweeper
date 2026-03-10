@@ -1,5 +1,5 @@
-import { $, $$ } from './domHelpers.js?v=0.9.1';
-import { loadStats } from '../storage/statsStorage.js?v=0.9.1';
+import { $, $$ } from './domHelpers.js?v=0.9.2';
+import { loadStats } from '../storage/statsStorage.js?v=0.9.2';
 
 // ── Theme Unlock Progression ──────────────────────────
 // Themes unlock based on highest level ever beaten (permanent).

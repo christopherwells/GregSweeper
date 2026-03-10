@@ -87,7 +87,8 @@
   --shadow-achievement-unlocked: 0 0 8px rgba(0, 255, 136, 0.1);
 }
 
-[data-theme="neon"] #game-title {
+[data-theme="neon"] #game-title,
+[data-theme="neon"] .title-screen-logo {
   animation: neonFlicker 5s ease-in-out infinite;
 }
 

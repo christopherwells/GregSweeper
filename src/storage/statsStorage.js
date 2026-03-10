@@ -351,6 +351,21 @@ export function invalidateStatsCache() {
   _statsCache = null;
 }
 
+// ── Daily Completion Tracking ────────────────────────
+const DAILY_COMPLETED_KEY = 'minesweeper_daily_completed_date';
+
+export function isDailyCompleted(dateStr) {
+  return localStorage.getItem(DAILY_COMPLETED_KEY) === dateStr;
+}
+
+export function markDailyCompleted(dateStr) {
+  try {
+    localStorage.setItem(DAILY_COMPLETED_KEY, dateStr);
+  } catch (e) {
+    // ignore
+  }
+}
+
 // ── Onboarding ──────────────────────────────────────
 const ONBOARDING_KEY = 'minesweeper_onboarded';
 

@@ -90,7 +90,8 @@
   50% { background-position: 100% 50%; }
 }
 
-[data-theme="galaxy"] #game-title {
+[data-theme="galaxy"] #game-title,
+[data-theme="galaxy"] .title-screen-logo {
   background: linear-gradient(135deg, #ea80fc, #d050ff, #82b1ff, #ff80ab);
   background-size: 200% 200%;
   -webkit-background-clip: text;

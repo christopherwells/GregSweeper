@@ -70,7 +70,8 @@
   -webkit-background-clip: padding-box;
 }
 
-[data-theme="holographic"] #game-title {
+[data-theme="holographic"] #game-title,
+[data-theme="holographic"] .title-screen-logo {
   background: linear-gradient(
     90deg,
     #ff4466, #ffaa22, #44ff88, #44ddff, #bb66ff, #ff4466

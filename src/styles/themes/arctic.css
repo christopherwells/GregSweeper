@@ -76,7 +76,8 @@
   --border-achievement-unlocked: rgba(64, 144, 221, 0.3);
 }
 
-[data-theme="arctic"] #game-title {
+[data-theme="arctic"] #game-title,
+[data-theme="arctic"] .title-screen-logo {
   background: linear-gradient(135deg, #4090dd, #80d0ff, #a0e0ff);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;

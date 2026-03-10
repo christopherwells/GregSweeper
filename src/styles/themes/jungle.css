@@ -78,7 +78,8 @@
   --shadow-achievement-unlocked: 0 0 8px rgba(68, 187, 68, 0.1);
 }
 
-[data-theme="jungle"] #game-title {
+[data-theme="jungle"] #game-title,
+[data-theme="jungle"] .title-screen-logo {
   background: linear-gradient(135deg, #44bb44, #88cc22, #ddaa22);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -86,7 +87,8 @@
   text-shadow: none;
 }
 
-[data-theme="jungle"] #title-subtitle {
+[data-theme="jungle"] #title-subtitle,
+[data-theme="jungle"] .title-screen-subtitle {
   font-style: italic;
 }
 

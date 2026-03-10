@@ -24,6 +24,16 @@
   50% { filter: brightness(1.2); }
 }
 
+@keyframes cellShimmer {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes heatWave {
+  0%, 100% { opacity: 0.04; transform: scaleY(1); }
+  50% { opacity: 0.08; transform: scaleY(1.02); }
+}
+
 [data-theme="supernova"] {
   --font-family: 'Segoe UI', 'Trebuchet MS', sans-serif;
   --font-display: 'Segoe UI', 'Trebuchet MS', sans-serif;
@@ -113,7 +123,8 @@
 }
 
 /* Explosive gradient title */
-[data-theme="supernova"] #game-title {
+[data-theme="supernova"] #game-title,
+[data-theme="supernova"] .title-screen-logo {
   background: linear-gradient(90deg, #ff3300, #ff8800, #ffcc00, #ff8800, #ff3300);
   background-size: 200% 100%;
   -webkit-background-clip: text;
@@ -122,7 +133,8 @@
   animation: supernovaShift 4s ease-in-out infinite, titleFlare 3s ease-in-out infinite;
 }
 
-[data-theme="supernova"] #title-subtitle {
+[data-theme="supernova"] #title-subtitle,
+[data-theme="supernova"] .title-screen-subtitle {
   color: #ff8800;
 }
 
@@ -134,4 +146,25 @@
 [data-theme="supernova"] .game-header {
   background: linear-gradient(180deg, #2a1210, #200c0a);
   border-bottom: 1px solid rgba(106, 48, 32, 0.3);
+}
+
+/* Heat wave overlay */
+[data-theme="supernova"] #app::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 100%, rgba(255, 100, 0, 0.1), transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+  animation: heatWave 4s ease-in-out infinite;
+}
+
+/* Color-shifting number shimmer */
+[data-theme="supernova"] .cell.revealed {
+  text-shadow: 0 0 6px currentColor;
+}
+
+/* Warm gradient on unrevealed cells */
+[data-theme="supernova"] .cell.unrevealed {
+  background: linear-gradient(135deg, #3a1810, #442018, #3a1810);
 }

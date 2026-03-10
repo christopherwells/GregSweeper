@@ -12,6 +12,17 @@
   98% { opacity: 0.9; }
 }
 
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+@keyframes neonBorderPulse {
+  0%, 100% { border-color: rgba(170, 68, 255, 0.4); box-shadow: 0 0 16px rgba(170, 68, 255, 0.1); }
+  33% { border-color: rgba(255, 32, 144, 0.5); box-shadow: 0 0 20px rgba(255, 32, 144, 0.15); }
+  66% { border-color: rgba(0, 255, 238, 0.4); box-shadow: 0 0 18px rgba(0, 255, 238, 0.12); }
+}
+
 [data-theme="synthwave"] {
   --font-family: 'Orbitron', 'Segoe UI', sans-serif;
   --font-display: 'Orbitron', 'Segoe UI', sans-serif;
@@ -97,7 +108,8 @@
 }
 
 /* Retro gradient title with animation */
-[data-theme="synthwave"] #game-title {
+[data-theme="synthwave"] #game-title,
+[data-theme="synthwave"] .title-screen-logo {
   background: linear-gradient(90deg, #ff2090, #aa44ff, #00ddff, #ff2090);
   background-size: 300% 100%;
   -webkit-background-clip: text;
@@ -108,7 +120,8 @@
   letter-spacing: 3px;
 }
 
-[data-theme="synthwave"] #title-subtitle {
+[data-theme="synthwave"] #title-subtitle,
+[data-theme="synthwave"] .title-screen-subtitle {
   color: #00ffee;
   text-transform: uppercase;
   letter-spacing: 2px;
@@ -136,4 +149,38 @@
 [data-theme="synthwave"] .mode-btn {
   text-transform: uppercase;
   letter-spacing: 1px;
+}
+
+/* Scanline overlay */
+[data-theme="synthwave"] #app::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.05) 2px,
+    rgba(0, 0, 0, 0.05) 4px
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Neon glow pulse on board border */
+[data-theme="synthwave"] #board {
+  animation: neonBorderPulse 6s ease-in-out infinite;
+}
+
+/* Neon glow on revealed numbers */
+[data-theme="synthwave"] .cell.revealed {
+  text-shadow: 0 0 8px currentColor;
+}
+
+/* Retro grid background effect */
+[data-theme="synthwave"] #app {
+  background-image:
+    linear-gradient(rgba(170, 68, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(170, 68, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
 }

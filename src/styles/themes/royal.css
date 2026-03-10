@@ -56,7 +56,8 @@
     inset 0 0 8px rgba(255, 215, 0, 0.04);
 }
 
-[data-theme="royal"] #game-title {
+[data-theme="royal"] #game-title,
+[data-theme="royal"] .title-screen-logo {
   background: linear-gradient(180deg, #ffd700, #e6b800, #ffd700);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;

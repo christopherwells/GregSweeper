@@ -1,33 +1,33 @@
-import { state, getRevealedCells } from '../state/gameState.js?v=0.9.1';
-import { $, $$, boardEl, resetBtn } from '../ui/domHelpers.js?v=0.9.1';
+import { state, getRevealedCells } from '../state/gameState.js?v=0.9.2';
+import { $, $$, boardEl, resetBtn } from '../ui/domHelpers.js?v=0.9.2';
 import {
   renderBoard, updateCell, updateAllCells, updateCells, getThemeEmoji,
   adjustCellSize, updateZoom,
-} from '../ui/boardRenderer.js?v=0.9.1';
+} from '../ui/boardRenderer.js?v=0.9.2';
 import {
   updateHeader, updateCheckpointDisplay, updateProgressBar,
   updateCellsRemaining, updateStreakDisplay, updateStreakBorder,
   updateFlagModeBar,
-} from '../ui/headerRenderer.js?v=0.9.1';
-import { updatePowerUpBar } from '../ui/powerUpBar.js?v=0.9.1';
-import { hideAllModals, showModal, hideModal } from '../ui/modalManager.js?v=0.9.1';
-import { showLevelInfoToast } from '../ui/toastManager.js?v=0.9.1';
-import { startTimer, stopTimer, startMineShift, updateTimerDisplay } from './timerManager.js?v=0.9.1';
-import { handleWin, handleLoss, handleDailyBombHit } from './winLossHandler.js?v=0.9.1';
-import { performScan, performXRay, performMagnet, tryLifeline } from './powerUpActions.js?v=0.9.1';
-import { generateBoard, createEmptyBoard, calculateAdjacency } from '../logic/boardGenerator.js?v=0.9.1';
-import { floodFillReveal, checkWin, chordReveal } from '../logic/boardSolver.js?v=0.9.1';
-import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster } from '../logic/difficulty.js?v=0.9.1';
-import { shieldDefuse } from '../logic/powerUps.js?v=0.9.1';
-import { getGimmicksForLevel, applyGimmicks, isLockedCell, hasSeenGimmick, markGimmickSeen, getGimmickDef, isModifierPopupDisabled, setModifierPopupDisabled, getDailyGimmick } from '../logic/gimmicks.js?v=0.9.1';
-import { createDailyRNG } from '../logic/seededRandom.js?v=0.9.1';
+} from '../ui/headerRenderer.js?v=0.9.2';
+import { updatePowerUpBar } from '../ui/powerUpBar.js?v=0.9.2';
+import { hideAllModals, showModal, hideModal } from '../ui/modalManager.js?v=0.9.2';
+import { showLevelInfoToast } from '../ui/toastManager.js?v=0.9.2';
+import { startTimer, stopTimer, startMineShift, updateTimerDisplay } from './timerManager.js?v=0.9.2';
+import { handleWin, handleLoss, handleDailyBombHit } from './winLossHandler.js?v=0.9.2';
+import { performScan, performXRay, performMagnet, tryLifeline } from './powerUpActions.js?v=0.9.2';
+import { generateBoard, createEmptyBoard, calculateAdjacency } from '../logic/boardGenerator.js?v=0.9.2';
+import { floodFillReveal, checkWin, chordReveal } from '../logic/boardSolver.js?v=0.9.2';
+import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster } from '../logic/difficulty.js?v=0.9.2';
+import { shieldDefuse } from '../logic/powerUps.js?v=0.9.2';
+import { getGimmicksForLevel, applyGimmicks, isLockedCell, hasSeenGimmick, markGimmickSeen, getGimmickDef, isModifierPopupDisabled, setModifierPopupDisabled, getDailyGimmick } from '../logic/gimmicks.js?v=0.9.2';
+import { createDailyRNG } from '../logic/seededRandom.js?v=0.9.2';
 import {
   loadModePowerUps, loadCheckpoint, clearGameState,
-} from '../storage/statsStorage.js?v=0.9.1';
+} from '../storage/statsStorage.js?v=0.9.2';
 import {
   playReveal, playFlag, playUnflag, playCascade, playShieldBreak,
-} from '../audio/sounds.js?v=0.9.1';
-import { loadEffects } from '../ui/collectionManager.js?v=0.9.1';
+} from '../audio/sounds.js?v=0.9.2';
+import { loadEffects } from '../ui/collectionManager.js?v=0.9.2';
 
 // ── Gimmick Intro Popup ───────────────────────────────
 
@@ -36,6 +36,7 @@ function showGimmickIntros(gimmickDefs) {
   const iconEl = document.getElementById('gimmick-intro-icon');
   const nameEl = document.getElementById('gimmick-intro-name');
   const descEl = document.getElementById('gimmick-intro-desc');
+  const exampleEl = document.getElementById('gimmick-intro-example');
   const okBtn = document.getElementById('gimmick-intro-ok');
   const dismissBtn = document.getElementById('gimmick-intro-dismiss');
   if (!iconEl || !nameEl || !descEl || !okBtn) return;
@@ -48,7 +49,10 @@ function showGimmickIntros(gimmickDefs) {
     const def = gimmickDefs[index];
     iconEl.textContent = def.icon;
     nameEl.textContent = `Modifier: ${def.name}`;
-    descEl.textContent = def.desc;
+    descEl.textContent = def.longDesc || def.desc;
+    if (exampleEl) {
+      exampleEl.innerHTML = def.exampleHtml || '';
+    }
     showModal('gimmick-intro-overlay');
   }
 
@@ -221,7 +225,7 @@ export function revealCell(row, col) {
 
   // Locked cell check
   if (cell.isLocked && isLockedCell(state.board, row, col)) {
-    import('../ui/toastManager.js?v=0.9.1').then(m => {
+    import('../ui/toastManager.js?v=0.9.2').then(m => {
       m.showToast('🔒 Unlock neighbors first!', 1500);
     });
     return;
