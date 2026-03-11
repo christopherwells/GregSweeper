@@ -88,9 +88,9 @@ const LESSONS = [
     explanation: 'When a number\'s mines are all flagged, its other hidden neighbors are guaranteed safe. Click them to reveal! This is one of the most important skills in Minesweeper.',
     puzzles: [
       // 2×3: one flag placed, reveal the safe cell
-      buildPuzzle(2, 3, [[0,0],[1,2]], allExcept(2,3,[[0,0],[0,2],[1,2]]), [[0,0]], [[0,2,'reveal']], 'The 1 already has its mine flagged. Its other hidden neighbor must be safe — click it!'),
-      // 2×3: mirrored
-      buildPuzzle(2, 3, [[0,2],[1,0]], allExcept(2,3,[[0,0],[0,2],[1,0]]), [[0,2]], [[0,0,'reveal']], 'The flag accounts for the 1. The other hidden cell can\'t be a mine.'),
+      buildPuzzle(2, 2, [[0,0]], [[1,0]], [[0,0]], [[0,1,'reveal'],[1,1,'reveal']], 'The 1 already has its mine flagged. All other hidden neighbors must be safe — click them!'),
+      // 3×3: two flags placed, reveal safe cell
+      buildPuzzle(3, 3, [[0,1],[2,1]], allExcept(3,3,[[0,1],[2,1],[2,2]]), [[0,1],[2,1]], [[2,2,'reveal']], 'Both flags satisfy the nearby 2s. The remaining hidden cell must be safe!'),
       // 3×3: one flag, reveal two safe cells
       buildPuzzle(3, 3, [[0,1],[2,1]], allExcept(3,3,[[0,1],[1,2],[2,1],[2,2]]), [[0,1]], [[1,2,'reveal'],[2,2,'reveal']], 'The flag satisfies the nearby numbers. Their other hidden neighbors are safe.'),
       // 3×3: flag one, then reveal one (chain)
