@@ -1369,6 +1369,22 @@ body {
   margin-top: 8px;
 }
 
+.clear-cache-btn {
+  padding: 10px 20px;
+  border: 2px solid var(--color-border, #555);
+  background: transparent;
+  color: var(--color-text, #ccc);
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+.clear-cache-btn:hover {
+  background: var(--color-border, #555);
+  color: #fff;
+}
+
 .reset-profile-btn {
   padding: 10px 20px;
   border: 2px solid #d32f2f;

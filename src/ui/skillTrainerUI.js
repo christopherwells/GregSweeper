@@ -582,6 +582,27 @@ function handlePuzzleClick(row, col, puzzle, correctMoves, isRightClick = false)
       }
     }
   } else {
+    // Check if this is a chord attempt on a revealed number cell
+    const cellData = puzzle.board[row] && puzzle.board[row][col];
+    const cellState = typeof cellData === 'object' ? cellData.state : cellData;
+    const cellValue = typeof cellData === 'object' ? cellData.value : undefined;
+
+    if (cellState === 'revealed' && cellValue > 0) {
+      // Find remaining reveal moves that are neighbors of this cell
+      const neighborMoves = correctMoves.filter(m =>
+        !completedMoves.has(m.row + ',' + m.col) &&
+        m.action === 'reveal' &&
+        Math.abs(m.row - row) <= 1 && Math.abs(m.col - col) <= 1
+      );
+      if (neighborMoves.length > 0) {
+        // Execute all neighbor reveal moves as a chord
+        for (const move of neighborMoves) {
+          handlePuzzleClick(move.row, move.col, puzzle, correctMoves, false);
+        }
+        return;
+      }
+    }
+
     // Wrong cell
     showFeedback('Try again', false);
     mistakeCount++;
