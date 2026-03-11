@@ -47,17 +47,4 @@
 }
 
 /* Rain/streak effect */
-[data-theme="slate"] #board::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(100deg, transparent, transparent 10px, rgba(120,150,180,0.03) 10px, rgba(120,150,180,0.03) 11px);
-  animation: slateRain 2s linear infinite;
-  pointer-events: none;
-  z-index: 1;
-}
 [data-theme="slate"] #board { position: relative; }
-@keyframes slateRain {
-  0% { transform: translateY(-10px); }
-  100% { transform: translateY(10px); }
-}

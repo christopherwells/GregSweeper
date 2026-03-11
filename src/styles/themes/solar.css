@@ -1,4 +1,5 @@
 /* Solar theme — bright golden yellows and warm whites, sun-themed */
+
 [data-theme="solar"] {
   --color-bg: #fdf8ec;
   --color-app-bg: #fffcf2;
@@ -47,56 +48,17 @@
   --shadow-board: 0 4px 20px rgba(74, 56, 16, 0.15);
 }
 
+
 /* Solar corona — warm radial glow pulsing from behind the board */
+
 [data-theme="solar"] #board {
   position: relative;
   overflow: hidden;
 }
 
-[data-theme="solar"] #board::before {
-  content: '';
-  position: absolute;
-  inset: -30%;
-  background: radial-gradient(
-    circle at 50% 30%,
-    rgba(232, 200, 80, 0.08) 0%,
-    rgba(216, 160, 40, 0.04) 30%,
-    transparent 60%
-  );
-  animation: solarCorona 5s ease-in-out infinite alternate;
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* Sun ray sweep across the board */
-[data-theme="solar"] #board::after {
-  content: '';
-  position: absolute;
-  inset: -50%;
-  background: linear-gradient(
-    110deg,
-    transparent 40%,
-    rgba(255, 240, 180, 0.06) 45%,
-    rgba(255, 230, 140, 0.04) 50%,
-    transparent 55%
-  );
-  animation: solarRay 8s ease-in-out infinite;
-  pointer-events: none;
-  z-index: 0;
-}
-
-@keyframes solarCorona {
-  0% { opacity: 0.5; transform: scale(0.95); }
-  100% { opacity: 1; transform: scale(1.05); }
-}
-
-@keyframes solarRay {
-  0% { transform: translateX(-60%); }
-  50% { transform: translateX(60%); }
-  100% { transform: translateX(-60%); }
-}
 
 /* Warm golden hover glow */
+
 [data-theme="solar"] .cell:not(.revealed):hover {
   box-shadow: 0 0 10px rgba(216, 160, 40, 0.25);
 }

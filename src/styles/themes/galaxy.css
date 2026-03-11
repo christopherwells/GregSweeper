@@ -1,4 +1,5 @@
 /* Galaxy theme — deep space nebula with cosmic accents */
+
 [data-theme="galaxy"] {
   --font-display: 'Orbitron', 'Segoe UI', sans-serif;
 
@@ -79,16 +80,19 @@
   --shadow-achievement-unlocked: 0 0 10px rgba(208, 80, 255, 0.1);
 }
 
+
 [data-theme="galaxy"] #app {
   background: linear-gradient(160deg, #12002a, #0a0015, #050020, #10002a);
   background-size: 300% 300%;
   animation: galaxyDrift 12s ease-in-out infinite;
 }
 
+
 @keyframes galaxyDrift {
   0%, 100% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
 }
+
 
 [data-theme="galaxy"] #game-title,
 [data-theme="galaxy"] .title-screen-logo {
@@ -102,59 +106,16 @@
   filter: drop-shadow(0 0 12px rgba(208, 80, 255, 0.3));
 }
 
+
 @keyframes galaxyTitleShimmer {
   0%, 100% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
 }
 
+
 /* Nebula glow that slowly drifts across the board */
+
 [data-theme="galaxy"] #board {
   position: relative;
   overflow: hidden;
-}
-
-[data-theme="galaxy"] #board::before {
-  content: '';
-  position: absolute;
-  inset: -30%;
-  background: radial-gradient(
-    ellipse 40% 50% at 30% 40%,
-    rgba(208, 80, 255, 0.07) 0%,
-    transparent 50%
-  ),
-  radial-gradient(
-    ellipse 35% 45% at 70% 60%,
-    rgba(130, 177, 255, 0.06) 0%,
-    transparent 50%
-  );
-  animation: nebulaDrift 10s ease-in-out infinite alternate;
-  pointer-events: none;
-  z-index: 0;
-  filter: blur(15px);
-}
-
-/* Twinkling star particle */
-[data-theme="galaxy"] #board::after {
-  content: '✦';
-  position: absolute;
-  top: 20%;
-  right: 15%;
-  font-size: 8px;
-  color: rgba(255, 255, 255, 0.7);
-  animation: starTwinkle 5s ease-in-out infinite;
-  pointer-events: none;
-  z-index: 1;
-  text-shadow: 0 0 4px rgba(234, 128, 252, 0.6);
-}
-
-@keyframes nebulaDrift {
-  0% { transform: translate(-10%, -5%) scale(1); }
-  100% { transform: translate(10%, 5%) scale(1.1); }
-}
-
-@keyframes starTwinkle {
-  0%, 100% { opacity: 0; transform: scale(0.5); }
-  20% { opacity: 0; }
-  50% { opacity: 0.8; transform: scale(1.2); }
-  80% { opacity: 0; }
 }

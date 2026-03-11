@@ -50,17 +50,3 @@
 [data-theme="copper"] #board {
   position: relative;
 }
-[data-theme="copper"] #board::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(105deg, transparent 40%, rgba(255,200,150,0.1) 45%, rgba(255,200,150,0.2) 50%, rgba(255,200,150,0.1) 55%, transparent 60%);
-  background-size: 200% 100%;
-  animation: copperShimmer 3s ease-in-out infinite;
-  pointer-events: none;
-  z-index: 1;
-}
-@keyframes copperShimmer {
-  0%, 100% { background-position: 200% 0; }
-  50% { background-position: -200% 0; }
-}

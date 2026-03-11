@@ -1,4 +1,5 @@
 /* Aurora theme — Northern Lights over an arctic sky */
+
 [data-theme="aurora"] {
   --font-display: 'Orbitron', 'Segoe UI', sans-serif;
 
@@ -78,6 +79,7 @@
   --shadow-achievement-unlocked: 0 0 8px rgba(0, 229, 160, 0.1);
 }
 
+
 [data-theme="aurora"] #game-title,
 [data-theme="aurora"] .title-screen-logo {
   background: linear-gradient(135deg, #00e5a0, #00bcd4, #b388ff, #00e5a0);
@@ -89,79 +91,30 @@
   animation: auroraShimmer 4s ease-in-out infinite;
 }
 
+
 @keyframes auroraShimmer {
   0%, 100% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
 }
 
+
 /* Slow-moving northern lights glow behind the board */
+
 [data-theme="aurora"] #board {
   position: relative;
   overflow: hidden;
 }
 
-[data-theme="aurora"] #board::before {
-  content: '';
-  position: absolute;
-  inset: -40% -20%;
-  background: linear-gradient(
-    120deg,
-    transparent 20%,
-    rgba(0, 229, 160, 0.06) 30%,
-    rgba(0, 188, 212, 0.08) 40%,
-    rgba(179, 136, 255, 0.06) 50%,
-    rgba(0, 229, 160, 0.04) 60%,
-    transparent 75%
-  );
-  background-size: 200% 100%;
-  animation: auroraSweep 12s ease-in-out infinite alternate;
-  pointer-events: none;
-  z-index: 0;
-  filter: blur(20px);
-}
-
-/* Subtle color-shifting border glow on the board */
-[data-theme="aurora"] #board::after {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  border-radius: inherit;
-  background: linear-gradient(
-    90deg,
-    rgba(0, 229, 160, 0.3),
-    rgba(0, 188, 212, 0.25),
-    rgba(179, 136, 255, 0.3),
-    rgba(255, 68, 136, 0.2),
-    rgba(0, 229, 160, 0.3)
-  );
-  background-size: 300% 100%;
-  animation: auroraBorder 8s linear infinite;
-  pointer-events: none;
-  z-index: -1;
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask-composite: exclude;
-  -webkit-mask-composite: xor;
-  padding: 2px;
-}
-
-@keyframes auroraSweep {
-  0% { background-position: 100% 0; opacity: 0.5; }
-  50% { opacity: 1; }
-  100% { background-position: -100% 0; opacity: 0.5; }
-}
-
-@keyframes auroraBorder {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 300% 50%; }
-}
 
 /* Cells get a faint aurora reflection on hover */
+
 [data-theme="aurora"] .cell:not(.revealed):hover {
   box-shadow: 0 0 12px rgba(0, 229, 160, 0.25), 0 0 4px rgba(0, 188, 212, 0.2);
 }
 
+
 /* Header picks up a subtle shifting glow */
+
 [data-theme="aurora"] .header-bar {
   border-bottom: 1px solid transparent;
   background-image: linear-gradient(var(--color-header-bg), var(--color-header-bg)),

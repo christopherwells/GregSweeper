@@ -20,6 +20,7 @@ import { showModal, hideModal, hideAllModals } from './ui/modalManager.js?v=1.0'
 import { showToast, showLevelUpToast, showCheckpointToast } from './ui/toastManager.js?v=1.0';
 import { showCelebration, haptic } from './ui/effectsRenderer.js?v=1.0';
 import { THEME_UNLOCKS, getUnlockedThemes, loadThemeCSS } from './ui/themeManager.js?v=1.0';
+import { applyThemeEffects, clearThemeEffects } from './ui/themeEffects.js?v=1.0.3';
 import { newGame, revealCell, toggleFlag, handleChordReveal } from './game/gameActions.js?v=1.0';
 import './game/winLossHandler.js?v=1.0'; // side-effect: registers handleWin with powerUpActions
 import { useRevealSafe, useShield, activateScan, activateXRay, activateMagnet } from './game/powerUpActions.js?v=1.0';
@@ -294,6 +295,7 @@ function renderCollectionModal() {
       state.theme = theme;
       loadThemeCSS(theme);
       document.documentElement.setAttribute('data-theme', theme);
+      applyThemeEffects(theme);
       saveTheme(theme);
       for (const s of themeGrid.querySelectorAll('.theme-swatch')) s.classList.remove('active');
       btn.classList.add('active');
@@ -949,6 +951,7 @@ function showTitleScreen() {
   // Restore theme if leaving chaos mode
   if (state.gameMode === 'chaos' && _previousTheme) {
     document.documentElement.setAttribute('data-theme', _previousTheme);
+    applyThemeEffects(_previousTheme);
     _previousTheme = null;
   }
 
@@ -1075,6 +1078,7 @@ for (const card of $$('.mode-card')) {
       _previousTheme = state.theme;
       document.documentElement.setAttribute('data-theme', 'chaos');
       loadThemeCSS('chaos');
+      applyThemeEffects('chaos');
       hideTitleScreen();
       switchMode('chaos');
       return;
@@ -1157,6 +1161,7 @@ $('#btn-reset-profile').addEventListener('click', () => {
     resetStats();
     state.theme = 'classic';
     document.documentElement.setAttribute('data-theme', 'classic');
+    applyThemeEffects('classic');
     saveTheme('classic');
     state.currentLevel = 1;
     state.powerUps = { revealSafe: 0, shield: 0, lifeline: 0, scanRowCol: 0, magnet: 0, xray: 0 };
@@ -1347,6 +1352,7 @@ function init() {
   state.theme = activeTheme;
   loadThemeCSS(activeTheme);
   document.documentElement.setAttribute('data-theme', activeTheme);
+  applyThemeEffects(activeTheme);
 
   const muted = loadMuted();
   if (muteBtn) {

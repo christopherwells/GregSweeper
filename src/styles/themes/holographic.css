@@ -1,9 +1,11 @@
 /* Holographic theme — rainbow shifting iridescence */
+
 @keyframes rainbowShift {
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
 }
+
 
 [data-theme="holographic"] {
   --color-bg: #1a1a2a;
@@ -59,7 +61,9 @@
     0 0 1px rgba(255, 68, 136, 0.2);
 }
 
+
 /* Animated rainbow header */
+
 [data-theme="holographic"] .game-header {
   background: linear-gradient(
     90deg,
@@ -69,6 +73,7 @@
   animation: rainbowShift 6s ease-in-out infinite;
   -webkit-background-clip: padding-box;
 }
+
 
 [data-theme="holographic"] #game-title,
 [data-theme="holographic"] .title-screen-logo {
@@ -83,7 +88,9 @@
   background-clip: text;
 }
 
+
 /* Iridescent cell borders */
+
 [data-theme="holographic"] .cell.hidden {
   border-image: linear-gradient(
     135deg,
@@ -91,59 +98,17 @@
   ) 1;
 }
 
+
 /* Rainbow light sweep across the board — like tilting a holographic card */
+
 [data-theme="holographic"] #board {
   position: relative;
   overflow: hidden;
 }
 
-[data-theme="holographic"] #board::before {
-  content: '';
-  position: absolute;
-  inset: -50%;
-  background: linear-gradient(
-    115deg,
-    transparent 30%,
-    rgba(255, 68, 102, 0.06) 35%,
-    rgba(255, 170, 34, 0.06) 38%,
-    rgba(68, 255, 136, 0.06) 42%,
-    rgba(68, 221, 255, 0.06) 46%,
-    rgba(187, 102, 255, 0.06) 50%,
-    transparent 55%
-  );
-  animation: holoSweep 6s ease-in-out infinite;
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* Prismatic border that shifts through the rainbow */
-[data-theme="holographic"] #board::after {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  border-radius: inherit;
-  background: linear-gradient(
-    90deg,
-    #ff4466, #ffaa22, #44ff88, #44ddff, #bb66ff, #ff4466
-  );
-  background-size: 300% 100%;
-  animation: rainbowShift 6s ease-in-out infinite;
-  pointer-events: none;
-  z-index: -1;
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask-composite: exclude;
-  -webkit-mask-composite: xor;
-  padding: 2px;
-}
-
-@keyframes holoSweep {
-  0% { transform: translateX(-60%) rotate(0deg); }
-  50% { transform: translateX(60%) rotate(0deg); }
-  100% { transform: translateX(-60%) rotate(0deg); }
-}
 
 /* Revealed cells get a subtle iridescent shimmer */
+
 [data-theme="holographic"] .cell:not(.revealed):hover {
   box-shadow: 0 0 8px rgba(68, 221, 255, 0.3), 0 0 4px rgba(255, 68, 136, 0.2);
 }
