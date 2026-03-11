@@ -11,7 +11,7 @@ export function loadThemeCSS(themeName) {
   if (EAGER_THEMES.has(themeName) || _loadedThemes.has(themeName)) return;
   const link = document.createElement('link');
   link.rel = 'stylesheet';
-  link.href = 'src/styles/themes/' + themeName + '.css';
+  link.href = 'src/styles/themes/' + themeName + '.css?v=1.0.4';
   document.head.appendChild(link);
   _loadedThemes.add(themeName);
 }
