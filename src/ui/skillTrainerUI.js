@@ -583,6 +583,12 @@ function handlePuzzleClick(row, col, puzzle, correctMoves, isRightClick = false)
     return;
   }
 
+  // In Chord Clicking lesson, force the player to chord (click a satisfied number)
+  if (currentLessonId === 'chord-clicking') {
+    showFeedback('Click a satisfied number to chord!', false);
+    return;
+  }
+
   // ── Reveal attempt on an unrevealed cell ──
   // Check if it's a correct move
   const matchingMove = correctMoves.find(m => m.row === row && m.col === col);
