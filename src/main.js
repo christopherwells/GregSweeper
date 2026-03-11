@@ -1132,6 +1132,23 @@ if (titleLeaderboardBtn) {
   });
 }
 
+// Clear Cache & Reload
+$('#btn-clear-cache').addEventListener('click', async () => {
+  if (confirm('This will clear the app cache and reload. Your stats and progress are safe.')) {
+    // Unregister all service workers
+    if ('serviceWorker' in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      for (const reg of registrations) await reg.unregister();
+    }
+    // Delete all caches
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      for (const key of keys) await caches.delete(key);
+    }
+    location.reload(true);
+  }
+});
+
 // Reset Profile
 $('#btn-reset-profile').addEventListener('click', () => {
   if (confirm('Are you sure you want to reset your profile? This will erase ALL stats, achievements, and leaderboard data. This cannot be undone.')) {
