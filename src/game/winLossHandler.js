@@ -114,13 +114,13 @@ export function handleWin() {
     usedPowerUps: state.usedPowerUps,
     gameMode: state.gameMode,
     hadGimmicks: state.activeGimmicks && state.activeGimmicks.length > 0,
+    dailySeed: state.dailySeed,
   });
   const earnedPowerUp = state.gameMode === 'chaos' ? null : awardPowerUps(stats);
 
   // Mark daily as completed so it cannot be replayed today
-  if (isDaily) {
-    const d = new Date();
-    markDailyCompleted(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'));
+  if (isDaily && state.dailySeed) {
+    markDailyCompleted(state.dailySeed);
   }
 
   // Persist power-ups after win (award changes them) — skip for chaos (no power-ups)

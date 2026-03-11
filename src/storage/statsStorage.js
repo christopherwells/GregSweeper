@@ -105,7 +105,7 @@ function getModeKey(gameMode) {
   return gameMode;
 }
 
-export function saveGameResult(won, time, level, { isDaily = false, usedPowerUps = false, gameMode = 'normal', hadGimmicks = false } = {}) {
+export function saveGameResult(won, time, level, { isDaily = false, usedPowerUps = false, gameMode = 'normal', hadGimmicks = false, dailySeed = null } = {}) {
   const stats = loadStats();
   const modeKey = getModeKey(gameMode);
   const modeStats = stats.modeStats[modeKey];
@@ -168,8 +168,8 @@ export function saveGameResult(won, time, level, { isDaily = false, usedPowerUps
       // Daily-specific: consecutive-day streak validation
       if (modeKey === 'daily') {
         modeStats.dailiesCompleted = (modeStats.dailiesCompleted || 0) + 1;
-        const _d = new Date();
-        const today = _d.getFullYear() + '-' + String(_d.getMonth() + 1).padStart(2, '0') + '-' + String(_d.getDate()).padStart(2, '0');
+        // Use the puzzle's seed date (not current date) to avoid midnight-crossing bugs
+        const today = dailySeed || (() => { const _d = new Date(); return _d.getFullYear() + '-' + String(_d.getMonth() + 1).padStart(2, '0') + '-' + String(_d.getDate()).padStart(2, '0'); })();
         const lastDate = modeStats.lastDailyCompletedDate;
         if (lastDate) {
           const last = new Date(lastDate + 'T00:00:00');
