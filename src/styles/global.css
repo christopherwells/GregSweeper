@@ -4153,7 +4153,7 @@ body {
 
 /* Modal headers — unified */
 .modal-header h2 {
-  font-family: 'Fredoka', sans-serif;
+  font-family: var(--font-display, 'Fredoka'), sans-serif;
   font-size: 20px;
   font-weight: 700;
   letter-spacing: -0.3px;
@@ -4170,7 +4170,7 @@ body {
 
 /* Collection subheaders */
 .collection-subheader {
-  font-family: 'Fredoka', sans-serif;
+  font-family: var(--font-display, 'Fredoka'), sans-serif;
   font-size: 14px;
   font-weight: 600;
   color: var(--color-text-secondary, #aaa);
@@ -4205,7 +4205,7 @@ body {
   padding: 10px 20px;
   border: none;
   border-radius: 10px;
-  font-family: 'Fredoka', sans-serif;
+  font-family: var(--font-display, 'Fredoka'), sans-serif;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -4259,7 +4259,7 @@ body {
   padding: 20px;
 }
 .gameover-content h2 {
-  font-family: 'Fredoka', sans-serif;
+  font-family: var(--font-display, 'Fredoka'), sans-serif;
   font-size: 24px;
   margin: 0 0 8px;
 }
