@@ -13,6 +13,7 @@ import {
 } from '../logic/skillTrainer.js?v=1.0';
 
 import { $, $$ } from './domHelpers.js?v=1.0';
+import state from '../state/gameState.js?v=1.0';
 import { playReveal, playWin, playFlag } from '../audio/sounds.js?v=1.0';
 
 // ── Constants ─────────────────────────────────────────
@@ -384,7 +385,7 @@ function renderPuzzleBoard(puzzle) {
     if (!cellEl) return;
     const row = parseInt(cellEl.dataset.row, 10);
     const col = parseInt(cellEl.dataset.col, 10);
-    handlePuzzleClick(row, col, puzzle, correctMoves);
+    handlePuzzleClick(row, col, puzzle, correctMoves, state.flagMode);
   });
 
   // Prevent context menu on the puzzle board

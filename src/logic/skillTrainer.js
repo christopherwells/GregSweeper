@@ -91,12 +91,12 @@ const LESSONS = [
       buildPuzzle(2, 2, [[0,0]], [[1,0]], [[0,0]], [[0,1,'reveal'],[1,1,'reveal']], 'The 1 already has its mine flagged. All other hidden neighbors must be safe — click them!'),
       // 3×3: two flags placed, reveal safe cell
       buildPuzzle(3, 3, [[0,1],[2,1]], allExcept(3,3,[[0,1],[2,1],[2,2]]), [[0,1],[2,1]], [[2,2,'reveal']], 'Both flags satisfy the nearby 2s. The remaining hidden cell must be safe!'),
-      // 3×3: one flag, reveal two safe cells
-      buildPuzzle(3, 3, [[0,1],[2,1]], allExcept(3,3,[[0,1],[1,2],[2,1],[2,2]]), [[0,1]], [[1,2,'reveal'],[2,2,'reveal']], 'The flag satisfies the nearby numbers. Their other hidden neighbors are safe.'),
-      // 3×3: flag one, then reveal one (chain)
-      buildPuzzle(3, 3, [[0,1],[2,1]], allExcept(3,3,[[0,1],[2,1],[2,2]]), [[0,1]], [[2,1,'flag'],[2,2,'reveal']], 'The 2 already has one flag. It needs one more mine — which hidden cell touches it? Then the other is safe.'),
-      // 3×3: both mines flagged, reveal remaining
-      buildPuzzle(3, 3, [[0,1],[2,1]], allExcept(3,3,[[0,1],[2,0],[2,1],[2,2]]), [[0,1],[2,1]], [[2,0,'reveal'],[2,2,'reveal']], 'Both mines are flagged. Every remaining hidden cell must be safe!'),
+      // 2×4: flags on both sides, reveal safe cell in the middle
+      buildPuzzle(2, 4, [[0,0],[1,3]], allExcept(2,4,[[0,0],[1,2],[1,3]]), [[0,0],[1,3]], [[1,2,'reveal']], 'Both flags satisfy the 1s nearby. The remaining hidden cell must be safe!'),
+      // 3×3: flag then reveal chain (different mine pattern)
+      buildPuzzle(3, 3, [[1,0],[1,2]], allExcept(3,3,[[1,0],[1,2],[2,0]]), [[1,2]], [[1,0,'flag'],[2,0,'reveal']], 'The corner 1 pins the mine — flag it! Then the 2 below is fully satisfied, making its hidden neighbor safe.'),
+      // 4×4: multi-step capstone
+      buildPuzzle(4, 4, [[0,0],[0,3],[2,0],[3,3]], allExcept(4,4,[[0,0],[0,3],[2,0],[3,2],[3,3]]), [[0,0],[3,3]], [[0,3,'flag'],[2,0,'flag'],[3,2,'reveal']], 'Work from the edges — each 1 with one hidden neighbor pins a mine. Flag them, then the safe cell reveals itself!'),
     ],
   },
   {
