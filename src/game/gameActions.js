@@ -12,7 +12,7 @@ import {
 import { updatePowerUpBar } from '../ui/powerUpBar.js?v=1.0';
 import { hideAllModals, showModal, hideModal } from '../ui/modalManager.js?v=1.0';
 import { showLevelInfoToast } from '../ui/toastManager.js?v=1.0';
-import { startTimer, stopTimer, startMineShift, updateTimerDisplay } from './timerManager.js?v=1.0';
+import { startTimer, stopTimer, pauseTimer, resumeTimer, startMineShift, updateTimerDisplay } from './timerManager.js?v=1.0';
 import { handleWin, handleLoss, handleDailyBombHit } from './winLossHandler.js?v=1.0';
 import { performScan, performXRay, performMagnet, tryLifeline } from './powerUpActions.js?v=1.0';
 import { generateBoard, createEmptyBoard, calculateAdjacency } from '../logic/boardGenerator.js?v=1.0';
@@ -54,7 +54,7 @@ function showGimmickIntros(gimmickDefs) {
 
   function showNext() {
     if (index >= gimmickDefs.length) {
-      hideModal('gimmick-intro-overlay');
+      closeIntro();
       return;
     }
     const def = gimmickDefs[index];
@@ -67,6 +67,11 @@ function showGimmickIntros(gimmickDefs) {
     showModal('gimmick-intro-overlay');
   }
 
+  function closeIntro() {
+    hideModal('gimmick-intro-overlay');
+    resumeTimer();
+  }
+
   // Remove old listeners if any, add fresh ones
   const newBtn = okBtn.cloneNode(true);
   okBtn.parentNode.replaceChild(newBtn, okBtn);
@@ -75,7 +80,7 @@ function showGimmickIntros(gimmickDefs) {
     if (index < gimmickDefs.length) {
       showNext();
     } else {
-      hideModal('gimmick-intro-overlay');
+      closeIntro();
     }
   });
 
@@ -85,10 +90,11 @@ function showGimmickIntros(gimmickDefs) {
     dismissBtn.parentNode.replaceChild(newDismissBtn, dismissBtn);
     newDismissBtn.addEventListener('click', () => {
       setModifierPopupDisabled(true);
-      hideModal('gimmick-intro-overlay');
+      closeIntro();
     });
   }
 
+  pauseTimer();
   showNext();
 }
 
