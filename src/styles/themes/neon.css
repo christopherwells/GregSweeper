@@ -103,7 +103,7 @@
   54% { opacity: 1; text-shadow: 0 0 16px rgba(0, 255, 136, 0.5), 0 0 32px rgba(0, 255, 136, 0.2); }
 }
 
-/* Press Start 2P is ~2x wider than normal fonts — scale everything down */
+/* Press Start 2P is wider than normal fonts — only shrink elements that wrap */
 [data-theme="neon"] .title-screen-logo {
   font-size: clamp(18px, 5vw, 28px);
   letter-spacing: 0;
@@ -130,32 +130,6 @@
 
 [data-theme="neon"] .gameover-content h2 {
   font-size: 16px;
-}
-
-[data-theme="neon"] .action-btn {
-  font-size: 10px;
-  padding: 10px 14px;
-}
-
-[data-theme="neon"] .nav-btn {
-  font-size: 9px;
-}
-
-[data-theme="neon"] .collection-subheader {
-  font-size: 9px;
-}
-
-[data-theme="neon"] .timed-tab {
-  font-size: 9px;
-  padding: 8px 10px;
-}
-
-[data-theme="neon"] .checkpoint-btn {
-  font-size: 9px;
-}
-
-[data-theme="neon"] .powerup-btn {
-  font-size: 9px;
 }
 
 [data-theme="neon"] #board {
