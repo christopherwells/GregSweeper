@@ -61,6 +61,15 @@ import { isStorageFailing, safeGet, safeSet } from './storage/storageAdapter.js?
 import { pauseTimer, resumeTimer } from './game/timerManager.js?v=1.0';
 import { startTutorial } from './ui/tutorialManager.js?v=1.0';
 
+// ── Theme-color meta tag (Android nav bar) ───────────
+function updateThemeColor() {
+  const bg = getComputedStyle(document.documentElement).getPropertyValue('--color-app-bg').trim();
+  if (bg) {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', bg);
+  }
+}
+
 // ── Stats Display ─────────────────────────────────────
 
 function updateStatsDisplay() {
@@ -296,6 +305,7 @@ function renderCollectionModal() {
       loadThemeCSS(theme);
       document.documentElement.setAttribute('data-theme', theme);
       applyThemeEffects(theme);
+      updateThemeColor();
       saveTheme(theme);
       for (const s of themeGrid.querySelectorAll('.theme-swatch')) s.classList.remove('active');
       btn.classList.add('active');
@@ -952,6 +962,7 @@ function showTitleScreen() {
   if (state.gameMode === 'chaos' && _previousTheme) {
     document.documentElement.setAttribute('data-theme', _previousTheme);
     applyThemeEffects(_previousTheme);
+    updateThemeColor();
     _previousTheme = null;
   }
 
@@ -1079,6 +1090,7 @@ for (const card of $$('.mode-card')) {
       document.documentElement.setAttribute('data-theme', 'chaos');
       loadThemeCSS('chaos');
       applyThemeEffects('chaos');
+      updateThemeColor();
       hideTitleScreen();
       switchMode('chaos');
       return;
@@ -1162,6 +1174,7 @@ $('#btn-reset-profile').addEventListener('click', () => {
     state.theme = 'classic';
     document.documentElement.setAttribute('data-theme', 'classic');
     applyThemeEffects('classic');
+    updateThemeColor();
     saveTheme('classic');
     state.currentLevel = 1;
     state.powerUps = { revealSafe: 0, shield: 0, lifeline: 0, scanRowCol: 0, magnet: 0, xray: 0 };
@@ -1353,6 +1366,7 @@ function init() {
   loadThemeCSS(activeTheme);
   document.documentElement.setAttribute('data-theme', activeTheme);
   applyThemeEffects(activeTheme);
+  updateThemeColor();
 
   const muted = loadMuted();
   if (muteBtn) {
