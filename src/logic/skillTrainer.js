@@ -122,6 +122,7 @@ const LESSONS = [
   },
   {
     id: 'chord-clicking',
+    comingSoon: true,
     name: 'Chord Clicking',
     category: 'Beginner',
     description: 'Use satisfied numbers to clear cells fast.',
@@ -141,6 +142,7 @@ const LESSONS = [
   },
   {
     id: 'putting-together',
+    comingSoon: true,
     name: 'Putting It All Together',
     category: 'Beginner',
     description: 'Combine everything to solve multi-step puzzles.',
@@ -162,6 +164,7 @@ const LESSONS = [
   // ═════════════════════ INTERMEDIATE ═════════════════════
   {
     id: 'pattern-1-1',
+    comingSoon: true,
     name: 'The 1-1 Pattern',
     category: 'Intermediate',
     description: 'Recognize the 1-1 wall pattern.',
@@ -176,6 +179,7 @@ const LESSONS = [
   },
   {
     id: 'pattern-1-2',
+    comingSoon: true,
     name: 'The 1-2 Pattern',
     category: 'Intermediate',
     description: 'Recognize the 1-2 wall pattern.',
@@ -190,6 +194,7 @@ const LESSONS = [
   },
   {
     id: 'wall-logic',
+    comingSoon: true,
     name: 'Wall & Edge Logic',
     category: 'Intermediate',
     description: 'Use board boundaries as extra clues.',
@@ -204,6 +209,7 @@ const LESSONS = [
   },
   {
     id: 'corner-deduction',
+    comingSoon: true,
     name: 'Corner Deduction',
     category: 'Intermediate',
     description: 'Solve corners quickly and easily.',
@@ -218,6 +224,7 @@ const LESSONS = [
   },
   {
     id: 'reduction',
+    comingSoon: true,
     name: 'Reduction Technique',
     category: 'Intermediate',
     description: 'Subtract flags to find new information.',
@@ -234,6 +241,7 @@ const LESSONS = [
   // ═════════════════════ ADVANCED ═════════════════════
   {
     id: 'subset-superset',
+    comingSoon: true,
     name: 'Subset / Superset',
     category: 'Advanced',
     description: 'Compare overlapping number clues.',
@@ -248,6 +256,7 @@ const LESSONS = [
   },
   {
     id: 'coupled-constraints',
+    comingSoon: true,
     name: 'Coupled Constraints',
     category: 'Advanced',
     description: 'Combine clues from multiple numbers.',
@@ -262,6 +271,7 @@ const LESSONS = [
   },
   {
     id: 'probability',
+    comingSoon: true,
     name: 'Probability Thinking',
     category: 'Advanced',
     description: 'Choose the safest cell when guessing.',
@@ -276,6 +286,7 @@ const LESSONS = [
   },
   {
     id: 'endgame',
+    comingSoon: true,
     name: 'Endgame Strategies',
     category: 'Advanced',
     description: 'Close out the last few cells.',
@@ -290,6 +301,7 @@ const LESSONS = [
   },
   {
     id: 'speed-techniques',
+    comingSoon: true,
     name: 'Speed Techniques',
     category: 'Advanced',
     description: 'Solve faster with pattern recognition.',
@@ -307,6 +319,7 @@ const LESSONS = [
 
   {
     id: 'mod-mystery',
+    comingSoon: true,
     name: 'Mystery Cells',
     category: 'Modifiers',
     description: 'Learn to play around hidden numbers.',
@@ -330,6 +343,7 @@ const LESSONS = [
   },
   {
     id: 'mod-locked',
+    comingSoon: true,
     name: 'Locked Cells',
     category: 'Modifiers',
     description: 'Work around cells you can\'t open yet.',
@@ -352,6 +366,7 @@ const LESSONS = [
   },
   {
     id: 'mod-liar',
+    comingSoon: true,
     name: 'Liar Cells',
     category: 'Modifiers',
     description: 'Spot numbers that lie by \u00b11.',
@@ -377,6 +392,7 @@ const LESSONS = [
   },
   {
     id: 'mod-walls',
+    comingSoon: true,
     name: 'Walls',
     category: 'Modifiers',
     description: 'Navigate around impassable wall cells.',
@@ -401,6 +417,7 @@ const LESSONS = [
   },
   {
     id: 'mod-wormhole',
+    comingSoon: true,
     name: 'Wormholes',
     category: 'Modifiers',
     description: 'Decode paired cells with summed numbers.',
@@ -436,6 +453,7 @@ const LESSONS = [
   },
   {
     id: 'mod-mirror',
+    comingSoon: true,
     name: 'Mirror Zone',
     category: 'Modifiers',
     description: 'Mentally un-swap mirrored numbers.',

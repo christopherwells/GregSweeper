@@ -3261,6 +3261,16 @@ body {
 .skill-lesson-card.completed {
   opacity: 0.85;
 }
+.skill-lesson-card.coming-soon {
+  opacity: 0.45;
+  cursor: default;
+  pointer-events: none;
+}
+.coming-soon-label {
+  color: var(--color-text-secondary, #888);
+  font-style: italic;
+  font-size: 11px;
+}
 
 .skill-lesson-info {
   flex: 1;

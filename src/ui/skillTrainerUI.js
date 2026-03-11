@@ -10,7 +10,7 @@ import {
   saveSkillProgress,
   markPuzzleCompleted,
   getLessonStars,
-} from '../logic/skillTrainer.js?v=1.0.1';
+} from '../logic/skillTrainer.js?v=1.0.2';
 
 import { $, $$ } from './domHelpers.js?v=1.0';
 import { state } from '../state/gameState.js?v=1.0';
@@ -198,6 +198,30 @@ function renderCategoryLessons(category) {
     const card = document.createElement('button');
     card.className = 'skill-lesson-card';
     card.type = 'button';
+
+    // Coming Soon lessons are disabled
+    if (lesson.comingSoon) {
+      card.classList.add('coming-soon');
+      card.disabled = true;
+
+      const nameEl = document.createElement('div');
+      nameEl.className = 'skill-lesson-name';
+      nameEl.textContent = lesson.name;
+
+      const descEl = document.createElement('div');
+      descEl.className = 'skill-lesson-desc';
+      descEl.textContent = lesson.description;
+
+      const statusEl = document.createElement('div');
+      statusEl.className = 'skill-lesson-status coming-soon-label';
+      statusEl.textContent = 'Coming Soon';
+
+      card.appendChild(nameEl);
+      card.appendChild(descEl);
+      card.appendChild(statusEl);
+      lessonList.appendChild(card);
+      continue;
+    }
 
     const stars = getLessonStars(lesson.id, progress);
     if (stars > 0) card.classList.add('completed');
