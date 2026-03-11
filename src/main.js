@@ -1245,6 +1245,11 @@ $('#gameover-submit-daily').addEventListener('click', async () => {
 
 $('#gameover-share').addEventListener('click', () => handleShare());
 
+$('#gameover-done').addEventListener('click', () => {
+  hideModal('gameover-overlay');
+  showTitleScreen();
+});
+
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
   const anyModalOpen = [...$$('.modal')].some(m => !m.classList.contains('hidden'));

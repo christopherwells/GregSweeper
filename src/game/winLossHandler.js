@@ -290,6 +290,13 @@ export function handleWin() {
     else retryBtn.classList.remove('hidden');
   }
 
+  // Show "Done" button for daily mode (no next level or retry available)
+  const doneBtn = $('#gameover-done');
+  if (doneBtn) {
+    if (isDaily) doneBtn.classList.remove('hidden');
+    else doneBtn.classList.add('hidden');
+  }
+
   // Clear saved game state on win
   clearGameState(state.gameMode);
 
@@ -426,6 +433,8 @@ export function handleLoss(mineRow, mineCol) {
   if (dailySubmitForm) dailySubmitForm.classList.add('hidden');
   $('#gameover-powerup-earned').classList.add('hidden');
   $('#gameover-share').classList.add('hidden');
+  const doneBtnLoss = $('#gameover-done');
+  if (doneBtnLoss) doneBtnLoss.classList.add('hidden');
   $('#gameover-achievements').classList.add('hidden');
   const sharePreview = $('#share-card-preview');
   if (sharePreview) sharePreview.classList.add('hidden');
@@ -504,6 +513,8 @@ export function handleTimedLoss() {
   if (dailySubmitForm2) dailySubmitForm2.classList.add('hidden');
   $('#gameover-powerup-earned').classList.add('hidden');
   $('#gameover-share').classList.add('hidden');
+  const doneBtnLoss = $('#gameover-done');
+  if (doneBtnLoss) doneBtnLoss.classList.add('hidden');
   $('#gameover-achievements').classList.add('hidden');
   const sharePreview2 = $('#share-card-preview');
   if (sharePreview2) sharePreview2.classList.add('hidden');
