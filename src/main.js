@@ -23,7 +23,7 @@ import { THEME_UNLOCKS, getUnlockedThemes, loadThemeCSS } from './ui/themeManage
 import { newGame, revealCell, toggleFlag, handleChordReveal } from './game/gameActions.js?v=1.0';
 import './game/winLossHandler.js?v=1.0'; // side-effect: registers handleWin with powerUpActions
 import { useRevealSafe, useShield, activateScan, activateXRay, activateMagnet } from './game/powerUpActions.js?v=1.0';
-import { switchMode, isChaosUnlocked } from './game/modeManager.js?v=1.0';
+import { switchMode, isChaosUnlocked, updateModeUI } from './game/modeManager.js?v=1.0';
 import { persistGameState, tryResumeGame } from './game/gamePersistence.js?v=1.0';
 import { getDifficultyForLevel, getTimedDifficulty, getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, CHAOS_UNLOCK_LEVEL } from './logic/difficulty.js?v=1.0';
 import {
@@ -969,12 +969,11 @@ function hideTitleScreen() {
 // ── Checkpoint Selector (Challenge mode) ────────────────
 const GIMMICK_LABELS = {
   11: { icon: '❓', name: 'Mystery' },
-  16: { icon: '🔒', name: 'Locked' },
-  21: { icon: '🤥', name: 'Liar' },
-  26: { icon: '💨', name: 'Mine Shift' },
-  31: { icon: '🧱', name: 'Walls' },
-  36: { icon: '🌀', name: 'Wormholes' },
-  41: { icon: '🪞', name: 'Mirror' },
+  21: { icon: '🔒', name: 'Locked' },
+  31: { icon: '🤥', name: 'Liar' },
+  51: { icon: '🧱', name: 'Walls' },
+  61: { icon: '🌀', name: 'Wormholes' },
+  71: { icon: '🪞', name: 'Mirror' },
 };
 
 function showCheckpointSelector() {
@@ -1032,8 +1031,9 @@ function showCheckpointSelector() {
       btn.addEventListener('click', () => {
         hideModal('checkpoint-modal');
         hideTitleScreen();
-        state.currentLevel = cp;
         state.gameMode = 'normal';
+        updateModeUI('normal');
+        state.currentLevel = cp;
         newGame();
       });
     }

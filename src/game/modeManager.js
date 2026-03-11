@@ -28,7 +28,7 @@ export function updateTimedDiffVisibility() {
   }
 }
 
-function updateModeUI(mode) {
+export function updateModeUI(mode) {
   // Quick Play size tabs + timer toggle
   if (timedSizeTabs) {
     timedSizeTabs.classList.toggle('hidden', mode !== 'timed');

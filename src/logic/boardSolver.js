@@ -421,7 +421,7 @@ export function chordReveal(board, row, col) {
       const nc = col + dc;
       if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
         const neighbor = board[nr][nc];
-        if (!neighbor.isRevealed && !neighbor.isFlagged) {
+        if (!neighbor.isRevealed && !neighbor.isFlagged && !neighbor.isLocked) {
           if (neighbor.isMine) {
             hitMine = true;
             neighbor.isRevealed = true;
