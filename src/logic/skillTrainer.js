@@ -30,9 +30,11 @@ function buildPuzzle(rows, cols, mines, revealed, flagged, moves, hint) {
     const row = [];
     for (let c = 0; c < cols; c++) {
       const k = r * 100 + c;
-      if (fs.has(k)) row.push({ state: 'flagged' });
-      else if (rs.has(k)) row.push({ state: 'revealed', value: adj(r, c) });
-      else row.push({ state: 'unrevealed' });
+      const isMine = ms.has(k);
+      const value = isMine ? -1 : adj(r, c);
+      if (fs.has(k)) row.push({ state: 'flagged', isMine, value });
+      else if (rs.has(k)) row.push({ state: 'revealed', isMine, value });
+      else row.push({ state: 'unrevealed', isMine, value });
     }
     board.push(row);
   }

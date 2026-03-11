@@ -69,6 +69,7 @@ export function showSkillTrainer() {
   currentPuzzleIndex = 0;
   mistakeCount = 0;
   completedMoves = new Set();
+  userFlags = new Set();
   puzzleTransitioning = false;
   renderCategoryPicker();
 }
@@ -230,6 +231,7 @@ function renderCategoryLessons(category) {
       currentPuzzleIndex = 0;
       mistakeCount = 0;
       completedMoves = new Set();
+      userFlags = new Set();
       renderLesson(lesson.id);
     });
 
@@ -485,127 +487,191 @@ function applyCellAppearance(cellEl, cellData) {
 
 // ── Puzzle Click Handling ─────────────────────────────
 
+// Track user-placed flags (not in the original puzzle) so chords work after flagging
+let userFlags = new Set();
+
+function countAdjacentFlags(row, col, puzzle) {
+  const board = puzzle.board;
+  const rows = board.length;
+  const cols = board[0].length;
+  let count = 0;
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      if (!dr && !dc) continue;
+      const nr = row + dr, nc = col + dc;
+      if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+      const neighbor = board[nr][nc];
+      const nState = typeof neighbor === 'object' ? neighbor.state : neighbor;
+      if (nState === 'flagged') count++;
+    }
+  }
+  return count;
+}
+
 function handlePuzzleClick(row, col, puzzle, correctMoves, isRightClick = false) {
   const moveKey = `${row},${col}`;
 
   // Block clicks during puzzle transition
   if (puzzleTransitioning) return;
 
-  // Skip already-completed moves
+  const cellData = puzzle.board[row] && puzzle.board[row][col];
+  if (!cellData) return;
+  const cellState = typeof cellData === 'object' ? cellData.state : cellData;
+  const cellValue = typeof cellData === 'object' ? cellData.value : undefined;
+  const isMine = typeof cellData === 'object' ? cellData.isMine : false;
+
+  // Ignore clicks on already-flagged cells
+  if (cellState === 'flagged') return;
+
+  // Ignore clicks on already-completed moves
   if (completedMoves.has(moveKey)) return;
 
-  // Find if this cell is one of the correct moves
-  const matchingMove = correctMoves.find(
-    (m) => m.row === row && m.col === col
-  );
-
-  if (matchingMove) {
-    // Check if the action type matches (flag vs reveal)
-    const wantsFlag = matchingMove.action === 'flag';
-    const playerFlags = isRightClick;
-
-    // If the move requires a specific action, validate it
-    if (matchingMove.action && wantsFlag !== playerFlags) {
-      showFeedback('Wrong action! Try ' + (wantsFlag ? 'flagging' : 'revealing') + ' this cell.', false);
-      mistakeCount++;
-      return;
-    }
-
-    // Correct move
-    completedMoves.add(moveKey);
-
-    // Update the cell visually
-    const container = getContainer();
-    const boardEl = container ? container.querySelector('.skill-puzzle-board') : null;
-    if (boardEl) {
-      const board = puzzle.board;
-      const cols = board[0].length;
-      const cellEl = boardEl.children[row * cols + col];
-      if (cellEl) {
-        if (wantsFlag || matchingMove.action === 'flag') {
-          cellEl.className = 'skill-cell flagged';
-          cellEl.textContent = '\uD83D\uDEA9';
-          playFlag();
-        } else {
-          cellEl.className = 'skill-cell revealed';
-          const revealValue = matchingMove.value != null
-            ? matchingMove.value
-            : (typeof puzzle.board[row][col] === 'object'
-              ? puzzle.board[row][col].revealValue
-              : 0);
-          if (revealValue != null && revealValue > 0) {
-            cellEl.textContent = revealValue;
-            cellEl.classList.add(`num-${revealValue}`);
-            const color = NUMBER_COLORS[revealValue];
-            if (color) {
-              cellEl.style.color = color;
-            }
-          }
-          playReveal();
-        }
-      }
-    }
-
-    // Show progress for multi-move puzzles
-    if (correctMoves.length > 1) {
-      showFeedback('Correct! (' + completedMoves.size + ' of ' + correctMoves.length + ')', true);
-    } else {
-      showFeedback('Correct!', true);
-    }
-
-    // Check if all correct moves are done
-    if (completedMoves.size >= correctMoves.length) {
-      clearFeedbackTimeout();
-
-      const lesson = getLesson(currentLessonId);
-      const puzzleCount = lesson && lesson.puzzles ? lesson.puzzles.length : 0;
-
-      // Mark this puzzle as completed
-      markPuzzleCompleted(currentLessonId, currentPuzzleIndex);
-
-      if (currentPuzzleIndex + 1 < puzzleCount) {
-        // Move to next puzzle after a short delay
-        puzzleTransitioning = true;
-        setTimeout(() => {
-          puzzleTransitioning = false;
-          currentPuzzleIndex++;
-          completedMoves = new Set();
-          renderLesson(currentLessonId);
-        }, 800);
-      } else {
-        // All puzzles complete — show lesson complete screen
-        puzzleTransitioning = true;
-        setTimeout(() => {
-          puzzleTransitioning = false;
-          renderLessonComplete(currentLessonId, mistakeCount);
-        }, 800);
-      }
-    }
-  } else {
-    // Check if this is a chord attempt on a revealed number cell
-    const cellData = puzzle.board[row] && puzzle.board[row][col];
-    const cellState = typeof cellData === 'object' ? cellData.state : cellData;
-    const cellValue = typeof cellData === 'object' ? cellData.value : undefined;
-
-    if (cellState === 'revealed' && cellValue > 0) {
-      // Find remaining reveal moves that are neighbors of this cell
+  // ── Chord attempt on a revealed number cell ──
+  if (cellState === 'revealed' && cellValue > 0 && !isRightClick) {
+    const adjFlags = countAdjacentFlags(row, col, puzzle);
+    if (adjFlags >= cellValue) {
+      // Number is satisfied — chord-reveal safe neighbors
       const neighborMoves = correctMoves.filter(m =>
         !completedMoves.has(m.row + ',' + m.col) &&
         m.action === 'reveal' &&
         Math.abs(m.row - row) <= 1 && Math.abs(m.col - col) <= 1
       );
       if (neighborMoves.length > 0) {
-        // Execute all neighbor reveal moves as a chord
         for (const move of neighborMoves) {
           handlePuzzleClick(move.row, move.col, puzzle, correctMoves, false);
         }
         return;
       }
     }
+    // Not satisfied or nothing to chord — silent no-op
+    return;
+  }
 
-    // Wrong cell
-    showFeedback('Try again', false);
+  // ── Revealed cell clicked (no chord possible) — ignore silently ──
+  if (cellState === 'revealed') return;
+
+  // ── Flag attempt on an unrevealed cell ──
+  if (isRightClick) {
+    // Check if this is a required flag move
+    const matchingFlagMove = correctMoves.find(m => m.row === row && m.col === col && m.action === 'flag');
+    if (matchingFlagMove) {
+      applyCorrectMove(row, col, puzzle, correctMoves, true);
+      return;
+    }
+    // Not a required move, but flagging a mine is always valid
+    if (isMine) {
+      // Place a bonus flag — visually update but don't count toward completion
+      cellData.state = 'flagged';
+      userFlags.add(moveKey);
+      const container = getContainer();
+      const boardEl = container ? container.querySelector('.skill-puzzle-board') : null;
+      if (boardEl) {
+        const cols = puzzle.board[0].length;
+        const cellEl = boardEl.children[row * cols + col];
+        if (cellEl) {
+          cellEl.className = 'skill-cell flagged';
+          cellEl.textContent = '\uD83D\uDEA9';
+        }
+      }
+      playFlag();
+      return;
+    }
+    // Flagging a non-mine cell is a mistake
+    showFeedback('Not a mine!', false);
     mistakeCount++;
+    return;
+  }
+
+  // ── Reveal attempt on an unrevealed cell ──
+  // Check if it's a correct move
+  const matchingMove = correctMoves.find(m => m.row === row && m.col === col);
+  if (matchingMove) {
+    if (matchingMove.action === 'flag') {
+      // This cell needs to be flagged, not revealed
+      showFeedback('Try flagging this cell instead.', false);
+      mistakeCount++;
+      return;
+    }
+    applyCorrectMove(row, col, puzzle, correctMoves, false);
+    return;
+  }
+
+  // Clicking a mine (not flagging) — that's a mistake
+  if (isMine) {
+    showFeedback("That's a mine! Try flagging it or find a safe cell.", false);
+    mistakeCount++;
+    return;
+  }
+
+  // Wrong cell
+  showFeedback('Try again', false);
+  mistakeCount++;
+}
+
+function applyCorrectMove(row, col, puzzle, correctMoves, isFlag) {
+  const moveKey = `${row},${col}`;
+  completedMoves.add(moveKey);
+
+  const container = getContainer();
+  const boardEl = container ? container.querySelector('.skill-puzzle-board') : null;
+  if (boardEl) {
+    const board = puzzle.board;
+    const cols = board[0].length;
+    const cellEl = boardEl.children[row * cols + col];
+    if (cellEl) {
+      if (isFlag) {
+        cellEl.className = 'skill-cell flagged';
+        cellEl.textContent = '\uD83D\uDEA9';
+        puzzle.board[row][col].state = 'flagged';
+        playFlag();
+      } else {
+        cellEl.className = 'skill-cell revealed';
+        const cellData = puzzle.board[row][col];
+        const revealValue = typeof cellData === 'object' ? cellData.value : 0;
+        if (revealValue != null && revealValue > 0) {
+          cellEl.textContent = revealValue;
+          cellEl.classList.add(`num-${revealValue}`);
+          const color = NUMBER_COLORS[revealValue];
+          if (color) cellEl.style.color = color;
+        }
+        puzzle.board[row][col].state = 'revealed';
+        playReveal();
+      }
+    }
+  }
+
+  // Show progress for multi-move puzzles
+  if (correctMoves.length > 1) {
+    showFeedback('Correct! (' + completedMoves.size + ' of ' + correctMoves.length + ')', true);
+  } else {
+    showFeedback('Correct!', true);
+  }
+
+  // Check if all correct moves are done
+  if (completedMoves.size >= correctMoves.length) {
+    clearFeedbackTimeout();
+
+    const lesson = getLesson(currentLessonId);
+    const puzzleCount = lesson && lesson.puzzles ? lesson.puzzles.length : 0;
+
+    markPuzzleCompleted(currentLessonId, currentPuzzleIndex);
+
+    if (currentPuzzleIndex + 1 < puzzleCount) {
+      puzzleTransitioning = true;
+      setTimeout(() => {
+        puzzleTransitioning = false;
+        currentPuzzleIndex++;
+        completedMoves = new Set();
+        userFlags = new Set();
+        renderLesson(currentLessonId);
+      }, 800);
+    } else {
+      puzzleTransitioning = true;
+      setTimeout(() => {
+        puzzleTransitioning = false;
+        renderLessonComplete(currentLessonId, mistakeCount);
+      }, 800);
+    }
   }
 }
 
