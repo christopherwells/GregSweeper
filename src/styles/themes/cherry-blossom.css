@@ -55,22 +55,28 @@
   overflow: hidden;
 }
 
+/* A single petal drifts down every ~18s — visible for ~5s, then a long pause */
 [data-theme="cherry-blossom"] #board::after {
-  content: '\1F338';
+  content: '🌸';
   position: absolute;
-  top: -20px;
-  right: -10px;
-  font-size: 16px;
-  opacity: 0.4;
-  animation: petalDrift 6s ease-in-out infinite;
+  top: -24px;
+  left: 15%;
+  font-size: 18px;
+  opacity: 0;
+  animation: petalDrift 18s ease-in-out infinite;
   pointer-events: none;
   z-index: 0;
 }
 
 @keyframes petalDrift {
-  0% { transform: translate(0, 0) rotate(0deg); opacity: 0; }
-  10% { opacity: 0.4; }
-  50% { transform: translate(-40px, 60px) rotate(180deg); opacity: 0.3; }
-  90% { opacity: 0.1; }
-  100% { transform: translate(-80px, 120px) rotate(360deg); opacity: 0; }
+  /* Invisible for the first 70% (~12.5s pause) */
+  0%, 70% { transform: translate(0, 0) rotate(0deg); opacity: 0; }
+  /* Fade in and begin falling */
+  75% { transform: translate(10px, 15%) rotate(30deg); opacity: 0.5; }
+  /* Drift diagonally with a gentle sway */
+  85% { transform: translate(35px, 55%) rotate(160deg); opacity: 0.4; }
+  /* Continue falling, start fading */
+  93% { transform: translate(20px, 85%) rotate(280deg); opacity: 0.15; }
+  /* Gone */
+  100% { transform: translate(50px, 110%) rotate(360deg); opacity: 0; }
 }
