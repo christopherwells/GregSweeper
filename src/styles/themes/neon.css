@@ -1,6 +1,6 @@
 /* Neon theme — electric arcade vibes with glowing edges */
 [data-theme="neon"] {
-  --font-family: 'Press Start 2P', monospace;
+  --font-family: 'Courier New', 'Consolas', monospace;
   --font-display: 'Press Start 2P', monospace;
   --border-radius: 2px;
   --cell-size: 38px;
@@ -103,25 +103,15 @@
   54% { opacity: 1; text-shadow: 0 0 16px rgba(0, 255, 136, 0.5), 0 0 32px rgba(0, 255, 136, 0.2); }
 }
 
-/* Press Start 2P is wider than normal fonts — only shrink elements that wrap */
+/* Press Start 2P is only used for --font-display (headings) — scale those down */
 [data-theme="neon"] .title-screen-logo {
   font-size: clamp(18px, 5vw, 28px);
   letter-spacing: 0;
   word-spacing: -2px;
 }
 
-[data-theme="neon"] .title-screen-subtitle {
-  font-size: 9px;
-  letter-spacing: 2px;
-}
-
 [data-theme="neon"] .mode-card-name {
-  font-size: 10px;
-}
-
-[data-theme="neon"] .mode-card-progress,
-[data-theme="neon"] .mode-card-desc {
-  font-size: 8px;
+  font-size: 11px;
 }
 
 [data-theme="neon"] .modal-header h2 {
