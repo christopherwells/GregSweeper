@@ -979,6 +979,8 @@ const GIMMICK_LABELS = {
 function showCheckpointSelector() {
   const stats = loadStats();
   const maxLevel = stats.modeStats?.challenge?.maxLevelReached || 1;
+  // maxLevelReached is the level you WON — the next level you'd play is maxLevel + 1
+  const nextPlayable = Math.min(maxLevel + 1, MAX_LEVEL);
   const savedGame = loadGameState('normal');
   const hasSavedGame = !!(savedGame && savedGame.board && savedGame.gameMode);
 
@@ -1004,7 +1006,7 @@ function showCheckpointSelector() {
 
   // Checkpoint list
   listEl.innerHTML = '';
-  const highestCheckpoint = getCheckpointForLevel(maxLevel);
+  const highestCheckpoint = getCheckpointForLevel(nextPlayable);
 
   for (let cp = 1; cp <= MAX_LEVEL; cp += CHECKPOINT_INTERVAL) {
     const unlocked = cp <= highestCheckpoint || cp === 1;
