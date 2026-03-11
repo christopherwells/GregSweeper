@@ -1370,6 +1370,7 @@ body {
 }
 
 .clear-cache-btn {
+  width: 100%;
   padding: 10px 20px;
   border: 2px solid var(--color-border, #555);
   background: transparent;
@@ -1383,9 +1384,16 @@ body {
 .clear-cache-btn:hover {
   background: var(--color-border, #555);
   color: #fff;
+  transform: translateY(-1px);
+}
+.clear-cache-btn:active {
+  background: var(--color-border, #555);
+  color: #fff;
 }
 
 .reset-profile-btn {
+  width: 100%;
+  margin-top: 16px;
   padding: 10px 20px;
   border: 2px solid #d32f2f;
   background: transparent;
@@ -1402,6 +1410,10 @@ body {
   color: #fff;
   transform: translateY(-1px);
   box-shadow: 0 2px 8px rgba(211, 47, 47, 0.3);
+}
+.reset-profile-btn:active {
+  background: #d32f2f;
+  color: #fff;
 }
 
 .reset-hint {
