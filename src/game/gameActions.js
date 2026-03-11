@@ -531,9 +531,14 @@ export function handleChordReveal(row, col) {
 
   if (result.hitMine) {
     const mineCell = result.revealed.find(c => c.isMine);
+    // Undo the reveal that chordReveal applied so lifeline/daily can handle it
+    mineCell.isRevealed = false;
     if (state.gameMode === 'daily') {
       handleDailyBombHit(mineCell.row, mineCell.col);
+    } else if (tryLifeline(mineCell.row, mineCell.col)) {
+      // Lifeline saved — continue playing
     } else {
+      mineCell.isRevealed = true;
       handleLoss(mineCell.row, mineCell.col);
     }
   } else if (checkWin(state.board)) {
