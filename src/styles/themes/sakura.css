@@ -47,52 +47,57 @@
   --shadow-board: 0 4px 20px rgba(8, 6, 14, 0.5);
 }
 
-/* Soft pink ambient glow — like distant lantern light */
+/* Lantern glow via animated box-shadow, frees pseudo-elements for petals */
 [data-theme="sakura"] #board {
   position: relative;
   overflow: hidden;
-}
-
-[data-theme="sakura"] #board::before {
-  content: '';
-  position: absolute;
-  inset: -20%;
-  background: radial-gradient(
-    ellipse 60% 40% at 50% 80%,
-    rgba(232, 112, 144, 0.06) 0%,
-    rgba(168, 80, 130, 0.03) 40%,
-    transparent 70%
-  );
   animation: lanternGlow 6s ease-in-out infinite alternate;
-  pointer-events: none;
-  z-index: 0;
-  filter: blur(12px);
 }
 
-/* Falling petal — gentler and slower than cherry blossom */
-[data-theme="sakura"] #board::after {
+@keyframes lanternGlow {
+  0% { box-shadow: 0 4px 20px rgba(8, 6, 14, 0.5), inset 0 0 60px rgba(232, 112, 144, 0.03); }
+  100% { box-shadow: 0 4px 30px rgba(8, 6, 14, 0.4), inset 0 0 80px rgba(232, 112, 144, 0.06); }
+}
+
+/* Two petals with staggered timing — always one visible */
+[data-theme="sakura"] #board::before {
   content: '🌸';
   position: absolute;
   top: 0;
-  right: 25%;
+  left: 20%;
   font-size: 14px;
   opacity: 0;
-  animation: sakuraPetalNight 22s ease-in-out infinite;
+  animation: sakuraPetalA 9s ease-in-out infinite;
   pointer-events: none;
   z-index: 1;
 }
 
-@keyframes lanternGlow {
-  0% { opacity: 0.4; }
-  100% { opacity: 0.8; }
+[data-theme="sakura"] #board::after {
+  content: '🌸';
+  position: absolute;
+  top: 0;
+  right: 20%;
+  font-size: 12px;
+  opacity: 0;
+  animation: sakuraPetalB 11s ease-in-out 5s infinite;
+  pointer-events: none;
+  z-index: 1;
 }
 
-@keyframes sakuraPetalNight {
-  0%, 75% { transform: translate(0, -20px) rotate(0deg); opacity: 0; }
-  80% { transform: translate(-10px, 60px) rotate(30deg); opacity: 0.45; }
-  88% { transform: translate(15px, 200px) rotate(140deg); opacity: 0.35; }
-  95% { transform: translate(-5px, 380px) rotate(260deg); opacity: 0.12; }
-  100% { transform: translate(10px, 480px) rotate(340deg); opacity: 0; }
+@keyframes sakuraPetalA {
+  0% { transform: translate(0, -20px) rotate(0deg); opacity: 0; }
+  8% { transform: translate(-6px, 30px) rotate(20deg); opacity: 0.4; }
+  40% { transform: translate(20px, 220px) rotate(130deg); opacity: 0.3; }
+  70% { transform: translate(5px, 400px) rotate(250deg); opacity: 0.1; }
+  85%, 100% { transform: translate(15px, 500px) rotate(330deg); opacity: 0; }
+}
+
+@keyframes sakuraPetalB {
+  0% { transform: translate(0, -20px) rotate(0deg); opacity: 0; }
+  7% { transform: translate(8px, 25px) rotate(-18deg); opacity: 0.35; }
+  35% { transform: translate(-15px, 190px) rotate(-110deg); opacity: 0.25; }
+  65% { transform: translate(-5px, 370px) rotate(-230deg); opacity: 0.08; }
+  80%, 100% { transform: translate(-12px, 480px) rotate(-320deg); opacity: 0; }
 }
 
 /* Title gets a warm pink glow like lanterns */
