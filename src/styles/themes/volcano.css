@@ -70,5 +70,57 @@
 }
 
 [data-theme="volcano"] #board {
+  position: relative;
+  overflow: hidden;
   animation: emberGlow 3s ease-in-out infinite;
+}
+
+/* Rising heat shimmer / lava cracks at bottom of board */
+[data-theme="volcano"] #board::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 40%;
+  background: linear-gradient(
+    0deg,
+    rgba(255, 80, 20, 0.08) 0%,
+    rgba(255, 140, 40, 0.04) 40%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 0;
+  animation: heatShimmer 4s ease-in-out infinite alternate;
+}
+
+/* Floating ember particle */
+[data-theme="volcano"] #board::after {
+  content: '';
+  position: absolute;
+  bottom: 10px;
+  left: 60%;
+  width: 4px;
+  height: 4px;
+  background: #ff6622;
+  border-radius: 50%;
+  box-shadow: 0 0 6px 2px rgba(255, 102, 34, 0.6);
+  opacity: 0;
+  animation: emberRise 14s ease-out infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+@keyframes heatShimmer {
+  0% { opacity: 0.6; transform: scaleY(1); }
+  50% { opacity: 1; transform: scaleY(1.05); }
+  100% { opacity: 0.7; transform: scaleY(0.98); }
+}
+
+@keyframes emberRise {
+  0%, 65% { transform: translate(0, 0); opacity: 0; }
+  70% { opacity: 0.8; }
+  80% { transform: translate(-15px, -120px); opacity: 0.6; }
+  90% { transform: translate(-8px, -280px); opacity: 0.3; }
+  100% { transform: translate(-20px, -400px); opacity: 0; }
 }
