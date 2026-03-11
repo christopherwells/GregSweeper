@@ -128,7 +128,7 @@ const LESSONS = [
     explanation: 'When a number has all its mines flagged, every other hidden neighbor is safe. In the real game, clicking that number auto-reveals them all — this is called "chording"!',
     puzzles: [
       // 2×3: simple chord from a satisfied 1
-      buildPuzzle(2, 3, [[0,0]], allExcept(2,3,[[0,0],[0,2]]), [[0,0]], [[0,2,'reveal']], 'The 1's mine is flagged. Click the 1 to chord — it reveals all safe neighbors!'),
+      buildPuzzle(2, 3, [[0,0]], allExcept(2,3,[[0,0],[0,2]]), [[0,0]], [[0,2,'reveal']], 'The mine is flagged. Click the 1 to chord — it reveals all safe neighbors!'),
       // 3×3: chord a satisfied 2
       buildPuzzle(3, 3, [[0,1],[2,1]], allExcept(3,3,[[0,1],[0,2],[1,2],[2,1]]), [[0,1],[2,1]], [[0,2,'reveal'],[1,2,'reveal']], 'The 2 has both mines flagged. All its hidden neighbors are safe!'),
       // 2×4: chord two satisfied 1s
