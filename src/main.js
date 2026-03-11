@@ -21,7 +21,7 @@ import { showToast, showLevelUpToast, showCheckpointToast } from './ui/toastMana
 import { showCelebration, haptic } from './ui/effectsRenderer.js?v=1.0';
 import { THEME_UNLOCKS, getUnlockedThemes, loadThemeCSS } from './ui/themeManager.js?v=1.0.4';
 import { applyThemeEffects, clearThemeEffects } from './ui/themeEffects.js?v=1.0.3';
-import { newGame, revealCell, toggleFlag, handleChordReveal } from './game/gameActions.js?v=1.0';
+import { newGame, revealCell, toggleFlag, handleChordReveal } from './game/gameActions.js?v=1.0.1';
 import './game/winLossHandler.js?v=1.0'; // side-effect: registers handleWin with powerUpActions
 import { useRevealSafe, useShield, activateScan, activateXRay, activateMagnet } from './game/powerUpActions.js?v=1.0';
 import { switchMode, isChaosUnlocked, updateModeUI } from './game/modeManager.js?v=1.0';

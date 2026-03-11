@@ -205,7 +205,6 @@ export function newGame() {
 
   // Reset dirty cells tracking
   state.dirtyCells = new Set();
-  state.flagMode = false;
 
   hideAllModals();
   adjustCellSize();
