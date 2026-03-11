@@ -7,7 +7,7 @@
 //   B. Pairwise subset/superset analysis
 //   C. Advanced solver (Gauss elimination + tank/partition enumeration)
 
-import { solveConstraints } from './constraintSolver.js?v=0.9.5';
+import { solveConstraints } from './constraintSolver.js?v=1.0';
 
 /**
  * Check if a Minesweeper board is solvable without guessing.

@@ -1,4 +1,4 @@
-import { safeGet, safeSet, safeRemove, safeGetJSON, safeSetJSON } from './storageAdapter.js?v=0.9.5';
+import { safeGet, safeSet, safeRemove, safeGetJSON, safeSetJSON } from './storageAdapter.js?v=1.0';
 
 const STATS_KEY = 'minesweeper_stats';
 const LEADERBOARD_KEY = 'minesweeper_daily_leaderboard';
@@ -51,6 +51,7 @@ function createDefaultModeStats() {
     timed: createModeStats(),
     skillTrainer: createModeStats(),
     daily: { ...createModeStats(), dailyStreak: 0, bestDailyStreak: 0, dailiesCompleted: 0, bombHits: 0, lastDailyCompletedDate: null },
+    chaos: { ...createModeStats(), bestRun: 0, totalRuns: 0 },
   };
 }
 
@@ -109,33 +110,38 @@ export function saveGameResult(won, time, level, { isDaily = false, usedPowerUps
   const modeKey = getModeKey(gameMode);
   const modeStats = stats.modeStats[modeKey];
 
-  // Update global stats
+  // Update global stats (chaos mode is tracked per-mode only — skip global streak/bestTimes/purist)
+  const isChaos = modeKey === 'chaos';
   stats.totalGames++;
   if (won) {
     stats.wins++;
-    stats.currentStreak++;
-    if (stats.currentStreak > stats.bestStreak) {
-      stats.bestStreak = stats.currentStreak;
-    }
-    const key = `level${level}`;
-    if (!stats.bestTimes[key] || time < stats.bestTimes[key]) {
-      stats.bestTimes[key] = time;
-    }
-    if (level > stats.maxLevelReached) {
-      stats.maxLevelReached = level;
+    if (!isChaos) {
+      stats.currentStreak++;
+      if (stats.currentStreak > stats.bestStreak) {
+        stats.bestStreak = stats.currentStreak;
+      }
+      const key = `level${level}`;
+      if (!stats.bestTimes[key] || time < stats.bestTimes[key]) {
+        stats.bestTimes[key] = time;
+      }
+      if (level > stats.maxLevelReached) {
+        stats.maxLevelReached = level;
+      }
+      if (!usedPowerUps) {
+        stats.puristWins++;
+      }
+      if (hadGimmicks) {
+        stats.gimmickWins = (stats.gimmickWins || 0) + 1;
+      }
     }
     if (isDaily) {
       stats.dailiesCompleted++;
     }
-    if (!usedPowerUps) {
-      stats.puristWins++;
-    }
-    if (hadGimmicks) {
-      stats.gimmickWins = (stats.gimmickWins || 0) + 1;
-    }
   } else {
     stats.losses++;
-    stats.currentStreak = 0;
+    if (!isChaos) {
+      stats.currentStreak = 0;
+    }
   }
 
   stats.recentGames.push({ won, time, level, date: new Date().toISOString(), mode: modeKey });
@@ -162,7 +168,8 @@ export function saveGameResult(won, time, level, { isDaily = false, usedPowerUps
       // Daily-specific: consecutive-day streak validation
       if (modeKey === 'daily') {
         modeStats.dailiesCompleted = (modeStats.dailiesCompleted || 0) + 1;
-        const today = new Date().toISOString().slice(0, 10);
+        const _d = new Date();
+        const today = _d.getFullYear() + '-' + String(_d.getMonth() + 1).padStart(2, '0') + '-' + String(_d.getDate()).padStart(2, '0');
         const lastDate = modeStats.lastDailyCompletedDate;
         if (lastDate) {
           const last = new Date(lastDate + 'T00:00:00');
@@ -329,7 +336,7 @@ export function clearGameState(mode) {
     safeRemove(gameStateKey(mode));
   } else {
     // Clear all mode states (used by reset)
-    for (const m of ['challenge', 'timed', 'daily', 'skillTrainer']) {
+    for (const m of ['challenge', 'timed', 'daily', 'skillTrainer', 'chaos']) {
       safeRemove(gameStateKey(m));
     }
     safeRemove(LEGACY_GAME_STATE_KEY);
@@ -386,7 +393,8 @@ export function getDailyStreak() {
   const daily = stats.modeStats?.daily;
   if (!daily) return { streak: 0, best: 0 };
   // Validate streak is still active (last completed was today or yesterday)
-  const today = new Date().toISOString().slice(0, 10);
+  const _d = new Date();
+  const today = _d.getFullYear() + '-' + String(_d.getMonth() + 1).padStart(2, '0') + '-' + String(_d.getDate()).padStart(2, '0');
   const lastDate = daily.lastDailyCompletedDate;
   if (lastDate) {
     const last = new Date(lastDate + 'T00:00:00');

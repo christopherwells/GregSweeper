@@ -18,7 +18,11 @@ export function hashString(str) {
 
 export function createDailyRNG(dateString) {
   if (!dateString) {
-    dateString = new Date().toISOString().slice(0, 10);
+    // Use local date so daily resets at local midnight
+    const d = new Date();
+    dateString = d.getFullYear() + '-' +
+      String(d.getMonth() + 1).padStart(2, '0') + '-' +
+      String(d.getDate()).padStart(2, '0');
   }
   const seed = hashString(dateString);
   return mulberry32(seed);

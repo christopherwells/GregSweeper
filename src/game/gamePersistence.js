@@ -1,22 +1,23 @@
-import { state } from '../state/gameState.js?v=0.9.5';
+import { state } from '../state/gameState.js?v=1.0';
 import {
   saveGameState, loadGameState,
-} from '../storage/statsStorage.js?v=0.9.5';
+} from '../storage/statsStorage.js?v=1.0';
 import {
   adjustCellSize, renderBoard, updateAllCells, updateZoom,
-} from '../ui/boardRenderer.js?v=0.9.5';
+} from '../ui/boardRenderer.js?v=1.0';
 import {
   updateHeader, updateCheckpointDisplay, updateProgressBar,
   updateCellsRemaining, updateStreakDisplay, updateStreakBorder,
   updateFlagModeBar,
-} from '../ui/headerRenderer.js?v=0.9.5';
-import { updatePowerUpBar } from '../ui/powerUpBar.js?v=0.9.5';
-import { startTimer, updateTimerDisplay } from './timerManager.js?v=0.9.5';
+} from '../ui/headerRenderer.js?v=1.0';
+import { updatePowerUpBar } from '../ui/powerUpBar.js?v=1.0';
+import { startTimer, updateTimerDisplay } from './timerManager.js?v=1.0';
 
 // ── Game State Persistence ────────────────────────────
 
 export function persistGameState() {
-  if (state.status !== 'playing') return;
+  // Persist for 'playing' and 'idle' (pre-first-click) states
+  if (state.status !== 'playing' && state.status !== 'idle') return;
   const gs = {
     board: state.board.map(row => row.map(c => ({
       isMine: c.isMine, isRevealed: c.isRevealed, isFlagged: c.isFlagged,
@@ -28,6 +29,7 @@ export function persistGameState() {
       displayedMines: c.displayedMines != null ? c.displayedMines : undefined,
       wormholePair: c.wormholePair || undefined,
       mirrorZone: c.mirrorZone || undefined,
+      inLiarZone: c.inLiarZone || false,
       row: c.row, col: c.col,
     }))),
     rows: state.rows, cols: state.cols, totalMines: state.totalMines,
@@ -39,6 +41,8 @@ export function persistGameState() {
     magnetMode: state.magnetMode || false,
     activeGimmicks: state.activeGimmicks || [],
     gimmickData: state.gimmickData || {},
+    firstClick: state.firstClick,
+    savedStatus: state.status,
   };
   saveGameState(gs);
 }
@@ -49,7 +53,8 @@ export function tryResumeGame(mode) {
 
   // Stale daily check: if saved daily seed does not match today, discard
   if (gs.gameMode === 'daily' && gs.dailySeed) {
-    const today = new Date().toISOString().slice(0, 10);
+    const d = new Date();
+    const today = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     if (gs.dailySeed !== today) return false;
   }
 
@@ -67,8 +72,8 @@ export function tryResumeGame(mode) {
   state.checkpoint = gs.checkpoint || 1;
   state.dailySeed = gs.dailySeed || null;
   state.dailyBombHits = gs.dailyBombHits || 0;
-  state.status = 'playing';
-  state.firstClick = false;
+  state.status = gs.savedStatus || 'playing';
+  state.firstClick = gs.firstClick ?? false;
   state.hitMine = null;
   state.scanMode = false;
   state.xrayMode = false;

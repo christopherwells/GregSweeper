@@ -1,7 +1,7 @@
-import { state } from '../state/gameState.js?v=0.9.5';
-import { boardEl, zoomControls, zoomLevelDisplay, boardScrollWrapper } from './domHelpers.js?v=0.9.5';
-import { THEME_UNLOCKS } from './themeManager.js?v=0.9.5';
-import { loadEmojiPack, getActiveEmojiPack } from './collectionManager.js?v=0.9.5';
+import { state } from '../state/gameState.js?v=1.0';
+import { boardEl, zoomControls, zoomLevelDisplay, boardScrollWrapper } from './domHelpers.js?v=1.0';
+import { THEME_UNLOCKS } from './themeManager.js?v=1.0';
+import { loadEmojiPack, getActiveEmojiPack } from './collectionManager.js?v=1.0';
 
 // ── Emoji Cache (avoid per-cell localStorage reads) ────
 let _emojiCache = null;
@@ -39,6 +39,10 @@ export function renderBoard() {
   boardEl.style.gridTemplateColumns = `repeat(${state.cols}, var(--cell-size))`;
   boardEl.style.gridTemplateRows = `repeat(${state.rows}, var(--cell-size))`;
 
+  // ARIA grid semantics
+  boardEl.setAttribute('role', 'grid');
+  boardEl.setAttribute('aria-label', 'Minesweeper board');
+
   const shouldAnimate = state._initialized;
   for (let r = 0; r < state.rows; r++) {
     for (let c = 0; c < state.cols; c++) {
@@ -46,6 +50,12 @@ export function renderBoard() {
       cellEl.className = 'cell unrevealed';
       cellEl.dataset.row = r;
       cellEl.dataset.col = c;
+      cellEl.setAttribute('role', 'gridcell');
+      cellEl.setAttribute('aria-rowindex', r + 1);
+      cellEl.setAttribute('aria-colindex', c + 1);
+      cellEl.setAttribute('aria-label', 'Unrevealed cell');
+      // Roving tabindex: focused cell = 0, all others = -1
+      cellEl.tabIndex = (r === state.focusedRow && c === state.focusedCol) ? 0 : -1;
       if (shouldAnimate) {
         const delay = (r + c) * 12; // diagonal wave
         cellEl.classList.add('cascade-in');
@@ -71,6 +81,36 @@ export function getThemeEmoji(type) {
   if (type === 'smileyWin') return themeInfo?.smileyWin || '😎';
   if (type === 'smileyLoss') return themeInfo?.smileyLoss || '😵';
   return '💣';
+}
+
+// ── ARIA Label Generation ────────────────────────────
+function getCellAriaLabel(cell, r, c) {
+  if (cell.isWall) return 'Wall';
+  if (cell.isRevealed) {
+    if (cell.isDefused) return 'Defused mine';
+    if (cell.isMine) {
+      const isHit = state.hitMine && state.hitMine.row === r && state.hitMine.col === c;
+      return isHit ? 'Mine, hit' : 'Mine';
+    }
+    if (cell.adjacentMines > 0) {
+      const displayNum = cell.displayedMines != null ? cell.displayedMines
+        : cell.isMystery ? null : cell.adjacentMines;
+      let label = (cell.isMystery && displayNum == null) ? 'Mystery cell'
+        : displayNum + (displayNum === 1 ? ' mine nearby' : ' mines nearby');
+      if (cell.isLiar) label += ', liar cell';
+      if (cell.isWormhole) label += ', wormhole';
+      if (cell.mirrorZone) label += ', mirrored';
+      return label;
+    }
+    return 'Empty, safe';
+  }
+  if (cell.isFlagged) return 'Flagged';
+  let label = 'Unrevealed';
+  if (cell.isLocked) label += ', locked';
+  if (cell.inLiarZone) label += ', in liar zone';
+  if (cell.isWormhole) label += ', wormhole';
+  if (cell.mirrorZone) label += ', mirror zone';
+  return label;
 }
 
 export function updateCell(r, c) {
@@ -113,7 +153,12 @@ export function updateCell(r, c) {
 
         // Gimmick markers
         if (cell.isLiar) cellEl.classList.add('liar-cell');
-        if (cell.isWormhole) cellEl.classList.add('wormhole-cell');
+        if (cell.isWormhole) {
+          cellEl.classList.add('wormhole-cell');
+          if (cell.wormholePairIndex != null) {
+            cellEl.classList.add('wormhole-pair-' + cell.wormholePairIndex);
+          }
+        }
         if (cell.mirrorZone) cellEl.classList.add('mirror-cell');
 
         // Pop-in animation for numbered cells during cascade reveals
@@ -140,13 +185,22 @@ export function updateCell(r, c) {
     cellEl.textContent = '';
     // Locked cell indicator
     if (cell.isLocked) cellEl.classList.add('locked-cell');
+    // Liar zone indicator on unrevealed cells
+    if (cell.inLiarZone) cellEl.classList.add('liar-zone');
     // Wormhole indicator on unrevealed cells
-    if (cell.isWormhole) cellEl.classList.add('wormhole-unrevealed');
+    if (cell.isWormhole) {
+      cellEl.classList.add('wormhole-unrevealed');
+      if (cell.wormholePairIndex != null) {
+        cellEl.classList.add('wormhole-pair-' + cell.wormholePairIndex);
+      }
+    }
     // Mirror zone indicator on unrevealed cells
     if (cell.mirrorZone) cellEl.classList.add('mirror-unrevealed');
     // Suggested safe move overlay (post-death analysis)
     if (cell.suggestedMove) cellEl.classList.add('suggested-move');
   }
+  // Update ARIA label for screen readers
+  cellEl.setAttribute('aria-label', getCellAriaLabel(cell, r, c));
 }
 
 export function updateAllCells() {
@@ -204,4 +258,60 @@ export function zoomIn() {
 export function zoomOut() {
   state.zoomLevel = Math.max(50, state.zoomLevel - 25);
   updateZoom();
+}
+
+// ── Keyboard Navigation ──────────────────────────────
+
+/** Move focus to a specific cell (roving tabindex pattern) */
+export function setFocusedCell(r, c) {
+  // Clamp to board bounds
+  r = Math.max(0, Math.min(state.rows - 1, r));
+  c = Math.max(0, Math.min(state.cols - 1, c));
+
+  // Skip wall cells — find next non-wall in direction of movement
+  const cell = state.board[r]?.[c];
+  if (cell && cell.isWall) return; // caller should handle wall skipping
+
+  // Remove tabindex from old focused cell
+  const oldIdx = state.focusedRow * state.cols + state.focusedCol;
+  const oldEl = boardEl.children[oldIdx];
+  if (oldEl) oldEl.tabIndex = -1;
+
+  // Set new focus
+  state.focusedRow = r;
+  state.focusedCol = c;
+  const newIdx = r * state.cols + c;
+  const newEl = boardEl.children[newIdx];
+  if (newEl) {
+    newEl.tabIndex = 0;
+    newEl.focus();
+  }
+}
+
+/** Get the DOM element for a specific cell */
+export function getCellElement(r, c) {
+  return boardEl.children[r * state.cols + c] || null;
+}
+
+// ── Screen Reader Announcements ──────────────────────
+
+let _liveRegion = null;
+
+/** Announce a message to screen readers via aria-live region */
+export function announceGame(message) {
+  if (!_liveRegion) {
+    _liveRegion = document.getElementById('sr-announcements');
+    if (!_liveRegion) {
+      _liveRegion = document.createElement('div');
+      _liveRegion.id = 'sr-announcements';
+      _liveRegion.setAttribute('role', 'status');
+      _liveRegion.setAttribute('aria-live', 'polite');
+      _liveRegion.setAttribute('aria-atomic', 'true');
+      _liveRegion.className = 'sr-only';
+      document.body.appendChild(_liveRegion);
+    }
+  }
+  // Clear then set to trigger announcement even for repeated messages
+  _liveRegion.textContent = '';
+  setTimeout(() => { _liveRegion.textContent = message; }, 100);
 }

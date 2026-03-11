@@ -96,33 +96,35 @@ const CHALLENGE_LEVELS = [
   { rows: 14, cols: 14, mines: 68 },  // L80 — 34.7%
 
   // Mythic (L81–100): 14×14, density 34–38%
+  // Smoothed ramp: no plateau longer than 3 levels, steady climb to L100
   { rows: 14, cols: 14, mines: 68 },  // L81 — 34.7%
-  { rows: 14, cols: 14, mines: 69 },  // L82 — 35.2%
+  { rows: 14, cols: 14, mines: 68 },  // L82 — 34.7%
   { rows: 14, cols: 14, mines: 69 },  // L83 — 35.2%
-  { rows: 14, cols: 14, mines: 70 },  // L84 — 35.7%
-  { rows: 14, cols: 14, mines: 70 },  // L85 — 35.7%
-  { rows: 14, cols: 14, mines: 71 },  // L86 — 36.2%
-  { rows: 14, cols: 14, mines: 71 },  // L87 — 36.2%
-  { rows: 14, cols: 14, mines: 72 },  // L88 — 36.7%
-  { rows: 14, cols: 14, mines: 72 },  // L89 — 36.7%
-  { rows: 14, cols: 14, mines: 73 },  // L90 — 37.2%
-  { rows: 14, cols: 14, mines: 73 },  // L91 — 37.2%
-  { rows: 14, cols: 14, mines: 73 },  // L92 — 37.2%
-  { rows: 14, cols: 14, mines: 74 },  // L93 — 37.8%
-  { rows: 14, cols: 14, mines: 74 },  // L94 — 37.8%
-  { rows: 14, cols: 14, mines: 74 },  // L95 — 37.8%
-  { rows: 14, cols: 14, mines: 75 },  // L96 — 38.3%
-  { rows: 14, cols: 14, mines: 75 },  // L97 — 38.3%
+  { rows: 14, cols: 14, mines: 69 },  // L84 — 35.2%
+  { rows: 14, cols: 14, mines: 69 },  // L85 — 35.2%
+  { rows: 14, cols: 14, mines: 70 },  // L86 — 35.7%
+  { rows: 14, cols: 14, mines: 70 },  // L87 — 35.7%
+  { rows: 14, cols: 14, mines: 71 },  // L88 — 36.2%
+  { rows: 14, cols: 14, mines: 71 },  // L89 — 36.2%
+  { rows: 14, cols: 14, mines: 71 },  // L90 — 36.2%
+  { rows: 14, cols: 14, mines: 72 },  // L91 — 36.7%
+  { rows: 14, cols: 14, mines: 72 },  // L92 — 36.7%
+  { rows: 14, cols: 14, mines: 73 },  // L93 — 37.2%
+  { rows: 14, cols: 14, mines: 73 },  // L94 — 37.2%
+  { rows: 14, cols: 14, mines: 73 },  // L95 — 37.2%
+  { rows: 14, cols: 14, mines: 74 },  // L96 — 37.8%
+  { rows: 14, cols: 14, mines: 74 },  // L97 — 37.8%
   { rows: 14, cols: 14, mines: 75 },  // L98 — 38.3%
   { rows: 14, cols: 14, mines: 75 },  // L99 — 38.3%
   { rows: 14, cols: 14, mines: 75 },  // L100 — 38.3%
 ];
 
-// Timed mode — mobile-friendly sizes, count UP (no countdown)
+// Quick Play (internally "timed") — mobile-friendly sizes, count UP (no countdown)
 const TIMED_LEVELS = [
   { rows: 9,  cols: 9,  mines: 10,  label: 'Beginner' },     // 12.3%
   { rows: 11, cols: 11, mines: 25,  label: 'Intermediate' },  // 20.7%
   { rows: 13, cols: 13, mines: 40,  label: 'Expert' },        // 23.7%
+  { rows: 14, cols: 14, mines: 55,  label: 'Extreme' },       // 28.1%
 ];
 
 // Speed ratings — thresholds in seconds per difficulty
@@ -130,6 +132,7 @@ const SPEED_THRESHOLDS = [
   { diamond: 30, gold: 60, silver: 120 },
   { diamond: 60, gold: 120, silver: 240 },
   { diamond: 90, gold: 180, silver: 360 },
+  { diamond: 120, gold: 240, silver: 480 },
 ];
 
 export function getDifficultyForLevel(level) {
@@ -164,3 +167,16 @@ export function getSpeedRating(level, time) {
 
 export const MAX_LEVEL = CHALLENGE_LEVELS.length;
 export const MAX_TIMED_LEVEL = TIMED_LEVELS.length;
+
+// ── Chaos Mode Difficulty ─────────────────────────────
+// Each round gets progressively harder: bigger board, more mines, more modifiers
+export function getChaosDifficulty(round) {
+  const r = Math.max(1, round);
+  const size = Math.min(7 + r, 14);          // 8×8 → caps at 14×14
+  const density = Math.min(0.16 + r * 0.02, 0.36); // 18% → caps at 36%
+  const mines = Math.max(2, Math.round(size * size * density));
+  const modifierCount = Math.min(2 + Math.floor((r - 1) / 2), 7); // 2 → caps at 7
+  return { rows: size, cols: size, mines, modifierCount };
+}
+
+export const CHAOS_UNLOCK_LEVEL = 50;

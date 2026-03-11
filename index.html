@@ -37,7 +37,7 @@
       </div>
       <div class="mode-card" data-mode="timed">
         <div class="mode-card-icon">⏱️</div>
-        <div class="mode-card-name">Timed</div>
+        <div class="mode-card-name">Quick Play</div>
         <div class="mode-card-progress" id="title-timed-progress">Race the clock</div>
       </div>
       <div class="mode-card" data-mode="skillTrainer">
@@ -49,6 +49,11 @@
         <div class="mode-card-icon">📅</div>
         <div class="mode-card-name">Daily</div>
         <div class="mode-card-progress" id="title-daily-progress">Today's challenge</div>
+      </div>
+      <div class="mode-card mode-card-chaos" data-mode="chaos">
+        <div class="mode-card-icon">🌀</div>
+        <div class="mode-card-name">Chaos</div>
+        <div class="mode-card-progress" id="title-chaos-progress">Reach Level 50</div>
       </div>
     </div>
     <div class="title-screen-footer">
@@ -129,9 +134,16 @@
         <button class="timed-tab active" data-level="1">Beginner</button>
         <button class="timed-tab" data-level="2">Intermediate</button>
         <button class="timed-tab" data-level="3">Expert</button>
+        <button class="timed-tab" data-level="4">Extreme</button>
+        <button class="timer-toggle" id="timer-toggle" title="Toggle timer display">⏱️</button>
       </div>
 
       <div id="skill-trainer-container" class="skill-trainer-container hidden"></div>
+
+      <div id="chaos-modifier-bar" class="chaos-modifier-bar hidden">
+        <span class="chaos-round-label" id="chaos-round-label">Round 1</span>
+        <span class="chaos-modifier-icons" id="chaos-modifier-icons"></span>
+      </div>
 
       <div id="board-container">
         <div id="streak-border"></div>
@@ -194,7 +206,7 @@
           <div class="help-section">
             <h3>Modes</h3>
             <p><strong>Challenge</strong> — 100 levels with modifiers &amp; power-ups</p>
-            <p><strong>Timed</strong> — race for speed ratings (💎🥇🥈🥉)</p>
+            <p><strong>Quick Play</strong> — race for speed ratings (💎🥇🥈🥉)</p>
             <p><strong>Skill Trainer</strong> — guided puzzles to learn techniques</p>
             <p><strong>Daily</strong> — same board for everyone, online leaderboard</p>
           </div>
@@ -238,10 +250,16 @@
         <div id="gameover-analysis" class="gameover-analysis hidden">
           <span id="gameover-analysis-text"></span>
         </div>
+        <div id="chaos-run-summary" class="chaos-run-summary hidden">
+          <div class="chaos-summary-stat"><span class="chaos-stat-label">Boards Cleared</span><span id="chaos-boards-cleared" class="chaos-stat-value">0</span></div>
+          <div class="chaos-summary-stat"><span class="chaos-stat-label">Total Time</span><span id="chaos-total-time" class="chaos-stat-value">0s</span></div>
+          <div class="chaos-summary-stat"><span class="chaos-stat-label">Best Run</span><span id="chaos-best-run" class="chaos-stat-value">0</span></div>
+        </div>
         <div class="gameover-actions">
           <button id="gameover-retry" class="action-btn">Play Again</button>
           <button id="gameover-explore" class="action-btn hidden">Explore Board</button>
           <button id="gameover-nextlevel" class="action-btn primary hidden">Next Level</button>
+          <button id="gameover-chaos-next" class="action-btn primary hidden">Next Board →</button>
           <div id="daily-submit-form" class="daily-submit-form hidden">
             <input id="daily-name-input" type="text" placeholder="Your name" maxlength="20" class="daily-name-input" autocomplete="off">
             <button id="gameover-submit-daily" class="action-btn">Submit</button>
@@ -255,7 +273,7 @@
       <button id="post-death-replay" class="action-btn primary">Play Again</button>
     </div>
 
-    <div id="toast-container" class="toast-container"></div>
+    <!-- (toast-container moved outside #app so it renders on the title screen too) -->
 
     <!-- Achievement Toast -->
     <div id="achievement-toast" class="achievement-toast hidden">
@@ -300,6 +318,9 @@
       </div>
     </div>
   </div>
+
+  <!-- Toast container lives outside #app so it shows on the title screen too -->
+  <div id="toast-container" class="toast-container"></div>
 
   <!-- Modals outside #app so they render on top of the title screen -->
 
@@ -384,6 +405,20 @@
     </div>
   </div>
 
+  <!-- Challenge Checkpoint Selector -->
+  <div id="checkpoint-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content checkpoint-modal-content">
+      <div class="modal-header">
+        <h2>⛏️ Challenge</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="checkpoint-resume" class="checkpoint-resume hidden"></div>
+        <div id="checkpoint-list" class="checkpoint-list"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Settings Modal -->
   <div id="settings-modal" class="modal hidden" role="dialog" aria-modal="true">
     <div class="modal-content">
@@ -402,6 +437,14 @@
             <input type="checkbox" id="modifier-popup-toggle" checked>
             Show new modifier popups
           </label>
+        </div>
+        <div class="setting-group">
+          <h3>Accessibility</h3>
+          <label class="toggle-label">
+            <input type="checkbox" id="colorblind-toggle">
+            Colorblind-friendly mode
+          </label>
+          <p class="reset-hint">Uses distinct colors and shape markers for numbers.</p>
         </div>
         <div class="setting-group reset-group">
           <h3>Data</h3>
@@ -486,7 +529,7 @@
     </div>
   </div>
 
-  <script type="module" src="src/main.js?v=0.9.2"></script>
+  <script type="module" src="src/main.js?v=1.0"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js').then(reg => {

@@ -2,7 +2,7 @@
 // 7 gimmicks introduced at checkpoints after L10.
 // Each gimmick has: apply (board setup), render hints, solver adjustments.
 
-import { safeGet, safeSet, safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js?v=0.9.5';
+import { safeGet, safeSet, safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js?v=1.0';
 
 const GIMMICK_DEFS = {
   mystery: {
@@ -24,7 +24,7 @@ const GIMMICK_DEFS = {
     exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-liar">3</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">2</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div></div><div class="ge-caption">The orange-bordered "3" is really a 2 or 4</div>',
   },
   mineShift: {
-    intro: 26, name: 'Mine Shift', icon: '💨',
+    intro: 26, name: 'Mine Shift', icon: '💨', chaosOnly: true,
     desc: 'Every 30\u201345s, unflagged mines may shift to adjacent cells. Flagged mines stay put!',
     longDesc: 'Mines that you haven\'t flagged will periodically move to a neighboring cell. Numbers update to reflect new positions. Flag mines quickly to pin them in place — flagged mines never move.',
     exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell unrevealed"></div><div class="ge-cell unrevealed ge-mine-shift">💣➜</div><div class="ge-cell unrevealed ge-mine-dest"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">0</div></div><div class="ge-caption">Unflagged mines drift — flag them to pin them down!</div>',
@@ -80,7 +80,8 @@ export function getGimmicksForLevel(level, rng = Math.random) {
   if (level <= 10) return [];
 
   const allTypes = Object.keys(GIMMICK_DEFS);
-  const introduced = allTypes.filter(g => level >= GIMMICK_DEFS[g].intro);
+  // Filter out chaosOnly gimmicks (e.g., mineShift) from Challenge mode
+  const introduced = allTypes.filter(g => level >= GIMMICK_DEFS[g].intro && !GIMMICK_DEFS[g].chaosOnly);
   if (introduced.length === 0) return [];
 
   const active = [];
@@ -106,6 +107,14 @@ export function getGimmicksForLevel(level, rng = Math.random) {
   }
 
   return active;
+}
+
+// ── Chaos mode: random gimmick selection (includes all types) ──
+
+export function getChaosGimmicks(count, rng = Math.random) {
+  const allTypes = Object.keys(GIMMICK_DEFS);
+  const shuffled = [...allTypes].sort(() => rng() - 0.5);
+  return shuffled.slice(0, Math.min(count, allTypes.length));
 }
 
 // ── Gimmick intensity (count of affected cells) ────────
@@ -145,6 +154,8 @@ export function applyGimmicks(board, level, activeGimmicks, rng = Math.random) {
         break;
       case 'liar':
         applied.liar = applyLiar(board, rows, cols, intensity, rng);
+        // Compute liar zone: all cells within 1 cell of any liar cell
+        computeLiarZone(board, rows, cols);
         break;
       case 'walls':
         applied.walls = applyWalls(board, rows, cols, intensity, rng);
@@ -229,6 +240,28 @@ function applyLiar(board, rows, cols, count, rng) {
     applied.push({ row: cell.row, col: cell.col, offset });
   }
   return applied;
+}
+
+// ── Liar Zone Computation ────────────────────────────────
+// Marks all cells within 1 cell of any liar cell as inLiarZone.
+// This gives players a visual cue about which area has unreliable numbers.
+
+function computeLiarZone(board, rows, cols) {
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (!board[r][c].isLiar) continue;
+      // Mark this cell and all its neighbors
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          const nr = r + dr;
+          const nc = c + dc;
+          if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+            board[nr][nc].inLiarZone = true;
+          }
+        }
+      }
+    }
+  }
 }
 
 // ── Walls: inert cells that block grid ─────────────────
@@ -316,12 +349,15 @@ function applyWormholes(board, rows, cols, pairCount, rng) {
     }
     if (a && b) {
       const summed = a.adjacentMines + b.adjacentMines;
+      const pairIndex = pairs.length; // 0, 1, 2 for color matching
       a.wormholePair = { row: b.row, col: b.col };
       a.displayedMines = summed;
       a.isWormhole = true;
+      a.wormholePairIndex = pairIndex;
       b.wormholePair = { row: a.row, col: a.col };
       b.displayedMines = summed;
       b.isWormhole = true;
+      b.wormholePairIndex = pairIndex;
       pairs.push({ a: { row: a.row, col: a.col }, b: { row: b.row, col: b.col }, summed });
     }
   }

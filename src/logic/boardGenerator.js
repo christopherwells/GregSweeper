@@ -1,4 +1,4 @@
-import { isBoardSolvable } from './boardSolver.js?v=0.9.5';
+import { isBoardSolvable } from './boardSolver.js?v=1.0';
 
 export function createEmptyBoard(rows, cols) {
   const board = [];
@@ -207,14 +207,16 @@ function swapMines(board, swapCount, excludeRow, excludeCol, rng) {
 }
 
 export function generateBoard(rows, cols, mines, excludeRow, excludeCol, rng, options = {}) {
+  // Default rng to Math.random if not provided
+  if (!rng) rng = Math.random;
   // Scale attempts based on mine density — higher density needs more tries
   const density = mines / (rows * cols);
-  const maxSolveAttempts = density > 0.30 ? 200 : density > 0.25 ? 100 : 50;
+  const maxSolveAttempts = density > 0.35 ? 500 : density > 0.30 ? 300 : density > 0.25 ? 100 : 50;
 
-  // Accept boards with a small number of remaining unknowns.
-  // Higher density boards get more leeway since fully solvable boards
-  // become mathematically rare above ~30% density.
-  const maxAcceptableUnknowns = density > 0.35 ? 6 : density > 0.30 ? 4 : 2;
+  // Accept boards with at most 2 remaining unknowns (max 2 guesses).
+  // Previously gave more leeway to high-density boards, but with increased
+  // solve attempts the solver now has enough budget to find better boards.
+  const maxAcceptableUnknowns = 2;
 
   let bestBoard = null;
   let bestUnknowns = Infinity;

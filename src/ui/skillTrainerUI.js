@@ -10,10 +10,10 @@ import {
   saveSkillProgress,
   markPuzzleCompleted,
   getLessonStars,
-} from '../logic/skillTrainer.js?v=0.9.5';
+} from '../logic/skillTrainer.js?v=1.0';
 
-import { $, $$ } from './domHelpers.js?v=0.9.5';
-import { playReveal, playWin, playFlag } from '../audio/sounds.js?v=0.9.5';
+import { $, $$ } from './domHelpers.js?v=1.0';
+import { playReveal, playWin, playFlag } from '../audio/sounds.js?v=1.0';
 
 // ── Constants ─────────────────────────────────────────
 
@@ -28,7 +28,7 @@ const NUMBER_COLORS = {
   8: '#78909c',
 };
 
-const CATEGORIES = ['Beginner', 'Intermediate', 'Advanced'];
+const CATEGORIES = ['Beginner', 'Intermediate', 'Advanced', 'Modifiers'];
 
 // ── Module State ──────────────────────────────────────
 
@@ -96,7 +96,7 @@ export function getSkillTrainerCompletedCount() {
 
 // ── Category Picker ───────────────────────────────────
 
-const CATEGORY_ICONS = { Beginner: '🟢', Intermediate: '🟡', Advanced: '🔴' };
+const CATEGORY_ICONS = { Beginner: '🟢', Intermediate: '🟡', Advanced: '🔴' , Modifiers: '⚙️' };
 
 function renderCategoryPicker() {
   const container = getContainer();
@@ -442,10 +442,41 @@ function applyCellAppearance(cellEl, cellData) {
       cellEl.textContent = '\uD83D\uDCA3';
       break;
 
+    case 'wall':
+      cellEl.classList.add('wall');
+      cellEl.textContent = '🧱';
+      break;
+
     case 'unrevealed':
     default:
       cellEl.classList.add('unrevealed');
       break;
+  }
+
+  // Modifier indicators (Skill Trainer modifier lessons)
+  if (typeof cellData === 'object') {
+    if (cellData.mystery) {
+      cellEl.textContent = '?';
+      cellEl.classList.add('skill-mystery');
+    }
+    if (cellData.liar) {
+      cellEl.classList.add('skill-liar');
+    }
+    if (cellData.wormhole) {
+      cellEl.classList.add('skill-wormhole');
+      if (cellData.pairIndex != null) {
+        cellEl.classList.add('skill-wormhole-' + cellData.pairIndex);
+      }
+    }
+    if (cellData.mirror) {
+      cellEl.classList.add('skill-mirror');
+    }
+    if (cellData.locked) {
+      cellEl.classList.add('skill-locked');
+      if (cellEl.classList.contains('unrevealed')) {
+        cellEl.textContent = '🔒';
+      }
+    }
   }
 }
 
@@ -509,7 +540,12 @@ function handlePuzzleClick(row, col, puzzle, correctMoves, isRightClick = false)
       }
     }
 
-    showFeedback('Correct!', true);
+    // Show progress for multi-move puzzles
+    if (correctMoves.length > 1) {
+      showFeedback('Correct! (' + completedMoves.size + ' of ' + correctMoves.length + ')', true);
+    } else {
+      showFeedback('Correct!', true);
+    }
 
     // Check if all correct moves are done
     if (completedMoves.size >= correctMoves.length) {

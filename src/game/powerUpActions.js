@@ -1,16 +1,16 @@
-import { state, getRevealedCells } from '../state/gameState.js?v=0.9.5';
-import { $, $$, boardEl, scanToast } from '../ui/domHelpers.js?v=0.9.5';
-import { updateAllCells } from '../ui/boardRenderer.js?v=0.9.5';
-import { showGreenFlash } from '../ui/effectsRenderer.js?v=0.9.5';
-import { showToast } from '../ui/toastManager.js?v=0.9.5';
-import { updateHeader } from '../ui/headerRenderer.js?v=0.9.5';
-import { updatePowerUpBar } from '../ui/powerUpBar.js?v=0.9.5';
-import { findSafeCell, scanRowCol, shieldDefuse, xRayScan, magnetPull } from '../logic/powerUps.js?v=0.9.5';
-import { checkWin } from '../logic/boardSolver.js?v=0.9.5';
-import { saveModePowerUps } from '../storage/statsStorage.js?v=0.9.5';
+import { state, getRevealedCells } from '../state/gameState.js?v=1.0';
+import { $, $$, boardEl, scanToast } from '../ui/domHelpers.js?v=1.0';
+import { updateAllCells } from '../ui/boardRenderer.js?v=1.0';
+import { showGreenFlash } from '../ui/effectsRenderer.js?v=1.0';
+import { showToast } from '../ui/toastManager.js?v=1.0';
+import { updateHeader } from '../ui/headerRenderer.js?v=1.0';
+import { updatePowerUpBar } from '../ui/powerUpBar.js?v=1.0';
+import { findSafeCell, scanRowCol, shieldDefuse, xRayScan, magnetPull } from '../logic/powerUps.js?v=1.0';
+import { checkWin } from '../logic/boardSolver.js?v=1.0';
+import { saveModePowerUps } from '../storage/statsStorage.js?v=1.0';
 import {
   playPowerUp, playShieldBreak, playXRay, playLifelineSave, playMagnet,
-} from '../audio/sounds.js?v=0.9.5';
+} from '../audio/sounds.js?v=1.0';
 
 // Forward declaration — set by winLossHandler to avoid circular import
 let _handleWin = null;

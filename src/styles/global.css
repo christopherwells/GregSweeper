@@ -4,6 +4,19 @@
   padding: 0;
 }
 
+/* Screen reader only — visually hidden but accessible */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 :root {
   --cell-size: 40px;
   --border-radius: 6px;
@@ -30,9 +43,9 @@
   --color-num-3: #c62828;
   --color-num-4: #4527a0;
   --color-num-5: #ad1457;
-  --color-num-6: #00838f;
+  --color-num-6: #007884;
   --color-num-7: #37474f;
-  --color-num-8: #78909c;
+  --color-num-8: #5a6f7a;
 
   --color-header-bg: #d4cabb;
   --color-header-gradient: linear-gradient(180deg, #ddd3c5, #c8bead);
@@ -564,6 +577,14 @@ body {
   box-shadow: none;
 }
 
+/* Keyboard focus indicator */
+.cell:focus-visible {
+  outline: 3px solid #1976d2;
+  outline-offset: -1px;
+  z-index: 3;
+  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.3);
+}
+
 .cell.touch-holding {
   transform: scale(0.92);
   opacity: 0.75;
@@ -930,6 +951,17 @@ body {
   text-shadow: 0 0 4px rgba(255, 200, 50, 0.4);
 }
 
+/* Liar zone — subtle hint showing which area contains liar cells */
+.cell.unrevealed.liar-zone {
+  background: linear-gradient(
+    135deg,
+    var(--color-cell-bg, #c8c0b0) 0%,
+    rgba(230, 126, 34, 0.12) 100%
+  );
+  border-color: rgba(230, 126, 34, 0.35);
+  border-style: dashed;
+}
+
 /* Liar cells — display is off by ±1 */
 .cell.liar-cell {
   border: 2px solid #e67e22 !important;
@@ -952,24 +984,46 @@ body {
   position: relative;
 }
 
-/* Wormhole cells */
+/* Wormhole cells — color-coded pairs */
 .cell.wormhole-cell {
   border: 2px solid #9b59b6 !important;
   box-shadow: inset 0 0 6px rgba(155, 89, 182, 0.3);
 }
+.cell.wormhole-cell.wormhole-pair-0 { border-color: #9b59b6 !important; }
+.cell.wormhole-cell.wormhole-pair-1 { border-color: #e74c3c !important; }
+.cell.wormhole-cell.wormhole-pair-2 { border-color: #f39c12 !important; }
 
 .cell.wormhole-unrevealed {
-  border: 2px dashed rgba(155, 89, 182, 0.4) !important;
+  border: 2px dashed rgba(155, 89, 182, 0.5) !important;
+  animation: wormholePulse 2s ease-in-out infinite;
+}
+.cell.wormhole-unrevealed.wormhole-pair-0 { border-color: rgba(155, 89, 182, 0.5) !important; }
+.cell.wormhole-unrevealed.wormhole-pair-1 { border-color: rgba(231, 76, 60, 0.5) !important; }
+.cell.wormhole-unrevealed.wormhole-pair-2 { border-color: rgba(243, 156, 18, 0.5) !important; }
+
+@keyframes wormholePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }
 
-/* Mirror zone cells */
+/* Mirror zone cells — reflection gradient */
 .cell.mirror-cell {
   border: 2px solid #3498db !important;
   box-shadow: inset 0 0 6px rgba(52, 152, 219, 0.3);
+  background: linear-gradient(
+    to bottom right,
+    rgba(52, 152, 219, 0.08),
+    rgba(52, 152, 219, 0.02)
+  );
 }
 
 .cell.mirror-unrevealed {
-  border: 2px dashed rgba(52, 152, 219, 0.3) !important;
+  border: 2px dashed rgba(52, 152, 219, 0.4) !important;
+  background: linear-gradient(
+    to bottom right,
+    var(--color-cell-bg, #c8c0b0) 0%,
+    rgba(52, 152, 219, 0.1) 100%
+  );
 }
 
 /* Mine shift shimmer */
@@ -2621,6 +2675,167 @@ body {
   to { opacity: 0; transform: translateY(-20px); }
 }
 
+/* ── Checkpoint Selector ────────────────────────────── */
+.checkpoint-modal-content {
+  max-width: 420px;
+}
+
+.checkpoint-resume {
+  margin-bottom: 16px;
+}
+
+.checkpoint-resume-btn {
+  width: 100%;
+  padding: 14px 18px;
+  border: 2px solid var(--color-accent);
+  background: var(--color-accent);
+  color: #fff;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px var(--color-accent-glow);
+}
+.checkpoint-resume-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px var(--color-accent-glow);
+}
+.checkpoint-resume-btn:active { transform: translateY(0); }
+
+.checkpoint-resume-btn .resume-icon { font-size: 20px; }
+.checkpoint-resume-btn .resume-label { flex: 1; text-align: left; }
+.checkpoint-resume-btn .resume-level {
+  font-size: 12px;
+  opacity: 0.85;
+  font-weight: 400;
+}
+
+.checkpoint-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.checkpoint-btn {
+  padding: 12px 10px;
+  border: 2px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  transition: all 0.2s;
+  min-height: 44px;
+}
+.checkpoint-btn:hover:not(.checkpoint-locked) {
+  border-color: var(--color-accent);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.checkpoint-btn:active:not(.checkpoint-locked) { transform: translateY(0); }
+
+.checkpoint-btn .cp-level { font-size: 14px; font-weight: 700; }
+.checkpoint-btn .cp-modifier {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.checkpoint-btn .cp-modifier-icon { font-size: 14px; }
+
+.checkpoint-locked {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.checkpoint-locked .cp-modifier {
+  font-style: italic;
+}
+
+/* ── Chaos Mode UI ────────────────────────────────── */
+.mode-card-chaos.mode-card-locked {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.5);
+}
+.mode-card-chaos.mode-card-locked .mode-card-progress {
+  font-style: italic;
+}
+
+.chaos-modifier-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 6px 12px;
+  margin: 4px auto;
+  background: linear-gradient(90deg, rgba(150,0,255,0.12), rgba(255,0,85,0.12));
+  border-radius: 8px;
+  border: 1px solid rgba(150,0,255,0.2);
+  max-width: fit-content;
+}
+
+.chaos-round-label {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--color-text, #e0d8f0);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.chaos-modifier-icons {
+  display: flex;
+  gap: 4px;
+  font-size: 18px;
+}
+
+.chaos-mod-icon {
+  display: inline-block;
+  transition: transform 0.2s;
+}
+.chaos-mod-icon:hover {
+  transform: scale(1.3);
+}
+
+.chaos-run-summary {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  padding: 10px 0;
+  margin: 8px 0;
+  border-top: 1px solid rgba(150,0,255,0.2);
+  border-bottom: 1px solid rgba(150,0,255,0.2);
+}
+
+.chaos-summary-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.chaos-stat-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.7;
+}
+
+.chaos-stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-accent, #ff0055);
+}
+
 /* ── Modal Exit Animation ───────────────────────────── */
 .modal.modal-closing .modal-content {
   animation: modal-slide-down 0.25s ease-in forwards;
@@ -2905,6 +3120,27 @@ body {
   border-color: var(--color-text-secondary, #666);
 }
 
+/* Timer toggle button */
+.timer-toggle {
+  padding: 8px 12px;
+  min-height: 44px;
+  min-width: 44px;
+  border-radius: 20px;
+  border: 2px solid var(--color-border, #333);
+  background: transparent;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  opacity: 1;
+}
+.timer-toggle.timer-off {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+.timer-toggle:hover {
+  border-color: var(--color-text-secondary, #666);
+}
+
 /* ── Skill Trainer ─────────────────────────────────── */
 
 .skill-trainer-container {
@@ -3111,6 +3347,59 @@ body {
   0% { transform: scale(1); }
   50% { transform: scale(1.15); }
   100% { transform: scale(1); }
+}
+
+/* ── Skill Trainer: Modifier Cell Styles ─────────── */
+.skill-cell.wall {
+  background: #5a4a3a;
+  border: 1px solid #7a6a5a;
+  cursor: default;
+  font-size: 18px;
+}
+.skill-cell.skill-mystery {
+  background: var(--color-cell-revealed, #3a3a5a);
+  border: 1px solid #9b59b6;
+  color: #9b59b6 !important;
+  font-size: 18px;
+  font-style: italic;
+}
+.skill-cell.skill-locked {
+  background: var(--color-cell-hidden, #2a2a4a);
+  border: 1px solid #95a5a6;
+  cursor: not-allowed;
+  font-size: 14px;
+}
+.skill-cell.skill-liar {
+  border: 2px solid #e67e22 !important;
+  box-shadow: 0 0 4px rgba(230, 126, 34, 0.4);
+}
+.skill-cell.skill-wormhole {
+  border: 2px solid #3498db !important;
+  box-shadow: 0 0 4px rgba(52, 152, 219, 0.4);
+  position: relative;
+}
+.skill-cell.skill-wormhole::after {
+  content: '\1F300';
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  font-size: 8px;
+  line-height: 1;
+}
+.skill-cell.skill-wormhole-0 { border-color: #3498db !important; }
+.skill-cell.skill-wormhole-1 { border-color: #e74c3c !important; }
+.skill-cell.skill-mirror {
+  border: 2px solid #1abc9c !important;
+  box-shadow: 0 0 4px rgba(26, 188, 156, 0.3);
+  position: relative;
+}
+.skill-cell.skill-mirror::after {
+  content: '\1FA9E';
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  font-size: 8px;
+  line-height: 1;
 }
 
 .skill-hint-btn {
@@ -3968,4 +4257,222 @@ body {
   background: var(--color-surface, #1a1a2e);
   border-radius: 8px;
   display: inline-block;
+}
+
+/* ── Colorblind Mode ──────────────────────────────────── */
+/* Overrides number colors with a palette safe for deuteranopia/protanopia.
+   Also adds distinct shape markers (::after) so numbers are identifiable
+   by shape alone, not just color. */
+
+[data-colorblind="true"] {
+  --color-num-1: #0072b2;  /* blue (unchanged, safe) */
+  --color-num-2: #009e73;  /* bluish green */
+  --color-num-3: #d55e00;  /* vermillion */
+  --color-num-4: #cc79a7;  /* reddish purple */
+  --color-num-5: #e69f00;  /* orange */
+  --color-num-6: #56b4e9;  /* sky blue */
+  --color-num-7: #333333;  /* dark gray */
+  --color-num-8: #999999;  /* light gray */
+}
+
+/* Shape markers: small symbols in top-right corner of each numbered cell */
+[data-colorblind="true"] .cell.revealed[class*="num-"]::after {
+  position: absolute;
+  top: 1px;
+  right: 2px;
+  font-size: 0.45em;
+  line-height: 1;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+[data-colorblind="true"] .cell.num-1::after { content: "●"; color: var(--color-num-1); }
+[data-colorblind="true"] .cell.num-2::after { content: "■"; color: var(--color-num-2); }
+[data-colorblind="true"] .cell.num-3::after { content: "▲"; color: var(--color-num-3); }
+[data-colorblind="true"] .cell.num-4::after { content: "◆"; color: var(--color-num-4); }
+[data-colorblind="true"] .cell.num-5::after { content: "★"; color: var(--color-num-5); }
+[data-colorblind="true"] .cell.num-6::after { content: "▼"; color: var(--color-num-6); }
+[data-colorblind="true"] .cell.num-7::after { content: "◀"; color: var(--color-num-7); }
+[data-colorblind="true"] .cell.num-8::after { content: "▶"; color: var(--color-num-8); }
+
+/* ── Interactive Tutorial ──────────────────────────────── */
+.tutorial-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: var(--color-bg, #1a1a2e);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: tutorialFadeIn 0.3s ease;
+}
+.tutorial-overlay.tutorial-exit {
+  animation: tutorialFadeOut 0.3s ease forwards;
+}
+@keyframes tutorialFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes tutorialFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.tutorial-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 24px;
+  max-width: 400px;
+  width: 100%;
+}
+
+.tutorial-instruction {
+  text-align: center;
+  padding: 16px 20px;
+  background: var(--color-card-bg, rgba(255,255,255,0.05));
+  border-radius: 12px;
+  border: 1px solid var(--color-border, rgba(255,255,255,0.1));
+  width: 100%;
+}
+.tutorial-instruction h3 {
+  font-size: 18px;
+  margin: 0 0 8px;
+  color: var(--color-text, #e0e0e0);
+}
+.tutorial-instruction p {
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0 0 12px;
+  color: var(--color-text-secondary, #aaa);
+}
+
+.tutorial-board-wrapper {
+  display: flex;
+  justify-content: center;
+}
+
+.tutorial-board {
+  --tutorial-cell-size: 48px;
+  display: grid;
+  gap: 2px;
+  background: var(--color-board-bg, #2a2a4a);
+  border: 2px solid var(--color-border, rgba(255,255,255,0.15));
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.tutorial-cell {
+  width: var(--tutorial-cell-size, 48px);
+  height: var(--tutorial-cell-size, 48px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 700;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: transform 0.15s, background 0.2s;
+  user-select: none;
+  -webkit-user-select: none;
+  position: relative;
+}
+.tutorial-cell:active {
+  transform: scale(0.92);
+}
+
+.tutorial-cell.unrevealed {
+  background: var(--color-cell-unrevealed, #3a3a5c);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+.tutorial-cell.revealed {
+  background: var(--color-cell-revealed, #1e1e38);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.tutorial-cell.revealed.empty {
+  background: var(--color-cell-revealed, #1e1e38);
+}
+.tutorial-cell.flagged {
+  background: var(--color-cell-unrevealed, #3a3a5c);
+  border: 1px solid rgba(255,255,255,0.12);
+  font-size: 22px;
+}
+.tutorial-cell.mine {
+  background: #c62828;
+  font-size: 22px;
+}
+
+/* Number colors */
+.tutorial-cell.num-1 { color: var(--color-num-1, #42a5f5); }
+.tutorial-cell.num-2 { color: var(--color-num-2, #66bb6a); }
+.tutorial-cell.num-3 { color: var(--color-num-3, #ef5350); }
+.tutorial-cell.num-4 { color: var(--color-num-4, #ab47bc); }
+.tutorial-cell.num-5 { color: var(--color-num-5, #ff7043); }
+
+/* Highlighted target cell — pulsing glow */
+.tutorial-cell.tutorial-highlight {
+  box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.7), 0 0 16px rgba(255, 193, 7, 0.4);
+  animation: tutorialPulse 1.2s ease-in-out infinite;
+  z-index: 1;
+}
+@keyframes tutorialPulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.7), 0 0 16px rgba(255, 193, 7, 0.4); }
+  50% { box-shadow: 0 0 0 5px rgba(255, 193, 7, 0.9), 0 0 24px rgba(255, 193, 7, 0.6); }
+}
+
+.tutorial-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.tutorial-skip-btn {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary, #888);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 6px 12px;
+  text-decoration: underline;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+.tutorial-skip-btn:hover {
+  opacity: 1;
+}
+
+.tutorial-progress {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.tutorial-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-text-secondary, #555);
+  opacity: 0.3;
+  transition: all 0.3s;
+}
+.tutorial-dot.active {
+  background: var(--color-accent, #ffc107);
+  opacity: 1;
+  transform: scale(1.3);
+}
+.tutorial-dot.completed {
+  background: var(--color-accent, #ffc107);
+  opacity: 0.6;
+}
+
+/* Responsive: smaller cells on small screens */
+@media (max-width: 360px) {
+  .tutorial-board {
+    --tutorial-cell-size: 40px;
+  }
+  .tutorial-cell {
+    font-size: 17px;
+  }
 }

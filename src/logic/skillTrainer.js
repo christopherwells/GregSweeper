@@ -1,7 +1,7 @@
-import { safeGet, safeSet, safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js?v=0.9.5';
+import { safeGet, safeSet, safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js?v=1.0';
 // ── Skill Trainer Data ────────────────────────────────
-// 15 lessons (5 beginner, 5 intermediate, 5 advanced)
-// with 75 hand-crafted puzzles teaching minesweeper techniques.
+// 21 lessons (5 beginner, 5 intermediate, 5 advanced, 6 modifiers)
+// with hand-crafted puzzles teaching minesweeper techniques.
 
 const SKILL_PROGRESS_KEY = 'minesweeper_skill_progress';
 
@@ -68,87 +68,92 @@ const LESSONS = [
     description: 'Learn what the numbers mean.',
     explanation: 'Each number tells you how many mines are in the 8 cells surrounding it (including diagonals). A 1 means exactly one mine nearby, a 2 means two, and so on.',
     puzzles: [
-      buildPuzzle(3, 3, [[0,2]], allExcept(3,3,[[0,2]]), [], [[0,2,'flag']], 'The 1 touches only one hidden cell — that must be the mine. Flag it!'),
-      buildPuzzle(3, 3, [[2,0]], allExcept(3,3,[[2,0]]), [], [[2,0,'flag']], 'Find the 1 and look at which hidden cell is next to it.'),
-      buildPuzzle(3, 3, [[0,0],[2,2]], allExcept(3,3,[[0,0],[2,2]]), [], [[0,0,'flag'],[2,2,'flag']], 'Each 1 touches only one hidden cell. Flag both hidden cells.'),
-      buildPuzzle(3, 4, [[0,3],[2,0]], allExcept(3,4,[[0,3],[2,0]]), [], [[0,3,'flag'],[2,0,'flag']], 'Edge cells have fewer neighbors. Each 1 only touches one hidden cell.'),
-      buildPuzzle(4, 4, [[0,3],[2,1],[3,0]], allExcept(4,4,[[0,3],[2,1],[3,0]]), [], [[0,3,'flag'],[2,1,'flag'],[3,0,'flag']], 'Start with the most constrained numbers — the ones with fewest hidden neighbors.'),
+      // 2×2: simplest possible — one mine, one flag
+      buildPuzzle(2, 2, [[0,1]], allExcept(2,2,[[0,1]]), [], [[0,1,'flag']], 'The 1 touches only one hidden cell — that must be the mine. Right-click (or long-press) to flag it!'),
+      // 2×2: same concept, different position
+      buildPuzzle(2, 2, [[1,0]], allExcept(2,2,[[1,0]]), [], [[1,0,'flag']], 'Find the 1 next to the hidden cell. Right-click to flag the mine!'),
+      // 3×3: two flags, zero blanks
+      buildPuzzle(3, 3, [[0,1],[2,1]], allExcept(3,3,[[0,1],[2,1]]), [], [[0,1,'flag'],[2,1,'flag']], 'Each 1 touches only one hidden cell. Flag both!'),
+      // 2×4: wider board, two flags, zero blanks
+      buildPuzzle(2, 4, [[0,0],[0,3]], allExcept(2,4,[[0,0],[0,3]]), [], [[0,0,'flag'],[0,3,'flag']], 'Edge cells have fewer neighbors. Each corner 1 only touches one hidden cell.'),
+      // 3×4: three flags, zero blanks
+      buildPuzzle(3, 4, [[0,0],[1,3],[2,0]], allExcept(3,4,[[0,0],[1,3],[2,0]]), [], [[0,0,'flag'],[1,3,'flag'],[2,0,'flag']], 'Start with the most constrained numbers — the ones with fewest hidden neighbors.'),
     ],
   },
   {
-    id: 'first-flags',
-    name: 'Your First Flags',
+    id: 'flag-reveal',
+    name: 'Flag and Reveal',
     category: 'Beginner',
-    description: 'Learn when to flag a cell as a mine.',
-    explanation: 'If a number has the same count of hidden neighbors as its value, all those hidden cells must be mines. Right-click (or long-press on mobile) to place a flag.',
+    description: 'Learn when hidden cells are safe to click.',
+    explanation: 'When a number\'s mines are all flagged, its other hidden neighbors are guaranteed safe. Click them to reveal! This is one of the most important skills in Minesweeper.',
     puzzles: [
-      // 3×3: mine at corner, one distractor nearby
-      buildPuzzle(3, 3, [[0,2]], allExcept(3,3,[[0,0],[0,2]]), [], [[0,2,'flag']], 'The 1 on the right side has only one hidden neighbor — flag it!'),
-      // 3×3: mine at bottom-left
-      buildPuzzle(3, 3, [[2,0]], allExcept(3,3,[[2,0],[2,2]]), [], [[2,0,'flag']], 'The 1 on the left side touches only one hidden cell.'),
-      // 3×3: two mines top row
-      buildPuzzle(3, 3, [[0,0],[0,1]], allExcept(3,3,[[0,0],[0,1]]), [], [[0,0,'flag'],[0,1,'flag']], 'The 2 has exactly 2 hidden neighbors — both must be mines.'),
-      // 3×3: center mine
-      buildPuzzle(3, 3, [[1,1]], allExcept(3,3,[[1,1]]), [], [[1,1,'flag']], 'All the numbers surround one hidden cell. They all agree: it\'s a mine!'),
-      // 3×4: two mines at edges
-      buildPuzzle(3, 4, [[0,0],[0,3]], allExcept(3,4,[[0,0],[0,3]]), [], [[0,0,'flag'],[0,3,'flag']], 'Each 1 on the edges only touches one hidden cell. Flag them both.'),
+      // 2×3: one flag placed, reveal the safe cell
+      buildPuzzle(2, 3, [[0,0],[1,2]], allExcept(2,3,[[0,0],[0,2],[1,2]]), [[0,0]], [[0,2,'reveal']], 'The 1 already has its mine flagged. Its other hidden neighbor must be safe — click it!'),
+      // 2×3: mirrored
+      buildPuzzle(2, 3, [[0,2],[1,0]], allExcept(2,3,[[0,0],[0,2],[1,0]]), [[0,2]], [[0,0,'reveal']], 'The flag accounts for the 1. The other hidden cell can\'t be a mine.'),
+      // 3×3: one flag, reveal two safe cells
+      buildPuzzle(3, 3, [[0,1],[2,1]], allExcept(3,3,[[0,1],[1,2],[2,1],[2,2]]), [[0,1]], [[1,2,'reveal'],[2,2,'reveal']], 'The flag satisfies the nearby numbers. Their other hidden neighbors are safe.'),
+      // 3×3: flag one, then reveal one (chain)
+      buildPuzzle(3, 3, [[0,1],[2,1]], allExcept(3,3,[[0,1],[2,1],[2,2]]), [[0,1]], [[2,1,'flag'],[2,2,'reveal']], 'The 2 already has one flag. It needs one more mine — which hidden cell touches it? Then the other is safe.'),
+      // 3×3: both mines flagged, reveal remaining
+      buildPuzzle(3, 3, [[0,1],[2,1]], allExcept(3,3,[[0,1],[2,0],[2,1],[2,2]]), [[0,1],[2,1]], [[2,0,'reveal'],[2,2,'reveal']], 'Both mines are flagged. Every remaining hidden cell must be safe!'),
     ],
   },
   {
-    id: 'safe-cells',
-    name: 'Finding Safe Cells',
+    id: 'narrowing-down',
+    name: 'Narrowing It Down',
     category: 'Beginner',
-    description: 'Find cells that are safe to click.',
-    explanation: 'Once all mines around a number are flagged, every other hidden neighbor of that number is guaranteed safe. Click them to reveal!',
+    description: 'Use one number to help solve another.',
+    explanation: 'When a number has more hidden neighbors than its value, you can\'t flag yet. But another number nearby might have fewer possibilities — use it to eliminate candidates and find safe cells.',
     puzzles: [
-      // 3×3: mine flagged at corner, one safe cell left
-      buildPuzzle(3, 3, [[0,0]], allExcept(3,3,[[0,0],[0,2]]), [[0,0]], [[0,2,'reveal']], 'The 🚩 accounts for the 1. The other hidden cell can\'t be a mine — reveal it!'),
-      // 3×3: mine flagged, two safe cells remain
-      buildPuzzle(3, 3, [[0,2]], allExcept(3,3,[[0,2],[2,0],[2,1]]), [[0,2]], [[2,0,'reveal'],[2,1,'reveal']], 'The flag satisfies the 1. All other hidden neighbors are safe.'),
-      // 3×3: mine flagged at corner, deduce remaining safe cell from satisfied number
-      buildPuzzle(3, 3, [[2,2]], allExcept(3,3,[[2,2],[0,2],[0,0]]), [[2,2]], [[0,2,'reveal'],[0,0,'reveal']], 'The 1 next to the flag is satisfied. Its other hidden neighbors must be safe.'),
-      // 3×3: two mines flagged, one safe remains
-      buildPuzzle(3, 3, [[0,0],[0,2]], allExcept(3,3,[[0,0],[0,2],[2,1]]), [[0,0],[0,2]], [[2,1,'reveal']], 'Both mines are flagged. The last hidden cell has to be safe.'),
-      // 3×4: two mines flagged, two safe cells remain
-      buildPuzzle(3, 4, [[0,0],[0,3]], allExcept(3,4,[[0,0],[0,3],[2,1],[2,2]]), [[0,0],[0,3]], [[2,1,'reveal'],[2,2,'reveal']], 'Every mine is flagged — all remaining hidden cells are safe!'),
+      // 2×3: one number pins the mine, making the other cell safe
+      buildPuzzle(2, 3, [[0,0],[1,2]], allExcept(2,3,[[0,0],[0,2],[1,2]]), [[1,2]], [[0,2,'reveal']], 'The bottom-left 1 only touches one hidden cell — that pins the mine. The other hidden cell is safe!'),
+      // 2×3: mirrored
+      buildPuzzle(2, 3, [[0,2],[1,0]], allExcept(2,3,[[0,0],[0,2],[1,0]]), [[1,0]], [[0,0,'reveal']], 'The bottom-right 1 tells you which hidden cell is the mine. The other is safe.'),
+      // 3×3: use edge 1 to clear an ambiguous cell
+      buildPuzzle(3, 3, [[0,1],[2,1]], allExcept(3,3,[[0,1],[2,0],[2,1]]), [[0,1]], [[2,0,'reveal']], 'The bottom-right 1 only touches one hidden cell — that\'s the mine. So the other is safe.'),
+      // 3×3: two flags placed, find the safe cell
+      buildPuzzle(3, 3, [[0,1],[2,0],[2,2]], allExcept(3,3,[[0,1],[2,0],[2,1],[2,2]]), [[0,1],[2,2]], [[2,1,'reveal']], 'The bottom-right 2 is already satisfied by both flags. Its hidden neighbor must be safe!'),
+      // 2×4: flag satisfies a 1, clearing cells further away
+      buildPuzzle(2, 4, [[0,0],[1,3]], allExcept(2,4,[[0,0],[0,2],[0,3],[1,3]]), [[1,3]], [[0,2,'reveal'],[0,3,'reveal']], 'The 1 next to the flag is satisfied — its other hidden neighbors are safe!'),
     ],
   },
   {
     id: 'chord-clicking',
     name: 'Chord Clicking',
     category: 'Beginner',
-    description: 'Reveal multiple safe cells at once.',
-    explanation: 'When a number already has all its mines flagged, clicking that number automatically reveals its other hidden neighbors. This is called "chording" — it saves a lot of time!',
+    description: 'Use satisfied numbers to clear cells fast.',
+    explanation: 'When a number has all its mines flagged, every other hidden neighbor is safe. In the real game, clicking that number auto-reveals them all — this is called "chording"!',
     puzzles: [
-      // 3×3: mine flagged on left edge, chord the 1 to reveal neighbors
-      buildPuzzle(3, 3, [[1,0]], allExcept(3,3,[[1,0],[0,0],[2,0]]), [[1,0]], [[0,0,'reveal'],[2,0,'reveal']], 'The 1\'s mine is already flagged. Click the 1 to reveal its other neighbors at once.'),
-      // 3×3: mine flagged at corner, chord to reveal diagonal
-      buildPuzzle(3, 3, [[0,0]], allExcept(3,3,[[0,0],[0,2],[2,0]]), [[0,0]], [[0,2,'reveal'],[2,0,'reveal']], 'The mine is flagged. Click the 1 to chord and reveal the safe cells.'),
-      // 3×4: two mines flagged, chord the 2 to reveal center
-      buildPuzzle(3, 4, [[0,0],[0,3]], allExcept(3,4,[[0,0],[0,3],[0,1],[0,2]]), [[0,0],[0,3]], [[0,1,'reveal'],[0,2,'reveal']], 'Both mines are flagged. Click the 2 to reveal the safe cells between them.'),
-      // 3×3: mine flagged, chord to clear remaining
-      buildPuzzle(3, 3, [[0,2]], allExcept(3,3,[[0,2],[0,0],[2,2]]), [[0,2]], [[0,0,'reveal'],[2,2,'reveal']], 'The flag covers the mine. Chord the 1 to clear the rest.'),
-      // 3×4: two mines flagged, multiple chords possible
-      buildPuzzle(3, 4, [[0,0],[2,3]], allExcept(3,4,[[0,0],[2,3],[0,2],[2,1]]), [[0,0],[2,3]], [[0,2,'reveal'],[2,1,'reveal']], 'Two flags placed. Chord the satisfied numbers to reveal safe cells.'),
+      // 2×3: simple chord from a satisfied 1
+      buildPuzzle(2, 3, [[0,0],[1,2]], allExcept(2,3,[[0,0],[0,2],[1,2]]), [[0,0]], [[0,2,'reveal']], 'The 1\'s mine is flagged. Its other hidden neighbor is safe — reveal it!'),
+      // 3×3: chord a satisfied 2
+      buildPuzzle(3, 3, [[0,1],[2,1]], allExcept(3,3,[[0,1],[0,2],[1,2],[2,1]]), [[0,1],[2,1]], [[0,2,'reveal'],[1,2,'reveal']], 'The 2 has both mines flagged. All its hidden neighbors are safe!'),
+      // 2×4: chord two satisfied 1s
+      buildPuzzle(2, 4, [[0,0],[0,3]], allExcept(2,4,[[0,0],[0,3],[1,0],[1,3]]), [[0,0],[0,3]], [[1,0,'reveal'],[1,3,'reveal']], 'Both middle 1s are satisfied by flags. Their hidden neighbors are safe!'),
+      // 3×3: flag then chord
+      buildPuzzle(3, 3, [[0,1],[2,1]], allExcept(3,3,[[0,1],[2,0],[2,1],[2,2]]), [[0,1]], [[2,1,'flag'],[2,0,'reveal'],[2,2,'reveal']], 'Two 2s both need a mine in the bottom row. Which cell do they share? Then the rest are safe!'),
+      // 3×3: chord from both sides
+      buildPuzzle(3, 3, [[1,0],[1,2]], allExcept(3,3,[[0,0],[1,0],[1,2],[2,2]]), [[1,0],[1,2]], [[0,0,'reveal'],[2,2,'reveal']], 'The 2s in the middle column are fully satisfied. Their hidden neighbors are all safe!'),
     ],
   },
   {
-    id: 'edges-corners',
-    name: 'Edge & Corner Logic',
+    id: 'putting-together',
+    name: 'Putting It All Together',
     category: 'Beginner',
-    description: 'Use the board edges to find mines faster.',
-    explanation: 'Cells at corners only have 3 neighbors. Edge cells have 5. Fewer neighbors means fewer possibilities, making numbers at the edges much easier to solve!',
+    description: 'Combine everything to solve multi-step puzzles.',
+    explanation: 'Use all the skills you\'ve learned — counting, flagging, finding safe cells, and chording — to solve puzzles that require multiple steps. Start with the most constrained numbers and work outward!',
     puzzles: [
-      // 3×3: mine on top edge, corner 1 constrains it
-      buildPuzzle(3, 3, [[0,1]], [[0,0],[1,0],[1,1],[1,2],[2,0],[2,1],[2,2]], [], [[0,1,'flag']], 'The 1 in the top-left corner only has 3 neighbors. One is hidden — that\'s the mine!'),
-      // 3×4: mine on edge, numbers narrow it down
-      buildPuzzle(3, 4, [[0,2]], [[0,0],[0,1],[0,3],[1,0],[1,1],[1,2],[1,3],[2,0],[2,1],[2,2],[2,3]], [], [[0,2,'flag']], 'Only one cell on the top edge is hidden. The 1 next to it tells you it\'s a mine.'),
-      // 3×3: two mines in corner, the 2 constrains both
-      buildPuzzle(3, 3, [[0,0],[1,0]], [[0,1],[0,2],[1,1],[1,2],[2,0],[2,1],[2,2]], [], [[0,0,'flag'],[1,0,'flag']], 'The 2 in the corner has exactly 2 hidden neighbors — both must be mines!'),
-      // 3×4: mine on top edge, edge numbers pinpoint it
-      buildPuzzle(3, 4, [[0,2]], [[0,0],[0,1],[0,3],[1,0],[1,1],[1,2],[1,3],[2,0],[2,1],[2,2],[2,3]], [], [[0,2,'flag']], 'Edge numbers have limited hidden neighbors, making the mine easy to spot.'),
-      // 3×4: two corner mines, each corner 1 constrains one
-      buildPuzzle(3, 4, [[0,0],[0,3]], [[0,1],[0,2],[1,0],[1,1],[1,2],[1,3],[2,0],[2,1],[2,2],[2,3]], [], [[0,0,'flag'],[0,3,'flag']], 'Each corner 1 only touches one hidden cell. Flag them both!'),
+      // 3×3: flag two, then reveal one
+      buildPuzzle(3, 3, [[0,1],[2,1]], allExcept(3,3,[[0,1],[1,2],[2,1]]), [], [[0,1,'flag'],[2,1,'flag'],[1,2,'reveal']], 'Start with numbers that have only one hidden neighbor. Then the satisfied 2 reveals a safe cell.'),
+      // 3×3: chain flag → flag → reveal
+      buildPuzzle(3, 3, [[0,1],[1,0],[2,2]], allExcept(3,3,[[0,0],[0,1],[1,0],[2,2]]), [[2,2]], [[1,0,'flag'],[0,1,'flag'],[0,0,'reveal']], 'Start at the bottom edge. Each flag gives you info for the next step.'),
+      // 3×3: flag edges, chord corners (4 moves)
+      buildPuzzle(3, 3, [[1,0],[1,2]], allExcept(3,3,[[0,0],[1,0],[1,2],[2,2]]), [], [[1,2,'flag'],[1,0,'flag'],[0,0,'reveal'],[2,2,'reveal']], 'The corner 1s each pin down a mine. Then the satisfied 2s clear the rest.'),
+      // 3×3: flag + reveal with pre-flag (3 moves)
+      buildPuzzle(3, 3, [[1,0],[1,2]], allExcept(3,3,[[0,0],[1,0],[1,2],[2,2]]), [[1,0]], [[1,2,'flag'],[0,0,'reveal'],[2,2,'reveal']], 'Flag the mine the corner 1 points to. Then the satisfied 2s clear the remaining cells.'),
+      // 3×4: five-step domino chain
+      buildPuzzle(3, 4, [[0,0],[1,3],[2,0]], allExcept(3,4,[[0,0],[0,1],[1,3],[2,0],[2,2]]), [], [[1,3,'flag'],[2,2,'reveal'],[2,0,'flag'],[0,1,'reveal'],[0,0,'flag']], 'Start at the edges where numbers are most constrained. Each step unlocks the next.'),
     ],
   },
 
@@ -294,6 +299,178 @@ const LESSONS = [
       buildPuzzle(4, 3, [[0,1],[3,1]], [[0,0],[0,2],[1,0],[1,1],[1,2],[2,0],[2,1],[2,2],[3,0],[3,2]], [], [[0,1,'flag'],[3,1,'flag']], 'Start at the edges where constraints are strongest. Flag both edge mines!'),
       buildPuzzle(3, 3, [[0,0],[2,2]], [[0,1],[0,2],[1,0],[1,1],[1,2],[2,0],[2,1]], [], [[0,0,'flag'],[2,2,'flag']], 'Two corner 1s — instant pattern recognition. Flag both without thinking!'),
     ],
+  },
+
+  // ═════════════════════ MODIFIERS ═════════════════════
+
+  {
+    id: 'mod-mystery',
+    name: 'Mystery Cells',
+    category: 'Modifiers',
+    description: 'Learn to play around hidden numbers.',
+    explanation: 'Mystery cells show "?" instead of their number. The cell is safe \u2014 it just won\'t tell you its count. Use surrounding non-mystery numbers to deduce where mines are.',
+    puzzles: (() => {
+      // 3x3, mine at (0,2). (0,1) is mystery (real adj=1).
+      const p1 = buildPuzzle(3, 3, [[0,2]], allExcept(3,3,[[0,2]]), [], [[0,2,'flag']], 'Ignore the "?" \u2014 the regular 1 next to the hidden cell tells you where the mine is.');
+      p1.board[0][1].mystery = true;
+
+      // 3x3, mine at (2,0). (1,1) is mystery.
+      const p2 = buildPuzzle(3, 3, [[2,0]], allExcept(3,3,[[2,0]]), [], [[2,0,'flag']], 'The "?" hides a number, but the other 1s point to the mine.');
+      p2.board[1][1].mystery = true;
+
+      // 3x4, mine at (0,3). (0,2) and (1,2) are mystery.
+      const p3 = buildPuzzle(3, 4, [[0,3]], allExcept(3,4,[[0,3]]), [], [[0,3,'flag']], 'Two mystery cells! Focus on the regular numbers to find the mine.');
+      p3.board[0][2].mystery = true;
+      p3.board[1][2].mystery = true;
+
+      return [p1, p2, p3];
+    })(),
+  },
+  {
+    id: 'mod-locked',
+    name: 'Locked Cells',
+    category: 'Modifiers',
+    description: 'Work around cells you can\'t open yet.',
+    explanation: 'Locked cells can\'t be revealed until all 8 neighbors are revealed. Don\'t try to click them \u2014 solve the rest of the board first, then they\'ll unlock on their own.',
+    puzzles: (() => {
+      // 3x3, mine at (0,0). Center is locked.
+      const p1 = buildPuzzle(3, 3, [[0,0]], [[0,1],[0,2],[1,0],[1,2],[2,0],[2,1],[2,2]], [], [[0,0,'flag']], 'The locked cell can\'t help you yet. Use the 1 next to the hidden cell!');
+      p1.board[1][1].locked = true;
+
+      // 3x3, mine at (0,2). Center is locked.
+      const p2 = buildPuzzle(3, 3, [[0,2]], [[0,0],[0,1],[1,0],[1,2],[2,0],[2,1],[2,2]], [], [[0,2,'flag']], 'Work around the lock. The edge 1s point to the mine.');
+      p2.board[1][1].locked = true;
+
+      // 3x4, mine at (0,3). (1,2) locked.
+      const p3 = buildPuzzle(3, 4, [[0,3]], [[0,0],[0,1],[0,2],[1,0],[1,1],[1,3],[2,0],[2,1],[2,2],[2,3]], [], [[0,3,'flag']], 'Locked cell blocks access, but nearby numbers reveal the mine.');
+      p3.board[1][2].locked = true;
+
+      return [p1, p2, p3];
+    })(),
+  },
+  {
+    id: 'mod-liar',
+    name: 'Liar Cells',
+    category: 'Modifiers',
+    description: 'Spot numbers that lie by \u00b11.',
+    explanation: 'Liar cells show a number off by exactly 1 \u2014 either too high or too low. They\'re marked with an orange border. Trust the regular numbers and use them to figure out the liar\'s true value.',
+    puzzles: (() => {
+      // 3x3, mine at (0,2). (0,1) is liar showing 2 (real: 1).
+      const p1 = buildPuzzle(3, 3, [[0,2]], allExcept(3,3,[[0,2]]), [], [[0,2,'flag']], 'The orange 2 is lying \u2014 it\'s really 1. The regular 1 tells the truth!');
+      p1.board[0][1].liar = true;
+      p1.board[0][1].value = 2;
+
+      // 3x3, mine at (2,2). (1,2) is liar showing 0 (real: 1).
+      const p2 = buildPuzzle(3, 3, [[2,2]], allExcept(3,3,[[2,2]]), [], [[2,2,'flag']], 'The liar shows 0, but it\'s really 1. Regular numbers confirm the mine.');
+      p2.board[1][2].liar = true;
+      p2.board[1][2].value = 0;
+
+      // 3x4, mine at (0,0). (0,1) is liar showing 2 (real: 1).
+      const p3 = buildPuzzle(3, 4, [[0,0]], allExcept(3,4,[[0,0]]), [], [[0,0,'flag']], 'Don\'t trust the orange number! Regular 1s point to the mine.');
+      p3.board[0][1].liar = true;
+      p3.board[0][1].value = 2;
+
+      return [p1, p2, p3];
+    })(),
+  },
+  {
+    id: 'mod-walls',
+    name: 'Walls',
+    category: 'Modifiers',
+    description: 'Navigate around impassable wall cells.',
+    explanation: 'Wall cells are impassable \u2014 you can\'t reveal or flag them, and numbers don\'t count walls as neighbors. Treat walls like the edge of the board.',
+    puzzles: (() => {
+      // 3x3, mine at (2,2), wall at (1,1).
+      const p1 = buildPuzzle(3, 3, [[2,2]], [[0,0],[0,1],[0,2],[1,0],[1,2],[2,0],[2,1]], [], [[2,2,'flag']], 'The wall splits the board. The 1 near the hidden cell says: mine!');
+      p1.board[1][1] = { state: 'wall' };
+
+      // 3x4, mine at (0,3), walls at (1,1) and (1,2).
+      const p2 = buildPuzzle(3, 4, [[0,3]], [[0,0],[0,1],[0,2],[1,0],[1,3],[2,0],[2,1],[2,2],[2,3]], [], [[0,3,'flag']], 'Walls create a barrier. Numbers near the gap point to the mine.');
+      p2.board[1][1] = { state: 'wall' };
+      p2.board[1][2] = { state: 'wall' };
+
+      // 4x3, mine at (0,2), walls at (1,0) and (2,0).
+      const p3 = buildPuzzle(4, 3, [[0,2]], [[0,0],[0,1],[1,1],[1,2],[2,1],[2,2],[3,0],[3,1],[3,2]], [], [[0,2,'flag']], 'Wall along the edge \u2014 find the mine on the open side!');
+      p3.board[1][0] = { state: 'wall' };
+      p3.board[2][0] = { state: 'wall' };
+
+      return [p1, p2, p3];
+    })(),
+  },
+  {
+    id: 'mod-wormhole',
+    name: 'Wormholes',
+    category: 'Modifiers',
+    description: 'Decode paired cells with summed numbers.',
+    explanation: 'Wormhole cells come in pairs. Each shows the SUM of both cells\' real mine counts. If one has 1 mine nearby and the other has 0, both display 1. Use surrounding non-wormhole numbers to split the sum.',
+    puzzles: (() => {
+      // 3x5, mine at (0,0). Wormholes at (1,1) adj=1 and (1,3) adj=0. Sum=1.
+      const p1 = buildPuzzle(3, 5, [[0,0]], allExcept(3,5,[[0,0]]), [], [[0,0,'flag']], 'Both wormholes show 1 (the sum). The regular 1 next to the hidden cell confirms the mine.');
+      p1.board[1][1].wormhole = true;
+      p1.board[1][1].pairIndex = 0;
+      p1.board[1][3].wormhole = true;
+      p1.board[1][3].pairIndex = 0;
+      p1.board[1][3].value = 1; // sum: 1+0=1 (overwrite 0)
+
+      // 2x5, mines at (0,0) and (0,4). Wormholes at (1,1) adj=1 and (1,3) adj=1. Sum=2.
+      const p2 = buildPuzzle(2, 5, [[0,0],[0,4]], allExcept(2,5,[[0,0],[0,4]]), [], [[0,0,'flag'],[0,4,'flag']], 'Both wormholes show 2 (1+1). Regular 1s on each end pin down each mine.');
+      p2.board[1][1].wormhole = true;
+      p2.board[1][1].pairIndex = 0;
+      p2.board[1][1].value = 2; // sum
+      p2.board[1][3].wormhole = true;
+      p2.board[1][3].pairIndex = 0;
+      p2.board[1][3].value = 2; // sum
+
+      // 3x5, mine at (0,4). Wormholes at (1,1) adj=0 and (1,3) adj=1. Sum=1.
+      const p3 = buildPuzzle(3, 5, [[0,4]], allExcept(3,5,[[0,4]]), [], [[0,4,'flag']], 'The wormhole sum is 1. Use non-wormhole numbers to find which side has the mine.');
+      p3.board[1][1].wormhole = true;
+      p3.board[1][1].pairIndex = 0;
+      p3.board[1][1].value = 1; // sum: 0+1=1 (overwrite 0)
+      p3.board[1][3].wormhole = true;
+      p3.board[1][3].pairIndex = 0;
+
+      return [p1, p2, p3];
+    })(),
+  },
+  {
+    id: 'mod-mirror',
+    name: 'Mirror Zone',
+    category: 'Modifiers',
+    description: 'Mentally un-swap mirrored numbers.',
+    explanation: 'Inside a mirror zone, numbers are swapped with the cell at the opposite position. A 2x2 mirror zone swaps diagonally. Focus on numbers OUTSIDE the zone for reliable clues.',
+    puzzles: (() => {
+      // 3x3, mine at (2,2). Mirror zone: top-left 2x2.
+      // Real: (0,0)=0, (0,1)=0, (1,0)=0, (1,1)=1. Swaps: (0,0)<->(1,1), (0,1)<->(1,0).
+      const p1 = buildPuzzle(3, 3, [[2,2]], allExcept(3,3,[[2,2]]), [], [[2,2,'flag']], 'Mirror zone swaps numbers diagonally. The regular 1 outside tells the truth!');
+      p1.board[0][0].mirror = true;
+      p1.board[0][0].value = 1; // shows (1,1)'s real value
+      p1.board[0][1].mirror = true;
+      p1.board[1][0].mirror = true;
+      p1.board[1][1].mirror = true;
+      p1.board[1][1].value = 0; // shows (0,0)'s real value
+
+      // 3x4, mine at (0,3). Mirror zone: (1,0)(1,1)(2,0)(2,1).
+      // Real: (1,0)=0, (1,1)=1, (2,0)=0, (2,1)=0. Swaps: (1,0)<->(2,1), (1,1)<->(2,0).
+      const p2 = buildPuzzle(3, 4, [[0,3]], allExcept(3,4,[[0,3]]), [], [[0,3,'flag']], 'The mirrored 1 moved to the wrong spot. Use non-mirrored numbers!');
+      p2.board[1][0].mirror = true;
+      p2.board[1][1].mirror = true;
+      p2.board[1][1].value = 0; // swapped from (2,0)
+      p2.board[2][0].mirror = true;
+      p2.board[2][0].value = 1; // swapped from (1,1)
+      p2.board[2][1].mirror = true;
+
+      // 3x3, mine at (0,0). Mirror zone: bottom-right 2x2.
+      // Real: (1,1)=1, (1,2)=0, (2,1)=0, (2,2)=0. Swaps: (1,1)<->(2,2), (1,2)<->(2,1).
+      const p3 = buildPuzzle(3, 3, [[0,0]], allExcept(3,3,[[0,0]]), [], [[0,0,'flag']], 'Corner mirror zone \u2014 the 1 appears swapped. Trust the edge numbers!');
+      p3.board[1][1].mirror = true;
+      p3.board[1][1].value = 0; // swapped from (2,2)
+      p3.board[1][2].mirror = true;
+      p3.board[2][1].mirror = true;
+      p3.board[2][2].mirror = true;
+      p3.board[2][2].value = 1; // swapped from (1,1)
+
+      return [p1, p2, p3];
+    })(),
   },
 ];
 

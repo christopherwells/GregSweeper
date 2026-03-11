@@ -1,10 +1,10 @@
-import { safeGet, safeSet, safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js?v=0.9.5';
+import { safeGet, safeSet, safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js?v=1.0';
 /**
  * Collection Manager — emoji packs, effects, and titles
  * Handles unlock logic and localStorage persistence.
  */
 
-import { loadStats } from '../storage/statsStorage.js?v=0.9.5';
+import { loadStats } from '../storage/statsStorage.js?v=1.0';
 
 // ── Emoji Packs ──────────────────────────────────────
 

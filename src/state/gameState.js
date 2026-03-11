@@ -14,7 +14,7 @@ export const state = {
   timeLimit: 0,         // countdown seconds for timed mode (0 = no limit)
 
   currentLevel: 1,
-  gameMode: 'daily',    // normal | timed | skillTrainer | daily
+  gameMode: 'normal',   // normal | timed | skillTrainer | daily | chaos
   dailySeed: null,
   dailyBombHits: 0,
 
@@ -40,6 +40,18 @@ export const state = {
   gimmickData: {},       // per-gimmick applied data
   mineShiftTimerId: null,
   inputLocked: false,    // true during cascade/chord animations
+
+  // Chaos mode (roguelike runs)
+  chaosRound: 0,          // current board number in the run (1-based)
+  chaosModifiers: [],     // modifiers rolled for current board
+  chaosTotalTime: 0,      // cumulative time across all boards in the run
+
+  // Quick Play timer toggle
+  timerHidden: false,     // true = hide timer LCD in Quick Play mode
+
+  // Keyboard navigation
+  focusedRow: 0,
+  focusedCol: 0,
 };
 
 // ── Encouragement Lines ────────────────────────────────

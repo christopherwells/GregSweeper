@@ -1,4 +1,4 @@
-import { toastContainer } from './domHelpers.js?v=0.9.5';
+import { toastContainer } from './domHelpers.js?v=1.0';
 
 // ── Toast Queue ────────────────────────────────────────
 const _toastQueue = [];

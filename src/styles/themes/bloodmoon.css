@@ -48,16 +48,16 @@
   --color-mine-hit: #ff0020;
   --color-flag: #dd1030;
   --color-text: #e0b0b8;
-  --color-text-secondary: #905060;
+  --color-text-secondary: #a96576;
 
-  --color-num-1: #dd3040;
+  --color-num-1: #de3847;
   --color-num-2: #ff6060;
-  --color-num-3: #cc0020;
-  --color-num-4: #aa2040;
-  --color-num-5: #880018;
+  --color-num-3: #f10026;
+  --color-num-4: #da3a5f;
+  --color-num-5: #f1002a;
   --color-num-6: #ee5050;
   --color-num-7: #d0b0b8;
-  --color-num-8: #603040;
+  --color-num-8: #af607a;
 
   --color-header-bg: #180408;
   --color-header-gradient: linear-gradient(180deg, #200810, #100204);

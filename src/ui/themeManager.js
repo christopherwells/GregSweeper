@@ -1,5 +1,5 @@
-import { $, $$ } from './domHelpers.js?v=0.9.5';
-import { loadStats } from '../storage/statsStorage.js?v=0.9.5';
+import { $, $$ } from './domHelpers.js?v=1.0';
+import { loadStats } from '../storage/statsStorage.js?v=1.0';
 
 // ── Lazy Theme CSS Loading ────────────────────────────
 // classic + dark are eagerly loaded in index.html.

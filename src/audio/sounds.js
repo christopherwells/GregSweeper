@@ -1,4 +1,4 @@
-import { safeGet, safeSet, safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js?v=0.9.5';
+import { safeGet, safeSet, safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js?v=1.0';
 // Web Audio API sound engine — no audio files needed
 let audioCtx = null;
 let muted = false;
@@ -42,7 +42,9 @@ function playTone(freq, duration, type = 'square', volume = 0.12) {
   const gain = ctx.createGain();
   osc.type = type;
   osc.frequency.value = freq;
-  gain.gain.setValueAtTime(volume, ctx.currentTime);
+  // Scale volume by SFX slider (0–100)
+  const scaledVol = volume * (sfxVolume / 100);
+  gain.gain.setValueAtTime(scaledVol, ctx.currentTime);
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
   osc.connect(gain);
   gain.connect(ctx.destination);
@@ -74,7 +76,8 @@ export function playExplosion() {
   osc.type = 'sawtooth';
   osc.frequency.setValueAtTime(200, ctx.currentTime);
   osc.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.4);
-  gain.gain.setValueAtTime(0.2, ctx.currentTime);
+  const vol = 0.2 * (sfxVolume / 100);
+  gain.gain.setValueAtTime(vol, ctx.currentTime);
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
   osc.connect(gain);
   gain.connect(ctx.destination);
@@ -141,7 +144,8 @@ export function playMagnet() {
   osc.type = 'sawtooth';
   osc.frequency.setValueAtTime(100, ctx.currentTime);
   osc.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.3);
-  gain.gain.setValueAtTime(0.08, ctx.currentTime);
+  const vol = 0.08 * (sfxVolume / 100);
+  gain.gain.setValueAtTime(vol, ctx.currentTime);
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
   osc.connect(gain);
   gain.connect(ctx.destination);
@@ -160,7 +164,8 @@ export function playXRay() {
   osc.type = 'sine';
   osc.frequency.setValueAtTime(300, ctx.currentTime);
   osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.3);
-  gain.gain.setValueAtTime(0.08, ctx.currentTime);
+  const vol = 0.08 * (sfxVolume / 100);
+  gain.gain.setValueAtTime(vol, ctx.currentTime);
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
   osc.connect(gain);
   gain.connect(ctx.destination);

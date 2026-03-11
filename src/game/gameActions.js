@@ -1,33 +1,44 @@
-import { state, getRevealedCells } from '../state/gameState.js?v=0.9.5';
-import { $, $$, boardEl, resetBtn } from '../ui/domHelpers.js?v=0.9.5';
+import { state, getRevealedCells } from '../state/gameState.js?v=1.0';
+import { $, $$, boardEl, resetBtn } from '../ui/domHelpers.js?v=1.0';
 import {
   renderBoard, updateCell, updateAllCells, updateCells, getThemeEmoji,
   adjustCellSize, updateZoom,
-} from '../ui/boardRenderer.js?v=0.9.5';
+} from '../ui/boardRenderer.js?v=1.0';
 import {
   updateHeader, updateCheckpointDisplay, updateProgressBar,
   updateCellsRemaining, updateStreakDisplay, updateStreakBorder,
   updateFlagModeBar,
-} from '../ui/headerRenderer.js?v=0.9.5';
-import { updatePowerUpBar } from '../ui/powerUpBar.js?v=0.9.5';
-import { hideAllModals, showModal, hideModal } from '../ui/modalManager.js?v=0.9.5';
-import { showLevelInfoToast } from '../ui/toastManager.js?v=0.9.5';
-import { startTimer, stopTimer, startMineShift, updateTimerDisplay } from './timerManager.js?v=0.9.5';
-import { handleWin, handleLoss, handleDailyBombHit } from './winLossHandler.js?v=0.9.5';
-import { performScan, performXRay, performMagnet, tryLifeline } from './powerUpActions.js?v=0.9.5';
-import { generateBoard, createEmptyBoard, calculateAdjacency } from '../logic/boardGenerator.js?v=0.9.5';
-import { floodFillReveal, checkWin, chordReveal } from '../logic/boardSolver.js?v=0.9.5';
-import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster } from '../logic/difficulty.js?v=0.9.5';
-import { shieldDefuse } from '../logic/powerUps.js?v=0.9.5';
-import { getGimmicksForLevel, applyGimmicks, isLockedCell, hasSeenGimmick, markGimmickSeen, getGimmickDef, isModifierPopupDisabled, setModifierPopupDisabled, getDailyGimmick } from '../logic/gimmicks.js?v=0.9.5';
-import { createDailyRNG } from '../logic/seededRandom.js?v=0.9.5';
+} from '../ui/headerRenderer.js?v=1.0';
+import { updatePowerUpBar } from '../ui/powerUpBar.js?v=1.0';
+import { hideAllModals, showModal, hideModal } from '../ui/modalManager.js?v=1.0';
+import { showLevelInfoToast } from '../ui/toastManager.js?v=1.0';
+import { startTimer, stopTimer, startMineShift, updateTimerDisplay } from './timerManager.js?v=1.0';
+import { handleWin, handleLoss, handleDailyBombHit } from './winLossHandler.js?v=1.0';
+import { performScan, performXRay, performMagnet, tryLifeline } from './powerUpActions.js?v=1.0';
+import { generateBoard, createEmptyBoard, calculateAdjacency } from '../logic/boardGenerator.js?v=1.0';
+import { floodFillReveal, checkWin, chordReveal } from '../logic/boardSolver.js?v=1.0';
+import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getChaosDifficulty } from '../logic/difficulty.js?v=1.0';
+import { shieldDefuse } from '../logic/powerUps.js?v=1.0';
+import { getGimmicksForLevel, applyGimmicks, isLockedCell, hasSeenGimmick, markGimmickSeen, getGimmickDef, isModifierPopupDisabled, setModifierPopupDisabled, getDailyGimmick, getChaosGimmicks } from '../logic/gimmicks.js?v=1.0';
+import { createDailyRNG } from '../logic/seededRandom.js?v=1.0';
 import {
   loadModePowerUps, loadCheckpoint, clearGameState,
-} from '../storage/statsStorage.js?v=0.9.5';
+} from '../storage/statsStorage.js?v=1.0';
 import {
   playReveal, playFlag, playUnflag, playCascade, playShieldBreak,
-} from '../audio/sounds.js?v=0.9.5';
-import { loadEffects } from '../ui/collectionManager.js?v=0.9.5';
+} from '../audio/sounds.js?v=1.0';
+import { loadEffects } from '../ui/collectionManager.js?v=1.0';
+
+let _lastInputTime = 0;
+
+// ── Local Date Utility ──────────────────────────────
+// Use local dates (not UTC) so daily challenges reset at local midnight
+function getLocalDateString() {
+  const d = new Date();
+  return d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' +
+    String(d.getDate()).padStart(2, '0');
+}
 
 // ── Gimmick Intro Popup ───────────────────────────────
 
@@ -85,9 +96,14 @@ function showGimmickIntros(gimmickDefs) {
 
 export function newGame() {
   stopTimer();
-  const diff = state.gameMode === 'timed'
-    ? getTimedDifficulty(state.currentLevel)
-    : getDifficultyForLevel(state.currentLevel);
+  let diff;
+  if (state.gameMode === 'chaos') {
+    diff = getChaosDifficulty(state.chaosRound || 1);
+  } else if (state.gameMode === 'timed') {
+    diff = getTimedDifficulty(state.currentLevel);
+  } else {
+    diff = getDifficultyForLevel(state.currentLevel);
+  }
   const prevRows = state.rows;
   const prevCols = state.cols;
 
@@ -110,7 +126,7 @@ export function newGame() {
   state.showParticles = false;
   state.hitMine = null;
   state.suggestedMove = null;
-  state.dailySeed = state.gameMode === 'daily' ? new Date().toISOString().slice(0, 10) : null;
+  state.dailySeed = state.gameMode === 'daily' ? getLocalDateString() : null;
   state.dailyBombHits = 0;
 
   // Daily mode: vary board dimensions using the daily seed
@@ -147,7 +163,7 @@ export function newGame() {
   // Load per-mode power-ups
   const modePU = loadModePowerUps(state.gameMode);
   const emptyPU = { revealSafe: 0, shield: 0, lifeline: 0, scanRowCol: 0, magnet: 0, xray: 0 };
-  if (state.gameMode === 'timed' || state.gameMode === 'daily') {
+  if (state.gameMode === 'timed' || state.gameMode === 'daily' || state.gameMode === 'chaos') {
     state.powerUps = { ...emptyPU };
   } else {
     state.powerUps = {
@@ -171,6 +187,14 @@ export function newGame() {
     state.checkpoint = loadCheckpoint(state.gameMode);
   } else {
     state.checkpoint = 1;
+  }
+
+  // Chaos mode: update modifier bar UI
+  if (state.gameMode === 'chaos') {
+    const roundLabel = document.getElementById('chaos-round-label');
+    const modIcons = document.getElementById('chaos-modifier-icons');
+    if (roundLabel) roundLabel.textContent = 'Round ' + (state.chaosRound || 1);
+    if (modIcons) modIcons.textContent = '';  // Will be populated on first click
   }
 
   // Reset dirty cells tracking
@@ -209,7 +233,10 @@ export function newGame() {
   }
 
   // Show level info toast on new game (except first load)
-  if (state._initialized && (state.gameMode === 'normal' || state.gameMode === 'timed')) {
+  if (state._initialized && state.gameMode === 'chaos') {
+    const chaosRound = state.chaosRound || 1;
+    showLevelInfoToast(chaosRound, diff, 'Round ' + chaosRound);
+  } else if (state._initialized && (state.gameMode === 'normal' || state.gameMode === 'timed')) {
     const label = diff.label ? `${diff.label}` : null;
     showLevelInfoToast(state.currentLevel, diff, label);
   }
@@ -225,7 +252,7 @@ export function revealCell(row, col) {
 
   // Locked cell check
   if (cell.isLocked && isLockedCell(state.board, row, col)) {
-    import('../ui/toastManager.js?v=0.9.5').then(m => {
+    import('../ui/toastManager.js?v=1.0').then(m => {
       m.showToast('🔒 Unlock neighbors first!', 1500);
     });
     return;
@@ -283,6 +310,34 @@ export function revealCell(row, col) {
           startMineShift(state.gimmickData.mineShift.interval);
         }
       }
+      // Refresh all cells to show liar-zone / wormhole / mirror indicators
+      updateAllCells();
+    }
+
+    // Apply gimmicks for chaos mode
+    if (state.gameMode === 'chaos') {
+      const chaosDiff = getChaosDifficulty(state.chaosRound || 1);
+      state.chaosModifiers = getChaosGimmicks(chaosDiff.modifierCount);
+      state.activeGimmicks = [...state.chaosModifiers];
+      if (state.activeGimmicks.length > 0) {
+        state.gimmickData = applyGimmicks(state.board, state.chaosRound || 1, state.activeGimmicks);
+
+        // Start mine shift timer if active
+        if (state.gimmickData.mineShift) {
+          startMineShift(state.gimmickData.mineShift.interval);
+        }
+      }
+
+      // Update chaos modifier bar with rolled modifiers
+      const modIcons = document.getElementById('chaos-modifier-icons');
+      if (modIcons) {
+        modIcons.innerHTML = state.chaosModifiers.map(g => {
+          const def = getGimmickDef(g);
+          return def ? '<span class="chaos-mod-icon" title="' + def.name + '">' + def.icon + '</span>' : '';
+        }).join('');
+      }
+      // Refresh all cells to show modifier indicators
+      updateAllCells();
     }
 
     state.firstClick = false;

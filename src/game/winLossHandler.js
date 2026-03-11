@@ -1,32 +1,33 @@
-import { state, ENCOURAGEMENT_LINES } from '../state/gameState.js?v=0.9.5';
-import { $, $$, boardEl, resetBtn, scanToast } from '../ui/domHelpers.js?v=0.9.5';
-import { getThemeEmoji, updateAllCells } from '../ui/boardRenderer.js?v=0.9.5';
-import { updateHeader, updateStreakBorder, updateCheckpointDisplay, getCheckpointForLevel } from '../ui/headerRenderer.js?v=0.9.5';
-import { updatePowerUpBar } from '../ui/powerUpBar.js?v=0.9.5';
-import { showModal } from '../ui/modalManager.js?v=0.9.5';
+import { state, ENCOURAGEMENT_LINES } from '../state/gameState.js?v=1.0';
+import { $, $$, boardEl, resetBtn, scanToast } from '../ui/domHelpers.js?v=1.0';
+import { getThemeEmoji, updateAllCells, announceGame } from '../ui/boardRenderer.js?v=1.0';
+import { updateHeader, updateStreakBorder, updateCheckpointDisplay, getCheckpointForLevel } from '../ui/headerRenderer.js?v=1.0';
+import { updatePowerUpBar } from '../ui/powerUpBar.js?v=1.0';
+import { showModal } from '../ui/modalManager.js?v=1.0';
 import {
   triggerHeavyShake, showRedFlash, showGreenFlash,
   haptic, chainRevealMines, showCelebration, showConfettiBurst,
-} from '../ui/effectsRenderer.js?v=0.9.5';
-import { showToast } from '../ui/toastManager.js?v=0.9.5';
-import { stopTimer } from './timerManager.js?v=0.9.5';
-import { awardPowerUps } from './powerUpActions.js?v=0.9.5';
-import { setHandleWin } from './powerUpActions.js?v=0.9.5';
-import { defuseMine } from '../logic/powerUps.js?v=0.9.5';
-import { findNextSafeMove } from '../logic/boardSolver.js?v=0.9.5';
-import { getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL } from '../logic/difficulty.js?v=0.9.5';
+} from '../ui/effectsRenderer.js?v=1.0';
+import { showToast } from '../ui/toastManager.js?v=1.0';
+import { stopTimer } from './timerManager.js?v=1.0';
+import { awardPowerUps } from './powerUpActions.js?v=1.0';
+import { setHandleWin } from './powerUpActions.js?v=1.0';
+import { defuseMine } from '../logic/powerUps.js?v=1.0';
+import { findNextSafeMove } from '../logic/boardSolver.js?v=1.0';
+import { getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, getChaosDifficulty } from '../logic/difficulty.js?v=1.0';
 import {
   loadStats, saveGameResult, saveModePowerUps, clearGameState,
   markDailyCompleted, getDailyStreak,
-} from '../storage/statsStorage.js?v=0.9.5';
+} from '../storage/statsStorage.js?v=1.0';
+import { safeSetJSON } from '../storage/storageAdapter.js?v=1.0';
 import {
   playExplosion, playWin, playTimeRecord,
-} from '../audio/sounds.js?v=0.9.5';
+} from '../audio/sounds.js?v=1.0';
 import {
   checkNewUnlocks, getHighestTier, getTotalScore,
   getAchievementState, getAllTierNames, getTierIcon, getTierColor,
-} from '../logic/achievements.js?v=0.9.5';
-import { checkThemeUnlocks, showThemeUnlockToasts } from '../ui/themeManager.js?v=0.9.5';
+} from '../logic/achievements.js?v=1.0';
+import { checkThemeUnlocks, showThemeUnlockToasts } from '../ui/themeManager.js?v=1.0';
 
 // ── Achievements Display (for game over) ───────────────
 
@@ -99,6 +100,7 @@ function renderShareCardPreview() {
 export function handleWin() {
   state.status = 'won';
   stopTimer();
+  announceGame('You won! Board cleared.');
   resetBtn.textContent = getThemeEmoji('smileyWin');
   resetBtn.classList.add('smiley-win-bounce');
   setTimeout(() => resetBtn.classList.remove('smiley-win-bounce'), 800);
@@ -113,15 +115,18 @@ export function handleWin() {
     gameMode: state.gameMode,
     hadGimmicks: state.activeGimmicks && state.activeGimmicks.length > 0,
   });
-  const earnedPowerUp = awardPowerUps(stats);
+  const earnedPowerUp = state.gameMode === 'chaos' ? null : awardPowerUps(stats);
 
   // Mark daily as completed so it cannot be replayed today
   if (isDaily) {
-    markDailyCompleted(new Date().toISOString().slice(0, 10));
+    const d = new Date();
+    markDailyCompleted(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'));
   }
 
-  // Persist power-ups after win (award changes them)
-  saveModePowerUps(state.gameMode, state.powerUps);
+  // Persist power-ups after win (award changes them) — skip for chaos (no power-ups)
+  if (state.gameMode !== 'chaos') {
+    saveModePowerUps(state.gameMode, state.powerUps);
+  }
 
   playWin();
   showCelebration();
@@ -178,7 +183,7 @@ export function handleWin() {
   setTimeout(() => gameoverTime.classList.remove('stats-cascade'), 500);
 
   const bestKey = `level${state.currentLevel}`;
-  const isNewRecord = stats.bestTimes[bestKey] === state.elapsedTime;
+  const isNewRecord = state.gameMode !== 'chaos' && stats.bestTimes[bestKey] === state.elapsedTime;
   if (isNewRecord) {
     if (state.gameMode === 'timed') {
       const rating = getSpeedRating(state.currentLevel, state.elapsedTime);
@@ -244,11 +249,26 @@ export function handleWin() {
     achievementsDiv.classList.add('hidden');
   }
 
-  const maxLevel = state.gameMode === 'timed' ? MAX_TIMED_LEVEL : MAX_LEVEL;
-  if (state.currentLevel < maxLevel && state.gameMode !== 'daily') {
-    nextLevelBtn.classList.remove('hidden');
-  } else {
+  // Chaos mode: show "Next Board" button, hide "Next Level"
+  const chaosNextBtn = $('#gameover-chaos-next');
+  const chaosRunSummary = $('#chaos-run-summary');
+  if (state.gameMode === 'chaos') {
     nextLevelBtn.classList.add('hidden');
+    if (chaosNextBtn) chaosNextBtn.classList.remove('hidden');
+    if (chaosRunSummary) chaosRunSummary.classList.add('hidden');
+    // Update chaos state for next round
+    state.chaosTotalTime = (state.chaosTotalTime || 0) + state.elapsedTime;
+    gameoverTitle.textContent = 'Board Cleared!';
+    gameoverTime.textContent = 'Round ' + (state.chaosRound || 1) + ' · ' + state.elapsedTime + 's';
+  } else {
+    if (chaosNextBtn) chaosNextBtn.classList.add('hidden');
+    if (chaosRunSummary) chaosRunSummary.classList.add('hidden');
+    const maxLevel = state.gameMode === 'timed' ? MAX_TIMED_LEVEL : MAX_LEVEL;
+    if (state.currentLevel < maxLevel && state.gameMode !== 'daily') {
+      nextLevelBtn.classList.remove('hidden');
+    } else {
+      nextLevelBtn.classList.add('hidden');
+    }
   }
 
   const dailySubmitForm = $('#daily-submit-form');
@@ -286,6 +306,7 @@ setHandleWin(handleWin);
 export function handleLoss(mineRow, mineCol) {
   state.status = 'lost';
   stopTimer();
+  announceGame('Game over. Hit a mine.');
   resetBtn.textContent = getThemeEmoji('smileyLoss');
   resetBtn.classList.add('smiley-loss-shake');
   setTimeout(() => resetBtn.classList.remove('smiley-loss-shake'), 500);
@@ -343,10 +364,41 @@ export function handleLoss(mineRow, mineCol) {
   gameoverTitle.classList.add('win-title-bounce');
   setTimeout(() => gameoverTitle.classList.remove('win-title-bounce'), 700);
 
-  if (lostLevel > state.currentLevel && isLevelMode) {
-    gameoverTime.textContent = `Time: ${state.elapsedTime}s · Back to Level ${state.currentLevel}`;
+  if (state.gameMode === 'chaos') {
+    const boardsCleared = (state.chaosRound || 1) - 1;
+    const totalTime = (state.chaosTotalTime || 0) + state.elapsedTime;
+    gameoverTitle.textContent = 'Run Over!';
+    gameoverTime.textContent = boardsCleared > 0
+      ? 'Cleared ' + boardsCleared + ' board' + (boardsCleared !== 1 ? 's' : '') + ' · ' + totalTime + 's total'
+      : 'Wiped out on Round 1 · ' + state.elapsedTime + 's';
+
+    // Save chaos stats
+    const chaosStatsObj = loadStats();
+    const chaosStats = chaosStatsObj.modeStats?.chaos;
+    if (chaosStats) {
+      chaosStats.totalRuns = (chaosStats.totalRuns || 0) + 1;
+      if (boardsCleared > (chaosStats.bestRun || 0)) {
+        chaosStats.bestRun = boardsCleared;
+      }
+      // Persist updated chaos stats
+      safeSetJSON('minesweeper_stats', chaosStatsObj);
+    }
+
+    // Show chaos run summary
+    const chaosRunSummary = $('#chaos-run-summary');
+    if (chaosRunSummary) {
+      chaosRunSummary.classList.remove('hidden');
+      const boardsClearedEl = $('#chaos-boards-cleared');
+      const totalTimeEl = $('#chaos-total-time');
+      const bestRunEl = $('#chaos-best-run');
+      if (boardsClearedEl) boardsClearedEl.textContent = boardsCleared;
+      if (totalTimeEl) totalTimeEl.textContent = totalTime + 's';
+      if (bestRunEl) bestRunEl.textContent = chaosStats?.bestRun || boardsCleared;
+    }
+  } else if (lostLevel > state.currentLevel && isLevelMode) {
+    gameoverTime.textContent = 'Time: ' + state.elapsedTime + 's · Back to Level ' + state.currentLevel;
   } else {
-    gameoverTime.textContent = `Time: ${state.elapsedTime}s`;
+    gameoverTime.textContent = 'Time: ' + state.elapsedTime + 's';
   }
 
   // Show encouragement line
@@ -364,6 +416,12 @@ export function handleLoss(mineRow, mineCol) {
   setTimeout(() => gameoverTime.classList.remove('stats-cascade'), 500);
   $('#gameover-record').classList.add('hidden');
   $('#gameover-nextlevel').classList.add('hidden');
+  const chaosNextBtn = $('#gameover-chaos-next');
+  if (chaosNextBtn) chaosNextBtn.classList.add('hidden');
+  if (state.gameMode !== 'chaos') {
+    const chaosRunSummary = $('#chaos-run-summary');
+    if (chaosRunSummary) chaosRunSummary.classList.add('hidden');
+  }
   const dailySubmitForm = $('#daily-submit-form');
   if (dailySubmitForm) dailySubmitForm.classList.add('hidden');
   $('#gameover-powerup-earned').classList.add('hidden');
@@ -436,6 +494,12 @@ export function handleTimedLoss() {
   }
   $('#gameover-record').classList.add('hidden');
   $('#gameover-nextlevel').classList.add('hidden');
+  const chaosNextBtn = $('#gameover-chaos-next');
+  if (chaosNextBtn) chaosNextBtn.classList.add('hidden');
+  if (state.gameMode !== 'chaos') {
+    const chaosRunSummary = $('#chaos-run-summary');
+    if (chaosRunSummary) chaosRunSummary.classList.add('hidden');
+  }
   const dailySubmitForm2 = $('#daily-submit-form');
   if (dailySubmitForm2) dailySubmitForm2.classList.add('hidden');
   $('#gameover-powerup-earned').classList.add('hidden');

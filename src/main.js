@@ -2,53 +2,63 @@
 // All game logic and UI rendering is in modules.
 // This file handles imports, event wiring, and init.
 
-import { state } from './state/gameState.js?v=0.9.5';
-import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn } from './ui/domHelpers.js?v=0.9.5';
-import { resizeCells, updateAllCells, getThemeEmoji, needsZoom, updateZoom, zoomIn, zoomOut, invalidateEmojiCache } from './ui/boardRenderer.js?v=0.9.5';
-import { updateHeader, updateStreakBorder, updateFlagModeBar, getCheckpointForLevel } from './ui/headerRenderer.js?v=0.9.5';
-import { updatePowerUpBar } from './ui/powerUpBar.js?v=0.9.5';
-import { showModal, hideModal, hideAllModals } from './ui/modalManager.js?v=0.9.5';
-import { showToast, showLevelUpToast, showCheckpointToast } from './ui/toastManager.js?v=0.9.5';
-import { showCelebration, haptic } from './ui/effectsRenderer.js?v=0.9.5';
-import { THEME_UNLOCKS, getUnlockedThemes, loadThemeCSS } from './ui/themeManager.js?v=0.9.5';
-import { newGame, revealCell, toggleFlag, handleChordReveal } from './game/gameActions.js?v=0.9.5';
-import './game/winLossHandler.js?v=0.9.5'; // side-effect: registers handleWin with powerUpActions
-import { useRevealSafe, useShield, activateScan, activateXRay, activateMagnet } from './game/powerUpActions.js?v=0.9.5';
-import { switchMode } from './game/modeManager.js?v=0.9.5';
-import { persistGameState, tryResumeGame } from './game/gamePersistence.js?v=0.9.5';
-import { getDifficultyForLevel, getTimedDifficulty, getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL } from './logic/difficulty.js?v=0.9.5';
+// ── Local Date Utility ──────────────────────────────
+// Use local dates (not UTC) so daily challenges reset at local midnight
+function getLocalDateString() {
+  const d = new Date();
+  return d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' +
+    String(d.getDate()).padStart(2, '0');
+}
+
+import { state } from './state/gameState.js?v=1.0';
+import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn } from './ui/domHelpers.js?v=1.0';
+import { resizeCells, updateAllCells, getThemeEmoji, needsZoom, updateZoom, zoomIn, zoomOut, invalidateEmojiCache, setFocusedCell, announceGame } from './ui/boardRenderer.js?v=1.0';
+import { updateHeader, updateStreakBorder, updateFlagModeBar, getCheckpointForLevel, CHECKPOINT_INTERVAL } from './ui/headerRenderer.js?v=1.0';
+import { updatePowerUpBar } from './ui/powerUpBar.js?v=1.0';
+import { showModal, hideModal, hideAllModals } from './ui/modalManager.js?v=1.0';
+import { showToast, showLevelUpToast, showCheckpointToast } from './ui/toastManager.js?v=1.0';
+import { showCelebration, haptic } from './ui/effectsRenderer.js?v=1.0';
+import { THEME_UNLOCKS, getUnlockedThemes, loadThemeCSS } from './ui/themeManager.js?v=1.0';
+import { newGame, revealCell, toggleFlag, handleChordReveal } from './game/gameActions.js?v=1.0';
+import './game/winLossHandler.js?v=1.0'; // side-effect: registers handleWin with powerUpActions
+import { useRevealSafe, useShield, activateScan, activateXRay, activateMagnet } from './game/powerUpActions.js?v=1.0';
+import { switchMode, isChaosUnlocked } from './game/modeManager.js?v=1.0';
+import { persistGameState, tryResumeGame } from './game/gamePersistence.js?v=1.0';
+import { getDifficultyForLevel, getTimedDifficulty, getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, CHAOS_UNLOCK_LEVEL } from './logic/difficulty.js?v=1.0';
 import {
   loadStats, saveTheme, loadTheme, resetStats,
   saveCheckpoint, loadCheckpoint,
   loadDailyLeaderboard, addDailyLeaderboardEntry,
-  saveModePowerUps,
+  saveModePowerUps, loadGameState,
   isOnboarded, setOnboarded,
   isDailyCompleted,
   getDailyStreak,
-} from './storage/statsStorage.js?v=0.9.5';
+} from './storage/statsStorage.js?v=1.0';
 import {
   playLevelUp, isMuted, setMuted, loadMuted,
   setSFXVolume, getSFXVolume,
-} from './audio/sounds.js?v=0.9.5';
+} from './audio/sounds.js?v=1.0';
 import {
   getAchievementState, getTotalScore, checkNewUnlocks,
   getHighestTier, getAllTierNames, getTierIcon, getTierColor,
-} from './logic/achievements.js?v=0.9.5';
+} from './logic/achievements.js?v=1.0';
 import {
   initFirebase, isFirebaseOnline, submitOnlineScore, fetchOnlineLeaderboard,
   createRoom, joinRoom, leaveRoom, submitRoomScore,
   fetchRoomLeaderboard, fetchRoomHistory, getRoomMembers, getRoomInfo,
   saveRoomInfo, loadRoomInfo, clearRoomInfo,
-} from './firebase/firebaseLeaderboard.js?v=0.9.5';
+} from './firebase/firebaseLeaderboard.js?v=1.0';
 import {
   EMOJI_PACKS, EFFECTS, TITLES,
   loadEmojiPack, saveEmojiPack, getActiveEmojiPack, isPackUnlocked,
   isEffectUnlocked, isTitleUnlocked,
   loadEffects, saveEffects, loadTitle, saveTitle,
-} from './ui/collectionManager.js?v=0.9.5';
-import { isModifierPopupDisabled, setModifierPopupDisabled } from './logic/gimmicks.js?v=0.9.5';
-import { isStorageFailing } from './storage/storageAdapter.js?v=0.9.5';
-import { pauseTimer, resumeTimer } from './game/timerManager.js?v=0.9.5';
+} from './ui/collectionManager.js?v=1.0';
+import { isModifierPopupDisabled, setModifierPopupDisabled } from './logic/gimmicks.js?v=1.0';
+import { isStorageFailing, safeGet, safeSet } from './storage/storageAdapter.js?v=1.0';
+import { pauseTimer, resumeTimer } from './game/timerManager.js?v=1.0';
+import { startTutorial } from './ui/tutorialManager.js?v=1.0';
 
 // ── Stats Display ─────────────────────────────────────
 
@@ -99,7 +109,7 @@ function escapeHtml(str) {
 }
 
 async function updateLeaderboardDisplay() {
-  const dateStr = new Date().toISOString().slice(0, 10);
+  const dateStr = getLocalDateString();
   $('#leaderboard-date').textContent = `Date: ${dateStr}`;
   const statusBadge = $('#leaderboard-status');
   const tbody = $('#leaderboard-body');
@@ -172,7 +182,7 @@ async function updateRoomPanel() {
   }
 
   // Today's scores
-  const dateStr = new Date().toISOString().slice(0, 10);
+  const dateStr = getLocalDateString();
   const entries = await fetchRoomLeaderboard(roomInfo.code, dateStr);
   const tbody = $('#room-leaderboard-body');
   const emptyMsg = $('#room-leaderboard-empty');
@@ -227,11 +237,52 @@ function renderCollectionModal() {
     const btn = document.createElement('button');
     btn.className = 'theme-swatch' + (theme === currentTheme ? ' active' : '') + (unlocked[theme] === false ? ' locked' : '');
     btn.dataset.theme = theme;
-    const gradientMap = {
+    const swatchColors = {
       classic: 'linear-gradient(135deg, #c0c0c0, #e0e0e0)',
-      dark: 'linear-gradient(135deg, #1a1a2e, #16213e)',
+      dark: 'linear-gradient(135deg, #1a1a2e, #1e2745)',
+      ocean: 'linear-gradient(135deg, #1b3a4b, #1e4a5f)',
+      sunset: 'linear-gradient(135deg, #2d1b2e, #3d2240)',
+      forest: 'linear-gradient(135deg, #2d3a2e, #3e5a3a)',
+      candy: 'linear-gradient(135deg, #fff0f5, #ffc1d3)',
+      midnight: 'linear-gradient(135deg, #1a1040, #221555)',
+      stealth: 'linear-gradient(135deg, #1a1a1a, #2a2a2a)',
+      neon: 'linear-gradient(135deg, #0a0a0a, #1a1a1a)',
+      'cherry-blossom': 'linear-gradient(135deg, #f5e6ee, #f0c4d8)',
+      aurora: 'linear-gradient(135deg, #0b1628, #122040)',
+      volcano: 'linear-gradient(135deg, #2a1008, #5c2210)',
+      ice: 'linear-gradient(135deg, #d8eaf5, #a8ceea)',
+      cyberpunk: 'linear-gradient(135deg, #0a0a1a, #1a1a3a)',
+      retro: 'linear-gradient(135deg, #1a0a2e, #3a1860)',
+      holographic: 'linear-gradient(135deg, #1a1a2a, #2a2a3e)',
+      copper: 'linear-gradient(135deg, #1c1410, #8b5e3c)',
+      sakura: 'linear-gradient(135deg, #fdf0f4, #f5c6d0)',
+      galaxy: 'linear-gradient(135deg, #0a0015, #1a0838)',
+      lavender: 'linear-gradient(135deg, #f0ecf8, #c8b8e0)',
+      toxic: 'linear-gradient(135deg, #0a0f0a, #1a2a18)',
+      autumn: 'linear-gradient(135deg, #201810, #8c5828)',
+      royal: 'linear-gradient(135deg, #1e1038, #2e1a55)',
+      coral: 'linear-gradient(135deg, #1c100e, #b85848)',
+      emerald: 'linear-gradient(135deg, #081c14, #18603c)',
+      prismatic: 'linear-gradient(135deg, #141420, #222238)',
+      slate: 'linear-gradient(135deg, #1c2028, #4a5468)',
+      void: 'linear-gradient(135deg, #080808, #0e0e0e)',
+      arctic: 'linear-gradient(135deg, #e8f0f8, #c0d8f0)',
+      deepspace: 'linear-gradient(135deg, #0a0818, #2a2050)',
+      jungle: 'linear-gradient(135deg, #0c1a0c, #1e3a1e)',
+      obsidian: 'linear-gradient(135deg, #000000, #111111)',
+      phantom: 'linear-gradient(135deg, #101218, #2c3040)',
+      matrix: 'linear-gradient(135deg, #000000, #0a1a0a)',
+      solar: 'linear-gradient(135deg, #fdf8ec, #e8c850)',
+      bloodmoon: 'linear-gradient(135deg, #080000, #2a0810)',
+      inferno: 'linear-gradient(135deg, #0d0000, #3d1008)',
+      synthwave: 'linear-gradient(135deg, #0a0020, #1a0848)',
+      celestial: 'linear-gradient(135deg, #080c1a, #182040)',
+      supernova: 'linear-gradient(135deg, #1a0808, #3a1810)',
+      legendary: 'linear-gradient(135deg, #0e0618, #261240)',
+      chaos: 'linear-gradient(135deg, #0a0a14, #1a0a2e)',
     };
-    btn.innerHTML = `<span class="swatch-color" style="background: var(--board-bg, #888)"></span>` +
+    const bg = swatchColors[theme] || '#888';
+    btn.innerHTML = `<span class="swatch-color" style="background: ${bg}"></span>` +
       `<span class="swatch-name">${info.displayName}</span>` +
       (unlocked[theme] === false ? `<span class="swatch-lock">🔒 Lv.${info.levelRequired}</span>` : '');
     btn.addEventListener('click', () => {
@@ -418,7 +469,7 @@ function generateShareCard() {
 
   let dateStr = '';
   if (mode === 'daily') {
-    dateStr = ` (${new Date().toISOString().slice(0, 10)})`;
+    dateStr = ` (${getLocalDateString()})`;
   }
 
   const levelLabel = diff.label || `Level ${level}`;
@@ -478,6 +529,8 @@ function showShareCopiedToast() {
 
 // Track when a modal was opened from the title screen
 let _returnToTitle = false;
+// Track previous theme so we can restore it when leaving chaos
+let _previousTheme = null;
 
 function closeModalAndReturn(modalId) {
   hideModal(modalId);
@@ -591,6 +644,49 @@ boardEl.addEventListener('touchmove', (e) => {
     touchedCellCol = null;
   }
 }, { passive: true });
+
+// ── Keyboard Navigation ─────────────────────────────
+boardEl.addEventListener('keydown', (e) => {
+  // Only handle when board is active
+  if (state.status !== 'idle' && state.status !== 'playing') return;
+  let r = state.focusedRow;
+  let c = state.focusedCol;
+  let handled = true;
+
+  switch (e.key) {
+    case 'ArrowUp':    r = Math.max(0, r - 1); break;
+    case 'ArrowDown':  r = Math.min(state.rows - 1, r + 1); break;
+    case 'ArrowLeft':  c = Math.max(0, c - 1); break;
+    case 'ArrowRight': c = Math.min(state.cols - 1, c + 1); break;
+    case 'Enter':
+    case ' ': {
+      // Reveal or chord
+      const cell = state.board[r]?.[c];
+      if (cell && cell.isRevealed && cell.adjacentMines > 0) {
+        handleChordReveal(r, c);
+      } else {
+        revealCell(r, c);
+      }
+      break;
+    }
+    case 'f':
+    case 'F':
+      toggleFlag(r, c);
+      break;
+    default:
+      handled = false;
+  }
+
+  if (handled) {
+    e.preventDefault();
+    // Skip wall cells when navigating
+    const targetCell = state.board[r]?.[c];
+    if (targetCell && targetCell.isWall) return;
+    if (r !== state.focusedRow || c !== state.focusedCol) {
+      setFocusedCell(r, c);
+    }
+  }
+});
 
 resetBtn.addEventListener('click', () => {
   resetBtn.classList.add('smiley-pressed');
@@ -765,7 +861,7 @@ for (const modal of $$('.modal')) {
 
 // Mode selection handled by title screen mode cards (see below)
 
-// Timed size tabs (above board)
+// Quick Play size tabs (above board)
 for (const tab of $$('.timed-tab')) {
   tab.addEventListener('click', () => {
     const level = parseInt(tab.dataset.level, 10);
@@ -775,6 +871,19 @@ for (const tab of $$('.timed-tab')) {
     // Sync settings modal buttons
     for (const d of $$('.timed-diff-btn')) d.classList.toggle('active', parseInt(d.dataset.level, 10) === level);
     newGame();
+  });
+}
+
+// Quick Play timer toggle
+const timerToggleBtn = $('#timer-toggle');
+if (timerToggleBtn) {
+  timerToggleBtn.addEventListener('click', () => {
+    state.timerHidden = !state.timerHidden;
+    timerToggleBtn.classList.toggle('timer-off', state.timerHidden);
+    const timerEl = $('#timer-display');
+    if (timerEl) {
+      timerEl.style.visibility = state.timerHidden ? 'hidden' : 'visible';
+    }
   });
 }
 
@@ -795,7 +904,7 @@ function updateTitleProgress() {
     timedEl.textContent = tWins > 0 ? `${tWins} wins` : 'Race the clock';
   }
   if (dailyEl) {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = getLocalDateString();
     const dailyCard = $('.mode-card[data-mode="daily"]');
     const { streak } = getDailyStreak();
     if (isDailyCompleted(today)) {
@@ -806,12 +915,42 @@ function updateTitleProgress() {
       if (dailyCard) dailyCard.classList.remove('daily-completed');
     }
   }
+
+  // Chaos mode card
+  const chaosEl = $('#title-chaos-progress');
+  const chaosCard = $('.mode-card[data-mode="chaos"]');
+  if (chaosCard) {
+    const unlocked = isChaosUnlocked();
+    if (unlocked) {
+      chaosCard.classList.remove('mode-card-locked');
+      const chaosStats = stats.modeStats?.chaos;
+      const bestRun = chaosStats?.bestRun || 0;
+      const totalRuns = chaosStats?.totalRuns || 0;
+      if (chaosEl) {
+        chaosEl.textContent = totalRuns > 0
+          ? `Best: ${bestRun} board${bestRun !== 1 ? 's' : ''} · ${totalRuns} run${totalRuns !== 1 ? 's' : ''}`
+          : 'Roguelike madness';
+      }
+    } else {
+      chaosCard.classList.add('mode-card-locked');
+      if (chaosEl) chaosEl.textContent = `Reach Level ${CHAOS_UNLOCK_LEVEL}`;
+    }
+  }
 }
 
 function showTitleScreen() {
   const titleScreen = $('#title-screen');
   const app = $('#app');
   if (!titleScreen || !app) return;
+
+  // Persist current game state before showing title (guard is inside persistGameState)
+  persistGameState();
+
+  // Restore theme if leaving chaos mode
+  if (state.gameMode === 'chaos' && _previousTheme) {
+    document.documentElement.setAttribute('data-theme', _previousTheme);
+    _previousTheme = null;
+  }
 
   updateTitleProgress();
   titleScreen.classList.remove('hidden');
@@ -827,12 +966,119 @@ function hideTitleScreen() {
   app.classList.remove('hidden');
 }
 
+// ── Checkpoint Selector (Challenge mode) ────────────────
+const GIMMICK_LABELS = {
+  11: { icon: '❓', name: 'Mystery' },
+  16: { icon: '🔒', name: 'Locked' },
+  21: { icon: '🤥', name: 'Liar' },
+  26: { icon: '💨', name: 'Mine Shift' },
+  31: { icon: '🧱', name: 'Walls' },
+  36: { icon: '🌀', name: 'Wormholes' },
+  41: { icon: '🪞', name: 'Mirror' },
+};
+
+function showCheckpointSelector() {
+  const stats = loadStats();
+  const maxLevel = stats.modeStats?.challenge?.maxLevelReached || 1;
+  const savedGame = loadGameState('normal');
+  const hasSavedGame = !!(savedGame && savedGame.board && savedGame.gameMode);
+
+  const resumeEl = $('#checkpoint-resume');
+  const listEl = $('#checkpoint-list');
+
+  // Resume button (if a saved game exists)
+  if (hasSavedGame) {
+    resumeEl.classList.remove('hidden');
+    resumeEl.innerHTML = '';
+    const btn = document.createElement('button');
+    btn.className = 'checkpoint-resume-btn';
+    btn.innerHTML = `<span class="resume-icon">▶️</span><span class="resume-label">Resume Game<br><span class="resume-level">Level ${savedGame.currentLevel}</span></span>`;
+    btn.addEventListener('click', () => {
+      hideModal('checkpoint-modal');
+      hideTitleScreen();
+      switchMode('normal');
+    });
+    resumeEl.appendChild(btn);
+  } else {
+    resumeEl.classList.add('hidden');
+  }
+
+  // Checkpoint list
+  listEl.innerHTML = '';
+  const highestCheckpoint = getCheckpointForLevel(maxLevel);
+
+  for (let cp = 1; cp <= MAX_LEVEL; cp += CHECKPOINT_INTERVAL) {
+    const unlocked = cp <= highestCheckpoint || cp === 1;
+    const btn = document.createElement('button');
+    btn.className = 'checkpoint-btn' + (unlocked ? '' : ' checkpoint-locked');
+
+    // Build label
+    let levelText = `Level ${cp}`;
+    if (cp + CHECKPOINT_INTERVAL - 1 <= MAX_LEVEL) {
+      levelText = `Level ${cp}–${Math.min(cp + CHECKPOINT_INTERVAL - 1, MAX_LEVEL)}`;
+    }
+
+    const gimmick = GIMMICK_LABELS[cp];
+    let modifierHtml = '';
+    if (gimmick) {
+      modifierHtml = `<span class="cp-modifier"><span class="cp-modifier-icon">${gimmick.icon}</span> ${gimmick.name}</span>`;
+    } else if (!unlocked) {
+      modifierHtml = `<span class="cp-modifier">Reach Level ${cp}</span>`;
+    }
+
+    btn.innerHTML = `<span class="cp-level">${levelText}</span>${modifierHtml}`;
+
+    if (unlocked) {
+      btn.addEventListener('click', () => {
+        hideModal('checkpoint-modal');
+        hideTitleScreen();
+        state.currentLevel = cp;
+        state.gameMode = 'normal';
+        newGame();
+      });
+    }
+
+    listEl.appendChild(btn);
+
+    // Stop after last unlocked + one row of locked (show a few locked ones as tease)
+    if (!unlocked && cp > highestCheckpoint + CHECKPOINT_INTERVAL * 2) break;
+  }
+
+  showModal('checkpoint-modal');
+}
+
+// Checkpoint modal close button
+const cpModal = $('#checkpoint-modal');
+if (cpModal) {
+  cpModal.querySelector('.modal-close')?.addEventListener('click', () => hideModal('checkpoint-modal'));
+  cpModal.addEventListener('click', (e) => {
+    if (e.target === cpModal) hideModal('checkpoint-modal');
+  });
+}
+
 // Title screen mode cards
 for (const card of $$('.mode-card')) {
   card.addEventListener('click', () => {
     const mode = card.dataset.mode;
+    if (mode === 'normal') {
+      showCheckpointSelector();
+      return;
+    }
+    if (mode === 'chaos') {
+      if (!isChaosUnlocked()) {
+        showToast(`Reach Challenge Level ${CHAOS_UNLOCK_LEVEL} to unlock Chaos mode!`);
+        return;
+      }
+      // Apply chaos theme automatically
+      _previousTheme = state.theme;
+      document.documentElement.setAttribute('data-theme', 'chaos');
+      loadThemeCSS('chaos');
+      hideTitleScreen();
+      switchMode('chaos');
+      return;
+    }
     if (mode === 'daily') {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = getLocalDateString();
       if (isDailyCompleted(today)) {
         showToast("You've already completed today's daily!");
         return;
@@ -907,8 +1153,23 @@ $('#btn-reset-profile').addEventListener('click', () => {
 $('#gameover-retry').addEventListener('click', () => {
   const postDeathBar = $('#post-death-bar');
   if (postDeathBar) postDeathBar.classList.add('hidden');
+  // Chaos mode: "Play Again" starts a fresh run
+  if (state.gameMode === 'chaos') {
+    state.chaosRound = 1;
+    state.chaosTotalTime = 0;
+    state.chaosModifiers = [];
+  }
   newGame();
 });
+
+// Chaos mode: "Next Board" advances to the next round
+const chaosNextBtn = $('#gameover-chaos-next');
+if (chaosNextBtn) {
+  chaosNextBtn.addEventListener('click', () => {
+    state.chaosRound = (state.chaosRound || 1) + 1;
+    newGame();
+  });
+}
 
 // Explore Board — dismiss modal, keep board visible for analysis
 $('#gameover-explore').addEventListener('click', () => {
@@ -950,7 +1211,7 @@ $('#gameover-submit-daily').addEventListener('click', async () => {
   const name = nameInput ? nameInput.value : '';
   if (name && name.trim()) {
     const sanitized = name.trim().slice(0, 20);
-    const dateStr = new Date().toISOString().slice(0, 10);
+    const dateStr = getLocalDateString();
     addDailyLeaderboardEntry(dateStr, sanitized, state.elapsedTime);
     await submitOnlineScore(dateStr, sanitized, state.elapsedTime, state.dailyBombHits || 0);
     // Auto-submit to room if in one
@@ -1029,6 +1290,20 @@ if (modifierToggle) {
   });
 }
 
+// Colorblind mode toggle
+const colorblindToggle = $('#colorblind-toggle');
+const COLORBLIND_KEY = 'minesweeper_colorblind';
+function applyColorblind(enabled) {
+  document.documentElement.setAttribute('data-colorblind', enabled ? 'true' : 'false');
+  safeSet(COLORBLIND_KEY, enabled ? '1' : '0');
+}
+if (colorblindToggle) {
+  const cbEnabled = safeGet(COLORBLIND_KEY) === '1';
+  colorblindToggle.checked = cbEnabled;
+  applyColorblind(cbEnabled);
+  colorblindToggle.addEventListener('change', () => applyColorblind(colorblindToggle.checked));
+}
+
 // ── Init ───────────────────────────────────────────────
 
 function init() {
@@ -1067,17 +1342,12 @@ function init() {
   const deepLinkMode = urlParams.get('mode');
 
   if (!isOnboarded()) {
-    // First time — show onboarding, start in challenge mode
-    setOnboarded();
-    state.gameMode = 'normal';
-    hideTitleScreen();
-    newGame();
-    const onboarding = $('#onboarding-overlay');
-    if (onboarding) showModal('onboarding-overlay');
-    const startBtn = $('#onboarding-start');
-    if (startBtn) {
-      startBtn.addEventListener('click', () => hideModal('onboarding-overlay'));
-    }
+    // First time — launch interactive tutorial, then start challenge mode
+    startTutorial(() => {
+      state.gameMode = 'normal';
+      hideTitleScreen();
+      newGame();
+    });
   } else if (deepLinkMode === 'daily') {
     // Deep link to daily mode
     state.gameMode = 'daily';
@@ -1097,16 +1367,14 @@ function init() {
       _lastPersistTime = state.elapsedTime;
       persistGameState();
     }
-  }, 10000); // Every 10s instead of 5s to reduce serialization overhead
+  }, 5000); // Every 5s for reliable mobile persistence
 }
 
 // Pause timer + persist when app loses focus; resume when visible
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') {
-    if (state.status === 'playing') {
-      pauseTimer();
-      persistGameState();
-    }
+    if (state.status === 'playing') pauseTimer();
+    persistGameState(); // Always persist (guard is inside)
   } else {
     if (state.status === 'playing') {
       resumeTimer();
@@ -1114,9 +1382,11 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 window.addEventListener('beforeunload', () => {
-  if (state.status === 'playing') {
-    persistGameState();
-  }
+  persistGameState(); // Guard is inside persistGameState
+});
+// pagehide fires more reliably than beforeunload on mobile (swipe-kill)
+window.addEventListener('pagehide', () => {
+  persistGameState(); // Guard is inside persistGameState
 });
 
 // Recalculate cell sizes on window resize
