@@ -1,77 +1,102 @@
-/* Sakura theme — Japanese spring, soft pinks and whites, cherry blossom inspired */
+/* Sakura theme — nighttime hanami, dark indigo sky with cherry blossom accents */
 [data-theme="sakura"] {
-  --color-bg: #fdf0f4;
-  --color-app-bg: #fff5f8;
-  --color-cell-hidden: #f5c6d0;
-  --color-cell-hidden-hover: #f8d4dc;
-  --color-cell-hidden-gradient: linear-gradient(145deg, #f8d0d8, #f0bcc8);
-  --color-cell-revealed: #fef8fa;
-  --color-cell-border-light: #fce0e8;
-  --color-cell-border-dark: #e0a8b8;
-  --color-mine: #d4506c;
-  --color-mine-hit: #c03050;
+  --color-bg: #12101e;
+  --color-app-bg: #0c0a16;
+  --color-cell-hidden: #2a2040;
+  --color-cell-hidden-hover: #352850;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #302648, #252038);
+  --color-cell-revealed: #18142a;
+  --color-cell-border-light: #3e3060;
+  --color-cell-border-dark: #0a0812;
+  --color-mine: #e85080;
+  --color-mine-hit: #d03060;
   --color-flag: #e87090;
-  --color-text: #5c3040;
-  --color-text-secondary: #9d5c6e;
-  --color-num-1: #b64e76;
-  --color-num-2: #67783f;
-  --color-num-3: #ce3958;
-  --color-num-4: #85659e;
-  --color-num-5: #b2583b;
-  --color-num-6: #457b75;
-  --color-num-7: #5c3040;
-  --color-num-8: #816c77;
-  --color-header-bg: #fdf0f4;
-  --color-header-gradient: linear-gradient(180deg, #fff5f8, #fdf0f4);
-  --color-lcd-bg: #f8e4ec;
-  --color-lcd-text: #c04868;
-  --color-modal-bg: #fff2f6;
-  --color-modal-overlay: rgba(92, 48, 64, 0.3);
-  --color-btn-bg: #f5c6d0;
-  --color-btn-hover: #f8d4dc;
-  --color-btn-gradient: linear-gradient(180deg, #f8d4dc, #f5c6d0);
-  --color-border: #f0b8c8;
-  --color-fog: rgba(253, 240, 244, 0.93);
+  --color-text: #e8d8f0;
+  --color-text-secondary: #9080aa;
+  --color-num-1: #7eb8e0;
+  --color-num-2: #e87090;
+  --color-num-3: #f0a0b8;
+  --color-num-4: #a888d0;
+  --color-num-5: #d8a060;
+  --color-num-6: #68b8a8;
+  --color-num-7: #e8d8f0;
+  --color-num-8: #807098;
+  --color-header-bg: #181428;
+  --color-header-gradient: linear-gradient(180deg, #201a35, #181428);
+  --color-lcd-bg: #0a0810;
+  --color-lcd-text: #e87090;
+  --color-modal-bg: #1e1830;
+  --color-modal-overlay: rgba(8, 6, 14, 0.88);
+  --color-btn-bg: #2a2040;
+  --color-btn-hover: #352850;
+  --color-btn-gradient: linear-gradient(180deg, #352850, #2a2040);
+  --color-border: #3e3060;
+  --color-fog: rgba(12, 10, 22, 0.93);
   --color-scan-highlight: rgba(232, 112, 144, 0.15);
   --color-golden: #e8a860;
   --color-accent: #e87090;
   --color-accent-hover: #d45878;
-  --color-accent-glow: rgba(232, 112, 144, 0.25);
+  --color-accent-glow: rgba(232, 112, 144, 0.3);
   --color-win: #90b858;
-  --color-loss: #c03050;
+  --color-loss: #d03060;
   --color-surface: rgba(232, 112, 144, 0.04);
-  --shadow-app: 0 8px 40px rgba(92, 48, 64, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.8);
-  --text-shadow-lcd: 0 0 10px rgba(192, 72, 104, 0.3);
-  --text-shadow-title: 0 0 14px rgba(232, 112, 144, 0.3);
+  --shadow-app: 0 8px 40px rgba(8, 6, 14, 0.6), inset 0 1px 0 rgba(232, 112, 144, 0.04);
+  --text-shadow-lcd: 0 0 10px rgba(232, 112, 144, 0.4);
+  --text-shadow-title: 0 0 14px rgba(232, 112, 144, 0.35);
   --bg-modal-close-hover: rgba(232, 112, 144, 0.12);
+  --shadow-board: 0 4px 20px rgba(8, 6, 14, 0.5);
 }
 
-/* Falling petal animation */
-[data-theme="sakura"] #board-container::before {
-  content: '\1F338';
-  position: absolute;
-  top: -20px;
-  left: 20%;
-  font-size: 14px;
-  animation: sakurFall 6s linear infinite;
-  pointer-events: none;
-  z-index: 2;
-  opacity: 0.6;
+/* Soft pink ambient glow — like distant lantern light */
+[data-theme="sakura"] #board {
+  position: relative;
+  overflow: hidden;
 }
-[data-theme="sakura"] #board-container::after {
-  content: '\1F338';
+
+[data-theme="sakura"] #board::before {
+  content: '';
   position: absolute;
-  top: -20px;
+  inset: -20%;
+  background: radial-gradient(
+    ellipse 60% 40% at 50% 80%,
+    rgba(232, 112, 144, 0.06) 0%,
+    rgba(168, 80, 130, 0.03) 40%,
+    transparent 70%
+  );
+  animation: lanternGlow 6s ease-in-out infinite alternate;
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(12px);
+}
+
+/* Falling petal — gentler and slower than cherry blossom */
+[data-theme="sakura"] #board::after {
+  content: '🌸';
+  position: absolute;
+  top: 0;
   right: 25%;
-  font-size: 12px;
-  animation: sakurFall 8s linear infinite 2s;
+  font-size: 14px;
+  opacity: 0;
+  animation: sakuraPetalNight 22s ease-in-out infinite;
   pointer-events: none;
-  z-index: 2;
-  opacity: 0.4;
+  z-index: 1;
 }
-[data-theme="sakura"] #board-container { position: relative; overflow: hidden; }
-@keyframes sakurFall {
-  0% { transform: translateY(-20px) rotate(0deg); opacity: 0; }
-  10% { opacity: 0.6; }
-  100% { transform: translateY(calc(100% + 40px)) rotate(360deg); opacity: 0; }
+
+@keyframes lanternGlow {
+  0% { opacity: 0.4; }
+  100% { opacity: 0.8; }
+}
+
+@keyframes sakuraPetalNight {
+  0%, 75% { transform: translate(0, -20px) rotate(0deg); opacity: 0; }
+  80% { transform: translate(-10px, 60px) rotate(30deg); opacity: 0.45; }
+  88% { transform: translate(15px, 200px) rotate(140deg); opacity: 0.35; }
+  95% { transform: translate(-5px, 380px) rotate(260deg); opacity: 0.12; }
+  100% { transform: translate(10px, 480px) rotate(340deg); opacity: 0; }
+}
+
+/* Title gets a warm pink glow like lanterns */
+[data-theme="sakura"] #game-title,
+[data-theme="sakura"] .title-screen-logo {
+  text-shadow: 0 0 16px rgba(232, 112, 144, 0.4), 0 0 32px rgba(168, 80, 130, 0.15);
 }

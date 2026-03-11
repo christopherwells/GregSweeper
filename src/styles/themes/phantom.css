@@ -44,4 +44,54 @@
   --text-shadow-lcd: 0 0 10px rgba(60, 168, 160, 0.5);
   --text-shadow-title: 0 0 14px rgba(64, 176, 168, 0.35);
   --bg-modal-close-hover: rgba(64, 176, 168, 0.1);
+  --shadow-board: 0 4px 20px rgba(4, 6, 8, 0.5);
+}
+
+/* Ghostly mist that drifts slowly */
+[data-theme="phantom"] #board {
+  position: relative;
+  overflow: hidden;
+}
+
+[data-theme="phantom"] #board::before {
+  content: '';
+  position: absolute;
+  inset: -20%;
+  background: radial-gradient(
+    ellipse 60% 40% at 50% 80%,
+    rgba(64, 200, 184, 0.04) 0%,
+    rgba(64, 176, 168, 0.02) 40%,
+    transparent 70%
+  );
+  animation: phantomMist 7s ease-in-out infinite alternate;
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(16px);
+}
+
+/* Eerie ghost wisp that fades in and out */
+[data-theme="phantom"] #board::after {
+  content: '';
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(64, 200, 184, 0.08) 0%, transparent 70%);
+  animation: phantomWisp 12s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+@keyframes phantomMist {
+  0% { transform: translateX(-3%); opacity: 0.5; }
+  100% { transform: translateX(3%); opacity: 0.9; }
+}
+
+@keyframes phantomWisp {
+  0%, 70% { transform: translate(-50%, 0) scale(0.5); opacity: 0; }
+  80% { transform: translate(-30%, -30px) scale(1); opacity: 0.6; }
+  90% { transform: translate(-70%, -80px) scale(1.3); opacity: 0.3; }
+  100% { transform: translate(-50%, -140px) scale(0.8); opacity: 0; }
 }

@@ -46,11 +46,61 @@
   --bg-modal-close-hover: rgba(152, 112, 200, 0.12);
 }
 
-/* Soft pulsing glow effect */
+/* Dreamy floating mist + soft pulsing glow */
 [data-theme="lavender"] #board {
+  position: relative;
+  overflow: hidden;
   animation: lavenderGlow 3s ease-in-out infinite;
 }
+
 @keyframes lavenderGlow {
-  0%, 100% { box-shadow: 0 0 10px rgba(160,120,200,0.15); }
-  50% { box-shadow: 0 0 25px rgba(160,120,200,0.35); }
+  0%, 100% { box-shadow: 0 0 10px rgba(160, 120, 200, 0.15); }
+  50% { box-shadow: 0 0 25px rgba(160, 120, 200, 0.35); }
+}
+
+/* Gentle drifting mist across the board */
+[data-theme="lavender"] #board::before {
+  content: '';
+  position: absolute;
+  inset: -30%;
+  background: radial-gradient(
+    ellipse 50% 40% at 30% 50%,
+    rgba(168, 120, 216, 0.06) 0%,
+    transparent 60%
+  ),
+  radial-gradient(
+    ellipse 40% 50% at 75% 45%,
+    rgba(140, 100, 200, 0.05) 0%,
+    transparent 55%
+  );
+  animation: lavenderMist 8s ease-in-out infinite alternate;
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(18px);
+}
+
+/* Floating lavender sprig */
+[data-theme="lavender"] #board::after {
+  content: '🪻';
+  position: absolute;
+  top: 0;
+  left: 70%;
+  font-size: 14px;
+  opacity: 0;
+  animation: lavenderFloat 20s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+@keyframes lavenderMist {
+  0% { transform: translate(-5%, 0); opacity: 0.5; }
+  100% { transform: translate(5%, 0); opacity: 0.8; }
+}
+
+@keyframes lavenderFloat {
+  0%, 70% { transform: translate(0, -20px) rotate(0deg); opacity: 0; }
+  76% { transform: translate(-8px, 70px) rotate(15deg); opacity: 0.4; }
+  85% { transform: translate(10px, 220px) rotate(-10deg); opacity: 0.3; }
+  94% { transform: translate(-5px, 390px) rotate(20deg); opacity: 0.1; }
+  100% { transform: translate(8px, 480px) rotate(-5deg); opacity: 0; }
 }

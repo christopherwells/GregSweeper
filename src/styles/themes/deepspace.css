@@ -44,4 +44,54 @@
   --text-shadow-lcd: 0 0 10px rgba(128, 112, 208, 0.5);
   --text-shadow-title: 0 0 14px rgba(120, 104, 224, 0.4);
   --bg-modal-close-hover: rgba(120, 104, 224, 0.12);
+  --shadow-board: 0 4px 20px rgba(4, 2, 10, 0.6);
+}
+
+/* Slow nebula drift behind the board */
+[data-theme="deepspace"] #board {
+  position: relative;
+  overflow: hidden;
+}
+
+[data-theme="deepspace"] #board::before {
+  content: '';
+  position: absolute;
+  inset: -40%;
+  background:
+    radial-gradient(ellipse 35% 40% at 25% 35%, rgba(96, 144, 255, 0.05) 0%, transparent 50%),
+    radial-gradient(ellipse 30% 35% at 70% 65%, rgba(160, 112, 216, 0.05) 0%, transparent 50%),
+    radial-gradient(ellipse 25% 30% at 50% 50%, rgba(224, 96, 136, 0.03) 0%, transparent 50%);
+  animation: deepNebula 14s ease-in-out infinite alternate;
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(20px);
+}
+
+/* Distant star twinkle */
+[data-theme="deepspace"] #board::after {
+  content: '·';
+  position: absolute;
+  top: 30%;
+  left: 25%;
+  font-size: 12px;
+  color: rgba(200, 192, 232, 0.6);
+  text-shadow:
+    80px -40px 0 rgba(96, 144, 255, 0.4),
+    200px 120px 0 rgba(160, 112, 216, 0.3),
+    140px 60px 0 rgba(200, 192, 232, 0.3);
+  animation: deepTwinkle 6s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+@keyframes deepNebula {
+  0% { transform: translate(-5%, -3%) rotate(0deg); }
+  100% { transform: translate(5%, 3%) rotate(2deg); }
+}
+
+@keyframes deepTwinkle {
+  0%, 100% { opacity: 0.3; }
+  25% { opacity: 0.8; }
+  50% { opacity: 0.2; }
+  75% { opacity: 0.7; }
 }
