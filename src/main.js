@@ -923,6 +923,7 @@ function updateTitleProgress() {
     const unlocked = isChaosUnlocked();
     if (unlocked) {
       chaosCard.classList.remove('mode-card-locked');
+      chaosCard.style.display = '';
       const chaosStats = stats.modeStats?.chaos;
       const bestRun = chaosStats?.bestRun || 0;
       const totalRuns = chaosStats?.totalRuns || 0;
@@ -932,8 +933,7 @@ function updateTitleProgress() {
           : 'Roguelike madness';
       }
     } else {
-      chaosCard.classList.add('mode-card-locked');
-      if (chaosEl) chaosEl.textContent = `Reach Level ${CHAOS_UNLOCK_LEVEL}`;
+      chaosCard.style.display = 'none';
     }
   }
 }

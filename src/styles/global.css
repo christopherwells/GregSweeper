@@ -2762,13 +2762,27 @@ body {
 }
 
 /* ── Chaos Mode UI ────────────────────────────────── */
-.mode-card-chaos.mode-card-locked {
-  opacity: 0.45;
-  cursor: not-allowed;
-  filter: grayscale(0.5);
+.mode-card-chaos {
+  position: relative;
+  animation: chaos-glitch 3s infinite;
 }
-.mode-card-chaos.mode-card-locked .mode-card-progress {
-  font-style: italic;
+.mode-card-chaos .mode-card-name {
+  animation: chaos-text-glitch 3s infinite;
+  display: inline-block;
+}
+@keyframes chaos-glitch {
+  0%, 90%, 100% { transform: none; }
+  91% { transform: translate(-2px, 1px) skewX(-1deg); }
+  92% { transform: translate(2px, -1px) skewX(1deg); }
+  93% { transform: translate(-1px, 0) skewX(0); }
+  94% { transform: none; }
+}
+@keyframes chaos-text-glitch {
+  0%, 90%, 95%, 100% { transform: none; letter-spacing: normal; font-style: normal; }
+  91% { transform: skewX(-4deg); letter-spacing: 2px; }
+  92% { transform: skewX(3deg) translateX(1px); letter-spacing: -1px; font-style: italic; }
+  93% { transform: skewX(-2deg) translateX(-1px); letter-spacing: 1px; }
+  94% { transform: none; font-style: italic; }
 }
 
 .chaos-modifier-bar {

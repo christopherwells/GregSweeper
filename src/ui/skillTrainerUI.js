@@ -38,6 +38,7 @@ let currentPuzzleIndex = 0;
 let mistakeCount = 0;
 let completedMoves = new Set();
 let feedbackTimeout = null;
+let puzzleTransitioning = false;
 
 // ── Helpers ───────────────────────────────────────────
 
@@ -67,6 +68,7 @@ export function showSkillTrainer() {
   currentPuzzleIndex = 0;
   mistakeCount = 0;
   completedMoves = new Set();
+  puzzleTransitioning = false;
   renderCategoryPicker();
 }
 
@@ -485,6 +487,9 @@ function applyCellAppearance(cellEl, cellData) {
 function handlePuzzleClick(row, col, puzzle, correctMoves, isRightClick = false) {
   const moveKey = `${row},${col}`;
 
+  // Block clicks during puzzle transition
+  if (puzzleTransitioning) return;
+
   // Skip already-completed moves
   if (completedMoves.has(moveKey)) return;
 
@@ -559,14 +564,18 @@ function handlePuzzleClick(row, col, puzzle, correctMoves, isRightClick = false)
 
       if (currentPuzzleIndex + 1 < puzzleCount) {
         // Move to next puzzle after a short delay
+        puzzleTransitioning = true;
         setTimeout(() => {
+          puzzleTransitioning = false;
           currentPuzzleIndex++;
           completedMoves = new Set();
           renderLesson(currentLessonId);
         }, 800);
       } else {
         // All puzzles complete — show lesson complete screen
+        puzzleTransitioning = true;
         setTimeout(() => {
+          puzzleTransitioning = false;
           renderLessonComplete(currentLessonId, mistakeCount);
         }, 800);
       }
