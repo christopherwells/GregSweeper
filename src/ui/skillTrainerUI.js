@@ -526,8 +526,9 @@ function handlePuzzleClick(row, col, puzzle, correctMoves, isRightClick = false)
   // Ignore clicks on already-completed moves
   if (completedMoves.has(moveKey)) return;
 
-  // ── Chord attempt on a revealed number cell ──
-  if (cellState === 'revealed' && cellValue > 0 && !isRightClick) {
+  // ── Chord attempt on a revealed number cell (not mystery — chording a "?" defeats its purpose) ──
+  const isMystery = typeof cellData === 'object' && cellData.mystery;
+  if (cellState === 'revealed' && cellValue > 0 && !isRightClick && !isMystery) {
     const adjFlags = countAdjacentFlags(row, col, puzzle);
     if (adjFlags >= cellValue) {
       // Number is satisfied — chord-reveal safe neighbors
