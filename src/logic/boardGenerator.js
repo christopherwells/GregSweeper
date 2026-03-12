@@ -1,4 +1,4 @@
-import { isBoardSolvable } from './boardSolver.js?v=1.0';
+import { isBoardSolvable } from './boardSolver.js?v=1.0.8';
 
 export function createEmptyBoard(rows, cols) {
   const board = [];

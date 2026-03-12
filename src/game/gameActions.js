@@ -1,33 +1,33 @@
-import { state, getRevealedCells } from '../state/gameState.js?v=1.0';
-import { $, $$, boardEl, resetBtn } from '../ui/domHelpers.js?v=1.0';
+import { state, getRevealedCells } from '../state/gameState.js?v=1.0.8';
+import { $, $$, boardEl, resetBtn } from '../ui/domHelpers.js?v=1.0.8';
 import {
   renderBoard, updateCell, updateAllCells, updateCells, getThemeEmoji,
   adjustCellSize, updateZoom,
-} from '../ui/boardRenderer.js?v=1.0';
+} from '../ui/boardRenderer.js?v=1.0.8';
 import {
   updateHeader, updateCheckpointDisplay, updateProgressBar,
   updateCellsRemaining, updateStreakDisplay, updateStreakBorder,
   updateFlagModeBar,
-} from '../ui/headerRenderer.js?v=1.0';
-import { updatePowerUpBar } from '../ui/powerUpBar.js?v=1.0';
-import { hideAllModals, showModal, hideModal } from '../ui/modalManager.js?v=1.0';
-import { showLevelInfoToast } from '../ui/toastManager.js?v=1.0';
-import { startTimer, stopTimer, pauseTimer, resumeTimer, startMineShift, updateTimerDisplay } from './timerManager.js?v=1.0';
-import { handleWin, handleLoss, handleDailyBombHit } from './winLossHandler.js?v=1.0';
-import { performScan, performXRay, performMagnet, tryLifeline } from './powerUpActions.js?v=1.0';
-import { generateBoard, createEmptyBoard, calculateAdjacency } from '../logic/boardGenerator.js?v=1.0';
-import { floodFillReveal, checkWin, chordReveal } from '../logic/boardSolver.js?v=1.0';
-import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getChaosDifficulty } from '../logic/difficulty.js?v=1.0';
-import { shieldDefuse } from '../logic/powerUps.js?v=1.0';
-import { getGimmicksForLevel, applyGimmicks, isLockedCell, hasSeenGimmick, markGimmickSeen, getGimmickDef, isModifierPopupDisabled, setModifierPopupDisabled, getDailyGimmick, getChaosGimmicks } from '../logic/gimmicks.js?v=1.0';
-import { createDailyRNG } from '../logic/seededRandom.js?v=1.0';
+} from '../ui/headerRenderer.js?v=1.0.8';
+import { updatePowerUpBar } from '../ui/powerUpBar.js?v=1.0.8';
+import { hideAllModals, showModal, hideModal } from '../ui/modalManager.js?v=1.0.8';
+import { showLevelInfoToast } from '../ui/toastManager.js?v=1.0.8';
+import { startTimer, stopTimer, pauseTimer, resumeTimer, startMineShift, updateTimerDisplay } from './timerManager.js?v=1.0.8';
+import { handleWin, handleLoss, handleDailyBombHit } from './winLossHandler.js?v=1.0.8';
+import { performScan, performXRay, performMagnet, tryLifeline } from './powerUpActions.js?v=1.0.8';
+import { generateBoard, createEmptyBoard, calculateAdjacency } from '../logic/boardGenerator.js?v=1.0.8';
+import { floodFillReveal, checkWin, chordReveal } from '../logic/boardSolver.js?v=1.0.8';
+import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getChaosDifficulty } from '../logic/difficulty.js?v=1.0.8';
+import { shieldDefuse } from '../logic/powerUps.js?v=1.0.8';
+import { getGimmicksForLevel, applyGimmicks, isLockedCell, hasSeenGimmick, markGimmickSeen, getGimmickDef, isModifierPopupDisabled, setModifierPopupDisabled, getDailyGimmick, getChaosGimmicks } from '../logic/gimmicks.js?v=1.0.8';
+import { createDailyRNG } from '../logic/seededRandom.js?v=1.0.8';
 import {
   loadModePowerUps, loadCheckpoint, clearGameState,
-} from '../storage/statsStorage.js?v=1.0';
+} from '../storage/statsStorage.js?v=1.0.8';
 import {
   playReveal, playFlag, playUnflag, playCascade, playShieldBreak,
-} from '../audio/sounds.js?v=1.0';
-import { loadEffects } from '../ui/collectionManager.js?v=1.0';
+} from '../audio/sounds.js?v=1.0.8';
+import { loadEffects } from '../ui/collectionManager.js?v=1.0.8';
 
 let _lastInputTime = 0;
 
@@ -257,7 +257,7 @@ export function revealCell(row, col) {
 
   // Locked cell check
   if (cell.isLocked && isLockedCell(state.board, row, col)) {
-    import('../ui/toastManager.js?v=1.0').then(m => {
+    import('../ui/toastManager.js?v=1.0.8').then(m => {
       m.showToast('🔒 Unlock neighbors first!', 1500);
     });
     return;

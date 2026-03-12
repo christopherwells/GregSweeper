@@ -1,7 +1,7 @@
-import { state } from '../state/gameState.js?v=1.0';
-import { timerEl, boardEl } from '../ui/domHelpers.js?v=1.0';
-import { updateAllCells } from '../ui/boardRenderer.js?v=1.0';
-import { performMineShift } from '../logic/gimmicks.js?v=1.0';
+import { state } from '../state/gameState.js?v=1.0.8';
+import { timerEl, boardEl } from '../ui/domHelpers.js?v=1.0.8';
+import { updateAllCells } from '../ui/boardRenderer.js?v=1.0.8';
+import { performMineShift } from '../logic/gimmicks.js?v=1.0.8';
 
 // ── Timer ──────────────────────────────────────────────
 

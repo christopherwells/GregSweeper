@@ -1,33 +1,33 @@
-import { state, ENCOURAGEMENT_LINES } from '../state/gameState.js?v=1.0';
-import { $, $$, boardEl, resetBtn, scanToast } from '../ui/domHelpers.js?v=1.0';
-import { getThemeEmoji, updateAllCells, announceGame } from '../ui/boardRenderer.js?v=1.0';
-import { updateHeader, updateStreakBorder, updateCheckpointDisplay, getCheckpointForLevel } from '../ui/headerRenderer.js?v=1.0';
-import { updatePowerUpBar } from '../ui/powerUpBar.js?v=1.0';
-import { showModal } from '../ui/modalManager.js?v=1.0';
+import { state, ENCOURAGEMENT_LINES } from '../state/gameState.js?v=1.0.8';
+import { $, $$, boardEl, resetBtn, scanToast } from '../ui/domHelpers.js?v=1.0.8';
+import { getThemeEmoji, updateAllCells, announceGame } from '../ui/boardRenderer.js?v=1.0.8';
+import { updateHeader, updateStreakBorder, updateCheckpointDisplay, getCheckpointForLevel } from '../ui/headerRenderer.js?v=1.0.8';
+import { updatePowerUpBar } from '../ui/powerUpBar.js?v=1.0.8';
+import { showModal } from '../ui/modalManager.js?v=1.0.8';
 import {
   triggerHeavyShake, showRedFlash, showGreenFlash,
   haptic, chainRevealMines, showCelebration, showConfettiBurst,
-} from '../ui/effectsRenderer.js?v=1.0';
-import { showToast } from '../ui/toastManager.js?v=1.0';
-import { stopTimer } from './timerManager.js?v=1.0';
-import { awardPowerUps } from './powerUpActions.js?v=1.0';
-import { setHandleWin } from './powerUpActions.js?v=1.0';
-import { defuseMine } from '../logic/powerUps.js?v=1.0';
-import { findNextSafeMove } from '../logic/boardSolver.js?v=1.0';
-import { getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, getChaosDifficulty } from '../logic/difficulty.js?v=1.0';
+} from '../ui/effectsRenderer.js?v=1.0.8';
+import { showToast } from '../ui/toastManager.js?v=1.0.8';
+import { stopTimer } from './timerManager.js?v=1.0.8';
+import { awardPowerUps } from './powerUpActions.js?v=1.0.8';
+import { setHandleWin } from './powerUpActions.js?v=1.0.8';
+import { defuseMine } from '../logic/powerUps.js?v=1.0.8';
+import { findNextSafeMove } from '../logic/boardSolver.js?v=1.0.8';
+import { getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, getChaosDifficulty } from '../logic/difficulty.js?v=1.0.8';
 import {
   loadStats, saveGameResult, saveModePowerUps, clearGameState,
   markDailyCompleted, getDailyStreak,
-} from '../storage/statsStorage.js?v=1.0';
-import { safeSetJSON } from '../storage/storageAdapter.js?v=1.0';
+} from '../storage/statsStorage.js?v=1.0.8';
+import { safeSetJSON } from '../storage/storageAdapter.js?v=1.0.8';
 import {
   playExplosion, playWin, playTimeRecord,
-} from '../audio/sounds.js?v=1.0';
+} from '../audio/sounds.js?v=1.0.8';
 import {
   checkNewUnlocks, getHighestTier, getTotalScore,
   getAchievementState, getAllTierNames, getTierIcon, getTierColor,
-} from '../logic/achievements.js?v=1.0';
-import { checkThemeUnlocks, showThemeUnlockToasts } from '../ui/themeManager.js?v=1.0';
+} from '../logic/achievements.js?v=1.0.8';
+import { checkThemeUnlocks, showThemeUnlockToasts } from '../ui/themeManager.js?v=1.0.8';
 
 // ── Achievements Display (for game over) ───────────────
 
@@ -264,7 +264,7 @@ export function handleWin() {
     if (chaosNextBtn) chaosNextBtn.classList.add('hidden');
     if (chaosRunSummary) chaosRunSummary.classList.add('hidden');
     const maxLevel = state.gameMode === 'timed' ? MAX_TIMED_LEVEL : MAX_LEVEL;
-    if (state.currentLevel < maxLevel && state.gameMode !== 'daily') {
+    if (state.currentLevel < maxLevel && state.gameMode !== 'daily' && state.gameMode !== 'timed') {
       nextLevelBtn.classList.remove('hidden');
     } else {
       nextLevelBtn.classList.add('hidden');

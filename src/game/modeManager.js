@@ -1,9 +1,9 @@
-import { state } from '../state/gameState.js?v=1.0';
-import { $, $$ } from '../ui/domHelpers.js?v=1.0';
-import { newGame } from './gameActions.js?v=1.0';
-import { persistGameState, tryResumeGame } from './gamePersistence.js?v=1.0';
-import { loadCheckpoint, loadStats } from '../storage/statsStorage.js?v=1.0';
-import { CHAOS_UNLOCK_LEVEL } from '../logic/difficulty.js?v=1.0';
+import { state } from '../state/gameState.js?v=1.0.8';
+import { $, $$ } from '../ui/domHelpers.js?v=1.0.8';
+import { newGame } from './gameActions.js?v=1.0.8';
+import { persistGameState, tryResumeGame } from './gamePersistence.js?v=1.0.8';
+import { loadCheckpoint, loadStats } from '../storage/statsStorage.js?v=1.0.8';
+import { CHAOS_UNLOCK_LEVEL } from '../logic/difficulty.js?v=1.0.8';
 
 // ── Mode Manager ──────────────────────────────────────
 
@@ -81,7 +81,7 @@ export function updateModeUI(mode) {
     if (powerUpBar) powerUpBar.classList.add('hidden');
     if (flagModeBar) flagModeBar.classList.add('hidden');
     // Lazy-load skill trainer UI
-    import('../ui/skillTrainerUI.js?v=1.0.7').then(m => m.showSkillTrainer()).catch(err => {
+    import('../ui/skillTrainerUI.js?v=1.0.8').then(m => m.showSkillTrainer()).catch(err => {
       console.error('Failed to load Skill Trainer:', err);
       const c = document.getElementById('skill-trainer-container');
       if (c) { c.classList.remove('hidden'); c.innerHTML = '<p style="padding:20px;color:#ff6b6b;">Failed to load Skill Trainer. Try Settings → Clear Cache & Reload.</p>'; }
@@ -92,7 +92,7 @@ export function updateModeUI(mode) {
     if (boardContainer) boardContainer.classList.remove('hidden');
     if (skillTrainerContainer) skillTrainerContainer.classList.add('hidden');
     // Hide skill trainer if it was showing
-    import('../ui/skillTrainerUI.js?v=1.0.7').then(m => m.hideSkillTrainer()).catch(() => {});
+    import('../ui/skillTrainerUI.js?v=1.0.8').then(m => m.hideSkillTrainer()).catch(() => {});
   }
 }
 

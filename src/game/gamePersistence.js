@@ -1,17 +1,17 @@
-import { state } from '../state/gameState.js?v=1.0';
+import { state } from '../state/gameState.js?v=1.0.8';
 import {
   saveGameState, loadGameState,
-} from '../storage/statsStorage.js?v=1.0';
+} from '../storage/statsStorage.js?v=1.0.8';
 import {
   adjustCellSize, renderBoard, updateAllCells, updateZoom,
-} from '../ui/boardRenderer.js?v=1.0';
+} from '../ui/boardRenderer.js?v=1.0.8';
 import {
   updateHeader, updateCheckpointDisplay, updateProgressBar,
   updateCellsRemaining, updateStreakDisplay, updateStreakBorder,
   updateFlagModeBar,
-} from '../ui/headerRenderer.js?v=1.0';
-import { updatePowerUpBar } from '../ui/powerUpBar.js?v=1.0';
-import { startTimer, updateTimerDisplay } from './timerManager.js?v=1.0';
+} from '../ui/headerRenderer.js?v=1.0.8';
+import { updatePowerUpBar } from '../ui/powerUpBar.js?v=1.0.8';
+import { startTimer, updateTimerDisplay } from './timerManager.js?v=1.0.8';
 
 // ── Game State Persistence ────────────────────────────
 
