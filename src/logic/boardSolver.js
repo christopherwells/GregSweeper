@@ -366,7 +366,7 @@ export function floodFillReveal(board, startRow, startCol) {
 export function checkWin(board) {
   for (const row of board) {
     for (const cell of row) {
-      if (!cell.isMine && !cell.isRevealed) return false;
+      if (!cell.isMine && !cell.isLocked && !cell.isRevealed) return false;
     }
   }
   return true;

@@ -55,7 +55,15 @@ export function updateProgressBar() {
 export function updateCellsRemaining() {
   if (!cellsRemainingEl) return;
   if (state.status === 'playing') {
-    const totalSafe = state.rows * state.cols - state.totalMines;
+    let lockedCount = 0;
+    if (state.board) {
+      for (const row of state.board) {
+        for (const cell of row) {
+          if (cell.isLocked && !cell.isRevealed) lockedCount++;
+        }
+      }
+    }
+    const totalSafe = state.rows * state.cols - state.totalMines - lockedCount;
     const remaining = totalSafe - state.revealedCount;
     if (remaining > 0) {
       cellsRemainingEl.textContent = `${remaining} left`;
