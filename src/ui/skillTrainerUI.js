@@ -10,11 +10,11 @@ import {
   saveSkillProgress,
   markPuzzleCompleted,
   getLessonStars,
-} from '../logic/skillTrainer.js?v=1.0.2';
+} from '../logic/skillTrainer.js?v=1.0.7';
 
-import { $, $$ } from './domHelpers.js?v=1.0';
-import { state } from '../state/gameState.js?v=1.0';
-import { playReveal, playWin, playFlag } from '../audio/sounds.js?v=1.0';
+import { $, $$ } from './domHelpers.js?v=1.0.7';
+import { state } from '../state/gameState.js?v=1.0.7';
+import { playReveal, playWin, playFlag } from '../audio/sounds.js?v=1.0.7';
 
 // ── Constants ─────────────────────────────────────────
 

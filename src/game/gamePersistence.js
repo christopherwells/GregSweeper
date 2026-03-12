@@ -40,6 +40,7 @@ export function persistGameState() {
     shieldActive: state.shieldActive, checkpoint: state.checkpoint,
     dailySeed: state.dailySeed, dailyBombHits: state.dailyBombHits,
     magnetMode: state.magnetMode || false,
+    flagMode: state.flagMode || false,
     activeGimmicks: state.activeGimmicks || [],
     gimmickData: state.gimmickData || {},
     firstClick: state.firstClick,
@@ -79,6 +80,7 @@ export function tryResumeGame(mode) {
   state.scanMode = false;
   state.xrayMode = false;
   state.magnetMode = gs.magnetMode || false;
+  state.flagMode = gs.flagMode || false;
   state.suggestedMove = null;
   state.activeGimmicks = gs.activeGimmicks || [];
   state.gimmickData = gs.gimmickData || {};

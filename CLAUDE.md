@@ -59,4 +59,4 @@ Modern Minesweeper game built with vanilla JavaScript (ES6 modules). No framewor
 - After push, bump `?v=` query string if browser caching is stale
 
 ## Version
-Current: v1.0.6
+Current: v1.0.7

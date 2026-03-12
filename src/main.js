@@ -11,22 +11,22 @@ function getLocalDateString() {
     String(d.getDate()).padStart(2, '0');
 }
 
-import { state } from './state/gameState.js?v=1.0.6';
-import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn } from './ui/domHelpers.js?v=1.0.6';
-import { resizeCells, updateAllCells, getThemeEmoji, needsZoom, updateZoom, zoomIn, zoomOut, invalidateEmojiCache, setFocusedCell, announceGame } from './ui/boardRenderer.js?v=1.0.6';
-import { updateHeader, updateStreakBorder, updateFlagModeBar, getCheckpointForLevel, CHECKPOINT_INTERVAL } from './ui/headerRenderer.js?v=1.0.6';
-import { updatePowerUpBar } from './ui/powerUpBar.js?v=1.0.6';
-import { showModal, hideModal, hideAllModals } from './ui/modalManager.js?v=1.0.6';
-import { showToast, showLevelUpToast, showCheckpointToast } from './ui/toastManager.js?v=1.0.6';
-import { showCelebration, haptic } from './ui/effectsRenderer.js?v=1.0.6';
-import { THEME_UNLOCKS, getUnlockedThemes, loadThemeCSS } from './ui/themeManager.js?v=1.0.6';
-import { applyThemeEffects, clearThemeEffects } from './ui/themeEffects.js?v=1.0.6';
-import { newGame, revealCell, toggleFlag, handleChordReveal } from './game/gameActions.js?v=1.0.6';
-import './game/winLossHandler.js?v=1.0.6'; // side-effect: registers handleWin with powerUpActions
-import { useRevealSafe, useShield, activateScan, activateXRay, activateMagnet } from './game/powerUpActions.js?v=1.0.6';
-import { switchMode, isChaosUnlocked, updateModeUI } from './game/modeManager.js?v=1.0.6';
-import { persistGameState, tryResumeGame } from './game/gamePersistence.js?v=1.0.6';
-import { getDifficultyForLevel, getTimedDifficulty, getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, CHAOS_UNLOCK_LEVEL } from './logic/difficulty.js?v=1.0.6';
+import { state } from './state/gameState.js?v=1.0.7';
+import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn } from './ui/domHelpers.js?v=1.0.7';
+import { resizeCells, updateAllCells, getThemeEmoji, needsZoom, updateZoom, zoomIn, zoomOut, invalidateEmojiCache, setFocusedCell, announceGame } from './ui/boardRenderer.js?v=1.0.7';
+import { updateHeader, updateStreakBorder, updateFlagModeBar, getCheckpointForLevel, CHECKPOINT_INTERVAL } from './ui/headerRenderer.js?v=1.0.7';
+import { updatePowerUpBar } from './ui/powerUpBar.js?v=1.0.7';
+import { showModal, hideModal, hideAllModals } from './ui/modalManager.js?v=1.0.7';
+import { showToast, showLevelUpToast, showCheckpointToast } from './ui/toastManager.js?v=1.0.7';
+import { showCelebration, haptic } from './ui/effectsRenderer.js?v=1.0.7';
+import { THEME_UNLOCKS, getUnlockedThemes, loadThemeCSS } from './ui/themeManager.js?v=1.0.7';
+import { applyThemeEffects, clearThemeEffects } from './ui/themeEffects.js?v=1.0.7';
+import { newGame, revealCell, toggleFlag, handleChordReveal } from './game/gameActions.js?v=1.0.7';
+import './game/winLossHandler.js?v=1.0.7'; // side-effect: registers handleWin with powerUpActions
+import { useRevealSafe, useShield, activateScan, activateXRay, activateMagnet } from './game/powerUpActions.js?v=1.0.7';
+import { switchMode, isChaosUnlocked, updateModeUI } from './game/modeManager.js?v=1.0.7';
+import { persistGameState, tryResumeGame } from './game/gamePersistence.js?v=1.0.7';
+import { getDifficultyForLevel, getTimedDifficulty, getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, CHAOS_UNLOCK_LEVEL } from './logic/difficulty.js?v=1.0.7';
 import {
   loadStats, saveTheme, loadTheme, resetStats,
   saveCheckpoint, loadCheckpoint,
@@ -35,31 +35,31 @@ import {
   isOnboarded, setOnboarded,
   isDailyCompleted,
   getDailyStreak,
-} from './storage/statsStorage.js?v=1.0.6';
+} from './storage/statsStorage.js?v=1.0.7';
 import {
   playLevelUp, isMuted, setMuted, loadMuted,
   setSFXVolume, getSFXVolume,
-} from './audio/sounds.js?v=1.0.6';
+} from './audio/sounds.js?v=1.0.7';
 import {
   getAchievementState, getTotalScore, checkNewUnlocks,
   getHighestTier, getAllTierNames, getTierIcon, getTierColor,
-} from './logic/achievements.js?v=1.0.6';
+} from './logic/achievements.js?v=1.0.7';
 import {
   initFirebase, isFirebaseOnline, submitOnlineScore, fetchOnlineLeaderboard,
   createRoom, joinRoom, leaveRoom, submitRoomScore,
   fetchRoomLeaderboard, fetchRoomHistory, getRoomMembers, getRoomInfo,
   saveRoomInfo, loadRoomInfo, clearRoomInfo,
-} from './firebase/firebaseLeaderboard.js?v=1.0.6';
+} from './firebase/firebaseLeaderboard.js?v=1.0.7';
 import {
   EMOJI_PACKS, EFFECTS, TITLES,
   loadEmojiPack, saveEmojiPack, getActiveEmojiPack, isPackUnlocked,
   isEffectUnlocked, isTitleUnlocked,
   loadEffects, saveEffects, loadTitle, saveTitle,
-} from './ui/collectionManager.js?v=1.0.6';
-import { isModifierPopupDisabled, setModifierPopupDisabled } from './logic/gimmicks.js?v=1.0.6';
-import { isStorageFailing, safeGet, safeSet } from './storage/storageAdapter.js?v=1.0.6';
-import { pauseTimer, resumeTimer } from './game/timerManager.js?v=1.0.6';
-import { startTutorial } from './ui/tutorialManager.js?v=1.0.6';
+} from './ui/collectionManager.js?v=1.0.7';
+import { isModifierPopupDisabled, setModifierPopupDisabled } from './logic/gimmicks.js?v=1.0.7';
+import { isStorageFailing, safeGet, safeSet } from './storage/storageAdapter.js?v=1.0.7';
+import { pauseTimer, resumeTimer } from './game/timerManager.js?v=1.0.7';
+import { startTutorial } from './ui/tutorialManager.js?v=1.0.7';
 
 // ── Theme-color meta tag (Android nav bar) ───────────
 function updateThemeColor() {
@@ -866,6 +866,9 @@ for (const closeBtn of $$('.modal-close')) {
 for (const modal of $$('.modal')) {
   modal.addEventListener('click', (e) => {
     if (e.target === modal && modal.id !== 'gameover-overlay') {
+      // Don't close if user is typing in an input inside the modal (mobile keyboard can cause stray taps)
+      const active = document.activeElement;
+      if (active && modal.contains(active) && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
       closeModalAndReturn(modal.id);
     }
   });
@@ -1273,6 +1276,9 @@ document.addEventListener('keydown', (e) => {
   // Don't intercept keys when user is typing in an input field
   const tag = e.target.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+  // Belt-and-suspenders: also check activeElement (some mobile keyboards fire events with wrong target)
+  const activeTag = document.activeElement?.tagName;
+  if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT') return;
 
   const anyModalOpen = [...$$('.modal')].some(m => !m.classList.contains('hidden'));
 
