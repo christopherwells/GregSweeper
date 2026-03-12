@@ -1270,6 +1270,10 @@ $('#gameover-done').addEventListener('click', () => {
 
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
+  // Don't intercept keys when user is typing in an input field
+  const tag = e.target.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
   const anyModalOpen = [...$$('.modal')].some(m => !m.classList.contains('hidden'));
 
   if (e.key === 'Escape') {
@@ -1283,6 +1287,8 @@ document.addEventListener('keydown', (e) => {
     return;
   }
 
+  if (anyModalOpen) return;
+
   if (e.key === 'r' || e.key === 'R') {
     if (state.gameMode === 'normal') {
       state.currentLevel = state.checkpoint || loadCheckpoint(state.gameMode) || 1;
@@ -1292,8 +1298,6 @@ document.addEventListener('keydown', (e) => {
     newGame();
     return;
   }
-
-  if (anyModalOpen) return;
 
   if (e.key === '1') useRevealSafe();
   else if (e.key === '2') useShield();
