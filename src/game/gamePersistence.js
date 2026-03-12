@@ -18,6 +18,7 @@ import { startTimer, updateTimerDisplay } from './timerManager.js?v=1.0';
 export function persistGameState() {
   // Persist for 'playing' and 'idle' (pre-first-click) states
   if (state.status !== 'playing' && state.status !== 'idle') return;
+  if (!state.board || state.board.length === 0) return;
   const gs = {
     board: state.board.map(row => row.map(c => ({
       isMine: c.isMine, isRevealed: c.isRevealed, isFlagged: c.isFlagged,
