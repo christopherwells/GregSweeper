@@ -2,8 +2,8 @@
 // Guided 5x5 mini-board that teaches minesweeper basics:
 // 1. Tap to reveal  2. Numbers explained  3. Flag  4. Chord  5. Win
 
-import { playReveal, playFlag, playWin } from '../audio/sounds.js?v=1.0.8';
-import { setOnboarded } from '../storage/statsStorage.js?v=1.0.8';
+import { playReveal, playFlag, playWin } from '../audio/sounds.js?v=1.0.9';
+import { setOnboarded } from '../storage/statsStorage.js?v=1.0.9';
 
 const ROWS = 5;
 const COLS = 5;

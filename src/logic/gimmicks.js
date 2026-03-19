@@ -2,7 +2,7 @@
 // 7 gimmicks introduced at checkpoints after L10.
 // Each gimmick has: apply (board setup), render hints, solver adjustments.
 
-import { safeGet, safeSet, safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js?v=1.0.8';
+import { safeGet, safeSet, safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js?v=1.0.9';
 
 const GIMMICK_DEFS = {
   mystery: {

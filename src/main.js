@@ -11,22 +11,22 @@ function getLocalDateString() {
     String(d.getDate()).padStart(2, '0');
 }
 
-import { state } from './state/gameState.js?v=1.0.8';
-import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn } from './ui/domHelpers.js?v=1.0.8';
-import { resizeCells, updateAllCells, getThemeEmoji, needsZoom, updateZoom, zoomIn, zoomOut, invalidateEmojiCache, setFocusedCell, announceGame } from './ui/boardRenderer.js?v=1.0.8';
-import { updateHeader, updateStreakBorder, updateFlagModeBar, getCheckpointForLevel, CHECKPOINT_INTERVAL } from './ui/headerRenderer.js?v=1.0.8';
-import { updatePowerUpBar } from './ui/powerUpBar.js?v=1.0.8';
-import { showModal, hideModal, hideAllModals } from './ui/modalManager.js?v=1.0.8';
-import { showToast, showLevelUpToast, showCheckpointToast } from './ui/toastManager.js?v=1.0.8';
-import { showCelebration, haptic } from './ui/effectsRenderer.js?v=1.0.8';
-import { THEME_UNLOCKS, getUnlockedThemes, loadThemeCSS } from './ui/themeManager.js?v=1.0.8';
-import { applyThemeEffects, clearThemeEffects } from './ui/themeEffects.js?v=1.0.8';
-import { newGame, revealCell, toggleFlag, handleChordReveal } from './game/gameActions.js?v=1.0.8';
-import './game/winLossHandler.js?v=1.0.8'; // side-effect: registers handleWin with powerUpActions
-import { useRevealSafe, useShield, activateScan, activateXRay, activateMagnet } from './game/powerUpActions.js?v=1.0.8';
-import { switchMode, isChaosUnlocked, updateModeUI } from './game/modeManager.js?v=1.0.8';
-import { persistGameState, tryResumeGame } from './game/gamePersistence.js?v=1.0.8';
-import { getDifficultyForLevel, getTimedDifficulty, getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, CHAOS_UNLOCK_LEVEL } from './logic/difficulty.js?v=1.0.8';
+import { state } from './state/gameState.js?v=1.0.9';
+import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn } from './ui/domHelpers.js?v=1.0.9';
+import { resizeCells, updateAllCells, getThemeEmoji, needsZoom, updateZoom, zoomIn, zoomOut, invalidateEmojiCache, setFocusedCell, announceGame } from './ui/boardRenderer.js?v=1.0.9';
+import { updateHeader, updateStreakBorder, updateFlagModeBar, getCheckpointForLevel, CHECKPOINT_INTERVAL } from './ui/headerRenderer.js?v=1.0.9';
+import { updatePowerUpBar } from './ui/powerUpBar.js?v=1.0.9';
+import { showModal, hideModal, hideAllModals } from './ui/modalManager.js?v=1.0.9';
+import { showToast, showLevelUpToast, showCheckpointToast } from './ui/toastManager.js?v=1.0.9';
+import { showCelebration, haptic } from './ui/effectsRenderer.js?v=1.0.9';
+import { THEME_UNLOCKS, getUnlockedThemes, loadThemeCSS } from './ui/themeManager.js?v=1.0.9';
+import { applyThemeEffects, clearThemeEffects } from './ui/themeEffects.js?v=1.0.9';
+import { newGame, revealCell, toggleFlag, handleChordReveal } from './game/gameActions.js?v=1.0.9';
+import './game/winLossHandler.js?v=1.0.9'; // side-effect: registers handleWin with powerUpActions
+import { useRevealSafe, useShield, activateScan, activateXRay, activateMagnet } from './game/powerUpActions.js?v=1.0.9';
+import { switchMode, isChaosUnlocked, updateModeUI } from './game/modeManager.js?v=1.0.9';
+import { persistGameState, tryResumeGame } from './game/gamePersistence.js?v=1.0.9';
+import { getDifficultyForLevel, getTimedDifficulty, getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, CHAOS_UNLOCK_LEVEL } from './logic/difficulty.js?v=1.0.9';
 import {
   loadStats, saveTheme, loadTheme, resetStats,
   saveCheckpoint, loadCheckpoint,
@@ -35,31 +35,31 @@ import {
   isOnboarded, setOnboarded,
   isDailyCompleted,
   getDailyStreak,
-} from './storage/statsStorage.js?v=1.0.8';
+} from './storage/statsStorage.js?v=1.0.9';
 import {
   playLevelUp, isMuted, setMuted, loadMuted,
   setSFXVolume, getSFXVolume,
-} from './audio/sounds.js?v=1.0.8';
+} from './audio/sounds.js?v=1.0.9';
 import {
   getAchievementState, getTotalScore, checkNewUnlocks,
   getHighestTier, getAllTierNames, getTierIcon, getTierColor,
-} from './logic/achievements.js?v=1.0.8';
+} from './logic/achievements.js?v=1.0.9';
 import {
   initFirebase, isFirebaseOnline, submitOnlineScore, fetchOnlineLeaderboard,
   createRoom, joinRoom, leaveRoom, submitRoomScore,
   fetchRoomLeaderboard, fetchRoomHistory, getRoomMembers, getRoomInfo,
   saveRoomInfo, loadRoomInfo, clearRoomInfo,
-} from './firebase/firebaseLeaderboard.js?v=1.0.8';
+} from './firebase/firebaseLeaderboard.js?v=1.0.9';
 import {
   EMOJI_PACKS, EFFECTS, TITLES,
   loadEmojiPack, saveEmojiPack, getActiveEmojiPack, isPackUnlocked,
   isEffectUnlocked, isTitleUnlocked,
   loadEffects, saveEffects, loadTitle, saveTitle,
-} from './ui/collectionManager.js?v=1.0.8';
-import { isModifierPopupDisabled, setModifierPopupDisabled } from './logic/gimmicks.js?v=1.0.8';
-import { isStorageFailing, safeGet, safeSet } from './storage/storageAdapter.js?v=1.0.8';
-import { pauseTimer, resumeTimer } from './game/timerManager.js?v=1.0.8';
-import { startTutorial } from './ui/tutorialManager.js?v=1.0.8';
+} from './ui/collectionManager.js?v=1.0.9';
+import { isModifierPopupDisabled, setModifierPopupDisabled } from './logic/gimmicks.js?v=1.0.9';
+import { isStorageFailing, safeGet, safeSet } from './storage/storageAdapter.js?v=1.0.9';
+import { pauseTimer, resumeTimer } from './game/timerManager.js?v=1.0.9';
+import { startTutorial } from './ui/tutorialManager.js?v=1.0.9';
 
 // ── Theme-color meta tag (Android nav bar) ───────────
 function updateThemeColor() {

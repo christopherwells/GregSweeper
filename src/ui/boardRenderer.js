@@ -1,7 +1,7 @@
-import { state } from '../state/gameState.js?v=1.0.8';
-import { boardEl, zoomControls, zoomLevelDisplay, boardScrollWrapper } from './domHelpers.js?v=1.0.8';
-import { THEME_UNLOCKS } from './themeManager.js?v=1.0.8';
-import { loadEmojiPack, getActiveEmojiPack } from './collectionManager.js?v=1.0.8';
+import { state } from '../state/gameState.js?v=1.0.9';
+import { boardEl, zoomControls, zoomLevelDisplay, boardScrollWrapper } from './domHelpers.js?v=1.0.9';
+import { THEME_UNLOCKS } from './themeManager.js?v=1.0.9';
+import { loadEmojiPack, getActiveEmojiPack } from './collectionManager.js?v=1.0.9';
 
 // ── Emoji Cache (avoid per-cell localStorage reads) ────
 let _emojiCache = null;

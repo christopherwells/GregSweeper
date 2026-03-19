@@ -1,4 +1,4 @@
-import { safeGet, safeSet, safeRemove, safeGetJSON, safeSetJSON } from './storageAdapter.js?v=1.0.8';
+import { safeGet, safeSet, safeRemove, safeGetJSON, safeSetJSON } from './storageAdapter.js?v=1.0.9';
 
 const STATS_KEY = 'minesweeper_stats';
 const LEADERBOARD_KEY = 'minesweeper_daily_leaderboard';

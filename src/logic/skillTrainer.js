@@ -1,4 +1,4 @@
-import { safeGet, safeSet, safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js?v=1.0.8';
+import { safeGet, safeSet, safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js?v=1.0.9';
 // ── Skill Trainer Data ────────────────────────────────
 // 21 lessons (5 beginner, 5 intermediate, 5 advanced, 6 modifiers)
 // with hand-crafted puzzles teaching minesweeper techniques.
