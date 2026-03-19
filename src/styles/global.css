@@ -639,6 +639,18 @@ body {
   50% { box-shadow: 0 0 16px rgba(0, 230, 118, 0.7); }
 }
 
+.cell.suggested-start {
+  background: rgba(76, 175, 80, 0.35);
+  border: 2px solid #4caf50 !important;
+  box-shadow: 0 0 8px rgba(76, 175, 80, 0.4);
+  animation: pulse-start 2s ease-in-out infinite;
+}
+
+@keyframes pulse-start {
+  0%, 100% { box-shadow: 0 0 6px rgba(76, 175, 80, 0.3); }
+  50% { box-shadow: 0 0 14px rgba(76, 175, 80, 0.6); }
+}
+
 .cell.fogged {
   background: var(--color-fog);
   border: 1px solid rgba(0,0,0,0.3);

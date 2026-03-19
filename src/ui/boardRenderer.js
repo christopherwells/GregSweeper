@@ -198,6 +198,10 @@ export function updateCell(r, c) {
     if (cell.mirrorZone) cellEl.classList.add('mirror-unrevealed');
     // Suggested safe move overlay (post-death analysis)
     if (cell.suggestedMove) cellEl.classList.add('suggested-move');
+    // Daily suggested start cell
+    if (cell.suggestedStart && state.gameMode === 'daily' && state.status === 'idle') {
+      cellEl.classList.add('suggested-start');
+    }
   }
   // Update ARIA label for screen readers
   cellEl.setAttribute('aria-label', getCellAriaLabel(cell, r, c));
