@@ -1154,19 +1154,8 @@ if (titleLeaderboardBtn) {
 }
 
 // Clear Cache & Reload
-$('#btn-clear-cache').addEventListener('click', async () => {
-  // Unregister all service workers
-  if ('serviceWorker' in navigator) {
-    const registrations = await navigator.serviceWorker.getRegistrations();
-    for (const reg of registrations) await reg.unregister();
-  }
-  // Delete all caches
-  if ('caches' in window) {
-    const keys = await caches.keys();
-    for (const key of keys) await caches.delete(key);
-  }
-  // Force hard reload — append cache buster since location.reload(true) is unreliable on mobile
-  window.location.href = window.location.pathname + '?cb=' + Date.now();
+$('#btn-clear-cache').addEventListener('click', () => {
+  if (window.gregsweeperCacheClear) window.gregsweeperCacheClear();
 });
 
 // Reset Profile
