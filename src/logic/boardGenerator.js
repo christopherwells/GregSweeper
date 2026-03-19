@@ -254,6 +254,7 @@ export function generateBoard(rows, cols, mines, excludeRow, excludeCol, rng, op
     const result = isBoardSolvable(board, rows, cols, excludeRow, excludeCol);
 
     if (result.solvable) {
+      cleanSolverArtifacts(board);
       return board;
     }
 
@@ -263,6 +264,7 @@ export function generateBoard(rows, cols, mines, excludeRow, excludeCol, rng, op
     }
 
     if (result.remainingUnknowns <= maxAcceptableUnknowns) {
+      cleanSolverArtifacts(board);
       return board;
     }
 
@@ -270,10 +272,24 @@ export function generateBoard(rows, cols, mines, excludeRow, excludeCol, rng, op
   }
 
   // Return best board found
-  return bestBoard || (() => {
+  const finalBoard = bestBoard || (() => {
     const board = createEmptyBoard(rows, cols);
     placeMines(board, mines, excludeRow, excludeCol, rng);
     calculateAdjacency(board);
     return board;
   })();
+  cleanSolverArtifacts(finalBoard);
+  return finalBoard;
+}
+
+// The board solver's isBoardSolvable sets isRevealed/revealAnimDelay on
+// board cells during its analysis. Clean these up so the returned board
+// is pristine (all cells unrevealed).
+function cleanSolverArtifacts(board) {
+  for (const row of board) {
+    for (const cell of row) {
+      cell.isRevealed = false;
+      cell.revealAnimDelay = 0;
+    }
+  }
 }
