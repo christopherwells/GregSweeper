@@ -211,11 +211,17 @@ export function updateCell(r, c) {
 
 export function updateAllCells() {
   // For daily mode: show suggested start when board is fresh or re-fogged after bomb hit
-  // (idle = fresh board, revealedCount <= 1 with playing = just re-fogged after bomb)
   const dailyNeedsStart = state.gameMode === "daily" && state.board?.length > 0 &&
     (state.status === "idle" || (state.status === "playing" && state.revealedCount <= 1));
   if (dailyNeedsStart) {
-    markDailySuggestedStart();
+    // Only calculate once; after bomb hits, reuse the original position
+    if (state.status === "idle") _dailySuggestedCell = null; // fresh board = recalculate
+    if (_dailySuggestedCell) {
+      for (const row of state.board) for (const cell of row) cell.suggestedStart = false;
+      state.board[_dailySuggestedCell.r][_dailySuggestedCell.c].suggestedStart = true;
+    } else {
+      markDailySuggestedStart();
+    }
   }
   for (let r = 0; r < state.rows; r++) {
     for (let c = 0; c < state.cols; c++) {
@@ -225,6 +231,9 @@ export function updateAllCells() {
   // Add "Start here" label near the suggested start cell
   updateStartHereLabel();
 }
+
+// Stores the original suggested start position so it doesn't move after bomb hits
+let _dailySuggestedCell = null;
 
 function markDailySuggestedStart() {
   const board = state.board, rows = state.rows, cols = state.cols;
@@ -275,6 +284,7 @@ function markDailySuggestedStart() {
 
   if (bestCell) {
     board[bestCell.r][bestCell.c].suggestedStart = true;
+    _dailySuggestedCell = { r: bestCell.r, c: bestCell.c };
   }
 }
 

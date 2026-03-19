@@ -203,7 +203,7 @@ export function updateFlagModeBar() {
 function updateTimerDisplayInHeader() {
   const timerEl = document.getElementById('timer-display');
   if (!timerEl) return;
-  const display = Math.min(state.elapsedTime, 999);
+  const display = Math.min(Math.floor(state.elapsedTime), 999);
   timerEl.textContent = String(display).padStart(3, '0');
   timerEl.classList.remove('timer-critical', 'timer-warning');
 }

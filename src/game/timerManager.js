@@ -7,7 +7,7 @@ import { performMineShift } from '../logic/gimmicks.js';
 
 export function getDisplayTime() {
   // Timed mode always counts up now (no countdown)
-  return Math.min(state.elapsedTime, 999);
+  return Math.min(Math.floor(state.elapsedTime), 999);
 }
 
 export function updateTimerDisplay() {

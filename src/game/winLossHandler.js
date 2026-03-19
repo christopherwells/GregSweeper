@@ -54,7 +54,7 @@ function showAchievementToasts(unlocks) {
           setTimeout(showNext, 200);
         }
       }, 300);
-    }, 2500);
+    }, 2000);
   }
 
   // Delay first toast slightly to let game over show first
@@ -567,8 +567,7 @@ export function handleDailyBombHit(mineRow, mineCol) {
   showRedFlash();
   haptic([80, 30, 60]);
 
-  // Pause timer during popup (1.5s popup, net penalty = 10s - 1.5s = 8.5s applied above)
-  state.elapsedTime -= 1.5; // compensate for popup display time
+  // Pause timer during popup so display time doesn't add to penalty
   pauseTimer();
 
   // Show centered popup for 1.5s
@@ -580,8 +579,9 @@ export function handleDailyBombHit(mineRow, mineCol) {
 
   setTimeout(() => {
     popup.remove();
+    state.elapsedTime = Math.floor(state.elapsedTime);
     resumeTimer();
     updateAllCells();
     updateHeader();
-  }, 1500);
+  }, 2000);
 }
