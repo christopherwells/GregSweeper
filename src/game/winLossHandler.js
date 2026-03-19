@@ -9,7 +9,7 @@ import {
   haptic, chainRevealMines, showCelebration, showConfettiBurst,
 } from '../ui/effectsRenderer.js';
 import { showToast } from '../ui/toastManager.js';
-import { stopTimer } from './timerManager.js';
+import { stopTimer, pauseTimer, resumeTimer } from './timerManager.js';
 import { awardPowerUps } from './powerUpActions.js';
 import { setHandleWin } from './powerUpActions.js';
 import { defuseMine } from '../logic/powerUps.js';
@@ -567,12 +567,21 @@ export function handleDailyBombHit(mineRow, mineCol) {
   showRedFlash();
   haptic([80, 30, 60]);
 
-  // Show strike toast
-  const strikes = state.dailyBombHits;
-  scanToast.textContent = `💥 Strike ${strikes} — +10s penalty! Board re-fogged!`;
-  scanToast.classList.remove('hidden');
-  setTimeout(() => scanToast.classList.add('hidden'), 2500);
+  // Pause timer during popup (1.5s popup, net penalty = 10s - 1.5s = 8.5s applied above)
+  state.elapsedTime -= 1.5; // compensate for popup display time
+  pauseTimer();
 
-  updateAllCells();
-  updateHeader();
+  // Show centered popup for 1.5s
+  const popup = document.createElement('div');
+  popup.className = 'daily-bomb-popup';
+  const strikes = state.dailyBombHits;
+  popup.innerHTML = `<div class="daily-bomb-popup-content">💥 You hit a mine!<br><span class="daily-bomb-sub">+10s penalty · Board reset · Mine removed</span></div>`;
+  document.getElementById('app').appendChild(popup);
+
+  setTimeout(() => {
+    popup.remove();
+    resumeTimer();
+    updateAllCells();
+    updateHeader();
+  }, 1500);
 }

@@ -199,8 +199,9 @@ export function updateCell(r, c) {
     if (cell.mirrorZone) cellEl.classList.add('mirror-unrevealed');
     // Suggested safe move overlay (post-death analysis)
     if (cell.suggestedMove) cellEl.classList.add('suggested-move');
-    // Daily suggested start cell (disappears once timer starts)
-    if (cell.suggestedStart && state.gameMode === 'daily' && state.status === 'idle') {
+    // Daily suggested start cell (shows when board is fresh or re-fogged)
+    if (cell.suggestedStart && state.gameMode === 'daily' &&
+        (state.status === 'idle' || (state.status === 'playing' && state.revealedCount <= 1))) {
       cellEl.classList.add('suggested-start');
     }
   }
@@ -209,8 +210,11 @@ export function updateCell(r, c) {
 }
 
 export function updateAllCells() {
-  // For daily mode before timer starts, compute and mark the best starting cell
-  if (state.gameMode === "daily" && state.status === "idle" && state.board?.length > 0) {
+  // For daily mode: show suggested start when board is fresh or re-fogged after bomb hit
+  // (idle = fresh board, revealedCount <= 1 with playing = just re-fogged after bomb)
+  const dailyNeedsStart = state.gameMode === "daily" && state.board?.length > 0 &&
+    (state.status === "idle" || (state.status === "playing" && state.revealedCount <= 1));
+  if (dailyNeedsStart) {
     markDailySuggestedStart();
   }
   for (let r = 0; r < state.rows; r++) {
@@ -279,7 +283,8 @@ function updateStartHereLabel() {
   const old = document.getElementById("start-here-label");
   if (old) old.remove();
 
-  if (state.gameMode !== "daily" || state.status !== "idle") return;
+  if (state.gameMode !== "daily") return;
+  if (state.status !== "idle" && !(state.status === "playing" && state.revealedCount <= 1)) return;
 
   const cellEl = boardEl.querySelector(".suggested-start");
   if (!cellEl) return;
