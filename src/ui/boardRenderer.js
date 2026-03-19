@@ -224,8 +224,15 @@ export function updateAllCells() {
 
 function markDailySuggestedStart() {
   const board = state.board, rows = state.rows, cols = state.cols;
-  // Clear any previous mark
-  for (const row of board) for (const cell of row) cell.suggestedStart = false;
+  // Reset ALL reveal/animation flags — the board solver in generateBoard
+  // and any stale cached code can leave these set
+  for (const row of board) for (const cell of row) {
+    cell.suggestedStart = false;
+    cell.isRevealed = false;
+    cell.revealAnimDelay = 0;
+  }
+  state.revealedCount = 0;
+  state.status = 'idle';
 
   // Collect non-mine, non-wall, non-locked candidates
   let candidates = [];
