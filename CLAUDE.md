@@ -59,4 +59,4 @@ Modern Minesweeper game built with vanilla JavaScript (ES6 modules). No framewor
 - After push, bump `CACHE_NAME` in `sw.js` (single version token — no per-file cache busters)
 
 ## Version
-Current: v1.1.1
+Current: v1.2.3
