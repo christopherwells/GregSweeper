@@ -99,62 +99,6 @@ function showGimmickIntros(gimmickDefs) {
 }
 
 
-// ── Daily Suggested Start ────────────────────────────
-// Find the safest starting cell using mine density (mines / neighbor count).
-// Ties broken by expanding the search radius until one cell wins.
-function markDailySuggestedStart(board, rows, cols) {
-  function getNeighborCount(r, c, radius) {
-    let mines = 0, total = 0;
-    for (let dr = -radius; dr <= radius; dr++) {
-      for (let dc = -radius; dc <= radius; dc++) {
-        if (dr === 0 && dc === 0) continue;
-        const nr = r + dr, nc = c + dc;
-        if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
-          total++;
-          if (board[nr][nc].isMine) mines++;
-        }
-      }
-    }
-    return { mines, total };
-  }
-
-  // Collect non-mine, non-wall, non-locked candidates
-  let candidates = [];
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const cell = board[r][c];
-      if (!cell.isMine && !cell.isWall && !cell.isLocked) {
-        candidates.push({ r, c });
-      }
-    }
-  }
-
-  // Progressively narrow by density at expanding radii
-  for (let radius = 1; radius <= 3 && candidates.length > 1; radius++) {
-    let bestDensity = Infinity;
-    for (const cand of candidates) {
-      const { mines, total } = getNeighborCount(cand.r, cand.c, radius);
-      cand.density = total > 0 ? mines / total : 1;
-      if (cand.density < bestDensity) bestDensity = cand.density;
-    }
-    candidates = candidates.filter(c => c.density === bestDensity);
-  }
-
-  // If still tied, pick the one closest to center
-  if (candidates.length > 1) {
-    const cr = rows / 2, cc = cols / 2;
-    candidates.sort((a, b) => {
-      const da = (a.r - cr) ** 2 + (a.c - cc) ** 2;
-      const db = (b.r - cr) ** 2 + (b.c - cc) ** 2;
-      return da - db;
-    });
-  }
-
-  if (candidates.length > 0) {
-    board[candidates[0].r][candidates[0].c].suggestedStart = true;
-  }
-}
-
 // ── Game Actions ───────────────────────────────────────
 
 export function newGame() {
@@ -222,8 +166,6 @@ export function newGame() {
       state.gimmickData = applyGimmicks(state.board, 1, state.activeGimmicks, gimmickApplyRng);
     }
 
-    // Mark the safest starting cell (lowest mine density in neighborhood)
-    markDailySuggestedStart(state.board, state.rows, state.cols);
   }
 
   // Load per-mode power-ups

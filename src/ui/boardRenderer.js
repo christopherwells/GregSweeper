@@ -208,11 +208,93 @@ export function updateCell(r, c) {
 }
 
 export function updateAllCells() {
+  // For daily mode before first click, compute and mark the safest starting cell
+  if (state.gameMode === "daily" && state.status === "idle" && state.board?.length > 0) {
+    markDailySuggestedStart();
+  }
   for (let r = 0; r < state.rows; r++) {
     for (let c = 0; c < state.cols; c++) {
       updateCell(r, c);
     }
   }
+  // Add "Start here" label near the suggested start cell
+  updateStartHereLabel();
+}
+
+function markDailySuggestedStart() {
+  const board = state.board, rows = state.rows, cols = state.cols;
+  // Clear any previous mark
+  for (const row of board) for (const cell of row) cell.suggestedStart = false;
+
+  function neighborDensity(r, c, radius) {
+    let mines = 0, total = 0;
+    for (let dr = -radius; dr <= radius; dr++) {
+      for (let dc = -radius; dc <= radius; dc++) {
+        if (dr === 0 && dc === 0) continue;
+        const nr = r + dr, nc = c + dc;
+        if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+          total++;
+          if (board[nr][nc].isMine) mines++;
+        }
+      }
+    }
+    return total > 0 ? mines / total : 1;
+  }
+
+  let candidates = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const cell = board[r][c];
+      if (!cell.isMine && !cell.isWall && !cell.isLocked) candidates.push({ r, c });
+    }
+  }
+
+  for (let radius = 1; radius <= 3 && candidates.length > 1; radius++) {
+    let best = Infinity;
+    for (const cand of candidates) {
+      cand.density = neighborDensity(cand.r, cand.c, radius);
+      if (cand.density < best) best = cand.density;
+    }
+    candidates = candidates.filter(c => c.density === best);
+  }
+
+  // Final tiebreak: closest to center
+  if (candidates.length > 1) {
+    const cr = rows / 2, cc = cols / 2;
+    candidates.sort((a, b) =>
+      ((a.r - cr) ** 2 + (a.c - cc) ** 2) - ((b.r - cr) ** 2 + (b.c - cc) ** 2)
+    );
+  }
+
+  if (candidates.length > 0) {
+    board[candidates[0].r][candidates[0].c].suggestedStart = true;
+  }
+}
+
+function updateStartHereLabel() {
+  // Remove any existing label
+  const old = document.getElementById("start-here-label");
+  if (old) old.remove();
+
+  if (state.gameMode !== "daily" || state.status !== "idle") return;
+
+  const cellEl = boardEl.querySelector(".suggested-start");
+  if (!cellEl) return;
+
+  const label = document.createElement("div");
+  label.id = "start-here-label";
+  label.textContent = "Start here";
+  label.className = "start-here-label";
+
+  // Position relative to the board container
+  const boardRect = boardEl.getBoundingClientRect();
+  const cellRect = cellEl.getBoundingClientRect();
+  const x = cellRect.left - boardRect.left + cellRect.width / 2;
+  const y = cellRect.top - boardRect.top - 6;
+
+  label.style.left = x + "px";
+  label.style.top = y + "px";
+  boardEl.parentElement.appendChild(label);
 }
 
 /** Update only the specified cells (array of {row, col} objects) */
