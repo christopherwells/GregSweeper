@@ -2,6 +2,7 @@ import { state } from '../state/gameState.js';
 import { boardEl, zoomControls, zoomLevelDisplay, boardScrollWrapper } from './domHelpers.js';
 import { THEME_UNLOCKS } from './themeManager.js';
 import { loadEmojiPack, getActiveEmojiPack } from './collectionManager.js';
+import { isBoardSolvable } from '../logic/boardSolver.js';
 
 // ── Emoji Cache (avoid per-cell localStorage reads) ────
 let _emojiCache = null;
@@ -198,8 +199,8 @@ export function updateCell(r, c) {
     if (cell.mirrorZone) cellEl.classList.add('mirror-unrevealed');
     // Suggested safe move overlay (post-death analysis)
     if (cell.suggestedMove) cellEl.classList.add('suggested-move');
-    // Daily suggested start cell
-    if (cell.suggestedStart && state.gameMode === 'daily' && state.firstClick === false) {
+    // Daily suggested start cell (disappears once timer starts)
+    if (cell.suggestedStart && state.gameMode === 'daily' && state.status === 'idle') {
       cellEl.classList.add('suggested-start');
     }
   }
@@ -208,10 +209,8 @@ export function updateCell(r, c) {
 }
 
 export function updateAllCells() {
-  // For daily mode before user's first click, compute and mark the safest starting cell
-  // Daily boards pre-reveal the center cell (for deterministic mines), so status is 'playing'
-  // but revealedCount is low and firstClick is still false
-  if (state.gameMode === "daily" && state.firstClick === false && state.board?.length > 0) {
+  // For daily mode before timer starts, compute and mark the best starting cell
+  if (state.gameMode === "daily" && state.status === "idle" && state.board?.length > 0) {
     markDailySuggestedStart();
   }
   for (let r = 0; r < state.rows; r++) {
@@ -228,60 +227,43 @@ function markDailySuggestedStart() {
   // Clear any previous mark
   for (const row of board) for (const cell of row) cell.suggestedStart = false;
 
-  // Collect non-mine, non-wall, non-locked, unrevealed candidates
+  // Collect non-mine, non-wall, non-locked candidates
   let candidates = [];
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const cell = board[r][c];
-      if (!cell.isMine && !cell.isWall && !cell.isLocked && !cell.isRevealed) {
+      if (!cell.isMine && !cell.isWall && !cell.isLocked) {
         candidates.push({ r, c, adj: cell.adjacentMines });
       }
     }
   }
 
-  // Priority 1: cells with 0 adjacent mines (guaranteed big cascade)
+  // Use the board solver to find which starting cell gives the most
+  // logically solvable board (fewest remaining unknowns / guesses).
+  // Test zero-cells first (big cascades = more info), then others.
   const zeroCells = candidates.filter(c => c.adj === 0);
-  if (zeroCells.length > 0) {
-    candidates = zeroCells;
-  } else {
-    // No zero cells — pick lowest adjacentMines
-    const minAdj = Math.min(...candidates.map(c => c.adj));
-    candidates = candidates.filter(c => c.adj === minAdj);
-  }
+  const nonZeroCells = candidates.filter(c => c.adj > 0);
+  const ordered = [...zeroCells, ...nonZeroCells];
 
-  // Tiebreak: use mine density in expanding radius to find the safest area
-  if (candidates.length > 1) {
-    for (let radius = 2; radius <= 3 && candidates.length > 1; radius++) {
-      let best = Infinity;
-      for (const cand of candidates) {
-        let mines = 0, total = 0;
-        for (let dr = -radius; dr <= radius; dr++) {
-          for (let dc = -radius; dc <= radius; dc++) {
-            if (dr === 0 && dc === 0) continue;
-            const nr = cand.r + dr, nc = cand.c + dc;
-            if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
-              total++;
-              if (board[nr][nc].isMine) mines++;
-            }
-          }
-        }
-        cand.density = total > 0 ? mines / total : 1;
-        if (cand.density < best) best = cand.density;
-      }
-      candidates = candidates.filter(c => c.density === best);
+  let bestCell = null;
+  let bestUnknowns = Infinity;
+
+  for (const cand of ordered) {
+    const result = isBoardSolvable(board, rows, cols, cand.r, cand.c);
+    if (result.solvable && result.remainingUnknowns === 0) {
+      // Fully solvable from this cell — use it immediately
+      bestCell = cand;
+      bestUnknowns = 0;
+      break;
+    }
+    if (result.remainingUnknowns < bestUnknowns) {
+      bestUnknowns = result.remainingUnknowns;
+      bestCell = cand;
     }
   }
 
-  // Final tiebreak: closest to center
-  if (candidates.length > 1) {
-    const cr = rows / 2, cc = cols / 2;
-    candidates.sort((a, b) =>
-      ((a.r - cr) ** 2 + (a.c - cc) ** 2) - ((b.r - cr) ** 2 + (b.c - cc) ** 2)
-    );
-  }
-
-  if (candidates.length > 0) {
-    board[candidates[0].r][candidates[0].c].suggestedStart = true;
+  if (bestCell) {
+    board[bestCell.r][bestCell.c].suggestedStart = true;
   }
 }
 
@@ -290,7 +272,7 @@ function updateStartHereLabel() {
   const old = document.getElementById("start-here-label");
   if (old) old.remove();
 
-  if (state.gameMode !== "daily" || state.firstClick !== false) return;
+  if (state.gameMode !== "daily" || state.status !== "idle") return;
 
   const cellEl = boardEl.querySelector(".suggested-start");
   if (!cellEl) return;
