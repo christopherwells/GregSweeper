@@ -256,6 +256,12 @@ export function newGame() {
 export function revealCell(row, col) {
   if (state.status === 'won' || state.status === 'lost') return;
 
+  // Remove daily "Start here" tooltip and green highlight on first interaction
+  const startLabel = document.getElementById('start-here-label');
+  if (startLabel) startLabel.remove();
+  const startCell = boardEl.querySelector('.suggested-start');
+  if (startCell) startCell.classList.remove('suggested-start');
+
   const cell = state.board[row][col];
   if (cell.isRevealed || cell.isFlagged) return;
   if (cell.isWall) return; // Walls are inert
