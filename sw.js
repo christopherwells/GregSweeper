@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v1.0.9';
+const CACHE_NAME = 'gregsweeper-v1.1.0';
 const ASSETS = [
   './',
   './index.html',
@@ -47,7 +47,13 @@ const ASSETS = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+    caches.open(CACHE_NAME).then((cache) =>
+      // Bypass browser HTTP cache on install so a CACHE_NAME bump
+      // always fetches truly fresh assets from the server.
+      Promise.all(ASSETS.map((url) =>
+        fetch(url, { cache: 'reload' }).then((res) => cache.put(url, res))
+      ))
+    )
   );
   self.skipWaiting();
 });

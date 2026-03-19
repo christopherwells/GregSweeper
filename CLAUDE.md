@@ -23,7 +23,7 @@ Modern Minesweeper game built with vanilla JavaScript (ES6 modules). No framewor
 - `index.html` — single-page app, all modals inside #app div
 
 ## Important Patterns
-- Cache busting: all imports use `?v=1.0` query string — bump when deploying changes
+- Cache busting: bump `CACHE_NAME` in `sw.js` on deploy (no query strings on imports)
 - Modals are inside `#app` — when `#app` has `.hidden` class (display: none), child modals can't render
 - Title screen (`#title-screen`) is a sibling of `#app`, not inside it
 - `_returnToTitle` flag in main.js tracks when modals were opened from the title screen
@@ -56,7 +56,7 @@ Modern Minesweeper game built with vanilla JavaScript (ES6 modules). No framewor
 ## Deployment
 - GitHub Pages: https://christopherwells.github.io/GregSweeper/
 - Push to main triggers deploy
-- After push, bump `?v=` query string if browser caching is stale
+- After push, bump `CACHE_NAME` in `sw.js` (single version token — no per-file cache busters)
 
 ## Version
-Current: v1.0.9
+Current: v1.1.0

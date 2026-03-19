@@ -1,5 +1,5 @@
-import { $, $$ } from './domHelpers.js?v=1.0.9';
-import { loadStats } from '../storage/statsStorage.js?v=1.0.9';
+import { $, $$ } from './domHelpers.js';
+import { loadStats } from '../storage/statsStorage.js';
 
 // ── Lazy Theme CSS Loading ────────────────────────────
 // classic + dark are eagerly loaded in index.html.
@@ -11,7 +11,7 @@ export function loadThemeCSS(themeName) {
   if (EAGER_THEMES.has(themeName) || _loadedThemes.has(themeName)) return;
   const link = document.createElement('link');
   link.rel = 'stylesheet';
-  link.href = 'src/styles/themes/' + themeName + '.css?v=1.0.9';
+  link.href = 'src/styles/themes/' + themeName + '.css';
   document.head.appendChild(link);
   _loadedThemes.add(themeName);
 }

@@ -1,4 +1,4 @@
-import { safeGet, safeSet, safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js?v=1.0.9';
+import { safeGet, safeSet, safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js';
 // Web Audio API sound engine — no audio files needed
 let audioCtx = null;
 let muted = false;

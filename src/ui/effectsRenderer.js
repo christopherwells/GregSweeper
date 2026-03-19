@@ -1,7 +1,7 @@
-import { state } from '../state/gameState.js?v=1.0.9';
-import { boardEl, shakeWrapper, particleCanvas } from './domHelpers.js?v=1.0.9';
-import { revealAllMines } from '../logic/boardSolver.js?v=1.0.9';
-import { updateAllCells } from './boardRenderer.js?v=1.0.9';
+import { state } from '../state/gameState.js';
+import { boardEl, shakeWrapper, particleCanvas } from './domHelpers.js';
+import { revealAllMines } from '../logic/boardSolver.js';
+import { updateAllCells } from './boardRenderer.js';
 
 // ── Reduced Motion Detection ────────────────────────────
 const prefersReducedMotion = () =>

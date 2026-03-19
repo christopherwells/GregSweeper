@@ -1,33 +1,33 @@
-import { state, ENCOURAGEMENT_LINES } from '../state/gameState.js?v=1.0.9';
-import { $, $$, boardEl, resetBtn, scanToast } from '../ui/domHelpers.js?v=1.0.9';
-import { getThemeEmoji, updateAllCells, announceGame } from '../ui/boardRenderer.js?v=1.0.9';
-import { updateHeader, updateStreakBorder, updateCheckpointDisplay, getCheckpointForLevel } from '../ui/headerRenderer.js?v=1.0.9';
-import { updatePowerUpBar } from '../ui/powerUpBar.js?v=1.0.9';
-import { showModal } from '../ui/modalManager.js?v=1.0.9';
+import { state, ENCOURAGEMENT_LINES } from '../state/gameState.js';
+import { $, $$, boardEl, resetBtn, scanToast } from '../ui/domHelpers.js';
+import { getThemeEmoji, updateAllCells, announceGame } from '../ui/boardRenderer.js';
+import { updateHeader, updateStreakBorder, updateCheckpointDisplay, getCheckpointForLevel } from '../ui/headerRenderer.js';
+import { updatePowerUpBar } from '../ui/powerUpBar.js';
+import { showModal } from '../ui/modalManager.js';
 import {
   triggerHeavyShake, showRedFlash, showGreenFlash,
   haptic, chainRevealMines, showCelebration, showConfettiBurst,
-} from '../ui/effectsRenderer.js?v=1.0.9';
-import { showToast } from '../ui/toastManager.js?v=1.0.9';
-import { stopTimer } from './timerManager.js?v=1.0.9';
-import { awardPowerUps } from './powerUpActions.js?v=1.0.9';
-import { setHandleWin } from './powerUpActions.js?v=1.0.9';
-import { defuseMine } from '../logic/powerUps.js?v=1.0.9';
-import { findNextSafeMove } from '../logic/boardSolver.js?v=1.0.9';
-import { getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, getChaosDifficulty } from '../logic/difficulty.js?v=1.0.9';
+} from '../ui/effectsRenderer.js';
+import { showToast } from '../ui/toastManager.js';
+import { stopTimer } from './timerManager.js';
+import { awardPowerUps } from './powerUpActions.js';
+import { setHandleWin } from './powerUpActions.js';
+import { defuseMine } from '../logic/powerUps.js';
+import { findNextSafeMove } from '../logic/boardSolver.js';
+import { getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, getChaosDifficulty } from '../logic/difficulty.js';
 import {
   loadStats, saveGameResult, saveModePowerUps, clearGameState,
   markDailyCompleted, getDailyStreak,
-} from '../storage/statsStorage.js?v=1.0.9';
-import { safeSetJSON } from '../storage/storageAdapter.js?v=1.0.9';
+} from '../storage/statsStorage.js';
+import { safeSetJSON } from '../storage/storageAdapter.js';
 import {
   playExplosion, playWin, playTimeRecord,
-} from '../audio/sounds.js?v=1.0.9';
+} from '../audio/sounds.js';
 import {
   checkNewUnlocks, getHighestTier, getTotalScore,
   getAchievementState, getAllTierNames, getTierIcon, getTierColor,
-} from '../logic/achievements.js?v=1.0.9';
-import { checkThemeUnlocks, showThemeUnlockToasts } from '../ui/themeManager.js?v=1.0.9';
+} from '../logic/achievements.js';
+import { checkThemeUnlocks, showThemeUnlockToasts } from '../ui/themeManager.js';
 
 // ── Achievements Display (for game over) ───────────────
 

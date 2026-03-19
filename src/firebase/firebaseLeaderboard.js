@@ -1,4 +1,4 @@
-import { safeGet, safeSet, safeRemove, safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js?v=1.0.9';
+import { safeGet, safeSet, safeRemove, safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js';
 /**
  * Firebase Online Daily Leaderboard
  * Uses Firebase Realtime Database (compat SDK loaded via CDN in index.html).
