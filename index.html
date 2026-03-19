@@ -533,6 +533,36 @@
   </div>
 
   <script type="module" src="src/main.js"></script>
+  <script type="module">
+    // Fix: board solver in generateBoard leaks isRevealed flags onto daily boards.
+    // This runs after all modules load and cleans up before the user sees anything.
+    import { state } from './src/state/gameState.js';
+    function fixDailyRevealed() {
+      if (state.gameMode === 'daily' && state.board?.length > 0) {
+        let leaked = 0;
+        for (const row of state.board) for (const cell of row) {
+          if (cell.isRevealed) { cell.isRevealed = false; cell.revealAnimDelay = 0; leaked++; }
+        }
+        if (leaked > 0) {
+          state.revealedCount = 0;
+          state.status = 'idle';
+          // Re-render to clear the visual artifacts
+          const boardEl = document.getElementById('board');
+          if (boardEl) {
+            for (const cellEl of boardEl.children) {
+              if (cellEl.classList.contains('revealed')) {
+                cellEl.className = 'cell unrevealed';
+                cellEl.textContent = '';
+              }
+            }
+          }
+        }
+      }
+    }
+    // Run after a tick to ensure main.js has finished init
+    setTimeout(fixDailyRevealed, 100);
+    setTimeout(fixDailyRevealed, 500);
+  </script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then(reg => {
