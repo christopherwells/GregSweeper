@@ -228,36 +228,48 @@ function markDailySuggestedStart() {
   // Clear any previous mark
   for (const row of board) for (const cell of row) cell.suggestedStart = false;
 
-  function neighborDensity(r, c, radius) {
-    let mines = 0, total = 0;
-    for (let dr = -radius; dr <= radius; dr++) {
-      for (let dc = -radius; dc <= radius; dc++) {
-        if (dr === 0 && dc === 0) continue;
-        const nr = r + dr, nc = c + dc;
-        if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
-          total++;
-          if (board[nr][nc].isMine) mines++;
-        }
-      }
-    }
-    return total > 0 ? mines / total : 1;
-  }
-
+  // Collect non-mine, non-wall, non-locked, unrevealed candidates
   let candidates = [];
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const cell = board[r][c];
-      if (!cell.isMine && !cell.isWall && !cell.isLocked) candidates.push({ r, c });
+      if (!cell.isMine && !cell.isWall && !cell.isLocked && !cell.isRevealed) {
+        candidates.push({ r, c, adj: cell.adjacentMines });
+      }
     }
   }
 
-  for (let radius = 1; radius <= 3 && candidates.length > 1; radius++) {
-    let best = Infinity;
-    for (const cand of candidates) {
-      cand.density = neighborDensity(cand.r, cand.c, radius);
-      if (cand.density < best) best = cand.density;
+  // Priority 1: cells with 0 adjacent mines (guaranteed big cascade)
+  const zeroCells = candidates.filter(c => c.adj === 0);
+  if (zeroCells.length > 0) {
+    candidates = zeroCells;
+  } else {
+    // No zero cells — pick lowest adjacentMines
+    const minAdj = Math.min(...candidates.map(c => c.adj));
+    candidates = candidates.filter(c => c.adj === minAdj);
+  }
+
+  // Tiebreak: use mine density in expanding radius to find the safest area
+  if (candidates.length > 1) {
+    for (let radius = 2; radius <= 3 && candidates.length > 1; radius++) {
+      let best = Infinity;
+      for (const cand of candidates) {
+        let mines = 0, total = 0;
+        for (let dr = -radius; dr <= radius; dr++) {
+          for (let dc = -radius; dc <= radius; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            const nr = cand.r + dr, nc = cand.c + dc;
+            if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+              total++;
+              if (board[nr][nc].isMine) mines++;
+            }
+          }
+        }
+        cand.density = total > 0 ? mines / total : 1;
+        if (cand.density < best) best = cand.density;
+      }
+      candidates = candidates.filter(c => c.density === best);
     }
-    candidates = candidates.filter(c => c.density === best);
   }
 
   // Final tiebreak: closest to center
