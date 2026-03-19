@@ -199,7 +199,7 @@ export function updateCell(r, c) {
     // Suggested safe move overlay (post-death analysis)
     if (cell.suggestedMove) cellEl.classList.add('suggested-move');
     // Daily suggested start cell
-    if (cell.suggestedStart && state.gameMode === 'daily' && state.status === 'idle') {
+    if (cell.suggestedStart && state.gameMode === 'daily' && state.firstClick === false) {
       cellEl.classList.add('suggested-start');
     }
   }
@@ -208,8 +208,10 @@ export function updateCell(r, c) {
 }
 
 export function updateAllCells() {
-  // For daily mode before first click, compute and mark the safest starting cell
-  if (state.gameMode === "daily" && state.status === "idle" && state.board?.length > 0) {
+  // For daily mode before user's first click, compute and mark the safest starting cell
+  // Daily boards pre-reveal the center cell (for deterministic mines), so status is 'playing'
+  // but revealedCount is low and firstClick is still false
+  if (state.gameMode === "daily" && state.firstClick === false && state.board?.length > 0) {
     markDailySuggestedStart();
   }
   for (let r = 0; r < state.rows; r++) {
@@ -276,7 +278,7 @@ function updateStartHereLabel() {
   const old = document.getElementById("start-here-label");
   if (old) old.remove();
 
-  if (state.gameMode !== "daily" || state.status !== "idle") return;
+  if (state.gameMode !== "daily" || state.firstClick !== false) return;
 
   const cellEl = boardEl.querySelector(".suggested-start");
   if (!cellEl) return;
