@@ -536,25 +536,33 @@
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then(reg => {
-        // Check for updates every 60s (GitHub Pages CDN can be slow)
-        setInterval(() => reg.update(), 60000);
+        // Check for SW updates every 30s so deploys reach users fast
+        setInterval(() => reg.update(), 30000);
         reg.addEventListener('updatefound', () => {
           const newWorker = reg.installing;
           if (newWorker) {
             newWorker.addEventListener('statechange', () => {
               if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
-                const banner = document.createElement('div');
-                banner.id = 'sw-update-banner';
-                banner.innerHTML = 'A new version is available! <button id="sw-refresh-btn">Refresh</button>';
-                banner.querySelector('#sw-refresh-btn').addEventListener('click', () => {
-                  Promise.all([
-                    navigator.serviceWorker.getRegistrations().then(regs => Promise.all(regs.map(r => r.unregister()))),
-                    caches.keys().then(names => Promise.all(names.map(n => caches.delete(n))))
-                  ]).then(() => { window.location.href = window.location.pathname + '?cb=' + Date.now(); });
-                });
-                banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#1a1a2e;color:#fff;padding:12px 16px;text-align:center;z-index:99999;font-size:14px;display:flex;align-items:center;justify-content:center;gap:10px;';
-                banner.querySelector('button').style.cssText = 'background:#6c5ce7;color:#fff;border:none;padding:6px 16px;border-radius:4px;cursor:pointer;font-size:14px;';
-                document.body.appendChild(banner);
+                // Auto-reload to pick up the new version immediately
+                // Only if user hasn't started playing (don't interrupt a game)
+                const playing = document.querySelector('.cell.revealed');
+                if (!playing) {
+                  window.location.reload();
+                } else {
+                  // Mid-game: show a non-intrusive banner
+                  const banner = document.createElement('div');
+                  banner.id = 'sw-update-banner';
+                  banner.innerHTML = 'Update available! <button id="sw-refresh-btn">Refresh</button>';
+                  banner.querySelector('#sw-refresh-btn').addEventListener('click', () => {
+                    Promise.all([
+                      navigator.serviceWorker.getRegistrations().then(regs => Promise.all(regs.map(r => r.unregister()))),
+                      caches.keys().then(names => Promise.all(names.map(n => caches.delete(n))))
+                    ]).then(() => { window.location.href = window.location.pathname + '?cb=' + Date.now(); });
+                  });
+                  banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#1a1a2e;color:#fff;padding:12px 16px;text-align:center;z-index:99999;font-size:14px;display:flex;align-items:center;justify-content:center;gap:10px;';
+                  banner.querySelector('button').style.cssText = 'background:#6c5ce7;color:#fff;border:none;padding:6px 16px;border-radius:4px;cursor:pointer;font-size:14px;';
+                  document.body.appendChild(banner);
+                }
               }
             });
           }
