@@ -154,6 +154,9 @@ export function newGame() {
     const fixedCol = Math.floor(state.cols / 2);
     const boardRng = createDailyRNG(state.dailySeed);
     state.board = generateBoard(state.rows, state.cols, state.totalMines, fixedRow, fixedCol, boardRng);
+    // The board solver marks cells as revealed during solvability analysis — reset them all
+    for (const row of state.board) for (const cell of row) { cell.isRevealed = false; cell.revealAnimDelay = 0; }
+    state.revealedCount = 0;
     state.firstClick = false;
     state.status = 'idle'; // stays idle until actual first click
 
