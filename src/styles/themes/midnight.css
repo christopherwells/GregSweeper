@@ -14,14 +14,14 @@
   --color-text: #e8e0ff;
   --color-text-secondary: #9080cc;
 
-  --color-num-1: #80b0ff;
-  --color-num-2: #80ffb0;
-  --color-num-3: #ff6688;
-  --color-num-4: #cc88ff;
-  --color-num-5: #ffaa66;
-  --color-num-6: #66ffdd;
-  --color-num-7: #e8e0ff;
-  --color-num-8: #8779a5;
+  --color-num-1: #5b9bd5;
+  --color-num-2: #66bb6a;
+  --color-num-3: #ef5350;
+  --color-num-4: #ab47bc;
+  --color-num-5: #ec407a;
+  --color-num-6: #26c6da;
+  --color-num-7: #bdbdbd;
+  --color-num-8: #90a4ae;
 
   --color-header-bg: #1a1040;
   --color-header-gradient: linear-gradient(180deg, #221555, #1a1040);
@@ -41,7 +41,7 @@
   --color-accent-glow: rgba(124, 77, 255, 0.3);
   --color-win: #69f0ae;
   --color-loss: #ff4466;
-  --color-wall: #4a3a6a;
+  --color-wall: #4a3070;
   --color-surface: rgba(255, 255, 255, 0.04);
 
   --bg-app: linear-gradient(180deg, #1e1250, #1a1040, #140d35);
