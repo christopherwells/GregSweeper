@@ -275,40 +275,72 @@ function wallKey(r1, c1, r2, c2) {
 
 export function hasWallBetween(wallEdges, r1, c1, r2, c2) {
   if (!wallEdges || wallEdges.size === 0) return false;
-  return wallEdges.has(wallKey(r1, c1, r2, c2));
+
+  const dr = r2 - r1;
+  const dc = c2 - c1;
+
+  // Cardinal move: check direct edge
+  if (dr === 0 || dc === 0) {
+    return wallEdges.has(wallKey(r1, c1, r2, c2));
+  }
+
+  // Diagonal move: blocked if ANY wall edge borders the 2x2 square
+  // the diagonal passes through (ensures symmetric blocking)
+  return wallEdges.has(wallKey(r1, c1, r1, c2)) ||   // source horizontal
+         wallEdges.has(wallKey(r1, c1, r2, c1)) ||   // source vertical
+         wallEdges.has(wallKey(r2, c1, r2, c2)) ||   // dest horizontal
+         wallEdges.has(wallKey(r1, c2, r2, c2));     // dest vertical
 }
 
 // ── Walls: edges between adjacent cells ──────────────
 
 function applyWalls(board, rows, cols, segmentCount, rng) {
   const wallEdges = new Set();
-  const maxSegments = Math.min(segmentCount, 5);
+  // Difficulty scales both count and length of wall segments
+  const maxSegments = Math.min(segmentCount, 6);
+  const baseLength = Math.min(2 + Math.floor(segmentCount / 2), 5); // 2-5
 
   for (let s = 0; s < maxSegments; s++) {
-    const length = 2 + Math.floor(rng() * 3); // 2-4 edges per segment
+    const length = baseLength + Math.floor(rng() * 2);
 
-    // Choose orientation: 0 = horizontal (wall between rows), 1 = vertical (wall between cols)
-    const orientation = Math.floor(rng() * 2);
+    // Starting orientation: horizontal = edges between rows, vertical = edges between cols
+    let horiz = rng() < 0.5;
+    // Bend at a random midpoint (~40% chance of a bend)
+    const bendAt = rng() < 0.4 ? -1 : (1 + Math.floor(rng() * Math.max(1, length - 1)));
+
+    // Pick a starting edge position
+    // For horizontal: wall between row r and r+1, starting at column c, extending c++
+    // For vertical: wall between col c and c+1, starting at row r, extending r++
+    let r = 1 + Math.floor(rng() * Math.max(1, rows - 3));
+    let c = 1 + Math.floor(rng() * Math.max(1, cols - 3));
+    // Extension direction along the wall line (+1 or -1)
+    let dir = rng() < 0.5 ? 1 : -1;
+
     const segment = [];
 
-    if (orientation === 0) {
-      // Horizontal wall line: between row r and r+1, spanning columns
-      const r = 1 + Math.floor(rng() * (rows - 3)); // avoid very top/bottom
-      const maxStartC = Math.max(0, cols - length);
-      const startC = Math.floor(rng() * (maxStartC + 1));
-      for (let i = 0; i < length && startC + i < cols; i++) {
-        const key = wallKey(r, startC + i, r + 1, startC + i);
-        segment.push(key);
+    for (let i = 0; i < length; i++) {
+      // Bend: switch orientation at the bend point
+      if (i === bendAt) {
+        horiz = !horiz;
+        dir = rng() < 0.5 ? 1 : -1;
       }
-    } else {
-      // Vertical wall line: between col c and c+1, spanning rows
-      const c = 1 + Math.floor(rng() * (cols - 3)); // avoid very left/right
-      const maxStartR = Math.max(0, rows - length);
-      const startR = Math.floor(rng() * (maxStartR + 1));
-      for (let i = 0; i < length && startR + i < rows; i++) {
-        const key = wallKey(startR + i, c, startR + i, c + 1);
-        segment.push(key);
+
+      let key = null;
+      if (horiz) {
+        // Edge between (r, c) and (r+1, c) — horizontal wall at this column
+        if (r >= 0 && r < rows - 1 && c >= 0 && c < cols) {
+          key = wallKey(r, c, r + 1, c);
+        }
+        c += dir; // extend along columns
+      } else {
+        // Edge between (r, c) and (r, c+1) — vertical wall at this row
+        if (r >= 0 && r < rows && c >= 0 && c < cols - 1) {
+          key = wallKey(r, c, r, c + 1);
+        }
+        r += dir; // extend along rows
       }
+
+      if (key) segment.push(key);
     }
 
     if (segment.length >= 2) {
