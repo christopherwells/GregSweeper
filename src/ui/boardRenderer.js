@@ -3,6 +3,7 @@ import { boardEl, zoomControls, zoomLevelDisplay, boardScrollWrapper } from './d
 import { THEME_UNLOCKS } from './themeManager.js';
 import { loadEmojiPack, getActiveEmojiPack } from './collectionManager.js';
 import { isBoardSolvable } from '../logic/boardSolver.js';
+import { hasWallBetween } from '../logic/gimmicks.js';
 
 // ── Emoji Cache (avoid per-cell localStorage reads) ────
 let _emojiCache = null;
@@ -86,7 +87,6 @@ export function getThemeEmoji(type) {
 
 // ── ARIA Label Generation ────────────────────────────
 function getCellAriaLabel(cell, r, c) {
-  if (cell.isWall) return 'Wall';
   if (cell.isRevealed) {
     if (cell.isDefused) return 'Defused mine';
     if (cell.isMine) {
@@ -119,13 +119,6 @@ export function updateCell(r, c) {
   if (!cell) return;
   const cellEl = boardEl.children[r * state.cols + c];
   if (!cellEl) return;
-
-  // Wall cells are always inert
-  if (cell.isWall) {
-    cellEl.className = 'cell wall';
-    cellEl.textContent = '';
-    return;
-  }
 
   if (cell.isRevealed) {
     if (cell.isDefused) {
@@ -186,8 +179,6 @@ export function updateCell(r, c) {
     cellEl.textContent = '';
     // Locked cell indicator
     if (cell.isLocked) cellEl.classList.add('locked-cell');
-    // Liar zone indicator on unrevealed cells
-    if (cell.inLiarZone) cellEl.classList.add('liar-zone');
     // Wormhole indicator on unrevealed cells
     if (cell.isWormhole) {
       cellEl.classList.add('wormhole-unrevealed');
@@ -204,6 +195,14 @@ export function updateCell(r, c) {
         (state.status === 'idle' || (state.status === 'playing' && state.revealedCount <= 1))) {
       cellEl.classList.add('suggested-start');
     }
+  }
+  // Wall edge borders
+  const wallEdges = state.board._wallEdges || null;
+  if (wallEdges) {
+    if (hasWallBetween(wallEdges, r, c, r - 1, c)) cellEl.classList.add('wall-top');
+    if (hasWallBetween(wallEdges, r, c, r + 1, c)) cellEl.classList.add('wall-bottom');
+    if (hasWallBetween(wallEdges, r, c, r, c - 1)) cellEl.classList.add('wall-left');
+    if (hasWallBetween(wallEdges, r, c, r, c + 1)) cellEl.classList.add('wall-right');
   }
   // Update ARIA label for screen readers
   cellEl.setAttribute('aria-label', getCellAriaLabel(cell, r, c));
@@ -252,7 +251,7 @@ function markDailySuggestedStart() {
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const cell = board[r][c];
-      if (!cell.isMine && !cell.isWall && !cell.isLocked) {
+      if (!cell.isMine && !cell.isLocked) {
         candidates.push({ r, c, adj: cell.adjacentMines });
       }
     }
@@ -371,10 +370,6 @@ export function setFocusedCell(r, c) {
   // Clamp to board bounds
   r = Math.max(0, Math.min(state.rows - 1, r));
   c = Math.max(0, Math.min(state.cols - 1, c));
-
-  // Skip wall cells — find next non-wall in direction of movement
-  const cell = state.board[r]?.[c];
-  if (cell && cell.isWall) return; // caller should handle wall skipping
 
   // Remove tabindex from old focused cell
   const oldIdx = state.focusedRow * state.cols + state.focusedCol;

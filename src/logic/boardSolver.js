@@ -8,6 +8,7 @@
 //   C. Advanced solver (Gauss elimination + tank/partition enumeration)
 
 import { solveConstraints } from './constraintSolver.js';
+import { hasWallBetween } from './gimmicks.js';
 
 /**
  * Check if a Minesweeper board is solvable without guessing.
@@ -327,6 +328,7 @@ export function findNextSafeMove(board) {
 export function floodFillReveal(board, startRow, startCol) {
   const rows = board.length;
   const cols = board[0].length;
+  const wallEdges = board._wallEdges || null;
   const revealed = [];
   const visited = new Set();
   const queue = [{ row: startRow, col: startCol, distance: 0 }];
@@ -348,6 +350,8 @@ export function floodFillReveal(board, startRow, startCol) {
           if (dr === 0 && dc === 0) continue;
           const nr = row + dr;
           const nc = col + dc;
+          // Don't propagate across wall edges
+          if (wallEdges && hasWallBetween(wallEdges, row, col, nr, nc)) continue;
           const key = `${nr},${nc}`;
           if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && !visited.has(key)) {
             visited.add(key);
@@ -366,7 +370,10 @@ export function floodFillReveal(board, startRow, startCol) {
 export function checkWin(board) {
   for (const row of board) {
     for (const cell of row) {
-      if (!cell.isMine && !cell.isLocked && !cell.isRevealed) return false;
+      // Skip mines (don't need to be revealed to win)
+      if (cell.isMine) continue;
+      // Locked cells that aren't mines must eventually be revealed too
+      if (!cell.isRevealed) return false;
     }
   }
   return true;
@@ -406,11 +413,25 @@ export function chordReveal(board, row, col) {
   const cell = board[row][col];
   if (!cell.isRevealed || cell.adjacentMines === 0) return [];
 
-  const flagCount = countAdjacentFlags(board, row, col);
-  if (flagCount !== cell.adjacentMines) return [];
+  const wallEdges = board._wallEdges || null;
 
+  // Count adjacent flags (respecting wall edges)
+  let flagCount = 0;
   const rows = board.length;
   const cols = board[0].length;
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      if (dr === 0 && dc === 0) continue;
+      const nr = row + dr, nc = col + dc;
+      if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+        if (wallEdges && hasWallBetween(wallEdges, row, col, nr, nc)) continue;
+        if (board[nr][nc].isFlagged) flagCount++;
+      }
+    }
+  }
+
+  if (flagCount !== cell.adjacentMines) return [];
+
   const allRevealed = [];
   let hitMine = false;
 
@@ -420,8 +441,11 @@ export function chordReveal(board, row, col) {
       const nr = row + dr;
       const nc = col + dc;
       if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+        // Don't chord across wall edges
+        if (wallEdges && hasWallBetween(wallEdges, row, col, nr, nc)) continue;
         const neighbor = board[nr][nc];
-        if (!neighbor.isRevealed && !neighbor.isFlagged && !neighbor.isLocked) {
+        // Don't chord-reveal locked, mystery, or liar cells
+        if (!neighbor.isRevealed && !neighbor.isFlagged && !neighbor.isLocked && !neighbor.isMystery && !neighbor.isLiar) {
           if (neighbor.isMine) {
             hitMine = true;
             neighbor.isRevealed = true;

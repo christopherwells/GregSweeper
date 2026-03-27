@@ -35,7 +35,11 @@ import {
   isOnboarded, setOnboarded,
   isDailyCompleted,
   getDailyStreak,
+  getPlayerName, setPlayerName,
+  getLastSeenVersion, setLastSeenVersion,
 } from './storage/statsStorage.js';
+
+const CURRENT_VERSION = 'v1.3';
 import {
   playLevelUp, isMuted, setMuted, loadMuted,
   setSFXVolume, getSFXVolume,
@@ -691,9 +695,6 @@ boardEl.addEventListener('keydown', (e) => {
 
   if (handled) {
     e.preventDefault();
-    // Skip wall cells when navigating
-    const targetCell = state.board[r]?.[c];
-    if (targetCell && targetCell.isWall) return;
     if (r !== state.focusedRow || c !== state.focusedCol) {
       setFocusedCell(r, c);
     }
@@ -985,12 +986,12 @@ function hideTitleScreen() {
 
 // ── Checkpoint Selector (Challenge mode) ────────────────
 const GIMMICK_LABELS = {
-  11: { icon: '❓', name: 'Mystery' },
-  21: { icon: '🔒', name: 'Locked' },
-  31: { icon: '🤥', name: 'Liar' },
-  51: { icon: '🧱', name: 'Walls' },
-  61: { icon: '🌀', name: 'Wormholes' },
-  71: { icon: '🪞', name: 'Mirror' },
+  11: { icon: '🧱', name: 'Walls' },
+  21: { icon: '🤥', name: 'Liar' },
+  31: { icon: '❓', name: 'Mystery' },
+  41: { icon: '🔒', name: 'Locked' },
+  51: { icon: '🌀', name: 'Wormholes' },
+  61: { icon: '🪞', name: 'Mirror' },
 };
 
 function showCheckpointSelector() {
@@ -1121,8 +1122,28 @@ function showModalFromTitle(modalId) {
 const titleSettingsBtn = $('#title-settings-btn');
 if (titleSettingsBtn) {
   titleSettingsBtn.addEventListener('click', () => {
+    // Load saved player name into settings input
+    const nameInput = $('#player-name-input');
+    if (nameInput) nameInput.value = getPlayerName();
     showModalFromTitle('settings-modal');
   });
+}
+const titleWhatsnewBtn = $('#title-whatsnew-btn');
+if (titleWhatsnewBtn) {
+  titleWhatsnewBtn.addEventListener('click', () => {
+    setLastSeenVersion(CURRENT_VERSION);
+    // Remove NEW badge if present
+    const badge = titleWhatsnewBtn.querySelector('.whatsnew-badge');
+    if (badge) badge.remove();
+    showModalFromTitle('whatsnew-modal');
+  });
+  // Show NEW badge if user hasn't seen current version
+  if (getLastSeenVersion() !== CURRENT_VERSION) {
+    const badge = document.createElement('span');
+    badge.className = 'whatsnew-badge';
+    badge.textContent = 'NEW';
+    titleWhatsnewBtn.appendChild(badge);
+  }
 }
 const titleStatsBtn = $('#title-stats-btn');
 if (titleStatsBtn) {
@@ -1309,6 +1330,16 @@ if (muteBtn) {
     setMuted(nowMuted);
     muteBtn.textContent = nowMuted ? '🔇' : '🔊';
     muteBtn.title = nowMuted ? 'Unmute' : 'Mute';
+  });
+}
+
+// ── Player Name Setting ──────────────────────────────
+
+const playerNameInput = $('#player-name-input');
+if (playerNameInput) {
+  playerNameInput.value = getPlayerName();
+  playerNameInput.addEventListener('input', () => {
+    setPlayerName(playerNameInput.value.trim().slice(0, 20));
   });
 }
 

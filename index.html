@@ -62,6 +62,7 @@
       <button id="title-leaderboard-btn" class="title-footer-btn">🏆 Leaderboard</button>
       <button id="title-collection-btn" class="title-footer-btn">🎁 Collection</button>
       <button id="title-settings-btn" class="title-footer-btn">⚙️ Settings</button>
+      <button id="title-whatsnew-btn" class="title-footer-btn">📋 What's New</button>
     </div>
   </div>
 
@@ -429,6 +430,13 @@
       </div>
       <div class="modal-body">
         <div class="setting-group">
+          <h3>Player</h3>
+          <label class="setting-label">Leaderboard Name
+            <input type="text" id="player-name-input" maxlength="20" placeholder="Your name" class="player-name-input" autocomplete="off">
+          </label>
+          <p class="reset-hint">Used for daily leaderboard submissions. Saves automatically.</p>
+        </div>
+        <div class="setting-group">
           <h3>Audio</h3>
           <label class="volume-label">Sound Effects <input type="range" id="sfx-volume" min="0" max="100" value="100" class="volume-slider"></label>
         </div>
@@ -453,6 +461,30 @@
           <p class="reset-hint">Forces a fresh download. Use if the app feels broken or stuck.</p>
           <button id="btn-reset-profile" class="reset-profile-btn">🗑️ Reset Profile</button>
           <p class="reset-hint">Erases all stats, achievements, and leaderboard data.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- What's New Modal -->
+  <div id="whatsnew-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>What's New</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body whatsnew-body">
+        <div class="whatsnew-entry">
+          <h3>v1.3 &mdash; March 2026</h3>
+          <ul>
+            <li><strong>Walls redesigned</strong> &mdash; Walls now appear as thick borders between cells instead of blocking tiles. Numbers don't count mines across walls.</li>
+            <li><strong>Gimmick order rebalanced</strong> &mdash; Walls appear first (L11), then Liar Cells (L21), Mystery Cells (L31), and Locked Cells (L41).</li>
+            <li><strong>Locked cells overhauled</strong> &mdash; Locked cells can now contain mines. They unlock once all safe neighbors are revealed.</li>
+            <li><strong>Liar cells</strong> &mdash; No longer give away their position before you click. The orange border only appears once revealed.</li>
+            <li><strong>Chording</strong> &mdash; No longer bypasses Mystery or Liar cells.</li>
+            <li><strong>Saved name</strong> &mdash; Your leaderboard name is now saved in Settings and auto-submits daily scores.</li>
+            <li><strong>Theme cleanup</strong> &mdash; 3 duplicate themes removed. All theme number colors audited for readability.</li>
+          </ul>
         </div>
       </div>
     </div>

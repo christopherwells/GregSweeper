@@ -19,7 +19,7 @@ import { generateBoard, createEmptyBoard, calculateAdjacency } from '../logic/bo
 import { floodFillReveal, checkWin, chordReveal } from '../logic/boardSolver.js';
 import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getChaosDifficulty } from '../logic/difficulty.js';
 import { shieldDefuse } from '../logic/powerUps.js';
-import { getGimmicksForLevel, applyGimmicks, isLockedCell, hasSeenGimmick, markGimmickSeen, getGimmickDef, isModifierPopupDisabled, setModifierPopupDisabled, getDailyGimmick, getChaosGimmicks } from '../logic/gimmicks.js';
+import { getGimmicksForLevel, applyGimmicks, isLockedCell, hasWallBetween, hasSeenGimmick, markGimmickSeen, getGimmickDef, isModifierPopupDisabled, setModifierPopupDisabled, getDailyGimmick, getChaosGimmicks } from '../logic/gimmicks.js';
 import { createDailyRNG } from '../logic/seededRandom.js';
 import {
   loadModePowerUps, loadCheckpoint, clearGameState,
@@ -264,7 +264,6 @@ export function revealCell(row, col) {
 
   const cell = state.board[row][col];
   if (cell.isRevealed || cell.isFlagged) return;
-  if (cell.isWall) return; // Walls are inert
 
   // Locked cell check
   if (cell.isLocked && isLockedCell(state.board, row, col)) {
@@ -372,8 +371,7 @@ export function revealCell(row, col) {
       const candidates = [];
       for (let r = 0; r < state.rows; r++) {
         for (let c = 0; c < state.cols; c++) {
-          if (!state.board[r][c].isMine && !state.board[r][c].isWall &&
-              (Math.abs(r - row) > 1 || Math.abs(c - col) > 1)) {
+          if (!state.board[r][c].isMine &&               (Math.abs(r - row) > 1 || Math.abs(c - col) > 1)) {
             candidates.push({ r, c });
           }
         }
@@ -477,6 +475,14 @@ export function toggleFlag(row, col) {
   if (state.inputLocked) return;
   const cell = state.board[row][col];
   if (cell.isRevealed) return;
+
+  // Can't flag locked cells until they're unlocked
+  if (cell.isLocked && isLockedCell(state.board, row, col)) {
+    import('../ui/toastManager.js').then(m => {
+      m.showToast('🔒 Unlock neighbors first!', 1500);
+    });
+    return;
+  }
 
   const wasFlagged = cell.isFlagged;
   cell.isFlagged = !cell.isFlagged;

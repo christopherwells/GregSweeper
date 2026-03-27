@@ -995,13 +995,11 @@ body {
 
 /* ── Gimmick Cells ─────────────────────────── */
 
-/* Wall cells */
-.cell.wall {
-  background: var(--color-border) !important;
-  border-color: var(--color-border);
-  cursor: default;
-  opacity: 0.6;
-}
+/* Wall edge borders between cells */
+.cell.wall-top { border-top: 4px solid var(--color-wall, #c9a96e) !important; }
+.cell.wall-bottom { border-bottom: 4px solid var(--color-wall, #c9a96e) !important; }
+.cell.wall-left { border-left: 4px solid var(--color-wall, #c9a96e) !important; }
+.cell.wall-right { border-right: 4px solid var(--color-wall, #c9a96e) !important; }
 
 /* Mystery cells — revealed but showing '?' */
 .cell.mystery-cell {
@@ -1011,18 +1009,7 @@ body {
   text-shadow: 0 0 4px rgba(255, 200, 50, 0.4);
 }
 
-/* Liar zone — subtle hint showing which area contains liar cells */
-.cell.unrevealed.liar-zone {
-  background: linear-gradient(
-    135deg,
-    var(--color-cell-bg, #c8c0b0) 0%,
-    rgba(230, 126, 34, 0.12) 100%
-  );
-  border-color: rgba(230, 126, 34, 0.35);
-  border-style: dashed;
-}
-
-/* Liar cells — display is off by ±1 */
+/* Liar cells — display is off by ±1 (border shown only on revealed cells) */
 .cell.liar-cell {
   border: 2px solid #e67e22 !important;
   box-shadow: inset 0 0 4px rgba(230, 126, 34, 0.3);
@@ -3204,6 +3191,65 @@ body {
 }
 .title-footer-btn:hover {
   border-color: var(--color-accent, #e94560);
+  color: var(--color-text, #eee);
+}
+
+/* What's New badge */
+.title-footer-btn { position: relative; }
+.whatsnew-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: #e94560;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 8px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* What's New modal body */
+.whatsnew-body h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  color: var(--color-accent, #e94560);
+}
+.whatsnew-body ul {
+  margin: 0 0 16px;
+  padding-left: 20px;
+}
+.whatsnew-body li {
+  margin-bottom: 6px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--color-text, #eee);
+}
+.whatsnew-body li strong {
+  color: var(--color-text, #fff);
+}
+
+/* Player name input in settings */
+.player-name-input {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 8px 12px;
+  border: 2px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface, #1a1a2e);
+  color: var(--color-text, #eee);
+  font-size: 14px;
+  box-sizing: border-box;
+}
+.player-name-input:focus {
+  border-color: var(--color-accent);
+  outline: none;
+}
+.setting-label {
+  display: block;
+  font-size: 14px;
   color: var(--color-text, #eee);
 }
 

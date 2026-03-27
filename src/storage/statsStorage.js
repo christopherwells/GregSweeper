@@ -5,6 +5,8 @@ const LEADERBOARD_KEY = 'minesweeper_daily_leaderboard';
 const THEME_KEY = 'minesweeper_theme';
 const POWERUPS_KEY = 'minesweeper_powerups';
 const LIVES_KEY = 'minesweeper_lives';
+const PLAYER_NAME_KEY = 'minesweeper_player_name';
+const LAST_SEEN_VERSION_KEY = 'minesweeper_last_seen_version';
 
 // In-memory cache for stats to avoid repeated reads + JSON.parse
 let _statsCache = null;
@@ -406,4 +408,24 @@ export function getDailyStreak() {
     }
   }
   return { streak: daily.dailyStreak || 0, best: daily.bestDailyStreak || 0 };
+}
+
+// ── Player Name ──────────────────────────────────────
+
+export function getPlayerName() {
+  return safeGet(PLAYER_NAME_KEY) || '';
+}
+
+export function setPlayerName(name) {
+  safeSet(PLAYER_NAME_KEY, name);
+}
+
+// ── What's New Version Tracking ──────────────────────
+
+export function getLastSeenVersion() {
+  return safeGet(LAST_SEEN_VERSION_KEY) || '';
+}
+
+export function setLastSeenVersion(version) {
+  safeSet(LAST_SEEN_VERSION_KEY, version);
 }

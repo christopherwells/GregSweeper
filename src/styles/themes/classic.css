@@ -1,6 +1,7 @@
 /* Classic theme — warm, elegant, modern take on the original */
 [data-theme="classic"] {
   /* Uses :root defaults — warm beige/cream palette */
+  --color-wall: #8B7355;
 }
 
 /* Satisfying pop on cell reveal */

@@ -5,23 +5,23 @@
 import { safeGet, safeSet, safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js';
 
 const GIMMICK_DEFS = {
+  walls: {
+    intro: 11, name: 'Walls', icon: '🧱',
+    desc: 'Impassable wall edges block adjacency between cells.',
+    longDesc: 'Walls appear as thick borders between cells. Numbers on either side of a wall don\'t count mines across it. Treat walls like the edge of the board — they split the grid into sections.',
+    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed" style="border-right:3px solid #8B7355">1</div><div class="ge-cell revealed" style="border-left:3px solid #8B7355">0</div><div class="ge-cell revealed">0</div><div class="ge-cell revealed" style="border-right:3px solid #8B7355">1</div><div class="ge-cell revealed" style="border-left:3px solid #8B7355">0</div><div class="ge-cell revealed">0</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">0</div></div><div class="ge-caption">Thick borders = walls — numbers ignore neighbors across them</div>',
+  },
+  liar: {
+    intro: 21, name: 'Liar Cells', icon: '🤥',
+    desc: 'A few cells display a number that\'s off by 1. They have a colored border so you know which ones lie.',
+    longDesc: 'Liar cells show a number that is exactly 1 higher or 1 lower than the true count. They are marked with a distinct colored border once revealed so you can spot them. Account for the offset when reasoning about nearby mines.',
+    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-liar">3</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">2</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div></div><div class="ge-caption">The orange-bordered "3" is really a 2 or 4</div>',
+  },
   mystery: {
-    intro: 11, name: 'Mystery Cells', icon: '❓',
+    intro: 31, name: 'Mystery Cells', icon: '❓',
     desc: 'Some numbered cells show "?" instead of their value.',
     longDesc: 'Certain safe cells hide their number behind a "?" symbol. You must deduce their value from surrounding clues. The cell is safe — it just won\'t tell you its count.',
     exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-mystery">?</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">0</div></div><div class="ge-caption">The "?" hides a number — use neighbors to figure it out</div>',
-  },
-  locked: {
-    intro: 21, name: 'Locked Cells', icon: '🔒',
-    desc: 'Locked cells can\'t be opened until all neighbors are revealed.',
-    longDesc: 'Cells with a lock icon cannot be clicked until every one of their 8 surrounding cells has been revealed. Work around them first, then come back once the area is clear.',
-    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed ge-locked">🔒</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div></div><div class="ge-caption">Reveal all 8 neighbors before the locked cell opens</div>',
-  },
-  liar: {
-    intro: 31, name: 'Liar Cells', icon: '🤥',
-    desc: 'A few cells display a number that\'s off by 1. They have a colored border so you know which ones lie.',
-    longDesc: 'Liar cells show a number that is exactly 1 higher or 1 lower than the true count. They are marked with a distinct colored border so you can spot them. Account for the offset when reasoning about nearby mines.',
-    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-liar">3</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">2</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div></div><div class="ge-caption">The orange-bordered "3" is really a 2 or 4</div>',
   },
   mineShift: {
     intro: 41, name: 'Mine Shift', icon: '💨', chaosOnly: true,
@@ -29,20 +29,20 @@ const GIMMICK_DEFS = {
     longDesc: 'Mines that you haven\'t flagged will periodically move to a neighboring cell. Numbers update to reflect new positions. Flag mines quickly to pin them in place — flagged mines never move.',
     exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell unrevealed"></div><div class="ge-cell unrevealed ge-mine-shift">💣➜</div><div class="ge-cell unrevealed ge-mine-dest"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">0</div></div><div class="ge-caption">Unflagged mines drift — flag them to pin them down!</div>',
   },
-  walls: {
-    intro: 51, name: 'Walls', icon: '🧱',
-    desc: 'Impassable wall cells block the grid. They don\'t count as neighbors.',
-    longDesc: 'Brick wall cells divide the board into sections. Walls cannot be revealed or flagged, and they do not count as neighbors for adjacent numbers. Treat them like the edge of the board.',
-    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell ge-wall">🧱</div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">1</div><div class="ge-cell ge-wall">🧱</div><div class="ge-cell revealed">0</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">0</div></div><div class="ge-caption">Walls split the board — numbers ignore wall neighbors</div>',
+  locked: {
+    intro: 41, name: 'Locked Cells', icon: '🔒',
+    desc: 'Locked cells can\'t be opened until all safe neighbors are revealed.',
+    longDesc: 'Cells with a lock icon cannot be clicked or flagged until every safe surrounding cell has been revealed. Locked cells may contain mines — be careful when they unlock! Work around them first, then come back once the area is clear.',
+    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed ge-locked">🔒</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div></div><div class="ge-caption">Reveal all safe neighbors before the locked cell opens</div>',
   },
   wormhole: {
-    intro: 61, name: 'Wormholes', icon: '🌀',
+    intro: 51, name: 'Wormholes', icon: '🌀',
     desc: 'Paired cells share information \u2014 each shows the SUM of both cells\' real neighbor counts.',
     longDesc: 'Two cells linked by a wormhole both display the combined total of their individual mine counts. If cell A has 1 mine neighbor and cell B has 2, both show 3. Use surrounding cells to split the sum.',
     exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(5,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-wormhole">🌀3</div><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-wormhole">🌀3</div><div class="ge-cell revealed">2</div></div><div class="ge-caption">Both 🌀 cells show 3 (sum of 1+2) — split the total</div>',
   },
   mirror: {
-    intro: 71, name: 'Mirror Zone', icon: '🪞',
+    intro: 61, name: 'Mirror Zone', icon: '🪞',
     desc: 'A marked zone displays mirrored adjacency values \u2014 numbers swap with their opposite cell in the zone.',
     longDesc: 'Inside the mirror zone, each cell\'s number is swapped with the cell at the opposite position. The zone is visually marked. To solve, mentally un-mirror each number to get the true count.',
     exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(2,32px)"><div class="ge-cell revealed ge-mirror">2🪞</div><div class="ge-cell revealed ge-mirror">1🪞</div><div class="ge-cell revealed ge-mirror">3🪞</div><div class="ge-cell revealed ge-mirror">0🪞</div></div><div class="ge-caption">Numbers are swapped diagonally within the zone</div>',
@@ -203,7 +203,8 @@ function applyLocked(board, rows, cols, count, rng) {
   for (let r = 1; r < rows - 1; r++) {
     for (let c = 1; c < cols - 1; c++) {
       const cell = board[r][c];
-      if (!cell.isMine && cell.adjacentMines > 0) {
+      // Allow mines AND numbered cells to be locked
+      if (cell.isMine || cell.adjacentMines > 0) {
         candidates.push(cell);
       }
     }
@@ -264,58 +265,68 @@ function computeLiarZone(board, rows, cols) {
   }
 }
 
-// ── Walls: inert cells that block grid ─────────────────
+// ── Wall Edge Helpers ─────────────────────────────────
+
+function wallKey(r1, c1, r2, c2) {
+  // Normalize so smaller coordinate comes first
+  if (r1 < r2 || (r1 === r2 && c1 < c2)) return `${r1},${c1}-${r2},${c2}`;
+  return `${r2},${c2}-${r1},${c1}`;
+}
+
+export function hasWallBetween(wallEdges, r1, c1, r2, c2) {
+  if (!wallEdges || wallEdges.size === 0) return false;
+  return wallEdges.has(wallKey(r1, c1, r2, c2));
+}
+
+// ── Walls: edges between adjacent cells ──────────────
 
 function applyWalls(board, rows, cols, segmentCount, rng) {
-  const wallCells = [];
+  const wallEdges = new Set();
   const maxSegments = Math.min(segmentCount, 5);
 
   for (let s = 0; s < maxSegments; s++) {
-    const length = 2 + Math.floor(rng() * 3); // 2-4 cells
-    const startR = 1 + Math.floor(rng() * (rows - 2));
-    const startC = 1 + Math.floor(rng() * (cols - 2));
+    const length = 2 + Math.floor(rng() * 3); // 2-4 edges per segment
 
-    // Random walk with one possible bend
-    const dirs = [[0, 1], [1, 0], [0, -1], [-1, 0]];
-    let dir = dirs[Math.floor(rng() * dirs.length)];
-    let r = startR, c = startC;
+    // Choose orientation: 0 = horizontal (wall between rows), 1 = vertical (wall between cols)
+    const orientation = Math.floor(rng() * 2);
     const segment = [];
-    let bendAt = 1 + Math.floor(rng() * (length - 1));
 
-    for (let i = 0; i < length; i++) {
-      if (r < 0 || r >= rows || c < 0 || c >= cols) break;
-      if (board[r][c].isMine || board[r][c].isWall) break;
-
-      // Don't wall the very edges (leave border cells for gameplay)
-      if (r === 0 || r === rows - 1 || c === 0 || c === cols - 1) break;
-
-      segment.push({ row: r, col: c });
-
-      if (i === bendAt) {
-        // Bend perpendicular
-        const perpDirs = dir[0] === 0 ? [[1, 0], [-1, 0]] : [[0, 1], [0, -1]];
-        dir = perpDirs[Math.floor(rng() * perpDirs.length)];
+    if (orientation === 0) {
+      // Horizontal wall line: between row r and r+1, spanning columns
+      const r = 1 + Math.floor(rng() * (rows - 3)); // avoid very top/bottom
+      const maxStartC = Math.max(0, cols - length);
+      const startC = Math.floor(rng() * (maxStartC + 1));
+      for (let i = 0; i < length && startC + i < cols; i++) {
+        const key = wallKey(r, startC + i, r + 1, startC + i);
+        segment.push(key);
       }
-
-      r += dir[0];
-      c += dir[1];
+    } else {
+      // Vertical wall line: between col c and c+1, spanning rows
+      const c = 1 + Math.floor(rng() * (cols - 3)); // avoid very left/right
+      const maxStartR = Math.max(0, rows - length);
+      const startR = Math.floor(rng() * (maxStartR + 1));
+      for (let i = 0; i < length && startR + i < rows; i++) {
+        const key = wallKey(startR + i, c, startR + i, c + 1);
+        segment.push(key);
+      }
     }
 
     if (segment.length >= 2) {
-      for (const pos of segment) {
-        board[pos.row][pos.col].isWall = true;
-        board[pos.row][pos.col].isMine = false;
-        wallCells.push(pos);
+      for (const key of segment) {
+        wallEdges.add(key);
       }
     }
   }
 
-  // Recalculate adjacency excluding wall cells
-  if (wallCells.length > 0) {
+  // Store wall edges on the board for easy access by other modules
+  board._wallEdges = wallEdges;
+
+  // Recalculate adjacency respecting wall edges
+  if (wallEdges.size > 0) {
     recalcAllAdjacency(board, rows, cols);
   }
 
-  return wallCells;
+  return wallEdges;
 }
 
 // ── Wormholes: paired cells show summed adjacency ──────
@@ -325,7 +336,7 @@ function applyWormholes(board, rows, cols, pairCount, rng) {
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const cell = board[r][c];
-      if (!cell.isMine && !cell.isWall && cell.adjacentMines > 0) {
+      if (!cell.isMine && cell.adjacentMines > 0) {
         candidates.push(cell);
       }
     }
@@ -374,7 +385,7 @@ function applyMirrorZone(board, rows, cols, rng) {
   const zone = [];
   for (let r = startR; r < startR + size; r++) {
     for (let c = startC; c < startC + size; c++) {
-      if (!board[r][c].isMine && !board[r][c].isWall) {
+      if (!board[r][c].isMine) {
         board[r][c].mirrorZone = { id: 0, centerRow: startR + (size - 1) / 2, centerCol: startC + (size - 1) / 2 };
         zone.push({ row: r, col: c });
       }
@@ -407,7 +418,7 @@ export function performMineShift(board, rng = Math.random) {
   const shiftable = [];
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      if (board[r][c].isMine && !board[r][c].isFlagged && !board[r][c].isRevealed && !board[r][c].isWall) {
+      if (board[r][c].isMine && !board[r][c].isFlagged && !board[r][c].isRevealed) {
         shiftable.push({ row: r, col: c });
       }
     }
@@ -429,7 +440,7 @@ export function performMineShift(board, rng = Math.random) {
         const nr = mine.row + dr, nc = mine.col + dc;
         if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
           const dest = board[nr][nc];
-          if (!dest.isMine && !dest.isRevealed && !dest.isFlagged && !dest.isWall) {
+          if (!dest.isMine && !dest.isRevealed && !dest.isFlagged) {
             dests.push({ row: nr, col: nc });
           }
         }
@@ -460,19 +471,23 @@ export function isLockedCell(board, row, col) {
   const rows = board.length;
   const cols = board[0].length;
 
-  // Check if all 8 neighbors are revealed (or wall/out-of-bounds)
+  // Check if all safe neighbors are revealed (mines and wall-edges don't block unlock)
+  const wallEdges = board._wallEdges || null;
   for (let dr = -1; dr <= 1; dr++) {
     for (let dc = -1; dc <= 1; dc++) {
       if (dr === 0 && dc === 0) continue;
       const nr = row + dr, nc = col + dc;
       if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+        // Wall edge between these cells = treat as satisfied
+        if (wallEdges && hasWallBetween(wallEdges, row, col, nr, nc)) continue;
         const neighbor = board[nr][nc];
-        if (!neighbor.isRevealed && !neighbor.isWall) return true; // Still locked
+        // Mines don't block unlock — only unrevealed safe cells do
+        if (!neighbor.isRevealed && !neighbor.isMine) return true; // Still locked
       }
     }
   }
 
-  return false; // All neighbors revealed — unlocked!
+  return false; // All safe neighbors revealed — unlocked!
 }
 
 // ── First-encounter popup tracking ─────────────────────
@@ -508,9 +523,10 @@ function shuffle(arr, rng) {
 }
 
 function recalcAllAdjacency(board, rows, cols) {
+  const wallEdges = board._wallEdges || null;
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      if (board[r][c].isMine || board[r][c].isWall) {
+      if (board[r][c].isMine) {
         board[r][c].adjacentMines = 0;
         continue;
       }
@@ -519,8 +535,10 @@ function recalcAllAdjacency(board, rows, cols) {
         for (let dc = -1; dc <= 1; dc++) {
           if (dr === 0 && dc === 0) continue;
           const nr = r + dr, nc = c + dc;
-          if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && board[nr][nc].isMine && !board[nr][nc].isWall) {
-            count++;
+          if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+            // Skip neighbors separated by a wall edge
+            if (wallEdges && hasWallBetween(wallEdges, r, c, nr, nc)) continue;
+            if (board[nr][nc].isMine) count++;
           }
         }
       }

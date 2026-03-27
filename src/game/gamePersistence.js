@@ -24,7 +24,7 @@ export function persistGameState() {
       isMine: c.isMine, isRevealed: c.isRevealed, isFlagged: c.isFlagged,
       adjacentMines: c.adjacentMines, isDefused: c.isDefused || false,
       isHiddenNumber: c.isHiddenNumber || false,
-      isWall: c.isWall || false, isMystery: c.isMystery || false,
+      isMystery: c.isMystery || false,
       isLiar: c.isLiar || false, isLocked: c.isLocked || false,
       isWormhole: c.isWormhole || false,
       displayedMines: c.displayedMines != null ? c.displayedMines : undefined,
@@ -43,6 +43,7 @@ export function persistGameState() {
     flagMode: state.flagMode || false,
     activeGimmicks: state.activeGimmicks || [],
     gimmickData: state.gimmickData || {},
+    wallEdges: state.board._wallEdges ? Array.from(state.board._wallEdges) : [],
     firstClick: state.firstClick,
     savedStatus: state.status,
   };
@@ -84,6 +85,11 @@ export function tryResumeGame(mode) {
   state.suggestedMove = null;
   state.activeGimmicks = gs.activeGimmicks || [];
   state.gimmickData = gs.gimmickData || {};
+
+  // Restore wall edges on the board
+  if (gs.wallEdges && gs.wallEdges.length > 0) {
+    state.board._wallEdges = new Set(gs.wallEdges);
+  }
 
   adjustCellSize();
   renderBoard();

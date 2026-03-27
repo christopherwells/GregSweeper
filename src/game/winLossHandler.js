@@ -17,7 +17,7 @@ import { findNextSafeMove } from '../logic/boardSolver.js';
 import { getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, getChaosDifficulty } from '../logic/difficulty.js';
 import {
   loadStats, saveGameResult, saveModePowerUps, clearGameState,
-  markDailyCompleted, getDailyStreak,
+  markDailyCompleted, getDailyStreak, getPlayerName,
 } from '../storage/statsStorage.js';
 import { safeSetJSON } from '../storage/storageAdapter.js';
 import {
@@ -28,6 +28,8 @@ import {
   getAchievementState, getAllTierNames, getTierIcon, getTierColor,
 } from '../logic/achievements.js';
 import { checkThemeUnlocks, showThemeUnlockToasts } from '../ui/themeManager.js';
+import { submitOnlineScore } from '../firebase/firebaseLeaderboard.js';
+import { addDailyLeaderboardEntry } from '../storage/statsStorage.js';
 
 // ── Achievements Display (for game over) ───────────────
 
@@ -273,9 +275,21 @@ export function handleWin() {
 
   const dailySubmitForm = $('#daily-submit-form');
   if (isDaily && dailySubmitForm) {
-    dailySubmitForm.classList.remove('hidden');
-    const nameInput = $('#daily-name-input');
-    if (nameInput) nameInput.value = '';
+    const savedName = getPlayerName();
+    if (savedName) {
+      // Auto-submit with saved name
+      dailySubmitForm.classList.add('hidden');
+      const dateStr = new Date().getFullYear() + '-' +
+        String(new Date().getMonth() + 1).padStart(2, '0') + '-' +
+        String(new Date().getDate()).padStart(2, '0');
+      addDailyLeaderboardEntry(dateStr, savedName, state.elapsedTime);
+      submitOnlineScore(dateStr, savedName, state.elapsedTime, state.dailyBombHits || 0);
+      showToast('✅ Score submitted!');
+    } else {
+      dailySubmitForm.classList.remove('hidden');
+      const nameInput = $('#daily-name-input');
+      if (nameInput) nameInput.value = '';
+    }
   } else if (dailySubmitForm) {
     dailySubmitForm.classList.add('hidden');
   }
