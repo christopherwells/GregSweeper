@@ -365,8 +365,10 @@
                 if (cell.isLiar) el.classList.add('liar-cell');
                 if (cell.isPressurePlate && !cell.plateDisarmed) el.classList.add('pressure-plate');
                 if (cell.isWormhole) {
-                  el.style.border = '2px solid #9b59b6';
-                  el.style.boxShadow = 'inset 0 0 6px rgba(155,89,182,0.3)';
+                  const pairColors = ['#9b59b6', '#e74c3c', '#f39c12'];
+                  const pc = pairColors[cell.wormholePairIndex || 0];
+                  el.style.border = '2px solid ' + pc;
+                  el.style.boxShadow = 'inset 0 0 6px ' + pc + '55';
                   el.textContent = '🌀' + el.textContent;
                   el.style.fontSize = '11px';
                 }
@@ -388,7 +390,8 @@
             el.textContent = '';
             if (cell.isLocked) el.classList.add('locked-cell');
             if (cell.isWormhole) {
-              el.style.border = '2px dashed rgba(155,89,182,0.5)';
+              const pairColors = ['#9b59b6', '#e74c3c', '#f39c12'];
+              el.style.border = '2px dashed ' + (pairColors[cell.wormholePairIndex || 0]) + '88';
             }
             if (cell.mirrorZone) {
               el.style.border = '2px dashed rgba(230,126,34,0.5)';
@@ -409,12 +412,14 @@
           for (let c = 0; c < COLS; c++) {
             const cell = board[r][c];
             if (cell.isLocked && !cell.isRevealed && !cell.isFlagged && !isLockedCell(board, r, c)) {
+              // Clear the permanent flag so floodFill/chord/rendering all work correctly
+              cell.isLocked = false;
               if (!cell.isMine) {
                 cell.isRevealed = true;
                 progress = true;
                 if (cell.adjacentMines === 0) floodFillReveal(board, r, c);
               }
-              // Locked mines: leave unrevealed, player flags them
+              // Unlocked mines: leave unrevealed, player flags them
             }
           }
         }
