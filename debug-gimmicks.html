@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GregSweeper — Gimmick Debug</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #1a1a2e; color: #eee; display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 20px; }
+    h1 { font-size: 18px; margin-bottom: 10px; }
+    .controls { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; justify-content: center; }
+    .controls button { padding: 8px 16px; border: 2px solid #444; border-radius: 8px; background: #2a2a4e; color: #eee; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+    .controls button:hover { border-color: #e94560; }
+    .controls button.active { border-color: #e94560; background: #e94560; color: #fff; }
+    .info { font-size: 13px; color: #aaa; margin-bottom: 12px; text-align: center; }
+    .info strong { color: #e94560; }
+    #board { display: inline-grid; gap: 2px; margin-bottom: 12px; }
+    .cell { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-weight: 700; font-size: 16px; cursor: pointer; user-select: none; border: 1px solid #3a3a5e; transition: all 0.15s; position: relative; }
+    .cell.unrevealed { background: #2a2a4e; }
+    .cell.unrevealed:hover { background: #3a3a6e; }
+    .cell.revealed { background: #1a1a2e; cursor: default; }
+    .cell.mine { background: #e94560; }
+    .cell.mine-hit { background: #ff2244; }
+    .cell.flagged { background: #2a2a4e; }
+    .cell.defused { background: #2a4a2a; }
+    .cell.empty { color: transparent; }
+    /* Number colors */
+    .cell.n1 { color: #5b9bd5; } .cell.n2 { color: #66bb6a; } .cell.n3 { color: #ef5350; }
+    .cell.n4 { color: #ab47bc; } .cell.n5 { color: #ec407a; } .cell.n6 { color: #26c6da; }
+    .cell.n7 { color: #bdbdbd; } .cell.n8 { color: #90a4ae; }
+    /* Gimmick styles */
+    .cell.liar-cell { border: 2px solid #e67e22; }
+    .cell.mystery-cell { color: #aaa; font-style: italic; }
+    .cell.locked-cell::after { content: '🔒'; position: absolute; font-size: 16px; opacity: 0.5; }
+    .cell.wall-top { border-top: 4px solid #c9a96e !important; }
+    .cell.wall-bottom { border-bottom: 4px solid #c9a96e !important; }
+    .cell.wall-left { border-left: 4px solid #c9a96e !important; }
+    .cell.wall-right { border-right: 4px solid #c9a96e !important; }
+    .cell.pressure-plate { box-shadow: inset 0 0 8px rgba(255,50,50,0.4); border-color: rgba(255,80,80,0.6); }
+    .cell.sonar-cell { border: 2px solid rgba(38,198,218,0.6); font-size: 12px; }
+    .cell.compass-cell { border: 2px solid rgba(255,167,38,0.6); font-size: 12px; }
+    .plate-timer { position: absolute; bottom: 1px; left: 1px; right: 1px; height: 3px; background: #ff4444; border-radius: 1px; transform-origin: left; transition: transform 0.2s linear; }
+    #status { font-size: 15px; margin-bottom: 8px; min-height: 24px; }
+    #status.win { color: #66bb6a; } #status.loss { color: #ef5350; }
+    .mine-count { font-size: 14px; color: #aaa; margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+  <h1>🧪 Gimmick Debug — 6×6 Boards</h1>
+  <div class="controls" id="gimmick-buttons"></div>
+  <div class="info" id="info"></div>
+  <div class="mine-count" id="mine-count"></div>
+  <div id="status"></div>
+  <div id="board"></div>
+
+  <script type="module">
+    import { generateBoard, createEmptyBoard, placeMines, calculateAdjacency } from './src/logic/boardGenerator.js';
+    import { isBoardSolvable, floodFillReveal, chordReveal, checkWin } from './src/logic/boardSolver.js';
+    import { applyGimmicks, hasWallBetween, isLockedCell, getGimmickDef } from './src/logic/gimmicks.js';
+
+    const ROWS = 6, COLS = 6, MINES = 6;
+    const boardEl = document.getElementById('board');
+    const statusEl = document.getElementById('status');
+    const infoEl = document.getElementById('info');
+    const mineCountEl = document.getElementById('mine-count');
+    const btnContainer = document.getElementById('gimmick-buttons');
+
+    const GIMMICK_LIST = ['walls', 'liar', 'mystery', 'locked', 'wormhole', 'mirror', 'pressurePlate', 'sonar', 'compass'];
+    let activeGimmick = 'walls';
+    let board = null;
+    let gimmickData = {};
+    let gameOver = false;
+    let firstClick = true;
+    let flagCount = 0;
+    let activePlateTimers = new Map();
+
+    // Build gimmick selector buttons
+    for (const g of GIMMICK_LIST) {
+      const def = getGimmickDef(g);
+      const btn = document.createElement('button');
+      btn.textContent = (def?.icon || '?') + ' ' + (def?.name || g);
+      btn.dataset.gimmick = g;
+      btn.addEventListener('click', () => {
+        activeGimmick = g;
+        document.querySelectorAll('.controls button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        startGame();
+      });
+      if (g === activeGimmick) btn.classList.add('active');
+      btnContainer.appendChild(btn);
+    }
+
+    function startGame() {
+      gameOver = false;
+      firstClick = true;
+      flagCount = 0;
+      board = null;
+      gimmickData = {};
+      activePlateTimers.forEach(t => clearInterval(t));
+      activePlateTimers.clear();
+      statusEl.textContent = '';
+      statusEl.className = '';
+      const def = getGimmickDef(activeGimmick);
+      infoEl.innerHTML = `<strong>${def?.icon} ${def?.name}</strong>: ${def?.desc || ''}`;
+      mineCountEl.textContent = `Mines: ${MINES} | Flags: 0`;
+      boardEl.style.gridTemplateColumns = `repeat(${COLS}, 44px)`;
+      boardEl.innerHTML = '';
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell unrevealed';
+          cell.dataset.row = r;
+          cell.dataset.col = c;
+          cell.addEventListener('click', () => handleClick(r, c));
+          cell.addEventListener('contextmenu', (e) => { e.preventDefault(); handleFlag(r, c); });
+          boardEl.appendChild(cell);
+        }
+      }
+    }
+
+    function handleClick(row, col) {
+      if (gameOver) { startGame(); return; }
+      const cell = board?.[row]?.[col];
+      if (cell && cell.isRevealed && cell.adjacentMines > 0) { handleChord(row, col); return; }
+      if (cell && cell.isRevealed) return;
+      if (cell && cell.isFlagged) return;
+
+      if (firstClick) {
+        // Generate board + apply gimmick, retrying if gimmicks break solvability
+        for (let attempt = 0; attempt < 30; attempt++) {
+          board = generateBoard(ROWS, COLS, MINES, row, col, Math.random, { hasGimmicks: true });
+          gimmickData = applyGimmicks(board, 50, [activeGimmick], Math.random);
+          // Verify solvability with gimmicks applied
+          const check = isBoardSolvable(board, ROWS, COLS, row, col);
+          // Clean solver artifacts
+          for (const brow of board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
+          if (check.solvable || check.remainingUnknowns === 0) break;
+        }
+        firstClick = false;
+      }
+
+      const c = board[row][col];
+      if (c.isLocked && isLockedCell(board, row, col)) { statusEl.textContent = '🔒 Locked! Reveal safe neighbors first.'; return; }
+      if (c.isMine) { endGame(false, row, col); return; }
+
+      if (c.adjacentMines === 0) {
+        const revealed = floodFillReveal(board, row, col);
+      } else {
+        c.isRevealed = true;
+      }
+
+      // Pressure plate timer
+      if (c.isPressurePlate && !c.plateDisarmed) {
+        startPlateTimer(c);
+      }
+
+      renderBoard();
+      if (checkWin(board)) endGame(true);
+    }
+
+    function handleFlag(row, col) {
+      if (gameOver || !board) return;
+      const c = board[row][col];
+      if (c.isRevealed) return;
+      if (c.isLocked && isLockedCell(board, row, col)) return;
+      c.isFlagged = !c.isFlagged;
+      flagCount += c.isFlagged ? 1 : -1;
+      mineCountEl.textContent = `Mines: ${MINES} | Flags: ${flagCount}`;
+      renderBoard();
+    }
+
+    function handleChord(row, col) {
+      if (!board) return;
+      const result = chordReveal(board, row, col);
+      if (!result || !result.revealed) return;
+      if (result.hitMine) {
+        const mine = result.revealed.find(c => c.isMine);
+        if (mine) endGame(false, mine.row, mine.col);
+        return;
+      }
+      // Check pressure plates in newly revealed
+      for (const c of result.revealed) {
+        if (c.isPressurePlate && !c.plateDisarmed) startPlateTimer(c);
+      }
+      renderBoard();
+      if (checkWin(board)) endGame(true);
+    }
+
+    function startPlateTimer(cell) {
+      const cellEl = boardEl.children[cell.row * COLS + cell.col];
+      const bar = document.createElement('div');
+      bar.className = 'plate-timer';
+      cellEl.appendChild(bar);
+      const start = Date.now();
+      const duration = (cell.plateTimer || 15) * 1000;
+      const timer = setInterval(() => {
+        if (gameOver) { clearInterval(timer); return; }
+        const elapsed = Date.now() - start;
+        const pct = Math.max(0, 1 - elapsed / duration);
+        bar.style.transform = `scaleX(${pct})`;
+        // Check if disarmed
+        if (checkPlateDisarmed(cell)) {
+          clearInterval(timer);
+          activePlateTimers.delete(cell);
+          cell.plateDisarmed = true;
+          bar.remove();
+          statusEl.textContent = '✅ Plate disarmed!';
+          return;
+        }
+        if (pct <= 0) {
+          clearInterval(timer);
+          activePlateTimers.delete(cell);
+          endGame(false, cell.row, cell.col);
+        }
+      }, 100);
+      activePlateTimers.set(cell, timer);
+    }
+
+    function checkPlateDisarmed(cell) {
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue;
+          const nr = cell.row + dr, nc = cell.col + dc;
+          if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) {
+            if (board[nr][nc].isMine && board[nr][nc].isFlagged) return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    function endGame(won, hitR, hitC) {
+      gameOver = true;
+      activePlateTimers.forEach(t => clearInterval(t));
+      activePlateTimers.clear();
+      if (won) {
+        statusEl.textContent = '🎉 You won! Click to play again.';
+        statusEl.className = 'win';
+      } else {
+        statusEl.textContent = '💥 Mine hit! Click to try again.';
+        statusEl.className = 'loss';
+        if (hitR != null) board[hitR][hitC].isRevealed = true;
+        // Reveal all mines
+        for (const row of board) for (const c of row) { if (c.isMine) c.isRevealed = true; }
+      }
+      renderBoard();
+    }
+
+    function renderBoard() {
+      if (!board) return;
+      const wallEdges = board._wallEdges || null;
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const cell = board[r][c];
+          const el = boardEl.children[r * COLS + c];
+          el.className = 'cell';
+
+          // Wall borders
+          if (wallEdges) {
+            if (hasWallBetween(wallEdges, r, c, r-1, c)) el.classList.add('wall-top');
+            if (hasWallBetween(wallEdges, r, c, r+1, c)) el.classList.add('wall-bottom');
+            if (hasWallBetween(wallEdges, r, c, r, c-1)) el.classList.add('wall-left');
+            if (hasWallBetween(wallEdges, r, c, r, c+1)) el.classList.add('wall-right');
+          }
+
+          if (cell.isRevealed) {
+            if (cell.isMine) {
+              const isHit = gameOver && !checkWin(board);
+              el.classList.add('revealed', isHit ? 'mine-hit' : 'mine');
+              el.textContent = '💣';
+            } else if (cell.isDefused) {
+              el.classList.add('revealed', 'defused');
+              el.textContent = '💣';
+            } else {
+              const num = cell.displayedMines != null ? cell.displayedMines
+                : cell.isMystery ? null : cell.adjacentMines;
+              if (cell.isMystery && num == null) {
+                el.classList.add('revealed', 'mystery-cell');
+                el.textContent = '?';
+              } else if (num > 0) {
+                el.classList.add('revealed', 'n' + Math.min(num, 8));
+                if (cell.isSonar) {
+                  el.textContent = '📡' + num;
+                  el.classList.add('sonar-cell');
+                } else if (cell.isCompass) {
+                  el.textContent = num + (cell.compassArrow || '');
+                  el.classList.add('compass-cell');
+                } else {
+                  el.textContent = num;
+                }
+                if (cell.isLiar) el.classList.add('liar-cell');
+                if (cell.isPressurePlate && !cell.plateDisarmed) el.classList.add('pressure-plate');
+              } else {
+                el.classList.add('revealed', 'empty');
+                el.textContent = '';
+              }
+            }
+          } else if (cell.isFlagged) {
+            el.classList.add('unrevealed', 'flagged');
+            el.textContent = '🚩';
+          } else {
+            el.classList.add('unrevealed');
+            el.textContent = '';
+            if (cell.isLocked) el.classList.add('locked-cell');
+          }
+        }
+      }
+    }
+
+    startGame();
+  </script>
+</body>
+</html>

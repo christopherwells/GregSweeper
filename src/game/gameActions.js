@@ -16,7 +16,7 @@ import { startTimer, stopTimer, pauseTimer, resumeTimer, startMineShift, updateT
 import { handleWin, handleLoss, handleDailyBombHit } from './winLossHandler.js';
 import { performScan, performXRay, performMagnet, tryLifeline } from './powerUpActions.js';
 import { generateBoard, createEmptyBoard, calculateAdjacency } from '../logic/boardGenerator.js';
-import { floodFillReveal, checkWin, chordReveal } from '../logic/boardSolver.js';
+import { floodFillReveal, checkWin, chordReveal, isBoardSolvable } from '../logic/boardSolver.js';
 import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getChaosDifficulty } from '../logic/difficulty.js';
 import { shieldDefuse } from '../logic/powerUps.js';
 import { getGimmicksForLevel, applyGimmicks, isLockedCell, hasWallBetween, hasSeenGimmick, markGimmickSeen, getGimmickDef, isModifierPopupDisabled, setModifierPopupDisabled, getDailyGimmick, getChaosGimmicks } from '../logic/gimmicks.js';
@@ -297,14 +297,41 @@ export function revealCell(row, col) {
     const maxZC = state.gameMode === 'normal'
       ? getMaxZeroCluster(state.currentLevel) : Infinity;
     const hasGimmicks = state.gameMode === 'normal' && state.currentLevel > 10;
-    state.board = generateBoard(state.rows, state.cols, state.totalMines, row, col, rng, { maxZeroCluster: maxZC, hasGimmicks });
 
-    // Apply gimmicks for challenge mode
-    if (state.gameMode === 'normal') {
-      const gimmickRng = rng || Math.random;
-      state.activeGimmicks = getGimmicksForLevel(state.currentLevel, gimmickRng);
+    // Generate board + apply gimmicks in a retry loop:
+    // Gimmicks (especially walls) can break solvability by changing adjacency.
+    // If that happens, regenerate until we get a solvable board with gimmicks applied.
+    let gimmickRetries = 0;
+    const MAX_GIMMICK_RETRIES = 20;
+    do {
+      state.board = generateBoard(state.rows, state.cols, state.totalMines, row, col, rng || Math.random, { maxZeroCluster: maxZC, hasGimmicks });
+      state.activeGimmicks = [];
+      state.gimmickData = {};
+
+      if (state.gameMode === 'normal') {
+        const gimmickRng = rng || Math.random;
+        state.activeGimmicks = getGimmicksForLevel(state.currentLevel, gimmickRng);
+        if (state.activeGimmicks.length > 0) {
+          state.gimmickData = applyGimmicks(state.board, state.currentLevel, state.activeGimmicks, gimmickRng);
+        }
+      }
+
+      // Verify solvability with gimmicks applied
       if (state.activeGimmicks.length > 0) {
-        state.gimmickData = applyGimmicks(state.board, state.currentLevel, state.activeGimmicks, gimmickRng);
+        
+        const check = isBoardSolvable(state.board, state.rows, state.cols, row, col);
+        // Clean solver artifacts
+        for (const brow of state.board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
+        if (check.solvable || check.remainingUnknowns === 0) break; // Good board!
+      } else {
+        break; // No gimmicks, board is already verified solvable
+      }
+      gimmickRetries++;
+    } while (gimmickRetries < MAX_GIMMICK_RETRIES);
+
+    // Apply gimmicks for challenge mode (show popups etc.)
+    if (state.gameMode === 'normal') {
+      if (state.activeGimmicks.length > 0) {
 
         // Show first-encounter popup for new modifiers (unless disabled)
         if (!isModifierPopupDisabled()) {
