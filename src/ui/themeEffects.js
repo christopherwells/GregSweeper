@@ -49,12 +49,21 @@ function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 function spawn(container, opts = {}) {
   const el = document.createElement('div');
   el.className = 'fx-particle';
-  Object.assign(el.style, {
+  const baseStyle = {
     position: 'absolute',
     pointerEvents: 'none',
     willChange: 'transform, opacity',
-    ...opts.style,
-  });
+  };
+  const merged = { ...baseStyle, ...opts.style };
+  // Object.assign doesn't work for CSS custom properties (--fx-*)
+  // Separate them and use setProperty instead
+  for (const [key, value] of Object.entries(merged)) {
+    if (key.startsWith('--')) {
+      el.style.setProperty(key, value);
+    } else {
+      el.style[key] = value;
+    }
+  }
   if (opts.text) el.textContent = opts.text;
   if (opts.html) el.innerHTML = opts.html;
   container.appendChild(el);
@@ -124,17 +133,17 @@ function injectStyles() {
 
     @keyframes fxFall {
       0% { transform: translate(var(--fx-x0, 0px), var(--fx-y0, -20px)) rotate(var(--fx-r0, 0deg)) scale(var(--fx-s, 1)); opacity: 0; }
-      8% { opacity: var(--fx-opacity, 0.6); }
-      50% { transform: translate(var(--fx-x1, 20px), var(--fx-y1, 50%)) rotate(var(--fx-r1, 180deg)) scale(var(--fx-s, 1)); opacity: var(--fx-opacity, 0.5); }
-      85% { opacity: var(--fx-opacity-end, 0.15); }
+      5% { opacity: var(--fx-opacity, 0.6); }
+      70% { transform: translate(var(--fx-x1, 20px), var(--fx-y1, 50%)) rotate(var(--fx-r1, 180deg)) scale(var(--fx-s, 1)); opacity: var(--fx-opacity, 0.45); }
+      92% { opacity: var(--fx-opacity-end, 0.2); }
       100% { transform: translate(var(--fx-x2, 40px), var(--fx-y2, 110%)) rotate(var(--fx-r2, 360deg)) scale(var(--fx-s, 1)); opacity: 0; }
     }
 
     @keyframes fxRise {
       0% { transform: translate(var(--fx-x0, 0px), var(--fx-y0, 0px)) scale(var(--fx-s, 1)); opacity: 0; }
-      10% { opacity: var(--fx-opacity, 0.7); }
-      50% { transform: translate(var(--fx-x1, 5px), var(--fx-y1, -40%)) scale(var(--fx-s, 1)); opacity: var(--fx-opacity, 0.5); }
-      90% { opacity: var(--fx-opacity-end, 0.1); }
+      8% { opacity: var(--fx-opacity, 0.7); }
+      65% { transform: translate(var(--fx-x1, 5px), var(--fx-y1, -40%)) scale(var(--fx-s, 1)); opacity: var(--fx-opacity, 0.5); }
+      92% { opacity: var(--fx-opacity-end, 0.15); }
       100% { transform: translate(var(--fx-x2, -5px), var(--fx-y2, -90%)) scale(var(--fx-s-end, 0.5)); opacity: 0; }
     }
 
@@ -208,7 +217,7 @@ function fallingParticle(container, opts) {
       '--fx-r1': rand(100, 200) + 'deg',
       '--fx-r2': rand(300, 400) + 'deg',
       '--fx-opacity': String(opts.opacity || 0.5),
-      '--fx-opacity-end': String(opts.opacityEnd || 0.12),
+      '--fx-opacity-end': String(opts.opacityEnd || 0.25),
       '--fx-s': String(rand(opts.scaleMin || 0.8, opts.scaleMax || 1.2)),
     },
   });
@@ -238,7 +247,7 @@ function risingParticle(container, opts) {
       '--fx-x2': rand(-20, 20) + 'px',
       '--fx-y2': -(boardH * 0.9) + 'px',
       '--fx-opacity': String(opts.opacity || 0.6),
-      '--fx-opacity-end': String(opts.opacityEnd || 0.1),
+      '--fx-opacity-end': String(opts.opacityEnd || 0.2),
       '--fx-s': '1',
       '--fx-s-end': String(opts.scaleEnd || 0.3),
     },
@@ -264,7 +273,7 @@ const THEME_EFFECTS = {
         '--fx-float-y': rand(-8, -15) + 'px', '--fx-opacity': String(rand(0.2, 0.4)),
       }});
       return el;
-    }, () => rand(2000, 5000));
+    }, () => rand(1400, 3500));
   },
 
   // Sunset (L6): warm golden light drift
@@ -291,7 +300,7 @@ const THEME_EFFECTS = {
         '--fx-float-y': rand(-10, -20) + 'px', '--fx-opacity': String(rand(0.3, 0.5)),
       }});
       return el;
-    }, () => rand(1500, 4000));
+    }, () => rand(1050, 2800));
   },
 
   // Candy (L12): floating sprinkles + sparkle pops
@@ -307,7 +316,7 @@ const THEME_EFFECTS = {
         '--fx-opacity': String(rand(0.4, 0.7)),
       }});
       return el;
-    }, () => rand(800, 2000));
+    }, () => rand(560, 1400));
   },
 
   // Midnight (L15): twinkling starfield
@@ -355,7 +364,7 @@ const THEME_EFFECTS = {
         '--fx-opacity': '0.7',
       }});
       return el;
-    }, () => rand(1500, 4000));
+    }, () => rand(1050, 2800));
   },
 
   // Cherry Blossom (L24): gentle shower of petals
@@ -367,7 +376,7 @@ const THEME_EFFECTS = {
         sizeMin: 12, sizeMax: 20, durationMin: 7, durationMax: 12,
         opacity: 0.5, opacityEnd: 0.1,
       });
-    }, () => rand(1500, 3500));
+    }, () => rand(1050, 2450));
   },
 
   // Aurora (L27): drifting colored light bands
@@ -404,7 +413,7 @@ const THEME_EFFECTS = {
         glow: '0 0 6px rgba(255,100,30,0.5)', sizeMin: 2, sizeMax: 5,
         durationMin: 3, durationMax: 6, opacity: 0.7, opacityEnd: 0.1, scaleEnd: 0.2,
       });
-    }, () => rand(600, 1800));
+    }, () => rand(420, 1260));
   },
 
   // Copper (L33): metallic shimmer sweep + warm sparks
@@ -426,7 +435,7 @@ const THEME_EFFECTS = {
         '--fx-opacity': String(rand(0.3, 0.5)),
       }});
       return el;
-    }, () => rand(2000, 5000));
+    }, () => rand(1400, 3500));
     return () => { sweep.remove(); sparkleCleanup(); };
   },
 
@@ -439,7 +448,7 @@ const THEME_EFFECTS = {
         sizeMin: 6, sizeMax: 14, durationMin: 6, durationMax: 12,
         opacity: 0.35, opacityEnd: 0.08, scaleMin: 0.6, scaleMax: 1,
       });
-    }, () => rand(1000, 3000));
+    }, () => rand(700, 2100));
   },
 
   // Sakura (L36): nighttime petals + floating lantern dots
@@ -454,13 +463,13 @@ const THEME_EFFECTS = {
         animation: `fxTwinkle ${rand(3, 6)}s ease-in-out forwards`, '--fx-opacity': '0.5',
       }});
       return el;
-    }, () => rand(2000, 5000));
+    }, () => rand(1400, 3500));
     const petalCleanup = particleLoop(container, (c) => {
       return fallingParticle(c, {
         chars: ['\uD83C\uDF38'], sizeMin: 10, sizeMax: 16,
         durationMin: 9, durationMax: 15, opacity: 0.35, opacityEnd: 0.08,
       });
-    }, () => rand(2500, 5000));
+    }, () => rand(1750, 3500));
     return () => { glowCleanup(); petalCleanup(); };
   },
 
@@ -478,7 +487,7 @@ const THEME_EFFECTS = {
         animation: `fxGlitch ${rand(0.2, 0.5)}s ease-in-out forwards`,
       }});
       return el;
-    }, () => rand(2000, 6000));
+    }, () => rand(1400, 4200));
     const dropCleanup = particleLoop(container, (c) => {
       const boardH = c.parentElement?.clientHeight || 500;
       const size = rand(2, 4);
@@ -495,7 +504,7 @@ const THEME_EFFECTS = {
         '--fx-opacity': '0.5', '--fx-opacity-end': '0.1', '--fx-s': '1',
       }});
       return el;
-    }, () => rand(400, 1200));
+    }, () => rand(280, 840));
     return () => { glitchCleanup(); dropCleanup(); };
   },
 
@@ -526,7 +535,7 @@ const THEME_EFFECTS = {
         animation: `fxSweep ${rand(0.6, 1.2)}s ease-out forwards`,
       }});
       return el;
-    }, () => rand(6000, 15000));
+    }, () => rand(4200, 10500));
     return () => { stars.forEach(s => s.remove()); shootCleanup(); };
   },
 
@@ -551,7 +560,7 @@ const THEME_EFFECTS = {
         '--fx-opacity': String(rand(0.3, 0.5)),
       }});
       return el;
-    }, () => rand(1000, 3000));
+    }, () => rand(700, 2100));
     return () => { scanLine.remove(); dustCleanup(); };
   },
 
@@ -568,7 +577,7 @@ const THEME_EFFECTS = {
         sizeMin: 8, sizeMax: 14, durationMin: 10, durationMax: 16,
         opacity: 0.3, opacityEnd: 0.06,
       });
-    }, () => rand(3000, 7000));
+    }, () => rand(2100, 4900));
   },
 
   // Holographic (L46): rainbow light sweeps
@@ -595,7 +604,7 @@ const THEME_EFFECTS = {
         '--fx-opacity': String(rand(0.4, 0.7)),
       }});
       return el;
-    }, () => rand(400, 1200));
+    }, () => rand(280, 840));
     return () => { sweeps.forEach(s => s.remove()); sparkleCleanup(); };
   },
 
@@ -622,7 +631,7 @@ const THEME_EFFECTS = {
         '--fx-s': '1', '--fx-s-end': String(rand(0.3, 0.6)),
       }});
       return el;
-    }, () => rand(800, 2000));
+    }, () => rand(560, 1400));
   },
 
   // Autumn (L52): falling leaves
@@ -634,7 +643,7 @@ const THEME_EFFECTS = {
         sizeMin: 12, sizeMax: 18, durationMin: 6, durationMax: 11,
         opacity: 0.45, opacityEnd: 0.1,
       });
-    }, () => rand(1500, 3500));
+    }, () => rand(1050, 2450));
   },
 
   // Royal (L55): gold dust + regal sparkles
@@ -656,7 +665,7 @@ const THEME_EFFECTS = {
         '--fx-opacity': String(rand(0.4, 0.7)),
       }});
       return el;
-    }, () => rand(800, 2000));
+    }, () => rand(560, 1400));
     return () => { sweep.remove(); sparkleCleanup(); };
   },
 
@@ -682,7 +691,7 @@ const THEME_EFFECTS = {
         '--fx-s': '1', '--fx-s-end': String(rand(1.2, 1.8)),
       }});
       return el;
-    }, () => rand(1200, 3000));
+    }, () => rand(840, 2100));
   },
 
   // Emerald (L61): sparkling gem facets
@@ -704,7 +713,7 @@ const THEME_EFFECTS = {
         '--fx-opacity': String(rand(0.4, 0.7)),
       }});
       return el;
-    }, () => rand(600, 1500));
+    }, () => rand(420, 1050));
     return () => { sweep.remove(); sparkleCleanup(); };
   },
 
@@ -732,7 +741,7 @@ const THEME_EFFECTS = {
         '--fx-opacity': String(rand(0.4, 0.7)),
       }});
       return el;
-    }, () => rand(400, 1000));
+    }, () => rand(280, 700));
     return () => { sweeps.forEach(s => s.remove()); sparkleCleanup(); };
   },
 
@@ -752,7 +761,7 @@ const THEME_EFFECTS = {
         '--fx-opacity': '0.3', '--fx-opacity-end': '0.05', '--fx-s': '1',
       }});
       return el;
-    }, () => rand(100, 400));
+    }, () => rand(80, 280));
   },
 
   // Void (L70): sparks in absolute darkness
@@ -765,7 +774,7 @@ const THEME_EFFECTS = {
         animation: `fxTwinkle ${rand(0.3, 0.8)}s ease-in-out forwards`, '--fx-opacity': '0.7',
       }});
       return el;
-    }, () => rand(2000, 6000));
+    }, () => rand(1400, 4200));
   },
 
   // Arctic (L73): drifting snow
@@ -777,7 +786,7 @@ const THEME_EFFECTS = {
         sizeMin: 6, sizeMax: 14, durationMin: 7, durationMax: 13,
         opacity: 0.3, opacityEnd: 0.06, scaleMin: 0.5, scaleMax: 1,
       });
-    }, () => rand(1200, 3500));
+    }, () => rand(840, 2450));
   },
 
   // Deep Space (L76): distant stars + slow nebula
@@ -814,14 +823,14 @@ const THEME_EFFECTS = {
         '--fx-float-y': rand(-15, -30) + 'px', '--fx-opacity': String(rand(0.4, 0.7)),
       }});
       return el;
-    }, () => rand(1000, 3000));
+    }, () => rand(700, 2100));
     const leafCleanup = particleLoop(container, (c) => {
       return fallingParticle(c, {
         chars: ['\uD83C\uDF43', '\uD83C\uDF3F'],
         sizeMin: 10, sizeMax: 16, durationMin: 8, durationMax: 14,
         opacity: 0.3, opacityEnd: 0.06,
       });
-    }, () => rand(5000, 12000));
+    }, () => rand(3500, 8400));
     return () => { fireflyCleanup(); leafCleanup(); };
   },
 
@@ -842,7 +851,7 @@ const THEME_EFFECTS = {
         animation: `fxTwinkle ${rand(0.2, 0.5)}s ease-in-out forwards`, '--fx-opacity': '0.5',
       }});
       return el;
-    }, () => rand(4000, 10000));
+    }, () => rand(2800, 7000));
     return () => { sweep.remove(); sparkCleanup(); };
   },
 
@@ -859,7 +868,7 @@ const THEME_EFFECTS = {
         '--fx-opacity': String(rand(0.3, 0.6)),
       }});
       return el;
-    }, () => rand(1500, 4000));
+    }, () => rand(1050, 2800));
   },
 
   // Matrix (L86): falling green characters
@@ -880,7 +889,7 @@ const THEME_EFFECTS = {
         '--fx-opacity': '0.6', '--fx-opacity-end': '0.1', '--fx-s': '1',
       }});
       return el;
-    }, () => rand(150, 500));
+    }, () => rand(105, 350));
   },
 
   // Solar (L88): sun rays
@@ -905,7 +914,7 @@ const THEME_EFFECTS = {
         '--fx-opacity': String(rand(0.3, 0.6)),
       }});
       return el;
-    }, () => rand(1000, 3000));
+    }, () => rand(700, 2100));
     return () => { ray.remove(); sparkleCleanup(); };
   },
 
@@ -922,7 +931,7 @@ const THEME_EFFECTS = {
         sizeMin: 4, sizeMax: 8, durationMin: 3, durationMax: 6,
         opacity: 0.4, opacityEnd: 0.05,
       });
-    }, () => rand(1000, 3000));
+    }, () => rand(700, 2100));
   },
 
   // Inferno (L92): intense fire + sparks
@@ -938,7 +947,7 @@ const THEME_EFFECTS = {
         glow: '0 0 8px rgba(255,80,0,0.5)', sizeMin: 2, sizeMax: 6,
         durationMin: 2, durationMax: 4, opacity: 0.7, opacityEnd: 0.1, scaleEnd: 0.15,
       });
-    }, () => rand(300, 900));
+    }, () => rand(210, 630));
   },
 
   // Synthwave (L94): retro grid + neon glow
@@ -955,7 +964,7 @@ const THEME_EFFECTS = {
         animation: `fxTwinkle ${rand(1, 2)}s ease-in-out forwards`, '--fx-opacity': '0.5',
       }});
       return el;
-    }, () => rand(2000, 5000));
+    }, () => rand(1400, 3500));
     return lineCleanup;
   },
 
@@ -982,7 +991,7 @@ const THEME_EFFECTS = {
         animation: `fxSweep ${rand(0.5, 1)}s ease-out forwards`,
       }});
       return el;
-    }, () => rand(4000, 10000));
+    }, () => rand(2800, 7000));
     return () => { stars.forEach(s => s.remove()); shootCleanup(); };
   },
 
@@ -999,7 +1008,7 @@ const THEME_EFFECTS = {
         glow: '0 0 6px rgba(255,136,0,0.4)', sizeMin: 2, sizeMax: 5,
         durationMin: 2, durationMax: 5, opacity: 0.6, opacityEnd: 0.08, scaleEnd: 0.2,
       });
-    }, () => rand(400, 1200));
+    }, () => rand(280, 840));
   },
 
   // Legendary (L100): golden sparkles + dragon fire embers
@@ -1014,14 +1023,14 @@ const THEME_EFFECTS = {
         '--fx-opacity': String(rand(0.5, 0.8)),
       }});
       return el;
-    }, () => rand(300, 800));
+    }, () => rand(210, 560));
     const emberCleanup = particleLoop(container, (c) => {
       return risingParticle(c, {
         color: pick(['rgba(255,80,20,0.7)', 'rgba(255,200,50,0.6)', 'rgba(255,140,0,0.5)']),
         glow: '0 0 8px rgba(255,100,0,0.5)', sizeMin: 2, sizeMax: 5,
         durationMin: 2, durationMax: 5, opacity: 0.7, opacityEnd: 0.1, scaleEnd: 0.2,
       });
-    }, () => rand(500, 1500));
+    }, () => rand(350, 1050));
     return () => { sparkleCleanup(); emberCleanup(); };
   },
 };

@@ -119,6 +119,21 @@ export function getChaosGimmicks(count, rng = Math.random) {
 
 // ── Gimmick intensity (count of affected cells) ────────
 
+// Check if any NEW gimmick is being introduced at this level
+function isAnyGimmickIntroBlock(level) {
+  for (const g of Object.values(GIMMICK_DEFS)) {
+    if (g.chaosOnly) continue;
+    if (level >= g.intro && level <= g.intro + 4) return true;
+  }
+  return false;
+}
+
+// Check if THIS gimmick is the one being introduced at this level
+function isThisGimmickIntro(gimmick, level) {
+  const def = GIMMICK_DEFS[gimmick];
+  return level >= def.intro && level <= def.intro + 4;
+}
+
 function getIntensity(gimmick, level, rng) {
   const def = GIMMICK_DEFS[gimmick];
   const introEnd = def.intro + 4;
@@ -132,7 +147,15 @@ function getIntensity(gimmick, level, rng) {
   // After introduction: slowly ramp toward level 100
   const progress = (level - introEnd) / (100 - introEnd);
   const base = 1 + Math.floor(progress * 3); // 1-4
-  return base + (rng() < 0.3 ? 1 : 0); // slight random boost
+  let intensity = base + (rng() < 0.3 ? 1 : 0); // slight random boost
+
+  // Breathing room: when a DIFFERENT gimmick is being introduced,
+  // subtly reduce this old gimmick's intensity by 1
+  if (isAnyGimmickIntroBlock(level) && !isThisGimmickIntro(gimmick, level)) {
+    intensity = Math.max(1, intensity - 1);
+  }
+
+  return intensity;
 }
 
 // ── Apply gimmicks to a generated board ────────────────

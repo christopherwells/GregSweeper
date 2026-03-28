@@ -135,9 +135,19 @@ const SPEED_THRESHOLDS = [
   { diamond: 120, gold: 240, silver: 480 },
 ];
 
+// Gimmick intro levels where mine density dips slightly (1-2 fewer mines)
+const GIMMICK_INTRO_LEVELS = new Set([11, 21, 31, 41, 51, 61]);
+
 export function getDifficultyForLevel(level) {
   const capped = Math.min(Math.max(level, 1), CHALLENGE_LEVELS.length);
-  return { ...CHALLENGE_LEVELS[capped - 1] };
+  const diff = { ...CHALLENGE_LEVELS[capped - 1] };
+
+  // Subtle breathing room: reduce mines by 1-2 on the exact level a gimmick is introduced
+  if (GIMMICK_INTRO_LEVELS.has(capped)) {
+    diff.mines = Math.max(1, diff.mines - 2);
+  }
+
+  return diff;
 }
 
 export function getTimedDifficulty(level) {

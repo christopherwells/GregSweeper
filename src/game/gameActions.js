@@ -296,7 +296,8 @@ export function revealCell(row, col) {
     const rng = state.dailySeed ? createDailyRNG(state.dailySeed) : undefined;
     const maxZC = state.gameMode === 'normal'
       ? getMaxZeroCluster(state.currentLevel) : Infinity;
-    state.board = generateBoard(state.rows, state.cols, state.totalMines, row, col, rng, { maxZeroCluster: maxZC });
+    const hasGimmicks = state.gameMode === 'normal' && state.currentLevel > 10;
+    state.board = generateBoard(state.rows, state.cols, state.totalMines, row, col, rng, { maxZeroCluster: maxZC, hasGimmicks });
 
     // Apply gimmicks for challenge mode
     if (state.gameMode === 'normal') {

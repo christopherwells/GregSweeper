@@ -45,7 +45,8 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol) {
   }
   let revealedCount = 0;
 
-  // Pre-compute neighbor lists for every cell
+  // Pre-compute neighbor lists for every cell (wall-aware)
+  const wallEdges = board._wallEdges || null;
   const neighborCache = new Array(rows * cols);
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -56,6 +57,8 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol) {
           const nr = r + dr;
           const nc = c + dc;
           if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+            // Skip neighbors blocked by walls
+            if (wallEdges && hasWallBetween(wallEdges, r, c, nr, nc)) continue;
             nbrs.push(idx(nr, nc));
           }
         }

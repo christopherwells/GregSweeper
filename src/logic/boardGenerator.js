@@ -211,12 +211,15 @@ export function generateBoard(rows, cols, mines, excludeRow, excludeCol, rng, op
   if (!rng) rng = Math.random;
   // Scale attempts based on mine density — higher density needs more tries
   const density = mines / (rows * cols);
-  const maxSolveAttempts = density > 0.35 ? 500 : density > 0.30 ? 300 : density > 0.25 ? 100 : 50;
+  const hasGimmicks = options.hasGimmicks || false;
+  // When gimmicks are active, increase retry budget for better solvability
+  const baseSolveAttempts = density > 0.35 ? 500 : density > 0.30 ? 300 : density > 0.25 ? 100 : 50;
+  // Gimmick levels demand 0-guess boards — much higher budget needed
+  const maxSolveAttempts = hasGimmicks ? Math.max(baseSolveAttempts, 1000) : baseSolveAttempts;
 
-  // Accept boards with at most 2 remaining unknowns (max 2 guesses).
-  // Previously gave more leeway to high-density boards, but with increased
-  // solve attempts the solver now has enough budget to find better boards.
-  const maxAcceptableUnknowns = 2;
+  // When gimmicks are active, tighten solvability (max 1 guess instead of 2)
+  // Combined with lifeline drops, this minimizes frustrating 50/50s
+  const maxAcceptableUnknowns = hasGimmicks ? 1 : 2;
 
   let bestBoard = null;
   let bestUnknowns = Infinity;

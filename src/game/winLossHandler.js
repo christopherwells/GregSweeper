@@ -130,6 +130,13 @@ export function handleWin() {
     saveModePowerUps(state.gameMode, state.powerUps);
   }
 
+  // 30% chance to earn a free lifeline on level completion (Challenge mode)
+  if (state.gameMode === 'normal' && Math.random() < 0.3) {
+    state.powerUps.lifeline = (state.powerUps.lifeline || 0) + 1;
+    saveModePowerUps(state.gameMode, state.powerUps);
+    showToast('❤️ Lifeline earned!');
+  }
+
   playWin();
   showCelebration();
   haptic([50, 30, 50, 30, 80]);
