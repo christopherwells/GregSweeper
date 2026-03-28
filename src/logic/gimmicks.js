@@ -713,8 +713,9 @@ export function isLockedCell(board, row, col) {
         // Wall edge between these cells = treat as satisfied
         if (wallEdges && hasWallBetween(wallEdges, row, col, nr, nc)) continue;
         const neighbor = board[nr][nc];
-        // Mines don't block unlock — only unrevealed safe cells do
-        if (!neighbor.isRevealed && !neighbor.isMine) return true; // Still locked
+        // Mines and other locked cells don't block unlock
+        // (prevents circular deadlock between adjacent locked cells)
+        if (!neighbor.isRevealed && !neighbor.isMine && !neighbor.isLocked) return true; // Still locked
       }
     }
   }

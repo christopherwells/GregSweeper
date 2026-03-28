@@ -227,6 +227,29 @@
         startPlateTimer(c);
       }
 
+      // Auto-unlock locked cells whose safe neighbors are all revealed
+      // (cascades: unlocking one may free adjacent locked cells)
+      let unlockProgress = true;
+      while (unlockProgress) {
+        unlockProgress = false;
+        for (let r = 0; r < ROWS; r++) {
+          for (let c2 = 0; c2 < COLS; c2++) {
+            const cell2 = board[r][c2];
+            if (cell2.isLocked && !cell2.isRevealed && !isLockedCell(board, r, c2)) {
+              // Cell is unlocked! If safe, auto-reveal it
+              if (!cell2.isMine) {
+                cell2.isRevealed = true;
+                unlockProgress = true;
+                if (cell2.adjacentMines === 0) {
+                  floodFillReveal(board, r, c2);
+                }
+              }
+              // If mine, leave it unrevealed — player needs to flag it
+            }
+          }
+        }
+      }
+
       renderBoard();
       renderWalls();
       if (checkWin(board)) endGame(true);
