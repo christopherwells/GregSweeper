@@ -58,7 +58,7 @@
     import { isBoardSolvable, floodFillReveal, chordReveal, checkWin } from './src/logic/boardSolver.js';
     import { applyGimmicks, applyWalls, hasWallBetween, isLockedCell, getGimmickDef } from './src/logic/gimmicks.js';
 
-    const ROWS = 6, COLS = 6, MINES = 6;
+    const ROWS = 7, COLS = 7, MINES = 8;
     const boardEl = document.getElementById('board');
     const statusEl = document.getElementById('status');
     const infoEl = document.getElementById('info');
@@ -130,32 +130,34 @@
         const def = getGimmickDef(activeGimmick);
         const testLevel = def ? def.intro + 3 : 50; // 3 levels into the intro block = intensity 4
 
-        // Simple fast generation: make board, apply gimmick, retry only if gimmick didn't spawn
-        for (let attempt = 0; attempt < 10; attempt++) {
+        // Fast generation: random board + gimmick, retry until solvable AND gimmick spawned
+        // Uses simple rejection sampling (fast ~1ms per board) not constructive generator
+        let solved = false, gc = 0;
+        for (let attempt = 0; attempt < 200; attempt++) {
           board = createEmptyBoard(ROWS, COLS);
-          // Place mines randomly (fast, no constructive generator)
           placeMines(board, MINES, row, col);
           calculateAdjacency(board);
           gimmickData = applyGimmicks(board, testLevel, [activeGimmick], Math.random);
 
-          // Check if gimmick cells actually spawned
-          let gc = 0;
+          // Count gimmick cells
+          gc = 0;
           for (const v of Object.values(gimmickData)) {
             if (Array.isArray(v)) gc += v.length;
             else if (v instanceof Set) gc += v.size;
           }
           if (activeGimmick === 'walls' && board._wallEdges) gc = board._wallEdges.size;
-          if (gc > 0) {
-            statusEl.textContent = `${gc} ${def?.name || ''} ${activeGimmick === 'walls' ? 'edges' : 'cells'}`;
-            statusEl.className = '';
-            break;
-          }
+          if (gc === 0) continue; // no gimmick cells, retry
+
+          // Quick solvability check (~1ms)
+          const check = isBoardSolvable(board, ROWS, COLS, row, col);
+          for (const brow of board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
+          if (check.solvable || check.remainingUnknowns === 0) { solved = true; break; }
         }
-        // Ensure first-click safe zone
-        if (board[row][col].isMine) {
-          board[row][col].isMine = false;
-          calculateAdjacency(board);
-        }
+        const gLabel = def?.name || activeGimmick;
+        statusEl.textContent = solved
+          ? `✅ Solvable | ${gc} ${gLabel} ${activeGimmick === 'walls' ? 'edges' : 'cells'}`
+          : `⚠️ Not solvable | ${gc} ${gLabel} ${activeGimmick === 'walls' ? 'edges' : 'cells'}`;
+        statusEl.className = solved ? 'win' : 'loss';
 
         firstClick = false;
       }
