@@ -181,6 +181,11 @@
           for (const v of Object.values(gd)) {
             if (Array.isArray(v)) gc += v.length;
             else if (v instanceof Set) gc += v.size;
+            else if (v && typeof v === 'object') {
+              // Mirror returns {cells: [...]} , mineShift returns {interval: N}
+              if (v.cells) gc += v.cells.length;
+              else if (v.interval) gc = 1;
+            }
           }
           if (activeGimmick === 'walls' && b._wallEdges) gc = b._wallEdges.size;
           if (gc === 0) continue;
@@ -276,8 +281,16 @@
       const timer = setInterval(() => {
         if (gameOver) { clearInterval(timer); return; }
         const elapsed = Date.now() - start;
-        const pct = Math.max(0, 1 - elapsed / duration);
+        const remaining = Math.max(0, (duration - elapsed) / 1000);
+        const pct = remaining / (duration / 1000);
         bar.style.transform = `scaleX(${pct})`;
+        // Show countdown in the cell
+        const cellEl2 = boardEl.children[cell.row * COLS + cell.col];
+        if (cellEl2 && remaining > 0) {
+          cellEl2.textContent = Math.ceil(remaining) + 's';
+          cellEl2.style.color = remaining < 5 ? '#ff4444' : '#ffaa44';
+          cellEl2.style.fontWeight = '900';
+        }
         // Check if disarmed
         if (checkPlateDisarmed(cell)) {
           clearInterval(timer);

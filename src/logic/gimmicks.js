@@ -595,6 +595,7 @@ export function performMineShift(board, rng = Math.random) {
 
 function applyPressurePlates(board, rows, cols, count, rng) {
   // Select non-mine cells with adjacentMines >= 1 (must have at least one mine neighbor to flag)
+  // Prefer lower numbers — easier to solve under pressure
   const candidates = [];
   for (let r = 1; r < rows - 1; r++) {
     for (let c = 1; c < cols - 1; c++) {
@@ -604,12 +605,22 @@ function applyPressurePlates(board, rows, cols, count, rng) {
       }
     }
   }
-  shuffle(candidates, rng);
+  // Sort by adjacentMines ascending so we prefer easy cells for plates
+  candidates.sort((a, b) => a.adjacentMines - b.adjacentMines);
+  // Only slight shuffle within same-count groups to keep low numbers first
+  for (let i = 0; i < candidates.length; i++) {
+    const j = i + Math.floor(rng() * Math.min(3, candidates.length - i));
+    [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+  }
+  // Cap at 1-2 plates max — more than that is overwhelming
+  const maxPlates = Math.min(count, 2);
   const applied = [];
-  for (let i = 0; i < Math.min(count, candidates.length); i++) {
-    candidates[i].isPressurePlate = true;
-    candidates[i].plateTimer = 15; // seconds
-    applied.push({ row: candidates[i].row, col: candidates[i].col });
+  for (let i = 0; i < Math.min(maxPlates, candidates.length); i++) {
+    const cell = candidates[i];
+    cell.isPressurePlate = true;
+    // 10 seconds per adjacent mine — a "1" gets 10s, a "3" gets 30s
+    cell.plateTimer = cell.adjacentMines * 10;
+    applied.push({ row: cell.row, col: cell.col });
   }
   return applied;
 }
