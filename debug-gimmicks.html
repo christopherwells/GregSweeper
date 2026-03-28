@@ -306,6 +306,17 @@
                 }
                 if (cell.isLiar) el.classList.add('liar-cell');
                 if (cell.isPressurePlate && !cell.plateDisarmed) el.classList.add('pressure-plate');
+                if (cell.isWormhole) {
+                  el.style.border = '2px solid #9b59b6';
+                  el.style.boxShadow = 'inset 0 0 6px rgba(155,89,182,0.3)';
+                  el.textContent = '🌀' + el.textContent;
+                  el.style.fontSize = '11px';
+                }
+                if (cell.mirrorZone) {
+                  el.style.border = '2px solid #e67e22';
+                  el.textContent = el.textContent + '🪞';
+                  el.style.fontSize = '11px';
+                }
               } else {
                 el.classList.add('revealed', 'empty');
                 el.textContent = '';
@@ -318,6 +329,12 @@
             el.classList.add('unrevealed');
             el.textContent = '';
             if (cell.isLocked) el.classList.add('locked-cell');
+            if (cell.isWormhole) {
+              el.style.border = '2px dashed rgba(155,89,182,0.5)';
+            }
+            if (cell.mirrorZone) {
+              el.style.border = '2px dashed rgba(230,126,34,0.5)';
+            }
           }
         }
       }
