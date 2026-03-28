@@ -357,7 +357,7 @@ export function floodFillReveal(board, startRow, startCol) {
     const { row, col, distance } = queue.shift();
     const cell = board[row][col];
 
-    if (cell.isFlagged || cell.isMine) continue;
+    if (cell.isFlagged || cell.isMine || cell.isLocked) continue;
 
     cell.isRevealed = true;
     cell.revealAnimDelay = distance * 30;
