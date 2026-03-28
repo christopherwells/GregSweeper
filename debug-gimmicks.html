@@ -329,11 +329,13 @@
         const remaining = Math.max(0, (duration - elapsed) / 1000);
         const pct = remaining / (duration / 1000);
         bar.style.transform = `scaleX(${pct})`;
-        // Show countdown in the cell
+        // Show number + countdown in the cell
         const cellEl2 = boardEl.children[cell.row * COLS + cell.col];
         if (cellEl2 && remaining > 0) {
-          cellEl2.textContent = Math.ceil(remaining) + 's';
+          const num = cell.displayedMines != null ? cell.displayedMines : cell.adjacentMines;
+          cellEl2.textContent = num + ' ⏱' + Math.ceil(remaining);
           cellEl2.style.color = remaining < 5 ? '#ff4444' : '#ffaa44';
+          cellEl2.style.fontSize = '11px';
           cellEl2.style.fontWeight = '900';
         }
         // Check if disarmed
