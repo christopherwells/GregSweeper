@@ -28,13 +28,29 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol) {
   const idx = (r, c) => r * cols + c;
 
   // Cache mine locations and adjacency counts for fast lookup
+  // Use PLAYER-VISIBLE information: mystery cells = unknown, liar cells = displayed value
+  const UNKNOWN = 255; // sentinel: cell provides no number info
   const isMine = new Uint8Array(rows * cols);
   const adjCount = new Uint8Array(rows * cols);
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const i = idx(r, c);
-      if (board[r][c].isMine) isMine[i] = 1;
-      adjCount[i] = board[r][c].adjacentMines;
+      const cell = board[r][c];
+      if (cell.isMine) isMine[i] = 1;
+      if (cell.isMystery || cell.isSonar || cell.isCompass) {
+        // Mystery: player sees "?" — no number info
+        // Sonar/Compass: their number counts a different region than the 8 neighbors,
+        // so the solver can't use it with the standard neighbor cache
+        adjCount[i] = UNKNOWN;
+      } else if (cell.isLiar && cell.displayedMines != null) {
+        adjCount[i] = cell.displayedMines; // liar shows ±1 — use what player sees
+      } else if (cell.isWormhole && cell.displayedMines != null) {
+        adjCount[i] = cell.displayedMines; // wormhole shows summed value
+      } else if (cell.mirrorZone && cell.displayedMines != null) {
+        adjCount[i] = cell.displayedMines; // mirror shows swapped value
+      } else {
+        adjCount[i] = cell.adjacentMines; // normal cell — true count
+      }
     }
   }
 
@@ -103,7 +119,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol) {
 
     // ── Pass A: Simple constraint propagation ──
     for (let i = 0; i < rows * cols; i++) {
-      if (sim[i] !== 1 || adjCount[i] === 0) continue;
+      if (sim[i] !== 1 || adjCount[i] === 0 || adjCount[i] === UNKNOWN) continue;
 
       const nbrs = neighborCache[i];
       let unknowns = 0;
@@ -232,7 +248,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol) {
 function buildConstraints(sim, adjCount, neighborCache, totalCells) {
   const constraints = [];
   for (let i = 0; i < totalCells; i++) {
-    if (sim[i] !== 1 || adjCount[i] === 0) continue;
+    if (sim[i] !== 1 || adjCount[i] === 0 || adjCount[i] === 255) continue; // 255 = mystery/unknown
 
     const nbrs = neighborCache[i];
     const unknownSet = [];
