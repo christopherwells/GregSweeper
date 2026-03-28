@@ -188,10 +188,19 @@
           // Reject boards where walls create isolated pockets
           if (hasIsolatedCells(b, row, col)) continue;
 
-          // Solvability check
+          // Solvability check — run solver, then double-check by counting
           const check = isBoardSolvable(b, ROWS, COLS, row, col);
+          // Count how many non-mine cells the solver actually revealed
+          let solverRevealed = 0, totalNonMine = 0;
+          for (let rr = 0; rr < ROWS; rr++) {
+            for (let cc = 0; cc < COLS; cc++) {
+              if (!b[rr][cc].isMine) totalNonMine++;
+              if (b[rr][cc].isRevealed && !b[rr][cc].isMine) solverRevealed++;
+            }
+          }
           for (const brow of b) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
-          if (check.solvable || check.remainingUnknowns === 0) {
+          // Only accept if solver revealed ALL non-mine cells
+          if (solverRevealed === totalNonMine) {
             board = b; gimmickData = gd; solved = true; break;
           }
         }
