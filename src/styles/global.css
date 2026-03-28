@@ -995,11 +995,26 @@ body {
 
 /* ── Gimmick Cells ─────────────────────────── */
 
-/* Wall edge borders between cells */
-.cell.wall-top { border-top: 4px solid var(--color-wall, #c9a96e) !important; }
-.cell.wall-bottom { border-bottom: 4px solid var(--color-wall, #c9a96e) !important; }
-.cell.wall-left { border-left: 4px solid var(--color-wall, #c9a96e) !important; }
-.cell.wall-right { border-right: 4px solid var(--color-wall, #c9a96e) !important; }
+/* Wall overlay lines — continuous between cells, no gaps */
+.wall-overlay-container {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+.wall-line {
+  position: absolute;
+  background: var(--color-wall, #c9a96e);
+  border-radius: 1px;
+}
+.wall-line-h {
+  height: 4px;
+  transform: translateY(-50%);
+}
+.wall-line-v {
+  width: 4px;
+  transform: translateX(-50%);
+}
 
 /* Mystery cells — revealed but showing '?' */
 .cell.mystery-cell {

@@ -69,6 +69,72 @@ export function renderBoard() {
   }
 }
 
+// ── Wall Overlay Rendering ──────────────────────────
+// Renders continuous wall lines between cells as absolutely-positioned divs
+// so walls visually connect across grid gaps.
+
+export function renderWallOverlays() {
+  // Remove old wall overlay container
+  const board = boardEl.parentElement;
+  if (!board) return;
+  const oldOverlay = board.querySelector('.wall-overlay-container');
+  if (oldOverlay) oldOverlay.remove();
+
+  const wallEdges = state.board?._wallEdges;
+  if (!wallEdges || wallEdges.size === 0) return;
+
+  // Make board container position:relative for absolute overlay positioning
+  board.style.position = 'relative';
+
+  const overlay = document.createElement('div');
+  overlay.className = 'wall-overlay-container';
+
+  // Get cell dimensions from the grid
+  const firstCell = boardEl.children[0];
+  if (!firstCell) return;
+  const boardRect = boardEl.getBoundingClientRect();
+  const cellRect = firstCell.getBoundingClientRect();
+  const cellW = cellRect.width;
+  const cellH = cellRect.height;
+  const gap = 2; // --grid-gap
+  const offsetX = boardEl.offsetLeft;
+  const offsetY = boardEl.offsetTop;
+
+  // Parse wall edge keys and draw lines
+  for (const key of wallEdges) {
+    const [from, to] = key.split('-');
+    const [r1, c1] = from.split(',').map(Number);
+    const [r2, c2] = to.split(',').map(Number);
+
+    const line = document.createElement('div');
+    line.className = 'wall-line';
+
+    if (r1 === r2) {
+      // Vertical wall between columns c1 and c2 at row r
+      const minC = Math.min(c1, c2);
+      const x = offsetX + (minC + 1) * (cellW + gap) - gap / 2;
+      const y = offsetY + r1 * (cellH + gap);
+      line.classList.add('wall-line-v');
+      line.style.left = x + 'px';
+      line.style.top = y + 'px';
+      line.style.height = cellH + 'px';
+    } else {
+      // Horizontal wall between rows r1 and r2 at column c
+      const minR = Math.min(r1, r2);
+      const x = offsetX + c1 * (cellW + gap);
+      const y = offsetY + (minR + 1) * (cellH + gap) - gap / 2;
+      line.classList.add('wall-line-h');
+      line.style.left = x + 'px';
+      line.style.top = y + 'px';
+      line.style.width = cellW + 'px';
+    }
+
+    overlay.appendChild(line);
+  }
+
+  board.appendChild(overlay);
+}
+
 export function getThemeEmoji(type) {
   // Check for active emoji pack override (cached to avoid per-cell localStorage reads)
   const pack = getCachedEmoji();
@@ -207,14 +273,7 @@ export function updateCell(r, c) {
       cellEl.classList.add('suggested-start');
     }
   }
-  // Wall edge borders
-  const wallEdges = state.board._wallEdges || null;
-  if (wallEdges) {
-    if (hasWallBetween(wallEdges, r, c, r - 1, c)) cellEl.classList.add('wall-top');
-    if (hasWallBetween(wallEdges, r, c, r + 1, c)) cellEl.classList.add('wall-bottom');
-    if (hasWallBetween(wallEdges, r, c, r, c - 1)) cellEl.classList.add('wall-left');
-    if (hasWallBetween(wallEdges, r, c, r, c + 1)) cellEl.classList.add('wall-right');
-  }
+  // Wall overlays rendered separately by renderWallOverlays()
   // Update ARIA label for screen readers
   cellEl.setAttribute('aria-label', getCellAriaLabel(cell, r, c));
 }

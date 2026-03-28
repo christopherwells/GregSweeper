@@ -3,7 +3,7 @@ import {
   saveGameState, loadGameState,
 } from '../storage/statsStorage.js';
 import {
-  adjustCellSize, renderBoard, updateAllCells, updateZoom,
+  adjustCellSize, renderBoard, updateAllCells, updateZoom, renderWallOverlays,
 } from '../ui/boardRenderer.js';
 import {
   updateHeader, updateCheckpointDisplay, updateProgressBar,
@@ -99,6 +99,7 @@ export function tryResumeGame(mode) {
   adjustCellSize();
   renderBoard();
   updateAllCells();
+  renderWallOverlays();
   updateHeader();
   updateTimerDisplay();
   updatePowerUpBar();

@@ -2,7 +2,7 @@ import { state, getRevealedCells } from '../state/gameState.js';
 import { $, $$, boardEl, resetBtn } from '../ui/domHelpers.js';
 import {
   renderBoard, updateCell, updateAllCells, updateCells, getThemeEmoji,
-  adjustCellSize, updateZoom,
+  adjustCellSize, updateZoom, renderWallOverlays,
 } from '../ui/boardRenderer.js';
 import {
   updateHeader, updateCheckpointDisplay, updateProgressBar,
@@ -355,6 +355,7 @@ export function revealCell(row, col) {
       }
       // Refresh all cells to show liar-zone / wormhole / mirror indicators
       updateAllCells();
+      renderWallOverlays();
     }
 
     // Apply gimmicks for chaos mode
@@ -381,6 +382,7 @@ export function revealCell(row, col) {
       }
       // Refresh all cells to show modifier indicators
       updateAllCells();
+      renderWallOverlays();
     }
 
     state.firstClick = false;
