@@ -15,7 +15,7 @@
     .info { font-size: 13px; color: #aaa; margin-bottom: 12px; text-align: center; }
     .info strong { color: #e94560; }
     #board { display: inline-grid; gap: 2px; margin-bottom: 12px; }
-    .cell { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-weight: 700; font-size: 16px; cursor: pointer; user-select: none; border: 1px solid #3a3a5e; transition: all 0.15s; position: relative; }
+    .cell { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-weight: 700; font-size: 16px; cursor: pointer; user-select: none; border: 1px solid #3a3a5e; transition: all 0.15s; position: relative; }
     .cell.unrevealed { background: #2a2a4e; }
     .cell.unrevealed:hover { background: #3a3a6e; }
     .cell.revealed { background: #1a1a2e; cursor: default; }
@@ -58,7 +58,7 @@
     import { isBoardSolvable, floodFillReveal, chordReveal, checkWin } from './src/logic/boardSolver.js';
     import { applyGimmicks, applyWalls, hasWallBetween, isLockedCell, getGimmickDef } from './src/logic/gimmicks.js';
 
-    const ROWS = 8, COLS = 8, MINES = 12;
+    const ROWS = 6, COLS = 6, MINES = 6;
     const boardEl = document.getElementById('board');
     const statusEl = document.getElementById('status');
     const infoEl = document.getElementById('info');
@@ -103,7 +103,7 @@
       const def = getGimmickDef(activeGimmick);
       infoEl.innerHTML = `<strong>${def?.icon} ${def?.name}</strong>: ${def?.desc || ''}`;
       mineCountEl.textContent = `Mines: ${MINES} | Flags: 0`;
-      boardEl.style.gridTemplateColumns = `repeat(${COLS}, 40px)`;
+      boardEl.style.gridTemplateColumns = `repeat(${COLS}, 44px)`;
       boardEl.innerHTML = '';
       for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
@@ -130,9 +130,13 @@
         const def = getGimmickDef(activeGimmick);
         const testLevel = def ? def.intro + 3 : 50; // 3 levels into the intro block = intensity 4
 
-        let bestBoard = null, bestUnknowns = Infinity, solved = false, bestGimmickData = {};
+        let bestBoard = null, bestUnknowns = Infinity, solved = false;
+        let bestGimmickData = {}, bestGimmickCount = 0;
 
-        for (let attempt = 0; attempt < 80; attempt++) {
+        // Minimum gimmick cells required (walls use edge count instead)
+        const minGimmickCells = activeGimmick === 'walls' ? 0 : 1;
+
+        for (let attempt = 0; attempt < 100; attempt++) {
           // For walls: generate wall edges first, pass to board generator
           let wallEdges = null;
           if (activeGimmick === 'walls') {
@@ -141,25 +145,46 @@
             wallEdges = tempBoard._wallEdges || null;
           }
 
-          board = generateBoard(ROWS, COLS, MINES, row, col, Math.random, { hasGimmicks: true, wallEdges });
-          gimmickData = applyGimmicks(board, testLevel, [activeGimmick], Math.random);
+          const b = generateBoard(ROWS, COLS, MINES, row, col, Math.random, { hasGimmicks: true, wallEdges });
+          const gd = applyGimmicks(b, testLevel, [activeGimmick], Math.random);
 
-          // Verify solvability with gimmicks applied
-          const check = isBoardSolvable(board, ROWS, COLS, row, col);
+          // Count gimmick cells that actually spawned
+          let gc = 0;
+          for (const v of Object.values(gd)) {
+            if (Array.isArray(v)) gc += v.length;
+            else if (v instanceof Set) gc += v.size;
+            else if (v && typeof v === 'object' && v.interval) gc = 1; // mineShift
+          }
+          // For walls, count edges
+          if (activeGimmick === 'walls' && b._wallEdges) gc = b._wallEdges.size;
+
+          // Skip boards where the gimmick didn't actually spawn
+          if (gc < minGimmickCells) continue;
+
+          // Verify solvability
+          const check = isBoardSolvable(b, ROWS, COLS, row, col);
           const u = check.remainingUnknowns;
-          for (const brow of board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
+          for (const brow of b) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
 
-          if (u < bestUnknowns) { bestBoard = board; bestUnknowns = u; bestGimmickData = gimmickData; }
-          if (check.solvable || u === 0) { solved = true; break; }
+          if (u < bestUnknowns || (u === bestUnknowns && gc > bestGimmickCount)) {
+            bestBoard = b; bestUnknowns = u; bestGimmickData = gd; bestGimmickCount = gc;
+          }
+          if ((check.solvable || u === 0) && gc >= minGimmickCells) {
+            board = b; gimmickData = gd; solved = true; break;
+          }
         }
 
-        if (!solved && bestBoard) { board = bestBoard; gimmickData = bestGimmickData; }
+        if (!solved) {
+          board = bestBoard || generateBoard(ROWS, COLS, MINES, row, col, Math.random, { hasGimmicks: true });
+          gimmickData = bestGimmickData;
+        }
 
-        // Show solvability status + gimmick cell count
-        const gimmickCount = Object.values(gimmickData).flat().filter(x => x?.row !== undefined).length;
+        // Show solvability + gimmick count
+        const gimmickCount = bestGimmickCount || 0;
+        const gLabel = def?.name || activeGimmick;
         statusEl.textContent = solved
-          ? `✅ Solvable | ${gimmickCount} ${def?.name || 'gimmick'} cells`
-          : `⚠️ ${bestUnknowns} unknowns | ${gimmickCount} ${def?.name || 'gimmick'} cells`;
+          ? `✅ Solvable | ${gimmickCount} ${gLabel} ${activeGimmick === 'walls' ? 'edges' : 'cells'}`
+          : `⚠️ ${bestUnknowns} unknowns | ${gimmickCount} ${gLabel} ${activeGimmick === 'walls' ? 'edges' : 'cells'}`;
         statusEl.className = solved ? 'win' : 'loss';
 
         firstClick = false;
@@ -357,7 +382,7 @@
       const overlay = document.createElement('div');
       overlay.className = 'wall-overlay';
 
-      const cellW = 40, cellH = 40, gap = 2;
+      const cellW = 44, cellH = 44, gap = 2;
       const offX = boardEl.offsetLeft, offY = boardEl.offsetTop;
 
       for (const key of board._wallEdges) {
