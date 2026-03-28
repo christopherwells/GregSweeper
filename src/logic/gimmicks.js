@@ -600,7 +600,7 @@ function applyPressurePlates(board, rows, cols, count, rng) {
   for (let r = 1; r < rows - 1; r++) {
     for (let c = 1; c < cols - 1; c++) {
       const cell = board[r][c];
-      if (!cell.isMine && cell.adjacentMines >= 1 && !cell.isLocked && !cell.isMystery && !cell.isLiar) {
+      if (!cell.isMine && cell.adjacentMines >= 2 && !cell.isLocked && !cell.isMystery && !cell.isLiar) {
         candidates.push(cell);
       }
     }
@@ -618,8 +618,8 @@ function applyPressurePlates(board, rows, cols, count, rng) {
   for (let i = 0; i < Math.min(maxPlates, candidates.length); i++) {
     const cell = candidates[i];
     cell.isPressurePlate = true;
-    // 10 seconds per adjacent mine — a "1" gets 10s, a "3" gets 30s
-    cell.plateTimer = cell.adjacentMines * 10;
+    // 10 seconds per adjacent mine — a "2" gets 20s, a "3" gets 30s
+    cell.plateTimer = Math.max(15, cell.adjacentMines * 10);
     applied.push({ row: cell.row, col: cell.col });
   }
   return applied;
