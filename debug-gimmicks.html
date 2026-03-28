@@ -90,9 +90,6 @@
       btnContainer.appendChild(btn);
     }
 
-    // Gimmicks that have visible pre-click indicators
-    const PRE_CLICK_GIMMICKS = new Set(['walls', 'locked', 'mirror', 'wormhole']);
-
     function startGame() {
       gameOver = false;
       firstClick = true;
@@ -118,20 +115,6 @@
           cell.addEventListener('contextmenu', (e) => { e.preventDefault(); handleFlag(r, c); });
           boardEl.appendChild(cell);
         }
-      }
-
-      // Pre-generate board for gimmicks with visible pre-click indicators
-      if (PRE_CLICK_GIMMICKS.has(activeGimmick)) {
-        const safeR = Math.floor(ROWS / 2), safeC = Math.floor(COLS / 2);
-        for (let attempt = 0; attempt < 30; attempt++) {
-          board = generateBoard(ROWS, COLS, MINES, safeR, safeC, Math.random, { hasGimmicks: true });
-          gimmickData = applyGimmicks(board, 50, [activeGimmick], Math.random);
-          const check = isBoardSolvable(board, ROWS, COLS, safeR, safeC);
-          for (const brow of board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
-          if (check.solvable || check.remainingUnknowns === 0) break;
-        }
-        firstClick = false;
-        renderBoard();
       }
     }
 
