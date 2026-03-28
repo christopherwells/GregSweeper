@@ -39,6 +39,9 @@
     .cell.pressure-plate { box-shadow: inset 0 0 8px rgba(255,50,50,0.4); border-color: rgba(255,80,80,0.6); }
     .cell.sonar-cell { border: 2px solid rgba(38,198,218,0.6); font-size: 12px; }
     .cell.compass-cell { border: 2px solid rgba(255,167,38,0.6); font-size: 12px; }
+    .cell.mirror-cell { background: linear-gradient(135deg, rgba(100,180,255,0.15) 0%, rgba(100,180,255,0.05) 45%, rgba(255,100,200,0.05) 55%, rgba(255,100,200,0.15) 100%) !important; border: 1px solid rgba(100,180,255,0.4) !important; }
+    .cell.mirror-cell-unrevealed { background: linear-gradient(135deg, rgba(100,180,255,0.1) 0%, rgba(255,100,200,0.1) 100%) !important; border: 1px dashed rgba(100,180,255,0.35) !important; }
+    .mirror-axis { position: absolute; background: linear-gradient(135deg, rgba(100,180,255,0.6), rgba(255,100,200,0.6)); border-radius: 2px; z-index: 4; pointer-events: none; }
     .plate-timer { position: absolute; bottom: 1px; left: 1px; right: 1px; height: 3px; background: #ff4444; border-radius: 1px; transform-origin: left; transition: transform 0.2s linear; }
     #status { font-size: 15px; margin-bottom: 8px; min-height: 24px; }
     #status.win { color: #66bb6a; } #status.loss { color: #ef5350; }
@@ -257,18 +260,23 @@
       if (c.isLocked && isLockedCell(board, row, col)) { statusEl.textContent = '🔒 Locked! Reveal safe neighbors first.'; return; }
       if (c.isMine) { endGame(false, row, col); return; }
 
+      let newlyRevealed = [];
       if (c.adjacentMines === 0) {
-        const revealed = floodFillReveal(board, row, col);
+        newlyRevealed = floodFillReveal(board, row, col);
       } else {
         c.isRevealed = true;
+        newlyRevealed = [c];
       }
 
       // Wormhole: revealing one side reveals the paired cell too
-      if (c.isWormhole && c.wormholePair) {
-        const pair = board[c.wormholePair.row]?.[c.wormholePair.col];
-        if (pair && !pair.isRevealed && !pair.isMine) {
-          pair.isRevealed = true;
-          if (pair.adjacentMines === 0) floodFillReveal(board, pair.row, pair.col);
+      // Check ALL newly revealed cells, not just the clicked one
+      for (const rev of newlyRevealed) {
+        if (rev.isWormhole && rev.wormholePair) {
+          const pair = board[rev.wormholePair.row]?.[rev.wormholePair.col];
+          if (pair && !pair.isRevealed && !pair.isMine) {
+            pair.isRevealed = true;
+            if (pair.adjacentMines === 0) floodFillReveal(board, pair.row, pair.col);
+          }
         }
       }
 
@@ -433,7 +441,7 @@
                   el.style.fontSize = '11px';
                 }
                 if (cell.mirrorZone) {
-                  el.style.border = '2px solid #e67e22';
+                  el.classList.add('mirror-cell');
                   el.textContent = el.textContent + '🪞';
                   el.style.fontSize = '11px';
                 }
@@ -454,7 +462,7 @@
               el.style.border = '2px dashed ' + (pairColors[cell.wormholePairIndex || 0]) + '88';
             }
             if (cell.mirrorZone) {
-              el.style.border = '2px dashed rgba(230,126,34,0.5)';
+              el.classList.add('mirror-cell-unrevealed');
             }
           }
         }
@@ -489,6 +497,9 @@
     function renderWalls() {
       const old = boardEl.parentElement?.querySelector('.wall-overlay');
       if (old) old.remove();
+      // Also remove old mirror axis
+      const oldAxis = boardEl.parentElement?.querySelector('.mirror-axis');
+      if (oldAxis) oldAxis.remove();
       if (!board?._wallEdges?.size) return;
 
       const wrapper = boardEl.parentElement || boardEl;
@@ -521,6 +532,31 @@
         overlay.appendChild(line);
       }
       wrapper.appendChild(overlay);
+
+      // Draw mirror axis line if mirror zone exists
+      if (board && gimmickData?.mirror?.cells?.length > 0) {
+        const m = gimmickData.mirror;
+        const cellW = 44, cellH = 44, gap = 2;
+        const offX = boardEl.offsetLeft, offY = boardEl.offsetTop;
+
+        // Diagonal axis line from top-left to bottom-right of the zone
+        const x1 = offX + m.startC * (cellW + gap);
+        const y1 = offY + m.startR * (cellH + gap);
+        const x2 = offX + (m.startC + m.size) * (cellW + gap) - gap;
+        const y2 = offY + (m.startR + m.size) * (cellH + gap) - gap;
+        const len = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+        const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+
+        const axis = document.createElement('div');
+        axis.className = 'mirror-axis';
+        axis.style.left = x1 + 'px';
+        axis.style.top = y1 + 'px';
+        axis.style.width = len + 'px';
+        axis.style.height = '3px';
+        axis.style.transformOrigin = '0 50%';
+        axis.style.transform = `rotate(${angle}deg)`;
+        wrapper.appendChild(axis);
+      }
     }
 
     startGame();
