@@ -263,6 +263,15 @@
         c.isRevealed = true;
       }
 
+      // Wormhole: revealing one side reveals the paired cell too
+      if (c.isWormhole && c.wormholePair) {
+        const pair = board[c.wormholePair.row]?.[c.wormholePair.col];
+        if (pair && !pair.isRevealed && !pair.isMine) {
+          pair.isRevealed = true;
+          if (pair.adjacentMines === 0) floodFillReveal(board, pair.row, pair.col);
+        }
+      }
+
       // Pressure plate timer
       if (c.isPressurePlate && !c.plateDisarmed) {
         startPlateTimer(c);
