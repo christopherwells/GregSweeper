@@ -416,6 +416,9 @@ export function chordReveal(board, row, col) {
   const cell = board[row][col];
   if (!cell.isRevealed || cell.adjacentMines === 0) return [];
 
+  // Can't chord ON a liar or mystery cell — their displayed number is unreliable
+  if (cell.isLiar || cell.isMystery) return [];
+
   const wallEdges = board._wallEdges || null;
 
   // Count adjacent flags (respecting wall edges)
@@ -447,8 +450,8 @@ export function chordReveal(board, row, col) {
         // Don't chord across wall edges
         if (wallEdges && hasWallBetween(wallEdges, row, col, nr, nc)) continue;
         const neighbor = board[nr][nc];
-        // Don't chord-reveal locked, mystery, or liar cells
-        if (!neighbor.isRevealed && !neighbor.isFlagged && !neighbor.isLocked && !neighbor.isMystery && !neighbor.isLiar) {
+        // Don't chord-reveal locked cells (must unlock first)
+        if (!neighbor.isRevealed && !neighbor.isFlagged && !neighbor.isLocked) {
           if (neighbor.isMine) {
             hitMine = true;
             neighbor.isRevealed = true;
