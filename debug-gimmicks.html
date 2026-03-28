@@ -130,62 +130,32 @@
         const def = getGimmickDef(activeGimmick);
         const testLevel = def ? def.intro + 3 : 50; // 3 levels into the intro block = intensity 4
 
-        let bestBoard = null, bestUnknowns = Infinity, solved = false;
-        let bestGimmickData = {}, bestGimmickCount = 0;
+        // Simple fast generation: make board, apply gimmick, retry only if gimmick didn't spawn
+        for (let attempt = 0; attempt < 10; attempt++) {
+          board = createEmptyBoard(ROWS, COLS);
+          // Place mines randomly (fast, no constructive generator)
+          placeMines(board, MINES, row, col);
+          calculateAdjacency(board);
+          gimmickData = applyGimmicks(board, testLevel, [activeGimmick], Math.random);
 
-        // Minimum gimmick cells required (walls use edge count instead)
-        const minGimmickCells = activeGimmick === 'walls' ? 0 : 1;
-
-        for (let attempt = 0; attempt < 100; attempt++) {
-          // For walls: generate wall edges first, pass to board generator
-          let wallEdges = null;
-          if (activeGimmick === 'walls') {
-            const tempBoard = createEmptyBoard(ROWS, COLS);
-            applyGimmicks(tempBoard, testLevel, ['walls'], Math.random);
-            wallEdges = tempBoard._wallEdges || null;
-          }
-
-          const b = generateBoard(ROWS, COLS, MINES, row, col, Math.random, { hasGimmicks: true, wallEdges });
-          const gd = applyGimmicks(b, testLevel, [activeGimmick], Math.random);
-
-          // Count gimmick cells that actually spawned
+          // Check if gimmick cells actually spawned
           let gc = 0;
-          for (const v of Object.values(gd)) {
+          for (const v of Object.values(gimmickData)) {
             if (Array.isArray(v)) gc += v.length;
             else if (v instanceof Set) gc += v.size;
-            else if (v && typeof v === 'object' && v.interval) gc = 1; // mineShift
           }
-          // For walls, count edges
-          if (activeGimmick === 'walls' && b._wallEdges) gc = b._wallEdges.size;
-
-          // Skip boards where the gimmick didn't actually spawn
-          if (gc < minGimmickCells) continue;
-
-          // Verify solvability
-          const check = isBoardSolvable(b, ROWS, COLS, row, col);
-          const u = check.remainingUnknowns;
-          for (const brow of b) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
-
-          if (u < bestUnknowns || (u === bestUnknowns && gc > bestGimmickCount)) {
-            bestBoard = b; bestUnknowns = u; bestGimmickData = gd; bestGimmickCount = gc;
-          }
-          if ((check.solvable || u === 0) && gc >= minGimmickCells) {
-            board = b; gimmickData = gd; solved = true; break;
+          if (activeGimmick === 'walls' && board._wallEdges) gc = board._wallEdges.size;
+          if (gc > 0) {
+            statusEl.textContent = `${gc} ${def?.name || ''} ${activeGimmick === 'walls' ? 'edges' : 'cells'}`;
+            statusEl.className = '';
+            break;
           }
         }
-
-        if (!solved) {
-          board = bestBoard || generateBoard(ROWS, COLS, MINES, row, col, Math.random, { hasGimmicks: true });
-          gimmickData = bestGimmickData;
+        // Ensure first-click safe zone
+        if (board[row][col].isMine) {
+          board[row][col].isMine = false;
+          calculateAdjacency(board);
         }
-
-        // Show solvability + gimmick count
-        const gimmickCount = bestGimmickCount || 0;
-        const gLabel = def?.name || activeGimmick;
-        statusEl.textContent = solved
-          ? `✅ Solvable | ${gimmickCount} ${gLabel} ${activeGimmick === 'walls' ? 'edges' : 'cells'}`
-          : `⚠️ ${bestUnknowns} unknowns | ${gimmickCount} ${gLabel} ${activeGimmick === 'walls' ? 'edges' : 'cells'}`;
-        statusEl.className = solved ? 'win' : 'loss';
 
         firstClick = false;
       }
