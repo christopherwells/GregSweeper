@@ -982,6 +982,11 @@ function hideTitleScreen() {
 
   titleScreen.classList.add('hidden');
   app.classList.remove('hidden');
+
+  // Re-apply theme effects now that #board is visible
+  // (applyThemeEffects silently returns if called during title screen since #board doesn't exist)
+  const activeTheme = document.documentElement.getAttribute('data-theme') || 'classic';
+  applyThemeEffects(activeTheme);
 }
 
 // ── Checkpoint Selector (Challenge mode) ────────────────

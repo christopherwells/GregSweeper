@@ -47,6 +47,24 @@ const GIMMICK_DEFS = {
     longDesc: 'Inside the mirror zone, each cell\'s number is swapped with the cell at the opposite position. The zone is visually marked. To solve, mentally un-mirror each number to get the true count.',
     exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(2,32px)"><div class="ge-cell revealed ge-mirror">2🪞</div><div class="ge-cell revealed ge-mirror">1🪞</div><div class="ge-cell revealed ge-mirror">3🪞</div><div class="ge-cell revealed ge-mirror">0🪞</div></div><div class="ge-caption">Numbers are swapped diagonally within the zone</div>',
   },
+  pressurePlate: {
+    intro: 71, name: 'Pressure Plates', icon: '🔴',
+    desc: 'Some cells start a 15-second countdown when revealed \u2014 flag an adjacent mine before time runs out!',
+    longDesc: 'Pressure plate cells show their number like normal, but a countdown timer starts when revealed. You have 15 seconds to flag at least one adjacent mine or the plate detonates. The cell gives you full information \u2014 you just need to act fast.',
+    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-pressure" style="box-shadow:inset 0 0 6px rgba(255,50,50,0.5)">2\uD83D\uDD34</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">0</div></div><div class="ge-caption">Flag a mine next to the \uD83D\uDD34 before the timer runs out!</div>',
+  },
+  sonar: {
+    intro: 81, name: 'Sonar', icon: '📡',
+    desc: 'Some cells scan a wider area \u2014 they count mines within a 2-cell radius (5\u00d75 area).',
+    longDesc: 'Sonar cells count all mines within 2 cells in every direction (a 5\u00d75 area centered on the cell) instead of the normal 3\u00d73. Their numbers are higher because they see more territory. Look for the \uD83D\uDCE1 icon to know which cells use the wider scan.',
+    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-sonar" style="color:#26c6da;font-weight:900">📡5</div><div class="ge-cell revealed">2</div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">0</div><div class="ge-cell unrevealed"></div></div><div class="ge-caption">The \uD83D\uDCE1 cell scans a 5\u00d75 area \u2014 "5" means 5 mines within 2 cells</div>',
+  },
+  compass: {
+    intro: 91, name: 'Compass', icon: '🧭',
+    desc: 'Cells with an arrow count ALL mines in the direction they point \u2014 across the entire board.',
+    longDesc: 'Compass cells show an arrow (\u2190\u2192\u2191\u2193) and a number. The number counts every mine in that direction across the full row or column. A "4\u2190" means there are 4 mines to the left in that row. Powerful global information, but you need to cross-reference it with local numbers.',
+    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(5,32px)"><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-compass" style="color:#ffa726;font-weight:900">3\u2190</div><div class="ge-cell revealed">2</div><div class="ge-cell unrevealed"></div></div><div class="ge-caption">"3\u2190" = 3 mines to the left in this row</div>',
+  },
 };
 
 const SEEN_KEY = 'minesweeper_seen_gimmicks';
@@ -191,6 +209,15 @@ export function applyGimmicks(board, level, activeGimmicks, rng = Math.random) {
         break;
       case 'mineShift':
         applied.mineShift = { interval: 30 + Math.floor(rng() * 16) }; // 30-45s
+        break;
+      case 'pressurePlate':
+        applied.pressurePlate = applyPressurePlates(board, rows, cols, intensity, rng);
+        break;
+      case 'sonar':
+        applied.sonar = applySonar(board, rows, cols, intensity, rng);
+        break;
+      case 'compass':
+        applied.compass = applyCompass(board, rows, cols, intensity, rng);
         break;
     }
   }
@@ -515,6 +542,110 @@ export function performMineShift(board, rng = Math.random) {
   }
 
   return shifted;
+}
+
+// ── Pressure Plates: timed cells that must be flagged ──
+
+function applyPressurePlates(board, rows, cols, count, rng) {
+  // Select non-mine cells with adjacentMines >= 1 (must have at least one mine neighbor to flag)
+  const candidates = [];
+  for (let r = 1; r < rows - 1; r++) {
+    for (let c = 1; c < cols - 1; c++) {
+      const cell = board[r][c];
+      if (!cell.isMine && cell.adjacentMines >= 1 && !cell.isLocked && !cell.isMystery && !cell.isLiar) {
+        candidates.push(cell);
+      }
+    }
+  }
+  shuffle(candidates, rng);
+  const applied = [];
+  for (let i = 0; i < Math.min(count, candidates.length); i++) {
+    candidates[i].isPressurePlate = true;
+    candidates[i].plateTimer = 15; // seconds
+    applied.push({ row: candidates[i].row, col: candidates[i].col });
+  }
+  return applied;
+}
+
+// ── Sonar: 2-cell radius mine counting ────────────────
+
+function applySonar(board, rows, cols, count, rng) {
+  const candidates = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const cell = board[r][c];
+      if (!cell.isMine && !cell.isLocked && !cell.isMystery && !cell.isLiar && !cell.isPressurePlate) {
+        candidates.push(cell);
+      }
+    }
+  }
+  shuffle(candidates, rng);
+  const wallEdges = board._wallEdges || null;
+  const applied = [];
+  for (let i = 0; i < Math.min(count, candidates.length); i++) {
+    const cell = candidates[i];
+    cell.isSonar = true;
+    // Count mines within 2-cell radius (5×5 area), respecting walls
+    let sonarCount = 0;
+    for (let dr = -2; dr <= 2; dr++) {
+      for (let dc = -2; dc <= 2; dc++) {
+        if (dr === 0 && dc === 0) continue;
+        const nr = cell.row + dr, nc = cell.col + dc;
+        if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+          // For sonar, walls only block if directly between the sonar cell and target
+          // (simplified: check cardinal wall for adjacent cells, no wall check for 2-away cells)
+          if (Math.abs(dr) <= 1 && Math.abs(dc) <= 1 && wallEdges && hasWallBetween(wallEdges, cell.row, cell.col, nr, nc)) continue;
+          if (board[nr][nc].isMine) sonarCount++;
+        }
+      }
+    }
+    cell.sonarCount = sonarCount;
+    cell.displayedMines = sonarCount; // Override displayed number
+    applied.push({ row: cell.row, col: cell.col, sonarCount });
+  }
+  return applied;
+}
+
+// ── Compass: directional mine counting across full row/col ──
+
+const COMPASS_DIRS = [
+  { arrow: '←', dr: 0, dc: -1 },
+  { arrow: '→', dr: 0, dc: 1 },
+  { arrow: '↑', dr: -1, dc: 0 },
+  { arrow: '↓', dr: 1, dc: 0 },
+];
+
+function applyCompass(board, rows, cols, count, rng) {
+  const candidates = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const cell = board[r][c];
+      if (!cell.isMine && !cell.isLocked && !cell.isMystery && !cell.isLiar && !cell.isPressurePlate && !cell.isSonar) {
+        candidates.push(cell);
+      }
+    }
+  }
+  shuffle(candidates, rng);
+  const applied = [];
+  for (let i = 0; i < Math.min(count, candidates.length); i++) {
+    const cell = candidates[i];
+    const dir = COMPASS_DIRS[Math.floor(rng() * COMPASS_DIRS.length)];
+    cell.isCompass = true;
+    cell.compassDir = dir;
+    // Count all mines in the direction
+    let compassCount = 0;
+    let r = cell.row + dir.dr, c = cell.col + dir.dc;
+    while (r >= 0 && r < rows && c >= 0 && c < cols) {
+      if (board[r][c].isMine) compassCount++;
+      r += dir.dr;
+      c += dir.dc;
+    }
+    cell.compassCount = compassCount;
+    cell.displayedMines = compassCount; // Override displayed number
+    cell.compassArrow = dir.arrow;
+    applied.push({ row: cell.row, col: cell.col, arrow: dir.arrow, compassCount });
+  }
+  return applied;
 }
 
 // ── Locked Cell Check ──────────────────────────────────

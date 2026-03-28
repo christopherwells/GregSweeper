@@ -147,6 +147,17 @@ export function updateCell(r, c) {
 
         // Gimmick markers
         if (cell.isLiar) cellEl.classList.add('liar-cell');
+        if (cell.isSonar) {
+          cellEl.classList.add('sonar-cell');
+          cellEl.textContent = '📡' + displayNum;
+        }
+        if (cell.isCompass) {
+          cellEl.classList.add('compass-cell');
+          cellEl.textContent = displayNum + (cell.compassArrow || '');
+        }
+        if (cell.isPressurePlate) {
+          cellEl.classList.add('pressure-plate');
+        }
         if (cell.isWormhole) {
           cellEl.classList.add('wormhole-cell');
           if (cell.wormholePairIndex != null) {

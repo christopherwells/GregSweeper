@@ -468,7 +468,83 @@ export function revealCell(row, col) {
   updateHeader();
   updateCellsRemaining();
 
+  // Activate pressure plate timers on newly revealed pressure plates
+  for (const cell of newlyRevealed) {
+    if (cell.isPressurePlate && !cell.plateDisarmed) {
+      startPressurePlateTimer(cell);
+    }
+  }
+
   if (checkWin(state.board)) handleWin();
+}
+
+// ── Pressure Plate Timer ────────────────────────────────
+
+const activePlates = new Map(); // cell -> timerId
+
+function startPressurePlateTimer(cell) {
+  const cellEl = boardEl.children[cell.row * state.cols + cell.col];
+  if (!cellEl) return;
+
+  cellEl.classList.add('plate-active');
+
+  // Add timer bar
+  const timerBar = document.createElement('div');
+  timerBar.className = 'plate-timer';
+  cellEl.appendChild(timerBar);
+
+  let remaining = cell.plateTimer || 15;
+  const startTime = Date.now();
+
+  const tick = setInterval(() => {
+    if (state.status !== 'playing') {
+      clearInterval(tick);
+      activePlates.delete(cell);
+      return;
+    }
+
+    remaining = Math.max(0, cell.plateTimer - (Date.now() - startTime) / 1000);
+    const pct = remaining / cell.plateTimer;
+    timerBar.style.transform = 'scaleX(' + pct + ')';
+
+    // Check if player flagged an adjacent mine
+    if (checkPlateDisarmed(cell)) {
+      clearInterval(tick);
+      activePlates.delete(cell);
+      cell.plateDisarmed = true;
+      cellEl.classList.remove('plate-active');
+      timerBar.remove();
+      import('../ui/toastManager.js').then(m => m.showToast('✅ Plate disarmed!', 1200));
+      return;
+    }
+
+    if (remaining <= 0) {
+      clearInterval(tick);
+      activePlates.delete(cell);
+      // Plate detonates! Try lifeline first, then game over
+      import('./powerUpActions.js').then(m => {
+        if (m.tryLifeline(cell.row, cell.col)) return;
+        handleLoss(cell.row, cell.col);
+      });
+    }
+  }, 200);
+
+  activePlates.set(cell, tick);
+}
+
+function checkPlateDisarmed(cell) {
+  const rows = state.board.length;
+  const cols = state.board[0].length;
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      if (dr === 0 && dc === 0) continue;
+      const nr = cell.row + dr, nc = cell.col + dc;
+      if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+        if (state.board[nr][nc].isMine && state.board[nr][nc].isFlagged) return true;
+      }
+    }
+  }
+  return false;
 }
 
 export function toggleFlag(row, col) {
