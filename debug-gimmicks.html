@@ -130,9 +130,46 @@
         const def = getGimmickDef(activeGimmick);
         const testLevel = def ? def.intro + 3 : 50; // 3 levels into the intro block = intensity 4
 
-        // Fast generation: random board + gimmick, retry until solvable AND gimmick spawned
-        // Uses simple rejection sampling (fast ~1ms per board) not constructive generator
+        // Fast rejection sampling: random board + gimmick, retry until:
+        // 1. Gimmick cells spawned
+        // 2. Solvable by solver
+        // 3. No wall-isolated dead zones (every cell reachable from first click via flood fill)
         let solved = false, gc = 0;
+
+        // Check that all non-mine cells are reachable from the start cell
+        // through wall-respecting flood fill. If walls create isolated pockets,
+        // those cells can only be solved via global mine counting — reject.
+        function hasIsolatedCells(b, startR, startC) {
+          const wEdges = b._wallEdges || null;
+          if (!wEdges || wEdges.size === 0) return false;
+          const visited = new Set();
+          const queue = [`${startR},${startC}`];
+          visited.add(queue[0]);
+          while (queue.length > 0) {
+            const [r, c] = queue.shift().split(',').map(Number);
+            for (let dr = -1; dr <= 1; dr++) {
+              for (let dc = -1; dc <= 1; dc++) {
+                if (dr === 0 && dc === 0) continue;
+                const nr = r + dr, nc = c + dc;
+                const key = `${nr},${nc}`;
+                if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && !visited.has(key)) {
+                  if (!hasWallBetween(wEdges, r, c, nr, nc)) {
+                    visited.add(key);
+                    queue.push(key);
+                  }
+                }
+              }
+            }
+          }
+          // Every non-mine cell must be reachable
+          for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+              if (!b[r][c].isMine && !visited.has(`${r},${c}`)) return true;
+            }
+          }
+          return false;
+        }
+
         for (let attempt = 0; attempt < 200; attempt++) {
           board = createEmptyBoard(ROWS, COLS);
           placeMines(board, MINES, row, col);
@@ -146,9 +183,12 @@
             else if (v instanceof Set) gc += v.size;
           }
           if (activeGimmick === 'walls' && board._wallEdges) gc = board._wallEdges.size;
-          if (gc === 0) continue; // no gimmick cells, retry
+          if (gc === 0) continue;
 
-          // Quick solvability check (~1ms)
+          // Reject boards where walls create isolated pockets
+          if (hasIsolatedCells(board, row, col)) continue;
+
+          // Solvability check
           const check = isBoardSolvable(board, ROWS, COLS, row, col);
           for (const brow of board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
           if (check.solvable || check.remainingUnknowns === 0) { solved = true; break; }
