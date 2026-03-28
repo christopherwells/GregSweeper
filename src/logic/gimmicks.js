@@ -334,12 +334,19 @@ export function hasWallBetween(wallEdges, r1, c1, r2, c2) {
     return wallEdges.has(wallKey(r1, c1, r2, c2));
   }
 
-  // Diagonal move: blocked if ANY wall edge borders the 2x2 square
-  // the diagonal passes through (ensures symmetric blocking)
-  return wallEdges.has(wallKey(r1, c1, r1, c2)) ||   // source horizontal
-         wallEdges.has(wallKey(r1, c1, r2, c1)) ||   // source vertical
-         wallEdges.has(wallKey(r2, c1, r2, c2)) ||   // dest horizontal
-         wallEdges.has(wallKey(r1, c2, r2, c2));     // dest vertical
+  // Diagonal move: blocked only if BOTH cardinal paths from source are walled.
+  // Think of it as: to reach (r2,c2) diagonally from (r1,c1), you could go
+  // via (r1,c2) or via (r2,c1). Only blocked if BOTH routes have a wall.
+  // A single wall on one side doesn't block the diagonal — you can "go around."
+  const horizBlocked = wallEdges.has(wallKey(r1, c1, r1, c2));  // source → horizontal step
+  const vertBlocked = wallEdges.has(wallKey(r1, c1, r2, c1));   // source → vertical step
+
+  // Also check from destination side for symmetry
+  const destHorizBlocked = wallEdges.has(wallKey(r2, c2, r2, c1));  // dest → horizontal step back
+  const destVertBlocked = wallEdges.has(wallKey(r2, c2, r1, c2));   // dest → vertical step back
+
+  // Blocked if both exits from source are walled, OR both entrances to dest are walled
+  return (horizBlocked && vertBlocked) || (destHorizBlocked && destVertBlocked);
 }
 
 // ── Walls: edges between adjacent cells ──────────────
