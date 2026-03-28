@@ -334,19 +334,24 @@ export function hasWallBetween(wallEdges, r1, c1, r2, c2) {
     return wallEdges.has(wallKey(r1, c1, r2, c2));
   }
 
-  // Diagonal move: blocked only if BOTH cardinal paths from source are walled.
-  // Think of it as: to reach (r2,c2) diagonally from (r1,c1), you could go
-  // via (r1,c2) or via (r2,c1). Only blocked if BOTH routes have a wall.
-  // A single wall on one side doesn't block the diagonal — you can "go around."
-  const horizBlocked = wallEdges.has(wallKey(r1, c1, r1, c2));  // source → horizontal step
-  const vertBlocked = wallEdges.has(wallKey(r1, c1, r2, c1));   // source → vertical step
+  // Diagonal move: check the 4 edges of the 2×2 square the diagonal passes through.
+  // Blocked if ANY pair of adjacent edges both exist — forming an L-corner
+  // or a continuous wall segment across the diagonal's path.
+  //
+  // Example: two adjacent horizontal walls block a diagonal through them:
+  //   X  A  F       walls: X-B and A-Y (e3 and e4)
+  //   -- --         X cannot see Y diagonally (continuous barrier)
+  //   B  Y  G       but A can see G (only one wall on that side)
+  //
+  const e1 = wallEdges.has(wallKey(r1, c1, r1, c2));  // horiz edge at source row
+  const e2 = wallEdges.has(wallKey(r2, c1, r2, c2));  // horiz edge at dest row
+  const e3 = wallEdges.has(wallKey(r1, c1, r2, c1));  // vert edge at source col
+  const e4 = wallEdges.has(wallKey(r1, c2, r2, c2));  // vert edge at dest col
 
-  // Also check from destination side for symmetry
-  const destHorizBlocked = wallEdges.has(wallKey(r2, c2, r2, c1));  // dest → horizontal step back
-  const destVertBlocked = wallEdges.has(wallKey(r2, c2, r1, c2));   // dest → vertical step back
-
-  // Blocked if both exits from source are walled, OR both entrances to dest are walled
-  return (horizBlocked && vertBlocked) || (destHorizBlocked && destVertBlocked);
+  return (e1 && e3)    // L-corner at source cell
+      || (e2 && e4)    // L-corner at dest cell
+      || (e3 && e4)    // continuous wall spanning the row boundary
+      || (e1 && e2);   // continuous wall spanning the column boundary
 }
 
 // ── Walls: edges between adjacent cells ──────────────
