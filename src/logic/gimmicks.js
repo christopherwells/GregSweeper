@@ -479,8 +479,9 @@ function applyWormholes(board, rows, cols, pairCount, rng) {
       const key = `${cell.row},${cell.col}`;
       if (used.has(key)) continue;
       if (!a) { a = cell; used.add(key); continue; }
-      // Ensure they're not adjacent (at least 3 cells apart)
-      if (Math.abs(cell.row - a.row) + Math.abs(cell.col - a.col) >= 3) {
+      // Ensure they're not adjacent (at least 2 cells apart on small boards, 3 on larger)
+      const minDist = Math.min(rows, cols) <= 8 ? 2 : 3;
+      if (Math.abs(cell.row - a.row) + Math.abs(cell.col - a.col) >= minDist) {
         b = cell;
         used.add(key);
         break;

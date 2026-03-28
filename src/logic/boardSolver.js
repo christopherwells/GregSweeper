@@ -37,15 +37,13 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol) {
       const i = idx(r, c);
       const cell = board[r][c];
       if (cell.isMine) isMine[i] = 1;
-      if (cell.isMystery || cell.isSonar || cell.isCompass) {
+      if (cell.isMystery || cell.isSonar || cell.isCompass || cell.isWormhole) {
         // Mystery: player sees "?" — no number info
-        // Sonar/Compass: their number counts a different region than the 8 neighbors,
-        // so the solver can't use it with the standard neighbor cache
+        // Sonar/Compass/Wormhole: their number counts a different set of cells
+        // than the standard 8 neighbors, so the solver can't use it correctly
         adjCount[i] = UNKNOWN;
       } else if (cell.isLiar && cell.displayedMines != null) {
         adjCount[i] = cell.displayedMines; // liar shows ±1 — use what player sees
-      } else if (cell.isWormhole && cell.displayedMines != null) {
-        adjCount[i] = cell.displayedMines; // wormhole shows summed value
       } else if (cell.mirrorZone && cell.displayedMines != null) {
         adjCount[i] = cell.displayedMines; // mirror shows swapped value
       } else {
