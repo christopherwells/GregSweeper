@@ -171,27 +171,37 @@
         }
 
         for (let attempt = 0; attempt < 200; attempt++) {
-          board = createEmptyBoard(ROWS, COLS);
-          placeMines(board, MINES, row, col);
-          calculateAdjacency(board);
-          gimmickData = applyGimmicks(board, testLevel, [activeGimmick], Math.random);
+          const b = createEmptyBoard(ROWS, COLS);
+          placeMines(b, MINES, row, col);
+          calculateAdjacency(b);
+          const gd = applyGimmicks(b, testLevel, [activeGimmick], Math.random);
 
           // Count gimmick cells
           gc = 0;
-          for (const v of Object.values(gimmickData)) {
+          for (const v of Object.values(gd)) {
             if (Array.isArray(v)) gc += v.length;
             else if (v instanceof Set) gc += v.size;
           }
-          if (activeGimmick === 'walls' && board._wallEdges) gc = board._wallEdges.size;
+          if (activeGimmick === 'walls' && b._wallEdges) gc = b._wallEdges.size;
           if (gc === 0) continue;
 
           // Reject boards where walls create isolated pockets
-          if (hasIsolatedCells(board, row, col)) continue;
+          if (hasIsolatedCells(b, row, col)) continue;
 
           // Solvability check
-          const check = isBoardSolvable(board, ROWS, COLS, row, col);
-          for (const brow of board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
-          if (check.solvable || check.remainingUnknowns === 0) { solved = true; break; }
+          const check = isBoardSolvable(b, ROWS, COLS, row, col);
+          for (const brow of b) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
+          if (check.solvable || check.remainingUnknowns === 0) {
+            board = b; gimmickData = gd; solved = true; break;
+          }
+        }
+        // If no solvable board found, generate a plain one without gimmicks as fallback
+        if (!solved) {
+          board = createEmptyBoard(ROWS, COLS);
+          placeMines(board, MINES, row, col);
+          calculateAdjacency(board);
+          gimmickData = {};
+          gc = 0;
         }
         const gLabel = def?.name || activeGimmick;
         statusEl.textContent = solved

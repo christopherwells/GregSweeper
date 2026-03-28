@@ -412,8 +412,42 @@ export function applyWalls(board, rows, cols, segmentCount, rng) {
     }
   }
 
-  // Store wall edges on the board for easy access by other modules
+  // Verify walls don't create isolated regions — every cell must be
+  // reachable from every other cell through wall-respecting paths.
+  // If walls partition the board, remove the last segment and retry.
   board._wallEdges = wallEdges;
+  if (wallEdges.size > 0) {
+    const visited = new Set();
+    const queue = ['0,0'];
+    visited.add('0,0');
+    while (queue.length > 0) {
+      const [cr, cc] = queue.shift().split(',').map(Number);
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue;
+          const nr = cr + dr, nc = cc + dc;
+          const key = `${nr},${nc}`;
+          if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && !visited.has(key)) {
+            if (!hasWallBetween(wallEdges, cr, cc, nr, nc)) {
+              visited.add(key);
+              queue.push(key);
+            }
+          }
+        }
+      }
+    }
+    // If any cell is unreachable, clear all walls and start over
+    let isolated = false;
+    for (let r = 0; r < rows && !isolated; r++) {
+      for (let c = 0; c < cols && !isolated; c++) {
+        if (!visited.has(`${r},${c}`)) isolated = true;
+      }
+    }
+    if (isolated) {
+      wallEdges.clear();
+      board._wallEdges = wallEdges;
+    }
+  }
 
   // Recalculate adjacency respecting wall edges
   if (wallEdges.size > 0) {
