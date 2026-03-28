@@ -83,15 +83,53 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol) {
     }
   }
 
+  // Track locked cells
+  const isLocked = new Uint8Array(rows * cols);
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (board[r][c].isLocked) isLocked[idx(r, c)] = 1;
+    }
+  }
+
+  // Check if a locked cell can unlock: all non-mine, non-locked neighbors must be revealed
+  function canUnlock(i) {
+    if (!isLocked[i]) return false;
+    for (const ni of neighborCache[i]) {
+      if (sim[ni] === 0 && !isMine[ni] && !isLocked[ni]) return false; // unrevealed non-mine non-locked neighbor
+    }
+    return true;
+  }
+
+  // Try to unlock locked cells whose conditions are met, cascading
+  function tryUnlockAll() {
+    let progress = true;
+    while (progress) {
+      progress = false;
+      for (let i = 0; i < rows * cols; i++) {
+        if (isLocked[i] && sim[i] === 0 && canUnlock(i)) {
+          isLocked[i] = 0; // unlock
+          if (!isMine[i]) {
+            revealQueue.push(i);
+            progress = true;
+          }
+          // Locked mines: unlocked but not revealed (player must flag)
+        }
+      }
+      while (revealQueue.length > 0) {
+        revealCell(revealQueue.pop());
+      }
+    }
+  }
+
   // Reveal a cell (simulate); if it's a zero, flood-fill
   const revealQueue = [];
   function revealCell(i) {
-    if (sim[i] !== 0 || isMine[i]) return;
+    if (sim[i] !== 0 || isMine[i] || isLocked[i]) return; // skip locked cells
     sim[i] = 1;
     revealedCount++;
     if (adjCount[i] === 0) {
       for (const ni of neighborCache[i]) {
-        if (sim[ni] === 0 && !isMine[ni]) {
+        if (sim[ni] === 0 && !isMine[ni] && !isLocked[ni]) {
           revealQueue.push(ni);
         }
       }
@@ -108,6 +146,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol) {
   while (revealQueue.length > 0) {
     revealCell(revealQueue.pop());
   }
+  tryUnlockAll(); // unlock any locked cells freed by the initial cascade
 
   if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0 };
 
@@ -159,6 +198,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol) {
       }
     }
 
+    tryUnlockAll(); // check if reveals freed any locked cells
     if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0 };
     if (progress) continue;
 
@@ -206,6 +246,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol) {
       }
     }
 
+    tryUnlockAll();
     if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0 };
     if (subsetProgress) continue;
 
@@ -232,6 +273,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol) {
       revealCell(revealQueue.pop());
     }
 
+    tryUnlockAll();
     if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0 };
     if (advancedProgress) continue;
 
