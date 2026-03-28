@@ -435,10 +435,7 @@
                 if (cell.isWormhole) {
                   const pairColors = ['#9b59b6', '#e74c3c', '#f39c12'];
                   const pc = pairColors[cell.wormholePairIndex || 0];
-                  el.style.border = '2px solid ' + pc;
-                  el.style.boxShadow = 'inset 0 0 6px ' + pc + '55';
-                  el.textContent = '🌀' + el.textContent;
-                  el.style.fontSize = '11px';
+                  el.innerHTML = `<span style="color:${pc};font-size:14px">●</span>${el.textContent}`;
                 }
                 if (cell.mirrorZone) {
                   el.classList.add('mirror-cell');
@@ -457,10 +454,7 @@
             el.classList.add('unrevealed');
             el.textContent = '';
             if (cell.isLocked) el.classList.add('locked-cell');
-            if (cell.isWormhole) {
-              const pairColors = ['#9b59b6', '#e74c3c', '#f39c12'];
-              el.style.border = '2px dashed ' + (pairColors[cell.wormholePairIndex || 0]) + '88';
-            }
+            // Wormholes: no visual indicator when unrevealed
             if (cell.mirrorZone) {
               el.classList.add('mirror-cell-unrevealed');
             }
