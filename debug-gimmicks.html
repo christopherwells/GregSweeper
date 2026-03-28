@@ -34,8 +34,8 @@
     .cell.locked-cell::after { content: '🔒'; position: absolute; font-size: 16px; opacity: 0.5; }
     .wall-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
     .wall-line { position: absolute; background: #c9a96e; border-radius: 1px; }
-    .wall-line-h { height: 4px; transform: translateY(-50%); }
-    .wall-line-v { width: 4px; transform: translateX(-50%); }
+    .wall-line-h { height: 5px; transform: translateY(-50%); margin-left: -1px; padding-right: 2px; box-sizing: content-box; }
+    .wall-line-v { width: 5px; transform: translateX(-50%); margin-top: -1px; padding-bottom: 2px; box-sizing: content-box; }
     .cell.pressure-plate { box-shadow: inset 0 0 8px rgba(255,50,50,0.4); border-color: rgba(255,80,80,0.6); }
     .cell.sonar-cell { border: 2px solid rgba(38,198,218,0.6); font-size: 12px; }
     .cell.compass-cell { border: 2px solid rgba(255,167,38,0.6); font-size: 12px; }
@@ -56,7 +56,7 @@
   <script type="module">
     import { generateBoard, createEmptyBoard, placeMines, calculateAdjacency } from './src/logic/boardGenerator.js';
     import { isBoardSolvable, floodFillReveal, chordReveal, checkWin } from './src/logic/boardSolver.js';
-    import { applyGimmicks, hasWallBetween, isLockedCell, getGimmickDef } from './src/logic/gimmicks.js';
+    import { applyGimmicks, applyWalls, hasWallBetween, isLockedCell, getGimmickDef } from './src/logic/gimmicks.js';
 
     const ROWS = 6, COLS = 6, MINES = 6;
     const boardEl = document.getElementById('board');
@@ -126,16 +126,35 @@
       if (cell && cell.isFlagged) return;
 
       if (firstClick) {
-        // Generate board + apply gimmick, retrying if gimmicks break solvability
-        for (let attempt = 0; attempt < 30; attempt++) {
-          board = generateBoard(ROWS, COLS, MINES, row, col, Math.random, { hasGimmicks: true });
+        let bestBoard = null, bestUnknowns = Infinity, solved = false;
+
+        for (let attempt = 0; attempt < 50; attempt++) {
+          // For walls: generate wall edges first, pass to board generator
+          let wallEdges = null;
+          if (activeGimmick === 'walls') {
+            const tempBoard = createEmptyBoard(ROWS, COLS);
+            applyGimmicks(tempBoard, 50, ['walls'], Math.random);
+            wallEdges = tempBoard._wallEdges || null;
+          }
+
+          board = generateBoard(ROWS, COLS, MINES, row, col, Math.random, { hasGimmicks: true, wallEdges });
           gimmickData = applyGimmicks(board, 50, [activeGimmick], Math.random);
+
           // Verify solvability with gimmicks applied
           const check = isBoardSolvable(board, ROWS, COLS, row, col);
-          // Clean solver artifacts
+          const u = check.remainingUnknowns;
           for (const brow of board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
-          if (check.solvable || check.remainingUnknowns === 0) break;
+
+          if (u < bestUnknowns) { bestBoard = board; bestUnknowns = u; }
+          if (check.solvable || u === 0) { solved = true; break; }
         }
+
+        if (!solved && bestBoard) board = bestBoard;
+
+        // Show solvability status
+        statusEl.textContent = solved ? '✅ Board verified solvable' : `⚠️ Best board has ${bestUnknowns} unknowns`;
+        statusEl.className = solved ? 'win' : 'loss';
+
         firstClick = false;
       }
 

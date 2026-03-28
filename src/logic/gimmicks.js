@@ -356,7 +356,7 @@ export function hasWallBetween(wallEdges, r1, c1, r2, c2) {
 
 // ── Walls: edges between adjacent cells ──────────────
 
-function applyWalls(board, rows, cols, segmentCount, rng) {
+export function applyWalls(board, rows, cols, segmentCount, rng) {
   const wallEdges = new Set();
   // Difficulty scales both count and length of wall segments
   const maxSegments = Math.min(segmentCount, 6);

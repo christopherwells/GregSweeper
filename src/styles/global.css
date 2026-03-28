@@ -1008,12 +1008,19 @@ body {
   border-radius: 1px;
 }
 .wall-line-h {
-  height: 4px;
+  height: 5px;
   transform: translateY(-50%);
+  /* Extend 1px past cell edges to overlap with adjacent wall segments */
+  margin-left: -1px;
+  padding-right: 2px;
+  box-sizing: content-box;
 }
 .wall-line-v {
-  width: 4px;
+  width: 5px;
   transform: translateX(-50%);
+  margin-top: -1px;
+  padding-bottom: 2px;
+  box-sizing: content-box;
 }
 
 /* Mystery cells — revealed but showing '?' */

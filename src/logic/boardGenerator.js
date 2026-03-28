@@ -1,4 +1,5 @@
 import { isBoardSolvable } from './boardSolver.js';
+import { hasWallBetween } from './gimmicks.js';
 
 export function createEmptyBoard(rows, cols) {
   const board = [];
@@ -49,6 +50,7 @@ export function calculateAdjacency(board) {
   const rows = board.length;
   const cols = board[0].length;
   const deltas = [-1, 0, 1];
+  const wallEdges = board._wallEdges || null;
 
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -59,8 +61,9 @@ export function calculateAdjacency(board) {
           if (dr === 0 && dc === 0) continue;
           const nr = r + dr;
           const nc = c + dc;
-          if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && board[nr][nc].isMine) {
-            count++;
+          if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+            if (wallEdges && hasWallBetween(wallEdges, r, c, nr, nc)) continue;
+            if (board[nr][nc].isMine) count++;
           }
         }
       }
@@ -211,12 +214,14 @@ function swapMines(board, swapCount, excludeRow, excludeCol, rng) {
 // and verifying solvability after each placement. Falls back to rejection
 // sampling for low-density boards where random generation works fine.
 
-function generateConstructive(rows, cols, targetMines, excludeRow, excludeCol, rng) {
+function generateConstructive(rows, cols, targetMines, excludeRow, excludeCol, rng, wallEdges) {
   const MAX_RESTARTS = 50;
   const totalCells = rows * cols;
 
   for (let restart = 0; restart < MAX_RESTARTS; restart++) {
     const board = createEmptyBoard(rows, cols);
+    // Apply pre-existing wall edges so adjacency is wall-aware from the start
+    if (wallEdges) board._wallEdges = wallEdges;
 
     // Build shuffled candidate list (excluding first-click safe zone)
     const candidates = [];
@@ -337,11 +342,14 @@ export function generateBoard(rows, cols, mines, excludeRow, excludeCol, rng, op
   const density = mines / (rows * cols);
   const hasGimmicks = options.hasGimmicks || false;
 
+  // Pre-generated wall edges (applied before mine placement for wall-aware solvability)
+  const wallEdges = options.wallEdges || null;
+
   // For high density (>22%) or gimmick levels, use constructive generator
   if (density > 0.22 || hasGimmicks) {
     // Try constructive approach up to 3 times (each attempt does 50 internal restarts)
     for (let outerTry = 0; outerTry < 3; outerTry++) {
-      const constructiveBoard = generateConstructive(rows, cols, mines, excludeRow, excludeCol, rng);
+      const constructiveBoard = generateConstructive(rows, cols, mines, excludeRow, excludeCol, rng, wallEdges);
       if (constructiveBoard) {
         // Apply anti-zero-cluster if needed (skip if it breaks solvability)
         if (options.maxZeroCluster && options.maxZeroCluster < Infinity) {

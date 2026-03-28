@@ -19,7 +19,7 @@ import { generateBoard, createEmptyBoard, calculateAdjacency } from '../logic/bo
 import { floodFillReveal, checkWin, chordReveal, isBoardSolvable } from '../logic/boardSolver.js';
 import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getChaosDifficulty } from '../logic/difficulty.js';
 import { shieldDefuse } from '../logic/powerUps.js';
-import { getGimmicksForLevel, applyGimmicks, isLockedCell, hasWallBetween, hasSeenGimmick, markGimmickSeen, getGimmickDef, isModifierPopupDisabled, setModifierPopupDisabled, getDailyGimmick, getChaosGimmicks } from '../logic/gimmicks.js';
+import { getGimmicksForLevel, applyGimmicks, applyWalls, isLockedCell, hasWallBetween, hasSeenGimmick, markGimmickSeen, getGimmickDef, isModifierPopupDisabled, setModifierPopupDisabled, getDailyGimmick, getChaosGimmicks } from '../logic/gimmicks.js';
 import { createDailyRNG } from '../logic/seededRandom.js';
 import {
   loadModePowerUps, loadCheckpoint, clearGameState,
@@ -298,36 +298,37 @@ export function revealCell(row, col) {
       ? getMaxZeroCluster(state.currentLevel) : Infinity;
     const hasGimmicks = state.gameMode === 'normal' && state.currentLevel > 10;
 
-    // Generate board + apply gimmicks in a retry loop:
-    // Gimmicks (especially walls) can break solvability by changing adjacency.
-    // If that happens, regenerate until we get a solvable board with gimmicks applied.
-    let gimmickRetries = 0;
-    const MAX_GIMMICK_RETRIES = 20;
-    do {
-      state.board = generateBoard(state.rows, state.cols, state.totalMines, row, col, rng || Math.random, { maxZeroCluster: maxZC, hasGimmicks });
+    // Determine which gimmicks will be active
+    const gimmickRng = rng || Math.random;
+    if (state.gameMode === 'normal') {
+      state.activeGimmicks = getGimmicksForLevel(state.currentLevel, gimmickRng);
+    } else {
       state.activeGimmicks = [];
-      state.gimmickData = {};
+    }
 
-      if (state.gameMode === 'normal') {
-        const gimmickRng = rng || Math.random;
-        state.activeGimmicks = getGimmicksForLevel(state.currentLevel, gimmickRng);
-        if (state.activeGimmicks.length > 0) {
-          state.gimmickData = applyGimmicks(state.board, state.currentLevel, state.activeGimmicks, gimmickRng);
-        }
-      }
+    // Generate walls FIRST so the constructive board generator builds
+    // mine layouts that are solvable WITH walls from the start.
+    let preWallEdges = null;
+    if (state.activeGimmicks.includes('walls')) {
+      // Create a temp board just to generate wall edges
+      const tempBoard = createEmptyBoard(state.rows, state.cols);
+      // Estimate wall intensity (1-5 based on level progression)
+      const wallIntensity = Math.min(1 + Math.floor((state.currentLevel - 11) / 15), 5);
+      applyWalls(tempBoard, state.rows, state.cols, wallIntensity, gimmickRng);
+      preWallEdges = tempBoard._wallEdges;
+    }
 
-      // Verify solvability with gimmicks applied
-      if (state.activeGimmicks.length > 0) {
-        
-        const check = isBoardSolvable(state.board, state.rows, state.cols, row, col);
-        // Clean solver artifacts
-        for (const brow of state.board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
-        if (check.solvable || check.remainingUnknowns === 0) break; // Good board!
-      } else {
-        break; // No gimmicks, board is already verified solvable
-      }
-      gimmickRetries++;
-    } while (gimmickRetries < MAX_GIMMICK_RETRIES);
+    // Generate board with wall-aware adjacency
+    state.board = generateBoard(state.rows, state.cols, state.totalMines, row, col,
+      rng || Math.random, { maxZeroCluster: maxZC, hasGimmicks, wallEdges: preWallEdges });
+
+    // Apply ALL gimmicks (walls will reuse preWallEdges, others applied fresh)
+    state.gimmickData = {};
+    if (state.activeGimmicks.length > 0) {
+      // Transfer pre-generated wall edges to the real board
+      if (preWallEdges) state.board._wallEdges = preWallEdges;
+      state.gimmickData = applyGimmicks(state.board, state.currentLevel, state.activeGimmicks, gimmickRng);
+    }
 
     // Apply gimmicks for challenge mode (show popups etc.)
     if (state.gameMode === 'normal') {
