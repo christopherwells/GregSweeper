@@ -45,7 +45,10 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol) {
       } else if (cell.isLiar && cell.displayedMines != null) {
         adjCount[i] = cell.displayedMines; // liar shows ±1 — use what player sees
       } else if (cell.mirrorZone && cell.displayedMines != null) {
-        adjCount[i] = cell.displayedMines; // mirror shows swapped value
+        // Mirror cells show a swapped value, but it IS a real adjacentMines count
+        // from the mirror-opposite cell. The constraint is valid for THAT count
+        // against THIS cell's neighbors. The solver can use it.
+        adjCount[i] = cell.displayedMines;
       } else {
         adjCount[i] = cell.adjacentMines; // normal cell — true count
       }

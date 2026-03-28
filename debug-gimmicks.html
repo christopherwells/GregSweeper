@@ -214,6 +214,42 @@
           : `⚠️ Not solvable | ${gc} ${gLabel} ${activeGimmick === 'walls' ? 'edges' : 'cells'}`;
         statusEl.className = solved ? 'win' : 'loss';
 
+        // Simulate the first-click cascade and strip pressure plates from revealed cells
+        // (plates shouldn't appear in the opening — player should discover them while exploring)
+        if (activeGimmick === 'pressurePlate' && board) {
+          const simBoard = board;
+          // Temporarily reveal the first click cascade
+          const cascade = (simBoard[row][col].adjacentMines === 0)
+            ? floodFillReveal(simBoard, row, col)
+            : [simBoard[row][col]];
+          // Mark cascade cells + their revealed neighbors
+          for (const cell of cascade) cell._inOpening = true;
+          // Also mark numbered cells adjacent to the cascade (they get revealed too)
+          for (const cell of cascade) {
+            if (cell.adjacentMines === 0) {
+              for (let dr = -1; dr <= 1; dr++) {
+                for (let dc = -1; dc <= 1; dc++) {
+                  const nr = cell.row + dr, nc = cell.col + dc;
+                  if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) {
+                    simBoard[nr][nc]._inOpening = true;
+                  }
+                }
+              }
+            }
+          }
+          // Strip pressure plates from cells in the opening
+          for (let r = 0; r < ROWS; r++) {
+            for (let c2 = 0; c2 < COLS; c2++) {
+              if (simBoard[r][c2]._inOpening && simBoard[r][c2].isPressurePlate) {
+                simBoard[r][c2].isPressurePlate = false;
+              }
+              delete simBoard[r][c2]._inOpening;
+            }
+          }
+          // Reset reveals for actual gameplay
+          for (const brow of simBoard) for (const c2 of brow) { c2.isRevealed = false; c2.revealAnimDelay = 0; }
+        }
+
         firstClick = false;
       }
 
