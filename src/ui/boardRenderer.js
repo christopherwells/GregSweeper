@@ -190,8 +190,6 @@ function getCellAriaLabel(cell, r, c) {
   let label = 'Unrevealed';
   if (cell.isLocked) label += ', locked';
   if (cell.inLiarZone) label += ', in liar zone';
-  if (cell.isWormhole) label += ', wormhole';
-  if (cell.mirrorZone) label += ', mirror zone';
   return label;
 }
 

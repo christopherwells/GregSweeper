@@ -495,10 +495,6 @@ export function revealCell(row, col) {
     playReveal();
   }
 
-  updateCells(newlyRevealed);
-  updateHeader();
-  updateCellsRemaining();
-
   // Wormhole: revealing one side reveals the paired cell too
   for (const rev of [...newlyRevealed]) {
     if (rev.isWormhole && rev.wormholePair) {
@@ -517,7 +513,10 @@ export function revealCell(row, col) {
       }
     }
   }
+
   updateCells(newlyRevealed);
+  updateHeader();
+  updateCellsRemaining();
 
   // Activate pressure plate timers on newly revealed pressure plates
   for (const cell of newlyRevealed) {
