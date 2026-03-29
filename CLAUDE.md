@@ -32,14 +32,14 @@ Modern Minesweeper game built with vanilla JavaScript (ES6 modules). No framewor
 - `$()` / `$$()` are querySelector/querySelectorAll helpers from `src/ui/domHelpers.js`
 
 ## Game Modes
-- **Challenge (normal):** 100 levels, increasing difficulty, checkpoints every 5 levels, modifiers from L11+
+- **Challenge (normal):** 120 levels, increasing difficulty, checkpoints every 5 levels, modifiers from L11+
 - **Timed:** Race the clock, 4 difficulty tabs (Beginner/Intermediate/Expert/Extreme)
 - **Daily:** One seeded puzzle per day, no levels, optional modifiers (~35% of days)
 - **Skill Trainer:** 15 interactive lessons teaching minesweeper techniques (beginner/intermediate/advanced)
 
 ## Modifier (Gimmick) System
-7 types defined in `src/logic/gimmicks.js`:
-- mystery (L11), locked (L16), liar (L21), mineShift (L26), walls (L31), wormhole (L36), mirror (L41)
+10 types defined in `src/logic/gimmicks.js`:
+- walls (L11), liar (L21), mystery (L31), locked (L41), wormhole (L51), mirror (L61), pressurePlate (L71), sonar (L81), compass (L91), mineShift (chaos-only)
 - Daily-safe subset: mystery, locked, walls, liar (no dynamic board changes)
 - First-encounter popup tracked in localStorage key `minesweeper_seen_gimmicks`
 - Popup can be disabled via `minesweeper_modifier_popup_disabled`
@@ -59,4 +59,4 @@ Modern Minesweeper game built with vanilla JavaScript (ES6 modules). No framewor
 - After push, bump `CACHE_NAME` in `sw.js` (single version token — no per-file cache busters)
 
 ## Version
-Current: v1.3
+Current: v1.4
