@@ -3,6 +3,7 @@
 // Each gimmick has: apply (board setup), render hints, solver adjustments.
 
 import { safeGet, safeSet, safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js';
+import { MAX_LEVEL } from './difficulty.js';
 
 const GIMMICK_DEFS = {
   walls: {
@@ -49,9 +50,9 @@ const GIMMICK_DEFS = {
   },
   pressurePlate: {
     intro: 71, name: 'Pressure Plates', icon: '🔴',
-    desc: 'Some cells start a 15-second countdown when revealed \u2014 flag an adjacent mine before time runs out!',
-    longDesc: 'Pressure plate cells show their number like normal, but a countdown timer starts when revealed. You have 15 seconds to flag at least one adjacent mine or the plate detonates. The cell gives you full information \u2014 you just need to act fast.',
-    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-pressure" style="box-shadow:inset 0 0 6px rgba(255,50,50,0.5)">2\uD83D\uDD34</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">0</div></div><div class="ge-caption">Flag a mine next to the \uD83D\uDD34 before the timer runs out!</div>',
+    desc: 'Some cells start a countdown when revealed \u2014 reveal all safe neighbors before time runs out!',
+    longDesc: 'Pressure plate cells show their number like normal, but a countdown timer starts when revealed. You must reveal every non-mine neighbor before time runs out or the plate detonates. Solve the area around the plate fast!',
+    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-pressure" style="box-shadow:inset 0 0 6px rgba(255,50,50,0.5)">2\uD83D\uDD34</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">0</div></div><div class="ge-caption">Reveal all safe cells around the \uD83D\uDD34 before the timer runs out!</div>',
   },
   sonar: {
     intro: 81, name: 'Sonar', icon: '📡',
@@ -162,8 +163,8 @@ function getIntensity(gimmick, level, rng) {
     return 1 + blockPos;
   }
 
-  // After introduction: slowly ramp toward level 100
-  const progress = (level - introEnd) / (100 - introEnd);
+  // After introduction: slowly ramp toward max level
+  const progress = (level - introEnd) / (MAX_LEVEL - introEnd);
   const base = 1 + Math.floor(progress * 3); // 1-4
   let intensity = base + (rng() < 0.3 ? 1 : 0); // slight random boost
 
@@ -507,21 +508,34 @@ function applyWormholes(board, rows, cols, pairCount, rng) {
 // ── Mirror Zone: cells display swapped adjacency ───────
 
 function applyMirrorZone(board, rows, cols, rng) {
-  const size = 2 + Math.floor(rng() * 2); // 2x2 or 3x3
+  const size = 2; // always 2x2 — keeps it solvable
   const startR = 1 + Math.floor(rng() * (rows - size - 1));
   const startC = 1 + Math.floor(rng() * (cols - size - 1));
+  const endR = startR + size - 1;
+  const endC = startC + size - 1;
 
   const zone = [];
-  for (let r = startR; r < startR + size; r++) {
-    for (let c = startC; c < startC + size; c++) {
+  for (let r = startR; r <= endR; r++) {
+    for (let c = startC; c <= endC; c++) {
       if (!board[r][c].isMine) {
-        board[r][c].mirrorZone = { id: 0, centerRow: startR + (size - 1) / 2, centerCol: startC + (size - 1) / 2 };
+        board[r][c].mirrorZone = {
+          id: 0,
+          centerRow: startR + (size - 1) / 2,
+          centerCol: startC + (size - 1) / 2,
+          // Zone boundary edges for rendering the zone outline
+          top: r === startR,
+          bottom: r === endR,
+          left: c === startC,
+          right: c === endC,
+        };
         zone.push({ row: r, col: c });
       }
     }
   }
 
   // Swap displayed values with mirror opposite
+  let pairIndex = 0;
+  const paired = new Set();
   for (const pos of zone) {
     const cell = board[pos.row][pos.col];
     const mirrorR = Math.round(2 * cell.mirrorZone.centerRow - pos.row);
@@ -530,6 +544,18 @@ function applyMirrorZone(board, rows, cols, rng) {
       const mirrorCell = board[mirrorR][mirrorC];
       if (mirrorCell.mirrorZone) {
         cell.displayedMines = mirrorCell.adjacentMines;
+        // Assign matching pair indices for color-coding swapped cells
+        const posKey = `${pos.row},${pos.col}`;
+        const mirKey = `${mirrorR},${mirrorC}`;
+        const key = posKey < mirKey ? `${posKey}-${mirKey}` : `${mirKey}-${posKey}`;
+        if (pos.row === mirrorR && pos.col === mirrorC) {
+          cell.mirrorZone.pairIndex = -1; // center cell, mirrors itself
+        } else if (!paired.has(key)) {
+          cell.mirrorZone.pairIndex = pairIndex;
+          mirrorCell.mirrorZone.pairIndex = pairIndex;
+          paired.add(key);
+          pairIndex++;
+        }
       }
     }
   }
@@ -594,32 +620,41 @@ export function performMineShift(board, rng = Math.random) {
 // ── Pressure Plates: timed cells that must be flagged ──
 
 function applyPressurePlates(board, rows, cols, count, rng) {
-  // Select non-mine cells with adjacentMines >= 1 (must have at least one mine neighbor to flag)
-  // Prefer lower numbers — easier to solve under pressure
+  // Select non-mine cells with adjacentMines >= 2
+  // Must have enough safe neighbors (>= 4) so the plate isn't trivially solved
+  // by a cascade revealing most of the area
   const candidates = [];
   for (let r = 1; r < rows - 1; r++) {
     for (let c = 1; c < cols - 1; c++) {
       const cell = board[r][c];
-      if (!cell.isMine && cell.adjacentMines >= 2 && !cell.isLocked && !cell.isMystery && !cell.isLiar) {
-        candidates.push(cell);
+      if (cell.isMine || cell.adjacentMines < 2 || cell.isLocked || cell.isMystery || cell.isLiar) continue;
+      // Count non-mine neighbors (these must be revealed to disarm)
+      let safeNeighbors = 0;
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue;
+          const nr = r + dr, nc = c + dc;
+          if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && !board[nr][nc].isMine) {
+            safeNeighbors++;
+          }
+        }
+      }
+      // Require >= 4 safe neighbors so the plate needs real work to disarm
+      if (safeNeighbors >= 4) {
+        candidates.push({ cell, safeNeighbors });
       }
     }
   }
-  // Sort by adjacentMines ascending so we prefer easy cells for plates
-  candidates.sort((a, b) => a.adjacentMines - b.adjacentMines);
-  // Only slight shuffle within same-count groups to keep low numbers first
-  for (let i = 0; i < candidates.length; i++) {
-    const j = i + Math.floor(rng() * Math.min(3, candidates.length - i));
-    [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
-  }
-  // Cap at 1-2 plates max — more than that is overwhelming
+  // Prefer cells with MORE safe neighbors (harder to disarm)
+  candidates.sort((a, b) => b.safeNeighbors - a.safeNeighbors);
+  shuffle(candidates, rng);
+
   const maxPlates = Math.min(count, 2);
   const applied = [];
   for (let i = 0; i < Math.min(maxPlates, candidates.length); i++) {
-    const cell = candidates[i];
+    const cell = candidates[i].cell;
     cell.isPressurePlate = true;
-    // 10 seconds per adjacent mine — a "2" gets 20s, a "3" gets 30s
-    cell.plateTimer = Math.max(15, cell.adjacentMines * 10);
+    cell.plateTimer = 15; // placeholder — dynamic timer computed at reveal time
     applied.push({ row: cell.row, col: cell.col });
   }
   return applied;

@@ -1,4 +1,4 @@
-// Challenge mode — 100 levels of progressive difficulty
+// Challenge mode — 120 levels of progressive difficulty
 // Boards grow from 5×5 up to 14×14. Timer is informational only (no countdown).
 // Difficulty increases via mine density, grid size, and zero-cluster limits.
 // Gimmicks are introduced at checkpoints starting at L11.
@@ -117,6 +117,28 @@ const CHALLENGE_LEVELS = [
   { rows: 14, cols: 14, mines: 75 },  // L98 — 38.3%
   { rows: 14, cols: 14, mines: 75 },  // L99 — 38.3%
   { rows: 14, cols: 14, mines: 75 },  // L100 — 38.3%
+
+  // Grandmaster (L101–120): 14×14, density 38–40%
+  { rows: 14, cols: 14, mines: 75 },  // L101 — 38.3%
+  { rows: 14, cols: 14, mines: 76 },  // L102 — 38.8%
+  { rows: 14, cols: 14, mines: 76 },  // L103 — 38.8%
+  { rows: 14, cols: 14, mines: 76 },  // L104 — 38.8%
+  { rows: 14, cols: 14, mines: 77 },  // L105 — 39.3%
+  { rows: 14, cols: 14, mines: 77 },  // L106 — 39.3%
+  { rows: 14, cols: 14, mines: 77 },  // L107 — 39.3%
+  { rows: 14, cols: 14, mines: 78 },  // L108 — 39.8%
+  { rows: 14, cols: 14, mines: 78 },  // L109 — 39.8%
+  { rows: 14, cols: 14, mines: 78 },  // L110 — 39.8%
+  { rows: 14, cols: 14, mines: 78 },  // L111 — 39.8%
+  { rows: 14, cols: 14, mines: 79 },  // L112 — 40.3%
+  { rows: 14, cols: 14, mines: 79 },  // L113 — 40.3%
+  { rows: 14, cols: 14, mines: 79 },  // L114 — 40.3%
+  { rows: 14, cols: 14, mines: 79 },  // L115 — 40.3%
+  { rows: 14, cols: 14, mines: 80 },  // L116 — 40.8%
+  { rows: 14, cols: 14, mines: 80 },  // L117 — 40.8%
+  { rows: 14, cols: 14, mines: 80 },  // L118 — 40.8%
+  { rows: 14, cols: 14, mines: 80 },  // L119 — 40.8%
+  { rows: 14, cols: 14, mines: 80 },  // L120 — 40.8%
 ];
 
 // Quick Play (internally "timed") — mobile-friendly sizes, count UP (no countdown)
@@ -136,7 +158,7 @@ const SPEED_THRESHOLDS = [
 ];
 
 // Gimmick intro levels where mine density dips slightly (1-2 fewer mines)
-const GIMMICK_INTRO_LEVELS = new Set([11, 21, 31, 41, 51, 61]);
+const GIMMICK_INTRO_LEVELS = new Set([11, 21, 31, 41, 51, 61, 71, 81, 91]);
 
 export function getDifficultyForLevel(level) {
   const capped = Math.min(Math.max(level, 1), CHALLENGE_LEVELS.length);
@@ -163,7 +185,7 @@ export function getMaxZeroCluster(level) {
   if (level <= 30) return 6;
   if (level <= 50) return 4;
   if (level <= 70) return 3;
-  return 2;                          // L71–100: near-zero openings
+  return 2;                          // L71–120: near-zero openings
 }
 
 export function getSpeedRating(level, time) {

@@ -46,6 +46,17 @@
   --color-num-6: #007884;
   --color-num-7: #37474f;
   --color-num-8: #5a6f7a;
+  /* 9-18 for wormhole combined counts (dark values for light base theme) */
+  --color-num-9: #b33d00;
+  --color-num-10: #006570;
+  --color-num-11: #5c1299;
+  --color-num-12: #7a7a00;
+  --color-num-13: #a83000;
+  --color-num-14: #00524a;
+  --color-num-15: #3a0f6e;
+  --color-num-16: #962a00;
+  --color-num-17: #0d1a6e;
+  --color-num-18: #6e0a40;
 
   --color-header-bg: #d4cabb;
   --color-header-gradient: linear-gradient(180deg, #ddd3c5, #c8bead);
@@ -716,6 +727,17 @@ body {
 .cell.num-6 { color: var(--color-num-6); }
 .cell.num-7 { color: var(--color-num-7); }
 .cell.num-8 { color: var(--color-num-8); }
+/* 9-18 for wormhole combined counts */
+.cell.num-9  { color: var(--color-num-9); }
+.cell.num-10 { color: var(--color-num-10); }
+.cell.num-11 { color: var(--color-num-11); }
+.cell.num-12 { color: var(--color-num-12); }
+.cell.num-13 { color: var(--color-num-13); }
+.cell.num-14 { color: var(--color-num-14); }
+.cell.num-15 { color: var(--color-num-15); }
+.cell.num-16 { color: var(--color-num-16); }
+.cell.num-17 { color: var(--color-num-17); }
+.cell.num-18 { color: var(--color-num-18); }
 
 /* ── Reveal Safe Animation ─────────────────── */
 .cell.golden-reveal {
@@ -1045,7 +1067,7 @@ body {
   left: 50%;
   transform: translate(-50%, -50%);
   font-size: calc(var(--cell-size) * 0.45);
-  opacity: 0.5;
+  opacity: 0.85;
   pointer-events: none;
 }
 
@@ -1114,25 +1136,25 @@ body {
   50% { opacity: 0.6; }
 }
 
-/* Mirror zone cells — reflection gradient */
-.cell.mirror-cell {
-  border: 2px solid #3498db !important;
-  box-shadow: inset 0 0 6px rgba(52, 152, 219, 0.3);
+/* Mirror zone — zone boundary outline + subtle inner tint */
+.cell.mirror-cell,
+.cell.mirror-unrevealed {
   background: linear-gradient(
     to bottom right,
-    rgba(52, 152, 219, 0.08),
-    rgba(52, 152, 219, 0.02)
+    rgba(52, 152, 219, 0.10),
+    rgba(52, 152, 219, 0.03)
   );
 }
 
-.cell.mirror-unrevealed {
-  border: 2px dashed rgba(52, 152, 219, 0.4) !important;
-  background: linear-gradient(
-    to bottom right,
-    var(--color-cell-bg, #c8c0b0) 0%,
-    rgba(52, 152, 219, 0.1) 100%
-  );
-}
+/* Zone boundary edges — thick solid border on outer edges */
+.cell.mirror-zone-top    { border-top:    3px solid #3498db !important; }
+.cell.mirror-zone-bottom { border-bottom: 3px solid #3498db !important; }
+.cell.mirror-zone-left   { border-left:   3px solid #3498db !important; }
+.cell.mirror-zone-right  { border-right:  3px solid #3498db !important; }
+
+/* Mirror pair color-coding — matching tints for swapped cells */
+.cell.mirror-pair-0 { background: rgba(52, 152, 219, 0.25) !important; }
+.cell.mirror-pair-1 { background: rgba(155, 89, 182, 0.25) !important; }
 
 /* Mine shift shimmer */
 .mine-shift-shimmer {
@@ -2830,7 +2852,7 @@ body {
 
 /* ── Checkpoint Selector ────────────────────────────── */
 .checkpoint-modal-content {
-  max-width: 420px;
+  max-width: 480px;
 }
 
 .checkpoint-resume {
@@ -2869,25 +2891,26 @@ body {
 
 .checkpoint-list {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
 }
 
 .checkpoint-btn {
-  padding: 12px 10px;
+  padding: 8px 6px;
   border: 2px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
-  border-radius: 10px;
-  font-size: 13px;
+  border-radius: 8px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  text-align: left;
+  text-align: center;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: 1px;
   transition: all 0.2s;
-  min-height: 44px;
+  min-height: 38px;
 }
 .checkpoint-btn:hover:not(.checkpoint-locked) {
   border-color: var(--color-accent);
@@ -2896,15 +2919,15 @@ body {
 }
 .checkpoint-btn:active:not(.checkpoint-locked) { transform: translateY(0); }
 
-.checkpoint-btn .cp-level { font-size: 14px; font-weight: 700; }
+.checkpoint-btn .cp-level { font-size: 12px; font-weight: 700; }
 .checkpoint-btn .cp-modifier {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--color-text-secondary);
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
 }
-.checkpoint-btn .cp-modifier-icon { font-size: 14px; }
+.checkpoint-btn .cp-modifier-icon { font-size: 12px; }
 
 .checkpoint-locked {
   opacity: 0.4;
@@ -4502,6 +4525,16 @@ body {
   --color-num-6: #56b4e9;  /* sky blue */
   --color-num-7: #333333;  /* dark gray */
   --color-num-8: #999999;  /* light gray */
+  --color-num-9: #f5793a;  /* warm orange */
+  --color-num-10: #85c0f9; /* light blue */
+  --color-num-11: #a95aa1; /* muted purple */
+  --color-num-12: #c5b731; /* gold */
+  --color-num-13: #fc6955; /* salmon */
+  --color-num-14: #4eb89a; /* sea green */
+  --color-num-15: #8080cc; /* periwinkle */
+  --color-num-16: #d4885e; /* clay */
+  --color-num-17: #6897bb; /* steel blue */
+  --color-num-18: #c97aa4; /* mauve */
 }
 
 /* Shape markers: small symbols in top-right corner of each numbered cell */

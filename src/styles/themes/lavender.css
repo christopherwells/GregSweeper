@@ -40,7 +40,7 @@
   --color-accent-glow: rgba(152, 112, 200, 0.25);
   --color-win: #70b068;
   --color-loss: #c05060;
-  --color-wall: #9a88b0;
+  --color-wall: #5f546d;
   --color-surface: rgba(152, 112, 200, 0.04);
   --shadow-app: 0 8px 40px rgba(60, 40, 96, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8);
   --text-shadow-lcd: 0 0 10px rgba(112, 80, 168, 0.3);

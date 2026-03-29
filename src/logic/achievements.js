@@ -98,7 +98,7 @@ const CATEGORIES = [
     name: 'Challenger',
     icon: '⛏️',
     desc: 'Challenge level reached',
-    thresholds: [10, 25, 50, 70, 85, 100],
+    thresholds: [10, 25, 50, 75, 100, 120],
     getValue: (s) => (s.modeStats?.challenge?.maxLevelReached) || (s.maxLevelReached || 1),
     format: (v) => `Level ${v}`,
   },

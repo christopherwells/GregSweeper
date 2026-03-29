@@ -55,6 +55,17 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol) {
     }
   }
 
+  // Cascade count: the effective value for flood-fill purposes.
+  // Mirror cells cascade based on displayedMines (what the player sees).
+  const cascadeCount = new Uint8Array(rows * cols);
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const i = idx(r, c);
+      const cell = board[r][c];
+      cascadeCount[i] = cell.displayedMines != null ? cell.displayedMines : cell.adjacentMines;
+    }
+  }
+
   // Count total non-mine cells — our target for "all revealed"
   let totalSafe = 0;
   for (let i = 0; i < rows * cols; i++) {
@@ -125,10 +136,10 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol) {
   // Reveal a cell (simulate); if it's a zero, flood-fill
   const revealQueue = [];
   function revealCell(i) {
-    if (sim[i] !== 0 || isMine[i] || isLocked[i]) return; // skip locked cells
+    if (sim[i] !== 0 || isMine[i] || isLocked[i]) return;
     sim[i] = 1;
     revealedCount++;
-    if (adjCount[i] === 0) {
+    if (cascadeCount[i] === 0) {
       for (const ni of neighborCache[i]) {
         if (sim[ni] === 0 && !isMine[ni] && !isLocked[ni]) {
           revealQueue.push(ni);
@@ -200,7 +211,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol) {
     }
 
     tryUnlockAll(); // check if reveals freed any locked cells
-    if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0 };
+      if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0 };
     if (progress) continue;
 
     // ── Pass B: Subset / superset constraint analysis ──
@@ -248,7 +259,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol) {
     }
 
     tryUnlockAll();
-    if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0 };
+      if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0 };
     if (subsetProgress) continue;
 
     // ── Pass C: Advanced solver (Gauss + Tank) ──
@@ -275,7 +286,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol) {
     }
 
     tryUnlockAll();
-    if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0 };
+      if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0 };
     if (advancedProgress) continue;
 
     // No progress from any layer — board requires guessing
@@ -406,7 +417,9 @@ export function floodFillReveal(board, startRow, startCol) {
     cell.revealAnimDelay = distance * 30;
     revealed.push(cell);
 
-    if (cell.adjacentMines === 0) {
+    // Cascade on displayed value (mirror cells show swapped numbers)
+    const effectiveMines = cell.displayedMines != null ? cell.displayedMines : cell.adjacentMines;
+    if (effectiveMines === 0) {
       for (let dr = -1; dr <= 1; dr++) {
         for (let dc = -1; dc <= 1; dc++) {
           if (dr === 0 && dc === 0) continue;
@@ -427,6 +440,126 @@ export function floodFillReveal(board, startRow, startCol) {
   }
 
   return revealed;
+}
+
+// Estimate how many cell reveals are needed to disarm a pressure plate
+// (reveal all non-mine neighbors). Runs a lightweight solver simulation on a
+// snapshot of the current board state without mutating the real board.
+export function estimatePlateMovesToDisarm(board, plateRow, plateCol) {
+  const rows = board.length, cols = board[0].length;
+  const wallEdges = board._wallEdges || null;
+
+  // Identify the safe neighbors we need revealed
+  const targets = new Set();
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      if (dr === 0 && dc === 0) continue;
+      const nr = plateRow + dr, nc = plateCol + dc;
+      if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+        const adj = board[nr][nc];
+        if (!adj.isMine && !adj.isRevealed) targets.add(`${nr},${nc}`);
+      }
+    }
+  }
+  if (targets.size === 0) return { moves: 0, steps: 0, unsolved: 0 };
+
+  // Snapshot: track revealed/flagged state without mutating the board
+  const revealed = new Set();
+  const flagged = new Set();
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (board[r][c].isRevealed) revealed.add(`${r},${c}`);
+      if (board[r][c].isFlagged) flagged.add(`${r},${c}`);
+    }
+  }
+
+  function getAdj(r, c) {
+    return board[r][c].displayedMines != null ? board[r][c].displayedMines : board[r][c].adjacentMines;
+  }
+
+  let totalMoves = 0;
+  let totalSteps = 0;
+  let remaining = new Set(targets);
+
+  for (let iter = 0; iter < 200 && remaining.size > 0; iter++) {
+    const toReveal = new Set();
+    const toFlag = new Set();
+
+    for (const key of revealed) {
+      const [r, c] = key.split(',').map(Number);
+      const cell = board[r][c];
+      const adj = cell.adjacentMines;
+      if (adj === 0) continue;
+
+      let fCount = 0;
+      const unknowns = [];
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue;
+          const nr = r + dr, nc = c + dc;
+          if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+          if (wallEdges && hasWallBetween(wallEdges, r, c, nr, nc)) continue;
+          const nk = `${nr},${nc}`;
+          if (flagged.has(nk)) fCount++;
+          else if (!revealed.has(nk)) unknowns.push(nk);
+        }
+      }
+
+      if (fCount === adj && unknowns.length > 0) {
+        for (const nk of unknowns) toReveal.add(nk);
+      }
+      if (unknowns.length === adj - fCount && unknowns.length > 0) {
+        for (const nk of unknowns) toFlag.add(nk);
+      }
+    }
+
+    if (toReveal.size === 0 && toFlag.size === 0) break; // stuck
+
+    for (const key of toFlag) flagged.add(key);
+
+    let batchMoves = 0;
+    for (const key of toReveal) {
+      if (revealed.has(key)) continue;
+      const [r, c] = key.split(',').map(Number);
+      if (board[r][c].isMine) continue;
+      revealed.add(key);
+      remaining.delete(key);
+      batchMoves++;
+
+      // Simulate cascade for 0-cells
+      const eff = getAdj(r, c);
+      if (eff === 0) {
+        const queue = [[r, c]];
+        while (queue.length > 0) {
+          const [cr, cc] = queue.shift();
+          for (let dr = -1; dr <= 1; dr++) {
+            for (let dc = -1; dc <= 1; dc++) {
+              if (dr === 0 && dc === 0) continue;
+              const nr = cr + dr, nc = cc + dc;
+              if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+              if (wallEdges && hasWallBetween(wallEdges, cr, cc, nr, nc)) continue;
+              const nk = `${nr},${nc}`;
+              if (revealed.has(nk) || flagged.has(nk)) continue;
+              if (board[nr][nc].isMine) continue;
+              revealed.add(nk);
+              remaining.delete(nk);
+              batchMoves++;
+              if (getAdj(nr, nc) === 0) queue.push([nr, nc]);
+            }
+          }
+        }
+      }
+    }
+
+    totalMoves += batchMoves;
+    if (batchMoves > 0) totalSteps++;
+  }
+
+  // If solver couldn't resolve all targets, estimate remaining as 2 steps each
+  totalMoves += remaining.size * 2;
+  totalSteps += remaining.size;
+
+  return { moves: totalMoves, steps: totalSteps, unsolved: remaining.size };
 }
 
 export function checkWin(board) {
@@ -473,7 +606,8 @@ export function countAdjacentFlags(board, row, col) {
 
 export function chordReveal(board, row, col) {
   const cell = board[row][col];
-  if (!cell.isRevealed || cell.adjacentMines === 0) return [];
+  const effectiveCount = cell.displayedMines != null ? cell.displayedMines : cell.adjacentMines;
+  if (!cell.isRevealed || effectiveCount === 0) return [];
 
   // Can't chord ON a liar or mystery cell — their displayed number is unreliable
   if (cell.isLiar || cell.isMystery) return [];
@@ -515,7 +649,7 @@ export function chordReveal(board, row, col) {
             hitMine = true;
             neighbor.isRevealed = true;
             allRevealed.push(neighbor);
-          } else if (neighbor.adjacentMines === 0) {
+          } else if ((neighbor.displayedMines != null ? neighbor.displayedMines : neighbor.adjacentMines) === 0) {
             const filled = floodFillReveal(board, nr, nc);
             allRevealed.push(...filled);
           } else {

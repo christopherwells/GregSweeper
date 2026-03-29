@@ -16,7 +16,7 @@ import { startTimer, stopTimer, pauseTimer, resumeTimer, startMineShift, updateT
 import { handleWin, handleLoss, handleDailyBombHit } from './winLossHandler.js';
 import { performScan, performXRay, performMagnet, tryLifeline } from './powerUpActions.js';
 import { generateBoard, createEmptyBoard, calculateAdjacency } from '../logic/boardGenerator.js';
-import { floodFillReveal, checkWin, chordReveal, isBoardSolvable } from '../logic/boardSolver.js';
+import { floodFillReveal, checkWin, chordReveal, isBoardSolvable, estimatePlateMovesToDisarm } from '../logic/boardSolver.js';
 import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getChaosDifficulty } from '../logic/difficulty.js';
 import { shieldDefuse } from '../logic/powerUps.js';
 import { getGimmicksForLevel, applyGimmicks, applyWalls, isLockedCell, hasWallBetween, hasSeenGimmick, markGimmickSeen, getGimmickDef, isModifierPopupDisabled, setModifierPopupDisabled, getDailyGimmick, getChaosGimmicks } from '../logic/gimmicks.js';
@@ -475,7 +475,8 @@ export function revealCell(row, col) {
   }
 
   let newlyRevealed = [];
-  if (currentCell.adjacentMines === 0) {
+  const effectiveMines = currentCell.displayedMines != null ? currentCell.displayedMines : currentCell.adjacentMines;
+  if (effectiveMines === 0) {
     state.inputLocked = true;
     const revealed = floodFillReveal(state.board, row, col);
     state.revealedCount += revealed.length;
@@ -497,6 +498,26 @@ export function revealCell(row, col) {
   updateCells(newlyRevealed);
   updateHeader();
   updateCellsRemaining();
+
+  // Wormhole: revealing one side reveals the paired cell too
+  for (const rev of [...newlyRevealed]) {
+    if (rev.isWormhole && rev.wormholePair) {
+      const pair = state.board[rev.wormholePair.row]?.[rev.wormholePair.col];
+      if (pair && !pair.isRevealed && !pair.isMine) {
+        pair.isRevealed = true;
+        pair.revealAnimDelay = 0;
+        state.revealedCount++;
+        newlyRevealed.push(pair);
+        const pairEff = pair.displayedMines != null ? pair.displayedMines : pair.adjacentMines;
+        if (pairEff === 0) {
+          const cascade = floodFillReveal(state.board, pair.row, pair.col);
+          state.revealedCount += cascade.length;
+          newlyRevealed.push(...cascade);
+        }
+      }
+    }
+  }
+  updateCells(newlyRevealed);
 
   // Activate pressure plate timers on newly revealed pressure plates
   for (const cell of newlyRevealed) {
@@ -523,7 +544,11 @@ function startPressurePlateTimer(cell) {
   timerBar.className = 'plate-timer';
   cellEl.appendChild(timerBar);
 
-  let remaining = cell.plateTimer || 15;
+  // Dynamic timer: estimate solver steps needed, scale to seconds
+  const est = estimatePlateMovesToDisarm(state.board, cell.row, cell.col);
+  const dynamicTime = Math.max(8, Math.round(est.steps * 10));
+  cell.plateTimer = dynamicTime;
+  let remaining = dynamicTime;
   const startTime = Date.now();
 
   const tick = setInterval(() => {
@@ -542,8 +567,12 @@ function startPressurePlateTimer(cell) {
       clearInterval(tick);
       activePlates.delete(cell);
       cell.plateDisarmed = true;
-      cellEl.classList.remove('plate-active');
+      cellEl.classList.remove('plate-active', 'pressure-plate');
+      cellEl.style.color = '';
+      cellEl.style.fontSize = '';
+      cellEl.style.fontWeight = '';
       timerBar.remove();
+      updateCell(cell.row, cell.col);
       import('../ui/toastManager.js').then(m => m.showToast('✅ Plate disarmed!', 1200));
       return;
     }
@@ -563,6 +592,7 @@ function startPressurePlateTimer(cell) {
 }
 
 function checkPlateDisarmed(cell) {
+  // Disarmed when all non-mine adjacent cells are revealed
   const rows = state.board.length;
   const cols = state.board[0].length;
   for (let dr = -1; dr <= 1; dr++) {
@@ -570,12 +600,13 @@ function checkPlateDisarmed(cell) {
       if (dr === 0 && dc === 0) continue;
       const nr = cell.row + dr, nc = cell.col + dc;
       if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
-        if (state.board[nr][nc].isMine && state.board[nr][nc].isFlagged) return true;
+        if (!state.board[nr][nc].isMine && !state.board[nr][nc].isRevealed) return false;
       }
     }
   }
-  return false;
+  return true;
 }
+
 
 export function toggleFlag(row, col) {
   if (state.status !== 'playing' && state.status !== 'idle') return;

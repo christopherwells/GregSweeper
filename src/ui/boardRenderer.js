@@ -27,7 +27,7 @@ function getCachedEmoji() {
 export function resizeCells() {
   const container = document.getElementById('board-container');
   if (!container || !state.cols) return;
-  const gap = 2; // --grid-gap
+  const gap = parseFloat(getComputedStyle(boardEl).gap) || 2;
   const borderPad = 8; // 2px border + 2px padding on each side
   const availableWidth = container.clientWidth - borderPad;
   const cellSize = Math.floor((availableWidth - (state.cols - 1) * gap) / state.cols);
@@ -89,44 +89,59 @@ export function renderWallOverlays() {
   const overlay = document.createElement('div');
   overlay.className = 'wall-overlay-container';
 
-  // Get cell dimensions from the grid
-  const firstCell = boardEl.children[0];
-  if (!firstCell) return;
+  // Use actual cell positions from the DOM for pixel-perfect wall placement
+  const cols = state.cols;
   const boardRect = boardEl.getBoundingClientRect();
-  const cellRect = firstCell.getBoundingClientRect();
-  const cellW = cellRect.width;
-  const cellH = cellRect.height;
-  const gap = 2; // --grid-gap
-  const offsetX = boardEl.offsetLeft;
-  const offsetY = boardEl.offsetTop;
+  const boardX = boardEl.offsetLeft;
+  const boardY = boardEl.offsetTop;
 
-  // Parse wall edge keys and draw lines
+  // Cache cell rects (relative to board parent)
+  function getCellPos(r, c) {
+    const el = boardEl.children[r * cols + c];
+    if (!el) return null;
+    const rect = el.getBoundingClientRect();
+    return {
+      left: rect.left - boardRect.left + boardX,
+      top: rect.top - boardRect.top + boardY,
+      right: rect.right - boardRect.left + boardX,
+      bottom: rect.bottom - boardRect.top + boardY,
+      width: rect.width,
+      height: rect.height,
+    };
+  }
+
   for (const key of wallEdges) {
     const [from, to] = key.split('-');
     const [r1, c1] = from.split(',').map(Number);
     const [r2, c2] = to.split(',').map(Number);
 
+    const pos1 = getCellPos(r1, c1);
+    const pos2 = getCellPos(r2, c2);
+    if (!pos1 || !pos2) continue;
+
     const line = document.createElement('div');
     line.className = 'wall-line';
 
     if (r1 === r2) {
-      // Vertical wall between columns c1 and c2 at row r
-      const minC = Math.min(c1, c2);
-      const x = offsetX + (minC + 1) * (cellW + gap) - gap / 2;
-      const y = offsetY + r1 * (cellH + gap);
+      // Vertical wall between two columns at same row
+      const midX = (Math.max(pos1.right, pos2.right) + Math.min(pos1.left, pos2.left)) / 2;
+      // Actually: midpoint between the right edge of left cell and left edge of right cell
+      const leftCell = c1 < c2 ? pos1 : pos2;
+      const rightCell = c1 < c2 ? pos2 : pos1;
+      const x = (leftCell.right + rightCell.left) / 2;
       line.classList.add('wall-line-v');
       line.style.left = x + 'px';
-      line.style.top = y + 'px';
-      line.style.height = cellH + 'px';
+      line.style.top = pos1.top + 'px';
+      line.style.height = pos1.height + 'px';
     } else {
-      // Horizontal wall between rows r1 and r2 at column c
-      const minR = Math.min(r1, r2);
-      const x = offsetX + c1 * (cellW + gap);
-      const y = offsetY + (minR + 1) * (cellH + gap) - gap / 2;
+      // Horizontal wall between two rows at same column
+      const topCell = r1 < r2 ? pos1 : pos2;
+      const bottomCell = r1 < r2 ? pos2 : pos1;
+      const y = (topCell.bottom + bottomCell.top) / 2;
       line.classList.add('wall-line-h');
-      line.style.left = x + 'px';
+      line.style.left = pos1.left + 'px';
       line.style.top = y + 'px';
-      line.style.width = cellW + 'px';
+      line.style.width = pos1.width + 'px';
     }
 
     overlay.appendChild(line);
@@ -221,7 +236,7 @@ export function updateCell(r, c) {
           cellEl.classList.add('compass-cell');
           cellEl.textContent = displayNum + (cell.compassArrow || '');
         }
-        if (cell.isPressurePlate) {
+        if (cell.isPressurePlate && !cell.plateDisarmed) {
           cellEl.classList.add('pressure-plate');
         }
         if (cell.isWormhole) {
@@ -230,7 +245,14 @@ export function updateCell(r, c) {
             cellEl.classList.add('wormhole-pair-' + cell.wormholePairIndex);
           }
         }
-        if (cell.mirrorZone) cellEl.classList.add('mirror-cell');
+        if (cell.mirrorZone) {
+          cellEl.classList.add('mirror-cell');
+          if (cell.mirrorZone.top) cellEl.classList.add('mirror-zone-top');
+          if (cell.mirrorZone.bottom) cellEl.classList.add('mirror-zone-bottom');
+          if (cell.mirrorZone.left) cellEl.classList.add('mirror-zone-left');
+          if (cell.mirrorZone.right) cellEl.classList.add('mirror-zone-right');
+          if (cell.mirrorZone.pairIndex >= 0) cellEl.classList.add('mirror-pair-' + cell.mirrorZone.pairIndex);
+        }
 
         // Pop-in animation for numbered cells during cascade reveals
         if (cell.revealAnimDelay > 0) {
@@ -241,6 +263,14 @@ export function updateCell(r, c) {
     } else {
       cellEl.className = 'cell revealed empty';
       cellEl.textContent = '';
+      if (cell.mirrorZone) {
+        cellEl.classList.add('mirror-cell');
+        if (cell.mirrorZone.top) cellEl.classList.add('mirror-zone-top');
+        if (cell.mirrorZone.bottom) cellEl.classList.add('mirror-zone-bottom');
+        if (cell.mirrorZone.left) cellEl.classList.add('mirror-zone-left');
+        if (cell.mirrorZone.right) cellEl.classList.add('mirror-zone-right');
+        if (cell.mirrorZone.pairIndex >= 0) cellEl.classList.add('mirror-pair-' + cell.mirrorZone.pairIndex);
+      }
     }
     if (cell.revealAnimDelay > 0) {
       cellEl.style.animationDelay = `${cell.revealAnimDelay}ms`;
@@ -256,15 +286,19 @@ export function updateCell(r, c) {
     cellEl.textContent = '';
     // Locked cell indicator
     if (cell.isLocked) cellEl.classList.add('locked-cell');
-    // Wormhole indicator on unrevealed cells
-    if (cell.isWormhole) {
-      cellEl.classList.add('wormhole-unrevealed');
-      if (cell.wormholePairIndex != null) {
-        cellEl.classList.add('wormhole-pair-' + cell.wormholePairIndex);
+    // Wormholes: no indicator on unrevealed cells (revealed on discovery)
+    // Mirror zone indicator on unrevealed cells
+    if (cell.mirrorZone) {
+      // Only show zone boundary once at least one zone cell is revealed
+      const zoneVisible = state.board.some(row => row.some(c => c.mirrorZone && c.isRevealed));
+      if (zoneVisible) {
+        cellEl.classList.add('mirror-unrevealed');
+        if (cell.mirrorZone.top) cellEl.classList.add('mirror-zone-top');
+        if (cell.mirrorZone.bottom) cellEl.classList.add('mirror-zone-bottom');
+        if (cell.mirrorZone.left) cellEl.classList.add('mirror-zone-left');
+        if (cell.mirrorZone.right) cellEl.classList.add('mirror-zone-right');
       }
     }
-    // Mirror zone indicator on unrevealed cells
-    if (cell.mirrorZone) cellEl.classList.add('mirror-unrevealed');
     // Suggested safe move overlay (post-death analysis)
     if (cell.suggestedMove) cellEl.classList.add('suggested-move');
     // Daily suggested start cell (shows when board is fresh or re-fogged)

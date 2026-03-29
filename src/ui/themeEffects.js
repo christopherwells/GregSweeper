@@ -264,16 +264,17 @@ const THEME_EFFECTS = {
   ocean: (container) => {
     injectStyles();
     return particleLoop(container, (c) => {
-      const size = rand(2, 4);
+      const size = rand(3, 6);
       const el = spawn(c, { style: {
         left: rand(5, 95) + '%', top: rand(10, 90) + '%',
         width: size + 'px', height: size + 'px', borderRadius: '50%',
-        background: 'rgba(150, 220, 255, 0.3)',
-        animation: `fxFloat ${rand(3, 6)}s ease-in-out forwards, fxTwinkle ${rand(5, 8)}s ease-in-out forwards`,
-        '--fx-float-y': rand(-8, -15) + 'px', '--fx-opacity': String(rand(0.2, 0.4)),
+        background: 'rgba(150, 220, 255, 0.5)',
+        boxShadow: '0 0 4px rgba(150, 220, 255, 0.3)',
+        animation: `fxFloat ${rand(3, 6)}s ease-in-out forwards, fxTwinkle ${rand(4, 7)}s ease-in-out forwards`,
+        '--fx-float-y': rand(-10, -20) + 'px', '--fx-opacity': String(rand(0.4, 0.6)),
       }});
       return el;
-    }, () => rand(1400, 3500));
+    }, () => rand(800, 2100));
   },
 
   // Sunset (L6): warm golden light drift
@@ -340,15 +341,28 @@ const THEME_EFFECTS = {
   // Stealth (L18): radar scan sweep
   stealth: (container) => {
     injectStyles();
+    // Visible radar sweep scanline
     const scanLine = document.createElement('div');
     Object.assign(scanLine.style, {
-      position: 'absolute', left: '0', width: '100%', height: '2px',
-      background: 'linear-gradient(90deg, transparent 5%, rgba(136,136,136,0.15) 30%, rgba(136,136,136,0.25) 50%, rgba(136,136,136,0.15) 70%, transparent 95%)',
-      boxShadow: '0 0 8px rgba(136,136,136,0.1), 0 -4px 16px rgba(136,136,136,0.03)',
-      animation: 'fxScanDown 4s linear infinite', pointerEvents: 'none', zIndex: '1',
+      position: 'absolute', left: '0', width: '100%', height: '3px',
+      background: 'linear-gradient(90deg, transparent 5%, rgba(180,180,180,0.3) 25%, rgba(200,200,200,0.45) 50%, rgba(180,180,180,0.3) 75%, transparent 95%)',
+      boxShadow: '0 0 12px rgba(180,180,180,0.15), 0 -4px 20px rgba(180,180,180,0.06)',
+      animation: 'fxScanDown 5s linear infinite', pointerEvents: 'none', zIndex: '1',
     });
     container.appendChild(scanLine);
-    return () => scanLine.remove();
+    // Subtle static dots
+    const dustCleanup = particleLoop(container, (c) => {
+      const size = rand(1, 3);
+      const el = spawn(c, { style: {
+        left: rand(5, 95) + '%', top: rand(5, 95) + '%',
+        width: size + 'px', height: size + 'px', borderRadius: '50%',
+        background: 'rgba(200,200,200,0.5)',
+        animation: `fxTwinkle ${rand(0.2, 0.6)}s ease-in-out forwards`,
+        '--fx-opacity': String(rand(0.3, 0.6)),
+      }});
+      return el;
+    }, () => rand(500, 1500));
+    return () => { scanLine.remove(); dustCleanup(); };
   },
 
   // Neon (L21): neon spark flickers
@@ -382,7 +396,7 @@ const THEME_EFFECTS = {
   // Aurora (L27): drifting colored light bands
   aurora: (container) => {
     injectStyles();
-    const colors = ['rgba(0,229,160,0.06)', 'rgba(0,188,212,0.06)', 'rgba(179,136,255,0.05)', 'rgba(0,255,200,0.05)'];
+    const colors = ['rgba(0,229,160,0.15)', 'rgba(0,188,212,0.15)', 'rgba(179,136,255,0.12)', 'rgba(0,255,200,0.12)'];
     const bands = [];
     for (let i = 0; i < 3; i++) {
       const band = document.createElement('div');
@@ -391,7 +405,7 @@ const THEME_EFFECTS = {
         background: `linear-gradient(90deg, transparent, ${pick(colors)}, ${pick(colors)}, transparent)`,
         filter: 'blur(25px)', animation: `fxDrift ${rand(8, 14)}s ease-in-out infinite alternate`,
         '--fx-x0': rand(-20, -5) + '%', '--fx-x2': rand(5, 20) + '%',
-        '--fx-opacity': String(rand(0.3, 0.7)), pointerEvents: 'none', zIndex: '0',
+        '--fx-opacity': String(rand(0.5, 0.9)), pointerEvents: 'none', zIndex: '0',
       });
       container.appendChild(band);
       bands.push(band);
@@ -445,10 +459,11 @@ const THEME_EFFECTS = {
     return particleLoop(container, (c) => {
       return fallingParticle(c, {
         chars: ['\u2744', '\u00B7', '\u2745', '\u00B7'],
-        sizeMin: 6, sizeMax: 14, durationMin: 6, durationMax: 12,
-        opacity: 0.35, opacityEnd: 0.08, scaleMin: 0.6, scaleMax: 1,
+        color: 'rgba(80,140,200,0.7)',
+        sizeMin: 8, sizeMax: 16, durationMin: 5, durationMax: 10,
+        opacity: 0.6, opacityEnd: 0.15, scaleMin: 0.6, scaleMax: 1,
       });
-    }, () => rand(700, 2100));
+    }, () => rand(500, 1400));
   },
 
   // Sakura (L36): nighttime petals + floating lantern dots
@@ -535,49 +550,61 @@ const THEME_EFFECTS = {
         animation: `fxSweep ${rand(0.6, 1.2)}s ease-out forwards`,
       }});
       return el;
-    }, () => rand(4200, 10500));
+    }, () => rand(2000, 5000));
     return () => { stars.forEach(s => s.remove()); shootCleanup(); };
   },
 
-  // Retro (L42): CRT scanlines + pixel dust
+  // Retro (L42): CRT scanlines + pixel dust + static overlay
   retro: (container) => {
     injectStyles();
+    // Visible CRT scanline sweep
     const scanLine = document.createElement('div');
     Object.assign(scanLine.style, {
-      position: 'absolute', left: '0', width: '100%', height: '3px',
-      background: 'linear-gradient(90deg, transparent, rgba(255,51,136,0.08), rgba(68,204,255,0.06), transparent)',
-      boxShadow: '0 0 12px rgba(255,51,136,0.04)',
-      animation: 'fxScanDown 6s linear infinite', pointerEvents: 'none', zIndex: '1',
+      position: 'absolute', left: '0', width: '100%', height: '4px',
+      background: 'linear-gradient(90deg, transparent 5%, rgba(255,51,136,0.35) 25%, rgba(68,204,255,0.3) 50%, rgba(255,51,136,0.35) 75%, transparent 95%)',
+      boxShadow: '0 0 16px rgba(255,51,136,0.15), 0 0 4px rgba(68,204,255,0.1)',
+      animation: 'fxScanDown 4s linear infinite', pointerEvents: 'none', zIndex: '1',
     });
     container.appendChild(scanLine);
+    // CRT static flicker overlay
+    const staticOverlay = document.createElement('div');
+    Object.assign(staticOverlay.style, {
+      position: 'absolute', inset: '0', pointerEvents: 'none', zIndex: '0',
+      background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px)',
+      opacity: '0.5',
+    });
+    container.appendChild(staticOverlay);
+    // Pixel dust — bigger, brighter, more frequent
     const dustCleanup = particleLoop(container, (c) => {
-      const size = rand(2, 4);
+      const size = rand(3, 6);
       const el = spawn(c, { style: {
         left: rand(5, 95) + '%', top: rand(5, 95) + '%',
         width: size + 'px', height: size + 'px',
-        background: pick(['rgba(255,51,136,0.4)', 'rgba(68,204,255,0.35)', 'rgba(68,255,170,0.3)']),
-        animation: `fxTwinkle ${rand(0.5, 1.5)}s ease-in-out forwards`,
-        '--fx-opacity': String(rand(0.3, 0.5)),
+        background: pick(['rgba(255,51,136,0.7)', 'rgba(68,204,255,0.6)', 'rgba(68,255,170,0.5)']),
+        boxShadow: '0 0 4px currentColor',
+        animation: `fxTwinkle ${rand(0.3, 1)}s ease-in-out forwards`,
+        '--fx-opacity': String(rand(0.5, 0.8)),
       }});
       return el;
-    }, () => rand(700, 2100));
-    return () => { scanLine.remove(); dustCleanup(); };
+    }, () => rand(350, 1050));
+    return () => { scanLine.remove(); staticOverlay.remove(); dustCleanup(); };
   },
 
   // Lavender (L44): floating particles + dreamy mist
   lavender: (container) => {
     injectStyles();
     ambientGlow(container, { blur: 22, style: {
-      background: 'radial-gradient(ellipse 50% 40% at 40% 50%, rgba(168,120,216,0.05) 0%, transparent 55%), radial-gradient(ellipse 40% 50% at 70% 45%, rgba(140,100,200,0.04) 0%, transparent 50%)',
+      background: 'radial-gradient(ellipse 50% 40% at 40% 50%, rgba(168,120,216,0.12) 0%, transparent 55%), radial-gradient(ellipse 40% 50% at 70% 45%, rgba(140,100,200,0.10) 0%, transparent 50%)',
       animation: 'fxDrift 10s ease-in-out infinite alternate', '--fx-x0': '-4%', '--fx-x2': '4%',
     }});
     return particleLoop(container, (c) => {
       return fallingParticle(c, {
         chars: ['\uD83E\uDEBB', '\u00B7', '\u273F'],
-        sizeMin: 8, sizeMax: 14, durationMin: 10, durationMax: 16,
-        opacity: 0.3, opacityEnd: 0.06,
+        color: 'rgba(168,120,216,0.6)',
+        sizeMin: 10, sizeMax: 16, durationMin: 8, durationMax: 14,
+        opacity: 0.5, opacityEnd: 0.12,
       });
-    }, () => rand(2100, 4900));
+    }, () => rand(1400, 3500));
   },
 
   // Holographic (L46): rainbow light sweeps
@@ -640,10 +667,10 @@ const THEME_EFFECTS = {
     return particleLoop(container, (c) => {
       return fallingParticle(c, {
         chars: ['\uD83C\uDF42', '\uD83C\uDF41', '\uD83C\uDF43', '\uD83C\uDF42'],
-        sizeMin: 12, sizeMax: 18, durationMin: 6, durationMax: 11,
-        opacity: 0.45, opacityEnd: 0.1,
+        sizeMin: 14, sizeMax: 22, durationMin: 5, durationMax: 9,
+        opacity: 0.65, opacityEnd: 0.15,
       });
-    }, () => rand(1050, 2450));
+    }, () => rand(700, 1800));
   },
 
   // Royal (L55): gold dust + regal sparkles
@@ -673,25 +700,26 @@ const THEME_EFFECTS = {
   coral: (container) => {
     injectStyles();
     ambientGlow(container, { blur: 15, style: {
-      background: 'radial-gradient(ellipse 30% 25% at 35% 30%, rgba(240,160,136,0.06) 0%, transparent 50%), radial-gradient(ellipse 25% 30% at 65% 60%, rgba(96,200,176,0.05) 0%, transparent 50%)',
-      animation: 'fxDrift 10s ease-in-out infinite alternate', '--fx-x0': '-5%', '--fx-x2': '5%',
+      background: 'radial-gradient(ellipse 30% 25% at 35% 30%, rgba(240,160,136,0.10) 0%, transparent 50%), radial-gradient(ellipse 25% 30% at 65% 60%, rgba(96,200,176,0.08) 0%, transparent 50%)',
+      animation: 'fxDrift 8s ease-in-out infinite alternate', '--fx-x0': '-5%', '--fx-x2': '5%',
     }});
     return particleLoop(container, (c) => {
       const boardH = c.parentElement?.clientHeight || 500;
-      const size = rand(3, 7);
+      const size = rand(4, 9);
       const el = spawn(c, { style: {
         left: rand(10, 90) + '%', bottom: '0%',
         width: size + 'px', height: size + 'px', borderRadius: '50%',
-        border: '1px solid rgba(240,160,136,0.25)', background: 'transparent',
-        animation: `fxRise ${rand(5, 10)}s ease-out forwards`,
+        border: '1.5px solid rgba(240,170,150,0.5)', background: 'rgba(240,170,150,0.08)',
+        boxShadow: '0 0 4px rgba(240,170,150,0.2)',
+        animation: `fxRise ${rand(4, 8)}s ease-out forwards`,
         '--fx-x0': '0px', '--fx-y0': '0px',
-        '--fx-x1': rand(-10, 10) + 'px', '--fx-y1': -(boardH * 0.35) + 'px',
-        '--fx-x2': rand(-8, 8) + 'px', '--fx-y2': -(boardH * 0.85) + 'px',
-        '--fx-opacity': '0.4', '--fx-opacity-end': '0.08',
-        '--fx-s': '1', '--fx-s-end': String(rand(1.2, 1.8)),
+        '--fx-x1': rand(-15, 15) + 'px', '--fx-y1': -(boardH * 0.4) + 'px',
+        '--fx-x2': rand(-10, 10) + 'px', '--fx-y2': -(boardH * 0.9) + 'px',
+        '--fx-opacity': '0.6', '--fx-opacity-end': '0.15',
+        '--fx-s': '1', '--fx-s-end': String(rand(1.3, 2.0)),
       }});
       return el;
-    }, () => rand(840, 2100));
+    }, () => rand(500, 1400));
   },
 
   // Emerald (L61): sparkling gem facets
@@ -748,20 +776,21 @@ const THEME_EFFECTS = {
   // Slate (L67): falling rain streaks
   slate: (container) => {
     injectStyles();
+    // Rain streaks
     return particleLoop(container, (c) => {
       const boardH = c.parentElement?.clientHeight || 500;
       const el = spawn(c, { style: {
-        left: rand(2, 98) + '%', top: '0px', width: '1px', height: rand(8, 20) + 'px',
-        background: 'linear-gradient(180deg, transparent, rgba(120,150,180,0.2), transparent)',
-        animation: `fxFall ${rand(0.8, 1.5)}s linear forwards`,
+        left: rand(2, 98) + '%', top: '0px', width: '1.5px', height: rand(12, 28) + 'px',
+        background: 'linear-gradient(180deg, transparent, rgba(140,170,200,0.45), transparent)',
+        animation: `fxFall ${rand(0.6, 1.2)}s linear forwards`,
         '--fx-x0': '0px', '--fx-y0': '-10px',
         '--fx-x1': rand(-3, 3) + 'px', '--fx-y1': (boardH * 0.5) + 'px',
         '--fx-x2': rand(-5, 5) + 'px', '--fx-y2': (boardH + 10) + 'px',
         '--fx-r0': '0deg', '--fx-r1': '0deg', '--fx-r2': '0deg',
-        '--fx-opacity': '0.3', '--fx-opacity-end': '0.05', '--fx-s': '1',
+        '--fx-opacity': '0.5', '--fx-opacity-end': '0.1', '--fx-s': '1',
       }});
       return el;
-    }, () => rand(80, 280));
+    }, () => rand(60, 200));
   },
 
   // Void (L70): sparks in absolute darkness
@@ -783,10 +812,11 @@ const THEME_EFFECTS = {
     return particleLoop(container, (c) => {
       return fallingParticle(c, {
         chars: ['\u2744', '\u2745', '\u2726', '\u00B7'],
-        sizeMin: 6, sizeMax: 14, durationMin: 7, durationMax: 13,
-        opacity: 0.3, opacityEnd: 0.06, scaleMin: 0.5, scaleMax: 1,
+        color: 'rgba(60,120,180,0.7)',
+        sizeMin: 8, sizeMax: 16, durationMin: 6, durationMax: 11,
+        opacity: 0.6, opacityEnd: 0.12, scaleMin: 0.5, scaleMax: 1,
       });
-    }, () => rand(840, 2450));
+    }, () => rand(500, 1600));
   },
 
   // Deep Space (L76): distant stars + slow nebula
@@ -827,10 +857,10 @@ const THEME_EFFECTS = {
     const leafCleanup = particleLoop(container, (c) => {
       return fallingParticle(c, {
         chars: ['\uD83C\uDF43', '\uD83C\uDF3F'],
-        sizeMin: 10, sizeMax: 16, durationMin: 8, durationMax: 14,
-        opacity: 0.3, opacityEnd: 0.06,
+        sizeMin: 12, sizeMax: 18, durationMin: 6, durationMax: 11,
+        opacity: 0.55, opacityEnd: 0.12,
       });
-    }, () => rand(3500, 8400));
+    }, () => rand(1400, 3500));
     return () => { fireflyCleanup(); leafCleanup(); };
   },
 
@@ -840,35 +870,37 @@ const THEME_EFFECTS = {
     const sweep = document.createElement('div');
     Object.assign(sweep.style, {
       position: 'absolute', inset: '-50%',
-      background: 'linear-gradient(120deg, transparent 45%, rgba(255,255,255,0.02) 48%, rgba(255,255,255,0.04) 50%, rgba(255,255,255,0.02) 52%, transparent 55%)',
-      animation: 'fxSweep 10s ease-in-out infinite', pointerEvents: 'none', zIndex: '0',
+      background: 'linear-gradient(120deg, transparent 42%, rgba(255,255,255,0.06) 46%, rgba(255,255,255,0.10) 50%, rgba(255,255,255,0.06) 54%, transparent 58%)',
+      animation: 'fxSweep 8s ease-in-out infinite', pointerEvents: 'none', zIndex: '0',
     });
     container.appendChild(sweep);
     const sparkCleanup = particleLoop(container, (c) => {
-      const el = spawn(c, { text: '\u00B7', style: {
-        left: rand(5, 95) + '%', top: rand(5, 95) + '%', fontSize: rand(4, 7) + 'px',
-        color: 'rgba(255,255,255,0.5)',
-        animation: `fxTwinkle ${rand(0.2, 0.5)}s ease-in-out forwards`, '--fx-opacity': '0.5',
+      const el = spawn(c, { text: pick(['\u00B7', '\u2726']), style: {
+        left: rand(5, 95) + '%', top: rand(5, 95) + '%', fontSize: rand(5, 9) + 'px',
+        color: 'rgba(255,255,255,0.7)', textShadow: '0 0 3px rgba(255,255,255,0.3)',
+        animation: `fxTwinkle ${rand(0.2, 0.6)}s ease-in-out forwards`, '--fx-opacity': '0.7',
       }});
       return el;
-    }, () => rand(2800, 7000));
+    }, () => rand(1000, 3000));
     return () => { sweep.remove(); sparkCleanup(); };
   },
 
   // Phantom (L83): ghostly wisps
   phantom: (container) => {
     injectStyles();
+    // Ghostly orbs that drift and pulse
     return particleLoop(container, (c) => {
-      const size = rand(20, 40);
+      const size = rand(20, 45);
       const el = spawn(c, { style: {
         left: rand(10, 80) + '%', top: rand(20, 70) + '%',
         width: size + 'px', height: size + 'px', borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(64,200,184,0.06) 0%, transparent 70%)',
-        animation: `fxTwinkle ${rand(3, 6)}s ease-in-out forwards`,
-        '--fx-opacity': String(rand(0.3, 0.6)),
+        background: 'radial-gradient(circle, rgba(88,168,184,0.18) 0%, rgba(64,200,184,0.06) 40%, transparent 70%)',
+        boxShadow: '0 0 12px rgba(88,168,184,0.1)',
+        animation: `fxTwinkle ${rand(3, 5)}s ease-in-out forwards`,
+        '--fx-opacity': String(rand(0.5, 0.8)),
       }});
       return el;
-    }, () => rand(1050, 2800));
+    }, () => rand(700, 1800));
   },
 
   // Matrix (L86): falling green characters
@@ -892,46 +924,56 @@ const THEME_EFFECTS = {
     }, () => rand(105, 350));
   },
 
-  // Solar (L88): sun rays
+  // Solar (L88): sun rays + warm sparkles
   solar: (container) => {
     injectStyles();
+    // Warm sun glow from top
     ambientGlow(container, { blur: 18, style: {
-      background: 'radial-gradient(circle at 50% 20%, rgba(232,200,80,0.08) 0%, transparent 50%)',
+      background: 'radial-gradient(circle at 50% 10%, rgba(232,180,40,0.15) 0%, rgba(255,200,80,0.05) 40%, transparent 60%)',
       animation: 'fxFloat 5s ease-in-out infinite', '--fx-float-y': '4px',
     }});
-    const ray = document.createElement('div');
-    Object.assign(ray.style, {
-      position: 'absolute', inset: '0',
-      background: 'linear-gradient(110deg, transparent 40%, rgba(255,240,180,0.06) 45%, rgba(255,230,140,0.04) 50%, transparent 55%)',
-      animation: 'fxSweep 10s ease-in-out infinite', pointerEvents: 'none', zIndex: '0',
-    });
-    container.appendChild(ray);
+    // Two diagonal light rays sweeping across
+    const rays = [];
+    for (let i = 0; i < 2; i++) {
+      const ray = document.createElement('div');
+      const angle = 100 + i * 40;
+      Object.assign(ray.style, {
+        position: 'absolute', inset: '-50%',
+        background: `linear-gradient(${angle}deg, transparent 38%, rgba(255,220,100,0.12) 43%, rgba(255,200,60,0.08) 50%, transparent 55%)`,
+        animation: `fxSweep ${7 + i * 4}s ease-in-out ${i * 2}s infinite`, pointerEvents: 'none', zIndex: '0',
+      });
+      container.appendChild(ray);
+      rays.push(ray);
+    }
+    // Warm sparkles — sun motes
     const sparkleCleanup = particleLoop(container, (c) => {
-      const el = spawn(c, { text: '\u00B7', style: {
-        left: rand(5, 95) + '%', top: rand(5, 95) + '%', fontSize: rand(6, 10) + 'px',
-        color: 'rgba(232,200,80,0.5)', textShadow: '0 0 3px rgba(216,160,40,0.4)',
-        animation: `fxTwinkle ${rand(1.5, 3)}s ease-in-out forwards`,
-        '--fx-opacity': String(rand(0.3, 0.6)),
+      const el = spawn(c, { text: pick(['\u00B7', '\u2726']), style: {
+        left: rand(5, 95) + '%', top: rand(5, 95) + '%', fontSize: rand(7, 12) + 'px',
+        color: pick(['rgba(232,180,40,0.7)', 'rgba(255,200,80,0.6)', 'rgba(216,160,40,0.5)']),
+        textShadow: '0 0 4px rgba(232,180,40,0.4)',
+        animation: `fxTwinkle ${rand(1, 2.5)}s ease-in-out forwards`,
+        '--fx-opacity': String(rand(0.5, 0.7)),
       }});
       return el;
     }, () => rand(700, 2100));
-    return () => { ray.remove(); sparkleCleanup(); };
+    return () => { rays.forEach(r => r.remove()); sparkleCleanup(); };
   },
 
   // Blood Moon (L90): dripping red particles
   bloodmoon: (container) => {
     injectStyles();
     ambientGlow(container, { blur: 25, style: {
-      background: 'radial-gradient(circle at 70% 20%, rgba(200,30,30,0.06) 0%, transparent 40%)',
+      background: 'radial-gradient(circle at 70% 20%, rgba(200,30,30,0.15) 0%, transparent 40%)',
       animation: 'fxFloat 5s ease-in-out infinite', '--fx-float-y': '3px',
     }});
     return particleLoop(container, (c) => {
       return fallingParticle(c, {
         chars: ['\u00B7', '\u22C5', '\u2022'],
-        sizeMin: 4, sizeMax: 8, durationMin: 3, durationMax: 6,
-        opacity: 0.4, opacityEnd: 0.05,
+        color: 'rgba(200,40,40,0.7)',
+        sizeMin: 5, sizeMax: 10, durationMin: 3, durationMax: 5,
+        opacity: 0.6, opacityEnd: 0.12,
       });
-    }, () => rand(700, 2100));
+    }, () => rand(500, 1400));
   },
 
   // Inferno (L92): intense fire + sparks
@@ -991,24 +1033,56 @@ const THEME_EFFECTS = {
         animation: `fxSweep ${rand(0.5, 1)}s ease-out forwards`,
       }});
       return el;
-    }, () => rand(2800, 7000));
+    }, () => rand(1500, 4000));
     return () => { stars.forEach(s => s.remove()); shootCleanup(); };
   },
 
-  // Supernova (L98): explosive particles + heat waves
+  // Supernova (L98): radial burst pulses + bright sparks
   supernova: (container) => {
     injectStyles();
-    ambientGlow(container, { blur: 20, style: {
-      background: 'radial-gradient(ellipse at 50% 100%, rgba(255,100,0,0.06) 0%, transparent 50%)',
-      animation: 'fxFloat 3s ease-in-out infinite', '--fx-float-y': '4px',
+    // Pulsing core glow
+    ambientGlow(container, { blur: 25, style: {
+      background: 'radial-gradient(circle at 50% 50%, rgba(255,120,20,0.12) 0%, rgba(255,60,0,0.04) 30%, transparent 55%)',
+      animation: 'fxFloat 2.5s ease-in-out infinite', '--fx-float-y': '3px',
     }});
-    return particleLoop(container, (c) => {
-      return risingParticle(c, {
-        color: pick(['rgba(255,100,0,0.6)', 'rgba(255,200,0,0.5)', 'rgba(255,50,50,0.4)']),
-        glow: '0 0 6px rgba(255,136,0,0.4)', sizeMin: 2, sizeMax: 5,
-        durationMin: 2, durationMax: 5, opacity: 0.6, opacityEnd: 0.08, scaleEnd: 0.2,
-      });
-    }, () => rand(280, 840));
+    // Radial burst rings that expand outward
+    const burstCleanup = particleLoop(container, (c) => {
+      const size = rand(8, 20);
+      const el = spawn(c, { style: {
+        left: rand(20, 80) + '%', top: rand(20, 80) + '%',
+        width: size + 'px', height: size + 'px', borderRadius: '50%',
+        border: '2px solid rgba(255,180,50,0.6)',
+        background: 'transparent',
+        boxShadow: '0 0 8px rgba(255,140,20,0.3)',
+        animation: `fxTwinkle ${rand(0.8, 1.5)}s ease-out forwards`,
+        '--fx-opacity': '0.7',
+        transform: 'scale(1)',
+      }});
+      // Expand the ring
+      el.animate([
+        { transform: 'scale(1)', opacity: 0.7 },
+        { transform: 'scale(3.5)', opacity: 0 },
+      ], { duration: rand(800, 1500), easing: 'ease-out', fill: 'forwards' });
+      return el;
+    }, () => rand(600, 1800));
+    // Bright sparks flying in all directions
+    const sparkCleanup = particleLoop(container, (c) => {
+      const angle = rand(0, 360);
+      const dist = rand(30, 80);
+      const el = spawn(c, { text: pick(['\u2726', '\u00B7']), style: {
+        left: '50%', top: '50%', fontSize: rand(6, 11) + 'px',
+        color: pick(['rgba(255,200,60,0.8)', 'rgba(255,140,40,0.7)', 'rgba(255,255,180,0.6)']),
+        textShadow: '0 0 6px currentColor',
+        animation: `fxTwinkle ${rand(0.4, 0.8)}s ease-out forwards`,
+        '--fx-opacity': '0.8',
+      }});
+      el.animate([
+        { transform: 'translate(0,0) scale(1)', opacity: 0.8 },
+        { transform: `translate(${Math.cos(angle)*dist}px,${Math.sin(angle)*dist}px) scale(0.3)`, opacity: 0 },
+      ], { duration: rand(500, 1000), easing: 'ease-out', fill: 'forwards' });
+      return el;
+    }, () => rand(200, 600));
+    return () => { burstCleanup(); sparkCleanup(); };
   },
 
   // Legendary (L100): golden sparkles + dragon fire embers

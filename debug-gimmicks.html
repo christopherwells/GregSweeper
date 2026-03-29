@@ -28,6 +28,10 @@
     .cell.n1 { color: #5b9bd5; } .cell.n2 { color: #66bb6a; } .cell.n3 { color: #ef5350; }
     .cell.n4 { color: #ab47bc; } .cell.n5 { color: #ec407a; } .cell.n6 { color: #26c6da; }
     .cell.n7 { color: #bdbdbd; } .cell.n8 { color: #90a4ae; }
+    .cell.n9 { color: #ff8a50; } .cell.n10 { color: #4dd0e1; } .cell.n11 { color: #ce93d8; }
+    .cell.n12 { color: #dce775; } .cell.n13 { color: #ff7043; } .cell.n14 { color: #4db6ac; }
+    .cell.n15 { color: #b39ddb; } .cell.n16 { color: #ffab91; } .cell.n17 { color: #7986cb; }
+    .cell.n18 { color: #f48fb1; }
     /* Gimmick styles */
     .cell.liar-cell { border: 2px solid #e67e22; }
     .cell.mystery-cell { color: #aaa; font-style: italic; }
@@ -39,12 +43,14 @@
     .cell.pressure-plate { box-shadow: inset 0 0 8px rgba(255,50,50,0.4); border-color: rgba(255,80,80,0.6); }
     .cell.sonar-cell { border: 2px solid rgba(38,198,218,0.6); font-size: 12px; }
     .cell.compass-cell { border: 2px solid rgba(255,167,38,0.6); font-size: 12px; }
-    .cell.mirror-a { background: rgba(100,180,255,0.25) !important; border: 2px solid rgba(100,180,255,0.6) !important; }
-    .cell.mirror-b { background: rgba(255,100,200,0.25) !important; border: 2px solid rgba(255,100,200,0.6) !important; }
-    .cell.mirror-a-unrev { background: rgba(100,180,255,0.12) !important; border: 2px dashed rgba(100,180,255,0.4) !important; }
-    .cell.mirror-b-unrev { background: rgba(255,100,200,0.12) !important; border: 2px dashed rgba(255,100,200,0.4) !important; }
-    .mirror-pair-badge { position: absolute; top: 1px; right: 1px; font-size: 8px; font-weight: 900; line-height: 1; pointer-events: none; }
-    .mirror-axis { position: absolute; background: linear-gradient(135deg, rgba(100,180,255,0.8), rgba(255,100,200,0.8)); border-radius: 2px; z-index: 4; pointer-events: none; }
+    .cell.mirror-zone { background: rgba(100,180,255,0.08) !important; }
+    .cell.mirror-zone-unrev { background: rgba(100,180,255,0.05) !important; }
+    /* Pair color-coding for swapped cells */
+    .cell.mirror-pair-0 { background: rgba(52,152,219,0.25) !important; }
+    .cell.mirror-pair-1 { background: rgba(155,89,182,0.25) !important; }
+    .cell.mirror-pair-2 { background: rgba(46,204,113,0.25) !important; }
+    .cell.mirror-pair-3 { background: rgba(241,196,15,0.25) !important; }
+    .mirror-zone-boundary { position: absolute; border: 3px solid rgba(100,180,255,0.7); border-radius: 4px; z-index: 4; pointer-events: none; }
     .plate-timer { position: absolute; bottom: 1px; left: 1px; right: 1px; height: 3px; background: #ff4444; border-radius: 1px; transform-origin: left; transition: transform 0.2s linear; }
     #status { font-size: 15px; margin-bottom: 8px; min-height: 24px; }
     #status.win { color: #66bb6a; } #status.loss { color: #ef5350; }
@@ -52,19 +58,21 @@
   </style>
 </head>
 <body>
-  <h1>🧪 Gimmick Debug — 6×6 Boards</h1>
+  <h1>🧪 Gimmick Debug — 8×8 Boards</h1>
   <div class="controls" id="gimmick-buttons"></div>
   <div class="info" id="info"></div>
   <div class="mine-count" id="mine-count"></div>
   <div id="status"></div>
-  <div id="board"></div>
+  <div id="board-wrapper" style="position:relative; display:inline-block;">
+    <div id="board"></div>
+  </div>
 
   <script type="module">
     import { generateBoard, createEmptyBoard, placeMines, calculateAdjacency } from './src/logic/boardGenerator.js';
-    import { isBoardSolvable, floodFillReveal, chordReveal, checkWin } from './src/logic/boardSolver.js';
+    import { isBoardSolvable, floodFillReveal, chordReveal, checkWin, estimatePlateMovesToDisarm } from './src/logic/boardSolver.js';
     import { applyGimmicks, applyWalls, hasWallBetween, isLockedCell, getGimmickDef } from './src/logic/gimmicks.js';
 
-    const ROWS = 7, COLS = 7, MINES = 10;
+    const ROWS = 8, COLS = 8, MINES = 10;
     const boardEl = document.getElementById('board');
     const statusEl = document.getElementById('status');
     const infoEl = document.getElementById('info');
@@ -176,7 +184,7 @@
           return false;
         }
 
-        for (let attempt = 0; attempt < 200; attempt++) {
+        for (let attempt = 0; attempt < 2000; attempt++) {
           const b = createEmptyBoard(ROWS, COLS);
           placeMines(b, MINES, row, col);
           calculateAdjacency(b);
@@ -188,7 +196,6 @@
             if (Array.isArray(v)) gc += v.length;
             else if (v instanceof Set) gc += v.size;
             else if (v && typeof v === 'object') {
-              // Mirror returns {cells: [...]} , mineShift returns {interval: N}
               if (v.cells) gc += v.cells.length;
               else if (v.interval) gc = 1;
             }
@@ -199,15 +206,15 @@
           // Reject boards where walls create isolated pockets
           if (hasIsolatedCells(b, row, col)) continue;
 
-          // Solvability check
+          // Solvability check — only accept fully solvable boards
           const check = isBoardSolvable(b, ROWS, COLS, row, col);
           for (const brow of b) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
           if (check.solvable || check.remainingUnknowns === 0) {
             board = b; gimmickData = gd; solved = true; break;
           }
         }
-        // If no solvable board found, generate a plain one without gimmicks as fallback
         if (!solved) {
+          // Fallback: solvable board without gimmicks
           board = createEmptyBoard(ROWS, COLS);
           placeMines(board, MINES, row, col);
           calculateAdjacency(board);
@@ -225,14 +232,15 @@
         if (activeGimmick === 'pressurePlate' && board) {
           const simBoard = board;
           // Temporarily reveal the first click cascade
-          const cascade = (simBoard[row][col].adjacentMines === 0)
+          const effMines = simBoard[row][col].displayedMines != null ? simBoard[row][col].displayedMines : simBoard[row][col].adjacentMines;
+          const cascade = (effMines === 0)
             ? floodFillReveal(simBoard, row, col)
             : [simBoard[row][col]];
           // Mark cascade cells + their revealed neighbors
           for (const cell of cascade) cell._inOpening = true;
           // Also mark numbered cells adjacent to the cascade (they get revealed too)
           for (const cell of cascade) {
-            if (cell.adjacentMines === 0) {
+            if ((cell.displayedMines != null ? cell.displayedMines : cell.adjacentMines) === 0) {
               for (let dr = -1; dr <= 1; dr++) {
                 for (let dc = -1; dc <= 1; dc++) {
                   const nr = cell.row + dr, nc = cell.col + dc;
@@ -283,7 +291,8 @@
       if (c.isMine) { endGame(false, row, col); return; }
 
       let newlyRevealed = [];
-      if (c.adjacentMines === 0) {
+      const eff = c.displayedMines != null ? c.displayedMines : c.adjacentMines;
+      if (eff === 0) {
         newlyRevealed = floodFillReveal(board, row, col);
       } else {
         c.isRevealed = true;
@@ -297,14 +306,16 @@
           const pair = board[rev.wormholePair.row]?.[rev.wormholePair.col];
           if (pair && !pair.isRevealed && !pair.isMine) {
             pair.isRevealed = true;
-            if (pair.adjacentMines === 0) floodFillReveal(board, pair.row, pair.col);
+            if ((pair.displayedMines != null ? pair.displayedMines : pair.adjacentMines) === 0) floodFillReveal(board, pair.row, pair.col);
           }
         }
       }
 
-      // Pressure plate timer
-      if (c.isPressurePlate && !c.plateDisarmed) {
-        startPlateTimer(c);
+      // Pressure plate timers — check all newly revealed cells (including cascaded)
+      for (const rev of newlyRevealed) {
+        if (rev.isPressurePlate && !rev.plateDisarmed) {
+          startPlateTimer(rev);
+        }
       }
 
       tryUnlockCells();
@@ -351,8 +362,11 @@
       const bar = document.createElement('div');
       bar.className = 'plate-timer';
       cellEl.appendChild(bar);
+      const est = estimatePlateMovesToDisarm(board, cell.row, cell.col);
+      const dynamicTime = Math.max(8, Math.round(est.steps * 10));
+      cell.plateTimer = dynamicTime;
       const start = Date.now();
-      const duration = (cell.plateTimer || 15) * 1000;
+      const duration = dynamicTime * 1000;
       const timer = setInterval(() => {
         if (gameOver) { clearInterval(timer); return; }
         const elapsed = Date.now() - start;
@@ -364,9 +378,7 @@
         if (cellEl2 && remaining > 0) {
           const num = cell.displayedMines != null ? cell.displayedMines : cell.adjacentMines;
           cellEl2.textContent = num + ' ⏱' + Math.ceil(remaining);
-          cellEl2.style.color = remaining < 5 ? '#ff4444' : '#ffaa44';
           cellEl2.style.fontSize = '11px';
-          cellEl2.style.fontWeight = '900';
         }
         // Check if disarmed
         if (checkPlateDisarmed(cell)) {
@@ -374,6 +386,16 @@
           activePlateTimers.delete(cell);
           cell.plateDisarmed = true;
           bar.remove();
+          // Revert cell to normal number styling
+          const cellEl3 = boardEl.children[cell.row * COLS + cell.col];
+          if (cellEl3) {
+            const num = cell.displayedMines != null ? cell.displayedMines : cell.adjacentMines;
+            cellEl3.textContent = num;
+            cellEl3.style.color = '';
+            cellEl3.style.fontSize = '';
+            cellEl3.style.fontWeight = '';
+            cellEl3.classList.remove('pressure-plate', 'plate-active');
+          }
           statusEl.textContent = '✅ Plate disarmed!';
           return;
         }
@@ -387,17 +409,19 @@
     }
 
     function checkPlateDisarmed(cell) {
+      // Disarmed when all non-mine adjacent cells are revealed
       for (let dr = -1; dr <= 1; dr++) {
         for (let dc = -1; dc <= 1; dc++) {
           if (dr === 0 && dc === 0) continue;
           const nr = cell.row + dr, nc = cell.col + dc;
           if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) {
-            if (board[nr][nc].isMine && board[nr][nc].isFlagged) return true;
+            if (!board[nr][nc].isMine && !board[nr][nc].isRevealed) return false;
           }
         }
       }
-      return false;
+      return true;
     }
+
 
     function endGame(won, hitR, hitC) {
       gameOver = true;
@@ -460,20 +484,16 @@
                   el.innerHTML = `<span style="color:${pc};font-size:14px">●</span>${el.textContent}`;
                 }
                 if (cell.mirrorZone) {
-                  // Compute which "side" of the mirror this cell is on
-                  const mz = cell.mirrorZone;
-                  const aboveCenter = (cell.row + cell.col) < (mz.centerRow + mz.centerCol);
-                  el.classList.add(aboveCenter ? 'mirror-a' : 'mirror-b');
-                  el.style.position = 'relative';
-                  // Add 🪞 badge
-                  const badge = document.createElement('span');
-                  badge.className = 'mirror-pair-badge';
-                  badge.textContent = '🪞';
-                  el.appendChild(badge);
+                  el.classList.add('mirror-zone');
+                  if (cell.mirrorZone.pairIndex >= 0) el.classList.add('mirror-pair-' + cell.mirrorZone.pairIndex);
                 }
               } else {
                 el.classList.add('revealed', 'empty');
                 el.textContent = '';
+                if (cell.mirrorZone) {
+                  el.classList.add('mirror-zone');
+                  if (cell.mirrorZone.pairIndex >= 0) el.classList.add('mirror-pair-' + cell.mirrorZone.pairIndex);
+                }
               }
             }
           } else if (cell.isFlagged) {
@@ -485,9 +505,7 @@
             if (cell.isLocked) el.classList.add('locked-cell');
             // Wormholes: no visual indicator when unrevealed
             if (cell.mirrorZone) {
-              const mz = cell.mirrorZone;
-              const aboveCenter = (cell.row + cell.col) < (mz.centerRow + mz.centerCol);
-              el.classList.add(aboveCenter ? 'mirror-a-unrev' : 'mirror-b-unrev');
+              el.classList.add('mirror-zone-unrev');
             }
           }
         }
@@ -510,7 +528,7 @@
               if (!cell.isMine) {
                 cell.isRevealed = true;
                 progress = true;
-                if (cell.adjacentMines === 0) floodFillReveal(board, r, c);
+                if ((cell.displayedMines != null ? cell.displayedMines : cell.adjacentMines) === 0) floodFillReveal(board, r, c);
               }
               // Unlocked mines: leave unrevealed, player flags them
             }
@@ -520,22 +538,21 @@
     }
 
     function renderWalls() {
-      const old = boardEl.parentElement?.querySelector('.wall-overlay');
+      const wrapper = document.getElementById('board-wrapper');
+      if (!wrapper) return;
+      const old = wrapper.querySelector('.wall-overlay');
       if (old) old.remove();
-      // Also remove old mirror axis
-      const oldAxis = boardEl.parentElement?.querySelector('.mirror-axis');
-      if (oldAxis) oldAxis.remove();
-      if (!board?._wallEdges?.size) return;
+      const oldBoundary = wrapper.querySelector('.mirror-zone-boundary');
+      if (oldBoundary) oldBoundary.remove();
+      if (!board?._wallEdges?.size && !gimmickData?.mirror) return;
 
-      const wrapper = boardEl.parentElement || boardEl;
-      wrapper.style.position = 'relative';
       const overlay = document.createElement('div');
       overlay.className = 'wall-overlay';
 
       const cellW = 44, cellH = 44, gap = 2;
-      const offX = boardEl.offsetLeft, offY = boardEl.offsetTop;
+      const offX = 0, offY = 0; // board is direct child of wrapper
 
-      for (const key of board._wallEdges) {
+      for (const key of (board._wallEdges || [])) {
         const [from, to] = key.split('-');
         const [r1, c1] = from.split(',').map(Number);
         const [r2, c2] = to.split(',').map(Number);
@@ -558,29 +575,24 @@
       }
       wrapper.appendChild(overlay);
 
-      // Draw mirror axis line if mirror zone exists
-      if (board && gimmickData?.mirror?.cells?.length > 0) {
+      // Draw mirror zone boundary rectangle (only once a zone cell is revealed)
+      if (board && gimmickData?.mirror?.cells?.length > 0 &&
+          gimmickData.mirror.cells.some(c => board[c.row]?.[c.col]?.isRevealed)) {
         const m = gimmickData.mirror;
         const cellW = 44, cellH = 44, gap = 2;
-        const offX = boardEl.offsetLeft, offY = boardEl.offsetTop;
 
-        // Diagonal axis line from top-left to bottom-right of the zone
-        const x1 = offX + m.startC * (cellW + gap);
-        const y1 = offY + m.startR * (cellH + gap);
-        const x2 = offX + (m.startC + m.size) * (cellW + gap) - gap;
-        const y2 = offY + (m.startR + m.size) * (cellH + gap) - gap;
-        const len = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
-        const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+        const x = m.startC * (cellW + gap) - 2;
+        const y = m.startR * (cellH + gap) - 2;
+        const w = m.size * (cellW + gap) - gap + 4;
+        const h = m.size * (cellH + gap) - gap + 4;
 
-        const axis = document.createElement('div');
-        axis.className = 'mirror-axis';
-        axis.style.left = x1 + 'px';
-        axis.style.top = y1 + 'px';
-        axis.style.width = len + 'px';
-        axis.style.height = '3px';
-        axis.style.transformOrigin = '0 50%';
-        axis.style.transform = `rotate(${angle}deg)`;
-        wrapper.appendChild(axis);
+        const boundary = document.createElement('div');
+        boundary.className = 'mirror-zone-boundary';
+        boundary.style.left = x + 'px';
+        boundary.style.top = y + 'px';
+        boundary.style.width = w + 'px';
+        boundary.style.height = h + 'px';
+        wrapper.appendChild(boundary);
       }
     }
 

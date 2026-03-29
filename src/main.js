@@ -39,7 +39,7 @@ import {
   getLastSeenVersion, setLastSeenVersion,
 } from './storage/statsStorage.js';
 
-const CURRENT_VERSION = 'v1.3';
+const CURRENT_VERSION = 'v1.4';
 import {
   playLevelUp, isMuted, setMuted, loadMuted,
   setSFXVolume, getSFXVolume,
@@ -913,7 +913,7 @@ function updateTitleProgress() {
 
   if (challengeEl) {
     const cLevel = stats.modeStats?.challenge?.maxLevelReached || 1;
-    challengeEl.textContent = `Level ${cLevel} · ${Math.round(cLevel / MAX_LEVEL * 100)}%`;
+    challengeEl.textContent = `Level ${cLevel} · ${Math.min(100, Math.round(cLevel / MAX_LEVEL * 100))}%`;
   }
   if (timedEl) {
     const tWins = stats.modeStats?.timed?.wins || 0;
@@ -997,6 +997,9 @@ const GIMMICK_LABELS = {
   41: { icon: '🔒', name: 'Locked' },
   51: { icon: '🌀', name: 'Wormholes' },
   61: { icon: '🪞', name: 'Mirror' },
+  71: { icon: '🔴', name: 'Pressure Plates' },
+  81: { icon: '📡', name: 'Sonar' },
+  91: { icon: '🧭', name: 'Compass' },
 };
 
 function showCheckpointSelector() {
