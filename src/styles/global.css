@@ -392,6 +392,10 @@ body {
   cursor: default;
   box-shadow: none;
 }
+/* Passive powerups (lifeline) show full opacity even when disabled */
+.powerup-btn.powerup-passive:disabled {
+  opacity: 0.85;
+}
 
 .powerup-btn:not(:disabled):hover {
   background: var(--color-btn-hover);
@@ -1114,27 +1118,10 @@ body {
   letter-spacing: -1px;
 }
 
-/* Wormhole cells — color-coded pairs */
-.cell.wormhole-cell {
-  border: 2px solid #9b59b6 !important;
-  box-shadow: inset 0 0 6px rgba(155, 89, 182, 0.3);
-}
-.cell.wormhole-cell.wormhole-pair-0 { border-color: #9b59b6 !important; }
-.cell.wormhole-cell.wormhole-pair-1 { border-color: #e74c3c !important; }
-.cell.wormhole-cell.wormhole-pair-2 { border-color: #f39c12 !important; }
-
-.cell.wormhole-unrevealed {
-  border: 2px dashed rgba(155, 89, 182, 0.5) !important;
-  animation: wormholePulse 2s ease-in-out infinite;
-}
-.cell.wormhole-unrevealed.wormhole-pair-0 { border-color: rgba(155, 89, 182, 0.5) !important; }
-.cell.wormhole-unrevealed.wormhole-pair-1 { border-color: rgba(231, 76, 60, 0.5) !important; }
-.cell.wormhole-unrevealed.wormhole-pair-2 { border-color: rgba(243, 156, 18, 0.5) !important; }
-
-@keyframes wormholePulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
-}
+/* Wormhole cells — paired background tints (no border, avoids conflict with number colors) */
+.cell.wormhole-cell.wormhole-pair-0 { background: rgba(255, 140, 0, 0.18) !important; }   /* warm amber */
+.cell.wormhole-cell.wormhole-pair-1 { background: rgba(0, 200, 180, 0.18) !important; }   /* teal */
+.cell.wormhole-cell.wormhole-pair-2 { background: rgba(220, 80, 220, 0.18) !important; }  /* magenta */
 
 /* Mirror zone — zone boundary outline + subtle inner tint */
 .cell.mirror-cell,

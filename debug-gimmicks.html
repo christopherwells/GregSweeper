@@ -479,9 +479,8 @@
                 if (cell.isLiar) el.classList.add('liar-cell');
                 if (cell.isPressurePlate && !cell.plateDisarmed) el.classList.add('pressure-plate');
                 if (cell.isWormhole) {
-                  const pairColors = ['#9b59b6', '#e74c3c', '#f39c12'];
-                  const pc = pairColors[cell.wormholePairIndex || 0];
-                  el.innerHTML = `<span style="color:${pc};font-size:14px">●</span>${el.textContent}`;
+                  const pairBgs = ['rgba(255,140,0,0.2)', 'rgba(0,200,180,0.2)', 'rgba(220,80,220,0.2)'];
+                  el.style.background = pairBgs[cell.wormholePairIndex || 0];
                 }
                 if (cell.mirrorZone) {
                   el.classList.add('mirror-zone');
