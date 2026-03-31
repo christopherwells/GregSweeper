@@ -44,11 +44,10 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol) {
         adjCount[i] = UNKNOWN;
       } else if (cell.isLiar && cell.displayedMines != null) {
         adjCount[i] = cell.displayedMines; // liar shows ±1 — use what player sees
-      } else if (cell.mirrorZone) {
-        // Mirror cells show a swapped value, but the player KNOWS the swap rule
-        // and can mentally reverse it. Use the TRUE adjacentMines for solving
-        // since the player can always derive the real value.
-        adjCount[i] = cell.adjacentMines;
+      } else if (cell.mirrorZone && cell.displayedMines != null) {
+        // Mirror cells show a swapped value. The player sees displayedMines
+        // and uses it as the constraint for THIS cell's neighbors.
+        adjCount[i] = cell.displayedMines;
       } else {
         adjCount[i] = cell.adjacentMines; // normal cell — true count
       }

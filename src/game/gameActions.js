@@ -160,13 +160,26 @@ export function newGame() {
     state.firstClick = false;
     state.status = 'idle'; // stays idle until actual first click
 
-    // Apply daily modifiers (~35% of days)
+    // Apply daily modifiers (~35% of days) with post-gimmick solvability check
     const dailyGimmicks = getDailyGimmick(state.dailySeed, createDailyRNG);
     if (dailyGimmicks.length > 0) {
       state.activeGimmicks = dailyGimmicks;
-      // Use a separate seeded RNG for gimmick application
       const gimmickApplyRng = createDailyRNG(state.dailySeed + '-gimmick-apply');
       state.gimmickData = applyGimmicks(state.board, 1, state.activeGimmicks, gimmickApplyRng);
+
+      // Verify solvability after gimmicks — if broken, strip gimmicks for this daily
+      const fixedRow = Math.floor(state.rows / 2);
+      const fixedCol = Math.floor(state.cols / 2);
+      const check = isBoardSolvable(state.board, state.rows, state.cols, fixedRow, fixedCol);
+      for (const brow of state.board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
+      if (!check.solvable && check.remainingUnknowns > 0) {
+        // Strip gimmick effects — regenerate clean board
+        const cleanRng = createDailyRNG(state.dailySeed);
+        state.board = generateBoard(state.rows, state.cols, state.totalMines, fixedRow, fixedCol, cleanRng);
+        for (const brow of state.board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
+        state.activeGimmicks = [];
+        state.gimmickData = {};
+      }
     }
 
   }
@@ -318,16 +331,29 @@ export function revealCell(row, col) {
       preWallEdges = tempBoard._wallEdges;
     }
 
-    // Generate board with wall-aware adjacency
-    state.board = generateBoard(state.rows, state.cols, state.totalMines, row, col,
-      rng || Math.random, { maxZeroCluster: maxZC, hasGimmicks, wallEdges: preWallEdges });
+    // Generate board + apply gimmicks, retry if post-gimmick board isn't solvable
+    let postGimmickSolvable = false;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      state.board = generateBoard(state.rows, state.cols, state.totalMines, row, col,
+        rng || Math.random, { maxZeroCluster: maxZC, hasGimmicks, wallEdges: preWallEdges });
 
-    // Apply ALL gimmicks (walls will reuse preWallEdges, others applied fresh)
-    state.gimmickData = {};
-    if (state.activeGimmicks.length > 0) {
-      // Transfer pre-generated wall edges to the real board
-      if (preWallEdges) state.board._wallEdges = preWallEdges;
-      state.gimmickData = applyGimmicks(state.board, state.currentLevel, state.activeGimmicks, gimmickRng);
+      state.gimmickData = {};
+      if (state.activeGimmicks.length > 0) {
+        if (preWallEdges) state.board._wallEdges = preWallEdges;
+        state.gimmickData = applyGimmicks(state.board, state.currentLevel, state.activeGimmicks, gimmickRng);
+
+        // Post-gimmick solvability check
+        const check = isBoardSolvable(state.board, state.rows, state.cols, row, col);
+        for (const brow of state.board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
+        if (check.solvable || check.remainingUnknowns === 0) {
+          postGimmickSolvable = true;
+          break;
+        }
+        // Not solvable — retry with fresh board
+      } else {
+        postGimmickSolvable = true;
+        break;
+      }
     }
 
     // Apply gimmicks for challenge mode (show popups etc.)
@@ -416,6 +442,20 @@ export function revealCell(row, col) {
       if (state.activeGimmicks.length > 0) {
         const gimmickApplyRng = createDailyRNG(state.dailySeed + '-gimmick-apply');
         state.gimmickData = applyGimmicks(state.board, 1, state.activeGimmicks, gimmickApplyRng);
+
+        // Verify post-relocation solvability
+        const check = isBoardSolvable(state.board, state.rows, state.cols, row, col);
+        for (const brow of state.board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
+        if (!check.solvable && check.remainingUnknowns > 0) {
+          // Strip gimmick effects from cells, keep raw board
+          for (const brow of state.board) for (const c of brow) {
+            c.isMystery = false; c.isLiar = false; c.displayedMines = undefined;
+            c.mirrorZone = undefined; c.isWormhole = false; c.wormholePair = undefined;
+          }
+          calculateAdjacency(state.board);
+          state.activeGimmicks = [];
+          state.gimmickData = {};
+        }
       }
     }
     state.status = 'playing';
