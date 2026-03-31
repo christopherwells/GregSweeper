@@ -375,7 +375,7 @@ export function generateBoard(rows, cols, mines, excludeRow, excludeCol, rng, op
 
   // Fallback: rejection sampling for low density boards
   const maxSolveAttempts = density > 0.35 ? 500 : density > 0.30 ? 300 : density > 0.25 ? 200 : 50;
-  const maxAcceptableUnknowns = hasGimmicks ? 0 : 2;
+  const maxAcceptableUnknowns = 0; // no 50/50s ever
 
   let bestBoard = null;
   let bestUnknowns = Infinity;

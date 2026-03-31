@@ -333,7 +333,7 @@ export function revealCell(row, col) {
 
     // Generate board + apply gimmicks, retry if post-gimmick board isn't solvable
     let postGimmickSolvable = false;
-    for (let attempt = 0; attempt < 5; attempt++) {
+    for (let attempt = 0; attempt < 10; attempt++) {
       state.board = generateBoard(state.rows, state.cols, state.totalMines, row, col,
         rng || Math.random, { maxZeroCluster: maxZC, hasGimmicks, wallEdges: preWallEdges });
 
