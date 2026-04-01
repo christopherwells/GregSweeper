@@ -461,8 +461,8 @@ export function revealCell(row, col) {
     state.status = 'playing';
     startTimer();
 
-    // Show modifier intro popup for daily gimmicks (always show in Daily, not just unseen)
-    if (state.activeGimmicks.length > 0 && !isModifierPopupDisabled()) {
+    // Show modifier intro popup for daily gimmicks — always, regardless of settings
+    if (state.activeGimmicks.length > 0) {
       const defs = state.activeGimmicks.map(g => getGimmickDef(g)).filter(Boolean);
       if (defs.length > 0) {
         showGimmickIntros(defs);
