@@ -1363,6 +1363,11 @@ if (sfxSlider) {
 
 const modifierToggle = $('#modifier-popup-toggle');
 if (modifierToggle) {
+  // v1.4.1: re-enable popups for all users (one-time reset)
+  if (localStorage.getItem('minesweeper_popup_reset_v141') !== 'done') {
+    setModifierPopupDisabled(false);
+    localStorage.setItem('minesweeper_popup_reset_v141', 'done');
+  }
   modifierToggle.checked = !isModifierPopupDisabled();
   modifierToggle.addEventListener('change', () => {
     setModifierPopupDisabled(!modifierToggle.checked);
