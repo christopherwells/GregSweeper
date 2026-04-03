@@ -180,15 +180,15 @@ export function newGame() {
         // Compute par on clean board
         const parCheck = isBoardSolvable(state.board, state.rows, state.cols, fixedRow, fixedCol);
         for (const brow of state.board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
-        state.dailyPar = Math.round(parCheck.totalReveals * 1 * 10) / 10;
+        state.dailyPar = Math.round(parCheck.totalReveals * 1.2 * 10) / 10;
       } else {
-        state.dailyPar = Math.round(check.totalReveals * 1 * 10) / 10;
+        state.dailyPar = Math.round(check.totalReveals * 1.2 * 10) / 10;
       }
     } else {
       // No gimmicks — compute par on raw board
       const parCheck = isBoardSolvable(state.board, state.rows, state.cols, fixedRow, fixedCol);
       for (const brow of state.board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
-      state.dailyPar = Math.round(parCheck.totalReveals * 1 * 10) / 10;
+      state.dailyPar = Math.round(parCheck.totalReveals * 1.2 * 10) / 10;
     }
 
   }
