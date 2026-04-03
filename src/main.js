@@ -155,13 +155,13 @@ async function updateLeaderboardDisplay() {
   $('#leaderboard-table').classList.remove('hidden');
   $('#leaderboard-empty').classList.add('hidden');
 
-  // Get daily par for comparison (from current game state or recompute)
-  const dailyPar = state.dailyPar || 0;
+  // Get daily par for comparison (from state or localStorage)
+  const dailyPar = state.dailyPar || parseFloat(localStorage.getItem('minesweeper_daily_par_' + dateStr)) || 0;
 
   entries.forEach((entry, i) => {
     const tr = document.createElement('tr');
     const bombCol = entry.bombHits != null ? `<td>${entry.bombHits}</td>` : '<td>-</td>';
-    let parCol = '';
+    let parCol = '<td>-</td>';
     if (dailyPar > 0) {
       const delta = entry.time - dailyPar;
       const abs = Math.abs(delta).toFixed(1);
