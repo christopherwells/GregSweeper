@@ -168,8 +168,6 @@ export function newGame() {
       state.gimmickData = applyGimmicks(state.board, 1, state.activeGimmicks, gimmickApplyRng);
 
       // Verify solvability after gimmicks — if broken, strip gimmicks for this daily
-      const fixedRow = Math.floor(state.rows / 2);
-      const fixedCol = Math.floor(state.cols / 2);
       const check = isBoardSolvable(state.board, state.rows, state.cols, fixedRow, fixedCol);
       for (const brow of state.board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
       if (!check.solvable && check.remainingUnknowns > 0) {
@@ -179,7 +177,18 @@ export function newGame() {
         for (const brow of state.board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
         state.activeGimmicks = [];
         state.gimmickData = {};
+        // Compute par on clean board
+        const parCheck = isBoardSolvable(state.board, state.rows, state.cols, fixedRow, fixedCol);
+        for (const brow of state.board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
+        state.dailyPar = Math.round(parCheck.totalReveals * 2 * 10) / 10;
+      } else {
+        state.dailyPar = Math.round(check.totalReveals * 2 * 10) / 10;
       }
+    } else {
+      // No gimmicks — compute par on raw board
+      const parCheck = isBoardSolvable(state.board, state.rows, state.cols, fixedRow, fixedCol);
+      for (const brow of state.board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
+      state.dailyPar = Math.round(parCheck.totalReveals * 2 * 10) / 10;
     }
 
   }

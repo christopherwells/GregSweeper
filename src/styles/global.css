@@ -2028,6 +2028,14 @@ body {
   color: var(--color-text-secondary);
 }
 
+#gameover-par {
+  font-size: 15px;
+  font-weight: 600;
+}
+.par-under { color: #4caf50 !important; }
+.par-over { color: #ef5350 !important; }
+.par-even { color: var(--color-text-secondary) !important; }
+
 #gameover-record {
   color: var(--color-golden) !important;
   font-weight: 800;

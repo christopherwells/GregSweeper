@@ -169,19 +169,41 @@ export function handleWin() {
     ? ` | 💥 ${state.dailyBombHits} strike${state.dailyBombHits !== 1 ? 's' : ''}`
     : '';
 
+  const parEl = $('#gameover-par');
+  if (parEl) parEl.classList.add('hidden');
+
   // Timed mode: show speed rating
   if (state.gameMode === 'timed') {
     const rating = getSpeedRating(state.currentLevel, state.elapsedTime);
     gameoverTime.textContent = `Time: ${state.elapsedTime}s — ${rating.icon} ${rating.name}!`;
+  } else if (state.gameMode === 'daily') {
+    // Daily: show precise time + par comparison
+    const precise = state.preciseTime || state.elapsedTime;
+    gameoverTime.textContent = `Time: ${precise.toFixed(1)}s${strikesInfo}`;
+    const { streak } = getDailyStreak();
+    if (streak > 0) {
+      gameoverTime.textContent += ` | \u{1F525} ${streak} day streak`;
+    }
+    // Show Greg's par time
+    if (parEl && state.dailyPar > 0) {
+      const delta = precise - state.dailyPar;
+      const absDelta = Math.abs(delta).toFixed(1);
+      let parClass, deltaText;
+      if (delta < -0.5) {
+        parClass = 'par-under';
+        deltaText = absDelta + 's under par';
+      } else if (delta > 0.5) {
+        parClass = 'par-over';
+        deltaText = absDelta + 's over par';
+      } else {
+        parClass = 'par-even';
+        deltaText = 'Even par!';
+      }
+      parEl.innerHTML = "Greg's Time: " + state.dailyPar.toFixed(1) + 's — <span class="' + parClass + '">' + deltaText + '</span>';
+      parEl.classList.remove('hidden');
+    }
   } else {
     gameoverTime.textContent = `Time: ${state.elapsedTime}s${strikesInfo}`;
-    // Show daily streak if applicable
-    if (state.gameMode === 'daily') {
-      const { streak } = getDailyStreak();
-      if (streak > 0) {
-        gameoverTime.textContent += ` | \u{1F525} ${streak} day streak`;
-      }
-    }
   }
 
   // Stats cascade animation on time display

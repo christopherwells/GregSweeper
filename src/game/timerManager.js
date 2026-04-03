@@ -17,7 +17,11 @@ export function updateTimerDisplay() {
   timerEl.classList.remove('timer-critical', 'timer-warning');
 }
 
+let _preciseStartTime = null;
+let _preciseAccumulated = 0; // accumulated ms from previous pause/resume cycles
+
 export function startTimer() {
+  if (!_preciseStartTime) _preciseStartTime = Date.now();
   if (state.timerId) return;
   let tickActive = false;
   state.timerId = setInterval(() => {
@@ -40,6 +44,13 @@ export function stopTimer() {
     clearInterval(state.timerId);
     state.timerId = null;
   }
+  // Compute precise elapsed time in tenths of a second
+  if (_preciseStartTime) {
+    const totalMs = _preciseAccumulated + (Date.now() - _preciseStartTime);
+    state.preciseTime = Math.round(totalMs / 100) / 10; // round to tenths
+    _preciseStartTime = null;
+    _preciseAccumulated = 0;
+  }
   timerEl.classList.remove('timer-critical', 'timer-warning');
   stopMineShift();
 }
@@ -53,6 +64,11 @@ export function pauseTimer() {
     clearInterval(state.timerId);
     state.timerId = null;
   }
+  // Accumulate precise time on pause
+  if (_preciseStartTime) {
+    _preciseAccumulated += Date.now() - _preciseStartTime;
+    _preciseStartTime = null;
+  }
   if (state.mineShiftTimerId) {
     clearInterval(state.mineShiftTimerId);
     state.mineShiftTimerId = null;
@@ -63,6 +79,7 @@ export function resumeTimer() {
   if (state.status !== 'playing') return;
   // Restart game timer if not already running
   if (!state.timerId) {
+    _preciseStartTime = Date.now(); // resume precise tracking
     startTimer();
   }
   // Restart mine shift if it was active

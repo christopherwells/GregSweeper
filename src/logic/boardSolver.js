@@ -134,10 +134,12 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol) {
 
   // Reveal a cell (simulate); if it's a zero, flood-fill
   const revealQueue = [];
+  let totalReveals = 0; // counts every cell reveal for par calculation
   function revealCell(i) {
     if (sim[i] !== 0 || isMine[i] || isLocked[i]) return;
     sim[i] = 1;
     revealedCount++;
+    totalReveals++;
     if (cascadeCount[i] === 0) {
       for (const ni of neighborCache[i]) {
         if (sim[ni] === 0 && !isMine[ni] && !isLocked[ni]) {
@@ -159,7 +161,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol) {
   }
   tryUnlockAll(); // unlock any locked cells freed by the initial cascade
 
-  if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0 };
+  if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0, totalReveals };
 
   // Step 2: Iterative multi-layer constraint solving
   const MAX_ITERATIONS = 1000;
@@ -182,7 +184,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol) {
       const remaining = adjCount[i] - flagged;
 
       if (remaining < 0 || remaining > unknowns) {
-        return { solvable: false, remainingUnknowns: totalSafe - revealedCount };
+        return { solvable: false, remainingUnknowns: totalSafe - revealedCount, totalReveals };
       }
 
       // Rule 1: All unknowns must be mines
@@ -210,7 +212,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol) {
     }
 
     tryUnlockAll(); // check if reveals freed any locked cells
-      if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0 };
+      if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0, totalReveals };
     if (progress) continue;
 
     // ── Pass B: Subset / superset constraint analysis ──
@@ -258,7 +260,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol) {
     }
 
     tryUnlockAll();
-      if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0 };
+      if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0, totalReveals };
     if (subsetProgress) continue;
 
     // ── Pass C: Advanced solver (Gauss + Tank) ──
@@ -285,7 +287,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol) {
     }
 
     tryUnlockAll();
-      if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0 };
+      if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0, totalReveals };
     if (advancedProgress) continue;
 
     // No progress from any layer — board requires guessing
@@ -293,7 +295,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol) {
   }
 
   const remaining = totalSafe - revealedCount;
-  return { solvable: false, remainingUnknowns: remaining };
+  return { solvable: false, remainingUnknowns: remaining, totalReveals };
 }
 
 // ── Build constraints from current simulation state ──────────
