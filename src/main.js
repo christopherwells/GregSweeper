@@ -155,10 +155,21 @@ async function updateLeaderboardDisplay() {
   $('#leaderboard-table').classList.remove('hidden');
   $('#leaderboard-empty').classList.add('hidden');
 
+  // Get daily par for comparison (from current game state or recompute)
+  const dailyPar = state.dailyPar || 0;
+
   entries.forEach((entry, i) => {
     const tr = document.createElement('tr');
     const bombCol = entry.bombHits != null ? `<td>${entry.bombHits}</td>` : '<td>-</td>';
-    tr.innerHTML = `<td>${i + 1}</td><td>${escapeHtml(entry.name)}</td><td>${entry.time}s</td>${bombCol}`;
+    let parCol = '';
+    if (dailyPar > 0) {
+      const delta = entry.time - dailyPar;
+      const abs = Math.abs(delta).toFixed(1);
+      if (delta < -0.5) parCol = `<td class="par-under">-${abs}</td>`;
+      else if (delta > 0.5) parCol = `<td class="par-over">+${abs}</td>`;
+      else parCol = `<td class="par-even">E</td>`;
+    }
+    tr.innerHTML = `<td>${i + 1}</td><td>${escapeHtml(entry.name)}</td><td>${entry.time}s</td>${bombCol}${parCol}`;
     tbody.appendChild(tr);
   });
 }
