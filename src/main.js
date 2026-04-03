@@ -54,6 +54,9 @@ import {
   fetchRoomLeaderboard, fetchRoomHistory, getRoomMembers, getRoomInfo,
   saveRoomInfo, loadRoomInfo, clearRoomInfo,
 } from './firebase/firebaseLeaderboard.js';
+import { generateBoard } from './logic/boardGenerator.js';
+import { isBoardSolvable } from './logic/boardSolver.js';
+import { createDailyRNG } from './logic/seededRandom.js';
 import {
   EMOJI_PACKS, EFFECTS, TITLES,
   loadEmojiPack, saveEmojiPack, getActiveEmojiPack, isPackUnlocked,
@@ -155,8 +158,24 @@ async function updateLeaderboardDisplay() {
   $('#leaderboard-table').classList.remove('hidden');
   $('#leaderboard-empty').classList.add('hidden');
 
-  // Get daily par for comparison (from state or localStorage)
-  const dailyPar = state.dailyPar || parseFloat(localStorage.getItem('minesweeper_daily_par_' + dateStr)) || 0;
+  // Get daily par for comparison (from state, localStorage, or compute on-demand)
+  let dailyPar = state.dailyPar || parseFloat(localStorage.getItem('minesweeper_daily_par_' + dateStr)) || 0;
+  if (dailyPar === 0) {
+    // Compute par on-demand by regenerating today's daily board
+    try {
+      const parRng = createDailyRNG(dateStr);
+      const pRows = 8 + Math.floor(parRng() * 5);
+      const pCols = 8 + Math.floor(parRng() * 5);
+      const pDensity = 0.14 + parRng() * 0.16;
+      const pMines = Math.max(5, Math.round(pRows * pCols * pDensity));
+      const pFixedR = Math.floor(pRows / 2), pFixedC = Math.floor(pCols / 2);
+      const pBoard = generateBoard(pRows, pCols, pMines, pFixedR, pFixedC, createDailyRNG(dateStr));
+      for (const row of pBoard) for (const c of row) { c.isRevealed = false; c.revealAnimDelay = 0; }
+      const parResult = isBoardSolvable(pBoard, pRows, pCols, pFixedR, pFixedC);
+      dailyPar = Math.round(parResult.totalReveals * 1.1 * 10) / 10;
+      localStorage.setItem('minesweeper_daily_par_' + dateStr, String(dailyPar));
+    } catch (e) { dailyPar = 0; }
+  }
 
   entries.forEach((entry, i) => {
     const tr = document.createElement('tr');
