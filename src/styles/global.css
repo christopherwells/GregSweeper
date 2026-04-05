@@ -1060,7 +1060,7 @@ body {
 /* Liar cells — display is off by ±1 (border shown only on revealed cells) */
 .cell.liar-cell {
   border: 3px solid #e67e22 !important;
-  box-shadow: inset 0 0 6px rgba(230, 126, 34, 0.6);
+  box-shadow: inset 0 0 8px rgba(230, 126, 34, 0.85);
 }
 
 /* Locked cells — padlock indicator */

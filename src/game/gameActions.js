@@ -160,38 +160,34 @@ export function newGame() {
     state.firstClick = false;
     state.status = 'idle'; // stays idle until actual first click
 
-    // Apply daily modifiers (~35% of days) with post-gimmick solvability check
+    // Apply daily modifiers (~35% of days) with post-gimmick solvability retry
     const dailyGimmicks = getDailyGimmick(state.dailySeed, createDailyRNG);
     if (dailyGimmicks.length > 0) {
       state.activeGimmicks = dailyGimmicks;
-      const gimmickApplyRng = createDailyRNG(state.dailySeed + '-gimmick-apply');
-      state.gimmickData = applyGimmicks(state.board, 1, state.activeGimmicks, gimmickApplyRng);
-
-      // Verify solvability after gimmicks — if broken, strip gimmicks for this daily
-      const check = isBoardSolvable(state.board, state.rows, state.cols, fixedRow, fixedCol);
-      for (const brow of state.board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
-      if (!check.solvable && check.remainingUnknowns > 0) {
-        // Strip gimmick effects — regenerate clean board
-        const cleanRng = createDailyRNG(state.dailySeed);
-        state.board = generateBoard(state.rows, state.cols, state.totalMines, fixedRow, fixedCol, cleanRng);
+      // Retry board + gimmicks until solvable
+      for (let dAttempt = 0; ; dAttempt++) {
+        const gimmickApplyRng = createDailyRNG(state.dailySeed + '-gimmick-apply-' + dAttempt);
+        // Regenerate board on retry
+        if (dAttempt > 0) {
+          const retryRng = createDailyRNG(state.dailySeed + '-retry-' + dAttempt);
+          state.board = generateBoard(state.rows, state.cols, state.totalMines, fixedRow, fixedCol, retryRng);
+          for (const brow of state.board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
+        }
+        state.gimmickData = applyGimmicks(state.board, 1, state.activeGimmicks, gimmickApplyRng);
+        const check = isBoardSolvable(state.board, state.rows, state.cols, fixedRow, fixedCol);
         for (const brow of state.board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
-        state.activeGimmicks = [];
-        state.gimmickData = {};
-        // Compute par on clean board
-        const parCheck = isBoardSolvable(state.board, state.rows, state.cols, fixedRow, fixedCol);
-        for (const brow of state.board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
-        state.dailyPar = Math.round(parCheck.totalReveals * 1.4 * 10) / 10;
-        localStorage.setItem('minesweeper_daily_par_' + state.dailySeed, String(state.dailyPar));
-      } else {
-        state.dailyPar = Math.round(check.totalReveals * 1.4 * 10) / 10;
-        localStorage.setItem('minesweeper_daily_par_' + state.dailySeed, String(state.dailyPar));
+        if (check.solvable || check.remainingUnknowns === 0) {
+          state.dailyPar = Math.round(check.totalReveals * 1.4 * 10) / 10;
+          localStorage.setItem('minesweeper_daily_par_' + state.dailySeed, String(state.dailyPar));
+          break;
+        }
       }
     } else {
       // No gimmicks — compute par on raw board
       const parCheck = isBoardSolvable(state.board, state.rows, state.cols, fixedRow, fixedCol);
       for (const brow of state.board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
       state.dailyPar = Math.round(parCheck.totalReveals * 1.4 * 10) / 10;
-        localStorage.setItem('minesweeper_daily_par_' + state.dailySeed, String(state.dailyPar));
+      localStorage.setItem('minesweeper_daily_par_' + state.dailySeed, String(state.dailyPar));
     }
 
   }
@@ -345,7 +341,7 @@ export function revealCell(row, col) {
 
     // Generate board + apply gimmicks, retry if post-gimmick board isn't solvable
     let postGimmickSolvable = false;
-    for (let attempt = 0; attempt < 10; attempt++) {
+    for (;;) { // retry until solvable — no unsolvable boards ever
       state.board = generateBoard(state.rows, state.cols, state.totalMines, row, col,
         rng || Math.random, { maxZeroCluster: maxZC, hasGimmicks, wallEdges: preWallEdges });
 
@@ -455,18 +451,20 @@ export function revealCell(row, col) {
         const gimmickApplyRng = createDailyRNG(state.dailySeed + '-gimmick-apply');
         state.gimmickData = applyGimmicks(state.board, 1, state.activeGimmicks, gimmickApplyRng);
 
-        // Verify post-relocation solvability
-        const check = isBoardSolvable(state.board, state.rows, state.cols, row, col);
-        for (const brow of state.board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
-        if (!check.solvable && check.remainingUnknowns > 0) {
-          // Strip gimmick effects from cells, keep raw board
+        // Verify post-relocation solvability — retry gimmick placement if needed
+        for (let rAttempt = 0; ; rAttempt++) {
+          const check = isBoardSolvable(state.board, state.rows, state.cols, row, col);
+          for (const brow of state.board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
+          if (check.solvable || check.remainingUnknowns === 0) break;
+          // Re-apply gimmicks with different seed
           for (const brow of state.board) for (const c of brow) {
             c.isMystery = false; c.isLiar = false; c.displayedMines = undefined;
             c.mirrorZone = undefined; c.isWormhole = false; c.wormholePair = undefined;
+            c.wormholePairIndex = undefined;
           }
           calculateAdjacency(state.board);
-          state.activeGimmicks = [];
-          state.gimmickData = {};
+          const retryGimmickRng = createDailyRNG(state.dailySeed + '-gimmick-retry-' + rAttempt);
+          state.gimmickData = applyGimmicks(state.board, 1, state.activeGimmicks, retryGimmickRng);
         }
       }
     }
