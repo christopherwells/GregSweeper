@@ -158,8 +158,9 @@ async function updateLeaderboardDisplay() {
   $('#leaderboard-table').classList.remove('hidden');
   $('#leaderboard-empty').classList.add('hidden');
 
-  // Get daily par for comparison (from state, localStorage, or compute on-demand)
+  // Get daily par and solver moves (from state, localStorage, or compute on-demand)
   let dailyPar = state.dailyPar || parseFloat(localStorage.getItem('minesweeper_daily_par_' + dateStr)) || 0;
+  let dailyMoves = state.dailyMoves || parseInt(localStorage.getItem('minesweeper_daily_moves_' + dateStr)) || 0;
   if (dailyPar === 0) {
     // Compute par on-demand by regenerating today's daily board
     try {
@@ -172,8 +173,10 @@ async function updateLeaderboardDisplay() {
       const pBoard = generateBoard(pRows, pCols, pMines, pFixedR, pFixedC, createDailyRNG(dateStr));
       for (const row of pBoard) for (const c of row) { c.isRevealed = false; c.revealAnimDelay = 0; }
       const parResult = isBoardSolvable(pBoard, pRows, pCols, pFixedR, pFixedC);
-      dailyPar = Math.round(parResult.totalReveals * 1.4 * 10) / 10;
+      dailyPar = Math.round(parResult.totalReveals * 2.05 * 10) / 10;
+      dailyMoves = parResult.totalReveals;
       localStorage.setItem('minesweeper_daily_par_' + dateStr, String(dailyPar));
+      localStorage.setItem('minesweeper_daily_moves_' + dateStr, String(dailyMoves));
     } catch (e) { dailyPar = 0; }
   }
 
@@ -188,7 +191,11 @@ async function updateLeaderboardDisplay() {
       else if (delta > 0.5) parCol = `<td class="par-over">+${abs}</td>`;
       else parCol = `<td class="par-even">E</td>`;
     }
-    tr.innerHTML = `<td>${i + 1}</td><td>${escapeHtml(entry.name)}</td><td>${entry.time}s</td>${bombCol}${parCol}`;
+    let paceCol = '<td>-</td>';
+    if (dailyMoves > 0) {
+      paceCol = `<td>${(entry.time / dailyMoves).toFixed(2)}</td>`;
+    }
+    tr.innerHTML = `<td>${i + 1}</td><td>${escapeHtml(entry.name)}</td><td>${entry.time}s</td>${bombCol}${parCol}${paceCol}`;
     tbody.appendChild(tr);
   });
 }
@@ -238,10 +245,16 @@ async function updateRoomPanel() {
   } else {
     $('#room-leaderboard-table').classList.remove('hidden');
     emptyMsg.classList.add('hidden');
+    // Reuse dailyMoves from the global leaderboard computation
+    const roomMoves = state.dailyMoves || parseInt(localStorage.getItem('minesweeper_daily_moves_' + dateStr)) || 0;
     entries.forEach((entry, i) => {
       const tr = document.createElement('tr');
       const bombCol = entry.bombHits != null ? `<td>${entry.bombHits}</td>` : '<td>-</td>';
-      tr.innerHTML = `<td>${i + 1}</td><td>${escapeHtml(entry.name)}</td><td>${entry.time}s</td>${bombCol}`;
+      let paceCol = '<td>-</td>';
+      if (roomMoves > 0) {
+        paceCol = `<td>${(entry.time / roomMoves).toFixed(2)}</td>`;
+      }
+      tr.innerHTML = `<td>${i + 1}</td><td>${escapeHtml(entry.name)}</td><td>${entry.time}s</td>${bombCol}${paceCol}`;
       tbody.appendChild(tr);
     });
   }

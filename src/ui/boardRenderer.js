@@ -2,9 +2,6 @@ import { state } from '../state/gameState.js';
 import { boardEl, zoomControls, zoomLevelDisplay, boardScrollWrapper } from './domHelpers.js';
 import { THEME_UNLOCKS } from './themeManager.js';
 import { loadEmojiPack, getActiveEmojiPack } from './collectionManager.js';
-import { isBoardSolvable } from '../logic/boardSolver.js';
-import { hasWallBetween } from '../logic/gimmicks.js';
-
 // ── Emoji Cache (avoid per-cell localStorage reads) ────
 let _emojiCache = null;
 let _emojiCacheValid = false;
@@ -311,82 +308,27 @@ export function updateCell(r, c) {
 }
 
 export function updateAllCells() {
-  // For daily mode: show suggested start when board is fresh or re-fogged after bomb hit
+  // For daily mode: apply cached suggested start position (computed in newGame)
   const dailyNeedsStart = state.gameMode === "daily" && state.board?.length > 0 &&
     (state.status === "idle" || (state.status === "playing" && state.revealedCount <= 1));
-  if (dailyNeedsStart) {
-    // Only calculate once; after bomb hits, reuse the original position
-    if (state.status === "idle") _dailySuggestedCell = null; // fresh board = recalculate
-    if (_dailySuggestedCell) {
-      for (const row of state.board) for (const cell of row) cell.suggestedStart = false;
-      state.board[_dailySuggestedCell.r][_dailySuggestedCell.c].suggestedStart = true;
-    } else {
-      markDailySuggestedStart();
-    }
+  if (dailyNeedsStart && _dailySuggestedCell) {
+    for (const row of state.board) for (const cell of row) cell.suggestedStart = false;
+    state.board[_dailySuggestedCell.r][_dailySuggestedCell.c].suggestedStart = true;
   }
   for (let r = 0; r < state.rows; r++) {
     for (let c = 0; c < state.cols; c++) {
       updateCell(r, c);
     }
   }
-  // Add "Start here" label near the suggested start cell
   updateStartHereLabel();
 }
 
-// Stores the original suggested start position so it doesn't move after bomb hits
+// Stores the suggested start position so it persists across re-fogs after bomb hits
 let _dailySuggestedCell = null;
 
-function markDailySuggestedStart() {
-  const board = state.board, rows = state.rows, cols = state.cols;
-  // Reset ALL reveal/animation flags — the board solver in generateBoard
-  // and any stale cached code can leave these set
-  for (const row of board) for (const cell of row) {
-    cell.suggestedStart = false;
-    cell.isRevealed = false;
-    cell.revealAnimDelay = 0;
-  }
-  state.revealedCount = 0;
-  state.status = 'idle';
-
-  // Collect non-mine, non-wall, non-locked candidates
-  let candidates = [];
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const cell = board[r][c];
-      if (!cell.isMine && !cell.isLocked) {
-        candidates.push({ r, c, adj: cell.adjacentMines });
-      }
-    }
-  }
-
-  // Use the board solver to find which starting cell gives the most
-  // logically solvable board (fewest remaining unknowns / guesses).
-  // Test zero-cells first (big cascades = more info), then others.
-  const zeroCells = candidates.filter(c => c.adj === 0);
-  const nonZeroCells = candidates.filter(c => c.adj > 0);
-  const ordered = [...zeroCells, ...nonZeroCells];
-
-  let bestCell = null;
-  let bestUnknowns = Infinity;
-
-  for (const cand of ordered) {
-    const result = isBoardSolvable(board, rows, cols, cand.r, cand.c);
-    if (result.solvable && result.remainingUnknowns === 0) {
-      // Fully solvable from this cell — use it immediately
-      bestCell = cand;
-      bestUnknowns = 0;
-      break;
-    }
-    if (result.remainingUnknowns < bestUnknowns) {
-      bestUnknowns = result.remainingUnknowns;
-      bestCell = cand;
-    }
-  }
-
-  if (bestCell) {
-    board[bestCell.r][bestCell.c].suggestedStart = true;
-    _dailySuggestedCell = { r: bestCell.r, c: bestCell.c };
-  }
+/** Set the cached daily suggested start cell (computed in gameActions.newGame) */
+export function setDailySuggestedCell(cell) {
+  _dailySuggestedCell = cell;
 }
 
 function updateStartHereLabel() {

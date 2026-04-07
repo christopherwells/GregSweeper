@@ -71,8 +71,8 @@ const GIMMICK_DEFS = {
 const SEEN_KEY = 'minesweeper_seen_gimmicks';
 const POPUP_DISABLED_KEY = 'minesweeper_modifier_popup_disabled';
 
-// ── Daily-safe gimmick subset ──────────────────────────
-const DAILY_SAFE_GIMMICKS = ['mystery', 'locked', 'walls', 'liar'];
+// ── Daily-safe gimmick subset (no dynamic board changes, no timers) ──
+const DAILY_SAFE_GIMMICKS = ['mystery', 'locked', 'walls', 'liar', 'wormhole', 'mirror', 'sonar', 'compass'];
 
 // ── Modifier popup preference ──────────────────────────
 
@@ -88,9 +88,17 @@ export function setModifierPopupDisabled(disabled) {
 
 export function getDailyGimmick(dailySeed, createRNG) {
   const rng = createRNG(dailySeed + '-gimmick');
-  if (rng() > 0.35) return []; // 65% of days: no gimmick
+  if (rng() > 0.55) return []; // 45% of days: no gimmick
   const idx = Math.floor(rng() * DAILY_SAFE_GIMMICKS.length);
-  return [DAILY_SAFE_GIMMICKS[idx]];
+  const gimmicks = [DAILY_SAFE_GIMMICKS[idx]];
+  // ~20% of gimmick days get a second modifier
+  if (rng() < 0.20) {
+    const idx2 = Math.floor(rng() * DAILY_SAFE_GIMMICKS.length);
+    if (DAILY_SAFE_GIMMICKS[idx2] !== gimmicks[0]) {
+      gimmicks.push(DAILY_SAFE_GIMMICKS[idx2]);
+    }
+  }
+  return gimmicks;
 }
 
 // ── Which gimmicks are active for a given level ────────
@@ -161,6 +169,11 @@ function getIntensity(gimmick, level, rng) {
     // Introduction block: ramp from 1 to block position
     const blockPos = level - def.intro; // 0-4
     return 1 + blockPos;
+  }
+
+  // Below intro (daily/chaos at low levels): moderate fixed intensity
+  if (level < def.intro) {
+    return 2 + (rng() < 0.3 ? 1 : 0);
   }
 
   // After introduction: slowly ramp toward max level

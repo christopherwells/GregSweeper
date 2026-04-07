@@ -11,6 +11,34 @@ import { solveConstraints } from './constraintSolver.js';
 import { hasWallBetween } from './gimmicks.js';
 
 /**
+ * Pre-compute wall-aware neighbor lists for every cell.
+ * Reuse across multiple isBoardSolvable() calls on the same board
+ * to avoid redundant O(rows*cols*8) computation.
+ */
+export function buildNeighborCache(board, rows, cols) {
+  const wallEdges = board._wallEdges || null;
+  const cache = new Array(rows * cols);
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const nbrs = [];
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue;
+          const nr = r + dr;
+          const nc = c + dc;
+          if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+            if (wallEdges && hasWallBetween(wallEdges, r, c, nr, nc)) continue;
+            nbrs.push(nr * cols + nc);
+          }
+        }
+      }
+      cache[r * cols + c] = nbrs;
+    }
+  }
+  return cache;
+}
+
+/**
  * Check if a Minesweeper board is solvable without guessing.
  * Works on a simulation — does NOT mutate the original board.
  *
@@ -19,9 +47,10 @@ import { hasWallBetween } from './gimmicks.js';
  * @param {number} cols                 - board width
  * @param {number} safeRow              - first click row
  * @param {number} safeCol              - first click column
+ * @param {Array} [preNeighborCache]    - optional pre-built neighbor cache from buildNeighborCache()
  * @returns {{ solvable: boolean, remainingUnknowns: number }}
  */
-export function isBoardSolvable(board, rows, cols, safeRow, safeCol) {
+export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighborCache) {
   // Build a lightweight simulation grid:
   // 0 = unrevealed unknown, 1 = revealed, 2 = flagged as mine
   const sim = new Uint8Array(rows * cols); // all 0 (unrevealed)
@@ -72,27 +101,8 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol) {
   }
   let revealedCount = 0;
 
-  // Pre-compute neighbor lists for every cell (wall-aware)
-  const wallEdges = board._wallEdges || null;
-  const neighborCache = new Array(rows * cols);
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const nbrs = [];
-      for (let dr = -1; dr <= 1; dr++) {
-        for (let dc = -1; dc <= 1; dc++) {
-          if (dr === 0 && dc === 0) continue;
-          const nr = r + dr;
-          const nc = c + dc;
-          if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
-            // Skip neighbors blocked by walls
-            if (wallEdges && hasWallBetween(wallEdges, r, c, nr, nc)) continue;
-            nbrs.push(idx(nr, nc));
-          }
-        }
-      }
-      neighborCache[idx(r, c)] = nbrs;
-    }
-  }
+  // Pre-compute neighbor lists (or reuse provided cache)
+  const neighborCache = preNeighborCache || buildNeighborCache(board, rows, cols);
 
   // Track locked cells
   const isLocked = new Uint8Array(rows * cols);

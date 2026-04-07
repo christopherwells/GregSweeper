@@ -2,7 +2,7 @@ import { state, getRevealedCells } from '../state/gameState.js';
 import { $, $$, boardEl, resetBtn } from '../ui/domHelpers.js';
 import {
   renderBoard, updateCell, updateAllCells, updateCells, getThemeEmoji,
-  adjustCellSize, updateZoom, renderWallOverlays,
+  adjustCellSize, updateZoom, renderWallOverlays, setDailySuggestedCell,
 } from '../ui/boardRenderer.js';
 import {
   updateHeader, updateCheckpointDisplay, updateProgressBar,
@@ -16,7 +16,7 @@ import { startTimer, stopTimer, pauseTimer, resumeTimer, startMineShift, updateT
 import { handleWin, handleLoss, handleDailyBombHit } from './winLossHandler.js';
 import { performScan, performXRay, performMagnet, tryLifeline } from './powerUpActions.js';
 import { generateBoard, createEmptyBoard, calculateAdjacency } from '../logic/boardGenerator.js';
-import { floodFillReveal, checkWin, chordReveal, isBoardSolvable, estimatePlateMovesToDisarm } from '../logic/boardSolver.js';
+import { floodFillReveal, checkWin, chordReveal, isBoardSolvable, estimatePlateMovesToDisarm, buildNeighborCache } from '../logic/boardSolver.js';
 import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getChaosDifficulty } from '../logic/difficulty.js';
 import { shieldDefuse } from '../logic/powerUps.js';
 import { getGimmicksForLevel, applyGimmicks, applyWalls, isLockedCell, hasWallBetween, hasSeenGimmick, markGimmickSeen, getGimmickDef, isModifierPopupDisabled, setModifierPopupDisabled, getDailyGimmick, getChaosGimmicks } from '../logic/gimmicks.js';
@@ -177,8 +177,10 @@ export function newGame() {
         const check = isBoardSolvable(state.board, state.rows, state.cols, fixedRow, fixedCol);
         for (const brow of state.board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
         if (check.solvable || check.remainingUnknowns === 0) {
-          state.dailyPar = Math.round(check.totalReveals * 1.4 * 10) / 10;
+          state.dailyPar = Math.round(check.totalReveals * 2.05 * 10) / 10;
+          state.dailyMoves = check.totalReveals;
           localStorage.setItem('minesweeper_daily_par_' + state.dailySeed, String(state.dailyPar));
+          localStorage.setItem('minesweeper_daily_moves_' + state.dailySeed, String(check.totalReveals));
           break;
         }
       }
@@ -186,9 +188,48 @@ export function newGame() {
       // No gimmicks — compute par on raw board
       const parCheck = isBoardSolvable(state.board, state.rows, state.cols, fixedRow, fixedCol);
       for (const brow of state.board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
-      state.dailyPar = Math.round(parCheck.totalReveals * 1.4 * 10) / 10;
+      state.dailyPar = Math.round(parCheck.totalReveals * 2.05 * 10) / 10;
+      state.dailyMoves = parCheck.totalReveals;
       localStorage.setItem('minesweeper_daily_par_' + state.dailySeed, String(state.dailyPar));
+      localStorage.setItem('minesweeper_daily_moves_' + state.dailySeed, String(parCheck.totalReveals));
     }
+
+    // Compute best starting cell for "Start here" indicator.
+    // Build neighbor cache once and reuse across all candidate solver calls.
+    const nbrCache = buildNeighborCache(state.board, state.rows, state.cols);
+    const startCandidates = [];
+    for (let r = 0; r < state.rows; r++) {
+      for (let c = 0; c < state.cols; c++) {
+        if (!state.board[r][c].isMine && !state.board[r][c].isLocked) {
+          startCandidates.push({ r, c, adj: state.board[r][c].adjacentMines });
+        }
+      }
+    }
+    // Try zero-cells first (big cascades = more info for the solver)
+    const zeroFirst = startCandidates.filter(c => c.adj === 0);
+    const nonZero = startCandidates.filter(c => c.adj > 0);
+    const ordered = [...zeroFirst, ...nonZero];
+
+    let bestStart = null;
+    let bestStartUnknowns = Infinity;
+    for (const cand of ordered) {
+      const result = isBoardSolvable(state.board, state.rows, state.cols, cand.r, cand.c, nbrCache);
+      if (result.solvable && result.remainingUnknowns === 0) {
+        bestStart = cand;
+        break;
+      }
+      if (result.remainingUnknowns < bestStartUnknowns) {
+        bestStartUnknowns = result.remainingUnknowns;
+        bestStart = cand;
+      }
+    }
+    // Clean solver artifacts (safety net)
+    for (const row of state.board) for (const cell of row) { cell.isRevealed = false; cell.revealAnimDelay = 0; }
+    state.revealedCount = 0;
+    if (bestStart) {
+      state.board[bestStart.r][bestStart.c].suggestedStart = true;
+    }
+    setDailySuggestedCell(bestStart);
 
   }
 
