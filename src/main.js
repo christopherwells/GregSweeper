@@ -173,8 +173,8 @@ async function updateLeaderboardDisplay() {
       const pBoard = generateBoard(pRows, pCols, pMines, pFixedR, pFixedC, createDailyRNG(dateStr));
       for (const row of pBoard) for (const c of row) { c.isRevealed = false; c.revealAnimDelay = 0; }
       const parResult = isBoardSolvable(pBoard, pRows, pCols, pFixedR, pFixedC);
-      dailyPar = Math.round(parResult.totalReveals * 2.05 * 10) / 10;
-      dailyMoves = parResult.totalReveals;
+      dailyPar = Math.round(parResult.totalClicks * 2.05 * 10) / 10;
+      dailyMoves = parResult.totalClicks;
       localStorage.setItem('minesweeper_daily_par_' + dateStr, String(dailyPar));
       localStorage.setItem('minesweeper_daily_moves_' + dateStr, String(dailyMoves));
     } catch (e) { dailyPar = 0; }

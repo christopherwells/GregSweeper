@@ -144,12 +144,11 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
 
   // Reveal a cell (simulate); if it's a zero, flood-fill
   const revealQueue = [];
-  let totalReveals = 0; // counts every cell reveal for par calculation
+  let totalClicks = 0; // counts player clicks (cascades = 1 click)
   function revealCell(i) {
     if (sim[i] !== 0 || isMine[i] || isLocked[i]) return;
     sim[i] = 1;
     revealedCount++;
-    totalReveals++;
     if (cascadeCount[i] === 0) {
       for (const ni of neighborCache[i]) {
         if (sim[ni] === 0 && !isMine[ni] && !isLocked[ni]) {
@@ -165,13 +164,14 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
   }
 
   // Step 1: Simulate first click — reveal safeRow, safeCol and flood-fill zeros
+  totalClicks++;
   revealQueue.push(idx(safeRow, safeCol));
   while (revealQueue.length > 0) {
     revealCell(revealQueue.pop());
   }
   tryUnlockAll(); // unlock any locked cells freed by the initial cascade
 
-  if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0, totalReveals };
+  if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0, totalClicks };
 
   // Step 2: Iterative multi-layer constraint solving
   const MAX_ITERATIONS = 1000;
@@ -194,7 +194,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
       const remaining = adjCount[i] - flagged;
 
       if (remaining < 0 || remaining > unknowns) {
-        return { solvable: false, remainingUnknowns: totalSafe - revealedCount, totalReveals };
+        return { solvable: false, remainingUnknowns: totalSafe - revealedCount, totalClicks };
       }
 
       // Rule 1: All unknowns must be mines
@@ -211,6 +211,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
       if (remaining === 0 && unknowns > 0) {
         for (const ni of nbrs) {
           if (sim[ni] === 0) {
+            totalClicks++;
             revealQueue.push(ni);
             progress = true;
           }
@@ -222,7 +223,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
     }
 
     tryUnlockAll(); // check if reveals freed any locked cells
-      if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0, totalReveals };
+      if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0, totalClicks };
     if (progress) continue;
 
     // ── Pass B: Subset / superset constraint analysis ──
@@ -258,6 +259,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
         if (diffMines === 0 && diff.length > 0) {
           for (const di of diff) {
             if (sim[di] === 0) {
+              totalClicks++;
               revealQueue.push(di);
               subsetProgress = true;
             }
@@ -270,7 +272,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
     }
 
     tryUnlockAll();
-      if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0, totalReveals };
+      if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0, totalClicks };
     if (subsetProgress) continue;
 
     // ── Pass C: Advanced solver (Gauss + Tank) ──
@@ -288,6 +290,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
 
     for (const cellIdx of solved.safe) {
       if (sim[cellIdx] === 0) {
+        totalClicks++;
         revealQueue.push(cellIdx);
         advancedProgress = true;
       }
@@ -297,7 +300,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
     }
 
     tryUnlockAll();
-      if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0, totalReveals };
+      if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0, totalClicks };
     if (advancedProgress) continue;
 
     // No progress from any layer — board requires guessing
@@ -305,7 +308,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
   }
 
   const remaining = totalSafe - revealedCount;
-  return { solvable: false, remainingUnknowns: remaining, totalReveals };
+  return { solvable: false, remainingUnknowns: remaining, totalClicks };
 }
 
 // ── Build constraints from current simulation state ──────────

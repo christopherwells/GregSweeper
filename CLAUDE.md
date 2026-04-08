@@ -36,7 +36,7 @@ No build step, no npm install, no dependencies to manage. Firebase SDK loaded vi
 
 Two-layer solver guarantees no 50/50 guesses:
 
-1. **Board solver** (`boardSolver.js`): Simulates full game playthrough from first click. Wall-aware neighbor lists, gimmick-aware (mystery=unknown, liar=displayedMines, mirror=displayedMines, sonar/compass/wormhole=unknown). Returns `{ solvable, remainingUnknowns, totalReveals }`.
+1. **Board solver** (`boardSolver.js`): Simulates full game playthrough from first click. Wall-aware neighbor lists, gimmick-aware (mystery=unknown, liar=displayedMines, mirror=displayedMines, sonar/compass/wormhole=unknown). Returns `{ solvable, remainingUnknowns, totalClicks }` (clicks, not individual cell reveals — cascades count as 1).
 
 2. **Constraint solver** (`constraintSolver.js`): Union-find partitions independent constraint groups. Tank solver (bitmask brute-force) for <=20 unknowns; Gaussian elimination for larger groups. Returns forced mines/safe cells.
 

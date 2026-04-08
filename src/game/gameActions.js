@@ -177,10 +177,10 @@ export function newGame() {
         const check = isBoardSolvable(state.board, state.rows, state.cols, fixedRow, fixedCol);
         for (const brow of state.board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
         if (check.solvable || check.remainingUnknowns === 0) {
-          state.dailyPar = Math.round(check.totalReveals * 2.05 * 10) / 10;
-          state.dailyMoves = check.totalReveals;
+          state.dailyPar = Math.round(check.totalClicks * 2.05 * 10) / 10;
+          state.dailyMoves = check.totalClicks;
           localStorage.setItem('minesweeper_daily_par_' + state.dailySeed, String(state.dailyPar));
-          localStorage.setItem('minesweeper_daily_moves_' + state.dailySeed, String(check.totalReveals));
+          localStorage.setItem('minesweeper_daily_moves_' + state.dailySeed, String(check.totalClicks));
           break;
         }
       }
@@ -188,10 +188,10 @@ export function newGame() {
       // No gimmicks — compute par on raw board
       const parCheck = isBoardSolvable(state.board, state.rows, state.cols, fixedRow, fixedCol);
       for (const brow of state.board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
-      state.dailyPar = Math.round(parCheck.totalReveals * 2.05 * 10) / 10;
-      state.dailyMoves = parCheck.totalReveals;
+      state.dailyPar = Math.round(parCheck.totalClicks * 2.05 * 10) / 10;
+      state.dailyMoves = parCheck.totalClicks;
       localStorage.setItem('minesweeper_daily_par_' + state.dailySeed, String(state.dailyPar));
-      localStorage.setItem('minesweeper_daily_moves_' + state.dailySeed, String(parCheck.totalReveals));
+      localStorage.setItem('minesweeper_daily_moves_' + state.dailySeed, String(parCheck.totalClicks));
     }
 
     // Compute best starting cell for "Start here" indicator.
