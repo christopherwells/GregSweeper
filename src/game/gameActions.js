@@ -772,6 +772,25 @@ export function handleChordReveal(row, col) {
 
   state.revealedCount += result.revealed.filter(c => !c.isMine).length;
 
+  // Wormhole: revealing one side reveals the paired cell too
+  for (const rev of [...result.revealed]) {
+    if (rev.isWormhole && rev.wormholePair && !rev.isMine) {
+      const pair = state.board[rev.wormholePair.row]?.[rev.wormholePair.col];
+      if (pair && !pair.isRevealed && !pair.isMine) {
+        pair.isRevealed = true;
+        pair.revealAnimDelay = 0;
+        state.revealedCount++;
+        result.revealed.push(pair);
+        const pairEff = pair.displayedMines != null ? pair.displayedMines : pair.adjacentMines;
+        if (pairEff === 0) {
+          const cascade = floodFillReveal(state.board, pair.row, pair.col);
+          state.revealedCount += cascade.length;
+          result.revealed.push(...cascade);
+        }
+      }
+    }
+  }
+
   updateCells(result.revealed);
   updateHeader();
 

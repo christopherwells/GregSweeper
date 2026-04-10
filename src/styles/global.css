@@ -394,7 +394,7 @@ body {
 }
 /* Passive powerups (lifeline) show full opacity even when disabled */
 .powerup-btn.powerup-passive:disabled {
-  opacity: 0.85;
+  opacity: 1;
 }
 
 .powerup-btn:not(:disabled):hover {

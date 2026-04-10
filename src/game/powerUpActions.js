@@ -29,6 +29,16 @@ export function useRevealSafe() {
   cell.revealAnimDelay = 0;
   state.revealedCount++;
 
+  // Wormhole: revealing one side reveals the paired cell too
+  if (cell.isWormhole && cell.wormholePair) {
+    const pair = state.board[cell.wormholePair.row]?.[cell.wormholePair.col];
+    if (pair && !pair.isRevealed && !pair.isMine) {
+      pair.isRevealed = true;
+      pair.revealAnimDelay = 0;
+      state.revealedCount++;
+    }
+  }
+
   const cellEl = boardEl.children[cell.row * state.cols + cell.col];
   if (cellEl) {
     cellEl.classList.add('golden-reveal');
