@@ -204,6 +204,7 @@ export function updateCell(r, c) {
       const isHit = state.hitMine && state.hitMine.row === r && state.hitMine.col === c;
       cellEl.className = `cell revealed mine${isHit ? ' mine-hit' : ''}`;
       cellEl.textContent = getThemeEmoji('mine');
+      if (cell.correctFlag) cellEl.classList.add('correct-flag');
     } else if (cell.adjacentMines > 0) {
       if (cell.isHiddenNumber) {
         cellEl.className = 'cell revealed hidden-number';
