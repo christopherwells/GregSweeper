@@ -649,14 +649,14 @@ body {
 }
 
 .cell.suggested-move {
-  border: 2px solid #00e676 !important;
-  box-shadow: 0 0 8px rgba(0, 230, 118, 0.4);
+  border: 2px solid #0091ea !important;
+  box-shadow: 0 0 8px rgba(0, 145, 234, 0.4);
   animation: pulse-suggest 1.5s ease-in-out infinite;
 }
 
 @keyframes pulse-suggest {
-  0%, 100% { box-shadow: 0 0 8px rgba(0, 230, 118, 0.3); }
-  50% { box-shadow: 0 0 16px rgba(0, 230, 118, 0.7); }
+  0%, 100% { box-shadow: 0 0 8px rgba(0, 145, 234, 0.3); }
+  50% { box-shadow: 0 0 16px rgba(0, 145, 234, 0.7); }
 }
 
 .cell.suggested-start {
