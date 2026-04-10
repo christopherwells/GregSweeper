@@ -276,6 +276,7 @@ export function updateCell(r, c) {
     cellEl.textContent = getThemeEmoji('flag');
     // Wrong flag overlay (post-death analysis)
     if (cell.wrongFlag) cellEl.classList.add('wrong-flag');
+    if (cell.correctFlag) cellEl.classList.add('correct-flag');
   } else {
     cellEl.className = 'cell unrevealed';
     cellEl.textContent = '';

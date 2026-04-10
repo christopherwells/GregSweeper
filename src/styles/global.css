@@ -643,6 +643,11 @@ body {
   background: rgba(255, 23, 68, 0.15) !important;
 }
 
+.cell.correct-flag {
+  background: rgba(0, 230, 118, 0.2) !important;
+  border: 2px solid #00c853 !important;
+}
+
 .cell.suggested-move {
   border: 2px solid #00e676 !important;
   box-shadow: 0 0 8px rgba(0, 230, 118, 0.4);

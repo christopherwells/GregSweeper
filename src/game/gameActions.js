@@ -185,13 +185,23 @@ export function newGame() {
         }
       }
     } else {
-      // No gimmicks — compute par on raw board
-      const parCheck = isBoardSolvable(state.board, state.rows, state.cols, fixedRow, fixedCol);
-      for (const brow of state.board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
-      state.dailyPar = Math.round(parCheck.totalClicks * 2.05 * 10) / 10;
-      state.dailyMoves = parCheck.totalClicks;
-      localStorage.setItem('minesweeper_daily_par_' + state.dailySeed, String(state.dailyPar));
-      localStorage.setItem('minesweeper_daily_moves_' + state.dailySeed, String(parCheck.totalClicks));
+      // No gimmicks — verify solvability and retry if needed
+      for (let dAttempt = 0; ; dAttempt++) {
+        if (dAttempt > 0) {
+          const retryRng = createDailyRNG(state.dailySeed + '-retry-' + dAttempt);
+          state.board = generateBoard(state.rows, state.cols, state.totalMines, fixedRow, fixedCol, retryRng);
+          for (const brow of state.board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
+        }
+        const parCheck = isBoardSolvable(state.board, state.rows, state.cols, fixedRow, fixedCol);
+        for (const brow of state.board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
+        if (parCheck.solvable || parCheck.remainingUnknowns === 0) {
+          state.dailyPar = Math.round(parCheck.totalClicks * 2.05 * 10) / 10;
+          state.dailyMoves = parCheck.totalClicks;
+          localStorage.setItem('minesweeper_daily_par_' + state.dailySeed, String(state.dailyPar));
+          localStorage.setItem('minesweeper_daily_moves_' + state.dailySeed, String(parCheck.totalClicks));
+          break;
+        }
+      }
     }
 
     // Compute best starting cell for "Start here" indicator.
@@ -400,8 +410,15 @@ export function revealCell(row, col) {
         }
         // Not solvable — retry with fresh board
       } else {
-        postGimmickSolvable = true;
-        break;
+        // Verify solvability even without gimmicks — generateBoard's fallback
+        // can return unsolvable boards when rejection sampling is exhausted
+        const check = isBoardSolvable(state.board, state.rows, state.cols, row, col);
+        for (const brow of state.board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
+        if (check.solvable || check.remainingUnknowns === 0) {
+          postGimmickSolvable = true;
+          break;
+        }
+        // Not solvable — loop retries with fresh board
       }
     }
 
@@ -499,10 +516,15 @@ export function revealCell(row, col) {
           if (check.solvable || check.remainingUnknowns === 0) break;
           // Re-apply gimmicks with different seed
           for (const brow of state.board) for (const c of brow) {
-            c.isMystery = false; c.isLiar = false; c.displayedMines = undefined;
-            c.mirrorZone = undefined; c.isWormhole = false; c.wormholePair = undefined;
-            c.wormholePairIndex = undefined;
+            c.isMystery = false; c.isLiar = false; c.inLiarZone = false;
+            c.displayedMines = undefined; c.mirrorZone = undefined;
+            c.isWormhole = false; c.wormholePair = undefined; c.wormholePairIndex = undefined;
+            c.isLocked = false; c.isPressurePlate = false; c.plateTimer = undefined;
+            c.plateDisarmed = false; c.isSonar = false; c.sonarCount = undefined;
+            c.isCompass = false; c.compassDir = undefined; c.compassArrow = undefined;
+            c.compassCount = undefined;
           }
+          state.board._wallEdges = null;
           calculateAdjacency(state.board);
           const retryGimmickRng = createDailyRNG(state.dailySeed + '-gimmick-retry-' + rAttempt);
           state.gimmickData = applyGimmicks(state.board, 1, state.activeGimmicks, retryGimmickRng);

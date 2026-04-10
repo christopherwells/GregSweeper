@@ -160,6 +160,17 @@ const SPEED_THRESHOLDS = [
 // Gimmick intro levels where mine density dips slightly (1-2 fewer mines)
 const GIMMICK_INTRO_LEVELS = new Set([11, 21, 31, 41, 51, 61, 71, 81, 91]);
 
+// Non-chaosOnly gimmick introduction levels — used to scale down mine density
+// as modifiers pile on (avoids circular import from gimmicks.js)
+const GIMMICK_INTROS = [11, 21, 31, 41, 51, 61, 71, 81, 91];
+function gimmickTypesAt(level) {
+  let count = 0;
+  for (const intro of GIMMICK_INTROS) {
+    if (level >= intro) count++;
+  }
+  return count;
+}
+
 export function getDifficultyForLevel(level) {
   const capped = Math.min(Math.max(level, 1), CHALLENGE_LEVELS.length);
   const diff = { ...CHALLENGE_LEVELS[capped - 1] };
@@ -167,6 +178,14 @@ export function getDifficultyForLevel(level) {
   // Subtle breathing room: reduce mines by 1-2 on the exact level a gimmick is introduced
   if (GIMMICK_INTRO_LEVELS.has(capped)) {
     diff.mines = Math.max(1, diff.mines - 2);
+  }
+
+  // Scale down mine density as gimmicks accumulate — each introduced type
+  // reduces mines by ~0.6, so L91+ (9 types) drops by 5 mines.
+  // This keeps L120 at roughly what L100 was before the adjustment.
+  const gimmickReduction = Math.floor(gimmickTypesAt(capped) * 0.6);
+  if (gimmickReduction > 0) {
+    diff.mines = Math.max(1, diff.mines - gimmickReduction);
   }
 
   return diff;

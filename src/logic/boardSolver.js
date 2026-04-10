@@ -343,8 +343,9 @@ export function findNextSafeMove(board) {
   const cols = board[0].length;
   const idx = (r, c) => r * cols + c;
   const totalCells = rows * cols;
+  const UNKNOWN = 255;
 
-  // Build simulation state from actual board
+  // Build simulation state from actual board — gimmick-aware (matches isBoardSolvable)
   const sim = new Uint8Array(totalCells);
   const adjCount = new Uint8Array(totalCells);
   const isMineArr = new Uint8Array(totalCells);
@@ -356,30 +357,25 @@ export function findNextSafeMove(board) {
       if (cell.isRevealed) sim[i] = 1;
       else if (cell.isFlagged) sim[i] = 2;
       if (cell.isMine) isMineArr[i] = 1;
-      adjCount[i] = cell.adjacentMines;
+      // Use player-visible information, same as isBoardSolvable
+      if (cell.isMystery || cell.isSonar || cell.isCompass || cell.isWormhole) {
+        adjCount[i] = UNKNOWN;
+      } else if (cell.isLiar && cell.displayedMines != null) {
+        adjCount[i] = cell.displayedMines;
+      } else if (cell.mirrorZone && cell.displayedMines != null) {
+        adjCount[i] = cell.displayedMines;
+      } else {
+        adjCount[i] = cell.adjacentMines;
+      }
     }
   }
 
-  // Pre-compute neighbors
-  const neighborCache = new Array(totalCells);
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const nbrs = [];
-      for (let dr = -1; dr <= 1; dr++) {
-        for (let dc = -1; dc <= 1; dc++) {
-          if (dr === 0 && dc === 0) continue;
-          const nr = r + dr;
-          const nc = c + dc;
-          if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) nbrs.push(idx(nr, nc));
-        }
-      }
-      neighborCache[idx(r, c)] = nbrs;
-    }
-  }
+  // Use wall-aware neighbor cache (matches isBoardSolvable)
+  const neighborCache = buildNeighborCache(board, rows, cols);
 
   // Pass A: Simple rules — check for immediately deducible safe cells
   for (let i = 0; i < totalCells; i++) {
-    if (sim[i] !== 1 || adjCount[i] === 0) continue;
+    if (sim[i] !== 1 || adjCount[i] === 0 || adjCount[i] === UNKNOWN) continue;
     const nbrs = neighborCache[i];
     let unknowns = 0;
     let flagged = 0;
@@ -643,7 +639,7 @@ export function chordReveal(board, row, col) {
     }
   }
 
-  if (flagCount !== cell.adjacentMines) return [];
+  if (flagCount !== effectiveCount) return [];
 
   const allRevealed = [];
   let hitMine = false;

@@ -372,6 +372,9 @@ export function handleLoss(mineRow, mineCol) {
         cell.wrongFlag = true;
         wrongFlagCount++;
       }
+      if (cell.isFlagged && cell.isMine) {
+        cell.correctFlag = true;
+      }
     }
   }
 
