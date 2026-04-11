@@ -18,6 +18,17 @@
   <link rel="stylesheet" href="src/styles/themes/dark.css">
   <!-- Other themes loaded on-demand by themeManager.js -->
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700;900&family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+  <!-- SW recovery: runs even if main app JS is broken, forces update + reload -->
+  <script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistration().then(function(reg) {
+      if (reg) reg.update().catch(function(){});
+    });
+    navigator.serviceWorker.addEventListener('controllerchange', function() {
+      window.location.reload();
+    });
+  }
+  </script>
   <!-- Firebase SDK (compat) for online daily leaderboard -->
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
@@ -352,12 +363,7 @@
         <button class="modal-close">&times;</button>
       </div>
       <div class="modal-body">
-        <div class="lb-tabs">
-          <button class="lb-tab active" data-tab="global">Global</button>
-          <button class="lb-tab" data-tab="room">My Room</button>
-        </div>
-        <div id="lb-global-panel">
-          <p id="leaderboard-date"></p>
+        <p id="leaderboard-date"></p>
           <table id="leaderboard-table">
             <thead>
               <tr><th>#</th><th>Name</th><th>Time</th><th>💥</th><th>Par</th><th>Pace</th></tr>
@@ -365,45 +371,6 @@
             <tbody id="leaderboard-body"></tbody>
           </table>
           <p id="leaderboard-empty" class="hidden">No entries yet. Complete today's daily challenge!</p>
-        </div>
-        <div id="lb-room-panel" class="hidden">
-          <div id="room-no-room">
-            <div class="room-form-section">
-              <h3>Create a Room</h3>
-              <input id="room-create-name" type="text" placeholder="Room name" maxlength="30" class="room-input" autocomplete="off">
-              <input id="room-create-code" type="text" placeholder="Code (4-8 letters/numbers)" maxlength="8" class="room-input" autocomplete="off">
-              <input id="room-create-player" type="text" placeholder="Your name" maxlength="20" class="room-input" autocomplete="off">
-              <button id="room-create-btn" class="action-btn">Create Room</button>
-            </div>
-            <div class="room-divider"><span>or</span></div>
-            <div class="room-form-section">
-              <h3>Join a Room</h3>
-              <input id="room-join-code" type="text" placeholder="Room code" maxlength="8" class="room-input" autocomplete="off">
-              <input id="room-join-player" type="text" placeholder="Your name" maxlength="20" class="room-input" autocomplete="off">
-              <button id="room-join-btn" class="action-btn">Join Room</button>
-            </div>
-          </div>
-          <div id="room-active" class="hidden">
-            <div class="room-header-info">
-              <div class="room-name-display" id="room-name-display"></div>
-              <div class="room-code-badge" id="room-code-badge" title="Click to copy"></div>
-            </div>
-            <div class="room-members" id="room-members-list"></div>
-            <h3>Today's Scores</h3>
-            <table id="room-leaderboard-table" class="room-table">
-              <thead>
-                <tr><th>#</th><th>Name</th><th>Time</th><th>💥</th><th>Pace</th></tr>
-              </thead>
-              <tbody id="room-leaderboard-body"></tbody>
-            </table>
-            <p id="room-leaderboard-empty" class="hidden">No room scores yet today.</p>
-            <details class="room-history-details">
-              <summary>Past 7 Days</summary>
-              <div id="room-history-content"></div>
-            </details>
-            <button id="room-leave-btn" class="action-btn room-leave-btn">Leave Room</button>
-          </div>
-        </div>
       </div>
     </div>
   </div>
