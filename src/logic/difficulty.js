@@ -7,6 +7,9 @@
 
 // ── Shared constants ──────────────────────────────────
 export const PAR_SECONDS_PER_MOVE = 3.65;
+export const PLATE_MIN_SECONDS = 8;
+export const PLATE_SECONDS_PER_STEP = 10;
+export const LIFELINE_WIN_REWARD_CHANCE = 0.3;
 
 // Daily board dimension ranges (seeded RNG picks within these)
 export const DAILY_MIN_SIZE = 8;

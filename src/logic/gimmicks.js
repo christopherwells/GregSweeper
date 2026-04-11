@@ -850,6 +850,8 @@ export function markGimmickSeen(gimmick) {
   }
 }
 
+export function getGimmickDefs() { return GIMMICK_DEFS; }
+
 export function getGimmickDef(gimmick) {
   return GIMMICK_DEFS[gimmick] || null;
 }

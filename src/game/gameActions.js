@@ -17,12 +17,12 @@ import { handleWin, handleLoss, handleDailyBombHit } from './winLossHandler.js';
 import { performScan, performXRay, performMagnet, tryLifeline } from './powerUpActions.js';
 import { generateBoard, createEmptyBoard, calculateAdjacency, cleanSolverArtifacts } from '../logic/boardGenerator.js';
 import { floodFillReveal, checkWin, chordReveal, isBoardSolvable, estimatePlateMovesToDisarm, buildNeighborCache } from '../logic/boardSolver.js';
-import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getChaosDifficulty, PAR_SECONDS_PER_MOVE, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE } from '../logic/difficulty.js';
+import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getChaosDifficulty, PAR_SECONDS_PER_MOVE, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE, PLATE_MIN_SECONDS, PLATE_SECONDS_PER_STEP } from '../logic/difficulty.js';
 import { shieldDefuse } from '../logic/powerUps.js';
 import { getGimmicksForLevel, applyGimmicks, applyWalls, isLockedCell, hasWallBetween, hasSeenGimmick, markGimmickSeen, getGimmickDef, isModifierPopupDisabled, setModifierPopupDisabled, getDailyGimmick, getChaosGimmicks, clearGimmickProperties } from '../logic/gimmicks.js';
 import { createDailyRNG, getLocalDateString } from '../logic/seededRandom.js';
 import {
-  loadModePowerUps, loadCheckpoint, clearGameState,
+  loadModePowerUps, loadCheckpoint, clearGameState, saveDailyPar,
 } from '../storage/statsStorage.js';
 import {
   playReveal, playFlag, playUnflag, playCascade, playShieldBreak,
@@ -197,8 +197,7 @@ export function newGame() {
       if (check.solvable || check.remainingUnknowns === 0) {
         state.dailyPar = Math.round(check.totalClicks * PAR_SECONDS_PER_MOVE * 10) / 10;
         state.dailyMoves = check.totalClicks;
-        localStorage.setItem('minesweeper_daily_par_' + state.dailySeed, String(state.dailyPar));
-        localStorage.setItem('minesweeper_daily_moves_' + state.dailySeed, String(check.totalClicks));
+        saveDailyPar(state.dailySeed, state.dailyPar, state.dailyMoves);
         break;
       }
     }
@@ -624,7 +623,7 @@ function startPressurePlateTimer(cell) {
 
   // Dynamic timer: estimate solver steps needed, scale to seconds
   const est = estimatePlateMovesToDisarm(state.board, cell.row, cell.col);
-  const dynamicTime = Math.max(8, Math.round(est.steps * 10));
+  const dynamicTime = Math.max(PLATE_MIN_SECONDS, Math.round(est.steps * PLATE_SECONDS_PER_STEP));
   cell.plateTimer = dynamicTime;
   let remaining = dynamicTime;
   const startTime = Date.now();

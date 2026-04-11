@@ -14,7 +14,7 @@ import { awardPowerUps } from './powerUpActions.js';
 import { setHandleWin } from './powerUpActions.js';
 import { defuseMine } from '../logic/powerUps.js';
 import { findNextSafeMove } from '../logic/boardSolver.js';
-import { getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, getChaosDifficulty } from '../logic/difficulty.js';
+import { getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, getChaosDifficulty, LIFELINE_WIN_REWARD_CHANCE } from '../logic/difficulty.js';
 import {
   loadStats, saveGameResult, saveModePowerUps, clearGameState,
   markDailyCompleted, getDailyStreak, getPlayerName,
@@ -132,7 +132,7 @@ export function handleWin() {
   }
 
   // 30% chance to earn a free lifeline on level completion (Challenge mode)
-  if (state.gameMode === 'normal' && Math.random() < 0.3) {
+  if (state.gameMode === 'normal' && Math.random() < LIFELINE_WIN_REWARD_CHANCE) {
     state.powerUps.lifeline = (state.powerUps.lifeline || 0) + 1;
     saveModePowerUps(state.gameMode, state.powerUps);
     showToast('❤️ Lifeline earned!');

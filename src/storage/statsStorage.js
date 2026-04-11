@@ -1,8 +1,22 @@
 import { safeGet, safeSet, safeRemove, safeGetJSON, safeSetJSON } from './storageAdapter.js';
+import { getLocalDateString } from '../logic/seededRandom.js';
 
 const STATS_KEY = 'minesweeper_stats';
 const LEADERBOARD_KEY = 'minesweeper_daily_leaderboard';
+const DAILY_PAR_KEY_PREFIX = 'minesweeper_daily_par_';
+const DAILY_MOVES_KEY_PREFIX = 'minesweeper_daily_moves_';
 const THEME_KEY = 'minesweeper_theme';
+
+export function saveDailyPar(dateStr, par, moves) {
+  safeSet(DAILY_PAR_KEY_PREFIX + dateStr, String(par));
+  safeSet(DAILY_MOVES_KEY_PREFIX + dateStr, String(moves));
+}
+
+export function loadDailyPar(dateStr) {
+  const par = parseFloat(safeGet(DAILY_PAR_KEY_PREFIX + dateStr)) || 0;
+  const moves = parseInt(safeGet(DAILY_MOVES_KEY_PREFIX + dateStr)) || 0;
+  return { par, moves };
+}
 const POWERUPS_KEY = 'minesweeper_powerups';
 const LIVES_KEY = 'minesweeper_lives';
 const PLAYER_NAME_KEY = 'minesweeper_player_name';
@@ -171,7 +185,7 @@ export function saveGameResult(won, time, level, { isDaily = false, usedPowerUps
       if (modeKey === 'daily') {
         modeStats.dailiesCompleted = (modeStats.dailiesCompleted || 0) + 1;
         // Use the puzzle's seed date (not current date) to avoid midnight-crossing bugs
-        const today = dailySeed || (() => { const _d = new Date(); return _d.getFullYear() + '-' + String(_d.getMonth() + 1).padStart(2, '0') + '-' + String(_d.getDate()).padStart(2, '0'); })();
+        const today = dailySeed || getLocalDateString();
         const lastDate = modeStats.lastDailyCompletedDate;
         if (lastDate) {
           const last = new Date(lastDate + 'T00:00:00');
@@ -395,8 +409,7 @@ export function getDailyStreak() {
   const daily = stats.modeStats?.daily;
   if (!daily) return { streak: 0, best: 0 };
   // Validate streak is still active (last completed was today or yesterday)
-  const _d = new Date();
-  const today = _d.getFullYear() + '-' + String(_d.getMonth() + 1).padStart(2, '0') + '-' + String(_d.getDate()).padStart(2, '0');
+  const today = getLocalDateString();
   const lastDate = daily.lastDailyCompletedDate;
   if (lastDate) {
     const last = new Date(lastDate + 'T00:00:00');

@@ -2,6 +2,7 @@ import { state } from '../state/gameState.js';
 import {
   saveGameState, loadGameState,
 } from '../storage/statsStorage.js';
+import { getLocalDateString } from '../logic/seededRandom.js';
 import {
   adjustCellSize, renderBoard, updateAllCells, updateZoom, renderWallOverlays,
 } from '../ui/boardRenderer.js';
@@ -61,8 +62,7 @@ export function tryResumeGame(mode) {
 
   // Stale daily check: if saved daily seed does not match today, discard
   if (gs.gameMode === 'daily' && gs.dailySeed) {
-    const d = new Date();
-    const today = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    const today = getLocalDateString();
     if (gs.dailySeed !== today) return false;
   }
 

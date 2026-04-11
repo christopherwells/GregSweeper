@@ -31,6 +31,7 @@ import {
   getDailyStreak,
   getPlayerName, setPlayerName,
   getLastSeenVersion, setLastSeenVersion,
+  saveDailyPar, loadDailyPar,
 } from './storage/statsStorage.js';
 
 const CURRENT_VERSION = 'v1.4';
@@ -54,7 +55,7 @@ import {
   isEffectUnlocked, isTitleUnlocked,
   loadEffects, saveEffects, loadTitle, saveTitle,
 } from './ui/collectionManager.js';
-import { isModifierPopupDisabled, setModifierPopupDisabled } from './logic/gimmicks.js';
+import { isModifierPopupDisabled, setModifierPopupDisabled, getGimmickDefs } from './logic/gimmicks.js';
 import { isStorageFailing, safeGet, safeSet } from './storage/storageAdapter.js';
 import { pauseTimer, resumeTimer } from './game/timerManager.js';
 import { startTutorial } from './ui/tutorialManager.js';
@@ -150,8 +151,9 @@ async function updateLeaderboardDisplay() {
   $('#leaderboard-empty').classList.add('hidden');
 
   // Get daily par and solver moves (from state, localStorage, or compute on-demand)
-  let dailyPar = state.dailyPar || parseFloat(localStorage.getItem('minesweeper_daily_par_' + dateStr)) || 0;
-  let dailyMoves = state.dailyMoves || parseInt(localStorage.getItem('minesweeper_daily_moves_' + dateStr)) || 0;
+  const cached = loadDailyPar(dateStr);
+  let dailyPar = state.dailyPar || cached.par;
+  let dailyMoves = state.dailyMoves || cached.moves;
   if (dailyPar === 0) {
     // Compute par on-demand by regenerating today's daily board
     try {
@@ -166,8 +168,7 @@ async function updateLeaderboardDisplay() {
       const parResult = isBoardSolvable(pBoard, pRows, pCols, pFixedR, pFixedC);
       dailyPar = Math.round(parResult.totalClicks * PAR_SECONDS_PER_MOVE * 10) / 10;
       dailyMoves = parResult.totalClicks;
-      localStorage.setItem('minesweeper_daily_par_' + dateStr, String(dailyPar));
-      localStorage.setItem('minesweeper_daily_moves_' + dateStr, String(dailyMoves));
+      saveDailyPar(dateStr, dailyPar, dailyMoves);
     } catch (e) { dailyPar = 0; }
   }
 
@@ -885,17 +886,14 @@ function hideTitleScreen() {
 }
 
 // ── Checkpoint Selector (Challenge mode) ────────────────
-const GIMMICK_LABELS = {
-  11: { icon: '🧱', name: 'Walls' },
-  21: { icon: '🤥', name: 'Liar' },
-  31: { icon: '❓', name: 'Mystery' },
-  41: { icon: '🔒', name: 'Locked' },
-  51: { icon: '🌀', name: 'Wormholes' },
-  61: { icon: '🪞', name: 'Mirror' },
-  71: { icon: '🔴', name: 'Pressure Plates' },
-  81: { icon: '📡', name: 'Sonar' },
-  91: { icon: '🧭', name: 'Compass' },
-};
+// Built dynamically from GIMMICK_DEFS (no duplicated icon/name data)
+const GIMMICK_LABELS = (() => {
+  const labels = {};
+  for (const [key, def] of Object.entries(getGimmickDefs())) {
+    if (!def.chaosOnly) labels[def.intro] = { icon: def.icon, name: def.name };
+  }
+  return labels;
+})()
 
 function showCheckpointSelector() {
   const stats = loadStats();
