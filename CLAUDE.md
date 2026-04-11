@@ -90,12 +90,18 @@ Computed by `getDifficultyForLevel()` in `difficulty.js` — no static table.
 - `--color-wall` contrast must be >= 3.5:1 against cell backgrounds
 
 ## Firebase
-- SDK v10.14.1 (compat) loaded via CDN in index.html
+- SDK v10.14.1 (compat) loaded via CDN in index.html: App, Database, Auth
 - Config hardcoded in `firebaseLeaderboard.js` — `initFirebase()` with 5s connection timeout
 - Rate limiting: 30s cooldown between score submissions
 - Score validation: 5-3600 seconds
-- Database path: `daily/{dateString}` — flat array of score objects
+- Database paths:
+  - `daily/{dateString}` — flat array of score objects (leaderboard)
+  - `users/{uid}/` — cloud progress sync (maxCheckpoint, dailyStreak, bestDailyStreak, lastDailyDate)
+- Anonymous auth (`firebaseProgress.js`): silent sign-in on load, no UI
+- Cloud sync: saves on checkpoint advance + daily completion, loads on init (takes max of cloud vs local)
 - Falls back to localStorage leaderboards if Firebase unavailable
+- Rules deployed via `firebase deploy --only database` (config in `.firebaserc` + `firebase.json`)
+- Rules reference file: `firebase-rules.json`
 - Security rules in `firebase-rules.json` (reference only, not auto-deployed)
 
 ## Commit Convention
