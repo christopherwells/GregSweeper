@@ -18,7 +18,7 @@ export const state = {
   gameMode: 'normal',   // normal | timed | skillTrainer | daily | chaos
   dailySeed: null,
   dailyBombHits: 0,
-  dailyPar: 0,       // par time in seconds (solver reveals * 2.05)
+  dailyPar: 0,       // par time in seconds (solver reveals * 3.65)
   dailyMoves: 0,     // solver totalClicks for pace calculation
 
   powerUps: { revealSafe: 0, shield: 0, lifeline: 0, scanRowCol: 0, magnet: 0, xray: 0 },

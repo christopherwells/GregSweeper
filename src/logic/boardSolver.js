@@ -10,6 +10,19 @@
 import { solveConstraints } from './constraintSolver.js';
 import { hasWallBetween } from './gimmicks.js';
 
+// Sentinel: cell provides no usable number info to the solver
+const UNKNOWN = 255;
+
+// Returns the player-visible mine count for a cell, accounting for gimmicks.
+// Mystery/sonar/compass/wormhole cells provide no usable constraint (UNKNOWN).
+// Liar and mirror cells use their displayed (modified) value.
+function getPlayerVisibleCount(cell) {
+  if (cell.isMystery || cell.isSonar || cell.isCompass || cell.isWormhole) return UNKNOWN;
+  if (cell.isLiar && cell.displayedMines != null) return cell.displayedMines;
+  if (cell.mirrorZone && cell.displayedMines != null) return cell.displayedMines;
+  return cell.adjacentMines;
+}
+
 /**
  * Pre-compute wall-aware neighbor lists for every cell.
  * Reuse across multiple isBoardSolvable() calls on the same board
@@ -56,9 +69,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
   const sim = new Uint8Array(rows * cols); // all 0 (unrevealed)
   const idx = (r, c) => r * cols + c;
 
-  // Cache mine locations and adjacency counts for fast lookup
-  // Use PLAYER-VISIBLE information: mystery cells = unknown, liar cells = displayed value
-  const UNKNOWN = 255; // sentinel: cell provides no number info
+  // Cache mine locations and player-visible adjacency counts
   const isMine = new Uint8Array(rows * cols);
   const adjCount = new Uint8Array(rows * cols);
   for (let r = 0; r < rows; r++) {
@@ -66,20 +77,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
       const i = idx(r, c);
       const cell = board[r][c];
       if (cell.isMine) isMine[i] = 1;
-      if (cell.isMystery || cell.isSonar || cell.isCompass || cell.isWormhole) {
-        // Mystery: player sees "?" — no number info
-        // Sonar/Compass/Wormhole: their number counts a different set of cells
-        // than the standard 8 neighbors, so the solver can't use it correctly
-        adjCount[i] = UNKNOWN;
-      } else if (cell.isLiar && cell.displayedMines != null) {
-        adjCount[i] = cell.displayedMines; // liar shows ±1 — use what player sees
-      } else if (cell.mirrorZone && cell.displayedMines != null) {
-        // Mirror cells show a swapped value. The player sees displayedMines
-        // and uses it as the constraint for THIS cell's neighbors.
-        adjCount[i] = cell.displayedMines;
-      } else {
-        adjCount[i] = cell.adjacentMines; // normal cell — true count
-      }
+      adjCount[i] = getPlayerVisibleCount(cell);
     }
   }
 
@@ -343,7 +341,6 @@ export function findNextSafeMove(board) {
   const cols = board[0].length;
   const idx = (r, c) => r * cols + c;
   const totalCells = rows * cols;
-  const UNKNOWN = 255;
 
   // Build simulation state from actual board — gimmick-aware (matches isBoardSolvable)
   const sim = new Uint8Array(totalCells);
@@ -357,16 +354,7 @@ export function findNextSafeMove(board) {
       if (cell.isRevealed) sim[i] = 1;
       else if (cell.isFlagged) sim[i] = 2;
       if (cell.isMine) isMineArr[i] = 1;
-      // Use player-visible information, same as isBoardSolvable
-      if (cell.isMystery || cell.isSonar || cell.isCompass || cell.isWormhole) {
-        adjCount[i] = UNKNOWN;
-      } else if (cell.isLiar && cell.displayedMines != null) {
-        adjCount[i] = cell.displayedMines;
-      } else if (cell.mirrorZone && cell.displayedMines != null) {
-        adjCount[i] = cell.displayedMines;
-      } else {
-        adjCount[i] = cell.adjacentMines;
-      }
+      adjCount[i] = getPlayerVisibleCount(cell);
     }
   }
 

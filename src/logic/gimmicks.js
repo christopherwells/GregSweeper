@@ -5,6 +5,29 @@
 import { safeGet, safeSet, safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js';
 import { MAX_LEVEL } from './difficulty.js';
 
+// Reset all gimmick-related properties on a single cell.
+// Used when retrying gimmick placement to avoid stale markers.
+export function clearGimmickProperties(cell) {
+  cell.isMystery = false;
+  cell.isLiar = false;
+  cell.inLiarZone = false;
+  cell.displayedMines = undefined;
+  cell.mirrorZone = undefined;
+  cell.isWormhole = false;
+  cell.wormholePair = undefined;
+  cell.wormholePairIndex = undefined;
+  cell.isLocked = false;
+  cell.isPressurePlate = false;
+  cell.plateTimer = undefined;
+  cell.plateDisarmed = false;
+  cell.isSonar = false;
+  cell.sonarCount = undefined;
+  cell.isCompass = false;
+  cell.compassDir = undefined;
+  cell.compassArrow = undefined;
+  cell.compassCount = undefined;
+}
+
 const GIMMICK_DEFS = {
   walls: {
     intro: 11, name: 'Walls', icon: '🧱',

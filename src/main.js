@@ -50,9 +50,6 @@ import {
 } from './logic/achievements.js';
 import {
   initFirebase, isFirebaseOnline, submitOnlineScore, fetchOnlineLeaderboard,
-  createRoom, joinRoom, leaveRoom, submitRoomScore,
-  fetchRoomLeaderboard, fetchRoomHistory, getRoomMembers, getRoomInfo,
-  saveRoomInfo, loadRoomInfo, clearRoomInfo,
 } from './firebase/firebaseLeaderboard.js';
 import { generateBoard } from './logic/boardGenerator.js';
 import { isBoardSolvable } from './logic/boardSolver.js';
@@ -173,7 +170,7 @@ async function updateLeaderboardDisplay() {
       const pBoard = generateBoard(pRows, pCols, pMines, pFixedR, pFixedC, createDailyRNG(dateStr));
       for (const row of pBoard) for (const c of row) { c.isRevealed = false; c.revealAnimDelay = 0; }
       const parResult = isBoardSolvable(pBoard, pRows, pCols, pFixedR, pFixedC);
-      dailyPar = Math.round(parResult.totalClicks * 2.05 * 10) / 10;
+      dailyPar = Math.round(parResult.totalClicks * 3.65 * 10) / 10;
       dailyMoves = parResult.totalClicks;
       localStorage.setItem('minesweeper_daily_par_' + dateStr, String(dailyPar));
       localStorage.setItem('minesweeper_daily_moves_' + dateStr, String(dailyMoves));
@@ -198,84 +195,6 @@ async function updateLeaderboardDisplay() {
     tr.innerHTML = `<td>${i + 1}</td><td>${escapeHtml(entry.name)}</td><td>${entry.time}s</td>${bombCol}${parCol}${paceCol}`;
     tbody.appendChild(tr);
   });
-}
-
-// ── Room Leaderboard Display ─────────────────────────
-
-async function updateRoomPanel() {
-  const roomInfo = loadRoomInfo();
-  const noRoomDiv = $('#room-no-room');
-  const activeDiv = $('#room-active');
-
-  if (!roomInfo) {
-    noRoomDiv.classList.remove('hidden');
-    activeDiv.classList.add('hidden');
-    return;
-  }
-
-  noRoomDiv.classList.add('hidden');
-  activeDiv.classList.remove('hidden');
-
-  const info = await getRoomInfo(roomInfo.code);
-  const nameDisplay = $('#room-name-display');
-  const codeBadge = $('#room-code-badge');
-  nameDisplay.textContent = info ? info.name : roomInfo.code;
-  codeBadge.textContent = roomInfo.code;
-
-  // Members
-  const membersList = $('#room-members-list');
-  const members = await getRoomMembers(roomInfo.code);
-  if (members && members.length > 0) {
-    membersList.innerHTML = '<span class="room-members-label">Members:</span> ' +
-      members.map(m => `<span class="room-member-chip">${escapeHtml(m)}</span>`).join(' ');
-  } else {
-    membersList.innerHTML = '<span class="room-members-label">Members:</span> —';
-  }
-
-  // Today's scores
-  const dateStr = getLocalDateString();
-  const entries = await fetchRoomLeaderboard(roomInfo.code, dateStr);
-  const tbody = $('#room-leaderboard-body');
-  const emptyMsg = $('#room-leaderboard-empty');
-  tbody.innerHTML = '';
-
-  if (!entries || entries.length === 0) {
-    $('#room-leaderboard-table').classList.add('hidden');
-    emptyMsg.classList.remove('hidden');
-  } else {
-    $('#room-leaderboard-table').classList.remove('hidden');
-    emptyMsg.classList.add('hidden');
-    // Reuse dailyMoves from the global leaderboard computation
-    const roomMoves = state.dailyMoves || parseInt(localStorage.getItem('minesweeper_daily_moves_' + dateStr)) || 0;
-    entries.forEach((entry, i) => {
-      const tr = document.createElement('tr');
-      const bombCol = entry.bombHits != null ? `<td>${entry.bombHits}</td>` : '<td>-</td>';
-      let paceCol = '<td>-</td>';
-      if (roomMoves > 0) {
-        paceCol = `<td>${(entry.time / roomMoves).toFixed(2)}</td>`;
-      }
-      tr.innerHTML = `<td>${i + 1}</td><td>${escapeHtml(entry.name)}</td><td>${entry.time}s</td>${bombCol}${paceCol}`;
-      tbody.appendChild(tr);
-    });
-  }
-
-  // History
-  const historyContent = $('#room-history-content');
-  const history = await fetchRoomHistory(roomInfo.code, 7);
-  if (history && Object.keys(history).length > 0) {
-    let html = '';
-    for (const [date, dayEntries] of Object.entries(history).sort((a, b) => b[0].localeCompare(a[0]))) {
-      html += `<div class="room-history-day"><strong>${date}</strong>`;
-      html += '<ol class="room-history-list">';
-      dayEntries.forEach(e => {
-        html += `<li>${escapeHtml(e.name)} — ${e.time}s${e.bombHits ? ' 💥' + e.bombHits : ''}</li>`;
-      });
-      html += '</ol></div>';
-    }
-    historyContent.innerHTML = html;
-  } else {
-    historyContent.innerHTML = '<p class="room-history-empty">No past results yet.</p>';
-  }
 }
 
 // ── Collection Display ───────────────────────────────
@@ -827,67 +746,6 @@ $('#btn-collection').addEventListener('click', () => {
 $('#btn-help').addEventListener('click', () => showModal('help-modal'));
 $('#title-bar').addEventListener('click', () => showModal('about-modal'));
 
-// Leaderboard tab switching
-for (const tab of $$('.lb-tab')) {
-  tab.addEventListener('click', () => {
-    for (const t of $$('.lb-tab')) t.classList.remove('active');
-    tab.classList.add('active');
-    const isRoom = tab.dataset.tab === 'room';
-    $('#lb-global-panel').classList.toggle('hidden', isRoom);
-    $('#lb-room-panel').classList.toggle('hidden', !isRoom);
-    if (isRoom) updateRoomPanel();
-  });
-}
-
-// Room create
-$('#room-create-btn').addEventListener('click', async () => {
-  const name = $('#room-create-name').value.trim();
-  const code = $('#room-create-code').value.trim();
-  const player = $('#room-create-player').value.trim();
-  if (!name || !code || !player) { showToast('Fill in all fields'); return; }
-  if (!/^[A-Za-z0-9]{4,8}$/.test(code)) { showToast('Code must be 4-8 letters/numbers'); return; }
-  const ok = await createRoom(code, name, player);
-  if (ok) {
-    saveRoomInfo(code, player);
-    showToast('Room created!');
-    updateRoomPanel();
-  } else {
-    showToast('Could not create room (code taken?)');
-  }
-});
-
-// Room join
-$('#room-join-btn').addEventListener('click', async () => {
-  const code = $('#room-join-code').value.trim();
-  const player = $('#room-join-player').value.trim();
-  if (!code || !player) { showToast('Fill in all fields'); return; }
-  const ok = await joinRoom(code, player);
-  if (ok) {
-    saveRoomInfo(code, player);
-    showToast('Joined room!');
-    updateRoomPanel();
-  } else {
-    showToast('Room not found or join failed');
-  }
-});
-
-// Room leave
-$('#room-leave-btn').addEventListener('click', async () => {
-  const info = loadRoomInfo();
-  if (info) {
-    await leaveRoom(info.code, info.playerName);
-    clearRoomInfo();
-    showToast('Left room');
-    updateRoomPanel();
-  }
-});
-
-// Room code badge copy
-$('#room-code-badge').addEventListener('click', () => {
-  const code = $('#room-code-badge').textContent;
-  navigator.clipboard.writeText(code).then(() => showToast('Room code copied!')).catch(() => {});
-});
-
 // Collection tab switching
 for (const tab of $$('.collection-tab')) {
   tab.addEventListener('click', () => {
@@ -1314,11 +1172,6 @@ $('#gameover-submit-daily').addEventListener('click', async () => {
     const dateStr = getLocalDateString();
     addDailyLeaderboardEntry(dateStr, sanitized, state.elapsedTime);
     await submitOnlineScore(dateStr, sanitized, state.elapsedTime, state.dailyBombHits || 0);
-    // Auto-submit to room if in one
-    const roomInfo = loadRoomInfo();
-    if (roomInfo) {
-      await submitRoomScore(roomInfo.code, dateStr, roomInfo.playerName, state.elapsedTime, state.dailyBombHits || 0);
-    }
     const dailySubmitForm = $('#daily-submit-form');
     if (dailySubmitForm) dailySubmitForm.classList.add('hidden');
     showToast('✅ Score submitted!');

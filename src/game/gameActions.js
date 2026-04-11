@@ -15,11 +15,11 @@ import { showLevelInfoToast } from '../ui/toastManager.js';
 import { startTimer, stopTimer, pauseTimer, resumeTimer, startMineShift, updateTimerDisplay } from './timerManager.js';
 import { handleWin, handleLoss, handleDailyBombHit } from './winLossHandler.js';
 import { performScan, performXRay, performMagnet, tryLifeline } from './powerUpActions.js';
-import { generateBoard, createEmptyBoard, calculateAdjacency } from '../logic/boardGenerator.js';
+import { generateBoard, createEmptyBoard, calculateAdjacency, cleanSolverArtifacts } from '../logic/boardGenerator.js';
 import { floodFillReveal, checkWin, chordReveal, isBoardSolvable, estimatePlateMovesToDisarm, buildNeighborCache } from '../logic/boardSolver.js';
 import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getChaosDifficulty } from '../logic/difficulty.js';
 import { shieldDefuse } from '../logic/powerUps.js';
-import { getGimmicksForLevel, applyGimmicks, applyWalls, isLockedCell, hasWallBetween, hasSeenGimmick, markGimmickSeen, getGimmickDef, isModifierPopupDisabled, setModifierPopupDisabled, getDailyGimmick, getChaosGimmicks } from '../logic/gimmicks.js';
+import { getGimmicksForLevel, applyGimmicks, applyWalls, isLockedCell, hasWallBetween, hasSeenGimmick, markGimmickSeen, getGimmickDef, isModifierPopupDisabled, setModifierPopupDisabled, getDailyGimmick, getChaosGimmicks, clearGimmickProperties } from '../logic/gimmicks.js';
 import { createDailyRNG } from '../logic/seededRandom.js';
 import {
   loadModePowerUps, loadCheckpoint, clearGameState,
@@ -101,6 +101,29 @@ function showGimmickIntros(gimmickDefs) {
 
 // ── Game Actions ───────────────────────────────────────
 
+
+// Reveal wormhole partners for any wormhole cells in the revealed array.
+// Mutates the array in-place (appends paired cells + cascades).
+function revealWormholePairs(revealed) {
+  for (const rev of [...revealed]) {
+    if (rev.isWormhole && rev.wormholePair && !rev.isMine) {
+      const pair = state.board[rev.wormholePair.row]?.[rev.wormholePair.col];
+      if (pair && !pair.isRevealed && !pair.isMine) {
+        pair.isRevealed = true;
+        pair.revealAnimDelay = 0;
+        state.revealedCount++;
+        revealed.push(pair);
+        const pairEff = pair.displayedMines != null ? pair.displayedMines : pair.adjacentMines;
+        if (pairEff === 0) {
+          const cascade = floodFillReveal(state.board, pair.row, pair.col);
+          state.revealedCount += cascade.length;
+          revealed.push(...cascade);
+        }
+      }
+    }
+  }
+}
+
 export function newGame() {
   stopTimer();
   let diff;
@@ -155,52 +178,35 @@ export function newGame() {
     const boardRng = createDailyRNG(state.dailySeed);
     state.board = generateBoard(state.rows, state.cols, state.totalMines, fixedRow, fixedCol, boardRng);
     // The board solver marks cells as revealed during solvability analysis — reset them all
-    for (const row of state.board) for (const cell of row) { cell.isRevealed = false; cell.revealAnimDelay = 0; }
+    cleanSolverArtifacts(state.board);
     state.revealedCount = 0;
     state.firstClick = false;
     state.status = 'idle'; // stays idle until actual first click
 
     // Apply daily modifiers (~35% of days) with post-gimmick solvability retry
     const dailyGimmicks = getDailyGimmick(state.dailySeed, createDailyRNG);
-    if (dailyGimmicks.length > 0) {
-      state.activeGimmicks = dailyGimmicks;
-      // Retry board + gimmicks until solvable
-      for (let dAttempt = 0; ; dAttempt++) {
-        const gimmickApplyRng = createDailyRNG(state.dailySeed + '-gimmick-apply-' + dAttempt);
-        // Regenerate board on retry
-        if (dAttempt > 0) {
-          const retryRng = createDailyRNG(state.dailySeed + '-retry-' + dAttempt);
-          state.board = generateBoard(state.rows, state.cols, state.totalMines, fixedRow, fixedCol, retryRng);
-          for (const brow of state.board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
-        }
-        state.gimmickData = applyGimmicks(state.board, 1, state.activeGimmicks, gimmickApplyRng);
-        const check = isBoardSolvable(state.board, state.rows, state.cols, fixedRow, fixedCol);
-        for (const brow of state.board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
-        if (check.solvable || check.remainingUnknowns === 0) {
-          state.dailyPar = Math.round(check.totalClicks * 2.05 * 10) / 10;
-          state.dailyMoves = check.totalClicks;
-          localStorage.setItem('minesweeper_daily_par_' + state.dailySeed, String(state.dailyPar));
-          localStorage.setItem('minesweeper_daily_moves_' + state.dailySeed, String(check.totalClicks));
-          break;
-        }
+    state.activeGimmicks = dailyGimmicks.length > 0 ? dailyGimmicks : [];
+    // Retry board (+ gimmicks if any) until solvable
+    for (let dAttempt = 0; ; dAttempt++) {
+      if (dAttempt > 0) {
+        const retryRng = createDailyRNG(state.dailySeed + '-retry-' + dAttempt);
+        state.board = generateBoard(state.rows, state.cols, state.totalMines, fixedRow, fixedCol, retryRng);
+        cleanSolverArtifacts(state.board);
       }
-    } else {
-      // No gimmicks — verify solvability and retry if needed
-      for (let dAttempt = 0; ; dAttempt++) {
-        if (dAttempt > 0) {
-          const retryRng = createDailyRNG(state.dailySeed + '-retry-' + dAttempt);
-          state.board = generateBoard(state.rows, state.cols, state.totalMines, fixedRow, fixedCol, retryRng);
-          for (const brow of state.board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
-        }
-        const parCheck = isBoardSolvable(state.board, state.rows, state.cols, fixedRow, fixedCol);
-        for (const brow of state.board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
-        if (parCheck.solvable || parCheck.remainingUnknowns === 0) {
-          state.dailyPar = Math.round(parCheck.totalClicks * 2.05 * 10) / 10;
-          state.dailyMoves = parCheck.totalClicks;
-          localStorage.setItem('minesweeper_daily_par_' + state.dailySeed, String(state.dailyPar));
-          localStorage.setItem('minesweeper_daily_moves_' + state.dailySeed, String(parCheck.totalClicks));
-          break;
-        }
+      if (state.activeGimmicks.length > 0) {
+        const gimmickApplyRng = createDailyRNG(state.dailySeed + '-gimmick-apply-' + dAttempt);
+        state.gimmickData = applyGimmicks(state.board, 1, state.activeGimmicks, gimmickApplyRng);
+      }
+      const check = isBoardSolvable(state.board, state.rows, state.cols, fixedRow, fixedCol);
+      cleanSolverArtifacts(state.board);
+      if (check.solvable || check.remainingUnknowns === 0) {
+        state.dailyPar = Math.round(check.totalClicks * 3.65 * 10) / 10;
+        state.dailyMoves = check.totalClicks;
+        localStorage.setItem('minesweeper_daily_par_' + state.dailySeed, String(state.dailyPar));
+        localStorage.setItem('minesweeper_daily_moves_' + state.dailySeed, String(check.totalClicks));
+        break;
+      }
+    }
       }
     }
 
@@ -234,7 +240,7 @@ export function newGame() {
       }
     }
     // Clean solver artifacts (safety net)
-    for (const row of state.board) for (const cell of row) { cell.isRevealed = false; cell.revealAnimDelay = 0; }
+    cleanSolverArtifacts(state.board);
     state.revealedCount = 0;
     if (bestStart) {
       state.board[bestStart.r][bestStart.c].suggestedStart = true;
@@ -400,25 +406,14 @@ export function revealCell(row, col) {
       if (state.activeGimmicks.length > 0) {
         if (preWallEdges) state.board._wallEdges = preWallEdges;
         state.gimmickData = applyGimmicks(state.board, state.currentLevel, state.activeGimmicks, gimmickRng);
+      }
 
-        // Post-gimmick solvability check
-        const check = isBoardSolvable(state.board, state.rows, state.cols, row, col);
-        for (const brow of state.board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
-        if (check.solvable || check.remainingUnknowns === 0) {
-          postGimmickSolvable = true;
-          break;
-        }
-        // Not solvable — retry with fresh board
-      } else {
-        // Verify solvability even without gimmicks — generateBoard's fallback
-        // can return unsolvable boards when rejection sampling is exhausted
-        const check = isBoardSolvable(state.board, state.rows, state.cols, row, col);
-        for (const brow of state.board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
-        if (check.solvable || check.remainingUnknowns === 0) {
-          postGimmickSolvable = true;
-          break;
-        }
-        // Not solvable — loop retries with fresh board
+      // Verify solvability (with or without gimmicks)
+      const check = isBoardSolvable(state.board, state.rows, state.cols, row, col);
+      cleanSolverArtifacts(state.board);
+      if (check.solvable || check.remainingUnknowns === 0) {
+        postGimmickSolvable = true;
+        break;
       }
     }
 
@@ -512,18 +507,10 @@ export function revealCell(row, col) {
         // Verify post-relocation solvability — retry gimmick placement if needed
         for (let rAttempt = 0; ; rAttempt++) {
           const check = isBoardSolvable(state.board, state.rows, state.cols, row, col);
-          for (const brow of state.board) for (const c of brow) { c.isRevealed = false; c.revealAnimDelay = 0; }
+          cleanSolverArtifacts(state.board);
           if (check.solvable || check.remainingUnknowns === 0) break;
           // Re-apply gimmicks with different seed
-          for (const brow of state.board) for (const c of brow) {
-            c.isMystery = false; c.isLiar = false; c.inLiarZone = false;
-            c.displayedMines = undefined; c.mirrorZone = undefined;
-            c.isWormhole = false; c.wormholePair = undefined; c.wormholePairIndex = undefined;
-            c.isLocked = false; c.isPressurePlate = false; c.plateTimer = undefined;
-            c.plateDisarmed = false; c.isSonar = false; c.sonarCount = undefined;
-            c.isCompass = false; c.compassDir = undefined; c.compassArrow = undefined;
-            c.compassCount = undefined;
-          }
+          for (const brow of state.board) for (const c of brow) clearGimmickProperties(c);
           state.board._wallEdges = null;
           calculateAdjacency(state.board);
           const retryGimmickRng = createDailyRNG(state.dailySeed + '-gimmick-retry-' + rAttempt);
@@ -609,23 +596,7 @@ export function revealCell(row, col) {
   }
 
   // Wormhole: revealing one side reveals the paired cell too
-  for (const rev of [...newlyRevealed]) {
-    if (rev.isWormhole && rev.wormholePair) {
-      const pair = state.board[rev.wormholePair.row]?.[rev.wormholePair.col];
-      if (pair && !pair.isRevealed && !pair.isMine) {
-        pair.isRevealed = true;
-        pair.revealAnimDelay = 0;
-        state.revealedCount++;
-        newlyRevealed.push(pair);
-        const pairEff = pair.displayedMines != null ? pair.displayedMines : pair.adjacentMines;
-        if (pairEff === 0) {
-          const cascade = floodFillReveal(state.board, pair.row, pair.col);
-          state.revealedCount += cascade.length;
-          newlyRevealed.push(...cascade);
-        }
-      }
-    }
-  }
+  revealWormholePairs(newlyRevealed);
 
   updateCells(newlyRevealed);
   updateHeader();
@@ -773,23 +744,7 @@ export function handleChordReveal(row, col) {
   state.revealedCount += result.revealed.filter(c => !c.isMine).length;
 
   // Wormhole: revealing one side reveals the paired cell too
-  for (const rev of [...result.revealed]) {
-    if (rev.isWormhole && rev.wormholePair && !rev.isMine) {
-      const pair = state.board[rev.wormholePair.row]?.[rev.wormholePair.col];
-      if (pair && !pair.isRevealed && !pair.isMine) {
-        pair.isRevealed = true;
-        pair.revealAnimDelay = 0;
-        state.revealedCount++;
-        result.revealed.push(pair);
-        const pairEff = pair.displayedMines != null ? pair.displayedMines : pair.adjacentMines;
-        if (pairEff === 0) {
-          const cascade = floodFillReveal(state.board, pair.row, pair.col);
-          state.revealedCount += cascade.length;
-          result.revealed.push(...cascade);
-        }
-      }
-    }
-  }
+  revealWormholePairs(result.revealed);
 
   updateCells(result.revealed);
   updateHeader();

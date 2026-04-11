@@ -6,7 +6,7 @@ import { showToast } from '../ui/toastManager.js';
 import { updateHeader } from '../ui/headerRenderer.js';
 import { updatePowerUpBar } from '../ui/powerUpBar.js';
 import { findSafeCell, scanRowCol, shieldDefuse, xRayScan, magnetPull } from '../logic/powerUps.js';
-import { checkWin } from '../logic/boardSolver.js';
+import { checkWin, floodFillReveal } from '../logic/boardSolver.js';
 import { saveModePowerUps } from '../storage/statsStorage.js';
 import {
   playPowerUp, playShieldBreak, playXRay, playLifelineSave, playMagnet,
@@ -36,6 +36,11 @@ export function useRevealSafe() {
       pair.isRevealed = true;
       pair.revealAnimDelay = 0;
       state.revealedCount++;
+      const pairEff = pair.displayedMines != null ? pair.displayedMines : pair.adjacentMines;
+      if (pairEff === 0) {
+        const cascade = floodFillReveal(state.board, pair.row, pair.col);
+        state.revealedCount += cascade.length;
+      }
     }
   }
 

@@ -440,7 +440,7 @@ export function generateBoard(rows, cols, mines, excludeRow, excludeCol, rng, op
 // The board solver's isBoardSolvable sets isRevealed/revealAnimDelay on
 // board cells during its analysis. Clean these up so the returned board
 // is pristine (all cells unrevealed).
-function cleanSolverArtifacts(board) {
+export function cleanSolverArtifacts(board) {
   for (const row of board) {
     for (const cell of row) {
       cell.isRevealed = false;
