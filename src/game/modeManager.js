@@ -84,7 +84,7 @@ export function updateModeUI(mode) {
     import('../ui/skillTrainerUI.js').then(m => m.showSkillTrainer()).catch(err => {
       console.error('Failed to load Skill Trainer:', err);
       const c = document.getElementById('skill-trainer-container');
-      if (c) { c.classList.remove('hidden'); c.innerHTML = '<p style="padding:20px;color:#ff6b6b;">Failed to load Skill Trainer. Try Settings → Clear Cache & Reload.</p>'; }
+      if (c) { c.classList.remove('hidden'); c.innerHTML = '<p style="padding:20px;color:#ff6b6b;">Failed to load Skill Trainer. Try Settings → Check for Updates.</p>'; }
     });
   } else {
     if (gameHeader) gameHeader.classList.remove('hidden');
