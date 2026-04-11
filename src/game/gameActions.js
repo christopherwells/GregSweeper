@@ -201,8 +201,6 @@ export function newGame() {
         break;
       }
     }
-      }
-    }
 
     // Compute best starting cell for "Start here" indicator.
     // Build neighbor cache once and reuse across all candidate solver calls.
