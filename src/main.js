@@ -31,7 +31,7 @@ import {
   getDailyStreak,
   getPlayerName, setPlayerName,
   getLastSeenVersion, setLastSeenVersion,
-  saveDailyPar, loadDailyPar,
+  saveDailyPar, loadDailyPar, applyCloudProgress,
 } from './storage/statsStorage.js';
 
 const CURRENT_VERSION = 'v1.4';
@@ -46,6 +46,7 @@ import {
 import {
   initFirebase, isFirebaseOnline, submitOnlineScore, fetchOnlineLeaderboard,
 } from './firebase/firebaseLeaderboard.js';
+import { initAnonymousAuth, loadProgress } from './firebase/firebaseProgress.js';
 import { generateBoard, cleanSolverArtifacts } from './logic/boardGenerator.js';
 import { isBoardSolvable } from './logic/boardSolver.js';
 import { createDailyRNG, getLocalDateString } from './logic/seededRandom.js';
@@ -1308,6 +1309,11 @@ function init() {
   }
 
   initFirebase();
+
+  // Cloud progress sync: anonymous auth + silent restore
+  initAnonymousAuth().then(() => loadProgress()).then(cloud => {
+    if (cloud) applyCloudProgress(cloud);
+  }).catch(() => {}); // silent — progress stays local-only
 
   // Warn if localStorage is broken (private browsing, quota, etc.)
   if (isStorageFailing()) {

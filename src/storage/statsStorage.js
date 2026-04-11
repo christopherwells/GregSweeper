@@ -433,6 +433,50 @@ export function setPlayerName(name) {
   safeSet(PLAYER_NAME_KEY, name);
 }
 
+// ── Cloud Progress Merge ──────────────────────────────
+// Merges cloud-synced progress into local stats. Takes the higher value
+// for each field so progress only goes up. Called silently on app init.
+export function applyCloudProgress({ maxCheckpoint, dailyStreak, bestDailyStreak, lastDailyDate }) {
+  const stats = loadStats();
+  let changed = false;
+
+  // Challenge checkpoint: take the higher value
+  if (maxCheckpoint != null && maxCheckpoint > (stats.maxLevelReached || 1)) {
+    stats.maxLevelReached = maxCheckpoint;
+    if (!stats.modeStats) stats.modeStats = {};
+    if (!stats.modeStats.challenge) stats.modeStats.challenge = {};
+    stats.modeStats.challenge.maxLevelReached = maxCheckpoint;
+    // Also update the checkpoint storage so the player can select it
+    saveCheckpoint('challenge', maxCheckpoint);
+    changed = true;
+  }
+
+  // Daily streak: take the higher values
+  if (dailyStreak != null || bestDailyStreak != null) {
+    if (!stats.modeStats) stats.modeStats = {};
+    if (!stats.modeStats.daily) stats.modeStats.daily = {};
+    const daily = stats.modeStats.daily;
+    if (dailyStreak != null && dailyStreak > (daily.dailyStreak || 0)) {
+      daily.dailyStreak = dailyStreak;
+      changed = true;
+    }
+    if (bestDailyStreak != null && bestDailyStreak > (daily.bestDailyStreak || 0)) {
+      daily.bestDailyStreak = bestDailyStreak;
+      changed = true;
+    }
+    if (lastDailyDate != null && (!daily.lastDailyCompletedDate || lastDailyDate > daily.lastDailyCompletedDate)) {
+      daily.lastDailyCompletedDate = lastDailyDate;
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    setJSON(STATS_KEY, stats);
+    _statsCache = stats;
+  }
+  return changed;
+}
+
 // ── What's New Version Tracking ──────────────────────
 
 export function getLastSeenVersion() {

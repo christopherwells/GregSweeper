@@ -29,6 +29,7 @@ import {
 } from '../logic/achievements.js';
 import { checkThemeUnlocks, showThemeUnlockToasts } from '../ui/themeManager.js';
 import { submitOnlineScore } from '../firebase/firebaseLeaderboard.js';
+import { saveProgress } from '../firebase/firebaseProgress.js';
 import { addDailyLeaderboardEntry } from '../storage/statsStorage.js';
 import { getLocalDateString } from '../logic/seededRandom.js';
 
@@ -120,6 +121,19 @@ export function handleWin() {
     dailySeed: state.dailySeed,
   });
   const earnedPowerUp = state.gameMode === 'chaos' ? null : awardPowerUps(stats);
+
+  // Sync progress to cloud (fire-and-forget)
+  if (state.gameMode === 'normal') {
+    saveProgress({ maxCheckpoint: stats.maxLevelReached || state.currentLevel });
+  }
+  if (isDaily) {
+    const streak = getDailyStreak();
+    saveProgress({
+      dailyStreak: streak.streak,
+      bestDailyStreak: streak.best,
+      lastDailyDate: state.dailySeed,
+    });
+  }
 
   // Mark daily as completed so it cannot be replayed today
   if (isDaily && state.dailySeed) {

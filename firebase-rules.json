@@ -25,53 +25,24 @@
         }
       }
     },
-    "rooms": {
-      "$code": {
-        ".read": true,
-        ".validate": "$code.matches(/^[A-Z0-9]{4,8}$/)",
-        "name": {
-          ".write": true,
-          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 30"
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        "maxCheckpoint": {
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 120"
         },
-        "createdAt": {
-          ".write": true,
-          ".validate": "newData.val() === now"
+        "dailyStreak": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
         },
-        "createdBy": {
-          ".write": true,
-          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 20"
+        "bestDailyStreak": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
         },
-        "members": {
-          "$member": {
-            ".write": true,
-            "joinedAt": {
-              ".validate": "newData.val() === now"
-            }
-          }
+        "lastDailyDate": {
+          ".validate": "newData.isString() && newData.val().length === 10"
         },
-        "scores": {
-          "$date": {
-            ".validate": "$date.matches(/^\\d{4}-\\d{2}-\\d{2}$/)",
-            "$entry": {
-              ".write": true,
-              ".validate": "newData.hasChildren(['name', 'time', 'timestamp'])",
-              "name": {
-                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 20"
-              },
-              "time": {
-                ".validate": "newData.isNumber() && newData.val() >= 5 && newData.val() <= 3600"
-              },
-              "bombHits": {
-                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 50"
-              },
-              "timestamp": {
-                ".validate": "newData.val() === now"
-              },
-              "$other": {
-                ".validate": false
-              }
-            }
-          }
+        "$other": {
+          ".validate": false
         }
       }
     },
