@@ -60,16 +60,25 @@ Network-first with cache fallback. `ignoreSearch: true` on cache.match. Install 
 **Cache busting:** Only bump `CACHE_NAME` in `sw.js`. No per-file `?v=` query strings on imports. SW registers on localhost too — unregister via DevTools or add `?v=N` when testing locally.
 
 ## Game Modes
-- **Challenge (normal):** 120 levels, increasing difficulty, checkpoints every 5 levels, modifiers from L11+
+- **Challenge (normal):** 120 levels, sawtooth difficulty, checkpoints every 5 levels, modifiers from L11+
 - **Timed:** Race the clock, 4 difficulty tabs (Beginner/Intermediate/Expert/Extreme)
 - **Daily:** One seeded puzzle per day, no levels, optional modifiers (~35% of days)
 - **Skill Trainer:** 15 interactive lessons teaching minesweeper techniques (beginner/intermediate/advanced)
 - **Chaos:** Rapid rounds with random modifiers, exempt from solvability guarantee
 
+## Challenge Difficulty Curve (Sawtooth)
+Computed by `getDifficultyForLevel()` in `difficulty.js` — no static table.
+- **L1-10:** Tutorial ramp, 5x5→9x9, 8%→16% density, no gimmicks
+- **L11-90:** Each 10-level block introduces one gimmick. Board drops to 11x11 at intro, ramps to 14x14 by block end. Density drops 10% (relative) at intro, ramps to next peak.
+- **L91-120:** Final 30-level ramp from 11x11 to 14x14, density reaches 34%.
+- **Gimmick selection:** Primary gimmick is 100% present during its intro block. Old gimmicks appear as secondary (60%) and tertiary (10%). By L120: guaranteed 3 gimmicks.
+- **Hard cap:** 34% mine density maximum for fast board generation.
+
 ## Modifier (Gimmick) System
 10 types defined in `src/logic/gimmicks.js`:
 - walls (L11), liar (L21), mystery (L31), locked (L41), wormhole (L51), mirror (L61), pressurePlate (L71), sonar (L81), compass (L91), mineShift (chaos-only)
-- Daily-safe subset: mystery, locked, walls, liar (no dynamic board changes)
+- 10-level intro blocks (intro to intro+9): primary gimmick always present
+- Daily-safe subset: mystery, locked, walls, liar, wormhole, mirror, sonar, compass
 - First-encounter popup tracked in localStorage key `minesweeper_seen_gimmicks`
 - Popup can be disabled via `minesweeper_modifier_popup_disabled`
 

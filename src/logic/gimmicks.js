@@ -111,28 +111,55 @@ export function getGimmicksForLevel(level, rng = Math.random) {
   const introduced = allTypes.filter(g => level >= GIMMICK_DEFS[g].intro && !GIMMICK_DEFS[g].chaosOnly);
   if (introduced.length === 0) return [];
 
-  const active = [];
+  // Find the gimmick whose intro block contains this level (10-level blocks)
+  const primaryGimmick = introduced.find(g => {
+    const intro = GIMMICK_DEFS[g].intro;
+    return level >= intro && level <= intro + 9;
+  });
 
-  for (const g of introduced) {
-    const def = GIMMICK_DEFS[g];
-    const introEnd = def.intro + 4; // 5-level introduction block
+  // Old gimmicks = all introduced EXCEPT the current primary
+  const oldGimmicks = introduced.filter(g => g !== primaryGimmick);
 
-    if (level >= def.intro && level <= introEnd) {
-      // Always present during introduction block
-      active.push(g);
-    } else if (level > introEnd) {
-      // 50% at low levels, scaling to 70% by L120 (mine density is capped,
-      // so late-game difficulty comes from modifier stacking instead)
-      const chance = 0.5 + Math.min((level - 30) / 90, 1) * 0.2;
-      if (rng() < chance) active.push(g);
+  if (level < 91 || (level >= 91 && level <= 100)) {
+    // During intro blocks (L11-90) or compass intro (L91-100):
+    // Primary is always present, secondary 60%, tertiary 10%
+    const active = [];
+
+    // Primary: 100% always present
+    if (primaryGimmick) active.push(primaryGimmick);
+
+    // Secondary: one old gimmick at 60% chance
+    if (oldGimmicks.length > 0 && rng() < 0.60) {
+      const pick = oldGimmicks[Math.floor(rng() * oldGimmicks.length)];
+      active.push(pick);
+
+      // Tertiary: another old gimmick at 10% chance
+      const remaining = oldGimmicks.filter(g => g !== pick);
+      if (remaining.length > 0 && rng() < 0.10) {
+        active.push(remaining[Math.floor(rng() * remaining.length)]);
+      }
     }
+
+    // Guarantee at least one gimmick
+    if (active.length === 0 && introduced.length > 0) {
+      active.push(introduced[introduced.length - 1]);
+    }
+
+    return active;
   }
 
-  // At least one gimmick after L10
-  if (active.length === 0) {
-    // Force the most recently introduced one
-    const latest = introduced[introduced.length - 1];
-    active.push(latest);
+  // L101-120: Post-intro ramp — all gimmicks equal, ramp to guaranteed 3
+  const progress = (level - 100) / 20; // 0.0 at L101, 1.0 at L120
+  const shuffled = [...introduced].sort(() => rng() - 0.5);
+  const active = [shuffled[0]]; // always at least 1
+
+  // Second gimmick: ramp from 80% to 100%
+  if (shuffled.length > 1 && rng() < 0.80 + progress * 0.20) {
+    active.push(shuffled[1]);
+  }
+  // Third gimmick: ramp from 40% to 100%
+  if (shuffled.length > 2 && rng() < 0.40 + progress * 0.60) {
+    active.push(shuffled[2]);
   }
 
   return active;
@@ -152,7 +179,7 @@ export function getChaosGimmicks(count, rng = Math.random) {
 function isAnyGimmickIntroBlock(level) {
   for (const g of Object.values(GIMMICK_DEFS)) {
     if (g.chaosOnly) continue;
-    if (level >= g.intro && level <= g.intro + 4) return true;
+    if (level >= g.intro && level <= g.intro + 9) return true;
   }
   return false;
 }
@@ -160,17 +187,17 @@ function isAnyGimmickIntroBlock(level) {
 // Check if THIS gimmick is the one being introduced at this level
 function isThisGimmickIntro(gimmick, level) {
   const def = GIMMICK_DEFS[gimmick];
-  return level >= def.intro && level <= def.intro + 4;
+  return level >= def.intro && level <= def.intro + 9;
 }
 
 function getIntensity(gimmick, level, rng) {
   const def = GIMMICK_DEFS[gimmick];
-  const introEnd = def.intro + 4;
+  const introEnd = def.intro + 9;
 
   if (level >= def.intro && level <= introEnd) {
-    // Introduction block: ramp from 1 to block position
-    const blockPos = level - def.intro; // 0-4
-    return 1 + blockPos;
+    // Introduction block: ramp from 1 over 10 levels
+    const blockPos = level - def.intro; // 0-9
+    return 1 + Math.floor(blockPos / 2); // 1-5 over the block
   }
 
   // Below intro (daily/chaos at low levels): moderate fixed intensity

@@ -1,145 +1,60 @@
-// Challenge mode — 120 levels of progressive difficulty
-// Boards grow from 5×5 up to 14×14. Timer is informational only (no countdown).
-// Difficulty increases via mine density, grid size, and zero-cluster limits.
-// Gimmicks are introduced at checkpoints starting at L11.
-const CHALLENGE_LEVELS = [
-  // Tutorial (L1–5): 5×5 → 7×7, very low density
-  { rows: 5,  cols: 5,  mines: 2  },  // L1  — 8.0%
-  { rows: 6,  cols: 6,  mines: 4  },  // L2  — 11.1%
-  { rows: 6,  cols: 6,  mines: 5  },  // L3  — 13.9%
-  { rows: 7,  cols: 7,  mines: 5  },  // L4  — 10.2%
-  { rows: 7,  cols: 7,  mines: 6  },  // L5  — 12.2%
+// Challenge mode — 120 levels with sawtooth difficulty progression.
+// Each gimmick introduction (L11, L21, ..., L91) drops the board to 11×11
+// and reduces density, creating a grace period to learn the new mechanic.
+// Between intros, board size ramps back up to 14×14 and density climbs.
+// After all gimmicks are introduced (L91+), a final 30-level ramp reaches
+// 14×14 at 34% density with heavy modifier stacking.
 
-  // Learning (L6–10): 7×7 → 9×9, density 14–16%
-  { rows: 7,  cols: 7,  mines: 7  },  // L6  — 14.3%
-  { rows: 8,  cols: 8,  mines: 8  },  // L7  — 12.5%
-  { rows: 8,  cols: 8,  mines: 10 },  // L8  — 15.6%
-  { rows: 9,  cols: 9,  mines: 11 },  // L9  — 13.6%
-  { rows: 9,  cols: 9,  mines: 13 },  // L10 — 16.0%
+// Gimmick introduction levels (non-chaosOnly)
+const GIMMICK_INTROS = [11, 21, 31, 41, 51, 61, 71, 81, 91];
 
-  // Intermediate (L11–20): 10×10, density 15–22%
-  { rows: 10, cols: 10, mines: 16 },  // L11 — 16.0%
-  { rows: 10, cols: 10, mines: 17 },  // L12 — 17.0%
-  { rows: 10, cols: 10, mines: 18 },  // L13 — 18.0%
-  { rows: 10, cols: 10, mines: 19 },  // L14 — 19.0%
-  { rows: 10, cols: 10, mines: 20 },  // L15 — 20.0%
-  { rows: 10, cols: 10, mines: 20 },  // L16 — 20.0%
-  { rows: 10, cols: 10, mines: 21 },  // L17 — 21.0%
-  { rows: 10, cols: 10, mines: 21 },  // L18 — 21.0%
-  { rows: 10, cols: 10, mines: 22 },  // L19 — 22.0%
-  { rows: 10, cols: 10, mines: 22 },  // L20 — 22.0%
+// Peak density at the END of each 10-level gimmick block.
+// These ramp from 20% to 33%, with the final block (L91-120) peaking at 34%.
+const PEAK_DENSITIES = [0.20, 0.24, 0.27, 0.29, 0.30, 0.31, 0.32, 0.33, 0.34];
 
-  // Advanced (L21–40): 11×11 → 12×12, density 22–30%
-  { rows: 11, cols: 11, mines: 27 },  // L21 — 22.3%
-  { rows: 11, cols: 11, mines: 28 },  // L22 — 23.1%
-  { rows: 11, cols: 11, mines: 29 },  // L23 — 24.0%
-  { rows: 11, cols: 11, mines: 30 },  // L24 — 24.8%
-  { rows: 11, cols: 11, mines: 31 },  // L25 — 25.6%
-  { rows: 11, cols: 11, mines: 32 },  // L26 — 26.4%
-  { rows: 11, cols: 11, mines: 33 },  // L27 — 27.3%
-  { rows: 11, cols: 11, mines: 34 },  // L28 — 28.1%
-  { rows: 11, cols: 11, mines: 35 },  // L29 — 28.9%
-  { rows: 11, cols: 11, mines: 36 },  // L30 — 29.8%
-  { rows: 12, cols: 12, mines: 36 },  // L31 — 25.0%
-  { rows: 12, cols: 12, mines: 37 },  // L32 — 25.7%
-  { rows: 12, cols: 12, mines: 38 },  // L33 — 26.4%
-  { rows: 12, cols: 12, mines: 39 },  // L34 — 27.1%
-  { rows: 12, cols: 12, mines: 40 },  // L35 — 27.8%
-  { rows: 12, cols: 12, mines: 41 },  // L36 — 28.5%
-  { rows: 12, cols: 12, mines: 42 },  // L37 — 29.2%
-  { rows: 12, cols: 12, mines: 43 },  // L38 — 29.9%
-  { rows: 12, cols: 12, mines: 43 },  // L39 — 29.9%
-  { rows: 12, cols: 12, mines: 44 },  // L40 — 30.6%
+export const MAX_LEVEL = 120;
 
-  // Expert (L41–60): 12×12 → 13×13, density 30–33%
-  { rows: 12, cols: 12, mines: 44 },  // L41 — 30.6%
-  { rows: 12, cols: 12, mines: 45 },  // L42 — 31.3%
-  { rows: 12, cols: 12, mines: 45 },  // L43 — 31.3%
-  { rows: 12, cols: 12, mines: 46 },  // L44 — 31.9%
-  { rows: 12, cols: 12, mines: 46 },  // L45 — 31.9%
-  { rows: 12, cols: 12, mines: 47 },  // L46 — 32.6%
-  { rows: 12, cols: 12, mines: 47 },  // L47 — 32.6%
-  { rows: 12, cols: 12, mines: 48 },  // L48 — 33.3%
-  { rows: 12, cols: 12, mines: 48 },  // L49 — 33.3%
-  { rows: 13, cols: 13, mines: 50 },  // L50 — 29.6%
-  { rows: 13, cols: 13, mines: 51 },  // L51 — 30.2%
-  { rows: 13, cols: 13, mines: 52 },  // L52 — 30.8%
-  { rows: 13, cols: 13, mines: 53 },  // L53 — 31.4%
-  { rows: 13, cols: 13, mines: 53 },  // L54 — 31.4%
-  { rows: 13, cols: 13, mines: 54 },  // L55 — 32.0%
-  { rows: 13, cols: 13, mines: 54 },  // L56 — 32.0%
-  { rows: 13, cols: 13, mines: 55 },  // L57 — 32.5%
-  { rows: 13, cols: 13, mines: 55 },  // L58 — 32.5%
-  { rows: 13, cols: 13, mines: 56 },  // L59 — 33.1%
-  { rows: 13, cols: 13, mines: 56 },  // L60 — 33.1%
+export function getDifficultyForLevel(level) {
+  const lv = Math.min(Math.max(level, 1), MAX_LEVEL);
 
-  // Legendary (L61–80): 13×13 → 14×14, density 30–36%
-  { rows: 13, cols: 13, mines: 57 },  // L61 — 33.7%
-  { rows: 13, cols: 13, mines: 57 },  // L62 — 33.7%
-  { rows: 13, cols: 13, mines: 58 },  // L63 — 34.3%
-  { rows: 13, cols: 13, mines: 58 },  // L64 — 34.3%
-  { rows: 13, cols: 13, mines: 59 },  // L65 — 34.9%
-  { rows: 13, cols: 13, mines: 59 },  // L66 — 34.9%
-  { rows: 13, cols: 13, mines: 60 },  // L67 — 35.5%
-  { rows: 13, cols: 13, mines: 60 },  // L68 — 35.5%
-  { rows: 14, cols: 14, mines: 60 },  // L69 — 30.6%
-  { rows: 14, cols: 14, mines: 61 },  // L70 — 31.1%
-  { rows: 14, cols: 14, mines: 62 },  // L71 — 31.6%
-  { rows: 14, cols: 14, mines: 63 },  // L72 — 32.1%
-  { rows: 14, cols: 14, mines: 64 },  // L73 — 32.7%
-  { rows: 14, cols: 14, mines: 65 },  // L74 — 33.2%
-  { rows: 14, cols: 14, mines: 65 },  // L75 — 33.2%
-  { rows: 14, cols: 14, mines: 66 },  // L76 — 33.7%
-  { rows: 14, cols: 14, mines: 66 },  // L77 — 33.7%
-  { rows: 14, cols: 14, mines: 67 },  // L78 — 34.2%
-  { rows: 14, cols: 14, mines: 67 },  // L79 — 34.2%
-  { rows: 14, cols: 14, mines: 68 },  // L80 — 34.7%
+  // ── L1-10: Tutorial ramp (no gimmicks) ──
+  if (lv <= 10) {
+    // Size ramps 5→9, density ramps 8%→16%
+    const t = (lv - 1) / 9; // 0.0 at L1, 1.0 at L10
+    const size = Math.round(5 + t * 4);
+    const density = 0.08 + t * 0.08;
+    const mines = Math.max(2, Math.round(size * size * density));
+    return { rows: size, cols: size, mines };
+  }
 
-  // Mythic (L81–100): 14×14, density 34–38%
-  // Smoothed ramp: no plateau longer than 3 levels, steady climb to L100
-  { rows: 14, cols: 14, mines: 68 },  // L81 — 34.7%
-  { rows: 14, cols: 14, mines: 68 },  // L82 — 34.7%
-  { rows: 14, cols: 14, mines: 69 },  // L83 — 35.2%
-  { rows: 14, cols: 14, mines: 69 },  // L84 — 35.2%
-  { rows: 14, cols: 14, mines: 69 },  // L85 — 35.2%
-  { rows: 14, cols: 14, mines: 70 },  // L86 — 35.7%
-  { rows: 14, cols: 14, mines: 70 },  // L87 — 35.7%
-  { rows: 14, cols: 14, mines: 71 },  // L88 — 36.2%
-  { rows: 14, cols: 14, mines: 71 },  // L89 — 36.2%
-  { rows: 14, cols: 14, mines: 71 },  // L90 — 36.2%
-  { rows: 14, cols: 14, mines: 72 },  // L91 — 36.7%
-  { rows: 14, cols: 14, mines: 72 },  // L92 — 36.7%
-  { rows: 14, cols: 14, mines: 73 },  // L93 — 37.2%
-  { rows: 14, cols: 14, mines: 73 },  // L94 — 37.2%
-  { rows: 14, cols: 14, mines: 73 },  // L95 — 37.2%
-  { rows: 14, cols: 14, mines: 74 },  // L96 — 37.8%
-  { rows: 14, cols: 14, mines: 74 },  // L97 — 37.8%
-  { rows: 14, cols: 14, mines: 75 },  // L98 — 38.3%
-  { rows: 14, cols: 14, mines: 75 },  // L99 — 38.3%
-  { rows: 14, cols: 14, mines: 75 },  // L100 — 38.3%
+  // ── L11-120: Sawtooth gimmick blocks ──
 
-  // Grandmaster (L101–120): 14×14, density 38–40%
-  { rows: 14, cols: 14, mines: 75 },  // L101 — 38.3%
-  { rows: 14, cols: 14, mines: 76 },  // L102 — 38.8%
-  { rows: 14, cols: 14, mines: 76 },  // L103 — 38.8%
-  { rows: 14, cols: 14, mines: 76 },  // L104 — 38.8%
-  { rows: 14, cols: 14, mines: 77 },  // L105 — 39.3%
-  { rows: 14, cols: 14, mines: 77 },  // L106 — 39.3%
-  { rows: 14, cols: 14, mines: 77 },  // L107 — 39.3%
-  { rows: 14, cols: 14, mines: 78 },  // L108 — 39.8%
-  { rows: 14, cols: 14, mines: 78 },  // L109 — 39.8%
-  { rows: 14, cols: 14, mines: 78 },  // L110 — 39.8%
-  { rows: 14, cols: 14, mines: 78 },  // L111 — 39.8%
-  { rows: 14, cols: 14, mines: 79 },  // L112 — 40.3%
-  { rows: 14, cols: 14, mines: 79 },  // L113 — 40.3%
-  { rows: 14, cols: 14, mines: 79 },  // L114 — 40.3%
-  { rows: 14, cols: 14, mines: 79 },  // L115 — 40.3%
-  { rows: 14, cols: 14, mines: 80 },  // L116 — 40.8%
-  { rows: 14, cols: 14, mines: 80 },  // L117 — 40.8%
-  { rows: 14, cols: 14, mines: 80 },  // L118 — 40.8%
-  { rows: 14, cols: 14, mines: 80 },  // L119 — 40.8%
-  { rows: 14, cols: 14, mines: 80 },  // L120 — 40.8%
-];
+  // Find which block we're in
+  let blockIdx = 0;
+  for (let i = GIMMICK_INTROS.length - 1; i >= 0; i--) {
+    if (lv >= GIMMICK_INTROS[i]) { blockIdx = i; break; }
+  }
+
+  const blockStart = GIMMICK_INTROS[blockIdx];
+  const blockEnd = blockIdx < 8 ? GIMMICK_INTROS[blockIdx + 1] - 1 : MAX_LEVEL;
+  const blockLen = blockEnd - blockStart; // 9 for regular blocks, 29 for final
+  const progress = blockLen > 0 ? (lv - blockStart) / blockLen : 0; // 0.0→1.0
+
+  // Board size: 11 at block start, ramps to 14 at block end
+  const size = Math.round(11 + progress * 3);
+
+  // Density: drops 10% (relative) from previous peak, ramps to this block's peak
+  const peakDensity = PEAK_DENSITIES[blockIdx];
+  const prevPeak = blockIdx === 0 ? 0.16 : PEAK_DENSITIES[blockIdx - 1];
+  const dropDensity = prevPeak * 0.90; // 10% relative reduction
+  const density = dropDensity + progress * (peakDensity - dropDensity);
+
+  // Compute mines, hard cap at 34%
+  const effectiveDensity = Math.min(density, 0.34);
+  const mines = Math.max(2, Math.round(size * size * effectiveDensity));
+
+  return { rows: size, cols: size, mines };
+}
 
 // Quick Play (internally "timed") — mobile-friendly sizes, count UP (no countdown)
 const TIMED_LEVELS = [
@@ -156,41 +71,6 @@ const SPEED_THRESHOLDS = [
   { diamond: 90, gold: 180, silver: 360 },
   { diamond: 120, gold: 240, silver: 480 },
 ];
-
-// Gimmick intro levels where mine density dips slightly (1-2 fewer mines)
-const GIMMICK_INTRO_LEVELS = new Set([11, 21, 31, 41, 51, 61, 71, 81, 91]);
-
-// Non-chaosOnly gimmick introduction levels — used to scale down mine density
-// as modifiers pile on (avoids circular import from gimmicks.js)
-const GIMMICK_INTROS = [11, 21, 31, 41, 51, 61, 71, 81, 91];
-function gimmickTypesAt(level) {
-  let count = 0;
-  for (const intro of GIMMICK_INTROS) {
-    if (level >= intro) count++;
-  }
-  return count;
-}
-
-export function getDifficultyForLevel(level) {
-  const capped = Math.min(Math.max(level, 1), CHALLENGE_LEVELS.length);
-  const diff = { ...CHALLENGE_LEVELS[capped - 1] };
-
-  // Subtle breathing room: reduce mines by 1-2 on the exact level a gimmick is introduced
-  if (GIMMICK_INTRO_LEVELS.has(capped)) {
-    diff.mines = Math.max(1, diff.mines - 2);
-  }
-
-  // Scale down mine density as gimmicks accumulate, then hard-cap at 33%.
-  // Difficulty past L80 comes from modifier complexity, not mine density.
-  const gimmickReduction = Math.floor(gimmickTypesAt(capped) * 0.6);
-  if (gimmickReduction > 0) {
-    diff.mines = Math.max(1, diff.mines - gimmickReduction);
-  }
-  const maxMines = Math.floor(diff.rows * diff.cols * 0.33);
-  if (diff.mines > maxMines) diff.mines = maxMines;
-
-  return diff;
-}
 
 export function getTimedDifficulty(level) {
   const capped = Math.min(Math.max(level, 1), TIMED_LEVELS.length);
@@ -217,7 +97,6 @@ export function getSpeedRating(level, time) {
   return                          { icon: '🥉', name: 'Bronze',  tier: 1 };
 }
 
-export const MAX_LEVEL = CHALLENGE_LEVELS.length;
 export const MAX_TIMED_LEVEL = TIMED_LEVELS.length;
 
 // ── Chaos Mode Difficulty ─────────────────────────────
