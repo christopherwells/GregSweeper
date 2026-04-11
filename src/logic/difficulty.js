@@ -5,6 +5,15 @@
 // After all gimmicks are introduced (L91+), a final 30-level ramp reaches
 // 14×14 at 34% density with heavy modifier stacking.
 
+// ── Shared constants ──────────────────────────────────
+export const PAR_SECONDS_PER_MOVE = 3.65;
+
+// Daily board dimension ranges (seeded RNG picks within these)
+export const DAILY_MIN_SIZE = 8;
+export const DAILY_SIZE_RANGE = 5;   // 8–12
+export const DAILY_MIN_DENSITY = 0.14;
+export const DAILY_DENSITY_RANGE = 0.16; // 14%–30%
+
 // Gimmick introduction levels (non-chaosOnly)
 const GIMMICK_INTROS = [11, 21, 31, 41, 51, 61, 71, 81, 91];
 

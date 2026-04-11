@@ -286,8 +286,8 @@ export function updateCell(r, c) {
     // Wormholes: no indicator on unrevealed cells (revealed on discovery)
     // Mirror zone indicator on unrevealed cells
     if (cell.mirrorZone) {
-      // Only show zone boundary once at least one zone cell is revealed
-      const zoneVisible = state.board.some(row => row.some(c => c.mirrorZone && c.isRevealed));
+      const zoneVisible = _mirrorZoneVisible != null ? _mirrorZoneVisible
+        : state.board.some(row => row.some(c => c.mirrorZone && c.isRevealed));
       if (zoneVisible) {
         cellEl.classList.add('mirror-unrevealed');
         if (cell.mirrorZone.top) cellEl.classList.add('mirror-zone-top');
@@ -309,7 +309,11 @@ export function updateCell(r, c) {
   cellEl.setAttribute('aria-label', getCellAriaLabel(cell, r, c));
 }
 
+// Cached per updateAllCells pass to avoid O(n^2) mirror zone scan
+let _mirrorZoneVisible = null;
+
 export function updateAllCells() {
+  _mirrorZoneVisible = state.board.some(row => row.some(c => c.mirrorZone && c.isRevealed));
   // For daily mode: apply cached suggested start position (computed in newGame)
   const dailyNeedsStart = state.gameMode === "daily" && state.board?.length > 0 &&
     (state.status === "idle" || (state.status === "playing" && state.revealedCount <= 1));
@@ -323,6 +327,7 @@ export function updateAllCells() {
     }
   }
   updateStartHereLabel();
+  _mirrorZoneVisible = null;
 }
 
 // Stores the suggested start position so it persists across re-fogs after bomb hits

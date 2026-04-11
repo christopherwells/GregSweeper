@@ -3,13 +3,7 @@
 // This file handles imports, event wiring, and init.
 
 // ── Local Date Utility ──────────────────────────────
-// Use local dates (not UTC) so daily challenges reset at local midnight
-function getLocalDateString() {
-  const d = new Date();
-  return d.getFullYear() + '-' +
-    String(d.getMonth() + 1).padStart(2, '0') + '-' +
-    String(d.getDate()).padStart(2, '0');
-}
+// getLocalDateString imported from seededRandom.js
 
 import { state } from './state/gameState.js';
 import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn } from './ui/domHelpers.js';
@@ -26,7 +20,7 @@ import './game/winLossHandler.js'; // side-effect: registers handleWin with powe
 import { useRevealSafe, useShield, activateScan, activateXRay, activateMagnet } from './game/powerUpActions.js';
 import { switchMode, isChaosUnlocked, updateModeUI } from './game/modeManager.js';
 import { persistGameState, tryResumeGame } from './game/gamePersistence.js';
-import { getDifficultyForLevel, getTimedDifficulty, getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, CHAOS_UNLOCK_LEVEL } from './logic/difficulty.js';
+import { getDifficultyForLevel, getTimedDifficulty, getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, CHAOS_UNLOCK_LEVEL, PAR_SECONDS_PER_MOVE, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE } from './logic/difficulty.js';
 import {
   loadStats, saveTheme, loadTheme, resetStats,
   saveCheckpoint, loadCheckpoint,
@@ -51,9 +45,9 @@ import {
 import {
   initFirebase, isFirebaseOnline, submitOnlineScore, fetchOnlineLeaderboard,
 } from './firebase/firebaseLeaderboard.js';
-import { generateBoard } from './logic/boardGenerator.js';
+import { generateBoard, cleanSolverArtifacts } from './logic/boardGenerator.js';
 import { isBoardSolvable } from './logic/boardSolver.js';
-import { createDailyRNG } from './logic/seededRandom.js';
+import { createDailyRNG, getLocalDateString } from './logic/seededRandom.js';
 import {
   EMOJI_PACKS, EFFECTS, TITLES,
   loadEmojiPack, saveEmojiPack, getActiveEmojiPack, isPackUnlocked,
@@ -162,15 +156,15 @@ async function updateLeaderboardDisplay() {
     // Compute par on-demand by regenerating today's daily board
     try {
       const parRng = createDailyRNG(dateStr);
-      const pRows = 8 + Math.floor(parRng() * 5);
-      const pCols = 8 + Math.floor(parRng() * 5);
-      const pDensity = 0.14 + parRng() * 0.16;
+      const pRows = DAILY_MIN_SIZE + Math.floor(parRng() * DAILY_SIZE_RANGE);
+      const pCols = DAILY_MIN_SIZE + Math.floor(parRng() * DAILY_SIZE_RANGE);
+      const pDensity = DAILY_MIN_DENSITY + parRng() * DAILY_DENSITY_RANGE;
       const pMines = Math.max(5, Math.round(pRows * pCols * pDensity));
       const pFixedR = Math.floor(pRows / 2), pFixedC = Math.floor(pCols / 2);
       const pBoard = generateBoard(pRows, pCols, pMines, pFixedR, pFixedC, createDailyRNG(dateStr));
-      for (const row of pBoard) for (const c of row) { c.isRevealed = false; c.revealAnimDelay = 0; }
+      cleanSolverArtifacts(pBoard);
       const parResult = isBoardSolvable(pBoard, pRows, pCols, pFixedR, pFixedC);
-      dailyPar = Math.round(parResult.totalClicks * 3.65 * 10) / 10;
+      dailyPar = Math.round(parResult.totalClicks * PAR_SECONDS_PER_MOVE * 10) / 10;
       dailyMoves = parResult.totalClicks;
       localStorage.setItem('minesweeper_daily_par_' + dateStr, String(dailyPar));
       localStorage.setItem('minesweeper_daily_moves_' + dateStr, String(dailyMoves));
@@ -1164,14 +1158,16 @@ $('#gameover-nextlevel').addEventListener('click', () => {
   newGame();
 });
 
-$('#gameover-submit-daily').addEventListener('click', async () => {
+$('#gameover-submit-daily').addEventListener('click', async (e) => {
+  e.currentTarget.disabled = true;
   const nameInput = $('#daily-name-input');
   const name = nameInput ? nameInput.value : '';
   if (name && name.trim()) {
     const sanitized = name.trim().slice(0, 20);
     const dateStr = getLocalDateString();
-    addDailyLeaderboardEntry(dateStr, sanitized, state.elapsedTime);
-    await submitOnlineScore(dateStr, sanitized, state.elapsedTime, state.dailyBombHits || 0);
+    const scoreTime = Math.round((state.preciseTime || state.elapsedTime) * 10) / 10;
+    addDailyLeaderboardEntry(dateStr, sanitized, scoreTime);
+    await submitOnlineScore(dateStr, sanitized, scoreTime, state.dailyBombHits || 0);
     const dailySubmitForm = $('#daily-submit-form');
     if (dailySubmitForm) dailySubmitForm.classList.add('hidden');
     showToast('✅ Score submitted!');

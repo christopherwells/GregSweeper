@@ -17,10 +17,10 @@ import { handleWin, handleLoss, handleDailyBombHit } from './winLossHandler.js';
 import { performScan, performXRay, performMagnet, tryLifeline } from './powerUpActions.js';
 import { generateBoard, createEmptyBoard, calculateAdjacency, cleanSolverArtifacts } from '../logic/boardGenerator.js';
 import { floodFillReveal, checkWin, chordReveal, isBoardSolvable, estimatePlateMovesToDisarm, buildNeighborCache } from '../logic/boardSolver.js';
-import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getChaosDifficulty } from '../logic/difficulty.js';
+import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getChaosDifficulty, PAR_SECONDS_PER_MOVE, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE } from '../logic/difficulty.js';
 import { shieldDefuse } from '../logic/powerUps.js';
 import { getGimmicksForLevel, applyGimmicks, applyWalls, isLockedCell, hasWallBetween, hasSeenGimmick, markGimmickSeen, getGimmickDef, isModifierPopupDisabled, setModifierPopupDisabled, getDailyGimmick, getChaosGimmicks, clearGimmickProperties } from '../logic/gimmicks.js';
-import { createDailyRNG } from '../logic/seededRandom.js';
+import { createDailyRNG, getLocalDateString } from '../logic/seededRandom.js';
 import {
   loadModePowerUps, loadCheckpoint, clearGameState,
 } from '../storage/statsStorage.js';
@@ -33,12 +33,7 @@ let _lastInputTime = 0;
 
 // ── Local Date Utility ──────────────────────────────
 // Use local dates (not UTC) so daily challenges reset at local midnight
-function getLocalDateString() {
-  const d = new Date();
-  return d.getFullYear() + '-' +
-    String(d.getMonth() + 1).padStart(2, '0') + '-' +
-    String(d.getDate()).padStart(2, '0');
-}
+// getLocalDateString imported from seededRandom.js
 
 // ── Gimmick Intro Popup ───────────────────────────────
 
@@ -166,9 +161,9 @@ export function newGame() {
     const dimRng1 = dailyRng();
     const dimRng2 = dailyRng();
     const dimRng3 = dailyRng();
-    state.rows = 8 + Math.floor(dimRng1 * 5);    // 8–12
-    state.cols = 8 + Math.floor(dimRng2 * 5);    // 8–12
-    const density = 0.14 + dimRng3 * 0.16;        // 14%–30%
+    state.rows = DAILY_MIN_SIZE + Math.floor(dimRng1 * DAILY_SIZE_RANGE);
+    state.cols = DAILY_MIN_SIZE + Math.floor(dimRng2 * DAILY_SIZE_RANGE);
+    const density = DAILY_MIN_DENSITY + dimRng3 * DAILY_DENSITY_RANGE;
     state.totalMines = Math.max(5, Math.round(state.rows * state.cols * density));
 
     // Pre-generate the board NOW with a fixed exclude position (center)
@@ -200,7 +195,7 @@ export function newGame() {
       const check = isBoardSolvable(state.board, state.rows, state.cols, fixedRow, fixedCol);
       cleanSolverArtifacts(state.board);
       if (check.solvable || check.remainingUnknowns === 0) {
-        state.dailyPar = Math.round(check.totalClicks * 3.65 * 10) / 10;
+        state.dailyPar = Math.round(check.totalClicks * PAR_SECONDS_PER_MOVE * 10) / 10;
         state.dailyMoves = check.totalClicks;
         localStorage.setItem('minesweeper_daily_par_' + state.dailySeed, String(state.dailyPar));
         localStorage.setItem('minesweeper_daily_moves_' + state.dailySeed, String(check.totalClicks));
@@ -664,10 +659,8 @@ function startPressurePlateTimer(cell) {
       clearInterval(tick);
       activePlates.delete(cell);
       // Plate detonates! Try lifeline first, then game over
-      import('./powerUpActions.js').then(m => {
-        if (m.tryLifeline(cell.row, cell.col)) return;
-        handleLoss(cell.row, cell.col);
-      });
+      if (tryLifeline(cell.row, cell.col)) return;
+      handleLoss(cell.row, cell.col);
     }
   }, 200);
 

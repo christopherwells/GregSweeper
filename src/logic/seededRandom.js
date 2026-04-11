@@ -16,14 +16,17 @@ export function hashString(str) {
   return hash;
 }
 
+// Local date string (YYYY-MM-DD) — daily challenges reset at local midnight.
+// Single source of truth: all daily-mode code imports this.
+export function getLocalDateString() {
+  const d = new Date();
+  return d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' +
+    String(d.getDate()).padStart(2, '0');
+}
+
 export function createDailyRNG(dateString) {
-  if (!dateString) {
-    // Use local date so daily resets at local midnight
-    const d = new Date();
-    dateString = d.getFullYear() + '-' +
-      String(d.getMonth() + 1).padStart(2, '0') + '-' +
-      String(d.getDate()).padStart(2, '0');
-  }
+  if (!dateString) dateString = getLocalDateString();
   const seed = hashString(dateString);
   return mulberry32(seed);
 }

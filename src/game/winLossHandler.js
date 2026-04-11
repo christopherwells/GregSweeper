@@ -30,6 +30,7 @@ import {
 import { checkThemeUnlocks, showThemeUnlockToasts } from '../ui/themeManager.js';
 import { submitOnlineScore } from '../firebase/firebaseLeaderboard.js';
 import { addDailyLeaderboardEntry } from '../storage/statsStorage.js';
+import { getLocalDateString } from '../logic/seededRandom.js';
 
 // ── Achievements Display (for game over) ───────────────
 
@@ -308,11 +309,10 @@ export function handleWin() {
     if (savedName) {
       // Auto-submit with saved name
       dailySubmitForm.classList.add('hidden');
-      const dateStr = new Date().getFullYear() + '-' +
-        String(new Date().getMonth() + 1).padStart(2, '0') + '-' +
-        String(new Date().getDate()).padStart(2, '0');
-      addDailyLeaderboardEntry(dateStr, savedName, state.elapsedTime);
-      submitOnlineScore(dateStr, savedName, state.elapsedTime, state.dailyBombHits || 0);
+      const dateStr = getLocalDateString();
+      const scoreTime = Math.round((state.preciseTime || state.elapsedTime) * 10) / 10;
+      addDailyLeaderboardEntry(dateStr, savedName, scoreTime);
+      submitOnlineScore(dateStr, savedName, scoreTime, state.dailyBombHits || 0);
       showToast('✅ Score submitted!');
     } else {
       dailySubmitForm.classList.remove('hidden');
