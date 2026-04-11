@@ -180,13 +180,14 @@ export function getDifficultyForLevel(level) {
     diff.mines = Math.max(1, diff.mines - 2);
   }
 
-  // Scale down mine density as gimmicks accumulate — each introduced type
-  // reduces mines by ~0.6, so L91+ (9 types) drops by 5 mines.
-  // This keeps L120 at roughly what L100 was before the adjustment.
+  // Scale down mine density as gimmicks accumulate, then hard-cap at 33%.
+  // Difficulty past L80 comes from modifier complexity, not mine density.
   const gimmickReduction = Math.floor(gimmickTypesAt(capped) * 0.6);
   if (gimmickReduction > 0) {
     diff.mines = Math.max(1, diff.mines - gimmickReduction);
   }
+  const maxMines = Math.floor(diff.rows * diff.cols * 0.33);
+  if (diff.mines > maxMines) diff.mines = maxMines;
 
   return diff;
 }

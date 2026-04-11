@@ -121,8 +121,10 @@ export function getGimmicksForLevel(level, rng = Math.random) {
       // Always present during introduction block
       active.push(g);
     } else if (level > introEnd) {
-      // ~50% chance after introduction
-      if (rng() < 0.5) active.push(g);
+      // 50% at low levels, scaling to 70% by L120 (mine density is capped,
+      // so late-game difficulty comes from modifier stacking instead)
+      const chance = 0.5 + Math.min((level - 30) / 90, 1) * 0.2;
+      if (rng() < chance) active.push(g);
     }
   }
 
