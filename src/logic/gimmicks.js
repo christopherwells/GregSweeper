@@ -13,6 +13,7 @@ export function clearGimmickProperties(cell) {
   cell.inLiarZone = false;
   cell.displayedMines = undefined;
   cell.mirrorZone = undefined;
+  cell.mirrorPair = undefined;
   cell.isWormhole = false;
   cell.wormholePair = undefined;
   cell.wormholePairIndex = undefined;
@@ -26,6 +27,7 @@ export function clearGimmickProperties(cell) {
   cell.compassDir = undefined;
   cell.compassArrow = undefined;
   cell.compassCount = undefined;
+  cell.liarOffset = undefined;
 }
 
 const GIMMICK_DEFS = {
@@ -37,9 +39,9 @@ const GIMMICK_DEFS = {
   },
   liar: {
     intro: 21, name: 'Liar Cells', icon: '🤥',
-    desc: 'A few cells display a number that\'s off by 1. They have a colored border so you know which ones lie.',
-    longDesc: 'Liar cells show a number that is exactly 1 higher or 1 lower than the true count. They are marked with a distinct colored border once revealed so you can spot them. Account for the offset when reasoning about nearby mines.',
-    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-liar">3</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">2</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div></div><div class="ge-caption">The orange-bordered "3" is really a 2 or 4</div>',
+    desc: 'A few cells display a number that\'s off by 1. Their numbers are italic and underlined.',
+    longDesc: 'Liar cells show a number that is exactly 1 higher or 1 lower than the true count. They are shown in italic with an underline so you can spot them. Account for the offset when reasoning about nearby mines.',
+    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-liar" style="font-style:italic;text-decoration:underline"><em>3</em></div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">2</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div></div><div class="ge-caption">The underlined italic "3" is really a 2 or 4</div>',
   },
   mystery: {
     intro: 31, name: 'Mystery Cells', icon: '❓',
@@ -66,10 +68,10 @@ const GIMMICK_DEFS = {
     exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(5,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-wormhole">🌀3</div><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-wormhole">🌀3</div><div class="ge-cell revealed">2</div></div><div class="ge-caption">Both 🌀 cells show 3 (sum of 1+2) — split the total</div>',
   },
   mirror: {
-    intro: 61, name: 'Mirror Zone', icon: '🪞',
-    desc: 'A marked zone displays mirrored adjacency values \u2014 numbers swap with their opposite cell in the zone.',
-    longDesc: 'Inside the mirror zone, each cell\'s number is swapped with the cell at the opposite position. The zone is visually marked. To solve, mentally un-mirror each number to get the true count.',
-    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(2,32px)"><div class="ge-cell revealed ge-mirror">2🪞</div><div class="ge-cell revealed ge-mirror">1🪞</div><div class="ge-cell revealed ge-mirror">3🪞</div><div class="ge-cell revealed ge-mirror">0🪞</div></div><div class="ge-caption">Numbers are swapped diagonally within the zone</div>',
+    intro: 61, name: 'Mirror Cells', icon: '🪞',
+    desc: 'Pairs of adjacent cells swap their numbers with each other.',
+    longDesc: 'Two neighboring cells swap displayed mine counts. If cell A has 1 mine and cell B has 3, A shows 3 and B shows 1. The swapped pair shares a colored tint so you can spot which cells are linked.',
+    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-mirror">3🪞</div><div class="ge-cell revealed ge-mirror">1🪞</div><div class="ge-cell revealed">2</div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">0</div></div><div class="ge-caption">The two 🪞 cells swapped their numbers (really 1 and 3)</div>',
   },
   pressurePlate: {
     intro: 71, name: 'Pressure Plates', icon: '🔴',
@@ -249,7 +251,19 @@ export function applyGimmicks(board, level, activeGimmicks, rng = Math.random) {
   const cols = board[0].length;
   const applied = {};
 
-  for (const g of activeGimmicks) {
+  // Order matters: walls first (affects adjacency), then cell markers that
+  // hide/lock cells, then base-value gimmicks (wormhole/mirror/sonar/compass)
+  // which are mutually exclusive with each other, then liar LAST so it can
+  // stack its offset on top of whatever base value is already assigned.
+  const ORDER = [
+    'walls', 'mineShift',
+    'mystery', 'locked', 'pressurePlate',
+    'wormhole', 'mirror', 'sonar', 'compass',
+    'liar',
+  ];
+  const ordered = ORDER.filter(g => activeGimmicks.includes(g));
+
+  for (const g of ordered) {
     const intensity = getIntensity(g, level, rng);
 
     switch (g) {
@@ -271,7 +285,7 @@ export function applyGimmicks(board, level, activeGimmicks, rng = Math.random) {
         applied.wormhole = applyWormholes(board, rows, cols, Math.min(intensity, 3), rng);
         break;
       case 'mirror':
-        applied.mirror = applyMirrorZone(board, rows, cols, rng);
+        applied.mirror = applyMirrorPairs(board, rows, cols, Math.min(intensity, 3), rng);
         break;
       case 'mineShift':
         applied.mineShift = { interval: 30 + Math.floor(rng() * 16) }; // 30-45s
@@ -288,7 +302,28 @@ export function applyGimmicks(board, level, activeGimmicks, rng = Math.random) {
     }
   }
 
+  // Single source of truth for displayed numbers — runs after every gimmick
+  // has marked its cells, so liar offsets stack correctly on top of
+  // wormhole/mirror/sonar/compass base values.
+  recomputeDisplayedMines(board);
+
   return applied;
+}
+
+// True if a cell already owns the base displayed number (i.e. any other
+// base-value gimmick must not be placed on it). Liar is NOT in this list —
+// liar stacks on top of a base value via its offset.
+function hasBaseValueGimmick(cell) {
+  return cell.isWormhole || !!cell.mirrorPair || cell.isSonar || cell.isCompass;
+}
+
+// True if the cell's displayed value is replaced by something other than a
+// mine-count number — stacking a base-value gimmick on top would be wasted.
+// Locked cells are intentionally NOT included here: the lock is a temporary
+// gate, and once unlocked the cell displays whatever the base/liar layers
+// dictate. That lets locked stack with wormhole/mirror/sonar/compass/liar.
+function hasDisplayBlockingGimmick(cell) {
+  return cell.isMystery || cell.isPressurePlate;
 }
 
 // ── Mystery Cells: show '?' instead of number ──────────
@@ -337,14 +372,35 @@ function applyLocked(board, rows, cols, count, rng) {
 // ── Liar Cells: adjacentMines display is off by ±1 ────
 
 function applyLiar(board, rows, cols, count, rng) {
+  // Compute the current would-be base display value for a candidate so we
+  // can sanity-check that offset ±1 stays non-negative. At this point in
+  // applyGimmicks, wormhole/mirror/sonar/compass have already marked their
+  // cells but recomputeDisplayedMines hasn't run yet, so pull the base the
+  // same way it will later.
+  const baseValue = (cell) => {
+    if (cell.isSonar && typeof cell.sonarCount === 'number') return cell.sonarCount;
+    if (cell.isCompass && typeof cell.compassCount === 'number') return cell.compassCount;
+    if (cell.isWormhole && cell.wormholePair) {
+      const p = board[cell.wormholePair.row]?.[cell.wormholePair.col];
+      return cell.adjacentMines + (p ? p.adjacentMines : 0);
+    }
+    if (cell.mirrorPair) {
+      const m = board[cell.mirrorPair.row]?.[cell.mirrorPair.col];
+      return m ? m.adjacentMines : cell.adjacentMines;
+    }
+    return cell.adjacentMines;
+  };
+
   const candidates = [];
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const cell = board[r][c];
-      // Only cells with adjacentMines >= 2 can be liars (±1 stays ≥ 1)
-      if (!cell.isMine && cell.adjacentMines >= 2) {
-        candidates.push(cell);
-      }
+      if (cell.isMine) continue;
+      // Liar cannot share a cell with anything that hides the number.
+      if (hasDisplayBlockingGimmick(cell)) continue;
+      // Need base >= 2 so that offset -1 still leaves a positive number.
+      if (baseValue(cell) < 2) continue;
+      candidates.push(cell);
     }
   }
   shuffle(candidates, rng);
@@ -353,7 +409,9 @@ function applyLiar(board, rows, cols, count, rng) {
     const cell = candidates[i];
     const offset = rng() < 0.5 ? -1 : 1;
     cell.isLiar = true;
-    cell.displayedMines = cell.adjacentMines + offset;
+    cell.liarOffset = offset;
+    // displayedMines is set by recomputeDisplayedMines so the offset stacks
+    // on top of any base-value gimmick present on this cell.
     applied.push({ row: cell.row, col: cell.col, offset });
   }
   return applied;
@@ -530,9 +588,9 @@ function applyWormholes(board, rows, cols, pairCount, rng) {
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const cell = board[r][c];
-      if (!cell.isMine && cell.adjacentMines > 0) {
-        candidates.push(cell);
-      }
+      if (cell.isMine || cell.adjacentMines <= 0) continue;
+      if (hasBaseValueGimmick(cell) || hasDisplayBlockingGimmick(cell)) continue;
+      candidates.push(cell);
     }
   }
   shuffle(candidates, rng);
@@ -557,75 +615,71 @@ function applyWormholes(board, rows, cols, pairCount, rng) {
       const summed = a.adjacentMines + b.adjacentMines;
       const pairIndex = pairs.length; // 0, 1, 2 for color matching
       a.wormholePair = { row: b.row, col: b.col };
-      a.displayedMines = summed;
       a.isWormhole = true;
       a.wormholePairIndex = pairIndex;
       b.wormholePair = { row: a.row, col: a.col };
-      b.displayedMines = summed;
       b.isWormhole = true;
       b.wormholePairIndex = pairIndex;
+      // displayedMines is set by recomputeDisplayedMines
       pairs.push({ a: { row: a.row, col: a.col }, b: { row: b.row, col: b.col }, summed });
     }
   }
   return pairs;
 }
 
-// ── Mirror Zone: cells display swapped adjacency ───────
+// ── Mirror Pairs: two adjacent cells display each other's adjacency ──
 
-function applyMirrorZone(board, rows, cols, rng) {
-  const size = 2; // always 2x2 — keeps it solvable
-  const startR = 1 + Math.floor(rng() * (rows - size - 1));
-  const startC = 1 + Math.floor(rng() * (cols - size - 1));
-  const endR = startR + size - 1;
-  const endC = startC + size - 1;
+function applyMirrorPairs(board, rows, cols, pairCount, rng) {
+  // Each pair is two adjacent (8-connected) non-mine numbered cells. The
+  // pair swaps displayed adjacency: each cell shows the partner's true
+  // adjacentMines. Numbers must differ so the swap is actually informative.
+  const wallEdges = board._wallEdges || null;
 
-  const zone = [];
-  for (let r = startR; r <= endR; r++) {
-    for (let c = startC; c <= endC; c++) {
-      if (!board[r][c].isMine) {
-        board[r][c].mirrorZone = {
-          id: 0,
-          centerRow: startR + (size - 1) / 2,
-          centerCol: startC + (size - 1) / 2,
-          // Zone boundary edges for rendering the zone outline
-          top: r === startR,
-          bottom: r === endR,
-          left: c === startC,
-          right: c === endC,
-        };
-        zone.push({ row: r, col: c });
-      }
+  const candidates = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const cell = board[r][c];
+      if (cell.isMine || cell.adjacentMines <= 0) continue;
+      if (hasBaseValueGimmick(cell) || hasDisplayBlockingGimmick(cell)) continue;
+      candidates.push(cell);
     }
   }
+  shuffle(candidates, rng);
 
-  // Swap displayed values with mirror opposite
-  let pairIndex = 0;
-  const paired = new Set();
-  for (const pos of zone) {
-    const cell = board[pos.row][pos.col];
-    const mirrorR = Math.round(2 * cell.mirrorZone.centerRow - pos.row);
-    const mirrorC = Math.round(2 * cell.mirrorZone.centerCol - pos.col);
-    if (mirrorR >= 0 && mirrorR < rows && mirrorC >= 0 && mirrorC < cols) {
-      const mirrorCell = board[mirrorR][mirrorC];
-      if (mirrorCell.mirrorZone) {
-        cell.displayedMines = mirrorCell.adjacentMines;
-        // Assign matching pair indices for color-coding swapped cells
-        const posKey = `${pos.row},${pos.col}`;
-        const mirKey = `${mirrorR},${mirrorC}`;
-        const key = posKey < mirKey ? `${posKey}-${mirKey}` : `${mirKey}-${posKey}`;
-        if (pos.row === mirrorR && pos.col === mirrorC) {
-          cell.mirrorZone.pairIndex = -1; // center cell, mirrors itself
-        } else if (!paired.has(key)) {
-          cell.mirrorZone.pairIndex = pairIndex;
-          mirrorCell.mirrorZone.pairIndex = pairIndex;
-          paired.add(key);
-          pairIndex++;
-        }
+  const pairs = [];
+  const used = new Set();
+  for (const a of candidates) {
+    if (pairs.length >= pairCount) break;
+    const aKey = `${a.row},${a.col}`;
+    if (used.has(aKey)) continue;
+
+    // Look for an adjacent partner with a different adjacentMines value.
+    const partners = [];
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        if (dr === 0 && dc === 0) continue;
+        const nr = a.row + dr, nc = a.col + dc;
+        if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+        if (wallEdges && hasWallBetween(wallEdges, a.row, a.col, nr, nc)) continue;
+        const b = board[nr][nc];
+        if (b.isMine || b.adjacentMines <= 0) continue;
+        if (hasBaseValueGimmick(b) || hasDisplayBlockingGimmick(b)) continue;
+        if (used.has(`${nr},${nc}`)) continue;
+        if (b.adjacentMines === a.adjacentMines) continue; // swap would be a no-op
+        partners.push(b);
       }
     }
-  }
+    if (partners.length === 0) continue;
 
-  return { startR, startC, size, cells: zone };
+    const b = partners[Math.floor(rng() * partners.length)];
+    const pairIndex = pairs.length % 2;
+    a.mirrorPair = { row: b.row, col: b.col, pairIndex };
+    b.mirrorPair = { row: a.row, col: a.col, pairIndex };
+    used.add(aKey);
+    used.add(`${b.row},${b.col}`);
+    pairs.push({ a: { row: a.row, col: a.col }, b: { row: b.row, col: b.col } });
+  }
+  return pairs;
 }
 
 // ── Mine Shift (runtime) ───────────────────────────────
@@ -677,6 +731,7 @@ export function performMineShift(board, rng = Math.random) {
 
   if (shifted.length > 0) {
     recalcAllAdjacency(board, rows, cols);
+    recomputeDisplayedMines(board);
   }
 
   return shifted;
@@ -732,34 +787,18 @@ function applySonar(board, rows, cols, count, rng) {
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const cell = board[r][c];
-      if (!cell.isMine && !cell.isLocked && !cell.isMystery && !cell.isLiar && !cell.isPressurePlate) {
-        candidates.push(cell);
-      }
+      if (cell.isMine) continue;
+      if (hasBaseValueGimmick(cell) || hasDisplayBlockingGimmick(cell)) continue;
+      candidates.push(cell);
     }
   }
   shuffle(candidates, rng);
-  const wallEdges = board._wallEdges || null;
   const applied = [];
   for (let i = 0; i < Math.min(count, candidates.length); i++) {
     const cell = candidates[i];
     cell.isSonar = true;
-    // Count mines within 2-cell radius (5×5 area), respecting walls
-    let sonarCount = 0;
-    for (let dr = -2; dr <= 2; dr++) {
-      for (let dc = -2; dc <= 2; dc++) {
-        if (dr === 0 && dc === 0) continue;
-        const nr = cell.row + dr, nc = cell.col + dc;
-        if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
-          // For sonar, walls only block if directly between the sonar cell and target
-          // (simplified: check cardinal wall for adjacent cells, no wall check for 2-away cells)
-          if (Math.abs(dr) <= 1 && Math.abs(dc) <= 1 && wallEdges && hasWallBetween(wallEdges, cell.row, cell.col, nr, nc)) continue;
-          if (board[nr][nc].isMine) sonarCount++;
-        }
-      }
-    }
-    cell.sonarCount = sonarCount;
-    cell.displayedMines = sonarCount; // Override displayed number
-    applied.push({ row: cell.row, col: cell.col, sonarCount });
+    // sonarCount + displayedMines are set by recomputeDisplayedMines
+    applied.push({ row: cell.row, col: cell.col });
   }
   return applied;
 }
@@ -778,9 +817,9 @@ function applyCompass(board, rows, cols, count, rng) {
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const cell = board[r][c];
-      if (!cell.isMine && !cell.isLocked && !cell.isMystery && !cell.isLiar && !cell.isPressurePlate && !cell.isSonar) {
-        candidates.push(cell);
-      }
+      if (cell.isMine) continue;
+      if (hasBaseValueGimmick(cell) || hasDisplayBlockingGimmick(cell)) continue;
+      candidates.push(cell);
     }
   }
   shuffle(candidates, rng);
@@ -790,18 +829,9 @@ function applyCompass(board, rows, cols, count, rng) {
     const dir = COMPASS_DIRS[Math.floor(rng() * COMPASS_DIRS.length)];
     cell.isCompass = true;
     cell.compassDir = dir;
-    // Count all mines in the direction
-    let compassCount = 0;
-    let r = cell.row + dir.dr, c = cell.col + dir.dc;
-    while (r >= 0 && r < rows && c >= 0 && c < cols) {
-      if (board[r][c].isMine) compassCount++;
-      r += dir.dr;
-      c += dir.dc;
-    }
-    cell.compassCount = compassCount;
-    cell.displayedMines = compassCount; // Override displayed number
     cell.compassArrow = dir.arrow;
-    applied.push({ row: cell.row, col: cell.col, arrow: dir.arrow, compassCount });
+    // compassCount + displayedMines are set by recomputeDisplayedMines
+    applied.push({ row: cell.row, col: cell.col, arrow: dir.arrow });
   }
   return applied;
 }
@@ -869,7 +899,73 @@ function shuffle(arr, rng) {
   }
 }
 
-function recalcAllAdjacency(board, rows, cols) {
+// Recompute displayedMines for every gimmick cell that overrides it.
+// Call after any mine removal/shift so liar/wormhole/mirror/sonar/compass
+// numbers match the current mine layout.
+//
+// Two-pass: first compute the base value (wormhole sum / mirror partner /
+// sonar count / compass count / plain adjacentMines), then apply the liar
+// offset on top. This is what makes a liar stacked on a wormhole lie
+// about the wormhole number rather than about the raw local adjacency.
+export function recomputeDisplayedMines(board) {
+  const rows = board.length;
+  const cols = board[0].length;
+  const wallEdges = board._wallEdges || null;
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const cell = board[r][c];
+      if (cell.isMine) continue;
+
+      // ── Pass 1: base value ─────────────────────────────
+      let base;
+      if (cell.isSonar) {
+        let count = 0;
+        for (let dr = -2; dr <= 2; dr++) {
+          for (let dc = -2; dc <= 2; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            const nr = r + dr, nc = c + dc;
+            if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+            if (Math.abs(dr) <= 1 && Math.abs(dc) <= 1 && wallEdges && hasWallBetween(wallEdges, r, c, nr, nc)) continue;
+            if (board[nr][nc].isMine) count++;
+          }
+        }
+        cell.sonarCount = count;
+        base = count;
+      } else if (cell.isCompass && cell.compassDir) {
+        let count = 0;
+        let rr = r + cell.compassDir.dr;
+        let cc = c + cell.compassDir.dc;
+        while (rr >= 0 && rr < rows && cc >= 0 && cc < cols) {
+          if (board[rr][cc].isMine) count++;
+          rr += cell.compassDir.dr;
+          cc += cell.compassDir.dc;
+        }
+        cell.compassCount = count;
+        base = count;
+      } else if (cell.isWormhole && cell.wormholePair) {
+        const partner = board[cell.wormholePair.row]?.[cell.wormholePair.col];
+        base = cell.adjacentMines + (partner ? partner.adjacentMines : 0);
+      } else if (cell.mirrorPair) {
+        const partner = board[cell.mirrorPair.row]?.[cell.mirrorPair.col];
+        base = partner ? partner.adjacentMines : cell.adjacentMines;
+      } else {
+        base = cell.adjacentMines;
+      }
+
+      // ── Pass 2: liar offset on top of base ─────────────
+      if (cell.isLiar && typeof cell.liarOffset === 'number') {
+        cell.displayedMines = Math.max(0, base + cell.liarOffset);
+      } else if (cell.isSonar || cell.isCompass || cell.isWormhole || cell.mirrorPair) {
+        cell.displayedMines = base;
+      } else {
+        cell.displayedMines = undefined; // plain number cell — render uses adjacentMines
+      }
+    }
+  }
+}
+
+export function recalcAllAdjacency(board, rows, cols) {
   const wallEdges = board._wallEdges || null;
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {

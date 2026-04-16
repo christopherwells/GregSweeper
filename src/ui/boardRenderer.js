@@ -28,7 +28,7 @@ export function resizeCells() {
   const borderPad = 8; // 2px border + 2px padding on each side
   const availableWidth = container.clientWidth - borderPad;
   const cellSize = Math.floor((availableWidth - (state.cols - 1) * gap) / state.cols);
-  const capped = Math.min(50, Math.max(24, cellSize));
+  const capped = Math.min(50, Math.max(18, cellSize));
   document.documentElement.style.setProperty('--cell-size', `${capped}px`);
 }
 
@@ -178,7 +178,7 @@ function getCellAriaLabel(cell, r, c) {
         : displayNum + (displayNum === 1 ? ' mine nearby' : ' mines nearby');
       if (cell.isLiar) label += ', liar cell';
       if (cell.isWormhole) label += ', wormhole';
-      if (cell.mirrorZone) label += ', mirrored';
+      if (cell.mirrorPair) label += ', mirrored';
       return label;
     }
     return 'Empty, safe';
@@ -205,7 +205,7 @@ export function updateCell(r, c) {
       cellEl.className = `cell revealed mine${isHit ? ' mine-hit' : ''}`;
       cellEl.textContent = getThemeEmoji('mine');
       if (cell.correctFlag) cellEl.classList.add('correct-flag');
-    } else if (cell.adjacentMines > 0) {
+    } else if (cell.adjacentMines > 0 || (cell.displayedMines != null && cell.displayedMines > 0)) {
       if (cell.isHiddenNumber) {
         cellEl.className = 'cell revealed hidden-number';
         cellEl.textContent = '?';
@@ -241,13 +241,11 @@ export function updateCell(r, c) {
             cellEl.classList.add('wormhole-pair-' + cell.wormholePairIndex);
           }
         }
-        if (cell.mirrorZone) {
+        if (cell.mirrorPair) {
           cellEl.classList.add('mirror-cell');
-          if (cell.mirrorZone.top) cellEl.classList.add('mirror-zone-top');
-          if (cell.mirrorZone.bottom) cellEl.classList.add('mirror-zone-bottom');
-          if (cell.mirrorZone.left) cellEl.classList.add('mirror-zone-left');
-          if (cell.mirrorZone.right) cellEl.classList.add('mirror-zone-right');
-          if (cell.mirrorZone.pairIndex >= 0) cellEl.classList.add('mirror-pair-' + cell.mirrorZone.pairIndex);
+          if (cell.mirrorPair.pairIndex != null) {
+            cellEl.classList.add('mirror-pair-' + cell.mirrorPair.pairIndex);
+          }
         }
 
         // Pop-in animation for numbered cells during cascade reveals
@@ -259,14 +257,6 @@ export function updateCell(r, c) {
     } else {
       cellEl.className = 'cell revealed empty';
       cellEl.textContent = '';
-      if (cell.mirrorZone) {
-        cellEl.classList.add('mirror-cell');
-        if (cell.mirrorZone.top) cellEl.classList.add('mirror-zone-top');
-        if (cell.mirrorZone.bottom) cellEl.classList.add('mirror-zone-bottom');
-        if (cell.mirrorZone.left) cellEl.classList.add('mirror-zone-left');
-        if (cell.mirrorZone.right) cellEl.classList.add('mirror-zone-right');
-        if (cell.mirrorZone.pairIndex >= 0) cellEl.classList.add('mirror-pair-' + cell.mirrorZone.pairIndex);
-      }
     }
     if (cell.revealAnimDelay > 0) {
       cellEl.style.animationDelay = `${cell.revealAnimDelay}ms`;
@@ -283,19 +273,7 @@ export function updateCell(r, c) {
     cellEl.textContent = '';
     // Locked cell indicator
     if (cell.isLocked) cellEl.classList.add('locked-cell');
-    // Wormholes: no indicator on unrevealed cells (revealed on discovery)
-    // Mirror zone indicator on unrevealed cells
-    if (cell.mirrorZone) {
-      const zoneVisible = _mirrorZoneVisible != null ? _mirrorZoneVisible
-        : state.board.some(row => row.some(c => c.mirrorZone && c.isRevealed));
-      if (zoneVisible) {
-        cellEl.classList.add('mirror-unrevealed');
-        if (cell.mirrorZone.top) cellEl.classList.add('mirror-zone-top');
-        if (cell.mirrorZone.bottom) cellEl.classList.add('mirror-zone-bottom');
-        if (cell.mirrorZone.left) cellEl.classList.add('mirror-zone-left');
-        if (cell.mirrorZone.right) cellEl.classList.add('mirror-zone-right');
-      }
-    }
+    // Wormholes and mirrors: no indicator on unrevealed cells (revealed on discovery)
     // Suggested safe move overlay (post-death analysis)
     if (cell.suggestedMove) cellEl.classList.add('suggested-move');
     // Daily suggested start cell (shows when board is fresh or re-fogged)
@@ -309,11 +287,7 @@ export function updateCell(r, c) {
   cellEl.setAttribute('aria-label', getCellAriaLabel(cell, r, c));
 }
 
-// Cached per updateAllCells pass to avoid O(n^2) mirror zone scan
-let _mirrorZoneVisible = null;
-
 export function updateAllCells() {
-  _mirrorZoneVisible = state.board.some(row => row.some(c => c.mirrorZone && c.isRevealed));
   // For daily mode: apply cached suggested start position (computed in newGame)
   const dailyNeedsStart = state.gameMode === "daily" && state.board?.length > 0 &&
     (state.status === "idle" || (state.status === "playing" && state.revealedCount <= 1));
@@ -327,7 +301,6 @@ export function updateAllCells() {
     }
   }
   updateStartHereLabel();
-  _mirrorZoneVisible = null;
 }
 
 // Stores the suggested start position so it persists across re-fogs after bomb hits
@@ -377,7 +350,7 @@ export function adjustCellSize() {
   const maxWidth = Math.min(window.innerWidth * 0.88, 520);
   const gapSpace = (state.cols - 1) * 2 + 8; // grid gaps + padding
   const maxCellSize = Math.floor((maxWidth - gapSpace) / state.cols);
-  const cellSize = Math.min(40, Math.max(24, maxCellSize));
+  const cellSize = Math.min(40, Math.max(18, maxCellSize));
   document.documentElement.style.setProperty('--cell-size', cellSize + 'px');
 }
 

@@ -602,7 +602,9 @@ export function handleDailyBombHit(mineRow, mineCol) {
   // Time penalty: +10s per strike
   state.elapsedTime += 10;
 
-  // Defuse the hit mine so it won't kill again
+  // Defuse the hit mine so it won't kill again. defuseMine also refreshes
+  // gimmick displays (wormhole sums, liar offsets, mirror swaps, sonar,
+  // compass) so they reflect the new mine layout.
   defuseMine(state.board, mineRow, mineCol);
   state.board[mineRow][mineCol].isRevealed = true;
   state.totalMines--;

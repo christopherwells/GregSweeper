@@ -1062,9 +1062,13 @@ body {
 }
 
 /* Liar cells — display is off by ±1 (border shown only on revealed cells) */
+/* Liar: italic + underline on the number. No border, no fill, no glow —
+   purely typographic so it never conflicts with border/fill gimmicks. */
 .cell.liar-cell {
-  border: 3px solid #e67e22 !important;
-  box-shadow: inset 0 0 8px rgba(230, 126, 34, 0.85);
+  font-style: italic;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
 }
 
 /* Locked cells — padlock indicator */
@@ -1108,44 +1112,30 @@ body {
   transition: transform 1s linear;
 }
 
-/* Sonar cells — wider scan radius indicator */
+/* Sonar cells — 📡 prefix is the identifier, no border needed */
 .cell.sonar-cell {
-  border: 2px solid rgba(38, 198, 218, 0.6) !important;
   font-size: calc(var(--cell-size) * 0.4) !important;
   letter-spacing: -1px;
 }
 
-/* Compass cells — directional mine count */
+/* Compass cells — arrow suffix is the identifier, no border needed */
 .cell.compass-cell {
-  border: 2px solid rgba(255, 167, 38, 0.6) !important;
   font-size: calc(var(--cell-size) * 0.4) !important;
   letter-spacing: -1px;
 }
 
-/* Wormhole cells — paired background tints (no border, avoids conflict with number colors) */
-.cell.wormhole-cell.wormhole-pair-0 { background: rgba(255, 140, 0, 0.18) !important; }   /* warm amber */
-.cell.wormhole-cell.wormhole-pair-1 { background: rgba(0, 200, 180, 0.18) !important; }   /* teal */
-.cell.wormhole-cell.wormhole-pair-2 { background: rgba(220, 80, 220, 0.18) !important; }  /* magenta */
+/* Wormhole cells — paired background tints (no border, avoids conflict with number colors).
+   Colors chosen to avoid sonar cyan, compass gold, and liar pink.
+   Base rule is a fallback for old saved games missing wormholePairIndex. */
+.cell.wormhole-cell { background: rgba(255, 140, 0, 0.18) !important; }                   /* fallback amber */
+.cell.wormhole-cell.wormhole-pair-0 { background: rgba(255, 140, 0, 0.18) !important; }   /* amber */
+.cell.wormhole-cell.wormhole-pair-1 { background: rgba(220, 80, 220, 0.18) !important; }  /* magenta */
+.cell.wormhole-cell.wormhole-pair-2 { background: rgba(100, 220, 100, 0.18) !important; } /* green */
 
-/* Mirror zone — zone boundary outline + subtle inner tint */
-.cell.mirror-cell,
-.cell.mirror-unrevealed {
-  background: linear-gradient(
-    to bottom right,
-    rgba(52, 152, 219, 0.10),
-    rgba(52, 152, 219, 0.03)
-  );
-}
-
-/* Zone boundary edges — thick solid border on outer edges */
-.cell.mirror-zone-top    { border-top:    3px solid #3498db !important; }
-.cell.mirror-zone-bottom { border-bottom: 3px solid #3498db !important; }
-.cell.mirror-zone-left   { border-left:   3px solid #3498db !important; }
-.cell.mirror-zone-right  { border-right:  3px solid #3498db !important; }
-
-/* Mirror pair color-coding — matching tints for swapped cells */
-.cell.mirror-pair-0 { background: rgba(52, 152, 219, 0.25) !important; }
-.cell.mirror-pair-1 { background: rgba(155, 89, 182, 0.25) !important; }
+/* Mirror pair color-coding — dashed border (not fill) so they're distinct from wormholes */
+.cell.mirror-cell.mirror-pair-0 { border: 2.5px dashed rgba(52, 152, 219, 0.85) !important; }
+.cell.mirror-cell.mirror-pair-1 { border: 2.5px dashed rgba(155, 89, 182, 0.85) !important; }
+.cell.mirror-cell.mirror-pair-2 { border: 2.5px dashed rgba(46, 204, 113, 0.85) !important; }
 
 /* Mine shift shimmer */
 .mine-shift-shimmer {
@@ -3778,164 +3768,6 @@ body {
   accent-color: var(--color-accent, #e94560);
 }
 
-/* ── Leaderboard Tabs (Room) ──────────────────────── */
-.lb-tabs {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 12px;
-  background: var(--color-surface, #1a1a2e);
-  border-radius: 8px;
-  padding: 3px;
-}
-.lb-tab {
-  flex: 1;
-  padding: 8px 0;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--color-text-secondary, #aaa);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.lb-tab.active {
-  background: var(--color-accent, #e94560);
-  color: #fff;
-}
-
-/* ── Room Forms ───────────────────────────────────── */
-.room-form-section h3 {
-  font-size: 14px;
-  margin-bottom: 8px;
-  color: var(--color-text, #eee);
-}
-.room-input {
-  display: block;
-  width: 100%;
-  padding: 8px 12px;
-  margin-bottom: 8px;
-  border: 1px solid var(--color-border, #333);
-  border-radius: 6px;
-  background: var(--color-surface, #1a1a2e);
-  color: var(--color-text, #eee);
-  font-size: 14px;
-}
-.room-input::placeholder { color: var(--color-text-secondary, #777); }
-.room-input:focus {
-  outline: none;
-  border-color: var(--color-accent, #e94560);
-}
-.room-divider {
-  text-align: center;
-  margin: 16px 0;
-  color: var(--color-text-secondary, #777);
-  font-size: 12px;
-  position: relative;
-}
-.room-divider::before,
-.room-divider::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  width: 40%;
-  height: 1px;
-  background: var(--color-border, #333);
-}
-.room-divider::before { left: 0; }
-.room-divider::after { right: 0; }
-
-/* ── Room Active View ─────────────────────────────── */
-.room-header-info {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-}
-.room-name-display {
-  font-weight: 700;
-  font-size: 16px;
-  color: var(--color-text, #eee);
-}
-.room-code-badge {
-  background: var(--color-surface, #1a1a2e);
-  border: 1px solid var(--color-accent, #e94560);
-  color: var(--color-accent, #e94560);
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-family: 'Courier New', monospace;
-  font-weight: 700;
-  font-size: 14px;
-  letter-spacing: 1px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-.room-code-badge:hover {
-  background: var(--color-accent, #e94560);
-  color: #fff;
-}
-.room-members {
-  margin-bottom: 12px;
-  font-size: 13px;
-  color: var(--color-text-secondary, #aaa);
-}
-.room-members-label {
-  font-weight: 600;
-  color: var(--color-text, #ccc);
-}
-.room-member-chip {
-  display: inline-block;
-  background: var(--color-surface, #1a1a2e);
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 12px;
-  margin: 2px;
-}
-.room-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 12px;
-}
-.room-table th, .room-table td {
-  padding: 6px 8px;
-  text-align: left;
-  border-bottom: 1px solid var(--color-border, #222);
-  font-size: 13px;
-}
-.room-table th { color: var(--color-text-secondary, #888); font-size: 11px; text-transform: uppercase; }
-.room-history-details {
-  margin: 10px 0;
-}
-.room-history-details summary {
-  cursor: pointer;
-  color: var(--color-accent, #e94560);
-  font-size: 13px;
-  font-weight: 600;
-}
-.room-history-day {
-  margin: 8px 0;
-  font-size: 13px;
-}
-.room-history-list {
-  padding-left: 20px;
-  margin: 4px 0;
-  color: var(--color-text-secondary, #aaa);
-}
-.room-history-empty {
-  color: var(--color-text-secondary, #777);
-  font-size: 13px;
-}
-.room-leave-btn {
-  margin-top: 12px;
-  background: transparent;
-  border: 1px solid #e94560;
-  color: #e94560;
-}
-.room-leave-btn:hover {
-  background: #e94560;
-  color: #fff;
-}
-
 /* ── Collection Modal ─────────────────────────────── */
 .collection-content {
   max-height: 80vh;
@@ -4405,27 +4237,6 @@ body {
   margin: 14px 0 8px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-}
-
-/* Room forms — consistent inputs */
-.room-input {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--color-border, #333);
-  border-radius: 8px;
-  background: var(--color-surface, #1a1a2e);
-  color: var(--color-text, #eee);
-  font-size: 14px;
-  margin-bottom: 8px;
-  box-sizing: border-box;
-  transition: border-color 0.2s;
-}
-.room-input:focus {
-  outline: none;
-  border-color: var(--color-accent, #e94560);
-}
-.room-input::placeholder {
-  color: var(--color-text-secondary, #666);
 }
 
 /* Action buttons — unified */

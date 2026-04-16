@@ -81,6 +81,13 @@ Computed by `getDifficultyForLevel()` in `difficulty.js` — no static table.
 - Daily-safe subset: mystery, locked, walls, liar, wormhole, mirror, sonar, compass
 - First-encounter popup tracked in localStorage key `minesweeper_seen_gimmicks`
 - Popup can be disabled via `minesweeper_modifier_popup_disabled`
+- **Per-cell stacking rules** (enforced in `applyGimmicks` via `hasBaseValueGimmick` / `hasDisplayBlockingGimmick`):
+  - Base-value gimmicks (wormhole, mirror, sonar, compass) are mutually exclusive with each other — only one number can be displayed per cell.
+  - Liar (±1 offset) stacks freely on any base-value gimmick. `recomputeDisplayedMines` computes the base value first, then applies the liar offset.
+  - Locked stacks with any base-value gimmick and with liar — it's a temporary gate that reveals whatever the base/liar layers dictate once unlocked.
+  - Mystery and pressure plate are fully exclusive (mystery hides the number, plate shows a timer instead of a count).
+- **Displayed-number source of truth:** `recomputeDisplayedMines(board)` in `gimmicks.js` is the single function that writes `displayedMines`. Called at the end of `applyGimmicks` and after any mine-layout change (`defuseMine`, `shieldDefuse`, `magnetPull`, `performMineShift`).
+- **Mirror is a 2-cell adjacent swap** (not a 2x2 zone). Pair count scales 1–3 with intensity. Cells store `mirrorPair = { row, col, pairIndex }`.
 
 ## Theme System
 - 30+ themes unlocked by level progression

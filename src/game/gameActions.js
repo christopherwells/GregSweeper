@@ -101,20 +101,29 @@ function showGimmickIntros(gimmickDefs) {
 // Mutates the array in-place (appends paired cells + cascades).
 function revealWormholePairs(revealed) {
   for (const rev of [...revealed]) {
+    // Wormhole: revealing one side reveals the paired cell
     if (rev.isWormhole && rev.wormholePair && !rev.isMine) {
-      const pair = state.board[rev.wormholePair.row]?.[rev.wormholePair.col];
-      if (pair && !pair.isRevealed && !pair.isMine) {
-        pair.isRevealed = true;
-        pair.revealAnimDelay = 0;
-        state.revealedCount++;
-        revealed.push(pair);
-        const pairEff = pair.displayedMines != null ? pair.displayedMines : pair.adjacentMines;
-        if (pairEff === 0) {
-          const cascade = floodFillReveal(state.board, pair.row, pair.col);
-          state.revealedCount += cascade.length;
-          revealed.push(...cascade);
-        }
-      }
+      revealLinkedCell(revealed, rev.wormholePair);
+    }
+    // Mirror: revealing one side reveals the paired cell (mirrors are never mines)
+    if (rev.mirrorPair && !rev.isMine) {
+      revealLinkedCell(revealed, rev.mirrorPair);
+    }
+  }
+}
+
+function revealLinkedCell(revealed, link) {
+  const pair = state.board[link.row]?.[link.col];
+  if (pair && !pair.isRevealed && !pair.isMine) {
+    pair.isRevealed = true;
+    pair.revealAnimDelay = 0;
+    state.revealedCount++;
+    revealed.push(pair);
+    const pairEff = pair.displayedMines != null ? pair.displayedMines : pair.adjacentMines;
+    if (pairEff === 0) {
+      const cascade = floodFillReveal(state.board, pair.row, pair.col);
+      state.revealedCount += cascade.length;
+      revealed.push(...cascade);
     }
   }
 }

@@ -3,6 +3,7 @@ import {
   saveGameState, loadGameState,
 } from '../storage/statsStorage.js';
 import { getLocalDateString } from '../logic/seededRandom.js';
+import { recomputeDisplayedMines } from '../logic/gimmicks.js';
 import {
   adjustCellSize, renderBoard, updateAllCells, updateZoom, renderWallOverlays,
 } from '../ui/boardRenderer.js';
@@ -35,7 +36,9 @@ export function persistGameState() {
       isWormhole: c.isWormhole || false,
       displayedMines: c.displayedMines != null ? c.displayedMines : undefined,
       wormholePair: c.wormholePair || undefined,
-      mirrorZone: c.mirrorZone || undefined,
+      wormholePairIndex: c.wormholePairIndex ?? undefined,
+      mirrorPair: c.mirrorPair || undefined,
+      liarOffset: typeof c.liarOffset === 'number' ? c.liarOffset : undefined,
       inLiarZone: c.inLiarZone || false,
       row: c.row, col: c.col,
     }))),
@@ -94,6 +97,13 @@ export function tryResumeGame(mode) {
   // Restore wall edges on the board
   if (gs.wallEdges && gs.wallEdges.length > 0) {
     state.board._wallEdges = new Set(gs.wallEdges);
+  }
+
+  // Recompute gimmick displayed values from current mine layout.
+  // Older saves may be missing wormholePairIndex or liarOffset, and
+  // displayedMines can go stale if a mine shift occurred between saves.
+  if (state.activeGimmicks.length > 0) {
+    recomputeDisplayedMines(state.board);
   }
 
   adjustCellSize();

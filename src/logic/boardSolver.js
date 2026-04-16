@@ -19,7 +19,7 @@ const UNKNOWN = 255;
 function getPlayerVisibleCount(cell) {
   if (cell.isMystery || cell.isSonar || cell.isCompass || cell.isWormhole) return UNKNOWN;
   if (cell.isLiar && cell.displayedMines != null) return cell.displayedMines;
-  if (cell.mirrorZone && cell.displayedMines != null) return cell.displayedMines;
+  if (cell.mirrorPair && cell.displayedMines != null) return cell.displayedMines;
   return cell.adjacentMines;
 }
 

@@ -1,3 +1,5 @@
+import { recomputeDisplayedMines } from './gimmicks.js';
+
 export function findSafeCell(board) {
   const candidates = [];
   for (const row of board) {
@@ -30,8 +32,11 @@ export function scanRowCol(board, row, col) {
 
 export function defuseMine(board, row, col) {
   board[row][col].isMine = false;
-  // Recalculate adjacency for neighbors
+  // Recalculate adjacency for neighbors, then refresh any gimmick cells
+  // (wormhole/liar/mirror/sonar/compass) whose displayed numbers are
+  // derived from the mine layout.
   recalcAreaAdjacency(board, row, col);
+  recomputeDisplayedMines(board);
 }
 
 /** Shield defuse: marks cell as defused (visual distinction from regular reveal) */
@@ -39,6 +44,7 @@ export function shieldDefuse(board, row, col) {
   board[row][col].isMine = false;
   board[row][col].isDefused = true;
   recalcAreaAdjacency(board, row, col);
+  recomputeDisplayedMines(board);
 }
 
 // Recalculate adjacency counts in area around (centerRow, centerCol)
@@ -126,6 +132,9 @@ export function magnetPull(board, centerRow, centerCol) {
       board[r][c].adjacentMines = count;
     }
   }
+
+  // Refresh gimmick cells whose displayed numbers depend on mine layout
+  recomputeDisplayedMines(board);
 
   const affectedArea = [];
   for (let dr = -1; dr <= 1; dr++) {
