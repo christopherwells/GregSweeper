@@ -57,7 +57,7 @@ import {
   loadEffects, saveEffects, loadTitle, saveTitle,
 } from './ui/collectionManager.js';
 import { isModifierPopupDisabled, setModifierPopupDisabled, getGimmickDefs } from './logic/gimmicks.js';
-import { isStorageFailing, safeGet, safeSet } from './storage/storageAdapter.js';
+import { isStorageFailing, safeGet, safeSet, safeRemove } from './storage/storageAdapter.js';
 import { pauseTimer, resumeTimer } from './game/timerManager.js';
 import { startTutorial } from './ui/tutorialManager.js';
 
@@ -1281,6 +1281,21 @@ if (modifierToggle) {
   if (safeGet('minesweeper_popup_reset_v141') !== 'done') {
     setModifierPopupDisabled(false);
     safeSet('minesweeper_popup_reset_v141', 'done');
+  }
+
+  // v1.4.35: a wall-rendering / adjacency bug in the prior cache version
+  // could let players "complete" a daily on a board with wrong numbers and
+  // missing walls. Reset today's daily completion + cached par/moves so
+  // affected players can replay properly with this fix in place. One-time
+  // per device, keyed to the cache version.
+  if (safeGet('minesweeper_daily_reset_v1435') !== 'done') {
+    const today = getLocalDateString();
+    safeRemove('minesweeper_daily_completed_date');
+    safeRemove('minesweeper_daily_par_' + today);
+    safeRemove('minesweeper_daily_moves_' + today);
+    // Also clear any in-progress daily save so newGame regenerates with the fix
+    safeRemove('minesweeper_game_state_daily');
+    safeSet('minesweeper_daily_reset_v1435', 'done');
   }
   modifierToggle.checked = !isModifierPopupDisabled();
   modifierToggle.addEventListener('change', () => {
