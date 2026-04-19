@@ -215,7 +215,7 @@ function isThisGimmickIntro(gimmick, level) {
   return level >= def.intro && level <= def.intro + 9;
 }
 
-function getIntensity(gimmick, level, rng) {
+export function getIntensity(gimmick, level, rng) {
   const def = GIMMICK_DEFS[gimmick];
   const introEnd = def.intro + 9;
 

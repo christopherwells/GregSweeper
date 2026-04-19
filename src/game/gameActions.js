@@ -17,9 +17,9 @@ import { handleWin, handleLoss, handleDailyBombHit } from './winLossHandler.js';
 import { performScan, performXRay, performMagnet, tryLifeline } from './powerUpActions.js';
 import { generateBoard, createEmptyBoard, calculateAdjacency, cleanSolverArtifacts } from '../logic/boardGenerator.js';
 import { floodFillReveal, checkWin, chordReveal, isBoardSolvable, estimatePlateMovesToDisarm, buildNeighborCache } from '../logic/boardSolver.js';
-import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getChaosDifficulty, PAR_SECONDS_PER_MOVE, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE, PLATE_MIN_SECONDS, PLATE_SECONDS_PER_STEP } from '../logic/difficulty.js';
+import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getChaosDifficulty, getRequiredTechnique, PAR_SECONDS_PER_MOVE, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE, PLATE_MIN_SECONDS, PLATE_SECONDS_PER_STEP } from '../logic/difficulty.js';
 import { shieldDefuse } from '../logic/powerUps.js';
-import { getGimmicksForLevel, applyGimmicks, applyWalls, isLockedCell, hasWallBetween, hasSeenGimmick, markGimmickSeen, getGimmickDef, isModifierPopupDisabled, setModifierPopupDisabled, getDailyGimmick, getChaosGimmicks, clearGimmickProperties } from '../logic/gimmicks.js';
+import { getGimmicksForLevel, applyGimmicks, applyWalls, isLockedCell, hasWallBetween, hasSeenGimmick, markGimmickSeen, getGimmickDef, isModifierPopupDisabled, setModifierPopupDisabled, getDailyGimmick, getChaosGimmicks, clearGimmickProperties, recomputeDisplayedMines, getIntensity } from '../logic/gimmicks.js';
 import { createDailyRNG, getLocalDateString } from '../logic/seededRandom.js';
 import {
   loadModePowerUps, loadCheckpoint, clearGameState, saveDailyPar,
@@ -110,6 +110,48 @@ function revealWormholePairs(revealed) {
       revealLinkedCell(revealed, rev.mirrorPair);
     }
   }
+}
+
+// Place mystery cells constructively: each candidate is tentatively marked,
+// the board is verified, and the cell is kept only if solvability survives.
+// Random placement of mystery often kills solvability because mystery cells
+// hide info entirely; this approach preserves as many as possible without
+// breaking the no-guessing contract. May place fewer than `targetCount` if
+// every remaining candidate would break the board. Returns the placed cells.
+function placeMysteryConstructive(board, rows, cols, targetCount, rng, fr, fc) {
+  if (targetCount <= 0) return [];
+  const candidates = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const cell = board[r][c];
+      if (cell.isMine || cell.adjacentMines === 0) continue;
+      // Mystery is exclusive with all other gimmicks — skip cells that
+      // already carry one. Match applyMystery's spec.
+      if (cell.isLiar || cell.isLocked || cell.isWormhole || cell.isSonar
+          || cell.isCompass || cell.mirrorPair || cell.isPressurePlate) continue;
+      candidates.push(cell);
+    }
+  }
+  // Fisher-Yates with provided rng
+  for (let i = candidates.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+  }
+  const placed = [];
+  for (const cell of candidates) {
+    if (placed.length >= targetCount) break;
+    cell.isMystery = true;
+    recomputeDisplayedMines(board);
+    const result = isBoardSolvable(board, rows, cols, fr, fc);
+    cleanSolverArtifacts(board);
+    if (result.solvable || result.remainingUnknowns === 0) {
+      placed.push({ row: cell.row, col: cell.col });
+    } else {
+      cell.isMystery = false;
+      recomputeDisplayedMines(board);
+    }
+  }
+  return placed;
 }
 
 function revealLinkedCell(revealed, link) {
@@ -407,45 +449,70 @@ export function revealCell(row, col) {
       preWallEdges = tempBoard._wallEdges;
     }
 
-    // Generate board + apply gimmicks, retry until post-gimmick is solvable.
+    // Generate board + apply gimmicks, retry until post-gimmick is solvable
+    // AT THE REQUIRED DIFFICULTY for this level. Two layers of "smart":
     //
-    // The base mine layout from generateBoard is already known solvable
-    // (its constructive generator verifies that). Only applyGimmicks can
-    // break it — usually by stacking liar/mirror/locked in a configuration
-    // that can't be deduced. So we retry the gimmick layer with a fresh RNG
-    // multiple times before regenerating the (expensive) base board, since
-    // re-rolling the gimmick placement is essentially free.
+    // (B) Constructive mystery placement. Mystery cells hide info entirely,
+    //     so randomly placing them often makes the board unsolvable. Place
+    //     them one at a time and verify after each — keep the cell only if
+    //     the board stays solvable. Other gimmicks (sonar/compass/wormhole/
+    //     wall/liar/etc.) provide info, so random placement works for them.
+    //
+    // (C) Technique-floor verification. Each level demands a minimum solver
+    //     technique (see getRequiredTechnique). A board that solves with
+    //     simple Pass A propagation alone at L91 is too easy — reject it
+    //     and roll again so the player actually needs the harder reasoning.
+    //
+    // The base mine layout from generateBoard is already known solvable, so
+    // we re-roll the gimmick layer multiple times before regenerating the
+    // (expensive) base board.
     const GIMMICK_RETRIES_PER_BOARD = 25;
+    // Relax the technique floor if we can't find a hard-enough board after
+    // many base attempts. Otherwise levels with low gimmick density can spin
+    // forever rejecting boards that are "easy" but legitimately solvable.
+    const baseTechniqueFloor = state.gameMode === 'normal' ? getRequiredTechnique(state.currentLevel) : 0;
+    const RELAX_AFTER_BASES = 15;
     let postGimmickSolvable = false;
     let baseAttempt = 0;
     outer: for (;;) {
       state.board = generateBoard(state.rows, state.cols, state.totalMines, row, col,
         rng || Math.random, { maxZeroCluster: maxZC, hasGimmicks, wallEdges: preWallEdges });
       baseAttempt++;
+      const techniqueFloor = baseAttempt > RELAX_AFTER_BASES ? 0 : baseTechniqueFloor;
 
-      // No gimmicks → board from generateBoard is the answer.
+      // No gimmicks → use the base board if it meets the technique floor.
       if (state.activeGimmicks.length === 0) {
         state.gimmickData = {};
         const check = isBoardSolvable(state.board, state.rows, state.cols, row, col);
         cleanSolverArtifacts(state.board);
-        if (check.solvable || check.remainingUnknowns === 0) {
+        if ((check.solvable || check.remainingUnknowns === 0) && (check.techniqueLevel ?? 0) >= techniqueFloor) {
           postGimmickSolvable = true;
           break;
         }
-        // Pathological — generateBoard returned a non-solvable board. Loop.
         continue;
       }
 
       // With gimmicks: try several gimmick re-rolls on this base board.
+      const wantsMystery = state.activeGimmicks.includes('mystery');
+      const nonMystery = wantsMystery ? state.activeGimmicks.filter(g => g !== 'mystery') : state.activeGimmicks;
       for (let g = 0; g < GIMMICK_RETRIES_PER_BOARD; g++) {
         if (preWallEdges) state.board._wallEdges = preWallEdges;
-        // Reset previous gimmick markings before re-applying.
         for (const r of state.board) for (const c of r) clearGimmickProperties(c);
-        state.gimmickData = applyGimmicks(state.board, state.currentLevel, state.activeGimmicks, gimmickRng);
+
+        state.gimmickData = applyGimmicks(state.board, state.currentLevel, nonMystery, gimmickRng);
+
+        // Mystery: constructive — place one at a time, verify each, keep only
+        // those that don't break solvability. May place fewer than requested
+        // intensity if every candidate would break the board.
+        if (wantsMystery) {
+          const targetCount = getIntensity('mystery', state.currentLevel, gimmickRng);
+          const placed = placeMysteryConstructive(state.board, state.rows, state.cols, targetCount, gimmickRng, row, col);
+          state.gimmickData.mystery = placed;
+        }
 
         const check = isBoardSolvable(state.board, state.rows, state.cols, row, col);
         cleanSolverArtifacts(state.board);
-        if (check.solvable || check.remainingUnknowns === 0) {
+        if ((check.solvable || check.remainingUnknowns === 0) && (check.techniqueLevel ?? 0) >= techniqueFloor) {
           postGimmickSolvable = true;
           break outer;
         }

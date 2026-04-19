@@ -89,6 +89,23 @@ export function getTimedDifficulty(level) {
   return { ...TIMED_LEVELS[capped - 1] };
 }
 
+// Minimum solver technique level required to verify a board for the given
+// challenge level. The solver returns techniqueLevel:
+//   0 = solved by simple Pass A propagation alone
+//   1 = required Pass B subset / superset analysis
+//   2 = required Pass C tank or gauss enumeration
+//   3 = required disjunctive (liar) reasoning to make a deduction
+// Boards verified below this floor are rejected by the generator and
+// regenerated, so the player at higher challenge levels actually needs
+// to apply the corresponding technique to win.
+export function getRequiredTechnique(level) {
+  if (level <= 30) return 0;   // tutorial / first 2 modifier blocks: any board OK
+  if (level <= 60) return 1;   // L31–60: must require subset reasoning
+  if (level <= 90) return 2;   // L61–90: must require advanced (tank/gauss)
+  return 2;                     // L91+: same advanced floor (pushing to 3 would
+                                //        starve generators that don't pick liar)
+}
+
 // Anti-zero-cluster thresholds per level
 export function getMaxZeroCluster(level) {
   if (level <= 5) return Infinity;   // Tutorial: no restriction

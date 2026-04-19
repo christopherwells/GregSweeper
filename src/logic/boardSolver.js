@@ -192,10 +192,17 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
   }
   tryUnlockAll(); // unlock any locked cells freed by the initial cascade
 
-  if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0, totalClicks };
+  if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0, totalClicks, techniqueLevel: 0 };
 
-  // Step 2: Iterative multi-layer constraint solving
+  // Step 2: Iterative multi-layer constraint solving.
+  // Track the highest "technique level" needed to solve the board so the
+  // generator can grade difficulty:
+  //   0 = simple propagation only (Pass A)
+  //   1 = subset / superset analysis (Pass B)
+  //   2 = advanced solver — tank / gauss (Pass C)
+  //   3 = required liar disjunctive reasoning to make a deduction
   const MAX_ITERATIONS = 1000;
+  let techniqueLevel = 0;
 
   for (let iter = 0; iter < MAX_ITERATIONS; iter++) {
     let progress = false;
@@ -232,7 +239,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
       const remaining = src.expected - flagged;
 
       if (remaining < 0 || remaining > unknowns) {
-        return { solvable: false, remainingUnknowns: totalSafe - revealedCount, totalClicks };
+        return { solvable: false, remainingUnknowns: totalSafe - revealedCount, totalClicks, techniqueLevel };
       }
 
       // Rule 1: All unknowns must be mines
@@ -261,7 +268,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
     }
 
     tryUnlockAll(); // check if reveals freed any locked cells
-      if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0, totalClicks };
+      if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0, totalClicks, techniqueLevel };
     if (progress) continue;
 
     // ── Pass B: Subset / superset constraint analysis ──
@@ -326,7 +333,8 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
     }
 
     tryUnlockAll();
-      if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0, totalClicks };
+    if (subsetProgress) techniqueLevel = Math.max(techniqueLevel, 1);
+      if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0, totalClicks, techniqueLevel };
     if (subsetProgress) continue;
 
     // ── Pass C: Advanced solver (Gauss + Tank) ──
@@ -336,6 +344,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
     const freshConstraints = buildConstraints(sim, adjCount, neighborCache, rows * cols);
     const liarCs = buildLiarConstraints(sim, liarBase, neighborCache, rows * cols);
     const gimmickCs = buildGimmickRuntimeConstraints(gimmickConstraints, sim);
+    const hasDisjunctive = liarCs.length > 0;
     const solved = solveConstraints([...freshConstraints, ...liarCs, ...gimmickCs]);
 
     let advancedProgress = false;
@@ -359,7 +368,8 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
     }
 
     tryUnlockAll();
-      if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0, totalClicks };
+    if (advancedProgress) techniqueLevel = Math.max(techniqueLevel, hasDisjunctive ? 3 : 2);
+      if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0, totalClicks, techniqueLevel };
     if (advancedProgress) continue;
 
     // No progress from any layer — board requires guessing
@@ -367,7 +377,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
   }
 
   const remaining = totalSafe - revealedCount;
-  return { solvable: false, remainingUnknowns: remaining, totalClicks };
+  return { solvable: false, remainingUnknowns: remaining, totalClicks, techniqueLevel };
 }
 
 // ── Build constraints from current simulation state ──────────
