@@ -451,21 +451,29 @@ export function applyCloudProgress({ maxCheckpoint, dailyStreak, bestDailyStreak
     changed = true;
   }
 
-  // Daily streak: take the higher values
+  // Daily streak: anchor count and date together. Without this, a stale
+  // cloud streak from days ago can pair with cloud's older lastDailyDate
+  // and overwrite a fresher local streak after a multi-day gap. We only
+  // adopt the cloud streak when its date is at least as recent as local's.
+  // bestDailyStreak is a high-water mark and can take the higher value
+  // independently. lastDailyDate is updated only with its paired streak.
   if (dailyStreak != null || bestDailyStreak != null) {
     if (!stats.modeStats) stats.modeStats = {};
     if (!stats.modeStats.daily) stats.modeStats.daily = {};
     const daily = stats.modeStats.daily;
-    if (dailyStreak != null && dailyStreak > (daily.dailyStreak || 0)) {
+    const cloudDate = lastDailyDate;
+    const localDate = daily.lastDailyCompletedDate;
+    const cloudIsAtLeastAsRecent = cloudDate != null && (!localDate || cloudDate >= localDate);
+    if (dailyStreak != null && dailyStreak > (daily.dailyStreak || 0) && cloudIsAtLeastAsRecent) {
       daily.dailyStreak = dailyStreak;
+      daily.lastDailyCompletedDate = cloudDate;
+      changed = true;
+    } else if (cloudIsAtLeastAsRecent && cloudDate !== localDate) {
+      daily.lastDailyCompletedDate = cloudDate;
       changed = true;
     }
     if (bestDailyStreak != null && bestDailyStreak > (daily.bestDailyStreak || 0)) {
       daily.bestDailyStreak = bestDailyStreak;
-      changed = true;
-    }
-    if (lastDailyDate != null && (!daily.lastDailyCompletedDate || lastDailyDate > daily.lastDailyCompletedDate)) {
-      daily.lastDailyCompletedDate = lastDailyDate;
       changed = true;
     }
   }

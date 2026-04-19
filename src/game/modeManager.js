@@ -4,6 +4,7 @@ import { newGame } from './gameActions.js';
 import { persistGameState, tryResumeGame } from './gamePersistence.js';
 import { loadCheckpoint, loadStats } from '../storage/statsStorage.js';
 import { CHAOS_UNLOCK_LEVEL } from '../logic/difficulty.js';
+import { restorePreChaosTheme } from '../main.js';
 
 // ── Mode Manager ──────────────────────────────────────
 
@@ -99,6 +100,14 @@ export function updateModeUI(mode) {
 export function switchMode(mode) {
   // Save current game state before switching (guard is inside persistGameState)
   persistGameState();
+
+  // If we were in chaos and aren't anymore, undo the chaos theme override
+  // before the new mode takes effect. Without this, returning to title later
+  // could re-apply a stale "previous theme" over a theme the player chose
+  // while in the intervening mode.
+  if (state.gameMode === 'chaos' && mode !== 'chaos') {
+    restorePreChaosTheme();
+  }
 
   state.gameMode = mode;
   updateModeUI(mode);

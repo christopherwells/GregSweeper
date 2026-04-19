@@ -130,6 +130,16 @@ function revealLinkedCell(revealed, link) {
 
 export function newGame() {
   stopTimer();
+  // Clear any pressure-plate timers from the previous game. activePlates is
+  // module-level, so without this an in-flight tick can fire handleLoss on
+  // the new board with the old cell coords.
+  for (const id of activePlates.values()) clearInterval(id);
+  activePlates.clear();
+  // inputLocked is set transiently during cascade/chord animations and cleared
+  // by a setTimeout. Starting a new game between the lock and the timeout would
+  // leave the new game with input frozen until the next interaction would
+  // normally clear it.
+  state.inputLocked = false;
   let diff;
   if (state.gameMode === 'chaos') {
     diff = getChaosDifficulty(state.chaosRound || 1);
@@ -397,25 +407,50 @@ export function revealCell(row, col) {
       preWallEdges = tempBoard._wallEdges;
     }
 
-    // Generate board + apply gimmicks, retry if post-gimmick board isn't solvable
+    // Generate board + apply gimmicks, retry until post-gimmick is solvable.
+    //
+    // The base mine layout from generateBoard is already known solvable
+    // (its constructive generator verifies that). Only applyGimmicks can
+    // break it — usually by stacking liar/mirror/locked in a configuration
+    // that can't be deduced. So we retry the gimmick layer with a fresh RNG
+    // multiple times before regenerating the (expensive) base board, since
+    // re-rolling the gimmick placement is essentially free.
+    const GIMMICK_RETRIES_PER_BOARD = 25;
     let postGimmickSolvable = false;
-    for (;;) { // retry until solvable — no unsolvable boards ever
+    let baseAttempt = 0;
+    outer: for (;;) {
       state.board = generateBoard(state.rows, state.cols, state.totalMines, row, col,
         rng || Math.random, { maxZeroCluster: maxZC, hasGimmicks, wallEdges: preWallEdges });
+      baseAttempt++;
 
-      state.gimmickData = {};
-      if (state.activeGimmicks.length > 0) {
+      // No gimmicks → board from generateBoard is the answer.
+      if (state.activeGimmicks.length === 0) {
+        state.gimmickData = {};
+        const check = isBoardSolvable(state.board, state.rows, state.cols, row, col);
+        cleanSolverArtifacts(state.board);
+        if (check.solvable || check.remainingUnknowns === 0) {
+          postGimmickSolvable = true;
+          break;
+        }
+        // Pathological — generateBoard returned a non-solvable board. Loop.
+        continue;
+      }
+
+      // With gimmicks: try several gimmick re-rolls on this base board.
+      for (let g = 0; g < GIMMICK_RETRIES_PER_BOARD; g++) {
         if (preWallEdges) state.board._wallEdges = preWallEdges;
+        // Reset previous gimmick markings before re-applying.
+        for (const r of state.board) for (const c of r) clearGimmickProperties(c);
         state.gimmickData = applyGimmicks(state.board, state.currentLevel, state.activeGimmicks, gimmickRng);
-      }
 
-      // Verify solvability (with or without gimmicks)
-      const check = isBoardSolvable(state.board, state.rows, state.cols, row, col);
-      cleanSolverArtifacts(state.board);
-      if (check.solvable || check.remainingUnknowns === 0) {
-        postGimmickSolvable = true;
-        break;
+        const check = isBoardSolvable(state.board, state.rows, state.cols, row, col);
+        cleanSolverArtifacts(state.board);
+        if (check.solvable || check.remainingUnknowns === 0) {
+          postGimmickSolvable = true;
+          break outer;
+        }
       }
+      // Exhausted gimmick retries on this base board — regenerate.
     }
 
     // Apply gimmicks for challenge mode (show popups etc.)

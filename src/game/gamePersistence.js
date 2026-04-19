@@ -13,7 +13,7 @@ import {
   updateFlagModeBar,
 } from '../ui/headerRenderer.js';
 import { updatePowerUpBar } from '../ui/powerUpBar.js';
-import { startTimer, updateTimerDisplay } from './timerManager.js';
+import { startTimer, updateTimerDisplay, seedPreciseAccumulated } from './timerManager.js';
 
 // ── Game State Persistence ────────────────────────────
 
@@ -94,8 +94,11 @@ export function tryResumeGame(mode) {
   state.activeGimmicks = gs.activeGimmicks || [];
   state.gimmickData = gs.gimmickData || {};
 
-  // Restore wall edges on the board
-  if (gs.wallEdges && gs.wallEdges.length > 0) {
+  // Restore wall edges on the board. Always create the Set (even if empty)
+  // when the walls modifier was active, so any downstream `_wallEdges.has(...)`
+  // call doesn't crash on `undefined`. The walls modifier may legitimately
+  // produce zero edges in some random rolls.
+  if (gs.wallEdges) {
     state.board._wallEdges = new Set(gs.wallEdges);
   }
 
@@ -120,6 +123,10 @@ export function tryResumeGame(mode) {
   updateStreakDisplay();
   updateFlagModeBar();
   updateZoom();
+  // Seed the module-level precise-time accumulator from the restored
+  // elapsedTime BEFORE startTimer, so leaderboard submissions for resumed
+  // Daily games include time elapsed prior to the resume.
+  seedPreciseAccumulated(state.elapsedTime);
   startTimer();
 
   return true;

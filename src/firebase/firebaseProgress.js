@@ -14,6 +14,10 @@ const FIREBASE_TIMEOUT_MS = 5000;
 let _uid = null;
 let _db = null;
 let _ready = false;
+// Saves attempted before auth completes are coalesced here and flushed
+// once _ready flips. Without this, fast Daily completions on slow
+// connections drop their cloud sync silently.
+let _pendingSave = null;
 
 /**
  * Sign in anonymously and prepare for progress sync.
@@ -32,6 +36,13 @@ export async function initAnonymousAuth() {
     _uid = result.user.uid;
     _db = firebase.database();
     _ready = true;
+
+    // Flush any save attempts that arrived before auth completed.
+    if (_pendingSave) {
+      const data = _pendingSave;
+      _pendingSave = null;
+      saveProgress(data);
+    }
   } catch (err) {
     // Silent failure — progress stays local-only
     console.warn('Anonymous auth failed:', err.message);
@@ -43,8 +54,6 @@ export async function initAnonymousAuth() {
  * Fire-and-forget — does not block gameplay.
  */
 export function saveProgress({ maxCheckpoint, dailyStreak, bestDailyStreak, lastDailyDate }) {
-  if (!_ready || !_uid) return;
-
   const data = {};
   if (maxCheckpoint != null) data.maxCheckpoint = maxCheckpoint;
   if (dailyStreak != null) data.dailyStreak = dailyStreak;
@@ -52,6 +61,14 @@ export function saveProgress({ maxCheckpoint, dailyStreak, bestDailyStreak, last
   if (lastDailyDate != null) data.lastDailyDate = lastDailyDate;
 
   if (Object.keys(data).length === 0) return;
+
+  // Auth not ready yet — coalesce into a pending save. We always merge
+  // so the latest values win for each field; queueing wins exclusively
+  // for that field, max-comparison is the cloud's job on flush.
+  if (!_ready || !_uid) {
+    _pendingSave = { ...(_pendingSave || {}), ...data };
+    return;
+  }
 
   _db.ref('users/' + _uid).update(data).catch(err => {
     console.warn('Cloud progress save failed:', err.message);

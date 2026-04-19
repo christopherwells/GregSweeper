@@ -1,4 +1,4 @@
-import { recomputeDisplayedMines } from './gimmicks.js';
+import { recomputeDisplayedMines, hasWallBetween } from './gimmicks.js';
 
 export function findSafeCell(board) {
   const candidates = [];
@@ -47,10 +47,15 @@ export function shieldDefuse(board, row, col) {
   recomputeDisplayedMines(board);
 }
 
-// Recalculate adjacency counts in area around (centerRow, centerCol)
+// Recalculate adjacency counts in area around (centerRow, centerCol).
+// Walls block adjacency: a mine on the other side of a wall edge is not
+// counted, matching gimmicks.recalcAllAdjacency behaviour. Without this,
+// defuse/shield-defuse on walled boards leaves cells showing counts that
+// are off by however many wall-separated mines surround them.
 function recalcAreaAdjacency(board, centerRow, centerCol) {
   const rows = board.length;
   const cols = board[0].length;
+  const wallEdges = board._wallEdges || null;
   for (let dr = -1; dr <= 1; dr++) {
     for (let dc = -1; dc <= 1; dc++) {
       const nr = centerRow + dr;
@@ -62,9 +67,9 @@ function recalcAreaAdjacency(board, centerRow, centerCol) {
             if (ddr === 0 && ddc === 0) continue;
             const nnr = nr + ddr;
             const nnc = nc + ddc;
-            if (nnr >= 0 && nnr < rows && nnc >= 0 && nnc < cols && board[nnr][nnc].isMine) {
-              count++;
-            }
+            if (nnr < 0 || nnr >= rows || nnc < 0 || nnc >= cols) continue;
+            if (wallEdges && hasWallBetween(wallEdges, nr, nc, nnr, nnc)) continue;
+            if (board[nnr][nnc].isMine) count++;
           }
         }
         board[nr][nc].adjacentMines = count;
@@ -117,7 +122,8 @@ export function magnetPull(board, centerRow, centerCol) {
     movedMines.push({ from, to });
   }
 
-  // Full adjacency recalculation
+  // Full adjacency recalculation (wall-aware).
+  const wallEdges = board._wallEdges || null;
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       if (board[r][c].isMine) { board[r][c].adjacentMines = 0; continue; }
@@ -126,7 +132,9 @@ export function magnetPull(board, centerRow, centerCol) {
         for (let dc = -1; dc <= 1; dc++) {
           if (dr === 0 && dc === 0) continue;
           const nr = r + dr, nc = c + dc;
-          if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && board[nr][nc].isMine) count++;
+          if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+          if (wallEdges && hasWallBetween(wallEdges, r, c, nr, nc)) continue;
+          if (board[nr][nc].isMine) count++;
         }
       }
       board[r][c].adjacentMines = count;

@@ -619,6 +619,17 @@ boardEl.addEventListener('touchmove', (e) => {
   }
 }, { passive: true });
 
+// touchcancel fires when the OS takes the gesture away (modal opens, scroll
+// handoff, incoming call). Without this, the long-press timer stays armed
+// and the holding-class stays painted until the next interaction.
+boardEl.addEventListener('touchcancel', () => {
+  if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+  if (touchedCellEl) { touchedCellEl.classList.remove('touch-holding'); touchedCellEl = null; }
+  touchedCellRow = null;
+  touchedCellCol = null;
+  longPressTriggered = false;
+}, { passive: true });
+
 // ── Keyboard Navigation ─────────────────────────────
 boardEl.addEventListener('keydown', (e) => {
   // Only handle when board is active
@@ -851,6 +862,18 @@ function updateTitleProgress() {
   }
 }
 
+// Restores the pre-chaos theme if it was stashed when entering chaos.
+// Exported so it can fire on any path that leaves chaos (title screen,
+// checkpoint selector, direct switchMode), not just title-screen returns.
+// Conditional on _previousTheme so it's idempotent and safe to call always.
+export function restorePreChaosTheme() {
+  if (!_previousTheme) return;
+  document.documentElement.setAttribute('data-theme', _previousTheme);
+  applyThemeEffects(_previousTheme);
+  updateThemeColor();
+  _previousTheme = null;
+}
+
 function showTitleScreen() {
   const titleScreen = $('#title-screen');
   const app = $('#app');
@@ -859,13 +882,7 @@ function showTitleScreen() {
   // Persist current game state before showing title (guard is inside persistGameState)
   persistGameState();
 
-  // Restore theme if leaving chaos mode
-  if (state.gameMode === 'chaos' && _previousTheme) {
-    document.documentElement.setAttribute('data-theme', _previousTheme);
-    applyThemeEffects(_previousTheme);
-    updateThemeColor();
-    _previousTheme = null;
-  }
+  restorePreChaosTheme();
 
   updateTitleProgress();
   titleScreen.classList.remove('hidden');
@@ -1163,7 +1180,10 @@ $('#gameover-submit-daily').addEventListener('click', async (e) => {
   const name = nameInput ? nameInput.value : '';
   if (name && name.trim()) {
     const sanitized = name.trim().slice(0, 20);
-    const dateStr = getLocalDateString();
+    // Anchor to the puzzle's seed, not the current local date — submitting
+    // a score at 12:00:01 AM for yesterday's puzzle would otherwise land on
+    // today's leaderboard.
+    const dateStr = state.dailySeed || getLocalDateString();
     const scoreTime = Math.round((state.preciseTime || state.elapsedTime) * 10) / 10;
     addDailyLeaderboardEntry(dateStr, sanitized, scoreTime);
     await submitOnlineScore(dateStr, sanitized, scoreTime, state.dailyBombHits || 0);
@@ -1254,10 +1274,13 @@ if (sfxSlider) {
 
 const modifierToggle = $('#modifier-popup-toggle');
 if (modifierToggle) {
-  // v1.4.1: re-enable popups for all users (one-time reset)
-  if (localStorage.getItem('minesweeper_popup_reset_v141') !== 'done') {
+  // v1.4.1: re-enable popups for all users (one-time reset).
+  // Use the storage adapter so we don't throw in iOS private browsing
+  // (where raw localStorage.setItem rejects), which would re-run this
+  // migration on every page load and could break surrounding init.
+  if (safeGet('minesweeper_popup_reset_v141') !== 'done') {
     setModifierPopupDisabled(false);
-    localStorage.setItem('minesweeper_popup_reset_v141', 'done');
+    safeSet('minesweeper_popup_reset_v141', 'done');
   }
   modifierToggle.checked = !isModifierPopupDisabled();
   modifierToggle.addEventListener('change', () => {

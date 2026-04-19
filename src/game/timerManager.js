@@ -20,6 +20,15 @@ export function updateTimerDisplay() {
 let _preciseStartTime = null;
 let _preciseAccumulated = 0; // accumulated ms from previous pause/resume cycles
 
+// Resuming a persisted game restores state.elapsedTime (whole seconds) but
+// _preciseAccumulated lives in module scope and resets to 0. Without seeding
+// it from the restored time, leaderboard submissions for resumed Daily
+// games would submit only the time elapsed AFTER resume.
+export function seedPreciseAccumulated(seconds) {
+  _preciseAccumulated = (seconds || 0) * 1000;
+  _preciseStartTime = null;
+}
+
 export function startTimer() {
   if (!_preciseStartTime) _preciseStartTime = Date.now();
   if (state.timerId) return;

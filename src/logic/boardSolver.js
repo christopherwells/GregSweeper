@@ -563,6 +563,17 @@ export function estimatePlateMovesToDisarm(board, plateRow, plateCol) {
     for (const key of revealed) {
       const [r, c] = key.split(',').map(Number);
       const cell = board[r][c];
+      // This estimator does single-cell Pass-A-style propagation only.
+      // Skip cells whose value isn't a single integer for that purpose:
+      //   - mystery/sonar/compass/wormhole give no per-cell constraint
+      //   - liar's value is {display-1, display+1}; the bounds differ
+      //     by 2, so no Pass-A rule can fire on it alone (the multi-
+      //     constraint solver in solveConstraints/tankSolve DOES use the
+      //     disjunctive constraint via buildLiarConstraints — we just
+      //     can't use it here without that machinery).
+      // Mirror cells use cell.adjacentMines directly: a smart player
+      // decodes the swap and reasons with the true count.
+      if (cell.isMystery || cell.isSonar || cell.isCompass || cell.isWormhole || cell.isLiar) continue;
       const adj = cell.adjacentMines;
       if (adj === 0) continue;
 
