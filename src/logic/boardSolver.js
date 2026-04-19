@@ -13,14 +13,28 @@ import { hasWallBetween } from './gimmicks.js';
 // Sentinel: cell provides no usable number info to the solver
 const UNKNOWN = 255;
 
-// Returns the player-visible mine count for a cell, accounting for gimmicks.
-// Mystery/sonar/compass/wormhole cells provide no usable constraint (UNKNOWN).
-// Liar and mirror cells use their displayed (modified) value.
+// Returns the EXACT mine count a smart player can read from this cell.
+// Returns UNKNOWN when the player can only deduce a range or set of values:
+//   - mystery/sonar/compass/wormhole: hide or aggregate count, no per-cell exact constraint
+//   - liar: display is true count ± 1, so it's one of two values, not a single number
+//     (the disjunctive constraint is emitted separately in buildLiarConstraints)
+// Mirror cells display the partner's count for visual deception; a player who
+// recognises the pair can mentally un-swap and reason with the cell's TRUE
+// adjacency (cell.adjacentMines).
 function getPlayerVisibleCount(cell) {
   if (cell.isMystery || cell.isSonar || cell.isCompass || cell.isWormhole) return UNKNOWN;
-  if (cell.isLiar && cell.displayedMines != null) return cell.displayedMines;
-  if (cell.mirrorPair && cell.displayedMines != null) return cell.displayedMines;
+  if (cell.isLiar) return UNKNOWN;
   return cell.adjacentMines;
+}
+
+// True when this cell contributes a "value is X-1 OR X+1" constraint to the
+// solver (plain liar, possibly stacked with locked). Liar combined with a
+// base-value or display-blocking gimmick produces too tangled a deduction
+// path to model precisely — those cells contribute nothing.
+function isPureLiar(cell) {
+  return cell.isLiar
+    && !cell.isMystery && !cell.isSonar && !cell.isCompass
+    && !cell.isWormhole && !cell.mirrorPair;
 }
 
 /**
@@ -69,15 +83,21 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
   const sim = new Uint8Array(rows * cols); // all 0 (unrevealed)
   const idx = (r, c) => r * cols + c;
 
-  // Cache mine locations and player-visible adjacency counts
+  // Cache mine locations and player-visible adjacency counts.
+  // liarBase[i] = displayed value for cells that contribute a {X-1, X+1}
+  // disjunctive constraint (plain liar, possibly + locked); -1 otherwise.
   const isMine = new Uint8Array(rows * cols);
   const adjCount = new Uint8Array(rows * cols);
+  const liarBase = new Int8Array(rows * cols).fill(-1);
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const i = idx(r, c);
       const cell = board[r][c];
       if (cell.isMine) isMine[i] = 1;
       adjCount[i] = getPlayerVisibleCount(cell);
+      if (isPureLiar(cell) && cell.displayedMines != null) {
+        liarBase[i] = cell.displayedMines;
+      }
     }
   }
 
@@ -225,23 +245,35 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
     if (progress) continue;
 
     // ── Pass B: Subset / superset constraint analysis ──
+    // Subset arithmetic only works with single-value (exact) constraints, so
+    // we skip Pass B for liar — its disjunctive constraints feed Pass C only.
     const constraints = buildConstraints(sim, adjCount, neighborCache, rows * cols);
+
+    // Pre-build sets once per pass — avoids O(n) Array.includes / new Set() per pair
+    const constraintSets = constraints.map(c => new Set(c.unknowns));
 
     let subsetProgress = false;
     for (let a = 0; a < constraints.length; a++) {
+      const cA = constraints[a];
+      const setA = constraintSets[a];
       for (let b = 0; b < constraints.length; b++) {
         if (a === b) continue;
-        const cA = constraints[a];
         const cB = constraints[b];
 
         if (cA.unknowns.length >= cB.unknowns.length) continue;
 
-        const setB = new Set(cB.unknowns);
-        const isSubset = cA.unknowns.every(x => setB.has(x));
+        const setB = constraintSets[b];
+        let isSubset = true;
+        for (const x of cA.unknowns) {
+          if (!setB.has(x)) { isSubset = false; break; }
+        }
         if (!isSubset) continue;
 
-        const diff = cB.unknowns.filter(x => !cA.unknowns.includes(x));
-        const diffMines = cB.mines - cA.mines;
+        const diff = [];
+        for (const x of cB.unknowns) {
+          if (!setA.has(x)) diff.push(x);
+        }
+        const diffMines = cB.allowedMines[0] - cA.allowedMines[0];
 
         if (diffMines < 0 || diffMines > diff.length) continue;
 
@@ -274,8 +306,11 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
     if (subsetProgress) continue;
 
     // ── Pass C: Advanced solver (Gauss + Tank) ──
+    // Combine exact constraints from non-liar cells with disjunctive
+    // constraints from plain-liar cells (each contributes "X-1 OR X+1" mines).
     const freshConstraints = buildConstraints(sim, adjCount, neighborCache, rows * cols);
-    const solved = solveConstraints(freshConstraints);
+    const liarCs = buildLiarConstraints(sim, liarBase, neighborCache, rows * cols);
+    const solved = solveConstraints([...freshConstraints, ...liarCs]);
 
     let advancedProgress = false;
 
@@ -310,6 +345,10 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
 }
 
 // ── Build constraints from current simulation state ──────────
+// Each constraint: { unknowns: cellIdx[], allowedMines: number[] } where the
+// final mine count among `unknowns` must equal one of the `allowedMines`
+// values. Exact constraints (normal numbered cells) have a single-element
+// `allowedMines`; liar cells contribute disjunctive 2-element sets.
 
 function buildConstraints(sim, adjCount, neighborCache, totalCells) {
   const constraints = [];
@@ -326,7 +365,40 @@ function buildConstraints(sim, adjCount, neighborCache, totalCells) {
     const remaining = adjCount[i] - flagged;
     if (unknownSet.length > 0 && remaining >= 0) {
       unknownSet.sort((a, b) => a - b);
-      constraints.push({ unknowns: unknownSet, mines: remaining });
+      constraints.push({ unknowns: unknownSet, allowedMines: [remaining] });
+    }
+  }
+  return constraints;
+}
+
+// Liar cells contribute "true count is display - 1 OR display + 1" — a
+// disjunctive constraint with two allowed mine counts. Values that are
+// already infeasible given the current flagged count are filtered out;
+// if both become infeasible the constraint is a contradiction (caller's
+// deductions will then fail naturally and the board is reported unsolvable).
+function buildLiarConstraints(sim, liarBase, neighborCache, totalCells) {
+  const constraints = [];
+  for (let i = 0; i < totalCells; i++) {
+    if (sim[i] !== 1 || liarBase[i] < 0) continue;
+
+    const nbrs = neighborCache[i];
+    const unknownSet = [];
+    let flagged = 0;
+    for (const ni of nbrs) {
+      if (sim[ni] === 0) unknownSet.push(ni);
+      else if (sim[ni] === 2) flagged++;
+    }
+    if (unknownSet.length === 0) continue;
+    unknownSet.sort((a, b) => a - b);
+
+    const display = liarBase[i];
+    const allowed = [];
+    const v1 = display - 1 - flagged;
+    const v2 = display + 1 - flagged;
+    if (v1 >= 0 && v1 <= unknownSet.length) allowed.push(v1);
+    if (v2 >= 0 && v2 <= unknownSet.length) allowed.push(v2);
+    if (allowed.length > 0) {
+      constraints.push({ unknowns: unknownSet, allowedMines: allowed });
     }
   }
   return constraints;
@@ -346,6 +418,7 @@ export function findNextSafeMove(board) {
   const sim = new Uint8Array(totalCells);
   const adjCount = new Uint8Array(totalCells);
   const isMineArr = new Uint8Array(totalCells);
+  const liarBase = new Int8Array(totalCells).fill(-1);
 
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -355,6 +428,9 @@ export function findNextSafeMove(board) {
       else if (cell.isFlagged) sim[i] = 2;
       if (cell.isMine) isMineArr[i] = 1;
       adjCount[i] = getPlayerVisibleCount(cell);
+      if (isPureLiar(cell) && cell.displayedMines != null) {
+        liarBase[i] = cell.displayedMines;
+      }
     }
   }
 
@@ -381,9 +457,10 @@ export function findNextSafeMove(board) {
     }
   }
 
-  // Pass B: Build constraints and run full solver
+  // Pass B: Build constraints (including liar disjunctions) and run full solver
   const constraints = buildConstraints(sim, adjCount, neighborCache, totalCells);
-  const solved = solveConstraints(constraints);
+  const liarCs = buildLiarConstraints(sim, liarBase, neighborCache, totalCells);
+  const solved = solveConstraints([...constraints, ...liarCs]);
 
   // Return first safe cell
   for (const cellIdx of solved.safe) {

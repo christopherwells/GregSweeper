@@ -1,5 +1,46 @@
-import { isBoardSolvable } from './boardSolver.js';
+import { isBoardSolvable, buildNeighborCache } from './boardSolver.js';
 import { hasWallBetween } from './gimmicks.js';
+
+// ── Incremental adjacency updates ────────────────────────────
+// Recomputing the entire board's adjacency on every mine place/remove
+// during constructive generation is O(rows*cols*8). These helpers update
+// only the 8 neighbors of the changed cell, which is what actually changes.
+//
+// Both functions assume the neighbor cache is wall-aware (built from the
+// same wallEdges that calculateAdjacency would respect), so the resulting
+// adjacentMines counts match a full recomputation exactly.
+
+function placeMineIncremental(board, r, c, neighborCache) {
+  const cols = board[0].length;
+  const idx = r * cols + c;
+  board[r][c].isMine = true;
+  board[r][c].adjacentMines = 0; // mines don't display a number
+  for (const ni of neighborCache[idx]) {
+    const nr = (ni / cols) | 0;
+    const nc = ni - nr * cols;
+    if (!board[nr][nc].isMine) board[nr][nc].adjacentMines++;
+  }
+}
+
+function removeMineIncremental(board, r, c, neighborCache) {
+  const cols = board[0].length;
+  const idx = r * cols + c;
+  // Decrement neighbors first (they're losing this mine)
+  for (const ni of neighborCache[idx]) {
+    const nr = (ni / cols) | 0;
+    const nc = ni - nr * cols;
+    if (!board[nr][nc].isMine) board[nr][nc].adjacentMines--;
+  }
+  // Now (r, c) is no longer a mine — compute its own adjacency from scratch
+  board[r][c].isMine = false;
+  let count = 0;
+  for (const ni of neighborCache[idx]) {
+    const nr = (ni / cols) | 0;
+    const nc = ni - nr * cols;
+    if (board[nr][nc].isMine) count++;
+  }
+  board[r][c].adjacentMines = count;
+}
 
 export function createEmptyBoard(rows, cols) {
   const board = [];
@@ -218,6 +259,11 @@ function generateConstructive(rows, cols, targetMines, excludeRow, excludeCol, r
   const MAX_RESTARTS = 50;
   const totalCells = rows * cols;
 
+  // Wall-aware neighbor cache depends only on dimensions and walls (not mine
+  // positions), so build it once here and reuse it across every solver call
+  // and every incremental adjacency update for all restarts.
+  const neighborCache = buildNeighborCache({ _wallEdges: wallEdges || null }, rows, cols);
+
   for (let restart = 0; restart < MAX_RESTARTS; restart++) {
     const board = createEmptyBoard(rows, cols);
     // Apply pre-existing wall edges so adjacency is wall-aware from the start
@@ -267,10 +313,9 @@ function generateConstructive(rows, cols, targetMines, excludeRow, excludeCol, r
 
       if (board[mr][mc].isMine) continue;
 
-      // Place mine tentatively
-      board[mr][mc].isMine = true;
+      // Place mine tentatively (incremental — only updates 8 neighbors)
+      placeMineIncremental(board, mr, mc, neighborCache);
       minesPlaced++;
-      calculateAdjacency(board);
 
       // Check solvability — but only do the full check periodically for performance
       // For the first ~60% of mines, skip most checks (they almost always pass)
@@ -280,7 +325,7 @@ function generateConstructive(rows, cols, targetMines, excludeRow, excludeCol, r
         continue; // Skip check for early mines (very likely solvable)
       }
 
-      const result = isBoardSolvable(board, rows, cols, excludeRow, excludeCol);
+      const result = isBoardSolvable(board, rows, cols, excludeRow, excludeCol, neighborCache);
       cleanSolverArtifacts(board);
 
       if (result.solvable || result.remainingUnknowns === 0) {
@@ -288,10 +333,9 @@ function generateConstructive(rows, cols, targetMines, excludeRow, excludeCol, r
         continue; // Valid placement
       }
 
-      // Unsolvable — undo
-      board[mr][mc].isMine = false;
+      // Unsolvable — undo (incremental — only updates 8 neighbors)
+      removeMineIncremental(board, mr, mc, neighborCache);
       minesPlaced--;
-      calculateAdjacency(board);
       consecutiveFails++;
 
       // Backtrack: swap out an existing mine to escape dead ends
@@ -302,16 +346,15 @@ function generateConstructive(rows, cols, targetMines, excludeRow, excludeCol, r
             if (board[r][c].isMine) existingMines.push({ row: r, col: c });
           }
         }
-        // Remove 1-2 random existing mines
+        // Remove 1-2 random existing mines (incremental adjacency)
         const removeCount = Math.min(1 + Math.floor(rng() * 2), existingMines.length);
         for (let k = 0; k < removeCount; k++) {
           const vi = Math.floor(rng() * existingMines.length);
           const victim = existingMines[vi];
-          board[victim.row][victim.col].isMine = false;
+          removeMineIncremental(board, victim.row, victim.col, neighborCache);
           minesPlaced--;
           existingMines.splice(vi, 1);
         }
-        calculateAdjacency(board);
         consecutiveFails = 0;
         backtrackBudget--;
 
@@ -324,8 +367,8 @@ function generateConstructive(rows, cols, targetMines, excludeRow, excludeCol, r
     }
 
     if (minesPlaced === targetMines) {
-      calculateAdjacency(board);
-      const finalCheck = isBoardSolvable(board, rows, cols, excludeRow, excludeCol);
+      // Incremental updates kept adjacency consistent — no full recompute needed
+      const finalCheck = isBoardSolvable(board, rows, cols, excludeRow, excludeCol, neighborCache);
       cleanSolverArtifacts(board);
       if (finalCheck.solvable || finalCheck.remainingUnknowns === 0) {
         return board;

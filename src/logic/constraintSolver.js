@@ -4,16 +4,19 @@
 //          for small connected components (≤20 unknowns).
 // Layer 2: Gaussian Elimination — integer row-reduction for
 //          larger components, extracting forced variables.
+//
+// Constraint format: { unknowns: cellIdx[], allowedMines: number[] }
+// The mine count among `unknowns` must equal one of the `allowedMines`
+// values. Single-element = exact constraint (normal cell). Multi-element
+// = disjunctive (liar: { display-1, display+1 }).
 
 const TANK_LIMIT = 20; // max unknowns per component for enumeration (2^20 ≈ 1M)
 
 /**
- * Given a set of linear constraints over binary (0/1) unknowns,
- * determine which cells are provably mines or provably safe.
+ * Given a set of constraints over binary (0/1) unknowns, determine which
+ * cells are provably mines or provably safe across ALL satisfying assignments.
  *
- * @param {Array<{unknowns: number[], mines: number}>} constraints
- *   Each constraint says: "among these unknown cell indices,
- *   exactly `mines` of them are mines."
+ * @param {Array<{unknowns: number[], allowedMines: number[]}>} constraints
  * @returns {{ mines: Set<number>, safe: Set<number> }}
  */
 export function solveConstraints(constraints) {
@@ -26,7 +29,11 @@ export function solveConstraints(constraints) {
     if (comp.unknowns.length <= TANK_LIMIT) {
       tankSolve(comp.unknowns, comp.constraints, result);
     } else {
-      gaussSolve(comp.unknowns, comp.constraints, result);
+      // Gauss elimination only handles exact constraints; strip the disjunctive
+      // (liar) ones for large components. They still contributed to component
+      // partitioning above so the solver doesn't miss cross-constraint links.
+      const exact = comp.constraints.filter(c => c.allowedMines.length === 1);
+      gaussSolve(comp.unknowns, exact, result);
     }
   }
 
@@ -90,24 +97,36 @@ function tankSolve(unknowns, constraints, result) {
   const idxMap = new Map();
   unknowns.forEach((u, i) => idxMap.set(u, i));
 
-  // Pre-compute constraint bitmasks for fast checking
-  const cInfo = constraints.map(c => ({
-    mask: c.unknowns.reduce((m, u) => m | (1 << idxMap.get(u)), 0),
-    mines: c.mines,
-  }));
+  // Pre-compute constraint bitmasks and per-constraint allowed mine counts.
+  const cCount = constraints.length;
+  const masks = new Int32Array(cCount);
+  const allowedSets = new Array(cCount);
+  for (let i = 0; i < cCount; i++) {
+    let m = 0;
+    for (const u of constraints[i].unknowns) m |= (1 << idxMap.get(u));
+    masks[i] = m;
+    allowedSets[i] = constraints[i].allowedMines;
+  }
 
-  let alwaysMine = (1 << n) - 1; // bits that are 1 in ALL valid assignments
-  let alwaysSafe = (1 << n) - 1; // bits that are 0 in ALL valid assignments
+  const allBits = n === 32 ? -1 : ((1 << n) - 1);
+  let alwaysMine = allBits;
+  let alwaysSafe = allBits;
   let validCount = 0;
 
+  // Brute-force enumeration. For each assignment, every constraint's mine
+  // count must be in its allowed set. Disjunctive (liar) constraints have
+  // multiple allowed values; exact constraints have one.
   const limit = 1 << n;
   for (let asgn = 0; asgn < limit; asgn++) {
     let valid = true;
-    for (const { mask, mines } of cInfo) {
-      if (popcount(asgn & mask) !== mines) {
-        valid = false;
-        break;
+    for (let i = 0; i < cCount; i++) {
+      const cnt = popcount(asgn & masks[i]);
+      const allowed = allowedSets[i];
+      let ok = false;
+      for (let j = 0; j < allowed.length; j++) {
+        if (allowed[j] === cnt) { ok = true; break; }
       }
+      if (!ok) { valid = false; break; }
     }
     if (!valid) continue;
 
@@ -115,7 +134,6 @@ function tankSolve(unknowns, constraints, result) {
     alwaysMine &= asgn;
     alwaysSafe &= ~asgn;
 
-    // Early exit: if nothing is forced anymore, no point continuing
     if (alwaysMine === 0 && alwaysSafe === 0) return;
   }
 
@@ -144,11 +162,13 @@ function gaussSolve(unknowns, constraints, result) {
   const colMap = new Map();
   unknowns.forEach((u, i) => colMap.set(u, i));
 
-  // Build augmented matrix [A | b] with integer entries
+  // Build augmented matrix [A | b] with integer entries.
+  // Caller (solveConstraints) already filtered to single-allowed constraints,
+  // so allowedMines[0] is the exact mine count.
   const matrix = constraints.map(c => {
     const row = new Array(n + 1).fill(0);
     for (const u of c.unknowns) row[colMap.get(u)] = 1;
-    row[n] = c.mines;
+    row[n] = c.allowedMines[0];
     return row;
   });
 
