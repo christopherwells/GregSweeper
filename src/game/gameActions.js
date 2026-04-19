@@ -346,6 +346,10 @@ export function newGame() {
   adjustCellSize();
   renderBoard();
   updateAllCells();
+  // Render wall overlays NOW for daily mode (board is fully generated before
+  // first click). Challenge / chaos render walls inside their first-click
+  // handler since gimmicks aren't applied until then.
+  renderWallOverlays();
   updateHeader();
   updateTimerDisplay();
   updatePowerUpBar();

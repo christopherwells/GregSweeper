@@ -279,7 +279,15 @@ export function applyGimmicks(board, level, activeGimmicks, rng = Math.random) {
         computeLiarZone(board, rows, cols);
         break;
       case 'walls':
-        applied.walls = applyWalls(board, rows, cols, intensity, rng);
+        // If walls are already on the board (challenge mode pre-applies
+        // them so the constructive generator can build a wall-aware mine
+        // layout), don't re-roll them — the new random walls would
+        // invalidate the solver-verified board. Just keep the existing set.
+        if (board._wallEdges && board._wallEdges.size > 0) {
+          applied.walls = Array.from(board._wallEdges);
+        } else {
+          applied.walls = applyWalls(board, rows, cols, intensity, rng);
+        }
         break;
       case 'wormhole':
         applied.wormhole = applyWormholes(board, rows, cols, Math.min(intensity, 3), rng);
@@ -573,10 +581,13 @@ export function applyWalls(board, rows, cols, segmentCount, rng) {
     }
   }
 
-  // Recalculate adjacency respecting wall edges
-  if (wallEdges.size > 0) {
-    recalcAllAdjacency(board, rows, cols);
-  }
+  // ALWAYS recalculate adjacency. Even when walls were cleared by the
+  // isolation check above, the board's adjacency may already reflect a
+  // PRIOR set of walls (from a constructive-generator call or an earlier
+  // applyWalls). Skipping the recalc here leaves stale wall-aware counts
+  // — cells would show fewer mines than actually surround them, and
+  // chord would refuse to fire because counts don't match flags.
+  recalcAllAdjacency(board, rows, cols);
 
   return wallEdges;
 }
