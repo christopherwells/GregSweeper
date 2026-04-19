@@ -451,26 +451,29 @@ export function applyCloudProgress({ maxCheckpoint, dailyStreak, bestDailyStreak
     changed = true;
   }
 
-  // Daily streak: anchor count and date together. Without this, a stale
-  // cloud streak from days ago can pair with cloud's older lastDailyDate
-  // and overwrite a fresher local streak after a multi-day gap. We only
-  // adopt the cloud streak when its date is at least as recent as local's.
-  // bestDailyStreak is a high-water mark and can take the higher value
-  // independently. lastDailyDate is updated only with its paired streak.
+  // Daily streak sync. The most recent play wins (it has the latest info):
+  //   - cloud date > local date → adopt cloud's streak AND date, even if
+  //     the streak went DOWN (player broke streak on another device).
+  //   - cloud date === local date → defensively take the higher streak.
+  //   - cloud date < local date → keep local; cloud is stale.
+  // bestDailyStreak is a high-water mark, always take the higher value.
   if (dailyStreak != null || bestDailyStreak != null) {
     if (!stats.modeStats) stats.modeStats = {};
     if (!stats.modeStats.daily) stats.modeStats.daily = {};
     const daily = stats.modeStats.daily;
     const cloudDate = lastDailyDate;
     const localDate = daily.lastDailyCompletedDate;
-    const cloudIsAtLeastAsRecent = cloudDate != null && (!localDate || cloudDate >= localDate);
-    if (dailyStreak != null && dailyStreak > (daily.dailyStreak || 0) && cloudIsAtLeastAsRecent) {
-      daily.dailyStreak = dailyStreak;
+    if (cloudDate && (!localDate || cloudDate > localDate)) {
+      // Cloud is strictly newer — adopt its streak + date verbatim.
+      if (dailyStreak != null) daily.dailyStreak = dailyStreak;
       daily.lastDailyCompletedDate = cloudDate;
       changed = true;
-    } else if (cloudIsAtLeastAsRecent && cloudDate !== localDate) {
-      daily.lastDailyCompletedDate = cloudDate;
-      changed = true;
+    } else if (cloudDate && cloudDate === localDate) {
+      // Same date — keep the higher streak (should normally match anyway).
+      if (dailyStreak != null && dailyStreak > (daily.dailyStreak || 0)) {
+        daily.dailyStreak = dailyStreak;
+        changed = true;
+      }
     }
     if (bestDailyStreak != null && bestDailyStreak > (daily.bestDailyStreak || 0)) {
       daily.bestDailyStreak = bestDailyStreak;
