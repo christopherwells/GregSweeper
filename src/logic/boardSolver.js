@@ -122,6 +122,9 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
   // Pre-compute neighbor lists (or reuse provided cache)
   const neighborCache = preNeighborCache || buildNeighborCache(board, rows, cols);
 
+  // Pre-compute static gimmick constraints (sonar / compass / wormhole).
+  const gimmickConstraints = buildStaticGimmickConstraints(board, rows, cols, neighborCache);
+
   // Track locked cells
   const isLocked = new Uint8Array(rows * cols);
   for (let r = 0; r < rows; r++) {
@@ -198,10 +201,27 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
     let progress = false;
 
     // ── Pass A: Simple constraint propagation ──
-    for (let i = 0; i < rows * cols; i++) {
-      if (sim[i] !== 1 || adjCount[i] === 0 || adjCount[i] === UNKNOWN) continue;
+    // Each revealed numbered cell + each gimmick constraint (sonar / compass /
+    // wormhole) is a single-value constraint. We deduce flags and reveals
+    // when the constraint pins a cell uniquely.
+    const passACells = (i) => {
+      const ok = sim[i] === 1 && adjCount[i] !== 0 && adjCount[i] !== UNKNOWN;
+      if (!ok) return null;
+      return { nbrs: neighborCache[i], expected: adjCount[i] };
+    };
 
-      const nbrs = neighborCache[i];
+    // Iterate cell-source constraints first, then gimmick constraints.
+    const constraintSources = [];
+    for (let i = 0; i < rows * cols; i++) {
+      const c = passACells(i);
+      if (c) constraintSources.push(c);
+    }
+    for (const gc of gimmickConstraints) {
+      constraintSources.push({ nbrs: gc.cells, expected: gc.expected });
+    }
+
+    for (const src of constraintSources) {
+      const nbrs = src.nbrs;
       let unknowns = 0;
       let flagged = 0;
       for (const ni of nbrs) {
@@ -209,7 +229,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
         else if (sim[ni] === 2) flagged++;
       }
 
-      const remaining = adjCount[i] - flagged;
+      const remaining = src.expected - flagged;
 
       if (remaining < 0 || remaining > unknowns) {
         return { solvable: false, remainingUnknowns: totalSafe - revealedCount, totalClicks };
@@ -247,7 +267,11 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
     // ── Pass B: Subset / superset constraint analysis ──
     // Subset arithmetic only works with single-value (exact) constraints, so
     // we skip Pass B for liar — its disjunctive constraints feed Pass C only.
-    const constraints = buildConstraints(sim, adjCount, neighborCache, rows * cols);
+    // Sonar / compass / wormhole are exact constraints over larger cell sets
+    // and DO participate in subset analysis here.
+    const baseConstraints = buildConstraints(sim, adjCount, neighborCache, rows * cols);
+    const gimmickRuntime = buildGimmickRuntimeConstraints(gimmickConstraints, sim);
+    const constraints = [...baseConstraints, ...gimmickRuntime];
 
     // Pre-build sets once per pass — avoids O(n) Array.includes / new Set() per pair
     const constraintSets = constraints.map(c => new Set(c.unknowns));
@@ -306,11 +330,13 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
     if (subsetProgress) continue;
 
     // ── Pass C: Advanced solver (Gauss + Tank) ──
-    // Combine exact constraints from non-liar cells with disjunctive
-    // constraints from plain-liar cells (each contributes "X-1 OR X+1" mines).
+    // Combine exact constraints from non-liar cells, exact constraints from
+    // gimmick cells (sonar/compass/wormhole), and disjunctive constraints
+    // from plain-liar cells (each contributes "X-1 OR X+1" mines).
     const freshConstraints = buildConstraints(sim, adjCount, neighborCache, rows * cols);
     const liarCs = buildLiarConstraints(sim, liarBase, neighborCache, rows * cols);
-    const solved = solveConstraints([...freshConstraints, ...liarCs]);
+    const gimmickCs = buildGimmickRuntimeConstraints(gimmickConstraints, sim);
+    const solved = solveConstraints([...freshConstraints, ...liarCs, ...gimmickCs]);
 
     let advancedProgress = false;
 
@@ -369,6 +395,91 @@ function buildConstraints(sim, adjCount, neighborCache, totalCells) {
     }
   }
   return constraints;
+}
+
+// Pre-computes the static (board-topology-only) part of gimmick constraints.
+// Each entry: { cells: cellIdx[], expected: number }
+//   - sonar: cells in the 5x5 area (radius 2). Wall blocks adjacency only at
+//     radius 1 (matches recomputeDisplayedMines).
+//   - compass: cells along the cell's compassDir line to the board edge.
+//   - wormhole: union of A's and B's neighborhoods. Skipped when neighborhoods
+//     overlap (would need a weighted constraint with shared cells contributing 2).
+// The runtime constraint per Pass C/B is built from this via
+// buildGimmickRuntimeConstraints, which subtracts already-flagged/revealed cells.
+function buildStaticGimmickConstraints(board, rows, cols, neighborCache) {
+  const wallEdges = board._wallEdges || null;
+  const idx = (r, c) => r * cols + c;
+  const out = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const cell = board[r][c];
+      if (cell.isMine || cell.displayedMines == null) continue;
+
+      if (cell.isSonar) {
+        const cells = [];
+        for (let dr = -2; dr <= 2; dr++) {
+          for (let dc = -2; dc <= 2; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            const nr = r + dr, nc = c + dc;
+            if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+            if (Math.abs(dr) <= 1 && Math.abs(dc) <= 1 && wallEdges && hasWallBetween(wallEdges, r, c, nr, nc)) continue;
+            cells.push(nr * cols + nc);
+          }
+        }
+        if (cells.length > 0) out.push({ cells, expected: cell.displayedMines });
+      } else if (cell.isCompass && cell.compassDir) {
+        const cells = [];
+        let nr = r + cell.compassDir.dr;
+        let nc = c + cell.compassDir.dc;
+        while (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+          cells.push(nr * cols + nc);
+          nr += cell.compassDir.dr;
+          nc += cell.compassDir.dc;
+        }
+        if (cells.length > 0) out.push({ cells, expected: cell.displayedMines });
+      } else if (cell.isWormhole && cell.wormholePair) {
+        const myIdx = idx(r, c);
+        const pIdx = idx(cell.wormholePair.row, cell.wormholePair.col);
+        if (myIdx > pIdx) continue; // lower-index cell owns the constraint
+        const myNbrs = neighborCache[myIdx];
+        const pNbrs = neighborCache[pIdx];
+        const seen = new Uint8Array(rows * cols);
+        let overlap = false;
+        const cells = [];
+        for (const ni of myNbrs) { seen[ni] = 1; cells.push(ni); }
+        for (const ni of pNbrs) {
+          if (seen[ni]) { overlap = true; break; }
+          cells.push(ni);
+        }
+        if (overlap) continue;
+        if (cells.length > 0) out.push({ cells, expected: cell.displayedMines });
+      }
+    }
+  }
+  return out;
+}
+
+// Sonar / compass / wormhole gimmicks each define a STATIC set of cells
+// they constrain (5x5 area, line, or union of two neighborhoods) and an
+// expected exact mine count. This converts each static constraint into a
+// runtime constraint over only the unknown cells, after subtracting cells
+// already revealed (counted as 0) and flagged (counted as mines).
+function buildGimmickRuntimeConstraints(staticConstraints, sim) {
+  const cs = [];
+  for (const gc of staticConstraints) {
+    const unknownSet = [];
+    let flagged = 0;
+    for (const ci of gc.cells) {
+      if (sim[ci] === 0) unknownSet.push(ci);
+      else if (sim[ci] === 2) flagged++;
+    }
+    if (unknownSet.length === 0) continue;
+    const remaining = gc.expected - flagged;
+    if (remaining < 0 || remaining > unknownSet.length) continue; // infeasible — Pass A check will catch
+    unknownSet.sort((a, b) => a - b);
+    cs.push({ unknowns: unknownSet, allowedMines: [remaining] });
+  }
+  return cs;
 }
 
 // Liar cells contribute "true count is display - 1 OR display + 1" — a
@@ -437,7 +548,10 @@ export function findNextSafeMove(board) {
   // Use wall-aware neighbor cache (matches isBoardSolvable)
   const neighborCache = buildNeighborCache(board, rows, cols);
 
-  // Pass A: Simple rules — check for immediately deducible safe cells
+  // Static gimmick constraints (sonar/compass/wormhole) — same as isBoardSolvable
+  const gimmickConstraints = buildStaticGimmickConstraints(board, rows, cols, neighborCache);
+
+  // Pass A: Simple rules over both numbered cells and gimmick constraints
   for (let i = 0; i < totalCells; i++) {
     if (sim[i] !== 1 || adjCount[i] === 0 || adjCount[i] === UNKNOWN) continue;
     const nbrs = neighborCache[i];
@@ -456,11 +570,29 @@ export function findNextSafeMove(board) {
       }
     }
   }
+  // Same Pass-A pattern over gimmick constraints
+  for (const gc of gimmickConstraints) {
+    let unknowns = 0;
+    let flagged = 0;
+    for (const ci of gc.cells) {
+      if (sim[ci] === 0) unknowns++;
+      else if (sim[ci] === 2) flagged++;
+    }
+    const remaining = gc.expected - flagged;
+    if (remaining === 0 && unknowns > 0) {
+      for (const ci of gc.cells) {
+        if (sim[ci] === 0) {
+          return { row: Math.floor(ci / cols), col: ci % cols };
+        }
+      }
+    }
+  }
 
-  // Pass B: Build constraints (including liar disjunctions) and run full solver
+  // Pass B: Build all constraints (numbered + liar disjunctive + gimmick exact)
   const constraints = buildConstraints(sim, adjCount, neighborCache, totalCells);
   const liarCs = buildLiarConstraints(sim, liarBase, neighborCache, totalCells);
-  const solved = solveConstraints([...constraints, ...liarCs]);
+  const gimmickCs = buildGimmickRuntimeConstraints(gimmickConstraints, sim);
+  const solved = solveConstraints([...constraints, ...liarCs, ...gimmickCs]);
 
   // Return first safe cell
   for (const cellIdx of solved.safe) {
