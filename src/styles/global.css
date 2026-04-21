@@ -1967,16 +1967,34 @@ body {
   border-bottom: 1px solid rgba(0,0,0,0.06);
 }
 
-/* Narrow screens: drop the secondary columns (bomb-hits, pace) and
-   tighten spacing. The essentials (#, name, time, par) stay. */
+/* Narrow screens: keep all 6 columns (#, name, time, strikes, par, pace)
+   but tighten padding and shrink fonts so everything fits at 390px.
+   Names truncate with ellipsis if they overflow. */
 @media (max-width: 520px) {
   #leaderboard-table th,
   #leaderboard-table td {
-    padding: 8px 6px;
-    font-size: 13px;
+    padding: 6px 3px;
+    font-size: 11.5px;
   }
-  #leaderboard-table .lb-col-extra {
-    display: none;
+  #leaderboard-table th {
+    font-size: 9px;
+    letter-spacing: 0.5px;
+  }
+  /* Name column takes whatever width is left; other columns hug their content */
+  #leaderboard-table td:nth-child(2),
+  #leaderboard-table th:nth-child(2) {
+    max-width: 70px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  #leaderboard-table td:first-child,
+  #leaderboard-table th:first-child {
+    padding-left: 4px;
+  }
+  #leaderboard-table td:last-child,
+  #leaderboard-table th:last-child {
+    padding-right: 4px;
   }
 }
 
