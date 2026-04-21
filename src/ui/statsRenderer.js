@@ -122,7 +122,6 @@ function renderHeadlineCards(plays, handicap) {
   setText('stat-strike-rate-recent', `${recentPct}%`);
   setText('stat-strike-rate', `${lifetimePct}%`);
   setText('stat-mean-strikes', meanStrikes);
-  setText('stat-total-strikes', String(totalStrikes));
 }
 
 // ── Chart: Handicap trajectory ────────────────────────
@@ -281,10 +280,18 @@ function renderDeltaDistribution(plays, handicap) {
     const lo = min + i * binWidth;
     return `${Math.round(lo)}s`;
   });
+  // Locate zero within the bin index so barChart can draw a threshold line
+  // between the appropriate bars — makes "left of zero = good" obvious.
+  let zeroMarker = null;
+  if (min < 0 && max > 0) {
+    zeroMarker = (0 - min) / binWidth - 0.5;
+  }
   const svg = barChart(labels, bins, {
     ariaLabel: 'Distribution of your daily deltas',
     yFormat: v => String(Math.round(v)),
     barClass: 'chart-bar-freq',
+    verticalMarkerAt: zeroMarker,
+    verticalMarkerLabel: zeroMarker != null ? 'par' : null,
   });
   replaceContent('chart-consistency', svg);
 }

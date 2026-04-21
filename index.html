@@ -495,14 +495,14 @@
 
           <div class="stats-section">
             <h3>Handicap</h3>
-            <p class="stats-blurb">Your typical over/under Greg-par across all your plays. Lower is faster.</p>
+            <p class="stats-blurb">Your typical over/under Greg-par across all your plays. Lower is faster. The chart shows how this number has moved as more plays were recorded &mdash; each dot is the running average up to that daily.</p>
             <div class="stat-headline" id="stat-handicap-now">--</div>
             <div class="stat-chart" id="chart-handicap-trajectory"></div>
           </div>
 
           <div class="stats-section">
             <h3>History</h3>
-            <p class="stats-blurb">Each dot is a past daily, positioned by how much you beat or trailed your par that day.</p>
+            <p class="stats-blurb">Each dot is a past daily, positioned by how much you beat or trailed your personal par that day. Dots <strong>above</strong> the zero line are under par (good); <strong>below</strong> is over par.</p>
             <div class="stat-row">
               <div class="stat-mini">
                 <div class="stat-mini-label">Dailies</div>
@@ -528,7 +528,7 @@
 
           <div class="stats-section">
             <h3>Strike rate</h3>
-            <p class="stats-blurb">Days where you hit at least one mine. Going down means your flagging discipline is improving.</p>
+            <p class="stats-blurb">Days where you hit at least one mine. Going down on the chart means your flagging discipline is improving.</p>
             <div class="stat-row">
               <div class="stat-mini">
                 <div class="stat-mini-label">Last 7 days</div>
@@ -542,23 +542,19 @@
                 <div class="stat-mini-label">Mean per daily</div>
                 <div class="stat-mini-value" id="stat-mean-strikes">--</div>
               </div>
-              <div class="stat-mini">
-                <div class="stat-mini-label">Total</div>
-                <div class="stat-mini-value" id="stat-total-strikes">--</div>
-              </div>
             </div>
             <div class="stat-chart" id="chart-strike-rate"></div>
           </div>
 
           <div class="stats-section">
             <h3>Delta by modifier</h3>
-            <p class="stats-blurb">Your mean delta vs. Greg-par (0s = matching par) when each modifier is in play. Positive bars are modifiers that slow you down more than they slow the average player.</p>
+            <p class="stats-blurb">Your mean delta vs. Greg-par on dailies where each modifier is in play. Greg-par already accounts for each modifier's baseline cost, so a positive bar means that modifier trips you up <em>more than the model's built-in adjustment</em>, not just that it's harder. Sort is by size of that surprise.</p>
             <div class="stat-chart" id="chart-modifier-heatmap"></div>
           </div>
 
           <div class="stats-section">
             <h3>Delta distribution</h3>
-            <p class="stats-blurb">Shape of your performance: narrow = consistent, wide = big swings. The line shows your average. Dots left of zero are good days.</p>
+            <p class="stats-blurb">Histogram of your daily deltas. Narrow = consistent; wide = swingier. Bars to the left of the zero line are days you beat par; to the right is over par.</p>
             <div class="stat-chart" id="chart-consistency"></div>
           </div>
 

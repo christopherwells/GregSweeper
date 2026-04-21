@@ -345,7 +345,31 @@ export function groupedBarChart(groups, seriesLabels, opts = {}) {
 // ── Bar chart (single series) ────────────────────────────────────
 export function barChart(labels, values, opts = {}) {
   const groups = labels.map((l, i) => ({ label: l, values: [values[i]] }));
-  return groupedBarChart(groups, null, { ...opts, barClasses: [opts.barClass || 'chart-bar-a'] });
+  const svg = groupedBarChart(groups, null, { ...opts, barClasses: [opts.barClass || 'chart-bar-a'] });
+  // Optional vertical marker line at a specific data index (fractional OK).
+  // Used by the delta-distribution histogram to place a zero indicator
+  // between the bin whose range brackets 0.
+  if (typeof opts.verticalMarkerAt === 'number' && svg.tagName?.toLowerCase() === 'svg') {
+    const layout = { ...DEFAULT_LAYOUT };
+    const plotW = VB_W - layout.padLeft - layout.padRight;
+    const n = groups.length;
+    const groupWidth = plotW / n;
+    const x = layout.padLeft + groupWidth * (opts.verticalMarkerAt + 0.5);
+    svg.appendChild(el('line', {
+      x1: x, y1: layout.padTop, x2: x, y2: VB_H - layout.padBottom,
+      class: 'chart-threshold',
+    }));
+    if (opts.verticalMarkerLabel) {
+      const lbl = el('text', {
+        x, y: layout.padTop - 6,
+        'text-anchor': 'middle',
+        class: 'chart-axis-label chart-axis-label-zero',
+      });
+      lbl.textContent = opts.verticalMarkerLabel;
+      svg.appendChild(lbl);
+    }
+  }
+  return svg;
 }
 
 // ── IQR / box-range chart ──────────────────────────────────────
