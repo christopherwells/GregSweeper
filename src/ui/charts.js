@@ -372,6 +372,129 @@ export function barChart(labels, values, opts = {}) {
   return svg;
 }
 
+// ── Kernel density estimate (frequency distribution) ──────────
+//
+// Smooth distribution of a univariate sample. Bandwidth picked by
+// Silverman's rule of thumb: h = 1.06 σ n^(-1/5). Renders as a filled
+// curve with an optional vertical threshold line (e.g. par = 0).
+//
+// values: number[] — the samples
+// opts: {
+//   ariaLabel,
+//   xFormat? (number -> string for axis labels),
+//   thresholdLine? number,
+//   thresholdLabel? string,
+// }
+export function densityChart(values, opts = {}) {
+  if (!values || values.length < 3) {
+    return emptyState(opts.emptyMessage || 'Need at least 3 data points.');
+  }
+  const svg = makeSvg(opts.ariaLabel || 'Density');
+  const layout = { ...DEFAULT_LAYOUT };
+  const plotH = VB_H - layout.padTop - layout.padBottom;
+  const plotW = VB_W - layout.padLeft - layout.padRight;
+
+  const n = values.length;
+  const mean = values.reduce((s, v) => s + v, 0) / n;
+  const variance = values.reduce((s, v) => s + (v - mean) ** 2, 0) / Math.max(1, n - 1);
+  const sd = Math.sqrt(variance) || 1;
+  // Silverman's rule of thumb — robust for small samples and easy to reason
+  // about. Floor keeps the curve readable when variance is tiny.
+  const bandwidth = Math.max(1, 1.06 * sd * Math.pow(n, -1 / 5));
+
+  const rawMin = Math.min(...values);
+  const rawMax = Math.max(...values);
+  const pad = Math.max(3 * bandwidth, (rawMax - rawMin) * 0.1 || 1);
+  const xMin = rawMin - pad;
+  const xMax = rawMax + pad;
+
+  const SAMPLES = 120;
+  const kde = x => {
+    let acc = 0;
+    for (const v of values) {
+      const z = (x - v) / bandwidth;
+      acc += Math.exp(-0.5 * z * z);
+    }
+    // Constant normaliser — not needed for display shape, but keeps
+    // peak height comparable across populations.
+    return acc / (n * bandwidth * Math.sqrt(2 * Math.PI));
+  };
+
+  const xs = [];
+  const ys = [];
+  for (let i = 0; i < SAMPLES; i++) {
+    const x = xMin + (xMax - xMin) * (i / (SAMPLES - 1));
+    xs.push(x);
+    ys.push(kde(x));
+  }
+  const yMax = Math.max(...ys) || 1;
+
+  const xToPx = x => layout.padLeft + plotW * ((x - xMin) / (xMax - xMin));
+  const yToPx = y => layout.padTop + plotH * (1 - y / (yMax * 1.1));
+
+  // Y grid — omit y-axis labels since the numeric density value is not
+  // the reader's target ("how often this delta" reads more intuitively
+  // from bar height alone).
+  drawYAxis(svg, layout, [0, yMax * 1.1], yToPx, {
+    yFormat: () => '',
+    step: yMax * 1.1, // just the top line
+  });
+
+  // Threshold line (par)
+  if (typeof opts.thresholdLine === 'number' && opts.thresholdLine >= xMin && opts.thresholdLine <= xMax) {
+    const x = xToPx(opts.thresholdLine);
+    svg.appendChild(el('line', {
+      x1: x, y1: layout.padTop, x2: x, y2: VB_H - layout.padBottom,
+      class: 'chart-threshold',
+    }));
+    if (opts.thresholdLabel) {
+      const lbl = el('text', {
+        x, y: layout.padTop - 6,
+        'text-anchor': 'middle',
+        class: 'chart-axis-label chart-axis-label-zero',
+      });
+      lbl.textContent = opts.thresholdLabel;
+      svg.appendChild(lbl);
+    }
+  }
+
+  // Filled curve
+  const pathD = [];
+  pathD.push(`M${xToPx(xs[0])},${yToPx(0)}`);
+  for (let i = 0; i < SAMPLES; i++) {
+    pathD.push(`L${xToPx(xs[i])},${yToPx(ys[i])}`);
+  }
+  pathD.push(`L${xToPx(xs[xs.length - 1])},${yToPx(0)}`);
+  pathD.push('Z');
+  svg.appendChild(el('path', {
+    d: pathD.join(' '),
+    class: 'chart-density-fill',
+  }));
+
+  // Stroke on top for definition
+  const strokeD = xs.map((x, i) => `${i === 0 ? 'M' : 'L'}${xToPx(x)},${yToPx(ys[i])}`).join(' ');
+  svg.appendChild(el('path', {
+    d: strokeD,
+    class: 'chart-density-line',
+    fill: 'none',
+  }));
+
+  // X tick labels — use nice round values near min, mean, and max.
+  const ticks = [xMin, (xMin + xMax) / 2, xMax].map(v => Math.round(v));
+  const uniqueTicks = [...new Set(ticks)].sort((a, b) => a - b);
+  for (const t of uniqueTicks) {
+    const label = el('text', {
+      x: xToPx(t), y: VB_H - layout.padBottom + 28,
+      'text-anchor': 'middle',
+      class: 'chart-axis-label chart-x-label',
+    });
+    label.textContent = opts.xFormat ? opts.xFormat(t) : ((t > 0 ? '+' : '') + t + 's');
+    svg.appendChild(label);
+  }
+
+  return svg;
+}
+
 // ── IQR / box-range chart ──────────────────────────────────────
 //
 // boxes: [{ label, median, q1, q3, min, max }]

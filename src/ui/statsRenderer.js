@@ -7,7 +7,7 @@
 
 import { predictPar } from '../logic/dailyFeatures.js';
 import {
-  lineChart, barChart, heatBars,
+  lineChart, barChart, heatBars, densityChart,
 } from './charts.js';
 import { renderDailyHistoryChart } from './dailyHistoryChart.js';
 
@@ -266,32 +266,11 @@ function renderDeltaDistribution(plays, handicap) {
     return;
   }
   const deltas = plays.map(p => p.deltaGlobal);
-  const min = Math.min(...deltas);
-  const max = Math.max(...deltas);
-  const span = Math.max(max - min, 1);
-  const binCount = Math.min(10, Math.max(5, Math.floor(Math.sqrt(deltas.length))));
-  const binWidth = span / binCount;
-  const bins = new Array(binCount).fill(0);
-  for (const d of deltas) {
-    const i = Math.min(binCount - 1, Math.max(0, Math.floor((d - min) / binWidth)));
-    bins[i]++;
-  }
-  const labels = bins.map((_, i) => {
-    const lo = min + i * binWidth;
-    return `${Math.round(lo)}s`;
-  });
-  // Locate zero within the bin index so barChart can draw a threshold line
-  // between the appropriate bars — makes "left of zero = good" obvious.
-  let zeroMarker = null;
-  if (min < 0 && max > 0) {
-    zeroMarker = (0 - min) / binWidth - 0.5;
-  }
-  const svg = barChart(labels, bins, {
+  const svg = densityChart(deltas, {
     ariaLabel: 'Distribution of your daily deltas',
-    yFormat: v => String(Math.round(v)),
-    barClass: 'chart-bar-freq',
-    verticalMarkerAt: zeroMarker,
-    verticalMarkerLabel: zeroMarker != null ? 'par' : null,
+    thresholdLine: 0,
+    thresholdLabel: 'par',
+    xFormat: v => (v > 0 ? '+' : '') + v + 's',
   });
   replaceContent('chart-consistency', svg);
 }

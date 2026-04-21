@@ -1850,6 +1850,18 @@ body {
 .chart-legend.chart-bar-recent { fill: var(--color-accent, #4c8dff); }
 .chart-legend.chart-bar-prior  { fill: var(--color-text-secondary); opacity: 0.8; }
 
+.chart-density-fill {
+  fill: #7b61ff;
+  fill-opacity: 0.35;
+  stroke: none;
+}
+.chart-density-line {
+  stroke: #7b61ff;
+  stroke-width: 3;
+  fill: none;
+  stroke-linejoin: round;
+}
+
 .chart-whisker { stroke: var(--color-text-secondary); stroke-width: 1.5; opacity: 0.6; }
 .chart-box     { fill: var(--color-accent, #4c8dff); fill-opacity: 0.35; stroke: var(--color-accent, #4c8dff); stroke-width: 1.5; }
 .chart-median  { stroke: #fff; stroke-width: 3; }

@@ -554,7 +554,7 @@
 
           <div class="stats-section">
             <h3>Delta distribution</h3>
-            <p class="stats-blurb">Histogram of your daily deltas. Narrow = consistent; wide = swingier. Bars to the left of the zero line are days you beat par; to the right is over par.</p>
+            <p class="stats-blurb">Smoothed density of your daily deltas (Gaussian kernel, Silverman bandwidth). A tall narrow peak is consistent play; a wide flat curve is swingier. Mass left of the par line is under par; right of par is over.</p>
             <div class="stat-chart" id="chart-consistency"></div>
           </div>
 
