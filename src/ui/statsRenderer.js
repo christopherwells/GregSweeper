@@ -1,14 +1,13 @@
 // Orchestrates the Daily tab of the stats modal. Pulls data from Firebase +
 // local storage, computes derived stats client-side (rolling handicap,
-// per-move-type shares, consistency IQR, percentile ranks, etc.), and
-// renders the charts defined in src/ui/charts.js.
+// per-modifier mean deltas, delta distribution, percentile ranks, etc.),
+// and renders the charts defined in src/ui/charts.js.
 //
 // All data fetching happens in main.js; this module is pure view + math.
 
-import { predictPar, breakdownPar } from '../logic/dailyFeatures.js';
+import { predictPar } from '../logic/dailyFeatures.js';
 import {
-  lineChart, stackedAreaChart, groupedBarChart,
-  barChart, boxChart, heatBars,
+  lineChart, barChart, heatBars,
 } from './charts.js';
 import { renderDailyHistoryChart } from './dailyHistoryChart.js';
 
@@ -20,15 +19,6 @@ function shortDate(dateStr) {
   const parts = dateStr.split('-');
   if (parts.length !== 3) return dateStr;
   return `${SHORT_MONTHS[parseInt(parts[1], 10) - 1] || parts[1]} ${parseInt(parts[2], 10)}`;
-}
-
-function quantile(sorted, q) {
-  if (sorted.length === 0) return 0;
-  const pos = (sorted.length - 1) * q;
-  const base = Math.floor(pos);
-  const rest = pos - base;
-  if (base + 1 < sorted.length) return sorted[base] + rest * (sorted[base + 1] - sorted[base]);
-  return sorted[base];
 }
 
 function setText(id, value) {
@@ -43,11 +33,27 @@ function replaceContent(id, child) {
   if (child instanceof Node) el.appendChild(child);
 }
 
+function emptyDiv(message) {
+  const d = document.createElement('div');
+  d.className = 'chart-empty';
+  d.textContent = message;
+  return d;
+}
+
+// Which complexity bucket does a board fall into — based on the HARDEST
+// move type the solver needed. Matches the user's mental model: "was this
+// an easy board, a medium board, or a hard board?"
+function complexityBucket(features) {
+  if ((features.disjunctiveMoves || 0) > 0 || (features.advancedLogicMoves || 0) > 0) return 'hard';
+  if ((features.genericSubsetMoves || 0) > 0) return 'medium';
+  return 'easy';
+}
+
 // ── Main entry point ──────────────────────────────────
 
 /**
  * @param {Object} data
- * @param {Array<{date:string, time:number}>} data.history  user's own dailies, newest-first
+ * @param {Array<{date:string, time:number}>} data.history  user's own dailies
  * @param {Object<string, Object>} data.metaByDate          dailyMeta features keyed by date
  * @param {Object<string, Array<{uid:string, name:string, time:number, bombHits?:number}>>} data.scoresByDate
  *        all players' scores for each date (flat across pushIds)
@@ -57,7 +63,6 @@ function replaceContent(id, child) {
 export function renderDailyStatsTab(data) {
   const { history, metaByDate, scoresByDate, uid, handicap } = data;
 
-  // Sort history oldest-first for trend computations
   const sorted = [...(history || [])].sort((a, b) => a.date.localeCompare(b.date));
 
   // Enrich each play with features, par, delta, and bombHits lookup.
@@ -65,30 +70,27 @@ export function renderDailyStatsTab(data) {
     const features = metaByDate[h.date];
     const globalPar = features ? predictPar(features) : null;
     const personalPar = globalPar != null ? globalPar + handicap : null;
-    const delta = personalPar != null ? h.time - personalPar : null;
     const deltaGlobal = globalPar != null ? h.time - globalPar : null;
-    // Find the user's own score row for bombHits
+    const deltaPersonal = personalPar != null ? h.time - personalPar : null;
     const sameDayScores = scoresByDate[h.date] || [];
     const mine = sameDayScores.find(s => s.uid === uid && Math.abs(s.time - h.time) < 0.01);
     const bombHits = mine ? (mine.bombHits || 0) : 0;
-    return { ...h, features, globalPar, personalPar, delta, deltaGlobal, bombHits };
-  }).filter(p => p.features); // drop entries with no meta
+    return { ...h, features, globalPar, personalPar, deltaGlobal, deltaPersonal, bombHits };
+  }).filter(p => p.features);
 
   renderHeadlineCards(plays, handicap);
   renderHandicapTrajectory(plays);
-  renderMoveTypeShare(plays);
+  renderHistoryChart(plays);
+  renderComplexityDelta(plays);
   renderStrikeRate(plays);
   renderModifierHeatmap(plays);
-  renderConsistency(plays);
+  renderDeltaDistribution(plays, handicap);
   renderPercentileTrend(plays, scoresByDate, uid);
-  renderPlayFrequency(plays);
-  renderHistoryChart(plays);
 }
 
-// ── Section: Headline cards (frequency + strike rate totals) ─────
+// ── Headline cards ────────────────────────────────────
 
 function renderHeadlineCards(plays, handicap) {
-  // Handicap headline (big)
   if (plays.length >= 3) {
     const sign = handicap >= 0 ? '+' : '';
     setText('stat-handicap-now', `${sign}${handicap.toFixed(1)}s`);
@@ -96,25 +98,31 @@ function renderHeadlineCards(plays, handicap) {
     setText('stat-handicap-now', 'Need 3+ plays');
   }
 
-  // Strike totals
+  // History section cards
+  setText('stat-daily-played', String(plays.length));
+  const avgTime = plays.length > 0
+    ? (plays.reduce((s, p) => s + p.time, 0) / plays.length).toFixed(1) + 's'
+    : '--';
+  setText('stat-daily-avg-time', avgTime);
+  const bestTime = plays.length > 0
+    ? Math.min(...plays.map(p => p.time)).toFixed(1) + 's'
+    : '--';
+  setText('stat-daily-best-time', bestTime);
+
+  // Strike rate cards — one for lifetime, one for the last 7 days to match
+  // the chart's trend line (fixing the "55% headline but chart endpoint
+  // shows 25%" confusion).
   const totalStrikes = plays.reduce((s, p) => s + p.bombHits, 0);
   const daysWithStrike = plays.filter(p => p.bombHits > 0).length;
-  const strikeRatePct = plays.length > 0 ? Math.round(100 * daysWithStrike / plays.length) : 0;
+  const lifetimePct = plays.length > 0 ? Math.round(100 * daysWithStrike / plays.length) : 0;
+  const last7 = plays.slice(-7);
+  const last7Strike = last7.filter(p => p.bombHits > 0).length;
+  const recentPct = last7.length > 0 ? Math.round(100 * last7Strike / last7.length) : 0;
   const meanStrikes = plays.length > 0 ? (totalStrikes / plays.length).toFixed(2) : '--';
-  setText('stat-strike-rate', `${strikeRatePct}%`);
+  setText('stat-strike-rate-recent', `${recentPct}%`);
+  setText('stat-strike-rate', `${lifetimePct}%`);
   setText('stat-mean-strikes', meanStrikes);
   setText('stat-total-strikes', String(totalStrikes));
-
-  // Play frequency
-  setText('stat-daily-played', String(plays.length));
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - 28);
-  const cutoffStr = cutoff.toISOString().slice(0, 10);
-  const last28 = plays.filter(p => p.date >= cutoffStr);
-  const perWeek = last28.length > 0 ? (last28.length / 4).toFixed(1) : '0';
-  setText('stat-daily-per-week', perWeek);
-  const avgTime = plays.length > 0 ? (plays.reduce((s, p) => s + p.time, 0) / plays.length).toFixed(1) + 's' : '--';
-  setText('stat-daily-avg-time', avgTime);
 }
 
 // ── Chart: Handicap trajectory ────────────────────────
@@ -124,7 +132,6 @@ function renderHandicapTrajectory(plays) {
     replaceContent('chart-handicap-trajectory', emptyDiv('Need at least 3 plays to trace a handicap.'));
     return;
   }
-  // Rolling handicap = running mean of deltaGlobal up to and including that day.
   let sum = 0;
   const points = plays.map((p, i) => {
     sum += p.deltaGlobal;
@@ -145,69 +152,45 @@ function renderHandicapTrajectory(plays) {
   replaceContent('chart-handicap-trajectory', svg);
 }
 
-// ── Chart: Move-type time share (per week) ────────────
+// ── Chart: Delta by board complexity ──────────────────
 
-function renderMoveTypeShare(plays) {
-  if (plays.length < 2) {
-    replaceContent('chart-move-type-share', emptyDiv('Need at least 2 plays for the time-share chart.'));
+function renderComplexityDelta(plays) {
+  if (plays.length < 3) {
+    replaceContent('chart-complexity-delta', emptyDiv('Need at least 3 plays.'));
     return;
   }
-  // For each daily: time allocated to each bucket ∝ the bucket's predicted par contribution.
-  // Then aggregate into weekly buckets (ISO weeks).
-  const weekly = new Map(); // weekKey -> { easy, medium, hard, total }
-
-  function weekKey(dateStr) {
-    const d = new Date(dateStr + 'T00:00:00');
-    const day = d.getDay() || 7; // Mon=1..Sun=7
-    d.setDate(d.getDate() - day + 1); // Monday of that week
-    return d.toISOString().slice(0, 10);
-  }
-
+  const buckets = { easy: [], medium: [], hard: [] };
   for (const p of plays) {
-    const breakdown = breakdownPar(p.features);
-    const byLabel = Object.fromEntries(breakdown.map(b => [b.label, b.seconds]));
-    const easyPar = byLabel['easy moves'] || 0;
-    const medPar  = byLabel['medium moves'] || 0;
-    const hardPar = byLabel['hard moves'] || 0;
-    const totalPar = easyPar + medPar + hardPar;
-    if (totalPar <= 0) continue;
-
-    // Allocate actual time proportionally
-    const t = p.time;
-    const easy = t * easyPar / totalPar;
-    const med  = t * medPar / totalPar;
-    const hard = t * hardPar / totalPar;
-
-    const wk = weekKey(p.date);
-    const entry = weekly.get(wk) || { easy: 0, medium: 0, hard: 0, n: 0 };
-    entry.easy += easy;
-    entry.medium += med;
-    entry.hard += hard;
-    entry.n += 1;
-    weekly.set(wk, entry);
+    const b = complexityBucket(p.features);
+    buckets[b].push(p.deltaGlobal);
   }
-
-  const weeks = [...weekly.keys()].sort();
-  if (weeks.length < 2) {
-    replaceContent('chart-move-type-share', emptyDiv('Need at least 2 weeks of data.'));
+  const order = [
+    { label: 'easy',   values: buckets.easy },
+    { label: 'medium', values: buckets.medium },
+    { label: 'hard',   values: buckets.hard },
+  ];
+  const groups = order
+    .filter(b => b.values.length > 0)
+    .map(b => {
+      const mean = b.values.reduce((s, v) => s + v, 0) / b.values.length;
+      return {
+        label: `${b.label} (n=${b.values.length})`,
+        value: mean,
+        sub: '',
+      };
+    });
+  if (groups.length === 0) {
+    replaceContent('chart-complexity-delta', emptyDiv('Not enough data yet.'));
     return;
   }
-
-  const series = [
-    { label: 'easy',   colorClass: 'chart-area-easy',   values: weeks.map(w => weekly.get(w).easy / weekly.get(w).n) },
-    { label: 'medium', colorClass: 'chart-area-medium', values: weeks.map(w => weekly.get(w).medium / weekly.get(w).n) },
-    { label: 'hard',   colorClass: 'chart-area-hard',   values: weeks.map(w => weekly.get(w).hard / weekly.get(w).n) },
-  ];
-
-  const labels = weeks.map(w => shortDate(w));
-  const svg = stackedAreaChart(series, labels, {
-    ariaLabel: 'Move-type time share by week',
-    normalize: true,
+  const svg = heatBars(groups, {
+    ariaLabel: 'Mean delta by board complexity',
+    valueFormat: v => (v > 0 ? '+' : '') + v.toFixed(1) + 's',
   });
-  replaceContent('chart-move-type-share', svg);
+  replaceContent('chart-complexity-delta', svg);
 }
 
-// ── Chart: Strike rate over time (rolling 7-day) ──────
+// ── Chart: Strike rate rolling trend ──────────────────
 
 function renderStrikeRate(plays) {
   if (plays.length < 3) {
@@ -226,7 +209,7 @@ function renderStrikeRate(plays) {
     };
   });
   const svg = lineChart(points, {
-    ariaLabel: 'Strike rate trend',
+    ariaLabel: 'Strike rate trend (rolling 7-day %)',
     yDomain: [0, 100],
     yFormat: v => v + '%',
     dotClassForValue: v => v <= 20 ? 'chart-dot-good' : v >= 50 ? 'chart-dot-bad' : 'chart-dot-even',
@@ -235,119 +218,78 @@ function renderStrikeRate(plays) {
   replaceContent('chart-strike-rate', svg);
 }
 
-// ── Chart: Delta-by-modifier heat map ─────────────────
+// ── Chart: Delta by modifier (single bar per modifier) ─
 
 function renderModifierHeatmap(plays) {
-  if (plays.length < 6) {
-    replaceContent('chart-modifier-heatmap', emptyDiv('Need more plays to detect modifier patterns.'));
+  if (plays.length < 3) {
+    replaceContent('chart-modifier-heatmap', emptyDiv('Not enough plays to stratify.'));
     return;
   }
-  // For each modifier, collect mean deltaGlobal across plays where that modifier was present.
-  // Split into two windows: last 14 days vs. prior 14 days.
-  const today = new Date();
-  const cutoffRecent = new Date(today); cutoffRecent.setDate(cutoffRecent.getDate() - 14);
-  const cutoffOld = new Date(today); cutoffOld.setDate(cutoffOld.getDate() - 28);
-  const recentStr = cutoffRecent.toISOString().slice(0, 10);
-  const oldStr = cutoffOld.toISOString().slice(0, 10);
-
   const MODIFIERS = [
-    { key: 'mysteryCellCount', label: 'mystery' },
-    { key: 'liarCellCount', label: 'liar' },
-    { key: 'lockedCellCount', label: 'locked' },
-    { key: 'wallEdgeCount', label: 'walls' },
+    { key: 'mysteryCellCount',  label: 'mystery' },
+    { key: 'liarCellCount',     label: 'liar' },
+    { key: 'lockedCellCount',   label: 'locked' },
+    { key: 'wallEdgeCount',     label: 'walls' },
     { key: 'wormholePairCount', label: 'wormhole' },
-    { key: 'mirrorPairCount', label: 'mirror' },
-    { key: 'sonarCellCount', label: 'sonar' },
-    { key: 'compassCellCount', label: 'compass' },
+    { key: 'mirrorPairCount',   label: 'mirror' },
+    { key: 'sonarCellCount',    label: 'sonar' },
+    { key: 'compassCellCount',  label: 'compass' },
   ];
-
-  const recent = plays.filter(p => p.date >= recentStr);
-  const prior  = plays.filter(p => p.date >= oldStr && p.date < recentStr);
-
-  function meanDeltaWhenPresent(subset, key) {
-    const rows = subset.filter(p => (p.features[key] || 0) > 0);
-    if (rows.length === 0) return null;
-    return {
-      mean: rows.reduce((s, p) => s + p.deltaGlobal, 0) / rows.length,
-      n: rows.length,
-    };
-  }
-
-  const groups = [];
+  const items = [];
   for (const m of MODIFIERS) {
-    const r = meanDeltaWhenPresent(recent, m.key);
-    const p = meanDeltaWhenPresent(prior, m.key);
-    if (!r && !p) continue;
-    groups.push({
+    const rows = plays.filter(p => (p.features[m.key] || 0) > 0);
+    if (rows.length === 0) continue;
+    const mean = rows.reduce((s, p) => s + p.deltaGlobal, 0) / rows.length;
+    items.push({
       label: m.label,
-      values: [r ? r.mean : 0, p ? p.mean : 0],
-      ns: [r ? r.n : 0, p ? p.n : 0],
+      value: Math.round(mean * 10) / 10,
+      sub: `n=${rows.length}`,
     });
   }
-
-  if (groups.length === 0) {
-    replaceContent('chart-modifier-heatmap', emptyDiv('No modifier days in the last 28.'));
+  if (items.length === 0) {
+    replaceContent('chart-modifier-heatmap', emptyDiv('No modifier days in your history yet.'));
     return;
   }
-
-  const svg = groupedBarChart(groups, ['last 14d', 'prior 14d'], {
-    ariaLabel: 'Delta by modifier, recent vs. prior',
-    yFormat: v => (v > 0 ? '+' : '') + Math.round(v) + 's',
-    barClasses: ['chart-bar-recent', 'chart-bar-prior'],
+  // Sort by absolute impact so biggest problems float to the top.
+  items.sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
+  const svg = heatBars(items, {
+    ariaLabel: 'Mean delta by modifier',
+    valueFormat: v => (v > 0 ? '+' : '') + v.toFixed(1) + 's',
   });
   replaceContent('chart-modifier-heatmap', svg);
 }
 
-// ── Chart: Consistency (rolling weekly IQR) ───────────
+// ── Chart: Delta distribution (histogram) ─────────────
 
-function renderConsistency(plays) {
-  if (plays.length < 7) {
-    replaceContent('chart-consistency', emptyDiv('Need at least 7 plays for an IQR band.'));
+function renderDeltaDistribution(plays, handicap) {
+  if (plays.length < 5) {
+    replaceContent('chart-consistency', emptyDiv('Need at least 5 plays to see distribution shape.'));
     return;
   }
-  // Group into ISO weeks (Mon-start); need >= 3 plays per week to compute a box.
-  const weekly = new Map();
-  function weekKey(dateStr) {
-    const d = new Date(dateStr + 'T00:00:00');
-    const day = d.getDay() || 7;
-    d.setDate(d.getDate() - day + 1);
-    return d.toISOString().slice(0, 10);
+  const deltas = plays.map(p => p.deltaGlobal);
+  const min = Math.min(...deltas);
+  const max = Math.max(...deltas);
+  const span = Math.max(max - min, 1);
+  const binCount = Math.min(10, Math.max(5, Math.floor(Math.sqrt(deltas.length))));
+  const binWidth = span / binCount;
+  const bins = new Array(binCount).fill(0);
+  for (const d of deltas) {
+    const i = Math.min(binCount - 1, Math.max(0, Math.floor((d - min) / binWidth)));
+    bins[i]++;
   }
-  for (const p of plays) {
-    const wk = weekKey(p.date);
-    if (!weekly.has(wk)) weekly.set(wk, []);
-    weekly.get(wk).push(p.deltaGlobal);
-  }
-
-  const boxes = [];
-  const weekKeys = [...weekly.keys()].sort();
-  for (const wk of weekKeys) {
-    const deltas = weekly.get(wk);
-    if (deltas.length < 3) continue;
-    const sorted = [...deltas].sort((a, b) => a - b);
-    boxes.push({
-      label: shortDate(wk),
-      median: quantile(sorted, 0.5),
-      q1: quantile(sorted, 0.25),
-      q3: quantile(sorted, 0.75),
-      min: sorted[0],
-      max: sorted[sorted.length - 1],
-    });
-  }
-
-  if (boxes.length === 0) {
-    replaceContent('chart-consistency', emptyDiv('Need 3+ plays in at least one week.'));
-    return;
-  }
-  const svg = boxChart(boxes, {
-    ariaLabel: 'Weekly consistency (IQR of delta)',
-    thresholdLine: 0,
-    yFormat: v => (v > 0 ? '+' : '') + Math.round(v) + 's',
+  const labels = bins.map((_, i) => {
+    const lo = min + i * binWidth;
+    return `${Math.round(lo)}s`;
+  });
+  const svg = barChart(labels, bins, {
+    ariaLabel: 'Distribution of your daily deltas',
+    yFormat: v => String(Math.round(v)),
+    barClass: 'chart-bar-freq',
   });
   replaceContent('chart-consistency', svg);
 }
 
-// ── Chart: Rank-vs-field percentile trend ─────────────
+// ── Chart: Percentile trend ───────────────────────────
 
 function renderPercentileTrend(plays, scoresByDate, uid) {
   if (plays.length < 3) {
@@ -357,7 +299,6 @@ function renderPercentileTrend(plays, scoresByDate, uid) {
   const points = [];
   for (const p of plays) {
     const dayScores = scoresByDate[p.date] || [];
-    // Best score per uid (for dates where someone played twice under the same uid)
     const bestByUid = new Map();
     for (const s of dayScores) {
       if (!s.uid || typeof s.time !== 'number') continue;
@@ -379,7 +320,7 @@ function renderPercentileTrend(plays, scoresByDate, uid) {
   }
 
   if (points.length === 0) {
-    replaceContent('chart-percentile-trend', emptyDiv('No days with cross-player data.'));
+    replaceContent('chart-percentile-trend', emptyDiv('Populates when 2+ players have uid-tagged scores on the same day.'));
     return;
   }
   const svg = lineChart(points, {
@@ -392,35 +333,6 @@ function renderPercentileTrend(plays, scoresByDate, uid) {
   replaceContent('chart-percentile-trend', svg);
 }
 
-// ── Chart: Play frequency (plays per week bar chart) ──
-
-function renderPlayFrequency(plays) {
-  if (plays.length === 0) {
-    replaceContent('chart-play-frequency', emptyDiv('No plays yet.'));
-    return;
-  }
-  const weekly = new Map();
-  function weekKey(dateStr) {
-    const d = new Date(dateStr + 'T00:00:00');
-    const day = d.getDay() || 7;
-    d.setDate(d.getDate() - day + 1);
-    return d.toISOString().slice(0, 10);
-  }
-  for (const p of plays) {
-    const wk = weekKey(p.date);
-    weekly.set(wk, (weekly.get(wk) || 0) + 1);
-  }
-  const weeks = [...weekly.keys()].sort();
-  const labels = weeks.map(w => shortDate(w));
-  const values = weeks.map(w => weekly.get(w));
-  const svg = barChart(labels, values, {
-    ariaLabel: 'Dailies per week',
-    yFormat: v => String(Math.round(v)),
-    barClass: 'chart-bar-freq',
-  });
-  replaceContent('chart-play-frequency', svg);
-}
-
 // ── Chart: Daily history (moved from leaderboard) ─────
 
 function renderHistoryChart(plays) {
@@ -428,15 +340,8 @@ function renderHistoryChart(plays) {
     date: p.date,
     time: p.time,
     par: p.personalPar != null ? p.personalPar : p.globalPar || 0,
-    delta: p.delta != null ? p.delta : (p.deltaGlobal || 0),
+    delta: p.deltaPersonal != null ? p.deltaPersonal : (p.deltaGlobal || 0),
   }));
   const svg = renderDailyHistoryChart(entries);
   replaceContent('chart-daily-history', svg);
-}
-
-function emptyDiv(message) {
-  const d = document.createElement('div');
-  d.className = 'chart-empty';
-  d.textContent = message;
-  return d;
 }

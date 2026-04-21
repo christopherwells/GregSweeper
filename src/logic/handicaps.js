@@ -48,6 +48,30 @@ export function getHandicap(uid) {
 }
 
 /**
+ * Estimate a handicap from the player's own history when the static
+ * handicaps.json doesn't have an entry yet (typical during the first
+ * days after a player starts — their uid-tagged scores exist, but the
+ * GitHub Action hasn't refitted since they first appeared, so their
+ * handicap is missing from the file).
+ *
+ * Returns the mean residual (`time - predictedPar`) across a list of
+ * `{ time, predictedPar }` pairs. Lower bound of 3 pairs — below that
+ * the mean is too noisy to surface.
+ */
+export function estimateHandicapFromHistory(pairs) {
+  if (!Array.isArray(pairs) || pairs.length < 3) return 0;
+  let sum = 0;
+  let n = 0;
+  for (const p of pairs) {
+    if (typeof p.time !== 'number' || typeof p.predictedPar !== 'number') continue;
+    sum += p.time - p.predictedPar;
+    n++;
+  }
+  if (n < 3) return 0;
+  return Math.round((sum / n) * 10) / 10;
+}
+
+/**
  * Your personal par = Greg-par + your handicap.
  */
 export function personalPar(globalPar, uid) {

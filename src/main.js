@@ -22,7 +22,7 @@ import { switchMode, isChaosUnlocked, updateModeUI } from './game/modeManager.js
 import { persistGameState, tryResumeGame } from './game/gamePersistence.js';
 import { getDifficultyForLevel, getTimedDifficulty, getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, CHAOS_UNLOCK_LEVEL, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE } from './logic/difficulty.js';
 import { computeDailyFeatures, predictPar } from './logic/dailyFeatures.js';
-import { loadHandicaps, getHandicap } from './logic/handicaps.js';
+import { loadHandicaps, getHandicap, estimateHandicapFromHistory } from './logic/handicaps.js';
 import {
   loadStats, saveTheme, loadTheme, resetStats,
   saveCheckpoint, loadCheckpoint,
@@ -170,9 +170,10 @@ function populateQuickPlayPanel() {
 async function populateDailyPanel() {
   // Show an unobtrusive loading state while we pull from Firebase.
   const tierChartIds = [
-    'chart-handicap-trajectory', 'chart-move-type-share', 'chart-strike-rate',
-    'chart-modifier-heatmap', 'chart-consistency', 'chart-percentile-trend',
-    'chart-play-frequency', 'chart-daily-history',
+    'chart-handicap-trajectory', 'chart-daily-history',
+    'chart-complexity-delta', 'chart-strike-rate',
+    'chart-modifier-heatmap', 'chart-consistency',
+    'chart-percentile-trend',
   ];
   for (const id of tierChartIds) {
     const el = document.getElementById(id);
@@ -204,7 +205,21 @@ async function populateDailyPanel() {
     return;
   }
 
-  const handicap = getHandicap(uid);
+  // Use the refitted handicap from handicaps.json when available. Fall
+  // back to a client-computed mean residual against the user's own
+  // history so first-time players see something meaningful before the
+  // nightly refit catches up.
+  let handicap = getHandicap(uid);
+  if (handicap === 0 && history && history.length >= 3) {
+    const pairs = history
+      .map(h => {
+        const f = metaByDate[h.date];
+        if (!f) return null;
+        return { time: h.time, predictedPar: predictPar(f) };
+      })
+      .filter(Boolean);
+    handicap = estimateHandicapFromHistory(pairs);
+  }
   renderDailyStatsTab({
     history: history || [],
     metaByDate: metaByDate || {},

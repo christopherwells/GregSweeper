@@ -422,31 +422,40 @@ export function boxChart(boxes, opts = {}) {
 // ── Heat-map (per-category bars with color) ─────────────────────
 //
 // Items: [{ label, value, sub? (e.g. "n=14") }]
-// Colors scale red→green based on sign (useful for delta displays).
+// Layout: fixed left column for category label, fixed right column for
+// value text, bars live in the middle with a vertical zero line. Bars
+// extend left for negative values and right for positive, but the value
+// text always sits in the same far-right column — so collisions between
+// bar and value label are impossible even on very short bars.
 export function heatBars(items, opts = {}) {
   if (!items || items.length === 0) {
     return emptyState(opts.emptyMessage || 'Not enough data yet.');
   }
   const svg = makeSvg(opts.ariaLabel || 'Heat bars');
-  const layout = { ...DEFAULT_LAYOUT, padLeft: 140 };
-  const plotH = VB_H - layout.padTop - layout.padBottom;
-  const plotW = VB_W - layout.padLeft - layout.padRight;
+  const LABEL_COL = 170;  // left-side category labels
+  const VALUE_COL = 130;  // right-side value text
+  const PAD_TOP = 16;
+  const PAD_BOTTOM = 16;
+  const plotH = VB_H - PAD_TOP - PAD_BOTTOM;
+  const plotLeft = LABEL_COL;
+  const plotRight = VB_W - VALUE_COL;
+  const plotW = plotRight - plotLeft;
 
   const absMax = Math.max(1, ...items.map(i => Math.abs(i.value)));
-  const zeroX = layout.padLeft + plotW * 0.5;
+  const zeroX = plotLeft + plotW * 0.5;
   const xToPx = v => zeroX + (plotW * 0.5) * (v / absMax);
 
   const rowH = plotH / items.length;
 
-  // Zero line (vertical)
+  // Vertical zero line
   svg.appendChild(el('line', {
-    x1: zeroX, y1: layout.padTop, x2: zeroX, y2: VB_H - layout.padBottom,
+    x1: zeroX, y1: PAD_TOP, x2: zeroX, y2: VB_H - PAD_BOTTOM,
     class: 'chart-axis-zero',
   }));
 
   for (let i = 0; i < items.length; i++) {
     const it = items[i];
-    const cy = layout.padTop + rowH * (i + 0.5);
+    const cy = PAD_TOP + rowH * (i + 0.5);
     const x = xToPx(it.value);
     const barLeft = Math.min(x, zeroX);
     const barRight = Math.max(x, zeroX);
@@ -456,28 +465,29 @@ export function heatBars(items, opts = {}) {
       : 'chart-heat-even';
 
     svg.appendChild(el('rect', {
-      x: barLeft, y: cy - rowH * 0.32, width: barRight - barLeft, height: rowH * 0.64,
+      x: barLeft, y: cy - rowH * 0.28, width: Math.max(2, barRight - barLeft), height: rowH * 0.56,
       class: `chart-heat-bar ${cls}`,
     }));
 
-    // Category label (left)
+    // Category label (left column, right-aligned)
     const label = el('text', {
-      x: layout.padLeft - 12, y: cy + 7,
+      x: LABEL_COL - 16, y: cy + 8,
       'text-anchor': 'end',
       class: 'chart-axis-label',
     });
     label.textContent = it.label;
     svg.appendChild(label);
 
-    // Value label (near bar end)
+    // Value label (right column, left-aligned so all values line up)
     const valLabel = el('text', {
-      x: it.value >= 0 ? barRight + 8 : barLeft - 8,
-      y: cy + 7,
-      'text-anchor': it.value >= 0 ? 'start' : 'end',
+      x: plotRight + 12, y: cy + 8,
+      'text-anchor': 'start',
       class: `chart-axis-label chart-value-label ${cls}`,
     });
-    valLabel.textContent = (opts.valueFormat ? opts.valueFormat(it.value) : (it.value > 0 ? '+' : '') + it.value.toFixed(1))
-      + (it.sub ? ' ' + it.sub : '');
+    const valText = opts.valueFormat
+      ? opts.valueFormat(it.value)
+      : (it.value > 0 ? '+' : '') + it.value.toFixed(1);
+    valLabel.textContent = valText + (it.sub ? ' ' + it.sub : '');
     svg.appendChild(valLabel);
   }
 

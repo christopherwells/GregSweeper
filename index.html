@@ -493,83 +493,79 @@
         <!-- DAILY TAB -->
         <div id="stats-panel-daily" class="stats-panel">
 
-          <!-- Tier 1 — Skill story -->
           <div class="stats-section">
             <h3>Handicap</h3>
-            <p class="stats-blurb">Your typical over/under Greg-par across all your plays, corrected for which boards you happened to get. Lower is faster.</p>
+            <p class="stats-blurb">Your typical over/under Greg-par across all your plays. Lower is faster.</p>
             <div class="stat-headline" id="stat-handicap-now">--</div>
             <div class="stat-chart" id="chart-handicap-trajectory"></div>
           </div>
 
           <div class="stats-section">
-            <h3>Move-type time share</h3>
-            <p class="stats-blurb">How your time is split across easy / medium / hard deductions each day. As you improve, the easy share shrinks.</p>
-            <div class="stat-chart" id="chart-move-type-share"></div>
+            <h3>History</h3>
+            <p class="stats-blurb">Each dot is a past daily, positioned by how much you beat or trailed your par that day.</p>
+            <div class="stat-row">
+              <div class="stat-mini">
+                <div class="stat-mini-label">Dailies</div>
+                <div class="stat-mini-value" id="stat-daily-played">--</div>
+              </div>
+              <div class="stat-mini">
+                <div class="stat-mini-label">Average time</div>
+                <div class="stat-mini-value" id="stat-daily-avg-time">--</div>
+              </div>
+              <div class="stat-mini">
+                <div class="stat-mini-label">Best time</div>
+                <div class="stat-mini-value" id="stat-daily-best-time">--</div>
+              </div>
+            </div>
+            <div class="stat-chart" id="chart-daily-history"></div>
+          </div>
+
+          <div class="stats-section">
+            <h3>Delta by board complexity</h3>
+            <p class="stats-blurb">Your mean delta vs. par, grouped by the hardest move type the board required. Negative = you beat par on boards of that complexity.</p>
+            <div class="stat-chart" id="chart-complexity-delta"></div>
           </div>
 
           <div class="stats-section">
             <h3>Strike rate</h3>
-            <p class="stats-blurb">Percentage of dailies where you hit at least one mine. Going down means your flagging discipline is improving.</p>
+            <p class="stats-blurb">Days where you hit at least one mine. Going down means your flagging discipline is improving.</p>
             <div class="stat-row">
               <div class="stat-mini">
-                <div class="stat-mini-label">Days with strikes</div>
+                <div class="stat-mini-label">Last 7 days</div>
+                <div class="stat-mini-value" id="stat-strike-rate-recent">--</div>
+              </div>
+              <div class="stat-mini">
+                <div class="stat-mini-label">Lifetime</div>
                 <div class="stat-mini-value" id="stat-strike-rate">--</div>
               </div>
               <div class="stat-mini">
-                <div class="stat-mini-label">Mean strikes / daily</div>
+                <div class="stat-mini-label">Mean per daily</div>
                 <div class="stat-mini-value" id="stat-mean-strikes">--</div>
               </div>
               <div class="stat-mini">
-                <div class="stat-mini-label">Total strikes</div>
+                <div class="stat-mini-label">Total</div>
                 <div class="stat-mini-value" id="stat-total-strikes">--</div>
               </div>
             </div>
             <div class="stat-chart" id="chart-strike-rate"></div>
           </div>
 
-          <!-- Tier 2 — Weaknesses -->
           <div class="stats-section">
             <h3>Delta by modifier</h3>
-            <p class="stats-blurb">Your mean delta vs. par when each modifier is in play. Positive = that modifier slows you down more than the model predicted. Last 14 days next to prior 14 for a trend.</p>
+            <p class="stats-blurb">Your mean delta vs. Greg-par (0s = matching par) when each modifier is in play. Positive bars are modifiers that slow you down more than they slow the average player.</p>
             <div class="stat-chart" id="chart-modifier-heatmap"></div>
           </div>
 
           <div class="stats-section">
-            <h3>Consistency</h3>
-            <p class="stats-blurb">The spread of your daily deltas. A narrow band = you score close to your typical every day; a wide band = more good days and bad days.</p>
+            <h3>Delta distribution</h3>
+            <p class="stats-blurb">Shape of your performance: narrow = consistent, wide = big swings. The line shows your average. Dots left of zero are good days.</p>
             <div class="stat-chart" id="chart-consistency"></div>
           </div>
 
-          <!-- Tier 3 — Social / motivational -->
           <div class="stats-section">
             <h3>Rank vs. field</h3>
             <p class="stats-blurb">Where you finished among all players that day. 0th percentile = you won that day.</p>
             <div class="stat-chart" id="chart-percentile-trend"></div>
-          </div>
-
-          <div class="stats-section">
-            <h3>Play frequency</h3>
-            <div class="stat-row">
-              <div class="stat-mini">
-                <div class="stat-mini-label">Dailies played</div>
-                <div class="stat-mini-value" id="stat-daily-played">--</div>
-              </div>
-              <div class="stat-mini">
-                <div class="stat-mini-label">Per week (last 28d)</div>
-                <div class="stat-mini-value" id="stat-daily-per-week">--</div>
-              </div>
-              <div class="stat-mini">
-                <div class="stat-mini-label">Average time</div>
-                <div class="stat-mini-value" id="stat-daily-avg-time">--</div>
-              </div>
-            </div>
-            <div class="stat-chart" id="chart-play-frequency"></div>
-          </div>
-
-          <div class="stats-section">
-            <h3>History</h3>
-            <p class="stats-blurb">Each dot is a past daily, positioned by how much you beat or trailed your par that day.</p>
-            <div class="stat-chart" id="chart-daily-history"></div>
           </div>
         </div>
 
