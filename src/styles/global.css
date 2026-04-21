@@ -1967,6 +1967,19 @@ body {
   border-bottom: 1px solid rgba(0,0,0,0.06);
 }
 
+/* Narrow screens: drop the secondary columns (bomb-hits, pace) and
+   tighten spacing. The essentials (#, name, time, par) stay. */
+@media (max-width: 520px) {
+  #leaderboard-table th,
+  #leaderboard-table td {
+    padding: 8px 6px;
+    font-size: 13px;
+  }
+  #leaderboard-table .lb-col-extra {
+    display: none;
+  }
+}
+
 #leaderboard-table th {
   font-size: 10px;
   text-transform: uppercase;

@@ -199,7 +199,9 @@ async function updateLeaderboardDisplay() {
 
   entries.forEach((entry, i) => {
     const tr = document.createElement('tr');
-    const bombCol = entry.bombHits != null ? `<td>${entry.bombHits}</td>` : '<td>-</td>';
+    const bombCol = entry.bombHits != null
+      ? `<td class="lb-col-extra">${entry.bombHits}</td>`
+      : '<td class="lb-col-extra">-</td>';
     let parCol = '<td>-</td>';
     if (dailyPar > 0) {
       const delta = entry.time - dailyPar;
@@ -208,9 +210,9 @@ async function updateLeaderboardDisplay() {
       else if (delta > 0.5) parCol = `<td class="par-over">+${abs}</td>`;
       else parCol = `<td class="par-even">E</td>`;
     }
-    let paceCol = '<td>-</td>';
+    let paceCol = '<td class="lb-col-extra">-</td>';
     if (dailyMoves > 0) {
-      paceCol = `<td>${(entry.time / dailyMoves).toFixed(2)}</td>`;
+      paceCol = `<td class="lb-col-extra">${(entry.time / dailyMoves).toFixed(2)}</td>`;
     }
     tr.innerHTML = `<td>${i + 1}</td><td>${escapeHtml(entry.name)}</td><td>${entry.time}s</td>${bombCol}${parCol}${paceCol}`;
     tbody.appendChild(tr);
