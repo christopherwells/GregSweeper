@@ -36,11 +36,18 @@ No build step, no npm install, no dependencies to manage. Firebase SDK loaded vi
 
 Two-layer solver guarantees no 50/50 guesses:
 
-1. **Board solver** (`boardSolver.js`): Simulates full game playthrough from first click. Wall-aware neighbor lists, gimmick-aware (mystery=unknown, liar=displayedMines, mirror=displayedMines, sonar/compass/wormhole=unknown). Returns `{ solvable, remainingUnknowns, totalClicks }` (clicks, not individual cell reveals — cascades count as 1).
+1. **Board solver** (`boardSolver.js`): Simulates full game playthrough from first click. Wall-aware neighbor lists. Gimmick handling via `getPlayerVisibleCount`:
+   - **Mystery / sonar / compass / wormhole:** return UNKNOWN (no direct per-cell constraint; sonar/compass/wormhole contribute separate gimmick-range constraints in Pass B/C).
+   - **Liar:** return UNKNOWN. Liar's displayed value is true count ±1 — a disjunctive constraint, not a single value. `buildLiarConstraints` emits `{allowedMines: [X-1, X+1]}` for Pass C tank solver.
+   - **Mirror:** return `cell.adjacentMines` (the true count). The displayed value shows the partner's count for visual deception; a smart player who recognizes the pair can mentally un-swap. Using `displayedMines` would create false constraints that made post-gimmick boards spuriously unsolvable.
+   - Returns `{ solvable, remainingUnknowns, totalClicks, techniqueLevel }` where `techniqueLevel` is 0 (Pass A), 1 (Pass B subset), 2 (Pass C tank/gauss), or 3 (required disjunctive liar reasoning).
 
-2. **Constraint solver** (`constraintSolver.js`): Union-find partitions independent constraint groups. Tank solver (bitmask brute-force) for <=20 unknowns; Gaussian elimination for larger groups. Returns forced mines/safe cells.
+2. **Constraint solver** (`constraintSolver.js`): Union-find partitions independent constraint groups. Constraints use `allowedMines: number[]` — single-element for exact, multi-element for disjunctive (liar). Tank solver (bitmask brute-force with disjunctive check) for <=20 unknowns; Gaussian elimination for larger groups (exact constraints only — disjunctive filtered out before gauss).
 
-Board generation retries until `remainingUnknowns === 0`. Challenge mode retries 10 times with gimmick re-check. Daily strips gimmicks if unsolvable. Chaos is exempt from solvability.
+**Generation (challenge mode, `gameActions.js`):** Retry loop with two layers of "smart":
+- **Constructive mystery placement** — mystery cells are placed one at a time, verified after each; kept only if the board stays solvable. May place fewer than requested intensity. Other gimmicks (sonar/compass/wormhole/wall/liar/etc.) contribute info, so random placement works for them.
+- **Technique-floor verification** — each level demands a minimum `techniqueLevel` via `getRequiredTechnique(level)`: L1-30→0, L31-60→1, L61+→2. Boards below the floor are rejected. After 15 base-board attempts without success, the floor relaxes to 0 so we don't spin forever.
+- Up to 25 gimmick re-rolls per base board before regenerating the (expensive) base board. Daily strips gimmicks if unsolvable. Chaos is exempt from solvability.
 
 ## Important Patterns
 
@@ -88,6 +95,8 @@ Computed by `getDifficultyForLevel()` in `difficulty.js` — no static table.
   - Mystery and pressure plate are fully exclusive (mystery hides the number, plate shows a timer instead of a count).
 - **Displayed-number source of truth:** `recomputeDisplayedMines(board)` in `gimmicks.js` is the single function that writes `displayedMines`. Called at the end of `applyGimmicks` and after any mine-layout change (`defuseMine`, `shieldDefuse`, `magnetPull`, `performMineShift`).
 - **Mirror is a 2-cell adjacent swap** (not a 2x2 zone). Pair count scales 1–3 with intensity. Cells store `mirrorPair = { row, col, pairIndex }`.
+- **Walls:** `applyWalls` ALWAYS calls `recalcAllAdjacency` at the end, even when its isolation check forces walls to be cleared. Without this, cells retain stale wall-aware counts from a prior pass (shown-too-low vs. actual mines). `applyGimmicks` skips re-rolling walls when `board._wallEdges` is already populated (challenge mode pre-applies walls via `preWallEdges` so the constructive generator can build a wall-aware layout; re-rolling would invalidate it).
+- **Wall rendering:** `renderWallOverlays()` is called at the end of `newGame()` so daily mode's pre-generated walls are visible before first click. Challenge and chaos modes also call it inside their first-click handler (gimmicks apply on first click in those modes).
 
 ## Theme System
 - 30+ themes unlocked by level progression
@@ -104,8 +113,8 @@ Computed by `getDifficultyForLevel()` in `difficulty.js` — no static table.
 - Database paths:
   - `daily/{dateString}` — flat array of score objects (leaderboard)
   - `users/{uid}/` — cloud progress sync (maxCheckpoint, dailyStreak, bestDailyStreak, lastDailyDate)
-- Anonymous auth (`firebaseProgress.js`): silent sign-in on load, no UI
-- Cloud sync: saves on checkpoint advance + daily completion, loads on init (takes max of cloud vs local)
+- Anonymous auth (`firebaseProgress.js`): silent sign-in on load, no UI. `saveProgress` calls before auth completes are coalesced into a pending-save and flushed once `_ready` flips, so fast daily completions on slow connections don't drop their cloud sync.
+- Cloud sync: saves on checkpoint advance + daily completion, loads on init. Checkpoint takes the max. Daily streak is date-anchored: cloud date > local date adopts cloud's streak AND date verbatim (even if streak went down — the most recent play has the latest info), same date takes the higher streak, cloud stale keeps local. `bestDailyStreak` is always the high-water mark.
 - Falls back to localStorage leaderboards if Firebase unavailable
 - Rules deployed via `firebase deploy --only database` (config in `.firebaserc` + `firebase.json`)
 - Rules reference file: `firebase-rules.json`
