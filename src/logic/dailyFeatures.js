@@ -105,24 +105,30 @@ export function computeDailyFeatures(state, solverResult) {
 // Keeping this table explicit (rather than implicit in predictPar's math)
 // makes predictPar and breakdownPar share exactly one source of truth.
 //
-// Labels are what the modal renders as the "why this board was hard"
-// breakdown. Style: sentence-case, compact, singular concept.
+// `displayGroup` controls the label the modal shows. The regression still
+// uses all five move-type coefficients independently, but for the UI they
+// collapse into three intuitive buckets (easy / medium / hard). Gimmick
+// and board-shape terms each stand alone with their natural name.
+//
+//   easy   = Pass A + canonical subsets (recognised instantly)
+//   medium = generic subsets (some scanning)
+//   hard   = advanced logic + disjunctive (the moves that actually slow you down)
 const COEF_TERMS = [
-  { coef: 'secPerPassAMove',           feature: 'passAMoves',           label: 'Pass A moves' },
-  { coef: 'secPerCanonicalSubsetMove', feature: 'canonicalSubsetMoves', label: 'canonical subsets' },
-  { coef: 'secPerGenericSubsetMove',   feature: 'genericSubsetMoves',   label: 'generic subsets' },
-  { coef: 'secPerAdvancedLogicMove',   feature: 'advancedLogicMoves',   label: 'advanced logic' },
-  { coef: 'secPerDisjunctiveMove',     feature: 'disjunctiveMoves',     label: 'disjunctive logic' },
-  { coef: 'secPerCell',                feature: 'cellCount',            label: 'board size',         baseline: true },
-  { coef: 'secPerMineFlag',            feature: 'totalMines',           label: 'flag count',         baseline: true },
-  { coef: 'secPerWallEdge',            feature: 'wallEdgeCount',        label: 'walls' },
-  { coef: 'secPerMysteryCell',         feature: 'mysteryCellCount',     label: 'mystery' },
-  { coef: 'secPerLiarCell',            feature: 'liarCellCount',        label: 'liar' },
-  { coef: 'secPerLockedCell',          feature: 'lockedCellCount',      label: 'locked' },
-  { coef: 'secPerWormholePair',        feature: 'wormholePairCount',    label: 'wormhole' },
-  { coef: 'secPerMirrorPair',          feature: 'mirrorPairCount',      label: 'mirror' },
-  { coef: 'secPerSonarCell',           feature: 'sonarCellCount',       label: 'sonar' },
-  { coef: 'secPerCompassCell',         feature: 'compassCellCount',     label: 'compass' },
+  { coef: 'secPerPassAMove',           feature: 'passAMoves',           displayGroup: 'easy moves' },
+  { coef: 'secPerCanonicalSubsetMove', feature: 'canonicalSubsetMoves', displayGroup: 'easy moves' },
+  { coef: 'secPerGenericSubsetMove',   feature: 'genericSubsetMoves',   displayGroup: 'medium moves' },
+  { coef: 'secPerAdvancedLogicMove',   feature: 'advancedLogicMoves',   displayGroup: 'hard moves' },
+  { coef: 'secPerDisjunctiveMove',     feature: 'disjunctiveMoves',     displayGroup: 'hard moves' },
+  { coef: 'secPerCell',                feature: 'cellCount',            displayGroup: 'baseline',    baseline: true },
+  { coef: 'secPerMineFlag',            feature: 'totalMines',           displayGroup: 'baseline',    baseline: true },
+  { coef: 'secPerWallEdge',            feature: 'wallEdgeCount',        displayGroup: 'walls' },
+  { coef: 'secPerMysteryCell',         feature: 'mysteryCellCount',     displayGroup: 'mystery' },
+  { coef: 'secPerLiarCell',            feature: 'liarCellCount',        displayGroup: 'liar' },
+  { coef: 'secPerLockedCell',          feature: 'lockedCellCount',      displayGroup: 'locked' },
+  { coef: 'secPerWormholePair',        feature: 'wormholePairCount',    displayGroup: 'wormhole' },
+  { coef: 'secPerMirrorPair',          feature: 'mirrorPairCount',      displayGroup: 'mirror' },
+  { coef: 'secPerSonarCell',           feature: 'sonarCellCount',       displayGroup: 'sonar' },
+  { coef: 'secPerCompassCell',         feature: 'compassCellCount',     displayGroup: 'compass' },
 ];
 
 /**
@@ -139,23 +145,30 @@ export function predictPar(features) {
 
 /**
  * Per-term contribution breakdown for the game-over modal.
- * Returns an array of `{ label, seconds }`, ordered largest first, with:
- *   - Zero-contribution terms filtered out.
- *   - Baseline terms (intercept + board-size + flag-count) merged into a
- *     single `{ label: "baseline", seconds: N }` entry so the modal line
- *     doesn't become a wall of tiny contributions.
+ * Returns an array of `{ label, seconds }`, ordered largest first.
+ * Multiple coefficients sharing a `displayGroup` (e.g. Pass A and
+ * canonical subsets both rolling up under "easy moves") are summed.
+ * Zero-contribution groups are filtered out. Baseline-flagged terms
+ * (intercept + board-size + flag-count) merge into a single "baseline"
+ * chip so the modal stays readable on boards with many gimmicks.
  */
 export function breakdownPar(features) {
-  const entries = [];
+  const byGroup = new Map();
   let baseline = PAR_MODEL.intercept;
 
-  for (const { coef, feature, label, baseline: isBaseline } of COEF_TERMS) {
+  for (const { coef, feature, displayGroup, baseline: isBaseline } of COEF_TERMS) {
     const contribution = (PAR_MODEL[coef] || 0) * (features[feature] || 0);
     if (isBaseline) {
       baseline += contribution;
-    } else if (contribution > 0.05) {
-      entries.push({ label, seconds: Math.round(contribution * 10) / 10 });
+    } else if (contribution > 0) {
+      byGroup.set(displayGroup, (byGroup.get(displayGroup) || 0) + contribution);
     }
+  }
+
+  const entries = [];
+  for (const [label, seconds] of byGroup) {
+    const rounded = Math.round(seconds * 10) / 10;
+    if (rounded > 0) entries.push({ label, seconds: rounded });
   }
 
   entries.sort((a, b) => b.seconds - a.seconds);
