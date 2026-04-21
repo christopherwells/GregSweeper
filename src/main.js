@@ -36,7 +36,7 @@ import {
   saveDailyPar, loadDailyPar, applyCloudProgress,
 } from './storage/statsStorage.js';
 
-const CURRENT_VERSION = 'v1.4';
+const CURRENT_VERSION = 'v1.5';
 import {
   playLevelUp, isMuted, setMuted, loadMuted,
   setSFXVolume, getSFXVolume,

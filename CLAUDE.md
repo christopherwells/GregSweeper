@@ -152,4 +152,4 @@ Computed by `getDifficultyForLevel()` in `difficulty.js` — no static table.
 - Git identity: Christopher Wells <c.wells@bowdoin.edu>
 
 ## Version
-Current: v1.4 (app), cache version in sw.js incremented per deploy
+Current: v1.5 (app), cache version in sw.js incremented per deploy
