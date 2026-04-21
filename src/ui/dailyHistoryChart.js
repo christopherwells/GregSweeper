@@ -9,13 +9,16 @@
 const DAYS_BACK = 30;
 
 // Layout — expressed in viewBox units, not pixels. The real rendered size is
-// controlled by the container's width via preserveAspectRatio.
+// controlled by the container's width via preserveAspectRatio. Aspect is
+// ~1.5:1 (taller than a typical dashboard chart) so that when the SVG
+// shrinks to fit a ~350px mobile viewport, text and dots stay readable
+// instead of collapsing to microscopic.
 const VB_WIDTH = 600;
-const VB_HEIGHT = 180;
-const PAD_LEFT = 36;
-const PAD_RIGHT = 10;
-const PAD_TOP = 16;
-const PAD_BOTTOM = 28;
+const VB_HEIGHT = 400;
+const PAD_LEFT = 56;
+const PAD_RIGHT = 16;
+const PAD_TOP = 24;
+const PAD_BOTTOM = 48;
 
 // Clamp the y-range so a single extreme outlier (e.g. a brand-new player's
 // first attempt took 5 minutes) doesn't compress every other dot to a hair.
@@ -104,26 +107,37 @@ export function renderDailyHistoryChart(entries, opts = {}) {
     line.setAttribute('x2', VB_WIDTH - PAD_RIGHT);
     line.setAttribute('y2', y);
     line.setAttribute('class', v === 0 ? 'dhc-axis-zero' : 'dhc-axis-grid');
+    line.setAttribute('stroke-width', v === 0 ? 2 : 1);
     svg.appendChild(line);
 
     const label = document.createElementNS(svgNS, 'text');
-    label.setAttribute('x', PAD_LEFT - 6);
-    label.setAttribute('y', y + 4);
+    label.setAttribute('x', PAD_LEFT - 10);
+    label.setAttribute('y', y + 7);
     label.setAttribute('text-anchor', 'end');
     label.setAttribute('class', v === 0 ? 'dhc-axis-label dhc-axis-label-zero' : 'dhc-axis-label');
     label.textContent = (v > 0 ? '+' : '') + v;
     svg.appendChild(label);
   }
 
-  // x-axis date ticks — every ~5 days, labeled at the left edge.
-  const xTickEvery = Math.max(1, Math.floor(slots.length / 6));
+  // x-axis date ticks — spaced so roughly 4-5 labels fit across the width
+  // without collision at the default font. First tick left-anchored, last
+  // tick right-anchored, middle ticks centered. The last position is
+  // always "today"; intermediate ticks within ~half an interval of the end
+  // are skipped so they don't collide with the "today" label.
+  const xTickEvery = Math.max(1, Math.floor(slots.length / 4));
+  const lastIdx = slots.length - 1;
   for (let i = 0; i < slots.length; i++) {
-    if (i % xTickEvery !== 0 && i !== slots.length - 1) continue;
+    const isFirst = i === 0;
+    const isLast = i === lastIdx;
+    const isRegular = i % xTickEvery === 0 && !isFirst;
+    if (!isFirst && !isLast && !isRegular) continue;
+    if (isRegular && lastIdx - i < xTickEvery / 2) continue; // would collide with "today"
     const x = xFor(i);
     const label = document.createElementNS(svgNS, 'text');
+    const anchor = isFirst ? 'start' : (isLast ? 'end' : 'middle');
     label.setAttribute('x', x);
-    label.setAttribute('y', VB_HEIGHT - 8);
-    label.setAttribute('text-anchor', 'middle');
+    label.setAttribute('y', VB_HEIGHT - 16);
+    label.setAttribute('text-anchor', anchor);
     label.setAttribute('class', 'dhc-axis-label dhc-date-label');
     label.textContent = formatShortDate(slots[i].date, slots[i].date === today);
     svg.appendChild(label);
@@ -142,11 +156,11 @@ export function renderDailyHistoryChart(entries, opts = {}) {
     const dot = document.createElementNS(svgNS, 'circle');
     dot.setAttribute('cx', x);
     dot.setAttribute('cy', y);
-    dot.setAttribute('r', 4);
+    dot.setAttribute('r', 9);
     dot.setAttribute('class', cls);
     // Native SVG <title> renders a browser tooltip on hover with no extra JS.
     const title = document.createElementNS(svgNS, 'title');
-    title.textContent = `${s.date} · ${s.entry.time.toFixed(1)}s vs par ${s.entry.par.toFixed(1)}s · ${formatDelta(s.entry.delta)}`;
+    title.textContent = `${formatLongDate(s.date)} · ${s.entry.time.toFixed(1)}s vs par ${s.entry.par.toFixed(1)}s · ${formatDelta(s.entry.delta)}`;
     dot.appendChild(title);
     svg.appendChild(dot);
   }
@@ -162,12 +176,24 @@ function localDateString(d) {
     String(d.getDate()).padStart(2, '0');
 }
 
+const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const LONG_MONTHS  = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
 function formatShortDate(dateStr, isToday) {
   if (isToday) return 'today';
-  // YYYY-MM-DD → "4/21"
+  // YYYY-MM-DD → "Apr 21"
   const parts = dateStr.split('-');
   if (parts.length !== 3) return dateStr;
-  return `${parseInt(parts[1], 10)}/${parseInt(parts[2], 10)}`;
+  const mo = SHORT_MONTHS[parseInt(parts[1], 10) - 1] || parts[1];
+  return `${mo} ${parseInt(parts[2], 10)}`;
+}
+
+function formatLongDate(dateStr) {
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return dateStr;
+  const mo = LONG_MONTHS[parseInt(parts[1], 10) - 1];
+  if (!mo) return dateStr;
+  return `${mo} ${parseInt(parts[2], 10)}, ${parts[0]}`;
 }
 
 function formatDelta(delta) {

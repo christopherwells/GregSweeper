@@ -2097,33 +2097,35 @@ body {
   display: block;
   width: 100%;
   height: auto;
-  max-height: 200px;
+  max-height: 340px;
 }
 .daily-history-empty {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--color-text-secondary);
   opacity: 0.7;
   padding: 16px 0;
   text-align: center;
 }
+/* Stroke widths and font sizes are in viewBox user units (the viewBox is
+   600x400). At a typical mobile rendered width of ~340px, one user unit
+   equals roughly 0.57 CSS px, so 22 user units ≈ 12.5 CSS px — large
+   enough to read without a zoom. */
 .dhc-axis-grid {
   stroke: var(--color-text-secondary);
-  stroke-width: 0.5;
   stroke-opacity: 0.15;
 }
 .dhc-axis-zero {
   stroke: var(--color-text-secondary);
-  stroke-width: 1;
-  stroke-opacity: 0.45;
+  stroke-opacity: 0.5;
 }
 .dhc-axis-label {
-  font-size: 9px;
+  font-size: 22px;
   font-family: inherit;
   fill: var(--color-text-secondary);
-  opacity: 0.65;
+  opacity: 0.75;
 }
-.dhc-axis-label-zero { opacity: 0.85; }
-.dhc-date-label { font-size: 9px; }
+.dhc-axis-label-zero { opacity: 0.95; font-weight: 600; }
+.dhc-date-label { font-size: 20px; }
 .dhc-dot { stroke: none; }
 .dhc-dot-under { fill: #4caf50; }
 .dhc-dot-over  { fill: #ef5350; }

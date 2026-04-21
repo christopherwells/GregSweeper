@@ -121,28 +121,29 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+const LONG_MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+function prettyDate(dateStr) {
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return dateStr;
+  const mo = LONG_MONTH_NAMES[parseInt(parts[1], 10) - 1];
+  if (!mo) return dateStr;
+  return `${mo} ${parseInt(parts[2], 10)}, ${parts[0]}`;
+}
+
 async function updateLeaderboardDisplay() {
   const dateStr = getLocalDateString();
-  $('#leaderboard-date').textContent = `Date: ${dateStr}`;
-  const statusBadge = $('#leaderboard-status');
+  $('#leaderboard-date').textContent = prettyDate(dateStr);
   const tbody = $('#leaderboard-body');
   tbody.innerHTML = '';
 
   let entries = null;
-  let isOnline = false;
 
   if (isFirebaseOnline()) {
     entries = await fetchOnlineLeaderboard(dateStr);
-    if (entries !== null) isOnline = true;
   }
 
   if (entries === null) {
     entries = loadDailyLeaderboard(dateStr);
-  }
-
-  if (statusBadge) {
-    statusBadge.textContent = isOnline ? '🌐 Online' : '📱 Local';
-    statusBadge.className = `lb-status ${isOnline ? 'online' : 'offline'}`;
   }
 
   const hasEntries = entries.length > 0;
