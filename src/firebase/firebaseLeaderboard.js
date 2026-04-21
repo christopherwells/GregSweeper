@@ -79,13 +79,23 @@ export function isFirebaseOnline() {
 
 /**
  * Submit a score to the online daily leaderboard.
+ *
+ * Board features for the date are uploaded separately to `dailyMeta/{date}`
+ * (write-once), because every player on a given date gets the same board and
+ * denormalising features into every per-player score push would waste space
+ * and complicate the R join for the offline refit.
+ *
  * @param {string} dateString YYYY-MM-DD format
  * @param {string} name Player name (max 20 chars)
  * @param {number} time Completion time in seconds
  * @param {number} bombHits Number of bomb hits (daily mode strikes)
+ * @param {Object} [extras]
+ * @param {string} [extras.uid] Stable anonymous uid for per-user analyses
+ * @param {number} [extras.par] Predicted par at play time (for R diagnostics)
+ * @param {Object} [extras.features] Board feature vector for dailyMeta upsert
  * @returns {Promise<boolean>} true if submitted successfully
  */
-export async function submitOnlineScore(dateString, name, time, bombHits = 0) {
+export async function submitOnlineScore(dateString, name, time, bombHits = 0, extras = {}) {
   if (!isFirebaseOnline()) return false;
 
   // Client-side rate limiting: reject submissions too close together
@@ -105,19 +115,108 @@ export async function submitOnlineScore(dateString, name, time, bombHits = 0) {
     const sanitizedName = String(name).slice(0, 20).trim();
     if (!sanitizedName) return false;
 
-    const ref = db.ref(`daily/${dateString}`);
-    await ref.push({
+    const payload = {
       name: sanitizedName,
       time,
       bombHits,
       timestamp: firebase.database.ServerValue.TIMESTAMP,
-    });
+    };
+    if (extras.uid) payload.uid = String(extras.uid);
+    if (typeof extras.par === 'number') payload.par = extras.par;
+
+    const ref = db.ref(`daily/${dateString}`);
+    await ref.push(payload);
+
+    // Fire-and-forget meta upload. Don't block the score submission if the
+    // meta write fails or is rejected (e.g. write-once rule when another
+    // client already uploaded it for today).
+    if (extras.features && typeof extras.features === 'object') {
+      upsertDailyMeta(dateString, extras.features).catch(() => {});
+    }
 
     _lastSubmitTime = now;
     return true;
   } catch (err) {
     console.warn('Firebase submit failed:', err.message);
     return false;
+  }
+}
+
+/**
+ * Write `dailyMeta/{date}` if it doesn't already exist. Rules enforce
+ * write-once server-side; the client check here is a bandwidth optimisation,
+ * not a guarantee. The FIRST successful client submission for a date lands
+ * the features; everyone else no-ops.
+ */
+async function upsertDailyMeta(dateString, features) {
+  if (!isFirebaseOnline()) return;
+  const ref = db.ref(`dailyMeta/${dateString}`);
+  const snap = await ref.once('value');
+  if (snap.exists()) return;
+  await ref.set({
+    features,
+    writtenAt: firebase.database.ServerValue.TIMESTAMP,
+  });
+}
+
+/**
+ * Fetch the current user's daily history, most-recent-first, limited to
+ * `daysBack` recent entries. Returns an array of `{ date, time }` or null
+ * if Firebase is offline. Par and delta are computed at render time against
+ * the current PAR_MODEL + dailyMeta features, so that older entries
+ * automatically reflect the latest coefficients after a refit (no server-
+ * side rewrite needed).
+ */
+export async function fetchUserDailyHistory(uid, daysBack = 30) {
+  if (!isFirebaseOnline() || !uid) return null;
+  try {
+    const ref = db.ref(`users/${uid}/dailyHistory`);
+    const snapshot = await Promise.race([
+      ref.once('value'),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000)),
+    ]);
+    if (!snapshot.exists()) return [];
+
+    const entries = [];
+    snapshot.forEach((child) => {
+      const v = child.val();
+      if (v && typeof v.time === 'number') {
+        entries.push({ date: child.key, time: v.time });
+      }
+    });
+
+    entries.sort((a, b) => b.date.localeCompare(a.date));
+    return entries.slice(0, daysBack);
+  } catch (err) {
+    console.warn('Firebase daily-history fetch failed:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Fetch the full dailyMeta tree — a map of `{ date: features }`. Used by
+ * the history chart to compute each historical entry's par on the fly
+ * against the current PAR_MODEL. World-readable, no auth needed.
+ * Returns null on error.
+ */
+export async function fetchAllDailyMeta() {
+  if (!isFirebaseOnline()) return null;
+  try {
+    const snapshot = await Promise.race([
+      db.ref('dailyMeta').once('value'),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000)),
+    ]);
+    if (!snapshot.exists()) return {};
+
+    const byDate = {};
+    snapshot.forEach((child) => {
+      const v = child.val();
+      if (v && v.features) byDate[child.key] = v.features;
+    });
+    return byDate;
+  } catch (err) {
+    console.warn('Firebase dailyMeta fetch failed:', err.message);
+    return null;
   }
 }
 

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>GregSweeper — Backfill Daily Features</title>
+<style>
+  body { font-family: system-ui, -apple-system, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 16px; background: #1a1a2e; color: #ddd; }
+  h1 { margin: 0 0 8px; font-size: 22px; }
+  .sub { opacity: 0.7; margin: 0 0 20px; font-size: 14px; }
+  .row { margin: 10px 0; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  label { font-size: 13px; }
+  input[type="date"], input[type="text"] { background: #26263e; color: #eee; border: 1px solid #444; padding: 6px 10px; border-radius: 4px; font-size: 14px; }
+  button { background: #3d5afe; color: #fff; border: 0; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  button.danger { background: #c62828; }
+  #log { margin-top: 16px; background: #0f0f1e; padding: 12px; border-radius: 4px; max-height: 480px; overflow-y: auto; font-family: monospace; font-size: 12px; line-height: 1.5; }
+  .log-ok { color: #4caf50; }
+  .log-skip { color: #888; }
+  .log-err { color: #ef5350; }
+  .log-info { color: #64b5f6; }
+</style>
+</head>
+<body>
+<h1>Backfill Daily Features</h1>
+<p class="sub">
+  One-shot utility that regenerates historical dailies from their date seeds,
+  computes the feature vector via <code>computeDailyFeatures</code>, and writes
+  each to <code>dailyMeta/{date}</code> in Firebase. Safe to re-run: existing
+  meta entries are skipped, not overwritten. Dates are local-calendar dates,
+  matching how the live app seeds its daily RNG.
+</p>
+
+<div class="row">
+  <label>Start date: <input id="start" type="date" required></label>
+  <label>End date (inclusive): <input id="end" type="date" required></label>
+</div>
+<div class="row">
+  <label>Type <code>BACKFILL</code> to enable: <input id="confirm" type="text" placeholder="BACKFILL" style="width: 120px"></label>
+  <button id="run" class="danger" disabled>Run backfill</button>
+</div>
+
+<div id="log"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+
+<script type="module">
+import { generateBoard, cleanSolverArtifacts } from './src/logic/boardGenerator.js';
+import { isBoardSolvable } from './src/logic/boardSolver.js';
+import { applyGimmicks, getDailyGimmick } from './src/logic/gimmicks.js';
+import { createDailyRNG } from './src/logic/seededRandom.js';
+import {
+  DAILY_MIN_SIZE, DAILY_SIZE_RANGE,
+  DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE,
+} from './src/logic/difficulty.js';
+import { computeDailyFeatures } from './src/logic/dailyFeatures.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBhiFPIUA0u021Yh7eA35N2nQOIUPVPtpo",
+  authDomain: "gregsweeper-66d02.firebaseapp.com",
+  databaseURL: "https://gregsweeper-66d02-default-rtdb.firebaseio.com",
+  projectId: "gregsweeper-66d02",
+  storageBucket: "gregsweeper-66d02.firebasestorage.app",
+  messagingSenderId: "381276018616",
+  appId: "1:381276018616:web:28a79187190dcf9caba14d",
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// Default dates: start = one month ago, end = yesterday.
+const today = new Date();
+const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+const monthAgo = new Date(today);  monthAgo.setDate(monthAgo.getDate() - 30);
+document.getElementById('start').value = toDateString(monthAgo);
+document.getElementById('end').value   = toDateString(yesterday);
+
+document.getElementById('confirm').addEventListener('input', (e) => {
+  document.getElementById('run').disabled = e.target.value.trim() !== 'BACKFILL';
+});
+
+document.getElementById('run').addEventListener('click', async () => {
+  const runBtn = document.getElementById('run');
+  runBtn.disabled = true;
+  runBtn.textContent = 'Running…';
+
+  const logEl = document.getElementById('log');
+  logEl.innerHTML = '';
+  const log = (msg, cls = '') => {
+    const line = document.createElement('div');
+    if (cls) line.className = 'log-' + cls;
+    line.textContent = msg;
+    logEl.appendChild(line);
+    logEl.scrollTop = logEl.scrollHeight;
+  };
+
+  try {
+    log('Signing in anonymously…', 'info');
+    await firebase.auth().signInAnonymously();
+    log('Signed in.', 'ok');
+  } catch (e) {
+    log('Auth failed: ' + e.message, 'err');
+    runBtn.disabled = false;
+    runBtn.textContent = 'Run backfill';
+    return;
+  }
+
+  const startDate = new Date(document.getElementById('start').value + 'T00:00:00');
+  const endDate   = new Date(document.getElementById('end').value   + 'T00:00:00');
+  if (isNaN(startDate) || isNaN(endDate) || startDate > endDate) {
+    log('Invalid date range.', 'err');
+    runBtn.disabled = false;
+    runBtn.textContent = 'Run backfill';
+    return;
+  }
+
+  let processed = 0;
+  let wrote = 0;
+  let skipped = 0;
+  let failed = 0;
+
+  for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+    const dateStr = toDateString(d);
+    processed++;
+    try {
+      const ref = db.ref('dailyMeta/' + dateStr);
+      const snap = await ref.once('value');
+      if (snap.exists()) {
+        log(dateStr + ' — already uploaded, skipped', 'skip');
+        skipped++;
+        continue;
+      }
+
+      const features = computeFeaturesForDate(dateStr);
+      if (!features) {
+        log(dateStr + ' — regen failed (board unsolvable?)', 'err');
+        failed++;
+        continue;
+      }
+
+      await ref.set({
+        features,
+        writtenAt: firebase.database.ServerValue.TIMESTAMP,
+      });
+      log(dateStr + ' — wrote features (move types: ' + moveSummary(features) + ')', 'ok');
+      wrote++;
+    } catch (e) {
+      log(dateStr + ' — error: ' + e.message, 'err');
+      failed++;
+    }
+  }
+
+  log('', '');
+  log('Done. Processed ' + processed + ', wrote ' + wrote + ', skipped ' + skipped + ', failed ' + failed, 'info');
+  runBtn.disabled = false;
+  runBtn.textContent = 'Run backfill';
+});
+
+function computeFeaturesForDate(dateStr) {
+  // Mirrors the daily generation path in src/game/gameActions.js:
+  // dims/density/mines come from the first three RNG values on the date seed,
+  // then we retry board + gimmicks up to 50 times until a solvable layout
+  // is found.
+  const dimRng = createDailyRNG(dateStr);
+  const rows = DAILY_MIN_SIZE + Math.floor(dimRng() * DAILY_SIZE_RANGE);
+  const cols = DAILY_MIN_SIZE + Math.floor(dimRng() * DAILY_SIZE_RANGE);
+  const density = DAILY_MIN_DENSITY + dimRng() * DAILY_DENSITY_RANGE;
+  const totalMines = Math.max(5, Math.round(rows * cols * density));
+  const fixedRow = Math.floor(rows / 2);
+  const fixedCol = Math.floor(cols / 2);
+  const activeGimmicks = getDailyGimmick(dateStr, createDailyRNG);
+
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const boardRng = attempt === 0
+      ? createDailyRNG(dateStr)
+      : createDailyRNG(dateStr + '-retry-' + attempt);
+    const board = generateBoard(rows, cols, totalMines, fixedRow, fixedCol, boardRng);
+    cleanSolverArtifacts(board);
+    if (activeGimmicks.length > 0) {
+      const gRng = createDailyRNG(dateStr + '-gimmick-apply-' + attempt);
+      applyGimmicks(board, 1, activeGimmicks, gRng);
+    }
+    const result = isBoardSolvable(board, rows, cols, fixedRow, fixedCol);
+    cleanSolverArtifacts(board);
+    if (result.solvable || result.remainingUnknowns === 0) {
+      return computeDailyFeatures(
+        { board, rows, cols, totalMines, activeGimmicks },
+        result,
+      );
+    }
+  }
+  return null;
+}
+
+function moveSummary(f) {
+  return [
+    f.passAMoves + ' A',
+    f.canonicalSubsetMoves + ' C',
+    f.genericSubsetMoves + ' G',
+    f.advancedLogicMoves + ' X',
+    f.disjunctiveMoves + ' D',
+  ].join('/');
+}
+
+function toDateString(d) {
+  return d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' +
+    String(d.getDate()).padStart(2, '0');
+}
+</script>
+</body>
+</html>

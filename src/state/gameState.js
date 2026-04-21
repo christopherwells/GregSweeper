@@ -18,8 +18,9 @@ export const state = {
   gameMode: 'normal',   // normal | timed | skillTrainer | daily | chaos
   dailySeed: null,
   dailyBombHits: 0,
-  dailyPar: 0,       // par time in seconds (solver reveals * PAR_SECONDS_PER_MOVE)
+  dailyPar: 0,       // predicted time in seconds — predictPar(dailyFeatures)
   dailyMoves: 0,     // solver totalClicks for pace calculation
+  dailyFeatures: null, // full feature vector from computeDailyFeatures — used for par breakdown, Firebase meta upload, and the R refit training set
 
   powerUps: { revealSafe: 0, shield: 0, lifeline: 0, scanRowCol: 0, magnet: 0, xray: 0 },
   shieldActive: false,

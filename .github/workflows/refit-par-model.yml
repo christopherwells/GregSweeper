@@ -1,0 +1,62 @@
+name: Refit Greg-par
+
+# Runs the Greg-par regression daily, patches src/logic/difficulty.js
+# between its PAR_MODEL:START / PAR_MODEL:END markers, and pushes the
+# change straight to master (GitHub Pages then redeploys automatically).
+#
+# 10am America/New_York is 14:00 UTC in EDT and 15:00 UTC in EST. GitHub
+# Actions cron does not observe DST, so the pinned 14:00 UTC slot fires at
+# 10am ET in summer and 9am ET in winter — close enough for a daily refit.
+# Change the cron if you move timezones.
+on:
+  schedule:
+    - cron: '0 14 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refit-par-model
+  cancel-in-progress: false
+
+jobs:
+  refit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: release
+          use-public-rspm: true
+
+      - name: Cache R packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.R_LIBS_USER }}
+          key: r-pkgs-${{ runner.os }}-jsonlite-dplyr-tidyr-purrr-stringr-lme4-v1
+          restore-keys: r-pkgs-${{ runner.os }}-
+
+      - name: Install R packages
+        shell: Rscript {0}
+        run: |
+          options(repos = c(CRAN = "https://packagemanager.posit.co/cran/__linux__/jammy/latest"))
+          pkgs <- c("jsonlite", "dplyr", "tidyr", "purrr", "stringr", "lme4")
+          need <- setdiff(pkgs, rownames(installed.packages()))
+          if (length(need)) install.packages(need)
+
+      - name: Refit PAR_MODEL
+        run: Rscript scripts/refit-par-model.R
+
+      - name: Commit and push if anything changed
+        run: |
+          if git diff --quiet src/logic/difficulty.js src/logic/handicaps.json; then
+            echo "No model or handicap changes — nothing to commit."
+            exit 0
+          fi
+          git config user.name  "Christopher Wells"
+          git config user.email "c.wells@bowdoin.edu"
+          git add src/logic/difficulty.js src/logic/handicaps.json
+          git commit -m "refit PAR_MODEL and handicaps — $(date -u +%Y-%m-%d)"
+          git push

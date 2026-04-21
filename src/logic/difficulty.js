@@ -6,10 +6,47 @@
 // 14×14 at 34% density with heavy modifier stacking.
 
 // ── Shared constants ──────────────────────────────────
-export const PAR_SECONDS_PER_MOVE = 3.65;
 export const PLATE_MIN_SECONDS = 8;
 export const PLATE_SECONDS_PER_STEP = 10;
 export const LIFELINE_WIN_REWARD_CHANCE = 0.3;
+
+// Greg-par linear model. Coefficients are fit in R against real daily
+// completion data and written here; the JS side just applies the formula
+// via computeDailyFeatures + predictPar in src/logic/dailyFeatures.js.
+//
+// The block between PAR_MODEL:START and PAR_MODEL:END is OVERWRITTEN
+// AUTOMATICALLY every day at 10am ET by the "Refit Greg-par" GitHub Action
+// (.github/workflows/refit-par-model.yml). Do not edit by hand between the
+// markers — your changes will be lost on the next scheduled refit.
+// To tune by hand, disable the workflow first or edit the R script in
+// scripts/refit-par-model.R.
+// PAR_MODEL:START
+export const PAR_MODEL = {
+  // Last refit: 2026-04-21 (seed values; N=0)
+  intercept: 5.0,
+
+  // Move-type coefficients (primary — these should dominate after R fit)
+  secPerPassAMove:            1.2,  // trivial propagation — near-instant
+  secPerCanonicalSubsetMove:  2.0,  // small local subset — instant for experienced players
+  secPerGenericSubsetMove:    4.5,  // non-local subset — real scanning required
+  secPerAdvancedLogicMove:    7.0,  // tank / gauss — the hardest exact logic
+  secPerDisjunctiveMove:     10.0,  // liar disjunctive — slowest
+
+  // Board shape (secondary)
+  secPerCell:      0.02,
+  secPerMineFlag:  0.3,
+  secPerWallEdge:  0.15,
+
+  // Gimmick cell counts (tertiary — seeded small)
+  secPerMysteryCell:   0.8,
+  secPerLiarCell:      0.6,
+  secPerLockedCell:    0.4,
+  secPerWormholePair:  0.8,
+  secPerMirrorPair:    1.0,
+  secPerSonarCell:     0.5,
+  secPerCompassCell:   0.5,
+};
+// PAR_MODEL:END
 
 // Daily board dimension ranges (seeded RNG picks within these)
 export const DAILY_MIN_SIZE = 8;

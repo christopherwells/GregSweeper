@@ -2030,6 +2030,74 @@ body {
 .par-over { color: #ef5350 !important; }
 .par-even { color: var(--color-text-secondary) !important; }
 
+.par-breakdown {
+  font-size: 11.5px;
+  color: var(--color-text-secondary);
+  opacity: 0.75;
+  line-height: 1.5;
+  margin-top: -2px;
+  margin-bottom: 10px;
+  /* Allow natural wrapping across multiple lines on narrow screens rather
+     than overflowing or truncating. */
+  word-spacing: 0;
+}
+.par-breakdown .par-term {
+  display: inline-block;
+  white-space: nowrap;
+}
+.par-breakdown .par-term-sep {
+  opacity: 0.5;
+}
+
+/* ── Daily history chart (leaderboard modal) ───────────── */
+.daily-history-section {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border, rgba(255, 255, 255, 0.1));
+}
+.daily-history-section h4 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.02em;
+}
+.daily-history-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 200px;
+}
+.daily-history-empty {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  opacity: 0.7;
+  padding: 16px 0;
+  text-align: center;
+}
+.dhc-axis-grid {
+  stroke: var(--color-text-secondary);
+  stroke-width: 0.5;
+  stroke-opacity: 0.15;
+}
+.dhc-axis-zero {
+  stroke: var(--color-text-secondary);
+  stroke-width: 1;
+  stroke-opacity: 0.45;
+}
+.dhc-axis-label {
+  font-size: 9px;
+  font-family: inherit;
+  fill: var(--color-text-secondary);
+  opacity: 0.65;
+}
+.dhc-axis-label-zero { opacity: 0.85; }
+.dhc-date-label { font-size: 9px; }
+.dhc-dot { stroke: none; }
+.dhc-dot-under { fill: #4caf50; }
+.dhc-dot-over  { fill: #ef5350; }
+.dhc-dot-even  { fill: var(--color-text-secondary); opacity: 0.7; }
+
 #gameover-record {
   color: var(--color-golden) !important;
   font-weight: 800;

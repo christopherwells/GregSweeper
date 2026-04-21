@@ -18,6 +18,18 @@ let _ready = false;
 // once _ready flips. Without this, fast Daily completions on slow
 // connections drop their cloud sync silently.
 let _pendingSave = null;
+// Daily-history entries submitted before auth completes are queued here and
+// flushed together on _ready. One entry per date (last-write-wins), since
+// re-submitting the same date is always a no-op or an upgrade.
+let _pendingHistory = null;
+
+/**
+ * Return the stable anonymous uid established by initAnonymousAuth, or null
+ * if auth has not yet resolved.
+ */
+export function getUid() {
+  return _uid;
+}
 
 /**
  * Sign in anonymously and prepare for progress sync.
@@ -42,6 +54,13 @@ export async function initAnonymousAuth() {
       const data = _pendingSave;
       _pendingSave = null;
       saveProgress(data);
+    }
+    if (_pendingHistory) {
+      const queued = _pendingHistory;
+      _pendingHistory = null;
+      for (const [date, entry] of Object.entries(queued)) {
+        saveDailyHistoryEntry(date, entry);
+      }
     }
   } catch (err) {
     // Silent failure — progress stays local-only
@@ -72,6 +91,37 @@ export function saveProgress({ maxCheckpoint, dailyStreak, bestDailyStreak, last
 
   _db.ref('users/' + _uid).update(data).catch(err => {
     console.warn('Cloud progress save failed:', err.message);
+  });
+}
+
+/**
+ * Write a daily-history entry for the current user.
+ * We only store the raw completion `time`, not par or delta. Par is a
+ * function of the board's features and the current PAR_MODEL; since both
+ * change over time (coefficients refit daily), recomputing par at read
+ * time against whatever PAR_MODEL is currently shipping keeps every
+ * historical entry in sync with the latest model. Otherwise we'd either
+ * have to write back to every row on every refit, or live with stale
+ * pars in older rows that don't match the rest of the app.
+ */
+export function saveDailyHistoryEntry(date, entry) {
+  if (!date || !entry || typeof entry.time !== 'number') return;
+
+  const payload = {
+    time: entry.time,
+    submittedAt: typeof firebase !== 'undefined' && firebase.database
+      ? firebase.database.ServerValue.TIMESTAMP
+      : Date.now(),
+  };
+
+  if (!_ready || !_uid) {
+    if (!_pendingHistory) _pendingHistory = {};
+    _pendingHistory[date] = payload;
+    return;
+  }
+
+  _db.ref('users/' + _uid + '/dailyHistory/' + date).set(payload).catch(err => {
+    console.warn('Daily history save failed:', err.message);
   });
 }
 

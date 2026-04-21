@@ -75,7 +75,21 @@ export function buildNeighborCache(board, rows, cols) {
  * @param {number} safeRow              - first click row
  * @param {number} safeCol              - first click column
  * @param {Array} [preNeighborCache]    - optional pre-built neighbor cache from buildNeighborCache()
- * @returns {{ solvable: boolean, remainingUnknowns: number }}
+ * @returns {{
+ *   solvable: boolean,
+ *   remainingUnknowns: number,
+ *   totalClicks: number,
+ *   techniqueLevel: 0 | 1 | 2 | 3,
+ *   passAMoves: number,
+ *   canonicalSubsetMoves: number,
+ *   genericSubsetMoves: number,
+ *   advancedLogicMoves: number,
+ *   disjunctiveMoves: number,
+ * }}
+ *
+ * Invariant (for solvable boards): passA + canonicalSubset + genericSubset +
+ * advancedLogic + disjunctive + 1 === totalClicks (the +1 accounts for the
+ * first click, which is a setup action, not a deduction).
  */
 export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighborCache) {
   // Build a lightweight simulation grid:
@@ -166,6 +180,33 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
   // Reveal a cell (simulate); if it's a zero, flood-fill
   const revealQueue = [];
   let totalClicks = 0; // counts player clicks (cascades = 1 click)
+  // Per-move-type counters: the mix of deduction techniques the board requires
+  // is the primary feature driving predicted par time. `totalClicks` = 1 (first
+  // click) + sum of the five buckets below.
+  let passAMoves = 0;            // trivial propagation (count == flags / unknowns)
+  let canonicalSubsetMoves = 0;  // Pass B subset where the larger constraint is small (<=3 unknowns) — local 1-1 / 1-2 / 1-1-1 shapes
+  let genericSubsetMoves = 0;    // Pass B subset over a larger constraint — non-local, slower
+  let advancedLogicMoves = 0;    // Pass C tank / gauss over exact constraints
+  let disjunctiveMoves = 0;      // Pass C where liar disjunctive constraints were in play
+
+  // Highest technique level the board required (hoisted so buildResult can read it):
+  //   0 = simple propagation only (Pass A)
+  //   1 = subset / superset analysis (Pass B)
+  //   2 = advanced solver — tank / gauss (Pass C)
+  //   3 = required liar disjunctive reasoning to make a deduction
+  let techniqueLevel = 0;
+
+  const buildResult = (solvable, remainingUnknowns) => ({
+    solvable,
+    remainingUnknowns,
+    totalClicks,
+    techniqueLevel,
+    passAMoves,
+    canonicalSubsetMoves,
+    genericSubsetMoves,
+    advancedLogicMoves,
+    disjunctiveMoves,
+  });
   function revealCell(i) {
     if (sim[i] !== 0 || isMine[i] || isLocked[i]) return;
     sim[i] = 1;
@@ -192,17 +233,11 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
   }
   tryUnlockAll(); // unlock any locked cells freed by the initial cascade
 
-  if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0, totalClicks, techniqueLevel: 0 };
+  if (revealedCount === totalSafe) return buildResult(true, 0);
 
   // Step 2: Iterative multi-layer constraint solving.
-  // Track the highest "technique level" needed to solve the board so the
-  // generator can grade difficulty:
-  //   0 = simple propagation only (Pass A)
-  //   1 = subset / superset analysis (Pass B)
-  //   2 = advanced solver — tank / gauss (Pass C)
-  //   3 = required liar disjunctive reasoning to make a deduction
+  // (techniqueLevel is hoisted above buildResult so returns include it.)
   const MAX_ITERATIONS = 1000;
-  let techniqueLevel = 0;
 
   for (let iter = 0; iter < MAX_ITERATIONS; iter++) {
     let progress = false;
@@ -239,7 +274,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
       const remaining = src.expected - flagged;
 
       if (remaining < 0 || remaining > unknowns) {
-        return { solvable: false, remainingUnknowns: totalSafe - revealedCount, totalClicks, techniqueLevel };
+        return buildResult(false, totalSafe - revealedCount);
       }
 
       // Rule 1: All unknowns must be mines
@@ -257,6 +292,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
         for (const ni of nbrs) {
           if (sim[ni] === 0) {
             totalClicks++;
+            passAMoves++;
             revealQueue.push(ni);
             progress = true;
           }
@@ -268,7 +304,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
     }
 
     tryUnlockAll(); // check if reveals freed any locked cells
-      if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0, totalClicks, techniqueLevel };
+      if (revealedCount === totalSafe) return buildResult(true, 0);
     if (progress) continue;
 
     // ── Pass B: Subset / superset constraint analysis ──
@@ -318,9 +354,16 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
         }
 
         if (diffMines === 0 && diff.length > 0) {
+          // Classify by the size of the LARGER constraint (cB.unknowns.length).
+          // <= 3 captures canonical 1-1, 1-2, and most 1-1-1 shapes — moves an
+          // experienced player recognises instantly. Larger constraints require
+          // real scanning and are grouped under "generic subset".
+          const isCanonical = cB.unknowns.length <= 3;
           for (const di of diff) {
             if (sim[di] === 0) {
               totalClicks++;
+              if (isCanonical) canonicalSubsetMoves++;
+              else genericSubsetMoves++;
               revealQueue.push(di);
               subsetProgress = true;
             }
@@ -334,7 +377,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
 
     tryUnlockAll();
     if (subsetProgress) techniqueLevel = Math.max(techniqueLevel, 1);
-      if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0, totalClicks, techniqueLevel };
+      if (revealedCount === totalSafe) return buildResult(true, 0);
     if (subsetProgress) continue;
 
     // ── Pass C: Advanced solver (Gauss + Tank) ──
@@ -359,6 +402,8 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
     for (const cellIdx of solved.safe) {
       if (sim[cellIdx] === 0) {
         totalClicks++;
+        if (hasDisjunctive) disjunctiveMoves++;
+        else advancedLogicMoves++;
         revealQueue.push(cellIdx);
         advancedProgress = true;
       }
@@ -369,15 +414,14 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
 
     tryUnlockAll();
     if (advancedProgress) techniqueLevel = Math.max(techniqueLevel, hasDisjunctive ? 3 : 2);
-      if (revealedCount === totalSafe) return { solvable: true, remainingUnknowns: 0, totalClicks, techniqueLevel };
+      if (revealedCount === totalSafe) return buildResult(true, 0);
     if (advancedProgress) continue;
 
     // No progress from any layer — board requires guessing
     break;
   }
 
-  const remaining = totalSafe - revealedCount;
-  return { solvable: false, remainingUnknowns: remaining, totalClicks, techniqueLevel };
+  return buildResult(false, totalSafe - revealedCount);
 }
 
 // ── Build constraints from current simulation state ──────────

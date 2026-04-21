@@ -5,17 +5,22 @@ const STATS_KEY = 'minesweeper_stats';
 const LEADERBOARD_KEY = 'minesweeper_daily_leaderboard';
 const DAILY_PAR_KEY_PREFIX = 'minesweeper_daily_par_';
 const DAILY_MOVES_KEY_PREFIX = 'minesweeper_daily_moves_';
+const DAILY_FEATURES_KEY_PREFIX = 'minesweeper_daily_features_';
 const THEME_KEY = 'minesweeper_theme';
 
-export function saveDailyPar(dateStr, par, moves) {
+export function saveDailyPar(dateStr, par, moves, features) {
   safeSet(DAILY_PAR_KEY_PREFIX + dateStr, String(par));
   safeSet(DAILY_MOVES_KEY_PREFIX + dateStr, String(moves));
+  if (features && typeof features === 'object') {
+    safeSetJSON(DAILY_FEATURES_KEY_PREFIX + dateStr, features);
+  }
 }
 
 export function loadDailyPar(dateStr) {
   const par = parseFloat(safeGet(DAILY_PAR_KEY_PREFIX + dateStr)) || 0;
   const moves = parseInt(safeGet(DAILY_MOVES_KEY_PREFIX + dateStr)) || 0;
-  return { par, moves };
+  const features = safeGetJSON(DAILY_FEATURES_KEY_PREFIX + dateStr, null);
+  return { par, moves, features };
 }
 const POWERUPS_KEY = 'minesweeper_powerups';
 const LIVES_KEY = 'minesweeper_lives';

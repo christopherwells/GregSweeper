@@ -70,8 +70,33 @@ Network-first with cache fallback. `ignoreSearch: true` on cache.match. Install 
 - **Challenge (normal):** 120 levels, sawtooth difficulty, checkpoints every 5 levels, modifiers from L11+
 - **Timed:** Race the clock, 4 difficulty tabs (Beginner/Intermediate/Expert/Extreme)
 - **Daily:** One seeded puzzle per day, no levels, optional modifiers (~35% of days)
-- **Skill Trainer:** 15 interactive lessons teaching minesweeper techniques (beginner/intermediate/advanced)
+- **Skill Trainer:** 15 interactive lessons — currently HIDDEN from the UI but code intact (see `src/logic/skillTrainer.js`, `src/ui/skillTrainerUI.js`). Re-enable by uncommenting the mode card in `index.html` and the help-modal bullet.
 - **Chaos:** Rapid rounds with random modifiers, exempt from solvability guarantee
+
+## Greg-par Model (Daily)
+Daily par is a linear regression over board features, fit in R offline against real completion data. Coefficients live in `PAR_MODEL` in `src/logic/difficulty.js`; the whole model lives in `src/logic/dailyFeatures.js` (`computeDailyFeatures`, `predictPar`, `breakdownPar`).
+- **Move type, not move count, is the primary signal.** The solver in `boardSolver.js` classifies every deduction into one of five buckets at the three `totalClicks++` sites: `passAMoves` (trivial propagation), `canonicalSubsetMoves` (Pass B subset with larger-constraint size ≤3 — 1-1 / 1-2 / 1-1-1 shapes), `genericSubsetMoves` (Pass B, size ≥4), `advancedLogicMoves` (Pass C tank/gauss), `disjunctiveMoves` (Pass C with liar). Invariant: `passA + canonical + generic + advanced + disjunctive + 1 === totalClicks` for solvable boards.
+- **Feature vector:** move-type counts + board shape (rows, cols, cellCount, totalMines, wallEdgeCount, etc.) + gimmick cell counts (mystery, liar, locked, wormhole/mirror pairs, sonar, compass). All numeric, safe to JSON-serialise for Firebase.
+- **End-of-game modal** renders a per-term breakdown below par: `+14s advanced logic · +9s generic subsets · …`. Baseline terms (intercept + size + flag count) are merged into a single chip to keep the line readable.
+- **R refit workflow:** export Firebase JSON from the console → run `scripts/fit-par-model.qmd` → paste the emitted `PAR_MODEL = { ... }` block into `difficulty.js` → commit + deploy. The .qmd also runs diagnostics (residual plots, QQ for log-linear check, VIF for collinearity, bootstrap CIs).
+- **Pre-ship scale anchor:** `scripts/calibrate-today.mjs` regenerates today's daily board locally and verifies `predictPar` lands inside the observed completion-time range before shipping new coefficients. One-board check, not a fit.
+
+## Daily History Chart
+- `src/ui/dailyHistoryChart.js` — pure-SVG timeline of the signed-in user's past 30 days of deltas from par. Rendered below the leaderboard table on modal open. No external library. Dots coloured green (under par) / grey (even) / red (over).
+- Data source: `users/{uid}/dailyHistory/{date} = { time, submittedAt }` in Firebase — ONLY the raw time is stored. Par and delta are computed at render time against the current `PAR_MODEL` (via `predictPar` on `dailyMeta/{date}` features) PLUS the user's current handicap. This keeps older entries automatically in sync with the latest model after each refit — no server-side rewrites needed.
+- The delta plotted is against the user's PERSONAL par (global par + handicap), so a dot below zero means "better than your typical" regardless of how fast you are in absolute terms.
+
+## Handicaps (user-specific par offsets)
+- Each user has a handicap in seconds — their typical over/under vs Greg's par across recent dailies. Golf-style: negative = faster than typical, positive = slower.
+- Stored in `src/logic/handicaps.json`, a static JSON asset committed to the repo. Keyed by Firebase anonymous uid. Not in Firebase — shipping via static file avoids write-permission issues and lets handicaps update the same way everything else does (commit → GitHub Pages redeploy).
+- Computed server-side (well, GitHub-Actions-side) by `scripts/refit-par-model.R` running daily: fits `lmer(time ~ features + (1|uid))` when >= 2 users are present, extracts random intercepts as handicaps (BLUPs, properly shrunk toward zero for low-N users via partial pooling). Falls back to `lm()` + mean residuals when only 0-1 users exist.
+- Client reads via `src/logic/handicaps.js`: `loadHandicaps()` fetches once, `getHandicap(uid)` returns the number or 0. Used in the end-of-game modal to show "Your par" alongside "Greg's Time" and in the history chart to compute personal-par deltas.
+
+## Refit Workflow (.github/workflows/refit-par-model.yml)
+- Runs daily at 10am America/New_York (14:00 UTC; 9am ET in winter since Actions cron doesn't observe DST).
+- Pulls `daily/*` and `dailyMeta/*` from Firebase (both world-readable — no secrets required), fits the mixed-effects model, patches `src/logic/difficulty.js` between `PAR_MODEL:START` / `PAR_MODEL:END` markers, and rewrites `src/logic/handicaps.json`. Commits both files under "Christopher Wells" identity and pushes to master; GitHub Pages redeploys.
+- Guards: `MIN_SCORES_TO_FIT = 20` (no refit below this — keep seed), `MAX_COEF_DRIFT = 10` (reject a fit where any move-type coef jumps more than 10x vs. previous day), negative-clamp (par must be monotonic in every feature).
+- `scripts/refit-par-model.R` is the full pipeline; `scripts/fit-par-model.qmd` is the exploratory Quarto notebook (diagnostic plots, VIF, bootstrap CIs) for interactive review.
 
 ## Challenge Difficulty Curve (Sawtooth)
 Computed by `getDifficultyForLevel()` in `difficulty.js` — no static table.
@@ -111,8 +136,10 @@ Computed by `getDifficultyForLevel()` in `difficulty.js` — no static table.
 - Rate limiting: 30s cooldown between score submissions
 - Score validation: 5-3600 seconds
 - Database paths:
-  - `daily/{dateString}` — flat array of score objects (leaderboard)
+  - `daily/{dateString}/{pushId}` — leaderboard score objects (`name, time, bombHits, uid, par, timestamp`)
+  - `dailyMeta/{dateString}` — per-date board features (write-once, public-read) — `{ features: {...}, writtenAt }`. The source of truth for R regression joins. Upserted on first score submission for a date, or via `backfill-features.html` for historical dailies.
   - `users/{uid}/` — cloud progress sync (maxCheckpoint, dailyStreak, bestDailyStreak, lastDailyDate)
+  - `users/{uid}/dailyHistory/{dateString}` — per-user completion record (`time, par, delta, submittedAt`). Written on every daily completion, read on every leaderboard-modal open for the SVG history chart.
 - Anonymous auth (`firebaseProgress.js`): silent sign-in on load, no UI. `saveProgress` calls before auth completes are coalesced into a pending-save and flushed once `_ready` flips, so fast daily completions on slow connections don't drop their cloud sync.
 - Cloud sync: saves on checkpoint advance + daily completion, loads on init. Checkpoint takes the max. Daily streak is date-anchored: cloud date > local date adopts cloud's streak AND date verbatim (even if streak went down — the most recent play has the latest info), same date takes the higher streak, cloud stale keeps local. `bestDailyStreak` is always the high-water mark.
 - Falls back to localStorage leaderboards if Firebase unavailable

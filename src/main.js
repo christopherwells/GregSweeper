@@ -20,7 +20,9 @@ import './game/winLossHandler.js'; // side-effect: registers handleWin with powe
 import { useRevealSafe, useShield, activateScan, activateXRay, activateMagnet } from './game/powerUpActions.js';
 import { switchMode, isChaosUnlocked, updateModeUI } from './game/modeManager.js';
 import { persistGameState, tryResumeGame } from './game/gamePersistence.js';
-import { getDifficultyForLevel, getTimedDifficulty, getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, CHAOS_UNLOCK_LEVEL, PAR_SECONDS_PER_MOVE, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE } from './logic/difficulty.js';
+import { getDifficultyForLevel, getTimedDifficulty, getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, CHAOS_UNLOCK_LEVEL, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE } from './logic/difficulty.js';
+import { computeDailyFeatures, predictPar } from './logic/dailyFeatures.js';
+import { loadHandicaps, getHandicap } from './logic/handicaps.js';
 import {
   loadStats, saveTheme, loadTheme, resetStats,
   saveCheckpoint, loadCheckpoint,
@@ -44,9 +46,10 @@ import {
   getHighestTier, getAllTierNames, getTierIcon, getTierColor,
 } from './logic/achievements.js';
 import {
-  initFirebase, isFirebaseOnline, submitOnlineScore, fetchOnlineLeaderboard,
+  initFirebase, isFirebaseOnline, submitOnlineScore, fetchOnlineLeaderboard, fetchUserDailyHistory, fetchAllDailyMeta,
 } from './firebase/firebaseLeaderboard.js';
-import { initAnonymousAuth, loadProgress } from './firebase/firebaseProgress.js';
+import { initAnonymousAuth, loadProgress, saveDailyHistoryEntry, getUid } from './firebase/firebaseProgress.js';
+import { renderDailyHistoryChart } from './ui/dailyHistoryChart.js';
 import { generateBoard, cleanSolverArtifacts } from './logic/boardGenerator.js';
 import { isBoardSolvable } from './logic/boardSolver.js';
 import { createDailyRNG, getLocalDateString } from './logic/seededRandom.js';
@@ -56,7 +59,7 @@ import {
   isEffectUnlocked, isTitleUnlocked,
   loadEffects, saveEffects, loadTitle, saveTitle,
 } from './ui/collectionManager.js';
-import { isModifierPopupDisabled, setModifierPopupDisabled, getGimmickDefs } from './logic/gimmicks.js';
+import { isModifierPopupDisabled, setModifierPopupDisabled, getGimmickDefs, getDailyGimmick, applyGimmicks } from './logic/gimmicks.js';
 import { isStorageFailing, safeGet, safeSet, safeRemove } from './storage/storageAdapter.js';
 import { pauseTimer, resumeTimer } from './game/timerManager.js';
 import { startTutorial } from './ui/tutorialManager.js';
@@ -142,34 +145,55 @@ async function updateLeaderboardDisplay() {
     statusBadge.className = `lb-status ${isOnline ? 'online' : 'offline'}`;
   }
 
-  if (entries.length === 0) {
-    $('#leaderboard-table').classList.add('hidden');
-    $('#leaderboard-empty').classList.remove('hidden');
-    return;
-  }
-
-  $('#leaderboard-table').classList.remove('hidden');
-  $('#leaderboard-empty').classList.add('hidden');
+  const hasEntries = entries.length > 0;
+  $('#leaderboard-table').classList.toggle('hidden', !hasEntries);
+  $('#leaderboard-empty').classList.toggle('hidden', hasEntries);
 
   // Get daily par and solver moves (from state, localStorage, or compute on-demand)
   const cached = loadDailyPar(dateStr);
   let dailyPar = state.dailyPar || cached.par;
   let dailyMoves = state.dailyMoves || cached.moves;
   if (dailyPar === 0) {
-    // Compute par on-demand by regenerating today's daily board
+    // Compute par on-demand by regenerating today's daily board.
+    // This path runs when the user opens the leaderboard without having
+    // played today's daily yet; it must mirror gameActions.js's daily branch
+    // (including gimmick application) so the solver's move-type counts
+    // reflect the same board every player actually gets.
     try {
-      const parRng = createDailyRNG(dateStr);
-      const pRows = DAILY_MIN_SIZE + Math.floor(parRng() * DAILY_SIZE_RANGE);
-      const pCols = DAILY_MIN_SIZE + Math.floor(parRng() * DAILY_SIZE_RANGE);
-      const pDensity = DAILY_MIN_DENSITY + parRng() * DAILY_DENSITY_RANGE;
+      const dimRng = createDailyRNG(dateStr);
+      const pRows = DAILY_MIN_SIZE + Math.floor(dimRng() * DAILY_SIZE_RANGE);
+      const pCols = DAILY_MIN_SIZE + Math.floor(dimRng() * DAILY_SIZE_RANGE);
+      const pDensity = DAILY_MIN_DENSITY + dimRng() * DAILY_DENSITY_RANGE;
       const pMines = Math.max(5, Math.round(pRows * pCols * pDensity));
       const pFixedR = Math.floor(pRows / 2), pFixedC = Math.floor(pCols / 2);
-      const pBoard = generateBoard(pRows, pCols, pMines, pFixedR, pFixedC, createDailyRNG(dateStr));
-      cleanSolverArtifacts(pBoard);
-      const parResult = isBoardSolvable(pBoard, pRows, pCols, pFixedR, pFixedC);
-      dailyPar = Math.round(parResult.totalClicks * PAR_SECONDS_PER_MOVE * 10) / 10;
-      dailyMoves = parResult.totalClicks;
-      saveDailyPar(dateStr, dailyPar, dailyMoves);
+      const activeGimmicks = getDailyGimmick(dateStr, createDailyRNG);
+
+      let pBoard;
+      let parResult;
+      for (let attempt = 0; attempt < 50; attempt++) {
+        const boardRng = attempt === 0
+          ? createDailyRNG(dateStr)
+          : createDailyRNG(dateStr + '-retry-' + attempt);
+        pBoard = generateBoard(pRows, pCols, pMines, pFixedR, pFixedC, boardRng);
+        cleanSolverArtifacts(pBoard);
+        if (activeGimmicks.length > 0) {
+          const gRng = createDailyRNG(dateStr + '-gimmick-apply-' + attempt);
+          applyGimmicks(pBoard, 1, activeGimmicks, gRng);
+        }
+        parResult = isBoardSolvable(pBoard, pRows, pCols, pFixedR, pFixedC);
+        cleanSolverArtifacts(pBoard);
+        if (parResult.solvable || parResult.remainingUnknowns === 0) break;
+      }
+
+      if (parResult && (parResult.solvable || parResult.remainingUnknowns === 0)) {
+        const features = computeDailyFeatures(
+          { board: pBoard, rows: pRows, cols: pCols, totalMines: pMines, activeGimmicks },
+          parResult,
+        );
+        dailyPar = predictPar(features);
+        dailyMoves = parResult.totalClicks;
+        saveDailyPar(dateStr, dailyPar, dailyMoves, features);
+      }
     } catch (e) { dailyPar = 0; }
   }
 
@@ -191,6 +215,48 @@ async function updateLeaderboardDisplay() {
     tr.innerHTML = `<td>${i + 1}</td><td>${escapeHtml(entry.name)}</td><td>${entry.time}s</td>${bombCol}${parCol}${paceCol}`;
     tbody.appendChild(tr);
   });
+
+  // ── My History SVG timeline ─────────────────────────
+  // Anonymous auth may still be resolving when the modal opens — in that
+  // case getUid() is null and we hide the section until next open. We
+  // compute par + delta per-entry HERE (not at save time) so historical
+  // entries pick up the latest PAR_MODEL coefficients and the user's
+  // latest handicap on every chart render, rather than freezing them
+  // at the moment the daily was played.
+  const historySection = $('#leaderboard-history-section');
+  const historyContainer = $('#leaderboard-history-chart');
+  if (historySection && historyContainer) {
+    const uid = getUid();
+    if (!uid) {
+      historySection.classList.add('hidden');
+    } else {
+      const [history, metaByDate] = await Promise.all([
+        fetchUserDailyHistory(uid, 30),
+        fetchAllDailyMeta(),
+        loadHandicaps(),
+      ]);
+      if (history === null || metaByDate === null) {
+        historySection.classList.add('hidden');
+      } else {
+        const handicap = getHandicap(uid);
+        const enriched = history.map(e => {
+          const features = metaByDate[e.date];
+          if (!features) return { date: e.date, time: e.time, par: 0, delta: 0 };
+          const globalPar = predictPar(features);
+          const personalPar = globalPar + handicap;
+          return {
+            date: e.date,
+            time: e.time,
+            par: personalPar,
+            delta: e.time - personalPar,
+          };
+        });
+        historyContainer.innerHTML = '';
+        historyContainer.appendChild(renderDailyHistoryChart(enriched));
+        historySection.classList.remove('hidden');
+      }
+    }
+  }
 }
 
 // ── Collection Display ───────────────────────────────
@@ -1186,7 +1252,12 @@ $('#gameover-submit-daily').addEventListener('click', async (e) => {
     const dateStr = state.dailySeed || getLocalDateString();
     const scoreTime = Math.round((state.preciseTime || state.elapsedTime) * 10) / 10;
     addDailyLeaderboardEntry(dateStr, sanitized, scoreTime);
-    await submitOnlineScore(dateStr, sanitized, scoreTime, state.dailyBombHits || 0);
+    await submitOnlineScore(dateStr, sanitized, scoreTime, state.dailyBombHits || 0, {
+      uid: getUid(),
+      par: state.dailyPar,
+      features: state.dailyFeatures,
+    });
+    saveDailyHistoryEntry(dateStr, { time: scoreTime });
     const dailySubmitForm = $('#daily-submit-form');
     if (dailySubmitForm) dailySubmitForm.classList.add('hidden');
     showToast('✅ Score submitted!');
@@ -1352,6 +1423,11 @@ function init() {
   initAnonymousAuth().then(() => loadProgress()).then(cloud => {
     if (cloud) applyCloudProgress(cloud);
   }).catch(() => {}); // silent — progress stays local-only
+
+  // Preload handicaps so the end-of-game modal can render personal par
+  // without a race. Fire-and-forget; getHandicap() falls back to 0
+  // when the file hasn't loaded yet.
+  loadHandicaps();
 
   // Warn if localStorage is broken (private browsing, quota, etc.)
   if (isStorageFailing()) {

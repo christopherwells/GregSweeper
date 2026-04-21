@@ -1,6 +1,7 @@
 {
   "rules": {
     "daily": {
+      ".read": true,
       "$date": {
         ".read": true,
         ".validate": "$date.matches(/^\\d{4}-\\d{2}-\\d{2}$/)",
@@ -16,12 +17,34 @@
           "bombHits": {
             ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 50"
           },
+          "par": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600"
+          },
+          "uid": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+          },
           "timestamp": {
             ".validate": "newData.val() === now"
           },
           "$other": {
             ".validate": false
           }
+        }
+      }
+    },
+    "dailyMeta": {
+      ".read": true,
+      "$date": {
+        ".write": "auth != null && !data.exists()",
+        ".validate": "$date.matches(/^\\d{4}-\\d{2}-\\d{2}$/) && newData.hasChildren(['features', 'writtenAt'])",
+        "features": {
+          ".validate": "newData.hasChildren(['rows', 'cols', 'totalMines'])"
+        },
+        "writtenAt": {
+          ".validate": "newData.val() === now"
+        },
+        "$other": {
+          ".validate": false
         }
       }
     },
@@ -40,6 +63,20 @@
         },
         "lastDailyDate": {
           ".validate": "newData.isString() && newData.val().length === 10"
+        },
+        "dailyHistory": {
+          "$date": {
+            ".validate": "$date.matches(/^\\d{4}-\\d{2}-\\d{2}$/) && newData.hasChildren(['time', 'submittedAt'])",
+            "time": {
+              ".validate": "newData.isNumber() && newData.val() >= 5 && newData.val() <= 3600"
+            },
+            "submittedAt": {
+              ".validate": "newData.val() === now"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
         },
         "$other": {
           ".validate": false

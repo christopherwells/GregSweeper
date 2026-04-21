@@ -1,6 +1,6 @@
 import { state } from '../state/gameState.js';
 import {
-  saveGameState, loadGameState,
+  saveGameState, loadGameState, loadDailyPar,
 } from '../storage/statsStorage.js';
 import { getLocalDateString } from '../logic/seededRandom.js';
 import { recomputeDisplayedMines } from '../logic/gimmicks.js';
@@ -93,6 +93,16 @@ export function tryResumeGame(mode) {
   state.suggestedMove = null;
   state.activeGimmicks = gs.activeGimmicks || [];
   state.gimmickData = gs.gimmickData || {};
+
+  // Rehydrate par + features from the per-date cache so the resumed game's
+  // end-of-game modal can render the full breakdown and the Firebase meta
+  // upload sees the same features the original play computed.
+  if (state.gameMode === 'daily' && state.dailySeed) {
+    const cached = loadDailyPar(state.dailySeed);
+    state.dailyPar = cached.par || 0;
+    state.dailyMoves = cached.moves || 0;
+    state.dailyFeatures = cached.features || null;
+  }
 
   // Restore wall edges on the board. Always create the Set (even if empty)
   // when the walls modifier was active, so any downstream `_wallEdges.has(...)`

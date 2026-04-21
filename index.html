@@ -55,11 +55,15 @@
         <div class="mode-card-name">Quick Play</div>
         <div class="mode-card-progress" id="title-timed-progress">Race the clock</div>
       </div>
+      <!-- Skill Trainer hidden 2026-04-21 — lessons shelved, code intact.
+           Re-enable by uncommenting this card and the help-modal bullet below. -->
+      <!--
       <div class="mode-card" data-mode="skillTrainer">
         <div class="mode-card-icon">🎓</div>
         <div class="mode-card-name">Skill Trainer</div>
         <div class="mode-card-progress" id="title-skill-progress">Learn techniques</div>
       </div>
+      -->
       <div class="mode-card" data-mode="daily">
         <div class="mode-card-icon">📅</div>
         <div class="mode-card-name">Daily</div>
@@ -223,7 +227,8 @@
             <h3>Modes</h3>
             <p><strong>Challenge</strong> — 100 levels with modifiers &amp; power-ups</p>
             <p><strong>Quick Play</strong> — race for speed ratings (💎🥇🥈🥉)</p>
-            <p><strong>Skill Trainer</strong> — guided puzzles to learn techniques</p>
+            <!-- <p><strong>Skill Trainer</strong> — guided puzzles to learn techniques</p> -->
+
             <p><strong>Daily</strong> — same board for everyone, online leaderboard</p>
           </div>
           <div class="help-section help-keyboard-only">
@@ -258,6 +263,7 @@
         <p id="gameover-time"></p>
         <p id="gameover-encouragement" class="gameover-encouragement hidden"></p>
         <p id="gameover-par" class="gameover-par hidden"></p>
+        <p id="gameover-par-breakdown" class="par-breakdown hidden"></p>
         <p id="gameover-record" class="hidden"></p>
         <p id="gameover-powerup-earned" class="hidden"></p>
         <div id="gameover-achievements" class="gameover-achievements hidden"></div>
@@ -375,6 +381,10 @@
             <tbody id="leaderboard-body"></tbody>
           </table>
           <p id="leaderboard-empty" class="hidden">No entries yet. Complete today's daily challenge!</p>
+          <div id="leaderboard-history-section" class="daily-history-section hidden">
+            <h4>My History</h4>
+            <div id="leaderboard-history-chart"></div>
+          </div>
       </div>
     </div>
   </div>

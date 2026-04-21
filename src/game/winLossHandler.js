@@ -29,7 +29,9 @@ import {
 } from '../logic/achievements.js';
 import { checkThemeUnlocks, showThemeUnlockToasts } from '../ui/themeManager.js';
 import { submitOnlineScore } from '../firebase/firebaseLeaderboard.js';
-import { saveProgress } from '../firebase/firebaseProgress.js';
+import { saveProgress, saveDailyHistoryEntry, getUid } from '../firebase/firebaseProgress.js';
+import { breakdownPar } from '../logic/dailyFeatures.js';
+import { getHandicap } from '../logic/handicaps.js';
 import { addDailyLeaderboardEntry } from '../storage/statsStorage.js';
 import { getLocalDateString } from '../logic/seededRandom.js';
 
@@ -186,6 +188,8 @@ export function handleWin() {
 
   const parEl = $('#gameover-par');
   if (parEl) parEl.classList.add('hidden');
+  const parBreakdownEl = $('#gameover-par-breakdown');
+  if (parBreakdownEl) parBreakdownEl.classList.add('hidden');
 
   // Timed mode: show speed rating
   if (state.gameMode === 'timed') {
@@ -199,23 +203,54 @@ export function handleWin() {
     if (streak > 0) {
       gameoverTime.textContent += ` | \u{1F525} ${streak} day streak`;
     }
-    // Show Greg's par time
+    // Greg's Time = global par from the current PAR_MODEL applied to today's
+    // board features. Personal par = Greg's + your handicap (your typical
+    // over/under across recent dailies). When a handicap is known we show
+    // both numbers and the primary delta is measured against YOUR par —
+    // that's the one that tells you whether you had a good or bad day
+    // relative to your own skill.
     if (parEl && state.dailyPar > 0) {
-      const delta = precise - state.dailyPar;
+      const handicap = getHandicap(getUid());
+      const personalPar = state.dailyPar + handicap;
+      const referencePar = handicap !== 0 ? personalPar : state.dailyPar;
+      const delta = precise - referencePar;
       const absDelta = Math.abs(delta).toFixed(1);
       let parClass, deltaText;
       if (delta < -0.5) {
         parClass = 'par-under';
-        deltaText = absDelta + 's under par';
+        deltaText = absDelta + 's under ' + (handicap !== 0 ? 'your par' : 'par');
       } else if (delta > 0.5) {
         parClass = 'par-over';
-        deltaText = absDelta + 's over par';
+        deltaText = absDelta + 's over ' + (handicap !== 0 ? 'your par' : 'par');
       } else {
         parClass = 'par-even';
-        deltaText = 'Even par!';
+        deltaText = handicap !== 0 ? 'Even with your par!' : 'Even par!';
       }
-      parEl.innerHTML = "Greg's Time: " + state.dailyPar.toFixed(1) + 's — <span class="' + parClass + '">' + deltaText + '</span>';
+
+      if (handicap !== 0) {
+        parEl.innerHTML =
+          "Greg's Time: " + state.dailyPar.toFixed(1) + 's · ' +
+          'Your par: ' + personalPar.toFixed(1) + 's — ' +
+          '<span class="' + parClass + '">' + deltaText + '</span>';
+      } else {
+        parEl.innerHTML =
+          "Greg's Time: " + state.dailyPar.toFixed(1) + 's — ' +
+          '<span class="' + parClass + '">' + deltaText + '</span>';
+      }
       parEl.classList.remove('hidden');
+
+      // Per-feature breakdown of what drove Greg's par. Only shown when
+      // state.dailyFeatures is populated (older resumed games may have
+      // been persisted before features existed).
+      if (parBreakdownEl && state.dailyFeatures) {
+        const terms = breakdownPar(state.dailyFeatures);
+        if (terms.length > 0) {
+          parBreakdownEl.innerHTML = terms
+            .map(t => '<span class="par-term">+' + t.seconds + 's ' + t.label + '</span>')
+            .join('<span class="par-term-sep"> · </span>');
+          parBreakdownEl.classList.remove('hidden');
+        }
+      }
     }
   } else {
     gameoverTime.textContent = `Time: ${state.elapsedTime}s${strikesInfo}`;
@@ -326,7 +361,16 @@ export function handleWin() {
       const dateStr = getLocalDateString();
       const scoreTime = Math.round((state.preciseTime || state.elapsedTime) * 10) / 10;
       addDailyLeaderboardEntry(dateStr, savedName, scoreTime);
-      submitOnlineScore(dateStr, savedName, scoreTime, state.dailyBombHits || 0);
+      submitOnlineScore(dateStr, savedName, scoreTime, state.dailyBombHits || 0, {
+        uid: getUid(),
+        par: state.dailyPar,
+        features: state.dailyFeatures,
+      });
+      // Per-user daily-history timeline feeds the leaderboard-modal chart.
+      // We only persist `time` — par is recomputed at read time against
+      // whatever PAR_MODEL is currently shipping so old entries update
+      // automatically when coefficients refit.
+      saveDailyHistoryEntry(dateStr, { time: scoreTime });
       showToast('✅ Score submitted!');
     } else {
       dailySubmitForm.classList.remove('hidden');

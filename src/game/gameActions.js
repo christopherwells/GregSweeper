@@ -17,7 +17,8 @@ import { handleWin, handleLoss, handleDailyBombHit } from './winLossHandler.js';
 import { performScan, performXRay, performMagnet, tryLifeline } from './powerUpActions.js';
 import { generateBoard, createEmptyBoard, calculateAdjacency, cleanSolverArtifacts } from '../logic/boardGenerator.js';
 import { floodFillReveal, checkWin, chordReveal, isBoardSolvable, estimatePlateMovesToDisarm, buildNeighborCache } from '../logic/boardSolver.js';
-import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getChaosDifficulty, getRequiredTechnique, PAR_SECONDS_PER_MOVE, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE, PLATE_MIN_SECONDS, PLATE_SECONDS_PER_STEP } from '../logic/difficulty.js';
+import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getChaosDifficulty, getRequiredTechnique, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE, PLATE_MIN_SECONDS, PLATE_SECONDS_PER_STEP } from '../logic/difficulty.js';
+import { computeDailyFeatures, predictPar } from '../logic/dailyFeatures.js';
 import { shieldDefuse } from '../logic/powerUps.js';
 import { getGimmicksForLevel, applyGimmicks, applyWalls, isLockedCell, hasWallBetween, hasSeenGimmick, markGimmickSeen, getGimmickDef, isModifierPopupDisabled, setModifierPopupDisabled, getDailyGimmick, getChaosGimmicks, clearGimmickProperties, recomputeDisplayedMines, getIntensity } from '../logic/gimmicks.js';
 import { createDailyRNG, getLocalDateString } from '../logic/seededRandom.js';
@@ -256,9 +257,10 @@ export function newGame() {
       const check = isBoardSolvable(state.board, state.rows, state.cols, fixedRow, fixedCol);
       cleanSolverArtifacts(state.board);
       if (check.solvable || check.remainingUnknowns === 0) {
-        state.dailyPar = Math.round(check.totalClicks * PAR_SECONDS_PER_MOVE * 10) / 10;
+        state.dailyFeatures = computeDailyFeatures(state, check);
+        state.dailyPar = predictPar(state.dailyFeatures);
         state.dailyMoves = check.totalClicks;
-        saveDailyPar(state.dailySeed, state.dailyPar, state.dailyMoves);
+        saveDailyPar(state.dailySeed, state.dailyPar, state.dailyMoves, state.dailyFeatures);
         break;
       }
     }
