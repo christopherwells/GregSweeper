@@ -381,10 +381,6 @@
             <tbody id="leaderboard-body"></tbody>
           </table>
           <p id="leaderboard-empty" class="hidden">No entries yet. Complete today's daily challenge!</p>
-          <div id="leaderboard-history-section" class="daily-history-section hidden">
-            <h4>My History</h4>
-            <div id="leaderboard-history-chart"></div>
-          </div>
       </div>
     </div>
   </div>
@@ -482,37 +478,155 @@
 
   <!-- Stats Modal -->
   <div id="stats-modal" class="modal hidden" role="dialog" aria-modal="true">
-    <div class="modal-content">
+    <div class="modal-content stats-modal-content">
       <div class="modal-header">
         <h2>Statistics</h2>
         <button class="modal-close">&times;</button>
       </div>
-      <div class="modal-body">
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-value" id="stat-played">0</div>
-            <div class="stat-label">Played</div>
+      <div class="modal-body stats-body">
+        <div class="stats-tabs">
+          <button class="stats-tab active" data-tab="daily">Daily</button>
+          <button class="stats-tab" data-tab="challenge">Challenge</button>
+          <button class="stats-tab" data-tab="timed">Quick Play</button>
+        </div>
+
+        <!-- DAILY TAB -->
+        <div id="stats-panel-daily" class="stats-panel">
+
+          <!-- Tier 1 — Skill story -->
+          <div class="stats-section">
+            <h3>Handicap</h3>
+            <p class="stats-blurb">Your typical over/under Greg-par across all your plays, corrected for which boards you happened to get. Lower is faster.</p>
+            <div class="stat-headline" id="stat-handicap-now">--</div>
+            <div class="stat-chart" id="chart-handicap-trajectory"></div>
           </div>
-          <div class="stat-card">
-            <div class="stat-value" id="stat-win-rate">0%</div>
-            <div class="stat-label">Win Rate</div>
+
+          <div class="stats-section">
+            <h3>Move-type time share</h3>
+            <p class="stats-blurb">How your time is split across easy / medium / hard deductions each day. As you improve, the easy share shrinks.</p>
+            <div class="stat-chart" id="chart-move-type-share"></div>
           </div>
-          <div class="stat-card">
-            <div class="stat-value" id="stat-streak">0</div>
-            <div class="stat-label">Current Streak</div>
+
+          <div class="stats-section">
+            <h3>Strike rate</h3>
+            <p class="stats-blurb">Percentage of dailies where you hit at least one mine. Going down means your flagging discipline is improving.</p>
+            <div class="stat-row">
+              <div class="stat-mini">
+                <div class="stat-mini-label">Days with strikes</div>
+                <div class="stat-mini-value" id="stat-strike-rate">--</div>
+              </div>
+              <div class="stat-mini">
+                <div class="stat-mini-label">Mean strikes / daily</div>
+                <div class="stat-mini-value" id="stat-mean-strikes">--</div>
+              </div>
+              <div class="stat-mini">
+                <div class="stat-mini-label">Total strikes</div>
+                <div class="stat-mini-value" id="stat-total-strikes">--</div>
+              </div>
+            </div>
+            <div class="stat-chart" id="chart-strike-rate"></div>
           </div>
-          <div class="stat-card">
-            <div class="stat-value" id="stat-best-streak">0</div>
-            <div class="stat-label">Best Streak</div>
+
+          <!-- Tier 2 — Weaknesses -->
+          <div class="stats-section">
+            <h3>Delta by modifier</h3>
+            <p class="stats-blurb">Your mean delta vs. par when each modifier is in play. Positive = that modifier slows you down more than the model predicted. Last 14 days next to prior 14 for a trend.</p>
+            <div class="stat-chart" id="chart-modifier-heatmap"></div>
+          </div>
+
+          <div class="stats-section">
+            <h3>Consistency</h3>
+            <p class="stats-blurb">The spread of your daily deltas. A narrow band = you score close to your typical every day; a wide band = more good days and bad days.</p>
+            <div class="stat-chart" id="chart-consistency"></div>
+          </div>
+
+          <!-- Tier 3 — Social / motivational -->
+          <div class="stats-section">
+            <h3>Rank vs. field</h3>
+            <p class="stats-blurb">Where you finished among all players that day. 0th percentile = you won that day.</p>
+            <div class="stat-chart" id="chart-percentile-trend"></div>
+          </div>
+
+          <div class="stats-section">
+            <h3>Play frequency</h3>
+            <div class="stat-row">
+              <div class="stat-mini">
+                <div class="stat-mini-label">Dailies played</div>
+                <div class="stat-mini-value" id="stat-daily-played">--</div>
+              </div>
+              <div class="stat-mini">
+                <div class="stat-mini-label">Per week (last 28d)</div>
+                <div class="stat-mini-value" id="stat-daily-per-week">--</div>
+              </div>
+              <div class="stat-mini">
+                <div class="stat-mini-label">Average time</div>
+                <div class="stat-mini-value" id="stat-daily-avg-time">--</div>
+              </div>
+            </div>
+            <div class="stat-chart" id="chart-play-frequency"></div>
+          </div>
+
+          <div class="stats-section">
+            <h3>History</h3>
+            <p class="stats-blurb">Each dot is a past daily, positioned by how much you beat or trailed your par that day.</p>
+            <div class="stat-chart" id="chart-daily-history"></div>
           </div>
         </div>
-        <div class="stat-card wide">
-          <div class="stat-label">Best Time</div>
-          <div class="stat-value" id="stat-best-time">--</div>
+
+        <!-- CHALLENGE TAB -->
+        <div id="stats-panel-challenge" class="stats-panel hidden">
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-value" id="stat-challenge-played">0</div>
+              <div class="stat-label">Played</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="stat-challenge-win-rate">0%</div>
+              <div class="stat-label">Win Rate</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="stat-challenge-max-level">1</div>
+              <div class="stat-label">Max Level</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="stat-challenge-checkpoint">1</div>
+              <div class="stat-label">Checkpoint</div>
+            </div>
+          </div>
+          <div class="stat-card wide">
+            <div class="stat-label">Best Time (current level)</div>
+            <div class="stat-value" id="stat-challenge-best-time">--</div>
+          </div>
+          <div class="stats-section">
+            <h3>Recent games</h3>
+            <div id="stat-challenge-recent" class="recent-games-inline"></div>
+          </div>
         </div>
-        <div class="recent-games">
-          <h3>Recent Games</h3>
-          <div id="recent-games-chart"></div>
+
+        <!-- QUICK PLAY TAB -->
+        <div id="stats-panel-timed" class="stats-panel hidden">
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-value" id="stat-timed-played">0</div>
+              <div class="stat-label">Played</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="stat-timed-win-rate">0%</div>
+              <div class="stat-label">Win Rate</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="stat-timed-streak">0</div>
+              <div class="stat-label">Streak</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="stat-timed-best-streak">0</div>
+              <div class="stat-label">Best</div>
+            </div>
+          </div>
+          <div class="stats-section">
+            <h3>Best times per difficulty</h3>
+            <div class="stat-row" id="stat-timed-best-times"></div>
+          </div>
         </div>
       </div>
     </div>

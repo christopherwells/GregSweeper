@@ -194,6 +194,45 @@ export async function fetchUserDailyHistory(uid, daysBack = 30) {
 }
 
 /**
+ * Fetch the full daily score tree — a map of `{ date: [{uid, name, time, bombHits, ...}, ...] }`.
+ * Flattens each date's pushId-keyed object into a plain array. Used by
+ * the stats page's percentile-trend chart to rank the signed-in user
+ * against the full field on each date. World-readable.
+ * Returns null on error.
+ */
+export async function fetchAllDailyScores() {
+  if (!isFirebaseOnline()) return null;
+  try {
+    const snapshot = await Promise.race([
+      db.ref('daily').once('value'),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000)),
+    ]);
+    if (!snapshot.exists()) return {};
+    const byDate = {};
+    snapshot.forEach((dateChild) => {
+      const date = dateChild.key;
+      const scores = [];
+      dateChild.forEach((entryChild) => {
+        const v = entryChild.val();
+        if (v && typeof v.time === 'number') {
+          scores.push({
+            uid: v.uid || null,
+            name: v.name || 'Anonymous',
+            time: v.time,
+            bombHits: v.bombHits || 0,
+          });
+        }
+      });
+      byDate[date] = scores;
+    });
+    return byDate;
+  } catch (err) {
+    console.warn('Firebase all-daily fetch failed:', err.message);
+    return null;
+  }
+}
+
+/**
  * Fetch the full dailyMeta tree — a map of `{ date: features }`. Used by
  * the history chart to compute each historical entry's par on the fly
  * against the current PAR_MODEL. World-readable, no auth needed.

@@ -46,10 +46,11 @@ import {
   getHighestTier, getAllTierNames, getTierIcon, getTierColor,
 } from './logic/achievements.js';
 import {
-  initFirebase, isFirebaseOnline, submitOnlineScore, fetchOnlineLeaderboard, fetchUserDailyHistory, fetchAllDailyMeta,
+  initFirebase, isFirebaseOnline, submitOnlineScore, fetchOnlineLeaderboard, fetchUserDailyHistory, fetchAllDailyMeta, fetchAllDailyScores,
 } from './firebase/firebaseLeaderboard.js';
 import { initAnonymousAuth, loadProgress, saveDailyHistoryEntry, getUid } from './firebase/firebaseProgress.js';
 import { renderDailyHistoryChart } from './ui/dailyHistoryChart.js';
+import { renderDailyStatsTab } from './ui/statsRenderer.js';
 import { generateBoard, cleanSolverArtifacts } from './logic/boardGenerator.js';
 import { isBoardSolvable } from './logic/boardSolver.js';
 import { createDailyRNG, getLocalDateString } from './logic/seededRandom.js';
@@ -75,42 +76,147 @@ function updateThemeColor() {
 
 // ── Stats Display ─────────────────────────────────────
 
-function updateStatsDisplay() {
-  const stats = loadStats();
-  $('#stat-played').textContent = stats.totalGames;
-  const rate = stats.totalGames > 0 ? Math.round((stats.wins / stats.totalGames) * 100) : 0;
-  $('#stat-win-rate').textContent = `${rate}%`;
-  $('#stat-streak').textContent = stats.currentStreak;
-  $('#stat-best-streak').textContent = stats.bestStreak;
+// Default tab = the mode the player most recently played (when meaningful).
+function pickDefaultStatsTab() {
+  if (state.gameMode === 'timed') return 'timed';
+  if (state.gameMode === 'normal') return 'challenge';
+  return 'daily';
+}
 
-  const bestKey = `level${state.currentLevel}`;
-  const best = stats.bestTimes[bestKey];
-  $('#stat-best-time').textContent = best != null ? `${best}s` : '--';
-
-  const chart = $('#recent-games-chart');
-  chart.innerHTML = '';
-  const recent = stats.recentGames.slice(-20);
-
-  if (recent.length === 0) {
-    chart.innerHTML = '<span class="chart-empty">Play some games to see your history!</span>';
-  } else {
-    const winTimes = recent.filter(g => g.won).map(g => g.time);
-    const maxTime = winTimes.length > 0 ? Math.max(...winTimes, 30) : 30;
-
-    for (const game of recent) {
-      const bar = document.createElement('div');
-      bar.className = `game-bar ${game.won ? 'win' : 'loss'}`;
-      if (game.won) {
-        const pct = Math.max(15, 100 - (game.time / maxTime) * 70);
-        bar.style.height = `${pct}%`;
-        bar.title = `Win: ${game.time}s (Level ${game.level || '?'})`;
-      } else {
-        bar.style.height = '30%';
-        bar.title = 'Loss';
-      }
-      chart.appendChild(bar);
-    }
+function setActiveStatsTab(tab) {
+  for (const btn of $$('.stats-tab')) {
+    btn.classList.toggle('active', btn.dataset.tab === tab);
   }
+  for (const panel of $$('.stats-panel')) {
+    panel.classList.toggle('hidden', panel.id !== `stats-panel-${tab}`);
+  }
+}
+
+async function updateStatsDisplay() {
+  setActiveStatsTab(pickDefaultStatsTab());
+  populateChallengePanel();
+  populateQuickPlayPanel();
+  await populateDailyPanel(); // async — fetches Firebase
+}
+
+function populateChallengePanel() {
+  const stats = loadStats();
+  const cm = stats.modeStats?.normal || stats; // fallback to legacy aggregate
+  $('#stat-challenge-played').textContent = cm.totalGames ?? stats.totalGames ?? 0;
+  const total = cm.totalGames ?? stats.totalGames ?? 0;
+  const wins = cm.wins ?? stats.wins ?? 0;
+  const rate = total > 0 ? Math.round((wins / total) * 100) : 0;
+  $('#stat-challenge-win-rate').textContent = `${rate}%`;
+  $('#stat-challenge-max-level').textContent = cm.maxLevelReached ?? stats.maxLevelReached ?? 1;
+  $('#stat-challenge-checkpoint').textContent = state.checkpoint || 1;
+  const bestKey = `level${state.currentLevel}`;
+  const best = (cm.bestTimes || stats.bestTimes || {})[bestKey];
+  $('#stat-challenge-best-time').textContent = best != null ? `${best}s` : '--';
+
+  const chart = $('#stat-challenge-recent');
+  if (!chart) return;
+  chart.innerHTML = '';
+  const recent = (cm.recentGames || stats.recentGames || []).slice(-20);
+  if (recent.length === 0) {
+    chart.innerHTML = '<span class="chart-empty">Play some challenge games to see your history!</span>';
+    return;
+  }
+  const winTimes = recent.filter(g => g.won).map(g => g.time);
+  const maxTime = winTimes.length > 0 ? Math.max(...winTimes, 30) : 30;
+  for (const game of recent) {
+    const bar = document.createElement('div');
+    bar.className = `game-bar ${game.won ? 'win' : 'loss'}`;
+    if (game.won) {
+      const pct = Math.max(15, 100 - (game.time / maxTime) * 70);
+      bar.style.height = `${pct}%`;
+      bar.title = `Win: ${game.time}s (Level ${game.level || '?'})`;
+    } else {
+      bar.style.height = '30%';
+      bar.title = 'Loss';
+    }
+    chart.appendChild(bar);
+  }
+}
+
+function populateQuickPlayPanel() {
+  const stats = loadStats();
+  const tm = stats.modeStats?.timed;
+  if (!tm) {
+    $('#stat-timed-played').textContent = '0';
+    $('#stat-timed-win-rate').textContent = '0%';
+    $('#stat-timed-streak').textContent = '0';
+    $('#stat-timed-best-streak').textContent = '0';
+    $('#stat-timed-best-times').innerHTML = '<span class="chart-empty">Play some Quick Play games!</span>';
+    return;
+  }
+  $('#stat-timed-played').textContent = tm.totalGames || 0;
+  const rate = tm.totalGames > 0 ? Math.round((tm.wins / tm.totalGames) * 100) : 0;
+  $('#stat-timed-win-rate').textContent = `${rate}%`;
+  $('#stat-timed-streak').textContent = tm.currentStreak || 0;
+  $('#stat-timed-best-streak').textContent = tm.bestStreak || 0;
+
+  const labels = ['Beginner', 'Intermediate', 'Expert', 'Extreme'];
+  const cont = $('#stat-timed-best-times');
+  cont.innerHTML = '';
+  for (let i = 0; i < 4; i++) {
+    const t = (tm.bestTimes || {})[`level${i + 1}`];
+    const mini = document.createElement('div');
+    mini.className = 'stat-mini';
+    mini.innerHTML = `<div class="stat-mini-label">${labels[i]}</div><div class="stat-mini-value">${t != null ? t + 's' : '--'}</div>`;
+    cont.appendChild(mini);
+  }
+}
+
+async function populateDailyPanel() {
+  // Show an unobtrusive loading state while we pull from Firebase.
+  const tierChartIds = [
+    'chart-handicap-trajectory', 'chart-move-type-share', 'chart-strike-rate',
+    'chart-modifier-heatmap', 'chart-consistency', 'chart-percentile-trend',
+    'chart-play-frequency', 'chart-daily-history',
+  ];
+  for (const id of tierChartIds) {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = '<div class="chart-empty">Loading…</div>';
+  }
+
+  const uid = getUid();
+  if (!uid) {
+    for (const id of tierChartIds) {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = '<div class="chart-empty">Sign-in still pending. Open again in a moment.</div>';
+    }
+    return;
+  }
+
+  // Fetch in parallel. handicaps.json is a static asset.
+  const [history, metaByDate, scoresByDate, handicapsMap] = await Promise.all([
+    fetchUserDailyHistory(uid, 365),
+    fetchAllDailyMeta(),
+    fetchAllDailyScores(),
+    loadHandicaps(),
+  ]);
+
+  if (history === null || metaByDate === null) {
+    for (const id of tierChartIds) {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = '<div class="chart-empty">Couldn\'t reach Firebase. Try again later.</div>';
+    }
+    return;
+  }
+
+  const handicap = getHandicap(uid);
+  renderDailyStatsTab({
+    history: history || [],
+    metaByDate: metaByDate || {},
+    scoresByDate: scoresByDate || {},
+    uid,
+    handicap,
+  });
+}
+
+// Tab switcher — bind once at module load.
+for (const btn of $$('.stats-tab')) {
+  btn.addEventListener('click', () => setActiveStatsTab(btn.dataset.tab));
 }
 
 // ── Leaderboard Display ───────────────────────────────
@@ -230,47 +336,7 @@ async function updateLeaderboardDisplay() {
     tbody.appendChild(tr);
   });
 
-  // ── My History SVG timeline ─────────────────────────
-  // Anonymous auth may still be resolving when the modal opens — in that
-  // case getUid() is null and we hide the section until next open. We
-  // compute par + delta per-entry HERE (not at save time) so historical
-  // entries pick up the latest PAR_MODEL coefficients and the user's
-  // latest handicap on every chart render, rather than freezing them
-  // at the moment the daily was played.
-  const historySection = $('#leaderboard-history-section');
-  const historyContainer = $('#leaderboard-history-chart');
-  if (historySection && historyContainer) {
-    const uid = getUid();
-    if (!uid) {
-      historySection.classList.add('hidden');
-    } else {
-      const [history, metaByDate] = await Promise.all([
-        fetchUserDailyHistory(uid, 30),
-        fetchAllDailyMeta(),
-        loadHandicaps(),
-      ]);
-      if (history === null || metaByDate === null) {
-        historySection.classList.add('hidden');
-      } else {
-        const handicap = getHandicap(uid);
-        const enriched = history.map(e => {
-          const features = metaByDate[e.date];
-          if (!features) return { date: e.date, time: e.time, par: 0, delta: 0 };
-          const globalPar = predictPar(features);
-          const personalPar = globalPar + handicap;
-          return {
-            date: e.date,
-            time: e.time,
-            par: personalPar,
-            delta: e.time - personalPar,
-          };
-        });
-        historyContainer.innerHTML = '';
-        historyContainer.appendChild(renderDailyHistoryChart(enriched));
-        historySection.classList.remove('hidden');
-      }
-    }
-  }
+  // (History chart moved to Stats modal → Daily tab → History section.)
 }
 
 // ── Collection Display ───────────────────────────────

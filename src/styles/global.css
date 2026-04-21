@@ -1660,6 +1660,216 @@ body {
   background: linear-gradient(180deg, var(--color-loss), #c62828);
 }
 
+/* ── Stats modal v2 — tabbed, mode-specific charts ───── */
+
+.stats-modal-content {
+  max-width: 620px;
+}
+.stats-body {
+  max-height: min(80vh, 900px);
+  overflow-y: auto;
+}
+
+.stats-tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--color-border, rgba(255, 255, 255, 0.1));
+}
+.stats-tab {
+  flex: 1;
+  background: transparent;
+  color: var(--color-text-secondary);
+  border: none;
+  padding: 10px 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+.stats-tab:hover { color: var(--color-text); }
+.stats-tab.active {
+  color: var(--color-accent, #4c8dff);
+  border-bottom-color: var(--color-accent, #4c8dff);
+}
+.stats-panel.hidden { display: none; }
+
+.stats-section {
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-border, rgba(255, 255, 255, 0.08));
+}
+.stats-section:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+.stats-section h3 {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 700;
+}
+.stats-blurb {
+  margin: 0 0 10px !important;
+  font-size: 11.5px;
+  color: var(--color-text-secondary);
+  opacity: 0.85;
+  line-height: 1.4;
+}
+
+.stat-headline {
+  font-size: 32px;
+  font-weight: 800;
+  font-family: var(--font-display);
+  margin: 4px 0 8px;
+  color: var(--color-accent, #4c8dff);
+}
+
+.stat-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.stat-mini {
+  flex: 1 1 0;
+  min-width: 80px;
+  padding: 8px 10px;
+  background: var(--color-surface);
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  text-align: center;
+}
+.stat-mini-label {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+.stat-mini-value {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 800;
+  margin-top: 2px;
+}
+
+.stat-chart {
+  background: var(--color-surface);
+  border-radius: 10px;
+  padding: 8px;
+  margin-top: 4px;
+}
+.chart-empty {
+  display: block;
+  padding: 24px 12px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  opacity: 0.65;
+}
+.recent-games-inline {
+  display: flex;
+  gap: 3px;
+  align-items: flex-end;
+  height: 70px;
+  padding: 6px;
+}
+
+.stats-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 320px;
+}
+
+/* Chart styling — SVG user units. Same viewBox as dailyHistoryChart. */
+.chart-axis-grid {
+  stroke: var(--color-text-secondary);
+  stroke-opacity: 0.12;
+  stroke-width: 1;
+}
+.chart-axis-zero {
+  stroke: var(--color-text-secondary);
+  stroke-opacity: 0.5;
+  stroke-width: 2;
+}
+.chart-threshold {
+  stroke: var(--color-text-secondary);
+  stroke-opacity: 0.4;
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+.chart-axis-label {
+  font-size: 20px;
+  font-family: inherit;
+  fill: var(--color-text-secondary);
+  opacity: 0.75;
+}
+.chart-axis-label-zero { opacity: 0.95; font-weight: 600; }
+.chart-x-label { font-size: 18px; }
+.chart-legend {
+  font-size: 18px;
+  font-family: inherit;
+  opacity: 0.9;
+}
+.chart-value-label { font-weight: 600; }
+
+.chart-line {
+  stroke: var(--color-accent, #4c8dff);
+  stroke-width: 3;
+  fill: none;
+  stroke-linejoin: round;
+}
+.chart-line-handicap { stroke: #7b61ff; }
+.chart-line-strike   { stroke: #ef5350; }
+.chart-line-rank     { stroke: #f9a825; }
+.chart-dot {
+  stroke: none;
+  fill: var(--color-accent, #4c8dff);
+}
+.chart-dot-good { fill: #4caf50; }
+.chart-dot-bad  { fill: #ef5350; }
+.chart-dot-even { fill: var(--color-text-secondary); opacity: 0.7; }
+
+.chart-area { fill-opacity: 0.85; stroke: none; }
+.chart-area-easy   { fill: #4caf50; }
+.chart-area-medium { fill: #fbc02d; }
+.chart-area-hard   { fill: #ef5350; }
+.chart-legend.chart-area-easy   { fill: #4caf50; }
+.chart-legend.chart-area-medium { fill: #fbc02d; }
+.chart-legend.chart-area-hard   { fill: #ef5350; }
+
+.chart-bar { stroke: none; }
+.chart-bar-a      { fill: var(--color-accent, #4c8dff); }
+.chart-bar-b      { fill: var(--color-text-secondary); opacity: 0.5; }
+.chart-bar-recent { fill: var(--color-accent, #4c8dff); }
+.chart-bar-prior  { fill: var(--color-text-secondary); opacity: 0.5; }
+.chart-bar-freq   { fill: #7b61ff; }
+.chart-legend.chart-bar-recent { fill: var(--color-accent, #4c8dff); }
+.chart-legend.chart-bar-prior  { fill: var(--color-text-secondary); opacity: 0.8; }
+
+.chart-whisker { stroke: var(--color-text-secondary); stroke-width: 1.5; opacity: 0.6; }
+.chart-box     { fill: var(--color-accent, #4c8dff); fill-opacity: 0.35; stroke: var(--color-accent, #4c8dff); stroke-width: 1.5; }
+.chart-median  { stroke: #fff; stroke-width: 3; }
+
+.chart-heat-bar { stroke: none; }
+.chart-heat-good { fill: #4caf50; }
+.chart-heat-bad  { fill: #ef5350; }
+.chart-heat-even { fill: var(--color-text-secondary); opacity: 0.5; }
+
+@media (max-width: 520px) {
+  .stats-modal-content { max-width: 100%; }
+  .stat-headline { font-size: 26px; }
+  .stats-section h3 { font-size: 13px; }
+  .stat-mini-label { font-size: 9px; }
+  .stat-mini-value { font-size: 15px; }
+  .stats-chart { max-height: 260px; }
+  .chart-axis-label { font-size: 22px; }
+  .chart-x-label { font-size: 20px; }
+}
+
 /* ── Achievements / Ranks ──────────────────── */
 
 .achievements-content {

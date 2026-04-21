@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v1.5.1';
+const CACHE_NAME = 'gregsweeper-v1.5.2';
 const ASSETS = [
   './',
   './index.html',
@@ -31,6 +31,8 @@ const ASSETS = [
   './src/logic/skillTrainer.js',
   './src/ui/skillTrainerUI.js',
   './src/ui/dailyHistoryChart.js',
+  './src/ui/charts.js',
+  './src/ui/statsRenderer.js',
   './src/ui/collectionManager.js',
   './src/logic/powerUps.js',
   './src/logic/seededRandom.js',
