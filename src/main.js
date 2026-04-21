@@ -150,10 +150,21 @@ async function updateLeaderboardDisplay() {
   $('#leaderboard-table').classList.toggle('hidden', !hasEntries);
   $('#leaderboard-empty').classList.toggle('hidden', hasEntries);
 
-  // Get daily par and solver moves (from state, localStorage, or compute on-demand)
+  // Get daily par and solver moves. Any cached par in localStorage was
+  // computed against whatever PAR_MODEL was shipping when the daily was
+  // played — it could be stale after a refit. If we have cached features
+  // (either in-memory from a fresh play or in localStorage), always
+  // recompute par from them against the CURRENT coefficients so the
+  // leaderboard "Par" column matches today's model. Only fall through to
+  // the expensive regenerate-from-seed path when no features are cached.
   const cached = loadDailyPar(dateStr);
-  let dailyPar = state.dailyPar || cached.par;
+  const featuresForPar = state.dailyFeatures || cached.features || null;
+  let dailyPar = 0;
   let dailyMoves = state.dailyMoves || cached.moves;
+  if (featuresForPar) {
+    dailyPar = predictPar(featuresForPar);
+    if (!dailyMoves && featuresForPar.totalClicks) dailyMoves = featuresForPar.totalClicks;
+  }
   if (dailyPar === 0) {
     // Compute par on-demand by regenerating today's daily board.
     // This path runs when the user opens the leaderboard without having
@@ -213,7 +224,7 @@ async function updateLeaderboardDisplay() {
     }
     let paceCol = '<td class="lb-col-extra">-</td>';
     if (dailyMoves > 0) {
-      paceCol = `<td class="lb-col-extra">${(entry.time / dailyMoves).toFixed(2)}</td>`;
+      paceCol = `<td class="lb-col-extra">${(entry.time / dailyMoves).toFixed(1)}</td>`;
     }
     tr.innerHTML = `<td>${i + 1}</td><td>${escapeHtml(entry.name)}</td><td>${entry.time}s</td>${bombCol}${parCol}${paceCol}`;
     tbody.appendChild(tr);
