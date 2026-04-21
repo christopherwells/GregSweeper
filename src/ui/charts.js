@@ -440,22 +440,45 @@ export function densityChart(values, opts = {}) {
     step: yMax * 1.1, // just the top line
   });
 
-  // Threshold line (par)
-  if (typeof opts.thresholdLine === 'number' && opts.thresholdLine >= xMin && opts.thresholdLine <= xMax) {
-    const x = xToPx(opts.thresholdLine);
+  // Helper to draw a labeled vertical marker line inside the plot area.
+  // labelYOffset lets callers stagger nearby labels vertically so two
+  // close-together markers don't collide (par vs. mean, typically).
+  const drawMarker = (x, label, cls, labelYOffset = 0) => {
+    if (x < xMin || x > xMax) return;
+    const px = xToPx(x);
     svg.appendChild(el('line', {
-      x1: x, y1: layout.padTop, x2: x, y2: VB_H - layout.padBottom,
-      class: 'chart-threshold',
+      x1: px, y1: layout.padTop, x2: px, y2: VB_H - layout.padBottom,
+      class: cls,
     }));
-    if (opts.thresholdLabel) {
+    if (label) {
       const lbl = el('text', {
-        x, y: layout.padTop - 6,
+        x: px, y: layout.padTop - 6 + labelYOffset,
         'text-anchor': 'middle',
         class: 'chart-axis-label chart-axis-label-zero',
       });
-      lbl.textContent = opts.thresholdLabel;
+      lbl.textContent = label;
       svg.appendChild(lbl);
     }
+  };
+
+  // Par line (threshold)
+  if (typeof opts.thresholdLine === 'number') {
+    drawMarker(opts.thresholdLine, opts.thresholdLabel, 'chart-threshold');
+  }
+  // Optional second line for the sample mean (shown distinct from par).
+  // If it's close enough to the par line that labels would run into each
+  // other, drop the mean label below the plot area instead of above.
+  if (typeof opts.meanLine === 'number') {
+    let labelYOffset = 0;
+    if (typeof opts.thresholdLine === 'number') {
+      const px = xToPx(opts.meanLine);
+      const parPx = xToPx(opts.thresholdLine);
+      if (Math.abs(px - parPx) < 80) {
+        // Render the mean label below the plot so it doesn't stack on "par"
+        labelYOffset = VB_H - 2 * layout.padTop + 12;
+      }
+    }
+    drawMarker(opts.meanLine, opts.meanLabel, 'chart-meanline', labelYOffset);
   }
 
   // Filled curve

@@ -263,13 +263,40 @@ function renderModifierHeatmap(plays) {
 function renderDeltaDistribution(plays, handicap) {
   if (plays.length < 5) {
     replaceContent('chart-consistency', emptyDiv('Need at least 5 plays to see distribution shape.'));
+    setText('stat-over-par-pct', '--');
+    setText('stat-under-par-pct', '--');
+    setText('stat-median-delta', '--');
     return;
   }
   const deltas = plays.map(p => p.deltaGlobal);
+  const n = deltas.length;
+  const mean = deltas.reduce((s, v) => s + v, 0) / n;
+  const over = deltas.filter(d => d > 0.5).length;
+  const under = deltas.filter(d => d < -0.5).length;
+
+  // Median delta: when the mean (handicap) is higher than the median,
+  // the distribution is right-skewed — typical days are better than the
+  // mean suggests, but a few bad days drag the average up. Surfacing
+  // both numbers makes that skew visible.
+  const sorted = [...deltas].sort((a, b) => a - b);
+  const median = n % 2 === 0
+    ? (sorted[n / 2 - 1] + sorted[n / 2]) / 2
+    : sorted[Math.floor(n / 2)];
+
+  setText('stat-over-par-pct', `${Math.round(100 * over / n)}%`);
+  setText('stat-under-par-pct', `${Math.round(100 * under / n)}%`);
+  const medianSign = median > 0 ? '+' : '';
+  setText('stat-median-delta', `${medianSign}${median.toFixed(1)}s`);
+
   const svg = densityChart(deltas, {
     ariaLabel: 'Distribution of your daily deltas',
     thresholdLine: 0,
     thresholdLabel: 'par',
+    meanLine: mean,
+    // Mean line is drawn but unlabeled — labeling it collides with the
+    // x-axis tick when the mean falls near the midpoint of the data range.
+    // The "Days over / under par" cards and the Handicap headline above
+    // make the mean self-evident from context.
     xFormat: v => (v > 0 ? '+' : '') + v + 's',
   });
   replaceContent('chart-consistency', svg);

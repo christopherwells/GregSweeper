@@ -1861,6 +1861,12 @@ body {
   fill: none;
   stroke-linejoin: round;
 }
+.chart-meanline {
+  stroke: #f9a825;
+  stroke-width: 2;
+  stroke-dasharray: 6 6;
+  opacity: 0.9;
+}
 
 .chart-whisker { stroke: var(--color-text-secondary); stroke-width: 1.5; opacity: 0.6; }
 .chart-box     { fill: var(--color-accent, #4c8dff); fill-opacity: 0.35; stroke: var(--color-accent, #4c8dff); stroke-width: 1.5; }

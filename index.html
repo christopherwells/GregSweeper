@@ -554,7 +554,21 @@
 
           <div class="stats-section">
             <h3>Delta distribution</h3>
-            <p class="stats-blurb">Smoothed density of your daily deltas (Gaussian kernel, Silverman bandwidth). A tall narrow peak is consistent play; a wide flat curve is swingier. Mass left of the par line is under par; right of par is over.</p>
+            <p class="stats-blurb">Smoothed density of your daily deltas (Gaussian kernel, Silverman bandwidth). The <strong>gray dashed line</strong> is par; the <strong>orange dashed line</strong> is where your mean sits (that's your handicap). Mass left of par is under par; right is over.</p>
+            <div class="stat-row">
+              <div class="stat-mini">
+                <div class="stat-mini-label">Days over par</div>
+                <div class="stat-mini-value" id="stat-over-par-pct">--</div>
+              </div>
+              <div class="stat-mini">
+                <div class="stat-mini-label">Days under par</div>
+                <div class="stat-mini-value" id="stat-under-par-pct">--</div>
+              </div>
+              <div class="stat-mini">
+                <div class="stat-mini-label">Median delta</div>
+                <div class="stat-mini-value" id="stat-median-delta">--</div>
+              </div>
+            </div>
             <div class="stat-chart" id="chart-consistency"></div>
           </div>
 
