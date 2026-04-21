@@ -213,7 +213,15 @@ export function newGame() {
   state.showParticles = false;
   state.hitMine = null;
   state.suggestedMove = null;
-  state.dailySeed = state.gameMode === 'daily' ? getLocalDateString() : null;
+  // Practice-daily sets state.dailySeed (and state.isDailyPractice) BEFORE
+  // newGame runs, so don't stomp on it here. For a normal daily we always
+  // use today's local date string.
+  if (state.gameMode !== 'daily') {
+    state.dailySeed = null;
+    state.isDailyPractice = false;
+  } else if (!state.dailySeed) {
+    state.dailySeed = getLocalDateString();
+  }
   state.dailyBombHits = 0;
 
   // Daily mode: vary board dimensions using the daily seed

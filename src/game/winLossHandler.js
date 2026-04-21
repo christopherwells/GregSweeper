@@ -115,12 +115,16 @@ export function handleWin() {
   const prevMaxLevel = prevStats.maxLevelReached || 1;
 
   const isDaily = state.gameMode === 'daily';
+  // Practice daily (URL ?seed=custom) plays like a daily but must not touch
+  // stats, streak, completion flags, or personal history — it exists for
+  // replaying after today's real daily has already been won.
+  const isRealDaily = isDaily && !state.isDailyPractice;
   const stats = saveGameResult(true, state.elapsedTime, state.currentLevel, {
-    isDaily,
+    isDaily: isRealDaily,
     usedPowerUps: state.usedPowerUps,
     gameMode: state.gameMode,
     hadGimmicks: state.activeGimmicks && state.activeGimmicks.length > 0,
-    dailySeed: state.dailySeed,
+    dailySeed: isRealDaily ? state.dailySeed : null,
   });
   const earnedPowerUp = state.gameMode === 'chaos' ? null : awardPowerUps(stats);
 
@@ -128,7 +132,7 @@ export function handleWin() {
   if (state.gameMode === 'normal') {
     saveProgress({ maxCheckpoint: stats.maxLevelReached || state.currentLevel });
   }
-  if (isDaily) {
+  if (isRealDaily) {
     const streak = getDailyStreak();
     saveProgress({
       dailyStreak: streak.streak,
@@ -138,7 +142,7 @@ export function handleWin() {
   }
 
   // Mark daily as completed so it cannot be replayed today
-  if (isDaily && state.dailySeed) {
+  if (isRealDaily && state.dailySeed) {
     markDailyCompleted(state.dailySeed);
   }
 
@@ -367,10 +371,12 @@ export function handleWin() {
         features: state.dailyFeatures,
       });
       // Per-user daily-history timeline feeds the leaderboard-modal chart.
-      // We only persist `time` — par is recomputed at read time against
-      // whatever PAR_MODEL is currently shipping so old entries update
-      // automatically when coefficients refit.
-      saveDailyHistoryEntry(dateStr, { time: scoreTime });
+      // Skip for practice dailies — they live on their own seed date-slot
+      // and would otherwise pollute the player's real timeline with
+      // off-schedule entries.
+      if (!state.isDailyPractice) {
+        saveDailyHistoryEntry(dateStr, { time: scoreTime });
+      }
       showToast('✅ Score submitted!');
     } else {
       dailySubmitForm.classList.remove('hidden');

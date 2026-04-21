@@ -1257,7 +1257,9 @@ $('#gameover-submit-daily').addEventListener('click', async (e) => {
       par: state.dailyPar,
       features: state.dailyFeatures,
     });
-    saveDailyHistoryEntry(dateStr, { time: scoreTime });
+    if (!state.isDailyPractice) {
+      saveDailyHistoryEntry(dateStr, { time: scoreTime });
+    }
     const dailySubmitForm = $('#daily-submit-form');
     if (dailySubmitForm) dailySubmitForm.classList.add('hidden');
     showToast('✅ Score submitted!');
@@ -1445,8 +1447,16 @@ function init() {
       newGame();
     });
   } else if (deepLinkMode === 'daily') {
-    // Deep link to daily mode
+    // Deep link to daily mode. ?seed=<custom> lets you play a fresh puzzle
+    // under a non-today seed (e.g. after you've finished today's). Practice
+    // runs submit to Firebase so the backend gets your uid, but don't
+    // touch streak, bestTimes, completion flags, or personal history.
     state.gameMode = 'daily';
+    const customSeed = urlParams.get('seed');
+    if (customSeed) {
+      state.dailySeed = customSeed;
+      state.isDailyPractice = true;
+    }
     hideTitleScreen();
     if (!tryResumeGame()) newGame();
   } else {
