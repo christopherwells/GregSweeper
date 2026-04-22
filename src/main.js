@@ -1579,6 +1579,21 @@ function init() {
   const urlParams = new URLSearchParams(window.location.search);
   const deepLinkMode = urlParams.get('mode');
 
+  // Diagnostics button is hidden for casual users. Unhide when `?debug=1`
+  // is in the URL (once per device — we persist a localStorage flag so
+  // the button stays visible on return visits without needing the param
+  // again). `?debug=0` clears the flag if we ever want to re-hide it.
+  const DEBUG_UI_KEY = 'gregsweeper_debug_ui';
+  if (urlParams.get('debug') === '1') {
+    safeSet(DEBUG_UI_KEY, '1');
+  } else if (urlParams.get('debug') === '0') {
+    safeRemove(DEBUG_UI_KEY);
+  }
+  if (safeGet(DEBUG_UI_KEY) === '1') {
+    const g = $('#settings-diagnostics-group');
+    if (g) g.classList.remove('hidden');
+  }
+
   if (!isOnboarded()) {
     // First time — launch interactive tutorial, then start challenge mode
     startTutorial(() => {
