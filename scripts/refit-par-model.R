@@ -1,11 +1,18 @@
-# Automated Greg-par refit.
+# Automated Greg-par refit — Bayesian mixed-effects model.
 #
 # Pulls `daily/*` scores and `dailyMeta/*` features from Firebase Realtime
 # Database via public HTTPS reads (security rules make both world-readable),
-# joins them, fits a mixed-effects model (fixed effects = par coefficients,
-# random intercept per uid = handicap), and patches src/logic/difficulty.js
-# between its PAR_MODEL:START / PAR_MODEL:END markers. Also writes
-# src/logic/handicaps.json keyed by uid.
+# joins them, fits `brm(time ~ features + (1|uid))` with weakly informative
+# priors centered on the hand-picked seed coefficients, and patches
+# src/logic/difficulty.js between its PAR_MODEL:START / PAR_MODEL:END markers.
+# Also writes src/logic/handicaps.json keyed by uid.
+#
+# Why Bayesian: the previous lme4 approach produced wild coefficients at
+# N=62 (canonical 2.0 -> 14.77, wormhole 0.8 -> 32) because ordinary maximum
+# likelihood has no regularisation on the fixed effects. Priors centered on
+# the seed values pull the fit toward sensible numbers whenever the data
+# isn't yet strong enough to override them, so we can refit at low N without
+# catastrophic drift and decommission the hard MAX_COEF_DRIFT = 10 clamp.
 #
 # Run manually with Rscript scripts/refit-par-model.R, or automatically on
 # the cron schedule defined in .github/workflows/refit-par-model.yml.
@@ -16,14 +23,18 @@ suppressPackageStartupMessages({
   library(tidyr)
   library(purrr)
   library(stringr)
-  library(lme4)   # lmer — estimates fixed effects AND per-user random intercepts
-                  # jointly, which is what makes the handicap unbiased by who-
-                  # played-more. Without the random intercept we'd have a
-                  # circular reference where a player with many submissions
-                  # pulls the fixed effects toward their own time, and their
-                  # handicap (residual from those same effects) then looks
-                  # smaller than it really is. lmer breaks the cycle.
+  library(brms)          # Bayesian mixed-effects via Stan. The fixed-effects
+                         # priors are what prevent the wild coefficient
+                         # swings that killed the lme4 approach; random
+                         # intercepts still do what lmer did for handicaps.
+  library(posterior)     # as_draws_array() and summarise_draws() used below
+                         # for convergence diagnostics. brms exports S3
+                         # methods but the generics live here.
 })
+
+# Reproducible sampling. Not strictly necessary with enough iterations but
+# avoids committing a different set of coefficients on identical data.
+set.seed(20260422)
 
 `%||%` <- function(a, b) if (is.null(a)) b else a
 
@@ -31,30 +42,100 @@ DB_URL          <- "https://gregsweeper-66d02-default-rtdb.firebaseio.com"
 DIFFICULTY_PATH <- "src/logic/difficulty.js"
 HANDICAPS_PATH  <- "src/logic/handicaps.json"
 
-# Minimum scores before the regression runs at all. Rule of thumb is ~10
-# observations per predictor; with 15 features that's ~150. Below this the
-# seed coefficients stay put and handicaps are computed as mean-residual
-# against those. We raised this from 20 after early fits on ~62 scores
-# produced nonsensical coefficients (canonical-subset jumped 7×, wormhole
-# 40×, etc.) — the practical par was visibly worse than the seeded guess.
-# Once the dataset is big enough the refit will land without overfit.
-MIN_SCORES_TO_FIT <- 150
+# Minimum scores before we bother fitting at all. With informative priors
+# the fit is stable at much lower N than the old lm/lmer approach (which
+# needed ~150 before the coefficients stopped blowing up), so the floor is
+# mostly about "is there enough signal to move the prior at all" rather
+# than "will the fit explode". 30 is roughly 2 observations per predictor.
+MIN_SCORES_TO_FIT <- 30
 
-# Soft guard: reject a refit that pushes any move-type coefficient more than
-# this multiple away from the PREVIOUS value (not the seed — yesterday's
-# coefficients are the baseline for today's drift). Prevents catastrophic
-# overwrites from a bad join or broken data while still letting the model
-# evolve gradually over time.
-MAX_COEF_DRIFT <- 10.0
-
-# Users with fewer than this many submitted scores get a handicap of 0 rather
-# than a noisy per-user mean. With lmer, partial pooling already shrinks
-# low-N users toward zero, so this is extra conservatism. When we're using
-# lm() instead (no random effects), this threshold actually matters.
+# Users with fewer than this many submitted scores get a handicap of 0
+# rather than a noisy single-game mean. Partial pooling via the random
+# intercept already shrinks low-N users toward zero, so this is extra
+# conservatism that only bites in the residuals fallback.
 MIN_PLAYS_FOR_HANDICAP <- 3
 
-# Parse the current PAR_MODEL block out of difficulty.js. Used as both the
-# drift baseline and the fallback when no new fit runs.
+# Sampling budget. 4 chains × 2000 iterations (1000 warmup) is standard;
+# more than enough for this model size on any plausible N.
+N_CHAINS    <- 4
+N_ITER      <- 2000
+N_WARMUP    <- 1000
+ADAPT_DELTA <- 0.99   # tight step-size adaptation: coefficients near their
+                      # lb = 0 boundary (cellCount ~ 0.02, etc.) create
+                      # sharp curvature in the log-posterior, and looser
+                      # adaptation produces a handful of divergent
+                      # transitions. 0.99 is the usual fix.
+
+# Max fraction of post-warmup draws that may diverge before we reject the
+# fit. Stan's own guidance is "much less than 1%" — 0.25% is comfortably
+# below that. A nonzero but small count is common near boundaries and does
+# not invalidate the posterior means we care about.
+MAX_DIVERGENT_FRAC <- 0.0025
+
+# Prior means, one per fixed-effect coefficient. These are the original
+# hand-picked seed values that were in difficulty.js before any refit ran,
+# and represent our "reasonable guess" for how many seconds each kind of
+# move / cell / mine / modifier adds to par. Keeping them fixed in the R
+# script (rather than re-reading them from the current PAR_MODEL) means
+# the priors are a stable anchor — successive refits can't ratchet the
+# prior toward a drift direction.
+PRIOR_MEANS <- list(
+  # Intercept centered at 0: no real board has all features = 0, so the
+  # intercept is only meaningful as an extrapolation artifact that catches
+  # whatever calibration mismatch the slopes can't explain. A seed of 0
+  # says "we have no strong opinion about the baseline, let the data
+  # decide" while still penalising absurd values through PRIOR_INTERCEPT_SD.
+  Intercept            = 0.0,
+  passAMoves           = 1.2,
+  canonicalSubsetMoves = 2.0,
+  genericSubsetMoves   = 4.5,
+  advancedLogicMoves   = 7.0,
+  disjunctiveMoves     = 10.0,
+  cellCount            = 0.02,
+  totalMines           = 0.3,
+  wallEdgeCount        = 0.15,
+  mysteryCellCount     = 0.8,
+  liarCellCount        = 0.6,
+  lockedCellCount      = 0.4,
+  wormholePairCount    = 0.8,
+  mirrorPairCount      = 1.0,
+  sonarCellCount       = 0.5,
+  compassCellCount     = 0.5
+)
+
+# Per-coefficient prior *log-scale* sigmas. Each non-intercept prior is
+# `lognormal(log(mean), sigma)`: lognormal is inherently positive (par is
+# monotonic non-decreasing in every feature, so slopes can't be negative),
+# and its median equals the seed value. sigma on the log scale is roughly
+# the coefficient of variation: 0.5 gives ~[seed/1.65, seed*1.65] at ±1 SD
+# and ~[seed/2.7, seed*2.7] at ±2 SD — wide enough to let strong data
+# override, tight enough to prevent the 10x fixed-effect swings that killed
+# the lme4 approach. The intercept keeps a plain normal prior (could
+# legitimately be near zero after bias correction).
+PRIOR_INTERCEPT_SD <- 15.0   # lets the intercept float freely; bias-
+                              # correction + slope priors carry the
+                              # calibration
+PRIOR_SIGMAS <- list(
+  passAMoves           = 1.0,
+  canonicalSubsetMoves = 1.0,
+  genericSubsetMoves   = 1.0,
+  advancedLogicMoves   = 1.0,
+  disjunctiveMoves     = 1.0,
+  cellCount            = 1.0,
+  totalMines           = 1.0,
+  wallEdgeCount        = 1.0,
+  mysteryCellCount     = 1.0,
+  liarCellCount        = 1.0,
+  lockedCellCount      = 1.0,
+  wormholePairCount    = 1.0,
+  mirrorPairCount      = 1.0,
+  sonarCellCount       = 1.0,
+  compassCellCount     = 1.0
+)
+
+# Parse the current PAR_MODEL block out of difficulty.js. Used as the
+# "previous values" baseline for the drift sanity check and as the fallback
+# when no new fit runs.
 parse_par_model <- function(path) {
   src <- paste(readLines(path, warn = FALSE, encoding = "UTF-8"),
                collapse = "\n")
@@ -91,6 +172,48 @@ apply_par_model <- function(df, coefs) {
     coefs$secPerSonarCell            * sonarCellCount +
     coefs$secPerCompassCell          * compassCellCount
   )
+}
+
+# Build the brms prior list. Per-coefficient priors are lognormal so they're
+# inherently positive and centered (as median) on the seed value — this is
+# what does the regularisation work. The Intercept gets a plain normal.
+# Residual SD and handicap SD get weakly informative priors appropriate for
+# variance components.
+build_priors <- function(fixed_names) {
+  parts <- list()
+  # Class-wide constraint: lognormal priors only make sense for positive
+  # parameters, so we need to tell Stan the b-class parameters are bounded
+  # below by zero. brms doesn't allow combining `coef` with `lb`, so the
+  # bound goes on a class-wide placeholder prior and the distribution
+  # specifications come through the per-coef priors below.
+  parts[[length(parts) + 1]] <- set_prior("", class = "b", lb = 0)
+
+  for (nm in fixed_names) {
+    m <- PRIOR_MEANS[[nm]]
+    if (is.null(m)) stop("Missing prior mean for ", nm)
+    if (nm == "Intercept") {
+      parts[[length(parts) + 1]] <- set_prior(
+        sprintf("normal(%f, %f)", m, PRIOR_INTERCEPT_SD),
+        class = "Intercept"
+      )
+    } else {
+      sig <- PRIOR_SIGMAS[[nm]]
+      if (is.null(sig)) stop("Missing prior sigma for ", nm)
+      parts[[length(parts) + 1]] <- set_prior(
+        sprintf("lognormal(%f, %f)", log(m), sig),
+        class = "b", coef = nm
+      )
+    }
+  }
+  # Residual SD: observation-level completion times vary on the order of
+  # tens of seconds; half-normal(0, 20) covers that with plenty of slack.
+  parts[[length(parts) + 1]] <- set_prior("normal(0, 20)", class = "sigma")
+  # Between-user SD for handicaps: student_t(3, 0, 5) is the brms default-
+  # style weakly informative prior for variance components.
+  parts[[length(parts) + 1]] <- set_prior(
+    "student_t(3, 0, 5)", class = "sd", group = "uid"
+  )
+  do.call(c, parts)
 }
 
 # ── 1. Pull data ────────────────────────────────────────
@@ -147,9 +270,9 @@ message(sprintf("  joined: N=%d scores, %d dates, %d players",
 current_coefs <- parse_par_model(DIFFICULTY_PATH)
 new_coefs     <- current_coefs  # default: no refit, keep what's there
 handicaps     <- list()         # uid -> seconds
-used_lmer     <- FALSE
-used_lm       <- FALSE
+fit_method    <- "seed-residuals"
 r2            <- NA_real_
+diag_note     <- ""
 
 # ── 2. Fit ──────────────────────────────────────────────
 
@@ -161,67 +284,115 @@ fit_formula_fixed <- time ~
   wormholePairCount + mirrorPairCount +
   sonarCellCount + compassCellCount
 
-if (n_scores >= MIN_SCORES_TO_FIT && n_players >= 3) {
-  # Mixed-effects fit: one random intercept per uid = that user's handicap.
-  # Partial pooling shrinks low-N users toward zero automatically, which
-  # is why we don't need to worry about a brand-new player's first score
-  # blowing out their handicap estimate.
-  #
-  # We require >=3 players because with exactly 2 groups lmer can't
-  # meaningfully estimate between-player variance (only 1 df for the
-  # variance component), and the random intercepts collapse to zero
-  # (singular fit). The lm + mean-residual fallback below gives a
-  # sensible number at N=2 at the cost of some circular-reference bias.
+if (n_scores >= MIN_SCORES_TO_FIT && n_players >= 2) {
+  # Bayesian mixed-effects fit. Same formula as the old lmer call, but with
+  # informative priors on the fixed effects. brms can estimate the random
+  # intercept variance even at n_players == 2 because the student_t prior
+  # on sd(uid) gives it enough structure to separate "two players differ
+  # by X" from "zero handicap variance, pure residual".
+  df_fit <- df |> filter(!is.na(uid), uid != "")
   fit_formula <- update(fit_formula_fixed, ~ . + (1 | uid))
-  df_lmer <- df |> filter(!is.na(uid), uid != "")
 
-  fit <- lmer(fit_formula, data = df_lmer, REML = TRUE,
-              control = lmerControl(
-                check.conv.singular = .makeCC(action = "ignore", tol = 1e-4)
-              ))
-  co <- fixef(fit)
-  used_lmer <- TRUE
+  priors <- build_priors(c("Intercept", all.vars(fit_formula_fixed)[-1]))
 
-  # Random intercepts = handicaps. ranef() returns a list with one entry
-  # per grouping factor; $uid is a 1-column data frame (the intercept).
-  re <- ranef(fit)$uid
-  handicaps <- setNames(as.list(round(re[, 1], 2)), rownames(re))
+  message("Fitting brms model (this takes ~1-2 min on first run)…")
+  fit <- brm(
+    fit_formula,
+    data    = df_fit,
+    prior   = priors,
+    chains  = N_CHAINS,
+    iter    = N_ITER,
+    warmup  = N_WARMUP,
+    control = list(adapt_delta = ADAPT_DELTA),
+    cores   = min(N_CHAINS, parallel::detectCores()),
+    refresh = 0,
+    seed    = 20260422
+  )
 
-  # Marginal R² (fixed effects only): var(fixed predictions) / total var.
-  # Close enough to OLS R² for diagnostic display; conditional (fixed+random)
-  # would always be higher and less comparable.
-  fe_pred <- model.matrix(fit_formula_fixed, data = df_lmer) %*%
-             co[match(colnames(model.matrix(fit_formula_fixed, data = df_lmer)), names(co))]
-  r2 <- as.numeric(1 - var(df_lmer$time - fe_pred) / var(df_lmer$time))
+  # Convergence diagnostics. Reject the fit if any Rhat > 1.05 or any ESS
+  # < 400 — Stan's rule-of-thumb for "posterior summaries are trustworthy".
+  # Divergent transitions are a hard-fail: they mean the posterior geometry
+  # has pockets the sampler couldn't explore and the point estimates could
+  # be seriously off.
+  post_summary <- posterior::summarise_draws(
+    as_draws_array(fit), c("mean", "rhat", "ess_bulk")
+  )
+  rhat_bad <- any(post_summary$rhat > 1.05, na.rm = TRUE)
+  ess_bad  <- any(post_summary$ess_bulk < 400, na.rm = TRUE)
+  diverge  <- sum(nuts_params(fit)$Value[nuts_params(fit)$Parameter == "divergent__"])
+  total_draws <- N_CHAINS * (N_ITER - N_WARMUP)
+  diverge_bad <- (diverge / total_draws) > MAX_DIVERGENT_FRAC
 
-  cat("\nlmer fixed effects:\n"); print(co)
-  cat(sprintf("  marginal R² ≈ %.3f, handicaps: %d users\n\n",
-              r2, length(handicaps)))
+  diag_note <- sprintf("max Rhat = %.3f, min ESS = %.0f, divergent = %d/%d",
+                       max(post_summary$rhat, na.rm = TRUE),
+                       min(post_summary$ess_bulk, na.rm = TRUE),
+                       diverge, total_draws)
+  message("  diagnostics: ", diag_note)
 
-} else if (n_scores >= MIN_SCORES_TO_FIT) {
-  # Single-user or uid-less data: lmer can't fit a random intercept.
-  # Fall back to plain lm for fixed effects; handicaps come from residuals.
-  fit <- lm(fit_formula_fixed, data = df)
-  co <- coef(fit)
-  used_lm <- TRUE
-  r2 <- summary(fit)$r.squared
+  if (rhat_bad || ess_bad || diverge_bad) {
+    message("Fit diagnostics failed — keeping previous PAR_MODEL and handicaps.")
+    message("  Rerun scripts/fit-par-model.qmd for a closer look at why.")
+    fit_method <- "seed-residuals"   # trigger residual fallback below
+  } else {
+    # fixef() on a brmsfit returns a matrix with Estimate / Est.Error / CIs.
+    # Estimate = posterior mean, which is what we want as the point value.
+    co <- fixef(fit)[, "Estimate"]
+    fit_method <- "brms-ranef"
 
-  cat("\nlm fit (n_players < 2, no random effect):\n")
-  print(summary(fit)$coefficients[, c("Estimate", "Std. Error", "Pr(>|t|)")])
-  cat(sprintf("  R² = %.3f\n\n", r2))
+    # Random intercepts. These are the raw posterior means from brms.
+    re <- ranef(fit)$uid[, , "Intercept"]
+    re_values <- if (is.matrix(re)) re[, "Estimate"] else re["Estimate"]
+    re_names  <- if (is.matrix(re)) rownames(re) else names(re_values)
 
+    # Recenter the random intercepts to sum to zero, absorbing the shift
+    # into the global Intercept. Without this, brms's sampler is free to
+    # park the overall baseline in either the fixed Intercept or the random
+    # intercepts (the two are non-identifiable up to an additive constant
+    # when predictors aren't centered at zero — which ours aren't, since we
+    # want the JS side to plug raw feature counts into the formula). The
+    # raw posterior here handed us alpha = -84.83 with both users' random
+    # intercepts around +100, which gave correct predictions internally but
+    # stored a nonsense "handicap = +100s" for each player. Centering moves
+    # the baseline into alpha so each handicap reads as the user's offset
+    # from the population mean, which is what the rest of the app expects.
+    #
+    # Play-weight the centering so users with very different N aren't
+    # re-centered in a way that makes a low-N user's handicap swing the
+    # mean. Play counts come from the fit data.
+    play_counts <- table(df_fit$uid)[re_names]
+    weighted_mean_re <- sum(re_values * play_counts) / sum(play_counts)
+    co["Intercept"] <- co["Intercept"] + weighted_mean_re
+    re_values       <- re_values - weighted_mean_re
+
+    handicaps <- setNames(as.list(round(re_values, 2)), re_names)
+
+    # Marginal R² (fixed effects only): var(fixed predictions) / total var.
+    # brms has bayes_R2() for conditional R², but the marginal definition
+    # here is directly comparable to the lmer pipeline and to OLS. Note
+    # that model.matrix names the intercept column "(Intercept)" whereas
+    # brms names it "Intercept" — normalise before the match.
+    mm <- model.matrix(fit_formula_fixed, data = df_fit)
+    mm_names <- colnames(mm); mm_names[mm_names == "(Intercept)"] <- "Intercept"
+    fe_pred <- mm %*% co[match(mm_names, names(co))]
+    r2 <- as.numeric(1 - var(df_fit$time - fe_pred) / var(df_fit$time))
+
+    cat("\nbrms posterior means (fixed effects, post-recenter):\n")
+    print(round(co, 3))
+    cat(sprintf("  marginal R² ≈ %.3f, handicaps: %d users\n\n",
+                r2, length(handicaps)))
+  }
 } else {
   message(sprintf(
-    "Too few scores to refit fixed effects (%d < %d). Seed coefficients unchanged.",
-    n_scores, MIN_SCORES_TO_FIT
+    "Too few scores/players to fit (N=%d, players=%d; need N >= %d and players >= 2). Seed coefficients unchanged.",
+    n_scores, n_players, MIN_SCORES_TO_FIT
   ))
 }
 
 # ── 3. Build new_coefs from the fit (if any) ─────────────
 
-if (used_lmer || used_lm) {
-  # Non-negative clamp — par should be monotonic non-decreasing in every
-  # feature. Negative coefficients are collinearity/noise, not signal.
+if (fit_method == "brms-ranef") {
+  # Non-negative clamp — our priors are truncated at 0 so this should never
+  # trigger, but cheap insurance against a future prior change.
   nn <- function(x, name) {
     v <- if (is.na(x)) 0 else as.numeric(x)
     if (v < 0) {
@@ -232,71 +403,42 @@ if (used_lmer || used_lm) {
   }
 
   new_coefs <- list(
-    intercept                   = nn(co["(Intercept)"],           "intercept"),
-    secPerPassAMove             = nn(co["passAMoves"],            "passA"),
-    secPerCanonicalSubsetMove   = nn(co["canonicalSubsetMoves"],  "canonicalSubset"),
-    secPerGenericSubsetMove     = nn(co["genericSubsetMoves"],    "genericSubset"),
-    secPerAdvancedLogicMove     = nn(co["advancedLogicMoves"],    "advancedLogic"),
-    secPerDisjunctiveMove       = nn(co["disjunctiveMoves"],      "disjunctive"),
-    secPerCell                  = nn(co["cellCount"],             "cell"),
+    intercept                   = nn(co["Intercept"],              "intercept"),
+    secPerPassAMove             = nn(co["passAMoves"],             "passA"),
+    secPerCanonicalSubsetMove   = nn(co["canonicalSubsetMoves"],   "canonicalSubset"),
+    secPerGenericSubsetMove     = nn(co["genericSubsetMoves"],     "genericSubset"),
+    secPerAdvancedLogicMove     = nn(co["advancedLogicMoves"],     "advancedLogic"),
+    secPerDisjunctiveMove       = nn(co["disjunctiveMoves"],       "disjunctive"),
+    secPerCell                  = nn(co["cellCount"],              "cell"),
     secPerMineFlag              = nn(co["totalMines"],             "mineFlag"),
-    secPerWallEdge              = nn(co["wallEdgeCount"],         "wallEdge"),
-    secPerMysteryCell           = nn(co["mysteryCellCount"],      "mysteryCell"),
-    secPerLiarCell              = nn(co["liarCellCount"],         "liarCell"),
-    secPerLockedCell            = nn(co["lockedCellCount"],       "lockedCell"),
-    secPerWormholePair          = nn(co["wormholePairCount"],     "wormholePair"),
-    secPerMirrorPair            = nn(co["mirrorPairCount"],       "mirrorPair"),
-    secPerSonarCell             = nn(co["sonarCellCount"],        "sonarCell"),
-    secPerCompassCell           = nn(co["compassCellCount"],      "compassCell")
+    secPerWallEdge              = nn(co["wallEdgeCount"],          "wallEdge"),
+    secPerMysteryCell           = nn(co["mysteryCellCount"],       "mysteryCell"),
+    secPerLiarCell              = nn(co["liarCellCount"],          "liarCell"),
+    secPerLockedCell            = nn(co["lockedCellCount"],        "lockedCell"),
+    secPerWormholePair          = nn(co["wormholePairCount"],      "wormholePair"),
+    secPerMirrorPair            = nn(co["mirrorPairCount"],        "mirrorPair"),
+    secPerSonarCell             = nn(co["sonarCellCount"],         "sonarCell"),
+    secPerCompassCell           = nn(co["compassCellCount"],       "compassCell")
   )
 
   # Bias-correct the intercept so the mean predicted par matches the mean
-  # actual time across the fit population. Without this, clamping negative
-  # coefficients to 0 systematically inflates every prediction — the
-  # population-level mean residual goes negative and every player's delta
-  # looks like they blew away par, which is misleading.
+  # actual time across the fit population. With half-normal priors on the
+  # slopes this should be tiny, but keeps the calibration invariant across
+  # any prior/clamping changes.
   biased_pred <- apply_par_model(df, new_coefs)
   bias <- mean(df$time) - mean(biased_pred)
   new_coefs$intercept <- max(0, new_coefs$intercept + bias)
   message(sprintf("  intercept bias-correction: %+.2fs (so mean predicted par = mean actual time)", bias))
-
-  # Drift guard (move-type coefs only — shape/gimmick can be noisier).
-  drift_fields <- c("intercept", "secPerPassAMove", "secPerCanonicalSubsetMove",
-                    "secPerGenericSubsetMove", "secPerAdvancedLogicMove",
-                    "secPerDisjunctiveMove")
-  violations <- c()
-  for (f in drift_fields) {
-    prev <- current_coefs[[f]]
-    new  <- new_coefs[[f]]
-    if (is.null(prev) || prev <= 0 || is.null(new) || new <= 0) next
-    ratio <- new / prev
-    if (ratio > MAX_COEF_DRIFT || ratio < 1 / MAX_COEF_DRIFT) {
-      violations <- c(violations,
-        sprintf("%s: prev=%.2f -> new=%.2f (%.1fx drift)", f, prev, new, ratio))
-    }
-  }
-  if (length(violations) > 0) {
-    message("Fit rejected — coefficients drifted too far from previous values:")
-    for (v in violations) message("  ", v)
-    message("Keeping previous PAR_MODEL. Investigate via scripts/fit-par-model.qmd.")
-    new_coefs <- current_coefs
-    used_lmer <- FALSE
-    used_lm   <- FALSE
-  }
 }
 
-# If lm was used (no random effect available), compute handicaps from
-# residuals against NEW coefficients. Users below MIN_PLAYS_FOR_HANDICAP
-# are dropped to avoid noisy single-game means.
-#
-# Residuals are then RECENTERED so the play-weighted mean handicap is
-# exactly 0. Without this, systematic bias in the fitted par (e.g. from
-# clamping negative coefficients) pushes every user's residual in the
-# same direction, producing e.g. "both players show -45s handicap" —
-# technically correct against the biased baseline, but useless for
-# comparing players to each other. Recentering restores the handicap's
-# meaning: "your typical delta vs. the population-average player."
-if (used_lm || (!used_lmer && !used_lm)) {
+# If the fit didn't run or failed diagnostics, compute handicaps from
+# residuals against the EXISTING coefficients. Users below
+# MIN_PLAYS_FOR_HANDICAP are dropped to avoid noisy single-game means.
+# Residuals are recentered (play-weighted) so the mean handicap is exactly
+# zero — otherwise systematic bias in the seed par pushes every user's
+# residual in the same direction, making handicaps useless for inter-
+# player comparison.
+if (fit_method == "seed-residuals") {
   df$predicted <- apply_par_model(df, new_coefs)
   df$residual  <- df$time - df$predicted
   per_user <- df |>
@@ -305,7 +447,6 @@ if (used_lm || (!used_lmer && !used_lm)) {
     summarise(n = n(), raw_handicap = mean(residual), .groups = "drop") |>
     filter(n >= MIN_PLAYS_FOR_HANDICAP)
   if (nrow(per_user) > 0) {
-    # Play-weighted mean so high-N users don't dominate or get dominated
     total_plays <- sum(per_user$n)
     weighted_mean <- sum(per_user$raw_handicap * per_user$n) / total_plays
     per_user$handicap <- round(per_user$raw_handicap - weighted_mean, 2)
@@ -315,9 +456,6 @@ if (used_lm || (!used_lmer && !used_lm)) {
   handicaps <- setNames(as.list(per_user$handicap), per_user$uid)
   message(sprintf("Handicaps computed from residuals (recentered): %d users (min %d plays)",
                   length(handicaps), MIN_PLAYS_FOR_HANDICAP))
-} else {
-  message(sprintf("Handicaps from lmer random intercepts: %d users",
-                  length(handicaps)))
 }
 
 # ── 4. Write handicaps.json (always, even if fit didn't run) ────────
@@ -326,7 +464,8 @@ handicaps_obj <- list(
   updatedAt = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
   modelFitN = n_scores,
   nPlayers  = n_players,
-  method    = if (used_lmer) "lmer-ranef" else if (used_lm) "lm-residuals" else "seed-residuals",
+  method    = fit_method,
+  diagnostics = if (nchar(diag_note)) diag_note else NULL,
   handicaps = handicaps
 )
 writeLines(toJSON(handicaps_obj, auto_unbox = TRUE, pretty = TRUE),
@@ -334,13 +473,13 @@ writeLines(toJSON(handicaps_obj, auto_unbox = TRUE, pretty = TRUE),
 
 # ── 5. Write updated PAR_MODEL block (only if fit produced new coefs) ──
 
-if (!used_lmer && !used_lm) {
+if (fit_method != "brms-ranef") {
   message("No new coefficients — difficulty.js untouched.")
   quit(status = 0)
 }
 
 r2_str <- if (is.na(r2)) "NA" else sprintf("%.3f", r2)
-method_str <- if (used_lmer) sprintf("lmer (%d random intercepts)", length(handicaps)) else "lm"
+method_str <- sprintf("brms (%d users · %s)", length(handicaps), diag_note)
 block <- sprintf(
 'export const PAR_MODEL = {
   // Last refit: %s | %s | N=%d scores, %d dates, %d players | R\u00b2=%s

@@ -35,18 +35,26 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.R_LIBS_USER }}
-          key: r-pkgs-${{ runner.os }}-jsonlite-dplyr-tidyr-purrr-stringr-lme4-v1
+          # Bump the suffix whenever the package list changes so the cache
+          # misses and reinstalls cleanly. brms pulls in rstan +
+          # StanHeaders + Rcpp + a stack of Stan dependencies, so the cache
+          # is worth 5+ min of CI time on hit.
+          key: r-pkgs-${{ runner.os }}-brms-v1
           restore-keys: r-pkgs-${{ runner.os }}-
 
       - name: Install R packages
         shell: Rscript {0}
         run: |
           options(repos = c(CRAN = "https://packagemanager.posit.co/cran/__linux__/jammy/latest"))
-          pkgs <- c("jsonlite", "dplyr", "tidyr", "purrr", "stringr", "lme4")
+          pkgs <- c("jsonlite", "dplyr", "tidyr", "purrr", "stringr",
+                    "brms", "posterior", "rstan", "StanHeaders")
           need <- setdiff(pkgs, rownames(installed.packages()))
           if (length(need)) install.packages(need)
 
       - name: Refit PAR_MODEL
+        # brms compiles a fresh Stan model at runtime (~30-60s) on top of
+        # the sampling time; budget ~3 min for the whole run.
+        timeout-minutes: 10
         run: Rscript scripts/refit-par-model.R
 
       - name: Commit and push if anything changed
