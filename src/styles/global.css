@@ -4877,3 +4877,93 @@ body {
     font-size: 17px;
   }
 }
+
+/* ── Diagnostics Modal ────────────────────────── */
+
+#diagnostics-modal .modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.diagnostics-loading {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  text-align: center;
+  padding: 24px 0;
+}
+
+.diagnostics-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 10px;
+  border-left: 3px solid transparent;
+}
+
+.diagnostics-row.diagnostics-warn {
+  border-left-color: #ff6b6b;
+}
+
+.diagnostics-label {
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  font-weight: 700;
+}
+
+.diagnostics-warn .diagnostics-label {
+  color: #ff6b6b;
+}
+
+.diagnostics-value {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 13px;
+  color: var(--color-text, #ccc);
+  word-break: break-all;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.diagnostics-value.diagnostics-uid {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-accent, #ffc107);
+}
+
+.diagnostics-small .diagnostics-value,
+.diagnostics-row.diagnostics-small .diagnostics-value {
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+pre.diagnostics-value,
+pre.diagnostics-pre {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: var(--color-text, #ccc);
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid var(--color-border, #555);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin: 0;
+  white-space: pre;
+  overflow-x: auto;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.diagnostics-note {
+  font-size: 12px;
+  color: #ffb84d;
+  margin: -6px 0 0 10px;
+  padding: 8px 10px;
+  background: rgba(255, 184, 77, 0.08);
+  border-left: 3px solid #ffb84d;
+  border-radius: 0 4px 4px 0;
+}
+
+.diagnostics-actions {
+  margin-top: 10px;
+}

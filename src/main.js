@@ -1259,6 +1259,14 @@ $('#btn-clear-cache').addEventListener('click', () => {
   if (window.gregsweeperCacheClear) window.gregsweeperCacheClear();
 });
 
+// Diagnostics — ground-truth snapshot of what this device sees. Dynamic
+// import so the module stays off the critical load path until opened.
+$('#btn-diagnostics').addEventListener('click', async () => {
+  $('#settings-modal').classList.add('hidden');
+  const m = await import('./ui/diagnosticsModal.js');
+  m.openDiagnosticsModal(CURRENT_VERSION);
+});
+
 // Reset Profile
 $('#btn-reset-profile').addEventListener('click', () => {
   if (confirm('Are you sure you want to reset your profile? This will erase ALL stats, achievements, and leaderboard data. This cannot be undone.')) {

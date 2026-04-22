@@ -440,7 +440,23 @@
           <button id="btn-reset-profile" class="reset-profile-btn">🗑️ Reset Profile</button>
           <p class="reset-hint">Erases all stats, achievements, and leaderboard data.</p>
         </div>
+        <div class="setting-group">
+          <h3>Diagnostics</h3>
+          <button id="btn-diagnostics" class="clear-cache-btn">🔬 Show Diagnostics</button>
+          <p class="reset-hint">Shows what this device is running — useful if something looks off.</p>
+        </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Diagnostics Modal -->
+  <div id="diagnostics-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Diagnostics</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body" id="diagnostics-body"></div>
     </div>
   </div>
 

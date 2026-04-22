@@ -11,6 +11,7 @@
 // worker cache). No Firebase round-trip at runtime.
 
 let _handicaps = null;
+let _meta = null;
 let _loading = null;
 
 /**
@@ -26,13 +27,27 @@ export function loadHandicaps() {
     .then(r => (r.ok ? r.json() : null))
     .then(data => {
       _handicaps = (data && data.handicaps) || {};
+      _meta = data
+        ? { updatedAt: data.updatedAt, modelFitN: data.modelFitN, nPlayers: data.nPlayers, method: data.method }
+        : { updatedAt: null, modelFitN: null, nPlayers: null, method: null };
       return _handicaps;
     })
     .catch(() => {
       _handicaps = {};
+      _meta = { updatedAt: null, modelFitN: null, nPlayers: null, method: null };
       return _handicaps;
     });
   return _loading;
+}
+
+/**
+ * Metadata from the currently-loaded handicaps.json: when the GitHub
+ * Action last refit, how many scores it saw, how many players, and which
+ * method (brms-ranef / seed-residuals). Returns nulls if loadHandicaps
+ * hasn't completed yet or the file was missing.
+ */
+export function getHandicapsMeta() {
+  return _meta || { updatedAt: null, modelFitN: null, nPlayers: null, method: null };
 }
 
 /**
