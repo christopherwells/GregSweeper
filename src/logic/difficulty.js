@@ -23,7 +23,7 @@ export const LIFELINE_WIN_REWARD_CHANCE = 0.3;
 // PAR_MODEL:START
 export const PAR_MODEL = {
   // Last refit: 2026-04-22 | brms (2 users · max Rhat = 1.004, min ESS = 1595, divergent = 0/4000) | N=82 scores, 42 dates, 2 players | R²=0.422
-  intercept: 14.46,
+  intercept: 8.96,
 
   // Move-type coefficients (primary)
   secPerPassAMove:            0.96,
