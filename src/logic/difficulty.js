@@ -22,29 +22,29 @@ export const LIFELINE_WIN_REWARD_CHANCE = 0.3;
 // scripts/refit-par-model.R.
 // PAR_MODEL:START
 export const PAR_MODEL = {
-  // Last refit: 2026-04-22 | brms (2 users · max Rhat = 1.004, min ESS = 1595, divergent = 0/4000) | N=82 scores, 42 dates, 2 players | R²=0.422
-  intercept: 8.96,
+  // Last refit: 2026-04-22 | brms (2 users · max Rhat = 1.006, min ESS = 647, divergent = 0/4000) | N=34 scores, 23 dates, 2 players | R²=0.566
+  intercept: 15.55,
 
   // Move-type coefficients (primary)
-  secPerPassAMove:            0.96,
-  secPerCanonicalSubsetMove:  3.79,
-  secPerGenericSubsetMove:    2.98,
-  secPerAdvancedLogicMove:    1.97,
-  secPerDisjunctiveMove:      10.01,
+  secPerPassAMove:            0.60,
+  secPerCanonicalSubsetMove:  8.07,
+  secPerGenericSubsetMove:    2.86,
+  secPerAdvancedLogicMove:    1.61,
+  secPerDisjunctiveMove:      16.80,
 
   // Board shape (secondary)
-  secPerCell:      0.037,
-  secPerMineFlag:  1.946,
-  secPerWallEdge:  0.233,
+  secPerCell:      0.033,
+  secPerMineFlag:  0.842,
+  secPerWallEdge:  0.265,
 
   // Gimmick cell counts (tertiary)
-  secPerMysteryCell:   1.186,
-  secPerLiarCell:      0.854,
-  secPerLockedCell:    0.516,
-  secPerWormholePair:  1.401,
-  secPerMirrorPair:    1.157,
-  secPerSonarCell:     0.706,
-  secPerCompassCell:   0.902,
+  secPerMysteryCell:   1.222,
+  secPerLiarCell:      0.986,
+  secPerLockedCell:    0.494,
+  secPerWormholePair:  1.346,
+  secPerMirrorPair:    1.227,
+  secPerSonarCell:     0.758,
+  secPerCompassCell:   0.760,
 };
 // PAR_MODEL:END
 
