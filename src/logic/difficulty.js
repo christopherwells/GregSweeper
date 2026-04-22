@@ -22,29 +22,29 @@ export const LIFELINE_WIN_REWARD_CHANCE = 0.3;
 // scripts/refit-par-model.R.
 // PAR_MODEL:START
 export const PAR_MODEL = {
-  // Last refit: 2026-04-21 (seed values; N=0)
-  intercept: 5.0,
+  // Last refit: 2026-04-21 | lm | N=62 scores, 31 dates, 2 players | R²=0.608
+  intercept: 9.26,
 
-  // Move-type coefficients (primary — these should dominate after R fit)
-  secPerPassAMove:            1.2,  // trivial propagation — near-instant
-  secPerCanonicalSubsetMove:  2.0,  // small local subset — instant for experienced players
-  secPerGenericSubsetMove:    4.5,  // non-local subset — real scanning required
-  secPerAdvancedLogicMove:    7.0,  // tank / gauss — the hardest exact logic
-  secPerDisjunctiveMove:     10.0,  // liar disjunctive — slowest
+  // Move-type coefficients (primary)
+  secPerPassAMove:            1.64,
+  secPerCanonicalSubsetMove:  13.47,
+  secPerGenericSubsetMove:    4.85,
+  secPerAdvancedLogicMove:    0.63,
+  secPerDisjunctiveMove:      0.00,
 
   // Board shape (secondary)
-  secPerCell:      0.02,
-  secPerMineFlag:  0.3,
-  secPerWallEdge:  0.15,
+  secPerCell:      0.000,
+  secPerMineFlag:  1.873,
+  secPerWallEdge:  0.000,
 
-  // Gimmick cell counts (tertiary — seeded small)
-  secPerMysteryCell:   0.8,
-  secPerLiarCell:      0.6,
-  secPerLockedCell:    0.4,
-  secPerWormholePair:  0.8,
-  secPerMirrorPair:    1.0,
-  secPerSonarCell:     0.5,
-  secPerCompassCell:   0.5,
+  // Gimmick cell counts (tertiary)
+  secPerMysteryCell:   0.000,
+  secPerLiarCell:      0.000,
+  secPerLockedCell:    0.000,
+  secPerWormholePair:  32.010,
+  secPerMirrorPair:    0.000,
+  secPerSonarCell:     0.000,
+  secPerCompassCell:   0.000,
 };
 // PAR_MODEL:END
 

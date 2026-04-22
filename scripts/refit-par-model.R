@@ -158,11 +158,17 @@ fit_formula_fixed <- time ~
   wormholePairCount + mirrorPairCount +
   sonarCellCount + compassCellCount
 
-if (n_scores >= MIN_SCORES_TO_FIT && n_players >= 2) {
+if (n_scores >= MIN_SCORES_TO_FIT && n_players >= 3) {
   # Mixed-effects fit: one random intercept per uid = that user's handicap.
   # Partial pooling shrinks low-N users toward zero automatically, which
   # is why we don't need to worry about a brand-new player's first score
   # blowing out their handicap estimate.
+  #
+  # We require >=3 players because with exactly 2 groups lmer can't
+  # meaningfully estimate between-player variance (only 1 df for the
+  # variance component), and the random intercepts collapse to zero
+  # (singular fit). The lm + mean-residual fallback below gives a
+  # sensible number at N=2 at the cost of some circular-reference bias.
   fit_formula <- update(fit_formula_fixed, ~ . + (1 | uid))
   df_lmer <- df |> filter(!is.na(uid), uid != "")
 
@@ -269,16 +275,32 @@ if (used_lmer || used_lm) {
 # If lm was used (no random effect available), compute handicaps from
 # residuals against NEW coefficients. Users below MIN_PLAYS_FOR_HANDICAP
 # are dropped to avoid noisy single-game means.
+#
+# Residuals are then RECENTERED so the play-weighted mean handicap is
+# exactly 0. Without this, systematic bias in the fitted par (e.g. from
+# clamping negative coefficients) pushes every user's residual in the
+# same direction, producing e.g. "both players show -45s handicap" —
+# technically correct against the biased baseline, but useless for
+# comparing players to each other. Recentering restores the handicap's
+# meaning: "your typical delta vs. the population-average player."
 if (used_lm || (!used_lmer && !used_lm)) {
   df$predicted <- apply_par_model(df, new_coefs)
   df$residual  <- df$time - df$predicted
   per_user <- df |>
     filter(!is.na(uid), uid != "") |>
     group_by(uid) |>
-    summarise(n = n(), handicap = round(mean(residual), 2), .groups = "drop") |>
+    summarise(n = n(), raw_handicap = mean(residual), .groups = "drop") |>
     filter(n >= MIN_PLAYS_FOR_HANDICAP)
+  if (nrow(per_user) > 0) {
+    # Play-weighted mean so high-N users don't dominate or get dominated
+    total_plays <- sum(per_user$n)
+    weighted_mean <- sum(per_user$raw_handicap * per_user$n) / total_plays
+    per_user$handicap <- round(per_user$raw_handicap - weighted_mean, 2)
+  } else {
+    per_user$handicap <- numeric(0)
+  }
   handicaps <- setNames(as.list(per_user$handicap), per_user$uid)
-  message(sprintf("Handicaps computed from residuals: %d users (min %d plays)",
+  message(sprintf("Handicaps computed from residuals (recentered): %d users (min %d plays)",
                   length(handicaps), MIN_PLAYS_FOR_HANDICAP))
 } else {
   message(sprintf("Handicaps from lmer random intercepts: %d users",

@@ -1,7 +1,10 @@
 {
-  "updatedAt": "2026-04-21T18:07:23Z",
+  "updatedAt": "2026-04-22T00:49:34Z",
   "modelFitN": 62,
-  "nPlayers": 0,
-  "method": "seed-residuals",
-  "handicaps": {}
+  "nPlayers": 2,
+  "method": "lm-residuals",
+  "handicaps": {
+    "5Ht9d2io0ugU1NGsjdJmZvkJi382": 2.93,
+    "kPkUkn5mndZG2SIGC1xC329zhrA3": -3.02
+  }
 }
