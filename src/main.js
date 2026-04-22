@@ -49,8 +49,10 @@ import {
   initFirebase, isFirebaseOnline, submitOnlineScore, fetchOnlineLeaderboard, fetchUserDailyHistory, fetchAllDailyMeta, fetchAllDailyScores,
 } from './firebase/firebaseLeaderboard.js';
 import { initAnonymousAuth, loadProgress, saveDailyHistoryEntry, getUid } from './firebase/firebaseProgress.js';
-import { renderDailyHistoryChart } from './ui/dailyHistoryChart.js';
-import { renderDailyStatsTab } from './ui/statsRenderer.js';
+// Stats-tab renderer + chart toolkit are lazy-imported in populateDailyPanel
+// so they stay off the critical load path — they only come in when the
+// user actually opens the Stats modal. Saves ~3 network round-trips
+// (statsRenderer, charts, dailyHistoryChart) on every cold load.
 import { generateBoard, cleanSolverArtifacts } from './logic/boardGenerator.js';
 import { isBoardSolvable } from './logic/boardSolver.js';
 import { createDailyRNG, getLocalDateString } from './logic/seededRandom.js';
@@ -222,6 +224,7 @@ async function populateDailyPanel() {
       .filter(Boolean);
     handicap = estimateHandicapFromHistory(pairs);
   }
+  const { renderDailyStatsTab } = await import('./ui/statsRenderer.js');
   renderDailyStatsTab({
     history: history || [],
     metaByDate: metaByDate || {},
