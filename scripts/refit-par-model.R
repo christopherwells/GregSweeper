@@ -31,11 +31,14 @@ DB_URL          <- "https://gregsweeper-66d02-default-rtdb.firebaseio.com"
 DIFFICULTY_PATH <- "src/logic/difficulty.js"
 HANDICAPS_PATH  <- "src/logic/handicaps.json"
 
-# Minimum scores before the regression runs at all. Intentionally low — the
-# user explicitly wants to watch the model develop from early days. Below
-# this, the seed coefficients stay and handicaps fall back to a mean-residual
-# estimator. Coefficients may be noisy early; that's expected and fine.
-MIN_SCORES_TO_FIT <- 20
+# Minimum scores before the regression runs at all. Rule of thumb is ~10
+# observations per predictor; with 15 features that's ~150. Below this the
+# seed coefficients stay put and handicaps are computed as mean-residual
+# against those. We raised this from 20 after early fits on ~62 scores
+# produced nonsensical coefficients (canonical-subset jumped 7×, wormhole
+# 40×, etc.) — the practical par was visibly worse than the seeded guess.
+# Once the dataset is big enough the refit will land without overfit.
+MIN_SCORES_TO_FIT <- 150
 
 # Soft guard: reject a refit that pushes any move-type coefficient more than
 # this multiple away from the PREVIOUS value (not the seed — yesterday's
@@ -246,6 +249,16 @@ if (used_lmer || used_lm) {
     secPerSonarCell             = nn(co["sonarCellCount"],        "sonarCell"),
     secPerCompassCell           = nn(co["compassCellCount"],      "compassCell")
   )
+
+  # Bias-correct the intercept so the mean predicted par matches the mean
+  # actual time across the fit population. Without this, clamping negative
+  # coefficients to 0 systematically inflates every prediction — the
+  # population-level mean residual goes negative and every player's delta
+  # looks like they blew away par, which is misleading.
+  biased_pred <- apply_par_model(df, new_coefs)
+  bias <- mean(df$time) - mean(biased_pred)
+  new_coefs$intercept <- max(0, new_coefs$intercept + bias)
+  message(sprintf("  intercept bias-correction: %+.2fs (so mean predicted par = mean actual time)", bias))
 
   # Drift guard (move-type coefs only — shape/gimmick can be noisier).
   drift_fields <- c("intercept", "secPerPassAMove", "secPerCanonicalSubsetMove",
