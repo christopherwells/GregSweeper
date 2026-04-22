@@ -130,12 +130,24 @@ export function lineChart(points, opts = {}) {
   const svg = makeSvg(opts.ariaLabel || 'Trend line');
   const layout = { ...DEFAULT_LAYOUT };
 
-  const ys = points.map(p => p.y).filter(v => Number.isFinite(v));
-  if (ys.length === 0) return emptyState(opts.emptyMessage || 'Not enough data yet.');
+  // Optional secondary series, rendered on the same y-axis as the
+  // primary one. Same x-count expected; if the caller passes fewer
+  // points the series just draws shorter. Styled with a distinct
+  // class (dashed line by default via `chart-line-secondary` CSS).
+  const secondary = Array.isArray(opts.secondary) ? opts.secondary : null;
+
+  // Pool y-values from both series when picking the auto-domain so
+  // neither line clips.
+  const primaryYs = points.map(p => p.y).filter(v => Number.isFinite(v));
+  const secondaryYs = secondary
+    ? secondary.map(p => p.y).filter(v => Number.isFinite(v))
+    : [];
+  const allYs = [...primaryYs, ...secondaryYs];
+  if (allYs.length === 0) return emptyState(opts.emptyMessage || 'Not enough data yet.');
 
   // Y-domain: given, or fit to data with a little breathing room.
-  let yMin = opts.yDomain ? opts.yDomain[0] : Math.min(...ys);
-  let yMax = opts.yDomain ? opts.yDomain[1] : Math.max(...ys);
+  let yMin = opts.yDomain ? opts.yDomain[0] : Math.min(...allYs);
+  let yMax = opts.yDomain ? opts.yDomain[1] : Math.max(...allYs);
   if (!opts.yDomain) {
     const span = yMax - yMin;
     const pad = span < 1 ? 1 : span * 0.15;
@@ -160,7 +172,31 @@ export function lineChart(points, opts = {}) {
     }));
   }
 
-  // Connecting path
+  // Secondary series FIRST so the primary renders on top (primary is
+  // the main signal the user reads; secondary is supporting context).
+  if (secondary && secondary.length > 1) {
+    const d = secondary
+      .map((p, i) => `${i === 0 ? 'M' : 'L'}${xToPx(i)},${yToPx(p.y)}`)
+      .join(' ');
+    svg.appendChild(el('path', {
+      d,
+      class: opts.secondaryLineClass || 'chart-line chart-line-secondary',
+      fill: 'none',
+    }));
+    for (let i = 0; i < secondary.length; i++) {
+      const p = secondary[i];
+      const dot = el('circle', {
+        cx: xToPx(i), cy: yToPx(p.y), r: 4,
+        class: 'chart-dot chart-dot-secondary',
+      });
+      const title = el('title', {});
+      title.textContent = p.label || `${p.x}: ${p.y}`;
+      dot.appendChild(title);
+      svg.appendChild(dot);
+    }
+  }
+
+  // Primary connecting path
   if (points.length > 1) {
     const d = points
       .map((p, i) => `${i === 0 ? 'M' : 'L'}${xToPx(i)},${yToPx(p.y)}`)
@@ -172,7 +208,7 @@ export function lineChart(points, opts = {}) {
     }));
   }
 
-  // Dots
+  // Primary dots
   for (let i = 0; i < points.length; i++) {
     const p = points[i];
     const cls = 'chart-dot ' + (opts.dotClassForValue ? opts.dotClassForValue(p.y) : '');

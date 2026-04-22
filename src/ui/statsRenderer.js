@@ -131,22 +131,40 @@ function renderHandicapTrajectory(plays) {
     replaceContent('chart-handicap-trajectory', emptyDiv('Need at least 3 plays to trace a handicap.'));
     return;
   }
-  let sum = 0;
-  const points = plays.map((p, i) => {
-    sum += p.deltaGlobal;
-    const rolling = sum / (i + 1);
-    return {
+  // Two series on the same y-axis: cumulative mean of deltaGlobal (your
+  // career-long handicap trajectory) and last-10-plays rolling mean
+  // (your recent form). The GAP between them reads as "am I trending
+  // better or worse than my career average?" — rolling BELOW cumulative
+  // means you've been improving lately; ABOVE means regressing.
+  const ROLLING_WINDOW = 10;
+  let cumSum = 0;
+  const cumulative = [];
+  const rolling = [];
+  for (let i = 0; i < plays.length; i++) {
+    const p = plays[i];
+    cumSum += p.deltaGlobal;
+    const cumMean = cumSum / (i + 1);
+    cumulative.push({
       x: shortDate(p.date),
-      y: Math.round(rolling * 10) / 10,
-      label: `${p.date}: handicap ${rolling >= 0 ? '+' : ''}${rolling.toFixed(1)}s (after ${i + 1} plays)`,
-    };
-  });
-  const svg = lineChart(points, {
-    ariaLabel: 'Handicap trajectory over time',
+      y: Math.round(cumMean * 10) / 10,
+      label: `${p.date}: career avg ${cumMean >= 0 ? '+' : ''}${cumMean.toFixed(1)}s (after ${i + 1} plays)`,
+    });
+    const lo = Math.max(0, i - ROLLING_WINDOW + 1);
+    const window = plays.slice(lo, i + 1);
+    const rollMean = window.reduce((s, pp) => s + pp.deltaGlobal, 0) / window.length;
+    rolling.push({
+      x: shortDate(p.date),
+      y: Math.round(rollMean * 10) / 10,
+      label: `${p.date}: last ${window.length} plays avg ${rollMean >= 0 ? '+' : ''}${rollMean.toFixed(1)}s`,
+    });
+  }
+  const svg = lineChart(cumulative, {
+    ariaLabel: 'Handicap trajectory — career average and last-10-play rolling',
     thresholdLine: 0,
     yFormat: v => (v > 0 ? '+' : '') + v + 's',
     dotClassForValue: v => v < -0.5 ? 'chart-dot-good' : v > 0.5 ? 'chart-dot-bad' : 'chart-dot-even',
     lineClass: 'chart-line chart-line-handicap',
+    secondary: rolling,
   });
   replaceContent('chart-handicap-trajectory', svg);
 }

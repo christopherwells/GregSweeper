@@ -1825,6 +1825,21 @@ body {
 .chart-line-handicap { stroke: #7b61ff; }
 .chart-line-strike   { stroke: #ef5350; }
 .chart-line-rank     { stroke: #f9a825; }
+/* Secondary series: thinner, dashed, muted neutral so the primary
+   line reads as the headline signal and the secondary reads as
+   supporting context. Used by the handicap-trajectory chart to
+   overlay a 10-play rolling mean on top of the cumulative average. */
+.chart-line-secondary {
+  stroke: var(--color-text-secondary, #888);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+  opacity: 0.75;
+  fill: none;
+}
+.chart-dot-secondary {
+  fill: var(--color-text-secondary, #888);
+  opacity: 0.85;
+}
 .chart-dot {
   stroke: none;
   fill: var(--color-accent, #4c8dff);
