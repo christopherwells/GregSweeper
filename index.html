@@ -436,7 +436,7 @@
         <div class="setting-group reset-group">
           <h3>Data</h3>
           <button id="btn-clear-cache" class="clear-cache-btn">🔄 Check for Updates</button>
-          <p class="reset-hint">Downloads the latest version. Use if the app feels broken or stuck.</p>
+          <p class="reset-hint">Downloads the latest version. May take a few seconds. Use if the app feels broken or stuck.</p>
           <button id="btn-reset-profile" class="reset-profile-btn">🗑️ Reset Profile</button>
           <p class="reset-hint">Erases all stats, achievements, and leaderboard data.</p>
         </div>
@@ -538,7 +538,7 @@
 
           <div class="stats-section">
             <h3>Delta by board complexity</h3>
-            <p class="stats-blurb">Your mean delta vs. par, grouped by the hardest move type the board required. Negative = you beat par on boards of that complexity.</p>
+            <p class="stats-blurb">Marginal extra time each complexity tier adds on top of the previous one. Easy is your baseline (renders as 0). Medium shows how much more time generic-subset deductions cost you on top of baseline. Hard shows the additional cost of advanced-logic or liar moves on top of medium. Positive = that tier hurts you more than the previous one; negative = you actually handle it better.</p>
             <div class="stat-chart" id="chart-complexity-delta"></div>
           </div>
 
@@ -570,7 +570,7 @@
 
           <div class="stats-section">
             <h3>Delta distribution</h3>
-            <p class="stats-blurb">Smoothed density of your daily deltas (Gaussian kernel, Silverman bandwidth). The <strong>gray dashed line</strong> is par; the <strong>orange dashed line</strong> is where your mean sits (that's your handicap). Mass left of par is under par; right is over.</p>
+            <p class="stats-blurb">Smoothed density of your daily deltas (Gaussian kernel, Silverman bandwidth). The <strong>gray dashed line</strong> is par; the <strong>orange dashed line</strong> is the mean of these deltas. The mean isn&rsquo;t quite the same as your handicap — handicap is fit only on bomb-free plays, while this line includes every daily you&rsquo;ve submitted. Mass left of par is under par; right is over.</p>
             <div class="stat-row">
               <div class="stat-mini">
                 <div class="stat-mini-label">Days over par</div>
@@ -590,7 +590,7 @@
 
           <div class="stats-section">
             <h3>Rank vs. field</h3>
-            <p class="stats-blurb">Where you finished among all players that day. 0th percentile = you won that day.</p>
+            <p class="stats-blurb">Where you finished among all players that day. 100th percentile = you won that day; 0th = slowest of the field. With a small field (2 players) the axis is bimodal — you either won (100) or lost (0).</p>
             <div class="stat-chart" id="chart-percentile-trend"></div>
           </div>
         </div>
