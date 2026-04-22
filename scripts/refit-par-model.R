@@ -42,18 +42,29 @@ DB_URL          <- "https://gregsweeper-66d02-default-rtdb.firebaseio.com"
 DIFFICULTY_PATH <- "src/logic/difficulty.js"
 HANDICAPS_PATH  <- "src/logic/handicaps.json"
 
-# Minimum scores before we bother fitting at all. With informative priors
-# the fit is stable at much lower N than the old lm/lmer approach (which
-# needed ~150 before the coefficients stopped blowing up), so the floor is
-# mostly about "is there enough signal to move the prior at all" rather
+# Minimum total scores before we bother fitting at all. With informative
+# priors the fit is stable at much lower N than the old lm/lmer approach
+# (which needed ~150 before coefficients stopped blowing up), so the floor
+# is mostly about "is there enough signal to move the prior at all" rather
 # than "will the fit explode". 30 is roughly 2 observations per predictor.
 MIN_SCORES_TO_FIT <- 30
 
-# Users with fewer than this many submitted scores get a handicap of 0
-# rather than a noisy single-game mean. Partial pooling via the random
-# intercept already shrinks low-N users toward zero, so this is extra
-# conservatism that only bites in the residuals fallback.
-MIN_PLAYS_FOR_HANDICAP <- 3
+# Minimum plays before a user's scores are allowed to influence the GLOBAL
+# model (PAR_MODEL coefficients and the bias-correction calibration). Users
+# below this threshold are excluded from the mixed-effects fit entirely,
+# which means the intercept/slopes describe "the average regular player"
+# instead of being dragged around by the occasional anonymous visitor.
+# Those below-threshold users can still see per-user stats client-side
+# (estimateHandicapFromHistory in handicaps.js computes a provisional
+# handicap from their own play history against the current PAR_MODEL),
+# but they don't get an entry in handicaps.json until they cross 30.
+MIN_PLAYS_FOR_FIT_INCLUSION <- 30
+
+# (MIN_PLAYS_FOR_HANDICAP retired; the residuals-fallback path now uses
+# the same MIN_PLAYS_FOR_FIT_INCLUSION threshold as the main fit, so
+# handicaps.json has a single meaning: "users with enough plays to
+# contribute to the population calibration". Anyone below the threshold
+# needs client-side handicap estimation via handicaps.js.)
 
 # Sampling budget. 4 chains × 2000 iterations (1000 warmup) is standard;
 # more than enough for this model size on any plausible N.
@@ -264,8 +275,20 @@ n_scores  <- nrow(df)
 n_dates   <- n_distinct(df$date)
 n_players <- df |> filter(!is.na(uid), uid != "") |> pull(uid) |> n_distinct()
 
-message(sprintf("  joined: N=%d scores, %d dates, %d players",
-                n_scores, n_dates, n_players))
+# Users who have played enough to be included in the fit (see
+# MIN_PLAYS_FOR_FIT_INCLUSION). These are the only users whose scores
+# calibrate the global PAR_MODEL and who receive a handicap entry in
+# handicaps.json. Below-threshold users are left out so a single slow
+# visitor can't drag the intercept.
+eligible_uids <- df |>
+  filter(!is.na(uid), uid != "") |>
+  count(uid) |>
+  filter(n >= MIN_PLAYS_FOR_FIT_INCLUSION) |>
+  pull(uid)
+n_eligible <- length(eligible_uids)
+
+message(sprintf("  joined: N=%d scores, %d dates, %d players (%d eligible with >= %d plays)",
+                n_scores, n_dates, n_players, n_eligible, MIN_PLAYS_FOR_FIT_INCLUSION))
 
 current_coefs <- parse_par_model(DIFFICULTY_PATH)
 new_coefs     <- current_coefs  # default: no refit, keep what's there
@@ -284,13 +307,16 @@ fit_formula_fixed <- time ~
   wormholePairCount + mirrorPairCount +
   sonarCellCount + compassCellCount
 
-if (n_scores >= MIN_SCORES_TO_FIT && n_players >= 2) {
-  # Bayesian mixed-effects fit. Same formula as the old lmer call, but with
-  # informative priors on the fixed effects. brms can estimate the random
-  # intercept variance even at n_players == 2 because the student_t prior
-  # on sd(uid) gives it enough structure to separate "two players differ
-  # by X" from "zero handicap variance, pure residual".
-  df_fit <- df |> filter(!is.na(uid), uid != "")
+if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
+  # Bayesian mixed-effects fit on only the eligible users (>= 30 plays).
+  # This keeps the global model from being dragged around by one-off
+  # visitors or brand-new players whose handful of scores would otherwise
+  # carry as much weight in the bias-correction step as a regular
+  # player's 40+ scores. brms can estimate the random-intercept variance
+  # even at n_eligible == 2 because the student_t prior on sd(uid) gives
+  # it enough structure to separate "two players differ by X" from "zero
+  # handicap variance, pure residual".
+  df_fit <- df |> filter(uid %in% eligible_uids)
   fit_formula <- update(fit_formula_fixed, ~ . + (1 | uid))
 
   priors <- build_priors(c("Intercept", all.vars(fit_formula_fixed)[-1]))
@@ -383,8 +409,8 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_players >= 2) {
   }
 } else {
   message(sprintf(
-    "Too few scores/players to fit (N=%d, players=%d; need N >= %d and players >= 2). Seed coefficients unchanged.",
-    n_scores, n_players, MIN_SCORES_TO_FIT
+    "Too few scores or eligible players to fit (N=%d, eligible players=%d; need N >= %d and >= 2 users with >= %d plays each). Seed coefficients unchanged.",
+    n_scores, n_eligible, MIN_SCORES_TO_FIT, MIN_PLAYS_FOR_FIT_INCLUSION
   ))
 }
 
@@ -422,30 +448,38 @@ if (fit_method == "brms-ranef") {
   )
 
   # Bias-correct the intercept so the mean predicted par matches the mean
-  # actual time across the fit population. With half-normal priors on the
-  # slopes this should be tiny, but keeps the calibration invariant across
-  # any prior/clamping changes.
-  biased_pred <- apply_par_model(df, new_coefs)
-  bias <- mean(df$time) - mean(biased_pred)
+  # actual time across the FIT population (df_fit), not the full df. This
+  # matters because some scores are submitted without a uid (retrofit gaps,
+  # anonymous Firebase sign-in race, etc.) and are filtered out of the
+  # mixed-effects fit. Their residuals don't belong in the calibration:
+  # they'd be absorbed into the intercept as if they were "population-
+  # average player" plays, which inflates predictPar and makes every
+  # uid-tagged user's displayed handicap look smaller than their true
+  # offset from the fit population. Against df_fit, the identity
+  # mean(time - predictPar) = play-weighted mean(u_j) = 0 holds exactly,
+  # so bias should be essentially zero — the step exists as a safety net
+  # for any future prior/clamping change that could violate the identity.
+  biased_pred <- apply_par_model(df_fit, new_coefs)
+  bias <- mean(df_fit$time) - mean(biased_pred)
   new_coefs$intercept <- max(0, new_coefs$intercept + bias)
-  message(sprintf("  intercept bias-correction: %+.2fs (so mean predicted par = mean actual time)", bias))
+  message(sprintf("  intercept bias-correction: %+.2fs (so mean predicted par = mean actual time across fit population)", bias))
 }
 
 # If the fit didn't run or failed diagnostics, compute handicaps from
-# residuals against the EXISTING coefficients. Users below
-# MIN_PLAYS_FOR_HANDICAP are dropped to avoid noisy single-game means.
-# Residuals are recentered (play-weighted) so the mean handicap is exactly
-# zero — otherwise systematic bias in the seed par pushes every user's
-# residual in the same direction, making handicaps useless for inter-
-# player comparison.
+# residuals against the EXISTING coefficients. Only eligible users (>=
+# MIN_PLAYS_FOR_FIT_INCLUSION plays) are included — same threshold the
+# main fit uses, so handicaps.json has a consistent meaning regardless
+# of which path wrote it. Residuals are recentered (play-weighted) so
+# the mean handicap is exactly zero — otherwise systematic bias in the
+# seed par pushes every user's residual in the same direction, making
+# handicaps useless for inter-player comparison.
 if (fit_method == "seed-residuals") {
   df$predicted <- apply_par_model(df, new_coefs)
   df$residual  <- df$time - df$predicted
   per_user <- df |>
-    filter(!is.na(uid), uid != "") |>
+    filter(uid %in% eligible_uids) |>
     group_by(uid) |>
-    summarise(n = n(), raw_handicap = mean(residual), .groups = "drop") |>
-    filter(n >= MIN_PLAYS_FOR_HANDICAP)
+    summarise(n = n(), raw_handicap = mean(residual), .groups = "drop")
   if (nrow(per_user) > 0) {
     total_plays <- sum(per_user$n)
     weighted_mean <- sum(per_user$raw_handicap * per_user$n) / total_plays
@@ -455,7 +489,7 @@ if (fit_method == "seed-residuals") {
   }
   handicaps <- setNames(as.list(per_user$handicap), per_user$uid)
   message(sprintf("Handicaps computed from residuals (recentered): %d users (min %d plays)",
-                  length(handicaps), MIN_PLAYS_FOR_HANDICAP))
+                  length(handicaps), MIN_PLAYS_FOR_FIT_INCLUSION))
 }
 
 # ── 4. Write handicaps.json (always, even if fit didn't run) ────────
