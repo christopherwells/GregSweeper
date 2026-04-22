@@ -649,6 +649,18 @@ export function handleTimedLoss() {
 export function handleDailyBombHit(mineRow, mineCol) {
   state.dailyBombHits++;
 
+  // Log the event so the refit can later reconstruct which cells the
+  // player saw for free. Time recorded BEFORE the +10s penalty so the
+  // timestamp matches when the player actually clicked, not when the
+  // penalty lands. Position matters: a bomb in a zero-cluster reveals
+  // little, a bomb adjacent to tight constraints trivialises the area.
+  if (!Array.isArray(state.dailyBombHitEvents)) state.dailyBombHitEvents = [];
+  state.dailyBombHitEvents.push({
+    t: Math.round(state.elapsedTime * 10) / 10,
+    row: mineRow,
+    col: mineCol,
+  });
+
   // Time penalty: +10s per strike
   state.elapsedTime += 10;
 

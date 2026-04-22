@@ -22,6 +22,7 @@ import { computeDailyFeatures, predictPar } from '../logic/dailyFeatures.js';
 import { shieldDefuse } from '../logic/powerUps.js';
 import { getGimmicksForLevel, applyGimmicks, applyWalls, isLockedCell, hasWallBetween, hasSeenGimmick, markGimmickSeen, getGimmickDef, isModifierPopupDisabled, setModifierPopupDisabled, getDailyGimmick, getChaosGimmicks, clearGimmickProperties, recomputeDisplayedMines, getIntensity } from '../logic/gimmicks.js';
 import { createDailyRNG, getLocalDateString } from '../logic/seededRandom.js';
+import { selectDailyRngSeed } from '../logic/selectDailyRngSeed.js';
 import {
   loadModePowerUps, loadCheckpoint, clearGameState, saveDailyPar,
 } from '../storage/statsStorage.js';
@@ -218,15 +219,25 @@ export function newGame() {
   // use today's local date string.
   if (state.gameMode !== 'daily') {
     state.dailySeed = null;
+    state.dailyRngSeed = null;
     state.isDailyPractice = false;
   } else if (!state.dailySeed) {
     state.dailySeed = getLocalDateString();
   }
   state.dailyBombHits = 0;
+  state.dailyBombHitEvents = [];
 
   // Daily mode: vary board dimensions using the daily seed
   if (state.gameMode === 'daily' && state.dailySeed) {
-    const dailyRng = createDailyRNG(state.dailySeed);
+    // Resolve the effective RNG seed. On adaptive-experiment days this
+    // picks a ":trialN" variant that biases the generated board toward
+    // whichever feature the Bayesian fit currently needs most data on;
+    // on normal days it returns the plain date string unchanged. Every
+    // client produces the same answer from the same date + same loaded
+    // experiment target, so the daily remains identical across players.
+    state.dailyRngSeed = selectDailyRngSeed(state.dailySeed);
+
+    const dailyRng = createDailyRNG(state.dailyRngSeed);
     // Use first 3 RNG values for board dimensions
     const dimRng1 = dailyRng();
     const dimRng2 = dailyRng();
@@ -240,7 +251,7 @@ export function newGame() {
     // so EVERY player gets the exact same mine layout regardless of first click
     const fixedRow = Math.floor(state.rows / 2);
     const fixedCol = Math.floor(state.cols / 2);
-    const boardRng = createDailyRNG(state.dailySeed);
+    const boardRng = createDailyRNG(state.dailyRngSeed);
     state.board = generateBoard(state.rows, state.cols, state.totalMines, fixedRow, fixedCol, boardRng);
     // The board solver marks cells as revealed during solvability analysis — reset them all
     cleanSolverArtifacts(state.board);
@@ -249,17 +260,17 @@ export function newGame() {
     state.status = 'idle'; // stays idle until actual first click
 
     // Apply daily modifiers (~35% of days) with post-gimmick solvability retry
-    const dailyGimmicks = getDailyGimmick(state.dailySeed, createDailyRNG);
+    const dailyGimmicks = getDailyGimmick(state.dailyRngSeed, createDailyRNG);
     state.activeGimmicks = dailyGimmicks.length > 0 ? dailyGimmicks : [];
     // Retry board (+ gimmicks if any) until solvable
     for (let dAttempt = 0; ; dAttempt++) {
       if (dAttempt > 0) {
-        const retryRng = createDailyRNG(state.dailySeed + '-retry-' + dAttempt);
+        const retryRng = createDailyRNG(state.dailyRngSeed + '-retry-' + dAttempt);
         state.board = generateBoard(state.rows, state.cols, state.totalMines, fixedRow, fixedCol, retryRng);
         cleanSolverArtifacts(state.board);
       }
       if (state.activeGimmicks.length > 0) {
-        const gimmickApplyRng = createDailyRNG(state.dailySeed + '-gimmick-apply-' + dAttempt);
+        const gimmickApplyRng = createDailyRNG(state.dailyRngSeed + '-gimmick-apply-' + dAttempt);
         state.gimmickData = applyGimmicks(state.board, 1, state.activeGimmicks, gimmickApplyRng);
       }
       const check = isBoardSolvable(state.board, state.rows, state.cols, fixedRow, fixedCol);
@@ -268,6 +279,9 @@ export function newGame() {
         state.dailyFeatures = computeDailyFeatures(state, check);
         state.dailyPar = predictPar(state.dailyFeatures);
         state.dailyMoves = check.totalClicks;
+        // Store par under the date key, not the trial variant — par is
+        // keyed by "what day is this" so the leaderboard joins lookup
+        // correctly across clients.
         saveDailyPar(state.dailySeed, state.dailyPar, state.dailyMoves, state.dailyFeatures);
         break;
       }
@@ -438,7 +452,7 @@ export function revealCell(row, col) {
 
   // First click — generate board (or start pre-generated daily board)
   if (state.firstClick) {
-    const rng = state.dailySeed ? createDailyRNG(state.dailySeed) : undefined;
+    const rng = state.dailySeed ? createDailyRNG(state.dailyRngSeed || state.dailySeed) : undefined;
     const maxZC = state.gameMode === 'normal'
       ? getMaxZeroCluster(state.currentLevel) : Infinity;
     const hasGimmicks = state.gameMode === 'normal' && state.currentLevel > 10;
@@ -601,7 +615,7 @@ export function revealCell(row, col) {
     if (clickedCell.isMine) {
       clickedCell.isMine = false;
       // Use seeded RNG so relocation is deterministic for the same click position
-      const relocRng = createDailyRNG(state.dailySeed + '-reloc-' + row + '-' + col);
+      const relocRng = createDailyRNG((state.dailyRngSeed || state.dailySeed) + '-reloc-' + row + '-' + col);
       // Gather all valid relocation targets (non-mine, not adjacent to click)
       const candidates = [];
       for (let r = 0; r < state.rows; r++) {
@@ -618,7 +632,7 @@ export function revealCell(row, col) {
       calculateAdjacency(state.board);
       // Re-apply gimmicks that depend on adjacency (liar, wormhole, mirror)
       if (state.activeGimmicks.length > 0) {
-        const gimmickApplyRng = createDailyRNG(state.dailySeed + '-gimmick-apply');
+        const gimmickApplyRng = createDailyRNG((state.dailyRngSeed || state.dailySeed) + '-gimmick-apply');
         state.gimmickData = applyGimmicks(state.board, 1, state.activeGimmicks, gimmickApplyRng);
 
         // Verify post-relocation solvability — retry gimmick placement if needed
@@ -630,7 +644,7 @@ export function revealCell(row, col) {
           for (const brow of state.board) for (const c of brow) clearGimmickProperties(c);
           state.board._wallEdges = null;
           calculateAdjacency(state.board);
-          const retryGimmickRng = createDailyRNG(state.dailySeed + '-gimmick-retry-' + rAttempt);
+          const retryGimmickRng = createDailyRNG((state.dailyRngSeed || state.dailySeed) + '-gimmick-retry-' + rAttempt);
           state.gimmickData = applyGimmicks(state.board, 1, state.activeGimmicks, retryGimmickRng);
         }
       }

@@ -17,7 +17,22 @@ export const state = {
   currentLevel: 1,
   gameMode: 'normal',   // normal | timed | skillTrainer | daily | chaos
   dailySeed: null,
+  // The effective RNG seed for the day's board generation. On normal
+  // days this equals dailySeed (the YYYY-MM-DD date). On adaptive-
+  // experiment days (see experimentDesign.js) it's a ":trialN" variant
+  // chosen deterministically to push a targeted feature. Using a
+  // separate field keeps dailySeed meaningful as the date identifier
+  // (for Firebase keys, leaderboard joins, local storage lookups) while
+  // letting all RNG creation during play route through the trial seed.
+  dailyRngSeed: null,
   dailyBombHits: 0,
+  // Per-hit log for today's daily: every bomb hit push-appends
+  // { t: elapsedSeconds, row, col } so the backend can reconstruct the
+  // player's effective solve path. A board with N bomb-defuses is a
+  // different puzzle than the nominal one (free information revealed),
+  // so a clean par fit needs to either exclude those plays or model
+  // the bomb-adjusted path.
+  dailyBombHitEvents: [],
   dailyPar: 0,       // predicted time in seconds — predictPar(dailyFeatures)
   dailyMoves: 0,     // solver totalClicks for pace calculation
   dailyFeatures: null, // full feature vector from computeDailyFeatures — used for par breakdown, Firebase meta upload, and the R refit training set

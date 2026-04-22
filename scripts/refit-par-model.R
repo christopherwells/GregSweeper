@@ -49,16 +49,25 @@ HANDICAPS_PATH  <- "src/logic/handicaps.json"
 # than "will the fit explode". 30 is roughly 2 observations per predictor.
 MIN_SCORES_TO_FIT <- 30
 
-# Minimum plays before a user's scores are allowed to influence the GLOBAL
-# model (PAR_MODEL coefficients and the bias-correction calibration). Users
-# below this threshold are excluded from the mixed-effects fit entirely,
-# which means the intercept/slopes describe "the average regular player"
-# instead of being dragged around by the occasional anonymous visitor.
-# Those below-threshold users can still see per-user stats client-side
-# (estimateHandicapFromHistory in handicaps.js computes a provisional
-# handicap from their own play history against the current PAR_MODEL),
-# but they don't get an entry in handicaps.json until they cross 30.
-MIN_PLAYS_FOR_FIT_INCLUSION <- 30
+# Minimum CLEAN plays (bombHits == 0) before a user's scores are allowed
+# to influence the GLOBAL model (PAR_MODEL coefficients and the bias-
+# correction calibration). Users below this threshold are excluded from
+# the mixed-effects fit entirely; the intercept/slopes describe "the
+# average regular player" instead of being dragged around by one-off
+# anonymous visitors. Those below-threshold users can still see per-user
+# stats client-side (estimateHandicapFromHistory in handicaps.js computes
+# a provisional handicap from their own play history against the current
+# PAR_MODEL), but they don't get an entry in handicaps.json until they
+# cross the threshold.
+#
+# Set to 15 (not 30) to account for the ~50-65% bomb-hit rate in the
+# daily mode's re-fog design: most plays hit at least one bomb and get
+# filtered from the fit, so the effective clean-play yield per user is
+# roughly half their raw play count. 15 clean plays ≈ 30 raw plays ≈
+# one month of daily play. Once the bomb-adjusted model lands (using
+# bombHitEvents to re-solve with hit cells pre-revealed), all plays
+# become includable and this threshold can move back up to 30.
+MIN_PLAYS_FOR_FIT_INCLUSION <- 15
 
 # (MIN_PLAYS_FOR_HANDICAP retired; the residuals-fallback path now uses
 # the same MIN_PLAYS_FOR_FIT_INCLUSION threshold as the main fit, so
@@ -254,11 +263,26 @@ scores_df <- tibble(
   entry = flatten(map(scores_raw, ~ .x))
 ) |>
   mutate(
-    time = map_dbl(entry, ~ .x$time %||% NA_real_),
-    uid  = map_chr(entry, ~ .x$uid  %||% NA_character_),
+    time      = map_dbl(entry, ~ .x$time %||% NA_real_),
+    uid       = map_chr(entry, ~ .x$uid  %||% NA_character_),
+    bombHits  = map_dbl(entry, ~ .x$bombHits %||% 0),
   ) |>
   select(-entry) |>
   filter(!is.na(time), time >= 5, time <= 3600)
+
+# Exclude plays where the player hit at least one bomb. Bomb hits reveal
+# cells the solver's optimal path didn't touch — free information — so
+# the submitted `time` doesn't describe the nominal puzzle anymore. From
+# v1.5.9+ the client also submits `bombHitEvents` (per-hit { t, row, col }),
+# which will eventually let us compute a bomb-adjusted feature vector per
+# play and include those scores; until that modelling exists, filtering
+# is the right default.
+bomb_hit_count <- sum(scores_df$bombHits > 0, na.rm = TRUE)
+scores_df <- scores_df |> filter(bombHits == 0)
+if (bomb_hit_count > 0) {
+  message(sprintf("  dropped %d bomb-hit plays (included in future bomb-adjusted fit)",
+                  bomb_hit_count))
+}
 
 df <- scores_df |>
   inner_join(meta, by = "date") |>
@@ -406,6 +430,56 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
     print(round(co, 3))
     cat(sprintf("  marginal R² ≈ %.3f, handicaps: %d users\n\n",
                 r2, length(handicaps)))
+
+    # Choose the experiment target — the coefficient with the highest
+    # posterior coefficient of variation (SD / |mean|), from a whitelist
+    # of features we can practically push with seed selection. Features
+    # like `passAMoves` are always non-zero on a real board so targeting
+    # them is pointless; `cellCount` we don't want to inflate because
+    # it's load-bearing for board size. The whitelist keeps the picked
+    # target to "things the seed-selection loop can meaningfully
+    # maximise by picking a different board layout".
+    target_whitelist <- c(
+      "canonicalSubsetMoves", "genericSubsetMoves",
+      "advancedLogicMoves", "disjunctiveMoves",
+      "totalMines", "wallEdgeCount",
+      "mysteryCellCount", "liarCellCount", "lockedCellCount",
+      "wormholePairCount", "mirrorPairCount",
+      "sonarCellCount", "compassCellCount"
+    )
+    fe_summary <- fixef(fit)  # posterior mean + SD for every fixed effect
+    target_candidates <- data.frame(
+      feature = target_whitelist,
+      post_mean = fe_summary[target_whitelist, "Estimate"],
+      post_sd   = fe_summary[target_whitelist, "Est.Error"],
+      stringsAsFactors = FALSE
+    )
+    target_candidates$cv <- target_candidates$post_sd / pmax(abs(target_candidates$post_mean), 0.01)
+    target_candidates <- target_candidates[order(-target_candidates$cv), ]
+    chosen_target <- target_candidates$feature[1]
+    message(sprintf("  experiment target: %s (posterior CV = %.3f)",
+                    chosen_target, target_candidates$cv[1]))
+
+    # Write experimentTarget.json. Daily clients fetch this at startup and
+    # the selectDailyRngSeed helper reads it to bias every 1-in-3 daily
+    # toward exercising this feature. Rewriting on every refit lets the
+    # target track whichever coefficient currently has the shakiest
+    # posterior.
+    experiment_obj <- list(
+      updatedAt = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
+      target    = chosen_target,
+      reason    = sprintf("highest posterior CV (%.3f) among whitelist", target_candidates$cv[1]),
+      candidates = lapply(seq_len(min(5, nrow(target_candidates))), function(i) {
+        list(
+          feature  = target_candidates$feature[i],
+          mean     = round(target_candidates$post_mean[i], 3),
+          sd       = round(target_candidates$post_sd[i], 3),
+          cv       = round(target_candidates$cv[i], 3)
+        )
+      })
+    )
+    writeLines(toJSON(experiment_obj, auto_unbox = TRUE, pretty = TRUE),
+               "src/logic/experimentTarget.json")
   }
 } else {
   message(sprintf(
@@ -492,18 +566,27 @@ if (fit_method == "seed-residuals") {
                   length(handicaps), MIN_PLAYS_FOR_FIT_INCLUSION))
 }
 
-# ── 4. Write handicaps.json (always, even if fit didn't run) ────────
+# ── 4. Write handicaps.json only if we produced new handicaps ────────
 
-handicaps_obj <- list(
-  updatedAt = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
-  modelFitN = n_scores,
-  nPlayers  = n_players,
-  method    = fit_method,
-  diagnostics = if (nchar(diag_note)) diag_note else NULL,
-  handicaps = handicaps
-)
-writeLines(toJSON(handicaps_obj, auto_unbox = TRUE, pretty = TRUE),
-           HANDICAPS_PATH)
+# If the fit didn't run AND the residuals fallback produced no entries
+# (e.g. after bomb-hit filtering leaves every player below the inclusion
+# threshold), do NOT overwrite the existing handicaps.json — that would
+# erase yesterday's good data in exchange for today's empty fit. Only
+# refresh when we actually have new handicaps to offer.
+if (length(handicaps) > 0) {
+  handicaps_obj <- list(
+    updatedAt = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
+    modelFitN = n_scores,
+    nPlayers  = n_players,
+    method    = fit_method,
+    diagnostics = if (nchar(diag_note)) diag_note else NULL,
+    handicaps = handicaps
+  )
+  writeLines(toJSON(handicaps_obj, auto_unbox = TRUE, pretty = TRUE),
+             HANDICAPS_PATH)
+} else {
+  message("No new handicaps to write — keeping existing handicaps.json.")
+}
 
 # ── 5. Write updated PAR_MODEL block (only if fit produced new coefs) ──
 

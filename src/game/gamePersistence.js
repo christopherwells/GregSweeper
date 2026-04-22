@@ -47,7 +47,9 @@ export function persistGameState() {
     elapsedTime: state.elapsedTime, currentLevel: state.currentLevel,
     gameMode: state.gameMode, powerUps: { ...state.powerUps },
     shieldActive: state.shieldActive, checkpoint: state.checkpoint,
-    dailySeed: state.dailySeed, dailyBombHits: state.dailyBombHits,
+    dailySeed: state.dailySeed, dailyRngSeed: state.dailyRngSeed || null,
+    dailyBombHits: state.dailyBombHits,
+    dailyBombHitEvents: state.dailyBombHitEvents || [],
     magnetMode: state.magnetMode || false,
     flagMode: state.flagMode || false,
     activeGimmicks: state.activeGimmicks || [],
@@ -82,7 +84,9 @@ export function tryResumeGame(mode) {
   state.shieldActive = gs.shieldActive || false;
   state.checkpoint = gs.checkpoint || 1;
   state.dailySeed = gs.dailySeed || null;
+  state.dailyRngSeed = gs.dailyRngSeed || gs.dailySeed || null;
   state.dailyBombHits = gs.dailyBombHits || 0;
+  state.dailyBombHitEvents = Array.isArray(gs.dailyBombHitEvents) ? gs.dailyBombHitEvents : [];
   state.status = gs.savedStatus || 'playing';
   state.firstClick = gs.firstClick ?? false;
   state.hitMine = null;

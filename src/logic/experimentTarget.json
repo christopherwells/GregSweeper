@@ -1,0 +1,37 @@
+{
+  "updatedAt": "2026-04-22T03:46:37Z",
+  "target": "disjunctiveMoves",
+  "reason": "highest posterior CV (1.274) among whitelist",
+  "candidates": [
+    {
+      "feature": "disjunctiveMoves",
+      "mean": 16.072,
+      "sd": 20.471,
+      "cv": 1.274
+    },
+    {
+      "feature": "wallEdgeCount",
+      "mean": 0.263,
+      "sd": 0.331,
+      "cv": 1.258
+    },
+    {
+      "feature": "liarCellCount",
+      "mean": 0.98,
+      "sd": 1.179,
+      "cv": 1.203
+    },
+    {
+      "feature": "sonarCellCount",
+      "mean": 0.77,
+      "sd": 0.916,
+      "cv": 1.19
+    },
+    {
+      "feature": "wormholePairCount",
+      "mean": 1.299,
+      "sd": 1.46,
+      "cv": 1.124
+    }
+  ]
+}

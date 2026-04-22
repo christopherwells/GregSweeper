@@ -54,6 +54,8 @@ import { renderDailyStatsTab } from './ui/statsRenderer.js';
 import { generateBoard, cleanSolverArtifacts } from './logic/boardGenerator.js';
 import { isBoardSolvable } from './logic/boardSolver.js';
 import { createDailyRNG, getLocalDateString } from './logic/seededRandom.js';
+import { selectDailyRngSeed } from './logic/selectDailyRngSeed.js';
+import { loadExperimentTarget } from './logic/experimentDesign.js';
 import {
   EMOJI_PACKS, EFFECTS, TITLES,
   loadEmojiPack, saveEmojiPack, getActiveEmojiPack, isPackUnlocked,
@@ -293,24 +295,28 @@ async function updateLeaderboardDisplay() {
     // (including gimmick application) so the solver's move-type counts
     // reflect the same board every player actually gets.
     try {
-      const dimRng = createDailyRNG(dateStr);
+      // Mirror the daily-gen path: resolve the effective RNG seed first so
+      // the computed par matches what the player will actually see when
+      // they start today's daily (especially on adaptive-experiment days).
+      const rngSeed = selectDailyRngSeed(dateStr);
+      const dimRng = createDailyRNG(rngSeed);
       const pRows = DAILY_MIN_SIZE + Math.floor(dimRng() * DAILY_SIZE_RANGE);
       const pCols = DAILY_MIN_SIZE + Math.floor(dimRng() * DAILY_SIZE_RANGE);
       const pDensity = DAILY_MIN_DENSITY + dimRng() * DAILY_DENSITY_RANGE;
       const pMines = Math.max(5, Math.round(pRows * pCols * pDensity));
       const pFixedR = Math.floor(pRows / 2), pFixedC = Math.floor(pCols / 2);
-      const activeGimmicks = getDailyGimmick(dateStr, createDailyRNG);
+      const activeGimmicks = getDailyGimmick(rngSeed, createDailyRNG);
 
       let pBoard;
       let parResult;
       for (let attempt = 0; attempt < 50; attempt++) {
         const boardRng = attempt === 0
-          ? createDailyRNG(dateStr)
-          : createDailyRNG(dateStr + '-retry-' + attempt);
+          ? createDailyRNG(rngSeed)
+          : createDailyRNG(rngSeed + '-retry-' + attempt);
         pBoard = generateBoard(pRows, pCols, pMines, pFixedR, pFixedC, boardRng);
         cleanSolverArtifacts(pBoard);
         if (activeGimmicks.length > 0) {
-          const gRng = createDailyRNG(dateStr + '-gimmick-apply-' + attempt);
+          const gRng = createDailyRNG(rngSeed + '-gimmick-apply-' + attempt);
           applyGimmicks(pBoard, 1, activeGimmicks, gRng);
         }
         parResult = isBoardSolvable(pBoard, pRows, pCols, pFixedR, pFixedC);
@@ -1359,6 +1365,8 @@ $('#gameover-submit-daily').addEventListener('click', async (e) => {
       uid: getUid(),
       par: state.dailyPar,
       features: state.dailyFeatures,
+      bombHitEvents: state.dailyBombHitEvents || [],
+      rngSeed: state.dailyRngSeed || dateStr,
     });
     if (!state.isDailyPractice) {
       saveDailyHistoryEntry(dateStr, { time: scoreTime });
@@ -1533,6 +1541,11 @@ function init() {
   // without a race. Fire-and-forget; getHandicap() falls back to 0
   // when the file hasn't loaded yet.
   loadHandicaps();
+
+  // Warm the experiment-target cache so selectDailyRngSeed has the
+  // current target when the user lands on a daily. If the fetch hasn't
+  // resolved yet, the module falls back to DEFAULT_TARGET.
+  loadExperimentTarget();
 
   // Warn if localStorage is broken (private browsing, quota, etc.)
   if (isStorageFailing()) {

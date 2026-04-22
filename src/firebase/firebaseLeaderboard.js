@@ -123,6 +123,22 @@ export async function submitOnlineScore(dateString, name, time, bombHits = 0, ex
     };
     if (extras.uid) payload.uid = String(extras.uid);
     if (typeof extras.par === 'number') payload.par = extras.par;
+    // Per-hit event log: [{ t, row, col }, ...]. Only meaningful when
+    // bombHits > 0, and only present for plays submitted from v1.5.9+
+    // (older scores will have `bombHits` but no `bombHitEvents`). R-side
+    // bomb-adjusted par modelling reads this to re-run the solver with
+    // the hit cells pre-revealed and produce an effective-feature fit.
+    if (Array.isArray(extras.bombHitEvents) && extras.bombHitEvents.length > 0) {
+      payload.bombHitEvents = extras.bombHitEvents;
+    }
+    // Effective RNG seed used for this daily's generation. Equal to the
+    // dateString on non-experiment days, a `:trialN` variant on
+    // adaptive-experiment days (see experimentDesign.js). Stored so
+    // the R refit can reproduce the exact board offline if it ever
+    // needs to recompute features or solver move-type counts.
+    if (typeof extras.rngSeed === 'string' && extras.rngSeed !== dateString) {
+      payload.rngSeed = extras.rngSeed;
+    }
 
     const ref = db.ref(`daily/${dateString}`);
     await ref.push(payload);

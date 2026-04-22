@@ -26,6 +26,19 @@
           "timestamp": {
             ".validate": "newData.val() === now"
           },
+          "bombHitEvents": {
+            ".validate": "newData.hasChildren() || newData.val() === null",
+            "$idx": {
+              ".validate": "newData.hasChildren(['t', 'row', 'col'])",
+              "t": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600" },
+              "row": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 99" },
+              "col": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 99" },
+              "$other": { ".validate": false }
+            }
+          },
+          "rngSeed": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 64"
+          },
           "$other": {
             ".validate": false
           }
