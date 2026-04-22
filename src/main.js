@@ -616,11 +616,35 @@ function generateShareCard() {
   const levelLabel = diff.label || `Level ${level}`;
 
   if (mode === 'daily') {
-    const strikesText = state.dailyBombHits > 0 ? ` | 💥 ${state.dailyBombHits} strike${state.dailyBombHits !== 1 ? 's' : ''}` : '';
-    return `${getThemeEmoji('mine')} GregSweeper — Daily${dateStr}\n` +
-           `⏱️ ${time}s (${state.rows}×${state.cols})${strikesText}${tierText}\n` +
-           `Can you beat my time?\n\n` +
-           `https://christopherwells.github.io/GregSweeper/?mode=daily`;
+    // Four-line Wordle-style card: title + par comparison + pace bar +
+    // (optional) strikes + URL. The pace bar is 8 dots where each dot
+    // represents 2.5% of par (so the bar fills completely at ±20%).
+    // Green fills for under-par, red for over-par; an empty bar means
+    // the player landed within a couple of tenths of par exactly.
+    const date = getLocalDateString();
+    const par = state.dailyPar || 0;
+    const lines = [`${getThemeEmoji('mine')} GregSweeper · ${date}`];
+
+    if (par > 0) {
+      const delta = time - par;
+      const sign = delta >= 0 ? '+' : '−';
+      const absDelta = Math.abs(delta).toFixed(1);
+      lines.push(`⏱ ${time}s · par ${par.toFixed(1)}s (${sign}${absDelta}s)`);
+
+      // Pace bar. 8 dots, each = 2.5% of par. Full bar at ±20% delta.
+      const magnitude = Math.min(1, Math.abs(delta) / (par * 0.2));
+      const filled = Math.round(magnitude * 8);
+      const fillDot = delta <= 0 ? '🟢' : '🔴';
+      lines.push(fillDot.repeat(filled) + '⚪'.repeat(8 - filled));
+    } else {
+      lines.push(`⏱ ${time}s`);
+    }
+
+    if (state.dailyBombHits > 0) {
+      lines.push(`💥×${state.dailyBombHits}`);
+    }
+    lines.push(`https://christopherwells.github.io/GregSweeper/?mode=daily`);
+    return lines.join('\n');
   }
 
   if (mode === 'timed') {

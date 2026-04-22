@@ -163,27 +163,43 @@ function renderComplexityDelta(plays) {
     const b = complexityBucket(p.features);
     buckets[b].push(p.deltaGlobal);
   }
+  // Cascading rebaseline. Every hard board has easy content and usually
+  // has medium content too; every medium board has easy content. If we
+  // just show raw mean delta per bucket, a uniformly-slow player looks
+  // the same across buckets (big delta everywhere), which tells us
+  // nothing about which complexity actually hurts. Instead we show each
+  // bucket as the MARGINAL extra time that complexity tier adds on top
+  // of the previous one:
+  //   easy   = mean(easy)  - mean(easy)  = 0 (your baseline)
+  //   medium = mean(medium) - mean(easy)  (what generic subsets cost)
+  //   hard   = mean(hard)  - mean(medium) (what advanced/disjunctive
+  //            cost on top of a medium board)
+  // If an upstream bucket is too small (N<3) we fall back to the next
+  // shallower one so the chart still renders meaningfully early on.
+  const mean = arr => arr.reduce((s, v) => s + v, 0) / arr.length;
+  const allDeltas = plays.map(p => p.deltaGlobal);
+  const overallBaseline = plays.length >= 3 ? mean(allDeltas) : 0;
+  const easyBaseline = buckets.easy.length >= 3 ? mean(buckets.easy) : overallBaseline;
+  const mediumBaseline = buckets.medium.length >= 3 ? mean(buckets.medium) : easyBaseline;
+
   const order = [
-    { label: 'easy',   values: buckets.easy },
-    { label: 'medium', values: buckets.medium },
-    { label: 'hard',   values: buckets.hard },
+    { label: 'easy',   values: buckets.easy,   baseline: easyBaseline },
+    { label: 'medium', values: buckets.medium, baseline: easyBaseline },
+    { label: 'hard',   values: buckets.hard,   baseline: mediumBaseline },
   ];
   const groups = order
     .filter(b => b.values.length > 0)
-    .map(b => {
-      const mean = b.values.reduce((s, v) => s + v, 0) / b.values.length;
-      return {
-        label: `${b.label} (n=${b.values.length})`,
-        value: mean,
-        sub: '',
-      };
-    });
+    .map(b => ({
+      label: `${b.label} (n=${b.values.length})`,
+      value: mean(b.values) - b.baseline,
+      sub: '',
+    }));
   if (groups.length === 0) {
     replaceContent('chart-complexity-delta', emptyDiv('Not enough data yet.'));
     return;
   }
   const svg = heatBars(groups, {
-    ariaLabel: 'Mean delta by board complexity',
+    ariaLabel: 'Marginal extra time per complexity tier (easy = baseline)',
     valueFormat: v => (v > 0 ? '+' : '') + v.toFixed(1) + 's',
   });
   replaceContent('chart-complexity-delta', svg);
@@ -323,8 +339,12 @@ function renderPercentileTrend(plays, scoresByDate, uid) {
     if (allTimes.length < 2) continue;
     const myTime = bestByUid.get(uid);
     if (myTime == null) continue;
-    const beatenBy = allTimes.filter(t => t < myTime).length;
-    const percentile = Math.round(100 * beatenBy / allTimes.length);
+    // Percentile where 100 = fastest (everyone you beat) and 0 = slowest
+    // (beaten by everyone). Conventionally readable: "90th percentile"
+    // means top 10%. With 2 players the axis is bimodal (0 or 100); more
+    // players spread out the intermediate values.
+    const othersBelowMe = allTimes.filter(t => t > myTime).length;
+    const percentile = Math.round(100 * othersBelowMe / (allTimes.length - 1));
     points.push({
       x: shortDate(p.date),
       y: percentile,
@@ -340,7 +360,8 @@ function renderPercentileTrend(plays, scoresByDate, uid) {
     ariaLabel: 'Rank among the field over time',
     yDomain: [0, 100],
     yFormat: v => v + 'th',
-    dotClassForValue: v => v <= 30 ? 'chart-dot-good' : v >= 60 ? 'chart-dot-bad' : 'chart-dot-even',
+    // High percentile = good. Low = bad.
+    dotClassForValue: v => v >= 70 ? 'chart-dot-good' : v <= 30 ? 'chart-dot-bad' : 'chart-dot-even',
     lineClass: 'chart-line chart-line-rank',
   });
   replaceContent('chart-percentile-trend', svg);
