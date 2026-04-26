@@ -113,7 +113,13 @@ PRIOR_MEANS <- list(
   # enough to let data move it. NOT shipped in the JS PAR_MODEL —
   # predictPar(features) stays "clean-play par" and the bombHits
   # coefficient exists only to absorb time inflation during fitting.
-  bombHits             = 15.0
+  bombHits             = 15.0,
+  # Structural features (v1.5.16+). Priors centred on rough guesses;
+  # data will pull them around. All non-negative on physical grounds
+  # (more deduction work / cascade entries / fragmentation = more time).
+  nonZeroSafeCellCount = 0.5,
+  zeroClusterCount     = 1.0,
+  fragmentationRatio   = 20.0
 )
 
 # Per-coefficient prior *log-scale* sigmas. Each non-intercept prior is
@@ -148,7 +154,12 @@ PRIOR_SIGMAS <- list(
   # estimate around 15.6s and we have plenty of variation in bomb
   # counts across plays — there's no need for the wide log-scale
   # spread the gimmick coefs need.
-  bombHits             = 0.4
+  bombHits             = 0.4,
+  # Structural feature priors (v1.5.16+). Wide (sigma=1.0) since these
+  # are new and we don't have strong intuition for the magnitudes yet.
+  nonZeroSafeCellCount = 1.0,
+  zeroClusterCount     = 1.0,
+  fragmentationRatio   = 1.0
 )
 
 # Parse the current PAR_MODEL block out of difficulty.js. Used as the
@@ -188,7 +199,10 @@ apply_par_model <- function(df, coefs) {
     coefs$secPerWormholePair         * wormholePairCount +
     coefs$secPerMirrorPair           * mirrorPairCount +
     coefs$secPerSonarCell            * sonarCellCount +
-    coefs$secPerCompassCell          * compassCellCount
+    coefs$secPerCompassCell          * compassCellCount +
+    (coefs$secPerNonZeroSafeCell %||% 0) * (nonZeroSafeCellCount %||% 0) +
+    (coefs$secPerZeroCluster     %||% 0) * (zeroClusterCount     %||% 0) +
+    (coefs$secPerFragmentation   %||% 0) * (fragmentationRatio   %||% 0)
   )
 }
 
@@ -287,14 +301,29 @@ if (bomb_hit_count > 0) {
 }
 
 df <- scores_df |>
-  inner_join(meta, by = "date") |>
+  inner_join(meta, by = "date")
+
+# v1.5.16+ structural features may not exist in older dailyMeta records
+# (the field is write-once per Firebase rules). Default missing columns
+# to 0 so old plays still contribute to the OTHER coefficients; their
+# new-feature contributions just get computed against a 0 baseline,
+# which biases the new coefficients slightly downward at first but
+# straightens out as new plays accumulate.
+NEW_STRUCTURAL_FEATURES <- c("nonZeroSafeCellCount", "zeroClusterCount",
+                              "fragmentationRatio")
+for (f in NEW_STRUCTURAL_FEATURES) {
+  if (!f %in% colnames(df)) df[[f]] <- 0
+}
+
+df <- df |>
   mutate(across(
     c(passAMoves, canonicalSubsetMoves, genericSubsetMoves,
       advancedLogicMoves, disjunctiveMoves,
       totalMines, cellCount, wallEdgeCount, mysteryCellCount,
       liarCellCount, lockedCellCount, wormholePairCount,
-      mirrorPairCount, sonarCellCount, compassCellCount),
-    as.numeric
+      mirrorPairCount, sonarCellCount, compassCellCount,
+      nonZeroSafeCellCount, zeroClusterCount, fragmentationRatio),
+    ~ ifelse(is.na(.x), 0, as.numeric(.x))
   ))
 
 n_scores  <- nrow(df)
@@ -333,6 +362,7 @@ fit_formula_fixed <- time ~
   mysteryCellCount + liarCellCount + lockedCellCount +
   wormholePairCount + mirrorPairCount +
   sonarCellCount + compassCellCount +
+  nonZeroSafeCellCount + zeroClusterCount + fragmentationRatio +
   bombHits  # NOT shipped to JS PAR_MODEL — see PRIOR_MEANS comment
 
 if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
@@ -449,7 +479,11 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
       "totalMines", "wallEdgeCount",
       "mysteryCellCount", "liarCellCount", "lockedCellCount",
       "wormholePairCount", "mirrorPairCount",
-      "sonarCellCount", "compassCellCount"
+      "sonarCellCount", "compassCellCount",
+      # Structural features (v1.5.16+). All can be pushed by the
+      # candidate-seed loop: more deduction cells, more cascade
+      # entries, more fragmentation = different boards.
+      "nonZeroSafeCellCount", "zeroClusterCount", "fragmentationRatio"
     )
     fe_summary <- fixef(fit)  # posterior mean + SD for every fixed effect
     target_candidates <- data.frame(
@@ -555,7 +589,10 @@ if (fit_method == "brms-ranef") {
     secPerWormholePair          = nn(co["wormholePairCount"],      "wormholePair"),
     secPerMirrorPair            = nn(co["mirrorPairCount"],        "mirrorPair"),
     secPerSonarCell             = nn(co["sonarCellCount"],         "sonarCell"),
-    secPerCompassCell           = nn(co["compassCellCount"],       "compassCell")
+    secPerCompassCell           = nn(co["compassCellCount"],       "compassCell"),
+    secPerNonZeroSafeCell       = nn(co["nonZeroSafeCellCount"],   "nonZeroSafeCell"),
+    secPerZeroCluster           = nn(co["zeroClusterCount"],       "zeroCluster"),
+    secPerFragmentation         = nn(co["fragmentationRatio"],     "fragmentation")
   )
 
   # Bias-correct the intercept so the mean predicted par matches the
@@ -580,6 +617,33 @@ if (fit_method == "brms-ranef") {
   new_coefs$intercept <- max(0, new_coefs$intercept + bias)
   message(sprintf("  bombHits coef: +%.2fs/hit  |  intercept bias-correction: %+.2fs (clean-time-equivalent mean matches mean predicted par)",
                   bomb_coef, bias))
+
+  # Guard: until enough plays have NONZERO values for each new structural
+  # feature, its posterior is essentially the lognormal prior expectation
+  # (~prior_mean * 1.65) — and that's not a real fit, just a prior. If we
+  # ship those prior-locked numbers to JS predictPar, every new board gets
+  # an unjustified +40s par bump because the predictions go up but actuals
+  # don't. Zero out below the data threshold so predictPar stays honest;
+  # once we have real variation in the feature columns, the threshold lifts
+  # and the fitted coefficients flow through. Old plays don't have these
+  # fields in dailyMeta (write-once) so we can only build data forward.
+  NEW_FEATURE_DATA_THRESHOLD <- 20
+  feature_data_counts <- list(
+    secPerNonZeroSafeCell = sum(df_fit$nonZeroSafeCellCount > 0, na.rm = TRUE),
+    secPerZeroCluster     = sum(df_fit$zeroClusterCount     > 0, na.rm = TRUE),
+    secPerFragmentation   = sum(df_fit$fragmentationRatio   > 0, na.rm = TRUE)
+  )
+  for (coef_name in names(feature_data_counts)) {
+    n_with_data <- feature_data_counts[[coef_name]]
+    if (n_with_data < NEW_FEATURE_DATA_THRESHOLD) {
+      new_coefs[[coef_name]] <- 0
+      message(sprintf("  zeroed %s (only %d plays have data; need %d)",
+                      coef_name, n_with_data, NEW_FEATURE_DATA_THRESHOLD))
+    } else {
+      message(sprintf("  %s: %.3f (fit on %d plays with nonzero data)",
+                      coef_name, new_coefs[[coef_name]], n_with_data))
+    }
+  }
 }
 
 # If the fit didn't run or failed diagnostics, compute handicaps from
@@ -669,6 +733,11 @@ block <- sprintf(
   secPerMirrorPair:    %.3f,
   secPerSonarCell:     %.3f,
   secPerCompassCell:   %.3f,
+
+  // Structural features (v1.5.16+)
+  secPerNonZeroSafeCell:  %.3f,
+  secPerZeroCluster:      %.3f,
+  secPerFragmentation:    %.3f,
 };',
   Sys.Date(), method_str, n_scores, n_dates, n_players, r2_str,
   new_coefs$intercept,
@@ -686,7 +755,10 @@ block <- sprintf(
   new_coefs$secPerWormholePair,
   new_coefs$secPerMirrorPair,
   new_coefs$secPerSonarCell,
-  new_coefs$secPerCompassCell
+  new_coefs$secPerCompassCell,
+  new_coefs$secPerNonZeroSafeCell,
+  new_coefs$secPerZeroCluster,
+  new_coefs$secPerFragmentation
 )
 
 src <- paste(readLines(DIFFICULTY_PATH, warn = FALSE, encoding = "UTF-8"),
