@@ -1,7 +1,10 @@
 {
-  "updatedAt": "2026-04-26T02:25:31Z",
+  "updatedAt": "2026-04-26T03:09:53Z",
   "target": "compassCellCount",
-  "reason": "highest posterior CV (1.238) among whitelist",
+  "reason": "highest posterior CV (1.238) excluding last 3 targets",
+  "recentTargets": [
+    "compassCellCount"
+  ],
   "candidates": [
     {
       "feature": "compassCellCount",
