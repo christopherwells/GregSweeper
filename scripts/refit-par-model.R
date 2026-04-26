@@ -49,25 +49,11 @@ HANDICAPS_PATH  <- "src/logic/handicaps.json"
 # than "will the fit explode". 30 is roughly 2 observations per predictor.
 MIN_SCORES_TO_FIT <- 30
 
-# Minimum CLEAN plays (bombHits == 0) before a user's scores are allowed
-# to influence the GLOBAL model (PAR_MODEL coefficients and the bias-
-# correction calibration). Users below this threshold are excluded from
-# the mixed-effects fit entirely; the intercept/slopes describe "the
-# average regular player" instead of being dragged around by one-off
-# anonymous visitors. Those below-threshold users can still see per-user
-# stats client-side (estimateHandicapFromHistory in handicaps.js computes
-# a provisional handicap from their own play history against the current
-# PAR_MODEL), but they don't get an entry in handicaps.json until they
-# cross the threshold.
-#
-# Set to 15 (not 30) to account for the ~50-65% bomb-hit rate in the
-# daily mode's re-fog design: most plays hit at least one bomb and get
-# filtered from the fit, so the effective clean-play yield per user is
-# roughly half their raw play count. 15 clean plays ≈ 30 raw plays ≈
-# one month of daily play. Once the bomb-adjusted model lands (using
-# bombHitEvents to re-solve with hit cells pre-revealed), all plays
-# become includable and this threshold can move back up to 30.
-MIN_PLAYS_FOR_FIT_INCLUSION <- 15
+# Minimum total plays before a user's scores are allowed to influence
+# the GLOBAL model. Bomb-hit plays now count (the bombHits regressor
+# absorbs their time inflation), so this is back to total-play count
+# rather than clean-only — roughly one month of daily play per user.
+MIN_PLAYS_FOR_FIT_INCLUSION <- 30
 
 # (MIN_PLAYS_FOR_HANDICAP retired; the residuals-fallback path now uses
 # the same MIN_PLAYS_FOR_FIT_INCLUSION threshold as the main fit, so
@@ -120,7 +106,14 @@ PRIOR_MEANS <- list(
   wormholePairCount    = 0.8,
   mirrorPairCount      = 1.0,
   sonarCellCount       = 0.5,
-  compassCellCount     = 0.5
+  compassCellCount     = 0.5,
+  # bombHits: each bomb hit adds ~15s of inflated time on average
+  # (10s explicit penalty + ~5s re-fog re-click cost). OLS on the
+  # full dataset gives 15.6s; the prior is centered there but wide
+  # enough to let data move it. NOT shipped in the JS PAR_MODEL —
+  # predictPar(features) stays "clean-play par" and the bombHits
+  # coefficient exists only to absorb time inflation during fitting.
+  bombHits             = 15.0
 )
 
 # Per-coefficient prior *log-scale* sigmas. Each non-intercept prior is
@@ -150,7 +143,12 @@ PRIOR_SIGMAS <- list(
   wormholePairCount    = 1.0,
   mirrorPairCount      = 1.0,
   sonarCellCount       = 1.0,
-  compassCellCount     = 1.0
+  compassCellCount     = 1.0,
+  # Tighter prior on bombHits (sigma=0.4) since OLS gives a clean
+  # estimate around 15.6s and we have plenty of variation in bomb
+  # counts across plays — there's no need for the wide log-scale
+  # spread the gimmick coefs need.
+  bombHits             = 0.4
 )
 
 # Parse the current PAR_MODEL block out of difficulty.js. Used as the
@@ -270,17 +268,21 @@ scores_df <- tibble(
   select(-entry) |>
   filter(!is.na(time), time >= 5, time <= 3600)
 
-# Exclude plays where the player hit at least one bomb. Bomb hits reveal
-# cells the solver's optimal path didn't touch — free information — so
-# the submitted `time` doesn't describe the nominal puzzle anymore. From
-# v1.5.9+ the client also submits `bombHitEvents` (per-hit { t, row, col }),
-# which will eventually let us compute a bomb-adjusted feature vector per
-# play and include those scores; until that modelling exists, filtering
-# is the right default.
+# Bomb-hit plays are KEPT (not filtered) and `bombHits` is a fixed-effect
+# regressor in the model — each hit adds a fitted constant to predicted
+# time. This lets us include the ~50% of plays where someone hit a mine
+# without their inflated time polluting the par coefficients. The
+# downstream JS side still uses predictPar(features) without a bombHits
+# term (par == clean-play par), so this regressor exists ONLY to keep
+# the bomb-hit time inflation out of the per-user random intercepts and
+# the per-feature coefficient estimates. The bombHits coefficient itself
+# is reported in handicaps.json's diagnostics as `secPerBombHit` for
+# transparency. Replaces the old "filter all bomb-hit plays" approach,
+# which was throwing out 60% of the data and biasing handicaps because
+# bomb-hit rate isn't symmetric across users.
 bomb_hit_count <- sum(scores_df$bombHits > 0, na.rm = TRUE)
-scores_df <- scores_df |> filter(bombHits == 0)
 if (bomb_hit_count > 0) {
-  message(sprintf("  dropped %d bomb-hit plays (included in future bomb-adjusted fit)",
+  message(sprintf("  including %d bomb-hit plays via bombHits regressor",
                   bomb_hit_count))
 }
 
@@ -320,6 +322,7 @@ handicaps     <- list()         # uid -> seconds
 fit_method    <- "seed-residuals"
 r2            <- NA_real_
 diag_note     <- ""
+bomb_coef     <- NA_real_       # populated by the brms fit; NA in fallback paths
 
 # ── 2. Fit ──────────────────────────────────────────────
 
@@ -329,7 +332,8 @@ fit_formula_fixed <- time ~
   cellCount + totalMines + wallEdgeCount +
   mysteryCellCount + liarCellCount + lockedCellCount +
   wormholePairCount + mirrorPairCount +
-  sonarCellCount + compassCellCount
+  sonarCellCount + compassCellCount +
+  bombHits  # NOT shipped to JS PAR_MODEL — see PRIOR_MEANS comment
 
 if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
   # Bayesian mixed-effects fit on only the eligible users (>= 30 plays).
@@ -521,22 +525,28 @@ if (fit_method == "brms-ranef") {
     secPerCompassCell           = nn(co["compassCellCount"],       "compassCell")
   )
 
-  # Bias-correct the intercept so the mean predicted par matches the mean
-  # actual time across the FIT population (df_fit), not the full df. This
-  # matters because some scores are submitted without a uid (retrofit gaps,
-  # anonymous Firebase sign-in race, etc.) and are filtered out of the
-  # mixed-effects fit. Their residuals don't belong in the calibration:
-  # they'd be absorbed into the intercept as if they were "population-
-  # average player" plays, which inflates predictPar and makes every
-  # uid-tagged user's displayed handicap look smaller than their true
-  # offset from the fit population. Against df_fit, the identity
-  # mean(time - predictPar) = play-weighted mean(u_j) = 0 holds exactly,
-  # so bias should be essentially zero — the step exists as a safety net
-  # for any future prior/clamping change that could violate the identity.
+  # Bias-correct the intercept so the mean predicted par matches the
+  # CLEAN-EQUIVALENT mean actual time across the fit population. Since
+  # the model fits time = par(features) + bombHits*coef + u_j + e but
+  # apply_par_model gives par(features) only, we have to subtract the
+  # bombHits contribution from the actual times before comparing —
+  # otherwise the intercept absorbs ~mean(bombHits) * bombCoef ≈ +14s
+  # of bomb inflation into predictPar for everyone, and predictPar
+  # becomes "expected time including a typical number of bombs" instead
+  # of "expected clean-play time". Worst case if bombCoef is missing
+  # from the fit (e.g. fallback path), bombCoef defaults to 0 and the
+  # subtraction is a no-op.
+  bomb_coef <- if ("bombHits" %in% rownames(fixef(fit))) {
+    as.numeric(fixef(fit)["bombHits", "Estimate"])
+  } else {
+    0
+  }
   biased_pred <- apply_par_model(df_fit, new_coefs)
-  bias <- mean(df_fit$time) - mean(biased_pred)
+  bomb_adjusted_time <- df_fit$time - bomb_coef * df_fit$bombHits
+  bias <- mean(bomb_adjusted_time) - mean(biased_pred)
   new_coefs$intercept <- max(0, new_coefs$intercept + bias)
-  message(sprintf("  intercept bias-correction: %+.2fs (so mean predicted par = mean actual time across fit population)", bias))
+  message(sprintf("  bombHits coef: +%.2fs/hit  |  intercept bias-correction: %+.2fs (clean-time-equivalent mean matches mean predicted par)",
+                  bomb_coef, bias))
 }
 
 # If the fit didn't run or failed diagnostics, compute handicaps from
@@ -580,6 +590,10 @@ if (length(handicaps) > 0) {
     nPlayers  = n_players,
     method    = fit_method,
     diagnostics = if (nchar(diag_note)) diag_note else NULL,
+    # Each bomb hit's fitted time cost. Surfaces here for transparency
+    # and so the diagnostics modal can show "your bombHits cost you ~Xs
+    # this week". NOT included in JS predictPar — par stays clean-only.
+    secPerBombHit = if (is.na(bomb_coef)) NULL else round(bomb_coef, 2),
     handicaps = handicaps
   )
   writeLines(toJSON(handicaps_obj, auto_unbox = TRUE, pretty = TRUE),
