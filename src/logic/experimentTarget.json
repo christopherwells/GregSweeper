@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-24T15:12:35Z",
+  "updatedAt": "2026-04-26T00:23:51Z",
   "target": "sonarCellCount",
   "reason": "highest posterior CV (1.371) among whitelist",
   "candidates": [
