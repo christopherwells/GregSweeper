@@ -460,19 +460,52 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
     )
     target_candidates$cv <- target_candidates$post_sd / pmax(abs(target_candidates$post_mean), 0.01)
     target_candidates <- target_candidates[order(-target_candidates$cv), ]
-    chosen_target <- target_candidates$feature[1]
-    message(sprintf("  experiment target: %s (posterior CV = %.3f)",
-                    chosen_target, target_candidates$cv[1]))
 
-    # Write experimentTarget.json. Daily clients fetch this at startup and
-    # the selectDailyRngSeed helper reads it to bias every 1-in-3 daily
-    # toward exercising this feature. Rewriting on every refit lets the
-    # target track whichever coefficient currently has the shakiest
-    # posterior.
+    # Read previous target choice + recent-target memory from the existing
+    # experimentTarget.json. Every daily is now an improvement day, so the
+    # "no repeat within 3 days" rule has to be enforced server-side here:
+    # we track the last 3 chosen targets and pick the top-CV candidate
+    # that ISN'T in that recent list. That keeps boards varied (a player
+    # never sees three liar-heavy dailies in a row) while still pushing
+    # the data toward whichever coefficient is currently most uncertain.
+    RECENT_DAYS <- 3
+    prev_recent <- tryCatch({
+      prev <- fromJSON("src/logic/experimentTarget.json", simplifyVector = FALSE)
+      unlist(prev$recentTargets %||% list())
+    }, error = function(e) character(0))
+
+    eligible <- target_candidates[!target_candidates$feature %in% prev_recent, ]
+    chosen_target <- if (nrow(eligible) > 0) {
+      eligible$feature[1]
+    } else {
+      # Whitelist has 13 entries vs RECENT_DAYS=3, so this branch should
+      # never fire — defensive fallback uses the top candidate even if
+      # it repeats (better to pick something than nothing).
+      message("  no eligible target after applying recent-3 filter — using top candidate anyway")
+      target_candidates$feature[1]
+    }
+    chosen_cv <- target_candidates$cv[match(chosen_target, target_candidates$feature)]
+    message(sprintf("  experiment target: %s (posterior CV = %.3f)  [excluded recent: %s]",
+                    chosen_target, chosen_cv,
+                    if (length(prev_recent)) paste(prev_recent, collapse = ", ") else "none"))
+
+    # Build the new recent-targets list: today's choice + previous
+    # entries, dedup, trim to RECENT_DAYS. dedup is just defensive — the
+    # eligibility filter above means chosen_target shouldn't be in
+    # prev_recent unless we hit the fallback.
+    new_recent <- unique(c(chosen_target, prev_recent))
+    new_recent <- new_recent[seq_len(min(RECENT_DAYS, length(new_recent)))]
+
+    # Write experimentTarget.json. Daily clients fetch this at startup
+    # and the selectDailyRngSeed helper reads `target` to bias every
+    # daily toward exercising that feature. `recentTargets` is the
+    # rolling memory the next refit reads to avoid same-target streaks.
     experiment_obj <- list(
       updatedAt = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
       target    = chosen_target,
-      reason    = sprintf("highest posterior CV (%.3f) among whitelist", target_candidates$cv[1]),
+      reason    = sprintf("highest posterior CV (%.3f) excluding last %d targets",
+                          chosen_cv, RECENT_DAYS),
+      recentTargets = as.list(new_recent),
       candidates = lapply(seq_len(min(5, nrow(target_candidates))), function(i) {
         list(
           feature  = target_candidates$feature[i],

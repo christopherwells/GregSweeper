@@ -1,23 +1,25 @@
 // Adaptive experimental design for the daily model refit.
 //
-// The Bayesian refit gives us per-coefficient posterior uncertainty. On a
-// fraction of days (day-of-month divisible by 3 — about 1 in 3 dailies)
-// the board generator picks, among a handful of candidate seeds, the one
+// The Bayesian refit gives us per-coefficient posterior uncertainty.
+// EVERY daily now picks, among a handful of candidate seeds, the one
 // whose generated board maximises the currently-targeted feature. The
-// target is chosen by the daily R refit (highest posterior coefficient of
-// variation among a whitelist) and shipped as a static JSON asset. The
-// remaining 2-in-3 days are plain date-seeded dailies — unbiased, which
-// keeps variety intact and lets the rest of the feature space keep
-// accumulating data at its natural pace.
+// target is chosen by the daily R refit (highest posterior coefficient
+// of variation among a whitelist, EXCLUDING any feature targeted in the
+// last 3 days) and shipped as a static JSON asset. The "no repeats in
+// 3 days" rule lives on the R side — see `recentTargets` in
+// experimentTarget.json — so this module just trusts whatever target
+// the refit chose for today.
 //
 // Constraints this module respects:
 // - Identical result on every client. All logic is a pure function of
-//   the dateString + the currently-loaded target; both inputs are the
-//   same for every player, so the chosen seed is the same for every
+//   the currently-loaded target; the target is the same for every
+//   player on the same day, so the chosen seed is the same for every
 //   player.
 // - The target follows the fit, not the clock. If the refit hasn't run
 //   for a day (Firebase blip, CI outage, whatever) we keep using the
-//   previously-loaded target — no special-casing needed.
+//   previously-loaded target — no special-casing needed. Variety is
+//   still preserved because that previous target was already chosen
+//   to differ from the 2 days before it.
 // - Fallback if the JSON can't be fetched at all: DEFAULT_TARGET
 //   (currently advancedLogicMoves, the shakiest coefficient at the time
 //   this module was written).
@@ -33,7 +35,9 @@ const DEFAULT_TARGET = 'advancedLogicMoves';
 // How many candidate board-generation attempts to make on an improvement
 // day. Each candidate runs the full generate + gimmicks + solve pipeline,
 // so cost scales linearly. 10 empirically produces a visible bias without
-// a jarring first-load delay (~500-800 ms vs. ~50 ms on a normal day).
+// a jarring first-load delay (~500-800 ms). Now that every daily is an
+// improvement day, this cost is paid on every cold daily load — if it
+// becomes user-visible, lower to 5–7.
 export const CANDIDATE_COUNT = 10;
 
 let _cachedTarget = null;          // the `target` string from the JSON
@@ -84,19 +88,15 @@ export function getExperimentMeta() {
 }
 
 /**
- * On an "improvement day" (day-of-month divisible by 3), return the
- * feature name to bias toward. Otherwise return null — the daily uses
- * its normal date-only seed with no candidate selection.
- *
- * Pure function of (dateString, currentTarget). Since both are the same
- * on every client, the return value is identical everywhere.
+ * Return the feature name to bias toward for this date's daily. Every
+ * daily is now an improvement day — the R refit guarantees no target
+ * repeats within 3 days, so variety is preserved without skipping
+ * generations on the client. dateString is unused now (kept for API
+ * compatibility and future per-date overrides).
  */
+// eslint-disable-next-line no-unused-vars
 export function getExperimentTarget(dateString) {
-  const parts = dateString.split('-');
-  if (parts.length !== 3) return null;
-  const day = parseInt(parts[2], 10);
-  if (!Number.isFinite(day)) return null;
-  return day % 3 === 0 ? getCurrentTarget() : null;
+  return getCurrentTarget();
 }
 
 /**
