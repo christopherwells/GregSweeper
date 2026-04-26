@@ -365,10 +365,17 @@ export function handleWin() {
       const dateStr = getLocalDateString();
       const scoreTime = Math.round((state.preciseTime || state.elapsedTime) * 10) / 10;
       addDailyLeaderboardEntry(dateStr, savedName, scoreTime);
+      // CRITICAL: this auto-submit path (used whenever the player has a
+      // saved name) MUST stay in sync with the manual-submit path in
+      // main.js. Both need to include bombHitEvents and rngSeed —
+      // missing either of those fields drops the experimental-design
+      // and bomb-adjusted-model data streams silently.
       submitOnlineScore(dateStr, savedName, scoreTime, state.dailyBombHits || 0, {
         uid: getUid(),
         par: state.dailyPar,
         features: state.dailyFeatures,
+        bombHitEvents: state.dailyBombHitEvents || [],
+        rngSeed: state.dailyRngSeed || dateStr,
       });
       // Per-user daily-history timeline feeds the leaderboard-modal chart.
       // Skip for practice dailies — they live on their own seed date-slot
