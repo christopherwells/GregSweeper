@@ -49,7 +49,6 @@ export const PAR_MODEL = {
   // Structural features (v1.5.16+)
   secPerNonZeroSafeCell:  0.359,
   secPerZeroCluster:      0.691,
-  secPerFragmentation:    0.000,
 };
 // PAR_MODEL:END
 

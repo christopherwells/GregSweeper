@@ -115,11 +115,10 @@ PRIOR_MEANS <- list(
   # coefficient exists only to absorb time inflation during fitting.
   bombHits             = 15.0,
   # Structural features (v1.5.16+). Priors centred on rough guesses;
-  # data will pull them around. All non-negative on physical grounds
-  # (more deduction work / cascade entries / fragmentation = more time).
+  # data will pull them around. Both non-negative on physical grounds
+  # (more deduction work / cascade entries = more time).
   nonZeroSafeCellCount = 0.5,
-  zeroClusterCount     = 1.0,
-  fragmentationRatio   = 20.0
+  zeroClusterCount     = 1.0
 )
 
 # Per-coefficient prior *log-scale* sigmas. Each non-intercept prior is
@@ -158,8 +157,7 @@ PRIOR_SIGMAS <- list(
   # Structural feature priors (v1.5.16+). Wide (sigma=1.0) since these
   # are new and we don't have strong intuition for the magnitudes yet.
   nonZeroSafeCellCount = 1.0,
-  zeroClusterCount     = 1.0,
-  fragmentationRatio   = 1.0
+  zeroClusterCount     = 1.0
 )
 
 # Parse the current PAR_MODEL block out of difficulty.js. Used as the
@@ -201,8 +199,7 @@ apply_par_model <- function(df, coefs) {
     coefs$secPerSonarCell            * sonarCellCount +
     coefs$secPerCompassCell          * compassCellCount +
     (coefs$secPerNonZeroSafeCell %||% 0) * (nonZeroSafeCellCount %||% 0) +
-    (coefs$secPerZeroCluster     %||% 0) * (zeroClusterCount     %||% 0) +
-    (coefs$secPerFragmentation   %||% 0) * (fragmentationRatio   %||% 0)
+    (coefs$secPerZeroCluster     %||% 0) * (zeroClusterCount     %||% 0)
   )
 }
 
@@ -309,8 +306,7 @@ df <- scores_df |>
 # new-feature contributions just get computed against a 0 baseline,
 # which biases the new coefficients slightly downward at first but
 # straightens out as new plays accumulate.
-NEW_STRUCTURAL_FEATURES <- c("nonZeroSafeCellCount", "zeroClusterCount",
-                              "fragmentationRatio")
+NEW_STRUCTURAL_FEATURES <- c("nonZeroSafeCellCount", "zeroClusterCount")
 for (f in NEW_STRUCTURAL_FEATURES) {
   if (!f %in% colnames(df)) df[[f]] <- 0
 }
@@ -322,7 +318,7 @@ df <- df |>
       totalMines, cellCount, wallEdgeCount, mysteryCellCount,
       liarCellCount, lockedCellCount, wormholePairCount,
       mirrorPairCount, sonarCellCount, compassCellCount,
-      nonZeroSafeCellCount, zeroClusterCount, fragmentationRatio),
+      nonZeroSafeCellCount, zeroClusterCount),
     ~ ifelse(is.na(.x), 0, as.numeric(.x))
   ))
 
@@ -362,7 +358,7 @@ fit_formula_fixed <- time ~
   mysteryCellCount + liarCellCount + lockedCellCount +
   wormholePairCount + mirrorPairCount +
   sonarCellCount + compassCellCount +
-  nonZeroSafeCellCount + zeroClusterCount + fragmentationRatio +
+  nonZeroSafeCellCount + zeroClusterCount +
   bombHits  # NOT shipped to JS PAR_MODEL — see PRIOR_MEANS comment
 
 if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
@@ -480,10 +476,10 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
       "mysteryCellCount", "liarCellCount", "lockedCellCount",
       "wormholePairCount", "mirrorPairCount",
       "sonarCellCount", "compassCellCount",
-      # Structural features (v1.5.16+). All can be pushed by the
+      # Structural features (v1.5.16+). Both can be pushed by the
       # candidate-seed loop: more deduction cells, more cascade
-      # entries, more fragmentation = different boards.
-      "nonZeroSafeCellCount", "zeroClusterCount", "fragmentationRatio"
+      # entries = different boards.
+      "nonZeroSafeCellCount", "zeroClusterCount"
     )
     fe_summary <- fixef(fit)  # posterior mean + SD for every fixed effect
     target_candidates <- data.frame(
@@ -591,8 +587,7 @@ if (fit_method == "brms-ranef") {
     secPerSonarCell             = nn(co["sonarCellCount"],         "sonarCell"),
     secPerCompassCell           = nn(co["compassCellCount"],       "compassCell"),
     secPerNonZeroSafeCell       = nn(co["nonZeroSafeCellCount"],   "nonZeroSafeCell"),
-    secPerZeroCluster           = nn(co["zeroClusterCount"],       "zeroCluster"),
-    secPerFragmentation         = nn(co["fragmentationRatio"],     "fragmentation")
+    secPerZeroCluster           = nn(co["zeroClusterCount"],       "zeroCluster")
   )
 
   # Bias-correct the intercept so the mean predicted par matches the
@@ -630,8 +625,7 @@ if (fit_method == "brms-ranef") {
   NEW_FEATURE_DATA_THRESHOLD <- 20
   feature_data_counts <- list(
     secPerNonZeroSafeCell = sum(df_fit$nonZeroSafeCellCount > 0, na.rm = TRUE),
-    secPerZeroCluster     = sum(df_fit$zeroClusterCount     > 0, na.rm = TRUE),
-    secPerFragmentation   = sum(df_fit$fragmentationRatio   > 0, na.rm = TRUE)
+    secPerZeroCluster     = sum(df_fit$zeroClusterCount     > 0, na.rm = TRUE)
   )
   for (coef_name in names(feature_data_counts)) {
     n_with_data <- feature_data_counts[[coef_name]]
@@ -737,7 +731,6 @@ block <- sprintf(
   // Structural features (v1.5.16+)
   secPerNonZeroSafeCell:  %.3f,
   secPerZeroCluster:      %.3f,
-  secPerFragmentation:    %.3f,
 };',
   Sys.Date(), method_str, n_scores, n_dates, n_players, r2_str,
   new_coefs$intercept,
@@ -757,8 +750,7 @@ block <- sprintf(
   new_coefs$secPerSonarCell,
   new_coefs$secPerCompassCell,
   new_coefs$secPerNonZeroSafeCell,
-  new_coefs$secPerZeroCluster,
-  new_coefs$secPerFragmentation
+  new_coefs$secPerZeroCluster
 )
 
 src <- paste(readLines(DIFFICULTY_PATH, warn = FALSE, encoding = "UTF-8"),

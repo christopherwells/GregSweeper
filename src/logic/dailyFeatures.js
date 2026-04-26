@@ -69,7 +69,7 @@ export function computeDailyFeatures(state, solverResult) {
   const gimmickTypeCount = Array.isArray(state.activeGimmicks) ? state.activeGimmicks.length : 0;
 
   // ── Structural features (added v1.5.16+) ─────────────
-  // Three features computed from the board layout itself:
+  // Two features computed from the board layout itself:
   //
   //  - nonZeroSafeCellCount: safe cells with adjacency > 0. These are
   //    the cells the player has to deduce (vs zero-adjacency cells
@@ -79,15 +79,17 @@ export function computeDailyFeatures(state, solverResult) {
   //    Each component is a cascade entry point. More clusters = more
   //    decisions about where to start clicking; fewer big cascades.
   //
-  //  - fragmentationRatio: 1 - (largest-safe-region / total-safe-cells).
-  //    0 = all safe cells form one connected region (easy to traverse).
-  //    Approaches 1 = many small disconnected safe islands separated
-  //    by mines (lots of separate puzzles to solve).
+  // (A third feature, fragmentationRatio = 1 - maxSafeRegion/safeCells,
+  // was tried briefly but turned out to be structurally zero on every
+  // board we ship: with 8-dir adjacency, isolating a safe region from
+  // the main mass requires complete mine encirclement, which makes the
+  // isolated region UNSOLVABLE — and the solver filters those boards
+  // out before they ever get committed as a daily. So we'd be fitting
+  // noise on a metric that's zero by construction. Dropped.)
   //
-  // All three are expected to have non-negative coefficients in the
-  // par regression (more deduction work / more cascade entries / more
-  // fragmentation = more time), which keeps them compatible with the
-  // existing positive-only lognormal priors.
+  // Both remaining features expect non-negative coefficients in the
+  // par regression (more deduction work / more cascade entries = more
+  // time), so they fit the existing positive-only lognormal priors.
   let nonZeroSafeCellCount = 0;
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -96,56 +98,33 @@ export function computeDailyFeatures(state, solverResult) {
     }
   }
 
-  // BFS connected components on the board. Two passes:
-  //  pass 1 counts components of (safe && adj==0)  → zeroClusterCount
-  //  pass 2 finds max component size of (safe)     → maxSafeRegionSize
+  // Count connected components of adj=0 safe cells via BFS.
   const dirs = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
   const visited = Array.from({ length: rows }, () => new Array(cols).fill(false));
-  function bfsCount(r0, c0, pred) {
-    let count = 0;
-    const queue = [[r0, c0]];
-    visited[r0][c0] = true;
-    while (queue.length > 0) {
-      const [r, c] = queue.shift();
-      count++;
-      for (const [dr, dc] of dirs) {
-        const nr = r + dr, nc = c + dc;
-        if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
-        if (visited[nr][nc]) continue;
-        if (!pred(board[nr][nc])) continue;
-        visited[nr][nc] = true;
-        queue.push([nr, nc]);
-      }
-    }
-    return count;
-  }
-
   let zeroClusterCount = 0;
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       if (visited[r][c]) continue;
       const cell = board[r][c];
       if (cell.isMine || (cell.adjacentMines || 0) !== 0) continue;
-      bfsCount(r, c, ce => !ce.isMine && (ce.adjacentMines || 0) === 0);
+      // BFS-flood this cluster
+      const queue = [[r, c]];
+      visited[r][c] = true;
+      while (queue.length > 0) {
+        const [cr, cc] = queue.shift();
+        for (const [dr, dc] of dirs) {
+          const nr = cr + dr, nc = cc + dc;
+          if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+          if (visited[nr][nc]) continue;
+          const nb = board[nr][nc];
+          if (nb.isMine || (nb.adjacentMines || 0) !== 0) continue;
+          visited[nr][nc] = true;
+          queue.push([nr, nc]);
+        }
+      }
       zeroClusterCount++;
     }
   }
-
-  // Reset visited for the safe-region pass.
-  for (const row of visited) row.fill(false);
-  let maxSafeRegionSize = 0;
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      if (visited[r][c]) continue;
-      if (board[r][c].isMine) continue;
-      const size = bfsCount(r, c, ce => !ce.isMine);
-      if (size > maxSafeRegionSize) maxSafeRegionSize = size;
-    }
-  }
-  const safeCellCount = cellCount - totalMines;
-  const fragmentationRatio = safeCellCount > 0
-    ? 1 - (maxSafeRegionSize / safeCellCount)
-    : 0;
 
   return {
     // Move-type counts (primary features)
@@ -179,7 +158,6 @@ export function computeDailyFeatures(state, solverResult) {
     // Structural features (v1.5.16+ — see above for definitions)
     nonZeroSafeCellCount,
     zeroClusterCount,
-    fragmentationRatio,
   };
 }
 
@@ -220,7 +198,6 @@ const COEF_TERMS = [
   // mechanics the player can identify.
   { coef: 'secPerNonZeroSafeCell',     feature: 'nonZeroSafeCellCount', displayGroup: 'structure' },
   { coef: 'secPerZeroCluster',         feature: 'zeroClusterCount',     displayGroup: 'structure' },
-  { coef: 'secPerFragmentation',       feature: 'fragmentationRatio',   displayGroup: 'structure' },
 ];
 
 /**
