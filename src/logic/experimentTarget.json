@@ -1,40 +1,41 @@
 {
-  "updatedAt": "2026-04-26T03:09:53Z",
-  "target": "compassCellCount",
-  "reason": "highest posterior CV (1.238) excluding last 3 targets",
+  "updatedAt": "2026-04-26T03:33:23Z",
+  "target": "fragmentationRatio",
+  "reason": "highest posterior CV (1.263) excluding last 3 targets",
   "recentTargets": [
+    "fragmentationRatio",
     "compassCellCount"
   ],
   "candidates": [
     {
       "feature": "compassCellCount",
-      "mean": 0.933,
-      "sd": 1.156,
-      "cv": 1.238
+      "mean": 1.009,
+      "sd": 1.322,
+      "cv": 1.311
+    },
+    {
+      "feature": "fragmentationRatio",
+      "mean": 34.534,
+      "sd": 43.618,
+      "cv": 1.263
     },
     {
       "feature": "wormholePairCount",
-      "mean": 1.51,
-      "sd": 1.806,
-      "cv": 1.196
+      "mean": 1.607,
+      "sd": 1.983,
+      "cv": 1.234
     },
     {
       "feature": "sonarCellCount",
-      "mean": 0.796,
-      "sd": 0.93,
-      "cv": 1.168
+      "mean": 0.769,
+      "sd": 0.896,
+      "cv": 1.164
     },
     {
       "feature": "wallEdgeCount",
-      "mean": 0.212,
-      "sd": 0.235,
-      "cv": 1.109
-    },
-    {
-      "feature": "lockedCellCount",
-      "mean": 0.56,
-      "sd": 0.609,
-      "cv": 1.089
+      "mean": 0.207,
+      "sd": 0.227,
+      "cv": 1.093
     }
   ]
 }
