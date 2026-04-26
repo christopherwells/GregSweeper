@@ -35,17 +35,25 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.R_LIBS_USER }}
-          # Bump the suffix whenever the package list changes so the cache
-          # misses and reinstalls cleanly. brms pulls in rstan +
-          # StanHeaders + Rcpp + a stack of Stan dependencies, so the cache
-          # is worth 5+ min of CI time on hit.
-          key: r-pkgs-${{ runner.os }}-brms-v1
-          restore-keys: r-pkgs-${{ runner.os }}-
+          # Bump the suffix whenever the package list OR the runner OS
+          # changes — binary R packages built against one Ubuntu release
+          # won't load on another (Apr 2026: ubuntu-latest moved Jammy ->
+          # Noble and the cached jammy `rlang.so` started erroring with
+          # `undefined symbol: SETLENGTH`). Including ubuntu-version in
+          # the key forces a clean reinstall whenever the runner shifts.
+          key: r-pkgs-${{ runner.os }}-noble-brms-v2
+          restore-keys: r-pkgs-${{ runner.os }}-noble-
 
       - name: Install R packages
         shell: Rscript {0}
         run: |
-          options(repos = c(CRAN = "https://packagemanager.posit.co/cran/__linux__/jammy/latest"))
+          # Use the system-detected RSPM URL set by r-lib/actions/setup-r
+          # so we get noble binaries on noble runners and jammy on jammy.
+          # Hardcoding the path was the previous bug — when the runner
+          # OS shifted, the install pulled jammy binaries onto a noble
+          # system and dyn.load failed.
+          rspm <- Sys.getenv("RSPM")
+          if (nzchar(rspm)) options(repos = c(CRAN = rspm))
           pkgs <- c("jsonlite", "dplyr", "tidyr", "purrr", "stringr",
                     "brms", "posterior", "rstan", "StanHeaders")
           need <- setdiff(pkgs, rownames(installed.packages()))
