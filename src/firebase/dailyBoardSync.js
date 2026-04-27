@@ -63,8 +63,18 @@ function _serializeCell(cell) {
   return out;
 }
 
-function _deserializeCell(raw) {
+function _deserializeCell(raw, r, c) {
+  // CRITICAL: every cell MUST carry its row and col. Many code paths
+  // (updateCells from cascade-reveal, pressure-plate DOM lookup,
+  // power-up cell handlers, gimmick stamping in applied[]) read
+  // cell.row / cell.col directly. Without them, updateCell(undefined,
+  // undefined) silently no-ops and the DOM never reflects state
+  // changes — every reveal cascade looks frozen even though the state
+  // is updating underneath. Found this the hard way after a player
+  // reported "tapping does nothing" on the canonical-board ship.
   const cell = {
+    row: r,
+    col: c,
     isMine: false,
     adjacentMines: 0,
     isMystery: false,
@@ -150,7 +160,7 @@ export function deserializeBoard(raw) {
   for (let r = 0; r < rows; r++) {
     const row = new Array(cols);
     for (let c = 0; c < cols; c++) {
-      row[c] = _deserializeCell(cells[r * cols + c]);
+      row[c] = _deserializeCell(cells[r * cols + c], r, c);
     }
     board[r] = row;
   }

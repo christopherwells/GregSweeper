@@ -71,6 +71,18 @@ export function tryResumeGame(mode) {
     if (gs.dailySeed !== today) return false;
   }
 
+  // Detect cells corrupted by the v1.5.19 canonical-board deserializer
+  // bug (cells without row/col). If found, return false so newGame()
+  // runs a fresh canonical fetch with the FIXED deserializer instead
+  // of resuming an unplayable board where reveal cascades never
+  // visually update.
+  if (Array.isArray(gs.board) && gs.board[0] && gs.board[0][0]) {
+    const c0 = gs.board[0][0];
+    if (typeof c0.row !== 'number' || typeof c0.col !== 'number') {
+      return false;
+    }
+  }
+
   state.board = gs.board;
   state.rows = gs.rows;
   state.cols = gs.cols;
