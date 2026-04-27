@@ -16,13 +16,23 @@ export function hashString(str) {
   return hash;
 }
 
-// Local date string (YYYY-MM-DD) — daily challenges reset at local midnight.
-// Single source of truth: all daily-mode code imports this.
+// Daily date string (YYYY-MM-DD) anchored to America/New_York. Every
+// player worldwide gets the same daily puzzle for any given ET date,
+// regardless of their machine's timezone — a player in Tokyo who loads
+// at 9am JST sees the puzzle for the previous ET date if it's still
+// before midnight ET, and rolls over to the new puzzle when ET does.
+// Anchoring globally is the only way to keep "everyone on the same
+// EST day plays the same board" honest.
+//
+// `en-CA` is the locale that emits ISO YYYY-MM-DD natively from
+// formatToParts, so we don't have to hand-pad with String/padStart.
+const _DAILY_DATE_FMT = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/New_York',
+  year: 'numeric', month: '2-digit', day: '2-digit',
+});
+
 export function getLocalDateString() {
-  const d = new Date();
-  return d.getFullYear() + '-' +
-    String(d.getMonth() + 1).padStart(2, '0') + '-' +
-    String(d.getDate()).padStart(2, '0');
+  return _DAILY_DATE_FMT.format(new Date());
 }
 
 export function createDailyRNG(dateString) {

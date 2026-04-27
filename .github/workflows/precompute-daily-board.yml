@@ -1,0 +1,61 @@
+name: Precompute daily board
+
+# Pre-generates tomorrow's canonical daily board and writes it to
+# Firebase BEFORE any player loads. This eliminates the "first player
+# of the day" race: without it, whoever loads first would generate
+# locally with whatever code+experimentTarget they have cached and
+# stamp THAT board as canonical, which means players on slightly
+# different cached state could diverge until the SW catches up.
+#
+# Cron: 00:00 UTC. We anchor to UTC rather than ET because the goal is
+# to land BEFORE the daily flips at 00:00 ET (= 04:00 UTC summer / 05:00
+# UTC winter). Running at 00:00 UTC gives us 4-5 hours of buffer to retry
+# if Firebase / network is flaky.
+#
+# The script is idempotent: write-once Firebase rules will reject
+# duplicate writes silently, so re-running is safe.
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+    inputs:
+      date:
+        description: 'Date to pre-generate (YYYY-MM-DD). Defaults to tomorrow ET.'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: precompute-daily-board
+  cancel-in-progress: false
+
+jobs:
+  precompute:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Compute target date
+        id: date
+        run: |
+          if [ -n "${{ github.event.inputs.date }}" ]; then
+            DATE="${{ github.event.inputs.date }}"
+          else
+            # Tomorrow in America/New_York. Done in shell rather than the
+            # Node script so the script stays simple (one date, one seed).
+            DATE=$(TZ=America/New_York date -d 'tomorrow' '+%Y-%m-%d')
+          fi
+          echo "date=$DATE" >> "$GITHUB_OUTPUT"
+          echo "Pre-generating board for $DATE"
+
+      - name: Pre-generate and upload
+        env:
+          TARGET_DATE: ${{ steps.date.outputs.date }}
+        run: node scripts/precompute-daily-board.mjs "$TARGET_DATE"

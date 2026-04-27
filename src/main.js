@@ -57,7 +57,8 @@ import { generateBoard, cleanSolverArtifacts } from './logic/boardGenerator.js';
 import { isBoardSolvable } from './logic/boardSolver.js';
 import { createDailyRNG, getLocalDateString } from './logic/seededRandom.js';
 import { selectDailyRngSeed } from './logic/selectDailyRngSeed.js';
-import { loadExperimentTarget } from './logic/experimentDesign.js';
+import { loadExperimentTarget, getCurrentTarget, getTargetGimmickName } from './logic/experimentDesign.js';
+import { loadDailyBoard, deserializeBoard } from './firebase/dailyBoardSync.js';
 import {
   EMOJI_PACKS, EFFECTS, TITLES,
   loadEmojiPack, saveEmojiPack, getActiveEmojiPack, isPackUnlocked,
@@ -292,39 +293,54 @@ async function updateLeaderboardDisplay() {
     if (!dailyMoves && featuresForPar.totalClicks) dailyMoves = featuresForPar.totalClicks;
   }
   if (dailyPar === 0) {
-    // Compute par on-demand by regenerating today's daily board.
-    // This path runs when the user opens the leaderboard without having
-    // played today's daily yet; it must mirror gameActions.js's daily branch
-    // (including gimmick application) so the solver's move-type counts
-    // reflect the same board every player actually gets.
+    // Compute par on-demand. Try the canonical board on Firebase first
+    // — every player today plays that exact layout, so par must come
+    // from solving IT, not whatever the local generator would produce.
+    // Falls back to local generation only when Firebase has nothing
+    // (very first player of a new date OR offline).
     try {
-      // Mirror the daily-gen path: resolve the effective RNG seed first so
-      // the computed par matches what the player will actually see when
-      // they start today's daily (especially on adaptive-experiment days).
-      const rngSeed = selectDailyRngSeed(dateStr);
-      const dimRng = createDailyRNG(rngSeed);
-      const pRows = DAILY_MIN_SIZE + Math.floor(dimRng() * DAILY_SIZE_RANGE);
-      const pCols = DAILY_MIN_SIZE + Math.floor(dimRng() * DAILY_SIZE_RANGE);
-      const pDensity = DAILY_MIN_DENSITY + dimRng() * DAILY_DENSITY_RANGE;
-      const pMines = Math.max(5, Math.round(pRows * pCols * pDensity));
-      const pFixedR = Math.floor(pRows / 2), pFixedC = Math.floor(pCols / 2);
-      const activeGimmicks = getDailyGimmick(rngSeed, createDailyRNG);
-
-      let pBoard;
+      let pBoard, pRows, pCols, pMines, activeGimmicks;
       let parResult;
-      for (let attempt = 0; attempt < 50; attempt++) {
-        const boardRng = attempt === 0
-          ? createDailyRNG(rngSeed)
-          : createDailyRNG(rngSeed + '-retry-' + attempt);
-        pBoard = generateBoard(pRows, pCols, pMines, pFixedR, pFixedC, boardRng);
-        cleanSolverArtifacts(pBoard);
-        if (activeGimmicks.length > 0) {
-          const gRng = createDailyRNG(rngSeed + '-gimmick-apply-' + attempt);
-          applyGimmicks(pBoard, 1, activeGimmicks, gRng);
-        }
+
+      const canonicalRaw = await loadDailyBoard(dateStr).catch(() => null);
+      if (canonicalRaw) {
+        const r = deserializeBoard(canonicalRaw);
+        pBoard = r.board;
+        pRows = r.rows;
+        pCols = r.cols;
+        pMines = r.totalMines;
+        activeGimmicks = r.activeGimmicks || [];
+        const pFixedR = Math.floor(pRows / 2), pFixedC = Math.floor(pCols / 2);
         parResult = isBoardSolvable(pBoard, pRows, pCols, pFixedR, pFixedC);
         cleanSolverArtifacts(pBoard);
-        if (parResult.solvable || parResult.remainingUnknowns === 0) break;
+      } else {
+        // Mirror the daily-gen path: resolve the effective RNG seed first so
+        // the computed par matches what the player will actually see when
+        // they start today's daily (especially on adaptive-experiment days).
+        const rngSeed = selectDailyRngSeed(dateStr);
+        const dimRng = createDailyRNG(rngSeed);
+        pRows = DAILY_MIN_SIZE + Math.floor(dimRng() * DAILY_SIZE_RANGE);
+        pCols = DAILY_MIN_SIZE + Math.floor(dimRng() * DAILY_SIZE_RANGE);
+        const pDensity = DAILY_MIN_DENSITY + dimRng() * DAILY_DENSITY_RANGE;
+        pMines = Math.max(5, Math.round(pRows * pCols * pDensity));
+        const pFixedR = Math.floor(pRows / 2), pFixedC = Math.floor(pCols / 2);
+        const forcedGimmick = getTargetGimmickName(getCurrentTarget());
+        activeGimmicks = getDailyGimmick(rngSeed, createDailyRNG, forcedGimmick);
+
+        for (let attempt = 0; attempt < 50; attempt++) {
+          const boardRng = attempt === 0
+            ? createDailyRNG(rngSeed)
+            : createDailyRNG(rngSeed + '-retry-' + attempt);
+          pBoard = generateBoard(pRows, pCols, pMines, pFixedR, pFixedC, boardRng);
+          cleanSolverArtifacts(pBoard);
+          if (activeGimmicks.length > 0) {
+            const gRng = createDailyRNG(rngSeed + '-gimmick-apply-' + attempt);
+            applyGimmicks(pBoard, 1, activeGimmicks, gRng);
+          }
+          parResult = isBoardSolvable(pBoard, pRows, pCols, pFixedR, pFixedC);
+          cleanSolverArtifacts(pBoard);
+          if (parResult.solvable || parResult.remainingUnknowns === 0) break;
+        }
       }
 
       if (parResult && (parResult.solvable || parResult.remainingUnknowns === 0)) {

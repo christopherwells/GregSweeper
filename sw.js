@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v1.5.18';
+const CACHE_NAME = 'gregsweeper-v1.5.19';
 const ASSETS = [
   './',
   './index.html',
@@ -54,6 +54,7 @@ const ASSETS = [
   // Other themes are lazy-loaded and cached on-demand via network-first strategy
   './src/firebase/firebaseLeaderboard.js',
   './src/firebase/firebaseProgress.js',
+  './src/firebase/dailyBoardSync.js',
   './assets/icon.svg',
   './assets/icon-192.png',
   './assets/icon-512.png',

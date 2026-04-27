@@ -61,6 +61,29 @@
         }
       }
     },
+    "dailyBoard": {
+      ".read": true,
+      "$date": {
+        ".write": "auth != null && !data.exists()",
+        ".validate": "$date.matches(/^\\d{4}-\\d{2}-\\d{2}$/) && newData.hasChildren(['rows', 'cols', 'totalMines', 'cells', 'writtenAt'])",
+        "rows":          { ".validate": "newData.isNumber() && newData.val() >= 5 && newData.val() <= 30" },
+        "cols":          { ".validate": "newData.isNumber() && newData.val() >= 5 && newData.val() <= 30" },
+        "totalMines":    { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 500" },
+        "rngSeed":       { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 64" },
+        "codeVersion":   { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 32" },
+        "activeGimmicks":{ ".validate": "newData.hasChildren() || newData.val() === null" },
+        "wallEdges":     { ".validate": "newData.hasChildren() || newData.val() === null" },
+        "cells": {
+          ".validate": "newData.hasChildren()"
+        },
+        "writtenAt": {
+          ".validate": "newData.val() === now"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
     "users": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",

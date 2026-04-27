@@ -110,9 +110,28 @@ export function setModifierPopupDisabled(disabled) {
 }
 
 // ── Daily gimmick selection (seeded, ~35% of days) ─────
+// `forcedGimmick`, when provided and member of DAILY_SAFE_GIMMICKS,
+// guarantees that gimmick is the primary on every seed — used by the
+// adaptive-experiment path so the candidate-seed loop competes on
+// target-cell count rather than presence. The natural-rate secondary
+// roll still runs (~20% chance of a second gimmick), so the
+// distribution is "always target + occasional bonus" instead of "45%
+// nothing / 55% random one".
 
-export function getDailyGimmick(dailySeed, createRNG) {
+export function getDailyGimmick(dailySeed, createRNG, forcedGimmick = null) {
   const rng = createRNG(dailySeed + '-gimmick');
+
+  if (forcedGimmick && DAILY_SAFE_GIMMICKS.includes(forcedGimmick)) {
+    const gimmicks = [forcedGimmick];
+    if (rng() < 0.20) {
+      const idx2 = Math.floor(rng() * DAILY_SAFE_GIMMICKS.length);
+      if (DAILY_SAFE_GIMMICKS[idx2] !== forcedGimmick) {
+        gimmicks.push(DAILY_SAFE_GIMMICKS[idx2]);
+      }
+    }
+    return gimmicks;
+  }
+
   if (rng() > 0.55) return []; // 45% of days: no gimmick
   const idx = Math.floor(rng() * DAILY_SAFE_GIMMICKS.length);
   const gimmicks = [DAILY_SAFE_GIMMICKS[idx]];

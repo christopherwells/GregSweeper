@@ -27,11 +27,12 @@ import {
   DAILY_MIN_SIZE, DAILY_SIZE_RANGE,
   DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE,
 } from './difficulty.js';
-import { getExperimentTarget, candidateSeed, CANDIDATE_COUNT } from './experimentDesign.js';
+import { getExperimentTarget, candidateSeed, CANDIDATE_COUNT, getTargetGimmickName } from './experimentDesign.js';
 
 export function selectDailyRngSeed(dateString) {
   const target = getExperimentTarget(dateString);
   if (!target) return dateString;
+  const forcedGimmick = getTargetGimmickName(target);
 
   let bestSeed = null;
   let bestCount = -1;
@@ -58,7 +59,7 @@ export function selectDailyRngSeed(dateString) {
     // reproducing the retry loop, and a skipped candidate just means one
     // fewer competitor for "most target feature" — the remaining N-1
     // still produce a valid winner.
-    const gimmicks = getDailyGimmick(seed, createDailyRNG);
+    const gimmicks = getDailyGimmick(seed, createDailyRNG, forcedGimmick);
     if (gimmicks.length > 0) {
       const gRng = createDailyRNG(seed + '-gimmick-apply-0');
       applyGimmicks(board, 1, gimmicks, gRng);

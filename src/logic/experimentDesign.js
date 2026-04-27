@@ -40,6 +40,29 @@ const DEFAULT_TARGET = 'advancedLogicMoves';
 // becomes user-visible, lower to 5–7.
 export const CANDIDATE_COUNT = 10;
 
+// Map experiment-target feature names to the gimmick name that produces
+// them. When the target maps to a gimmick, the candidate-seed loop
+// force-injects that gimmick into every candidate's gimmick list so the
+// 10-way max competes on cell COUNT rather than mere PRESENCE — without
+// this, the natural 6.6% per-seed inclusion rate means ~50% of dailies
+// have zero of the target across all 10 candidates and the maximisation
+// is meaningless. Targets not in this map (move-type counts, structural
+// features) fall through to the natural gimmick lottery.
+const TARGET_TO_GIMMICK = {
+  mysteryCellCount:  'mystery',
+  liarCellCount:     'liar',
+  lockedCellCount:   'locked',
+  wormholePairCount: 'wormhole',
+  mirrorPairCount:   'mirror',
+  sonarCellCount:    'sonar',
+  compassCellCount:  'compass',
+  wallEdgeCount:     'walls',
+};
+
+export function getTargetGimmickName(target) {
+  return TARGET_TO_GIMMICK[target] || null;
+}
+
 let _cachedTarget = null;          // the `target` string from the JSON
 let _cachedMeta = null;            // the rest of the object (for debugging / diagnostics modal)
 let _loading = null;
