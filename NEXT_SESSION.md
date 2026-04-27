@@ -1,146 +1,212 @@
 # Handoff — current state of stats / handicap pipeline
 
-This supersedes the previous handoff (most of those TODOs landed). Picking up
-from a session that hardened the v1.5 stats pipeline end to end: Bayesian
-refit, adaptive experimental design, bomb-event capture, in-app diagnostics,
-Kate's uid migration, and a string of stats-modal accuracy fixes.
+This supersedes the previous handoff. Picking up from a session that:
+- Replaced the bomb-hit filter with a `bombHits` regressor (option A) so
+  all 90 plays now contribute to the fit instead of just the clean 38
+- Found and fixed a critical auto-submit bug that had been silently
+  dropping `bombHitEvents` and `rngSeed` from EVERY play since v1.5.9
+- Added two new structural features (`nonZeroSafeCellCount`,
+  `zeroClusterCount`) AND backfilled them across all 48 historical
+  dailyMeta records via a Playwright + admin Firebase pipeline
+- Tried and dropped a third (`fragmentationRatio`) — turns out it's
+  structurally zero on solvable boards by construction
+- Made every daily a "learning daily" with a no-repeat-target-within-
+  3-days rule (was previously every 3rd day)
+- Several stats-modal accuracy fixes (share card, percentile flip,
+  complexity cascade, two-line handicap trajectory overlay)
+- Lazy-imported the stats / charts / diagnostics / skill-trainer
+  modules off the cold-load critical path
+- Fixed the GitHub Actions cron after the ubuntu-latest Jammy → Noble
+  migration broke the R package cache
+- Hid the diagnostics button behind `?debug=1` URL flag
 
 ## Current state — what's shipping
 
-- **v1.5.14 deployed.** Stats modal Daily tab renders the full panel
-  cleanly (handicap with two-line trajectory overlay, daily history,
-  cascaded complexity delta, strike rate, modifier heatmap, delta
-  distribution, rank vs. field). Stats / charts / diagnostics modules
-  are dynamic-imported on demand to keep the cold-load path light.
+- **v1.5.18 deployed.** Every daily picks a candidate seed targeting
+  the most-uncertain coefficient; rotation guarantees no target
+  repeats within 3 days. Stats / charts / diagnostics modules are
+  dynamic-imported on demand.
 - **Refit is fully Bayesian.** `scripts/refit-par-model.R` runs
-  `brm(time ~ features + (1|uid))` with informative `lognormal` priors
-  centred on the seed coefficients (sigma=1.0 on the log scale).
-  Convergence guard: Rhat ≤ 1.05, ESS ≥ 400, divergent ≤ 0.25%.
-  Bias-correction targets the FIT POPULATION only (uid-tagged + ≥15
-  clean plays), so anonymous-visitor outliers don't pollute the
-  intercept. `MIN_PLAYS_FOR_FIT_INCLUSION = 15` (acknowledges the
-  ~50-65% bomb-hit rate).
-- **PAR_MODEL** (as of last successful refit): see
-  `src/logic/difficulty.js` between markers. Re-run is automatic at
-  ~10am ET via `.github/workflows/refit-par-model.yml`.
-- **Handicaps** (`src/logic/handicaps.json`):
-  - Chris (`5Ht9d2io0ugU1NGsjdJmZvkJi382`): around **−1.3s**
-  - Kate (`AYXrTjKPieYrZI8sksnYqbI3Pmh1`, post-migration): around **+1.1s**
-  - Numbers reflect clean-play skill, not bomb-hit pollution. Sign
-    flipped from the seed-residuals era because we now exclude
-    bomb-hit plays from the fit.
-- **Adaptive experimental design** (every 3rd daily, day-of-month % 3 == 0):
-  client tries 10 candidate seeds and picks the board that maximises
-  the currently-targeted feature. Target is auto-selected by the R
-  refit (highest posterior CV from a whitelist) and written to
-  `src/logic/experimentTarget.json`. Other days are plain date-seeded
-  dailies. Determinism preserved across players: same date + same
-  loaded target → same winning seed.
+  `brm(time ~ features + bombHits + (1|uid))` with informative
+  `lognormal` priors. Convergence guard: Rhat ≤ 1.05, ESS ≥ 400,
+  divergent ≤ 0.25%. `MIN_PLAYS_FOR_FIT_INCLUSION = 30` (clean-play
+  threshold lifted now that bomb-hit plays are kept).
+- **`bombHits` regressor absorbs bomb-time inflation.** Each hit
+  fitted at +14.66s (visible as `secPerBombHit` in handicaps.json).
+  This regressor is FIT but NOT shipped to JS — `predictPar(features)`
+  stays "clean-play par" and the bombHits coef exists only to keep
+  per-user random intercepts representing pure solving skill.
+- **Handicaps** (`src/logic/handicaps.json`, last refit 2026-04-26):
+  - Chris (`5Ht9d2io0ugU1NGsjdJmZvkJi382`): **+6.05s**
+  - Kate  (`AYXrTjKPieYrZI8sksnYqbI3Pmh1`): **−6.63s**
+  - The ~12s gap reflects clean-equivalent skill, not bomb-rate
+    asymmetry. Sign flipped from earlier seed-residuals era (+2.45/
+    −2.53) because the model now properly accounts for bombs.
+- **Two structural features active in PAR_MODEL:**
+  - `secPerNonZeroSafeCell`: 0.36 s/cell (cells the player must deduce)
+  - `secPerZeroCluster`: 0.69 s/cluster (cascade entry points)
+  - `fragmentationRatio` was tried and dropped — always 0 because
+    isolated safe regions are unsolvable and the solver filters them
+    out before they ever ship.
+- **Backfilled dailyMeta.** All 48 historical dates have the new
+  structural features computed by regenerating each board from its
+  deterministic seed (Playwright + JS modules + admin Firebase
+  multi-path update). Threshold guard satisfied; coefficients now
+  fit on real data not just priors.
+- **Adaptive experimental design.** EVERY daily generates 10 candidate
+  seeds (`{date}:trial0..9`), solves each, picks the one whose board
+  maximises the currently-targeted feature. Target chosen server-side
+  by the R refit (highest posterior CV from a whitelist), excluding
+  any feature that was the target on any of the last 3 days
+  (`recentTargets` in `experimentTarget.json` is a rolling 3-slot
+  memory). Determinism preserved across players.
 - **Bomb-hit event capture.** Every bomb hit pushes `{ t, row, col }`
-  onto `state.dailyBombHitEvents`; submission to Firebase includes the
-  array plus the effective `rngSeed`. Old plays only have a `bombHits`
-  count; new plays from v1.5.9+ carry the full event log.
-- **Bomb-hit plays excluded from fit.** Their times describe a
-  materially easier puzzle (bomb defuses reveal cells the solver's
-  optimal path didn't use), so including them distorts the
-  coefficients. The events log will eventually feed a bomb-adjusted
-  effective-feature model that re-includes them — see open item #1.
-- **In-app diagnostics modal.** Hidden by default; Settings →
-  🔬 Show Diagnostics is gated behind `?debug=1` URL flag (persisted
-  in localStorage). Surfaces uid, Firebase status, history join
-  count, current PAR_MODEL, handicaps.json metadata, version, and a
+  to `state.dailyBombHitEvents`. Submission includes the array plus
+  the effective `rngSeed`. **AUTO-SUBMIT PATH FIXED in
+  `cf87e3f` — pre-fix, ~51 plays from Apr 22-25 had bombHits counted
+  but events DROPPED on the floor.** End-to-end verified via
+  Playwright that post-fix submissions land cleanly with the array.
+- **In-app diagnostics modal.** Hidden by default. Visit
+  `?debug=1` once on a device to unlock (persisted via localStorage).
+  Settings → 🔬 Show Diagnostics surfaces uid, Firebase status,
+  history join count, current PAR_MODEL, handicaps.json metadata,
   Copy-as-JSON button.
 - **Kate's data migrated.** Old uid (`kPkUkn5mndZG2SIGC1xC329zhrA3`)
-  scores rewritten to her current uid (`AYXrTjKPieYrZI8sksnYqbI3Pmh1`)
-  in both `daily/*` and `users/{uid}/dailyHistory/*`. Old-uid data
-  left intact as a rollback option.
-- **Firebase rules updated** to allow `bombHitEvents` and `rngSeed`
-  fields on score submissions. Deployed via
+  scores rewritten to current uid (`AYXrTjKPieYrZI8sksnYqbI3Pmh1`) in
+  `daily/*` and `users/{uid}/dailyHistory/*`. Old-uid data left intact
+  as rollback option.
+- **Firebase rules** allow `bombHitEvents` (array of `{t, row, col}`)
+  and `rngSeed` (string) on score submissions. Deployed via
   `firebase deploy --only database`.
 - **Refit workflow:** runs daily at 14:00 UTC (10am ET EDT). Cache
-  key is `r-pkgs-Linux-noble-brms-v2` — bump if ubuntu-latest moves
-  to a new Ubuntu major version.
+  key `r-pkgs-Linux-noble-brms-v2` — bump if ubuntu-latest moves
+  again. Install step uses RSPM env var (auto-detects OS).
 
 ## Recent learnings worth preserving
 
-- **Bomb-hit rate is high (~50-65%).** Daily mode's re-fog design
-  makes bomb hits feel cheap (flags preserved, just re-click), but
-  the back-of-envelope cost is much higher than the explicit 10s
-  penalty. With Chris's overall delta averaging ~+32s vs his clean
-  handicap of −1.3s, each bomb hit averages ~+25s real cost vs the
-  10s nominal — players are systematically under-weighting bombs.
-  See open item #2 for the rebalance question.
-- **Posterior CV is sensitive at low N.** Disjunctive-move and liar-
-  cell coefficients show CV > 1.0 in the current fit because we have
-  few liar/disjunctive boards in the clean dataset. The adaptive
-  experiment design targets these features on the 1-in-3 days, which
-  should compress those posteriors over the next few weeks.
-- **brms identifiability quirk.** Non-centred predictors (which we
-  need so JS can plug in raw feature counts) leave the global
-  intercept and random intercepts non-identifiable up to an additive
+- **Trust outcomes, not element existence.** I shipped v1.5.9's bomb-
+  event capture by verifying the deployed code looked correct and
+  that Firebase rules accepted the field — but never actually played
+  a daily and confirmed events landed. The auto-submit path bug went
+  undetected for 4 days, costing 51 plays of position data we can't
+  recover. Rule: before claiming "shipped" on a data-flow change,
+  RUN A PLAY through it and inspect the resulting Firebase entry.
+- **Bomb-hit rate is high (~50-65%).** Daily re-fog design makes
+  bomb hits feel cheap. Empirical cost is closer to ~25s per hit
+  (10s explicit penalty + ~15s re-fog re-click + disruption) vs the
+  nominal 10s. Player behaviour confirms: nobody would hit bombs
+  60%+ of the time if they actually felt the cost.
+- **Selection bias on clean-only fits.** Filtering bomb-hit plays
+  isn't symmetric — Chris bombed on harder boards, Kate on slightly
+  easier ones, so the clean subset compared "Chris on easy boards"
+  to "Kate on slightly-harder boards" and called them equal. The
+  bombHits regressor restores symmetry by including all plays and
+  letting bomb count absorb its own variance.
+- **Posterior MEAN of a lognormal prior overshoots the median by
+  ~1.65×.** With sigma=1.0 priors, a coefficient with no data signal
+  comes out at `prior_mean × exp(0.5)` ≈ 1.65 × prior_median, not at
+  the median. New coefs that lock to prior expectation will inflate
+  predictPar by a noticeable amount unless guarded.
+- **Threshold guard for new features.** When adding a feature, force
+  its coefficient to 0 in the SHIPPED PAR_MODEL until ≥20 plays have
+  nonzero values for it. Otherwise the prior mean alone bends
+  predictPar with no data justification. The fit still includes the
+  feature as a regressor (so other coefficients aren't polluted), but
+  the JS side only sees the data-fit value once a real signal exists.
+- **brms identifiability quirk** (still applies). Non-centred
+  predictors leave alpha + u_j non-identifiable up to an additive
   constant. We play-weight-recentre the random intercepts post-fit
-  so handicaps sum to zero across users — without this both users'
-  handicaps came out as +100s offsets.
-- **History dots can sit dramatically below personal par.** This is
-  a real artifact of the small-N posterior on disjunctive/canonical
-  coefficients: the model OVERPREDICTS par on hard boards, so actual
-  times look superhuman. Will compress as N grows. Don't "fix" by
-  filtering bomb-hit plays from the chart — keep the user's full
-  history visible.
-- **Ubuntu major-version transitions break the R cache.** Cached
-  binaries built on Jammy crash on Noble with
-  `undefined symbol: SETLENGTH`. Cache key now includes the OS
-  release; install step uses the RSPM env var that
-  `r-lib/actions/setup-r` sets automatically.
+  so handicaps sum to zero. Without this both users' handicaps came
+  out as ~+100s offsets.
+- **Ubuntu major-version transitions break R cache.** Cached binaries
+  built on one Ubuntu release crash on the next with
+  `undefined symbol: SETLENGTH`. Cache key now includes OS release.
+- **Backfill via Playwright works for any deterministic-seed feature.**
+  Pattern: load page locally → import JS modules → for each historical
+  date regenerate the board → compute new features → batch update via
+  `firebase database:update / update.json -f` (admin bypasses
+  write-once rules). 48 dates × ~50ms = ~2.5s of compute.
 
 ## Open items
 
-### 1. Bomb-adjusted effective-feature model (option 2: client-side)
+### 1. Full bomb-adjusted effective-feature model (option C)
 
-`bombHitEvents` are streaming in but the R script just filters bomb-hit
-plays. To re-include them, the client should compute an effective
-feature vector at end-of-game when bomb hits occurred — re-run the
-solver on the original board with the bomb cells marked as revealed
-starting points, take the resulting `passAMoves / canonical / generic /
-advanced / disjunctive` counts as the effective vector, submit alongside
-the regular features. R script then prefers `effectiveFeatures` when
-present, falls back to nominal `features` otherwise.
+For each bomb-hit play, re-run the solver with the bomb cells marked
+as pre-revealed starting points, then take the resulting
+move-type counts as the "effective" feature vector for that play.
+This isolates the structural information value of each bomb position
+instead of treating all bombs as worth +14.66s flat.
 
-Estimated work: ~45 min. Steps:
-- In `winLossHandler.js` win path, if `state.dailyBombHits > 0`, save
-  a copy of the original board layout, mark bomb cells revealed, run
-  `isBoardSolvable` again, derive features.
-- Submit as `extras.effectiveFeatures` in `submitOnlineScore`.
-- Update Firebase rules to allow the new field.
-- R script: `coalesce(effectiveFeatures, features)` when building the
-  feature matrix, drop the `bombHits == 0` filter.
+Status: blocked on data accumulation. Auto-submit fix landed today
+(`cf87e3f`); need ~20-40 bomb-hit plays with `bombHitEvents`
+populated before this is worth building. Pre-fix bomb-hit plays
+have only `bombHits` count, no positions, can't be retrofitted.
+At ~2 dailies/day across 2 users with ~50% bomb rate, ~2-3 weeks
+of data accumulation.
+
+When ready, implementation:
+- Add an `effectiveFeatures` field to score submissions, computed at
+  end-of-game when `state.dailyBombHits > 0` by re-running the solver
+  on the original board with bomb cells marked revealed
+- R script reads `coalesce(effectiveFeatures, features)` per play
+- Drop the `bombHits` regressor (the effective vector already
+  reflects the post-bomb difficulty)
+- Update Firebase rules to allow the new field
 
 ### 2. Bomb penalty rebalance
 
-Current: +10s per hit + re-fog all non-flag cells. Empirically the
-real cost is closer to +25s per hit (10s explicit + ~15s re-fog
-re-click time + disruption). The 60% bomb-hit rate suggests players
-under-perceive cost. Once we have ~20-40 bomb-event-tagged plays we
-can compute the per-bomb info-value rigorously. Knobs: bump explicit
-penalty to ~20s, or remove flag-preservation, or both.
+Current: 10s explicit + flag-preserved re-fog. Effective cost per
+hit ≈ 25s. The system rewards risky play.
 
-Tied to item #1 — once effective-feature data is collected we can
-measure the actual time saved per bomb hit vs the 10s penalty.
+Knobs (cheapest first):
+- Bump explicit penalty 10 → 20s
+- Drop flag-preservation (re-fog ALL non-mine cells, not just
+  non-flag)
+- Both
 
-### 3. Slowness on cold load
+Empirical evidence will be cleaner once option (1) lands — the
+bomb-adjusted model gives the precise info-value of each hit, which
+sets a defensible floor for the explicit penalty.
 
-Lazy-imports landed in v1.5.14 (statsRenderer / charts /
-dailyHistoryChart / diagnosticsModal / skillTrainer all dynamic-imported,
-removed from SW pre-cache). Bundling would shave another 2-5s but
-breaks the `no-build-step` rule. Revisit if the perceived slowness
-returns after these optimisations propagate.
+### 3. Handicap interpretation / confidence intervals
 
-### 4. Hidden Skill Trainer
+Statistician deep-dive concluded the +6/−6 point estimates are
+honest but the data is severely underpowered: 95% CrI on the gap is
+roughly ±15s. Displaying "+6.05s" makes it look more precise than
+it is. Consider showing "+6.05s ± 8s (95% CrI)" in the UI so
+players read it as "we can't tell exactly yet" instead of a
+verdict.
 
-Skill Trainer mode is hidden from the UI but the code is intact (see
-`src/logic/skillTrainer.js`, `src/ui/skillTrainerUI.js`). Modules are
-dynamic-imported via `modeManager.js` and excluded from SW pre-cache.
-Decide whether to ship Skill Trainer publicly or remove the dead code.
+### 4. New features worth investigating
+
+User has been generative about features. We added 2 (kept) and tried
+1 (dropped). Other candidates that vary on solvable boards:
+- **Mean cell adjacency** among safe cells (range 0-8). Sign
+  uncertain — tighter constraints could go either way.
+- **Border-cell count** (cells touching board edge). Different
+  shape signal beyond cellCount.
+- **Mine-density ratio** as its own coefficient (currently the model
+  has totalMines and cellCount separately but no density term).
+- **Max single-cell adjacency** (the most-constrained safe cell on
+  the board).
+
+Each would follow the same pattern: add to `dailyFeatures.js`
++ `COEF_TERMS` + `PAR_MODEL` placeholder + R script formula/priors/
+whitelist + threshold guard, then backfill via Playwright. The
+backfill harness is now proven — see `experimentTarget.json` flow.
+
+### 5. Hidden Skill Trainer
+
+Skill Trainer mode is hidden from the UI but the code is intact
+(`src/logic/skillTrainer.js`, `src/ui/skillTrainerUI.js`). Modules
+are dynamic-imported via `modeManager.js` and excluded from SW
+pre-cache. Decide whether to ship publicly or remove the dead code.
+
+### 6. Node.js 20 deprecation in CI
+
+The Refit workflow uses `actions/cache@v4`, `actions/checkout@v4`,
+`r-lib/actions/setup-r@v2` — all of which run on Node 20, deprecated
+June 2026. Bump action versions before then.
 
 ## Quick reference — how to rerun things locally
 
@@ -149,7 +215,7 @@ Decide whether to ship Skill Trainer publicly or remove the dead code.
 python -m http.server 8080
 
 # Manual refit (writes difficulty.js + handicaps.json + experimentTarget.json
-# only if N >= 30 total clean scores AND >= 2 users with >= 15 clean plays)
+# only if N >= 30 total uid-tagged scores AND >= 2 users with >= 30 plays each)
 "/c/Program Files/R/R-4.5.2/bin/Rscript.exe" scripts/refit-par-model.R
 
 # Trigger remote refit
@@ -161,8 +227,16 @@ MSYS_NO_PATHCONV=1 firebase deploy --only database
 # Apply a multi-path Firebase update (admin bypasses rules)
 MSYS_NO_PATHCONV=1 firebase database:update / update.json -f
 
-# Backfill historical dailyMeta
-# Start a dev server, then open /backfill-features.html, set dates, type BACKFILL, click Run.
+# Backfill new features for historical dailyMeta records:
+#   1. Edit dailyFeatures.js to compute the new feature
+#   2. Start dev server: python -m http.server 8082
+#   3. Open Playwright, navigate to localhost:8082
+#   4. Use browser_evaluate to import the JS modules and iterate
+#      over dailyMeta dates regenerating boards + computing features
+#   5. Output an update payload (paths like
+#      `dailyMeta/{date}/features/{newField}: <value>`)
+#   6. Apply via firebase database:update
+# (See session history "backfill-update.json" pattern)
 
 # Open diagnostics modal (one-time per device — flag persists)
 # https://christopherwells.github.io/GregSweeper/?debug=1
@@ -170,31 +244,52 @@ MSYS_NO_PATHCONV=1 firebase database:update / update.json -f
 
 ## Who's who (current uid map)
 
-- **Chris** uid = `5Ht9d2io0ugU1NGsjdJmZvkJi382` — handicap around −1.3s
-- **Kate** uid = `AYXrTjKPieYrZI8sksnYqbI3Pmh1` — handicap around +1.1s
-  (old uid `kPkUkn5mndZG2SIGC1xC329zhrA3` migrated, scores left intact for rollback)
-- **Wendy / Sebas** — single anonymous-visitor scores, excluded from fit
-  by the `MIN_PLAYS_FOR_FIT_INCLUSION` threshold
+- **Chris** uid = `5Ht9d2io0ugU1NGsjdJmZvkJi382` — handicap +6.05s
+- **Kate** uid = `AYXrTjKPieYrZI8sksnYqbI3Pmh1` — handicap −6.63s
+  (old uid `kPkUkn5mndZG2SIGC1xC329zhrA3` migrated, scores left intact
+  for rollback)
+- **Wendy / Sebas** — single anonymous-visitor scores, excluded by
+  `MIN_PLAYS_FOR_FIT_INCLUSION` threshold
 
 ## Files that matter
 
-- `src/logic/difficulty.js` — `PAR_MODEL` between markers
-- `src/logic/dailyFeatures.js` — feature computation, `predictPar`,
-  `breakdownPar`
+- `src/logic/difficulty.js` — `PAR_MODEL` between markers (overwritten
+  daily by the R refit)
+- `src/logic/dailyFeatures.js` — `computeDailyFeatures`, `predictPar`,
+  `breakdownPar`, `COEF_TERMS` table
 - `src/logic/handicaps.js` — handicap lookup + client-side fallback
-- `src/logic/handicaps.json` — current handicaps (refitted daily)
+- `src/logic/handicaps.json` — current handicaps + `secPerBombHit`
+  (refitted daily)
 - `src/logic/experimentDesign.js` — adaptive-experiment policy
-- `src/logic/experimentTarget.json` — current target (refitted daily)
+  (every-daily, target rotation memory)
+- `src/logic/experimentTarget.json` — current target + `recentTargets`
+  rolling-3 memory (refitted daily)
 - `src/logic/selectDailyRngSeed.js` — candidate-seed selection
-- `src/ui/charts.js` — SVG chart toolkit (now supports `secondary`
-  series for the handicap-trajectory two-line overlay)
-- `src/ui/statsRenderer.js` — Daily-tab orchestration; lazy-imported
-- `src/ui/diagnosticsModal.js` — diagnostics surface; lazy-imported,
-  Settings button hidden behind `?debug=1`
+  mechanism
+- `src/ui/charts.js` — SVG chart toolkit (supports `secondary` series
+  for the handicap-trajectory two-line overlay)
+- `src/ui/statsRenderer.js` — Daily-tab orchestration (lazy-imported)
+- `src/ui/diagnosticsModal.js` — diagnostics surface (lazy-imported,
+  Settings button hidden behind `?debug=1`)
+- `src/game/winLossHandler.js` — daily completion: handleDailyBombHit
+  pushes events; auto-submit path passes them through to Firebase
+  (THE AUTO-SUBMIT PATH MUST STAY IN SYNC WITH the manual submit in
+  main.js — both pass `{uid, par, features, bombHitEvents, rngSeed}`)
 - `scripts/refit-par-model.R` — daily Bayesian regression + handicap
   computation + experiment-target selection
 - `scripts/fit-par-model.qmd` — interactive Quarto diagnostics
 - `.github/workflows/refit-par-model.yml` — cron schedule + R env
 - `firebase-rules.json` — RTDB security rules (allows
-  `bombHitEvents` and `rngSeed` on daily entries)
-- `backfill-features.html` — one-shot browser utility for dailyMeta
+  `bombHitEvents` array and `rngSeed` string on daily entries)
+- `backfill-features.html` — one-shot browser utility for ORIGINAL
+  dailyMeta upload (write-once); for UPDATING existing records to
+  add new features, use the Playwright-based pattern instead
+
+## CLAUDE.md sections worth re-reading
+
+- "Greg-par Model (Daily)"
+- "Daily History Chart"
+- "Handicaps (user-specific par offsets)"
+- "Refit Workflow (.github/workflows/refit-par-model.yml)"
+- "Adaptive Experimental Design"
+- "Firebase" → Database paths
