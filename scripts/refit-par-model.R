@@ -609,7 +609,15 @@ if (fit_method == "brms-ranef") {
   biased_pred <- apply_par_model(df_fit, new_coefs)
   bomb_adjusted_time <- df_fit$time - bomb_coef * df_fit$bombHits
   bias <- mean(bomb_adjusted_time) - mean(biased_pred)
-  new_coefs$intercept <- max(0, new_coefs$intercept + bias)
+  # Apply the bias straight, no max(0, ...) clamp. Earlier code clamped
+  # at zero "for theoretical purity" but that broke calibration whenever
+  # the feature-only sum overshot the population mean — the clamp left
+  # predictPar systematically high (mean residual ~−12s in the audit
+  # 2026-04-30). The intercept is just an additive constant; letting it
+  # absorb whatever bias remains is its only job. A small negative
+  # intercept is harmless because real boards have feature sums well
+  # above any plausible negative shift.
+  new_coefs$intercept <- new_coefs$intercept + bias
   message(sprintf("  bombHits coef: +%.2fs/hit  |  intercept bias-correction: %+.2fs (clean-time-equivalent mean matches mean predicted par)",
                   bomb_coef, bias))
 
