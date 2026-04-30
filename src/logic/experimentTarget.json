@@ -1,11 +1,11 @@
 {
-  "updatedAt": "2026-04-30T12:09:32Z",
-  "target": "sonarCellCount",
-  "reason": "highest posterior CV (1.131) excluding last 3 targets",
+  "updatedAt": "2026-04-30T15:50:28Z",
+  "target": "compassCellCount",
+  "reason": "highest posterior CV (1.247) excluding last 3 targets",
   "recentTargets": [
+    "compassCellCount",
     "sonarCellCount",
-    "wormholePairCount",
-    "wallEdgeCount"
+    "wormholePairCount"
   ],
   "candidates": [
     {
