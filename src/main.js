@@ -106,18 +106,38 @@ function setActiveStatsTab(tab) {
   }
 }
 
-async function updateStatsDisplay() {
-  // Toggle owner-only Model tab visibility based on current uid. Done
-  // on every open so a session that signs in mid-session picks it up.
-  const uid = getUid();
-  const isOwner = uid === OWNER_UID;
-  $('#stats-tab-model').classList.toggle('hidden', !isOwner);
+// Poll getUid() until anonymous auth resolves it, or until the timeout.
+// Anonymous auth typically completes in <500 ms after initAnonymousAuth
+// fires at app boot, but on a cold reload (e.g. right after a service
+// worker auto-reload from a new deploy) Stats can be opened during the
+// race. Without this, the owner gate evaluates `null === OWNER_UID`
+// false and the Model tab silently stays hidden.
+async function waitForUid(timeoutMs = 3000, intervalMs = 100) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const uid = getUid();
+    if (uid) return uid;
+    await new Promise(r => setTimeout(r, intervalMs));
+  }
+  return getUid();
+}
 
+async function updateStatsDisplay() {
   setActiveStatsTab(pickDefaultStatsTab());
   populateChallengePanel();
   populateQuickPlayPanel();
-  await populateDailyPanel(); // async — fetches Firebase
-  if (isOwner) await populateModelPanel();
+
+  // Resolve uid + populate Model tab in parallel with the daily panel —
+  // the auth wait shouldn't gate the visible part of the modal.
+  await Promise.all([
+    populateDailyPanel(),
+    (async () => {
+      const uid = await waitForUid();
+      const isOwner = uid === OWNER_UID;
+      $('#stats-tab-model').classList.toggle('hidden', !isOwner);
+      if (isOwner) await populateModelPanel();
+    })(),
+  ]);
 }
 
 // Populate the owner-only Model tab. Skipped entirely for non-owner
