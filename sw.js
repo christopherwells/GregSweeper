@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v1.5.20';
+const CACHE_NAME = 'gregsweeper-v1.5.21';
 const ASSETS = [
   './',
   './index.html',
@@ -29,6 +29,7 @@ const ASSETS = [
   './src/logic/handicaps.json',
   './src/logic/experimentDesign.js',
   './src/logic/experimentTarget.json',
+  './src/logic/modelHistory.json',
   './src/logic/selectDailyRngSeed.js',
   './src/logic/gimmicks.js',
   // Stats-tab, diagnostics, and skill-trainer modules are dynamic-imported

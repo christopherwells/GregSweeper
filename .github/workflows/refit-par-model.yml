@@ -67,12 +67,12 @@ jobs:
 
       - name: Commit and push if anything changed
         run: |
-          if git diff --quiet src/logic/difficulty.js src/logic/handicaps.json src/logic/experimentTarget.json; then
-            echo "No model, handicap, or experiment-target changes — nothing to commit."
+          if git diff --quiet src/logic/difficulty.js src/logic/handicaps.json src/logic/experimentTarget.json src/logic/modelHistory.json; then
+            echo "No model, handicap, experiment-target, or history changes — nothing to commit."
             exit 0
           fi
           git config user.name  "Christopher Wells"
           git config user.email "c.wells@bowdoin.edu"
-          git add src/logic/difficulty.js src/logic/handicaps.json src/logic/experimentTarget.json
+          git add src/logic/difficulty.js src/logic/handicaps.json src/logic/experimentTarget.json src/logic/modelHistory.json
           git commit -m "refit PAR_MODEL, handicaps, and experiment target — $(date -u +%Y-%m-%d)"
           git push

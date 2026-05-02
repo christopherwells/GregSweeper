@@ -701,7 +701,83 @@ if (length(handicaps) > 0) {
   message("No new handicaps to write — keeping existing handicaps.json.")
 }
 
-# ── 5. Write updated PAR_MODEL block (only if fit produced new coefs) ──
+# ── 5. Emit per-refit diagnostics row to modelHistory.json ──
+#
+# Backend timeline of how the model is doing over time, surfaced only in
+# Chris's diagnostics modal (uid-gated client-side). One row per refit so
+# the question "is RMSE shrinking? are CVs tightening? is N growing?" can
+# be answered without re-pulling Firebase + git history each time. Both
+# fit branches emit so a no-fit day still lands a row — gaps would
+# obscure whether the pipeline failed or the model just stayed put.
+{
+  history_path <- "src/logic/modelHistory.json"
+
+  if (fit_method == "brms-ranef") {
+    # RMSE on the bias-corrected fit data. apply_par_model uses the
+    # already-corrected new_coefs, so this is the residual the fit
+    # actually ships with — clean-time vs clean predicted par.
+    predicted_clean <- apply_par_model(df_fit, new_coefs)
+    clean_time      <- df_fit$time - bomb_coef * df_fit$bombHits
+    resid           <- clean_time - predicted_clean
+    cv_rows <- lapply(seq_len(nrow(target_candidates)), function(i) {
+      list(
+        feature = target_candidates$feature[i],
+        mean    = round(target_candidates$post_mean[i], 4),
+        sd      = round(target_candidates$post_sd[i], 4),
+        cv      = round(target_candidates$cv[i], 4)
+      )
+    })
+    target_field <- chosen_target
+  } else {
+    # Seed-residuals fallback: residuals already on df. No new fit so
+    # no candidates posterior to record; carry the previously-chosen
+    # experiment target forward so the timeline still shows what the
+    # daily was testing this day.
+    resid <- if (!is.null(df$residual)) df$residual else numeric(0)
+    cv_rows <- list()
+    target_field <- tryCatch({
+      prev <- fromJSON("src/logic/experimentTarget.json", simplifyVector = FALSE)
+      prev$target %||% NA_character_
+    }, error = function(e) NA_character_)
+  }
+
+  rmse_val <- if (length(resid) > 0) sqrt(mean(resid^2, na.rm = TRUE)) else NA_real_
+  bias_val <- if (length(resid) > 0) mean(resid, na.rm = TRUE) else NA_real_
+
+  new_row <- list(
+    date        = format(Sys.time(), "%Y-%m-%d", tz = "UTC"),
+    updatedAt   = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
+    method      = fit_method,
+    n_scores    = n_scores,
+    n_dates     = n_dates,
+    n_players   = n_players,
+    n_eligible  = n_eligible,
+    rmse        = if (is.na(rmse_val)) NA_real_ else round(rmse_val, 2),
+    bias        = if (is.na(bias_val)) NA_real_ else round(bias_val, 2),
+    diagnostics = if (nchar(diag_note)) diag_note else NA_character_,
+    target      = target_field,
+    candidates  = cv_rows
+  )
+
+  history <- tryCatch(
+    fromJSON(history_path, simplifyVector = FALSE),
+    error = function(e) list()
+  )
+  # Defensive: empty-file or named-list edge case → coerce to unnamed
+  # list so JSON serialises as an array rather than an object.
+  if (!is.list(history) || !is.null(names(history))) history <- list()
+  history[[length(history) + 1]] <- new_row
+
+  writeLines(toJSON(history, auto_unbox = TRUE, pretty = TRUE, na = "null"),
+             history_path)
+  message(sprintf("Wrote modelHistory.json — %d rows total (this row: rmse=%s, bias=%s, target=%s)",
+                  length(history),
+                  if (is.na(rmse_val)) "NA" else sprintf("%.2fs", rmse_val),
+                  if (is.na(bias_val)) "NA" else sprintf("%+.2fs", bias_val),
+                  if (is.na(target_field)) "NA" else target_field))
+}
+
+# ── 6. Write updated PAR_MODEL block (only if fit produced new coefs) ──
 
 if (fit_method != "brms-ranef") {
   message("No new coefficients — difficulty.js untouched.")

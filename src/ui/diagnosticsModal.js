@@ -17,6 +17,14 @@ import { loadHandicaps, getHandicap, getHandicapsMeta } from '../logic/handicaps
 
 const UID_RETRY_MS = 1000;
 
+// UID-gated diagnostics. The Model history panel (per-refit timeline of
+// RMSE / bias / candidate CVs) is only rendered for this uid; other
+// clients with `?debug=1` see the standard diagnostics without it. Path
+// fetched only when the gate matches, so a non-owner browser never
+// touches the JSON either.
+const OWNER_UID = '5Ht9d2io0ugU1NGsjdJmZvkJi382';
+const MODEL_HISTORY_PATH = './src/logic/modelHistory.json';
+
 export async function openDiagnosticsModal(currentVersion) {
   const body = $('#diagnostics-body');
   body.innerHTML = '<p class="diagnostics-loading">Gathering diagnostics…</p>';
@@ -53,6 +61,21 @@ async function collectSnapshot(currentVersion) {
   const handicap = uid ? getHandicap(uid) : 0;
   const uidInHandicaps = !!(uid && uid in handicapsMap);
 
+  // Owner-only model-history fetch. Skip the network round-trip entirely
+  // for non-owner uids so other devices don't even pull the file.
+  let modelHistory = null;
+  if (uid === OWNER_UID) {
+    try {
+      const r = await fetch(MODEL_HISTORY_PATH, { cache: 'no-cache' });
+      if (r.ok) {
+        const parsed = await r.json();
+        if (Array.isArray(parsed)) modelHistory = parsed;
+      }
+    } catch {
+      // Swallow — modelHistory stays null and the panel just doesn't render.
+    }
+  }
+
   const historyCount = Array.isArray(history) ? history.length : null;
   let withFeatures = null;
   let withoutFeatures = null;
@@ -84,6 +107,7 @@ async function collectSnapshot(currentVersion) {
     },
     handicapsMeta,
     handicapsMap,
+    modelHistory,
     parModel: { ...PAR_MODEL },
     userAgent: navigator.userAgent,
   };
@@ -166,6 +190,83 @@ function renderSnapshot(body, snap) {
       pre: true,
       small: true,
     }));
+  }
+
+  // Model history (owner-only). snap.modelHistory is an array on owner
+  // clients, null otherwise. Renders the latest fit's headline metrics
+  // plus a tabular timeline of the last 14 fits so trend in RMSE / bias
+  // is visible at a glance.
+  if (Array.isArray(snap.modelHistory)) {
+    if (snap.modelHistory.length === 0) {
+      body.appendChild(row({
+        label: 'Model history',
+        value: '(no fits yet — first row lands after the next refit run)',
+        small: true,
+      }));
+    } else {
+      const history = snap.modelHistory;
+      const latest = history[history.length - 1];
+      const recent = history.slice(-14);
+
+      const fmtRmse = r => (r == null) ? 'NA' : `${r.toFixed(2)}s`;
+      const fmtBias = b => (b == null) ? 'NA' : `${b >= 0 ? '+' : ''}${b.toFixed(2)}s`;
+
+      body.appendChild(row({
+        label: 'Model fits',
+        value: `${history.length} total · latest ${latest.date}`,
+      }));
+      body.appendChild(row({
+        label: 'Latest fit',
+        value: `${latest.method} · N=${latest.n_scores ?? '?'} · ${latest.n_players ?? '?'} players`,
+      }));
+      body.appendChild(row({
+        label: 'Latest RMSE',
+        value: `${fmtRmse(latest.rmse)} (bias ${fmtBias(latest.bias)})`,
+      }));
+      body.appendChild(row({
+        label: 'Latest target',
+        value: latest.target || '-',
+      }));
+
+      // Tabular trend, last 14 fits. Monospace inside a <pre> so columns
+      // line up regardless of font.
+      const headerLine = 'date         meth   N    RMSE     bias      target';
+      const dividerLine = '----         ----   --   ----     ----      ------';
+      const dataLines = recent.map(r => {
+        const meth = (r.method || '?').slice(0, 4);
+        return (
+          (r.date || '').padEnd(12) + ' ' +
+          meth.padEnd(6) + ' ' +
+          String(r.n_scores ?? '?').padStart(3) + '  ' +
+          fmtRmse(r.rmse).padStart(7) + '  ' +
+          fmtBias(r.bias).padStart(8) + '  ' +
+          (r.target || '-')
+        );
+      });
+      const histPre = document.createElement('pre');
+      histPre.className = 'diagnostics-pre';
+      histPre.textContent = [headerLine, dividerLine, ...dataLines].join('\n');
+      body.appendChild(labeledBlock('Model history (last 14)', histPre));
+
+      // Top targeted-feature CVs from the latest fit. One row per feature,
+      // sorted descending — quickly shows whether the targeted coefficient
+      // (top of the list) is shrinking from refit to refit.
+      if (Array.isArray(latest.candidates) && latest.candidates.length > 0) {
+        const cvLines = ['feature                    mean       sd        cv'];
+        latest.candidates.slice(0, 8).forEach(c => {
+          cvLines.push(
+            (c.feature || '').padEnd(26) + ' ' +
+            (c.mean != null ? c.mean.toFixed(3) : '   -  ').padStart(8) + '  ' +
+            (c.sd   != null ? c.sd.toFixed(3)   : '   -  ').padStart(8) + '  ' +
+            (c.cv   != null ? c.cv.toFixed(3)   : '   -  ').padStart(8)
+          );
+        });
+        const cvPre = document.createElement('pre');
+        cvPre.className = 'diagnostics-pre';
+        cvPre.textContent = cvLines.join('\n');
+        body.appendChild(labeledBlock('Latest candidate CVs (top 8)', cvPre));
+      }
+    }
   }
 
   // PAR_MODEL — compact table. Format small coefficients with more decimals
