@@ -22,7 +22,7 @@ export const LIFELINE_WIN_REWARD_CHANCE = 0.3;
 // scripts/refit-par-model.R.
 // PAR_MODEL:START
 export const PAR_MODEL = {
-  // Last refit: 2026-05-01 | brms (2 users · max Rhat = 1.003, min ESS = 1264, divergent = 1/4000) | N=102 scores, 52 dates, 2 players | R²=0.564
+  // Last refit: 2026-05-02 | brms (2 users · max Rhat = 1.003, min ESS = 1264, divergent = 1/4000) | N=102 scores, 52 dates, 2 players | R²=0.564
   intercept: -5.52,
 
   // Move-type coefficients (primary)
