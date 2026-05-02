@@ -81,6 +81,15 @@ function updateThemeColor() {
 
 // ── Stats Display ─────────────────────────────────────
 
+// Owner-only Model tab. Renders the per-refit timeline (RMSE, bias,
+// candidate CVs) from src/logic/modelHistory.json. Tab button is hidden
+// at boot in index.html and only unhidden when getUid() === OWNER_UID,
+// so other players never see the tab. The JSON file itself ships with
+// the rest of the static assets — privacy-by-obscurity, not Firebase
+// rules. Worth revisiting if the user base grows past ~10.
+const OWNER_UID = '5Ht9d2io0ugU1NGsjdJmZvkJi382';
+const MODEL_HISTORY_PATH = './src/logic/modelHistory.json';
+
 // Default tab = the mode the player most recently played (when meaningful).
 function pickDefaultStatsTab() {
   if (state.gameMode === 'timed') return 'timed';
@@ -98,10 +107,100 @@ function setActiveStatsTab(tab) {
 }
 
 async function updateStatsDisplay() {
+  // Toggle owner-only Model tab visibility based on current uid. Done
+  // on every open so a session that signs in mid-session picks it up.
+  const uid = getUid();
+  const isOwner = uid === OWNER_UID;
+  $('#stats-tab-model').classList.toggle('hidden', !isOwner);
+
   setActiveStatsTab(pickDefaultStatsTab());
   populateChallengePanel();
   populateQuickPlayPanel();
   await populateDailyPanel(); // async — fetches Firebase
+  if (isOwner) await populateModelPanel();
+}
+
+// Populate the owner-only Model tab. Skipped entirely for non-owner
+// uids (gated in updateStatsDisplay) — non-owners never even fetch
+// modelHistory.json.
+async function populateModelPanel() {
+  // Reset to placeholders while fetching, in case a previous open's
+  // values are still in the DOM and this fetch fails.
+  $('#stat-model-date').textContent = '…';
+  $('#stat-model-n').textContent = '…';
+  $('#stat-model-rmse').textContent = '…';
+  $('#stat-model-bias').textContent = '…';
+  $('#stat-model-target-line').textContent = 'Loading…';
+  $('#stat-model-history-table').textContent = '…';
+  $('#stat-model-cv-table').textContent = '…';
+
+  let history;
+  try {
+    const r = await fetch(MODEL_HISTORY_PATH, { cache: 'no-cache' });
+    if (!r.ok) throw new Error(`fetch failed: HTTP ${r.status}`);
+    history = await r.json();
+    if (!Array.isArray(history)) throw new Error('not an array');
+  } catch (err) {
+    $('#stat-model-target-line').textContent = `Failed to load model history: ${err.message}`;
+    return;
+  }
+
+  if (history.length === 0) {
+    $('#stat-model-target-line').textContent =
+      'No fits yet — first row lands after the next refit run.';
+    $('#stat-model-history-table').textContent = '(empty)';
+    $('#stat-model-cv-table').textContent = '(empty)';
+    return;
+  }
+
+  const latest = history[history.length - 1];
+  const recent = history.slice(-14);
+
+  const fmtRmse = v => (v == null) ? 'NA' : `${v.toFixed(2)}s`;
+  const fmtBias = v => (v == null) ? 'NA' : `${v >= 0 ? '+' : ''}${v.toFixed(2)}s`;
+
+  $('#stat-model-date').textContent = latest.date || '--';
+  $('#stat-model-n').textContent = `${latest.n_scores ?? '?'} · ${latest.n_players ?? '?'}`;
+  $('#stat-model-rmse').textContent = fmtRmse(latest.rmse);
+  $('#stat-model-bias').textContent = fmtBias(latest.bias);
+  $('#stat-model-target-line').textContent =
+    `Target: ${latest.target || '-'} · Method: ${latest.method || '?'} · Total fits: ${history.length}`;
+
+  // History trend table — monospace so columns line up.
+  const headerLine  = 'date         meth   N    RMSE     bias      target';
+  const dividerLine = '----         ----   --   ----     ----      ------';
+  const dataLines = recent.map(r => {
+    const meth = (r.method || '?').slice(0, 4);
+    return (
+      (r.date || '').padEnd(12) + ' ' +
+      meth.padEnd(6) + ' ' +
+      String(r.n_scores ?? '?').padStart(3) + '  ' +
+      fmtRmse(r.rmse).padStart(7) + '  ' +
+      fmtBias(r.bias).padStart(8) + '  ' +
+      (r.target || '-')
+    );
+  });
+  $('#stat-model-history-table').textContent =
+    [headerLine, dividerLine, ...dataLines].join('\n');
+
+  // Candidate CVs from the latest fit. seed-residuals fallback rows have
+  // no posterior, so candidates is an empty array — show that explicitly
+  // rather than a blank table.
+  if (Array.isArray(latest.candidates) && latest.candidates.length > 0) {
+    const cvLines = ['feature                    mean       sd        cv'];
+    latest.candidates.slice(0, 8).forEach(c => {
+      cvLines.push(
+        (c.feature || '').padEnd(26) + ' ' +
+        (c.mean != null ? c.mean.toFixed(3) : '   -  ').padStart(8) + '  ' +
+        (c.sd   != null ? c.sd.toFixed(3)   : '   -  ').padStart(8) + '  ' +
+        (c.cv   != null ? c.cv.toFixed(3)   : '   -  ').padStart(8)
+      );
+    });
+    $('#stat-model-cv-table').textContent = cvLines.join('\n');
+  } else {
+    $('#stat-model-cv-table').textContent =
+      '(seed-residuals fallback — no posterior this refit)';
+  }
 }
 
 function populateChallengePanel() {

@@ -504,6 +504,10 @@
           <button class="stats-tab active" data-tab="daily">Daily</button>
           <button class="stats-tab" data-tab="challenge">Challenge</button>
           <button class="stats-tab" data-tab="timed">Quick Play</button>
+          <!-- Model tab: hidden at boot. main.js unhides only when the
+               signed-in uid matches OWNER_UID (Christopher's). Other
+               players never see the tab even if they inspect the DOM. -->
+          <button class="stats-tab hidden" data-tab="model" id="stats-tab-model">Model</button>
         </div>
 
         <!-- DAILY TAB -->
@@ -649,6 +653,50 @@
             <h3>Best times per difficulty</h3>
             <div class="stat-row" id="stat-timed-best-times"></div>
           </div>
+        </div>
+
+        <!-- MODEL TAB (uid-gated, owner-only). Populated by
+             populateModelPanel() in main.js from src/logic/modelHistory.json.
+             The tab button is hidden at boot and only unhidden when uid
+             matches OWNER_UID, so other players never see this surface. -->
+        <div id="stats-panel-model" class="stats-panel hidden">
+
+          <div class="stats-section">
+            <h3>Latest fit</h3>
+            <p class="stats-blurb">Most recent successful refit. RMSE is the typical residual between actual completion times and the model&rsquo;s clean-play predicted par; bias should sit near zero after the intercept correction. Target is the feature tomorrow&rsquo;s daily will be biased to maximize.</p>
+            <div class="stat-row">
+              <div class="stat-mini">
+                <div class="stat-mini-label">Latest fit</div>
+                <div class="stat-mini-value" id="stat-model-date">--</div>
+              </div>
+              <div class="stat-mini">
+                <div class="stat-mini-label">N · players</div>
+                <div class="stat-mini-value" id="stat-model-n">--</div>
+              </div>
+              <div class="stat-mini">
+                <div class="stat-mini-label">RMSE</div>
+                <div class="stat-mini-value" id="stat-model-rmse">--</div>
+              </div>
+              <div class="stat-mini">
+                <div class="stat-mini-label">Bias</div>
+                <div class="stat-mini-value" id="stat-model-bias">--</div>
+              </div>
+            </div>
+            <p class="stats-blurb" id="stat-model-target-line" style="margin-top: 0.75em;">--</p>
+          </div>
+
+          <div class="stats-section">
+            <h3>Trend (last 14 fits)</h3>
+            <p class="stats-blurb">RMSE and bias over time. Declining RMSE = the model is matching reality better; bias near zero = the intercept correction is doing its job. Method column: brms = full Bayesian fit, seed = fallback (no fit, residuals against existing coefficients).</p>
+            <pre id="stat-model-history-table" class="diagnostics-pre">--</pre>
+          </div>
+
+          <div class="stats-section">
+            <h3>Latest candidate CVs (top 8)</h3>
+            <p class="stats-blurb">Posterior coefficient of variation for the candidate features. The next experiment target is the highest CV not in the last-3 list. CVs near 1.0 mean the data hasn&rsquo;t pushed the prior much; CVs trending down across refits means the experiment is paying off.</p>
+            <pre id="stat-model-cv-table" class="diagnostics-pre">--</pre>
+          </div>
+
         </div>
       </div>
     </div>
