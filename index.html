@@ -686,8 +686,20 @@
           </div>
 
           <div class="stats-section">
-            <h3>Trend (last 14 fits)</h3>
-            <p class="stats-blurb">RMSE and bias over time. Declining RMSE = the model is matching reality better; bias near zero = the intercept correction is doing its job. Method column: brms = full Bayesian fit, seed = fallback (no fit, residuals against existing coefficients).</p>
+            <h3>RMSE &amp; bias trend</h3>
+            <p class="stats-blurb">RMSE (solid line) is the typical residual between actual completion times and the model&rsquo;s clean-play prediction; lower over time means the model matches reality better. Bias (dashed line) is the mean residual — it should hover near zero after each refit&rsquo;s intercept correction.</p>
+            <div class="stat-chart" id="chart-model-rmse-bias"></div>
+          </div>
+
+          <div class="stats-section">
+            <h3>Sample size over time</h3>
+            <p class="stats-blurb">Total scores included in each refit. More N = posteriors tighten faster, CVs fall, the experimental design starts paying off.</p>
+            <div class="stat-chart" id="chart-model-n"></div>
+          </div>
+
+          <div class="stats-section">
+            <h3>Trend table (last 14 fits)</h3>
+            <p class="stats-blurb">Same data as the charts above, in raw numbers. Method column: brms = full Bayesian fit, seed = fallback (no fit, residuals against the existing coefficients).</p>
             <pre id="stat-model-history-table" class="diagnostics-pre">--</pre>
           </div>
 

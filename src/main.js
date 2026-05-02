@@ -140,6 +140,32 @@ async function updateStatsDisplay() {
   ]);
 }
 
+// Short month-day label for chart x-axis ticks. Stats tab elsewhere has
+// its own copy in statsRenderer.js; duplicating the 5-line helper here
+// keeps the lazy-loaded charts.js the only thing main.js pulls from the
+// stats stack.
+const SHORT_MONTHS_M = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function shortDateModel(dateStr) {
+  const parts = String(dateStr || '').split('-');
+  if (parts.length !== 3) return dateStr || '';
+  return `${SHORT_MONTHS_M[parseInt(parts[1], 10) - 1] || parts[1]} ${parseInt(parts[2], 10)}`;
+}
+
+function clearChartContainer(id) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = '';
+  return el;
+}
+
+function renderChartEmpty(id, message) {
+  const el = clearChartContainer(id);
+  if (!el) return;
+  const d = document.createElement('div');
+  d.className = 'chart-empty';
+  d.textContent = message;
+  el.appendChild(d);
+}
+
 // Populate the owner-only Model tab. Skipped entirely for non-owner
 // uids (gated in updateStatsDisplay) — non-owners never even fetch
 // modelHistory.json.
@@ -153,6 +179,8 @@ async function populateModelPanel() {
   $('#stat-model-target-line').textContent = 'Loading…';
   $('#stat-model-history-table').textContent = '…';
   $('#stat-model-cv-table').textContent = '…';
+  renderChartEmpty('chart-model-rmse-bias', 'Loading…');
+  renderChartEmpty('chart-model-n', 'Loading…');
 
   let history;
   try {
@@ -162,14 +190,18 @@ async function populateModelPanel() {
     if (!Array.isArray(history)) throw new Error('not an array');
   } catch (err) {
     $('#stat-model-target-line').textContent = `Failed to load model history: ${err.message}`;
+    renderChartEmpty('chart-model-rmse-bias', 'Failed to load.');
+    renderChartEmpty('chart-model-n', 'Failed to load.');
     return;
   }
 
   if (history.length === 0) {
-    $('#stat-model-target-line').textContent =
-      'No fits yet — first row lands after the next refit run.';
+    const msg = 'No fits yet — first row lands after the next refit run.';
+    $('#stat-model-target-line').textContent = msg;
     $('#stat-model-history-table').textContent = '(empty)';
     $('#stat-model-cv-table').textContent = '(empty)';
+    renderChartEmpty('chart-model-rmse-bias', msg);
+    renderChartEmpty('chart-model-n', msg);
     return;
   }
 
@@ -186,6 +218,59 @@ async function populateModelPanel() {
   $('#stat-model-target-line').textContent =
     `Target: ${latest.target || '-'} · Method: ${latest.method || '?'} · Total fits: ${history.length}`;
 
+  // ── Charts ────────────────────────────────────────────
+  // Lazy-import so the chart toolkit only comes in when the owner
+  // actually opens the Model tab, matching how other Stats charts load.
+  const { lineChart } = await import('./ui/charts.js');
+
+  const rmsePoints = recent
+    .filter(r => r.rmse != null && Number.isFinite(r.rmse))
+    .map(r => ({
+      x: shortDateModel(r.date),
+      y: r.rmse,
+      label: `${r.date}: RMSE ${r.rmse.toFixed(2)}s`,
+    }));
+  const biasPoints = recent
+    .filter(r => r.bias != null && Number.isFinite(r.bias))
+    .map(r => ({
+      x: shortDateModel(r.date),
+      y: r.bias,
+      label: `${r.date}: bias ${r.bias >= 0 ? '+' : ''}${r.bias.toFixed(2)}s`,
+    }));
+  const rmseChartEl = clearChartContainer('chart-model-rmse-bias');
+  if (rmseChartEl) {
+    if (rmsePoints.length === 0 && biasPoints.length === 0) {
+      renderChartEmpty('chart-model-rmse-bias', 'No RMSE data yet.');
+    } else {
+      rmseChartEl.appendChild(lineChart(rmsePoints, {
+        ariaLabel: 'RMSE (solid) and bias (dashed) per refit',
+        thresholdLine: 0,
+        yFormat: v => (v > 0 ? '+' : '') + (Math.round(v * 10) / 10) + 's',
+        secondary: biasPoints,
+      }));
+    }
+  }
+
+  const nPoints = recent
+    .filter(r => r.n_scores != null && Number.isFinite(r.n_scores))
+    .map(r => ({
+      x: shortDateModel(r.date),
+      y: r.n_scores,
+      label: `${r.date}: N=${r.n_scores}, ${r.n_players ?? '?'} players`,
+    }));
+  const nChartEl = clearChartContainer('chart-model-n');
+  if (nChartEl) {
+    if (nPoints.length === 0) {
+      renderChartEmpty('chart-model-n', 'No N data yet.');
+    } else {
+      nChartEl.appendChild(lineChart(nPoints, {
+        ariaLabel: 'Total scores per refit',
+        yFormat: v => String(Math.round(v)),
+      }));
+    }
+  }
+
+  // ── Tables ────────────────────────────────────────────
   // History trend table — monospace so columns line up.
   const headerLine  = 'date         meth   N    RMSE     bias      target';
   const dividerLine = '----         ----   --   ----     ----      ------';
