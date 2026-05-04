@@ -827,10 +827,10 @@ block <- sprintf(
   intercept: %.2f,
 
   // Move-type coefficients (primary). disjunctiveMoves was dropped
-  // 2026-05-04 because it's structurally confounded with liarCellCount
-  // (every liar board produces disjunctive moves) and we have N=1 liar
-  // board, so the two coefficients can't be separately identified. The
-  // disjunctive contribution is now absorbed into secPerLiarCell.
+  // 2026-05-04: structurally confounded with liarCellCount (every liar
+  // board produces disjunctive moves) and N=1 liar board means the two
+  // coefficients cannot be separately identified. The disjunctive
+  // contribution is now absorbed into secPerLiarCell.
   secPerPassAMove:            %.2f,
   secPerCanonicalSubsetMove:  %.2f,
   secPerGenericSubsetMove:    %.2f,
