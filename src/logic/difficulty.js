@@ -22,36 +22,36 @@ export const LIFELINE_WIN_REWARD_CHANCE = 0.3;
 // scripts/refit-par-model.R.
 // PAR_MODEL:START
 export const PAR_MODEL = {
-  // Last refit: 2026-05-04 | brms (2 users · max Rhat = 1.005, min ESS = 1589, divergent = 0/4000) | N=108 scores, 55 dates, 2 players | R²=0.585
-  intercept: -7.78,
+  // Last refit: 2026-05-04 | brms (2 users · max Rhat = 1.003, min ESS = 1284, divergent = 0/4000) | N=108 scores, 55 dates, 2 players | R²=0.591
+  intercept: -8.87,
 
   // Move-type coefficients (primary). disjunctiveMoves was dropped
-  // 2026-05-04 because it's structurally confounded with liarCellCount
-  // (every liar board produces disjunctive moves) and we have N=1 liar
-  // board, so the two coefficients can't be separately identified. The
-  // disjunctive contribution is now absorbed into secPerLiarCell.
-  secPerPassAMove:            0.56,
-  secPerCanonicalSubsetMove:  4.57,
-  secPerGenericSubsetMove:    2.44,
+  // 2026-05-04: structurally confounded with liarCellCount (every liar
+  // board produces disjunctive moves) and N=1 liar board means the two
+  // coefficients cannot be separately identified. The disjunctive
+  // contribution is now absorbed into secPerLiarCell.
+  secPerPassAMove:            0.55,
+  secPerCanonicalSubsetMove:  4.54,
+  secPerGenericSubsetMove:    2.49,
   secPerAdvancedLogicMove:    1.36,
 
   // Board shape (secondary)
-  secPerCell:      0.032,
-  secPerMineFlag:  1.478,
-  secPerWallEdge:  0.223,
+  secPerCell:      0.033,
+  secPerMineFlag:  1.551,
+  secPerWallEdge:  0.213,
 
   // Gimmick cell counts (tertiary)
-  secPerMysteryCell:   0.959,
-  secPerLiarCell:      0.780,
-  secPerLockedCell:    0.564,
-  secPerWormholePair:  1.454,
-  secPerMirrorPair:    1.232,
-  secPerSonarCell:     0.681,
-  secPerCompassCell:   0.810,
+  secPerMysteryCell:   0.954,
+  secPerLiarCell:      0.748,
+  secPerLockedCell:    0.560,
+  secPerWormholePair:  1.542,
+  secPerMirrorPair:    1.231,
+  secPerSonarCell:     0.675,
+  secPerCompassCell:   0.756,
 
   // Structural features (v1.5.16+)
-  secPerNonZeroSafeCell:  0.323,
-  secPerZeroCluster:      0.618,
+  secPerNonZeroSafeCell:  0.324,
+  secPerZeroCluster:      0.627,
 };
 // PAR_MODEL:END
 
