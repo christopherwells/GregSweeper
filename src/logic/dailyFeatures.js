@@ -167,20 +167,27 @@ export function computeDailyFeatures(state, solverResult) {
 // Keeping this table explicit (rather than implicit in predictPar's math)
 // makes predictPar and breakdownPar share exactly one source of truth.
 //
-// `displayGroup` controls the label the modal shows. The regression still
-// uses all five move-type coefficients independently, but for the UI they
+// `displayGroup` controls the label the modal shows. The regression uses
+// the four move-type coefficients independently, but for the UI they
 // collapse into three intuitive buckets (easy / medium / hard). Gimmick
 // and board-shape terms each stand alone with their natural name.
 //
 //   easy   = Pass A + canonical subsets (recognised instantly)
 //   medium = generic subsets (some scanning)
-//   hard   = advanced logic + disjunctive (the moves that actually slow you down)
+//   hard   = advanced logic (tank-style enumeration)
+//
+// disjunctiveMoves is no longer modeled (dropped 2026-05-04): it's
+// structurally confounded with liarCellCount since every liar board
+// produces disjunctive moves, and at N=1 liar board the two
+// coefficients can't be separately identified. The disjunctive
+// contribution is absorbed into secPerLiarCell. The solver still
+// classifies and counts disjunctiveMoves for diagnostics, but the
+// linear predictor doesn't multiply it by anything.
 const COEF_TERMS = [
   { coef: 'secPerPassAMove',           feature: 'passAMoves',           displayGroup: 'easy moves' },
   { coef: 'secPerCanonicalSubsetMove', feature: 'canonicalSubsetMoves', displayGroup: 'easy moves' },
   { coef: 'secPerGenericSubsetMove',   feature: 'genericSubsetMoves',   displayGroup: 'medium moves' },
   { coef: 'secPerAdvancedLogicMove',   feature: 'advancedLogicMoves',   displayGroup: 'hard moves' },
-  { coef: 'secPerDisjunctiveMove',     feature: 'disjunctiveMoves',     displayGroup: 'hard moves' },
   { coef: 'secPerCell',                feature: 'cellCount',            displayGroup: 'baseline',    baseline: true },
   { coef: 'secPerMineFlag',            feature: 'totalMines',           displayGroup: 'baseline',    baseline: true },
   { coef: 'secPerWallEdge',            feature: 'wallEdgeCount',        displayGroup: 'walls' },

@@ -96,7 +96,10 @@ PRIOR_MEANS <- list(
   canonicalSubsetMoves = 2.0,
   genericSubsetMoves   = 4.5,
   advancedLogicMoves   = 7.0,
-  disjunctiveMoves     = 10.0,
+  # disjunctiveMoves dropped 2026-05-04: structurally confounded with
+  # liarCellCount (every liar board produces disjunctive moves), and at
+  # N=1 liar board there's no way to identify the two coefficients
+  # separately. The variance now flows into secPerLiarCell on refit.
   cellCount            = 0.02,
   totalMines           = 0.3,
   wallEdgeCount        = 0.15,
@@ -138,7 +141,6 @@ PRIOR_SIGMAS <- list(
   canonicalSubsetMoves = 1.0,
   genericSubsetMoves   = 1.0,
   advancedLogicMoves   = 1.0,
-  disjunctiveMoves     = 1.0,
   cellCount            = 1.0,
   totalMines           = 1.0,
   wallEdgeCount        = 1.0,
@@ -187,7 +189,6 @@ apply_par_model <- function(df, coefs) {
     coefs$secPerCanonicalSubsetMove  * canonicalSubsetMoves +
     coefs$secPerGenericSubsetMove    * genericSubsetMoves +
     coefs$secPerAdvancedLogicMove    * advancedLogicMoves +
-    coefs$secPerDisjunctiveMove      * disjunctiveMoves +
     coefs$secPerCell                 * cellCount +
     coefs$secPerMineFlag             * totalMines +
     coefs$secPerWallEdge             * wallEdgeCount +
@@ -314,7 +315,7 @@ for (f in NEW_STRUCTURAL_FEATURES) {
 df <- df |>
   mutate(across(
     c(passAMoves, canonicalSubsetMoves, genericSubsetMoves,
-      advancedLogicMoves, disjunctiveMoves,
+      advancedLogicMoves,
       totalMines, cellCount, wallEdgeCount, mysteryCellCount,
       liarCellCount, lockedCellCount, wormholePairCount,
       mirrorPairCount, sonarCellCount, compassCellCount,
@@ -353,7 +354,7 @@ bomb_coef     <- NA_real_       # populated by the brms fit; NA in fallback path
 
 fit_formula_fixed <- time ~
   passAMoves + canonicalSubsetMoves + genericSubsetMoves +
-  advancedLogicMoves + disjunctiveMoves +
+  advancedLogicMoves +
   cellCount + totalMines + wallEdgeCount +
   mysteryCellCount + liarCellCount + lockedCellCount +
   wormholePairCount + mirrorPairCount +
@@ -471,7 +472,7 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
     # maximise by picking a different board layout".
     target_whitelist <- c(
       "canonicalSubsetMoves", "genericSubsetMoves",
-      "advancedLogicMoves", "disjunctiveMoves",
+      "advancedLogicMoves",
       "totalMines", "wallEdgeCount",
       "mysteryCellCount", "liarCellCount", "lockedCellCount",
       "wormholePairCount", "mirrorPairCount",
@@ -610,7 +611,6 @@ if (fit_method == "brms-ranef") {
     secPerCanonicalSubsetMove   = nn(co["canonicalSubsetMoves"],   "canonicalSubset"),
     secPerGenericSubsetMove     = nn(co["genericSubsetMoves"],     "genericSubset"),
     secPerAdvancedLogicMove     = nn(co["advancedLogicMoves"],     "advancedLogic"),
-    secPerDisjunctiveMove       = nn(co["disjunctiveMoves"],       "disjunctive"),
     secPerCell                  = nn(co["cellCount"],              "cell"),
     secPerMineFlag              = nn(co["totalMines"],             "mineFlag"),
     secPerWallEdge              = nn(co["wallEdgeCount"],          "wallEdge"),
@@ -826,12 +826,15 @@ block <- sprintf(
   // Last refit: %s | %s | N=%d scores, %d dates, %d players | R\u00b2=%s
   intercept: %.2f,
 
-  // Move-type coefficients (primary)
+  // Move-type coefficients (primary). disjunctiveMoves was dropped
+  // 2026-05-04 because it's structurally confounded with liarCellCount
+  // (every liar board produces disjunctive moves) and we have N=1 liar
+  // board, so the two coefficients can't be separately identified. The
+  // disjunctive contribution is now absorbed into secPerLiarCell.
   secPerPassAMove:            %.2f,
   secPerCanonicalSubsetMove:  %.2f,
   secPerGenericSubsetMove:    %.2f,
   secPerAdvancedLogicMove:    %.2f,
-  secPerDisjunctiveMove:      %.2f,
 
   // Board shape (secondary)
   secPerCell:      %.3f,
@@ -857,7 +860,6 @@ block <- sprintf(
   new_coefs$secPerCanonicalSubsetMove,
   new_coefs$secPerGenericSubsetMove,
   new_coefs$secPerAdvancedLogicMove,
-  new_coefs$secPerDisjunctiveMove,
   new_coefs$secPerCell,
   new_coefs$secPerMineFlag,
   new_coefs$secPerWallEdge,

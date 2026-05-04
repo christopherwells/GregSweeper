@@ -25,12 +25,15 @@ export const PAR_MODEL = {
   // Last refit: 2026-05-04 | brms (2 users · max Rhat = 1.005, min ESS = 1589, divergent = 0/4000) | N=108 scores, 55 dates, 2 players | R²=0.585
   intercept: -7.78,
 
-  // Move-type coefficients (primary)
+  // Move-type coefficients (primary). disjunctiveMoves was dropped
+  // 2026-05-04 because it's structurally confounded with liarCellCount
+  // (every liar board produces disjunctive moves) and we have N=1 liar
+  // board, so the two coefficients can't be separately identified. The
+  // disjunctive contribution is now absorbed into secPerLiarCell.
   secPerPassAMove:            0.56,
   secPerCanonicalSubsetMove:  4.57,
   secPerGenericSubsetMove:    2.44,
   secPerAdvancedLogicMove:    1.36,
-  secPerDisjunctiveMove:      7.32,
 
   // Board shape (secondary)
   secPerCell:      0.032,
