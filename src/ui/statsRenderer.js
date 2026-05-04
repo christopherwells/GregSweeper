@@ -181,29 +181,25 @@ function renderComplexityDelta(plays) {
     const b = complexityBucket(p.features);
     buckets[b].push(p.deltaGlobal);
   }
-  // Cascading rebaseline. Every hard board has easy content and usually
-  // has medium content too; every medium board has easy content. If we
-  // just show raw mean delta per bucket, a uniformly-slow player looks
-  // the same across buckets (big delta everywhere), which tells us
-  // nothing about which complexity actually hurts. Instead we show each
-  // bucket as the MARGINAL extra time that complexity tier adds on top
-  // of the previous one:
-  //   easy   = mean(easy)  - mean(easy)  = 0 (your baseline)
-  //   medium = mean(medium) - mean(easy)  (what generic subsets cost)
-  //   hard   = mean(hard)  - mean(medium) (what advanced/disjunctive
-  //            cost on top of a medium board)
-  // If an upstream bucket is too small (N<3) we fall back to the next
-  // shallower one so the chart still renders meaningfully early on.
+  // Both medium and hard are reported as their MARGINAL extra time over
+  // the easy baseline — not over the previous tier. Easy is the
+  // reference line at 0; medium and hard each show "how much more time
+  // on average than an easy board." This makes the bars directly
+  // comparable: a hard board costs you X seconds vs. easy, and a medium
+  // board costs you Y seconds vs. easy. With cascading baselines, hard
+  // would have read as "extra cost of advanced/disjunctive on top of a
+  // medium board" which isn't what readers usually want to see.
+  // Fallback: if easy has too few plays (N<3) we use the overall mean
+  // so the chart still renders meaningfully early in a player's history.
   const mean = arr => arr.reduce((s, v) => s + v, 0) / arr.length;
   const allDeltas = plays.map(p => p.deltaGlobal);
   const overallBaseline = plays.length >= 3 ? mean(allDeltas) : 0;
   const easyBaseline = buckets.easy.length >= 3 ? mean(buckets.easy) : overallBaseline;
-  const mediumBaseline = buckets.medium.length >= 3 ? mean(buckets.medium) : easyBaseline;
 
   const order = [
     { label: 'easy',   values: buckets.easy,   baseline: easyBaseline },
     { label: 'medium', values: buckets.medium, baseline: easyBaseline },
-    { label: 'hard',   values: buckets.hard,   baseline: mediumBaseline },
+    { label: 'hard',   values: buckets.hard,   baseline: easyBaseline },
   ];
   const groups = order
     .filter(b => b.values.length > 0)
@@ -276,15 +272,16 @@ function renderModifierHeatmap(plays) {
     items.push({
       label: m.label,
       value: Math.round(mean * 10) / 10,
-      sub: `n=${rows.length}`,
     });
   }
   if (items.length === 0) {
     replaceContent('chart-modifier-heatmap', emptyDiv('No modifier days in your history yet.'));
     return;
   }
-  // Sort by absolute impact so biggest problems float to the top.
-  items.sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
+  // Sort by signed effect, most-negative first → 0 → most-positive last.
+  // Reads as a smooth ramp from "modifiers you handle better than the
+  // model expects" to "modifiers that consistently cost you time."
+  items.sort((a, b) => a.value - b.value);
   const svg = heatBars(items, {
     ariaLabel: 'Mean delta by modifier',
     valueFormat: v => (v > 0 ? '+' : '') + v.toFixed(1) + 's',

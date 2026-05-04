@@ -542,7 +542,7 @@
 
           <div class="stats-section">
             <h3>Delta by board complexity</h3>
-            <p class="stats-blurb">Marginal extra time each complexity tier adds on top of the previous one. Easy is your baseline (renders as 0). Medium shows how much more time generic-subset deductions cost you on top of baseline. Hard shows the additional cost of advanced-logic or liar moves on top of medium. Positive = that tier hurts you more than the previous one; negative = you actually handle it better.</p>
+            <p class="stats-blurb">Extra time each complexity tier costs you compared to easy boards. Easy is your baseline (renders as 0). Medium shows how much more time boards needing generic-subset deductions cost you. Hard shows the same for boards needing advanced-logic or liar moves. Both bars are measured vs. easy, so they&rsquo;re directly comparable. Positive = that tier hurts you more than easy; negative = you handle it better than your easy baseline.</p>
             <div class="stat-chart" id="chart-complexity-delta"></div>
           </div>
 
@@ -568,7 +568,7 @@
 
           <div class="stats-section">
             <h3>Delta by modifier</h3>
-            <p class="stats-blurb">Your mean delta vs. Greg-par on dailies where each modifier is in play. Greg-par already accounts for each modifier's baseline cost, so a positive bar means that modifier trips you up <em>more than the model's built-in adjustment</em>, not just that it's harder. Sort is by size of that surprise.</p>
+            <p class="stats-blurb">Your mean delta vs. Greg-par on dailies where each modifier is in play. Greg-par already accounts for each modifier&rsquo;s baseline cost, so a positive bar means that modifier trips you up <em>more than the model&rsquo;s built-in adjustment</em>, not just that it&rsquo;s harder. Sort is by signed effect — modifiers you handle better than expected on the left, modifiers that cost you extra on the right.</p>
             <div class="stat-chart" id="chart-modifier-heatmap"></div>
           </div>
 
