@@ -57,7 +57,7 @@ import { generateBoard, cleanSolverArtifacts } from './logic/boardGenerator.js';
 import { isBoardSolvable } from './logic/boardSolver.js';
 import { createDailyRNG, getLocalDateString } from './logic/seededRandom.js';
 import { selectDailyRngSeed } from './logic/selectDailyRngSeed.js';
-import { loadExperimentTarget, getCurrentTarget, getTargetGimmickName } from './logic/experimentDesign.js';
+import { loadExperimentTarget, getTargetGimmickName, getMissionForSeed } from './logic/experimentDesign.js';
 import { loadDailyBoard, deserializeBoard } from './firebase/dailyBoardSync.js';
 import {
   EMOJI_PACKS, EFFECTS, TITLES,
@@ -528,8 +528,12 @@ async function updateLeaderboardDisplay() {
         const pDensity = DAILY_MIN_DENSITY + dimRng() * DAILY_DENSITY_RANGE;
         pMines = Math.max(5, Math.round(pRows * pCols * pDensity));
         const pFixedR = Math.floor(pRows / 2), pFixedC = Math.floor(pCols / 2);
-        const forcedGimmick = getTargetGimmickName(getCurrentTarget());
-        activeGimmicks = getDailyGimmick(rngSeed, createDailyRNG, forcedGimmick);
+        // Recover the mission that won the seed selection so we
+        // force-inject the same gimmick (and respect the single-only
+        // constraint for coverage slots) the selector evaluated.
+        const parMission = getMissionForSeed(rngSeed);
+        const forcedGimmick = getTargetGimmickName(parMission.target);
+        activeGimmicks = getDailyGimmick(rngSeed, createDailyRNG, forcedGimmick, parMission.singleOnly);
 
         for (let attempt = 0; attempt < 50; attempt++) {
           const boardRng = attempt === 0

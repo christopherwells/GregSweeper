@@ -31,19 +31,6 @@ const DB_BASE = 'https://gregsweeper-66d02-default-rtdb.firebaseio.com';
 const CANDIDATE_COUNT = 10;
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-function loadExperimentTarget() {
-  // Mirror experimentDesign.js: load the static JSON, fall back to
-  // DEFAULT_TARGET if the file is missing. This script lives in the
-  // same repo as the JSON, so we just read it from disk.
-  try {
-    const raw = readFileSync(join(__dirname, '..', 'src', 'logic', 'experimentTarget.json'), 'utf8');
-    const data = JSON.parse(raw);
-    return data.target || 'advancedLogicMoves';
-  } catch {
-    return 'advancedLogicMoves';
-  }
-}
-
 // Mirror src/logic/experimentDesign.js TARGET_TO_GIMMICK. Kept inline
 // to avoid pulling in the browser-only fetch path.
 const TARGET_TO_GIMMICK = {
@@ -57,7 +44,49 @@ const TARGET_TO_GIMMICK = {
   wallEdgeCount:     'walls',
 };
 
-function buildOneCandidate(seed, forcedGimmick) {
+const DEFAULT_TARGET = 'advancedLogicMoves';
+const PRIMARY_WEIGHT = 0.1; // mirrors src/logic/experimentDesign.js
+
+function loadExperimentSpec() {
+  // Mirror experimentDesign.js: load the static JSON. Returns the full
+  // spec object (target + coverage_targets) so the per-slot mission
+  // logic has everything it needs. Falls back to a primary-only spec
+  // if the file is missing or malformed.
+  try {
+    const raw = readFileSync(join(__dirname, '..', 'src', 'logic', 'experimentTarget.json'), 'utf8');
+    const data = JSON.parse(raw);
+    return {
+      target: data.target || DEFAULT_TARGET,
+      coverage_targets: Array.isArray(data.coverage_targets) ? data.coverage_targets : [],
+    };
+  } catch {
+    return { target: DEFAULT_TARGET, coverage_targets: [] };
+  }
+}
+
+// Resolve the mission for slot index i. Mirrors getMissionForSlot in
+// experimentDesign.js — slot 0 is primary (low weight, double-allowed),
+// slots ≥1 cycle through coverage_targets (single-only). Empty
+// coverage list collapses to primary on every slot.
+function missionForSlot(spec, slotIndex) {
+  if (slotIndex === 0 || spec.coverage_targets.length === 0) {
+    return {
+      target:        spec.target,
+      deficitWeight: PRIMARY_WEIGHT,
+      singleOnly:    false,
+      isPrimary:     true,
+    };
+  }
+  const entry = spec.coverage_targets[(slotIndex - 1) % spec.coverage_targets.length];
+  return {
+    target:        entry.feature,
+    deficitWeight: typeof entry.deficit_weight === 'number' ? entry.deficit_weight : 0.1,
+    singleOnly:    true,
+    isPrimary:     false,
+  };
+}
+
+function buildOneCandidate(seed, forcedGimmick, singleOnly) {
   // Mirror gameActions.js daily branch + retry loop.
   const dRng = createDailyRNG(seed);
   const rows = DAILY_MIN_SIZE + Math.floor(dRng() * DAILY_SIZE_RANGE);
@@ -70,7 +99,7 @@ function buildOneCandidate(seed, forcedGimmick) {
   let board = generateBoard(rows, cols, totalMines, fr, fc, boardRng);
   cleanSolverArtifacts(board);
 
-  const activeGimmicks = getDailyGimmick(seed, createDailyRNG, forcedGimmick);
+  const activeGimmicks = getDailyGimmick(seed, createDailyRNG, forcedGimmick, singleOnly);
 
   let check = null;
   for (let dAttempt = 0; dAttempt < 200; dAttempt++) {
@@ -90,37 +119,40 @@ function buildOneCandidate(seed, forcedGimmick) {
   return { board, rows, cols, totalMines, activeGimmicks, check };
 }
 
-function selectBestCandidate(dateString, target, forcedGimmick) {
-  // Mirror selectDailyRngSeed.js: try CANDIDATE_COUNT seeds, pick the
-  // one whose board has the highest count of the targeted feature.
-  let best = null, bestCount = -1, bestSeed = null;
+function selectBestCandidate(dateString, spec) {
+  // Mirror selectDailyRngSeed.js: per-slot missions (1 primary + 9
+  // coverage), score = target_count × deficit_weight, pick max.
+  let best = null, bestScore = -Infinity, bestSeed = null, bestMission = null;
   for (let i = 0; i < CANDIDATE_COUNT; i++) {
+    const mission = missionForSlot(spec, i);
+    const forcedGimmick = TARGET_TO_GIMMICK[mission.target] || null;
     const seed = `${dateString}:trial${i}`;
-    // Lightweight first-attempt-only check matching selectDailyRngSeed
-    // (it skips the retry loop too). buildOneCandidate's retry doesn't
-    // hurt — if the board needs retries, we'd find that out anyway.
-    const cand = buildOneCandidate(seed, forcedGimmick);
+    const cand = buildOneCandidate(seed, forcedGimmick, mission.singleOnly);
     if (!cand.check.solvable && cand.check.remainingUnknowns !== 0) continue;
     const features = computeDailyFeatures(
       { board: cand.board, rows: cand.rows, cols: cand.cols, totalMines: cand.totalMines, activeGimmicks: cand.activeGimmicks },
       cand.check,
     );
-    const count = features[target] || 0;
-    if (count > bestCount) {
-      bestCount = count;
+    const count = features[mission.target] || 0;
+    const score = count * mission.deficitWeight;
+    if (score > bestScore) {
+      bestScore = score;
       bestSeed = seed;
       best = cand;
+      bestMission = mission;
     }
   }
   if (!best) {
     // No solvable candidate — fall back to the plain dateString. This
     // shouldn't happen often; the gameActions retry loop would also
     // have to dig harder if it did.
-    const cand = buildOneCandidate(dateString, forcedGimmick);
+    const fallbackForced = TARGET_TO_GIMMICK[spec.target] || null;
+    const cand = buildOneCandidate(dateString, fallbackForced, false);
     best = cand;
     bestSeed = dateString;
+    bestMission = missionForSlot(spec, 0);
   }
-  return { ...best, rngSeed: bestSeed };
+  return { ...best, rngSeed: bestSeed, mission: bestMission };
 }
 
 async function signInAnonymously() {
@@ -173,12 +205,14 @@ async function writeCanonicalBoard(date, idToken, payload) {
     return;
   }
 
-  const target = loadExperimentTarget();
-  const forcedGimmick = TARGET_TO_GIMMICK[target] || null;
-  console.log(`  target: ${target}, forcedGimmick: ${forcedGimmick || '(none)'}`);
+  const spec = loadExperimentSpec();
+  console.log(`  primary target: ${spec.target} (gimmick: ${TARGET_TO_GIMMICK[spec.target] || '(none)'})`);
+  console.log(`  coverage_targets: ${spec.coverage_targets.length} entries`);
 
-  const cand = selectBestCandidate(date, target, forcedGimmick);
-  console.log(`  selected: ${cand.rngSeed}, ${cand.rows}x${cand.cols}, ${cand.totalMines} mines, gimmicks: ${cand.activeGimmicks.join(',') || '(none)'}`);
+  const cand = selectBestCandidate(date, spec);
+  const m = cand.mission || {};
+  console.log(`  selected: ${cand.rngSeed} [${m.isPrimary ? 'PRIMARY' : 'COVERAGE'} mission: ${m.target}, weight ${m.deficitWeight}]`);
+  console.log(`  board: ${cand.rows}x${cand.cols}, ${cand.totalMines} mines, gimmicks: ${cand.activeGimmicks.join(',') || '(none)'}`);
 
   // Read sw.js for codeVersion provenance — useful when debugging which
   // build wrote a given canonical board.

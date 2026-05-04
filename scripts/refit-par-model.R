@@ -526,10 +526,44 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
     new_recent <- unique(c(chosen_target, prev_recent))
     new_recent <- new_recent[seq_len(min(RECENT_DAYS, length(new_recent)))]
 
+    # Coverage targets — the "secondary mission" half of candidate
+    # selection. The current high-CV target drives slot 0 of the daily's
+    # 10 candidate seeds; slots 1-9 are dedicated to filling per-gimmick
+    # data gaps. Counts are taken over UNIQUE DATES (not per-play rows)
+    # so a single board with many plays doesn't dominate. Deficit weight
+    # is 1/(count+1), so a gimmick with 1 board scores 0.5 and one with
+    # 10 boards scores 0.09 — the ranking flows from "least sampled" to
+    # "most sampled". Primary target is excluded from this list since
+    # it already gets slot 0 attention. Non-gimmick features (move-type
+    # counts, structural) aren't included because the per-slot
+    # force-injection mechanism only works on gimmicks.
+    GIMMICK_FEATURES <- c(
+      "mysteryCellCount", "liarCellCount", "lockedCellCount",
+      "wallEdgeCount", "wormholePairCount", "mirrorPairCount",
+      "sonarCellCount", "compassCellCount"
+    )
+    coverage_features <- setdiff(GIMMICK_FEATURES, chosen_target)
+    date_first <- df_fit[!duplicated(df_fit$date), , drop = FALSE]
+    coverage_targets <- lapply(coverage_features, function(f) {
+      vals <- date_first[[f]]
+      cnt <- if (is.null(vals)) 0L else sum(vals > 0, na.rm = TRUE)
+      list(
+        feature = f,
+        n_boards = as.integer(cnt),
+        deficit_weight = round(1 / (cnt + 1), 4)
+      )
+    })
+    # Sort descending by deficit_weight (most undersampled first).
+    coverage_targets <- coverage_targets[order(
+      -sapply(coverage_targets, function(x) x$deficit_weight)
+    )]
+
     # Write experimentTarget.json. Daily clients fetch this at startup
     # and the selectDailyRngSeed helper reads `target` to bias every
     # daily toward exercising that feature. `recentTargets` is the
     # rolling memory the next refit reads to avoid same-target streaks.
+    # `coverage_targets` is the ranked secondary-mission list — slots
+    # 1-9 of each candidate selection cycle through it.
     experiment_obj <- list(
       updatedAt = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
       target    = chosen_target,
@@ -543,7 +577,8 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
           sd       = round(target_candidates$post_sd[i], 3),
           cv       = round(target_candidates$cv[i], 3)
         )
-      })
+      }),
+      coverage_targets = coverage_targets
     )
     writeLines(toJSON(experiment_obj, auto_unbox = TRUE, pretty = TRUE),
                "src/logic/experimentTarget.json")

@@ -23,7 +23,7 @@ import { shieldDefuse } from '../logic/powerUps.js';
 import { getGimmicksForLevel, applyGimmicks, applyWalls, isLockedCell, hasWallBetween, hasSeenGimmick, markGimmickSeen, getGimmickDef, isModifierPopupDisabled, setModifierPopupDisabled, getDailyGimmick, getChaosGimmicks, clearGimmickProperties, recomputeDisplayedMines, getIntensity } from '../logic/gimmicks.js';
 import { createDailyRNG, getLocalDateString } from '../logic/seededRandom.js';
 import { selectDailyRngSeed } from '../logic/selectDailyRngSeed.js';
-import { getCurrentTarget, getTargetGimmickName } from '../logic/experimentDesign.js';
+import { getTargetGimmickName, getMissionForSeed } from '../logic/experimentDesign.js';
 import { loadDailyBoard, saveDailyBoard, serializeBoard, deserializeBoard } from '../firebase/dailyBoardSync.js';
 import {
   loadModePowerUps, loadCheckpoint, clearGameState, saveDailyPar,
@@ -283,8 +283,17 @@ export async function newGame() {
       state.board = generateBoard(state.rows, state.cols, state.totalMines, fixedRowGen, fixedColGen, boardRng);
       cleanSolverArtifacts(state.board);
 
-      const forcedDailyGimmick = getTargetGimmickName(getCurrentTarget());
-      const dailyGimmicks = getDailyGimmick(state.dailyRngSeed, createDailyRNG, forcedDailyGimmick);
+      // The winning seed already encodes which mission slot won. Recover
+      // the mission so we force-inject the same gimmick (and respect the
+      // single-gimmick constraint for coverage slots) the selection
+      // routine evaluated against. Without this, the play board would
+      // get a force-injected primary gimmick even when a coverage slot
+      // won — and the picked board would no longer be the picked board.
+      const dailyMission = getMissionForSeed(state.dailyRngSeed);
+      const forcedDailyGimmick = getTargetGimmickName(dailyMission.target);
+      const dailyGimmicks = getDailyGimmick(
+        state.dailyRngSeed, createDailyRNG, forcedDailyGimmick, dailyMission.singleOnly,
+      );
       state.activeGimmicks = dailyGimmicks.length > 0 ? dailyGimmicks : [];
 
       for (let dAttempt = 0; ; dAttempt++) {

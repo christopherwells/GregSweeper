@@ -1,28 +1,35 @@
 // Adaptive experimental design for the daily model refit.
 //
-// The Bayesian refit gives us per-coefficient posterior uncertainty.
-// EVERY daily now picks, among a handful of candidate seeds, the one
-// whose generated board maximises the currently-targeted feature. The
-// target is chosen by the daily R refit (highest posterior coefficient
-// of variation among a whitelist, EXCLUDING any feature targeted in the
-// last 3 days) and shipped as a static JSON asset. The "no repeats in
-// 3 days" rule lives on the R side — see `recentTargets` in
-// experimentTarget.json — so this module just trusts whatever target
-// the refit chose for today.
+// EVERY daily picks, among CANDIDATE_COUNT candidate seeds, ONE
+// candidate to ship. Each candidate is built around a "mission" — a
+// specific feature target that candidate is trying to maximise:
+//
+//   slot 0:    PRIMARY mission. Force-injects the high-CV target's
+//              gimmick (chosen by the R refit). Allowed to roll a
+//              second gimmick at the natural ~10% rate.
+//   slots 1-9: COVERAGE missions. Each force-injects a different
+//              undersampled gimmick from the ranked coverage_targets
+//              list (also produced by the R refit). Single-gimmick
+//              only — no second-roll. Slots cycle through the list
+//              if it's shorter than 9 entries.
+//
+// Each candidate's score is `target_count * deficit_weight`. Slot 0's
+// weight is fixed low (PRIMARY_WEIGHT) so it only wins when its target
+// count is several times higher than the best coverage candidate.
+// Coverage slots use the deficit weight from the ranked list — heavier
+// for the most undersampled features. The candidate with the highest
+// score is the daily.
 //
 // Constraints this module respects:
 // - Identical result on every client. All logic is a pure function of
-//   the currently-loaded target; the target is the same for every
-//   player on the same day, so the chosen seed is the same for every
-//   player.
-// - The target follows the fit, not the clock. If the refit hasn't run
-//   for a day (Firebase blip, CI outage, whatever) we keep using the
-//   previously-loaded target — no special-casing needed. Variety is
-//   still preserved because that previous target was already chosen
-//   to differ from the 2 days before it.
+//   the currently-loaded target + coverage_targets; both are the same
+//   for every player on the same day, so the chosen seed is the same.
+// - The target follows the fit, not the clock. If the refit hasn't
+//   run for a day, we keep using the previously-loaded target.
 // - Fallback if the JSON can't be fetched at all: DEFAULT_TARGET
-//   (currently advancedLogicMoves, the shakiest coefficient at the time
-//   this module was written).
+//   (currently advancedLogicMoves) and an empty coverage_targets list,
+//   in which case ALL slots fall back to the primary target — same
+//   behaviour as the pre-multi-objective design.
 
 const EXPERIMENT_PATH = './src/logic/experimentTarget.json';
 
@@ -130,4 +137,79 @@ export function getExperimentTarget(dateString) {
  */
 export function candidateSeed(dateString, n) {
   return `${dateString}:trial${n}`;
+}
+
+// ── Multi-objective candidate selection ──────────────────────────────
+//
+// Slot 0 = primary high-CV mission. Its weight is fixed low so it only
+// wins when its target_count is several times the best coverage. With
+// PRIMARY_WEIGHT = 0.1 and a typical liar deficit_weight of ~0.5, the
+// primary slot needs ~5× the cell count of the best coverage candidate
+// to win. That tuning yields roughly 1-in-10 primary outcomes when the
+// coverage list is well-populated, matching the design intent.
+const PRIMARY_WEIGHT = 0.1;
+
+/**
+ * Coverage targets list from experimentTarget.json, ordered most-to-least
+ * undersampled. Each entry: { feature, n_boards, deficit_weight }.
+ * Empty array if the JSON pre-dates the multi-objective design.
+ */
+export function getCoverageTargets() {
+  const meta = getExperimentMeta();
+  const list = Array.isArray(meta.coverage_targets) ? meta.coverage_targets : [];
+  return list.filter(t => t && typeof t.feature === 'string');
+}
+
+/**
+ * Resolve the mission for the candidate identified by an effective
+ * RNG seed of the form `${dateString}:trial${n}`. Returns the same
+ * shape as getMissionForSlot. If the seed doesn't match the candidate
+ * pattern (e.g. fallback to plain dateString in selectDailyRngSeed),
+ * defaults to slot 0 / primary so the play path still picks a
+ * sensible gimmick.
+ */
+export function getMissionForSeed(rngSeed) {
+  if (typeof rngSeed !== 'string') return getMissionForSlot(0);
+  const m = rngSeed.match(/:trial(\d+)$/);
+  if (!m) return getMissionForSlot(0);
+  return getMissionForSlot(parseInt(m[1], 10));
+}
+
+/**
+ * Resolve the mission for a given candidate slot index. Returns:
+ *   { target, deficitWeight, singleOnly, isPrimary }
+ *
+ * Slot 0 → primary high-CV target with full natural double-roll allowed.
+ * Slots ≥1 → cycle through the coverage list with single-gimmick only.
+ * If the coverage list is empty (legacy experimentTarget.json) every
+ * slot falls back to primary, recovering the pre-multi-objective
+ * behaviour where all 10 candidates compete on the same target.
+ */
+export function getMissionForSlot(slotIndex) {
+  if (slotIndex === 0) {
+    return {
+      target:        getCurrentTarget(),
+      deficitWeight: PRIMARY_WEIGHT,
+      singleOnly:    false,
+      isPrimary:     true,
+    };
+  }
+  const coverage = getCoverageTargets();
+  if (coverage.length === 0) {
+    // Legacy fallback — no coverage list available, so every slot just
+    // optimises the primary target like before.
+    return {
+      target:        getCurrentTarget(),
+      deficitWeight: PRIMARY_WEIGHT,
+      singleOnly:    false,
+      isPrimary:     true,
+    };
+  }
+  const entry = coverage[(slotIndex - 1) % coverage.length];
+  return {
+    target:        entry.feature,
+    deficitWeight: typeof entry.deficit_weight === 'number' ? entry.deficit_weight : 0.1,
+    singleOnly:    true,
+    isPrimary:     false,
+  };
 }

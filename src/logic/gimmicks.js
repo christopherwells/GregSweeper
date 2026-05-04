@@ -113,17 +113,26 @@ export function setModifierPopupDisabled(disabled) {
 // `forcedGimmick`, when provided and member of DAILY_SAFE_GIMMICKS,
 // guarantees that gimmick is the primary on every seed — used by the
 // adaptive-experiment path so the candidate-seed loop competes on
-// target-cell count rather than presence. The natural-rate secondary
-// roll still runs (~20% chance of a second gimmick), so the
-// distribution is "always target + occasional bonus" instead of "45%
-// nothing / 55% random one".
+// target-cell count rather than presence.
+//
+// `singleOnly`, when true, suppresses the natural-rate second-gimmick
+// roll. Used by coverage-mission slots in the multi-objective candidate
+// selection: those slots are intentionally dedicated to a single
+// undersampled feature, and adding a random second gimmick would
+// muddy the signal we're trying to fill in.
+//
+// Default double-gimmick rate is 10% (down from the original 20%) —
+// the coverage missions absorb most of the "make boards more varied"
+// goal, so we don't need natural double-gimmick days to do as much
+// of the work, and lower noise = cleaner per-feature deltas.
+const DOUBLE_GIMMICK_PROB = 0.10;
 
-export function getDailyGimmick(dailySeed, createRNG, forcedGimmick = null) {
+export function getDailyGimmick(dailySeed, createRNG, forcedGimmick = null, singleOnly = false) {
   const rng = createRNG(dailySeed + '-gimmick');
 
   if (forcedGimmick && DAILY_SAFE_GIMMICKS.includes(forcedGimmick)) {
     const gimmicks = [forcedGimmick];
-    if (rng() < 0.20) {
+    if (!singleOnly && rng() < DOUBLE_GIMMICK_PROB) {
       const idx2 = Math.floor(rng() * DAILY_SAFE_GIMMICKS.length);
       if (DAILY_SAFE_GIMMICKS[idx2] !== forcedGimmick) {
         gimmicks.push(DAILY_SAFE_GIMMICKS[idx2]);
@@ -135,8 +144,7 @@ export function getDailyGimmick(dailySeed, createRNG, forcedGimmick = null) {
   if (rng() > 0.55) return []; // 45% of days: no gimmick
   const idx = Math.floor(rng() * DAILY_SAFE_GIMMICKS.length);
   const gimmicks = [DAILY_SAFE_GIMMICKS[idx]];
-  // ~20% of gimmick days get a second modifier
-  if (rng() < 0.20) {
+  if (!singleOnly && rng() < DOUBLE_GIMMICK_PROB) {
     const idx2 = Math.floor(rng() * DAILY_SAFE_GIMMICKS.length);
     if (DAILY_SAFE_GIMMICKS[idx2] !== gimmicks[0]) {
       gimmicks.push(DAILY_SAFE_GIMMICKS[idx2]);
