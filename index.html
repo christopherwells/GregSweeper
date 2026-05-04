@@ -541,8 +541,8 @@
           </div>
 
           <div class="stats-section">
-            <h3>Delta by board complexity</h3>
-            <p class="stats-blurb">Extra time each complexity tier costs you compared to easy boards. Easy is your baseline (renders as 0). Medium shows how much more time boards needing generic-subset deductions cost you. Hard shows the same for boards needing advanced-logic or liar moves. Both bars are measured vs. easy, so they&rsquo;re directly comparable. Positive = that tier hurts you more than easy; negative = you handle it better than your easy baseline.</p>
+            <h3>Delta by reasoning type</h3>
+            <p class="stats-blurb">Your mean delta vs. Greg-par on dailies that needed each kind of reasoning. <strong>Easy patterns</strong> are 1-1, 1-2, and 1-1-1 shapes you spot on sight. <strong>Complex patterns</strong> are larger overlap deductions where you have to count out the cells. <strong>Process of elimination</strong> is when patterns don&rsquo;t apply and you walk through possibilities to find which cells are forced. Boards typically need more than one type of reasoning, so the bars overlap. Sort is by signed effect — reasoning you handle better than expected on the left, reasoning that costs you extra on the right.</p>
             <div class="stat-chart" id="chart-complexity-delta"></div>
           </div>
 

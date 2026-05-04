@@ -40,14 +40,6 @@ function emptyDiv(message) {
   return d;
 }
 
-// Which complexity bucket does a board fall into — based on the HARDEST
-// move type the solver needed. Matches the user's mental model: "was this
-// an easy board, a medium board, or a hard board?"
-function complexityBucket(features) {
-  if ((features.disjunctiveMoves || 0) > 0 || (features.advancedLogicMoves || 0) > 0) return 'hard';
-  if ((features.genericSubsetMoves || 0) > 0) return 'medium';
-  return 'easy';
-}
 
 // ── Main entry point ──────────────────────────────────
 
@@ -169,51 +161,52 @@ function renderHandicapTrajectory(plays) {
   replaceContent('chart-handicap-trajectory', svg);
 }
 
-// ── Chart: Delta by board complexity ──────────────────
+// ── Chart: Delta by reasoning type ────────────────────
+//
+// Each bar is your mean delta vs. Greg-par on dailies that NEEDED a
+// given kind of reasoning. Boards contribute to multiple bars
+// simultaneously (a board needing process-of-elimination almost
+// always also needed the simpler patterns), so the bars are
+// overlapping rather than mutually exclusive — same convention as the
+// modifier heatmap. Sorted by signed effect so reasoning kinds you
+// handle better than expected sit on the left, ones that cost you
+// extra time sit on the right.
+//
+// passAMoves is intentionally excluded — it's on every board, so its
+// bar would equal your overall mean (no signal). disjunctiveMoves is
+// excluded because it's structurally identical to "liar boards"
+// (every disjunctive move comes from a liar cell), and the modifier
+// chart already covers the liar bar.
+const REASONING_TYPES = [
+  { key: 'canonicalSubsetMoves', label: 'Easy patterns' },
+  { key: 'genericSubsetMoves',   label: 'Complex patterns' },
+  { key: 'advancedLogicMoves',   label: 'Process of elimination' },
+];
 
 function renderComplexityDelta(plays) {
   if (plays.length < 3) {
     replaceContent('chart-complexity-delta', emptyDiv('Need at least 3 plays.'));
     return;
   }
-  const buckets = { easy: [], medium: [], hard: [] };
-  for (const p of plays) {
-    const b = complexityBucket(p.features);
-    buckets[b].push(p.deltaGlobal);
+  const items = [];
+  for (const r of REASONING_TYPES) {
+    const rows = plays.filter(p => (p.features[r.key] || 0) > 0);
+    if (rows.length === 0) continue;
+    const mean = rows.reduce((s, p) => s + p.deltaGlobal, 0) / rows.length;
+    items.push({
+      label: r.label,
+      value: Math.round(mean * 10) / 10,
+    });
   }
-  // Both medium and hard are reported as their MARGINAL extra time over
-  // the easy baseline — not over the previous tier. Easy is the
-  // reference line at 0; medium and hard each show "how much more time
-  // on average than an easy board." This makes the bars directly
-  // comparable: a hard board costs you X seconds vs. easy, and a medium
-  // board costs you Y seconds vs. easy. With cascading baselines, hard
-  // would have read as "extra cost of advanced/disjunctive on top of a
-  // medium board" which isn't what readers usually want to see.
-  // Fallback: if easy has too few plays (N<3) we use the overall mean
-  // so the chart still renders meaningfully early in a player's history.
-  const mean = arr => arr.reduce((s, v) => s + v, 0) / arr.length;
-  const allDeltas = plays.map(p => p.deltaGlobal);
-  const overallBaseline = plays.length >= 3 ? mean(allDeltas) : 0;
-  const easyBaseline = buckets.easy.length >= 3 ? mean(buckets.easy) : overallBaseline;
-
-  const order = [
-    { label: 'easy',   values: buckets.easy,   baseline: easyBaseline },
-    { label: 'medium', values: buckets.medium, baseline: easyBaseline },
-    { label: 'hard',   values: buckets.hard,   baseline: easyBaseline },
-  ];
-  const groups = order
-    .filter(b => b.values.length > 0)
-    .map(b => ({
-      label: `${b.label} (n=${b.values.length})`,
-      value: mean(b.values) - b.baseline,
-      sub: '',
-    }));
-  if (groups.length === 0) {
+  if (items.length === 0) {
     replaceContent('chart-complexity-delta', emptyDiv('Not enough data yet.'));
     return;
   }
-  const svg = heatBars(groups, {
-    ariaLabel: 'Marginal extra time per complexity tier (easy = baseline)',
+  // Sort by signed effect, most-negative first → 0 → most-positive
+  // last. Same convention as the modifier chart.
+  items.sort((a, b) => a.value - b.value);
+  const svg = heatBars(items, {
+    ariaLabel: 'Mean delta by reasoning type',
     valueFormat: v => (v > 0 ? '+' : '') + v.toFixed(1) + 's',
   });
   replaceContent('chart-complexity-delta', svg);
