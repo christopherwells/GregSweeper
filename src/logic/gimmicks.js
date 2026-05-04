@@ -41,7 +41,7 @@ const GIMMICK_DEFS = {
     intro: 21, name: 'Liar Cells', icon: '🤥',
     desc: 'A few cells display a number that\'s off by 1. Their numbers are italic and underlined.',
     longDesc: 'Liar cells show a number that is exactly 1 higher or 1 lower than the true count. They are shown in italic with an underline so you can spot them. Account for the offset when reasoning about nearby mines.',
-    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-liar" style="font-style:italic;text-decoration:underline"><em>3</em></div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">2</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div></div><div class="ge-caption">The underlined italic "3" is really a 2 or 4</div>',
+    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed" style="font-style:italic;text-decoration:underline">3</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">2</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div></div><div class="ge-caption">The underlined italic "3" is really a 2 or 4</div>',
   },
   mystery: {
     intro: 31, name: 'Mystery Cells', icon: '❓',
@@ -64,14 +64,14 @@ const GIMMICK_DEFS = {
   wormhole: {
     intro: 51, name: 'Wormholes', icon: '🌀',
     desc: 'Paired cells share information \u2014 each shows the SUM of both cells\' real neighbor counts.',
-    longDesc: 'Two cells linked by a wormhole both display the combined total of their individual mine counts. If cell A has 1 mine neighbor and cell B has 2, both show 3. Use surrounding cells to split the sum.',
-    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(5,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-wormhole">🌀3</div><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-wormhole">🌀3</div><div class="ge-cell revealed">2</div></div><div class="ge-caption">Both 🌀 cells show 3 (sum of 1+2) — split the total</div>',
+    longDesc: 'Two cells linked by a wormhole both display the combined total of their individual mine counts. If cell A has 1 mine neighbor and cell B has 2, both show 3. Linked cells share the same colored background tint (amber, magenta, or green) so you can spot the pair. Use surrounding cells to split the sum.',
+    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(5,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed" style="background:rgba(255,140,0,0.35)">3</div><div class="ge-cell revealed">1</div><div class="ge-cell revealed" style="background:rgba(255,140,0,0.35)">3</div><div class="ge-cell revealed">2</div></div><div class="ge-caption">The two amber-tinted cells share a sum of 3 (really 1+2) — split it using their neighbors</div>',
   },
   mirror: {
     intro: 61, name: 'Mirror Cells', icon: '🪞',
     desc: 'Pairs of adjacent cells swap their numbers with each other.',
-    longDesc: 'Two neighboring cells swap displayed mine counts. If cell A has 1 mine and cell B has 3, A shows 3 and B shows 1. The swapped pair shares a colored tint so you can spot which cells are linked.',
-    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-mirror">3🪞</div><div class="ge-cell revealed ge-mirror">1🪞</div><div class="ge-cell revealed">2</div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">0</div></div><div class="ge-caption">The two 🪞 cells swapped their numbers (really 1 and 3)</div>',
+    longDesc: 'Two neighboring cells swap displayed mine counts. If cell A has 1 mine and cell B has 3, A shows 3 and B shows 1. The swapped pair shares a dashed colored outline (blue, purple, or green) so you can spot which cells are linked.',
+    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed" style="border:2.5px dashed rgba(52,152,219,0.85)">3</div><div class="ge-cell revealed" style="border:2.5px dashed rgba(52,152,219,0.85)">1</div><div class="ge-cell revealed">2</div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">0</div></div><div class="ge-caption">The two outlined cells swapped their numbers (really 1 and 3)</div>',
   },
   pressurePlate: {
     intro: 71, name: 'Pressure Plates', icon: '🔴',
