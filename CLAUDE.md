@@ -76,7 +76,13 @@ Network-first with cache fallback. `ignoreSearch: true` on cache.match. Install 
 - **Chaos:** Rapid rounds with random modifiers, exempt from solvability guarantee
 
 ## Push Notifications
-PWA web push via FCM, opt-in via Settings (`Notifications` block alongside the modifier-popup toggle). Players pick an ET hour; a GH Actions hourly cron at `0 * * * *` (`notify-daily-ready.yml`) fires `scripts/send-push.mjs` which reads all users' subscriptions, filters to those whose `notificationPrefs.hourLocal` matches the current ET hour, and POSTs FCM REST messages to each.
+PWA web push via FCM, opt-in via Settings (`Notifications` block alongside the modifier-popup toggle). The `notify-daily-ready.yml` workflow has three triggers:
+
+- **`workflow_run`** (primary): fires the moment `Precompute daily board` or `Precompute weekly board` finishes successfully. Pushes go out as soon as a fresh canonical lands on Firebase. `send-push.mjs` reads `$GITHUB_EVENT_NAME` and `$TRIGGER_WORKFLOW` and broadcasts to ALL enabled subscribers regardless of `notificationPrefs.hourLocal`.
+- **`schedule`** (`0 * * * *`): hourly fall-back for users who want a clock-time reminder. Filters subscribers by `notificationPrefs.hourLocal === currentHourET`.
+- **`workflow_dispatch`**: manual fire for testing. Same broadcast behavior as `workflow_run`.
+
+Notification text adapts: event-driven says "just dropped", scheduled says "ready for you". Category is pinned to the source workflow (daily-precompute → daily/bonus, weekly-precompute → weekly) when invoked via `workflow_run`, so an 8 PM ET precompute doesn't accidentally label TOMORROW's board as TODAY's.
 
 - `src/firebase/firebasePush.js`: `enableNotifications({hourLocal})`, `disableNotifications()`, `loadNotificationPrefs()`, `updateNotificationHour()`. Hardcoded `VAPID_PUBLIC_KEY` constant — set this from the Firebase Console value (Project Settings → Cloud Messaging → Web Push certificates) before push will work. Empty string = `'no-key'` toast.
 - Subscription stored at `users/{uid}/pushSubscription = { token, subscribedAt }` with auth.uid match. Token is the FCM-managed string from `messaging.getToken({vapidKey})` — server-side script POSTs against `fcm.googleapis.com/v1/projects/{id}/messages:send` using this token.

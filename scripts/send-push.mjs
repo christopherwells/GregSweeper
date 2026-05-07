@@ -35,6 +35,13 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // content in sync with what the player actually sees on the title.
 const BONUS_DAILY_DATES = new Set(['2026-05-07']);
 
+// Classify the trigger so we know whether to broadcast (event-driven,
+// fire as soon as boards are generated) or to filter by hourLocal
+// (fall-back hourly cron for clock-time reminders).
+const TRIGGER_EVENT = process.env.GITHUB_EVENT_NAME || '';
+const TRIGGER_WORKFLOW = process.env.TRIGGER_WORKFLOW || '';
+const IS_BROADCAST = TRIGGER_EVENT === 'workflow_run' || TRIGGER_EVENT === 'workflow_dispatch';
+
 function _etDateParts() {
   // America/New_York anchored YYYY-MM-DD + hour 0..23 + day-of-week.
   const fmt = new Intl.DateTimeFormat('en-CA', {
@@ -52,35 +59,50 @@ function _etDateParts() {
 }
 
 function _categoryFor({ date, dow }) {
-  // Monday = a fresh weekly puzzle just opened. Bonus dates take
-  // precedence over the regular daily content. Otherwise default to
-  // the daily reminder. (Weekly wins over bonus if both apply on the
-  // same date — rare but Monday is the dramatic content.)
+  // Workflow_run from the precompute workflows pins the category to
+  // the source — a daily-board precompute is a daily/bonus event, a
+  // weekly-board precompute is a weekly event. This avoids the awkward
+  // case where the precompute fires at 8pm ET (date is still today)
+  // but the board it just wrote is for TOMORROW.
+  if (TRIGGER_WORKFLOW === 'Precompute weekly board') return 'weekly';
+  if (TRIGGER_WORKFLOW === 'Precompute daily board') {
+    return BONUS_DAILY_DATES.has(date) ? 'bonus' : 'daily';
+  }
+  // Schedule / manual: pick category from the calendar.
   if (dow === 1) return 'weekly';
   if (BONUS_DAILY_DATES.has(date)) return 'bonus';
   return 'daily';
 }
 
 function _payloadFor(category) {
+  // Event-driven (broadcast) phrasing matches "just dropped" since the
+  // upstream precompute literally just finished. Schedule phrasing
+  // matches "ready for you" since the board has been live for hours.
   if (category === 'weekly') {
     return {
       title: 'GregSweeper — Weekly puzzle live',
-      body: "This week's puzzle just opened. Same board for 7 days, best time wins.",
+      body: IS_BROADCAST
+        ? 'A new weekly puzzle just dropped. Same board for 7 days, best time wins.'
+        : "This week's puzzle is open. Same board for 7 days, best time wins.",
       tag: 'gregsweeper-weekly',
       deepLink: './?mode=weekly',
     };
   }
   if (category === 'bonus') {
     return {
-      title: 'GregSweeper — Bonus daily today',
-      body: "There's a bonus daily puzzle on top of the regular one — free play.",
+      title: 'GregSweeper — Bonus daily',
+      body: IS_BROADCAST
+        ? 'A bonus daily puzzle just opened. Free play, no streak impact.'
+        : "There's a bonus daily on top of the regular one — free play.",
       tag: 'gregsweeper-bonus',
       deepLink: './?mode=daily',
     };
   }
   return {
     title: 'GregSweeper — Daily puzzle ready',
-    body: "Today's daily is waiting for you.",
+    body: IS_BROADCAST
+      ? 'A fresh daily puzzle just dropped.'
+      : "Today's daily is waiting for you.",
     tag: 'gregsweeper-daily',
     deepLink: './?mode=daily',
   };
@@ -188,7 +210,10 @@ async function fetchAllUsers(accessToken) {
   const category = _categoryFor({ date, dow });
   const payload = _payloadFor(category);
 
-  console.log(`[${date} ${String(hour).padStart(2, '0')}:00 ET] category=${category}`);
+  const triggerLabel = IS_BROADCAST
+    ? `BROADCAST (${TRIGGER_EVENT}${TRIGGER_WORKFLOW ? ' / ' + TRIGGER_WORKFLOW : ''})`
+    : `SCHEDULE (hour=${hour})`;
+  console.log(`[${date} ${String(hour).padStart(2, '0')}:00 ET] ${triggerLabel} category=${category}`);
 
   const accessToken = await getAccessToken(serviceAccount);
   const users = await fetchAllUsers(accessToken);
@@ -201,7 +226,9 @@ async function fetchAllUsers(accessToken) {
     const prefs = userData?.notificationPrefs;
     const sub = userData?.pushSubscription;
     if (!prefs || !prefs.enabled || !sub || !sub.token) continue;
-    if (prefs.hourLocal !== hour) continue;
+    // Hourly cron: respect each user's preferred clock-time. Workflow_run
+    // / dispatch: broadcast immediately to everyone enabled.
+    if (!IS_BROADCAST && prefs.hourLocal !== hour) continue;
     // Per-category opt-outs (default ON if missing — same as the
     // toggle UI's defaults). streakWarning is reserved for a future
     // evening fire; not emitted by this script yet.
