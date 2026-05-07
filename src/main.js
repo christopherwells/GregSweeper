@@ -215,19 +215,17 @@ async function runStartupGate() {
     }
   }
 
-  // Stale-completion check: if the local "completed today" flag is set
-  // but our actual Firebase score for today is missing or has a
-  // divergent rngSeed, the local flag is from a divergent play that
-  // should not block a clean replay. Clear the flag.
+  // Stale-completion check: only clear the local "completed today"
+  // flag when we POSITIVELY confirm a divergent rngSeed on a Firebase
+  // score we've matched to this user. If we can't find a score (uid
+  // mismatch, network race, fresh device, offline submission, etc.)
+  // we trust the local flag — it's set because the user on this
+  // device actually completed the daily, and absence of a Firebase
+  // record is more often a sync issue than a server-side deletion.
   //
-  // This is what unblocks Kate (and any future player who lands here
-  // after the SW update): her trial3 score was deleted server-side
-  // and her local completion flag is the only thing standing between
-  // her and the canonical board. Without this check she'd see the
-  // "already completed today" toast forever.
-  //
-  // No-op for clean players (Chris): his trial5 score matches canonical,
-  // flag stays, daily card still shows "completed today!".
+  // The earlier version of this check cleared the flag on any "non-
+  // clean" outcome including missing-score, which let the user replay
+  // a daily they had already completed when their uid lookup raced.
   if (firebaseReady && !customSeed && isDailyCompleted(today)) {
     setBootStatus('Verifying today\'s play…');
     const myUid = await _waitForUid(3000);
@@ -244,15 +242,13 @@ async function runStartupGate() {
           }
           return undefined;
         });
-        const myScoreSeed = myScore?.rngSeed || (myScore ? today : null);
-        const isClean = myScore && myScoreSeed === canonicalSeed;
-        if (!isClean) {
-          // Divergent or missing — clear the completion flag plus the
+        const myScoreSeed = myScore?.rngSeed || null;
+        const isDivergent = myScore && myScoreSeed && myScoreSeed !== canonicalSeed;
+        if (isDivergent) {
+          // Confirmed divergent — clear the completion flag plus the
           // cached par/moves so newGame recomputes them against the
-          // canonical layout. Don't touch streak fields; if we cleanly
-          // replay, Firebase already has the correct streak from the
-          // original (divergent) submission, and replaying maintains
-          // it via lastDailyDate === today.
+          // canonical layout. Don't touch streak fields; replaying
+          // maintains the streak via lastDailyDate === today.
           safeRemove('minesweeper_daily_completed_date');
           safeRemove('minesweeper_daily_par_' + today);
           safeRemove('minesweeper_daily_moves_' + today);
