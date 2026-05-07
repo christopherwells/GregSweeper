@@ -35,6 +35,13 @@ import { getHandicap } from '../logic/handicaps.js';
 import { addDailyLeaderboardEntry } from '../storage/statsStorage.js';
 import { getLocalDateString } from '../logic/seededRandom.js';
 
+// Weekly's first-attempt-of-the-week play is supposed to feed the
+// par-model fit pool (honest first encounter, no memorisation
+// advantage). Disabled while the weekly mode is still being shaken
+// down — we don't want test plays with shifting rules to drag the
+// model coefficients. Flip to true when the rules are stable.
+const WEEKLY_FIT_DATA_ENABLED = false;
+
 // ── Achievements Display (for game over) ───────────────
 
 function showAchievementToasts(unlocks) {
@@ -178,11 +185,18 @@ export function handleWin() {
     if (playerName) {
       submitWeeklyScore(state.weeklySeed, getUid(), playerName, bestTime, updated).catch(() => {});
 
-      if (isFirstAttemptThisWeek) {
+      if (isFirstAttemptThisWeek && WEEKLY_FIT_DATA_ENABLED) {
         // Honest first encounter — qualifies for par-model fit data.
         // Reuses submitOnlineScore so we land in the same daily/* and
         // dailyMeta/* tables the R refit already reads, with a unique
         // key suffix so it joins as its own row.
+        //
+        // Currently DISABLED via WEEKLY_FIT_DATA_ENABLED. Weekly is
+        // brand-new and we're still iterating on its rules (gimmick
+        // count, bomb-hit handling, end-screen). Letting test plays
+        // pollute the par-model fit pool would skew coefficients on
+        // half-baked data. Flip the flag to true once the weekly
+        // mechanic has stabilised and we trust the inputs.
         submitOnlineScore(
           state.weeklySeed + '_weekly_first',
           playerName,
@@ -244,8 +258,11 @@ export function handleWin() {
   gameoverTitle.classList.add('win-title-bounce');
   setTimeout(() => gameoverTitle.classList.remove('win-title-bounce'), 700);
 
-  const strikesInfo = state.gameMode === 'daily' && state.dailyBombHits > 0
-    ? ` | 💥 ${state.dailyBombHits} strike${state.dailyBombHits !== 1 ? 's' : ''}`
+  const _strikes = state.gameMode === 'weekly'
+    ? (state.weeklyBombHits || 0)
+    : state.gameMode === 'daily' ? (state.dailyBombHits || 0) : 0;
+  const strikesInfo = _strikes > 0
+    ? ` | 💥 ${_strikes} strike${_strikes !== 1 ? 's' : ''}`
     : '';
 
   const parEl = $('#gameover-par');
@@ -271,7 +288,13 @@ export function handleWin() {
     // both numbers and the primary delta is measured against YOUR par —
     // that's the one that tells you whether you had a good or bad day
     // relative to your own skill.
-    if (parEl && state.dailyPar > 0) {
+    // Par only meaningful in regular daily mode. Weekly doesn't carry
+    // a par (same board across the week — par would be a moving target
+    // anyway since the player learns the board), and bonus daily uses
+    // the daily par value but we suppress it on the modal in favor of
+    // the bonus's own framing. Without this gate, state.dailyPar can
+    // leak from a previous in-session daily play and render here.
+    if (parEl && state.dailyPar > 0 && state.gameMode === 'daily' && !state.isBonusDaily) {
       const handicap = getHandicap(getUid());
       const personalPar = state.dailyPar + handicap;
       const referencePar = handicap !== 0 ? personalPar : state.dailyPar;
@@ -313,6 +336,39 @@ export function handleWin() {
           parBreakdownEl.classList.remove('hidden');
         }
       }
+    }
+  } else if (state.gameMode === 'weekly') {
+    // Weekly: show precise time, plus a learning-curve summary —
+    // best across the week so far, attempts used, and how this run
+    // compares to the player's previous best on the same board.
+    const precise = state.preciseTime || state.elapsedTime;
+    gameoverTime.textContent = `Time: ${precise.toFixed(1)}s${strikesInfo}`;
+
+    // weeklyDayTimes was loaded at newGame and contains all PRIOR days'
+    // completions; the current attempt's time isn't in there yet. Best
+    // PRIOR is the bar to beat for "personal record" framing.
+    const priorTimes = Object.values(state.weeklyDayTimes || {})
+      .filter(t => typeof t === 'number');
+    const priorBest = priorTimes.length > 0 ? Math.min(...priorTimes) : null;
+    const allTimes = priorBest != null ? [...priorTimes, precise] : [precise];
+    const newBest = Math.min(...allTimes);
+    const attemptsUsed = allTimes.length;
+
+    if (parEl) {
+      let summary;
+      if (priorBest == null) {
+        summary = `First attempt this week — set the bar at ${precise.toFixed(1)}s.`;
+      } else if (precise < priorBest) {
+        const delta = (priorBest - precise).toFixed(1);
+        summary = `<span class="par-under">${delta}s faster than your best</span> · new best ${newBest.toFixed(1)}s`;
+      } else if (precise > priorBest) {
+        const delta = (precise - priorBest).toFixed(1);
+        summary = `<span class="par-over">${delta}s off your best</span> · still ${newBest.toFixed(1)}s to beat`;
+      } else {
+        summary = `<span class="par-even">Matched your best!</span> · ${newBest.toFixed(1)}s`;
+      }
+      parEl.innerHTML = `Best this week: ${newBest.toFixed(1)}s · Attempts: ${attemptsUsed}/7<br>${summary}`;
+      parEl.classList.remove('hidden');
     }
   } else {
     gameoverTime.textContent = `Time: ${state.elapsedTime}s${strikesInfo}`;

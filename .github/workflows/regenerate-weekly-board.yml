@@ -1,0 +1,37 @@
+name: Regenerate weekly board
+
+# Manual one-off: nukes a week's weekly canonical + leaderboard +
+# per-user attempt markers + synthetic-daily fit data, then regenerates
+# the canonical with the current code's rules. Use when the weekly
+# generation rules change mid-week and we want next-load players to
+# see the new rules without waiting for next Monday's precompute.
+#
+# Service-account auth is required to bypass the write-once rule on
+# weeklyBoard/$weekStart. The FIREBASE_SERVICE_ACCOUNT secret is the
+# same one used by send-push.mjs.
+#
+# Triggered manually via:
+#   gh workflow run regenerate-weekly-board.yml -f weekStart=2026-05-04
+
+on:
+  workflow_dispatch:
+    inputs:
+      weekStart:
+        description: 'Week start (YYYY-MM-DD, must be a Monday)'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Regenerate
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node scripts/regenerate-weekly-board.mjs "${{ github.event.inputs.weekStart }}"

@@ -931,8 +931,10 @@ export function revealCell(row, col) {
     }
     // Lifeline: passive save from mine death
     if (tryLifeline(row, col)) return;
-    // Daily mode: bomb hit re-fogs instead of ending
-    if (state.gameMode === 'daily') {
+    // Daily / weekly: bomb hit re-fogs and adds 10s instead of ending.
+    // Without weekly here, a bomb hit drops the player to the loss
+    // screen mid-attempt — and weekly forfeits that day's slot.
+    if (state.gameMode === 'daily' || state.gameMode === 'weekly') {
       handleDailyBombHit(row, col);
       return;
     }
@@ -1143,7 +1145,7 @@ export function handleChordReveal(row, col) {
     const mineCell = result.revealed.find(c => c.isMine);
     // Undo the reveal that chordReveal applied so lifeline/daily can handle it
     mineCell.isRevealed = false;
-    if (state.gameMode === 'daily') {
+    if (state.gameMode === 'daily' || state.gameMode === 'weekly') {
       handleDailyBombHit(mineCell.row, mineCell.col);
     } else if (tryLifeline(mineCell.row, mineCell.col)) {
       // Lifeline saved — continue playing

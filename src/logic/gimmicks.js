@@ -153,13 +153,16 @@ export function getDailyGimmick(dailySeed, createRNG, forcedGimmick = null, sing
   return gimmicks;
 }
 
-// Weekly puzzle: always 2–4 modifiers stacked. Same daily-safe pool but
-// picked without replacement so we never duplicate. Weekly is meant to
-// be hard — every player gets a week of attempts on the same board, so
-// we can afford to push complexity.
+// Weekly puzzle: 2 or 3 modifiers stacked. Same daily-safe pool, picked
+// without replacement so we never duplicate. Originally 2–4 but four
+// stacked modifiers is technically solvable (the solver verifies it)
+// but humanly miserable — recognising disjunctive liar constraints
+// while tracking compass arrows and wormhole partners and wall-aware
+// adjacency in the same play makes the board feel unsolvable even
+// when it isn't. Capping at 3 is the playable ceiling.
 export function getWeeklyGimmicks(weeklySeed, createRNG) {
   const rng = createRNG(weeklySeed + '-weekly-gimmicks');
-  const count = 2 + Math.floor(rng() * 3); // 2, 3, or 4
+  const count = 2 + Math.floor(rng() * 2); // 2 or 3
   const pool = [...DAILY_SAFE_GIMMICKS];
   const picked = [];
   for (let i = 0; i < count && pool.length > 0; i++) {
