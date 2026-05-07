@@ -110,6 +110,14 @@
         <div class="mode-card-name">Daily</div>
         <div class="mode-card-progress" id="title-daily-progress">Today's challenge</div>
       </div>
+      <!-- Bonus daily card — hidden by default, unhidden on dates the
+           title-progress logic flags as bonus dates (currently 2026-05-07
+           only). Bonus completions don't touch streak or handicap. -->
+      <div class="mode-card" data-mode="dailyBonus" id="title-daily-bonus-card" style="display: none;">
+        <div class="mode-card-icon">🎁</div>
+        <div class="mode-card-name">Bonus Daily</div>
+        <div class="mode-card-progress" id="title-daily-bonus-progress">Free play, no streak</div>
+      </div>
       <div class="mode-card mode-card-chaos" data-mode="chaos">
         <div class="mode-card-icon">🌀</div>
         <div class="mode-card-name">Chaos</div>

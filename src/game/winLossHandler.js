@@ -17,7 +17,7 @@ import { findNextSafeMove } from '../logic/boardSolver.js';
 import { getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, getChaosDifficulty, LIFELINE_WIN_REWARD_CHANCE } from '../logic/difficulty.js';
 import {
   loadStats, saveGameResult, saveModePowerUps, clearGameState,
-  markDailyCompleted, getDailyStreak, getPlayerName,
+  markDailyCompleted, markBonusDailyCompleted, getDailyStreak, getPlayerName,
 } from '../storage/statsStorage.js';
 import { safeSetJSON } from '../storage/storageAdapter.js';
 import {
@@ -117,8 +117,13 @@ export function handleWin() {
   const isDaily = state.gameMode === 'daily';
   // Practice daily (URL ?seed=custom) plays like a daily but must not touch
   // stats, streak, completion flags, or personal history — it exists for
-  // replaying after today's real daily has already been won.
-  const isRealDaily = isDaily && !state.isDailyPractice;
+  // replaying after today's real daily has already been won. Bonus daily
+  // (state.isBonusDaily) submits to its own leaderboard / dailyMeta for
+  // the model fit, but also doesn't touch streak / handicap / personal
+  // history — completing it shouldn't change the player's regular-daily
+  // standing.
+  const isRealDaily = isDaily && !state.isDailyPractice && !state.isBonusDaily;
+  const isBonusDaily = isDaily && state.isBonusDaily;
   const stats = saveGameResult(true, state.elapsedTime, state.currentLevel, {
     isDaily: isRealDaily,
     usedPowerUps: state.usedPowerUps,
@@ -141,9 +146,14 @@ export function handleWin() {
     });
   }
 
-  // Mark daily as completed so it cannot be replayed today
+  // Mark daily as completed so it cannot be replayed today. Bonus uses
+  // its own completion key so it doesn't clobber the regular flag.
   if (isRealDaily && state.dailySeed) {
     markDailyCompleted(state.dailySeed);
+  } else if (isBonusDaily && state.dailySeed) {
+    // The bonus completion is keyed by the bare ET date so the title
+    // screen's bonus card can match `isBonusDailyCompleted(today)`.
+    markBonusDailyCompleted(getLocalDateString());
   }
 
   // Persist power-ups after win (award changes them) — skip for chaos (no power-ups)
@@ -362,7 +372,13 @@ export function handleWin() {
     if (savedName) {
       // Auto-submit with saved name
       dailySubmitForm.classList.add('hidden');
-      const dateStr = getLocalDateString();
+      // Bonus daily submits to its own dated bucket (`daily/{date}_bonus`,
+      // `dailyMeta/{date}_bonus`) so the regular leaderboard isn't
+      // polluted with bonus times and the R refit picks them up as a
+      // separate row with their own feature vector.
+      const dateStr = state.isBonusDaily && state.dailySeed
+        ? state.dailySeed
+        : getLocalDateString();
       const scoreTime = Math.round((state.preciseTime || state.elapsedTime) * 10) / 10;
       addDailyLeaderboardEntry(dateStr, savedName, scoreTime);
       // CRITICAL: this auto-submit path (used whenever the player has a
@@ -378,10 +394,10 @@ export function handleWin() {
         rngSeed: state.dailyRngSeed || dateStr,
       });
       // Per-user daily-history timeline feeds the leaderboard-modal chart.
-      // Skip for practice dailies — they live on their own seed date-slot
-      // and would otherwise pollute the player's real timeline with
-      // off-schedule entries.
-      if (!state.isDailyPractice) {
+      // Skip for practice dailies AND bonus dailies — practice plays on
+      // its own seed date-slot, and bonus is a free-play side puzzle
+      // that shouldn't show up in the player's regular history timeline.
+      if (!state.isDailyPractice && !state.isBonusDaily) {
         saveDailyHistoryEntry(dateStr, { time: scoreTime });
       }
       showToast('✅ Score submitted!');

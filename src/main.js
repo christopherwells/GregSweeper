@@ -29,7 +29,7 @@ import {
   loadDailyLeaderboard, addDailyLeaderboardEntry,
   saveModePowerUps, loadGameState,
   isOnboarded, setOnboarded,
-  isDailyCompleted,
+  isDailyCompleted, isBonusDailyCompleted,
   getDailyStreak,
   getPlayerName, setPlayerName,
   getLastSeenVersion, setLastSeenVersion,
@@ -37,6 +37,14 @@ import {
 } from './storage/statsStorage.js';
 
 const CURRENT_VERSION = 'v1.5';
+
+// Dates on which a second "bonus" daily card appears on the title screen.
+// Bonus completions submit to a separate Firebase bucket (`daily/{date}_bonus`)
+// and contribute to the model fit, but don't touch streak / handicap /
+// personal history. Add a date here to enable a bonus daily for that
+// ET date; the dailyBoard/{date}_bonus canonical must already be
+// pre-generated (see scripts/precompute-daily-board.mjs).
+const BONUS_DAILY_DATES = new Set(['2026-05-07']);
 import {
   playLevelUp, isMuted, setMuted, loadMuted,
   setSFXVolume, getSFXVolume,
@@ -644,8 +652,17 @@ function prettyDate(dateStr) {
 }
 
 async function updateLeaderboardDisplay() {
-  const dateStr = getLocalDateString();
-  $('#leaderboard-date').textContent = prettyDate(dateStr);
+  // Show the leaderboard for whichever daily slot the player is engaged
+  // with — if they're playing the bonus, the modal shows bonus scores;
+  // otherwise (title screen or regular daily) it shows the regular
+  // daily leaderboard.
+  const dateStr = (state.isBonusDaily && state.dailySeed)
+    ? state.dailySeed
+    : getLocalDateString();
+  const headerStr = dateStr.endsWith('_bonus')
+    ? prettyDate(dateStr.replace('_bonus', '')) + ' · Bonus'
+    : prettyDate(dateStr);
+  $('#leaderboard-date').textContent = headerStr;
   const tbody = $('#leaderboard-body');
   tbody.innerHTML = '';
 
@@ -1440,6 +1457,27 @@ function updateTitleProgress() {
     }
   }
 
+  // Bonus daily card — surfaces on BONUS_DAILY_DATES only. One-off
+  // recovery for the 2026-05-06 divergence incident; future bonus dates
+  // can extend this list.
+  const today = getLocalDateString();
+  const bonusCard = $('#title-daily-bonus-card');
+  const bonusProgressEl = $('#title-daily-bonus-progress');
+  if (bonusCard) {
+    if (BONUS_DAILY_DATES.has(today)) {
+      bonusCard.style.display = '';
+      if (isBonusDailyCompleted(today)) {
+        if (bonusProgressEl) bonusProgressEl.textContent = 'Completed!';
+        bonusCard.classList.add('daily-completed');
+      } else {
+        if (bonusProgressEl) bonusProgressEl.textContent = 'Free play, no streak';
+        bonusCard.classList.remove('daily-completed');
+      }
+    } else {
+      bonusCard.style.display = 'none';
+    }
+  }
+
   // Chaos mode card
   const chaosEl = $('#title-chaos-progress');
   const chaosCard = $('.mode-card[data-mode="chaos"]');
@@ -1624,6 +1662,33 @@ for (const card of $$('.mode-card')) {
         showToast("You've already completed today's daily!");
         return;
       }
+      // Clear any bonus state left over from a previous bonus play in
+      // this session — switching from bonus → regular daily must reset
+      // the seed and flag, otherwise newGame would reuse the bonus key.
+      state.isBonusDaily = false;
+      state.dailySeed = null;
+      state.dailyRngSeed = null;
+    }
+    if (mode === 'dailyBonus') {
+      const today = getLocalDateString();
+      if (!BONUS_DAILY_DATES.has(today)) {
+        // Defensive — the card shouldn't be clickable on non-bonus
+        // dates, but if anything routes here anyway treat it as a no-op.
+        return;
+      }
+      if (isBonusDailyCompleted(today)) {
+        showToast("You've already played today's bonus daily!");
+        return;
+      }
+      // Set up bonus state BEFORE switchMode so newGame's daily branch
+      // sees the bonus seed when it resolves the canonical board.
+      state.gameMode = 'daily';
+      state.dailySeed = today + '_bonus';
+      state.isBonusDaily = true;
+      state.isDailyPractice = false;
+      hideTitleScreen();
+      switchMode('daily');
+      return;
     }
     hideTitleScreen();
     switchMode(mode);
@@ -1801,7 +1866,10 @@ $('#gameover-submit-daily').addEventListener('click', async (e) => {
       bombHitEvents: state.dailyBombHitEvents || [],
       rngSeed: state.dailyRngSeed || dateStr,
     });
-    if (!state.isDailyPractice) {
+    // Skip personal-history write for both practice AND bonus dailies —
+    // bonus is a free-play side puzzle that shouldn't appear in the
+    // player's regular daily timeline.
+    if (!state.isDailyPractice && !state.isBonusDaily) {
       saveDailyHistoryEntry(dateStr, { time: scoreTime });
     }
     const dailySubmitForm = $('#daily-submit-form');

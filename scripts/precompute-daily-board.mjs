@@ -193,8 +193,12 @@ async function writeCanonicalBoard(date, idToken, payload) {
 
 (async () => {
   const date = process.argv[2];
-  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    console.error('usage: node precompute-daily-board.mjs YYYY-MM-DD');
+  // Accept the bare YYYY-MM-DD form for the regular daily and a
+  // YYYY-MM-DD_bonus form for the one-off second daily slot. Anything
+  // else is a typo. The Firebase rules accept the same shape, so the
+  // bonus key writes through under the existing dailyBoard branch.
+  if (!date || !/^\d{4}-\d{2}-\d{2}(_bonus)?$/.test(date)) {
+    console.error('usage: node precompute-daily-board.mjs YYYY-MM-DD[_bonus]');
     process.exit(1);
   }
 

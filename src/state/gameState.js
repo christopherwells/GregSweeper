@@ -37,6 +37,14 @@ export const state = {
   dailyMoves: 0,     // solver totalClicks for pace calculation
   dailyFeatures: null, // full feature vector from computeDailyFeatures — used for par breakdown, Firebase meta upload, and the R refit training set
   isDailyPractice: false, // set when the URL carries ?seed=<custom>: play a custom-seed board but skip streak/completion/history side effects. Submissions still go to Firebase (under the custom seed path) so the session still tags a uid.
+  // Set true when the player picks the "bonus" daily slot (one-off, only
+  // exposed on dates the title screen explicitly enables a second card —
+  // currently 2026-05-07 only). Bonus completions submit to the bonus
+  // leaderboard and dailyMeta (so the model fit gets the data) but DON'T
+  // touch streak / handicap / markDailyCompleted / saveDailyHistoryEntry —
+  // bonus is free-to-play, completing it doesn't change the player's
+  // standing on the regular daily ladder.
+  isBonusDaily: false,
 
   powerUps: { revealSafe: 0, shield: 0, lifeline: 0, scanRowCol: 0, magnet: 0, xray: 0 },
   shieldActive: false,

@@ -49,6 +49,29 @@ function makeSvg(ariaLabel) {
   return svg;
 }
 
+// Greedy word-wrap. Splits a label on whitespace and packs words into
+// lines of up to `maxChars` characters. Used for SVG <text> labels that
+// would otherwise clip off the chart edge — SVG text doesn't wrap on
+// its own, so the caller stacks the resulting lines as <tspan>s.
+function wrapLabel(label, maxChars) {
+  if (!label || label.length <= maxChars) return [label || ''];
+  const words = String(label).split(/\s+/);
+  const lines = [];
+  let current = '';
+  for (const w of words) {
+    if (!current) {
+      current = w;
+    } else if (current.length + 1 + w.length <= maxChars) {
+      current += ' ' + w;
+    } else {
+      lines.push(current);
+      current = w;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
+}
+
 // Nice axis tick step — returns a step value that divides `range` into 4-7 ticks.
 function niceStep(range) {
   if (range <= 1) return 0.2;
@@ -675,13 +698,27 @@ export function heatBars(items, opts = {}) {
       class: `chart-heat-bar ${cls}`,
     }));
 
-    // Category label (left column, right-aligned)
+    // Category label (left column, right-aligned). SVG <text> doesn't
+    // wrap natively, so for labels that exceed the column width we split
+    // on word boundaries and stack the resulting lines as <tspan>s.
+    // "Process of elimination" and "Complex patterns" both overflow the
+    // 170px column at default font size; "Easy patterns" fits.
+    const labelLines = wrapLabel(it.label, 14);
+    const lineHeight = 14;
     const label = el('text', {
-      x: LABEL_COL - 16, y: cy + 8,
+      x: LABEL_COL - 16,
+      y: cy + 8 - (labelLines.length - 1) * (lineHeight / 2),
       'text-anchor': 'end',
       class: 'chart-axis-label',
     });
-    label.textContent = it.label;
+    for (let li = 0; li < labelLines.length; li++) {
+      const tspan = el('tspan', {
+        x: LABEL_COL - 16,
+        dy: li === 0 ? 0 : lineHeight,
+      });
+      tspan.textContent = labelLines[li];
+      label.appendChild(tspan);
+    }
     svg.appendChild(label);
 
     // Value label (right column, left-aligned so all values line up)

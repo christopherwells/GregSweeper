@@ -65,10 +65,14 @@ export function tryResumeGame(mode) {
   const gs = loadGameState(mode || state.gameMode);
   if (!gs || !gs.board || !gs.gameMode) return false;
 
-  // Stale daily check: if saved daily seed does not match today, discard
+  // Stale daily check: if saved daily seed doesn't match the slot the
+  // player is about to enter, discard. The expected seed is `state.dailySeed`
+  // when it's been set by the title-screen click handler (e.g. bonus
+  // daily sets it before switchMode), otherwise fall back to today's
+  // ET date for the regular daily flow.
   if (gs.gameMode === 'daily' && gs.dailySeed) {
-    const today = getLocalDateString();
-    if (gs.dailySeed !== today) return false;
+    const expectedSeed = state.dailySeed || getLocalDateString();
+    if (gs.dailySeed !== expectedSeed) return false;
   }
 
   // Divergent-canonical check: if the saved daily was generated against

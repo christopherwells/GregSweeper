@@ -397,6 +397,20 @@ export function markDailyCompleted(dateStr) {
   safeSet(DAILY_COMPLETED_KEY, dateStr);
 }
 
+// Bonus daily uses a parallel completion key so a bonus completion
+// doesn't overwrite the regular-daily flag (and vice versa) — the player
+// can complete both today and the title-screen surfaces both states
+// independently.
+const BONUS_DAILY_COMPLETED_KEY = 'minesweeper_bonus_daily_completed_date';
+
+export function isBonusDailyCompleted(dateStr) {
+  return safeGet(BONUS_DAILY_COMPLETED_KEY) === dateStr;
+}
+
+export function markBonusDailyCompleted(dateStr) {
+  safeSet(BONUS_DAILY_COMPLETED_KEY, dateStr);
+}
+
 // ── Onboarding ──────────────────────────────────────
 const ONBOARDING_KEY = 'minesweeper_onboarded';
 

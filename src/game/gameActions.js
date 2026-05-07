@@ -223,6 +223,7 @@ export async function newGame() {
     state.dailySeed = null;
     state.dailyRngSeed = null;
     state.isDailyPractice = false;
+    state.isBonusDaily = false;
   } else if (!state.dailySeed) {
     state.dailySeed = getLocalDateString();
   }
