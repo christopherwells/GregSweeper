@@ -781,18 +781,36 @@ async function renderWeeklyLeaderboard(weekStart) {
   $('#leaderboard-date').textContent = `Week of ${prettyDate(weekStart)}`;
   const tbody = $('#leaderboard-body');
   tbody.innerHTML = '';
+  // Repurpose the table header for weekly: "Best" instead of "Time",
+  // "Played" instead of "Par". Restored to the daily defaults if the
+  // player switches back to a daily tab via the modal's tab strip.
+  const thead = $('#leaderboard-table thead');
+  if (thead) {
+    thead.innerHTML = '<tr><th>#</th><th>Name</th><th>Best</th><th class="lb-col-extra">💥</th><th>Played</th><th class="lb-col-extra">Pace</th></tr>';
+  }
   const entries = await fetchWeeklyLeaderboard(weekStart);
   const hasEntries = entries.length > 0;
   $('#leaderboard-table').classList.toggle('hidden', !hasEntries);
   $('#leaderboard-empty').classList.toggle('hidden', hasEntries);
   if (!hasEntries) return;
-  // Reuse the daily leaderboard table layout. The Par column shows
-  // `n/7` (attempts used) instead of par; the bomb-hits column shows
-  // a dash since weekly's bomb-hit penalty is folded into the time.
+  // Column repurposing for weekly:
+  //   Time   = bestTime (best across the player's 7 attempts)
+  //   💥     = strike count from THAT specific best play
+  //   Par    = N/7 attempts used
+  //   Pace   = bestTime / solver totalMoves (s per click)
+  // Older rows from before the schema added dayBombHits/totalMoves
+  // render '-' for those cells — graceful degradation, no upgrade
+  // step required.
   entries.forEach((entry, i) => {
     const tr = document.createElement('tr');
     const used = entry.attemptsUsed || 0;
-    tr.innerHTML = `<td>${i + 1}</td><td>${escapeHtml(entry.name)}</td><td>${entry.bestTime.toFixed(1)}s</td><td class="lb-col-extra">-</td><td>${used}/7</td><td class="lb-col-extra">-</td>`;
+    const bombs = (typeof entry.bestDayBombHits === 'number')
+      ? `<td class="lb-col-extra">${entry.bestDayBombHits}</td>`
+      : '<td class="lb-col-extra">-</td>';
+    const pace = (entry.totalMoves && entry.totalMoves > 0)
+      ? `<td class="lb-col-extra">${(entry.bestTime / entry.totalMoves).toFixed(2)}</td>`
+      : '<td class="lb-col-extra">-</td>';
+    tr.innerHTML = `<td>${i + 1}</td><td>${escapeHtml(entry.name)}</td><td>${entry.bestTime.toFixed(1)}s</td>${bombs}<td>${used}/7</td>${pace}`;
     tbody.appendChild(tr);
   });
 }
@@ -831,6 +849,12 @@ async function _renderLeaderboardForTab(tab) {
     return;
   }
   // daily / bonus paths share the existing daily-shape rendering.
+  // Restore the daily-style table header in case it was last rendered
+  // for the weekly tab (which repurposes Best/Played columns).
+  const thead = $('#leaderboard-table thead');
+  if (thead) {
+    thead.innerHTML = '<tr><th>#</th><th>Name</th><th>Time</th><th class="lb-col-extra">💥</th><th>Par</th><th class="lb-col-extra">Pace</th></tr>';
+  }
   const today = getLocalDateString();
   const dateStr = tab === 'bonus' ? `${today}_bonus` : today;
   const headerStr = tab === 'bonus'

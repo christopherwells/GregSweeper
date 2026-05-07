@@ -121,6 +121,7 @@ export const state = {
   weeklyBombHits: 0,               // for current attempt
   weeklyBombHitEvents: [],         // [{t, row, col}, ...] for current attempt
   weeklyDayTimes: {},              // {0: 45.2, 3: 50.1, ...} from Firebase on mode entry
+  weeklyDayBombHits: {},           // {0: 1, 3: 0, ...} per-day strike counts from Firebase
   weeklyFeatures: null,            // computed at canonical resolve, used for the first-attempt fit-data submit
   cachedWeeklyDayAttempts: {},     // {0: true, 3: true} from Firebase at startup so the gate is sync
 };

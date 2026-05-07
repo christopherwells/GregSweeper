@@ -239,6 +239,7 @@ export async function newGame() {
     state.weeklyBombHits = 0;
     state.weeklyBombHitEvents = [];
     state.weeklyDayTimes = {};
+    state.weeklyDayBombHits = {};
     state.weeklyFeatures = null;
   }
   state.dailyBombHits = 0;
@@ -514,8 +515,10 @@ export async function newGame() {
         const myUid = getUid();
         const myRow = myUid ? entries.find(e => e.uid === myUid) : null;
         state.weeklyDayTimes = myRow?.dayTimes ? { ...myRow.dayTimes } : {};
+        state.weeklyDayBombHits = myRow?.dayBombHits ? { ...myRow.dayBombHits } : {};
       } catch (err) {
         state.weeklyDayTimes = {};
+        state.weeklyDayBombHits = {};
       }
     }
 

@@ -103,6 +103,15 @@
               ".validate": "$day.matches(/^[0-6]$/) && newData.isNumber() && newData.val() >= 5 && newData.val() <= 3600"
             }
           },
+          "dayBombHits": {
+            ".validate": "newData.hasChildren() || newData.val() === null",
+            "$day": {
+              ".validate": "$day.matches(/^[0-6]$/) && newData.isNumber() && newData.val() >= 0 && newData.val() <= 50"
+            }
+          },
+          "totalMoves": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 1000"
+          },
           "timestamp": {
             ".validate": "newData.val() === now"
           },

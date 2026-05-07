@@ -173,7 +173,7 @@ export async function submitOnlineScore(dateString, name, time, bombHits = 0, ex
  * @param {Object<number, number>} dayTimes {0: 45.2, 3: 50.1, ...}
  * @returns {Promise<boolean>}
  */
-export async function submitWeeklyScore(weekStart, uid, name, bestTime, dayTimes) {
+export async function submitWeeklyScore(weekStart, uid, name, bestTime, dayTimes, extras = {}) {
   if (!isFirebaseOnline()) return false;
   if (!weekStart || !uid) return false;
   if (typeof bestTime !== 'number' || bestTime < MIN_VALID_TIME || bestTime > MAX_VALID_TIME) {
@@ -195,13 +195,37 @@ export async function submitWeeklyScore(weekStart, uid, name, bestTime, dayTimes
       }
     }
 
-    const ref = db.ref(`weekly/${weekStart}/${uid}`);
-    await ref.set({
+    // Per-day strikes count. Used by the leaderboard to show the strike
+    // count from whichever day produced the best time.
+    const safeDayBombHits = {};
+    if (extras.dayBombHits && typeof extras.dayBombHits === 'object') {
+      for (const [k, v] of Object.entries(extras.dayBombHits)) {
+        const day = Number(k);
+        if (Number.isInteger(day) && day >= 0 && day <= 6
+            && typeof v === 'number' && v >= 0 && v <= 50) {
+          safeDayBombHits[day] = v;
+        }
+      }
+    }
+
+    const payload = {
       name: sanitizedName,
       bestTime,
       dayTimes: safeDayTimes,
       timestamp: firebase.database.ServerValue.TIMESTAMP,
-    });
+    };
+    if (Object.keys(safeDayBombHits).length > 0) payload.dayBombHits = safeDayBombHits;
+    // totalMoves is the solver's optimal click count for the weekly
+    // board — same number for every player (same board), used to show
+    // a pace column = bestTime / totalMoves. Not strictly per-player
+    // data but it's convenient to denormalise here so the leaderboard
+    // renderer doesn't need a separate fetch.
+    if (typeof extras.totalMoves === 'number' && extras.totalMoves > 0 && extras.totalMoves < 1000) {
+      payload.totalMoves = extras.totalMoves;
+    }
+
+    const ref = db.ref(`weekly/${weekStart}/${uid}`);
+    await ref.set(payload);
     return true;
   } catch (err) {
     console.warn('Weekly score submit failed:', err.message);
@@ -229,12 +253,28 @@ export async function fetchWeeklyLeaderboard(weekStart) {
     snap.forEach((child) => {
       const v = child.val();
       if (v && typeof v.bestTime === 'number') {
+        const dayTimes = v.dayTimes || {};
+        const dayBombHits = v.dayBombHits || {};
+        // Find which day produced the best time so we can report the
+        // strikes from that specific play. If bestTime appears on
+        // multiple days (rare, players matching their own time), the
+        // first match wins — fine for the leaderboard column.
+        let bestDay = null;
+        for (const [k, t] of Object.entries(dayTimes)) {
+          if (Math.abs(t - v.bestTime) < 0.05) { bestDay = Number(k); break; }
+        }
+        const bestDayBombHits = bestDay != null && typeof dayBombHits[bestDay] === 'number'
+          ? dayBombHits[bestDay] : null;
         rows.push({
           uid: child.key,
           name: v.name || 'Anonymous',
           bestTime: v.bestTime,
-          dayTimes: v.dayTimes || {},
-          attemptsUsed: v.dayTimes ? Object.keys(v.dayTimes).length : 0,
+          dayTimes,
+          dayBombHits,
+          bestDay,
+          bestDayBombHits,
+          totalMoves: typeof v.totalMoves === 'number' ? v.totalMoves : null,
+          attemptsUsed: Object.keys(dayTimes).length,
         });
       }
     });

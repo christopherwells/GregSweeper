@@ -194,11 +194,23 @@ export function handleWin() {
     const scoreTime = Math.round((state.preciseTime || state.elapsedTime) * 10) / 10;
     const updated = { ...(state.weeklyDayTimes || {}), [state.weeklyDay]: scoreTime };
     state.weeklyDayTimes = updated;
+    // Merge this attempt's strike count into the per-day map. Used by
+    // the leaderboard to show the strikes from whichever day produced
+    // the player's best time.
+    const updatedBombs = { ...(state.weeklyDayBombHits || {}), [state.weeklyDay]: state.weeklyBombHits || 0 };
+    state.weeklyDayBombHits = updatedBombs;
     const bestTime = Math.min(...Object.values(updated));
+    // Solver-optimal click count for this board, derived once at
+    // canonical resolve in gameActions. Same number for every player
+    // (same board), used by the leaderboard's pace column.
+    const totalMoves = state.weeklyFeatures?.totalClicks || null;
 
     const playerName = (getPlayerName() || '').slice(0, 20).trim();
     if (playerName) {
-      submitWeeklyScore(state.weeklySeed, getUid(), playerName, bestTime, updated).catch(() => {});
+      submitWeeklyScore(state.weeklySeed, getUid(), playerName, bestTime, updated, {
+        dayBombHits: updatedBombs,
+        totalMoves,
+      }).catch(() => {});
 
       if (isFirstAttemptThisWeek && WEEKLY_FIT_DATA_ENABLED) {
         // Honest first encounter — qualifies for par-model fit data.
