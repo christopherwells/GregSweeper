@@ -1,0 +1,42 @@
+name: Backfill weekly leaderboard row
+
+# Patches a single weekly/{weekStart}/{uid} row to add dayBombHits +
+# totalMoves to a row written under the pre-v1.5.45 schema. Manual
+# trigger only — for one-off corrections, not a routine.
+
+on:
+  workflow_dispatch:
+    inputs:
+      weekStart:
+        description: 'Week start (YYYY-MM-DD, must be a Monday)'
+        required: true
+      uid:
+        description: 'Firebase anonymous uid of the player'
+        required: true
+      dayBombHits:
+        description: 'JSON map of day-index → strike count, e.g. {"3":0}'
+        required: true
+      totalMoves:
+        description: 'Solver totalClicks for the weekly board (integer)'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Patch row
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          node scripts/backfill-weekly-row.mjs \
+            "${{ github.event.inputs.weekStart }}" \
+            "${{ github.event.inputs.uid }}" \
+            '${{ github.event.inputs.dayBombHits }}' \
+            "${{ github.event.inputs.totalMoves }}"
