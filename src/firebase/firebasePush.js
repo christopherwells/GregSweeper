@@ -188,15 +188,18 @@ export async function refreshTokenIfStale() {
 
     const reg = await navigator.serviceWorker.ready;
     const messaging = firebase.messaging();
-    // If Firebase has no token recorded but the user is enabled, the
-    // subscription was either never written or got auto-cleared after
-    // a 404. In that case we want a guaranteed-fresh mint, so wipe
-    // FCM's cached token first. Same reasoning as enableNotifications:
-    // FCM's getToken returns the IndexedDB-cached token without
-    // re-validating, so a stale cache makes "refresh" a no-op.
-    if (!existingToken) {
-      try { await messaging.deleteToken(); } catch {}
-    }
+    // ALWAYS deleteToken before getToken. The previous version skipped
+    // the wipe when Firebase already had a token, on the theory that an
+    // existing record meant a good subscription. But SW updates (every
+    // CACHE_NAME bump, every Check for Updates) invalidate the
+    // underlying push subscription server-side, while FCM's IndexedDB
+    // cache still holds the now-dead token. The next getToken returns
+    // that dead token, currentToken === existingToken short-circuits
+    // 'unchanged', and Firebase keeps pointing at a tombstoned token
+    // until a push attempt 404s and clears it. Forcing the wipe every
+    // load guarantees Firebase tracks a token that's actually live for
+    // the SW currently controlling this page.
+    try { await messaging.deleteToken(); } catch {}
     const currentToken = await messaging.getToken({
       vapidKey: VAPID_PUBLIC_KEY,
       serviceWorkerRegistration: reg,
