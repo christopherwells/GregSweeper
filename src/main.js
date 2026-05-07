@@ -2256,14 +2256,20 @@ async function syncReminderUI() {
     const { loadNotificationPrefs, isPushSupported } = await import('./firebase/firebasePush.js');
     if (!isPushSupported()) {
       dailyReminderToggle.disabled = true;
+      if (reminderHourSelect) reminderHourSelect.disabled = true;
       if (dailyReminderHint) dailyReminderHint.textContent = 'Push notifications not supported in this browser.';
       return;
     }
     const prefs = await loadNotificationPrefs();
     dailyReminderToggle.checked = !!prefs.enabled;
+    // Dropdown stays interactive regardless of toggle state so the
+    // player can pre-set their preferred time even before flipping
+    // reminders on. updateNotificationHour writes only the hourLocal
+    // field, so a hour-change while disabled is harmless — the cron
+    // skips users where enabled !== true anyway.
     if (reminderHourSelect) {
       reminderHourSelect.value = String(prefs.hourLocal ?? 9);
-      reminderHourSelect.disabled = !prefs.enabled;
+      reminderHourSelect.disabled = false;
     }
   } catch (err) {
     console.warn('syncReminderUI failed:', err.message);
@@ -2296,7 +2302,6 @@ if (dailyReminderToggle) {
       const hour = parseInt(reminderHourSelect?.value || '9', 10);
       const result = await enableNotifications({ hourLocal: hour, dailyReminder: true });
       if (result === 'success') {
-        if (reminderHourSelect) reminderHourSelect.disabled = false;
         showToast('🔔 Daily reminders enabled');
       } else if (result === 'denied') {
         dailyReminderToggle.checked = false;
@@ -2317,7 +2322,6 @@ if (dailyReminderToggle) {
     } else {
       const result = await disableNotifications();
       if (result === 'success') {
-        if (reminderHourSelect) reminderHourSelect.disabled = true;
         showToast('🔕 Daily reminders disabled');
       }
     }
