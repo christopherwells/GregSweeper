@@ -80,6 +80,17 @@ export function tryResumeGame(mode) {
   if (gs.gameMode === 'daily' && gs.dailySeed) {
     const expectedSeed = state.dailySeed || getLocalDateString();
     if (gs.dailySeed !== expectedSeed) return false;
+    // Cross-mode-garbage guard: the bonus daily click handler sets
+    // state.gameMode='daily' + state.dailySeed=today+'_bonus' BEFORE
+    // switchMode, which means switchMode's persistGameState() writes
+    // the in-progress challenge/timed/chaos board under the 'daily'
+    // localStorage key with the bonus seed but no dailyRngSeed (since
+    // the daily branch in newGame hadn't run yet). Without this guard,
+    // tryResumeGame matches the seed and resumes the wrong (challenge)
+    // board the next time the player enters bonus daily. dailyRngSeed
+    // is always populated by newGame's daily branch, so requiring it
+    // here is the right fingerprint for a real daily save.
+    if (!gs.dailyRngSeed) return false;
   }
 
   // Weekly resume: only valid if both the week AND the day-index match,
