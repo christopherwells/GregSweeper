@@ -1,38 +1,22 @@
 name: Send daily/weekly push notifications
 
-# Sends push notifications to subscribers via FCM. Triggered three ways:
+# Hourly cron that sends push notifications to subscribers whose chosen
+# ET hour matches the current ET hour. send-push.mjs reads each user's
+# notificationPrefs.hourLocal from Firebase and only sends to matches —
+# so each subscriber gets at most one push per day, at the time they
+# picked in Settings.
 #
-#   • workflow_run — fires the moment a precompute workflow finishes
-#     successfully. This is the primary trigger: pushes go out as soon
-#     as a fresh canonical board is on Firebase, so the player gets
-#     pinged when there's actually something new to play. Sends to
-#     ALL enabled subscribers regardless of hourLocal.
-#
-#   • schedule (hourly cron) — falls back to the user's chosen hour
-#     for anyone who wants a clock-time reminder rather than the
-#     event-driven ping. Filters by notificationPrefs.hourLocal ===
-#     currentHourET so each user gets at most one timed push per day.
-#
-#   • workflow_dispatch — manual fire for testing. Same behavior as
-#     workflow_run (broadcast to all enabled subscribers).
-#
-# send-push.mjs reads $GITHUB_EVENT_NAME to pick the right behavior.
+# workflow_dispatch lets you trigger manually for testing; it'll only
+# fire to subscribers whose hourLocal matches the current ET hour.
 #
 # Required secrets:
-#   FIREBASE_SERVICE_ACCOUNT — full service-account JSON (one line). Used
-#                              to mint OAuth2 access tokens for FCM and
-#                              read users/*. Generate via Firebase Console
-#                              → Project Settings → Service Accounts.
+#   FIREBASE_SERVICE_ACCOUNT — full service-account JSON (one line).
+#     Used to mint OAuth2 access tokens for FCM and read users/*.
+#     Generate via Firebase Console → Project Settings → Service Accounts.
 
 on:
   schedule:
     - cron: '0 * * * *'
-  workflow_run:
-    workflows:
-      - 'Precompute daily board'
-      - 'Precompute weekly board'
-    types:
-      - completed
   workflow_dispatch: {}
 
 permissions:
@@ -44,10 +28,6 @@ concurrency:
 
 jobs:
   send:
-    # Skip workflow_run firings where the upstream precompute failed —
-    # we don't want to push "puzzle ready" if the canonical wasn't
-    # actually written.
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -56,10 +36,7 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Send push notifications
+      - name: Send push notifications for the current ET hour
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          # Identifies the source workflow (daily vs weekly precompute)
-          # when invoked via workflow_run. Empty for schedule / dispatch.
-          TRIGGER_WORKFLOW: ${{ github.event.workflow_run.name || '' }}
         run: node scripts/send-push.mjs
