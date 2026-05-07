@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v1.5.51';
+const CACHE_NAME = 'gregsweeper-v1.5.52';
 const ASSETS = [
   './',
   './index.html',
@@ -117,16 +117,25 @@ self.addEventListener('message', (event) => {
 // when multiple pushes for the same category arrive.
 self.addEventListener('push', (event) => {
   if (!event.data) return;
-  let payload;
-  try { payload = event.data.json(); }
-  catch { payload = { title: 'GregSweeper', body: event.data.text() }; }
+  let raw;
+  try { raw = event.data.json(); }
+  catch { raw = { title: 'GregSweeper', body: event.data.text() }; }
+  // FCM can deliver the payload in any of three shapes depending on
+  // how the v1 message was structured: flat (data-only message lands
+  // as flat data), nested under .data, or under .notification (when
+  // the sender used the platform-default notification block). Reading
+  // from all three keeps us robust to any structure switch.
+  const title = raw?.notification?.title || raw?.data?.title || raw?.title || 'GregSweeper';
+  const body = raw?.notification?.body || raw?.data?.body || raw?.body || '';
+  const tag = raw?.notification?.tag || raw?.data?.tag || raw?.tag || 'gregsweeper-notification';
+  const deepLink = raw?.data?.deepLink || raw?.deepLink || raw?.fcmOptions?.link || './?mode=daily';
   event.waitUntil(
-    self.registration.showNotification(payload.title || 'GregSweeper', {
-      body: payload.body || '',
+    self.registration.showNotification(title, {
+      body,
       icon: './assets/icon-192.png',
       badge: './assets/icon-192.png',
-      tag: payload.tag || 'gregsweeper-notification',
-      data: { deepLink: payload.deepLink || './?mode=daily' },
+      tag,
+      data: { deepLink },
     })
   );
 });

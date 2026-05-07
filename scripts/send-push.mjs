@@ -155,23 +155,22 @@ async function getAccessToken(serviceAccount) {
 }
 
 async function sendOneFcmMessage(accessToken, token, payload) {
+  // Data-only message: we put title/body/tag/deepLink in `data` and
+  // let our SW's push handler call showNotification itself. Avoids
+  // FCM's platform-override gotcha where setting webpush.notification
+  // (for the icon) silently drops the title/body from the top-level
+  // notification block. Since the SW does the rendering, every field
+  // (title, body, icon path, deep link) flows through ONE code path —
+  // sw.js's `push` listener. All values are strings (FCM data fields
+  // must be strings).
   const message = {
     message: {
       token,
-      notification: { title: payload.title, body: payload.body },
       data: {
-        deepLink: payload.deepLink,
+        title: payload.title,
+        body: payload.body,
         tag: payload.tag,
-      },
-      webpush: {
-        notification: {
-          icon: '/assets/icon-192.png',
-          badge: '/assets/icon-192.png',
-          tag: payload.tag,
-        },
-        fcm_options: {
-          link: payload.deepLink,
-        },
+        deepLink: payload.deepLink,
       },
     },
   };
