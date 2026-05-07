@@ -135,6 +135,53 @@ export async function disableNotifications() {
 }
 
 /**
+ * Refresh the FCM token if notifications are enabled in Firebase but
+ * the current page's token is missing or out of sync. Call on app load.
+ *
+ * Why this matters: events like "Check for Updates" (which unregisters
+ * the SW), browser data clears, OS-level permission revocation, or
+ * automatic FCM token rotation can all leave the Firebase record
+ * pointing to a token that no longer maps to a live push subscription.
+ * The cron then sends to that token, FCM returns 404, send-push.mjs
+ * auto-clears the subscription, and the user gets no notifications until
+ * they manually re-toggle. With this auto-heal in place, every app load
+ * checks: enabled in Firebase but token mismatch (or token absent) →
+ * call getToken and write the fresh one. Idempotent and silent.
+ */
+export async function refreshTokenIfStale() {
+  if (!isPushSupported() || !VAPID_PUBLIC_KEY) return 'skip';
+  if (Notification.permission !== 'granted') return 'skip';
+  try {
+    const uid = getUid();
+    if (!uid || typeof firebase === 'undefined' || !firebase.database) return 'skip';
+    const db = firebase.database();
+    const prefsSnap = await db.ref(`users/${uid}/notificationPrefs`).once('value');
+    const prefs = prefsSnap.val();
+    if (!prefs || prefs.enabled !== true) return 'skip';
+
+    const subSnap = await db.ref(`users/${uid}/pushSubscription`).once('value');
+    const existingToken = subSnap.val()?.token || null;
+
+    const reg = await navigator.serviceWorker.ready;
+    const currentToken = await firebase.messaging().getToken({
+      vapidKey: VAPID_PUBLIC_KEY,
+      serviceWorkerRegistration: reg,
+    });
+    if (!currentToken) return 'no-token';
+    if (currentToken === existingToken) return 'unchanged';
+
+    await db.ref(`users/${uid}/pushSubscription`).set({
+      token: currentToken,
+      subscribedAt: firebase.database.ServerValue.TIMESTAMP,
+    });
+    return 'refreshed';
+  } catch (err) {
+    console.warn('refreshTokenIfStale failed:', err.message);
+    return 'error';
+  }
+}
+
+/**
  * Read the current notification prefs from Firebase. Returns an object
  * shaped { enabled, hourLocal, dailyReminder, streakWarning } or
  * defaults if nothing is stored yet.

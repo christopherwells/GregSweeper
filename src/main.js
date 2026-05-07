@@ -2219,6 +2219,20 @@ if (dailyReminderToggle) {
   // syncReminderUI is also called when the Settings modal opens.
   setTimeout(syncReminderUI, 1500);
 
+  // Auto-heal stale FCM tokens on every app load. Events like a SW
+  // unregister (Settings → Check for Updates) can leave Firebase
+  // pointing to a dead token; the next cron then 404s and the
+  // subscription gets auto-cleared, killing future pushes until the
+  // user manually re-toggles. This call regenerates the token via
+  // getToken() and writes whatever's current to Firebase, so a stale
+  // record self-heals on the next visit.
+  setTimeout(async () => {
+    try {
+      const { refreshTokenIfStale } = await import('./firebase/firebasePush.js');
+      await refreshTokenIfStale();
+    } catch {}
+  }, 3000);
+
   dailyReminderToggle.addEventListener('change', async () => {
     const wantsOn = dailyReminderToggle.checked;
     const { enableNotifications, disableNotifications, isIOS, isInstalledPWA } = await import('./firebase/firebasePush.js');

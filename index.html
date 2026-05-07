@@ -927,15 +927,32 @@
         });
       }).catch(() => {});
     }
-    // Global cache clear function used by Settings button and update banner
-    window.gregsweeperCacheClear = function() {
-      // Set flag to skip SW on next load
+    // Global cache clear function used by Settings button and update banner.
+    // Sets a flag to skip SW on the next load, then unregisters all SWs
+    // and clears caches. Before the SW goes away we also try to delete
+    // the FCM token + Firebase pushSubscription record — without that,
+    // the unregister invalidates the underlying browser push subscription
+    // but Firebase keeps pointing to the now-dead token, the next cron
+    // 404s, and the user gets no notifications until they manually re-
+    // toggle. The dynamic import is wrapped in a try/catch so the cache-
+    // clear flow still works on broken or partially-loaded pages.
+    window.gregsweeperCacheClear = async function() {
       sessionStorage.setItem('skip_sw', '1');
-      // Unregister all SWs and clear all caches
-      Promise.all([
-        navigator.serviceWorker.getRegistrations().then(regs => Promise.all(regs.map(r => r.unregister()))),
-        caches.keys().then(names => Promise.all(names.map(n => caches.delete(n))))
-      ]).then(() => { window.location.href = window.location.pathname + '?cb=' + Date.now(); });
+      try {
+        const mod = await import('./src/firebase/firebasePush.js');
+        await mod.disableNotifications();
+      } catch (err) {
+        console.warn('cacheClear: disableNotifications failed:', err && err.message);
+      }
+      try {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map(r => r.unregister()));
+        const names = await caches.keys();
+        await Promise.all(names.map(n => caches.delete(n)));
+      } catch (err) {
+        console.warn('cacheClear: SW/caches teardown failed:', err && err.message);
+      }
+      window.location.href = window.location.pathname + '?cb=' + Date.now();
     };
   </script>
 </body>
