@@ -2309,6 +2309,12 @@ if (dailyReminderToggle) {
       } else if (result === 'unsupported') {
         dailyReminderToggle.checked = false;
         showToast("This browser doesn't support push notifications.");
+      } else if (result === 'token-null') {
+        dailyReminderToggle.checked = false;
+        showToast('FCM returned no token. Try uninstalling and reinstalling the PWA.');
+      } else if (result === 'token-error') {
+        dailyReminderToggle.checked = false;
+        showToast('Token write failed. Check connection and try again.');
       } else {
         dailyReminderToggle.checked = false;
         showToast('Could not enable notifications. Try again later.');

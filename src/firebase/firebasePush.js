@@ -131,10 +131,12 @@ export async function enableNotifications({ hourLocal = 9, dailyReminder = true,
         subscribedAt: firebase.database.ServerValue.TIMESTAMP,
       });
     } else {
-      console.warn('enableNotifications: getToken returned null; relying on refreshTokenIfStale to retry');
+      console.warn('enableNotifications: getToken returned null');
+      return 'token-null';
     }
   } catch (err) {
-    console.warn('enableNotifications: token/subscription write failed (will retry on next load):', err.message);
+    console.warn('enableNotifications: token/subscription write failed:', err.message);
+    return 'token-error';
   }
 
   return 'success';
