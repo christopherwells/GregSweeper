@@ -107,6 +107,15 @@ export async function enableNotifications({ hourLocal = 9, dailyReminder = true,
   try {
     const messaging = firebase.messaging();
     const reg = await navigator.serviceWorker.ready;
+    // Force-clear FCM's IndexedDB-cached token before requesting a new
+    // one. Without this, getToken can return a stale cached token from
+    // an earlier SW lifecycle (since the underlying browser push
+    // subscription was invalidated by a SW unregister). FCM doesn't
+    // re-validate the cached token against the live subscription on
+    // its own — it just returns it. The cron then sends to a dead
+    // token and gets 404. Deleting first guarantees a fresh mint
+    // tied to the current SW's PushSubscription.
+    try { await messaging.deleteToken(); } catch {}
     const token = await messaging.getToken({
       vapidKey: VAPID_PUBLIC_KEY,
       serviceWorkerRegistration: reg,
@@ -178,7 +187,17 @@ export async function refreshTokenIfStale() {
     const existingToken = subSnap.val()?.token || null;
 
     const reg = await navigator.serviceWorker.ready;
-    const currentToken = await firebase.messaging().getToken({
+    const messaging = firebase.messaging();
+    // If Firebase has no token recorded but the user is enabled, the
+    // subscription was either never written or got auto-cleared after
+    // a 404. In that case we want a guaranteed-fresh mint, so wipe
+    // FCM's cached token first. Same reasoning as enableNotifications:
+    // FCM's getToken returns the IndexedDB-cached token without
+    // re-validating, so a stale cache makes "refresh" a no-op.
+    if (!existingToken) {
+      try { await messaging.deleteToken(); } catch {}
+    }
+    const currentToken = await messaging.getToken({
       vapidKey: VAPID_PUBLIC_KEY,
       serviceWorkerRegistration: reg,
     });
