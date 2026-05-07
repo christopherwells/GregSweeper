@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v1.5.58';
+const CACHE_NAME = 'gregsweeper-v1.5.59';
 const ASSETS = [
   './',
   './index.html',
@@ -126,11 +126,7 @@ self.addEventListener('push', (event) => {
   // the sender used the platform-default notification block). Reading
   // from all three keeps us robust to any structure switch.
   const title = raw?.notification?.title || raw?.data?.title || raw?.title || 'GregSweeper';
-  // DEBUG: when no body is found, surface the raw payload shape in the
-  // notification so we can see exactly what FCM delivered. Remove once
-  // the title/body display is verified working.
-  const resolvedBody = raw?.notification?.body || raw?.data?.body || raw?.body;
-  const body = resolvedBody || `[debug] ${JSON.stringify(raw).slice(0, 280)}`;
+  const body = raw?.notification?.body || raw?.data?.body || raw?.body || '';
   const tag = raw?.notification?.tag || raw?.data?.tag || raw?.tag || 'gregsweeper-notification';
   const deepLink = raw?.data?.deepLink || raw?.deepLink || raw?.fcmOptions?.link || './?mode=daily';
   event.waitUntil(

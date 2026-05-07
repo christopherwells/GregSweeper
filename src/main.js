@@ -2246,21 +2246,17 @@ const dailyReminderHint = $('#daily-reminder-hint');
 
 async function syncReminderUI() {
   if (!dailyReminderToggle) return;
+  // Always leave the toggle interactive. A previous version disabled
+  // it when isPushSupported() returned false at sync-time (eg before
+  // firebase-messaging-compat finished loading) — but nothing ever
+  // re-enabled it once support arrived. The toggle handler itself
+  // returns a clear error toast when push isn't supported, so a
+  // disabled-by-default state buys us nothing except silent failures.
+  dailyReminderToggle.disabled = false;
   try {
-    const { loadNotificationPrefs, isPushSupported } = await import('./firebase/firebasePush.js');
-    if (!isPushSupported()) {
-      dailyReminderToggle.disabled = true;
-      if (reminderHourSelect) reminderHourSelect.disabled = true;
-      if (dailyReminderHint) dailyReminderHint.textContent = 'Push notifications not supported in this browser.';
-      return;
-    }
+    const { loadNotificationPrefs } = await import('./firebase/firebasePush.js');
     const prefs = await loadNotificationPrefs();
     dailyReminderToggle.checked = !!prefs.enabled;
-    // Dropdown stays interactive regardless of toggle state so the
-    // player can pre-set their preferred time even before flipping
-    // reminders on. updateNotificationHour writes only the hourLocal
-    // field, so a hour-change while disabled is harmless — the cron
-    // skips users where enabled !== true anyway.
     if (reminderHourSelect) {
       reminderHourSelect.value = String(prefs.hourLocal ?? 9);
       reminderHourSelect.disabled = false;
@@ -2291,7 +2287,6 @@ if (dailyReminderToggle) {
 
   dailyReminderToggle.addEventListener('change', async () => {
     const wantsOn = dailyReminderToggle.checked;
-    showToast(`Toggle changed: wantsOn=${wantsOn}`);
     const { enableNotifications, disableNotifications, isIOS, isInstalledPWA } = await import('./firebase/firebasePush.js');
     if (wantsOn) {
       const hour = parseInt(reminderHourSelect?.value || '9', 10);
@@ -2324,8 +2319,6 @@ if (dailyReminderToggle) {
       const result = await disableNotifications();
       if (result === 'success') {
         showToast('🔕 Daily reminders disabled');
-      } else {
-        showToast(`Disable returned: ${result}`);
       }
     }
   });
