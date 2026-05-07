@@ -947,22 +947,15 @@
       }).catch(() => {});
     }
     // Global cache clear function used by Settings button and update banner.
-    // Sets a flag to skip SW on the next load, then unregisters all SWs
-    // and clears caches. Before the SW goes away we also try to delete
-    // the FCM token + Firebase pushSubscription record — without that,
-    // the unregister invalidates the underlying browser push subscription
-    // but Firebase keeps pointing to the now-dead token, the next cron
-    // 404s, and the user gets no notifications until they manually re-
-    // toggle. The dynamic import is wrapped in a try/catch so the cache-
-    // clear flow still works on broken or partially-loaded pages.
+    // Sets a flag to skip SW on the next load, unregisters all SWs, and
+    // clears caches. The user's notificationPrefs.enabled is intentionally
+    // left alone — the firebasePush.refreshTokenIfStale() auto-heal that
+    // runs on every app load will mint a fresh FCM token against the
+    // freshly-registered SW and rewrite the Firebase record. Without that
+    // auto-heal we'd need to disable here to avoid stale tokens, which
+    // would visibly uncheck the daily-reminder toggle on every update.
     window.gregsweeperCacheClear = async function() {
       sessionStorage.setItem('skip_sw', '1');
-      try {
-        const mod = await import('./src/firebase/firebasePush.js');
-        await mod.disableNotifications();
-      } catch (err) {
-        console.warn('cacheClear: disableNotifications failed:', err && err.message);
-      }
       try {
         const regs = await navigator.serviceWorker.getRegistrations();
         await Promise.all(regs.map(r => r.unregister()));
