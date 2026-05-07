@@ -71,6 +71,22 @@ export function tryResumeGame(mode) {
     if (gs.dailySeed !== today) return false;
   }
 
+  // Divergent-canonical check: if the saved daily was generated against
+  // a different `:trialN` seed than today's canonical board on Firebase,
+  // discard the local save and let newGame() pull the canonical.
+  // Without this, a player whose previous load lost a Firebase race
+  // (and silently fell through to local generation) would keep playing
+  // the wrong board on every return visit until they manually cleared
+  // their cache. Kate hit exactly this scenario on 2026-05-06 — saved
+  // trial3 in her browser even though canonical was trial5.
+  if (gs.gameMode === 'daily'
+      && gs.dailyRngSeed
+      && state.canonicalDailyBoard?.raw?.rngSeed
+      && state.canonicalDailyBoard.date === gs.dailySeed
+      && state.canonicalDailyBoard.raw.rngSeed !== gs.dailyRngSeed) {
+    return false;
+  }
+
   // Detect cells corrupted by the v1.5.19 canonical-board deserializer
   // bug (cells without row/col). If found, return false so newGame()
   // runs a fresh canonical fetch with the FIXED deserializer instead

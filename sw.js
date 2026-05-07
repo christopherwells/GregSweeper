@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v1.5.30';
+const CACHE_NAME = 'gregsweeper-v1.5.31';
 const ASSETS = [
   './',
   './index.html',
@@ -77,11 +77,32 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    )
+    Promise.all([
+      caches.keys().then((keys) =>
+        Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+      ),
+      // Broadcast our cache name to every client window so the page knows
+      // exactly which build is serving it. Used for forensic provenance
+      // (`codeVersion` field on canonical board writes) and for runtime
+      // diagnostics. Stops the bug where the page hardcoded a stale
+      // version literal that didn't match what was actually running.
+      self.clients.matchAll({ includeUncontrolled: true }).then((clients) => {
+        for (const client of clients) {
+          client.postMessage({ type: 'codeVersion', value: CACHE_NAME });
+        }
+      }),
+    ])
   );
   self.clients.claim();
+});
+
+// Reply to client requests for the current cache name. The page asks
+// this on first load (when it has a controller but missed the activate
+// broadcast) so it can populate `state.codeVersion` synchronously.
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'getCodeVersion') {
+    event.source?.postMessage({ type: 'codeVersion', value: CACHE_NAME });
+  }
 });
 
 self.addEventListener('fetch', (event) => {

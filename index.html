@@ -16,6 +16,40 @@
   <link rel="stylesheet" href="src/styles/animations.css">
   <link rel="stylesheet" href="src/styles/themes/classic.css">
   <link rel="stylesheet" href="src/styles/themes/dark.css">
+  <!-- Boot overlay: visible from first paint until the startup gate (SW
+       update check + Firebase ready + canonical board fetch for daily)
+       resolves. CSS is inline so it shows even before stylesheets load.
+       Without this, the player would see the title screen / a daily
+       board flash up before we know whether the canonical loaded — and
+       on a cold-load race that flash could be a divergent board. -->
+  <style>
+    #boot-overlay {
+      position: fixed; inset: 0; z-index: 999999;
+      background: #1a1a2e; color: #fff;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 18px;
+      font-family: 'Press Start 2P', system-ui, -apple-system, sans-serif;
+      transition: opacity 0.2s ease;
+    }
+    #boot-overlay.fading { opacity: 0; pointer-events: none; }
+    #boot-overlay h1 {
+      font-size: 28px; margin: 0; letter-spacing: 2px;
+      color: #6c5ce7; text-shadow: 2px 2px 0 #2d3436;
+    }
+    #boot-overlay .boot-spinner {
+      width: 36px; height: 36px;
+      border: 3px solid rgba(255,255,255,0.15);
+      border-top-color: #6c5ce7;
+      border-radius: 50%;
+      animation: bootspin 0.8s linear infinite;
+    }
+    #boot-overlay #boot-status {
+      margin: 0; opacity: 0.7; font-size: 11px;
+      letter-spacing: 1px; min-height: 14px;
+    }
+    @keyframes bootspin { to { transform: rotate(360deg); } }
+  </style>
   <!-- Other themes loaded on-demand by themeManager.js -->
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700;900&family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
   <!-- SW recovery: runs even if main app JS is broken, forces update + reload (once) -->
@@ -38,6 +72,13 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 </head>
 <body>
+  <!-- Boot overlay — visible until runStartupGate() in main.js completes -->
+  <div id="boot-overlay">
+    <h1>GregSweeper</h1>
+    <div class="boot-spinner"></div>
+    <p id="boot-status">Loading…</p>
+  </div>
+
   <!-- Title Screen -->
   <div id="title-screen" class="title-screen">
     <div class="title-screen-header">

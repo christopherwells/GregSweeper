@@ -70,6 +70,188 @@ import { isStorageFailing, safeGet, safeSet, safeRemove } from './storage/storag
 import { pauseTimer, resumeTimer } from './game/timerManager.js';
 import { startTutorial } from './ui/tutorialManager.js';
 
+// ── Code-version handshake with the service worker ────
+// The SW broadcasts its CACHE_NAME on activate and replies to
+// `getCodeVersion` requests. We listen for both. `state.codeVersion`
+// is the single source of truth for which build is running — used
+// as forensic provenance on canonical-board writes (instead of the
+// stale literal it used to hardcode) and surfaced in diagnostics.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    if (event.data?.type === 'codeVersion' && typeof event.data.value === 'string') {
+      state.codeVersion = event.data.value;
+    }
+  });
+  if (navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({ type: 'getCodeVersion' });
+  }
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({ type: 'getCodeVersion' });
+    }
+  });
+}
+
+// ── Boot overlay helpers ──────────────────────────────
+function setBootStatus(text) {
+  const el = document.getElementById('boot-status');
+  if (el) el.textContent = text;
+}
+function hideBootOverlay() {
+  const el = document.getElementById('boot-overlay');
+  if (!el) return;
+  el.classList.add('fading');
+  setTimeout(() => el.remove(), 250);
+}
+
+// ── Service-worker update gate ────────────────────────
+// Kick off an update check and wait briefly for any new SW to install
+// and activate. If activation fires, the controllerchange handler in
+// index.html <head> reloads the page — the new code restarts the gate
+// from scratch, so we just need to give it time to fire. If no update
+// is found within timeoutMs, we proceed with the current bundle.
+async function ensureLatestServiceWorker(timeoutMs = 3000) {
+  if (!('serviceWorker' in navigator)) return;
+  let reg;
+  try {
+    reg = await navigator.serviceWorker.getRegistration();
+  } catch { return; }
+  if (!reg) return;
+
+  await new Promise((resolve) => {
+    const timer = setTimeout(resolve, timeoutMs);
+    reg.addEventListener('updatefound', () => {
+      const sw = reg.installing;
+      if (!sw) return;
+      sw.addEventListener('statechange', () => {
+        if (sw.state === 'activated') {
+          clearTimeout(timer);
+          // Don't resolve; controllerchange will reload us. If the
+          // reload doesn't fire within 500ms (unusual), fall through
+          // so the gate can proceed.
+          setTimeout(resolve, 500);
+        }
+      });
+    });
+    reg.update().catch(() => {});
+  });
+}
+
+// ── Startup gate ──────────────────────────────────────
+// Render nothing user-interactive until three preconditions hold:
+//   1. The SW is up to date (or we've waited long enough — a stale
+//      cache on a steady-state load is benign).
+//   2. The Firebase SDK is initialized so loadDailyBoard can succeed.
+//   3. For non-practice loads, today's canonical board is in memory.
+//
+// Without this gate, a cold-load race lets `loadDailyBoard` return
+// null silently, gameActions falls through to local generation, the
+// stale `experimentTarget.json` cache picks a different `:trialN`
+// winner from whatever wrote the canonical, and the player ends up
+// on a divergent board. This is exactly the failure that put Kate on
+// trial3 while Chris was on trial5 on 2026-05-06.
+async function runStartupGate() {
+  setBootStatus('Checking for updates…');
+  await ensureLatestServiceWorker(3000);
+
+  setBootStatus('Connecting…');
+  // Wait for `firebase.initializeApp()` to have run. initFirebase() was
+  // started before the gate; we just poll. If it never arrives in 8s,
+  // proceed in degraded (offline) mode — score submission is already
+  // gated on isFirebaseOnline() so a fully-local play stays out of the
+  // canonical leaderboard.
+  let firebaseReady = false;
+  const fbStartedAt = Date.now();
+  const FB_TIMEOUT = 8000;
+  while (Date.now() - fbStartedAt < FB_TIMEOUT) {
+    if (typeof firebase !== 'undefined' && firebase.apps?.length) {
+      firebaseReady = true;
+      break;
+    }
+    await new Promise(r => setTimeout(r, 50));
+  }
+  state.firebaseReady = firebaseReady;
+
+  // Pre-fetch today's canonical board so newGame() and tryResumeGame()
+  // see it before any rendering decision. Skip for ?seed= practice runs
+  // since those intentionally bypass the canonical bucket.
+  const urlParams = new URLSearchParams(window.location.search);
+  const customSeed = urlParams.get('seed');
+  const today = getLocalDateString();
+  if (firebaseReady && !customSeed) {
+    setBootStatus('Loading today\'s puzzle…');
+    try {
+      const raw = await loadDailyBoard(today);
+      if (raw) {
+        state.canonicalDailyBoard = { date: today, raw };
+      }
+    } catch (err) {
+      console.warn('startup gate: canonical fetch failed:', err.message);
+    }
+  }
+
+  // Stale-completion check: if the local "completed today" flag is set
+  // but our actual Firebase score for today is missing or has a
+  // divergent rngSeed, the local flag is from a divergent play that
+  // should not block a clean replay. Clear the flag.
+  //
+  // This is what unblocks Kate (and any future player who lands here
+  // after the SW update): her trial3 score was deleted server-side
+  // and her local completion flag is the only thing standing between
+  // her and the canonical board. Without this check she'd see the
+  // "already completed today" toast forever.
+  //
+  // No-op for clean players (Chris): his trial5 score matches canonical,
+  // flag stays, daily card still shows "completed today!".
+  if (firebaseReady && !customSeed && isDailyCompleted(today)) {
+    setBootStatus('Verifying today\'s play…');
+    const myUid = await _waitForUid(3000);
+    const canonicalSeed = state.canonicalDailyBoard?.raw?.rngSeed || null;
+    if (myUid && canonicalSeed) {
+      try {
+        const snap = await firebase.database().ref(`daily/${today}`).once('value');
+        let myScore = null;
+        snap.forEach((child) => {
+          const v = child.val();
+          if (v && v.uid === myUid) {
+            myScore = v;
+            return true; // stop iteration
+          }
+          return undefined;
+        });
+        const myScoreSeed = myScore?.rngSeed || (myScore ? today : null);
+        const isClean = myScore && myScoreSeed === canonicalSeed;
+        if (!isClean) {
+          // Divergent or missing — clear the completion flag plus the
+          // cached par/moves so newGame recomputes them against the
+          // canonical layout. Don't touch streak fields; if we cleanly
+          // replay, Firebase already has the correct streak from the
+          // original (divergent) submission, and replaying maintains
+          // it via lastDailyDate === today.
+          safeRemove('minesweeper_daily_completed_date');
+          safeRemove('minesweeper_daily_par_' + today);
+          safeRemove('minesweeper_daily_moves_' + today);
+        }
+      } catch (err) {
+        console.warn('startup gate: completion verification failed:', err.message);
+      }
+    }
+  }
+}
+
+// Wait for anonymous auth to complete and return the resulting uid, or
+// null if it never arrives. Polls because initAnonymousAuth is fire-and-
+// forget from init() — we don't have a promise to await directly.
+async function _waitForUid(timeoutMs = 3000) {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    const uid = getUid();
+    if (uid) return uid;
+    await new Promise(r => setTimeout(r, 50));
+  }
+  return null;
+}
+
 // ── Theme-color meta tag (Android nav bar) ───────────
 function updateThemeColor() {
   const bg = getComputedStyle(document.documentElement).getPropertyValue('--color-app-bg').trim();
@@ -1754,7 +1936,7 @@ if (colorblindToggle) {
 
 // ── Init ───────────────────────────────────────────────
 
-function init() {
+async function init() {
   const theme = loadTheme();
   const unlocked = getUnlockedThemes();
 
@@ -1821,6 +2003,12 @@ function init() {
     if (g) g.classList.remove('hidden');
   }
 
+  // Startup gate — block rendering until the SW is current, Firebase is
+  // ready, and the canonical board for today is in memory. Keeps the
+  // boot overlay up across the whole wait so the player never sees a
+  // flash of a divergent board.
+  await runStartupGate();
+
   if (!isOnboarded()) {
     // First time — launch interactive tutorial, then start challenge mode
     startTutorial(() => {
@@ -1840,13 +2028,17 @@ function init() {
       state.isDailyPractice = true;
     }
     hideTitleScreen();
-    if (!tryResumeGame()) newGame();
+    if (!tryResumeGame()) await newGame();
   } else {
     // Returning user — show title screen
     showTitleScreen();
     // Pre-load the game in background so it's ready
-    if (!tryResumeGame()) newGame();
+    if (!tryResumeGame()) await newGame();
   }
+
+  // All routing settled and the appropriate UI surface (tutorial /
+  // daily board / title screen) has rendered — release the boot overlay.
+  hideBootOverlay();
 
   // Persist game state periodically (only when actively playing)
   let _lastPersistTime = 0;
@@ -1884,4 +2076,9 @@ window.addEventListener('resize', () => {
   boardEl.style.gridTemplateRows = `repeat(${state.rows}, var(--cell-size))`;
 });
 
-init();
+// Safety net: if init throws anywhere, drop the boot overlay so the
+// user isn't stuck on a black screen with a spinner.
+init().catch((err) => {
+  console.error('init failed:', err);
+  hideBootOverlay();
+});

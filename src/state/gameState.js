@@ -72,6 +72,28 @@ export const state = {
   // Keyboard navigation
   focusedRow: 0,
   focusedCol: 0,
+
+  // ── Startup-gate state ──────────────────────────────
+  // Set by runStartupGate() in main.js before any board renders.
+  // Without these, daily mode could fall through to local generation
+  // on a Firebase cold-load race and produce a divergent board.
+  //
+  // codeVersion: the running SW's CACHE_NAME (e.g. 'gregsweeper-v1.5.31'),
+  // populated via postMessage handshake. Used as forensic provenance
+  // when writing canonical boards. Null until the SW responds.
+  //
+  // canonicalDailyBoard: { date, raw } — the canonical board for today
+  // pre-fetched at boot. newGame() uses this verbatim instead of doing
+  // its own loadDailyBoard call, so by construction every device on
+  // the same ET date plays the same layout. Null when offline or when
+  // today's canonical hasn't been written yet (first visitor of the day).
+  //
+  // firebaseReady: true once the Firebase SDK has initialized and we
+  // can call db.ref(). Read by score-submission and other Firebase-
+  // dependent paths to gate behavior cleanly instead of hitting null.
+  codeVersion: null,
+  canonicalDailyBoard: null,
+  firebaseReady: false,
 };
 
 // ── Encouragement Lines ────────────────────────────────

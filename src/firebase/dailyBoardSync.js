@@ -20,6 +20,7 @@
 const DB_PATH = 'dailyBoard';
 const FETCH_TIMEOUT_MS = 5000;
 const WRITE_TIMEOUT_MS = 5000;
+const FIREBASE_READY_TIMEOUT_MS = 8000;
 
 // Per-cell fields we ship across the wire. Anything not listed here
 // is dropped on serialise — keeps the payload tight and prevents
@@ -50,6 +51,26 @@ const CELL_FIELDS = [
 function _firebaseDb() {
   if (typeof firebase === 'undefined' || !firebase.apps?.length) return null;
   try { return firebase.database(); } catch { return null; }
+}
+
+// Wait for the Firebase SDK to finish initializing before returning the
+// database handle. The SDK loads via CDN scripts in index.html separate
+// from this bundle, so on a cold load there's a real possibility that
+// `loadDailyBoard` is called before `firebase.initializeApp()` has run.
+// Without this gate, the bare `_firebaseDb()` would return null silently
+// and the canonical fetch would no-op — and the caller in gameActions
+// would fall through to local generation, producing a divergent board
+// on the same date as another player who got the canonical. Polling at
+// 50ms keeps the cold-start latency tight while still leaving plenty of
+// budget under FIREBASE_READY_TIMEOUT_MS.
+async function waitForFirebaseReady(timeoutMs = FIREBASE_READY_TIMEOUT_MS) {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    const db = _firebaseDb();
+    if (db) return db;
+    await new Promise(r => setTimeout(r, 50));
+  }
+  throw new Error(`Firebase did not initialize within ${timeoutMs}ms`);
 }
 
 function _serializeCell(cell) {
@@ -178,14 +199,31 @@ export function deserializeBoard(raw) {
 }
 
 /**
- * Try to load the canonical board for a date. Returns null if Firebase
- * is unavailable, the path is empty, or the read times out.
+ * Try to load the canonical board for a date. Waits up to
+ * FIREBASE_READY_TIMEOUT_MS for the SDK to finish initializing before
+ * giving up — without this wait, a cold-load race would silently fall
+ * through to local generation and produce a divergent board for the
+ * same date as another player who got the canonical.
+ *
+ * Returns null when:
+ *   - Firebase did not initialize within the timeout (treat as offline).
+ *   - The path exists in the database but contains no value.
+ *   - The fetch itself fails or times out.
+ *
+ * Throws nothing. The caller can distinguish offline vs. empty-canonical
+ * via `isFirebaseOnline()` if it needs to.
+ *
  * @param {string} dateString YYYY-MM-DD
  * @returns {Promise<object|null>}
  */
 export async function loadDailyBoard(dateString) {
-  const db = _firebaseDb();
-  if (!db) return null;
+  let db;
+  try {
+    db = await waitForFirebaseReady();
+  } catch (err) {
+    console.warn('loadDailyBoard:', err.message);
+    return null;
+  }
   try {
     const ref = db.ref(`${DB_PATH}/${dateString}`);
     const snap = await Promise.race([
@@ -195,7 +233,7 @@ export async function loadDailyBoard(dateString) {
     if (!snap.exists()) return null;
     return snap.val();
   } catch (err) {
-    console.warn('loadDailyBoard failed:', err.message);
+    console.warn('loadDailyBoard fetch failed:', err.message);
     return null;
   }
 }
@@ -212,8 +250,13 @@ export async function loadDailyBoard(dateString) {
  * @returns {Promise<boolean>}
  */
 export async function saveDailyBoard(dateString, payload) {
-  const db = _firebaseDb();
-  if (!db) return false;
+  let db;
+  try {
+    db = await waitForFirebaseReady();
+  } catch (err) {
+    console.warn('saveDailyBoard:', err.message);
+    return false;
+  }
   try {
     const ref = db.ref(`${DB_PATH}/${dateString}`);
     const writePayload = {
