@@ -995,6 +995,45 @@
       }
       window.location.href = window.location.pathname + '?cb=' + Date.now();
     };
+
+    // ── Version-mismatch detector ──────────────────────
+    // Belt-and-suspenders for the case where the SW's normal update
+    // mechanism fails (Android Chrome's WebAPK can ignore registration.
+    // update() in some configurations; iOS PWAs cache aggressively at
+    // the OS shell layer; CDN edge caches can serve stale to particular
+    // users for unknown reasons). Every 5 minutes, fetch the live sw.js
+    // with cache:'no-store' + a unique query string so neither HTTP cache
+    // nor the SW itself can intercept. Parse out CACHE_NAME. Compare to
+    // what the running SW broadcast at activate. If they differ, the
+    // page is stuck on a stale build — force-clear and reload.
+    let _runningVersion = null;
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', (e) => {
+        if (e.data?.type === 'codeVersion') _runningVersion = e.data.value;
+      });
+    }
+    async function _checkForVersionMismatch() {
+      if (!_runningVersion) return;
+      try {
+        const r = await fetch('./sw.js?_v=' + Date.now(), { cache: 'no-store' });
+        if (!r.ok) return;
+        const txt = await r.text();
+        const m = txt.match(/CACHE_NAME\s*=\s*['"]([^'"]+)['"]/);
+        if (!m) return;
+        const liveVersion = m[1];
+        if (liveVersion !== _runningVersion) {
+          // Stale. Don't interrupt mid-game; the SW updatefound flow
+          // already handles the polite mid-game banner. Just force a
+          // clean reload at idle.
+          const playing = document.querySelector('.cell.revealed');
+          if (!playing && window.gregsweeperCacheClear) {
+            window.gregsweeperCacheClear();
+          }
+        }
+      } catch {}
+    }
+    setInterval(_checkForVersionMismatch, 5 * 60 * 1000);
+    setTimeout(_checkForVersionMismatch, 10000);
   </script>
 </body>
 </html>
