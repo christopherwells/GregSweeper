@@ -50,6 +50,13 @@ export function persistGameState() {
     dailySeed: state.dailySeed, dailyRngSeed: state.dailyRngSeed || null,
     dailyBombHits: state.dailyBombHits,
     dailyBombHitEvents: state.dailyBombHitEvents || [],
+    weeklySeed: state.weeklySeed || null,
+    weeklyDay: state.weeklyDay,
+    weeklyRngSeed: state.weeklyRngSeed || null,
+    weeklyBombHits: state.weeklyBombHits || 0,
+    weeklyBombHitEvents: state.weeklyBombHitEvents || [],
+    weeklyDayTimes: state.weeklyDayTimes || {},
+    weeklyFeatures: state.weeklyFeatures || null,
     magnetMode: state.magnetMode || false,
     flagMode: state.flagMode || false,
     activeGimmicks: state.activeGimmicks || [],
@@ -73,6 +80,25 @@ export function tryResumeGame(mode) {
   if (gs.gameMode === 'daily' && gs.dailySeed) {
     const expectedSeed = state.dailySeed || getLocalDateString();
     if (gs.dailySeed !== expectedSeed) return false;
+  }
+
+  // Weekly resume: only valid if both the week AND the day-index match,
+  // AND the saved board actually came from the weekly branch (it has
+  // a populated weeklyRngSeed). Without that last check, a stale cross-
+  // mode persisted state — written by switchMode's persistGameState
+  // call when the click handler set state.gameMode='weekly' before the
+  // weekly branch had a chance to populate the real board — would pass
+  // the seed/day checks and resume a 5×5 challenge L1 board.
+  // Crossing midnight ET into the next ET day forfeits the in-progress
+  // attempt — saved game must be discarded and the player gets a fresh
+  // attempt on the new day. Crossing into a new ISO week (Sunday →
+  // Monday) does the same since weeklySeed changes too.
+  if (gs.gameMode === 'weekly' && gs.weeklySeed != null) {
+    const expectedSeed = state.weeklySeed || gs.weeklySeed;
+    const expectedDay = state.weeklyDay != null ? state.weeklyDay : gs.weeklyDay;
+    if (gs.weeklySeed !== expectedSeed) return false;
+    if (gs.weeklyDay !== expectedDay) return false;
+    if (!gs.weeklyRngSeed) return false;
   }
 
   // Divergent-canonical check: if the saved daily was generated against
@@ -119,6 +145,13 @@ export function tryResumeGame(mode) {
   state.dailyRngSeed = gs.dailyRngSeed || gs.dailySeed || null;
   state.dailyBombHits = gs.dailyBombHits || 0;
   state.dailyBombHitEvents = Array.isArray(gs.dailyBombHitEvents) ? gs.dailyBombHitEvents : [];
+  state.weeklySeed = gs.weeklySeed || null;
+  state.weeklyDay = typeof gs.weeklyDay === 'number' ? gs.weeklyDay : null;
+  state.weeklyRngSeed = gs.weeklyRngSeed || null;
+  state.weeklyBombHits = gs.weeklyBombHits || 0;
+  state.weeklyBombHitEvents = Array.isArray(gs.weeklyBombHitEvents) ? gs.weeklyBombHitEvents : [];
+  state.weeklyDayTimes = (gs.weeklyDayTimes && typeof gs.weeklyDayTimes === 'object') ? gs.weeklyDayTimes : {};
+  state.weeklyFeatures = gs.weeklyFeatures || null;
   state.status = gs.savedStatus || 'playing';
   state.firstClick = gs.firstClick ?? false;
   state.hitMine = null;

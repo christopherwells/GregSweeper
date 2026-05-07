@@ -159,6 +159,98 @@ export async function submitOnlineScore(dateString, name, time, bombHits = 0, ex
 }
 
 /**
+ * Submit the player's weekly result to `weekly/{weekStart}/{uid}`.
+ * Writes via `set` (not `push`) so each player has at most one row per
+ * week — every subsequent attempt overwrites with the latest best time
+ * and dayTimes map.
+ *
+ * Caller is responsible for computing bestTime and the updated dayTimes.
+ *
+ * @param {string} weekStart 'YYYY-MM-DD' Monday in ET
+ * @param {string} uid stable anonymous uid
+ * @param {string} name player name (max 20 chars)
+ * @param {number} bestTime min across all dayTimes (seconds)
+ * @param {Object<number, number>} dayTimes {0: 45.2, 3: 50.1, ...}
+ * @returns {Promise<boolean>}
+ */
+export async function submitWeeklyScore(weekStart, uid, name, bestTime, dayTimes) {
+  if (!isFirebaseOnline()) return false;
+  if (!weekStart || !uid) return false;
+  if (typeof bestTime !== 'number' || bestTime < MIN_VALID_TIME || bestTime > MAX_VALID_TIME) {
+    console.warn(`Weekly bestTime ${bestTime}s outside valid range`);
+    return false;
+  }
+  try {
+    const sanitizedName = String(name).slice(0, 20).trim();
+    if (!sanitizedName) return false;
+
+    const safeDayTimes = {};
+    if (dayTimes && typeof dayTimes === 'object') {
+      for (const [k, v] of Object.entries(dayTimes)) {
+        const day = Number(k);
+        if (Number.isInteger(day) && day >= 0 && day <= 6
+            && typeof v === 'number' && v >= MIN_VALID_TIME && v <= MAX_VALID_TIME) {
+          safeDayTimes[day] = v;
+        }
+      }
+    }
+
+    const ref = db.ref(`weekly/${weekStart}/${uid}`);
+    await ref.set({
+      name: sanitizedName,
+      bestTime,
+      dayTimes: safeDayTimes,
+      timestamp: firebase.database.ServerValue.TIMESTAMP,
+    });
+    return true;
+  } catch (err) {
+    console.warn('Weekly score submit failed:', err.message);
+    return false;
+  }
+}
+
+/**
+ * Fetch the weekly leaderboard for a given weekStart. Returns an
+ * array sorted by bestTime ascending (faster on top), with ties broken
+ * by attempts-used (more attempts → better tiebreaker so single-day
+ * flukes don't beat full-week explorers). Returns [] when offline or
+ * empty.
+ */
+export async function fetchWeeklyLeaderboard(weekStart) {
+  if (!isFirebaseOnline() || !weekStart) return [];
+  try {
+    const snap = await Promise.race([
+      db.ref(`weekly/${weekStart}`).once('value'),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000)),
+    ]);
+    if (!snap.exists()) return [];
+
+    const rows = [];
+    snap.forEach((child) => {
+      const v = child.val();
+      if (v && typeof v.bestTime === 'number') {
+        rows.push({
+          uid: child.key,
+          name: v.name || 'Anonymous',
+          bestTime: v.bestTime,
+          dayTimes: v.dayTimes || {},
+          attemptsUsed: v.dayTimes ? Object.keys(v.dayTimes).length : 0,
+        });
+      }
+    });
+
+    rows.sort((a, b) => {
+      if (a.bestTime !== b.bestTime) return a.bestTime - b.bestTime;
+      return b.attemptsUsed - a.attemptsUsed; // more attempts → higher rank on tie
+    });
+    return rows;
+  } catch (err) {
+    console.warn('Weekly leaderboard fetch failed:', err.message);
+    return [];
+  }
+}
+
+/**
  * Write `dailyMeta/{date}` if it doesn't already exist. Rules enforce
  * write-once server-side; the client check here is a bandwidth optimisation,
  * not a guarantee. The FIRST successful client submission for a date lands

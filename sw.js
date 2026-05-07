@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v1.5.32';
+const CACHE_NAME = 'gregsweeper-v1.5.36';
 const ASSETS = [
   './',
   './index.html',
@@ -56,6 +56,10 @@ const ASSETS = [
   './src/firebase/firebaseLeaderboard.js',
   './src/firebase/firebaseProgress.js',
   './src/firebase/dailyBoardSync.js',
+  './src/firebase/weeklyBoardSync.js',
+  './src/firebase/waitForFirebase.js',
+  './src/firebase/firebasePush.js',
+  './src/logic/selectWeeklyRngSeed.js',
   './assets/icon.svg',
   './assets/icon-192.png',
   './assets/icon-512.png',
@@ -103,6 +107,45 @@ self.addEventListener('message', (event) => {
   if (event.data?.type === 'getCodeVersion') {
     event.source?.postMessage({ type: 'codeVersion', value: CACHE_NAME });
   }
+});
+
+// ── Push notifications ─────────────────────────────────
+// Inbound push from FCM. Payload shape (set by scripts/send-push.mjs):
+//   { title: string, body: string, tag?: string, deepLink?: string }
+// We always show the notification (browsers reject silent pushes after
+// the user has granted permission). Tag prevents duplicate stacking
+// when multiple pushes for the same category arrive.
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+  let payload;
+  try { payload = event.data.json(); }
+  catch { payload = { title: 'GregSweeper', body: event.data.text() }; }
+  event.waitUntil(
+    self.registration.showNotification(payload.title || 'GregSweeper', {
+      body: payload.body || '',
+      icon: './assets/icon-192.png',
+      badge: './assets/icon-192.png',
+      tag: payload.tag || 'gregsweeper-notification',
+      data: { deepLink: payload.deepLink || './?mode=daily' },
+    })
+  );
+});
+
+// Notification click → focus an existing tab on the deep-link URL or
+// open a new one. Closes the notification. The deepLink is passed
+// through from send-push.mjs's payload.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = event.notification.data?.deepLink || './?mode=daily';
+  event.waitUntil((async () => {
+    const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const c of all) {
+      try {
+        if (c.url.endsWith(url) && 'focus' in c) return c.focus();
+      } catch {}
+    }
+    if (self.clients.openWindow) return self.clients.openWindow(url);
+  })());
 });
 
 self.addEventListener('fetch', (event) => {

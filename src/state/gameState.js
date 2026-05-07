@@ -96,12 +96,33 @@ export const state = {
   // the same ET date plays the same layout. Null when offline or when
   // today's canonical hasn't been written yet (first visitor of the day).
   //
+  // canonicalWeeklyBoard: { weekStart, raw } — same idea but for the
+  // weekly puzzle. One canonical board per ET week (Monday → Sunday),
+  // pre-fetched at boot so the Weekly card opens without a round-trip.
+  //
   // firebaseReady: true once the Firebase SDK has initialized and we
   // can call db.ref(). Read by score-submission and other Firebase-
   // dependent paths to gate behavior cleanly instead of hitting null.
   codeVersion: null,
   canonicalDailyBoard: null,
+  canonicalWeeklyBoard: null,
   firebaseReady: false,
+
+  // ── Weekly mode (per-attempt) ───────────────────────
+  // The weekly puzzle is one board per ET week, with up to 7 attempts
+  // (one per day Mon–Sun). All players see the same board for the
+  // whole week; the leaderboard records each player's best time and
+  // a per-day map. The first attempt a player makes on the week's
+  // board doubles as par-model fit data (honest first encounter); days
+  // 2–7 are speedruns and stay out of the fit.
+  weeklySeed: null,                // 'YYYY-MM-DD' Monday in ET
+  weeklyDay: null,                 // 0..6, which day's attempt is in progress
+  weeklyRngSeed: null,             // canonical's resolved seed (e.g. '2026-05-04:trial1')
+  weeklyBombHits: 0,               // for current attempt
+  weeklyBombHitEvents: [],         // [{t, row, col}, ...] for current attempt
+  weeklyDayTimes: {},              // {0: 45.2, 3: 50.1, ...} from Firebase on mode entry
+  weeklyFeatures: null,            // computed at canonical resolve, used for the first-attempt fit-data submit
+  cachedWeeklyDayAttempts: {},     // {0: true, 3: true} from Firebase at startup so the gate is sync
 };
 
 // ── Encouragement Lines ────────────────────────────────

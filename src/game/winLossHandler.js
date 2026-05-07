@@ -28,8 +28,8 @@ import {
   getAchievementState, getAllTierNames, getTierIcon, getTierColor,
 } from '../logic/achievements.js';
 import { checkThemeUnlocks, showThemeUnlockToasts } from '../ui/themeManager.js';
-import { submitOnlineScore } from '../firebase/firebaseLeaderboard.js';
-import { saveProgress, saveDailyHistoryEntry, getUid } from '../firebase/firebaseProgress.js';
+import { submitOnlineScore, submitWeeklyScore } from '../firebase/firebaseLeaderboard.js';
+import { saveProgress, saveDailyHistoryEntry, getUid, markWeeklyDayAttempted } from '../firebase/firebaseProgress.js';
 import { breakdownPar } from '../logic/dailyFeatures.js';
 import { getHandicap } from '../logic/handicaps.js';
 import { addDailyLeaderboardEntry } from '../storage/statsStorage.js';
@@ -115,13 +115,15 @@ export function handleWin() {
   const prevMaxLevel = prevStats.maxLevelReached || 1;
 
   const isDaily = state.gameMode === 'daily';
+  const isWeekly = state.gameMode === 'weekly';
   // Practice daily (URL ?seed=custom) plays like a daily but must not touch
   // stats, streak, completion flags, or personal history — it exists for
   // replaying after today's real daily has already been won. Bonus daily
   // (state.isBonusDaily) submits to its own leaderboard / dailyMeta for
   // the model fit, but also doesn't touch streak / handicap / personal
   // history — completing it shouldn't change the player's regular-daily
-  // standing.
+  // standing. Weekly is its own world entirely — see the dedicated
+  // weekly branch below.
   const isRealDaily = isDaily && !state.isDailyPractice && !state.isBonusDaily;
   const isBonusDaily = isDaily && state.isBonusDaily;
   const stats = saveGameResult(true, state.elapsedTime, state.currentLevel, {
@@ -154,6 +156,52 @@ export function handleWin() {
     // The bonus completion is keyed by the bare ET date so the title
     // screen's bonus card can match `isBonusDailyCompleted(today)`.
     markBonusDailyCompleted(getLocalDateString());
+  }
+
+  // Weekly mode win: mark this day's attempt cloud-synced, update the
+  // weeklyDayTimes map, submit to the weekly leaderboard, and (only on
+  // the player's FIRST attempt this week) submit a synthetic-daily row
+  // to daily/{weekStart}_weekly_first so the par-model fit gets honest
+  // first-encounter timing data.
+  if (isWeekly && state.weeklySeed != null && state.weeklyDay != null) {
+    const isFirstAttemptThisWeek = !state.weeklyDayTimes
+      || Object.keys(state.weeklyDayTimes).length === 0;
+
+    markWeeklyDayAttempted(state.weeklySeed, state.weeklyDay);
+
+    const scoreTime = Math.round((state.preciseTime || state.elapsedTime) * 10) / 10;
+    const updated = { ...(state.weeklyDayTimes || {}), [state.weeklyDay]: scoreTime };
+    state.weeklyDayTimes = updated;
+    const bestTime = Math.min(...Object.values(updated));
+
+    const playerName = (getPlayerName() || '').slice(0, 20).trim();
+    if (playerName) {
+      submitWeeklyScore(state.weeklySeed, getUid(), playerName, bestTime, updated).catch(() => {});
+
+      if (isFirstAttemptThisWeek) {
+        // Honest first encounter — qualifies for par-model fit data.
+        // Reuses submitOnlineScore so we land in the same daily/* and
+        // dailyMeta/* tables the R refit already reads, with a unique
+        // key suffix so it joins as its own row.
+        submitOnlineScore(
+          state.weeklySeed + '_weekly_first',
+          playerName,
+          scoreTime,
+          state.weeklyBombHits || 0,
+          {
+            uid: getUid(),
+            features: state.weeklyFeatures,
+            bombHitEvents: state.weeklyBombHitEvents || [],
+            rngSeed: state.weeklyRngSeed || state.weeklySeed,
+          }
+        ).catch(() => {});
+      }
+    } else {
+      // Players without a name still get the local attempt counted
+      // (markWeeklyDayAttempted already fired) but their time stays
+      // out of the leaderboard. Surface a soft hint.
+      showToast('Set your name in Settings to appear on the weekly leaderboard');
+    }
   }
 
   // Persist power-ups after win (award changes them) — skip for chaos (no power-ups)
@@ -359,7 +407,7 @@ export function handleWin() {
     if (chaosNextBtn) chaosNextBtn.classList.add('hidden');
     if (chaosRunSummary) chaosRunSummary.classList.add('hidden');
     const maxLevel = state.gameMode === 'timed' ? MAX_TIMED_LEVEL : MAX_LEVEL;
-    if (state.currentLevel < maxLevel && state.gameMode !== 'daily' && state.gameMode !== 'timed') {
+    if (state.currentLevel < maxLevel && state.gameMode !== 'daily' && state.gameMode !== 'weekly' && state.gameMode !== 'timed') {
       nextLevelBtn.classList.remove('hidden');
     } else {
       nextLevelBtn.classList.add('hidden');
@@ -416,14 +464,14 @@ export function handleWin() {
   // Hide "Play Again" for daily mode (can't replay today's daily)
   const retryBtn = $('#gameover-retry');
   if (retryBtn) {
-    if (isDaily) retryBtn.classList.add('hidden');
+    if (isDaily || isWeekly) retryBtn.classList.add('hidden');
     else retryBtn.classList.remove('hidden');
   }
 
   // Show "Done" button for daily mode (no next level or retry available)
   const doneBtn = $('#gameover-done');
   if (doneBtn) {
-    if (isDaily) doneBtn.classList.remove('hidden');
+    if (isDaily || isWeekly) doneBtn.classList.remove('hidden');
     else doneBtn.classList.add('hidden');
   }
 
@@ -667,22 +715,36 @@ export function handleTimedLoss() {
   updateStreakBorder();
 }
 
-// ── Daily Mode: Bomb Hit Re-Fog ─────────────────────────
+// ── Daily / Weekly Mode: Bomb Hit Re-Fog ────────────────
+// Same mechanic for both modes: +10s penalty, all non-mine reveals
+// re-fog, hit mine becomes a defused safe cell. Per-attempt counters
+// route to dailyBombHits/dailyBombHitEvents in daily, or
+// weeklyBombHits/weeklyBombHitEvents in weekly. Function name kept
+// as handleDailyBombHit for backward-compat with all the call sites.
 
 export function handleDailyBombHit(mineRow, mineCol) {
-  state.dailyBombHits++;
+  const isWeekly = state.gameMode === 'weekly';
 
-  // Log the event so the refit can later reconstruct which cells the
-  // player saw for free. Time recorded BEFORE the +10s penalty so the
-  // timestamp matches when the player actually clicked, not when the
-  // penalty lands. Position matters: a bomb in a zero-cluster reveals
-  // little, a bomb adjacent to tight constraints trivialises the area.
-  if (!Array.isArray(state.dailyBombHitEvents)) state.dailyBombHitEvents = [];
-  state.dailyBombHitEvents.push({
-    t: Math.round(state.elapsedTime * 10) / 10,
-    row: mineRow,
-    col: mineCol,
-  });
+  // Bump the per-attempt strike counter for whichever mode owns this
+  // attempt. Also append to the per-hit event log so a future bomb-
+  // adjusted refit can reconstruct what the player saw for free.
+  if (isWeekly) {
+    state.weeklyBombHits = (state.weeklyBombHits || 0) + 1;
+    if (!Array.isArray(state.weeklyBombHitEvents)) state.weeklyBombHitEvents = [];
+    state.weeklyBombHitEvents.push({
+      t: Math.round(state.elapsedTime * 10) / 10,
+      row: mineRow,
+      col: mineCol,
+    });
+  } else {
+    state.dailyBombHits++;
+    if (!Array.isArray(state.dailyBombHitEvents)) state.dailyBombHitEvents = [];
+    state.dailyBombHitEvents.push({
+      t: Math.round(state.elapsedTime * 10) / 10,
+      row: mineRow,
+      col: mineCol,
+    });
+  }
 
   // Time penalty: +10s per strike
   state.elapsedTime += 10;
@@ -720,7 +782,7 @@ export function handleDailyBombHit(mineRow, mineCol) {
   // Show centered popup for 1.5s
   const popup = document.createElement('div');
   popup.className = 'daily-bomb-popup';
-  const strikes = state.dailyBombHits;
+  const strikes = isWeekly ? state.weeklyBombHits : state.dailyBombHits;
   popup.innerHTML = `<div class="daily-bomb-popup-content">💥 You hit a mine!<br><span class="daily-bomb-sub">+10s penalty · Board reset · Mine removed</span></div>`;
   document.getElementById('app').appendChild(popup);
 

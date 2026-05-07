@@ -1,0 +1,43 @@
+name: Send daily/weekly push notifications
+
+# Hourly cron that sends push notifications to subscribers whose chosen
+# ET hour matches the current ET hour. The send-push.mjs script handles
+# all the per-user filtering, category selection (daily / weekly /
+# bonus), and FCM REST plumbing.
+#
+# Cron: every hour at minute 0. The 24 cron firings per day are cheap
+# (a few seconds each, only does work for hours where someone has opted
+# in) and cover every user-picked hour without any per-user scheduling.
+#
+# Required secrets:
+#   FIREBASE_SERVICE_ACCOUNT — full service-account JSON (one line). Used
+#                              to mint OAuth2 access tokens for FCM and
+#                              read users/*. Generate via Firebase Console
+#                              → Project Settings → Service Accounts.
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: send-push
+  cancel-in-progress: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Send push notifications for the current ET hour
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node scripts/send-push.mjs

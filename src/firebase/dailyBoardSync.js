@@ -17,10 +17,11 @@
 // adjacency or gimmick-display logic don't retroactively change the
 // numbers a past day showed.
 
+import { waitForFirebaseReady } from './waitForFirebase.js';
+
 const DB_PATH = 'dailyBoard';
 const FETCH_TIMEOUT_MS = 5000;
 const WRITE_TIMEOUT_MS = 5000;
-const FIREBASE_READY_TIMEOUT_MS = 8000;
 
 // Per-cell fields we ship across the wire. Anything not listed here
 // is dropped on serialise — keeps the payload tight and prevents
@@ -48,30 +49,9 @@ const CELL_FIELDS = [
   'isPressurePlate', 'plateTimer', 'plateDisarmed',
 ];
 
-function _firebaseDb() {
-  if (typeof firebase === 'undefined' || !firebase.apps?.length) return null;
-  try { return firebase.database(); } catch { return null; }
-}
-
-// Wait for the Firebase SDK to finish initializing before returning the
-// database handle. The SDK loads via CDN scripts in index.html separate
-// from this bundle, so on a cold load there's a real possibility that
-// `loadDailyBoard` is called before `firebase.initializeApp()` has run.
-// Without this gate, the bare `_firebaseDb()` would return null silently
-// and the canonical fetch would no-op — and the caller in gameActions
-// would fall through to local generation, producing a divergent board
-// on the same date as another player who got the canonical. Polling at
-// 50ms keeps the cold-start latency tight while still leaving plenty of
-// budget under FIREBASE_READY_TIMEOUT_MS.
-async function waitForFirebaseReady(timeoutMs = FIREBASE_READY_TIMEOUT_MS) {
-  const startedAt = Date.now();
-  while (Date.now() - startedAt < timeoutMs) {
-    const db = _firebaseDb();
-    if (db) return db;
-    await new Promise(r => setTimeout(r, 50));
-  }
-  throw new Error(`Firebase did not initialize within ${timeoutMs}ms`);
-}
+// waitForFirebaseReady lives in ./waitForFirebase.js so weeklyBoardSync
+// and the main.js startup gate can share the exact same readiness
+// machinery — the canonical-board correctness contract depends on it.
 
 function _serializeCell(cell) {
   const out = {};

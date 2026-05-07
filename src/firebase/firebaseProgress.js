@@ -22,6 +22,9 @@ let _pendingSave = null;
 // flushed together on _ready. One entry per date (last-write-wins), since
 // re-submitting the same date is always a no-op or an upgrade.
 let _pendingHistory = null;
+// Weekly day-attempt markers submitted before auth completes. Keyed by
+// `${weekStart}/${day}` for uniqueness; flushed on _ready.
+let _pendingWeeklyAttempts = null;
 
 /**
  * Return the stable anonymous uid established by initAnonymousAuth, or null
@@ -60,6 +63,14 @@ export async function initAnonymousAuth() {
       _pendingHistory = null;
       for (const [date, entry] of Object.entries(queued)) {
         saveDailyHistoryEntry(date, entry);
+      }
+    }
+    if (_pendingWeeklyAttempts) {
+      const queued = _pendingWeeklyAttempts;
+      _pendingWeeklyAttempts = null;
+      for (const key of Object.keys(queued)) {
+        const [weekStart, day] = key.split('/');
+        markWeeklyDayAttempted(weekStart, Number(day));
       }
     }
   } catch (err) {
@@ -122,6 +133,58 @@ export function saveDailyHistoryEntry(date, entry) {
 
   _db.ref('users/' + _uid + '/dailyHistory/' + date).set(payload).catch(err => {
     console.warn('Daily history save failed:', err.message);
+  });
+}
+
+/**
+ * Load the per-day attempt map for a given ET-week. Returns
+ * `{ 0: true, 3: true }` shape (numbers as keys when consumed via
+ * `Object.keys`). Used by the startup gate so newGame() can
+ * synchronously check whether today's slot has been used. Never throws;
+ * returns {} on any failure or when offline.
+ */
+export async function loadWeeklyAttempts(weekStart) {
+  if (!_ready || !_uid || !weekStart) return {};
+  try {
+    const snap = await Promise.race([
+      _db.ref(`users/${_uid}/weeklyAttempts/${weekStart}/dayAttempts`).once('value'),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), FIREBASE_TIMEOUT_MS)),
+    ]);
+    if (!snap.exists()) return {};
+    const out = {};
+    snap.forEach((child) => {
+      const k = Number(child.key);
+      if (Number.isInteger(k) && k >= 0 && k <= 6) out[k] = true;
+    });
+    return out;
+  } catch (err) {
+    console.warn('loadWeeklyAttempts failed:', err.message);
+    return {};
+  }
+}
+
+/**
+ * Record that the player completed today's weekly attempt. Writes
+ * `users/{uid}/weeklyAttempts/{weekStart}/dayAttempts/{day}` with a
+ * server-side timestamp. Queues into _pendingWeeklyAttempts when auth
+ * isn't ready yet.
+ */
+export function markWeeklyDayAttempted(weekStart, day) {
+  if (typeof weekStart !== 'string' || !Number.isInteger(day) || day < 0 || day > 6) return;
+
+  if (!_ready || !_uid) {
+    if (!_pendingWeeklyAttempts) _pendingWeeklyAttempts = {};
+    _pendingWeeklyAttempts[`${weekStart}/${day}`] = true;
+    return;
+  }
+
+  const payload = {
+    timestamp: typeof firebase !== 'undefined' && firebase.database
+      ? firebase.database.ServerValue.TIMESTAMP
+      : Date.now(),
+  };
+  _db.ref(`users/${_uid}/weeklyAttempts/${weekStart}/dayAttempts/${day}`).set(payload).catch(err => {
+    console.warn('Weekly attempt save failed:', err.message);
   });
 }
 

@@ -54,19 +54,20 @@ import {
   getHighestTier, getAllTierNames, getTierIcon, getTierColor,
 } from './logic/achievements.js';
 import {
-  initFirebase, isFirebaseOnline, submitOnlineScore, fetchOnlineLeaderboard, fetchUserDailyHistory, fetchAllDailyMeta, fetchAllDailyScores,
+  initFirebase, isFirebaseOnline, submitOnlineScore, fetchOnlineLeaderboard, fetchUserDailyHistory, fetchAllDailyMeta, fetchAllDailyScores, fetchWeeklyLeaderboard,
 } from './firebase/firebaseLeaderboard.js';
-import { initAnonymousAuth, loadProgress, saveDailyHistoryEntry, getUid } from './firebase/firebaseProgress.js';
+import { initAnonymousAuth, loadProgress, saveDailyHistoryEntry, getUid, loadWeeklyAttempts } from './firebase/firebaseProgress.js';
 // Stats-tab renderer + chart toolkit are lazy-imported in populateDailyPanel
 // so they stay off the critical load path — they only come in when the
 // user actually opens the Stats modal. Saves ~3 network round-trips
 // (statsRenderer, charts, dailyHistoryChart) on every cold load.
 import { generateBoard, cleanSolverArtifacts } from './logic/boardGenerator.js';
 import { isBoardSolvable } from './logic/boardSolver.js';
-import { createDailyRNG, getLocalDateString } from './logic/seededRandom.js';
+import { createDailyRNG, getLocalDateString, getWeekStart, getWeekDayIndex } from './logic/seededRandom.js';
 import { selectDailyRngSeed } from './logic/selectDailyRngSeed.js';
 import { loadExperimentTarget, getTargetGimmickName, getMissionForSeed } from './logic/experimentDesign.js';
 import { loadDailyBoard, deserializeBoard } from './firebase/dailyBoardSync.js';
+import { loadWeeklyBoard } from './firebase/weeklyBoardSync.js';
 import {
   EMOJI_PACKS, EFFECTS, TITLES,
   loadEmojiPack, saveEmojiPack, getActiveEmojiPack, isPackUnlocked,
@@ -186,6 +187,7 @@ async function runStartupGate() {
   const urlParams = new URLSearchParams(window.location.search);
   const customSeed = urlParams.get('seed');
   const today = getLocalDateString();
+  const currentWeek = getWeekStart();
   if (firebaseReady && !customSeed) {
     setBootStatus('Loading today\'s puzzle…');
     try {
@@ -195,6 +197,23 @@ async function runStartupGate() {
       }
     } catch (err) {
       console.warn('startup gate: canonical fetch failed:', err.message);
+    }
+    // Pre-fetch this week's weekly canonical and the per-day attempt
+    // map in parallel. Both feed the Weekly card on the title screen
+    // so it can show "Best: 45.2s · 3/7 used" without any round-trip
+    // when the user clicks. The attempt map populates the gate that
+    // newGame() uses to refuse a same-day double-attempt.
+    try {
+      const [weeklyRaw, attempts] = await Promise.all([
+        loadWeeklyBoard(currentWeek).catch(() => null),
+        loadWeeklyAttempts(currentWeek).catch(() => ({})),
+      ]);
+      if (weeklyRaw) {
+        state.canonicalWeeklyBoard = { weekStart: currentWeek, raw: weeklyRaw };
+      }
+      state.cachedWeeklyDayAttempts = attempts || {};
+    } catch (err) {
+      console.warn('startup gate: weekly pre-fetch failed:', err.message);
     }
   }
 
@@ -284,6 +303,7 @@ const MODEL_HISTORY_PATH = './src/logic/modelHistory.json';
 function pickDefaultStatsTab() {
   if (state.gameMode === 'timed') return 'timed';
   if (state.gameMode === 'normal') return 'challenge';
+  if (state.gameMode === 'weekly') return 'weekly';
   return 'daily';
 }
 
@@ -316,6 +336,7 @@ async function updateStatsDisplay() {
   setActiveStatsTab(pickDefaultStatsTab());
   populateChallengePanel();
   populateQuickPlayPanel();
+  populateWeeklyPanel();
 
   // Resolve uid + populate Model tab in parallel with the daily panel —
   // the auth wait shouldn't gate the visible part of the modal.
@@ -328,6 +349,111 @@ async function updateStatsDisplay() {
       if (isOwner) await populateModelPanel();
     })(),
   ]);
+}
+
+// Populate the Weekly stats tab. Pulls the player's row from
+// weekly/{currentWeek}/{uid} (via fetchWeeklyLeaderboard's uid filter)
+// and renders headline cards + the 7-day line chart. Fire-and-forget
+// from updateStatsDisplay so it doesn't block the visible daily panel.
+async function populateWeeklyPanel() {
+  const weekStart = getWeekStart();
+  const bestEl = $('#stat-weekly-best');
+  const attemptsEl = $('#stat-weekly-attempts');
+  const rankEl = $('#stat-weekly-rank');
+  const chartEl = $('#chart-weekly-history');
+  const pastEl = $('#stat-weekly-past-table');
+  if (!bestEl || !chartEl) return;
+
+  // Defaults so the cards never render '--' forever on cold-load.
+  bestEl.textContent = '--';
+  attemptsEl.textContent = '0/7';
+  rankEl.textContent = '--';
+
+  if (!isFirebaseOnline()) {
+    chartEl.innerHTML = '<div class="chart-empty">Online play required for weekly stats.</div>';
+    return;
+  }
+
+  try {
+    const [entries, _] = await Promise.all([fetchWeeklyLeaderboard(weekStart), Promise.resolve()]);
+    const uid = getUid();
+    const myRow = uid ? entries.find(e => e.uid === uid) : null;
+
+    if (myRow) {
+      bestEl.textContent = myRow.bestTime.toFixed(1) + 's';
+      attemptsEl.textContent = (myRow.attemptsUsed || 0) + '/7';
+      const rank = entries.indexOf(myRow) + 1;
+      rankEl.textContent = `#${rank} of ${entries.length}`;
+    } else {
+      bestEl.textContent = '--';
+      attemptsEl.textContent = '0/7';
+      rankEl.textContent = entries.length > 0 ? `unranked of ${entries.length}` : '--';
+    }
+
+    // Render the 7-day chart via the lazy-loaded charts module.
+    const { lineChart } = await import('./ui/charts.js');
+    const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const points = [];
+    if (myRow && myRow.dayTimes) {
+      for (let d = 0; d < 7; d++) {
+        const t = myRow.dayTimes[d];
+        if (typeof t === 'number') {
+          points.push({ x: DAY_LABELS[d], y: t, label: `${DAY_LABELS[d]}: ${t.toFixed(1)}s` });
+        }
+      }
+    }
+    chartEl.innerHTML = '';
+    if (points.length === 0) {
+      chartEl.innerHTML = '<div class="chart-empty">No attempts yet this week.</div>';
+    } else {
+      const bestVal = myRow.bestTime;
+      const svg = lineChart(points, {
+        ariaLabel: 'Weekly puzzle times Mon to Sun',
+        yFormat: v => v.toFixed(0) + 's',
+        dotClassForValue: v => Math.abs(v - bestVal) < 0.05 ? 'chart-dot-good' : 'chart-dot-even',
+        lineClass: 'chart-line',
+      });
+      chartEl.appendChild(svg);
+    }
+
+    // Past weeks table — last 4 finished weeks before this one.
+    if (pastEl) {
+      const past = await collectPastWeeklyBests(uid, 4);
+      if (past.length === 0) {
+        pastEl.textContent = 'No past weekly attempts yet.';
+      } else {
+        pastEl.textContent = past
+          .map(p => `${prettyDate(p.weekStart)}  best ${p.bestTime.toFixed(1)}s  (${p.attemptsUsed}/7)`)
+          .join('\n');
+      }
+    }
+  } catch (err) {
+    console.warn('weekly panel populate failed:', err.message);
+  }
+}
+
+async function collectPastWeeklyBests(uid, count) {
+  if (!uid) return [];
+  // Walk backward from this week's start. Read each week's per-uid row.
+  const out = [];
+  const today = new Date(`${getLocalDateString()}T00:00:00-05:00`);
+  const start = new Date(today);
+  // Step to the most recent Monday before this Monday
+  const dayBefore = (start.getUTCDay() + 6) % 7; // 0=Mon
+  start.setUTCDate(start.getUTCDate() - dayBefore - 7); // last week's Monday
+  for (let i = 0; i < count; i++) {
+    const yy = start.getUTCFullYear();
+    const mm = String(start.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(start.getUTCDate()).padStart(2, '0');
+    const wkStart = `${yy}-${mm}-${dd}`;
+    try {
+      const entries = await fetchWeeklyLeaderboard(wkStart);
+      const row = entries.find(e => e.uid === uid);
+      if (row) out.push({ weekStart: wkStart, bestTime: row.bestTime, attemptsUsed: row.attemptsUsed || 0 });
+    } catch {}
+    start.setUTCDate(start.getUTCDate() - 7);
+  }
+  return out;
 }
 
 // Short month-day label for chart x-axis ticks. Stats tab elsewhere has
@@ -651,7 +777,36 @@ function prettyDate(dateStr) {
   return `${mo} ${parseInt(parts[2], 10)}, ${parts[0]}`;
 }
 
+async function renderWeeklyLeaderboard(weekStart) {
+  $('#leaderboard-date').textContent = `Week of ${prettyDate(weekStart)}`;
+  const tbody = $('#leaderboard-body');
+  tbody.innerHTML = '';
+  const entries = await fetchWeeklyLeaderboard(weekStart);
+  const hasEntries = entries.length > 0;
+  $('#leaderboard-table').classList.toggle('hidden', !hasEntries);
+  $('#leaderboard-empty').classList.toggle('hidden', hasEntries);
+  if (!hasEntries) return;
+  // Reuse the daily leaderboard table layout. The Par column shows
+  // `n/7` (attempts used) instead of par; the bomb-hits column shows
+  // a dash since weekly's bomb-hit penalty is folded into the time.
+  entries.forEach((entry, i) => {
+    const tr = document.createElement('tr');
+    const used = entry.attemptsUsed || 0;
+    tr.innerHTML = `<td>${i + 1}</td><td>${escapeHtml(entry.name)}</td><td>${entry.bestTime.toFixed(1)}s</td><td class="lb-col-extra">-</td><td>${used}/7</td><td class="lb-col-extra">-</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
 async function updateLeaderboardDisplay() {
+  // Weekly leaderboard branch: when the player is playing the weekly,
+  // the leaderboard modal shows the weekly leaderboard for the current
+  // ET week. Different shape from daily (one row per player per week,
+  // bestTime + dayTimes map, no par). Drop the par/pace columns.
+  if (state.gameMode === 'weekly' && state.weeklySeed) {
+    await renderWeeklyLeaderboard(state.weeklySeed);
+    return;
+  }
+
   // Show the leaderboard for whichever daily slot the player is engaged
   // with — if they're playing the bonus, the modal shows bonus scores;
   // otherwise (title screen or regular daily) it shows the regular
@@ -1350,6 +1505,10 @@ $('#btn-home').addEventListener('click', () => {
 });
 $('#btn-settings').addEventListener('click', () => {
   showModal('settings-modal');
+  // Refresh the daily-reminder toggle's state from Firebase whenever
+  // the Settings modal opens — covers the case where prefs were
+  // updated on another device or the auth uid resolved late.
+  syncReminderUI();
 });
 $('#btn-stats').addEventListener('click', () => {
   updateStatsDisplay();
@@ -1475,6 +1634,28 @@ function updateTitleProgress() {
       }
     } else {
       bonusCard.style.display = 'none';
+    }
+  }
+
+  // Weekly card — always visible. Shows attempts used and best time
+  // when the gate has populated state.cachedWeeklyDayAttempts and
+  // state.weeklyDayTimes (both pre-fetched at startup).
+  const weeklyCard = $('.mode-card[data-mode="weekly"]');
+  const weeklyProgressEl = $('#title-weekly-progress');
+  if (weeklyCard && weeklyProgressEl) {
+    const dayIdx = getWeekDayIndex();
+    const attempts = state.cachedWeeklyDayAttempts || {};
+    const used = Object.keys(attempts).length;
+    const todayAlreadyAttempted = !!attempts[dayIdx];
+    if (todayAlreadyAttempted) {
+      weeklyProgressEl.textContent = used >= 7 ? `Done · ${used}/7` : `Played today · ${used}/7`;
+      weeklyCard.classList.add('daily-completed');
+    } else if (used > 0) {
+      weeklyProgressEl.textContent = `Play today · ${used}/7 used`;
+      weeklyCard.classList.remove('daily-completed');
+    } else {
+      weeklyProgressEl.textContent = 'Same puzzle, 7 chances';
+      weeklyCard.classList.remove('daily-completed');
     }
   }
 
@@ -1690,6 +1871,25 @@ for (const card of $$('.mode-card')) {
       switchMode('daily');
       return;
     }
+    if (mode === 'weekly') {
+      const weekStart = getWeekStart();
+      const dayIdx = getWeekDayIndex();
+      // Cloud-synced gate: refuse a second attempt on the same day.
+      if (state.cachedWeeklyDayAttempts && state.cachedWeeklyDayAttempts[dayIdx]) {
+        showToast("You've already played today's weekly puzzle. Come back tomorrow!");
+        return;
+      }
+      // Set up weekly state BEFORE switchMode so newGame's weekly branch
+      // sees the weekStart + day index when it resolves the canonical.
+      state.gameMode = 'weekly';
+      state.weeklySeed = weekStart;
+      state.weeklyDay = dayIdx;
+      state.isBonusDaily = false;
+      state.isDailyPractice = false;
+      hideTitleScreen();
+      switchMode('weekly');
+      return;
+    }
     hideTitleScreen();
     switchMode(mode);
   });
@@ -1710,6 +1910,7 @@ if (titleSettingsBtn) {
     const nameInput = $('#player-name-input');
     if (nameInput) nameInput.value = getPlayerName();
     showModalFromTitle('settings-modal');
+    syncReminderUI();
   });
 }
 const titleWhatsnewBtn = $('#title-whatsnew-btn');
@@ -1988,6 +2189,80 @@ if (modifierToggle) {
   });
 }
 
+// ── Daily reminder push notification ──────────────────
+const dailyReminderToggle = $('#daily-reminder-toggle');
+const reminderHourSelect = $('#reminder-hour-select');
+const dailyReminderHint = $('#daily-reminder-hint');
+
+async function syncReminderUI() {
+  if (!dailyReminderToggle) return;
+  try {
+    const { loadNotificationPrefs, isPushSupported } = await import('./firebase/firebasePush.js');
+    if (!isPushSupported()) {
+      dailyReminderToggle.disabled = true;
+      if (dailyReminderHint) dailyReminderHint.textContent = 'Push notifications not supported in this browser.';
+      return;
+    }
+    const prefs = await loadNotificationPrefs();
+    dailyReminderToggle.checked = !!prefs.enabled;
+    if (reminderHourSelect) {
+      reminderHourSelect.value = String(prefs.hourLocal ?? 9);
+      reminderHourSelect.disabled = !prefs.enabled;
+    }
+  } catch (err) {
+    console.warn('syncReminderUI failed:', err.message);
+  }
+}
+
+if (dailyReminderToggle) {
+  // Defer initial sync until Firebase auth has had time to resolve.
+  // syncReminderUI is also called when the Settings modal opens.
+  setTimeout(syncReminderUI, 1500);
+
+  dailyReminderToggle.addEventListener('change', async () => {
+    const wantsOn = dailyReminderToggle.checked;
+    const { enableNotifications, disableNotifications, isIOS, isInstalledPWA } = await import('./firebase/firebasePush.js');
+    if (wantsOn) {
+      const hour = parseInt(reminderHourSelect?.value || '9', 10);
+      const result = await enableNotifications({ hourLocal: hour, dailyReminder: true });
+      if (result === 'success') {
+        if (reminderHourSelect) reminderHourSelect.disabled = false;
+        showToast('🔔 Daily reminders enabled');
+      } else if (result === 'denied') {
+        dailyReminderToggle.checked = false;
+        showToast('Notifications are blocked in your browser settings — enable them there to use this.');
+      } else if (result === 'ios-needs-install') {
+        dailyReminderToggle.checked = false;
+        showToast('Install GregSweeper to your home screen first to enable notifications.');
+      } else if (result === 'no-key') {
+        dailyReminderToggle.checked = false;
+        showToast('Push not configured yet — VAPID key missing on this build.');
+      } else if (result === 'unsupported') {
+        dailyReminderToggle.checked = false;
+        showToast("This browser doesn't support push notifications.");
+      } else {
+        dailyReminderToggle.checked = false;
+        showToast('Could not enable notifications. Try again later.');
+      }
+    } else {
+      const result = await disableNotifications();
+      if (result === 'success') {
+        if (reminderHourSelect) reminderHourSelect.disabled = true;
+        showToast('🔕 Daily reminders disabled');
+      }
+    }
+  });
+}
+
+if (reminderHourSelect) {
+  reminderHourSelect.addEventListener('change', async () => {
+    const { updateNotificationHour } = await import('./firebase/firebasePush.js');
+    const hour = parseInt(reminderHourSelect.value, 10);
+    const ok = await updateNotificationHour(hour);
+    if (ok) showToast(`Reminder time set to ${reminderHourSelect.options[reminderHourSelect.selectedIndex].textContent}`);
+  });
+}
+
 // Colorblind mode toggle
 const colorblindToggle = $('#colorblind-toggle');
 const COLORBLIND_KEY = 'minesweeper_colorblind';
@@ -2097,6 +2372,24 @@ async function init() {
     }
     hideTitleScreen();
     if (!tryResumeGame()) await newGame();
+  } else if (deepLinkMode === 'weekly') {
+    // Deep link to weekly mode (used by push notifications and direct
+    // shares). Drop into the weekly card's click-handler equivalent
+    // state setup, then route through the daily flow.
+    const weekStart = getWeekStart();
+    const dayIdx = getWeekDayIndex();
+    if (state.cachedWeeklyDayAttempts && state.cachedWeeklyDayAttempts[dayIdx]) {
+      // Already played today — show the title screen with the weekly
+      // card surfacing the "Played today" status. Don't auto-launch.
+      showTitleScreen();
+      if (!tryResumeGame()) await newGame();
+    } else {
+      state.gameMode = 'weekly';
+      state.weeklySeed = weekStart;
+      state.weeklyDay = dayIdx;
+      hideTitleScreen();
+      if (!tryResumeGame()) await newGame();
+    }
   } else {
     // Returning user — show title screen
     showTitleScreen();

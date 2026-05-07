@@ -4,7 +4,7 @@
       ".read": true,
       "$date": {
         ".read": true,
-        ".validate": "$date.matches(/^\\d{4}-\\d{2}-\\d{2}(_bonus)?$/)",
+        ".validate": "$date.matches(/^\\d{4}-\\d{2}-\\d{2}(_bonus|_weekly_first)?$/)",
         "$entry": {
           ".write": true,
           ".validate": "newData.hasChildren(['name', 'time', 'timestamp'])",
@@ -49,7 +49,7 @@
       ".read": true,
       "$date": {
         ".write": "auth != null && !data.exists()",
-        ".validate": "$date.matches(/^\\d{4}-\\d{2}-\\d{2}(_bonus)?$/) && newData.hasChildren(['features', 'writtenAt'])",
+        ".validate": "$date.matches(/^\\d{4}-\\d{2}-\\d{2}(_bonus|_weekly_first)?$/) && newData.hasChildren(['features', 'writtenAt'])",
         "features": {
           ".validate": "newData.hasChildren(['rows', 'cols', 'totalMines'])"
         },
@@ -65,7 +65,58 @@
       ".read": true,
       "$date": {
         ".write": "auth != null && !data.exists()",
-        ".validate": "$date.matches(/^\\d{4}-\\d{2}-\\d{2}(_bonus)?$/) && newData.hasChildren(['rows', 'cols', 'totalMines', 'cells', 'writtenAt'])",
+        ".validate": "$date.matches(/^\\d{4}-\\d{2}-\\d{2}(_bonus|_weekly_first)?$/) && newData.hasChildren(['rows', 'cols', 'totalMines', 'cells', 'writtenAt'])",
+        "rows":          { ".validate": "newData.isNumber() && newData.val() >= 5 && newData.val() <= 30" },
+        "cols":          { ".validate": "newData.isNumber() && newData.val() >= 5 && newData.val() <= 30" },
+        "totalMines":    { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 500" },
+        "rngSeed":       { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 64" },
+        "codeVersion":   { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 32" },
+        "activeGimmicks":{ ".validate": "newData.hasChildren() || newData.val() === null" },
+        "wallEdges":     { ".validate": "newData.hasChildren() || newData.val() === null" },
+        "cells": {
+          ".validate": "newData.hasChildren()"
+        },
+        "writtenAt": {
+          ".validate": "newData.val() === now"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "weekly": {
+      ".read": true,
+      "$weekStart": {
+        ".validate": "$weekStart.matches(/^\\d{4}-\\d{2}-\\d{2}$/)",
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid",
+          ".validate": "newData.hasChildren(['name', 'bestTime', 'timestamp'])",
+          "name": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 20"
+          },
+          "bestTime": {
+            ".validate": "newData.isNumber() && newData.val() >= 5 && newData.val() <= 3600"
+          },
+          "dayTimes": {
+            ".validate": "newData.hasChildren() || newData.val() === null",
+            "$day": {
+              ".validate": "$day.matches(/^[0-6]$/) && newData.isNumber() && newData.val() >= 5 && newData.val() <= 3600"
+            }
+          },
+          "timestamp": {
+            ".validate": "newData.val() === now"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
+    "weeklyBoard": {
+      ".read": true,
+      "$weekStart": {
+        ".write": "auth != null && !data.exists()",
+        ".validate": "$weekStart.matches(/^\\d{4}-\\d{2}-\\d{2}$/) && newData.hasChildren(['rows', 'cols', 'totalMines', 'cells', 'writtenAt'])",
         "rows":          { ".validate": "newData.isNumber() && newData.val() >= 5 && newData.val() <= 30" },
         "cols":          { ".validate": "newData.isNumber() && newData.val() >= 5 && newData.val() <= 30" },
         "totalMines":    { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 500" },
@@ -112,6 +163,55 @@
             "$other": {
               ".validate": false
             }
+          }
+        },
+        "weeklyAttempts": {
+          "$weekStart": {
+            ".validate": "$weekStart.matches(/^\\d{4}-\\d{2}-\\d{2}$/)",
+            "dayAttempts": {
+              "$day": {
+                ".validate": "$day.matches(/^[0-6]$/) && newData.hasChildren(['timestamp'])",
+                "timestamp": {
+                  ".validate": "newData.val() === now"
+                },
+                "$other": {
+                  ".validate": false
+                }
+              }
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "pushSubscription": {
+          ".validate": "newData.hasChildren(['token']) || newData.val() === null",
+          "token": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 1024"
+          },
+          "subscribedAt": {
+            ".validate": "newData.val() === now"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "notificationPrefs": {
+          ".validate": "newData.hasChildren(['enabled']) || newData.val() === null",
+          "enabled": {
+            ".validate": "newData.isBoolean()"
+          },
+          "hourLocal": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 23"
+          },
+          "dailyReminder": {
+            ".validate": "newData.isBoolean()"
+          },
+          "streakWarning": {
+            ".validate": "newData.isBoolean()"
+          },
+          "$other": {
+            ".validate": false
           }
         },
         "$other": {

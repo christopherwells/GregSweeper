@@ -35,6 +35,37 @@ export function getLocalDateString() {
   return _DAILY_DATE_FMT.format(new Date());
 }
 
+// Weekly puzzle anchor: every player on the same ET week plays the
+// same single canonical board (different from daily's per-date board).
+// `weekStart` is the Monday of the current ET week as YYYY-MM-DD;
+// `weeklyDayIndex` is 0..6 (Mon=0, Sun=6, ISO style). Both are
+// computed from the same ET date string the daily uses, so a player
+// in Tokyo on Sunday morning local sees Saturday's weekly day if
+// it's still Saturday in ET.
+function _etDateParts(dateString) {
+  const [y, m, d] = (dateString || getLocalDateString()).split('-').map(Number);
+  return { y, m, d };
+}
+
+export function getWeekStart() {
+  const { y, m, d } = _etDateParts();
+  const date = new Date(Date.UTC(y, m - 1, d));
+  const dow = date.getUTCDay();              // 0=Sun, 1=Mon, ..., 6=Sat
+  const daysFromMonday = (dow + 6) % 7;      // Mon=0, Sun=6
+  date.setUTCDate(date.getUTCDate() - daysFromMonday);
+  const yyyy = date.getUTCFullYear();
+  const mm = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(date.getUTCDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+export function getWeekDayIndex() {
+  const { y, m, d } = _etDateParts();
+  const date = new Date(Date.UTC(y, m - 1, d));
+  const dow = date.getUTCDay();
+  return (dow + 6) % 7; // Mon=0, Sun=6
+}
+
 export function createDailyRNG(dateString) {
   if (!dateString) dateString = getLocalDateString();
   const seed = hashString(dateString);

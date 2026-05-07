@@ -125,6 +125,14 @@ export function switchMode(mode) {
     return;
   }
 
+  // Weekly mode: try to resume an in-progress attempt for today's day
+  // index, otherwise start fresh. The resume check inside tryResumeGame
+  // confirms `weeklySeed` and `weeklyDay` match the live values.
+  if (mode === 'weekly') {
+    if (!tryResumeGame(mode)) newGame();
+    return;
+  }
+
   // Try to resume saved state for the target mode
   if (!tryResumeGame(mode)) {
     if (mode === 'normal') {

@@ -276,8 +276,8 @@ export function updateCell(r, c) {
     // Wormholes and mirrors: no indicator on unrevealed cells (revealed on discovery)
     // Suggested safe move overlay (post-death analysis)
     if (cell.suggestedMove) cellEl.classList.add('suggested-move');
-    // Daily suggested start cell (shows when board is fresh or re-fogged)
-    if (cell.suggestedStart && state.gameMode === 'daily' &&
+    // Daily / weekly suggested start cell (shows when board is fresh or re-fogged)
+    if (cell.suggestedStart && (state.gameMode === 'daily' || state.gameMode === 'weekly') &&
         (state.status === 'idle' || (state.status === 'playing' && state.revealedCount <= 1))) {
       cellEl.classList.add('suggested-start');
     }

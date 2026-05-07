@@ -1,0 +1,61 @@
+name: Precompute weekly board
+
+# Pre-generates the upcoming Monday's canonical weekly board and writes
+# it to Firebase BEFORE any player starts the week. Same correctness
+# story as precompute-daily-board.yml: without this, whoever opens the
+# Weekly card first on Monday morning would generate locally and stamp
+# THEIR board as canonical, splitting the player base for the whole
+# week if any code/experiment-target cache is stale.
+#
+# Cron: 00:00 UTC every Monday. Goal: land BEFORE the week flips at
+# 00:00 ET Monday (= 04:00 UTC summer / 05:00 UTC winter), so 00:00
+# UTC Monday gives a 4-5h buffer to retry if Firebase/network is flaky.
+#
+# The script is idempotent: write-once Firebase rules silently reject
+# duplicates, so re-running is safe.
+
+on:
+  schedule:
+    - cron: '0 0 * * 1'
+  workflow_dispatch:
+    inputs:
+      weekStart:
+        description: 'Week start (YYYY-MM-DD, must be a Monday). Defaults to this coming Monday ET.'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: precompute-weekly-board
+  cancel-in-progress: false
+
+jobs:
+  precompute:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Compute target week start
+        id: week
+        run: |
+          if [ -n "${{ github.event.inputs.weekStart }}" ]; then
+            WK="${{ github.event.inputs.weekStart }}"
+          else
+            # Next Monday in America/New_York. The cron fires Monday
+            # 00:00 UTC = ~7-8pm Sunday ET, so "next Monday" is
+            # ~5-6 hours away — that's the week we want to seed.
+            WK=$(TZ=America/New_York date -d 'next Monday' '+%Y-%m-%d')
+          fi
+          echo "weekStart=$WK" >> "$GITHUB_OUTPUT"
+          echo "Pre-generating weekly board for $WK"
+
+      - name: Pre-generate and upload
+        env:
+          TARGET_WEEK: ${{ steps.week.outputs.weekStart }}
+        run: node scripts/precompute-weekly-board.mjs "$TARGET_WEEK"

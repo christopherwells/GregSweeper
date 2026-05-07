@@ -17,14 +17,18 @@ import { handleWin, handleLoss, handleDailyBombHit } from './winLossHandler.js';
 import { performScan, performXRay, performMagnet, tryLifeline } from './powerUpActions.js';
 import { generateBoard, createEmptyBoard, calculateAdjacency, cleanSolverArtifacts } from '../logic/boardGenerator.js';
 import { floodFillReveal, checkWin, chordReveal, isBoardSolvable, estimatePlateMovesToDisarm, buildNeighborCache } from '../logic/boardSolver.js';
-import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getChaosDifficulty, getRequiredTechnique, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE, PLATE_MIN_SECONDS, PLATE_SECONDS_PER_STEP } from '../logic/difficulty.js';
+import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getChaosDifficulty, getRequiredTechnique, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE, WEEKLY_MIN_SIZE, WEEKLY_SIZE_RANGE, PLATE_MIN_SECONDS, PLATE_SECONDS_PER_STEP } from '../logic/difficulty.js';
 import { computeDailyFeatures, predictPar } from '../logic/dailyFeatures.js';
 import { shieldDefuse } from '../logic/powerUps.js';
-import { getGimmicksForLevel, applyGimmicks, applyWalls, isLockedCell, hasWallBetween, hasSeenGimmick, markGimmickSeen, getGimmickDef, isModifierPopupDisabled, setModifierPopupDisabled, getDailyGimmick, getChaosGimmicks, clearGimmickProperties, recomputeDisplayedMines, getIntensity } from '../logic/gimmicks.js';
-import { createDailyRNG, getLocalDateString } from '../logic/seededRandom.js';
+import { getGimmicksForLevel, applyGimmicks, applyWalls, isLockedCell, hasWallBetween, hasSeenGimmick, markGimmickSeen, getGimmickDef, isModifierPopupDisabled, setModifierPopupDisabled, getDailyGimmick, getWeeklyGimmicks, getChaosGimmicks, clearGimmickProperties, recomputeDisplayedMines, getIntensity } from '../logic/gimmicks.js';
+import { createDailyRNG, getLocalDateString, getWeekStart } from '../logic/seededRandom.js';
 import { selectDailyRngSeed } from '../logic/selectDailyRngSeed.js';
+import { selectWeeklyRngSeed } from '../logic/selectWeeklyRngSeed.js';
 import { getTargetGimmickName, getMissionForSeed } from '../logic/experimentDesign.js';
 import { loadDailyBoard, saveDailyBoard, serializeBoard, deserializeBoard } from '../firebase/dailyBoardSync.js';
+import { loadWeeklyBoard, saveWeeklyBoard } from '../firebase/weeklyBoardSync.js';
+import { fetchWeeklyLeaderboard } from '../firebase/firebaseLeaderboard.js';
+import { getUid } from '../firebase/firebaseProgress.js';
 import {
   loadModePowerUps, loadCheckpoint, clearGameState, saveDailyPar,
 } from '../storage/statsStorage.js';
@@ -227,6 +231,16 @@ export async function newGame() {
   } else if (!state.dailySeed) {
     state.dailySeed = getLocalDateString();
   }
+  // Reset weekly mode state when leaving weekly (mirrors the daily reset).
+  if (state.gameMode !== 'weekly') {
+    state.weeklySeed = null;
+    state.weeklyDay = null;
+    state.weeklyRngSeed = null;
+    state.weeklyBombHits = 0;
+    state.weeklyBombHitEvents = [];
+    state.weeklyDayTimes = {};
+    state.weeklyFeatures = null;
+  }
   state.dailyBombHits = 0;
   state.dailyBombHitEvents = [];
 
@@ -390,10 +404,160 @@ export async function newGame() {
     setDailySuggestedCell(bestStart);
   }
 
+  // Weekly mode: same canonical-board pattern as daily, but using
+  // weeklyBoard/{weekStart} for the whole-week board, getWeeklyGimmicks
+  // for the 2–4 stacked modifier pool, and selectWeeklyRngSeed for
+  // candidate scoring (gimmick count + advanced-logic-moves tiebreaker).
+  // Reset weekly per-attempt fields so the bomb-hit handler tracks
+  // this attempt cleanly.
+  state.weeklyBombHits = 0;
+  state.weeklyBombHitEvents = [];
+  if (state.gameMode === 'weekly' && state.weeklySeed) {
+    let reconstructed = null;
+    try {
+      let canonicalRaw = null;
+      if (state.canonicalWeeklyBoard
+          && state.canonicalWeeklyBoard.weekStart === state.weeklySeed
+          && state.canonicalWeeklyBoard.raw) {
+        canonicalRaw = state.canonicalWeeklyBoard.raw;
+      } else {
+        canonicalRaw = await loadWeeklyBoard(state.weeklySeed);
+        if (canonicalRaw) {
+          state.canonicalWeeklyBoard = { weekStart: state.weeklySeed, raw: canonicalRaw };
+        }
+      }
+      if (canonicalRaw) reconstructed = deserializeBoard(canonicalRaw);
+    } catch (err) {
+      console.warn('weekly canonical load/deserialize failed, regenerating:', err.message);
+    }
+
+    if (reconstructed) {
+      state.weeklyRngSeed = reconstructed.rngSeed || state.weeklySeed;
+      state.rows = reconstructed.rows;
+      state.cols = reconstructed.cols;
+      state.totalMines = reconstructed.totalMines;
+      state.board = reconstructed.board;
+      state.activeGimmicks = reconstructed.activeGimmicks || [];
+      state.gimmickData = {};
+    } else {
+      // Fall back to local generation. Same retry pattern as daily.
+      state.weeklyRngSeed = selectWeeklyRngSeed(state.weeklySeed);
+      const wRng = createDailyRNG(state.weeklyRngSeed);
+      const dim1 = wRng();
+      const dim2 = wRng();
+      const dim3 = wRng();
+      state.rows = WEEKLY_MIN_SIZE + Math.floor(dim1 * WEEKLY_SIZE_RANGE);
+      state.cols = WEEKLY_MIN_SIZE + Math.floor(dim2 * WEEKLY_SIZE_RANGE);
+      const density = DAILY_MIN_DENSITY + dim3 * DAILY_DENSITY_RANGE;
+      state.totalMines = Math.max(5, Math.round(state.rows * state.cols * density));
+
+      const fr = Math.floor(state.rows / 2);
+      const fc = Math.floor(state.cols / 2);
+      const boardRng = createDailyRNG(state.weeklyRngSeed);
+      state.board = generateBoard(state.rows, state.cols, state.totalMines, fr, fc, boardRng);
+      cleanSolverArtifacts(state.board);
+
+      const weeklyGimmicks = getWeeklyGimmicks(state.weeklyRngSeed, createDailyRNG);
+      state.activeGimmicks = weeklyGimmicks.length > 0 ? weeklyGimmicks : [];
+
+      for (let dAttempt = 0; ; dAttempt++) {
+        if (dAttempt > 0) {
+          const retryRng = createDailyRNG(state.weeklyRngSeed + '-retry-' + dAttempt);
+          state.board = generateBoard(state.rows, state.cols, state.totalMines, fr, fc, retryRng);
+          cleanSolverArtifacts(state.board);
+        }
+        if (state.activeGimmicks.length > 0) {
+          const gRng = createDailyRNG(state.weeklyRngSeed + '-gimmick-apply-' + dAttempt);
+          state.gimmickData = applyGimmicks(state.board, 1, state.activeGimmicks, gRng);
+        }
+        const checkRetry = isBoardSolvable(state.board, state.rows, state.cols, fr, fc);
+        cleanSolverArtifacts(state.board);
+        if (checkRetry.solvable || checkRetry.remainingUnknowns === 0) break;
+      }
+
+      // Write our generated weekly board to Firebase. Write-once rules
+      // silently no-op duplicates, so a slow first-visitor on Monday
+      // morning racing the precompute workflow is harmless — whichever
+      // wins, the rest of the week sees that board.
+      saveWeeklyBoard(state.weeklySeed, serializeBoard({
+        board: state.board, rows: state.rows, cols: state.cols,
+        totalMines: state.totalMines, rngSeed: state.weeklyRngSeed,
+        activeGimmicks: state.activeGimmicks,
+        codeVersion: state.codeVersion || 'unknown',
+      })).catch(() => {});
+    }
+
+    state.revealedCount = 0;
+    state.firstClick = false;
+    state.status = 'idle';
+
+    const fixedRow = Math.floor(state.rows / 2);
+    const fixedCol = Math.floor(state.cols / 2);
+
+    // Compute features once on canonical resolve. Used by the
+    // first-attempt fit-data submit in winLossHandler. Weekly doesn't
+    // ship a par to the player (no PAR_MODEL training on memorized
+    // boards), but we still need the feature vector so the FIRST
+    // attempt of the week — which IS an honest first encounter — can
+    // contribute to the next R refit via the daily/{weekStart}_weekly_first
+    // synthetic-daily path.
+    const wcheck = isBoardSolvable(state.board, state.rows, state.cols, fixedRow, fixedCol);
+    cleanSolverArtifacts(state.board);
+    state.weeklyFeatures = computeDailyFeatures(state, wcheck);
+
+    // Pre-fetch the player's existing weekly row from Firebase so the
+    // win handler can compute bestTime correctly. If we're offline or
+    // the player is new this week, weeklyDayTimes stays empty.
+    if (state.firebaseReady) {
+      try {
+        const entries = await fetchWeeklyLeaderboard(state.weeklySeed);
+        const myUid = getUid();
+        const myRow = myUid ? entries.find(e => e.uid === myUid) : null;
+        state.weeklyDayTimes = myRow?.dayTimes ? { ...myRow.dayTimes } : {};
+      } catch (err) {
+        state.weeklyDayTimes = {};
+      }
+    }
+
+    // Best-start cell for the Start-here label, same as daily.
+    const nbrCache = buildNeighborCache(state.board, state.rows, state.cols);
+    const startCandidates = [];
+    for (let r = 0; r < state.rows; r++) {
+      for (let c = 0; c < state.cols; c++) {
+        if (!state.board[r][c].isMine && !state.board[r][c].isLocked) {
+          startCandidates.push({ r, c, adj: state.board[r][c].adjacentMines });
+        }
+      }
+    }
+    const zeroFirst = startCandidates.filter(c => c.adj === 0);
+    const nonZero = startCandidates.filter(c => c.adj > 0);
+    const ordered = [...zeroFirst, ...nonZero];
+
+    let bestStart = null;
+    let bestStartUnknowns = Infinity;
+    for (const cand of ordered) {
+      const result = isBoardSolvable(state.board, state.rows, state.cols, cand.r, cand.c, nbrCache);
+      if (result.solvable && result.remainingUnknowns === 0) {
+        bestStart = cand;
+        break;
+      }
+      if (result.remainingUnknowns < bestStartUnknowns) {
+        bestStartUnknowns = result.remainingUnknowns;
+        bestStart = cand;
+      }
+    }
+    cleanSolverArtifacts(state.board);
+    state.revealedCount = 0;
+    if (bestStart) {
+      state.board[bestStart.r][bestStart.c].suggestedStart = true;
+    }
+    setDailySuggestedCell(bestStart);
+  }
+
   // Load per-mode power-ups
   const modePU = loadModePowerUps(state.gameMode);
   const emptyPU = { revealSafe: 0, shield: 0, lifeline: 0, scanRowCol: 0, magnet: 0, xray: 0 };
-  if (state.gameMode === 'timed' || state.gameMode === 'daily' || state.gameMode === 'chaos') {
+  if (state.gameMode === 'timed' || state.gameMode === 'daily' || state.gameMode === 'weekly' || state.gameMode === 'chaos') {
     state.powerUps = { ...emptyPU };
   } else {
     state.powerUps = {
@@ -406,8 +570,10 @@ export async function newGame() {
     };
   }
 
-  // Gimmicks / modifiers (set by challenge mode on first click, or daily mode above)
-  if (state.gameMode !== 'daily') {
+  // Gimmicks / modifiers (set by challenge mode on first click, or
+  // daily/weekly mode above). Weekly is added so the canonical-resolved
+  // gimmicks aren't blown away after the weekly branch sets them.
+  if (state.gameMode !== 'daily' && state.gameMode !== 'weekly') {
     state.activeGimmicks = [];
     state.gimmickData = {};
   }

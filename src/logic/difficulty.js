@@ -61,6 +61,13 @@ export const DAILY_SIZE_RANGE = 5;   // 8–12
 export const DAILY_MIN_DENSITY = 0.14;
 export const DAILY_DENSITY_RANGE = 0.16; // 14%–30%
 
+// Weekly board dimensions — same density range as daily but a wider
+// size band, since the player gets 7 attempts on the same board and
+// we want some weeks to feel chunky. The 14×14 cap matches challenge
+// L120's max so we don't introduce new size territory.
+export const WEEKLY_MIN_SIZE = 8;
+export const WEEKLY_SIZE_RANGE = 7;  // 8–14
+
 // Gimmick introduction levels (non-chaosOnly)
 const GIMMICK_INTROS = [11, 21, 31, 41, 51, 61, 71, 81, 91];
 
