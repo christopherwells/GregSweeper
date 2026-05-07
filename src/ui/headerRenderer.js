@@ -99,7 +99,11 @@ export function updateHeader() {
 
   // Level display
   if (state.gameMode === 'daily') {
-    levelDisplay.textContent = '📅 Daily';
+    levelDisplay.textContent = state.isBonusDaily ? '🎁 Bonus Daily' : '📅 Daily';
+  } else if (state.gameMode === 'weekly') {
+    const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const dayLbl = state.weeklyDay != null ? dayLabels[state.weeklyDay] : '';
+    levelDisplay.textContent = dayLbl ? `🏁 Weekly · ${dayLbl}` : '🏁 Weekly';
   } else if (state.gameMode === 'timed') {
     const tdiff = getTimedDifficulty(state.currentLevel);
     levelDisplay.textContent = tdiff.label || `Level ${state.currentLevel}`;

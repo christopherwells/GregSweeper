@@ -838,19 +838,24 @@ export function revealCell(row, col) {
     state.status = 'playing';
     startTimer();
 
-  } else if (state.status === 'idle' && state.gameMode === 'daily') {
-    // Daily mode: board was pre-generated for consistency.
-    // If first click lands on a mine, relocate it deterministically.
+  } else if (state.status === 'idle' && (state.gameMode === 'daily' || state.gameMode === 'weekly')) {
+    // Daily / weekly mode: board was pre-generated (canonical) so the
+    // generic first-click path above didn't fire. Relocate a mine away
+    // from the click cell deterministically, then start the timer.
+    // Source the RNG from whichever seed the mode owns.
+    const isWeekly = state.gameMode === 'weekly';
+    const seed = isWeekly
+      ? (state.weeklyRngSeed || state.weeklySeed)
+      : (state.dailyRngSeed || state.dailySeed);
     const clickedCell = state.board[row][col];
     if (clickedCell.isMine) {
       clickedCell.isMine = false;
-      // Use seeded RNG so relocation is deterministic for the same click position
-      const relocRng = createDailyRNG((state.dailyRngSeed || state.dailySeed) + '-reloc-' + row + '-' + col);
-      // Gather all valid relocation targets (non-mine, not adjacent to click)
+      const relocRng = createDailyRNG(seed + '-reloc-' + row + '-' + col);
       const candidates = [];
       for (let r = 0; r < state.rows; r++) {
         for (let c = 0; c < state.cols; c++) {
-          if (!state.board[r][c].isMine &&               (Math.abs(r - row) > 1 || Math.abs(c - col) > 1)) {
+          if (!state.board[r][c].isMine &&
+              (Math.abs(r - row) > 1 || Math.abs(c - col) > 1)) {
             candidates.push({ r, c });
           }
         }
@@ -862,7 +867,7 @@ export function revealCell(row, col) {
       calculateAdjacency(state.board);
       // Re-apply gimmicks that depend on adjacency (liar, wormhole, mirror)
       if (state.activeGimmicks.length > 0) {
-        const gimmickApplyRng = createDailyRNG((state.dailyRngSeed || state.dailySeed) + '-gimmick-apply');
+        const gimmickApplyRng = createDailyRNG(seed + '-gimmick-apply');
         state.gimmickData = applyGimmicks(state.board, 1, state.activeGimmicks, gimmickApplyRng);
 
         // Verify post-relocation solvability — retry gimmick placement if needed
@@ -870,11 +875,10 @@ export function revealCell(row, col) {
           const check = isBoardSolvable(state.board, state.rows, state.cols, row, col);
           cleanSolverArtifacts(state.board);
           if (check.solvable || check.remainingUnknowns === 0) break;
-          // Re-apply gimmicks with different seed
           for (const brow of state.board) for (const c of brow) clearGimmickProperties(c);
           state.board._wallEdges = null;
           calculateAdjacency(state.board);
-          const retryGimmickRng = createDailyRNG((state.dailyRngSeed || state.dailySeed) + '-gimmick-retry-' + rAttempt);
+          const retryGimmickRng = createDailyRNG(seed + '-gimmick-retry-' + rAttempt);
           state.gimmickData = applyGimmicks(state.board, 1, state.activeGimmicks, retryGimmickRng);
         }
       }
@@ -882,7 +886,8 @@ export function revealCell(row, col) {
     state.status = 'playing';
     startTimer();
 
-    // Show modifier intro popup for daily gimmicks (always show in Daily, not just unseen)
+    // Show modifier intro popup for daily/weekly gimmicks (always
+    // show, not just unseen — these modes always carry modifiers).
     if (state.activeGimmicks.length > 0 && !isModifierPopupDisabled()) {
       const defs = state.activeGimmicks.map(g => getGimmickDef(g)).filter(Boolean);
       if (defs.length > 0) {
