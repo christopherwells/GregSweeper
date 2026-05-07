@@ -28,7 +28,14 @@ import {
   getAchievementState, getAllTierNames, getTierIcon, getTierColor,
 } from '../logic/achievements.js';
 import { checkThemeUnlocks, showThemeUnlockToasts } from '../ui/themeManager.js';
-import { submitOnlineScore, submitWeeklyScore } from '../firebase/firebaseLeaderboard.js';
+import { submitOnlineScore, submitWeeklyScore, fetchWeeklyLeaderboard } from '../firebase/firebaseLeaderboard.js';
+
+// Inline HTML-escape used in the weekly leaderboard rows so a player
+// name with `<` or `&` doesn't break out of the cell.
+function escapeHtmlInline(s) {
+  return String(s || '').replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+}
 import { saveProgress, saveDailyHistoryEntry, getUid, markWeeklyDayAttempted } from '../firebase/firebaseProgress.js';
 import { breakdownPar } from '../logic/dailyFeatures.js';
 import { getHandicap } from '../logic/handicaps.js';
@@ -140,7 +147,10 @@ export function handleWin() {
     hadGimmicks: state.activeGimmicks && state.activeGimmicks.length > 0,
     dailySeed: isRealDaily ? state.dailySeed : null,
   });
-  const earnedPowerUp = state.gameMode === 'chaos' ? null : awardPowerUps(stats);
+  // Skip power-up awarding for chaos AND weekly. Weekly is a pure
+  // time-trial against a fixed board — power-ups would let later-week
+  // attempts cheese the leaderboard against earlier days.
+  const earnedPowerUp = (state.gameMode === 'chaos' || state.gameMode === 'weekly') ? null : awardPowerUps(stats);
 
   // Sync progress to cloud (fire-and-forget)
   if (state.gameMode === 'normal') {
@@ -171,8 +181,13 @@ export function handleWin() {
   // to daily/{weekStart}_weekly_first so the par-model fit gets honest
   // first-encounter timing data.
   if (isWeekly && state.weeklySeed != null && state.weeklyDay != null) {
-    const isFirstAttemptThisWeek = !state.weeklyDayTimes
-      || Object.keys(state.weeklyDayTimes).length === 0;
+    // Snapshot the prior-times BEFORE we mutate state.weeklyDayTimes,
+    // so the modal-render code below can compute "1st attempt" vs
+    // "Nth attempt" correctly. Without this snapshot the modal would
+    // see the just-written entry as a "prior" attempt and double-count.
+    state._weeklyPriorTimesAtWin = Object.values(state.weeklyDayTimes || {})
+      .filter(t => typeof t === 'number');
+    const isFirstAttemptThisWeek = state._weeklyPriorTimesAtWin.length === 0;
 
     markWeeklyDayAttempted(state.weeklySeed, state.weeklyDay);
 
@@ -218,8 +233,10 @@ export function handleWin() {
     }
   }
 
-  // Persist power-ups after win (award changes them) — skip for chaos (no power-ups)
-  if (state.gameMode !== 'chaos') {
+  // Persist power-ups after win (award changes them). Skip for chaos
+  // and weekly — neither mode uses power-ups so the saved counts would
+  // just be empty objects bouncing around localStorage.
+  if (state.gameMode !== 'chaos' && state.gameMode !== 'weekly') {
     saveModePowerUps(state.gameMode, state.powerUps);
   }
 
@@ -338,37 +355,90 @@ export function handleWin() {
       }
     }
   } else if (state.gameMode === 'weekly') {
-    // Weekly: show precise time, plus a learning-curve summary —
-    // best across the week so far, attempts used, and how this run
-    // compares to the player's previous best on the same board.
+    // Weekly: show precise time, day-of-week dot indicators, vs-best
+    // comparison, and the live leaderboard inline.
     const precise = state.preciseTime || state.elapsedTime;
     gameoverTime.textContent = `Time: ${precise.toFixed(1)}s${strikesInfo}`;
 
-    // weeklyDayTimes was loaded at newGame and contains all PRIOR days'
-    // completions; the current attempt's time isn't in there yet. Best
-    // PRIOR is the bar to beat for "personal record" framing.
-    const priorTimes = Object.values(state.weeklyDayTimes || {})
-      .filter(t => typeof t === 'number');
+    // CAPTURE the prior-times snapshot BEFORE handleWin's weekly win
+    // block mutates state.weeklyDayTimes (which it does to compute the
+    // bestTime for submitWeeklyScore). Without this snapshot, priorTimes
+    // would already include the current attempt's time and the modal
+    // would report a 1st attempt as a 2nd attempt.
+    const priorTimes = state._weeklyPriorTimesAtWin
+      || Object.values(state.weeklyDayTimes || {}).filter(t => typeof t === 'number' && Math.abs(t - precise) > 0.01);
     const priorBest = priorTimes.length > 0 ? Math.min(...priorTimes) : null;
-    const allTimes = priorBest != null ? [...priorTimes, precise] : [precise];
-    const newBest = Math.min(...allTimes);
-    const attemptsUsed = allTimes.length;
+    const newBest = priorBest != null ? Math.min(priorBest, precise) : precise;
+    const attemptsUsed = priorTimes.length + 1;
+
+    // Day circles: ● for played, ○ for not-yet, ◉ for the day this win
+    // landed on. After the win-flow mutation, state.weeklyDayTimes
+    // contains all played days including today. Find which one is today.
+    const playedDays = state.weeklyDayTimes || {};
+    const dayCircles = [0, 1, 2, 3, 4, 5, 6].map(d => {
+      if (d === state.weeklyDay) return '◉';
+      if (playedDays[d] != null) return '●';
+      return '○';
+    }).join(' ');
+
+    let summary;
+    if (priorBest == null) {
+      summary = `<span class="par-even">First attempt this week — set the bar at ${precise.toFixed(1)}s.</span>`;
+    } else if (precise < priorBest) {
+      const delta = (priorBest - precise).toFixed(1);
+      summary = `<span class="par-under">${delta}s faster than your best</span> · new best ${newBest.toFixed(1)}s`;
+    } else if (precise > priorBest) {
+      const delta = (precise - priorBest).toFixed(1);
+      summary = `<span class="par-over">${delta}s off your best</span> · still ${newBest.toFixed(1)}s to beat`;
+    } else {
+      summary = `<span class="par-even">Matched your best!</span> · ${newBest.toFixed(1)}s`;
+    }
 
     if (parEl) {
-      let summary;
-      if (priorBest == null) {
-        summary = `First attempt this week — set the bar at ${precise.toFixed(1)}s.`;
-      } else if (precise < priorBest) {
-        const delta = (priorBest - precise).toFixed(1);
-        summary = `<span class="par-under">${delta}s faster than your best</span> · new best ${newBest.toFixed(1)}s`;
-      } else if (precise > priorBest) {
-        const delta = (precise - priorBest).toFixed(1);
-        summary = `<span class="par-over">${delta}s off your best</span> · still ${newBest.toFixed(1)}s to beat`;
-      } else {
-        summary = `<span class="par-even">Matched your best!</span> · ${newBest.toFixed(1)}s`;
-      }
-      parEl.innerHTML = `Best this week: ${newBest.toFixed(1)}s · Attempts: ${attemptsUsed}/7<br>${summary}`;
+      parEl.innerHTML = `
+        <div class="weekly-summary-row weekly-day-dots">${dayCircles}</div>
+        <div class="weekly-summary-row">Best this week: <strong>${newBest.toFixed(1)}s</strong> · Attempts: ${attemptsUsed}/7</div>
+        <div class="weekly-summary-row">${summary}</div>
+        <div class="weekly-leaderboard" id="weekly-leaderboard-inline">
+          <div class="weekly-leaderboard-loading">Loading leaderboard…</div>
+        </div>
+      `;
       parEl.classList.remove('hidden');
+
+      // Fetch and render the leaderboard inline. Fire-and-forget — the
+      // gameover modal renders immediately with a "Loading…" placeholder
+      // and replaces it once Firebase responds. Keeps the modal snappy
+      // even on slow networks; if the fetch fails the placeholder just
+      // stays as "Loading…" which is harmless.
+      fetchWeeklyLeaderboard(state.weeklySeed).then((rows) => {
+        const el = document.getElementById('weekly-leaderboard-inline');
+        if (!el) return;
+        if (!rows || rows.length === 0) {
+          el.innerHTML = '<div class="weekly-leaderboard-empty">No scores yet this week.</div>';
+          return;
+        }
+        const myUid = getUid();
+        const myIdx = myUid ? rows.findIndex(r => r.uid === myUid) : -1;
+        // Show top 5 + your row if you're outside top 5.
+        const maxRows = 5;
+        const display = rows.slice(0, maxRows).map((r, i) => ({ ...r, rank: i + 1, mine: r.uid === myUid }));
+        if (myIdx >= maxRows) {
+          display.push({ ...rows[myIdx], rank: myIdx + 1, mine: true });
+        }
+        const rowsHtml = display.map(r =>
+          `<div class="weekly-lb-row${r.mine ? ' weekly-lb-row-mine' : ''}">` +
+            `<span class="weekly-lb-rank">${r.rank}.</span>` +
+            `<span class="weekly-lb-name">${escapeHtmlInline(r.name)}</span>` +
+            `<span class="weekly-lb-time">${r.bestTime.toFixed(1)}s</span>` +
+            `<span class="weekly-lb-attempts">${r.attemptsUsed}/7</span>` +
+          `</div>`
+        ).join('');
+        const myRank = myIdx >= 0 ? myIdx + 1 : null;
+        const header = myRank
+          ? `Rank #${myRank} of ${rows.length}`
+          : `${rows.length} player${rows.length !== 1 ? 's' : ''} this week`;
+        el.innerHTML = `<div class="weekly-leaderboard-header">${header}</div>${rowsHtml}`;
+      }).catch(() => {});
     }
   } else {
     gameoverTime.textContent = `Time: ${state.elapsedTime}s${strikesInfo}`;

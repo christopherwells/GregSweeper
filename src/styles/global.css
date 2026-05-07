@@ -2323,6 +2323,57 @@ body {
   opacity: 0.5;
 }
 
+/* ── Weekly end-of-game summary ──────────────────────── */
+.weekly-summary-row {
+  margin: 6px 0;
+  font-size: 14px;
+}
+.weekly-day-dots {
+  font-size: 22px;
+  letter-spacing: 4px;
+  text-align: center;
+  margin: 8px 0 12px;
+  color: var(--color-text-primary);
+}
+.weekly-leaderboard {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border, rgba(255,255,255,0.15));
+  font-size: 13px;
+  text-align: left;
+  max-width: 320px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.weekly-leaderboard-header {
+  font-weight: 600;
+  margin-bottom: 6px;
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+.weekly-leaderboard-loading,
+.weekly-leaderboard-empty {
+  text-align: center;
+  color: var(--color-text-secondary);
+  opacity: 0.7;
+  font-style: italic;
+}
+.weekly-lb-row {
+  display: grid;
+  grid-template-columns: 30px 1fr auto auto;
+  gap: 8px;
+  padding: 3px 6px;
+  border-radius: 4px;
+}
+.weekly-lb-row-mine {
+  background: rgba(108, 92, 231, 0.18);
+  font-weight: 600;
+}
+.weekly-lb-rank { color: var(--color-text-secondary); }
+.weekly-lb-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.weekly-lb-time { font-variant-numeric: tabular-nums; }
+.weekly-lb-attempts { color: var(--color-text-secondary); font-size: 11px; align-self: center; }
+
 /* ── Daily history chart (leaderboard modal) ───────────── */
 .daily-history-section {
   margin-top: 14px;

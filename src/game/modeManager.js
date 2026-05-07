@@ -57,12 +57,14 @@ export function updateModeUI(mode) {
     chaosModifierBar.classList.toggle('hidden', mode !== 'chaos');
   }
 
-  // Power-ups hidden in chaos mode
+  // Power-ups hidden in chaos, skillTrainer, and weekly. Weekly is a
+  // time-trial against a fixed board — letting players cheese with
+  // power-ups on later attempts would defeat the bestTime leaderboard.
   if (powerUpBar) {
-    if (mode === 'chaos' || mode === 'skillTrainer') {
+    if (mode === 'chaos' || mode === 'skillTrainer' || mode === 'weekly') {
       powerUpBar.classList.add('hidden');
     } else {
-      // Only show if not skill trainer (other modes manage visibility themselves)
+      powerUpBar.classList.remove('hidden');
     }
   }
 
