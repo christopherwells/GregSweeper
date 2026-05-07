@@ -427,10 +427,15 @@
   <div id="leaderboard-modal" class="modal hidden" role="dialog" aria-modal="true">
     <div class="modal-content">
       <div class="modal-header">
-        <h2>Daily Leaderboard</h2>
+        <h2>Leaderboard</h2>
         <button class="modal-close">&times;</button>
       </div>
       <div class="modal-body">
+        <div class="leaderboard-tabs">
+          <button class="leaderboard-tab active" data-lb-tab="daily">Daily</button>
+          <button class="leaderboard-tab" data-lb-tab="bonus" id="leaderboard-tab-bonus" style="display: none;">Bonus</button>
+          <button class="leaderboard-tab" data-lb-tab="weekly">Weekly</button>
+        </div>
         <p id="leaderboard-date"></p>
           <table id="leaderboard-table">
             <thead>
@@ -438,7 +443,7 @@
             </thead>
             <tbody id="leaderboard-body"></tbody>
           </table>
-          <p id="leaderboard-empty" class="hidden">No entries yet. Complete today's daily challenge!</p>
+          <p id="leaderboard-empty" class="hidden">No entries yet.</p>
       </div>
     </div>
   </div>

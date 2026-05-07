@@ -1695,6 +1695,33 @@ body {
 }
 .stats-panel.hidden { display: none; }
 
+/* Leaderboard modal tabs (Daily / Bonus / Weekly). Reuses the stats-tab
+   visual pattern but scoped to the leaderboard modal so tab styles stay
+   independent if either set evolves. */
+.leaderboard-tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--color-border, rgba(255, 255, 255, 0.1));
+}
+.leaderboard-tab {
+  flex: 1;
+  background: transparent;
+  color: var(--color-text-secondary);
+  border: none;
+  padding: 8px 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+.leaderboard-tab:hover { color: var(--color-text); }
+.leaderboard-tab.active {
+  color: var(--color-accent, #4c8dff);
+  border-bottom-color: var(--color-accent, #4c8dff);
+}
+
 .stats-section {
   margin-top: 20px;
   padding-top: 14px;

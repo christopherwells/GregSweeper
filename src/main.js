@@ -797,26 +797,45 @@ async function renderWeeklyLeaderboard(weekStart) {
   });
 }
 
+// Pick the default leaderboard tab based on current mode. Player in
+// weekly → start on Weekly tab; bonus → Bonus; otherwise Daily.
+function _defaultLeaderboardTab() {
+  if (state.gameMode === 'weekly' && state.weeklySeed) return 'weekly';
+  if (state.isBonusDaily) return 'bonus';
+  return 'daily';
+}
+
+function _setActiveLeaderboardTab(tab) {
+  for (const btn of $$('.leaderboard-tab')) {
+    btn.classList.toggle('active', btn.dataset.lbTab === tab);
+  }
+}
+
 async function updateLeaderboardDisplay() {
-  // Weekly leaderboard branch: when the player is playing the weekly,
-  // the leaderboard modal shows the weekly leaderboard for the current
-  // ET week. Different shape from daily (one row per player per week,
-  // bestTime + dayTimes map, no par). Drop the par/pace columns.
-  if (state.gameMode === 'weekly' && state.weeklySeed) {
-    await renderWeeklyLeaderboard(state.weeklySeed);
+  // Bonus tab is only visible on a bonus date — the player can't see
+  // bonus scores from a non-bonus date because there's no bonus
+  // leaderboard for that day.
+  const today = getLocalDateString();
+  const bonusTab = $('#leaderboard-tab-bonus');
+  if (bonusTab) {
+    bonusTab.style.display = BONUS_DAILY_DATES.has(today) ? '' : 'none';
+  }
+  const tab = _defaultLeaderboardTab();
+  _setActiveLeaderboardTab(tab);
+  await _renderLeaderboardForTab(tab);
+}
+
+async function _renderLeaderboardForTab(tab) {
+  if (tab === 'weekly') {
+    await renderWeeklyLeaderboard(getWeekStart());
     return;
   }
-
-  // Show the leaderboard for whichever daily slot the player is engaged
-  // with — if they're playing the bonus, the modal shows bonus scores;
-  // otherwise (title screen or regular daily) it shows the regular
-  // daily leaderboard.
-  const dateStr = (state.isBonusDaily && state.dailySeed)
-    ? state.dailySeed
-    : getLocalDateString();
-  const headerStr = dateStr.endsWith('_bonus')
-    ? prettyDate(dateStr.replace('_bonus', '')) + ' · Bonus'
-    : prettyDate(dateStr);
+  // daily / bonus paths share the existing daily-shape rendering.
+  const today = getLocalDateString();
+  const dateStr = tab === 'bonus' ? `${today}_bonus` : today;
+  const headerStr = tab === 'bonus'
+    ? prettyDate(today) + ' · Bonus'
+    : prettyDate(today);
   $('#leaderboard-date').textContent = headerStr;
   const tbody = $('#leaderboard-body');
   tbody.innerHTML = '';
@@ -1522,6 +1541,19 @@ $('#btn-leaderboard').addEventListener('click', () => {
   updateLeaderboardDisplay();
   showModal('leaderboard-modal');
 });
+
+// Leaderboard tab clicks: switch between Daily / Bonus / Weekly views
+// without closing the modal. The active tab is set by both the click
+// and by updateLeaderboardDisplay's default-tab logic; clicking just
+// re-renders the body for the picked tab.
+for (const tabBtn of $$('.leaderboard-tab')) {
+  tabBtn.addEventListener('click', () => {
+    const tab = tabBtn.dataset.lbTab;
+    if (!tab) return;
+    _setActiveLeaderboardTab(tab);
+    _renderLeaderboardForTab(tab);
+  });
+}
 $('#btn-collection').addEventListener('click', () => {
   renderCollectionModal();
   showModal('collection-modal');
