@@ -1,0 +1,25 @@
+name: Diagnose push subscriptions
+
+# Read-only inspection — lists notification prefs + subscription state
+# for every user, redacted. Use when a push isn't arriving and we want
+# to see whether the token is registered, what hour the player picked,
+# and whether the cron would match them now.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Inspect users
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node scripts/diagnose-push.mjs
