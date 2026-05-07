@@ -2343,13 +2343,16 @@ function _flashBanner(text) {
 const btnTestPushSetup = $('#btn-test-push-setup');
 if (btnTestPushSetup) {
   btnTestPushSetup.addEventListener('click', async () => {
-    _flashBanner('Test button clicked');
+    btnTestPushSetup.textContent = '⏳ Running…';
+    _flashBanner('Test button clicked (v1.5.62)');
     try {
       const { enableNotifications } = await import('./firebase/firebasePush.js');
       const hour = parseInt(reminderHourSelect?.value || '9', 10);
       const result = await enableNotifications({ hourLocal: hour, dailyReminder: true });
+      btnTestPushSetup.textContent = `Result: ${result}`;
       _flashBanner(`enableNotifications → ${result}`);
     } catch (err) {
+      btnTestPushSetup.textContent = `Error: ${(err.message || err).slice(0, 30)}`;
       _flashBanner(`Test threw: ${err.message || err}`);
     }
   });
