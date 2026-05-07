@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v1.5.63';
+const CACHE_NAME = 'gregsweeper-v1.5.64';
 const ASSETS = [
   './',
   './index.html',
@@ -158,10 +158,24 @@ self.addEventListener('notificationclick', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  // Same-origin only. Cross-origin (Firebase SDK CDN, gstatic, etc.)
+  // bypasses the SW entirely so it can't accidentally cache or stall
+  // those.
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
+
+  // Bypass HTTP cache on every same-origin fetch. Without this, the
+  // SW's network-first strategy still pulled stale resources from
+  // the browser/PWA HTTP cache when the cached entry hadn't expired
+  // (GH Pages defaults to 10-minute HTML cache; iOS PWAs hold even
+  // longer at the OS shell layer). cache:'no-store' tells fetch to
+  // ignore HTTP cache and always go to the network. Combined with the
+  // no-cache meta tags in index.html, this means an updated deploy
+  // reaches every active user on their next reload — no Check-for-
+  // Updates dance, no PWA reinstall, no support emails.
   event.respondWith(
-    fetch(event.request)
+    fetch(event.request, { cache: 'no-store' })
       .then((response) => {
-        // Cache a fresh copy for offline use
         if (response.ok) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
@@ -171,7 +185,7 @@ self.addEventListener('fetch', (event) => {
         return response;
       })
       .catch(() => {
-        // Network failed — try cache (ignoreSearch so ?v=X still matches)
+        // Network failed — fall back to cache for offline play.
         return caches.match(event.request, { ignoreSearch: true });
       })
   );
