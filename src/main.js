@@ -2333,6 +2333,21 @@ if (reminderHourSelect) {
   });
 }
 
+const btnTestPushSetup = $('#btn-test-push-setup');
+if (btnTestPushSetup) {
+  btnTestPushSetup.addEventListener('click', async () => {
+    showToast('Testing push setup…');
+    try {
+      const { enableNotifications } = await import('./firebase/firebasePush.js');
+      const hour = parseInt(reminderHourSelect?.value || '9', 10);
+      const result = await enableNotifications({ hourLocal: hour, dailyReminder: true });
+      showToast(`enableNotifications → ${result}`);
+    } catch (err) {
+      showToast(`Test threw: ${err.message || err}`);
+    }
+  });
+}
+
 // Colorblind mode toggle
 const colorblindToggle = $('#colorblind-toggle');
 const COLORBLIND_KEY = 'minesweeper_colorblind';
