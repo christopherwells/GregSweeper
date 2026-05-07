@@ -76,6 +76,34 @@ export async function enableNotifications({ hourLocal = 9, dailyReminder = true,
   }
   if (perm !== 'granted') return 'denied';
 
+  const uid = getUid();
+  if (!uid || typeof firebase === 'undefined' || !firebase.database) return 'error';
+  const db = firebase.database();
+
+  // Write the user's intent FIRST. This is what the toggle reflects
+  // and it's a plain Firebase write that doesn't depend on FCM being
+  // healthy. If we wait for getToken before writing prefs and FCM
+  // happens to be flaky (token tombstoned, SW updating, network
+  // blip), the toggle silently unchecks when the user re-opens
+  // settings — even though the user explicitly asked for it on.
+  try {
+    await db.ref(`users/${uid}/notificationPrefs`).set({
+      enabled: true,
+      hourLocal,
+      dailyReminder,
+      streakWarning,
+    });
+  } catch (err) {
+    console.warn('enableNotifications: prefs write failed:', err.message);
+    return 'error';
+  }
+
+  // Now try to mint a token + write the subscription. If this leg
+  // fails the user is still considered "enabled" — refreshTokenIfStale
+  // on the next app load will retry getToken and persist a fresh
+  // subscription. Until then the cron just skips us (no token to send
+  // to), so the worst case is a couple of missed notifications, not a
+  // silently-flipped toggle.
   try {
     const messaging = firebase.messaging();
     const reg = await navigator.serviceWorker.ready;
@@ -83,32 +111,19 @@ export async function enableNotifications({ hourLocal = 9, dailyReminder = true,
       vapidKey: VAPID_PUBLIC_KEY,
       serviceWorkerRegistration: reg,
     });
-    if (!token) return 'error';
-
-    // FCM tokens encode the endpoint + auth + p256dh in one opaque
-    // string for the FCM REST API. Server-side script (send-push.mjs)
-    // POSTs against fcm.googleapis.com using this token directly, no
-    // need to decode endpoint/auth/p256dh separately.
-    const uid = getUid();
-    if (!uid || typeof firebase === 'undefined' || !firebase.database) return 'error';
-
-    const db = firebase.database();
-    await db.ref(`users/${uid}/pushSubscription`).set({
-      token,
-      subscribedAt: firebase.database.ServerValue.TIMESTAMP,
-    });
-    await db.ref(`users/${uid}/notificationPrefs`).set({
-      enabled: true,
-      hourLocal,
-      dailyReminder,
-      streakWarning,
-    });
-
-    return 'success';
+    if (token) {
+      await db.ref(`users/${uid}/pushSubscription`).set({
+        token,
+        subscribedAt: firebase.database.ServerValue.TIMESTAMP,
+      });
+    } else {
+      console.warn('enableNotifications: getToken returned null; relying on refreshTokenIfStale to retry');
+    }
   } catch (err) {
-    console.warn('enableNotifications failed:', err.message);
-    return 'error';
+    console.warn('enableNotifications: token/subscription write failed (will retry on next load):', err.message);
   }
+
+  return 'success';
 }
 
 /**
