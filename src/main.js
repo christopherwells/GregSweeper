@@ -2333,17 +2333,24 @@ if (reminderHourSelect) {
   });
 }
 
+function _flashBanner(text) {
+  const el = document.createElement('div');
+  el.textContent = text;
+  el.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#e94560;color:#fff;padding:14px 18px;font:600 14px system-ui;text-align:center;z-index:2147483647;box-shadow:0 2px 8px rgba(0,0,0,0.4);';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
 const btnTestPushSetup = $('#btn-test-push-setup');
 if (btnTestPushSetup) {
   btnTestPushSetup.addEventListener('click', async () => {
-    showToast('Testing push setup…');
+    _flashBanner('Test button clicked');
     try {
       const { enableNotifications } = await import('./firebase/firebasePush.js');
       const hour = parseInt(reminderHourSelect?.value || '9', 10);
       const result = await enableNotifications({ hourLocal: hour, dailyReminder: true });
-      showToast(`enableNotifications → ${result}`);
+      _flashBanner(`enableNotifications → ${result}`);
     } catch (err) {
-      showToast(`Test threw: ${err.message || err}`);
+      _flashBanner(`Test threw: ${err.message || err}`);
     }
   });
 }
