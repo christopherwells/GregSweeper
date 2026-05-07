@@ -26,9 +26,9 @@ import { getUid } from './firebaseProgress.js';
 
 // VAPID public key from Firebase Console → Project Settings → Cloud
 // Messaging → Web Push certificates. Public — safe to ship in client.
-// Empty string here surfaces a clear "not configured" toast instead of
-// a cryptic FCM error if push is enabled before the key is generated.
-const VAPID_PUBLIC_KEY = '';
+// FCM uses this to derive the per-subscriber endpoint when the page
+// calls messaging.getToken({vapidKey}).
+const VAPID_PUBLIC_KEY = 'BOuXy2fkaqrNc2KnGgLaMVKo1hJ3z9UeP7S1vU1RO_fLYmzdX1jmyC1GSSiUxW_JiXSnqvUFmGfJaeeRd0KTeZw';
 
 const PERMISSION_HINT_KEY = 'gregsweeper_push_permission_hinted';
 
