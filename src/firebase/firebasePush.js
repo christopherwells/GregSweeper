@@ -107,14 +107,19 @@ export async function enableNotifications({ hourLocal = 9, dailyReminder = true,
   try {
     const messaging = firebase.messaging();
     const reg = await navigator.serviceWorker.ready;
-    // Force-clear FCM's IndexedDB-cached token before requesting a new
-    // one. Without this, getToken can return a stale cached token from
-    // an earlier SW lifecycle (since the underlying browser push
-    // subscription was invalidated by a SW unregister). FCM doesn't
-    // re-validate the cached token against the live subscription on
-    // its own — it just returns it. The cron then sends to a dead
-    // token and gets 404. Deleting first guarantees a fresh mint
-    // tied to the current SW's PushSubscription.
+    // Reset both layers before minting a fresh token:
+    //   (a) browser pushManager.unsubscribe() — kills the actual push
+    //       subscription. messaging.getToken reuses an existing live
+    //       subscription if one is present, so an OS/browser-level
+    //       dead subscription persists across deleteToken cycles. The
+    //       new FCM token then points at a dead endpoint and FCM 404s
+    //       on send with "UNREGISTERED" the moment we try to deliver.
+    //   (b) messaging.deleteToken() — clears FCM's IndexedDB cache so
+    //       getToken doesn't short-circuit to the cached token before
+    //       checking subscription state.
+    // Both must run for getToken to actually create a new subscription
+    // tied to the current SW lifecycle.
+    try { const sub = await reg.pushManager.getSubscription(); if (sub) await sub.unsubscribe(); } catch {}
     try { await messaging.deleteToken(); } catch {}
     const token = await messaging.getToken({
       vapidKey: VAPID_PUBLIC_KEY,
@@ -188,17 +193,13 @@ export async function refreshTokenIfStale() {
 
     const reg = await navigator.serviceWorker.ready;
     const messaging = firebase.messaging();
-    // ALWAYS deleteToken before getToken. The previous version skipped
-    // the wipe when Firebase already had a token, on the theory that an
-    // existing record meant a good subscription. But SW updates (every
-    // CACHE_NAME bump, every Check for Updates) invalidate the
-    // underlying push subscription server-side, while FCM's IndexedDB
-    // cache still holds the now-dead token. The next getToken returns
-    // that dead token, currentToken === existingToken short-circuits
-    // 'unchanged', and Firebase keeps pointing at a tombstoned token
-    // until a push attempt 404s and clears it. Forcing the wipe every
-    // load guarantees Firebase tracks a token that's actually live for
-    // the SW currently controlling this page.
+    // Same two-layer reset as enableNotifications: kill the dead
+    // browser pushManager subscription FIRST, then clear FCM's cached
+    // token. Without the unsubscribe, getToken reuses the existing
+    // (dead-after-SW-update) subscription and FCM 404s on send. With
+    // it, getToken creates a brand-new subscription tied to the SW
+    // currently controlling the page.
+    try { const sub = await reg.pushManager.getSubscription(); if (sub) await sub.unsubscribe(); } catch {}
     try { await messaging.deleteToken(); } catch {}
     const currentToken = await messaging.getToken({
       vapidKey: VAPID_PUBLIC_KEY,
