@@ -155,17 +155,23 @@ async function getAccessToken(serviceAccount) {
 }
 
 async function sendOneFcmMessage(accessToken, token, payload) {
-  // Data-only message: we put title/body/tag/deepLink in `data` and
-  // let our SW's push handler call showNotification itself. Avoids
-  // FCM's platform-override gotcha where setting webpush.notification
-  // (for the icon) silently drops the title/body from the top-level
-  // notification block. Since the SW does the rendering, every field
-  // (title, body, icon path, deep link) flows through ONE code path —
-  // sw.js's `push` listener. All values are strings (FCM data fields
-  // must be strings).
+  // Belt-and-suspenders payload. Two reasons we ship title/body in both
+  // `notification` AND `data`:
+  //   1. The current SW (v1.5.52+) reads the FCM-wrapped shape and
+  //      pulls from `data.*` first. Belt.
+  //   2. Older SWs that pre-date the multi-shape parser pull from the
+  //      top-level `notification.*` field that FCM unpacks for them.
+  //      Suspenders, so users with stale SWs still see the body.
+  // We deliberately do NOT set webpush.notification — that's the
+  // override gotcha that silently drops title/body for some browsers.
+  // The icon path lives in sw.js's showNotification call, not here.
   const message = {
     message: {
       token,
+      notification: {
+        title: payload.title,
+        body: payload.body,
+      },
       data: {
         title: payload.title,
         body: payload.body,
