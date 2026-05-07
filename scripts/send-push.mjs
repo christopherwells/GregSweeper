@@ -87,13 +87,19 @@ function _payloadFor(category) {
 }
 
 // Mint an OAuth2 access token from the service-account JSON. The token
-// has scope https://www.googleapis.com/auth/firebase.messaging which
-// authorises POSTs to fcm.googleapis.com/v1/.../messages:send.
+// needs three scopes: firebase.messaging for FCM REST, firebase.database
+// (+ userinfo.email) for the Realtime Database REST users-tree read.
+// Without all three the FCM POST works but the users-tree fetch returns
+// 401 Unauthorized.
 async function getAccessToken(serviceAccount) {
   const now = Math.floor(Date.now() / 1000);
   const claims = {
     iss: serviceAccount.client_email,
-    scope: 'https://www.googleapis.com/auth/firebase.messaging',
+    scope: [
+      'https://www.googleapis.com/auth/firebase.messaging',
+      'https://www.googleapis.com/auth/firebase.database',
+      'https://www.googleapis.com/auth/userinfo.email',
+    ].join(' '),
     aud: 'https://oauth2.googleapis.com/token',
     iat: now,
     exp: now + 3600,
