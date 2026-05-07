@@ -2291,6 +2291,7 @@ if (dailyReminderToggle) {
 
   dailyReminderToggle.addEventListener('change', async () => {
     const wantsOn = dailyReminderToggle.checked;
+    showToast(`Toggle changed: wantsOn=${wantsOn}`);
     const { enableNotifications, disableNotifications, isIOS, isInstalledPWA } = await import('./firebase/firebasePush.js');
     if (wantsOn) {
       const hour = parseInt(reminderHourSelect?.value || '9', 10);
@@ -2323,6 +2324,8 @@ if (dailyReminderToggle) {
       const result = await disableNotifications();
       if (result === 'success') {
         showToast('🔕 Daily reminders disabled');
+      } else {
+        showToast(`Disable returned: ${result}`);
       }
     }
   });
