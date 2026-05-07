@@ -108,9 +108,7 @@ function setBootStatus(text) {
 }
 function hideBootOverlay() {
   const el = document.getElementById('boot-overlay');
-  if (!el) return;
-  el.classList.add('fading');
-  setTimeout(() => el.remove(), 250);
+  if (el) el.remove();
 }
 
 // ── Service-worker update gate ────────────────────────

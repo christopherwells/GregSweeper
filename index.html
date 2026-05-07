@@ -16,39 +16,56 @@
   <link rel="stylesheet" href="src/styles/animations.css">
   <link rel="stylesheet" href="src/styles/themes/classic.css">
   <link rel="stylesheet" href="src/styles/themes/dark.css">
+  <!-- Apply the saved theme's data attribute BEFORE the boot overlay
+       renders so its colors / font come from the theme's CSS
+       variables (defined in global.css + per-theme files) instead of
+       hardcoded values. Falls back to 'classic' if nothing is stored.
+       Also lazy-injects the theme stylesheet for non-default themes
+       so the overlay matches even on first paint. -->
+  <script>
+  (function () {
+    try {
+      var t = localStorage.getItem('minesweeper_theme') || 'classic';
+      document.documentElement.setAttribute('data-theme', t);
+      if (t !== 'classic' && t !== 'dark') {
+        var link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'src/styles/themes/' + t + '.css';
+        document.head.appendChild(link);
+      }
+    } catch (e) {
+      document.documentElement.setAttribute('data-theme', 'classic');
+    }
+  })();
+  </script>
   <!-- Boot overlay: visible from first paint until the startup gate (SW
        update check + Firebase ready + canonical board fetch for daily)
        resolves. CSS is inline so it shows even before stylesheets load.
-       Without this, the player would see the title screen / a daily
-       board flash up before we know whether the canonical loaded — and
-       on a cold-load race that flash could be a divergent board. -->
+       Colors / font come from the active theme's CSS variables — set
+       by the inline script above so they resolve before the overlay
+       paints. No animations: a static "Loading…" line keeps the boot
+       splash quiet and avoids competing with the active theme's own
+       look. -->
   <style>
     #boot-overlay {
       position: fixed; inset: 0; z-index: 999999;
-      background: #1a1a2e; color: #fff;
+      background: var(--color-app-bg, #d4ccc0);
+      color: var(--color-text, #2d2416);
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      gap: 18px;
-      font-family: 'Press Start 2P', system-ui, -apple-system, sans-serif;
-      transition: opacity 0.2s ease;
+      gap: 14px;
+      font-family: var(--font-family, 'Segoe UI', system-ui, -apple-system, sans-serif);
     }
-    #boot-overlay.fading { opacity: 0; pointer-events: none; }
+    #boot-overlay.fading { display: none; }
     #boot-overlay h1 {
-      font-size: 28px; margin: 0; letter-spacing: 2px;
-      color: #6c5ce7; text-shadow: 2px 2px 0 #2d3436;
-    }
-    #boot-overlay .boot-spinner {
-      width: 36px; height: 36px;
-      border: 3px solid rgba(255,255,255,0.15);
-      border-top-color: #6c5ce7;
-      border-radius: 50%;
-      animation: bootspin 0.8s linear infinite;
+      font-size: 28px; margin: 0;
+      font-family: var(--font-display, var(--font-family, system-ui));
+      color: var(--color-accent, #5c6bc0);
     }
     #boot-overlay #boot-status {
-      margin: 0; opacity: 0.7; font-size: 11px;
-      letter-spacing: 1px; min-height: 14px;
+      margin: 0; font-size: 13px;
+      color: var(--color-text-secondary, #7a6e5d);
     }
-    @keyframes bootspin { to { transform: rotate(360deg); } }
   </style>
   <!-- Other themes loaded on-demand by themeManager.js -->
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700;900&family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
@@ -74,10 +91,11 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js"></script>
 </head>
 <body>
-  <!-- Boot overlay — visible until runStartupGate() in main.js completes -->
+  <!-- Boot overlay — visible until runStartupGate() in main.js completes.
+       No animation; just a static title + status line in the active
+       theme's colors. -->
   <div id="boot-overlay">
     <h1>GregSweeper</h1>
-    <div class="boot-spinner"></div>
     <p id="boot-status">Loading…</p>
   </div>
 
