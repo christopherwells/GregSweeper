@@ -1,45 +1,50 @@
 {
-  "updatedAt": "2026-05-08T15:28:04Z",
-  "target": "lockedCellCount",
-  "reason": "highest posterior CV (1.137) excluding last 3 targets",
+  "updatedAt": "2026-05-09T14:55:10Z",
+  "target": "compassCellCount",
+  "reason": "highest posterior CV (1.117) excluding last 3 targets",
   "recentTargets": [
+    "compassCellCount",
     "lockedCellCount",
-    "wormholePairCount",
-    "wallEdgeCount"
+    "wormholePairCount"
   ],
   "candidates": [
     {
-      "feature": "lockedCellCount",
-      "mean": 0.559,
-      "sd": 0.636,
-      "cv": 1.137
-    },
-    {
       "feature": "wormholePairCount",
-      "mean": 1.455,
-      "sd": 1.634,
-      "cv": 1.123
+      "mean": 1.464,
+      "sd": 1.663,
+      "cv": 1.136
     },
     {
       "feature": "compassCellCount",
-      "mean": 0.774,
-      "sd": 0.847,
-      "cv": 1.094
+      "mean": 0.797,
+      "sd": 0.891,
+      "cv": 1.117
     },
     {
-      "feature": "wallEdgeCount",
-      "mean": 0.213,
-      "sd": 0.23,
-      "cv": 1.077
+      "feature": "lockedCellCount",
+      "mean": 0.556,
+      "sd": 0.582,
+      "cv": 1.047
     },
     {
       "feature": "sonarCellCount",
-      "mean": 0.679,
-      "sd": 0.722,
-      "cv": 1.064
+      "mean": 0.69,
+      "sd": 0.71,
+      "cv": 1.029
+    },
+    {
+      "feature": "liarCellCount",
+      "mean": 0.76,
+      "sd": 0.762,
+      "cv": 1.003
     }
   ],
   "coverage_targets": [
+    {
+      "feature": "lockedCellCount",
+      "n_boards": 3,
+      "deficit_weight": 0.25
+    },
     {
       "feature": "mirrorPairCount",
       "n_boards": 3,
@@ -56,17 +61,7 @@
       "deficit_weight": 0.2
     },
     {
-      "feature": "compassCellCount",
-      "n_boards": 5,
-      "deficit_weight": 0.1667
-    },
-    {
       "feature": "mysteryCellCount",
-      "n_boards": 6,
-      "deficit_weight": 0.1429
-    },
-    {
-      "feature": "wallEdgeCount",
       "n_boards": 6,
       "deficit_weight": 0.1429
     },
@@ -74,6 +69,11 @@
       "feature": "sonarCellCount",
       "n_boards": 6,
       "deficit_weight": 0.1429
+    },
+    {
+      "feature": "wallEdgeCount",
+      "n_boards": 8,
+      "deficit_weight": 0.1111
     }
   ]
 }

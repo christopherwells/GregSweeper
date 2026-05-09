@@ -1695,5 +1695,104 @@
         "cv": 0.4165
       }
     ]
+  },
+  {
+    "date": "2026-05-09",
+    "updatedAt": "2026-05-09T14:55:10Z",
+    "method": "brms-ranef",
+    "n_scores": 121,
+    "n_dates": 61,
+    "n_players": 3,
+    "n_eligible": 2,
+    "rmse": 32.57,
+    "bias": -0,
+    "diagnostics": "max Rhat = 1.004, min ESS = 1507, divergent = 0/4000",
+    "target": "compassCellCount",
+    "candidates": [
+      {
+        "feature": "wormholePairCount",
+        "mean": 1.4642,
+        "sd": 1.6626,
+        "cv": 1.1355
+      },
+      {
+        "feature": "compassCellCount",
+        "mean": 0.797,
+        "sd": 0.8905,
+        "cv": 1.1173
+      },
+      {
+        "feature": "lockedCellCount",
+        "mean": 0.5559,
+        "sd": 0.5822,
+        "cv": 1.0473
+      },
+      {
+        "feature": "sonarCellCount",
+        "mean": 0.6896,
+        "sd": 0.7095,
+        "cv": 1.0289
+      },
+      {
+        "feature": "liarCellCount",
+        "mean": 0.7595,
+        "sd": 0.7619,
+        "cv": 1.0031
+      },
+      {
+        "feature": "wallEdgeCount",
+        "mean": 0.1899,
+        "sd": 0.1856,
+        "cv": 0.9772
+      },
+      {
+        "feature": "mirrorPairCount",
+        "mean": 1.2255,
+        "sd": 1.1661,
+        "cv": 0.9516
+      },
+      {
+        "feature": "mysteryCellCount",
+        "mean": 0.9263,
+        "sd": 0.8801,
+        "cv": 0.9501
+      },
+      {
+        "feature": "zeroClusterCount",
+        "mean": 0.5821,
+        "sd": 0.4374,
+        "cv": 0.7515
+      },
+      {
+        "feature": "nonZeroSafeCellCount",
+        "mean": 0.2884,
+        "sd": 0.1899,
+        "cv": 0.6585
+      },
+      {
+        "feature": "canonicalSubsetMoves",
+        "mean": 3.9897,
+        "sd": 2.1952,
+        "cv": 0.5502
+      },
+      {
+        "feature": "advancedLogicMoves",
+        "mean": 1.321,
+        "sd": 0.5637,
+        "cv": 0.4267
+      },
+      {
+        "feature": "genericSubsetMoves",
+        "mean": 2.3098,
+        "sd": 0.9702,
+        "cv": 0.42
+      },
+      {
+        "feature": "totalMines",
+        "mean": 1.9216,
+        "sd": 0.7197,
+        "cv": 0.3745
+      }
+    ]
   }
 ]
