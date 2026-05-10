@@ -25,6 +25,15 @@ let _initialized = false;
 let _sessionWriteCount = 0;
 let _buffer = [];
 let _codeVersion = 'unknown';
+let _intervalId = null;
+// Monotonic timestamp for the path key. Date.now() can collide if two
+// errors fire in the same millisecond (a single throw inside a tight
+// retry loop would do it); the second write would silently overwrite
+// the first because the rule allows updates on existing keys. Bumping
+// past _lastTs guarantees within-session uniqueness without needing
+// an underscore-bearing key (which the numeric-only path regex would
+// reject).
+let _lastTs = 0;
 
 function _safeStr(v, max) {
   try {
@@ -43,6 +52,13 @@ function _isStandalone() {
   }
 }
 
+function _nextTs() {
+  let ts = Date.now();
+  if (ts <= _lastTs) ts = _lastTs + 1;
+  _lastTs = ts;
+  return ts;
+}
+
 function _writeOne(payload) {
   // Defensive: never let the reporter throw and bubble back into the
   // page. Every step is wrapped.
@@ -50,7 +66,7 @@ function _writeOne(payload) {
     const uid = getUid();
     if (!uid) return false;
     if (typeof firebase === 'undefined' || !firebase.database) return false;
-    const ts = Date.now();
+    const ts = _nextTs();
     const data = {
       message: _safeStr(payload.message, MAX_MESSAGE_LEN),
       stack: _safeStr(payload.stack || '', MAX_STACK_LEN),
@@ -88,6 +104,21 @@ function _enqueue(payload) {
   // Auth not ready yet — buffer for the periodic flush. Cap the buffer
   // so a flood during initialization can't grow unbounded.
   if (_buffer.length < MAX_BUFFER) _buffer.push(payload);
+  // Restart the periodic flush if it had cleared after a previous drain.
+  // Without this, an error that arrives AFTER auth resolves but BEFORE
+  // the next periodic tick (and after the interval was cleared on
+  // empty-buffer) would sit in the buffer forever. _initialized stays
+  // true; we just re-arm the timer.
+  if (_initialized && _intervalId === null && _buffer.length > 0) {
+    _intervalId = setInterval(() => {
+      if (_sessionWriteCount >= MAX_ERRORS_PER_SESSION || _buffer.length === 0) {
+        clearInterval(_intervalId);
+        _intervalId = null;
+        return;
+      }
+      _flushBuffer();
+    }, BUFFER_FLUSH_INTERVAL_MS);
+  }
 }
 
 /**
@@ -124,10 +155,19 @@ export function initErrorReporter(opts) {
   });
 
   // Periodic flush handles the auth-not-yet-ready case. Cleared once
-  // session cap is hit so we don't spin needlessly.
-  const intervalId = setInterval(() => {
+  // the cap is hit OR the buffer has fully drained — without the empty-
+  // buffer clear, a single buffered boot-time error would leave the
+  // interval ticking every second for the entire session even after
+  // its work is done.
+  _intervalId = setInterval(() => {
     if (_sessionWriteCount >= MAX_ERRORS_PER_SESSION) {
-      clearInterval(intervalId);
+      clearInterval(_intervalId);
+      _intervalId = null;
+      return;
+    }
+    if (_buffer.length === 0) {
+      clearInterval(_intervalId);
+      _intervalId = null;
       return;
     }
     _flushBuffer();

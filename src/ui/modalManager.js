@@ -28,6 +28,13 @@ function _focusableIn(modal) {
 }
 
 function _attachTrap(modal) {
+  // Guard against re-entrancy: showModal may be called twice on the
+  // same modal (e.g. a delayed showModal fires after a synchronous
+  // path already opened it). Without this, the first handler stays
+  // bound forever and every Tab triggers two trap loops, which
+  // overshoot the wrap and land focus in unexpected places. Detach
+  // any prior trap before attaching a fresh one.
+  if (_trapState.has(modal)) _detachTrap(modal);
   const restoreTarget = document.activeElement;
   const handler = (e) => {
     if (e.key !== 'Tab') return;

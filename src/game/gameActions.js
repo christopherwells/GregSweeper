@@ -28,7 +28,7 @@ import { getTargetGimmickName, getMissionForSeed } from '../logic/experimentDesi
 import { loadDailyBoard, saveDailyBoard, serializeBoard, deserializeBoard } from '../firebase/dailyBoardSync.js';
 import { loadWeeklyBoard, saveWeeklyBoard } from '../firebase/weeklyBoardSync.js';
 import { fetchWeeklyLeaderboard } from '../firebase/firebaseLeaderboard.js';
-import { getUid } from '../firebase/firebaseProgress.js';
+import { getUid, markWeeklyDayAttempted } from '../firebase/firebaseProgress.js';
 import {
   loadModePowerUps, loadCheckpoint, clearGameState, saveDailyPar,
 } from '../storage/statsStorage.js';
@@ -962,6 +962,19 @@ export function revealCell(row, col) {
     }
     state.status = 'playing';
     startTimer();
+
+    // Weekly: commit the attempt on first click. Without this, a player
+    // could hit a mine (which doesn't end the game — just adds 10s and
+    // re-fogs), smash the smiley, and get a fresh attempt for today —
+    // bypassing the bomb-time-penalty mechanic. Marking on first click
+    // means the slot is consumed the moment the player commits to a
+    // play, regardless of whether they reset, hit bombs, or finish.
+    // Idempotent — re-marking the same day is a no-op on Firebase.
+    if (state.gameMode === 'weekly' && state.weeklySeed != null && state.weeklyDay != null) {
+      markWeeklyDayAttempted(state.weeklySeed, state.weeklyDay);
+      if (!state.cachedWeeklyDayAttempts) state.cachedWeeklyDayAttempts = {};
+      state.cachedWeeklyDayAttempts[state.weeklyDay] = true;
+    }
 
     // Show modifier intro popup for daily/weekly gimmicks (always
     // show, not just unseen — these modes always carry modifiers).
