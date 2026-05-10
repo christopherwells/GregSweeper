@@ -18,7 +18,7 @@
 import { createDailyRNG } from '../src/logic/seededRandom.js';
 import { getDailyGimmick, applyGimmicks } from '../src/logic/gimmicks.js';
 import { generateBoard, cleanSolverArtifacts } from '../src/logic/boardGenerator.js';
-import { isBoardSolvable } from '../src/logic/boardSolver.js';
+import { isBoardSolvable, findDecorativeGimmicks } from '../src/logic/boardSolver.js';
 import { computeDailyFeatures } from '../src/logic/dailyFeatures.js';
 import { DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE } from '../src/logic/difficulty.js';
 import { serializeBoard } from '../src/firebase/dailyBoardSync.js';
@@ -116,41 +116,74 @@ function buildOneCandidate(seed, forcedGimmick, singleOnly) {
     cleanSolverArtifacts(board);
     if (check.solvable || check.remainingUnknowns === 0) break;
   }
-  return { board, rows, cols, totalMines, activeGimmicks, check };
+  // Compute decorative gimmicks once per candidate. Only meaningful when
+  // the board is solvable — otherwise we'd be measuring decoration on a
+  // failed candidate. selectBestCandidate uses this to prefer load-bearing
+  // candidates and falls back to the best decorative if none pass.
+  const decorative = (check && (check.solvable || check.remainingUnknowns === 0))
+    ? findDecorativeGimmicks(board, rows, cols, fr, fc, activeGimmicks)
+    : [];
+  return { board, rows, cols, totalMines, activeGimmicks, check, decorative };
 }
 
 function selectBestCandidate(dateString, spec) {
   // Mirror selectDailyRngSeed.js: per-slot missions (1 primary + 9
   // coverage), score = target_count × deficit_weight, pick max.
-  let best = null, bestScore = -Infinity, bestSeed = null, bestMission = null;
+  //
+  // Two-tier preference: among solvable candidates, prefer those whose
+  // every non-mystery modifier is load-bearing (no decorative modifiers).
+  // Fall back to highest-scoring decorative candidate if no load-bearing
+  // candidate exists. This avoids shipping boards where, say, the sonar
+  // cell is window-dressing the player can ignore.
+  let loadBearingBest = null, loadBearingScore = -Infinity, loadBearingSeed = null, loadBearingMission = null;
+  let anyBest = null, anyScore = -Infinity, anySeed = null, anyMission = null;
+  let totalSolvable = 0;
+  let totalLoadBearing = 0;
   for (let i = 0; i < CANDIDATE_COUNT; i++) {
     const mission = missionForSlot(spec, i);
     const forcedGimmick = TARGET_TO_GIMMICK[mission.target] || null;
     const seed = `${dateString}:trial${i}`;
     const cand = buildOneCandidate(seed, forcedGimmick, mission.singleOnly);
     if (!cand.check.solvable && cand.check.remainingUnknowns !== 0) continue;
+    totalSolvable++;
     const features = computeDailyFeatures(
       { board: cand.board, rows: cand.rows, cols: cand.cols, totalMines: cand.totalMines, activeGimmicks: cand.activeGimmicks },
       cand.check,
     );
     const count = features[mission.target] || 0;
     const score = count * mission.deficitWeight;
-    if (score > bestScore) {
-      bestScore = score;
-      bestSeed = seed;
-      best = cand;
-      bestMission = mission;
+    if (score > anyScore) {
+      anyScore = score;
+      anySeed = seed;
+      anyBest = cand;
+      anyMission = mission;
+    }
+    if (cand.decorative.length === 0) {
+      totalLoadBearing++;
+      if (score > loadBearingScore) {
+        loadBearingScore = score;
+        loadBearingSeed = seed;
+        loadBearingBest = cand;
+        loadBearingMission = mission;
+      }
     }
   }
+  console.log(`  candidates: ${totalSolvable} solvable, ${totalLoadBearing} fully load-bearing`);
+  let best = loadBearingBest, bestSeed = loadBearingSeed, bestMission = loadBearingMission;
   if (!best) {
-    // No solvable candidate — fall back to the plain dateString. This
-    // shouldn't happen often; the gameActions retry loop would also
-    // have to dig harder if it did.
-    const fallbackForced = TARGET_TO_GIMMICK[spec.target] || null;
-    const cand = buildOneCandidate(dateString, fallbackForced, false);
-    best = cand;
-    bestSeed = dateString;
-    bestMission = missionForSlot(spec, 0);
+    if (anyBest) {
+      console.log(`  no fully load-bearing candidate; falling back to highest-scoring (decorative=${anyBest.decorative.join(',')})`);
+      best = anyBest; bestSeed = anySeed; bestMission = anyMission;
+    } else {
+      // No solvable candidate — fall back to the plain dateString. This
+      // shouldn't happen often; the gameActions retry loop would also
+      // have to dig harder if it did.
+      const fallbackForced = TARGET_TO_GIMMICK[spec.target] || null;
+      const cand = buildOneCandidate(dateString, fallbackForced, false);
+      best = cand;
+      bestSeed = dateString;
+      bestMission = missionForSlot(spec, 0);
+    }
   }
   return { ...best, rngSeed: bestSeed, mission: bestMission };
 }

@@ -16,7 +16,7 @@
 // Read-only. Does not write to Firebase.
 
 import { deserializeBoard } from '../src/firebase/dailyBoardSync.js';
-import { isBoardSolvable } from '../src/logic/boardSolver.js';
+import { isBoardSolvable, findDecorativeGimmicks } from '../src/logic/boardSolver.js';
 
 const DB_BASE = 'https://gregsweeper-66d02-default-rtdb.firebaseio.com';
 
@@ -70,8 +70,12 @@ async function auditDate(date) {
   const fc = Math.floor(cols / 2);
 
   let check;
+  let decorative = [];
   try {
     check = isBoardSolvable(board, rows, cols, fr, fc);
+    if (check.solvable || check.remainingUnknowns === 0) {
+      decorative = findDecorativeGimmicks(board, rows, cols, fr, fc, activeGimmicks);
+    }
   } catch (err) {
     return { date, status: 'SOLVER_CRASHED', error: err.message, rows, cols, totalMines };
   }
@@ -111,6 +115,7 @@ async function auditDate(date) {
     },
     totalScores,
     divergentScores: divergent,
+    decorativeGimmicks: decorative,
   };
 }
 
@@ -132,13 +137,16 @@ function printRow(r) {
   const div = r.divergentScores > 0
     ? `  div=${r.divergentScores}/${r.totalScores}`
     : (r.totalScores > 0 ? `  scores=${r.totalScores}` : '');
+  const deco = r.decorativeGimmicks && r.decorativeGimmicks.length > 0
+    ? `  DECORATIVE=[${r.decorativeGimmicks.join(',')}]`
+    : '';
   console.log(
     `  ${r.date}  ${flag}t${r.techniqueLevel}  ${r.rows}x${r.cols}  ${r.totalMines}m  ` +
     `[${gims}]  ${r.codeVersion}  seed=${r.rngSeed}` +
     `  passA=${r.moves.passA} cs=${r.moves.canonicalSubset} gs=${r.moves.genericSubset} ` +
     `adv=${r.moves.advancedLogic} dis=${r.moves.disjunctive}` +
     (r.status === 'UNSOLVABLE' ? `  remaining=${r.remainingUnknowns}` : '') +
-    div,
+    div + deco,
   );
 }
 
@@ -163,16 +171,18 @@ function printRow(r) {
 
   let unsolvableCount = 0;
   let divergentCount = 0;
+  let decorativeCount = 0;
 
   for (const date of dates) {
     const r = await auditDate(date);
     printRow(r);
     if (r.status === 'UNSOLVABLE') unsolvableCount++;
     if (r.divergentScores > 0) divergentCount++;
+    if (r.decorativeGimmicks && r.decorativeGimmicks.length > 0) decorativeCount++;
   }
 
   console.log('');
-  console.log(`summary: ${unsolvableCount} UNSOLVABLE, ${divergentCount} dates with divergent scores`);
+  console.log(`summary: ${unsolvableCount} UNSOLVABLE, ${divergentCount} dates with divergent scores, ${decorativeCount} with decorative modifiers`);
   if (unsolvableCount > 0) {
     console.log('!! ACTION REQUIRED: at least one canonical is objectively unsolvable.');
     process.exit(2);

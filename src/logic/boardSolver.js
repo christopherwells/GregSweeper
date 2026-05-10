@@ -21,9 +21,15 @@ const UNKNOWN = 255;
 // Mirror cells display the partner's count for visual deception; a player who
 // recognises the pair can mentally un-swap and reason with the cell's TRUE
 // adjacency (cell.adjacentMines).
-function getPlayerVisibleCount(cell) {
+//
+// `stripGimmicks` (Set<string>) lets callers ask "what could the player solve
+// without info from these gimmick types?" — used by the load-bearing check
+// in candidate selection. When mirror is stripped the player loses the un-
+// swap deduction and the cell becomes UNKNOWN.
+function getPlayerVisibleCount(cell, stripGimmicks) {
   if (cell.isMystery || cell.isSonar || cell.isCompass || cell.isWormhole) return UNKNOWN;
   if (cell.isLiar) return UNKNOWN;
+  if (cell.mirrorPair && stripGimmicks && stripGimmicks.has('mirror')) return UNKNOWN;
   return cell.adjacentMines;
 }
 
@@ -31,7 +37,11 @@ function getPlayerVisibleCount(cell) {
 // solver (plain liar, possibly stacked with locked). Liar combined with a
 // base-value or display-blocking gimmick produces too tangled a deduction
 // path to model precisely — those cells contribute nothing.
-function isPureLiar(cell) {
+//
+// When 'liar' is in `stripGimmicks`, no liar disjunctive constraints fire at
+// all (the load-bearing test for liar).
+function isPureLiar(cell, stripGimmicks) {
+  if (stripGimmicks && stripGimmicks.has('liar')) return false;
   return cell.isLiar
     && !cell.isMystery && !cell.isSonar && !cell.isCompass
     && !cell.isWormhole && !cell.mirrorPair;
@@ -91,7 +101,14 @@ export function buildNeighborCache(board, rows, cols) {
  * advancedLogic + disjunctive + 1 === totalClicks (the +1 accounts for the
  * first click, which is a setup action, not a deduction).
  */
-export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighborCache) {
+export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighborCache, options) {
+  // Optional: callers can pass `{ stripGimmicks: ['liar', 'mirror', ...] }`
+  // to ask "could the board be solved if these gimmick types contributed
+  // nothing?" — the basis of the load-bearing filter in candidate selection.
+  const stripGimmicks = options && options.stripGimmicks
+    ? (options.stripGimmicks instanceof Set ? options.stripGimmicks : new Set(options.stripGimmicks))
+    : null;
+
   // Build a lightweight simulation grid:
   // 0 = unrevealed unknown, 1 = revealed, 2 = flagged as mine
   const sim = new Uint8Array(rows * cols); // all 0 (unrevealed)
@@ -108,8 +125,8 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
       const i = idx(r, c);
       const cell = board[r][c];
       if (cell.isMine) isMine[i] = 1;
-      adjCount[i] = getPlayerVisibleCount(cell);
-      if (isPureLiar(cell) && cell.displayedMines != null) {
+      adjCount[i] = getPlayerVisibleCount(cell, stripGimmicks);
+      if (isPureLiar(cell, stripGimmicks) && cell.displayedMines != null) {
         liarBase[i] = cell.displayedMines;
       }
     }
@@ -137,7 +154,9 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
   const neighborCache = preNeighborCache || buildNeighborCache(board, rows, cols);
 
   // Pre-compute static gimmick constraints (sonar / compass / wormhole).
-  const gimmickConstraints = buildStaticGimmickConstraints(board, rows, cols, neighborCache);
+  // stripGimmicks suppresses the constraint for the named types — used to
+  // detect whether a gimmick is load-bearing on this board.
+  const gimmickConstraints = buildStaticGimmickConstraints(board, rows, cols, neighborCache, stripGimmicks);
 
   // Track locked cells
   const isLocked = new Uint8Array(rows * cols);
@@ -424,6 +443,53 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
   return buildResult(false, totalSafe - revealedCount);
 }
 
+// Gimmick types that meaningfully contribute info the player uses for
+// deduction. The "load-bearing" filter strips one of these at a time and
+// re-runs the solver: if the board is still solvable without that gimmick's
+// info, the gimmick was decorative on this board.
+//
+//   - mystery: removes info by definition, can't be load-bearing — skipped.
+//   - walls: changes adjacency topology, cell numbers were computed WITH walls;
+//     stripping would break the board's number coherence. Always structural.
+//   - locked: changes reveal order, not deductions. Always structural.
+//   - pressurePlate / mineShift: chaos-only.
+const TESTABLE_GIMMICK_TYPES = ['sonar', 'compass', 'wormhole', 'liar', 'mirror'];
+
+/**
+ * Returns the subset of activeGimmicks that are decorative on this board —
+ * i.e. removing their info still leaves the board solvable. Empty array
+ * means every testable gimmick is load-bearing.
+ *
+ * Mystery, walls, and locked are skipped (structural / informational gimmicks
+ * for which the load-bearing question doesn't apply).
+ *
+ * Cost: one additional isBoardSolvable run per testable type present on the
+ * board (typically 1-2 per daily, rarely more).
+ *
+ * @param {Array<Array<Object>>} board  - 2D cell grid (already gimmick-applied)
+ * @param {number} rows
+ * @param {number} cols
+ * @param {number} safeRow              - first-click row
+ * @param {number} safeCol              - first-click col
+ * @param {string[]} activeGimmicks     - the modifier types present on the board
+ * @param {Array} [preNeighborCache]    - optional pre-built neighbor cache
+ * @returns {string[]}                  - decorative gimmick type names
+ */
+export function findDecorativeGimmicks(board, rows, cols, safeRow, safeCol, activeGimmicks, preNeighborCache) {
+  const decorative = [];
+  if (!Array.isArray(activeGimmicks) || activeGimmicks.length === 0) return decorative;
+  for (const g of activeGimmicks) {
+    if (!TESTABLE_GIMMICK_TYPES.includes(g)) continue;
+    const stripped = isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighborCache, {
+      stripGimmicks: [g],
+    });
+    if (stripped.solvable || stripped.remainingUnknowns === 0) {
+      decorative.push(g);
+    }
+  }
+  return decorative;
+}
+
 // ── Build constraints from current simulation state ──────────
 // Each constraint: { unknowns: cellIdx[], allowedMines: number[] } where the
 // final mine count among `unknowns` must equal one of the `allowedMines`
@@ -460,16 +526,19 @@ function buildConstraints(sim, adjCount, neighborCache, totalCells) {
 //     overlap (would need a weighted constraint with shared cells contributing 2).
 // The runtime constraint per Pass C/B is built from this via
 // buildGimmickRuntimeConstraints, which subtracts already-flagged/revealed cells.
-function buildStaticGimmickConstraints(board, rows, cols, neighborCache) {
+function buildStaticGimmickConstraints(board, rows, cols, neighborCache, stripGimmicks) {
   const wallEdges = board._wallEdges || null;
   const idx = (r, c) => r * cols + c;
+  const skipSonar = stripGimmicks && stripGimmicks.has('sonar');
+  const skipCompass = stripGimmicks && stripGimmicks.has('compass');
+  const skipWormhole = stripGimmicks && stripGimmicks.has('wormhole');
   const out = [];
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const cell = board[r][c];
       if (cell.isMine || cell.displayedMines == null) continue;
 
-      if (cell.isSonar) {
+      if (cell.isSonar && !skipSonar) {
         const cells = [];
         for (let dr = -2; dr <= 2; dr++) {
           for (let dc = -2; dc <= 2; dc++) {
@@ -481,7 +550,7 @@ function buildStaticGimmickConstraints(board, rows, cols, neighborCache) {
           }
         }
         if (cells.length > 0) out.push({ cells, expected: cell.displayedMines });
-      } else if (cell.isCompass && cell.compassDir) {
+      } else if (cell.isCompass && cell.compassDir && !skipCompass) {
         const cells = [];
         let nr = r + cell.compassDir.dr;
         let nc = c + cell.compassDir.dc;
@@ -491,7 +560,7 @@ function buildStaticGimmickConstraints(board, rows, cols, neighborCache) {
           nc += cell.compassDir.dc;
         }
         if (cells.length > 0) out.push({ cells, expected: cell.displayedMines });
-      } else if (cell.isWormhole && cell.wormholePair) {
+      } else if (cell.isWormhole && cell.wormholePair && !skipWormhole) {
         const myIdx = idx(r, c);
         const pIdx = idx(cell.wormholePair.row, cell.wormholePair.col);
         if (myIdx > pIdx) continue; // lower-index cell owns the constraint

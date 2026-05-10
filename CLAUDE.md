@@ -32,6 +32,17 @@ No build step, no npm install, no dependencies to manage. Firebase SDK loaded vi
 - `src/storage/storageAdapter.js` — graceful fallback from localStorage to in-memory Map (private browsing, quota exceeded)
 - `src/firebase/firebaseLeaderboard.js` — online leaderboards; Firebase config is hardcoded in this file
 
+## Modifier Load-Bearing Filter (generation)
+
+Beyond solvability, every generation path (precompute, daily play-path local-gen, weekly play-path local-gen, challenge) requires that each non-mystery modifier on a board contributes at least one deduction the player needs to make. Implemented via `findDecorativeGimmicks` in `boardSolver.js`: strip one gimmick type's info at a time and re-run the solver — if the board is still solvable, that type is decorative on this layout and the candidate is rejected.
+
+- **Mystery is exempt** — it removes info by definition, can't be load-bearing. Every mystery board would fail the test, so we don't apply it.
+- **Walls and locked are exempt** — they're structural (topology change, reveal-order change), not deduction contributors. Stripping them would invalidate the cell numbers.
+- **Sonar / compass / wormhole / liar / mirror** are testable. The filter strips their constraints (and for mirror, the un-swap assumption) and asks "could the player still solve this board with only the other modifiers' info?"
+- **Per-type, not per-cell.** A board with 3 sonar cells where only 1 is load-bearing passes — sonar AS A TYPE contributed. We don't iterate per-cell; that's intentional.
+- **Fallback when no candidate is load-bearing**: precompute falls back to the highest-scoring solvable candidate (with a console note); play-path retry loops relax the requirement after RELAX_AFTER_BASES (challenge) / LOAD_BEARING_BUDGET=25 (daily/weekly) attempts. Better to ship a decorative-modifier board than spin forever.
+- **Why this matters**: an audit (2026-05-10) found 5 of the prior 13 dailies shipped decorative modifiers (sonar, compass, or liar that contributed nothing). With force-injected coverage missions pushing under-sampled gimmicks, the natural rate of "decorative" was rising. This filter makes the modifier MEAN SOMETHING on the board.
+
 ## Board Solver Architecture
 
 Two-layer solver guarantees no 50/50 guesses:

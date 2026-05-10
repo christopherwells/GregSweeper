@@ -16,7 +16,7 @@ import { startTimer, stopTimer, pauseTimer, resumeTimer, startMineShift, updateT
 import { handleWin, handleLoss, handleDailyBombHit } from './winLossHandler.js';
 import { performScan, performXRay, performMagnet, tryLifeline } from './powerUpActions.js';
 import { generateBoard, createEmptyBoard, calculateAdjacency, cleanSolverArtifacts } from '../logic/boardGenerator.js';
-import { floodFillReveal, checkWin, chordReveal, isBoardSolvable, estimatePlateMovesToDisarm, buildNeighborCache } from '../logic/boardSolver.js';
+import { floodFillReveal, checkWin, chordReveal, isBoardSolvable, estimatePlateMovesToDisarm, buildNeighborCache, findDecorativeGimmicks } from '../logic/boardSolver.js';
 import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getChaosDifficulty, getRequiredTechnique, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE, WEEKLY_MIN_SIZE, WEEKLY_SIZE_RANGE, PLATE_MIN_SECONDS, PLATE_SECONDS_PER_STEP } from '../logic/difficulty.js';
 import { computeDailyFeatures, predictPar } from '../logic/dailyFeatures.js';
 import { shieldDefuse } from '../logic/powerUps.js';
@@ -323,7 +323,20 @@ export async function newGame() {
       );
       state.activeGimmicks = dailyGimmicks.length > 0 ? dailyGimmicks : [];
 
-      for (let dAttempt = 0; ; dAttempt++) {
+      // Capped retry loop with two relaxation tiers:
+      //   - Attempts 0..LOAD_BEARING_BUDGET: require board solvable AND every
+      //     non-mystery modifier load-bearing. Mirrors the precompute filter.
+      //   - Attempts LOAD_BEARING_BUDGET..MAX_DAILY_ATTEMPTS: drop the
+      //     load-bearing requirement; just need solvable.
+      //   - At MAX_DAILY_ATTEMPTS: strip modifiers entirely and break (matches
+      //     the "Daily strips gimmicks if unsolvable" contract). Logged so a
+      //     persistent failure shows up in the console for triage.
+      // Capped (vs the prior unbounded loop) so a degenerate seed can't hang
+      // the page waiting for solvability that will never come.
+      const LOAD_BEARING_BUDGET = 25;
+      const MAX_DAILY_ATTEMPTS = 100;
+      let solvedDaily = false;
+      for (let dAttempt = 0; dAttempt < MAX_DAILY_ATTEMPTS; dAttempt++) {
         if (dAttempt > 0) {
           const retryRng = createDailyRNG(state.dailyRngSeed + '-retry-' + dAttempt);
           state.board = generateBoard(state.rows, state.cols, state.totalMines, fixedRowGen, fixedColGen, retryRng);
@@ -335,7 +348,25 @@ export async function newGame() {
         }
         const checkRetry = isBoardSolvable(state.board, state.rows, state.cols, fixedRowGen, fixedColGen);
         cleanSolverArtifacts(state.board);
-        if (checkRetry.solvable || checkRetry.remainingUnknowns === 0) break;
+        if (!(checkRetry.solvable || checkRetry.remainingUnknowns === 0)) continue;
+        if (dAttempt < LOAD_BEARING_BUDGET && state.activeGimmicks.length > 0) {
+          const decorative = findDecorativeGimmicks(
+            state.board, state.rows, state.cols, fixedRowGen, fixedColGen, state.activeGimmicks,
+          );
+          if (decorative.length > 0) continue;
+        }
+        solvedDaily = true;
+        break;
+      }
+      if (!solvedDaily) {
+        // Strip modifiers and accept the last solvable layout. Better to
+        // ship a plain-Minesweeper daily for one player than to hang the page.
+        console.warn('Daily local-gen exhausted retries; stripping modifiers for', state.dailyRngSeed);
+        state.activeGimmicks = [];
+        state.gimmickData = {};
+        const stripRng = createDailyRNG(state.dailyRngSeed + '-strip-final');
+        state.board = generateBoard(state.rows, state.cols, state.totalMines, fixedRowGen, fixedColGen, stripRng);
+        cleanSolverArtifacts(state.board);
       }
 
       // Write our generated board to Firebase. Write-once rules at the
@@ -461,7 +492,14 @@ export async function newGame() {
       const weeklyGimmicks = getWeeklyGimmicks(state.weeklyRngSeed, createDailyRNG);
       state.activeGimmicks = weeklyGimmicks.length > 0 ? weeklyGimmicks : [];
 
-      for (let dAttempt = 0; ; dAttempt++) {
+      // Same capped + tiered retry as the daily loop above. Weekly stacks
+      // 2–4 modifiers so load-bearing has more types to cover; the relax
+      // tier exists for the rare case where the seed can't satisfy all of
+      // them simultaneously.
+      const LOAD_BEARING_BUDGET_W = 25;
+      const MAX_WEEKLY_ATTEMPTS = 100;
+      let solvedWeekly = false;
+      for (let dAttempt = 0; dAttempt < MAX_WEEKLY_ATTEMPTS; dAttempt++) {
         if (dAttempt > 0) {
           const retryRng = createDailyRNG(state.weeklyRngSeed + '-retry-' + dAttempt);
           state.board = generateBoard(state.rows, state.cols, state.totalMines, fr, fc, retryRng);
@@ -473,7 +511,23 @@ export async function newGame() {
         }
         const checkRetry = isBoardSolvable(state.board, state.rows, state.cols, fr, fc);
         cleanSolverArtifacts(state.board);
-        if (checkRetry.solvable || checkRetry.remainingUnknowns === 0) break;
+        if (!(checkRetry.solvable || checkRetry.remainingUnknowns === 0)) continue;
+        if (dAttempt < LOAD_BEARING_BUDGET_W && state.activeGimmicks.length > 0) {
+          const decorative = findDecorativeGimmicks(
+            state.board, state.rows, state.cols, fr, fc, state.activeGimmicks,
+          );
+          if (decorative.length > 0) continue;
+        }
+        solvedWeekly = true;
+        break;
+      }
+      if (!solvedWeekly) {
+        console.warn('Weekly local-gen exhausted retries; stripping modifiers for', state.weeklyRngSeed);
+        state.activeGimmicks = [];
+        state.gimmickData = {};
+        const stripRng = createDailyRNG(state.weeklyRngSeed + '-strip-final');
+        state.board = generateBoard(state.rows, state.cols, state.totalMines, fr, fc, stripRng);
+        cleanSolverArtifacts(state.board);
       }
 
       // Write our generated weekly board to Firebase. Write-once rules
@@ -732,6 +786,9 @@ export function revealCell(row, col) {
     // Relax the technique floor if we can't find a hard-enough board after
     // many base attempts. Otherwise levels with low gimmick density can spin
     // forever rejecting boards that are "easy" but legitimately solvable.
+    // Same relaxation applies to the load-bearing requirement: after
+    // RELAX_AFTER_BASES attempts, we accept decorative modifiers rather
+    // than spin further. Most boards converge well before this.
     const baseTechniqueFloor = state.gameMode === 'normal' ? getRequiredTechnique(state.currentLevel) : 0;
     const RELAX_AFTER_BASES = 15;
     let postGimmickSolvable = false;
@@ -741,6 +798,7 @@ export function revealCell(row, col) {
         rng || Math.random, { maxZeroCluster: maxZC, hasGimmicks, wallEdges: preWallEdges });
       baseAttempt++;
       const techniqueFloor = baseAttempt > RELAX_AFTER_BASES ? 0 : baseTechniqueFloor;
+      const requireLoadBearing = baseAttempt <= RELAX_AFTER_BASES;
 
       // No gimmicks → use the base board if it meets the technique floor.
       if (state.activeGimmicks.length === 0) {
@@ -775,6 +833,17 @@ export function revealCell(row, col) {
         const check = isBoardSolvable(state.board, state.rows, state.cols, row, col);
         cleanSolverArtifacts(state.board);
         if ((check.solvable || check.remainingUnknowns === 0) && (check.techniqueLevel ?? 0) >= techniqueFloor) {
+          // Load-bearing check: every non-mystery modifier on the board
+          // must contribute to deduction. Stripping any gimmick type and
+          // still solving means that type is decoration on this layout.
+          // Skipped after RELAX_AFTER_BASES base attempts so we can ship a
+          // valid board even when load-bearing is hard to satisfy.
+          if (requireLoadBearing && state.activeGimmicks.length > 0) {
+            const decorative = findDecorativeGimmicks(
+              state.board, state.rows, state.cols, row, col, state.activeGimmicks,
+            );
+            if (decorative.length > 0) continue;
+          }
           postGimmickSolvable = true;
           break outer;
         }
