@@ -40,15 +40,17 @@ checklist a new session should pick up cold.
       gate now also handles a pre-existing `waiting` SW per R3 (iOS
       ships SWs in waiting state without firing `updatefound`); see 6.3.
 
-- [ ] **1.5 Push handler runs in stale code.** A push arriving days after
-      the user last opened the app wakes the OLD `sw.js` (whatever was
-      active then) and runs the push handler with stale logic. If you ever
-      change the push payload schema or deepLink rules, the handler
-      interprets new payload with old code. Fix: treat the push payload
-      schema as a permanent contract. Version it (`{ v: 2, ... }`) and
-      keep v1 fallback forever. Add a `console.warn` in the handler when
-      it sees an unknown version (will surface in remote diagnostics
-      once item 12.1 ships).
+- [x] **1.5 Push handler runs in stale code.** **Shipped v1.5.77.**
+      `send-push.mjs` now stamps `v: "1"` on every push payload (FCM
+      data fields are strings, hence the quoted "1"). The SW push
+      handler reads `raw?.data?.v || raw?.v || '1'` and console.warns
+      on any version it doesn't recognise. The known list is
+      `PUSH_SCHEMA_KNOWN_VERSIONS = ['1']` — bump when a v2 schema
+      ships, leave v1 in the list FOREVER so old SWs that haven't
+      updated still process current pushes without warnings. Combined
+      with 12.1, an unknown-version warning would land in
+      `errors/{uid}/{ts}` if it ever fires (currently no such warning
+      is expected since no v2 exists).
 
 ### iOS / storage
 
@@ -74,17 +76,14 @@ checklist a new session should pick up cold.
 
 ### Offline + update safety
 
-- [ ] **4.1 Offline navigation fallback.** Current `fetch().catch(() =>
-      caches.match(...))` can resolve to undefined on a navigation request
-      that misses both network and cache → blank page. Add
-      navigation-request fallback:
-      ```js
-      if (event.request.mode === 'navigate') {
-        return caches.match('./index.html', { ignoreSearch: true })
-          || new Response('<h1>GregSweeper offline — reconnect to update.</h1>',
-                          { headers: { 'Content-Type': 'text/html' } });
-      }
-      ```
+- [x] **4.1 Offline navigation fallback.** **Shipped v1.5.77.** SW
+      `fetch` catch path now serves the cached `./index.html` when a
+      navigation request misses both network and the requested URL's
+      cache entry. App boots client-side from `index.html` regardless
+      of route, so the player sees the title screen rather than the
+      browser's generic offline page. Last-resort fallback for non-
+      navigation requests returns a 503 with a plain-text body so the
+      caller gets a real response rather than `undefined`.
 
 - [x] **6.3 Mid-game update safety.** **Shipped v1.5.75 with 1.4.**
       `_gsIsPlaying()` returns `state.status === 'playing'` so the
@@ -118,9 +117,16 @@ checklist a new session should pick up cold.
       type a name that would silently fail submission. Requires
       `firebase deploy --only database` after push.
 
-- [ ] **11.4 Audit zero sensor-permission usage.** Confirm: no
-      `navigator.geolocation`, no `getUserMedia`, no clipboard read.
-      Currently true; document in CLAUDE.md as a deliberate constraint.
+- [x] **11.4 Audit zero sensor-permission usage.** **Audited v1.5.77.**
+      Grep confirms no `navigator.geolocation`, no `getUserMedia`, no
+      `clipboard.read*`, no `navigator.permissions.query`. The only
+      Web API permission surfaces are notification opt-in (Settings
+      toggle) and `navigator.storage.persist()` (silent on iOS,
+      heuristic-based on Chrome). `clipboard.writeText` is used in
+      Settings and the diagnostics modal for write-only copy actions
+      that don't trigger a permission prompt for user-initiated
+      events. CLAUDE.md grew a "Privacy / sensor-permission posture"
+      section codifying this as a forward constraint.
 
 ### Accessibility
 

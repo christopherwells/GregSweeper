@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v1.5.76';
+const CACHE_NAME = 'gregsweeper-v1.5.77';
 const ASSETS = [
   './',
   './index.html',
@@ -118,11 +118,14 @@ self.addEventListener('message', (event) => {
 });
 
 // ── Push notifications ─────────────────────────────────
-// Inbound push from FCM. Payload shape (set by scripts/send-push.mjs):
-//   { title: string, body: string, tag?: string, deepLink?: string }
-// We always show the notification (browsers reject silent pushes after
-// the user has granted permission). Tag prevents duplicate stacking
-// when multiple pushes for the same category arrive.
+// Inbound push from FCM. Payload schema (set by scripts/send-push.mjs):
+//   v1 (current): { v: "1", title, body, tag?, deepLink? }
+// The `v` field is a permanent contract — a push delivered today might
+// be processed by a SW that's days or weeks old. When `v` increments
+// to 2+, this handler keeps reading v1 fields exactly as it does today,
+// so old SWs still render notifications safely. New SWs get a v2+
+// branch that consumes the new fields. NEVER repurpose a v1 field.
+const PUSH_SCHEMA_KNOWN_VERSIONS = ['1'];
 self.addEventListener('push', (event) => {
   if (!event.data) return;
   let raw;
@@ -137,6 +140,15 @@ self.addEventListener('push', (event) => {
   const body = raw?.notification?.body || raw?.data?.body || raw?.body || '';
   const tag = raw?.notification?.tag || raw?.data?.tag || raw?.tag || 'gregsweeper-notification';
   const deepLink = raw?.data?.deepLink || raw?.deepLink || raw?.fcmOptions?.link || './?mode=daily';
+  // Schema-version awareness. Absence is treated as v1 (legacy pushes
+  // from before the version field shipped). A version this SW doesn't
+  // recognise gets logged so we can see staleness rates after a future
+  // schema bump. The fields above are v1 — if a future v2 adds new
+  // fields, add a branch here.
+  const schemaVersion = raw?.data?.v || raw?.v || '1';
+  if (!PUSH_SCHEMA_KNOWN_VERSIONS.includes(schemaVersion)) {
+    console.warn(`[push] unknown schema version: ${schemaVersion} — treating as v1`);
+  }
   event.waitUntil(
     self.registration.showNotification(title, {
       body,
@@ -192,9 +204,28 @@ self.addEventListener('fetch', (event) => {
         }
         return response;
       })
-      .catch(() => {
+      .catch(async () => {
         // Network failed — fall back to cache for offline play.
-        return caches.match(event.request, { ignoreSearch: true });
+        const cached = await caches.match(event.request, { ignoreSearch: true });
+        if (cached) return cached;
+        // Navigation request with no cache hit (e.g. user navigates to a
+        // route we don't have, or first-time offline visit). Serve the
+        // app shell so the player sees something other than the browser's
+        // generic offline screen. The app handles routing client-side
+        // from `?mode=...` etc., so index.html bootstraps the same way
+        // it would online.
+        if (event.request.mode === 'navigate') {
+          const shell = await caches.match('./index.html');
+          if (shell) return shell;
+        }
+        // Last resort — return a minimal offline response so at least
+        // the request resolves rather than producing an unhandled
+        // network error in the page.
+        return new Response('Offline — please reconnect to load this resource.', {
+          status: 503,
+          statusText: 'Service Unavailable',
+          headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+        });
       })
   );
 });

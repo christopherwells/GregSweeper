@@ -165,6 +165,17 @@ async function sendOneFcmMessage(accessToken, token, payload) {
   // We deliberately do NOT set webpush.notification — that's the
   // override gotcha that silently drops title/body for some browsers.
   // The icon path lives in sw.js's showNotification call, not here.
+  // Schema version. The push payload is a permanent contract with the
+  // SW handler — a push delivered today might be processed by a SW
+  // that's days or weeks old (the user closed the app and opened the
+  // notification later). Versioning lets us evolve the payload safely:
+  // the SW reads `v` and either handles it natively (matching version)
+  // or falls back to the v1 path (lower / missing version). When `v`
+  // is incremented, the OLD SW logs an unknown-version warning that
+  // surfaces in remote diagnostics so we can see staleness rates.
+  // FCM's `data` field accepts strings only, so the version is sent as
+  // a numeric string ("1") rather than a number.
+  const PUSH_SCHEMA_VERSION = '1';
   const message = {
     message: {
       token,
@@ -173,6 +184,7 @@ async function sendOneFcmMessage(accessToken, token, payload) {
         body: payload.body,
       },
       data: {
+        v: PUSH_SCHEMA_VERSION,
         title: payload.title,
         body: payload.body,
         tag: payload.tag,

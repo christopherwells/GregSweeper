@@ -87,6 +87,18 @@ Network-first with cache fallback. `ignoreSearch: true` on cache.match. Install 
 - **Skill Trainer:** 15 interactive lessons — currently HIDDEN from the UI but code intact (see `src/logic/skillTrainer.js`, `src/ui/skillTrainerUI.js`). Re-enable by uncommenting the mode card in `index.html` and the help-modal bullet.
 - **Chaos:** Rapid rounds with random modifiers, exempt from solvability guarantee
 
+## Privacy / sensor-permission posture
+
+By design, GregSweeper requests ZERO sensor permissions and reads NO clipboard / camera / microphone / location data. Audited 2026-05-10:
+
+- No `navigator.geolocation` calls anywhere.
+- No `getUserMedia` (camera / microphone) calls.
+- `navigator.clipboard.writeText` is used in `main.js` (Settings copy-link) and `diagnosticsModal.js` (copy diagnostic state). Write-only — modern browsers grant this without a permission prompt for user-initiated actions. No `clipboard.read*`.
+- No `navigator.permissions.query()` calls.
+- Notifications and persistent-storage are the only Web APIs that prompt the user, and both are gated by explicit opt-in actions (Settings toggle, install heuristic).
+
+When adding a new feature, treat this list as a constraint: if it requires a sensor permission, surface that decision explicitly rather than silently expanding the permission surface.
+
 ## Push Notifications
 PWA web push via FCM, opt-in via Settings (`Notifications` block alongside the modifier-popup toggle). The `notify-daily-ready.yml` workflow runs an hourly cron at `0 * * * *` UTC; `send-push.mjs` reads each enabled subscriber's `notificationPrefs.hourLocal` from Firebase and only sends to those whose chosen ET hour matches the current ET hour. So each subscriber gets at most one push per day at the time they picked in Settings.
 
