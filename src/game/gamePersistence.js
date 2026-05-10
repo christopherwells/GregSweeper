@@ -10,7 +10,7 @@ import {
 import {
   updateHeader, updateCheckpointDisplay, updateProgressBar,
   updateCellsRemaining, updateStreakDisplay, updateStreakBorder,
-  updateFlagModeBar,
+  updateFlagModeBar, updateActiveGimmickBar,
 } from '../ui/headerRenderer.js';
 import { updatePowerUpBar } from '../ui/powerUpBar.js';
 import { startTimer, updateTimerDisplay, seedPreciseAccumulated } from './timerManager.js';
@@ -212,6 +212,7 @@ export function tryResumeGame(mode) {
   updateCellsRemaining();
   updateStreakDisplay();
   updateFlagModeBar();
+  updateActiveGimmickBar();
   updateZoom();
   // Seed the module-level precise-time accumulator from the restored
   // elapsedTime BEFORE startTimer, so leaderboard submissions for resumed
