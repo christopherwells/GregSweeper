@@ -166,6 +166,8 @@ Computed by `getDifficultyForLevel()` in `difficulty.js` — no static table.
 - Daily-safe subset: mystery, locked, walls, liar, wormhole, mirror, sonar, compass
 - First-encounter popup tracked in localStorage key `minesweeper_seen_gimmicks`
 - Popup can be disabled via `minesweeper_modifier_popup_disabled`
+- **Persistent active-modifier reminder:** the `#active-gimmick-bar` (rendered above the board) shows icons for all currently-active modifiers in daily / weekly / challenge modes. Updated by `updateActiveGimmickBar()` in `src/ui/headerRenderer.js`, called at the end of `newGame()` (covers daily/weekly where modifiers are settled at start) and again after challenge first-click gimmick application. Hidden when no modifiers are active or in chaos (which has its own bar).
+- **Liar visual cue:** liar cells use rose-pink background tint + italic + underlined number (CSS in `global.css` `.cell.liar-cell`). The pink background is the primary cue — italic+underline alone disappears at small mobile font sizes. Color avoids conflict with sonar cyan, compass gold, wormhole amber/magenta/green, and mirror blue/purple/green.
 - **Per-cell stacking rules** (enforced in `applyGimmicks` via `hasBaseValueGimmick` / `hasDisplayBlockingGimmick`):
   - Base-value gimmicks (wormhole, mirror, sonar, compass) are mutually exclusive with each other — only one number can be displayed per cell.
   - Liar (±1 offset) stacks freely on any base-value gimmick. `recomputeDisplayedMines` computes the base value first, then applies the liar offset.

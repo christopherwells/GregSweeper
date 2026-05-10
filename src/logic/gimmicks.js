@@ -39,9 +39,9 @@ const GIMMICK_DEFS = {
   },
   liar: {
     intro: 21, name: 'Liar Cells', icon: '🤥',
-    desc: 'A few cells display a number that\'s off by 1. Their numbers are italic and underlined.',
-    longDesc: 'Liar cells show a number that is exactly 1 higher or 1 lower than the true count. They are shown in italic with an underline so you can spot them. Account for the offset when reasoning about nearby mines.',
-    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed" style="font-style:italic;text-decoration:underline">3</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">2</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div></div><div class="ge-caption">The underlined italic "3" is really a 2 or 4</div>',
+    desc: 'A few cells display a number that\'s off by 1. They have a rose-pink background and their numbers are italic + underlined.',
+    longDesc: 'Liar cells show a number that is exactly 1 higher or 1 lower than the true count. They are tinted rose-pink with italic, underlined numbers so you can spot them at a glance. Account for the offset when reasoning about nearby mines.',
+    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed" style="font-style:italic;text-decoration:underline;background:rgba(231,76,60,0.22)">3</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">2</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div></div><div class="ge-caption">The pink-tinted italic "3" is really a 2 or 4</div>',
   },
   mystery: {
     intro: 31, name: 'Mystery Cells', icon: '❓',

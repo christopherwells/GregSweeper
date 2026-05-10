@@ -7,7 +7,7 @@ import {
 import {
   updateHeader, updateCheckpointDisplay, updateProgressBar,
   updateCellsRemaining, updateStreakDisplay, updateStreakBorder,
-  updateFlagModeBar,
+  updateFlagModeBar, updateActiveGimmickBar,
 } from '../ui/headerRenderer.js';
 import { updatePowerUpBar } from '../ui/powerUpBar.js';
 import { hideAllModals, showModal, hideModal } from '../ui/modalManager.js';
@@ -616,6 +616,7 @@ export async function newGame() {
   updateCellsRemaining();
   updateStreakDisplay();
   updateFlagModeBar();
+  updateActiveGimmickBar();
   updateZoom();
 
   // Apply board border effect from collection
@@ -808,6 +809,10 @@ export function revealCell(row, col) {
       // Refresh all cells to show liar-zone / wormhole / mirror indicators
       updateAllCells();
       renderWallOverlays();
+      // Challenge mode: gimmicks weren't known until just now (they're
+      // selected on first click), so the active-gimmick bar was hidden
+      // when newGame ran. Update it now that activeGimmicks is settled.
+      updateActiveGimmickBar();
     }
 
     // Apply gimmicks for chaos mode

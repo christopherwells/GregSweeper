@@ -9,6 +9,7 @@ import {
 import { getThemeEmoji } from './boardRenderer.js';
 import { getTimedDifficulty, getSpeedRating, MAX_LEVEL } from '../logic/difficulty.js';
 import { loadStats } from '../storage/statsStorage.js';
+import { getGimmickDef } from '../logic/gimmicks.js';
 
 // ── Checkpoint Display ─────────────────────────────────
 export const CHECKPOINT_INTERVAL = 5;
@@ -50,6 +51,33 @@ export function updateProgressBar() {
       progressBarMarkers.appendChild(marker);
     }
   }
+}
+
+// Persistent reminder of which modifiers are active in this game.
+// Renders icon chips into #active-gimmick-bar. Hidden when no gimmicks
+// are active, when in chaos mode (chaos has its own bar), or when in
+// timed mode (no gimmicks). Daily / weekly / challenge with at least
+// one active gimmick all render here.
+export function updateActiveGimmickBar() {
+  const bar = document.getElementById('active-gimmick-bar');
+  const icons = document.getElementById('active-gimmick-icons');
+  if (!bar || !icons) return;
+  const eligibleMode = state.gameMode === 'normal'
+    || state.gameMode === 'daily'
+    || state.gameMode === 'weekly';
+  const list = Array.isArray(state.activeGimmicks) ? state.activeGimmicks : [];
+  if (!eligibleMode || list.length === 0) {
+    bar.classList.add('hidden');
+    icons.innerHTML = '';
+    return;
+  }
+  icons.innerHTML = list.map(g => {
+    const def = getGimmickDef(g);
+    if (!def) return '';
+    const tooltip = (def.name + ': ' + (def.desc || '')).replace(/"/g, '&quot;');
+    return '<span class="active-gimmick-icon" title="' + tooltip + '">' + def.icon + '</span>';
+  }).join('');
+  bar.classList.remove('hidden');
 }
 
 export function updateCellsRemaining() {
