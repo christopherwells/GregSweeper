@@ -110,6 +110,16 @@ if ('serviceWorker' in navigator) {
 // events until uid resolves and Firebase is ready, then drains.
 initErrorReporter({ codeVersion: state.codeVersion || 'unknown' });
 
+// Expose a single getter for "is the user actively playing right now?"
+// so the inline scripts in index.html (SW updatefound, version-mismatch
+// detector) can consult the actual game state instead of probing the
+// DOM for `.cell.revealed`. The DOM heuristic mistakes "looking at a
+// finished board" or "fresh game with no reveals yet" for the wrong
+// thing — state.status is the source of truth. Inline scripts call
+// this with a `?.()` so a load order race (script before main.js
+// initializes the bridge) safely defaults to "not playing".
+window._gsIsPlaying = () => state && state.status === 'playing';
+
 // ── Boot overlay helpers ──────────────────────────────
 function setBootStatus(text) {
   const el = document.getElementById('boot-status');
@@ -133,6 +143,36 @@ async function ensureLatestServiceWorker(timeoutMs = 3000) {
     reg = await navigator.serviceWorker.getRegistration();
   } catch { return; }
   if (!reg) return;
+
+  // R3 (iOS standalone PWAs): updatefound rarely fires here because
+  // iOS often updates the SW BEFORE launching the page, leaving it in
+  // `waiting` state when our code runs. controllerchange may not fire
+  // either if the activation already happened pre-launch. So handle
+  // an existing `waiting` worker explicitly: postMessage skipWaiting
+  // (the SW listens via the existing message handler), wait briefly
+  // for controllerchange, then force a reload as a fallback for the
+  // case where activation completed silently before we could observe.
+  if (reg.waiting && navigator.serviceWorker.controller) {
+    await new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        // controllerchange didn't fire — iOS may have already swapped
+        // the controller before we attached the listener. Force a
+        // single reload so the new SW takes over our page state.
+        if (!sessionStorage.getItem('_gs_skip_force_reload')) {
+          sessionStorage.setItem('_gs_skip_force_reload', '1');
+          window.location.reload();
+          return; // navigation pre-empts resolve
+        }
+        sessionStorage.removeItem('_gs_skip_force_reload');
+        resolve();
+      }, 2000);
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        clearTimeout(timer);
+        resolve(); // controllerchange handler in <head> reloads us
+      }, { once: true });
+      reg.waiting.postMessage({ type: 'skipWaiting' });
+    });
+  }
 
   await new Promise((resolve) => {
     const timer = setTimeout(resolve, timeoutMs);

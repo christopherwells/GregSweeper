@@ -958,8 +958,14 @@
             newWorker.addEventListener('statechange', () => {
               if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
                 // Auto-reload to pick up the new version immediately
-                // Only if user hasn't started playing (don't interrupt a game)
-                const playing = document.querySelector('.cell.revealed');
+                // Only if user hasn't started playing (don't interrupt a game).
+                // Source of truth: window._gsIsPlaying() set by main.js.
+                // Falls back to the DOM-revealed-cell heuristic if main.js
+                // hasn't run yet (very early load — practically never mid-game
+                // either way).
+                const playing = window._gsIsPlaying
+                  ? window._gsIsPlaying()
+                  : !!document.querySelector('.cell.revealed');
                 if (!playing) {
                   window.location.reload();
                 } else {
@@ -1029,8 +1035,12 @@
         if (liveVersion !== _runningVersion) {
           // Stale. Don't interrupt mid-game; the SW updatefound flow
           // already handles the polite mid-game banner. Just force a
-          // clean reload at idle.
-          const playing = document.querySelector('.cell.revealed');
+          // clean reload at idle. Use the state-backed getter set by
+          // main.js; fall back to the DOM heuristic only if main.js
+          // hasn't loaded yet.
+          const playing = window._gsIsPlaying
+            ? window._gsIsPlaying()
+            : !!document.querySelector('.cell.revealed');
           if (!playing && window.gregsweeperCacheClear) {
             window.gregsweeperCacheClear();
           }

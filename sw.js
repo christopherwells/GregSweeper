@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v1.5.74';
+const CACHE_NAME = 'gregsweeper-v1.5.75';
 const ASSETS = [
   './',
   './index.html',
@@ -103,9 +103,17 @@ self.addEventListener('activate', (event) => {
 // Reply to client requests for the current cache name. The page asks
 // this on first load (when it has a controller but missed the activate
 // broadcast) so it can populate `state.codeVersion` synchronously.
+//
+// `skipWaiting` lets the boot-time gate ask a NEW-but-stuck-in-waiting
+// SW to take over immediately. The install event already calls
+// self.skipWaiting() unconditionally, so this is a no-op in the common
+// fresh-install path; it matters when iOS ships us a SW that's been
+// installed but not activated (per R3).
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'getCodeVersion') {
     event.source?.postMessage({ type: 'codeVersion', value: CACHE_NAME });
+  } else if (event.data?.type === 'skipWaiting') {
+    self.skipWaiting();
   }
 });
 

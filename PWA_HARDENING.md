@@ -30,16 +30,15 @@ checklist a new session should pick up cold.
 
 ### Service worker safety
 
-- [ ] **1.4 SW skipWaiting mid-game.** `sw.js:79` calls `skipWaiting()` and
-      `sw.js:100` calls `clients.claim()`. Combined with the auto-reload in
-      `index.html:957`, the page reloads as soon as a new SW activates — but
-      only when no `.cell.revealed` is present. The "playing" check is
-      brittle: it reads DOM at the moment the listener fires, but a player
-      who just clicked their first cell and is about to click the next
-      could be yanked. Fix: replace `.cell.revealed` heuristic with
-      `state.status === 'playing'` (game's own truth). And: don't
-      `skipWaiting()` unconditionally — have the page agree first via
-      postMessage.
+- [x] **1.4 SW skipWaiting mid-game.** **Shipped v1.5.75 alongside 6.3.**
+      Both inline scripts in `index.html` (the SW updatefound auto-reload
+      around line 962, and the 5-min version-mismatch detector around
+      line 1033) now consult `window._gsIsPlaying()` set by `main.js`
+      before reloading. The DOM heuristic remains as a fallback only for
+      the early-load window where main.js hasn't bridged the getter
+      yet (in which case the user is definitely not mid-game). Boot-time
+      gate now also handles a pre-existing `waiting` SW per R3 (iOS
+      ships SWs in waiting state without firing `updatefound`); see 6.3.
 
 - [ ] **1.5 Push handler runs in stale code.** A push arriving days after
       the user last opened the app wakes the OLD `sw.js` (whatever was
@@ -87,11 +86,21 @@ checklist a new session should pick up cold.
       }
       ```
 
-- [ ] **6.3 Mid-game update safety.** The 5-min mismatch detector
-      (`index.html:1027`) checks `playing = !!document.querySelector('.cell.revealed')`.
-      Same brittleness as 1.4. Use `state.status` source-of-truth AND
-      modal-open detection. Always `persistGameState()` before reload;
-      pause 200ms for the write to land.
+- [x] **6.3 Mid-game update safety.** **Shipped v1.5.75 with 1.4.**
+      `_gsIsPlaying()` returns `state.status === 'playing'` so the
+      detector consults the game's own truth, not a DOM probe that
+      can mis-classify "looking at finished board" or "pre-first-click
+      idle." Plus per R3 the boot-time gate (`ensureLatestServiceWorker`)
+      now handles `reg.waiting` explicitly: postMessages skipWaiting to
+      the SW (which has a new handler in `sw.js`), waits up to 2s for
+      `controllerchange`, and force-reloads as a fallback for iOS
+      where `controllerchange` may not fire because the swap happened
+      pre-launch. Reload de-duplication via a `_gs_skip_force_reload`
+      sessionStorage flag prevents reload loops. Game state is still
+      auto-saved every 5s via `gamePersistence.js`, so a reload at
+      idle (per the new gate) loses at most that interval; no extra
+      pre-reload save needed since the gate refuses to fire mid-game
+      anyway.
 
 ### Security
 
