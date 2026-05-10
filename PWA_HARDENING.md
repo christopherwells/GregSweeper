@@ -115,15 +115,18 @@ checklist a new session should pick up cold.
 
 ### Accessibility
 
-- [ ] **10.1 Modal focus trap.** `modalManager.js` just toggles `.hidden`
-      — no focus management. A keyboard user inside a modal can Tab past
-      the close button into the page behind. On installed PWAs the browser
-      chrome is hidden, so getting lost is worse than in a tab. Two paths:
-      add full focus-trap (save → first-focus → Tab cycling → restore on
-      close), OR replace custom modals with native `<dialog>` element +
-      `.showModal()` (handles focus + Escape + ARIA for free). The
-      `<dialog>` path is much less code — but see Open Research below
-      about iOS Safari standalone-mode compatibility.
+- [x] **10.1 Modal focus trap.** **Shipped v1.5.74.** Per R2 research,
+      native `<dialog>` doesn't auto-trap on iOS Safari, so the custom-
+      modal + JS-trap path was the right call regardless of which it
+      was easier to write. `src/ui/modalManager.js` now: captures
+      `document.activeElement` at `showModal`, focuses the first
+      visible focusable inside, attaches a Tab/Shift+Tab handler that
+      wraps focus inside, and restores focus to the trigger element on
+      `hideModal` / `hideAllModals`. Verified in Playwright on the
+      Settings modal — Tab from the last button (Reset Profile)
+      wraps to the close ×, Shift+Tab from × wraps to Reset Profile.
+      Per-modal state in a WeakMap so multiple modals stack safely
+      even though the app pattern is one-at-a-time.
 
 ### Observability
 
