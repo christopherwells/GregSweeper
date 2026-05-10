@@ -53,17 +53,18 @@ checklist a new session should pick up cold.
 
 ### iOS / storage
 
-- [ ] **2.1 / 5.1 Persistent storage.** Call `navigator.storage.persist()`
-      after the FIRST DAILY COMPLETION (not at app load — Safari's
-      heuristic favors apps the user has invested time in). Without this,
-      iOS evicts cache + IndexedDB after 7 days inactivity, Chrome at
-      80% disk fill. Three lines:
-      ```js
-      if (navigator.storage?.persist) {
-        const isPersisted = await navigator.storage.persisted();
-        if (!isPersisted) await navigator.storage.persist();
-      }
-      ```
+- [x] **2.1 / 5.1 Persistent storage.** **Shipped v1.5.73** as
+      `requestPersistentStorage()` in `src/storage/storageAdapter.js`,
+      called fire-and-forget from `main.js` right after the storage-
+      failing toast check. Per R4 research the call is silent on iOS
+      Safari (no permission prompt — installed PWAs grant automatically)
+      and on Chrome / Firefox once the engagement heuristic passes. We
+      call at boot rather than after-first-completion as the doc
+      originally suggested: the call costs nothing if it fails, and
+      calling early means even a player who never finishes their first
+      daily still gets the protection on subsequent visits. Result is
+      cached at `gregsweeper_persist_granted` for diagnostics
+      readback via `getPersistentStorageStatus()`.
 
 - [ ] **2.3 Verify shell-cache fix actually works.** Ship a probe: a
       static `_v.txt` file at the repo root containing the build version.

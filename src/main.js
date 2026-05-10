@@ -75,7 +75,7 @@ import {
   loadEffects, saveEffects, loadTitle, saveTitle,
 } from './ui/collectionManager.js';
 import { isModifierPopupDisabled, setModifierPopupDisabled, getGimmickDefs, getDailyGimmick, applyGimmicks } from './logic/gimmicks.js';
-import { isStorageFailing, safeGet, safeSet, safeRemove } from './storage/storageAdapter.js';
+import { isStorageFailing, safeGet, safeSet, safeRemove, requestPersistentStorage } from './storage/storageAdapter.js';
 import { pauseTimer, resumeTimer } from './game/timerManager.js';
 import { startTutorial } from './ui/tutorialManager.js';
 import { initErrorReporter, setErrorReporterCodeVersion, reportTestError } from './diagnostics/errorReporter.js';
@@ -2420,6 +2420,14 @@ async function init() {
   if (isStorageFailing()) {
     showToast('⚠️ Playing in temporary mode — progress won\'t be saved', 5000);
   }
+
+  // Ask the browser to mark our storage as persistent so it isn't
+  // evicted by the browser's storage-pressure cleanup. iOS Safari
+  // grants silently for installed PWAs; desktop Chrome / Firefox grant
+  // automatically once the engagement heuristic passes (no permission
+  // prompt). Fire-and-forget — the diagnostics modal can read the
+  // cached result from getPersistentStorageStatus().
+  requestPersistentStorage().catch(() => {});
 
   const urlParams = new URLSearchParams(window.location.search);
   const deepLinkMode = urlParams.get('mode');
