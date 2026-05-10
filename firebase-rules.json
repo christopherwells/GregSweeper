@@ -228,6 +228,23 @@
         }
       }
     },
+    "errors": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        "$timestamp": {
+          ".validate": "$timestamp.matches(/^[0-9]+$/) && newData.hasChildren(['message', 'codeVersion', 'createdAt'])",
+          "message":     { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 2000" },
+          "stack":       { ".validate": "newData.isString() && newData.val().length <= 8000" },
+          "url":         { ".validate": "newData.isString() && newData.val().length <= 500" },
+          "codeVersion": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 32" },
+          "userAgent":   { ".validate": "newData.isString() && newData.val().length <= 500" },
+          "isStandalone":{ ".validate": "newData.isBoolean()" },
+          "createdAt":   { ".validate": "newData.val() === now" },
+          "$other":      { ".validate": false }
+        }
+      }
+    },
     "$other": {
       ".read": false,
       ".write": false

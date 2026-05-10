@@ -78,6 +78,7 @@ import { isModifierPopupDisabled, setModifierPopupDisabled, getGimmickDefs, getD
 import { isStorageFailing, safeGet, safeSet, safeRemove } from './storage/storageAdapter.js';
 import { pauseTimer, resumeTimer } from './game/timerManager.js';
 import { startTutorial } from './ui/tutorialManager.js';
+import { initErrorReporter, setErrorReporterCodeVersion, reportTestError } from './diagnostics/errorReporter.js';
 
 // ── Code-version handshake with the service worker ────
 // The SW broadcasts its CACHE_NAME on activate and replies to
@@ -89,6 +90,9 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('message', (event) => {
     if (event.data?.type === 'codeVersion' && typeof event.data.value === 'string') {
       state.codeVersion = event.data.value;
+      // Keep the error reporter's tag in sync so late errors carry the
+      // build that produced them, not the boot-time placeholder.
+      setErrorReporterCodeVersion(event.data.value);
     }
   });
   if (navigator.serviceWorker.controller) {
@@ -100,6 +104,11 @@ if ('serviceWorker' in navigator) {
     }
   });
 }
+
+// Attach error listeners as early as possible — before any other module
+// runs — so init-time exceptions are captured. The reporter buffers
+// events until uid resolves and Firebase is ready, then drains.
+initErrorReporter({ codeVersion: state.codeVersion || 'unknown' });
 
 // ── Boot overlay helpers ──────────────────────────────
 function setBootStatus(text) {
@@ -2428,6 +2437,10 @@ async function init() {
   if (safeGet(DEBUG_UI_KEY) === '1') {
     const g = $('#settings-diagnostics-group');
     if (g) g.classList.remove('hidden');
+    // Expose a console helper for verifying the error reporter end-to-end.
+    // Usage: open DevTools, run `gsTestError('label')`, then check
+    // Firebase Console → errors/{uid}/{timestamp} for the row.
+    window.gsTestError = (label) => reportTestError(label);
   }
 
   // Startup gate — block rendering until the SW is current, Firebase is
