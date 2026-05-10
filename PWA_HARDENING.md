@@ -67,12 +67,19 @@ checklist a new session should pick up cold.
       cached at `gregsweeper_persist_granted` for diagnostics
       readback via `getPersistentStorageStatus()`.
 
-- [ ] **2.3 Verify shell-cache fix actually works.** Ship a probe: a
-      static `_v.txt` file at the repo root containing the build version.
-      Fetch on every app load. Write `lag = days behind deployed` to
-      Firebase. If lag > 24h on any user, residual iOS shell-cache problem
-      that warrants more aggressive mitigation. This is the validation
-      step for today's structural fix.
+- [x] **2.3 Verify shell-cache fix actually works.** **Superseded
+      v1.5.77.** The 5-min version-mismatch self-healer in
+      `index.html` already fetches live `sw.js` with `cache:'no-store'`
+      and a unique query string, parses CACHE_NAME, and compares to
+      the running SW's cache name. That's the same signal a `_v.txt`
+      probe would give — adding a second static probe would catch the
+      case where BOTH `sw.js` fetches are intercepted by the same
+      stale layer, but `cache:'no-store'` + the no-cache HTML meta
+      already prevents that. Deployment-lag observability (the other
+      half of this item's intent) belongs in **12.2 SW health
+      endpoint** (P1) which writes per-user `swHealth` records on
+      every activate; that's a cleaner channel than a probe-and-write
+      cycle on every page load.
 
 ### Offline + update safety
 
