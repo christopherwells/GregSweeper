@@ -38,10 +38,11 @@ Beyond solvability, every generation path (precompute, daily play-path local-gen
 
 - **Mystery is exempt** — it removes info by definition, can't be load-bearing. Every mystery board would fail the test, so we don't apply it.
 - **Walls and locked are exempt** — they're structural (topology change, reveal-order change), not deduction contributors. Stripping them would invalidate the cell numbers.
-- **Sonar / compass / wormhole / liar / mirror** are testable. The filter strips their constraints (and for mirror, the un-swap assumption) and asks "could the player still solve this board with only the other modifiers' info?"
-- **Per-type, not per-cell.** A board with 3 sonar cells where only 1 is load-bearing passes — sonar AS A TYPE contributed. We don't iterate per-cell; that's intentional.
-- **Fallback when no candidate is load-bearing**: precompute falls back to the highest-scoring solvable candidate (with a console note); play-path retry loops relax the requirement after RELAX_AFTER_BASES (challenge) / LOAD_BEARING_BUDGET=25 (daily/weekly) attempts. Better to ship a decorative-modifier board than spin forever.
-- **Why this matters**: an audit (2026-05-10) found 5 of the prior 13 dailies shipped decorative modifiers (sonar, compass, or liar that contributed nothing). With force-injected coverage missions pushing under-sampled gimmicks, the natural rate of "decorative" was rising. This filter makes the modifier MEAN SOMETHING on the board.
+- **Sonar / compass / wormhole / liar / mirror** are testable. The filter strips their constraints (and for mirror, the un-swap assumption) and asks "could the player still solve this board with only the other modifiers' info, AT THE SAME DIFFICULTY?"
+- **Per-type, not per-cell.** A board with 3 sonar cells where only 1 contributes passes — sonar AS A TYPE contributed. We don't iterate per-cell; that's intentional.
+- **A modifier "contributes" when stripping it does ANY of**: makes board unsolvable, raises technique level (Pass C tank/gauss instead of Pass A), or adds ≥2 clicks. The threshold catches both strict load-bearing AND meaningful shortcut — a sonar that lets the player skip a tank-solve counts even if Pass C could have eventually solved without it. See `_gimmickContributes` in `boardSolver.js`. The 2-click threshold avoids penalizing incidental savings (1 saved click is often just "the same cell deduced moments later via a neighbor").
+- **Fallback when no candidate contributes**: precompute falls back to the highest-scoring solvable candidate (with a console note); play-path retry loops relax the requirement after RELAX_AFTER_BASES (challenge) / LOAD_BEARING_BUDGET=25 (daily/weekly) attempts. Better to ship a decorative-modifier board than spin forever.
+- **Why this matters**: an audit (2026-05-10) found ~3-5 of the prior 13 dailies shipped decorative modifiers (sonar, compass, or liar that contributed nothing). With force-injected coverage missions pushing under-sampled gimmicks, the natural rate of "decorative" was rising. This filter makes the modifier MEAN SOMETHING on the board — either required, or at least a useful shortcut.
 
 ## Board Solver Architecture
 

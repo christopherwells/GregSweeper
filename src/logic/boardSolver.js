@@ -455,16 +455,39 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
 //   - pressurePlate / mineShift: chaos-only.
 const TESTABLE_GIMMICK_TYPES = ['sonar', 'compass', 'wormhole', 'liar', 'mirror'];
 
+// A gimmick "contributes" to the solve if stripping it does any of:
+//   1. Makes the board unsolvable (strict load-bearing).
+//   2. Forces a higher technique level (the player would have to reason
+//      harder without the gimmick — e.g. Pass C tank/gauss instead of
+//      Pass A).
+//   3. Adds a meaningful number of clicks the player would have to make
+//      manually because the gimmick no longer shortcuts the deduction
+//      chain. Threshold of 2 because saving exactly 1 click is often
+//      incidental — the same cell would have been deduced moments later
+//      via a neighbor anyway.
+// If none of those three hold, the gimmick was decorative on this board.
+const SHORTCUT_CLICK_THRESHOLD = 2;
+
+function _gimmickContributes(withCheck, strippedCheck) {
+  if (!strippedCheck.solvable && strippedCheck.remainingUnknowns > 0) return true;
+  if ((strippedCheck.techniqueLevel ?? 0) > (withCheck.techniqueLevel ?? 0)) return true;
+  if (strippedCheck.totalClicks - withCheck.totalClicks >= SHORTCUT_CLICK_THRESHOLD) return true;
+  return false;
+}
+
 /**
  * Returns the subset of activeGimmicks that are decorative on this board —
- * i.e. removing their info still leaves the board solvable. Empty array
- * means every testable gimmick is load-bearing.
+ * i.e. stripping them changes nothing meaningful (board still solvable at
+ * the same technique level with similar click count). A gimmick that
+ * SHORTCUTS the solve (lets the player skip ≥2 clicks or use easier
+ * reasoning) counts as contributing, even if not strictly required.
+ * Empty array means every testable gimmick contributes.
  *
  * Mystery, walls, and locked are skipped (structural / informational gimmicks
  * for which the load-bearing question doesn't apply).
  *
- * Cost: one additional isBoardSolvable run per testable type present on the
- * board (typically 1-2 per daily, rarely more).
+ * Cost: one baseline solver run plus one additional run per testable type
+ * present on the board (typically 2-3 runs total per board).
  *
  * @param {Array<Array<Object>>} board  - 2D cell grid (already gimmick-applied)
  * @param {number} rows
@@ -478,12 +501,21 @@ const TESTABLE_GIMMICK_TYPES = ['sonar', 'compass', 'wormhole', 'liar', 'mirror'
 export function findDecorativeGimmicks(board, rows, cols, safeRow, safeCol, activeGimmicks, preNeighborCache) {
   const decorative = [];
   if (!Array.isArray(activeGimmicks) || activeGimmicks.length === 0) return decorative;
+  // Baseline: the with-gimmicks solve. We compare each strip-test against
+  // this — if technique level rises or clicks rise meaningfully, the
+  // gimmick contributed. If neither, the gimmick was decoration.
+  const withCheck = isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighborCache);
+  if (!withCheck.solvable && withCheck.remainingUnknowns > 0) {
+    // Caller should have verified solvability already — bail rather than
+    // report misleading results on an unsolvable board.
+    return decorative;
+  }
   for (const g of activeGimmicks) {
     if (!TESTABLE_GIMMICK_TYPES.includes(g)) continue;
     const stripped = isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighborCache, {
       stripGimmicks: [g],
     });
-    if (stripped.solvable || stripped.remainingUnknowns === 0) {
+    if (!_gimmickContributes(withCheck, stripped)) {
       decorative.push(g);
     }
   }
