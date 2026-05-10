@@ -448,8 +448,15 @@ export function getPlayerName() {
   return safeGet(PLAYER_NAME_KEY) || '';
 }
 
+// Strip the chars Firebase rejects in leaderboard names (the regex on
+// daily/$date/$entry/name and weekly/$weekStart/$uid/name). Without this
+// the player can type, say, `Chris<3` in Settings, see it stored
+// locally, and then have every score submission silently fail because
+// the rule rejects the `<`. Strip on save so the local copy matches
+// what would actually be accepted.
 export function setPlayerName(name) {
-  safeSet(PLAYER_NAME_KEY, name);
+  const cleaned = String(name || '').replace(/[<>&"'`]/g, '').slice(0, 20);
+  safeSet(PLAYER_NAME_KEY, cleaned);
 }
 
 // ── Cloud Progress Merge ──────────────────────────────

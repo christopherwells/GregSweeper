@@ -94,17 +94,19 @@ checklist a new session should pick up cold.
 
 ### Security
 
-- [ ] **9.5 Player-name XSS audit.** The leaderboard renders `name` from
-      Firebase. If the client doesn't escape, a malicious user could
-      submit a name like `<img src=x onerror=...>`and every leaderboard
-      viewer executes it. Audit `firebaseLeaderboard.js` and the leaderboard
-      render path: every user-provided string must go through
-      `textContent`, never `innerHTML`. Add server-side validator in
-      firebase rules:
-      ```json
-      ".validate": "newData.val().length <= 20 &&
-                    newData.val().matches(/^[\\w\\s\\-_.]+$/)"
-      ```
+- [x] **9.5 Player-name XSS audit.** ~~The leaderboard renders `name` from
+      Firebase.~~ **Audit clean v1.5.72.** Every render site
+      (`main.js:816` weekly, `main.js:983` daily) goes through
+      `escapeHtml(entry.name)` — the createElement→textContent→innerHTML
+      pattern, bulletproof. Submission paths in `firebaseLeaderboard.js`
+      already cap length and trim. Defense in depth added:
+      (a) Firebase rules now reject names containing `<`, `>`, `&`, `"`,
+      `'`, or backtick on both `daily/$date/$entry/name` and
+      `weekly/$weekStart/$uid/name` (regex
+      `/^[^<>&\"'`]+$/`); (b) `setPlayerName` in `statsStorage.js`
+      strips the same chars before saving locally so the player can't
+      type a name that would silently fail submission. Requires
+      `firebase deploy --only database` after push.
 
 - [ ] **11.4 Audit zero sensor-permission usage.** Confirm: no
       `navigator.geolocation`, no `getUserMedia`, no clipboard read.

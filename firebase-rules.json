@@ -9,7 +9,7 @@
           ".write": true,
           ".validate": "newData.hasChildren(['name', 'time', 'timestamp'])",
           "name": {
-            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 20"
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 20 && newData.val().matches(/^[^<>&\"'`]+$/)"
           },
           "time": {
             ".validate": "newData.isNumber() && newData.val() >= 5 && newData.val() <= 3600"
@@ -92,7 +92,7 @@
           ".write": "auth != null && auth.uid === $uid",
           ".validate": "newData.hasChildren(['name', 'bestTime', 'timestamp'])",
           "name": {
-            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 20"
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 20 && newData.val().matches(/^[^<>&\"'`]+$/)"
           },
           "bestTime": {
             ".validate": "newData.isNumber() && newData.val() >= 5 && newData.val() <= 3600"
