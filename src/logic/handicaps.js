@@ -62,6 +62,11 @@ export function getHandicap(uid) {
   return typeof v === 'number' ? v : 0;
 }
 
+// Minimum residuals before we'll surface a provisional handicap. Two is
+// the minimum where the mean isn't just a single delta in disguise;
+// the wide-uncertainty caveat is rendered alongside the number.
+const PROVISIONAL_HANDICAP_MIN_PAIRS = 2;
+
 /**
  * Estimate a handicap from the player's own history when the static
  * handicaps.json doesn't have an entry yet (typical during the first
@@ -70,11 +75,20 @@ export function getHandicap(uid) {
  * handicap is missing from the file).
  *
  * Returns the mean residual (`time - predictedPar`) across a list of
- * `{ time, predictedPar }` pairs. Lower bound of 3 pairs — below that
- * the mean is too noisy to surface.
+ * `{ time, predictedPar }` pairs. Below MIN_PAIRS returns 0.
  */
 export function estimateHandicapFromHistory(pairs) {
-  if (!Array.isArray(pairs) || pairs.length < 3) return 0;
+  const r = estimateHandicapDetails(pairs);
+  return r ? r.handicap : 0;
+}
+
+/**
+ * Same as estimateHandicapFromHistory but also returns the sample size
+ * so callers can render an "(N plays)" qualifier alongside the number.
+ * Returns null when the sample is too small to surface anything.
+ */
+export function estimateHandicapDetails(pairs) {
+  if (!Array.isArray(pairs)) return null;
   let sum = 0;
   let n = 0;
   for (const p of pairs) {
@@ -82,9 +96,15 @@ export function estimateHandicapFromHistory(pairs) {
     sum += p.time - p.predictedPar;
     n++;
   }
-  if (n < 3) return 0;
-  return Math.round((sum / n) * 10) / 10;
+  if (n < PROVISIONAL_HANDICAP_MIN_PAIRS) return null;
+  return {
+    handicap: Math.round((sum / n) * 10) / 10,
+    n,
+    provisional: true,
+  };
 }
+
+export const PROVISIONAL_MIN = PROVISIONAL_HANDICAP_MIN_PAIRS;
 
 /**
  * Your personal par = Greg-par + your handicap.

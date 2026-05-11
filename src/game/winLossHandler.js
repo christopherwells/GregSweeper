@@ -38,8 +38,8 @@ function escapeHtmlInline(s) {
 }
 import { saveProgress, saveDailyHistoryEntry, getUid, markWeeklyDayAttempted } from '../firebase/firebaseProgress.js';
 import { breakdownPar } from '../logic/dailyFeatures.js';
-import { getHandicap } from '../logic/handicaps.js';
-import { addDailyLeaderboardEntry } from '../storage/statsStorage.js';
+import { getHandicap, estimateHandicapDetails } from '../logic/handicaps.js';
+import { addDailyLeaderboardEntry, appendDailyResidual, loadDailyResiduals } from '../storage/statsStorage.js';
 import { getLocalDateString } from '../logic/seededRandom.js';
 
 // Weekly's first-attempt-of-the-week play is supposed to feed the
@@ -331,7 +331,31 @@ export function handleWin() {
     // the bonus's own framing. Without this gate, state.dailyPar can
     // leak from a previous in-session daily play and render here.
     if (parEl && state.dailyPar > 0 && state.gameMode === 'daily' && !state.isBonusDaily) {
-      const handicap = getHandicap(getUid());
+      // Stash this play's residual locally BEFORE computing the provisional
+      // handicap so the current play counts toward the running mean. We
+      // dedupe by date inside appendDailyResidual, so replaying after a
+      // resume doesn't double-count.
+      appendDailyResidual({ date: state.dailySeed, time: precise, par: state.dailyPar });
+
+      // Handicap resolution: prefer the refit value from handicaps.json
+      // (set by the nightly Bayesian fit once the user crosses
+      // MIN_PLAYS_FOR_FIT_INCLUSION=30 plays). If the refit hasn't
+      // included this user yet, fall back to the client-side mean
+      // residual across at least 2 local plays so newcomers see a
+      // "Your par" line that tightens with each daily instead of
+      // staring at "Greg's Time" alone for a month.
+      const refitHandicap = getHandicap(getUid());
+      let handicap = refitHandicap;
+      let provisional = null;
+      if (refitHandicap === 0) {
+        const residuals = loadDailyResiduals();
+        const pairs = residuals.map(r => ({ time: r.time, predictedPar: r.par }));
+        const est = estimateHandicapDetails(pairs);
+        if (est) {
+          handicap = est.handicap;
+          provisional = est;
+        }
+      }
       const personalPar = state.dailyPar + handicap;
       const referencePar = handicap !== 0 ? personalPar : state.dailyPar;
       const delta = precise - referencePar;
@@ -348,15 +372,30 @@ export function handleWin() {
         deltaText = handicap !== 0 ? 'Even with your par!' : 'Even par!';
       }
 
+      // Provisional handicaps carry a "(based on N plays)" qualifier so
+      // the player understands the number will tighten with more data,
+      // and so we don't pretend a 2-play mean is anywhere near as
+      // trustworthy as a 30-play Bayesian random intercept.
+      const yourParLabel = provisional
+        ? 'Your par (provisional, ' + provisional.n + ' plays): '
+        : 'Your par: ';
+
       if (handicap !== 0) {
         parEl.innerHTML =
           "Greg's Time: " + state.dailyPar.toFixed(1) + 's · ' +
-          'Your par: ' + personalPar.toFixed(1) + 's — ' +
+          yourParLabel + personalPar.toFixed(1) + 's — ' +
           '<span class="' + parClass + '">' + deltaText + '</span>';
       } else {
+        // No handicap yet — surface a small hint about what would
+        // unlock one so a brand-new player (1 daily complete) doesn't
+        // think the system is just ignoring them.
+        const residuals = loadDailyResiduals();
+        const needHint = residuals.length === 1
+          ? ' <span class="par-hint">· 1 more daily and your personal par appears</span>'
+          : '';
         parEl.innerHTML =
           "Greg's Time: " + state.dailyPar.toFixed(1) + 's — ' +
-          '<span class="' + parClass + '">' + deltaText + '</span>';
+          '<span class="' + parClass + '">' + deltaText + '</span>' + needHint;
       }
       parEl.classList.remove('hidden');
 

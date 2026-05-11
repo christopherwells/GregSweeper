@@ -2334,6 +2334,11 @@ body {
 .par-under { color: #4caf50 !important; }
 .par-over { color: #ef5350 !important; }
 .par-even { color: var(--color-text-secondary) !important; }
+.par-hint {
+  color: var(--color-text-secondary);
+  font-size: 0.85em;
+  opacity: 0.8;
+}
 
 .par-breakdown {
   font-size: 11.5px;

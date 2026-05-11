@@ -6,7 +6,45 @@ const LEADERBOARD_KEY = 'minesweeper_daily_leaderboard';
 const DAILY_PAR_KEY_PREFIX = 'minesweeper_daily_par_';
 const DAILY_MOVES_KEY_PREFIX = 'minesweeper_daily_moves_';
 const DAILY_FEATURES_KEY_PREFIX = 'minesweeper_daily_features_';
+const DAILY_RESIDUALS_KEY = 'minesweeper_daily_residuals';
 const THEME_KEY = 'minesweeper_theme';
+
+// ── Local daily residuals (provisional handicap source) ──────────
+// We persist {date, time, par} after each daily completion so the end-
+// of-game modal can compute a provisional handicap before the nightly
+// refit has accumulated enough plays to include the user. The Firebase
+// users/{uid}/dailyHistory record is the same data with a server
+// timestamp; the local cache exists so we can render synchronously on
+// win without a round trip. Capped at the last 50 entries (handicap
+// only ever needs the running mean, not the full history).
+
+const RESIDUAL_HISTORY_CAP = 50;
+
+export function appendDailyResidual({ date, time, par }) {
+  if (!date || typeof time !== 'number' || typeof par !== 'number' || par <= 0) return;
+  const existing = safeGetJSON(DAILY_RESIDUALS_KEY, []);
+  // De-duplicate by date — if the same daily is played and re-submitted
+  // (rare), overwrite the prior entry rather than letting two rows for
+  // the same date both feed the mean.
+  const filtered = existing.filter(e => e && e.date !== date);
+  filtered.push({ date, time, par });
+  // Keep only the most recent RESIDUAL_HISTORY_CAP entries; sort by
+  // date ascending so slicing from the end keeps the newest plays.
+  filtered.sort((a, b) => (a.date < b.date ? -1 : 1));
+  const trimmed = filtered.length > RESIDUAL_HISTORY_CAP
+    ? filtered.slice(-RESIDUAL_HISTORY_CAP) : filtered;
+  safeSetJSON(DAILY_RESIDUALS_KEY, trimmed);
+}
+
+/**
+ * Read the cached daily residuals as `[{ date, time, par }, ...]`. Used
+ * by the end-of-game modal's provisional-handicap path to fall back to
+ * a client-side mean residual when the refit handicap is unavailable.
+ */
+export function loadDailyResiduals() {
+  const arr = safeGetJSON(DAILY_RESIDUALS_KEY, []);
+  return Array.isArray(arr) ? arr.filter(e => e && typeof e.time === 'number' && typeof e.par === 'number') : [];
+}
 
 export function saveDailyPar(dateStr, par, moves, features) {
   safeSet(DAILY_PAR_KEY_PREFIX + dateStr, String(par));
