@@ -51,9 +51,11 @@ function emptyDiv(message) {
  *        all players' scores for each date (flat across pushIds)
  * @param {string} data.uid  signed-in user's uid
  * @param {number} data.handicap  user's current handicap
+ * @param {boolean} [data.handicapProvisional]  true when handicap came from
+ *        the local-residual fallback (< MIN_PLAYS_FOR_FIT_INCLUSION plays)
  */
 export function renderDailyStatsTab(data) {
-  const { history, metaByDate, scoresByDate, uid, handicap } = data;
+  const { history, metaByDate, scoresByDate, uid, handicap, handicapProvisional } = data;
 
   const sorted = [...(history || [])].sort((a, b) => a.date.localeCompare(b.date));
 
@@ -70,7 +72,7 @@ export function renderDailyStatsTab(data) {
     return { ...h, features, globalPar, personalPar, deltaGlobal, deltaPersonal, bombHits };
   }).filter(p => p.features);
 
-  renderHeadlineCards(plays, handicap);
+  renderHeadlineCards(plays, handicap, handicapProvisional);
   renderHandicapTrajectory(plays);
   renderHistoryChart(plays);
   renderComplexityDelta(plays);
@@ -82,12 +84,25 @@ export function renderDailyStatsTab(data) {
 
 // ── Headline cards ────────────────────────────────────
 
-function renderHeadlineCards(plays, handicap) {
-  if (plays.length >= 3) {
+function renderHeadlineCards(plays, handicap, handicapProvisional) {
+  // Two-tier headline: show a real handicap number whenever we have one
+  // (refit handicap OR provisional from >= 2 plays); fall back to a
+  // "tracking" message for brand-new players. The provisional case
+  // appends a "~ (provisional)" qualifier so the player understands
+  // the number will tighten with more plays.
+  if (plays.length >= 2 && handicap !== 0) {
     const sign = handicap >= 0 ? '+' : '';
-    setText('stat-handicap-now', `${sign}${handicap.toFixed(1)}s`);
+    const suffix = handicapProvisional ? ` ~ ${plays.length} plays` : '';
+    setText('stat-handicap-now', `${sign}${handicap.toFixed(1)}s${suffix}`);
+  } else if (plays.length === 1) {
+    setText('stat-handicap-now', '1 more daily');
+  } else if (plays.length === 0) {
+    setText('stat-handicap-now', '--');
   } else {
-    setText('stat-handicap-now', 'Need 3+ plays');
+    // 2+ plays but handicap is exactly 0 (rare — would mean perfectly
+    // average across every play). Render literal zero instead of a
+    // "need more plays" message that's misleading at this point.
+    setText('stat-handicap-now', '0.0s');
   }
 
   // History section cards

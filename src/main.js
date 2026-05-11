@@ -22,7 +22,7 @@ import { switchMode, isChaosUnlocked, updateModeUI } from './game/modeManager.js
 import { persistGameState, tryResumeGame } from './game/gamePersistence.js';
 import { getDifficultyForLevel, getTimedDifficulty, getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, CHAOS_UNLOCK_LEVEL, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE } from './logic/difficulty.js';
 import { computeDailyFeatures, predictPar } from './logic/dailyFeatures.js';
-import { loadHandicaps, getHandicap, estimateHandicapFromHistory } from './logic/handicaps.js';
+import { loadHandicaps, getHandicap, estimateHandicapDetails } from './logic/handicaps.js';
 import {
   loadStats, saveTheme, loadTheme, resetStats,
   saveCheckpoint, loadCheckpoint,
@@ -776,9 +776,12 @@ async function populateDailyPanel() {
   // Use the refitted handicap from handicaps.json when available. Fall
   // back to a client-computed mean residual against the user's own
   // history so first-time players see something meaningful before the
-  // nightly refit catches up.
+  // nightly refit catches up. Provisional flag tells the stats renderer
+  // to qualify the number ("(provisional, N plays)") so the player
+  // understands it'll tighten as more data accumulates.
   let handicap = getHandicap(uid);
-  if (handicap === 0 && history && history.length >= 3) {
+  let handicapProvisional = false;
+  if (handicap === 0 && history && history.length >= 2) {
     const pairs = history
       .map(h => {
         const f = metaByDate[h.date];
@@ -786,7 +789,11 @@ async function populateDailyPanel() {
         return { time: h.time, predictedPar: predictPar(f) };
       })
       .filter(Boolean);
-    handicap = estimateHandicapFromHistory(pairs);
+    const est = estimateHandicapDetails(pairs);
+    if (est) {
+      handicap = est.handicap;
+      handicapProvisional = true;
+    }
   }
   const { renderDailyStatsTab } = await import('./ui/statsRenderer.js');
   renderDailyStatsTab({
@@ -795,6 +802,7 @@ async function populateDailyPanel() {
     scoresByDate: scoresByDate || {},
     uid,
     handicap,
+    handicapProvisional,
   });
 }
 
