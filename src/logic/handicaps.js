@@ -107,6 +107,53 @@ export function estimateHandicapDetails(pairs) {
 export const PROVISIONAL_MIN = PROVISIONAL_HANDICAP_MIN_PAIRS;
 
 /**
+ * Rebuild the local residual cache from the user's Firebase dailyHistory
+ * + the public dailyMeta tree. Used at app boot so the provisional
+ * handicap survives cache clears, private-browsing sessions, and cross-
+ * device opens.
+ *
+ * Intentionally does NOT survive a uid reset (save-scumming) — that's a
+ * deliberate "start over" gesture by the player, and silently linking
+ * to old uids by name would be guessable and fragile.
+ *
+ * Returns the number of residuals appended. appendDailyResidual dedupes
+ * by date so re-running is idempotent.
+ *
+ * Best-effort: failures are swallowed and return 0. The win-path
+ * residual append still runs regardless, so even a backfill failure
+ * doesn't degrade the per-play recording.
+ */
+export async function backfillResidualsFromFirebase(uid) {
+  if (!uid) return 0;
+  try {
+    const [{ fetchUserDailyHistory, fetchAllDailyMeta }, dailyFeatures, statsStorage] = await Promise.all([
+      import('../firebase/firebaseLeaderboard.js'),
+      import('./dailyFeatures.js'),
+      import('../storage/statsStorage.js'),
+    ]);
+    const [history, meta] = await Promise.all([
+      fetchUserDailyHistory(uid, 50),
+      fetchAllDailyMeta(),
+    ]);
+    if (!Array.isArray(history) || !meta) return 0;
+    let added = 0;
+    for (const h of history) {
+      if (!h || !h.date || typeof h.time !== 'number') continue;
+      const m = meta[h.date];
+      const features = m && m.features ? m.features : null;
+      if (!features) continue;
+      const par = dailyFeatures.predictPar(features);
+      if (typeof par !== 'number' || par <= 0) continue;
+      statsStorage.appendDailyResidual({ date: h.date, time: h.time, par });
+      added++;
+    }
+    return added;
+  } catch {
+    return 0;
+  }
+}
+
+/**
  * Your personal par = Greg-par + your handicap.
  */
 export function personalPar(globalPar, uid) {

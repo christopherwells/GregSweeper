@@ -2451,6 +2451,20 @@ async function init() {
   // when the file hasn't loaded yet.
   loadHandicaps();
 
+  // Rebuild the provisional-handicap residual cache from Firebase
+  // dailyHistory after anon auth resolves. Covers cache clears, private-
+  // browsing sessions, and cross-device opens — a player who finished
+  // three dailies on their phone won't reset their provisional handicap
+  // when they first open the PWA on their laptop. Save-scumming via a
+  // uid reset legitimately resets the cache (new uid = no history to
+  // backfill), which is the intended behaviour for that gesture.
+  initAnonymousAuth().then(async () => {
+    const uid = getUid();
+    if (!uid) return;
+    const { backfillResidualsFromFirebase } = await import('./logic/handicaps.js');
+    backfillResidualsFromFirebase(uid).catch(() => {});
+  }).catch(() => {});
+
   // Warm the experiment-target cache so selectDailyRngSeed has the
   // current target when the user lands on a daily. If the fetch hasn't
   // resolved yet, the module falls back to DEFAULT_TARGET.
