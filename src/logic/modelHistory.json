@@ -1903,7 +1903,7 @@
     "n_players": 3,
     "n_eligible": 2,
     "rmse": 32.39,
-    "bias": -0,
+    "bias": 0,
     "diagnostics": "max Rhat = 1.002, min ESS = 1585, divergent = 0/4000",
     "target": "wormholePairCount",
     "candidates": [
@@ -1990,6 +1990,105 @@
         "mean": 1.9177,
         "sd": 0.7254,
         "cv": 0.3783
+      }
+    ]
+  },
+  {
+    "date": "2026-05-12",
+    "updatedAt": "2026-05-12T16:24:52Z",
+    "method": "brms-ranef",
+    "n_scores": 127,
+    "n_dates": 64,
+    "n_players": 3,
+    "n_eligible": 2,
+    "rmse": 32.25,
+    "bias": 0,
+    "diagnostics": "max Rhat = 1.003, min ESS = 1330, divergent = 0/4000",
+    "target": "lockedCellCount",
+    "candidates": [
+      {
+        "feature": "compassCellCount",
+        "mean": 0.8215,
+        "sd": 0.9188,
+        "cv": 1.1185
+      },
+      {
+        "feature": "lockedCellCount",
+        "mean": 0.5795,
+        "sd": 0.6374,
+        "cv": 1.1
+      },
+      {
+        "feature": "wormholePairCount",
+        "mean": 1.4505,
+        "sd": 1.5918,
+        "cv": 1.0974
+      },
+      {
+        "feature": "sonarCellCount",
+        "mean": 0.6952,
+        "sd": 0.7251,
+        "cv": 1.043
+      },
+      {
+        "feature": "mirrorPairCount",
+        "mean": 1.3923,
+        "sd": 1.3712,
+        "cv": 0.9849
+      },
+      {
+        "feature": "wallEdgeCount",
+        "mean": 0.1799,
+        "sd": 0.1763,
+        "cv": 0.9799
+      },
+      {
+        "feature": "liarCellCount",
+        "mean": 0.7318,
+        "sd": 0.7074,
+        "cv": 0.9666
+      },
+      {
+        "feature": "mysteryCellCount",
+        "mean": 0.9445,
+        "sd": 0.8921,
+        "cv": 0.9445
+      },
+      {
+        "feature": "zeroClusterCount",
+        "mean": 0.5543,
+        "sd": 0.4223,
+        "cv": 0.7619
+      },
+      {
+        "feature": "nonZeroSafeCellCount",
+        "mean": 0.2602,
+        "sd": 0.1708,
+        "cv": 0.6565
+      },
+      {
+        "feature": "canonicalSubsetMoves",
+        "mean": 4.0277,
+        "sd": 2.2003,
+        "cv": 0.5463
+      },
+      {
+        "feature": "genericSubsetMoves",
+        "mean": 2.2488,
+        "sd": 0.9647,
+        "cv": 0.429
+      },
+      {
+        "feature": "advancedLogicMoves",
+        "mean": 1.3075,
+        "sd": 0.5603,
+        "cv": 0.4285
+      },
+      {
+        "feature": "totalMines",
+        "mean": 1.9117,
+        "sd": 0.7216,
+        "cv": 0.3774
       }
     ]
   }
