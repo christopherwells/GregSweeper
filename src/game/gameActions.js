@@ -17,7 +17,7 @@ import { handleWin, handleLoss, handleDailyBombHit } from './winLossHandler.js';
 import { performScan, performXRay, performMagnet, tryLifeline } from './powerUpActions.js';
 import { generateBoard, createEmptyBoard, calculateAdjacency, cleanSolverArtifacts } from '../logic/boardGenerator.js';
 import { floodFillReveal, checkWin, chordReveal, isBoardSolvable, estimatePlateMovesToDisarm, buildNeighborCache, findDecorativeGimmicks } from '../logic/boardSolver.js';
-import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getChaosDifficulty, getRequiredTechnique, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE, WEEKLY_MIN_SIZE, WEEKLY_SIZE_RANGE, PLATE_MIN_SECONDS, PLATE_SECONDS_PER_STEP } from '../logic/difficulty.js';
+import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getChaosDifficulty, getRequiredTechnique, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE, WEEKLY_MIN_SIZE, WEEKLY_SIZE_RANGE, BOARD_WIDTH_CAP, PLATE_MIN_SECONDS, PLATE_SECONDS_PER_STEP } from '../logic/difficulty.js';
 import { computeDailyFeatures, predictPar } from '../logic/dailyFeatures.js';
 import { shieldDefuse } from '../logic/powerUps.js';
 import { getGimmicksForLevel, applyGimmicks, applyWalls, isLockedCell, hasWallBetween, hasSeenGimmick, markGimmickSeen, getGimmickDef, isModifierPopupDisabled, setModifierPopupDisabled, getDailyGimmick, getWeeklyGimmicks, getChaosGimmicks, clearGimmickProperties, recomputeDisplayedMines, getIntensity } from '../logic/gimmicks.js';
@@ -479,7 +479,8 @@ export async function newGame() {
       const dim2 = wRng();
       const dim3 = wRng();
       state.rows = WEEKLY_MIN_SIZE + Math.floor(dim1 * WEEKLY_SIZE_RANGE);
-      state.cols = WEEKLY_MIN_SIZE + Math.floor(dim2 * WEEKLY_SIZE_RANGE);
+      // Cap cols at BOARD_WIDTH_CAP (12). Rows can still grow up to 14.
+      state.cols = Math.min(WEEKLY_MIN_SIZE + Math.floor(dim2 * WEEKLY_SIZE_RANGE), BOARD_WIDTH_CAP);
       const density = DAILY_MIN_DENSITY + dim3 * DAILY_DENSITY_RANGE;
       state.totalMines = Math.max(5, Math.round(state.rows * state.cols * density));
 
@@ -1073,6 +1074,17 @@ export function revealCell(row, col) {
 // ── Pressure Plate Timer ────────────────────────────────
 
 const activePlates = new Map(); // cell -> timerId
+
+// Defensive teardown helper. Daily/weekly modes do not currently include
+// pressure plates in their gimmick subset, but if a future change ever
+// surfaces a plate during a daily/weekly bomb-hit refog, the per-cell
+// interval would keep ticking on a now-hidden cell and potentially
+// trigger handleLoss after the refog. Exposed for winLossHandler's
+// handleDailyBombHit to call as a safety net.
+export function clearAllPlateTimers() {
+  for (const id of activePlates.values()) clearInterval(id);
+  activePlates.clear();
+}
 
 function startPressurePlateTimer(cell) {
   const cellEl = boardEl.children[cell.row * state.cols + cell.col];

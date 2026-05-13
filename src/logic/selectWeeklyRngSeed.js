@@ -14,7 +14,7 @@ import { generateBoard, cleanSolverArtifacts } from './boardGenerator.js';
 import { isBoardSolvable } from './boardSolver.js';
 import { getWeeklyGimmicks, applyGimmicks } from './gimmicks.js';
 import {
-  WEEKLY_MIN_SIZE, WEEKLY_SIZE_RANGE,
+  WEEKLY_MIN_SIZE, WEEKLY_SIZE_RANGE, BOARD_WIDTH_CAP,
   DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE,
 } from './difficulty.js';
 
@@ -29,7 +29,9 @@ export function selectWeeklyRngSeed(weekStart) {
 
     const dRng = createDailyRNG(seed);
     const rows = WEEKLY_MIN_SIZE + Math.floor(dRng() * WEEKLY_SIZE_RANGE);
-    const cols = WEEKLY_MIN_SIZE + Math.floor(dRng() * WEEKLY_SIZE_RANGE);
+    // Cap cols at BOARD_WIDTH_CAP (12). Rows can still sample up to 14;
+    // 12-wide boards fit any viewport without scrolling.
+    const cols = Math.min(WEEKLY_MIN_SIZE + Math.floor(dRng() * WEEKLY_SIZE_RANGE), BOARD_WIDTH_CAP);
     const density = DAILY_MIN_DENSITY + dRng() * DAILY_DENSITY_RANGE;
     const mines = Math.max(5, Math.round(rows * cols * density));
     const fr = Math.floor(rows / 2);

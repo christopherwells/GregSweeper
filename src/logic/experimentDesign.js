@@ -164,23 +164,31 @@ export function getCoverageTargets() {
  * Resolve the mission for the candidate identified by an effective
  * RNG seed of the form `${dateString}:trial${n}`. Returns the same
  * shape as getMissionForSlot. If the seed doesn't match the candidate
- * pattern (e.g. fallback to plain dateString in selectDailyRngSeed),
- * defaults to slot 0 / primary so the play path still picks a
- * sensible gimmick.
+ * pattern (e.g. fallback to plain dateString in selectDailyRngSeed)
+ * OR the slot index has no valid mission, defaults to slot 0 / primary
+ * so the play path always picks a sensible gimmick.
  */
 export function getMissionForSeed(rngSeed) {
   if (typeof rngSeed !== 'string') return getMissionForSlot(0);
   const m = rngSeed.match(/:trial(\d+)$/);
   if (!m) return getMissionForSlot(0);
-  return getMissionForSlot(parseInt(m[1], 10));
+  const mission = getMissionForSlot(parseInt(m[1], 10));
+  return mission || getMissionForSlot(0);
 }
 
 /**
  * Resolve the mission for a given candidate slot index. Returns:
- *   { target, deficitWeight, singleOnly, isPrimary }
+ *   { target, deficitWeight, singleOnly, isPrimary }   or null
  *
  * Slot 0 → primary high-CV target with full natural double-roll allowed.
- * Slots ≥1 → cycle through the coverage list with single-gimmick only.
+ * Slots 1 through coverage.length → cycle through the coverage list
+ *   one-to-one (no wrap), single-gimmick only.
+ * Slots beyond that → null, so the candidate loop in selectDailyRngSeed
+ *   skips them. Returning null fixes the "(slotIndex - 1) % coverage.length"
+ *   bug where short coverage lists made top-2 deficits get DOUBLE slots
+ *   (e.g. coverage.length=7 + CANDIDATE_COUNT=10 → slots 1+8 and 2+9 both
+ *   targeted the top-deficit feature, silently halving the effective
+ *   sampling rate of features ranked lower in the deficit list).
  * If the coverage list is empty (legacy experimentTarget.json) every
  * slot falls back to primary, recovering the pre-multi-objective
  * behaviour where all 10 candidates compete on the same target.
@@ -205,7 +213,10 @@ export function getMissionForSlot(slotIndex) {
       isPrimary:     true,
     };
   }
-  const entry = coverage[(slotIndex - 1) % coverage.length];
+  // No-wrap: slot N targets coverage[N-1], or returns null if N exceeds
+  // the list. Effective candidate count becomes 1 + coverage.length.
+  if (slotIndex - 1 >= coverage.length) return null;
+  const entry = coverage[slotIndex - 1];
   return {
     target:        entry.feature,
     deficitWeight: typeof entry.deficit_weight === 'number' ? entry.deficit_weight : 0.1,

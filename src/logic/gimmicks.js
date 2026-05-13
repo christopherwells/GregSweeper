@@ -405,14 +405,34 @@ function applyMystery(board, rows, cols, count, rng) {
 // ── Locked Cells: can't reveal until all 8 neighbors revealed ──
 
 function applyLocked(board, rows, cols, count, rng) {
+  // Filter candidates whose unlock path is reachable. A locked cell
+  // unlocks once all its non-mine wall-accessible neighbors are revealed.
+  // If walls fully isolate a cell from any safe neighbor (mines only, or
+  // every safe neighbor lives behind a wall), the cell can never unlock —
+  // dead end for the player. Pre-filter out those placements so the
+  // generator never ships an undeadlockable locked cell.
+  const wallEdges = board._wallEdges || null;
   const candidates = [];
   for (let r = 1; r < rows - 1; r++) {
     for (let c = 1; c < cols - 1; c++) {
       const cell = board[r][c];
       // Allow mines AND numbered cells to be locked
-      if (cell.isMine || cell.adjacentMines > 0) {
-        candidates.push(cell);
+      if (!(cell.isMine || cell.adjacentMines > 0)) continue;
+      // Confirm at least one accessible safe neighbor exists.
+      let hasAccessibleSafe = false;
+      for (let dr = -1; dr <= 1 && !hasAccessibleSafe; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue;
+          const nr = r + dr, nc = c + dc;
+          if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+          const n = board[nr][nc];
+          if (n.isMine) continue;
+          if (wallEdges && hasWallBetween(wallEdges, r, c, nr, nc)) continue;
+          hasAccessibleSafe = true;
+          break;
+        }
       }
+      if (hasAccessibleSafe) candidates.push(cell);
     }
   }
   shuffle(candidates, rng);

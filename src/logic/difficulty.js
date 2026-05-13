@@ -1,14 +1,31 @@
 // Challenge mode — 120 levels with sawtooth difficulty progression.
 // Each gimmick introduction (L11, L21, ..., L91) drops the board to 11×11
 // and reduces density, creating a grace period to learn the new mechanic.
-// Between intros, board size ramps back up to 14×14 and density climbs.
+// Between intros, board size ramps back up to ~12×14 and density climbs.
 // After all gimmicks are introduced (L91+), a final 30-level ramp reaches
-// 14×14 at 34% density with heavy modifier stacking.
+// 12-wide at 34% density with heavy modifier stacking.
 
 // ── Shared constants ──────────────────────────────────
 export const PLATE_MIN_SECONDS = 8;
 export const PLATE_SECONDS_PER_STEP = 10;
 export const LIFELINE_WIN_REWARD_CHANCE = 0.3;
+
+// Board width is hard-capped at 12 cells on every viewport. Wider boards
+// either force a scroll (rejected on mobile) or shrink cells below the iOS
+// 44pt tap target. With width=12 and the existing --cell-size of 28px on
+// mobile (≤480px viewport), a board fits 12 × 28 = 336 px plus gaps inside
+// the 390 px iPhone portrait viewport without scrolling. Rows are NOT
+// capped — taller boards are allowed since vertical space is reclaimable
+// from the header / footer area. Mines are rescaled to preserve density.
+export const BOARD_WIDTH_CAP = 12;
+
+export function applyWidthCap(rows, cols, mines) {
+  if (cols <= BOARD_WIDTH_CAP) return { rows, cols, mines };
+  const density = mines / (rows * cols);
+  const newCols = BOARD_WIDTH_CAP;
+  const newMines = Math.max(2, Math.round(rows * newCols * density));
+  return { rows, cols: newCols, mines: newMines };
+}
 
 // Greg-par linear model. Coefficients are fit in R against real daily
 // completion data and written here; the JS side just applies the formula
@@ -116,7 +133,7 @@ export function getDifficultyForLevel(level) {
   const effectiveDensity = Math.min(density, 0.34);
   const mines = Math.max(2, Math.round(size * size * effectiveDensity));
 
-  return { rows: size, cols: size, mines };
+  return applyWidthCap(size, size, mines);
 }
 
 // Quick Play (internally "timed") — mobile-friendly sizes, count UP (no countdown)
@@ -136,8 +153,9 @@ const SPEED_THRESHOLDS = [
 ];
 
 export function getTimedDifficulty(level) {
-  const capped = Math.min(Math.max(level, 1), TIMED_LEVELS.length);
-  return { ...TIMED_LEVELS[capped - 1] };
+  const idx = Math.min(Math.max(level, 1), TIMED_LEVELS.length) - 1;
+  const { rows, cols, mines, label } = TIMED_LEVELS[idx];
+  return { ...applyWidthCap(rows, cols, mines), label };
 }
 
 // Minimum solver technique level required to verify a board for the given
@@ -183,11 +201,11 @@ export const MAX_TIMED_LEVEL = TIMED_LEVELS.length;
 // Each round gets progressively harder: bigger board, more mines, more modifiers
 export function getChaosDifficulty(round) {
   const r = Math.max(1, round);
-  const size = Math.min(7 + r, 14);          // 8×8 → caps at 14×14
+  const size = Math.min(7 + r, 14);          // 8×8 → caps at 14×14 (cols later capped to 12)
   const density = Math.min(0.16 + r * 0.02, 0.36); // 18% → caps at 36%
   const mines = Math.max(2, Math.round(size * size * density));
   const modifierCount = Math.min(2 + Math.floor((r - 1) / 2), 7); // 2 → caps at 7
-  return { rows: size, cols: size, mines, modifierCount };
+  return { ...applyWidthCap(size, size, mines), modifierCount };
 }
 
 export const CHAOS_UNLOCK_LEVEL = 50;

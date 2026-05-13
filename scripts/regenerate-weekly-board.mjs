@@ -17,7 +17,7 @@ import { getWeeklyGimmicks, applyGimmicks } from '../src/logic/gimmicks.js';
 import { generateBoard, cleanSolverArtifacts } from '../src/logic/boardGenerator.js';
 import { isBoardSolvable } from '../src/logic/boardSolver.js';
 import {
-  WEEKLY_MIN_SIZE, WEEKLY_SIZE_RANGE,
+  WEEKLY_MIN_SIZE, WEEKLY_SIZE_RANGE, BOARD_WIDTH_CAP,
   DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE,
 } from '../src/logic/difficulty.js';
 import { serializeBoard } from '../src/firebase/dailyBoardSync.js';
@@ -76,7 +76,8 @@ async function adminWrite(accessToken, path, payload) {
 function buildOneCandidate(seed) {
   const dRng = createDailyRNG(seed);
   const rows = WEEKLY_MIN_SIZE + Math.floor(dRng() * WEEKLY_SIZE_RANGE);
-  const cols = WEEKLY_MIN_SIZE + Math.floor(dRng() * WEEKLY_SIZE_RANGE);
+  // Cap cols at BOARD_WIDTH_CAP (12); rows can still sample 8-14.
+  const cols = Math.min(WEEKLY_MIN_SIZE + Math.floor(dRng() * WEEKLY_SIZE_RANGE), BOARD_WIDTH_CAP);
   const density = DAILY_MIN_DENSITY + dRng() * DAILY_DENSITY_RANGE;
   const totalMines = Math.max(5, Math.round(rows * cols * density));
   const fr = Math.floor(rows / 2), fc = Math.floor(cols / 2);
