@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v1.5.81';
+const CACHE_NAME = 'gregsweeper-v1.5.82';
 const ASSETS = [
   './',
   './index.html',
@@ -32,12 +32,10 @@ const ASSETS = [
   './src/logic/modelHistory.json',
   './src/logic/selectDailyRngSeed.js',
   './src/logic/gimmicks.js',
-  // Stats-tab, diagnostics, and skill-trainer modules are dynamic-imported
-  // on demand — no need to pre-cache at install time. Runtime fetch handler
-  // caches them on first use so offline access still works once the user
-  // has opened those surfaces once.
-  //   './src/logic/skillTrainer.js',
-  //   './src/ui/skillTrainerUI.js',
+  // Stats-tab + diagnostics modules are dynamic-imported on demand — no
+  // need to pre-cache at install time. Runtime fetch handler caches them
+  // on first use so offline access still works once the user has opened
+  // those surfaces once. (Skill Trainer was removed 2026-05-13.)
   //   './src/ui/dailyHistoryChart.js',
   //   './src/ui/charts.js',
   //   './src/ui/statsRenderer.js',
@@ -63,6 +61,7 @@ const ASSETS = [
   './assets/icon.svg',
   './assets/icon-192.png',
   './assets/icon-512.png',
+  './assets/icon-maskable-512.png',
   './assets/apple-touch-icon.png',
 ];
 

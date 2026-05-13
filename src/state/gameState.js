@@ -15,7 +15,7 @@ export const state = {
   timeLimit: 0,         // countdown seconds for timed mode (0 = no limit)
 
   currentLevel: 1,
-  gameMode: 'normal',   // normal | timed | skillTrainer | daily | chaos
+  gameMode: 'normal',   // normal | timed | daily | weekly | chaos
   dailySeed: null,
   // The effective RNG seed for the day's board generation. On normal
   // days this equals dailySeed (the YYYY-MM-DD date). On adaptive-

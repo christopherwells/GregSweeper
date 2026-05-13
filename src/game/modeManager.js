@@ -10,7 +10,6 @@ import { restorePreChaosTheme } from '../main.js';
 
 const timedDiffPanel = $('#timed-difficulty');
 const timedSizeTabs = $('#timed-size-tabs');
-const skillTrainerContainer = $('#skill-trainer-container');
 const boardContainer = $('#board-container');
 const powerUpBar = $('#powerup-bar');
 const flagModeBar = $('#flag-mode-bar');
@@ -57,11 +56,11 @@ export function updateModeUI(mode) {
     chaosModifierBar.classList.toggle('hidden', mode !== 'chaos');
   }
 
-  // Power-ups hidden in chaos, skillTrainer, and weekly. Weekly is a
-  // time-trial against a fixed board — letting players cheese with
-  // power-ups on later attempts would defeat the bestTime leaderboard.
+  // Power-ups hidden in chaos and weekly. Weekly is a time-trial against
+  // a fixed board — letting players cheese with power-ups on later
+  // attempts would defeat the bestTime leaderboard.
   if (powerUpBar) {
-    if (mode === 'chaos' || mode === 'skillTrainer' || mode === 'weekly') {
+    if (mode === 'chaos' || mode === 'weekly') {
       powerUpBar.classList.add('hidden');
     } else {
       powerUpBar.classList.remove('hidden');
@@ -75,28 +74,10 @@ export function updateModeUI(mode) {
     }
   }
 
-  // Skill trainer vs board visibility
-  if (mode === 'skillTrainer') {
-    if (gameHeader) gameHeader.classList.add('hidden');
-    if (gameInfoBar) gameInfoBar.classList.add('hidden');
-    if (progressBarContainer) progressBarContainer.classList.add('hidden');
-    if (boardContainer) boardContainer.classList.add('hidden');
-    if (powerUpBar) powerUpBar.classList.add('hidden');
-    if (flagModeBar) flagModeBar.classList.add('hidden');
-    // Lazy-load skill trainer UI
-    import('../ui/skillTrainerUI.js').then(m => m.showSkillTrainer()).catch(err => {
-      console.error('Failed to load Skill Trainer:', err);
-      const c = document.getElementById('skill-trainer-container');
-      if (c) { c.classList.remove('hidden'); c.innerHTML = '<p style="padding:20px;color:#ff6b6b;">Failed to load Skill Trainer. Try Settings → Check for Updates.</p>'; }
-    });
-  } else {
-    if (gameHeader) gameHeader.classList.remove('hidden');
-    if (gameInfoBar) gameInfoBar.classList.remove('hidden');
-    if (boardContainer) boardContainer.classList.remove('hidden');
-    if (skillTrainerContainer) skillTrainerContainer.classList.add('hidden');
-    // Hide skill trainer if it was showing
-    import('../ui/skillTrainerUI.js').then(m => m.hideSkillTrainer()).catch(() => {});
-  }
+  // Normal board visibility (Skill Trainer mode was removed 2026-05-13)
+  if (gameHeader) gameHeader.classList.remove('hidden');
+  if (gameInfoBar) gameInfoBar.classList.remove('hidden');
+  if (boardContainer) boardContainer.classList.remove('hidden');
 }
 
 export function switchMode(mode) {
@@ -113,9 +94,6 @@ export function switchMode(mode) {
 
   state.gameMode = mode;
   updateModeUI(mode);
-
-  // Skill trainer doesn't use normal game flow
-  if (mode === 'skillTrainer') return;
 
   // Chaos mode: always start a fresh run (no resume)
   if (mode === 'chaos') {
