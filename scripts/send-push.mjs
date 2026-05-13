@@ -261,8 +261,16 @@ async function fetchAllUsers(accessToken) {
     } catch (err) {
       failed++;
       console.warn(`  uid=${uid}: ${err.message}`);
-      // FCM 404/410 means token invalid — clear the subscription.
-      if (/\b40[04]\b/.test(err.message)) {
+      // Only clear the subscription on EXPLICIT token-invalidation signals
+      // from FCM. The previous regex /\b40[04]\b/ also matched transient
+      // 400 INVALID_ARGUMENT responses (payload-too-large, malformed body,
+      // quota etc.), which wrongly deleted valid subscriptions on every
+      // transient hiccup. Per FCM v1 docs, UNREGISTERED (token no longer
+      // valid) and NOT_FOUND (legacy) are the only error codes that mean
+      // "this token will never work again." Everything else (transient
+      // 4xx, 5xx) keeps the subscription and lets the next hourly cron
+      // retry.
+      if (/UNREGISTERED|"NOT_FOUND"|status"\s*:\s*"NOT_FOUND/.test(err.message)) {
         try {
           await fetch(`${DB_BASE}/users/${uid}/pushSubscription.json?access_token=${encodeURIComponent(accessToken)}`, { method: 'DELETE' });
           console.warn(`    cleared invalid subscription for ${uid}`);

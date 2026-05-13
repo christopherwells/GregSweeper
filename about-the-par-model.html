@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About the par model — GregSweeper</title>
+  <meta name="description" content="How Greg's par time and your personal handicap are computed. The full coefficient table is published openly.">
+  <link rel="canonical" href="https://christopherwells.github.io/GregSweeper/about-the-par-model.html">
+  <style>
+    :root {
+      --bg: #1a1a2e;
+      --surface: #2a2a4a;
+      --text: #e8e8f0;
+      --text-dim: #a8a8c0;
+      --accent: #5c6bc0;
+      --border: #3a3a5a;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f8f8fc;
+        --surface: #ffffff;
+        --text: #1a1a2e;
+        --text-dim: #5a5a7a;
+        --accent: #5c6bc0;
+        --border: #d8d8e0;
+      }
+    }
+    body {
+      font: 16px/1.6 'Segoe UI', system-ui, -apple-system, sans-serif;
+      margin: 0;
+      padding: max(24px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+      background: var(--bg);
+      color: var(--text);
+    }
+    main {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 24px;
+      background: var(--surface);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+    h1 { margin: 0 0 8px; font-size: 28px; }
+    h2 { margin: 28px 0 8px; font-size: 18px; color: var(--accent); }
+    p, ul { margin: 8px 0; }
+    code { background: var(--bg); padding: 1px 6px; border-radius: 4px; font-size: 14px; }
+    table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; }
+    th, td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--border); }
+    th { color: var(--accent); font-weight: 700; }
+    td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .last-updated, .meta { color: var(--text-dim); font-size: 13px; }
+    a { color: var(--accent); }
+    a:hover { text-decoration: underline; }
+    .formula { font-family: 'Consolas', monospace; background: var(--bg); padding: 8px 12px; border-radius: 6px; font-size: 14px; overflow-x: auto; }
+    .back { display: inline-block; margin-top: 24px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>About the par model</h1>
+    <p class="last-updated">Live coefficients are loaded from <code>handicaps.json</code> at the bottom of this page.</p>
+
+    <p>Every daily and weekly puzzle in GregSweeper has a <strong>par time</strong> — the time the model expects a typical player to need on that specific board. Your <strong>personal handicap</strong> shifts par up or down based on your past plays, golf-style.</p>
+
+    <h2>What's in the model</h2>
+    <p>The model is a Bayesian mixed-effects regression of completion time on board features:</p>
+    <div class="formula">time ~ moveType_coefficients + boardShape_coefficients + gimmickCellCount_coefficients + (1 | user)</div>
+    <p>The fixed-effect coefficients are global (every player shares them). The random intercept <code>(1 | user)</code> is your personal handicap — the average residual between your times and predicted par.</p>
+
+    <h2>The fit, in detail</h2>
+    <ul>
+      <li><strong>Tool</strong>: <code>brms</code> with Stan, four chains, 2000 iterations per chain.</li>
+      <li><strong>Priors</strong>: lognormal on each coefficient with a wide sigma; the data does most of the work after the first ~50 plays.</li>
+      <li><strong>Outlier rejection</strong>: rows with <code>time &lt; max(5, 0.3 × predicted_par)</code> are filtered before fitting.</li>
+      <li><strong>Bomb hits</strong>: included in the fit as a regressor (~14s per hit) so the per-feature coefficients aren't polluted by mine-strike inflation. Not shipped to the client-side <code>predictPar</code> — your shown par stays "clean-play par."</li>
+      <li><strong>Threshold</strong>: a refit only ships if Rhat ≤ 1.05, min ESS ≥ 400, divergent transitions ≤ 0.25%. Below threshold, the previous coefficients stay and the workflow fails loudly.</li>
+      <li><strong>Schedule</strong>: refits run daily at ~10am ET (14:00 UTC).</li>
+    </ul>
+
+    <h2>Your personal handicap</h2>
+    <p>If you've played at least 30 daily puzzles, your handicap is fitted directly as the random intercept on the model. Below that, the game shows a <em>provisional handicap</em> computed from the mean residual of your last few plays (with bomb-hit time cost subtracted). The provisional handicap converges to the fitted one as you accumulate plays.</p>
+
+    <h2>Where the code lives</h2>
+    <ul>
+      <li><a href="https://github.com/christopherwells/GregSweeper/blob/master/scripts/refit-par-model.R">scripts/refit-par-model.R</a> — the production refit pipeline. Runs in GitHub Actions.</li>
+      <li><a href="https://github.com/christopherwells/GregSweeper/blob/master/scripts/fit-par-model.qmd">scripts/fit-par-model.qmd</a> — the exploratory Quarto notebook with diagnostics (VIF, posterior plots, prior-vs-posterior).</li>
+      <li><a href="https://github.com/christopherwells/GregSweeper/blob/master/src/logic/difficulty.js">src/logic/difficulty.js</a> — the shipped coefficients (between the <code>PAR_MODEL:START</code> / <code>PAR_MODEL:END</code> markers).</li>
+      <li><a href="https://github.com/christopherwells/GregSweeper/blob/master/src/logic/handicaps.json">src/logic/handicaps.json</a> — the per-user handicap map, refreshed by each refit.</li>
+    </ul>
+
+    <h2>Current coefficients</h2>
+    <p class="meta" id="model-meta">Loading…</p>
+    <div id="coef-table-wrap"></div>
+
+    <p><a class="back" href="./">← Back to GregSweeper</a></p>
+  </main>
+
+  <script type="module">
+    // Live-load the model state from the same JSON files the game uses.
+    // No build step, no API — just fetch + render.
+    async function loadModel() {
+      const metaEl = document.getElementById('model-meta');
+      const wrap = document.getElementById('coef-table-wrap');
+      try {
+        const [hresp, dresp] = await Promise.all([
+          fetch('./src/logic/handicaps.json'),
+          fetch('./src/logic/difficulty.js'),
+        ]);
+        const hjson = hresp.ok ? await hresp.json() : null;
+        const dtext = dresp.ok ? await dresp.text() : '';
+
+        // Parse PAR_MODEL block out of difficulty.js. The block sits between
+        // PAR_MODEL:START / PAR_MODEL:END markers; coefficients are
+        // `name: value,` lines.
+        const m = dtext.match(/PAR_MODEL:START[\s\S]*?PAR_MODEL:END/);
+        const coefs = {};
+        if (m) {
+          for (const line of m[0].split('\n')) {
+            const cm = line.match(/(\w+)\s*:\s*(-?\d+\.?\d*)/);
+            if (cm && cm[1] !== 'PAR_MODEL') {
+              coefs[cm[1]] = parseFloat(cm[2]);
+            }
+          }
+        }
+
+        // Meta line
+        if (hjson) {
+          metaEl.innerHTML = `Last refit: <strong>${hjson.updatedAt || '?'}</strong> · ` +
+            `N=${hjson.modelFitN || '?'} scores · ` +
+            `${hjson.nPlayers || '?'} players · ` +
+            `method <code>${hjson.method || '?'}</code> · ` +
+            `bombHits = ${hjson.secPerBombHit != null ? hjson.secPerBombHit.toFixed(2) + 's' : '?'}` +
+            (hjson.diagnostics ? `<br>Diagnostics: ${hjson.diagnostics}` : '');
+        } else {
+          metaEl.textContent = 'Could not load handicaps.json';
+        }
+
+        // Coefficient table
+        const rows = Object.entries(coefs);
+        if (rows.length === 0) {
+          wrap.textContent = 'Could not parse PAR_MODEL block.';
+          return;
+        }
+        rows.sort(([, a], [, b]) => Math.abs(b) - Math.abs(a));
+        let html = '<table><thead><tr><th>Coefficient</th><th>Value (seconds)</th></tr></thead><tbody>';
+        for (const [k, v] of rows) {
+          html += `<tr><td><code>${k}</code></td><td class="num">${v.toFixed(3)}</td></tr>`;
+        }
+        html += '</tbody></table>';
+        wrap.innerHTML = html;
+      } catch (err) {
+        metaEl.textContent = `Couldn't load model state: ${err.message}`;
+      }
+    }
+    loadModel();
+  </script>
+</body>
+</html>

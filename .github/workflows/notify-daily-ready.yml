@@ -40,3 +40,14 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: node scripts/send-push.mjs
+
+      - name: Notify on failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          if [ -n "$DISCORD_WEBHOOK_URL" ]; then
+            curl -fsS -X POST -H "Content-Type: application/json" \
+              -d "{\"content\":\":warning: GregSweeper workflow FAILED: ${{ github.workflow }} (run ${{ github.run_id }})\"}" \
+              "$DISCORD_WEBHOOK_URL" || true
+          fi

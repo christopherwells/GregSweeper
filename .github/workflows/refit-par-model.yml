@@ -76,3 +76,14 @@ jobs:
           git add src/logic/difficulty.js src/logic/handicaps.json src/logic/experimentTarget.json src/logic/modelHistory.json
           git commit -m "refit PAR_MODEL, handicaps, and experiment target — $(date -u +%Y-%m-%d)"
           git push
+
+      - name: Notify on failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          if [ -n "$DISCORD_WEBHOOK_URL" ]; then
+            curl -fsS -X POST -H "Content-Type: application/json" \
+              -d "{\"content\":\":warning: GregSweeper workflow FAILED: ${{ github.workflow }} (run ${{ github.run_id }}, commit ${{ github.sha }})\"}" \
+              "$DISCORD_WEBHOOK_URL" || true
+          fi

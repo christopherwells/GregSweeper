@@ -335,7 +335,12 @@ export function handleWin() {
       // handicap so the current play counts toward the running mean. We
       // dedupe by date inside appendDailyResidual, so replaying after a
       // resume doesn't double-count.
-      appendDailyResidual({ date: state.dailySeed, time: precise, par: state.dailyPar });
+      appendDailyResidual({
+        date: state.dailySeed,
+        time: precise,
+        par: state.dailyPar,
+        bombHits: state.dailyBombHits || 0,
+      });
 
       // Handicap resolution: prefer the refit value from handicaps.json
       // (set by the nightly Bayesian fit once the user crosses
@@ -349,7 +354,15 @@ export function handleWin() {
       let provisional = null;
       if (refitHandicap === 0) {
         const residuals = loadDailyResiduals();
-        const pairs = residuals.map(r => ({ time: r.time, predictedPar: r.par }));
+        // Pass bombHits per residual so the provisional handicap subtracts
+        // secPerBombHit × bombHits before averaging. Older residuals
+        // (pre-schema-bump) lack the field — defaults to 0 inside
+        // estimateHandicapDetails.
+        const pairs = residuals.map(r => ({
+          time: r.time,
+          predictedPar: r.par,
+          bombHits: r.bombHits || 0,
+        }));
         const est = estimateHandicapDetails(pairs);
         if (est) {
           handicap = est.handicap;
@@ -645,6 +658,27 @@ export function handleWin() {
   // Always show share button on win
   shareBtn.classList.remove('hidden');
 
+  // Daily-win opt-in CTA — shown on daily/weekly wins ONLY when push
+  // notifications are currently disabled. Best single moment to convert
+  // a one-off player into a returning one. Hidden by default; the show
+  // path checks notification prefs asynchronously and unhides.
+  const remindBtn = $('#gameover-remind-tomorrow');
+  if (remindBtn) {
+    remindBtn.classList.add('hidden');
+    if (isDaily || isWeekly) {
+      (async () => {
+        try {
+          const { loadNotificationPrefs } = await import('../firebase/firebasePush.js');
+          const prefs = await loadNotificationPrefs();
+          if (!prefs?.enabled) remindBtn.classList.remove('hidden');
+        } catch {
+          // If push module fails to load (offline, missing SDK), leave
+          // the button hidden — the prompt wouldn't work anyway.
+        }
+      })();
+    }
+  }
+
   // Hide "Play Again" for daily mode (can't replay today's daily)
   const retryBtn = $('#gameover-retry');
   if (retryBtn) {
@@ -909,25 +943,26 @@ export function handleTimedLoss() {
 export function handleDailyBombHit(mineRow, mineCol) {
   const isWeekly = state.gameMode === 'weekly';
 
+  // Capture priorHits BEFORE incrementing so the per-event `t` stamp is
+  // accurate. The previous version stamped `t = state.elapsedTime` after
+  // prior strikes had already added their +10s penalties, so the 3rd
+  // hit's `t` read ~30s later than wall-clock truth. Subtracting
+  // 10 * priorHits gives the clean precise-timer value at the moment of
+  // the actual hit — unblocks the future bomb-adjusted per-play model.
+  const priorHits = isWeekly ? (state.weeklyBombHits || 0) : (state.dailyBombHits || 0);
+  const tClean = Math.round((state.elapsedTime - 10 * priorHits) * 10) / 10;
+
   // Bump the per-attempt strike counter for whichever mode owns this
   // attempt. Also append to the per-hit event log so a future bomb-
   // adjusted refit can reconstruct what the player saw for free.
   if (isWeekly) {
-    state.weeklyBombHits = (state.weeklyBombHits || 0) + 1;
+    state.weeklyBombHits = priorHits + 1;
     if (!Array.isArray(state.weeklyBombHitEvents)) state.weeklyBombHitEvents = [];
-    state.weeklyBombHitEvents.push({
-      t: Math.round(state.elapsedTime * 10) / 10,
-      row: mineRow,
-      col: mineCol,
-    });
+    state.weeklyBombHitEvents.push({ t: tClean, row: mineRow, col: mineCol });
   } else {
-    state.dailyBombHits++;
+    state.dailyBombHits = priorHits + 1;
     if (!Array.isArray(state.dailyBombHitEvents)) state.dailyBombHitEvents = [];
-    state.dailyBombHitEvents.push({
-      t: Math.round(state.elapsedTime * 10) / 10,
-      row: mineRow,
-      col: mineCol,
-    });
+    state.dailyBombHitEvents.push({ t: tClean, row: mineRow, col: mineCol });
   }
 
   // Time penalty: +10s per strike
@@ -938,7 +973,20 @@ export function handleDailyBombHit(mineRow, mineCol) {
   // compass) so they reflect the new mine layout.
   defuseMine(state.board, mineRow, mineCol);
   state.board[mineRow][mineCol].isRevealed = true;
+  // Clear isLocked on the defused cell. defuseMine flips isMine=false but
+  // leaves isLocked alone; without this, the cell still counts as
+  // non-startable in startCandidates and as locked in solver paths,
+  // even though it's now a revealed safe value.
+  state.board[mineRow][mineCol].isLocked = false;
   state.totalMines--;
+
+  // Safety net: tear down any active pressure-plate timers. Daily/weekly
+  // don't currently include plates in their gimmick subset, but if a
+  // future change ever does, the per-cell intervals would keep ticking on
+  // a now-hidden cell after refog and trigger spurious handleLoss calls.
+  // Dynamic import to avoid a top-level circular dependency with
+  // gameActions.js (which imports handleDailyBombHit from this file).
+  import('./gameActions.js').then(m => m.clearAllPlateTimers?.()).catch(() => {});
 
   // Re-fog ALL non-mine revealed cells
   let refogCount = 0;

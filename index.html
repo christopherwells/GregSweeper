@@ -12,7 +12,45 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>GregSweeper</title>
+  <title>GregSweeper — The daily Minesweeper with no guesses</title>
+  <meta name="description" content="The daily Minesweeper, no guesses required. Every board guaranteed solvable. Ten optional modifiers, worldwide leaderboard, free in your browser.">
+  <link rel="canonical" href="https://christopherwells.github.io/GregSweeper/">
+
+  <!-- Open Graph (Discord, iMessage, Slack, Facebook link previews) -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="GregSweeper">
+  <meta property="og:title" content="GregSweeper — The daily Minesweeper with no guesses">
+  <meta property="og:description" content="One daily puzzle, ten modifiers, par times that adapt to you. Guaranteed solvable, no 50/50 guesses.">
+  <meta property="og:url" content="https://christopherwells.github.io/GregSweeper/">
+  <meta property="og:image" content="https://christopherwells.github.io/GregSweeper/assets/og-card.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="GregSweeper — The daily Minesweeper with no guesses">
+  <meta name="twitter:description" content="Daily Minesweeper · 10 modifiers · personal par · guaranteed solvable.">
+  <meta name="twitter:image" content="https://christopherwells.github.io/GregSweeper/assets/og-card.png">
+
+  <!-- schema.org VideoGame for Google rich results -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "VideoGame",
+    "name": "GregSweeper",
+    "description": "A daily Minesweeper puzzle with a no-guess guarantee and ten optional board modifiers including sonar, wormholes, mirrors, and lying numbers.",
+    "url": "https://christopherwells.github.io/GregSweeper/",
+    "image": "https://christopherwells.github.io/GregSweeper/assets/og-card.png",
+    "genre": ["Puzzle", "Logic", "Minesweeper"],
+    "applicationCategory": "GameApplication",
+    "operatingSystem": "Web Browser, iOS, Android, Windows, macOS",
+    "gamePlatform": ["Web", "PWA"],
+    "playMode": "SinglePlayer",
+    "inLanguage": "en-US",
+    "isAccessibleForFree": true,
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "author": { "@type": "Person", "name": "Christopher Wells" }
+  }
+  </script>
+
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#1a1a2e">
@@ -34,7 +72,13 @@
   <script>
   (function () {
     try {
-      var t = localStorage.getItem('minesweeper_theme') || 'classic';
+      var saved = localStorage.getItem('minesweeper_theme');
+      // First-time visitors: respect their system color-scheme preference.
+      // Dark mode is the more common preference and the more visually distinct
+      // theme; nudging dark-mode users into the light "classic" default loses
+      // a meaningful first impression.
+      var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var t = saved || (prefersDark ? 'dark' : 'classic');
       document.documentElement.setAttribute('data-theme', t);
       if (t !== 'classic' && t !== 'dark') {
         var link = document.createElement('link');
@@ -63,6 +107,8 @@
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
       gap: 14px;
+      /* Respect iPhone notch / Dynamic Island when the PWA is installed. */
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
       font-family: var(--font-family, 'Segoe UI', system-ui, -apple-system, sans-serif);
     }
     #boot-overlay.fading { display: none; }
@@ -77,7 +123,11 @@
     }
   </style>
   <!-- Other themes loaded on-demand by themeManager.js -->
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700;900&family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+  <!-- Press+Start+2P removed: no CSS rule referenced it. Self-hosting these
+       fonts is on the GDPR / Schrems II punch list — drop Google Fonts
+       entirely once assets/fonts/{orbitron,fredoka}.woff2 land. -->
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
   <!-- SW recovery: runs even if main app JS is broken, forces update + reload (once) -->
   <script>
   if ('serviceWorker' in navigator) {
@@ -115,50 +165,41 @@
       <p class="title-screen-subtitle">Modern Minesweeper</p>
     </div>
     <div class="title-screen-modes">
-      <div class="mode-card" data-mode="normal">
+      <button class="mode-card" data-mode="normal" type="button">
         <div class="mode-card-icon">⛏️</div>
         <div class="mode-card-name">Challenge</div>
         <div class="mode-card-progress" id="title-challenge-progress">Level 1</div>
-      </div>
-      <div class="mode-card" data-mode="timed">
+      </button>
+      <button class="mode-card" data-mode="timed" type="button">
         <div class="mode-card-icon">⏱️</div>
         <div class="mode-card-name">Quick Play</div>
         <div class="mode-card-progress" id="title-timed-progress">Race the clock</div>
-      </div>
-      <!-- Skill Trainer hidden 2026-04-21 — lessons shelved, code intact.
-           Re-enable by uncommenting this card and the help-modal bullet below. -->
-      <!--
-      <div class="mode-card" data-mode="skillTrainer">
-        <div class="mode-card-icon">🎓</div>
-        <div class="mode-card-name">Skill Trainer</div>
-        <div class="mode-card-progress" id="title-skill-progress">Learn techniques</div>
-      </div>
-      -->
-      <div class="mode-card" data-mode="daily">
+      </button>
+      <button class="mode-card" data-mode="daily" type="button">
         <div class="mode-card-icon">📅</div>
         <div class="mode-card-name">Daily</div>
         <div class="mode-card-progress" id="title-daily-progress">Today's challenge</div>
-      </div>
+      </button>
       <!-- Bonus daily card — hidden by default, unhidden on dates the
            title-progress logic flags as bonus dates (currently 2026-05-07
            only). Bonus completions don't touch streak or handicap. -->
-      <div class="mode-card" data-mode="dailyBonus" id="title-daily-bonus-card" style="display: none;">
+      <button class="mode-card" data-mode="dailyBonus" id="title-daily-bonus-card" type="button" style="display: none;">
         <div class="mode-card-icon">🎁</div>
         <div class="mode-card-name">Bonus Daily</div>
         <div class="mode-card-progress" id="title-daily-bonus-progress">Free play, no streak</div>
-      </div>
+      </button>
       <!-- Weekly puzzle card — same single board for the whole ET week
            (Mon-Sun), one attempt per day, best time wins. No streak. -->
-      <div class="mode-card" data-mode="weekly">
+      <button class="mode-card" data-mode="weekly" type="button">
         <div class="mode-card-icon">🏁</div>
         <div class="mode-card-name">Weekly</div>
         <div class="mode-card-progress" id="title-weekly-progress">Same puzzle, 7 chances</div>
-      </div>
-      <div class="mode-card mode-card-chaos" data-mode="chaos">
+      </button>
+      <button class="mode-card mode-card-chaos" data-mode="chaos" type="button">
         <div class="mode-card-icon">🌀</div>
         <div class="mode-card-name">Chaos</div>
         <div class="mode-card-progress" id="title-chaos-progress">Reach Level 50</div>
-      </div>
+      </button>
     </div>
     <div class="title-screen-footer">
       <button id="title-stats-btn" class="title-footer-btn">📊 Stats</button>
@@ -243,8 +284,6 @@
         <button class="timer-toggle" id="timer-toggle" title="Toggle timer display">⏱️</button>
       </div>
 
-      <div id="skill-trainer-container" class="skill-trainer-container hidden"></div>
-
       <div id="chaos-modifier-bar" class="chaos-modifier-bar hidden">
         <span class="chaos-round-label" id="chaos-round-label">Round 1</span>
         <span class="chaos-modifier-icons" id="chaos-modifier-icons"></span>
@@ -317,10 +356,8 @@
           </div>
           <div class="help-section">
             <h3>Modes</h3>
-            <p><strong>Challenge</strong> — 100 levels with modifiers &amp; power-ups</p>
+            <p><strong>Challenge</strong> — 120 levels with modifiers &amp; power-ups</p>
             <p><strong>Quick Play</strong> — race for speed ratings (💎🥇🥈🥉)</p>
-            <!-- <p><strong>Skill Trainer</strong> — guided puzzles to learn techniques</p> -->
-
             <p><strong>Daily</strong> — same board for everyone, online leaderboard</p>
           </div>
           <div class="help-section help-keyboard-only">
@@ -341,9 +378,13 @@
         <div class="modal-body about-body">
           <div class="about-name">Greg</div>
           <div class="about-role">Visionary</div>
-          <p class="about-tagline">The mind behind GregSweeper — reimagining a classic for a new generation.</p>
+          <p class="about-tagline">Greg dreamed up the modifiers. The mines are his fault.</p>
           <div class="about-divider"></div>
-          <p class="about-credits">GregSweeper &copy; 2026</p>
+          <p class="about-credits">GregSweeper &copy; 2026 · Built by Christopher Wells</p>
+          <p class="about-support">
+            <a href="https://github.com/sponsors/christopherwells" target="_blank" rel="noopener">💛 Support GregSweeper</a>
+            — voluntary, helps cover domain + hosting + app-store fees.
+          </p>
         </div>
       </div>
     </div>
@@ -379,6 +420,13 @@
             <input id="daily-name-input" type="text" placeholder="Your name" maxlength="20" class="daily-name-input" autocomplete="off">
             <button id="gameover-submit-daily" class="action-btn">Submit</button>
           </div>
+          <!-- Daily-win opt-in CTA: shown on daily/weekly wins ONLY when
+               push notifications are currently disabled. The single
+               highest-leverage push-opt-in moment in the entire app —
+               player just felt good, completion is fresh, asking for
+               tomorrow's reminder right here converts at far higher rates
+               than the same toggle buried in Settings. -->
+          <button id="gameover-remind-tomorrow" class="action-btn primary hidden">🔔 Remind me tomorrow</button>
           <button id="gameover-share" class="action-btn share-btn hidden">📋 Share</button>
           <button id="gameover-done" class="action-btn hidden">Done</button>
         </div>
@@ -567,9 +615,24 @@
         <div class="setting-group reset-group">
           <h3>Data</h3>
           <button id="btn-clear-cache" class="clear-cache-btn">🔄 Check for Updates</button>
-          <p class="reset-hint">Downloads the latest version. May take a few seconds. Use if the app feels broken or stuck.</p>
+          <p class="reset-hint">Pulls the latest version. Use if you suspect you're a build behind.</p>
           <button id="btn-reset-profile" class="reset-profile-btn">🗑️ Reset Profile</button>
-          <p class="reset-hint">Erases all stats, achievements, and leaderboard data.</p>
+          <p class="reset-hint">Erases all stats, achievements, and leaderboard data on this device.</p>
+          <div id="settings-uid-row" style="margin-top:10px;font-size:13px;color:var(--color-text-secondary);">
+            <span>Your anonymous ID:</span>
+            <code id="settings-uid-display" style="margin-left:6px;padding:1px 6px;background:var(--color-cell-hidden);border-radius:4px;cursor:pointer;" title="Click to copy full ID">…</code>
+          </div>
+          <button id="btn-delete-my-data" class="reset-profile-btn" style="margin-top:8px;">🌐 Delete my data (server-side)</button>
+          <p class="reset-hint">Removes your leaderboard rows, weekly best-times, and progress under your anonymous ID from Firebase. Opens a pre-filled email — your data is scrubbed within 30 days.</p>
+        </div>
+        <div class="setting-group">
+          <h3>Support</h3>
+          <button id="btn-report-problem" class="clear-cache-btn">🐛 Report a problem</button>
+          <p class="reset-hint">Opens a GitHub issue with your device state pre-filled. No personal data leaves the device until you actually submit the issue.</p>
+          <a id="link-sponsor" href="https://github.com/sponsors/christopherwells" target="_blank" rel="noopener" class="reset-hint" style="display:inline-block;margin-top:6px;text-decoration:underline;">💛 Sponsor GregSweeper →</a>
+          <p class="reset-hint" style="margin-top:2px;">Helps cover domain, hosting, and app-store fees. Optional — the game is free either way.</p>
+          <a id="link-privacy" href="./privacy.html" class="reset-hint" style="display:inline-block;margin-top:6px;text-decoration:underline;">Privacy policy →</a>
+          <a id="link-about-par-model" href="./about-the-par-model.html" class="reset-hint" style="display:inline-block;margin-top:6px;text-decoration:underline;margin-left:14px;">About the par model →</a>
         </div>
         <div id="settings-diagnostics-group" class="setting-group hidden">
           <h3>Diagnostics</h3>

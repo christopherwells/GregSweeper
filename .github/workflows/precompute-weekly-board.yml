@@ -59,3 +59,14 @@ jobs:
         env:
           TARGET_WEEK: ${{ steps.week.outputs.weekStart }}
         run: node scripts/precompute-weekly-board.mjs "$TARGET_WEEK"
+
+      - name: Notify on failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          if [ -n "$DISCORD_WEBHOOK_URL" ]; then
+            curl -fsS -X POST -H "Content-Type: application/json" \
+              -d "{\"content\":\":warning: GregSweeper workflow FAILED: ${{ github.workflow }} (run ${{ github.run_id }}, week ${{ steps.week.outputs.weekStart }})\"}" \
+              "$DISCORD_WEBHOOK_URL" || true
+          fi

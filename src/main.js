@@ -207,30 +207,31 @@ async function ensureLatestServiceWorker(timeoutMs = 3000) {
 // on a divergent board. This is exactly the failure that put Kate on
 // trial3 while Chris was on trial5 on 2026-05-06.
 async function runStartupGate() {
-  setBootStatus('Checking for updates…');
-  await ensureLatestServiceWorker(3000);
+  setBootStatus('Loading…');
 
-  setBootStatus('Connecting…');
-  // Wait for `firebase.initializeApp()` to have run. initFirebase() was
-  // started before the gate; we just poll. If it never arrives in 8s,
-  // proceed in degraded (offline) mode — score submission is already
-  // gated on isFirebaseOnline() so a fully-local play stays out of the
+  // SW update wait + Firebase ready wait run in PARALLEL. Both have
+  // their own time budgets (3s SW, 8s Firebase) and neither depends on
+  // the other; the prior sequential version could spend up to 11s in
+  // the gate before any fetch started. With Promise.all the gate
+  // takes at most max(3, 8) = 8s for the two waits, then daily +
+  // weekly + attempts fetch in parallel below.
+  //
+  // initFirebase() was kicked off before this gate runs (fire-and-
+  // forget in init()), so the Firebase-ready wait is just polling for
+  // completion. If neither comes back in time we proceed in degraded
+  // (offline) mode — score submission is already gated on
+  // isFirebaseOnline() so a fully-local play stays out of the
   // canonical leaderboard.
-  let firebaseReady = false;
-  const fbStartedAt = Date.now();
-  const FB_TIMEOUT = 8000;
-  while (Date.now() - fbStartedAt < FB_TIMEOUT) {
-    if (typeof firebase !== 'undefined' && firebase.apps?.length) {
-      firebaseReady = true;
-      break;
-    }
-    await new Promise(r => setTimeout(r, 50));
-  }
+  const [, firebaseReady] = await Promise.all([
+    ensureLatestServiceWorker(3000),
+    _waitForFirebaseInit(8000),
+  ]);
   state.firebaseReady = firebaseReady;
 
-  // Pre-fetch today's canonical board so newGame() and tryResumeGame()
-  // see it before any rendering decision. Skip for ?seed= practice runs
-  // since those intentionally bypass the canonical bucket.
+  // Pre-fetch today's canonical board + this week's weekly canonical +
+  // weekly attempts ALL in parallel. None depend on each other; they
+  // share the Firebase connection. Skip for ?seed= practice runs since
+  // those intentionally bypass the canonical bucket.
   const urlParams = new URLSearchParams(window.location.search);
   const customSeed = urlParams.get('seed');
   const today = getLocalDateString();
@@ -238,29 +239,20 @@ async function runStartupGate() {
   if (firebaseReady && !customSeed) {
     setBootStatus('Loading today\'s puzzle…');
     try {
-      const raw = await loadDailyBoard(today);
-      if (raw) {
-        state.canonicalDailyBoard = { date: today, raw };
-      }
-    } catch (err) {
-      console.warn('startup gate: canonical fetch failed:', err.message);
-    }
-    // Pre-fetch this week's weekly canonical and the per-day attempt
-    // map in parallel. Both feed the Weekly card on the title screen
-    // so it can show "Best: 45.2s · 3/7 used" without any round-trip
-    // when the user clicks. The attempt map populates the gate that
-    // newGame() uses to refuse a same-day double-attempt.
-    try {
-      const [weeklyRaw, attempts] = await Promise.all([
+      const [dailyRaw, weeklyRaw, attempts] = await Promise.all([
+        loadDailyBoard(today).catch(() => null),
         loadWeeklyBoard(currentWeek).catch(() => null),
         loadWeeklyAttempts(currentWeek).catch(() => ({})),
       ]);
+      if (dailyRaw) {
+        state.canonicalDailyBoard = { date: today, raw: dailyRaw };
+      }
       if (weeklyRaw) {
         state.canonicalWeeklyBoard = { weekStart: currentWeek, raw: weeklyRaw };
       }
       state.cachedWeeklyDayAttempts = attempts || {};
     } catch (err) {
-      console.warn('startup gate: weekly pre-fetch failed:', err.message);
+      console.warn('startup gate: pre-fetch failed:', err.message);
     }
   }
 
@@ -320,6 +312,18 @@ async function _waitForUid(timeoutMs = 3000) {
     await new Promise(r => setTimeout(r, 50));
   }
   return null;
+}
+
+// Wait for `firebase.initializeApp()` to have run. initFirebase() was
+// kicked off before runStartupGate; this just polls for completion.
+// Returns true on Firebase ready, false on timeout (offline mode).
+async function _waitForFirebaseInit(timeoutMs = 8000) {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    if (typeof firebase !== 'undefined' && firebase.apps?.length) return true;
+    await new Promise(r => setTimeout(r, 50));
+  }
+  return false;
 }
 
 // ── Theme-color meta tag (Android nav bar) ───────────
@@ -786,7 +790,18 @@ async function populateDailyPanel() {
       .map(h => {
         const f = metaByDate[h.date];
         if (!f) return null;
-        return { time: h.time, predictedPar: predictPar(f) };
+        // Cross-reference the user's bombHits for this date so the
+        // provisional handicap subtracts secPerBombHit × bombHits before
+        // averaging residuals. Without this, a single bomb-hit day swings
+        // the provisional handicap by ~14s, masking the player's true
+        // skill until the nightly refit catches up.
+        const myScore = Array.isArray(scoresByDate?.[h.date])
+          ? scoresByDate[h.date].find(s => s.uid === uid) : null;
+        return {
+          time: h.time,
+          predictedPar: predictPar(f),
+          bombHits: myScore?.bombHits || 0,
+        };
       })
       .filter(Boolean);
     const est = estimateHandicapDetails(pairs);
@@ -1276,7 +1291,7 @@ function generateShareCard() {
     ? getTimedDifficulty(level)
     : getDifficultyForLevel(level);
   const mode = state.gameMode;
-  const modeLabel = { normal: 'Challenge', timed: 'Timed', skillTrainer: 'Skill Trainer', daily: 'Daily' }[mode] || 'Challenge';
+  const modeLabel = { normal: 'Challenge', timed: 'Timed', daily: 'Daily', weekly: 'Weekly', chaos: 'Chaos' }[mode] || 'Challenge';
 
   const stats = loadStats();
   const streakText = stats.currentStreak > 1 ? ` | 🔥 ${stats.currentStreak} streak` : '';
@@ -1617,6 +1632,7 @@ $('#btn-settings').addEventListener('click', () => {
   // the Settings modal opens — covers the case where prefs were
   // updated on another device or the auth uid resolved late.
   syncReminderUI();
+  _updateSettingsUid();
 });
 $('#btn-stats').addEventListener('click', () => {
   updateStatsDisplay();
@@ -1829,6 +1845,19 @@ function showTitleScreen() {
   app.classList.add('hidden');
 }
 
+// Draw the player's eye to the Daily card after onboarding. Adds a
+// pulsing-glow class for ~5 seconds, removed early on first click.
+// Called once at end-of-tutorial; subsequent title-screen visits are
+// unaffected.
+function spotlightDailyCard() {
+  const dailyCard = document.querySelector('.mode-card[data-mode="daily"]');
+  if (!dailyCard) return;
+  dailyCard.classList.add('spotlight');
+  const cleanup = () => dailyCard.classList.remove('spotlight');
+  setTimeout(cleanup, 5000);
+  dailyCard.addEventListener('click', cleanup, { once: true });
+}
+
 function hideTitleScreen() {
   const titleScreen = $('#title-screen');
   const app = $('#app');
@@ -2032,6 +2061,7 @@ if (titleSettingsBtn) {
     if (nameInput) nameInput.value = getPlayerName();
     showModalFromTitle('settings-modal');
     syncReminderUI();
+    _updateSettingsUid();
   });
 }
 const titleWhatsnewBtn = $('#title-whatsnew-btn');
@@ -2091,6 +2121,97 @@ $('#btn-diagnostics').addEventListener('click', async () => {
   $('#settings-modal').classList.add('hidden');
   const m = await import('./ui/diagnosticsModal.js');
   m.openDiagnosticsModal(CURRENT_VERSION);
+});
+
+// Report-a-problem: open a new GH issue with device state pre-filled in
+// the body. The user reviews + edits before submitting; nothing is sent
+// to GitHub until they click "Submit new issue" on github.com itself.
+// Closes the "find Christopher's email in the commit log" UX hole.
+$('#btn-report-problem').addEventListener('click', () => {
+  const uid = getUid() || 'not-signed-in';
+  const codeVersion = state.codeVersion || CURRENT_VERSION || 'unknown';
+  const ua = navigator.userAgent || 'unknown';
+  const theme = localStorage.getItem('minesweeper_theme') || 'classic';
+  const mode = state.gameMode || 'idle';
+  const url = window.location.href;
+  const ts = new Date().toISOString();
+  const body = [
+    '<!-- Describe what you saw, what you expected, and how to reproduce. -->',
+    '',
+    '',
+    '---',
+    '**Device state at time of report (auto-filled, edit if anything is sensitive):**',
+    '',
+    '```',
+    `version: ${codeVersion}`,
+    `mode:    ${mode}`,
+    `theme:   ${theme}`,
+    `uid:     ${uid.slice(0, 8)}...`,
+    `ua:      ${ua}`,
+    `url:     ${url}`,
+    `ts:      ${ts}`,
+    '```',
+  ].join('\n');
+  const ghUrl = 'https://github.com/christopherwells/GregSweeper/issues/new?'
+    + 'title=' + encodeURIComponent('Bug: ')
+    + '&body=' + encodeURIComponent(body)
+    + '&labels=bug,from-app';
+  window.open(ghUrl, '_blank', 'noopener,noreferrer');
+});
+
+// Settings → render the anonymous uid + click-to-copy. GDPR Recital 30
+// treats the anonymous Firebase auth uid as personal data; the user has
+// a right to see it. Short form by default; clicking copies the full
+// uid to clipboard for use in right-to-erasure requests.
+function _updateSettingsUid() {
+  const el = $('#settings-uid-display');
+  if (!el) return;
+  const uid = getUid();
+  if (uid) {
+    el.textContent = uid.slice(0, 8) + '…' + uid.slice(-4);
+    el.dataset.fullUid = uid;
+    el.title = 'Click to copy full ID';
+  } else {
+    el.textContent = 'not yet signed in';
+    delete el.dataset.fullUid;
+    el.title = '';
+  }
+}
+$('#settings-uid-display').addEventListener('click', async () => {
+  const el = $('#settings-uid-display');
+  const full = el?.dataset.fullUid;
+  if (!full) return;
+  try {
+    await navigator.clipboard.writeText(full);
+    showToast('Anonymous ID copied');
+  } catch {
+    showToast('Couldn\'t copy — long-press the ID and Copy manually');
+  }
+});
+
+// Delete my data (server-side). Opens a pre-filled email with the user's
+// anonymous uid so Christopher can run scripts/delete-user-data.mjs against
+// it. Privacy policy commits to 30-day turnaround. Inline scrub would need
+// either a Cloud Function or a Firebase write that's broad enough to defeat
+// auth scoping — the email path keeps the user-side change tiny and the
+// server-side change auditable.
+$('#btn-delete-my-data').addEventListener('click', () => {
+  const uid = getUid() || 'unknown-uid';
+  const subject = 'GregSweeper: delete my data';
+  const body = [
+    'Please delete all data associated with my anonymous GregSweeper ID:',
+    '',
+    `  ${uid}`,
+    '',
+    'I understand this removes my leaderboard rows, weekly best-times,',
+    'and progress from Firebase. It cannot be undone.',
+    '',
+    '(Privacy policy: https://christopherwells.github.io/GregSweeper/privacy.html)',
+  ].join('\n');
+  const url = 'mailto:christopher.wells.23@gmail.com'
+    + '?subject=' + encodeURIComponent(subject)
+    + '&body=' + encodeURIComponent(body);
+  window.location.href = url;
 });
 
 // Reset Profile
@@ -2205,6 +2326,44 @@ $('#gameover-share').addEventListener('click', () => handleShare());
 $('#gameover-done').addEventListener('click', () => {
   hideModal('gameover-overlay');
   showTitleScreen();
+});
+
+// Daily-win opt-in CTA. Click → enable push notifications with the
+// player's preferred hour (default 9am ET). Picked here because the
+// player has just completed a daily and the dopamine moment is fresh
+// — the same toggle in Settings converts at a fraction of this rate.
+$('#gameover-remind-tomorrow').addEventListener('click', async () => {
+  const btn = $('#gameover-remind-tomorrow');
+  if (!btn || btn.disabled) return;
+  btn.disabled = true;
+  btn.textContent = '⏳ Setting up…';
+  try {
+    const { enableNotifications, loadNotificationPrefs } = await import('./firebase/firebasePush.js');
+    const prefs = await loadNotificationPrefs();
+    const result = await enableNotifications({
+      hourLocal: typeof prefs.hourLocal === 'number' ? prefs.hourLocal : 9,
+      dailyReminder: true,
+      streakWarning: prefs.streakWarning ?? false,
+    });
+    if (result === true || result === 'ok') {
+      btn.textContent = '✅ Reminder set for tomorrow';
+      showToast('Notifications on — see you tomorrow!');
+    } else if (result === 'ios-needs-install') {
+      btn.textContent = '📱 Install to home screen first';
+      showToast('Install GregSweeper to your home screen on iOS first');
+      btn.disabled = false;
+    } else if (result === 'denied') {
+      btn.textContent = '⚠️ Permission blocked';
+      showToast('Notification permission was blocked in browser settings');
+    } else {
+      btn.textContent = 'Try again';
+      btn.disabled = false;
+    }
+  } catch (err) {
+    console.warn('Daily-win remind opt-in failed:', err?.message || err);
+    btn.textContent = 'Try again';
+    btn.disabled = false;
+  }
 });
 
 // Keyboard shortcuts
@@ -2520,11 +2679,15 @@ async function init() {
   await runStartupGate();
 
   if (!isOnboarded()) {
-    // First time — launch interactive tutorial, then start challenge mode
+    // First time — launch interactive tutorial, then route to the title
+    // screen with a one-time spotlight on the Daily card. Previously this
+    // flow force-launched Challenge L1 and bypassed the title screen
+    // entirely, meaning first-time users never saw the Daily card on
+    // day one. The Daily is the highest-value conversion moment for
+    // the dataset-growth audience, so the FTU funnel now ends here.
     startTutorial(() => {
-      state.gameMode = 'normal';
-      hideTitleScreen();
-      newGame();
+      showTitleScreen();
+      spotlightDailyCard();
     });
   } else if (deepLinkMode === 'daily') {
     // Deep link to daily mode. ?seed=<custom> lets you play a fresh puzzle

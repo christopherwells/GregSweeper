@@ -1,7 +1,10 @@
 {
   "name": "GregSweeper",
   "short_name": "GregSweeper",
-  "description": "A modern Minesweeper reimagined by Greg",
+  "description": "The daily Minesweeper, no guesses required. Every board guaranteed solvable. Ten optional modifiers, worldwide leaderboard. Free in your browser.",
+  "categories": ["games", "entertainment"],
+  "lang": "en-US",
+  "dir": "ltr",
   "start_url": ".",
   "scope": ".",
   "id": "gregsweeper",
@@ -23,16 +26,47 @@
       "purpose": "any"
     },
     {
-      "src": "assets/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "assets/icon-512.png",
+      "src": "assets/icon-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "assets/screenshot-daily.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Today's daily puzzle — same board for everyone"
+    },
+    {
+      "src": "assets/screenshot-challenge.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "120 levels of Minesweeper with ten modifier types"
+    },
+    {
+      "src": "assets/screenshot-winmodal.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Beat Greg's par, build your personal handicap"
+    },
+    {
+      "src": "assets/screenshot-stats.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Track your par-delta history"
+    },
+    {
+      "src": "assets/screenshot-desktop.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Desktop play with modifiers"
     }
   ]
 }

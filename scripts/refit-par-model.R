@@ -344,11 +344,37 @@ message(sprintf("  joined: N=%d scores, %d dates, %d players (%d eligible with >
 
 current_coefs <- parse_par_model(DIFFICULTY_PATH)
 new_coefs     <- current_coefs  # default: no refit, keep what's there
+
+# CSci P0 #7: reject impossibly-fast rows BEFORE fitting. A single 4-sigma
+# lognormal outlier (e.g. 3s on a 60s daily) drags the intercept by ~0.6s
+# at N=90 — meaningful pollution. Compare against the CURRENT shipped
+# PAR_MODEL (the best estimate of "what the time should have been" before
+# this refit runs). Threshold: time < max(5s, 0.3 × predicted_par).
+df$predicted_for_outlier <- apply_par_model(df, current_coefs)
+pre_outlier_n <- nrow(df)
+df <- df |> filter(time >= pmax(5, 0.3 * predicted_for_outlier))
+n_outliers <- pre_outlier_n - nrow(df)
+if (n_outliers > 0) {
+  message(sprintf("  rejected %d outlier row(s) with time < max(5, 0.3 × predicted_par)", n_outliers))
+}
+df$predicted_for_outlier <- NULL
+
+# Recompute n_scores after outlier rejection so downstream diagnostics
+# (modelHistory.json, the threshold check against MIN_SCORES_TO_FIT) reflect
+# what actually went into the fit.
+n_scores <- nrow(df)
+n_dates  <- length(unique(df$date))
+
 handicaps     <- list()         # uid -> seconds
 fit_method    <- "seed-residuals"
 r2            <- NA_real_
 diag_note     <- ""
 bomb_coef     <- NA_real_       # populated by the brms fit; NA in fallback paths
+# Set TRUE if a brms fit ran but failed diagnostics (Rhat / ESS / divergent).
+# After all the normal write-outs, the script exits with status 2 so the
+# GitHub Actions workflow registers the run as failed and the Discord
+# webhook fires. Closes the silent-degrade gap COO P0 #1 flagged.
+diagnostic_failure <- FALSE
 
 # ── 2. Fit ──────────────────────────────────────────────
 
@@ -414,6 +440,7 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
     message("Fit diagnostics failed — keeping previous PAR_MODEL and handicaps.")
     message("  Rerun scripts/fit-par-model.qmd for a closer look at why.")
     fit_method <- "seed-residuals"   # trigger residual fallback below
+    diagnostic_failure <- TRUE       # surface as workflow failure at end of script
   } else {
     # fixef() on a brmsfit returns a matrix with Estimate / Est.Error / CIs.
     # Estimate = posterior mean, which is what we want as the point value.
@@ -897,3 +924,11 @@ if (identical(new_src, src)) {
 
 writeLines(new_src, DIFFICULTY_PATH, useBytes = TRUE)
 message(sprintf("Wrote updated PAR_MODEL to %s", DIFFICULTY_PATH))
+
+# Fail the workflow loudly if the brms fit was rejected for diagnostic
+# reasons. The previous PAR_MODEL stays in effect (good), but the run
+# should NOT register green — that's how silent degradation creeps in.
+if (diagnostic_failure) {
+  message("REFIT REJECTED: brms fit failed diagnostics; previous PAR_MODEL retained.")
+  quit(save = "no", status = 2)
+}

@@ -20,14 +20,18 @@ const THEME_KEY = 'minesweeper_theme';
 
 const RESIDUAL_HISTORY_CAP = 50;
 
-export function appendDailyResidual({ date, time, par }) {
+export function appendDailyResidual({ date, time, par, bombHits = 0 }) {
   if (!date || typeof time !== 'number' || typeof par !== 'number' || par <= 0) return;
   const existing = safeGetJSON(DAILY_RESIDUALS_KEY, []);
   // De-duplicate by date — if the same daily is played and re-submitted
   // (rare), overwrite the prior entry rather than letting two rows for
   // the same date both feed the mean.
   const filtered = existing.filter(e => e && e.date !== date);
-  filtered.push({ date, time, par });
+  // Persist bombHits so the provisional-handicap estimator can subtract
+  // secPerBombHit × bombHits before averaging. Older entries (written
+  // before this field shipped) lack bombHits — the consumer defaults
+  // absent values to 0.
+  filtered.push({ date, time, par, bombHits: bombHits || 0 });
   // Keep only the most recent RESIDUAL_HISTORY_CAP entries; sort by
   // date ascending so slicing from the end keeps the newest plays.
   filtered.sort((a, b) => (a.date < b.date ? -1 : 1));

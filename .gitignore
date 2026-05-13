@@ -1,3 +1,9 @@
 .claude/
 .playwright-mcp/
+.polish/
 *.png
+# Marketing / app assets ship with the repo even though the global *.png
+# rule above would otherwise exclude them. Anything not under assets/
+# (dev screenshots, .docx exports, ad-hoc captures at repo root) stays
+# ignored.
+!assets/*.png

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy — GregSweeper</title>
+  <meta name="description" content="Privacy policy for GregSweeper. What we collect, how we use it, and how to delete your data.">
+  <link rel="canonical" href="https://christopherwells.github.io/GregSweeper/privacy.html">
+  <style>
+    :root {
+      --bg: #1a1a2e;
+      --surface: #2a2a4a;
+      --text: #e8e8f0;
+      --text-dim: #a8a8c0;
+      --accent: #5c6bc0;
+      --border: #3a3a5a;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f8f8fc;
+        --surface: #ffffff;
+        --text: #1a1a2e;
+        --text-dim: #5a5a7a;
+        --accent: #5c6bc0;
+        --border: #d8d8e0;
+      }
+    }
+    body {
+      font: 16px/1.6 'Segoe UI', system-ui, -apple-system, sans-serif;
+      margin: 0;
+      padding: max(24px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+      background: var(--bg);
+      color: var(--text);
+    }
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 24px;
+      background: var(--surface);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+    h1 { margin: 0 0 8px; font-size: 28px; }
+    h2 { margin: 28px 0 8px; font-size: 18px; color: var(--accent); }
+    p, ul { margin: 8px 0; }
+    code { background: var(--bg); padding: 1px 6px; border-radius: 4px; font-size: 14px; }
+    .last-updated { color: var(--text-dim); font-size: 13px; margin-bottom: 16px; }
+    a { color: var(--accent); }
+    a:hover { text-decoration: underline; }
+    .back { display: inline-block; margin-top: 24px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Privacy Policy</h1>
+    <p class="last-updated">Last updated: 2026-05-13</p>
+
+    <p>GregSweeper is a free browser-based puzzle game made by Christopher Wells. This page explains what data the game collects, how it's used, and how to delete it.</p>
+
+    <h2>What we collect</h2>
+    <ul>
+      <li><strong>Anonymous device ID.</strong> A random identifier issued by Firebase Anonymous Auth when you first load the game. It links your plays together so streaks, handicaps, and personal history work. It is not tied to any real-world identity unless you put your name on a leaderboard.</li>
+      <li><strong>Optional display name.</strong> If you put your name on the daily leaderboard, that string is shown publicly. Use a handle, not your real name.</li>
+      <li><strong>Daily completion times and per-game telemetry.</strong> When you finish a daily, the game submits your time, bomb hits, the board's feature counts (modifier types, cell counts), and the sequence of bomb-hit cells if any. This feeds the par-time model that scores your future runs.</li>
+      <li><strong>Push token + chosen reminder hour.</strong> Only if you opt in via Settings. The token is managed by Firebase Cloud Messaging and is required to deliver the daily notification you asked for.</li>
+      <li><strong>Local play state.</strong> Your level progress, theme choice, achievements, settings, and in-progress games are stored in your browser's <code>localStorage</code> on your device. They never leave your device unless cloud sync is on (which requires a Firebase write under your anonymous device ID).</li>
+      <li><strong>Standard server-side logs.</strong> Firebase records your IP address and user agent when the game contacts its servers (leaderboard fetches, score submissions, push delivery). Google retains these for approximately 30 days under their own policies.</li>
+    </ul>
+
+    <h2>How it's used</h2>
+    <ul>
+      <li>To render leaderboards.</li>
+      <li>To fit the daily par-time model nightly. The model is published openly; your individual times are aggregated.</li>
+      <li>To send the daily reminder you requested, if any.</li>
+      <li>To investigate crashes you trigger (errors are written to a per-user error log that only you and the game owner can read).</li>
+    </ul>
+    <p>We do not sell your data, use it for advertising, or share it for purposes outside running the game.</p>
+
+    <h2>Who we share with</h2>
+    <ul>
+      <li><strong>Google / Firebase.</strong> Hosting (Realtime Database), anonymous authentication, push delivery (Firebase Cloud Messaging), and access logs. See Google's privacy policy at <a href="https://policies.google.com/privacy">policies.google.com/privacy</a>.</li>
+      <li><strong>Google Fonts.</strong> Two web fonts (Orbitron, Fredoka) are currently loaded from <code>fonts.gstatic.com</code>. This means Google sees your IP when you load the game. We plan to self-host these fonts to remove the third-party request entirely; until then, this dependency is disclosed here.</li>
+      <li><strong>GitHub Pages.</strong> The game's static files are served from GitHub Pages. GitHub may log your IP for abuse prevention; see GitHub's privacy statement at <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">docs.github.com/site-policy</a>.</li>
+    </ul>
+    <p>No analytics services, tracking pixels, or advertising networks are loaded.</p>
+
+    <h2>Your rights and deletion</h2>
+    <p>You have the right to know your anonymous device ID, request a new one, and delete your data.</p>
+    <ul>
+      <li><strong>See your anonymous ID:</strong> open Settings or load <code>?debug=1</code> for diagnostics.</li>
+      <li><strong>Get a new anonymous ID:</strong> clear your browser's site data for this domain (Settings → Privacy & security in Chrome, or Develop → Empty Caches in Safari). This issues a fresh ID on next load. Your old data is orphaned but stays in the database until you ask for it to be removed.</li>
+      <li><strong>Delete your data:</strong> email Christopher at <a href="mailto:christopher.wells.23@gmail.com">christopher.wells.23@gmail.com</a> with your anonymous device ID (find it in Settings). Server-side scrubs of leaderboard rows are run manually via the <code>scripts/delete-user-data.mjs</code> tool. Requests are processed within 30 days.</li>
+    </ul>
+    <p>EU and California residents have additional rights under GDPR / CCPA. We honor these on request through the same email contact.</p>
+
+    <h2>Retention and contact</h2>
+    <p>Game data is kept while you continue to play plus 24 months idle. Firebase access logs are retained ~30 days under Google's policy. Push tokens are deleted immediately when you turn off notifications.</p>
+    <p><strong>Data controller:</strong> Christopher Wells, <a href="mailto:christopher.wells.23@gmail.com">christopher.wells.23@gmail.com</a>.</p>
+    <p>If we change this policy materially, the "Last updated" date above is bumped and the change is summarized in the in-game "What's New" modal.</p>
+
+    <h2>Monetization disclosure</h2>
+    <p>GregSweeper is currently free to play in your browser, with no ads, no tracking pixels, and no paid features. To cover operating costs (domain, hosting, app-store fees), the game may add <strong>voluntary donations</strong> (e.g. GitHub Sponsors, Buy Me a Coffee) and may eventually ship a <strong>paid native app wrapper</strong> on app stores while the browser version stays free. The game will never sell your data, run third-party ad scripts, or paywall gameplay. Any monetization change is summarized in the in-game "What's New" modal before it ships.</p>
+
+    <p><a class="back" href="./">← Back to GregSweeper</a></p>
+  </main>
+</body>
+</html>

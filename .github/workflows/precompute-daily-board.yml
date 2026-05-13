@@ -7,17 +7,21 @@ name: Precompute daily board
 # stamp THAT board as canonical, which means players on slightly
 # different cached state could diverge until the SW catches up.
 #
-# Cron: 00:00 UTC. We anchor to UTC rather than ET because the goal is
-# to land BEFORE the daily flips at 00:00 ET (= 04:00 UTC summer / 05:00
-# UTC winter). Running at 00:00 UTC gives us 4-5 hours of buffer to retry
-# if Firebase / network is flaky.
+# Cron: 03:00 UTC = 22:00 ET (winter) / 23:00 ET (summer), about an
+# hour before midnight ET. Earlier versions ran at 00:00 UTC, which
+# meant the canonical board was readable on Firebase ~4-5 hours BEFORE
+# the daily actually opened to players — enough time for a determined
+# attacker to fetch the board, run boardSolver.js offline, and pre-compute
+# the click sequence for a guaranteed sub-par solve. The 03:00 UTC cron
+# trims that pre-solve window to ~1 hour while keeping enough buffer to
+# retry if Firebase / network is flaky.
 #
 # The script is idempotent: write-once Firebase rules will reject
 # duplicate writes silently, so re-running is safe.
 
 on:
   schedule:
-    - cron: '0 0 * * *'
+    - cron: '0 3 * * *'
   workflow_dispatch:
     inputs:
       date:
@@ -59,3 +63,14 @@ jobs:
         env:
           TARGET_DATE: ${{ steps.date.outputs.date }}
         run: node scripts/precompute-daily-board.mjs "$TARGET_DATE"
+
+      - name: Notify on failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          if [ -n "$DISCORD_WEBHOOK_URL" ]; then
+            curl -fsS -X POST -H "Content-Type: application/json" \
+              -d "{\"content\":\":warning: GregSweeper workflow FAILED: ${{ github.workflow }} (run ${{ github.run_id }}, target ${{ steps.date.outputs.date }})\"}" \
+              "$DISCORD_WEBHOOK_URL" || true
+          fi

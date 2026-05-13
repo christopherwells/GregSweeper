@@ -28,13 +28,24 @@ export function loadHandicaps() {
     .then(data => {
       _handicaps = (data && data.handicaps) || {};
       _meta = data
-        ? { updatedAt: data.updatedAt, modelFitN: data.modelFitN, nPlayers: data.nPlayers, method: data.method }
-        : { updatedAt: null, modelFitN: null, nPlayers: null, method: null };
+        ? {
+            updatedAt: data.updatedAt,
+            modelFitN: data.modelFitN,
+            nPlayers: data.nPlayers,
+            method: data.method,
+            // secPerBombHit is fit-only (not in shipped PAR_MODEL) but the
+            // refit publishes it here so the client can subtract bomb-hit
+            // contributions when computing provisional handicaps. Without
+            // this, a player with one fast day and one bomb-hit day sees
+            // a wildly swinging provisional handicap.
+            secPerBombHit: typeof data.secPerBombHit === 'number' ? data.secPerBombHit : 0,
+          }
+        : { updatedAt: null, modelFitN: null, nPlayers: null, method: null, secPerBombHit: 0 };
       return _handicaps;
     })
     .catch(() => {
       _handicaps = {};
-      _meta = { updatedAt: null, modelFitN: null, nPlayers: null, method: null };
+      _meta = { updatedAt: null, modelFitN: null, nPlayers: null, method: null, secPerBombHit: 0 };
       return _handicaps;
     });
   return _loading;
@@ -42,12 +53,14 @@ export function loadHandicaps() {
 
 /**
  * Metadata from the currently-loaded handicaps.json: when the GitHub
- * Action last refit, how many scores it saw, how many players, and which
- * method (brms-ranef / seed-residuals). Returns nulls if loadHandicaps
- * hasn't completed yet or the file was missing.
+ * Action last refit, how many scores it saw, how many players, which
+ * method (brms-ranef / seed-residuals), and the fitted per-bomb-hit
+ * time cost (used for provisional-handicap bomb subtraction).
+ * Returns nulls if loadHandicaps hasn't completed yet or the file was
+ * missing.
  */
 export function getHandicapsMeta() {
-  return _meta || { updatedAt: null, modelFitN: null, nPlayers: null, method: null };
+  return _meta || { updatedAt: null, modelFitN: null, nPlayers: null, method: null, secPerBombHit: 0 };
 }
 
 /**
@@ -86,14 +99,23 @@ export function estimateHandicapFromHistory(pairs) {
  * Same as estimateHandicapFromHistory but also returns the sample size
  * so callers can render an "(N plays)" qualifier alongside the number.
  * Returns null when the sample is too small to surface anything.
+ *
+ * Each pair: `{ time, predictedPar, bombHits? }`. When `bombHits` is
+ * present (and getHandicapsMeta has loaded `secPerBombHit`), the
+ * fitted per-hit time cost is subtracted from `time` before averaging
+ * so a single bomb-hit day doesn't swing the provisional handicap by
+ * ~14 seconds. Backward-compatible: missing `bombHits` is treated as 0.
  */
 export function estimateHandicapDetails(pairs) {
   if (!Array.isArray(pairs)) return null;
+  const secPerBomb = (getHandicapsMeta()?.secPerBombHit) || 0;
   let sum = 0;
   let n = 0;
   for (const p of pairs) {
     if (typeof p.time !== 'number' || typeof p.predictedPar !== 'number') continue;
-    sum += p.time - p.predictedPar;
+    const bombHits = typeof p.bombHits === 'number' && p.bombHits > 0 ? p.bombHits : 0;
+    const cleanTime = p.time - bombHits * secPerBomb;
+    sum += cleanTime - p.predictedPar;
     n++;
   }
   if (n < PROVISIONAL_HANDICAP_MIN_PAIRS) return null;
