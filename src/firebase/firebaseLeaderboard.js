@@ -16,6 +16,34 @@ const SUBMIT_COOLDOWN_MS = 30000; // 30 seconds between submissions
 const MIN_VALID_TIME = 5;    // seconds — anything faster is impossible
 const MAX_VALID_TIME = 3600; // seconds — 1 hour cap
 
+// Retry queue for failed submissions. When a submit fails (offline,
+// auth-race, transient Firebase error, or post-rules-deploy rejection on
+// a stale client), queue the payload to localStorage. Flushed from
+// initFirebase() on every successful boot.
+const PENDING_KEY = 'minesweeper_pending_daily_submissions';
+const PENDING_MAX_ENTRIES = 10;                  // Drop oldest beyond this
+const PENDING_MAX_AGE_MS = 7 * 24 * 3600 * 1000; // 7 days — older entries are stale
+const PENDING_MAX_ATTEMPTS = 3;                  // Give up after N flushes per entry
+
+function _queueFailedSubmission(dateString, name, time, bombHits, extras) {
+  try {
+    const pending = safeGetJSON(PENDING_KEY) || [];
+    pending.push({
+      dateString,
+      name,
+      time,
+      bombHits,
+      extras: extras || {},
+      queuedAt: Date.now(),
+      attempts: 0,
+    });
+    while (pending.length > PENDING_MAX_ENTRIES) pending.shift();
+    safeSetJSON(PENDING_KEY, pending);
+  } catch (err) {
+    console.warn('Could not queue pending submission:', err.message);
+  }
+}
+
 /**
  * Initialize Firebase. Call once on app startup.
  * Config should be replaced with user's own Firebase project config.
@@ -60,6 +88,8 @@ export async function initFirebase() {
 
     firebaseReady = true;
     console.log('Firebase leaderboard initialized');
+    // Catch up on any queued failed submissions from prior offline / auth-race sessions
+    flushPendingSubmissions().catch(() => {});
   } catch (err) {
     console.warn('Firebase init failed — using local leaderboard:', err.message);
     if (err.message?.includes('permission')) {
@@ -95,17 +125,16 @@ export function isFirebaseOnline() {
  * @param {Object} [extras.features] Board feature vector for dailyMeta upsert
  * @returns {Promise<boolean>} true if submitted successfully
  */
-export async function submitOnlineScore(dateString, name, time, bombHits = 0, extras = {}) {
+/**
+ * Internal: push the score to Firebase. No rate limiting. Returns true
+ * on success, false on any validation/network/auth failure. Shared by
+ * submitOnlineScore (with rate limit + queueing) and flushPendingSubmissions
+ * (bypasses rate limit because queue entries are legitimate prior attempts,
+ * not user spam).
+ */
+async function _doSubmitOnlineScore(dateString, name, time, bombHits, extras) {
   if (!isFirebaseOnline()) return false;
 
-  // Client-side rate limiting: reject submissions too close together
-  const now = Date.now();
-  if (now - _lastSubmitTime < SUBMIT_COOLDOWN_MS) {
-    console.warn('Score submission rate-limited — please wait before submitting again');
-    return false;
-  }
-
-  // Basic score validation: reject impossible or unreasonable times
   if (typeof time !== 'number' || time < MIN_VALID_TIME || time > MAX_VALID_TIME) {
     console.warn(`Score rejected — time ${time}s is outside valid range (${MIN_VALID_TIME}–${MAX_VALID_TIME}s)`);
     return false;
@@ -150,11 +179,80 @@ export async function submitOnlineScore(dateString, name, time, bombHits = 0, ex
       upsertDailyMeta(dateString, extras.features).catch(() => {});
     }
 
-    _lastSubmitTime = now;
     return true;
   } catch (err) {
     console.warn('Firebase submit failed:', err.message);
     return false;
+  }
+}
+
+export async function submitOnlineScore(dateString, name, time, bombHits = 0, extras = {}) {
+  // Offline / Firebase not ready — queue and retry on next successful boot
+  if (!isFirebaseOnline()) {
+    _queueFailedSubmission(dateString, name, time, bombHits, extras);
+    return false;
+  }
+
+  // Client-side rate limiting — reject without queueing (user spam, not a
+  // submission worth retrying)
+  const now = Date.now();
+  if (now - _lastSubmitTime < SUBMIT_COOLDOWN_MS) {
+    console.warn('Score submission rate-limited — please wait before submitting again');
+    return false;
+  }
+
+  const ok = await _doSubmitOnlineScore(dateString, name, time, bombHits, extras);
+  if (ok) {
+    _lastSubmitTime = now;
+  } else {
+    // Push failed mid-flight (transient network, auth race, or post-deploy
+    // rule rejection on a stale client). Queue for retry.
+    _queueFailedSubmission(dateString, name, time, bombHits, extras);
+  }
+  return ok;
+}
+
+/**
+ * Resubmit any queued failed score writes. Called by initFirebase() on every
+ * successful boot. Bypasses SUBMIT_COOLDOWN_MS — queue entries are legitimate
+ * prior submissions, not user spam. Drops entries older than PENDING_MAX_AGE_MS
+ * or that have hit PENDING_MAX_ATTEMPTS.
+ */
+export async function flushPendingSubmissions() {
+  if (!isFirebaseOnline()) return;
+  let pending;
+  try {
+    pending = safeGetJSON(PENDING_KEY);
+  } catch (err) {
+    console.warn('Could not read pending submissions:', err.message);
+    return;
+  }
+  if (!Array.isArray(pending) || pending.length === 0) return;
+
+  const stillPending = [];
+  const now = Date.now();
+  let flushed = 0;
+  for (const entry of pending) {
+    if (now - entry.queuedAt > PENDING_MAX_AGE_MS) continue;
+    if (entry.attempts >= PENDING_MAX_ATTEMPTS) continue;
+    entry.attempts++;
+    const ok = await _doSubmitOnlineScore(
+      entry.dateString,
+      entry.name,
+      entry.time,
+      entry.bombHits,
+      entry.extras || {}
+    );
+    if (ok) flushed++;
+    else stillPending.push(entry);
+  }
+  try {
+    safeSetJSON(PENDING_KEY, stillPending);
+  } catch (err) {
+    console.warn('Could not save pending submissions:', err.message);
+  }
+  if (flushed > 0) {
+    console.log(`Re-submitted ${flushed} pending daily score(s) after reconnect.`);
   }
 }
 
