@@ -476,24 +476,29 @@ async function populateWeeklyPanel() {
 
 async function collectPastWeeklyBests(uid, count) {
   if (!uid) return [];
-  // Walk backward from this week's start. Read each week's per-uid row.
-  const out = [];
+  // Build the list of weekStart strings first, then fetch all weeks in
+  // parallel. Each fetchWeeklyLeaderboard is independent — running them
+  // sequentially burns ~4 round-trips on the network for the 4-week
+  // case. Promise.all cuts that to ~1 round-trip's worth of latency.
   const today = new Date(`${getLocalDateString()}T00:00:00-05:00`);
   const start = new Date(today);
-  // Step to the most recent Monday before this Monday
   const dayBefore = (start.getUTCDay() + 6) % 7; // 0=Mon
   start.setUTCDate(start.getUTCDate() - dayBefore - 7); // last week's Monday
+  const weekStarts = [];
   for (let i = 0; i < count; i++) {
     const yy = start.getUTCFullYear();
     const mm = String(start.getUTCMonth() + 1).padStart(2, '0');
     const dd = String(start.getUTCDate()).padStart(2, '0');
-    const wkStart = `${yy}-${mm}-${dd}`;
-    try {
-      const entries = await fetchWeeklyLeaderboard(wkStart);
-      const row = entries.find(e => e.uid === uid);
-      if (row) out.push({ weekStart: wkStart, bestTime: row.bestTime, attemptsUsed: row.attemptsUsed || 0 });
-    } catch {}
+    weekStarts.push(`${yy}-${mm}-${dd}`);
     start.setUTCDate(start.getUTCDate() - 7);
+  }
+  const settled = await Promise.allSettled(weekStarts.map(w => fetchWeeklyLeaderboard(w)));
+  const out = [];
+  for (let i = 0; i < weekStarts.length; i++) {
+    const r = settled[i];
+    if (r.status !== 'fulfilled') continue;
+    const row = (r.value || []).find(e => e.uid === uid);
+    if (row) out.push({ weekStart: weekStarts[i], bestTime: row.bestTime, attemptsUsed: row.attemptsUsed || 0 });
   }
   return out;
 }

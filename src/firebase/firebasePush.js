@@ -33,7 +33,12 @@ const VAPID_PUBLIC_KEY = 'BOuXy2fkaqrNc2KnGgLaMVKo1hJ3z9UeP7S1vU1RO_fLYmzdX1jmyC
 const PERMISSION_HINT_KEY = 'gregsweeper_push_permission_hinted';
 
 function _isIOS() {
-  return /iPad|iPhone|iPod/.test(navigator.userAgent);
+  // iPadOS 13+ ships a Mac user agent — the only reliable tell is the
+  // combination of Macintosh + touch capability (Macs proper don't
+  // have touchscreens). Plain iPad/iPhone/iPod still works for the
+  // older path.
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (/Macintosh/.test(navigator.userAgent) && 'ontouchstart' in window);
 }
 function _isInstalledPWA() {
   return window.navigator.standalone === true ||
