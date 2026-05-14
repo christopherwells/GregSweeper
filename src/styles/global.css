@@ -708,32 +708,33 @@ body {
     0 0 30px rgba(255, 215, 79, 0.55),
     0 0 6px rgba(0, 0, 0, 0.9);
   font-family: var(--font-display, var(--font-family, system-ui));
-  animation: victoryPop 900ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation: victoryPop 1800ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 @keyframes victoryPop {
   0%   { transform: scale(0.4) rotate(-6deg); opacity: 0; }
-  35%  { transform: scale(1.4) rotate(2deg);  opacity: 1; }
-  55%  { transform: scale(1.0) rotate(0deg);  opacity: 1; }
+  17%  { transform: scale(1.4) rotate(2deg);  opacity: 1; }
+  28%  { transform: scale(1.0) rotate(0deg);  opacity: 1; }
   85%  { transform: scale(1.0) rotate(0deg);  opacity: 1; }
   100% { transform: scale(1.05) rotate(0deg); opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   .victory-overlay {
-    animation: victoryFade 900ms ease-out forwards;
+    animation: victoryFade 1800ms ease-out forwards;
   }
   @keyframes victoryFade {
     0% { opacity: 0; } 20% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; }
   }
 }
 
-/* Post-loss NEXT MOVE label — same layout as start-here, blue chip to
-   match the .suggested-move outline so the player understands "this is
-   the cell the solver says you should have clicked next." */
+/* Post-loss NEXT MOVE label — blue chip anchored to the
+   solver-suggested safe cell. Default layout matches .start-here-label
+   (floats above the cell); .label-on-cell overrides to center it
+   directly on top of the cell so it visually belongs to the square. */
 .next-move-label {
   position: absolute;
   transform: translate(-50%, -100%);
-  font-size: 11px;
-  font-weight: 700;
+  font-size: 10px;
+  font-weight: 800;
   letter-spacing: 0.5px;
   white-space: nowrap;
   pointer-events: none;
@@ -741,8 +742,11 @@ body {
   background: #0091ea;
   padding: 2px 6px;
   border-radius: 4px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
   animation: fade-in-start 0.4s ease-out;
+}
+.next-move-label.label-on-cell {
+  transform: translate(-50%, -50%);
 }
 
 @keyframes fade-in-start {

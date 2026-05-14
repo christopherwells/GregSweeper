@@ -322,15 +322,24 @@ export function setDailySuggestedCell(cell) {
   _dailySuggestedCell = cell;
 }
 
-function _placeLabel(cellEl, id, text, className) {
+function _placeLabel(cellEl, id, text, className, position = "above") {
   const label = document.createElement("div");
   label.id = id;
   label.textContent = text;
   label.className = className;
   const boardRect = boardEl.getBoundingClientRect();
   const cellRect = cellEl.getBoundingClientRect();
-  label.style.left = (cellRect.left - boardRect.left + cellRect.width / 2) + "px";
-  label.style.top = (cellRect.top - boardRect.top - 6) + "px";
+  const cx = cellRect.left - boardRect.left + cellRect.width / 2;
+  label.style.left = cx + "px";
+  if (position === "on") {
+    // Center the chip on the cell — the existing translate(-50%, -100%)
+    // CSS would float it up above; the .label-on-cell variant uses
+    // translate(-50%, -50%) so the label visually sits inside the cell.
+    label.style.top = (cellRect.top - boardRect.top + cellRect.height / 2) + "px";
+    label.classList.add("label-on-cell");
+  } else {
+    label.style.top = (cellRect.top - boardRect.top - 6) + "px";
+  }
   boardEl.parentElement.appendChild(label);
 }
 
@@ -351,10 +360,12 @@ function updateStartHereLabel() {
   // Post-loss "NEXT MOVE" — the solver-suggested safe cell that would
   // have been the right click instead of the mine. Fires on any mode
   // that sets cell.suggestedMove (challenge + timed; handleLoss sets
-  // it before the cascade reveals).
+  // it before the cascade reveals). Positioned ON the cell (centered)
+  // rather than floating above, so the chip clearly anchors to the
+  // blue-outlined square instead of looking detached.
   if (state.status === "lost") {
     const nextCell = boardEl.querySelector(".suggested-move");
-    if (nextCell) _placeLabel(nextCell, "next-move-label", "NEXT MOVE", "next-move-label");
+    if (nextCell) _placeLabel(nextCell, "next-move-label", "NEXT MOVE", "next-move-label", "on");
   }
 }
 

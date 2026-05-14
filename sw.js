@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v1.5.101';
+const CACHE_NAME = 'gregsweeper-v1.5.102';
 const ASSETS = [
   './',
   './index.html',
@@ -191,15 +191,37 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
 
-  // Bypass HTTP cache on every same-origin fetch. Without this, the
-  // SW's network-first strategy still pulled stale resources from
-  // the browser/PWA HTTP cache when the cached entry hadn't expired
-  // (GH Pages defaults to 10-minute HTML cache; iOS PWAs hold even
-  // longer at the OS shell layer). cache:'no-store' tells fetch to
-  // ignore HTTP cache and always go to the network. Combined with the
-  // no-cache meta tags in index.html, this means an updated deploy
-  // reaches every active user on their next reload — no Check-for-
-  // Updates dance, no PWA reinstall, no support emails.
+  // Cache-first for static assets (sprites, icons, loading splash).
+  // These are versioned by CACHE_NAME — when CACHE_NAME bumps on
+  // deploy, install pre-caches the new bytes and the old cache is
+  // deleted in activate. So serving from cache is always fresh-as-of-
+  // deploy, and we skip a network roundtrip per image. Without this,
+  // every <img src> request waited for the network even though the
+  // sprite was already cached, which made flag/mine renders feel
+  // sluggish on mobile cellular (10-20 s in the worst cases).
+  if (url.pathname.includes('/assets/')) {
+    event.respondWith(
+      caches.match(event.request, { ignoreSearch: true }).then((cached) => {
+        if (cached) return cached;
+        // Cache miss (rare — install pre-caches everything in ASSETS).
+        // Fall through to network; cache the response for next time.
+        return fetch(event.request).then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        }).catch(() => new Response('Offline asset', {
+          status: 503, statusText: 'Service Unavailable',
+        }));
+      })
+    );
+    return;
+  }
+
+  // Network-first for everything else (HTML, JS, CSS). cache:'no-store'
+  // bypasses the browser HTTP cache so an updated deploy reaches every
+  // active user on their next reload. Cache fallback covers offline.
   event.respondWith(
     fetch(event.request, { cache: 'no-store' })
       .then((response) => {
