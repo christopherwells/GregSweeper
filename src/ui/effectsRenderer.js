@@ -141,7 +141,7 @@ export function showVictoryOverlay() {
   div.textContent = 'VICTORY!';
   div.setAttribute('aria-hidden', 'true');
   app.appendChild(div);
-  setTimeout(() => div.remove(), 1800);
+  setTimeout(() => div.remove(), 3600);
 }
 
 export function showConfettiBurst(originX, originY, count) {

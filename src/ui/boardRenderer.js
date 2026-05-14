@@ -203,10 +203,19 @@ export function updateCell(r, c) {
 
   if (cell.isRevealed) {
     if (cell.isStrike) {
-      // Daily/weekly: an exploded bomb defused by the bomb-hit mechanic.
-      // The mine is gone (cell.isMine === false) but we keep the strike
-      // marker on the board so the player can see where it was.
-      cellEl.className = 'cell revealed strike-cell';
+      // Strike cell renders for two distinct mechanics:
+      //   1. Daily/weekly bomb-hit (cell.isMine flipped to false in
+      //      handleDailyBombHit, isStrike marks the defused spot).
+      //   2. Challenge/timed game-over cascade — every non-flagged mine
+      //      gets isStrike via chainRevealMines.
+      // In case 2 the hit mine needs to stand out from the rest of the
+      // cascade so the player can see which mine ended the game. The
+      // `.mine-hit` class adds the strong red background + glow on top
+      // of the soft .strike-cell tint. state.hitMine is only set by
+      // handleLoss (challenge/timed) and stays null in daily/weekly,
+      // so the same check cleanly excludes the daily path.
+      const isHit = state.hitMine && state.hitMine.row === r && state.hitMine.col === c;
+      cellEl.className = `cell revealed strike-cell${isHit ? ' mine-hit' : ''}`;
       applyIcon(cellEl, 'strikeCell', getThemeEmoji('mine'), { sizeClass: 'sprite-cell' });
     } else if (cell.isDefused) {
       cellEl.className = 'cell revealed defused';

@@ -711,18 +711,18 @@ body {
     0 0 30px rgba(255, 215, 79, 0.55),
     0 0 6px rgba(0, 0, 0, 0.9);
   font-family: var(--font-display, var(--font-family, system-ui));
-  animation: victoryPop 1800ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation: victoryPop 3600ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 @keyframes victoryPop {
   0%   { transform: scale(0.4) rotate(-6deg); opacity: 0; }
-  17%  { transform: scale(1.4) rotate(2deg);  opacity: 1; }
-  28%  { transform: scale(1.0) rotate(0deg);  opacity: 1; }
-  85%  { transform: scale(1.0) rotate(0deg);  opacity: 1; }
+  9%   { transform: scale(1.4) rotate(2deg);  opacity: 1; }
+  14%  { transform: scale(1.0) rotate(0deg);  opacity: 1; }
+  90%  { transform: scale(1.0) rotate(0deg);  opacity: 1; }
   100% { transform: scale(1.05) rotate(0deg); opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   .victory-overlay {
-    animation: victoryFade 1800ms ease-out forwards;
+    animation: victoryFade 3600ms ease-out forwards;
   }
   @keyframes victoryFade {
     0% { opacity: 0; } 20% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; }
