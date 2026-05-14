@@ -1068,17 +1068,20 @@ body {
 }
 
 /* Liar cells — display is off by ±1.
-   Italic + underline on the number AND a rose-pink background tint.
-   The tint is the primary cue (legible on small mobile cells where
-   italic+underline alone disappears at low font weight); the typography
-   is the secondary reinforcement. Color chosen to avoid sonar cyan,
-   compass gold, wormhole amber/magenta/green, and mirror blue/purple/green. */
+   2px solid rose-pink outline for the strong "watch this number" cue,
+   plus italic + underline as typographic reinforcement. Outline (not
+   border) so mirror's dashed border can still wrap the same cell when
+   both gimmicks land on one cell. Tested across all 30+ themes — the
+   outline reads clearly against every cell-bg color. Color chosen to
+   avoid sonar cyan, compass gold, wormhole amber/magenta/green, and
+   mirror blue/purple/green. */
 .cell.liar-cell {
   font-style: italic;
   text-decoration: underline;
   text-decoration-thickness: 2px;
   text-underline-offset: 2px;
-  background: rgba(231, 76, 60, 0.22) !important;
+  outline: 2px solid rgba(231, 76, 60, 0.9);
+  outline-offset: -2px;
 }
 
 /* Locked cells — padlock indicator */
@@ -1122,16 +1125,23 @@ body {
   transition: transform 1s linear;
 }
 
-/* Sonar cells — 📡 prefix is the identifier, no border needed */
+/* Sonar cells — 📡 prefix is the identifier, plus a faint cyan tint
+   so the cell reads as "different" even before the player parses the
+   range glyph. Subtle alpha so the underlying number color stays
+   legible. */
 .cell.sonar-cell {
   font-size: calc(var(--cell-size) * 0.4) !important;
   letter-spacing: -1px;
+  background-color: rgba(0, 200, 220, 0.15) !important;
 }
 
-/* Compass cells — arrow suffix is the identifier, no border needed */
+/* Compass cells — arrow suffix is the identifier, plus a faint gold
+   tint mirroring the sonar pattern. Different hue so the player can
+   distinguish a sonar tile from a compass tile at peripheral glance. */
 .cell.compass-cell {
   font-size: calc(var(--cell-size) * 0.4) !important;
   letter-spacing: -1px;
+  background-color: rgba(230, 180, 0, 0.16) !important;
 }
 
 /* Wormhole cells — paired background tints (no border, avoids conflict with number colors).
