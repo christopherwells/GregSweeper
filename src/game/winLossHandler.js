@@ -730,11 +730,12 @@ export function handleWin() {
   // Clear saved game state on win
   clearGameState(state.gameMode);
 
-  // Delay the modal so the confetti, win chime, and final cell flip
-  // have a moment to land before the modal covers everything. 700ms is
-  // the sweet spot from CPO testing — long enough that the audio cue
-  // breathes, short enough that "the modal feels slow" doesn't start.
-  setTimeout(() => showModal('gameover-overlay'), 700);
+  // Delay the modal so the VICTORY! overlay (3.6 s total) has a chance
+  // to play before the modal covers it. 2 s lands the modal after the
+  // VICTORY bounce has settled into its hold phase — confetti still
+  // visible behind, win chime audible, but the modal arrives in time
+  // for the Play Again button to be useful before the user moves on.
+  setTimeout(() => showModal('gameover-overlay'), 2000);
   updatePowerUpBar();
   updateStreakBorder();
 }

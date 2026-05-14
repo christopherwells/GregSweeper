@@ -50,7 +50,10 @@ export function showGreenFlash() {
 // they keep mine.png + their green outline.
 const CASCADE_STEP_MS = 120;
 const CASCADE_SOUND_AT = 3;
-const CASCADE_SETTLE_MS = 300;
+// 1 s breathing room after the last bomb pops before the gameover
+// modal slides in. Was 300 ms — too tight; the player barely registered
+// the last explosion before the modal covered everything.
+const CASCADE_SETTLE_MS = 1000;
 
 export function chainRevealMines(hitRow, hitCol) {
   revealAllMines(state.board);
@@ -106,10 +109,14 @@ export function chainRevealMines(hitRow, hitCol) {
     }, i * CASCADE_STEP_MS);
   }
 
-  // Promise resolves after the last mine's pop animation has had a
-  // moment to settle. handleLoss awaits this before showing the modal.
+  // Promise resolves 1 s AFTER the last bomb fires — last bomb
+  // pops at (cascade.length - 1) * CASCADE_STEP_MS, then we wait
+  // CASCADE_SETTLE_MS before resolving. handleLoss awaits this before
+  // showing the modal so the player sees the chain land before being
+  // asked to Play Again.
   return new Promise(resolve => {
-    setTimeout(resolve, cascade.length * CASCADE_STEP_MS + CASCADE_SETTLE_MS);
+    const lastPopAt = Math.max(0, cascade.length - 1) * CASCADE_STEP_MS;
+    setTimeout(resolve, lastPopAt + CASCADE_SETTLE_MS);
   });
 }
 
