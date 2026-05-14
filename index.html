@@ -102,8 +102,13 @@
   <style>
     #boot-overlay {
       position: fixed; inset: 0; z-index: 999999;
-      background: var(--color-app-bg, #d4ccc0);
-      color: var(--color-text, #2d2416);
+      /* Underwater-mine artwork covers the whole splash. background-color
+         under the image is the deep teal of the artwork so the moment
+         between the SW serving CSS and the JPEG decoding stays on-theme.
+         center / cover keeps the foreground mine on screen across phone
+         portrait, tablet, and landscape. */
+      background: #0d2229 url('assets/loading.jpg') center / cover no-repeat;
+      color: #fff;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
       gap: 14px;
@@ -111,15 +116,28 @@
       padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
       font-family: var(--font-family, 'Segoe UI', system-ui, -apple-system, sans-serif);
     }
+    /* Radial darken centered behind the title + status so the text reads
+       cleanly without flattening the whole image. Sized so the artwork's
+       edges (foreground mine, spike silhouettes) stay visible. */
+    #boot-overlay::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 60% 35% at center, rgba(0,0,0,0.55), rgba(0,0,0,0) 80%);
+      pointer-events: none;
+    }
     #boot-overlay.fading { display: none; }
+    #boot-overlay h1, #boot-overlay #boot-status { position: relative; z-index: 1; }
     #boot-overlay h1 {
-      font-size: 28px; margin: 0;
+      font-size: 32px; margin: 0;
       font-family: var(--font-display, var(--font-family, system-ui));
-      color: var(--color-accent, #5c6bc0);
+      color: #fff;
+      letter-spacing: 0.5px;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.85), 0 0 24px rgba(0,0,0,0.4);
     }
     #boot-overlay #boot-status {
       margin: 0; font-size: 13px;
-      color: var(--color-text-secondary, #7a6e5d);
+      color: rgba(255,255,255,0.88);
+      text-shadow: 0 1px 6px rgba(0,0,0,0.85);
     }
     /* Idle-pause overlay. Inline so it works even if a CSS module fails
        to load — the timer paused on the player, they need to see why. */
