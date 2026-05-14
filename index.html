@@ -1120,6 +1120,25 @@
       window.location.href = window.location.pathname + '?cb=' + Date.now();
     };
 
+    // Defensive wiring: bind the Settings → Check for Updates button to
+    // gregsweeperCacheClear at the inline-script level, NOT just from
+    // main.js. If main.js fails to load (a static-import 503, a syntax
+    // error in a downstream module, etc.), the button is the user's
+    // only escape hatch from the broken state — it MUST still work.
+    // The main.js click handler is harmless: clicking once fires both
+    // listeners but gregsweeperCacheClear is idempotent (skip_sw set,
+    // SW unregistered, caches cleared) and the navigation only happens
+    // once per call.
+    document.addEventListener('DOMContentLoaded', function() {
+      var btn = document.getElementById('btn-clear-cache');
+      if (btn && !btn._inlineWired) {
+        btn._inlineWired = true;
+        btn.addEventListener('click', function() {
+          if (window.gregsweeperCacheClear) window.gregsweeperCacheClear();
+        });
+      }
+    });
+
     // ── Version-mismatch detector ──────────────────────
     // Belt-and-suspenders for the case where the SW's normal update
     // mechanism fails (Android Chrome's WebAPK can ignore registration.
