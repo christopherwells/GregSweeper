@@ -172,6 +172,20 @@
     }
   </style>
   <!-- Other themes loaded on-demand by themeManager.js -->
+  <!-- High-priority sprite + boot-image preloads. The browser's preload
+       scanner picks these up during HTML parse and fetches them in
+       parallel with main.js evaluation, before any cell renders. Without
+       these, sprites don't get requested until preloadSprites() fires
+       inside init() ~700-1000 ms in, so the first flag-click on a cold
+       cellular session waited for a network roundtrip. URLs must match
+       the SPRITES manifest in src/ui/spriteLoader.js exactly. -->
+  <link rel="preload" as="image" type="image/png" href="assets/sprites/mine.png">
+  <link rel="preload" as="image" type="image/png" href="assets/sprites/flag.png">
+  <link rel="preload" as="image" type="image/png" href="assets/sprites/idle.png">
+  <link rel="preload" as="image" type="image/png" href="assets/sprites/win.png">
+  <link rel="preload" as="image" type="image/png" href="assets/sprites/loss.png">
+  <link rel="preload" as="image" type="image/png" href="assets/sprites/strike.png">
+  <link rel="preload" as="image" type="image/jpeg" href="assets/loading.jpg">
   <!-- Press+Start+2P removed: no CSS rule referenced it. Self-hosting these
        fonts is on the GDPR / Schrems II punch list — drop Google Fonts
        entirely once assets/fonts/{orbitron,fredoka}.woff2 land. -->
@@ -191,12 +205,17 @@
     });
   }
   </script>
-  <!-- Firebase SDK (compat) for online daily leaderboard -->
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <!-- Firebase SDK (compat) for online daily leaderboard. `defer` so the
+       parser keeps going past these and main.js (module, also deferred)
+       starts evaluating sooner — without `defer` these blocked HTML
+       parsing for ~200-400 ms on cellular, delaying the sprite preload.
+       `defer` scripts execute in source order before DOMContentLoaded;
+       all consumer code already waits via waitForFirebaseReady. -->
+  <script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <!-- FCM (Web Push). messaging-compat.js exposes firebase.messaging() -->
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js"></script>
 </head>
 <body>
   <!-- Boot overlay — visible until runStartupGate() in main.js completes.

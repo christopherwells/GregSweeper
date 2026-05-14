@@ -19,10 +19,24 @@ const SPRITES = {
   strikeCell: { defaultEmoji: '💣', url: 'assets/sprites/strike.png' },
 };
 
+// Retain Image refs until each one fires onload/onerror so the browser
+// can't GC-cancel a pending fetch (rare, but defensive — and pinning
+// during the early load is cheap, the array clears as fetches resolve).
+const _preloadCache = [];
+
 export function preloadSprites() {
   for (const s of Object.values(SPRITES)) {
+    if (_preloadCache.some(i => i.src.endsWith(s.url))) continue;
     const img = new Image();
+    img.decoding = 'async';
     img.src = s.url;
+    _preloadCache.push(img);
+    const drop = () => {
+      const idx = _preloadCache.indexOf(img);
+      if (idx >= 0) _preloadCache.splice(idx, 1);
+    };
+    img.onload = drop;
+    img.onerror = drop;
   }
 }
 
@@ -42,6 +56,11 @@ export function applyIcon(el, key, resolvedEmoji, { extraClass = '', sizeClass =
     img.src = url;
     img.alt = '';
     img.draggable = false;
+    // Async decode so a cascade reveal (50+ mines flipping to strike.png
+    // in rapid succession) doesn't block the render thread on the
+    // synchronous decode path. Cached bitmaps decode in microseconds
+    // either way; this matters mostly during the first uncached burst.
+    img.decoding = 'async';
     el.appendChild(img);
   } else {
     el.textContent = resolvedEmoji;
@@ -55,5 +74,5 @@ export function spriteImgHTML(key, sizeClass = '', alt = '') {
   if (!s) return '';
   const cls = `game-sprite ${sizeClass}`.trim();
   const altAttr = alt ? ` alt="${alt}"` : ' alt=""';
-  return `<img class="${cls}" src="${s.url}"${altAttr} draggable="false">`;
+  return `<img class="${cls}" src="${s.url}"${altAttr} decoding="async" draggable="false">`;
 }
