@@ -5211,6 +5211,12 @@ pre.diagnostics-pre {
   margin-top: 10px;
 }
 
+.daily-name-hint {
+  font-size: 11px;
+  color: var(--color-text-secondary, #888);
+  margin: 4px 0 8px 0;
+}
+
 /* ── Forced-colors (Windows High Contrast / accessibility) ────────
    When the OS forces a high-contrast palette, theme colors get
    stripped and replaced with system colors (ButtonText, ButtonFace,

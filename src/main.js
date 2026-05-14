@@ -2241,7 +2241,15 @@ $('#gameover-submit-daily').addEventListener('click', async (e) => {
   const nameInput = $('#daily-name-input');
   const name = nameInput ? nameInput.value : '';
   if (name && name.trim()) {
-    const sanitized = name.trim().slice(0, 20);
+    // Strip @ to defang accidental email pastes before the Firebase
+    // rules reject them. Server-side regex catches anything we miss
+    // here, but client-side strip gives a faster, friendlier path.
+    const sanitized = name.trim().replace(/@/g, '').slice(0, 20);
+    if (!sanitized) {
+      showToast('Please pick a handle (no @ symbols).');
+      e.currentTarget.disabled = false;
+      return;
+    }
     // Anchor to the puzzle's seed, not the current local date — submitting
     // a score at 12:00:01 AM for yesterday's puzzle would otherwise land on
     // today's leaderboard.

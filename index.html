@@ -453,7 +453,8 @@
           <button id="gameover-nextlevel" class="action-btn primary hidden">Next Level</button>
           <button id="gameover-chaos-next" class="action-btn primary hidden">Next Board →</button>
           <div id="daily-submit-form" class="daily-submit-form hidden">
-            <input id="daily-name-input" type="text" placeholder="Your name" maxlength="20" class="daily-name-input" autocomplete="off">
+            <input id="daily-name-input" type="text" placeholder="Pick a handle" maxlength="20" class="daily-name-input" autocomplete="off" aria-describedby="daily-name-hint">
+            <p id="daily-name-hint" class="daily-name-hint">Shown on the public leaderboard — pick a handle, not your real name.</p>
             <button id="gameover-submit-daily" class="action-btn">Submit</button>
           </div>
           <!-- Daily-win opt-in CTA: shown on daily/weekly wins ONLY when

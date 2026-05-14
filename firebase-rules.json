@@ -10,7 +10,7 @@
           ".write": "auth != null && !data.exists() && newData.child('uid').val() === auth.uid",
           ".validate": "newData.hasChildren(['name', 'time', 'timestamp', 'uid'])",
           "name": {
-            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 20 && newData.val().matches(/^[^<>&\"'`]+$/)"
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 20 && newData.val().matches(/^[^<>&\"'`@]+$/)"
           },
           "time": {
             ".validate": "newData.isNumber() && newData.val() >= 5 && newData.val() <= 3600"
@@ -93,10 +93,10 @@
           ".write": "auth != null && auth.uid === $uid",
           ".validate": "newData.hasChildren(['name', 'bestTime', 'timestamp'])",
           "name": {
-            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 20 && newData.val().matches(/^[^<>&\"'`]+$/)"
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 20 && newData.val().matches(/^[^<>&\"'`@]+$/)"
           },
           "bestTime": {
-            ".validate": "newData.isNumber() && newData.val() >= 5 && newData.val() <= 3600"
+            ".validate": "newData.isNumber() && newData.val() >= 5 && newData.val() <= 3600 && (!data.exists() || newData.val() <= data.val())"
           },
           "dayTimes": {
             ".validate": "newData.hasChildren() || newData.val() === null",
@@ -180,6 +180,7 @@
             ".validate": "$weekStart.matches(/^\\d{4}-\\d{2}-\\d{2}$/)",
             "dayAttempts": {
               "$day": {
+                ".write": "auth != null && auth.uid === $uid && !data.exists()",
                 ".validate": "$day.matches(/^[0-6]$/) && newData.hasChildren(['timestamp'])",
                 "timestamp": {
                   ".validate": "newData.val() === now"
