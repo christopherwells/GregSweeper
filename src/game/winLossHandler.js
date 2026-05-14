@@ -1,6 +1,7 @@
 import { state, ENCOURAGEMENT_LINES } from '../state/gameState.js';
 import { $, $$, boardEl, resetBtn, scanToast } from '../ui/domHelpers.js';
 import { getThemeEmoji, updateAllCells, announceGame } from '../ui/boardRenderer.js';
+import { applyIcon, spriteImgHTML } from '../ui/spriteLoader.js';
 import { updateHeader, updateStreakBorder, updateCheckpointDisplay, getCheckpointForLevel } from '../ui/headerRenderer.js';
 import { updatePowerUpBar } from '../ui/powerUpBar.js';
 import { showModal } from '../ui/modalManager.js';
@@ -162,7 +163,7 @@ export function handleWin() {
   state.status = 'won';
   stopTimer();
   announceGame('You won! Board cleared.');
-  resetBtn.textContent = getThemeEmoji('smileyWin');
+  applyIcon(resetBtn, 'smileyWin', getThemeEmoji('smileyWin'), { sizeClass: 'sprite-smiley' });
   resetBtn.classList.add('smiley-win-bounce');
   setTimeout(() => resetBtn.classList.remove('smiley-win-bounce'), 800);
 
@@ -744,7 +745,7 @@ export function handleLoss(mineRow, mineCol) {
   state.status = 'lost';
   stopTimer();
   announceGame('Game over. Hit a mine.');
-  resetBtn.textContent = getThemeEmoji('smileyLoss');
+  applyIcon(resetBtn, 'smileyLoss', getThemeEmoji('smileyLoss'), { sizeClass: 'sprite-smiley' });
   resetBtn.classList.add('smiley-loss-shake');
   setTimeout(() => resetBtn.classList.remove('smiley-loss-shake'), 500);
 
@@ -910,7 +911,7 @@ export function handleLoss(mineRow, mineCol) {
 export function handleTimedLoss() {
   state.status = 'lost';
   stopTimer();
-  resetBtn.textContent = getThemeEmoji('smileyLoss');
+  applyIcon(resetBtn, 'smileyLoss', getThemeEmoji('smileyLoss'), { sizeClass: 'sprite-smiley' });
   resetBtn.classList.add('smiley-loss-shake');
   setTimeout(() => resetBtn.classList.remove('smiley-loss-shake'), 500);
   playExplosion();
@@ -1004,37 +1005,36 @@ export function handleDailyBombHit(mineRow, mineCol) {
 
   // Defuse the hit mine so it won't kill again. defuseMine also refreshes
   // gimmick displays (wormhole sums, liar offsets, mirror swaps, sonar,
-  // compass) so they reflect the new mine layout.
+  // compass) AND recalculates adjacent-mine counts in the 3x3 area, so
+  // surrounding revealed numbers automatically reflect the new layout.
   defuseMine(state.board, mineRow, mineCol);
-  state.board[mineRow][mineCol].isRevealed = true;
+  const hitCell = state.board[mineRow][mineCol];
+  hitCell.isRevealed = true;
   // Clear isLocked on the defused cell. defuseMine flips isMine=false but
   // leaves isLocked alone; without this, the cell still counts as
   // non-startable in startCandidates and as locked in solver paths,
   // even though it's now a revealed safe value.
-  state.board[mineRow][mineCol].isLocked = false;
+  hitCell.isLocked = false;
+  // Mark the hit spot so the renderer keeps showing the strike sprite —
+  // the player gets a permanent "here's where the bomb went off" marker
+  // instead of just a re-numbered cell.
+  hitCell.isStrike = true;
+  state.revealedCount++;
   state.totalMines--;
 
   // Safety net: tear down any active pressure-plate timers. Daily/weekly
   // don't currently include plates in their gimmick subset, but if a
-  // future change ever does, the per-cell intervals would keep ticking on
-  // a now-hidden cell after refog and trigger spurious handleLoss calls.
+  // future change ever does, stale per-cell intervals could fire a
+  // spurious handleLoss after the mid-attempt mine removal.
   // Dynamic import to avoid a top-level circular dependency with
   // gameActions.js (which imports handleDailyBombHit from this file).
   import('./gameActions.js').then(m => m.clearAllPlateTimers?.()).catch(() => {});
 
-  // Re-fog ALL non-mine revealed cells
-  let refogCount = 0;
-  for (let r = 0; r < state.rows; r++) {
-    for (let c = 0; c < state.cols; c++) {
-      const cell = state.board[r][c];
-      if (cell.isRevealed && !cell.isMine && !(r === mineRow && c === mineCol)) {
-        cell.isRevealed = false;
-        cell.isHiddenNumber = false;
-        refogCount++;
-      }
-    }
-  }
-  state.revealedCount = 1; // only the defused mine cell remains revealed
+  // Previously the board was re-fogged after every bomb hit. Now the
+  // player keeps everything they've revealed so far — only the bomb spot
+  // changes (mine removed, strike sprite stays). recomputeDisplayedMines
+  // and recalcAreaAdjacency from defuseMine above have already updated
+  // surrounding cells' numbers to reflect the missing mine.
 
   // Shake + muffled explosion effect
   playExplosion();
@@ -1049,7 +1049,7 @@ export function handleDailyBombHit(mineRow, mineCol) {
   const popup = document.createElement('div');
   popup.className = 'daily-bomb-popup';
   const strikes = isWeekly ? state.weeklyBombHits : state.dailyBombHits;
-  popup.innerHTML = `<div class="daily-bomb-popup-content">💥 You hit a mine!<br><span class="daily-bomb-sub">+10s penalty · Board reset · Mine removed</span></div>`;
+  popup.innerHTML = `<div class="daily-bomb-popup-content">${spriteImgHTML('strike', 'sprite-popup', 'Mine hit')} You hit a mine!<br><span class="daily-bomb-sub">+10s penalty · Mine defused — keep going</span></div>`;
   document.getElementById('app').appendChild(popup);
 
   setTimeout(() => {

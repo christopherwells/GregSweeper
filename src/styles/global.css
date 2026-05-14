@@ -5261,3 +5261,43 @@ pre.diagnostics-pre {
     outline: 2px solid Highlight;
   }
 }
+
+/* ── Game sprites (mine, flag, smileys, strike) ───────── */
+.game-sprite {
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+/* Strike cell: a defused bomb spot in daily/weekly mode (player hit the
+   mine, +10s penalty, mine removed, but the explosion mark stays so
+   they can see where it was). Soft red tint differentiates it from
+   regular revealed cells without screaming. */
+.cell.strike-cell {
+  background-color: rgba(220, 80, 60, 0.22) !important;
+}
+.cell > .game-sprite.sprite-cell {
+  display: block;
+  width: 88%;
+  height: 88%;
+  object-fit: contain;
+}
+.smiley-btn > .game-sprite.sprite-smiley {
+  display: block;
+  width: 78%;
+  height: 78%;
+  object-fit: contain;
+}
+.game-sprite.sprite-header {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.15em;
+}
+.game-sprite.sprite-popup {
+  display: inline-block;
+  width: 1.2em;
+  height: 1.2em;
+  vertical-align: -0.2em;
+  margin-right: 0.25em;
+}
+

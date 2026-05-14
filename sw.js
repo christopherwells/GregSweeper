@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v1.5.91';
+const CACHE_NAME = 'gregsweeper-v1.5.94';
 const ASSETS = [
   './',
   './index.html',
@@ -63,6 +63,13 @@ const ASSETS = [
   './assets/icon-512.png',
   './assets/icon-maskable-512.png',
   './assets/apple-touch-icon.png',
+  './assets/sprites/mine.png',
+  './assets/sprites/flag.png',
+  './assets/sprites/idle.png',
+  './assets/sprites/win.png',
+  './assets/sprites/loss.png',
+  './assets/sprites/strike.png',
+  './src/ui/spriteLoader.js',
 ];
 
 self.addEventListener('install', (event) => {

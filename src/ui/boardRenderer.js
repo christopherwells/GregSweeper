@@ -2,6 +2,7 @@ import { state } from '../state/gameState.js';
 import { boardEl, zoomControls, zoomLevelDisplay, boardScrollWrapper } from './domHelpers.js';
 import { THEME_UNLOCKS } from './themeManager.js';
 import { loadEmojiPack, getActiveEmojiPack } from './collectionManager.js';
+import { applyIcon } from './spriteLoader.js';
 // ── Emoji Cache (avoid per-cell localStorage reads) ────
 let _emojiCache = null;
 let _emojiCacheValid = false;
@@ -166,6 +167,7 @@ export function getThemeEmoji(type) {
 // ── ARIA Label Generation ────────────────────────────
 function getCellAriaLabel(cell, r, c) {
   if (cell.isRevealed) {
+    if (cell.isStrike) return 'Exploded mine';
     if (cell.isDefused) return 'Defused mine';
     if (cell.isMine) {
       const isHit = state.hitMine && state.hitMine.row === r && state.hitMine.col === c;
@@ -200,13 +202,19 @@ export function updateCell(r, c) {
   if (!cellEl) return;
 
   if (cell.isRevealed) {
-    if (cell.isDefused) {
+    if (cell.isStrike) {
+      // Daily/weekly: an exploded bomb defused by the bomb-hit mechanic.
+      // The mine is gone (cell.isMine === false) but we keep the strike
+      // marker on the board so the player can see where it was.
+      cellEl.className = 'cell revealed strike-cell';
+      applyIcon(cellEl, 'strikeCell', getThemeEmoji('mine'), { sizeClass: 'sprite-cell' });
+    } else if (cell.isDefused) {
       cellEl.className = 'cell revealed defused';
-      cellEl.textContent = getThemeEmoji('mine');
+      applyIcon(cellEl, 'mine', getThemeEmoji('mine'), { sizeClass: 'sprite-cell' });
     } else if (cell.isMine) {
       const isHit = state.hitMine && state.hitMine.row === r && state.hitMine.col === c;
       cellEl.className = `cell revealed mine${isHit ? ' mine-hit' : ''}`;
-      cellEl.textContent = getThemeEmoji('mine');
+      applyIcon(cellEl, isHit ? 'strikeCell' : 'mine', getThemeEmoji('mine'), { sizeClass: 'sprite-cell' });
       if (cell.correctFlag) cellEl.classList.add('correct-flag');
     } else if (cell.adjacentMines > 0 || (cell.displayedMines != null && cell.displayedMines > 0)) {
       if (cell.isHiddenNumber) {
@@ -267,7 +275,7 @@ export function updateCell(r, c) {
     }
   } else if (cell.isFlagged) {
     cellEl.className = 'cell unrevealed flagged';
-    cellEl.textContent = getThemeEmoji('flag');
+    applyIcon(cellEl, 'flag', getThemeEmoji('flag'), { sizeClass: 'sprite-cell' });
     // Wrong flag overlay (post-death analysis)
     if (cell.wrongFlag) cellEl.classList.add('wrong-flag');
     if (cell.correctFlag) cellEl.classList.add('correct-flag');

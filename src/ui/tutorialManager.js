@@ -4,6 +4,8 @@
 
 import { playReveal, playFlag, playWin } from '../audio/sounds.js';
 import { setOnboarded } from '../storage/statsStorage.js';
+import { applyIcon } from './spriteLoader.js';
+import { getThemeEmoji } from './boardRenderer.js';
 
 const ROWS = 5;
 const COLS = 5;
@@ -190,7 +192,7 @@ function updateBoardDisplay() {
       if (cell.isRevealed) {
         cellEl.classList.add('revealed');
         if (cell.isMine) {
-          cellEl.textContent = '\uD83D\uDCA3';
+          applyIcon(cellEl, 'mine', getThemeEmoji('mine'), { sizeClass: 'sprite-cell' });
           cellEl.classList.add('mine');
         } else if (cell.adjacentMines > 0) {
           cellEl.textContent = cell.adjacentMines;
@@ -200,7 +202,7 @@ function updateBoardDisplay() {
         }
       } else if (cell.isFlagged) {
         cellEl.classList.add('flagged');
-        cellEl.textContent = '\uD83D\uDEA9';
+        applyIcon(cellEl, 'flag', getThemeEmoji('flag'), { sizeClass: 'sprite-cell' });
       } else {
         cellEl.classList.add('unrevealed');
       }

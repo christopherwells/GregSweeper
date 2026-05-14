@@ -25,6 +25,7 @@ export function persistGameState() {
     board: state.board.map(row => row.map(c => ({
       isMine: c.isMine, isRevealed: c.isRevealed, isFlagged: c.isFlagged,
       adjacentMines: c.adjacentMines, isDefused: c.isDefused || false,
+      isStrike: c.isStrike || false,
       isHiddenNumber: c.isHiddenNumber || false,
       isMystery: c.isMystery || false,
       isPressurePlate: c.isPressurePlate || false, plateDisarmed: c.plateDisarmed || false,

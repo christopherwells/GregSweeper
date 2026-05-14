@@ -8,6 +8,7 @@
 import { state } from './state/gameState.js';
 import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn } from './ui/domHelpers.js';
 import { resizeCells, updateAllCells, getThemeEmoji, needsZoom, updateZoom, zoomIn, zoomOut, invalidateEmojiCache, setFocusedCell, announceGame } from './ui/boardRenderer.js';
+import { preloadSprites, spriteImgHTML } from './ui/spriteLoader.js';
 import { updateHeader, updateStreakBorder, updateFlagModeBar, getCheckpointForLevel, CHECKPOINT_INTERVAL } from './ui/headerRenderer.js';
 import { updatePowerUpBar } from './ui/powerUpBar.js';
 import { showModal, hideModal, hideAllModals } from './ui/modalManager.js';
@@ -852,7 +853,7 @@ async function renderWeeklyLeaderboard(weekStart) {
   // player switches back to a daily tab via the modal's tab strip.
   const thead = $('#leaderboard-table thead');
   if (thead) {
-    thead.innerHTML = '<tr><th>#</th><th>Name</th><th>Best</th><th class="lb-col-extra">💥</th><th>Played</th><th class="lb-col-extra">Pace</th></tr>';
+    thead.innerHTML = `<tr><th>#</th><th>Name</th><th>Best</th><th class="lb-col-extra">${spriteImgHTML('strike', 'sprite-header', 'Strikes')}</th><th>Played</th><th class="lb-col-extra">Pace</th></tr>`;
   }
   const entries = await fetchWeeklyLeaderboard(weekStart);
   const hasEntries = entries.length > 0;
@@ -913,7 +914,7 @@ async function _renderLeaderboardForTab(tab) {
   // for the weekly tab (which repurposes Best/Played columns).
   const thead = $('#leaderboard-table thead');
   if (thead) {
-    thead.innerHTML = '<tr><th>#</th><th>Name</th><th>Time</th><th class="lb-col-extra">💥</th><th>Par</th><th class="lb-col-extra">Pace</th></tr>';
+    thead.innerHTML = `<tr><th>#</th><th>Name</th><th>Time</th><th class="lb-col-extra">${spriteImgHTML('strike', 'sprite-header', 'Strikes')}</th><th>Par</th><th class="lb-col-extra">Pace</th></tr>`;
   }
   const today = getLocalDateString();
   const dateStr = today;
@@ -2572,6 +2573,7 @@ if (colorblindToggle) {
 // ── Init ───────────────────────────────────────────────
 
 async function init() {
+  preloadSprites();
   const theme = loadTheme();
   const unlocked = getUnlockedThemes();
 

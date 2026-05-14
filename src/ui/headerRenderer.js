@@ -7,6 +7,7 @@ import {
   flagModeBar, flagModeToggle, flagModeIcon, flagModeLabel,
 } from './domHelpers.js';
 import { getThemeEmoji } from './boardRenderer.js';
+import { applyIcon } from './spriteLoader.js';
 import { getTimedDifficulty, getSpeedRating, MAX_LEVEL } from '../logic/difficulty.js';
 import { loadStats, getDailyStreak } from '../storage/statsStorage.js';
 import { getGimmickDef } from '../logic/gimmicks.js';
@@ -179,9 +180,10 @@ export function updateHeader() {
     }
   }
 
-  if (state.status === 'won') resetBtn.textContent = getThemeEmoji('smileyWin');
-  else if (state.status === 'lost') resetBtn.textContent = getThemeEmoji('smileyLoss');
-  else resetBtn.textContent = getThemeEmoji('smiley');
+  const smileyKey = state.status === 'won' ? 'smileyWin'
+    : state.status === 'lost' ? 'smileyLoss'
+    : 'smiley';
+  applyIcon(resetBtn, smileyKey, getThemeEmoji(smileyKey), { sizeClass: 'sprite-smiley' });
 }
 
 // ── Streak Fire Effect ─────────────────────────────────
