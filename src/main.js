@@ -50,7 +50,7 @@ import {
 import {
   initFirebase, isFirebaseOnline, submitOnlineScore, fetchOnlineLeaderboard, fetchUserDailyHistory, fetchAllDailyMeta, fetchAllDailyScores, fetchWeeklyLeaderboard,
 } from './firebase/firebaseLeaderboard.js';
-import { initAnonymousAuth, loadProgress, saveDailyHistoryEntry, getUid, loadWeeklyAttempts } from './firebase/firebaseProgress.js';
+import { initAnonymousAuth, loadProgress, saveDailyHistoryEntry, getUid, loadWeeklyAttempts, loadLocalWeeklyAttempts, pruneStaleLocalWeeklyAttempts } from './firebase/firebaseProgress.js';
 // Stats-tab renderer + chart toolkit are lazy-imported in populateDailyPanel
 // so they stay off the critical load path — they only come in when the
 // user actually opens the Stats modal. Saves ~3 network round-trips
@@ -230,6 +230,15 @@ async function runStartupGate() {
   const customSeed = urlParams.get('seed');
   const today = getLocalDateString();
   const currentWeek = getWeekStart();
+
+  // Seed the weekly-attempt cache from localStorage SYNCHRONOUSLY. This
+  // closes the boot-time race where Firebase's anon-auth + fetch hadn't
+  // settled before the title screen rendered, letting the player tap
+  // Weekly and bypass the one-per-day gate. Firebase data merges over
+  // this once it arrives. Also prune stale entries from previous weeks.
+  state.cachedWeeklyDayAttempts = loadLocalWeeklyAttempts(currentWeek);
+  pruneStaleLocalWeeklyAttempts(currentWeek);
+
   if (firebaseReady && !customSeed) {
     setBootStatus('Loading today\'s puzzle…');
     try {
@@ -244,7 +253,10 @@ async function runStartupGate() {
       if (weeklyRaw) {
         state.canonicalWeeklyBoard = { weekStart: currentWeek, raw: weeklyRaw };
       }
-      state.cachedWeeklyDayAttempts = attempts || {};
+      // Merge Firebase truth over the localStorage seed — Firebase wins
+      // for any day it knows about, localStorage covers gaps when the
+      // cloud copy hasn't written through yet.
+      state.cachedWeeklyDayAttempts = { ...state.cachedWeeklyDayAttempts, ...(attempts || {}) };
     } catch (err) {
       console.warn('startup gate: pre-fetch failed:', err.message);
     }
@@ -1817,6 +1829,14 @@ function showTitleScreen() {
   persistGameState();
 
   restorePreChaosTheme();
+
+  // Idle-pause overlay is a gameplay-only surface — if it was left up by
+  // a paused-then-Home-buttoned game, hide it explicitly when the title
+  // screen comes back. The _pauseForIdle path is already status-gated to
+  // 'playing', so this only matters when stale state survives navigation.
+  const idleOverlay = document.getElementById('idle-pause-overlay');
+  if (idleOverlay) idleOverlay.classList.add('hidden');
+  state.idlePaused = false;
 
   updateTitleProgress();
   titleScreen.classList.remove('hidden');

@@ -24,7 +24,7 @@ let _preciseAccumulated = 0; // accumulated ms from previous pause/resume cycles
 // (pointer/key/throttled-move) while the game is playing, we pause the
 // timer and surface a "Paused" overlay so they don't lose seconds to
 // being AFK. Resume happens on the next input event.
-const IDLE_PAUSE_MS = 30000;
+const IDLE_PAUSE_MS = 60000;
 
 function _pauseForIdle() {
   if (state.idlePaused) return;

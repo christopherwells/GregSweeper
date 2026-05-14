@@ -172,6 +172,14 @@ export async function loadWeeklyAttempts(weekStart) {
 export function markWeeklyDayAttempted(weekStart, day) {
   if (typeof weekStart !== 'string' || !Number.isInteger(day) || day < 0 || day > 6) return;
 
+  // Mirror the attempt to localStorage so the synchronous gate (in
+  // main.js's weekly mode-card handler + reset-button handler) doesn't
+  // fail-open during the boot-time race when Firebase is still loading
+  // anonymous auth. Without this, a fresh page-load on a slow network
+  // could let the player tap Weekly before the cloud cache populates and
+  // get a second attempt for the same day.
+  saveLocalWeeklyAttempt(weekStart, day);
+
   if (!_ready || !_uid) {
     if (!_pendingWeeklyAttempts) _pendingWeeklyAttempts = {};
     _pendingWeeklyAttempts[`${weekStart}/${day}`] = true;
@@ -186,6 +194,55 @@ export function markWeeklyDayAttempted(weekStart, day) {
   _db.ref(`users/${_uid}/weeklyAttempts/${weekStart}/dayAttempts/${day}`).set(payload).catch(err => {
     console.warn('Weekly attempt save failed:', err.message);
   });
+}
+
+// ── Local-storage backup of weekly attempts ────────────
+// In-memory state.cachedWeeklyDayAttempts is repopulated from Firebase on
+// each startup, but that fetch can race with the title-screen render
+// when anonymous auth or the network is slow. Mirroring to localStorage
+// gives us a synchronous source the gate can trust before Firebase has
+// settled. Keyed per weekStart so old weeks don't pollute the current one.
+
+const LS_WEEKLY_ATTEMPTS_PREFIX = 'minesweeper_weekly_attempts_';
+
+export function loadLocalWeeklyAttempts(weekStart) {
+  if (typeof weekStart !== 'string' || !weekStart) return {};
+  try {
+    const raw = localStorage.getItem(LS_WEEKLY_ATTEMPTS_PREFIX + weekStart);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return {};
+    const clean = {};
+    for (const k of Object.keys(parsed)) {
+      const n = Number(k);
+      if (Number.isInteger(n) && n >= 0 && n <= 6 && parsed[k]) clean[n] = true;
+    }
+    return clean;
+  } catch { return {}; }
+}
+
+export function saveLocalWeeklyAttempt(weekStart, day) {
+  if (typeof weekStart !== 'string' || !weekStart) return;
+  if (!Number.isInteger(day) || day < 0 || day > 6) return;
+  try {
+    const current = loadLocalWeeklyAttempts(weekStart);
+    current[day] = true;
+    localStorage.setItem(LS_WEEKLY_ATTEMPTS_PREFIX + weekStart, JSON.stringify(current));
+  } catch { /* private browsing / quota — best-effort */ }
+}
+
+// Sweep localStorage entries for weeks we're no longer tracking. Called
+// once at startup; cheap, only touches keys with our prefix.
+export function pruneStaleLocalWeeklyAttempts(currentWeekStart) {
+  try {
+    const keep = currentWeekStart ? LS_WEEKLY_ATTEMPTS_PREFIX + currentWeekStart : null;
+    const toRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(LS_WEEKLY_ATTEMPTS_PREFIX) && k !== keep) toRemove.push(k);
+    }
+    for (const k of toRemove) localStorage.removeItem(k);
+  } catch { /* best-effort */ }
 }
 
 /**
