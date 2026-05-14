@@ -2340,6 +2340,43 @@ body {
 .par-under { color: #4caf50 !important; }
 .par-over { color: #ef5350 !important; }
 .par-even { color: var(--color-text-secondary) !important; }
+
+/* Highlight the signed-in player's own row on the daily / weekly
+   leaderboard. Themes can override --color-mine-row, but the default
+   accent-tinted background works against every shipped theme. */
+.lb-row-mine td {
+  background: var(--color-mine-row, rgba(76, 141, 255, 0.18));
+  font-weight: 700;
+}
+
+/* 7-dot history strip on the daily-win modal. Compact glance at the
+   player's recent trajectory. Today's just-completed play is the
+   rightmost dot, scaled up so it reads as "this play vs. recent
+   pattern." Missed days render as faint outlines. */
+.gameover-history-dots {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  align-items: center;
+  margin: 8px 0;
+}
+.gameover-history-dot {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--color-text-secondary, #999);
+  opacity: 0.85;
+}
+.gameover-history-dot.under { background: #4caf50; }
+.gameover-history-dot.over { background: #ef5350; }
+.gameover-history-dot.even { background: var(--color-text-secondary, #888); }
+.gameover-history-dot.missed {
+  background: transparent;
+  border: 1.5px solid var(--color-text-secondary, #888);
+  opacity: 0.35;
+}
+.gameover-history-dot.today {
+  width: 20px; height: 20px;
+  box-shadow: 0 0 0 2px var(--color-accent, #4c8dff);
+}
 .par-hint {
   color: var(--color-text-secondary);
   font-size: 0.85em;

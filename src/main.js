@@ -860,8 +860,10 @@ async function renderWeeklyLeaderboard(weekStart) {
   // Older rows from before the schema added dayBombHits/totalMoves
   // render '-' for those cells — graceful degradation, no upgrade
   // step required.
+  const myUidW = getUid();
   entries.forEach((entry, i) => {
     const tr = document.createElement('tr');
+    if (myUidW && entry.uid === myUidW) tr.classList.add('lb-row-mine');
     const used = entry.attemptsUsed || 0;
     const bombs = (typeof entry.bestDayBombHits === 'number')
       ? `<td class="lb-col-extra">${entry.bestDayBombHits}</td>`
@@ -1007,8 +1009,10 @@ async function _renderLeaderboardForTab(tab) {
     } catch (e) { dailyPar = 0; }
   }
 
+  const myUid = getUid();
   entries.forEach((entry, i) => {
     const tr = document.createElement('tr');
+    if (myUid && entry.uid === myUid) tr.classList.add('lb-row-mine');
     const bombCol = entry.bombHits != null
       ? `<td class="lb-col-extra">${entry.bombHits}</td>`
       : '<td class="lb-col-extra">-</td>';
@@ -1729,7 +1733,7 @@ function updateTitleProgress() {
       dailyEl.textContent = streak > 0 ? `Completed! 🔥 ${streak} day streak` : 'Completed today!';
       if (dailyCard) dailyCard.classList.add('daily-completed');
     } else {
-      dailyEl.textContent = streak > 0 ? `🔥 ${streak} day streak` : "Today's challenge";
+      dailyEl.textContent = streak > 0 ? `🔥 ${streak} day streak` : 'Same puzzle worldwide · ~2 min';
       if (dailyCard) dailyCard.classList.remove('daily-completed');
     }
   }

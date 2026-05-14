@@ -115,6 +115,47 @@ function renderShareCardPreview() {
   preview.classList.remove('hidden');
 }
 
+// Render the compact 7-dot daily-history strip on the win modal.
+// Reads localStorage residuals (already includes today's just-appended
+// play). One dot per of the last 7 ET dates; days the player missed
+// render as faint outlines, days they played render in green/gray/red
+// based on (time - par) sign. Today's dot is enlarged + accent-ringed.
+function _renderWinModalHistoryDots(todayDate) {
+  const el = document.getElementById('gameover-history-dots');
+  if (!el) return;
+  const residuals = loadDailyResiduals();
+  if (residuals.length === 0) {
+    el.classList.add('hidden');
+    return;
+  }
+  // Build a date → entry index for fast lookup.
+  const byDate = new Map();
+  for (const r of residuals) byDate.set(r.date, r);
+  // Walk the last 7 ET dates ending at today (or the play's date if it
+  // differs from today — e.g., a late-night submit just after midnight).
+  const dots = [];
+  const baseDate = todayDate || new Date().toISOString().slice(0, 10);
+  const [by, bm, bd] = baseDate.split('-').map(Number);
+  const baseUtc = Date.UTC(by, bm - 1, bd);
+  for (let i = 6; i >= 0; i--) {
+    const ts = baseUtc - i * 24 * 3600 * 1000;
+    const d = new Date(ts);
+    const ds = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+    const entry = byDate.get(ds);
+    let cls = 'missed';
+    if (entry) {
+      const delta = entry.time - entry.par;
+      if (delta < -0.5) cls = 'under';
+      else if (delta > 0.5) cls = 'over';
+      else cls = 'even';
+    }
+    const isToday = ds === baseDate;
+    dots.push(`<div class="gameover-history-dot ${cls}${isToday ? ' today' : ''}" title="${ds}${entry ? ` · ${entry.time}s (par ${entry.par.toFixed(1)})` : ' · no play'}"></div>`);
+  }
+  el.innerHTML = dots.join('');
+  el.classList.remove('hidden');
+}
+
 // ── Handle Win ─────────────────────────────────────────
 
 export function handleWin() {
@@ -295,6 +336,8 @@ export function handleWin() {
   if (parEl) parEl.classList.add('hidden');
   const parBreakdownEl = $('#gameover-par-breakdown');
   if (parBreakdownEl) parBreakdownEl.classList.add('hidden');
+  const historyDotsEl = document.getElementById('gameover-history-dots');
+  if (historyDotsEl) historyDotsEl.classList.add('hidden');
 
   // Timed mode: show speed rating
   if (state.gameMode === 'timed') {
@@ -413,6 +456,11 @@ export function handleWin() {
           parBreakdownEl.classList.remove('hidden');
         }
       }
+      // 7-dot history strip — at-a-glance look at the player's recent
+      // trajectory. Today's just-played dot is the rightmost; older
+      // days fall off the left edge. Reads localStorage residuals
+      // (just-appended above) so it's instant and works offline.
+      _renderWinModalHistoryDots(state.dailySeed);
     }
   } else if (state.gameMode === 'weekly') {
     // Weekly: show precise time, day-of-week dot indicators, vs-best
@@ -678,7 +726,11 @@ export function handleWin() {
   // Clear saved game state on win
   clearGameState(state.gameMode);
 
-  showModal('gameover-overlay');
+  // Delay the modal so the confetti, win chime, and final cell flip
+  // have a moment to land before the modal covers everything. 700ms is
+  // the sweet spot from CPO testing — long enough that the audio cue
+  // breathes, short enough that "the modal feels slow" doesn't start.
+  setTimeout(() => showModal('gameover-overlay'), 700);
   updatePowerUpBar();
   updateStreakBorder();
 }

@@ -8,7 +8,7 @@ import {
 } from './domHelpers.js';
 import { getThemeEmoji } from './boardRenderer.js';
 import { getTimedDifficulty, getSpeedRating, MAX_LEVEL } from '../logic/difficulty.js';
-import { loadStats } from '../storage/statsStorage.js';
+import { loadStats, getDailyStreak } from '../storage/statsStorage.js';
 import { getGimmickDef } from '../logic/gimmicks.js';
 
 // ── Checkpoint Display ─────────────────────────────────
@@ -127,7 +127,11 @@ export function updateHeader() {
 
   // Level display
   if (state.gameMode === 'daily') {
-    levelDisplay.textContent = '📅 Daily';
+    // Append the current streak (the one going INTO today's play) so
+    // the player can see what's on the line at a glance. Suppressed at
+    // streak 0/1 since "Daily · 🔥 0" reads like noise.
+    const { streak } = getDailyStreak();
+    levelDisplay.textContent = streak >= 2 ? `📅 Daily · 🔥 ${streak}` : '📅 Daily';
   } else if (state.gameMode === 'weekly') {
     const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const dayLbl = state.weeklyDay != null ? dayLabels[state.weeklyDay] : '';
