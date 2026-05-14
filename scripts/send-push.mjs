@@ -2,12 +2,21 @@
 // the current ET hour. Run by the notify-daily-ready.yml GitHub
 // Actions workflow on `0 * * * *` (every hour at minute 0).
 //
-// For each subscribed user with notificationPrefs.enabled === true and
-// notificationPrefs.hourLocal === currentHourET, send one of two
-// notification categories based on the calendar:
+// Two passes per run:
 //
-//   • weekly  — Monday morning, when a fresh weekly puzzle just opened
-//   • daily   — the default, fired any other day
+//   1. Reminder pass — for users with notificationPrefs.enabled === true
+//      and notificationPrefs.hourLocal === currentHourET, send a daily
+//      or weekly reminder.
+//        • weekly — Monday (the fresh weekly puzzle just opened)
+//        • daily  — any other day
+//
+//   2. Streak-warning pass — only when currentHourET === 20 (8pm ET),
+//      regardless of each user's hourLocal preference. For every user
+//      with notificationPrefs.streakWarning !== false, dailyStreak ≥ 3,
+//      and lastDailyDate < today (i.e., they haven't played yet today
+//      and their streak is genuinely at risk), send a streak-rescue
+//      push naming their streak length. Uses a separate tag so it
+//      stacks with the morning reminder rather than replacing it.
 //
 // FCM REST API is called with an OAuth2 access token derived from the
 // service-account JSON in FIREBASE_SERVICE_ACCOUNT (repo secret). FCM
@@ -57,18 +66,26 @@ function _categoryFor({ date, dow }) {
 // every subscriber on the same day sees the same wording, but day-to-
 // day the phrasing varies and doesn't feel scripted.
 const DAILY_BODIES = [
-  "Today's daily is waiting for you.",
-  'A fresh daily puzzle is ready.',
-  "Don't forget your daily!",
-  "Play your daily before the day's over.",
-  "Your daily streak is waiting.",
-  "Today's puzzle just opened.",
-  "Beat today's daily.",
+  "Today's puzzle is up. ~2 minutes.",
+  "Fresh daily — same board for everyone today.",
+  "Today's daily is live. Sharpen up.",
+  "Quick puzzle break? Daily's waiting.",
+  "Time to defuse. Today's daily is open.",
+  "One board, one shot. Today's daily is ready.",
+  "Daily's open — see if you can beat par.",
 ];
 const WEEKLY_BODIES = [
-  "This week's puzzle is open. Same board for 7 days, best time wins.",
-  "A new weekly puzzle just dropped. Seven days, one board, best time wins.",
-  "This week's grand puzzle is live. Same board all week — chase your best time.",
+  "New weekly. One board all week, best time wins.",
+  "This week's puzzle is open. 7 chances, fastest run keeps the crown.",
+  "Fresh weekly puzzle. Same board Mon–Sun — your best attempt counts.",
+];
+// Streak-rescue evening pushes. {streak} interpolates the user's current
+// dailyStreak. Tone is direct but not panicked — the reader DOES want
+// the reminder, that's why they enabled streakWarning.
+const STREAK_BODIES = [
+  "Your {streak}-day streak ends at midnight ET.",
+  "{streak} days in a row. Don't drop it tonight.",
+  "Streak alert: {streak} days going. Today's daily is still open.",
 ];
 function _pickBody(date, pool) {
   // Stable per-date hash so all subscribers on the same date see the
@@ -93,6 +110,22 @@ function _payloadFor(category, date) {
     deepLink: './?mode=daily',
   };
 }
+
+function _streakPayload(streak, date) {
+  const body = _pickBody(date, STREAK_BODIES).replace('{streak}', String(streak));
+  return {
+    title: 'GregSweeper — Streak warning',
+    body,
+    tag: 'gregsweeper-streak',
+    deepLink: './?mode=daily',
+  };
+}
+
+// 8pm ET — late enough that a user who plays after work has had their
+// chance, early enough to leave them several hours to act on the
+// rescue. Hardcoded rather than per-user because the at-risk window
+// is the same for everyone (midnight ET).
+const STREAK_WARNING_HOUR = 20;
 
 // Mint an OAuth2 access token from the service-account JSON. The token
 // needs three scopes: firebase.messaging for FCM REST, firebase.database
@@ -184,6 +217,40 @@ async function sendOneFcmMessage(accessToken, token, payload) {
   }
 }
 
+// Generic send pass: walk every user, ask the caller's perUserPayload
+// callback whether and what to send. Centralizes the FCM send + invalid-
+// subscription cleanup so the reminder pass and the streak pass don't
+// duplicate that boilerplate.
+async function _sendPass(accessToken, users, { label, perUserPayload }) {
+  let matched = 0, sent = 0, failed = 0;
+  for (const [uid, userData] of Object.entries(users || {})) {
+    const sub = userData?.pushSubscription;
+    if (!sub || !sub.token) continue;
+    const payload = perUserPayload(uid, userData);
+    if (!payload) continue;
+    matched++;
+    try {
+      await sendOneFcmMessage(accessToken, sub.token, payload);
+      sent++;
+    } catch (err) {
+      failed++;
+      console.warn(`  [${label}] uid=${uid}: ${err.message}`);
+      // Only clear the subscription on EXPLICIT token-invalidation signals
+      // from FCM. UNREGISTERED (token no longer valid) and NOT_FOUND
+      // (legacy) are the only error codes that mean "this token will
+      // never work again." Everything else (transient 4xx, 5xx) keeps
+      // the subscription and lets the next hourly cron retry.
+      if (/UNREGISTERED|"NOT_FOUND"|status"\s*:\s*"NOT_FOUND/.test(err.message)) {
+        try {
+          await fetch(`${DB_BASE}/users/${uid}/pushSubscription.json?access_token=${encodeURIComponent(accessToken)}`, { method: 'DELETE' });
+          console.warn(`    cleared invalid subscription for ${uid}`);
+        } catch {}
+      }
+    }
+  }
+  return { matched, sent, failed };
+}
+
 // Fetch the entire users/* tree at once. The /users path requires auth
 // for individual sub-tree reads (uid match), but the SERVICE ACCOUNT
 // bypasses rules entirely when using its access token via the REST DB
@@ -211,53 +278,48 @@ async function fetchAllUsers(accessToken) {
 
   const { date, hour, dow } = _etDateParts();
   const category = _categoryFor({ date, dow });
-  const payload = _payloadFor(category, date);
+  const reminderPayload = _payloadFor(category, date);
 
   console.log(`[${date} ${String(hour).padStart(2, '0')}:00 ET] category=${category}`);
 
   const accessToken = await getAccessToken(serviceAccount);
   const users = await fetchAllUsers(accessToken);
 
-  let matched = 0;
-  let sent = 0;
-  let failed = 0;
+  // ── Reminder pass: hourLocal-matched daily/weekly push ─────
+  const r = await _sendPass(accessToken, users, {
+    label: 'reminder',
+    perUserPayload(uid, userData) {
+      const prefs = userData?.notificationPrefs;
+      if (!prefs || !prefs.enabled) return null;
+      if (prefs.hourLocal !== hour) return null;
+      // Per-category opt-outs (default ON if missing — matches the toggle defaults).
+      if (category === 'daily' && prefs.dailyReminder === false) return null;
+      return reminderPayload;
+    },
+  });
 
-  for (const [uid, userData] of Object.entries(users || {})) {
-    const prefs = userData?.notificationPrefs;
-    const sub = userData?.pushSubscription;
-    if (!prefs || !prefs.enabled || !sub || !sub.token) continue;
-    if (prefs.hourLocal !== hour) continue;
-    // Per-category opt-outs (default ON if missing — same as the
-    // toggle UI's defaults). streakWarning is reserved for a future
-    // evening fire; not emitted by this script yet.
-    if (category === 'daily' && prefs.dailyReminder === false) continue;
-
-    matched++;
-    try {
-      await sendOneFcmMessage(accessToken, sub.token, payload);
-      sent++;
-    } catch (err) {
-      failed++;
-      console.warn(`  uid=${uid}: ${err.message}`);
-      // Only clear the subscription on EXPLICIT token-invalidation signals
-      // from FCM. The previous regex /\b40[04]\b/ also matched transient
-      // 400 INVALID_ARGUMENT responses (payload-too-large, malformed body,
-      // quota etc.), which wrongly deleted valid subscriptions on every
-      // transient hiccup. Per FCM v1 docs, UNREGISTERED (token no longer
-      // valid) and NOT_FOUND (legacy) are the only error codes that mean
-      // "this token will never work again." Everything else (transient
-      // 4xx, 5xx) keeps the subscription and lets the next hourly cron
-      // retry.
-      if (/UNREGISTERED|"NOT_FOUND"|status"\s*:\s*"NOT_FOUND/.test(err.message)) {
-        try {
-          await fetch(`${DB_BASE}/users/${uid}/pushSubscription.json?access_token=${encodeURIComponent(accessToken)}`, { method: 'DELETE' });
-          console.warn(`    cleared invalid subscription for ${uid}`);
-        } catch {}
-      }
-    }
+  // ── Streak-warning pass: 8pm ET evening rescue ─────────────
+  let s = { matched: 0, sent: 0, failed: 0 };
+  if (hour === STREAK_WARNING_HOUR) {
+    s = await _sendPass(accessToken, users, {
+      label: 'streak-warning',
+      perUserPayload(uid, userData) {
+        const prefs = userData?.notificationPrefs;
+        if (!prefs || !prefs.enabled) return null;
+        // Default ON if missing — same convention as dailyReminder.
+        if (prefs.streakWarning === false) return null;
+        const streak = userData?.dailyStreak || 0;
+        if (streak < 3) return null;
+        const lastDate = userData?.lastDailyDate || '';
+        // String comparison works because YYYY-MM-DD is lexicographically
+        // ordered. If lastDate >= today, they already played today.
+        if (lastDate >= date) return null;
+        return _streakPayload(streak, date);
+      },
+    });
   }
 
-  console.log(`Done: matched=${matched}, sent=${sent}, failed=${failed}`);
+  console.log(`Done: reminder matched=${r.matched} sent=${r.sent} failed=${r.failed}; streak matched=${s.matched} sent=${s.sent} failed=${s.failed}`);
 })().catch(err => {
   console.error('send-push failed:', err.message);
   process.exit(1);

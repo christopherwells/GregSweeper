@@ -257,4 +257,21 @@ export async function updateNotificationHour(hourLocal) {
   }
 }
 
+/**
+ * Toggle the streak-warning evening push. Fires at 8pm ET when the
+ * user has a streak ≥ 3 and hasn't played today. Independent of the
+ * morning daily-reminder hour preference.
+ */
+export async function updateStreakWarning(enabled) {
+  try {
+    const uid = getUid();
+    if (!uid || typeof firebase === 'undefined' || !firebase.database) return false;
+    await firebase.database().ref(`users/${uid}/notificationPrefs/streakWarning`).set(!!enabled);
+    return true;
+  } catch (err) {
+    console.warn('updateStreakWarning failed:', err.message);
+    return false;
+  }
+}
+
 export { _isIOS as isIOS, _isInstalledPWA as isInstalledPWA };

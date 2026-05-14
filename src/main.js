@@ -2406,6 +2406,7 @@ if (modifierToggle) {
 const dailyReminderToggle = $('#daily-reminder-toggle');
 const reminderHourSelect = $('#reminder-hour-select');
 const dailyReminderHint = $('#daily-reminder-hint');
+const streakWarningToggle = $('#streak-warning-toggle');
 
 async function syncReminderUI() {
   if (!dailyReminderToggle) return;
@@ -2423,6 +2424,12 @@ async function syncReminderUI() {
     if (reminderHourSelect) {
       reminderHourSelect.value = String(prefs.hourLocal ?? 9);
       reminderHourSelect.disabled = false;
+    }
+    if (streakWarningToggle) {
+      streakWarningToggle.checked = !!prefs.streakWarning;
+      // Disable when notifications themselves are off — toggling
+      // streak-rescue alone without parent push enabled is a no-op.
+      streakWarningToggle.disabled = !prefs.enabled;
     }
   } catch (err) {
     console.warn('syncReminderUI failed:', err.message);
@@ -2453,8 +2460,10 @@ if (dailyReminderToggle) {
     const { enableNotifications, disableNotifications, isIOS, isInstalledPWA } = await import('./firebase/firebasePush.js');
     if (wantsOn) {
       const hour = parseInt(reminderHourSelect?.value || '9', 10);
-      const result = await enableNotifications({ hourLocal: hour, dailyReminder: true });
+      const streakOn = !!streakWarningToggle?.checked;
+      const result = await enableNotifications({ hourLocal: hour, dailyReminder: true, streakWarning: streakOn });
       if (result === 'success') {
+        if (streakWarningToggle) streakWarningToggle.disabled = false;
         showToast('🔔 Daily reminders enabled');
       } else if (result === 'denied') {
         dailyReminderToggle.checked = false;
@@ -2481,6 +2490,10 @@ if (dailyReminderToggle) {
     } else {
       const result = await disableNotifications();
       if (result === 'success') {
+        if (streakWarningToggle) {
+          streakWarningToggle.checked = false;
+          streakWarningToggle.disabled = true;
+        }
         showToast('🔕 Daily reminders disabled');
       }
     }
@@ -2493,6 +2506,20 @@ if (reminderHourSelect) {
     const hour = parseInt(reminderHourSelect.value, 10);
     const ok = await updateNotificationHour(hour);
     if (ok) showToast(`Reminder time set to ${reminderHourSelect.options[reminderHourSelect.selectedIndex].textContent}`);
+  });
+}
+
+if (streakWarningToggle) {
+  streakWarningToggle.addEventListener('change', async () => {
+    const { updateStreakWarning } = await import('./firebase/firebasePush.js');
+    const enabled = streakWarningToggle.checked;
+    const ok = await updateStreakWarning(enabled);
+    if (ok) {
+      showToast(enabled ? '🔥 Streak rescue on (8pm ET)' : 'Streak rescue off');
+    } else {
+      streakWarningToggle.checked = !enabled;
+      showToast('Could not update. Try again later.');
+    }
   });
 }
 
