@@ -686,7 +686,9 @@ body {
   white-space: nowrap;
   pointer-events: none;
   opacity: 0.85;
-  z-index: 1400;
+  /* Below .modal (z-index 1001) so the gameover overlay covers the
+     label cleanly. Still well above board cells. */
+  z-index: 900;
   animation: fade-in-start 0.5s ease-out;
 }
 
@@ -744,7 +746,9 @@ body {
   padding: 2px 6px;
   border-radius: 4px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
-  z-index: 1400;
+  /* Below .modal (z-index 1001) so the gameover overlay covers the
+     label cleanly when it slides in after the cascade. */
+  z-index: 900;
   animation: fade-in-start 0.4s ease-out;
 }
 .next-move-label.label-on-cell {

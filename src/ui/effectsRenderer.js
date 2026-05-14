@@ -69,18 +69,17 @@ export function chainRevealMines(hitRow, hitCol) {
   }
   cascade.sort((a, b) => a.dist - b.dist);
 
-  // Reduced motion: collapse the cascade to instant. Set isStrike on
-  // every non-flagged mine synchronously, one render, no per-mine
-  // sounds, resolve the promise right away.
-  if (prefersReducedMotion()) {
-    for (const { r, c } of cascade) state.board[r][c].isStrike = true;
-    updateAllCells();
-    return Promise.resolve();
-  }
-
-  // First repaint reveals every mine as mine.png. The cascade then swaps
-  // each non-flagged one to strike.png via per-mine updateCell calls.
+  // First repaint reveals every mine as mine.png. The cascade then
+  // swaps each non-flagged one to strike.png via per-mine updateCell.
   updateAllCells();
+
+  // Reduced-motion preference suppresses the SCALE/POP keyframe but
+  // does NOT collapse the staggered timing or the per-3rd-mine sounds —
+  // the user reported "bombs aren't making multiple noises and the
+  // modal comes up too soon," which is exactly what happens if the
+  // entire cascade gets short-circuited under prefers-reduced-motion.
+  // Sounds and modal-delay are not motion concerns, so they stay.
+  const reducedMotion = prefersReducedMotion();
 
   for (let i = 0; i < cascade.length; i++) {
     const { r, c } = cascade[i];
@@ -89,13 +88,15 @@ export function chainRevealMines(hitRow, hitCol) {
       if (!cell) return;
       cell.isStrike = true;
       updateCell(r, c);
-      const cellEl = boardEl.children[r * state.cols + c];
-      if (cellEl) {
-        cellEl.style.animationDelay = '0ms';
-        cellEl.classList.remove('mine-chain');
-        // Force reflow so re-adding the class restarts the keyframe
-        void cellEl.offsetWidth;
-        cellEl.classList.add('mine-chain');
+      if (!reducedMotion) {
+        const cellEl = boardEl.children[r * state.cols + c];
+        if (cellEl) {
+          cellEl.style.animationDelay = '0ms';
+          cellEl.classList.remove('mine-chain');
+          // Force reflow so re-adding the class restarts the keyframe
+          void cellEl.offsetWidth;
+          cellEl.classList.add('mine-chain');
+        }
       }
       // Sound every 3rd mine starting at i=3. i=0 (hit mine) is covered
       // by the initial playExplosion() in handleLoss, so we skip it.
