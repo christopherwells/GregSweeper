@@ -128,17 +128,22 @@ export const state = {
 };
 
 // ── Encouragement Lines ────────────────────────────────
+// Shown on loss screens. Unified pool — was three near-identical
+// variants ("you got this", "almost had it") plus a couple of weird
+// outliers ("the board fears your return"). Pool below favors honest
+// over chipper; "the right cell was a 50-50, you guessed wrong" reads
+// more grounded than "shake it off."
 export const ENCOURAGEMENT_LINES = [
-  'You got this! Try again 💪',
-  'Almost had it! One more try?',
-  'Even the best stumble sometimes.',
-  'Mines are sneaky — you\'ll get them!',
-  'Shake it off and sweep again! 🧹',
-  'Every loss makes you stronger.',
-  'That mine came out of nowhere!',
-  'Close one! Give it another shot.',
-  'Keep sweeping — glory awaits! ⚔️',
-  'The board fears your return.',
+  'One more.',
+  'Tomorrow\'s daily is a fresh board.',
+  'That one was a thinker.',
+  'Sometimes the numbers lie. Try again.',
+  'Shake it off — next board\'s yours.',
+  'Close. Pull at the corner next time.',
+  'Mines hide. You find. Eventually.',
+  'New board, new chance.',
+  'The good news: there\'s another puzzle.',
+  'Skill is reps. This was a rep.',
 ];
 
 export function getRevealedCells() {

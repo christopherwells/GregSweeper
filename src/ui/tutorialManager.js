@@ -97,9 +97,9 @@ const STEPS = [
   {
     id: 'complete',
     title: 'You did it! \uD83C\uDF89',
-    text: "You\u2019ve mastered the basics! Reveal safe cells, use numbers to find mines, flag them, and chord to clear fast.",
+    text: "That\u2019s it \u2014 you know how to play. Today\u2019s daily is waiting; same puzzle for everyone, leaderboard inside.",
     action: 'finish',
-    buttonText: "Let\u2019s Play!",
+    buttonText: "Play today\u2019s daily",
   },
 ];
 

@@ -1755,7 +1755,7 @@ function updateTitleProgress() {
       weeklyProgressEl.textContent = `Play today · ${used}/7 used`;
       weeklyCard.classList.remove('daily-completed');
     } else {
-      weeklyProgressEl.textContent = 'Same puzzle, 7 chances';
+      weeklyProgressEl.textContent = 'Same puzzle all week — your best run wins.';
       weeklyCard.classList.remove('daily-completed');
     }
   }
@@ -1954,7 +1954,7 @@ for (const card of $$('.mode-card')) {
     if (mode === 'daily') {
       const today = getLocalDateString();
       if (isDailyCompleted(today)) {
-        showToast("You've already completed today's daily!");
+        showToast("Already done for today. Weekly's open if you want more.");
         return;
       }
       state.dailySeed = null;
