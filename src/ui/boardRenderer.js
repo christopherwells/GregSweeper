@@ -322,31 +322,40 @@ export function setDailySuggestedCell(cell) {
   _dailySuggestedCell = cell;
 }
 
-function updateStartHereLabel() {
-  // Remove any existing label
-  const old = document.getElementById("start-here-label");
-  if (old) old.remove();
-
-  if (state.gameMode !== "daily") return;
-  if (state.status !== "idle" && !(state.status === "playing" && state.revealedCount <= 1)) return;
-
-  const cellEl = boardEl.querySelector(".suggested-start");
-  if (!cellEl) return;
-
+function _placeLabel(cellEl, id, text, className) {
   const label = document.createElement("div");
-  label.id = "start-here-label";
-  label.textContent = "Start here";
-  label.className = "start-here-label";
-
-  // Position relative to the board container
+  label.id = id;
+  label.textContent = text;
+  label.className = className;
   const boardRect = boardEl.getBoundingClientRect();
   const cellRect = cellEl.getBoundingClientRect();
-  const x = cellRect.left - boardRect.left + cellRect.width / 2;
-  const y = cellRect.top - boardRect.top - 6;
-
-  label.style.left = x + "px";
-  label.style.top = y + "px";
+  label.style.left = (cellRect.left - boardRect.left + cellRect.width / 2) + "px";
+  label.style.top = (cellRect.top - boardRect.top - 6) + "px";
   boardEl.parentElement.appendChild(label);
+}
+
+function updateStartHereLabel() {
+  // Always remove existing labels first so they don't double up on
+  // re-render or stick around after the cell they pointed at is gone.
+  document.getElementById("start-here-label")?.remove();
+  document.getElementById("next-move-label")?.remove();
+
+  // Daily "Start here" — pre-first-click marker for the solver's best
+  // opener. Only shows on daily mode while the board is fresh.
+  if (state.gameMode === "daily" &&
+      (state.status === "idle" || (state.status === "playing" && state.revealedCount <= 1))) {
+    const startCell = boardEl.querySelector(".suggested-start");
+    if (startCell) _placeLabel(startCell, "start-here-label", "Start here", "start-here-label");
+  }
+
+  // Post-loss "NEXT MOVE" — the solver-suggested safe cell that would
+  // have been the right click instead of the mine. Fires on any mode
+  // that sets cell.suggestedMove (challenge + timed; handleLoss sets
+  // it before the cascade reveals).
+  if (state.status === "lost") {
+    const nextCell = boardEl.querySelector(".suggested-move");
+    if (nextCell) _placeLabel(nextCell, "next-move-label", "NEXT MOVE", "next-move-label");
+  }
 }
 
 /** Update only the specified cells (array of {row, col} objects) */

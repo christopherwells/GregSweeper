@@ -342,8 +342,9 @@ export function handleWin() {
 
   // Timed mode: show speed rating
   if (state.gameMode === 'timed') {
-    const rating = getSpeedRating(state.currentLevel, state.elapsedTime);
-    gameoverTime.textContent = `Time: ${state.elapsedTime}s — ${rating.icon} ${rating.name}!`;
+    const precise = state.preciseTime || state.elapsedTime;
+    const rating = getSpeedRating(state.currentLevel, precise);
+    gameoverTime.textContent = `Time: ${precise.toFixed(1)}s — ${rating.icon} ${rating.name}!`;
   } else if (state.gameMode === 'daily') {
     // Daily: show precise time + par comparison
     const precise = state.preciseTime || state.elapsedTime;
@@ -550,7 +551,8 @@ export function handleWin() {
       }).catch(() => {});
     }
   } else {
-    gameoverTime.textContent = `Time: ${state.elapsedTime}s${strikesInfo}`;
+    const precise = state.preciseTime || state.elapsedTime;
+    gameoverTime.textContent = `Time: ${precise.toFixed(1)}s${strikesInfo}`;
   }
 
   // Stats cascade animation on time display
@@ -635,9 +637,10 @@ export function handleWin() {
     if (chaosNextBtn) chaosNextBtn.classList.remove('hidden');
     if (chaosRunSummary) chaosRunSummary.classList.add('hidden');
     // Update chaos state for next round
-    state.chaosTotalTime = (state.chaosTotalTime || 0) + state.elapsedTime;
+    const precise = state.preciseTime || state.elapsedTime;
+    state.chaosTotalTime = (state.chaosTotalTime || 0) + precise;
     gameoverTitle.textContent = 'Board Cleared!';
-    gameoverTime.textContent = 'Round ' + (state.chaosRound || 1) + ' · ' + state.elapsedTime + 's';
+    gameoverTime.textContent = 'Round ' + (state.chaosRound || 1) + ' · ' + precise.toFixed(1) + 's';
   } else {
     if (chaosNextBtn) chaosNextBtn.classList.add('hidden');
     if (chaosRunSummary) chaosRunSummary.classList.add('hidden');
@@ -774,8 +777,12 @@ export function handleLoss(mineRow, mineCol) {
     if (cell) cell.suggestedMove = true;
   }
 
-  // Chain explosion: reveal mines in expanding rings from the hit
-  chainRevealMines(mineRow, mineCol);
+  // Chain detonation: each non-flagged mine pops in turn from the blast
+  // outward, swapping mine.png to strike.png with explosion sound every
+  // 3rd. Returns a Promise resolving when the cascade settles; we attach
+  // the modal reveal to it below so the modal doesn't interrupt the
+  // animation.
+  const cascadePromise = chainRevealMines(mineRow, mineCol);
 
   playExplosion();
   triggerHeavyShake();
@@ -837,9 +844,11 @@ export function handleLoss(mineRow, mineCol) {
       if (bestRunEl) bestRunEl.textContent = chaosStats?.bestRun || boardsCleared;
     }
   } else if (lostLevel > state.currentLevel && isLevelMode) {
-    gameoverTime.textContent = 'Time: ' + state.elapsedTime + 's · Back to Level ' + state.currentLevel;
+    const precise = state.preciseTime || state.elapsedTime;
+    gameoverTime.textContent = 'Time: ' + precise.toFixed(1) + 's · Back to Level ' + state.currentLevel;
   } else {
-    gameoverTime.textContent = 'Time: ' + state.elapsedTime + 's';
+    const precise = state.preciseTime || state.elapsedTime;
+    gameoverTime.textContent = 'Time: ' + precise.toFixed(1) + 's';
   }
 
   // Show encouragement line
@@ -900,7 +909,11 @@ export function handleLoss(mineRow, mineCol) {
   // Clear saved game state on loss
   clearGameState(state.gameMode);
 
-  setTimeout(() => showModal('gameover-overlay'), 900);
+  // Show the modal only after the chain-detonation cascade finishes
+  // (resolved Promise from chainRevealMines). Reduced-motion path
+  // resolves the promise instantly, so the modal still appears
+  // immediately for those users.
+  cascadePromise.then(() => showModal('gameover-overlay'));
   updatePowerUpBar();
   updateStreakBorder();
   updateCheckpointDisplay();

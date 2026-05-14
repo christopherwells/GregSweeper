@@ -94,11 +94,22 @@ export function stopTimer() {
     clearInterval(state.timerId);
     state.timerId = null;
   }
-  // Compute precise elapsed time in tenths of a second
-  if (_preciseStartTime) {
+  // Compute precise elapsed time in tenths of a second. Three cases:
+  // 1. Timer running normally — _preciseStartTime set; combine with any
+  //    accumulated pause history.
+  // 2. Timer was paused at stop (idle-pause or visibility hide) —
+  //    _preciseStartTime is null but _preciseAccumulated still has the
+  //    real elapsed up to the pause. Commit that.
+  // 3. Already stopped — both null/zero; preserve the previous
+  //    preciseTime so a defensive double-stopTimer call doesn't blow
+  //    away the winning time.
+  if (_preciseStartTime !== null) {
     const totalMs = _preciseAccumulated + (Date.now() - _preciseStartTime);
-    state.preciseTime = Math.round(totalMs / 100) / 10; // round to tenths
+    state.preciseTime = Math.round(totalMs / 100) / 10;
     _preciseStartTime = null;
+    _preciseAccumulated = 0;
+  } else if (_preciseAccumulated > 0) {
+    state.preciseTime = Math.round(_preciseAccumulated / 100) / 10;
     _preciseAccumulated = 0;
   }
   timerEl.classList.remove('timer-critical', 'timer-warning');

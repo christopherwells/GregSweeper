@@ -1,7 +1,8 @@
 import { state } from '../state/gameState.js';
 import { boardEl, shakeWrapper, particleCanvas } from './domHelpers.js';
 import { revealAllMines } from '../logic/boardSolver.js';
-import { updateAllCells } from './boardRenderer.js';
+import { updateAllCells, updateCell } from './boardRenderer.js';
+import { playExplosion } from '../audio/sounds.js';
 
 // ── Reduced Motion Detection ────────────────────────────
 const prefersReducedMotion = () =>
@@ -41,43 +42,105 @@ export function showGreenFlash() {
   setTimeout(() => flash.remove(), 500);
 }
 
-// Chain-reveal mines outward from hit point for dramatic effect
+// Chain-detonation cascade radiating outward from the hit point. Each
+// non-flagged mine pops in turn, swaps from mine.png to strike.png via
+// cell.isStrike, and triggers an explosion sound every 3rd mine. The
+// initial blast from handleLoss covers i=0; cascade sounds start at i=3.
+// Correctly-flagged mines stay revealed but are NOT in the cascade —
+// they keep mine.png + their green outline.
+const CASCADE_STEP_MS = 120;
+const CASCADE_SOUND_AT = 3;
+const CASCADE_SETTLE_MS = 300;
+
 export function chainRevealMines(hitRow, hitCol) {
   revealAllMines(state.board);
 
-  // Find all mine cells and sort by distance from hit
-  const mineCells = [];
+  // Build cascade list = mines minus correctly-flagged ones, sorted by
+  // Manhattan distance from blast. Hit mine is at distance 0 and pops
+  // first as the trigger.
+  const cascade = [];
   for (let r = 0; r < state.rows; r++) {
     for (let c = 0; c < state.cols; c++) {
-      if (state.board[r][c].isMine) {
-        const dist = Math.abs(r - hitRow) + Math.abs(c - hitCol);
-        mineCells.push({ r, c, dist });
+      const cell = state.board[r][c];
+      if (cell.isMine && !cell.correctFlag) {
+        cascade.push({ r, c, dist: Math.abs(r - hitRow) + Math.abs(c - hitCol) });
       }
     }
   }
-  mineCells.sort((a, b) => a.dist - b.dist);
+  cascade.sort((a, b) => a.dist - b.dist);
 
-  // Reveal immediately — add staggered explosion animation
+  // Reduced motion: collapse the cascade to instant. Set isStrike on
+  // every non-flagged mine synchronously, one render, no per-mine
+  // sounds, resolve the promise right away.
+  if (prefersReducedMotion()) {
+    for (const { r, c } of cascade) state.board[r][c].isStrike = true;
+    updateAllCells();
+    return Promise.resolve();
+  }
+
+  // First repaint reveals every mine as mine.png. The cascade then swaps
+  // each non-flagged one to strike.png via per-mine updateCell calls.
   updateAllCells();
-  if (!prefersReducedMotion()) {
-    for (let i = 0; i < mineCells.length; i++) {
-      const { r, c } = mineCells[i];
+
+  for (let i = 0; i < cascade.length; i++) {
+    const { r, c } = cascade[i];
+    setTimeout(() => {
+      const cell = state.board[r]?.[c];
+      if (!cell) return;
+      cell.isStrike = true;
+      updateCell(r, c);
       const cellEl = boardEl.children[r * state.cols + c];
       if (cellEl) {
-        cellEl.style.animationDelay = `${i * 50}ms`;
+        cellEl.style.animationDelay = '0ms';
+        cellEl.classList.remove('mine-chain');
+        // Force reflow so re-adding the class restarts the keyframe
+        void cellEl.offsetWidth;
         cellEl.classList.add('mine-chain');
       }
-    }
+      // Sound every 3rd mine starting at i=3. i=0 (hit mine) is covered
+      // by the initial playExplosion() in handleLoss, so we skip it.
+      if (i > 0 && i % CASCADE_SOUND_AT === 0) {
+        playExplosion();
+      }
+    }, i * CASCADE_STEP_MS);
   }
+
+  // Promise resolves after the last mine's pop animation has had a
+  // moment to settle. handleLoss awaits this before showing the modal.
+  return new Promise(resolve => {
+    setTimeout(resolve, cascade.length * CASCADE_STEP_MS + CASCADE_SETTLE_MS);
+  });
 }
 
 // ── Celebration Effects ─────────────────────────────────
 
 export function showCelebration() {
   showGreenFlash();
+  showVictoryOverlay();
   if (prefersReducedMotion()) return;
-  // Single lightweight confetti burst — 60 particles, simple shapes
-  showConfettiBurst(0.5, 0.4, 60);
+  // Triple confetti burst staggered for that "you DID it" feeling. Was a
+  // single 60-particle burst; promoted the time-record pattern (3 bursts
+  // at 200/500/800 ms with cross-screen positions) up to every win.
+  showConfettiBurst(0.5, 0.3, 60);
+  setTimeout(() => showConfettiBurst(0.3, 0.5, 35), 250);
+  setTimeout(() => showConfettiBurst(0.7, 0.5, 35), 550);
+}
+
+// VICTORY! overlay — large gold text that bounces in over the board for
+// ~700 ms then fades out. Built inline so the boot overlay's loading
+// path doesn't need to know about it.
+export function showVictoryOverlay() {
+  const app = document.getElementById('app');
+  if (!app) return;
+  // Remove any stale overlay from a previous rapid win-loss-win cycle
+  document.getElementById('victory-overlay')?.remove();
+  const div = document.createElement('div');
+  div.id = 'victory-overlay';
+  div.className = 'victory-overlay';
+  div.textContent = 'VICTORY!';
+  div.setAttribute('aria-hidden', 'true');
+  app.appendChild(div);
+  setTimeout(() => div.remove(), 900);
 }
 
 export function showConfettiBurst(originX, originY, count) {
