@@ -2216,6 +2216,20 @@ $('#btn-reset-profile').addEventListener('click', () => {
 $('#gameover-retry').addEventListener('click', () => {
   const postDeathBar = $('#post-death-bar');
   if (postDeathBar) postDeathBar.classList.add('hidden');
+  // Weekly: refuse a fresh attempt if today's slot has already been
+  // used. The reset (smiley) button and the mode-card handler both
+  // enforce this; the Play Again button on the gameover modal was the
+  // only gameplay entry-point that didn't, so clicking Play Again
+  // after a weekly win spawned a second attempt for the same day.
+  if (state.gameMode === 'weekly') {
+    const dayIdx = getWeekDayIndex();
+    if (state.cachedWeeklyDayAttempts && state.cachedWeeklyDayAttempts[dayIdx]) {
+      showToast("You've already played today's weekly puzzle. Come back tomorrow!");
+      hideModal('gameover-overlay');
+      showTitleScreen();
+      return;
+    }
+  }
   // Chaos mode: "Play Again" starts a fresh run
   if (state.gameMode === 'chaos') {
     state.chaosRound = 1;
@@ -2245,6 +2259,18 @@ $('#gameover-explore').addEventListener('click', () => {
 $('#post-death-replay').addEventListener('click', () => {
   const postDeathBar = $('#post-death-bar');
   if (postDeathBar) postDeathBar.classList.add('hidden');
+  // Same weekly gate as the gameover-retry handler — daily/weekly use
+  // a one-attempt-per-day mechanic, so post-death replay must respect
+  // it. Daily lock-out lives in newGame's daily branch; weekly needs
+  // the explicit check here.
+  if (state.gameMode === 'weekly') {
+    const dayIdx = getWeekDayIndex();
+    if (state.cachedWeeklyDayAttempts && state.cachedWeeklyDayAttempts[dayIdx]) {
+      showToast("You've already played today's weekly puzzle. Come back tomorrow!");
+      showTitleScreen();
+      return;
+    }
+  }
   newGame();
 });
 
