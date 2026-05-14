@@ -5275,16 +5275,29 @@ pre.diagnostics-pre {
 .cell.strike-cell {
   background-color: rgba(220, 80, 60, 0.22) !important;
 }
+/* Use max-width/max-height + width:auto/height:auto so the sprite stays
+   inside the cell on every browser, including ones where percentage
+   height on a flex item resolves to 0 or leaks intrinsic dimensions.
+   margin:auto centers the image when its natural size is smaller than
+   the cap (it never is here — natural is 768×768 — but keeps the
+   rule robust under future sprite resizes). object-fit:contain is a
+   no-op when the cap matches aspect, useful insurance otherwise. */
 .cell > .game-sprite.sprite-cell {
   display: block;
-  width: 88%;
-  height: 88%;
+  width: auto;
+  height: auto;
+  max-width: 88%;
+  max-height: 88%;
+  margin: auto;
   object-fit: contain;
 }
 .smiley-btn > .game-sprite.sprite-smiley {
   display: block;
-  width: 78%;
-  height: 78%;
+  width: auto;
+  height: auto;
+  max-width: 78%;
+  max-height: 78%;
+  margin: auto;
   object-fit: contain;
 }
 .game-sprite.sprite-header {
