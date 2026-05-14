@@ -122,13 +122,25 @@ export function chainRevealMines(hitRow, hitCol) {
 
 // ── Celebration Effects ─────────────────────────────────
 
+// Lightweight transition effect — used by the "Next Level" button on
+// the gameover modal to acknowledge advancement without claiming the
+// new level is won. Was the original showCelebration before the
+// board-win VICTORY ceremony was bolted on top of it.
 export function showCelebration() {
+  showGreenFlash();
+  if (prefersReducedMotion()) return;
+  showConfettiBurst(0.5, 0.4, 60);
+}
+
+// Full "you beat the board" ceremony — VICTORY! overlay, triple
+// confetti, green flash. Called by handleWin only. Kept separate from
+// showCelebration so the next-level transition doesn't inherit the
+// VICTORY text — it should only show when the player actually wins
+// the board, not when they tap to advance.
+export function showVictoryCelebration() {
   showGreenFlash();
   showVictoryOverlay();
   if (prefersReducedMotion()) return;
-  // Triple confetti burst staggered for that "you DID it" feeling. Was a
-  // single 60-particle burst; promoted the time-record pattern (3 bursts
-  // at 200/500/800 ms with cross-screen positions) up to every win.
   showConfettiBurst(0.5, 0.3, 60);
   setTimeout(() => showConfettiBurst(0.3, 0.5, 35), 250);
   setTimeout(() => showConfettiBurst(0.7, 0.5, 35), 550);

@@ -7,7 +7,7 @@ import { updatePowerUpBar } from '../ui/powerUpBar.js';
 import { showModal } from '../ui/modalManager.js';
 import {
   triggerHeavyShake, showRedFlash, showGreenFlash,
-  haptic, chainRevealMines, showCelebration, showConfettiBurst,
+  haptic, chainRevealMines, showVictoryCelebration, showConfettiBurst,
 } from '../ui/effectsRenderer.js';
 import { showToast } from '../ui/toastManager.js';
 import { stopTimer, pauseTimer, resumeTimer } from './timerManager.js';
@@ -299,7 +299,7 @@ export function handleWin() {
   }
 
   playWin();
-  showCelebration();
+  showVictoryCelebration();
   haptic([50, 30, 50, 30, 80]);
 
   // Check for newly unlocked themes
