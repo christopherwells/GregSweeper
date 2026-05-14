@@ -225,6 +225,7 @@ export function updateFlagModeBar() {
   }
   if (flagModeToggle) {
     flagModeToggle.classList.toggle('flag-active', state.flagMode);
+    flagModeToggle.setAttribute('aria-pressed', state.flagMode ? 'true' : 'false');
   }
   if (flagModeIcon) {
     flagModeIcon.textContent = state.flagMode ? '🚩' : '👆';

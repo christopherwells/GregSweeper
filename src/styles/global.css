@@ -5210,3 +5210,48 @@ pre.diagnostics-pre {
 .diagnostics-actions {
   margin-top: 10px;
 }
+
+/* ── Forced-colors (Windows High Contrast / accessibility) ────────
+   When the OS forces a high-contrast palette, theme colors get
+   stripped and replaced with system colors (ButtonText, ButtonFace,
+   Highlight, etc.). Without explicit forced-colors rules, decorative
+   elements like cell borders and button outlines can vanish entirely.
+   These rules restore the bare-minimum visual structure so the game
+   stays playable. */
+@media (forced-colors: active) {
+  .cell {
+    border: 1px solid ButtonText;
+    forced-color-adjust: none;
+  }
+  .cell.revealed {
+    background: ButtonFace;
+    color: ButtonText;
+  }
+  .cell.unrevealed {
+    background: Canvas;
+  }
+  .cell.mine,
+  .cell.mine-hit {
+    background: Mark;
+    color: MarkText;
+  }
+  .cell.flagged {
+    background: Highlight;
+    color: HighlightText;
+  }
+  .mode-card,
+  .action-btn,
+  .title-footer-btn,
+  .modal-close {
+    border: 1px solid ButtonText;
+    forced-color-adjust: none;
+  }
+  /* Win/loss color cues fall back to text-decoration since color is
+     unreliable under forced-colors. */
+  .par-under { text-decoration: underline solid; }
+  .par-over { text-decoration: overline solid; }
+  /* Liar outline survives — outline color uses system Highlight. */
+  .cell.liar-cell {
+    outline: 2px solid Highlight;
+  }
+}

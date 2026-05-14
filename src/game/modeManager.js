@@ -47,7 +47,9 @@ export function updateModeUI(mode) {
     if (timerToggle) timerToggle.classList.toggle('timer-off', state.timerHidden);
     // Sync active tab highlight to match state.currentLevel
     for (const t of document.querySelectorAll('.timed-tab')) {
-      t.classList.toggle('active', parseInt(t.dataset.level, 10) === state.currentLevel);
+      const isActive = parseInt(t.dataset.level, 10) === state.currentLevel;
+      t.classList.toggle('active', isActive);
+      t.setAttribute('aria-selected', isActive ? 'true' : 'false');
     }
   }
 

@@ -179,6 +179,9 @@ function getCellAriaLabel(cell, r, c) {
       if (cell.isLiar) label += ', liar cell';
       if (cell.isWormhole) label += ', wormhole';
       if (cell.mirrorPair) label += ', mirrored';
+      if (cell.isSonar) label += ', sonar range';
+      if (cell.isCompass) label += ', compass direction';
+      if (cell.isPressurePlate) label += ', pressure plate';
       return label;
     }
     return 'Empty, safe';

@@ -349,7 +349,9 @@ function pickDefaultStatsTab() {
 
 function setActiveStatsTab(tab) {
   for (const btn of $$('.stats-tab')) {
-    btn.classList.toggle('active', btn.dataset.tab === tab);
+    const isActive = btn.dataset.tab === tab;
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
   }
   for (const panel of $$('.stats-panel')) {
     panel.classList.toggle('hidden', panel.id !== `stats-panel-${tab}`);
@@ -885,7 +887,9 @@ function _defaultLeaderboardTab() {
 
 function _setActiveLeaderboardTab(tab) {
   for (const btn of $$('.leaderboard-tab')) {
-    btn.classList.toggle('active', btn.dataset.lbTab === tab);
+    const isActive = btn.dataset.lbTab === tab;
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
   }
 }
 
@@ -1654,8 +1658,12 @@ $('#title-bar').addEventListener('click', () => showModal('about-modal'));
 // Collection tab switching
 for (const tab of $$('.collection-tab')) {
   tab.addEventListener('click', () => {
-    for (const t of $$('.collection-tab')) t.classList.remove('active');
+    for (const t of $$('.collection-tab')) {
+      t.classList.remove('active');
+      t.setAttribute('aria-selected', 'false');
+    }
     tab.classList.add('active');
+    tab.setAttribute('aria-selected', 'true');
     const panels = ['themes', 'emoji', 'effects', 'titles'];
     for (const p of panels) {
       $(`#collection-${p}`).classList.toggle('hidden', p !== tab.dataset.tab);

@@ -309,11 +309,11 @@
         </button>
       </div>
 
-      <div id="timed-size-tabs" class="timed-size-tabs hidden">
-        <button class="timed-tab active" data-level="1">Beginner</button>
-        <button class="timed-tab" data-level="2">Intermediate</button>
-        <button class="timed-tab" data-level="3">Expert</button>
-        <button class="timed-tab" data-level="4">Extreme</button>
+      <div id="timed-size-tabs" class="timed-size-tabs hidden" role="tablist" aria-label="Quick Play difficulty">
+        <button class="timed-tab active" data-level="1" role="tab" aria-selected="true">Beginner</button>
+        <button class="timed-tab" data-level="2" role="tab" aria-selected="false">Intermediate</button>
+        <button class="timed-tab" data-level="3" role="tab" aria-selected="false">Expert</button>
+        <button class="timed-tab" data-level="4" role="tab" aria-selected="false">Extreme</button>
         <button class="timer-toggle" id="timer-toggle" title="Toggle timer display">⏱️</button>
       </div>
 
@@ -519,8 +519,11 @@
     </div>
   </div>
 
-  <!-- Toast container lives outside #app so it shows on the title screen too -->
-  <div id="toast-container" class="toast-container"></div>
+  <!-- Toast container lives outside #app so it shows on the title screen too.
+       role=status + aria-live=polite means screen readers announce
+       toasts (e.g. "Score submitted") without interrupting whatever
+       the user is reading. -->
+  <div id="toast-container" class="toast-container" role="status" aria-live="polite" aria-atomic="false"></div>
 
   <!-- Modals outside #app so they render on top of the title screen -->
 
@@ -549,9 +552,9 @@
         <button class="modal-close">&times;</button>
       </div>
       <div class="modal-body">
-        <div class="leaderboard-tabs">
-          <button class="leaderboard-tab active" data-lb-tab="daily">Daily</button>
-          <button class="leaderboard-tab" data-lb-tab="weekly">Weekly</button>
+        <div class="leaderboard-tabs" role="tablist" aria-label="Leaderboard scope">
+          <button class="leaderboard-tab active" data-lb-tab="daily" role="tab" aria-selected="true">Daily</button>
+          <button class="leaderboard-tab" data-lb-tab="weekly" role="tab" aria-selected="false">Weekly</button>
         </div>
         <p id="leaderboard-date"></p>
           <table id="leaderboard-table">
@@ -734,15 +737,15 @@
         <button class="modal-close">&times;</button>
       </div>
       <div class="modal-body stats-body">
-        <div class="stats-tabs">
-          <button class="stats-tab active" data-tab="daily">Daily</button>
-          <button class="stats-tab" data-tab="weekly">Weekly</button>
-          <button class="stats-tab" data-tab="challenge">Challenge</button>
-          <button class="stats-tab" data-tab="timed">Quick Play</button>
+        <div class="stats-tabs" role="tablist" aria-label="Stats category">
+          <button class="stats-tab active" data-tab="daily" role="tab" aria-selected="true">Daily</button>
+          <button class="stats-tab" data-tab="weekly" role="tab" aria-selected="false">Weekly</button>
+          <button class="stats-tab" data-tab="challenge" role="tab" aria-selected="false">Challenge</button>
+          <button class="stats-tab" data-tab="timed" role="tab" aria-selected="false">Quick Play</button>
           <!-- Model tab: hidden at boot. main.js unhides only when the
                signed-in uid matches OWNER_UID (Christopher's). Other
                players never see the tab even if they inspect the DOM. -->
-          <button class="stats-tab hidden" data-tab="model" id="stats-tab-model">Model</button>
+          <button class="stats-tab hidden" data-tab="model" id="stats-tab-model" role="tab" aria-selected="false">Model</button>
         </div>
 
         <!-- DAILY TAB -->
@@ -986,11 +989,11 @@
         <button class="modal-close">&times;</button>
       </div>
       <div class="modal-body">
-        <div class="collection-tabs">
-          <button class="collection-tab active" data-tab="themes">Themes</button>
-          <button class="collection-tab" data-tab="emoji">Emoji</button>
-          <button class="collection-tab" data-tab="effects">Effects</button>
-          <button class="collection-tab" data-tab="titles">Titles</button>
+        <div class="collection-tabs" role="tablist" aria-label="Collection category">
+          <button class="collection-tab active" data-tab="themes" role="tab" aria-selected="true">Themes</button>
+          <button class="collection-tab" data-tab="emoji" role="tab" aria-selected="false">Emoji</button>
+          <button class="collection-tab" data-tab="effects" role="tab" aria-selected="false">Effects</button>
+          <button class="collection-tab" data-tab="titles" role="tab" aria-selected="false">Titles</button>
         </div>
         <div id="collection-themes" class="collection-panel">
           <div id="collection-theme-grid" class="theme-swatches"></div>
