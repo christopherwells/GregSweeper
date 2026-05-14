@@ -2024,8 +2024,15 @@ if (titleWhatsnewBtn) {
     if (badge) badge.remove();
     showModalFromTitle('whatsnew-modal');
   });
-  // Show NEW badge if user hasn't seen current version
-  if (getLastSeenVersion() !== CURRENT_VERSION) {
+  // Show NEW badge ONLY for returning visitors who saw an older
+  // version. First-time visitors (lastSeen empty) get no badge —
+  // they haven't missed anything, the NEW label would just confuse.
+  // Mark them as "having seen" the current version so the badge
+  // never fires for them retroactively after the next deploy.
+  const lastSeen = getLastSeenVersion();
+  if (!lastSeen) {
+    setLastSeenVersion(CURRENT_VERSION);
+  } else if (lastSeen !== CURRENT_VERSION) {
     const badge = document.createElement('span');
     badge.className = 'whatsnew-badge';
     badge.textContent = 'NEW';
