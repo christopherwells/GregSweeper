@@ -1,42 +1,42 @@
 {
-  "updatedAt": "2026-05-13T23:14:01Z",
-  "target": "sonarCellCount",
-  "reason": "highest posterior CV (1.019) excluding last 3 targets",
+  "updatedAt": "2026-05-14T16:12:29Z",
+  "target": "wormholePairCount",
+  "reason": "highest posterior CV (1.066) excluding last 3 targets",
   "recentTargets": [
+    "wormholePairCount",
     "sonarCellCount",
-    "compassCellCount",
-    "lockedCellCount"
+    "compassCellCount"
   ],
   "candidates": [
     {
       "feature": "compassCellCount",
-      "mean": 0.796,
-      "sd": 0.881,
-      "cv": 1.107
+      "mean": 0.798,
+      "sd": 0.904,
+      "cv": 1.132
     },
     {
       "feature": "lockedCellCount",
-      "mean": 0.559,
-      "sd": 0.607,
-      "cv": 1.086
+      "mean": 0.571,
+      "sd": 0.616,
+      "cv": 1.079
     },
     {
       "feature": "wormholePairCount",
-      "mean": 1.451,
-      "sd": 1.57,
-      "cv": 1.082
+      "mean": 1.421,
+      "sd": 1.516,
+      "cv": 1.066
     },
     {
       "feature": "sonarCellCount",
-      "mean": 0.672,
-      "sd": 0.684,
-      "cv": 1.019
+      "mean": 0.687,
+      "sd": 0.714,
+      "cv": 1.039
     },
     {
-      "feature": "liarCellCount",
-      "mean": 0.727,
-      "sd": 0.725,
-      "cv": 0.998
+      "feature": "wallEdgeCount",
+      "mean": 0.199,
+      "sd": 0.2,
+      "cv": 1.003
     }
   ],
   "coverage_targets": [
@@ -46,19 +46,14 @@
       "deficit_weight": 0.25
     },
     {
-      "feature": "liarCellCount",
-      "n_boards": 4,
-      "deficit_weight": 0.2
-    },
-    {
-      "feature": "wormholePairCount",
-      "n_boards": 4,
-      "deficit_weight": 0.2
-    },
-    {
       "feature": "mirrorPairCount",
       "n_boards": 4,
       "deficit_weight": 0.2
+    },
+    {
+      "feature": "liarCellCount",
+      "n_boards": 5,
+      "deficit_weight": 0.1667
     },
     {
       "feature": "compassCellCount",
@@ -67,6 +62,11 @@
     },
     {
       "feature": "mysteryCellCount",
+      "n_boards": 6,
+      "deficit_weight": 0.1429
+    },
+    {
+      "feature": "sonarCellCount",
       "n_boards": 6,
       "deficit_weight": 0.1429
     },
