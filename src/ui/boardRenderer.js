@@ -327,20 +327,20 @@ function _placeLabel(cellEl, id, text, className, position = "above") {
   label.id = id;
   label.textContent = text;
   label.className = className;
-  const boardRect = boardEl.getBoundingClientRect();
+  // Use viewport-relative coords with position:fixed so the label
+  // doesn't depend on whichever ancestor happens to be position:relative
+  // (the previous board-parent-relative math was off by ~130 px when
+  // the wrapping container wasn't a positioning context).
   const cellRect = cellEl.getBoundingClientRect();
-  const cx = cellRect.left - boardRect.left + cellRect.width / 2;
+  const cx = cellRect.left + cellRect.width / 2;
   label.style.left = cx + "px";
   if (position === "on") {
-    // Center the chip on the cell — the existing translate(-50%, -100%)
-    // CSS would float it up above; the .label-on-cell variant uses
-    // translate(-50%, -50%) so the label visually sits inside the cell.
-    label.style.top = (cellRect.top - boardRect.top + cellRect.height / 2) + "px";
+    label.style.top = (cellRect.top + cellRect.height / 2) + "px";
     label.classList.add("label-on-cell");
   } else {
-    label.style.top = (cellRect.top - boardRect.top - 6) + "px";
+    label.style.top = (cellRect.top - 6) + "px";
   }
-  boardEl.parentElement.appendChild(label);
+  document.body.appendChild(label);
 }
 
 function updateStartHereLabel() {
