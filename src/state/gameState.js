@@ -37,14 +37,6 @@ export const state = {
   dailyMoves: 0,     // solver totalClicks for pace calculation
   dailyFeatures: null, // full feature vector from computeDailyFeatures — used for par breakdown, Firebase meta upload, and the R refit training set
   isDailyPractice: false, // set when the URL carries ?seed=<custom>: play a custom-seed board but skip streak/completion/history side effects. Submissions still go to Firebase (under the custom seed path) so the session still tags a uid.
-  // Set true when the player picks the "bonus" daily slot (one-off, only
-  // exposed on dates the title screen explicitly enables a second card —
-  // currently 2026-05-07 only). Bonus completions submit to the bonus
-  // leaderboard and dailyMeta (so the model fit gets the data) but DON'T
-  // touch streak / handicap / markDailyCompleted / saveDailyHistoryEntry —
-  // bonus is free-to-play, completing it doesn't change the player's
-  // standing on the regular daily ladder.
-  isBonusDaily: false,
 
   powerUps: { revealSafe: 0, shield: 0, lifeline: 0, scanRowCol: 0, magnet: 0, xray: 0 },
   shieldActive: false,
@@ -124,6 +116,15 @@ export const state = {
   weeklyDayBombHits: {},           // {0: 1, 3: 0, ...} per-day strike counts from Firebase
   weeklyFeatures: null,            // computed at canonical resolve, used for the first-attempt fit-data submit
   cachedWeeklyDayAttempts: {},     // {0: true, 3: true} from Firebase at startup so the gate is sync
+
+  // ── Idle-pause state ─────────────────────────────────
+  // Auto-pause the timer after 30s without user input so a player who
+  // walks away doesn't bleed seconds into their daily/weekly time.
+  // `lastInteractionTime` is a Date.now() millis stamp, refreshed on
+  // any pointerdown/keydown/throttled-pointermove. `idlePaused` flips
+  // true when the gap exceeds the threshold and the overlay is showing.
+  lastInteractionTime: 0,
+  idlePaused: false,
 };
 
 // ── Encouragement Lines ────────────────────────────────

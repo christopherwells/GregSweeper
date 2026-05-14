@@ -154,7 +154,7 @@ function printRow(r) {
   const args = process.argv.slice(2);
 
   // Single-date mode: literal YYYY-MM-DD argument.
-  const single = args.find(a => /^\d{4}-\d{2}-\d{2}(_bonus)?$/.test(a));
+  const single = args.find(a => /^\d{4}-\d{2}-\d{2}$/.test(a));
   let dates;
   if (single) {
     dates = [single];

@@ -1705,9 +1705,9 @@ body {
 }
 .stats-panel.hidden { display: none; }
 
-/* Leaderboard modal tabs (Daily / Bonus / Weekly). Reuses the stats-tab
+/* Leaderboard modal tabs (Daily / Weekly). Reuses the stats-tab
    visual pattern but scoped to the leaderboard modal so tab styles stay
-   independent if either set evolves. */
+   independent if either set changes. */
 .leaderboard-tabs {
   display: flex;
   gap: 2px;

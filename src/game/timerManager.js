@@ -20,6 +20,34 @@ export function updateTimerDisplay() {
 let _preciseStartTime = null;
 let _preciseAccumulated = 0; // accumulated ms from previous pause/resume cycles
 
+// Idle-pause threshold. If the player goes this long without ANY input
+// (pointer/key/throttled-move) while the game is playing, we pause the
+// timer and surface a "Paused" overlay so they don't lose seconds to
+// being AFK. Resume happens on the next input event.
+const IDLE_PAUSE_MS = 30000;
+
+function _pauseForIdle() {
+  if (state.idlePaused) return;
+  if (state.status !== 'playing') return;
+  state.idlePaused = true;
+  pauseTimer();
+  const overlay = document.getElementById('idle-pause-overlay');
+  if (overlay) overlay.classList.remove('hidden');
+}
+
+// Called from main.js's document-level pointer/key listeners. Refreshes
+// the idle clock and, if we WERE paused, unpauses and dismisses the
+// overlay. Safe to call on every interaction — cheap.
+export function recordInteraction() {
+  state.lastInteractionTime = Date.now();
+  if (state.idlePaused) {
+    state.idlePaused = false;
+    const overlay = document.getElementById('idle-pause-overlay');
+    if (overlay) overlay.classList.add('hidden');
+    if (state.status === 'playing') resumeTimer();
+  }
+}
+
 // Resuming a persisted game restores state.elapsedTime (whole seconds) but
 // _preciseAccumulated lives in module scope and resets to 0. Without seeding
 // it from the restored time, leaderboard submissions for resumed Daily
@@ -31,11 +59,24 @@ export function seedPreciseAccumulated(seconds) {
 
 export function startTimer() {
   if (!_preciseStartTime) _preciseStartTime = Date.now();
+  // Initialize the idle-pause clock on every (re)start so a player who
+  // had a long gap between hitting Play and looking at the board
+  // doesn't immediately pause on the first tick.
+  state.lastInteractionTime = Date.now();
   if (state.timerId) return;
   let tickActive = false;
   state.timerId = setInterval(() => {
     state.elapsedTime++;
     updateTimerDisplay();
+    // Idle-pause check after the elapsedTime bump so we don't pause
+    // mid-tick before incrementing. The threshold is intentionally
+    // generous (30s) — short enough that AFK doesn't bleed seconds
+    // but long enough that hard thinking on a sticky board doesn't
+    // false-trigger.
+    if (state.lastInteractionTime && Date.now() - state.lastInteractionTime > IDLE_PAUSE_MS) {
+      _pauseForIdle();
+      return; // pauseTimer already cleared the interval; don't run the pulse
+    }
     // Timer tick pulse (no forced reflow — use class toggle)
     if (!tickActive) {
       tickActive = true;

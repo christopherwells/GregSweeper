@@ -72,24 +72,15 @@ export function tryResumeGame(mode) {
   const gs = loadGameState(mode || state.gameMode);
   if (!gs || !gs.board || !gs.gameMode) return false;
 
-  // Stale daily check: if saved daily seed doesn't match the slot the
-  // player is about to enter, discard. The expected seed is `state.dailySeed`
-  // when it's been set by the title-screen click handler (e.g. bonus
-  // daily sets it before switchMode), otherwise fall back to today's
-  // ET date for the regular daily flow.
+  // Stale daily check: if saved daily seed doesn't match today's ET date,
+  // discard. dailyRngSeed is populated by newGame's daily branch, so its
+  // presence is the fingerprint for a real daily save — without it, a
+  // cross-mode persisted state (e.g. challenge board written under the
+  // 'daily' localStorage key) would match the seed and resume the wrong
+  // board.
   if (gs.gameMode === 'daily' && gs.dailySeed) {
     const expectedSeed = state.dailySeed || getLocalDateString();
     if (gs.dailySeed !== expectedSeed) return false;
-    // Cross-mode-garbage guard: the bonus daily click handler sets
-    // state.gameMode='daily' + state.dailySeed=today+'_bonus' BEFORE
-    // switchMode, which means switchMode's persistGameState() writes
-    // the in-progress challenge/timed/chaos board under the 'daily'
-    // localStorage key with the bonus seed but no dailyRngSeed (since
-    // the daily branch in newGame hadn't run yet). Without this guard,
-    // tryResumeGame matches the seed and resumes the wrong (challenge)
-    // board the next time the player enters bonus daily. dailyRngSeed
-    // is always populated by newGame's daily branch, so requiring it
-    // here is the right fingerprint for a real daily save.
     if (!gs.dailyRngSeed) return false;
   }
 

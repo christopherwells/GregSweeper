@@ -3,11 +3,10 @@
 // Actions workflow on `0 * * * *` (every hour at minute 0).
 //
 // For each subscribed user with notificationPrefs.enabled === true and
-// notificationPrefs.hourLocal === currentHourET, send one of three
+// notificationPrefs.hourLocal === currentHourET, send one of two
 // notification categories based on the calendar:
 //
 //   • weekly  — Monday morning, when a fresh weekly puzzle just opened
-//   • bonus   — dates listed in BONUS_DAILY_DATES (one-off events)
 //   • daily   — the default, fired any other day
 //
 // FCM REST API is called with an OAuth2 access token derived from the
@@ -31,10 +30,6 @@ const FCM_SEND_URL = `https://fcm.googleapis.com/v1/projects/${FCM_PROJECT_ID}/m
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// Mirror src/main.js BONUS_DAILY_DATES — keeps weekly/bonus push
-// content in sync with what the player actually sees on the title.
-const BONUS_DAILY_DATES = new Set(['2026-05-07']);
-
 function _etDateParts() {
   // America/New_York anchored YYYY-MM-DD + hour 0..23 + day-of-week.
   const fmt = new Intl.DateTimeFormat('en-CA', {
@@ -53,11 +48,8 @@ function _etDateParts() {
 
 function _categoryFor({ date, dow }) {
   // Monday morning has a fresh weekly puzzle dropping; surface that
-  // rather than the daily reminder. Bonus dates are second-priority.
-  // (Weekly always wins over bonus on the same date — Monday is the
-  // dramatic content.)
+  // rather than the daily reminder.
   if (dow === 1) return 'weekly';
-  if (BONUS_DAILY_DATES.has(date)) return 'bonus';
   return 'daily';
 }
 
@@ -78,12 +70,6 @@ const WEEKLY_BODIES = [
   "A new weekly puzzle just dropped. Seven days, one board, best time wins.",
   "This week's grand puzzle is live. Same board all week — chase your best time.",
 ];
-const BONUS_BODIES = [
-  "There's a bonus daily on top of the regular one — free play.",
-  'Bonus daily today! Free play, no streak impact.',
-  'Surprise bonus daily — give it a shot.',
-];
-
 function _pickBody(date, pool) {
   // Stable per-date hash so all subscribers on the same date see the
   // same line. Sum of the year-month-day digits mod pool length.
@@ -98,14 +84,6 @@ function _payloadFor(category, date) {
       body: _pickBody(date, WEEKLY_BODIES),
       tag: 'gregsweeper-weekly',
       deepLink: './?mode=weekly',
-    };
-  }
-  if (category === 'bonus') {
-    return {
-      title: 'GregSweeper — Bonus daily',
-      body: _pickBody(date, BONUS_BODIES),
-      tag: 'gregsweeper-bonus',
-      deepLink: './?mode=daily',
     };
   }
   return {

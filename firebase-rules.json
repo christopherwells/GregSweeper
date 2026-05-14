@@ -5,7 +5,7 @@
       "$date": {
         ".read": true,
         ".indexOn": ["time"],
-        ".validate": "$date.matches(/^\\d{4}-\\d{2}-\\d{2}(_bonus|_weekly_first)?$/)",
+        ".validate": "$date.matches(/^\\d{4}-\\d{2}-\\d{2}(_weekly_first)?$/)",
         "$entry": {
           ".write": "auth != null && !data.exists() && newData.child('uid').val() === auth.uid",
           ".validate": "newData.hasChildren(['name', 'time', 'timestamp', 'uid'])",
@@ -50,7 +50,7 @@
       ".read": true,
       "$date": {
         ".write": "auth != null && !data.exists()",
-        ".validate": "$date.matches(/^\\d{4}-\\d{2}-\\d{2}(_bonus|_weekly_first)?$/) && newData.hasChildren(['features', 'writtenAt'])",
+        ".validate": "$date.matches(/^\\d{4}-\\d{2}-\\d{2}(_weekly_first)?$/) && newData.hasChildren(['features', 'writtenAt'])",
         "features": {
           ".validate": "newData.hasChildren(['rows', 'cols', 'totalMines'])"
         },
@@ -66,7 +66,7 @@
       ".read": true,
       "$date": {
         ".write": "auth != null && !data.exists()",
-        ".validate": "$date.matches(/^\\d{4}-\\d{2}-\\d{2}(_bonus|_weekly_first)?$/) && newData.hasChildren(['rows', 'cols', 'totalMines', 'cells', 'writtenAt'])",
+        ".validate": "$date.matches(/^\\d{4}-\\d{2}-\\d{2}(_weekly_first)?$/) && newData.hasChildren(['rows', 'cols', 'totalMines', 'cells', 'writtenAt'])",
         "rows":          { ".validate": "newData.isNumber() && newData.val() >= 5 && newData.val() <= 30" },
         "cols":          { ".validate": "newData.isNumber() && newData.val() >= 5 && newData.val() <= 30" },
         "totalMines":    { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 500" },

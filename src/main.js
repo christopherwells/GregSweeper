@@ -29,7 +29,7 @@ import {
   loadDailyLeaderboard, addDailyLeaderboardEntry,
   saveModePowerUps, loadGameState,
   isOnboarded, setOnboarded,
-  isDailyCompleted, isBonusDailyCompleted,
+  isDailyCompleted,
   getDailyStreak,
   getPlayerName, setPlayerName,
   getLastSeenVersion, setLastSeenVersion,
@@ -38,13 +38,6 @@ import {
 
 const CURRENT_VERSION = 'v1.5';
 
-// Dates on which a second "bonus" daily card appears on the title screen.
-// Bonus completions submit to a separate Firebase bucket (`daily/{date}_bonus`)
-// and contribute to the model fit, but don't touch streak / handicap /
-// personal history. Add a date here to enable a bonus daily for that
-// ET date; the dailyBoard/{date}_bonus canonical must already be
-// pre-generated (see scripts/precompute-daily-board.mjs).
-const BONUS_DAILY_DATES = new Set(['2026-05-07']);
 import {
   playLevelUp, isMuted, setMuted, loadMuted,
   setSFXVolume, getSFXVolume,
@@ -76,7 +69,7 @@ import {
 } from './ui/collectionManager.js';
 import { isModifierPopupDisabled, setModifierPopupDisabled, getGimmickDefs, getDailyGimmick, applyGimmicks } from './logic/gimmicks.js';
 import { isStorageFailing, safeGet, safeSet, safeRemove, requestPersistentStorage } from './storage/storageAdapter.js';
-import { pauseTimer, resumeTimer } from './game/timerManager.js';
+import { pauseTimer, resumeTimer, recordInteraction } from './game/timerManager.js';
 import { startTutorial } from './ui/tutorialManager.js';
 import { initErrorReporter, setErrorReporterCodeVersion, reportTestError } from './diagnostics/errorReporter.js';
 
@@ -882,10 +875,9 @@ async function renderWeeklyLeaderboard(weekStart) {
 }
 
 // Pick the default leaderboard tab based on current mode. Player in
-// weekly → start on Weekly tab; bonus → Bonus; otherwise Daily.
+// weekly → start on Weekly tab; otherwise Daily.
 function _defaultLeaderboardTab() {
   if (state.gameMode === 'weekly' && state.weeklySeed) return 'weekly';
-  if (state.isBonusDaily) return 'bonus';
   return 'daily';
 }
 
@@ -896,14 +888,6 @@ function _setActiveLeaderboardTab(tab) {
 }
 
 async function updateLeaderboardDisplay() {
-  // Bonus tab is only visible on a bonus date — the player can't see
-  // bonus scores from a non-bonus date because there's no bonus
-  // leaderboard for that day.
-  const today = getLocalDateString();
-  const bonusTab = $('#leaderboard-tab-bonus');
-  if (bonusTab) {
-    bonusTab.style.display = BONUS_DAILY_DATES.has(today) ? '' : 'none';
-  }
   const tab = _defaultLeaderboardTab();
   _setActiveLeaderboardTab(tab);
   await _renderLeaderboardForTab(tab);
@@ -914,7 +898,6 @@ async function _renderLeaderboardForTab(tab) {
     await renderWeeklyLeaderboard(getWeekStart());
     return;
   }
-  // daily / bonus paths share the existing daily-shape rendering.
   // Restore the daily-style table header in case it was last rendered
   // for the weekly tab (which repurposes Best/Played columns).
   const thead = $('#leaderboard-table thead');
@@ -922,10 +905,8 @@ async function _renderLeaderboardForTab(tab) {
     thead.innerHTML = '<tr><th>#</th><th>Name</th><th>Time</th><th class="lb-col-extra">💥</th><th>Par</th><th class="lb-col-extra">Pace</th></tr>';
   }
   const today = getLocalDateString();
-  const dateStr = tab === 'bonus' ? `${today}_bonus` : today;
-  const headerStr = tab === 'bonus'
-    ? prettyDate(today) + ' · Bonus'
-    : prettyDate(today);
+  const dateStr = today;
+  const headerStr = prettyDate(today);
   $('#leaderboard-date').textContent = headerStr;
   const tbody = $('#leaderboard-body');
   tbody.innerHTML = '';
@@ -1647,7 +1628,7 @@ $('#btn-leaderboard').addEventListener('click', () => {
   showModal('leaderboard-modal');
 });
 
-// Leaderboard tab clicks: switch between Daily / Bonus / Weekly views
+// Leaderboard tab clicks: switch between Daily / Weekly views
 // without closing the modal. The active tab is set by both the click
 // and by updateLeaderboardDisplay's default-tab logic; clicking just
 // re-renders the body for the picked tab.
@@ -1750,27 +1731,6 @@ function updateTitleProgress() {
     } else {
       dailyEl.textContent = streak > 0 ? `🔥 ${streak} day streak` : "Today's challenge";
       if (dailyCard) dailyCard.classList.remove('daily-completed');
-    }
-  }
-
-  // Bonus daily card — surfaces on BONUS_DAILY_DATES only. One-off
-  // recovery for the 2026-05-06 divergence incident; future bonus dates
-  // can extend this list.
-  const today = getLocalDateString();
-  const bonusCard = $('#title-daily-bonus-card');
-  const bonusProgressEl = $('#title-daily-bonus-progress');
-  if (bonusCard) {
-    if (BONUS_DAILY_DATES.has(today)) {
-      bonusCard.style.display = '';
-      if (isBonusDailyCompleted(today)) {
-        if (bonusProgressEl) bonusProgressEl.textContent = 'Completed!';
-        bonusCard.classList.add('daily-completed');
-      } else {
-        if (bonusProgressEl) bonusProgressEl.textContent = 'Free play, no streak';
-        bonusCard.classList.remove('daily-completed');
-      }
-    } else {
-      bonusCard.style.display = 'none';
     }
   }
 
@@ -1993,33 +1953,8 @@ for (const card of $$('.mode-card')) {
         showToast("You've already completed today's daily!");
         return;
       }
-      // Clear any bonus state left over from a previous bonus play in
-      // this session — switching from bonus → regular daily must reset
-      // the seed and flag, otherwise newGame would reuse the bonus key.
-      state.isBonusDaily = false;
       state.dailySeed = null;
       state.dailyRngSeed = null;
-    }
-    if (mode === 'dailyBonus') {
-      const today = getLocalDateString();
-      if (!BONUS_DAILY_DATES.has(today)) {
-        // Defensive — the card shouldn't be clickable on non-bonus
-        // dates, but if anything routes here anyway treat it as a no-op.
-        return;
-      }
-      if (isBonusDailyCompleted(today)) {
-        showToast("You've already played today's bonus daily!");
-        return;
-      }
-      // Set up bonus state BEFORE switchMode so newGame's daily branch
-      // sees the bonus seed when it resolves the canonical board.
-      state.gameMode = 'daily';
-      state.dailySeed = today + '_bonus';
-      state.isBonusDaily = true;
-      state.isDailyPractice = false;
-      hideTitleScreen();
-      switchMode('daily');
-      return;
     }
     if (mode === 'weekly') {
       const weekStart = getWeekStart();
@@ -2034,7 +1969,6 @@ for (const card of $$('.mode-card')) {
       state.gameMode = 'weekly';
       state.weeklySeed = weekStart;
       state.weeklyDay = dayIdx;
-      state.isBonusDaily = false;
       state.isDailyPractice = false;
       hideTitleScreen();
       switchMode('weekly');
@@ -2309,10 +2243,9 @@ $('#gameover-submit-daily').addEventListener('click', async (e) => {
       bombHitEvents: state.dailyBombHitEvents || [],
       rngSeed: state.dailyRngSeed || dateStr,
     });
-    // Skip personal-history write for both practice AND bonus dailies —
-    // bonus is a free-play side puzzle that shouldn't appear in the
-    // player's regular daily timeline.
-    if (!state.isDailyPractice && !state.isBonusDaily) {
+    // Skip personal-history write for practice dailies — they play on a
+    // custom seed and don't belong on the regular daily timeline.
+    if (!state.isDailyPractice) {
       saveDailyHistoryEntry(dateStr, { time: scoreTime });
     }
     const dailySubmitForm = $('#daily-submit-form');
@@ -2747,11 +2680,46 @@ document.addEventListener('visibilitychange', () => {
     if (state.status === 'playing') pauseTimer();
     persistGameState(); // Always persist (guard is inside)
   } else {
-    if (state.status === 'playing') {
+    // Coming back from a hidden tab counts as fresh activity — without
+    // this, the idle-pause timer would fire ~30s after refocus because
+    // lastInteractionTime froze when we went hidden.
+    recordInteraction();
+    if (state.status === 'playing' && !state.idlePaused) {
       resumeTimer();
     }
   }
 });
+
+// Idle-pause: any user input refreshes the idle clock. Capture-phase
+// listeners so that the dismissing pointerdown/keydown can be swallowed
+// when we're paused — without that, tapping the overlay to resume would
+// also reveal whatever cell is under the tap. pointermove doesn't have
+// board side-effects so it doesn't need swallowing; it's throttled to
+// ~1Hz since trackpads fire 60+/sec.
+let _lastMoveStamp = 0;
+document.addEventListener('pointerdown', (ev) => {
+  const wasPaused = state.idlePaused;
+  recordInteraction();
+  if (wasPaused) {
+    ev.stopPropagation();
+    ev.preventDefault();
+  }
+}, { capture: true });
+document.addEventListener('keydown', (ev) => {
+  const wasPaused = state.idlePaused;
+  recordInteraction();
+  if (wasPaused) {
+    ev.stopPropagation();
+    ev.preventDefault();
+  }
+}, { capture: true });
+document.addEventListener('pointermove', () => {
+  const now = Date.now();
+  if (now - _lastMoveStamp > 1000) {
+    _lastMoveStamp = now;
+    recordInteraction();
+  }
+}, { passive: true });
 window.addEventListener('beforeunload', () => {
   persistGameState(); // Guard is inside persistGameState
 });

@@ -121,6 +121,37 @@
       margin: 0; font-size: 13px;
       color: var(--color-text-secondary, #7a6e5d);
     }
+    /* Idle-pause overlay. Inline so it works even if a CSS module fails
+       to load — the timer paused on the player, they need to see why. */
+    #idle-pause-overlay {
+      position: fixed; inset: 0; z-index: 998000;
+      background: rgba(0, 0, 0, 0.55);
+      display: flex; align-items: center; justify-content: center;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+      animation: idlePauseFade 0.18s ease-out;
+    }
+    #idle-pause-overlay.hidden { display: none; }
+    .idle-pause-card {
+      background: var(--color-app-bg, #d4ccc0);
+      color: var(--color-text, #2d2416);
+      border-radius: 12px;
+      padding: 28px 36px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+      text-align: center;
+      max-width: 280px;
+    }
+    .idle-pause-icon { font-size: 40px; margin-bottom: 8px; }
+    .idle-pause-title {
+      font-size: 22px; font-weight: 700; margin-bottom: 4px;
+      font-family: var(--font-display, var(--font-family, system-ui));
+    }
+    .idle-pause-hint {
+      font-size: 13px; color: var(--color-text-secondary, #7a6e5d);
+    }
+    @keyframes idlePauseFade {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
   </style>
   <!-- Other themes loaded on-demand by themeManager.js -->
   <!-- Press+Start+2P removed: no CSS rule referenced it. Self-hosting these
@@ -158,6 +189,16 @@
     <p id="boot-status">Loading…</p>
   </div>
 
+  <!-- Idle-pause overlay — shown when the player has been idle for 30s
+       during gameplay. Dismisses on the first interaction. -->
+  <div id="idle-pause-overlay" class="hidden" aria-live="polite">
+    <div class="idle-pause-card">
+      <div class="idle-pause-icon">⏸</div>
+      <div class="idle-pause-title">Paused</div>
+      <div class="idle-pause-hint">Tap anywhere to resume</div>
+    </div>
+  </div>
+
   <!-- Title Screen -->
   <div id="title-screen" class="title-screen">
     <div class="title-screen-header">
@@ -179,14 +220,6 @@
         <div class="mode-card-icon">📅</div>
         <div class="mode-card-name">Daily</div>
         <div class="mode-card-progress" id="title-daily-progress">Today's challenge</div>
-      </button>
-      <!-- Bonus daily card — hidden by default, unhidden on dates the
-           title-progress logic flags as bonus dates (currently 2026-05-07
-           only). Bonus completions don't touch streak or handicap. -->
-      <button class="mode-card" data-mode="dailyBonus" id="title-daily-bonus-card" type="button" style="display: none;">
-        <div class="mode-card-icon">🎁</div>
-        <div class="mode-card-name">Bonus Daily</div>
-        <div class="mode-card-progress" id="title-daily-bonus-progress">Free play, no streak</div>
       </button>
       <!-- Weekly puzzle card — same single board for the whole ET week
            (Mon-Sun), one attempt per day, best time wins. No streak. -->
@@ -515,7 +548,6 @@
       <div class="modal-body">
         <div class="leaderboard-tabs">
           <button class="leaderboard-tab active" data-lb-tab="daily">Daily</button>
-          <button class="leaderboard-tab" data-lb-tab="bonus" id="leaderboard-tab-bonus" style="display: none;">Bonus</button>
           <button class="leaderboard-tab" data-lb-tab="weekly">Weekly</button>
         </div>
         <p id="leaderboard-date"></p>
