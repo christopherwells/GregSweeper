@@ -18,6 +18,7 @@
 // numbers a past day showed.
 
 import { waitForFirebaseReady } from './waitForFirebase.js';
+import { isTestEnvironment } from './env.js';
 
 const DB_PATH = 'dailyBoard';
 const FETCH_TIMEOUT_MS = 5000;
@@ -230,6 +231,12 @@ export async function loadDailyBoard(dateString) {
  * @returns {Promise<boolean>}
  */
 export async function saveDailyBoard(dateString, payload) {
+  // Test branch: don't overwrite the production canonical board.
+  // Test-branch code may generate a slightly different layout than
+  // master if any board-generation logic has changed, and a stray
+  // write would clobber the real canonical that every real player
+  // is using today.
+  if (isTestEnvironment()) return false;
   let db;
   try {
     db = await waitForFirebaseReady();

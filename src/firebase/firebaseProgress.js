@@ -9,6 +9,8 @@
  * and initFirebase() from firebaseLeaderboard.js to have been called first.
  */
 
+import { isTestEnvironment } from './env.js';
+
 const FIREBASE_TIMEOUT_MS = 5000;
 
 let _uid = null;
@@ -84,6 +86,7 @@ export async function initAnonymousAuth() {
  * Fire-and-forget — does not block gameplay.
  */
 export function saveProgress({ maxCheckpoint, dailyStreak, bestDailyStreak, lastDailyDate }) {
+  if (isTestEnvironment()) return;
   const data = {};
   if (maxCheckpoint != null) data.maxCheckpoint = maxCheckpoint;
   if (dailyStreak != null) data.dailyStreak = dailyStreak;
@@ -116,6 +119,7 @@ export function saveProgress({ maxCheckpoint, dailyStreak, bestDailyStreak, last
  * pars in older rows that don't match the rest of the app.
  */
 export function saveDailyHistoryEntry(date, entry) {
+  if (isTestEnvironment()) return;
   if (!date || !entry || typeof entry.time !== 'number') return;
 
   const payload = {
@@ -171,6 +175,10 @@ export async function loadWeeklyAttempts(weekStart) {
  */
 export function markWeeklyDayAttempted(weekStart, day) {
   if (typeof weekStart !== 'string' || !Number.isInteger(day) || day < 0 || day > 6) return;
+  // Test branch: skip Firebase write and skip localStorage too —
+  // otherwise the test deployment would gate the player out of weekly
+  // mode on test even though no real attempt was recorded.
+  if (isTestEnvironment()) return;
 
   // Mirror the attempt to localStorage so the synchronous gate (in
   // main.js's weekly mode-card handler + reset-button handler) doesn't

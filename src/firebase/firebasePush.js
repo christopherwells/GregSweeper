@@ -23,6 +23,7 @@
 
 import { safeGet, safeSet, safeRemove } from '../storage/storageAdapter.js';
 import { getUid } from './firebaseProgress.js';
+import { isTestEnvironment } from './env.js';
 
 // VAPID public key from Firebase Console → Project Settings → Cloud
 // Messaging → Web Push certificates. Public — safe to ship in client.
@@ -69,6 +70,12 @@ export function getPushPermission() {
  *   'error' — anything else; details in console.warn
  */
 export async function enableNotifications({ hourLocal = 9, dailyReminder = true, streakWarning = false } = {}) {
+  // Test branch: never register a push subscription. Otherwise the
+  // test deployment would write a FCM token to the user's Firebase
+  // record and the production cron would happily send pushes to the
+  // test SW (which is a separate origin and a separate SW
+  // registration). The toast still shows so the UI flow is testable.
+  if (isTestEnvironment()) return 'success';
   if (!isPushSupported()) {
     return _isIOS() && !_isInstalledPWA() ? 'ios-needs-install' : 'unsupported';
   }
