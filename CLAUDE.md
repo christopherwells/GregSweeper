@@ -12,7 +12,7 @@ No build step, no npm install, no dependencies to manage. Firebase SDK loaded vi
 
 **Testing:** No automated test framework. For UI and modifier verification, use Playwright via MCP — load the live page with `?seed=<custom>` to play deterministic boards.
 
-**Deploy:** Push to `master` branch triggers GitHub Pages. After push, bump `CACHE_NAME` in `sw.js` (format: `gregsweeper-v1.4.N`). No CI/CD pipeline.
+**Deploy:** Push to `main` branch triggers GitHub Pages (via the `.github/workflows/deploy-pages.yml` Actions workflow — composes main at `/` and the `test` branch at `/test/`). After push, bump `CACHE_NAME` in `sw.js` (format: `gregsweeper-v1.5.N`). The `test` branch deploys to `https://christopherwells.github.io/GregSweeper/test/` with an orange "TEST BUILD" banner and skips Firebase writes via `isTestEnvironment()`.
 
 ## Key Architecture
 
@@ -132,7 +132,7 @@ Daily par is a linear regression over board features, fit in R offline against r
 
 ## Refit Workflow (.github/workflows/refit-par-model.yml)
 - Runs daily at 10am America/New_York (14:00 UTC; 9am ET in winter since Actions cron doesn't observe DST).
-- Pulls `daily/*` and `dailyMeta/*` from Firebase (both world-readable — no secrets required), fits the Bayesian mixed-effects model via `brms` + Stan, patches `src/logic/difficulty.js` between `PAR_MODEL:START` / `PAR_MODEL:END` markers, and rewrites `src/logic/handicaps.json`. Commits both files under "Christopher Wells" identity and pushes to master; GitHub Pages redeploys.
+- Pulls `daily/*` and `dailyMeta/*` from Firebase (both world-readable — no secrets required), fits the Bayesian mixed-effects model via `brms` + Stan, patches `src/logic/difficulty.js` between `PAR_MODEL:START` / `PAR_MODEL:END` markers, and rewrites `src/logic/handicaps.json`. Commits both files under "Christopher Wells" identity and pushes to main; GitHub Pages redeploys.
 - Guards: `MIN_SCORES_TO_FIT = 30` (total scores required, priors do the regularisation so the old `MAX_COEF_DRIFT` clamp was retired), `MIN_PLAYS_FOR_FIT_INCLUSION = 30` (per-user TOTAL-play threshold — only users above this contribute to the global PAR_MODEL and receive a handicap entry in handicaps.json; below-threshold users get a provisional handicap computed client-side via `estimateHandicapFromHistory`. Bomb-hit plays count toward the threshold now that they're included in the fit via the `bombHits` regressor), `ADAPT_DELTA = 0.99` with `MAX_DIVERGENT_FRAC = 0.25%` — a fit that comes back with Rhat > 1.05, ESS < 400, or more than 0.25% divergent transitions is rejected and the previous `PAR_MODEL` stays.
 - Priors live in `PRIOR_MEANS` + `PRIOR_SIGMAS` at the top of the R script. Each per-coefficient prior is `lognormal(log(mean), sigma)`, naturally positive, with sigma = 1.0 giving roughly `[seed/2.7, seed*2.7]` at ±2 SD — wide enough for data to move a well-supported coefficient, tight enough to stop the collinearity-driven 10x swings the old lme4 fit produced at N=62.
 - After the fit: random-intercept means are play-weighted-recentered to sum to zero (brms's sampler can park any overall baseline in either the global intercept or the random intercepts; without this recentering both users' handicaps come out shifted by the same ~100s constant). Intercept is then bias-corrected so mean(clean-time-equivalent predicted par) = mean(actual time minus `bombHits * bombCoef`) across the FIT POPULATION — subtracting the bomb contribution from the actual times before comparing keeps `predictPar` as "clean-play par" while still including bomb-hit plays in the fit.

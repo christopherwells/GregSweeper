@@ -1,12 +1,12 @@
 name: Deploy GitHub Pages
 
-# Single workflow that publishes both master (production) and test
+# Single workflow that publishes both main (production) and test
 # (development) to GitHub Pages in one artifact:
-#   master content   →   https://christopherwells.github.io/GregSweeper/
+#   main content     →   https://christopherwells.github.io/GregSweeper/
 #   test branch      →   https://christopherwells.github.io/GregSweeper/test/
 #
 # Triggered by push to either branch — both rebuild the same artifact
-# (we always pull the latest of BOTH branches) so a master push doesn't
+# (we always pull the latest of BOTH branches) so a main push doesn't
 # stale the test directory and vice versa.
 #
 # One-time setup: in repo Settings → Pages, switch Source from "Deploy
@@ -15,7 +15,7 @@ name: Deploy GitHub Pages
 
 on:
   push:
-    branches: [master, test]
+    branches: [main, test]
   workflow_dispatch: {}
 
 permissions:
@@ -31,11 +31,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout master branch
+      - name: Checkout main branch
         uses: actions/checkout@v4
         with:
-          ref: master
-          path: master-content
+          ref: main
+          path: main-content
           fetch-depth: 1
 
       - name: Checkout test branch
@@ -49,11 +49,11 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p _site
-          # Copy master contents into root. Use tar for clean dotfile
+          # Copy main contents into root. Use tar for clean dotfile
           # handling and to exclude .git / .github + any stray test/
-          # directory at master root (so it can't conflict with the
+          # directory at main root (so it can't conflict with the
           # subdir we're about to place).
-          (cd master-content && tar c \
+          (cd main-content && tar c \
             --exclude='.git' \
             --exclude='.github' \
             --exclude='test' \
@@ -67,7 +67,7 @@ jobs:
           # Rewrite the test deployment's manifest so it installs as a
           # SEPARATE PWA (different id) with a distinct name + orange
           # theme color matching the test banner. Keeping the in-branch
-          # manifest.json identical to master means future test→master
+          # manifest.json identical to main means future test→main
           # merges don't accidentally carry these test-only changes
           # into production. jq is pre-installed on the ubuntu runner.
           jq '
