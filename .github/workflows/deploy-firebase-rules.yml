@@ -1,7 +1,7 @@
 name: Deploy Firebase Rules
 
 # Auto-deploys firebase-rules.json to the Realtime Database when the rules
-# file (or firebase.json) is modified on master. Closes the manual-deploy
+# file (or firebase.json) is modified on main. Closes the manual-deploy
 # discipline gap that CSec flagged: a rules-file change in the repo is no
 # longer dependent on Christopher running `firebase deploy --only database`
 # from his laptop. Manual trigger also available via workflow_dispatch.
@@ -12,7 +12,7 @@ name: Deploy Firebase Rules
 
 on:
   push:
-    branches: [master]
+    branches: [main]
     paths:
       - 'firebase-rules.json'
       - 'firebase.json'

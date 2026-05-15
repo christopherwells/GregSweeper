@@ -360,10 +360,10 @@ python -m http.server 8080
 "/c/Program Files/R/R-4.6.0/bin/Rscript.exe" scripts/refit-par-model.R
 
 # Trigger remote refit
-gh workflow run "Refit Greg-par" --ref master
+gh workflow run "Refit Greg-par" --ref main
 
 # Trigger remote canonical-board pre-gen for a specific date
-gh workflow run "Precompute daily board" --ref master -f date=2026-05-01
+gh workflow run "Precompute daily board" --ref main -f date=2026-05-01
 
 # Manually pre-generate locally (writes to Firebase via REST + anon auth)
 node scripts/precompute-daily-board.mjs 2026-05-01
