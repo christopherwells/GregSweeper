@@ -29,6 +29,7 @@ import { loadDailyBoard, saveDailyBoard, serializeBoard, deserializeBoard } from
 import { loadWeeklyBoard, saveWeeklyBoard } from '../firebase/weeklyBoardSync.js';
 import { fetchWeeklyLeaderboard } from '../firebase/firebaseLeaderboard.js';
 import { getUid, markWeeklyDayAttempted } from '../firebase/firebaseProgress.js';
+import { isTestEnvironment } from '../firebase/env.js';
 import {
   loadModePowerUps, loadCheckpoint, clearGameState, saveDailyPar,
 } from '../storage/statsStorage.js';
@@ -970,7 +971,8 @@ export function revealCell(row, col) {
     // means the slot is consumed the moment the player commits to a
     // play, regardless of whether they reset, hit bombs, or finish.
     // Idempotent — re-marking the same day is a no-op on Firebase.
-    if (state.gameMode === 'weekly' && state.weeklySeed != null && state.weeklyDay != null) {
+    if (state.gameMode === 'weekly' && state.weeklySeed != null && state.weeklyDay != null
+        && !isTestEnvironment()) {
       markWeeklyDayAttempted(state.weeklySeed, state.weeklyDay);
       if (!state.cachedWeeklyDayAttempts) state.cachedWeeklyDayAttempts = {};
       state.cachedWeeklyDayAttempts[state.weeklyDay] = true;
@@ -1202,6 +1204,16 @@ export function toggleFlag(row, col) {
 export function handleChordReveal(row, col) {
   if (state.status !== 'playing') return;
   if (state.inputLocked) return;
+  // Strike cells are defused-bomb markers, not numbered safe cells.
+  // Chord-revealing from them can cascade into a neighboring
+  // unrevealed mine and fire another handleDailyBombHit — the
+  // "click an already-exploded mine for more penalty" footgun.
+  // The re-fog after each bomb hit already keeps mines hidden, but
+  // a stale chord-tap on a strike cell while a neighbor's still
+  // exposed (e.g., during animation, or a player who flagged the
+  // wrong neighbor) would still cascade. Block it here unconditionally.
+  const cellHere = state.board[row]?.[col];
+  if (cellHere && cellHere.isStrike) return;
   const now = Date.now();
   if (now - _lastInputTime < 50) return;
   _lastInputTime = now;

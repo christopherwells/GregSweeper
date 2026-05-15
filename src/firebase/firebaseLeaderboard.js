@@ -1,4 +1,5 @@
 import { safeGet, safeSet, safeRemove, safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js';
+import { isTestEnvironment } from './env.js';
 /**
  * Firebase Online Daily Leaderboard
  * Uses Firebase Realtime Database (compat SDK loaded via CDN in index.html).
@@ -187,6 +188,10 @@ async function _doSubmitOnlineScore(dateString, name, time, bombHits, extras) {
 }
 
 export async function submitOnlineScore(dateString, name, time, bombHits = 0, extras = {}) {
+  // Test branch: never write to the production leaderboard. Reads
+  // (fetchOnlineLeaderboard) still work so the modal still shows
+  // current standings, but no test score lands in the bucket.
+  if (isTestEnvironment()) return false;
   // Offline / Firebase not ready — queue and retry on next successful boot
   if (!isFirebaseOnline()) {
     _queueFailedSubmission(dateString, name, time, bombHits, extras);
@@ -272,6 +277,8 @@ export async function flushPendingSubmissions() {
  * @returns {Promise<boolean>}
  */
 export async function submitWeeklyScore(weekStart, uid, name, bestTime, dayTimes, extras = {}) {
+  // Test branch: don't write to the production weekly leaderboard.
+  if (isTestEnvironment()) return false;
   if (!isFirebaseOnline()) return false;
   if (!weekStart || !uid) return false;
   if (typeof bestTime !== 'number' || bestTime < MIN_VALID_TIME || bestTime > MAX_VALID_TIME) {

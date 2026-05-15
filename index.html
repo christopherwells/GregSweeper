@@ -218,6 +218,29 @@
   <script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js"></script>
 </head>
 <body>
+  <!-- Test-environment banner. Renders when we're on the test deploy
+       (GH Pages /test/ subdirectory, Cloudflare Pages preview, or the
+       ?isTest=1 manual override). Inline script + style so it's
+       visible the instant <body> parses, before main.js even runs.
+       Mirrors src/firebase/env.js#isTestEnvironment exactly. -->
+  <div id="test-banner" hidden style="
+    position: fixed; top: 0; left: 0; right: 0; z-index: 999998;
+    background: #f59e0b; color: #1a1a2e; text-align: center;
+    font-family: system-ui, sans-serif; font-size: 12px; font-weight: 700;
+    letter-spacing: 0.5px; padding: 6px 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  ">TEST BUILD · scores not saved</div>
+  <script>
+    (function(){
+      var isTest = location.hostname.endsWith('.pages.dev') ||
+                   location.pathname.split('/').indexOf('test') !== -1 ||
+                   new URLSearchParams(location.search).get('isTest') === '1';
+      if (isTest) {
+        var b = document.getElementById('test-banner');
+        if (b) b.hidden = false;
+      }
+    })();
+  </script>
   <!-- Boot overlay — visible until runStartupGate() in main.js completes.
        No animation; just a static title + status line in the active
        theme's colors. -->

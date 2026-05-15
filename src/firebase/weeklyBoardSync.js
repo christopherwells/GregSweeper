@@ -7,6 +7,7 @@
 
 import { waitForFirebaseReady } from './waitForFirebase.js';
 import { serializeBoard, deserializeBoard } from './dailyBoardSync.js';
+import { isTestEnvironment } from './env.js';
 
 const DB_PATH = 'weeklyBoard';
 const FETCH_TIMEOUT_MS = 5000;
@@ -54,6 +55,9 @@ export async function loadWeeklyBoard(weekStart) {
  * @returns {Promise<boolean>}
  */
 export async function saveWeeklyBoard(weekStart, payload) {
+  // Test branch: don't overwrite the production canonical weekly.
+  // Same rationale as saveDailyBoard's guard.
+  if (isTestEnvironment()) return false;
   let db;
   try {
     db = await waitForFirebaseReady();

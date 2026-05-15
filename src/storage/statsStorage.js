@@ -1,5 +1,6 @@
 import { safeGet, safeSet, safeRemove, safeGetJSON, safeSetJSON } from './storageAdapter.js';
 import { getLocalDateString } from '../logic/seededRandom.js';
+import { isTestEnvironment } from '../firebase/env.js';
 
 const STATS_KEY = 'minesweeper_stats';
 const LEADERBOARD_KEY = 'minesweeper_daily_leaderboard';
@@ -432,10 +433,16 @@ export function invalidateStatsCache() {
 const DAILY_COMPLETED_KEY = 'minesweeper_daily_completed_date';
 
 export function isDailyCompleted(dateStr) {
+  // Test branch: report no completion so the daily can be replayed
+  // indefinitely for testing. localStorage is shared between the
+  // master and test origins (same github.io host), so without this
+  // override a real completion on master would lock test out too.
+  if (isTestEnvironment()) return false;
   return safeGet(DAILY_COMPLETED_KEY) === dateStr;
 }
 
 export function markDailyCompleted(dateStr) {
+  if (isTestEnvironment()) return;
   safeSet(DAILY_COMPLETED_KEY, dateStr);
 }
 
