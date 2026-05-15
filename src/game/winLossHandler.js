@@ -13,7 +13,6 @@ import { showToast } from '../ui/toastManager.js';
 import { stopTimer, pauseTimer, resumeTimer } from './timerManager.js';
 import { awardPowerUps } from './powerUpActions.js';
 import { setHandleWin } from './powerUpActions.js';
-import { defuseMine } from '../logic/powerUps.js';
 import { findNextSafeMove } from '../logic/boardSolver.js';
 import { getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, getChaosDifficulty, LIFELINE_WIN_REWARD_CHANCE } from '../logic/difficulty.js';
 import {
@@ -992,8 +991,11 @@ export function handleTimedLoss() {
 
 // ── Daily / Weekly Mode: Bomb Hit Re-Fog ────────────────
 // Same mechanic for both modes: +10s penalty, all non-mine reveals
-// re-fog, hit mine becomes a defused safe cell. Per-attempt counters
-// route to dailyBombHits/dailyBombHitEvents in daily, or
+// re-fog, hit cell stays revealed with the strike sprite as a
+// permanent marker. The MINE STAYS — adjacent numbers don't drop
+// (count is still correct), and chordReveal treats the strike as a
+// flag so the player can chord around it cleanly. Per-attempt
+// counters route to dailyBombHits/dailyBombHitEvents in daily, or
 // weeklyBombHits/weeklyBombHitEvents in weekly. Function name kept
 // as handleDailyBombHit for backward-compat with all the call sites.
 
@@ -1025,24 +1027,27 @@ export function handleDailyBombHit(mineRow, mineCol) {
   // Time penalty: +10s per strike
   state.elapsedTime += 10;
 
-  // Defuse the hit mine so it won't kill again. defuseMine also refreshes
-  // gimmick displays (wormhole sums, liar offsets, mirror swaps, sonar,
-  // compass) AND recalculates adjacent-mine counts in the 3x3 area, so
-  // surrounding revealed numbers automatically reflect the new layout.
-  defuseMine(state.board, mineRow, mineCol);
+  // Mark the hit cell as a strike: revealed (so the renderer shows the
+  // strike sprite), but the mine STAYS — we do NOT call defuseMine.
+  // Consequences (all desired):
+  //   (a) Adjacent numbers don't drop. A "3" stays a "3" after the
+  //       bomb hit because the mine is still there, the count is still
+  //       correct. Pre-rework, defuseMine flipped isMine=false and
+  //       recalculated neighbor counts, which dropped them by 1 — a
+  //       confusing "where did that mine go?" moment for the player.
+  //   (b) The strike acts as a flag for chord-reveal. chordReveal in
+  //       boardSolver.js sums `isFlagged || isStrike` neighbors, so a
+  //       "3" with one strike + two flags chords correctly.
+  //   (c) checkWin naturally treats the strike cell as a don't-need-
+  //       to-reveal mine (skips all isMine cells). Winning still
+  //       requires revealing every non-mine cell; struck-but-not-yet-
+  //       struck-again mines stay unrevealed.
+  // state.totalMines is NOT decremented (the mine is still there).
+  // state.revealedCount is reset to 0 below by the re-fog block (no
+  // non-mine cell is revealed after re-fog — strike cells are mines).
   const hitCell = state.board[mineRow][mineCol];
   hitCell.isRevealed = true;
-  // Clear isLocked on the defused cell. defuseMine flips isMine=false but
-  // leaves isLocked alone; without this, the cell still counts as
-  // non-startable in startCandidates and as locked in solver paths,
-  // even though it's now a revealed safe value.
-  hitCell.isLocked = false;
-  // Mark the hit spot so the renderer keeps showing the strike sprite —
-  // the player gets a permanent "here's where the bomb went off" marker
-  // instead of just a re-numbered cell.
   hitCell.isStrike = true;
-  state.revealedCount++;
-  state.totalMines--;
 
   // Safety net: tear down any active pressure-plate timers. Daily/weekly
   // don't currently include plates in their gimmick subset, but if a
@@ -1052,16 +1057,12 @@ export function handleDailyBombHit(mineRow, mineCol) {
   // gameActions.js (which imports handleDailyBombHit from this file).
   import('./gameActions.js').then(m => m.clearAllPlateTimers?.()).catch(() => {});
 
-  // Re-fog every revealed cell EXCEPT mines (still unrevealed) and
-  // strike cells (defused-bomb markers from prior hits + the just-hit
-  // one — these stay visible so the player can see where the bombs
-  // were). This is the classic daily/weekly bomb behavior: +10s
-  // penalty + board reset + adjacent numbers (now hidden) recalculated
-  // so the next reveal reflects one fewer mine in the neighbourhood.
-  // Without the re-fog, chord-reveal on a strike cell could cascade
-  // into an unrevealed mine — the "click an already exploded mine for
-  // more penalty" footgun. handleChordReveal also blocks chord on
-  // strike cells as belt-and-suspenders.
+  // Re-fog every revealed cell EXCEPT mines (untouched) and strike
+  // cells (still-mine cells with the strike marker — these stay
+  // visible). Adjacent numbers stay the same as before the hit
+  // because we didn't defuse, so a "3" next to the strike is still
+  // a "3" on the next reveal. handleChordReveal also blocks chord
+  // ON strike cells as belt-and-suspenders.
   for (let r = 0; r < state.rows; r++) {
     for (let c = 0; c < state.cols; c++) {
       const cell = state.board[r][c];
@@ -1071,11 +1072,11 @@ export function handleDailyBombHit(mineRow, mineCol) {
       }
     }
   }
-  // revealedCount now equals the number of strike cells on the board
-  // (one per bomb hit so far this attempt, including this one).
-  state.revealedCount = isWeekly
-    ? (state.weeklyBombHits || 0)
-    : (state.dailyBombHits || 0);
+  // After re-fog, the only revealed cells are strikes — and strikes
+  // are mines (we didn't defuse). So revealedCount, which tracks
+  // non-mine reveals, resets to 0. The player has to clear every
+  // non-mine cell from scratch.
+  state.revealedCount = 0;
 
   // Shake + muffled explosion effect
   playExplosion();
@@ -1090,7 +1091,7 @@ export function handleDailyBombHit(mineRow, mineCol) {
   const popup = document.createElement('div');
   popup.className = 'daily-bomb-popup';
   const strikes = isWeekly ? state.weeklyBombHits : state.dailyBombHits;
-  popup.innerHTML = `<div class="daily-bomb-popup-content">${spriteImgHTML('strike', 'sprite-popup', 'Mine hit')} You hit a mine!<br><span class="daily-bomb-sub">+10s · Board reset · Mine defused at that spot</span></div>`;
+  popup.innerHTML = `<div class="daily-bomb-popup-content">${spriteImgHTML('strike', 'sprite-popup', 'Mine hit')} You hit a mine!<br><span class="daily-bomb-sub">+10s · Board reset · Bomb flagged</span></div>`;
   document.getElementById('app').appendChild(popup);
 
   setTimeout(() => {
