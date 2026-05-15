@@ -218,11 +218,11 @@
   <script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js"></script>
 </head>
 <body>
-  <!-- Test-environment banner. Only renders when we're on a Cloudflare
-       Pages preview (any *.pages.dev host) or the URL carries
-       ?isTest=1. Inline script + style so it's visible the instant the
-       <body> parses, before main.js even runs. Matches the JS-side
-       isTestEnvironment() check in src/firebase/env.js exactly. -->
+  <!-- Test-environment banner. Renders when we're on the test deploy
+       (GH Pages /test/ subdirectory, Cloudflare Pages preview, or the
+       ?isTest=1 manual override). Inline script + style so it's
+       visible the instant <body> parses, before main.js even runs.
+       Mirrors src/firebase/env.js#isTestEnvironment exactly. -->
   <div id="test-banner" hidden style="
     position: fixed; top: 0; left: 0; right: 0; z-index: 999998;
     background: #f59e0b; color: #1a1a2e; text-align: center;
@@ -233,6 +233,7 @@
   <script>
     (function(){
       var isTest = location.hostname.endsWith('.pages.dev') ||
+                   location.pathname.split('/').indexOf('test') !== -1 ||
                    new URLSearchParams(location.search).get('isTest') === '1';
       if (isTest) {
         var b = document.getElementById('test-banner');
