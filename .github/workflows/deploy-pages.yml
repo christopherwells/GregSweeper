@@ -1,0 +1,82 @@
+name: Deploy GitHub Pages
+
+# Single workflow that publishes both master (production) and test
+# (development) to GitHub Pages in one artifact:
+#   master content   →   https://christopherwells.github.io/GregSweeper/
+#   test branch      →   https://christopherwells.github.io/GregSweeper/test/
+#
+# Triggered by push to either branch — both rebuild the same artifact
+# (we always pull the latest of BOTH branches) so a master push doesn't
+# stale the test directory and vice versa.
+#
+# One-time setup: in repo Settings → Pages, switch Source from "Deploy
+# from a branch" to "GitHub Actions". Until that flip happens, this
+# workflow runs but its deployment step has nowhere to publish.
+
+on:
+  push:
+    branches: [master, test]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout master branch
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          path: master-content
+          fetch-depth: 1
+
+      - name: Checkout test branch
+        uses: actions/checkout@v4
+        with:
+          ref: test
+          path: test-content
+          fetch-depth: 1
+
+      - name: Compose site
+        run: |
+          set -euo pipefail
+          mkdir -p _site
+          # Copy master contents into root. Use tar for clean dotfile
+          # handling and to exclude .git / .github + any stray test/
+          # directory at master root (so it can't conflict with the
+          # subdir we're about to place).
+          (cd master-content && tar c \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='test' \
+            .) | (cd _site && tar x)
+          # Place test branch contents under /test/.
+          mkdir -p _site/test
+          (cd test-content && tar c \
+            --exclude='.git' \
+            --exclude='.github' \
+            .) | (cd _site/test && tar x)
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
