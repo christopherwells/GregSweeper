@@ -987,7 +987,14 @@ export function chordReveal(board, row, col) {
 
   const wallEdges = board._wallEdges || null;
 
-  // Count adjacent flags (respecting wall edges)
+  // Count adjacent flags (respecting wall edges). Strike cells —
+  // mines the player previously hit in daily/weekly — count as flags
+  // too: the player has visually confirmed the mine is there, the
+  // bomb-hit handler leaves the cell as `isMine: true` so adjacent
+  // numbers don't drop, and the strike marker functions as a flag for
+  // chord-counting. Without this, a "3" next to a strike + two flags
+  // wouldn't satisfy the chord even though the player has correctly
+  // accounted for all three mines.
   let flagCount = 0;
   const rows = board.length;
   const cols = board[0].length;
@@ -997,7 +1004,7 @@ export function chordReveal(board, row, col) {
       const nr = row + dr, nc = col + dc;
       if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
         if (wallEdges && hasWallBetween(wallEdges, row, col, nr, nc)) continue;
-        if (board[nr][nc].isFlagged) flagCount++;
+        if (board[nr][nc].isFlagged || board[nr][nc].isStrike) flagCount++;
       }
     }
   }

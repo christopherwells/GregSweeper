@@ -118,7 +118,17 @@ export function updateStreakDisplay() {
 }
 
 export function updateHeader() {
-  const remaining = state.totalMines - state.flagCount;
+  // Strike cells (daily/weekly bomb-hit markers) count as flags for
+  // mine accounting — the player has visually confirmed the mine
+  // and the chord-reveal logic treats the strike as a flag. Without
+  // subtracting strikes here the mine counter stays stuck at the
+  // original count after a bomb hit, which doesn't match the
+  // player's mental model ("I know where that one is").
+  const dailyMode = state.gameMode === 'daily' || state.gameMode === 'weekly';
+  const strikeCount = dailyMode
+    ? (state.gameMode === 'weekly' ? (state.weeklyBombHits || 0) : (state.dailyBombHits || 0))
+    : 0;
+  const remaining = state.totalMines - state.flagCount - strikeCount;
   if (remaining < 0) {
     mineCounterEl.textContent = '-' + String(Math.abs(remaining)).padStart(2, '0');
   } else {
