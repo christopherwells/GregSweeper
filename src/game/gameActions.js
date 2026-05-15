@@ -1202,6 +1202,16 @@ export function toggleFlag(row, col) {
 export function handleChordReveal(row, col) {
   if (state.status !== 'playing') return;
   if (state.inputLocked) return;
+  // Strike cells are defused-bomb markers, not numbered safe cells.
+  // Chord-revealing from them can cascade into a neighboring
+  // unrevealed mine and fire another handleDailyBombHit — the
+  // "click an already-exploded mine for more penalty" footgun.
+  // The re-fog after each bomb hit already keeps mines hidden, but
+  // a stale chord-tap on a strike cell while a neighbor's still
+  // exposed (e.g., during animation, or a player who flagged the
+  // wrong neighbor) would still cascade. Block it here unconditionally.
+  const cellHere = state.board[row]?.[col];
+  if (cellHere && cellHere.isStrike) return;
   const now = Date.now();
   if (now - _lastInputTime < 50) return;
   _lastInputTime = now;

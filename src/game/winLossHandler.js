@@ -1044,11 +1044,30 @@ export function handleDailyBombHit(mineRow, mineCol) {
   // gameActions.js (which imports handleDailyBombHit from this file).
   import('./gameActions.js').then(m => m.clearAllPlateTimers?.()).catch(() => {});
 
-  // Previously the board was re-fogged after every bomb hit. Now the
-  // player keeps everything they've revealed so far — only the bomb spot
-  // changes (mine removed, strike sprite stays). recomputeDisplayedMines
-  // and recalcAreaAdjacency from defuseMine above have already updated
-  // surrounding cells' numbers to reflect the missing mine.
+  // Re-fog every revealed cell EXCEPT mines (still unrevealed) and
+  // strike cells (defused-bomb markers from prior hits + the just-hit
+  // one — these stay visible so the player can see where the bombs
+  // were). This is the classic daily/weekly bomb behavior: +10s
+  // penalty + board reset + adjacent numbers (now hidden) recalculated
+  // so the next reveal reflects one fewer mine in the neighbourhood.
+  // Without the re-fog, chord-reveal on a strike cell could cascade
+  // into an unrevealed mine — the "click an already exploded mine for
+  // more penalty" footgun. handleChordReveal also blocks chord on
+  // strike cells as belt-and-suspenders.
+  for (let r = 0; r < state.rows; r++) {
+    for (let c = 0; c < state.cols; c++) {
+      const cell = state.board[r][c];
+      if (cell.isRevealed && !cell.isMine && !cell.isStrike) {
+        cell.isRevealed = false;
+        cell.isHiddenNumber = false;
+      }
+    }
+  }
+  // revealedCount now equals the number of strike cells on the board
+  // (one per bomb hit so far this attempt, including this one).
+  state.revealedCount = isWeekly
+    ? (state.weeklyBombHits || 0)
+    : (state.dailyBombHits || 0);
 
   // Shake + muffled explosion effect
   playExplosion();
@@ -1063,7 +1082,7 @@ export function handleDailyBombHit(mineRow, mineCol) {
   const popup = document.createElement('div');
   popup.className = 'daily-bomb-popup';
   const strikes = isWeekly ? state.weeklyBombHits : state.dailyBombHits;
-  popup.innerHTML = `<div class="daily-bomb-popup-content">${spriteImgHTML('strike', 'sprite-popup', 'Mine hit')} You hit a mine!<br><span class="daily-bomb-sub">+10s penalty · Mine defused — keep going</span></div>`;
+  popup.innerHTML = `<div class="daily-bomb-popup-content">${spriteImgHTML('strike', 'sprite-popup', 'Mine hit')} You hit a mine!<br><span class="daily-bomb-sub">+10s · Board reset · Mine defused at that spot</span></div>`;
   document.getElementById('app').appendChild(popup);
 
   setTimeout(() => {
