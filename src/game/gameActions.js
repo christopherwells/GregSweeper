@@ -29,6 +29,7 @@ import { loadDailyBoard, saveDailyBoard, serializeBoard, deserializeBoard } from
 import { loadWeeklyBoard, saveWeeklyBoard } from '../firebase/weeklyBoardSync.js';
 import { fetchWeeklyLeaderboard } from '../firebase/firebaseLeaderboard.js';
 import { getUid, markWeeklyDayAttempted } from '../firebase/firebaseProgress.js';
+import { isTestEnvironment } from '../firebase/env.js';
 import {
   loadModePowerUps, loadCheckpoint, clearGameState, saveDailyPar,
 } from '../storage/statsStorage.js';
@@ -970,7 +971,8 @@ export function revealCell(row, col) {
     // means the slot is consumed the moment the player commits to a
     // play, regardless of whether they reset, hit bombs, or finish.
     // Idempotent — re-marking the same day is a no-op on Firebase.
-    if (state.gameMode === 'weekly' && state.weeklySeed != null && state.weeklyDay != null) {
+    if (state.gameMode === 'weekly' && state.weeklySeed != null && state.weeklyDay != null
+        && !isTestEnvironment()) {
       markWeeklyDayAttempted(state.weeklySeed, state.weeklyDay);
       if (!state.cachedWeeklyDayAttempts) state.cachedWeeklyDayAttempts = {};
       state.cachedWeeklyDayAttempts[state.weeklyDay] = true;

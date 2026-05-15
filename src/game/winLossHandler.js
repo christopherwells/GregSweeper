@@ -38,6 +38,7 @@ function escapeHtmlInline(s) {
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 }
 import { saveProgress, saveDailyHistoryEntry, getUid, markWeeklyDayAttempted } from '../firebase/firebaseProgress.js';
+import { isTestEnvironment } from '../firebase/env.js';
 import { breakdownPar } from '../logic/dailyFeatures.js';
 import { getHandicap, estimateHandicapDetails } from '../logic/handicaps.js';
 import { addDailyLeaderboardEntry, appendDailyResidual, loadDailyResiduals } from '../storage/statsStorage.js';
@@ -221,14 +222,21 @@ export function handleWin() {
       .filter(t => typeof t === 'number');
     const isFirstAttemptThisWeek = state._weeklyPriorTimesAtWin.length === 0;
 
-    markWeeklyDayAttempted(state.weeklySeed, state.weeklyDay);
-    // Keep the local attempt cache in sync. Without this, every gate that
-    // reads state.cachedWeeklyDayAttempts (title-screen weekly card, mode-card
-    // click handler, deep-link router, reset-button gate) sees the stale
-    // pre-win value until the player reloads — which means smashing the
-    // smiley or revisiting the title spawns another attempt for the same day.
-    if (!state.cachedWeeklyDayAttempts) state.cachedWeeklyDayAttempts = {};
-    state.cachedWeeklyDayAttempts[state.weeklyDay] = true;
+    // Test branch: skip both Firebase + in-memory weekly attempt
+    // marking so the weekly can be replayed indefinitely for testing.
+    // markWeeklyDayAttempted is already a no-op on test (Firebase
+    // guard), but the in-memory cachedWeeklyDayAttempts set would
+    // still gate the player out within the session — bypass that too.
+    if (!isTestEnvironment()) {
+      markWeeklyDayAttempted(state.weeklySeed, state.weeklyDay);
+      // Keep the local attempt cache in sync. Without this, every gate that
+      // reads state.cachedWeeklyDayAttempts (title-screen weekly card, mode-card
+      // click handler, deep-link router, reset-button gate) sees the stale
+      // pre-win value until the player reloads — which means smashing the
+      // smiley or revisiting the title spawns another attempt for the same day.
+      if (!state.cachedWeeklyDayAttempts) state.cachedWeeklyDayAttempts = {};
+      state.cachedWeeklyDayAttempts[state.weeklyDay] = true;
+    }
 
     const scoreTime = Math.round((state.preciseTime || state.elapsedTime) * 10) / 10;
     const updated = { ...(state.weeklyDayTimes || {}), [state.weeklyDay]: scoreTime };

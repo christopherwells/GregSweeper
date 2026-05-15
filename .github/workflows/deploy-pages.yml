@@ -64,6 +64,20 @@ jobs:
             --exclude='.git' \
             --exclude='.github' \
             .) | (cd _site/test && tar x)
+          # Rewrite the test deployment's manifest so it installs as a
+          # SEPARATE PWA (different id) with a distinct name + orange
+          # theme color matching the test banner. Keeping the in-branch
+          # manifest.json identical to master means future test→master
+          # merges don't accidentally carry these test-only changes
+          # into production. jq is pre-installed on the ubuntu runner.
+          jq '
+            .name = "GregSweeper Test"
+            | .short_name = "GregSweeper Test"
+            | .id = "gregsweeper-test"
+            | .description = "Test build of GregSweeper — scores not saved. Daily/weekly play limits removed for repeat-play testing."
+            | .theme_color = "#f59e0b"
+          ' _site/test/manifest.json > _site/test/manifest.json.new
+          mv _site/test/manifest.json.new _site/test/manifest.json
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

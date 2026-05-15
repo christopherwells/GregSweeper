@@ -51,6 +51,7 @@ import {
   initFirebase, isFirebaseOnline, submitOnlineScore, fetchOnlineLeaderboard, fetchUserDailyHistory, fetchAllDailyMeta, fetchAllDailyScores, fetchWeeklyLeaderboard,
 } from './firebase/firebaseLeaderboard.js';
 import { initAnonymousAuth, loadProgress, saveDailyHistoryEntry, getUid, loadWeeklyAttempts, loadLocalWeeklyAttempts, pruneStaleLocalWeeklyAttempts } from './firebase/firebaseProgress.js';
+import { isTestEnvironment } from './firebase/env.js';
 // Stats-tab renderer + chart toolkit are lazy-imported in populateDailyPanel
 // so they stay off the critical load path — they only come in when the
 // user actually opens the Stats modal. Saves ~3 network round-trips
@@ -236,16 +237,25 @@ async function runStartupGate() {
   // settled before the title screen rendered, letting the player tap
   // Weekly and bypass the one-per-day gate. Firebase data merges over
   // this once it arrives. Also prune stale entries from previous weeks.
-  state.cachedWeeklyDayAttempts = loadLocalWeeklyAttempts(currentWeek);
-  pruneStaleLocalWeeklyAttempts(currentWeek);
+  // Test branch: start with no cached weekly attempts so the player
+  // can replay the weekly indefinitely. Don't touch localStorage (it's
+  // shared with master via the same github.io origin and we'd nuke
+  // production's stored attempts).
+  state.cachedWeeklyDayAttempts = isTestEnvironment() ? {} : loadLocalWeeklyAttempts(currentWeek);
+  if (!isTestEnvironment()) pruneStaleLocalWeeklyAttempts(currentWeek);
 
   if (firebaseReady && !customSeed) {
     setBootStatus('Loading today\'s puzzle…');
     try {
+      // Test branch: skip the Firebase weekly-attempts read too so an
+      // existing master attempt doesn't get pulled in and gate test.
+      const weeklyAttemptsP = isTestEnvironment()
+        ? Promise.resolve({})
+        : loadWeeklyAttempts(currentWeek).catch(() => ({}));
       const [dailyRaw, weeklyRaw, attempts] = await Promise.all([
         loadDailyBoard(today).catch(() => null),
         loadWeeklyBoard(currentWeek).catch(() => null),
-        loadWeeklyAttempts(currentWeek).catch(() => ({})),
+        weeklyAttemptsP,
       ]);
       if (dailyRaw) {
         state.canonicalDailyBoard = { date: today, raw: dailyRaw };
