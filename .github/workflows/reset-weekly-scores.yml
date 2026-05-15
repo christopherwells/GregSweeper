@@ -1,0 +1,38 @@
+name: Reset weekly scores
+
+# Manual one-off: clears a week's weekly leaderboard + per-user
+# attempt caps + synthetic-daily par-fit data, WITHOUT regenerating
+# the board. Every player keeps the same puzzle but gets a fresh
+# shot at it. Use when the gameplay mechanic changed mid-week and
+# earlier scores were set under the old (broken) rules.
+#
+# Service-account auth required — the per-user weeklyAttempts paths
+# are owner-write-only under the security rules. FIREBASE_SERVICE_
+# ACCOUNT is the same secret used by send-push.mjs /
+# regenerate-weekly-board.mjs.
+#
+# Triggered manually via:
+#   gh workflow run reset-weekly-scores.yml -f weekStart=2026-05-11
+
+on:
+  workflow_dispatch:
+    inputs:
+      weekStart:
+        description: 'Week start (YYYY-MM-DD, must be a Monday)'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  reset:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Reset weekly scores
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node scripts/reset-weekly-scores.mjs "${{ github.event.inputs.weekStart }}"
