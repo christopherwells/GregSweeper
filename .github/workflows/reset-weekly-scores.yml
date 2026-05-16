@@ -13,6 +13,11 @@ name: Reset weekly scores
 #
 # Triggered manually via:
 #   gh workflow run reset-weekly-scores.yml -f weekStart=2026-05-11
+#
+# Note: workflow_dispatch registration requires the file to be present
+# on the default branch via a commit that touches this file directly;
+# a squash-merge that adds it alongside other files can be missed by
+# GitHub's workflow indexer until a subsequent touch commit lands.
 
 on:
   workflow_dispatch:
