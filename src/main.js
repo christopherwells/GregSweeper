@@ -35,6 +35,7 @@ import {
   getPlayerName, setPlayerName,
   getLastSeenVersion, setLastSeenVersion,
   saveDailyPar, loadDailyPar, applyCloudProgress,
+  hasSeenNotice, markNoticeSeen,
 } from './storage/statsStorage.js';
 
 const CURRENT_VERSION = 'v1.5';
@@ -72,7 +73,7 @@ import {
 import { isModifierPopupDisabled, setModifierPopupDisabled, getGimmickDefs, getDailyGimmick, applyGimmicks } from './logic/gimmicks.js';
 import { isStorageFailing, safeGet, safeSet, safeRemove, requestPersistentStorage } from './storage/storageAdapter.js';
 import { pauseTimer, resumeTimer, recordInteraction } from './game/timerManager.js';
-import { startTutorial } from './ui/tutorialManager.js';
+import { startTutorial, startWarmup } from './ui/tutorialManager.js';
 import { initErrorReporter, setErrorReporterCodeVersion, reportTestError } from './diagnostics/errorReporter.js';
 
 // ── Code-version handshake with the service worker ────
@@ -378,6 +379,30 @@ function setActiveStatsTab(tab) {
   }
   for (const panel of $$('.stats-panel')) {
     panel.classList.toggle('hidden', panel.id !== `stats-panel-${tab}`);
+  }
+}
+
+// Help / Settings use the same tabbed pattern so each section fits on
+// one screen with no scrolling (scrolling mid-game is jarring).
+function setActiveHelpTab(tab) {
+  for (const btn of $$('.help-tab')) {
+    const isActive = btn.dataset.tab === tab;
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+  }
+  for (const panel of $$('.help-panel')) {
+    panel.classList.toggle('hidden', panel.id !== `help-panel-${tab}`);
+  }
+}
+
+function setActiveSettingsTab(tab) {
+  for (const btn of $$('.settings-tab')) {
+    const isActive = btn.dataset.tab === tab;
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+  }
+  for (const panel of $$('.settings-panel')) {
+    panel.classList.toggle('hidden', panel.id !== `settings-panel-${tab}`);
   }
 }
 
@@ -844,9 +869,15 @@ async function populateDailyPanel() {
   });
 }
 
-// Tab switcher — bind once at module load.
+// Tab switchers — bind once at module load.
 for (const btn of $$('.stats-tab')) {
   btn.addEventListener('click', () => setActiveStatsTab(btn.dataset.tab));
+}
+for (const btn of $$('.help-tab')) {
+  btn.addEventListener('click', () => setActiveHelpTab(btn.dataset.tab));
+}
+for (const btn of $$('.settings-tab')) {
+  btn.addEventListener('click', () => setActiveSettingsTab(btn.dataset.tab));
 }
 
 // ── Leaderboard Display ───────────────────────────────
@@ -880,6 +911,7 @@ async function renderWeeklyLeaderboard(weekStart) {
   const entries = await fetchWeeklyLeaderboard(weekStart);
   const hasEntries = entries.length > 0;
   $('#leaderboard-table').classList.toggle('hidden', !hasEntries);
+  $('#leaderboard-empty').textContent = 'No weekly times yet. Be the first to set one.';
   $('#leaderboard-empty').classList.toggle('hidden', hasEntries);
   if (!hasEntries) return;
   // Column repurposing for weekly:
@@ -1041,6 +1073,9 @@ async function _renderLeaderboardForTab(tab) {
 
   const hasEntries = entries.length > 0;
   $('#leaderboard-table').classList.toggle('hidden', !hasEntries);
+  $('#leaderboard-empty').textContent = (dateStr === today)
+    ? 'No times yet today. Be the first to finish it.'
+    : 'No entries for this day.';
   $('#leaderboard-empty').classList.toggle('hidden', hasEntries);
 
   // Daily par + solver moves (shared with the title-card par badge).
@@ -1258,6 +1293,22 @@ function updateAchievementsDisplay() {
   progressText.textContent = `${total} / ${max}`;
 
   grid.innerHTML = '';
+
+  // Zero-state: a brand-new player sees a wall of locks. Frame it so it
+  // reads as "go play" rather than "you have nothing". Most categories
+  // unlock on the very first win.
+  let achZero = document.getElementById('ach-zero-banner');
+  if (total === 0) {
+    if (!achZero) {
+      achZero = document.createElement('div');
+      achZero.id = 'ach-zero-banner';
+      achZero.className = 'chart-empty';
+      grid.parentNode.insertBefore(achZero, grid);
+    }
+    achZero.textContent = 'Nothing unlocked yet. Most of these fire on your very first win, so go play a game.';
+  } else if (achZero) {
+    achZero.remove();
+  }
 
   for (const ach of achievements) {
     const item = document.createElement('div');
@@ -1649,6 +1700,7 @@ $('#btn-home').addEventListener('click', () => {
   showTitleScreen();
 });
 $('#btn-settings').addEventListener('click', () => {
+  setActiveSettingsTab('general');
   showModal('settings-modal');
   // Refresh the daily-reminder toggle's state from Firebase whenever
   // the Settings modal opens — covers the case where prefs were
@@ -1685,7 +1737,7 @@ $('#btn-collection').addEventListener('click', () => {
   renderCollectionModal();
   showModal('collection-modal');
 });
-$('#btn-help').addEventListener('click', () => showModal('help-modal'));
+$('#btn-help').addEventListener('click', () => { setActiveHelpTab('basics'); showModal('help-modal'); });
 $('#title-bar').addEventListener('click', () => showModal('about-modal'));
 
 // Collection tab switching
@@ -1806,7 +1858,7 @@ function updateTitleProgress() {
       weeklyProgressEl.textContent = `Play today · ${used}/7 used`;
       weeklyCard.classList.remove('daily-completed');
     } else {
-      weeklyProgressEl.textContent = 'Same puzzle all week — your best run wins.';
+      weeklyProgressEl.textContent = 'Same puzzle all week. Your best run wins.';
       weeklyCard.classList.remove('daily-completed');
     }
   }
@@ -2066,12 +2118,17 @@ function showModalFromTitle(modalId) {
   showModal(modalId);
 }
 
+const titleHelpBtn = $('#title-help-btn');
+if (titleHelpBtn) {
+  titleHelpBtn.addEventListener('click', () => { setActiveHelpTab('basics'); showModalFromTitle('help-modal'); });
+}
 const titleSettingsBtn = $('#title-settings-btn');
 if (titleSettingsBtn) {
   titleSettingsBtn.addEventListener('click', () => {
     // Load saved player name into settings input
     const nameInput = $('#player-name-input');
     if (nameInput) nameInput.value = getPlayerName();
+    setActiveSettingsTab('general');
     showModalFromTitle('settings-modal');
     syncReminderUI();
     _updateSettingsUid();
@@ -2133,6 +2190,15 @@ if (titleLeaderboardBtn) {
 // Clear Cache & Reload
 $('#btn-clear-cache').addEventListener('click', () => {
   if (window.gregsweeperCacheClear) window.gregsweeperCacheClear();
+});
+
+// Replay the tutorial on demand. Always includes the warm-up board
+// (the Settings hint promises it), independent of the one-time
+// onboarding gates. Routes back to the title screen when done.
+$('#btn-replay-tutorial').addEventListener('click', () => {
+  $('#settings-modal').classList.add('hidden');
+  _returnToTitle = false;
+  startTutorial(() => startWarmup(() => showTitleScreen()));
 });
 
 // Diagnostics — ground-truth snapshot of what this device sees. Dynamic
@@ -2767,8 +2833,16 @@ async function init() {
     // day one. The Daily is the highest-value conversion moment for
     // the dataset-growth audience, so the FTU funnel now ends here.
     startTutorial(() => {
-      showTitleScreen();
-      spotlightDailyCard();
+      const toTitle = () => { showTitleScreen(); spotlightDailyCard(); };
+      // One gentle no-modifier warm-up board bridges the 5x5 tutorial
+      // and a full Daily. Once ever — marked before it runs so closing
+      // the tab mid-warm-up doesn't relaunch it next visit.
+      if (!hasSeenNotice('warmup_done')) {
+        markNoticeSeen('warmup_done');
+        startWarmup(toTitle);
+      } else {
+        toTitle();
+      }
     });
   } else if (deepLinkMode === 'daily') {
     // Deep link to daily mode. ?seed=<custom> lets you play a fresh puzzle

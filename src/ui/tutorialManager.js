@@ -380,3 +380,296 @@ function finishTutorial() {
     }, 300);
   }
 }
+
+// ── Warm-up: one free-play Beginner board after the tutorial ────────
+// Bridges the gap between the 5x5 scripted tutorial and a full Daily.
+// Self-contained: its own overlay/state, reuses the tutorial overlay
+// styling and applyIcon sprites. Free-play (reveal/flag/chord anywhere)
+// on a classic 9x9/10-mine board, first click guaranteed safe. A mine
+// hit is a gentle re-fog ("just practice"), never a game-over. Touches
+// nothing in the real game / score / daily / leaderboard pipelines.
+
+const WU_ROWS = 9;
+const WU_COLS = 9;
+const WU_MINES = 10;
+
+let _wuOverlay = null;
+let _wuBoard = null;
+let _wuPlaced = false;   // mines laid (deferred until first click)
+let _wuFinished = false; // onComplete fired / skipped (guards double-call)
+let _wuOnComplete = null;
+let _wuLpTimer = null;
+
+export function startWarmup(onComplete) {
+  _wuOnComplete = onComplete || (() => {});
+  _wuFinished = false;
+  _wuPlaced = false;
+  _wuBoard = [];
+  for (let r = 0; r < WU_ROWS; r++) {
+    const row = [];
+    for (let c = 0; c < WU_COLS; c++) {
+      row.push({ isMine: false, adjacentMines: 0, isRevealed: false, isFlagged: false });
+    }
+    _wuBoard.push(row);
+  }
+  wuRenderOverlay();
+}
+
+function wuPlaceMines(safeR, safeC) {
+  // Ban the first-clicked cell and its 8 neighbors so the opening click
+  // always cracks open a region (classic first-click-safe).
+  const banned = new Set();
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      const nr = safeR + dr, nc = safeC + dc;
+      if (nr >= 0 && nr < WU_ROWS && nc >= 0 && nc < WU_COLS) banned.add(nr * 100 + nc);
+    }
+  }
+  let placed = 0;
+  while (placed < WU_MINES) {
+    const r = Math.floor(Math.random() * WU_ROWS);
+    const c = Math.floor(Math.random() * WU_COLS);
+    if (banned.has(r * 100 + c) || _wuBoard[r][c].isMine) continue;
+    _wuBoard[r][c].isMine = true;
+    placed++;
+  }
+  for (let r = 0; r < WU_ROWS; r++) {
+    for (let c = 0; c < WU_COLS; c++) {
+      if (_wuBoard[r][c].isMine) continue;
+      let n = 0;
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (!dr && !dc) continue;
+          const nr = r + dr, nc = c + dc;
+          if (nr >= 0 && nr < WU_ROWS && nc >= 0 && nc < WU_COLS && _wuBoard[nr][nc].isMine) n++;
+        }
+      }
+      _wuBoard[r][c].adjacentMines = n;
+    }
+  }
+  _wuPlaced = true;
+}
+
+function wuFlood(r, c) {
+  if (r < 0 || r >= WU_ROWS || c < 0 || c >= WU_COLS) return;
+  const cell = _wuBoard[r][c];
+  if (cell.isRevealed || cell.isFlagged || cell.isMine) return;
+  cell.isRevealed = true;
+  if (cell.adjacentMines === 0) {
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        if (!dr && !dc) continue;
+        wuFlood(r + dr, c + dc);
+      }
+    }
+  }
+}
+
+function wuRenderOverlay() {
+  const existing = document.getElementById('warmup-overlay');
+  if (existing) existing.remove();
+
+  _wuOverlay = document.createElement('div');
+  _wuOverlay.id = 'warmup-overlay';
+  _wuOverlay.className = 'tutorial-overlay';
+  _wuOverlay.innerHTML = '<div class="tutorial-container">'
+    + '<div class="tutorial-instruction">'
+    + '<h3>Your turn</h3>'
+    + '<p id="warmup-text">Clear every safe cell. Long-press (or right-click) to flag a mine.</p>'
+    + '</div>'
+    + '<div class="tutorial-board-wrapper"><div id="warmup-board" class="tutorial-board"></div></div>'
+    + '<div class="tutorial-footer">'
+    + '<button id="warmup-skip-btn" class="tutorial-skip-btn">Skip to menu</button>'
+    + '</div>'
+    + '</div>';
+  document.body.appendChild(_wuOverlay);
+  _wuOverlay.querySelector('#warmup-skip-btn').addEventListener('click', () => wuFinish());
+
+  const boardEl = _wuOverlay.querySelector('#warmup-board');
+  boardEl.style.gridTemplateColumns = 'repeat(' + WU_COLS + ', var(--tutorial-cell-size, 48px))';
+  boardEl.style.gridTemplateRows = 'repeat(' + WU_ROWS + ', var(--tutorial-cell-size, 48px))';
+  for (let r = 0; r < WU_ROWS; r++) {
+    for (let c = 0; c < WU_COLS; c++) {
+      const cellEl = document.createElement('div');
+      cellEl.className = 'tutorial-cell unrevealed';
+      cellEl.dataset.row = r;
+      cellEl.dataset.col = c;
+      boardEl.appendChild(cellEl);
+    }
+  }
+  boardEl.addEventListener('click', wuClick);
+  boardEl.addEventListener('contextmenu', (e) => { e.preventDefault(); wuRightClick(e); });
+  boardEl.addEventListener('touchstart', wuTouchStart, { passive: true });
+  boardEl.addEventListener('touchend', wuClearLp);
+  boardEl.addEventListener('touchmove', wuClearLp, { passive: true });
+  boardEl.addEventListener('touchcancel', wuClearLp);
+  wuRender();
+}
+
+function wuRender() {
+  const boardEl = _wuOverlay && _wuOverlay.querySelector('#warmup-board');
+  if (!boardEl) return;
+  for (let r = 0; r < WU_ROWS; r++) {
+    for (let c = 0; c < WU_COLS; c++) {
+      const cell = _wuBoard[r][c];
+      const el = boardEl.children[r * WU_COLS + c];
+      if (!el) continue;
+      el.className = 'tutorial-cell';
+      el.textContent = '';
+      if (cell.isRevealed) {
+        el.classList.add('revealed');
+        if (cell.isMine) {
+          applyIcon(el, 'mine', getThemeEmoji('mine'), { sizeClass: 'sprite-cell' });
+          el.classList.add('mine');
+        } else if (cell.adjacentMines > 0) {
+          el.textContent = cell.adjacentMines;
+          el.classList.add('num-' + cell.adjacentMines);
+        } else {
+          el.classList.add('empty');
+        }
+      } else if (cell.isFlagged) {
+        el.classList.add('flagged');
+        applyIcon(el, 'flag', getThemeEmoji('flag'), { sizeClass: 'sprite-cell' });
+      } else {
+        el.classList.add('unrevealed');
+      }
+    }
+  }
+}
+
+function wuSetMsg(t) {
+  const el = _wuOverlay && _wuOverlay.querySelector('#warmup-text');
+  if (el) el.textContent = t;
+}
+
+function wuClearLp() {
+  if (_wuLpTimer) { clearTimeout(_wuLpTimer); _wuLpTimer = null; }
+}
+
+function wuTouchStart(e) {
+  const el = e.target.closest('.tutorial-cell');
+  if (!el) return;
+  const r = parseInt(el.dataset.row, 10);
+  const c = parseInt(el.dataset.col, 10);
+  wuClearLp();
+  _wuLpTimer = setTimeout(() => { _wuLpTimer = null; wuToggleFlag(r, c); }, 500);
+}
+
+function wuRightClick(e) {
+  const el = e.target.closest('.tutorial-cell');
+  if (!el) return;
+  wuToggleFlag(parseInt(el.dataset.row, 10), parseInt(el.dataset.col, 10));
+}
+
+function wuToggleFlag(r, c) {
+  if (_wuFinished) return;
+  const cell = _wuBoard[r][c];
+  if (cell.isRevealed) return;
+  cell.isFlagged = !cell.isFlagged;
+  playFlag();
+  wuRender();
+}
+
+function wuClick(e) {
+  if (_wuFinished) return;
+  const el = e.target.closest('.tutorial-cell');
+  if (!el) return;
+  const r = parseInt(el.dataset.row, 10);
+  const c = parseInt(el.dataset.col, 10);
+  const cell = _wuBoard[r][c];
+  if (cell.isFlagged) return;
+  if (!_wuPlaced) wuPlaceMines(r, c);
+  if (cell.isRevealed) {
+    if (cell.adjacentMines > 0) wuChord(r, c); // chord only on a satisfied number
+    return;
+  }
+  if (cell.isMine) { wuHitMine(); return; }
+  wuFlood(r, c);
+  playReveal();
+  wuAfterMove();
+}
+
+function wuChord(r, c) {
+  const cell = _wuBoard[r][c];
+  let flags = 0;
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      if (!dr && !dc) continue;
+      const nr = r + dr, nc = c + dc;
+      if (nr >= 0 && nr < WU_ROWS && nc >= 0 && nc < WU_COLS && _wuBoard[nr][nc].isFlagged) flags++;
+    }
+  }
+  if (flags !== cell.adjacentMines) return; // real chord rule: only when satisfied
+  let hitMine = false;
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      if (!dr && !dc) continue;
+      const nr = r + dr, nc = c + dc;
+      if (nr < 0 || nr >= WU_ROWS || nc < 0 || nc >= WU_COLS) continue;
+      const n = _wuBoard[nr][nc];
+      if (n.isRevealed || n.isFlagged) continue;
+      if (n.isMine) { hitMine = true; continue; }
+      wuFlood(nr, nc);
+    }
+  }
+  if (hitMine) { wuHitMine(); return; }
+  playReveal();
+  wuAfterMove();
+}
+
+function wuHitMine() {
+  // Practice has no game-over. Briefly surface the mines so the player
+  // sees what happened, then re-fog and let them keep going. Flags are
+  // left in place so the re-explore is not from scratch.
+  for (let r = 0; r < WU_ROWS; r++) {
+    for (let c = 0; c < WU_COLS; c++) {
+      if (_wuBoard[r][c].isMine) _wuBoard[r][c].isRevealed = true;
+    }
+  }
+  wuSetMsg('That was a mine. The board resets, give it another go.');
+  wuRender();
+  setTimeout(() => {
+    if (_wuFinished || !_wuBoard) return;
+    for (let r = 0; r < WU_ROWS; r++) {
+      for (let c = 0; c < WU_COLS; c++) _wuBoard[r][c].isRevealed = false;
+    }
+    wuSetMsg('Keep clearing. Long-press to flag suspected mines.');
+    wuRender();
+  }, 1300);
+}
+
+function wuIsWon() {
+  for (let r = 0; r < WU_ROWS; r++) {
+    for (let c = 0; c < WU_COLS; c++) {
+      const cell = _wuBoard[r][c];
+      if (!cell.isMine && !cell.isRevealed) return false;
+    }
+  }
+  return true;
+}
+
+function wuAfterMove() {
+  wuRender();
+  if (wuIsWon()) {
+    _wuFinished = true;
+    playWin();
+    wuSetMsg('Board cleared. Nice work!');
+    setTimeout(() => wuFinish(), 1500);
+  }
+}
+
+function wuFinish() {
+  if (_wuFinished && !_wuOverlay) return;
+  _wuFinished = true;
+  wuClearLp();
+  const ov = _wuOverlay;
+  _wuOverlay = null;
+  _wuBoard = null;
+  if (ov) {
+    ov.classList.add('tutorial-exit');
+    setTimeout(() => { if (ov.parentNode) ov.parentNode.removeChild(ov); }, 300);
+  }
+  const cb = _wuOnComplete;
+  _wuOnComplete = null;
+  if (cb) cb();
+}
