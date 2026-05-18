@@ -1858,7 +1858,7 @@ function updateTitleProgress() {
       weeklyProgressEl.textContent = `Play today · ${used}/7 used`;
       weeklyCard.classList.remove('daily-completed');
     } else {
-      weeklyProgressEl.textContent = 'Same puzzle all week — your best run wins.';
+      weeklyProgressEl.textContent = 'Same puzzle all week. Your best run wins.';
       weeklyCard.classList.remove('daily-completed');
     }
   }

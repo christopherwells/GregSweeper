@@ -456,7 +456,7 @@ export function handleWin() {
       if (useHandicap) {
         parEl.innerHTML = parPrimer +
           "Greg's Time: " + state.dailyPar.toFixed(1) + 's · ' +
-          yourParLabel + personalPar.toFixed(1) + 's — ' +
+          yourParLabel + personalPar.toFixed(1) + 's · ' +
           '<span class="' + parClass + '">' + deltaText + '</span>';
       } else {
         // No handicap yet — surface a small hint about what would
@@ -467,7 +467,7 @@ export function handleWin() {
           ? ' <span class="par-hint">· 1 more daily and your personal par appears</span>'
           : '';
         parEl.innerHTML = parPrimer +
-          "Greg's Time: " + state.dailyPar.toFixed(1) + 's — ' +
+          "Greg's Time: " + state.dailyPar.toFixed(1) + 's · ' +
           '<span class="' + parClass + '">' + deltaText + '</span>' + needHint;
       }
       parEl.classList.remove('hidden');
