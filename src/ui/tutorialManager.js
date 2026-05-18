@@ -474,8 +474,8 @@ function wuRenderOverlay() {
   _wuOverlay.className = 'tutorial-overlay';
   _wuOverlay.innerHTML = '<div class="tutorial-container">'
     + '<div class="tutorial-instruction">'
-    + '<h3>Warm-up</h3>'
-    + '<p id="warmup-text">A real board, no modifiers, no clock. Clear every safe cell. Long-press (or right-click) to flag a mine.</p>'
+    + '<h3>Your turn</h3>'
+    + '<p id="warmup-text">Clear every safe cell. Long-press (or right-click) to flag a mine.</p>'
     + '</div>'
     + '<div class="tutorial-board-wrapper"><div id="warmup-board" class="tutorial-board"></div></div>'
     + '<div class="tutorial-footer">'
@@ -626,14 +626,14 @@ function wuHitMine() {
       if (_wuBoard[r][c].isMine) _wuBoard[r][c].isRevealed = true;
     }
   }
-  wuSetMsg('That was a mine. In a real game it ends there. This is just practice, so the board re-hides. Keep going.');
+  wuSetMsg('That was a mine. The board resets, give it another go.');
   wuRender();
   setTimeout(() => {
     if (_wuFinished || !_wuBoard) return;
     for (let r = 0; r < WU_ROWS; r++) {
       for (let c = 0; c < WU_COLS; c++) _wuBoard[r][c].isRevealed = false;
     }
-    wuSetMsg('Just practice. Keep clearing; long-press to flag suspected mines.');
+    wuSetMsg('Keep clearing. Long-press to flag suspected mines.');
     wuRender();
   }, 1300);
 }
@@ -653,7 +653,7 @@ function wuAfterMove() {
   if (wuIsWon()) {
     _wuFinished = true;
     playWin();
-    wuSetMsg('Cleared. That is the whole game. You are ready for the Daily.');
+    wuSetMsg('Board cleared. Nice work!');
     setTimeout(() => wuFinish(), 1500);
   }
 }

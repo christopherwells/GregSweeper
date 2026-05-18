@@ -1756,13 +1756,13 @@ body {
   overflow-y: auto;
 }
 
-.stats-tabs {
+.stats-tabs, .help-tabs, .settings-tabs {
   display: flex;
   gap: 2px;
   margin-bottom: 16px;
   border-bottom: 1px solid var(--color-border, rgba(255, 255, 255, 0.1));
 }
-.stats-tab {
+.stats-tab, .help-tab, .settings-tab {
   flex: 1;
   background: transparent;
   color: var(--color-text-secondary);
@@ -1774,12 +1774,12 @@ body {
   border-bottom: 2px solid transparent;
   transition: color 0.2s, border-color 0.2s;
 }
-.stats-tab:hover { color: var(--color-text); }
-.stats-tab.active {
+.stats-tab:hover, .help-tab:hover, .settings-tab:hover { color: var(--color-text); }
+.stats-tab.active, .help-tab.active, .settings-tab.active {
   color: var(--color-accent, #4c8dff);
   border-bottom-color: var(--color-accent, #4c8dff);
 }
-.stats-panel.hidden { display: none; }
+.stats-panel.hidden, .help-panel.hidden, .settings-panel.hidden { display: none; }
 
 /* Leaderboard modal tabs (Daily / Weekly). Reuses the stats-tab
    visual pattern but scoped to the leaderboard modal so tab styles stay

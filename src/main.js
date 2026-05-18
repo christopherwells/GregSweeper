@@ -382,6 +382,30 @@ function setActiveStatsTab(tab) {
   }
 }
 
+// Help / Settings use the same tabbed pattern so each section fits on
+// one screen with no scrolling (scrolling mid-game is jarring).
+function setActiveHelpTab(tab) {
+  for (const btn of $$('.help-tab')) {
+    const isActive = btn.dataset.tab === tab;
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+  }
+  for (const panel of $$('.help-panel')) {
+    panel.classList.toggle('hidden', panel.id !== `help-panel-${tab}`);
+  }
+}
+
+function setActiveSettingsTab(tab) {
+  for (const btn of $$('.settings-tab')) {
+    const isActive = btn.dataset.tab === tab;
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+  }
+  for (const panel of $$('.settings-panel')) {
+    panel.classList.toggle('hidden', panel.id !== `settings-panel-${tab}`);
+  }
+}
+
 // Poll getUid() until anonymous auth resolves it, or until the timeout.
 // Anonymous auth typically completes in <500 ms after initAnonymousAuth
 // fires at app boot, but on a cold reload (e.g. right after a service
@@ -845,9 +869,15 @@ async function populateDailyPanel() {
   });
 }
 
-// Tab switcher — bind once at module load.
+// Tab switchers — bind once at module load.
 for (const btn of $$('.stats-tab')) {
   btn.addEventListener('click', () => setActiveStatsTab(btn.dataset.tab));
+}
+for (const btn of $$('.help-tab')) {
+  btn.addEventListener('click', () => setActiveHelpTab(btn.dataset.tab));
+}
+for (const btn of $$('.settings-tab')) {
+  btn.addEventListener('click', () => setActiveSettingsTab(btn.dataset.tab));
 }
 
 // ── Leaderboard Display ───────────────────────────────
@@ -1670,6 +1700,7 @@ $('#btn-home').addEventListener('click', () => {
   showTitleScreen();
 });
 $('#btn-settings').addEventListener('click', () => {
+  setActiveSettingsTab('general');
   showModal('settings-modal');
   // Refresh the daily-reminder toggle's state from Firebase whenever
   // the Settings modal opens — covers the case where prefs were
@@ -1706,7 +1737,7 @@ $('#btn-collection').addEventListener('click', () => {
   renderCollectionModal();
   showModal('collection-modal');
 });
-$('#btn-help').addEventListener('click', () => showModal('help-modal'));
+$('#btn-help').addEventListener('click', () => { setActiveHelpTab('basics'); showModal('help-modal'); });
 $('#title-bar').addEventListener('click', () => showModal('about-modal'));
 
 // Collection tab switching
@@ -2089,7 +2120,7 @@ function showModalFromTitle(modalId) {
 
 const titleHelpBtn = $('#title-help-btn');
 if (titleHelpBtn) {
-  titleHelpBtn.addEventListener('click', () => showModalFromTitle('help-modal'));
+  titleHelpBtn.addEventListener('click', () => { setActiveHelpTab('basics'); showModalFromTitle('help-modal'); });
 }
 const titleSettingsBtn = $('#title-settings-btn');
 if (titleSettingsBtn) {
@@ -2097,6 +2128,7 @@ if (titleSettingsBtn) {
     // Load saved player name into settings input
     const nameInput = $('#player-name-input');
     if (nameInput) nameInput.value = getPlayerName();
+    setActiveSettingsTab('general');
     showModalFromTitle('settings-modal');
     syncReminderUI();
     _updateSettingsUid();
