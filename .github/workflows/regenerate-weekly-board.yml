@@ -25,7 +25,10 @@ permissions:
 
 jobs:
   regenerate:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, gregsweeper-win]
+    defaults:
+      run:
+        shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -eo pipefail "{0}"'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
