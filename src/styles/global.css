@@ -4798,6 +4798,29 @@ button:focus-visible {
   background: var(--color-accent, #e94560)15;
 }
 
+/* Short viewports (iPhone SE/8 at 667, most Android at 640, and any tall
+   phone once the browser toolbar is showing ~664). The title screen is a
+   fixed, centered, viewport-height column; the newcomer goal line and the
+   Daily par/streak lines pushed the stack past these heights, clipping the
+   footer. Collapse the redundant section spacing (the flex gap already
+   separates header / modes / footer, so the extra margin-bottom on each was
+   double-spacing) and trim the cards so everything fits without scrolling.
+   Tall phones (>=721px, e.g. 390x844) keep the roomier layout untouched. */
+@media (max-height: 720px) {
+  .title-screen {
+    gap: 14px;
+    padding-top: max(14px, env(safe-area-inset-top));
+    padding-bottom: max(14px, env(safe-area-inset-bottom));
+  }
+  .title-screen-header { margin-bottom: 0; }
+  .title-screen-logo { font-size: clamp(24px, 6vw, 36px); }
+  .title-screen-goal { margin-top: 6px; font-size: 12px; }
+  .title-screen-modes { margin-bottom: 0; }
+  .mode-card { padding: 12px 10px; }
+  .mode-card-icon { font-size: 24px; margin-bottom: 2px; }
+  .title-footer-btn { padding: 7px 14px; }
+}
+
 /* Modifier dismiss button in intro popup */
 .modifier-dismiss-btn {
   display: block;
