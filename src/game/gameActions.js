@@ -47,7 +47,7 @@ let _lastInputTime = 0;
 
 // ── Gimmick Intro Popup ───────────────────────────────
 
-function showGimmickIntros(gimmickDefs) {
+function showGimmickIntros(gimmickDefs, recapDefs = []) {
   const iconEl = document.getElementById('gimmick-intro-icon');
   const nameEl = document.getElementById('gimmick-intro-name');
   const descEl = document.getElementById('gimmick-intro-desc');
@@ -79,6 +79,17 @@ function showGimmickIntros(gimmickDefs) {
       exampleHtml: def.exampleHtml || '',
     });
   }
+  // Modifiers the player has already learned: one compact recap line
+  // instead of re-showing their full explainer every day.
+  if (recapDefs && recapDefs.length > 0) {
+    cards.push({
+      recap: true,
+      icon: '🧩',
+      name: 'Also on this board',
+      body: recapDefs.map(d => `${d.icon} ${d.name}`).join(' · '),
+      exampleHtml: '',
+    });
+  }
 
   let index = 0;
 
@@ -89,7 +100,7 @@ function showGimmickIntros(gimmickDefs) {
     }
     const card = cards[index];
     iconEl.textContent = card.icon;
-    nameEl.textContent = card.primer ? card.name : `Modifier: ${card.name}`;
+    nameEl.textContent = (card.primer || card.recap) ? card.name : `Modifier: ${card.name}`;
     descEl.textContent = card.body;
     if (exampleEl) {
       exampleEl.innerHTML = card.exampleHtml || '';
@@ -1012,12 +1023,27 @@ export function revealCell(row, col) {
       state.cachedWeeklyDayAttempts[state.weeklyDay] = true;
     }
 
-    // Show modifier intro popup for daily/weekly gimmicks (always
-    // show, not just unseen — these modes always carry modifiers).
+    // Modifier intro for daily/weekly: full card only for modifiers the
+    // player hasn't met yet (mark them seen), and a single compact recap
+    // line for ones they already know. No popup at all when everything
+    // on the board is already familiar — the persistent active-modifier
+    // bar already reminds them. Stops the same explainers re-appearing
+    // every single day.
     if (state.activeGimmicks.length > 0 && !isModifierPopupDisabled()) {
-      const defs = state.activeGimmicks.map(g => getGimmickDef(g)).filter(Boolean);
-      if (defs.length > 0) {
-        showGimmickIntros(defs);
+      const unseenDefs = [];
+      const seenDefs = [];
+      for (const g of state.activeGimmicks) {
+        const def = getGimmickDef(g);
+        if (!def) continue;
+        if (hasSeenGimmick(g)) {
+          seenDefs.push(def);
+        } else {
+          markGimmickSeen(g);
+          unseenDefs.push(def);
+        }
+      }
+      if (unseenDefs.length > 0) {
+        showGimmickIntros(unseenDefs, seenDefs);
       }
     }
   }

@@ -72,6 +72,25 @@ export function renderDailyStatsTab(data) {
     return { ...h, features, globalPar, personalPar, deltaGlobal, deltaPersonal, bombHits };
   }).filter(p => p.features);
 
+  // Zero-state: a brand-new player has no plays, so every chart below
+  // would just say "need N plays". Lead with one friendly line instead
+  // of that wall.
+  const panel = document.getElementById('stats-panel-daily');
+  if (panel) {
+    let zero = document.getElementById('stats-daily-zero');
+    if (plays.length === 0) {
+      if (!zero) {
+        zero = document.createElement('div');
+        zero.id = 'stats-daily-zero';
+        zero.className = 'chart-empty';
+        panel.insertBefore(zero, panel.firstChild);
+      }
+      zero.textContent = 'Finish your first daily to start your stats and personal par. The charts below fill in after a few plays.';
+    } else if (zero) {
+      zero.remove();
+    }
+  }
+
   renderHeadlineCards(plays, handicap, handicapProvisional);
   renderHandicapTrajectory(plays);
   renderHistoryChart(plays);

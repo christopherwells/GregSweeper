@@ -411,20 +411,30 @@ export function handleWin() {
           provisional = est;
         }
       }
+      // A newcomer's first few dailies show ONLY the plain "vs Greg's
+      // Time" line (plus the one-time primer). Handicap/personal-par,
+      // the per-feature breakdown chips, and the 30-day history strip
+      // stay hidden until they have a few plays — otherwise the very
+      // first result screen is a wall of scoring jargon. The residual
+      // for this play was already appended above, so the count includes
+      // today.
+      const NEWCOMER_DAILY_LIMIT = 3;
+      const isNewcomerDaily = loadDailyResiduals().length <= NEWCOMER_DAILY_LIMIT;
       const personalPar = state.dailyPar + handicap;
-      const referencePar = handicap !== 0 ? personalPar : state.dailyPar;
+      const useHandicap = handicap !== 0 && !isNewcomerDaily;
+      const referencePar = useHandicap ? personalPar : state.dailyPar;
       const delta = precise - referencePar;
       const absDelta = Math.abs(delta).toFixed(1);
       let parClass, deltaText;
       if (delta < -0.5) {
         parClass = 'par-under';
-        deltaText = absDelta + 's under ' + (handicap !== 0 ? 'your par' : 'par');
+        deltaText = absDelta + 's under ' + (useHandicap ? 'your par' : 'par');
       } else if (delta > 0.5) {
         parClass = 'par-over';
-        deltaText = absDelta + 's over ' + (handicap !== 0 ? 'your par' : 'par');
+        deltaText = absDelta + 's over ' + (useHandicap ? 'your par' : 'par');
       } else {
         parClass = 'par-even';
-        deltaText = handicap !== 0 ? 'Even with your par!' : 'Even par!';
+        deltaText = useHandicap ? 'Even with your par!' : 'Even par!';
       }
 
       // Provisional handicaps carry a "(based on N plays)" qualifier so
@@ -443,7 +453,7 @@ export function handleWin() {
         parPrimer = '<span class="par-primer">Greg’s Time is the typical solve time for today’s board. Finish faster and you’re under par.</span><br>';
       }
 
-      if (handicap !== 0) {
+      if (useHandicap) {
         parEl.innerHTML = parPrimer +
           "Greg's Time: " + state.dailyPar.toFixed(1) + 's · ' +
           yourParLabel + personalPar.toFixed(1) + 's — ' +
@@ -462,10 +472,11 @@ export function handleWin() {
       }
       parEl.classList.remove('hidden');
 
-      // Per-feature breakdown of what drove Greg's par. Only shown when
-      // state.dailyFeatures is populated (older resumed games may have
-      // been persisted before features existed).
-      if (parBreakdownEl && state.dailyFeatures) {
+      // Per-feature breakdown of what drove Greg's par. Held back for a
+      // newcomer's first few dailies (jargon overload on the first
+      // result). Only shown when state.dailyFeatures is populated
+      // (older resumed games may predate features).
+      if (!isNewcomerDaily && parBreakdownEl && state.dailyFeatures) {
         const terms = breakdownPar(state.dailyFeatures);
         if (terms.length > 0) {
           parBreakdownEl.innerHTML = terms
@@ -475,10 +486,10 @@ export function handleWin() {
         }
       }
       // 7-dot history strip — at-a-glance look at the player's recent
-      // trajectory. Today's just-played dot is the rightmost; older
-      // days fall off the left edge. Reads localStorage residuals
-      // (just-appended above) so it's instant and works offline.
-      _renderWinModalHistoryDots(state.dailySeed);
+      // trajectory. Also held back until they have a few dailies under
+      // their belt; one or two dots says nothing. Reads localStorage
+      // residuals (just-appended above) so it's instant and offline.
+      if (!isNewcomerDaily) _renderWinModalHistoryDots(state.dailySeed);
     }
   } else if (state.gameMode === 'weekly') {
     // Weekly: show precise time, day-of-week dot indicators, vs-best

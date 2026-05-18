@@ -3788,6 +3788,16 @@ body {
   letter-spacing: 3px;
   text-transform: uppercase;
 }
+/* One-line objective so a newcomer knows the goal before picking a mode. */
+.title-screen-goal {
+  font-size: 13px;
+  color: var(--color-text-secondary, #888);
+  margin-top: 8px;
+  max-width: 30ch;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.4;
+}
 
 .title-screen-modes {
   display: grid;

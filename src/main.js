@@ -35,6 +35,7 @@ import {
   getPlayerName, setPlayerName,
   getLastSeenVersion, setLastSeenVersion,
   saveDailyPar, loadDailyPar, applyCloudProgress,
+  hasSeenNotice, markNoticeSeen,
 } from './storage/statsStorage.js';
 
 const CURRENT_VERSION = 'v1.5';
@@ -72,7 +73,7 @@ import {
 import { isModifierPopupDisabled, setModifierPopupDisabled, getGimmickDefs, getDailyGimmick, applyGimmicks } from './logic/gimmicks.js';
 import { isStorageFailing, safeGet, safeSet, safeRemove, requestPersistentStorage } from './storage/storageAdapter.js';
 import { pauseTimer, resumeTimer, recordInteraction } from './game/timerManager.js';
-import { startTutorial } from './ui/tutorialManager.js';
+import { startTutorial, startWarmup } from './ui/tutorialManager.js';
 import { initErrorReporter, setErrorReporterCodeVersion, reportTestError } from './diagnostics/errorReporter.js';
 
 // ── Code-version handshake with the service worker ────
@@ -880,6 +881,7 @@ async function renderWeeklyLeaderboard(weekStart) {
   const entries = await fetchWeeklyLeaderboard(weekStart);
   const hasEntries = entries.length > 0;
   $('#leaderboard-table').classList.toggle('hidden', !hasEntries);
+  $('#leaderboard-empty').textContent = 'No weekly times yet. Be the first to set one.';
   $('#leaderboard-empty').classList.toggle('hidden', hasEntries);
   if (!hasEntries) return;
   // Column repurposing for weekly:
@@ -1041,6 +1043,9 @@ async function _renderLeaderboardForTab(tab) {
 
   const hasEntries = entries.length > 0;
   $('#leaderboard-table').classList.toggle('hidden', !hasEntries);
+  $('#leaderboard-empty').textContent = (dateStr === today)
+    ? 'No times yet today. Be the first to finish it.'
+    : 'No entries for this day.';
   $('#leaderboard-empty').classList.toggle('hidden', hasEntries);
 
   // Daily par + solver moves (shared with the title-card par badge).
@@ -1258,6 +1263,22 @@ function updateAchievementsDisplay() {
   progressText.textContent = `${total} / ${max}`;
 
   grid.innerHTML = '';
+
+  // Zero-state: a brand-new player sees a wall of locks. Frame it so it
+  // reads as "go play" rather than "you have nothing". Most categories
+  // unlock on the very first win.
+  let achZero = document.getElementById('ach-zero-banner');
+  if (total === 0) {
+    if (!achZero) {
+      achZero = document.createElement('div');
+      achZero.id = 'ach-zero-banner';
+      achZero.className = 'chart-empty';
+      grid.parentNode.insertBefore(achZero, grid);
+    }
+    achZero.textContent = 'Nothing unlocked yet. Most of these fire on your very first win, so go play a game.';
+  } else if (achZero) {
+    achZero.remove();
+  }
 
   for (const ach of achievements) {
     const item = document.createElement('div');
@@ -2066,6 +2087,10 @@ function showModalFromTitle(modalId) {
   showModal(modalId);
 }
 
+const titleHelpBtn = $('#title-help-btn');
+if (titleHelpBtn) {
+  titleHelpBtn.addEventListener('click', () => showModalFromTitle('help-modal'));
+}
 const titleSettingsBtn = $('#title-settings-btn');
 if (titleSettingsBtn) {
   titleSettingsBtn.addEventListener('click', () => {
@@ -2133,6 +2158,15 @@ if (titleLeaderboardBtn) {
 // Clear Cache & Reload
 $('#btn-clear-cache').addEventListener('click', () => {
   if (window.gregsweeperCacheClear) window.gregsweeperCacheClear();
+});
+
+// Replay the tutorial on demand. Always includes the warm-up board
+// (the Settings hint promises it), independent of the one-time
+// onboarding gates. Routes back to the title screen when done.
+$('#btn-replay-tutorial').addEventListener('click', () => {
+  $('#settings-modal').classList.add('hidden');
+  _returnToTitle = false;
+  startTutorial(() => startWarmup(() => showTitleScreen()));
 });
 
 // Diagnostics — ground-truth snapshot of what this device sees. Dynamic
@@ -2767,8 +2801,16 @@ async function init() {
     // day one. The Daily is the highest-value conversion moment for
     // the dataset-growth audience, so the FTU funnel now ends here.
     startTutorial(() => {
-      showTitleScreen();
-      spotlightDailyCard();
+      const toTitle = () => { showTitleScreen(); spotlightDailyCard(); };
+      // One gentle no-modifier warm-up board bridges the 5x5 tutorial
+      // and a full Daily. Once ever — marked before it runs so closing
+      // the tab mid-warm-up doesn't relaunch it next visit.
+      if (!hasSeenNotice('warmup_done')) {
+        markNoticeSeen('warmup_done');
+        startWarmup(toTitle);
+      } else {
+        toTitle();
+      }
     });
   } else if (deepLinkMode === 'daily') {
     // Deep link to daily mode. ?seed=<custom> lets you play a fresh puzzle
