@@ -125,6 +125,14 @@ export const state = {
   // true when the gap exceeds the threshold and the overlay is showing.
   lastInteractionTime: 0,
   idlePaused: false,
+
+  // True while a blocking popup (modifier intro, bomb-hit explainer)
+  // has paused the timer. Resume paths (visibilitychange, idle
+  // interaction) must NOT restart the clock while this is set, or the
+  // timer ticks behind the modal — e.g. tab away during the bomb-hit
+  // explainer and back resumes it mid-read. Cleared only when the popup
+  // itself closes and explicitly resumes.
+  modalPaused: false,
 };
 
 // ── Encouragement Lines ────────────────────────────────

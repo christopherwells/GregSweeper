@@ -921,55 +921,17 @@ function _setActiveLeaderboardTab(tab) {
   }
 }
 
-async function updateLeaderboardDisplay() {
-  const tab = _defaultLeaderboardTab();
-  _setActiveLeaderboardTab(tab);
-  await _renderLeaderboardForTab(tab);
-}
-
-async function _renderLeaderboardForTab(tab) {
-  if (tab === 'weekly') {
-    await renderWeeklyLeaderboard(getWeekStart());
-    return;
-  }
-  // Restore the daily-style table header in case it was last rendered
-  // for the weekly tab (which repurposes Best/Played columns).
-  const thead = $('#leaderboard-table thead');
-  if (thead) {
-    thead.innerHTML = `<tr><th>#</th><th>Name</th><th>Time</th><th class="lb-col-extra">${spriteImgHTML('strike', 'sprite-header', 'Strikes')}</th><th>Par</th><th class="lb-col-extra">Pace</th></tr>`;
-  }
-  const today = getLocalDateString();
-  const dateStr = today;
-  const headerStr = prettyDate(today);
-  $('#leaderboard-date').textContent = headerStr;
-  const tbody = $('#leaderboard-body');
-  tbody.innerHTML = '';
-
-  let entries = null;
-
-  if (isFirebaseOnline()) {
-    entries = await fetchOnlineLeaderboard(dateStr);
-  }
-
-  if (entries === null) {
-    entries = loadDailyLeaderboard(dateStr);
-  }
-
-  const hasEntries = entries.length > 0;
-  $('#leaderboard-table').classList.toggle('hidden', !hasEntries);
-  $('#leaderboard-empty').classList.toggle('hidden', hasEntries);
-
-  // Get daily par and solver moves. Any cached par in localStorage was
-  // computed against whatever PAR_MODEL was shipping when the daily was
-  // played — it could be stale after a refit. If we have cached features
-  // (either in-memory from a fresh play or in localStorage), always
-  // recompute par from them against the CURRENT coefficients so the
-  // leaderboard "Par" column matches today's model. Only fall through to
-  // the expensive regenerate-from-seed path when no features are cached.
+// Shared daily-par resolver. Cheap path: cached features (date-keyed in
+// localStorage, or in-memory from a fresh play) -> predictPar. Fallback:
+// solve today's canonical board, or only if Firebase has nothing,
+// regenerate locally, then cache the result. ignoreInMemory skips the
+// in-memory state.dailyFeatures source so the title card gets strictly
+// today's-date par and never a previous play's leftover features.
+async function computeDailyParForDate(dateStr, ignoreInMemory = false) {
   const cached = loadDailyPar(dateStr);
-  const featuresForPar = state.dailyFeatures || cached.features || null;
+  const featuresForPar = (ignoreInMemory ? null : state.dailyFeatures) || cached.features || null;
   let dailyPar = 0;
-  let dailyMoves = state.dailyMoves || cached.moves;
+  let dailyMoves = (ignoreInMemory ? 0 : state.dailyMoves) || cached.moves;
   if (featuresForPar) {
     dailyPar = predictPar(featuresForPar);
     if (!dailyMoves && featuresForPar.totalClicks) dailyMoves = featuresForPar.totalClicks;
@@ -1040,6 +1002,49 @@ async function _renderLeaderboardForTab(tab) {
       }
     } catch (e) { dailyPar = 0; }
   }
+  return { par: dailyPar, moves: dailyMoves };
+}
+
+async function updateLeaderboardDisplay() {
+  const tab = _defaultLeaderboardTab();
+  _setActiveLeaderboardTab(tab);
+  await _renderLeaderboardForTab(tab);
+}
+
+async function _renderLeaderboardForTab(tab) {
+  if (tab === 'weekly') {
+    await renderWeeklyLeaderboard(getWeekStart());
+    return;
+  }
+  // Restore the daily-style table header in case it was last rendered
+  // for the weekly tab (which repurposes Best/Played columns).
+  const thead = $('#leaderboard-table thead');
+  if (thead) {
+    thead.innerHTML = `<tr><th>#</th><th>Name</th><th>Time</th><th class="lb-col-extra">${spriteImgHTML('strike', 'sprite-header', 'Strikes')}</th><th>Par</th><th class="lb-col-extra">Pace</th></tr>`;
+  }
+  const today = getLocalDateString();
+  const dateStr = today;
+  const headerStr = prettyDate(today);
+  $('#leaderboard-date').textContent = headerStr;
+  const tbody = $('#leaderboard-body');
+  tbody.innerHTML = '';
+
+  let entries = null;
+
+  if (isFirebaseOnline()) {
+    entries = await fetchOnlineLeaderboard(dateStr);
+  }
+
+  if (entries === null) {
+    entries = loadDailyLeaderboard(dateStr);
+  }
+
+  const hasEntries = entries.length > 0;
+  $('#leaderboard-table').classList.toggle('hidden', !hasEntries);
+  $('#leaderboard-empty').classList.toggle('hidden', hasEntries);
+
+  // Daily par + solver moves (shared with the title-card par badge).
+  const { par: dailyPar, moves: dailyMoves } = await computeDailyParForDate(dateStr);
 
   const myUid = getUid();
   entries.forEach((entry, i) => {
@@ -1747,6 +1752,11 @@ if (timerToggleBtn) {
 
 // ── Title Screen ──────────────────────────────────────
 
+// Today's Greg-par for the Daily card subtitle. Resolved once per date
+// per session (the solve is not free) by refreshTitleDailyPar(); read
+// synchronously by updateTitleProgress().
+let _titleDailyPar = { date: null, secs: 0 };
+
 function updateTitleProgress() {
   const stats = loadStats();
   const challengeEl = $('#title-challenge-progress');
@@ -1765,13 +1775,18 @@ function updateTitleProgress() {
     const today = getLocalDateString();
     const dailyCard = $('.mode-card[data-mode="daily"]');
     const { streak } = getDailyStreak();
-    if (isDailyCompleted(today)) {
-      dailyEl.textContent = streak > 0 ? `Completed! 🔥 ${streak} day streak` : 'Completed today!';
-      if (dailyCard) dailyCard.classList.add('daily-completed');
+    const parLine = (_titleDailyPar.date === today && _titleDailyPar.secs > 0)
+      ? `<span class="mode-card-par">Par: ${_titleDailyPar.secs} seconds</span>`
+      : '';
+    const completed = isDailyCompleted(today);
+    let descriptor;
+    if (completed) {
+      descriptor = streak > 0 ? `Completed! 🔥 ${streak} day streak` : 'Completed today!';
     } else {
-      dailyEl.textContent = streak > 0 ? `🔥 ${streak} day streak` : 'Same puzzle worldwide · ~2 min';
-      if (dailyCard) dailyCard.classList.remove('daily-completed');
+      descriptor = streak > 0 ? `🔥 ${streak} day streak` : 'Same puzzle worldwide';
     }
+    dailyEl.innerHTML = descriptor + parLine;
+    if (dailyCard) dailyCard.classList.toggle('daily-completed', completed);
   }
 
   // Weekly card — always visible. Shows attempts used and best time
@@ -1849,8 +1864,24 @@ function showTitleScreen() {
   state.idlePaused = false;
 
   updateTitleProgress();
+  refreshTitleDailyPar(); // fills in "Par: N seconds" once resolved
   titleScreen.classList.remove('hidden');
   app.classList.add('hidden');
+}
+
+// Resolve today's Greg-par for the Daily card, once per date per
+// session. Fire-and-forget: the title shows immediately with the
+// fallback subtitle, then the par badge fills in when this resolves.
+async function refreshTitleDailyPar() {
+  const today = getLocalDateString();
+  if (_titleDailyPar.date === today && _titleDailyPar.secs > 0) return;
+  try {
+    const { par } = await computeDailyParForDate(today, true);
+    if (par > 0) {
+      _titleDailyPar = { date: today, secs: Math.round(par) };
+      updateTitleProgress();
+    }
+  } catch { /* keep the fallback subtitle */ }
 }
 
 // Draw the player's eye to the Daily card after onboarding. Adds a

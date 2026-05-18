@@ -9,7 +9,11 @@ import { getThemeEmoji } from './boardRenderer.js';
 
 const ROWS = 5;
 const COLS = 5;
-const MINES = [[1,1], [3,3]];
+// Mine #1 sits in the top-left board corner so it is boxed in by three
+// 1s whose ONLY shared hidden cell is that corner — an unambiguous
+// "inside corner" deduction for a beginner. Mine #2 at (3,3) is pinned
+// the same way by a single adjacent 1.
+const MINES = [[0,0], [3,3]];
 
 function buildTutorialBoard() {
   const mineSet = new Set(MINES.map(([r,c]) => r * 100 + c));
@@ -64,44 +68,51 @@ const STEPS = [
   {
     id: 'reveal',
     title: 'Step 1: Reveal a Cell',
-    text: 'Tap the glowing cell to reveal it. Safe cells with no nearby mines will open up automatically!',
-    targetCell: [0, 4],
+    text: 'Tap the glowing cell. It has no mines beside it, so a whole safe area opens up at once.',
+    targetCell: [4, 0],
     action: 'reveal',
   },
   {
     id: 'numbers',
     title: 'Step 2: Read the Numbers',
-    text: 'Each number tells you how many mines touch that cell (including diagonals). Use them to figure out where mines are hiding.',
+    text: 'Each number counts the mines touching that cell, diagonals included. Blank cells were safe; the numbers are your clues.',
     action: 'next',
     buttonText: 'Got it!',
   },
   {
     id: 'flag',
     title: 'Step 3: Flag a Mine',
-    text: "The 1 at the top only touches one hidden cell \u2014 that must be a mine! Tap the glowing cell to flag it.",
-    targetCell: [1, 1],
+    text: "The top-left corner is boxed in by 1s, and the only hidden cell they all touch is that corner. A 1 means exactly one mine, so the corner has to be one. Long-press it to flag it (right-click on desktop).",
+    targetCell: [0, 0],
     action: 'flag',
   },
   {
-    id: 'chord',
-    title: 'Step 4: Chord Reveal',
-    text: "When all mines around a number are flagged, tap the number to reveal the rest. Tap the glowing 1!",
-    targetCell: [0, 2],
-    action: 'chord',
-  },
-  {
     id: 'flag2',
-    title: 'Step 5: Flag the Last Mine',
-    text: "One mine left! The 2 shows two adjacent mines \u2014 one is flagged, so the last hidden cell must be the other. Flag it!",
+    title: 'Step 4: Flag the Last Mine',
+    text: "Same trick: a nearby 1 touches only one hidden cell, the glowing one. So it is the last mine. Long-press it to flag it. (On a phone you can also tap the \ud83d\udea9 toggle, then tap cells to flag.)",
     targetCell: [3, 3],
     action: 'flag',
   },
   {
+    id: 'chord',
+    title: 'Step 5: Chord Reveal',
+    text: "Both mines are flagged. Tap the glowing number to chord it. A chord opens only the hidden cells touching that one number.",
+    targetCell: [2, 4],
+    action: 'chord',
+  },
+  {
+    id: 'chord2',
+    title: 'Step 6: Finish the Board',
+    text: "See? The chord opened only its own neighbor, not the whole board. Two safe cells are still hidden. Chord the glowing 1 to open the last of them.",
+    targetCell: [3, 4],
+    action: 'chord',
+  },
+  {
     id: 'complete',
     title: 'You did it! \uD83C\uDF89',
-    text: "That\u2019s it \u2014 you know how to play. Today\u2019s daily is waiting; same puzzle for everyone, leaderboard inside.",
+    text: "That\u2019s it, you know how to play. Some boards add Modifiers: special cells that bend the rules. GregSweeper explains each one the first time it shows up. Today\u2019s daily is waiting, same puzzle for everyone, leaderboard inside.",
     action: 'finish',
-    buttonText: "Play today\u2019s daily",
+    buttonText: "Let\u2019s go \u2192",
   },
 ];
 
@@ -109,6 +120,7 @@ let _board = null;
 let _stepIndex = 0;
 let _overlay = null;
 let _onComplete = null;
+let _lpTimer = null; // long-press timer for the flag steps
 
 export function startTutorial(onComplete) {
   _board = buildTutorialBoard();
@@ -171,6 +183,10 @@ function renderBoard() {
     e.preventDefault();
     handleCellRightClick(e);
   });
+  boardEl.addEventListener('touchstart', handleTouchStart, { passive: true });
+  boardEl.addEventListener('touchend', clearLongPress);
+  boardEl.addEventListener('touchmove', clearLongPress, { passive: true });
+  boardEl.addEventListener('touchcancel', clearLongPress);
 }
 
 function updateBoardDisplay() {
@@ -215,6 +231,7 @@ function updateBoardDisplay() {
 }
 
 function renderStep() {
+  clearLongPress();
   const step = STEPS[_stepIndex];
   if (!step) return;
 
@@ -245,6 +262,43 @@ function renderStep() {
   updateBoardDisplay();
 }
 
+// Single source of truth for flagging in the tutorial. Long-press
+// (touch), right-click (desktop), and the plain-tap fallback all route
+// here so every input path behaves identically, including the flag2
+// auto-reveal, which the old right-click path silently skipped.
+function doFlag(r, c) {
+  const step = STEPS[_stepIndex];
+  if (!step || step.action !== 'flag' || !step.targetCell) return;
+  const [tr, tc] = step.targetCell;
+  if (r !== tr || c !== tc) return;
+  if (_board[r][c].isFlagged) return; // long-press already handled it; ignore the trailing tap
+  _board[r][c].isFlagged = true;
+  playFlag();
+  updateBoardDisplay();
+  setTimeout(advanceStep, 500);
+}
+
+function clearLongPress() {
+  if (_lpTimer) {
+    clearTimeout(_lpTimer);
+    _lpTimer = null;
+  }
+}
+
+function handleTouchStart(e) {
+  const cellEl = e.target.closest('.tutorial-cell');
+  if (!cellEl) return;
+  const step = STEPS[_stepIndex];
+  if (!step || step.action !== 'flag') return; // long-press is the taught flag gesture
+  const r = parseInt(cellEl.dataset.row, 10);
+  const c = parseInt(cellEl.dataset.col, 10);
+  clearLongPress();
+  _lpTimer = setTimeout(() => {
+    _lpTimer = null;
+    doFlag(r, c);
+  }, 500);
+}
+
 function handleCellClick(e) {
   const cellEl = e.target.closest('.tutorial-cell');
   if (!cellEl) return;
@@ -265,22 +319,7 @@ function handleCellClick(e) {
       setTimeout(advanceStep, 600);
     }, 100);
   } else if (step.action === 'flag') {
-    if (r !== tr || c !== tc) return;
-    _board[r][c].isFlagged = true;
-    playFlag();
-    // If this is the last flag, auto-reveal all remaining safe cells
-    if (step.id === 'flag2') {
-      for (let ar = 0; ar < ROWS; ar++) {
-        for (let ac = 0; ac < COLS; ac++) {
-          const cell = _board[ar][ac];
-          if (!cell.isRevealed && !cell.isFlagged && !cell.isMine) {
-            cell.isRevealed = true;
-          }
-        }
-      }
-    }
-    updateBoardDisplay();
-    setTimeout(advanceStep, 500);
+    doFlag(r, c);
   } else if (step.action === 'chord') {
     if (r !== tr || c !== tc) return;
     const cell = _board[r][c];
@@ -309,17 +348,7 @@ function handleCellRightClick(e) {
   if (!cellEl) return;
   const r = parseInt(cellEl.dataset.row, 10);
   const c = parseInt(cellEl.dataset.col, 10);
-  const step = STEPS[_stepIndex];
-  if (!step || !step.targetCell) return;
-
-  if (step.action === 'flag') {
-    const [tr, tc] = step.targetCell;
-    if (r !== tr || c !== tc) return;
-    _board[r][c].isFlagged = true;
-    playFlag();
-    updateBoardDisplay();
-    setTimeout(advanceStep, 500);
-  }
+  doFlag(r, c);
 }
 
 function advanceStep() {
@@ -337,6 +366,7 @@ function advanceStep() {
 }
 
 function finishTutorial() {
+  clearLongPress();
   setOnboarded();
   if (_overlay) {
     _overlay.classList.add('tutorial-exit');

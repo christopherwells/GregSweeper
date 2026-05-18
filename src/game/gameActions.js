@@ -32,6 +32,7 @@ import { getUid, markWeeklyDayAttempted } from '../firebase/firebaseProgress.js'
 import { isTestEnvironment } from '../firebase/env.js';
 import {
   loadModePowerUps, loadCheckpoint, clearGameState, saveDailyPar,
+  hasSeenNotice, markNoticeSeen,
 } from '../storage/statsStorage.js';
 import {
   playReveal, playFlag, playUnflag, playCascade, playShieldBreak,
@@ -47,7 +48,6 @@ let _lastInputTime = 0;
 // ── Gimmick Intro Popup ───────────────────────────────
 
 function showGimmickIntros(gimmickDefs) {
-  let index = 0;
   const iconEl = document.getElementById('gimmick-intro-icon');
   const nameEl = document.getElementById('gimmick-intro-name');
   const descEl = document.getElementById('gimmick-intro-desc');
@@ -56,23 +56,51 @@ function showGimmickIntros(gimmickDefs) {
   const dismissBtn = document.getElementById('gimmick-intro-dismiss');
   if (!iconEl || !nameEl || !descEl || !okBtn) return;
 
+  // First time a player ever meets a Modifier, lead with a plain-language
+  // primer so the per-modifier card isn't a cold dump on a newcomer who
+  // just finished the basics tutorial.
+  const showPrimer = !hasSeenNotice('modifier_primer');
+  const cards = [];
+  if (showPrimer) {
+    cards.push({
+      primer: true,
+      icon: '✨',
+      name: 'Modifiers',
+      body: "This board has a Modifier. GregSweeper sometimes adds special cells that bend the rules: a liar that's off by one, a wormhole that shares counts, and more. You'll get a quick explainer the first time each one appears.",
+      exampleHtml: '',
+    });
+  }
+  for (const def of gimmickDefs) {
+    cards.push({
+      primer: false,
+      icon: def.icon,
+      name: def.name,
+      body: def.longDesc || def.desc,
+      exampleHtml: def.exampleHtml || '',
+    });
+  }
+
+  let index = 0;
+
   function showNext() {
-    if (index >= gimmickDefs.length) {
+    if (index >= cards.length) {
       closeIntro();
       return;
     }
-    const def = gimmickDefs[index];
-    iconEl.textContent = def.icon;
-    nameEl.textContent = `Modifier: ${def.name}`;
-    descEl.textContent = def.longDesc || def.desc;
+    const card = cards[index];
+    iconEl.textContent = card.icon;
+    nameEl.textContent = card.primer ? card.name : `Modifier: ${card.name}`;
+    descEl.textContent = card.body;
     if (exampleEl) {
-      exampleEl.innerHTML = def.exampleHtml || '';
+      exampleEl.innerHTML = card.exampleHtml || '';
     }
+    if (card.primer) markNoticeSeen('modifier_primer');
     showModal('gimmick-intro-overlay');
   }
 
   function closeIntro() {
     hideModal('gimmick-intro-overlay');
+    state.modalPaused = false;
     resumeTimer();
   }
 
@@ -81,17 +109,21 @@ function showGimmickIntros(gimmickDefs) {
   okBtn.parentNode.replaceChild(newBtn, okBtn);
   newBtn.addEventListener('click', () => {
     index++;
-    if (index < gimmickDefs.length) {
+    if (index < cards.length) {
       showNext();
     } else {
       closeIntro();
     }
   });
 
-  // "Don't show again" button
+  // "Skip all modifier explainers" is a global kill switch. Hide it for
+  // the whole first-ever run (the run that carries the primer) so a brand
+  // new player can't disable every future explainer before understanding
+  // what a Modifier even is. It returns to normal on later encounters.
   if (dismissBtn) {
     const newDismissBtn = dismissBtn.cloneNode(true);
     dismissBtn.parentNode.replaceChild(newDismissBtn, dismissBtn);
+    newDismissBtn.style.display = showPrimer ? 'none' : '';
     newDismissBtn.addEventListener('click', () => {
       setModifierPopupDisabled(true);
       closeIntro();
@@ -99,6 +131,7 @@ function showGimmickIntros(gimmickDefs) {
   }
 
   pauseTimer();
+  state.modalPaused = true;
   showNext();
 }
 
@@ -211,6 +244,7 @@ export async function newGame() {
   state.flagCount = 0;
   state.revealedCount = 0;
   state.elapsedTime = 0;
+  state.modalPaused = false; // fresh game must never inherit a stale modal-pause
   state.timeLimit = 0; // Timed mode now counts up — no countdown
   state.shieldActive = false;
   state.scanMode = false;

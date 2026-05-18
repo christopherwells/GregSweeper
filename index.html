@@ -430,12 +430,16 @@
           <div class="help-section">
             <h3>Controls</h3>
             <p><strong>Tap / Click</strong> a cell to reveal it</p>
-            <p><strong>Long-press / Right-click</strong> to flag a suspected mine</p>
-            <p><strong>Tap a number</strong> to auto-reveal neighbors (chord)</p>
+            <p><strong>Long-press / Right-click</strong> to flag a suspected mine. On a phone you can also tap the 🚩 toggle, then tap cells to flag.</p>
+            <p><strong>Tap a number</strong> whose mines are all flagged to clear the rest (chord). Chording with the wrong flags will detonate.</p>
           </div>
           <div class="help-section">
             <h3>Numbers</h3>
             <p>Each number tells you how many of its 8 neighbors are mines. Use logic to deduce which cells are safe!</p>
+          </div>
+          <div class="help-section">
+            <h3>Modifiers</h3>
+            <p>Some boards add Modifiers: special cells that bend the rules, like a liar that&rsquo;s off by one or a wormhole that shares counts. The first time each one appears, GregSweeper explains it. You can skip the explainers from the popup or in Settings.</p>
           </div>
           <div class="help-section">
             <h3>Power-Ups</h3>
@@ -449,9 +453,11 @@
           </div>
           <div class="help-section">
             <h3>Modes</h3>
-            <p><strong>Challenge</strong> — 120 levels with modifiers &amp; power-ups</p>
-            <p><strong>Quick Play</strong> — race for speed ratings (💎🥇🥈🥉)</p>
-            <p><strong>Daily</strong> — same board for everyone, online leaderboard</p>
+            <p><strong>Challenge:</strong> 120 levels with modifiers &amp; power-ups</p>
+            <p><strong>Quick Play:</strong> race the clock for a speed rating (💎 best, then 🥇 🥈 🥉)</p>
+            <p><strong>Daily:</strong> one puzzle a day, same board for everyone, online leaderboard</p>
+            <p><strong>Weekly:</strong> one puzzle all week, one try a day, your best time wins</p>
+            <p><strong>Chaos:</strong> fast rounds of random modifiers (unlocks at Challenge Level 50)</p>
           </div>
           <div class="help-section help-keyboard-only">
             <h3>Keyboard</h3>
@@ -562,7 +568,24 @@
         <p id="gimmick-intro-desc"></p>
         <div id="gimmick-intro-example"></div>
         <button id="gimmick-intro-ok" class="action-btn primary">Got it!</button>
-        <button id="gimmick-intro-dismiss" class="action-btn secondary modifier-dismiss-btn">Don't show again</button>
+        <button id="gimmick-intro-dismiss" class="action-btn secondary modifier-dismiss-btn">Skip all modifier explainers</button>
+      </div>
+    </div>
+
+    <!-- First-bomb-hit explainer (Daily / Weekly only). Shown once ever:
+         a newcomer expects classic game-over here, so the rule reversal
+         needs a real, dismissible explanation the first time. -->
+    <div id="bombhit-explainer" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Mine hit. The game continues.</h2>
+        </div>
+        <div class="modal-body">
+          <p>In Daily and Weekly, hitting a mine does <strong>not</strong> end the game.</p>
+          <p>You take a <strong>+10 second</strong> penalty, the cells you had cleared are hidden again, and a <img class="game-sprite sprite-popup" src="assets/sprites/strike.png" alt="strike" decoding="async" draggable="false"> marks the mine. The numbers stay correct, so re-clear the board and finish for your time.</p>
+          <p>Other modes still end on a mine, so flag carefully.</p>
+        </div>
+        <button id="bombhit-explainer-ok" class="action-btn primary">Got it</button>
       </div>
     </div>
 
@@ -799,6 +822,11 @@
 
         <!-- DAILY TAB -->
         <div id="stats-panel-daily" class="stats-panel">
+
+          <div class="stats-section">
+            <h3>Quick guide</h3>
+            <p class="stats-blurb"><strong>Greg&rsquo;s Time</strong> (par) is the typical solve time for a board. <strong>Your par</strong> is that adjusted by your <strong>handicap</strong>, your usual pace versus Greg across recent dailies (negative is faster). <strong>Delta</strong> is how far under or over your par you finished on a given day.</p>
+          </div>
 
           <div class="stats-section">
             <h3>Handicap</h3>

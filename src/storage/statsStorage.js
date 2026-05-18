@@ -457,6 +457,20 @@ export function setOnboarded() {
   safeSet(ONBOARDING_KEY, 'true');
 }
 
+// ── One-time newcomer notices ─────────────────────────
+// Each first-encounter primer (the Modifier primer, the daily/weekly
+// bomb-hit explainer, the par primer) shows once ever, then never
+// again. One generic flag pair instead of three near-identical ones.
+const ONE_TIME_KEY_PREFIX = 'minesweeper_seen_';
+
+export function hasSeenNotice(name) {
+  return safeGet(ONE_TIME_KEY_PREFIX + name) === 'true';
+}
+
+export function markNoticeSeen(name) {
+  safeSet(ONE_TIME_KEY_PREFIX + name, 'true');
+}
+
 // ── Daily Streak ──────────────────────────────────────
 export function getDailyStreak() {
   const stats = loadStats();
