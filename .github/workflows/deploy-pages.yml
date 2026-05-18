@@ -42,6 +42,13 @@ jobs:
         # exe path breaks. C:\PROGRA~1 avoids both.
         shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -eo pipefail "{0}"'
     steps:
+      # actions/upload-pages-artifact (and other third-party actions)
+      # run their own steps with `shell: bash`, which we can't override.
+      # The runner service account has no Git on PATH, so bare `bash`
+      # is not found. Prepending Git's bin via $GITHUB_PATH makes `bash`
+      # resolve for every later step, including inside composite actions.
+      - name: Put Git bash on PATH (self-hosted runner)
+        run: echo 'C:\Program Files\Git\bin' >> "$GITHUB_PATH"
       - name: Checkout main branch
         uses: actions/checkout@v4
         with:
