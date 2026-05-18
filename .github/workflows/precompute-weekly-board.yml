@@ -33,10 +33,11 @@ concurrency:
 
 jobs:
   precompute:
-    runs-on: [self-hosted, gregsweeper-win]
-    defaults:
-      run:
-        shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -eo pipefail "{0}"'
+    # MUST be GitHub-hosted: writes the canonical weekly board on a
+    # fixed Monday cron before players start the week. A self-hosted
+    # runner only runs when the dev box is on; a missed run forks the
+    # weekly board for everyone. Reliability over minutes.
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 

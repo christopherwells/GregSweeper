@@ -28,10 +28,11 @@ concurrency:
 
 jobs:
   send:
-    runs-on: [self-hosted, gregsweeper-win]
-    defaults:
-      run:
-        shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -eo pipefail "{0}"'
+    # MUST be GitHub-hosted: hourly cron that sends each subscriber
+    # their "daily is ready" push at their chosen ET hour. A self-hosted
+    # runner only runs when the dev box is on, so a sleeping machine
+    # means players miss that day's reminder. Reliability over minutes.
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
