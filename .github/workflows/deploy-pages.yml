@@ -36,9 +36,11 @@ jobs:
     runs-on: [self-hosted, gregsweeper-win]
     defaults:
       run:
-        # Absolute path: the runner service account (NETWORK SERVICE)
-        # doesn't have Git on PATH, so bare `bash` is not found.
-        shell: '"C:\Program Files\Git\bin\bash.exe" --noprofile --norc -eo pipefail "{0}"'
+        # Space-free 8.3 path to Git bash: the runner service account
+        # (NETWORK SERVICE) has no Git on PATH, and GitHub splits the
+        # custom-shell string on spaces — so a "C:\Program Files\..."
+        # exe path breaks. C:\PROGRA~1 avoids both.
+        shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -eo pipefail "{0}"'
     steps:
       - name: Checkout main branch
         uses: actions/checkout@v4
