@@ -138,6 +138,10 @@ export function pauseTimer() {
 
 export function resumeTimer() {
   if (state.status !== 'playing') return;
+  // A blocking popup owns the pause. Don't let visibilitychange / idle
+  // interaction restart the clock behind it — the popup clears this
+  // flag itself right before its own resumeTimer call.
+  if (state.modalPaused) return;
   // Restart game timer if not already running
   if (!state.timerId) {
     _preciseStartTime = Date.now(); // resume precise tracking

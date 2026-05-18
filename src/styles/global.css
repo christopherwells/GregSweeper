@@ -3867,6 +3867,13 @@ button:focus-visible {
   font-size: 11px;
   color: var(--color-text-secondary, #888);
 }
+/* Par sits on its own line beneath the Daily card's descriptor. */
+.mode-card-par {
+  display: block;
+  margin-top: 2px;
+  opacity: 0.8;
+  font-variant-numeric: tabular-nums;
+}
 
 .mode-card.daily-completed {
   opacity: 0.6;
@@ -5348,7 +5355,8 @@ pre.diagnostics-pre {
    the cap (it never is here — natural is 768×768 — but keeps the
    rule robust under future sprite resizes). object-fit:contain is a
    no-op when the cap matches aspect, useful insurance otherwise. */
-.cell > .game-sprite.sprite-cell {
+.cell > .game-sprite.sprite-cell,
+.tutorial-cell > .game-sprite.sprite-cell {
   display: block;
   width: auto;
   height: auto;

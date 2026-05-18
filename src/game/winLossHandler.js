@@ -4,13 +4,13 @@ import { getThemeEmoji, updateAllCells, announceGame } from '../ui/boardRenderer
 import { applyIcon, spriteImgHTML } from '../ui/spriteLoader.js';
 import { updateHeader, updateStreakBorder, updateCheckpointDisplay, getCheckpointForLevel } from '../ui/headerRenderer.js';
 import { updatePowerUpBar } from '../ui/powerUpBar.js';
-import { showModal } from '../ui/modalManager.js';
+import { showModal, hideModal } from '../ui/modalManager.js';
 import {
   triggerHeavyShake, showRedFlash, showGreenFlash,
   haptic, chainRevealMines, showVictoryCelebration, showConfettiBurst,
 } from '../ui/effectsRenderer.js';
 import { showToast } from '../ui/toastManager.js';
-import { stopTimer, pauseTimer, resumeTimer } from './timerManager.js';
+import { stopTimer, pauseTimer, resumeTimer, updateTimerDisplay } from './timerManager.js';
 import { awardPowerUps } from './powerUpActions.js';
 import { setHandleWin } from './powerUpActions.js';
 import { findNextSafeMove } from '../logic/boardSolver.js';
@@ -18,6 +18,7 @@ import { getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, getChaosDifficulty, LIFELIN
 import {
   loadStats, saveGameResult, saveModePowerUps, clearGameState,
   markDailyCompleted, getDailyStreak, getPlayerName,
+  hasSeenNotice, markNoticeSeen,
 } from '../storage/statsStorage.js';
 import { safeSetJSON } from '../storage/storageAdapter.js';
 import {
@@ -434,8 +435,16 @@ export function handleWin() {
         ? 'Your par (provisional, ' + provisional.n + ' plays): '
         : 'Your par: ';
 
+      // First daily a player ever finishes: define par in one plain
+      // sentence before throwing numbers at them. Shows once, ever.
+      let parPrimer = '';
+      if (!hasSeenNotice('par_primer')) {
+        markNoticeSeen('par_primer');
+        parPrimer = '<span class="par-primer">Greg’s Time is the typical solve time for today’s board. Finish faster and you’re under par.</span><br>';
+      }
+
       if (handicap !== 0) {
-        parEl.innerHTML =
+        parEl.innerHTML = parPrimer +
           "Greg's Time: " + state.dailyPar.toFixed(1) + 's · ' +
           yourParLabel + personalPar.toFixed(1) + 's — ' +
           '<span class="' + parClass + '">' + deltaText + '</span>';
@@ -447,7 +456,7 @@ export function handleWin() {
         const needHint = residuals.length === 1
           ? ' <span class="par-hint">· 1 more daily and your personal par appears</span>'
           : '';
-        parEl.innerHTML =
+        parEl.innerHTML = parPrimer +
           "Greg's Time: " + state.dailyPar.toFixed(1) + 's — ' +
           '<span class="' + parClass + '">' + deltaText + '</span>' + needHint;
       }
@@ -460,7 +469,7 @@ export function handleWin() {
         const terms = breakdownPar(state.dailyFeatures);
         if (terms.length > 0) {
           parBreakdownEl.innerHTML = terms
-            .map(t => '<span class="par-term">+' + t.seconds + 's ' + t.label + '</span>')
+            .map(t => '<span class="par-term" title="Extra time this part of the board adds to Greg’s Time">+' + t.seconds + 's ' + t.label + '</span>')
             .join('<span class="par-term-sep"> · </span>');
           parBreakdownEl.classList.remove('hidden');
         }
@@ -1084,21 +1093,71 @@ export function handleDailyBombHit(mineRow, mineCol) {
   showRedFlash();
   haptic([80, 30, 60]);
 
-  // Pause timer during popup so display time doesn't add to penalty
+  // Pause timer during popup so display time doesn't add to penalty.
+  // modalPaused makes it sticky: a tab-away/return (visibilitychange)
+  // must not resume the clock while the explainer/popup is still up.
   pauseTimer();
+  state.modalPaused = true;
 
-  // Show centered popup for 1.5s
+  // Render the +10 penalty NOW, while the timer is frozen, so the
+  // displayed time during the modal already reflects the hit. Without
+  // this the display lags at the pre-penalty value and only jumps
+  // forward when the modal closes — which reads as "the clock ran while
+  // I was reading the explainer" even though it was paused the whole
+  // time.
+  state.elapsedTime = Math.floor(state.elapsedTime);
+  updateTimerDisplay();
+
+  function finishBombHit() {
+    state.modalPaused = false;
+    resumeTimer();
+    updateAllCells();
+    updateHeader();
+  }
+
+  // First bomb hit ever: a newcomer expects classic Minesweeper game-over
+  // here. Stop and explain the rule reversal with a modal they dismiss
+  // when ready (the timer stays paused until then). Every later hit just
+  // gets the fast transient popup.
+  if (!hasSeenNotice('bombhit_explainer')) {
+    markNoticeSeen('bombhit_explainer');
+    const modal = document.getElementById('bombhit-explainer');
+    const okBtn = document.getElementById('bombhit-explainer-ok');
+    if (modal && okBtn) {
+      // The cleanup (resume timer, repaint the re-fogged board) must run
+      // no matter HOW the modal closes: the button, or the global Escape
+      // handler. Watching for the 'hidden' class covers both paths;
+      // wiring only the button would soft-lock an Escape user with a
+      // paused timer and a stale board.
+      let done = false;
+      let obs = null;
+      const finishOnce = () => {
+        if (done) return;
+        done = true;
+        if (obs) obs.disconnect();
+        finishBombHit();
+      };
+      obs = new MutationObserver(() => {
+        if (modal.classList.contains('hidden')) finishOnce();
+      });
+      obs.observe(modal, { attributes: true, attributeFilter: ['class'] });
+      const fresh = okBtn.cloneNode(true);
+      okBtn.parentNode.replaceChild(fresh, okBtn);
+      fresh.addEventListener('click', () => hideModal('bombhit-explainer'), { once: true });
+      showModal('bombhit-explainer');
+      return;
+    }
+    // Element missing (shouldn't happen): fall through to the popup.
+  }
+
+  // Subsequent hits: brief centered popup, auto-dismiss.
   const popup = document.createElement('div');
   popup.className = 'daily-bomb-popup';
-  const strikes = isWeekly ? state.weeklyBombHits : state.dailyBombHits;
   popup.innerHTML = `<div class="daily-bomb-popup-content">${spriteImgHTML('strike', 'sprite-popup', 'Mine hit')} You hit a mine!<br><span class="daily-bomb-sub">+10s · Board reset · Bomb flagged</span></div>`;
   document.getElementById('app').appendChild(popup);
 
   setTimeout(() => {
     popup.remove();
-    state.elapsedTime = Math.floor(state.elapsedTime);
-    resumeTimer();
-    updateAllCells();
-    updateHeader();
+    finishBombHit();
   }, 2000);
 }
