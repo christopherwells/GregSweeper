@@ -1633,6 +1633,51 @@ body {
   opacity: 0.7;
 }
 
+/* Reminder time: a themed control instead of the bare OS dropdown,
+   so the Alerts tab matches the rest of Settings. */
+.reminder-hour-select {
+  font: inherit;
+  font-size: 14px;
+  color: var(--color-text, #eee);
+  background: transparent;
+  border: 2px solid var(--color-border, #555);
+  border-radius: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.reminder-hour-select:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+/* "Reminder time" is dependent on the Daily-reminders toggle above it:
+   indent + space it so Alerts reads with the same rhythm as the
+   other tabs instead of one cramped block. */
+.setting-subrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 0 28px;
+  font-size: 14px;
+  color: var(--color-text, #eee);
+}
+.setting-subrow label {
+  color: var(--color-text-secondary);
+}
+
+/* About tab: the sponsor / privacy / par links and their explanations
+   must be readable, not the faint muted hint style used elsewhere. */
+#settings-panel-about .reset-hint {
+  color: var(--color-text, #eee);
+  opacity: 1;
+  font-size: 12px;
+}
+#settings-panel-about a {
+  color: var(--color-text, #eee);
+  opacity: 1;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
 /* ── Help ───────────────────────────────────── */
 
 .help-body {

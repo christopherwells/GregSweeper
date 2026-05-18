@@ -723,8 +723,8 @@
             <input type="checkbox" id="daily-reminder-toggle">
             Daily reminders
           </label>
-          <label class="toggle-label">
-            Time:
+          <div class="setting-subrow">
+            <label for="reminder-hour-select">Reminder time</label>
             <select id="reminder-hour-select" class="reminder-hour-select" disabled>
               <option value="0">12:00 AM ET</option>
               <option value="1">1:00 AM ET</option>
@@ -751,7 +751,7 @@
               <option value="22">10:00 PM ET</option>
               <option value="23">11:00 PM ET</option>
             </select>
-          </label>
+          </div>
           <p class="reset-hint" id="daily-reminder-hint">Pings you when today's daily / weekly is ready.</p>
           <label class="toggle-label">
             <input type="checkbox" id="streak-warning-toggle">
@@ -781,14 +781,14 @@
           <button id="btn-report-problem" class="clear-cache-btn">🐛 Report a problem</button>
           <p class="reset-hint">Opens a GitHub issue with your device state pre-filled. No personal data leaves the device until you actually submit the issue.</p>
           <a id="link-sponsor" href="https://github.com/sponsors/christopherwells" target="_blank" rel="noopener" class="reset-hint" style="display:inline-block;margin-top:6px;text-decoration:underline;">💛 Sponsor GregSweeper →</a>
-          <p class="reset-hint" style="margin-top:2px;">Helps cover domain, hosting, and app-store fees. Optional — the game is free either way.</p>
+          <p class="reset-hint" style="margin-top:2px;">Helps cover domain, hosting, and app-store fees (optional, the game is free either way).</p>
           <a id="link-privacy" href="./privacy.html" class="reset-hint" style="display:inline-block;margin-top:6px;text-decoration:underline;">Privacy policy →</a>
           <a id="link-about-par-model" href="./about-the-par-model.html" class="reset-hint" style="display:inline-block;margin-top:6px;text-decoration:underline;margin-left:14px;">About the par model →</a>
         </div>
         <div id="settings-diagnostics-group" class="setting-group hidden">
           <h3>Diagnostics</h3>
           <button id="btn-diagnostics" class="clear-cache-btn">🔬 Show Diagnostics</button>
-          <p class="reset-hint">Shows what this device is running — useful if something looks off.</p>
+          <p class="reset-hint">Shows what this device is running (useful if something looks off).</p>
         </div>
         </div>
       </div>
