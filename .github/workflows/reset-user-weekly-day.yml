@@ -1,0 +1,51 @@
+name: Reset one user's weekly day
+
+# Manual one-off: clears exactly ONE leaf —
+#   users/{uid}/weeklyAttempts/{weekStart}/dayAttempts/{day}
+# Nothing else (board, leaderboard, other days, other users untouched).
+# Use when a single player lost a single day's attempt to a UI bug.
+#
+# Service-account auth required — per-user weeklyAttempts paths are
+# owner-write-only under the security rules. FIREBASE_SERVICE_ACCOUNT
+# is the same secret used by reset-weekly-scores.mjs / send-push.mjs.
+#
+# Triggered manually via:
+#   gh workflow run reset-user-weekly-day.yml \
+#     -f uid=AYXrTjKPieYrZI8sksnYqbI3Pmh1 -f weekStart=2026-05-18 -f day=1
+
+on:
+  workflow_dispatch:
+    inputs:
+      uid:
+        description: 'Firebase anonymous uid of the affected player'
+        required: true
+      weekStart:
+        description: 'Week start (YYYY-MM-DD, must be a Monday)'
+        required: true
+      day:
+        description: 'Day index within the week (Mon=0 .. Sun=6)'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  reset:
+    runs-on: [self-hosted, gregsweeper-win]
+    defaults:
+      run:
+        shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -eo pipefail "{0}"'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Reset one user's weekly day
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          # Pass dispatch inputs via env (not string-interpolated into
+          # the command) so a hostile input value can't inject shell.
+          IN_UID: ${{ github.event.inputs.uid }}
+          IN_WEEKSTART: ${{ github.event.inputs.weekStart }}
+          IN_DAY: ${{ github.event.inputs.day }}
+        run: node scripts/reset-user-weekly-day.mjs "$IN_UID" "$IN_WEEKSTART" "$IN_DAY"
