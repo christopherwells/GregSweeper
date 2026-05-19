@@ -4706,17 +4706,28 @@ button:focus-visible {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* `safe center` centers when the content fits but falls back to start
+     alignment (no clipping) when it doesn't, instead of overflowing equally
+     off both ends. Paired with overflow-y:auto so that on the rare device
+     where even the compact layout is taller than the visible area (mobile
+     browser address bar eating height), the footer is still reachable by a
+     small scroll rather than silently cut off. */
+  justify-content: safe center;
+  overflow-y: auto;
+  gap: 16px;
   /* Use max() so the iPhone notch / Dynamic Island doesn't overlap the logo
-     when the PWA is installed and runs full-screen. Falls back to 24px on
+     when the PWA is installed and runs full-screen. Falls back to 16px on
      viewports without safe-area-inset support. */
-  padding: max(24px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
   background: var(--color-bg, #0f0f23);
   color: var(--color-text, #eee);
 }
 .title-screen-header {
   text-align: center;
-  margin-bottom: 32px;
+  /* The flex gap already separates header / modes / footer. The extra big
+     margin here was double-spacing, which (with the newcomer goal + Daily
+     par lines) made the column overflow shorter phones. */
+  margin-bottom: 4px;
 }
 .title-screen-logo {
   font-family: var(--font-display, 'Fredoka'), sans-serif;
@@ -4741,7 +4752,7 @@ button:focus-visible {
   gap: 12px;
   width: 100%;
   max-width: 360px;
-  margin-bottom: 28px;
+  margin-bottom: 4px;
 }
 .mode-card {
   background: var(--color-surface, #1a1a2e);
@@ -4798,27 +4809,39 @@ button:focus-visible {
   background: var(--color-accent, #e94560)15;
 }
 
-/* Short viewports (iPhone SE/8 at 667, most Android at 640, and any tall
-   phone once the browser toolbar is showing ~664). The title screen is a
-   fixed, centered, viewport-height column; the newcomer goal line and the
-   Daily par/streak lines pushed the stack past these heights, clipping the
-   footer. Collapse the redundant section spacing (the flex gap already
-   separates header / modes / footer, so the extra margin-bottom on each was
-   double-spacing) and trim the cards so everything fits without scrolling.
-   Tall phones (>=721px, e.g. 390x844) keep the roomier layout untouched. */
-@media (max-height: 720px) {
+/* Phone compaction. Keyed on WIDTH, not height: a phone is a phone whether
+   it reports 740px or 930px tall, and its real visible height is unknowable
+   (the mobile browser address bar eats a variable, dynamic slice that the
+   media query never sees). A height breakpoint missed tall Androids/iPhones
+   entirely. Every phone is <=480px wide, so this reliably catches all of
+   them. Combined with the base overflow-y:auto + safe-center, the title
+   screen now fits the visible area on phones and can never hard-clip the
+   footer even on the shortest devices. The slightly shorter `(max-height)`
+   query layers on extra trimming for very short / landscape cases. */
+@media (max-width: 480px) {
   .title-screen {
-    gap: 14px;
-    padding-top: max(14px, env(safe-area-inset-top));
-    padding-bottom: max(14px, env(safe-area-inset-bottom));
+    gap: 12px;
+    padding-top: max(12px, env(safe-area-inset-top));
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
   }
   .title-screen-header { margin-bottom: 0; }
-  .title-screen-logo { font-size: clamp(24px, 6vw, 36px); }
-  .title-screen-goal { margin-top: 6px; font-size: 12px; }
+  .title-screen-logo { font-size: clamp(24px, 6vw, 34px); }
+  .title-screen-subtitle { font-size: 12px; }
+  .title-screen-goal { margin-top: 5px; font-size: 12px; }
   .title-screen-modes { margin-bottom: 0; }
-  .mode-card { padding: 12px 10px; }
+  .mode-card { padding: 11px 10px; }
   .mode-card-icon { font-size: 24px; margin-bottom: 2px; }
-  .title-footer-btn { padding: 7px 14px; }
+  .mode-card-name { font-size: 14px; margin-bottom: 2px; }
+  .title-footer-btn { padding: 7px 13px; }
+}
+/* Extra squeeze for genuinely short viewports (small Androids, landscape,
+   browser UI showing on top of an already-short device). */
+@media (max-height: 680px) {
+  .title-screen { gap: 9px; }
+  .title-screen-logo { font-size: clamp(22px, 6vw, 30px); }
+  .mode-card { padding: 9px 8px; }
+  .mode-card-icon { font-size: 22px; }
+  .title-footer-btn { padding: 6px 12px; }
 }
 
 /* Modifier dismiss button in intro popup */
