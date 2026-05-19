@@ -1635,20 +1635,10 @@ boardEl.addEventListener('keydown', (e) => {
 resetBtn.addEventListener('click', () => {
   resetBtn.classList.add('smiley-pressed');
   setTimeout(() => resetBtn.classList.remove('smiley-pressed'), 150);
-  // Weekly mode: refuse a fresh attempt if today's slot has already been
-  // used. Without this, the smiley becomes a back-door to unlimited
-  // replays of a won (or a still-in-progress-after-reset) day. The
-  // mode-card click handler enforces the same gate; this is the parallel
-  // entry-point safeguard.
-  if (state.gameMode === 'weekly') {
-    const dayIdx = getWeekDayIndex();
-    if (state.cachedWeeklyDayAttempts && state.cachedWeeklyDayAttempts[dayIdx]) {
-      showToast("You've already played today's weekly puzzle. Come back tomorrow!");
-      hideModal('gameover-overlay');
-      showTitleScreen();
-      return;
-    }
-  }
+  // Daily/Weekly are canonical single-puzzle modes — no reset. The smiley
+  // is rendered disabled in these modes (see updateHeader); this guard is
+  // the parallel safeguard against any pre-first-render click.
+  if (state.gameMode === 'daily' || state.gameMode === 'weekly') return;
   if (state.gameMode === 'normal') {
     state.currentLevel = state.checkpoint || loadCheckpoint(state.gameMode) || 1;
   } else {
