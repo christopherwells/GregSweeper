@@ -194,6 +194,10 @@ export function updateHeader() {
     : state.status === 'lost' ? 'smileyLoss'
     : 'smiley';
   applyIcon(resetBtn, smileyKey, getThemeEmoji(smileyKey), { sizeClass: 'sprite-smiley' });
+
+  // Daily/Weekly are canonical single-puzzle modes — no board reset. Keep
+  // the smiley as a status face but strip its interactivity.
+  resetBtn.disabled = state.gameMode === 'daily' || state.gameMode === 'weekly';
 }
 
 // ── Streak Fire Effect ─────────────────────────────────

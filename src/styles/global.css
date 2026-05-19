@@ -273,13 +273,19 @@ body {
   transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-.smiley-btn:hover {
+.smiley-btn:not(:disabled):hover {
   transform: scale(1.08);
 }
 
-.smiley-btn:active {
+.smiley-btn:not(:disabled):active {
   transform: scale(0.95);
   box-shadow: none;
+}
+
+/* Daily/Weekly: smiley stays a fully-visible status face (no opacity
+   dimming, unlike .powerup-btn:disabled) but reads as non-interactive. */
+.smiley-btn:disabled {
+  cursor: default;
 }
 
 /* ── Info Bar ───────────────────────────────── */
