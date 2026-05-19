@@ -51,7 +51,7 @@ import {
 import {
   initFirebase, isFirebaseOnline, submitOnlineScore, fetchOnlineLeaderboard, fetchUserDailyHistory, fetchAllDailyMeta, fetchAllDailyScores, fetchWeeklyLeaderboard,
 } from './firebase/firebaseLeaderboard.js';
-import { initAnonymousAuth, loadProgress, saveDailyHistoryEntry, getUid, loadWeeklyAttempts, loadLocalWeeklyAttempts, pruneStaleLocalWeeklyAttempts } from './firebase/firebaseProgress.js';
+import { initAnonymousAuth, loadProgress, saveDailyHistoryEntry, getUid, loadWeeklyAttempts, loadLocalWeeklyAttempts, replaceLocalWeeklyAttempts, pruneStaleLocalWeeklyAttempts } from './firebase/firebaseProgress.js';
 import { isTestEnvironment } from './firebase/env.js';
 // Stats-tab renderer + chart toolkit are lazy-imported in populateDailyPanel
 // so they stay off the critical load path — they only come in when the
@@ -252,7 +252,7 @@ async function runStartupGate() {
       // existing master attempt doesn't get pulled in and gate test.
       const weeklyAttemptsP = isTestEnvironment()
         ? Promise.resolve({})
-        : loadWeeklyAttempts(currentWeek).catch(() => ({}));
+        : loadWeeklyAttempts(currentWeek).catch(() => null);
       const [dailyRaw, weeklyRaw, attempts] = await Promise.all([
         loadDailyBoard(today).catch(() => null),
         loadWeeklyBoard(currentWeek).catch(() => null),
@@ -264,10 +264,18 @@ async function runStartupGate() {
       if (weeklyRaw) {
         state.canonicalWeeklyBoard = { weekStart: currentWeek, raw: weeklyRaw };
       }
-      // Merge Firebase truth over the localStorage seed — Firebase wins
-      // for any day it knows about, localStorage covers gaps when the
-      // cloud copy hasn't written through yet.
-      state.cachedWeeklyDayAttempts = { ...state.cachedWeeklyDayAttempts, ...(attempts || {}) };
+      // A successful Firebase read is AUTHORITATIVE for the week (a map,
+      // possibly empty). Replacing — not merging over — the localStorage
+      // seed is what lets an admin-side reset / cloud deletion actually
+      // propagate to the player instead of being masked by a stale local
+      // copy. Mirror it back to localStorage so the next boot's
+      // synchronous seed agrees and a deleted day stays deleted. A null
+      // result means the read could not be completed (offline / not
+      // signed in / timed out) — keep the localStorage seed set above.
+      if (attempts) {
+        state.cachedWeeklyDayAttempts = attempts;
+        if (!isTestEnvironment()) replaceLocalWeeklyAttempts(currentWeek, attempts);
+      }
     } catch (err) {
       console.warn('startup gate: pre-fetch failed:', err.message);
     }

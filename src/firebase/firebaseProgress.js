@@ -141,14 +141,19 @@ export function saveDailyHistoryEntry(date, entry) {
 }
 
 /**
- * Load the per-day attempt map for a given ET-week. Returns
- * `{ 0: true, 3: true }` shape (numbers as keys when consumed via
- * `Object.keys`). Used by the startup gate so newGame() can
- * synchronously check whether today's slot has been used. Never throws;
- * returns {} on any failure or when offline.
+ * Load the per-day attempt map for a given ET-week. On a SUCCESSFUL
+ * cloud read returns the `{ 0: true, 3: true }` shape (numbers as keys
+ * when consumed via `Object.keys`); a successful read with nothing
+ * recorded returns an empty `{}` — that is an authoritative "no
+ * attempts this week", not an error. Returns `null` when the read
+ * could NOT be completed (not signed in, offline, or timed out) so the
+ * caller can keep its synchronous localStorage seed instead of
+ * mistaking an unreachable cloud for an empty one. Distinguishing these
+ * is what lets an admin-side cloud deletion actually propagate to the
+ * client. Never throws.
  */
 export async function loadWeeklyAttempts(weekStart) {
-  if (!_ready || !_uid || !weekStart) return {};
+  if (!_ready || !_uid || !weekStart) return null;
   try {
     const snap = await Promise.race([
       _db.ref(`users/${_uid}/weeklyAttempts/${weekStart}/dayAttempts`).once('value'),
@@ -163,7 +168,7 @@ export async function loadWeeklyAttempts(weekStart) {
     return out;
   } catch (err) {
     console.warn('loadWeeklyAttempts failed:', err.message);
-    return {};
+    return null;
   }
 }
 
@@ -236,6 +241,23 @@ export function saveLocalWeeklyAttempt(weekStart, day) {
     const current = loadLocalWeeklyAttempts(weekStart);
     current[day] = true;
     localStorage.setItem(LS_WEEKLY_ATTEMPTS_PREFIX + weekStart, JSON.stringify(current));
+  } catch { /* private browsing / quota — best-effort */ }
+}
+
+// Overwrite the localStorage mirror for a week with an authoritative
+// day-map. Used when a successful Firebase read is treated as the
+// source of truth: this keeps the next boot's synchronous seed in sync
+// with the cloud and lets an admin-side cloud deletion actually
+// propagate, instead of being resurrected from a stale local copy.
+export function replaceLocalWeeklyAttempts(weekStart, dayMap) {
+  if (typeof weekStart !== 'string' || !weekStart) return;
+  try {
+    const clean = {};
+    for (const k of Object.keys(dayMap || {})) {
+      const n = Number(k);
+      if (Number.isInteger(n) && n >= 0 && n <= 6 && dayMap[k]) clean[n] = true;
+    }
+    localStorage.setItem(LS_WEEKLY_ATTEMPTS_PREFIX + weekStart, JSON.stringify(clean));
   } catch { /* private browsing / quota — best-effort */ }
 }
 
