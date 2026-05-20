@@ -688,6 +688,27 @@
         </div>
         <div id="settings-panel-general" class="settings-panel">
         <div class="setting-group">
+          <h3>Account</h3>
+          <div id="account-signed-out" class="account-section hidden">
+            <p class="reset-hint" style="margin-top:0;">Sign in to keep your streak and progress in sync between phone and desktop.</p>
+            <button id="btn-signin-google" class="clear-cache-btn account-btn">Sign in with Google</button>
+            <button id="btn-signin-email" class="clear-cache-btn account-btn">Sign in with email link</button>
+            <div id="email-link-form" class="email-link-form hidden">
+              <input type="email" id="email-link-input" placeholder="you@example.com" autocomplete="email" inputmode="email" class="player-name-input">
+              <div class="email-link-row">
+                <button id="btn-cancel-email-link" class="text-btn">Cancel</button>
+                <button id="btn-send-email-link" class="clear-cache-btn account-btn-inline">Send link</button>
+              </div>
+            </div>
+            <p id="email-link-sent" class="reset-hint hidden">✓ Check your email — click the link on whichever device you want signed in.</p>
+          </div>
+          <div id="account-signed-in" class="account-section hidden">
+            <p class="account-status">Signed in as <strong id="account-email">…</strong></p>
+            <p class="reset-hint" id="account-provider">Your streak and progress are synced across devices.</p>
+            <button id="btn-signout" class="reset-profile-btn">Sign out</button>
+          </div>
+        </div>
+        <div class="setting-group">
           <h3>Player</h3>
           <label class="setting-label">Leaderboard Name
             <input type="text" id="player-name-input" maxlength="20" placeholder="Your name" class="player-name-input" autocomplete="off">
@@ -790,6 +811,28 @@
           <button id="btn-diagnostics" class="clear-cache-btn">🔬 Show Diagnostics</button>
           <p class="reset-hint">Shows what this device is running (useful if something looks off).</p>
         </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Account Confirm Modal — used for credential-conflict confirmation
+       (PC signing in to an account that already exists) and for the
+       "enter your email" prompt when the email-sign-in link is clicked
+       on a device that didn't originate the request. -->
+  <div id="account-confirm-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="account-confirm-title">Sign in?</h2>
+      </div>
+      <div class="modal-body">
+        <p id="account-confirm-body" style="margin-top:0;"></p>
+        <div id="account-confirm-input-wrap" class="hidden" style="margin:14px 0;">
+          <input type="email" id="account-confirm-input" placeholder="you@example.com" autocomplete="email" inputmode="email" class="player-name-input">
+        </div>
+        <div class="account-confirm-actions">
+          <button id="account-confirm-cancel" class="text-btn">Cancel</button>
+          <button id="account-confirm-ok" class="clear-cache-btn account-btn-inline">Continue</button>
         </div>
       </div>
     </div>
