@@ -26,6 +26,13 @@ const AUTH_SETTLE_TIMEOUT_MS = 800;
 let _uid = null;
 let _db = null;
 let _ready = false;
+// True after the FIRST non-null auth state of this session. Distinct
+// from _uid because credential-switch flows go through a brief null
+// intermediate state (after currentUser.delete() and before
+// signInWithCredential) — without this flag, the post-switch fire
+// would look like a fresh initial auth resolution and miss the
+// "treat this as a uid switch, not an initial load" branch.
+let _hasInitialized = false;
 // Saves attempted before auth completes are coalesced here and flushed
 // once _ready flips. Without this, fast Daily completions on slow
 // connections drop their cloud sync silently. Cleared on a uid SWITCH
@@ -104,9 +111,12 @@ function _handleAuthChange(snap) {
   }
 
   if (!newUid) {
-    // Signed out (intermediate state during signOut → re-anonymize).
-    // Drop the uid + ready flag; the next state change with a real uid
-    // will be treated as an "isInitial" reload for the new identity.
+    // Signed out — could be a permanent logout OR a transient
+    // intermediate state during credential-switch (currentUser.delete()
+    // then signInWithCredential). Either way drop the uid + ready
+    // flag, but keep _hasInitialized true so the subsequent sign-in
+    // is treated as a uid SWITCH (with the reset+merge path), not as
+    // a fresh initial auth resolution.
     _uid = null;
     _ready = false;
     _pendingSave = null;
@@ -115,7 +125,8 @@ function _handleAuthChange(snap) {
     return;
   }
 
-  const isInitial = !oldUid;
+  const isInitial = !_hasInitialized;
+  _hasInitialized = true;
   _uid = newUid;
   _db = firebase.database();
   _ready = true;
