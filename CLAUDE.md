@@ -238,7 +238,7 @@ The default anonymous uid per device makes phone and PC look like two unrelated 
 - **Manual Firebase Console prerequisites (one-time, before this feature works):**
   - Authentication → Sign-in method → enable **Google** (no extra cost).
   - Authentication → Sign-in method → enable **Email link (passwordless sign-in)**. The action-URL is computed dynamically (`?emailLink=1` on the current origin) so test and prod both work without further config.
-  - Authorized domains: `christopherwells.github.io` is already authorized for anonymous auth — no change needed.
+  - Authentication → **Settings tab** → Authorized domains → add `christopherwells.github.io`. Anonymous auth doesn't need this (server-side credential issuance) but Google sign-in's popup-return DOES, otherwise the popup throws `auth/unauthorized-domain`. Firebase auto-adds `localhost` and `<project>.firebaseapp.com`; the GitHub Pages domain has to be added manually.
   - No security-rule changes needed for V1 (the existing `users/$uid/*` and `daily/$date/$entry` rules continue to work — sign-in just changes which uid the device authenticates as).
 - **Verifying via diagnostics:** the Diagnostics modal (`?debug=1` then Settings → Show Diagnostics) shows a "Signed in" row reporting provider + email. If two devices report the same uid and email, the link worked.
 
