@@ -1,0 +1,28 @@
+name: Set user fields
+
+on:
+  workflow_dispatch:
+    inputs:
+      uid:
+        description: 'Firebase uid'
+        required: true
+        type: string
+      payload:
+        description: 'JSON payload — flat object of top-level fields to update'
+        required: true
+        type: string
+
+jobs:
+  set:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install firebase-admin
+        run: npm install firebase-admin@12
+      - name: Write
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node scripts/set-user-fields.mjs "${{ inputs.uid }}" '${{ inputs.payload }}'
