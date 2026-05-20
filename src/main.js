@@ -51,7 +51,7 @@ import {
 import {
   initFirebase, isFirebaseOnline, submitOnlineScore, fetchOnlineLeaderboard, fetchUserDailyHistory, fetchAllDailyMeta, fetchAllDailyScores, fetchWeeklyLeaderboard,
 } from './firebase/firebaseLeaderboard.js';
-import { initAnonymousAuth, loadProgress, saveDailyHistoryEntry, getUid, loadWeeklyAttempts, loadLocalWeeklyAttempts, replaceLocalWeeklyAttempts, pruneStaleLocalWeeklyAttempts, subscribeToUidChanges, forceWriteProgressForDebug, readProgressForDebug } from './firebase/firebaseProgress.js';
+import { initAnonymousAuth, loadProgress, saveDailyHistoryEntry, getUid, loadWeeklyAttempts, loadLocalWeeklyAttempts, replaceLocalWeeklyAttempts, pruneStaleLocalWeeklyAttempts, subscribeToUidChanges } from './firebase/firebaseProgress.js';
 import { getAuthState, subscribeAuthState, linkWithGoogle, sendEmailLink, tryCompleteEmailLink, signOut as authSignOut } from './firebase/firebaseAuth.js';
 import { isTestEnvironment } from './firebase/env.js';
 // Stats-tab renderer + chart toolkit are lazy-imported in populateDailyPanel
@@ -2202,42 +2202,6 @@ $('#btn-replay-tutorial').addEventListener('click', () => {
   startTutorial(() => startWarmup(() => showTitleScreen()));
 });
 
-// Debug-only: force a cloud progress sync from the current device.
-// Writes results into a persistent <pre> block in Settings so the user
-// can read at their own pace — no toast truncation.
-$('#btn-force-cloud-sync')?.addEventListener('click', async () => {
-  const out = $('#force-cloud-sync-output');
-  if (!out) return;
-  const log = (line) => {
-    out.textContent += (out.textContent ? '\n' : '') + line;
-  };
-  out.style.display = 'block';
-  out.textContent = '';
-  const uid = getUid() || '(no uid)';
-  log('uid: ' + uid);
-  const stats = loadStats();
-  const daily = stats?.modeStats?.daily || {};
-  const localStreak = daily.dailyStreak || 0;
-  const localBest = daily.bestDailyStreak || 0;
-  const localLast = daily.lastDailyCompletedDate;
-  const localMax = stats?.maxLevelReached || 1;
-  log('local: streak=' + localStreak + ', best=' + localBest + ', lastDate=' + (localLast || 'null') + ', max=' + localMax);
-  log('reading users/' + uid + ' ...');
-  const read = await readProgressForDebug();
-  if (read.error) {
-    log('READ ERROR: ' + read.error);
-  } else if (read.val === null) {
-    log('READ: cloud subtree does not exist');
-  } else {
-    log('READ: ' + JSON.stringify(read.val, null, 2));
-  }
-  const payload = { dailyStreak: localStreak, bestDailyStreak: localBest, maxCheckpoint: localMax };
-  if (localLast && typeof localLast === 'string' && localLast.length === 10) payload.lastDailyDate = localLast;
-  log('writing ' + JSON.stringify(payload) + ' ...');
-  const write = await forceWriteProgressForDebug(payload);
-  log('WRITE: ' + (write.ok ? 'OK' : 'FAIL — ' + write.message));
-});
-
 // Diagnostics — ground-truth snapshot of what this device sees. Dynamic
 // import so the module stays off the critical load path until opened.
 $('#btn-diagnostics').addEventListener('click', async () => {
@@ -2497,16 +2461,7 @@ subscribeToUidChanges(async ({ uid, isInitial }) => {
     // verbatim instead of its date-based max-merge keeping the local ones.
     resetDailyStatsForAccountSwitch();
     const cloud = await loadProgress();
-    // Surface what the cloud actually returned. This is on-screen
-    // diagnostic so we can spot "cloud is empty for this uid" vs
-    // "merge logic is broken" without DevTools.
-    if (cloud) {
-      const summary = `streak ${cloud.dailyStreak ?? '–'} · lastDaily ${cloud.lastDailyDate ?? '–'} · chk ${cloud.maxCheckpoint ?? '–'}`;
-      showToast(`Cloud loaded: ${summary}`, 10000);
-      applyCloudProgress(cloud);
-    } else {
-      showToast(`Cloud loaded: empty (no data under ${uid.slice(0,8)}…)`, 10000);
-    }
+    if (cloud) applyCloudProgress(cloud);
     // Re-prime the daily-residuals cache so the personal-par estimate
     // catches up to the new account's recent plays right away.
     const { backfillResidualsFromFirebase } = await import('./logic/handicaps.js');
@@ -2519,7 +2474,6 @@ subscribeToUidChanges(async ({ uid, isInitial }) => {
     try { updateHeader(); } catch {}
   } catch (err) {
     console.warn('post-switch progress reload failed:', err && err.message);
-    showToast(`Cloud load FAILED: ${err && err.message}`, 12000);
   }
 });
 
