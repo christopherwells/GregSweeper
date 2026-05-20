@@ -2460,6 +2460,12 @@ subscribeToUidChanges(async ({ uid, isInitial }) => {
     // catches up to the new account's recent plays right away.
     const { backfillResidualsFromFirebase } = await import('./logic/handicaps.js');
     backfillResidualsFromFirebase(uid).catch(() => {});
+    // applyCloudProgress wrote the merged streak / checkpoint values to
+    // localStorage, but the UI on screen was rendered with the OLD uid's
+    // numbers. Refresh the title screen + header so the player sees the
+    // adopted streak immediately instead of having to reload.
+    try { updateTitleProgress(); } catch {}
+    try { updateHeader(); } catch {}
   } catch (err) {
     console.warn('post-switch progress reload failed:', err && err.message);
   }
