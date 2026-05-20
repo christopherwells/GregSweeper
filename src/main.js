@@ -51,7 +51,7 @@ import {
 import {
   initFirebase, isFirebaseOnline, submitOnlineScore, fetchOnlineLeaderboard, fetchUserDailyHistory, fetchAllDailyMeta, fetchAllDailyScores, fetchWeeklyLeaderboard,
 } from './firebase/firebaseLeaderboard.js';
-import { initAnonymousAuth, loadProgress, saveDailyHistoryEntry, getUid, loadWeeklyAttempts, loadLocalWeeklyAttempts, replaceLocalWeeklyAttempts, pruneStaleLocalWeeklyAttempts, subscribeToUidChanges } from './firebase/firebaseProgress.js';
+import { initAnonymousAuth, loadProgress, saveDailyHistoryEntry, getUid, loadWeeklyAttempts, loadLocalWeeklyAttempts, replaceLocalWeeklyAttempts, pruneStaleLocalWeeklyAttempts, subscribeToUidChanges, subscribeToCloudProgressUpdates } from './firebase/firebaseProgress.js';
 import { getAuthState, subscribeAuthState, linkWithGoogle, sendEmailLink, tryCompleteEmailLink, signOut as authSignOut } from './firebase/firebaseAuth.js';
 import { isTestEnvironment } from './firebase/env.js';
 // Stats-tab renderer + chart toolkit are lazy-imported in populateDailyPanel
@@ -2450,6 +2450,17 @@ subscribeAuthState(() => {
 // the new uid's progress and apply it. applyCloudProgress takes max-merge
 // across fields, so the user's higher checkpoint stays even on switch and
 // the streak / lastDailyDate adopt the newer (cloud) values.
+// Real-time cloud sync: any write to users/{uid}/* (from this device
+// OR from another device signed in to the same account) fires the
+// listener with the updated snapshot. We apply the merge + refresh the
+// counters on the title screen / header so a daily completion on PC
+// appears on phone within a second, without needing the app reopened.
+subscribeToCloudProgressUpdates((cloud) => {
+  try { applyCloudProgress(cloud); } catch {}
+  try { updateTitleProgress(); } catch {}
+  try { updateHeader(); } catch {}
+});
+
 subscribeToUidChanges(async ({ uid, isInitial }) => {
   if (isInitial) return; // initial load is handled by the existing init() chain
   if (!uid) return;

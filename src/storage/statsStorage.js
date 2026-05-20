@@ -582,6 +582,21 @@ export function applyCloudProgress({ maxCheckpoint, dailyStreak, bestDailyStreak
     setJSON(STATS_KEY, stats);
     _statsCache = stats;
   }
+
+  // Keep DAILY_COMPLETED_KEY in sync with cloud's lastDailyDate so
+  // multi-device users don't get prompted to "play today's daily" on
+  // device B after device A already submitted. The two keys serve
+  // different gates — stats.modeStats.daily.lastDailyCompletedDate
+  // drives the streak math; DAILY_COMPLETED_KEY drives the daily-card
+  // "completed" lock — but they should always agree on whether today
+  // is done.
+  if (lastDailyDate && typeof lastDailyDate === 'string' && lastDailyDate.length === 10) {
+    const today = getLocalDateString();
+    if (lastDailyDate === today && safeGet(DAILY_COMPLETED_KEY) !== today) {
+      safeSet(DAILY_COMPLETED_KEY, today);
+    }
+  }
+
   return changed;
 }
 
