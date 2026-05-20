@@ -2203,24 +2203,39 @@ $('#btn-replay-tutorial').addEventListener('click', () => {
 });
 
 // Debug-only: force a cloud progress sync from the current device.
-// Reads users/{uid}, then writes the device's local stats to it,
-// toasting both results. Use to diagnose silent-failure cases where
-// the user's streak/checkpoint never sync to cloud.
+// Writes results into a persistent <pre> block in Settings so the user
+// can read at their own pace — no toast truncation.
 $('#btn-force-cloud-sync')?.addEventListener('click', async () => {
-  const uid = getUid() || 'no-uid';
+  const out = $('#force-cloud-sync-output');
+  if (!out) return;
+  const log = (line) => {
+    out.textContent += (out.textContent ? '\n' : '') + line;
+  };
+  out.style.display = 'block';
+  out.textContent = '';
+  const uid = getUid() || '(no uid)';
+  log('uid: ' + uid);
   const stats = loadStats();
   const daily = stats?.modeStats?.daily || {};
   const localStreak = daily.dailyStreak || 0;
   const localBest = daily.bestDailyStreak || 0;
   const localLast = daily.lastDailyCompletedDate;
   const localMax = stats?.maxLevelReached || 1;
-  showToast(`uid ${uid.slice(0,10)}… reading…`, 5000);
+  log('local: streak=' + localStreak + ', best=' + localBest + ', lastDate=' + (localLast || 'null') + ', max=' + localMax);
+  log('reading users/' + uid + ' ...');
   const read = await readProgressForDebug();
-  showToast(`READ ${read.path}: ${read.error ? 'ERR ' + read.error : JSON.stringify(read.val)}`, 12000);
+  if (read.error) {
+    log('READ ERROR: ' + read.error);
+  } else if (read.val === null) {
+    log('READ: cloud subtree does not exist');
+  } else {
+    log('READ: ' + JSON.stringify(read.val, null, 2));
+  }
   const payload = { dailyStreak: localStreak, bestDailyStreak: localBest, maxCheckpoint: localMax };
   if (localLast && typeof localLast === 'string' && localLast.length === 10) payload.lastDailyDate = localLast;
+  log('writing ' + JSON.stringify(payload) + ' ...');
   const write = await forceWriteProgressForDebug(payload);
-  showToast(`WRITE ${JSON.stringify(payload)} → ${write.ok ? 'OK' : 'FAIL ' + write.message}`, 15000);
+  log('WRITE: ' + (write.ok ? 'OK' : 'FAIL — ' + write.message));
 });
 
 // Diagnostics — ground-truth snapshot of what this device sees. Dynamic

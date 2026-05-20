@@ -811,7 +811,8 @@
           <button id="btn-diagnostics" class="clear-cache-btn">🔬 Show Diagnostics</button>
           <p class="reset-hint">Shows what this device is running (useful if something looks off).</p>
           <button id="btn-force-cloud-sync" class="clear-cache-btn" style="margin-top:10px;">☁️ Force cloud sync</button>
-          <p class="reset-hint">Reads users/{uid} from cloud, then attempts to write local streak + checkpoint to it. Toasts the result of each step.</p>
+          <p class="reset-hint">Reads users/{uid} from cloud, then attempts to write local streak + checkpoint to it.</p>
+          <pre id="force-cloud-sync-output" style="margin-top:8px;padding:8px;background:var(--color-cell-hidden);border-radius:6px;font-size:11px;white-space:pre-wrap;word-break:break-word;max-height:300px;overflow:auto;display:none;"></pre>
         </div>
         </div>
       </div>
