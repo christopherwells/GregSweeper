@@ -2456,7 +2456,11 @@ subscribeAuthState(() => {
 // counters on the title screen / header so a daily completion on PC
 // appears on phone within a second, without needing the app reopened.
 subscribeToCloudProgressUpdates((cloud) => {
-  try { applyCloudProgress(cloud); } catch {}
+  // overwrite: true — the listener fires when cloud is the new
+  // authoritative state, including downgrades from admin resets or a
+  // partner device. The max-merge default would stick a higher local
+  // value indefinitely after such a write.
+  try { applyCloudProgress(cloud, { overwrite: true }); } catch {}
   // applyCloudProgress only handles the stats fields (streak / lastDate
   // / checkpoint). Weekly attempts live separately under cloud's
   // weeklyAttempts[weekStart].dayAttempts subtree, and the title screen
