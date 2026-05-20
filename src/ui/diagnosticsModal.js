@@ -9,6 +9,7 @@ import { $ } from './domHelpers.js';
 import { showModal } from './modalManager.js';
 import { showToast } from './toastManager.js';
 import { getUid } from '../firebase/firebaseProgress.js';
+import { getAuthState } from '../firebase/firebaseAuth.js';
 import {
   isFirebaseOnline, fetchUserDailyHistory, fetchAllDailyMeta,
 } from '../firebase/firebaseLeaderboard.js';
@@ -38,6 +39,7 @@ async function collectSnapshot(currentVersion) {
   }
 
   const firebaseOnline = isFirebaseOnline();
+  const authState = getAuthState();
 
   // Load handicaps, Firebase history, and dailyMeta in parallel. Any of
   // them can be null / empty on a cold session or when Firebase is down;
@@ -72,6 +74,11 @@ async function collectSnapshot(currentVersion) {
     timestamp: new Date().toISOString(),
     uid: uid || null,
     firebaseOnline,
+    auth: {
+      signedIn: !!(authState.uid && !authState.isAnonymous),
+      provider: authState.providerLabel,
+      email: authState.email,
+    },
     history: {
       historyCount,
       withFeatures,
@@ -106,6 +113,17 @@ function renderSnapshot(body, snap) {
     label: 'Firebase online',
     value: snap.firebaseOnline ? 'yes' : 'no',
     warn: !snap.firebaseOnline,
+  }));
+
+  // Sign-in identity. Surfacing this here lets the user verify a "my
+  // streak didn't follow my device" report at a glance — if the same
+  // email shows on both devices, the linking worked.
+  const authValue = snap.auth.signedIn
+    ? `${snap.auth.provider}${snap.auth.email ? ' · ' + snap.auth.email : ''}`
+    : 'no (anonymous)';
+  body.appendChild(row({
+    label: 'Signed in',
+    value: authValue,
   }));
 
   // History summary

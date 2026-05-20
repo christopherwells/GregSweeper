@@ -22,7 +22,7 @@
 // failing.
 
 import { safeGet, safeSet, safeRemove } from '../storage/storageAdapter.js';
-import { getUid } from './firebaseProgress.js';
+import { getUid, subscribeToUidChanges } from './firebaseProgress.js';
 import { isTestEnvironment } from './env.js';
 
 // VAPID public key from Firebase Console → Project Settings → Cloud
@@ -287,3 +287,27 @@ export async function updateStreakWarning(enabled) {
 }
 
 export { _isIOS as isIOS, _isInstalledPWA as isInstalledPWA };
+
+// ── Auth-state hook ───────────────────────────────────
+// When the user signs in on this device (uid switch), the token that
+// was registered under the old anonymous uid is now orphaned (firebaseAuth
+// cleared it during the switch). If the destination uid has
+// notificationPrefs.enabled === true, mint a fresh token on this device
+// and write it under the new uid so the player's pushes follow them.
+// If the destination uid doesn't have notifications enabled, leave them
+// off — the player can opt in via Settings if they want.
+
+let _pushAuthListenerInit = false;
+
+export function initPushAuthListener() {
+  if (_pushAuthListenerInit) return;
+  _pushAuthListenerInit = true;
+  subscribeToUidChanges(({ uid, previousUid, isInitial }) => {
+    if (isInitial || !uid || !previousUid) return;
+    // Defer so the new uid's auth + database state is fully settled
+    // before we read prefs / write the token under it.
+    setTimeout(() => {
+      refreshTokenIfStale().catch(() => {});
+    }, 500);
+  });
+}

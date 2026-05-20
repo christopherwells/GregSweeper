@@ -1639,6 +1639,65 @@ body {
   opacity: 0.7;
 }
 
+/* Account section in Settings — two stacked buttons with hint above,
+   plus the optional email-link form that slides in when "Sign in with
+   email link" is tapped. */
+.account-section {
+  display: block;
+}
+.account-btn {
+  margin-top: 10px;
+}
+.account-btn:first-of-type {
+  margin-top: 8px;
+}
+.account-status {
+  margin: 0 0 4px;
+  font-size: 14px;
+  color: var(--color-text, #eee);
+}
+.account-status strong {
+  font-weight: 700;
+}
+.email-link-form {
+  margin-top: 10px;
+}
+.email-link-form input {
+  width: 100%;
+  margin-bottom: 8px;
+}
+.email-link-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.text-btn {
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.text-btn:hover {
+  color: var(--color-text, #eee);
+}
+.account-btn-inline {
+  width: auto;
+  padding: 8px 18px;
+  font-size: 13px;
+}
+.account-confirm-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
 /* Reminder time: a themed control instead of the bare OS dropdown,
    so the Alerts tab matches the rest of Settings. */
 .reminder-hour-select {

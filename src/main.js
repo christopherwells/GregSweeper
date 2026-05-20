@@ -51,7 +51,8 @@ import {
 import {
   initFirebase, isFirebaseOnline, submitOnlineScore, fetchOnlineLeaderboard, fetchUserDailyHistory, fetchAllDailyMeta, fetchAllDailyScores, fetchWeeklyLeaderboard,
 } from './firebase/firebaseLeaderboard.js';
-import { initAnonymousAuth, loadProgress, saveDailyHistoryEntry, getUid, loadWeeklyAttempts, loadLocalWeeklyAttempts, replaceLocalWeeklyAttempts, pruneStaleLocalWeeklyAttempts } from './firebase/firebaseProgress.js';
+import { initAnonymousAuth, loadProgress, saveDailyHistoryEntry, getUid, loadWeeklyAttempts, loadLocalWeeklyAttempts, replaceLocalWeeklyAttempts, pruneStaleLocalWeeklyAttempts, subscribeToUidChanges } from './firebase/firebaseProgress.js';
+import { getAuthState, subscribeAuthState, linkWithGoogle, sendEmailLink, tryCompleteEmailLink, signOut as authSignOut } from './firebase/firebaseAuth.js';
 import { isTestEnvironment } from './firebase/env.js';
 // Stats-tab renderer + chart toolkit are lazy-imported in populateDailyPanel
 // so they stay off the critical load path — they only come in when the
@@ -1705,6 +1706,7 @@ $('#btn-settings').addEventListener('click', () => {
   // updated on another device or the auth uid resolved late.
   syncReminderUI();
   _updateSettingsUid();
+  _updateSettingsAccount();
 });
 $('#btn-stats').addEventListener('click', () => {
   updateStatsDisplay();
@@ -2130,6 +2132,7 @@ if (titleSettingsBtn) {
     showModalFromTitle('settings-modal');
     syncReminderUI();
     _updateSettingsUid();
+    _updateSettingsAccount();
   });
 }
 const titleWhatsnewBtn = $('#title-whatsnew-btn');
@@ -2241,6 +2244,225 @@ $('#btn-report-problem').addEventListener('click', () => {
     + '&body=' + encodeURIComponent(body)
     + '&labels=bug,from-app';
   window.open(ghUrl, '_blank', 'noopener,noreferrer');
+});
+
+// ── Account section in Settings ────────────────────────
+// Renders one of two views based on whether the user is signed in via
+// a permanent provider (Google / Email link) or still anonymous.
+
+function _updateSettingsAccount() {
+  const signedOut = $('#account-signed-out');
+  const signedIn = $('#account-signed-in');
+  if (!signedOut || !signedIn) return;
+  const auth = getAuthState();
+  if (auth.uid && !auth.isAnonymous) {
+    signedOut.classList.add('hidden');
+    signedIn.classList.remove('hidden');
+    const emailEl = $('#account-email');
+    const providerEl = $('#account-provider');
+    if (emailEl) emailEl.textContent = auth.email || auth.displayName || 'signed in';
+    if (providerEl) providerEl.textContent = `Signed in via ${auth.providerLabel}. Your streak and progress sync across devices.`;
+  } else {
+    signedIn.classList.add('hidden');
+    signedOut.classList.remove('hidden');
+    // Reset transient sub-views (email form, "check your email" hint)
+    const form = $('#email-link-form');
+    const sent = $('#email-link-sent');
+    if (form) form.classList.add('hidden');
+    if (sent) sent.classList.add('hidden');
+    const input = $('#email-link-input');
+    if (input) input.value = '';
+  }
+}
+
+// Confirmation modal shared by:
+//   (a) the credential-already-in-use prompt when a second device tries
+//       to sign in to an account that already exists
+//   (b) the "enter your email" prompt when an email-link is clicked on
+//       a device that didn't request the link (no localStorage stash)
+// Returns a Promise resolving to either `true` / `string` (the typed
+// email) on confirm, or `false` on cancel.
+function openAccountConfirmModal({ title, body, okLabel = 'Continue', cancelLabel = 'Cancel', input = false, inputPlaceholder = 'you@example.com', danger = false }) {
+  return new Promise((resolve) => {
+    const modal = $('#account-confirm-modal');
+    const titleEl = $('#account-confirm-title');
+    const bodyEl = $('#account-confirm-body');
+    const inputWrap = $('#account-confirm-input-wrap');
+    const inputEl = $('#account-confirm-input');
+    const okBtn = $('#account-confirm-ok');
+    const cancelBtn = $('#account-confirm-cancel');
+    if (!modal || !okBtn || !cancelBtn) { resolve(false); return; }
+
+    titleEl.textContent = title || 'Confirm';
+    bodyEl.innerHTML = body || '';
+    okBtn.textContent = okLabel;
+    cancelBtn.textContent = cancelLabel;
+    okBtn.classList.toggle('reset-profile-btn', danger);
+    okBtn.classList.toggle('clear-cache-btn', !danger);
+    okBtn.classList.toggle('account-btn-inline', true);
+    if (input) {
+      inputWrap.classList.remove('hidden');
+      inputEl.value = '';
+      inputEl.placeholder = inputPlaceholder;
+      setTimeout(() => inputEl.focus(), 50);
+    } else {
+      inputWrap.classList.add('hidden');
+    }
+
+    const cleanup = () => {
+      modal.classList.add('hidden');
+      okBtn.removeEventListener('click', onOk);
+      cancelBtn.removeEventListener('click', onCancel);
+      inputEl?.removeEventListener('keydown', onKey);
+    };
+    const onOk = () => {
+      const value = input ? (inputEl.value || '').trim() : true;
+      cleanup();
+      resolve(value || false);
+    };
+    const onCancel = () => { cleanup(); resolve(false); };
+    const onKey = (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); onOk(); }
+      else if (e.key === 'Escape') { e.preventDefault(); onCancel(); }
+    };
+    okBtn.addEventListener('click', onOk);
+    cancelBtn.addEventListener('click', onCancel);
+    inputEl?.addEventListener('keydown', onKey);
+    modal.classList.remove('hidden');
+  });
+}
+
+// Used by linkWithGoogle / tryCompleteEmailLink. Renders the warning
+// that signing in will abandon the device's current anonymous data.
+async function _confirmCredentialConflict({ providerLabel, email }) {
+  const safeEmail = email ? _escapeHtml(String(email)) : '';
+  const safeProvider = _escapeHtml(String(providerLabel || 'this'));
+  const who = safeEmail
+    ? `the ${safeProvider} account <strong>${safeEmail}</strong>`
+    : `that ${safeProvider} account`;
+  return await openAccountConfirmModal({
+    title: 'Switch to existing account?',
+    body:
+      `An account already exists for ${who}. Signing in here will switch this device to that account — your phone's streak, history, and progress will appear here.` +
+      `<br><br><strong>Any progress this device has made anonymously will be lost.</strong>`,
+    okLabel: 'Continue',
+    danger: true,
+  });
+}
+
+function _escapeHtml(s) {
+  return s.replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[c]));
+}
+
+// Used by tryCompleteEmailLink when the click-destination device doesn't
+// have the email stashed in localStorage (link sent from another device).
+async function _promptForEmailLinkEmail() {
+  const value = await openAccountConfirmModal({
+    title: 'Enter your email to finish signing in',
+    body: 'For security, please confirm the email you used to request this sign-in link.',
+    okLabel: 'Sign in',
+    input: true,
+  });
+  return typeof value === 'string' ? value : null;
+}
+
+// Google sign-in button. Shown only when anonymous.
+$('#btn-signin-google')?.addEventListener('click', async () => {
+  const btn = $('#btn-signin-google');
+  btn.disabled = true;
+  const result = await linkWithGoogle({ onCredentialConflict: _confirmCredentialConflict });
+  btn.disabled = false;
+  if (result.status === 'linked' || result.status === 'switched') {
+    showToast(`Signed in as ${result.email || 'your account'}`);
+    _updateSettingsAccount();
+    _updateSettingsUid();
+  } else if (result.status === 'popup-blocked') {
+    showToast('Popup blocked — try again or use email link');
+  } else if (result.status === 'error') {
+    showToast(`Sign-in failed: ${result.message || 'unknown error'}`);
+  }
+  // cancelled / popup-closed → silent
+});
+
+// Email link sign-in button — reveals the email input form. Send button
+// fires off the email; "Check your email" hint appears below.
+$('#btn-signin-email')?.addEventListener('click', () => {
+  $('#email-link-form')?.classList.remove('hidden');
+  $('#email-link-sent')?.classList.add('hidden');
+  setTimeout(() => $('#email-link-input')?.focus(), 50);
+});
+$('#btn-cancel-email-link')?.addEventListener('click', () => {
+  $('#email-link-form')?.classList.add('hidden');
+  $('#email-link-input').value = '';
+});
+$('#btn-send-email-link')?.addEventListener('click', async () => {
+  const input = $('#email-link-input');
+  const email = (input?.value || '').trim();
+  const btn = $('#btn-send-email-link');
+  btn.disabled = true;
+  const result = await sendEmailLink(email);
+  btn.disabled = false;
+  if (result.status === 'sent') {
+    $('#email-link-form')?.classList.add('hidden');
+    $('#email-link-sent')?.classList.remove('hidden');
+  } else if (result.status === 'invalid-email') {
+    showToast('Please enter a valid email address');
+  } else {
+    showToast(`Couldn't send link: ${result.message || 'try again'}`);
+  }
+});
+$('#email-link-input')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    $('#btn-send-email-link')?.click();
+  }
+});
+
+// Sign out — pre-clears push subscription, signs out, re-anonymizes.
+$('#btn-signout')?.addEventListener('click', async () => {
+  const confirmed = await openAccountConfirmModal({
+    title: 'Sign out?',
+    body: 'You\'ll go back to playing as an anonymous device. Your synced progress stays with your account — sign in again to bring it back.',
+    okLabel: 'Sign out',
+    danger: true,
+  });
+  if (!confirmed) return;
+  const btn = $('#btn-signout');
+  btn.disabled = true;
+  await authSignOut();
+  btn.disabled = false;
+  showToast('Signed out');
+  _updateSettingsAccount();
+  _updateSettingsUid();
+});
+
+// Refresh the Account section whenever auth state changes, so a
+// background link/switch (e.g. from tryCompleteEmailLink at boot)
+// flips the Settings UI without the user having to close + reopen.
+subscribeAuthState(() => {
+  _updateSettingsAccount();
+  _updateSettingsUid();
+});
+
+// When the uid switches mid-session (sign-in from a second device), reload
+// the new uid's progress and apply it. applyCloudProgress takes max-merge
+// across fields, so the user's higher checkpoint stays even on switch and
+// the streak / lastDailyDate adopt the newer (cloud) values.
+subscribeToUidChanges(async ({ uid, isInitial }) => {
+  if (isInitial) return; // initial load is handled by the existing init() chain
+  if (!uid) return;
+  try {
+    const cloud = await loadProgress();
+    if (cloud) applyCloudProgress(cloud);
+    // Re-prime the daily-residuals cache so the personal-par estimate
+    // catches up to the new account's recent plays right away.
+    const { backfillResidualsFromFirebase } = await import('./logic/handicaps.js');
+    backfillResidualsFromFirebase(uid).catch(() => {});
+  } catch (err) {
+    console.warn('post-switch progress reload failed:', err && err.message);
+  }
 });
 
 // Settings → render the anonymous uid + click-to-copy. GDPR Recital 30
@@ -2753,8 +2975,24 @@ async function init() {
 
   initFirebase();
 
-  // Cloud progress sync: anonymous auth + silent restore
-  initAnonymousAuth().then(() => loadProgress()).then(cloud => {
+  // Wire FCM token re-subscription to uid changes BEFORE auth settles
+  // so the listener catches the first uid switch even if it happens
+  // unusually fast (persisted email-link return URL on boot).
+  import('./firebase/firebasePush.js').then(m => m.initPushAuthListener()).catch(() => {});
+
+  // Cloud progress sync: anonymous auth + silent restore. Also completes
+  // the email-link flow if the boot URL has the email-link return params,
+  // so the user lands on the title screen already signed in.
+  initAnonymousAuth().then(async () => {
+    try {
+      await tryCompleteEmailLink({
+        onCredentialConflict: _confirmCredentialConflict,
+        promptForEmail: _promptForEmailLinkEmail,
+      });
+    } catch (err) {
+      console.warn('tryCompleteEmailLink failed:', err && err.message);
+    }
+    const cloud = await loadProgress();
     if (cloud) applyCloudProgress(cloud);
   }).catch(() => {}); // silent — progress stays local-only
 

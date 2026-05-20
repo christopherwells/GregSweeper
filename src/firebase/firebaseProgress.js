@@ -1,84 +1,199 @@
 /**
- * Firebase Anonymous Auth + Cloud Progress Sync
+ * Firebase Auth (anonymous + linked) + Cloud Progress Sync
  *
- * Syncs minimal progress (challenge checkpoint, daily streak) to Firebase
- * so it survives cache clears and device switches. No account creation,
- * no prompts — completely invisible to the user.
+ * Every fresh visit gets an anonymous uid via signInAnonymously. The user
+ * can later upgrade the anonymous account to a permanent identity
+ * (Google, email link) via src/firebase/firebaseAuth.js — that preserves
+ * the uid. On a second device, signing in with the same identity SWITCHES
+ * the device's session to the existing uid, so users/{uid}/* (streak,
+ * dailyHistory, weeklyAttempts, etc.) carries across devices.
  *
- * Requires Firebase App + Auth + Database SDKs (loaded via CDN in index.html)
- * and initFirebase() from firebaseLeaderboard.js to have been called first.
+ * The uid is reactive: subscribeToUidChanges(callback) fires whenever the
+ * uid flips (initial anonymous sign-in, link, switch, sign-out + re-anon).
+ * Callers should reload any user-keyed state when uid changes.
+ *
+ * Requires Firebase App + Auth + Database SDKs (loaded via CDN in
+ * index.html) and initFirebase() from firebaseLeaderboard.js to have been
+ * called first.
  */
 
 import { isTestEnvironment } from './env.js';
+import { subscribeAuthState } from './firebaseAuth.js';
 
 const FIREBASE_TIMEOUT_MS = 5000;
+const AUTH_SETTLE_TIMEOUT_MS = 800;
 
 let _uid = null;
 let _db = null;
 let _ready = false;
 // Saves attempted before auth completes are coalesced here and flushed
 // once _ready flips. Without this, fast Daily completions on slow
-// connections drop their cloud sync silently.
+// connections drop their cloud sync silently. Cleared on a uid SWITCH
+// (sign-in) because the queued writes were destined for the old uid.
 let _pendingSave = null;
-// Daily-history entries submitted before auth completes are queued here and
-// flushed together on _ready. One entry per date (last-write-wins), since
-// re-submitting the same date is always a no-op or an upgrade.
 let _pendingHistory = null;
-// Weekly day-attempt markers submitted before auth completes. Keyed by
-// `${weekStart}/${day}` for uniqueness; flushed on _ready.
 let _pendingWeeklyAttempts = null;
 
+// Listeners notified on uid changes. main.js uses this to reload progress,
+// firebasePush.js uses it to re-subscribe FCM under the new uid.
+const _uidChangeListeners = new Set();
+
 /**
- * Return the stable anonymous uid established by initAnonymousAuth, or null
- * if auth has not yet resolved.
+ * Return the stable uid for this session, or null if auth has not yet
+ * resolved. The uid can change at runtime when the user signs in (their
+ * anonymous uid is upgraded — uid unchanged) or switches accounts (their
+ * old anonymous uid is abandoned and they adopt the existing uid).
  */
 export function getUid() {
   return _uid;
 }
 
 /**
- * Sign in anonymously and prepare for progress sync.
- * Call after initFirebase(). Silent — no UI, no errors shown.
+ * Subscribe to uid changes. Callback receives
+ * `{ uid, previousUid, isInitial }`:
+ *   - `isInitial: true` means the first time auth settles (anonymous
+ *     sign-in completion on a fresh device, or persisted-session restore)
+ *   - `isInitial: false` means an in-app switch — the previous uid's
+ *     local state is stale and the caller should reload from the new uid
+ * Returns an unsubscribe function.
  */
-export async function initAnonymousAuth() {
-  try {
-    if (typeof firebase === 'undefined' || !firebase.auth) return;
-    if (!firebase.apps.length) return; // initFirebase must run first
+export function subscribeToUidChanges(callback) {
+  _uidChangeListeners.add(callback);
+  return () => _uidChangeListeners.delete(callback);
+}
 
-    const result = await Promise.race([
-      firebase.auth().signInAnonymously(),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('auth timeout')), FIREBASE_TIMEOUT_MS)),
-    ]);
-
-    _uid = result.user.uid;
-    _db = firebase.database();
-    _ready = true;
-
-    // Flush any save attempts that arrived before auth completed.
-    if (_pendingSave) {
-      const data = _pendingSave;
-      _pendingSave = null;
-      saveProgress(data);
-    }
-    if (_pendingHistory) {
-      const queued = _pendingHistory;
-      _pendingHistory = null;
-      for (const [date, entry] of Object.entries(queued)) {
-        saveDailyHistoryEntry(date, entry);
-      }
-    }
-    if (_pendingWeeklyAttempts) {
-      const queued = _pendingWeeklyAttempts;
-      _pendingWeeklyAttempts = null;
-      for (const key of Object.keys(queued)) {
-        const [weekStart, day] = key.split('/');
-        markWeeklyDayAttempted(weekStart, Number(day));
-      }
-    }
-  } catch (err) {
-    // Silent failure — progress stays local-only
-    console.warn('Anonymous auth failed:', err.message);
+function _notifyUidChange(uid, previousUid, isInitial) {
+  for (const cb of _uidChangeListeners) {
+    try { cb({ uid, previousUid, isInitial }); }
+    catch (err) { console.warn('uid change listener error:', err && err.message); }
   }
+}
+
+function _flushPendingWrites() {
+  if (_pendingSave) {
+    const data = _pendingSave;
+    _pendingSave = null;
+    saveProgress(data);
+  }
+  if (_pendingHistory) {
+    const queued = _pendingHistory;
+    _pendingHistory = null;
+    for (const [date, entry] of Object.entries(queued)) {
+      saveDailyHistoryEntry(date, entry);
+    }
+  }
+  if (_pendingWeeklyAttempts) {
+    const queued = _pendingWeeklyAttempts;
+    _pendingWeeklyAttempts = null;
+    for (const key of Object.keys(queued)) {
+      const [weekStart, day] = key.split('/');
+      markWeeklyDayAttempted(weekStart, Number(day));
+    }
+  }
+}
+
+function _handleAuthChange(snap) {
+  const newUid = snap.uid || null;
+  const oldUid = _uid;
+
+  if (newUid === oldUid) {
+    // Same uid — either a no-op fire (e.g., a token refresh) or a link
+    // upgrade where the providerId changed but uid stayed. Nothing to
+    // reload either way; downstream code reads providerId via firebaseAuth.
+    return;
+  }
+
+  if (!newUid) {
+    // Signed out (intermediate state during signOut → re-anonymize).
+    // Drop the uid + ready flag; the next state change with a real uid
+    // will be treated as an "isInitial" reload for the new identity.
+    _uid = null;
+    _ready = false;
+    _pendingSave = null;
+    _pendingHistory = null;
+    _pendingWeeklyAttempts = null;
+    return;
+  }
+
+  const isInitial = !oldUid;
+  _uid = newUid;
+  _db = firebase.database();
+  _ready = true;
+
+  if (isInitial) {
+    // First auth settle of the session — flush any writes queued during
+    // the boot window where saveProgress was called before auth resolved.
+    _flushPendingWrites();
+  } else {
+    // uid changed mid-session — pending writes were intended for the OLD
+    // uid (its data is no longer reachable from this device), so discard.
+    _pendingSave = null;
+    _pendingHistory = null;
+    _pendingWeeklyAttempts = null;
+  }
+
+  _notifyUidChange(newUid, oldUid, isInitial);
+}
+
+/**
+ * Wire up the auth-state listener and bootstrap the initial anonymous
+ * sign-in if no persisted session exists. Idempotent — calling twice is
+ * a no-op after the first.
+ *
+ * Resolves when auth has settled (uid available) or after the timeout.
+ * Existing callers can keep using `await initAnonymousAuth()` followed
+ * by `loadProgress()`.
+ */
+let _initStarted = false;
+let _initPromise = null;
+
+export async function initAnonymousAuth() {
+  if (_initStarted) return _initPromise;
+  _initStarted = true;
+  _initPromise = (async () => {
+    try {
+      if (typeof firebase === 'undefined' || !firebase.auth) return;
+      if (!firebase.apps.length) return; // initFirebase must run first
+
+      _db = firebase.database();
+
+      // Subscribe BEFORE kicking signInAnonymously so we don't miss the
+      // post-sign-in fire on a fresh device.
+      let resolveSettled;
+      const settled = new Promise((resolve) => { resolveSettled = resolve; });
+      subscribeAuthState((snap) => {
+        _handleAuthChange(snap);
+        if (snap.uid && resolveSettled) {
+          resolveSettled();
+          resolveSettled = null;
+        }
+      });
+
+      // If there's a persisted session, the subscribe callback already
+      // fired synchronously with the existing user. Otherwise kick anon.
+      if (!firebase.auth().currentUser) {
+        try {
+          await Promise.race([
+            firebase.auth().signInAnonymously(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('auth timeout')), FIREBASE_TIMEOUT_MS)),
+          ]);
+        } catch (err) {
+          console.warn('Anonymous auth failed:', err && err.message);
+        }
+      }
+
+      // Wait for the listener to have set _uid before returning, so
+      // existing call sites that chain loadProgress() after init have a
+      // valid uid to work with.
+      await Promise.race([
+        settled,
+        new Promise((resolve) => setTimeout(resolve, AUTH_SETTLE_TIMEOUT_MS)),
+      ]);
+    } catch (err) {
+      console.warn('initAnonymousAuth failed:', err && err.message);
+    }
+  })();
+  return _initPromise;
 }
 
 /**
