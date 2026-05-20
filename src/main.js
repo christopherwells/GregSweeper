@@ -2461,7 +2461,16 @@ subscribeToUidChanges(async ({ uid, isInitial }) => {
     // verbatim instead of its date-based max-merge keeping the local ones.
     resetDailyStatsForAccountSwitch();
     const cloud = await loadProgress();
-    if (cloud) applyCloudProgress(cloud);
+    // Surface what the cloud actually returned. This is on-screen
+    // diagnostic so we can spot "cloud is empty for this uid" vs
+    // "merge logic is broken" without DevTools.
+    if (cloud) {
+      const summary = `streak ${cloud.dailyStreak ?? '–'} · lastDaily ${cloud.lastDailyDate ?? '–'} · chk ${cloud.maxCheckpoint ?? '–'}`;
+      showToast(`Cloud loaded: ${summary}`, 10000);
+      applyCloudProgress(cloud);
+    } else {
+      showToast(`Cloud loaded: empty (no data under ${uid.slice(0,8)}…)`, 10000);
+    }
     // Re-prime the daily-residuals cache so the personal-par estimate
     // catches up to the new account's recent plays right away.
     const { backfillResidualsFromFirebase } = await import('./logic/handicaps.js');
@@ -2474,6 +2483,7 @@ subscribeToUidChanges(async ({ uid, isInitial }) => {
     try { updateHeader(); } catch {}
   } catch (err) {
     console.warn('post-switch progress reload failed:', err && err.message);
+    showToast(`Cloud load FAILED: ${err && err.message}`, 12000);
   }
 });
 
