@@ -34,7 +34,7 @@ import {
   getDailyStreak,
   getPlayerName, setPlayerName,
   getLastSeenVersion, setLastSeenVersion,
-  saveDailyPar, loadDailyPar, applyCloudProgress,
+  saveDailyPar, loadDailyPar, applyCloudProgress, resetDailyStatsForAccountSwitch,
   hasSeenNotice, markNoticeSeen,
 } from './storage/statsStorage.js';
 
@@ -2454,6 +2454,12 @@ subscribeToUidChanges(async ({ uid, isInitial }) => {
   if (isInitial) return; // initial load is handled by the existing init() chain
   if (!uid) return;
   try {
+    // The user has explicitly chosen to adopt this account's identity,
+    // so the local daily streak / lastDailyCompletedDate are obsolete —
+    // they belonged to the device's now-abandoned anonymous uid. Reset
+    // those fields so applyCloudProgress takes the new account's values
+    // verbatim instead of its date-based max-merge keeping the local ones.
+    resetDailyStatsForAccountSwitch();
     const cloud = await loadProgress();
     if (cloud) applyCloudProgress(cloud);
     // Re-prime the daily-residuals cache so the personal-par estimate

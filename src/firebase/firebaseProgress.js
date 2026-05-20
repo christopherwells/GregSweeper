@@ -157,21 +157,40 @@ export async function initAnonymousAuth() {
 
       _db = firebase.database();
 
-      // Subscribe BEFORE kicking signInAnonymously so we don't miss the
-      // post-sign-in fire on a fresh device.
+      // Wait for Firebase to FINISH reading its IndexedDB persistence
+      // before deciding whether to sign in anonymously. Without this,
+      // `firebase.auth().currentUser` returns null synchronously even
+      // when a persisted session exists (the IndexedDB read is async).
+      // Calling signInAnonymously while a persisted user is still
+      // loading would create a fresh anonymous account and overwrite
+      // the linked Google session — that's the "sign-in disappears
+      // after refresh" bug. Awaiting the first onAuthStateChanged fire
+      // guarantees we've seen Firebase's authoritative initial state.
+      let resolveFirstFire;
+      const firstFire = new Promise((resolve) => { resolveFirstFire = resolve; });
       let resolveSettled;
       const settled = new Promise((resolve) => { resolveSettled = resolve; });
+      let firstFireDone = false;
       subscribeAuthState((snap) => {
         _handleAuthChange(snap);
+        if (!firstFireDone) {
+          firstFireDone = true;
+          resolveFirstFire(snap);
+        }
         if (snap.uid && resolveSettled) {
           resolveSettled();
           resolveSettled = null;
         }
       });
 
-      // If there's a persisted session, the subscribe callback already
-      // fired synchronously with the existing user. Otherwise kick anon.
-      if (!firebase.auth().currentUser) {
+      const initialSnap = await Promise.race([
+        firstFire,
+        new Promise((resolve) => setTimeout(() => resolve(null), FIREBASE_TIMEOUT_MS)),
+      ]);
+
+      // After Firebase finished reading persistence, kick anon only if
+      // truly no user is signed in.
+      if (!initialSnap || !initialSnap.uid) {
         try {
           await Promise.race([
             firebase.auth().signInAnonymously(),

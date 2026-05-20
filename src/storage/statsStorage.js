@@ -508,6 +508,28 @@ export function setPlayerName(name) {
   safeSet(PLAYER_NAME_KEY, cleaned);
 }
 
+// Reset the daily-streak portion of local stats so the next applyCloudProgress
+// call adopts the cloud values verbatim instead of treating local as "newer".
+// Used when the user explicitly switches accounts on this device — the local
+// daily plays belonged to the device's now-abandoned anonymous uid, not the
+// account we're switching to.
+//
+// Also clears the daily-completed-today marker so the player can play today's
+// daily under the new account if they haven't already on that account.
+export function resetDailyStatsForAccountSwitch() {
+  const stats = loadStats();
+  if (stats.modeStats && stats.modeStats.daily) {
+    stats.modeStats.daily.dailyStreak = 0;
+    stats.modeStats.daily.bestDailyStreak = 0;
+    stats.modeStats.daily.lastDailyCompletedDate = null;
+  }
+  setJSON(STATS_KEY, stats);
+  _statsCache = stats;
+  // Drop the per-date local caches keyed off the abandoned uid's plays —
+  // the new account may have different par / move counts on the same date.
+  try { safeRemove(DAILY_COMPLETED_KEY); } catch {}
+}
+
 // ── Cloud Progress Merge ──────────────────────────────
 // Merges cloud-synced progress into local stats. Takes the higher value
 // for each field so progress only goes up. Called silently on app init.
