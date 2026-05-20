@@ -2457,6 +2457,27 @@ subscribeAuthState(() => {
 // appears on phone within a second, without needing the app reopened.
 subscribeToCloudProgressUpdates((cloud) => {
   try { applyCloudProgress(cloud); } catch {}
+  // applyCloudProgress only handles the stats fields (streak / lastDate
+  // / checkpoint). Weekly attempts live separately under cloud's
+  // weeklyAttempts[weekStart].dayAttempts subtree, and the title screen
+  // reads them from state.cachedWeeklyDayAttempts — so we also extract
+  // and apply the current week's attempts here, otherwise a weekly day
+  // attempt on device A would still show as "2/7 used" on device B.
+  try {
+    const currentWeek = getWeekStart(getLocalDateString());
+    const dayAttempts = cloud.weeklyAttempts
+      && cloud.weeklyAttempts[currentWeek]
+      && cloud.weeklyAttempts[currentWeek].dayAttempts;
+    if (dayAttempts && typeof dayAttempts === 'object') {
+      const next = {};
+      for (const k of Object.keys(dayAttempts)) {
+        const n = Number(k);
+        if (Number.isInteger(n) && n >= 0 && n <= 6) next[n] = true;
+      }
+      state.cachedWeeklyDayAttempts = next;
+      if (!isTestEnvironment()) replaceLocalWeeklyAttempts(currentWeek, next);
+    }
+  } catch {}
   try { updateTitleProgress(); } catch {}
   try { updateHeader(); } catch {}
 });
