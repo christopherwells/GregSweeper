@@ -421,6 +421,46 @@ export function pruneStaleLocalWeeklyAttempts(currentWeekStart) {
 }
 
 /**
+ * DEBUG-ONLY: force-write the supplied progress fields to cloud,
+ * bypassing the test-environment short-circuit. Used by the Settings →
+ * Show Diagnostics → "Force sync" button so we can drive a cloud write
+ * from the test build under a Google-linked uid and surface the error
+ * (or success) verbatim. Resolves to `{ ok, message }`.
+ */
+export async function forceWriteProgressForDebug(data) {
+  if (typeof firebase === 'undefined' || !firebase.database) {
+    return { ok: false, message: 'Firebase database not loaded' };
+  }
+  if (!_uid) return { ok: false, message: 'No uid (auth not ready)' };
+  const db = firebase.database();
+  try {
+    await db.ref('users/' + _uid).update(data);
+    return { ok: true, message: 'write succeeded' };
+  } catch (err) {
+    return {
+      ok: false,
+      message: `${(err && err.code) || ''} ${(err && err.message) || 'unknown'}`.trim(),
+    };
+  }
+}
+
+/**
+ * DEBUG-ONLY: read the cloud progress record for the current uid and
+ * return the raw value (or null) plus the path it was read from.
+ */
+export async function readProgressForDebug() {
+  if (!_uid) return { path: null, val: null, error: 'No uid (auth not ready)' };
+  const db = firebase.database();
+  const path = 'users/' + _uid;
+  try {
+    const snap = await db.ref(path).once('value');
+    return { path, val: snap.val(), error: null };
+  } catch (err) {
+    return { path, val: null, error: (err && err.message) || 'unknown' };
+  }
+}
+
+/**
  * Load progress from cloud. Returns null if unavailable.
  * Call on app init to silently restore progress.
  */

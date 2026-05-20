@@ -51,7 +51,7 @@ import {
 import {
   initFirebase, isFirebaseOnline, submitOnlineScore, fetchOnlineLeaderboard, fetchUserDailyHistory, fetchAllDailyMeta, fetchAllDailyScores, fetchWeeklyLeaderboard,
 } from './firebase/firebaseLeaderboard.js';
-import { initAnonymousAuth, loadProgress, saveDailyHistoryEntry, getUid, loadWeeklyAttempts, loadLocalWeeklyAttempts, replaceLocalWeeklyAttempts, pruneStaleLocalWeeklyAttempts, subscribeToUidChanges } from './firebase/firebaseProgress.js';
+import { initAnonymousAuth, loadProgress, saveDailyHistoryEntry, getUid, loadWeeklyAttempts, loadLocalWeeklyAttempts, replaceLocalWeeklyAttempts, pruneStaleLocalWeeklyAttempts, subscribeToUidChanges, forceWriteProgressForDebug, readProgressForDebug } from './firebase/firebaseProgress.js';
 import { getAuthState, subscribeAuthState, linkWithGoogle, sendEmailLink, tryCompleteEmailLink, signOut as authSignOut } from './firebase/firebaseAuth.js';
 import { isTestEnvironment } from './firebase/env.js';
 // Stats-tab renderer + chart toolkit are lazy-imported in populateDailyPanel
@@ -2200,6 +2200,27 @@ $('#btn-replay-tutorial').addEventListener('click', () => {
   $('#settings-modal').classList.add('hidden');
   _returnToTitle = false;
   startTutorial(() => startWarmup(() => showTitleScreen()));
+});
+
+// Debug-only: force a cloud progress sync from the current device.
+// Reads users/{uid}, then writes the device's local stats to it,
+// toasting both results. Use to diagnose silent-failure cases where
+// the user's streak/checkpoint never sync to cloud.
+$('#btn-force-cloud-sync')?.addEventListener('click', async () => {
+  const uid = getUid() || 'no-uid';
+  const stats = loadStats();
+  const daily = stats?.modeStats?.daily || {};
+  const localStreak = daily.dailyStreak || 0;
+  const localBest = daily.bestDailyStreak || 0;
+  const localLast = daily.lastDailyCompletedDate;
+  const localMax = stats?.maxLevelReached || 1;
+  showToast(`uid ${uid.slice(0,10)}… reading…`, 5000);
+  const read = await readProgressForDebug();
+  showToast(`READ ${read.path}: ${read.error ? 'ERR ' + read.error : JSON.stringify(read.val)}`, 12000);
+  const payload = { dailyStreak: localStreak, bestDailyStreak: localBest, maxCheckpoint: localMax };
+  if (localLast && typeof localLast === 'string' && localLast.length === 10) payload.lastDailyDate = localLast;
+  const write = await forceWriteProgressForDebug(payload);
+  showToast(`WRITE ${JSON.stringify(payload)} → ${write.ok ? 'OK' : 'FAIL ' + write.message}`, 15000);
 });
 
 // Diagnostics — ground-truth snapshot of what this device sees. Dynamic
