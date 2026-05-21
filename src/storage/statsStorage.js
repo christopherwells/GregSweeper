@@ -1,6 +1,7 @@
 import { safeGet, safeSet, safeRemove, safeGetJSON, safeSetJSON } from './storageAdapter.js';
 import { getLocalDateString } from '../logic/seededRandom.js';
 import { isTestEnvironment } from '../firebase/env.js';
+import { containsHateSpeech } from '../logic/nameFilter.js';
 
 const STATS_KEY = 'minesweeper_stats';
 const LEADERBOARD_KEY = 'minesweeper_daily_leaderboard';
@@ -503,9 +504,19 @@ export function getPlayerName() {
 // locally, and then have every score submission silently fail because
 // the rule rejects the `<`. Strip on save so the local copy matches
 // what would actually be accepted.
+//
+// Also rejects hate-speech names (slurs) so they never reach the
+// leaderboard. Returns { ok, reason }: ok=false with reason='hate' means
+// the name was NOT saved and the caller should surface a message. The
+// server-side sweep is the authoritative backstop for anything that
+// bypasses this (e.g. a direct Firebase write).
 export function setPlayerName(name) {
   const cleaned = String(name || '').replace(/[<>&"'`]/g, '').slice(0, 20);
+  if (containsHateSpeech(cleaned)) {
+    return { ok: false, reason: 'hate' };
+  }
   safeSet(PLAYER_NAME_KEY, cleaned);
+  return { ok: true, value: cleaned };
 }
 
 // Reset the daily-streak portion of local stats so the next applyCloudProgress

@@ -1,0 +1,29 @@
+name: Scrub leaderboard names
+
+on:
+  schedule:
+    # Every 3 hours. A bad name shows for at most ~3h before this scrubs
+    # it; the client-side reject blocks the common cases instantly.
+    - cron: '0 */3 * * *'
+  workflow_dispatch:
+    inputs:
+      dryRun:
+        description: 'Scan and report only — write nothing'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  scrub:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install deps
+        run: npm install firebase-admin@12 obscenity@latest
+      - name: Sweep
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node scripts/scrub-leaderboard-names.mjs ${{ inputs.dryRun && '--dry-run' || '' }}
