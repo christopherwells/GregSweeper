@@ -51,7 +51,7 @@ import {
 import {
   initFirebase, isFirebaseOnline, submitOnlineScore, fetchOnlineLeaderboard, fetchUserDailyHistory, fetchAllDailyMeta, fetchAllDailyScores, fetchWeeklyLeaderboard,
 } from './firebase/firebaseLeaderboard.js';
-import { initAnonymousAuth, loadProgress, saveDailyHistoryEntry, getUid, loadWeeklyAttempts, loadLocalWeeklyAttempts, replaceLocalWeeklyAttempts, pruneStaleLocalWeeklyAttempts, subscribeToUidChanges } from './firebase/firebaseProgress.js';
+import { initAnonymousAuth, loadProgress, saveDailyHistoryEntry, getUid, loadWeeklyAttempts, loadLocalWeeklyAttempts, replaceLocalWeeklyAttempts, pruneStaleLocalWeeklyAttempts, subscribeToUidChanges, subscribeToCloudProgressUpdates } from './firebase/firebaseProgress.js';
 import { getAuthState, subscribeAuthState, linkWithGoogle, sendEmailLink, tryCompleteEmailLink, signOut as authSignOut } from './firebase/firebaseAuth.js';
 import { isTestEnvironment } from './firebase/env.js';
 // Stats-tab renderer + chart toolkit are lazy-imported in populateDailyPanel
@@ -2450,6 +2450,42 @@ subscribeAuthState(() => {
 // the new uid's progress and apply it. applyCloudProgress takes max-merge
 // across fields, so the user's higher checkpoint stays even on switch and
 // the streak / lastDailyDate adopt the newer (cloud) values.
+// Real-time cloud sync: any write to users/{uid}/* (from this device
+// OR from another device signed in to the same account) fires the
+// listener with the updated snapshot. We apply the merge + refresh the
+// counters on the title screen / header so a daily completion on PC
+// appears on phone within a second, without needing the app reopened.
+subscribeToCloudProgressUpdates((cloud) => {
+  // overwrite: true — the listener fires when cloud is the new
+  // authoritative state, including downgrades from admin resets or a
+  // partner device. The max-merge default would stick a higher local
+  // value indefinitely after such a write.
+  try { applyCloudProgress(cloud, { overwrite: true }); } catch {}
+  // applyCloudProgress only handles the stats fields (streak / lastDate
+  // / checkpoint). Weekly attempts live separately under cloud's
+  // weeklyAttempts[weekStart].dayAttempts subtree, and the title screen
+  // reads them from state.cachedWeeklyDayAttempts — so we also extract
+  // and apply the current week's attempts here, otherwise a weekly day
+  // attempt on device A would still show as "2/7 used" on device B.
+  try {
+    const currentWeek = getWeekStart(getLocalDateString());
+    const dayAttempts = cloud.weeklyAttempts
+      && cloud.weeklyAttempts[currentWeek]
+      && cloud.weeklyAttempts[currentWeek].dayAttempts;
+    if (dayAttempts && typeof dayAttempts === 'object') {
+      const next = {};
+      for (const k of Object.keys(dayAttempts)) {
+        const n = Number(k);
+        if (Number.isInteger(n) && n >= 0 && n <= 6) next[n] = true;
+      }
+      state.cachedWeeklyDayAttempts = next;
+      if (!isTestEnvironment()) replaceLocalWeeklyAttempts(currentWeek, next);
+    }
+  } catch {}
+  try { updateTitleProgress(); } catch {}
+  try { updateHeader(); } catch {}
+});
+
 subscribeToUidChanges(async ({ uid, isInitial }) => {
   if (isInitial) return; // initial load is handled by the existing init() chain
   if (!uid) return;

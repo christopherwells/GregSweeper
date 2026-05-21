@@ -531,14 +531,22 @@ export function resetDailyStatsForAccountSwitch() {
 }
 
 // ── Cloud Progress Merge ──────────────────────────────
-// Merges cloud-synced progress into local stats. Takes the higher value
-// for each field so progress only goes up. Called silently on app init.
-export function applyCloudProgress({ maxCheckpoint, dailyStreak, bestDailyStreak, lastDailyDate }) {
+// Merges cloud-synced progress into local stats. By default takes the
+// higher value for each field so progress only goes up (used on app
+// init where local might have unflushed plays).
+//
+// When `opts.overwrite` is true (used by the real-time listener path
+// where cloud IS the authoritative state — any write to users/{uid}
+// just landed), values are adopted verbatim including downgrades.
+// Otherwise an admin-side correction or a partner-device reset would
+// be silently rejected by the max-merge.
+export function applyCloudProgress({ maxCheckpoint, dailyStreak, bestDailyStreak, lastDailyDate }, opts = {}) {
+  const overwrite = !!opts.overwrite;
   const stats = loadStats();
   let changed = false;
 
-  // Challenge checkpoint: take the higher value
-  if (maxCheckpoint != null && maxCheckpoint > (stats.maxLevelReached || 1)) {
+  // Challenge checkpoint
+  if (maxCheckpoint != null && (overwrite || maxCheckpoint > (stats.maxLevelReached || 1))) {
     stats.maxLevelReached = maxCheckpoint;
     if (!stats.modeStats) stats.modeStats = {};
     if (!stats.modeStats.challenge) stats.modeStats.challenge = {};
@@ -548,33 +556,41 @@ export function applyCloudProgress({ maxCheckpoint, dailyStreak, bestDailyStreak
     changed = true;
   }
 
-  // Daily streak sync. The most recent play wins (it has the latest info):
-  //   - cloud date > local date → adopt cloud's streak AND date, even if
-  //     the streak went DOWN (player broke streak on another device).
-  //   - cloud date === local date → defensively take the higher streak.
-  //   - cloud date < local date → keep local; cloud is stale.
-  // bestDailyStreak is a high-water mark, always take the higher value.
+  // Daily streak sync.
+  //   overwrite=true  (listener path): adopt cloud verbatim regardless of date
+  //   overwrite=false (initial-load):
+  //     - cloud date > local date → adopt cloud's streak AND date verbatim
+  //       (even if the streak went DOWN — player broke it on another device).
+  //     - cloud date === local date → defensively take the higher streak.
+  //     - cloud date < local date → keep local; cloud is stale.
+  // bestDailyStreak is normally a high-water mark, but with overwrite=true
+  // we adopt cloud's value verbatim (so an admin reset reflects in best too).
   if (dailyStreak != null || bestDailyStreak != null) {
     if (!stats.modeStats) stats.modeStats = {};
     if (!stats.modeStats.daily) stats.modeStats.daily = {};
     const daily = stats.modeStats.daily;
-    const cloudDate = lastDailyDate;
-    const localDate = daily.lastDailyCompletedDate;
-    if (cloudDate && (!localDate || cloudDate > localDate)) {
-      // Cloud is strictly newer — adopt its streak + date verbatim.
+    if (overwrite) {
       if (dailyStreak != null) daily.dailyStreak = dailyStreak;
-      daily.lastDailyCompletedDate = cloudDate;
+      if (bestDailyStreak != null) daily.bestDailyStreak = bestDailyStreak;
+      if (lastDailyDate != null) daily.lastDailyCompletedDate = lastDailyDate;
       changed = true;
-    } else if (cloudDate && cloudDate === localDate) {
-      // Same date — keep the higher streak (should normally match anyway).
-      if (dailyStreak != null && dailyStreak > (daily.dailyStreak || 0)) {
-        daily.dailyStreak = dailyStreak;
+    } else {
+      const cloudDate = lastDailyDate;
+      const localDate = daily.lastDailyCompletedDate;
+      if (cloudDate && (!localDate || cloudDate > localDate)) {
+        if (dailyStreak != null) daily.dailyStreak = dailyStreak;
+        daily.lastDailyCompletedDate = cloudDate;
+        changed = true;
+      } else if (cloudDate && cloudDate === localDate) {
+        if (dailyStreak != null && dailyStreak > (daily.dailyStreak || 0)) {
+          daily.dailyStreak = dailyStreak;
+          changed = true;
+        }
+      }
+      if (bestDailyStreak != null && bestDailyStreak > (daily.bestDailyStreak || 0)) {
+        daily.bestDailyStreak = bestDailyStreak;
         changed = true;
       }
-    }
-    if (bestDailyStreak != null && bestDailyStreak > (daily.bestDailyStreak || 0)) {
-      daily.bestDailyStreak = bestDailyStreak;
-      changed = true;
     }
   }
 
@@ -582,6 +598,21 @@ export function applyCloudProgress({ maxCheckpoint, dailyStreak, bestDailyStreak
     setJSON(STATS_KEY, stats);
     _statsCache = stats;
   }
+
+  // Keep DAILY_COMPLETED_KEY in sync with cloud's lastDailyDate so
+  // multi-device users don't get prompted to "play today's daily" on
+  // device B after device A already submitted. The two keys serve
+  // different gates — stats.modeStats.daily.lastDailyCompletedDate
+  // drives the streak math; DAILY_COMPLETED_KEY drives the daily-card
+  // "completed" lock — but they should always agree on whether today
+  // is done.
+  if (lastDailyDate && typeof lastDailyDate === 'string' && lastDailyDate.length === 10) {
+    const today = getLocalDateString();
+    if (lastDailyDate === today && safeGet(DAILY_COMPLETED_KEY) !== today) {
+      safeSet(DAILY_COMPLETED_KEY, today);
+    }
+  }
+
   return changed;
 }
 

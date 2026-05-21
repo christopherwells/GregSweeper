@@ -45,6 +45,14 @@ let _pendingWeeklyAttempts = null;
 // firebasePush.js uses it to re-subscribe FCM under the new uid.
 const _uidChangeListeners = new Set();
 
+// Listeners notified when the cloud `users/{uid}/*` subtree changes —
+// fires on every Firebase update under that path, including writes from
+// other devices. main.js uses this to apply the merged progress and
+// refresh on-screen counters so a daily completion on PC shows up on
+// phone without requiring an app reopen.
+const _cloudUpdateListeners = new Set();
+let _cloudListenerRef = null;
+
 /**
  * Return the stable uid for this session, or null if auth has not yet
  * resolved. The uid can change at runtime when the user signs in (their
@@ -74,6 +82,47 @@ function _notifyUidChange(uid, previousUid, isInitial) {
     try { cb({ uid, previousUid, isInitial }); }
     catch (err) { console.warn('uid change listener error:', err && err.message); }
   }
+}
+
+/**
+ * Subscribe to real-time cloud updates of `users/{currentUid}/*`. The
+ * callback fires with the snapshot value every time the subtree changes
+ * — both for writes from THIS device (own writes echo back) and writes
+ * from OTHER devices signed into the same account. Returns an
+ * unsubscribe function.
+ */
+export function subscribeToCloudProgressUpdates(callback) {
+  _cloudUpdateListeners.add(callback);
+  return () => _cloudUpdateListeners.delete(callback);
+}
+
+function _detachCloudListener() {
+  if (_cloudListenerRef) {
+    try { _cloudListenerRef.off(); } catch {}
+    _cloudListenerRef = null;
+  }
+}
+
+function _attachCloudListener(uid) {
+  _detachCloudListener();
+  if (!uid || !_db) return;
+  // .on('value', ...) fires once on attach with the current snapshot,
+  // then on every subsequent write. That initial fire is the same data
+  // loadProgress() returned during the explicit init chain, so the
+  // double-apply is idempotent (max-merge, same data) — not worth
+  // adding state to suppress.
+  const ref = _db.ref('users/' + uid);
+  _cloudListenerRef = ref;
+  ref.on('value', (snap) => {
+    const val = snap.val();
+    if (!val) return;
+    for (const cb of _cloudUpdateListeners) {
+      try { cb(val); }
+      catch (err) { console.warn('cloud update listener error:', err && err.message); }
+    }
+  }, (err) => {
+    console.warn('cloud listener error:', err && err.message);
+  });
 }
 
 function _flushPendingWrites() {
@@ -122,6 +171,7 @@ function _handleAuthChange(snap) {
     _pendingSave = null;
     _pendingHistory = null;
     _pendingWeeklyAttempts = null;
+    _detachCloudListener();
     return;
   }
 
@@ -142,6 +192,11 @@ function _handleAuthChange(snap) {
     _pendingHistory = null;
     _pendingWeeklyAttempts = null;
   }
+
+  // Attach the real-time listener AFTER _uid + _db are set so the
+  // listener fires under the new uid. Detach happens implicitly on the
+  // next uid change (via _attachCloudListener which calls _detachCloudListener first).
+  _attachCloudListener(newUid);
 
   _notifyUidChange(newUid, oldUid, isInitial);
 }
