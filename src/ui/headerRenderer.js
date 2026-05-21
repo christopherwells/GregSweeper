@@ -232,9 +232,12 @@ export function updateStreakBorder() {
 
 export function updateFlagModeBar() {
   if (!flagModeBar) return;
-  // Only show on touch devices during gameplay
-  const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-  if (isTouchDevice && state.status !== 'won' && state.status !== 'lost') {
+  // Show on all devices during gameplay. The toggle started as a
+  // mobile-only affordance (touch has no right-click for flagging),
+  // but desktop users without easy right-click — Chromebooks, beginners
+  // who don't know about it — benefit too. Right-click-to-flag still
+  // works alongside the toggle.
+  if (state.status !== 'won' && state.status !== 'lost') {
     flagModeBar.classList.remove('hidden');
   } else {
     flagModeBar.classList.add('hidden');
@@ -247,7 +250,10 @@ export function updateFlagModeBar() {
     flagModeIcon.textContent = state.flagMode ? '🚩' : '👆';
   }
   if (flagModeLabel) {
-    flagModeLabel.textContent = state.flagMode ? 'Tap to Flag' : 'Tap to Reveal';
+    // "Tap" reads wrong with a mouse; "Click" reads wrong on a phone.
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    const verb = isTouchDevice ? 'Tap' : 'Click';
+    flagModeLabel.textContent = state.flagMode ? `${verb} to Flag` : `${verb} to Reveal`;
   }
 }
 

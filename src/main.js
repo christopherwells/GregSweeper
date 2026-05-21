@@ -1492,6 +1492,12 @@ boardEl.addEventListener('mousedown', (e) => {
     const cell = state.board[row]?.[col];
     if (cell && cell.isRevealed && cell.adjacentMines > 0) {
       handleChordReveal(row, col);
+    } else if (state.flagMode && !cell?.isRevealed) {
+      // Flag-mode toggle is on (set via the header bar) — left-click
+      // flags instead of revealing. Right-click still flags directly
+      // via the contextmenu handler, so users with right-click muscle
+      // memory keep their workflow.
+      toggleFlag(row, col);
     } else {
       revealCell(row, col);
     }
