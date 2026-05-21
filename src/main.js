@@ -2816,8 +2816,21 @@ if (muteBtn) {
 const playerNameInput = $('#player-name-input');
 if (playerNameInput) {
   playerNameInput.value = getPlayerName();
+  // Live-save on each keystroke. setPlayerName silently declines to
+  // persist a hate-speech name (returns ok:false) — we stay quiet here
+  // rather than toasting mid-word.
   playerNameInput.addEventListener('input', () => {
     setPlayerName(playerNameInput.value.trim().slice(0, 20));
+  });
+  // On commit (blur / Enter), if the final value was a rejected
+  // hate-speech name, surface the message and revert the field to the
+  // last good saved name.
+  playerNameInput.addEventListener('change', () => {
+    const result = setPlayerName(playerNameInput.value.trim().slice(0, 20));
+    if (result && result.ok === false && result.reason === 'hate') {
+      showToast('Please choose a different name');
+      playerNameInput.value = getPlayerName();
+    }
   });
 }
 

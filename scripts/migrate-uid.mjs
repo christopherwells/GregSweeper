@@ -38,7 +38,7 @@ admin.initializeApp({
 const db = admin.database();
 
 async function rewriteDailyEntries() {
-  console.log(`[1/3] Scanning daily/ for entries with uid=${sourceUid}...`);
+  console.log(`[1/4] Scanning daily/ for entries with uid=${sourceUid}...`);
   const root = await db.ref('daily').once('value');
   const updates = {};
   let count = 0;
@@ -61,7 +61,7 @@ async function rewriteDailyEntries() {
 }
 
 async function migrateUserSubtree() {
-  console.log(`[2/3] Migrating users/${sourceUid} → users/${targetUid}...`);
+  console.log(`[2/4] Migrating users/${sourceUid} → users/${targetUid}...`);
   const [srcSnap, tgtSnap] = await Promise.all([
     db.ref(`users/${sourceUid}`).once('value'),
     db.ref(`users/${targetUid}`).once('value'),
@@ -125,8 +125,90 @@ async function migrateUserSubtree() {
   return merged;
 }
 
+// Normalize a Firebase day-keyed value to a plain { day: value } map.
+// Firebase stores {0: x, 1: y} as an ARRAY [x, y] when keys are
+// sequential from 0, but keeps it an OBJECT when there's a gap (e.g.
+// {3: z}). Older weekly rows are arrays, newer ones objects — normalize
+// both so the merge is format-agnostic.
+function normalizeDayMap(v) {
+  const out = {};
+  if (!v) return out;
+  if (Array.isArray(v)) {
+    v.forEach((val, i) => { if (val != null) out[i] = val; });
+  } else if (typeof v === 'object') {
+    for (const k of Object.keys(v)) { if (v[k] != null) out[k] = v[k]; }
+  }
+  return out;
+}
+
+// Merge two weekly leaderboard rows into one. dayTimes union with
+// min-time on a per-day collision; dayBombHits follows the kept time;
+// bestTime is the min across the merged days.
+function mergeWeeklyRows(src, tgt) {
+  const srcDays = normalizeDayMap(src.dayTimes);
+  const tgtDays = normalizeDayMap(tgt.dayTimes);
+  const srcBomb = normalizeDayMap(src.dayBombHits);
+  const tgtBomb = normalizeDayMap(tgt.dayBombHits);
+
+  const mergedDays = {};
+  const mergedBomb = {};
+  const allDays = new Set([...Object.keys(srcDays), ...Object.keys(tgtDays)]);
+  for (const d of allDays) {
+    const s = srcDays[d];
+    const t = tgtDays[d];
+    if (s != null && t != null) {
+      if (s <= t) { mergedDays[d] = s; if (srcBomb[d] != null) mergedBomb[d] = srcBomb[d]; }
+      else { mergedDays[d] = t; if (tgtBomb[d] != null) mergedBomb[d] = tgtBomb[d]; }
+    } else if (s != null) {
+      mergedDays[d] = s; if (srcBomb[d] != null) mergedBomb[d] = srcBomb[d];
+    } else {
+      mergedDays[d] = t; if (tgtBomb[d] != null) mergedBomb[d] = tgtBomb[d];
+    }
+  }
+
+  const out = {
+    name: tgt.name || src.name,
+    bestTime: Math.min(...Object.values(mergedDays)),
+    dayTimes: mergedDays,
+    timestamp: Math.max(src.timestamp || 0, tgt.timestamp || 0),
+  };
+  if (Object.keys(mergedBomb).length > 0) out.dayBombHits = mergedBomb;
+  const totalMoves = tgt.totalMoves || src.totalMoves;
+  if (totalMoves) out.totalMoves = totalMoves;
+  return out;
+}
+
+async function migrateWeeklyEntries() {
+  console.log(`[3/4] Scanning weekly/ for entries under ${sourceUid}...`);
+  const root = await db.ref('weekly').once('value');
+  const weeks = root.val() || {};
+  const updates = {};
+  let merged = 0, copied = 0;
+  for (const weekStart of Object.keys(weeks)) {
+    const week = weeks[weekStart];
+    const srcEntry = week && week[sourceUid];
+    if (!srcEntry) continue;
+    const tgtEntry = week[targetUid];
+    if (tgtEntry) {
+      updates[`weekly/${weekStart}/${targetUid}`] = mergeWeeklyRows(srcEntry, tgtEntry);
+      merged++;
+    } else {
+      updates[`weekly/${weekStart}/${targetUid}`] = srcEntry;
+      copied++;
+    }
+    updates[`weekly/${weekStart}/${sourceUid}`] = null; // delete source row
+  }
+  if (Object.keys(updates).length === 0) {
+    console.log('  no weekly entries to migrate.');
+    return 0;
+  }
+  await db.ref().update(updates);
+  console.log(`  weekly: merged ${merged}, copied ${copied}, deleted ${merged + copied} source rows.`);
+  return merged + copied;
+}
+
 async function deleteSource() {
-  console.log(`[3/3] Deleting users/${sourceUid}...`);
+  console.log(`[4/4] Deleting users/${sourceUid}...`);
   await db.ref(`users/${sourceUid}`).remove();
   console.log(`  done.`);
 }
@@ -135,6 +217,7 @@ async function deleteSource() {
   try {
     const rewrote = await rewriteDailyEntries();
     await migrateUserSubtree();
+    await migrateWeeklyEntries();
     await deleteSource();
     console.log(`Migration complete. Rewrote ${rewrote} daily entries; merged users/${sourceUid} → users/${targetUid}.`);
     process.exit(0);
