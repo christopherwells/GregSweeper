@@ -3091,9 +3091,108 @@
     "n_players": 3,
     "n_eligible": 2,
     "rmse": 31.62,
-    "bias": -0,
+    "bias": 0,
     "diagnostics": "max Rhat = 1.003, min ESS = 1557, divergent = 0/4000",
     "target": "sonarCellCount",
+    "candidates": [
+      {
+        "feature": "sonarCellCount",
+        "mean": 0.7086,
+        "sd": 0.7623,
+        "cv": 1.0758
+      },
+      {
+        "feature": "lockedCellCount",
+        "mean": 0.5441,
+        "sd": 0.5689,
+        "cv": 1.0456
+      },
+      {
+        "feature": "compassCellCount",
+        "mean": 0.7962,
+        "sd": 0.8283,
+        "cv": 1.0403
+      },
+      {
+        "feature": "wormholePairCount",
+        "mean": 1.1874,
+        "sd": 1.1917,
+        "cv": 1.0036
+      },
+      {
+        "feature": "mysteryCellCount",
+        "mean": 0.9874,
+        "sd": 0.972,
+        "cv": 0.9845
+      },
+      {
+        "feature": "wallEdgeCount",
+        "mean": 0.1853,
+        "sd": 0.1729,
+        "cv": 0.933
+      },
+      {
+        "feature": "mirrorPairCount",
+        "mean": 1.7231,
+        "sd": 1.6073,
+        "cv": 0.9328
+      },
+      {
+        "feature": "liarCellCount",
+        "mean": 0.6677,
+        "sd": 0.6209,
+        "cv": 0.93
+      },
+      {
+        "feature": "zeroClusterCount",
+        "mean": 0.5297,
+        "sd": 0.3837,
+        "cv": 0.7244
+      },
+      {
+        "feature": "nonZeroSafeCellCount",
+        "mean": 0.2361,
+        "sd": 0.1534,
+        "cv": 0.6496
+      },
+      {
+        "feature": "canonicalSubsetMoves",
+        "mean": 3.0343,
+        "sd": 1.6739,
+        "cv": 0.5517
+      },
+      {
+        "feature": "advancedLogicMoves",
+        "mean": 1.4401,
+        "sd": 0.5554,
+        "cv": 0.3857
+      },
+      {
+        "feature": "genericSubsetMoves",
+        "mean": 2.5688,
+        "sd": 0.9565,
+        "cv": 0.3723
+      },
+      {
+        "feature": "totalMines",
+        "mean": 2.4983,
+        "sd": 0.6461,
+        "cv": 0.2586
+      }
+    ]
+  },
+  {
+    "date": "2026-05-23",
+    "updatedAt": "2026-05-23T15:04:52Z",
+    "method": "brms-ranef",
+    "n_scores": 147,
+    "n_dates": 74,
+    "n_players": 4,
+    "n_eligible": 2,
+    "rmse": 31.62,
+    "bias": -0,
+    "diagnostics": "max Rhat = 1.003, min ESS = 1557, divergent = 0/4000",
+    "target": "lockedCellCount",
     "candidates": [
       {
         "feature": "sonarCellCount",

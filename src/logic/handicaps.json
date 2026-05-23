@@ -1,7 +1,7 @@
 {
-  "updatedAt": "2026-05-22T16:29:20Z",
-  "modelFitN": 146,
-  "nPlayers": 3,
+  "updatedAt": "2026-05-23T15:04:52Z",
+  "modelFitN": 147,
+  "nPlayers": 4,
   "method": "brms-ranef",
   "diagnostics": "max Rhat = 1.003, min ESS = 1557, divergent = 0/4000",
   "secPerBombHit": 14.47,

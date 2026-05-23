@@ -39,7 +39,7 @@ export function applyWidthCap(rows, cols, mines) {
 // scripts/refit-par-model.R.
 // PAR_MODEL:START
 export const PAR_MODEL = {
-  // Last refit: 2026-05-22 | brms (2 users · max Rhat = 1.003, min ESS = 1557, divergent = 0/4000) | N=146 scores, 73 dates, 3 players | R²=0.642
+  // Last refit: 2026-05-23 | brms (2 users · max Rhat = 1.003, min ESS = 1557, divergent = 0/4000) | N=147 scores, 74 dates, 4 players | R²=0.642
   intercept: -21.00,
 
   // Move-type coefficients (primary). disjunctiveMoves was dropped
