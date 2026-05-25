@@ -36,26 +36,23 @@ const APPLY = process.argv.includes('--apply');
 
 // ── Incident participants + ground truth ──────────────
 const CHRIS_PRIMARY = 'V07QPXYaICOOcP5ev6DXa2yG9y92';
-const CHRIS_STRAY   = 'pWhYDHjYGnalM4WGOeUFkM8nPol2';
 const KATE          = 'AYXrTjKPieYrZI8sksnYqbI3Pmh1';
-const RUN_END       = '2026-05-24'; // most recent completed day at incident time
-
 const PEOPLE = [
   {
+    // `name` is the identity we match on — connectivity churn spread Chris's
+    // plays across his primary uid, a May-22 stray uid, and a May-5 row with
+    // NO uid at all, so only the display name reliably ties them together.
     name: 'Chris',
     uid: CHRIS_PRIMARY,
-    stray: CHRIS_STRAY,
-    strayDays: ['2026-05-22'], // bridge from stray uid → primary
-    recoverDays: [],
-    expectStreak: 69,          // 2026-03-17 .. 2026-05-24 inclusive
+    // Days played with NO leaderboard row anywhere — recorded as completion-
+    // only markers, never a fabricated time. Their real time recovers
+    // client-side via the durable upload queue on reopen.
+    assertedPlayed: [],
   },
   {
     name: 'Kate',
     uid: KATE,
-    stray: null,
-    strayDays: [],
-    recoverDays: ['2026-05-22', '2026-05-23'], // missing uploads (she played both)
-    expectStreak: 63,          // 2026-03-23 .. 2026-05-24 inclusive
+    assertedPlayed: ['2026-05-22', '2026-05-23'], // played both; uploads failed (no rows)
   },
 ];
 
@@ -112,27 +109,20 @@ async function dbPut(path, token, body) {
   if (!r.ok) throw new Error(`PUT ${path} -> ${r.status} ${await r.text()}`);
   return r.json();
 }
-async function dbPush(path, token, body) {
-  const r = await fetch(_url(path, token), {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
-  });
-  if (!r.ok) throw new Error(`POST ${path} -> ${r.status} ${await r.text()}`);
-  return r.json(); // { name: '<pushId>' }
-}
-
 // Maximal consecutive-day run ending at the latest date — identical logic
 // to computeStreakFromHistory in src/storage/statsStorage.js.
 function computeRun(dates) {
   const s = [...new Set((dates || []).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)))].sort();
-  if (s.length === 0) return { streak: 0, lastDate: null };
+  if (s.length === 0) return { streak: 0, lastDate: null, startDate: null };
   const lastDate = s[s.length - 1];
   let streak = 1;
+  let startDate = lastDate;
   for (let i = s.length - 1; i > 0; i--) {
     const diff = Math.round((new Date(s[i] + 'T00:00:00') - new Date(s[i - 1] + 'T00:00:00')) / 86400000);
-    if (diff === 1) streak++;
+    if (diff === 1) { streak++; startDate = s[i - 1]; }
     else break;
   }
-  return { streak, lastDate };
+  return { streak, lastDate, startDate };
 }
 
 // Plan/execute a write. In dry-run it only logs; with --apply it runs `fn`.
@@ -142,106 +132,86 @@ async function step(label, fn) {
   await fn();
 }
 
-async function lookupParAndSeed(token, day) {
-  const rows = (await dbGet(`daily/${day}`, token)) || {};
-  let par = null;
-  for (const k of Object.keys(rows)) {
-    if (rows[k] && typeof rows[k].par === 'number') { par = rows[k].par; break; }
-  }
-  const seed = (await dbGet(`dailyBoard/${day}/rngSeed`, token)) || day;
-  return { par, seed, rows };
-}
-
-async function repairPerson(token, p) {
+async function repairPerson(token, p, dailyTree) {
   console.log(`\n=== ${p.name} (${p.uid}) ===`);
   const user = (await dbGet(`users/${p.uid}`, token)) || {};
   const hist = { ...(user.dailyHistory || {}) }; // working copy incl. planned additions
   console.log(`  current: dailyStreak=${user.dailyStreak ?? '∅'} lastDailyDate=${user.lastDailyDate ?? '∅'} best=${user.bestDailyStreak ?? '∅'} historyDays=${Object.keys(hist).length}`);
 
-  // ── Step 1: bridge stray-uid completions into the primary account ──
-  if (p.stray && p.strayDays.length) {
-    const strayHist = (await dbGet(`users/${p.stray}/dailyHistory`, token)) || {};
-    for (const day of p.strayDays) {
-      if (hist[day]) {
-        console.log(`  ${day}: primary already has history — no bridge needed`);
-      } else if (strayHist[day]) {
-        const entry = strayHist[day];
-        hist[day] = entry;
-        await step(`bridge users/${p.uid}/dailyHistory/${day} = ${JSON.stringify(entry)} (from stray)`,
-          () => dbPut(`users/${p.uid}/dailyHistory/${day}`, token, entry));
-      } else {
-        // Stray had no history row either — fall back to a completion marker
-        // so the streak is preserved (the leaderboard row proves the play).
-        const marker = { completed: true, submittedAt: Date.now() };
-        hist[day] = marker;
-        await step(`mark users/${p.uid}/dailyHistory/${day} = ${JSON.stringify(marker)} (stray had no history)`,
-          () => dbPut(`users/${p.uid}/dailyHistory/${day}`, token, marker));
-      }
-      // Rewrite the leaderboard row's uid stray → primary so the play is
-      // attributed to the canonical account.
-      const rows = (await dbGet(`daily/${day}`, token)) || {};
-      let rewrote = false;
-      for (const pushId of Object.keys(rows)) {
-        if (rows[pushId] && rows[pushId].uid === p.stray) {
-          await step(`rewrite daily/${day}/${pushId}.uid: ${p.stray} → ${p.uid}`,
-            () => dbPatch(`daily/${day}/${pushId}`, token, { uid: p.uid }));
-          rewrote = true;
-        }
-      }
-      if (!rewrote) console.log(`  ${day}: no stray-uid leaderboard row to rewrite`);
+  // ── Reconstruct real plays from the LEADERBOARD (authoritative) ──
+  // daily/* holds every actual completion with a real time and is more
+  // complete than dailyHistory (on flaky service the score upload often
+  // landed while the history write failed). We identify a player's rows by
+  // their leaderboard DISPLAY NAME, not uid: connectivity/auth churn spread
+  // their plays across several anonymous uids — Chris's May 22 under a stray
+  // uid, his May 5 under a row with NO uid at all — so a uid-only union
+  // undercounts. On this private friends-only board the name is the stable
+  // identity. Synthetic keys (_bonus / _weekly_first) are skipped.
+  const PLAIN_DATE = /^\d{4}-\d{2}-\d{2}$/;
+  const lbPlays = {};        // date -> { time }
+  const strayRewrites = [];  // { date, pushId, from } rows to reattribute to the canonical uid
+  for (const date of Object.keys(dailyTree)) {
+    if (!PLAIN_DATE.test(date)) continue;
+    const rows = dailyTree[date] || {};
+    for (const pushId of Object.keys(rows)) {
+      const row = rows[pushId];
+      if (!row || row.name !== p.name) continue;
+      if (typeof row.time === 'number' && !(date in lbPlays)) lbPlays[date] = { time: row.time };
+      if (row.uid !== p.uid) strayRewrites.push({ date, pushId, from: row.uid ?? '(no uid)' });
     }
   }
 
-  // ── Step 2: recover missing-upload days (Kate's 22/23) ──
-  for (const day of p.recoverDays) {
-    const existing = hist[day];
-    if (existing && typeof existing.time === 'number') {
-      // Her completion history survived — only the leaderboard push failed.
-      // Re-create the leaderboard row from the real time she actually got.
-      const { par, seed, rows } = await lookupParAndSeed(token, day);
-      const already = Object.values(rows).some(r => r && r.uid === p.uid);
-      if (already) {
-        console.log(`  ${day}: leaderboard row already present (client queue may have flushed) — skip`);
-      } else {
-        const row = {
-          name: p.name, time: existing.time, bombHits: 0, uid: p.uid,
-          rngSeed: seed, timestamp: { '.sv': 'timestamp' },
-        };
-        if (typeof par === 'number') row.par = par;
-        await step(`push daily/${day} row ${JSON.stringify({ ...row, timestamp: 'SERVER' })} (recovered time ${existing.time}s)`,
-          () => dbPush(`daily/${day}`, token, row));
-      }
-    } else if (existing) {
-      console.log(`  ${day}: completion marker already present — streak preserved, leaderboard deferred to client`);
-    } else {
-      // No server-side record of her time. Preserve the streak with a
-      // completion-only marker (NO fabricated time). Her real time recovers
-      // client-side when she reopens the patched app (durable upload queue).
-      const marker = { completed: true, submittedAt: Date.now() };
-      hist[day] = marker;
-      await step(`mark users/${p.uid}/dailyHistory/${day} = ${JSON.stringify(marker)} (no recoverable time; client queue will fill the real score)`,
-        () => dbPut(`users/${p.uid}/dailyHistory/${day}`, token, marker));
+  // Union of every date this player completed, from any source.
+  const unionDates = new Set([
+    ...Object.keys(hist),
+    ...Object.keys(lbPlays),
+    ...p.assertedPlayed,
+  ]);
+
+  // ── Backfill dailyHistory holes from real leaderboard times ──
+  // Makes the per-day completion record match actual plays so the client's
+  // history-derived streak agrees with the counter we set. Real times only —
+  // never fabricated.
+  const backfillDates = [...unionDates].sort().filter(d =>
+    (!hist[d] || typeof hist[d].time !== 'number') && lbPlays[d] && typeof lbPlays[d].time === 'number');
+  if (backfillDates.length) {
+    console.log(`  ${APPLY ? '[APPLY]' : '[DRY]'} backfill ${backfillDates.length} dailyHistory entries from leaderboard times (${backfillDates[0]} … ${backfillDates[backfillDates.length - 1]})`);
+    for (const d of backfillDates) {
+      hist[d] = { time: lbPlays[d].time, submittedAt: Date.now() };
+      if (APPLY) await dbPut(`users/${p.uid}/dailyHistory/${d}`, token, hist[d]);
     }
   }
 
-  // ── Step 3: recompute the streak from the repaired history ──
-  const { streak, lastDate } = computeRun(Object.keys(hist));
+  // ── Completion markers for asserted-played days with NO recoverable time ──
+  for (const d of p.assertedPlayed) {
+    if (hist[d]) { console.log(`  ${d}: already in history — no marker needed`); continue; }
+    const marker = { completed: true, submittedAt: Date.now() };
+    hist[d] = marker;
+    await step(`mark users/${p.uid}/dailyHistory/${d} = {completed:true} (asserted played; no recoverable time — client queue fills the real score)`,
+      () => dbPut(`users/${p.uid}/dailyHistory/${d}`, token, marker));
+  }
+
+  // ── Reattribute stray-uid leaderboard rows to the canonical uid ──
+  for (const { date, pushId, from } of strayRewrites) {
+    await step(`rewrite daily/${date}/${pushId}.uid: ${from} → ${p.uid}`,
+      () => dbPatch(`daily/${date}/${pushId}`, token, { uid: p.uid }));
+  }
+
+  // ── Recompute the streak from the union and write it ──
+  const { streak, lastDate, startDate } = computeRun([...unionDates]);
   const best = Math.max(user.bestDailyStreak || 0, streak);
-  console.log(`  derived from repaired history: streak=${streak} lastDate=${lastDate} (expected ${p.expectStreak})`);
-  if (streak !== p.expectStreak) {
-    console.warn(`  ⚠ derived streak ${streak} != expected ${p.expectStreak} — review the history above before applying.`);
-  }
+  console.log(`  derived streak = ${streak}  (run ${startDate} → ${lastDate}; was stored ${user.dailyStreak ?? '∅'})`);
   await step(`patch users/${p.uid} { dailyStreak:${streak}, lastDailyDate:'${lastDate}', bestDailyStreak:${best} }`,
     () => dbPatch(`users/${p.uid}`, token, { dailyStreak: streak, lastDailyDate: lastDate, bestDailyStreak: best }));
 
-  return { name: p.name, uid: p.uid, expectStreak: p.expectStreak, derived: streak, lastDate };
+  return { name: p.name, uid: p.uid, derived: streak, lastDate };
 }
 
 async function verify(token, summaries) {
   console.log('\n=== VERIFY (post-write re-read) ===');
   for (const s of summaries) {
     const u = (await dbGet(`users/${s.uid}`, token)) || {};
-    const ok = u.dailyStreak === s.expectStreak && u.lastDailyDate === RUN_END;
+    const ok = u.dailyStreak === s.derived && u.lastDailyDate === s.lastDate;
     console.log(`  ${s.name}: dailyStreak=${u.dailyStreak} lastDailyDate=${u.lastDailyDate} best=${u.bestDailyStreak} ${ok ? '✓' : '✗ MISMATCH'}`);
   }
 }
@@ -261,8 +231,12 @@ async function verify(token, summaries) {
     : '*** DRY RUN — no writes. Pass --apply to execute. ***');
 
   const token = await getAccessToken(serviceAccount);
+  // Load the whole leaderboard once — repairPerson reconstructs real plays
+  // from it (it's the authoritative completion record).
+  const dailyTree = (await dbGet('daily', token)) || {};
+  console.log(`Loaded ${Object.keys(dailyTree).length} leaderboard dates from daily/*.`);
   const summaries = [];
-  for (const p of PEOPLE) summaries.push(await repairPerson(token, p));
+  for (const p of PEOPLE) summaries.push(await repairPerson(token, p, dailyTree));
 
   if (APPLY) await verify(token, summaries);
   else console.log('\nDry run complete. Review the planned writes above, then re-run with --apply.');

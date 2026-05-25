@@ -39,36 +39,36 @@ export function applyWidthCap(rows, cols, mines) {
 // scripts/refit-par-model.R.
 // PAR_MODEL:START
 export const PAR_MODEL = {
-  // Last refit: 2026-05-21 | brms (2 users · max Rhat = 1.004, min ESS = 1415, divergent = 0/4000) | N=145 scores, 73 dates, 3 players | R²=0.642
-  intercept: -21.10,
+  // Last refit: 2026-05-24 | brms (2 users · max Rhat = 1.003, min ESS = 1341, divergent = 0/4000) | N=150 scores, 76 dates, 4 players | R²=0.634
+  intercept: -17.58,
 
   // Move-type coefficients (primary). disjunctiveMoves was dropped
   // 2026-05-04: structurally confounded with liarCellCount (every liar
   // board produces disjunctive moves) and N=1 liar board means the two
   // coefficients cannot be separately identified. The disjunctive
   // contribution is now absorbed into secPerLiarCell.
-  secPerPassAMove:            0.45,
-  secPerCanonicalSubsetMove:  3.13,
-  secPerGenericSubsetMove:    2.54,
-  secPerAdvancedLogicMove:    1.43,
+  secPerPassAMove:            0.43,
+  secPerCanonicalSubsetMove:  2.97,
+  secPerGenericSubsetMove:    2.48,
+  secPerAdvancedLogicMove:    1.47,
 
   // Board shape (secondary)
   secPerCell:      0.028,
-  secPerMineFlag:  2.520,
-  secPerWallEdge:  0.178,
+  secPerMineFlag:  2.481,
+  secPerWallEdge:  0.177,
 
   // Gimmick cell counts (tertiary)
-  secPerMysteryCell:   0.940,
-  secPerLiarCell:      0.663,
-  secPerLockedCell:    0.552,
-  secPerWormholePair:  1.176,
-  secPerMirrorPair:    1.818,
-  secPerSonarCell:     0.688,
-  secPerCompassCell:   0.806,
+  secPerMysteryCell:   0.939,
+  secPerLiarCell:      0.674,
+  secPerLockedCell:    0.633,
+  secPerWormholePair:  1.134,
+  secPerMirrorPair:    1.705,
+  secPerSonarCell:     0.677,
+  secPerCompassCell:   0.759,
 
   // Structural features (v1.5.16+)
-  secPerNonZeroSafeCell:  0.234,
-  secPerZeroCluster:      0.527,
+  secPerNonZeroSafeCell:  0.219,
+  secPerZeroCluster:      0.510,
 };
 // PAR_MODEL:END
 

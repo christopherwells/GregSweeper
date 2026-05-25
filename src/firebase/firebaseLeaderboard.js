@@ -231,6 +231,10 @@ export async function submitOnlineScore(dateString, name, time, bombHits = 0, ex
  * or that have hit PENDING_MAX_ATTEMPTS.
  */
 export async function flushPendingSubmissions() {
+  // Never write prod scores from a test session — the pending queue lives in
+  // localStorage, shared across the master/test github.io origin, so a score
+  // queued on master must not flush while the test build is open.
+  if (isTestEnvironment()) return;
   if (!isFirebaseOnline()) return;
   let pending;
   try {
@@ -384,6 +388,10 @@ function _queueFailedWeeklySubmission(weekStart, uid, name, bestTime, dayTimes, 
  * rules as the daily queue.
  */
 export async function flushPendingWeeklySubmissions() {
+  // Test-session guard (see flushPendingSubmissions). Extra important here:
+  // _doSubmitWeeklyScore uses set() not push(), so a stray test-session
+  // flush would OVERWRITE the player's live weekly row with stale data.
+  if (isTestEnvironment()) return;
   if (!isFirebaseOnline()) return;
   let pending;
   try {

@@ -2992,7 +2992,7 @@
     "n_players": 3,
     "n_eligible": 2,
     "rmse": 31.66,
-    "bias": -0,
+    "bias": 0,
     "diagnostics": "max Rhat = 1.004, min ESS = 1415, divergent = 0/4000",
     "target": "wormholePairCount",
     "candidates": [
@@ -3079,6 +3079,303 @@
         "mean": 2.5198,
         "sd": 0.6343,
         "cv": 0.2517
+      }
+    ]
+  },
+  {
+    "date": "2026-05-22",
+    "updatedAt": "2026-05-22T16:29:20Z",
+    "method": "brms-ranef",
+    "n_scores": 146,
+    "n_dates": 73,
+    "n_players": 3,
+    "n_eligible": 2,
+    "rmse": 31.62,
+    "bias": 0,
+    "diagnostics": "max Rhat = 1.003, min ESS = 1557, divergent = 0/4000",
+    "target": "sonarCellCount",
+    "candidates": [
+      {
+        "feature": "sonarCellCount",
+        "mean": 0.7086,
+        "sd": 0.7623,
+        "cv": 1.0758
+      },
+      {
+        "feature": "lockedCellCount",
+        "mean": 0.5441,
+        "sd": 0.5689,
+        "cv": 1.0456
+      },
+      {
+        "feature": "compassCellCount",
+        "mean": 0.7962,
+        "sd": 0.8283,
+        "cv": 1.0403
+      },
+      {
+        "feature": "wormholePairCount",
+        "mean": 1.1874,
+        "sd": 1.1917,
+        "cv": 1.0036
+      },
+      {
+        "feature": "mysteryCellCount",
+        "mean": 0.9874,
+        "sd": 0.972,
+        "cv": 0.9845
+      },
+      {
+        "feature": "wallEdgeCount",
+        "mean": 0.1853,
+        "sd": 0.1729,
+        "cv": 0.933
+      },
+      {
+        "feature": "mirrorPairCount",
+        "mean": 1.7231,
+        "sd": 1.6073,
+        "cv": 0.9328
+      },
+      {
+        "feature": "liarCellCount",
+        "mean": 0.6677,
+        "sd": 0.6209,
+        "cv": 0.93
+      },
+      {
+        "feature": "zeroClusterCount",
+        "mean": 0.5297,
+        "sd": 0.3837,
+        "cv": 0.7244
+      },
+      {
+        "feature": "nonZeroSafeCellCount",
+        "mean": 0.2361,
+        "sd": 0.1534,
+        "cv": 0.6496
+      },
+      {
+        "feature": "canonicalSubsetMoves",
+        "mean": 3.0343,
+        "sd": 1.6739,
+        "cv": 0.5517
+      },
+      {
+        "feature": "advancedLogicMoves",
+        "mean": 1.4401,
+        "sd": 0.5554,
+        "cv": 0.3857
+      },
+      {
+        "feature": "genericSubsetMoves",
+        "mean": 2.5688,
+        "sd": 0.9565,
+        "cv": 0.3723
+      },
+      {
+        "feature": "totalMines",
+        "mean": 2.4983,
+        "sd": 0.6461,
+        "cv": 0.2586
+      }
+    ]
+  },
+  {
+    "date": "2026-05-23",
+    "updatedAt": "2026-05-23T15:04:52Z",
+    "method": "brms-ranef",
+    "n_scores": 147,
+    "n_dates": 74,
+    "n_players": 4,
+    "n_eligible": 2,
+    "rmse": 31.62,
+    "bias": 0,
+    "diagnostics": "max Rhat = 1.003, min ESS = 1557, divergent = 0/4000",
+    "target": "lockedCellCount",
+    "candidates": [
+      {
+        "feature": "sonarCellCount",
+        "mean": 0.7086,
+        "sd": 0.7623,
+        "cv": 1.0758
+      },
+      {
+        "feature": "lockedCellCount",
+        "mean": 0.5441,
+        "sd": 0.5689,
+        "cv": 1.0456
+      },
+      {
+        "feature": "compassCellCount",
+        "mean": 0.7962,
+        "sd": 0.8283,
+        "cv": 1.0403
+      },
+      {
+        "feature": "wormholePairCount",
+        "mean": 1.1874,
+        "sd": 1.1917,
+        "cv": 1.0036
+      },
+      {
+        "feature": "mysteryCellCount",
+        "mean": 0.9874,
+        "sd": 0.972,
+        "cv": 0.9845
+      },
+      {
+        "feature": "wallEdgeCount",
+        "mean": 0.1853,
+        "sd": 0.1729,
+        "cv": 0.933
+      },
+      {
+        "feature": "mirrorPairCount",
+        "mean": 1.7231,
+        "sd": 1.6073,
+        "cv": 0.9328
+      },
+      {
+        "feature": "liarCellCount",
+        "mean": 0.6677,
+        "sd": 0.6209,
+        "cv": 0.93
+      },
+      {
+        "feature": "zeroClusterCount",
+        "mean": 0.5297,
+        "sd": 0.3837,
+        "cv": 0.7244
+      },
+      {
+        "feature": "nonZeroSafeCellCount",
+        "mean": 0.2361,
+        "sd": 0.1534,
+        "cv": 0.6496
+      },
+      {
+        "feature": "canonicalSubsetMoves",
+        "mean": 3.0343,
+        "sd": 1.6739,
+        "cv": 0.5517
+      },
+      {
+        "feature": "advancedLogicMoves",
+        "mean": 1.4401,
+        "sd": 0.5554,
+        "cv": 0.3857
+      },
+      {
+        "feature": "genericSubsetMoves",
+        "mean": 2.5688,
+        "sd": 0.9565,
+        "cv": 0.3723
+      },
+      {
+        "feature": "totalMines",
+        "mean": 2.4983,
+        "sd": 0.6461,
+        "cv": 0.2586
+      }
+    ]
+  },
+  {
+    "date": "2026-05-24",
+    "updatedAt": "2026-05-24T15:07:39Z",
+    "method": "brms-ranef",
+    "n_scores": 150,
+    "n_dates": 76,
+    "n_players": 4,
+    "n_eligible": 2,
+    "rmse": 31.73,
+    "bias": -0,
+    "diagnostics": "max Rhat = 1.003, min ESS = 1341, divergent = 0/4000",
+    "target": "compassCellCount",
+    "candidates": [
+      {
+        "feature": "lockedCellCount",
+        "mean": 0.6331,
+        "sd": 0.6988,
+        "cv": 1.1038
+      },
+      {
+        "feature": "compassCellCount",
+        "mean": 0.7593,
+        "sd": 0.8247,
+        "cv": 1.0862
+      },
+      {
+        "feature": "sonarCellCount",
+        "mean": 0.677,
+        "sd": 0.7225,
+        "cv": 1.0671
+      },
+      {
+        "feature": "wormholePairCount",
+        "mean": 1.1338,
+        "sd": 1.1141,
+        "cv": 0.9826
+      },
+      {
+        "feature": "wallEdgeCount",
+        "mean": 0.1767,
+        "sd": 0.1661,
+        "cv": 0.9401
+      },
+      {
+        "feature": "liarCellCount",
+        "mean": 0.6739,
+        "sd": 0.6316,
+        "cv": 0.9372
+      },
+      {
+        "feature": "mysteryCellCount",
+        "mean": 0.9387,
+        "sd": 0.8776,
+        "cv": 0.9349
+      },
+      {
+        "feature": "mirrorPairCount",
+        "mean": 1.7054,
+        "sd": 1.586,
+        "cv": 0.93
+      },
+      {
+        "feature": "zeroClusterCount",
+        "mean": 0.5099,
+        "sd": 0.3607,
+        "cv": 0.7074
+      },
+      {
+        "feature": "nonZeroSafeCellCount",
+        "mean": 0.219,
+        "sd": 0.1395,
+        "cv": 0.6367
+      },
+      {
+        "feature": "canonicalSubsetMoves",
+        "mean": 2.9745,
+        "sd": 1.7356,
+        "cv": 0.5835
+      },
+      {
+        "feature": "genericSubsetMoves",
+        "mean": 2.4774,
+        "sd": 0.9594,
+        "cv": 0.3872
+      },
+      {
+        "feature": "advancedLogicMoves",
+        "mean": 1.4699,
+        "sd": 0.5636,
+        "cv": 0.3834
+      },
+      {
+        "feature": "totalMines",
+        "mean": 2.4808,
+        "sd": 0.6265,
+        "cv": 0.2526
       }
     ]
   }

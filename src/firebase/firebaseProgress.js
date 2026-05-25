@@ -342,11 +342,13 @@ export function saveDailyHistoryEntry(date, entry) {
   else return; // nothing meaningful to record
 
   if (!_ready || !_uid) {
-    // Boot-window coalescing (auth not settled). Also mirror to the
-    // durable queue so a never-online session still recovers next boot.
+    // Boot-window coalescing (auth not settled). In-memory ONLY: we don't
+    // know the uid yet, so we can't tag a durable entry to its owner.
+    // The window is brief — Firebase restores the anonymous session from
+    // IndexedDB within ~1s even offline — and these flush on the initial
+    // settle via _flushPendingWrites (and are discarded on a uid switch).
     if (!_pendingHistory) _pendingHistory = {};
     _pendingHistory[date] = payload;
-    _persistPendingDailyHistory(date, payload);
     return;
   }
 
@@ -367,20 +369,26 @@ export function saveDailyHistoryEntry(date, entry) {
 const PENDING_HISTORY_KEY = 'minesweeper_pending_daily_history';
 
 function _persistPendingDailyHistory(date, payload) {
+  if (!_uid) return; // only the write-failed path persists, and that has a uid
   try {
     const q = safeGetJSON(PENDING_HISTORY_KEY, {}) || {};
-    q[date] = { ...payload, submittedAt: typeof payload.submittedAt === 'number' ? payload.submittedAt : Date.now() };
+    // Tag with the owning uid so flushPendingDailyHistory can refuse to
+    // attribute this completion to a DIFFERENT account that later signs in
+    // on this device (a shared/family device, or sign-out then sign-in).
+    q[date] = { uid: _uid, ...payload, submittedAt: typeof payload.submittedAt === 'number' ? payload.submittedAt : Date.now() };
     safeSetJSON(PENDING_HISTORY_KEY, q);
   } catch (err) {
     console.warn('Could not queue pending daily history:', err && err.message);
   }
 }
 
-// Re-send any queued daily-history writes. Flushed on auth-ready (initial
-// sign-in AND account switch — a switched-in account is the same human,
-// so their queued completions belong to it and recover automatically).
+// Re-send queued daily-history writes for the CURRENT uid only. Each entry
+// is tagged with its owning uid; entries belonging to a different account
+// that used this device are left untouched — never cross-attributed, which
+// would inflate the wrong account's streak. Flushed on auth-ready.
 export async function flushPendingDailyHistory() {
   if (!_ready || !_uid) return;
+  if (isTestEnvironment()) return; // never write prod history from a test session
   let q;
   try { q = safeGetJSON(PENDING_HISTORY_KEY, null); } catch { return; }
   if (!q || typeof q !== 'object') return;
@@ -389,11 +397,15 @@ export async function flushPendingDailyHistory() {
   const remaining = {};
   let flushed = 0;
   for (const date of dates) {
+    const entry = q[date];
+    // Only this account's own queued completions; leave others in place.
+    if (!entry || entry.uid !== _uid) { if (entry) remaining[date] = entry; continue; }
+    const { uid, ...payload } = entry; // strip the owner tag before writing
     try {
-      await _db.ref('users/' + _uid + '/dailyHistory/' + date).set(q[date]);
+      await _db.ref('users/' + _uid + '/dailyHistory/' + date).set(payload);
       flushed++;
     } catch {
-      remaining[date] = q[date];
+      remaining[date] = entry;
     }
   }
   try { safeSetJSON(PENDING_HISTORY_KEY, remaining); } catch {}
