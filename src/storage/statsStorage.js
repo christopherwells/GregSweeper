@@ -492,6 +492,60 @@ export function getDailyStreak() {
   return { streak: daily.dailyStreak || 0, best: daily.bestDailyStreak || 0 };
 }
 
+// Length of the maximal run of consecutive ET dates ending at the most
+// recent completed date, computed from the authoritative completed-date
+// set (users/{uid}/dailyHistory). Pure date math — no storage access.
+// `dates` is an array of 'YYYY-MM-DD' strings; order/dupes don't matter.
+export function computeStreakFromHistory(dates) {
+  if (!Array.isArray(dates) || dates.length === 0) return { streak: 0, lastDate: null };
+  const sorted = [...new Set(dates.filter(d => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)))].sort();
+  if (sorted.length === 0) return { streak: 0, lastDate: null };
+  const lastDate = sorted[sorted.length - 1];
+  let streak = 1;
+  for (let i = sorted.length - 1; i > 0; i--) {
+    const diff = Math.round(
+      (new Date(sorted[i] + 'T00:00:00') - new Date(sorted[i - 1] + 'T00:00:00')) / 86400000
+    );
+    if (diff === 1) streak++;
+    else break; // gap (or dup, already de-duped) — run ends here
+  }
+  return { streak, lastDate };
+}
+
+// Reconcile the locally-stored streak against the authoritative
+// completion history. UPWARD-ONLY: raises the stored streak when the
+// history implies a longer run than the local counter knows about (an
+// offline day that synced late, or a cross-device / uid-split play the
+// counter missed). Never LOWERS — a shorter derived run isn't proof of a
+// real break, because history can have holes from failed offline writes;
+// genuine breaks are handled at play time by saveGameResult's reset-on-gap.
+// This is the self-heal that recovers a streak corrupted by connectivity.
+export function reconcileStreakFromHistory(dates) {
+  const { streak, lastDate } = computeStreakFromHistory(dates);
+  if (!lastDate || streak <= 0) return false;
+  const stats = loadStats();
+  if (!stats.modeStats) stats.modeStats = {};
+  if (!stats.modeStats.daily) stats.modeStats.daily = {};
+  const daily = stats.modeStats.daily;
+  let changed = false;
+  if (streak > (daily.dailyStreak || 0)) {
+    daily.dailyStreak = streak;
+    if (!daily.lastDailyCompletedDate || lastDate > daily.lastDailyCompletedDate) {
+      daily.lastDailyCompletedDate = lastDate;
+    }
+    changed = true;
+  }
+  if (streak > (daily.bestDailyStreak || 0)) {
+    daily.bestDailyStreak = streak;
+    changed = true;
+  }
+  if (changed) {
+    setJSON(STATS_KEY, stats);
+    _statsCache = stats;
+  }
+  return changed;
+}
+
 // ── Player Name ──────────────────────────────────────
 
 export function getPlayerName() {

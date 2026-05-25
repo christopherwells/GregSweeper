@@ -19,6 +19,7 @@
 
 import { waitForFirebaseReady } from './waitForFirebase.js';
 import { isTestEnvironment } from './env.js';
+import { getCachedDailyBoard, cacheDailyBoard, addDays, PREFETCH_DAILY_DAYS } from './boardCache.js';
 
 const DB_PATH = 'dailyBoard';
 const FETCH_TIMEOUT_MS = 5000;
@@ -198,6 +199,12 @@ export function deserializeBoard(raw) {
  * @returns {Promise<object|null>}
  */
 export async function loadDailyBoard(dateString) {
+  // Cache-first: canonical boards are write-once / immutable, so a locally
+  // cached copy is authoritative and lets the daily load with zero network.
+  // This is what keeps it playable offline once it's been pre-fetched.
+  const cached = getCachedDailyBoard(dateString);
+  if (cached) return cached;
+
   let db;
   try {
     db = await waitForFirebaseReady();
@@ -212,10 +219,29 @@ export async function loadDailyBoard(dateString) {
       new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), FETCH_TIMEOUT_MS)),
     ]);
     if (!snap.exists()) return null;
-    return snap.val();
+    const val = snap.val();
+    cacheDailyBoard(dateString, val); // populate local cache for offline replays
+    return val;
   } catch (err) {
     console.warn('loadDailyBoard fetch failed:', err.message);
     return null;
+  }
+}
+
+/**
+ * Fetch + cache the upcoming week of daily boards (today .. today+6 ET) so
+ * they stay playable through an offline stretch. Best-effort, sequential,
+ * and skips dates already cached — a failure just means that day isn't
+ * cached yet. Intended to run in the background after boot.
+ *
+ * @param {string} today YYYY-MM-DD (ET)
+ */
+export async function prefetchUpcomingDailyBoards(today) {
+  if (typeof today !== 'string' || !today) return;
+  for (let i = 0; i < PREFETCH_DAILY_DAYS; i++) {
+    const date = addDays(today, i);
+    if (getCachedDailyBoard(date)) continue;
+    try { await loadDailyBoard(date); } catch { /* best-effort */ }
   }
 }
 

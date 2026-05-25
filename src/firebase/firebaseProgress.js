@@ -19,6 +19,7 @@
 
 import { isTestEnvironment } from './env.js';
 import { subscribeAuthState } from './firebaseAuth.js';
+import { safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js';
 
 const FIREBASE_TIMEOUT_MS = 5000;
 const AUTH_SETTLE_TIMEOUT_MS = 800;
@@ -198,6 +199,12 @@ function _handleAuthChange(snap) {
   // next uid change (via _attachCloudListener which calls _detachCloudListener first).
   _attachCloudListener(newUid);
 
+  // Re-send any durably-queued daily-history records under this uid.
+  // Runs on both initial sign-in and account switch: the durable queue
+  // holds the device-owner's real completions, which belong to whatever
+  // account they sign into (this is what recovers Kate's offline days).
+  flushPendingDailyHistory().catch(() => {});
+
   _notifyUidChange(newUid, oldUid, isInitial);
 }
 
@@ -320,24 +327,101 @@ export function saveProgress({ maxCheckpoint, dailyStreak, bestDailyStreak, last
  */
 export function saveDailyHistoryEntry(date, entry) {
   if (isTestEnvironment()) return;
-  if (!date || !entry || typeof entry.time !== 'number') return;
+  if (!date) return;
 
-  const payload = {
-    time: entry.time,
-    submittedAt: typeof firebase !== 'undefined' && firebase.database
-      ? firebase.database.ServerValue.TIMESTAMP
-      : Date.now(),
-  };
+  // An entry is either a full record `{ time }` or a completion-only
+  // marker `{ completed: true }`. The marker lets us record a VERIFIED
+  // completion (e.g. an offline day recovered for a streak) without
+  // fabricating a time — fetchUserDailyHistory filters to numeric-time
+  // rows, so a marker never pollutes the delta chart but still counts
+  // toward the derived streak (computeStreakFromHistory walks the date
+  // keys, not the values).
+  const payload = { submittedAt: Date.now() };
+  if (typeof entry?.time === 'number') payload.time = entry.time;
+  else if (entry?.completed) payload.completed = true;
+  else return; // nothing meaningful to record
 
   if (!_ready || !_uid) {
+    // Boot-window coalescing (auth not settled). Also mirror to the
+    // durable queue so a never-online session still recovers next boot.
     if (!_pendingHistory) _pendingHistory = {};
     _pendingHistory[date] = payload;
+    _persistPendingDailyHistory(date, payload);
     return;
   }
 
   _db.ref('users/' + _uid + '/dailyHistory/' + date).set(payload).catch(err => {
     console.warn('Daily history save failed:', err.message);
+    // Durable retry: the completion record is the source of truth for
+    // the streak, so a dropped write would silently break it. Persist
+    // to localStorage and flush on the next auth-ready / boot.
+    _persistPendingDailyHistory(date, payload);
   });
+}
+
+// ── Durable daily-history retry queue ─────────────────
+// RTDB's web SDK has no on-disk offline persistence, so a completion
+// recorded while offline (or during a flaky write) must survive a page
+// close in localStorage and re-send when connectivity returns. Keyed by
+// date so re-completing the same day overwrites rather than duplicates.
+const PENDING_HISTORY_KEY = 'minesweeper_pending_daily_history';
+
+function _persistPendingDailyHistory(date, payload) {
+  try {
+    const q = safeGetJSON(PENDING_HISTORY_KEY, {}) || {};
+    q[date] = { ...payload, submittedAt: typeof payload.submittedAt === 'number' ? payload.submittedAt : Date.now() };
+    safeSetJSON(PENDING_HISTORY_KEY, q);
+  } catch (err) {
+    console.warn('Could not queue pending daily history:', err && err.message);
+  }
+}
+
+// Re-send any queued daily-history writes. Flushed on auth-ready (initial
+// sign-in AND account switch — a switched-in account is the same human,
+// so their queued completions belong to it and recover automatically).
+export async function flushPendingDailyHistory() {
+  if (!_ready || !_uid) return;
+  let q;
+  try { q = safeGetJSON(PENDING_HISTORY_KEY, null); } catch { return; }
+  if (!q || typeof q !== 'object') return;
+  const dates = Object.keys(q);
+  if (dates.length === 0) return;
+  const remaining = {};
+  let flushed = 0;
+  for (const date of dates) {
+    try {
+      await _db.ref('users/' + _uid + '/dailyHistory/' + date).set(q[date]);
+      flushed++;
+    } catch {
+      remaining[date] = q[date];
+    }
+  }
+  try { safeSetJSON(PENDING_HISTORY_KEY, remaining); } catch {}
+  if (flushed > 0) console.log(`Re-sent ${flushed} pending daily-history record(s) after reconnect.`);
+}
+
+/**
+ * Read the current user's set of completed daily dates from
+ * `users/{uid}/dailyHistory`. Returns an array of 'YYYY-MM-DD' strings
+ * (any entry shape counts — full or completion-only marker), or null if
+ * the read could not be completed (offline / not signed in / timeout).
+ * This is the authoritative completed-date set the streak derives from.
+ */
+export async function loadDailyHistory() {
+  if (!_ready || !_uid) return null;
+  try {
+    const snap = await Promise.race([
+      _db.ref('users/' + _uid + '/dailyHistory').once('value'),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), FIREBASE_TIMEOUT_MS)),
+    ]);
+    if (!snap.exists()) return [];
+    const dates = [];
+    snap.forEach((child) => { if (child.key) dates.push(child.key); });
+    return dates;
+  } catch (err) {
+    console.warn('loadDailyHistory failed:', err.message);
+    return null;
+  }
 }
 
 /**

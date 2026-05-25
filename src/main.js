@@ -35,6 +35,7 @@ import {
   getPlayerName, setPlayerName,
   getLastSeenVersion, setLastSeenVersion,
   saveDailyPar, loadDailyPar, applyCloudProgress, resetDailyStatsForAccountSwitch,
+  reconcileStreakFromHistory,
   hasSeenNotice, markNoticeSeen,
 } from './storage/statsStorage.js';
 
@@ -51,7 +52,7 @@ import {
 import {
   initFirebase, isFirebaseOnline, submitOnlineScore, fetchOnlineLeaderboard, fetchUserDailyHistory, fetchAllDailyMeta, fetchAllDailyScores, fetchWeeklyLeaderboard,
 } from './firebase/firebaseLeaderboard.js';
-import { initAnonymousAuth, loadProgress, saveDailyHistoryEntry, getUid, loadWeeklyAttempts, loadLocalWeeklyAttempts, replaceLocalWeeklyAttempts, pruneStaleLocalWeeklyAttempts, subscribeToUidChanges, subscribeToCloudProgressUpdates } from './firebase/firebaseProgress.js';
+import { initAnonymousAuth, loadProgress, loadDailyHistory, saveDailyHistoryEntry, getUid, loadWeeklyAttempts, loadLocalWeeklyAttempts, replaceLocalWeeklyAttempts, pruneStaleLocalWeeklyAttempts, subscribeToUidChanges, subscribeToCloudProgressUpdates } from './firebase/firebaseProgress.js';
 import { getAuthState, subscribeAuthState, linkWithGoogle, sendEmailLink, tryCompleteEmailLink, signOut as authSignOut } from './firebase/firebaseAuth.js';
 import { isTestEnvironment } from './firebase/env.js';
 // Stats-tab renderer + chart toolkit are lazy-imported in populateDailyPanel
@@ -63,8 +64,9 @@ import { isBoardSolvable } from './logic/boardSolver.js';
 import { createDailyRNG, getLocalDateString, getWeekStart, getWeekDayIndex } from './logic/seededRandom.js';
 import { selectDailyRngSeed } from './logic/selectDailyRngSeed.js';
 import { loadExperimentTarget, getTargetGimmickName, getMissionForSeed } from './logic/experimentDesign.js';
-import { loadDailyBoard, deserializeBoard } from './firebase/dailyBoardSync.js';
-import { loadWeeklyBoard } from './firebase/weeklyBoardSync.js';
+import { loadDailyBoard, deserializeBoard, prefetchUpcomingDailyBoards } from './firebase/dailyBoardSync.js';
+import { loadWeeklyBoard, prefetchUpcomingWeeklyBoards } from './firebase/weeklyBoardSync.js';
+import { pruneOldCachedBoards } from './firebase/boardCache.js';
 import {
   EMOJI_PACKS, EFFECTS, TITLES,
   loadEmojiPack, saveEmojiPack, getActiveEmojiPack, isPackUnlocked,
@@ -245,6 +247,9 @@ async function runStartupGate() {
   // production's stored attempts).
   state.cachedWeeklyDayAttempts = isTestEnvironment() ? {} : loadLocalWeeklyAttempts(currentWeek);
   if (!isTestEnvironment()) pruneStaleLocalWeeklyAttempts(currentWeek);
+  // Trim the offline board cache to its rolling window (yesterday..+7
+  // dailies, prev/current/next weekly) so it can't grow unbounded.
+  pruneOldCachedBoards(today, currentWeek);
 
   if (firebaseReady && !customSeed) {
     setBootStatus('Loading today\'s puzzle…');
@@ -2492,6 +2497,24 @@ subscribeToCloudProgressUpdates((cloud) => {
   try { updateHeader(); } catch {}
 });
 
+// Reconcile the daily streak against the authoritative completion history
+// (users/{uid}/dailyHistory). The self-heal for streaks corrupted by a
+// connectivity drop or a uid split: raises the stored streak to the real
+// consecutive-day run once the history is reachable. Upward-only (see
+// reconcileStreakFromHistory). One read; call after any cloud merge.
+async function _reconcileDailyStreak() {
+  try {
+    const dates = await loadDailyHistory();
+    if (!dates) return;
+    if (reconcileStreakFromHistory(dates)) {
+      try { updateTitleProgress(); } catch {}
+      try { updateHeader(); } catch {}
+    }
+  } catch (err) {
+    console.warn('streak reconcile failed:', err && err.message);
+  }
+}
+
 subscribeToUidChanges(async ({ uid, isInitial }) => {
   if (isInitial) return; // initial load is handled by the existing init() chain
   if (!uid) return;
@@ -2504,6 +2527,10 @@ subscribeToUidChanges(async ({ uid, isInitial }) => {
     resetDailyStatsForAccountSwitch();
     const cloud = await loadProgress();
     if (cloud) applyCloudProgress(cloud);
+    // Adopt the switched-in account's real streak from its completion
+    // history. This is what restores a long streak after signing in on a
+    // device whose anonymous play history was just reset above.
+    await _reconcileDailyStreak();
     // Re-prime the daily-residuals cache so the personal-par estimate
     // catches up to the new account's recent plays right away.
     const { backfillResidualsFromFirebase } = await import('./logic/handicaps.js');
@@ -2696,7 +2723,7 @@ $('#gameover-submit-daily').addEventListener('click', async (e) => {
     const dateStr = state.dailySeed || getLocalDateString();
     const scoreTime = Math.round((state.preciseTime || state.elapsedTime) * 10) / 10;
     addDailyLeaderboardEntry(dateStr, sanitized, scoreTime);
-    await submitOnlineScore(dateStr, sanitized, scoreTime, state.dailyBombHits || 0, {
+    const submitOk = await submitOnlineScore(dateStr, sanitized, scoreTime, state.dailyBombHits || 0, {
       uid: getUid(),
       par: state.dailyPar,
       features: state.dailyFeatures,
@@ -2710,7 +2737,7 @@ $('#gameover-submit-daily').addEventListener('click', async (e) => {
     }
     const dailySubmitForm = $('#daily-submit-form');
     if (dailySubmitForm) dailySubmitForm.classList.add('hidden');
-    showToast('✅ Score submitted!');
+    showToast(submitOk ? '✅ Score submitted!' : '📡 Saved — uploads when you reconnect');
   }
 });
 
@@ -3061,6 +3088,10 @@ async function init() {
     }
     const cloud = await loadProgress();
     if (cloud) applyCloudProgress(cloud);
+    // Self-heal the streak from the authoritative completion history once
+    // auth + cloud have settled. Recovers a streak the local counter lost
+    // to an offline gap or a mid-session uid switch on a prior session.
+    await _reconcileDailyStreak();
   }).catch(() => {}); // silent — progress stays local-only
 
   // Preload handicaps so the end-of-game modal can render personal par
@@ -3127,6 +3158,17 @@ async function init() {
   // boot overlay up across the whole wait so the player never sees a
   // flash of a divergent board.
   await runStartupGate();
+
+  // Background: pre-fetch + cache the upcoming week of daily boards and
+  // the current + next weekly board so they stay playable through an
+  // offline stretch. Fire-and-forget and deferred so it never competes
+  // with first paint; skips practice (?seed=) and offline sessions.
+  if (state.firebaseReady && !urlParams.get('seed')) {
+    setTimeout(() => {
+      prefetchUpcomingDailyBoards(getLocalDateString()).catch(() => {});
+      prefetchUpcomingWeeklyBoards(getWeekStart()).catch(() => {});
+    }, 2500);
+  }
 
   if (!isOnboarded()) {
     // First time — launch interactive tutorial, then route to the title

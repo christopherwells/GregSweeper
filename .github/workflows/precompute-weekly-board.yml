@@ -1,7 +1,9 @@
 name: Precompute weekly board
 
-# Pre-generates the upcoming Monday's canonical weekly board and writes
-# it to Firebase BEFORE any player starts the week. Same correctness
+# Pre-generates the next two Mondays' canonical weekly boards and writes
+# them to Firebase BEFORE any player starts the week. The 2-week horizon
+# lets clients cache the current AND next week so the weekly stays
+# playable across a week boundary while offline. Same correctness
 # story as precompute-daily-board.yml: without this, whoever opens the
 # Weekly card first on Monday morning would generate locally and stamp
 # THEIR board as canonical, splitting the player base for the whole
@@ -20,7 +22,7 @@ on:
   workflow_dispatch:
     inputs:
       weekStart:
-        description: 'Week start (YYYY-MM-DD, must be a Monday). Defaults to this coming Monday ET.'
+        description: 'Single week start (YYYY-MM-DD Monday). Blank = this coming Monday + the one after.'
         required: false
         default: ''
 
@@ -45,24 +47,34 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Compute target week start
-        id: week
-        run: |
-          if [ -n "${{ github.event.inputs.weekStart }}" ]; then
-            WK="${{ github.event.inputs.weekStart }}"
-          else
-            # Next Monday in America/New_York. The cron fires Monday
-            # 00:00 UTC = ~7-8pm Sunday ET, so "next Monday" is
-            # ~5-6 hours away — that's the week we want to seed.
-            WK=$(TZ=America/New_York date -d 'next Monday' '+%Y-%m-%d')
-          fi
-          echo "weekStart=$WK" >> "$GITHUB_OUTPUT"
-          echo "Pre-generating weekly board for $WK"
-
-      - name: Pre-generate and upload
+      - name: Pre-generate and upload (2-week horizon)
         env:
-          TARGET_WEEK: ${{ steps.week.outputs.weekStart }}
-        run: node scripts/precompute-weekly-board.mjs "$TARGET_WEEK"
+          OVERRIDE_WEEK: ${{ github.event.inputs.weekStart }}
+        run: |
+          # Generate the next two Mondays so a client always has the
+          # current week PLUS next week cached — enough to stay playable
+          # across a week boundary while offline. Idempotent via write-once
+          # rules + the script's existsCanonicalBoard short-circuit.
+          if [ -n "$OVERRIDE_WEEK" ]; then
+            echo "Manual single-week run: $OVERRIDE_WEEK"
+            node scripts/precompute-weekly-board.mjs "$OVERRIDE_WEEK"
+          else
+            # The cron fires Monday 00:00 UTC = ~7-8pm Sunday ET, so
+            # "next Monday" is ~5-6 hours away — that's the week to seed.
+            WK1=$(TZ=America/New_York date -d 'next Monday' '+%Y-%m-%d')
+            WK2=$(TZ=America/New_York date -d "$WK1 +7 day" '+%Y-%m-%d')
+            FAILED=""
+            for WK in "$WK1" "$WK2"; do
+              echo "=== Pre-generating weekly $WK ==="
+              if ! node scripts/precompute-weekly-board.mjs "$WK"; then
+                FAILED="$FAILED $WK"
+              fi
+            done
+            if [ -n "$FAILED" ]; then
+              echo "Failed weeks:$FAILED"
+              exit 1
+            fi
+          fi
 
       - name: Notify on failure
         if: failure()
@@ -71,6 +83,6 @@ jobs:
         run: |
           if [ -n "$DISCORD_WEBHOOK_URL" ]; then
             curl -fsS -X POST -H "Content-Type: application/json" \
-              -d "{\"content\":\":warning: GregSweeper workflow FAILED: ${{ github.workflow }} (run ${{ github.run_id }}, week ${{ steps.week.outputs.weekStart }})\"}" \
+              -d "{\"content\":\":warning: GregSweeper workflow FAILED: ${{ github.workflow }} (run ${{ github.run_id }}, 2-week weekly horizon)\"}" \
               "$DISCORD_WEBHOOK_URL" || true
           fi
