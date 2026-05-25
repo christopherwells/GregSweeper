@@ -699,14 +699,20 @@ export function handleWin() {
         features: state.dailyFeatures,
         bombHitEvents: state.dailyBombHitEvents || [],
         rngSeed: state.dailyRngSeed || dateStr,
-      });
+      }).then((ok) => {
+        // Show the REAL outcome. Previously this toasted success
+        // unconditionally, so an offline player thought their score
+        // uploaded when it had only been queued — that's how Kate
+        // believed she'd posted scores that never reached the board.
+        showToast(ok ? '✅ Score submitted!' : '📡 Saved — uploads when you reconnect');
+      }).catch(() => showToast('📡 Saved — uploads when you reconnect'));
       // Per-user daily-history timeline feeds the leaderboard-modal chart.
       // Skip for practice dailies — they play on a custom seed and don't
-      // belong on the player's regular history timeline.
+      // belong on the player's regular history timeline. Durable: queues
+      // to localStorage and re-sends on reconnect if the write fails.
       if (!state.isDailyPractice) {
         saveDailyHistoryEntry(dateStr, { time: scoreTime });
       }
-      showToast('✅ Score submitted!');
     } else {
       dailySubmitForm.classList.remove('hidden');
       const nameInput = $('#daily-name-input');
