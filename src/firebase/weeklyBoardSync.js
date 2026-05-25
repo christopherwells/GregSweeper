@@ -8,6 +8,7 @@
 import { waitForFirebaseReady } from './waitForFirebase.js';
 import { serializeBoard, deserializeBoard } from './dailyBoardSync.js';
 import { isTestEnvironment } from './env.js';
+import { getCachedWeeklyBoard, cacheWeeklyBoard, addDays } from './boardCache.js';
 
 const DB_PATH = 'weeklyBoard';
 const FETCH_TIMEOUT_MS = 5000;
@@ -24,6 +25,12 @@ export { serializeBoard, deserializeBoard };
  * @returns {Promise<object|null>}
  */
 export async function loadWeeklyBoard(weekStart) {
+  // Cache-first, same rationale as loadDailyBoard — the weekly board is
+  // write-once/immutable for the week, so a cached copy is authoritative
+  // and keeps the weekly playable offline once pre-fetched.
+  const cached = getCachedWeeklyBoard(weekStart);
+  if (cached) return cached;
+
   let db;
   try {
     db = await waitForFirebaseReady();
@@ -38,10 +45,27 @@ export async function loadWeeklyBoard(weekStart) {
       new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), FETCH_TIMEOUT_MS)),
     ]);
     if (!snap.exists()) return null;
-    return snap.val();
+    const val = snap.val();
+    cacheWeeklyBoard(weekStart, val); // populate local cache for offline play
+    return val;
   } catch (err) {
     console.warn('loadWeeklyBoard fetch failed:', err.message);
     return null;
+  }
+}
+
+/**
+ * Fetch + cache the current and next ET week's boards so the weekly stays
+ * playable across a week boundary while offline. Best-effort; skips weeks
+ * already cached. Intended to run in the background after boot.
+ *
+ * @param {string} currentWeek Monday's YYYY-MM-DD in ET
+ */
+export async function prefetchUpcomingWeeklyBoards(currentWeek) {
+  if (typeof currentWeek !== 'string' || !currentWeek) return;
+  for (const wk of [currentWeek, addDays(currentWeek, 7)]) {
+    if (getCachedWeeklyBoard(wk)) continue;
+    try { await loadWeeklyBoard(wk); } catch { /* best-effort */ }
   }
 }
 

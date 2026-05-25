@@ -22,9 +22,15 @@ const MAX_VALID_TIME = 3600; // seconds — 1 hour cap
 // a stale client), queue the payload to localStorage. Flushed from
 // initFirebase() on every successful boot.
 const PENDING_KEY = 'minesweeper_pending_daily_submissions';
-const PENDING_MAX_ENTRIES = 10;                  // Drop oldest beyond this
-const PENDING_MAX_AGE_MS = 7 * 24 * 3600 * 1000; // 7 days — older entries are stale
-const PENDING_MAX_ATTEMPTS = 3;                  // Give up after N flushes per entry
+const PENDING_WEEKLY_KEY = 'minesweeper_pending_weekly_submissions';
+const PENDING_MAX_ENTRIES = 10;                   // Drop oldest beyond this
+// 14 days / 6 attempts (was 7 / 3). flushPending* only runs while online,
+// so attempts increment only on real online tries — but on persistently
+// bad service a player can burn several boots before reconnecting. The
+// wider window is what lets a score queued on flaky service still recover
+// when the player finally gets signal days later, instead of aging out.
+const PENDING_MAX_AGE_MS = 14 * 24 * 3600 * 1000; // 14 days — older entries are stale
+const PENDING_MAX_ATTEMPTS = 6;                   // Give up after N flushes per entry
 
 function _queueFailedSubmission(dateString, name, time, bombHits, extras) {
   try {
@@ -91,6 +97,7 @@ export async function initFirebase() {
     console.log('Firebase leaderboard initialized');
     // Catch up on any queued failed submissions from prior offline / auth-race sessions
     flushPendingSubmissions().catch(() => {});
+    flushPendingWeeklySubmissions().catch(() => {});
   } catch (err) {
     console.warn('Firebase init failed — using local leaderboard:', err.message);
     if (err.message?.includes('permission')) {
@@ -279,12 +286,25 @@ export async function flushPendingSubmissions() {
 export async function submitWeeklyScore(weekStart, uid, name, bestTime, dayTimes, extras = {}) {
   // Test branch: don't write to the production weekly leaderboard.
   if (isTestEnvironment()) return false;
-  if (!isFirebaseOnline()) return false;
   if (!weekStart || !uid) return false;
   if (typeof bestTime !== 'number' || bestTime < MIN_VALID_TIME || bestTime > MAX_VALID_TIME) {
     console.warn(`Weekly bestTime ${bestTime}s outside valid range`);
     return false;
   }
+  // Offline — durably queue and retry on the next online boot (mirrors the
+  // daily path). Previously a flaky connection here dropped the weekly
+  // score permanently with no retry, which is how Kate's weekly attempts
+  // could vanish on bad service.
+  if (!isFirebaseOnline()) {
+    _queueFailedWeeklySubmission(weekStart, uid, name, bestTime, dayTimes, extras);
+    return false;
+  }
+  const ok = await _doSubmitWeeklyScore(weekStart, uid, name, bestTime, dayTimes, extras);
+  if (!ok) _queueFailedWeeklySubmission(weekStart, uid, name, bestTime, dayTimes, extras);
+  return ok;
+}
+
+async function _doSubmitWeeklyScore(weekStart, uid, name, bestTime, dayTimes, extras = {}) {
   try {
     const sanitizedName = String(name).slice(0, 20).trim();
     if (!sanitizedName) return false;
@@ -335,6 +355,65 @@ export async function submitWeeklyScore(weekStart, uid, name, bestTime, dayTimes
   } catch (err) {
     console.warn('Weekly score submit failed:', err.message);
     return false;
+  }
+}
+
+function _queueFailedWeeklySubmission(weekStart, uid, name, bestTime, dayTimes, extras) {
+  try {
+    const pending = safeGetJSON(PENDING_WEEKLY_KEY) || [];
+    // One row per (week, uid) — a later, better attempt supersedes the
+    // queued one rather than stacking duplicates.
+    const filtered = pending.filter(e => !(e && e.weekStart === weekStart && e.uid === uid));
+    filtered.push({
+      weekStart, uid, name, bestTime,
+      dayTimes: dayTimes || {},
+      extras: extras || {},
+      queuedAt: Date.now(),
+      attempts: 0,
+    });
+    while (filtered.length > PENDING_MAX_ENTRIES) filtered.shift();
+    safeSetJSON(PENDING_WEEKLY_KEY, filtered);
+  } catch (err) {
+    console.warn('Could not queue pending weekly submission:', err.message);
+  }
+}
+
+/**
+ * Resubmit any queued failed weekly writes. Called by initFirebase() on
+ * every successful boot, next to flushPendingSubmissions(). Same staleness
+ * rules as the daily queue.
+ */
+export async function flushPendingWeeklySubmissions() {
+  if (!isFirebaseOnline()) return;
+  let pending;
+  try {
+    pending = safeGetJSON(PENDING_WEEKLY_KEY);
+  } catch (err) {
+    console.warn('Could not read pending weekly submissions:', err.message);
+    return;
+  }
+  if (!Array.isArray(pending) || pending.length === 0) return;
+
+  const stillPending = [];
+  const now = Date.now();
+  let flushed = 0;
+  for (const entry of pending) {
+    if (now - entry.queuedAt > PENDING_MAX_AGE_MS) continue;
+    if (entry.attempts >= PENDING_MAX_ATTEMPTS) continue;
+    entry.attempts++;
+    const ok = await _doSubmitWeeklyScore(
+      entry.weekStart, entry.uid, entry.name, entry.bestTime, entry.dayTimes, entry.extras || {}
+    );
+    if (ok) flushed++;
+    else stillPending.push(entry);
+  }
+  try {
+    safeSetJSON(PENDING_WEEKLY_KEY, stillPending);
+  } catch (err) {
+    console.warn('Could not save pending weekly submissions:', err.message);
+  }
+  if (flushed > 0) {
+    console.log(`Re-submitted ${flushed} pending weekly score(s) after reconnect.`);
   }
 }
 

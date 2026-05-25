@@ -1,7 +1,9 @@
 name: Precompute daily board
 
-# Pre-generates tomorrow's canonical daily board and writes it to
-# Firebase BEFORE any player loads. This eliminates the "first player
+# Pre-generates the next 7 ET days of canonical daily boards and writes
+# them to Firebase BEFORE any player loads. The 7-day horizon lets
+# clients pre-fetch a full week so dailies stay playable through bad
+# service / offline stretches. This also eliminates the "first player
 # of the day" race: without it, whoever loads first would generate
 # locally with whatever code+experimentTarget they have cached and
 # stamp THAT board as canonical, which means players on slightly
@@ -25,7 +27,7 @@ on:
   workflow_dispatch:
     inputs:
       date:
-        description: 'Date to pre-generate (YYYY-MM-DD). Defaults to tomorrow ET.'
+        description: 'Single date to pre-generate (YYYY-MM-DD). Blank = the next 7 days ET.'
         required: false
         default: ''
 
@@ -50,23 +52,32 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Compute target date
-        id: date
-        run: |
-          if [ -n "${{ github.event.inputs.date }}" ]; then
-            DATE="${{ github.event.inputs.date }}"
-          else
-            # Tomorrow in America/New_York. Done in shell rather than the
-            # Node script so the script stays simple (one date, one seed).
-            DATE=$(TZ=America/New_York date -d 'tomorrow' '+%Y-%m-%d')
-          fi
-          echo "date=$DATE" >> "$GITHUB_OUTPUT"
-          echo "Pre-generating board for $DATE"
-
-      - name: Pre-generate and upload
+      - name: Pre-generate and upload (7-day horizon)
         env:
-          TARGET_DATE: ${{ steps.date.outputs.date }}
-        run: node scripts/precompute-daily-board.mjs "$TARGET_DATE"
+          OVERRIDE_DATE: ${{ github.event.inputs.date }}
+        run: |
+          # Generate the next 7 ET days so clients can pre-fetch a full
+          # week of boards for offline play. Each date is idempotent
+          # (write-once Firebase rules + the script's existsCanonicalBoard
+          # short-circuit), so in steady state only the +7 date is newly
+          # generated each night; the other six skip immediately.
+          if [ -n "$OVERRIDE_DATE" ]; then
+            echo "Manual single-date run: $OVERRIDE_DATE"
+            node scripts/precompute-daily-board.mjs "$OVERRIDE_DATE"
+          else
+            FAILED=""
+            for i in $(seq 1 7); do
+              DATE=$(TZ=America/New_York date -d "+$i day" '+%Y-%m-%d')
+              echo "=== Pre-generating $DATE (offset +$i) ==="
+              if ! node scripts/precompute-daily-board.mjs "$DATE"; then
+                FAILED="$FAILED $DATE"
+              fi
+            done
+            if [ -n "$FAILED" ]; then
+              echo "Failed dates:$FAILED"
+              exit 1
+            fi
+          fi
 
       - name: Notify on failure
         if: failure()
@@ -75,6 +86,6 @@ jobs:
         run: |
           if [ -n "$DISCORD_WEBHOOK_URL" ]; then
             curl -fsS -X POST -H "Content-Type: application/json" \
-              -d "{\"content\":\":warning: GregSweeper workflow FAILED: ${{ github.workflow }} (run ${{ github.run_id }}, target ${{ steps.date.outputs.date }})\"}" \
+              -d "{\"content\":\":warning: GregSweeper workflow FAILED: ${{ github.workflow }} (run ${{ github.run_id }}, 7-day daily horizon)\"}" \
               "$DISCORD_WEBHOOK_URL" || true
           fi

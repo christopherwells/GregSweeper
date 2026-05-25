@@ -1,0 +1,53 @@
+name: Repair streaks (May 2026 incident)
+
+# One-time, manually-triggered repair for Chris & Kate's daily streaks
+# after the May 22-24 2026 connectivity incident. Runs the admin script
+# scripts/repair-streaks-may2026.mjs with the FIREBASE_SERVICE_ACCOUNT
+# secret (the same credential the push workflow uses), whose token bypasses
+# the users/{uid} rules so it can read/write per-user progress.
+#
+# DEFAULTS TO DRY RUN. Trigger once with dry_run=true (default) to review
+# the planned writes in the run log, then trigger again with dry_run=false
+# to apply. Idempotent — re-running after apply is a no-op (history already
+# bridged, streaks already correct).
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (no writes). Set false to actually apply the repair.'
+        type: boolean
+        required: false
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: repair-streaks
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Run streak repair
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "FIREBASE_SERVICE_ACCOUNT secret is not set"; exit 1
+          fi
+          if [ "${{ github.event.inputs.dry_run }}" = "false" ]; then
+            echo "APPLY mode"
+            node scripts/repair-streaks-may2026.mjs --apply
+          else
+            echo "DRY RUN (default). Set dry_run=false to apply."
+            node scripts/repair-streaks-may2026.mjs
+          fi
