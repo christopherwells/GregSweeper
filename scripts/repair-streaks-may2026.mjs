@@ -36,26 +36,23 @@ const APPLY = process.argv.includes('--apply');
 
 // ── Incident participants + ground truth ──────────────
 const CHRIS_PRIMARY = 'V07QPXYaICOOcP5ev6DXa2yG9y92';
-const CHRIS_STRAY   = 'pWhYDHjYGnalM4WGOeUFkM8nPol2';
 const KATE          = 'AYXrTjKPieYrZI8sksnYqbI3Pmh1';
 const PEOPLE = [
   {
+    // `name` is the identity we match on — connectivity churn spread Chris's
+    // plays across his primary uid, a May-22 stray uid, and a May-5 row with
+    // NO uid at all, so only the display name reliably ties them together.
     name: 'Chris',
     uid: CHRIS_PRIMARY,
-    // Other anonymous uids this person played under. Leaderboard rows under
-    // these count as their plays and get reattributed to the canonical uid.
-    altUids: [CHRIS_STRAY], // May 22 landed under a stray uid
-    // Days played that have NO record anywhere (no leaderboard row, no
-    // dailyHistory time) — recorded as completion-only markers, never a
-    // fabricated time. Their real time recovers client-side via the durable
-    // upload queue when they reopen the patched app.
+    // Days played with NO leaderboard row anywhere — recorded as completion-
+    // only markers, never a fabricated time. Their real time recovers
+    // client-side via the durable upload queue on reopen.
     assertedPlayed: [],
   },
   {
     name: 'Kate',
     uid: KATE,
-    altUids: [],
-    assertedPlayed: ['2026-05-22', '2026-05-23'], // played both; uploads failed
+    assertedPlayed: ['2026-05-22', '2026-05-23'], // played both; uploads failed (no rows)
   },
 ];
 
@@ -142,21 +139,25 @@ async function repairPerson(token, p, dailyTree) {
   console.log(`  current: dailyStreak=${user.dailyStreak ?? '∅'} lastDailyDate=${user.lastDailyDate ?? '∅'} best=${user.bestDailyStreak ?? '∅'} historyDays=${Object.keys(hist).length}`);
 
   // ── Reconstruct real plays from the LEADERBOARD (authoritative) ──
-  // daily/* holds every actual completion with a real time, and is more
-  // complete than dailyHistory: on flaky service the score upload sometimes
-  // succeeded while the history write failed, leaving holes that make a
-  // history-only streak undercount (this is exactly why Chris derived 20).
-  // Scan every leaderboard row under any uid this person used.
-  const myUids = new Set([p.uid, ...p.altUids]);
+  // daily/* holds every actual completion with a real time and is more
+  // complete than dailyHistory (on flaky service the score upload often
+  // landed while the history write failed). We identify a player's rows by
+  // their leaderboard DISPLAY NAME, not uid: connectivity/auth churn spread
+  // their plays across several anonymous uids — Chris's May 22 under a stray
+  // uid, his May 5 under a row with NO uid at all — so a uid-only union
+  // undercounts. On this private friends-only board the name is the stable
+  // identity. Synthetic keys (_bonus / _weekly_first) are skipped.
+  const PLAIN_DATE = /^\d{4}-\d{2}-\d{2}$/;
   const lbPlays = {};        // date -> { time }
-  const strayRewrites = [];  // { date, pushId, from } leaderboard rows to reattribute
+  const strayRewrites = [];  // { date, pushId, from } rows to reattribute to the canonical uid
   for (const date of Object.keys(dailyTree)) {
+    if (!PLAIN_DATE.test(date)) continue;
     const rows = dailyTree[date] || {};
     for (const pushId of Object.keys(rows)) {
       const row = rows[pushId];
-      if (!row || !myUids.has(row.uid)) continue;
+      if (!row || row.name !== p.name) continue;
       if (typeof row.time === 'number' && !(date in lbPlays)) lbPlays[date] = { time: row.time };
-      if (row.uid !== p.uid) strayRewrites.push({ date, pushId, from: row.uid });
+      if (row.uid !== p.uid) strayRewrites.push({ date, pushId, from: row.uid ?? '(no uid)' });
     }
   }
 
