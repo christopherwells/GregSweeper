@@ -982,8 +982,14 @@ export function chordReveal(board, row, col) {
   const effectiveCount = cell.displayedMines != null ? cell.displayedMines : cell.adjacentMines;
   if (!cell.isRevealed || effectiveCount === 0) return [];
 
-  // Can't chord ON a liar or mystery cell — their displayed number is unreliable
-  if (cell.isLiar || cell.isMystery) return [];
+  // Can't chord ON a cell whose displayed number isn't its OWN adjacent-mine
+  // count. Liar (true ±1) and mystery (hidden) were already covered; the
+  // base-value gimmicks show something unrelated to the 8 neighbors — sonar a
+  // region count, compass a directional count, wormhole/mirror the PARTNER
+  // cell's count — so chording them reveals the neighbors against a number
+  // that doesn't describe them and pops a mine. This is exactly the
+  // base-value set recomputeDisplayedMines (gimmicks.js) treats specially.
+  if (cell.isLiar || cell.isMystery || cell.isSonar || cell.isCompass || cell.isWormhole || cell.mirrorPair) return [];
 
   const wallEdges = board._wallEdges || null;
 
