@@ -59,6 +59,28 @@ async function dbDelete(path, token) {
   const r = await fetch(_url(path, token), { method: 'DELETE' });
   if (!r.ok) throw new Error(`DELETE ${path} -> ${r.status} ${await r.text()}`);
 }
+async function dbPatch(path, token, body) {
+  const r = await fetch(_url(path, token), {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(`PATCH ${path} -> ${r.status} ${await r.text()}`);
+  return r.json();
+}
+async function dbPut(path, token, body) {
+  const r = await fetch(_url(path, token), {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(`PUT ${path} -> ${r.status} ${await r.text()}`);
+  return r.json();
+}
+
+// dayTimes/dayBombHits are stored as a dense ARRAY when keys are 0..N
+// (Firebase auto-coerces) or an OBJECT when sparse. Normalise to a
+// day-index → value map so we can merge regardless of shape.
+function dayMap(v) {
+  if (Array.isArray(v)) { const m = {}; v.forEach((x, i) => { if (x != null) m[i] = x; }); return m; }
+  return { ...(v || {}) };
+}
 
 async function step(label, fn) {
   if (!APPLY) { console.log(`  [DRY] ${label}`); return; }
@@ -78,6 +100,58 @@ async function step(label, fn) {
     : '*** DRY RUN — no writes. Pass --apply to execute. ***');
 
   const token = await getAccessToken(serviceAccount);
+
+  // ── 0. Migrate the stray's weekly day-times into the canonical row ──
+  // Before deleting the stray weekly row, absorb its real per-day times +
+  // bomb-hit counts into the canonical row so the player keeps the actual
+  // play. No fabrication — every value is a real time the player got under
+  // the stray uid. Never overwrites a day the canonical already has.
+  console.log(`\n=== migrate weekly ${WEEK_START}: ${DUPLICATE} → ${CANONICAL} ===`);
+  const strayWeekly = await dbGet(`weekly/${WEEK_START}/${DUPLICATE}`, token);
+  const canonWeekly = await dbGet(`weekly/${WEEK_START}/${CANONICAL}`, token);
+  if (!strayWeekly || !strayWeekly.dayTimes) {
+    console.log('  (no stray weekly row to migrate)');
+  } else if (!canonWeekly) {
+    console.log('  ⚠ no canonical weekly row exists — skipping migrate (would need to promote the stray instead)');
+  } else {
+    const canTimes = dayMap(canonWeekly.dayTimes);
+    const canBombs = dayMap(canonWeekly.dayBombHits);
+    const strayTimes = dayMap(strayWeekly.dayTimes);
+    const strayBombs = dayMap(strayWeekly.dayBombHits);
+    const mergedTimes = { ...canTimes };
+    const mergedBombs = { ...canBombs };
+    const migrated = [];
+    for (const d of Object.keys(strayTimes)) {
+      if (!(d in canTimes)) { // never overwrite a day the canonical already has
+        mergedTimes[d] = strayTimes[d];
+        if (d in strayBombs) mergedBombs[d] = strayBombs[d];
+        migrated.push(d);
+      } else {
+        console.log(`  day ${d}: canonical already has ${canTimes[d]}s — leaving canonical untouched`);
+      }
+    }
+    if (migrated.length === 0) {
+      console.log('  no new days to migrate');
+    } else {
+      const newBest = Math.min(...Object.values(mergedTimes));
+      console.log(`  migrating day(s) [${migrated.join(',')}] (times: ${migrated.map(d => strayTimes[d]+'s').join(', ')})`);
+      console.log(`  bestTime: ${canonWeekly.bestTime} → ${newBest}`);
+      const patch = {
+        bestTime: newBest,
+        dayTimes: mergedTimes,
+        dayBombHits: mergedBombs,
+        timestamp: { '.sv': 'timestamp' },
+      };
+      await step(`patch weekly/${WEEK_START}/${CANONICAL} (add day(s) ${migrated.join(',')} from stray)`,
+        () => dbPatch(`weekly/${WEEK_START}/${CANONICAL}`, token, patch));
+      // Mark the per-uid attempt cap so V07 can't accidentally re-play this day.
+      for (const d of migrated) {
+        await step(`mark users/${CANONICAL}/weeklyAttempts/${WEEK_START}/dayAttempts/${d} attempted`,
+          () => dbPut(`users/${CANONICAL}/weeklyAttempts/${WEEK_START}/dayAttempts/${d}`, token,
+            { timestamp: { '.sv': 'timestamp' } }));
+      }
+    }
+  }
 
   // ── 1. Find and delete the duplicate daily row ──
   console.log(`\n=== daily/${DAILY_DATE} ===`);
@@ -143,7 +217,7 @@ async function step(label, fn) {
   }
 
   if (APPLY) {
-    // Verify deletions landed.
+    // Verify: stray rows gone AND canonical weekly absorbed the migrated day(s).
     console.log(`\n=== VERIFY (post-write re-read) ===`);
     const stillThere = await Promise.all([
       ...dupDailyKeys.map(k => dbGet(`daily/${DAILY_DATE}/${k.pushId}`, token).then(v => `daily/${DAILY_DATE}/${k.pushId} -> ${v == null ? 'gone ✓' : 'STILL PRESENT ✗'}`)),
@@ -151,6 +225,10 @@ async function step(label, fn) {
       dbGet(`users/${DUPLICATE}`, token).then(v => `users/${DUPLICATE} -> ${v == null ? 'gone ✓' : 'STILL PRESENT ✗'}`),
     ]);
     for (const line of stillThere) console.log(`  ${line}`);
+    const canonNow = await dbGet(`weekly/${WEEK_START}/${CANONICAL}`, token);
+    console.log(`  canonical weekly dayTimes: ${JSON.stringify(canonNow?.dayTimes)} bestTime=${canonNow?.bestTime}`);
+    const canonAttempts = await dbGet(`users/${CANONICAL}/weeklyAttempts/${WEEK_START}/dayAttempts`, token);
+    console.log(`  canonical weeklyAttempts/dayAttempts: ${JSON.stringify(canonAttempts && Object.keys(canonAttempts))}`);
   } else {
     console.log('\nDry run complete. Review the planned deletes above, then re-run with --apply.');
   }
