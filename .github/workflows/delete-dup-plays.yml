@@ -1,0 +1,48 @@
+name: Delete duplicate plays (2026-05-30)
+
+# One-off cleanup for Chris's duplicate plays on 2026-05-30. A second
+# device/session under a fresh anonymous uid submitted today's daily and
+# this week's Saturday weekly row in parallel to his canonical V07 plays.
+# This deletes the duplicate-uid rows + the abandoned user's subtree.
+# DEFAULTS TO DRY RUN.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (no writes). Set false to actually delete.'
+        type: boolean
+        required: false
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: delete-dup-plays
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Run cleanup
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "FIREBASE_SERVICE_ACCOUNT secret is not set"; exit 1
+          fi
+          if [ "${{ github.event.inputs.dry_run }}" = "false" ]; then
+            echo "APPLY mode"
+            node scripts/delete-dup-plays-2026-05-30.mjs --apply
+          else
+            echo "DRY RUN (default). Set dry_run=false to apply."
+            node scripts/delete-dup-plays-2026-05-30.mjs
+          fi
