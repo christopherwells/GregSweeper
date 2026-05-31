@@ -46,6 +46,12 @@ const TARGET_TO_GIMMICK = {
 
 const DEFAULT_TARGET = 'advancedLogicMoves';
 const PRIMARY_WEIGHT = 0.1; // mirrors src/logic/experimentDesign.js
+// Cap the per-feature target count in slot scoring. wallEdgeCount runs
+// 10-30 edges per board while cell-based gimmicks (compass/mystery/locked/
+// mirror/sonar/liar) cap out at ~3-5 cells, so an uncapped `count × weight`
+// score lets walls dominate every selection. Saturating at COUNT_CAP makes
+// the deficit_weight (= how undersampled the feature is) the actual driver.
+const COUNT_CAP = 5;
 
 function loadExperimentSpec() {
   // Mirror experimentDesign.js: load the static JSON. Returns the full
@@ -128,7 +134,9 @@ function buildOneCandidate(seed, forcedGimmick, singleOnly) {
 
 function selectBestCandidate(dateString, spec) {
   // Mirror selectDailyRngSeed.js: per-slot missions (1 primary + 9
-  // coverage), score = target_count × deficit_weight, pick max.
+  // coverage), score = min(target_count, COUNT_CAP) × deficit_weight, pick
+  // max. The cap stops wallEdgeCount (10-30 edges/board) from dwarfing
+  // cell-based gimmicks (3-5 cells max) and lets deficit_weight drive.
   //
   // Two-tier preference: among solvable candidates, prefer those whose
   // every non-mystery modifier is load-bearing (no decorative modifiers).
@@ -151,7 +159,7 @@ function selectBestCandidate(dateString, spec) {
       cand.check,
     );
     const count = features[mission.target] || 0;
-    const score = count * mission.deficitWeight;
+    const score = Math.min(count, COUNT_CAP) * mission.deficitWeight;
     if (score > anyScore) {
       anyScore = score;
       anySeed = seed;

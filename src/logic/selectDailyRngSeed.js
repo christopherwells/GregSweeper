@@ -8,14 +8,18 @@
 // force-injects a different undersampled gimmick from the ranked
 // coverage_targets list, single-gimmick only). Scoring is:
 //
-//   score = target_count_in_features × deficit_weight
+//   score = min(target_count_in_features, COUNT_CAP) × deficit_weight
 //
 // where target/deficit_weight come from getMissionForSlot(i). The
-// candidate with the highest score is the daily. Coverage slots'
-// deficit weights are heavier than the primary slot's fixed low weight,
-// so coverage missions win most days; the primary slot only wins when
-// its target's cell count is high enough to overcome the weight gap —
-// roughly 10% of the time when the coverage list is well-populated.
+// candidate with the highest score is the daily. The cap stops
+// wallEdgeCount (10-30 edges per board) from dwarfing cell-based
+// gimmicks (3-5 cells max) and lets deficit_weight actually drive the
+// rotation; an uncapped product made walls win nearly every slot.
+// Coverage slots' deficit weights are heavier than the primary slot's
+// fixed low weight, so coverage missions win most days; the primary
+// slot only wins when its target's cell count is high enough to
+// overcome the weight gap — roughly 10% of the time when the coverage
+// list is well-populated.
 //
 // Called from two places: gameActions.js (the actual play flow) and
 // main.js (the on-demand par calculation for the leaderboard when the
@@ -41,6 +45,10 @@ import {
 import {
   candidateSeed, CANDIDATE_COUNT, getTargetGimmickName, getMissionForSlot,
 } from './experimentDesign.js';
+
+// Saturating cap on a slot's target count in the score formula. See the
+// header comment for why; mirrors COUNT_CAP in scripts/precompute-daily-board.mjs.
+const COUNT_CAP = 5;
 
 export function selectDailyRngSeed(dateString) {
   let bestSeed = null;
@@ -87,7 +95,7 @@ export function selectDailyRngSeed(dateString) {
       check,
     );
     const count = features[mission.target] || 0;
-    const score = count * mission.deficitWeight;
+    const score = Math.min(count, COUNT_CAP) * mission.deficitWeight;
     if (score > bestScore) {
       bestScore = score;
       bestSeed = seed;

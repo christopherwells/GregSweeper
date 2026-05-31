@@ -107,7 +107,10 @@ function selectWithFilter(dateString, spec, useLoadBearing) {
       cand.check,
     );
     const count = features[mission.target] || 0;
-    const score = count * mission.deficitWeight;
+    // Mirrors precompute-daily-board.mjs / selectDailyRngSeed.js: cap the
+    // target count at 5 so wallEdgeCount (10-30) can't dwarf the cell-based
+    // gimmicks (3-5 max) and dominate every selection.
+    const score = Math.min(count, 5) * mission.deficitWeight;
     if (score > bestScore) {
       bestScore = score;
       bestSeed = seed;
