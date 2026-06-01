@@ -605,7 +605,7 @@ export function resetDailyStatsForAccountSwitch() {
 // just landed), values are adopted verbatim including downgrades.
 // Otherwise an admin-side correction or a partner-device reset would
 // be silently rejected by the max-merge.
-export function applyCloudProgress({ maxCheckpoint, dailyStreak, bestDailyStreak, lastDailyDate }, opts = {}) {
+export function applyCloudProgress({ maxCheckpoint, dailyStreak, bestDailyStreak, lastDailyDate, powerUps }, opts = {}) {
   const overwrite = !!opts.overwrite;
   const stats = loadStats();
   let changed = false;
@@ -662,6 +662,41 @@ export function applyCloudProgress({ maxCheckpoint, dailyStreak, bestDailyStreak
   if (changed) {
     setJSON(STATS_KEY, stats);
     _statsCache = stats;
+  }
+
+  // Power-up sync. Cloud is the cross-device source of truth.
+  //   overwrite=true  (real-time listener): adopt cloud verbatim.
+  //   overwrite=false (initial load): take max per type so an offline
+  //     earn or spend on THIS device isn't silently discarded before the
+  //     two sides have had a chance to converge. Worst case: a spent
+  //     power-up briefly re-appears until the next saveProgress write;
+  //     that's a minor UX hiccup vs permanently losing earned power-ups.
+  if (powerUps && typeof powerUps === 'object') {
+    const local = getJSON(POWERUPS_KEY, null);
+    if (overwrite || !local) {
+      setJSON(POWERUPS_KEY, powerUps);
+      changed = true;
+    } else {
+      // Max-merge per mode per type.
+      let anyChange = false;
+      for (const mode of Object.keys(powerUps)) {
+        const cloudMode = powerUps[mode] || {};
+        const localMode = local[mode] || {};
+        for (const type of Object.keys(cloudMode)) {
+          const cloudVal = typeof cloudMode[type] === 'number' ? cloudMode[type] : 0;
+          const localVal = typeof localMode[type] === 'number' ? localMode[type] : 0;
+          if (cloudVal > localVal) {
+            if (!local[mode]) local[mode] = {};
+            local[mode][type] = cloudVal;
+            anyChange = true;
+          }
+        }
+      }
+      if (anyChange) {
+        setJSON(POWERUPS_KEY, local);
+        changed = true;
+      }
+    }
   }
 
   // Keep DAILY_COMPLETED_KEY in sync with cloud's lastDailyDate so
