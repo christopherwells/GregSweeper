@@ -225,6 +225,14 @@
             ".validate": false
           }
         },
+        "powerUps": {
+          ".validate": "newData.hasChildren() || newData.val() === null",
+          "$mode": {
+            "$type": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9999"
+            }
+          }
+        },
         "$other": {
           ".validate": false
         }
