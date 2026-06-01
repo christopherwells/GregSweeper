@@ -1,0 +1,118 @@
+name: Ship bomb feature (one-shot 2026-06-08)
+
+# Auto-ships the info-value bomb mechanic to production right after the
+# ET day flips on Monday 2026-06-08, so the whole new daily+weekly cycle
+# is on one scoring mechanic for everyone (see the rollout discussion:
+# shipping at the week boundary avoids splitting a board between the old
+# +10s/re-fog and the new info-value penalty).
+#
+# Cron: 04:10 UTC = 00:10 EDT on June 8. GitHub may delay scheduled runs
+# under load; a 5-15 min slip is fine (still hours before morning play).
+# Manual workflow_dispatch is available as a backup trigger.
+#
+# Safety: it does a FRESH merge of cwells/bomb-info-value-penalty into
+# main, asserts the ONLY conflict is the sw.js cache line (resolved
+# deterministically), runs the full unit suite, and only pushes if green.
+# Anything unexpected → abort without pushing + Discord ping. Idempotent:
+# if the feature is already on main it exits 0, so a re-fire is a no-op.
+#
+# DELETE this workflow after it has shipped (it's a one-shot).
+
+on:
+  schedule:
+    - cron: '10 4 8 6 *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ship-bomb-feature
+  cancel-in-progress: false
+
+jobs:
+  ship:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Merge, gate on tests, and ship
+        id: ship
+        run: |
+          set -e
+
+          # Idempotency: if the bomb feature is already on main, do nothing.
+          if git show origin/main:src/logic/difficulty.js | grep -q 'BOMB_PENALTY_BASE'; then
+            echo "Bomb feature already on main — nothing to ship."
+            echo "shipped=already" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git config user.name  "Christopher Wells"
+          git config user.email "c.wells@bowdoin.edu"
+          git fetch origin cwells/bomb-info-value-penalty
+
+          # Next cache version = main's current patch + 1.
+          MAIN_NUM=$(git show origin/main:sw.js | grep -oE 'gregsweeper-v1\.5\.[0-9]+' | head -1 | grep -oE '[0-9]+$')
+          NEXT_VER="gregsweeper-v1.5.$((MAIN_NUM + 1))"
+          echo "Next cache version: $NEXT_VER"
+
+          # Fresh merge. The only expected conflict is the sw.js cache line.
+          git merge --no-ff --no-commit origin/cwells/bomb-info-value-penalty || true
+          CONFLICTS=$(git diff --name-only --diff-filter=U | sort | tr '\n' ' ' | xargs || true)
+          echo "Conflicted files: [$CONFLICTS]"
+          if [ "$CONFLICTS" != "sw.js" ]; then
+            echo "Unexpected conflicts (expected only sw.js) — aborting, NOT shipping."
+            git merge --abort || true
+            exit 1
+          fi
+
+          # Resolve sw.js: take the feature branch's copy (= main's asset
+          # list plus the new bombInfoValue.js precache entry), then bump
+          # the cache version so clients refresh.
+          git checkout --theirs -- sw.js
+          sed -i "s/gregsweeper-v1\.5\.[0-9]*/${NEXT_VER}/" sw.js
+          if grep -q '<<<<<<<' sw.js; then echo "Unresolved markers in sw.js"; git merge --abort || true; exit 1; fi
+          git add sw.js
+
+          git commit --no-edit
+
+          # Test gate — roll back the merge if anything is red.
+          if ! node --test test/*.test.mjs; then
+            echo "Unit suite FAILED on the merged result — rolling back, NOT shipping."
+            git reset --hard origin/main
+            exit 1
+          fi
+
+          git push origin main
+          echo "Shipped bomb feature to main as $NEXT_VER."
+          echo "shipped=yes" >> "$GITHUB_OUTPUT"
+
+      - name: Notify success
+        if: success() && steps.ship.outputs.shipped == 'yes'
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          if [ -n "$DISCORD_WEBHOOK_URL" ]; then
+            curl -fsS -X POST -H "Content-Type: application/json" \
+              -d "{\"content\":\":rocket: GregSweeper: info-value bomb mechanic SHIPPED to main (run ${{ github.run_id }}). Pages + rules already live; new daily/weekly cycle is on the new mechanic.\"}" \
+              "$DISCORD_WEBHOOK_URL" || true
+          fi
+
+      - name: Notify failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          if [ -n "$DISCORD_WEBHOOK_URL" ]; then
+            curl -fsS -X POST -H "Content-Type: application/json" \
+              -d "{\"content\":\":warning: GregSweeper: bomb-feature auto-ship FAILED and did NOT push (run ${{ github.run_id }}). Needs a manual look.\"}" \
+              "$DISCORD_WEBHOOK_URL" || true
+          fi
