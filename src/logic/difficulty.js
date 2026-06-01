@@ -15,8 +15,10 @@ export const LIFELINE_WIN_REWARD_CHANCE = 0.3;
 // 44pt tap target. With width=12 and the existing --cell-size of 28px on
 // mobile (≤480px viewport), a board fits 12 × 28 = 336 px plus gaps inside
 // the 390 px iPhone portrait viewport without scrolling. Rows are NOT
-// capped — taller boards are allowed since vertical space is reclaimable
-// from the header / footer area. Mines are rescaled to preserve density.
+// capped — taller boards (weekly samples up to 14 rows) are allowed because
+// the renderer fits cells to BOTH width and height, shrinking the cell so the
+// whole board stays inside the 70vh scroll wrapper (_fitCellSize in
+// boardRenderer.js). Mines are rescaled to preserve density.
 export const BOARD_WIDTH_CAP = 12;
 
 export function applyWidthCap(rows, cols, mines) {
