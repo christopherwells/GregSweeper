@@ -34,8 +34,13 @@
               "t": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600" },
               "row": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 99" },
               "col": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 99" },
+              "penalty": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600" },
+              "infoValue": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600" },
               "$other": { ".validate": false }
             }
+          },
+          "totalBombPenalty": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600"
           },
           "rngSeed": {
             ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 64"
