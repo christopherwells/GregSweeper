@@ -1,0 +1,38 @@
+name: Unit tests
+
+# Pure-logic regression gate. Runs the node:test suite in test/ on every
+# push to main/test and every PR into them. No build, no npm install —
+# the suite uses Node's built-in test runner against the app's pure
+# modules (bomb math, streak derivation, chord eligibility, solver
+# invariant, date/cache math, par model, board serialize round-trip).
+#
+# A red run here means a logic regression that manual Playwright testing
+# might miss. Keep it green before merging.
+
+on:
+  push:
+    branches: [main, test]
+  pull_request:
+    branches: [main, test]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: unit-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Run unit tests
+        # Glob the test files explicitly — `node --test <dir>` treats the
+        # directory as a module to execute rather than a test root.
+        run: node --test test/*.test.mjs
