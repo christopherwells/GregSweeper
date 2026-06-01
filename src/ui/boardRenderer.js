@@ -22,14 +22,42 @@ function getCachedEmoji() {
 
 // ── Board Rendering ────────────────────────────────────
 
+// Vertical space the board may fill before it has to scroll. Mirrors
+// #board-scroll-wrapper's `max-height: 70vh` in global.css — read the resolved
+// pixel value so the two never drift, falling back to 0.70·innerHeight when the
+// computed value isn't expressed in px.
+function _boardHeightBudget() {
+  if (boardScrollWrapper) {
+    const mh = getComputedStyle(boardScrollWrapper).maxHeight;
+    if (mh && mh.endsWith('px')) {
+      const px = parseFloat(mh);
+      if (Number.isFinite(px) && px > 0) return px;
+    }
+  }
+  return window.innerHeight * 0.70;
+}
+
+// Largest cell size (px) that fits state.cols across `widthBudget` AND
+// state.rows down the board's vertical budget, clamped to [18, maxCap].
+// Fitting by width alone overflows tall, narrow boards: weekly samples rows up
+// to 14 but caps cols at 12, so a 14×8 board sized to its width gets cells big
+// enough to push the board past the 70vh scroll wrapper, hiding the lower rows
+// (the "too zoomed in, can't see where to play" report). The height term keeps
+// the whole board on screen. `widthBudget` is already net of board border+pad.
+function _fitCellSize(widthBudget, gap, maxCap) {
+  const widthFit = Math.floor((widthBudget - (state.cols - 1) * gap) / state.cols);
+  const heightBudget = _boardHeightBudget() - 8; // 2px border + 2px padding, top+bottom
+  const heightFit = Math.floor((heightBudget - (state.rows - 1) * gap) / state.rows);
+  return Math.min(maxCap, Math.max(18, Math.min(widthFit, heightFit)));
+}
+
 export function resizeCells() {
   const container = document.getElementById('board-container');
-  if (!container || !state.cols) return;
+  if (!container || !state.cols || !state.rows) return;
   const gap = parseFloat(getComputedStyle(boardEl).gap) || 2;
   const borderPad = 8; // 2px border + 2px padding on each side
   const availableWidth = container.clientWidth - borderPad;
-  const cellSize = Math.floor((availableWidth - (state.cols - 1) * gap) / state.cols);
-  const capped = Math.min(50, Math.max(18, cellSize));
+  const capped = _fitCellSize(availableWidth, gap, 50);
   document.documentElement.style.setProperty('--cell-size', `${capped}px`);
 }
 
@@ -387,10 +415,10 @@ export function updateCells(cells) {
 
 // Dynamically adjust cell size to fit the board on screen
 export function adjustCellSize() {
+  if (!state.cols || !state.rows) return;
   const maxWidth = Math.min(window.innerWidth * 0.88, 520);
-  const gapSpace = (state.cols - 1) * 2 + 8; // grid gaps + padding
-  const maxCellSize = Math.floor((maxWidth - gapSpace) / state.cols);
-  const cellSize = Math.min(40, Math.max(18, maxCellSize));
+  const widthBudget = maxWidth - 8; // 2px border + 2px padding, left+right
+  const cellSize = _fitCellSize(widthBudget, 2, 40);
   document.documentElement.style.setProperty('--cell-size', cellSize + 'px');
 }
 
