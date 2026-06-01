@@ -13,12 +13,16 @@
 //              only — no second-roll. Slots cycle through the list
 //              if it's shorter than 9 entries.
 //
-// Each candidate's score is `target_count * deficit_weight`. Slot 0's
-// weight is fixed low (PRIMARY_WEIGHT) so it only wins when its target
-// count is several times higher than the best coverage candidate.
-// Coverage slots use the deficit weight from the ranked list — heavier
-// for the most undersampled features. The candidate with the highest
-// score is the daily.
+// Each candidate's score is `min(target_count, COUNT_CAP) * deficit_weight`.
+// The cap (= 5; defined in selectDailyRngSeed.js and the precompute script)
+// stops wallEdgeCount (10-30 edges per board) from dwarfing the cell-based
+// gimmicks (3-5 cells max) — without it, walls' coverage slot wins nearly
+// every selection because its raw count is several times anyone else's.
+// Slot 0's weight is fixed low (PRIMARY_WEIGHT) so it only wins when its
+// target count saturates against a coverage candidate with a much lower
+// deficit weight. Coverage slots use the deficit weight from the ranked
+// list — heavier for the most undersampled features. The candidate with
+// the highest score is the daily.
 //
 // Constraints this module respects:
 // - Identical result on every client. All logic is a pure function of
@@ -142,11 +146,13 @@ export function candidateSeed(dateString, n) {
 // ── Multi-objective candidate selection ──────────────────────────────
 //
 // Slot 0 = primary high-CV mission. Its weight is fixed low so it only
-// wins when its target_count is several times the best coverage. With
-// PRIMARY_WEIGHT = 0.1 and a typical liar deficit_weight of ~0.5, the
-// primary slot needs ~5× the cell count of the best coverage candidate
-// to win. That tuning yields roughly 1-in-10 primary outcomes when the
-// coverage list is well-populated, matching the design intent.
+// wins when its target_count saturates the cap against a coverage slot
+// with a smaller deficit weight. With PRIMARY_WEIGHT = 0.1, COUNT_CAP = 5,
+// and a typical liar deficit_weight of ~0.5, the primary slot tops out at
+// 5×0.1 = 0.5 while the heaviest coverage tops out at 5×0.5 = 2.5, so
+// coverage wins whenever its target injects. The tuning yields roughly
+// 1-in-10 primary outcomes when the coverage list is well-populated,
+// matching the design intent.
 const PRIMARY_WEIGHT = 0.1;
 
 /**

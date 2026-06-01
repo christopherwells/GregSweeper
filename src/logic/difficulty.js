@@ -39,38 +39,45 @@ export function applyWidthCap(rows, cols, mines) {
 // scripts/refit-par-model.R.
 // PAR_MODEL:START
 export const PAR_MODEL = {
-  // Last refit: 2026-05-24 | brms (2 users · max Rhat = 1.003, min ESS = 1341, divergent = 0/4000) | N=150 scores, 76 dates, 4 players | R²=0.634
-  intercept: -17.58,
+  // Last refit: 2026-05-31 | brms (2 users · max Rhat = 1.003, min ESS = 1363, divergent = 2/4000) | N=163 scores, 82 dates, 3 players | R²=0.620
+  intercept: -19.64,
 
   // Move-type coefficients (primary). disjunctiveMoves was dropped
   // 2026-05-04: structurally confounded with liarCellCount (every liar
   // board produces disjunctive moves) and N=1 liar board means the two
   // coefficients cannot be separately identified. The disjunctive
   // contribution is now absorbed into secPerLiarCell.
-  secPerPassAMove:            0.43,
+  secPerPassAMove:            0.45,
   secPerCanonicalSubsetMove:  2.97,
-  secPerGenericSubsetMove:    2.48,
-  secPerAdvancedLogicMove:    1.47,
+  secPerGenericSubsetMove:    2.38,
+  secPerAdvancedLogicMove:    1.38,
 
   // Board shape (secondary)
-  secPerCell:      0.028,
-  secPerMineFlag:  2.481,
-  secPerWallEdge:  0.177,
+  secPerCell:      0.025,
+  secPerMineFlag:  2.649,
+  secPerWallEdge:  0.173,
 
   // Gimmick cell counts (tertiary)
-  secPerMysteryCell:   0.939,
-  secPerLiarCell:      0.674,
+  secPerMysteryCell:   0.907,
+  secPerLiarCell:      0.839,
   secPerLockedCell:    0.633,
-  secPerWormholePair:  1.134,
-  secPerMirrorPair:    1.705,
-  secPerSonarCell:     0.677,
-  secPerCompassCell:   0.759,
+  secPerWormholePair:  1.107,
+  secPerMirrorPair:    1.613,
+  secPerSonarCell:     0.664,
+  secPerCompassCell:   0.792,
 
   // Structural features (v1.5.16+)
-  secPerNonZeroSafeCell:  0.219,
-  secPerZeroCluster:      0.510,
+  secPerNonZeroSafeCell:  0.201,
+  secPerZeroCluster:      0.517,
 };
 // PAR_MODEL:END
+
+// Bomb-hit penalty: flat component added on top of the info-value cost
+// computed by src/logic/bombInfoValue.js. The info-value alone can be 0
+// for a mine the solver was about to nail anyway; the base keeps every
+// bomb-pop slightly punishing so it's never a strict-zero shortcut, and
+// preserves solving as the intended path.
+export const BOMB_PENALTY_BASE = 3;
 
 // Daily board dimension ranges (seeded RNG picks within these)
 export const DAILY_MIN_SIZE = 8;
