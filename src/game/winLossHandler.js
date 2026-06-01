@@ -338,35 +338,14 @@ export function handleWin() {
   const _strikes = state.gameMode === 'weekly'
     ? (state.weeklyBombHits || 0)
     : state.gameMode === 'daily' ? (state.dailyBombHits || 0) : 0;
-  const strikesInfo = _strikes > 0
-    ? ` | 💥 ${_strikes} strike${_strikes !== 1 ? 's' : ''}`
-    : '';
-
-  // Per-hit bomb breakdown (info-value mechanic, v1.5.149+). Legacy
-  // events (no `penalty` field) just see the inline strike count above
-  // and the gameover-bomb-breakdown element stays hidden.
   const _bombEvents = state.gameMode === 'weekly'
     ? (state.weeklyBombHitEvents || [])
     : state.gameMode === 'daily' ? (state.dailyBombHitEvents || []) : [];
-  const _bombBreakdownEl = $('#gameover-bomb-breakdown');
-  if (_bombBreakdownEl) {
-    const hasNewMechanic = _bombEvents.some(e => e && typeof e.penalty === 'number');
-    if (hasNewMechanic) {
-      const lines = _bombEvents.map(e => {
-        if (!e || typeof e.penalty !== 'number') {
-          return `<li>(${e?.row ?? '?'},${e?.col ?? '?'}): legacy hit</li>`;
-        }
-        const iv = typeof e.infoValue === 'number' ? e.infoValue : Math.max(0, e.penalty - BOMB_PENALTY_BASE);
-        return `<li>(${e.row},${e.col}): ${iv.toFixed(1)}s anchor + ${BOMB_PENALTY_BASE}s base = <strong>+${e.penalty.toFixed(1)}s</strong></li>`;
-      }).join('');
-      const total = _bombEvents.reduce((s, e) => s + (e && typeof e.penalty === 'number' ? e.penalty : 0), 0);
-      _bombBreakdownEl.innerHTML =
-        `💣 Cost breakdown:<ul style="margin: 0.3em 0 0.3em 1.2em; padding: 0; text-align: left; list-style: none;">${lines}</ul><strong>Total: +${total.toFixed(1)}s</strong>`;
-      _bombBreakdownEl.classList.remove('hidden');
-    } else {
-      _bombBreakdownEl.classList.add('hidden');
-    }
-  }
+  const _totalPenalty = _bombEvents.reduce(
+    (s, e) => s + (e && typeof e.penalty === 'number' ? e.penalty : 0), 0);
+  const strikesInfo = _strikes > 0
+    ? ` | 💥 ${_strikes} strike${_strikes !== 1 ? 's' : ''}${_totalPenalty > 0 ? ` (+${_totalPenalty.toFixed(1)}s)` : ''}`
+    : '';
 
   const parEl = $('#gameover-par');
   if (parEl) parEl.classList.add('hidden');
@@ -1197,7 +1176,11 @@ export function handleDailyBombHit(mineRow, mineCol) {
   // so the cost reads as principled, not arbitrary.
   const popup = document.createElement('div');
   popup.className = 'daily-bomb-popup';
-  popup.innerHTML = `<div class="daily-bomb-popup-content">${spriteImgHTML('strike', 'sprite-popup', 'Mine hit')} <span class="daily-bomb-penalty">+${penalty.toFixed(1)}s</span><br><span class="daily-bomb-sub">${infoValueRounded.toFixed(1)}s anchor + ${BOMB_PENALTY_BASE}s base</span></div>`;
+  const bombLabel = infoValueRounded < 2  ? '' :
+                    infoValueRounded < 8  ? ' · Minor mine' :
+                    infoValueRounded < 16 ? ' · Key mine' :
+                                           '! Critical mine';
+  popup.innerHTML = `<div class="daily-bomb-popup-content">${spriteImgHTML('strike', 'sprite-popup', 'Mine hit')} <span class="daily-bomb-penalty">+${penalty.toFixed(1)}s${bombLabel}</span></div>`;
   document.getElementById('app').appendChild(popup);
 
   setTimeout(() => {
