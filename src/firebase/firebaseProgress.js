@@ -292,13 +292,14 @@ export async function initAnonymousAuth() {
  * Save progress to cloud. Call when checkpoint advances or daily streak updates.
  * Fire-and-forget — does not block gameplay.
  */
-export function saveProgress({ maxCheckpoint, dailyStreak, bestDailyStreak, lastDailyDate }) {
+export function saveProgress({ maxCheckpoint, dailyStreak, bestDailyStreak, lastDailyDate, powerUps }) {
   if (isTestEnvironment()) return;
   const data = {};
   if (maxCheckpoint != null) data.maxCheckpoint = maxCheckpoint;
   if (dailyStreak != null) data.dailyStreak = dailyStreak;
   if (bestDailyStreak != null) data.bestDailyStreak = bestDailyStreak;
   if (lastDailyDate != null) data.lastDailyDate = lastDailyDate;
+  if (powerUps != null && typeof powerUps === 'object') data.powerUps = powerUps;
 
   if (Object.keys(data).length === 0) return;
 

@@ -7,7 +7,8 @@ import { updateHeader } from '../ui/headerRenderer.js';
 import { updatePowerUpBar } from '../ui/powerUpBar.js';
 import { findSafeCell, scanRowCol, shieldDefuse, xRayScan, magnetPull } from '../logic/powerUps.js';
 import { checkWin, floodFillReveal } from '../logic/boardSolver.js';
-import { saveModePowerUps } from '../storage/statsStorage.js';
+import { saveModePowerUps, loadPowerUps } from '../storage/statsStorage.js';
+import { saveProgress } from '../firebase/firebaseProgress.js';
 import {
   playPowerUp, playShieldBreak, playXRay, playLifelineSave, playMagnet,
 } from '../audio/sounds.js';
@@ -25,6 +26,7 @@ export function useRevealSafe() {
   state.powerUps.revealSafe--;
   state.usedPowerUps = true;
   saveModePowerUps(state.gameMode, state.powerUps);
+  saveProgress({ powerUps: loadPowerUps() });
   cell.isRevealed = true;
   cell.revealAnimDelay = 0;
   state.revealedCount++;
@@ -72,6 +74,7 @@ export function useShield() {
   state.usedPowerUps = true;
   state.shieldActive = true;
   saveModePowerUps(state.gameMode, state.powerUps);
+  saveProgress({ powerUps: loadPowerUps() });
   updatePowerUpBar();
 }
 
@@ -82,6 +85,7 @@ export function tryLifeline(row, col) {
   state.powerUps.lifeline--;
   state.usedPowerUps = true;
   saveModePowerUps(state.gameMode, state.powerUps);
+  saveProgress({ powerUps: loadPowerUps() });
   playLifelineSave();
 
   // Flag the mine instead of dying
@@ -126,6 +130,7 @@ export function performScan(row, col) {
   state.powerUps.scanRowCol--;
   state.scanMode = false;
   saveModePowerUps(state.gameMode, state.powerUps);
+  saveProgress({ powerUps: loadPowerUps() });
   const result = scanRowCol(state.board, row, col);
 
   boardEl.style.position = 'relative';
@@ -212,6 +217,7 @@ export function performMagnet(row, col) {
   state.magnetMode = false;
   playMagnet();
   saveModePowerUps(state.gameMode, state.powerUps);
+  saveProgress({ powerUps: loadPowerUps() });
 
   const { movedMines, affectedArea } = magnetPull(state.board, row, col);
 
@@ -249,6 +255,7 @@ export function performXRay(row, col) {
   state.xrayMode = false;
   playXRay();
   saveModePowerUps(state.gameMode, state.powerUps);
+  saveProgress({ powerUps: loadPowerUps() });
 
   const mines = xRayScan(state.board, row, col);
 

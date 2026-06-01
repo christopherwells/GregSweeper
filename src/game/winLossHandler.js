@@ -41,7 +41,7 @@ import { saveProgress, saveDailyHistoryEntry, getUid, markWeeklyDayAttempted } f
 import { isTestEnvironment } from '../firebase/env.js';
 import { breakdownPar } from '../logic/dailyFeatures.js';
 import { getHandicap, estimateHandicapDetails } from '../logic/handicaps.js';
-import { addDailyLeaderboardEntry, appendDailyResidual, loadDailyResiduals } from '../storage/statsStorage.js';
+import { addDailyLeaderboardEntry, appendDailyResidual, loadDailyResiduals, loadPowerUps } from '../storage/statsStorage.js';
 import { getLocalDateString } from '../logic/seededRandom.js';
 
 // Weekly's first-attempt-of-the-week play is supposed to feed the
@@ -297,12 +297,14 @@ export function handleWin() {
   // just be empty objects bouncing around localStorage.
   if (state.gameMode !== 'chaos' && state.gameMode !== 'weekly') {
     saveModePowerUps(state.gameMode, state.powerUps);
+  saveProgress({ powerUps: loadPowerUps() });
   }
 
   // 30% chance to earn a free lifeline on level completion (Challenge mode)
   if (state.gameMode === 'normal' && Math.random() < LIFELINE_WIN_REWARD_CHANCE) {
     state.powerUps.lifeline = (state.powerUps.lifeline || 0) + 1;
     saveModePowerUps(state.gameMode, state.powerUps);
+  saveProgress({ powerUps: loadPowerUps() });
     showToast('❤️ Lifeline earned!');
   }
 
@@ -826,6 +828,7 @@ export function handleLoss(mineRow, mineCol) {
 
   // Power-ups persist on loss within same mode
   saveModePowerUps(state.gameMode, state.powerUps);
+  saveProgress({ powerUps: loadPowerUps() });
 
   // Death penalty: checkpoint-aware
   const lostLevel = state.currentLevel;
@@ -967,6 +970,7 @@ export function handleTimedLoss() {
   haptic([100, 40, 100, 40, 200]);
   saveGameResult(false, state.elapsedTime, state.currentLevel, { gameMode: state.gameMode });
   saveModePowerUps(state.gameMode, state.powerUps);
+  saveProgress({ powerUps: loadPowerUps() });
 
   // Death penalty: reset to the checkpoint for the CURRENT level range
   const lostLevel = state.currentLevel;
