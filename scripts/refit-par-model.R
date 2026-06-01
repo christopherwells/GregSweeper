@@ -50,9 +50,11 @@ HANDICAPS_PATH  <- "src/logic/handicaps.json"
 MIN_SCORES_TO_FIT <- 30
 
 # Minimum total plays before a user's scores are allowed to influence
-# the GLOBAL model. Bomb-hit plays now count (the bombHits regressor
-# absorbs their time inflation), so this is back to total-play count
-# rather than clean-only — roughly one month of daily play per user.
+# the GLOBAL model. Bomb-hit plays count: new-mechanic plays
+# (v1.5.149+) have their deterministic info-value penalty subtracted
+# into `clean_time` upstream; legacy +10s/re-fog plays carry their cost
+# via the `legacy_bombs` regressor. Total-play count, roughly one month
+# of daily play per user.
 MIN_PLAYS_FOR_FIT_INCLUSION <- 30
 
 # (MIN_PLAYS_FOR_HANDICAP retired; the residuals-fallback path now uses
@@ -110,13 +112,14 @@ PRIOR_MEANS <- list(
   mirrorPairCount      = 1.0,
   sonarCellCount       = 0.5,
   compassCellCount     = 0.5,
-  # bombHits: each bomb hit adds ~15s of inflated time on average
-  # (10s explicit penalty + ~5s re-fog re-click cost). OLS on the
-  # full dataset gives 15.6s; the prior is centered there but wide
-  # enough to let data move it. NOT shipped in the JS PAR_MODEL —
-  # predictPar(features) stays "clean-play par" and the bombHits
-  # coefficient exists only to absorb time inflation during fitting.
-  bombHits             = 15.0,
+  # legacy_bombs: per-hit cost for plays under the old +10s/re-fog
+  # mechanic (v1.5.148 and earlier). Each hit added 10s explicit penalty
+  # + ~5s re-fog re-click cost. OLS gives ~15s; prior centred there.
+  # New-mechanic plays (v1.5.149+) already have the info-value penalty
+  # subtracted from `time` → `clean_time` and contribute 0 here, so this
+  # coefficient ONLY explains the legacy cohort. NOT shipped in the JS
+  # PAR_MODEL — predictPar(features) stays clean-play par.
+  legacy_bombs         = 15.0,
   # Structural features (v1.5.16+). Priors centred on rough guesses;
   # data will pull them around. Both non-negative on physical grounds
   # (more deduction work / cascade entries = more time).
@@ -151,11 +154,10 @@ PRIOR_SIGMAS <- list(
   mirrorPairCount      = 1.0,
   sonarCellCount       = 1.0,
   compassCellCount     = 1.0,
-  # Tighter prior on bombHits (sigma=0.4) since OLS gives a clean
-  # estimate around 15.6s and we have plenty of variation in bomb
-  # counts across plays — there's no need for the wide log-scale
-  # spread the gimmick coefs need.
-  bombHits             = 0.4,
+  # Tighter prior on legacy_bombs (sigma=0.4) — same rationale as the
+  # old bombHits prior: OLS on legacy data gives a clean ~15s estimate
+  # with little need for the wide spread the gimmick coefs need.
+  legacy_bombs         = 0.4,
   # Structural feature priors (v1.5.16+). Wide (sigma=1.0) since these
   # are new and we don't have strong intuition for the magnitudes yet.
   nonZeroSafeCellCount = 1.0,
@@ -273,29 +275,33 @@ scores_df <- tibble(
   entry = flatten(map(scores_raw, ~ .x))
 ) |>
   mutate(
-    time      = map_dbl(entry, ~ .x$time %||% NA_real_),
-    uid       = map_chr(entry, ~ .x$uid  %||% NA_character_),
-    bombHits  = map_dbl(entry, ~ .x$bombHits %||% 0),
+    time              = map_dbl(entry, ~ .x$time %||% NA_real_),
+    uid               = map_chr(entry, ~ .x$uid  %||% NA_character_),
+    bombHits          = map_dbl(entry, ~ .x$bombHits %||% 0),
+    # v1.5.149+ (info-value bomb mechanic): totalBombPenalty is the sum
+    # of per-hit deterministic penalties already added to `time`. Legacy
+    # plays (re-fog / +10s mechanic) don't have this field — they're
+    # detected by `bombHits > 0 & totalBombPenalty == 0` and continue to
+    # contribute to a `legacy_bombs` regressor.
+    totalBombPenalty  = map_dbl(entry, ~ .x$totalBombPenalty %||% 0),
   ) |>
   select(-entry) |>
-  filter(!is.na(time), time >= 5, time <= 3600)
+  filter(!is.na(time), time >= 5, time <= 3600) |>
+  mutate(
+    is_legacy_bomb = bombHits > 0 & totalBombPenalty == 0,
+    legacy_bombs   = if_else(is_legacy_bomb, bombHits, 0),
+    # clean_time strips the deterministic info-value penalty so the
+    # canonical features fit against the time the player would have
+    # spent on the same board with no bomb hits. Legacy plays
+    # contribute their inflated `time` through `legacy_bombs` instead.
+    clean_time     = time - totalBombPenalty,
+  )
 
-# Bomb-hit plays are KEPT (not filtered) and `bombHits` is a fixed-effect
-# regressor in the model — each hit adds a fitted constant to predicted
-# time. This lets us include the ~50% of plays where someone hit a mine
-# without their inflated time polluting the par coefficients. The
-# downstream JS side still uses predictPar(features) without a bombHits
-# term (par == clean-play par), so this regressor exists ONLY to keep
-# the bomb-hit time inflation out of the per-user random intercepts and
-# the per-feature coefficient estimates. The bombHits coefficient itself
-# is reported in handicaps.json's diagnostics as `secPerBombHit` for
-# transparency. Replaces the old "filter all bomb-hit plays" approach,
-# which was throwing out 60% of the data and biasing handicaps because
-# bomb-hit rate isn't symmetric across users.
-bomb_hit_count <- sum(scores_df$bombHits > 0, na.rm = TRUE)
-if (bomb_hit_count > 0) {
-  message(sprintf("  including %d bomb-hit plays via bombHits regressor",
-                  bomb_hit_count))
+legacy_n <- sum(scores_df$is_legacy_bomb, na.rm = TRUE)
+new_n    <- sum(scores_df$totalBombPenalty > 0, na.rm = TRUE)
+if (legacy_n > 0 || new_n > 0) {
+  message(sprintf("  bomb cohort split: %d legacy (+10s/re-fog) | %d new-mechanic (info-value)",
+                  legacy_n, new_n))
 }
 
 df <- scores_df |>
@@ -378,7 +384,7 @@ diagnostic_failure <- FALSE
 
 # ── 2. Fit ──────────────────────────────────────────────
 
-fit_formula_fixed <- time ~
+fit_formula_fixed <- clean_time ~
   passAMoves + canonicalSubsetMoves + genericSubsetMoves +
   advancedLogicMoves +
   cellCount + totalMines + wallEdgeCount +
@@ -386,7 +392,7 @@ fit_formula_fixed <- time ~
   wormholePairCount + mirrorPairCount +
   sonarCellCount + compassCellCount +
   nonZeroSafeCellCount + zeroClusterCount +
-  bombHits  # NOT shipped to JS PAR_MODEL — see PRIOR_MEANS comment
+  legacy_bombs  # NOT shipped to JS PAR_MODEL — see PRIOR_MEANS comment
 
 if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
   # Bayesian mixed-effects fit on only the eligible users (>= 30 plays).
@@ -653,23 +659,23 @@ if (fit_method == "brms-ranef") {
   )
 
   # Bias-correct the intercept so the mean predicted par matches the
-  # CLEAN-EQUIVALENT mean actual time across the fit population. Since
-  # the model fits time = par(features) + bombHits*coef + u_j + e but
-  # apply_par_model gives par(features) only, we have to subtract the
-  # bombHits contribution from the actual times before comparing —
-  # otherwise the intercept absorbs ~mean(bombHits) * bombCoef ≈ +14s
-  # of bomb inflation into predictPar for everyone, and predictPar
-  # becomes "expected time including a typical number of bombs" instead
-  # of "expected clean-play time". Worst case if bombCoef is missing
-  # from the fit (e.g. fallback path), bombCoef defaults to 0 and the
-  # subtraction is a no-op.
-  bomb_coef <- if ("bombHits" %in% rownames(fixef(fit))) {
-    as.numeric(fixef(fit)["bombHits", "Estimate"])
+  # CLEAN-EQUIVALENT mean actual time across the fit population. The fit
+  # has two bomb-cost sources to net out before comparing:
+  #   (a) New-mechanic plays: their info-value penalty is already in
+  #       `totalBombPenalty`, which we subtracted from `time` into
+  #       `clean_time` upstream — so clean_time is already clean for them.
+  #   (b) Legacy +10s/re-fog plays: `clean_time == time` (their
+  #       totalBombPenalty is 0) and the `legacy_bombs` regressor carries
+  #       their cost; subtract its contribution from clean_time too.
+  # Without (b) the intercept would absorb ~mean(legacy_bombs) * bombCoef
+  # ≈ +14s of legacy inflation, biasing predictPar high.
+  bomb_coef <- if ("legacy_bombs" %in% rownames(fixef(fit))) {
+    as.numeric(fixef(fit)["legacy_bombs", "Estimate"])
   } else {
     0
   }
   biased_pred <- apply_par_model(df_fit, new_coefs)
-  bomb_adjusted_time <- df_fit$time - bomb_coef * df_fit$bombHits
+  bomb_adjusted_time <- df_fit$clean_time - bomb_coef * df_fit$legacy_bombs
   bias <- mean(bomb_adjusted_time) - mean(biased_pred)
   # Apply the bias straight, no max(0, ...) clamp. Earlier code clamped
   # at zero "for theoretical purity" but that broke calibration whenever
@@ -680,7 +686,7 @@ if (fit_method == "brms-ranef") {
   # intercept is harmless because real boards have feature sums well
   # above any plausible negative shift.
   new_coefs$intercept <- new_coefs$intercept + bias
-  message(sprintf("  bombHits coef: +%.2fs/hit  |  intercept bias-correction: %+.2fs (clean-time-equivalent mean matches mean predicted par)",
+  message(sprintf("  legacy_bombs coef: +%.2fs/hit (legacy +10s/re-fog cohort only) | intercept bias-correction: %+.2fs (clean-time-equivalent mean matches mean predicted par)",
                   bomb_coef, bias))
 
   # Guard: until enough plays have NONZERO values for each new structural
@@ -778,9 +784,12 @@ if (length(handicaps) > 0) {
     # RMSE on the bias-corrected fit data. apply_par_model uses the
     # already-corrected new_coefs, so this is the residual the fit
     # actually ships with — clean-time vs clean predicted par.
-    predicted_clean <- apply_par_model(df_fit, new_coefs)
-    clean_time      <- df_fit$time - bomb_coef * df_fit$bombHits
-    resid           <- clean_time - predicted_clean
+    # df_fit$clean_time already nets out new-mechanic info-value
+    # penalties; subtract legacy_bombs * bomb_coef to also net out the
+    # legacy +10s/re-fog cost so the residual is pure-play vs pure-par.
+    predicted_clean   <- apply_par_model(df_fit, new_coefs)
+    pure_play_time    <- df_fit$clean_time - bomb_coef * df_fit$legacy_bombs
+    resid             <- pure_play_time - predicted_clean
     cv_rows <- lapply(seq_len(nrow(target_candidates)), function(i) {
       list(
         feature = target_candidates$feature[i],

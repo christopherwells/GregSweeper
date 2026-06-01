@@ -14,7 +14,8 @@ import { stopTimer, pauseTimer, resumeTimer, updateTimerDisplay } from './timerM
 import { awardPowerUps } from './powerUpActions.js';
 import { setHandleWin } from './powerUpActions.js';
 import { findNextSafeMove } from '../logic/boardSolver.js';
-import { getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, getChaosDifficulty, LIFELINE_WIN_REWARD_CHANCE } from '../logic/difficulty.js';
+import { computeBombInfoValue } from '../logic/bombInfoValue.js';
+import { getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, getChaosDifficulty, LIFELINE_WIN_REWARD_CHANCE, BOMB_PENALTY_BASE } from '../logic/difficulty.js';
 import {
   loadStats, saveGameResult, saveModePowerUps, clearGameState,
   markDailyCompleted, getDailyStreak, getPlayerName,
@@ -340,6 +341,32 @@ export function handleWin() {
   const strikesInfo = _strikes > 0
     ? ` | 💥 ${_strikes} strike${_strikes !== 1 ? 's' : ''}`
     : '';
+
+  // Per-hit bomb breakdown (info-value mechanic, v1.5.149+). Legacy
+  // events (no `penalty` field) just see the inline strike count above
+  // and the gameover-bomb-breakdown element stays hidden.
+  const _bombEvents = state.gameMode === 'weekly'
+    ? (state.weeklyBombHitEvents || [])
+    : state.gameMode === 'daily' ? (state.dailyBombHitEvents || []) : [];
+  const _bombBreakdownEl = $('#gameover-bomb-breakdown');
+  if (_bombBreakdownEl) {
+    const hasNewMechanic = _bombEvents.some(e => e && typeof e.penalty === 'number');
+    if (hasNewMechanic) {
+      const lines = _bombEvents.map(e => {
+        if (!e || typeof e.penalty !== 'number') {
+          return `<li>(${e?.row ?? '?'},${e?.col ?? '?'}): legacy hit</li>`;
+        }
+        const iv = typeof e.infoValue === 'number' ? e.infoValue : Math.max(0, e.penalty - BOMB_PENALTY_BASE);
+        return `<li>(${e.row},${e.col}): ${iv.toFixed(1)}s anchor + ${BOMB_PENALTY_BASE}s base = <strong>+${e.penalty.toFixed(1)}s</strong></li>`;
+      }).join('');
+      const total = _bombEvents.reduce((s, e) => s + (e && typeof e.penalty === 'number' ? e.penalty : 0), 0);
+      _bombBreakdownEl.innerHTML =
+        `💣 Cost breakdown:<ul style="margin: 0.3em 0 0.3em 1.2em; padding: 0; text-align: left; list-style: none;">${lines}</ul><strong>Total: +${total.toFixed(1)}s</strong>`;
+      _bombBreakdownEl.classList.remove('hidden');
+    } else {
+      _bombBreakdownEl.classList.add('hidden');
+    }
+  }
 
   const parEl = $('#gameover-par');
   if (parEl) parEl.classList.add('hidden');
@@ -1015,114 +1042,117 @@ export function handleTimedLoss() {
   updateStreakBorder();
 }
 
-// ── Daily / Weekly Mode: Bomb Hit Re-Fog ────────────────
-// Same mechanic for both modes: +10s penalty, all non-mine reveals
-// re-fog, hit cell stays revealed with the strike sprite as a
-// permanent marker. The MINE STAYS — adjacent numbers don't drop
-// (count is still correct), and chordReveal treats the strike as a
-// flag so the player can chord around it cleanly. Per-attempt
-// counters route to dailyBombHits/dailyBombHitEvents in daily, or
-// weeklyBombHits/weeklyBombHitEvents in weekly. Function name kept
-// as handleDailyBombHit for backward-compat with all the call sites.
+// ── Daily / Weekly Mode: Info-Value Bomb Penalty ────────
+// New (post-2026-05-31) mechanic: NO re-fog, NO flat +10s. Hitting a
+// mine instead costs a deterministic info-value penalty + a small base.
+//   penalty = max(0, infoValue) + BOMB_PENALTY_BASE
+// where info-value is computed by computeBombInfoValue (src/logic/
+// bombInfoValue.js) by running the solver twice — once without this
+// mine pre-flagged, once with — and weighting the difference in move-
+// type counts by PAR_MODEL coefficients. A mine the solver was about
+// to nail anyway scores ~0; a mine anchoring a Pass-C deduction can
+// score 20+. The base keeps every bomb-pop slightly punishing so it's
+// never a strict-zero shortcut.
+//
+// Strike cell stays visible (isMine=true, isStrike=true, isRevealed=
+// true) so the player sees what they hit and the adjacency contribution
+// stays correct. Other revealed cells are NOT re-fogged.
+//
+// The function name remains handleDailyBombHit for backward-compat
+// with all the call sites; it handles both daily and weekly via the
+// isWeekly branch.
 
 export function handleDailyBombHit(mineRow, mineCol) {
   const isWeekly = state.gameMode === 'weekly';
 
-  // Capture priorHits BEFORE incrementing so the per-event `t` stamp is
-  // accurate. The previous version stamped `t = state.elapsedTime` after
-  // prior strikes had already added their +10s penalties, so the 3rd
-  // hit's `t` read ~30s later than wall-clock truth. Subtracting
-  // 10 * priorHits gives the clean precise-timer value at the moment of
-  // the actual hit — unblocks the future bomb-adjusted per-play model.
+  // Prior strikes on this attempt — pre-flagged in the info-value
+  // computation so the returned value is the MARGINAL info-value of
+  // this hit given those prior hits, not the cumulative value.
+  const priorEvents = (isWeekly ? state.weeklyBombHitEvents : state.dailyBombHitEvents) || [];
   const priorHits = isWeekly ? (state.weeklyBombHits || 0) : (state.dailyBombHits || 0);
-  const tClean = Math.round((state.elapsedTime - 10 * priorHits) * 10) / 10;
+  const priorPenaltySum = priorEvents.reduce((s, e) => s + (e && typeof e.penalty === 'number' ? e.penalty : 0), 0);
+  // tClean is the unblemished elapsed time at the moment of the hit,
+  // before any prior penalties were applied. Subtracting the
+  // accumulated penalty sum gives a wall-clock-aligned timestamp for
+  // the per-event `t` field; the R refit can recover hit ordering from
+  // this without untangling penalty values.
+  const tClean = Math.round((state.elapsedTime - priorPenaltySum) * 10) / 10;
 
-  // Bump the per-attempt strike counter for whichever mode owns this
-  // attempt. Also append to the per-hit event log so a future bomb-
-  // adjusted refit can reconstruct what the player saw for free.
+  // Pause the timer immediately. The penalty is applied while the
+  // clock is frozen so we don't race a tick.
+  pauseTimer();
+  state.modalPaused = true;
+
+  // Compute info-value penalty BEFORE marking the strike cell so the
+  // solver's "before" run sees the same board state the player saw.
+  // Daily / weekly always use the centre cell as the first click.
+  const fr = Math.floor(state.rows / 2);
+  const fc = Math.floor(state.cols / 2);
+  const priorStrikes = priorEvents.map(e => ({ row: e.row, col: e.col }));
+  let infoValue = 0;
+  try {
+    const result = computeBombInfoValue(state.board, state.rows, state.cols, fr, fc, mineRow, mineCol, priorStrikes);
+    infoValue = result.infoValue;
+  } catch (err) {
+    // The solver is robust on well-formed daily/weekly boards; if it
+    // ever does throw we'd rather charge the base penalty than crash
+    // the player's attempt.
+    console.warn('computeBombInfoValue failed:', err && err.message);
+  }
+  const penalty = Math.round((infoValue + BOMB_PENALTY_BASE) * 10) / 10;
+  const infoValueRounded = Math.round(infoValue * 10) / 10;
+
+  // Bump the per-attempt strike counter + append the event with its
+  // penalty value. The penalty field is new in this mechanic; legacy
+  // events (under the old +10s/re-fog mechanic) lack it, and the R
+  // refit treats `bombHits > 0 && no penalty` as the legacy cohort.
+  const event = { t: tClean, row: mineRow, col: mineCol, penalty, infoValue: infoValueRounded };
   if (isWeekly) {
     state.weeklyBombHits = priorHits + 1;
     if (!Array.isArray(state.weeklyBombHitEvents)) state.weeklyBombHitEvents = [];
-    state.weeklyBombHitEvents.push({ t: tClean, row: mineRow, col: mineCol });
+    state.weeklyBombHitEvents.push(event);
   } else {
     state.dailyBombHits = priorHits + 1;
     if (!Array.isArray(state.dailyBombHitEvents)) state.dailyBombHitEvents = [];
-    state.dailyBombHitEvents.push({ t: tClean, row: mineRow, col: mineCol });
+    state.dailyBombHitEvents.push(event);
   }
 
-  // Time penalty: +10s per strike
-  state.elapsedTime += 10;
-
-  // Mark the hit cell as a strike: revealed (so the renderer shows the
-  // strike sprite), but the mine STAYS — we do NOT call defuseMine.
-  // Consequences (all desired):
-  //   (a) Adjacent numbers don't drop. A "3" stays a "3" after the
-  //       bomb hit because the mine is still there, the count is still
-  //       correct. Pre-rework, defuseMine flipped isMine=false and
-  //       recalculated neighbor counts, which dropped them by 1 — a
-  //       confusing "where did that mine go?" moment for the player.
-  //   (b) The strike acts as a flag for chord-reveal. chordReveal in
-  //       boardSolver.js sums `isFlagged || isStrike` neighbors, so a
-  //       "3" with one strike + two flags chords correctly.
-  //   (c) checkWin naturally treats the strike cell as a don't-need-
-  //       to-reveal mine (skips all isMine cells). Winning still
-  //       requires revealing every non-mine cell; struck-but-not-yet-
-  //       struck-again mines stay unrevealed.
-  // state.totalMines is NOT decremented (the mine is still there).
-  // state.revealedCount is reset to 0 below by the re-fog block (no
-  // non-mine cell is revealed after re-fog — strike cells are mines).
+  // Mark the hit cell as a strike. NO re-fog: every other revealed cell
+  // stays revealed. The mine is preserved (we never call defuseMine):
+  //   (a) Adjacent numbers don't drop — a "3" next to the strike stays
+  //       a "3" because the mine is still there.
+  //   (b) Strike counts as a flag for chordReveal (sums isFlagged ||
+  //       isStrike), so chording around it works.
+  //   (c) checkWin treats isMine cells as don't-need-to-reveal; win
+  //       still requires every non-mine cell revealed.
   const hitCell = state.board[mineRow][mineCol];
   hitCell.isRevealed = true;
   hitCell.isStrike = true;
 
-  // Safety net: tear down any active pressure-plate timers. Daily/weekly
-  // don't currently include plates in their gimmick subset, but if a
-  // future change ever does, stale per-cell intervals could fire a
-  // spurious handleLoss after the mid-attempt mine removal.
-  // Dynamic import to avoid a top-level circular dependency with
-  // gameActions.js (which imports handleDailyBombHit from this file).
+  // Apply the penalty to the clock. state.elapsedTime is "whole seconds"
+  // for the on-screen timer display (timerManager floors it again before
+  // rendering), so round there; preciseTime preserves decimal precision
+  // for the gameover-modal final-time readout.
+  state.elapsedTime = Math.floor(state.elapsedTime + penalty);
+  if (typeof state.preciseTime === 'number') {
+    state.preciseTime = Math.round((state.preciseTime + penalty) * 10) / 10;
+  }
+
+  // Safety net: tear down any active pressure-plate timers. Daily /
+  // weekly don't currently use plates, but if they ever do a stale
+  // per-cell interval could fire a spurious handleLoss after this hit.
   import('./gameActions.js').then(m => m.clearAllPlateTimers?.()).catch(() => {});
 
-  // Re-fog every revealed cell EXCEPT mines (untouched) and strike
-  // cells (still-mine cells with the strike marker — these stay
-  // visible). Adjacent numbers stay the same as before the hit
-  // because we didn't defuse, so a "3" next to the strike is still
-  // a "3" on the next reveal. handleChordReveal also blocks chord
-  // ON strike cells as belt-and-suspenders.
-  for (let r = 0; r < state.rows; r++) {
-    for (let c = 0; c < state.cols; c++) {
-      const cell = state.board[r][c];
-      if (cell.isRevealed && !cell.isMine && !cell.isStrike) {
-        cell.isRevealed = false;
-        cell.isHiddenNumber = false;
-      }
-    }
-  }
-  // After re-fog, the only revealed cells are strikes — and strikes
-  // are mines (we didn't defuse). So revealedCount, which tracks
-  // non-mine reveals, resets to 0. The player has to clear every
-  // non-mine cell from scratch.
-  state.revealedCount = 0;
-
-  // Shake + muffled explosion effect
+  // Effects
   playExplosion();
   triggerHeavyShake();
   showRedFlash();
   haptic([80, 30, 60]);
 
-  // Pause timer during popup so display time doesn't add to penalty.
-  // modalPaused makes it sticky: a tab-away/return (visibilitychange)
-  // must not resume the clock while the explainer/popup is still up.
-  pauseTimer();
-  state.modalPaused = true;
-
-  // Render the +10 penalty NOW, while the timer is frozen, so the
-  // displayed time during the modal already reflects the hit. Without
-  // this the display lags at the pre-penalty value and only jumps
-  // forward when the modal closes — which reads as "the clock ran while
-  // I was reading the explainer" even though it was paused the whole
-  // time.
-  state.elapsedTime = Math.floor(state.elapsedTime);
+  // Update the displayed time NOW so the new total reads on screen
+  // before any popup appears — without this the player sees the old
+  // time during the popup and a jump when it closes, which reads as
+  // "the clock ran while I was reading" even though it was paused.
   updateTimerDisplay();
 
   function finishBombHit() {
@@ -1132,20 +1162,16 @@ export function handleDailyBombHit(mineRow, mineCol) {
     updateHeader();
   }
 
-  // First bomb hit ever: a newcomer expects classic Minesweeper game-over
-  // here. Stop and explain the rule reversal with a modal they dismiss
-  // when ready (the timer stays paused until then). Every later hit just
-  // gets the fast transient popup.
-  if (!hasSeenNotice('bombhit_explainer')) {
-    markNoticeSeen('bombhit_explainer');
+  // First-time popup. Uses a NEW notice key so existing users who saw
+  // the old "+10s · board re-fog" explainer still see the new
+  // mechanic's explainer the first time they encounter it.
+  if (!hasSeenNotice('bombhit_explainer_v2')) {
+    markNoticeSeen('bombhit_explainer_v2');
     const modal = document.getElementById('bombhit-explainer');
     const okBtn = document.getElementById('bombhit-explainer-ok');
     if (modal && okBtn) {
-      // The cleanup (resume timer, repaint the re-fogged board) must run
-      // no matter HOW the modal closes: the button, or the global Escape
-      // handler. Watching for the 'hidden' class covers both paths;
-      // wiring only the button would soft-lock an Escape user with a
-      // paused timer and a stale board.
+      // Cleanup must run no matter how the modal closes (button or
+      // Escape) — observe the 'hidden' class transition.
       let done = false;
       let obs = null;
       const finishOnce = () => {
@@ -1164,13 +1190,14 @@ export function handleDailyBombHit(mineRow, mineCol) {
       showModal('bombhit-explainer');
       return;
     }
-    // Element missing (shouldn't happen): fall through to the popup.
+    // Modal element missing — fall through to the transient popup.
   }
 
-  // Subsequent hits: brief centered popup, auto-dismiss.
+  // Subsequent hits: brief centred popup showing the penalty breakdown
+  // so the cost reads as principled, not arbitrary.
   const popup = document.createElement('div');
   popup.className = 'daily-bomb-popup';
-  popup.innerHTML = `<div class="daily-bomb-popup-content">${spriteImgHTML('strike', 'sprite-popup', 'Mine hit')} You hit a mine!<br><span class="daily-bomb-sub">+10s · Board reset · Bomb flagged</span></div>`;
+  popup.innerHTML = `<div class="daily-bomb-popup-content">${spriteImgHTML('strike', 'sprite-popup', 'Mine hit')} <span class="daily-bomb-penalty">+${penalty.toFixed(1)}s</span><br><span class="daily-bomb-sub">${infoValueRounded.toFixed(1)}s anchor + ${BOMB_PENALTY_BASE}s base</span></div>`;
   document.getElementById('app').appendChild(popup);
 
   setTimeout(() => {
