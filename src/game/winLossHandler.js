@@ -1,4 +1,4 @@
-import { state, ENCOURAGEMENT_LINES } from '../state/gameState.js';
+import { state, ENCOURAGEMENT_LINES, getActiveBombPenaltyTotal } from '../state/gameState.js';
 import { $, $$, boardEl, resetBtn, scanToast } from '../ui/domHelpers.js';
 import { getThemeEmoji, updateAllCells, announceGame } from '../ui/boardRenderer.js';
 import { applyIcon, spriteImgHTML } from '../ui/spriteLoader.js';
@@ -388,6 +388,7 @@ export function handleWin() {
         time: precise,
         par: state.dailyPar,
         bombHits: state.dailyBombHits || 0,
+        bombPenalty: getActiveBombPenaltyTotal(),
       });
 
       // Handicap resolution: prefer the refit value from handicaps.json
@@ -1049,13 +1050,9 @@ export function handleDailyBombHit(mineRow, mineCol) {
   // this hit given those prior hits, not the cumulative value.
   const priorEvents = (isWeekly ? state.weeklyBombHitEvents : state.dailyBombHitEvents) || [];
   const priorHits = isWeekly ? (state.weeklyBombHits || 0) : (state.dailyBombHits || 0);
-  const priorPenaltySum = priorEvents.reduce((s, e) => s + (e && typeof e.penalty === 'number' ? e.penalty : 0), 0);
-  // tClean is the unblemished elapsed time at the moment of the hit,
-  // before any prior penalties were applied. Subtracting the
-  // accumulated penalty sum gives a wall-clock-aligned timestamp for
-  // the per-event `t` field; the R refit can recover hit ordering from
-  // this without untangling penalty values.
-  const tClean = Math.round((state.elapsedTime - priorPenaltySum) * 10) / 10;
+  // state.elapsedTime is pure wall-clock (penalties live in the event log,
+  // not in elapsedTime), so it already IS the clean hit timestamp.
+  const tClean = Math.round(state.elapsedTime * 10) / 10;
 
   // Pause the timer immediately. The penalty is applied while the
   // clock is frozen so we don't race a tick.
@@ -1108,14 +1105,12 @@ export function handleDailyBombHit(mineRow, mineCol) {
   hitCell.isRevealed = true;
   hitCell.isStrike = true;
 
-  // Apply the penalty to the clock. state.elapsedTime is "whole seconds"
-  // for the on-screen timer display (timerManager floors it again before
-  // rendering), so round there; preciseTime preserves decimal precision
-  // for the gameover-modal final-time readout.
-  state.elapsedTime = Math.floor(state.elapsedTime + penalty);
-  if (typeof state.preciseTime === 'number') {
-    state.preciseTime = Math.round((state.preciseTime + penalty) * 10) / 10;
-  }
+  // The penalty is NOT added to elapsedTime/preciseTime here. It lives in
+  // the hit-event log (event.penalty, pushed above) and is folded into the
+  // displayed time by getDisplayTime() and into the final time by
+  // stopTimer(), both via getActiveBombPenaltyTotal(). Keeping the
+  // wall-clock counters penalty-free is what lets the daily auto-save
+  // round-trip without double-counting the penalty.
 
   // Safety net: tear down any active pressure-plate timers. Daily /
   // weekly don't currently use plates, but if they ever do a stale

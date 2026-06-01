@@ -42,6 +42,13 @@ DB_URL          <- "https://gregsweeper-66d02-default-rtdb.firebaseio.com"
 DIFFICULTY_PATH <- "src/logic/difficulty.js"
 HANDICAPS_PATH  <- "src/logic/handicaps.json"
 
+# Fixed base component of the info-value bomb penalty (mirrors
+# BOMB_PENALTY_BASE in src/logic/difficulty.js). For a new-mechanic
+# bomb-hit play, this is the only part of the per-hit penalty that's a
+# true added cost — the info-value part offsets the deduction time the
+# player skipped — so it's what we subtract to recover clean-play time.
+BOMB_PENALTY_BASE <- 3
+
 # Minimum total scores before we bother fitting at all. With informative
 # priors the fit is stable at much lower N than the old lm/lmer approach
 # (which needed ~150 before coefficients stopped blowing up), so the floor
@@ -290,11 +297,16 @@ scores_df <- tibble(
   mutate(
     is_legacy_bomb = bombHits > 0 & totalBombPenalty == 0,
     legacy_bombs   = if_else(is_legacy_bomb, bombHits, 0),
-    # clean_time strips the deterministic info-value penalty so the
-    # canonical features fit against the time the player would have
-    # spent on the same board with no bomb hits. Legacy plays
-    # contribute their inflated `time` through `legacy_bombs` instead.
-    clean_time     = time - totalBombPenalty,
+    # clean_time = the time the player would have scored solving the FULL
+    # board with no bomb hits. For a new-mechanic play, `time` already
+    # includes Σ(infoValue + base) of penalty; the infoValue part exactly
+    # offsets the deduction time the player skipped by bombing, so the
+    # only true added cost is BOMB_PENALTY_BASE per hit. Subtract just
+    # that — NOT totalBombPenalty (which would over-subtract by Σ infoValue
+    # and make bomb-hit plays look artificially fast, dragging the
+    # coefficients down). Legacy plays keep their full `time` here and
+    # contribute their cost through the `legacy_bombs` regressor instead.
+    clean_time     = time - if_else(totalBombPenalty > 0, BOMB_PENALTY_BASE * bombHits, 0),
   )
 
 legacy_n <- sum(scores_df$is_legacy_bomb, na.rm = TRUE)
