@@ -131,3 +131,12 @@
   background: linear-gradient(180deg, #2a0800, #1a0500);
   border-bottom: 1px solid rgba(255, 68, 0, 0.15);
 }
+
+/* Reveal moment: an ignition flash. */
+[data-theme="inferno"] .cell.num-pop,
+[data-theme="inferno"] .cell.revealing {
+  animation-name: infernoIgnite;
+}
+@keyframes infernoIgnite {
+  0%{opacity:0;transform:scale(0.8);filter:brightness(0.4)}40%{opacity:1;filter:brightness(2)}100%{opacity:1;transform:scale(1);filter:brightness(1)}
+}

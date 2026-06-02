@@ -181,3 +181,12 @@
   0% { background-position: 0 -30px; }
   100% { background-position: 0 30px; }
 }
+
+/* Reveal moment: a glyph decoding. */
+[data-theme="matrix"] .cell.num-pop,
+[data-theme="matrix"] .cell.revealing {
+  animation-name: matrixDecode;
+}
+@keyframes matrixDecode {
+  0%{opacity:0;transform:translateY(-2px);filter:brightness(2)}30%{opacity:1}46%{opacity:0.5;transform:translateY(1px)}100%{opacity:1;transform:translateY(0);filter:brightness(1)}
+}

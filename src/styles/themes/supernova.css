@@ -182,3 +182,12 @@
 [data-theme="supernova"] .cell.unrevealed {
   background: linear-gradient(135deg, #3a1810, #442018, #3a1810);
 }
+
+/* Reveal moment: a stellar burst. */
+[data-theme="supernova"] .cell.num-pop,
+[data-theme="supernova"] .cell.revealing {
+  animation-name: novaBurst;
+}
+@keyframes novaBurst {
+  0%{opacity:0;transform:scale(0.4);filter:brightness(2.5)}55%{opacity:1;transform:scale(1.15)}100%{opacity:1;transform:scale(1);filter:brightness(1)}
+}

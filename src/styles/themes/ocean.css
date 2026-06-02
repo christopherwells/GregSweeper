@@ -64,3 +64,11 @@
   --shadow-board: 0 4px 16px rgba(0, 20, 40, 0.4);
 }
 
+/* Reveal moment: a bubble surfacing. */
+[data-theme="ocean"] .cell.num-pop,
+[data-theme="ocean"] .cell.revealing {
+  animation-name: oceanSurface;
+}
+@keyframes oceanSurface {
+  0%{opacity:0;transform:scale(0.82)}60%{opacity:1;transform:scale(1.06)}100%{opacity:1;transform:scale(1)}
+}

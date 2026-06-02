@@ -77,3 +77,12 @@
 [data-theme="sakura"] .title-screen-logo {
   text-shadow: 0 0 16px rgba(232, 112, 144, 0.4), 0 0 32px rgba(168, 80, 130, 0.15);
 }
+
+/* Reveal moment: a petal settling. */
+[data-theme="sakura"] .cell.num-pop,
+[data-theme="sakura"] .cell.revealing {
+  animation-name: sakuraDrift;
+}
+@keyframes sakuraDrift {
+  0%{opacity:0;transform:translateY(-3px) rotate(-4deg)}100%{opacity:1;transform:translateY(0) rotate(0)}
+}

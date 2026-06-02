@@ -198,3 +198,13 @@
     linear-gradient(90deg, rgba(170, 68, 255, 0.03) 1px, transparent 1px);
   background-size: 40px 40px;
 }
+
+/* Reveal moment: a scanline sweep. */
+[data-theme="synthwave"] .cell.num-pop,
+[data-theme="synthwave"] .cell.revealing {
+  animation-name: synthScan;
+  transform-origin:center;
+}
+@keyframes synthScan {
+  0%{opacity:0;transform:scaleY(0.1)}60%{opacity:1;transform:scaleY(1.08)}100%{opacity:1;transform:scaleY(1)}
+}
