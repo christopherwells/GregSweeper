@@ -336,6 +336,22 @@ const THEME_EFFECTS = {
     return () => { leafCleanup(); fireflyCleanup(); };
   },
 
+  // Chalkboard: faint chalk dust drifting up off the slate.
+  chalkboard: (container) => {
+    injectStyles();
+    return particleLoop(container, (c) => {
+      const size = rand(1.5, 4);
+      return spawn(c, { style: {
+        left: rand(5, 95) + '%', top: rand(25, 95) + '%',
+        width: size + 'px', height: size + 'px', borderRadius: '50%',
+        background: 'rgba(240, 235, 224, 0.5)',
+        boxShadow: '0 0 3px rgba(240, 235, 224, 0.3)',
+        animation: `fxFloat ${rand(3, 6)}s ease-in-out forwards, fxTwinkle ${rand(2, 4)}s ease-in-out forwards`,
+        '--fx-float-y': rand(-16, -36) + 'px', '--fx-opacity': String(rand(0.3, 0.6)),
+      }});
+    }, () => rand(420, 1100));
+  },
+
   // Candy (L12): a busy shower of sprinkles, hearts + sparkle pops
   candy: (container) => {
     injectStyles();

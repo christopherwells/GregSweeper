@@ -1189,6 +1189,7 @@ function renderCollectionModal() {
       blueprint: 'linear-gradient(135deg, #08203a, #11375c)',
       cartography: 'linear-gradient(135deg, #e0d0a8, #c9b896)',
       origami: 'linear-gradient(135deg, #f4f1ea, #e2ddd2)',
+      chalkboard: 'linear-gradient(135deg, #223028, #2e4038)',
       ocean: 'linear-gradient(135deg, #1b3a4b, #1e4a5f)',
       sunset: 'linear-gradient(135deg, #2d1b2e, #3d2240)',
       forest: 'linear-gradient(135deg, #2d3a2e, #3e5a3a)',
