@@ -1206,9 +1206,33 @@
     setTimeout(fixDailyRevealed, 500);
   </script>
   <script>
+    // Dev theme-preview (?previewthemes=1 on localhost): never run the service
+    // worker, so every reload serves fresh CSS/JS while reviewing theme work.
+    // Inert on any deployed build (gated to localhost).
+    const _previewMode = (() => {
+      try {
+        const h = location.hostname;
+        const local = h === 'localhost' || h === '127.0.0.1' || h === '';
+        return local && new URLSearchParams(location.search).has('previewthemes');
+      } catch (e) { return false; }
+    })();
+    if (_previewMode) {
+      // If a stale SW is still controlling THIS load, tear it (and the caches)
+      // down and reload once — that reload is SW-free, hence fresh.
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller && !sessionStorage.getItem('_pv_reloaded')) {
+        sessionStorage.setItem('_pv_reloaded', '1');
+        navigator.serviceWorker.getRegistrations()
+          .then(rs => Promise.all(rs.map(r => r.unregister())))
+          .then(() => (window.caches ? caches.keys().then(ks => Promise.all(ks.map(k => caches.delete(k)))) : null))
+          .then(() => location.reload())
+          .catch(() => location.reload());
+      } else if ('serviceWorker' in navigator) {
+        // No SW controlling — already fresh; just make sure none lingers.
+        navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(() => {});
+      }
     // After a cache clear, skip SW registration for ONE load so the browser
     // fetches all files fresh from the network with zero SW interference.
-    if (sessionStorage.getItem('skip_sw')) {
+    } else if (sessionStorage.getItem('skip_sw')) {
       sessionStorage.removeItem('skip_sw');
       // Don't register SW this load — everything comes from network
     } else if ('serviceWorker' in navigator) {

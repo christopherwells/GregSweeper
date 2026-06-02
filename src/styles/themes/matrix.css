@@ -72,10 +72,12 @@
   --border-lcd: 1px solid rgba(0, 204, 0, 0.3);
   --text-shadow-mine: 0 0 8px rgba(255, 0, 0, 0.6);
 
-  --text-shadow-num-1: 0 0 6px rgba(0, 255, 0, 0.5);
-  --text-shadow-num-2: 0 0 6px rgba(0, 204, 0, 0.5);
-  --text-shadow-num-3: 0 0 6px rgba(255, 0, 0, 0.5);
-  --text-shadow-num-4: 0 0 6px rgba(0, 255, 136, 0.5);
+  /* Bolder numbers + a tighter halo so the glow accents rather than hazes. */
+  --fs-cell-number: calc(var(--cell-size) * 0.46);
+  --text-shadow-num-1: 0 0 3px rgba(0, 255, 0, 0.5);
+  --text-shadow-num-2: 0 0 3px rgba(0, 204, 0, 0.5);
+  --text-shadow-num-3: 0 0 3px rgba(255, 0, 0, 0.5);
+  --text-shadow-num-4: 0 0 3px rgba(0, 255, 136, 0.5);
 
   --shadow-board: 0 0 12px rgba(0, 255, 0, 0.06);
   --border-board: 1px solid rgba(0, 204, 0, 0.3);
@@ -94,6 +96,41 @@
 
   --border-achievement-unlocked: rgba(0, 204, 0, 0.3);
   --shadow-achievement-unlocked: 0 0 6px rgba(0, 255, 0, 0.06);
+
+  /* ── Theme-expression layer (foundation tokens) ───────────────────
+     Faint CRT scanlines on the page surround (the board itself gets the
+     live digital rain from themeEffects.js). */
+  --bg-page-image:
+    repeating-linear-gradient(0deg, rgba(0, 255, 70, 0.05) 0, rgba(0, 255, 70, 0.05) 1px, transparent 1px, transparent 3px);
+
+  /* Snappy digital reveals — terminal-fast, no overshoot. */
+  --anim-reveal-dur: 0.1s;
+  --anim-reveal-ease: linear;
+  --anim-flag-dur: 0.16s;
+  --anim-flag-ease: ease-out;
+  --anim-mine-dur: 0.18s;
+  --anim-mine-ease: ease-out;
+
+  /* Cleared cells = near-black tiles set in a phosphor-green grid (matching the
+     faint green lines between the unrevealed cells) rather than a solid black
+     slab, so the cleared region reads as a lit terminal grid. */
+  --cell-gap-seal: #0c8a34;
+
+  /* Modifier markers lifted off the near-black cells AND the green rain.
+     Hues kept to their identities (sonar=cyan, compass=gold, wormhole=
+     amber/magenta/lime, mirror=blue/purple/green, liar/plate=red), pushed
+     bright + opaque so the falling code can't bury them. */
+  --marker-liar-outline: rgba(255, 70, 60, 0.97);
+  --marker-sonar-tint: rgba(0, 230, 255, 0.26);
+  --marker-compass-tint: rgba(255, 210, 0, 0.28);
+  --marker-wormhole-0: rgba(255, 120, 20, 0.32);
+  --marker-wormhole-1: rgba(245, 90, 245, 0.30);
+  --marker-wormhole-2: rgba(170, 255, 120, 0.30);
+  --marker-mirror-0: rgba(80, 175, 255, 0.97);
+  --marker-mirror-1: rgba(205, 110, 255, 0.97);
+  --marker-mirror-2: rgba(120, 120, 255, 0.97);   /* shifted blue-violet so it reads distinct from the green theme */
+  --marker-plate-border: rgba(255, 80, 80, 0.95);
+  --marker-plate-timer: #ff5252;
 }
 
 [data-theme="matrix"] #game-title,

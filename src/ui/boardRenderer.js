@@ -3,6 +3,7 @@ import { boardEl, zoomControls, zoomLevelDisplay, boardScrollWrapper } from './d
 import { THEME_UNLOCKS } from './themeManager.js';
 import { loadEmojiPack, getActiveEmojiPack } from './collectionManager.js';
 import { applyIcon } from './spriteLoader.js';
+import { applyThemeEffects } from './themeEffects.js';
 // ── Emoji Cache (avoid per-cell localStorage reads) ────
 let _emojiCache = null;
 let _emojiCacheValid = false;
@@ -22,6 +23,15 @@ function getCachedEmoji() {
 
 // ── Board Rendering ────────────────────────────────────
 
+// Cell-size clamp bounds are theme-overridable via --cell-min-size /
+// --cell-max-size (responsive) and --cell-fit-max-size (fit-to-screen). JS owns
+// --cell-size at runtime, so these tokens are the only way a theme can widen or
+// tighten cells. Defaults preserve the original 18/50 and 18/40 clamps exactly.
+function _cellBound(name, fallback) {
+  const v = parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name));
+  return Number.isFinite(v) ? v : fallback;
+}
+
 // Vertical space the board may fill before it has to scroll. Mirrors
 // #board-scroll-wrapper's `max-height: 70vh` in global.css — read the resolved
 // pixel value so the two never drift, falling back to 0.70·innerHeight when the
@@ -38,17 +48,18 @@ function _boardHeightBudget() {
 }
 
 // Largest cell size (px) that fits state.cols across `widthBudget` AND
-// state.rows down the board's vertical budget, clamped to [18, maxCap].
+// state.rows down the board's vertical budget, clamped to [min, maxCap].
 // Fitting by width alone overflows tall, narrow boards: weekly samples rows up
 // to 14 but caps cols at 12, so a 14×8 board sized to its width gets cells big
 // enough to push the board past the 70vh scroll wrapper, hiding the lower rows
 // (the "too zoomed in, can't see where to play" report). The height term keeps
 // the whole board on screen. `widthBudget` is already net of board border+pad.
 function _fitCellSize(widthBudget, gap, maxCap) {
+  const min = _cellBound('--cell-min-size', 18);
   const widthFit = Math.floor((widthBudget - (state.cols - 1) * gap) / state.cols);
   const heightBudget = _boardHeightBudget() - 8; // 2px border + 2px padding, top+bottom
   const heightFit = Math.floor((heightBudget - (state.rows - 1) * gap) / state.rows);
-  return Math.min(maxCap, Math.max(18, Math.min(widthFit, heightFit)));
+  return Math.min(maxCap, Math.max(min, Math.min(widthFit, heightFit)));
 }
 
 export function resizeCells() {
@@ -57,7 +68,7 @@ export function resizeCells() {
   const gap = parseFloat(getComputedStyle(boardEl).gap) || 2;
   const borderPad = 8; // 2px border + 2px padding on each side
   const availableWidth = container.clientWidth - borderPad;
-  const capped = _fitCellSize(availableWidth, gap, 50);
+  const capped = _fitCellSize(availableWidth, gap, _cellBound('--cell-max-size', 50));
   document.documentElement.style.setProperty('--cell-size', `${capped}px`);
 }
 
@@ -93,6 +104,13 @@ export function renderBoard() {
       boardEl.appendChild(cellEl);
     }
   }
+
+  // `boardEl.innerHTML = ''` above destroyed the prior ambient-effects layer
+  // (.theme-fx lives inside #board). Re-apply it so animations persist across
+  // board rebuilds (new game / next level / resume) instead of vanishing until
+  // the next theme switch — and so the previous particle loops get torn down
+  // rather than firing forever into a detached node.
+  applyThemeEffects(document.documentElement.getAttribute('data-theme') || 'classic');
 }
 
 // ── Wall Overlay Rendering ──────────────────────────
@@ -418,7 +436,7 @@ export function adjustCellSize() {
   if (!state.cols || !state.rows) return;
   const maxWidth = Math.min(window.innerWidth * 0.88, 520);
   const widthBudget = maxWidth - 8; // 2px border + 2px padding, left+right
-  const cellSize = _fitCellSize(widthBudget, 2, 40);
+  const cellSize = _fitCellSize(widthBudget, 2, _cellBound('--cell-fit-max-size', 40));
   document.documentElement.style.setProperty('--cell-size', cellSize + 'px');
 }
 
