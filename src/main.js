@@ -1184,6 +1184,7 @@ function renderCollectionModal() {
     const swatchColors = {
       classic: 'linear-gradient(135deg, #c0c0c0, #e0e0e0)',
       dark: 'linear-gradient(135deg, #1a1a2e, #1e2745)',
+      editorial: 'linear-gradient(135deg, #f0ebdd, #ddd6c8)',
       ocean: 'linear-gradient(135deg, #1b3a4b, #1e4a5f)',
       sunset: 'linear-gradient(135deg, #2d1b2e, #3d2240)',
       forest: 'linear-gradient(135deg, #2d3a2e, #3e5a3a)',

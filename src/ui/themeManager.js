@@ -29,6 +29,7 @@ export function loadThemeCSS(themeName) {
 export const THEME_UNLOCKS = {
   classic:          { levelRequired: 0,  displayName: 'Classic',        mine: '💣', flag: '🚩', smiley: '😊', smileyWin: '😎', smileyLoss: '😵' },
   dark:             { levelRequired: 0,  displayName: 'Dark',           mine: '💣', flag: '🚩', smiley: '😊', smileyWin: '😎', smileyLoss: '😵' },
+  editorial:        { levelRequired: 5,  displayName: 'Editorial',      mine: '⬛', flag: '✒️', strikeCell: '💢', smiley: '📰', smileyWin: '🎩', smileyLoss: '☕' },
   ocean:            { levelRequired: 3,  displayName: 'Ocean',          mine: '🐡', flag: '⚓', smiley: '🐟', smileyWin: '🐬', smileyLoss: '🫧' },
   sunset:           { levelRequired: 6,  displayName: 'Sunset',         mine: '☀️', flag: '🚩', smiley: '🌤️', smileyWin: '🌞', smileyLoss: '🌧️' },
   forest:           { levelRequired: 9,  displayName: 'Forest',         mine: '🌰', flag: '🐿️', strikeCell: '🌳', smiley: '🌲', smileyWin: '🦉', smileyLoss: '🪵' },
