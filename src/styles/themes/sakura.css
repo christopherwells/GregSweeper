@@ -7,6 +7,9 @@
   --color-cell-hidden-hover: #352850;
   --color-cell-hidden-gradient: linear-gradient(145deg, #302648, #252038);
   --color-cell-revealed: #18142a;
+  /* Effect-bearing theme: grout MUST contrast the cleared tile (#18142a),
+     never equal it (the banned slab). moonlit mauve line, not the dark plum tile. */
+  --cell-gap-seal: #6a4a68;
   --color-cell-border-light: #3e3060;
   --color-cell-border-dark: #0a0812;
   --color-mine: #e85080;

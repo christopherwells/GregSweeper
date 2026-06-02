@@ -20,6 +20,9 @@
   --color-cell-hidden-hover: #5a1a0c;
   --color-cell-hidden-gradient: linear-gradient(145deg, #4a1410, #2e0a05);
   --color-cell-revealed: #1a0800;
+  /* Effect-bearing theme: grout MUST contrast the cleared tile (#1a0800),
+     never equal it (the banned slab). glowing lava crack between charred tiles. */
+  --cell-gap-seal: #8a3010;
   --color-cell-border-light: #6b2010;
   --color-cell-border-dark: #1a0500;
   --color-mine: #ff4400;

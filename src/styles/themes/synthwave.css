@@ -35,6 +35,9 @@
   --color-cell-hidden-hover: #280c60;
   --color-cell-hidden-gradient: linear-gradient(145deg, #220a58, #140640);
   --color-cell-revealed: #0c0228;
+  /* Effect-bearing theme: grout MUST contrast the cleared tile (#0c0228),
+     never equal it (the banned slab). neon-grid magenta line, not the dark purple tile. */
+  --cell-gap-seal: #802a80;
   --color-cell-border-light: #4020a0;
   --color-cell-border-dark: #0a0020;
   --color-mine: #ff2090;

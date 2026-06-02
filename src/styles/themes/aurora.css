@@ -9,6 +9,9 @@
   --color-cell-hidden-hover: #1a2e55;
   --color-cell-hidden-gradient: linear-gradient(145deg, #182a50, #10203e);
   --color-cell-revealed: #0a1525;
+  /* Effect-bearing theme: grout MUST contrast the cleared tile (#0a1525),
+     never equal it (the banned slab). faint aurora-teal seam, not the night-sky tile. */
+  --cell-gap-seal: #245a55;
   --color-cell-border-light: #1e3a60;
   --color-cell-border-dark: #040a14;
   --color-mine: #ff4488;

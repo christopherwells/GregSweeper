@@ -46,6 +46,9 @@
   --color-cell-hidden-hover: #4e2418;
   --color-cell-hidden-gradient: linear-gradient(145deg, #442018, #30140c);
   --color-cell-revealed: #1e0c08;
+  /* Effect-bearing theme: grout MUST contrast the cleared tile (#1e0c08),
+     never equal it (the banned slab). stellar-ember seam, not the dark tile. */
+  --cell-gap-seal: #9a4820;
   --color-cell-border-light: #6a3020;
   --color-cell-border-dark: #140604;
   --color-mine: #ffcc00;
