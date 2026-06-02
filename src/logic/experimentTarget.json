@@ -1,47 +1,52 @@
 {
-  "updatedAt": "2026-06-01T19:23:06Z",
-  "target": "compassCellCount",
-  "reason": "highest posterior CV (1.094) excluding last 3 targets",
+  "updatedAt": "2026-06-02T18:08:15Z",
+  "target": "sonarCellCount",
+  "reason": "highest posterior CV (1.008) excluding last 3 targets",
   "recentTargets": [
+    "sonarCellCount",
     "compassCellCount",
-    "lockedCellCount",
-    "wormholePairCount"
+    "lockedCellCount"
   ],
   "candidates": [
     {
       "feature": "compassCellCount",
-      "mean": 0.792,
-      "sd": 0.866,
-      "cv": 1.094
+      "mean": 0.8,
+      "sd": 0.873,
+      "cv": 1.091
     },
     {
       "feature": "lockedCellCount",
-      "mean": 0.629,
-      "sd": 0.657,
-      "cv": 1.044
-    },
-    {
-      "feature": "sonarCellCount",
-      "mean": 0.684,
-      "sd": 0.712,
-      "cv": 1.04
+      "mean": 0.628,
+      "sd": 0.666,
+      "cv": 1.06
     },
     {
       "feature": "wormholePairCount",
-      "mean": 1.125,
-      "sd": 1.092,
-      "cv": 0.97
+      "mean": 1.189,
+      "sd": 1.228,
+      "cv": 1.032
+    },
+    {
+      "feature": "sonarCellCount",
+      "mean": 0.67,
+      "sd": 0.675,
+      "cv": 1.008
     },
     {
       "feature": "liarCellCount",
-      "mean": 0.856,
-      "sd": 0.825,
-      "cv": 0.964
+      "mean": 0.786,
+      "sd": 0.765,
+      "cv": 0.973
     }
   ],
   "coverage_targets": [
     {
       "feature": "wormholePairCount",
+      "n_boards": 5,
+      "deficit_weight": 0.1667
+    },
+    {
+      "feature": "compassCellCount",
       "n_boards": 5,
       "deficit_weight": 0.1667
     },
@@ -61,19 +66,14 @@
       "deficit_weight": 0.1429
     },
     {
-      "feature": "sonarCellCount",
-      "n_boards": 6,
-      "deficit_weight": 0.1429
-    },
-    {
       "feature": "liarCellCount",
-      "n_boards": 8,
-      "deficit_weight": 0.1111
+      "n_boards": 9,
+      "deficit_weight": 0.1
     },
     {
       "feature": "wallEdgeCount",
-      "n_boards": 19,
-      "deficit_weight": 0.05
+      "n_boards": 20,
+      "deficit_weight": 0.0476
     }
   ]
 }
