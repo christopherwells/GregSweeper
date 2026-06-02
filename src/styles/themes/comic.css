@@ -1,0 +1,130 @@
+/* Comic theme — pop-art panel page. Ben-Day halftone dots, fat black ink
+   outlines, primary-color punch. Cleared cells are white panels divided by bold
+   black gutters (the grout). */
+[data-theme="comic"] {
+  --color-bg: #fdf3d8;
+  --color-app-bg: #fff8e8;
+  /* Unread panels — bright halftone yellow. */
+  --color-cell-hidden: #ffd23a;
+  --color-cell-hidden-hover: #ffe06a;
+  --color-cell-hidden-gradient:
+    radial-gradient(circle at 50% 50%, rgba(0,0,0,0.10) 0 1.4px, transparent 1.8px) 0 0 / 7px 7px,
+    linear-gradient(150deg, #ffd84a, #ffc81a);
+  /* Cleared = white panel. */
+  --color-cell-revealed: #fffdf6;
+  --color-cell-border-light: #ffffff;
+  --color-cell-border-dark: #111111;
+  --color-mine: #111111;
+  --color-mine-hit: #e81c2a;
+  --color-flag: #e81c2a;
+  --color-text: #141414;
+  --color-text-secondary: #5a5444;
+
+  /* Bold pop primaries — heavy and saturated. */
+  --color-num-1: #1556d0;
+  --color-num-2: #168a2e;
+  --color-num-3: #e81c2a;
+  --color-num-4: #7a1ec0;
+  --color-num-5: #e06a10;
+  --color-num-6: #0a9aa8;
+  --color-num-7: #c01890;
+  --color-num-8: #303030;
+  --color-num-9: #b0901a;
+  --color-num-10: #1570d0;
+  --color-num-11: #9020c0;
+  --color-num-12: #b89010;
+  --color-num-13: #e83020;
+  --color-num-14: #109080;
+  --color-num-15: #5040c0;
+  --color-num-16: #d07018;
+  --color-num-17: #1860c0;
+  --color-num-18: #d02090;
+
+  --color-header-bg: #ffd23a;
+  --color-header-gradient: linear-gradient(180deg, #ffdc54, #ffc828);
+  --color-lcd-bg: #141414;
+  --color-lcd-text: #ffe04a;
+  --color-modal-bg: #fff8e8;
+  --color-modal-overlay: rgba(20, 20, 20, 0.7);
+  --color-btn-bg: #ffffff;
+  --color-btn-hover: #ffe9a8;
+  --color-btn-gradient: linear-gradient(180deg, #ffffff, #ffeebb);
+  --color-border: #141414;
+  --color-fog: rgba(255, 210, 58, 0.92);
+  --color-scan-highlight: rgba(232, 28, 42, 0.16);
+  --color-golden: #f0a818;
+  --color-accent: #e81c2a;
+  --color-accent-hover: #c81020;
+  --color-accent-glow: rgba(232, 28, 42, 0.25);
+  --color-win: #168a2e;
+  --color-loss: #e81c2a;
+  --color-wall: #141414;
+  --color-surface: rgba(20, 20, 20, 0.05);
+
+  --shadow-app: 0 8px 0 #141414, 0 12px 40px rgba(20, 16, 8, 0.3);
+  --text-shadow-lcd: none;
+  --text-shadow-title: 3px 3px 0 #141414, 5px 5px 0 rgba(232, 28, 42, 0.4);
+  --shadow-board: 0 6px 0 #141414, 0 10px 24px rgba(20, 16, 8, 0.25);
+  --bg-modal-close-hover: rgba(232, 28, 42, 0.12);
+
+  /* ── Theme-expression layer ─────────────────────────── */
+  /* Heavy display sans — comic lettering. */
+  --font-family: 'Arial Black', 'Arial', 'Helvetica Neue', sans-serif;
+  --font-display: 'Impact', 'Haettenschweiler', 'Arial Black', sans-serif;
+  --cell-shape-radius: 3px;
+  --anim-reveal-dur: 0.22s;
+  --anim-reveal-ease: cubic-bezier(0.34, 1.56, 0.5, 1);
+  --anim-flag-dur: 0.24s;
+  --anim-flag-ease: cubic-bezier(0.34, 1.7, 0.5, 1);
+
+  /* Ben-Day halftone wash across the page. */
+  --bg-page-image:
+    radial-gradient(circle at 50% 50%, rgba(232, 28, 42, 0.08) 0 1.6px, transparent 2px) 0 0 / 10px 10px,
+    radial-gradient(circle at 50% 50%, rgba(21, 86, 208, 0.06) 0 1.6px, transparent 2px) 5px 5px / 10px 10px;
+
+  /* Cleared panels need a grout. It must CONTRAST the white panel (#fffdf6),
+     not match it — the bold black ink gutter (#141414) between panels, so
+     cleared cells read as separate comic panels, never a white slab. */
+  --cell-gap-seal: #141414;
+
+  --marker-liar-outline: rgba(232, 28, 42, 0.98);
+  --marker-sonar-tint: rgba(0, 150, 200, 0.22);
+  --marker-compass-tint: rgba(240, 168, 24, 0.26);
+  --marker-wormhole-0: rgba(224, 106, 16, 0.30);
+  --marker-wormhole-1: rgba(160, 40, 200, 0.28);
+  --marker-wormhole-2: rgba(22, 138, 46, 0.28);
+  --marker-mirror-0: rgba(21, 86, 208, 0.96);
+  --marker-mirror-1: rgba(122, 30, 192, 0.96);
+  --marker-mirror-2: rgba(224, 106, 16, 0.96);
+  --marker-plate-border: rgba(232, 28, 42, 0.95);
+  --marker-plate-timer: #e81c2a;
+}
+
+[data-theme="comic"] #game-title,
+[data-theme="comic"] .title-screen-logo {
+  font-family: 'Impact', 'Haettenschweiler', 'Arial Black', sans-serif;
+  font-weight: 400;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #ffe04a;
+  -webkit-text-stroke: 2px #141414;
+  text-shadow: 3px 3px 0 #141414, 5px 5px 0 rgba(232, 28, 42, 0.5);
+}
+[data-theme="comic"] #title-subtitle,
+[data-theme="comic"] .title-screen-subtitle {
+  font-family: 'Arial Black', 'Arial', sans-serif;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: #141414;
+}
+
+/* Panel pops in with a springy comic bounce. */
+[data-theme="comic"] .cell.num-pop,
+[data-theme="comic"] .cell.revealing {
+  animation-name: comicPop;
+}
+@keyframes comicPop {
+  0%   { transform: scale(0.4) rotate(-6deg); opacity: 0; }
+  60%  { transform: scale(1.18) rotate(3deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}

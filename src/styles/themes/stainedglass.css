@@ -1,0 +1,127 @@
+/* Stained Glass theme — leaded cathedral window. Jewel-toned glass panes held in
+   dark lead came, light pouring through cleared panes. Blackletter title. The
+   lead lines ARE the grout, so cleared cells read as separate lit panes. */
+[data-theme="stainedglass"] {
+  --color-bg: #0e0b16;
+  --color-app-bg: #08060e;
+  /* Unlit jewel panes — deep saturated glass. */
+  --color-cell-hidden: #2a1c4a;
+  --color-cell-hidden-hover: #34245a;
+  --color-cell-hidden-gradient: linear-gradient(150deg, #3a2060, #1e1440 55%, #2a1846);
+  /* Cleared = warm cathedral light pouring through. */
+  --color-cell-revealed: #ecdcb4;
+  --color-cell-border-light: #4a3a70;
+  --color-cell-border-dark: #100b1c;
+  --color-mine: #f0e6c8;
+  --color-mine-hit: #d63030;
+  --color-flag: #e0b040;
+  --color-text: #ece4d0;
+  --color-text-secondary: #9a86c0;
+
+  /* Jewel-glass numbers — deep saturated on the warm lit pane. */
+  --color-num-1: #2456c0;
+  --color-num-2: #1d7a3a;
+  --color-num-3: #c41e2a;
+  --color-num-4: #6a2db0;
+  --color-num-5: #b85010;
+  --color-num-6: #157a82;
+  --color-num-7: #8a1a6a;
+  --color-num-8: #4a4a55;
+  --color-num-9: #b08010;
+  --color-num-10: #2060b0;
+  --color-num-11: #7a30a0;
+  --color-num-12: #a07810;
+  --color-num-13: #c0301a;
+  --color-num-14: #1a7a6a;
+  --color-num-15: #5040a0;
+  --color-num-16: #b06020;
+  --color-num-17: #2050a0;
+  --color-num-18: #a02080;
+
+  --color-header-bg: #1a1230;
+  --color-header-gradient: linear-gradient(180deg, #221840, #160e28);
+  --color-lcd-bg: #08060e;
+  --color-lcd-text: #e0b040;
+  --color-modal-bg: #140d24;
+  --color-modal-overlay: rgba(4, 2, 10, 0.88);
+  --color-btn-bg: #221840;
+  --color-btn-hover: #2c2050;
+  --color-btn-gradient: linear-gradient(180deg, #2c2050, #221840);
+  --color-border: #3a2860;
+  --color-fog: rgba(6, 4, 14, 0.92);
+  --color-scan-highlight: rgba(224, 176, 64, 0.18);
+  --color-golden: #e0b040;
+  --color-accent: #e0b040;
+  --color-accent-hover: #f0c860;
+  --color-accent-glow: rgba(224, 176, 64, 0.3);
+  --color-win: #3aa060;
+  --color-loss: #d63030;
+  --color-wall: #c8b0e8;
+  --color-surface: rgba(224, 176, 64, 0.05);
+
+  --shadow-app: 0 12px 48px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(200, 176, 232, 0.08);
+  --text-shadow-lcd: 0 0 8px rgba(224, 176, 64, 0.35);
+  --text-shadow-title: 0 2px 6px rgba(0, 0, 0, 0.6);
+  --shadow-board: 0 6px 24px rgba(0, 0, 0, 0.55);
+  --bg-modal-close-hover: rgba(224, 176, 64, 0.12);
+
+  /* ── Theme-expression layer ─────────────────────────── */
+  /* Blackletter title; warm humanist serif for the rest. */
+  --font-family: 'Book Antiqua', 'Palatino Linotype', 'Georgia', serif;
+  --font-display: 'Old English Text MT', 'Blackadder ITC', 'Book Antiqua', serif;
+  --cell-shape-radius: 3px;
+  --anim-reveal-dur: 0.3s;
+  --anim-reveal-ease: ease-out;
+  --anim-flag-dur: 0.2s;
+  --anim-flag-ease: ease-out;
+
+  /* Jewel light scattered across the dark lead. */
+  --bg-page-image:
+    radial-gradient(circle at 22% 28%, rgba(120, 60, 200, 0.10), transparent 32%),
+    radial-gradient(circle at 76% 36%, rgba(200, 60, 80, 0.08), transparent 32%),
+    radial-gradient(circle at 50% 78%, rgba(60, 140, 200, 0.08), transparent 36%);
+
+  /* Light pours through cleared panes → they need a grout. It must CONTRAST the
+     warm lit pane (#ecdcb4), not match it — the dark lead came (#16111f) that
+     frames every pane, so cleared cells read as separate lit panes of glass. */
+  --cell-gap-seal: #16111f;
+
+  --marker-liar-outline: rgba(214, 48, 48, 0.96);
+  --marker-sonar-tint: rgba(0, 170, 200, 0.26);
+  --marker-compass-tint: rgba(224, 176, 64, 0.30);
+  --marker-wormhole-0: rgba(224, 140, 40, 0.32);
+  --marker-wormhole-1: rgba(180, 60, 200, 0.32);
+  --marker-wormhole-2: rgba(60, 160, 110, 0.32);
+  --marker-mirror-0: rgba(60, 110, 210, 0.96);
+  --marker-mirror-1: rgba(150, 70, 200, 0.96);
+  --marker-mirror-2: rgba(210, 150, 50, 0.96);
+  --marker-plate-border: rgba(214, 48, 48, 0.92);
+  --marker-plate-timer: #d63030;
+}
+
+[data-theme="stainedglass"] #game-title,
+[data-theme="stainedglass"] .title-screen-logo {
+  font-family: 'Old English Text MT', 'Blackadder ITC', 'Book Antiqua', serif;
+  font-weight: 400;
+  letter-spacing: 1px;
+  color: #e0b040;
+  text-shadow: 0 0 12px rgba(224, 176, 64, 0.4), 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+[data-theme="stainedglass"] #title-subtitle,
+[data-theme="stainedglass"] .title-screen-subtitle {
+  font-family: 'Book Antiqua', 'Palatino Linotype', serif;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: #9a86c0;
+}
+
+/* Light blooms through the glass as the pane clears. */
+[data-theme="stainedglass"] .cell.num-pop,
+[data-theme="stainedglass"] .cell.revealing {
+  animation-name: glassBloom;
+}
+@keyframes glassBloom {
+  0%   { opacity: 0; filter: brightness(0.3) saturate(2); transform: scale(0.85); }
+  60%  { opacity: 1; filter: brightness(1.4) saturate(1.4); }
+  100% { opacity: 1; filter: brightness(1) saturate(1); transform: scale(1); }
+}

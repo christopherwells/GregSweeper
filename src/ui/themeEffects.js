@@ -378,6 +378,107 @@ const THEME_EFFECTS = {
     return () => { grain.remove(); dustCleanup(); };
   },
 
+  // Stained Glass: jewel light scattered across the panes + drifting colored
+  // glow, as if the sun is moving behind the cathedral window.
+  stainedglass: (container) => {
+    injectStyles();
+    ambientGlow(container, { blur: 30, style: {
+      background: 'radial-gradient(ellipse 40% 45% at 26% 30%, rgba(120,60,200,0.12) 0%, transparent 55%), radial-gradient(ellipse 38% 40% at 74% 60%, rgba(200,50,70,0.10) 0%, transparent 55%), radial-gradient(ellipse 36% 38% at 50% 86%, rgba(60,140,200,0.10) 0%, transparent 55%)',
+      animation: 'fxDrift 18s ease-in-out infinite alternate', '--fx-x0': '-5%', '--fx-x2': '5%',
+    }});
+    return particleLoop(container, (c) => {
+      const colors = ['rgba(180,80,240,0.75)', 'rgba(240,80,110,0.75)', 'rgba(80,160,240,0.7)', 'rgba(80,200,140,0.65)', 'rgba(240,200,80,0.75)'];
+      return spawn(c, { text: pick(['✦', '✧', '⋆']), style: {
+        left: rand(5, 95) + '%', top: rand(5, 95) + '%', fontSize: rand(6, 11) + 'px',
+        color: pick(colors), textShadow: '0 0 6px currentColor',
+        animation: `fxTwinkle ${rand(1.6, 3.4)}s ease-in-out forwards`,
+        '--fx-opacity': String(rand(0.4, 0.7)),
+      }});
+    }, () => rand(500, 1300));
+  },
+
+  // Apothecary: a flickering candle glow in one corner + warm dust motes rising
+  // through the candlelight.
+  apothecary: (container) => {
+    injectStyles();
+    const glow = ambientGlow(container, { blur: 26, style: {
+      inset: '-12%',
+      background: 'radial-gradient(ellipse 50% 42% at 78% 20%, rgba(255,190,90,0.15) 0%, transparent 56%)',
+    }});
+    glow.animate(
+      [{ opacity: 0.85 }, { opacity: 1 }, { opacity: 0.72 }, { opacity: 0.96 }, { opacity: 0.8 }],
+      { duration: 1700, iterations: Infinity, easing: 'ease-in-out' }
+    );
+    const moteCleanup = particleLoop(container, (c) => {
+      return risingParticle(c, {
+        color: pick(['rgba(232,180,90,0.55)', 'rgba(200,140,60,0.5)', 'rgba(180,120,50,0.4)']),
+        glow: '0 0 5px rgba(232,180,90,0.35)', sizeMin: 2, sizeMax: 4,
+        durationMin: 4, durationMax: 8, opacity: 0.5, opacityEnd: 0.08, scaleEnd: 0.3,
+      });
+    }, () => rand(700, 1800));
+    return () => { glow.remove(); moteCleanup(); };
+  },
+
+  // Split-Flap: sparse amber 'clack' glints where a flap turns over — the quiet
+  // mechanical life of a departure board between updates.
+  splitflap: (container) => {
+    injectStyles();
+    return particleLoop(container, (c) => {
+      const w = rand(10, 20);
+      return spawn(c, { style: {
+        left: rand(5, 90) + '%', top: rand(5, 90) + '%',
+        width: w + 'px', height: rand(5, 9) + 'px', borderRadius: '1px',
+        background: 'linear-gradient(180deg, rgba(232,200,90,0), rgba(232,200,90,0.30), rgba(0,0,0,0))',
+        animation: `fxGlitch ${rand(0.18, 0.4)}s steps(2, end) forwards`,
+        '--fx-opacity': '0.5',
+      }});
+    }, () => rand(360, 1050));
+  },
+
+  // Circuit Board: indicator LEDs blinking + current pulses zipping along the
+  // copper traces.
+  circuitboard: (container) => {
+    injectStyles();
+    const ledCleanup = particleLoop(container, (c) => {
+      const size = rand(2.5, 5);
+      return spawn(c, { style: {
+        left: rand(5, 95) + '%', top: rand(5, 95) + '%',
+        width: size + 'px', height: size + 'px', borderRadius: '50%',
+        background: pick(['rgba(64,240,144,0.9)', 'rgba(64,200,240,0.85)', 'rgba(240,80,60,0.8)', 'rgba(240,200,64,0.85)']),
+        boxShadow: '0 0 6px currentColor, 0 0 12px currentColor',
+        animation: `fxTwinkle ${rand(0.5, 1.6)}s ease-in-out forwards`,
+        '--fx-opacity': String(rand(0.6, 0.95)),
+      }});
+    }, () => rand(280, 800));
+    const pulseCleanup = particleLoop(container, (c) => {
+      return spawn(c, { style: {
+        left: '0', top: rand(8, 92) + '%',
+        width: rand(20, 40) + 'px', height: '2px', borderRadius: '2px',
+        background: 'linear-gradient(90deg, transparent, rgba(64,255,150,0.9), transparent)',
+        boxShadow: '0 0 6px rgba(64,255,150,0.5)',
+        transformOrigin: 'left center',
+        animation: `fxShoot ${rand(0.7, 1.4)}s linear forwards`,
+        '--fx-ang': '0deg', '--fx-dist': rand(180, 360) + 'px',
+      }});
+    }, () => rand(500, 1400));
+    return () => { ledCleanup(); pulseCleanup(); };
+  },
+
+  // Comic: bursty halftone-colored stars popping across the page, each with a
+  // hard ink-outline shadow.
+  comic: (container) => {
+    injectStyles();
+    return particleLoop(container, (c) => {
+      const colors = ['rgba(232,28,42,0.85)', 'rgba(21,86,208,0.8)', 'rgba(240,200,30,0.88)', 'rgba(22,138,46,0.75)'];
+      return spawn(c, { text: pick(['✦', '✵', '✷', '✯', '★']), style: {
+        left: rand(5, 95) + '%', top: rand(5, 95) + '%', fontSize: rand(8, 16) + 'px',
+        color: pick(colors), textShadow: '1px 1px 0 #141414',
+        animation: `fxTwinkle ${rand(0.7, 1.6)}s ease-in-out forwards`,
+        '--fx-opacity': String(rand(0.6, 0.9)),
+      }});
+    }, () => rand(280, 760));
+  },
+
   // Candy (L12): a busy shower of sprinkles, hearts + sparkle pops
   candy: (container) => {
     injectStyles();

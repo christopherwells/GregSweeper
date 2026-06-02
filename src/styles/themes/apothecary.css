@@ -1,0 +1,125 @@
+/* Apothecary theme — candlelit alchemist's cabinet. Aged vellum, dark wood
+   shelving, sepia-and-verdigris ink, warm candle glow. Cleared cells are lit
+   vellum framed by dark shelf-wood grout. */
+[data-theme="apothecary"] {
+  --color-bg: #1c140b;
+  --color-app-bg: #140e07;
+  /* Closed drawers — dark aged wood. */
+  --color-cell-hidden: #3a2a18;
+  --color-cell-hidden-hover: #463320;
+  --color-cell-hidden-gradient: linear-gradient(150deg, #43301c, #2e2012 60%, #38271590);
+  /* Cleared = lit vellum page. */
+  --color-cell-revealed: #e6d5a8;
+  --color-cell-border-light: #6a5030;
+  --color-cell-border-dark: #160f08;
+  --color-mine: #2a1c0e;
+  --color-mine-hit: #b03818;
+  --color-flag: #c89030;
+  --color-text: #ecdcb8;
+  --color-text-secondary: #a08860;
+
+  /* Ink + alchemical tints on vellum. */
+  --color-num-1: #2a5a8a;
+  --color-num-2: #4a7028;
+  --color-num-3: #b03818;
+  --color-num-4: #6a3a8a;
+  --color-num-5: #8a4818;
+  --color-num-6: #1a7868;
+  --color-num-7: #5a3818;
+  --color-num-8: #4a4030;
+  --color-num-9: #a07810;
+  --color-num-10: #2a6080;
+  --color-num-11: #7a4080;
+  --color-num-12: #907018;
+  --color-num-13: #a84020;
+  --color-num-14: #2a7860;
+  --color-num-15: #5a4880;
+  --color-num-16: #986028;
+  --color-num-17: #2a5878;
+  --color-num-18: #984068;
+
+  --color-header-bg: #2a1e10;
+  --color-header-gradient: linear-gradient(180deg, #32240f, #221808);
+  --color-lcd-bg: #140e07;
+  --color-lcd-text: #e8c060;
+  --color-modal-bg: #1e160c;
+  --color-modal-overlay: rgba(8, 5, 2, 0.86);
+  --color-btn-bg: #32240f;
+  --color-btn-hover: #3e2c14;
+  --color-btn-gradient: linear-gradient(180deg, #3e2c14, #32240f);
+  --color-border: #4a3418;
+  --color-fog: rgba(10, 7, 3, 0.9);
+  --color-scan-highlight: rgba(200, 144, 48, 0.18);
+  --color-golden: #c89030;
+  --color-accent: #c89030;
+  --color-accent-hover: #e0a848;
+  --color-accent-glow: rgba(200, 144, 48, 0.3);
+  --color-win: #6a9028;
+  --color-loss: #b03818;
+  --color-wall: #d8c090;
+  --color-surface: rgba(200, 144, 48, 0.05);
+
+  --shadow-app: 0 12px 44px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(232, 192, 96, 0.06);
+  --text-shadow-lcd: 0 0 8px rgba(232, 192, 96, 0.35);
+  --text-shadow-title: 0 1px 3px rgba(0, 0, 0, 0.6);
+  --shadow-board: 0 6px 22px rgba(0, 0, 0, 0.5);
+  --bg-modal-close-hover: rgba(200, 144, 48, 0.12);
+
+  /* ── Theme-expression layer ─────────────────────────── */
+  /* Warm bookish serif — old pharmacopoeia. */
+  --font-family: 'Bookman Old Style', 'Bookman', 'Georgia', serif;
+  --font-display: 'Bookman Old Style', 'Bookman', 'Georgia', serif;
+  --cell-shape-radius: 2px;
+  --anim-reveal-dur: 0.26s;
+  --anim-reveal-ease: ease-out;
+  --anim-flag-dur: 0.2s;
+  --anim-flag-ease: ease-out;
+
+  /* Candle glow warming one corner of the cabinet. */
+  --bg-page-image:
+    radial-gradient(ellipse 55% 50% at 78% 22%, rgba(232, 180, 80, 0.10), transparent 58%),
+    radial-gradient(ellipse 45% 40% at 24% 76%, rgba(180, 120, 40, 0.06), transparent 56%);
+
+  /* Cleared drawers reveal lit vellum → they need a grout. It must CONTRAST the
+     lit vellum (#e6d5a8), not match it — the dark shelf-wood (#2a1c0e) between
+     drawers, so cleared cells read as separate framed pages. */
+  --cell-gap-seal: #2a1c0e;
+
+  --marker-liar-outline: rgba(176, 56, 24, 0.96);
+  --marker-sonar-tint: rgba(0, 150, 160, 0.26);
+  --marker-compass-tint: rgba(200, 144, 48, 0.30);
+  --marker-wormhole-0: rgba(200, 130, 40, 0.32);
+  --marker-wormhole-1: rgba(150, 70, 150, 0.30);
+  --marker-wormhole-2: rgba(70, 140, 80, 0.30);
+  --marker-mirror-0: rgba(50, 100, 150, 0.95);
+  --marker-mirror-1: rgba(130, 80, 150, 0.95);
+  --marker-mirror-2: rgba(180, 130, 60, 0.95);
+  --marker-plate-border: rgba(176, 56, 24, 0.92);
+  --marker-plate-timer: #b03818;
+}
+
+[data-theme="apothecary"] #game-title,
+[data-theme="apothecary"] .title-screen-logo {
+  font-family: 'Bookman Old Style', 'Bookman', 'Georgia', serif;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #e8c060;
+  text-shadow: 0 0 10px rgba(232, 192, 96, 0.35), 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+[data-theme="apothecary"] #title-subtitle,
+[data-theme="apothecary"] .title-screen-subtitle {
+  font-family: 'Bookman Old Style', 'Bookman', serif;
+  letter-spacing: 3px;
+  font-style: italic;
+  color: #a08860;
+}
+
+/* The label fades up as the drawer slides open. */
+[data-theme="apothecary"] .cell.num-pop,
+[data-theme="apothecary"] .cell.revealing {
+  animation-name: apothReveal;
+}
+@keyframes apothReveal {
+  0%   { opacity: 0; transform: translateY(-3px); filter: sepia(0.6) brightness(0.7); }
+  100% { opacity: 1; transform: translateY(0); filter: sepia(0) brightness(1); }
+}
