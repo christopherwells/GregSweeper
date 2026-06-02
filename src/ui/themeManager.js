@@ -31,7 +31,7 @@ export const THEME_UNLOCKS = {
   dark:             { levelRequired: 0,  displayName: 'Dark',           mine: '💣', flag: '🚩', smiley: '😊', smileyWin: '😎', smileyLoss: '😵' },
   ocean:            { levelRequired: 3,  displayName: 'Ocean',          mine: '🐡', flag: '⚓', smiley: '🐟', smileyWin: '🐬', smileyLoss: '🫧' },
   sunset:           { levelRequired: 6,  displayName: 'Sunset',         mine: '☀️', flag: '🚩', smiley: '🌤️', smileyWin: '🌞', smileyLoss: '🌧️' },
-  forest:           { levelRequired: 9,  displayName: 'Forest',         mine: '🍄', flag: '🌿', smiley: '🌲', smileyWin: '🦉', smileyLoss: '🪵' },
+  forest:           { levelRequired: 9,  displayName: 'Forest',         mine: '🌰', flag: '🐿️', strikeCell: '🌳', smiley: '🌲', smileyWin: '🦉', smileyLoss: '🪵' },
   candy:            { levelRequired: 12, displayName: 'Candy',          mine: '🍬', flag: '🍭', smiley: '🧁', smileyWin: '🎂', smileyLoss: '🍩' },
   midnight:         { levelRequired: 15, displayName: 'Midnight',       mine: '🌙', flag: '⭐', smiley: '🦇', smileyWin: '🌕', smileyLoss: '🌑' },
   stealth:          { levelRequired: 18, displayName: 'Stealth',        mine: '💣', flag: '📌', smiley: '🥷', smileyWin: '🕵️', smileyLoss: '💀' },
