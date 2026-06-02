@@ -352,6 +352,32 @@ const THEME_EFFECTS = {
     }, () => rand(420, 1100));
   },
 
+  // Noir: pale dust drifting in the projector beam + a faint full-board film
+  // grain flicker (the cinema look). Dust is sparse but visible; grain is subtle.
+  noir: (container) => {
+    injectStyles();
+    // Subtle film-grain flicker over the whole board.
+    const grain = document.createElement('div');
+    Object.assign(grain.style, {
+      position: 'absolute', inset: '0', pointerEvents: 'none', zIndex: '0',
+      background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.018) 2px, rgba(255,255,255,0.018) 3px)',
+      animation: 'fxGlitch 0.5s steps(2, end) infinite',
+    });
+    container.appendChild(grain);
+    const dustCleanup = particleLoop(container, (c) => {
+      const size = rand(2, 5);
+      return spawn(c, { style: {
+        left: rand(5, 95) + '%', top: rand(8, 92) + '%',
+        width: size + 'px', height: size + 'px', borderRadius: '50%',
+        background: 'rgba(238, 234, 222, 0.4)',
+        boxShadow: '0 0 4px rgba(238, 234, 222, 0.25)',
+        animation: `fxFloat ${rand(4, 8)}s ease-in-out forwards, fxTwinkle ${rand(3, 6)}s ease-in-out forwards`,
+        '--fx-float-y': rand(-14, -32) + 'px', '--fx-opacity': String(rand(0.25, 0.5)),
+      }});
+    }, () => rand(600, 1600));
+    return () => { grain.remove(); dustCleanup(); };
+  },
+
   // Candy (L12): a busy shower of sprinkles, hearts + sparkle pops
   candy: (container) => {
     injectStyles();

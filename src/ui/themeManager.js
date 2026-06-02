@@ -35,6 +35,7 @@ export const THEME_UNLOCKS = {
   cartography:      { levelRequired: 20, displayName: 'Cartography',    mine: '❌', flag: '⛵', strikeCell: '🐙', smiley: '🧭', smileyWin: '💰', smileyLoss: '🐙' },
   origami:          { levelRequired: 25, displayName: 'Origami',        mine: '🕊️', flag: '🔖', strikeCell: '🗯️', smiley: '🦢', smileyWin: '🎏', smileyLoss: '🗯️' },
   chalkboard:       { levelRequired: 40, displayName: 'Chalkboard',     mine: '☠️', flag: '⚑', strikeCell: '💨', smiley: '✏️', smileyWin: '💯', smileyLoss: '💨' },
+  noir:             { levelRequired: 50, displayName: 'Noir',           mine: '🎱', flag: '🔍', strikeCell: '🩸', smiley: '🕵️', smileyWin: '🥃', smileyLoss: '🚬' },
   ocean:            { levelRequired: 3,  displayName: 'Ocean',          mine: '🐡', flag: '⚓', smiley: '🐟', smileyWin: '🐬', smileyLoss: '🫧' },
   sunset:           { levelRequired: 6,  displayName: 'Sunset',         mine: '☀️', flag: '🚩', smiley: '🌤️', smileyWin: '🌞', smileyLoss: '🌧️' },
   forest:           { levelRequired: 9,  displayName: 'Forest',         mine: '🌰', flag: '🐿️', strikeCell: '🌳', smiley: '🌲', smileyWin: '🦉', smileyLoss: '🪵' },
