@@ -1,0 +1,120 @@
+/* Sumi-e theme — minimal Japanese ink-brush on warm rice paper. Soft serif,
+   ink gradations, a single cinnabar-seal red accent. No particles (zen). */
+[data-theme="sumie"] {
+  --color-bg: #e6dfce;
+  --color-app-bg: #f2ede1;
+  --color-cell-hidden: #e4ddcd;
+  --color-cell-hidden-hover: #dbd3c0;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #e8e1d2, #ddd5c4);
+  --color-cell-revealed: #f6f1e7;
+  --color-cell-border-light: #c4bba6;
+  --color-cell-border-dark: #9a9078;
+  --color-mine: #1c1814;
+  --color-mine-hit: #b03020;
+  --color-flag: #b03020;
+  --color-text: #1c1814;
+  --color-text-secondary: #6a6252;
+
+  /* Ink gradations with a few muted natural tones — brush, not UI. */
+  --color-num-1: #3a5a6a;
+  --color-num-2: #4a6a4a;
+  --color-num-3: #b03020;
+  --color-num-4: #6a5a7a;
+  --color-num-5: #8a5a5a;
+  --color-num-6: #3a6a6a;
+  --color-num-7: #2a2620;
+  --color-num-8: #6a6258;
+  --color-num-9: #9a6238;
+  --color-num-10: #3a6a78;
+  --color-num-11: #7a5a86;
+  --color-num-12: #7a7038;
+  --color-num-13: #a84838;
+  --color-num-14: #3a7060;
+  --color-num-15: #5a5a80;
+  --color-num-16: #8a6248;
+  --color-num-17: #3a5a80;
+  --color-num-18: #8a4860;
+
+  --color-header-bg: #e4ddcd;
+  --color-header-gradient: linear-gradient(180deg, #eae3d4, #ddd5c4);
+  --color-lcd-bg: #2a2620;
+  --color-lcd-text: #d8b89a;
+  --color-modal-bg: #f2ede1;
+  --color-modal-overlay: rgba(36, 32, 26, 0.7);
+  --color-btn-bg: #e4ddcd;
+  --color-btn-hover: #dbd3c0;
+  --color-btn-gradient: linear-gradient(180deg, #eae3d4, #ddd5c4);
+  --color-border: #cabfa8;
+  --color-fog: rgba(36, 32, 26, 0.88);
+  --color-scan-highlight: rgba(176, 48, 32, 0.12);
+  --color-golden: #b8860b;
+  --color-accent: #b03020;
+  --color-accent-hover: #8f2618;
+  --color-accent-glow: rgba(176, 48, 32, 0.2);
+  --color-win: #4a6a4a;
+  --color-loss: #b03020;
+  --color-wall: #2a2620;
+  --color-surface: rgba(0, 0, 0, 0.03);
+
+  --shadow-app: 0 10px 40px rgba(40, 32, 22, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  --text-shadow-lcd: none;
+  --text-shadow-title: none;
+  --shadow-board: 0 3px 14px rgba(40, 32, 22, 0.15);
+  --bg-modal-close-hover: rgba(176, 48, 32, 0.1);
+  --border-cell-revealed: 1px solid rgba(154, 144, 120, 0.3);
+
+  /* ── Theme-expression layer ─────────────────────────── */
+  /* Soft humanist serif — closest system face to a brushed figure. */
+  --font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif;
+  --font-display: 'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif;
+  --cell-shape-radius: 1px;
+  /* Slow, soft reveal — ink bleeding into paper. */
+  --anim-reveal-dur: 0.45s;
+  --anim-reveal-ease: ease-out;
+  --anim-flag-dur: 0.4s;
+  --anim-flag-ease: ease-out;
+
+  /* Faint mottled rice-paper fibers. */
+  --bg-page-image:
+    radial-gradient(ellipse 60% 50% at 22% 30%, rgba(120, 100, 70, 0.05), transparent 60%),
+    radial-gradient(ellipse 50% 60% at 78% 68%, rgba(120, 100, 70, 0.045), transparent 60%),
+    radial-gradient(ellipse 40% 40% at 55% 85%, rgba(100, 80, 60, 0.04), transparent 60%);
+
+  --marker-liar-outline: rgba(176, 48, 32, 0.95);
+  --marker-sonar-tint: rgba(0, 130, 150, 0.22);
+  --marker-compass-tint: rgba(170, 120, 0, 0.24);
+  --marker-wormhole-0: rgba(180, 90, 30, 0.28);
+  --marker-wormhole-1: rgba(140, 50, 130, 0.26);
+  --marker-wormhole-2: rgba(50, 100, 60, 0.26);
+  --marker-mirror-0: rgba(50, 80, 130, 0.92);
+  --marker-mirror-1: rgba(110, 60, 130, 0.92);
+  --marker-mirror-2: rgba(150, 90, 40, 0.92);
+  --marker-plate-border: rgba(176, 48, 32, 0.9);
+  --marker-plate-timer: #b03020;
+}
+
+[data-theme="sumie"] #game-title,
+[data-theme="sumie"] .title-screen-logo {
+  font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #1c1814;
+  text-shadow: none;
+}
+[data-theme="sumie"] #title-subtitle,
+[data-theme="sumie"] .title-screen-subtitle {
+  font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif;
+  font-style: italic;
+  letter-spacing: 2px;
+  color: #6a6252;
+}
+
+/* Ink-bleed reveal — soft fade and settle, no hard edges. */
+[data-theme="sumie"] .cell.num-pop,
+[data-theme="sumie"] .cell.revealing {
+  animation-name: sumieBleed;
+}
+@keyframes sumieBleed {
+  0%   { opacity: 0; transform: scale(0.8); filter: blur(2px); }
+  100% { opacity: 1; transform: scale(1); filter: blur(0); }
+}
