@@ -1195,7 +1195,7 @@ function renderCollectionModal() {
       apothecary: 'linear-gradient(135deg, #43301c, #c89030)',
       splitflap: 'linear-gradient(135deg, #2a2a2a, #e8c84a)',
       circuitboard: 'linear-gradient(135deg, #0e3322, #b87838)',
-      comic: 'linear-gradient(135deg, #ffd23a, #e81c2a)',
+      comic: 'linear-gradient(135deg, #e4dabf, #c8d6cf)',
       ocean: 'linear-gradient(135deg, #1b3a4b, #1e4a5f)',
       sunset: 'linear-gradient(135deg, #2d1b2e, #3d2240)',
       forest: 'linear-gradient(135deg, #2d3a2e, #3e5a3a)',

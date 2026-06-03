@@ -464,21 +464,6 @@ const THEME_EFFECTS = {
     return () => { ledCleanup(); pulseCleanup(); };
   },
 
-  // Comic: bursty halftone-colored stars popping across the page, each with a
-  // hard ink-outline shadow.
-  comic: (container) => {
-    injectStyles();
-    return particleLoop(container, (c) => {
-      const colors = ['rgba(232,28,42,0.85)', 'rgba(21,86,208,0.8)', 'rgba(240,200,30,0.88)', 'rgba(22,138,46,0.75)'];
-      return spawn(c, { text: pick(['✦', '✵', '✷', '✯', '★']), style: {
-        left: rand(5, 95) + '%', top: rand(5, 95) + '%', fontSize: rand(8, 16) + 'px',
-        color: pick(colors), textShadow: '1px 1px 0 #141414',
-        animation: `fxTwinkle ${rand(0.7, 1.6)}s ease-in-out forwards`,
-        '--fx-opacity': String(rand(0.6, 0.9)),
-      }});
-    }, () => rand(280, 760));
-  },
-
   // Candy (L12): a busy shower of sprinkles, hearts + sparkle pops
   candy: (container) => {
     injectStyles();
