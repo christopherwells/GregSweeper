@@ -1,50 +1,45 @@
 {
-  "updatedAt": "2026-06-02T18:08:15Z",
-  "target": "sonarCellCount",
-  "reason": "highest posterior CV (1.008) excluding last 3 targets",
+  "updatedAt": "2026-06-03T18:25:30Z",
+  "target": "liarCellCount",
+  "reason": "highest posterior CV (0.965) excluding last 3 targets",
   "recentTargets": [
+    "liarCellCount",
     "sonarCellCount",
-    "compassCellCount",
-    "lockedCellCount"
+    "compassCellCount"
   ],
   "candidates": [
     {
-      "feature": "compassCellCount",
-      "mean": 0.8,
-      "sd": 0.873,
-      "cv": 1.091
-    },
-    {
       "feature": "lockedCellCount",
-      "mean": 0.628,
-      "sd": 0.666,
-      "cv": 1.06
+      "mean": 0.654,
+      "sd": 0.73,
+      "cv": 1.115
     },
     {
-      "feature": "wormholePairCount",
-      "mean": 1.189,
-      "sd": 1.228,
-      "cv": 1.032
+      "feature": "compassCellCount",
+      "mean": 0.774,
+      "sd": 0.86,
+      "cv": 1.112
     },
     {
       "feature": "sonarCellCount",
-      "mean": 0.67,
-      "sd": 0.675,
-      "cv": 1.008
+      "mean": 0.693,
+      "sd": 0.709,
+      "cv": 1.022
     },
     {
       "feature": "liarCellCount",
-      "mean": 0.786,
-      "sd": 0.765,
-      "cv": 0.973
+      "mean": 0.769,
+      "sd": 0.742,
+      "cv": 0.965
+    },
+    {
+      "feature": "wormholePairCount",
+      "mean": 1.047,
+      "sd": 0.993,
+      "cv": 0.948
     }
   ],
   "coverage_targets": [
-    {
-      "feature": "wormholePairCount",
-      "n_boards": 5,
-      "deficit_weight": 0.1667
-    },
     {
       "feature": "compassCellCount",
       "n_boards": 5,
@@ -61,14 +56,19 @@
       "deficit_weight": 0.1429
     },
     {
+      "feature": "wormholePairCount",
+      "n_boards": 6,
+      "deficit_weight": 0.1429
+    },
+    {
       "feature": "mirrorPairCount",
       "n_boards": 6,
       "deficit_weight": 0.1429
     },
     {
-      "feature": "liarCellCount",
-      "n_boards": 9,
-      "deficit_weight": 0.1
+      "feature": "sonarCellCount",
+      "n_boards": 6,
+      "deficit_weight": 0.1429
     },
     {
       "feature": "wallEdgeCount",
