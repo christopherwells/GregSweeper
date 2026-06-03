@@ -71,7 +71,8 @@
   /* Heavy display sans — comic lettering. */
   --font-family: 'Arial Black', 'Arial', 'Helvetica Neue', sans-serif;
   --font-display: 'Impact', 'Haettenschweiler', 'Arial Black', sans-serif;
-  --cell-shape-radius: 3px;
+  --fs-cell-number: 1.08rem;
+  --cell-shape-radius: 1px;
   --anim-reveal-dur: 0.22s;
   --anim-reveal-ease: cubic-bezier(0.34, 1.56, 0.5, 1);
   --anim-flag-dur: 0.24s;
@@ -127,4 +128,68 @@
   0%   { transform: scale(0.4) rotate(-6deg); opacity: 0; }
   60%  { transform: scale(1.18) rotate(3deg); opacity: 1; }
   100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+/* ── Deep comic treatment ─────────────────────────────────────────────────────
+   Not a recolor: the board becomes an inked comic PAGE. Cells are panels with
+   thick black ink borders set in black gutters; hidden panels carry Ben-Day
+   halftone in varied pop colors so the page reads like real comic art; numbers
+   are hand-lettered (italic, black-outlined) ink. */
+
+/* The board itself: a black-ink page edge with a hard offset "sticker" shadow.
+   Frame via box-shadow only (inset rim + hard drop) so it adds zero layout width
+   — a real border/padding here overflows the cell-sized board into a scrollbar. */
+[data-theme="comic"] #board {
+  background: #141414;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 3px #141414, 5px 5px 0 #141414, 0 10px 26px rgba(20, 16, 8, 0.28);
+}
+
+/* Hidden cells = flat ink-bordered panels (no bevel), sharp corners. */
+[data-theme="comic"] .cell.unrevealed {
+  border: 2.5px solid #141414;
+  box-shadow: none;
+}
+/* Panel-color variety: the unrevealed page is a patchwork of pop primaries with
+   a halftone dot screen, not one flat yellow. */
+[data-theme="comic"] .cell.unrevealed:nth-child(4n+1) {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(20,20,20,0.13) 0 1.4px, transparent 1.8px) 0 0 / 7px 7px,
+    linear-gradient(150deg, #ffd84a, #ffc81a);
+}
+[data-theme="comic"] .cell.unrevealed:nth-child(4n+2) {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(20,20,20,0.13) 0 1.4px, transparent 1.8px) 0 0 / 7px 7px,
+    linear-gradient(150deg, #8ad4ff, #54b6ef);
+}
+[data-theme="comic"] .cell.unrevealed:nth-child(4n+3) {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(20,20,20,0.13) 0 1.4px, transparent 1.8px) 0 0 / 7px 7px,
+    linear-gradient(150deg, #ff9a8a, #f4604f);
+}
+[data-theme="comic"] .cell.unrevealed:nth-child(4n) {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(20,20,20,0.13) 0 1.4px, transparent 1.8px) 0 0 / 7px 7px,
+    linear-gradient(150deg, #a6ec9c, #62cf72);
+}
+
+/* Snappy, slightly-askew comic hover. */
+@media (hover: hover) and (pointer: fine) {
+  [data-theme="comic"] .cell.unrevealed:hover {
+    transform: scale(1.07) rotate(-1.5deg);
+    box-shadow: 2px 2px 0 #141414;
+  }
+}
+
+/* Revealed cells = clean white panels with the same thick ink border. */
+[data-theme="comic"] .cell.revealed {
+  border: 2.5px solid #141414;
+}
+
+/* Hand-lettered ink numerals: heavy italic, black-outlined, with a faint
+   off-register shadow for the printed-comic look. */
+[data-theme="comic"] .cell {
+  font-style: italic;
+  -webkit-text-stroke: 1.1px #141414;
+  text-shadow: 1.4px 1.4px 0 rgba(20, 20, 20, 0.16);
 }
