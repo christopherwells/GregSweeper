@@ -1247,15 +1247,9 @@ function renderCollectionModal() {
         setTimeout(() => btn.classList.remove('swatch-shake'), 400);
         return;
       }
-      state.theme = theme;
-      loadThemeCSS(theme);
-      document.documentElement.setAttribute('data-theme', theme);
-      applyThemeEffects(theme);
-      updateThemeColor();
-      saveTheme(theme);
+      applyThemeLive(theme);
       for (const s of themeGrid.querySelectorAll('.theme-swatch')) s.classList.remove('active');
       btn.classList.add('active');
-      updateAllCells();
     });
     themeGrid.appendChild(btn);
   }
@@ -1803,6 +1797,69 @@ for (const tabBtn of $$('.leaderboard-tab')) {
 $('#btn-collection').addEventListener('click', () => {
   renderCollectionModal();
   showModal('collection-modal');
+});
+
+// ── Live theme carousel ───────────────────────────────────────────────────────
+// Apply a theme everywhere it takes effect. Shared by the Collection swatches and
+// the carousel so there is one source of truth for "switch theme".
+function applyThemeLive(theme) {
+  state.theme = theme;
+  loadThemeCSS(theme);
+  document.documentElement.setAttribute('data-theme', theme);
+  applyThemeEffects(theme);
+  updateThemeColor();
+  saveTheme(theme);
+  updateAllCells();
+}
+
+let _carouselThemes = [];
+let _carouselIdx = 0;
+let _carouselOpen = false;
+
+function openThemeCarousel() {
+  const unlocked = getUnlockedThemes();
+  _carouselThemes = Object.keys(THEME_UNLOCKS).filter(t => unlocked[t] !== false);
+  if (_carouselThemes.length === 0) _carouselThemes = Object.keys(THEME_UNLOCKS);
+  const cur = state.theme || document.documentElement.getAttribute('data-theme') || 'classic';
+  _carouselIdx = Math.max(0, _carouselThemes.indexOf(cur));
+  _carouselOpen = true;
+  $('#theme-carousel').classList.remove('hidden');
+  updateCarouselDisplay();
+}
+
+function closeThemeCarousel() {
+  _carouselOpen = false;
+  $('#theme-carousel').classList.add('hidden');
+}
+
+function updateCarouselDisplay() {
+  const name = _carouselThemes[_carouselIdx];
+  const info = THEME_UNLOCKS[name];
+  $('#theme-carousel-name').textContent = (info && info.displayName) || name;
+  $('#theme-carousel-pos').textContent = `${_carouselIdx + 1} / ${_carouselThemes.length}`;
+}
+
+function cycleCarousel(dir) {
+  if (!_carouselThemes.length) return;
+  const n = _carouselThemes.length;
+  _carouselIdx = (_carouselIdx + dir + n) % n;
+  applyThemeLive(_carouselThemes[_carouselIdx]);
+  updateCarouselDisplay();
+}
+
+$('#btn-themes')?.addEventListener('click', () => {
+  if (_carouselOpen) closeThemeCarousel(); else openThemeCarousel();
+});
+$('#theme-carousel-prev')?.addEventListener('click', () => cycleCarousel(-1));
+$('#theme-carousel-next')?.addEventListener('click', () => cycleCarousel(1));
+$('#theme-carousel-done')?.addEventListener('click', closeThemeCarousel);
+
+// Arrow keys flip themes; Esc closes — only while the carousel is open.
+document.addEventListener('keydown', (e) => {
+  if (!_carouselOpen) return;
+  if (e.key === 'ArrowLeft') { e.preventDefault(); cycleCarousel(-1); }
+  else if (e.key === 'ArrowRight') { e.preventDefault(); cycleCarousel(1); }
+  else if (e.key === 'Escape') { e.preventDefault(); closeThemeCarousel(); }
 });
 $('#btn-help').addEventListener('click', () => { setActiveHelpTab('basics'); showModal('help-modal'); });
 $('#title-bar').addEventListener('click', () => showModal('about-modal'));
