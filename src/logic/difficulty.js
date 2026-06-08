@@ -74,6 +74,13 @@ export const PAR_MODEL = {
 };
 // PAR_MODEL:END
 
+// Bomb-hit penalty: flat component added on top of the info-value cost
+// computed by src/logic/bombInfoValue.js. The info-value alone can be 0
+// for a mine the solver was about to nail anyway; the base keeps every
+// bomb-pop slightly punishing so it's never a strict-zero shortcut, and
+// preserves solving as the intended path.
+export const BOMB_PENALTY_BASE = 3;
+
 // Daily board dimension ranges (seeded RNG picks within these)
 export const DAILY_MIN_SIZE = 8;
 export const DAILY_SIZE_RANGE = 5;   // 8–12

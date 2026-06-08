@@ -135,6 +135,24 @@ export const state = {
   modalPaused: false,
 };
 
+// Total bomb-hit penalty (seconds) accrued in the CURRENT daily/weekly
+// attempt, derived from the per-hit event log. Single source of truth so
+// the live timer, the final precise time, and the score submission all
+// agree. Derived from events (not a separate accumulator) so it survives
+// the daily auto-save/restore for free — the events are persisted.
+// Only one mode's events are populated at a time; summing both is safe.
+export function getActiveBombPenaltyTotal() {
+  let sum = 0;
+  const events = [
+    ...(state.dailyBombHitEvents || []),
+    ...(state.weeklyBombHitEvents || []),
+  ];
+  for (const e of events) {
+    if (e && typeof e.penalty === 'number') sum += e.penalty;
+  }
+  return Math.round(sum * 10) / 10;
+}
+
 // ── Encouragement Lines ────────────────────────────────
 // Shown on loss screens. Unified pool — was three near-identical
 // variants ("you got this", "almost had it") plus a couple of weird
