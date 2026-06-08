@@ -316,6 +316,18 @@ export function saveProgress({ maxCheckpoint, dailyStreak, bestDailyStreak, last
   });
 }
 
+// dailyHistory's rule requires `submittedAt === now`, satisfied only by
+// the server-timestamp sentinel (the server stamps its own clock). A
+// literal client Date.now() never equals the server's now, so the whole
+// write is rejected — the regression that silently froze every stats page
+// from 2026-05-25 until this fix. Every dailyHistory write stamps
+// submittedAt with this, mirroring the leaderboard score write.
+function _serverTimestamp() {
+  return (typeof firebase !== 'undefined' && firebase.database)
+    ? firebase.database.ServerValue.TIMESTAMP
+    : Date.now();
+}
+
 /**
  * Write a daily-history entry for the current user.
  * We only store the raw completion `time`, not par or delta. Par is a
@@ -337,9 +349,14 @@ export function saveDailyHistoryEntry(date, entry) {
   // rows, so a marker never pollutes the delta chart but still counts
   // toward the derived streak (computeStreakFromHistory walks the date
   // keys, not the values).
-  const payload = { submittedAt: Date.now() };
-  if (typeof entry?.time === 'number') payload.time = entry.time;
-  else if (entry?.completed) payload.completed = true;
+  // `body` holds only the meaningful content (time, or a completion
+  // marker). submittedAt is deliberately NOT in here: the rule demands
+  // submittedAt === now, so it is attached as the server sentinel at each
+  // real write (below, and in flushPendingDailyHistory). Storing a client
+  // Date.now() here is what got the write rejected.
+  let body;
+  if (typeof entry?.time === 'number') body = { time: entry.time };
+  else if (entry?.completed) body = { completed: true };
   else return; // nothing meaningful to record
 
   if (!_ready || !_uid) {
@@ -348,18 +365,20 @@ export function saveDailyHistoryEntry(date, entry) {
     // The window is brief — Firebase restores the anonymous session from
     // IndexedDB within ~1s even offline — and these flush on the initial
     // settle via _flushPendingWrites (and are discarded on a uid switch).
+    // Re-routes through this function on settle, which re-stamps submittedAt.
     if (!_pendingHistory) _pendingHistory = {};
-    _pendingHistory[date] = payload;
+    _pendingHistory[date] = body;
     return;
   }
 
-  _db.ref('users/' + _uid + '/dailyHistory/' + date).set(payload).catch(err => {
-    console.warn('Daily history save failed:', err.message);
-    // Durable retry: the completion record is the source of truth for
-    // the streak, so a dropped write would silently break it. Persist
-    // to localStorage and flush on the next auth-ready / boot.
-    _persistPendingDailyHistory(date, payload);
-  });
+  _db.ref('users/' + _uid + '/dailyHistory/' + date)
+    .set({ ...body, submittedAt: _serverTimestamp() }).catch(err => {
+      console.warn('Daily history save failed:', err.message);
+      // Durable retry: the completion record is the source of truth for
+      // the streak, so a dropped write would silently break it. Persist
+      // to localStorage and flush on the next auth-ready / boot.
+      _persistPendingDailyHistory(date, body);
+    });
 }
 
 // ── Durable daily-history retry queue ─────────────────
@@ -376,7 +395,7 @@ function _persistPendingDailyHistory(date, payload) {
     // Tag with the owning uid so flushPendingDailyHistory can refuse to
     // attribute this completion to a DIFFERENT account that later signs in
     // on this device (a shared/family device, or sign-out then sign-in).
-    q[date] = { uid: _uid, ...payload, submittedAt: typeof payload.submittedAt === 'number' ? payload.submittedAt : Date.now() };
+    q[date] = { uid: _uid, ...payload };
     safeSetJSON(PENDING_HISTORY_KEY, q);
   } catch (err) {
     console.warn('Could not queue pending daily history:', err && err.message);
@@ -403,7 +422,10 @@ export async function flushPendingDailyHistory() {
     if (!entry || entry.uid !== _uid) { if (entry) remaining[date] = entry; continue; }
     const { uid, ...payload } = entry; // strip the owner tag before writing
     try {
-      await _db.ref('users/' + _uid + '/dailyHistory/' + date).set(payload);
+      // Re-stamp submittedAt with the server sentinel: the rule rejects a
+      // stored client timestamp, and pre-fix queue entries may carry one.
+      await _db.ref('users/' + _uid + '/dailyHistory/' + date)
+        .set({ ...payload, submittedAt: _serverTimestamp() });
       flushed++;
     } catch {
       remaining[date] = entry;
