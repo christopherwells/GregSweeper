@@ -1,11 +1,11 @@
 {
-  "updatedAt": "2026-06-08T16:59:20Z",
-  "target": "lockedCellCount",
-  "reason": "highest posterior CV (1.104) excluding last 3 targets",
+  "updatedAt": "2026-06-08T17:25:43Z",
+  "target": "compassCellCount",
+  "reason": "highest posterior CV (1.080) excluding last 3 targets",
   "recentTargets": [
+    "compassCellCount",
     "lockedCellCount",
-    "liarCellCount",
-    "sonarCellCount"
+    "liarCellCount"
   ],
   "candidates": [
     {
@@ -41,9 +41,9 @@
   ],
   "coverage_targets": [
     {
-      "feature": "compassCellCount",
-      "n_boards": 5,
-      "deficit_weight": 0.1667
+      "feature": "lockedCellCount",
+      "n_boards": 6,
+      "deficit_weight": 0.1429
     },
     {
       "feature": "mirrorPairCount",
