@@ -852,17 +852,21 @@ async function populateDailyPanel() {
       .map(h => {
         const f = metaByDate[h.date];
         if (!f) return null;
-        // Cross-reference the user's bombHits for this date so the
-        // provisional handicap subtracts secPerBombHit × bombHits before
-        // averaging residuals. Without this, a single bomb-hit day swings
-        // the provisional handicap by ~14s, masking the player's true
-        // skill until the nightly refit catches up.
+        // Cross-reference the user's bombHits AND totalBombPenalty for this
+        // date so estimateHandicapDetails can reconstruct clean-play time:
+        // new info-value plays (bombPenalty > 0) subtract only the fixed
+        // per-hit base, while legacy +10s/re-fog plays subtract the fitted
+        // secPerBombHit. Without bombPenalty, a new-mechanic bomb day is
+        // misread as legacy and over-subtracted (~14s vs 3s per hit),
+        // making the provisional handicap too favorable until the nightly
+        // refit catches up.
         const myScore = Array.isArray(scoresByDate?.[h.date])
           ? scoresByDate[h.date].find(s => s.uid === uid) : null;
         return {
           time: h.time,
           predictedPar: predictPar(f),
           bombHits: myScore?.bombHits || 0,
+          bombPenalty: myScore?.totalBombPenalty || 0,
         };
       })
       .filter(Boolean);
