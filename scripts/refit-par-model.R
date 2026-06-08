@@ -50,10 +50,16 @@ HANDICAPS_PATH  <- "src/logic/handicaps.json"
 MIN_SCORES_TO_FIT <- 30
 
 # Minimum total plays before a user's scores are allowed to influence
-# the GLOBAL model. Bomb-hit plays now count (the bombHits regressor
-# absorbs their time inflation), so this is back to total-play count
-# rather than clean-only — roughly one month of daily play per user.
-MIN_PLAYS_FOR_FIT_INCLUSION <- 30
+# the GLOBAL model and earn a shipped handicap. Set low (5) because the
+# heavy players anchor the fixed effects and partial pooling shrinks a
+# small-N user's random intercept toward zero, so a light player can
+# neither drag the board-difficulty coefficients nor get an over-
+# confident handicap; the threshold's only job now is to keep true
+# one-offs (1-4 plays) out. Bomb-hit plays count toward the total (the
+# bombHits regressor absorbs their time inflation). Anyone below this
+# still gets a client-side provisional handicap from their own
+# residuals (handicaps.js).
+MIN_PLAYS_FOR_FIT_INCLUSION <- 5
 
 # (MIN_PLAYS_FOR_HANDICAP retired; the residuals-fallback path now uses
 # the same MIN_PLAYS_FOR_FIT_INCLUSION threshold as the main fit, so
@@ -389,14 +395,15 @@ fit_formula_fixed <- time ~
   bombHits  # NOT shipped to JS PAR_MODEL — see PRIOR_MEANS comment
 
 if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
-  # Bayesian mixed-effects fit on only the eligible users (>= 30 plays).
-  # This keeps the global model from being dragged around by one-off
-  # visitors or brand-new players whose handful of scores would otherwise
-  # carry as much weight in the bias-correction step as a regular
-  # player's 40+ scores. brms can estimate the random-intercept variance
-  # even at n_eligible == 2 because the student_t prior on sd(uid) gives
-  # it enough structure to separate "two players differ by X" from "zero
-  # handicap variance, pure residual".
+  # Bayesian mixed-effects fit on the eligible users (>=
+  # MIN_PLAYS_FOR_FIT_INCLUSION plays). Partial pooling shrinks a light
+  # player's random intercept toward zero and the bias-correction step
+  # is play-weighted, so an included small-N user can't dominate either
+  # the coefficients or the recentering — the threshold mainly keeps
+  # true one-off visitors out. brms can estimate the random-intercept
+  # variance even at n_eligible == 2 because the student_t prior on
+  # sd(uid) gives it enough structure to separate "two players differ
+  # by X" from "zero handicap variance, pure residual".
   df_fit <- df |> filter(uid %in% eligible_uids)
   fit_formula <- update(fit_formula_fixed, ~ . + (1 | uid))
 
