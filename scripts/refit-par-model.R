@@ -107,13 +107,14 @@ PRIOR_MEANS <- list(
   # says "we have no strong opinion about the baseline, let the data
   # decide" while still penalising absurd values through PRIOR_INTERCEPT_SD.
   Intercept            = 0.0,
-  # Size / density (2026-06-08 feature rework). cellCount is the lone
-  # board-size axis — it absorbs trivial-propagation time, so passAMoves
-  # is no longer a predictor; its seed is well above the old 0.02 to carry
-  # that propagation cost. Mines enter as DENSITY (mines/cell), orthogonal
-  # to size rather than correlated ~0.70 with it.
+  # Size (2026-06-08 feature rework). cellCount is the lone board-size axis
+  # — it absorbs trivial-propagation time, so passAMoves is no longer a
+  # predictor; its seed is well above the old 0.02 to carry that cost.
+  # totalMines stays a raw count: VIF 3.6 (fine once the redundant size
+  # features are dropped), and density made its coefficient unreadable
+  # (352/-80 intercept), so we keep the interpretable per-mine form.
   cellCount            = 0.30,
-  mineDensity          = 80.0,
+  totalMines           = 0.3,
   # Reasoning load, two earned tiers: pattern = canonical + generic subset
   # deductions; search = advanced (tank/gauss) enumeration. The raw four
   # move-types are too sparse/small-count to identify separately.
@@ -152,7 +153,7 @@ PRIOR_INTERCEPT_SD <- 15.0   # lets the intercept float freely; bias-
                               # calibration
 PRIOR_SIGMAS <- list(
   cellCount            = 1.0,
-  mineDensity          = 1.0,
+  totalMines           = 1.0,
   patternMoves         = 1.0,
   searchMoves          = 1.0,
   wallEdgeCount        = 1.0,
@@ -193,7 +194,7 @@ apply_par_model <- function(df, coefs) {
   with(df,
     coefs$intercept +
     coefs$secPerCell                 * cellCount +
-    (coefs$secPerMineDensity %||% 0)  * mineDensity +
+    coefs$secPerMineFlag             * totalMines +
     (coefs$secPerPatternMove %||% 0)  * patternMoves +
     (coefs$secPerSearchMove  %||% 0)  * searchMoves +
     coefs$secPerWallEdge             * wallEdgeCount +
@@ -336,14 +337,12 @@ df <- df |>
     ~ ifelse(is.na(.x), 0, as.numeric(.x))
   ))
 
-# Derived model predictors (2026-06-08 feature rework). The fit AND
-# apply_par_model use THESE, not the raw counts: size = cellCount alone,
-# mines as DENSITY, reasoning pooled into pattern (canonical + generic) +
-# search (advanced). All derived from the raw dailyMeta fields above, so
-# every historical board stays usable with no dailyMeta migration.
+# Derived model predictors (2026-06-08 feature rework): reasoning pooled
+# into pattern (canonical + generic) + search (advanced). Derived from the
+# raw dailyMeta fields above, so every historical board stays usable with
+# no dailyMeta migration. (Size = cellCount alone; totalMines stays raw.)
 df <- df |>
   mutate(
-    mineDensity  = if_else(cellCount > 0, totalMines / cellCount, 0),
     patternMoves = canonicalSubsetMoves + genericSubsetMoves,
     searchMoves  = advancedLogicMoves
   )
@@ -404,7 +403,7 @@ diagnostic_failure <- FALSE
 # ── 2. Fit ──────────────────────────────────────────────
 
 fit_formula_fixed <- clean_time ~
-  cellCount + mineDensity +
+  cellCount + totalMines +
   patternMoves + searchMoves +
   wallEdgeCount +
   mysteryCellCount + liarCellCount + lockedCellCount +
@@ -522,7 +521,7 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
     # names match the reworked PAR_MODEL predictors (fixef rownames).
     target_whitelist <- c(
       "patternMoves", "searchMoves",
-      "mineDensity", "wallEdgeCount",
+      "totalMines", "wallEdgeCount",
       "mysteryCellCount", "liarCellCount", "lockedCellCount",
       "wormholePairCount", "mirrorPairCount",
       "sonarCellCount", "compassCellCount",
@@ -654,7 +653,7 @@ if (fit_method == "brms-ranef") {
   new_coefs <- list(
     intercept          = nn(co["Intercept"],         "intercept"),
     secPerCell         = nn(co["cellCount"],         "cell"),
-    secPerMineDensity  = nn(co["mineDensity"],       "mineDensity"),
+    secPerMineFlag     = nn(co["totalMines"],        "mineFlag"),
     secPerPatternMove  = nn(co["patternMoves"],      "patternMove"),
     secPerSearchMove   = nn(co["searchMoves"],       "searchMove"),
     secPerWallEdge     = nn(co["wallEdgeCount"],     "wallEdge"),
@@ -903,10 +902,10 @@ block <- sprintf(
   // Last refit: %s | %s | N=%d scores, %d dates, %d players | R\u00b2=%s
   intercept: %.2f,
 
-  // Size / density baseline. cellCount is the lone size axis (it absorbs
-  // trivial propagation); mines enter as mines/cell. (2026-06-08 rework.)
+  // Size baseline. cellCount is the lone size axis (it absorbs trivial
+  // propagation); totalMines stays a raw count. (2026-06-08 rework.)
   secPerCell:        %.3f,
-  secPerMineDensity: %.3f,
+  secPerMineFlag:    %.3f,
 
   // Reasoning tiers: pattern = canonical + generic subsets; search = advanced.
   secPerPatternMove: %.3f,
@@ -928,7 +927,7 @@ block <- sprintf(
   Sys.Date(), method_str, n_scores, n_dates, n_players, r2_str,
   new_coefs$intercept,
   new_coefs$secPerCell,
-  new_coefs$secPerMineDensity,
+  new_coefs$secPerMineFlag,
   new_coefs$secPerPatternMove,
   new_coefs$secPerSearchMove,
   new_coefs$secPerWallEdge,

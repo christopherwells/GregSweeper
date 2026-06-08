@@ -175,8 +175,8 @@ export function computeDailyFeatures(state, solverResult) {
 //   - SIZE block decorrelated: `cellCount` is the lone board-size axis
 //     (it absorbs trivial-propagation time, so `passAMoves` — a size proxy,
 //     VIF 7.4 — is dropped, as is the near-redundant `nonZeroSafeCellCount`,
-//     VIF 23.7). Mines enter as DENSITY (mines/cell) so they're orthogonal
-//     to size instead of correlated 0.70 with it.
+//     VIF 23.7). `totalMines` stays a raw count — VIF 3.6, fine once those
+//     redundant size features are gone (density made its coef unreadable).
 //   - REASONING collapsed into two earned tiers: `pattern` (subset
 //     deductions = canonical + generic) and `search` (advanced enumeration).
 //     The raw four move-types are too sparse/small-count to identify
@@ -190,7 +190,7 @@ export function computeDailyFeatures(state, solverResult) {
 const COEF_TERMS = [
   // Size / density — the baseline block.
   { coef: 'secPerCell',        value: f => f.cellCount || 0,                                       displayGroup: 'baseline', baseline: true },
-  { coef: 'secPerMineDensity', value: f => (f.cellCount ? (f.totalMines || 0) / f.cellCount : 0),  displayGroup: 'baseline', baseline: true },
+  { coef: 'secPerMineFlag',    value: f => f.totalMines || 0,                                       displayGroup: 'baseline', baseline: true },
   // Reasoning load — two earned tiers.
   { coef: 'secPerPatternMove', value: f => (f.canonicalSubsetMoves || 0) + (f.genericSubsetMoves || 0), displayGroup: 'pattern moves' },
   { coef: 'secPerSearchMove',  value: f => f.advancedLogicMoves || 0,                              displayGroup: 'search moves' },
