@@ -708,6 +708,32 @@ if (fit_method == "brms-ranef") {
   message(sprintf("  legacy_bombs coef: +%.2fs/hit (legacy +10s/re-fog cohort only) | intercept bias-correction: %+.2fs (clean-time-equivalent mean matches mean predicted par)",
                   bomb_coef, bias))
 
+  # Bombs are part of your HANDICAP, not par. predictPar stays clean board
+  # difficulty (untouched above); each player's typical bomb cost is added
+  # onto their clean-skill random intercept here. Per-play bomb cost = the
+  # time bombs add vs clean play: BOMB_PENALTY_BASE/hit for new-mechanic
+  # plays (the info-value part is offset deduction time, not extra cost),
+  # the fitted legacy rate (bomb_coef)/hit for old +10s/re-fog plays.
+  # Net: handicaps no longer sum to zero — the clean-skill part does, and
+  # each player's absolute bomb cost lifts their number. handicap = clean
+  # offset + bomb factor (a steady 1-bomb/day player carries ~+3s now,
+  # ~+14s on legacy plays).
+  df_fit$bomb_cost <- ifelse(df_fit$totalBombPenalty > 0,
+                             BOMB_PENALTY_BASE * df_fit$bombHits,
+                             bomb_coef * df_fit$bombHits)
+  bomb_cost_by_uid <- tapply(df_fit$bomb_cost, df_fit$uid, mean)
+  for (u in names(handicaps)) {
+    bc <- bomb_cost_by_uid[[u]]
+    if (!is.null(bc) && !is.na(bc) && bc != 0) {
+      handicaps[[u]] <- round(handicaps[[u]] + bc, 2)
+    }
+  }
+  if (any(bomb_cost_by_uid > 0, na.rm = TRUE)) {
+    message(sprintf("  bomb factor folded into handicaps: %s",
+                    paste(sprintf("%s +%.2fs", names(bomb_cost_by_uid), bomb_cost_by_uid),
+                          collapse = ", ")))
+  }
+
   # Guard: until enough plays have NONZERO values for each new structural
   # feature, its posterior is essentially the lognormal prior expectation
   # (~prior_mean * 1.65) — and that's not a real fit, just a prior. If we
@@ -739,26 +765,31 @@ if (fit_method == "brms-ranef") {
 # residuals against the EXISTING coefficients. Only eligible users (>=
 # MIN_PLAYS_FOR_FIT_INCLUSION plays) are included — same threshold the
 # main fit uses, so handicaps.json has a consistent meaning regardless
-# of which path wrote it. Residuals are recentered (play-weighted) so
-# the mean handicap is exactly zero — otherwise systematic bias in the
-# seed par pushes every user's residual in the same direction, making
-# handicaps useless for inter-player comparison.
+# of which path wrote it. Only the clean-skill part is recentered (play-
+# weighted), so seed-par bias doesn't push everyone the same way; the bomb
+# factor is absolute and lifts each handicap, matching the brms path. So the
+# handicap is clean offset + your typical bomb cost (it does NOT sum to zero).
 if (fit_method == "seed-residuals") {
-  df$predicted <- apply_par_model(df, new_coefs)
-  df$residual  <- df$time - df$predicted
+  df$predicted  <- apply_par_model(df, new_coefs)
+  # Per-play bomb cost (time bombs add vs clean play). No fitted bomb_coef
+  # in this fallback, so legacy plays use the prior legacy rate.
+  df$bomb_cost   <- ifelse(df$totalBombPenalty > 0,
+                           BOMB_PENALTY_BASE * df$bombHits,
+                           PRIOR_MEANS$legacy_bombs * df$bombHits)
+  df$clean_resid <- (df$time - df$bomb_cost) - df$predicted
   per_user <- df |>
     filter(uid %in% eligible_uids) |>
     group_by(uid) |>
-    summarise(n = n(), raw_handicap = mean(residual), .groups = "drop")
+    summarise(n = n(), clean_h = mean(clean_resid), bomb_h = mean(bomb_cost), .groups = "drop")
   if (nrow(per_user) > 0) {
     total_plays <- sum(per_user$n)
-    weighted_mean <- sum(per_user$raw_handicap * per_user$n) / total_plays
-    per_user$handicap <- round(per_user$raw_handicap - weighted_mean, 2)
+    wm_clean <- sum(per_user$clean_h * per_user$n) / total_plays
+    per_user$handicap <- round((per_user$clean_h - wm_clean) + per_user$bomb_h, 2)
   } else {
     per_user$handicap <- numeric(0)
   }
   handicaps <- setNames(as.list(per_user$handicap), per_user$uid)
-  message(sprintf("Handicaps computed from residuals (recentered): %d users (min %d plays)",
+  message(sprintf("Handicaps = clean offset + bomb factor (residuals fallback): %d users (min %d plays)",
                   length(handicaps), MIN_PLAYS_FOR_FIT_INCLUSION))
 }
 
@@ -776,9 +807,10 @@ if (length(handicaps) > 0) {
     nPlayers  = n_players,
     method    = fit_method,
     diagnostics = if (nchar(diag_note)) diag_note else NULL,
-    # Each bomb hit's fitted time cost. Surfaces here for transparency
-    # and so the diagnostics modal can show "your bombHits cost you ~Xs
-    # this week". NOT included in JS predictPar — par stays clean-only.
+    # Fitted legacy +10s/re-fog per-hit cost. Surfaces for transparency /
+    # diagnostics, and is the legacy rate used above to fold each player's
+    # bomb cost into their handicap. NOT in JS predictPar — par stays clean;
+    # bombs live in the handicap, not par.
     secPerBombHit = if (is.na(bomb_coef)) NULL else round(bomb_coef, 2),
     handicaps = handicaps
   )
