@@ -41,36 +41,34 @@ export function applyWidthCap(rows, cols, mines) {
 // scripts/refit-par-model.R.
 // PAR_MODEL:START
 export const PAR_MODEL = {
-  // Last refit: 2026-06-08 | brms (3 users · max Rhat = 1.004, min ESS = 1103, divergent = 0/4000) | N=182 scores, 90 dates, 3 players | R²=0.600
-  intercept: -12.90,
+  // Seed values (2026-06-08 feature rework) — overwritten by the nightly
+  // refit. Predictor set reworked so coefficients are identified rather
+  // than collinear/prior-driven: size = cellCount alone (absorbs trivial
+  // propagation; passAMoves + nonZeroSafeCellCount dropped), mines as
+  // DENSITY, reasoning collapsed to pattern (canonical+generic) + search
+  // (advanced), modifiers kept split.
+  intercept: 10.0,
 
-  // Move-type coefficients (primary). disjunctiveMoves was dropped
-  // 2026-05-04: structurally confounded with liarCellCount (every liar
-  // board produces disjunctive moves) and N=1 liar board means the two
-  // coefficients cannot be separately identified. The disjunctive
-  // contribution is now absorbed into secPerLiarCell.
-  secPerPassAMove:            0.45,
-  secPerCanonicalSubsetMove:  3.05,
-  secPerGenericSubsetMove:    2.20,
-  secPerAdvancedLogicMove:    1.49,
+  // Size / density baseline.
+  secPerCell:        0.30,
+  secPerMineDensity: 80.0,
 
-  // Board shape (secondary)
-  secPerCell:      0.024,
-  secPerMineFlag:  2.341,
-  secPerWallEdge:  0.160,
+  // Reasoning tiers.
+  secPerPatternMove: 4.0,
+  secPerSearchMove:  6.0,
 
-  // Gimmick cell counts (tertiary)
-  secPerMysteryCell:   0.896,
-  secPerLiarCell:      0.831,
-  secPerLockedCell:    0.642,
-  secPerWormholePair:  0.847,
-  secPerMirrorPair:    1.711,
-  secPerSonarCell:     0.719,
-  secPerCompassCell:   0.776,
+  // Board structure.
+  secPerWallEdge:    0.15,
+  secPerZeroCluster: 1.0,
 
-  // Structural features (v1.5.16+)
-  secPerNonZeroSafeCell:  0.199,
-  secPerZeroCluster:      0.483,
+  // Modifier cells (sparse — prior-anchored until coverage builds data).
+  secPerMysteryCell:   0.8,
+  secPerLiarCell:      0.6,
+  secPerLockedCell:    0.4,
+  secPerWormholePair:  0.8,
+  secPerMirrorPair:    1.0,
+  secPerSonarCell:     0.5,
+  secPerCompassCell:   0.5,
 };
 // PAR_MODEL:END
 

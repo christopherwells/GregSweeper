@@ -163,48 +163,48 @@ export function computeDailyFeatures(state, solverResult) {
 
 // ── Model application ─────────────────────────────────
 
-// Maps each PAR_MODEL coefficient to the feature field it multiplies.
-// Keeping this table explicit (rather than implicit in predictPar's math)
-// makes predictPar and breakdownPar share exactly one source of truth.
+// Maps each PAR_MODEL coefficient to a function that derives its predictor
+// value from the raw feature object. Keeping this table explicit (and
+// deriving each value rather than reading a stored field) makes predictPar
+// and breakdownPar share one source of truth AND keeps every historical
+// dailyMeta record usable — the derived predictors below are all functions
+// of the raw counts that dailyMeta has always stored.
 //
-// `displayGroup` controls the label the modal shows. The regression uses
-// the four move-type coefficients independently, but for the UI they
-// collapse into three intuitive buckets (easy / medium / hard). Gimmick
-// and board-shape terms each stand alone with their natural name.
+// The predictor set was reworked (2026-06-08) so the coefficients are
+// actually identified, not collinearity-scrambled / prior-driven:
+//   - SIZE block decorrelated: `cellCount` is the lone board-size axis
+//     (it absorbs trivial-propagation time, so `passAMoves` — a size proxy,
+//     VIF 7.4 — is dropped, as is the near-redundant `nonZeroSafeCellCount`,
+//     VIF 23.7). Mines enter as DENSITY (mines/cell) so they're orthogonal
+//     to size instead of correlated 0.70 with it.
+//   - REASONING collapsed into two earned tiers: `pattern` (subset
+//     deductions = canonical + generic) and `search` (advanced enumeration).
+//     The raw four move-types are too sparse/small-count to identify
+//     separately; pooling densifies them.
+//   - MODIFIERS kept split. They're sparse today (each on ~5-10% of boards),
+//     so their coefficients are still prior-anchored; the adaptive coverage
+//     missions accumulate boards until they earn out.
 //
-//   easy   = Pass A + canonical subsets (recognised instantly)
-//   medium = generic subsets (some scanning)
-//   hard   = advanced logic (tank-style enumeration)
-//
-// disjunctiveMoves is no longer modeled (dropped 2026-05-04): it's
-// structurally confounded with liarCellCount since every liar board
-// produces disjunctive moves, and at N=1 liar board the two
-// coefficients can't be separately identified. The disjunctive
-// contribution is absorbed into secPerLiarCell. The solver still
-// classifies and counts disjunctiveMoves for diagnostics, but the
-// linear predictor doesn't multiply it by anything.
+// disjunctiveMoves remains unmodeled (dropped 2026-05-04, confounded with
+// liarCellCount). The solver still counts it for diagnostics.
 const COEF_TERMS = [
-  { coef: 'secPerPassAMove',           feature: 'passAMoves',           displayGroup: 'easy moves' },
-  { coef: 'secPerCanonicalSubsetMove', feature: 'canonicalSubsetMoves', displayGroup: 'easy moves' },
-  { coef: 'secPerGenericSubsetMove',   feature: 'genericSubsetMoves',   displayGroup: 'medium moves' },
-  { coef: 'secPerAdvancedLogicMove',   feature: 'advancedLogicMoves',   displayGroup: 'hard moves' },
-  { coef: 'secPerCell',                feature: 'cellCount',            displayGroup: 'baseline',    baseline: true },
-  { coef: 'secPerMineFlag',            feature: 'totalMines',           displayGroup: 'baseline',    baseline: true },
-  { coef: 'secPerWallEdge',            feature: 'wallEdgeCount',        displayGroup: 'walls' },
-  { coef: 'secPerMysteryCell',         feature: 'mysteryCellCount',     displayGroup: 'mystery' },
-  { coef: 'secPerLiarCell',            feature: 'liarCellCount',        displayGroup: 'liar' },
-  { coef: 'secPerLockedCell',          feature: 'lockedCellCount',      displayGroup: 'locked' },
-  { coef: 'secPerWormholePair',        feature: 'wormholePairCount',    displayGroup: 'wormhole' },
-  { coef: 'secPerMirrorPair',          feature: 'mirrorPairCount',      displayGroup: 'mirror' },
-  { coef: 'secPerSonarCell',           feature: 'sonarCellCount',       displayGroup: 'sonar' },
-  { coef: 'secPerCompassCell',         feature: 'compassCellCount',     displayGroup: 'compass' },
-  // Structural features (v1.5.16+). All grouped under "structure" so the
-  // end-of-game breakdown shows a single combined chip rather than three
-  // small ones — nonZeroSafeCells, zeroClusters, and fragmentation are
-  // all aspects of the board's overall puzzle shape, not separate
-  // mechanics the player can identify.
-  { coef: 'secPerNonZeroSafeCell',     feature: 'nonZeroSafeCellCount', displayGroup: 'structure' },
-  { coef: 'secPerZeroCluster',         feature: 'zeroClusterCount',     displayGroup: 'structure' },
+  // Size / density — the baseline block.
+  { coef: 'secPerCell',        value: f => f.cellCount || 0,                                       displayGroup: 'baseline', baseline: true },
+  { coef: 'secPerMineDensity', value: f => (f.cellCount ? (f.totalMines || 0) / f.cellCount : 0),  displayGroup: 'baseline', baseline: true },
+  // Reasoning load — two earned tiers.
+  { coef: 'secPerPatternMove', value: f => (f.canonicalSubsetMoves || 0) + (f.genericSubsetMoves || 0), displayGroup: 'pattern moves' },
+  { coef: 'secPerSearchMove',  value: f => f.advancedLogicMoves || 0,                              displayGroup: 'search moves' },
+  // Board structure.
+  { coef: 'secPerWallEdge',    value: f => f.wallEdgeCount || 0,    displayGroup: 'walls' },
+  { coef: 'secPerZeroCluster', value: f => f.zeroClusterCount || 0, displayGroup: 'structure' },
+  // Modifiers — kept split (sparse; earn out over time).
+  { coef: 'secPerMysteryCell',  value: f => f.mysteryCellCount || 0,  displayGroup: 'mystery' },
+  { coef: 'secPerLiarCell',     value: f => f.liarCellCount || 0,     displayGroup: 'liar' },
+  { coef: 'secPerLockedCell',   value: f => f.lockedCellCount || 0,   displayGroup: 'locked' },
+  { coef: 'secPerWormholePair', value: f => f.wormholePairCount || 0, displayGroup: 'wormhole' },
+  { coef: 'secPerMirrorPair',   value: f => f.mirrorPairCount || 0,   displayGroup: 'mirror' },
+  { coef: 'secPerSonarCell',    value: f => f.sonarCellCount || 0,    displayGroup: 'sonar' },
+  { coef: 'secPerCompassCell',  value: f => f.compassCellCount || 0,  displayGroup: 'compass' },
 ];
 
 /**
@@ -213,8 +213,8 @@ const COEF_TERMS = [
  */
 export function predictPar(features) {
   let par = PAR_MODEL.intercept;
-  for (const { coef, feature } of COEF_TERMS) {
-    par += (PAR_MODEL[coef] || 0) * (features[feature] || 0);
+  for (const { coef, value } of COEF_TERMS) {
+    par += (PAR_MODEL[coef] || 0) * value(features);
   }
   return Math.round(par * 10) / 10;
 }
@@ -232,8 +232,8 @@ export function breakdownPar(features) {
   const byGroup = new Map();
   let baseline = PAR_MODEL.intercept;
 
-  for (const { coef, feature, displayGroup, baseline: isBaseline } of COEF_TERMS) {
-    const contribution = (PAR_MODEL[coef] || 0) * (features[feature] || 0);
+  for (const { coef, value, displayGroup, baseline: isBaseline } of COEF_TERMS) {
+    const contribution = (PAR_MODEL[coef] || 0) * value(features);
     if (isBaseline) {
       baseline += contribution;
     } else if (contribution > 0) {
