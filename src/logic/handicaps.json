@@ -1,12 +1,13 @@
 {
-  "updatedAt": "2026-06-07T15:27:23Z",
-  "modelFitN": 180,
+  "updatedAt": "2026-06-08T16:59:21Z",
+  "modelFitN": 182,
   "nPlayers": 3,
   "method": "brms-ranef",
-  "diagnostics": "max Rhat = 1.003, min ESS = 1531, divergent = 0/4000",
-  "secPerBombHit": 15.1,
+  "diagnostics": "max Rhat = 1.004, min ESS = 1103, divergent = 0/4000",
+  "secPerBombHit": 15.27,
   "handicaps": {
-    "AYXrTjKPieYrZI8sksnYqbI3Pmh1": -6.26,
-    "V07QPXYaICOOcP5ev6DXa2yG9y92": 5.78
+    "AYXrTjKPieYrZI8sksnYqbI3Pmh1": 7.13,
+    "l0szSlaOvVb67aYrDzNU7j687BC3": 61.13,
+    "V07QPXYaICOOcP5ev6DXa2yG9y92": 21
   }
 }
