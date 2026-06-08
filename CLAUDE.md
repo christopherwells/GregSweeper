@@ -12,7 +12,7 @@ No build step, no npm install, no dependencies to manage. Firebase SDK loaded vi
 
 **Testing:** No automated test framework. For UI and modifier verification, use Playwright via MCP — load the live page with `?seed=<custom>` to play deterministic boards.
 
-**Deploy:** Push to `main` branch triggers GitHub Pages (via the `.github/workflows/deploy-pages.yml` Actions workflow — composes main at `/` and the `test` branch at `/test/`). After push, bump `CACHE_NAME` in `sw.js` (format: `gregsweeper-v1.5.N`). The `test` branch deploys to `https://christopherwells.github.io/GregSweeper/test/` with an orange "TEST BUILD" banner and skips Firebase writes via `isTestEnvironment()`.
+**Deploy:** Push to `main` branch triggers GitHub Pages (via the `.github/workflows/deploy-pages.yml` Actions workflow — composes main at `/` and the `test` branch at `/test/`). After push, bump `CACHE_NAME` in `sw.js` (format: `gregsweeper-v1.6.N`). The `test` branch deploys to `https://christopherwells.github.io/GregSweeper/test/` with an orange "TEST BUILD" banner and skips Firebase writes via `isTestEnvironment()`.
 
 ## Key Architecture
 
@@ -268,4 +268,4 @@ Two-layer filter so slurs don't reach the daily/weekly leaderboards. Scope is **
 - Git identity: Christopher Wells <c.wells@bowdoin.edu>
 
 ## Version
-Current: v1.5 (app), cache version in sw.js incremented per deploy
+Current: v1.6 (app), cache version in sw.js incremented per deploy
