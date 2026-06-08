@@ -41,33 +41,30 @@ export function applyWidthCap(rows, cols, mines) {
 // scripts/refit-par-model.R.
 // PAR_MODEL:START
 export const PAR_MODEL = {
-  // Seed values (2026-06-08 mines-raw revert) — overwritten by the nightly
-  // refit. Predictor set: cellCount (lone size axis, absorbs trivial
-  // propagation), totalMines (raw — VIF 3.6, fine once the redundant size
-  // features are dropped), reasoning pooled to pattern (canonical+generic)
-  // + search (advanced), modifiers kept split.
-  intercept: 10.0,
+  // Last refit: 2026-06-08 | brms (3 users · max Rhat = 1.006, min ESS = 873, divergent = 0/4000) | N=183 scores, 91 dates, 3 players | R²=0.598
+  intercept: -12.32,
 
-  // Size baseline.
-  secPerCell:     0.30,
-  secPerMineFlag: 0.30,
+  // Size baseline. cellCount is the lone size axis (it absorbs trivial
+  // propagation); totalMines stays a raw count. (2026-06-08 rework.)
+  secPerCell:        0.159,
+  secPerMineFlag:    3.015,
 
-  // Reasoning tiers.
-  secPerPatternMove: 4.0,
-  secPerSearchMove:  6.0,
+  // Reasoning tiers: pattern = canonical + generic subsets; search = advanced.
+  secPerPatternMove: 2.200,
+  secPerSearchMove:  1.338,
 
   // Board structure.
-  secPerWallEdge:    0.15,
-  secPerZeroCluster: 1.0,
+  secPerWallEdge:    0.156,
+  secPerZeroCluster: 0.565,
 
-  // Modifier cells (sparse — prior-anchored until coverage builds data).
-  secPerMysteryCell:   0.8,
-  secPerLiarCell:      0.6,
-  secPerLockedCell:    0.4,
-  secPerWormholePair:  0.8,
-  secPerMirrorPair:    1.0,
-  secPerSonarCell:     0.5,
-  secPerCompassCell:   0.5,
+  // Modifier cells (kept split; sparse, prior-anchored until data builds).
+  secPerMysteryCell:   0.942,
+  secPerLiarCell:      0.760,
+  secPerLockedCell:    0.680,
+  secPerWormholePair:  0.768,
+  secPerMirrorPair:    1.862,
+  secPerSonarCell:     0.788,
+  secPerCompassCell:   0.744,
 };
 // PAR_MODEL:END
 
