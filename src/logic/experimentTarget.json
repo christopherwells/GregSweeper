@@ -1,45 +1,50 @@
 {
-  "updatedAt": "2026-06-08T17:25:43Z",
-  "target": "compassCellCount",
-  "reason": "highest posterior CV (1.080) excluding last 3 targets",
+  "updatedAt": "2026-06-08T18:59:14Z",
+  "target": "sonarCellCount",
+  "reason": "highest posterior CV (1.090) excluding last 3 targets",
   "recentTargets": [
+    "sonarCellCount",
     "compassCellCount",
-    "lockedCellCount",
-    "liarCellCount"
+    "lockedCellCount"
   ],
   "candidates": [
     {
       "feature": "lockedCellCount",
-      "mean": 0.642,
-      "sd": 0.709,
-      "cv": 1.104
-    },
-    {
-      "feature": "compassCellCount",
-      "mean": 0.776,
-      "sd": 0.838,
-      "cv": 1.08
+      "mean": 0.662,
+      "sd": 0.743,
+      "cv": 1.122
     },
     {
       "feature": "sonarCellCount",
-      "mean": 0.719,
-      "sd": 0.756,
-      "cv": 1.051
+      "mean": 0.818,
+      "sd": 0.892,
+      "cv": 1.09
+    },
+    {
+      "feature": "compassCellCount",
+      "mean": 0.734,
+      "sd": 0.753,
+      "cv": 1.026
     },
     {
       "feature": "liarCellCount",
-      "mean": 0.831,
-      "sd": 0.783,
-      "cv": 0.941
+      "mean": 0.759,
+      "sd": 0.726,
+      "cv": 0.957
     },
     {
       "feature": "mirrorPairCount",
-      "mean": 1.711,
-      "sd": 1.601,
-      "cv": 0.936
+      "mean": 1.835,
+      "sd": 1.688,
+      "cv": 0.92
     }
   ],
   "coverage_targets": [
+    {
+      "feature": "compassCellCount",
+      "n_boards": 5,
+      "deficit_weight": 0.1667
+    },
     {
       "feature": "lockedCellCount",
       "n_boards": 6,
@@ -47,11 +52,6 @@
     },
     {
       "feature": "mirrorPairCount",
-      "n_boards": 6,
-      "deficit_weight": 0.1429
-    },
-    {
-      "feature": "sonarCellCount",
       "n_boards": 6,
       "deficit_weight": 0.1429
     },
@@ -62,8 +62,8 @@
     },
     {
       "feature": "wormholePairCount",
-      "n_boards": 7,
-      "deficit_weight": 0.125
+      "n_boards": 8,
+      "deficit_weight": 0.1111
     },
     {
       "feature": "liarCellCount",
