@@ -1,4 +1,4 @@
-import { state } from '../state/gameState.js';
+import { state, getActiveBombPenaltyTotal } from '../state/gameState.js';
 import { timerEl, boardEl } from '../ui/domHelpers.js';
 import { updateAllCells } from '../ui/boardRenderer.js';
 import { performMineShift } from '../logic/gimmicks.js';
@@ -6,8 +6,12 @@ import { performMineShift } from '../logic/gimmicks.js';
 // ── Timer ──────────────────────────────────────────────
 
 export function getDisplayTime() {
-  // Timed mode always counts up now (no countdown)
-  return Math.min(Math.floor(state.elapsedTime), 999);
+  // elapsedTime is PURE wall-clock (tick-driven). The daily/weekly bomb
+  // penalty is held separately in the hit-event log and added here so the
+  // live timer jumps by the penalty on a hit without mutating the
+  // wall-clock counter (which would double-count on auto-save/restore).
+  // Timed mode counts up; getActiveBombPenaltyTotal is 0 outside daily/weekly.
+  return Math.min(Math.floor(state.elapsedTime + getActiveBombPenaltyTotal()), 999);
 }
 
 export function updateTimerDisplay() {
@@ -103,13 +107,20 @@ export function stopTimer() {
   // 3. Already stopped — both null/zero; preserve the previous
   //    preciseTime so a defensive double-stopTimer call doesn't blow
   //    away the winning time.
+  // The bomb penalty (daily/weekly) lives outside the wall-clock
+  // accumulator, so fold it into preciseTime exactly when we commit the
+  // wall-clock value. Doing it here (not in the win handler) keeps the
+  // final time penalty-inclusive no matter which path stops the timer,
+  // and the no-op third branch below preserves an already-penalised
+  // preciseTime so a defensive double-stopTimer can't drop or double it.
+  const bombPenalty = getActiveBombPenaltyTotal();
   if (_preciseStartTime !== null) {
     const totalMs = _preciseAccumulated + (Date.now() - _preciseStartTime);
-    state.preciseTime = Math.round(totalMs / 100) / 10;
+    state.preciseTime = Math.round((totalMs / 1000 + bombPenalty) * 10) / 10;
     _preciseStartTime = null;
     _preciseAccumulated = 0;
   } else if (_preciseAccumulated > 0) {
-    state.preciseTime = Math.round(_preciseAccumulated / 100) / 10;
+    state.preciseTime = Math.round((_preciseAccumulated / 1000 + bombPenalty) * 10) / 10;
     _preciseAccumulated = 0;
   }
   timerEl.classList.remove('timer-critical', 'timer-warning');

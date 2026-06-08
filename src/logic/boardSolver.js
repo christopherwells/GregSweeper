@@ -114,6 +114,23 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
   const sim = new Uint8Array(rows * cols); // all 0 (unrevealed)
   const idx = (r, c) => r * cols + c;
 
+  // Optional: pre-flag cells before the deduction loop runs. Used by
+  // computeBombInfoValue (src/logic/bombInfoValue.js) to ask "what does
+  // the rest of the solve look like if the player already knows THIS
+  // cell is a mine?". sim[i]===2 is treated as a known-mine constraint
+  // by the existing deduction loop, so the move-type counts reflect a
+  // strictly easier board than the unflagged baseline.
+  if (options && Array.isArray(options.preFlagCells)) {
+    for (const pf of options.preFlagCells) {
+      if (!pf) continue;
+      const pr = pf.row, pc = pf.col;
+      if (Number.isInteger(pr) && pr >= 0 && pr < rows
+          && Number.isInteger(pc) && pc >= 0 && pc < cols) {
+        sim[idx(pr, pc)] = 2;
+      }
+    }
+  }
+
   // Cache mine locations and player-visible adjacency counts.
   // liarBase[i] = displayed value for cells that contribute a {X-1, X+1}
   // disjunctive constraint (plain liar, possibly + locked); -1 otherwise.

@@ -532,8 +532,13 @@
           <h2>Mine hit. The game continues.</h2>
         </div>
         <div class="modal-body">
-          <p>In Daily and Weekly, hitting a mine does <strong>not</strong> end the game.</p>
-          <p>You take a <strong>+10 second</strong> penalty, the cells you had cleared are hidden again, and a <img class="game-sprite sprite-popup" src="assets/sprites/strike.png" alt="strike" decoding="async" draggable="false"> marks the mine. The numbers stay correct, so re-clear the board and finish for your time.</p>
+          <p>In Daily and Weekly, hitting a mine does <strong>not</strong> end the game. Your revealed cells stay revealed and a <img class="game-sprite sprite-popup" src="assets/sprites/strike.png" alt="strike" decoding="async" draggable="false"> marks the mine you hit.</p>
+          <p>The time cost depends on <strong>how much that mine was anchoring the rest of the solve</strong>:</p>
+          <ul style="margin: 0.5em 0 0.5em 1.2em; padding: 0;">
+            <li>A mine the solver was about to nail anyway → just the <strong>+3s base</strong></li>
+            <li>A mine holding back deeper deductions → up to <strong>+30s</strong> or more</li>
+          </ul>
+          <p>So bombing a "throwaway" mine is a cheap shortcut; bombing a critical mine is real time. The popup on each hit shows the breakdown.</p>
           <p>Other modes still end on a mine, so flag carefully.</p>
         </div>
         <button id="bombhit-explainer-ok" class="action-btn primary">Got it</button>

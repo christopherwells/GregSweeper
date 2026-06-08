@@ -160,13 +160,23 @@ async function _doSubmitOnlineScore(dateString, name, time, bombHits, extras) {
     };
     if (extras.uid) payload.uid = String(extras.uid);
     if (typeof extras.par === 'number') payload.par = extras.par;
-    // Per-hit event log: [{ t, row, col }, ...]. Only meaningful when
-    // bombHits > 0, and only present for plays submitted from v1.5.9+
-    // (older scores will have `bombHits` but no `bombHitEvents`). R-side
-    // bomb-adjusted par modelling reads this to re-run the solver with
-    // the hit cells pre-revealed and produce an effective-feature fit.
+    // Per-hit event log: [{ t, row, col, penalty?, infoValue? }, ...].
+    // - v1.5.9+ plays carry { t, row, col }.
+    // - v1.5.149+ plays (new info-value bomb mechanic) additionally
+    //   carry `penalty` and `infoValue`. The R refit treats events
+    //   without a `penalty` field as the legacy +10s/re-fog cohort.
+    // Denormalised `totalBombPenalty` is the sum of per-hit penalties on
+    // the row, so the R-side `clean_time = time - totalBombPenalty`
+    // subtraction is a single column read instead of an unnest.
     if (Array.isArray(extras.bombHitEvents) && extras.bombHitEvents.length > 0) {
       payload.bombHitEvents = extras.bombHitEvents;
+      let totalPenalty = 0;
+      for (const e of extras.bombHitEvents) {
+        if (e && typeof e.penalty === 'number') totalPenalty += e.penalty;
+      }
+      if (totalPenalty > 0) {
+        payload.totalBombPenalty = Math.round(totalPenalty * 10) / 10;
+      }
     }
     // Effective RNG seed used for this daily's generation. Equal to the
     // dateString on non-experiment days, a `:trialN` variant on
