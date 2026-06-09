@@ -284,17 +284,18 @@ export async function flushPendingSubmissions() {
 
 /**
  * Submit the player's weekly result to `weekly/{weekStart}/{uid}`.
- * Writes via `set` (not `push`) so each player has at most one row per
- * week — every subsequent attempt overwrites with the latest best time
- * and dayTimes map.
+ * Writes per-day data via `update` and bestTime via a transaction, so
+ * each day's entry is additive and never clobbers prior days even if
+ * the pre-fetch of existing data failed.
  *
- * Caller is responsible for computing bestTime and the updated dayTimes.
+ * Caller passes only today's {day: time} entry and a local bestTime
+ * candidate. The transaction ensures server-side bestTime only decreases.
  *
  * @param {string} weekStart 'YYYY-MM-DD' Monday in ET
  * @param {string} uid stable anonymous uid
  * @param {string} name player name (max 20 chars)
- * @param {number} bestTime min across all dayTimes (seconds)
- * @param {Object<number, number>} dayTimes {0: 45.2, 3: 50.1, ...}
+ * @param {number} bestTime local best-time candidate (seconds)
+ * @param {Object<number, number>} dayTimes today's entry, e.g. {2: 50.1}
  * @returns {Promise<boolean>}
  */
 export async function submitWeeklyScore(weekStart, uid, name, bestTime, dayTimes, extras = {}) {
@@ -334,8 +335,6 @@ async function _doSubmitWeeklyScore(weekStart, uid, name, bestTime, dayTimes, ex
       }
     }
 
-    // Per-day strikes count. Used by the leaderboard to show the strike
-    // count from whichever day produced the best time.
     const safeDayBombHits = {};
     if (extras.dayBombHits && typeof extras.dayBombHits === 'object') {
       for (const [k, v] of Object.entries(extras.dayBombHits)) {
@@ -347,25 +346,48 @@ async function _doSubmitWeeklyScore(weekStart, uid, name, bestTime, dayTimes, ex
       }
     }
 
-    const payload = {
+    const ref = db.ref(`weekly/${weekStart}/${uid}`);
+
+    // Additive per-day write: only touches the days in this submission,
+    // never overwrites prior days. Fixes #27.
+    const updates = {
       name: sanitizedName,
-      bestTime,
-      dayTimes: safeDayTimes,
       timestamp: firebase.database.ServerValue.TIMESTAMP,
     };
-    if (Object.keys(safeDayBombHits).length > 0) payload.dayBombHits = safeDayBombHits;
-    // totalMoves is the solver's optimal click count for the weekly
-    // board — same number for every player (same board), used to show
-    // a pace column = bestTime / totalMoves. Not strictly per-player
-    // data but it's convenient to denormalise here so the leaderboard
-    // renderer doesn't need a separate fetch.
+    for (const [day, time] of Object.entries(safeDayTimes)) {
+      updates[`dayTimes/${day}`] = time;
+    }
+    for (const [day, hits] of Object.entries(safeDayBombHits)) {
+      updates[`dayBombHits/${day}`] = hits;
+    }
     if (typeof extras.totalMoves === 'number' && extras.totalMoves > 0 && extras.totalMoves < 1000) {
-      payload.totalMoves = extras.totalMoves;
+      updates.totalMoves = extras.totalMoves;
     }
 
-    const ref = db.ref(`weekly/${weekStart}/${uid}`);
-    await ref.set(payload);
-    return true;
+    try {
+      await ref.update(updates);
+      await ref.child('bestTime').transaction(current => {
+        if (current === null || bestTime <= current) return bestTime;
+        return undefined;
+      }).catch(() => {});
+      return true;
+    } catch {
+      // First write for this player+week — node doesn't exist yet, so
+      // update() failed the hasChildren rule. set() is safe here because
+      // there's no prior data to clobber.
+      const payload = {
+        name: sanitizedName,
+        bestTime,
+        timestamp: firebase.database.ServerValue.TIMESTAMP,
+      };
+      if (Object.keys(safeDayTimes).length > 0) payload.dayTimes = safeDayTimes;
+      if (Object.keys(safeDayBombHits).length > 0) payload.dayBombHits = safeDayBombHits;
+      if (typeof extras.totalMoves === 'number' && extras.totalMoves > 0 && extras.totalMoves < 1000) {
+        payload.totalMoves = extras.totalMoves;
+      }
+      await ref.set(payload);
+      return true;
+    }
   } catch (err) {
     console.warn('Weekly score submit failed:', err.message);
     return false;
@@ -375,18 +397,32 @@ async function _doSubmitWeeklyScore(weekStart, uid, name, bestTime, dayTimes, ex
 function _queueFailedWeeklySubmission(weekStart, uid, name, bestTime, dayTimes, extras) {
   try {
     const pending = safeGetJSON(PENDING_WEEKLY_KEY) || [];
-    // One row per (week, uid) — a later, better attempt supersedes the
-    // queued one rather than stacking duplicates.
-    const filtered = pending.filter(e => !(e && e.weekStart === weekStart && e.uid === uid));
-    filtered.push({
-      weekStart, uid, name, bestTime,
-      dayTimes: dayTimes || {},
-      extras: extras || {},
-      queuedAt: Date.now(),
-      attempts: 0,
-    });
-    while (filtered.length > PENDING_MAX_ENTRIES) filtered.shift();
-    safeSetJSON(PENDING_WEEKLY_KEY, filtered);
+    const existingIdx = pending.findIndex(e => e && e.weekStart === weekStart && e.uid === uid);
+    if (existingIdx >= 0) {
+      // Merge today's day into the existing queued entry so both days
+      // reach Firebase on flush — with additive writes each day is
+      // independent.
+      const existing = pending[existingIdx];
+      existing.dayTimes = { ...existing.dayTimes, ...(dayTimes || {}) };
+      if (extras?.dayBombHits) {
+        existing.extras = existing.extras || {};
+        existing.extras.dayBombHits = { ...(existing.extras.dayBombHits || {}), ...extras.dayBombHits };
+      }
+      existing.bestTime = Math.min(existing.bestTime, bestTime);
+      existing.name = name;
+      existing.queuedAt = Date.now();
+      existing.attempts = 0;
+    } else {
+      pending.push({
+        weekStart, uid, name, bestTime,
+        dayTimes: dayTimes || {},
+        extras: extras || {},
+        queuedAt: Date.now(),
+        attempts: 0,
+      });
+    }
+    while (pending.length > PENDING_MAX_ENTRIES) pending.shift();
+    safeSetJSON(PENDING_WEEKLY_KEY, pending);
   } catch (err) {
     console.warn('Could not queue pending weekly submission:', err.message);
   }
@@ -398,9 +434,9 @@ function _queueFailedWeeklySubmission(weekStart, uid, name, bestTime, dayTimes, 
  * rules as the daily queue.
  */
 export async function flushPendingWeeklySubmissions() {
-  // Test-session guard (see flushPendingSubmissions). Extra important here:
-  // _doSubmitWeeklyScore uses set() not push(), so a stray test-session
-  // flush would OVERWRITE the player's live weekly row with stale data.
+  // Test-session guard (see flushPendingSubmissions). The weekly path
+  // writes per-day data additively, but a stray test-session flush
+  // would still pollute the player's live weekly row.
   if (isTestEnvironment()) return;
   if (!isFirebaseOnline()) return;
   let pending;

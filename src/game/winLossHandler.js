@@ -255,10 +255,13 @@ export function handleWin() {
 
     const playerName = (getPlayerName() || '').slice(0, 20).trim();
     if (playerName) {
-      submitWeeklyScore(state.weeklySeed, getUid(), playerName, bestTime, updated, {
-        dayBombHits: updatedBombs,
-        totalMoves,
-      }).catch(() => {});
+      submitWeeklyScore(state.weeklySeed, getUid(), playerName, bestTime,
+        { [state.weeklyDay]: scoreTime },
+        {
+          dayBombHits: { [state.weeklyDay]: state.weeklyBombHits || 0 },
+          totalMoves,
+        }
+      ).catch(() => {});
 
       if (isFirstAttemptThisWeek && WEEKLY_FIT_DATA_ENABLED) {
         // Honest first encounter — qualifies for par-model fit data.
