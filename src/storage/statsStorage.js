@@ -569,7 +569,7 @@ export function getPlayerName() {
 // server-side sweep is the authoritative backstop for anything that
 // bypasses this (e.g. a direct Firebase write).
 export function setPlayerName(name) {
-  const cleaned = String(name || '').replace(/[<>&"'`]/g, '').slice(0, 20);
+  const cleaned = String(name || '').replace(/[<>&"'`@]/g, '').slice(0, 20);
   if (containsHateSpeech(cleaned)) {
     return { ok: false, reason: 'hate' };
   }
