@@ -51,6 +51,7 @@ export function persistGameState() {
     dailySeed: state.dailySeed, dailyRngSeed: state.dailyRngSeed || null,
     dailyBombHits: state.dailyBombHits,
     dailyBombHitEvents: state.dailyBombHitEvents || [],
+    clickTimeline: state.clickTimeline || [],
     weeklySeed: state.weeklySeed || null,
     weeklyDay: state.weeklyDay,
     weeklyRngSeed: state.weeklyRngSeed || null,
@@ -148,6 +149,7 @@ export function tryResumeGame(mode) {
   state.dailyRngSeed = gs.dailyRngSeed || gs.dailySeed || null;
   state.dailyBombHits = gs.dailyBombHits || 0;
   state.dailyBombHitEvents = Array.isArray(gs.dailyBombHitEvents) ? gs.dailyBombHitEvents : [];
+  state.clickTimeline = Array.isArray(gs.clickTimeline) ? gs.clickTimeline : [];
   state.weeklySeed = gs.weeklySeed || null;
   state.weeklyDay = typeof gs.weeklyDay === 'number' ? gs.weeklyDay : null;
   state.weeklyRngSeed = gs.weeklyRngSeed || null;
