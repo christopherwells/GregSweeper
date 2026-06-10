@@ -19,11 +19,15 @@ const TIER_COLORS = {
   diamond:  '#b9f2ff',
 };
 
+// Two groups, rendered as separate sections:
+//   'feat'     — engine-certified skill (the identity: what you DID)
+//   'progress' — accumulation and bests
 const CATEGORIES = [
   {
     id: 'wins',
     name: 'Victory',
     icon: '🏆',
+    group: 'progress',
     desc: 'Total wins',
     thresholds: [1, 5, 25, 50, 100, 200],
     getValue: (s) => s.wins,
@@ -33,6 +37,7 @@ const CATEGORIES = [
     id: 'streak',
     name: 'On Fire',
     icon: '🔥',
+    group: 'progress',
     desc: 'Best win streak',
     thresholds: [3, 5, 10, 15, 25, 50],
     getValue: (s) => s.bestStreak,
@@ -42,6 +47,7 @@ const CATEGORIES = [
     id: 'speed',
     name: 'Speed Demon',
     icon: '⚡',
+    group: 'progress',
     desc: 'Fastest win',
     thresholds: [60, 45, 30, 20, 15, 10],
     getValue: (s) => {
@@ -56,6 +62,7 @@ const CATEGORIES = [
     id: 'daily',
     name: 'Daily Player',
     icon: '📅',
+    group: 'progress',
     desc: 'Daily challenges completed',
     thresholds: [1, 5, 10, 20, 30, 50],
     getValue: (s) => s.dailiesCompleted || 0,
@@ -71,6 +78,7 @@ const CATEGORIES = [
     id: 'flagless',
     name: 'Flagless',
     icon: '🏳️',
+    group: 'feat',
     desc: 'Wins without placing a single flag',
     thresholds: [1, 5, 15, 30, 50, 100],
     getValue: (s) => s.flaglessWins || 0,
@@ -80,6 +88,7 @@ const CATEGORIES = [
     id: 'efficient',
     name: 'No Wasted Clicks',
     icon: '🎯',
+    group: 'feat',
     desc: 'Wins matching the certified solve’s click count',
     thresholds: [1, 5, 15, 30, 50, 100],
     getValue: (s) => s.efficientWins || 0,
@@ -89,6 +98,7 @@ const CATEGORIES = [
     id: 'tankCommander',
     name: 'Tank Commander',
     icon: '🧮',
+    group: 'feat',
     desc: 'Wins on boards that provably require search reasoning',
     thresholds: [1, 3, 10, 20, 35, 60],
     getValue: (s) => s.searchWins || 0,
@@ -98,6 +108,7 @@ const CATEGORIES = [
     id: 'lieDetector',
     name: 'Lie Detector',
     icon: '🕵️',
+    group: 'feat',
     desc: 'Wins on boards that provably require liar reasoning',
     thresholds: [1, 3, 8, 15, 25, 50],
     getValue: (s) => s.liarWins || 0,
@@ -107,6 +118,7 @@ const CATEGORIES = [
     id: 'purist',
     name: 'Fearless',
     icon: '💪',
+    group: 'feat',
     desc: 'Wins without power-ups',
     thresholds: [1, 5, 15, 30, 50, 100],
     getValue: (s) => s.puristWins || 0,
@@ -117,6 +129,7 @@ const CATEGORIES = [
     id: 'challengeClimber',
     name: 'Challenger',
     icon: '⛏️',
+    group: 'progress',
     desc: 'Challenge level reached',
     thresholds: [10, 25, 50, 75, 100, 120],
     getValue: (s) => (s.modeStats?.challenge?.maxLevelReached) || (s.maxLevelReached || 1),
@@ -126,6 +139,7 @@ const CATEGORIES = [
     id: 'timedSpeed',
     name: 'Speedrunner',
     icon: '⏱️',
+    group: 'progress',
     desc: 'Best timed win',
     thresholds: [120, 90, 60, 40, 25, 15],
     getValue: (s) => {
@@ -142,6 +156,7 @@ const CATEGORIES = [
     id: 'gimmickMaster',
     name: 'Modifier Master',
     icon: '🎪',
+    group: 'progress',
     desc: 'Beat levels with modifiers active',
     thresholds: [1, 5, 15, 30, 50, 100],
     getValue: (s) => s.gimmickWins || 0,
@@ -151,6 +166,7 @@ const CATEGORIES = [
     id: 'dailyStreak',
     name: 'Daily Devotee',
     icon: '📆',
+    group: 'progress',
     desc: 'Daily challenge streak',
     thresholds: [3, 7, 14, 21, 30, 60],
     getValue: (s) => s.modeStats?.daily?.bestDailyStreak || 0,
@@ -202,6 +218,7 @@ export function getAchievementState(stats) {
 
     return {
       ...cat,
+      value: cat.getValue(stats),
       tierIndex: tierIdx,
       currentTier,
       currentTierIcon: currentTier ? TIER_ICONS[currentTier] : '🔒',

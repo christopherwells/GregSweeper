@@ -1,10 +1,13 @@
-// ── Lexicon overlay: the deducibility click-gate ───────
-// A lesson board where clicking a cell that is not currently PROVABLY
-// safe does nothing except pulse the proving region of a deduction that
-// IS available. The player cannot luck through — completing the lesson
-// means performing the technique, and the pattern is named only at the
-// end. Dynamically imported from the title-screen button; never touches
-// game state, scores, or the par pipeline.
+// ── Greg's Gym (player-facing name; module keeps its original
+// "lexicon" filename) — drills behind the deducibility click-gate.
+// A lesson board where clicking a square the clues can't yet settle
+// does nothing except point at the clues that hold the next step. The
+// player cannot luck through — completing a drill means performing the
+// technique, and the pattern is named only at the end. Flags are gated
+// the same way: you can only flag a square the clues can settle as a
+// MINE, so a flag is a worked deduction too, never a guess marker.
+// Dynamically imported from the title-screen button; never touches game
+// state, scores, or the par pipeline.
 
 import { findDeducibleFrontier } from '../logic/boardSolver.js';
 import { explainDeduction } from '../logic/proofExplainer.js';
@@ -16,6 +19,8 @@ let _lessonBoard = null;
 let _lesson = null;
 let _boardsDone = 0;
 let _pulseTimer = null;
+let _lpTimer = null;   // long-press flag timer (touch)
+let _lpFired = false;  // swallow the click that follows a long-press
 
 export function openLexicon() {
   _lesson = LESSONS.subset12;
@@ -31,10 +36,10 @@ function _buildOverlay() {
   _overlay.innerHTML = `
     <div class="lexicon-card">
       <div class="lexicon-header">
-        <span class="lexicon-title">The Lexicon</span>
+        <span class="lexicon-title">🏋️ Greg's Gym</span>
         <button class="lexicon-close" aria-label="Close">&times;</button>
       </div>
-      <p class="lexicon-instruction">Only squares the clues can settle will open. If a click bounces, watch where the board points — the answer is in those squares.</p>
+      <p class="lexicon-instruction">Only squares the clues can settle will open — and flags only stick on squares the clues can settle as mines. Hold or right-click to flag. If anything bounces, watch where the board points.</p>
       <div class="lexicon-grid" role="grid"></div>
       <p class="lexicon-naming hidden"></p>
       <div class="lexicon-actions hidden">
@@ -46,11 +51,34 @@ function _buildOverlay() {
   _overlay.querySelector('.lexicon-close').addEventListener('click', closeLexicon);
   _overlay.querySelector('.lexicon-done').addEventListener('click', closeLexicon);
   _overlay.querySelector('.lexicon-another').addEventListener('click', _nextBoard);
-  _overlay.querySelector('.lexicon-grid').addEventListener('click', _onCellClick);
+  const grid = _overlay.querySelector('.lexicon-grid');
+  grid.addEventListener('click', _onCellClick);
+  // Flagging: right-click on desktop, long-press on touch. The pointer
+  // timer sets _lpFired so the synthetic click that follows a long-press
+  // is swallowed instead of triggering a reveal attempt.
+  grid.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    const el = e.target.closest('.lexicon-cell');
+    if (el) _tryFlag(parseInt(el.dataset.row, 10), parseInt(el.dataset.col, 10));
+  });
+  grid.addEventListener('pointerdown', (e) => {
+    const el = e.target.closest('.lexicon-cell');
+    if (!el || e.pointerType === 'mouse') return;
+    _lpTimer = setTimeout(() => {
+      _lpFired = true;
+      _tryFlag(parseInt(el.dataset.row, 10), parseInt(el.dataset.col, 10));
+    }, 450);
+  });
+  const cancelLp = () => { if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; } };
+  grid.addEventListener('pointerup', cancelLp);
+  grid.addEventListener('pointerleave', cancelLp);
+  grid.addEventListener('pointercancel', cancelLp);
 }
 
 export function closeLexicon() {
   if (_pulseTimer) { clearTimeout(_pulseTimer); _pulseTimer = null; }
+  if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
+  _lpFired = false;
   if (_overlay) { _overlay.remove(); _overlay = null; }
   _lessonBoard = null;
 }
@@ -86,10 +114,52 @@ function _render() {
       if (cell.isRevealed && cell.adjacentMines > 0) {
         el.textContent = cell.adjacentMines;
         el.dataset.num = cell.adjacentMines;
+      } else if (!cell.isRevealed && cell.isFlagged) {
+        el.textContent = '🚩';
+        el.classList.add('flagged');
       }
       grid.appendChild(el);
     }
   }
+}
+
+// Gated flagging: a flag only sticks on a square the clues can settle
+// as a MINE — in the gym, a flag is a worked deduction, never a guess
+// marker. Tapping a flagged square unflags it.
+function _tryFlag(row, col) {
+  if (!_lessonBoard) return;
+  const { board } = _lessonBoard;
+  const cell = board[row]?.[col];
+  if (!cell || cell.isRevealed) return;
+  if (cell.isFlagged) {
+    cell.isFlagged = false;
+    _render();
+    return;
+  }
+  const frontier = findDeducibleFrontier(board, { respectFlags: false });
+  const provablyMine = frontier.mines.some(m => m.row === row && m.col === col);
+  if (!provablyMine) {
+    const el = _cellEl(row, col);
+    if (el) {
+      el.classList.remove('lexicon-bounce');
+      void el.offsetWidth;
+      el.classList.add('lexicon-bounce');
+    }
+    const hit = frontier.mines[0] || frontier.safe[0];
+    if (hit) {
+      _pulse(hit.sources);
+      const ask = explainDeduction(board, hit, {
+        style: 'socratic',
+        kind: frontier.mines.includes(hit) ? 'mine' : 'safe',
+      });
+      if (ask) showToast(`🤔 The clues can’t pin that square yet. ${ask}`, 3600);
+    } else {
+      showToast('🤔 The clues can’t pin that square as a mine yet', 2600);
+    }
+    return;
+  }
+  cell.isFlagged = true;
+  _render();
 }
 
 function _cellEl(row, col) {
@@ -111,6 +181,7 @@ function _pulse(cells) {
 
 function _onCellClick(e) {
   if (!_lessonBoard) return;
+  if (_lpFired) { _lpFired = false; return; } // long-press already flagged
   const el = e.target.closest('.lexicon-cell');
   if (!el) return;
   const row = parseInt(el.dataset.row, 10);
@@ -118,6 +189,9 @@ function _onCellClick(e) {
   const { board } = _lessonBoard;
   const cell = board[row]?.[col];
   if (!cell || cell.isRevealed) return;
+  // A tap on a flagged square unflags it (flags never block proof —
+  // the gate below recomputes from the clues alone).
+  if (cell.isFlagged) { cell.isFlagged = false; _render(); return; }
 
   const frontier = findDeducibleFrontier(board, { respectFlags: false });
   const provablySafe = frontier.safe.some(s => s.row === row && s.col === col);
