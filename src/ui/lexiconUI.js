@@ -39,7 +39,7 @@ function _buildOverlay() {
         <span class="lexicon-title">🏋️ Greg's Gym</span>
         <button class="lexicon-close" aria-label="Close">&times;</button>
       </div>
-      <p class="lexicon-instruction">Only squares the clues can settle will open — and flags only stick on squares the clues can settle as mines. Hold or right-click to flag. If anything bounces, watch where the board points.</p>
+      <p class="lexicon-instruction">Only squares the clues can settle will open, and flags only stick on squares the clues can settle as mines. Hold or right-click to flag. If anything bounces, watch where the board points.</p>
       <div class="lexicon-grid" role="grid"></div>
       <p class="lexicon-naming hidden"></p>
       <div class="lexicon-actions hidden">
@@ -89,7 +89,7 @@ function _nextBoard() {
   _boardsDone++;
   _lessonBoard = generateLessonBoard(_lesson, `s${_boardsDone}`);
   if (!_lessonBoard) {
-    showToast('Could not build a lesson board — please try again', 2500);
+    showToast('Could not build a lesson board. Please try again', 2500);
     closeLexicon();
     return;
   }
@@ -145,16 +145,16 @@ function _tryFlag(row, col) {
       void el.offsetWidth;
       el.classList.add('lexicon-bounce');
     }
-    const hit = frontier.mines[0] || frontier.safe[0];
+    const hit = _lowestTier(frontier.mines) || _lowestTier(frontier.safe);
     if (hit) {
       _pulse(hit.sources);
       const ask = explainDeduction(board, hit, {
         style: 'socratic',
         kind: frontier.mines.includes(hit) ? 'mine' : 'safe',
       });
-      if (ask) showToast(`🤔 The clues can’t pin that square yet. ${ask}`, 3600);
+      if (ask) showToast(`🤔 The clues can't pin that square yet. ${ask}`, 3600);
     } else {
-      showToast('🤔 The clues can’t pin that square as a mine yet', 2600);
+      showToast('🤔 The clues can\'t pin that square as a mine yet', 2600);
     }
     return;
   }
@@ -164,6 +164,11 @@ function _tryFlag(row, col) {
 
 function _cellEl(row, col) {
   return _overlay.querySelector(`.lexicon-cell[data-row="${row}"][data-col="${col}"]`);
+}
+
+// Teach the simplest available step.
+function _lowestTier(list) {
+  return list.reduce((best, d) => (!best || d.tier < best.tier ? d : best), null);
 }
 
 function _pulse(cells) {
@@ -197,12 +202,12 @@ function _onCellClick(e) {
   const provablySafe = frontier.safe.some(s => s.row === row && s.col === col);
 
   if (!provablySafe) {
-    // THE GATE: bounce, point at the clues that hold the next step, and
-    // say in plain words what kind of thinking unlocks it.
+    // THE GATE: bounce, point at the clues that hold the SIMPLEST next
+    // step, and say in plain words what kind of thinking unlocks it.
     el.classList.remove('lexicon-bounce');
     void el.offsetWidth;
     el.classList.add('lexicon-bounce');
-    const next = frontier.safe[0];
+    const next = _lowestTier(frontier.safe);
     if (next) {
       _pulse(next.sources);
       const ask = explainDeduction(board, next, { style: 'socratic', kind: 'safe' });

@@ -69,6 +69,20 @@ async function collectSnapshot(currentVersion) {
       .slice(0, 10);
   }
 
+  // Device-local recovery data: the pending-submission queues (scores
+  // that failed to upload and are awaiting retry) and the local residual
+  // cache ({date, time, par} per completed daily). These are the ONLY
+  // copies of a completion that never reached Firebase, so the
+  // diagnostics Copy button must carry them — that is how a player's
+  // lost days get recovered (Sebas's June 8/9, for example) without
+  // attaching a debugger to their phone.
+  let pendingDaily = null;
+  let pendingWeekly = null;
+  let localResiduals = null;
+  try { pendingDaily = JSON.parse(localStorage.getItem('minesweeper_pending_daily_submissions') || 'null'); } catch { /* unreadable */ }
+  try { pendingWeekly = JSON.parse(localStorage.getItem('minesweeper_pending_weekly_submissions') || 'null'); } catch { /* unreadable */ }
+  try { localResiduals = JSON.parse(localStorage.getItem('minesweeper_daily_residuals') || 'null'); } catch { /* unreadable */ }
+
   return {
     version: currentVersion,
     timestamp: new Date().toISOString(),
@@ -92,6 +106,9 @@ async function collectSnapshot(currentVersion) {
     handicapsMeta,
     handicapsMap,
     parModel: { ...PAR_MODEL },
+    pendingDaily,
+    pendingWeekly,
+    localResiduals,
     userAgent: navigator.userAgent,
   };
 }
@@ -275,7 +292,7 @@ function fallbackCopy(text) {
     document.execCommand('copy');
     showToast('Copied ✓');
   } catch {
-    showToast('Copy failed — long-press to select');
+    showToast('Copy failed. Long-press to select');
   }
   document.body.removeChild(ta);
 }

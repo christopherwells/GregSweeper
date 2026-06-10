@@ -41,8 +41,8 @@ export function fieldNoteLine(mission) {
   const name = featureName(mission.target);
   if (!name) return null;
   return mission.isPrimary
-    ? `Greg: today probes ${name} — my widest uncertainty`
-    : `Greg: today is a ${name} study — my model wants more data there`;
+    ? `Greg: today probes ${name}, my widest uncertainty`
+    : `Greg: today is a ${name} study. My model wants more data there`;
 }
 
 // Gimmick ids (board.activeGimmicks) → the same plain-English names.
@@ -95,12 +95,12 @@ export function yesterdayNote(history) {
 
   // The refit kept the previous model because diagnostics failed.
   if (cur.method && cur.method !== 'brms-ranef') {
-    return 'Greg: yesterday’s fit failed my quality bar — I kept the previous model';
+    return 'Greg: yesterday’s fit failed my quality bar, so I kept the previous model';
   }
 
   const runs = (cur.n_scores || 0) - (prev.n_scores || 0);
   if (runs <= 0) {
-    return 'Greg: nobody fed the model yesterday — today’s runs count double';
+    return 'Greg: nobody fed the model yesterday. Today’s runs count double';
   }
 
   // What yesterday's target estimate did. prev.target is the feature
@@ -117,7 +117,7 @@ export function yesterdayNote(history) {
     return `Greg: yesterday’s ${runs} run${runs !== 1 ? 's' : ''} tightened my ${name} estimate by ${deltaPct}%`;
   }
   if (deltaPct <= -2) {
-    return `Greg: yesterday WIDENED my ${name} estimate by ${Math.abs(deltaPct)}% — more spread, not less. Science.`;
+    return `Greg: yesterday WIDENED my ${name} estimate by ${Math.abs(deltaPct)}%. More spread, not less. Science.`;
   }
   return `Greg: yesterday’s ${runs} run${runs !== 1 ? 's' : ''} barely moved my ${name} estimate`;
 }
