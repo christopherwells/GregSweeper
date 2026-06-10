@@ -110,6 +110,15 @@ export function playUnflag() {
   playTone(500, 0.06, 'triangle', 0.08);
 }
 
+// Greg's Gym click-gate rejection: a soft, friendly descending "not
+// yet". Deliberately quiet and unthemed — it fires often while a
+// learner probes, and it must read as the board shaking its head, not
+// as punishment or breakage.
+export function playGateBounce() {
+  playTone(220, 0.06, 'triangle', 0.06);
+  setTimeout(() => playTone(185, 0.08, 'triangle', 0.05), 60);
+}
+
 export function playExplosion() {
   vibrate([50, 30, 100]);
   if (muted) return;

@@ -13,6 +13,7 @@ import { findDeducibleFrontier } from '../logic/boardSolver.js';
 import { explainDeduction } from '../logic/proofExplainer.js';
 import { LESSONS, generateLessonBoard, applyLessonOpening, lessonComplete } from '../logic/lexicon.js';
 import { showToast } from './toastManager.js';
+import { playReveal, playCascade, playFlag, playUnflag, playWin, playGateBounce } from '../audio/sounds.js';
 
 let _overlay = null;
 let _lessonBoard = null;
@@ -39,7 +40,11 @@ function _buildOverlay() {
         <span class="lexicon-title">🏋️ Greg's Gym</span>
         <button class="lexicon-close" aria-label="Close">&times;</button>
       </div>
-      <p class="lexicon-instruction">Only squares the clues can settle will open, and flags only stick on squares the clues can settle as mines. Hold or right-click to flag. If anything bounces, watch where the board points.</p>
+      <p class="lexicon-instruction">Open every safe square to finish the board. A square only opens when the clues prove it is safe. If it bounces, look at the clues that light up. Right-click or hold to flag a proven mine, then tap a number whose mines are all flagged to open the rest around it.</p>
+      <div class="lexicon-status">
+        <span class="lexicon-mines-left"></span>
+        <span class="lexicon-board-count"></span>
+      </div>
       <div class="lexicon-grid" role="grid"></div>
       <p class="lexicon-naming hidden"></p>
       <div class="lexicon-actions hidden">
@@ -104,9 +109,13 @@ function _render() {
   const { board, rows, cols } = _lessonBoard;
   grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
   grid.innerHTML = '';
+  let mines = 0;
+  let flags = 0;
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const cell = board[r][c];
+      if (cell.isMine) mines++;
+      if (cell.isFlagged) flags++;
       const el = document.createElement('div');
       el.className = 'lexicon-cell ' + (cell.isRevealed ? 'revealed' : 'unrevealed');
       el.dataset.row = r;
@@ -121,6 +130,50 @@ function _render() {
       grid.appendChild(el);
     }
   }
+  // The same anchor the main game's LCD gives: how many mines are
+  // unaccounted for. Without it the player has no idea what the board
+  // even holds.
+  _overlay.querySelector('.lexicon-mines-left').textContent = `💣 ${mines - flags} left`;
+  _overlay.querySelector('.lexicon-board-count').textContent = `Board ${_boardsDone}`;
+}
+
+// Open a provably-safe square, flooding zeros like the real game.
+// Returns how many cells opened so the caller can voice it.
+function _floodOpen(row, col) {
+  const { board, rows, cols } = _lessonBoard;
+  let opened = 0;
+  const queue = [[row, col]];
+  while (queue.length > 0) {
+    const [r, c] = queue.pop();
+    const cc = board[r][c];
+    if (cc.isRevealed || cc.isMine) continue;
+    cc.isRevealed = true;
+    opened++;
+    if (cc.adjacentMines === 0) {
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue;
+          const nr = r + dr, nc = c + dc;
+          if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) queue.push([nr, nc]);
+        }
+      }
+    }
+  }
+  return opened;
+}
+
+// Voice the move, repaint, and handle the naming moment.
+function _finishMove(opened) {
+  if (opened > 1) playCascade(opened);
+  else if (opened === 1) playReveal();
+  _render();
+  if (lessonComplete(_lessonBoard)) {
+    playWin();
+    const naming = _overlay.querySelector('.lexicon-naming');
+    naming.textContent = _lesson.naming;
+    naming.classList.remove('hidden');
+    _overlay.querySelector('.lexicon-actions').classList.remove('hidden');
+  }
 }
 
 // Gated flagging: a flag only sticks on a square the clues can settle
@@ -133,18 +186,14 @@ function _tryFlag(row, col) {
   if (!cell || cell.isRevealed) return;
   if (cell.isFlagged) {
     cell.isFlagged = false;
+    playUnflag();
     _render();
     return;
   }
   const frontier = findDeducibleFrontier(board, { respectFlags: false });
   const provablyMine = frontier.mines.some(m => m.row === row && m.col === col);
   if (!provablyMine) {
-    const el = _cellEl(row, col);
-    if (el) {
-      el.classList.remove('lexicon-bounce');
-      void el.offsetWidth;
-      el.classList.add('lexicon-bounce');
-    }
+    _bounce(row, col);
     const hit = _lowestTier(frontier.mines) || _lowestTier(frontier.safe);
     if (hit) {
       _pulse(hit.sources);
@@ -159,7 +208,18 @@ function _tryFlag(row, col) {
     return;
   }
   cell.isFlagged = true;
+  playFlag();
   _render();
+}
+
+function _bounce(row, col) {
+  const el = _cellEl(row, col);
+  if (el) {
+    el.classList.remove('lexicon-bounce');
+    void el.offsetWidth;
+    el.classList.add('lexicon-bounce');
+  }
+  playGateBounce();
 }
 
 function _cellEl(row, col) {
@@ -193,10 +253,12 @@ function _onCellClick(e) {
   const col = parseInt(el.dataset.col, 10);
   const { board } = _lessonBoard;
   const cell = board[row]?.[col];
-  if (!cell || cell.isRevealed) return;
+  if (!cell) return;
+  // Tap on an open number: chord, just like the real game.
+  if (cell.isRevealed) { _tryChord(row, col); return; }
   // A tap on a flagged square unflags it (flags never block proof —
   // the gate below recomputes from the clues alone).
-  if (cell.isFlagged) { cell.isFlagged = false; _render(); return; }
+  if (cell.isFlagged) { cell.isFlagged = false; playUnflag(); _render(); return; }
 
   const frontier = findDeducibleFrontier(board, { respectFlags: false });
   const provablySafe = frontier.safe.some(s => s.row === row && s.col === col);
@@ -204,9 +266,7 @@ function _onCellClick(e) {
   if (!provablySafe) {
     // THE GATE: bounce, point at the clues that hold the SIMPLEST next
     // step, and say in plain words what kind of thinking unlocks it.
-    el.classList.remove('lexicon-bounce');
-    void el.offsetWidth;
-    el.classList.add('lexicon-bounce');
+    _bounce(row, col);
     const next = _lowestTier(frontier.safe);
     if (next) {
       _pulse(next.sources);
@@ -216,31 +276,40 @@ function _onCellClick(e) {
     return;
   }
 
-  // Provably safe — open it (flood zeros like the real game).
-  const queue = [[row, col]];
-  const { rows, cols } = _lessonBoard;
-  while (queue.length > 0) {
-    const [r, c] = queue.pop();
-    const cc = board[r][c];
-    if (cc.isRevealed || cc.isMine) continue;
-    cc.isRevealed = true;
-    if (cc.adjacentMines === 0) {
-      for (let dr = -1; dr <= 1; dr++) {
-        for (let dc = -1; dc <= 1; dc++) {
-          if (dr === 0 && dc === 0) continue;
-          const nr = r + dr, nc = c + dc;
-          if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) queue.push([nr, nc]);
-        }
-      }
+  _finishMove(_floodOpen(row, col));
+}
+
+// Chord on an open number. Gym flags are gate-proven mines, so a number
+// whose flags match it has PROVEN its remaining neighbors safe — the
+// chord is the physical shortcut for exactly the deduction the gym
+// teaches, and it can never hit a mine here.
+function _tryChord(row, col) {
+  const { board, rows, cols } = _lessonBoard;
+  const cell = board[row][col];
+  if (!cell.adjacentMines) return;
+  let flags = 0;
+  const hidden = [];
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      if (dr === 0 && dc === 0) continue;
+      const nr = row + dr, nc = col + dc;
+      if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+      const n = board[nr][nc];
+      if (n.isFlagged) flags++;
+      else if (!n.isRevealed) hidden.push([nr, nc]);
     }
   }
-  _render();
-
-  if (lessonComplete(_lessonBoard)) {
-    // The naming moment — AFTER the player performed the technique.
-    const naming = _overlay.querySelector('.lexicon-naming');
-    naming.textContent = _lesson.naming;
-    naming.classList.remove('hidden');
-    _overlay.querySelector('.lexicon-actions').classList.remove('hidden');
+  if (hidden.length === 0) return;
+  // An idle tap on a number with no flags around it stays silent; a
+  // half-flagged chord attempt gets the teaching bounce.
+  if (flags !== cell.adjacentMines) {
+    if (flags > 0) {
+      _bounce(row, col);
+      showToast('🤔 Flag all of this number\'s mines first, then tap it to open the rest', 2800);
+    }
+    return;
   }
+  let opened = 0;
+  for (const [nr, nc] of hidden) opened += _floodOpen(nr, nc);
+  _finishMove(opened);
 }
