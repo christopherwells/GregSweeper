@@ -256,8 +256,10 @@ function _finishMove(opened) {
 // flags get their reasoning spelled out once per board, then a short
 // nod; trivial single-clue reveals stay silent.
 
-const TIER1_OPENERS = [
-  '💪 Excellent use of the {p} pattern!',
+const FIRST_OPENER = '💪 Excellent use of the {p} pattern!';
+// Repeat lines only — every one of these must stay honest when the
+// player has ALREADY performed this exact pair on this board.
+const REPEAT_OPENERS = [
   '💪 A clean {p} read.',
   '💪 Textbook {p}.',
   '💪 The {p} again. You are getting quick at this.',
@@ -300,10 +302,16 @@ function _pairName(ded) {
   return digits.length >= 2 ? `${digits[0]}-${digits[1]}` : 'overlap';
 }
 
-function _celebrate(ded, kind) {
+function _celebrate(ded, kind, opts = {}) {
   if (!ded) return;
   if (ded.tier === 1) {
     const pair = _pairName(ded);
+    // "Again" lines must only fire when THIS pair was already performed
+    // this board (the reveal path pre-records the pair before the move
+    // resolves, so it passes firstOfPair in explicitly).
+    const firstOfPair = opts.firstOfPair !== undefined
+      ? opts.firstOfPair
+      : !_patternsUsed.has(pair);
     _patternsUsed.add(pair);
     _tier1Count++;
     // Only 1-1 and 1-2 are real pattern NAMES; cheering "the 2-2
@@ -312,11 +320,15 @@ function _celebrate(ded, kind) {
     const canonical = !!PATTERN_NAMINGS[pair];
     if (_tier1Count === 1) {
       const opener = canonical
-        ? TIER1_OPENERS[0].replace('{p}', pair)
+        ? FIRST_OPENER.replace('{p}', pair)
         : '💪 Sharp read!';
       _coach(`${opener} ${_recognitionTip(pair)}`, 6500);
+    } else if (firstOfPair) {
+      _coach(canonical
+        ? FIRST_OPENER.replace('{p}', pair)
+        : `💪 A ${pair}: same trick as the ${_patternFamily(pair)}.`, 2600);
     } else if (canonical) {
-      _coach(TIER1_OPENERS[_tier1Count % TIER1_OPENERS.length].replace('{p}', pair), 2600);
+      _coach(REPEAT_OPENERS[_tier1Count % REPEAT_OPENERS.length].replace('{p}', pair), 2600);
     } else {
       _coach(`💪 The ${pair} again: same trick as the ${_patternFamily(pair)}.`, 2600);
     }
@@ -441,11 +453,14 @@ function _onCellClick(e) {
 
   const ded = frontier.safe.find(s => s.row === row && s.col === col);
   // Record the pattern BEFORE the move resolves, so the naming moment
-  // can describe the completing move too.
-  if (ded && ded.tier === 1) _patternsUsed.add(_pairName(ded));
+  // can describe the completing move too — capturing novelty first so
+  // the celebration's "again" lines stay honest.
+  const movePair = (ded && ded.tier === 1) ? _pairName(ded) : null;
+  const firstOfPair = movePair ? !_patternsUsed.has(movePair) : false;
+  if (movePair) _patternsUsed.add(movePair);
   const completed = _finishMove(_floodOpen(row, col));
   if (!completed) {
-    _celebrate(ded, 'safe');
+    _celebrate(ded, 'safe', { firstOfPair });
   } else if (ded && ded.tier === 1) {
     // On these small boards the pattern move is OFTEN the completing
     // move (the subset crux unlocks the rest) — the cheer must still
