@@ -1904,6 +1904,17 @@ document.addEventListener('keydown', (e) => {
 $('#btn-help').addEventListener('click', () => { setActiveHelpTab('basics'); showModal('help-modal'); });
 $('#title-bar').addEventListener('click', () => showModal('about-modal'));
 
+// The Lexicon — generated single-technique lessons behind the
+// deducibility click-gate. Lazy-loaded: it never touches the boot path,
+// game state, or the par pipeline.
+const titleLexiconBtn = $('#title-lexicon-btn');
+if (titleLexiconBtn) {
+  titleLexiconBtn.addEventListener('click', () => {
+    import('./ui/lexiconUI.js').then(m => m.openLexicon())
+      .catch(err => reportCaughtError('lexicon-import', err));
+  });
+}
+
 // The Lens — Socratic mid-game help. Never names the safe cell: it
 // detects wrong flags, or pulses the proving region of the next
 // available deduction (sized honestly by tier). Every use is recorded
