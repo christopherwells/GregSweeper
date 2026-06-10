@@ -60,6 +60,10 @@
   --text-shadow-title: 0 0 14px rgba(232, 112, 144, 0.35);
   --bg-modal-close-hover: rgba(232, 112, 144, 0.12);
   --shadow-board: 0 4px 20px rgba(8, 6, 14, 0.5);
+
+  /* Petal-fall motion: unhurried, soft landing (see sakuraDrift). */
+  --anim-reveal-dur: 0.42s;
+  --anim-reveal-ease: cubic-bezier(0.25, 0.8, 0.35, 1);
 }
 
 
@@ -78,11 +82,17 @@
   text-shadow: 0 0 16px rgba(232, 112, 144, 0.4), 0 0 32px rgba(168, 80, 130, 0.15);
 }
 
-/* Reveal moment: a petal settling. */
+/* Reveal moment: a petal settling — it drifts in from up-left with the
+   sway of falling paper, overswings past level, rocks back once, and
+   comes to rest. The two-direction rock is what makes it read as a
+   petal landing instead of a slide-in. */
 [data-theme="sakura"] .cell.num-pop,
 [data-theme="sakura"] .cell.revealing {
   animation-name: sakuraDrift;
 }
 @keyframes sakuraDrift {
-  0%{opacity:0;transform:translateY(-3px) rotate(-4deg)}100%{opacity:1;transform:translateY(0) rotate(0)}
+  0%   { opacity: 0; transform: translate(-4px, -7px) rotate(-7deg); }
+  55%  { opacity: 1; transform: translate(2px, 1px) rotate(2.5deg); }
+  80%  { transform: translate(-1px, 0) rotate(-1deg); }
+  100% { opacity: 1; transform: translate(0, 0) rotate(0deg); }
 }
