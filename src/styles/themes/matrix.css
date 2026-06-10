@@ -199,3 +199,14 @@
   70%  { opacity: 0.8; transform: translate(0, 0); filter: brightness(1.15); }
   100% { opacity: 1; transform: translate(0, 0); filter: brightness(1); }
 }
+
+/* Flag moment: target lock — the marker snaps in oversized and hot,
+   then locks down in discrete steps (flag tokens: 0.16s, ease-out). */
+[data-theme="matrix"] .cell.flag-pop {
+  animation-name: matrixFlagLock;
+}
+@keyframes matrixFlagLock {
+  0%   { opacity: 0.4; transform: scale(1.6); filter: brightness(2.2); }
+  45%  { opacity: 1; transform: scale(0.92); filter: brightness(1.5); }
+  100% { opacity: 1; transform: scale(1); filter: brightness(1); }
+}
