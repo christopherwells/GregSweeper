@@ -19,6 +19,10 @@
 
 import { isTestEnvironment } from './env.js';
 import { subscribeAuthState } from './firebaseAuth.js';
+// Runtime-only cycle with errorReporter (it imports getUid from here);
+// both sides touch the other only inside function bodies, never at
+// module-evaluation time, so the ESM live bindings resolve safely.
+import { reportCaughtError } from '../diagnostics/errorReporter.js';
 import { safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js';
 
 const FIREBASE_TIMEOUT_MS = 5000;
@@ -203,7 +207,7 @@ function _handleAuthChange(snap) {
   // Runs on both initial sign-in and account switch: the durable queue
   // holds the device-owner's real completions, which belong to whatever
   // account they sign into (this is what recovers Kate's offline days).
-  flushPendingDailyHistory().catch(() => {});
+  flushPendingDailyHistory().catch(err => reportCaughtError('flush-daily-history', err));
 
   _notifyUidChange(newUid, oldUid, isInitial);
 }

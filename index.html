@@ -139,6 +139,27 @@
       color: rgba(255,255,255,0.88);
       text-shadow: 0 1px 6px rgba(0,0,0,0.85);
     }
+    /* Liveness hairline. The gate can legitimately wait up to ~8s on a
+       slow connection, and a fully static splash reads as hung by ~3s.
+       A 2px indeterminate slide is the quietest cue that work is
+       happening — deliberately not a spinner ring, which would compete
+       with the artwork (the original no-animation rationale). */
+    #boot-overlay .boot-progress {
+      position: relative; z-index: 1;
+      width: 120px; height: 2px; margin-top: 14px;
+      background: rgba(255,255,255,0.22); border-radius: 1px;
+      overflow: hidden;
+    }
+    #boot-overlay .boot-progress::after {
+      content: ''; position: absolute; top: 0; left: -40%;
+      width: 40%; height: 100%; border-radius: 1px;
+      background: rgba(255,255,255,0.85);
+      animation: bootSlide 1.2s ease-in-out infinite;
+    }
+    @keyframes bootSlide { to { left: 100%; } }
+    @media (prefers-reduced-motion: reduce) {
+      #boot-overlay .boot-progress { display: none; }
+    }
     /* Idle-pause overlay. Inline so it works even if a CSS module fails
        to load — the timer paused on the player, they need to see why. */
     #idle-pause-overlay {
@@ -242,11 +263,12 @@
     })();
   </script>
   <!-- Boot overlay — visible until runStartupGate() in main.js completes.
-       No animation; just a static title + status line in the active
-       theme's colors. -->
+       Title + stepped status line + a quiet liveness hairline (the gate
+       can wait up to ~8s; see the .boot-progress comment above). -->
   <div id="boot-overlay">
     <h1>GregSweeper</h1>
     <p id="boot-status">Loading…</p>
+    <div class="boot-progress"></div>
   </div>
 
   <!-- Idle-pause overlay — shown when the player has been idle for 30s
@@ -583,6 +605,7 @@
           </div>
           <div class="help-section help-keyboard-only">
             <h3>Keyboard</h3>
+            <p><strong>Arrows</strong> move around the board &bull; <strong>Enter / Space</strong> reveal (chord on a satisfied number) &bull; <strong>F</strong> flag</p>
             <p><strong>R</strong> restart &bull; <strong>1-5</strong> power-ups &bull; <strong>Esc</strong> close</p>
           </div>
         </div>
