@@ -1,4 +1,4 @@
-import { state, getRevealedCells } from '../state/gameState.js';
+import { state, getRevealedCells, recordPlayerAction } from '../state/gameState.js';
 import { $, $$, boardEl, resetBtn } from '../ui/domHelpers.js';
 import {
   renderBoard, updateCell, updateAllCells, updateCells, getThemeEmoji,
@@ -290,6 +290,7 @@ export async function newGame() {
   }
   state.dailyBombHits = 0;
   state.dailyBombHitEvents = [];
+  state.clickTimeline = [];
 
   // Daily mode: vary board dimensions using the daily seed
   if (state.gameMode === 'daily' && state.dailySeed) {
@@ -785,6 +786,10 @@ export function revealCell(row, col) {
     return;
   }
 
+  // Past every intercept — this click is a real reveal action. Recorded
+  // BEFORE processing so a bomb hit still logs the click that caused it.
+  recordPlayerAction('r', row, col);
+
   // First click — generate board (or start pre-generated daily board)
   if (state.firstClick) {
     const rng = state.dailySeed ? createDailyRNG(state.dailyRngSeed || state.dailySeed) : undefined;
@@ -1238,6 +1243,7 @@ export function toggleFlag(row, col) {
   const wasFlagged = cell.isFlagged;
   cell.isFlagged = !cell.isFlagged;
   state.flagCount += cell.isFlagged ? 1 : -1;
+  recordPlayerAction(cell.isFlagged ? 'f' : 'u', row, col);
   if (cell.isFlagged) playFlag(); else playUnflag();
   updateCell(row, col);
   // Flag pop / unflag shrink animation
@@ -1280,6 +1286,7 @@ export function handleChordReveal(row, col) {
   _lastInputTime = now;
   const result = chordReveal(state.board, row, col);
   if (!result || !result.revealed) return;
+  recordPlayerAction('c', row, col);
 
   state.revealedCount += result.revealed.filter(c => !c.isMine).length;
 

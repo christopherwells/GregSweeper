@@ -5,10 +5,14 @@
 // Layer 2: Gaussian Elimination — integer row-reduction for
 //          larger components, extracting forced variables.
 //
-// Constraint format: { unknowns: cellIdx[], allowedMines: number[] }
+// Constraint format: { unknowns: cellIdx[], allowedMines: number[], origin? }
 // The mine count among `unknowns` must equal one of the `allowedMines`
 // values. Single-element = exact constraint (normal cell). Multi-element
-// = disjunctive (liar: { display-1, display+1 }).
+// = disjunctive (liar: { display-1, display+1 }). `origin` (optional) is
+// the cell index that produced the constraint — provenance for the
+// deduction trace, the Socratic lens, and per-deduction disjunctive
+// attribution. Constraints without an origin solve identically; they just
+// contribute nothing to a group's explanation.
 
 const TANK_LIMIT = 20; // max unknowns per component for enumeration (2^20 ≈ 1M)
 
@@ -16,25 +20,53 @@ const TANK_LIMIT = 20; // max unknowns per component for enumeration (2^20 ≈ 1
  * Given a set of constraints over binary (0/1) unknowns, determine which
  * cells are provably mines or provably safe across ALL satisfying assignments.
  *
- * @param {Array<{unknowns: number[], allowedMines: number[]}>} constraints
- * @returns {{ mines: Set<number>, safe: Set<number> }}
+ * Besides the flat mines/safe sets the result carries provenance:
+ *   groups[g]   = { unknowns, hasDisjunctive, origins } per independent
+ *                 union-find component (origins = source cells of its
+ *                 constraints — the honest "where the proof lives" region).
+ *   cellGroup   = Map cellIdx → g for every solved cell, so a caller can
+ *                 attribute each deduction to ITS component instead of
+ *                 batch-flagging the whole round (the old disjunctiveMoves
+ *                 inflation on liar boards).
+ *   contradiction = true when a tank component admits ZERO satisfying
+ *                 assignments — on live player state this means at least
+ *                 one flag is provably wrong.
+ *
+ * @param {Array<{unknowns: number[], allowedMines: number[], origin?: number}>} constraints
+ * @returns {{ mines: Set<number>, safe: Set<number>, groups: Array, cellGroup: Map, contradiction: boolean }}
  */
 export function solveConstraints(constraints) {
-  const result = { mines: new Set(), safe: new Set() };
+  const result = { mines: new Set(), safe: new Set(), groups: [], cellGroup: new Map(), contradiction: false };
   if (constraints.length === 0) return result;
 
   const components = findComponents(constraints);
 
   for (const comp of components) {
+    const compResult = { mines: new Set(), safe: new Set() };
     if (comp.unknowns.length <= TANK_LIMIT) {
-      tankSolve(comp.unknowns, comp.constraints, result);
+      const satisfiable = tankSolve(comp.unknowns, comp.constraints, compResult);
+      if (!satisfiable) result.contradiction = true;
     } else {
       // Gauss elimination only handles exact constraints; strip the disjunctive
       // (liar) ones for large components. They still contributed to component
       // partitioning above so the solver doesn't miss cross-constraint links.
       const exact = comp.constraints.filter(c => c.allowedMines.length === 1);
-      gaussSolve(comp.unknowns, exact, result);
+      gaussSolve(comp.unknowns, exact, compResult);
     }
+
+    const gIdx = result.groups.length;
+    const origins = [];
+    const seen = new Set();
+    for (const c of comp.constraints) {
+      if (c.origin != null && !seen.has(c.origin)) { seen.add(c.origin); origins.push(c.origin); }
+    }
+    result.groups.push({
+      unknowns: comp.unknowns,
+      hasDisjunctive: comp.constraints.some(c => c.allowedMines.length > 1),
+      origins,
+    });
+    for (const m of compResult.mines) { result.mines.add(m); result.cellGroup.set(m, gIdx); }
+    for (const s of compResult.safe) { result.safe.add(s); result.cellGroup.set(s, gIdx); }
   }
 
   return result;
@@ -89,9 +121,12 @@ function findComponents(constraints) {
 // For each valid binary assignment of unknowns, track which cells
 // are mine in ALL solutions and which are safe in ALL solutions.
 
+// Returns true when at least one satisfying assignment exists (false =
+// the component's constraints are contradictory — on live player state
+// that means a wrong flag poisoned the system).
 function tankSolve(unknowns, constraints, result) {
   const n = unknowns.length;
-  if (n === 0) return;
+  if (n === 0) return true;
 
   // Map unknown cell indices to bit positions 0..n-1
   const idxMap = new Map();
@@ -134,15 +169,16 @@ function tankSolve(unknowns, constraints, result) {
     alwaysMine &= asgn;
     alwaysSafe &= ~asgn;
 
-    if (alwaysMine === 0 && alwaysSafe === 0) return;
+    if (alwaysMine === 0 && alwaysSafe === 0) return true;
   }
 
-  if (validCount === 0) return; // contradictory constraints — shouldn't happen
+  if (validCount === 0) return false; // contradictory constraints (wrong flag on live state)
 
   for (let i = 0; i < n; i++) {
     if (alwaysMine & (1 << i)) result.mines.add(unknowns[i]);
     if (alwaysSafe & (1 << i)) result.safe.add(unknowns[i]);
   }
+  return true;
 }
 
 // Fast popcount (Hamming weight) for 32-bit integers

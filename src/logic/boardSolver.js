@@ -232,17 +232,31 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
   //   3 = required liar disjunctive reasoning to make a deduction
   let techniqueLevel = 0;
 
-  const buildResult = (solvable, remainingUnknowns) => ({
-    solvable,
-    remainingUnknowns,
-    totalClicks,
-    techniqueLevel,
-    passAMoves,
-    canonicalSubsetMoves,
-    genericSubsetMoves,
-    advancedLogicMoves,
-    disjunctiveMoves,
-  });
+  // Opt-in deduction trace ({ trace: true }): one entry per deduced
+  // reveal — { cell, tier, sources } where sources are the origin cells
+  // of the constraints that PROVED the deduction (Pass A: the one
+  // constraint; Pass B: the subset pair; Pass C: the whole union-find
+  // component, which is the honest minimal explanation for enumeration).
+  // Collection only — behavior, counters, and ordering are unchanged.
+  // Off in generation retry loops (they call without the option).
+  // Invariant on solvable boards: trace.length + 1 === totalClicks.
+  const trace = options && options.trace ? [] : null;
+
+  const buildResult = (solvable, remainingUnknowns) => {
+    const out = {
+      solvable,
+      remainingUnknowns,
+      totalClicks,
+      techniqueLevel,
+      passAMoves,
+      canonicalSubsetMoves,
+      genericSubsetMoves,
+      advancedLogicMoves,
+      disjunctiveMoves,
+    };
+    if (trace) out.trace = trace;
+    return out;
+  };
   function revealCell(i) {
     if (sim[i] !== 0 || isMine[i] || isLocked[i]) return;
     sim[i] = 1;
@@ -292,10 +306,10 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
     const constraintSources = [];
     for (let i = 0; i < rows * cols; i++) {
       const c = passACells(i);
-      if (c) constraintSources.push(c);
+      if (c) { c.origin = i; constraintSources.push(c); }
     }
     for (const gc of gimmickConstraints) {
-      constraintSources.push({ nbrs: gc.cells, expected: gc.expected });
+      constraintSources.push({ nbrs: gc.cells, expected: gc.expected, origin: gc.origin });
     }
 
     for (const src of constraintSources) {
@@ -329,6 +343,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
           if (sim[ni] === 0) {
             totalClicks++;
             passAMoves++;
+            if (trace) trace.push({ cell: ni, tier: 0, sources: src.origin != null ? [src.origin] : [] });
             revealQueue.push(ni);
             progress = true;
           }
@@ -400,6 +415,12 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
               totalClicks++;
               if (isCanonical) canonicalSubsetMoves++;
               else genericSubsetMoves++;
+              if (trace) {
+                const sources = [];
+                if (cA.origin != null) sources.push(cA.origin);
+                if (cB.origin != null && cB.origin !== cA.origin) sources.push(cB.origin);
+                trace.push({ cell: di, tier: 1, sources });
+              }
               revealQueue.push(di);
               subsetProgress = true;
             }
@@ -423,14 +444,26 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
     const freshConstraints = buildConstraints(sim, adjCount, neighborCache, rows * cols);
     const liarCs = buildLiarConstraints(sim, liarBase, neighborCache, rows * cols);
     const gimmickCs = buildGimmickRuntimeConstraints(gimmickConstraints, sim);
-    const hasDisjunctive = liarCs.length > 0;
     const solved = solveConstraints([...freshConstraints, ...liarCs, ...gimmickCs]);
 
+    // Per-deduction disjunctive attribution. The old version batch-flagged
+    // EVERY Pass C deduction of a round as disjunctive whenever ANY liar
+    // constraint existed anywhere on the board, inflating disjunctiveMoves
+    // in dailyMeta for every liar board (and over-promoting techniqueLevel
+    // to 3). Honest version: a deduction is disjunctive only if ITS
+    // union-find component carries a disjunctive constraint.
+    const isDisjDeduction = (cellIdx) => {
+      const g = solved.cellGroup.get(cellIdx);
+      return g != null ? solved.groups[g].hasDisjunctive : liarCs.length > 0;
+    };
+
     let advancedProgress = false;
+    let anyDisjThisRound = false;
 
     for (const cellIdx of solved.mines) {
       if (sim[cellIdx] === 0) {
         flagCell(cellIdx);
+        if (isDisjDeduction(cellIdx)) anyDisjThisRound = true;
         advancedProgress = true;
       }
     }
@@ -438,8 +471,17 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
     for (const cellIdx of solved.safe) {
       if (sim[cellIdx] === 0) {
         totalClicks++;
-        if (hasDisjunctive) disjunctiveMoves++;
+        const disj = isDisjDeduction(cellIdx);
+        if (disj) { disjunctiveMoves++; anyDisjThisRound = true; }
         else advancedLogicMoves++;
+        if (trace) {
+          const g = solved.cellGroup.get(cellIdx);
+          trace.push({
+            cell: cellIdx,
+            tier: disj ? 3 : 2,
+            sources: g != null ? solved.groups[g].origins : [],
+          });
+        }
         revealQueue.push(cellIdx);
         advancedProgress = true;
       }
@@ -449,7 +491,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
     }
 
     tryUnlockAll();
-    if (advancedProgress) techniqueLevel = Math.max(techniqueLevel, hasDisjunctive ? 3 : 2);
+    if (advancedProgress) techniqueLevel = Math.max(techniqueLevel, anyDisjThisRound ? 3 : 2);
       if (revealedCount === totalSafe) return buildResult(true, 0);
     if (advancedProgress) continue;
 
@@ -560,7 +602,7 @@ function buildConstraints(sim, adjCount, neighborCache, totalCells) {
     const remaining = adjCount[i] - flagged;
     if (unknownSet.length > 0 && remaining >= 0) {
       unknownSet.sort((a, b) => a - b);
-      constraints.push({ unknowns: unknownSet, allowedMines: [remaining] });
+      constraints.push({ unknowns: unknownSet, allowedMines: [remaining], origin: i });
     }
   }
   return constraints;
@@ -598,7 +640,7 @@ function buildStaticGimmickConstraints(board, rows, cols, neighborCache, stripGi
             cells.push(nr * cols + nc);
           }
         }
-        if (cells.length > 0) out.push({ cells, expected: cell.displayedMines });
+        if (cells.length > 0) out.push({ cells, expected: cell.displayedMines, origin: idx(r, c) });
       } else if (cell.isCompass && cell.compassDir && !skipCompass) {
         const cells = [];
         let nr = r + cell.compassDir.dr;
@@ -608,7 +650,7 @@ function buildStaticGimmickConstraints(board, rows, cols, neighborCache, stripGi
           nr += cell.compassDir.dr;
           nc += cell.compassDir.dc;
         }
-        if (cells.length > 0) out.push({ cells, expected: cell.displayedMines });
+        if (cells.length > 0) out.push({ cells, expected: cell.displayedMines, origin: idx(r, c) });
       } else if (cell.isWormhole && cell.wormholePair && !skipWormhole) {
         const myIdx = idx(r, c);
         const pIdx = idx(cell.wormholePair.row, cell.wormholePair.col);
@@ -624,7 +666,9 @@ function buildStaticGimmickConstraints(board, rows, cols, neighborCache, stripGi
           cells.push(ni);
         }
         if (overlap) continue;
-        if (cells.length > 0) out.push({ cells, expected: cell.displayedMines });
+        // Origin = the owning wormhole cell; the UI can pull the partner
+        // from cell.wormholePair when it highlights the proving region.
+        if (cells.length > 0) out.push({ cells, expected: cell.displayedMines, origin: myIdx });
       }
     }
   }
@@ -649,7 +693,7 @@ function buildGimmickRuntimeConstraints(staticConstraints, sim) {
     const remaining = gc.expected - flagged;
     if (remaining < 0 || remaining > unknownSet.length) continue; // infeasible — Pass A check will catch
     unknownSet.sort((a, b) => a - b);
-    cs.push({ unknowns: unknownSet, allowedMines: [remaining] });
+    cs.push({ unknowns: unknownSet, allowedMines: [remaining], origin: gc.origin });
   }
   return cs;
 }
@@ -681,7 +725,7 @@ function buildLiarConstraints(sim, liarBase, neighborCache, totalCells) {
     if (v1 >= 0 && v1 <= unknownSet.length) allowed.push(v1);
     if (v2 >= 0 && v2 <= unknownSet.length) allowed.push(v2);
     if (allowed.length > 0) {
-      constraints.push({ unknowns: unknownSet, allowedMines: allowed });
+      constraints.push({ unknowns: unknownSet, allowedMines: allowed, origin: i });
     }
   }
   return constraints;
@@ -691,16 +735,38 @@ function buildLiarConstraints(sim, liarBase, neighborCache, totalCells) {
 // Analyzes the current board state and returns a deducible safe cell,
 // or null if the situation was a genuine 50/50.
 
-export function findNextSafeMove(board) {
+// Analyze the live player-visible board state and return EVERYTHING that
+// is provably deducible right now — the full safe + mine frontier, each
+// deduction carrying its proving region (constraint origin cells), plus a
+// contradiction signal.
+//
+// `respectFlags: false` runs flags-blind: player flags are treated as
+// plain unknowns. This matters because flags are CLAIMS, not facts — a
+// single wrong flag can poison the constraint system into certifying a
+// mine as "provably safe" or stamping "genuine 50/50" on a deducible
+// position. Every player-facing verdict (receipts, lens) must come from
+// the flags-blind run; the flags-respecting run's `contradiction` flag is
+// itself the signal that some flag is provably wrong.
+//
+// @returns {{
+//   safe:  Array<{row, col, tier, sources: Array<{row, col}>}>,
+//   mines: Array<{row, col, tier, sources: Array<{row, col}>}>,
+//   contradiction: boolean,
+// }}  tier 0 = a single constraint pins it; tier 2 = needed the joint
+//     constraint solve (sources = the whole component — the honest
+//     minimal explanation for enumeration); tier 3 = its component
+//     carried a liar disjunction.
+export function findDeducibleFrontier(board, opts = {}) {
+  const respectFlags = opts.respectFlags !== false;
   const rows = board.length;
   const cols = board[0].length;
   const idx = (r, c) => r * cols + c;
+  const rc = (i) => ({ row: Math.floor(i / cols), col: i % cols });
   const totalCells = rows * cols;
 
   // Build simulation state from actual board — gimmick-aware (matches isBoardSolvable)
   const sim = new Uint8Array(totalCells);
   const adjCount = new Uint8Array(totalCells);
-  const isMineArr = new Uint8Array(totalCells);
   const liarBase = new Int8Array(totalCells).fill(-1);
 
   for (let r = 0; r < rows; r++) {
@@ -708,8 +774,7 @@ export function findNextSafeMove(board) {
       const i = idx(r, c);
       const cell = board[r][c];
       if (cell.isRevealed) sim[i] = 1;
-      else if (cell.isFlagged) sim[i] = 2;
-      if (cell.isMine) isMineArr[i] = 1;
+      else if (respectFlags && cell.isFlagged) sim[i] = 2;
       adjCount[i] = getPlayerVisibleCount(cell);
       if (isPureLiar(cell) && cell.displayedMines != null) {
         liarBase[i] = cell.displayedMines;
@@ -719,60 +784,98 @@ export function findNextSafeMove(board) {
 
   // Use wall-aware neighbor cache (matches isBoardSolvable)
   const neighborCache = buildNeighborCache(board, rows, cols);
-
-  // Static gimmick constraints (sonar/compass/wormhole) — same as isBoardSolvable
   const gimmickConstraints = buildStaticGimmickConstraints(board, rows, cols, neighborCache);
 
-  // Pass A: Simple rules over both numbered cells and gimmick constraints
+  const safe = new Map();  // cellIdx -> { tier, sources: number[] }
+  const mines = new Map();
+  let contradiction = false;
+  const addTo = (map, i, tier, sources) => {
+    if (!map.has(i)) map.set(i, { tier, sources });
+  };
+
+  // Pass A: single-constraint deductions over numbered cells + gimmick
+  // constraints, collected in board-scan order (preserves the pick order
+  // the one-cell findNextSafeMove always had).
+  const passASources = [];
   for (let i = 0; i < totalCells; i++) {
     if (sim[i] !== 1 || adjCount[i] === 0 || adjCount[i] === UNKNOWN) continue;
-    const nbrs = neighborCache[i];
-    let unknowns = 0;
-    let flagged = 0;
-    for (const ni of nbrs) {
-      if (sim[ni] === 0) unknowns++;
-      else if (sim[ni] === 2) flagged++;
-    }
-    const remaining = adjCount[i] - flagged;
-    if (remaining === 0 && unknowns > 0) {
-      for (const ni of nbrs) {
-        if (sim[ni] === 0) {
-          return { row: Math.floor(ni / cols), col: ni % cols };
-        }
-      }
-    }
+    passASources.push({ cells: neighborCache[i], expected: adjCount[i], origin: i });
   }
-  // Same Pass-A pattern over gimmick constraints
   for (const gc of gimmickConstraints) {
+    passASources.push({ cells: gc.cells, expected: gc.expected, origin: gc.origin });
+  }
+  for (const src of passASources) {
     let unknowns = 0;
     let flagged = 0;
-    for (const ci of gc.cells) {
+    for (const ci of src.cells) {
       if (sim[ci] === 0) unknowns++;
       else if (sim[ci] === 2) flagged++;
     }
-    const remaining = gc.expected - flagged;
+    const remaining = src.expected - flagged;
+    if (remaining < 0 || remaining > unknowns) {
+      // Infeasible single constraint. Flags-respecting: a wrong flag.
+      // Flags-blind: shouldn't happen on a generator board.
+      contradiction = true;
+      continue;
+    }
     if (remaining === 0 && unknowns > 0) {
-      for (const ci of gc.cells) {
-        if (sim[ci] === 0) {
-          return { row: Math.floor(ci / cols), col: ci % cols };
-        }
-      }
+      for (const ci of src.cells) if (sim[ci] === 0) addTo(safe, ci, 0, [src.origin]);
+    }
+    if (remaining === unknowns && unknowns > 0) {
+      for (const ci of src.cells) if (sim[ci] === 0) addTo(mines, ci, 0, [src.origin]);
     }
   }
 
-  // Pass B: Build all constraints (numbered + liar disjunctive + gimmick exact)
+  // Joint constraint solve (subset + tank/gauss in one): numbered + liar
+  // disjunctive + gimmick exact constraints, with per-component provenance.
   const constraints = buildConstraints(sim, adjCount, neighborCache, totalCells);
   const liarCs = buildLiarConstraints(sim, liarBase, neighborCache, totalCells);
   const gimmickCs = buildGimmickRuntimeConstraints(gimmickConstraints, sim);
   const solved = solveConstraints([...constraints, ...liarCs, ...gimmickCs]);
+  if (solved.contradiction) contradiction = true;
 
-  // Return first safe cell
-  for (const cellIdx of solved.safe) {
-    return { row: Math.floor(cellIdx / cols), col: cellIdx % cols };
+  const groupMeta = (i) => {
+    const g = solved.cellGroup.get(i);
+    if (g == null) return { tier: 2, sources: [] };
+    const grp = solved.groups[g];
+    return { tier: grp.hasDisjunctive ? 3 : 2, sources: grp.origins };
+  };
+  for (const ci of solved.safe) {
+    if (sim[ci] === 0) { const m = groupMeta(ci); addTo(safe, ci, m.tier, m.sources); }
+  }
+  for (const ci of solved.mines) {
+    if (sim[ci] === 0) { const m = groupMeta(ci); addTo(mines, ci, m.tier, m.sources); }
   }
 
-  // No deducible safe move — genuine 50/50 situation
-  return null;
+  const toList = (map) => [...map.entries()].map(([i, m]) => ({
+    ...rc(i),
+    tier: m.tier,
+    sources: m.sources.filter(s => s != null).map(rc),
+  }));
+  return { safe: toList(safe), mines: toList(mines), contradiction };
+}
+
+// Back-compat one-cell wrapper (post-death verdicts): first deducible safe
+// cell respecting the player's flags, or null for a genuine 50/50.
+export function findNextSafeMove(board) {
+  const f = findDeducibleFrontier(board, { respectFlags: true });
+  return f.safe.length > 0 ? { row: f.safe[0].row, col: f.safe[0].col } : null;
+}
+
+// Wrong-flag detection by dual-solve diff. A player flag is PROVABLY
+// wrong when the flags-blind run proves that cell safe; the
+// flags-respecting run's contradiction flag additionally says "some flag
+// is wrong" even when it can't be localized. The most common true cause
+// of a stuck player is a wrong flag placed minutes earlier — this is the
+// honest version of "are you stuck?".
+export function detectWrongFlags(board) {
+  const blind = findDeducibleFrontier(board, { respectFlags: false });
+  const wrongFlags = [];
+  for (const s of blind.safe) {
+    if (board[s.row][s.col].isFlagged) wrongFlags.push({ row: s.row, col: s.col });
+  }
+  const trusting = findDeducibleFrontier(board, { respectFlags: true });
+  return { wrongFlags, contradiction: trusting.contradiction };
 }
 
 // ── Game-play reveal / chord functions ──────────────────────

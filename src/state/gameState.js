@@ -33,6 +33,14 @@ export const state = {
   // so a clean par fit needs to either exclude those plays or model
   // the bomb-adjusted path.
   dailyBombHitEvents: [],
+  // Player click timeline for the CURRENT game: { t: elapsedSeconds,
+  // r, c, a } with a = 'r' reveal | 'f' flag | 'u' unflag | 'c' chord.
+  // The ground truth for honest player-grounded claims (receipts that
+  // grade the player's ACTUAL clicks instead of narrating the solver's
+  // canonical order, the skill-feat detections, the future
+  // click-to-technique attribution question). Reset in newGame; capped
+  // so a marathon session can't bloat the auto-persisted save.
+  clickTimeline: [],
   dailyPar: 0,       // predicted time in seconds — predictPar(dailyFeatures)
   dailyMoves: 0,     // solver totalClicks for pace calculation
   dailyFeatures: null, // full feature vector from computeDailyFeatures — used for par breakdown, Firebase meta upload, and the R refit training set
@@ -138,6 +146,23 @@ export const state = {
 // Total bomb-hit penalty (seconds) accrued in the CURRENT daily/weekly
 // attempt, derived from the per-hit event log. Single source of truth so
 // the live timer, the final precise time, and the score submission all
+// Record one player action on the click timeline. t mirrors the
+// bombHitEvents convention (clean wall-clock seconds, 1 decimal).
+// Capped: drop-oldest beyond 2000 entries so a pathological session
+// can't bloat the auto-persisted save — a full 14x14 game is ~200-400
+// actions, so the cap never bites in real play.
+const CLICK_TIMELINE_CAP = 2000;
+export function recordPlayerAction(action, row, col) {
+  if (!Array.isArray(state.clickTimeline)) state.clickTimeline = [];
+  state.clickTimeline.push({
+    t: Math.round((state.elapsedTime || 0) * 10) / 10,
+    r: row, c: col, a: action,
+  });
+  if (state.clickTimeline.length > CLICK_TIMELINE_CAP) {
+    state.clickTimeline.splice(0, state.clickTimeline.length - CLICK_TIMELINE_CAP);
+  }
+}
+
 // agree. Derived from events (not a separate accumulator) so it survives
 // the daily auto-save/restore for free — the events are persisted.
 // Only one mode's events are populated at a time; summing both is safe.
