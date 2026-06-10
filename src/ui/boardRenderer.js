@@ -347,6 +347,10 @@ export function updateCell(r, c) {
     // Wormholes and mirrors: no indicator on unrevealed cells (revealed on discovery)
     // Suggested safe move overlay (post-death analysis)
     if (cell.suggestedMove) cellEl.classList.add('suggested-move');
+    // Loss-receipt frontier: every provably-safe-at-death cell gets a
+    // quiet outline so the explore view shows the WHOLE proof surface,
+    // not just the one NEXT MOVE chip.
+    if (cell.frontierSafe) cellEl.classList.add('frontier-safe');
     // Daily / weekly suggested start cell (shows when board is fresh or re-fogged)
     if (cell.suggestedStart && (state.gameMode === 'daily' || state.gameMode === 'weekly') &&
         (state.status === 'idle' || (state.status === 'playing' && state.revealedCount <= 1))) {
