@@ -242,6 +242,28 @@ async function writeCanonicalBoard(date, idToken, payload) {
   }
 }
 
+// Write the board's feature vector to dailyMeta at GENERATION time, so
+// the generator's solver counts are canonical before any client can
+// upsert its own. This closes the cross-version determinism gap that
+// reveal gating opened: an old-code client solving a gated board
+// computes ungated (slightly different) move counts, and without this
+// write it could land them in dailyMeta first. Write-once rules make a
+// duplicate write fail with 401/403 — treated as "already written".
+async function writeDailyMeta(date, idToken, features) {
+  const url = `${DB_BASE}/dailyMeta/${date}.json?auth=${encodeURIComponent(idToken)}`;
+  const body = JSON.stringify({ features, writtenAt: { '.sv': 'timestamp' } });
+  const r = await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body });
+  if (!r.ok) {
+    if (r.status === 401 || r.status === 403) {
+      console.log('  dailyMeta already written — skipped');
+      return;
+    }
+    const txt = await r.text();
+    throw new Error(`dailyMeta write failed: ${r.status} ${txt}`);
+  }
+  console.log('  dailyMeta written');
+}
+
 (async () => {
   const date = process.argv[2];
   if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
@@ -296,6 +318,12 @@ async function writeCanonicalBoard(date, idToken, payload) {
   const idToken = await signInAnonymously();
   await writeCanonicalBoard(date, idToken, payload);
   console.log('  written');
+
+  const features = computeDailyFeatures(
+    { board: cand.board, rows: cand.rows, cols: cand.cols, totalMines: cand.totalMines, activeGimmicks: cand.activeGimmicks },
+    cand.check,
+  );
+  await writeDailyMeta(date, idToken, features);
 })().catch(err => {
   console.error('precompute failed:', err.message);
   process.exit(1);

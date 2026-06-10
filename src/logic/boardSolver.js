@@ -109,6 +109,22 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
     ? (options.stripGimmicks instanceof Set ? options.stripGimmicks : new Set(options.stripGimmicks))
     : null;
 
+  // Reveal gating: sonar / compass / wormhole constraints are available
+  // only once their number is on screen — the origin cell revealed (for
+  // wormhole: either endpoint, both display the pair sum). Without the
+  // gate the certifier can rely on a clue the player cannot SEE yet (a
+  // fogged gimmick cell displays nothing), weakening the no-guess
+  // guarantee on gimmick boards. The default comes from the BOARD's own
+  // contract flag (`board._gatedCert`, stamped by createEmptyBoard and
+  // carried through canonical payloads and game saves), so historical
+  // boards certified ungated keep their original contract and newly
+  // generated boards are certified gated — on every solver surface,
+  // automatically. `options.gateGimmickOrigins` overrides for
+  // measurement tooling.
+  const gateGimmickOrigins = options && options.gateGimmickOrigins !== undefined
+    ? !!options.gateGimmickOrigins
+    : !!(board && board._gatedCert);
+
   // Build a lightweight simulation grid:
   // 0 = unrevealed unknown, 1 = revealed, 2 = flagged as mine
   const sim = new Uint8Array(rows * cols); // all 0 (unrevealed)
@@ -309,6 +325,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
       if (c) { c.origin = i; constraintSources.push(c); }
     }
     for (const gc of gimmickConstraints) {
+      if (gateGimmickOrigins && !gimmickConstraintVisible(gc, sim)) continue;
       constraintSources.push({ nbrs: gc.cells, expected: gc.expected, origin: gc.origin });
     }
 
@@ -364,7 +381,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
     // Sonar / compass / wormhole are exact constraints over larger cell sets
     // and DO participate in subset analysis here.
     const baseConstraints = buildConstraints(sim, adjCount, neighborCache, rows * cols);
-    const gimmickRuntime = buildGimmickRuntimeConstraints(gimmickConstraints, sim);
+    const gimmickRuntime = buildGimmickRuntimeConstraints(gimmickConstraints, sim, gateGimmickOrigins);
     const constraints = [...baseConstraints, ...gimmickRuntime];
 
     // Pre-build sets once per pass — avoids O(n) Array.includes / new Set() per pair
@@ -443,7 +460,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
     // from plain-liar cells (each contributes "X-1 OR X+1" mines).
     const freshConstraints = buildConstraints(sim, adjCount, neighborCache, rows * cols);
     const liarCs = buildLiarConstraints(sim, liarBase, neighborCache, rows * cols);
-    const gimmickCs = buildGimmickRuntimeConstraints(gimmickConstraints, sim);
+    const gimmickCs = buildGimmickRuntimeConstraints(gimmickConstraints, sim, gateGimmickOrigins);
     const solved = solveConstraints([...freshConstraints, ...liarCs, ...gimmickCs]);
 
     // Per-deduction disjunctive attribution. The old version batch-flagged
@@ -654,6 +671,12 @@ function buildStaticGimmickConstraints(board, rows, cols, neighborCache, stripGi
     for (let c = 0; c < cols; c++) {
       const cell = board[r][c];
       if (cell.isMine || cell.displayedMines == null) continue;
+      // Liar stacks freely on base-value gimmicks (gimmicks.js stacking
+      // rules), and displayedMines then INCLUDES the ±1 lie. Emitting
+      // that as an exact constraint would let the certifier deduce from
+      // a false premise — isPureLiar's contract says liar-stacked
+      // gimmick cells contribute nothing, and that must hold here too.
+      if (cell.isLiar) continue;
 
       if (cell.isSonar && !skipSonar) {
         const cells = [];
@@ -694,11 +717,23 @@ function buildStaticGimmickConstraints(board, rows, cols, neighborCache, stripGi
         if (overlap) continue;
         // Origin = the owning wormhole cell; the UI can pull the partner
         // from cell.wormholePair when it highlights the proving region.
-        if (cells.length > 0) out.push({ cells, expected: cell.displayedMines, origin: myIdx });
+        // `partner` is carried for reveal-gating: both endpoints display
+        // the pair sum, so the constraint is on screen when EITHER is
+        // revealed.
+        if (cells.length > 0) out.push({ cells, expected: cell.displayedMines, origin: myIdx, partner: pIdx });
       }
     }
   }
   return out;
+}
+
+// A sonar / compass / wormhole constraint is on screen — usable by the
+// player — only when its number is visible: the origin cell is revealed,
+// or, for wormhole (both endpoints display the pair sum), either endpoint
+// is. Locked gimmick cells pass through naturally: once unlocked and
+// revealed, sim[origin] === 1.
+function gimmickConstraintVisible(gc, sim) {
+  return sim[gc.origin] === 1 || (gc.partner != null && sim[gc.partner] === 1);
 }
 
 // Sonar / compass / wormhole gimmicks each define a STATIC set of cells
@@ -706,9 +741,11 @@ function buildStaticGimmickConstraints(board, rows, cols, neighborCache, stripGi
 // expected exact mine count. This converts each static constraint into a
 // runtime constraint over only the unknown cells, after subtracting cells
 // already revealed (counted as 0) and flagged (counted as mines).
-function buildGimmickRuntimeConstraints(staticConstraints, sim) {
+// `gateOrigins` filters to constraints whose number the player can SEE.
+function buildGimmickRuntimeConstraints(staticConstraints, sim, gateOrigins) {
   const cs = [];
   for (const gc of staticConstraints) {
+    if (gateOrigins && !gimmickConstraintVisible(gc, sim)) continue;
     const unknownSet = [];
     let flagged = 0;
     for (const ci of gc.cells) {
@@ -784,6 +821,13 @@ function buildLiarConstraints(sim, liarBase, neighborCache, totalCells) {
 //     carried a liar disjunction.
 export function findDeducibleFrontier(board, opts = {}) {
   const respectFlags = opts.respectFlags !== false;
+  // Same per-board reveal gate as isBoardSolvable: only count sonar /
+  // compass / wormhole constraints whose number is on screen. Defaults
+  // to the board's own contract flag so the lens / receipts / wrong-flag
+  // verdicts never cite a clue the player cannot see on a gated board.
+  const gateGimmickOrigins = opts.gateGimmickOrigins !== undefined
+    ? !!opts.gateGimmickOrigins
+    : !!(board && board._gatedCert);
   const rows = board.length;
   const cols = board[0].length;
   const idx = (r, c) => r * cols + c;
@@ -836,6 +880,7 @@ export function findDeducibleFrontier(board, opts = {}) {
     passASources.push({ cells: neighborCache[i], expected: adjCount[i], origin: i });
   }
   for (const gc of gimmickConstraints) {
+    if (gateGimmickOrigins && !gimmickConstraintVisible(gc, sim)) continue;
     passASources.push({ cells: gc.cells, expected: gc.expected, origin: gc.origin });
   }
   for (const src of passASources) {
@@ -862,7 +907,7 @@ export function findDeducibleFrontier(board, opts = {}) {
 
   const constraints = buildConstraints(sim, adjCount, neighborCache, totalCells);
   const liarCs = buildLiarConstraints(sim, liarBase, neighborCache, totalCells);
-  const gimmickCs = buildGimmickRuntimeConstraints(gimmickConstraints, sim);
+  const gimmickCs = buildGimmickRuntimeConstraints(gimmickConstraints, sim, gateGimmickOrigins);
 
   // Pass B mirror: two-clue subset deductions with the PAIR as the
   // minimal explanation (tier 1). Without this stage every subset

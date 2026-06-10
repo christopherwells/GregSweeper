@@ -189,8 +189,27 @@ function popcount(x) {
 }
 
 // ── Gaussian Elimination for larger components ────────────────
-// Row-reduce the constraint matrix over integers to find
-// any variables that are forced to 0 or 1.
+// Row-reduce the constraint matrix and extract variables that are
+// forced to 0 or 1. Gauss is allowed to be INCOMPLETE (a missed
+// deduction just means "couldn't prove it"), but it must never be
+// UNSOUND: a false "provable mine / provably safe" poisons the
+// certifier and every player-facing verdict built on it.
+//
+// The old version rounded float coefficients with Math.round before
+// pattern-matching rows — a fractional entry like 0.5 (which 0/1
+// systems legitimately produce under elimination) was read as 1, and
+// the row then "proved" cells that nothing proved. Found 2026-06-10 as
+// 17/360 monotonicity violations in the reveal-gating probe (boards
+// certifying WITH FEWER constraints because the extra constraints
+// routed a big component into the unsound gauss path).
+
+// A row only yields deductions when every coefficient and the RHS sit
+// within SNAP_EPS of an integer. True fractional values arising in 0/1
+// systems are ratios of small minors (1/2, 1/3, 2/3, ...) — never
+// closer to an integer than ~1/1000 in components this size — while
+// float noise on genuinely-integer entries stays orders of magnitude
+// below this. Rows that fail the snap are SKIPPED, never rounded.
+const SNAP_EPS = 1e-6;
 
 function gaussSolve(unknowns, constraints, result) {
   const n = unknowns.length;
@@ -198,7 +217,7 @@ function gaussSolve(unknowns, constraints, result) {
   const colMap = new Map();
   unknowns.forEach((u, i) => colMap.set(u, i));
 
-  // Build augmented matrix [A | b] with integer entries.
+  // Build augmented matrix [A | b].
   // Caller (solveConstraints) already filtered to single-allowed constraints,
   // so allowedMines[0] is the exact mine count.
   const matrix = constraints.map(c => {
@@ -208,19 +227,18 @@ function gaussSolve(unknowns, constraints, result) {
     return row;
   });
 
-  // Row-reduce using integer arithmetic
-  // Since all initial coefficients are 0 or 1, pivots are always ±1,
-  // and row subtraction keeps entries as small integers.
+  // Row-reduce with partial pivoting (largest |entry| in the column) to
+  // keep the float arithmetic well-conditioned.
   let pivotRow = 0;
   for (let col = 0; col < n && pivotRow < m; col++) {
-    // Find a row with non-zero entry in this column
     let found = -1;
+    let best = SNAP_EPS;
     for (let r = pivotRow; r < m; r++) {
-      if (matrix[r][col] !== 0) { found = r; break; }
+      const a = Math.abs(matrix[r][col]);
+      if (a > best) { best = a; found = r; }
     }
     if (found === -1) continue;
 
-    // Swap to pivot position
     if (found !== pivotRow) {
       [matrix[pivotRow], matrix[found]] = [matrix[found], matrix[pivotRow]];
     }
@@ -238,44 +256,42 @@ function gaussSolve(unknowns, constraints, result) {
     pivotRow++;
   }
 
-  // Extract forced variables from reduced matrix
+  // Extract forced variables. For a row Σ c_i·x_i = b over binary x:
+  //   max achievable = Σ positive c_i  (positives at 1, negatives at 0)
+  //   min achievable = Σ negative c_i  (positives at 0, negatives at 1)
+  // b == max forces every positive-coefficient var to 1 (mine) and every
+  // negative-coefficient var to 0 (safe); b == min is the mirror image.
+  // This is the standard sound bound rule — it subsumes the old
+  // single-variable / all-(+1) / all-(−1) special cases.
   for (let r = 0; r < m; r++) {
     const vars = [];
+    let snapped = true;
     for (let c = 0; c < n; c++) {
-      if (Math.abs(matrix[r][c]) > 0.001) {
-        vars.push({ col: c, val: Math.round(matrix[r][c]) });
+      const raw = matrix[r][c];
+      const val = Math.round(raw);
+      if (Math.abs(raw - val) > SNAP_EPS) { snapped = false; break; }
+      if (val !== 0) vars.push({ col: c, val });
+    }
+    if (!snapped || vars.length === 0) continue;
+    const rawRhs = matrix[r][n];
+    const rhs = Math.round(rawRhs);
+    if (Math.abs(rawRhs - rhs) > SNAP_EPS) continue;
+
+    let minSum = 0, maxSum = 0;
+    for (const v of vars) {
+      if (v.val > 0) maxSum += v.val;
+      else minSum += v.val;
+    }
+
+    if (rhs === maxSum) {
+      for (const v of vars) {
+        if (v.val > 0) result.mines.add(unknowns[v.col]);
+        else result.safe.add(unknowns[v.col]);
       }
-    }
-    if (vars.length === 0) continue;
-
-    const rhs = Math.round(matrix[r][n]);
-
-    // Single variable → directly determined
-    if (vars.length === 1) {
-      const v = rhs / vars[0].val;
-      if (v === 1) result.mines.add(unknowns[vars[0].col]);
-      else if (v === 0) result.safe.add(unknowns[vars[0].col]);
-      continue;
-    }
-
-    // All coefficients are +1: standard minesweeper constraint form
-    if (vars.every(v => v.val === 1)) {
-      if (rhs === vars.length) {
-        // All must be mines
-        for (const v of vars) result.mines.add(unknowns[v.col]);
-      } else if (rhs === 0) {
-        // All must be safe
-        for (const v of vars) result.safe.add(unknowns[v.col]);
-      }
-    }
-
-    // All coefficients are -1: inverted form (-x1 - x2 - ... = -k → x1+x2+...=k)
-    if (vars.every(v => v.val === -1)) {
-      const posRhs = -rhs;
-      if (posRhs === vars.length) {
-        for (const v of vars) result.mines.add(unknowns[v.col]);
-      } else if (posRhs === 0) {
-        for (const v of vars) result.safe.add(unknowns[v.col]);
+    } else if (rhs === minSum) {
+      for (const v of vars) {
+        if (v.val > 0) result.safe.add(unknowns[v.col]);
+        else result.mines.add(unknowns[v.col]);
       }
     }
   }
