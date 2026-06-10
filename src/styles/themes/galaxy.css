@@ -69,11 +69,13 @@
   --shadow-cell-hover: 0 0 14px rgba(208, 80, 255, 0.25), 0 0 6px rgba(130, 177, 255, 0.15);
   --border-cell-revealed: 1px solid rgba(180, 80, 255, 0.1);
 
-  --text-shadow-num-1: 0 0 8px rgba(130, 177, 255, 0.4);
-  --text-shadow-num-2: 0 0 8px rgba(185, 246, 202, 0.4);
-  --text-shadow-num-3: 0 0 8px rgba(255, 128, 171, 0.4);
-  --text-shadow-num-4: 0 0 8px rgba(234, 128, 252, 0.4);
-  --text-shadow-num-5: 0 0 8px rgba(255, 204, 128, 0.4);
+  /* Bolder numbers + a tighter halo so the glow accents rather than hazes. */
+  --fs-cell-number: calc(var(--cell-size) * 0.46);
+  --text-shadow-num-1: 0 0 4px rgba(130, 177, 255, 0.4);
+  --text-shadow-num-2: 0 0 4px rgba(185, 246, 202, 0.4);
+  --text-shadow-num-3: 0 0 4px rgba(255, 128, 171, 0.4);
+  --text-shadow-num-4: 0 0 4px rgba(234, 128, 252, 0.4);
+  --text-shadow-num-5: 0 0 4px rgba(255, 204, 128, 0.4);
 
   --shadow-board: 0 4px 24px rgba(2, 0, 8, 0.6), 0 0 24px rgba(180, 80, 255, 0.06);
   --border-board: 2px solid rgba(180, 80, 255, 0.25);
@@ -89,6 +91,50 @@
   --bg-modal-close-hover: rgba(208, 80, 255, 0.1);
   --border-achievement-unlocked: rgba(208, 80, 255, 0.3);
   --shadow-achievement-unlocked: 0 0 10px rgba(208, 80, 255, 0.1);
+
+  /* ── Theme-expression layer ─────────────────────────── */
+  /* Floaty, drifting cosmic motion (slower than default, eased). */
+  --anim-reveal-dur: 0.4s;
+  --anim-reveal-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --anim-flag-dur: 0.45s;
+  --anim-flag-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Cleared cells = near-black cosmic tiles set in a purple grid (echoing the
+     faint purple grid between the unrevealed cells) rather than a solid void
+     slab, so the cleared region reads as a lit star-chart grid. */
+  --cell-gap-seal: #5e34a8;
+
+  /* Modifier markers brightened so they read on the near-black cosmic
+     cells; hues kept distinct from the purple/magenta UI. */
+  --marker-liar-outline: rgba(255, 84, 74, 0.96);
+  --marker-sonar-tint: rgba(0, 228, 255, 0.24);
+  --marker-compass-tint: rgba(255, 212, 0, 0.26);
+  --marker-wormhole-0: rgba(255, 132, 28, 0.30);
+  --marker-wormhole-1: rgba(255, 96, 232, 0.30);
+  --marker-wormhole-2: rgba(120, 255, 150, 0.30);
+  --marker-mirror-0: rgba(90, 180, 255, 0.96);
+  --marker-mirror-1: rgba(120, 235, 200, 0.96);   /* teal-green, away from the theme's purples */
+  --marker-mirror-2: rgba(255, 170, 90, 0.96);    /* amber, third distinct hue */
+  --marker-plate-border: rgba(255, 92, 92, 0.92);
+  --marker-plate-timer: #ff5a5a;
+}
+
+/* Page-wide starfield + faint nebula behind everything (the foundation's
+   body::before hook, overridden to a repeating star tile + drifting clouds). */
+[data-theme="galaxy"] body::before {
+  background-image:
+    radial-gradient(1.2px 1.2px at 24% 28%, rgba(255,255,255,0.9), transparent),
+    radial-gradient(1px 1px at 68% 62%, rgba(214,196,255,0.85), transparent),
+    radial-gradient(1.4px 1.4px at 44% 82%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(1px 1px at 86% 22%, rgba(168,206,255,0.7), transparent),
+    radial-gradient(1px 1px at 12% 68%, rgba(255,255,255,0.6), transparent),
+    radial-gradient(1.3px 1.3px at 56% 14%, rgba(232,204,255,0.7), transparent),
+    radial-gradient(1px 1px at 92% 84%, rgba(255,255,255,0.6), transparent),
+    radial-gradient(1px 1px at 34% 50%, rgba(190,170,255,0.6), transparent);
+  background-size: 240px 240px;
+  background-repeat: repeat;
+  mix-blend-mode: screen;
+  opacity: 0.9;
 }
 
 

@@ -11,7 +11,14 @@ export function loadThemeCSS(themeName) {
   if (EAGER_THEMES.has(themeName) || _loadedThemes.has(themeName)) return;
   const link = document.createElement('link');
   link.rel = 'stylesheet';
-  link.href = 'src/styles/themes/' + themeName + '.css';
+  // In live theme-preview mode (localhost + ?previewthemes=1) the service worker
+  // is bypassed and the goal is to always see the freshest CSS, so cache-bust
+  // the href — otherwise the browser serves a stale cached theme file and new
+  // token edits (e.g. a theme's --cell-gap-seal) silently don't apply. In
+  // production the SW + CACHE_NAME handle versioning, so no buster is added.
+  const preview = /[?&]previewthemes=1\b/.test(location.search) &&
+    /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+  link.href = 'src/styles/themes/' + themeName + '.css' + (preview ? '?v=' + Date.now() : '');
   document.head.appendChild(link);
   _loadedThemes.add(themeName);
 }
@@ -60,12 +67,26 @@ export const THEME_UNLOCKS = {
   legendary:        { levelRequired: 100, displayName: 'Legendary',     mine: '🐉', flag: '🏰', smiley: '⚔️', smileyWin: '🐉', smileyLoss: '💀' },
 };
 
+// Dev-only theme preview: `?previewthemes=1` on localhost unlocks every theme
+// in the Collection so designs can be reviewed live (with effects). Gated to
+// localhost so it is inert on any deployed build (christopherwells.github.io).
+function isThemePreview() {
+  try {
+    const h = location.hostname;
+    const isLocal = h === 'localhost' || h === '127.0.0.1' || h === '';
+    return isLocal && new URLSearchParams(location.search).has('previewthemes');
+  } catch {
+    return false;
+  }
+}
+
 export function getUnlockedThemes() {
   const stats = loadStats();
   const maxLevel = stats.maxLevelReached || 1;
+  const preview = isThemePreview();
   const unlocked = {};
   for (const [theme, info] of Object.entries(THEME_UNLOCKS)) {
-    unlocked[theme] = maxLevel >= info.levelRequired;
+    unlocked[theme] = preview || maxLevel >= info.levelRequired;
   }
   return unlocked;
 }

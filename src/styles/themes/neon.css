@@ -73,11 +73,13 @@
   --text-shadow-subtitle: 0 0 8px rgba(0, 255, 136, 0.3);
   --text-shadow-mine: 0 0 12px #ff0066;
 
-  --text-shadow-num-1: 0 0 8px #00ccff;
-  --text-shadow-num-2: 0 0 8px #00ff88;
-  --text-shadow-num-3: 0 0 8px #ff0066;
-  --text-shadow-num-4: 0 0 8px #cc44ff;
-  --text-shadow-num-5: 0 0 8px #ff6600;
+  /* Bolder numbers + a tighter halo so the glow reads as an accent, not haze. */
+  --fs-cell-number: calc(var(--cell-size) * 0.46);
+  --text-shadow-num-1: 0 0 4px #00ccff;
+  --text-shadow-num-2: 0 0 4px #00ff88;
+  --text-shadow-num-3: 0 0 4px #ff0066;
+  --text-shadow-num-4: 0 0 4px #cc44ff;
+  --text-shadow-num-5: 0 0 4px #ff6600;
 
   --shadow-board: 0 0 16px rgba(0, 255, 136, 0.1);
   --border-board: 2px solid rgba(0, 255, 136, 0.3);
@@ -96,6 +98,46 @@
 
   --border-achievement-unlocked: rgba(0, 255, 136, 0.4);
   --shadow-achievement-unlocked: 0 0 8px rgba(0, 255, 136, 0.1);
+
+  /* ── Theme-expression layer (foundation tokens) ───────────────────
+     CRT scanlines rastered over the cabinet (#app) and the surrounding
+     page. Cells are opaque, so numbers stay crisp; the lines only show
+     in padding, grid gaps, and the page margins. */
+  --bg-app:
+    repeating-linear-gradient(0deg, rgba(0, 255, 136, 0.10) 0, rgba(0, 255, 136, 0.10) 1px, transparent 1px, transparent 3px),
+    #0a0a0a;
+  --bg-page-image:
+    repeating-linear-gradient(0deg, rgba(0, 255, 136, 0.07) 0, rgba(0, 255, 136, 0.07) 1px, transparent 1px, transparent 3px);
+  /* constant green screen-vignette so the CRT reads even in a frozen frame */
+  --shadow-app: 0 0 30px rgba(0, 255, 136, 0.12), 0 0 70px rgba(0, 255, 136, 0.06), inset 0 0 55px rgba(0, 255, 136, 0.06);
+
+  /* Mechanical arcade motion: fast, no overshoot (lighter than the
+     default bounce). */
+  --anim-reveal-dur: 0.13s;
+  --anim-reveal-ease: ease-out;
+  --anim-flag-dur: 0.2s;
+  --anim-flag-ease: ease-out;
+
+  /* Cleared cells = near-black tiles set in a glowing spring-green grid (the
+     neon --color-border hue, made opaque) rather than a solid black slab, so
+     the cleared region reads as a lit arcade grid. */
+  --cell-gap-seal: #0aab5e;
+
+  /* Modifier markers re-hued BRIGHTER so they stay unmistakable on pure
+     black (legibility floor). Same hue identity as the global defaults
+     (sonar=cyan, compass=gold, wormhole=amber/magenta/green, mirror=
+     blue/purple/green, liar=red), just lifted off the background. */
+  --marker-liar-outline: rgba(255, 84, 72, 0.95);
+  --marker-sonar-tint: rgba(0, 225, 255, 0.22);
+  --marker-compass-tint: rgba(255, 214, 0, 0.26);   /* pure yellow-gold, pulled away from wormhole amber */
+  --marker-wormhole-0: rgba(255, 122, 12, 0.30);    /* deeper orange, distinct from compass */
+  --marker-wormhole-1: rgba(240, 90, 240, 0.26);
+  --marker-wormhole-2: rgba(120, 240, 120, 0.26);
+  --marker-mirror-0: rgba(70, 170, 255, 0.95);
+  --marker-mirror-1: rgba(190, 110, 255, 0.95);
+  --marker-mirror-2: rgba(70, 230, 130, 0.95);
+  --marker-plate-border: rgba(255, 90, 90, 0.85);
+  --marker-plate-timer: #ff4d4d;
 }
 
 [data-theme="neon"] #game-title,

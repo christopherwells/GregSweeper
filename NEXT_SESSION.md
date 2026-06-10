@@ -335,12 +335,16 @@ Each follows the same pattern: add to `dailyFeatures.js` + `COEF_TERMS`
 + `PAR_MODEL` placeholder + R script formula/priors/whitelist + threshold
 guard, then backfill via Playwright.
 
-### 9. Hidden Skill Trainer
+### 9. Hidden Skill Trainer — RESOLVED (removed)
 
-Skill Trainer mode is hidden from the UI but the code is intact
-(`src/logic/skillTrainer.js`, `src/ui/skillTrainerUI.js`). Modules are
-dynamic-imported via `modeManager.js` and excluded from SW pre-cache.
-Decide whether to ship publicly or remove the dead code.
+Skill Trainer was deleted (the hand-authored lesson approach died with
+3 of 21 lessons shipped; `src/logic/skillTrainer.js` and
+`src/ui/skillTrainerUI.js` no longer exist). Its successor is the
+Lexicon prototype in the identity plan: solver-GENERATED single-technique
+lesson boards with a deducibility click-gate, so lessons can't drift from
+the shipped rules and can't be lucked through. Residual `skillTrainer`
+strings remain only in `global.css` and `statsStorage.js` (dead keys) —
+clean up opportunistically.
 
 ### 10. Node.js 20 deprecation in CI
 

@@ -57,6 +57,43 @@
   --border-modal: 2px solid #f0a0b8;
   --bg-modal-close-hover: rgba(224, 64, 251, 0.1);
   --border-radius-board: 14px;
+
+  /* ── Theme-expression layer ─────────────────────────── */
+  /* Extra-bouncy candy motion + rounder cells. */
+  --anim-reveal-dur: 0.36s;
+  --anim-reveal-ease: cubic-bezier(0.34, 1.7, 0.5, 1);
+  --anim-flag-dur: 0.42s;
+  --anim-flag-ease: cubic-bezier(0.34, 1.85, 0.5, 1);
+  --cell-shape-radius: 9px;
+  /* Pink grout in the gaps so the near-white cleared tiles stay separated
+     instead of merging into one pale slab. */
+  --cell-gap-seal: #f0a0b8;
+
+  /* Markers deepened/saturated so they read on the pale-pink cells (light bg
+     is the opposite problem from the dark themes), kept distinct from the
+     pink/magenta candy palette. */
+  --marker-liar-outline: rgba(228, 28, 64, 0.95);
+  --marker-sonar-tint: rgba(0, 175, 205, 0.30);
+  --marker-compass-tint: rgba(214, 146, 0, 0.30);
+  --marker-wormhole-0: rgba(255, 118, 16, 0.32);
+  --marker-wormhole-1: rgba(140, 64, 220, 0.30);
+  --marker-wormhole-2: rgba(36, 176, 84, 0.30);
+  --marker-mirror-0: rgba(40, 128, 230, 0.95);
+  --marker-mirror-1: rgba(150, 72, 222, 0.95);
+  --marker-mirror-2: rgba(16, 132, 76, 0.97);   /* deepened for >=3:1 on the near-white cells */
+  --marker-plate-border: rgba(228, 40, 44, 0.92);
+  --marker-plate-timer: #ee2244;
+}
+
+/* Playful two-tone polka-dot page texture. */
+[data-theme="candy"] body::before {
+  background-image:
+    radial-gradient(circle at 50% 50%, rgba(255, 140, 190, 0.22) 2.5px, transparent 3px),
+    radial-gradient(circle at 50% 50%, rgba(180, 150, 255, 0.18) 2.5px, transparent 3px);
+  background-size: 30px 30px, 30px 30px;
+  background-position: 0 0, 15px 15px;
+  background-repeat: repeat;
+  opacity: 0.7;
 }
 
 /* Candy has extra border-radius on many elements */
@@ -84,6 +121,23 @@
   0% { transform: scale(1); }
   40% { transform: scale(1.08); }
   100% { transform: scale(1); }
+}
+
+/* Candy reveals get a bigger, springier double-bounce than the default numPop —
+   on BOTH number cells (.num-pop) and empty cascade cells (.revealing). Override
+   name/duration/timing only, NOT animation-delay (set inline per cell so the
+   reveal cascade keeps its diagonal stagger). */
+[data-theme="candy"] .cell.num-pop,
+[data-theme="candy"] .cell.revealing {
+  animation-name: candyPop;
+  animation-duration: 0.42s;
+  animation-timing-function: cubic-bezier(0.34, 1.5, 0.55, 1);
+}
+@keyframes candyPop {
+  0%   { transform: scale(0);    opacity: 0; }
+  55%  { transform: scale(1.32); opacity: 1; }
+  76%  { transform: scale(0.93); }
+  100% { transform: scale(1);    opacity: 1; }
 }
 
 [data-theme="candy"] #board {

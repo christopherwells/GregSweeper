@@ -10,8 +10,6 @@
 // same way the rest of the app does (through GitHub Pages + the service
 // worker cache). No Firebase round-trip at runtime.
 
-import { BOMB_PENALTY_BASE } from './difficulty.js';
-
 let _handicaps = null;
 let _meta = null;
 let _loading = null;
@@ -102,30 +100,21 @@ export function estimateHandicapFromHistory(pairs) {
  * so callers can render an "(N plays)" qualifier alongside the number.
  * Returns null when the sample is too small to surface anything.
  *
- * Each pair: `{ time, predictedPar, bombHits?, bombPenalty? }`. We
- * reconstruct clean-play time (what the player would have scored with no
- * bomb hits) before averaging, so a bomb-hit day doesn't swing the
- * provisional handicap:
- *   - New info-value mechanic (bombPenalty > 0): `time` already includes
- *     the per-hit penalty. The info-value part of that penalty exactly
- *     offsets the deduction time the player skipped, so only the fixed
- *     BOMB_PENALTY_BASE per hit is a true added cost — subtract that.
- *   - Legacy +10s/re-fog mechanic (bombPenalty 0, bombHits > 0): subtract
- *     the fitted secPerBombHit per hit (~14s).
- * Backward-compatible: missing fields are treated as 0.
+ * Each pair: `{ time, predictedPar }`. The handicap is your offset from
+ * Greg's CLEAN par INCLUDING your bomb factor — bombs are part of your
+ * handicap, not stripped out. Greg-par is the clean board difficulty; how
+ * you actually play, bombs and all, lives in the handicap. So we use the
+ * raw delta, realized time − clean par. Averaging over plays keeps a single
+ * bomb day from swinging it, while a player who reliably bombs rightly
+ * carries that cost in their handicap.
  */
 export function estimateHandicapDetails(pairs) {
   if (!Array.isArray(pairs)) return null;
-  const secPerBomb = (getHandicapsMeta()?.secPerBombHit) || 0;
   let sum = 0;
   let n = 0;
   for (const p of pairs) {
     if (typeof p.time !== 'number' || typeof p.predictedPar !== 'number') continue;
-    const bombHits = typeof p.bombHits === 'number' && p.bombHits > 0 ? p.bombHits : 0;
-    const bombPenalty = typeof p.bombPenalty === 'number' ? p.bombPenalty : 0;
-    const perHitCost = bombPenalty > 0 ? BOMB_PENALTY_BASE : secPerBomb;
-    const cleanTime = p.time - bombHits * perHitCost;
-    sum += cleanTime - p.predictedPar;
+    sum += p.time - p.predictedPar;
     n++;
   }
   if (n < PROVISIONAL_HANDICAP_MIN_PAIRS) return null;

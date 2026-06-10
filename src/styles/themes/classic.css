@@ -2,6 +2,24 @@
 [data-theme="classic"] {
   /* Uses :root defaults — warm beige/cream palette */
   --color-wall: #8B7355;
+  /* Lightest touch (this is the default everyone sees): a crisper reveal
+     cascade. */
+  --anim-reveal-dur: 0.18s;
+  /* The default blue/green mirror borders and the plate border fall below the
+     3:1 legibility floor on the light beige cells (1.9-2.8:1); nudge just those
+     three darker, same hues, to clear it. All other markers stay default. */
+  --marker-mirror-0: rgba(28, 110, 200, 0.95);
+  --marker-mirror-2: rgba(18, 140, 82, 0.97);
+  --marker-plate-border: rgba(214, 40, 40, 0.92);
+}
+
+/* Faint paper grain on the page surround — barely-there warmth, not a pattern. */
+[data-theme="classic"] body::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='pg'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23pg)'/%3E%3C/svg%3E");
+  background-size: 140px 140px;
+  background-repeat: repeat;
+  mix-blend-mode: multiply;
+  opacity: 0.06;
 }
 
 /* Satisfying pop on cell reveal */

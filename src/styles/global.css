@@ -129,6 +129,113 @@
   --transition-fast: 0.15s ease;
   --transition-normal: 0.25s ease;
   --transition-slow: 0.4s ease;
+
+  /* ════════════════════════════════════════════════════════════════
+     THEME EXPRESSION TOKENS
+     Every token below defaults to the exact value that used to be
+     hardcoded, so all themes render identically until one deliberately
+     overrides a token. This is what lets a theme diverge in motion,
+     type, texture, and cell treatment without a code change.
+     ════════════════════════════════════════════════════════════════ */
+
+  /* ── Motion character (only the animation shorthand is tokenized —
+     @keyframes interiors cannot read vars). A theme changes feel by
+     overriding duration/easing; it changes choreography with its own
+     @keyframes. ── */
+  --anim-reveal-dur: 0.25s;
+  --anim-reveal-ease: ease-out;
+  --anim-flag-dur: 0.3s;
+  --anim-flag-ease: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --anim-mine-dur: 0.35s;
+  --anim-mine-ease: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-standard: ease;
+
+  /* ── Typography scale (defaults = current fixed px) ── */
+  --fs-title: 28px;
+  --fs-lcd: 28px;
+  --fs-cell-number: 16px;
+  --fs-mine: 20px;
+  --fs-flag: 18px;
+
+  /* ── Cell treatment + sizing hooks. --cell-min/max-size are read by
+     boardRenderer.js (JS owns --cell-size at runtime). ── */
+  --cell-shape-radius: var(--border-radius);
+  --cell-min-size: 18px;
+  --cell-max-size: 50px;      /* responsive cap (resizeCells) */
+  --cell-fit-max-size: 40px;  /* fit-to-screen cap (adjustCellSize) */
+  /* Color painted into the gap *ring* between revealed cells when an ambient
+     effect is active (see `#board.fx-on .cell.revealed::before`). Defaults to
+     the revealed surface so dark "void" themes (matrix/neon/galaxy) read as one
+     continuous cleared area. Themes whose grid color contrasts with the cell
+     (forest sage, candy pink) override this to their opaque grid color so the
+     revealed cells stay separated as individual tiles instead of merging. */
+  --cell-gap-seal: var(--color-cell-revealed);
+
+  /* ── Background / texture hooks (vector only: gradients, CSS patterns,
+     SVG data-URIs — no raster assets, so no service-worker coupling).
+     Defaults paint nothing new. Animated / board ambiance routes through
+     src/ui/themeEffects.js, not CSS. ── */
+  --bg-page-image: none;
+  --bg-page-blend: normal;
+  --bg-board: transparent;
+
+  /* ── Special-cell / modifier markers — LEGIBILITY FLOOR.
+     A theme may re-hue these slightly to avoid clashing with its own
+     background, but must keep every marker (a) unmistakable, (b) mutually
+     distinct, (c) high-contrast against the cell bg, and (d) never below
+     these alpha floors (tints >= 0.12, borders >= 0.6). Identity is
+     anchored in a non-color channel (glyph / italic+underline / dashed
+     border / outline) so meaning never rests on hue alone. ── */
+  --marker-liar-outline: rgba(231, 76, 60, 0.9);
+  --marker-liar-outline-width: 2px;
+  --marker-sonar-tint: rgba(0, 200, 220, 0.15);
+  --marker-compass-tint: rgba(230, 180, 0, 0.16);
+  --marker-wormhole-0: rgba(255, 140, 0, 0.18);
+  --marker-wormhole-1: rgba(220, 80, 220, 0.18);
+  --marker-wormhole-2: rgba(100, 220, 100, 0.18);
+  --marker-mirror-0: rgba(52, 152, 219, 0.85);
+  --marker-mirror-1: rgba(155, 89, 182, 0.85);
+  --marker-mirror-2: rgba(46, 204, 113, 0.85);
+  --marker-mirror-width: 2.5px;
+  --marker-plate-timer: #ff4444;
+  --marker-plate-border: rgba(255, 80, 80, 0.6);
+  --marker-plate-glow: rgba(255, 50, 50, 0.4);
+
+  /* ── Post-death analysis overlays ── */
+  --overlay-wrong-flag: #ff1744;
+  --overlay-wrong-flag-fill: rgba(255, 23, 68, 0.15);
+  --overlay-correct-flag: #00c853;
+  --overlay-correct-flag-fill: rgba(0, 230, 118, 0.2);
+  --overlay-suggest-move: #0091ea;
+  --overlay-suggest-move-glow: rgba(0, 145, 234, 0.4);
+  --overlay-suggest-start: #4caf50;
+  --overlay-suggest-start-fill: rgba(76, 175, 80, 0.35);
+  --overlay-suggest-start-glow: rgba(76, 175, 80, 0.4);
+  --overlay-mine-hit-glow: rgba(255, 23, 68, 0.5);
+
+  /* ── Timer urgency. Defaults are the EFFECTIVE colors, which the
+     .timer-warning / .timer-critical rules set with !important (those mask
+     the .lcd-display.timer-* color). --timer-critical-glow is the LCD
+     critical box-shadow tint. ── */
+  --timer-warning: #ff9800;
+  --timer-critical: #f44336;
+  --timer-critical-glow: rgba(255, 51, 51, 0.3);
+
+  /* ── Victory overlay ── */
+  --victory-color: #ffd54f;
+  --victory-duration: 3600ms;
+
+  /* ── Power-up feedback (solid/usage colors tokenized; deep glow alphas
+     inside keyframes stay literal — partial by design). ── */
+  --pu-shield: #43a047;
+  --pu-shield-fill: rgba(67, 160, 71, 0.15);
+  --pu-shield-glow: rgba(67, 160, 71, 0.6);
+  --pu-xray-area: rgba(100, 149, 237, 0.15);
+  --pu-xray-mine: rgba(255, 50, 50, 0.3);
+  --pu-xray-accent: rgba(100, 149, 237, 0.9);
+  --pu-lifeline: rgba(80, 200, 120, 0.9);
+  --pu-magnet: rgba(180, 130, 255, 0.6);
 }
 
 html, body {
@@ -162,6 +269,21 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Theme page-texture layer. Sits behind all content; paints nothing by
+   default (--bg-page-image: none). A theme overrides --bg-page-image with
+   a gradient, CSS pattern, or SVG data-URI for ambient page texture. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--bg-page-image, none);
+  background-size: cover;
+  background-position: center;
+  mix-blend-mode: var(--bg-page-blend, normal);
+}
+
 #app {
   display: flex;
   flex-direction: column;
@@ -187,7 +309,7 @@ body {
 
 #game-title {
   font-family: var(--font-display);
-  font-size: 28px;
+  font-size: var(--fs-title, 28px);
   font-weight: 800;
   letter-spacing: 3px;
   text-align: center;
@@ -226,7 +348,7 @@ body {
 
 .lcd-display {
   font-family: 'Courier New', 'Orbitron', monospace;
-  font-size: 28px;
+  font-size: var(--fs-lcd, 28px);
   font-weight: bold;
   color: var(--color-lcd-text);
   background: var(--color-lcd-bg);
@@ -242,14 +364,14 @@ body {
 
 /* Timer urgency for countdown */
 .lcd-display.timer-warning {
-  color: #ffaa00;
+  color: var(--timer-warning, #ff9800);
   animation: timerPulse 1s ease-in-out infinite;
 }
 
 .lcd-display.timer-critical {
-  color: #ff3333;
+  color: var(--timer-critical, #f44336);
   animation: timerPulse 0.4s ease-in-out infinite;
-  box-shadow: inset 0 2px 6px rgba(0,0,0,0.4), 0 0 8px rgba(255, 51, 51, 0.3);
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.4), 0 0 8px var(--timer-critical-glow, rgba(255, 51, 51, 0.3));
 }
 
 @keyframes timerPulse {
@@ -447,6 +569,7 @@ body {
 #board-container {
   position: relative;
   width: 100%;
+  background: var(--bg-board, transparent);
 }
 
 /* Scroll wrapper for zoom on large boards */
@@ -583,11 +706,11 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: var(--fs-cell-number, 16px);
   font-weight: 800;
   cursor: pointer;
   transition: background-color var(--transition-fast), transform var(--transition-fast);
-  border-radius: var(--border-radius);
+  border-radius: var(--cell-shape-radius, var(--border-radius));
   position: relative;
 }
 
@@ -631,38 +754,123 @@ body {
 .cell.revealed {
   background: var(--color-cell-revealed);
   border: var(--border-cell-revealed);
-  border-radius: var(--border-radius);
+  border-radius: var(--cell-shape-radius, var(--border-radius));
   cursor: default;
 }
 
+/* ── Effect-occlusion system (engages only when an ambient effect is on) ──────
+   themeEffects.js adds `.fx-on` to #board whenever a theme registers a particle
+   effect. These rules then (1) lift revealed cells + flags above the .theme-fx
+   layer (z-index 1) so animations never wash over numbers/markers, and (2) seal
+   the inter-cell gaps around revealed cells so the effect can't show as slivers
+   between two already-revealed cells. Scoped to `.fx-on` so the effect-less
+   themes render byte-for-byte as before — no stacking contexts, no gap fill. */
+#board.fx-on .cell.revealed,
+#board.fx-on .cell.flagged {
+  z-index: 2;
+}
+
+/* Two stacked layers so cleared cells read as separate rounded tiles set in a
+   colored grout, while the ambient effect is FULLY blocked — including the
+   4-cell junctions a rounded ring/shadow leaves open (that diamond is inherent
+   to rounded corners; only a SQUARE fill tiles it shut).
+
+   ::before — a SQUARE solid fill of the gap color over cell + surrounding gap.
+   Square (no radius) so four neighbors' fills tile every junction with no
+   diamond. z-index -2: back of the cell's stacking context, still above the fx
+   layer (a lower sibling).
+   ::after  — the rounded revealed body on top (z-index -1): each tile shows its
+   own surface, grout reads only in the gaps + corner notches.
+
+   Special-cell markers whose cue lives on the cell FACE are excluded so the
+   seal never buries them: the background tints (sonar/compass/wormhole) and the
+   cells whose ::after is a status glyph (locked/pressure-plate/defused). Liar
+   (outline), mirror (border) and mystery (text) survive the body layer
+   untouched, so they keep the full seal. An excluded cell's gaps are still
+   covered by the solid fill of any plain neighbor. */
+#board.fx-on .cell.revealed:not(.sonar-cell):not(.compass-cell):not(.wormhole-cell):not(.locked-cell):not(.pressure-plate):not(.defused)::before {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  /* Extend by the gap PLUS 1px. `inset` is measured from the cell's padding
+     box, but the cell carries a ~1px revealed border that would otherwise eat
+     the whole reach — so a bare `-gap` only touches the border-box edge and
+     never enters the gap (matrix's 1px gap leaked the CSS #board::before rain
+     for exactly this reason). The extra 1px pushes the fill the gap's full
+     width past the border so it meets the neighbor's edge; two neighbors
+     double-cover every seam with no hi-DPI sliver. */
+  inset: calc(-1 * var(--grid-gap, 2px) - 1px);
+  background: var(--cell-gap-seal, var(--color-cell-revealed));
+  z-index: -2;
+}
+html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):not(.compass-cell):not(.wormhole-cell):not(.locked-cell):not(.pressure-plate):not(.defused)::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  inset: 0;
+  background: var(--color-cell-revealed);
+  border-radius: var(--cell-shape-radius, var(--border-radius));
+  z-index: -1;
+}
+/* In colorblind mode ::after is a shape glyph, so there's no body layer — paint
+   the seal in the revealed color so the cell reads as one cleared surface under
+   the glyph instead of bleeding the grout color across the whole tile. */
+[data-colorblind="true"] #board.fx-on .cell.revealed {
+  --cell-gap-seal: var(--color-cell-revealed);
+}
+
+/* The tint markers (sonar/compass/wormhole) are excluded from the seal so their
+   color stays visible — but their fill is translucent, which on an effect theme
+   would let the ambient animation bleed THROUGH the marker face and break the
+   "markers never blend into the background" rule. Composite the same tint over
+   an opaque revealed base so the marker keeps its exact hue while fully blocking
+   the effect behind it. (Higher specificity + !important beats the base marker
+   rules; identical hue, just no longer see-through.) */
+#board.fx-on .cell.revealed.sonar-cell {
+  background: linear-gradient(var(--marker-sonar-tint, rgba(0, 200, 220, 0.15)), var(--marker-sonar-tint, rgba(0, 200, 220, 0.15))), var(--color-cell-revealed) !important;
+}
+#board.fx-on .cell.revealed.compass-cell {
+  background: linear-gradient(var(--marker-compass-tint, rgba(230, 180, 0, 0.16)), var(--marker-compass-tint, rgba(230, 180, 0, 0.16))), var(--color-cell-revealed) !important;
+}
+#board.fx-on .cell.revealed.wormhole-cell,
+#board.fx-on .cell.revealed.wormhole-cell.wormhole-pair-0 {
+  background: linear-gradient(var(--marker-wormhole-0, rgba(255, 140, 0, 0.18)), var(--marker-wormhole-0, rgba(255, 140, 0, 0.18))), var(--color-cell-revealed) !important;
+}
+#board.fx-on .cell.revealed.wormhole-cell.wormhole-pair-1 {
+  background: linear-gradient(var(--marker-wormhole-1, rgba(220, 80, 220, 0.18)), var(--marker-wormhole-1, rgba(220, 80, 220, 0.18))), var(--color-cell-revealed) !important;
+}
+#board.fx-on .cell.revealed.wormhole-cell.wormhole-pair-2 {
+  background: linear-gradient(var(--marker-wormhole-2, rgba(100, 220, 100, 0.18)), var(--marker-wormhole-2, rgba(100, 220, 100, 0.18))), var(--color-cell-revealed) !important;
+}
+
 .cell.mine {
-  font-size: 20px;
+  font-size: var(--fs-mine, 20px);
   text-shadow: var(--text-shadow-mine);
 }
 
 .cell.mine-hit {
   background: var(--color-mine-hit) !important;
-  box-shadow: 0 0 12px rgba(255, 23, 68, 0.5);
+  box-shadow: 0 0 12px var(--overlay-mine-hit-glow, rgba(255, 23, 68, 0.5));
 }
 
 .cell.flagged {
-  font-size: 18px;
+  font-size: var(--fs-flag, 18px);
 }
 
 /* Post-death analysis overlays */
 .cell.wrong-flag {
-  border: 2px solid #ff1744 !important;
-  background: rgba(255, 23, 68, 0.15) !important;
+  border: 2px solid var(--overlay-wrong-flag, #ff1744) !important;
+  background: var(--overlay-wrong-flag-fill, rgba(255, 23, 68, 0.15)) !important;
 }
 
 .cell.correct-flag {
-  background: rgba(0, 230, 118, 0.2) !important;
-  border: 2px solid #00c853 !important;
+  background: var(--overlay-correct-flag-fill, rgba(0, 230, 118, 0.2)) !important;
+  border: 2px solid var(--overlay-correct-flag, #00c853) !important;
 }
 
 .cell.suggested-move {
-  border: 2px solid #0091ea !important;
-  box-shadow: 0 0 8px rgba(0, 145, 234, 0.4);
+  border: 2px solid var(--overlay-suggest-move, #0091ea) !important;
+  box-shadow: 0 0 8px var(--overlay-suggest-move-glow, rgba(0, 145, 234, 0.4));
   animation: pulse-suggest 1.5s ease-in-out infinite;
 }
 
@@ -672,9 +880,9 @@ body {
 }
 
 .cell.suggested-start {
-  background: rgba(76, 175, 80, 0.35);
-  border: 2px solid #4caf50 !important;
-  box-shadow: 0 0 8px rgba(76, 175, 80, 0.4);
+  background: var(--overlay-suggest-start-fill, rgba(76, 175, 80, 0.35));
+  border: 2px solid var(--overlay-suggest-start, #4caf50) !important;
+  box-shadow: 0 0 8px var(--overlay-suggest-start-glow, rgba(76, 175, 80, 0.4));
   animation: pulse-start 2s ease-in-out infinite;
 }
 
@@ -711,13 +919,13 @@ body {
   font-size: clamp(48px, 14vw, 96px);
   font-weight: 900;
   letter-spacing: 4px;
-  color: #ffd54f;
+  color: var(--victory-color, #ffd54f);
   text-shadow:
     0 4px 14px rgba(0, 0, 0, 0.7),
     0 0 30px rgba(255, 215, 79, 0.55),
     0 0 6px rgba(0, 0, 0, 0.9);
   font-family: var(--font-display, var(--font-family, system-ui));
-  animation: victoryPop 3600ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation: victoryPop var(--victory-duration, 3600ms) var(--ease-bounce, cubic-bezier(0.34, 1.56, 0.64, 1)) forwards;
 }
 @keyframes victoryPop {
   0%   { transform: scale(0.4) rotate(-6deg); opacity: 0; }
@@ -728,7 +936,7 @@ body {
 }
 @media (prefers-reduced-motion: reduce) {
   .victory-overlay {
-    animation: victoryFade 3600ms ease-out forwards;
+    animation: victoryFade var(--victory-duration, 3600ms) ease-out forwards;
   }
   @keyframes victoryFade {
     0% { opacity: 0; } 20% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; }
@@ -748,7 +956,7 @@ body {
   white-space: nowrap;
   pointer-events: none;
   color: #fff;
-  background: #0091ea;
+  background: var(--overlay-suggest-move, #0091ea);
   padding: 2px 6px;
   border-radius: 4px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
@@ -922,7 +1130,7 @@ body {
 
 .cell.defused {
   position: relative;
-  background: rgba(67, 160, 71, 0.15) !important;
+  background: var(--pu-shield-fill, rgba(67, 160, 71, 0.15)) !important;
   font-size: calc(var(--cell-size) * 0.6);
   animation: shieldDefusePop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
@@ -932,8 +1140,8 @@ body {
   position: absolute;
   font-size: calc(var(--cell-size) * 0.7);
   font-weight: 900;
-  color: #43a047;
-  text-shadow: 0 0 6px rgba(67, 160, 71, 0.6);
+  color: var(--pu-shield, #43a047);
+  text-shadow: 0 0 6px var(--pu-shield-glow, rgba(67, 160, 71, 0.6));
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
@@ -1007,12 +1215,12 @@ body {
 
 /* ── X-Ray Power-Up ────────────────────────── */
 .cell.xray-area {
-  background: rgba(100, 149, 237, 0.15) !important;
+  background: var(--pu-xray-area, rgba(100, 149, 237, 0.15)) !important;
   transition: background 0.3s ease;
 }
 
 .cell.xray-mine {
-  background: rgba(255, 50, 50, 0.3) !important;
+  background: var(--pu-xray-mine, rgba(255, 50, 50, 0.3)) !important;
   box-shadow: 0 0 10px rgba(255, 50, 50, 0.6), inset 0 0 6px rgba(255, 50, 50, 0.4);
   animation: xrayPulse 0.5s ease infinite alternate;
 }
@@ -1027,7 +1235,7 @@ body {
   position: absolute;
   left: 0; right: 0;
   height: 3px;
-  background: linear-gradient(90deg, transparent, rgba(100, 149, 237, 0.9), transparent);
+  background: linear-gradient(90deg, transparent, var(--pu-xray-accent, rgba(100, 149, 237, 0.9)), transparent);
   box-shadow: 0 0 8px rgba(100, 149, 237, 0.6);
   pointer-events: none;
   z-index: 60;
@@ -1051,7 +1259,7 @@ body {
 /* ── Lifeline Power-Up ─────────────────────── */
 .cell.lifeline-save {
   animation: lifelinePulse 1.4s ease-out;
-  box-shadow: 0 0 16px rgba(80, 200, 120, 0.9), inset 0 0 8px rgba(80, 200, 120, 0.5);
+  box-shadow: 0 0 16px var(--pu-lifeline, rgba(80, 200, 120, 0.9)), inset 0 0 8px rgba(80, 200, 120, 0.5);
 }
 
 @keyframes lifelinePulse {
@@ -1083,7 +1291,7 @@ body {
 /* ── Magnet Power-Up ──────────────────────── */
 .cell.magnet-area {
   animation: magnetPulse 1.5s ease-out;
-  box-shadow: 0 0 10px rgba(180, 130, 255, 0.6);
+  box-shadow: 0 0 10px var(--pu-magnet, rgba(180, 130, 255, 0.6));
 }
 
 @keyframes magnetPulse {
@@ -1152,7 +1360,7 @@ body {
   text-decoration: underline;
   text-decoration-thickness: 2px;
   text-underline-offset: 2px;
-  outline: 2px solid rgba(231, 76, 60, 0.9);
+  outline: var(--marker-liar-outline-width, 2px) solid var(--marker-liar-outline, rgba(231, 76, 60, 0.9));
   outline-offset: -2px;
 }
 
@@ -1175,8 +1383,8 @@ body {
 /* Pressure Plate cells — countdown timer ring */
 .cell.pressure-plate {
   position: relative;
-  box-shadow: inset 0 0 8px rgba(255, 50, 50, 0.4);
-  border: 2px solid rgba(255, 80, 80, 0.6) !important;
+  box-shadow: inset 0 0 8px var(--marker-plate-glow, rgba(255, 50, 50, 0.4));
+  border: 2px solid var(--marker-plate-border, rgba(255, 80, 80, 0.6)) !important;
 }
 .cell.pressure-plate.plate-active {
   animation: platePulse 1s ease-in-out infinite;
@@ -1191,7 +1399,7 @@ body {
   left: 1px;
   right: 1px;
   height: 3px;
-  background: #ff4444;
+  background: var(--marker-plate-timer, #ff4444);
   border-radius: 1px;
   transform-origin: left;
   transition: transform 1s linear;
@@ -1204,7 +1412,7 @@ body {
 .cell.sonar-cell {
   font-size: calc(var(--cell-size) * 0.4) !important;
   letter-spacing: -1px;
-  background-color: rgba(0, 200, 220, 0.15) !important;
+  background-color: var(--marker-sonar-tint, rgba(0, 200, 220, 0.15)) !important;
 }
 
 /* Compass cells — arrow suffix is the identifier, plus a faint gold
@@ -1213,21 +1421,21 @@ body {
 .cell.compass-cell {
   font-size: calc(var(--cell-size) * 0.4) !important;
   letter-spacing: -1px;
-  background-color: rgba(230, 180, 0, 0.16) !important;
+  background-color: var(--marker-compass-tint, rgba(230, 180, 0, 0.16)) !important;
 }
 
 /* Wormhole cells — paired background tints (no border, avoids conflict with number colors).
    Colors chosen to avoid sonar cyan, compass gold, and liar pink.
    Base rule is a fallback for old saved games missing wormholePairIndex. */
-.cell.wormhole-cell { background: rgba(255, 140, 0, 0.18) !important; }                   /* fallback amber */
-.cell.wormhole-cell.wormhole-pair-0 { background: rgba(255, 140, 0, 0.18) !important; }   /* amber */
-.cell.wormhole-cell.wormhole-pair-1 { background: rgba(220, 80, 220, 0.18) !important; }  /* magenta */
-.cell.wormhole-cell.wormhole-pair-2 { background: rgba(100, 220, 100, 0.18) !important; } /* green */
+.cell.wormhole-cell { background: var(--marker-wormhole-0, rgba(255, 140, 0, 0.18)) !important; }                   /* fallback amber */
+.cell.wormhole-cell.wormhole-pair-0 { background: var(--marker-wormhole-0, rgba(255, 140, 0, 0.18)) !important; }   /* amber */
+.cell.wormhole-cell.wormhole-pair-1 { background: var(--marker-wormhole-1, rgba(220, 80, 220, 0.18)) !important; }  /* magenta */
+.cell.wormhole-cell.wormhole-pair-2 { background: var(--marker-wormhole-2, rgba(100, 220, 100, 0.18)) !important; } /* green */
 
 /* Mirror pair color-coding — dashed border (not fill) so they're distinct from wormholes */
-.cell.mirror-cell.mirror-pair-0 { border: 2.5px dashed rgba(52, 152, 219, 0.85) !important; }
-.cell.mirror-cell.mirror-pair-1 { border: 2.5px dashed rgba(155, 89, 182, 0.85) !important; }
-.cell.mirror-cell.mirror-pair-2 { border: 2.5px dashed rgba(46, 204, 113, 0.85) !important; }
+.cell.mirror-cell.mirror-pair-0 { border: var(--marker-mirror-width, 2.5px) dashed var(--marker-mirror-0, rgba(52, 152, 219, 0.85)) !important; }
+.cell.mirror-cell.mirror-pair-1 { border: var(--marker-mirror-width, 2.5px) dashed var(--marker-mirror-1, rgba(155, 89, 182, 0.85)) !important; }
+.cell.mirror-cell.mirror-pair-2 { border: var(--marker-mirror-width, 2.5px) dashed var(--marker-mirror-2, rgba(46, 204, 113, 0.85)) !important; }
 
 /* Mine shift shimmer */
 .mine-shift-shimmer {
@@ -3450,11 +3658,11 @@ body {
 
 /* ── Timer Urgency ──────────────────────────────────── */
 .timer-warning {
-  color: #ff9800 !important;
+  color: var(--timer-warning, #ff9800) !important;
   text-shadow: 0 0 4px rgba(255, 152, 0, 0.4);
 }
 .timer-critical {
-  color: #f44336 !important;
+  color: var(--timer-critical, #f44336) !important;
   text-shadow: 0 0 6px rgba(244, 67, 54, 0.5);
   animation: timer-pulse 0.5s ease-in-out infinite;
 }

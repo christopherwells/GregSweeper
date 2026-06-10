@@ -15,8 +15,10 @@ export const LIFELINE_WIN_REWARD_CHANCE = 0.3;
 // 44pt tap target. With width=12 and the existing --cell-size of 28px on
 // mobile (≤480px viewport), a board fits 12 × 28 = 336 px plus gaps inside
 // the 390 px iPhone portrait viewport without scrolling. Rows are NOT
-// capped — taller boards are allowed since vertical space is reclaimable
-// from the header / footer area. Mines are rescaled to preserve density.
+// capped — taller boards (weekly samples up to 14 rows) are allowed because
+// the renderer fits cells to BOTH width and height, shrinking the cell so the
+// whole board stays inside the 70vh scroll wrapper (_fitCellSize in
+// boardRenderer.js). Mines are rescaled to preserve density.
 export const BOARD_WIDTH_CAP = 12;
 
 export function applyWidthCap(rows, cols, mines) {
@@ -39,36 +41,30 @@ export function applyWidthCap(rows, cols, mines) {
 // scripts/refit-par-model.R.
 // PAR_MODEL:START
 export const PAR_MODEL = {
-  // Last refit: 2026-05-31 | brms (2 users · max Rhat = 1.003, min ESS = 1363, divergent = 2/4000) | N=163 scores, 82 dates, 3 players | R²=0.620
-  intercept: -19.64,
+  // Last refit: 2026-06-08 | brms (3 users · max Rhat = 1.006, min ESS = 873, divergent = 0/4000) | N=183 scores, 91 dates, 3 players | R²=0.598
+  intercept: -12.32,
 
-  // Move-type coefficients (primary). disjunctiveMoves was dropped
-  // 2026-05-04: structurally confounded with liarCellCount (every liar
-  // board produces disjunctive moves) and N=1 liar board means the two
-  // coefficients cannot be separately identified. The disjunctive
-  // contribution is now absorbed into secPerLiarCell.
-  secPerPassAMove:            0.45,
-  secPerCanonicalSubsetMove:  2.97,
-  secPerGenericSubsetMove:    2.38,
-  secPerAdvancedLogicMove:    1.38,
+  // Size baseline. cellCount is the lone size axis (it absorbs trivial
+  // propagation); totalMines stays a raw count. (2026-06-08 rework.)
+  secPerCell:        0.159,
+  secPerMineFlag:    3.015,
 
-  // Board shape (secondary)
-  secPerCell:      0.025,
-  secPerMineFlag:  2.649,
-  secPerWallEdge:  0.173,
+  // Reasoning tiers: pattern = canonical + generic subsets; search = advanced.
+  secPerPatternMove: 2.200,
+  secPerSearchMove:  1.338,
 
-  // Gimmick cell counts (tertiary)
-  secPerMysteryCell:   0.907,
-  secPerLiarCell:      0.839,
-  secPerLockedCell:    0.633,
-  secPerWormholePair:  1.107,
-  secPerMirrorPair:    1.613,
-  secPerSonarCell:     0.664,
-  secPerCompassCell:   0.792,
+  // Board structure.
+  secPerWallEdge:    0.156,
+  secPerZeroCluster: 0.565,
 
-  // Structural features (v1.5.16+)
-  secPerNonZeroSafeCell:  0.201,
-  secPerZeroCluster:      0.517,
+  // Modifier cells (kept split; sparse, prior-anchored until data builds).
+  secPerMysteryCell:   0.942,
+  secPerLiarCell:      0.760,
+  secPerLockedCell:    0.680,
+  secPerWormholePair:  0.768,
+  secPerMirrorPair:    1.862,
+  secPerSonarCell:     0.788,
+  secPerCompassCell:   0.744,
 };
 // PAR_MODEL:END
 

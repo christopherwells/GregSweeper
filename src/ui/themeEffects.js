@@ -9,6 +9,9 @@ let effectContainer = null;
 
 /** Remove all active effects and their DOM elements */
 export function clearThemeEffects() {
+  // Drop the occlusion-system flag (see global.css `#board.fx-on …`) so the
+  // gap-seal + revealed/flag z-index lifts switch off when no effect is active.
+  document.getElementById('board')?.classList.remove('fx-on');
   if (activeCleanup) {
     activeCleanup();
     activeCleanup = null;
@@ -37,6 +40,10 @@ export function applyThemeEffects(themeName) {
   effectContainer.className = 'theme-fx';
   effectContainer.setAttribute('aria-hidden', 'true');
   board.appendChild(effectContainer);
+  // Engage the occlusion system (gap-seal + z-index lifts) only now that a real
+  // effect layer exists for this theme. Effect-less themes never get the class,
+  // so their revealed cells render exactly as before.
+  board.classList.add('fx-on');
 
   activeCleanup = effectFn(effectContainer, board);
 }
@@ -121,11 +128,14 @@ function injectStyles() {
   stylesInjected = true;
 
   const css = `
+    /* Effects sit BETWEEN unrevealed cells (z-index 0) and revealed cells
+       (z-index 2): they play over the unrevealed board + background gaps, but
+       revealed cells render on top so their numbers/markers stay clean. */
     .theme-fx {
       position: absolute;
       inset: 0;
       pointer-events: none;
-      z-index: 2;
+      z-index: 1;
       overflow: hidden;
     }
     .fx-particle { z-index: 2; }
@@ -181,6 +191,17 @@ function injectStyles() {
       40% { transform: translate(2px, -1px); opacity: 0.8; }
       60% { transform: translate(-1px, -2px); opacity: 0.4; }
       80% { transform: translate(1px, 2px); opacity: 0.7; }
+    }
+
+    /* Shooting star: a rotated streak that travels a long distance ALONG its
+       own axis, so the bright leading head points the way it flies (no longer
+       backwards) and it crosses far more of the board. --fx-ang/--fx-dist are
+       set per-particle. */
+    @keyframes fxShoot {
+      0%   { transform: rotate(var(--fx-ang, 30deg)) translateX(0); opacity: 0; }
+      12%  { opacity: 1; }
+      82%  { opacity: 1; }
+      100% { transform: rotate(var(--fx-ang, 30deg)) translateX(var(--fx-dist, 320px)); opacity: 0; }
     }
   `;
 
@@ -288,36 +309,48 @@ const THEME_EFFECTS = {
     return () => {};
   },
 
-  // Forest (L9): floating spores / pollen
+  // Forest (L9): drifting leaves (the visible headline) + glowing fireflies
   forest: (container) => {
     injectStyles();
-    return particleLoop(container, (c) => {
-      const size = rand(2, 4);
+    // falling leaves — clearly readable motion, drifting + tumbling down
+    const leafCleanup = particleLoop(container, (c) => {
+      return fallingParticle(c, {
+        chars: ['🍃', '🍂', '🌿', '🍃', '🍃'],
+        sizeMin: 13, sizeMax: 22, durationMin: 5, durationMax: 9,
+        opacity: 0.75, opacityEnd: 0.2,
+      });
+    }, () => rand(520, 1250));
+    // brighter, larger fireflies that pulse and drift
+    const fireflyCleanup = particleLoop(container, (c) => {
+      const size = rand(3, 5);
       const el = spawn(c, { style: {
-        left: rand(5, 95) + '%', top: rand(5, 95) + '%',
+        left: rand(8, 92) + '%', top: rand(15, 85) + '%',
         width: size + 'px', height: size + 'px', borderRadius: '50%',
-        background: pick(['rgba(180, 220, 80, 0.4)', 'rgba(255, 215, 0, 0.3)', 'rgba(200, 200, 100, 0.3)']),
-        animation: `fxFloat ${rand(3, 6)}s ease-in-out forwards, fxTwinkle ${rand(4, 7)}s ease-in-out forwards`,
-        '--fx-float-y': rand(-10, -20) + 'px', '--fx-opacity': String(rand(0.3, 0.5)),
+        background: 'rgba(216, 255, 130, 0.88)',
+        boxShadow: '0 0 9px rgba(200, 255, 100, 0.75), 0 0 18px rgba(200, 255, 100, 0.35)',
+        animation: `fxFloat ${rand(3, 6)}s ease-in-out forwards, fxTwinkle ${rand(2, 4)}s ease-in-out forwards`,
+        '--fx-float-y': rand(-20, -42) + 'px', '--fx-opacity': String(rand(0.55, 0.9)),
       }});
       return el;
-    }, () => rand(1050, 2800));
+    }, () => rand(650, 1600));
+    return () => { leafCleanup(); fireflyCleanup(); };
   },
 
-  // Candy (L12): floating sprinkles + sparkle pops
+  // Candy (L12): a busy shower of sprinkles, hearts + sparkle pops
   candy: (container) => {
     injectStyles();
     return particleLoop(container, (c) => {
-      const candyChars = ['\u2726', '\u2022', '\u2666', '\u2605', '\u25CF'];
-      const colors = ['rgba(255,64,129,0.5)', 'rgba(224,64,251,0.4)', 'rgba(124,77,255,0.4)', 'rgba(255,215,64,0.5)', 'rgba(105,240,174,0.4)'];
+      const candyChars = ['\u2726', '\u2022', '\u2666', '\u2605', '\u25CF', '\u2764', '\u273F'];
+      const colors = ['rgba(255,64,129,0.7)', 'rgba(224,64,251,0.6)', 'rgba(124,77,255,0.6)', 'rgba(255,170,40,0.7)', 'rgba(64,210,140,0.6)', 'rgba(80,170,255,0.6)'];
       const el = spawn(c, { text: pick(candyChars), style: {
-        left: rand(5, 95) + '%', top: rand(5, 95) + '%',
-        fontSize: rand(6, 12) + 'px', color: pick(colors),
-        animation: `fxTwinkle ${rand(1.5, 3)}s ease-in-out forwards`,
-        '--fx-opacity': String(rand(0.4, 0.7)),
+        left: rand(4, 96) + '%', top: rand(4, 96) + '%',
+        fontSize: rand(8, 17) + 'px', color: pick(colors),
+        textShadow: '0 1px 2px rgba(180,80,120,0.25)',
+        animation: `fxTwinkle ${rand(1.4, 2.8)}s ease-in-out forwards`,
+        '--fx-opacity': String(rand(0.55, 0.9)),
       }});
       return el;
-    }, () => rand(560, 1400));
+    }, () => rand(170, 470));
   },
 
   // Midnight (L15): twinkling starfield
@@ -365,20 +398,41 @@ const THEME_EFFECTS = {
     return () => { scanLine.remove(); dustCleanup(); };
   },
 
-  // Neon (L21): neon spark flickers
+  // Neon (L21): electric arcade \u2014 dense sparks, arc streaks, a CRT beam sweep
   neon: (container) => {
     injectStyles();
-    return particleLoop(container, (c) => {
-      const el = spawn(c, { text: pick(['\u00B7', '\u26A1', '\u2726']), style: {
-        left: rand(5, 95) + '%', top: rand(5, 95) + '%',
-        fontSize: rand(6, 10) + 'px',
-        color: pick(['rgba(0,255,136,0.6)', 'rgba(0,204,255,0.5)', 'rgba(255,0,102,0.4)']),
-        textShadow: '0 0 6px currentColor',
-        animation: `fxTwinkle ${rand(0.3, 0.8)}s ease-in-out forwards`,
-        '--fx-opacity': '0.7',
+    // CRT scan beam sweeping down
+    const scan = document.createElement('div');
+    Object.assign(scan.style, {
+      position: 'absolute', left: '0', width: '100%', height: '2px',
+      background: 'linear-gradient(90deg, transparent, rgba(0,255,136,0.5), transparent)',
+      boxShadow: '0 0 12px rgba(0,255,136,0.4)',
+      animation: 'fxScanDown 3.5s linear infinite', pointerEvents: 'none', zIndex: '1',
+    });
+    container.appendChild(scan);
+    const sparkCleanup = particleLoop(container, (c) => {
+      // ~1 in 5 spawns is a horizontal electric arc instead of a spark
+      if (Math.random() < 0.18) {
+        return spawn(c, { style: {
+          left: '0', top: rand(8, 92) + '%', width: '100%', height: rand(1, 2) + 'px',
+          background: pick([
+            'linear-gradient(90deg, transparent, rgba(0,255,136,0.5), rgba(0,204,255,0.3), transparent)',
+            'linear-gradient(90deg, transparent, rgba(255,0,110,0.4), rgba(0,255,136,0.4), transparent)',
+          ]),
+          boxShadow: '0 0 8px rgba(0,255,136,0.3)',
+          animation: `fxGlitch ${rand(0.2, 0.45)}s ease-in-out forwards`,
+        }});
+      }
+      return spawn(c, { text: pick(['\u00B7', '\u26A1', '\u2726', '\u00D7']), style: {
+        left: rand(4, 96) + '%', top: rand(4, 96) + '%',
+        fontSize: rand(7, 13) + 'px',
+        color: pick(['rgba(0,255,136,0.85)', 'rgba(0,221,255,0.75)', 'rgba(255,0,110,0.6)']),
+        textShadow: '0 0 8px currentColor, 0 0 14px currentColor',
+        animation: `fxTwinkle ${rand(0.25, 0.7)}s ease-in-out forwards`,
+        '--fx-opacity': String(rand(0.6, 0.95)),
       }});
-      return el;
-    }, () => rand(1050, 2800));
+    }, () => rand(160, 480));
+    return () => { scan.remove(); sparkCleanup(); };
   },
 
   // Cherry Blossom (L24): gentle shower of petals
@@ -523,34 +577,44 @@ const THEME_EFFECTS = {
     return () => { glitchCleanup(); dropCleanup(); };
   },
 
-  // Galaxy (L40): twinkling star field + shooting star
+  // Galaxy (L40): dense twinkling star field + frequent shooting stars + nebula
   galaxy: (container) => {
     injectStyles();
     const stars = [];
-    for (let i = 0; i < 15; i++) {
-      const star = spawn(container, { text: pick(['\u00B7', '\u2726', '\u22C6', '.']), style: {
-        left: rand(5, 95) + '%', top: rand(5, 95) + '%', fontSize: rand(6, 11) + 'px',
-        color: pick(['rgba(255,255,255,0.5)', 'rgba(234,128,252,0.4)', 'rgba(130,177,255,0.4)']),
-        textShadow: '0 0 3px currentColor',
-        animation: `fxTwinkle ${rand(2, 5)}s ease-in-out ${rand(0, 3)}s infinite`,
-        '--fx-opacity': String(rand(0.3, 0.7)),
+    for (let i = 0; i < 28; i++) {
+      const star = spawn(container, { text: pick(['\u00B7', '\u2726', '\u22C6', '.', '\u2727']), style: {
+        left: rand(3, 97) + '%', top: rand(3, 97) + '%', fontSize: rand(6, 13) + 'px',
+        color: pick(['rgba(255,255,255,0.75)', 'rgba(234,128,252,0.6)', 'rgba(130,177,255,0.6)', 'rgba(255,200,255,0.55)']),
+        textShadow: '0 0 4px currentColor, 0 0 8px currentColor',
+        animation: `fxTwinkle ${rand(1.8, 4.5)}s ease-in-out ${rand(0, 3)}s infinite`,
+        '--fx-opacity': String(rand(0.4, 0.9)),
       }});
       stars.push(star);
     }
-    ambientGlow(container, { blur: 20, style: {
-      background: 'radial-gradient(ellipse 40% 40% at 30% 40%, rgba(208,80,255,0.05) 0%, transparent 50%), radial-gradient(ellipse 35% 35% at 70% 60%, rgba(130,177,255,0.04) 0%, transparent 50%)',
-      animation: 'fxDrift 12s ease-in-out infinite alternate', '--fx-x0': '-5%', '--fx-x2': '5%',
+    ambientGlow(container, { blur: 22, style: {
+      background: 'radial-gradient(ellipse 45% 45% at 28% 38%, rgba(208,80,255,0.10) 0%, transparent 55%), radial-gradient(ellipse 40% 38% at 72% 62%, rgba(130,177,255,0.08) 0%, transparent 55%), radial-gradient(ellipse 30% 30% at 55% 85%, rgba(255,90,200,0.06) 0%, transparent 55%)',
+      animation: 'fxDrift 12s ease-in-out infinite alternate', '--fx-x0': '-6%', '--fx-x2': '6%',
     }});
     const shootCleanup = particleLoop(container, (c) => {
+      const ang = rand(16, 46);            // travel angle (down-right)
+      const dist = rand(220, 400);         // streak length
       const el = spawn(c, { style: {
-        left: rand(10, 60) + '%', top: rand(5, 30) + '%',
-        width: rand(20, 40) + 'px', height: '1px',
-        background: 'linear-gradient(90deg, rgba(255,255,255,0.6), transparent)',
-        transformOrigin: 'left center', transform: 'rotate(' + rand(15, 45) + 'deg)',
-        animation: `fxSweep ${rand(0.6, 1.2)}s ease-out forwards`,
+        // Originate anywhere across the board (and a little off the top/left
+        // edge) so the streaks aren't bunched into one corner — they all drift
+        // down-right, so a left/top-biased spawn made them only ever appear in
+        // the top-right after travelling. Full-spread spawn covers the board.
+        left: rand(-12, 85) + '%', top: rand(-8, 82) + '%',
+        width: rand(38, 70) + 'px', height: '2px', borderRadius: '2px',
+        // bright head on the RIGHT (= leading edge), trail fading behind it
+        background: 'linear-gradient(90deg, transparent, rgba(208,80,255,0.4), rgba(255,255,255,0.95))',
+        boxShadow: '0 0 7px rgba(255,255,255,0.5)',
+        transformOrigin: 'left center',
+        animation: `fxShoot ${rand(0.9, 1.5)}s ease-in forwards`,
+        '--fx-ang': ang + 'deg',
+        '--fx-dist': dist + 'px',
       }});
       return el;
-    }, () => rand(2000, 5000));
+    }, () => rand(1100, 2800));
     return () => { stars.forEach(s => s.remove()); shootCleanup(); };
   },
 
@@ -903,25 +967,49 @@ const THEME_EFFECTS = {
     }, () => rand(700, 1800));
   },
 
-  // Matrix (L86): falling green characters
+  // Matrix (L86): dense falling code \u2014 trailing columns of katakana/binary
+  // with a bright leading head and a masked fading tail (the real rain look).
   matrix: (container) => {
     injectStyles();
-    const matrixChars = '01\u30A2\u30A4\u30A6\u30A8\u30AA\u30AB\u30AD\u30AF\u30B1\u30B3\u30B5\u30B7\u30B9\u30BB\u30BD'.split('');
+    const matrixChars = '01'.split('');
+    const FS = 14; // column character size / pitch
     return particleLoop(container, (c) => {
+      // Hard cap concurrent columns. This used to be uncapped at a 70-180ms
+      // spawn rate, which steady-stated at ~40 columns — each a separately
+      // composited maskImage + textShadow layer animating every frame. On a
+      // large, high-DPI desktop board that tanked the frame rate (fine on a
+      // small phone board). Capped + slower spawn + no per-column mask keeps
+      // the rain readable while cutting the per-frame paint cost by ~3x.
+      if (c.childElementCount >= 16) return null;
       const boardH = c.parentElement?.clientHeight || 500;
-      const el = spawn(container, { text: pick(matrixChars), style: {
-        left: rand(2, 98) + '%', top: '0px', fontFamily: 'monospace',
-        fontSize: rand(10, 16) + 'px', color: 'rgba(0,255,65,0.6)',
-        textShadow: '0 0 4px rgba(0,255,65,0.4)',
-        animation: `fxFall ${rand(2, 5)}s linear forwards`,
-        '--fx-x0': '0px', '--fx-y0': '-10px',
-        '--fx-x1': '0px', '--fx-y1': (boardH * 0.5) + 'px',
-        '--fx-x2': '0px', '--fx-y2': (boardH + 20) + 'px',
-        '--fx-r0': '0deg', '--fx-r1': '0deg', '--fx-r2': '0deg',
-        '--fx-opacity': '0.6', '--fx-opacity-end': '0.1', '--fx-s': '1',
-      }});
+      const boardW = c.parentElement?.clientWidth || 500;
+      const cols = Math.max(6, Math.floor(boardW / FS));
+      const colX = Math.floor(rand(0, cols)) * FS;
+      const len = Math.floor(rand(8, 18));
+      const text = Array.from({ length: len }, () => pick(matrixChars)).join('\n');
+      const dur = rand(2.6, 4.8);
+      const el = spawn(c, {
+        text,
+        style: {
+          left: colX + 'px', top: '0px', width: FS + 'px',
+          fontFamily: 'monospace', fontSize: FS + 'px', lineHeight: '1',
+          whiteSpace: 'pre', textAlign: 'center',
+          color: 'rgba(140, 255, 165, 0.92)',
+          textShadow: '0 0 4px rgba(0, 255, 90, 0.5)',
+          // No maskImage: the column instead fades to nothing via the fxFall
+          // opacity keyframe (--fx-opacity → --fx-opacity-end), which costs
+          // nothing extra to composite. Trades the per-character tail for a
+          // whole-column fade — still reads as falling code.
+          animation: `fxFall ${dur}s linear forwards`,
+          '--fx-x0': '0px', '--fx-y0': (-len * FS) + 'px',
+          '--fx-x1': '0px', '--fx-y1': (boardH * 0.5) + 'px',
+          '--fx-x2': '0px', '--fx-y2': (boardH + len * FS) + 'px',
+          '--fx-r0': '0deg', '--fx-r1': '0deg', '--fx-r2': '0deg',
+          '--fx-opacity': '0.92', '--fx-opacity-end': '0', '--fx-s': '1',
+        },
+      });
       return el;
-    }, () => rand(105, 350));
+    }, () => rand(190, 380));
   },
 
   // Solar (L88): sun rays + warm sparkles

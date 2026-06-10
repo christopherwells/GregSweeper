@@ -23,17 +23,33 @@
 import { isBoardSolvable } from './boardSolver.js';
 import { PAR_MODEL } from './difficulty.js';
 
-// Solver move-type counter → its PAR_MODEL coefficient.
-// disjunctiveMoves is intentionally omitted: PAR_MODEL has no
-// secPerDisjunctiveMove (it was dropped 2026-05-04, absorbed into
-// secPerLiarCell because disjunctive moves are confounded with the
-// presence of liar cells).
-const MOVE_TYPE_TO_COEF = {
-  passAMoves:           'secPerPassAMove',
-  canonicalSubsetMoves: 'secPerCanonicalSubsetMove',
-  genericSubsetMoves:   'secPerGenericSubsetMove',
-  advancedLogicMoves:   'secPerAdvancedLogicMove',
-};
+// Solver move-type counters → the pooled PAR_MODEL coefficients from the
+// 2026-06-08 identifiability rework (PR #36): the four raw counters pool
+// into two earned tiers, pattern (subset deductions) and search
+// (tank/gauss enumeration).
+//
+// Deliberately unpriced:
+//   - passAMoves: the rework absorbed trivial propagation into cellCount
+//     (it's a board-size proxy), so deduction a mine anchors in Pass A
+//     prices at 0. Cascade-anchoring mines are therefore underpriced
+//     relative to the pre-rework four-coefficient scale; the flat
+//     BOMB_PENALTY_BASE keeps every strike non-free regardless.
+//   - disjunctiveMoves: dropped 2026-05-04, confounded with liar-cell
+//     presence (absorbed into secPerLiarCell).
+//
+// Exported for the unit test that pins each coef name to a live
+// PAR_MODEL key — the original four-name mapping silently zeroed every
+// info-value for the hours between PR #32 and this fix because nothing
+// checked the names against the model.
+export const POOLED_TERMS = [
+  { coef: 'secPerPatternMove', moveKeys: ['canonicalSubsetMoves', 'genericSubsetMoves'] },
+  { coef: 'secPerSearchMove',  moveKeys: ['advancedLogicMoves'] },
+];
+
+// All five raw solver counters, reported in `deltas` for diagnostics and
+// offline re-weighting (scripts/reanchor-bomb-tiers.mjs) even where the
+// pricing above ignores them.
+const RAW_DELTA_KEYS = ['passAMoves', 'canonicalSubsetMoves', 'genericSubsetMoves', 'advancedLogicMoves', 'disjunctiveMoves'];
 
 /**
  * @param {Array<Array<object>>} board       the canonical board (live state ignored)
@@ -70,14 +86,22 @@ export function computeBombInfoValue(board, rows, cols, safeRow, safeCol, strike
   });
 
   const deltas = {};
+  for (const moveKey of RAW_DELTA_KEYS) {
+    deltas[moveKey] = (resultA[moveKey] || 0) - (resultB[moveKey] || 0);
+  }
+
   let infoValue = 0;
-  for (const moveKey of Object.keys(MOVE_TYPE_TO_COEF)) {
-    const a = resultA[moveKey] || 0;
-    const b = resultB[moveKey] || 0;
-    const delta = a - b;
-    deltas[moveKey] = delta;
-    const coef = PAR_MODEL[MOVE_TYPE_TO_COEF[moveKey]] || 0;
-    infoValue += delta * coef;
+  for (const term of POOLED_TERMS) {
+    // Loud failure beats a silent zero: a missing coefficient means the
+    // PAR_MODEL names drifted (the exact regression this rewrite fixes).
+    // The caller (handleDailyBombHit) catches, warns, and charges the
+    // base penalty, so the player is never stranded — but the break is
+    // visible instead of quietly logging infoValue: 0 to Firebase.
+    if (typeof PAR_MODEL[term.coef] !== 'number') {
+      throw new Error(`PAR_MODEL is missing coefficient "${term.coef}" — bomb pricing is de-wired`);
+    }
+    const pooledDelta = term.moveKeys.reduce((sum, k) => sum + deltas[k], 0);
+    infoValue += pooledDelta * PAR_MODEL[term.coef];
   }
 
   // Clamp ≥ 0. A mine whose discovery somehow ADDS solver work shouldn't

@@ -17,12 +17,13 @@ test('predictPar on an all-zero feature vector returns the rounded intercept', (
 });
 
 test('predictPar is monotonic in a positive-coefficient feature', () => {
-  assert.ok(PAR_MODEL.secPerAdvancedLogicMove > 0, 'precondition: advanced coef positive');
+  assert.ok(PAR_MODEL.secPerSearchMove > 0, 'precondition: search coef positive');
+  // advancedLogicMoves feeds the derived `search` tier (searchMoves = advanced).
   const lo = predictPar({ advancedLogicMoves: 1 });
   const hi = predictPar({ advancedLogicMoves: 5 });
-  assert.ok(hi > lo, `par should rise with advancedLogicMoves: ${lo} -> ${hi}`);
+  assert.ok(hi > lo, `par should rise with search moves: ${lo} -> ${hi}`);
   // The increase equals coef × delta (within rounding).
-  const expected = PAR_MODEL.secPerAdvancedLogicMove * 4;
+  const expected = PAR_MODEL.secPerSearchMove * 4;
   assert.ok(Math.abs((hi - lo) - expected) < 0.15, `delta ${hi - lo} vs expected ${expected}`);
 });
 

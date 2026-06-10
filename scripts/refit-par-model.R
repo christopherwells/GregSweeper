@@ -57,12 +57,18 @@ BOMB_PENALTY_BASE <- 3
 MIN_SCORES_TO_FIT <- 30
 
 # Minimum total plays before a user's scores are allowed to influence
-# the GLOBAL model. Bomb-hit plays count: new-mechanic plays
-# (v1.5.149+) have their deterministic info-value penalty subtracted
-# into `clean_time` upstream; legacy +10s/re-fog plays carry their cost
-# via the `legacy_bombs` regressor. Total-play count, roughly one month
-# of daily play per user.
-MIN_PLAYS_FOR_FIT_INCLUSION <- 30
+# the GLOBAL model and earn a shipped handicap. Set low (5) because the
+# heavy players anchor the fixed effects and partial pooling shrinks a
+# small-N user's random intercept toward zero, so a light player can
+# neither drag the board-difficulty coefficients nor get an over-
+# confident handicap; the threshold's only job now is to keep true
+# one-offs (1-4 plays) out. Bomb-hit plays count toward the total:
+# new-mechanic plays have their deterministic info-value penalty
+# subtracted into `clean_time` upstream; legacy +10s/re-fog plays carry
+# their cost via the `legacy_bombs` regressor. Anyone below this still
+# gets a client-side provisional handicap from their own residuals
+# (handicaps.js).
+MIN_PLAYS_FOR_FIT_INCLUSION <- 5
 
 # (MIN_PLAYS_FOR_HANDICAP retired; the residuals-fallback path now uses
 # the same MIN_PLAYS_FOR_FIT_INCLUSION threshold as the main fit, so
@@ -101,17 +107,22 @@ PRIOR_MEANS <- list(
   # says "we have no strong opinion about the baseline, let the data
   # decide" while still penalising absurd values through PRIOR_INTERCEPT_SD.
   Intercept            = 0.0,
-  passAMoves           = 1.2,
-  canonicalSubsetMoves = 2.0,
-  genericSubsetMoves   = 4.5,
-  advancedLogicMoves   = 7.0,
-  # disjunctiveMoves dropped 2026-05-04: structurally confounded with
-  # liarCellCount (every liar board produces disjunctive moves), and at
-  # N=1 liar board there's no way to identify the two coefficients
-  # separately. The variance now flows into secPerLiarCell on refit.
-  cellCount            = 0.02,
+  # Size (2026-06-08 feature rework). cellCount is the lone board-size axis
+  # — it absorbs trivial-propagation time, so passAMoves is no longer a
+  # predictor; its seed is well above the old 0.02 to carry that cost.
+  # totalMines stays a raw count: VIF 3.6 (fine once the redundant size
+  # features are dropped), and density made its coefficient unreadable
+  # (352/-80 intercept), so we keep the interpretable per-mine form.
+  cellCount            = 0.30,
   totalMines           = 0.3,
+  # Reasoning load, two earned tiers: pattern = canonical + generic subset
+  # deductions; search = advanced (tank/gauss) enumeration. The raw four
+  # move-types are too sparse/small-count to identify separately.
+  patternMoves         = 4.0,
+  searchMoves          = 6.0,
   wallEdgeCount        = 0.15,
+  # Modifier cells — kept split; sparse (each on ~5-10% of boards), so
+  # prior-anchored until the coverage missions accumulate boards.
   mysteryCellCount     = 0.8,
   liarCellCount        = 0.6,
   lockedCellCount      = 0.4,
@@ -119,18 +130,12 @@ PRIOR_MEANS <- list(
   mirrorPairCount      = 1.0,
   sonarCellCount       = 0.5,
   compassCellCount     = 0.5,
-  # legacy_bombs: per-hit cost for plays under the old +10s/re-fog
-  # mechanic (v1.5.148 and earlier). Each hit added 10s explicit penalty
-  # + ~5s re-fog re-click cost. OLS gives ~15s; prior centred there.
-  # New-mechanic plays (v1.5.149+) already have the info-value penalty
-  # subtracted from `time` → `clean_time` and contribute 0 here, so this
-  # coefficient ONLY explains the legacy cohort. NOT shipped in the JS
-  # PAR_MODEL — predictPar(features) stays clean-play par.
+  # legacy_bombs: per-hit cost for plays under the old +10s/re-fog mechanic
+  # (v1.5.148 and earlier). New-mechanic plays already have their info-value
+  # penalty subtracted into clean_time and contribute 0 here, so this only
+  # explains the legacy cohort. Fit-only — folded into each player's
+  # handicap, not shipped to predictPar.
   legacy_bombs         = 15.0,
-  # Structural features (v1.5.16+). Priors centred on rough guesses;
-  # data will pull them around. Both non-negative on physical grounds
-  # (more deduction work / cascade entries = more time).
-  nonZeroSafeCellCount = 0.5,
   zeroClusterCount     = 1.0
 )
 
@@ -147,12 +152,10 @@ PRIOR_INTERCEPT_SD <- 15.0   # lets the intercept float freely; bias-
                               # correction + slope priors carry the
                               # calibration
 PRIOR_SIGMAS <- list(
-  passAMoves           = 1.0,
-  canonicalSubsetMoves = 1.0,
-  genericSubsetMoves   = 1.0,
-  advancedLogicMoves   = 1.0,
   cellCount            = 1.0,
   totalMines           = 1.0,
+  patternMoves         = 1.0,
+  searchMoves          = 1.0,
   wallEdgeCount        = 1.0,
   mysteryCellCount     = 1.0,
   liarCellCount        = 1.0,
@@ -161,13 +164,9 @@ PRIOR_SIGMAS <- list(
   mirrorPairCount      = 1.0,
   sonarCellCount       = 1.0,
   compassCellCount     = 1.0,
-  # Tighter prior on legacy_bombs (sigma=0.4) — same rationale as the
-  # old bombHits prior: OLS on legacy data gives a clean ~15s estimate
-  # with little need for the wide spread the gimmick coefs need.
+  # Tighter prior on legacy_bombs (sigma=0.4): OLS on legacy data gives a
+  # clean ~15s estimate, with little need for the wide spread the others get.
   legacy_bombs         = 0.4,
-  # Structural feature priors (v1.5.16+). Wide (sigma=1.0) since these
-  # are new and we don't have strong intuition for the magnitudes yet.
-  nonZeroSafeCellCount = 1.0,
   zeroClusterCount     = 1.0
 )
 
@@ -194,12 +193,10 @@ parse_par_model <- function(path) {
 apply_par_model <- function(df, coefs) {
   with(df,
     coefs$intercept +
-    coefs$secPerPassAMove            * passAMoves +
-    coefs$secPerCanonicalSubsetMove  * canonicalSubsetMoves +
-    coefs$secPerGenericSubsetMove    * genericSubsetMoves +
-    coefs$secPerAdvancedLogicMove    * advancedLogicMoves +
     coefs$secPerCell                 * cellCount +
     coefs$secPerMineFlag             * totalMines +
+    (coefs$secPerPatternMove %||% 0)  * patternMoves +
+    (coefs$secPerSearchMove  %||% 0)  * searchMoves +
     coefs$secPerWallEdge             * wallEdgeCount +
     coefs$secPerMysteryCell          * mysteryCellCount +
     coefs$secPerLiarCell             * liarCellCount +
@@ -208,8 +205,7 @@ apply_par_model <- function(df, coefs) {
     coefs$secPerMirrorPair           * mirrorPairCount +
     coefs$secPerSonarCell            * sonarCellCount +
     coefs$secPerCompassCell          * compassCellCount +
-    (coefs$secPerNonZeroSafeCell %||% 0) * (nonZeroSafeCellCount %||% 0) +
-    (coefs$secPerZeroCluster     %||% 0) * (zeroClusterCount     %||% 0)
+    (coefs$secPerZeroCluster %||% 0) * zeroClusterCount
   )
 }
 
@@ -341,6 +337,16 @@ df <- df |>
     ~ ifelse(is.na(.x), 0, as.numeric(.x))
   ))
 
+# Derived model predictors (2026-06-08 feature rework): reasoning pooled
+# into pattern (canonical + generic) + search (advanced). Derived from the
+# raw dailyMeta fields above, so every historical board stays usable with
+# no dailyMeta migration. (Size = cellCount alone; totalMines stays raw.)
+df <- df |>
+  mutate(
+    patternMoves = canonicalSubsetMoves + genericSubsetMoves,
+    searchMoves  = advancedLogicMoves
+  )
+
 n_scores  <- nrow(df)
 n_dates   <- n_distinct(df$date)
 n_players <- df |> filter(!is.na(uid), uid != "") |> pull(uid) |> n_distinct()
@@ -397,24 +403,25 @@ diagnostic_failure <- FALSE
 # ── 2. Fit ──────────────────────────────────────────────
 
 fit_formula_fixed <- clean_time ~
-  passAMoves + canonicalSubsetMoves + genericSubsetMoves +
-  advancedLogicMoves +
-  cellCount + totalMines + wallEdgeCount +
+  cellCount + totalMines +
+  patternMoves + searchMoves +
+  wallEdgeCount +
   mysteryCellCount + liarCellCount + lockedCellCount +
   wormholePairCount + mirrorPairCount +
   sonarCellCount + compassCellCount +
-  nonZeroSafeCellCount + zeroClusterCount +
-  legacy_bombs  # NOT shipped to JS PAR_MODEL — see PRIOR_MEANS comment
+  zeroClusterCount +
+  legacy_bombs  # fit-only (folded into handicap), not in JS PAR_MODEL
 
 if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
-  # Bayesian mixed-effects fit on only the eligible users (>= 30 plays).
-  # This keeps the global model from being dragged around by one-off
-  # visitors or brand-new players whose handful of scores would otherwise
-  # carry as much weight in the bias-correction step as a regular
-  # player's 40+ scores. brms can estimate the random-intercept variance
-  # even at n_eligible == 2 because the student_t prior on sd(uid) gives
-  # it enough structure to separate "two players differ by X" from "zero
-  # handicap variance, pure residual".
+  # Bayesian mixed-effects fit on the eligible users (>=
+  # MIN_PLAYS_FOR_FIT_INCLUSION plays). Partial pooling shrinks a light
+  # player's random intercept toward zero and the bias-correction step
+  # is play-weighted, so an included small-N user can't dominate either
+  # the coefficients or the recentering — the threshold mainly keeps
+  # true one-off visitors out. brms can estimate the random-intercept
+  # variance even at n_eligible == 2 because the student_t prior on
+  # sd(uid) gives it enough structure to separate "two players differ
+  # by X" from "zero handicap variance, pure residual".
   df_fit <- df |> filter(uid %in% eligible_uids)
   fit_formula <- update(fit_formula_fixed, ~ . + (1 | uid))
 
@@ -509,23 +516,16 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
 
     # Choose the experiment target — the coefficient with the highest
     # posterior coefficient of variation (SD / |mean|), from a whitelist
-    # of features we can practically push with seed selection. Features
-    # like `passAMoves` are always non-zero on a real board so targeting
-    # them is pointless; `cellCount` we don't want to inflate because
-    # it's load-bearing for board size. The whitelist keeps the picked
-    # target to "things the seed-selection loop can meaningfully
-    # maximise by picking a different board layout".
+    # of features we can practically push with seed selection. cellCount is
+    # excluded (load-bearing for board size, not something to inflate); these
+    # names match the reworked PAR_MODEL predictors (fixef rownames).
     target_whitelist <- c(
-      "canonicalSubsetMoves", "genericSubsetMoves",
-      "advancedLogicMoves",
+      "patternMoves", "searchMoves",
       "totalMines", "wallEdgeCount",
       "mysteryCellCount", "liarCellCount", "lockedCellCount",
       "wormholePairCount", "mirrorPairCount",
       "sonarCellCount", "compassCellCount",
-      # Structural features (v1.5.16+). Both can be pushed by the
-      # candidate-seed loop: more deduction cells, more cascade
-      # entries = different boards.
-      "nonZeroSafeCellCount", "zeroClusterCount"
+      "zeroClusterCount"
     )
     fe_summary <- fixef(fit)  # posterior mean + SD for every fixed effect
     target_candidates <- data.frame(
@@ -651,23 +651,20 @@ if (fit_method == "brms-ranef") {
   }
 
   new_coefs <- list(
-    intercept                   = nn(co["Intercept"],              "intercept"),
-    secPerPassAMove             = nn(co["passAMoves"],             "passA"),
-    secPerCanonicalSubsetMove   = nn(co["canonicalSubsetMoves"],   "canonicalSubset"),
-    secPerGenericSubsetMove     = nn(co["genericSubsetMoves"],     "genericSubset"),
-    secPerAdvancedLogicMove     = nn(co["advancedLogicMoves"],     "advancedLogic"),
-    secPerCell                  = nn(co["cellCount"],              "cell"),
-    secPerMineFlag              = nn(co["totalMines"],             "mineFlag"),
-    secPerWallEdge              = nn(co["wallEdgeCount"],          "wallEdge"),
-    secPerMysteryCell           = nn(co["mysteryCellCount"],       "mysteryCell"),
-    secPerLiarCell              = nn(co["liarCellCount"],          "liarCell"),
-    secPerLockedCell            = nn(co["lockedCellCount"],        "lockedCell"),
-    secPerWormholePair          = nn(co["wormholePairCount"],      "wormholePair"),
-    secPerMirrorPair            = nn(co["mirrorPairCount"],        "mirrorPair"),
-    secPerSonarCell             = nn(co["sonarCellCount"],         "sonarCell"),
-    secPerCompassCell           = nn(co["compassCellCount"],       "compassCell"),
-    secPerNonZeroSafeCell       = nn(co["nonZeroSafeCellCount"],   "nonZeroSafeCell"),
-    secPerZeroCluster           = nn(co["zeroClusterCount"],       "zeroCluster")
+    intercept          = nn(co["Intercept"],         "intercept"),
+    secPerCell         = nn(co["cellCount"],         "cell"),
+    secPerMineFlag     = nn(co["totalMines"],        "mineFlag"),
+    secPerPatternMove  = nn(co["patternMoves"],      "patternMove"),
+    secPerSearchMove   = nn(co["searchMoves"],       "searchMove"),
+    secPerWallEdge     = nn(co["wallEdgeCount"],     "wallEdge"),
+    secPerMysteryCell  = nn(co["mysteryCellCount"],  "mysteryCell"),
+    secPerLiarCell     = nn(co["liarCellCount"],     "liarCell"),
+    secPerLockedCell   = nn(co["lockedCellCount"],   "lockedCell"),
+    secPerWormholePair = nn(co["wormholePairCount"], "wormholePair"),
+    secPerMirrorPair   = nn(co["mirrorPairCount"],   "mirrorPair"),
+    secPerSonarCell    = nn(co["sonarCellCount"],    "sonarCell"),
+    secPerCompassCell  = nn(co["compassCellCount"],  "compassCell"),
+    secPerZeroCluster  = nn(co["zeroClusterCount"],  "zeroCluster")
   )
 
   # Bias-correct the intercept so the mean predicted par matches the
@@ -701,6 +698,32 @@ if (fit_method == "brms-ranef") {
   message(sprintf("  legacy_bombs coef: +%.2fs/hit (legacy +10s/re-fog cohort only) | intercept bias-correction: %+.2fs (clean-time-equivalent mean matches mean predicted par)",
                   bomb_coef, bias))
 
+  # Bombs are part of your HANDICAP, not par. predictPar stays clean board
+  # difficulty (untouched above); each player's typical bomb cost is added
+  # onto their clean-skill random intercept here. Per-play bomb cost = the
+  # time bombs add vs clean play: BOMB_PENALTY_BASE/hit for new-mechanic
+  # plays (the info-value part is offset deduction time, not extra cost),
+  # the fitted legacy rate (bomb_coef)/hit for old +10s/re-fog plays.
+  # Net: handicaps no longer sum to zero — the clean-skill part does, and
+  # each player's absolute bomb cost lifts their number. handicap = clean
+  # offset + bomb factor (a steady 1-bomb/day player carries ~+3s now,
+  # ~+14s on legacy plays).
+  df_fit$bomb_cost <- ifelse(df_fit$totalBombPenalty > 0,
+                             BOMB_PENALTY_BASE * df_fit$bombHits,
+                             bomb_coef * df_fit$bombHits)
+  bomb_cost_by_uid <- tapply(df_fit$bomb_cost, df_fit$uid, mean)
+  for (u in names(handicaps)) {
+    bc <- bomb_cost_by_uid[[u]]
+    if (!is.null(bc) && !is.na(bc) && bc != 0) {
+      handicaps[[u]] <- round(handicaps[[u]] + bc, 2)
+    }
+  }
+  if (any(bomb_cost_by_uid > 0, na.rm = TRUE)) {
+    message(sprintf("  bomb factor folded into handicaps: %s",
+                    paste(sprintf("%s +%.2fs", names(bomb_cost_by_uid), bomb_cost_by_uid),
+                          collapse = ", ")))
+  }
+
   # Guard: until enough plays have NONZERO values for each new structural
   # feature, its posterior is essentially the lognormal prior expectation
   # (~prior_mean * 1.65) — and that's not a real fit, just a prior. If we
@@ -712,8 +735,7 @@ if (fit_method == "brms-ranef") {
   # fields in dailyMeta (write-once) so we can only build data forward.
   NEW_FEATURE_DATA_THRESHOLD <- 20
   feature_data_counts <- list(
-    secPerNonZeroSafeCell = sum(df_fit$nonZeroSafeCellCount > 0, na.rm = TRUE),
-    secPerZeroCluster     = sum(df_fit$zeroClusterCount     > 0, na.rm = TRUE)
+    secPerZeroCluster = sum(df_fit$zeroClusterCount > 0, na.rm = TRUE)
   )
   for (coef_name in names(feature_data_counts)) {
     n_with_data <- feature_data_counts[[coef_name]]
@@ -732,26 +754,31 @@ if (fit_method == "brms-ranef") {
 # residuals against the EXISTING coefficients. Only eligible users (>=
 # MIN_PLAYS_FOR_FIT_INCLUSION plays) are included — same threshold the
 # main fit uses, so handicaps.json has a consistent meaning regardless
-# of which path wrote it. Residuals are recentered (play-weighted) so
-# the mean handicap is exactly zero — otherwise systematic bias in the
-# seed par pushes every user's residual in the same direction, making
-# handicaps useless for inter-player comparison.
+# of which path wrote it. Only the clean-skill part is recentered (play-
+# weighted), so seed-par bias doesn't push everyone the same way; the bomb
+# factor is absolute and lifts each handicap, matching the brms path. So the
+# handicap is clean offset + your typical bomb cost (it does NOT sum to zero).
 if (fit_method == "seed-residuals") {
-  df$predicted <- apply_par_model(df, new_coefs)
-  df$residual  <- df$time - df$predicted
+  df$predicted  <- apply_par_model(df, new_coefs)
+  # Per-play bomb cost (time bombs add vs clean play). No fitted bomb_coef
+  # in this fallback, so legacy plays use the prior legacy rate.
+  df$bomb_cost   <- ifelse(df$totalBombPenalty > 0,
+                           BOMB_PENALTY_BASE * df$bombHits,
+                           PRIOR_MEANS$legacy_bombs * df$bombHits)
+  df$clean_resid <- (df$time - df$bomb_cost) - df$predicted
   per_user <- df |>
     filter(uid %in% eligible_uids) |>
     group_by(uid) |>
-    summarise(n = n(), raw_handicap = mean(residual), .groups = "drop")
+    summarise(n = n(), clean_h = mean(clean_resid), bomb_h = mean(bomb_cost), .groups = "drop")
   if (nrow(per_user) > 0) {
     total_plays <- sum(per_user$n)
-    weighted_mean <- sum(per_user$raw_handicap * per_user$n) / total_plays
-    per_user$handicap <- round(per_user$raw_handicap - weighted_mean, 2)
+    wm_clean <- sum(per_user$clean_h * per_user$n) / total_plays
+    per_user$handicap <- round((per_user$clean_h - wm_clean) + per_user$bomb_h, 2)
   } else {
     per_user$handicap <- numeric(0)
   }
   handicaps <- setNames(as.list(per_user$handicap), per_user$uid)
-  message(sprintf("Handicaps computed from residuals (recentered): %d users (min %d plays)",
+  message(sprintf("Handicaps = clean offset + bomb factor (residuals fallback): %d users (min %d plays)",
                   length(handicaps), MIN_PLAYS_FOR_FIT_INCLUSION))
 }
 
@@ -769,9 +796,10 @@ if (length(handicaps) > 0) {
     nPlayers  = n_players,
     method    = fit_method,
     diagnostics = if (nchar(diag_note)) diag_note else NULL,
-    # Each bomb hit's fitted time cost. Surfaces here for transparency
-    # and so the diagnostics modal can show "your bombHits cost you ~Xs
-    # this week". NOT included in JS predictPar — par stays clean-only.
+    # Fitted legacy +10s/re-fog per-hit cost. Surfaces for transparency /
+    # diagnostics, and is the legacy rate used above to fold each player's
+    # bomb cost into their handicap. NOT in JS predictPar — par stays clean;
+    # bombs live in the handicap, not par.
     secPerBombHit = if (is.na(bomb_coef)) NULL else round(bomb_coef, 2),
     handicaps = handicaps
   )
@@ -874,22 +902,20 @@ block <- sprintf(
   // Last refit: %s | %s | N=%d scores, %d dates, %d players | R\u00b2=%s
   intercept: %.2f,
 
-  // Move-type coefficients (primary). disjunctiveMoves was dropped
-  // 2026-05-04: structurally confounded with liarCellCount (every liar
-  // board produces disjunctive moves) and N=1 liar board means the two
-  // coefficients cannot be separately identified. The disjunctive
-  // contribution is now absorbed into secPerLiarCell.
-  secPerPassAMove:            %.2f,
-  secPerCanonicalSubsetMove:  %.2f,
-  secPerGenericSubsetMove:    %.2f,
-  secPerAdvancedLogicMove:    %.2f,
+  // Size baseline. cellCount is the lone size axis (it absorbs trivial
+  // propagation); totalMines stays a raw count. (2026-06-08 rework.)
+  secPerCell:        %.3f,
+  secPerMineFlag:    %.3f,
 
-  // Board shape (secondary)
-  secPerCell:      %.3f,
-  secPerMineFlag:  %.3f,
-  secPerWallEdge:  %.3f,
+  // Reasoning tiers: pattern = canonical + generic subsets; search = advanced.
+  secPerPatternMove: %.3f,
+  secPerSearchMove:  %.3f,
 
-  // Gimmick cell counts (tertiary)
+  // Board structure.
+  secPerWallEdge:    %.3f,
+  secPerZeroCluster: %.3f,
+
+  // Modifier cells (kept split; sparse, prior-anchored until data builds).
   secPerMysteryCell:   %.3f,
   secPerLiarCell:      %.3f,
   secPerLockedCell:    %.3f,
@@ -897,29 +923,22 @@ block <- sprintf(
   secPerMirrorPair:    %.3f,
   secPerSonarCell:     %.3f,
   secPerCompassCell:   %.3f,
-
-  // Structural features (v1.5.16+)
-  secPerNonZeroSafeCell:  %.3f,
-  secPerZeroCluster:      %.3f,
 };',
   Sys.Date(), method_str, n_scores, n_dates, n_players, r2_str,
   new_coefs$intercept,
-  new_coefs$secPerPassAMove,
-  new_coefs$secPerCanonicalSubsetMove,
-  new_coefs$secPerGenericSubsetMove,
-  new_coefs$secPerAdvancedLogicMove,
   new_coefs$secPerCell,
   new_coefs$secPerMineFlag,
+  new_coefs$secPerPatternMove,
+  new_coefs$secPerSearchMove,
   new_coefs$secPerWallEdge,
+  new_coefs$secPerZeroCluster,
   new_coefs$secPerMysteryCell,
   new_coefs$secPerLiarCell,
   new_coefs$secPerLockedCell,
   new_coefs$secPerWormholePair,
   new_coefs$secPerMirrorPair,
   new_coefs$secPerSonarCell,
-  new_coefs$secPerCompassCell,
-  new_coefs$secPerNonZeroSafeCell,
-  new_coefs$secPerZeroCluster
+  new_coefs$secPerCompassCell
 )
 
 src <- paste(readLines(DIFFICULTY_PATH, warn = FALSE, encoding = "UTF-8"),

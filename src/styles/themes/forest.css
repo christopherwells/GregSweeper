@@ -59,6 +59,38 @@
   --text-shadow-title: 0 0 12px rgba(106, 191, 106, 0.3);
   --bg-modal-close-hover: rgba(126, 200, 126, 0.1);
   --shadow-board: 0 4px 16px rgba(10, 18, 8, 0.4);
+
+  /* ── Theme-expression layer ─────────────────────────── */
+  /* Dappled canopy light, screen-blended so it glows on the dark surround. */
+  --bg-page-image:
+    radial-gradient(ellipse 42% 32% at 18% 18%, rgba(150, 210, 95, 0.12), transparent 62%),
+    radial-gradient(ellipse 36% 42% at 82% 72%, rgba(95, 165, 75, 0.10), transparent 62%),
+    radial-gradient(ellipse 30% 26% at 60% 32%, rgba(190, 225, 130, 0.08), transparent 62%);
+  --bg-page-blend: screen;
+
+  /* Gentle, calm motion — soft and unhurried. */
+  --anim-reveal-dur: 0.32s;
+  --anim-reveal-ease: cubic-bezier(0.25, 1, 0.4, 1);
+  --anim-flag-dur: 0.36s;
+  --anim-flag-ease: cubic-bezier(0.25, 1, 0.4, 1);
+  --cell-shape-radius: 8px;
+  /* Sage grid color in the gaps so cleared cells stay separate tiles (their
+     dark #263822 body against the sage grout) instead of merging into a slab. */
+  --cell-gap-seal: #5a7a52;
+
+  /* Markers brightened for the dark-green cells; mirror-2 shifted to amber
+     so no marker hides in the green palette. */
+  --marker-liar-outline: rgba(255, 92, 72, 0.96);
+  --marker-sonar-tint: rgba(0, 222, 242, 0.24);
+  --marker-compass-tint: rgba(255, 202, 0, 0.26);
+  --marker-wormhole-0: rgba(255, 142, 30, 0.30);
+  --marker-wormhole-1: rgba(232, 104, 232, 0.28);
+  --marker-wormhole-2: rgba(175, 255, 130, 0.30);
+  --marker-mirror-0: rgba(92, 182, 255, 0.96);
+  --marker-mirror-1: rgba(212, 122, 255, 0.96);
+  --marker-mirror-2: rgba(255, 182, 84, 0.96);
+  --marker-plate-border: rgba(255, 96, 80, 0.92);
+  --marker-plate-timer: #ff5a44;
 }
 
 [data-theme="forest"] #board {
