@@ -52,7 +52,7 @@ import {
 import {
   initFirebase, isFirebaseOnline, submitOnlineScore, fetchOnlineLeaderboard, fetchUserDailyHistory, fetchAllDailyMeta, fetchAllDailyScores, fetchWeeklyLeaderboard,
 } from './firebase/firebaseLeaderboard.js';
-import { initAnonymousAuth, loadProgress, loadDailyHistory, saveDailyHistoryEntry, getUid, loadWeeklyAttempts, loadLocalWeeklyAttempts, replaceLocalWeeklyAttempts, pruneStaleLocalWeeklyAttempts, subscribeToUidChanges, subscribeToCloudProgressUpdates } from './firebase/firebaseProgress.js';
+import { initAnonymousAuth, loadProgress, loadDailyHistory, saveDailyHistoryEntry, getUid, loadWeeklyAttempts, loadLocalWeeklyAttempts, replaceLocalWeeklyAttempts, pruneStaleLocalWeeklyAttempts, subscribeToUidChanges, subscribeToCloudProgressUpdates, reportClientSeen } from './firebase/firebaseProgress.js';
 import { getAuthState, subscribeAuthState, linkWithGoogle, sendEmailLink, tryCompleteEmailLink, signOut as authSignOut } from './firebase/firebaseAuth.js';
 import { isTestEnvironment } from './firebase/env.js';
 // Stats-tab renderer + chart toolkit are lazy-imported in populateDailyPanel
@@ -92,6 +92,12 @@ if ('serviceWorker' in navigator) {
       // Keep the error reporter's tag in sync so late errors carry the
       // build that produced them, not the boot-time placeholder.
       setErrorReporterCodeVersion(event.data.value);
+      // Stale-client beacon: stamp users/{uid}/lastSeen with the build
+      // this device is ACTUALLY running (the SW's cache name, not the
+      // JS bundle's idea of itself). Written once per session; the
+      // Sebastien incident (device silently stuck on v1.5.162 for days)
+      // was only diagnosable by error-log spelunking without this.
+      reportClientSeen(event.data.value);
     }
   });
   if (navigator.serviceWorker.controller) {
@@ -102,6 +108,11 @@ if ('serviceWorker' in navigator) {
       navigator.serviceWorker.controller.postMessage({ type: 'getCodeVersion' });
     }
   });
+  // No-SW fallback (first-ever visit before install, or SW unsupported):
+  // report the bundle's own version so the beacon never goes missing.
+  setTimeout(() => {
+    if (!state.codeVersion) reportClientSeen('js-' + CURRENT_VERSION);
+  }, 6000);
 }
 
 // Attach error listeners as early as possible — before any other module
@@ -188,9 +199,33 @@ async function ensureLatestServiceWorker(timeoutMs = 3000) {
         }
       });
     });
-    reg.update().catch(() => {});
+    // Two-callback form (NOT .catch().then(), which would run the reset
+    // right after the failure handler and zero the counter it just bumped).
+    reg.update().then(
+      () => {
+        // Successful check (even "no update found") — reset the counter.
+        if (navigator.onLine) safeSet(SW_UPDATE_FAIL_KEY, '0');
+      },
+      (err) => {
+        // The update CHECK failed — the exact failure that left
+        // Sebastien's device silently stuck on a 6-day-old bundle.
+        // Offline checks fail legitimately (no report); an ONLINE
+        // failure means updates aren't reaching this device, so count
+        // consecutive failures durably and, at three in a row, tell the
+        // player how to self-rescue.
+        if (!navigator.onLine) return;
+        reportCaughtError('sw-update-check', err);
+        const fails = (parseInt(safeGet(SW_UPDATE_FAIL_KEY)) || 0) + 1;
+        safeSet(SW_UPDATE_FAIL_KEY, String(fails));
+        if (fails >= 3) {
+          import('./ui/toastManager.js').then(m => m.showToast(
+            '⚠️ Game updates aren\'t reaching this device. Try closing every tab of the game and reopening it.', 6000));
+        }
+      }
+    );
   });
 }
+const SW_UPDATE_FAIL_KEY = 'minesweeper_sw_update_fail_count';
 
 // ── Startup gate ──────────────────────────────────────
 // Render nothing user-interactive until three preconditions hold:
