@@ -193,3 +193,30 @@ export function reportTestError(label) {
     stack: new Error('TEST').stack || '',
   });
 }
+
+/**
+ * Report a HANDLED error — one a catch block recovered from but that
+ * still indicates something broke (a dropped score submission, a failed
+ * canonical-board fetch, a push-token refresh that died). These never
+ * reach the window listeners precisely because they were caught, which
+ * is how the project's worst silent failures (issue #31: every
+ * dailyHistory write rejected for two weeks) stayed invisible. Same
+ * buffer, rate limit, and uid gating as uncaught errors.
+ *
+ * @param {string} label  stable site name, e.g. 'daily-board-fetch'
+ * @param {*} err         the caught error (Error, string, or anything)
+ */
+export function reportCaughtError(label, err) {
+  let message = '';
+  let stack = '';
+  if (err) {
+    if (typeof err === 'string') message = err;
+    else if (err.message) message = err.message;
+    else { try { message = JSON.stringify(err); } catch { message = String(err); } }
+    if (err.stack) stack = err.stack;
+  }
+  _enqueue({
+    message: `[caught:${label || 'unlabeled'}] ${message || 'unknown error'}`,
+    stack,
+  });
+}

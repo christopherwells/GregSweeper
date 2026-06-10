@@ -24,6 +24,7 @@
 import { safeGet, safeSet, safeRemove } from '../storage/storageAdapter.js';
 import { getUid, subscribeToUidChanges } from './firebaseProgress.js';
 import { isTestEnvironment } from './env.js';
+import { reportCaughtError } from '../diagnostics/errorReporter.js';
 
 // VAPID public key from Firebase Console → Project Settings → Cloud
 // Messaging → Web Push certificates. Public — safe to ship in client.
@@ -307,7 +308,7 @@ export function initPushAuthListener() {
     // Defer so the new uid's auth + database state is fully settled
     // before we read prefs / write the token under it.
     setTimeout(() => {
-      refreshTokenIfStale().catch(() => {});
+      refreshTokenIfStale().catch(err => reportCaughtError('push-token-refresh-uidswitch', err));
     }, 500);
   });
 }

@@ -30,6 +30,7 @@ import { loadWeeklyBoard, saveWeeklyBoard } from '../firebase/weeklyBoardSync.js
 import { fetchWeeklyLeaderboard } from '../firebase/firebaseLeaderboard.js';
 import { getUid, markWeeklyDayAttempted } from '../firebase/firebaseProgress.js';
 import { isTestEnvironment } from '../firebase/env.js';
+import { reportCaughtError } from '../diagnostics/errorReporter.js';
 import {
   loadModePowerUps, loadCheckpoint, clearGameState, saveDailyPar,
   hasSeenNotice, markNoticeSeen,
@@ -426,7 +427,7 @@ export async function newGame() {
           totalMines: state.totalMines, rngSeed: state.dailyRngSeed,
           activeGimmicks: state.activeGimmicks,
           codeVersion: state.codeVersion || 'unknown',
-        })).catch(() => {});
+        })).catch(err => reportCaughtError('daily-board-save', err));
       }
     }
 
@@ -585,7 +586,7 @@ export async function newGame() {
         totalMines: state.totalMines, rngSeed: state.weeklyRngSeed,
         activeGimmicks: state.activeGimmicks,
         codeVersion: state.codeVersion || 'unknown',
-      })).catch(() => {});
+      })).catch(err => reportCaughtError('weekly-board-save', err));
     }
 
     state.revealedCount = 0;

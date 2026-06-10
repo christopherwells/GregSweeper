@@ -110,6 +110,30 @@ export function safeSetJSON(key, value) {
  * Returns true when localStorage is broken and we're using
  * the in-memory fallback. UI can show a toast about it.
  */
+/**
+ * Enumerate stored keys that start with `prefix` (both backends).
+ * Used by maintenance sweeps (e.g. pruning per-date daily keys) that
+ * need to find keys without knowing their date suffixes in advance.
+ */
+export function safeKeys(prefix) {
+  const out = [];
+  try {
+    if (getBackend() === 'local') {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith(prefix)) out.push(k);
+      }
+    } else {
+      for (const k of _memoryStore.keys()) {
+        if (k.startsWith(prefix)) out.push(k);
+      }
+    }
+  } catch {
+    // Enumeration is best-effort; an empty list just means no pruning.
+  }
+  return out;
+}
+
 export function isStorageFailing() {
   getBackend(); // ensure test has run
   return _fallbackActive;

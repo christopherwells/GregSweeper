@@ -1,5 +1,6 @@
 import { safeGet, safeSet, safeRemove, safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js';
 import { isTestEnvironment } from './env.js';
+import { reportCaughtError } from '../diagnostics/errorReporter.js';
 /**
  * Firebase Online Daily Leaderboard
  * Uses Firebase Realtime Database (compat SDK loaded via CDN in index.html).
@@ -96,8 +97,8 @@ export async function initFirebase() {
     firebaseReady = true;
     console.log('Firebase leaderboard initialized');
     // Catch up on any queued failed submissions from prior offline / auth-race sessions
-    flushPendingSubmissions().catch(() => {});
-    flushPendingWeeklySubmissions().catch(() => {});
+    flushPendingSubmissions().catch(err => reportCaughtError('flush-pending-daily', err));
+    flushPendingWeeklySubmissions().catch(err => reportCaughtError('flush-pending-weekly', err));
   } catch (err) {
     console.warn('Firebase init failed — using local leaderboard:', err.message);
     if (err.message?.includes('permission')) {
@@ -194,7 +195,12 @@ async function _doSubmitOnlineScore(dateString, name, time, bombHits, extras) {
     // meta write fails or is rejected (e.g. write-once rule when another
     // client already uploaded it for today).
     if (extras.features && typeof extras.features === 'object') {
-      upsertDailyMeta(dateString, extras.features).catch(() => {});
+      // PERMISSION_DENIED is the EXPECTED write-once rejection when another
+      // client already wrote today's meta — only unexpected failures report.
+      upsertDailyMeta(dateString, extras.features).catch(err => {
+        const msg = String((err && err.code) || (err && err.message) || '');
+        if (!/permission[ _]?denied/i.test(msg)) reportCaughtError('daily-meta-upsert', err);
+      });
     }
 
     return true;
@@ -369,7 +375,7 @@ async function _doSubmitWeeklyScore(weekStart, uid, name, bestTime, dayTimes, ex
       await ref.child('bestTime').transaction(current => {
         if (current === null || bestTime <= current) return bestTime;
         return undefined;
-      }).catch(() => {});
+      }).catch(err => reportCaughtError('weekly-besttime-transaction', err));
       return true;
     } catch {
       // First write for this player+week — node doesn't exist yet, so

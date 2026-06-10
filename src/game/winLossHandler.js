@@ -1,5 +1,5 @@
 import { state, ENCOURAGEMENT_LINES, getActiveBombPenaltyTotal } from '../state/gameState.js';
-import { $, $$, boardEl, resetBtn, scanToast } from '../ui/domHelpers.js';
+import { $, $$, boardEl, resetBtn, scanToast, escapeHtml } from '../ui/domHelpers.js';
 import { getThemeEmoji, updateAllCells, announceGame } from '../ui/boardRenderer.js';
 import { applyIcon, spriteImgHTML } from '../ui/spriteLoader.js';
 import { updateHeader, updateStreakBorder, updateCheckpointDisplay, getCheckpointForLevel } from '../ui/headerRenderer.js';
@@ -32,14 +32,11 @@ import {
 import { checkThemeUnlocks, showThemeUnlockToasts } from '../ui/themeManager.js';
 import { submitOnlineScore, submitWeeklyScore, fetchWeeklyLeaderboard } from '../firebase/firebaseLeaderboard.js';
 
-// Inline HTML-escape used in the weekly leaderboard rows so a player
-// name with `<` or `&` doesn't break out of the cell.
-function escapeHtmlInline(s) {
-  return String(s || '').replace(/[&<>"']/g, c =>
-    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-}
+// (HTML escaping for the weekly leaderboard rows now comes from
+// ui/domHelpers.js's escapeHtml — single source of truth.)
 import { saveProgress, saveDailyHistoryEntry, getUid, markWeeklyDayAttempted } from '../firebase/firebaseProgress.js';
 import { isTestEnvironment } from '../firebase/env.js';
+import { reportCaughtError } from '../diagnostics/errorReporter.js';
 import { breakdownPar } from '../logic/dailyFeatures.js';
 import { getHandicap, estimateHandicapDetails } from '../logic/handicaps.js';
 import { addDailyLeaderboardEntry, appendDailyResidual, loadDailyResiduals, loadPowerUps } from '../storage/statsStorage.js';
@@ -261,7 +258,7 @@ export function handleWin() {
           dayBombHits: { [state.weeklyDay]: state.weeklyBombHits || 0 },
           totalMoves,
         }
-      ).catch(() => {});
+      ).catch(err => reportCaughtError('weekly-score-submit', err));
 
       if (isFirstAttemptThisWeek && WEEKLY_FIT_DATA_ENABLED) {
         // Honest first encounter — qualifies for par-model fit data.
@@ -286,7 +283,7 @@ export function handleWin() {
             bombHitEvents: state.weeklyBombHitEvents || [],
             rngSeed: state.weeklyRngSeed || state.weeklySeed,
           }
-        ).catch(() => {});
+        ).catch(err => reportCaughtError('weekly-first-fit-submit', err));
       }
     } else {
       // Players without a name still get the local attempt counted
@@ -577,7 +574,7 @@ export function handleWin() {
         const rowsHtml = display.map(r =>
           `<div class="weekly-lb-row${r.mine ? ' weekly-lb-row-mine' : ''}">` +
             `<span class="weekly-lb-rank">${r.rank}.</span>` +
-            `<span class="weekly-lb-name">${escapeHtmlInline(r.name)}</span>` +
+            `<span class="weekly-lb-name">${escapeHtml(r.name)}</span>` +
             `<span class="weekly-lb-time">${r.bestTime.toFixed(1)}s</span>` +
             `<span class="weekly-lb-attempts">${r.attemptsUsed}/7</span>` +
           `</div>`
@@ -587,7 +584,7 @@ export function handleWin() {
           ? `Rank #${myRank} of ${rows.length}`
           : `${rows.length} player${rows.length !== 1 ? 's' : ''} this week`;
         el.innerHTML = `<div class="weekly-leaderboard-header">${header}</div>${rowsHtml}`;
-      }).catch(() => {});
+      }).catch(err => reportCaughtError('weekly-leaderboard-render', err));
     }
   } else {
     const precise = state.preciseTime || state.elapsedTime;
@@ -1081,6 +1078,7 @@ export function handleDailyBombHit(mineRow, mineCol) {
     // ever does throw we'd rather charge the base penalty than crash
     // the player's attempt.
     console.warn('computeBombInfoValue failed:', err && err.message);
+    reportCaughtError('bomb-info-value', err);
   }
   const penalty = Math.round((infoValue + BOMB_PENALTY_BASE) * 10) / 10;
   const infoValueRounded = Math.round(infoValue * 10) / 10;
@@ -1122,7 +1120,7 @@ export function handleDailyBombHit(mineRow, mineCol) {
   // Safety net: tear down any active pressure-plate timers. Daily /
   // weekly don't currently use plates, but if they ever do a stale
   // per-cell interval could fire a spurious handleLoss after this hit.
-  import('./gameActions.js').then(m => m.clearAllPlateTimers?.()).catch(() => {});
+  import('./gameActions.js').then(m => m.clearAllPlateTimers?.()).catch(err => reportCaughtError('plate-timer-teardown', err));
 
   // Effects
   playExplosion();
