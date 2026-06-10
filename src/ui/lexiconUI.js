@@ -28,6 +28,12 @@ let _lpFired = false;  // swallow the click that follows a long-press
 let _tier1Count = 0;
 let _flagTipShown = false;
 let _chordTipShown = false;
+// Which subset shapes the player actually performed this board — the
+// end-of-board naming describes THESE, not the lesson's default. The
+// subset12 lesson admits any canonical subset shape, so a board can be
+// all 1-1 reads; closing it with "that was the 1-2 pattern" would
+// contradict every note the coach just gave.
+let _patternsUsed = new Set();
 
 export function openLexicon() {
   _lesson = LESSONS.subset12;
@@ -123,6 +129,7 @@ function _nextBoard() {
   _tier1Count = 0;
   _flagTipShown = false;
   _chordTipShown = false;
+  _patternsUsed = new Set();
   _lessonBoard = generateLessonBoard(_lesson, `s${_boardsDone}`);
   if (!_lessonBoard) {
     showToast('Could not build a lesson board. Please try again', 2500);
@@ -196,6 +203,24 @@ function _floodOpen(row, col) {
   return opened;
 }
 
+// Per-pattern completion lines. The board is closed with the pattern
+// the player ACTUALLY performed; the lesson's static naming is only
+// the fallback for a board completed without any tier-1 click.
+const PATTERN_NAMINGS = {
+  '1-2': 'That was the 1-2 pattern: when a 1 and a 2 share unknowns, subtracting one clue from the other pins the difference.',
+  '1-1': 'That was the 1-1 pattern: when two 1s share squares, the first 1 already pays for the mine, so the second 1\'s leftover square is safe.',
+};
+
+function _namingText() {
+  const used = [..._patternsUsed];
+  if (used.length === 0) return _lesson.naming;
+  if (used.length === 1) {
+    return PATTERN_NAMINGS[used[0]]
+      || `That was the ${used[0]} read: where two clues overlap, subtract the smaller from the larger. The leftover squares carry the leftover mines.`;
+  }
+  return `Those were subset reads (the ${used.join(' and the ')}): where two clues overlap, subtract the smaller from the larger. The leftover squares carry the leftover mines.`;
+}
+
 // Voice the move, repaint, and handle the naming moment. Returns true
 // when the board just completed, so callers can skip per-move coaching
 // and let the naming moment own the screen.
@@ -206,7 +231,7 @@ function _finishMove(opened) {
   if (lessonComplete(_lessonBoard)) {
     playWin();
     const naming = _overlay.querySelector('.lexicon-naming');
-    naming.textContent = _lesson.naming;
+    naming.textContent = _namingText();
     naming.classList.remove('hidden');
     _overlay.querySelector('.lexicon-actions').classList.remove('hidden');
     return true;
@@ -255,6 +280,7 @@ function _celebrate(ded, kind) {
   if (!ded) return;
   if (ded.tier === 1) {
     const pair = _pairName(ded);
+    _patternsUsed.add(pair);
     const opener = TIER1_OPENERS[_tier1Count % TIER1_OPENERS.length].replace('{p}', pair);
     _tier1Count++;
     if (_tier1Count === 1) {
@@ -382,6 +408,9 @@ function _onCellClick(e) {
   }
 
   const ded = frontier.safe.find(s => s.row === row && s.col === col);
+  // Record the pattern BEFORE the move resolves, so the naming moment
+  // can describe the completing move too.
+  if (ded && ded.tier === 1) _patternsUsed.add(_pairName(ded));
   const completed = _finishMove(_floodOpen(row, col));
   if (!completed) {
     _celebrate(ded, 'safe');
