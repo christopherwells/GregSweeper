@@ -1,0 +1,129 @@
+/* Split-Flap theme — Solari airport departure board. Charcoal flaps with a
+   center seam, brushed-steel frame between them, a mechanical flip-to-reveal.
+   Cleared flaps are framed by the lighter steel grout. */
+[data-theme="splitflap"] {
+  --color-bg: #161616;
+  --color-app-bg: #0c0c0c;
+  --color-cell-hidden: #242424;
+  --color-cell-hidden-hover: #2e2e2e;
+  /* Seam across the middle of each flap (the split). */
+  --color-cell-hidden-gradient: linear-gradient(180deg, #2a2a2a 0%, #2a2a2a 48.5%, #0e0e0e 48.5%, #0e0e0e 51.5%, #232323 51.5%, #232323 100%);
+  --color-cell-revealed: linear-gradient(180deg, #313131 0%, #313131 48.5%, #141414 48.5%, #141414 51.5%, #2b2b2b 51.5%, #2b2b2b 100%);
+  --color-cell-border-light: #4a4a4a;
+  --color-cell-border-dark: #050505;
+  --color-mine: #e8c84a;
+  --color-mine-hit: #e0402a;
+  --color-flag: #e8b84a;
+  --color-text: #f0ece2;
+  --color-text-secondary: #8a8a8a;
+
+  /* Luminous flap glyphs — departure-board amber/white/cyan set. */
+  --color-num-1: #5ab0e8;
+  --color-num-2: #5ad07a;
+  --color-num-3: #ff7a5a;
+  --color-num-4: #c89af0;
+  --color-num-5: #f0a040;
+  --color-num-6: #4ad0c8;
+  --color-num-7: #f0ece2;
+  --color-num-8: #a0a0a8;
+  --color-num-9: #e8c84a;
+  --color-num-10: #6ab8e8;
+  --color-num-11: #b89ae8;
+  --color-num-12: #e0c060;
+  --color-num-13: #f08868;
+  --color-num-14: #5ad0b8;
+  --color-num-15: #9aa8e8;
+  --color-num-16: #e0a858;
+  --color-num-17: #6aa8e8;
+  --color-num-18: #e088b0;
+
+  --color-header-bg: #1e1e1e;
+  --color-header-gradient: linear-gradient(180deg, #242424, #181818);
+  --color-lcd-bg: #0a0a0a;
+  --color-lcd-text: #e8c84a;
+  --color-modal-bg: #181818;
+  --color-modal-overlay: rgba(2, 2, 2, 0.88);
+  --color-btn-bg: #242424;
+  --color-btn-hover: #2e2e2e;
+  --color-btn-gradient: linear-gradient(180deg, #2e2e2e, #242424);
+  --color-border: #383838;
+  --color-fog: rgba(4, 4, 4, 0.92);
+  --color-scan-highlight: rgba(232, 184, 74, 0.16);
+  --color-golden: #e8c84a;
+  --color-accent: #e8b84a;
+  --color-accent-hover: #f0c860;
+  --color-accent-glow: rgba(232, 184, 74, 0.28);
+  --color-win: #5ad07a;
+  --color-loss: #e0402a;
+  --color-wall: #16181c; /* gantry steel - contrasts the light flap faces; outline covers the dark fog side */
+  --color-wall-outline: #d0d0d0; /* silver rail edging for visibility over the dark fog */
+  --color-surface: rgba(240, 236, 226, 0.04);
+
+  --shadow-app: 0 12px 44px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --text-shadow-lcd: 0 0 6px rgba(232, 184, 74, 0.3);
+  --text-shadow-title: 0 2px 4px rgba(0, 0, 0, 0.7);
+  --shadow-board: 0 6px 20px rgba(0, 0, 0, 0.55);
+  --bg-modal-close-hover: rgba(232, 184, 74, 0.1);
+
+  /* ── Theme-expression layer ─────────────────────────── */
+  /* Clean bold grotesque — the Solari typeface. */
+  --font-family: 'Arial', 'Helvetica Neue', 'Helvetica', sans-serif;
+  --font-display: 'Arial Black', 'Arial', 'Helvetica Neue', sans-serif;
+  --fs-cell-number: 1.05rem;
+  --cell-shape-radius: 2px;
+  --anim-reveal-dur: 0.34s;
+  --anim-reveal-ease: cubic-bezier(0.6, 0, 0.4, 1);
+  --anim-flag-dur: 0.2s;
+  --anim-flag-ease: ease-out;
+
+  /* Faint vertical column dividers like the real board's bays. */
+  --bg-page-image:
+    repeating-linear-gradient(90deg, transparent 0, transparent 60px, rgba(255, 255, 255, 0.02) 60px, rgba(255, 255, 255, 0.02) 61px);
+
+  /* Cleared flaps need a grout. It must CONTRAST the charcoal flap (#2b2b2b),
+     not match it — the brushed-steel frame (#4c4c52) that holds every flap, so
+     cleared cells read as separate flaps in the board, never a charcoal slab. */
+  --cell-gap-seal: #4c4c52;
+
+  --marker-liar-outline: rgba(224, 64, 42, 0.96);
+  --marker-sonar-tint: rgba(0, 190, 224, 0.26);
+  --marker-compass-tint: rgba(232, 184, 74, 0.3);
+  --marker-wormhole-0: rgba(232, 168, 64, 0.32);
+  --marker-wormhole-1: rgba(200, 120, 200, 0.30);
+  --marker-wormhole-2: rgba(80, 200, 140, 0.30);
+  --marker-mirror-0: rgba(90, 176, 232, 0.96);
+  --marker-mirror-1: rgba(184, 154, 232, 0.96);
+  --marker-mirror-2: rgba(232, 200, 90, 0.96);
+  --marker-plate-border: rgba(224, 64, 42, 0.92);
+  --marker-plate-timer: #e0402a;
+}
+
+[data-theme="splitflap"] #game-title,
+[data-theme="splitflap"] .title-screen-logo {
+  font-family: 'Arial Black', 'Arial', sans-serif;
+  font-weight: 900;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #e8c84a;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.7);
+}
+[data-theme="splitflap"] #title-subtitle,
+[data-theme="splitflap"] .title-screen-subtitle {
+  font-family: 'Arial', 'Helvetica Neue', sans-serif;
+  letter-spacing: 6px;
+  text-transform: uppercase;
+  color: #8a8a8a;
+}
+
+/* Mechanical flip — the flap rotates down to show its new glyph. */
+[data-theme="splitflap"] .cell.num-pop,
+[data-theme="splitflap"] .cell.revealing {
+  animation-name: flapFlip;
+  transform-origin: center top;
+}
+@keyframes flapFlip {
+  0%   { transform: perspective(220px) rotateX(-88deg); opacity: 0.2; }
+  55%  { transform: perspective(220px) rotateX(14deg); opacity: 1; }
+  78%  { transform: perspective(220px) rotateX(-7deg); }
+  100% { transform: perspective(220px) rotateX(0deg); opacity: 1; }
+}

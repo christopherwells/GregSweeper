@@ -1,0 +1,118 @@
+/* Cartography theme — antique treasure-map parchment, sepia ink, map-red
+   accents, latitude/longitude ruling. X marks the spot. No particles. */
+[data-theme="cartography"] {
+  --color-bg: #c9b896;
+  --color-app-bg: #e0d0a8;
+  --color-cell-hidden: #d8c8a0;
+  --color-cell-hidden-hover: #d0bf94;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #dccca4, #d2c096);
+  --color-cell-revealed: #ebdcb8;
+  --color-cell-border-light: #b09868;
+  --color-cell-border-dark: #8a7448;
+  --color-mine: #6a3a1a;
+  --color-mine-hit: #a02818;
+  --color-flag: #8a2818;
+  --color-text: #4a3420;
+  --color-text-secondary: #8a7048;
+
+  --color-num-1: #3a5a7a;
+  --color-num-2: #4a6a3a;
+  --color-num-3: #a02818;
+  --color-num-4: #7a5a8a;
+  --color-num-5: #9a6a4a;
+  --color-num-6: #3a7a7a;
+  --color-num-7: #4a3420;
+  --color-num-8: #8a7048;
+  --color-num-9: #9a5a2a;
+  --color-num-10: #3a6a8a;
+  --color-num-11: #7a4f86;
+  --color-num-12: #8a7838;
+  --color-num-13: #a84a30;
+  --color-num-14: #3a7a5a;
+  --color-num-15: #5a5a88;
+  --color-num-16: #9a6a3a;
+  --color-num-17: #3a5a88;
+  --color-num-18: #8a4860;
+
+  --color-header-bg: #d8c8a0;
+  --color-header-gradient: linear-gradient(180deg, #dccca4, #d2c096);
+  --color-lcd-bg: #3a2c18;
+  --color-lcd-text: #d8b86a;
+  --color-modal-bg: #e0d0a8;
+  --color-modal-overlay: rgba(40, 30, 16, 0.72);
+  --color-btn-bg: #d8c8a0;
+  --color-btn-hover: #d0bf94;
+  --color-btn-gradient: linear-gradient(180deg, #dccca4, #d2c096);
+  --color-border: #b8a070;
+  --color-fog: rgba(40, 30, 16, 0.86);
+  --color-scan-highlight: rgba(138, 40, 24, 0.12);
+  --color-golden: #b8860b;
+  --color-accent: #8a2818;
+  --color-accent-hover: #6f2014;
+  --color-accent-glow: rgba(138, 40, 24, 0.2);
+  --color-win: #4a6a3a;
+  --color-loss: #a02818;
+  --color-wall: #4a3420;
+  --color-surface: rgba(0, 0, 0, 0.03);
+
+  --shadow-app: 0 10px 40px rgba(50, 36, 18, 0.28), inset 0 1px 0 rgba(255, 248, 230, 0.35);
+  --text-shadow-lcd: none;
+  --text-shadow-title: none;
+  --shadow-board: 0 3px 14px rgba(50, 36, 18, 0.2);
+  --bg-modal-close-hover: rgba(138, 40, 24, 0.1);
+
+  /* ── Theme-expression layer ─────────────────────────── */
+  --font-family: 'Book Antiqua', Palatino, Georgia, 'Times New Roman', serif;
+  --font-display: 'Copperplate', 'Copperplate Gothic Light', 'Book Antiqua', Georgia, serif;
+  --cell-shape-radius: 0px;
+  --anim-reveal-dur: 0.2s;
+  --anim-reveal-ease: ease-out;
+  --anim-flag-dur: 0.22s;
+  --anim-flag-ease: ease-out;
+
+  /* Latitude/longitude ruling + aged stains. */
+  --bg-page-image:
+    repeating-linear-gradient(0deg, rgba(74, 52, 32, 0.045) 0, rgba(74, 52, 32, 0.045) 1px, transparent 1px, transparent 30px),
+    repeating-linear-gradient(90deg, rgba(74, 52, 32, 0.045) 0, rgba(74, 52, 32, 0.045) 1px, transparent 1px, transparent 30px),
+    radial-gradient(ellipse 50% 45% at 28% 24%, rgba(120, 90, 50, 0.07), transparent 55%),
+    radial-gradient(ellipse 45% 50% at 76% 72%, rgba(120, 90, 50, 0.06), transparent 55%);
+
+  --marker-liar-outline: rgba(160, 40, 24, 0.95);
+  --marker-sonar-tint: rgba(0, 130, 150, 0.22);
+  --marker-compass-tint: rgba(170, 120, 0, 0.26);
+  --marker-wormhole-0: rgba(180, 90, 30, 0.28);
+  --marker-wormhole-1: rgba(140, 50, 130, 0.26);
+  --marker-wormhole-2: rgba(50, 100, 60, 0.26);
+  --marker-mirror-0: rgba(50, 80, 130, 0.92);
+  --marker-mirror-1: rgba(110, 60, 130, 0.92);
+  --marker-mirror-2: rgba(150, 90, 40, 0.92);
+  --marker-plate-border: rgba(160, 40, 24, 0.9);
+  --marker-plate-timer: #a02818;
+}
+
+[data-theme="cartography"] #game-title,
+[data-theme="cartography"] .title-screen-logo {
+  font-family: 'Copperplate', 'Copperplate Gothic Light', 'Book Antiqua', Georgia, serif;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #4a3420;
+  text-shadow: none;
+}
+[data-theme="cartography"] #title-subtitle,
+[data-theme="cartography"] .title-screen-subtitle {
+  font-family: 'Book Antiqua', Palatino, Georgia, serif;
+  font-style: italic;
+  letter-spacing: 2px;
+  color: #8a7048;
+}
+
+/* Discover reveal — a quick unfurl. */
+[data-theme="cartography"] .cell.num-pop,
+[data-theme="cartography"] .cell.revealing {
+  animation-name: cartoReveal;
+}
+@keyframes cartoReveal {
+  0%   { opacity: 0; transform: scale(0.85) rotate(-3deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}

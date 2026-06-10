@@ -1,7 +1,7 @@
 /* Classic theme — warm, elegant, modern take on the original */
 [data-theme="classic"] {
   /* Uses :root defaults — warm beige/cream palette */
-  --color-wall: #8B7355;
+  --color-wall: #766248; /* darkened from #8B7355 - clears the 3.5:1 wall floor vs BOTH cell bgs (5.14 / 3.60) */
   /* Lightest touch (this is the default everyone sees): a crisper reveal
      cascade. */
   --anim-reveal-dur: 0.18s;

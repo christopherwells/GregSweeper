@@ -1,0 +1,119 @@
+/* Origami theme — folded-paper craft. Clean geometric sans, diagonal fold
+   shadows on each cell, an unfold reveal, playful paper-color figures. */
+[data-theme="origami"] {
+  --color-bg: #e6e2da;
+  --color-app-bg: #f4f1ea;
+  --color-cell-hidden: #e2ddd2;
+  --color-cell-hidden-hover: #dad4c6;
+  /* Diagonal light→dark = a folded-paper crease on every tile. */
+  --color-cell-hidden-gradient: linear-gradient(135deg, #ece7dc 0%, #e2ddd2 52%, #d4cdbe 100%);
+  --color-cell-revealed: #f6f3ec;
+  --color-cell-border-light: #c8c0b0;
+  --color-cell-border-dark: #a09880;
+  --color-mine: #d14a4a;
+  --color-mine-hit: #c02828;
+  --color-flag: #d14a4a;
+  --color-text: #3a342c;
+  --color-text-secondary: #8a8270;
+
+  --color-num-1: #4a8ac0;
+  --color-num-2: #5aa05a;
+  --color-num-3: #d14a4a;
+  --color-num-4: #9a6ac0;
+  --color-num-5: #e08ab0;
+  --color-num-6: #4ab0b0;
+  --color-num-7: #5a5450;
+  --color-num-8: #9a9080;
+  --color-num-9: #e0903a;
+  --color-num-10: #4aa0c0;
+  --color-num-11: #a06ac0;
+  --color-num-12: #b0a040;
+  --color-num-13: #e06a4a;
+  --color-num-14: #4aa080;
+  --color-num-15: #6a6ac0;
+  --color-num-16: #d0904a;
+  --color-num-17: #4a7ac0;
+  --color-num-18: #c06a90;
+
+  --color-header-bg: #e2ddd2;
+  --color-header-gradient: linear-gradient(180deg, #ece7dc, #e2ddd2);
+  --color-lcd-bg: #3a342c;
+  --color-lcd-text: #f0ece4;
+  --color-modal-bg: #f4f1ea;
+  --color-modal-overlay: rgba(40, 36, 30, 0.7);
+  --color-btn-bg: #e2ddd2;
+  --color-btn-hover: #dad4c6;
+  --color-btn-gradient: linear-gradient(180deg, #ece7dc, #e2ddd2);
+  --color-border: #d0c8b8;
+  --color-fog: rgba(40, 36, 30, 0.86);
+  --color-scan-highlight: rgba(209, 74, 74, 0.12);
+  --color-golden: #d0a040;
+  --color-accent: #d14a4a;
+  --color-accent-hover: #b03838;
+  --color-accent-glow: rgba(209, 74, 74, 0.22);
+  --color-win: #5aa05a;
+  --color-loss: #d14a4a;
+  --color-wall: #5a5048;
+  --color-surface: rgba(0, 0, 0, 0.03);
+
+  --shadow-app: 0 10px 40px rgba(40, 34, 26, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  --text-shadow-lcd: none;
+  --text-shadow-title: none;
+  --shadow-board: 0 3px 14px rgba(40, 34, 26, 0.16);
+  --bg-modal-close-hover: rgba(209, 74, 74, 0.1);
+  --border-cell-revealed: 1px solid rgba(160, 152, 128, 0.3);
+
+  /* ── Theme-expression layer ─────────────────────────── */
+  /* Clean geometric sans — crisp paper lettering. */
+  --font-family: 'Century Gothic', 'Futura', 'Trebuchet MS', 'Segoe UI', sans-serif;
+  --font-display: 'Century Gothic', 'Futura', 'Trebuchet MS', 'Segoe UI', sans-serif;
+  --cell-shape-radius: 0px;
+  --anim-reveal-dur: 0.3s;
+  --anim-reveal-ease: cubic-bezier(0.34, 1.4, 0.5, 1);
+  --anim-flag-dur: 0.3s;
+  --anim-flag-ease: cubic-bezier(0.34, 1.5, 0.5, 1);
+
+  /* Faint diagonal creases across the paper. */
+  --bg-page-image:
+    repeating-linear-gradient(45deg, rgba(0, 0, 0, 0.012) 0, rgba(0, 0, 0, 0.012) 1px, transparent 1px, transparent 20px),
+    repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0.01) 0, rgba(0, 0, 0, 0.01) 1px, transparent 1px, transparent 20px);
+
+  --marker-liar-outline: rgba(209, 74, 74, 0.95);
+  --marker-sonar-tint: rgba(0, 150, 170, 0.22);
+  --marker-compass-tint: rgba(190, 140, 0, 0.24);
+  --marker-wormhole-0: rgba(220, 120, 40, 0.28);
+  --marker-wormhole-1: rgba(170, 70, 170, 0.26);
+  --marker-wormhole-2: rgba(60, 150, 80, 0.26);
+  --marker-mirror-0: rgba(50, 110, 190, 0.92);
+  --marker-mirror-1: rgba(140, 80, 180, 0.92);
+  --marker-mirror-2: rgba(190, 120, 50, 0.92);
+  --marker-plate-border: rgba(209, 74, 74, 0.9);
+  --marker-plate-timer: #d14a4a;
+}
+
+[data-theme="origami"] #game-title,
+[data-theme="origami"] .title-screen-logo {
+  font-family: 'Century Gothic', 'Futura', 'Trebuchet MS', sans-serif;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: #3a342c;
+  text-shadow: none;
+}
+[data-theme="origami"] #title-subtitle,
+[data-theme="origami"] .title-screen-subtitle {
+  font-family: 'Century Gothic', 'Futura', 'Trebuchet MS', sans-serif;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: #8a8270;
+}
+
+/* Unfold reveal — the tile opens flat from a crease. */
+[data-theme="origami"] .cell.num-pop,
+[data-theme="origami"] .cell.revealing {
+  animation-name: origamiUnfold;
+}
+@keyframes origamiUnfold {
+  0%   { transform: scaleY(0); opacity: 0; }
+  62%  { transform: scaleY(1.12); opacity: 1; }
+  100% { transform: scaleY(1); opacity: 1; }
+}

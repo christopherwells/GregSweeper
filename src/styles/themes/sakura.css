@@ -7,6 +7,9 @@
   --color-cell-hidden-hover: #352850;
   --color-cell-hidden-gradient: linear-gradient(145deg, #302648, #252038);
   --color-cell-revealed: #18142a;
+  /* Effect-bearing theme: grout MUST contrast the cleared tile (#18142a),
+     never equal it (the banned slab). moonlit mauve line, not the dark plum tile. */
+  --cell-gap-seal: #6a4a68;
   --color-cell-border-light: #3e3060;
   --color-cell-border-dark: #0a0812;
   --color-mine: #e85080;
@@ -73,4 +76,13 @@
 [data-theme="sakura"] #game-title,
 [data-theme="sakura"] .title-screen-logo {
   text-shadow: 0 0 16px rgba(232, 112, 144, 0.4), 0 0 32px rgba(168, 80, 130, 0.15);
+}
+
+/* Reveal moment: a petal settling. */
+[data-theme="sakura"] .cell.num-pop,
+[data-theme="sakura"] .cell.revealing {
+  animation-name: sakuraDrift;
+}
+@keyframes sakuraDrift {
+  0%{opacity:0;transform:translateY(-3px) rotate(-4deg)}100%{opacity:1;transform:translateY(0) rotate(0)}
 }

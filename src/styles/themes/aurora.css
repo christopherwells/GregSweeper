@@ -9,6 +9,9 @@
   --color-cell-hidden-hover: #1a2e55;
   --color-cell-hidden-gradient: linear-gradient(145deg, #182a50, #10203e);
   --color-cell-revealed: #0a1525;
+  /* Effect-bearing theme: grout MUST contrast the cleared tile (#0a1525),
+     never equal it (the banned slab). faint aurora-teal seam, not the night-sky tile. */
+  --cell-gap-seal: #245a55;
   --color-cell-border-light: #1e3a60;
   --color-cell-border-dark: #040a14;
   --color-mine: #ff4488;
@@ -54,7 +57,7 @@
   --color-accent-glow: rgba(0, 191, 165, 0.3);
   --color-win: #69f0ae;
   --color-loss: #ff4488;
-  --color-wall: #477474;
+  --color-wall: #557e7e; /* lightened from #477474 - clears 3.5:1 vs both cell bgs (4.09 / 3.59) */
   --color-surface: rgba(0, 229, 160, 0.04);
 
   --shadow-glow: 0 0 24px rgba(0, 229, 160, 0.1);
@@ -132,4 +135,13 @@
                     linear-gradient(90deg, rgba(0, 229, 160, 0.2), rgba(179, 136, 255, 0.2), rgba(0, 188, 212, 0.2));
   background-origin: border-box;
   background-clip: padding-box, border-box;
+}
+
+/* Reveal moment: a light shimmer. */
+[data-theme="aurora"] .cell.num-pop,
+[data-theme="aurora"] .cell.revealing {
+  animation-name: auroraShimmer;
+}
+@keyframes auroraShimmer {
+  0%{opacity:0;filter:brightness(0.6) saturate(1.6)}50%{opacity:1;filter:brightness(1.5) saturate(1.3)}100%{opacity:1;filter:brightness(1) saturate(1)}
 }

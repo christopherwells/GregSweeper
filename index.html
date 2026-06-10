@@ -434,10 +434,22 @@
       <button id="btn-achievements" class="nav-btn" title="Achievements">🏅</button>
       <button id="btn-leaderboard" class="nav-btn" title="Daily Leaderboard">🏆</button>
       <button id="btn-collection" class="nav-btn" title="Collection">🎁</button>
+      <button id="btn-themes" class="nav-btn" title="Themes">🎨</button>
       <button id="btn-help" class="nav-btn" title="How to Play">❓</button>
       <button id="btn-mute" class="nav-btn" title="Mute">🔊</button>
       <button id="btn-settings" class="nav-btn" title="Settings">⚙️</button>
     </nav>
+
+    <!-- Live theme carousel: flip themes on the real board (swipe / arrows / buttons) -->
+    <div id="theme-carousel" class="theme-carousel hidden" role="dialog" aria-label="Theme switcher" aria-modal="false">
+      <button id="theme-carousel-prev" class="tc-arrow" aria-label="Previous theme">‹</button>
+      <div class="tc-info">
+        <div class="tc-name" id="theme-carousel-name">Classic</div>
+        <div class="tc-pos" id="theme-carousel-pos">1 / 26</div>
+      </div>
+      <button id="theme-carousel-next" class="tc-arrow" aria-label="Next theme">›</button>
+      <button id="theme-carousel-done" class="tc-done">Done</button>
+    </div>
 
 
     <!-- About Modal -->

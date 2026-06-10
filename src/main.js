@@ -1184,6 +1184,18 @@ function renderCollectionModal() {
     const swatchColors = {
       classic: 'linear-gradient(135deg, #c0c0c0, #e0e0e0)',
       dark: 'linear-gradient(135deg, #1a1a2e, #1e2745)',
+      editorial: 'linear-gradient(135deg, #f0ebdd, #ddd6c8)',
+      sumie: 'linear-gradient(135deg, #f2ede1, #e6dfce)',
+      blueprint: 'linear-gradient(135deg, #08203a, #11375c)',
+      cartography: 'linear-gradient(135deg, #e0d0a8, #c9b896)',
+      origami: 'linear-gradient(135deg, #f4f1ea, #e2ddd2)',
+      chalkboard: 'linear-gradient(135deg, #223028, #2e4038)',
+      noir: 'linear-gradient(135deg, #3a3a44, #14141a)',
+      stainedglass: 'linear-gradient(135deg, #3a2060, #c41e2a)',
+      apothecary: 'linear-gradient(135deg, #43301c, #c89030)',
+      splitflap: 'linear-gradient(135deg, #2a2a2a, #e8c84a)',
+      circuitboard: 'linear-gradient(135deg, #0e3322, #b87838)',
+      comic: 'linear-gradient(135deg, #e4dabf, #c8d6cf)',
       ocean: 'linear-gradient(135deg, #1b3a4b, #1e4a5f)',
       sunset: 'linear-gradient(135deg, #2d1b2e, #3d2240)',
       forest: 'linear-gradient(135deg, #2d3a2e, #3e5a3a)',
@@ -1235,15 +1247,9 @@ function renderCollectionModal() {
         setTimeout(() => btn.classList.remove('swatch-shake'), 400);
         return;
       }
-      state.theme = theme;
-      loadThemeCSS(theme);
-      document.documentElement.setAttribute('data-theme', theme);
-      applyThemeEffects(theme);
-      updateThemeColor();
-      saveTheme(theme);
+      applyThemeLive(theme);
       for (const s of themeGrid.querySelectorAll('.theme-swatch')) s.classList.remove('active');
       btn.classList.add('active');
-      updateAllCells();
     });
     themeGrid.appendChild(btn);
   }
@@ -1791,6 +1797,69 @@ for (const tabBtn of $$('.leaderboard-tab')) {
 $('#btn-collection').addEventListener('click', () => {
   renderCollectionModal();
   showModal('collection-modal');
+});
+
+// ── Live theme carousel ───────────────────────────────────────────────────────
+// Apply a theme everywhere it takes effect. Shared by the Collection swatches and
+// the carousel so there is one source of truth for "switch theme".
+function applyThemeLive(theme) {
+  state.theme = theme;
+  loadThemeCSS(theme);
+  document.documentElement.setAttribute('data-theme', theme);
+  applyThemeEffects(theme);
+  updateThemeColor();
+  saveTheme(theme);
+  updateAllCells();
+}
+
+let _carouselThemes = [];
+let _carouselIdx = 0;
+let _carouselOpen = false;
+
+function openThemeCarousel() {
+  const unlocked = getUnlockedThemes();
+  _carouselThemes = Object.keys(THEME_UNLOCKS).filter(t => unlocked[t] !== false);
+  if (_carouselThemes.length === 0) _carouselThemes = Object.keys(THEME_UNLOCKS);
+  const cur = state.theme || document.documentElement.getAttribute('data-theme') || 'classic';
+  _carouselIdx = Math.max(0, _carouselThemes.indexOf(cur));
+  _carouselOpen = true;
+  $('#theme-carousel').classList.remove('hidden');
+  updateCarouselDisplay();
+}
+
+function closeThemeCarousel() {
+  _carouselOpen = false;
+  $('#theme-carousel').classList.add('hidden');
+}
+
+function updateCarouselDisplay() {
+  const name = _carouselThemes[_carouselIdx];
+  const info = THEME_UNLOCKS[name];
+  $('#theme-carousel-name').textContent = (info && info.displayName) || name;
+  $('#theme-carousel-pos').textContent = `${_carouselIdx + 1} / ${_carouselThemes.length}`;
+}
+
+function cycleCarousel(dir) {
+  if (!_carouselThemes.length) return;
+  const n = _carouselThemes.length;
+  _carouselIdx = (_carouselIdx + dir + n) % n;
+  applyThemeLive(_carouselThemes[_carouselIdx]);
+  updateCarouselDisplay();
+}
+
+$('#btn-themes')?.addEventListener('click', () => {
+  if (_carouselOpen) closeThemeCarousel(); else openThemeCarousel();
+});
+$('#theme-carousel-prev')?.addEventListener('click', () => cycleCarousel(-1));
+$('#theme-carousel-next')?.addEventListener('click', () => cycleCarousel(1));
+$('#theme-carousel-done')?.addEventListener('click', closeThemeCarousel);
+
+// Arrow keys flip themes; Esc closes — only while the carousel is open.
+document.addEventListener('keydown', (e) => {
+  if (!_carouselOpen) return;
+  if (e.key === 'ArrowLeft') { e.preventDefault(); cycleCarousel(-1); }
+  else if (e.key === 'ArrowRight') { e.preventDefault(); cycleCarousel(1); }
+  else if (e.key === 'Escape') { e.preventDefault(); closeThemeCarousel(); }
 });
 $('#btn-help').addEventListener('click', () => { setActiveHelpTab('basics'); showModal('help-modal'); });
 $('#title-bar').addEventListener('click', () => showModal('about-modal'));
@@ -3083,7 +3152,11 @@ async function init() {
   const unlocked = getUnlockedThemes();
 
   let activeTheme = theme;
-  if (unlocked[theme] === false) {
+  // Guard BOTH not-yet-unlocked and no-longer-existing themes. A saved
+  // theme that was cut from the catalog (the 2026-06 trim to the kept
+  // set) is undefined in `unlocked` — without the `in` check it would
+  // apply with no CSS file behind it and render unstyled.
+  if (!(theme in THEME_UNLOCKS) || unlocked[theme] === false) {
     const stats = loadStats();
     const maxLevel = stats.maxLevelReached || 1;
     const sortedThemes = Object.entries(THEME_UNLOCKS)

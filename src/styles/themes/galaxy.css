@@ -54,7 +54,7 @@
   --color-accent-glow: rgba(208, 80, 255, 0.35);
   --color-win: #b9f6ca;
   --color-loss: #ff2d78;
-  --color-wall: #7d599e;
+  --color-wall: #8461a3; /* lightened from #7d599e - clears 3.5:1 vs both cell bgs (4.00 / 3.72) */
   --color-surface: rgba(180, 80, 255, 0.05);
 
   --shadow-glow: 0 0 30px rgba(180, 80, 255, 0.12);
@@ -175,4 +175,13 @@
 [data-theme="galaxy"] #board {
   position: relative;
   overflow: hidden;
+}
+
+/* Reveal moment: a star twinkling in. */
+[data-theme="galaxy"] .cell.num-pop,
+[data-theme="galaxy"] .cell.revealing {
+  animation-name: galaxyTwinkle;
+}
+@keyframes galaxyTwinkle {
+  0%{opacity:0;transform:scale(0.5);filter:brightness(2)}60%{opacity:1;transform:scale(1.1)}100%{opacity:1;transform:scale(1);filter:brightness(1)}
 }

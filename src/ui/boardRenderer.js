@@ -207,6 +207,11 @@ export function getThemeEmoji(type) {
   if (type === 'smiley') return themeInfo?.smiley || '😊';
   if (type === 'smileyWin') return themeInfo?.smileyWin || '😎';
   if (type === 'smileyLoss') return themeInfo?.smileyLoss || '😵';
+  // The "bomb you actually hit." A theme may give it a distinct glyph
+  // (e.g. forest: acorn mine → fallen-tree strike) via `strikeCell`. Falling
+  // back to the theme's mine keeps today's behavior (and the canonical 💣
+  // still resolves to strike.png on Classic/Dark via the sprite path).
+  if (type === 'strikeCell') return themeInfo?.strikeCell || themeInfo?.mine || '💣';
   return '💣';
 }
 
@@ -262,14 +267,14 @@ export function updateCell(r, c) {
       // so the same check cleanly excludes the daily path.
       const isHit = state.hitMine && state.hitMine.row === r && state.hitMine.col === c;
       cellEl.className = `cell revealed strike-cell${isHit ? ' mine-hit' : ''}`;
-      applyIcon(cellEl, 'strikeCell', getThemeEmoji('mine'), { sizeClass: 'sprite-cell' });
+      applyIcon(cellEl, 'strikeCell', getThemeEmoji('strikeCell'), { sizeClass: 'sprite-cell' });
     } else if (cell.isDefused) {
       cellEl.className = 'cell revealed defused';
       applyIcon(cellEl, 'mine', getThemeEmoji('mine'), { sizeClass: 'sprite-cell' });
     } else if (cell.isMine) {
       const isHit = state.hitMine && state.hitMine.row === r && state.hitMine.col === c;
       cellEl.className = `cell revealed mine${isHit ? ' mine-hit' : ''}`;
-      applyIcon(cellEl, isHit ? 'strikeCell' : 'mine', getThemeEmoji('mine'), { sizeClass: 'sprite-cell' });
+      applyIcon(cellEl, isHit ? 'strikeCell' : 'mine', getThemeEmoji(isHit ? 'strikeCell' : 'mine'), { sizeClass: 'sprite-cell' });
       if (cell.correctFlag) cellEl.classList.add('correct-flag');
     } else if (cell.adjacentMines > 0 || (cell.displayedMines != null && cell.displayedMines > 0)) {
       if (cell.isHiddenNumber) {

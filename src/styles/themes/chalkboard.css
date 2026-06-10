@@ -1,0 +1,119 @@
+/* Chalkboard theme — colored chalk on dark slate. Handwritten face, chalk-line
+   grid, drifting chalk dust (so cleared cells use a slate-line grout). */
+[data-theme="chalkboard"] {
+  --color-bg: #283832;
+  --color-app-bg: #223028;
+  --color-cell-hidden: #2e4038;
+  --color-cell-hidden-hover: #364a42;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #324640, #283832);
+  --color-cell-revealed: #1f2e28;
+  --color-cell-border-light: #4a5e54;
+  --color-cell-border-dark: #1a2620;
+  --color-mine: #f0ebe0;
+  --color-mine-hit: #ff8a6a;
+  --color-flag: #ffe066;
+  --color-text: #ebe6da;
+  --color-text-secondary: #9aa89e;
+
+  /* Colored chalk — dusty pastels on slate. */
+  --color-num-1: #7ec0ee;
+  --color-num-2: #9ae07a;
+  --color-num-3: #ff9a8a;
+  --color-num-4: #d8a0e8;
+  --color-num-5: #ffb0c8;
+  --color-num-6: #7ae0d0;
+  --color-num-7: #ebe6da;
+  --color-num-8: #b8c0b6;
+  --color-num-9: #ffc890;
+  --color-num-10: #8ad0ee;
+  --color-num-11: #c8a0e8;
+  --color-num-12: #e0e090;
+  --color-num-13: #ffa890;
+  --color-num-14: #8ae0c0;
+  --color-num-15: #b0b0e8;
+  --color-num-16: #f0c0a0;
+  --color-num-17: #90b8ee;
+  --color-num-18: #e8a0c8;
+
+  --color-header-bg: #2e4038;
+  --color-header-gradient: linear-gradient(180deg, #324640, #283832);
+  --color-lcd-bg: #1a2620;
+  --color-lcd-text: #f0ebe0;
+  --color-modal-bg: #223028;
+  --color-modal-overlay: rgba(10, 18, 14, 0.85);
+  --color-btn-bg: #2e4038;
+  --color-btn-hover: #364a42;
+  --color-btn-gradient: linear-gradient(180deg, #364a42, #2e4038);
+  --color-border: #3e524a;
+  --color-fog: rgba(10, 18, 14, 0.9);
+  --color-scan-highlight: rgba(255, 224, 102, 0.18);
+  --color-golden: #ffe066;
+  --color-accent: #ffe066;
+  --color-accent-hover: #e8c840;
+  --color-accent-glow: rgba(255, 224, 102, 0.25);
+  --color-win: #9ae07a;
+  --color-loss: #ff8a6a;
+  --color-wall: #d0d8ca;
+  --color-surface: rgba(240, 235, 224, 0.04);
+
+  --shadow-app: 0 8px 40px rgba(0, 8, 4, 0.5), inset 0 1px 0 rgba(240, 235, 224, 0.05);
+  --text-shadow-lcd: 0 0 6px rgba(240, 235, 224, 0.25);
+  --text-shadow-title: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-board: 0 4px 16px rgba(0, 8, 4, 0.45);
+  --bg-modal-close-hover: rgba(255, 224, 102, 0.1);
+
+  /* ── Theme-expression layer ─────────────────────────── */
+  /* Handwritten chalk lettering. */
+  --font-family: 'Comic Sans MS', 'Bradley Hand', 'Segoe Print', 'Chalkboard SE', cursive;
+  --font-display: 'Comic Sans MS', 'Bradley Hand', 'Segoe Print', cursive;
+  --cell-shape-radius: 2px;
+  --anim-reveal-dur: 0.16s;
+  --anim-reveal-ease: ease-out;
+  --anim-flag-dur: 0.2s;
+  --anim-flag-ease: ease-out;
+
+  /* Faint chalk-residue smudges across the slate. */
+  --bg-page-image:
+    radial-gradient(ellipse 55% 40% at 24% 22%, rgba(240, 235, 224, 0.035), transparent 60%),
+    radial-gradient(ellipse 45% 55% at 78% 70%, rgba(240, 235, 224, 0.03), transparent 60%),
+    radial-gradient(ellipse 40% 35% at 55% 88%, rgba(240, 235, 224, 0.025), transparent 60%);
+
+  /* Drifting chalk dust → cleared cells need a grout. It must clearly CONTRAST
+     the dark cleared tile (#1f2e28), not match it — a light chalk grid line so
+     the cleared cells read as separate tiles, never a merged slab. */
+  --cell-gap-seal: #6a7e72;
+
+  --marker-liar-outline: rgba(255, 138, 106, 0.96);
+  --marker-sonar-tint: rgba(0, 224, 240, 0.24);
+  --marker-compass-tint: rgba(255, 224, 102, 0.26);
+  --marker-wormhole-0: rgba(255, 160, 70, 0.30);
+  --marker-wormhole-1: rgba(240, 120, 240, 0.30);
+  --marker-wormhole-2: rgba(150, 240, 130, 0.30);
+  --marker-mirror-0: rgba(120, 192, 238, 0.96);
+  --marker-mirror-1: rgba(216, 160, 232, 0.96);
+  --marker-mirror-2: rgba(255, 200, 130, 0.96);
+  --marker-plate-border: rgba(255, 138, 106, 0.92);
+  --marker-plate-timer: #ff8a6a;
+}
+
+[data-theme="chalkboard"] #game-title,
+[data-theme="chalkboard"] .title-screen-logo {
+  font-family: 'Comic Sans MS', 'Bradley Hand', cursive;
+  font-weight: 700;
+  color: #f0ebe0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+[data-theme="chalkboard"] #title-subtitle,
+[data-theme="chalkboard"] .title-screen-subtitle {
+  font-family: 'Comic Sans MS', 'Bradley Hand', cursive;
+  color: #9aa89e;
+}
+
+[data-theme="chalkboard"] .cell.num-pop,
+[data-theme="chalkboard"] .cell.revealing {
+  animation-name: chalkScrawl;
+}
+@keyframes chalkScrawl {
+  0%   { opacity: 0; transform: scale(0.7) rotate(-4deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
