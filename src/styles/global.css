@@ -1007,6 +1007,21 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 .lexicon-cell.lexicon-pulse {
   animation: receiptSourcePulse 0.9s ease-in-out 2;
 }
+/* The coach line: one slot under the board, updated in place (never
+   queued like toasts, so the note lands the instant the move does).
+   Reserved height keeps the card from jumping as notes come and go. */
+.lexicon-coach {
+  min-height: 3.4em;
+  margin: 10px 0 0;
+  font-size: 0.88em;
+  line-height: 1.35;
+  color: var(--color-text, #eee);
+}
+.lexicon-coach.coach-pop { animation: lexCoachPop 0.25s ease-out; }
+@keyframes lexCoachPop {
+  0% { transform: translateY(4px); opacity: 0.3; }
+  100% { transform: translateY(0); opacity: 1; }
+}
 .lexicon-naming {
   margin: 12px 0 4px;
   font-size: 0.92em;

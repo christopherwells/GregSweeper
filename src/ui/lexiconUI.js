@@ -20,6 +20,7 @@ let _lessonBoard = null;
 let _lesson = null;
 let _boardsDone = 0;
 let _pulseTimer = null;
+let _coachTimer = null;
 let _lpTimer = null;   // long-press flag timer (touch)
 let _lpFired = false;  // swallow the click that follows a long-press
 // Per-board coaching state: the first pattern move of a board carries
@@ -51,6 +52,7 @@ function _buildOverlay() {
         <span class="lexicon-board-count"></span>
       </div>
       <div class="lexicon-grid" role="grid"></div>
+      <p class="lexicon-coach" aria-live="polite"></p>
       <p class="lexicon-naming hidden"></p>
       <div class="lexicon-actions hidden">
         <button class="lexicon-another action-btn primary">Another</button>
@@ -87,10 +89,31 @@ function _buildOverlay() {
 
 export function closeLexicon() {
   if (_pulseTimer) { clearTimeout(_pulseTimer); _pulseTimer = null; }
+  if (_coachTimer) { clearTimeout(_coachTimer); _coachTimer = null; }
   if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
   _lpFired = false;
   if (_overlay) { _overlay.remove(); _overlay = null; }
   _lessonBoard = null;
+}
+
+// The coach line: a single slot under the board that updates IN PLACE.
+// Toasts queue globally and display serially, so under quick play a
+// note would arrive seconds after the move it praises — exactly wrong
+// for in-the-moment coaching. One line, instantly replaced, right
+// where the player is already looking.
+function _coach(message, ms = 3200) {
+  if (!_overlay) return;
+  const el = _overlay.querySelector('.lexicon-coach');
+  if (!el) return;
+  el.textContent = message;
+  el.classList.remove('coach-pop');
+  void el.offsetWidth;
+  el.classList.add('coach-pop');
+  if (_coachTimer) clearTimeout(_coachTimer);
+  _coachTimer = setTimeout(() => {
+    el.textContent = '';
+    _coachTimer = null;
+  }, ms);
 }
 
 function _nextBoard() {
@@ -109,6 +132,9 @@ function _nextBoard() {
   applyLessonOpening(_lessonBoard);
   _overlay.querySelector('.lexicon-naming').classList.add('hidden');
   _overlay.querySelector('.lexicon-actions').classList.add('hidden');
+  const coach = _overlay.querySelector('.lexicon-coach');
+  if (coach) coach.textContent = '';
+  if (_coachTimer) { clearTimeout(_coachTimer); _coachTimer = null; }
   _render();
 }
 
@@ -232,9 +258,9 @@ function _celebrate(ded, kind) {
     const opener = TIER1_OPENERS[_tier1Count % TIER1_OPENERS.length].replace('{p}', pair);
     _tier1Count++;
     if (_tier1Count === 1) {
-      showToast(`${opener} ${_recognitionTip(pair)}`, 5200);
+      _coach(`${opener} ${_recognitionTip(pair)}`, 6500);
     } else {
-      showToast(opener, 2200);
+      _coach(opener, 2600);
     }
     return;
   }
@@ -244,9 +270,9 @@ function _celebrate(ded, kind) {
     if (!_flagTipShown) {
       _flagTipShown = true;
       const why = explainDeduction(_lessonBoard.board, ded, { style: 'full', kind: 'mine' });
-      showToast(why ? `📌 Proven mine. ${why}` : '📌 Proven mine.', 4200);
+      _coach(why ? `📌 Proven mine. ${why}` : '📌 Proven mine.', 5200);
     } else {
-      showToast('📌 Proven mine.', 1600);
+      _coach('📌 Proven mine.', 2000);
     }
   }
   // Tier-0 safe reveals stay silent: they are plain propagation, and
@@ -278,9 +304,9 @@ function _tryFlag(row, col) {
         style: 'socratic',
         kind: frontier.mines.includes(hit) ? 'mine' : 'safe',
       });
-      if (ask) showToast(`🤔 The clues can't pin that square yet. ${ask}`, 3600);
+      if (ask) _coach(`🤔 The clues can't pin that square yet. ${ask}`, 5200);
     } else {
-      showToast('🤔 The clues can\'t pin that square as a mine yet', 2600);
+      _coach('🤔 The clues can\'t pin that square as a mine yet', 3600);
     }
     return;
   }
@@ -350,7 +376,7 @@ function _onCellClick(e) {
     if (next) {
       _pulse(next.sources);
       const ask = explainDeduction(board, next, { style: 'socratic', kind: 'safe' });
-      if (ask) showToast(`🤔 Not that one yet. ${ask}`, 3600);
+      if (ask) _coach(`🤔 Not that one yet. ${ask}`, 5200);
     }
     return;
   }
@@ -364,7 +390,7 @@ function _onCellClick(e) {
     // move (the subset crux unlocks the rest) — the cheer must still
     // land. Short form only: the naming paragraph right below it
     // carries the full explanation.
-    showToast(`💪 Excellent use of the ${_pairName(ded)} pattern!`, 2600);
+    _coach(`💪 Excellent use of the ${_pairName(ded)} pattern!`, 4200);
   }
 }
 
@@ -394,7 +420,7 @@ function _tryChord(row, col) {
   if (flags !== cell.adjacentMines) {
     if (flags > 0) {
       _bounce(row, col);
-      showToast('🤔 Flag all of this number\'s mines first, then tap it to open the rest', 2800);
+      _coach('🤔 Flag all of this number\'s mines first, then tap it to open the rest', 3800);
     }
     return;
   }
@@ -405,6 +431,6 @@ function _tryChord(row, col) {
   // that the cascade sound is feedback enough.
   if (!completed && opened > 0 && !_chordTipShown) {
     _chordTipShown = true;
-    showToast(`⚡ Chorded: the ${cell.adjacentMines} was fully flagged, so everything else around it opened at once`, 2600);
+    _coach(`⚡ Chorded: the ${cell.adjacentMines} was fully flagged, so everything else around it opened at once`, 3600);
   }
 }
