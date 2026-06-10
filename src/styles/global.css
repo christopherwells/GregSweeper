@@ -966,6 +966,16 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   color: var(--color-text-secondary, #999);
   margin: 8px 0 12px;
 }
+/* Mines-left counter + board number, aligned to the grid edges — the
+   same anchor the main game's LCD provides. */
+.lexicon-status {
+  display: flex; justify-content: space-between; align-items: center;
+  max-width: 320px;
+  margin: 0 auto 8px;
+  font-size: 0.9em;
+}
+.lexicon-mines-left { font-weight: 700; color: var(--color-text, #eee); }
+.lexicon-board-count { font-size: 0.85em; color: var(--color-text-secondary, #999); }
 .lexicon-grid {
   display: grid;
   gap: 3px;
@@ -996,6 +1006,21 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 }
 .lexicon-cell.lexicon-pulse {
   animation: receiptSourcePulse 0.9s ease-in-out 2;
+}
+/* The coach line: one slot under the board, updated in place (never
+   queued like toasts, so the note lands the instant the move does).
+   Reserved height keeps the card from jumping as notes come and go. */
+.lexicon-coach {
+  min-height: 3.4em;
+  margin: 10px 0 0;
+  font-size: 0.88em;
+  line-height: 1.35;
+  color: var(--color-text, #eee);
+}
+.lexicon-coach.coach-pop { animation: lexCoachPop 0.25s ease-out; }
+@keyframes lexCoachPop {
+  0% { transform: translateY(4px); opacity: 0.3; }
+  100% { transform: translateY(0); opacity: 1; }
 }
 .lexicon-naming {
   margin: 12px 0 4px;

@@ -13,14 +13,27 @@ import { findDeducibleFrontier } from '../logic/boardSolver.js';
 import { explainDeduction } from '../logic/proofExplainer.js';
 import { LESSONS, generateLessonBoard, applyLessonOpening, lessonComplete } from '../logic/lexicon.js';
 import { showToast } from './toastManager.js';
+import { playReveal, playCascade, playFlag, playUnflag, playWin, playGateBounce } from '../audio/sounds.js';
 
 let _overlay = null;
 let _lessonBoard = null;
 let _lesson = null;
 let _boardsDone = 0;
 let _pulseTimer = null;
+let _coachTimer = null;
 let _lpTimer = null;   // long-press flag timer (touch)
 let _lpFired = false;  // swallow the click that follows a long-press
+// Per-board coaching state: the first pattern move of a board carries
+// the recognition tip; later ones get short rotating affirmations.
+let _tier1Count = 0;
+let _flagTipShown = false;
+let _chordTipShown = false;
+// Which subset shapes the player actually performed this board — the
+// end-of-board naming describes THESE, not the lesson's default. The
+// subset12 lesson admits any canonical subset shape, so a board can be
+// all 1-1 reads; closing it with "that was the 1-2 pattern" would
+// contradict every note the coach just gave.
+let _patternsUsed = new Set();
 
 export function openLexicon() {
   _lesson = LESSONS.subset12;
@@ -39,8 +52,13 @@ function _buildOverlay() {
         <span class="lexicon-title">🏋️ Greg's Gym</span>
         <button class="lexicon-close" aria-label="Close">&times;</button>
       </div>
-      <p class="lexicon-instruction">Only squares the clues can settle will open, and flags only stick on squares the clues can settle as mines. Hold or right-click to flag. If anything bounces, watch where the board points.</p>
+      <p class="lexicon-instruction">Open every safe square to finish the board. A square only opens when the clues prove it is safe. If it bounces, look at the clues that light up. Right-click or hold to flag a proven mine, then tap a number whose mines are all flagged to open the rest around it.</p>
+      <div class="lexicon-status">
+        <span class="lexicon-mines-left"></span>
+        <span class="lexicon-board-count"></span>
+      </div>
       <div class="lexicon-grid" role="grid"></div>
+      <p class="lexicon-coach" aria-live="polite"></p>
       <p class="lexicon-naming hidden"></p>
       <div class="lexicon-actions hidden">
         <button class="lexicon-another action-btn primary">Another</button>
@@ -77,16 +95,41 @@ function _buildOverlay() {
 
 export function closeLexicon() {
   if (_pulseTimer) { clearTimeout(_pulseTimer); _pulseTimer = null; }
+  if (_coachTimer) { clearTimeout(_coachTimer); _coachTimer = null; }
   if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
   _lpFired = false;
   if (_overlay) { _overlay.remove(); _overlay = null; }
   _lessonBoard = null;
 }
 
+// The coach line: a single slot under the board that updates IN PLACE.
+// Toasts queue globally and display serially, so under quick play a
+// note would arrive seconds after the move it praises — exactly wrong
+// for in-the-moment coaching. One line, instantly replaced, right
+// where the player is already looking.
+function _coach(message, ms = 3200) {
+  if (!_overlay) return;
+  const el = _overlay.querySelector('.lexicon-coach');
+  if (!el) return;
+  el.textContent = message;
+  el.classList.remove('coach-pop');
+  void el.offsetWidth;
+  el.classList.add('coach-pop');
+  if (_coachTimer) clearTimeout(_coachTimer);
+  _coachTimer = setTimeout(() => {
+    el.textContent = '';
+    _coachTimer = null;
+  }, ms);
+}
+
 function _nextBoard() {
   // Seed by session progression — deterministic enough to debug, varied
   // enough to feel fresh. (No Date/random in the seed: the count varies it.)
   _boardsDone++;
+  _tier1Count = 0;
+  _flagTipShown = false;
+  _chordTipShown = false;
+  _patternsUsed = new Set();
   _lessonBoard = generateLessonBoard(_lesson, `s${_boardsDone}`);
   if (!_lessonBoard) {
     showToast('Could not build a lesson board. Please try again', 2500);
@@ -96,6 +139,9 @@ function _nextBoard() {
   applyLessonOpening(_lessonBoard);
   _overlay.querySelector('.lexicon-naming').classList.add('hidden');
   _overlay.querySelector('.lexicon-actions').classList.add('hidden');
+  const coach = _overlay.querySelector('.lexicon-coach');
+  if (coach) coach.textContent = '';
+  if (_coachTimer) { clearTimeout(_coachTimer); _coachTimer = null; }
   _render();
 }
 
@@ -104,9 +150,13 @@ function _render() {
   const { board, rows, cols } = _lessonBoard;
   grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
   grid.innerHTML = '';
+  let mines = 0;
+  let flags = 0;
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const cell = board[r][c];
+      if (cell.isMine) mines++;
+      if (cell.isFlagged) flags++;
       const el = document.createElement('div');
       el.className = 'lexicon-cell ' + (cell.isRevealed ? 'revealed' : 'unrevealed');
       el.dataset.row = r;
@@ -121,6 +171,182 @@ function _render() {
       grid.appendChild(el);
     }
   }
+  // The same anchor the main game's LCD gives: how many mines are
+  // unaccounted for. Without it the player has no idea what the board
+  // even holds.
+  _overlay.querySelector('.lexicon-mines-left').textContent = `💣 ${mines - flags} left`;
+  _overlay.querySelector('.lexicon-board-count').textContent = `Board ${_boardsDone}`;
+}
+
+// Open a provably-safe square, flooding zeros like the real game.
+// Returns how many cells opened so the caller can voice it.
+function _floodOpen(row, col) {
+  const { board, rows, cols } = _lessonBoard;
+  let opened = 0;
+  const queue = [[row, col]];
+  while (queue.length > 0) {
+    const [r, c] = queue.pop();
+    const cc = board[r][c];
+    if (cc.isRevealed || cc.isMine) continue;
+    cc.isRevealed = true;
+    opened++;
+    if (cc.adjacentMines === 0) {
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue;
+          const nr = r + dr, nc = c + dc;
+          if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) queue.push([nr, nc]);
+        }
+      }
+    }
+  }
+  return opened;
+}
+
+// Per-pattern completion lines. The board is closed with the pattern
+// the player ACTUALLY performed; the lesson's static naming is only
+// the fallback for a board completed without any tier-1 click. Every
+// line names something on the board: the two numbers, their shared
+// squares, the square only one of them touches.
+const PATTERN_NAMINGS = {
+  '1-2': 'That was the 1-2 pattern: the 2 needs one mine more than the 1, so the square only the 2 can see must hold it, and the square only the 1 can see is safe.',
+  '1-1': 'That was the 1-1 pattern: the first 1\'s mine already sits in the squares both 1s share, so the second 1 is satisfied too and its extra square is safe.',
+};
+
+function _namingText() {
+  const used = [..._patternsUsed];
+  if (used.length === 0) return _lesson.naming;
+  if (used.length === 1) {
+    const pair = used[0];
+    if (PATTERN_NAMINGS[pair]) return PATTERN_NAMINGS[pair];
+    const family = _patternFamily(pair);
+    return family === '1-1'
+      ? `That was a ${pair}, which is the 1-1 pattern with bigger numbers: both needed the same mines in the squares they share, so the extra squares had to be safe.`
+      : `That was a ${pair}, which is the 1-2 pattern with bigger numbers: the bigger number's extra mines could only sit in the squares the smaller one cannot see.`;
+  }
+  // Mixed shapes on one board: teach the one idea behind all of them
+  // instead of listing digit codes.
+  return 'Each of those moves compared two numbers that look at the same squares. The smaller number\'s mines all fit inside the shared squares, so the squares left over were either forced to be mines or proven safe. The 1-1 and 1-2 patterns are the simplest versions of this, and bigger pairs work exactly the same way.';
+}
+
+// Voice the move, repaint, and handle the naming moment. Returns true
+// when the board just completed, so callers can skip per-move coaching
+// and let the naming moment own the screen.
+function _finishMove(opened) {
+  if (opened > 1) playCascade(opened);
+  else if (opened === 1) playReveal();
+  _render();
+  if (lessonComplete(_lessonBoard)) {
+    playWin();
+    const naming = _overlay.querySelector('.lexicon-naming');
+    naming.textContent = _namingText();
+    naming.classList.remove('hidden');
+    _overlay.querySelector('.lexicon-actions').classList.remove('hidden');
+    return true;
+  }
+  return false;
+}
+
+// ── In-the-moment coaching ──────────────────────────────
+// The gate teaches on FAILURE (Socratic bounce); these notes teach on
+// SUCCESS, naming the move the player just made and reinforcing how to
+// spot it. Pacing rules so it never becomes noise: pattern moves
+// (tier 1, the technique the gym exists for) are celebrated every time,
+// the FIRST one per board carrying the recognition tip; proven-mine
+// flags get their reasoning spelled out once per board, then a short
+// nod; trivial single-clue reveals stay silent.
+
+const FIRST_OPENER = '💪 Excellent use of the {p} pattern!';
+// Repeat lines only — every one of these must stay honest when the
+// player has ALREADY performed this exact pair on this board.
+const REPEAT_OPENERS = [
+  '💪 A clean {p} read.',
+  '💪 Textbook {p}.',
+  '💪 The {p} again. You are getting quick at this.',
+];
+
+// Only 1-1 and 1-2 are names players actually know. Any other pair is
+// one of those two in disguise: equal numbers behave like the 1-1
+// (same mines, shared squares, extras safe), unequal numbers behave
+// like the 1-2 (the bigger number's extra mine lives in the square
+// only it touches).
+function _patternFamily(pairName) {
+  const [a, b] = pairName.split('-').map(Number);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+  return a === b ? '1-1' : '1-2';
+}
+
+// Recognition tips, grounded in the classic pattern vocabulary and
+// always pointing at things the player can SEE: the two numbers, the
+// squares they share, and the square only one of them touches.
+function _recognitionTip(pairName) {
+  if (pairName === '1-2') {
+    return 'How to spot it: a 1 and a 2 side by side, looking at the same squares. The 2 needs one mine more than the 1, and the only place for it is the square the 1 cannot see. The 1\'s far square is safe for the same reason. Walls are full of these.';
+  }
+  if (pairName === '1-1') {
+    return 'How to spot it: two 1s side by side, looking at the same squares. The first 1\'s mine is already somewhere in the shared squares, which also satisfies the second 1, so the square beyond them is safe. Watch for it along walls.';
+  }
+  const family = _patternFamily(pairName);
+  if (family === '1-1') {
+    return `How to spot it: two numbers that need the SAME amount and look at the same squares. The shared squares pay for both, so the extra squares are safe. A ${pairName} is a 1-1 in disguise.`;
+  }
+  return `How to spot it: two numbers side by side where one needs more mines than the other. The extra mines can only sit in the squares the smaller number cannot see. A ${pairName} is a 1-2 in disguise.`;
+}
+
+// "1-2", "1-1", "2-3"... — named from the two clue digits on screen.
+function _pairName(ded) {
+  const digits = ded.sources
+    .map(s => _lessonBoard.board[s.row]?.[s.col]?.adjacentMines)
+    .filter(n => typeof n === 'number')
+    .sort((a, b) => a - b);
+  return digits.length >= 2 ? `${digits[0]}-${digits[1]}` : 'overlap';
+}
+
+function _celebrate(ded, kind, opts = {}) {
+  if (!ded) return;
+  if (ded.tier === 1) {
+    const pair = _pairName(ded);
+    // "Again" lines must only fire when THIS pair was already performed
+    // this board (the reveal path pre-records the pair before the move
+    // resolves, so it passes firstOfPair in explicitly).
+    const firstOfPair = opts.firstOfPair !== undefined
+      ? opts.firstOfPair
+      : !_patternsUsed.has(pair);
+    _patternsUsed.add(pair);
+    _tier1Count++;
+    // Only 1-1 and 1-2 are real pattern NAMES; cheering "the 2-2
+    // pattern" would invent vocabulary. Bigger pairs cheer through
+    // their family instead.
+    const canonical = !!PATTERN_NAMINGS[pair];
+    if (_tier1Count === 1) {
+      const opener = canonical
+        ? FIRST_OPENER.replace('{p}', pair)
+        : '💪 Sharp read!';
+      _coach(`${opener} ${_recognitionTip(pair)}`, 6500);
+    } else if (firstOfPair) {
+      _coach(canonical
+        ? FIRST_OPENER.replace('{p}', pair)
+        : `💪 A ${pair}: same trick as the ${_patternFamily(pair)}.`, 2600);
+    } else if (canonical) {
+      _coach(REPEAT_OPENERS[_tier1Count % REPEAT_OPENERS.length].replace('{p}', pair), 2600);
+    } else {
+      _coach(`💪 The ${pair} again: same trick as the ${_patternFamily(pair)}.`, 2600);
+    }
+    return;
+  }
+  if (kind === 'mine') {
+    // A flag in the gym is a worked deduction — say the reasoning once,
+    // then keep it to a nod.
+    if (!_flagTipShown) {
+      _flagTipShown = true;
+      const why = explainDeduction(_lessonBoard.board, ded, { style: 'full', kind: 'mine' });
+      _coach(why ? `📌 Proven mine. ${why}` : '📌 Proven mine.', 5200);
+    } else {
+      _coach('📌 Proven mine.', 2000);
+    }
+  }
+  // Tier-0 safe reveals stay silent: they are plain propagation, and
+  // voicing every one would bury the pattern moments that matter.
 }
 
 // Gated flagging: a flag only sticks on a square the clues can settle
@@ -133,18 +359,14 @@ function _tryFlag(row, col) {
   if (!cell || cell.isRevealed) return;
   if (cell.isFlagged) {
     cell.isFlagged = false;
+    playUnflag();
     _render();
     return;
   }
   const frontier = findDeducibleFrontier(board, { respectFlags: false });
   const provablyMine = frontier.mines.some(m => m.row === row && m.col === col);
   if (!provablyMine) {
-    const el = _cellEl(row, col);
-    if (el) {
-      el.classList.remove('lexicon-bounce');
-      void el.offsetWidth;
-      el.classList.add('lexicon-bounce');
-    }
+    _bounce(row, col);
     const hit = _lowestTier(frontier.mines) || _lowestTier(frontier.safe);
     if (hit) {
       _pulse(hit.sources);
@@ -152,14 +374,27 @@ function _tryFlag(row, col) {
         style: 'socratic',
         kind: frontier.mines.includes(hit) ? 'mine' : 'safe',
       });
-      if (ask) showToast(`🤔 The clues can't pin that square yet. ${ask}`, 3600);
+      if (ask) _coach(`🤔 The clues can't pin that square yet. ${ask}`, 5200);
     } else {
-      showToast('🤔 The clues can\'t pin that square as a mine yet', 2600);
+      _coach('🤔 The clues can\'t pin that square as a mine yet', 3600);
     }
     return;
   }
   cell.isFlagged = true;
+  playFlag();
   _render();
+  const ded = frontier.mines.find(m => m.row === row && m.col === col);
+  _celebrate(ded, 'mine');
+}
+
+function _bounce(row, col) {
+  const el = _cellEl(row, col);
+  if (el) {
+    el.classList.remove('lexicon-bounce');
+    void el.offsetWidth;
+    el.classList.add('lexicon-bounce');
+  }
+  playGateBounce();
 }
 
 function _cellEl(row, col) {
@@ -193,10 +428,12 @@ function _onCellClick(e) {
   const col = parseInt(el.dataset.col, 10);
   const { board } = _lessonBoard;
   const cell = board[row]?.[col];
-  if (!cell || cell.isRevealed) return;
+  if (!cell) return;
+  // Tap on an open number: chord, just like the real game.
+  if (cell.isRevealed) { _tryChord(row, col); return; }
   // A tap on a flagged square unflags it (flags never block proof —
   // the gate below recomputes from the clues alone).
-  if (cell.isFlagged) { cell.isFlagged = false; _render(); return; }
+  if (cell.isFlagged) { cell.isFlagged = false; playUnflag(); _render(); return; }
 
   const frontier = findDeducibleFrontier(board, { respectFlags: false });
   const provablySafe = frontier.safe.some(s => s.row === row && s.col === col);
@@ -204,43 +441,75 @@ function _onCellClick(e) {
   if (!provablySafe) {
     // THE GATE: bounce, point at the clues that hold the SIMPLEST next
     // step, and say in plain words what kind of thinking unlocks it.
-    el.classList.remove('lexicon-bounce');
-    void el.offsetWidth;
-    el.classList.add('lexicon-bounce');
+    _bounce(row, col);
     const next = _lowestTier(frontier.safe);
     if (next) {
       _pulse(next.sources);
       const ask = explainDeduction(board, next, { style: 'socratic', kind: 'safe' });
-      if (ask) showToast(`🤔 Not that one yet. ${ask}`, 3600);
+      if (ask) _coach(`🤔 Not that one yet. ${ask}`, 5200);
     }
     return;
   }
 
-  // Provably safe — open it (flood zeros like the real game).
-  const queue = [[row, col]];
-  const { rows, cols } = _lessonBoard;
-  while (queue.length > 0) {
-    const [r, c] = queue.pop();
-    const cc = board[r][c];
-    if (cc.isRevealed || cc.isMine) continue;
-    cc.isRevealed = true;
-    if (cc.adjacentMines === 0) {
-      for (let dr = -1; dr <= 1; dr++) {
-        for (let dc = -1; dc <= 1; dc++) {
-          if (dr === 0 && dc === 0) continue;
-          const nr = r + dr, nc = c + dc;
-          if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) queue.push([nr, nc]);
-        }
-      }
+  const ded = frontier.safe.find(s => s.row === row && s.col === col);
+  // Record the pattern BEFORE the move resolves, so the naming moment
+  // can describe the completing move too — capturing novelty first so
+  // the celebration's "again" lines stay honest.
+  const movePair = (ded && ded.tier === 1) ? _pairName(ded) : null;
+  const firstOfPair = movePair ? !_patternsUsed.has(movePair) : false;
+  if (movePair) _patternsUsed.add(movePair);
+  const completed = _finishMove(_floodOpen(row, col));
+  if (!completed) {
+    _celebrate(ded, 'safe', { firstOfPair });
+  } else if (ded && ded.tier === 1) {
+    // On these small boards the pattern move is OFTEN the completing
+    // move (the subset crux unlocks the rest) — the cheer must still
+    // land. Short form only: the naming paragraph right below it
+    // carries the full explanation.
+    const pair = _pairName(ded);
+    _coach(PATTERN_NAMINGS[pair]
+      ? `💪 Excellent use of the ${pair} pattern!`
+      : `💪 Sharp finish: a ${pair}, same trick as the ${_patternFamily(pair)}.`, 4200);
+  }
+}
+
+// Chord on an open number. Gym flags are gate-proven mines, so a number
+// whose flags match it has PROVEN its remaining neighbors safe — the
+// chord is the physical shortcut for exactly the deduction the gym
+// teaches, and it can never hit a mine here.
+function _tryChord(row, col) {
+  const { board, rows, cols } = _lessonBoard;
+  const cell = board[row][col];
+  if (!cell.adjacentMines) return;
+  let flags = 0;
+  const hidden = [];
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      if (dr === 0 && dc === 0) continue;
+      const nr = row + dr, nc = col + dc;
+      if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+      const n = board[nr][nc];
+      if (n.isFlagged) flags++;
+      else if (!n.isRevealed) hidden.push([nr, nc]);
     }
   }
-  _render();
-
-  if (lessonComplete(_lessonBoard)) {
-    // The naming moment — AFTER the player performed the technique.
-    const naming = _overlay.querySelector('.lexicon-naming');
-    naming.textContent = _lesson.naming;
-    naming.classList.remove('hidden');
-    _overlay.querySelector('.lexicon-actions').classList.remove('hidden');
+  if (hidden.length === 0) return;
+  // An idle tap on a number with no flags around it stays silent; a
+  // half-flagged chord attempt gets the teaching bounce.
+  if (flags !== cell.adjacentMines) {
+    if (flags > 0) {
+      _bounce(row, col);
+      _coach('🤔 Flag all of this number\'s mines first, then tap it to open the rest', 3800);
+    }
+    return;
+  }
+  let opened = 0;
+  for (const [nr, nc] of hidden) opened += _floodOpen(nr, nc);
+  const completed = _finishMove(opened);
+  // Teach the mechanic the first time it lands on each board; after
+  // that the cascade sound is feedback enough.
+  if (!completed && opened > 0 && !_chordTipShown) {
+    _chordTipShown = true;
+    _coach(`⚡ Chorded: the ${cell.adjacentMines} was fully flagged, so everything else around it opened at once`, 3600);
   }
 }

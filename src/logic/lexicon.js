@@ -23,8 +23,9 @@ export const LESSONS = {
   subset12: {
     id: 'subset12',
     name: 'The 1-2 pattern',
-    // Shown ONLY at completion — naming arrives after the epiphany.
-    naming: 'That was the 1-2 pattern: when a 1 and a 2 share unknowns, subtracting one clue from the other pins the difference.',
+    // Fallback completion line only — lexiconUI composes the real one
+    // from the pattern shapes the player actually performed.
+    naming: 'That was a pair read: two numbers looking at the same squares, where the smaller one\'s mines settle what the bigger one has left.',
     rows: 6, cols: 6, mines: 6,
     accepts: (r) =>
       (r.solvable || r.remainingUnknowns === 0)
