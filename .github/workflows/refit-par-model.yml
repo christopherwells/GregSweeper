@@ -15,6 +15,13 @@ on:
 
 permissions:
   contents: write
+  # Needed to dispatch the Pages deploy after the refit pushes: commits
+  # made with GITHUB_TOKEN never fire push-triggered workflows (GitHub's
+  # recursion guard), so without an explicit dispatch the new PAR_MODEL,
+  # handicaps, and experiment target sit on main UNDEPLOYED until the
+  # next human push. Verified live 2026-06-10: the 17:22 UTC refit
+  # pushed and no deploy followed.
+  actions: write
 
 concurrency:
   group: refit-par-model
@@ -66,9 +73,11 @@ jobs:
         run: Rscript scripts/refit-par-model.R
 
       - name: Commit and push if anything changed
+        id: commit
         run: |
           if git diff --quiet src/logic/difficulty.js src/logic/handicaps.json src/logic/experimentTarget.json src/logic/modelHistory.json; then
             echo "No model, handicap, experiment-target, or history changes — nothing to commit."
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git config user.name  "Christopher Wells"
@@ -76,6 +85,13 @@ jobs:
           git add src/logic/difficulty.js src/logic/handicaps.json src/logic/experimentTarget.json src/logic/modelHistory.json
           git commit -m "refit PAR_MODEL, handicaps, and experiment target — $(date -u +%Y-%m-%d)"
           git push
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy the refit (GITHUB_TOKEN pushes don't trigger push workflows)
+        if: steps.commit.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy-pages.yml --ref main
 
       - name: Notify on failure
         if: failure()
