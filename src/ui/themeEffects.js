@@ -759,33 +759,36 @@ const THEME_EFFECTS = {
   // emoji glyph. Counts stay modest, sizes visible (the Forest-spore
   // lesson), and each theme's motion comes from its own craft idiom.
 
-  // Editorial (L5): loose ink flecks drift down the page; now and then
-  // a thin headline rule slides across like a galley being set.
+  // Editorial (L5): the page typesets itself. Nothing falls and nothing
+  // flies on a newspaper — the first cut (falling flecks + a sweeping
+  // rule) read as dust and an airplane contrail (Christopher,
+  // 2026-06-10). Now short lines of "type" fade in AT REST like a
+  // galley being composed, with small ink specks blinking like setting
+  // characters.
   editorial: (container) => {
     injectStyles();
-    const fleckCleanup = particleLoop(container, (c) => {
-      const s = rand(2.5, 5);
+    const lineCleanup = particleLoop(container, (c) => {
+      // A line of type: thin dark rule with a lighter ragged right end.
+      const w = rand(34, 78);
       return spawn(c, { style: {
-        left: rand(4, 94) + '%', top: '0px',
-        width: s + 'px', height: s * rand(0.8, 1.6) + 'px',
-        borderRadius: rand(0, 1) > 0.5 ? '50%' : '1px',
-        background: pick(['rgba(26,26,26,0.4)', 'rgba(44,62,143,0.3)', 'rgba(58,58,58,0.35)']),
-        animation: `fxFall ${rand(7, 12)}s linear forwards`,
-        '--fx-x1': rand(-18, 18) + 'px', '--fx-y1': '50%',
-        '--fx-x2': rand(-28, 28) + 'px', '--fx-y2': '105%',
-        '--fx-r0': '0deg', '--fx-r1': rand(60, 140) + 'deg', '--fx-r2': rand(200, 320) + 'deg',
-        '--fx-opacity': '0.35', '--fx-opacity-end': '0.15', '--fx-s': '1',
+        left: rand(6, 60) + '%', top: rand(6, 92) + '%',
+        width: w + 'px', height: '3px', borderRadius: '1.5px',
+        background: 'linear-gradient(90deg, rgba(26,26,26,0.42) 0 82%, rgba(26,26,26,0.18) 82% 100%)',
+        animation: `fxTwinkle ${rand(3.5, 6)}s ease-in-out forwards`,
+        '--fx-opacity': '0.55',
       }});
-    }, () => rand(700, 1500));
-    const ruleCleanup = particleLoop(container, (c) => {
+    }, () => rand(1100, 2200));
+    const speckCleanup = particleLoop(container, (c) => {
+      const s = rand(2.5, 4.5);
       return spawn(c, { style: {
-        left: '0', top: rand(8, 88) + '%',
-        width: rand(46, 90) + 'px', height: '2px',
-        background: 'rgba(26,26,26,0.22)',
-        animation: `fxSweep ${rand(9, 14)}s linear forwards`,
+        left: rand(5, 93) + '%', top: rand(5, 93) + '%',
+        width: s + 'px', height: s + 'px', borderRadius: '1px',
+        background: pick(['rgba(26,26,26,0.45)', 'rgba(44,62,143,0.35)']),
+        animation: `fxTwinkle ${rand(2, 4)}s ease-in-out forwards`,
+        '--fx-opacity': '0.5',
       }});
-    }, () => rand(4200, 8000));
-    return () => { fleckCleanup(); ruleCleanup(); };
+    }, () => rand(900, 1900));
+    return () => { lineCleanup(); speckCleanup(); };
   },
 
   // Sumi-e (L10): ink motes bloom on the paper and feather away; a
