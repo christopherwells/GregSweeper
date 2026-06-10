@@ -455,12 +455,21 @@ export async function newGame() {
       // code+target produce the same seed). Fire-and-forget — no need
       // to block rendering on the round-trip.
       if (wantCanonical) {
-        saveDailyBoard(state.dailySeed, serializeBoard({
+        const fallbackPayload = serializeBoard({
           board: state.board, rows: state.rows, cols: state.cols,
           totalMines: state.totalMines, rngSeed: state.dailyRngSeed,
           activeGimmicks: state.activeGimmicks,
           codeVersion: state.codeVersion || 'unknown',
-        })).catch(err => reportCaughtError('daily-board-save', err));
+        });
+        // Stamp the mission INTO the payload so consumers (Greg's Field
+        // Note) never re-derive it from the seed's slot index against an
+        // experimentTarget.json that may have been refit since generation.
+        if (dailyMission && typeof dailyMission.target === 'string') {
+          fallbackPayload.missionTarget = dailyMission.target;
+          fallbackPayload.missionIsPrimary = dailyMission.isPrimary === true;
+        }
+        saveDailyBoard(state.dailySeed, fallbackPayload)
+          .catch(err => reportCaughtError('daily-board-save', err));
       }
     }
 

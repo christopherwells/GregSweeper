@@ -45,6 +45,42 @@ export function fieldNoteLine(mission) {
     : `Greg: today is a ${name} study — my model wants more data there`;
 }
 
+// Gimmick ids (board.activeGimmicks) → the same plain-English names.
+const GIMMICK_NAMES = {
+  wormhole: 'wormholes',
+  mirror: 'mirrors',
+  liar: 'liar cells',
+  mystery: 'mystery cells',
+  locked: 'locked cells',
+  walls: 'walls',
+  sonar: 'sonar',
+  compass: 'compass',
+};
+
+// Field note derived from the CANONICAL BOARD itself — the only source
+// that cannot drift. Boards are pre-generated up to 7 days ahead
+// against THAT day's experimentTarget.json, and the nightly refit
+// reorders the coverage list, so re-deriving the mission from the
+// CURRENT file via the seed's slot index names the wrong gimmick
+// (2026-06-10: board carried wormholes, note said compass).
+// Preference order:
+//   1. The mission stamped into the payload at generation
+//      (missionTarget/missionIsPrimary — boards written after this fix).
+//   2. The board's actual activeGimmicks, in the neutral framing (we
+//      know WHAT is on the board, not why it was chosen).
+//   3. Nothing — a gimmick-free board gets no note rather than a vague one.
+export function fieldNoteFromBoard(raw) {
+  if (!raw) return null;
+  if (typeof raw.missionTarget === 'string') {
+    const line = fieldNoteLine({ target: raw.missionTarget, isPrimary: raw.missionIsPrimary === true });
+    if (line) return line;
+  }
+  const gimmicks = Array.isArray(raw.activeGimmicks) ? raw.activeGimmicks : [];
+  const names = gimmicks.map(g => GIMMICK_NAMES[g]).filter(Boolean);
+  if (names.length === 0) return null;
+  return `Greg: today is a ${names.join(' + ')} study`;
+}
+
 // The closed loop: what yesterday's runs did to the model. `history` is
 // the modelHistory.json array (per-refit rows with n_scores, method,
 // target, and the per-feature posterior mean/sd table). All four honesty
