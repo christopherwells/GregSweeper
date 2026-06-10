@@ -357,7 +357,15 @@ function _onCellClick(e) {
 
   const ded = frontier.safe.find(s => s.row === row && s.col === col);
   const completed = _finishMove(_floodOpen(row, col));
-  if (!completed) _celebrate(ded, 'safe');
+  if (!completed) {
+    _celebrate(ded, 'safe');
+  } else if (ded && ded.tier === 1) {
+    // On these small boards the pattern move is OFTEN the completing
+    // move (the subset crux unlocks the rest) — the cheer must still
+    // land. Short form only: the naming paragraph right below it
+    // carries the full explanation.
+    showToast(`💪 Excellent use of the ${_pairName(ded)} pattern!`, 2600);
+  }
 }
 
 // Chord on an open number. Gym flags are gate-proven mines, so a number
