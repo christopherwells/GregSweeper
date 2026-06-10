@@ -12,21 +12,21 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>GregSweeper — The daily Minesweeper with no guesses</title>
+  <title>GregSweeper: The daily Minesweeper with no guesses</title>
   <meta name="description" content="The daily Minesweeper, no guesses required. Every standard board verified solvable. Ten optional modifiers, worldwide leaderboard, free in your browser.">
   <link rel="canonical" href="https://christopherwells.github.io/GregSweeper/">
 
   <!-- Open Graph (Discord, iMessage, Slack, Facebook link previews) -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="GregSweeper">
-  <meta property="og:title" content="GregSweeper — The daily Minesweeper with no guesses">
-  <meta property="og:description" content="One daily puzzle, ten modifiers, par times that adapt to you. Every standard board verified solvable — no 50/50 guesses.">
+  <meta property="og:title" content="GregSweeper: The daily Minesweeper with no guesses">
+  <meta property="og:description" content="One daily puzzle, ten modifiers, par times that adapt to you. Every standard board verified solvable. No 50/50 guesses.">
   <meta property="og:url" content="https://christopherwells.github.io/GregSweeper/">
   <meta property="og:image" content="https://christopherwells.github.io/GregSweeper/assets/og-card.png">
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="GregSweeper — The daily Minesweeper with no guesses">
+  <meta name="twitter:title" content="GregSweeper: The daily Minesweeper with no guesses">
   <meta name="twitter:description" content="Daily Minesweeper · 10 modifiers · personal par · guaranteed solvable.">
   <meta name="twitter:image" content="https://christopherwells.github.io/GregSweeper/assets/og-card.png">
 
@@ -436,14 +436,12 @@
       </div>
     </div>
 
+    <!-- In-game nav: FOUR large targets, sized for a phone. Stats,
+         achievements, collection, themes, and help all live on the
+         title screen footer; Home is the road back to them. -->
     <nav id="bottom-nav">
       <button id="btn-home" class="nav-btn" title="Home">🏠</button>
-      <button id="btn-stats" class="nav-btn" title="Stats">📊</button>
-      <button id="btn-achievements" class="nav-btn" title="Achievements">🏅</button>
-      <button id="btn-leaderboard" class="nav-btn" title="Daily Leaderboard">🏆</button>
-      <button id="btn-collection" class="nav-btn" title="Collection">🎁</button>
-      <button id="btn-themes" class="nav-btn" title="Themes">🎨</button>
-      <button id="btn-help" class="nav-btn" title="How to Play">❓</button>
+      <button id="btn-leaderboard" class="nav-btn" title="Leaderboard">🏆</button>
       <button id="btn-mute" class="nav-btn" title="Mute">🔊</button>
       <button id="btn-settings" class="nav-btn" title="Settings">⚙️</button>
     </nav>
@@ -662,7 +660,7 @@
             <p><strong>Quick Play:</strong> race the clock for a speed rating (💎 best, then 🥇 🥈 🥉)</p>
             <p><strong>Daily:</strong> one puzzle a day, same board for everyone, online leaderboard</p>
             <p><strong>Weekly:</strong> one puzzle all week, one try a day, your best time wins</p>
-            <p><strong>Chaos:</strong> fast rounds of random modifiers (unlocks at Challenge Level 50). The one mode OUTSIDE the no-guess guarantee &mdash; boards are not verified solvable, and mines can move.</p>
+            <p><strong>Chaos:</strong> fast rounds of random modifiers (unlocks at Challenge Level 50). The one mode OUTSIDE the no-guess guarantee: boards are not verified solvable, and mines can move.</p>
           </div>
         </div>
       </div>
@@ -757,7 +755,7 @@
                 <button id="btn-send-email-link" class="clear-cache-btn account-btn-inline">Send link</button>
               </div>
             </div>
-            <p id="email-link-sent" class="reset-hint hidden">✓ Check your email — click the link on whichever device you want signed in.</p>
+            <p id="email-link-sent" class="reset-hint hidden">✓ Check your email, then click the link on whichever device you want signed in.</p>
           </div>
           <div id="account-signed-in" class="account-section hidden">
             <p class="account-status">Signed in as <strong id="account-email">…</strong></p>
@@ -850,7 +848,7 @@
             <code id="settings-uid-display" style="margin-left:6px;padding:1px 6px;background:var(--color-cell-hidden);border-radius:4px;cursor:pointer;" title="Click to copy full ID">…</code>
           </div>
           <button id="btn-delete-my-data" class="reset-profile-btn" style="margin-top:8px;">🌐 Delete my data (server-side)</button>
-          <p class="reset-hint">Removes your leaderboard rows, weekly best-times, and progress under your anonymous ID from Firebase. Opens a pre-filled email — your data is scrubbed within 30 days.</p>
+          <p class="reset-hint">Removes your leaderboard rows, weekly best-times, and progress under your anonymous ID from Firebase. Opens a pre-filled email, and your data is scrubbed within 30 days.</p>
         </div>
         </div>
         <div id="settings-panel-about" class="settings-panel hidden">
@@ -915,40 +913,40 @@
       </div>
       <div class="modal-body whatsnew-body">
         <div class="whatsnew-entry">
-          <h3>v1.7 &mdash; June 10, 2026</h3>
+          <h3>v1.7 &middot; June 10, 2026</h3>
           <ul>
-            <li><strong>The board shows its proof</strong> &mdash; After a loss, every provably safe cell is outlined; tap any cell to ask &ldquo;was this knowable?&rdquo; and watch the cells that prove it light up. &ldquo;Genuine 50/50&rdquo; is now a claim the engine can back.</li>
-            <li><strong>Honest bomb verdicts</strong> &mdash; Each daily/weekly mine hit says whether the mine was provable, a safe move existed elsewhere, or you were genuinely at the frontier.</li>
-            <li><strong>Stuck? Ask the board</strong> &mdash; The new 🔍 button never names the safe cell. It tells you when a flag is provably wrong, or lights up the region where the next proof lives. Hinted runs are excluded from the par model.</li>
-            <li><strong>Greg speaks</strong> &mdash; The daily card says why today&rsquo;s board exists (&ldquo;today is a compass study&rdquo;), and the leaderboard reports what yesterday&rsquo;s runs did to the model &mdash; including the bad days.</li>
-            <li><strong>Greg&rsquo;s Gym</strong> &mdash; A new 🏋️ practice room that generates fresh drill boards where only squares the clues can settle will open. You can&rsquo;t luck through one; the pattern is named after you find it.</li>
-            <li><strong>Timed gets a par</strong> &mdash; Every Quick Play board now shows Greg&rsquo;s Time and your delta.</li>
-            <li><strong>Achievements that mean something</strong> &mdash; New skill feats (Flagless, No Wasted Clicks, Tank Commander, Lie Detector) certified by the engine; the pure attendance badges are retired.</li>
+            <li><strong>The board shows its proof</strong>: After a loss, every provably safe cell is outlined; tap any cell to ask &ldquo;was this knowable?&rdquo; and watch the cells that prove it light up. &ldquo;Genuine 50/50&rdquo; is now a claim the engine can back.</li>
+            <li><strong>Honest bomb verdicts</strong>: Each daily/weekly mine hit says whether the mine was provable, a safe move existed elsewhere, or you were genuinely at the frontier.</li>
+            <li><strong>Stuck? Ask the board</strong>: The new 🔍 button never names the safe cell. It tells you when a flag is provably wrong, or lights up the region where the next proof lives. Hinted runs are excluded from the par model.</li>
+            <li><strong>Greg speaks</strong>: The daily card says why today&rsquo;s board exists (&ldquo;today is a compass study&rdquo;), and the leaderboard reports what yesterday&rsquo;s runs did to the model, including the bad days.</li>
+            <li><strong>Greg&rsquo;s Gym</strong>: A new 🏋️ practice room that generates fresh drill boards where only squares the clues can settle will open. You can&rsquo;t luck through one; the pattern is named after you find it.</li>
+            <li><strong>Timed gets a par</strong>: Every Quick Play board now shows Greg&rsquo;s Time and your delta.</li>
+            <li><strong>Achievements that mean something</strong>: New skill feats (Flagless, No Wasted Clicks, Tank Commander, Lie Detector) certified by the engine; the pure attendance badges are retired.</li>
           </ul>
         </div>
         <div class="whatsnew-entry">
-          <h3>v1.6 &mdash; June 8, 2026</h3>
+          <h3>v1.6 &middot; June 8, 2026</h3>
           <ul>
-            <li><strong>Smarter bomb penalty</strong> &mdash; Hitting a mine now costs time based on how much it was holding up the rest of the board. A mine blocking a big deduction costs more; a harmless one barely counts. The old flat penalty is gone.</li>
-            <li><strong>Weekly puzzle</strong> &mdash; One shared board for the whole week, with one attempt a day for seven days. Your best time wins.</li>
-            <li><strong>Sign in to sync</strong> &mdash; Link a Google or email account to carry your streak, stats, and progress between your phone and computer.</li>
-            <li><strong>Daily reminders</strong> &mdash; Turn on a notification in Settings at a time you pick, so a busy day doesn&rsquo;t cost you your streak.</li>
+            <li><strong>Smarter bomb penalty</strong>: Hitting a mine now costs time based on how much it was holding up the rest of the board. A mine blocking a big deduction costs more; a harmless one barely counts. The old flat penalty is gone.</li>
+            <li><strong>Weekly puzzle</strong>: One shared board for the whole week, with one attempt a day for seven days. Your best time wins.</li>
+            <li><strong>Sign in to sync</strong>: Link a Google or email account to carry your streak, stats, and progress between your phone and computer.</li>
+            <li><strong>Daily reminders</strong>: Turn on a notification in Settings at a time you pick, so a busy day doesn&rsquo;t cost you your streak.</li>
           </ul>
         </div>
         <div class="whatsnew-entry">
-          <h3>v1.5 &mdash; April 21, 2026</h3>
+          <h3>v1.5 &middot; April 21, 2026</h3>
           <ul>
-            <li><strong>Smarter Greg-par</strong> &mdash; Daily par is now fit to real completion times instead of raw move count, so easy boards target a lower time and tough ones a higher one. Each result shows what drove par.</li>
-            <li><strong>Handicaps</strong> &mdash; Your par adjusts for your usual pace, golf-style, so &ldquo;beating par&rdquo; means the same thing for everyone.</li>
-            <li><strong>History timeline</strong> &mdash; A chart of your last 30 dailies against par. Green is under, red is over.</li>
+            <li><strong>Smarter Greg-par</strong>: Daily par is now fit to real completion times instead of raw move count, so easy boards target a lower time and tough ones a higher one. Each result shows what drove par.</li>
+            <li><strong>Handicaps</strong>: Your par adjusts for your usual pace, golf-style, so &ldquo;beating par&rdquo; means the same thing for everyone.</li>
+            <li><strong>History timeline</strong>: A chart of your last 30 dailies against par. Green is under, red is over.</li>
           </ul>
         </div>
         <div class="whatsnew-entry">
-          <h3>v1.4 &mdash; March 29, 2026</h3>
+          <h3>v1.4 &middot; March 29, 2026</h3>
           <ul>
-            <li><strong>120 levels</strong> &mdash; Challenge mode gained 20 Grandmaster levels (L101 to L120).</li>
-            <li><strong>No more 50/50s</strong> &mdash; Every board is verified solvable after modifiers, so you never have to guess.</li>
-            <li><strong>New modifiers</strong> &mdash; Mirror pairs swap two cells&rsquo; numbers; redesigned pressure plates disarm when you clear their safe neighbors.</li>
+            <li><strong>120 levels</strong>: Challenge mode gained 20 Grandmaster levels (L101 to L120).</li>
+            <li><strong>No more 50/50s</strong>: Every board is verified solvable after modifiers, so you never have to guess.</li>
+            <li><strong>New modifiers</strong>: Mirror pairs swap two cells&rsquo; numbers; redesigned pressure plates disarm when you clear their safe neighbors.</li>
           </ul>
         </div>
       </div>
@@ -984,7 +982,7 @@
 
           <div class="stats-section">
             <h3>Handicap</h3>
-            <p class="stats-blurb">Your typical over/under Greg-par across all your plays. Lower is faster. Solid line is your career average up to each daily; dashed line is your last-10-plays rolling mean — when the dashed line sits below the solid one, you&rsquo;ve been improving lately.</p>
+            <p class="stats-blurb">Your typical over/under Greg-par across all your plays. Lower is faster. Solid line is your career average up to each daily; dashed line is your last-10-plays rolling mean. When the dashed line sits below the solid one, you&rsquo;ve been improving lately.</p>
             <div class="stat-headline" id="stat-handicap-now">--</div>
             <div class="stat-chart" id="chart-handicap-trajectory"></div>
           </div>
@@ -1011,7 +1009,7 @@
 
           <div class="stats-section">
             <h3>Delta by reasoning type</h3>
-            <p class="stats-blurb">Your mean delta vs. Greg-par on dailies that needed each kind of reasoning. <strong>Easy patterns</strong> are 1-1, 1-2, and 1-1-1 shapes you spot on sight. <strong>Complex patterns</strong> are larger overlap deductions where you have to count out the cells. <strong>Process of elimination</strong> is when patterns don&rsquo;t apply and you walk through possibilities to find which cells are forced. Boards typically need more than one type of reasoning, so the bars overlap. Sort is by signed effect — reasoning you handle better than expected on the left, reasoning that costs you extra on the right.</p>
+            <p class="stats-blurb">Your mean delta vs. Greg-par on dailies that needed each kind of reasoning. <strong>Easy patterns</strong> are 1-1, 1-2, and 1-1-1 shapes you spot on sight. <strong>Complex patterns</strong> are larger overlap deductions where you have to count out the cells. <strong>Process of elimination</strong> is when patterns don&rsquo;t apply and you walk through possibilities to find which cells are forced. Boards typically need more than one type of reasoning, so the bars overlap. Sort is by signed effect: reasoning you handle better than expected on the left, reasoning that costs you extra on the right.</p>
             <div class="stat-chart" id="chart-complexity-delta"></div>
           </div>
 
@@ -1037,13 +1035,13 @@
 
           <div class="stats-section">
             <h3>Delta by modifier</h3>
-            <p class="stats-blurb">Your mean delta vs. Greg-par on dailies where each modifier is in play. Greg-par already accounts for each modifier&rsquo;s baseline cost, so a positive bar means that modifier trips you up <em>more than the model&rsquo;s built-in adjustment</em>, not just that it&rsquo;s harder. Sort is by signed effect — modifiers you handle better than expected on the left, modifiers that cost you extra on the right.</p>
+            <p class="stats-blurb">Your mean delta vs. Greg-par on dailies where each modifier is in play. Greg-par already accounts for each modifier&rsquo;s baseline cost, so a positive bar means that modifier trips you up <em>more than the model&rsquo;s built-in adjustment</em>, not just that it&rsquo;s harder. Sort is by signed effect: modifiers you handle better than expected on the left, modifiers that cost you extra on the right.</p>
             <div class="stat-chart" id="chart-modifier-heatmap"></div>
           </div>
 
           <div class="stats-section">
             <h3>Delta distribution</h3>
-            <p class="stats-blurb">Smoothed density of your daily deltas (Gaussian kernel, Silverman bandwidth). The <strong>gray dashed line</strong> is par; the <strong>orange dashed line</strong> is the mean of these deltas. The mean isn&rsquo;t quite the same as your handicap — handicap is fit only on bomb-free plays, while this line includes every daily you&rsquo;ve submitted. Mass left of par is under par; right is over.</p>
+            <p class="stats-blurb">Smoothed density of your daily deltas (Gaussian kernel, Silverman bandwidth). The <strong>gray dashed line</strong> is par; the <strong>orange dashed line</strong> is the mean of these deltas. The mean isn&rsquo;t quite the same as your handicap, because handicap is fit only on bomb-free plays, while this line includes every daily you&rsquo;ve submitted. Mass left of par is under par; right is over.</p>
             <div class="stat-row">
               <div class="stat-mini">
                 <div class="stat-mini-label">Days over par</div>
@@ -1063,7 +1061,7 @@
 
           <div class="stats-section">
             <h3>Rank vs. field</h3>
-            <p class="stats-blurb">Where you finished among all players that day. 100th percentile = you won that day; 0th = slowest of the field. With a small field (2 players) the axis is bimodal — you either won (100) or lost (0).</p>
+            <p class="stats-blurb">Where you finished among all players that day. 100th percentile = you won that day; 0th = slowest of the field. With a small field (2 players) the axis is bimodal: you either won (100) or lost (0).</p>
             <div class="stat-chart" id="chart-percentile-trend"></div>
           </div>
         </div>
@@ -1072,7 +1070,7 @@
         <div id="stats-panel-weekly" class="stats-panel hidden">
           <div class="stats-section">
             <h3>This week</h3>
-            <p class="stats-blurb">Same puzzle each day &mdash; watch yourself learn it. Your best time across the 7 attempts is what counts on the leaderboard.</p>
+            <p class="stats-blurb">Same puzzle each day. Watch yourself learn it. Your best time across the 7 attempts is what counts on the leaderboard.</p>
             <div class="stat-row">
               <div class="stat-mini">
                 <div class="stat-mini-label">Best time</div>
@@ -1185,7 +1183,7 @@
 
           <div class="stats-section">
             <h3>RMSE &amp; bias trend</h3>
-            <p class="stats-blurb">RMSE (solid line) is the typical residual between actual completion times and the model&rsquo;s clean-play prediction; lower over time means the model matches reality better. Bias (dashed line) is the mean residual — it should hover near zero after each refit&rsquo;s intercept correction.</p>
+            <p class="stats-blurb">RMSE (solid line) is the typical residual between actual completion times and the model&rsquo;s clean-play prediction; lower over time means the model matches reality better. Bias (dashed line) is the mean residual, and it should hover near zero after each refit&rsquo;s intercept correction.</p>
             <div class="stat-chart" id="chart-model-rmse-bias"></div>
           </div>
 

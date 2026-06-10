@@ -52,23 +52,41 @@ test('tier-0 safe after a strike: references the known mine honestly', () => {
   assert.ok(!JARGON.test(full));
 });
 
-test('tier-2 region: names the count of clues, full resolves and socratic does not', () => {
-  // The 5x5 subset fixture: row 1's four 1s jointly prove (0,2) safe.
+test('subset deduction surfaces as tier 1 with exactly the two proving clues', () => {
+  // The 5x5 fixture: (1,0)'s 1 is a subset of (1,1)'s 1, and the
+  // difference proves (0,2) safe. Before the frontier grew its Pass B
+  // mirror this surfaced as a whole-component tier-2 answer naming all
+  // the row-1 clues at once; the minimal honest explanation is the PAIR.
   const board = makeBoard(5, 5);
   board[0][0].isMine = true;
   board[0][4].isMine = true;
   recalcAdjacency(board);
   for (let r = 1; r < 5; r++) for (let c = 0; c < 5; c++) board[r][c].isRevealed = true;
   const f = findDeducibleFrontier(board, { respectFlags: false });
-  const safe = f.safe[0];
-  assert.ok(safe.tier >= 2, 'joint-solve deduction expected');
+  const safe = f.safe.find(s => s.row === 0 && s.col === 2);
+  assert.ok(safe, 'expected (0,2) in the safe frontier');
+  assert.equal(safe.tier, 1, 'a plain subset must surface as tier 1, not the whole component');
+  assert.equal(safe.sources.length, 2, 'the minimal explanation is the two clues');
 
   const full = explainDeduction(board, safe, { style: 'full', kind: 'safe' });
-  assert.match(full, new RegExp(`all ${safe.sources.length} highlighted clues`));
-  assert.match(full, /this square is clear/);
+  assert.match(full, /Compare the 1 and the 1/);
   assert.ok(!JARGON.test(full));
 
   const socratic = explainDeduction(board, safe, { style: 'socratic', kind: 'safe' });
+  assert.match(socratic, /overlap/);
+  assert.ok(!JARGON.test(socratic));
+});
+
+test('tier-2 copy: names the clue count, full resolves and socratic does not', () => {
+  // Synthetic tier-2 deduction (the copy path reads only tier+sources).
+  const board = makeBoard(3, 3);
+  recalcAdjacency(board);
+  const ded = { row: 0, col: 0, tier: 2, sources: [{ row: 1, col: 0 }, { row: 1, col: 1 }, { row: 1, col: 2 }, { row: 2, col: 0 }, { row: 2, col: 1 }, { row: 2, col: 2 }] };
+  const full = explainDeduction(board, ded, { style: 'full', kind: 'safe' });
+  assert.match(full, /all 6 highlighted clues/);
+  assert.match(full, /this square is clear/);
+  assert.ok(!JARGON.test(full));
+  const socratic = explainDeduction(board, ded, { style: 'socratic', kind: 'safe' });
   assert.ok(!/this square/.test(socratic), 'socratic must not resolve the square');
   assert.ok(!JARGON.test(socratic));
 });

@@ -75,19 +75,19 @@ export function explainDeduction(board, ded, opts = {}) {
     if (kind === 'safe') {
       // Its count is already met by known mines → everything else clear.
       if (style === 'socratic') {
-        return `The highlighted clue already touches all of its mines — what does that mean for its other neighbors?`;
+        return `The highlighted clue already touches all of its mines. What does that mean for its other neighbors?`;
       }
       return gimmick
         ? `The ${gimmick} clue here is already satisfied by known mines, so this square had to be clear.`
-        : `The ${visibleNumber(originCell)} beside it already touches ${knownMines} known mine${knownMines !== 1 ? 's' : ''} — every other square around it is clear.`;
+        : `The ${visibleNumber(originCell)} beside it already touches ${knownMines} known mine${knownMines !== 1 ? 's' : ''}, so every other square around it is clear.`;
     }
     // Mine: it needs exactly as many mines as it has hidden squares.
     if (style === 'socratic') {
-      return `The highlighted clue needs exactly as many mines as it has hidden squares left — count them.`;
+      return `The highlighted clue needs exactly as many mines as it has hidden squares left. Count them.`;
     }
     return gimmick
       ? `The ${gimmick} clue here can only be satisfied if this square is a mine.`
-      : `${clue.charAt(0).toUpperCase()}${clue.slice(1)} beside it still needs ${hidden} mine${hidden !== 1 ? 's' : ''} and has exactly ${hidden} hidden square${hidden !== 1 ? 's' : ''} left — they must all be mines.`;
+      : `${clue.charAt(0).toUpperCase()}${clue.slice(1)} beside it still needs ${hidden} mine${hidden !== 1 ? 's' : ''} and has exactly ${hidden} hidden square${hidden !== 1 ? 's' : ''} left, so they must all be mines.`;
   }
 
   // ── Tier 1: two clues compared (the subset pattern) ──
@@ -100,7 +100,7 @@ export function explainDeduction(board, ded, opts = {}) {
       return g ? `the ${g} clue` : `the ${visibleNumber(cell)}`;
     };
     if (style === 'socratic') {
-      return `Two of the highlighted clues overlap — what does subtracting one from the other leave?`;
+      return `Two of the highlighted clues overlap. What does subtracting one from the other leave?`;
     }
     return `Compare ${nameOf(a)} and ${nameOf(b)}: they share hidden squares, and the difference between their counts settles this one.`;
   }
@@ -109,17 +109,17 @@ export function explainDeduction(board, ded, opts = {}) {
   if (ded.tier === 2) {
     const k = ded.sources.length;
     if (style === 'socratic') {
-      return `No single clue cracks this — try mine layouts that satisfy ALL ${k} highlighted clues at once.`;
+      return `No single clue cracks this. Try mine layouts that satisfy ALL ${k} highlighted clues at once.`;
     }
     return kind === 'safe'
-      ? `No single clue settles this square, but only one mine layout fits all ${k} highlighted clues at once — and in it, this square is clear.`
-      : `Only one mine layout fits all ${k} highlighted clues at once — and in it, this square is a mine.`;
+      ? `No single clue settles this square, but only one mine layout fits all ${k} highlighted clues at once, and in it this square is clear.`
+      : `Only one mine layout fits all ${k} highlighted clues at once, and in it this square is a mine.`;
   }
 
   // ── Tier 3: the region contains a liar ──
   if (ded.tier === 3) {
     if (style === 'socratic') {
-      return `One of the highlighted clues is lying by one — but even so, only certain layouts work. Test them.`;
+      return `One of the highlighted clues is lying by one, but even so only certain layouts work. Test them.`;
     }
     return kind === 'safe'
       ? `Even allowing for the liar's off-by-one, every layout that fits the highlighted clues leaves this square clear.`

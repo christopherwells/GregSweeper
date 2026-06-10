@@ -904,6 +904,19 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 .cell.receipt-source-pulse {
   animation: receiptSourcePulse 0.9s ease-in-out 3;
 }
+/* The crux square during the win-receipt "show me" jump */
+.cell.receipt-crux {
+  outline: 3px solid var(--receipt-crux-outline, #f9a825);
+  outline-offset: -3px;
+  animation: receiptSourcePulse 0.9s ease-in-out 3;
+  z-index: 4;
+}
+.gameover-receipt-tappable {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
 @keyframes receiptSourcePulse {
   0%, 100% { box-shadow: inset 0 0 0 2px var(--receipt-pulse-color, rgba(80, 160, 255, 0.45)); }
   50% { box-shadow: inset 0 0 0 4px var(--receipt-pulse-color, rgba(80, 160, 255, 0.85)), 0 0 12px var(--receipt-pulse-color, rgba(80, 160, 255, 0.6)); }
@@ -1571,15 +1584,17 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 
 #bottom-nav {
   display: flex;
-  gap: 8px;
+  gap: 14px;
   flex-wrap: wrap;
   justify-content: center;
 }
 
+/* Four targets only since the 2026-06-10 declutter: roomier thumb
+   targets, no wrap pressure on a phone. */
 .nav-btn {
-  font-size: 20px;
-  width: 44px;
-  height: 44px;
+  font-size: 22px;
+  width: 52px;
+  height: 48px;
   border: var(--border-nav-btn);
   background: var(--color-btn-gradient);
   border-radius: 12px;

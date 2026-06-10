@@ -860,11 +860,45 @@ export function findDeducibleFrontier(board, opts = {}) {
     }
   }
 
-  // Joint constraint solve (subset + tank/gauss in one): numbered + liar
-  // disjunctive + gimmick exact constraints, with per-component provenance.
   const constraints = buildConstraints(sim, adjCount, neighborCache, totalCells);
   const liarCs = buildLiarConstraints(sim, liarBase, neighborCache, totalCells);
   const gimmickCs = buildGimmickRuntimeConstraints(gimmickConstraints, sim);
+
+  // Pass B mirror: two-clue subset deductions with the PAIR as the
+  // minimal explanation (tier 1). Without this stage every subset
+  // deduction fell through to the joint solve and surfaced as a
+  // whole-component tier-2 answer ("all 6 highlighted clues at once"),
+  // which is technically true but pedagogically useless for a plain
+  // 1-1 — the player should be pointed at exactly the two clues that
+  // settle it. Exact constraints only, same as the solver's Pass B.
+  const exact = [...constraints, ...gimmickCs].filter(c => c.allowedMines.length === 1);
+  for (let a = 0; a < exact.length; a++) {
+    const cA = exact[a];
+    const setA = new Set(cA.unknowns);
+    for (let b = 0; b < exact.length; b++) {
+      if (a === b) continue;
+      const cB = exact[b];
+      if (cA.unknowns.length >= cB.unknowns.length) continue;
+      let isSubset = true;
+      for (const x of cA.unknowns) {
+        if (!cB.unknowns.includes(x)) { isSubset = false; break; }
+      }
+      if (!isSubset) continue;
+      const diff = cB.unknowns.filter(x => !setA.has(x));
+      const diffMines = cB.allowedMines[0] - cA.allowedMines[0];
+      if (diff.length === 0 || diffMines < 0 || diffMines > diff.length) continue;
+      const srcs = [cA.origin, cB.origin].filter(o => o != null);
+      if (diffMines === 0) {
+        for (const di of diff) addTo(safe, di, 1, srcs);
+      } else if (diffMines === diff.length) {
+        for (const di of diff) addTo(mines, di, 1, srcs);
+      }
+    }
+  }
+
+  // Joint constraint solve (tank/gauss): numbered + liar disjunctive +
+  // gimmick exact constraints, with per-component provenance. Catches
+  // everything the single-clue and two-clue stages above could not.
   const solved = solveConstraints([...constraints, ...liarCs, ...gimmickCs]);
   if (solved.contradiction) contradiction = true;
 

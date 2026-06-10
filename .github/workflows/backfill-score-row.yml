@@ -1,0 +1,53 @@
+name: Backfill score row
+
+# Admin tool: write ONE daily leaderboard row a player's device completed
+# but never uploaded. The time must come off the device (diagnostics
+# Copy button: pendingDaily / localResiduals) — never fabricated.
+
+on:
+  workflow_dispatch:
+    inputs:
+      date:
+        description: 'YYYY-MM-DD'
+        required: true
+      uid:
+        description: 'Player uid'
+        required: true
+      name:
+        description: 'Display name'
+        required: true
+      time:
+        description: 'Completion time in seconds (from the device)'
+        required: true
+      bombHits:
+        description: 'Bomb hits (default 0)'
+        required: false
+        default: '0'
+      write:
+        description: 'Set to "yes" to write (anything else = dry run)'
+        required: false
+        default: 'no'
+
+permissions:
+  contents: read
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install firebase-admin --no-save
+      - name: Backfill
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: >
+          node scripts/backfill-score-row.mjs
+          "${{ github.event.inputs.date }}"
+          "${{ github.event.inputs.uid }}"
+          "${{ github.event.inputs.name }}"
+          "${{ github.event.inputs.time }}"
+          "${{ github.event.inputs.bombHits }}"
+          ${{ github.event.inputs.write == 'yes' && '--write' || '' }}

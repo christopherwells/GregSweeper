@@ -666,7 +666,7 @@ async function populateModelPanel() {
   }
 
   if (history.length === 0) {
-    const msg = 'No fits yet — first row lands after the next refit run.';
+    const msg = 'No fits yet. The first row lands after the next refit run.';
     $('#stat-model-target-line').textContent = msg;
     $('#stat-model-history-table').textContent = '(empty)';
     $('#stat-model-cv-table').textContent = '(empty)';
@@ -774,7 +774,7 @@ async function populateModelPanel() {
     $('#stat-model-cv-table').textContent = cvLines.join('\n');
   } else {
     $('#stat-model-cv-table').textContent =
-      '(seed-residuals fallback — no posterior this refit)';
+      '(seed-residuals fallback, no posterior this refit)';
   }
 }
 
@@ -1453,7 +1453,7 @@ function updateAchievementsDisplay() {
     grid.appendChild(h);
     for (const a of items) grid.appendChild(renderRow(a));
   };
-  section('Skill feats — certified by the board', feats);
+  section('Skill feats (certified by the board)', feats);
   section('Progress', progress);
 }
 
@@ -1514,12 +1514,12 @@ function generateShareCard() {
 
   if (mode === 'timed') {
     const rating = getSpeedRating(level, time);
-    return `${getThemeEmoji('mine')} GregSweeper — Timed ${levelLabel}\n` +
-           `${rating.icon} ${rating.name} — ${time}s (${diff.rows}×${diff.cols})${tierText}\n\n` +
+    return `${getThemeEmoji('mine')} GregSweeper · Timed ${levelLabel}\n` +
+           `${rating.icon} ${rating.name} · ${time}s (${diff.rows}×${diff.cols})${tierText}\n\n` +
            `https://christopherwells.github.io/GregSweeper/`;
   }
 
-  return `${getThemeEmoji('mine')} GregSweeper — ${modeLabel}\n` +
+  return `${getThemeEmoji('mine')} GregSweeper · ${modeLabel}\n` +
          `${levelLabel} (${diff.rows}x${diff.cols}) in ${time}s${streakText}${tierText}\n\n` +
          `https://christopherwells.github.io/GregSweeper/`;
 }
@@ -1824,11 +1824,15 @@ $('#btn-settings').addEventListener('click', () => {
   _updateSettingsUid();
   _updateSettingsAccount();
 });
-$('#btn-stats').addEventListener('click', () => {
+// Stats / achievements / collection / themes / help left the in-game
+// nav in the 2026-06-10 declutter (all reachable from the title screen;
+// the in-game row is four large targets on a phone). Optional chaining
+// keeps these wirings safe if the buttons return someday.
+$('#btn-stats')?.addEventListener('click', () => {
   updateStatsDisplay();
   showModal('stats-modal');
 });
-$('#btn-achievements').addEventListener('click', () => {
+$('#btn-achievements')?.addEventListener('click', () => {
   updateAchievementsDisplay();
   showModal('achievements-modal');
 });
@@ -1849,7 +1853,7 @@ for (const tabBtn of $$('.leaderboard-tab')) {
     _renderLeaderboardForTab(tab);
   });
 }
-$('#btn-collection').addEventListener('click', () => {
+$('#btn-collection')?.addEventListener('click', () => {
   renderCollectionModal();
   showModal('collection-modal');
 });
@@ -1916,7 +1920,7 @@ document.addEventListener('keydown', (e) => {
   else if (e.key === 'ArrowRight') { e.preventDefault(); cycleCarousel(1); }
   else if (e.key === 'Escape') { e.preventDefault(); closeThemeCarousel(); }
 });
-$('#btn-help').addEventListener('click', () => { setActiveHelpTab('basics'); showModal('help-modal'); });
+$('#btn-help')?.addEventListener('click', () => { setActiveHelpTab('basics'); showModal('help-modal'); });
 $('#title-bar').addEventListener('click', () => showModal('about-modal'));
 
 // The Lexicon — generated single-technique lessons behind the
@@ -2237,7 +2241,7 @@ function showCheckpointSelector() {
     // Build label
     let levelText = `Level ${cp}`;
     if (cp + CHECKPOINT_INTERVAL - 1 <= MAX_LEVEL) {
-      levelText = `Level ${cp}–${Math.min(cp + CHECKPOINT_INTERVAL - 1, MAX_LEVEL)}`;
+      levelText = `Level ${cp}-${Math.min(cp + CHECKPOINT_INTERVAL - 1, MAX_LEVEL)}`;
     }
 
     const gimmick = GIMMICK_LABELS[cp];
@@ -2567,7 +2571,7 @@ async function _confirmCredentialConflict({ providerLabel, email }) {
   return await openAccountConfirmModal({
     title: 'Switch to existing account?',
     body:
-      `An account already exists for ${who}. Signing in here will switch this device to that account — your phone's streak, history, and progress will appear here.` +
+      `An account already exists for ${who}. Signing in here will switch this device to that account. Your phone's streak, history, and progress will appear here.` +
       `<br><br><strong>Any progress this device has made anonymously will be lost.</strong>`,
     okLabel: 'Continue',
     danger: true,
@@ -2597,7 +2601,7 @@ $('#btn-signin-google')?.addEventListener('click', async () => {
     _updateSettingsAccount();
     _updateSettingsUid();
   } else if (result.status === 'popup-blocked') {
-    showToast('Popup blocked — try again or use email link');
+    showToast('Popup blocked. Try again or use the email link');
   } else if (result.status === 'error') {
     showToast(`Sign-in failed: ${result.message || 'unknown error'}`);
   }
@@ -2642,7 +2646,7 @@ $('#email-link-input')?.addEventListener('keydown', (e) => {
 $('#btn-signout')?.addEventListener('click', async () => {
   const confirmed = await openAccountConfirmModal({
     title: 'Sign out?',
-    body: 'You\'ll go back to playing as an anonymous device. Your synced progress stays with your account — sign in again to bring it back.',
+    body: 'You\'ll go back to playing as an anonymous device. Your synced progress stays with your account. Sign in again to bring it back.',
     okLabel: 'Sign out',
     danger: true,
   });
@@ -2779,7 +2783,7 @@ $('#settings-uid-display').addEventListener('click', async () => {
     await navigator.clipboard.writeText(full);
     showToast('Anonymous ID copied');
   } catch {
-    showToast('Couldn\'t copy — long-press the ID and Copy manually');
+    showToast('Couldn\'t copy. Long-press the ID and Copy manually');
   }
 });
 
@@ -2945,7 +2949,7 @@ $('#gameover-submit-daily').addEventListener('click', async (e) => {
     }
     const dailySubmitForm = $('#daily-submit-form');
     if (dailySubmitForm) dailySubmitForm.classList.add('hidden');
-    showToast(submitOk ? '✅ Score submitted!' : '📡 Saved — uploads when you reconnect');
+    showToast(submitOk ? '✅ Score submitted!' : '📡 Saved. Uploads when you reconnect');
   }
 });
 
@@ -2975,7 +2979,7 @@ $('#gameover-remind-tomorrow').addEventListener('click', async () => {
     });
     if (result === true || result === 'ok') {
       btn.textContent = '✅ Reminder set for tomorrow';
-      showToast('Notifications on — see you tomorrow!');
+      showToast('Notifications on. See you tomorrow!');
     } else if (result === 'ios-needs-install') {
       btn.textContent = '📱 Install to home screen first';
       showToast('Install GregSweeper to your home screen on iOS first');
@@ -3063,7 +3067,7 @@ if (playerNameInput) {
   playerNameInput.addEventListener('change', () => {
     const result = setPlayerName(playerNameInput.value.trim().slice(0, 20));
     if (result && result.ok === false && result.reason === 'hate') {
-      showToast("That name isn't allowed — please pick another.");
+      showToast("That name isn't allowed. Please pick another.");
       playerNameInput.value = getPlayerName();
     }
   });
@@ -3175,7 +3179,7 @@ if (dailyReminderToggle) {
         showToast('🔔 Daily reminders enabled');
       } else if (result === 'denied') {
         dailyReminderToggle.checked = false;
-        showToast('Notifications are blocked in your browser settings — enable them there to use this.');
+        showToast('Notifications are blocked in your browser settings. Enable them there to use this.');
       } else if (result === 'ios-needs-install') {
         dailyReminderToggle.checked = false;
         showToast('Install GregSweeper to your home screen first to enable notifications.');
@@ -3332,7 +3336,7 @@ async function init() {
 
   // Warn if localStorage is broken (private browsing, quota, etc.)
   if (isStorageFailing()) {
-    showToast('⚠️ Playing in temporary mode — progress won\'t be saved', 5000);
+    showToast('⚠️ Playing in temporary mode: progress won\'t be saved', 5000);
   }
 
   // Ask the browser to mark our storage as persistent so it isn't
