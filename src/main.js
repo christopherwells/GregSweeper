@@ -39,7 +39,7 @@ import {
   hasSeenNotice, markNoticeSeen,
 } from './storage/statsStorage.js';
 
-const CURRENT_VERSION = 'v1.6';
+const CURRENT_VERSION = 'v1.7';
 
 import {
   playLevelUp, isMuted, setMuted, loadMuted,
