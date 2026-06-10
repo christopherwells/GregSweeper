@@ -1,0 +1,81 @@
+// Plain-language proof explanations: the sentence must match the actual
+// board arithmetic (right numbers, right counts), never name jargon, and
+// the Socratic style must never resolve the square it's hinting at.
+
+import './helpers.mjs';
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+
+const { explainDeduction } = await import('../src/logic/proofExplainer.js');
+const { findDeducibleFrontier } = await import('../src/logic/boardSolver.js');
+const { makeBoard, recalcAdjacency } = await import('./helpers.mjs');
+
+const JARGON = /provabl|frontier|enumerat|disjunctiv|constraint|tier/i;
+
+test('tier-0 mine: sentence carries the real counts from the board', () => {
+  // 3x3, mine at (0,0), everything else revealed: the 1 at (1,1) has one
+  // hidden square left and still needs one mine.
+  const board = makeBoard(3, 3);
+  board[0][0].isMine = true;
+  recalcAdjacency(board);
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) {
+    if (!(r === 0 && c === 0)) board[r][c].isRevealed = true;
+  }
+  const f = findDeducibleFrontier(board, { respectFlags: false });
+  const mine = f.mines[0];
+  const full = explainDeduction(board, mine, { style: 'full', kind: 'mine' });
+  assert.match(full, /needs 1 mine and has exactly 1 hidden square left/);
+  assert.ok(!JARGON.test(full), `jargon leaked: ${full}`);
+
+  const socratic = explainDeduction(board, mine, { style: 'socratic', kind: 'mine' });
+  assert.match(socratic, /exactly as many mines as it has hidden squares/);
+  assert.ok(!JARGON.test(socratic));
+});
+
+test('tier-0 safe after a strike: references the known mine honestly', () => {
+  // 2x3, mine at (0,1) struck (revealed, still a mine). Every number is
+  // satisfied; (1,0) and (1,2) are deducibly safe via their adjacent 1s.
+  const board = makeBoard(2, 3);
+  board[0][1].isMine = true;
+  recalcAdjacency(board);
+  board[0][0].isRevealed = true;
+  board[0][2].isRevealed = true;
+  board[1][1].isRevealed = true;
+  board[0][1].isRevealed = true;
+  board[0][1].isStrike = true;
+  const f = findDeducibleFrontier(board, { respectFlags: false });
+  const safe = f.safe.find(s => s.row === 1 && s.col === 0);
+  assert.ok(safe, 'expected (1,0) provably safe');
+  const full = explainDeduction(board, safe, { style: 'full', kind: 'safe' });
+  assert.match(full, /already touches 1 known mine/);
+  assert.match(full, /every other square around it is clear/);
+  assert.ok(!JARGON.test(full));
+});
+
+test('tier-2 region: names the count of clues, full resolves and socratic does not', () => {
+  // The 5x5 subset fixture: row 1's four 1s jointly prove (0,2) safe.
+  const board = makeBoard(5, 5);
+  board[0][0].isMine = true;
+  board[0][4].isMine = true;
+  recalcAdjacency(board);
+  for (let r = 1; r < 5; r++) for (let c = 0; c < 5; c++) board[r][c].isRevealed = true;
+  const f = findDeducibleFrontier(board, { respectFlags: false });
+  const safe = f.safe[0];
+  assert.ok(safe.tier >= 2, 'joint-solve deduction expected');
+
+  const full = explainDeduction(board, safe, { style: 'full', kind: 'safe' });
+  assert.match(full, new RegExp(`all ${safe.sources.length} highlighted clues`));
+  assert.match(full, /this square is clear/);
+  assert.ok(!JARGON.test(full));
+
+  const socratic = explainDeduction(board, safe, { style: 'socratic', kind: 'safe' });
+  assert.ok(!/this square/.test(socratic), 'socratic must not resolve the square');
+  assert.ok(!JARGON.test(socratic));
+});
+
+test('graceful null on malformed input', () => {
+  const board = makeBoard(3, 3);
+  recalcAdjacency(board);
+  assert.equal(explainDeduction(board, null), null);
+  assert.equal(explainDeduction(board, { row: 0, col: 0, tier: 0, sources: [] }), null);
+});

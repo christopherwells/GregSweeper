@@ -12,6 +12,7 @@
 import { state, recordHintEvent } from '../state/gameState.js';
 import { boardEl } from './domHelpers.js';
 import { findDeducibleFrontier, detectWrongFlags } from '../logic/boardSolver.js';
+import { explainDeduction } from '../logic/proofExplainer.js';
 import { showToast } from './toastManager.js';
 import { reportCaughtError } from '../diagnostics/errorReporter.js';
 
@@ -23,9 +24,18 @@ let _pulseTimer = null;
 // caller can build its verdict line.
 export function prepareLossReceipt() {
   _frontier = findDeducibleFrontier(state.board, { respectFlags: false });
+  // Precompute the plain-language explanation for every frontier entry
+  // NOW, against the board as the player saw it at death. The loss
+  // cascade is about to reveal every mine, which would inflate the
+  // "known mines" counts and make the sentences claim knowledge the
+  // player never had.
   for (const s of _frontier.safe) {
+    s.why = explainDeduction(state.board, s, { style: 'full', kind: 'safe' });
     const cell = state.board[s.row]?.[s.col];
     if (cell) cell.frontierSafe = true;
+  }
+  for (const m of _frontier.mines) {
+    m.why = explainDeduction(state.board, m, { style: 'full', kind: 'mine' });
   }
   return _frontier;
 }
@@ -65,13 +75,13 @@ export function handleInterrogateTap(row, col) {
   const safeHit = _frontier.safe.find(s => s.row === row && s.col === col);
   const mineHit = _frontier.mines.find(m => m.row === row && m.col === col);
   if (safeHit) {
-    showToast('✅ Provably safe — the proof lived in the highlighted cells', 2600);
+    showToast(`✅ This was knowable. ${safeHit.why || 'The highlighted clues settle it.'}`, 4200);
     _pulseSources(safeHit.sources);
   } else if (mineHit) {
-    showToast('💣 Provably a mine — the highlighted cells proved it', 2600);
+    showToast(`💣 This mine was catchable. ${mineHit.why || 'The highlighted clues pin it down.'}`, 4200);
     _pulseSources(mineHit.sources);
   } else {
-    showToast('🤷 Not deducible at the time — no proof reached this cell', 2600);
+    showToast('🤷 Not knowable at that point — the numbers didn’t reach this square yet', 2800);
   }
   return true;
 }
@@ -102,7 +112,7 @@ export function handleLensRequest() {
     const flagCheck = detectWrongFlags(state.board);
     if (flagCheck.wrongFlags.length > 0 || flagCheck.contradiction) {
       recordHintEvent('flag-warning');
-      showToast('🚩 One of your flags is provably wrong', 3000);
+      showToast('🚩 One of your flags doesn’t add up — a number near it can’t be satisfied. Re-check your flags first.', 3600);
       return;
     }
     const frontier = findDeducibleFrontier(state.board, { respectFlags: false });
@@ -136,24 +146,23 @@ export function handleLensRequest() {
       if (startCell) {
         recordHintEvent('region');
         _pulseSources([startCell]);
-        showToast('🔍 Nothing is provable from here — the highlighted start cell is the certified safe entry', 3400);
+        showToast('🔍 Nothing can be worked out from here yet — the highlighted square is the guaranteed-safe start. Begin there.', 3800);
       } else if (state.gameMode === 'daily' || state.gameMode === 'weekly') {
-        showToast('🤔 Nothing provable found — that should not happen on this board', 3200);
+        showToast('🤔 Nothing can be worked out from here — that shouldn’t happen on this board', 3200);
         reportCaughtError('lens-empty-frontier', new Error(`mode=${state.gameMode} seed=${state.dailyRngSeed || ''}`));
       } else {
-        showToast('🔍 Nothing is provably safe from this position right now', 3000);
+        showToast('🔍 Nothing can be worked out from this position right now — sometimes you have to open more board first', 3400);
       }
       return;
     }
     recordHintEvent('region');
     _pulseSources(next.sources);
-    if (next.tier === 0) {
-      showToast('🔍 Look again at the highlighted clue — it is already satisfied', 3200);
-    } else if (next.sources.length <= 3) {
-      showToast('🔍 The proof lives in the highlighted cells — compare what they claim', 3200);
-    } else {
-      showToast('🔍 The answer is in the highlighted region — it needs enumeration; no small clue exists', 3600);
-    }
+    const isMineDeduction = !frontier.safe.includes(next);
+    const ask = explainDeduction(state.board, next, {
+      style: 'socratic',
+      kind: isMineDeduction ? 'mine' : 'safe',
+    });
+    showToast(`🔍 ${ask || 'The highlighted clues hold the next step — compare what they claim.'}`, 4200);
   } catch (err) {
     reportCaughtError('lens-request', err);
   }
@@ -168,11 +177,11 @@ export function handleLensRequest() {
 export function bombStrikeVerdict(board, strikeRow, strikeCol) {
   const f = findDeducibleFrontier(board, { respectFlags: false });
   if (f.mines.some(m => m.row === strikeRow && m.col === strikeCol)) {
-    return { text: 'That mine was provable', avoidable: true };
+    return { text: 'The numbers around this square already pinned it as a mine', avoidable: true };
   }
   if (f.safe.length > 0) {
     const n = f.safe.length;
-    return { text: `${n} provably safe cell${n !== 1 ? 's' : ''} existed elsewhere`, avoidable: true };
+    return { text: `This one wasn't knowable, but ${n} safe square${n !== 1 ? 's were' : ' was'} still findable elsewhere`, avoidable: true };
   }
-  return { text: 'You were at the frontier — nothing was provable yet', avoidable: false };
+  return { text: 'Nothing on the board could have told you — a fair gamble', avoidable: false };
 }
