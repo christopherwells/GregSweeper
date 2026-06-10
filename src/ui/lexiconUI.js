@@ -205,20 +205,28 @@ function _floodOpen(row, col) {
 
 // Per-pattern completion lines. The board is closed with the pattern
 // the player ACTUALLY performed; the lesson's static naming is only
-// the fallback for a board completed without any tier-1 click.
+// the fallback for a board completed without any tier-1 click. Every
+// line names something on the board: the two numbers, their shared
+// squares, the square only one of them touches.
 const PATTERN_NAMINGS = {
-  '1-2': 'That was the 1-2 pattern: when a 1 and a 2 share unknowns, subtracting one clue from the other pins the difference.',
-  '1-1': 'That was the 1-1 pattern: when two 1s share squares, the first 1 already pays for the mine, so the second 1\'s leftover square is safe.',
+  '1-2': 'That was the 1-2 pattern: the 2 needs one mine more than the 1, so the square only the 2 can see must hold it, and the square only the 1 can see is safe.',
+  '1-1': 'That was the 1-1 pattern: the first 1\'s mine already sits in the squares both 1s share, so the second 1 is satisfied too and its extra square is safe.',
 };
 
 function _namingText() {
   const used = [..._patternsUsed];
   if (used.length === 0) return _lesson.naming;
   if (used.length === 1) {
-    return PATTERN_NAMINGS[used[0]]
-      || `That was the ${used[0]} read: where two clues overlap, subtract the smaller from the larger. The leftover squares carry the leftover mines.`;
+    const pair = used[0];
+    if (PATTERN_NAMINGS[pair]) return PATTERN_NAMINGS[pair];
+    const family = _patternFamily(pair);
+    return family === '1-1'
+      ? `That was a ${pair}, which is the 1-1 pattern with bigger numbers: both needed the same mines in the squares they share, so the extra squares had to be safe.`
+      : `That was a ${pair}, which is the 1-2 pattern with bigger numbers: the bigger number's extra mines could only sit in the squares the smaller one cannot see.`;
   }
-  return `Those were subset reads (the ${used.join(' and the ')}): where two clues overlap, subtract the smaller from the larger. The leftover squares carry the leftover mines.`;
+  // Mixed shapes on one board: teach the one idea behind all of them
+  // instead of listing digit codes.
+  return 'Each of those moves compared two numbers that look at the same squares. The smaller number\'s mines all fit inside the shared squares, so the squares left over were either forced to be mines or proven safe. The 1-1 and 1-2 patterns are the simplest versions of this, and bigger pairs work exactly the same way.';
 }
 
 // Voice the move, repaint, and handle the naming moment. Returns true
@@ -255,16 +263,32 @@ const TIER1_OPENERS = [
   '💪 The {p} again. You are getting quick at this.',
 ];
 
-// Recognition tips, grounded in the classic pattern vocabulary: the
-// overlap subtraction, and where each pattern tends to live.
+// Only 1-1 and 1-2 are names players actually know. Any other pair is
+// one of those two in disguise: equal numbers behave like the 1-1
+// (same mines, shared squares, extras safe), unequal numbers behave
+// like the 1-2 (the bigger number's extra mine lives in the square
+// only it touches).
+function _patternFamily(pairName) {
+  const [a, b] = pairName.split('-').map(Number);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+  return a === b ? '1-1' : '1-2';
+}
+
+// Recognition tips, grounded in the classic pattern vocabulary and
+// always pointing at things the player can SEE: the two numbers, the
+// squares they share, and the square only one of them touches.
 function _recognitionTip(pairName) {
   if (pairName === '1-2') {
-    return 'How to spot it: when a 1 and a 2 share squares, the 2\'s leftover square holds its second mine and the 1\'s leftover square is safe. It shows up constantly along walls.';
+    return 'How to spot it: a 1 and a 2 side by side, looking at the same squares. The 2 needs one mine more than the 1, and the only place for it is the square the 1 cannot see. The 1\'s far square is safe for the same reason. Walls are full of these.';
   }
   if (pairName === '1-1') {
-    return 'How to spot it: when two 1s share squares, the second 1 is already accounted for, so its leftover square is safe. Watch for it marching along walls.';
+    return 'How to spot it: two 1s side by side, looking at the same squares. The first 1\'s mine is already somewhere in the shared squares, which also satisfies the second 1, so the square beyond them is safe. Watch for it along walls.';
   }
-  return 'How to spot it: where two clues overlap, subtract the smaller from the larger. The leftover squares carry the leftover mines. Flagged mines reduce a number, so a 2-3 plays like a 1-2.';
+  const family = _patternFamily(pairName);
+  if (family === '1-1') {
+    return `How to spot it: two numbers that need the SAME amount and look at the same squares. The shared squares pay for both, so the extra squares are safe. A ${pairName} is a 1-1 in disguise.`;
+  }
+  return `How to spot it: two numbers side by side where one needs more mines than the other. The extra mines can only sit in the squares the smaller number cannot see. A ${pairName} is a 1-2 in disguise.`;
 }
 
 // "1-2", "1-1", "2-3"... — named from the two clue digits on screen.
@@ -281,12 +305,20 @@ function _celebrate(ded, kind) {
   if (ded.tier === 1) {
     const pair = _pairName(ded);
     _patternsUsed.add(pair);
-    const opener = TIER1_OPENERS[_tier1Count % TIER1_OPENERS.length].replace('{p}', pair);
     _tier1Count++;
+    // Only 1-1 and 1-2 are real pattern NAMES; cheering "the 2-2
+    // pattern" would invent vocabulary. Bigger pairs cheer through
+    // their family instead.
+    const canonical = !!PATTERN_NAMINGS[pair];
     if (_tier1Count === 1) {
+      const opener = canonical
+        ? TIER1_OPENERS[0].replace('{p}', pair)
+        : '💪 Sharp read!';
       _coach(`${opener} ${_recognitionTip(pair)}`, 6500);
+    } else if (canonical) {
+      _coach(TIER1_OPENERS[_tier1Count % TIER1_OPENERS.length].replace('{p}', pair), 2600);
     } else {
-      _coach(opener, 2600);
+      _coach(`💪 The ${pair} again: same trick as the ${_patternFamily(pair)}.`, 2600);
     }
     return;
   }
@@ -419,7 +451,10 @@ function _onCellClick(e) {
     // move (the subset crux unlocks the rest) — the cheer must still
     // land. Short form only: the naming paragraph right below it
     // carries the full explanation.
-    _coach(`💪 Excellent use of the ${_pairName(ded)} pattern!`, 4200);
+    const pair = _pairName(ded);
+    _coach(PATTERN_NAMINGS[pair]
+      ? `💪 Excellent use of the ${pair} pattern!`
+      : `💪 Sharp finish: a ${pair}, same trick as the ${_patternFamily(pair)}.`, 4200);
   }
 }
 
