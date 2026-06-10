@@ -1,0 +1,121 @@
+/* Blueprint theme — cyan drafting lines on navy blueprint paper. Technical
+   monospace, a graph-paper grid behind everything, rivet/annotation objects.
+   No ambient particles, so no grout seal — cells read as drawn cells. */
+[data-theme="blueprint"] {
+  --color-bg: #08203a;
+  --color-app-bg: #0c2a47;
+  --color-cell-hidden: #11375c;
+  --color-cell-hidden-hover: #16456f;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #134066, #0f3050);
+  --color-cell-revealed: #0a2540;
+  --color-cell-border-light: #3a7ca8;
+  --color-cell-border-dark: #08203a;
+  --color-mine: #ff6b6b;
+  --color-mine-hit: #ff3a3a;
+  --color-flag: #5ad0ff;
+  --color-text: #d8eeff;
+  --color-text-secondary: #6a9ec4;
+
+  --color-num-1: #5ad0ff;
+  --color-num-2: #7ed957;
+  --color-num-3: #ff6b6b;
+  --color-num-4: #c89bff;
+  --color-num-5: #ffb3c8;
+  --color-num-6: #4ae0e0;
+  --color-num-7: #cfe3f5;
+  --color-num-8: #90a8c0;
+  --color-num-9: #ffb060;
+  --color-num-10: #6ad8ff;
+  --color-num-11: #b89bff;
+  --color-num-12: #d8e060;
+  --color-num-13: #ff8a6a;
+  --color-num-14: #5ad0b0;
+  --color-num-15: #9aa0ff;
+  --color-num-16: #ffc090;
+  --color-num-17: #70b0ff;
+  --color-num-18: #ff90c0;
+
+  --color-header-bg: #0c2a47;
+  --color-header-gradient: linear-gradient(180deg, #11375c, #0c2a47);
+  --color-lcd-bg: #061626;
+  --color-lcd-text: #5ad0ff;
+  --color-modal-bg: #0c2a47;
+  --color-modal-overlay: rgba(4, 14, 26, 0.85);
+  --color-btn-bg: #11375c;
+  --color-btn-hover: #16456f;
+  --color-btn-gradient: linear-gradient(180deg, #16456f, #11375c);
+  --color-border: #2a5a80;
+  --color-fog: rgba(4, 14, 26, 0.92);
+  --color-scan-highlight: rgba(90, 208, 255, 0.18);
+  --color-golden: #ffd24a;
+  --color-accent: #5ad0ff;
+  --color-accent-hover: #3ab8e8;
+  --color-accent-glow: rgba(90, 208, 255, 0.3);
+  --color-win: #7ed957;
+  --color-loss: #ff6b6b;
+  --color-wall: #7ec8ff;
+  --color-surface: rgba(90, 208, 255, 0.04);
+
+  --shadow-app: 0 8px 40px rgba(0, 12, 26, 0.6), inset 0 1px 0 rgba(90, 208, 255, 0.06);
+  --text-shadow-lcd: 0 0 8px rgba(90, 208, 255, 0.5);
+  --text-shadow-title: 0 0 10px rgba(90, 208, 255, 0.4);
+  --shadow-board: 0 4px 16px rgba(0, 12, 26, 0.5);
+  --bg-modal-close-hover: rgba(90, 208, 255, 0.1);
+
+  /* ── Theme-expression layer ─────────────────────────── */
+  /* Technical monospace — a draftsman's lettering set. */
+  --font-family: 'Courier New', 'Consolas', monospace;
+  --font-display: 'Courier New', 'Consolas', monospace;
+  --cell-shape-radius: 0px;
+  --anim-reveal-dur: 0.12s;
+  --anim-reveal-ease: linear;
+  --anim-flag-dur: 0.18s;
+  --anim-flag-ease: ease-out;
+
+  /* The graph-paper grid — faint cyan ruling, minor + major lines. */
+  --bg-page-image:
+    repeating-linear-gradient(0deg, rgba(90, 208, 255, 0.09) 0, rgba(90, 208, 255, 0.09) 1px, transparent 1px, transparent 24px),
+    repeating-linear-gradient(90deg, rgba(90, 208, 255, 0.09) 0, rgba(90, 208, 255, 0.09) 1px, transparent 1px, transparent 24px),
+    repeating-linear-gradient(0deg, rgba(90, 208, 255, 0.04) 0, rgba(90, 208, 255, 0.04) 1px, transparent 1px, transparent 6px),
+    repeating-linear-gradient(90deg, rgba(90, 208, 255, 0.04) 0, rgba(90, 208, 255, 0.04) 1px, transparent 1px, transparent 6px);
+
+  /* Markers brightened for the navy; sonar pushed toward white-cyan so it
+     doesn't merge with the theme's cyan ruling, compass to warm gold. */
+  --marker-liar-outline: rgba(255, 110, 110, 0.96);
+  --marker-sonar-tint: rgba(150, 240, 255, 0.26);
+  --marker-compass-tint: rgba(255, 210, 74, 0.26);
+  --marker-wormhole-0: rgba(255, 150, 60, 0.30);
+  --marker-wormhole-1: rgba(240, 110, 240, 0.30);
+  --marker-wormhole-2: rgba(120, 230, 120, 0.30);
+  --marker-mirror-0: rgba(120, 180, 255, 0.95);
+  --marker-mirror-1: rgba(200, 130, 255, 0.95);
+  --marker-mirror-2: rgba(255, 180, 90, 0.95);
+  --marker-plate-border: rgba(255, 90, 90, 0.92);
+  --marker-plate-timer: #ff5a5a;
+}
+
+[data-theme="blueprint"] #game-title,
+[data-theme="blueprint"] .title-screen-logo {
+  font-family: 'Courier New', monospace;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #d8eeff;
+}
+[data-theme="blueprint"] #title-subtitle,
+[data-theme="blueprint"] .title-screen-subtitle {
+  font-family: 'Courier New', monospace;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #6a9ec4;
+}
+
+/* Technical "draw-in" reveal — a quick wipe, no bounce. */
+[data-theme="blueprint"] .cell.num-pop,
+[data-theme="blueprint"] .cell.revealing {
+  animation-name: blueprintDraw;
+}
+@keyframes blueprintDraw {
+  0%   { opacity: 0; transform: scale(0.86); }
+  100% { opacity: 1; transform: scale(1); }
+}

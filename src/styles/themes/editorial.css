@@ -1,0 +1,132 @@
+/* Editorial theme — ink-on-newsprint broadsheet. Serif masthead, sharp print
+   columns, editor's-red accents. No ambient particles (clean print), so no
+   grout seal is needed — cells separate via the column-rule grid. */
+[data-theme="editorial"] {
+  --color-bg: #ddd6c8;
+  --color-app-bg: #f0ebdd;
+  --color-cell-hidden: #e6e0d0;
+  --color-cell-hidden-hover: #ded7c4;
+  --color-cell-hidden-gradient: linear-gradient(145deg, #ebe5d6, #e0d9c8);
+  --color-cell-revealed: #f7f3e8;
+  --color-cell-border-light: #c2baa8;
+  --color-cell-border-dark: #9a9280;
+  --color-mine: #1a1714;
+  --color-mine-hit: #9c1006;
+  --color-flag: #9c1006;
+  --color-text: #1a1714;
+  --color-text-secondary: #6b6456;
+
+  /* Editorial spot colors — refined ink tones, distinct on cream */
+  --color-num-1: #2d4f6b;
+  --color-num-2: #3a6b3e;
+  --color-num-3: #9c1006;
+  --color-num-4: #6a4a86;
+  --color-num-5: #9a5a2a;
+  --color-num-6: #1f6f7a;
+  --color-num-7: #3a3530;
+  --color-num-8: #7a7060;
+  --color-num-9: #b5602a;
+  --color-num-10: #2a7e8c;
+  --color-num-11: #7a4f96;
+  --color-num-12: #8a7a2a;
+  --color-num-13: #a83a2a;
+  --color-num-14: #2f7a5e;
+  --color-num-15: #5a5aa0;
+  --color-num-16: #9a6a3a;
+  --color-num-17: #3a6a9a;
+  --color-num-18: #9a3a6a;
+
+  --color-header-bg: #e6e0d0;
+  --color-header-gradient: linear-gradient(180deg, #ece6d6, #e0d9c8);
+  --color-lcd-bg: #1e1a16;
+  --color-lcd-text: #d8b06a;
+  --color-modal-bg: #f0ebdd;
+  --color-modal-overlay: rgba(40, 36, 30, 0.75);
+  --color-btn-bg: #e6e0d0;
+  --color-btn-hover: #ded7c4;
+  --color-btn-gradient: linear-gradient(180deg, #ece6d6, #e0d9c8);
+  --color-border: #c2baa8;
+  --color-fog: rgba(40, 36, 30, 0.9);
+  --color-scan-highlight: rgba(156, 16, 6, 0.12);
+  --color-golden: #b8860b;
+  --color-accent: #9c1006;
+  --color-accent-hover: #7d0d05;
+  --color-accent-glow: rgba(156, 16, 6, 0.22);
+  --color-win: #3a6b3e;
+  --color-loss: #9c1006;
+  --color-wall: #3a3530;
+  --color-surface: rgba(0, 0, 0, 0.03);
+
+  --shadow-app: 0 10px 40px rgba(40, 30, 20, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  --text-shadow-lcd: none;
+  --text-shadow-title: none;
+  --shadow-board: 0 3px 14px rgba(40, 30, 20, 0.16);
+  --bg-modal-close-hover: rgba(156, 16, 6, 0.1);
+  --border-cell-revealed: 1px solid rgba(154, 146, 128, 0.35);
+
+  /* ── Theme-expression layer ─────────────────────────── */
+  /* Serif everything — broadsheet body type. Numbers set in a serif read as
+     printed figures, not UI digits. */
+  --font-family: Georgia, 'Times New Roman', 'Times', serif;
+  --font-display: Georgia, 'Times New Roman', 'Times', serif;
+  --fs-cell-number: calc(var(--cell-size) * 0.5);
+
+  /* Sharp print columns — no rounding, fast crisp reveal (ink hits paper). */
+  --cell-shape-radius: 0px;
+  --anim-reveal-dur: 0.11s;
+  --anim-reveal-ease: ease-out;
+  --anim-flag-dur: 0.16s;
+  --anim-flag-ease: ease-out;
+
+  /* Faint horizontal newsprint ruling across the page surround. */
+  --bg-page-image:
+    repeating-linear-gradient(0deg, rgba(26, 23, 20, 0.022) 0, rgba(26, 23, 20, 0.022) 1px, transparent 1px, transparent 5px);
+
+  /* Markers deepened/saturated for the pale cream (light-bg legibility);
+     liar's outline lands on the editorial red, which suits the theme. */
+  --marker-liar-outline: rgba(156, 16, 6, 0.95);
+  --marker-sonar-tint: rgba(0, 140, 160, 0.22);
+  --marker-compass-tint: rgba(180, 120, 0, 0.24);
+  --marker-wormhole-0: rgba(190, 90, 20, 0.28);
+  --marker-wormhole-1: rgba(150, 40, 150, 0.26);
+  --marker-wormhole-2: rgba(40, 110, 60, 0.26);
+  --marker-mirror-0: rgba(40, 80, 150, 0.92);
+  --marker-mirror-1: rgba(120, 50, 140, 0.92);
+  --marker-mirror-2: rgba(160, 90, 30, 0.92);
+  --marker-plate-border: rgba(156, 16, 6, 0.9);
+  --marker-plate-timer: #9c1006;
+}
+
+/* Masthead — bold serif with a double-rule underline, the newspaper nameplate. */
+[data-theme="editorial"] #game-title,
+[data-theme="editorial"] .title-screen-logo {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 900;
+  letter-spacing: -1.5px;
+  color: #1a1714;
+  text-shadow: none;
+  border-bottom: 3px double #1a1714;
+  padding-bottom: 4px;
+}
+
+[data-theme="editorial"] #title-subtitle,
+[data-theme="editorial"] .title-screen-subtitle {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  letter-spacing: 1px;
+  color: #6b6456;
+}
+
+[data-theme="editorial"] .cell.revealed {
+  font-weight: 700;
+}
+
+/* Crisp "ink hits paper" reveal — a tiny settle, no bounce. */
+[data-theme="editorial"] .cell.num-pop,
+[data-theme="editorial"] .cell.revealing {
+  animation-name: editorialPrint;
+}
+@keyframes editorialPrint {
+  0%   { opacity: 0; transform: translateY(-2px); }
+  100% { opacity: 1; transform: none; }
+}

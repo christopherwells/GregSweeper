@@ -52,6 +52,9 @@
   --color-cell-hidden-hover: #341a54;
   --color-cell-hidden-gradient: linear-gradient(145deg, #2e164a, #1e0e36);
   --color-cell-revealed: #140a20;
+  /* Effect-bearing theme: grout MUST contrast the cleared tile (#140a20),
+     never equal it (the banned slab). gold trim line between tiles, not the dark tile. */
+  --cell-gap-seal: #8a6a20;
   --color-cell-border-light: #442068;
   --color-cell-border-dark: #0a0410;
   --color-mine: #ffc830;
@@ -97,7 +100,7 @@
   --color-accent-glow: rgba(255, 200, 48, 0.25);
   --color-win: #60dd88;
   --color-loss: #ff4040;
-  --color-wall: #8a6a30;
+  --color-wall: #90713a; /* lightened from #8a6a30 - clears 3.5:1 vs both cell bgs (4.23 / 3.72) */
   --color-surface: rgba(255, 200, 48, 0.03);
 
   --bg-app: linear-gradient(180deg, #140a22, #0e0618);
@@ -206,4 +209,13 @@
 /* Gold glow on LCD displays */
 [data-theme="legendary"] .lcd-display {
   animation: goldSparkle 3s ease-in-out infinite;
+}
+
+/* Reveal moment: a golden bloom. */
+[data-theme="legendary"] .cell.num-pop,
+[data-theme="legendary"] .cell.revealing {
+  animation-name: legendBloom;
+}
+@keyframes legendBloom {
+  0%{opacity:0;transform:scale(0.6);filter:brightness(0.5)}55%{opacity:1;transform:scale(1.1);filter:brightness(1.6) drop-shadow(0 0 6px rgba(255,215,0,0.6))}100%{opacity:1;transform:scale(1);filter:brightness(1)}
 }

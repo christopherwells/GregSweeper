@@ -226,6 +226,18 @@
   --victory-color: #ffd54f;
   --victory-duration: 3600ms;
 
+  /* ── Receipt moments (reserved) ──
+     Tokens for the deduction-receipt surfaces (proof-region pulse,
+     verdict chip, crux highlight) that the receipts/lens work renders.
+     Reserved in the theme contract NOW so each world can voice these
+     moments in its own idiom from the day they ship, instead of the
+     moments being retrofitted across the catalog later. Defaults are
+     theme-neutral; a world overrides them like any other token. */
+  --receipt-pulse-color: rgba(80, 160, 255, 0.45);
+  --receipt-verdict-bg: rgba(40, 44, 52, 0.92);
+  --receipt-verdict-border: rgba(80, 160, 255, 0.6);
+  --receipt-crux-outline: rgba(255, 200, 60, 0.85);
+
   /* ── Power-up feedback (solid/usage colors tokenized; deep glow alphas
      inside keyframes stay literal — partial by design). ── */
   --pu-shield: #43a047;
@@ -1322,6 +1334,13 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   position: absolute;
   background: var(--color-wall, #c9a96e);
   border-radius: 1px;
+  /* Two-tone wall support: themes whose revealed and hidden cell bgs sit
+     at OPPOSITE luminance extremes (light panes + dark fog — stained
+     glass, apothecary, split-flap) cannot clear the 3.5:1 wall floor
+     against both with any single color. The body covers one side, this
+     outline covers the other. Default transparent so every other theme
+     renders exactly as before. */
+  box-shadow: 0 0 0 1.5px var(--color-wall-outline, transparent);
 }
 .wall-line-h {
   height: 5px;
@@ -5761,4 +5780,93 @@ pre.diagnostics-pre {
   vertical-align: -0.2em;
   margin-right: 0.25em;
 }
+
+/* ── Live theme carousel ──────────────────────────────────────────────────────
+   A slim bar that floats over the bottom of the screen so the real board stays
+   visible and re-themes live as you flip. Theme-NEUTRAL (its own fixed dark
+   glass look) so it reads on every theme, light or dark. */
+.theme-carousel {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 4000;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 16px;
+  background: rgba(18, 18, 24, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #f4f4f6;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  max-width: calc(100vw - 24px);
+  animation: tcRise 0.22s cubic-bezier(0.34, 1.4, 0.5, 1);
+}
+.theme-carousel.hidden { display: none; }
+
+@keyframes tcRise {
+  from { opacity: 0; transform: translate(-50%, 14px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.tc-arrow {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.tc-arrow:hover { background: rgba(255, 255, 255, 0.2); }
+.tc-arrow:active { transform: scale(0.92); }
+
+.tc-info {
+  flex: 1 1 auto;
+  min-width: 116px;
+  text-align: center;
+  user-select: none;
+}
+.tc-name {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tc-pos {
+  font-size: 11px;
+  opacity: 0.6;
+  margin-top: 1px;
+  letter-spacing: 0.5px;
+}
+.tc-name .tc-lock { opacity: 0.7; font-size: 12px; margin-left: 4px; }
+
+.tc-done {
+  flex: 0 0 auto;
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 12px;
+  border: none;
+  background: #4a8af0;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.tc-done:hover { background: #5a97f5; }
+.tc-done:active { transform: scale(0.95); }
+
+/* While the carousel is open, hint that the board is swipeable. */
+#board.tc-swipe-target { cursor: grab; }
 

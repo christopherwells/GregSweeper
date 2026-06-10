@@ -1,0 +1,127 @@
+/* Circuit Board theme — green PCB with copper traces. Dark soldermask pads,
+   silkscreen-white glyphs, current pulsing along the traces. The copper traces
+   ARE the grout running between cleared pads. */
+[data-theme="circuitboard"] {
+  --color-bg: #0a2418;
+  --color-app-bg: #061810;
+  --color-cell-hidden: #0e3322;
+  --color-cell-hidden-hover: #134029;
+  --color-cell-hidden-gradient: linear-gradient(150deg, #134a30, #0c2c1d 60%, #103826);
+  /* Cleared = exposed substrate pad, slightly darker matte green. */
+  --color-cell-revealed: #0c2a1c;
+  --color-cell-border-light: #1f6a44;
+  --color-cell-border-dark: #051410;
+  --color-mine: #d8e0d0;
+  --color-mine-hit: #ff5a3a;
+  --color-flag: #f0b030;
+  --color-text: #d8ecdc;
+  --color-text-secondary: #6a9a7e;
+
+  /* Silkscreen + indicator-LED palette. */
+  --color-num-1: #40b0f0;
+  --color-num-2: #50e060;
+  --color-num-3: #ff5a4a;
+  --color-num-4: #c080f0;
+  --color-num-5: #f0a030;
+  --color-num-6: #30e0d0;
+  --color-num-7: #e8f0e0;
+  --color-num-8: #88a890;
+  --color-num-9: #f0d040;
+  --color-num-10: #50c0f0;
+  --color-num-11: #b090f0;
+  --color-num-12: #d0e040;
+  --color-num-13: #ff7050;
+  --color-num-14: #40e0b0;
+  --color-num-15: #90a0f0;
+  --color-num-16: #f0b050;
+  --color-num-17: #50a0f0;
+  --color-num-18: #f070b0;
+
+  --color-header-bg: #0c2c1d;
+  --color-header-gradient: linear-gradient(180deg, #103626, #0a2418);
+  --color-lcd-bg: #051410;
+  --color-lcd-text: #40f090;
+  --color-modal-bg: #0a2417;
+  --color-modal-overlay: rgba(2, 10, 6, 0.88);
+  --color-btn-bg: #103626;
+  --color-btn-hover: #154430;
+  --color-btn-gradient: linear-gradient(180deg, #154430, #103626);
+  --color-border: #1a5236;
+  --color-fog: rgba(3, 12, 8, 0.92);
+  --color-scan-highlight: rgba(64, 240, 144, 0.18);
+  --color-golden: #f0b030;
+  --color-accent: #40f090;
+  --color-accent-hover: #60ffa8;
+  --color-accent-glow: rgba(64, 240, 144, 0.3);
+  --color-win: #40f090;
+  --color-loss: #ff5a3a;
+  --color-wall: #d09850;
+  --color-surface: rgba(64, 240, 144, 0.05);
+
+  --shadow-app: 0 12px 44px rgba(0, 8, 4, 0.6), inset 0 1px 0 rgba(64, 240, 144, 0.06);
+  --text-shadow-lcd: 0 0 8px rgba(64, 240, 144, 0.4);
+  --text-shadow-title: 0 1px 3px rgba(0, 0, 0, 0.6);
+  --shadow-board: 0 6px 22px rgba(0, 8, 4, 0.55);
+  --bg-modal-close-hover: rgba(64, 240, 144, 0.1);
+
+  /* ── Theme-expression layer ─────────────────────────── */
+  /* Technical monospace — datasheet lettering. */
+  --font-family: 'Consolas', 'Lucida Console', 'Courier New', monospace;
+  --font-display: 'Consolas', 'Lucida Console', monospace;
+  --cell-shape-radius: 1px;
+  --anim-reveal-dur: 0.18s;
+  --anim-reveal-ease: steps(2, end);
+  --anim-flag-dur: 0.18s;
+  --anim-flag-ease: ease-out;
+
+  /* Etched copper traces + vias across the soldermask. */
+  --bg-page-image:
+    repeating-linear-gradient(0deg, transparent 0, transparent 23px, rgba(184, 120, 56, 0.07) 23px, rgba(184, 120, 56, 0.07) 24px),
+    repeating-linear-gradient(90deg, transparent 0, transparent 23px, rgba(184, 120, 56, 0.07) 23px, rgba(184, 120, 56, 0.07) 24px),
+    radial-gradient(circle at 24% 30%, rgba(208, 152, 80, 0.10) 0 2px, transparent 3px),
+    radial-gradient(circle at 72% 64%, rgba(208, 152, 80, 0.10) 0 2px, transparent 3px);
+
+  /* Cleared pads need a grout. It must CONTRAST the dark green pad (#0c2a1c),
+     not match it — the glowing copper trace (#b87838) that runs between pads, so
+     cleared cells read as separate pads wired together, never a green slab. */
+  --cell-gap-seal: #b87838;
+
+  --marker-liar-outline: rgba(255, 90, 58, 0.96);
+  --marker-sonar-tint: rgba(0, 200, 224, 0.26);
+  --marker-compass-tint: rgba(240, 176, 48, 0.3);
+  --marker-wormhole-0: rgba(240, 160, 48, 0.32);
+  --marker-wormhole-1: rgba(200, 100, 240, 0.30);
+  --marker-wormhole-2: rgba(64, 224, 144, 0.32);
+  --marker-mirror-0: rgba(64, 176, 240, 0.96);
+  --marker-mirror-1: rgba(192, 128, 240, 0.96);
+  --marker-mirror-2: rgba(240, 176, 64, 0.96);
+  --marker-plate-border: rgba(255, 90, 58, 0.92);
+  --marker-plate-timer: #ff5a3a;
+}
+
+[data-theme="circuitboard"] #game-title,
+[data-theme="circuitboard"] .title-screen-logo {
+  font-family: 'Consolas', 'Lucida Console', monospace;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #40f090;
+  text-shadow: 0 0 12px rgba(64, 240, 144, 0.5), 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+[data-theme="circuitboard"] #title-subtitle,
+[data-theme="circuitboard"] .title-screen-subtitle {
+  font-family: 'Consolas', 'Lucida Console', monospace;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: #6a9a7e;
+}
+
+/* The pad energizes — a quick power-on flicker. */
+[data-theme="circuitboard"] .cell.num-pop,
+[data-theme="circuitboard"] .cell.revealing {
+  animation-name: circuitPower;
+}
+@keyframes circuitPower {
+  0%   { opacity: 0; filter: brightness(0.4); }
+  40%  { opacity: 1; filter: brightness(1.8) drop-shadow(0 0 4px rgba(64, 240, 144, 0.6)); }
+  100% { opacity: 1; filter: brightness(1); }
+}

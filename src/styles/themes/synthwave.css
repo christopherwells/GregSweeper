@@ -35,6 +35,9 @@
   --color-cell-hidden-hover: #280c60;
   --color-cell-hidden-gradient: linear-gradient(145deg, #220a58, #140640);
   --color-cell-revealed: #0c0228;
+  /* Effect-bearing theme: grout MUST contrast the cleared tile (#0c0228),
+     never equal it (the banned slab). neon-grid magenta line, not the dark purple tile. */
+  --cell-gap-seal: #802a80;
   --color-cell-border-light: #4020a0;
   --color-cell-border-dark: #0a0020;
   --color-mine: #ff2090;
@@ -80,7 +83,7 @@
   --color-accent-glow: rgba(255, 32, 144, 0.3);
   --color-win: #00ffaa;
   --color-loss: #ff0070;
-  --color-wall: #7e54a5;
+  --color-wall: #8861ac; /* lightened from #7e54a5 - clears 3.5:1 vs both cell bgs (4.11 / 3.70) */
   --color-surface: rgba(170, 68, 255, 0.04);
 
   --bg-app: linear-gradient(180deg, #0e0030, #0a0020);
@@ -194,4 +197,14 @@
     linear-gradient(rgba(170, 68, 255, 0.03) 1px, transparent 1px),
     linear-gradient(90deg, rgba(170, 68, 255, 0.03) 1px, transparent 1px);
   background-size: 40px 40px;
+}
+
+/* Reveal moment: a scanline sweep. */
+[data-theme="synthwave"] .cell.num-pop,
+[data-theme="synthwave"] .cell.revealing {
+  animation-name: synthScan;
+  transform-origin:center;
+}
+@keyframes synthScan {
+  0%{opacity:0;transform:scaleY(0.1)}60%{opacity:1;transform:scaleY(1.08)}100%{opacity:1;transform:scaleY(1)}
 }
