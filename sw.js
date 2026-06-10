@@ -45,6 +45,7 @@ const ASSETS = [
   //   './src/ui/diagnosticsModal.js',
   './src/ui/collectionManager.js',
   './src/ui/receiptRenderer.js',
+  './src/logic/gregVoice.js',
   './src/logic/powerUps.js',
   './src/logic/seededRandom.js',
   './src/logic/achievements.js',

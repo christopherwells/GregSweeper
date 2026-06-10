@@ -4256,6 +4256,25 @@ button:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
+/* Greg's Field Note on the daily card — why today's board exists, in
+   one true sentence from the experiment design. Quiet, italic, ambient. */
+.mode-card-fieldnote {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.86em;
+  font-style: italic;
+  opacity: 0.7;
+}
+
+/* Greg's yesterday note in the leaderboard modal — the closed loop of
+   the daily experiment, rendered once per session. */
+.greg-yesterday-note {
+  font-size: 0.85em;
+  font-style: italic;
+  color: var(--color-text-secondary, #999);
+  margin: 4px 0 8px;
+}
+
 .mode-card.daily-completed {
   opacity: 0.6;
   position: relative;
