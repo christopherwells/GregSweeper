@@ -1,4 +1,4 @@
-import { safeGet, safeSet, safeRemove, safeGetJSON, safeSetJSON } from './storageAdapter.js';
+import { safeGet, safeSet, safeRemove, safeGetJSON, safeSetJSON, safeKeys } from './storageAdapter.js';
 import { getLocalDateString } from '../logic/seededRandom.js';
 import { isTestEnvironment } from '../firebase/env.js';
 import { containsHateSpeech } from '../logic/nameFilter.js';
@@ -69,6 +69,36 @@ export function loadDailyPar(dateStr) {
   const moves = parseInt(safeGet(DAILY_MOVES_KEY_PREFIX + dateStr)) || 0;
   const features = safeGetJSON(DAILY_FEATURES_KEY_PREFIX + dateStr, null);
   return { par, moves, features };
+}
+
+/**
+ * Remove per-date daily keys (par / moves / features) older than
+ * `keepDays`. These accumulate one trio per played date forever —
+ * a daily-habit player banks ~1 MB/year of feature JSON, and the
+ * eventual quota failure downgrades storage to the silent in-memory
+ * fallback. Nothing reads entries this old: residuals are capped at 50
+ * and have their own store, the history chart reads Firebase, and the
+ * par cache only matters for dates a player might still reopen.
+ * Called once at boot.
+ */
+export function pruneOldDailyKeys(keepDays = 60) {
+  const today = getLocalDateString();
+  const [ty, tm, td] = today.split('-').map(Number);
+  const cutoffMs = Date.UTC(ty, tm - 1, td) - keepDays * 24 * 3600 * 1000;
+  let removed = 0;
+  for (const prefix of [DAILY_PAR_KEY_PREFIX, DAILY_MOVES_KEY_PREFIX, DAILY_FEATURES_KEY_PREFIX]) {
+    for (const key of safeKeys(prefix)) {
+      const dateStr = key.slice(prefix.length);
+      const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(dateStr);
+      if (!m) continue; // unknown suffix shape — leave it alone
+      const ms = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+      if (Number.isFinite(ms) && ms < cutoffMs) {
+        safeRemove(key);
+        removed++;
+      }
+    }
+  }
+  return removed;
 }
 const POWERUPS_KEY = 'minesweeper_powerups';
 const LIVES_KEY = 'minesweeper_lives';

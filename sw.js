@@ -60,6 +60,15 @@ const ASSETS = [
   './src/firebase/weeklyBoardSync.js',
   './src/firebase/waitForFirebase.js',
   './src/firebase/firebasePush.js',
+  // Hard static imports of main.js / the firebase modules — without
+  // these, a first-visit install that goes offline before its first
+  // online page load fails to boot (runtime caching only covers files
+  // that have been fetched once).
+  './src/firebase/firebaseAuth.js',
+  './src/firebase/env.js',
+  './src/firebase/boardCache.js',
+  './src/diagnostics/errorReporter.js',
+  './src/ui/tutorialManager.js',
   './src/logic/selectWeeklyRngSeed.js',
   './assets/icon.svg',
   './assets/icon-192.png',

@@ -6,7 +6,7 @@
 // getLocalDateString imported from seededRandom.js
 
 import { state } from './state/gameState.js';
-import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn } from './ui/domHelpers.js';
+import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn, escapeHtml } from './ui/domHelpers.js';
 import { resizeCells, updateAllCells, getThemeEmoji, needsZoom, updateZoom, zoomIn, zoomOut, invalidateEmojiCache, setFocusedCell, announceGame } from './ui/boardRenderer.js';
 import { preloadSprites, spriteImgHTML } from './ui/spriteLoader.js';
 import { updateHeader, updateStreakBorder, updateFlagModeBar, getCheckpointForLevel, CHECKPOINT_INTERVAL } from './ui/headerRenderer.js';
@@ -34,7 +34,7 @@ import {
   getDailyStreak,
   getPlayerName, setPlayerName,
   getLastSeenVersion, setLastSeenVersion,
-  saveDailyPar, loadDailyPar, applyCloudProgress, resetDailyStatsForAccountSwitch,
+  saveDailyPar, loadDailyPar, pruneOldDailyKeys, applyCloudProgress, resetDailyStatsForAccountSwitch,
   reconcileStreakFromHistory,
   hasSeenNotice, markNoticeSeen,
 } from './storage/statsStorage.js';
@@ -77,7 +77,7 @@ import { isModifierPopupDisabled, setModifierPopupDisabled, getGimmickDefs, getD
 import { isStorageFailing, safeGet, safeSet, safeRemove, requestPersistentStorage } from './storage/storageAdapter.js';
 import { pauseTimer, resumeTimer, recordInteraction } from './game/timerManager.js';
 import { startTutorial, startWarmup } from './ui/tutorialManager.js';
-import { initErrorReporter, setErrorReporterCodeVersion, reportTestError } from './diagnostics/errorReporter.js';
+import { initErrorReporter, setErrorReporterCodeVersion, reportTestError, reportCaughtError } from './diagnostics/errorReporter.js';
 
 // ── Code-version handshake with the service worker ────
 // The SW broadcasts its CACHE_NAME on activate and replies to
@@ -206,7 +206,10 @@ async function ensureLatestServiceWorker(timeoutMs = 3000) {
 // on a divergent board. This is exactly the failure that put Kate on
 // trial3 while Chris was on trial5 on 2026-05-06.
 async function runStartupGate() {
-  setBootStatus('Loading…');
+  // Step 1 of the visible boot sequence ('Loading…' is the HTML
+  // default before this runs): the SW-update + Firebase waits below
+  // are where a slow connection actually spends its time.
+  setBootStatus('Connecting…');
 
   // SW update wait + Firebase ready wait run in PARALLEL. Both have
   // their own time budgets (3s SW, 8s Firebase) and neither depends on
@@ -250,18 +253,25 @@ async function runStartupGate() {
   // Trim the offline board cache to its rolling window (yesterday..+7
   // dailies, prev/current/next weekly) so it can't grow unbounded.
   pruneOldCachedBoards(today, currentWeek);
+  // Same for the per-date daily par/moves/features keys — one trio per
+  // played date forever would eventually trip the quota and silently
+  // downgrade storage to the in-memory fallback.
+  pruneOldDailyKeys();
 
   if (firebaseReady && !customSeed) {
     setBootStatus('Loading today\'s puzzle…');
     try {
       // Test branch: skip the Firebase weekly-attempts read too so an
       // existing master attempt doesn't get pulled in and gate test.
+      // loadDailyBoard/loadWeeklyBoard are designed to throw nothing, so
+      // these catches fire only on a real bug — worth a report, and the
+      // null fallback keeps the gate degrading gracefully either way.
       const weeklyAttemptsP = isTestEnvironment()
         ? Promise.resolve({})
-        : loadWeeklyAttempts(currentWeek).catch(() => null);
+        : loadWeeklyAttempts(currentWeek).catch(err => { reportCaughtError('gate-weekly-attempts', err); return null; });
       const [dailyRaw, weeklyRaw, attempts] = await Promise.all([
-        loadDailyBoard(today).catch(() => null),
-        loadWeeklyBoard(currentWeek).catch(() => null),
+        loadDailyBoard(today).catch(err => { reportCaughtError('gate-daily-board', err); return null; }),
+        loadWeeklyBoard(currentWeek).catch(err => { reportCaughtError('gate-weekly-board', err); return null; }),
         weeklyAttemptsP,
       ]);
       if (dailyRaw) {
@@ -899,12 +909,7 @@ for (const btn of $$('.settings-tab')) {
 }
 
 // ── Leaderboard Display ───────────────────────────────
-
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
+// (escapeHtml now lives in ui/domHelpers.js — single source of truth.)
 
 const LONG_MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 function prettyDate(dateStr) {
@@ -996,7 +1001,7 @@ async function computeDailyParForDate(dateStr, ignoreInMemory = false) {
       let pBoard, pRows, pCols, pMines, activeGimmicks;
       let parResult;
 
-      const canonicalRaw = await loadDailyBoard(dateStr).catch(() => null);
+      const canonicalRaw = await loadDailyBoard(dateStr).catch(err => { reportCaughtError('par-canonical-fetch', err); return null; });
       if (canonicalRaw) {
         const r = deserializeBoard(canonicalRaw);
         pBoard = r.board;
@@ -2350,8 +2355,8 @@ function openAccountConfirmModal({ title, body, okLabel = 'Continue', cancelLabe
 // Used by linkWithGoogle / tryCompleteEmailLink. Renders the warning
 // that signing in will abandon the device's current anonymous data.
 async function _confirmCredentialConflict({ providerLabel, email }) {
-  const safeEmail = email ? _escapeHtml(String(email)) : '';
-  const safeProvider = _escapeHtml(String(providerLabel || 'this'));
+  const safeEmail = email ? escapeHtml(String(email)) : '';
+  const safeProvider = escapeHtml(String(providerLabel || 'this'));
   const who = safeEmail
     ? `the ${safeProvider} account <strong>${safeEmail}</strong>`
     : `that ${safeProvider} account`;
@@ -2363,12 +2368,6 @@ async function _confirmCredentialConflict({ providerLabel, email }) {
     okLabel: 'Continue',
     danger: true,
   });
-}
-
-function _escapeHtml(s) {
-  return s.replace(/[&<>"']/g, (c) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-  }[c]));
 }
 
 // Used by tryCompleteEmailLink when the click-destination device doesn't
@@ -2475,7 +2474,7 @@ subscribeToCloudProgressUpdates((cloud) => {
   // authoritative state, including downgrades from admin resets or a
   // partner device. The max-merge default would stick a higher local
   // value indefinitely after such a write.
-  try { applyCloudProgress(cloud, { overwrite: true }); } catch {}
+  try { applyCloudProgress(cloud, { overwrite: true }); } catch (err) { reportCaughtError('apply-cloud-progress', err); }
   // applyCloudProgress only handles the stats fields (streak / lastDate
   // / checkpoint). Weekly attempts live separately under cloud's
   // weeklyAttempts[weekStart].dayAttempts subtree, and the title screen
@@ -2538,7 +2537,7 @@ subscribeToUidChanges(async ({ uid, isInitial }) => {
     // Re-prime the daily-residuals cache so the personal-par estimate
     // catches up to the new account's recent plays right away.
     const { backfillResidualsFromFirebase } = await import('./logic/handicaps.js');
-    backfillResidualsFromFirebase(uid).catch(() => {});
+    backfillResidualsFromFirebase(uid).catch(err => reportCaughtError('residuals-backfill-uidswitch', err));
     // applyCloudProgress wrote the merged streak / checkpoint values to
     // localStorage, but the UI on screen was rendered with the OLD uid's
     // numbers. Refresh the title screen + header so the player sees the
@@ -2859,7 +2858,7 @@ if (playerNameInput) {
   playerNameInput.addEventListener('change', () => {
     const result = setPlayerName(playerNameInput.value.trim().slice(0, 20));
     if (result && result.ok === false && result.reason === 'hate') {
-      showToast('Please choose a different name');
+      showToast("That name isn't allowed — please pick another.");
       playerNameInput.value = getPlayerName();
     }
   });
@@ -2956,7 +2955,7 @@ if (dailyReminderToggle) {
     try {
       const { refreshTokenIfStale } = await import('./firebase/firebasePush.js');
       await refreshTokenIfStale();
-    } catch {}
+    } catch (err) { reportCaughtError('push-token-refresh-boot', err); }
   }, 3000);
 
   dailyReminderToggle.addEventListener('change', async () => {
@@ -2977,7 +2976,7 @@ if (dailyReminderToggle) {
         showToast('Install GregSweeper to your home screen first to enable notifications.');
       } else if (result === 'no-key') {
         dailyReminderToggle.checked = false;
-        showToast('Push not configured yet — VAPID key missing on this build.');
+        showToast("Notifications aren't available on this build yet.");
       } else if (result === 'unsupported') {
         dailyReminderToggle.checked = false;
         showToast("This browser doesn't support push notifications.");
@@ -3076,7 +3075,7 @@ async function init() {
   // Wire FCM token re-subscription to uid changes BEFORE auth settles
   // so the listener catches the first uid switch even if it happens
   // unusually fast (persisted email-link return URL on boot).
-  import('./firebase/firebasePush.js').then(m => m.initPushAuthListener()).catch(() => {});
+  import('./firebase/firebasePush.js').then(m => m.initPushAuthListener()).catch(err => reportCaughtError('push-auth-listener', err));
 
   // Cloud progress sync: anonymous auth + silent restore. Also completes
   // the email-link flow if the boot URL has the email-link return params,
@@ -3096,7 +3095,7 @@ async function init() {
     // auth + cloud have settled. Recovers a streak the local counter lost
     // to an offline gap or a mid-session uid switch on a prior session.
     await _reconcileDailyStreak();
-  }).catch(() => {}); // silent — progress stays local-only
+  }).catch(err => reportCaughtError('cloud-progress-load', err)); // progress stays local-only on failure — but the failure is reported
 
   // Preload handicaps so the end-of-game modal can render personal par
   // without a race. Fire-and-forget; getHandicap() falls back to 0
@@ -3114,8 +3113,8 @@ async function init() {
     const uid = getUid();
     if (!uid) return;
     const { backfillResidualsFromFirebase } = await import('./logic/handicaps.js');
-    backfillResidualsFromFirebase(uid).catch(() => {});
-  }).catch(() => {});
+    backfillResidualsFromFirebase(uid).catch(err => reportCaughtError('residuals-backfill', err));
+  }).catch(err => reportCaughtError('residuals-backfill-auth', err));
 
   // Warm the experiment-target cache so selectDailyRngSeed has the
   // current target when the user lands on a daily. If the fetch hasn't

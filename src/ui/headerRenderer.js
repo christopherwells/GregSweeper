@@ -76,9 +76,36 @@ export function updateActiveGimmickBar() {
     const def = getGimmickDef(g);
     if (!def) return '';
     const tooltip = (def.name + ': ' + (def.desc || '')).replace(/"/g, '&quot;');
-    return '<span class="active-gimmick-icon" title="' + tooltip + '">' + def.icon + '</span>';
+    // data-gimmick drives the tap-to-explain toast below. The title
+    // attr only serves desktop hover — touch devices never see it,
+    // which left phone players with unexplainable icons mid-game.
+    return '<span class="active-gimmick-icon" role="button" tabindex="0" data-gimmick="' + g + '" title="' + tooltip + '">' + def.icon + '</span>';
   }).join('');
   bar.classList.remove('hidden');
+}
+
+// Tap (or Enter on a focused chip) → toast the modifier's name + rule.
+// Touch devices have no hover, so without this the bar's icons are
+// undecipherable once the first-encounter popup has been dismissed.
+// Delegated once on the container — survives every innerHTML rebuild.
+function _explainGimmickChip(target) {
+  const chip = target && target.closest ? target.closest('.active-gimmick-icon[data-gimmick]') : null;
+  if (!chip) return;
+  const def = getGimmickDef(chip.dataset.gimmick);
+  if (!def) return;
+  import('./toastManager.js').then(m => {
+    m.showToast(`${def.icon} ${def.name} — ${def.desc || ''}`, 4500);
+  });
+}
+const _gimmickIconsEl = document.getElementById('active-gimmick-icons');
+if (_gimmickIconsEl) {
+  _gimmickIconsEl.addEventListener('click', (e) => _explainGimmickChip(e.target));
+  _gimmickIconsEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      _explainGimmickChip(e.target);
+      e.preventDefault();
+    }
+  });
 }
 
 export function updateCellsRemaining() {

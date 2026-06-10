@@ -3,6 +3,19 @@
 export const $ = (sel) => document.querySelector(sel);
 export const $$ = (sel) => document.querySelectorAll(sel);
 
+// Canonical HTML escaper for player-controlled strings interpolated
+// into innerHTML (leaderboard names, account emails, …). The single
+// source of truth — this used to exist as three private copies
+// (main.js ×2, winLossHandler.js ×1), which is one forgotten import
+// away from an XSS. Escapes quotes too, so the result is safe in
+// attribute position as well as text position; the old detached-div
+// trick was not.
+export function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[c]));
+}
+
 export const boardEl = $('#board');
 export const mineCounterEl = $('#mine-counter');
 export const timerEl = $('#timer-display');
