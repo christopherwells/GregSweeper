@@ -26,39 +26,54 @@ export function loadThemeCSS(themeName) {
 // ── Theme Unlock Progression ──────────────────────────
 // Themes unlock based on highest level ever beaten (permanent).
 // Dying in normal mode resets current level to 1 but keeps unlocks.
+//
+// THE LADDER RULE: classic + dark are free at level 0; the other 24
+// themes unlock one per checkpoint — every 5 challenge levels, L5
+// through L120 — ordered by IN-YOUR-FACE-NESS. Quiet print-and-paper
+// worlds come first so new players have classic-feeling boards; the
+// loud, animated, high-saturation worlds are late-game rewards. When
+// adding or cutting a theme, keep the levels exactly the multiples of
+// 5 with no gaps or doubles, and place it by visual intensity (color
+// saturation + ambient motion + background busyness), not by age —
+// test/themeUnlockLadder.test.mjs enforces the structure. Entries are
+// listed in unlock order; the Collection grid renders in this order.
+//
+// (2026-06 catalog trim note: cut themes live in git history; restoring
+// one means restoring its CSS file + entries here, in THEME_EFFECTS,
+// and in the confetti palette, bringing it up to the objects+moments
+// contract, AND giving it a ladder slot — which bumps everything after
+// it.)
 export const THEME_UNLOCKS = {
-  classic:          { levelRequired: 0,  displayName: 'Classic',        mine: '💣', flag: '🚩', smiley: '😊', smileyWin: '😎', smileyLoss: '😵' },
-  dark:             { levelRequired: 0,  displayName: 'Dark',           mine: '💣', flag: '🚩', smiley: '😊', smileyWin: '😎', smileyLoss: '😵' },
-  editorial:        { levelRequired: 5,  displayName: 'Editorial',      mine: '⬛', flag: '✒️', strikeCell: '💢', smiley: '📰', smileyWin: '🎩', smileyLoss: '☕' },
-  sumie:            { levelRequired: 10, displayName: 'Sumi-e',         mine: '⚫', flag: '🖌️', strikeCell: '💢', smiley: '🎴', smileyWin: '🌸', smileyLoss: '🌑' },
-  blueprint:        { levelRequired: 15, displayName: 'Blueprint',      mine: '🔩', flag: '📍', strikeCell: '⚠️', smiley: '📐', smileyWin: '✏️', smileyLoss: '❌' },
-  cartography:      { levelRequired: 20, displayName: 'Cartography',    mine: '❌', flag: '⛵', strikeCell: '🐙', smiley: '🧭', smileyWin: '💰', smileyLoss: '🐙' },
-  origami:          { levelRequired: 25, displayName: 'Origami',        mine: '🕊️', flag: '🔖', strikeCell: '🗯️', smiley: '🦢', smileyWin: '🎏', smileyLoss: '🗯️' },
-  chalkboard:       { levelRequired: 40, displayName: 'Chalkboard',     mine: '☠️', flag: '⚑', strikeCell: '💨', smiley: '✏️', smileyWin: '💯', smileyLoss: '💨' },
-  noir:             { levelRequired: 50, displayName: 'Noir',           mine: '🎱', flag: '🔍', strikeCell: '🩸', smiley: '🕵️', smileyWin: '🥃', smileyLoss: '🚬' },
-  stainedglass:     { levelRequired: 60, displayName: 'Stained Glass',  mine: '🕯️', flag: '⚜️', strikeCell: '🔥', smiley: '⛪', smileyWin: '😇', smileyLoss: '💀' },
-  apothecary:       { levelRequired: 65, displayName: 'Apothecary',     mine: '🧪', flag: '🗝️', strikeCell: '☠️', smiley: '⚗️', smileyWin: '✨', smileyLoss: '💀' },
-  splitflap:        { levelRequired: 75, displayName: 'Split-Flap',     mine: '🧳', flag: '🏷️', strikeCell: '💥', smiley: '🛫', smileyWin: '🛬', smileyLoss: '⛔' },
-  circuitboard:     { levelRequired: 80, displayName: 'Circuit Board',  mine: '🐛', flag: '🔧', strikeCell: '⚡', smiley: '🤖', smileyWin: '💡', smileyLoss: '🔥' },
-  comic:            { levelRequired: 90, displayName: 'Comic',          mine: '💣', flag: '❗', strikeCell: '💥', smiley: '😮', smileyWin: '🦸', smileyLoss: '💀' },
-  // ── Kept legacy worlds (2026-06 trim) ────────────────
-  // The catalog was trimmed to the set that carries the full per-theme
-  // kit (objects + grout + confetti palette + reveal choreography).
-  // Cut themes live in git history; restoring one means restoring its
-  // CSS file + entries here, in THEME_EFFECTS, and in the confetti
-  // palette, then bringing it up to the objects+moments contract.
-  ocean:            { levelRequired: 3,  displayName: 'Ocean',          mine: '🐡', flag: '⚓', strikeCell: '🌊', smiley: '🐟', smileyWin: '🐬', smileyLoss: '🫧' },
-  forest:           { levelRequired: 9,  displayName: 'Forest',         mine: '🌰', flag: '🐿️', strikeCell: '🌳', smiley: '🌲', smileyWin: '🦉', smileyLoss: '🪵' },
-  candy:            { levelRequired: 12, displayName: 'Candy',          mine: '🍬', flag: '🍭', strikeCell: '💥', smiley: '🧁', smileyWin: '🎂', smileyLoss: '🍩' },
-  neon:             { levelRequired: 21, displayName: 'Neon',           mine: '⚡', flag: '🎯', strikeCell: '💥', smiley: '💡', smileyWin: '🔆', smileyLoss: '💤' },
-  aurora:           { levelRequired: 24, displayName: 'Aurora',         mine: '❄️', flag: '🌌', strikeCell: '🌨️', smiley: '🌀', smileyWin: '🌈', smileyLoss: '🌫️' },
-  sakura:           { levelRequired: 33, displayName: 'Sakura',         mine: '🎴', flag: '🏮', strikeCell: '🌸', smiley: '🌸', smileyWin: '🎎', smileyLoss: '🍂' },
-  galaxy:           { levelRequired: 39, displayName: 'Galaxy',         mine: '☄️', flag: '🛸', strikeCell: '💫', smiley: '🪐', smileyWin: '🌟', smileyLoss: '🌑' },
-  matrix:           { levelRequired: 86, displayName: 'Matrix',         mine: '🟢', flag: '🔴', strikeCell: '❌', smiley: '👁️', smileyWin: '🔓', smileyLoss: '🔒' },
-  inferno:          { levelRequired: 92, displayName: 'Inferno',        mine: '🔥', flag: '💀', strikeCell: '🌋', smiley: '😈', smileyWin: '👹', smileyLoss: '💀' },
-  synthwave:        { levelRequired: 94, displayName: 'Synthwave',      mine: '🎹', flag: '🎧', strikeCell: '📺', smiley: '🎛️', smileyWin: '🎶', smileyLoss: '📴' },
-  supernova:        { levelRequired: 98, displayName: 'Supernova',      mine: '💥', flag: '🚀', strikeCell: '🌟', smiley: '🛰️', smileyWin: '⭐', smileyLoss: '🌑' },
-  legendary:        { levelRequired: 100, displayName: 'Legendary',     mine: '🐉', flag: '🏰', strikeCell: '🔥', smiley: '⚔️', smileyWin: '🐉', smileyLoss: '💀' },
+  classic:          { levelRequired: 0,   displayName: 'Classic',        mine: '💣', flag: '🚩', smiley: '😊', smileyWin: '😎', smileyLoss: '😵' },
+  dark:             { levelRequired: 0,   displayName: 'Dark',           mine: '💣', flag: '🚩', smiley: '😊', smileyWin: '😎', smileyLoss: '😵' },
+  // Quiet print & paper — muted palettes, little or no ambient motion.
+  editorial:        { levelRequired: 5,   displayName: 'Editorial',      mine: '⬛', flag: '✒️', strikeCell: '💢', smiley: '📰', smileyWin: '🎩', smileyLoss: '☕' },
+  sumie:            { levelRequired: 10,  displayName: 'Sumi-e',         mine: '⚫', flag: '🖌️', strikeCell: '💢', smiley: '🎴', smileyWin: '🌸', smileyLoss: '🌑' },
+  blueprint:        { levelRequired: 15,  displayName: 'Blueprint',      mine: '🔩', flag: '📍', strikeCell: '⚠️', smiley: '📐', smileyWin: '✏️', smileyLoss: '❌' },
+  cartography:      { levelRequired: 20,  displayName: 'Cartography',    mine: '❌', flag: '⛵', strikeCell: '🐙', smiley: '🧭', smileyWin: '💰', smileyLoss: '🐙' },
+  origami:          { levelRequired: 25,  displayName: 'Origami',        mine: '🕊️', flag: '🔖', strikeCell: '🗯️', smiley: '🦢', smileyWin: '🎏', smileyLoss: '🗯️' },
+  chalkboard:       { levelRequired: 30,  displayName: 'Chalkboard',     mine: '☠️', flag: '⚑', strikeCell: '💨', smiley: '✏️', smileyWin: '💯', smileyLoss: '💨' },
+  noir:             { levelRequired: 35,  displayName: 'Noir',           mine: '🎱', flag: '🔍', strikeCell: '🩸', smiley: '🕵️', smileyWin: '🥃', smileyLoss: '🚬' },
+  // Gentle nature — soft color, slow ambient drift.
+  ocean:            { levelRequired: 40,  displayName: 'Ocean',          mine: '🐡', flag: '⚓', strikeCell: '🌊', smiley: '🐟', smileyWin: '🐬', smileyLoss: '🫧' },
+  forest:           { levelRequired: 45,  displayName: 'Forest',         mine: '🌰', flag: '🐿️', strikeCell: '🌳', smiley: '🌲', smileyWin: '🦉', smileyLoss: '🪵' },
+  sakura:           { levelRequired: 50,  displayName: 'Sakura',         mine: '🎴', flag: '🏮', strikeCell: '🌸', smiley: '🌸', smileyWin: '🎎', smileyLoss: '🍂' },
+  apothecary:       { levelRequired: 55,  displayName: 'Apothecary',     mine: '🧪', flag: '🗝️', strikeCell: '☠️', smiley: '⚗️', smileyWin: '✨', smileyLoss: '💀' },
+  splitflap:        { levelRequired: 60,  displayName: 'Split-Flap',     mine: '🧳', flag: '🏷️', strikeCell: '💥', smiley: '🛫', smileyWin: '🛬', smileyLoss: '⛔' },
+  // Rich light — saturated color and glow, steady motion.
+  stainedglass:     { levelRequired: 65,  displayName: 'Stained Glass',  mine: '🕯️', flag: '⚜️', strikeCell: '🔥', smiley: '⛪', smileyWin: '😇', smileyLoss: '💀' },
+  aurora:           { levelRequired: 70,  displayName: 'Aurora',         mine: '❄️', flag: '🌌', strikeCell: '🌨️', smiley: '🌀', smileyWin: '🌈', smileyLoss: '🌫️' },
+  galaxy:           { levelRequired: 75,  displayName: 'Galaxy',         mine: '☄️', flag: '🛸', strikeCell: '💫', smiley: '🪐', smileyWin: '🌟', smileyLoss: '🌑' },
+  candy:            { levelRequired: 80,  displayName: 'Candy',          mine: '🍬', flag: '🍭', strikeCell: '💥', smiley: '🧁', smileyWin: '🎂', smileyLoss: '🍩' },
+  // Loud — high contrast, busy ambient animation, maximum saturation.
+  comic:            { levelRequired: 85,  displayName: 'Comic',          mine: '💣', flag: '❗', strikeCell: '💥', smiley: '😮', smileyWin: '🦸', smileyLoss: '💀' },
+  circuitboard:     { levelRequired: 90,  displayName: 'Circuit Board',  mine: '🐛', flag: '🔧', strikeCell: '⚡', smiley: '🤖', smileyWin: '💡', smileyLoss: '🔥' },
+  matrix:           { levelRequired: 95,  displayName: 'Matrix',         mine: '🟢', flag: '🔴', strikeCell: '❌', smiley: '👁️', smileyWin: '🔓', smileyLoss: '🔒' },
+  neon:             { levelRequired: 100, displayName: 'Neon',           mine: '⚡', flag: '🎯', strikeCell: '💥', smiley: '💡', smileyWin: '🔆', smileyLoss: '💤' },
+  synthwave:        { levelRequired: 105, displayName: 'Synthwave',      mine: '🎹', flag: '🎧', strikeCell: '📺', smiley: '🎛️', smileyWin: '🎶', smileyLoss: '📴' },
+  inferno:          { levelRequired: 110, displayName: 'Inferno',        mine: '🔥', flag: '💀', strikeCell: '🌋', smiley: '😈', smileyWin: '👹', smileyLoss: '💀' },
+  supernova:        { levelRequired: 115, displayName: 'Supernova',      mine: '💥', flag: '🚀', strikeCell: '🌟', smiley: '🛰️', smileyWin: '⭐', smileyLoss: '🌑' },
+  legendary:        { levelRequired: 120, displayName: 'Legendary',      mine: '🐉', flag: '🏰', strikeCell: '🔥', smiley: '⚔️', smileyWin: '🐉', smileyLoss: '💀' },
 };
 
 // Dev-only theme preview: `?previewthemes=1` on localhost unlocks every theme
