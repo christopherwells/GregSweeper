@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Reveal Safe: a magnifying glass with a green check inside the
+       lens — safe guidance, not just "search". -->
+  <rect x="74" y="74" width="46" height="18" rx="9" transform="rotate(45 74 74)" fill="#8a6a3c" stroke="#232838" stroke-width="5"/>
+  <circle cx="52" cy="52" r="32" fill="#cfe9ff" stroke="#232838" stroke-width="6"/>
+  <circle cx="52" cy="52" r="24" fill="#e8f5ff"/>
+  <path d="M32 40 A24 24 0 0 1 50 29" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" opacity="0.9"/>
+  <path d="M40 53 L49 62 L66 42" fill="none" stroke="#37a04a" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
