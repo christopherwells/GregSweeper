@@ -238,6 +238,12 @@
             }
           }
         },
+        "lastSeen": {
+          ".validate": "newData.hasChildren(['codeVersion', 'at'])",
+          "codeVersion": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 32" },
+          "at": { ".validate": "newData.val() === now" },
+          "$other": { ".validate": false }
+        },
         "$other": {
           ".validate": false
         }

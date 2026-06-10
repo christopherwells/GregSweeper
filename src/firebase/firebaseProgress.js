@@ -209,6 +209,10 @@ function _handleAuthChange(snap) {
   // account they sign into (this is what recovers Kate's offline days).
   flushPendingDailyHistory().catch(err => reportCaughtError('flush-daily-history', err));
 
+  // Stale-client beacon: if the SW already reported its codeVersion
+  // before auth settled, the deferred write fires now.
+  _tryWriteLastSeen();
+
   _notifyUidChange(newUid, oldUid, isInitial);
 }
 
@@ -318,6 +322,32 @@ export function saveProgress({ maxCheckpoint, dailyStreak, bestDailyStreak, last
   _db.ref('users/' + _uid).update(data).catch(err => {
     console.warn('Cloud progress save failed:', err.message);
   });
+}
+
+// ── Stale-client beacon ───────────────────────────────
+// users/{uid}/lastSeen = { codeVersion, at } written once per session.
+// Server-side visibility into which build each player's device is
+// actually running — the Sebastien incident (device stuck on v1.5.162
+// for days because its SW update fetch kept failing) was only
+// diagnosable by spelunking captured errors. With the beacon, the
+// inspect-user-record workflow shows the stuck version directly.
+let _lastSeenWritten = false;
+let _lastSeenVersion = null;
+
+export function reportClientSeen(codeVersion) {
+  if (isTestEnvironment()) return;
+  if (typeof codeVersion === 'string' && codeVersion) _lastSeenVersion = codeVersion;
+  _tryWriteLastSeen();
+}
+
+function _tryWriteLastSeen() {
+  if (_lastSeenWritten || !_lastSeenVersion || !_ready || !_uid) return;
+  _lastSeenWritten = true;
+  _db.ref('users/' + _uid + '/lastSeen')
+    .set({ codeVersion: _lastSeenVersion.slice(0, 32), at: _serverTimestamp() })
+    .catch(err => {
+      console.warn('lastSeen beacon failed:', err && err.message);
+    });
 }
 
 // dailyHistory's rule requires `submittedAt === now`, satisfied only by
