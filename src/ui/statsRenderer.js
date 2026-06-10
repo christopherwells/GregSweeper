@@ -185,7 +185,7 @@ function renderHandicapTrajectory(plays) {
     });
   }
   const svg = lineChart(cumulative, {
-    ariaLabel: 'Handicap trajectory — career average and last-10-play rolling',
+    ariaLabel: 'Handicap trajectory: career average and last-10-play rolling',
     thresholdLine: 0,
     yFormat: v => (v > 0 ? '+' : '') + v + 's',
     dotClassForValue: v => v < -0.5 ? 'chart-dot-good' : v > 0.5 ? 'chart-dot-bad' : 'chart-dot-even',

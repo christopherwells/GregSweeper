@@ -34,8 +34,8 @@ const GIMMICK_DEFS = {
   walls: {
     intro: 11, name: 'Walls', icon: '🧱',
     desc: 'Impassable wall edges block adjacency between cells.',
-    longDesc: 'Walls appear as thick borders between cells. Numbers on either side of a wall don\'t count mines across it. Treat walls like the edge of the board — they split the grid into sections.',
-    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed" style="border-right:3px solid #8B7355">1</div><div class="ge-cell revealed" style="border-left:3px solid #8B7355">0</div><div class="ge-cell revealed">0</div><div class="ge-cell revealed" style="border-right:3px solid #8B7355">1</div><div class="ge-cell revealed" style="border-left:3px solid #8B7355">0</div><div class="ge-cell revealed">0</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">0</div></div><div class="ge-caption">Thick borders = walls — numbers ignore neighbors across them</div>',
+    longDesc: 'Walls appear as thick borders between cells. Numbers on either side of a wall don\'t count mines across it. Treat walls like the edge of the board: they split the grid into sections.',
+    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed" style="border-right:3px solid #8B7355">1</div><div class="ge-cell revealed" style="border-left:3px solid #8B7355">0</div><div class="ge-cell revealed">0</div><div class="ge-cell revealed" style="border-right:3px solid #8B7355">1</div><div class="ge-cell revealed" style="border-left:3px solid #8B7355">0</div><div class="ge-cell revealed">0</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">0</div></div><div class="ge-caption">Thick borders are walls. Numbers ignore neighbors across them</div>',
   },
   liar: {
     intro: 21, name: 'Liar Cells', icon: '🤥',
@@ -46,26 +46,26 @@ const GIMMICK_DEFS = {
   mystery: {
     intro: 31, name: 'Mystery Cells', icon: '❓',
     desc: 'Some numbered cells show "?" instead of their value.',
-    longDesc: 'Certain safe cells hide their number behind a "?" symbol. You must deduce their value from surrounding clues. The cell is safe — it just won\'t tell you its count.',
-    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-mystery">?</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">0</div></div><div class="ge-caption">The "?" hides a number — use neighbors to figure it out</div>',
+    longDesc: 'Certain safe cells hide their number behind a "?" symbol. You must deduce their value from surrounding clues. The cell is safe, it just won\'t tell you its count.',
+    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-mystery">?</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">0</div></div><div class="ge-caption">The "?" hides a number. Use neighbors to figure it out</div>',
   },
   mineShift: {
     intro: 41, name: 'Mine Shift', icon: '💨', chaosOnly: true,
     desc: 'Every 30\u201345s, unflagged mines may shift to adjacent cells. Flagged mines stay put!',
-    longDesc: 'Mines that you haven\'t flagged will periodically move to a neighboring cell. Numbers update to reflect new positions. Flag mines quickly to pin them in place — flagged mines never move.',
-    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell unrevealed"></div><div class="ge-cell unrevealed ge-mine-shift">💣➜</div><div class="ge-cell unrevealed ge-mine-dest"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">0</div></div><div class="ge-caption">Unflagged mines drift — flag them to pin them down!</div>',
+    longDesc: 'Mines that you haven\'t flagged will periodically move to a neighboring cell. Numbers update to reflect new positions. Flag mines quickly to pin them in place. Flagged mines never move.',
+    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell unrevealed"></div><div class="ge-cell unrevealed ge-mine-shift">💣➜</div><div class="ge-cell unrevealed ge-mine-dest"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">0</div></div><div class="ge-caption">Unflagged mines drift. Flag them to pin them down!</div>',
   },
   locked: {
     intro: 41, name: 'Locked Cells', icon: '🔒',
     desc: 'Locked cells can\'t be opened until all safe neighbors are revealed.',
-    longDesc: 'Cells with a lock icon cannot be clicked or flagged until every safe surrounding cell has been revealed. Locked cells may contain mines — be careful when they unlock! Work around them first, then come back once the area is clear.',
+    longDesc: 'Cells with a lock icon cannot be clicked or flagged until every safe surrounding cell has been revealed. Locked cells may contain mines, so be careful when they unlock! Work around them first, then come back once the area is clear.',
     exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed ge-locked">🔒</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div></div><div class="ge-caption">Reveal all safe neighbors before the locked cell opens</div>',
   },
   wormhole: {
     intro: 51, name: 'Wormholes', icon: '🌀',
     desc: 'Paired cells share information \u2014 each shows the SUM of both cells\' real neighbor counts.',
     longDesc: 'Two cells linked by a wormhole both display the combined total of their individual mine counts. If cell A has 1 mine neighbor and cell B has 2, both show 3. Linked cells share the same colored background tint (amber, magenta, or green) so you can spot the pair. Use surrounding cells to split the sum.',
-    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(5,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed" style="background:rgba(255,140,0,0.35)">3</div><div class="ge-cell revealed">1</div><div class="ge-cell revealed" style="background:rgba(255,140,0,0.35)">3</div><div class="ge-cell revealed">2</div></div><div class="ge-caption">The two amber-tinted cells share a sum of 3 (really 1+2) — split it using their neighbors</div>',
+    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(5,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed" style="background:rgba(255,140,0,0.35)">3</div><div class="ge-cell revealed">1</div><div class="ge-cell revealed" style="background:rgba(255,140,0,0.35)">3</div><div class="ge-cell revealed">2</div></div><div class="ge-caption">The two amber-tinted cells share a sum of 3 (really 1+2). Split it using their neighbors</div>',
   },
   mirror: {
     intro: 61, name: 'Mirror Cells', icon: '🪞',

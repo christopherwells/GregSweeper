@@ -42,7 +42,7 @@ export function renderDailyHistoryChart(entries, opts = {}) {
   if (!entries || entries.length === 0) {
     const empty = document.createElement('div');
     empty.className = 'daily-history-empty';
-    empty.textContent = 'No daily history yet — play a daily to start your timeline.';
+    empty.textContent = 'No daily history yet. Play a daily to start your timeline.';
     return empty;
   }
 

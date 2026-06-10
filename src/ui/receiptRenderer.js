@@ -81,7 +81,7 @@ export function handleInterrogateTap(row, col) {
     showToast(`💣 This mine was catchable. ${mineHit.why || 'The highlighted clues pin it down.'}`, 4200);
     _pulseSources(mineHit.sources);
   } else {
-    showToast('🤷 Not knowable at that point — the numbers didn’t reach this square yet', 2800);
+    showToast('🤷 Not knowable at that point. The numbers had not reached this square yet', 2800);
   }
   return true;
 }
@@ -105,20 +105,28 @@ export function handleInterrogateTap(row, col) {
 // hinted plays or the Lens quietly corrupts the model.
 export function handleLensRequest() {
   if (state.status !== 'playing') {
-    showToast('🔍 The lens works mid-game — start revealing first', 2200);
+    showToast('🔍 The lens works mid-game. Start revealing first', 2200);
     return;
   }
   try {
     const flagCheck = detectWrongFlags(state.board);
     if (flagCheck.wrongFlags.length > 0 || flagCheck.contradiction) {
       recordHintEvent('flag-warning');
-      showToast('🚩 One of your flags doesn’t add up — a number near it can’t be satisfied. Re-check your flags first.', 3600);
+      showToast('🚩 One of your flags does not add up: a number near it cannot be satisfied. Re-check your flags first.', 3600);
       return;
     }
     const frontier = findDeducibleFrontier(state.board, { respectFlags: false });
-    const next = frontier.safe.find(s => !state.board[s.row][s.col].isFlagged)
-      || frontier.safe[0]
-      || frontier.mines[0];
+    // Teach the SIMPLEST available step, not the first-found one: pick
+    // the lowest-tier deduction across safes and mines (tie → safe).
+    // Without this, a board with a plain 1-1 available could hint the
+    // whole-region enumeration instead.
+    const lowest = (list) => list.reduce((best, d) => (!best || d.tier < best.tier ? d : best), null);
+    const bestSafe = lowest(frontier.safe.filter(s => !state.board[s.row][s.col].isFlagged))
+      || lowest(frontier.safe);
+    const bestMine = lowest(frontier.mines);
+    const next = bestSafe && bestMine
+      ? (bestSafe.tier <= bestMine.tier ? bestSafe : bestMine)
+      : (bestSafe || bestMine);
     if (!next) {
       // An empty frontier is NOT broken-board evidence by itself: the
       // no-guess certificate runs from the marked start cell, and a
@@ -146,23 +154,23 @@ export function handleLensRequest() {
       if (startCell) {
         recordHintEvent('region');
         _pulseSources([startCell]);
-        showToast('🔍 Nothing can be worked out from here yet — the highlighted square is the guaranteed-safe start. Begin there.', 3800);
+        showToast('🔍 Nothing can be worked out from here yet. The highlighted square is the guaranteed safe start, so begin there.', 3800);
       } else if (state.gameMode === 'daily' || state.gameMode === 'weekly') {
-        showToast('🤔 Nothing can be worked out from here — that shouldn’t happen on this board', 3200);
+        showToast('🤔 Nothing can be worked out from here. That should not happen on this board', 3200);
         reportCaughtError('lens-empty-frontier', new Error(`mode=${state.gameMode} seed=${state.dailyRngSeed || ''}`));
       } else {
-        showToast('🔍 Nothing can be worked out from this position right now — sometimes you have to open more board first', 3400);
+        showToast('🔍 Nothing can be worked out from this position. The provable path runs through squares you have not opened yet', 3400);
       }
       return;
     }
     recordHintEvent('region');
     _pulseSources(next.sources);
-    const isMineDeduction = !frontier.safe.includes(next);
+    const isMineDeduction = next === bestMine && next !== bestSafe;
     const ask = explainDeduction(state.board, next, {
       style: 'socratic',
       kind: isMineDeduction ? 'mine' : 'safe',
     });
-    showToast(`🔍 ${ask || 'The highlighted clues hold the next step — compare what they claim.'}`, 4200);
+    showToast(`🔍 ${ask || 'The highlighted clues hold the next step. Compare what they claim.'}`, 4200);
   } catch (err) {
     reportCaughtError('lens-request', err);
   }
@@ -181,7 +189,12 @@ export function bombStrikeVerdict(board, strikeRow, strikeCol) {
   }
   if (f.safe.length > 0) {
     const n = f.safe.length;
-    return { text: `This one wasn't knowable, but ${n} safe square${n !== 1 ? 's were' : ' was'} still findable elsewhere`, avoidable: true };
+    return { text: `This one was not knowable, but ${n} safe square${n !== 1 ? 's were' : ' was'} still findable elsewhere`, avoidable: true };
   }
-  return { text: 'Nothing on the board could have told you — a fair gamble', avoidable: false };
+  // Nothing was knowable from the squares the player had open. On a
+  // certified board that NEVER means a forced 50/50: the knowable path
+  // exists from the marked start and stays available. The honest read
+  // is that the player moved past it, so the copy must not absolve the
+  // click as "a fair gamble".
+  return { text: 'Nothing you had open could settle this square. The knowable path was elsewhere on the board', avoidable: false };
 }

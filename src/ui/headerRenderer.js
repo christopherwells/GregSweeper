@@ -94,7 +94,7 @@ function _explainGimmickChip(target) {
   const def = getGimmickDef(chip.dataset.gimmick);
   if (!def) return;
   import('./toastManager.js').then(m => {
-    m.showToast(`${def.icon} ${def.name} — ${def.desc || ''}`, 4500);
+    m.showToast(`${def.icon} ${def.name}: ${def.desc || ''}`, 4500);
   });
 }
 const _gimmickIconsEl = document.getElementById('active-gimmick-icons');

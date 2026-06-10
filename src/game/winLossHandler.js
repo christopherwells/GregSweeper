@@ -63,7 +63,7 @@ function showAchievementToasts(unlocks) {
     toast.querySelector('.achievement-toast-icon').textContent = unlock.categoryIcon;
     toast.querySelector('.achievement-toast-title').textContent = 'Achievement Unlocked!';
     toast.querySelector('.achievement-toast-name').textContent =
-      `${unlock.category} — ${unlock.tier.charAt(0).toUpperCase() + unlock.tier.slice(1)} ${unlock.tierIcon}`;
+      `${unlock.category} · ${unlock.tier.charAt(0).toUpperCase() + unlock.tier.slice(1)} ${unlock.tierIcon}`;
     toast.classList.remove('hidden', 'hiding');
 
     setTimeout(() => {
@@ -176,6 +176,7 @@ function _renderWinReceipt() {
   const el = $('#gameover-receipt');
   if (!el) return;
   el.classList.add('hidden');
+  el.onclick = null;
   const board = state.board;
   const rows = state.rows, cols = state.cols;
   const fr = Math.floor(rows / 2), fc = Math.floor(cols / 2);
@@ -186,14 +187,21 @@ function _renderWinReceipt() {
       // wipe cell.isRevealed on the live, fully-revealed board).
       const traced = isBoardSolvable(board, rows, cols, fr, fc, undefined, { trace: true });
       const parts = [];
+      let cruxJump = null;
       if (traced.solvable && Array.isArray(traced.trace)) {
         const crux = traced.trace.find(e => e.tier >= 1);
         if (crux) {
-          const r = Math.floor(crux.cell / cols) + 1;
-          const c = (crux.cell % cols) + 1;
-          parts.push(`Hardest step: row ${r}, col ${c} — the first square that took ${TIER_PHRASE[crux.tier] || 'real thought'}`);
+          // Coordinates mean nothing to a player; take them THERE
+          // instead. Tapping the line hides the modal, pulses the crux
+          // square and the clues that prove it, then brings the modal
+          // back.
+          parts.push(`Hardest step: the first square that took ${TIER_PHRASE[crux.tier] || 'real thought'} (tap to see it)`);
+          cruxJump = {
+            cell: { row: Math.floor(crux.cell / cols), col: crux.cell % cols },
+            sources: (crux.sources || []).map(i => ({ row: Math.floor(i / cols), col: i % cols })),
+          };
         } else {
-          parts.push('Every square here fell to plain counting — a breather board');
+          parts.push('Every square here fell to plain counting. A breather board');
         }
       }
       const testable = (state.activeGimmicks || [])
@@ -213,6 +221,26 @@ function _renderWinReceipt() {
       }
       if (parts.length > 0) {
         el.textContent = parts.join(' · ');
+        el.classList.toggle('gameover-receipt-tappable', !!cruxJump);
+        if (cruxJump) {
+          el.onclick = () => {
+            // Show, don't tell: drop the modal, light the crux square
+            // and its proving clues on the real board, then bring the
+            // results back.
+            hideModal('gameover-overlay');
+            const els = [];
+            const mark = (pos, cls) => {
+              const cellEl = boardEl.children[pos.row * cols + pos.col];
+              if (cellEl) { cellEl.classList.add(cls); els.push([cellEl, cls]); }
+            };
+            mark(cruxJump.cell, 'receipt-crux');
+            for (const s of cruxJump.sources) mark(s, 'receipt-source-pulse');
+            setTimeout(() => {
+              for (const [cellEl, cls] of els) cellEl.classList.remove(cls);
+              showModal('gameover-overlay');
+            }, 3200);
+          };
+        }
         el.classList.remove('hidden');
       }
     } catch (err) {
@@ -460,7 +488,7 @@ export function handleWin() {
   if (state.gameMode === 'timed') {
     const precise = state.preciseTime || state.elapsedTime;
     const rating = getSpeedRating(state.currentLevel, precise);
-    gameoverTime.textContent = `Time: ${precise.toFixed(1)}s — ${rating.icon} ${rating.name}!`;
+    gameoverTime.textContent = `Time: ${precise.toFixed(1)}s · ${rating.icon} ${rating.name}!`;
     if (parEl && state.timedPar > 0) {
       const tDelta = precise - state.timedPar;
       const tAbs = Math.abs(tDelta).toFixed(1);
@@ -656,7 +684,7 @@ export function handleWin() {
 
     let summary;
     if (priorBest == null) {
-      summary = `<span class="par-even">First attempt this week — set the bar at ${precise.toFixed(1)}s.</span>`;
+      summary = `<span class="par-even">First attempt this week. You set the bar at ${precise.toFixed(1)}s.</span>`;
     } else if (precise < priorBest) {
       const delta = (priorBest - precise).toFixed(1);
       summary = `<span class="par-under">${delta}s faster than your best</span> · new best ${newBest.toFixed(1)}s`;
@@ -843,8 +871,8 @@ export function handleWin() {
         // unconditionally, so an offline player thought their score
         // uploaded when it had only been queued — that's how Kate
         // believed she'd posted scores that never reached the board.
-        showToast(ok ? '✅ Score submitted!' : '📡 Saved — uploads when you reconnect');
-      }).catch(() => showToast('📡 Saved — uploads when you reconnect'));
+        showToast(ok ? '✅ Score submitted!' : '📡 Saved. Uploads when you reconnect');
+      }).catch(() => showToast('📡 Saved. Uploads when you reconnect'));
       // Per-user daily-history timeline feeds the leaderboard-modal chart.
       // Skip for practice dailies — they play on a custom seed and don't
       // belong on the player's regular history timeline. Durable: queues
@@ -1076,9 +1104,16 @@ export function handleLoss(mineRow, mineCol) {
     const flagNote = wrongFlagCount > 0
       ? `${wrongFlagCount} wrong flag${wrongFlagCount > 1 ? 's' : ''} · ` : '';
     if (n > 0) {
-      analysisText.textContent = `${flagNote}${n} square${n !== 1 ? 's' : ''} could still be worked out safely — tap any square to see how`;
+      analysisText.textContent = `${flagNote}${n} square${n !== 1 ? 's' : ''} could still be worked out safely. Tap any square to see how`;
+    } else if (state.gameMode === 'chaos') {
+      analysisText.textContent = `${flagNote}Chaos boards carry no guarantees. Out here, sometimes there is no safe move`;
     } else {
-      analysisText.textContent = `${flagNote}No safe move could be worked out from here — this one wasn't on you`;
+      // An empty frontier at death on a certified board never means a
+      // forced 50/50: if the player had only ever clicked knowable
+      // squares, a knowable square would still exist. Reaching this
+      // state means an earlier click already left the provable path,
+      // so the copy must not absolve it as bad luck.
+      analysisText.textContent = `${flagNote}Nothing you had open could prove a safe square here. The provable path was left behind earlier`;
     }
     analysisEl.classList.remove('hidden');
   }
