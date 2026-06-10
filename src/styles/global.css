@@ -570,6 +570,17 @@ body::before {
   font-size: 18px;
 }
 
+/* Drawn sprite variants track their container's font-size, so every
+   existing breakpoint (mode cards 32/28/24/22px, power-ups 18/14px)
+   keeps working — a 1.25em square sits where the emoji glyph sat. */
+.powerup-img,
+.mode-card-img {
+  width: 1.25em;
+  height: 1.25em;
+  display: inline-block;
+  vertical-align: -0.2em;
+}
+
 .powerup-count {
   font-weight: 700;
   font-size: 13px;

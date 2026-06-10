@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Magnet: horseshoe pulling a small mine — the power relocates
+       mines, so show one mid-pull. -->
+  <path d="M34 16 L58 16 L58 56 C58 64 70 64 70 56 L70 16 L94 16 L94 58 C94 80 78 94 64 94 C50 94 34 80 34 58 Z"
+        fill="#e4453a" stroke="#232838" stroke-width="6" stroke-linejoin="round"/>
+  <rect x="34" y="16" width="24" height="16" fill="#d9dde6" stroke="#232838" stroke-width="6"/>
+  <rect x="70" y="16" width="24" height="16" fill="#d9dde6" stroke="#232838" stroke-width="6"/>
+  <path d="M44 42 L48 42 M80 42 L84 42" stroke="#a82e24" stroke-width="4" stroke-linecap="round"/>
+  <!-- Field lines reaching for the mine -->
+  <g stroke="#7aa6e8" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.9">
+    <path d="M46 100 C52 106 58 108 64 108"/>
+    <path d="M40 108 C50 116 60 118 68 117"/>
+  </g>
+  <!-- The mine being pulled -->
+  <g stroke="#232838" stroke-width="4">
+    <circle cx="92" cy="108" r="10" fill="#2c3142"/>
+    <path d="M92 94 L92 98 M92 118 L92 122 M78 108 L82 108 M102 108 L106 108" stroke-linecap="round"/>
+  </g>
+</svg>

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<!--
+  Sprite evaluation gallery — every drawn sprite next to the emoji slot
+  it replaces, at the sizes it actually renders in-app. Open via the
+  local server (python -m http.server 8080 →
+  http://localhost:8080/scripts/sprite-gallery.html) or on a deploy at
+  /scripts/sprite-gallery.html. Judge silhouettes at the SMALL sizes:
+  that is where these live.
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<title>Sprite gallery</title>
+<style>
+  body { font: 14px/1.5 system-ui, sans-serif; background: #1d2030; color: #e8eaf2; padding: 24px; }
+  h1 { font-size: 20px; } h2 { font-size: 16px; margin-top: 28px; color: #9fb0d8; }
+  table { border-collapse: collapse; }
+  td, th { padding: 10px 16px; border-bottom: 1px solid #323850; text-align: center; vertical-align: middle; }
+  th { color: #9fb0d8; font-weight: 600; font-size: 12px; }
+  td.name { text-align: left; font-weight: 600; }
+  .emoji-lg { font-size: 48px; } .emoji-md { font-size: 28px; } .emoji-sm { font-size: 16px; }
+  img { vertical-align: middle; image-rendering: auto; }
+  .on-light { background: #e8e2d4; border-radius: 8px; padding: 6px; }
+</style>
+</head>
+<body>
+<h1>GregSweeper drawn sprites — evaluation gallery</h1>
+<p>Each row: the emoji it replaces, then the sprite at large / in-app / small sizes, then on a light tile background. Mode cards and power-ups are already wired in-app; medals wait for approval before the inline call sites adopt them.</p>
+<div id="out"></div>
+<script>
+const SETS = [
+  { title: 'Tier 3 — Mode cards (in-app: title screen, 22-32px)', rows: [
+    ['⛏️', 'Challenge', 'mode-challenge'],
+    ['⏱️', 'Quick Play', 'mode-quickplay'],
+    ['📅', 'Daily', 'mode-daily'],
+    ['🏁', 'Weekly', 'mode-weekly'],
+    ['🌀', 'Chaos', 'mode-chaos'],
+  ]},
+  { title: 'Tier 4 — Power-ups (in-app: power-up bar, 14-18px)', rows: [
+    ['🔍', 'Reveal Safe', 'pow-revealsafe'],
+    ['🛡️', 'Shield', 'pow-shield'],
+    ['🎯', 'Scan', 'pow-scan'],
+    ['❤️', 'Lifeline', 'pow-lifeline'],
+    ['🧲', 'Magnet', 'pow-magnet'],
+    ['🔬', 'X-Ray', 'pow-xray'],
+  ]},
+  { title: 'Tier 5 — Speed medals (game-over line, leaderboards, achievement tiers)', rows: [
+    ['💎', 'Diamond', 'medal-diamond'],
+    ['🥇', 'Gold', 'medal-gold'],
+    ['🥈', 'Silver', 'medal-silver'],
+    ['🥉', 'Bronze', 'medal-bronze'],
+  ]},
+];
+const out = document.getElementById('out');
+for (const set of SETS) {
+  const h = document.createElement('h2');
+  h.textContent = set.title;
+  out.appendChild(h);
+  const t = document.createElement('table');
+  t.innerHTML = '<tr><th>Emoji slot</th><th>Name</th><th>96px</th><th>32px (in-app)</th><th>16px (inline)</th><th>On light tile</th></tr>' +
+    set.rows.map(([emoji, name, slug]) => {
+      const src = '../assets/sprites/' + slug + '.svg';
+      return `<tr>
+        <td class="emoji-md">${emoji}</td>
+        <td class="name">${name}</td>
+        <td><img src="${src}" width="96" height="96"></td>
+        <td><img src="${src}" width="32" height="32"></td>
+        <td><img src="${src}" width="16" height="16"></td>
+        <td class="on-light"><img src="${src}" width="40" height="40"></td>
+      </tr>`;
+    }).join('');
+  out.appendChild(t);
+}
+</script>
+</body>
+</html>
