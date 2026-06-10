@@ -193,6 +193,16 @@ function selectBestCandidate(dateString, spec) {
       bestMission = missionForSlot(spec, 0);
     }
   }
+  // HARD GATE: never write an uncertified canonical. buildOneCandidate
+  // returns its last attempt even when all attempts failed, so the
+  // fallback path above could hand us an unsolvable board — written as
+  // canonical, that would break the no-guess contract for every player
+  // on this date. Failing the workflow is the correct outcome: the
+  // first client of the day falls back to (now-verified) local
+  // generation instead.
+  if (!best.check || !(best.check.solvable || best.check.remainingUnknowns === 0)) {
+    throw new Error(`No solvable board found for ${dateString} — refusing to write an uncertified canonical`);
+  }
   return { ...best, rngSeed: bestSeed, mission: bestMission };
 }
 

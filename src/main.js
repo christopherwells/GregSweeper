@@ -2066,9 +2066,11 @@ function updateTitleProgress() {
       const bestRun = chaosStats?.bestRun || 0;
       const totalRuns = chaosStats?.totalRuns || 0;
       if (chaosEl) {
+        // "No guarantees" is the honest label: chaos is the one mode
+        // outside the no-guess contract (unverified boards, moving mines).
         chaosEl.textContent = totalRuns > 0
-          ? `Best: ${bestRun} board${bestRun !== 1 ? 's' : ''} · ${totalRuns} run${totalRuns !== 1 ? 's' : ''}`
-          : 'Roguelike madness';
+          ? `Best: ${bestRun} board${bestRun !== 1 ? 's' : ''} · ${totalRuns} run${totalRuns !== 1 ? 's' : ''} · No guarantees`
+          : 'Roguelike madness · No guarantees';
       }
     } else {
       chaosCard.style.display = 'none';

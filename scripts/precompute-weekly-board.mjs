@@ -85,6 +85,12 @@ function selectBestCandidate(weekStart) {
     best = cand;
     bestSeed = weekStart;
   }
+  // HARD GATE: never write an uncertified canonical (buildOneCandidate
+  // returns its last attempt even on exhaustion). Failing the workflow
+  // is correct — Monday's first client falls back to verified local gen.
+  if (!best.check || !(best.check.solvable || best.check.remainingUnknowns === 0)) {
+    throw new Error(`No solvable weekly board found for ${weekStart} — refusing to write an uncertified canonical`);
+  }
   return { ...best, rngSeed: bestSeed };
 }
 
