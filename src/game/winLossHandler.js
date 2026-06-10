@@ -167,9 +167,9 @@ function _renderWinModalHistoryDots(todayDate) {
 // player reasoned. Runs async after the modal shows (two solver runs
 // ≈ tens of ms on a phone; the modal must feel instant).
 const TIER_PHRASE = {
-  1: 'a pattern deduction',
-  2: 'a search solve',
-  3: 'liar reasoning',
+  1: 'comparing two clues',
+  2: 'weighing a whole region at once',
+  3: 'seeing through the liar',
 };
 
 function _renderWinReceipt() {
@@ -191,9 +191,9 @@ function _renderWinReceipt() {
         if (crux) {
           const r = Math.floor(crux.cell / cols) + 1;
           const c = (crux.cell % cols) + 1;
-          parts.push(`Crux: ${TIER_PHRASE[crux.tier] || 'a deduction'} at row ${r}, column ${c}`);
+          parts.push(`Hardest step: row ${r}, col ${c} — the first square that took ${TIER_PHRASE[crux.tier] || 'real thought'}`);
         } else {
-          parts.push('No crux — this board fell to pure propagation');
+          parts.push('Every square here fell to plain counting — a breather board');
         }
       }
       const testable = (state.activeGimmicks || [])
@@ -202,13 +202,13 @@ function _renderWinReceipt() {
         const g = testable[0];
         const grade = gradeGimmickContribution(board, rows, cols, fr, fc, g);
         if (grade.tier === 'required') {
-          parts.push(`the ${g} was required — without it, no solution`);
+          parts.push(`without the ${g}, this board had no solution`);
         } else if (grade.tier === 'technique') {
-          parts.push(`the ${g} spared you ${TIER_PHRASE[grade.to] || 'harder reasoning'}`);
+          parts.push(`the ${g} spared you ${TIER_PHRASE[grade.to] || 'harder thinking'}`);
         } else if (grade.tier === 'shortcut') {
-          parts.push(`the ${g} saved ${grade.clicksSaved} clicks`);
+          parts.push(`the ${g} saved you ${grade.clicksSaved} clicks`);
         } else if (grade.tier === 'decorative') {
-          parts.push(`the ${g} was a free hint this time`);
+          parts.push(`the ${g} was a free extra clue this time`);
         }
       }
       if (parts.length > 0) {
@@ -1076,9 +1076,9 @@ export function handleLoss(mineRow, mineCol) {
     const flagNote = wrongFlagCount > 0
       ? `${wrongFlagCount} wrong flag${wrongFlagCount > 1 ? 's' : ''} · ` : '';
     if (n > 0) {
-      analysisText.textContent = `${flagNote}${n} cell${n !== 1 ? 's were' : ' was'} provably safe — tap cells to see the proof`;
+      analysisText.textContent = `${flagNote}${n} square${n !== 1 ? 's' : ''} could still be worked out safely — tap any square to see how`;
     } else {
-      analysisText.textContent = `${flagNote}Genuine 50/50 — no cell was provable`;
+      analysisText.textContent = `${flagNote}No safe move could be worked out from here — this one wasn't on you`;
     }
     analysisEl.classList.remove('hidden');
   }
