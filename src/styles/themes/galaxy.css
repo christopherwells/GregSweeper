@@ -93,8 +93,9 @@
   --shadow-achievement-unlocked: 0 0 10px rgba(208, 80, 255, 0.1);
 
   /* ── Theme-expression layer ─────────────────────────── */
-  /* Floaty, drifting cosmic motion (slower than default, eased). */
-  --anim-reveal-dur: 0.4s;
+  /* Floaty, drifting cosmic motion (slower than default, eased) —
+     0.45s gives the starbirth flare room to flare AND settle. */
+  --anim-reveal-dur: 0.45s;
   --anim-reveal-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --anim-flag-dur: 0.45s;
   --anim-flag-ease: cubic-bezier(0.22, 1, 0.36, 1);
@@ -177,11 +178,17 @@
   overflow: hidden;
 }
 
-/* Reveal moment: a star twinkling in. */
+/* Reveal moment: starbirth — the tile ignites from a point, flares
+   with a blue-white halo past full size, then breathes back down as
+   the flash decays. The slight rotation makes it read as matter
+   condensing rather than a UI pop. */
 [data-theme="galaxy"] .cell.num-pop,
 [data-theme="galaxy"] .cell.revealing {
-  animation-name: galaxyTwinkle;
+  animation-name: galaxyStarbirth;
 }
-@keyframes galaxyTwinkle {
-  0%{opacity:0;transform:scale(0.5);filter:brightness(2)}60%{opacity:1;transform:scale(1.1)}100%{opacity:1;transform:scale(1);filter:brightness(1)}
+@keyframes galaxyStarbirth {
+  0%   { opacity: 0; transform: scale(0.15) rotate(-12deg); filter: brightness(3); }
+  40%  { opacity: 1; transform: scale(1.16) rotate(3deg); box-shadow: 0 0 16px rgba(180,200,255,0.5), 0 0 4px rgba(255,255,255,0.7); }
+  70%  { transform: scale(0.97) rotate(-1deg); box-shadow: 0 0 7px rgba(180,200,255,0.22); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); filter: brightness(1); box-shadow: 0 0 0 rgba(180,200,255,0); }
 }
