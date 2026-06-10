@@ -59,6 +59,13 @@ export function createEmptyBoard(rows, cols) {
     }
     board.push(row);
   }
+  // Reveal-gated certification contract: every board created by this
+  // code certifies with sonar / compass / wormhole constraints gated on
+  // their origin cell being revealed (boardSolver reads this flag as its
+  // default). The flag TRAVELS WITH THE BOARD — serialized into canonical
+  // payloads and game saves — so historical boards certified ungated
+  // (no flag) keep their original contract on every solver surface.
+  board._gatedCert = true;
   return board;
 }
 

@@ -19,6 +19,7 @@ import { createDailyRNG } from '../src/logic/seededRandom.js';
 import { getWeeklyGimmicks, applyGimmicks } from '../src/logic/gimmicks.js';
 import { generateBoard, cleanSolverArtifacts } from '../src/logic/boardGenerator.js';
 import { isBoardSolvable } from '../src/logic/boardSolver.js';
+import { computeDailyFeatures } from '../src/logic/dailyFeatures.js';
 import {
   WEEKLY_MIN_SIZE, WEEKLY_SIZE_RANGE, BOARD_WIDTH_CAP,
   DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE,
@@ -130,6 +131,27 @@ async function writeCanonicalBoard(weekStart, idToken, payload) {
   }
 }
 
+// Write the week's feature vector to dailyMeta/{weekStart}_weekly_first
+// at GENERATION time (the key first-of-week win submissions join
+// against). Same determinism rationale as the daily script: the
+// generator's gated solver counts become canonical before any client —
+// possibly on older code, solving ungated — can upsert its own.
+// Write-once: 401/403 means already written.
+async function writeWeeklyMeta(weekStart, idToken, features) {
+  const url = `${DB_BASE}/dailyMeta/${weekStart}_weekly_first.json?auth=${encodeURIComponent(idToken)}`;
+  const body = JSON.stringify({ features, writtenAt: { '.sv': 'timestamp' } });
+  const r = await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body });
+  if (!r.ok) {
+    if (r.status === 401 || r.status === 403) {
+      console.log('  weekly dailyMeta already written — skipped');
+      return;
+    }
+    const txt = await r.text();
+    throw new Error(`weekly dailyMeta write failed: ${r.status} ${txt}`);
+  }
+  console.log('  weekly dailyMeta written');
+}
+
 (async () => {
   const weekStart = process.argv[2];
   if (!weekStart || !/^\d{4}-\d{2}-\d{2}$/.test(weekStart)) {
@@ -167,6 +189,12 @@ async function writeCanonicalBoard(weekStart, idToken, payload) {
   const idToken = await signInAnonymously();
   await writeCanonicalBoard(weekStart, idToken, payload);
   console.log('  written');
+
+  const features = computeDailyFeatures(
+    { board: cand.board, rows: cand.rows, cols: cand.cols, totalMines: cand.totalMines, activeGimmicks: cand.activeGimmicks },
+    cand.check,
+  );
+  await writeWeeklyMeta(weekStart, idToken, features);
 })().catch(err => {
   console.error('precompute failed:', err.message);
   process.exit(1);
