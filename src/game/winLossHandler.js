@@ -1178,10 +1178,18 @@ export function handleDailyBombHit(mineRow, mineCol) {
   // so the cost reads as principled, not arbitrary.
   const popup = document.createElement('div');
   popup.className = 'daily-bomb-popup';
-  const bombLabel = infoValueRounded < 2  ? '' :
-                    infoValueRounded < 8  ? ' · Minor mine' :
-                    infoValueRounded < 16 ? ' · Key mine' :
-                                           '! Critical mine';
+  // Tier thresholds re-anchored 2026-06-09 for the pooled PAR_MODEL
+  // scale (scripts/reanchor-bomb-tiers.mjs): quantile-matched against the
+  // design-era four-coefficient pricing across all 60 canonical boards
+  // (1,449 mines), so the Minor/Key/Critical label frequencies match what
+  // the original 2/8/16 tuning intended. Key/Critical land at ~3.9%/~2.8%
+  // of mines (designed: 3.6%/2.7%); Minor runs lower than designed
+  // (8.1% vs 10.4%) because Pass-A-anchoring mines price 0 under the
+  // pooled model by design.
+  const bombLabel = infoValueRounded < 2   ? '' :
+                    infoValueRounded < 6.5 ? ' · Minor mine' :
+                    infoValueRounded < 13  ? ' · Key mine' :
+                                            '! Critical mine';
   popup.innerHTML = `<div class="daily-bomb-popup-content">${spriteImgHTML('strike', 'sprite-popup', 'Mine hit')} <span class="daily-bomb-penalty">+${penalty.toFixed(1)}s${bombLabel}</span></div>`;
   document.getElementById('app').appendChild(popup);
 
