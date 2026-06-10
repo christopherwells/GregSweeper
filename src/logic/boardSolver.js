@@ -511,7 +511,9 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
 //   - walls: changes adjacency topology, cell numbers were computed WITH walls;
 //     stripping would break the board's number coherence. Always structural.
 //   - locked: changes reveal order, not deductions. Always structural.
-//   - pressurePlate / mineShift: chaos-only.
+//   - pressurePlate: challenge L71+ and chaos. It adds a real-time
+//     deadline, not a deduction constraint — the load-bearing question
+//     doesn't apply. mineShift: chaos-only.
 const TESTABLE_GIMMICK_TYPES = ['sonar', 'compass', 'wormhole', 'liar', 'mirror'];
 
 // A gimmick "contributes" to the solve if stripping it does any of:
@@ -797,7 +799,15 @@ export function findDeducibleFrontier(board, opts = {}) {
     for (let c = 0; c < cols; c++) {
       const i = idx(r, c);
       const cell = board[r][c];
-      if (cell.isRevealed) sim[i] = 1;
+      // A revealed MINE (a daily/weekly strike cell, or a loss-cascade
+      // reveal) is a KNOWN MINE, not a revealed-safe cell — model it
+      // like a confirmed flag (sim=2) so neighboring numbers count it.
+      // Modeling it as sim=1 (zero mine contribution) poisons every
+      // adjacent constraint: after one strike the engine would assert
+      // contradictions on flagless boards and certify genuinely safe
+      // cells as "provable mines". This is a FACT, not a player claim,
+      // so it applies in the flags-blind run too.
+      if (cell.isRevealed) sim[i] = cell.isMine ? 2 : 1;
       else if (respectFlags && cell.isFlagged) sim[i] = 2;
       adjCount[i] = getPlayerVisibleCount(cell);
       if (isPureLiar(cell) && cell.displayedMines != null) {

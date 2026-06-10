@@ -409,14 +409,28 @@ export async function newGame() {
         break;
       }
       if (!solvedDaily) {
-        // Strip modifiers and accept the last solvable layout. Better to
-        // ship a plain-Minesweeper daily for one player than to hang the page.
+        // Strip modifiers and generate a plain board — but VERIFY it.
+        // generateBoard's terminal fallback returns its best-effort
+        // (possibly unsolvable) board, and this path writes to Firebase
+        // as the canonical board for every player on this date — the one
+        // place an unverified ship would break the no-guess contract for
+        // everyone at once. Gimmick-free boards at daily density certify
+        // within a try or two; the bound only prevents a hang.
         console.warn('Daily local-gen exhausted retries; stripping modifiers for', state.dailyRngSeed);
         state.activeGimmicks = [];
         state.gimmickData = {};
-        const stripRng = createDailyRNG(state.dailyRngSeed + '-strip-final');
-        state.board = generateBoard(state.rows, state.cols, state.totalMines, fixedRowGen, fixedColGen, stripRng);
-        cleanSolverArtifacts(state.board);
+        let stripCertified = false;
+        for (let sAttempt = 0; sAttempt < 50; sAttempt++) {
+          const stripRng = createDailyRNG(state.dailyRngSeed + '-strip-final-' + sAttempt);
+          state.board = generateBoard(state.rows, state.cols, state.totalMines, fixedRowGen, fixedColGen, stripRng);
+          cleanSolverArtifacts(state.board);
+          const stripCheck = isBoardSolvable(state.board, state.rows, state.cols, fixedRowGen, fixedColGen);
+          cleanSolverArtifacts(state.board);
+          if (stripCheck.solvable || stripCheck.remainingUnknowns === 0) { stripCertified = true; break; }
+        }
+        if (!stripCertified) {
+          reportCaughtError('daily-strip-unverified', new Error(`seed=${state.dailyRngSeed}`));
+        }
       }
 
       // Write our generated board to Firebase. Write-once rules at the
@@ -573,12 +587,24 @@ export async function newGame() {
         break;
       }
       if (!solvedWeekly) {
+        // Same verified-strip discipline as the daily fallback: this
+        // board becomes canonical for the whole week, so it must be
+        // certified, not best-effort.
         console.warn('Weekly local-gen exhausted retries; stripping modifiers for', state.weeklyRngSeed);
         state.activeGimmicks = [];
         state.gimmickData = {};
-        const stripRng = createDailyRNG(state.weeklyRngSeed + '-strip-final');
-        state.board = generateBoard(state.rows, state.cols, state.totalMines, fr, fc, stripRng);
-        cleanSolverArtifacts(state.board);
+        let stripCertified = false;
+        for (let sAttempt = 0; sAttempt < 50; sAttempt++) {
+          const stripRng = createDailyRNG(state.weeklyRngSeed + '-strip-final-' + sAttempt);
+          state.board = generateBoard(state.rows, state.cols, state.totalMines, fr, fc, stripRng);
+          cleanSolverArtifacts(state.board);
+          const stripCheck = isBoardSolvable(state.board, state.rows, state.cols, fr, fc);
+          cleanSolverArtifacts(state.board);
+          if (stripCheck.solvable || stripCheck.remainingUnknowns === 0) { stripCertified = true; break; }
+        }
+        if (!stripCertified) {
+          reportCaughtError('weekly-strip-unverified', new Error(`seed=${state.weeklyRngSeed}`));
+        }
       }
 
       // Write our generated weekly board to Firebase. Write-once rules
@@ -998,6 +1024,11 @@ export function revealCell(row, col) {
       : (state.dailyRngSeed || state.dailySeed);
     const clickedCell = state.board[row][col];
     if (clickedCell.isMine) {
+      // NOTE: relocation MUTATES the canonical board for this player —
+      // their layout diverges from everyone else's and from the features
+      // already computed for par. The no-guess contract is preserved
+      // below by re-certifying the relocated layout from the player's
+      // click; the divergence itself is a known design tension.
       clickedCell.isMine = false;
       const relocRng = createDailyRNG(seed + '-reloc-' + row + '-' + col);
       const candidates = [];
@@ -1009,27 +1040,57 @@ export function revealCell(row, col) {
           }
         }
       }
-      if (candidates.length > 0) {
+      // Try relocation destinations until the relocated board is
+      // certified solvable from the PLAYER'S click (their actual entry
+      // point) — without this, a gimmick-free relocated board shipped
+      // unverified and could contain a genuine 50/50. Bounded: a
+      // candidate set this size virtually always certifies within a few
+      // picks; if every destination fails we keep the least-bad board
+      // and report, rather than hanging the page.
+      const RELOC_VERIFY_ATTEMPTS = Math.min(40, candidates.length);
+      let relocCertified = candidates.length === 0;
+      let lastPick = null;
+      for (let attempt = 0; attempt < RELOC_VERIFY_ATTEMPTS; attempt++) {
+        if (lastPick) state.board[lastPick.r][lastPick.c].isMine = false;
         const pick = candidates[Math.floor(relocRng() * candidates.length)];
         state.board[pick.r][pick.c].isMine = true;
-      }
-      calculateAdjacency(state.board);
-      // Re-apply gimmicks that depend on adjacency (liar, wormhole, mirror)
-      if (state.activeGimmicks.length > 0) {
-        const gimmickApplyRng = createDailyRNG(seed + '-gimmick-apply');
-        state.gimmickData = applyGimmicks(state.board, 1, state.activeGimmicks, gimmickApplyRng);
+        lastPick = pick;
+        calculateAdjacency(state.board);
 
-        // Verify post-relocation solvability — retry gimmick placement if needed
-        for (let rAttempt = 0; ; rAttempt++) {
+        if (state.activeGimmicks.length > 0) {
+          // Re-apply gimmicks that depend on adjacency (liar, wormhole,
+          // mirror) — clearing the prior placements FIRST. Re-applying
+          // over live gimmick properties stacks a second set of modifier
+          // cells on top of the canonical ones (applyGimmicks never
+          // clears), shipping a board with ~double modifiers that
+          // matches neither the canonical nor the submitted features.
+          let gimmickOk = false;
+          const GIMMICK_RETRIES = 25;
+          for (let g = 0; g < GIMMICK_RETRIES; g++) {
+            for (const brow of state.board) for (const c of brow) clearGimmickProperties(c);
+            // First try keeps the canonical wall layout (least divergence);
+            // later retries re-roll walls too, matching the old loop.
+            if (g > 0) state.board._wallEdges = null;
+            calculateAdjacency(state.board);
+            const gRng = createDailyRNG(seed + `-gimmick-reloc-${attempt}-${g}`);
+            state.gimmickData = applyGimmicks(state.board, 1, state.activeGimmicks, gRng);
+            const check = isBoardSolvable(state.board, state.rows, state.cols, row, col);
+            cleanSolverArtifacts(state.board);
+            if (check.solvable || check.remainingUnknowns === 0) { gimmickOk = true; break; }
+          }
+          if (gimmickOk) { relocCertified = true; break; }
+        } else {
           const check = isBoardSolvable(state.board, state.rows, state.cols, row, col);
           cleanSolverArtifacts(state.board);
-          if (check.solvable || check.remainingUnknowns === 0) break;
-          for (const brow of state.board) for (const c of brow) clearGimmickProperties(c);
-          state.board._wallEdges = null;
-          calculateAdjacency(state.board);
-          const retryGimmickRng = createDailyRNG(seed + '-gimmick-retry-' + rAttempt);
-          state.gimmickData = applyGimmicks(state.board, 1, state.activeGimmicks, retryGimmickRng);
+          if (check.solvable || check.remainingUnknowns === 0) { relocCertified = true; break; }
         }
+      }
+      if (!relocCertified && candidates.length > 0) {
+        // Every destination failed certification (statistically ~never).
+        // The board still plays — bombs cost time, not the game — but
+        // the contract is not certified for this layout; make it visible.
+        reportCaughtError('daily-reloc-unverified',
+          new Error(`mode=${state.gameMode} seed=${seed} click=${row},${col}`));
       }
     }
     state.status = 'playing';

@@ -188,3 +188,33 @@ test('frontier is flags-blind on demand: a wrong flag cannot hide a provable ded
   assert.ok(blind.safe.some(s => s.row === 0 && s.col === 2),
     'flags-blind frontier must still prove (0,2) safe');
 });
+
+test('a revealed mine (strike cell) is modeled as a KNOWN MINE, not a revealed-safe cell', () => {
+  // Regression: a daily/weekly strike (mine revealed, isMine preserved)
+  // used to enter the sim as a revealed-SAFE cell with zero mine
+  // contribution, so every adjacent number over-counted its remaining
+  // mines — the engine asserted contradictions on flagless boards and
+  // certified genuinely safe cells as "provable mines", making the Lens
+  // and second-strike verdicts lie. 2x3 board, single mine at (0,1),
+  // struck; (1,0) and (1,2) are safe and must NOT appear as mines.
+  const board = makeBoard(2, 3);
+  board[0][1].isMine = true;
+  recalcAdjacency(board);
+  board[0][0].isRevealed = true;
+  board[0][2].isRevealed = true;
+  board[1][1].isRevealed = true;
+  // The strike: revealed AND still a mine.
+  board[0][1].isRevealed = true;
+  board[0][1].isStrike = true;
+
+  const f = findDeducibleFrontier(board, { respectFlags: false });
+  assert.equal(f.contradiction, false,
+    'no contradiction may be asserted on a flagless post-strike board');
+  assert.ok(!f.mines.some(m => m.row === 1 && (m.col === 0 || m.col === 2)),
+    'safe cells must not be certified as provable mines');
+  // With the struck mine accounted, every number is satisfied — the two
+  // remaining cells are in fact provably safe.
+  const safeKeys = new Set(f.safe.map(s => `${s.row},${s.col}`));
+  assert.ok(safeKeys.has('1,0') && safeKeys.has('1,2'),
+    'the satisfied constraints should prove the remaining cells safe');
+});
