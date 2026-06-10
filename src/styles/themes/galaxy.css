@@ -54,7 +54,7 @@
   --color-accent-glow: rgba(208, 80, 255, 0.35);
   --color-win: #b9f6ca;
   --color-loss: #ff2d78;
-  --color-wall: #7d599e;
+  --color-wall: #8461a3; /* lightened from #7d599e - clears 3.5:1 vs both cell bgs (4.00 / 3.72) */
   --color-surface: rgba(180, 80, 255, 0.05);
 
   --shadow-glow: 0 0 30px rgba(180, 80, 255, 0.12);

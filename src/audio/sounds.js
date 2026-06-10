@@ -1,4 +1,5 @@
 import { safeGet, safeSet, safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js';
+import { state } from '../state/gameState.js';
 // Web Audio API sound engine — no audio files needed
 let audioCtx = null;
 let muted = false;
@@ -52,12 +53,55 @@ function playTone(freq, duration, type = 'square', volume = 0.12) {
   osc.stop(ctx.currentTime + duration);
 }
 
+// ── Per-theme sound palettes ──────────────────────────
+// The audio half of the per-theme objects + moments contract: a theme
+// can re-voice the four highest-frequency moment sounds (reveal, flag,
+// cascade, win) in its own idiom. Everything not overridden falls back
+// to the default synth, so the 23 paletteless themes sound exactly as
+// before. The visual half of each world set the direction: chalk taps
+// on slate, logic-probe blips on copper, bell tones through glass.
+const THEME_SOUND_PALETTES = {
+  chalkboard: {
+    reveal: [{ freq: 340, dur: 0.05, type: 'sine', vol: 0.09 }],
+    flag: [{ freq: 460, dur: 0.07, type: 'sine', vol: 0.1 }, { freq: 540, dur: 0.05, type: 'sine', vol: 0.07, delay: 50 }],
+    cascade: { base: 260, step: 50, type: 'sine' },
+    win: { notes: [392, 494, 587, 784], type: 'sine', dur: 0.25 },
+  },
+  circuitboard: {
+    reveal: [{ freq: 880, dur: 0.03, type: 'square', vol: 0.06 }],
+    flag: [{ freq: 1200, dur: 0.05, type: 'square', vol: 0.07 }, { freq: 1600, dur: 0.04, type: 'square', vol: 0.05, delay: 40 }],
+    cascade: { base: 600, step: 120, type: 'square' },
+    win: { notes: [659, 880, 1175, 1760], type: 'square', dur: 0.12 },
+  },
+  stainedglass: {
+    reveal: [{ freq: 740, dur: 0.12, type: 'triangle', vol: 0.07 }],
+    flag: [{ freq: 988, dur: 0.12, type: 'triangle', vol: 0.08 }, { freq: 1319, dur: 0.1, type: 'triangle', vol: 0.06, delay: 70 }],
+    cascade: { base: 523, step: 88, type: 'triangle' },
+    win: { notes: [523, 659, 784, 1047], type: 'triangle', dur: 0.35 },
+  },
+};
+
+function _palette() {
+  return THEME_SOUND_PALETTES[state && state.theme] || null;
+}
+
+function _playSeq(seq) {
+  for (const t of seq) {
+    if (t.delay) setTimeout(() => playTone(t.freq, t.dur, t.type, t.vol), t.delay);
+    else playTone(t.freq, t.dur, t.type, t.vol);
+  }
+}
+
 export function playReveal() {
+  const p = _palette();
+  if (p && p.reveal) return _playSeq(p.reveal);
   playTone(600, 0.06, 'square', 0.08);
 }
 
 export function playFlag() {
   vibrate(15);
+  const p = _palette();
+  if (p && p.flag) return _playSeq(p.flag);
   playTone(800, 0.08, 'triangle', 0.1);
   setTimeout(() => playTone(1000, 0.06, 'triangle', 0.08), 50);
 }
@@ -88,18 +132,25 @@ export function playExplosion() {
 export function playCascade(count) {
   if (muted) return;
   // Quick ascending blips for flood-fill
+  const p = _palette();
+  const base = p && p.cascade ? p.cascade.base : 400;
+  const step = p && p.cascade ? p.cascade.step : 80;
+  const type = p && p.cascade ? p.cascade.type : 'sine';
   const steps = Math.min(count, 8);
   for (let i = 0; i < steps; i++) {
-    setTimeout(() => playTone(400 + i * 80, 0.04, 'sine', 0.05), i * 30);
+    setTimeout(() => playTone(base + i * step, 0.04, type, 0.05), i * 30);
   }
 }
 
 export function playWin() {
   vibrate([30, 50, 30, 50, 100]);
   if (muted) return;
-  const notes = [523, 659, 784, 1047]; // C5, E5, G5, C6
+  const p = _palette();
+  const notes = p && p.win ? p.win.notes : [523, 659, 784, 1047]; // C5, E5, G5, C6
+  const type = p && p.win ? p.win.type : 'square';
+  const dur = p && p.win ? p.win.dur : 0.2;
   notes.forEach((freq, i) => {
-    setTimeout(() => playTone(freq, 0.2, 'square', 0.1), i * 120);
+    setTimeout(() => playTone(freq, dur, type, 0.1), i * 120);
   });
 }
 

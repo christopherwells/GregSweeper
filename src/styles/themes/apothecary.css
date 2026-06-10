@@ -56,7 +56,8 @@
   --color-accent-glow: rgba(200, 144, 48, 0.3);
   --color-win: #6a9028;
   --color-loss: #b03818;
-  --color-wall: #d8c090;
+  --color-wall: #4a3520; /* dark walnut shelf-edge - contrasts the parchment panes; outline covers the dark fog side */
+  --color-wall-outline: #e0c890; /* lamplit parchment edging for visibility over the dark fog */
   --color-surface: rgba(200, 144, 48, 0.05);
 
   --shadow-app: 0 12px 44px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(232, 192, 96, 0.06);

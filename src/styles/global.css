@@ -226,6 +226,18 @@
   --victory-color: #ffd54f;
   --victory-duration: 3600ms;
 
+  /* ── Receipt moments (reserved) ──
+     Tokens for the deduction-receipt surfaces (proof-region pulse,
+     verdict chip, crux highlight) that the receipts/lens work renders.
+     Reserved in the theme contract NOW so each world can voice these
+     moments in its own idiom from the day they ship, instead of the
+     moments being retrofitted across the catalog later. Defaults are
+     theme-neutral; a world overrides them like any other token. */
+  --receipt-pulse-color: rgba(80, 160, 255, 0.45);
+  --receipt-verdict-bg: rgba(40, 44, 52, 0.92);
+  --receipt-verdict-border: rgba(80, 160, 255, 0.6);
+  --receipt-crux-outline: rgba(255, 200, 60, 0.85);
+
   /* ── Power-up feedback (solid/usage colors tokenized; deep glow alphas
      inside keyframes stay literal — partial by design). ── */
   --pu-shield: #43a047;
@@ -1322,6 +1334,13 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   position: absolute;
   background: var(--color-wall, #c9a96e);
   border-radius: 1px;
+  /* Two-tone wall support: themes whose revealed and hidden cell bgs sit
+     at OPPOSITE luminance extremes (light panes + dark fog — stained
+     glass, apothecary, split-flap) cannot clear the 3.5:1 wall floor
+     against both with any single color. The body covers one side, this
+     outline covers the other. Default transparent so every other theme
+     renders exactly as before. */
+  box-shadow: 0 0 0 1.5px var(--color-wall-outline, transparent);
 }
 .wall-line-h {
   height: 5px;

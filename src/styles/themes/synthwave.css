@@ -83,7 +83,7 @@
   --color-accent-glow: rgba(255, 32, 144, 0.3);
   --color-win: #00ffaa;
   --color-loss: #ff0070;
-  --color-wall: #7e54a5;
+  --color-wall: #8861ac; /* lightened from #7e54a5 - clears 3.5:1 vs both cell bgs (4.11 / 3.70) */
   --color-surface: rgba(170, 68, 255, 0.04);
 
   --bg-app: linear-gradient(180deg, #0e0030, #0a0020);

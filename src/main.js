@@ -3152,7 +3152,11 @@ async function init() {
   const unlocked = getUnlockedThemes();
 
   let activeTheme = theme;
-  if (unlocked[theme] === false) {
+  // Guard BOTH not-yet-unlocked and no-longer-existing themes. A saved
+  // theme that was cut from the catalog (the 2026-06 trim to the kept
+  // set) is undefined in `unlocked` — without the `in` check it would
+  // apply with no CSS file behind it and render unstyled.
+  if (!(theme in THEME_UNLOCKS) || unlocked[theme] === false) {
     const stats = loadStats();
     const maxLevel = stats.maxLevelReached || 1;
     const sortedThemes = Object.entries(THEME_UNLOCKS)
