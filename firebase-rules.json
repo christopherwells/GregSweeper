@@ -60,6 +60,37 @@
         }
       }
     },
+    "timed": {
+      ".read": true,
+      "$entry": {
+        ".write": "auth != null && !data.exists() && newData.child('uid').val() === auth.uid",
+        ".validate": "newData.hasChildren(['name', 'time', 'timestamp', 'uid'])",
+        "name": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 20 && newData.val().matches(/^[^<>&\"'`@]+$/)"
+        },
+        "time": {
+          ".validate": "newData.isNumber() && newData.val() >= 5 && newData.val() <= 3600"
+        },
+        "level": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 4"
+        },
+        "par": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600"
+        },
+        "uid": {
+          ".validate": "newData.isString() && newData.val() === auth.uid"
+        },
+        "timestamp": {
+          ".validate": "newData.val() === now"
+        },
+        "features": {
+          ".validate": "newData.hasChildren(['rows', 'cols', 'totalMines'])"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
     "dailyMeta": {
       ".read": true,
       "$date": {

@@ -258,8 +258,21 @@ message("[", format(Sys.time(), tz = "UTC", usetz = TRUE), "] fetching Firebase�
 meta_raw   <- fromJSON(paste0(DB_URL, "/dailyMeta.json"), simplifyVector = FALSE) %||% list()
 scores_raw <- fromJSON(paste0(DB_URL, "/daily.json"),     simplifyVector = FALSE) %||% list()
 
+# Timed-mode rows (timed/{pushId}, features embedded per row since every
+# timed board is unique). NOT yet in the fit: the modeTimed effect
+# activates once >= TIMED_FIT_THRESHOLD rows exist — same instrument-
+# first-model-later pattern as new feature coefficients. Until then this
+# is a progress counter so the workflow log shows the data accumulating.
+TIMED_FIT_THRESHOLD <- 20
+timed_raw <- tryCatch(
+  fromJSON(paste0(DB_URL, "/timed.json"), simplifyVector = FALSE) %||% list(),
+  error = function(e) list()
+)
+
 message(sprintf("  dailyMeta dates: %d", length(meta_raw)))
 message(sprintf("  daily score dates: %d", length(scores_raw)))
+message(sprintf("  timed rows: %d (modeTimed effect activates at >= %d)",
+                length(timed_raw), TIMED_FIT_THRESHOLD))
 
 if (length(meta_raw) == 0 || length(scores_raw) == 0) {
   message("Empty dataset — nothing to fit. Exiting cleanly.")
@@ -600,6 +613,13 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
     )
     coverage_features <- setdiff(GIMMICK_FEATURES, chosen_target)
     date_first <- df_fit[!duplicated(df_fit$date), , drop = FALSE]
+    # Coverage throttle: a gimmick with >= COVERAGE_SATURATION_BOARDS
+    # unique-date boards in the fit data has enough coverage that
+    # force-injecting more of it is wasted experiment budget — drop it
+    # from the coverage list so the candidate slots concentrate on the
+    # genuinely undersampled features. (Saturated features still appear
+    # via the primary CV target or the natural lottery.)
+    COVERAGE_SATURATION_BOARDS <- 20
     coverage_targets <- lapply(coverage_features, function(f) {
       vals <- date_first[[f]]
       cnt <- if (is.null(vals)) 0L else sum(vals > 0, na.rm = TRUE)
@@ -609,6 +629,15 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
         deficit_weight = round(1 / (cnt + 1), 4)
       )
     })
+    n_before_throttle <- length(coverage_targets)
+    coverage_targets <- Filter(
+      function(x) x$n_boards < COVERAGE_SATURATION_BOARDS,
+      coverage_targets
+    )
+    if (length(coverage_targets) < n_before_throttle) {
+      message(sprintf("  coverage throttle: dropped %d saturated gimmick(s) (>= %d boards)",
+                      n_before_throttle - length(coverage_targets), COVERAGE_SATURATION_BOARDS))
+    }
     # Sort descending by deficit_weight (most undersampled first).
     coverage_targets <- coverage_targets[order(
       -sapply(coverage_targets, function(x) x$deficit_weight)

@@ -292,6 +292,8 @@ export async function newGame() {
   state.dailyBombHitEvents = [];
   state.clickTimeline = [];
   state.hintEvents = [];
+  state.timedPar = 0;
+  state.timedFeatures = null;
 
   // Daily mode: vary board dimensions using the daily seed
   if (state.gameMode === 'daily' && state.dailySeed) {
@@ -902,6 +904,23 @@ export function revealCell(row, col) {
         }
       }
       // Exhausted gimmick retries on this base board — regenerate.
+    }
+
+    // Timed mode: compute features + par for THIS board (same PAR_MODEL
+    // as daily — timed boards are gimmick-free, so the gimmick terms are
+    // simply zero). Powers the par-relative rating on the win modal and
+    // the timed/{pushId} submission that will eventually feed the fit.
+    if (state.gameMode === 'timed') {
+      try {
+        const tcheck = isBoardSolvable(state.board, state.rows, state.cols, row, col);
+        cleanSolverArtifacts(state.board);
+        state.timedFeatures = computeDailyFeatures(state, tcheck);
+        state.timedPar = predictPar(state.timedFeatures);
+      } catch (err) {
+        state.timedFeatures = null;
+        state.timedPar = 0;
+        reportCaughtError('timed-par-compute', err);
+      }
     }
 
     // Apply gimmicks for challenge mode (show popups etc.)

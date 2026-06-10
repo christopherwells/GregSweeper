@@ -47,6 +47,12 @@ export const state = {
   // times, and an uninstrumented hint system would quietly corrupt the
   // model the whole game stands on.
   hintEvents: [],
+  // Timed mode: par + feature vector for the CURRENT board, computed at
+  // generation from the same PAR_MODEL as daily (timed boards are
+  // gimmick-free, so gimmick terms are zero). Powers the par-relative
+  // rating on the timed win modal and the timed/{pushId} submission.
+  timedPar: 0,
+  timedFeatures: null,
   dailyPar: 0,       // predicted time in seconds — predictPar(dailyFeatures)
   dailyMoves: 0,     // solver totalClicks for pace calculation
   dailyFeatures: null, // full feature vector from computeDailyFeatures — used for par breakdown, Firebase meta upload, and the R refit training set
