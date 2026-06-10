@@ -110,9 +110,39 @@ export function handleLensRequest() {
       || frontier.safe[0]
       || frontier.mines[0];
     if (!next) {
-      // Should be impossible on a generator-certified board.
-      showToast('🤔 Nothing provable found — that should not happen on an official board', 3200);
-      reportCaughtError('lens-empty-frontier', new Error(`mode=${state.gameMode} seed=${state.dailyRngSeed || ''}`));
+      // An empty frontier is NOT broken-board evidence by itself: the
+      // no-guess certificate runs from the marked start cell, and a
+      // player who first-clicked elsewhere can legitimately sit in a
+      // proof-free state (measured: most off-path first clicks do).
+      // Three honest answers:
+      //  1. The marked start is still fogged → point back to the
+      //     contract's entry. Not a spoiler — the game itself marked
+      //     that cell at the start.
+      //  2. Daily/weekly with the start already revealed → genuinely
+      //     impossible by information monotonicity; report it.
+      //  3. Challenge/timed → the player may have gambled past the
+      //     proof chain; say so plainly, no false alarm.
+      let startCell = null;
+      if (state.gameMode === 'daily' || state.gameMode === 'weekly') {
+        outer: for (let r = 0; r < state.rows; r++) {
+          for (let c = 0; c < state.cols; c++) {
+            if (state.board[r][c].suggestedStart && !state.board[r][c].isRevealed) {
+              startCell = { row: r, col: c };
+              break outer;
+            }
+          }
+        }
+      }
+      if (startCell) {
+        recordHintEvent('region');
+        _pulseSources([startCell]);
+        showToast('🔍 Nothing is provable from here — the highlighted start cell is the certified safe entry', 3400);
+      } else if (state.gameMode === 'daily' || state.gameMode === 'weekly') {
+        showToast('🤔 Nothing provable found — that should not happen on this board', 3200);
+        reportCaughtError('lens-empty-frontier', new Error(`mode=${state.gameMode} seed=${state.dailyRngSeed || ''}`));
+      } else {
+        showToast('🔍 Nothing is provably safe from this position right now', 3000);
+      }
       return;
     }
     recordHintEvent('region');

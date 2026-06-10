@@ -13,14 +13,14 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>GregSweeper — The daily Minesweeper with no guesses</title>
-  <meta name="description" content="The daily Minesweeper, no guesses required. Every board guaranteed solvable. Ten optional modifiers, worldwide leaderboard, free in your browser.">
+  <meta name="description" content="The daily Minesweeper, no guesses required. Every standard board verified solvable. Ten optional modifiers, worldwide leaderboard, free in your browser.">
   <link rel="canonical" href="https://christopherwells.github.io/GregSweeper/">
 
   <!-- Open Graph (Discord, iMessage, Slack, Facebook link previews) -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="GregSweeper">
   <meta property="og:title" content="GregSweeper — The daily Minesweeper with no guesses">
-  <meta property="og:description" content="One daily puzzle, ten modifiers, par times that adapt to you. Guaranteed solvable, no 50/50 guesses.">
+  <meta property="og:description" content="One daily puzzle, ten modifiers, par times that adapt to you. Every standard board verified solvable — no 50/50 guesses.">
   <meta property="og:url" content="https://christopherwells.github.io/GregSweeper/">
   <meta property="og:image" content="https://christopherwells.github.io/GregSweeper/assets/og-card.png">
 
@@ -656,7 +656,7 @@
             <p><strong>Quick Play:</strong> race the clock for a speed rating (💎 best, then 🥇 🥈 🥉)</p>
             <p><strong>Daily:</strong> one puzzle a day, same board for everyone, online leaderboard</p>
             <p><strong>Weekly:</strong> one puzzle all week, one try a day, your best time wins</p>
-            <p><strong>Chaos:</strong> fast rounds of random modifiers (unlocks at Challenge Level 50)</p>
+            <p><strong>Chaos:</strong> fast rounds of random modifiers (unlocks at Challenge Level 50). The one mode OUTSIDE the no-guess guarantee &mdash; boards are not verified solvable, and mines can move.</p>
           </div>
         </div>
       </div>
@@ -908,6 +908,18 @@
         <button class="modal-close">&times;</button>
       </div>
       <div class="modal-body whatsnew-body">
+        <div class="whatsnew-entry">
+          <h3>v1.7 &mdash; June 10, 2026</h3>
+          <ul>
+            <li><strong>The board shows its proof</strong> &mdash; After a loss, every provably safe cell is outlined; tap any cell to ask &ldquo;was this knowable?&rdquo; and watch the cells that prove it light up. &ldquo;Genuine 50/50&rdquo; is now a claim the engine can back.</li>
+            <li><strong>Honest bomb verdicts</strong> &mdash; Each daily/weekly mine hit says whether the mine was provable, a safe move existed elsewhere, or you were genuinely at the frontier.</li>
+            <li><strong>Stuck? Ask the board</strong> &mdash; The new 🔍 button never names the safe cell. It tells you when a flag is provably wrong, or lights up the region where the next proof lives. Hinted runs are excluded from the par model.</li>
+            <li><strong>Greg speaks</strong> &mdash; The daily card says why today&rsquo;s board exists (&ldquo;today is a compass study&rdquo;), and the leaderboard reports what yesterday&rsquo;s runs did to the model &mdash; including the bad days.</li>
+            <li><strong>The Lexicon</strong> &mdash; A new 🔬 practice room that generates fresh lesson boards where only provably safe cells will open. You can&rsquo;t luck through one; the pattern is named after you find it.</li>
+            <li><strong>Timed gets a par</strong> &mdash; Every Quick Play board now shows Greg&rsquo;s Time and your delta.</li>
+            <li><strong>Achievements that mean something</strong> &mdash; New skill feats (Flagless, No Wasted Clicks, Tank Commander, Lie Detector) certified by the engine; the pure attendance badges are retired.</li>
+          </ul>
+        </div>
         <div class="whatsnew-entry">
           <h3>v1.6 &mdash; June 8, 2026</h3>
           <ul>

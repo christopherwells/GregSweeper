@@ -6,6 +6,7 @@ import { playReveal, playFlag, playWin } from '../audio/sounds.js';
 import { setOnboarded } from '../storage/statsStorage.js';
 import { applyIcon } from './spriteLoader.js';
 import { getThemeEmoji } from './boardRenderer.js';
+import { generateBoard, cleanSolverArtifacts } from '../logic/boardGenerator.js';
 
 const ROWS = 5;
 const COLS = 5;
@@ -416,35 +417,17 @@ export function startWarmup(onComplete) {
 }
 
 function wuPlaceMines(safeR, safeC) {
-  // Ban the first-clicked cell and its 8 neighbors so the opening click
-  // always cracks open a region (classic first-click-safe).
-  const banned = new Set();
-  for (let dr = -1; dr <= 1; dr++) {
-    for (let dc = -1; dc <= 1; dc++) {
-      const nr = safeR + dr, nc = safeC + dc;
-      if (nr >= 0 && nr < WU_ROWS && nc >= 0 && nc < WU_COLS) banned.add(nr * 100 + nc);
-    }
-  }
-  let placed = 0;
-  while (placed < WU_MINES) {
-    const r = Math.floor(Math.random() * WU_ROWS);
-    const c = Math.floor(Math.random() * WU_COLS);
-    if (banned.has(r * 100 + c) || _wuBoard[r][c].isMine) continue;
-    _wuBoard[r][c].isMine = true;
-    placed++;
-  }
+  // The warm-up is the newcomer's FIRST real board — the one player the
+  // no-guess promise most needs to be true for. Use the certified
+  // generator (solver-verified, first-click-safe 3x3 by construction)
+  // instead of raw random placement, which routinely produces classic
+  // corner 50/50s on 9x9/10.
+  const board = generateBoard(WU_ROWS, WU_COLS, WU_MINES, safeR, safeC, Math.random);
+  cleanSolverArtifacts(board);
   for (let r = 0; r < WU_ROWS; r++) {
     for (let c = 0; c < WU_COLS; c++) {
-      if (_wuBoard[r][c].isMine) continue;
-      let n = 0;
-      for (let dr = -1; dr <= 1; dr++) {
-        for (let dc = -1; dc <= 1; dc++) {
-          if (!dr && !dc) continue;
-          const nr = r + dr, nc = c + dc;
-          if (nr >= 0 && nr < WU_ROWS && nc >= 0 && nc < WU_COLS && _wuBoard[nr][nc].isMine) n++;
-        }
-      }
-      _wuBoard[r][c].adjacentMines = n;
+      _wuBoard[r][c].isMine = board[r][c].isMine;
+      _wuBoard[r][c].adjacentMines = board[r][c].adjacentMines;
     }
   }
   _wuPlaced = true;
