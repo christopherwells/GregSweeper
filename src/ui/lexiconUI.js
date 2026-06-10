@@ -7,6 +7,7 @@
 // game state, scores, or the par pipeline.
 
 import { findDeducibleFrontier } from '../logic/boardSolver.js';
+import { explainDeduction } from '../logic/proofExplainer.js';
 import { LESSONS, generateLessonBoard, applyLessonOpening, lessonComplete } from '../logic/lexicon.js';
 import { showToast } from './toastManager.js';
 
@@ -33,7 +34,7 @@ function _buildOverlay() {
         <span class="lexicon-title">The Lexicon</span>
         <button class="lexicon-close" aria-label="Close">&times;</button>
       </div>
-      <p class="lexicon-instruction">Only provably safe cells will open. If a click bounces, the board shows you where the proof lives.</p>
+      <p class="lexicon-instruction">Only squares the clues can settle will open. If a click bounces, watch where the board points — the answer is in those squares.</p>
       <div class="lexicon-grid" role="grid"></div>
       <p class="lexicon-naming hidden"></p>
       <div class="lexicon-actions hidden">
@@ -122,12 +123,17 @@ function _onCellClick(e) {
   const provablySafe = frontier.safe.some(s => s.row === row && s.col === col);
 
   if (!provablySafe) {
-    // THE GATE: bounce, and show where the proof actually lives.
+    // THE GATE: bounce, point at the clues that hold the next step, and
+    // say in plain words what kind of thinking unlocks it.
     el.classList.remove('lexicon-bounce');
     void el.offsetWidth;
     el.classList.add('lexicon-bounce');
     const next = frontier.safe[0];
-    if (next) _pulse(next.sources);
+    if (next) {
+      _pulse(next.sources);
+      const ask = explainDeduction(board, next, { style: 'socratic', kind: 'safe' });
+      if (ask) showToast(`🤔 Not that one yet. ${ask}`, 3600);
+    }
     return;
   }
 
