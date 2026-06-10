@@ -224,7 +224,21 @@ function revealLinkedCell(revealed, link) {
   }
 }
 
+// Re-entrancy guard for newGame. newGame is async (daily/weekly await
+// canonical-board fetches, up to 8s on a cold connection) and is fired
+// un-awaited by switchMode — so two overlapping runs are reachable in
+// real play (double-tap a mode card during a slow fetch, or smiley spam
+// during the daily cold start). Without the guard, the SLOWER run's
+// post-await phase resumes after the faster run's board is live and
+// clobbers it: cleanSolverArtifacts(state.board) wipes isRevealed on
+// every cell (a phantom re-fog) and status resets to idle mid-game.
+// Each run takes a generation ticket; after every await it checks the
+// ticket and abandons itself if a newer run has started.
+let _newGameGeneration = 0;
+
 export async function newGame() {
+  const myGeneration = ++_newGameGeneration;
+  const staleRun = () => myGeneration !== _newGameGeneration;
   stopTimer();
   // Clear any pressure-plate timers from the previous game. activePlates is
   // module-level, so without this an in-flight tick can fire handleLoss on
@@ -318,6 +332,7 @@ export async function newGame() {
           canonicalRaw = state.canonicalDailyBoard.raw;
         } else {
           canonicalRaw = await loadDailyBoard(state.dailySeed);
+          if (staleRun()) return; // a newer newGame superseded this run mid-fetch
           if (canonicalRaw) {
             state.canonicalDailyBoard = { date: state.dailySeed, raw: canonicalRaw };
           }
@@ -518,6 +533,7 @@ export async function newGame() {
         canonicalRaw = state.canonicalWeeklyBoard.raw;
       } else {
         canonicalRaw = await loadWeeklyBoard(state.weeklySeed);
+        if (staleRun()) return; // a newer newGame superseded this run mid-fetch
         if (canonicalRaw) {
           state.canonicalWeeklyBoard = { weekStart: state.weeklySeed, raw: canonicalRaw };
         }
@@ -643,11 +659,13 @@ export async function newGame() {
     if (state.firebaseReady) {
       try {
         const entries = await fetchWeeklyLeaderboard(state.weeklySeed);
+        if (staleRun()) return; // a newer newGame superseded this run mid-fetch
         const myUid = getUid();
         const myRow = myUid ? entries.find(e => e.uid === myUid) : null;
         state.weeklyDayTimes = myRow?.dayTimes ? { ...myRow.dayTimes } : {};
         state.weeklyDayBombHits = myRow?.dayBombHits ? { ...myRow.dayBombHits } : {};
       } catch (err) {
+        if (staleRun()) return;
         state.weeklyDayTimes = {};
         state.weeklyDayBombHits = {};
       }
