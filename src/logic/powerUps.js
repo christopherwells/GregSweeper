@@ -1,6 +1,22 @@
 import { recomputeDisplayedMines, hasWallBetween } from './gimmicks.js';
+import { findDeducibleFrontier } from './boardSolver.js';
 
 export function findSafeCell(board) {
+  // Deduction-first: prefer the next PROVABLY-safe cell (flags-blind) so
+  // every Reveal Safe use is a worked example the player could have
+  // reasoned to, instead of an oracle read of the true mine layout.
+  // Falls back to the old random safe pick only when nothing is
+  // deducible — a genuine frontier, where the oracle IS the power-up's
+  // legitimate value.
+  try {
+    const frontier = findDeducibleFrontier(board, { respectFlags: false });
+    for (const s of frontier.safe) {
+      const cell = board[s.row][s.col];
+      if (cell && !cell.isFlagged) return cell;
+    }
+  } catch {
+    // fall through to the random pick
+  }
   const candidates = [];
   for (const row of board) {
     for (const cell of row) {

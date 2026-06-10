@@ -41,6 +41,12 @@ export const state = {
   // click-to-technique attribution question). Reset in newGame; capped
   // so a marathon session can't bloat the auto-persisted save.
   clickTimeline: [],
+  // Lens invocations this game: { t: elapsedSeconds, kind } with kind =
+  // 'flag-warning' | 'region'. Submitted with daily scores so the
+  // nightly par fit can EXCLUDE hinted plays — hints change completion
+  // times, and an uninstrumented hint system would quietly corrupt the
+  // model the whole game stands on.
+  hintEvents: [],
   dailyPar: 0,       // predicted time in seconds — predictPar(dailyFeatures)
   dailyMoves: 0,     // solver totalClicks for pace calculation
   dailyFeatures: null, // full feature vector from computeDailyFeatures — used for par breakdown, Firebase meta upload, and the R refit training set
@@ -161,6 +167,17 @@ export function recordPlayerAction(action, row, col) {
   if (state.clickTimeline.length > CLICK_TIMELINE_CAP) {
     state.clickTimeline.splice(0, state.clickTimeline.length - CLICK_TIMELINE_CAP);
   }
+}
+
+// Record one Lens invocation (same wall-clock convention as the click
+// timeline). Tiny payload, hard cap as a safety net.
+export function recordHintEvent(kind) {
+  if (!Array.isArray(state.hintEvents)) state.hintEvents = [];
+  if (state.hintEvents.length >= 200) return;
+  state.hintEvents.push({
+    t: Math.round((state.elapsedTime || 0) * 10) / 10,
+    kind,
+  });
 }
 
 // agree. Derived from events (not a separate accumulator) so it survives

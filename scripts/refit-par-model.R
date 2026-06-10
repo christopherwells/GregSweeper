@@ -287,9 +287,16 @@ scores_df <- tibble(
     # detected by `bombHits > 0 & totalBombPenalty == 0` and continue to
     # contribute to a `legacy_bombs` regressor.
     totalBombPenalty  = map_dbl(entry, ~ .x$totalBombPenalty %||% 0),
+    # v1.6.12+ Lens hints: rows carry hintEvents only when the player
+    # invoked the in-game lens. A hinted completion is not an honest
+    # observation of board difficulty for that player, so hinted plays
+    # are EXCLUDED from the fit (cheaper and more defensible than a
+    # hint regressor until hinted plays are numerous enough to model).
+    n_hints           = map_int(entry, ~ length(.x$hintEvents %||% list())),
   ) |>
   select(-entry) |>
   filter(!is.na(time), time >= 5, time <= 3600) |>
+  filter(n_hints == 0) |>
   mutate(
     is_legacy_bomb = bombHits > 0 & totalBombPenalty == 0,
     legacy_bombs   = if_else(is_legacy_bomb, bombHits, 0),
