@@ -245,11 +245,40 @@ export function handleWin() {
   // replaying after today's real daily has already been won. Weekly is its
   // own world entirely — see the dedicated weekly branch below.
   const isRealDaily = isDaily && !state.isDailyPractice;
+  // Skill feats — honestly detectable from the click timeline + the
+  // board's certified solve, never from heuristics:
+  //   flagless  — the recorded timeline contains no flag action.
+  //   efficient — the player's reveal+chord count matched (or beat) the
+  //               certified solve's click count, reconstructed from the
+  //               stored move-type counters via the solver invariant
+  //               passA + pattern + search + disjunctive + 1 = totalClicks.
+  //   search    — the board PROVABLY required tank/gauss enumeration.
+  //   liar      — the board PROVABLY required disjunctive liar reasoning.
+  // Feature-based feats only exist where a feature vector was computed
+  // (daily / weekly / timed); challenge wins can still earn flagless.
+  const winFeatures = state.gameMode === 'daily' ? state.dailyFeatures
+    : state.gameMode === 'weekly' ? state.weeklyFeatures
+    : state.gameMode === 'timed' ? state.timedFeatures
+    : null;
+  const timeline = Array.isArray(state.clickTimeline) ? state.clickTimeline : [];
+  const certifiedClicks = winFeatures
+    ? (winFeatures.passAMoves || 0) + (winFeatures.canonicalSubsetMoves || 0)
+      + (winFeatures.genericSubsetMoves || 0) + (winFeatures.advancedLogicMoves || 0)
+      + (winFeatures.disjunctiveMoves || 0) + 1
+    : 0;
+  const playerClicks = timeline.filter(e => e.a === 'r' || e.a === 'c').length;
+  const skillFeats = state.gameMode === 'chaos' ? {} : {
+    flagless: timeline.length > 0 && !timeline.some(e => e.a === 'f'),
+    efficient: !!winFeatures && playerClicks > 0 && playerClicks <= certifiedClicks,
+    search: !!winFeatures && (winFeatures.advancedLogicMoves || 0) >= 1,
+    liar: !!winFeatures && (winFeatures.disjunctiveMoves || 0) >= 1,
+  };
   const stats = saveGameResult(true, state.elapsedTime, state.currentLevel, {
     isDaily: isRealDaily,
     usedPowerUps: state.usedPowerUps,
     gameMode: state.gameMode,
     hadGimmicks: state.activeGimmicks && state.activeGimmicks.length > 0,
+    skillFeats,
     dailySeed: isRealDaily ? state.dailySeed : null,
   });
   // Skip power-up awarding for chaos AND weekly. Weekly is a pure
