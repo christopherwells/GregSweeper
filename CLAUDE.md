@@ -234,6 +234,7 @@ Value-derived categories in src/logic/achievements.js (6 tiers each, no stored u
 
 ## Theme System
 - **26 kept themes** unlocked by level progression (trimmed from 50 in 2026-06: every kept theme carries the full per-theme kit — objects + contrasting grout + confetti palette + reveal choreography; the 24 cut themes live in git history and restoring one means restoring its CSS + registry entries and bringing it up to the contract). Count is FROZEN — the feel budget goes into deepening these, not adding palettes.
+- **Unlock ladder rule:** classic + dark free at level 0; the other 24 themes unlock one per checkpoint — every 5 challenge levels, L5 through L120 — ordered by IN-YOUR-FACE-NESS (quiet print-and-paper worlds first; loud, animated, high-saturation worlds as late-game rewards). `test/themeUnlockLadder.test.mjs` enforces the structure: exact multiples of 5, no gaps or doubles, registry listed in unlock order (the Collection grid renders in registry order). Restoring a cut theme means giving it a ladder slot, which bumps everything after it.
 - CSS custom properties per theme in `src/styles/themes/`
 - `THEME_UNLOCKS` in `src/ui/themeManager.js` maps theme to required level. The boot path guards saved themes that are locked OR no longer exist (cut themes fall back to the highest unlocked).
 - Num colors 9-18 exist for wormhole sums; dark themes override them with bright variants
