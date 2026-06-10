@@ -53,19 +53,6 @@ const CATEGORIES = [
     inverted: true, // lower is better
   },
   {
-    id: 'level',
-    name: 'Survivor',
-    icon: '🛡️',
-    desc: 'Total wins across all modes',
-    thresholds: [10, 25, 75, 150, 300, 500],
-    getValue: (s) => {
-      const ms = s.modeStats;
-      if (!ms) return s.wins;
-      return (ms.challenge?.wins || 0) + (ms.timed?.wins || 0) + (ms.daily?.wins || 0);
-    },
-    format: (v) => `${v} total wins`,
-  },
-  {
     id: 'daily',
     name: 'Daily Player',
     icon: '📅',
@@ -74,14 +61,47 @@ const CATEGORIES = [
     getValue: (s) => s.dailiesCompleted || 0,
     format: (v) => `${v} daily${v !== 1 ? 's' : ''}`,
   },
+  // ── Skill feats (2026-06-10 rebuild) ────────────────
+  // Honestly detectable from the click timeline + the board's CERTIFIED
+  // solve — never heuristics. "Survivor" (total wins, duplicate of
+  // Victory) and "Dedicated" (total games, pure attendance) were cut to
+  // make room: an achievement should certify something the player DID,
+  // not how long they've been around.
   {
-    id: 'games',
-    name: 'Dedicated',
-    icon: '🎮',
-    desc: 'Total games played',
-    thresholds: [10, 25, 50, 100, 200, 500],
-    getValue: (s) => s.totalGames,
-    format: (v) => `${v} game${v !== 1 ? 's' : ''}`,
+    id: 'flagless',
+    name: 'Flagless',
+    icon: '🏳️',
+    desc: 'Wins without placing a single flag',
+    thresholds: [1, 5, 15, 30, 50, 100],
+    getValue: (s) => s.flaglessWins || 0,
+    format: (v) => `${v} flagless win${v !== 1 ? 's' : ''}`,
+  },
+  {
+    id: 'efficient',
+    name: 'No Wasted Clicks',
+    icon: '🎯',
+    desc: 'Wins matching the certified solve’s click count',
+    thresholds: [1, 5, 15, 30, 50, 100],
+    getValue: (s) => s.efficientWins || 0,
+    format: (v) => `${v} efficient win${v !== 1 ? 's' : ''}`,
+  },
+  {
+    id: 'tankCommander',
+    name: 'Tank Commander',
+    icon: '🧮',
+    desc: 'Wins on boards that provably require search reasoning',
+    thresholds: [1, 3, 10, 20, 35, 60],
+    getValue: (s) => s.searchWins || 0,
+    format: (v) => `${v} search win${v !== 1 ? 's' : ''}`,
+  },
+  {
+    id: 'lieDetector',
+    name: 'Lie Detector',
+    icon: '🕵️',
+    desc: 'Wins on boards that provably require liar reasoning',
+    thresholds: [1, 3, 8, 15, 25, 50],
+    getValue: (s) => s.liarWins || 0,
+    format: (v) => `${v} liar win${v !== 1 ? 's' : ''}`,
   },
   {
     id: 'purist',

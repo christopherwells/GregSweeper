@@ -128,6 +128,12 @@ const DEFAULT_STATS = {
   dailiesCompleted: 0,
   puristWins: 0,
   gimmickWins: 0,
+  // Skill-feat counters (2026-06-10 achievements rebuild) — incremented
+  // by saveGameResult from winLossHandler's honestly-detected feats.
+  flaglessWins: 0,
+  efficientWins: 0,
+  searchWins: 0,
+  liarWins: 0,
 };
 
 // Per-mode stats structure
@@ -169,6 +175,10 @@ export function loadStats() {
   if (stats.dailiesCompleted == null) stats.dailiesCompleted = 0;
   if (stats.puristWins == null) stats.puristWins = 0;
   if (stats.gimmickWins == null) stats.gimmickWins = 0;
+  if (stats.flaglessWins == null) stats.flaglessWins = 0;
+  if (stats.efficientWins == null) stats.efficientWins = 0;
+  if (stats.searchWins == null) stats.searchWins = 0;
+  if (stats.liarWins == null) stats.liarWins = 0;
 
   // Migrate: if no modeStats, seed challenge stats from existing global stats
   if (!stats.modeStats) {
@@ -204,7 +214,7 @@ function getModeKey(gameMode) {
   return gameMode;
 }
 
-export function saveGameResult(won, time, level, { isDaily = false, usedPowerUps = false, gameMode = 'normal', hadGimmicks = false, dailySeed = null } = {}) {
+export function saveGameResult(won, time, level, { isDaily = false, usedPowerUps = false, gameMode = 'normal', hadGimmicks = false, skillFeats = {}, dailySeed = null } = {}) {
   const stats = loadStats();
   const modeKey = getModeKey(gameMode);
   const modeStats = stats.modeStats[modeKey];
@@ -232,6 +242,12 @@ export function saveGameResult(won, time, level, { isDaily = false, usedPowerUps
       if (hadGimmicks) {
         stats.gimmickWins = (stats.gimmickWins || 0) + 1;
       }
+      // Skill feats — booleans computed by the win handler from the
+      // click timeline + the board's certified solve.
+      if (skillFeats.flagless) stats.flaglessWins = (stats.flaglessWins || 0) + 1;
+      if (skillFeats.efficient) stats.efficientWins = (stats.efficientWins || 0) + 1;
+      if (skillFeats.search) stats.searchWins = (stats.searchWins || 0) + 1;
+      if (skillFeats.liar) stats.liarWins = (stats.liarWins || 0) + 1;
     }
     if (isDaily) {
       stats.dailiesCompleted++;
