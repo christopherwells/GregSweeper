@@ -966,6 +966,16 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   color: var(--color-text-secondary, #999);
   margin: 8px 0 12px;
 }
+/* Mines-left counter + board number, aligned to the grid edges — the
+   same anchor the main game's LCD provides. */
+.lexicon-status {
+  display: flex; justify-content: space-between; align-items: center;
+  max-width: 320px;
+  margin: 0 auto 8px;
+  font-size: 0.9em;
+}
+.lexicon-mines-left { font-weight: 700; color: var(--color-text, #eee); }
+.lexicon-board-count { font-size: 0.85em; color: var(--color-text-secondary, #999); }
 .lexicon-grid {
   display: grid;
   gap: 3px;
