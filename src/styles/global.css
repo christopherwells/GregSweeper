@@ -925,6 +925,72 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   margin: 4px 0;
 }
 
+/* ── The Lexicon overlay ───────────────────────────────
+   Generated single-technique lessons behind the deducibility
+   click-gate: unproven clicks bounce, the proving region pulses. */
+#lexicon-overlay {
+  position: fixed; inset: 0; z-index: 1200;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px;
+}
+.lexicon-card {
+  background: var(--color-modal-bg, #2a2a2a);
+  color: var(--color-text, #eee);
+  border-radius: 12px;
+  padding: 18px;
+  max-width: 420px;
+  width: 100%;
+}
+.lexicon-header { display: flex; justify-content: space-between; align-items: center; }
+.lexicon-title { font-weight: 700; font-size: 1.1em; }
+.lexicon-close {
+  background: none; border: none; color: inherit;
+  font-size: 1.6em; line-height: 1; cursor: pointer; padding: 2px 8px;
+}
+.lexicon-instruction {
+  font-size: 0.85em;
+  color: var(--color-text-secondary, #999);
+  margin: 8px 0 12px;
+}
+.lexicon-grid {
+  display: grid;
+  gap: 3px;
+  max-width: 320px;
+  margin: 0 auto;
+}
+.lexicon-cell {
+  aspect-ratio: 1;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 1.05em;
+  border-radius: var(--cell-shape-radius, 4px);
+  cursor: pointer;
+  user-select: none;
+}
+.lexicon-cell.unrevealed { background: var(--color-cell-hidden, #555); }
+.lexicon-cell.revealed { background: var(--color-cell-revealed, #333); cursor: default; }
+.lexicon-cell[data-num="1"] { color: var(--color-num-1, #6baed6); }
+.lexicon-cell[data-num="2"] { color: var(--color-num-2, #66bb6a); }
+.lexicon-cell[data-num="3"] { color: var(--color-num-3, #ff6b6b); }
+.lexicon-cell[data-num="4"] { color: var(--color-num-4, #ce93d8); }
+.lexicon-cell[data-num="5"] { color: var(--color-num-5, #f48fb1); }
+.lexicon-cell.lexicon-bounce { animation: lexiconBounce 0.3s ease-out; }
+@keyframes lexiconBounce {
+  0%, 100% { transform: translateX(0); }
+  30% { transform: translateX(-4px); }
+  60% { transform: translateX(4px); }
+}
+.lexicon-cell.lexicon-pulse {
+  animation: receiptSourcePulse 0.9s ease-in-out 2;
+}
+.lexicon-naming {
+  margin: 12px 0 4px;
+  font-size: 0.92em;
+  font-style: italic;
+  color: var(--color-accent, #6cf);
+}
+.lexicon-actions { display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
+
 .cell.suggested-start {
   background: var(--overlay-suggest-start-fill, rgba(76, 175, 80, 0.35));
   border: 2px solid var(--overlay-suggest-start, #4caf50) !important;
