@@ -2123,17 +2123,21 @@ async function refreshTitleDailyPar() {
   try {
     const { par } = await computeDailyParForDate(today, true);
     if (par > 0) {
-      // Greg's Field Note: WHY today's board exists, sourced from the
-      // adaptive experiment design (the canonical board's effective seed
-      // recovers which mission won the 10-candidate contest). A true
-      // sentence, not flavor copy — null when there's nothing honest to say.
+      // Greg's Field Note — derived from the CANONICAL BOARD, never by
+      // re-running the seed→mission lookup. Boards are pre-generated up
+      // to 7 days ahead against THAT day's experimentTarget.json, and
+      // the nightly refit reorders the coverage list, so resolving the
+      // seed's slot against the CURRENT file names the wrong gimmick
+      // (2026-06-10: the board carried wormholes, the note said
+      // compass). fieldNoteFromBoard prefers the mission stamped into
+      // the payload at generation and falls back to the board's actual
+      // activeGimmicks; either way it cannot contradict the board.
       let note = null;
       try {
-        const seed = state.canonicalDailyBoard?.date === today
-          ? state.canonicalDailyBoard.raw?.rngSeed
-          : selectDailyRngSeed(today);
-        const { fieldNoteLine } = await import('./logic/gregVoice.js');
-        note = fieldNoteLine(getMissionForSeed(seed));
+        if (state.canonicalDailyBoard?.date === today && state.canonicalDailyBoard.raw) {
+          const { fieldNoteFromBoard } = await import('./logic/gregVoice.js');
+          note = fieldNoteFromBoard(state.canonicalDailyBoard.raw);
+        }
       } catch { /* no note — the par line still renders */ }
       _titleDailyPar = { date: today, secs: Math.round(par), note };
       updateTitleProgress();
