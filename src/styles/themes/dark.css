@@ -58,6 +58,19 @@
   /* Hushed-night motion: slower than classic, always settling. */
   --anim-reveal-dur: 0.32s;
   --anim-reveal-ease: ease-out;
+  --anim-flag-dur: 0.26s;
+  --anim-flag-ease: ease-out;
+}
+
+/* Flag moment: a marker set down quietly — drifts a hair downward into
+   place and dims to rest. No bounce; nothing in this world bounces. */
+[data-theme="dark"] .cell.flag-pop {
+  animation-name: darkFlagSet;
+}
+@keyframes darkFlagSet {
+  0%   { opacity: 0; transform: translateY(-3px) scale(1.08); filter: brightness(1.4); }
+  70%  { opacity: 1; transform: translateY(0) scale(1); filter: brightness(1.1); }
+  100% { opacity: 1; transform: translateY(0) scale(1); filter: brightness(1); }
 }
 
 /* Reveal moment: moonlight reaching a tile — it surfaces from the dark

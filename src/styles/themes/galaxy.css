@@ -192,3 +192,16 @@
   70%  { transform: scale(0.97) rotate(-1deg); box-shadow: 0 0 7px rgba(180,200,255,0.22); }
   100% { opacity: 1; transform: scale(1) rotate(0deg); filter: brightness(1); box-shadow: 0 0 0 rgba(180,200,255,0); }
 }
+
+/* Flag moment: capture into orbit — the marker swings in on a wide arc
+   with a magenta flash, circles past center, and parks (flag tokens:
+   0.45s, the theme's floaty bezier). */
+[data-theme="galaxy"] .cell.flag-pop {
+  animation-name: galaxyFlagOrbit;
+}
+@keyframes galaxyFlagOrbit {
+  0%   { opacity: 0; transform: translate(6px, -6px) rotate(14deg) scale(0.6); filter: brightness(2); }
+  45%  { opacity: 1; transform: translate(-2px, 1px) rotate(-5deg) scale(1.08); box-shadow: 0 0 12px rgba(255,45,120,0.4); }
+  75%  { transform: translate(1px, 0) rotate(2deg) scale(0.98); box-shadow: 0 0 5px rgba(255,45,120,0.18); }
+  100% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); filter: brightness(1); box-shadow: 0 0 0 rgba(255,45,120,0); }
+}

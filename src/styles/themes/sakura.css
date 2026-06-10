@@ -64,6 +64,8 @@
   /* Petal-fall motion: unhurried, soft landing (see sakuraDrift). */
   --anim-reveal-dur: 0.42s;
   --anim-reveal-ease: cubic-bezier(0.25, 0.8, 0.35, 1);
+  --anim-flag-dur: 0.4s;
+  --anim-flag-ease: cubic-bezier(0.25, 0.8, 0.35, 1);
 }
 
 
@@ -95,4 +97,16 @@
   55%  { opacity: 1; transform: translate(2px, 1px) rotate(2.5deg); }
   80%  { transform: translate(-1px, 0) rotate(-1deg); }
   100% { opacity: 1; transform: translate(0, 0) rotate(0deg); }
+}
+
+/* Flag moment: the lantern marker is hung, not planted — it drops in
+   from above and sways once around its hook before coming to rest. */
+[data-theme="sakura"] .cell.flag-pop {
+  animation-name: sakuraFlagHang;
+}
+@keyframes sakuraFlagHang {
+  0%   { opacity: 0; transform: translateY(-6px) rotate(-8deg); }
+  45%  { opacity: 1; transform: translateY(1px) rotate(5deg); }
+  72%  { transform: translateY(0) rotate(-2.5deg); }
+  100% { opacity: 1; transform: translateY(0) rotate(0deg); }
 }
