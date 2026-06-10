@@ -691,6 +691,11 @@
           <button class="leaderboard-tab active" data-lb-tab="daily" role="tab" aria-selected="true">Daily</button>
           <button class="leaderboard-tab" data-lb-tab="weekly" role="tab" aria-selected="false">Weekly</button>
         </div>
+        <!-- Greg's closed loop: what yesterday's runs did to the model.
+             Filled once per session from modelHistory.json diffs; all
+             four honesty branches (tightened / widened / fit-rejected /
+             nobody-played) are first-class. -->
+        <p id="greg-yesterday-note" class="greg-yesterday-note hidden"></p>
         <p id="leaderboard-date"></p>
           <table id="leaderboard-table">
             <thead>

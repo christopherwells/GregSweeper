@@ -396,7 +396,10 @@ df$predicted_for_outlier <- NULL
 n_scores <- nrow(df)
 n_dates  <- length(unique(df$date))
 
-handicaps     <- list()         # uid -> seconds
+handicaps        <- list()      # uid -> seconds (clean offset + bomb factor)
+handicap_details <- list()      # uid -> { clean, bomb } — the v2 split the
+                                # client itemizes ("Your par = Greg + pace
+                                # + bombs"); emitted alongside the sum.
 fit_method    <- "seed-residuals"
 r2            <- NA_real_
 diag_note     <- ""
@@ -719,9 +722,14 @@ if (fit_method == "brms-ranef") {
                              BOMB_PENALTY_BASE * df_fit$bombHits,
                              bomb_coef * df_fit$bombHits)
   bomb_cost_by_uid <- tapply(df_fit$bomb_cost, df_fit$uid, mean)
+  # Emit the clean/bomb split alongside the sum (handicaps.json v2's
+  # handicapDetails) so the client can ITEMIZE "your par" instead of
+  # presenting an oracular single number: par = Greg + pace + bombs.
   for (u in names(handicaps)) {
     bc <- bomb_cost_by_uid[[u]]
-    if (!is.null(bc) && !is.na(bc) && bc != 0) {
+    bc <- if (is.null(bc) || is.na(bc)) 0 else bc
+    handicap_details[[u]] <- list(clean = round(handicaps[[u]], 2), bomb = round(bc, 2))
+    if (bc != 0) {
       handicaps[[u]] <- round(handicaps[[u]] + bc, 2)
     }
   }
@@ -781,6 +789,13 @@ if (fit_method == "seed-residuals") {
     total_plays <- sum(per_user$n)
     wm_clean <- sum(per_user$clean_h * per_user$n) / total_plays
     per_user$handicap <- round((per_user$clean_h - wm_clean) + per_user$bomb_h, 2)
+    # Same clean/bomb split as the brms path (handicapDetails v2).
+    for (i in seq_len(nrow(per_user))) {
+      handicap_details[[per_user$uid[i]]] <- list(
+        clean = round(per_user$clean_h[i] - wm_clean, 2),
+        bomb  = round(per_user$bomb_h[i], 2)
+      )
+    }
   } else {
     per_user$handicap <- numeric(0)
   }
@@ -808,7 +823,11 @@ if (length(handicaps) > 0) {
     # bomb cost into their handicap. NOT in JS predictPar — par stays clean;
     # bombs live in the handicap, not par.
     secPerBombHit = if (is.na(bomb_coef)) NULL else round(bomb_coef, 2),
-    handicaps = handicaps
+    handicaps = handicaps,
+    # v2: the clean/bomb decomposition per uid, so the client can itemize
+    # "Your par" instead of presenting one oracular number. Additive —
+    # consumers of the plain `handicaps` map are unaffected.
+    handicapDetails = if (length(handicap_details) > 0) handicap_details else NULL
   )
   writeLines(toJSON(handicaps_obj, auto_unbox = TRUE, pretty = TRUE),
              HANDICAPS_PATH)

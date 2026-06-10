@@ -39,7 +39,8 @@ import { saveProgress, saveDailyHistoryEntry, getUid, markWeeklyDayAttempted } f
 import { isTestEnvironment } from '../firebase/env.js';
 import { reportCaughtError } from '../diagnostics/errorReporter.js';
 import { breakdownPar } from '../logic/dailyFeatures.js';
-import { getHandicap, estimateHandicapDetails } from '../logic/handicaps.js';
+import { getHandicap, getHandicapDetails, estimateHandicapDetails } from '../logic/handicaps.js';
+import { labFileLine } from '../logic/gregVoice.js';
 import { addDailyLeaderboardEntry, appendDailyResidual, loadDailyResiduals, loadPowerUps } from '../storage/statsStorage.js';
 import { getLocalDateString } from '../logic/seededRandom.js';
 
@@ -531,9 +532,18 @@ export function handleWin() {
       }
 
       if (useHandicap) {
+        // Lab File itemization (handicaps.json v2): when the refit has
+        // emitted the clean/bomb split, "your par" stops being one
+        // oracular number and becomes an explanation — Greg + your pace
+        // + your bomb habit. Falls back to the plain line when the
+        // decomposition hasn't shipped; we never fabricate a split.
+        const details = getHandicapDetails(getUid());
+        const itemized = details ? labFileLine(state.dailyPar, details) : null;
         parEl.innerHTML = parPrimer +
-          "Greg's Time: " + state.dailyPar.toFixed(1) + 's · ' +
-          yourParLabel + personalPar.toFixed(1) + 's · ' +
+          (itemized
+            ? itemized + ' · '
+            : "Greg's Time: " + state.dailyPar.toFixed(1) + 's · ' +
+              yourParLabel + personalPar.toFixed(1) + 's · ') +
           '<span class="' + parClass + '">' + deltaText + '</span>';
       } else {
         // No handicap yet — surface a small hint about what would
