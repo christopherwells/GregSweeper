@@ -1881,6 +1881,19 @@ document.addEventListener('keydown', (e) => {
 $('#btn-help').addEventListener('click', () => { setActiveHelpTab('basics'); showModal('help-modal'); });
 $('#title-bar').addEventListener('click', () => showModal('about-modal'));
 
+// The Lens — Socratic mid-game help. Never names the safe cell: it
+// detects wrong flags, or pulses the proving region of the next
+// available deduction (sized honestly by tier). Every use is recorded
+// into state.hintEvents and submitted with daily scores so the par fit
+// can exclude hinted plays.
+const lensBtn = $('#btn-lens');
+if (lensBtn) {
+  lensBtn.addEventListener('click', () => {
+    import('./ui/receiptRenderer.js').then(m => m.handleLensRequest())
+      .catch(err => reportCaughtError('lens-import', err));
+  });
+}
+
 // Collection tab switching
 for (const tab of $$('.collection-tab')) {
   tab.addEventListener('click', () => {
@@ -2852,6 +2865,7 @@ $('#gameover-submit-daily').addEventListener('click', async (e) => {
       par: state.dailyPar,
       features: state.dailyFeatures,
       bombHitEvents: state.dailyBombHitEvents || [],
+      hintEvents: state.hintEvents || [],
       rngSeed: state.dailyRngSeed || dateStr,
     });
     // Skip personal-history write for practice dailies — they play on a
