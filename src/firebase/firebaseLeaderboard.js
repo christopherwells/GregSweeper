@@ -249,6 +249,52 @@ export async function submitOnlineScore(dateString, name, time, bombHits = 0, ex
 }
 
 /**
+ * Submit a timed-mode run to `timed/{pushId}`. Unlike daily, every timed
+ * board is unique, so the feature vector rides the row itself (there is
+ * no per-date meta bucket to join against). These rows are fit-data
+ * first, leaderboard later: the R refit starts using them via a
+ * modeTimed effect once >= 20 rows exist (same threshold pattern as new
+ * feature coefficients). Fire-and-forget — no retry queue; timed runs
+ * are frequent and a lost row is statistically replaceable.
+ *
+ * @param {string} name Player name
+ * @param {number} time Completion time in seconds
+ * @param {number} level Difficulty tab (1-4: Beginner..Extreme)
+ * @param {Object} extras { uid, par, features }
+ * @returns {Promise<boolean>}
+ */
+export async function submitTimedScore(name, time, level, extras = {}) {
+  if (isTestEnvironment()) return false;
+  if (!isFirebaseOnline()) return false;
+  if (typeof time !== 'number' || time < MIN_VALID_TIME || time > MAX_VALID_TIME) return false;
+
+  const now = Date.now();
+  if (now - _lastSubmitTime < SUBMIT_COOLDOWN_MS) return false;
+
+  try {
+    const sanitizedName = String(name).slice(0, 20).trim();
+    if (!sanitizedName) return false;
+    const payload = {
+      name: sanitizedName,
+      time,
+      level: typeof level === 'number' ? level : 0,
+      timestamp: firebase.database.ServerValue.TIMESTAMP,
+    };
+    if (extras.uid) payload.uid = String(extras.uid);
+    if (typeof extras.par === 'number' && extras.par > 0) payload.par = extras.par;
+    if (extras.features && typeof extras.features === 'object') {
+      payload.features = extras.features;
+    }
+    await db.ref('timed').push(payload);
+    _lastSubmitTime = now;
+    return true;
+  } catch (err) {
+    console.warn('Timed score submission failed:', err && err.message);
+    return false;
+  }
+}
+
+/**
  * Resubmit any queued failed score writes. Called by initFirebase() on every
  * successful boot. Bypasses SUBMIT_COOLDOWN_MS — queue entries are legitimate
  * prior submissions, not user spam. Drops entries older than PENDING_MAX_AGE_MS

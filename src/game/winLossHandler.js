@@ -31,7 +31,7 @@ import {
   getAchievementState, getAllTierNames, getTierIcon, getTierColor,
 } from '../logic/achievements.js';
 import { checkThemeUnlocks, showThemeUnlockToasts } from '../ui/themeManager.js';
-import { submitOnlineScore, submitWeeklyScore, fetchWeeklyLeaderboard } from '../firebase/firebaseLeaderboard.js';
+import { submitOnlineScore, submitTimedScore, submitWeeklyScore, fetchWeeklyLeaderboard } from '../firebase/firebaseLeaderboard.js';
 
 // (HTML escaping for the weekly leaderboard rows now comes from
 // ui/domHelpers.js's escapeHtml — single source of truth.)
@@ -425,11 +425,29 @@ export function handleWin() {
   const historyDotsEl = document.getElementById('gameover-history-dots');
   if (historyDotsEl) historyDotsEl.classList.add('hidden');
 
-  // Timed mode: show speed rating
+  // Timed mode: show speed rating + par-relative delta, and feed the run
+  // into the fit pipeline (timed/{pushId} — the modeTimed effect
+  // activates in the R refit once >= 20 rows exist).
   if (state.gameMode === 'timed') {
     const precise = state.preciseTime || state.elapsedTime;
     const rating = getSpeedRating(state.currentLevel, precise);
     gameoverTime.textContent = `Time: ${precise.toFixed(1)}s — ${rating.icon} ${rating.name}!`;
+    if (parEl && state.timedPar > 0) {
+      const tDelta = precise - state.timedPar;
+      const tAbs = Math.abs(tDelta).toFixed(1);
+      const tClass = tDelta < -0.5 ? 'par-under' : tDelta > 0.5 ? 'par-over' : 'par-even';
+      const tText = tDelta < -0.5 ? `${tAbs}s under par` : tDelta > 0.5 ? `${tAbs}s over par` : 'Even par!';
+      parEl.innerHTML = `Greg's Time: ${state.timedPar.toFixed(1)}s · <span class="${tClass}">${tText}</span>`;
+      parEl.classList.remove('hidden');
+    }
+    if (state.timedFeatures && state.timedPar > 0) {
+      const timedName = getPlayerName() || 'Anonymous';
+      submitTimedScore(timedName, Math.round(precise * 10) / 10, state.currentLevel, {
+        uid: getUid(),
+        par: state.timedPar,
+        features: state.timedFeatures,
+      }).catch(err => reportCaughtError('timed-score-submit', err));
+    }
   } else if (state.gameMode === 'daily') {
     // Daily: show precise time + par comparison
     const precise = state.preciseTime || state.elapsedTime;
