@@ -25,18 +25,20 @@ export { serializeBoard, deserializeBoard };
  * @returns {Promise<object|null>}
  */
 export async function loadWeeklyBoard(weekStart) {
-  // Cache-first, same rationale as loadDailyBoard — the weekly board is
-  // write-once/immutable for the week, so a cached copy is authoritative
-  // and keeps the weekly playable offline once pre-fetched.
+  // Network-first with cache fallback, same rationale as loadDailyBoard:
+  // the regenerate-weekly-board tool can replace a week's canonical
+  // mid-week (service-account bypass of the write-once rule), and a
+  // blindly authoritative cache would pin players who had already
+  // fetched the old board to a divergent layout for the rest of the
+  // week. Offline, the cached copy still keeps the weekly playable.
   const cached = getCachedWeeklyBoard(weekStart);
-  if (cached) return cached;
 
   let db;
   try {
     db = await waitForFirebaseReady();
   } catch (err) {
     console.warn('loadWeeklyBoard:', err.message);
-    return null;
+    return cached; // offline — the cached canonical is the best truth available
   }
   try {
     const ref = db.ref(`${DB_PATH}/${weekStart}`);
@@ -44,13 +46,15 @@ export async function loadWeeklyBoard(weekStart) {
       ref.once('value'),
       new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), FETCH_TIMEOUT_MS)),
     ]);
+    // Server reachable and empty = no canonical for this week; don't
+    // resurrect a cached copy the server disowned.
     if (!snap.exists()) return null;
     const val = snap.val();
-    cacheWeeklyBoard(weekStart, val); // populate local cache for offline play
+    cacheWeeklyBoard(weekStart, val); // refresh local cache for offline play
     return val;
   } catch (err) {
     console.warn('loadWeeklyBoard fetch failed:', err.message);
-    return null;
+    return cached;
   }
 }
 

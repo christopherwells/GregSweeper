@@ -209,18 +209,23 @@ export function deserializeBoard(raw) {
  * @returns {Promise<object|null>}
  */
 export async function loadDailyBoard(dateString) {
-  // Cache-first: canonical boards are write-once / immutable, so a locally
-  // cached copy is authoritative and lets the daily load with zero network.
-  // This is what keeps it playable offline once it's been pre-fetched.
+  // Network-first with cache fallback. Canonical boards are write-once
+  // at the RULES layer, but an admin regeneration (service-account
+  // bypass — scripts/regenerate-daily-board.mjs) can replace an
+  // UNPLAYED future board, e.g. the 2026-06-14 reveal-gating
+  // re-certification. A blindly authoritative cache would pin every
+  // client that had prefetched the old layout to a divergent board on
+  // the day. Cost while online: one ~2KB fetch per load — the
+  // pre-boardCache behavior. Offline, the cached copy below is still
+  // what keeps the daily playable.
   const cached = getCachedDailyBoard(dateString);
-  if (cached) return cached;
 
   let db;
   try {
     db = await waitForFirebaseReady();
   } catch (err) {
     console.warn('loadDailyBoard:', err.message);
-    return null;
+    return cached; // offline — the cached canonical is the best truth available
   }
   try {
     const ref = db.ref(`${DB_PATH}/${dateString}`);
@@ -228,13 +233,17 @@ export async function loadDailyBoard(dateString) {
       ref.once('value'),
       new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), FETCH_TIMEOUT_MS)),
     ]);
+    // Server reachable and empty = there IS no canonical for this date
+    // (admin deletions must always be followed immediately by a
+    // rewrite). Don't resurrect a cached copy the server disowned —
+    // fall through to the caller's local-generation path.
     if (!snap.exists()) return null;
     const val = snap.val();
-    cacheDailyBoard(dateString, val); // populate local cache for offline replays
+    cacheDailyBoard(dateString, val); // refresh local cache for offline replays
     return val;
   } catch (err) {
     console.warn('loadDailyBoard fetch failed:', err.message);
-    return null;
+    return cached;
   }
 }
 
