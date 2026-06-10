@@ -1,0 +1,46 @@
+name: Regenerate daily board
+
+# Manual one-off: replaces an UNPLAYED future date's daily canonical +
+# dailyMeta with a freshly generated board under the current code's
+# rules. Built for the 2026-06-14 reveal-gating re-certification (the
+# old board's certificate relied on a fogged compass clue).
+#
+# The script refuses past/live dates and dates with score rows — see
+# scripts/regenerate-daily-board.mjs for the rails. Service-account
+# auth is required to bypass the write-once rule on dailyBoard/$date;
+# the FIREBASE_SERVICE_ACCOUNT secret is the same one used by
+# send-push.mjs and regenerate-weekly-board.yml.
+#
+# Triggered manually via:
+#   gh workflow run regenerate-daily-board.yml --ref <branch> \
+#     -f date=2026-06-14 -f dryRun=true
+
+on:
+  workflow_dispatch:
+    inputs:
+      date:
+        description: 'Daily date to regenerate (YYYY-MM-DD, must be a future ET date)'
+        required: true
+      dryRun:
+        description: 'Dry run (generate + certify + print, write nothing)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  regenerate:
+    runs-on: [self-hosted, gregsweeper-win]
+    defaults:
+      run:
+        shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -eo pipefail "{0}"'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Regenerate
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node scripts/regenerate-daily-board.mjs "${{ github.event.inputs.date }}" ${{ github.event.inputs.dryRun == 'true' && '--dry-run' || '' }}
