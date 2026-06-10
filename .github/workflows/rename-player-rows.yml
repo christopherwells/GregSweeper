@@ -1,0 +1,33 @@
+name: Rename player rows
+
+on:
+  workflow_dispatch:
+    inputs:
+      uid:
+        description: 'Firebase uid whose leaderboard rows should be renamed'
+        required: true
+        type: string
+      new_name:
+        description: 'New display name (1-20 chars, no <>&"''`@)'
+        required: true
+        type: string
+      dry_run:
+        description: 'Preview only — list rows without writing'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  rename:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install firebase-admin
+        run: npm install firebase-admin@12
+      - name: Rename
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node scripts/rename-player-rows.mjs "${{ inputs.uid }}" "${{ inputs.new_name }}" ${{ inputs.dry_run && '--dry-run' || '' }}
