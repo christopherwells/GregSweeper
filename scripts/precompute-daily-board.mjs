@@ -281,6 +281,16 @@ async function writeCanonicalBoard(date, idToken, payload) {
     activeGimmicks: cand.activeGimmicks,
     codeVersion,
   });
+  // Stamp the winning mission INTO the canonical payload. Boards are
+  // generated up to 7 days before they're played, and the nightly refit
+  // reorders the coverage list, so consumers must never re-derive the
+  // mission from the seed's slot index against the CURRENT
+  // experimentTarget.json — they read it from the board (Greg's Field
+  // Note does exactly this).
+  if (m && typeof m.target === 'string') {
+    payload.missionTarget = m.target;
+    payload.missionIsPrimary = m.isPrimary === true;
+  }
   console.log(`  payload size: ${JSON.stringify(payload).length} bytes`);
 
   const idToken = await signInAnonymously();

@@ -6,13 +6,38 @@ import './helpers.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-const { fieldNoteLine, yesterdayNote, labFileLine, featureName } = await import('../src/logic/gregVoice.js');
+const { fieldNoteLine, fieldNoteFromBoard, yesterdayNote, labFileLine, featureName } = await import('../src/logic/gregVoice.js');
 
 test('fieldNoteLine distinguishes primary probes from coverage studies, null on unknowns', () => {
   assert.match(fieldNoteLine({ target: 'sonarCellCount', isPrimary: true }), /probes sonar.*widest uncertainty/);
   assert.match(fieldNoteLine({ target: 'lockedCellCount', isPrimary: false }), /locked cells study.*more data/);
   assert.equal(fieldNoteLine({ target: 'someUnknownFeature', isPrimary: true }), null);
   assert.equal(fieldNoteLine(null), null);
+});
+
+test('fieldNoteFromBoard cannot contradict the board (regression: 2026-06-10 wormhole board labeled compass)', () => {
+  // Stamped mission wins when present (boards written after the fix).
+  assert.match(
+    fieldNoteFromBoard({ missionTarget: 'wormholePairCount', missionIsPrimary: false, activeGimmicks: ['wormhole'] }),
+    /wormholes study.*more data/,
+  );
+  assert.match(
+    fieldNoteFromBoard({ missionTarget: 'sonarCellCount', missionIsPrimary: true }),
+    /probes sonar.*widest uncertainty/,
+  );
+  // No stamp (historical boards): fall back to the board's ACTUAL
+  // gimmicks in the neutral framing — never a re-derived slot mapping.
+  assert.equal(
+    fieldNoteFromBoard({ activeGimmicks: ['wormhole'] }),
+    'Greg: today is a wormholes study',
+  );
+  assert.equal(
+    fieldNoteFromBoard({ activeGimmicks: ['liar', 'walls'] }),
+    'Greg: today is a liar cells + walls study',
+  );
+  // Gimmick-free board → no note, never a vague one.
+  assert.equal(fieldNoteFromBoard({ activeGimmicks: [] }), null);
+  assert.equal(fieldNoteFromBoard(null), null);
 });
 
 const row = (over) => ({
