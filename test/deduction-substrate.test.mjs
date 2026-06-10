@@ -7,7 +7,7 @@ import './helpers.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-const { isBoardSolvable, findDeducibleFrontier, findNextSafeMove, detectWrongFlags } = await import('../src/logic/boardSolver.js');
+const { isBoardSolvable, findDeducibleFrontier, findNextSafeMove, detectWrongFlags, gradeGimmickContribution } = await import('../src/logic/boardSolver.js');
 const { solveConstraints } = await import('../src/logic/constraintSolver.js');
 const { generateBoard, cleanSolverArtifacts } = await import('../src/logic/boardGenerator.js');
 const { createDailyRNG } = await import('../src/logic/seededRandom.js');
@@ -163,6 +163,22 @@ test('detectWrongFlags localizes a provably wrong flag and signals contradiction
     'the wrong flag at (0,2) must be localized by the flags-blind run');
   assert.equal(d.contradiction, true,
     'the flags-respecting run must report the contradiction the wrong flag creates');
+});
+
+test('gradeGimmickContribution: a load-bearing liar grades as required, structural types skip', () => {
+  // 1x5 strip, mine at (0,4), liar at (0,2) lying high. With the liar's
+  // disjunctive constraint the strip solves; stripped, (0,3) is
+  // unreachable by any deduction — the liar is strictly required.
+  const board = makeBoard(1, 5);
+  board[0][4].isMine = true;
+  recalcAdjacency(board);
+  board[0][2].isLiar = true;
+  board[0][2].displayedMines = board[0][2].adjacentMines + 1;
+  const grade = gradeGimmickContribution(board, 1, 5, 0, 0, 'liar');
+  assert.equal(grade.tier, 'required');
+  // Structural types never run the strip analysis.
+  assert.equal(gradeGimmickContribution(board, 1, 5, 0, 0, 'walls').tier, 'structural');
+  assert.equal(gradeGimmickContribution(board, 1, 5, 0, 0, 'mystery').tier, 'structural');
 });
 
 test('frontier is flags-blind on demand: a wrong flag cannot hide a provable deduction', () => {

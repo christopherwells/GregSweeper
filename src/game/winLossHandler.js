@@ -13,7 +13,8 @@ import { showToast } from '../ui/toastManager.js';
 import { stopTimer, pauseTimer, resumeTimer, updateTimerDisplay } from './timerManager.js';
 import { awardPowerUps } from './powerUpActions.js';
 import { setHandleWin } from './powerUpActions.js';
-import { findNextSafeMove } from '../logic/boardSolver.js';
+import { findNextSafeMove, isBoardSolvable, gradeGimmickContribution } from '../logic/boardSolver.js';
+import { prepareLossReceipt, bombStrikeVerdict } from '../ui/receiptRenderer.js';
 import { computeBombInfoValue } from '../logic/bombInfoValue.js';
 import { getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, getChaosDifficulty, LIFELINE_WIN_REWARD_CHANCE, BOMB_PENALTY_BASE } from '../logic/difficulty.js';
 import {
@@ -156,12 +157,79 @@ function _renderWinModalHistoryDots(todayDate) {
   el.classList.remove('hidden');
 }
 
+// ── Win receipt: the board's confession ────────────────
+// One line on the daily/weekly win modal naming (a) the board's crux —
+// the first deduction trivial propagation couldn't reach — and (b) the
+// modifier's CERTIFIED contribution, graded by the same strip-and-
+// resolve analysis the generator used to admit the board. Voice rule:
+// these are statements about the BOARD's proof, never about how the
+// player reasoned. Runs async after the modal shows (two solver runs
+// ≈ tens of ms on a phone; the modal must feel instant).
+const TIER_PHRASE = {
+  1: 'a pattern deduction',
+  2: 'a search solve',
+  3: 'liar reasoning',
+};
+
+function _renderWinReceipt() {
+  const el = $('#gameover-receipt');
+  if (!el) return;
+  el.classList.add('hidden');
+  const board = state.board;
+  const rows = state.rows, cols = state.cols;
+  const fr = Math.floor(rows / 2), fc = Math.floor(cols / 2);
+  setTimeout(() => {
+    try {
+      // The solver simulates in its own arrays — live revealed state is
+      // untouched (and cleanSolverArtifacts must NOT run here: it would
+      // wipe cell.isRevealed on the live, fully-revealed board).
+      const traced = isBoardSolvable(board, rows, cols, fr, fc, undefined, { trace: true });
+      const parts = [];
+      if (traced.solvable && Array.isArray(traced.trace)) {
+        const crux = traced.trace.find(e => e.tier >= 1);
+        if (crux) {
+          const r = Math.floor(crux.cell / cols) + 1;
+          const c = (crux.cell % cols) + 1;
+          parts.push(`Crux: ${TIER_PHRASE[crux.tier] || 'a deduction'} at row ${r}, column ${c}`);
+        } else {
+          parts.push('No crux — this board fell to pure propagation');
+        }
+      }
+      const testable = (state.activeGimmicks || [])
+        .filter(g => ['sonar', 'compass', 'wormhole', 'liar', 'mirror'].includes(g));
+      if (testable.length > 0) {
+        const g = testable[0];
+        const grade = gradeGimmickContribution(board, rows, cols, fr, fc, g);
+        if (grade.tier === 'required') {
+          parts.push(`the ${g} was required — without it, no solution`);
+        } else if (grade.tier === 'technique') {
+          parts.push(`the ${g} spared you ${TIER_PHRASE[grade.to] || 'harder reasoning'}`);
+        } else if (grade.tier === 'shortcut') {
+          parts.push(`the ${g} saved ${grade.clicksSaved} clicks`);
+        } else if (grade.tier === 'decorative') {
+          parts.push(`the ${g} was a free hint this time`);
+        }
+      }
+      if (parts.length > 0) {
+        el.textContent = parts.join(' · ');
+        el.classList.remove('hidden');
+      }
+    } catch (err) {
+      console.warn('win receipt failed:', err && err.message);
+    }
+  }, 80);
+}
+
 // ── Handle Win ─────────────────────────────────────────
 
 export function handleWin() {
   state.status = 'won';
   stopTimer();
   announceGame('You won! Board cleared.');
+  // Shared modal hygiene: the win receipt only renders for daily/weekly;
+  // hide it up front so a prior game's line can't bleed through.
+  const winReceiptEl = $('#gameover-receipt');
+  if (winReceiptEl) winReceiptEl.classList.add('hidden');
   applyIcon(resetBtn, 'smileyWin', getThemeEmoji('smileyWin'), { sizeClass: 'sprite-smiley' });
   resetBtn.classList.add('smiley-win-bounce');
   setTimeout(() => resetBtn.classList.remove('smiley-win-bounce'), 800);
@@ -499,6 +567,8 @@ export function handleWin() {
       // their belt; one or two dots says nothing. Reads localStorage
       // residuals (just-appended above) so it's instant and offline.
       if (!isNewcomerDaily) _renderWinModalHistoryDots(state.dailySeed);
+      // Win receipt: the board's confession (crux + modifier verdict).
+      if (!isNewcomerDaily) _renderWinReceipt();
     }
   } else if (state.gameMode === 'weekly') {
     // Weekly: show precise time, day-of-week dot indicators, vs-best
@@ -586,6 +656,8 @@ export function handleWin() {
         el.innerHTML = `<div class="weekly-leaderboard-header">${header}</div>${rowsHtml}`;
       }).catch(err => reportCaughtError('weekly-leaderboard-render', err));
     }
+    // Weekly gets the board's confession too (crux + modifier verdict).
+    _renderWinReceipt();
   } else {
     const precise = state.preciseTime || state.elapsedTime;
     gameoverTime.textContent = `Time: ${precise.toFixed(1)}s${strikesInfo}`;
@@ -812,8 +884,14 @@ export function handleLoss(mineRow, mineCol) {
     }
   }
 
-  // Find what the solver says was the correct next move
-  const suggestedMove = findNextSafeMove(state.board);
+  // The loss receipt: the FULL deducible frontier (flags-blind — a wrong
+  // flag must never make the verdict lie), painted on the board for the
+  // explore view's tap-to-interrogate. The first frontier cell keeps the
+  // legacy one-cell NEXT MOVE chip.
+  const lossFrontier = prepareLossReceipt();
+  const suggestedMove = lossFrontier.safe.length > 0
+    ? { row: lossFrontier.safe[0].row, col: lossFrontier.safe[0].col }
+    : null;
   state.suggestedMove = suggestedMove;
   if (suggestedMove) {
     const cell = state.board[suggestedMove.row]?.[suggestedMove.col];
@@ -923,21 +1001,26 @@ export function handleLoss(mineRow, mineCol) {
   const doneBtnLoss = $('#gameover-done');
   if (doneBtnLoss) doneBtnLoss.classList.add('hidden');
   $('#gameover-achievements').classList.add('hidden');
+  const lossReceiptEl = $('#gameover-receipt');
+  if (lossReceiptEl) lossReceiptEl.classList.add('hidden');
   const sharePreview = $('#share-card-preview');
   if (sharePreview) sharePreview.classList.add('hidden');
 
-  // Show post-death analysis info
+  // Post-death verdict — honest counts from the flags-blind frontier.
+  // "Genuine 50/50" is now a TRUSTWORTHY claim: the old one-cell check
+  // trusted player flags, so a wrong flag could stamp 50/50 on a fully
+  // deducible position. Tap any cell in the explore view to see its
+  // proof (receiptRenderer.handleInterrogateTap).
   const analysisEl = $('#gameover-analysis');
   const analysisText = $('#gameover-analysis-text');
   if (analysisEl && analysisText) {
-    if (wrongFlagCount > 0 && suggestedMove) {
-      analysisText.textContent = `${wrongFlagCount} wrong flag${wrongFlagCount > 1 ? 's' : ''} · Safe move available`;
-    } else if (wrongFlagCount > 0) {
-      analysisText.textContent = `${wrongFlagCount} wrong flag${wrongFlagCount > 1 ? 's' : ''} · It was a 50/50`;
-    } else if (suggestedMove) {
-      analysisText.textContent = 'A safe move was available';
+    const n = lossFrontier.safe.length;
+    const flagNote = wrongFlagCount > 0
+      ? `${wrongFlagCount} wrong flag${wrongFlagCount > 1 ? 's' : ''} · ` : '';
+    if (n > 0) {
+      analysisText.textContent = `${flagNote}${n} cell${n !== 1 ? 's were' : ' was'} provably safe — tap cells to see the proof`;
     } else {
-      analysisText.textContent = 'It was a genuine 50/50';
+      analysisText.textContent = `${flagNote}Genuine 50/50 — no cell was provable`;
     }
     analysisEl.classList.remove('hidden');
   }
@@ -1083,6 +1166,17 @@ export function handleDailyBombHit(mineRow, mineCol) {
   const penalty = Math.round((infoValue + BOMB_PENALTY_BASE) * 10) / 10;
   const infoValueRounded = Math.round(infoValue * 10) / 10;
 
+  // The strike verdict — computed from the board state the player SAW
+  // (before the strike cell is marked below), flags-blind so a wrong
+  // flag can't make the receipt lie. Three honest answers: the mine was
+  // provable / safe moves existed elsewhere / genuinely at the frontier.
+  let strikeVerdict = null;
+  try {
+    strikeVerdict = bombStrikeVerdict(state.board, mineRow, mineCol);
+  } catch (err) {
+    console.warn('bombStrikeVerdict failed:', err && err.message);
+  }
+
   // Bump the per-attempt strike counter + append the event with its
   // penalty value. The penalty field is new in this mechanic; legacy
   // events (under the old +10s/re-fog mechanic) lack it, and the R
@@ -1148,6 +1242,17 @@ export function handleDailyBombHit(mineRow, mineCol) {
     markNoticeSeen('bombhit_explainer_v2');
     const modal = document.getElementById('bombhit-explainer');
     const okBtn = document.getElementById('bombhit-explainer-ok');
+    // First hit gets its verdict inside the explainer (the per-hit popup
+    // only shows from the second hit onward).
+    const verdictEl = document.getElementById('bombhit-verdict');
+    if (verdictEl) {
+      if (strikeVerdict) {
+        verdictEl.textContent = `This one: ${strikeVerdict.text.charAt(0).toLowerCase()}${strikeVerdict.text.slice(1)}.`;
+        verdictEl.classList.remove('hidden');
+      } else {
+        verdictEl.classList.add('hidden');
+      }
+    }
     if (modal && okBtn) {
       // Cleanup must run no matter how the modal closes (button or
       // Escape) — observe the 'hidden' class transition.
@@ -1188,7 +1293,9 @@ export function handleDailyBombHit(mineRow, mineCol) {
                     infoValueRounded < 6.5 ? ' · Minor mine' :
                     infoValueRounded < 13  ? ' · Key mine' :
                                             '! Critical mine';
-  popup.innerHTML = `<div class="daily-bomb-popup-content">${spriteImgHTML('strike', 'sprite-popup', 'Mine hit')} <span class="daily-bomb-penalty">+${penalty.toFixed(1)}s${bombLabel}</span></div>`;
+  const verdictHtml = strikeVerdict
+    ? `<div class="daily-bomb-verdict">${strikeVerdict.text}</div>` : '';
+  popup.innerHTML = `<div class="daily-bomb-popup-content">${spriteImgHTML('strike', 'sprite-popup', 'Mine hit')} <span class="daily-bomb-penalty">+${penalty.toFixed(1)}s${bombLabel}</span>${verdictHtml}</div>`;
   document.getElementById('app').appendChild(popup);
 
   setTimeout(() => {

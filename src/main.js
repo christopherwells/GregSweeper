@@ -1694,6 +1694,23 @@ boardEl.addEventListener('keydown', (e) => {
   }
 });
 
+// ── Post-loss tap-to-interrogate (the Receipt's explore view) ──
+// In the lost state, board clicks otherwise do nothing — route them to
+// the receipt: tap any cell to ask "was this knowable?" and watch the
+// proving region pulse. Additive listener; live-game handlers all guard
+// away from the lost state, so there is no conflict.
+boardEl.addEventListener('click', (e) => {
+  if (state.status !== 'lost') return;
+  const cellEl = e.target.closest('.cell');
+  if (!cellEl) return;
+  const row = parseInt(cellEl.dataset.row, 10);
+  const col = parseInt(cellEl.dataset.col, 10);
+  if (Number.isInteger(row) && Number.isInteger(col)) {
+    import('./ui/receiptRenderer.js').then(m => m.handleInterrogateTap(row, col))
+      .catch(err => reportCaughtError('receipt-interrogate', err));
+  }
+});
+
 resetBtn.addEventListener('click', () => {
   resetBtn.classList.add('smiley-pressed');
   setTimeout(() => resetBtn.classList.remove('smiley-pressed'), 150);

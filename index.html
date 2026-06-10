@@ -481,6 +481,9 @@
         <p id="gameover-encouragement" class="gameover-encouragement hidden"></p>
         <p id="gameover-par" class="gameover-par hidden"></p>
         <p id="gameover-par-breakdown" class="par-breakdown hidden"></p>
+        <!-- Win receipt: the board's confession — crux + certified
+             modifier contribution. Filled async by _renderWinReceipt. -->
+        <p id="gameover-receipt" class="gameover-receipt hidden"></p>
         <p id="gameover-record" class="hidden"></p>
         <p id="gameover-powerup-earned" class="hidden"></p>
         <!-- Last 7 daily deltas as colored dots. Populated on daily wins
@@ -573,6 +576,7 @@
             <li>A mine holding back deeper deductions → up to <strong>+30s</strong> or more</li>
           </ul>
           <p>So bombing a "throwaway" mine is a cheap shortcut; bombing a critical mine is real time. The popup on each hit shows the breakdown.</p>
+          <p id="bombhit-verdict" class="bombhit-verdict hidden"></p>
           <p>Other modes still end on a mine, so flag carefully.</p>
         </div>
         <button id="bombhit-explainer-ok" class="action-btn primary">Got it</button>

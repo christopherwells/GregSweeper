@@ -534,6 +534,30 @@ function _gimmickContributes(withCheck, strippedCheck) {
   return false;
 }
 
+// Grade ONE gimmick type's contribution to this board, for the win
+// receipt's modifier verdict. Same strip-and-resolve analysis as the
+// load-bearing filter, but returns the honest TIER instead of a boolean,
+// so the receipt copy can never overclaim ("required" is only said when
+// stripping the gimmick literally leaves the board unsolvable):
+//   required   — without it, no solution
+//   technique  — it lowers the reasoning class the board demands
+//   shortcut   — it saves >= SHORTCUT_CLICK_THRESHOLD clicks
+//   decorative — a free hint this time (relax-valve boards ship these)
+//   structural — walls/locked/mystery: the question doesn't apply
+export function gradeGimmickContribution(board, rows, cols, safeRow, safeCol, type) {
+  if (!TESTABLE_GIMMICK_TYPES.includes(type)) return { tier: 'structural' };
+  const nbrCache = buildNeighborCache(board, rows, cols);
+  const withCheck = isBoardSolvable(board, rows, cols, safeRow, safeCol, nbrCache);
+  const stripped = isBoardSolvable(board, rows, cols, safeRow, safeCol, nbrCache, { stripGimmicks: [type] });
+  if (!stripped.solvable && stripped.remainingUnknowns > 0) return { tier: 'required' };
+  if ((stripped.techniqueLevel ?? 0) > (withCheck.techniqueLevel ?? 0)) {
+    return { tier: 'technique', from: withCheck.techniqueLevel ?? 0, to: stripped.techniqueLevel ?? 0 };
+  }
+  const clicksSaved = stripped.totalClicks - withCheck.totalClicks;
+  if (clicksSaved >= SHORTCUT_CLICK_THRESHOLD) return { tier: 'shortcut', clicksSaved };
+  return { tier: 'decorative' };
+}
+
 /**
  * Returns the subset of activeGimmicks that are decorative on this board —
  * i.e. stripping them changes nothing meaningful (board still solvable at
