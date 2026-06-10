@@ -179,6 +179,14 @@ async function _doSubmitOnlineScore(dateString, name, time, bombHits, extras) {
         payload.totalBombPenalty = Math.round(totalPenalty * 10) / 10;
       }
     }
+    // Lens invocations: [{ t, kind }] with kind 'flag-warning' | 'region'.
+    // Hints change completion times, so the R refit EXCLUDES hinted plays
+    // from the par fit — an uninstrumented hint system would quietly
+    // corrupt the model. Only attached when the player actually used the
+    // lens, so hint-free rows stay byte-identical to before.
+    if (Array.isArray(extras.hintEvents) && extras.hintEvents.length > 0) {
+      payload.hintEvents = extras.hintEvents;
+    }
     // Effective RNG seed used for this daily's generation. Equal to the
     // dateString on non-experiment days, a `:trialN` variant on
     // adaptive-experiment days (see experimentDesign.js). Stored so

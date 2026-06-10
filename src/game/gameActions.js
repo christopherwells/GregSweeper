@@ -291,6 +291,7 @@ export async function newGame() {
   state.dailyBombHits = 0;
   state.dailyBombHitEvents = [];
   state.clickTimeline = [];
+  state.hintEvents = [];
 
   // Daily mode: vary board dimensions using the daily seed
   if (state.gameMode === 'daily' && state.dailySeed) {

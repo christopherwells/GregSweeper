@@ -779,6 +779,7 @@ export function handleWin() {
         par: state.dailyPar,
         features: state.dailyFeatures,
         bombHitEvents: state.dailyBombHitEvents || [],
+        hintEvents: state.hintEvents || [],
         rngSeed: state.dailyRngSeed || dateStr,
       }).then((ok) => {
         // Show the REAL outcome. Previously this toasted success

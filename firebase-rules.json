@@ -42,6 +42,15 @@
           "totalBombPenalty": {
             ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600"
           },
+          "hintEvents": {
+            ".validate": "newData.hasChildren() || newData.val() === null",
+            "$idx": {
+              ".validate": "newData.hasChildren(['t', 'kind'])",
+              "t": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600" },
+              "kind": { ".validate": "newData.isString() && newData.val().length <= 16" },
+              "$other": { ".validate": false }
+            }
+          },
           "rngSeed": {
             ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 64"
           },

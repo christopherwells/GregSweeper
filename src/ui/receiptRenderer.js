@@ -9,10 +9,11 @@
 // Voice rule: receipts describe the BOARD's proof ("this was provably
 // safe — the proof lived here"), never narrate the player's reasoning.
 
-import { state } from '../state/gameState.js';
+import { state, recordHintEvent } from '../state/gameState.js';
 import { boardEl } from './domHelpers.js';
-import { findDeducibleFrontier } from '../logic/boardSolver.js';
+import { findDeducibleFrontier, detectWrongFlags } from '../logic/boardSolver.js';
 import { showToast } from './toastManager.js';
+import { reportCaughtError } from '../diagnostics/errorReporter.js';
 
 let _frontier = null; // { safe: [...], mines: [...], contradiction } at death
 let _pulseTimer = null;
@@ -73,6 +74,59 @@ export function handleInterrogateTap(row, col) {
     showToast('🤷 Not deducible at the time — no proof reached this cell', 2600);
   }
   return true;
+}
+
+// ── The Lens: Socratic mid-game help ───────────────────
+// Three honest answers, in priority order, none of which ever names the
+// safe cell:
+//   1. "One of your flags is wrong" — the most common true cause of a
+//      stuck player, detected by the dual-solve diff. Deliberately not
+//      localized (saying WHICH flag would solve a chunk of the board).
+//   2. Pulse the proving region of the first available deduction, sized
+//      honestly by tier: a single satisfied constraint for Pass A, the
+//      constraint set for subsets, the whole component for enumeration
+//      (and the copy SAYS it needs enumeration — that teaches what tank
+//      reasoning is).
+//   3. "No safe move exists" is impossible by construction on an
+//      official board — if the frontier ever comes back empty we say so
+//      honestly and report it, because it means something broke.
+// Every invocation is recorded into state.hintEvents: hints change
+// completion times, and the nightly par fit must be able to exclude
+// hinted plays or the Lens quietly corrupts the model.
+export function handleLensRequest() {
+  if (state.status !== 'playing') {
+    showToast('🔍 The lens works mid-game — start revealing first', 2200);
+    return;
+  }
+  try {
+    const flagCheck = detectWrongFlags(state.board);
+    if (flagCheck.wrongFlags.length > 0 || flagCheck.contradiction) {
+      recordHintEvent('flag-warning');
+      showToast('🚩 One of your flags is provably wrong', 3000);
+      return;
+    }
+    const frontier = findDeducibleFrontier(state.board, { respectFlags: false });
+    const next = frontier.safe.find(s => !state.board[s.row][s.col].isFlagged)
+      || frontier.safe[0]
+      || frontier.mines[0];
+    if (!next) {
+      // Should be impossible on a generator-certified board.
+      showToast('🤔 Nothing provable found — that should not happen on an official board', 3200);
+      reportCaughtError('lens-empty-frontier', new Error(`mode=${state.gameMode} seed=${state.dailyRngSeed || ''}`));
+      return;
+    }
+    recordHintEvent('region');
+    _pulseSources(next.sources);
+    if (next.tier === 0) {
+      showToast('🔍 Look again at the highlighted clue — it is already satisfied', 3200);
+    } else if (next.sources.length <= 3) {
+      showToast('🔍 The proof lives in the highlighted cells — compare what they claim', 3200);
+    } else {
+      showToast('🔍 The answer is in the highlighted region — it needs enumeration; no small clue exists', 3600);
+    }
+  } catch (err) {
+    reportCaughtError('lens-request', err);
+  }
 }
 
 // One-line verdict for a struck mine (daily/weekly bomb hits). Computed
