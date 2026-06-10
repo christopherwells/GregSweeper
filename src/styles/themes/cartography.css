@@ -1,5 +1,7 @@
 /* Cartography theme — antique treasure-map parchment, sepia ink, map-red
-   accents, latitude/longitude ruling. X marks the spot. No particles. */
+   accents, latitude/longitude ruling. X marks the spot. Ambient plotted-route
+   dashes + sounding rings (themeEffects.js wave 2), so cleared cells need a
+   grout: the sepia chart ruling between explored squares. */
 [data-theme="cartography"] {
   --color-bg: #c9b896;
   --color-app-bg: #e0d0a8;
@@ -7,6 +9,7 @@
   --color-cell-hidden-hover: #d0bf94;
   --color-cell-hidden-gradient: linear-gradient(145deg, #dccca4, #d2c096);
   --color-cell-revealed: #ebdcb8;
+  --cell-gap-seal: #6a4a26;
   --color-cell-border-light: #b09868;
   --color-cell-border-dark: #8a7448;
   --color-mine: #6a3a1a;

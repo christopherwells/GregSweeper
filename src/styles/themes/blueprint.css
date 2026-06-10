@@ -1,6 +1,8 @@
 /* Blueprint theme — cyan drafting lines on navy blueprint paper. Technical
    monospace, a graph-paper grid behind everything, rivet/annotation objects.
-   No ambient particles, so no grout seal — cells read as drawn cells. */
+   Ambient drafting ticks + dashed measure lines (themeEffects.js wave 2), so
+   cleared cells need a grout: the pale drafting grid line that rules the
+   sheet, bright against the deep navy. */
 [data-theme="blueprint"] {
   --color-bg: #08203a;
   --color-app-bg: #0c2a47;
@@ -8,6 +10,7 @@
   --color-cell-hidden-hover: #16456f;
   --color-cell-hidden-gradient: linear-gradient(145deg, #134066, #0f3050);
   --color-cell-revealed: #0a2540;
+  --cell-gap-seal: #cfe6f7;
   --color-cell-border-light: #3a7ca8;
   --color-cell-border-dark: #08203a;
   --color-mine: #ff6b6b;
