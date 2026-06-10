@@ -751,6 +751,182 @@ const THEME_EFFECTS = {
     }, () => rand(350, 1050));
     return () => { sparkleCleanup(); emberCleanup(); };
   },
+
+  // ── Wave 2: the six quiet concept worlds (2026-06-10) ──────────
+  // Christopher's bar: "worlds apart, not reskins ... excellent
+  // animations and less emojis." Every particle below is DRAWN — a
+  // styled div with gradients / clip-paths / dash patterns — never an
+  // emoji glyph. Counts stay modest, sizes visible (the Forest-spore
+  // lesson), and each theme's motion comes from its own craft idiom.
+
+  // Editorial (L5): loose ink flecks drift down the page; now and then
+  // a thin headline rule slides across like a galley being set.
+  editorial: (container) => {
+    injectStyles();
+    const fleckCleanup = particleLoop(container, (c) => {
+      const s = rand(2.5, 5);
+      return spawn(c, { style: {
+        left: rand(4, 94) + '%', top: '0px',
+        width: s + 'px', height: s * rand(0.8, 1.6) + 'px',
+        borderRadius: rand(0, 1) > 0.5 ? '50%' : '1px',
+        background: pick(['rgba(26,26,26,0.4)', 'rgba(44,62,143,0.3)', 'rgba(58,58,58,0.35)']),
+        animation: `fxFall ${rand(7, 12)}s linear forwards`,
+        '--fx-x1': rand(-18, 18) + 'px', '--fx-y1': '50%',
+        '--fx-x2': rand(-28, 28) + 'px', '--fx-y2': '105%',
+        '--fx-r0': '0deg', '--fx-r1': rand(60, 140) + 'deg', '--fx-r2': rand(200, 320) + 'deg',
+        '--fx-opacity': '0.35', '--fx-opacity-end': '0.15', '--fx-s': '1',
+      }});
+    }, () => rand(700, 1500));
+    const ruleCleanup = particleLoop(container, (c) => {
+      return spawn(c, { style: {
+        left: '0', top: rand(8, 88) + '%',
+        width: rand(46, 90) + 'px', height: '2px',
+        background: 'rgba(26,26,26,0.22)',
+        animation: `fxSweep ${rand(9, 14)}s linear forwards`,
+      }});
+    }, () => rand(4200, 8000));
+    return () => { fleckCleanup(); ruleCleanup(); };
+  },
+
+  // Sumi-e (L10): ink motes bloom on the paper and feather away; a
+  // long brush wisp occasionally floats across. Rarely, a seal-red mote
+  // — the artist's stamp.
+  sumie: (container) => {
+    injectStyles();
+    const moteCleanup = particleLoop(container, (c) => {
+      const s = rand(8, 18);
+      const red = Math.random() < 0.07;
+      const ink = red ? '176,48,32' : '42,42,42';
+      return spawn(c, { style: {
+        left: rand(6, 90) + '%', top: rand(6, 90) + '%',
+        width: s + 'px', height: s + 'px', borderRadius: '50%',
+        background: `radial-gradient(circle, rgba(${ink},0.4) 0%, rgba(${ink},0.18) 45%, transparent 72%)`,
+        animation: `fxTwinkle ${rand(3.5, 6.5)}s ease-in-out forwards`,
+        '--fx-opacity': '0.7',
+      }});
+    }, () => rand(900, 1900));
+    const wispCleanup = particleLoop(container, (c) => {
+      return spawn(c, { style: {
+        left: '-10%', top: rand(12, 82) + '%',
+        width: rand(60, 110) + 'px', height: rand(3, 5) + 'px',
+        borderRadius: '50%',
+        background: 'linear-gradient(90deg, transparent, rgba(42,42,42,0.18) 30%, rgba(42,42,42,0.26) 50%, rgba(42,42,42,0.12) 80%, transparent)',
+        animation: `fxSweep ${rand(11, 17)}s ease-in-out forwards`,
+      }});
+    }, () => rand(5200, 9500));
+    return () => { moteCleanup(); wispCleanup(); };
+  },
+
+  // Blueprint (L15): drafting ticks — small cyan crosses register on
+  // the sheet like compass pricks; a dashed measure line sweeps through
+  // on the slow cycle.
+  blueprint: (container) => {
+    injectStyles();
+    const tickCleanup = particleLoop(container, (c) => {
+      const s = rand(6, 11);
+      const cyan = pick(['90,208,255', '160,224,255', '122,224,255']);
+      return spawn(c, { style: {
+        left: rand(4, 94) + '%', top: rand(4, 94) + '%',
+        width: s + 'px', height: s + 'px',
+        background: `linear-gradient(rgba(${cyan},0.75), rgba(${cyan},0.75)) center / 100% 1px no-repeat, ` +
+                    `linear-gradient(rgba(${cyan},0.75), rgba(${cyan},0.75)) center / 1px 100% no-repeat`,
+        animation: `fxTwinkle ${rand(1.6, 3.2)}s ease-in-out forwards`,
+        '--fx-opacity': '0.8',
+      }});
+    }, () => rand(550, 1250));
+    const measureCleanup = particleLoop(container, (c) => {
+      return spawn(c, { style: {
+        left: '0', top: rand(10, 86) + '%',
+        width: rand(80, 150) + 'px', height: '1px',
+        background: 'repeating-linear-gradient(90deg, rgba(90,208,255,0.45) 0 6px, transparent 6px 11px)',
+        animation: `fxSweep ${rand(10, 15)}s linear forwards`,
+      }});
+    }, () => rand(5000, 9000));
+    return () => { tickCleanup(); measureCleanup(); };
+  },
+
+  // Cartography (L20): plotted routes — dashed sepia course segments
+  // drift across the chart while tiny sounding rings surface and fade.
+  cartography: (container) => {
+    injectStyles();
+    const routeCleanup = particleLoop(container, (c) => {
+      const ang = rand(-24, 24);
+      return spawn(c, { style: {
+        left: rand(-5, 70) + '%', top: rand(8, 88) + '%',
+        width: rand(55, 105) + 'px', height: '2px',
+        transform: `rotate(${ang}deg)`,
+        background: 'repeating-linear-gradient(90deg, rgba(106,74,38,0.5) 0 7px, transparent 7px 13px)',
+        animation: `fxDrift ${rand(9, 15)}s ease-in-out forwards`,
+        '--fx-x0': '-12%', '--fx-x2': '12%', '--fx-opacity': '0.5',
+      }});
+    }, () => rand(2400, 4800));
+    const soundingCleanup = particleLoop(container, (c) => {
+      const s = rand(5, 9);
+      return spawn(c, { style: {
+        left: rand(6, 92) + '%', top: rand(6, 92) + '%',
+        width: s + 'px', height: s + 'px', borderRadius: '50%',
+        border: '1.5px solid rgba(106,74,38,0.55)',
+        background: 'transparent',
+        animation: `fxTwinkle ${rand(2.5, 4.5)}s ease-in-out forwards`,
+        '--fx-opacity': '0.6',
+      }});
+    }, () => rand(1100, 2300));
+    return () => { routeCleanup(); soundingCleanup(); };
+  },
+
+  // Origami (L25): folded paper birds — pastel clip-path triangles
+  // glide down with the slow rotation of drifting paper.
+  origami: (container) => {
+    injectStyles();
+    return particleLoop(container, (c) => {
+      const s = rand(10, 17);
+      const hue = pick(['209,74,74', '74,138,192', '90,160,90', '224,144,58', '154,106,192']);
+      return spawn(c, { style: {
+        left: rand(4, 92) + '%', top: '0px',
+        width: s + 'px', height: s + 'px',
+        clipPath: pick([
+          'polygon(0 100%, 50% 0, 100% 100%)',
+          'polygon(0 0, 100% 35%, 25% 100%)',
+          'polygon(0 40%, 100% 0, 70% 100%)',
+        ]),
+        background: `linear-gradient(135deg, rgba(${hue},0.55), rgba(${hue},0.3))`,
+        animation: `fxFall ${rand(6, 11)}s ease-in-out forwards`,
+        '--fx-x1': rand(-36, 36) + 'px', '--fx-y1': '50%',
+        '--fx-x2': rand(-55, 55) + 'px', '--fx-y2': '105%',
+        '--fx-r0': rand(0, 40) + 'deg', '--fx-r1': rand(90, 180) + 'deg', '--fx-r2': rand(240, 360) + 'deg',
+        '--fx-opacity': '0.6', '--fx-opacity-end': '0.25', '--fx-s': '1',
+      }});
+    }, () => rand(800, 1700));
+  },
+
+  // Comic (L85): halftone clusters pulse like screen-tone shading, and
+  // a burst of speed lines streaks through on the rare beat.
+  comic: (container) => {
+    injectStyles();
+    const toneCleanup = particleLoop(container, (c) => {
+      const s = rand(26, 44);
+      return spawn(c, { style: {
+        left: rand(4, 88) + '%', top: rand(4, 88) + '%',
+        width: s + 'px', height: s + 'px', borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(42,34,24,0.5) 1.2px, transparent 1.4px)',
+        backgroundSize: '6px 6px',
+        animation: `fxTwinkle ${rand(3, 5.5)}s ease-in-out forwards`,
+        '--fx-opacity': '0.4',
+      }});
+    }, () => rand(1300, 2600));
+    const speedCleanup = particleLoop(container, (c) => {
+      const ang = pick([-18, -8, 8, 18]);
+      return spawn(c, { style: {
+        left: '0', top: rand(15, 80) + '%',
+        width: rand(60, 100) + 'px', height: '9px',
+        background: 'repeating-linear-gradient(180deg, rgba(42,34,24,0.5) 0 1.5px, transparent 1.5px 4px)',
+        '--fx-ang': ang + 'deg',
+        '--fx-dist': rand(260, 420) + 'px',
+        animation: `fxShoot ${rand(0.9, 1.5)}s ease-out forwards`,
+      }});
+    }, () => rand(4500, 9000));
+    return () => { toneCleanup(); speedCleanup(); };
+  },
 };
 
 export default THEME_EFFECTS;

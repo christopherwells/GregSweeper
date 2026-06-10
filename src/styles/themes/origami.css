@@ -1,5 +1,7 @@
 /* Origami theme — folded-paper craft. Clean geometric sans, diagonal fold
-   shadows on each cell, an unfold reveal, playful paper-color figures. */
+   shadows on each cell, an unfold reveal, playful paper-color figures.
+   Ambient gliding paper triangles (themeEffects.js wave 2), so cleared
+   cells need a grout: the crease shadow between unfolded panels. */
 [data-theme="origami"] {
   --color-bg: #e6e2da;
   --color-app-bg: #f4f1ea;
@@ -8,6 +10,7 @@
   /* Diagonal light→dark = a folded-paper crease on every tile. */
   --color-cell-hidden-gradient: linear-gradient(135deg, #ece7dc 0%, #e2ddd2 52%, #d4cdbe 100%);
   --color-cell-revealed: #f6f3ec;
+  --cell-gap-seal: #8a8478;
   --color-cell-border-light: #c8c0b0;
   --color-cell-border-dark: #a09880;
   --color-mine: #d14a4a;

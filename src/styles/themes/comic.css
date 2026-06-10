@@ -12,8 +12,11 @@
   --color-cell-hidden-gradient:
     radial-gradient(circle at 50% 50%, rgba(40,34,24,0.16) 0 1px, transparent 1.5px) 0 0 / 6px 6px,
     linear-gradient(150deg, #e8dec3, #ded2b4);
-  /* Cleared = clean printed paper. */
+  /* Cleared = clean printed paper. Ambient halftone clusters + speed
+     lines (themeEffects.js wave 2), so cleared cells need a grout: the
+     black ink gutter between panels. */
   --color-cell-revealed: #f5efdf;
+  --cell-gap-seal: #2a2218;
   --color-cell-border-light: #2a2218;
   --color-cell-border-dark: #2a2218;
   --color-mine: #2a2218;
