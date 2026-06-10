@@ -11,6 +11,7 @@
 // worker cache). No Firebase round-trip at runtime.
 
 let _handicaps = null;
+let _details = null;  // v2: uid -> { clean, bomb } decomposition
 let _meta = null;
 let _loading = null;
 
@@ -27,6 +28,7 @@ export function loadHandicaps() {
     .then(r => (r.ok ? r.json() : null))
     .then(data => {
       _handicaps = (data && data.handicaps) || {};
+      _details = (data && data.handicapDetails) || {};
       _meta = data
         ? {
             updatedAt: data.updatedAt,
@@ -45,6 +47,7 @@ export function loadHandicaps() {
     })
     .catch(() => {
       _handicaps = {};
+      _details = {};
       _meta = { updatedAt: null, modelFitN: null, nPlayers: null, method: null, secPerBombHit: 0 };
       return _handicaps;
     });
@@ -73,6 +76,19 @@ export function getHandicap(uid) {
   if (!_handicaps || !uid) return 0;
   const v = _handicaps[uid];
   return typeof v === 'number' ? v : 0;
+}
+
+/**
+ * The clean/bomb decomposition of the user's handicap (handicaps.json
+ * v2's handicapDetails), or null when the refit hasn't emitted it yet
+ * (pre-v2 file, missing uid, or load not complete). Callers must treat
+ * null as "no itemization available" — never fabricate a split.
+ */
+export function getHandicapDetails(uid) {
+  if (!_details || !uid) return null;
+  const d = _details[uid];
+  if (!d || typeof d.clean !== 'number' || typeof d.bomb !== 'number') return null;
+  return d;
 }
 
 // Minimum residuals before we'll surface a provisional handicap. Two is

@@ -1095,9 +1095,32 @@ async function computeDailyParForDate(dateStr, ignoreInMemory = false) {
   return { par: dailyPar, moves: dailyMoves };
 }
 
+// Greg's yesterday note — once per session, computed from the shipped
+// modelHistory.json (no network). The voice budget is a hard rule: one
+// Greg line on this surface, rendered the first time the modal opens.
+let _gregNoteRendered = false;
+async function _renderGregYesterdayNote() {
+  if (_gregNoteRendered) return;
+  _gregNoteRendered = true;
+  try {
+    const el = $('#greg-yesterday-note');
+    if (!el) return;
+    const [{ yesterdayNote }, historyRes] = await Promise.all([
+      import('./logic/gregVoice.js'),
+      fetch('./src/logic/modelHistory.json').then(r => (r.ok ? r.json() : null)),
+    ]);
+    const note = yesterdayNote(historyRes);
+    if (note) {
+      el.textContent = note;
+      el.classList.remove('hidden');
+    }
+  } catch { /* no note — the leaderboard renders fine without it */ }
+}
+
 async function updateLeaderboardDisplay() {
   const tab = _defaultLeaderboardTab();
   _setActiveLeaderboardTab(tab);
+  _renderGregYesterdayNote();
   await _renderLeaderboardForTab(tab);
 }
 
@@ -1984,6 +2007,9 @@ function updateTitleProgress() {
     const parLine = (_titleDailyPar.date === today && _titleDailyPar.secs > 0)
       ? `<span class="mode-card-par">Par: ${_titleDailyPar.secs} seconds</span>`
       : '';
+    const fieldNote = (_titleDailyPar.date === today && _titleDailyPar.note)
+      ? `<span class="mode-card-fieldnote">${_titleDailyPar.note}</span>`
+      : '';
     const completed = isDailyCompleted(today);
     let descriptor;
     if (completed) {
@@ -1991,7 +2017,7 @@ function updateTitleProgress() {
     } else {
       descriptor = streak > 0 ? `🔥 ${streak} day streak` : 'Same puzzle worldwide';
     }
-    dailyEl.innerHTML = descriptor + parLine;
+    dailyEl.innerHTML = descriptor + parLine + fieldNote;
     if (dailyCard) dailyCard.classList.toggle('daily-completed', completed);
   }
 
@@ -2084,7 +2110,19 @@ async function refreshTitleDailyPar() {
   try {
     const { par } = await computeDailyParForDate(today, true);
     if (par > 0) {
-      _titleDailyPar = { date: today, secs: Math.round(par) };
+      // Greg's Field Note: WHY today's board exists, sourced from the
+      // adaptive experiment design (the canonical board's effective seed
+      // recovers which mission won the 10-candidate contest). A true
+      // sentence, not flavor copy — null when there's nothing honest to say.
+      let note = null;
+      try {
+        const seed = state.canonicalDailyBoard?.date === today
+          ? state.canonicalDailyBoard.raw?.rngSeed
+          : selectDailyRngSeed(today);
+        const { fieldNoteLine } = await import('./logic/gregVoice.js');
+        note = fieldNoteLine(getMissionForSeed(seed));
+      } catch { /* no note — the par line still renders */ }
+      _titleDailyPar = { date: today, secs: Math.round(par), note };
       updateTitleProgress();
     }
   } catch { /* keep the fallback subtitle */ }
