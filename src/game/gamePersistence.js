@@ -41,6 +41,10 @@ export function persistGameState() {
       mirrorPair: c.mirrorPair || undefined,
       liarOffset: typeof c.liarOffset === 'number' ? c.liarOffset : undefined,
       inLiarZone: c.inLiarZone || false,
+      // The Lens points back at the marked start when a player walks
+      // off the certified path into a proof-free state — losing this
+      // on resume would misfire its error branch on resumed dailies.
+      suggestedStart: c.suggestedStart || false,
       row: c.row, col: c.col,
     }))),
     rows: state.rows, cols: state.cols, totalMines: state.totalMines,
@@ -64,6 +68,7 @@ export function persistGameState() {
     activeGimmicks: state.activeGimmicks || [],
     gimmickData: state.gimmickData || {},
     wallEdges: state.board._wallEdges ? Array.from(state.board._wallEdges) : [],
+    gatedCert: !!state.board._gatedCert,
     firstClick: state.firstClick,
     savedStatus: state.status,
   };
@@ -184,6 +189,13 @@ export function tryResumeGame(mode) {
   // produce zero edges in some random rolls.
   if (gs.wallEdges) {
     state.board._wallEdges = new Set(gs.wallEdges);
+  }
+
+  // Restore the certification-contract flag (boardSolver reads it as its
+  // gating default). Saves from before reveal gating lack the field and
+  // resume ungated — correct, their boards were certified ungated.
+  if (gs.gatedCert) {
+    state.board._gatedCert = true;
   }
 
   // Recompute gimmick displayed values from current mine layout.

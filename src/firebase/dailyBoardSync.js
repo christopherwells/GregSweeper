@@ -134,6 +134,12 @@ export function serializeBoard({ board, rows, cols, totalMines, rngSeed, activeG
   if (board._wallEdges instanceof Set && board._wallEdges.size > 0) {
     out.wallEdges = Array.from(board._wallEdges);
   }
+  // Certification-contract flag: this board was certified with sonar /
+  // compass / wormhole constraints reveal-gated (boardSolver reads it as
+  // its default). Old clients ignore the field and solve ungated — safe,
+  // because a gated certificate implies an ungated one (gating only
+  // removes constraints).
+  if (board._gatedCert) out.gatedCert = true;
   return out;
 }
 
@@ -170,6 +176,10 @@ export function deserializeBoard(raw) {
   if (Array.isArray(wallEdges) && wallEdges.length > 0) {
     board._wallEdges = new Set(wallEdges);
   }
+  // Restore the certification contract: boards without the flag were
+  // certified ungated and must keep that contract on every solver
+  // surface (historical canonicals predate reveal gating).
+  if (raw.gatedCert === true) board._gatedCert = true;
   return {
     board,
     rows,
