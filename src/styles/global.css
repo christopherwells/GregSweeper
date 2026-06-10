@@ -969,6 +969,7 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 }
 .lexicon-cell.unrevealed { background: var(--color-cell-hidden, #555); }
 .lexicon-cell.revealed { background: var(--color-cell-revealed, #333); cursor: default; }
+.lexicon-cell.flagged { font-size: 0.9em; }
 .lexicon-cell[data-num="1"] { color: var(--color-num-1, #6baed6); }
 .lexicon-cell[data-num="2"] { color: var(--color-num-2, #66bb6a); }
 .lexicon-cell[data-num="3"] { color: var(--color-num-3, #ff6b6b); }
@@ -2490,112 +2491,113 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   text-shadow: 0 1px 2px rgba(255,255,255,0.5);
 }
 
+/* ── Achievements: sectioned list rows (2026-06-10 redesign) ──
+   The earned medal opens each row; the name carries the weight; the
+   next step reads as one sentence; a six-dot track shows the tier
+   ladder; a hairline progress bar underlines rows still in motion.
+   No boxes — the rows breathe against the modal surface. */
 .achievements-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 8px;
+  display: flex;
+  flex-direction: column;
 }
 
-/* Achievement category cards */
-.achievement-category-card {
-  padding: 14px;
-  background: var(--color-surface);
-  border-radius: 14px;
-  border: 1px solid rgba(0,0,0,0.04);
+.ach-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  margin: 18px 0 4px;
+}
+.ach-section-title:first-child {
+  margin-top: 6px;
 }
 
-.ach-header {
+.ach-row {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: 12px;
+  padding: 10px 2px 12px;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.12);
 }
 
-.ach-cat-icon {
-  font-size: 28px;
+.ach-medal {
+  font-size: 24px;
   flex-shrink: 0;
+  width: 32px;
+  text-align: center;
+}
+.ach-medal.none {
+  opacity: 0.35;
+  filter: grayscale(1);
+  font-size: 20px;
 }
 
-.ach-cat-info {
+.ach-main {
   flex: 1;
   min-width: 0;
 }
 
-.ach-cat-name {
+.ach-name-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ach-name {
   font-weight: 700;
   font-size: 14px;
 }
 
-.ach-cat-desc {
-  font-size: 11px;
-  color: var(--color-text-secondary);
-}
-
-.ach-current-tier {
-  font-size: 24px;
-  flex-shrink: 0;
-}
-
-/* Tier badge row */
-.tier-badges {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 8px;
-}
-
-.tier-badge {
-  font-size: 18px;
-  width: 28px;
-  height: 28px;
-  display: flex;
+.ach-track {
+  display: inline-flex;
+  gap: 4px;
   align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  background: rgba(0,0,0,0.06);
-  transition: all var(--transition-fast);
+}
+.ach-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(128, 128, 128, 0.25);
+}
+.ach-dot.earned {
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.15);
 }
 
-.tier-badge.unlocked {
-  background: rgba(0,0,0,0.12);
-  transform: scale(1.05);
-}
-
-.tier-badge.locked {
-  opacity: 0.3;
-  filter: grayscale(1);
-}
-
-/* Progress bar within achievement card */
-.ach-progress-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.ach-progress-bar {
-  flex: 1;
-  height: 6px;
-  background: rgba(0,0,0,0.08);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.ach-progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--color-accent), var(--color-golden));
-  border-radius: 3px;
-  transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.ach-progress-label {
-  font-size: 10px;
+.ach-sub {
+  font-size: 11.5px;
   color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+.ach-next {
   font-weight: 600;
-  white-space: nowrap;
+  color: var(--color-text);
+}
+.ach-next.ach-maxed {
+  color: var(--color-golden);
 }
 
+/* Hairline progress underline for rows still in motion */
+.ach-rowbar {
+  position: absolute;
+  left: 44px;
+  right: 2px;
+  bottom: 0;
+  height: 2px;
+  background: transparent;
+}
+.ach-rowbar > div {
+  height: 100%;
+  background: var(--color-accent);
+  opacity: 0.55;
+  border-radius: 1px;
+  transition: width 0.5s var(--ease-standard, ease-out);
+}
+
+/* kept for the win-modal tier-up chips */
 .ach-maxed {
-  text-align: center;
   color: var(--color-golden);
   font-weight: 700;
   font-size: 11px;
@@ -3740,7 +3742,17 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 #flag-mode-bar {
   display: flex;
   justify-content: center;
+  gap: 8px;
   padding: 4px 0;
+}
+/* The Stuck? pill sits beside the flag toggle — quieter than it (the
+   flag toggle is the every-few-seconds control; Stuck? is the
+   once-in-a-while ask), distinguished by tone, not loudness. */
+.stuck-btn {
+  opacity: 0.85;
+}
+.stuck-btn:active {
+  transform: scale(0.97);
 }
 .flag-toggle-btn {
   display: flex;

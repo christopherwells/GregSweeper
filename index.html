@@ -323,7 +323,7 @@
       <button id="title-achievements-btn" class="title-footer-btn">🏅 Achievements</button>
       <button id="title-leaderboard-btn" class="title-footer-btn">🏆 Leaderboard</button>
       <button id="title-collection-btn" class="title-footer-btn">🎁 Collection</button>
-      <button id="title-lexicon-btn" class="title-footer-btn">🔬 Lexicon</button>
+      <button id="title-lexicon-btn" class="title-footer-btn">🏋️ Greg's Gym</button>
       <button id="title-settings-btn" class="title-footer-btn">⚙️ Settings</button>
       <button id="title-whatsnew-btn" class="title-footer-btn">📋 What's New</button>
     </div>
@@ -392,6 +392,13 @@
           <span id="flag-mode-icon">👆</span>
           <span id="flag-mode-label">Tap to Reveal</span>
         </button>
+        <!-- The Lens lives HERE, beside the board, as a game action —
+             not as a tenth icon in the nav. Same visibility as the flag
+             toggle: shown while a game is live, gone on win/loss. -->
+        <button id="stuck-btn" class="flag-toggle-btn stuck-btn" aria-label="Stuck? Shows where to look, never what to click">
+          <span>🤔</span>
+          <span>Stuck?</span>
+        </button>
       </div>
 
       <div id="timed-size-tabs" class="timed-size-tabs hidden" role="tablist" aria-label="Quick Play difficulty">
@@ -436,7 +443,6 @@
       <button id="btn-leaderboard" class="nav-btn" title="Daily Leaderboard">🏆</button>
       <button id="btn-collection" class="nav-btn" title="Collection">🎁</button>
       <button id="btn-themes" class="nav-btn" title="Themes">🎨</button>
-      <button id="btn-lens" class="nav-btn" title="Stuck? Shows where to look — never what to click">🔍</button>
       <button id="btn-help" class="nav-btn" title="How to Play">❓</button>
       <button id="btn-mute" class="nav-btn" title="Mute">🔊</button>
       <button id="btn-settings" class="nav-btn" title="Settings">⚙️</button>
@@ -915,7 +921,7 @@
             <li><strong>Honest bomb verdicts</strong> &mdash; Each daily/weekly mine hit says whether the mine was provable, a safe move existed elsewhere, or you were genuinely at the frontier.</li>
             <li><strong>Stuck? Ask the board</strong> &mdash; The new 🔍 button never names the safe cell. It tells you when a flag is provably wrong, or lights up the region where the next proof lives. Hinted runs are excluded from the par model.</li>
             <li><strong>Greg speaks</strong> &mdash; The daily card says why today&rsquo;s board exists (&ldquo;today is a compass study&rdquo;), and the leaderboard reports what yesterday&rsquo;s runs did to the model &mdash; including the bad days.</li>
-            <li><strong>The Lexicon</strong> &mdash; A new 🔬 practice room that generates fresh lesson boards where only provably safe cells will open. You can&rsquo;t luck through one; the pattern is named after you find it.</li>
+            <li><strong>Greg&rsquo;s Gym</strong> &mdash; A new 🏋️ practice room that generates fresh drill boards where only squares the clues can settle will open. You can&rsquo;t luck through one; the pattern is named after you find it.</li>
             <li><strong>Timed gets a par</strong> &mdash; Every Quick Play board now shows Greg&rsquo;s Time and your delta.</li>
             <li><strong>Achievements that mean something</strong> &mdash; New skill feats (Flagless, No Wasted Clicks, Tank Commander, Lie Detector) certified by the engine; the pure attendance badges are retired.</li>
           </ul>

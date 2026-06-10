@@ -1397,49 +1397,64 @@ function updateAchievementsDisplay() {
     achZero.remove();
   }
 
-  for (const ach of achievements) {
-    const item = document.createElement('div');
-    item.className = 'achievement-category-card';
+  // Two sections: engine-certified skill feats lead (the identity),
+  // accumulation follows. List rows, not identical cards — the earned
+  // medal opens each row, the next step reads as one plain sentence,
+  // and a six-dot tier track replaces the old wall of emoji badges.
+  const tierNames = getAllTierNames();
+  const renderRow = (ach) => {
+    const row = document.createElement('div');
+    row.className = 'ach-row';
 
-    const tierNames = getAllTierNames();
-    let tiersHtml = '<div class="tier-badges">';
+    let track = '<span class="ach-track" aria-hidden="true">';
     for (let i = 0; i < tierNames.length; i++) {
-      const isUnlocked = i <= ach.tierIndex;
-      const tierName = tierNames[i];
-      const icon = getTierIcon(tierName);
-      const color = getTierColor(tierName);
-      tiersHtml += `<span class="tier-badge ${isUnlocked ? 'unlocked' : 'locked'}" title="${tierName}" style="${isUnlocked ? `color:${color}; text-shadow: 0 0 6px ${color}40` : ''}">${icon}</span>`;
+      const earned = i <= ach.tierIndex;
+      const color = getTierColor(tierNames[i]);
+      track += `<i class="ach-dot${earned ? ' earned' : ''}"${earned ? ` style="background:${color}"` : ''}></i>`;
     }
-    tiersHtml += '</div>';
+    track += '</span>';
 
-    let progressHtml = '';
-    if (ach.nextTier) {
-      progressHtml = `
-        <div class="ach-progress-row">
-          <div class="ach-progress-bar">
-            <div class="ach-progress-fill" style="width: ${ach.progress * 100}%"></div>
-          </div>
-          <span class="ach-progress-label">Next: ${ach.format(ach.nextValue)}</span>
-        </div>
-      `;
+    // The next step as one plain sentence. Counting categories phrase
+    // the DELTA ("3 more for 🥈"); best-time categories phrase the bar
+    // to beat ("beat 30s for 🥇").
+    let nextLine;
+    if (!ach.nextTier) {
+      nextLine = 'Complete';
+    } else if (ach.inverted) {
+      nextLine = `beat ${ach.nextValue}s for ${ach.nextTierIcon}`;
     } else {
-      progressHtml = `<div class="ach-progress-label ach-maxed">Maxed Out!</div>`;
+      const have = Number.isFinite(ach.value) ? ach.value : 0;
+      const need = Math.max(0, ach.nextValue - have);
+      nextLine = `${need} more for ${ach.nextTierIcon}`;
     }
 
-    item.innerHTML = `
-      <div class="ach-header">
-        <span class="ach-cat-icon">${ach.icon}</span>
-        <div class="ach-cat-info">
-          <div class="ach-cat-name">${ach.name}</div>
-          <div class="ach-cat-desc">${ach.desc}</div>
-        </div>
-        <span class="ach-current-tier">${ach.currentTierIcon}</span>
+    row.innerHTML = `
+      <span class="ach-medal${ach.tierIndex < 0 ? ' none' : ''}">${ach.tierIndex >= 0 ? ach.currentTierIcon : ach.icon}</span>
+      <div class="ach-main">
+        <div class="ach-name-line"><span class="ach-name">${ach.name}</span>${track}</div>
+        <div class="ach-sub">${ach.desc} · <span class="ach-next${!ach.nextTier ? ' ach-maxed' : ''}">${nextLine}</span></div>
       </div>
-      ${tiersHtml}
-      ${progressHtml}
     `;
-    grid.appendChild(item);
-  }
+    if (ach.nextTier) {
+      const bar = document.createElement('div');
+      bar.className = 'ach-rowbar';
+      bar.innerHTML = `<div style="width:${Math.round(ach.progress * 100)}%"></div>`;
+      row.appendChild(bar);
+    }
+    return row;
+  };
+
+  const feats = achievements.filter(a => a.group === 'feat');
+  const progress = achievements.filter(a => a.group !== 'feat');
+  const section = (title, items) => {
+    const h = document.createElement('div');
+    h.className = 'ach-section-title';
+    h.textContent = title;
+    grid.appendChild(h);
+    for (const a of items) grid.appendChild(renderRow(a));
+  };
+  section('Skill feats — certified by the board', feats);
+  section('Progress', progress);
 }
 
 // ── Share Card ─────────────────────────────────────────
@@ -1915,14 +1930,14 @@ if (titleLexiconBtn) {
   });
 }
 
-// The Lens — Socratic mid-game help. Never names the safe cell: it
-// detects wrong flags, or pulses the proving region of the next
-// available deduction (sized honestly by tier). Every use is recorded
-// into state.hintEvents and submitted with daily scores so the par fit
-// can exclude hinted plays.
-const lensBtn = $('#btn-lens');
-if (lensBtn) {
-  lensBtn.addEventListener('click', () => {
+// The Lens — Socratic mid-game help, living beside the board as the
+// "Stuck?" pill (a game action, not a nav destination). Never names the
+// safe cell: it detects wrong flags, or pulses the clues that hold the
+// next step. Every use is recorded into state.hintEvents and submitted
+// with daily scores so the par fit can exclude hinted plays.
+const stuckBtn = $('#stuck-btn');
+if (stuckBtn) {
+  stuckBtn.addEventListener('click', () => {
     import('./ui/receiptRenderer.js').then(m => m.handleLensRequest())
       .catch(err => reportCaughtError('lens-import', err));
   });
