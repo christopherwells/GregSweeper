@@ -51,6 +51,25 @@ const db = admin.database();
       }
     }
   }
+  // Captured client errors for this uid — the remote error reporter
+  // writes uncaught exceptions + unhandled rejections (and, since
+  // v1.6.7, reported caught errors) here. The decisive instrument for
+  // "this player's device is failing somewhere we can't see."
+  const errSnap = await db.ref(`errors/${uid}`).limitToLast(25).once('value');
+  const errs = errSnap.val();
+  console.log(`=== errors/${uid} (last 25) ===`);
+  if (errs === null) {
+    console.log('(none captured)');
+  } else {
+    for (const [ts, e] of Object.entries(errs)) {
+      const when = new Date(Number(ts)).toISOString();
+      console.log(`--- ${when} · ${e.codeVersion || '?'} · standalone=${e.isStandalone} ---`);
+      console.log(`  url: ${e.url || '?'}`);
+      console.log(`  ua:  ${(e.userAgent || '?').slice(0, 120)}`);
+      console.log(`  msg: ${e.message}`);
+      if (e.stack) console.log(`  stack: ${String(e.stack).slice(0, 600)}`);
+    }
+  }
   process.exit(0);
 })().catch(err => {
   console.error('inspect failed:', err);
