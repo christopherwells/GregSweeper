@@ -1,10 +1,8 @@
 <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
-<!-- A snow-capped stone cairn: how you mark a spot in the arctic. -->
-<ellipse cx='32' cy='53' rx='17' ry='6.5' fill='#46586a' stroke='#2c3a48' stroke-width='2'/>
-<ellipse cx='32' cy='42' rx='13' ry='6' fill='#566a7e' stroke='#2c3a48' stroke-width='2'/>
-<ellipse cx='32' cy='31' rx='9.5' ry='5.4' fill='#66798c' stroke='#2c3a48' stroke-width='2'/>
-<ellipse cx='32' cy='21' rx='6.4' ry='4.6' fill='#74899c' stroke='#2c3a48' stroke-width='2'/>
-<path d='M26 19 C28 16 36 16 38 19 C36 21 28 21 26 19 Z' fill='#eef6fc'/>
-<path d='M21 28 C25 26 39 26 43 28 C39 30 25 30 21 28 Z' fill='#eef6fc' opacity='0.85'/>
-<path d='M32 10 L32 14 M27 12 L30 15 M37 12 L34 15' stroke='#9ae8d8' stroke-width='1.8' stroke-linecap='round' opacity='0.9'/>
+<!-- Polaris: you mark your place in the arctic by the sky. -->
+<path d='M32 4 C33.5 18 35 24 38 27 C41 30 45 31 52 32 C45 33 41 34 38 37 C35 40 33.5 46 32 60 C30.5 46 29 40 26 37 C23 34 19 33 12 32 C19 31 23 30 26 27 C29 24 30.5 18 32 4 Z' fill='#eef8ff'/>
+<path d='M32 14 C32.8 22 34 26 36 28 C38 30 42 31.2 47 32 C42 32.8 38 34 36 36 C34 38 32.8 42 32 50 C31.2 42 30 38 28 36 C26 34 22 32.8 17 32 C22 31.2 26 30 28 28 C30 26 31.2 22 32 14 Z' fill='#9ae8e0' opacity='0.7'/>
+<circle cx='32' cy='32' r='3.2' fill='#ffffff'/>
+<circle cx='50' cy='12' r='1.6' fill='#cfeefc' opacity='0.9'/>
+<circle cx='13' cy='50' r='1.3' fill='#cfeefc' opacity='0.75'/>
 </svg>
