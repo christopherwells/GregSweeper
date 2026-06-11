@@ -1,0 +1,8 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
+<!-- A probe clip latched onto the pad. -->
+<rect x='24' y='44' width='16' height='10' rx='2' fill='#b87838' stroke='#7a4e20' stroke-width='2'/>
+<path d='M26 44 L32 30 L38 44' fill='#d9dde6' stroke='#5a5e66' stroke-width='2.4' stroke-linejoin='round'/>
+<path d='M29 37 L35 37' stroke='#5a5e66' stroke-width='2'/>
+<path d='M32 30 C32 18 40 12 50 10' stroke='#ff5a4a' stroke-width='3.2' fill='none' stroke-linecap='round'/>
+<circle cx='52' cy='9.5' r='2.6' fill='#ff5a4a'/>
+</svg>

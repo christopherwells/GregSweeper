@@ -1,0 +1,10 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
+<!-- A round-bottom flask of red potion, corked. -->
+<rect x='27' y='6' width='10' height='7' rx='2.4' fill='#a8845a'/>
+<path d='M28 13 L28 24 C18 28 12 36 14 45 C16 53 24 58 32 58 C40 58 48 53 50 45 C52 36 46 28 36 24 L36 13 Z' fill='rgba(214,234,240,0.3)' stroke='#7a98a8' stroke-width='2.6'/>
+<path d='M17 41 C20 34 25 30 30 28 L34 28 C39 30 44 34 47 41 C49 48 42 54 32 54 C22 54 15 48 17 41 Z' fill='#c81e28'/>
+<ellipse cx='32' cy='40' rx='11' ry='3.4' fill='#e8404a' opacity='0.8'/>
+<circle cx='27' cy='47' r='2' fill='#f47078' opacity='0.85'/>
+<circle cx='37' cy='49' r='1.4' fill='#f47078' opacity='0.7'/>
+<path d='M24 18 L24 26' stroke='rgba(255,255,255,0.55)' stroke-width='2' stroke-linecap='round'/>
+</svg>

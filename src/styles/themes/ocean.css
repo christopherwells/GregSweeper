@@ -4,6 +4,11 @@
   --color-app-bg: #0d2137;
   --color-cell-hidden: #1e4a5f;
   --color-cell-hidden-hover: #245a72;
+  /* No fog drawing here -- the water itself is the identity: animated
+     caustic light-nets (the wiggly light-on-sand pattern) play over the
+     fog via themeEffects, with glassy bubbles rising the full board.
+     (A static sounding-chart drawing was tried 2026-06-11 and cut the
+     same day -- it read as clutter, not sea.) */
   --color-cell-hidden-gradient: linear-gradient(145deg, #225568, #1a4555);
   --color-cell-revealed: #0f2e42;
   /* Effect-bearing theme: grout MUST contrast the cleared tile (#0f2e42),

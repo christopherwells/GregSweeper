@@ -1,0 +1,7 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
+<!-- One vertical brushstroke; the artist's hanko claims the square. -->
+<path d='M33 6 C38 14 37 26 34 36 C32 42 31 46 31 50 L27 49 C28 42 29 34 28 26 C27 18 28 10 30 6 Z' fill='#2a2a2a'/>
+<path d='M30 8 C31 16 31 26 30 34' stroke='#4a4a4a' stroke-width='1.6' fill='none' opacity='0.6'/>
+<rect x='34' y='44' width='17' height='17' rx='2.5' fill='#b03020'/>
+<path d='M39 49 L46 49 M39 53 L46 53 M42.5 49 L42.5 57' stroke='#f6f1e7' stroke-width='2' stroke-linecap='round'/>
+</svg>

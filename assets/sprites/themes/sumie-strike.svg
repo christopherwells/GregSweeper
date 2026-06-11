@@ -1,0 +1,14 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
+<!-- The circle bleeds out in feathered rays. -->
+<circle cx='32' cy='32' r='12' fill='#222222'/>
+<g fill='#2a2a2a'>
+<path d='M32 18 C30 12 31 7 32 3 C33 7 34 12 32 18 Z' opacity='0.8'/>
+<path d='M32 46 C30 52 31 57 32 61 C33 57 34 52 32 46 Z' opacity='0.8'/>
+<path d='M18 32 C12 30 7 31 3 32 C7 33 12 34 18 32 Z' opacity='0.8'/>
+<path d='M46 32 C52 30 57 31 61 32 C57 33 52 34 46 32 Z' opacity='0.8'/>
+<path d='M22 22 C17 18 14 14 12 11 C16 13 20 17 22 22 Z' opacity='0.6'/>
+<path d='M42 42 C47 46 50 50 52 53 C48 51 44 47 42 42 Z' opacity='0.6'/>
+<path d='M42 22 C46 17 50 14 53 12 C51 16 47 20 42 22 Z' opacity='0.6'/>
+<path d='M22 42 C18 47 14 50 11 52 C13 48 17 44 22 42 Z' opacity='0.6'/>
+</g>
+</svg>

@@ -1,0 +1,7 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
+<!-- A hanafuda card: the full-moon suit, face down in the dusk. -->
+<rect x='14' y='8' width='36' height='48' rx='4' fill='#2a2034' stroke='#c03048' stroke-width='3'/>
+<circle cx='32' cy='28' r='11' fill='#f0e6d4'/>
+<path d='M18 46 C24 38 30 36 36 40 C42 44 46 44 46 42 L46 50 C38 54 24 54 18 50 Z' fill='#181020'/>
+<circle cx='44' cy='16' r='2' fill='#e87090'/>
+</svg>

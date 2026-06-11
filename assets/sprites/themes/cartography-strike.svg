@@ -1,0 +1,9 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
+<!-- The wreck: hull broken on the sounding line, mast down. -->
+<path d='M8 46 C16 43 24 49 32 46 C40 43 48 49 58 46' stroke='#6a4a26' stroke-width='2.2' fill='none' stroke-linecap='round'/>
+<path d='M12 40 L26 40 L30 46 L14 48 Z' fill='#5c4020'/>
+<path d='M34 44 L48 38 L52 44 L40 49 Z' fill='#5c4020'/>
+<path d='M40 38 L28 16' stroke='#5c4020' stroke-width='3.4' stroke-linecap='round'/>
+<path d='M28 16 C34 18 40 16 44 12' stroke='#5c4020' stroke-width='2.2' fill='none' stroke-linecap='round'/>
+<path d='M20 36 L24 30 M44 34 L48 28' stroke='#8a3020' stroke-width='2.2' stroke-linecap='round'/>
+</svg>

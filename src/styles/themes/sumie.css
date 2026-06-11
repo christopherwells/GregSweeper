@@ -1,5 +1,7 @@
 /* Sumi-e theme — minimal Japanese ink-brush on warm rice paper. Soft serif,
-   ink gradations, a single cinnabar-seal red accent. No particles (zen). */
+   ink gradations, a single cinnabar-seal red accent. Ambient ink motes +
+   brush wisps (themeEffects.js wave 2), so cleared cells need a grout: the
+   sumi brush line between paper panels. */
 [data-theme="sumie"] {
   --color-bg: #e6dfce;
   --color-app-bg: #f2ede1;
@@ -7,6 +9,7 @@
   --color-cell-hidden-hover: #dbd3c0;
   --color-cell-hidden-gradient: linear-gradient(145deg, #e8e1d2, #ddd5c4);
   --color-cell-revealed: #f6f1e7;
+  --cell-gap-seal: #3a3631;
   --color-cell-border-light: #c4bba6;
   --color-cell-border-dark: #9a9078;
   --color-mine: #1c1814;

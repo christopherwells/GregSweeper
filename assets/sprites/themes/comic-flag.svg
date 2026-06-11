@@ -1,0 +1,7 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
+<!-- An exclamation balloon on its stick: DANGER, said out loud. -->
+<path d='M26 10 C12 12 8 28 18 34 C20 36 20 38 18 42 L28 37 C40 40 52 32 50 22 C48 13 38 8 26 10 Z' fill='#f5efdf' stroke='#1d1812' stroke-width='3'/>
+<rect x='29.6' y='15' width='6' height='12' rx='2.6' fill='#b83320'/>
+<circle cx='32.6' cy='31.5' r='3.2' fill='#b83320'/>
+<path d='M24 42 L24 58' stroke='#1d1812' stroke-width='3.4' stroke-linecap='round'/>
+</svg>

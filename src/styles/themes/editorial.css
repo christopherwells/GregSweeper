@@ -1,6 +1,7 @@
 /* Editorial theme — ink-on-newsprint broadsheet. Serif masthead, sharp print
-   columns, editor's-red accents. No ambient particles (clean print), so no
-   grout seal is needed — cells separate via the column-rule grid. */
+   columns, editor's-red accents. Ambient ink flecks + headline-rule sweeps
+   (themeEffects.js wave 2), so cleared cells need a grout: the column-rule
+   ink that separates every story on the page. */
 [data-theme="editorial"] {
   --color-bg: #ddd6c8;
   --color-app-bg: #f0ebdd;
@@ -8,6 +9,7 @@
   --color-cell-hidden-hover: #ded7c4;
   --color-cell-hidden-gradient: linear-gradient(145deg, #ebe5d6, #e0d9c8);
   --color-cell-revealed: #f7f3e8;
+  --cell-gap-seal: #2c2a24;
   --color-cell-border-light: #c2baa8;
   --color-cell-border-dark: #9a9280;
   --color-mine: #1a1714;

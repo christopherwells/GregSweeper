@@ -1,0 +1,10 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
+<!-- The chip burns out: scorch, crack, dead pins. -->
+<rect x='16' y='18' width='32' height='28' rx='3' fill='#0c1a10' stroke='#40f090' stroke-width='2.4'/>
+<g stroke='#b87838' stroke-width='2.4' stroke-linecap='round'>
+<path d='M22 18 L22 10 M32 18 L32 10 M42 18 L42 10 M22 46 L22 54 M32 46 L32 54 M42 46 L42 54'/>
+</g>
+<path d='M24 40 L32 30 L29 28 L38 22' stroke='#ffb060' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/>
+<circle cx='36' cy='36' r='6.5' fill='#000000' opacity='0.85'/>
+<path d='M42 26 L48 20 M44 32 L52 30' stroke='#ff5a4a' stroke-width='2.2' stroke-linecap='round'/>
+</svg>

@@ -1,0 +1,8 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
+<!-- A bomb sketched in chalk: doubled wobbly outline, hatch shading. -->
+<circle cx='30' cy='37' r='16' fill='none' stroke='#f0ebe0' stroke-width='2.6' opacity='0.95'/>
+<circle cx='30.8' cy='36.4' r='15.2' fill='none' stroke='#f0ebe0' stroke-width='1.1' opacity='0.5'/>
+<path d='M22 44 L30 36 M26 48 L36 38 M32 48 L40 40' stroke='#f0ebe0' stroke-width='1.4' opacity='0.5'/>
+<path d='M40 26 C44 20 50 18 54 20' stroke='#f0ebe0' stroke-width='2.6' fill='none' stroke-linecap='round'/>
+<path d='M52 16 L57 21 M57 16 L52 21' stroke='#ffe066' stroke-width='2.6' stroke-linecap='round'/>
+</svg>

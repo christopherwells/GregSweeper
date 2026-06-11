@@ -1,0 +1,10 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
+<!-- Crime scene: the chalk outline where the bomb went off. -->
+<g fill='none' stroke='#f2efe6' stroke-width='2.6' stroke-linecap='round' opacity='0.95'>
+<path d='M20 30 C17 36 18 44 23 48 C28 53 38 53 43 47 C47 42 48 35 44 30 C46 28 47 25 45 23'/>
+<path d='M45 23 C48 20 46 14 41 14 C37 14 34 17 35 21'/>
+<path d='M35 21 C30 19 23 22 20 28' opacity='0.85'/>
+<path d='M41 12 C43 9 47 8 50 10' stroke-width='2.2' opacity='0.8'/>
+</g>
+<path d='M14 52 L20 56 M48 54 L54 50' stroke='#f2efe6' stroke-width='1.6' stroke-linecap='round' opacity='0.45'/>
+</svg>

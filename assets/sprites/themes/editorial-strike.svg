@@ -1,0 +1,9 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
+<!-- The blot bursts across the column; type slugs scatter. -->
+<path d='M32 20 C42 18 48 26 46 33 C52 38 46 47 39 46 C36 52 26 52 23 46 C15 46 12 37 18 33 C14 25 24 18 32 20 Z' fill='#1a1714'/>
+<g stroke='#1a1714' stroke-width='3' stroke-linecap='round'>
+<path d='M32 14 L32 4 M45 18 L52 10 M52 32 L62 30 M46 46 L54 54 M18 46 L10 54 M12 32 L2 33 M19 18 L12 11'/>
+</g>
+<rect x='50' y='40' width='8' height='3.4' rx='1' fill='#1a1714' transform='rotate(24 54 42)'/>
+<rect x='6' y='20' width='7' height='3.2' rx='1' fill='#1a1714' transform='rotate(-18 9 22)'/>
+</svg>

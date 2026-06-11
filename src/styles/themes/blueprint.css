@@ -1,13 +1,23 @@
 /* Blueprint theme — cyan drafting lines on navy blueprint paper. Technical
    monospace, a graph-paper grid behind everything, rivet/annotation objects.
-   No ambient particles, so no grout seal — cells read as drawn cells. */
+   Ambient drafting ticks + dashed measure lines (themeEffects.js wave 2), so
+   cleared cells need a grout: the pale drafting grid line that rules the
+   sheet, bright against the deep navy. */
 [data-theme="blueprint"] {
   --color-bg: #08203a;
   --color-app-bg: #0c2a47;
   --color-cell-hidden: #11375c;
-  --color-cell-hidden-hover: #16456f;
-  --color-cell-hidden-gradient: linear-gradient(145deg, #134066, #0f3050);
+  --color-cell-hidden-hover: rgba(26, 74, 118, 0.55);
+  /* THE SHEET: the unrevealed board is one cyanotype drawing — double
+     border frame, a drafted part (circle with dash-dot centerlines), a
+     dimension line with arrowheads, a hatched detail, and the title
+     block in the corner. All WHITE line work on prussian blue, the way
+     a blueprint actually looks. Translucent fog lets the one drawing
+     span the board; revealing erases the sheet back to blank stock. */
+  --bg-fog-art: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 150' preserveAspectRatio='none'%3E%3Cg fill='none' stroke='%23dceeff'%3E%3Crect x='4' y='4' width='192' height='142' stroke-width='1.8' opacity='0.8'/%3E%3Crect x='8' y='8' width='184' height='134' stroke-width='0.7' opacity='0.55'/%3E%3Ccircle cx='62' cy='72' r='30' stroke-width='1.6' opacity='0.85'/%3E%3Ccircle cx='62' cy='72' r='12' stroke-width='1.1' opacity='0.7'/%3E%3Cpath d='M62 32 L62 112 M22 72 L102 72' stroke-width='0.9' stroke-dasharray='9 3 2 3' opacity='0.7'/%3E%3Cpath d='M118 28 L186 28' stroke-width='1' opacity='0.8'/%3E%3Cpath d='M118 22 L118 34 M186 22 L186 34' stroke-width='0.9' opacity='0.7'/%3E%3Cpath d='M118 28 L125 25 L125 31 Z M186 28 L179 25 L179 31 Z' fill='%23dceeff' opacity='0.8'/%3E%3Crect x='124' y='96' width='40' height='26' stroke-width='1.2' opacity='0.8'/%3E%3Cpath d='M124 102 L164 122 M124 110 L154 122 M132 96 L164 112 M144 96 L164 104' stroke-width='0.7' opacity='0.6'/%3E%3Crect x='138' y='130' width='56' height='14' stroke-width='1.2' opacity='0.85'/%3E%3Cpath d='M138 137 L194 137 M166 130 L166 144' stroke-width='0.7' opacity='0.7'/%3E%3C/g%3E%3C/svg%3E");
+  --color-cell-hidden-gradient: linear-gradient(145deg, rgba(19,64,102,0.45), rgba(15,48,80,0.3));
   --color-cell-revealed: #0a2540;
+  --cell-gap-seal: #cfe6f7;
   --color-cell-border-light: #3a7ca8;
   --color-cell-border-dark: #08203a;
   --color-mine: #ff6b6b;
@@ -16,14 +26,18 @@
   --color-text: #d8eeff;
   --color-text-secondary: #6a9ec4;
 
-  --color-num-1: #5ad0ff;
-  --color-num-2: #7ed957;
-  --color-num-3: #ff6b6b;
-  --color-num-4: #c89bff;
-  --color-num-5: #ffb3c8;
-  --color-num-6: #4ae0e0;
-  --color-num-7: #cfe3f5;
-  --color-num-8: #90a8c0;
+  /* Cyanotype number set: a real blueprint is white line work on blue,
+     so the digits read as chalk-white annotations — each keeps a faint
+     tint of its classic hue for at-a-glance counting, but the page
+     stays blue/black/white. */
+  --color-num-1: #d6eaff;
+  --color-num-2: #d8f4e2;
+  --color-num-3: #ffdcd2;
+  --color-num-4: #e6dcff;
+  --color-num-5: #ffe6f0;
+  --color-num-6: #d2f4f4;
+  --color-num-7: #f4f8fc;
+  --color-num-8: #ccd8e4;
   --color-num-9: #ffb060;
   --color-num-10: #6ad8ff;
   --color-num-11: #b89bff;
