@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<!--
+  Frozen computed-style probe — the regression gate for theme work.
+
+  Builds synthetic cell / marker / overlay / timer elements, freezes all
+  animations and transitions (resting values become deterministic AND
+  readable), pins the cell size, then walks every theme: set data-theme,
+  sample a curated computed-style property list per element, hash the
+  result. Redesigning a theme changes only ITS hash; every other theme's
+  hash must stay byte-identical to the baseline run.
+
+  How to use (Playwright MCP or by hand):
+    1. On the BASELINE checkout: serve the repo (python -m http.server 8080),
+       open http://localhost:8080/scripts/theme-style-probe.html, wait for
+       "done", copy JSON.stringify(window.__probeResults).
+    2. On the CHANGED checkout: open the same page, paste the baseline JSON
+       into the textarea, click Diff. Only deliberately redesigned themes
+       may appear in the diff — anything else is a leak through a shared
+       token or selector.
+
+  Hashes are stable within one browser+platform; never compare across
+  machines. The probe samples RESTING values plus animation identity
+  (name/duration/easing) — keyframe interiors are reviewed by eye.
+-->
+<html data-theme="classic">
+<head>
+<meta charset="utf-8">
+<title>Theme style probe</title>
+<link rel="stylesheet" href="../src/styles/global.css">
+<!-- Every theme sheet, eagerly: the app lazy-loads these, the probe needs them all. -->
+<link rel="stylesheet" href="../src/styles/themes/classic.css">
+<link rel="stylesheet" href="../src/styles/themes/dark.css">
+<link rel="stylesheet" href="../src/styles/themes/editorial.css">
+<link rel="stylesheet" href="../src/styles/themes/sumie.css">
+<link rel="stylesheet" href="../src/styles/themes/blueprint.css">
+<link rel="stylesheet" href="../src/styles/themes/cartography.css">
+<link rel="stylesheet" href="../src/styles/themes/origami.css">
+<link rel="stylesheet" href="../src/styles/themes/chalkboard.css">
+<link rel="stylesheet" href="../src/styles/themes/noir.css">
+<link rel="stylesheet" href="../src/styles/themes/ocean.css">
+<link rel="stylesheet" href="../src/styles/themes/forest.css">
+<link rel="stylesheet" href="../src/styles/themes/sakura.css">
+<link rel="stylesheet" href="../src/styles/themes/apothecary.css">
+<link rel="stylesheet" href="../src/styles/themes/splitflap.css">
+<link rel="stylesheet" href="../src/styles/themes/stainedglass.css">
+<link rel="stylesheet" href="../src/styles/themes/aurora.css">
+<link rel="stylesheet" href="../src/styles/themes/galaxy.css">
+<link rel="stylesheet" href="../src/styles/themes/candy.css">
+<link rel="stylesheet" href="../src/styles/themes/comic.css">
+<link rel="stylesheet" href="../src/styles/themes/circuitboard.css">
+<link rel="stylesheet" href="../src/styles/themes/matrix.css">
+<link rel="stylesheet" href="../src/styles/themes/neon.css">
+<link rel="stylesheet" href="../src/styles/themes/synthwave.css">
+<link rel="stylesheet" href="../src/styles/themes/inferno.css">
+<link rel="stylesheet" href="../src/styles/themes/supernova.css">
+<link rel="stylesheet" href="../src/styles/themes/legendary.css">
+<style>
+  /* FREEZE: running animations make box-shadow/opacity time-varying and
+     the gate flaky. Pause at frame zero (NOT animation: none — that
+     would erase animation-name/duration from computed styles, blinding
+     the probe to choreography identity): values are deterministic, and
+     each animated element samples its 0% keyframe state, so keyframe
+     edits at 0% are caught too. */
+  #probe-host *, #probe-host *::before, #probe-host *::after {
+    animation-play-state: paused !important;
+    animation-delay: 0s !important;
+    transition: none !important;
+  }
+  #probe-host { --cell-size: 40px; position: absolute; left: -9999px; top: 0; }
+  #probe-host .cell { width: 40px; height: 40px; }
+  #report { font: 13px/1.5 monospace; padding: 16px; white-space: pre-wrap; }
+  textarea { width: 95%; height: 60px; }
+</style>
+<script>
+  // Theme CSS must be FRESH every run — a probe comparing against a
+  // baseline taken minutes earlier in the same browser would otherwise
+  // diff cached stylesheets against themselves and report "no
+  // differences" for real changes.
+  for (const link of document.querySelectorAll('link[rel="stylesheet"]')) {
+    link.href = link.getAttribute('href') + '?t=' + Date.now();
+  }
+</script>
+</head>
+<body>
+<div id="probe-host">
+  <div id="board">
+    <div class="cell unrevealed" data-el="hidden"></div>
+    <div class="cell revealed" data-el="revealed"><span data-num="1">1</span></div>
+    <!-- Choreography identity: animation-name/duration/easing + the 0%
+         keyframe state of each theme's reveal animation. -->
+    <div class="cell revealed num-pop" data-el="revealPop">5</div>
+    <div class="cell revealing" data-el="revealing"></div>
+    <div class="cell flagged flag-pop" data-el="flagPop">🚩</div>
+    <div class="cell revealed mine mine-chain" data-el="mineChain">💣</div>
+    <div class="cell revealed sonar-cell" data-el="sonar"></div>
+    <div class="cell revealed compass-cell" data-el="compass"></div>
+    <div class="cell revealed wormhole-cell wormhole-pair-0" data-el="wormhole0"></div>
+    <div class="cell revealed liar-cell" data-el="liar">2</div>
+    <div class="cell revealed mirror-cell mirror-pair-0" data-el="mirror0"></div>
+    <div class="cell locked-cell" data-el="locked"></div>
+    <div class="cell pressure-plate" data-el="plate"></div>
+    <div class="cell flagged" data-el="flagged">🚩</div>
+    <div class="cell revealed mine" data-el="mine">💣</div>
+    <div class="cell suggested-start" data-el="suggestedStart"></div>
+    <div class="wall-line" data-el="wall"></div>
+  </div>
+  <div class="lcd-display" data-el="lcd">000</div>
+  <div class="lcd-display timer-warning" data-el="timerWarn">042</div>
+  <div class="lcd-display timer-critical" data-el="timerCrit">009</div>
+  <button class="action-btn primary" data-el="btnPrimary">Btn</button>
+  <h1 id="game-title" data-el="title">GregSweeper</h1>
+</div>
+
+<div id="report">probing…</div>
+<p>Baseline JSON: <textarea id="baseline" placeholder="paste window.__probeResults JSON from the baseline run"></textarea>
+<button id="diff-btn">Diff</button></p>
+<div id="diff-out" style="font: 13px/1.5 monospace; padding: 0 16px;"></div>
+
+<script>
+const THEMES = ['classic','dark','editorial','sumie','blueprint','cartography','origami','chalkboard','noir','ocean','forest','sakura','apothecary','splitflap','stainedglass','aurora','galaxy','candy','comic','circuitboard','matrix','neon','synthwave','inferno','supernova','legendary'];
+
+// Curated property list: palette, surface, type, and ANIMATION IDENTITY.
+const PROPS = ['color','background-color','background-image','border','border-radius','box-shadow','outline','text-shadow','opacity','font-family','font-size','font-weight','font-style','text-decoration-line','clip-path','animation-name','animation-duration','animation-timing-function','filter','letter-spacing','text-transform'];
+
+// Theme-expression tokens resolved at the root: catches token-only changes
+// (e.g. a new --anim-reveal-dur) even where no probe element consumes them.
+const TOKENS = ['--anim-reveal-dur','--anim-reveal-ease','--anim-flag-dur','--anim-flag-ease','--anim-mine-dur','--anim-mine-ease','--fs-title','--fs-lcd','--fs-cell-number','--fs-mine','--fs-flag','--cell-shape-radius','--cell-gap-seal','--font-display','--font-family','--marker-liar-outline','--marker-sonar-tint','--marker-compass-tint','--marker-wormhole-0','--marker-mirror-0','--timer-warning','--timer-critical','--victory-color','--color-wall','--color-wall-outline'];
+
+function fnv1a(str) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(16).padStart(8, '0');
+}
+
+function sampleTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  // Force style resolution
+  void document.body.offsetWidth;
+  const out = {};
+  for (const el of document.querySelectorAll('#probe-host [data-el]')) {
+    const name = el.dataset.el;
+    const parts = [];
+    for (const pseudo of [null, '::before', '::after']) {
+      const cs = getComputedStyle(el, pseudo);
+      for (const p of PROPS) parts.push(p + ':' + cs.getPropertyValue(p));
+    }
+    out[name] = fnv1a(parts.join(';'));
+  }
+  const rootCs = getComputedStyle(document.documentElement);
+  const tokenParts = TOKENS.map(t => t + ':' + rootCs.getPropertyValue(t).trim());
+  out['_tokens'] = fnv1a(tokenParts.join(';'));
+  out['_theme'] = fnv1a(Object.entries(out).map(([k, v]) => k + '=' + v).join('|'));
+  return out;
+}
+
+function run() {
+  const results = {};
+  for (const t of THEMES) results[t] = sampleTheme(t);
+  window.__probeResults = results;
+  const lines = THEMES.map(t => t.padEnd(14) + results[t]._theme);
+  document.getElementById('report').textContent =
+    'done — ' + THEMES.length + ' themes\n\n' + lines.join('\n') +
+    '\n\ncopy: JSON.stringify(window.__probeResults)';
+}
+
+document.getElementById('diff-btn').addEventListener('click', () => {
+  let base;
+  try { base = JSON.parse(document.getElementById('baseline').value); }
+  catch { document.getElementById('diff-out').textContent = 'baseline JSON unparseable'; return; }
+  const cur = window.__probeResults;
+  const lines = [];
+  for (const t of THEMES) {
+    if (!base[t]) { lines.push(t + ': NOT IN BASELINE'); continue; }
+    if (base[t]._theme === cur[t]._theme) continue;
+    const changed = Object.keys(cur[t]).filter(k => k !== '_theme' && base[t][k] !== cur[t][k]);
+    lines.push(t + ' CHANGED: ' + changed.join(', '));
+  }
+  document.getElementById('diff-out').textContent = lines.length ? lines.join('\n') : 'no differences — all themes identical to baseline';
+});
+
+// Fonts settle async; sample after load + a tick so font-family resolution is stable.
+window.addEventListener('load', () => setTimeout(run, 400));
+</script>
+</body>
+</html>

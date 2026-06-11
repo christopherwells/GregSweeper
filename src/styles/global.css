@@ -144,9 +144,14 @@
      @keyframes. ── */
   --anim-reveal-dur: 0.25s;
   --anim-reveal-ease: ease-out;
-  --anim-flag-dur: 0.3s;
+  /* Flag/mine defaults are byte-for-byte the literals .cell.flag-pop /
+     .cell.mine-chain used to hardcode (the tokens were declared with
+     aspirational values, 0.3s / 0.35s, but never consumed — wired up
+     2026-06-10, so a theme that overrides nothing animates exactly as
+     before). */
+  --anim-flag-dur: 0.35s;
   --anim-flag-ease: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --anim-mine-dur: 0.35s;
+  --anim-mine-dur: 0.4s;
   --anim-mine-ease: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-standard: ease;
@@ -3425,7 +3430,7 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 
 /* Chain mine reveal explosion */
 .cell.mine-chain {
-  animation: mineChainExplode 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation: mineChainExplode var(--anim-mine-dur, 0.4s) var(--anim-mine-ease, cubic-bezier(0.34, 1.56, 0.64, 1)) both;
 }
 
 @keyframes mineChainExplode {
@@ -3438,7 +3443,7 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 
 /* ── Flag Pop Animation ────────────────────── */
 .cell.flag-pop {
-  animation: flagPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: flagPop var(--anim-flag-dur, 0.35s) var(--anim-flag-ease, cubic-bezier(0.34, 1.56, 0.64, 1));
 }
 
 @keyframes flagPop {
