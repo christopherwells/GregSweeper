@@ -1,0 +1,7 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
+<!-- A luggage tag, string and all. -->
+<path d='M20 24 L40 14 L54 22 L54 44 L34 54 L20 46 Z' fill='#e8c84a' stroke='#8a6a14' stroke-width='2.6' stroke-linejoin='round'/>
+<circle cx='38' cy='22' r='3.4' fill='#17171c'/>
+<path d='M37 21 C28 14 18 10 10 10 C16 13 24 17 30 23' stroke='#8a8a92' stroke-width='2.2' fill='none' stroke-linecap='round'/>
+<path d='M28 36 L46 28 M30 42 L48 34' stroke='#8a6a14' stroke-width='2.2' stroke-linecap='round'/>
+</svg>

@@ -1,0 +1,8 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
+<!-- A drafted mine, plan view: dashed outline, centerlines, leader. -->
+<circle cx='30' cy='34' r='17' fill='none' stroke='#dceeff' stroke-width='2.6' stroke-dasharray='6 3.5'/>
+<circle cx='30' cy='34' r='6' fill='none' stroke='#dceeff' stroke-width='2'/>
+<path d='M30 12 L30 56 M8 34 L52 34' stroke='#dceeff' stroke-width='1.5' stroke-dasharray='8 2.5 2 2.5' opacity='0.85'/>
+<path d='M43 21 L56 10 L62 10' stroke='#dceeff' stroke-width='1.8' fill='none'/>
+<circle cx='43' cy='21' r='1.8' fill='#dceeff'/>
+</svg>

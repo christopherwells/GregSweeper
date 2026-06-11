@@ -1,0 +1,6 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
+<!-- The expedition pennant, planted on the chart. -->
+<path d='M22 6 L22 56' stroke='#5c4020' stroke-width='4.4' stroke-linecap='round'/>
+<path d='M22 9 C32 6 40 12 54 8 L50 18 L54 28 C40 24 32 30 22 27 Z' fill='#8a3020' stroke='#5c4020' stroke-width='2'/>
+<path d='M14 57 C19 54 27 54 32 57' stroke='#5c4020' stroke-width='2.4' fill='none' stroke-linecap='round'/>
+</svg>

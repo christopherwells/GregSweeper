@@ -1,0 +1,10 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
+<!-- The bomb scrubbed out: chalk burst and cross-out. -->
+<g stroke='#f0ebe0' stroke-linecap='round' fill='none'>
+<path d='M32 16 L32 6 M32 48 L32 58 M16 32 L6 32 M48 32 L58 32' stroke-width='2.8'/>
+<path d='M21 21 L13 13 M43 21 L51 13 M21 43 L13 51 M43 43 L51 51' stroke-width='2.4' opacity='0.85'/>
+<circle cx='32' cy='32' r='9' stroke-width='2.6'/>
+<circle cx='32' cy='32' r='7.4' stroke-width='1.1' opacity='0.5'/>
+</g>
+<path d='M24 28 C30 34 36 30 40 36' stroke='#ff8a6a' stroke-width='2.4' fill='none' stroke-linecap='round' opacity='0.9'/>
+</svg>

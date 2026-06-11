@@ -23,6 +23,56 @@ first ambient effects.
 
 ---
 
+## The deepening pass (2026-06-11): holistic fog + drawn objects
+
+Two new layers, on top of everything above. **Evaluate these on a fresh board
+(all fog) and again after clearing a region.**
+
+**Holistic fog art.** Seven worlds now carry ONE drawing across the whole
+unrevealed board — the fog tiles went translucent so the drawing reads through
+them as a single image, and revealing breaks it tile by tile (you unfold the
+paper, push past the charted edge, wipe the slate). Not per-cell decoration;
+stand back from a fresh board and the picture should be obvious:
+
+- **Origami** — the crane's crease pattern (bird base): diagonals, medians,
+  the inner diamond, neck/tail kites. Valley folds are dashed red, mountains
+  solid, the way real crease diagrams are drawn. You should feel "I'm about
+  to fold this."
+- **Cartography** — one worn chart: a coastline winding across many cells, a
+  contour island, the compass rose in the top-right, a dashed route to an X,
+  foxing stains, two old fold lines.
+- **Comic** (rebuilt — the old buff tiles read as nothing) — a real inked
+  page: heavy panel gutters dividing the board into multi-cell panels,
+  visible halftone screen, speed lines, a yellow action burst in a corner.
+- **Blueprint** — one cyanotype sheet: double border frame, a drafted part
+  with dash-dot centerlines, dimension arrows, hatched detail, title block.
+  Numbers moved to white line work (faint hue tints keep counting legible) —
+  blue, black, and white, the famous look.
+- **Chalkboard** — half-erased workings span the slate (circled figure, sums,
+  a long-division bracket, an eraser smear), and the digits now bleed colored
+  chalk dust instead of reading as print.
+- **Noir** — venetian-blind light raking the whole board at a tilt: one beam
+  through the office blinds.
+- **Ocean** — a sounding chart: a minesweeper vessel on the surface line,
+  sweep cable trailing, nested depth contours, sounding marks. The literal
+  heritage world.
+
+**Drawn object sets (sprite batch 1).** Ten worlds' mines/flags/strikes are
+now drawn in their material, replacing the emoji: editorial (ink blot / red
+editor's circle / blot burst with scattered type), sumi-e (wet ink circle /
+brushstroke with cinnabar hanko / feathered bleed), blueprint (drafted mine in
+plan view / red revision triangle / red-scribbled rejection), cartography (sea
+serpent / expedition pennant / shipwreck), chalkboard (chalk-sketched bomb /
+chalk pennant / scrubbed-out burst), splitflap (cancelled flap module /
+luggage tag / module shattering mid-flip), galaxy (black hole / planted survey
+probe / collapsing-star flash), circuitboard (a literal bug on the silicon /
+probe clip / burnt-out chip), comic (classic fused bomb / exclamation balloon
+/ BOOM star), and noir's losses now leave a **chalk body outline** at every
+detonation — the crime scene accumulates. A player's emoji-pack override still
+wins, and undrawn themes keep their emoji.
+
+---
+
 ## Free at level 0
 
 **Classic** — The 90s original. Deliberately untouched: default synth voice,

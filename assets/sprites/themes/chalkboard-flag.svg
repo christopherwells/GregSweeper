@@ -1,0 +1,7 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
+<!-- A chalk pennant, drawn twice the way chalk lines double. -->
+<path d='M24 8 L24 56' stroke='#f0ebe0' stroke-width='3' stroke-linecap='round'/>
+<path d='M25 10 L48 18 L25 28' fill='none' stroke='#ffe066' stroke-width='2.8' stroke-linejoin='round'/>
+<path d='M26 12.5 L43 18 L26 25' fill='none' stroke='#ffe066' stroke-width='1.2' opacity='0.55'/>
+<path d='M18 56 L31 56' stroke='#f0ebe0' stroke-width='2.2' stroke-linecap='round' opacity='0.8'/>
+</svg>

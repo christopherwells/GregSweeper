@@ -63,9 +63,14 @@
   .tg-level { font-size: 12px; opacity: 0.7; }
   .tg-world { font-size: 12px; opacity: 0.85; min-height: 3em; margin-bottom: 8px; }
   .tg-board-wrap { --cell-size: 34px; }
+  .tg-sprite { width: 80%; height: 80%; object-fit: contain; display: block; margin: auto; }
+  /* Match the real #board compositing: background-color is the theme's
+     --color-border (what translucent fog actually sits on in-game),
+     with the fog-art drawing above it. Grout still demos via the live
+     card's fx-on machinery. */
   .tg-board { display: grid; grid-template-columns: repeat(4, 34px); gap: 3px; padding: 6px; width: max-content;
               border-radius: 8px; position: relative; overflow: hidden;
-              background-color: var(--cell-gap-seal, var(--color-cell-revealed, #555));
+              background-color: var(--color-border, var(--cell-gap-seal, #555));
               background-image: var(--bg-fog-art, none);
               background-size: 100% 100%; }
   .tg-board .cell { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
@@ -124,15 +129,27 @@ const CELLS = [
   ['revealed num-1', '1'], ['revealed'], ['revealed mine', 'MINE'], ['unrevealed'],
 ];
 
+// Themes with drawn object sets (batch 1) — the gallery shows the
+// sprite instead of the emoji so the sets are judged side by side.
+// noir has only its chalk-outline strike, which the mini-board's mine
+// slot demos.
+const SPRITED = {
+  editorial: 1, sumie: 1, blueprint: 1, cartography: 1, chalkboard: 1,
+  splitflap: 1, galaxy: 1, circuitboard: 1, comic: 1,
+};
+const spriteImg = (key, obj) => `<img class="tg-sprite" src="../assets/sprites/themes/${key}-${obj}.svg" alt="">`;
+
 for (const [key, name, level, world, mine, flag] of THEMES) {
   const card = document.createElement('div');
   card.className = 'tg-card';
   card.dataset.themeKey = key;
+  const mineHtml = SPRITED[key] ? spriteImg(key, 'mine') : key === 'noir' ? spriteImg(key, 'strike') : mine;
+  const flagHtml = SPRITED[key] ? spriteImg(key, 'flag') : flag;
   card.innerHTML = `
     <div class="tg-head"><span class="tg-name">${name}</span><span class="tg-level">${level ? 'L' + level : 'free'}</span></div>
     <div class="tg-world">${world}</div>
     <div class="tg-board-wrap" data-theme="${key}"><div class="tg-board">${
-      CELLS.map(([cls, txt]) => `<div class="cell ${cls}">${txt === 'FLAG' ? flag : txt === 'MINE' ? mine : (txt || '')}</div>`).join('')
+      CELLS.map(([cls, txt]) => `<div class="cell ${cls}">${txt === 'FLAG' ? flagHtml : txt === 'MINE' ? mineHtml : (txt || '')}</div>`).join('')
     }</div></div>
     <div class="tg-sounds">
       <button data-snd="reveal">reveal</button>

@@ -1,0 +1,14 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
+<!-- A literal bug on the silicon, legs on the trace pads. -->
+<ellipse cx='32' cy='36' rx='11' ry='14' fill='#142a18' stroke='#40f090' stroke-width='2.6'/>
+<path d='M32 24 C28 20 28 16 30 13 M32 24 C36 20 36 16 34 13' stroke='#40f090' stroke-width='2.2' fill='none' stroke-linecap='round'/>
+<path d='M32 24 L32 50' stroke='#40f090' stroke-width='1.6' opacity='0.8'/>
+<g stroke='#40f090' stroke-width='2.2' stroke-linecap='round'>
+<path d='M21 30 L10 26 M21 38 L9 38 M22 45 L11 50'/>
+<path d='M43 30 L54 26 M43 38 L55 38 M42 45 L53 50'/>
+</g>
+<g fill='#b87838'>
+<rect x='6' y='23' width='5' height='5' rx='1'/><rect x='5' y='35.5' width='5' height='5' rx='1'/><rect x='8' y='48' width='5' height='5' rx='1'/>
+<rect x='53' y='23' width='5' height='5' rx='1'/><rect x='54' y='35.5' width='5' height='5' rx='1'/><rect x='51' y='48' width='5' height='5' rx='1'/>
+</g>
+</svg>
