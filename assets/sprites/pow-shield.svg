@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Shield: kite shield taking a hit — the spark mark says "blocks
+       one mine hit", distinguishing it from achievement shields. -->
+  <path d="M64 10 C78 18 92 22 104 24 L104 62 C104 90 88 106 64 120 C40 106 24 90 24 62 L24 24 C36 22 50 18 64 10 Z"
+        fill="#4a78c8" stroke="#232838" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M64 22 C74 27 84 30 93 32 L93 61 C93 83 81 96 64 107 Z" fill="#3a5fa6"/>
+  <path d="M64 22 C54 27 44 30 35 32 L35 61 C35 83 47 96 64 107 Z" fill="#5d8ad8"/>
+  <!-- Impact spark, upper right -->
+  <path d="M84 34 L89 46 L102 44 L92 53 L99 65 L86 58 L80 70 L79 56 L66 54 L79 48 Z"
+        fill="#ffd23e" stroke="#b8860b" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M76 66 L70 78 M82 68 L80 80" stroke="#ffd23e" stroke-width="4" stroke-linecap="round"/>
+</svg>

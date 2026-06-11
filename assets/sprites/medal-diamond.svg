@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Speed-rating medal: diamond, the top tier. Same slate ribbon as
+       the metal medals for set cohesion, but the disc gives way to a
+       brilliant-cut stone with facet lines and sparkles — prestige,
+       not just another metal. -->
+  <g stroke="#232838" stroke-width="5" stroke-linejoin="round">
+    <path d="M42 8 L60 8 L67 40 L46 46 Z" fill="#46506b"/>
+    <path d="M86 8 L68 8 L61 40 L82 46 Z" fill="#3a4258"/>
+  </g>
+  <!-- Stone: crown (trapezoid) + pavilion (point), icy blues. -->
+  <g stroke="#232838" stroke-width="5" stroke-linejoin="round">
+    <path d="M36 62 L52 44 L76 44 L92 62 L64 112 Z" fill="#7fc6e8"/>
+  </g>
+  <!-- Facets -->
+  <g stroke="#3e88b0" stroke-width="3" stroke-linejoin="round" fill="none">
+    <path d="M36 62 L92 62"/>
+    <path d="M52 44 L56 62 L64 112"/>
+    <path d="M76 44 L72 62 L64 112"/>
+  </g>
+  <path d="M52 44 L56 62 L36 62 Z" fill="#bfe7f7"/>
+  <path d="M56 62 L64 112 L36 62 Z" fill="#5aaed4" opacity="0.65"/>
+  <!-- Sparkles -->
+  <path d="M97 38 L100 46 L108 49 L100 52 L97 60 L94 52 L86 49 L94 46 Z" fill="#ffffff" opacity="0.95"/>
+  <path d="M30 88 L32 93 L37 95 L32 97 L30 102 L28 97 L23 95 L28 93 Z" fill="#ffffff" opacity="0.8"/>
+</svg>
