@@ -511,7 +511,8 @@ async function populateWeeklyPanel() {
   const attemptsEl = $('#stat-weekly-attempts');
   const rankEl = $('#stat-weekly-rank');
   const chartEl = $('#chart-weekly-history');
-  const pastEl = $('#stat-weekly-past-table');
+  const pastEl = $('#stat-weekly-past');
+  const pastEmptyEl = $('#stat-weekly-past-empty');
   if (!bestEl || !chartEl) return;
 
   // Defaults so the cards never render '--' forever on cold-load.
@@ -533,7 +534,10 @@ async function populateWeeklyPanel() {
       bestEl.textContent = myRow.bestTime.toFixed(1) + 's';
       attemptsEl.textContent = (myRow.attemptsUsed || 0) + '/7';
       const rank = entries.indexOf(myRow) + 1;
-      rankEl.textContent = `#${rank} of ${entries.length}`;
+      // Medal for the four top ranks — the leaderboard's rank language.
+      rankEl.innerHTML = rank <= _RANK_MEDALS.length
+        ? `${spriteImgHTML(_RANK_MEDALS[rank - 1], 'sprite-rank', `#${rank}`)} of ${entries.length}`
+        : `#${rank} of ${entries.length}`;
     } else {
       bestEl.textContent = '--';
       attemptsEl.textContent = '0/7';
@@ -566,15 +570,27 @@ async function populateWeeklyPanel() {
       chartEl.appendChild(svg);
     }
 
-    // Past weeks table — last 4 finished weeks before this one.
-    if (pastEl) {
+    // Past weeks table — last 4 finished weeks before this one, in the
+    // leaderboard's row language with medal cells for top-4 finishes.
+    if (pastEl && pastEmptyEl) {
       const past = await collectPastWeeklyBests(uid, 4);
+      const tbody = pastEl.querySelector('tbody');
+      tbody.innerHTML = '';
       if (past.length === 0) {
-        pastEl.textContent = 'No past weekly attempts yet.';
+        pastEl.classList.add('hidden');
+        pastEmptyEl.textContent = 'No past weekly attempts yet.';
+        pastEmptyEl.classList.remove('hidden');
       } else {
-        pastEl.textContent = past
-          .map(p => `${prettyDate(p.weekStart)}  best ${p.bestTime.toFixed(1)}s  (${p.attemptsUsed}/7)`)
-          .join('\n');
+        pastEl.classList.remove('hidden');
+        pastEmptyEl.classList.add('hidden');
+        for (const pw of past) {
+          const tr = document.createElement('tr');
+          const rankCell = (pw.rank && pw.rank <= _RANK_MEDALS.length)
+            ? `<td class="lb-rank-cell">${spriteImgHTML(_RANK_MEDALS[pw.rank - 1], 'sprite-rank', `#${pw.rank}`)} of ${pw.fieldSize}</td>`
+            : `<td>${pw.rank ? `#${pw.rank} of ${pw.fieldSize}` : '-'}</td>`;
+          tr.innerHTML = `<td>${prettyDate(pw.weekStart)}</td><td>${pw.bestTime.toFixed(1)}s</td><td>${pw.attemptsUsed}/7</td>${rankCell}`;
+          tbody.appendChild(tr);
+        }
       }
     }
   } catch (err) {
@@ -605,8 +621,17 @@ async function collectPastWeeklyBests(uid, count) {
   for (let i = 0; i < weekStarts.length; i++) {
     const r = settled[i];
     if (r.status !== 'fulfilled') continue;
-    const row = (r.value || []).find(e => e.uid === uid);
-    if (row) out.push({ weekStart: weekStarts[i], bestTime: row.bestTime, attemptsUsed: row.attemptsUsed || 0 });
+    const rows = r.value || [];
+    const row = rows.find(e => e.uid === uid);
+    if (row) {
+      out.push({
+        weekStart: weekStarts[i],
+        bestTime: row.bestTime,
+        attemptsUsed: row.attemptsUsed || 0,
+        rank: rows.indexOf(row) + 1,
+        fieldSize: rows.length,
+      });
+    }
   }
   return out;
 }

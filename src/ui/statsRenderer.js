@@ -111,8 +111,13 @@ function renderHeadlineCards(plays, handicap, handicapProvisional) {
   // the number will tighten with more plays.
   if (plays.length >= 2 && handicap !== 0) {
     const sign = handicap >= 0 ? '+' : '';
-    const suffix = handicapProvisional ? ` ~ ${plays.length} plays` : '';
-    setText('stat-handicap-now', `${sign}${handicap.toFixed(1)}s${suffix}`);
+    const el = document.getElementById('stat-handicap-now');
+    if (el) {
+      // Provisional reads as a chip, the leaderboard's qualifier language.
+      el.innerHTML = handicapProvisional
+        ? `${sign}${handicap.toFixed(1)}s <span class="lb-hc-chip lb-hc-unrated">provisional · ${plays.length} plays</span>`
+        : `${sign}${handicap.toFixed(1)}s`;
+    }
   } else if (plays.length === 1) {
     setText('stat-handicap-now', '1 more daily');
   } else if (plays.length === 0) {
@@ -344,7 +349,13 @@ function renderDeltaDistribution(plays, handicap) {
   setText('stat-over-par-pct', `${Math.round(100 * over / n)}%`);
   setText('stat-under-par-pct', `${Math.round(100 * under / n)}%`);
   const medianSign = median > 0 ? '+' : '';
-  setText('stat-median-delta', `${medianSign}${median.toFixed(1)}s`);
+  const medEl = document.getElementById('stat-median-delta');
+  if (medEl) {
+    medEl.textContent = `${medianSign}${median.toFixed(1)}s`;
+    // The leaderboard's delta coloring: under par green, over par red.
+    medEl.classList.remove('par-under', 'par-over', 'par-even');
+    medEl.classList.add(median < -0.5 ? 'par-under' : median > 0.5 ? 'par-over' : 'par-even');
+  }
 
   const svg = densityChart(deltas, {
     ariaLabel: 'Distribution of your daily deltas',
