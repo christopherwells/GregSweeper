@@ -6,8 +6,15 @@
   --color-bg: #c9b896;
   --color-app-bg: #e0d0a8;
   --color-cell-hidden: #d8c8a0;
-  --color-cell-hidden-hover: #d0bf94;
-  --color-cell-hidden-gradient: linear-gradient(145deg, #dccca4, #d2c096);
+  --color-cell-hidden-hover: rgba(202, 184, 138, 0.55);
+  /* THE CHART: the unrevealed board is one worn map — a coastline
+     winding across many cells, contour islands, a compass rose owning
+     the top-right, a dashed route running to an X, foxing stains and
+     two old fold lines crossing the whole sheet. Translucent parchment
+     fog lets the one drawing read across the board; revealing pushes
+     past the charted edge. */
+  --bg-fog-art: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 150' preserveAspectRatio='none'%3E%3Cg fill='none' stroke='%236a4a26' stroke-width='1.6' opacity='0.85'%3E%3Cpath d='M-2 96 C20 88 30 102 48 94 C66 86 70 70 92 74 C108 77 112 92 132 88 C150 84 158 96 176 90 C188 86 196 90 202 86'/%3E%3Cpath d='M30 122 C40 114 56 116 60 126 C64 136 48 142 38 136 C30 131 26 126 30 122 Z'/%3E%3Cpath d='M38 125 C43 121 51 122 53 127'/%3E%3C/g%3E%3Cg fill='none' stroke='%236a4a26' opacity='0.8'%3E%3Ccircle cx='162' cy='34' r='17' stroke-width='1.4'/%3E%3Ccircle cx='162' cy='34' r='6' stroke-width='1.2'/%3E%3Cpath d='M162 9 L162 59 M137 34 L187 34 M148 20 L176 48 M176 20 L148 48' stroke-width='1.2'/%3E%3Cpath d='M162 9 L158 17 L166 17 Z' fill='%236a4a26'/%3E%3C/g%3E%3Cpath d='M-2 24 C30 30 60 18 88 30 C106 38 118 28 136 36' fill='none' stroke='%238a3020' stroke-width='1.6' stroke-dasharray='6 5' opacity='0.8'/%3E%3Cpath d='M138 32 L148 44 M148 32 L138 44' stroke='%238a3020' stroke-width='2.4' opacity='0.9'/%3E%3Cg fill='%23715226' opacity='0.16'%3E%3Cellipse cx='52' cy='52' rx='16' ry='10'/%3E%3Cellipse cx='178' cy='118' rx='13' ry='9'/%3E%3Cellipse cx='110' cy='12' rx='10' ry='7'/%3E%3C/g%3E%3Cg stroke='%235c4020' stroke-width='0.8' opacity='0.4'%3E%3Cpath d='M100 0 L100 150'/%3E%3Cpath d='M0 75 L200 75'/%3E%3C/g%3E%3C/svg%3E");
+  --color-cell-hidden-gradient: linear-gradient(145deg, rgba(220,204,164,0.42), rgba(210,192,150,0.3));
   --color-cell-revealed: #ebdcb8;
   --cell-gap-seal: #6a4a26;
   --color-cell-border-light: #b09868;

@@ -65,7 +65,9 @@
   .tg-board-wrap { --cell-size: 34px; }
   .tg-board { display: grid; grid-template-columns: repeat(4, 34px); gap: 3px; padding: 6px; width: max-content;
               border-radius: 8px; position: relative; overflow: hidden;
-              background: var(--cell-gap-seal, var(--color-cell-revealed, #555)); }
+              background-color: var(--cell-gap-seal, var(--color-cell-revealed, #555));
+              background-image: var(--bg-fog-art, none);
+              background-size: 100% 100%; }
   .tg-board .cell { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
                     font-weight: 700; font-size: 16px; position: relative; }
   .tg-sounds { margin-top: 8px; display: none; gap: 6px; }

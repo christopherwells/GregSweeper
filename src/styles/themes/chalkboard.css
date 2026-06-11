@@ -4,8 +4,14 @@
   --color-bg: #283832;
   --color-app-bg: #223028;
   --color-cell-hidden: #2e4038;
-  --color-cell-hidden-hover: #364a42;
-  --color-cell-hidden-gradient: linear-gradient(145deg, #324640, #283832);
+  --color-cell-hidden-hover: rgba(58, 78, 70, 0.55);
+  /* THE SLATE: half-erased workings span the unrevealed board — a
+     circled figure, a plus-sum, a long-division bracket, a crossed-out
+     line, an arrow, and the wide pale smear where the eraser went
+     through. Translucent fog tiles let the one slate read across the
+     grid; revealing wipes it clean. */
+  --bg-fog-art: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 150' preserveAspectRatio='none'%3E%3Crect x='18' y='30' width='86' height='34' rx='17' fill='rgba(240,235,224,0.06)' transform='rotate(-7 61 47)'/%3E%3Cg fill='none' stroke='rgba(240,235,224,0.32)' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M22 26 C30 20 42 22 44 30 C46 38 34 42 28 36 C24 32 24 28 22 26 Z'/%3E%3Cpath d='M58 24 C64 30 72 30 78 24'/%3E%3Cpath d='M96 20 L96 44 M88 32 L104 32'/%3E%3Cpath d='M126 24 L168 24 M126 24 C124 30 124 36 126 42 L150 42'/%3E%3Cpath d='M30 92 C50 86 70 96 88 90 M34 98 L84 96'/%3E%3Cpath d='M120 88 C136 84 150 92 162 86 M118 94 L166 90' opacity='0.5'/%3E%3Cpath d='M118 91 L166 87' stroke-width='2.4' opacity='0.7'/%3E%3Cpath d='M52 124 C70 118 92 126 108 120 M108 120 L100 114 M108 120 L99 126'/%3E%3Cpath d='M150 116 C158 110 170 112 174 120 C178 128 168 134 160 130'/%3E%3C/g%3E%3C/svg%3E");
+  --color-cell-hidden-gradient: linear-gradient(145deg, rgba(50,70,64,0.45), rgba(40,56,50,0.32));
   --color-cell-revealed: #1f2e28;
   --color-cell-border-light: #4a5e54;
   --color-cell-border-dark: #1a2620;
@@ -116,4 +122,11 @@
 @keyframes chalkScrawl {
   0%   { opacity: 0; transform: scale(0.7) rotate(-4deg); }
   100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+
+/* Numbers written in chalk, not printed: each digit bleeds a little of
+   its own colored dust and carries a faint white haze, the way a real
+   chalk stroke sits on slate. */
+[data-theme="chalkboard"] .cell.revealed {
+  text-shadow: 0 0 2px currentColor, 0 0 7px rgba(240, 235, 224, 0.22);
 }

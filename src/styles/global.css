@@ -671,7 +671,16 @@ body::before {
 #board {
   display: grid;
   gap: var(--grid-gap);
-  background: var(--color-border);
+  /* Holistic fog art: a theme may set --bg-fog-art to ONE large vector
+     drawing (data-URI SVG / gradient) that spans the whole grid — the
+     crane crease pattern, the worn chart, the comic page. Themes that
+     use it switch their unrevealed cells to TRANSLUCENT tints so the
+     drawing reads through the fog as one continuous image; revealed
+     cells stay opaque (revealing = unfolding the paper / tearing away
+     the chart). Default none = byte-identical to the old shorthand. */
+  background-color: var(--color-border);
+  background-image: var(--bg-fog-art, none);
+  background-size: 100% 100%;
   border: var(--border-board);
   border-radius: var(--border-radius-board);
   padding: 2px;

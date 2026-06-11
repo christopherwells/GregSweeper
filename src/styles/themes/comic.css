@@ -6,12 +6,16 @@
 [data-theme="comic"] {
   --color-bg: #d8ccb0;
   --color-app-bg: #ece3cb;
-  /* Unread panels — buff newsprint with a faint dot screen + ink border. */
+  /* THE PAGE: the unrevealed board is one inked comic page — heavy
+     panel borders dividing the grid into multi-cell panels, a visible
+     halftone screen across one panel, speed lines in another, and a
+     yellow action burst waiting in the corner. Translucent fog tiles
+     let the page read as one drawing; revealing tears panels open.
+     (Rebuilt 2026-06-11: the old uniform buff tiles read as nothing.) */
+  --bg-fog-art: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 150' preserveAspectRatio='none'%3E%3Cdefs%3E%3Cpattern id='h' width='7' height='7' patternUnits='userSpaceOnUse'%3E%3Ccircle cx='3.5' cy='3.5' r='1.7' fill='rgba(29,24,18,0.5)'/%3E%3C/pattern%3E%3C/defs%3E%3Crect x='80' y='8' width='112' height='57' fill='url(%23h)' opacity='0.55'/%3E%3Cg stroke='%231d1812' stroke-width='2.2' opacity='0.75'%3E%3Cpath d='M10 12 L46 40 M22 8 L54 34 M36 6 L62 28'/%3E%3C/g%3E%3Cpath d='M160 108 L168 122 L184 116 L174 130 L188 138 L170 138 L166 148 L158 136 L142 140 L154 128 L144 118 L160 122 Z' fill='%23f0c43a' stroke='%231d1812' stroke-width='2.4' opacity='0.9'/%3E%3Cg fill='none' stroke='%231d1812' stroke-width='5'%3E%3Crect x='3' y='3' width='194' height='144'/%3E%3Cpath d='M75 3 L75 70 M3 70 L197 70 M125 70 L125 147'/%3E%3C/g%3E%3C/svg%3E");
   --color-cell-hidden: #e4dabf;
-  --color-cell-hidden-hover: #efe6cc;
-  --color-cell-hidden-gradient:
-    radial-gradient(circle at 50% 50%, rgba(40,34,24,0.16) 0 1px, transparent 1.5px) 0 0 / 6px 6px,
-    linear-gradient(150deg, #e8dec3, #ded2b4);
+  --color-cell-hidden-hover: rgba(232, 222, 195, 0.55);
+  --color-cell-hidden-gradient: linear-gradient(150deg, rgba(232,222,195,0.42), rgba(222,210,180,0.3));
   /* Cleared = clean printed paper. Ambient halftone clusters + speed
      lines (themeEffects.js wave 2), so cleared cells need a grout: the
      black ink gutter between panels. */
