@@ -267,6 +267,16 @@ html {
   background-color: var(--color-app-bg);
 }
 
+/* Form controls don't inherit font-family in CSS — without this reset
+   every button, tab strip, and input across the app fell back to the
+   UA's Arial and sat as an off-brand island inside fully-themed
+   screens (63 controls measured on chalkboard, 2026-06-11: nav
+   buttons, all five tab strips, settings, the smiley). Element-level
+   specificity, so any rule that sets an explicit face still wins. */
+button, input, select, textarea {
+  font-family: inherit;
+}
+
 body {
   font-family: var(--font-family);
   background: var(--color-app-bg);
