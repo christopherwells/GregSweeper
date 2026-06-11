@@ -1195,6 +1195,7 @@ function renderCollectionModal() {
   const maxLevel = stats.maxLevelReached || 1;
 
   // Themes tab — clone theme swatches from THEME_UNLOCKS
+  for (const t of Object.keys(THEME_UNLOCKS)) loadThemeCSS(t);
   const themeGrid = $('#collection-theme-grid');
   themeGrid.innerHTML = '';
   const unlocked = getUnlockedThemes();
@@ -1204,64 +1205,24 @@ function renderCollectionModal() {
     const btn = document.createElement('button');
     btn.className = 'theme-swatch' + (theme === currentTheme ? ' active' : '') + (unlocked[theme] === false ? ' locked' : '');
     btn.dataset.theme = theme;
-    const swatchColors = {
-      classic: 'linear-gradient(135deg, #c0c0c0, #e0e0e0)',
-      dark: 'linear-gradient(135deg, #1a1a2e, #1e2745)',
-      editorial: 'linear-gradient(135deg, #f0ebdd, #ddd6c8)',
-      sumie: 'linear-gradient(135deg, #f2ede1, #e6dfce)',
-      blueprint: 'linear-gradient(135deg, #08203a, #11375c)',
-      cartography: 'linear-gradient(135deg, #e0d0a8, #c9b896)',
-      origami: 'linear-gradient(135deg, #f4f1ea, #e2ddd2)',
-      chalkboard: 'linear-gradient(135deg, #223028, #2e4038)',
-      noir: 'linear-gradient(135deg, #3a3a44, #14141a)',
-      stainedglass: 'linear-gradient(135deg, #3a2060, #c41e2a)',
-      apothecary: 'linear-gradient(135deg, #43301c, #c89030)',
-      splitflap: 'linear-gradient(135deg, #2a2a2a, #e8c84a)',
-      circuitboard: 'linear-gradient(135deg, #0e3322, #b87838)',
-      comic: 'linear-gradient(135deg, #e4dabf, #c8d6cf)',
-      ocean: 'linear-gradient(135deg, #1b3a4b, #1e4a5f)',
-      sunset: 'linear-gradient(135deg, #2d1b2e, #3d2240)',
-      forest: 'linear-gradient(135deg, #2d3a2e, #3e5a3a)',
-      candy: 'linear-gradient(135deg, #fff0f5, #ffc1d3)',
-      midnight: 'linear-gradient(135deg, #1a1040, #221555)',
-      stealth: 'linear-gradient(135deg, #1a1a1a, #2a2a2a)',
-      neon: 'linear-gradient(135deg, #0a0a0a, #1a1a1a)',
-      'cherry-blossom': 'linear-gradient(135deg, #f5e6ee, #f0c4d8)',
-      aurora: 'linear-gradient(135deg, #0b1628, #122040)',
-      volcano: 'linear-gradient(135deg, #2a1008, #5c2210)',
-      ice: 'linear-gradient(135deg, #d8eaf5, #a8ceea)',
-      cyberpunk: 'linear-gradient(135deg, #0a0a1a, #1a1a3a)',
-      retro: 'linear-gradient(135deg, #1a0a2e, #3a1860)',
-      holographic: 'linear-gradient(135deg, #1a1a2a, #2a2a3e)',
-      copper: 'linear-gradient(135deg, #1c1410, #8b5e3c)',
-      sakura: 'linear-gradient(135deg, #fdf0f4, #f5c6d0)',
-      galaxy: 'linear-gradient(135deg, #0a0015, #1a0838)',
-      lavender: 'linear-gradient(135deg, #f0ecf8, #c8b8e0)',
-      toxic: 'linear-gradient(135deg, #0a0f0a, #1a2a18)',
-      autumn: 'linear-gradient(135deg, #201810, #8c5828)',
-      royal: 'linear-gradient(135deg, #1e1038, #2e1a55)',
-      coral: 'linear-gradient(135deg, #1c100e, #b85848)',
-      emerald: 'linear-gradient(135deg, #081c14, #18603c)',
-      prismatic: 'linear-gradient(135deg, #141420, #222238)',
-      slate: 'linear-gradient(135deg, #1c2028, #4a5468)',
-      void: 'linear-gradient(135deg, #080808, #0e0e0e)',
-      arctic: 'linear-gradient(135deg, #e8f0f8, #c0d8f0)',
-      deepspace: 'linear-gradient(135deg, #0a0818, #2a2050)',
-      jungle: 'linear-gradient(135deg, #0c1a0c, #1e3a1e)',
-      obsidian: 'linear-gradient(135deg, #000000, #111111)',
-      phantom: 'linear-gradient(135deg, #101218, #2c3040)',
-      matrix: 'linear-gradient(135deg, #000000, #0a1a0a)',
-      solar: 'linear-gradient(135deg, #fdf8ec, #e8c850)',
-      bloodmoon: 'linear-gradient(135deg, #080000, #2a0810)',
-      inferno: 'linear-gradient(135deg, #0d0000, #3d1008)',
-      synthwave: 'linear-gradient(135deg, #0a0020, #1a0848)',
-      celestial: 'linear-gradient(135deg, #080c1a, #182040)',
-      supernova: 'linear-gradient(135deg, #1a0808, #3a1810)',
-      legendary: 'linear-gradient(135deg, #0e0618, #261240)',
-      chaos: 'linear-gradient(135deg, #0a0a14, #1a0a2e)',
-    };
-    const bg = swatchColors[theme] || '#888';
-    btn.innerHTML = `<span class="swatch-color" style="background: ${bg}"></span>` +
+    // Mini-board preview: real .cell elements inside this card's own
+    // data-theme scope, so the theme's fog, numbers, objects, and
+    // fog-art drawing all render live. (Replaced the gradient-dot
+    // swatches 2026-06-11 - a color circle said nothing about the
+    // world.) All theme stylesheets are loaded before this renders.
+    const flagEmoji = info.flag || '🚩';
+    const mineEmoji = info.mine || '💣';
+    btn.innerHTML =
+      `<span class="swatch-board" data-theme="${theme}">` +
+        `<span class="cell unrevealed"></span>` +
+        `<span class="cell revealed num-1">1</span>` +
+        `<span class="cell unrevealed flagged">${flagEmoji}</span>` +
+        `<span class="cell revealed num-2">2</span>` +
+        `<span class="cell revealed num-3">3</span>` +
+        `<span class="cell revealed mine">${mineEmoji}</span>` +
+        `<span class="cell revealed"></span>` +
+        `<span class="cell unrevealed"></span>` +
+      `</span>` +
       `<span class="swatch-name">${info.displayName}</span>` +
       (unlocked[theme] === false ? `<span class="swatch-lock">🔒 Lv.${info.levelRequired}</span>` : '');
     btn.addEventListener('click', () => {
