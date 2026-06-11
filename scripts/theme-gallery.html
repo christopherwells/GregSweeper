@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<!--
+  Theme evaluation gallery — all 26 worlds side by side, in unlock
+  order. Each card shows a themed mini-board (real .cell classes, real
+  theme tokens: hidden vs revealed faces, number colors, objects, and
+  the grout color in the gaps).
+
+  CLICK A CARD to bring that world fully alive: the page takes the
+  theme, the card's board becomes the live #board (so the real gap-seal
+  grout machinery and ambient effect run), the reveal/flag choreography
+  replays, and the sound buttons play that theme's voice. Click another
+  card to switch worlds.
+
+  Open via http://localhost:8080/scripts/theme-gallery.html or on a
+  deploy at /scripts/theme-gallery.html. Companion text: THEME_WORLDS.md.
+  (OS-level reduced-motion disables ambient effects by design.)
+-->
+<html data-theme="classic">
+<head>
+<meta charset="utf-8">
+<title>Theme worlds gallery</title>
+<link rel="stylesheet" href="../src/styles/global.css">
+<link rel="stylesheet" href="../src/styles/themes/classic.css">
+<link rel="stylesheet" href="../src/styles/themes/dark.css">
+<link rel="stylesheet" href="../src/styles/themes/editorial.css">
+<link rel="stylesheet" href="../src/styles/themes/sumie.css">
+<link rel="stylesheet" href="../src/styles/themes/blueprint.css">
+<link rel="stylesheet" href="../src/styles/themes/cartography.css">
+<link rel="stylesheet" href="../src/styles/themes/origami.css">
+<link rel="stylesheet" href="../src/styles/themes/chalkboard.css">
+<link rel="stylesheet" href="../src/styles/themes/noir.css">
+<link rel="stylesheet" href="../src/styles/themes/ocean.css">
+<link rel="stylesheet" href="../src/styles/themes/forest.css">
+<link rel="stylesheet" href="../src/styles/themes/sakura.css">
+<link rel="stylesheet" href="../src/styles/themes/apothecary.css">
+<link rel="stylesheet" href="../src/styles/themes/splitflap.css">
+<link rel="stylesheet" href="../src/styles/themes/stainedglass.css">
+<link rel="stylesheet" href="../src/styles/themes/aurora.css">
+<link rel="stylesheet" href="../src/styles/themes/galaxy.css">
+<link rel="stylesheet" href="../src/styles/themes/candy.css">
+<link rel="stylesheet" href="../src/styles/themes/comic.css">
+<link rel="stylesheet" href="../src/styles/themes/circuitboard.css">
+<link rel="stylesheet" href="../src/styles/themes/matrix.css">
+<link rel="stylesheet" href="../src/styles/themes/neon.css">
+<link rel="stylesheet" href="../src/styles/themes/synthwave.css">
+<link rel="stylesheet" href="../src/styles/themes/inferno.css">
+<link rel="stylesheet" href="../src/styles/themes/supernova.css">
+<link rel="stylesheet" href="../src/styles/themes/legendary.css">
+<style>
+  body { margin: 0; padding: 20px; font: 14px/1.5 system-ui, sans-serif; background: var(--color-bg, #222); color: var(--color-text, #eee); transition: background 0.3s; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .hint { opacity: 0.75; margin-bottom: 18px; }
+  #cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 16px; }
+  .tg-card { border: 2px solid rgba(128,128,128,0.35); border-radius: 12px; padding: 12px; cursor: pointer; background: rgba(0,0,0,0.15); }
+  .tg-card.active { border-color: var(--color-accent, #6cf); box-shadow: 0 0 14px var(--color-accent-glow, rgba(100,200,255,0.3)); }
+  .tg-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px; }
+  .tg-name { font-weight: 700; font-size: 15px; }
+  .tg-level { font-size: 12px; opacity: 0.7; }
+  .tg-world { font-size: 12px; opacity: 0.85; min-height: 3em; margin-bottom: 8px; }
+  .tg-board-wrap { --cell-size: 34px; }
+  .tg-board { display: grid; grid-template-columns: repeat(4, 34px); gap: 3px; padding: 6px; width: max-content;
+              border-radius: 8px; position: relative; overflow: hidden;
+              background: var(--cell-gap-seal, var(--color-cell-revealed, #555)); }
+  .tg-board .cell { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
+                    font-weight: 700; font-size: 16px; position: relative; }
+  .tg-sounds { margin-top: 8px; display: none; gap: 6px; }
+  .tg-card.active .tg-sounds { display: flex; }
+  .tg-sounds button { font: 12px system-ui; padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(128,128,128,0.5);
+                      background: var(--color-btn-bg, #333); color: var(--color-text, #eee); cursor: pointer; }
+</style>
+</head>
+<body>
+<h1>Theme worlds — all 26, unlock order</h1>
+<p class="hint">Every mini-board uses the theme's real tokens: fog vs cleared faces, number colors, objects, grout in the gaps. <strong>Click a card</strong> to take that world live: page background, ambient effect, reveal/flag motion replay, and its voice on the sound buttons. Companion text: THEME_WORLDS.md.</p>
+<div id="cards"></div>
+
+<script type="module">
+import { applyThemeEffects, clearThemeEffects } from '../src/ui/themeEffects.js';
+import { state } from '../src/state/gameState.js';
+import { playReveal, playFlag, playCascade, playWin } from '../src/audio/sounds.js';
+
+const THEMES = [
+  ['classic', 'Classic', 0, 'The 90s original, untouched on purpose. Default synth voice, no ambiance. Restraint is the identity.', '💣', '🚩'],
+  ['dark', 'Dark', 0, 'Hushed night. Moonrise reveals, quiet no-bounce flag, low soft sines. No ambiance by design.', '💣', '🚩'],
+  ['editorial', 'Editorial', 5, 'A broadsheet: ink on newsprint, column-rule grout. Typewriter voice. The page typesets itself: lines of type fade in at rest.', '⬛', '✒️'],
+  ['sumie', 'Sumi-e', 10, 'Ink-brush on rice paper, one seal-red accent. Soft slow triangles. Ink motes bloom; brush wisps float.', '⚫', '🖌️'],
+  ['blueprint', 'Blueprint', 15, 'Cyan drafting on navy. Precise tick voice. Drafting crosses register; dashed measure lines sweep. Pale grid grout.', '🔩', '📍'],
+  ['cartography', 'Cartography', 20, 'A treasure chart in sepia. Buoy-bell flag, low warm win. Plotted route dashes drift; sounding rings surface.', '❌', '⛵'],
+  ['origami', 'Origami', 25, 'Folded craft paper. Crease-snap voice. Pastel paper triangles glide down with slow rotation.', '🕊️', '🔖'],
+  ['chalkboard', 'Chalkboard', 30, 'Chalk on slate. Felt-tap voice, chalk dust, chalk-line grout.', '☠️', '⚑'],
+  ['noir', 'Noir', 35, 'A detective film: grain, smoke, projector-flicker reveals. The win is a jazz chord that never quite resolves.', '🎱', '🔍'],
+  ['ocean', 'Ocean', 40, 'Deep water. Slow low sines, anchor-drop flag, rising-bubble cascade. Floating bubbles.', '🐡', '⚓'],
+  ['forest', 'Forest', 45, 'Woodland. Two-note bird-chirp reveals, dawn-chorus win. Falling leaves and fireflies.', '🌰', '🐿️'],
+  ['sakura', 'Sakura', 50, 'Blossoms and lanterns at dusk. Koto plucks (hirajoshi). Petal-landing reveals; the flag hangs and sways once.', '🎴', '🏮'],
+  ['apothecary', 'Apothecary', 55, 'A candle-lit potion shop. Glass-clink voice, sparkle win. Candle glow and motes. Shelf-wood grout.', '🧪', '🗝️'],
+  ['splitflap', 'Split-Flap', 60, 'A Solari departure board. Redesigned: sleeping flaps vs live lit modules. Mechanical tick voice; DESCENDING boarding-chime win.', '🧳', '🏷️'],
+  ['stainedglass', 'Stained Glass', 65, 'A cathedral window. Bell tones through glass, jewel-light glow, dark lead grout.', '🕯️', '⚜️'],
+  ['aurora', 'Aurora', 70, 'Polar night. Long glassy sines. Light-curtain reveals with a hue swing; drifting aurora bands. (Title shimmer fixed.)', '❄️', '🌌'],
+  ['galaxy', 'Galaxy', 75, 'Deep space. Sub-bass thrums; star-ping flag answered by the void. Starbirth reveals; orbit-capture flag.', '☄️', '🛸'],
+  ['candy', 'Candy', 80, 'A sweetshop. Two-tone bubble-POP reveal, saccharine sparkle win. Sprinkles. Pink grout.', '🍬', '🍭'],
+  ['comic', 'Comic', 85, 'A Sunday strip. Octave-leap boings; the flag BONKS down an octave. Halftone clusters pulse; speed lines streak. Ink-gutter grout.', '💣', '❗'],
+  ['circuitboard', 'Circuit Board', 90, 'A live PCB. Logic-probe blips, LED pulses, copper-trace grout.', '🐛', '🔧'],
+  ['matrix', 'Matrix', 95, 'The green terminal. Cascade DESCENDS like the rain. Stepped glitch-decode reveals; target-lock flag. Phosphor grid grout.', '🟢', '🔴'],
+  ['neon', 'Neon', 100, 'A buzzing sign. Same-pitch double-sputter reveal (a flickering tube), E-major flash win. CRT scan and sparks.', '⚡', '🎯'],
+  ['synthwave', 'Synthwave', 105, 'Retrowave: hot grid, magenta and cyan. Sawtooth Cm7 arps. Grid-glow ambiance.', '🎹', '🎧'],
+  ['inferno', 'Inferno', 110, 'Hellfire. Low sawtooth growls, minor brass win. Fire and rising sparks. Lava-crack grout.', '🔥', '💀'],
+  ['supernova', 'Supernova', 115, 'A stellar blast. Bright saw-zap reveal, charge-and-flash flag, blazing octave win. Burst rings.', '💥', '🚀'],
+  ['legendary', 'Legendary', 120, 'The gold-and-dragon capstone. Herald brass in rising fifths; coronation fanfare. Sparkles and embers. Gold grout.', '🐉', '🏰'],
+];
+
+const cards = document.getElementById('cards');
+const CELLS = [
+  ['unrevealed'], ['unrevealed flagged', 'FLAG'], ['unrevealed'], ['revealed num-1', '1'],
+  ['revealed num-2', '2'], ['revealed num-3', '3'], ['revealed'], ['unrevealed'],
+  ['revealed num-1', '1'], ['revealed'], ['revealed mine', 'MINE'], ['unrevealed'],
+];
+
+for (const [key, name, level, world, mine, flag] of THEMES) {
+  const card = document.createElement('div');
+  card.className = 'tg-card';
+  card.dataset.themeKey = key;
+  card.innerHTML = `
+    <div class="tg-head"><span class="tg-name">${name}</span><span class="tg-level">${level ? 'L' + level : 'free'}</span></div>
+    <div class="tg-world">${world}</div>
+    <div class="tg-board-wrap" data-theme="${key}"><div class="tg-board">${
+      CELLS.map(([cls, txt]) => `<div class="cell ${cls}">${txt === 'FLAG' ? flag : txt === 'MINE' ? mine : (txt || '')}</div>`).join('')
+    }</div></div>
+    <div class="tg-sounds">
+      <button data-snd="reveal">reveal</button>
+      <button data-snd="flag">flag</button>
+      <button data-snd="cascade">cascade</button>
+      <button data-snd="win">win</button>
+    </div>`;
+  cards.appendChild(card);
+}
+
+let activeBoard = null;
+cards.addEventListener('click', (e) => {
+  const sndBtn = e.target.closest('[data-snd]');
+  if (sndBtn) {
+    const fn = { reveal: playReveal, flag: playFlag, cascade: () => playCascade(7), win: playWin }[sndBtn.dataset.snd];
+    fn();
+    return;
+  }
+  const card = e.target.closest('.tg-card');
+  if (!card) return;
+  const key = card.dataset.themeKey;
+  // Take the world live: page theme, sounds, and the real #board
+  // machinery (gap-seal grout + ambient effect) on this card.
+  document.documentElement.setAttribute('data-theme', key);
+  state.theme = key;
+  clearThemeEffects();
+  if (activeBoard) activeBoard.removeAttribute('id');
+  document.querySelectorAll('.tg-card.active').forEach(c => c.classList.remove('active'));
+  card.classList.add('active');
+  activeBoard = card.querySelector('.tg-board');
+  activeBoard.id = 'board';
+  applyThemeEffects(key);
+  // Replay the reveal + flag choreography so the motion is visible.
+  for (const cell of card.querySelectorAll('.cell.revealed')) {
+    cell.classList.remove('num-pop');
+    void cell.offsetWidth;
+    cell.classList.add('num-pop');
+  }
+  const flagged = card.querySelector('.cell.flagged');
+  if (flagged) {
+    flagged.classList.remove('flag-pop');
+    void flagged.offsetWidth;
+    flagged.classList.add('flag-pop');
+  }
+});
+</script>
+</body>
+</html>
