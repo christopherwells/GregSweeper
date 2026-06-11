@@ -182,9 +182,23 @@ function injectStyles() {
        pattern breathes — two of these at different scales/directions
        interfere into the wiggly light-on-sand look. */
     @keyframes fxCaustic {
-      0%   { background-position: 0px 0px; transform: scale(1); }
-      50%  { transform: scale(1.06); }
-      100% { background-position: 160px 118px; transform: scale(1); }
+      0%   { background-position: 0px 0px; transform: rotate(var(--fx-rot, 0deg)) scale(1); }
+      50%  { transform: rotate(var(--fx-rot, 0deg)) scale(1.045); }
+      100% { background-position: 160px 118px; transform: rotate(var(--fx-rot, 0deg)) scale(1); }
+    }
+
+    /* Split-flap module flutter: the top half flips down three times
+       (cycling characters) then settles, while the module fades. */
+    @keyframes fxFlapTop {
+      0%, 28%, 56% { transform: rotateX(0deg); }
+      14%, 42%, 70% { transform: rotateX(-72deg); }
+      84%, 100% { transform: rotateX(0deg); }
+    }
+    @keyframes fxFlapFade {
+      0% { opacity: 0; }
+      12% { opacity: 0.9; }
+      80% { opacity: 0.9; }
+      100% { opacity: 0; }
     }
 
     /* Slow god-ray rotation for light-through-glass themes. */
@@ -236,6 +250,8 @@ function fallingParticle(container, opts) {
   const swayX2 = rand(-50, 50);
   const duration = rand(opts.durationMin || 6, opts.durationMax || 10);
 
+  // linear, not ease-in-out: easing applies per keyframe segment, so
+  // ease-in-out parked every faller at the 70% (mid-board) keyframe.
   const el = spawn(container, {
     text: pick(opts.chars),
     style: {
@@ -243,7 +259,7 @@ function fallingParticle(container, opts) {
       top: '0px',
       fontSize: size + 'px',
       lineHeight: '1',
-      animation: `fxFall ${duration}s ease-in-out forwards`,
+      animation: `fxFall ${duration}s linear forwards`,
       '--fx-x0': '0px',
       '--fx-y0': '-20px',
       '--fx-x1': swayX1 + 'px',
@@ -303,22 +319,28 @@ const THEME_EFFECTS = {
   // a glassy highlight ring.
   ocean: (container) => {
     injectStyles();
-    const net = (sizePx, alpha, dur, reverse) => {
+    const net = (sizePx, alpha, dur, reverse, rot) => {
       const el = document.createElement('div');
       Object.assign(el.style, {
-        position: 'absolute', inset: '-20%', pointerEvents: 'none', zIndex: '0',
+        position: 'absolute', inset: '-25%', pointerEvents: 'none', zIndex: '0',
+        // Thin bright ring with soft shoulders: closer to the sharp
+        // filaments real caustics make than a wide glow band. Near-white
+        // (desaturated) - sun through water is white light.
         backgroundImage:
-          `radial-gradient(ellipse ${sizePx}px ${sizePx * 0.62}px at 50% 50%, transparent 58%, rgba(170,230,255,${alpha}) 72%, transparent 86%)`,
-        backgroundSize: `${sizePx * 1.7}px ${sizePx * 1.3}px`,
+          `radial-gradient(ellipse ${sizePx}px ${sizePx * 0.58}px at 50% 50%, transparent 60%, rgba(225,243,252,${alpha * 0.55}) 69%, rgba(232,246,253,${alpha}) 73%, rgba(225,243,252,${alpha * 0.45}) 77%, transparent 84%)`,
+        backgroundSize: `${sizePx * 1.6}px ${sizePx * 1.18}px`,
         animation: `fxCaustic ${dur}s linear infinite${reverse ? ' reverse' : ''}`,
         mixBlendMode: 'screen',
       });
+      el.style.setProperty('--fx-rot', rot + 'deg');
       container.appendChild(el);
       return el;
     };
-    // Two scales, opposite directions: the interference is the wiggle.
-    const a = net(46, 0.16, 17, false);
-    const b = net(74, 0.12, 26, true);
+    // Three scales, two directions, three grid angles: the moving
+    // interference between offset nets is what reads as the wiggle.
+    const a = net(38, 0.10, 13, false, 0);
+    const b = net(60, 0.085, 21, true, 16);
+    const c2 = net(92, 0.06, 31, false, -11);
     const bubbleCleanup = particleLoop(container, (c) => {
       const boardH = c.parentElement?.clientHeight || 500;
       const s = rand(4, 10);
@@ -334,7 +356,7 @@ const THEME_EFFECTS = {
         '--fx-s-end': String(rand(1.1, 1.5)),
       }});
     }, () => rand(550, 1400));
-    return () => { a.remove(); b.remove(); bubbleCleanup(); };
+    return () => { a.remove(); b.remove(); c2.remove(); bubbleCleanup(); };
   },
 
   // Forest (L9): drifting leaves (the visible headline) + glowing fireflies
@@ -342,11 +364,23 @@ const THEME_EFFECTS = {
     injectStyles();
     // falling leaves — clearly readable motion, drifting + tumbling down
     const leafCleanup = particleLoop(container, (c) => {
-      return fallingParticle(c, {
-        chars: ['🍃', '🍂', '🌿', '🍃', '🍃'],
-        sizeMin: 13, sizeMax: 22, durationMin: 5, durationMax: 9,
-        opacity: 0.75, opacityEnd: 0.2,
-      });
+      // Vector leaf: a pointed-oval (two round corners) with a center
+      // vein, in autumn-to-green hues. No emoji glyphs.
+      const boardH = c.parentElement?.clientHeight || 500;
+      const s = rand(11, 18);
+      const hue = pick(['96,150,70', '124,160,66', '150,120,46', '170,104,40']);
+      return spawn(c, { style: {
+        left: rand(4, 92) + '%', top: '0px',
+        width: s + 'px', height: (s * 0.62) + 'px',
+        borderRadius: '0 85% 0 85%',
+        background: `linear-gradient(135deg, rgba(${hue},0.9), rgba(${hue},0.55))`,
+        boxShadow: `inset 0 0 0 0.5px rgba(60,70,40,0.4)`,
+        animation: `fxFall ${rand(5, 9)}s linear forwards`,
+        '--fx-x1': rand(-34, 34) + 'px', '--fx-y1': (boardH * 0.5) + 'px',
+        '--fx-x2': rand(-55, 55) + 'px', '--fx-y2': (boardH + 22) + 'px',
+        '--fx-r0': rand(0, 70) + 'deg', '--fx-r1': rand(110, 200) + 'deg', '--fx-r2': rand(290, 400) + 'deg',
+        '--fx-opacity': '0.8', '--fx-opacity-end': '0.2', '--fx-s': '1',
+      }});
     }, () => rand(520, 1250));
     // brighter, larger fireflies that pulse and drift
     const fireflyCleanup = particleLoop(container, (c) => {
@@ -483,38 +517,37 @@ const THEME_EFFECTS = {
   // sparse clacks in between.
   splitflap: (container) => {
     injectStyles();
+    // One Solari module: dark split housing + a top flap that cycles
+    // (rotateX flutter via fxFlapTop) while the whole module fades in
+    // and out. Used singly (idle clacks) and in rows (board updates).
+    const moduleFlutter = (c, leftPct, topPct) => spawn(c, {
+      html: '<span style="position:absolute;inset:0;border-radius:2.5px;' +
+            'background:linear-gradient(180deg,#30303a 0 46%,#08080a 46% 54%,#1e1e24 54% 100%);' +
+            'box-shadow:0 1px 3px rgba(0,0,0,0.5);"></span>' +
+            '<span style="position:absolute;left:0;right:0;top:0;height:50%;border-radius:2.5px 2.5px 0 0;' +
+            'background:linear-gradient(180deg,#42424e,#34343e);transform-origin:50% 100%;' +
+            'animation:fxFlapTop 0.62s ease-in forwards;"></span>',
+      style: {
+        left: leftPct + '%', top: topPct + '%',
+        width: '15px', height: '19px',
+        perspective: '70px', transformStyle: 'preserve-3d',
+        animation: 'fxFlapFade 0.8s linear forwards',
+      },
+    });
     const clackCleanup = particleLoop(container, (c) => {
-      const w = rand(10, 20);
-      return spawn(c, { style: {
-        left: rand(5, 90) + '%', top: rand(5, 90) + '%',
-        width: w + 'px', height: rand(5, 9) + 'px', borderRadius: '1px',
-        background: 'linear-gradient(180deg, rgba(232,200,90,0), rgba(232,200,90,0.30), rgba(0,0,0,0))',
-        animation: `fxGlitch ${rand(0.18, 0.4)}s steps(2, end) forwards`,
-        '--fx-opacity': '0.5',
-      }});
-    }, () => rand(900, 2200));
+      return moduleFlutter(c, rand(5, 90), rand(5, 88));
+    }, () => rand(1200, 2800));
     const rippleCleanup = particleLoop(container, (c) => {
-      // One row update: 9 glints firing in sequence across the width.
-      // The first glint is returned (particleLoop wires its removal via
-      // animationend); the staggered rest self-remove the same way. If
-      // the theme switches mid-ripple the container is detached and the
-      // late spawns render nowhere — harmless.
-      const y = rand(8, 88);
-      const glint = (i) => spawn(c, { style: {
-        left: (3 + i * 11) + '%', top: y + '%',
-        width: rand(12, 18) + 'px', height: rand(6, 9) + 'px', borderRadius: '1px',
-        background: 'linear-gradient(180deg, rgba(232,200,90,0), rgba(232,200,90,0.42), rgba(0,0,0,0))',
-        animation: 'fxGlitch 0.3s steps(2, end) forwards',
-        '--fx-opacity': '0.7',
-      }});
+      // A row update sweeping left to right, like a flight changing.
+      const y = rand(8, 84);
       for (let i = 1; i < 9; i++) {
         setTimeout(() => {
-          const el = glint(i);
+          const el = moduleFlutter(c, 3 + i * 11, y);
           el.addEventListener('animationend', () => el.remove());
-        }, i * 55);
+        }, i * 70);
       }
-      return glint(0);
-    }, () => rand(3800, 7500));
+      return moduleFlutter(c, 3, y);
+    }, () => rand(4200, 8000));
     return () => { clackCleanup(); rippleCleanup(); };
   },
 
@@ -551,14 +584,17 @@ const THEME_EFFECTS = {
   candy: (container) => {
     injectStyles();
     return particleLoop(container, (c) => {
-      const candyChars = ['\u2726', '\u2022', '\u2666', '\u2605', '\u25CF', '\u2764', '\u273F'];
-      const colors = ['rgba(255,64,129,0.7)', 'rgba(224,64,251,0.6)', 'rgba(124,77,255,0.6)', 'rgba(255,170,40,0.7)', 'rgba(64,210,140,0.6)', 'rgba(80,170,255,0.6)'];
-      const el = spawn(c, { text: pick(candyChars), style: {
+      const colors = ['255,64,129', '224,64,251', '124,77,255', '255,170,40', '64,210,140', '80,170,255'];
+      const hue = pick(colors);
+      const w = rand(7, 13);
+      const el = spawn(c, { style: {
         left: rand(4, 96) + '%', top: rand(4, 96) + '%',
-        fontSize: rand(8, 17) + 'px', color: pick(colors),
-        textShadow: '0 1px 2px rgba(180,80,120,0.25)',
+        width: w + 'px', height: (w * 0.38) + 'px',
+        borderRadius: w + 'px',
+        background: `linear-gradient(180deg, rgba(${hue},0.95), rgba(${hue},0.65))`,
+        boxShadow: '0 1px 1px rgba(180,80,120,0.3)',
         animation: `fxTwinkle ${rand(1.4, 2.8)}s ease-in-out forwards`,
-        '--fx-opacity': String(rand(0.55, 0.9)),
+        '--fx-opacity': String(rand(0.5, 0.85)),
       }});
       return el;
     }, () => rand(170, 470));
@@ -589,7 +625,7 @@ const THEME_EFFECTS = {
           animation: `fxGlitch ${rand(0.2, 0.45)}s ease-in-out forwards`,
         }});
       }
-      return spawn(c, { text: pick(['\u00B7', '\u26A1', '\u2726', '\u00D7']), style: {
+      return spawn(c, { text: pick(['\u00B7', '\u2726', '\u00D7']), style: {
         left: rand(4, 96) + '%', top: rand(4, 96) + '%',
         fontSize: rand(7, 13) + 'px',
         color: pick(['rgba(0,255,136,0.85)', 'rgba(0,221,255,0.75)', 'rgba(255,0,110,0.6)']),
@@ -601,17 +637,6 @@ const THEME_EFFECTS = {
     return () => { scan.remove(); sparkCleanup(); };
   },
 
-  // Cherry Blossom (L24): gentle shower of petals
-  'cherry-blossom': (container) => {
-    injectStyles();
-    return particleLoop(container, (c) => {
-      return fallingParticle(c, {
-        chars: ['\uD83C\uDF38', '\uD83C\uDF38', '\uD83C\uDF38', '\uD83D\uDCAE'],
-        sizeMin: 12, sizeMax: 20, durationMin: 7, durationMax: 12,
-        opacity: 0.5, opacityEnd: 0.1,
-      });
-    }, () => rand(1050, 2450));
-  },
 
   // Aurora (L27): drifting colored light bands
   aurora: (container) => {
@@ -658,7 +683,7 @@ const THEME_EFFECTS = {
         width: s + 'px', height: (s * 0.72) + 'px',
         borderRadius: '80% 8% 80% 8%',
         background: `linear-gradient(135deg, rgba(${pink},0.85), rgba(${pink},0.5))`,
-        animation: `fxFall ${rand(8, 14)}s ease-in-out forwards`,
+        animation: `fxFall ${rand(8, 14)}s linear forwards`,
         '--fx-x1': rand(-40, 40) + 'px', '--fx-y1': (boardH * 0.5) + 'px',
         '--fx-x2': rand(-65, 65) + 'px', '--fx-y2': (boardH + 20) + 'px',
         '--fx-r0': rand(0, 70) + 'deg', '--fx-r1': rand(120, 220) + 'deg', '--fx-r2': rand(300, 420) + 'deg',
@@ -840,7 +865,7 @@ const THEME_EFFECTS = {
   legendary: (container) => {
     injectStyles();
     const sparkleCleanup = particleLoop(container, (c) => {
-      const el = spawn(c, { text: pick(['\u2726', '\u2B50', '\u2727']), style: {
+      const el = spawn(c, { text: pick(['\u2726', '\u2727']), style: {
         left: rand(5, 95) + '%', top: rand(5, 95) + '%', fontSize: rand(6, 12) + 'px',
         color: pick(['rgba(255,215,0,0.7)', 'rgba(255,180,0,0.5)', 'rgba(255,240,150,0.5)']),
         textShadow: '0 0 6px rgba(255,215,0,0.5)',
@@ -999,7 +1024,7 @@ const THEME_EFFECTS = {
           'polygon(0 40%, 100% 0, 70% 100%)',
         ]),
         background: `linear-gradient(135deg, rgba(${hue},0.55), rgba(${hue},0.3))`,
-        animation: `fxFall ${rand(6, 11)}s ease-in-out forwards`,
+        animation: `fxFall ${rand(6, 11)}s linear forwards`,
         '--fx-x1': rand(-36, 36) + 'px', '--fx-y1': (boardH * 0.5) + 'px',
         '--fx-x2': rand(-55, 55) + 'px', '--fx-y2': (boardH + 25) + 'px',
         '--fx-r0': rand(0, 40) + 'deg', '--fx-r1': rand(90, 180) + 'deg', '--fx-r2': rand(240, 360) + 'deg',

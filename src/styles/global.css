@@ -1771,6 +1771,11 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   font-weight: 600;
   color: var(--color-text);
   transition: all var(--transition-fast);
+  /* 26 cards x 8 themed cells + fog-art rasters is a heavy first
+     paint; skip layout/paint for offscreen cards so opening the tab
+     does not jank. */
+  content-visibility: auto;
+  contain-intrinsic-size: 130px 118px;
 }
 
 .theme-swatch:hover {
@@ -1806,8 +1811,10 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   justify-content: center;
   font-size: 11px;
   line-height: 1;
-  border-radius: 3px;
-  box-shadow: none;
+  /* Inherit the theme's own face: its cell radius, its bevel shadow,
+     its number font - that is what makes the preview accurate. */
+  font-family: var(--font-family);
+  border-radius: var(--cell-shape-radius, 3px);
 }
 
 .swatch-name {
