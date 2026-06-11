@@ -1,0 +1,10 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
+<!-- A snow-capped stone cairn: how you mark a spot in the arctic. -->
+<ellipse cx='32' cy='53' rx='17' ry='6.5' fill='#46586a' stroke='#2c3a48' stroke-width='2'/>
+<ellipse cx='32' cy='42' rx='13' ry='6' fill='#566a7e' stroke='#2c3a48' stroke-width='2'/>
+<ellipse cx='32' cy='31' rx='9.5' ry='5.4' fill='#66798c' stroke='#2c3a48' stroke-width='2'/>
+<ellipse cx='32' cy='21' rx='6.4' ry='4.6' fill='#74899c' stroke='#2c3a48' stroke-width='2'/>
+<path d='M26 19 C28 16 36 16 38 19 C36 21 28 21 26 19 Z' fill='#eef6fc'/>
+<path d='M21 28 C25 26 39 26 43 28 C39 30 25 30 21 28 Z' fill='#eef6fc' opacity='0.85'/>
+<path d='M32 10 L32 14 M27 12 L30 15 M37 12 L34 15' stroke='#9ae8d8' stroke-width='1.8' stroke-linecap='round' opacity='0.9'/>
+</svg>

@@ -1,0 +1,15 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
+<!-- The poison label come true: skull and crossbones. -->
+<g stroke='#ece4d2' stroke-width='5.5' stroke-linecap='round'>
+<path d='M14 44 L50 20 M14 20 L50 44'/>
+</g>
+<g stroke='#b8a888' stroke-width='1.4'>
+<circle cx='14' cy='44' r='3.2' fill='#ece4d2'/><circle cx='50' cy='20' r='3.2' fill='#ece4d2'/>
+<circle cx='14' cy='20' r='3.2' fill='#ece4d2'/><circle cx='50' cy='44' r='3.2' fill='#ece4d2'/>
+</g>
+<path d='M32 8 C42 8 48 15 48 23 C48 28 45 32 41 34 L41 39 C41 41 39 43 37 43 L27 43 C25 43 23 41 23 39 L23 34 C19 32 16 28 16 23 C16 15 22 8 32 8 Z' fill='#ece4d2' stroke='#b8a888' stroke-width='1.6'/>
+<ellipse cx='25.5' cy='24' rx='4.4' ry='5.2' fill='#3a3026'/>
+<ellipse cx='38.5' cy='24' rx='4.4' ry='5.2' fill='#3a3026'/>
+<path d='M32 30 L29.5 35 L34.5 35 Z' fill='#3a3026'/>
+<path d='M28 43 L28 47 M32 43 L32 48 M36 43 L36 47' stroke='#b8a888' stroke-width='2.2' stroke-linecap='round'/>
+</svg>

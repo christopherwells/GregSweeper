@@ -1,0 +1,16 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
+<!-- The bloom scatters: petals thrown outward from the hit. -->
+<circle cx='32' cy='32' r='5' fill='#c03048'/>
+<g fill='#f4aabe'>
+<path d='M32 22 C28 16 29 9 32 5 C35 9 36 16 32 22 Z'/>
+<path d='M32 42 C28 48 29 55 32 59 C35 55 36 48 32 42 Z'/>
+<path d='M22 32 C16 28 9 29 5 32 C9 35 16 36 22 32 Z'/>
+<path d='M42 32 C48 28 55 29 59 32 C55 35 48 36 42 32 Z'/>
+</g>
+<g fill='#e87090'>
+<path d='M24 24 C19 21 14 16 12 12 C17 14 22 18 24 24 Z'/>
+<path d='M40 40 C45 43 50 48 52 52 C47 50 42 46 40 40 Z'/>
+<path d='M40 24 C43 19 48 14 52 12 C50 17 46 22 40 24 Z'/>
+<path d='M24 40 C21 45 16 50 12 52 C14 47 18 42 24 40 Z'/>
+</g>
+</svg>

@@ -178,6 +178,22 @@ function injectStyles() {
       50% { transform: translateY(var(--fx-float-y, -8px)); }
     }
 
+    /* Caustic light-net: the layer drifts diagonally while its cell
+       pattern breathes — two of these at different scales/directions
+       interfere into the wiggly light-on-sand look. */
+    @keyframes fxCaustic {
+      0%   { background-position: 0px 0px; transform: scale(1); }
+      50%  { transform: scale(1.06); }
+      100% { background-position: 160px 118px; transform: scale(1); }
+    }
+
+    /* Slow god-ray rotation for light-through-glass themes. */
+    @keyframes fxBeams {
+      0%   { transform: rotate(-4deg); opacity: 0.75; }
+      50%  { transform: rotate(4deg); opacity: 1; }
+      100% { transform: rotate(-4deg); opacity: 0.75; }
+    }
+
     @keyframes fxScanDown {
       0% { transform: translateY(-100%); opacity: 0; }
       10% { opacity: 1; }
@@ -281,21 +297,44 @@ function risingParticle(container, opts) {
 
 const THEME_EFFECTS = {
 
-  // Ocean (L3): gentle floating particles
+  // Ocean: water caustics — two cellular light-nets drifting over each
+  // other at different speeds, the wiggly pattern sunlight makes on sand
+  // under moving waves — plus proper bubbles rising the full board with
+  // a glassy highlight ring.
   ocean: (container) => {
     injectStyles();
-    return particleLoop(container, (c) => {
-      const size = rand(3, 6);
-      const el = spawn(c, { style: {
-        left: rand(5, 95) + '%', top: rand(10, 90) + '%',
-        width: size + 'px', height: size + 'px', borderRadius: '50%',
-        background: 'rgba(150, 220, 255, 0.5)',
-        boxShadow: '0 0 4px rgba(150, 220, 255, 0.3)',
-        animation: `fxFloat ${rand(3, 6)}s ease-in-out forwards, fxTwinkle ${rand(4, 7)}s ease-in-out forwards`,
-        '--fx-float-y': rand(-10, -20) + 'px', '--fx-opacity': String(rand(0.4, 0.6)),
-      }});
+    const net = (sizePx, alpha, dur, reverse) => {
+      const el = document.createElement('div');
+      Object.assign(el.style, {
+        position: 'absolute', inset: '-20%', pointerEvents: 'none', zIndex: '0',
+        backgroundImage:
+          `radial-gradient(ellipse ${sizePx}px ${sizePx * 0.62}px at 50% 50%, transparent 58%, rgba(170,230,255,${alpha}) 72%, transparent 86%)`,
+        backgroundSize: `${sizePx * 1.7}px ${sizePx * 1.3}px`,
+        animation: `fxCaustic ${dur}s linear infinite${reverse ? ' reverse' : ''}`,
+        mixBlendMode: 'screen',
+      });
+      container.appendChild(el);
       return el;
-    }, () => rand(800, 2100));
+    };
+    // Two scales, opposite directions: the interference is the wiggle.
+    const a = net(46, 0.16, 17, false);
+    const b = net(74, 0.12, 26, true);
+    const bubbleCleanup = particleLoop(container, (c) => {
+      const boardH = c.parentElement?.clientHeight || 500;
+      const s = rand(4, 10);
+      return spawn(c, { style: {
+        left: rand(5, 93) + '%', bottom: '-12px',
+        width: s + 'px', height: s + 'px', borderRadius: '50%',
+        background: 'radial-gradient(circle at 32% 30%, rgba(220,245,255,0.85) 0 18%, rgba(170,225,255,0.18) 45%, rgba(150,215,255,0.05) 70%)',
+        border: '1px solid rgba(190,235,255,0.5)',
+        animation: `fxRise ${rand(5, 10)}s ease-in forwards`,
+        '--fx-x1': rand(-22, 22) + 'px', '--fx-y1': -(boardH * 0.55) + 'px',
+        '--fx-x2': rand(-34, 34) + 'px', '--fx-y2': -(boardH + 24) + 'px',
+        '--fx-opacity': String(rand(0.5, 0.8)), '--fx-opacity-end': '0.1',
+        '--fx-s-end': String(rand(1.1, 1.5)),
+      }});
+    }, () => rand(550, 1400));
+    return () => { a.remove(); b.remove(); bubbleCleanup(); };
   },
 
   // Forest (L9): drifting leaves (the visible headline) + glowing fireflies
@@ -371,19 +410,43 @@ const THEME_EFFECTS = {
   // glow, as if the sun is moving behind the cathedral window.
   stainedglass: (container) => {
     injectStyles();
+    // The sun behind the window: three soft beams raking down through
+    // the panes, swaying very slowly. THE identity moment — light
+    // through colored glass — visible at a glance, gentle over minutes.
+    const beams = document.createElement('div');
+    Object.assign(beams.style, {
+      position: 'absolute', inset: '-25% -10%', pointerEvents: 'none', zIndex: '0',
+      background:
+        'linear-gradient(112deg, transparent 12%, rgba(255,240,200,0.10) 17%, rgba(255,240,200,0.02) 24%, transparent 28%, ' +
+        'transparent 42%, rgba(200,120,255,0.09) 48%, rgba(200,120,255,0.02) 55%, transparent 59%, ' +
+        'transparent 72%, rgba(255,150,150,0.08) 78%, rgba(255,150,150,0.02) 85%, transparent 89%)',
+      transformOrigin: '50% -30%',
+      animation: 'fxBeams 22s ease-in-out infinite',
+    });
+    container.appendChild(beams);
     ambientGlow(container, { blur: 30, style: {
       background: 'radial-gradient(ellipse 40% 45% at 26% 30%, rgba(120,60,200,0.12) 0%, transparent 55%), radial-gradient(ellipse 38% 40% at 74% 60%, rgba(200,50,70,0.10) 0%, transparent 55%), radial-gradient(ellipse 36% 38% at 50% 86%, rgba(60,140,200,0.10) 0%, transparent 55%)',
       animation: 'fxDrift 18s ease-in-out infinite alternate', '--fx-x0': '-5%', '--fx-x2': '5%',
     }});
-    return particleLoop(container, (c) => {
-      const colors = ['rgba(180,80,240,0.75)', 'rgba(240,80,110,0.75)', 'rgba(80,160,240,0.7)', 'rgba(80,200,140,0.65)', 'rgba(240,200,80,0.75)'];
-      return spawn(c, { text: pick(['✦', '✧', '⋆']), style: {
-        left: rand(5, 95) + '%', top: rand(5, 95) + '%', fontSize: rand(6, 11) + 'px',
-        color: pick(colors), textShadow: '0 0 6px currentColor',
+    // Vector jewel glints (rotated squares with a glow), not text glyphs.
+    const glintCleanup = particleLoop(container, (c) => {
+      const colors = ['rgba(180,80,240,0.8)', 'rgba(240,80,110,0.8)', 'rgba(80,160,240,0.75)', 'rgba(80,200,140,0.7)', 'rgba(240,200,80,0.8)'];
+      const col = pick(colors);
+      const s = rand(4, 8);
+      return spawn(c, { style: {
+        left: rand(5, 95) + '%', top: rand(5, 95) + '%',
+        width: s + 'px', height: s + 'px',
+        // Diamond via clip-path, not transform:rotate — fxTwinkle's
+        // keyframes own the transform channel (scale) and would clobber
+        // an inline rotation.
+        clipPath: 'polygon(50% 0, 100% 50%, 50% 100%, 0 50%)',
+        background: col,
+        filter: `drop-shadow(0 0 ${Math.round(s / 2) + 1}px ${col})`,
         animation: `fxTwinkle ${rand(1.6, 3.4)}s ease-in-out forwards`,
-        '--fx-opacity': String(rand(0.4, 0.7)),
+        '--fx-opacity': String(rand(0.45, 0.75)),
       }});
     }, () => rand(500, 1300));
+    return () => { beams.remove(); glintCleanup(); };
   },
 
   // Apothecary: a flickering candle glow in one corner + warm dust motes rising
@@ -398,21 +461,29 @@ const THEME_EFFECTS = {
       [{ opacity: 0.85 }, { opacity: 1 }, { opacity: 0.72 }, { opacity: 0.96 }, { opacity: 0.8 }],
       { duration: 1700, iterations: Infinity, easing: 'ease-in-out' }
     );
+    // Dust hanging in the candlelight — slow lateral drift, soft and
+    // round, NOT rising embers (the old fast rise read as fire flecks).
     const moteCleanup = particleLoop(container, (c) => {
-      return risingParticle(c, {
-        color: pick(['rgba(232,180,90,0.55)', 'rgba(200,140,60,0.5)', 'rgba(180,120,50,0.4)']),
-        glow: '0 0 5px rgba(232,180,90,0.35)', sizeMin: 2, sizeMax: 4,
-        durationMin: 4, durationMax: 8, opacity: 0.5, opacityEnd: 0.08, scaleEnd: 0.3,
-      });
-    }, () => rand(700, 1800));
+      const s = rand(2.5, 5);
+      return spawn(c, { style: {
+        left: rand(8, 92) + '%', top: rand(10, 88) + '%',
+        width: s + 'px', height: s + 'px', borderRadius: '50%',
+        background: 'rgba(232,190,110,0.5)',
+        boxShadow: '0 0 6px rgba(232,180,90,0.3)',
+        animation: `fxFloat ${rand(6, 11)}s ease-in-out forwards, fxTwinkle ${rand(5, 9)}s ease-in-out forwards`,
+        '--fx-float-y': rand(-8, -18) + 'px', '--fx-opacity': String(rand(0.3, 0.55)),
+      }});
+    }, () => rand(900, 2200));
     return () => { glow.remove(); moteCleanup(); };
   },
 
-  // Split-Flap: sparse amber 'clack' glints where a flap turns over — the quiet
-  // mechanical life of a departure board between updates.
+  // Split-Flap: the departures board UPDATES — every few seconds a row
+  // of flap-glints ripples across the board left to right (the wave a
+  // real Solari board makes when a flight changes), over the quiet
+  // sparse clacks in between.
   splitflap: (container) => {
     injectStyles();
-    return particleLoop(container, (c) => {
+    const clackCleanup = particleLoop(container, (c) => {
       const w = rand(10, 20);
       return spawn(c, { style: {
         left: rand(5, 90) + '%', top: rand(5, 90) + '%',
@@ -421,7 +492,30 @@ const THEME_EFFECTS = {
         animation: `fxGlitch ${rand(0.18, 0.4)}s steps(2, end) forwards`,
         '--fx-opacity': '0.5',
       }});
-    }, () => rand(360, 1050));
+    }, () => rand(900, 2200));
+    const rippleCleanup = particleLoop(container, (c) => {
+      // One row update: 9 glints firing in sequence across the width.
+      // The first glint is returned (particleLoop wires its removal via
+      // animationend); the staggered rest self-remove the same way. If
+      // the theme switches mid-ripple the container is detached and the
+      // late spawns render nowhere — harmless.
+      const y = rand(8, 88);
+      const glint = (i) => spawn(c, { style: {
+        left: (3 + i * 11) + '%', top: y + '%',
+        width: rand(12, 18) + 'px', height: rand(6, 9) + 'px', borderRadius: '1px',
+        background: 'linear-gradient(180deg, rgba(232,200,90,0), rgba(232,200,90,0.42), rgba(0,0,0,0))',
+        animation: 'fxGlitch 0.3s steps(2, end) forwards',
+        '--fx-opacity': '0.7',
+      }});
+      for (let i = 1; i < 9; i++) {
+        setTimeout(() => {
+          const el = glint(i);
+          el.addEventListener('animationend', () => el.remove());
+        }, i * 55);
+      }
+      return glint(0);
+    }, () => rand(3800, 7500));
+    return () => { clackCleanup(); rippleCleanup(); };
   },
 
   // Circuit Board: indicator LEDs blinking + current pulses zipping along the
@@ -552,12 +646,25 @@ const THEME_EFFECTS = {
       }});
       return el;
     }, () => rand(1400, 3500));
+    // Vector petals, not the \uD83C\uDF38 glyph: a single rounded petal shape
+    // (teardrop via asymmetric border-radius) in layered pinks, tumbling
+    // the full board height.
     const petalCleanup = particleLoop(container, (c) => {
-      return fallingParticle(c, {
-        chars: ['\uD83C\uDF38'], sizeMin: 10, sizeMax: 16,
-        durationMin: 9, durationMax: 15, opacity: 0.35, opacityEnd: 0.08,
-      });
-    }, () => rand(1750, 3500));
+      const boardH = c.parentElement?.clientHeight || 500;
+      const s = rand(8, 14);
+      const pink = pick(['244,170,190', '240,150,176', '250,190,205']);
+      return spawn(c, { style: {
+        left: rand(4, 92) + '%', top: '0px',
+        width: s + 'px', height: (s * 0.72) + 'px',
+        borderRadius: '80% 8% 80% 8%',
+        background: `linear-gradient(135deg, rgba(${pink},0.85), rgba(${pink},0.5))`,
+        animation: `fxFall ${rand(8, 14)}s ease-in-out forwards`,
+        '--fx-x1': rand(-40, 40) + 'px', '--fx-y1': (boardH * 0.5) + 'px',
+        '--fx-x2': rand(-65, 65) + 'px', '--fx-y2': (boardH + 20) + 'px',
+        '--fx-r0': rand(0, 70) + 'deg', '--fx-r1': rand(120, 220) + 'deg', '--fx-r2': rand(300, 420) + 'deg',
+        '--fx-opacity': '0.7', '--fx-opacity-end': '0.15', '--fx-s': '1',
+      }});
+    }, () => rand(1100, 2400));
     return () => { glowCleanup(); petalCleanup(); };
   },
 
@@ -837,15 +944,9 @@ const THEME_EFFECTS = {
         '--fx-opacity': '0.8',
       }});
     }, () => rand(550, 1250));
-    const measureCleanup = particleLoop(container, (c) => {
-      return spawn(c, { style: {
-        left: '0', top: rand(10, 86) + '%',
-        width: rand(80, 150) + 'px', height: '1px',
-        background: 'repeating-linear-gradient(90deg, rgba(90,208,255,0.45) 0 6px, transparent 6px 11px)',
-        animation: `fxSweep ${rand(10, 15)}s linear forwards`,
-      }});
-    }, () => rand(5000, 9000));
-    return () => { tickCleanup(); measureCleanup(); };
+    // (The sweeping dashed measure lines were cut 2026-06-11 — moving
+    // dashes read as noise on the drafted sheet. Register ticks only.)
+    return tickCleanup;
   },
 
   // Cartography (L20): plotted routes — dashed sepia course segments
@@ -884,6 +985,11 @@ const THEME_EFFECTS = {
     return particleLoop(container, (c) => {
       const s = rand(10, 17);
       const hue = pick(['209,74,74', '74,138,192', '90,160,90', '224,144,58', '154,106,192']);
+      // Travel must be in PIXELS of the board, not % — fxFall feeds
+      // translate(), where % is relative to the PARTICLE's own ~14px
+      // box, so '105%' meant triangles died ~15px down (inside the
+      // first cell on an expert board).
+      const boardH = c.parentElement?.clientHeight || 500;
       return spawn(c, { style: {
         left: rand(4, 92) + '%', top: '0px',
         width: s + 'px', height: s + 'px',
@@ -894,8 +1000,8 @@ const THEME_EFFECTS = {
         ]),
         background: `linear-gradient(135deg, rgba(${hue},0.55), rgba(${hue},0.3))`,
         animation: `fxFall ${rand(6, 11)}s ease-in-out forwards`,
-        '--fx-x1': rand(-36, 36) + 'px', '--fx-y1': '50%',
-        '--fx-x2': rand(-55, 55) + 'px', '--fx-y2': '105%',
+        '--fx-x1': rand(-36, 36) + 'px', '--fx-y1': (boardH * 0.5) + 'px',
+        '--fx-x2': rand(-55, 55) + 'px', '--fx-y2': (boardH + 25) + 'px',
         '--fx-r0': rand(0, 40) + 'deg', '--fx-r1': rand(90, 180) + 'deg', '--fx-r2': rand(240, 360) + 'deg',
         '--fx-opacity': '0.6', '--fx-opacity-end': '0.25', '--fx-s': '1',
       }});

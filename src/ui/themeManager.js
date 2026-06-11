@@ -76,14 +76,16 @@ export const THEME_UNLOCKS = {
   legendary:        { levelRequired: 120, displayName: 'Legendary',      mine: '🐉', flag: '🏰', strikeCell: '🔥', smiley: '⚔️', smileyWin: '🐉', smileyLoss: '💀' },
 };
 
-// Dev-only theme preview: `?previewthemes=1` on localhost unlocks every theme
-// in the Collection so designs can be reviewed live (with effects). Gated to
-// localhost so it is inert on any deployed build (christopherwells.github.io).
+// Dev-only theme preview: `?previewthemes=1` unlocks every theme in the
+// Collection so designs can be reviewed live (with effects). Allowed on
+// localhost AND on the /test/ deployment (theme evaluation happens
+// there); inert on the production build.
 function isThemePreview() {
   try {
     const h = location.hostname;
     const isLocal = h === 'localhost' || h === '127.0.0.1' || h === '';
-    return isLocal && new URLSearchParams(location.search).has('previewthemes');
+    const isTestBuild = location.pathname.includes('/test/');
+    return (isLocal || isTestBuild) && new URLSearchParams(location.search).has('previewthemes');
   } catch {
     return false;
   }
