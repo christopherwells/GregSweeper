@@ -2289,7 +2289,8 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 /* ── Stats modal v2 — tabbed, mode-specific charts ───── */
 
 .stats-modal-content {
-  max-width: 620px;
+  /* Matches leaderboard-modal-content: the two modals read as one design. */
+  max-width: 600px;
 }
 .stats-body {
   max-height: min(80vh, 900px);
@@ -2307,7 +2308,7 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   background: transparent;
   color: var(--color-text-secondary);
   border: none;
-  padding: 10px 6px;
+  padding: 9px 6px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -2386,6 +2387,27 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 .lb-view-tab.lb-view-disabled {
   opacity: 0.35;
   cursor: not-allowed;
+}
+
+/* Mini tables inside Stats (past weeks): the leaderboard's row language. */
+.lb-mini-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+}
+.lb-mini-table th,
+.lb-mini-table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  font-size: 12.5px;
+}
+.lb-mini-table th {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--color-text-secondary);
+  font-weight: 700;
 }
 
 /* Medal sprites mark the four top ranks (diamond/gold/silver/bronze). */
@@ -2564,7 +2586,7 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 }
 .stats-blurb {
   margin: 0 0 10px !important;
-  font-size: 11.5px;
+  font-size: 11px;
   color: var(--color-text-secondary);
   opacity: 0.85;
   line-height: 1.4;
@@ -2580,16 +2602,16 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 
 .stat-row {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
   margin-bottom: 10px;
 }
 .stat-mini {
   flex: 1 1 0;
   min-width: 80px;
-  padding: 8px 10px;
+  padding: 9px 12px;
   background: var(--color-surface);
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid rgba(0, 0, 0, 0.04);
   text-align: center;
 }
