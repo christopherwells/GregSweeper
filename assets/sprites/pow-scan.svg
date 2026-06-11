@@ -1,14 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <!-- Scan: a reticle inspecting a line — the cyan band is the row
-       being counted. -->
-  <rect x="10" y="52" width="108" height="24" rx="6" fill="#39c2e8" opacity="0.35"/>
-  <circle cx="64" cy="64" r="38" fill="none" stroke="#232838" stroke-width="6"/>
-  <g stroke="#232838" stroke-width="6" stroke-linecap="round">
-    <path d="M64 14 L64 30"/>
-    <path d="M64 98 L64 114"/>
-    <path d="M14 64 L30 64"/>
-    <path d="M98 64 L114 64"/>
+  <!-- Scan: a row of board tiles under a sweeping beam — the power-up
+       counts the mines in one row or column, so show the LINE being
+       inspected, not a crosshair. -->
+  <!-- The row of tiles -->
+  <g stroke="#232838" stroke-width="5" stroke-linejoin="round">
+    <rect x="8" y="50" width="32" height="32" rx="6" fill="#dfe5ee"/>
+    <rect x="48" y="50" width="32" height="32" rx="6" fill="#dfe5ee"/>
+    <rect x="88" y="50" width="32" height="32" rx="6" fill="#dfe5ee"/>
   </g>
-  <circle cx="64" cy="64" r="14" fill="none" stroke="#e4453a" stroke-width="6"/>
-  <circle cx="64" cy="64" r="4.5" fill="#e4453a"/>
+  <!-- The beam sweeping the middle tile -->
+  <path d="M50 8 L78 8 L88 124 L40 124 Z" fill="#39c2e8" opacity="0.3"/>
+  <path d="M50 8 L78 8" stroke="#39c2e8" stroke-width="6" stroke-linecap="round"/>
+  <rect x="48" y="50" width="32" height="32" rx="6" fill="#aee8f8" stroke="#1188b0" stroke-width="5"/>
+  <!-- The mine the beam found -->
+  <circle cx="64" cy="66" r="8" fill="#2c3142"/>
+  <path d="M64 53 L64 57 M64 75 L64 79 M51 66 L55 66 M73 66 L77 66" stroke="#2c3142" stroke-width="3.5" stroke-linecap="round"/>
 </svg>
