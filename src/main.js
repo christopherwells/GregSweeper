@@ -24,6 +24,7 @@ import { persistGameState, tryResumeGame } from './game/gamePersistence.js';
 import { getDifficultyForLevel, getTimedDifficulty, getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, CHAOS_UNLOCK_LEVEL, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE } from './logic/difficulty.js';
 import { computeDailyFeatures, predictPar } from './logic/dailyFeatures.js';
 import { loadHandicaps, getHandicap, estimateHandicapDetails } from './logic/handicaps.js';
+import { rankAdjusted, filterToFriends } from './logic/leaderboardViews.js';
 import {
   loadStats, saveTheme, loadTheme, resetStats,
   saveCheckpoint, loadCheckpoint,
@@ -955,8 +956,7 @@ function prettyDate(dateStr) {
   return `${mo} ${parseInt(parts[2], 10)}, ${parts[0]}`;
 }
 
-async function renderWeeklyLeaderboard(weekStart) {
-  $('#leaderboard-date').textContent = `Week of ${prettyDate(weekStart)}`;
+async function renderWeeklyLeaderboard(weekStart, friendCtx = null, emptyText = null) {
   const tbody = $('#leaderboard-body');
   tbody.innerHTML = '';
   // Repurpose the table header for weekly: "Best" instead of "Time",
@@ -966,10 +966,15 @@ async function renderWeeklyLeaderboard(weekStart) {
   if (thead) {
     thead.innerHTML = `<tr><th>#</th><th>Name</th><th>Best</th><th class="lb-col-extra">${spriteImgHTML('strike', 'sprite-header', 'Strikes')}</th><th>Played</th><th class="lb-col-extra">Pace</th></tr>`;
   }
-  const entries = await fetchWeeklyLeaderboard(weekStart);
+  let entries = await fetchWeeklyLeaderboard(weekStart);
+  const playedCount = entries.length;
+  if (friendCtx) entries = filterToFriends(entries, friendCtx.uids, friendCtx.myUid);
+  $('#leaderboard-date').textContent = `Week of ${prettyDate(weekStart)}`
+    + (playedCount > 0 ? ` · ${playedCount} played` : '');
   const hasEntries = entries.length > 0;
   $('#leaderboard-table').classList.toggle('hidden', !hasEntries);
-  $('#leaderboard-empty').textContent = 'No weekly times yet. Be the first to set one.';
+  $('#leaderboard-empty').textContent = emptyText
+    || 'No weekly times yet. Be the first to set one.';
   $('#leaderboard-empty').classList.toggle('hidden', hasEntries);
   if (!hasEntries) return;
   // Column repurposing for weekly:
@@ -1117,47 +1122,83 @@ async function _renderGregYesterdayNote() {
   } catch { /* no note — the leaderboard renders fine without it */ }
 }
 
-async function updateLeaderboardDisplay() {
-  const tab = _defaultLeaderboardTab();
-  _setActiveLeaderboardTab(tab);
-  _renderGregYesterdayNote();
-  await _renderLeaderboardForTab(tab);
+// Leaderboard state: scope (daily/weekly) x view (scores/adjusted/
+// friends). Adjusted is daily-only — handicaps are fitted on daily
+// boards, so applying them to weekly best-times would be dishonest.
+let _lbScope = 'daily';
+let _lbView = 'scores';
+
+function _setActiveLeaderboardView(view) {
+  for (const btn of $$('.lb-view-tab')) {
+    const isActive = btn.dataset.lbView === view;
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+  }
 }
 
-async function _renderLeaderboardForTab(tab) {
-  if (tab === 'weekly') {
-    await renderWeeklyLeaderboard(getWeekStart());
-    return;
+async function updateLeaderboardDisplay() {
+  _lbScope = _defaultLeaderboardTab();
+  if (_lbView === 'adjusted' && _lbScope === 'weekly') _lbView = 'scores';
+  _renderGregYesterdayNote();
+  await renderLeaderboard();
+}
+
+async function renderLeaderboard() {
+  _setActiveLeaderboardTab(_lbScope);
+  _setActiveLeaderboardView(_lbView);
+  const adjTab = $('.lb-view-tab[data-lb-view="adjusted"]');
+  if (adjTab) {
+    const off = _lbScope === 'weekly';
+    adjTab.disabled = off;
+    adjTab.classList.toggle('lb-view-disabled', off);
+    adjTab.title = off ? 'Handicaps are fitted on daily boards' : '';
   }
-  // Restore the daily-style table header in case it was last rendered
-  // for the weekly tab (which repurposes Best/Played columns).
+  $('#friends-panel')?.classList.toggle('hidden', _lbView !== 'friends');
+  $('#leaderboard-footnote')?.classList.add('hidden');
+
+  if (_lbView === 'friends') { await _renderFriendsView(); return; }
+  if (_lbView === 'adjusted') { await _renderAdjustedView(); return; }
+  if (_lbScope === 'weekly') { await renderWeeklyLeaderboard(getWeekStart()); return; }
+  await _renderDailyScores();
+}
+
+// Fetch today's rows: online first (rows carry uid), local fallback.
+async function _fetchDailyEntries(dateStr) {
+  let entries = null;
+  if (isFirebaseOnline()) {
+    entries = await fetchOnlineLeaderboard(dateStr);
+  }
+  if (entries === null) {
+    entries = loadDailyLeaderboard(dateStr);
+  }
+  return entries || [];
+}
+
+// The raw daily table. filterSet (Set of uids) narrows to friends ∪ me
+// for the Friends view; emptyText overrides the no-rows message there.
+async function _renderDailyScores(friendCtx = null, emptyText = null) {
   const thead = $('#leaderboard-table thead');
   if (thead) {
     thead.innerHTML = `<tr><th>#</th><th>Name</th><th>Time</th><th class="lb-col-extra">${spriteImgHTML('strike', 'sprite-header', 'Strikes')}</th><th>Par</th><th class="lb-col-extra">Pace</th></tr>`;
   }
   const today = getLocalDateString();
   const dateStr = today;
-  const headerStr = prettyDate(today);
-  $('#leaderboard-date').textContent = headerStr;
   const tbody = $('#leaderboard-body');
   tbody.innerHTML = '';
 
-  let entries = null;
+  let entries = await _fetchDailyEntries(dateStr);
+  const playedCount = entries.length;
+  if (friendCtx) entries = filterToFriends(entries, friendCtx.uids, friendCtx.myUid);
 
-  if (isFirebaseOnline()) {
-    entries = await fetchOnlineLeaderboard(dateStr);
-  }
-
-  if (entries === null) {
-    entries = loadDailyLeaderboard(dateStr);
-  }
+  $('#leaderboard-date').textContent = prettyDate(today)
+    + (playedCount > 0 ? ` · ${playedCount} played` : '');
 
   const hasEntries = entries.length > 0;
   $('#leaderboard-table').classList.toggle('hidden', !hasEntries);
-  $('#leaderboard-empty').textContent = (dateStr === today)
-    ? 'No times yet today. Be the first to finish it.'
-    : 'No entries for this day.';
+  $('#leaderboard-empty').textContent = emptyText
+    || 'No times yet today. Be the first to finish it.';
   $('#leaderboard-empty').classList.toggle('hidden', hasEntries);
+  if (!hasEntries) return;
 
   // Daily par + solver moves (shared with the title-card par badge).
   const { par: dailyPar, moves: dailyMoves } = await computeDailyParForDate(dateStr);
@@ -1166,6 +1207,7 @@ async function _renderLeaderboardForTab(tab) {
   entries.forEach((entry, i) => {
     const tr = document.createElement('tr');
     if (myUid && entry.uid === myUid) tr.classList.add('lb-row-mine');
+    if (i < 3) tr.classList.add(`lb-rank-${i + 1}`);
     const bombCol = entry.bombHits != null
       ? `<td class="lb-col-extra">${entry.bombHits}</td>`
       : '<td class="lb-col-extra">-</td>';
@@ -1184,8 +1226,134 @@ async function _renderLeaderboardForTab(tab) {
     tr.innerHTML = `<td>${i + 1}</td><td>${escapeHtml(entry.name)}</td><td>${entry.time}s</td>${bombCol}${parCol}${paceCol}`;
     tbody.appendChild(tr);
   });
+}
 
-  // (History chart moved to Stats modal → Daily tab → History section.)
+// Handicap-adjusted view: time − fitted handicap, ranked. Uses the
+// SHIPPED handicaps.json (public, identical for every viewer); players
+// not in the fit (under 5 plays) rank by raw time with an unrated tag.
+async function _renderAdjustedView() {
+  const thead = $('#leaderboard-table thead');
+  if (thead) {
+    thead.innerHTML = '<tr><th>#</th><th>Name</th><th>Time</th><th>HC</th><th>Adjusted</th></tr>';
+  }
+  const today = getLocalDateString();
+  $('#leaderboard-date').textContent = prettyDate(today);
+  const tbody = $('#leaderboard-body');
+  tbody.innerHTML = '';
+
+  if (!isFirebaseOnline()) {
+    $('#leaderboard-table').classList.add('hidden');
+    $('#leaderboard-empty').textContent = 'The adjusted board needs a connection.';
+    $('#leaderboard-empty').classList.remove('hidden');
+    return;
+  }
+
+  const [entries, handicapMap] = await Promise.all([
+    fetchOnlineLeaderboard(today).then(e => e || []),
+    loadHandicaps(),
+  ]);
+  const ranked = rankAdjusted(entries, handicapMap || new Map());
+
+  const hasEntries = ranked.length > 0;
+  $('#leaderboard-table').classList.toggle('hidden', !hasEntries);
+  $('#leaderboard-empty').textContent = 'No times yet today. Be the first to finish it.';
+  $('#leaderboard-empty').classList.toggle('hidden', hasEntries);
+
+  const myUid = getUid();
+  ranked.forEach((entry, i) => {
+    const tr = document.createElement('tr');
+    if (myUid && entry.uid === myUid) tr.classList.add('lb-row-mine');
+    if (i < 3) tr.classList.add(`lb-rank-${i + 1}`);
+    const hcChip = entry.rated
+      ? `<span class="lb-hc-chip">${entry.handicap >= 0 ? '−' : '+'}${Math.abs(entry.handicap).toFixed(1)}s</span>`
+      : '<span class="lb-hc-chip lb-hc-unrated">unrated</span>';
+    tr.innerHTML = `<td>${i + 1}</td><td>${escapeHtml(entry.name)}</td><td>${entry.time}s</td>`
+      + `<td>${hcChip}</td><td class="lb-adjusted">${entry.adjusted.toFixed(1)}s</td>`;
+    tbody.appendChild(tr);
+  });
+
+  const foot = $('#leaderboard-footnote');
+  if (foot) {
+    foot.textContent = 'Adjusted = time − fitted handicap · rated after 5 plays';
+    foot.classList.remove('hidden');
+  }
+}
+
+// ── Friends view ─────────────────────────────────────
+// Panel (code + add + list) above a scores table filtered to
+// friends ∪ me for the current scope. All I/O via firebaseFriends.js
+// (lazy import — modal-only module).
+let _friendsCodeTimer = null;
+
+function _friendsStatus(msg, isError = false) {
+  const el = $('#friends-status');
+  if (!el) return;
+  el.textContent = msg || '';
+  el.classList.toggle('friends-status-error', isError);
+  el.classList.toggle('hidden', !msg);
+}
+
+function _startCodeCountdown(createdAtLocal) {
+  if (_friendsCodeTimer) { clearInterval(_friendsCodeTimer); _friendsCodeTimer = null; }
+  const el = $('#friends-code-expiry');
+  if (!el) return;
+  const tick = async () => {
+    const { codeMsRemaining } = await import('./logic/friendCodes.js');
+    const ms = codeMsRemaining(createdAtLocal, Date.now());
+    if (ms <= 0) {
+      clearInterval(_friendsCodeTimer);
+      _friendsCodeTimer = null;
+      el.textContent = 'Code expired — get a new one.';
+      $('#friends-my-code').textContent = '······';
+      $('#friends-new-code').textContent = 'Get code';
+      return;
+    }
+    const m = Math.floor(ms / 60000);
+    const s = Math.floor((ms % 60000) / 1000);
+    el.textContent = `expires in ${m}:${String(s).padStart(2, '0')}`;
+  };
+  tick();
+  _friendsCodeTimer = setInterval(tick, 1000);
+}
+
+async function _renderFriendsView() {
+  const friends = await import('./firebase/firebaseFriends.js');
+
+  // Code block: re-show a still-fresh cached code with its countdown.
+  const cached = friends.getCachedCode();
+  $('#friends-my-code').textContent = cached ? cached.code : '······';
+  $('#friends-new-code').textContent = cached ? 'New code' : 'Get code';
+  if (cached) _startCodeCountdown(cached.createdAtLocal);
+  else $('#friends-code-expiry').textContent = '';
+
+  // Friends list.
+  const listEl = $('#friends-list');
+  listEl.innerHTML = '';
+  const list = await friends.fetchFriends();
+  if (list === null) {
+    listEl.innerHTML = '<p class="friends-empty">Friends need a connection.</p>';
+  } else if (list.length === 0) {
+    listEl.innerHTML = '<p class="friends-empty">No friends yet — share your code or paste theirs.</p>';
+  } else {
+    for (const f of list) {
+      const row = document.createElement('div');
+      row.className = 'friends-row';
+      row.innerHTML = `<span class="friends-row-name">${escapeHtml(f.name)}</span>`
+        + `<button class="friends-remove" data-friend-uid="${escapeHtml(f.uid)}" title="Remove friend">✕</button>`;
+      listEl.appendChild(row);
+    }
+  }
+
+  // Scores table filtered to friends ∪ me (via the tested
+  // filterToFriends), current scope.
+  const friendCtx = { uids: (list || []).map(f => f.uid), myUid: getUid() };
+  if (_lbScope === 'weekly') {
+    await renderWeeklyLeaderboard(getWeekStart(), friendCtx,
+      'None of your friends set a weekly time yet.');
+  } else {
+    await _renderDailyScores(friendCtx,
+      'None of your friends finished today’s board yet.');
+  }
 }
 
 // ── Collection Display ───────────────────────────────
@@ -1802,18 +1970,84 @@ $('#btn-leaderboard').addEventListener('click', () => {
   showModal('leaderboard-modal');
 });
 
-// Leaderboard tab clicks: switch between Daily / Weekly views
-// without closing the modal. The active tab is set by both the click
-// and by updateLeaderboardDisplay's default-tab logic; clicking just
-// re-renders the body for the picked tab.
+// Leaderboard scope (Daily/Weekly) and view (Scores/Adjusted/Friends)
+// clicks re-render the body without closing the modal. Adjusted is
+// daily-only, so flipping to Weekly while on Adjusted falls back to
+// Scores.
 for (const tabBtn of $$('.leaderboard-tab')) {
   tabBtn.addEventListener('click', () => {
     const tab = tabBtn.dataset.lbTab;
     if (!tab) return;
-    _setActiveLeaderboardTab(tab);
-    _renderLeaderboardForTab(tab);
+    _lbScope = tab;
+    if (_lbScope === 'weekly' && _lbView === 'adjusted') _lbView = 'scores';
+    renderLeaderboard();
   });
 }
+for (const viewBtn of $$('.lb-view-tab')) {
+  viewBtn.addEventListener('click', () => {
+    const view = viewBtn.dataset.lbView;
+    if (!view || viewBtn.disabled) return;
+    _lbView = view;
+    renderLeaderboard();
+  });
+}
+
+// Friends panel actions. Handlers are wired once; all state is read at
+// click time via the lazy firebaseFriends module.
+$('#friends-new-code')?.addEventListener('click', async () => {
+  _friendsStatus('');
+  try {
+    const friends = await import('./firebase/firebaseFriends.js');
+    const entry = $('#friends-my-code').textContent.includes('·')
+      ? await friends.createFriendCode()
+      : await friends.regenerateFriendCode();
+    $('#friends-my-code').textContent = entry.code;
+    $('#friends-new-code').textContent = 'New code';
+    _startCodeCountdown(entry.createdAtLocal);
+  } catch (err) {
+    _friendsStatus(err && err.message === 'offline'
+      ? 'Codes need a connection.' : 'Could not get a code — try again.', true);
+  }
+});
+$('#friends-add-btn')?.addEventListener('click', async () => {
+  const input = $('#friends-code-input');
+  _friendsStatus('');
+  try {
+    const friends = await import('./firebase/firebaseFriends.js');
+    const added = await friends.redeemFriendCode(input.value);
+    input.value = '';
+    _friendsStatus(`You and ${added.name} are now friends.`);
+    await _renderFriendsView();
+  } catch (err) {
+    const msgs = {
+      invalid: 'That does not look like a code (6 letters and numbers).',
+      expired: 'Code expired or not found — ask for a fresh one.',
+      self: 'That is your own code.',
+      offline: 'Adding friends needs a connection.',
+    };
+    _friendsStatus(msgs[err && err.reason] || 'Could not add — try again.', true);
+  }
+});
+// Remove buttons are created per-render: delegate. First tap arms the
+// button ("Sure?"), second tap removes — both sides unlink.
+$('#friends-list')?.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.friends-remove');
+  if (!btn) return;
+  if (!btn.dataset.armed) {
+    btn.dataset.armed = '1';
+    btn.textContent = 'Sure?';
+    setTimeout(() => { btn.dataset.armed = ''; btn.textContent = '✕'; }, 2500);
+    return;
+  }
+  try {
+    const friends = await import('./firebase/firebaseFriends.js');
+    await friends.removeFriend(btn.dataset.friendUid);
+    _friendsStatus('Removed.');
+    await _renderFriendsView();
+  } catch {
+    _friendsStatus('Could not remove — try again.', true);
+  }
+});
 $('#btn-collection')?.addEventListener('click', () => {
   renderCollectionModal();
   showModal('collection-modal');
