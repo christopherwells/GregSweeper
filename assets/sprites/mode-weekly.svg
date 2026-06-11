@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Weekly: the checkered finish flag planted over a seven-day strip,
+       first attempts already banked — a longer race on one board. -->
+  <!-- Flag pole -->
+  <path d="M30 14 L30 92" stroke="#232838" stroke-width="7" stroke-linecap="round"/>
+  <!-- Checkered flag with a wave -->
+  <path d="M30 16 C52 8 66 24 96 16 L96 50 C66 58 52 42 30 50 Z"
+        fill="#f3f6fb" stroke="#232838" stroke-width="5" stroke-linejoin="round"/>
+  <g fill="#232838">
+    <path d="M30 16 C37 13.5 44 12.5 50 13 L50 30 C43 29.5 36 30.5 30 33 Z" opacity="0.92"/>
+    <path d="M50 30 C58 30 64 33 73 33 L73 50 C64 50 58 47 50 47 Z" opacity="0.92"/>
+    <path d="M73 16 C81 15 88 13 96 16 L96 33 C88 30 81 32 73 33 Z" opacity="0.92"/>
+  </g>
+  <!-- Seven-day strip, three days banked -->
+  <g stroke="#232838" stroke-width="4" stroke-linejoin="round">
+    <rect x="11" y="98" width="15" height="15" rx="3" fill="#5ad07a"/>
+    <rect x="26" y="98" width="15" height="15" rx="3" fill="#5ad07a"/>
+    <rect x="41" y="98" width="15" height="15" rx="3" fill="#5ad07a"/>
+    <rect x="56" y="98" width="15" height="15" rx="3" fill="#dfe5ee"/>
+    <rect x="71" y="98" width="15" height="15" rx="3" fill="#dfe5ee"/>
+    <rect x="86" y="98" width="15" height="15" rx="3" fill="#dfe5ee"/>
+    <rect x="101" y="98" width="15" height="15" rx="3" fill="#dfe5ee"/>
+  </g>
+  <g stroke="#1d5c34" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M15 105 L18 108 L23 102"/>
+    <path d="M30 105 L33 108 L38 102"/>
+    <path d="M45 105 L48 108 L53 102"/>
+  </g>
+</svg>

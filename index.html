@@ -289,30 +289,33 @@
       <p class="title-screen-goal">Clear every safe cell. The numbers show where the mines are.</p>
     </div>
     <div class="title-screen-modes">
+      <!-- Mode-card icons are drawn SVG sprites (Tier 3 of the sprite
+           inventory) with the old emoji as loading/missing-asset
+           fallback via onerror. -->
       <button class="mode-card" data-mode="normal" type="button">
-        <div class="mode-card-icon">⛏️</div>
+        <div class="mode-card-icon"><img class="mode-card-img" src="assets/sprites/mode-challenge.svg" alt="" draggable="false" onerror="this.replaceWith('⛏️')"></div>
         <div class="mode-card-name">Challenge</div>
         <div class="mode-card-progress" id="title-challenge-progress">Level 1</div>
       </button>
       <button class="mode-card" data-mode="timed" type="button">
-        <div class="mode-card-icon">⏱️</div>
+        <div class="mode-card-icon"><img class="mode-card-img" src="assets/sprites/mode-quickplay.svg" alt="" draggable="false" onerror="this.replaceWith('⏱️')"></div>
         <div class="mode-card-name">Quick Play</div>
         <div class="mode-card-progress" id="title-timed-progress">Race the clock</div>
       </button>
       <button class="mode-card" data-mode="daily" type="button">
-        <div class="mode-card-icon">📅</div>
+        <div class="mode-card-icon"><img class="mode-card-img" src="assets/sprites/mode-daily.svg" alt="" draggable="false" onerror="this.replaceWith('📅')"></div>
         <div class="mode-card-name">Daily</div>
         <div class="mode-card-progress" id="title-daily-progress">Today's challenge</div>
       </button>
       <!-- Weekly puzzle card — same single board for the whole ET week
            (Mon-Sun), one attempt per day, best time wins. No streak. -->
       <button class="mode-card" data-mode="weekly" type="button">
-        <div class="mode-card-icon">🏁</div>
+        <div class="mode-card-icon"><img class="mode-card-img" src="assets/sprites/mode-weekly.svg" alt="" draggable="false" onerror="this.replaceWith('🏁')"></div>
         <div class="mode-card-name">Weekly</div>
         <div class="mode-card-progress" id="title-weekly-progress">Same puzzle all week. Your best run wins.</div>
       </button>
       <button class="mode-card mode-card-chaos" data-mode="chaos" type="button">
-        <div class="mode-card-icon">🌀</div>
+        <div class="mode-card-icon"><img class="mode-card-img" src="assets/sprites/mode-chaos.svg" alt="" draggable="false" onerror="this.replaceWith('🌀')"></div>
         <div class="mode-card-name">Chaos</div>
         <div class="mode-card-progress" id="title-chaos-progress">Reach Level 50</div>
       </button>
@@ -360,29 +363,31 @@
         <div id="progress-bar-markers"></div>
       </div>
 
+      <!-- Power-up icons are drawn SVG sprites (Tier 4) with emoji
+           fallback via onerror. -->
       <div id="powerup-bar">
         <button class="powerup-btn" data-powerup="revealSafe" title="Reveal Safe Cell" disabled>
-          <span class="powerup-icon">🔍</span>
+          <span class="powerup-icon"><img class="powerup-img" src="assets/sprites/pow-revealsafe.svg" alt="" draggable="false" onerror="this.replaceWith('🔍')"></span>
           <span class="powerup-count">0</span>
         </button>
         <button class="powerup-btn" data-powerup="shield" title="Shield (survive one mine)" disabled>
-          <span class="powerup-icon">🛡️</span>
+          <span class="powerup-icon"><img class="powerup-img" src="assets/sprites/pow-shield.svg" alt="" draggable="false" onerror="this.replaceWith('🛡️')"></span>
           <span class="powerup-count">0</span>
         </button>
         <button class="powerup-btn" data-powerup="scanRowCol" title="Scan Row/Column" disabled>
-          <span class="powerup-icon">🎯</span>
+          <span class="powerup-icon"><img class="powerup-img" src="assets/sprites/pow-scan.svg" alt="" draggable="false" onerror="this.replaceWith('🎯')"></span>
           <span class="powerup-count">0</span>
         </button>
         <button class="powerup-btn lifeline-indicator" data-powerup="lifeline" title="Lifeline (auto-saves from mine)" disabled>
-          <span class="powerup-icon">❤️</span>
+          <span class="powerup-icon"><img class="powerup-img" src="assets/sprites/pow-lifeline.svg" alt="" draggable="false" onerror="this.replaceWith('❤️')"></span>
           <span class="powerup-count">0</span>
         </button>
         <button class="powerup-btn" data-powerup="magnet" title="Magnet (relocate mines from 3x3 area to edges)" disabled>
-          <span class="powerup-icon">🧲</span>
+          <span class="powerup-icon"><img class="powerup-img" src="assets/sprites/pow-magnet.svg" alt="" draggable="false" onerror="this.replaceWith('🧲')"></span>
           <span class="powerup-count">0</span>
         </button>
         <button class="powerup-btn" data-powerup="xray" title="X-Ray (reveal mines in 5x5)" disabled>
-          <span class="powerup-icon">🔬</span>
+          <span class="powerup-icon"><img class="powerup-img" src="assets/sprites/pow-xray.svg" alt="" draggable="false" onerror="this.replaceWith('🔬')"></span>
           <span class="powerup-count">0</span>
         </button>
       </div>
@@ -436,12 +441,15 @@
       </div>
     </div>
 
-    <!-- In-game nav: FOUR large targets, sized for a phone. Stats,
-         achievements, collection, themes, and help all live on the
-         title screen footer; Home is the road back to them. -->
+    <!-- In-game nav: FIVE large targets, sized for a phone. Stats,
+         achievements, and help live on the title screen footer; Home is
+         the road back to them. Collection stays here so themes can be
+         browsed and switched mid-game (restored 2026-06-10 by request —
+         the 4-icon declutter had cut it). -->
     <nav id="bottom-nav">
       <button id="btn-home" class="nav-btn" title="Home">🏠</button>
       <button id="btn-leaderboard" class="nav-btn" title="Leaderboard">🏆</button>
+      <button id="btn-collection" class="nav-btn" title="Collection">🎨</button>
       <button id="btn-mute" class="nav-btn" title="Mute">🔊</button>
       <button id="btn-settings" class="nav-btn" title="Settings">⚙️</button>
     </nav>
