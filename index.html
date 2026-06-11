@@ -692,17 +692,24 @@
     </div>
   </div>
 
-  <!-- Leaderboard Modal -->
+  <!-- Leaderboard Modal — scope toggle (Daily/Weekly) x view tabs
+       (Scores / Adjusted / Friends). Adjusted is daily-only: handicaps
+       are fitted on daily boards. -->
   <div id="leaderboard-modal" class="modal hidden" role="dialog" aria-modal="true">
-    <div class="modal-content">
+    <div class="modal-content leaderboard-modal-content">
       <div class="modal-header">
         <h2>Leaderboard</h2>
         <button class="modal-close">&times;</button>
       </div>
       <div class="modal-body">
-        <div class="leaderboard-tabs" role="tablist" aria-label="Leaderboard scope">
+        <div class="leaderboard-tabs lb-scope-toggle" role="tablist" aria-label="Leaderboard scope">
           <button class="leaderboard-tab active" data-lb-tab="daily" role="tab" aria-selected="true">Daily</button>
           <button class="leaderboard-tab" data-lb-tab="weekly" role="tab" aria-selected="false">Weekly</button>
+        </div>
+        <div class="lb-view-tabs" role="tablist" aria-label="Leaderboard view">
+          <button class="lb-view-tab active" data-lb-view="scores" role="tab" aria-selected="true">Scores</button>
+          <button class="lb-view-tab" data-lb-view="adjusted" role="tab" aria-selected="false">Adjusted</button>
+          <button class="lb-view-tab" data-lb-view="friends" role="tab" aria-selected="false">Friends</button>
         </div>
         <!-- Greg's closed loop: what yesterday's runs did to the model.
              Filled once per session from modelHistory.json diffs; all
@@ -717,6 +724,27 @@
             <tbody id="leaderboard-body"></tbody>
           </table>
           <p id="leaderboard-empty" class="hidden">No entries yet.</p>
+          <p id="leaderboard-footnote" class="lb-footnote hidden"></p>
+        <!-- Friends view: your code, add-by-code, friends list. The
+             scores table above doubles as the friends score table. -->
+        <div id="friends-panel" class="hidden">
+          <div class="friends-code-block">
+            <p class="friends-code-label">Your friend code</p>
+            <div class="friends-code-row">
+              <span id="friends-my-code" class="friends-code">&middot;&middot;&middot;&middot;&middot;&middot;</span>
+              <button id="friends-new-code" class="friends-btn">Get code</button>
+            </div>
+            <p id="friends-code-expiry" class="friends-code-expiry"></p>
+            <p class="friends-code-hint">Share it &mdash; anyone who enters your code becomes your friend. Codes last 15 minutes.</p>
+          </div>
+          <div class="friends-add-block">
+            <input id="friends-code-input" class="friends-input" type="text" maxlength="8"
+                   placeholder="Enter a friend's code" autocomplete="off" autocapitalize="characters" spellcheck="false">
+            <button id="friends-add-btn" class="friends-btn friends-btn-primary">Add friend</button>
+          </div>
+          <p id="friends-status" class="friends-status hidden"></p>
+          <div id="friends-list"></div>
+        </div>
       </div>
     </div>
   </div>

@@ -110,11 +110,34 @@ async function sweepWeekly() {
   return hits;
 }
 
+// Expired friend codes: the rules read gate already hides codes older
+// than 15 minutes, so this is pure tidiness — delete codes older than
+// an hour so the node never accumulates dead entries.
+const FRIEND_CODE_SWEEP_AGE_MS = 60 * 60 * 1000;
+async function sweepExpiredFriendCodes() {
+  const snap = await db.ref('friendCodes').once('value');
+  const root = snap.val() || {};
+  const updates = {};
+  let hits = 0;
+  const cutoff = Date.now() - FRIEND_CODE_SWEEP_AGE_MS;
+  for (const code of Object.keys(root)) {
+    const createdAt = root[code] && root[code].createdAt;
+    if (typeof createdAt !== 'number' || createdAt < cutoff) {
+      console.log(`  friendCodes/${code}: expired (createdAt=${createdAt})`);
+      updates[`friendCodes/${code}`] = null;
+      hits++;
+    }
+  }
+  if (!dryRun && hits > 0) await db.ref().update(updates);
+  return hits;
+}
+
 (async () => {
   console.log(dryRun ? '[DRY RUN] scanning, no writes' : 'scanning + scrubbing');
   const d = await sweepDaily();
   const w = await sweepWeekly();
-  console.log(`Done. daily hits: ${d}, weekly hits: ${w}${dryRun ? ' (dry run — nothing written)' : ''}.`);
+  const c = await sweepExpiredFriendCodes();
+  console.log(`Done. daily hits: ${d}, weekly hits: ${w}, expired codes: ${c}${dryRun ? ' (dry run — nothing written)' : ''}.`);
   process.exit(0);
 })().catch(err => {
   console.error('Sweep FAILED:', err);

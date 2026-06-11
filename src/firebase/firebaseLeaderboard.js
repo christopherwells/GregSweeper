@@ -716,7 +716,9 @@ export async function fetchAllDailyMeta() {
 /**
  * Fetch the online daily leaderboard for a given date.
  * @param {string} dateString YYYY-MM-DD format
- * @returns {Promise<Array<{name: string, time: number, bombHits: number}>>} sorted entries
+ * @returns {Promise<Array<{name: string, time: number, bombHits: number, uid: string|null}>>}
+ *   sorted entries. uid rides along for the Adjusted (handicap) and
+ *   Friends leaderboard views; rows are public either way.
  */
 export async function fetchOnlineLeaderboard(dateString) {
   if (!isFirebaseOnline()) return null;
@@ -738,6 +740,7 @@ export async function fetchOnlineLeaderboard(dateString) {
         name: val.name || 'Anonymous',
         time: val.time || 0,
         bombHits: val.bombHits || 0,
+        uid: val.uid || null,
       });
     });
 

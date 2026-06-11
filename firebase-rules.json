@@ -210,6 +210,21 @@
         "lastDailyDate": {
           ".validate": "newData.isString() && newData.val().length === 10"
         },
+        "friends": {
+          "$friendUid": {
+            ".write": "auth != null && (auth.uid === $uid || auth.uid === $friendUid)",
+            ".validate": "$friendUid !== $uid && newData.hasChildren(['name', 'addedAt'])",
+            "name": {
+              ".validate": "newData.isString() && newData.val().length <= 20"
+            },
+            "addedAt": {
+              ".validate": "newData.val() === now"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
         "dailyHistory": {
           "$date": {
             ".validate": "$date.matches(/^\\d{4}-\\d{2}-\\d{2}$/) && newData.hasChildren(['time', 'submittedAt'])",
@@ -307,6 +322,25 @@
           "isStandalone":{ ".validate": "newData.isBoolean()" },
           "createdAt":   { ".validate": "newData.val() === now" },
           "$other":      { ".validate": false }
+        }
+      }
+    },
+    "friendCodes": {
+      "$code": {
+        ".read": "auth != null && data.child('createdAt').val() > (now - 900000)",
+        ".write": "auth != null && ((!data.exists() && newData.child('uid').val() === auth.uid) || (data.exists() && !newData.exists()))",
+        ".validate": "$code.matches(/^[A-Z2-9]{6}$/) && newData.hasChildren(['uid', 'name', 'createdAt'])",
+        "uid": {
+          ".validate": "newData.isString() && newData.val().length >= 10 && newData.val().length <= 64"
+        },
+        "name": {
+          ".validate": "newData.isString() && newData.val().length <= 20"
+        },
+        "createdAt": {
+          ".validate": "newData.val() === now"
+        },
+        "$other": {
+          ".validate": false
         }
       }
     },
