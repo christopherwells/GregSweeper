@@ -2324,28 +2324,213 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 /* Leaderboard modal tabs (Daily / Weekly). Reuses the stats-tab
    visual pattern but scoped to the leaderboard modal so tab styles stay
    independent if either set changes. */
-.leaderboard-tabs {
+/* Leaderboard modal: roomier than the default 420px so the three-view
+   layout and the friends panel can breathe (stats-modal precedent). */
+.leaderboard-modal-content {
+  max-width: 600px;
+}
+
+/* Scope toggle (Daily/Weekly): compact pills, sits above the view tabs. */
+.leaderboard-tabs.lb-scope-toggle {
+  display: inline-flex;
+  gap: 3px;
+  margin-bottom: 10px;
+  padding: 3px;
+  border-radius: 9px;
+  background: var(--color-surface, rgba(255, 255, 255, 0.05));
+  border-bottom: none;
+}
+.lb-scope-toggle .leaderboard-tab {
+  flex: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  border: none;
+  border-radius: 6px;
+  padding: 6px 18px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.2s, background-color 0.2s;
+}
+.lb-scope-toggle .leaderboard-tab:hover { color: var(--color-text); }
+.lb-scope-toggle .leaderboard-tab.active {
+  background: var(--color-accent, #4c8dff);
+  color: #fff;
+}
+
+/* View tabs (Scores / Adjusted / Friends): the proven underline style. */
+.lb-view-tabs {
   display: flex;
   gap: 2px;
   margin-bottom: 12px;
   border-bottom: 1px solid var(--color-border, rgba(255, 255, 255, 0.1));
 }
-.leaderboard-tab {
+.lb-view-tab {
   flex: 1;
   background: transparent;
   color: var(--color-text-secondary);
   border: none;
-  padding: 8px 6px;
+  padding: 9px 6px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   border-bottom: 2px solid transparent;
   transition: color 0.2s, border-color 0.2s;
 }
-.leaderboard-tab:hover { color: var(--color-text); }
-.leaderboard-tab.active {
+.lb-view-tab:hover:not(:disabled) { color: var(--color-text); }
+.lb-view-tab.active {
   color: var(--color-accent, #4c8dff);
   border-bottom-color: var(--color-accent, #4c8dff);
+}
+.lb-view-tab:disabled,
+.lb-view-tab.lb-view-disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Top-3 rank coloring — readable medal hues on the rank cell. (The
+   drawn medal sprites stay unwired pending art approval.) */
+.lb-rank-1 td:first-child { color: #d4a017; font-weight: 800; }
+.lb-rank-2 td:first-child { color: #9aa4ae; font-weight: 800; }
+.lb-rank-3 td:first-child { color: #b07040; font-weight: 800; }
+
+/* Handicap chips on the Adjusted view. */
+.lb-hc-chip {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--color-surface, rgba(255, 255, 255, 0.07));
+  color: var(--color-text-secondary);
+}
+.lb-hc-chip.lb-hc-unrated {
+  font-style: italic;
+  font-weight: 600;
+  opacity: 0.7;
+}
+.lb-adjusted { font-weight: 700; }
+.lb-footnote {
+  margin: 10px 0 0;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  opacity: 0.85;
+}
+
+/* ── Friends panel ───────────────────────────── */
+.friends-code-block {
+  margin: 4px 0 14px;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--color-surface, rgba(255, 255, 255, 0.05));
+  text-align: center;
+}
+.friends-code-label {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+.friends-code-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+.friends-code {
+  font-family: var(--font-display, monospace);
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 6px;
+  color: var(--color-accent, #4c8dff);
+  user-select: all;
+}
+.friends-code-expiry {
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  color: var(--color-text-secondary);
+  min-height: 1em;
+}
+.friends-code-hint {
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--color-text-secondary);
+  opacity: 0.85;
+}
+.friends-add-block {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.friends-input {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border, rgba(255, 255, 255, 0.15));
+  background: var(--color-surface, rgba(255, 255, 255, 0.05));
+  color: var(--color-text);
+  font-size: 14px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.friends-btn {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border, rgba(255, 255, 255, 0.15));
+  background: var(--color-btn-bg);
+  color: var(--color-text);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.friends-btn:hover { background: var(--color-btn-hover); }
+.friends-btn-primary {
+  background: var(--color-accent, #4c8dff);
+  border-color: transparent;
+  color: #fff;
+}
+.friends-status {
+  margin: 0 0 10px;
+  font-size: 12.5px;
+  color: var(--color-win, #6abf69);
+}
+.friends-status-error { color: var(--color-loss, #e57373); }
+.friends-empty {
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+  margin: 8px 0 12px;
+}
+.friends-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 4px;
+  border-bottom: 1px solid var(--color-border, rgba(255, 255, 255, 0.08));
+}
+.friends-row-name { font-size: 13.5px; font-weight: 600; }
+.friends-remove {
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.friends-remove:hover {
+  color: var(--color-loss, #e57373);
+  background: var(--color-surface, rgba(255, 255, 255, 0.06));
+}
+#friends-list { margin-bottom: 14px; }
+
+@media (max-width: 520px) {
+  .friends-code { font-size: 22px; letter-spacing: 4px; }
+  .lb-scope-toggle .leaderboard-tab { padding: 6px 14px; }
+  .lb-hc-chip { font-size: 10px; padding: 1px 5px; }
 }
 
 .stats-section {
