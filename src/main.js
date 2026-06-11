@@ -964,7 +964,7 @@ async function renderWeeklyLeaderboard(weekStart, friendCtx = null, emptyText = 
   // player switches back to a daily tab via the modal's tab strip.
   const thead = $('#leaderboard-table thead');
   if (thead) {
-    thead.innerHTML = `<tr><th>#</th><th>Name</th><th>Best</th><th class="lb-col-extra">${spriteImgHTML('strike', 'sprite-header', 'Strikes')}</th><th>Played</th><th class="lb-col-extra">Pace</th></tr>`;
+    thead.innerHTML = '<tr><th>#</th><th>Name</th><th>Best</th><th>Played</th><th>Par</th></tr>';
   }
   let entries = await fetchWeeklyLeaderboard(weekStart);
   const playedCount = entries.length;
@@ -977,26 +977,17 @@ async function renderWeeklyLeaderboard(weekStart, friendCtx = null, emptyText = 
     || 'No weekly times yet. Be the first to set one.';
   $('#leaderboard-empty').classList.toggle('hidden', hasEntries);
   if (!hasEntries) return;
-  // Column repurposing for weekly:
-  //   Time   = bestTime (best across the player's 7 attempts)
-  //   💥     = strike count from THAT specific best play
-  //   Par    = N/7 attempts used
-  //   Pace   = bestTime / solver totalMoves (s per click)
-  // Older rows from before the schema added dayBombHits/totalMoves
-  // render '-' for those cells — graceful degradation, no upgrade
-  // step required.
+  // Weekly columns: Best = fastest across the 7 attempts, Played =
+  // attempts used, Par = delta of Best vs the canonical weekly board's
+  // par (solved once per session via computeWeeklyPar).
+  const weeklyPar = await computeWeeklyPar(weekStart);
   const myUidW = getUid();
   entries.forEach((entry, i) => {
     const tr = document.createElement('tr');
     if (myUidW && entry.uid === myUidW) tr.classList.add('lb-row-mine');
     const used = entry.attemptsUsed || 0;
-    const bombs = (typeof entry.bestDayBombHits === 'number')
-      ? `<td class="lb-col-extra">${entry.bestDayBombHits}</td>`
-      : '<td class="lb-col-extra">-</td>';
-    const pace = (entry.totalMoves && entry.totalMoves > 0)
-      ? `<td class="lb-col-extra">${(entry.bestTime / entry.totalMoves).toFixed(2)}</td>`
-      : '<td class="lb-col-extra">-</td>';
-    tr.innerHTML = `<td>${i + 1}</td><td>${escapeHtml(entry.name)}</td><td>${entry.bestTime.toFixed(1)}s</td>${bombs}<td>${used}/7</td>${pace}`;
+    const parCol = _parDeltaCell(entry.bestTime, weeklyPar);
+    tr.innerHTML = `${_rankCell(i)}${_nameCell(entry.name)}<td>${entry.bestTime.toFixed(1)}s</td><td>${used}/7</td>${parCol}`;
     tbody.appendChild(tr);
   });
 }
@@ -1122,6 +1113,58 @@ async function _renderGregYesterdayNote() {
   } catch { /* no note — the leaderboard renders fine without it */ }
 }
 
+// Rank cell: the four drawn medals for the four top ranks (diamond,
+// gold, silver, bronze - the achievement-tier order), numbers below.
+const _RANK_MEDALS = ['medalDiamond', 'medalGold', 'medalSilver', 'medalBronze'];
+function _rankCell(i) {
+  if (i < _RANK_MEDALS.length) {
+    return `<td class="lb-rank-cell">${spriteImgHTML(_RANK_MEDALS[i], 'sprite-rank', `#${i + 1}`)}</td>`;
+  }
+  return `<td>${i + 1}</td>`;
+}
+
+// Scrollable name cell: long names scroll horizontally instead of
+// truncating, so the full name is always reachable.
+function _nameCell(name) {
+  return `<td class="lb-name-cell"><span class="lb-name">${escapeHtml(name)}</span></td>`;
+}
+
+// Par-delta cell, shared by daily/weekly/friends tables.
+function _parDeltaCell(time, par) {
+  if (!(par > 0)) return '<td>-</td>';
+  const delta = time - par;
+  const abs = Math.abs(delta).toFixed(1);
+  if (delta < -0.5) return `<td class="par-under">-${abs}</td>`;
+  if (delta > 0.5) return `<td class="par-over">+${abs}</td>`;
+  return '<td class="par-even">E</td>';
+}
+
+// Weekly par: solve the canonical weekly board once per session (same
+// canonical-solve path as computeDailyParForDate's Firebase branch).
+const _weeklyParCache = new Map();
+async function computeWeeklyPar(weekStart) {
+  if (_weeklyParCache.has(weekStart)) return _weeklyParCache.get(weekStart);
+  let par = 0;
+  try {
+    const raw = await loadWeeklyBoard(weekStart).catch(() => null);
+    if (raw) {
+      const r = deserializeBoard(raw);
+      const fr = Math.floor(r.rows / 2), fc = Math.floor(r.cols / 2);
+      const check = isBoardSolvable(r.board, r.rows, r.cols, fr, fc);
+      cleanSolverArtifacts(r.board);
+      if (check.solvable || check.remainingUnknowns === 0) {
+        const features = computeDailyFeatures(
+          { board: r.board, rows: r.rows, cols: r.cols, totalMines: r.totalMines, activeGimmicks: r.activeGimmicks || [] },
+          check,
+        );
+        par = predictPar(features);
+      }
+    }
+  } catch { par = 0; }
+  _weeklyParCache.set(weekStart, par);
+  return par;
+}
+
 // Leaderboard state: scope (daily/weekly) x view (scores/adjusted/
 // friends). Adjusted is daily-only — handicaps are fitted on daily
 // boards, so applying them to weekly best-times would be dishonest.
@@ -1148,10 +1191,11 @@ async function renderLeaderboard() {
   _setActiveLeaderboardView(_lbView);
   const adjTab = $('.lb-view-tab[data-lb-view="adjusted"]');
   if (adjTab) {
+    // Handicaps are fitted on daily boards: under Weekly the tab is
+    // simply gone, not greyed.
     const off = _lbScope === 'weekly';
     adjTab.disabled = off;
-    adjTab.classList.toggle('lb-view-disabled', off);
-    adjTab.title = off ? 'Handicaps are fitted on daily boards' : '';
+    adjTab.classList.toggle('hidden', off);
   }
   $('#friends-panel')?.classList.toggle('hidden', _lbView !== 'friends');
   $('#leaderboard-footnote')?.classList.add('hidden');
@@ -1179,7 +1223,9 @@ async function _fetchDailyEntries(dateStr) {
 async function _renderDailyScores(friendCtx = null, emptyText = null) {
   const thead = $('#leaderboard-table thead');
   if (thead) {
-    thead.innerHTML = `<tr><th>#</th><th>Name</th><th>Time</th><th class="lb-col-extra">${spriteImgHTML('strike', 'sprite-header', 'Strikes')}</th><th>Par</th><th class="lb-col-extra">Pace</th></tr>`;
+    thead.innerHTML = friendCtx
+      ? '<tr><th>#</th><th>Name</th><th>Time</th><th>Par</th><th>Adjusted</th></tr>'
+      : '<tr><th>#</th><th>Name</th><th>Time</th><th>Par</th></tr>';
   }
   const today = getLocalDateString();
   const dateStr = today;
@@ -1200,30 +1246,24 @@ async function _renderDailyScores(friendCtx = null, emptyText = null) {
   $('#leaderboard-empty').classList.toggle('hidden', hasEntries);
   if (!hasEntries) return;
 
-  // Daily par + solver moves (shared with the title-card par badge).
-  const { par: dailyPar, moves: dailyMoves } = await computeDailyParForDate(dateStr);
+  // Daily par (shared with the title-card par badge). The friends view
+  // also shows each row's handicap-adjusted time.
+  const { par: dailyPar } = await computeDailyParForDate(dateStr);
+  const handicapMap = friendCtx ? await loadHandicaps() : null;
 
   const myUid = getUid();
   entries.forEach((entry, i) => {
     const tr = document.createElement('tr');
     if (myUid && entry.uid === myUid) tr.classList.add('lb-row-mine');
-    if (i < 3) tr.classList.add(`lb-rank-${i + 1}`);
-    const bombCol = entry.bombHits != null
-      ? `<td class="lb-col-extra">${entry.bombHits}</td>`
-      : '<td class="lb-col-extra">-</td>';
-    let parCol = '<td>-</td>';
-    if (dailyPar > 0) {
-      const delta = entry.time - dailyPar;
-      const abs = Math.abs(delta).toFixed(1);
-      if (delta < -0.5) parCol = `<td class="par-under">-${abs}</td>`;
-      else if (delta > 0.5) parCol = `<td class="par-over">+${abs}</td>`;
-      else parCol = `<td class="par-even">E</td>`;
+    const parCol = _parDeltaCell(entry.time, dailyPar);
+    let adjCol = '';
+    if (friendCtx) {
+      const [r] = rankAdjusted([entry], handicapMap || {});
+      adjCol = r.rated
+        ? `<td class="lb-adjusted">${r.adjusted.toFixed(1)}s</td>`
+        : '<td class="lb-adjusted">-</td>';
     }
-    let paceCol = '<td class="lb-col-extra">-</td>';
-    if (dailyMoves > 0) {
-      paceCol = `<td class="lb-col-extra">${(entry.time / dailyMoves).toFixed(1)}</td>`;
-    }
-    tr.innerHTML = `<td>${i + 1}</td><td>${escapeHtml(entry.name)}</td><td>${entry.time}s</td>${bombCol}${parCol}${paceCol}`;
+    tr.innerHTML = `${_rankCell(i)}${_nameCell(entry.name)}<td>${entry.time}s</td>${parCol}${adjCol}`;
     tbody.appendChild(tr);
   });
 }
@@ -1234,7 +1274,7 @@ async function _renderDailyScores(friendCtx = null, emptyText = null) {
 async function _renderAdjustedView() {
   const thead = $('#leaderboard-table thead');
   if (thead) {
-    thead.innerHTML = '<tr><th>#</th><th>Name</th><th>Time</th><th>HC</th><th>Adjusted</th></tr>';
+    thead.innerHTML = '<tr><th>#</th><th>Name</th><th>HC</th><th>Adjusted</th></tr>';
   }
   const today = getLocalDateString();
   $('#leaderboard-date').textContent = prettyDate(today);
@@ -1263,11 +1303,10 @@ async function _renderAdjustedView() {
   ranked.forEach((entry, i) => {
     const tr = document.createElement('tr');
     if (myUid && entry.uid === myUid) tr.classList.add('lb-row-mine');
-    if (i < 3) tr.classList.add(`lb-rank-${i + 1}`);
     const hcChip = entry.rated
       ? `<span class="lb-hc-chip">${entry.handicap >= 0 ? '−' : '+'}${Math.abs(entry.handicap).toFixed(1)}s</span>`
       : '<span class="lb-hc-chip lb-hc-unrated">unrated</span>';
-    tr.innerHTML = `<td>${i + 1}</td><td>${escapeHtml(entry.name)}</td><td>${entry.time}s</td>`
+    tr.innerHTML = `${_rankCell(i)}${_nameCell(entry.name)}`
       + `<td>${hcChip}</td><td class="lb-adjusted">${entry.adjusted.toFixed(1)}s</td>`;
     tbody.appendChild(tr);
   });

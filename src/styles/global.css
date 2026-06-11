@@ -2388,11 +2388,25 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   cursor: not-allowed;
 }
 
-/* Top-3 rank coloring — readable medal hues on the rank cell. (The
-   drawn medal sprites stay unwired pending art approval.) */
-.lb-rank-1 td:first-child { color: #d4a017; font-weight: 800; }
-.lb-rank-2 td:first-child { color: #9aa4ae; font-weight: 800; }
-.lb-rank-3 td:first-child { color: #b07040; font-weight: 800; }
+/* Medal sprites mark the four top ranks (diamond/gold/silver/bronze). */
+.sprite-rank {
+  width: 21px;
+  height: 21px;
+  vertical-align: middle;
+}
+.lb-rank-cell { line-height: 1; }
+
+/* Long names scroll horizontally (hidden scrollbar) instead of
+   truncating, so the full name is always reachable by swipe/trackpad. */
+.lb-name {
+  display: inline-block;
+  vertical-align: middle;
+  max-width: 220px;
+  white-space: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.lb-name::-webkit-scrollbar { display: none; }
 
 /* Handicap chips on the Adjusted view. */
 .lb-hc-chip {
@@ -3049,9 +3063,8 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   border-bottom: 1px solid rgba(0,0,0,0.06);
 }
 
-/* Narrow screens: keep all 6 columns (#, name, time, strikes, par, pace)
-   but tighten padding and shrink fonts so everything fits at 390px.
-   Names truncate with ellipsis if they overflow. */
+/* Narrow screens: tighten padding and shrink fonts so the table fits
+   at 390px. Long names SCROLL (see .lb-name) rather than truncate. */
 @media (max-width: 520px) {
   #leaderboard-table th,
   #leaderboard-table td {
@@ -3062,14 +3075,8 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
     font-size: 9px;
     letter-spacing: 0.5px;
   }
-  /* Name column takes whatever width is left; other columns hug their content */
-  #leaderboard-table td:nth-child(2),
-  #leaderboard-table th:nth-child(2) {
-    max-width: 70px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
+  .lb-name { max-width: 110px; }
+  .sprite-rank { width: 18px; height: 18px; }
   #leaderboard-table td:first-child,
   #leaderboard-table th:first-child {
     padding-left: 4px;
