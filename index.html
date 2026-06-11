@@ -1137,27 +1137,18 @@
 
         <!-- CHALLENGE TAB -->
         <div id="stats-panel-challenge" class="stats-panel hidden">
-          <div class="stats-grid">
-            <div class="stat-card">
-              <div class="stat-value" id="stat-challenge-played">0</div>
-              <div class="stat-label">Played</div>
+          <!-- Same component language as Daily/Weekly: one hero headline,
+               then delicate mini-card rows. -->
+          <div class="stats-section" style="margin-top: 0; padding-top: 0; border-top: none;">
+            <h3>Progress</h3>
+            <div class="stat-headline" id="stat-challenge-max-level">1</div>
+            <p class="stats-blurb">Highest level reached. Checkpoints every 5 levels keep it.</p>
+            <div class="stat-row">
+              <div class="stat-mini"><div class="stat-mini-label">Played</div><div class="stat-mini-value" id="stat-challenge-played">0</div></div>
+              <div class="stat-mini"><div class="stat-mini-label">Win Rate</div><div class="stat-mini-value" id="stat-challenge-win-rate">0%</div></div>
+              <div class="stat-mini"><div class="stat-mini-label">Checkpoint</div><div class="stat-mini-value" id="stat-challenge-checkpoint">1</div></div>
+              <div class="stat-mini"><div class="stat-mini-label">Best (this level)</div><div class="stat-mini-value" id="stat-challenge-best-time">--</div></div>
             </div>
-            <div class="stat-card">
-              <div class="stat-value" id="stat-challenge-win-rate">0%</div>
-              <div class="stat-label">Win Rate</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-value" id="stat-challenge-max-level">1</div>
-              <div class="stat-label">Max Level</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-value" id="stat-challenge-checkpoint">1</div>
-              <div class="stat-label">Checkpoint</div>
-            </div>
-          </div>
-          <div class="stat-card wide">
-            <div class="stat-label">Best Time (current level)</div>
-            <div class="stat-value" id="stat-challenge-best-time">--</div>
           </div>
           <div class="stats-section">
             <h3>Recent games</h3>
@@ -1167,22 +1158,14 @@
 
         <!-- QUICK PLAY TAB -->
         <div id="stats-panel-timed" class="stats-panel hidden">
-          <div class="stats-grid">
-            <div class="stat-card">
-              <div class="stat-value" id="stat-timed-played">0</div>
-              <div class="stat-label">Played</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-value" id="stat-timed-win-rate">0%</div>
-              <div class="stat-label">Win Rate</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-value" id="stat-timed-streak">0</div>
-              <div class="stat-label">Streak</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-value" id="stat-timed-best-streak">0</div>
-              <div class="stat-label">Best</div>
+          <div class="stats-section" style="margin-top: 0; padding-top: 0; border-top: none;">
+            <h3>Streak</h3>
+            <div class="stat-headline" id="stat-timed-best-streak">0</div>
+            <p class="stats-blurb">Best win streak. Keep the clock honest.</p>
+            <div class="stat-row">
+              <div class="stat-mini"><div class="stat-mini-label">Played</div><div class="stat-mini-value" id="stat-timed-played">0</div></div>
+              <div class="stat-mini"><div class="stat-mini-label">Win Rate</div><div class="stat-mini-value" id="stat-timed-win-rate">0%</div></div>
+              <div class="stat-mini"><div class="stat-mini-label">Streak</div><div class="stat-mini-value" id="stat-timed-streak">0</div></div>
             </div>
           </div>
           <div class="stats-section">
