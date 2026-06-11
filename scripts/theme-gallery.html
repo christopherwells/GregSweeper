@@ -47,10 +47,15 @@
 <link rel="stylesheet" href="../src/styles/themes/supernova.css">
 <link rel="stylesheet" href="../src/styles/themes/legendary.css">
 <style>
-  body { margin: 0; padding: 20px; font: 14px/1.5 system-ui, sans-serif; background: var(--color-bg, #222); color: var(--color-text, #eee); transition: background 0.3s; }
+  /* global.css lays the GAME's body out as a centering flex row — here
+     that turned the heading, hint, and card grid into three side-by-side
+     flex items and squished the grid into one far-right column. The
+     gallery owns its own layout. */
+  body { display: block !important; margin: 0; padding: 20px; font: 14px/1.5 system-ui, sans-serif; background: var(--color-bg, #222); color: var(--color-text, #eee); transition: background 0.3s; min-height: 100vh; }
+  #tg-root { position: relative; z-index: 1; max-width: 1560px; margin: 0 auto; }
   h1 { font-size: 20px; margin: 0 0 4px; }
-  .hint { opacity: 0.75; margin-bottom: 18px; }
-  #cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 16px; }
+  .hint { opacity: 0.75; margin-bottom: 18px; max-width: 70em; }
+  #cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; width: 100%; }
   .tg-card { border: 2px solid rgba(128,128,128,0.35); border-radius: 12px; padding: 12px; cursor: pointer; background: rgba(0,0,0,0.15); }
   .tg-card.active { border-color: var(--color-accent, #6cf); box-shadow: 0 0 14px var(--color-accent-glow, rgba(100,200,255,0.3)); }
   .tg-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px; }
@@ -70,9 +75,11 @@
 </style>
 </head>
 <body>
+<main id="tg-root">
 <h1>Theme worlds — all 26, unlock order</h1>
 <p class="hint">Every mini-board uses the theme's real tokens: fog vs cleared faces, number colors, objects, grout in the gaps. <strong>Click a card</strong> to take that world live: page background, ambient effect, reveal/flag motion replay, and its voice on the sound buttons. Companion text: THEME_WORLDS.md.</p>
 <div id="cards"></div>
+</main>
 
 <script type="module">
 import { applyThemeEffects, clearThemeEffects } from '../src/ui/themeEffects.js';
