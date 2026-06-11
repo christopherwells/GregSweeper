@@ -1,0 +1,8 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
+<!-- A cluster of ice shards, sharp side up - the danger under the snow. -->
+<path d='M20 56 L14 30 L24 40 L26 18 L34 42 Z' fill='rgba(150,230,235,0.35)' stroke='#7ae0d8' stroke-width='2.4' stroke-linejoin='round'/>
+<path d='M34 56 L38 12 L48 34 L46 56 Z' fill='rgba(150,210,255,0.3)' stroke='#8ec8ff' stroke-width='2.4' stroke-linejoin='round'/>
+<path d='M46 56 L54 38 L56 56 Z' fill='rgba(190,160,255,0.28)' stroke='#b9a0f0' stroke-width='2.2' stroke-linejoin='round'/>
+<path d='M12 56 L58 56' stroke='#dceefc' stroke-width='3' stroke-linecap='round'/>
+<path d='M38 18 L38 40' stroke='rgba(255,255,255,0.6)' stroke-width='1.6'/>
+</svg>

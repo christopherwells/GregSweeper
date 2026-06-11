@@ -135,15 +135,17 @@ const CELLS = [
 // slot demos.
 const SPRITED = {
   editorial: 1, sumie: 1, blueprint: 1, cartography: 1, chalkboard: 1,
-  splitflap: 1, galaxy: 1, circuitboard: 1, comic: 1,
+  splitflap: 1, galaxy: 1, circuitboard: 1, comic: 1, sakura: 1, aurora: 1,
 };
+// apothecary has mine + strike only (flag stays the key emoji for now)
+const SPRITED_MINE_ONLY = { apothecary: 1 };
 const spriteImg = (key, obj) => `<img class="tg-sprite" src="../assets/sprites/themes/${key}-${obj}.svg" alt="">`;
 
 for (const [key, name, level, world, mine, flag] of THEMES) {
   const card = document.createElement('div');
   card.className = 'tg-card';
   card.dataset.themeKey = key;
-  const mineHtml = SPRITED[key] ? spriteImg(key, 'mine') : key === 'noir' ? spriteImg(key, 'strike') : mine;
+  const mineHtml = (SPRITED[key] || SPRITED_MINE_ONLY[key]) ? spriteImg(key, 'mine') : key === 'noir' ? spriteImg(key, 'strike') : mine;
   const flagHtml = SPRITED[key] ? spriteImg(key, 'flag') : flag;
   card.innerHTML = `
     <div class="tg-head"><span class="tg-name">${name}</span><span class="tg-level">${level ? 'L' + level : 'free'}</span></div>
