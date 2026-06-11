@@ -103,9 +103,10 @@
   --bg-page-image:
     repeating-linear-gradient(0deg, rgba(0, 255, 70, 0.05) 0, rgba(0, 255, 70, 0.05) 1px, transparent 1px, transparent 3px);
 
-  /* Snappy digital reveals — terminal-fast, no overshoot. */
-  --anim-reveal-dur: 0.1s;
-  --anim-reveal-ease: linear;
+  /* Digital reveals: stepped, never smooth — the decode happens in
+     discrete glitch frames (see matrixDecode). */
+  --anim-reveal-dur: 0.24s;
+  --anim-reveal-ease: steps(6, end);
   --anim-flag-dur: 0.16s;
   --anim-flag-ease: ease-out;
   --anim-mine-dur: 0.18s;
@@ -182,11 +183,30 @@
   100% { background-position: 0 30px; }
 }
 
-/* Reveal moment: a glyph decoding. */
+/* Reveal moment: the glyph fights its way out of the rain — phosphor
+   flash, two misregistered glitch frames, an afterglow decaying to
+   rest. steps() easing (theme tokens) keeps every frame discrete;
+   nothing in this world moves smoothly. */
 [data-theme="matrix"] .cell.num-pop,
 [data-theme="matrix"] .cell.revealing {
   animation-name: matrixDecode;
 }
 @keyframes matrixDecode {
-  0%{opacity:0;transform:translateY(-2px);filter:brightness(2)}30%{opacity:1}46%{opacity:0.5;transform:translateY(1px)}100%{opacity:1;transform:translateY(0);filter:brightness(1)}
+  0%   { opacity: 0; transform: translate(-2px, -3px); filter: brightness(2.4) saturate(2); }
+  18%  { opacity: 1; transform: translate(2px, 1px); }
+  34%  { opacity: 0.35; transform: translate(-1px, 0); filter: brightness(1.7); }
+  52%  { opacity: 1; transform: translate(1px, 0); filter: brightness(1.4); }
+  70%  { opacity: 0.8; transform: translate(0, 0); filter: brightness(1.15); }
+  100% { opacity: 1; transform: translate(0, 0); filter: brightness(1); }
+}
+
+/* Flag moment: target lock — the marker snaps in oversized and hot,
+   then locks down in discrete steps (flag tokens: 0.16s, ease-out). */
+[data-theme="matrix"] .cell.flag-pop {
+  animation-name: matrixFlagLock;
+}
+@keyframes matrixFlagLock {
+  0%   { opacity: 0.4; transform: scale(1.6); filter: brightness(2.2); }
+  45%  { opacity: 1; transform: scale(0.92); filter: brightness(1.5); }
+  100% { opacity: 1; transform: scale(1); filter: brightness(1); }
 }

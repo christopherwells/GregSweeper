@@ -26,6 +26,17 @@ const SPRITES = {
   // the exploded bomb stands out from the other revealed mines. On themed
   // alternates (e.g. Ocean 🐡), the themed mine emoji renders verbatim.
   strikeCell: { defaultEmoji: '💣', url: 'assets/sprites/strike.png' },
+
+  // ── Tiers 3-5 of the sprite inventory (drawn SVG, 2026-06-10) ──
+  // Mode cards and power-ups render these directly from index.html
+  // markup (static surfaces, emoji as onerror fallback). The medal set
+  // is registered here for the inline-text call sites (winLossHandler
+  // ratings, achievement tiers, leaderboard headers) to adopt via
+  // applyIcon/spriteImgHTML once the art is approved.
+  medalDiamond: { defaultEmoji: '💎', url: 'assets/sprites/medal-diamond.svg' },
+  medalGold:    { defaultEmoji: '🥇', url: 'assets/sprites/medal-gold.svg' },
+  medalSilver:  { defaultEmoji: '🥈', url: 'assets/sprites/medal-silver.svg' },
+  medalBronze:  { defaultEmoji: '🥉', url: 'assets/sprites/medal-bronze.svg' },
 };
 
 // Retain Image refs until each one fires onload/onerror so the browser

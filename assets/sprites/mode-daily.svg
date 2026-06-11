@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Daily: a calendar page with TODAY highlighted and flagged — one
+       puzzle per day, same worldwide. The calendar is the honest icon;
+       the flag on today's square makes it ours. -->
+  <!-- Page -->
+  <rect x="16" y="22" width="96" height="92" rx="10" fill="#f3f6fb" stroke="#232838" stroke-width="6"/>
+  <rect x="16" y="22" width="96" height="26" rx="10" fill="#e4453a"/>
+  <path d="M16 40 L112 40 L112 48 L16 48 Z" fill="#e4453a"/>
+  <!-- Binder rings -->
+  <g stroke="#232838" stroke-width="6" stroke-linecap="round">
+    <path d="M38 14 L38 30"/>
+    <path d="M90 14 L90 30"/>
+  </g>
+  <!-- Faint day grid -->
+  <g fill="#d4dae6">
+    <rect x="28" y="58" width="16" height="14" rx="3"/>
+    <rect x="56" y="58" width="16" height="14" rx="3"/>
+    <rect x="84" y="58" width="16" height="14" rx="3"/>
+    <rect x="28" y="86" width="16" height="14" rx="3"/>
+    <rect x="84" y="86" width="16" height="14" rx="3"/>
+  </g>
+  <!-- Today: highlighted, flagged -->
+  <rect x="52" y="80" width="26" height="26" rx="5" fill="#ffd23e" stroke="#232838" stroke-width="5"/>
+  <path d="M61 100 L61 86 L73 90 L61 94" fill="#e4453a" stroke="#232838" stroke-width="3.5" stroke-linejoin="round"/>
+</svg>

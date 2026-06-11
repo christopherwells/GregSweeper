@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Quick Play: a stopwatch at full sprint — speed arcs behind, the
+       needle leaning into the first seconds. -->
+  <!-- Speed arcs -->
+  <g stroke="#39c2e8" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.85">
+    <path d="M22 48 C14 58 12 70 16 82"/>
+    <path d="M10 44 C0 58 -2 76 6 92" opacity="0.5"/>
+  </g>
+  <!-- Crown + side button -->
+  <rect x="66" y="8" width="16" height="14" rx="4" fill="#8d93a1" stroke="#232838" stroke-width="5"/>
+  <rect x="98" y="26" width="14" height="10" rx="4" transform="rotate(45 105 31)" fill="#8d93a1" stroke="#232838" stroke-width="5"/>
+  <!-- Case + face -->
+  <circle cx="74" cy="70" r="40" fill="#3a4258" stroke="#232838" stroke-width="6"/>
+  <circle cx="74" cy="70" r="31" fill="#f3f6fb"/>
+  <!-- Ticks -->
+  <g stroke="#3a4258" stroke-width="4" stroke-linecap="round">
+    <path d="M74 43 L74 50"/>
+    <path d="M74 90 L74 97"/>
+    <path d="M47 70 L54 70"/>
+    <path d="M94 70 L101 70"/>
+  </g>
+  <!-- Needle, leaning into the run -->
+  <path d="M74 70 L89 50" stroke="#e4453a" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="74" cy="70" r="5" fill="#e4453a"/>
+</svg>
