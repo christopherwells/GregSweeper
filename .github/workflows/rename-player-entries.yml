@@ -1,0 +1,57 @@
+name: Rename player entries
+
+# Admin tool: rewrite a player's display name across their existing
+# daily/weekly leaderboard rows (and stored friend-list copies). Score
+# rows are write-once at the rules layer, so this runs with the service
+# account. DEFAULTS TO DRY RUN.
+
+on:
+  workflow_dispatch:
+    inputs:
+      uid:
+        description: 'Firebase uid whose rows to rename'
+        type: string
+        required: true
+      new_name:
+        description: 'New display name (max 20 chars)'
+        type: string
+        required: true
+      dry_run:
+        description: 'Dry run (no writes). Set false to actually rename.'
+        type: boolean
+        required: false
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rename-player-entries
+  cancel-in-progress: false
+
+jobs:
+  rename:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Rename
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          TARGET_UID: ${{ github.event.inputs.uid }}
+          NEW_NAME: ${{ github.event.inputs.new_name }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "FIREBASE_SERVICE_ACCOUNT secret is not set"; exit 1
+          fi
+          if [ "${{ github.event.inputs.dry_run }}" = "false" ]; then
+            echo "APPLY mode"
+            node scripts/rename-player-entries.mjs "$TARGET_UID" "$NEW_NAME" --apply
+          else
+            echo "DRY RUN (default). Set dry_run=false to apply."
+            node scripts/rename-player-entries.mjs "$TARGET_UID" "$NEW_NAME"
+          fi
