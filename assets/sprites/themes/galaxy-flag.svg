@@ -1,0 +1,9 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
+<!-- A survey probe, planted and blinking. -->
+<path d='M28 50 L24 58 M36 50 L40 58 M32 50 L32 58' stroke='#9070c0' stroke-width='2.6' stroke-linecap='round'/>
+<rect x='24' y='32' width='16' height='18' rx='3' fill='#3a1870' stroke='#b450ff' stroke-width='2.4'/>
+<path d='M32 32 L32 22' stroke='#b450ff' stroke-width='2.4'/>
+<path d='M24 20 A8 4.6 0 0 1 40 20' fill='none' stroke='#ea80fc' stroke-width='2.6'/>
+<circle cx='32' cy='18' r='3.2' fill='#ff2d78'/>
+<circle cx='32' cy='18' r='6' fill='none' stroke='#ff2d78' stroke-width='1.2' opacity='0.5'/>
+</svg>

@@ -1,9 +1,18 @@
-// Sprite loader for the Tier 1 default-look icons.
+// Sprite loader for the Tier 1 default-look icons AND the per-theme
+// object sets.
 //
-// Sprites render only when the resolved emoji (after theme + emoji-pack
-// overrides) equals the canonical default for that key — Classic/Dark theme
-// plus the Default pack. Themed alternates (Ocean fish, Pirate skull, etc.)
-// and pack overrides stay as text emoji so themes keep their personality.
+// Tier 1 sprites render only when the resolved emoji (after theme +
+// emoji-pack overrides) equals the canonical default for that key —
+// Classic/Dark theme plus the Default pack.
+//
+// THEME_SPRITES (below) are each world's objects drawn in its material
+// language — the editorial ink blot, the sumi-e hanko stroke, the
+// blueprint drafted bomb. A theme sprite renders only when the resolved
+// emoji equals THAT THEME's own object emoji, so a player's emoji-pack
+// override always wins, and undrawn themes fall back to their emoji
+// untouched. Ship world by world.
+
+import { THEME_UNLOCKS } from './themeManager.js';
 
 const SPRITES = {
   mine:       { defaultEmoji: '💣', url: 'assets/sprites/mine.png' },
@@ -51,7 +60,43 @@ export function preloadSprites() {
   }
 }
 
+// Per-theme object sets: theme -> { mine, flag, strikeCell } -> svg.
+// Batch 1 (2026-06-11): the eight concept worlds + chalkboard's chalk
+// set + noir's chalk-outline strike.
+const T = 'assets/sprites/themes/';
+const THEME_SPRITES = {
+  editorial:    { mine: T + 'editorial-mine.svg',    flag: T + 'editorial-flag.svg',    strikeCell: T + 'editorial-strike.svg' },
+  sumie:        { mine: T + 'sumie-mine.svg',        flag: T + 'sumie-flag.svg',        strikeCell: T + 'sumie-strike.svg' },
+  blueprint:    { mine: T + 'blueprint-mine.svg',    flag: T + 'blueprint-flag.svg',    strikeCell: T + 'blueprint-strike.svg' },
+  cartography:  { mine: T + 'cartography-mine.svg',  flag: T + 'cartography-flag.svg',  strikeCell: T + 'cartography-strike.svg' },
+  chalkboard:   { mine: T + 'chalkboard-mine.svg',   flag: T + 'chalkboard-flag.svg',   strikeCell: T + 'chalkboard-strike.svg' },
+  noir:         { strikeCell: T + 'noir-strike.svg' },
+  splitflap:    { mine: T + 'splitflap-mine.svg',    flag: T + 'splitflap-flag.svg',    strikeCell: T + 'splitflap-strike.svg' },
+  galaxy:       { mine: T + 'galaxy-mine.svg',       flag: T + 'galaxy-flag.svg',       strikeCell: T + 'galaxy-strike.svg' },
+  circuitboard: { mine: T + 'circuitboard-mine.svg', flag: T + 'circuitboard-flag.svg', strikeCell: T + 'circuitboard-strike.svg' },
+  comic:        { mine: T + 'comic-mine.svg',        flag: T + 'comic-flag.svg',        strikeCell: T + 'comic-strike.svg' },
+};
+
+// The theme's OWN emoji for a key (strikeCell falls back to mine, the
+// same chain getThemeEmoji uses). A theme sprite only replaces this.
+function themeDefaultEmoji(themeInfo, key) {
+  if (!themeInfo) return null;
+  if (key === 'strikeCell') return themeInfo.strikeCell || themeInfo.mine;
+  return themeInfo[key];
+}
+
+export function getThemeSpriteUrl(key, resolvedEmoji) {
+  const theme = document.documentElement.getAttribute('data-theme') || 'classic';
+  const set = THEME_SPRITES[theme];
+  if (!set || !set[key]) return null;
+  // resolvedEmoji differing from the theme's own object means an
+  // emoji-pack override is active — the player's choice wins.
+  return resolvedEmoji === themeDefaultEmoji(THEME_UNLOCKS[theme], key) ? set[key] : null;
+}
+
 export function getSpriteUrl(key, resolvedEmoji) {
+  const themed = getThemeSpriteUrl(key, resolvedEmoji);
+  if (themed) return themed;
   const s = SPRITES[key];
   if (!s || resolvedEmoji !== s.defaultEmoji) return null;
   return s.url;

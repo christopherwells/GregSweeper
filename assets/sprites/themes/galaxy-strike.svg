@@ -1,0 +1,9 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
+<!-- The star collapses, then the flash gets out. -->
+<circle cx='32' cy='32' r='8' fill='#fff6ff'/>
+<circle cx='32' cy='32' r='12' fill='none' stroke='#ea80fc' stroke-width='2.4' opacity='0.85'/>
+<g stroke='#82b1ff' stroke-width='2.8' stroke-linecap='round'>
+<path d='M32 16 L32 6 M32 48 L32 58 M16 32 L6 32 M48 32 L58 32'/>
+<path d='M21 21 L15 15 M43 21 L49 15 M21 43 L15 49 M43 43 L49 49' opacity='0.75'/>
+</g>
+</svg>

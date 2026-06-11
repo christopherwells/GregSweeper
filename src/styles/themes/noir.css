@@ -5,8 +5,16 @@
   --color-bg: #14141a;
   --color-app-bg: #0c0c11;
   --color-cell-hidden: #2a2a32;
-  --color-cell-hidden-hover: #34343e;
-  --color-cell-hidden-gradient: linear-gradient(145deg, #32323c, #222229);
+  --color-cell-hidden-hover: rgba(58, 58, 68, 0.55);
+  /* THE WINDOW: venetian-blind light rakes across the whole unrevealed
+     board at a slight tilt — one beam of streetlight through the office
+     blinds, not per-tile decoration. Translucent fog lets the bands run
+     unbroken across the grid; revealed cells cut to the dark room. */
+  --bg-fog-art: repeating-linear-gradient(96deg,
+      rgba(242, 239, 230, 0.085) 0 14px,
+      rgba(242, 239, 230, 0.015) 14px 22px,
+      transparent 22px 44px);
+  --color-cell-hidden-gradient: linear-gradient(145deg, rgba(50,50,60,0.45), rgba(34,34,41,0.34));
   --color-cell-revealed: #16161c;
   --color-cell-border-light: #44444e;
   --color-cell-border-dark: #0e0e13;

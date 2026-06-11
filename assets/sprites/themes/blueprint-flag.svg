@@ -1,0 +1,6 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
+<!-- The red revision triangle. -->
+<path d='M32 10 L56 52 L8 52 Z' fill='none' stroke='#ff6b6b' stroke-width='4.5' stroke-linejoin='round'/>
+<path d='M32 26 L32 40' stroke='#ff6b6b' stroke-width='4' stroke-linecap='round'/>
+<circle cx='32' cy='46' r='1.4' fill='#ff6b6b'/>
+</svg>
