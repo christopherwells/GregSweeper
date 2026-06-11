@@ -1,19 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <!-- Challenge: the classic two-horned pickaxe sunk into a tile, spark
-       at the bite. Drawn upright, rotated as one group so the geometry
-       stays sane; silhouette reads at 22px. -->
-  <!-- The tile being worked -->
-  <rect x="50" y="66" width="54" height="48" rx="9" fill="#b6bcc8" stroke="#232838" stroke-width="6"/>
-  <rect x="50" y="66" width="54" height="19" rx="9" fill="#cdd3de"/>
-  <path d="M62 86 L68 93 L61 100 L67 107" fill="none" stroke="#3a4258" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-  <!-- Pickaxe -->
-  <g transform="rotate(38 52 50)">
-    <rect x="46.5" y="18" width="11" height="74" rx="5.5" fill="#a8763e" stroke="#232838" stroke-width="5.5"/>
-    <rect x="49" y="20" width="4" height="70" rx="2" fill="#c79355"/>
-    <path d="M52 14 C36 4 16 8 4 26 C18 20 34 23 46 32 L58 32 C70 23 86 20 100 26 C88 8 68 4 52 14 Z"
-          fill="#c8ccd4" stroke="#232838" stroke-width="5.5" stroke-linejoin="round"/>
-    <path d="M16 18 C28 11 42 12 50 17" fill="none" stroke="#eef1f5" stroke-width="4.5" stroke-linecap="round"/>
+  <!-- Challenge: the climb. A summit with the flag planted and a
+       checkpoint path of tiles working up the face — 120 levels,
+       checkpoints every 5. Says "progression," not "tool." -->
+  <!-- Mountain -->
+  <path d="M10 112 L52 32 L74 70 L88 52 L118 112 Z" fill="#5d8ad8" stroke="#232838" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M52 32 L62 50 L52 58 L44 47 Z" fill="#eef3fb" stroke="#232838" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M88 52 L96 66 L84 64 Z" fill="#eef3fb"/>
+  <path d="M52 32 L74 70 L88 52 L118 112 L74 112 Z" fill="#3a5fa6" opacity="0.55"/>
+  <!-- Checkpoint path: tiles stepping up the slope -->
+  <g stroke="#232838" stroke-width="3.5" stroke-linejoin="round">
+    <rect x="30" y="96" width="13" height="13" rx="3" fill="#dfe5ee"/>
+    <rect x="44" y="80" width="13" height="13" rx="3" fill="#dfe5ee"/>
+    <rect x="38" y="62" width="13" height="13" rx="3" fill="#5ad07a"/>
   </g>
-  <!-- Spark at the bite point -->
-  <path d="M46 60 L56 54 M42 68 L32 66 M50 74 L58 80" stroke="#ffd23e" stroke-width="5" stroke-linecap="round"/>
+  <!-- Summit flag -->
+  <path d="M52 30 L52 8" stroke="#232838" stroke-width="5" stroke-linecap="round"/>
+  <path d="M52 9 L72 14 L52 21 Z" fill="#e4453a" stroke="#232838" stroke-width="4" stroke-linejoin="round"/>
 </svg>

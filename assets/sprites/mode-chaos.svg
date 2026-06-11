@@ -1,20 +1,26 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <!-- Chaos: a violent vortex tearing tiles apart, lightning in the
-       seams — aggressive where the wormhole modifier is "physics".
-       Magenta-purple storm palette. -->
-  <!-- Spiral arms -->
-  <g fill="none" stroke-linecap="round">
-    <path d="M64 64 C64 44 84 38 98 48 C88 42 72 46 70 60" stroke="#a04ad8" stroke-width="10"/>
-    <path d="M64 64 C84 64 90 84 80 98 C86 88 82 72 68 70" stroke="#d050ff" stroke-width="10"/>
-    <path d="M64 64 C44 64 38 44 48 30 C42 40 46 56 60 58" stroke="#7a2db0" stroke-width="10"/>
-    <path d="M64 64 C64 84 44 90 30 80 C40 86 56 82 58 68" stroke="#b86ae8" stroke-width="10"/>
+  <!-- Chaos: a roll of the dice — random modifiers every round, no
+       guarantees. One die shows a mine as its center pip. -->
+  <!-- Back die, mid-tumble -->
+  <g transform="rotate(-18 44 52)">
+    <rect x="20" y="28" width="48" height="48" rx="10" fill="#b86ae8" stroke="#232838" stroke-width="6"/>
+    <circle cx="34" cy="42" r="5" fill="#2a0a3e"/>
+    <circle cx="54" cy="62" r="5" fill="#2a0a3e"/>
   </g>
-  <circle cx="64" cy="64" r="9" fill="#2a0a3e" stroke="#d050ff" stroke-width="4"/>
-  <!-- Torn tile shards flying out -->
-  <g stroke="#232838" stroke-width="4" stroke-linejoin="round">
-    <path d="M99 24 L113 28 L106 40 L95 34 Z" fill="#dfe5ee" transform="rotate(18 104 32)"/>
-    <path d="M16 88 L29 86 L28 99 L17 99 Z" fill="#c2c9d6" transform="rotate(-14 22 92)"/>
+  <!-- Front die: the mine pip -->
+  <g transform="rotate(12 80 80)">
+    <rect x="54" y="54" width="52" height="52" rx="10" fill="#f3f6fb" stroke="#232838" stroke-width="6"/>
+    <circle cx="66" cy="66" r="4.5" fill="#232838"/>
+    <circle cx="94" cy="66" r="4.5" fill="#232838"/>
+    <circle cx="66" cy="94" r="4.5" fill="#232838"/>
+    <circle cx="94" cy="94" r="4.5" fill="#232838"/>
+    <!-- Center pip is a tiny mine -->
+    <circle cx="80" cy="80" r="6.5" fill="#2c3142"/>
+    <path d="M80 70 L80 73 M80 87 L80 90 M70 80 L73 80 M87 80 L90 80" stroke="#2c3142" stroke-width="3" stroke-linecap="round"/>
   </g>
-  <!-- Lightning -->
-  <path d="M88 88 L78 102 L86 102 L74 118" fill="none" stroke="#ffd23e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Tumble arcs -->
+  <g stroke="#d050ff" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.85">
+    <path d="M14 92 C18 102 26 110 36 114"/>
+    <path d="M96 22 C106 26 114 34 118 44"/>
+  </g>
 </svg>
