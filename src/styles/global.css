@@ -1763,10 +1763,14 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   font-weight: 700;
 }
 
+/* Theme picker: each theme is a CARD with a live mini-board preview —
+   real cell classes inside a [data-theme] wrapper, so the theme's own
+   fog, numbers, objects, and fog-art render. Replaced the old
+   circle-swatch look (a gradient dot said nothing about the world). */
 .theme-swatches {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 10px;
 }
 
 .theme-swatch {
@@ -1774,7 +1778,7 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  padding: 10px 8px;
+  padding: 8px 8px 9px;
   border: 2px solid transparent;
   background: var(--color-btn-bg);
   border-radius: 12px;
@@ -1795,12 +1799,31 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   box-shadow: 0 0 0 2px var(--color-accent-glow);
 }
 
-.swatch-color {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: block;
-  box-shadow: var(--shadow-sm);
+/* The mini-board: 4x2 of real .cell elements. Sized locally (the
+   global .cell reads --cell-size, which JS owns on the live #board). */
+.swatch-board {
+  display: grid;
+  grid-template-columns: repeat(4, 21px);
+  gap: 2px;
+  padding: 4px;
+  border-radius: 6px;
+  background-color: var(--color-border, #555);
+  background-image: var(--bg-fog-art, none);
+  background-size: 100% 100%;
+  pointer-events: none;
+}
+
+.swatch-board .cell {
+  width: 21px;
+  height: 21px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  line-height: 1;
+  border-radius: 3px;
+  box-shadow: none;
 }
 
 .swatch-name {
@@ -1834,7 +1857,7 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   box-shadow: none;
 }
 
-.theme-swatch.locked .swatch-color {
+.theme-swatch.locked .swatch-board {
   filter: grayscale(0.8) brightness(0.7);
 }
 
