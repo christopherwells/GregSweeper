@@ -101,9 +101,9 @@
   --marker-wormhole-0: rgba(176, 110, 28, 0.26);
   --marker-wormhole-1: rgba(140, 60, 140, 0.24);
   --marker-wormhole-2: rgba(50, 120, 70, 0.24);
-  --marker-mirror-0: rgba(42, 90, 138, 0.92);
-  --marker-mirror-1: rgba(106, 74, 136, 0.92);
-  --marker-mirror-2: rgba(168, 90, 40, 0.92);
+  --marker-mirror-0: rgba(26, 110, 224, 0.95);
+  --marker-mirror-1: rgba(212, 42, 140, 0.95);
+  --marker-mirror-2: rgba(16, 154, 48, 0.95);
   --marker-plate-border: rgba(184, 51, 32, 0.9);
   --marker-plate-timer: #b83320;
 }

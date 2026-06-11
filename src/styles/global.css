@@ -820,12 +820,19 @@ body::before {
    own surface, grout reads only in the gaps + corner notches.
 
    Special-cell markers whose cue lives on the cell FACE are excluded so the
-   seal never buries them: the background tints (sonar/compass/wormhole) and the
-   cells whose ::after is a status glyph (locked/pressure-plate/defused). Liar
-   (outline), mirror (border) and mystery (text) survive the body layer
-   untouched, so they keep the full seal. An excluded cell's gaps are still
-   covered by the solid fill of any plain neighbor. */
-#board.fx-on .cell.revealed:not(.sonar-cell):not(.compass-cell):not(.wormhole-cell):not(.locked-cell):not(.pressure-plate):not(.defused)::before {
+   seal never buries them: the background tints (sonar/compass/wormhole), the
+   cells whose ::after is a status glyph (locked/pressure-plate/defused), and
+   MIRROR - its cue is the dashed border, and because the fx-on z-lift makes
+   each revealed cell a stacking context, negative-z pseudos paint ABOVE the
+   element's own background and borders (CSS painting order: backgrounds and
+   borders first, then negative-z children) - the seal would bury the dashes
+   (2026-06-11 mirror-daily-on-chalkboard bug). Liar (outline; outlines paint
+   last) and mystery (text) genuinely survive and keep the full seal. An
+   excluded cell's gaps are still covered by the solid fill of any plain
+   neighbor; a mirror PAIR is adjacent, so the seam between the two excluded
+   cells can show a 1px effect sliver - accepted, same as two adjacent tint
+   markers. */
+#board.fx-on .cell.revealed:not(.sonar-cell):not(.compass-cell):not(.wormhole-cell):not(.locked-cell):not(.pressure-plate):not(.defused):not(.mirror-cell)::before {
   content: '';
   position: absolute;
   pointer-events: none;
@@ -840,7 +847,7 @@ body::before {
   background: var(--cell-gap-seal, var(--color-cell-revealed));
   z-index: -2;
 }
-html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):not(.compass-cell):not(.wormhole-cell):not(.locked-cell):not(.pressure-plate):not(.defused)::after {
+html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):not(.compass-cell):not(.wormhole-cell):not(.locked-cell):not(.pressure-plate):not(.defused):not(.mirror-cell)::after {
   content: '';
   position: absolute;
   pointer-events: none;
