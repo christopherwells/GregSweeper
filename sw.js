@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v1.6.25';
+const CACHE_NAME = 'gregsweeper-v1.6.26';
 const ASSETS = [
   './',
   './index.html',
@@ -73,6 +73,11 @@ const ASSETS = [
   './src/diagnostics/errorReporter.js',
   './src/ui/tutorialManager.js',
   './src/logic/selectWeeklyRngSeed.js',
+  // leaderboardViews is a STATIC import of main.js (boot-critical);
+  // friendCodes/firebaseFriends are lazy but precached for offline.
+  './src/logic/leaderboardViews.js',
+  './src/logic/friendCodes.js',
+  './src/firebase/firebaseFriends.js',
   './assets/icon.svg',
   './assets/icon-192.png',
   './assets/icon-512.png',

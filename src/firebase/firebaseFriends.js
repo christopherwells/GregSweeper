@@ -61,17 +61,21 @@ export async function createFriendCode() {
     name: (getPlayerName() || 'Player').slice(0, 20),
     createdAt: firebase.database.ServerValue.TIMESTAMP,
   };
-  // Collision odds at 30^6 are negligible, but the create-if-absent
-  // transaction makes a clash a clean retry instead of a hijack.
+  // Plain set(), NOT a transaction: transactions need read access to
+  // the slot, and the rules read gate (createdAt > now - TTL) evaluates
+  // FALSE on a nonexistent node, so the transaction's initial read is
+  // denied. set() is write-only; the create-only-if-absent write rule
+  // still rejects a clash with an existing live code (permission
+  // denied), which we treat as a retry. Collision odds at 30^6 are
+  // negligible anyway.
   for (let attempt = 0; attempt < 3; attempt++) {
     const code = generateCode();
-    const result = await db().ref('friendCodes/' + code)
-      .transaction(cur => (cur === null ? payload : undefined));
-    if (result.committed) {
+    try {
+      await db().ref('friendCodes/' + code).set(payload);
       const entry = { code, createdAtLocal: Date.now() };
       safeSetJSON(MY_CODE_KEY, entry);
       return entry;
-    }
+    } catch { /* collision or transient — retry with a fresh code */ }
   }
   throw new Error('could not allocate a code');
 }
