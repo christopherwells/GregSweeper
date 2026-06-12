@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-<!-- Greg inked for the comic page: heavy black outlines, flat color,
-     halftone shading, a speed mark. -->
+<!-- Comic Greg, v2 inked the Marvel way: varied line weight, solid
+     spot blacks for shadow, flat color. No screen tone. -->
 <!-- Legs -->
 <g fill="none" stroke-linecap="round" stroke-linejoin="round">
   <g stroke="#1d1812" stroke-width="4.6">
@@ -30,40 +30,33 @@
   <path d="M25 18.5 L23 12.5" stroke="#4d9e57" stroke-width="2.2"/>
   <path d="M39 18.5 L41 12.5" stroke="#4d9e57" stroke-width="2.2"/>
 </g>
-<circle cx="22.5" cy="9.5" r="4.6" fill="#f5efdf" stroke="#1d1812" stroke-width="2.6"/>
-<circle cx="41.5" cy="9.5" r="4.6" fill="#f5efdf" stroke="#1d1812" stroke-width="2.6"/>
+<circle cx="22.5" cy="9.5" r="4.6" fill="#f5efdf" stroke="#1d1812" stroke-width="2.8"/>
+<circle cx="41.5" cy="9.5" r="4.6" fill="#f5efdf" stroke="#1d1812" stroke-width="2.8"/>
 <circle cx="23.2" cy="10.2" r="1.9" fill="#1d1812"/>
 <circle cx="40.8" cy="10.2" r="1.9" fill="#1d1812"/>
-<!-- Shell: flat color, heavy ink -->
+<!-- Shell: flat color, heavy contour -->
 <path d="M11 31 C11 24 16 19 22 17.5 Q27 15 32 15 Q37 15 42 17.5 C48 19 53 24 53 31 C53 38 45 43 32 43 C19 43 11 38 11 31 Z"
-      fill="#4d9e57" stroke="#1d1812" stroke-width="3"/>
-<!-- Halftone shading, lower shell -->
-<g fill="#1d1812" opacity="0.4">
-  <circle cx="22" cy="38" r="1"/>
-  <circle cx="27" cy="39.5" r="1"/>
-  <circle cx="32" cy="40" r="1"/>
-  <circle cx="37" cy="39.5" r="1"/>
-  <circle cx="42" cy="38" r="1"/>
-  <circle cx="24.5" cy="36" r="0.9"/>
-  <circle cx="29.5" cy="37" r="0.9"/>
-  <circle cx="34.5" cy="37" r="0.9"/>
-  <circle cx="39.5" cy="36" r="0.9"/>
-</g>
-<!-- Ink highlight stroke, upper-left shell -->
-<path d="M15 25 A 18 12 0 0 1 24 18.5" stroke="#f5efdf" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.8"/>
-<!-- Open smile -->
+      fill="#4d9e57" stroke="#1d1812" stroke-width="3.2"/>
+<!-- Spot black: shadow crescent along the lower shell -->
+<path d="M14 35 C18 40.5 27 42.5 32 42.5 C37 42.5 46 40.5 50 35 C47 41 39 43.5 32 43.5 C25 43.5 17 41 14 35 Z"
+      fill="#1d1812"/>
+<!-- Thin interior stroke: shell ridge -->
+<path d="M18 24 Q32 18 46 24" fill="none" stroke="#1d1812" stroke-width="1.4" opacity="0.85"/>
+<!-- Open smile, solid black with tongue -->
 <path d="M27 31 Q32 38 37 31 Z" fill="#1d1812" stroke="#1d1812" stroke-width="1.8" stroke-linejoin="round"/>
+<path d="M29.5 34 Q32 36 34.5 34 Q33 35.6 32 35.6 Q31 35.6 29.5 34 Z" fill="#c0392b"/>
 <!-- Big right pincer + pencil -->
-<ellipse cx="54" cy="22" rx="6.2" ry="5" fill="#4d9e57" stroke="#1d1812" stroke-width="2.8" transform="rotate(-35 54 22)"/>
+<ellipse cx="54" cy="22" rx="6.2" ry="5" fill="#4d9e57" stroke="#1d1812" stroke-width="3" transform="rotate(-35 54 22)"/>
+<path d="M52 26 A 6 5 0 0 1 49 18" fill="none" stroke="#1d1812" stroke-width="2" transform="rotate(-35 54 22)" opacity="0.9"/>
 <g transform="rotate(-62 53 20)">
   <rect x="47" y="18" width="13" height="4" rx="1" fill="#f0c43a" stroke="#1d1812" stroke-width="1.8"/>
   <path d="M60 18 L63 20 L60 22 Z" fill="#1d1812"/>
 </g>
 <!-- Clipboard -->
 <g transform="rotate(-12 8 30)">
-  <rect x="0" y="19" width="16" height="22" rx="2" fill="#f5efdf" stroke="#1d1812" stroke-width="2.6"/>
+  <rect x="0" y="19" width="16" height="22" rx="2" fill="#f5efdf" stroke="#1d1812" stroke-width="2.8"/>
   <rect x="4.5" y="16" width="7" height="4.5" rx="1.5" fill="#1d1812"/>
-  <g fill="#1d1812" opacity="0.35">
+  <g fill="#1d1812" opacity="0.3">
     <rect x="2.5" y="24" width="3.5" height="3.5" rx="0.7"/>
     <rect x="7" y="24" width="3.5" height="3.5" rx="0.7"/>
     <rect x="11.5" y="24" width="3.5" height="3.5" rx="0.7"/>
@@ -72,8 +65,7 @@
   </g>
   <rect x="7" y="28.5" width="3.5" height="3.5" rx="0.7" fill="#f0c43a"/>
 </g>
-<!-- Big left pincer -->
-<ellipse cx="14" cy="21" rx="5.8" ry="4.8" fill="#4d9e57" stroke="#1d1812" stroke-width="2.8" transform="rotate(28 14 21)"/>
-<!-- Speed mark -->
-<path d="M57 34 L62 33 M57 38 L61 38" stroke="#1d1812" stroke-width="1.8" stroke-linecap="round"/>
+<!-- Big left pincer, spot-black underside -->
+<ellipse cx="14" cy="21" rx="5.8" ry="4.8" fill="#4d9e57" stroke="#1d1812" stroke-width="3" transform="rotate(28 14 21)"/>
+<path d="M11 24.5 A 6 5 0 0 0 18.5 23.5" fill="none" stroke="#1d1812" stroke-width="2" opacity="0.9"/>
 </svg>
