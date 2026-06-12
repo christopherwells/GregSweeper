@@ -8,6 +8,30 @@
 // ── Shared constants ──────────────────────────────────
 export const PLATE_MIN_SECONDS = 8;
 export const PLATE_SECONDS_PER_STEP = 10;
+// Each disarm target the Pass-A estimator could NOT resolve needs
+// subset/tank reasoning; it is billed at PLATE_TIER_WEIGHT x the par
+// model's fitted per-tier cost (the dearer of pattern/search — fit-day
+// noise can invert the two). Calibration, not proof: the certificate
+// still doesn't model wall-clock, but the deadline now scales with the
+// same fitted difficulty prices par uses instead of ignoring hard
+// reasoning entirely. The cap keeps a many-hard-target plate from
+// becoming a non-event.
+export const PLATE_TIER_WEIGHT = 8;
+export const PLATE_MAX_SECONDS = 90;
+
+/**
+ * Seconds for a pressure-plate countdown, from the disarm estimate.
+ * @param {{steps: number, unsolved: number}} est estimatePlateMovesToDisarm result
+ * @param {object} model PAR_MODEL (injectable for tests)
+ */
+export function plateSeconds(est, model = PAR_MODEL) {
+  const tierSec = Math.max(model.secPerPatternMove || 0, model.secPerSearchMove || 0);
+  // A stuck target can never price below the classic per-step rate,
+  // whatever the day's refit put in the tier coefficients.
+  const perHardTarget = Math.max(PLATE_SECONDS_PER_STEP, Math.ceil(PLATE_TIER_WEIGHT * tierSec));
+  const raw = est.steps * PLATE_SECONDS_PER_STEP + est.unsolved * perHardTarget;
+  return Math.max(PLATE_MIN_SECONDS, Math.min(PLATE_MAX_SECONDS, Math.round(raw)));
+}
 export const LIFELINE_WIN_REWARD_CHANCE = 0.3;
 
 // Board width is hard-capped at 12 cells on every viewport. Wider boards
