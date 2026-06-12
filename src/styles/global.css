@@ -3920,6 +3920,38 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   #app {
     padding: 12px 10px 10px;
     border-radius: 12px;
+    gap: 6px;
+  }
+
+  /* In-game, on a phone, every row above the board is rent. The
+     wordmark block is the one purely decorative tenant: the title
+     screen owns the brand, the Certified chip carries the contract,
+     and About is reachable from Settings. Desktop keeps the wordmark
+     (and its tap-for-About) — space is free there. */
+  #app #title-bar {
+    display: none;
+  }
+
+  #game-header {
+    padding: 6px 10px;
+  }
+
+  #game-info-bar {
+    padding: 2px 12px;
+  }
+
+  #flag-mode-bar {
+    padding: 2px 0;
+  }
+
+  .flag-toggle-btn {
+    min-height: 40px;
+    padding: 8px 12px;
+  }
+
+  .active-gimmick-bar {
+    margin: 2px auto;
+    padding: 3px 10px;
   }
 
   #game-title {
