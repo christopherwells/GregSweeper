@@ -31,7 +31,7 @@ import {
   loadDailyLeaderboard, addDailyLeaderboardEntry,
   saveModePowerUps, loadGameState,
   isOnboarded, setOnboarded,
-  isDailyCompleted,
+  isDailyCompleted, markDailyCompleted,
   getDailyStreak,
   getPlayerName, setPlayerName,
   getLastSeenVersion, setLastSeenVersion,
@@ -79,6 +79,7 @@ import { isModifierPopupDisabled, setModifierPopupDisabled, getGimmickDefs, getD
 import { isStorageFailing, safeGet, safeSet, safeRemove, requestPersistentStorage } from './storage/storageAdapter.js';
 import { pauseTimer, resumeTimer, stopTimer, recordInteraction } from './game/timerManager.js';
 import { isLiveGameExpired } from './logic/resumeEligibility.js';
+import { findRowByUid, findRowForBoard } from './logic/scoreRowMatch.js';
 import { startTutorial, startWarmup } from './ui/tutorialManager.js';
 import { initErrorReporter, setErrorReporterCodeVersion, reportTestError, reportCaughtError } from './diagnostics/errorReporter.js';
 
@@ -335,46 +336,62 @@ async function runStartupGate() {
     }
   }
 
-  // Stale-completion check: only clear the local "completed today"
-  // flag when we POSITIVELY confirm a divergent rngSeed on a Firebase
-  // score we've matched to this user. If we can't find a score (uid
-  // mismatch, network race, fresh device, offline submission, etc.)
-  // we trust the local flag — it's set because the user on this
-  // device actually completed the daily, and absence of a Firebase
-  // record is more often a sync issue than a server-side deletion.
+  // Completion ↔ cloud reconciliation (one read, both directions).
+  // "Completed today" is a per-ACCOUNT fact; the localStorage flag is
+  // just this device's cache of it. Two ways they can disagree:
   //
-  // The earlier version of this check cleared the flag on any "non-
-  // clean" outcome including missing-score, which let the user replay
-  // a daily they had already completed when their uid lookup raced.
-  if (firebaseReady && !customSeed && isDailyCompleted(today)) {
-    setBootStatus('Verifying today\'s play…');
-    const myUid = await _waitForUid(3000);
+  //  - Local flag SET, cloud row DIVERGENT (different rngSeed than the
+  //    canonical): the player completed a wrong board (cold-load race,
+  //    pre-canonical client). Clear the flag + cached par/moves so they
+  //    can play the real canonical. Only a POSITIVELY divergent row
+  //    clears — a missing row (uid mismatch, network race, offline
+  //    submission) trusts the local flag; an earlier version cleared on
+  //    missing-score and let raced lookups unlock replays.
+  //
+  //  - Local flag UNSET, cloud row MATCHING the canonical: this account
+  //    already completed today's board on ANOTHER device. Adopt the
+  //    completion locally (mark + drop any in-progress daily save) so
+  //    the Daily card reads "Completed!" and the player can't finish
+  //    the same board twice and double-submit. Adoption requires an
+  //    explicit effective-seed match — a divergent row must NOT lock
+  //    the player out of the canonical (that is exactly what the clear
+  //    branch unlocks). The submission-level dedupe in
+  //    firebaseLeaderboard backs this up for mid-session races the
+  //    boot check can't see.
+  //
+  // Test env: skipped entirely — isDailyCompleted/markDailyCompleted
+  // are no-ops there, and clearGameState would touch localStorage
+  // shared with the production origin.
+  if (firebaseReady && !customSeed && !isTestEnvironment()) {
     const canonicalSeed = state.canonicalDailyBoard?.raw?.rngSeed || null;
-    if (myUid && canonicalSeed) {
-      try {
-        const snap = await firebase.database().ref(`daily/${today}`).once('value');
-        let myScore = null;
-        snap.forEach((child) => {
-          const v = child.val();
-          if (v && v.uid === myUid) {
-            myScore = v;
-            return true; // stop iteration
+    if (canonicalSeed) {
+      setBootStatus('Verifying today\'s play…');
+      const myUid = await _waitForUid(3000);
+      if (myUid) {
+        try {
+          const snap = await firebase.database().ref(`daily/${today}`).once('value');
+          const rows = snap.val();
+          if (isDailyCompleted(today)) {
+            const myScore = findRowByUid(rows, myUid);
+            const myScoreSeed = myScore?.rngSeed || null;
+            if (myScore && myScoreSeed && myScoreSeed !== canonicalSeed) {
+              // Confirmed divergent — clear the completion flag plus the
+              // cached par/moves so newGame recomputes them against the
+              // canonical layout. Don't touch streak fields; replaying
+              // maintains the streak via lastDailyDate === today.
+              safeRemove('minesweeper_daily_completed_date');
+              safeRemove('minesweeper_daily_par_' + today);
+              safeRemove('minesweeper_daily_moves_' + today);
+            }
+          } else if (findRowForBoard(rows, myUid, today, canonicalSeed)) {
+            // Completed on another device — adopt. Any in-progress local
+            // attempt is moot; first completion wins.
+            markDailyCompleted(today);
+            clearGameState('daily');
           }
-          return undefined;
-        });
-        const myScoreSeed = myScore?.rngSeed || null;
-        const isDivergent = myScore && myScoreSeed && myScoreSeed !== canonicalSeed;
-        if (isDivergent) {
-          // Confirmed divergent — clear the completion flag plus the
-          // cached par/moves so newGame recomputes them against the
-          // canonical layout. Don't touch streak fields; replaying
-          // maintains the streak via lastDailyDate === today.
-          safeRemove('minesweeper_daily_completed_date');
-          safeRemove('minesweeper_daily_par_' + today);
-          safeRemove('minesweeper_daily_moves_' + today);
+        } catch (err) {
+          console.warn('startup gate: completion verification failed:', err.message);
         }
-      } catch (err) {
-        console.warn('startup gate: completion verification failed:', err.message);
       }
     }
   }
@@ -3208,13 +3225,19 @@ $('#gameover-submit-daily').addEventListener('click', async (e) => {
       rngSeed: state.dailyRngSeed || dateStr,
     });
     // Skip personal-history write for practice dailies — they play on a
-    // custom seed and don't belong on the regular daily timeline.
-    if (!state.isDailyPractice) {
+    // custom seed and don't belong on the regular daily timeline. Also
+    // skipped on 'duplicate' (this account already posted this board
+    // from another device): first completion wins the history slot.
+    if (!state.isDailyPractice && submitOk !== 'duplicate') {
       saveDailyHistoryEntry(dateStr, { time: scoreTime });
     }
     const dailySubmitForm = $('#daily-submit-form');
     if (dailySubmitForm) dailySubmitForm.classList.add('hidden');
-    showToast(submitOk ? '✅ Score submitted!' : '📡 Saved. Uploads when you reconnect');
+    if (submitOk === 'duplicate') {
+      showToast('Already on the board from another device');
+    } else {
+      showToast(submitOk ? '✅ Score submitted!' : '📡 Saved. Uploads when you reconnect');
+    }
   }
 });
 
@@ -3675,14 +3698,24 @@ async function init() {
     // under a non-today seed (e.g. after you've finished today's). Practice
     // runs submit to Firebase so the backend gets your uid, but don't
     // touch streak, bestTimes, completion flags, or personal history.
-    state.gameMode = 'daily';
     const customSeed = urlParams.get('seed');
-    if (customSeed) {
-      state.dailySeed = customSeed;
-      state.isDailyPractice = true;
+    if (!customSeed && isDailyCompleted(getLocalDateString())) {
+      // Already completed (possibly adopted from another device by the
+      // startup gate) — the Daily card gates this, and a notification
+      // tap must not bypass it into a replay + duplicate submission.
+      // Mirror the weekly already-played branch: title screen + toast.
+      showTitleScreen();
+      showToast("Already done for today. Weekly's open if you want more.");
+      if (!tryResumeGame()) await newGame(); else rearmPlateTimers();
+    } else {
+      state.gameMode = 'daily';
+      if (customSeed) {
+        state.dailySeed = customSeed;
+        state.isDailyPractice = true;
+      }
+      hideTitleScreen();
+      if (!tryResumeGame()) await newGame(); else rearmPlateTimers();
     }
-    hideTitleScreen();
-    if (!tryResumeGame()) await newGame(); else rearmPlateTimers();
   } else if (deepLinkMode === 'weekly') {
     // Deep link to weekly mode (used by push notifications and direct
     // shares). Drop into the weekly card's click-handler equivalent

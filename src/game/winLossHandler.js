@@ -851,7 +851,10 @@ export function handleWin() {
     if (savedName) {
       // Auto-submit with saved name
       dailySubmitForm.classList.add('hidden');
-      const dateStr = getLocalDateString();
+      // Anchor to the puzzle's seed, not the current local date (same as
+      // the manual-submit path in main.js) — finishing at 12:00:01 AM
+      // would otherwise post yesterday's board onto today's leaderboard.
+      const dateStr = state.dailySeed || getLocalDateString();
       const scoreTime = Math.round((state.preciseTime || state.elapsedTime) * 10) / 10;
       addDailyLeaderboardEntry(dateStr, savedName, scoreTime);
       // CRITICAL: this auto-submit path (used whenever the player has a
@@ -871,15 +874,30 @@ export function handleWin() {
         // unconditionally, so an offline player thought their score
         // uploaded when it had only been queued — that's how Kate
         // believed she'd posted scores that never reached the board.
-        showToast(ok ? '✅ Score submitted!' : '📡 Saved. Uploads when you reconnect');
-      }).catch(() => showToast('📡 Saved. Uploads when you reconnect'));
-      // Per-user daily-history timeline feeds the leaderboard-modal chart.
-      // Skip for practice dailies — they play on a custom seed and don't
-      // belong on the player's regular history timeline. Durable: queues
-      // to localStorage and re-sends on reconnect if the write fails.
-      if (!state.isDailyPractice) {
-        saveDailyHistoryEntry(dateStr, { time: scoreTime });
-      }
+        // 'duplicate' = this account already has a row for this exact
+        // board (another device finished first, or a queued retry had
+        // already landed) — first completion wins, so the personal-
+        // history entry is skipped too rather than overwriting the
+        // first device's time.
+        if (ok === 'duplicate') {
+          showToast('Already on the board from another device');
+        } else {
+          showToast(ok ? '✅ Score submitted!' : '📡 Saved. Uploads when you reconnect');
+          // Per-user daily-history timeline feeds the leaderboard-modal
+          // chart. Skip for practice dailies — they play on a custom seed
+          // and don't belong on the player's regular history timeline.
+          // Durable: queues to localStorage and re-sends on reconnect if
+          // the write fails.
+          if (!state.isDailyPractice) {
+            saveDailyHistoryEntry(dateStr, { time: scoreTime });
+          }
+        }
+      }).catch(() => {
+        showToast('📡 Saved. Uploads when you reconnect');
+        if (!state.isDailyPractice) {
+          saveDailyHistoryEntry(dateStr, { time: scoreTime });
+        }
+      });
     } else {
       dailySubmitForm.classList.remove('hidden');
       const nameInput = $('#daily-name-input');
