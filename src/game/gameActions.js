@@ -968,6 +968,9 @@ export function revealCell(row, col) {
         const tcheck = isBoardSolvable(state.board, state.rows, state.cols, row, col);
         cleanSolverArtifacts(state.board);
         state.timedFeatures = computeDailyFeatures(state, tcheck);
+        // Mode indicator rides IN the feature vector, so submitted timed
+        // rows carry it and the R refit reads it straight off features.
+        state.timedFeatures.modeTimed = 1;
         state.timedPar = predictPar(state.timedFeatures);
       } catch (err) {
         state.timedFeatures = null;

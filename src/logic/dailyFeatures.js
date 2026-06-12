@@ -188,6 +188,10 @@ export function computeDailyFeatures(state, solverResult) {
 // disjunctiveMoves remains unmodeled (dropped 2026-05-04, confounded with
 // liarCellCount). The solver still counts it for diagnostics.
 const COEF_TERMS = [
+  // Mode offset: 1 on quick-play boards (features.modeTimed, stamped by
+  // the timed path in gameActions), 0/absent on daily/weekly. Folded
+  // into the baseline chip — a mode constant, not a reasoning term.
+  { coef: 'secModeTimed',      value: f => (f.modeTimed ? 1 : 0),                                  displayGroup: 'baseline', baseline: true },
   // Size / density — the baseline block.
   { coef: 'secPerCell',        value: f => f.cellCount || 0,                                       displayGroup: 'baseline', baseline: true },
   { coef: 'secPerMineFlag',    value: f => f.totalMines || 0,                                       displayGroup: 'baseline', baseline: true },
