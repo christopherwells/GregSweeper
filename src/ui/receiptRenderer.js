@@ -14,6 +14,7 @@ import { boardEl } from './domHelpers.js';
 import { findDeducibleFrontier, detectWrongFlags } from '../logic/boardSolver.js';
 import { explainDeduction } from '../logic/proofExplainer.js';
 import { showToast } from './toastManager.js';
+import { showBoardCoach } from './boardCoach.js';
 import { reportCaughtError } from '../diagnostics/errorReporter.js';
 
 let _frontier = null; // { safe: [...], mines: [...], contradiction } at death
@@ -112,7 +113,7 @@ export function handleLensRequest() {
     const flagCheck = detectWrongFlags(state.board);
     if (flagCheck.wrongFlags.length > 0 || flagCheck.contradiction) {
       recordHintEvent('flag-warning');
-      showToast('🚩 One of your flags does not add up: a number near it cannot be satisfied. Re-check your flags first.', 3600);
+      showBoardCoach('🚩 One of your flags does not add up: a number near it cannot be satisfied. Re-check your flags first.');
       return;
     }
     const frontier = findDeducibleFrontier(state.board, { respectFlags: false });
@@ -154,12 +155,12 @@ export function handleLensRequest() {
       if (startCell) {
         recordHintEvent('region');
         _pulseSources([startCell]);
-        showToast('🔍 Nothing can be worked out from here yet. The highlighted square is the guaranteed safe start, so begin there.', 3800);
+        showBoardCoach('🔍 Nothing can be worked out from here yet. The highlighted square is the guaranteed safe start, so begin there.');
       } else if (state.gameMode === 'daily' || state.gameMode === 'weekly') {
-        showToast('🤔 Nothing can be worked out from here. That should not happen on this board', 3200);
+        showBoardCoach('🤔 Nothing can be worked out from here. That should not happen on this board');
         reportCaughtError('lens-empty-frontier', new Error(`mode=${state.gameMode} seed=${state.dailyRngSeed || ''}`));
       } else {
-        showToast('🔍 Nothing can be worked out from this position. The provable path runs through squares you have not opened yet', 3400);
+        showBoardCoach('🔍 Nothing can be worked out from this position. The provable path runs through squares you have not opened yet');
       }
       return;
     }
@@ -170,7 +171,7 @@ export function handleLensRequest() {
       style: 'socratic',
       kind: isMineDeduction ? 'mine' : 'safe',
     });
-    showToast(`🔍 ${ask || 'The highlighted clues hold the next step. Compare what they claim.'}`, 4200);
+    showBoardCoach(`🔍 ${ask || 'The highlighted clues hold the next step. Compare what they claim.'}`);
   } catch (err) {
     reportCaughtError('lens-request', err);
   }

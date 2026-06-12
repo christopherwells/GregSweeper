@@ -7,7 +7,7 @@
 
 import { state } from './state/gameState.js';
 import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn, escapeHtml } from './ui/domHelpers.js';
-import { resizeCells, updateAllCells, getThemeEmoji, needsZoom, updateZoom, zoomIn, zoomOut, invalidateEmojiCache, setFocusedCell, announceGame } from './ui/boardRenderer.js';
+import { resizeCells, updateAllCells, getThemeEmoji, needsZoom, updateZoom, zoomIn, zoomOut, setFocusedCell, announceGame } from './ui/boardRenderer.js';
 import { preloadSprites, spriteImgHTML, medalImgForEmoji } from './ui/spriteLoader.js';
 import { updateHeader, updateStreakBorder, updateFlagModeBar, getCheckpointForLevel, CHECKPOINT_INTERVAL } from './ui/headerRenderer.js';
 import { updatePowerUpBar } from './ui/powerUpBar.js';
@@ -69,12 +69,6 @@ import { loadExperimentTarget, getTargetGimmickName, getMissionForSeed } from '.
 import { loadDailyBoard, deserializeBoard, prefetchUpcomingDailyBoards } from './firebase/dailyBoardSync.js';
 import { loadWeeklyBoard, prefetchUpcomingWeeklyBoards } from './firebase/weeklyBoardSync.js';
 import { pruneOldCachedBoards } from './firebase/boardCache.js';
-import {
-  EMOJI_PACKS, EFFECTS, TITLES,
-  loadEmojiPack, saveEmojiPack, getActiveEmojiPack, isPackUnlocked,
-  isEffectUnlocked, isTitleUnlocked,
-  loadEffects, saveEffects, loadTitle, saveTitle,
-} from './ui/collectionManager.js';
 import { isModifierPopupDisabled, setModifierPopupDisabled, getGimmickDefs, getDailyGimmick, applyGimmicks } from './logic/gimmicks.js';
 import { isStorageFailing, safeGet, safeSet, safeRemove, requestPersistentStorage } from './storage/storageAdapter.js';
 import { pauseTimer, resumeTimer, stopTimer, recordInteraction } from './game/timerManager.js';
@@ -1442,10 +1436,8 @@ async function _renderFriendsView() {
 // ── Collection Display ───────────────────────────────
 
 function renderCollectionModal() {
-  const stats = loadStats();
-  const maxLevel = stats.maxLevelReached || 1;
-
-  // Themes tab — clone theme swatches from THEME_UNLOCKS
+  // Themes only — the emoji-pack / effects / titles tabs were cut
+  // 2026-06-12 (selection chaff; themes carry the whole identity).
   for (const t of Object.keys(THEME_UNLOCKS)) loadThemeCSS(t);
   const themeGrid = $('#collection-theme-grid');
   themeGrid.innerHTML = '';
@@ -1487,93 +1479,6 @@ function renderCollectionModal() {
       btn.classList.add('active');
     });
     themeGrid.appendChild(btn);
-  }
-
-  // Emoji tab
-  const emojiGrid = $('#emoji-pack-grid');
-  emojiGrid.innerHTML = '';
-  const activePack = loadEmojiPack();
-
-  for (const [packId, pack] of Object.entries(EMOJI_PACKS)) {
-    const card = document.createElement('div');
-    const packUnlocked = isPackUnlocked(packId);
-    card.className = 'emoji-pack-card' + (packId === activePack ? ' active' : '') + (!packUnlocked ? ' locked' : '');
-    card.innerHTML = `
-      <div class="emoji-pack-preview">${pack.mine} ${pack.flag} ${pack.smiley}</div>
-      <div class="emoji-pack-name">${pack.name}</div>
-      ${!packUnlocked ? `<div class="emoji-pack-lock">🔒 Lv.${pack.unlock.value}</div>` : ''}
-    `;
-    card.addEventListener('click', () => {
-      if (!packUnlocked) {
-        card.classList.add('swatch-shake');
-        setTimeout(() => card.classList.remove('swatch-shake'), 400);
-        return;
-      }
-      saveEmojiPack(packId);
-      invalidateEmojiCache();
-      for (const c of emojiGrid.querySelectorAll('.emoji-pack-card')) c.classList.remove('active');
-      card.classList.add('active');
-      showToast(`Emoji pack: ${pack.name}`);
-    });
-    emojiGrid.appendChild(card);
-  }
-
-  // Effects tab
-  const effectsConfig = loadEffects();
-  for (const [category, options] of Object.entries(EFFECTS)) {
-    const grid = $(`#effects-${category}`);
-    if (!grid) continue;
-    grid.innerHTML = '';
-    for (const [effectId, effect] of Object.entries(options)) {
-      const effUnlocked = isEffectUnlocked(category, effectId);
-      const opt = document.createElement('div');
-      opt.className = 'effect-option' + (effectsConfig[category] === effectId ? ' active' : '') + (!effUnlocked ? ' locked' : '');
-      opt.innerHTML = `<span class="effect-name">${effect.name}</span>` +
-        (!effUnlocked ? `<span class="effect-lock">🔒 Lv.${effect.unlock.value}</span>` : '');
-      opt.addEventListener('click', () => {
-        if (!effUnlocked) {
-          opt.classList.add('swatch-shake');
-          setTimeout(() => opt.classList.remove('swatch-shake'), 400);
-          return;
-        }
-        effectsConfig[category] = effectId;
-        saveEffects(effectsConfig);
-        for (const o of grid.querySelectorAll('.effect-option')) o.classList.remove('active');
-        opt.classList.add('active');
-      });
-      grid.appendChild(opt);
-    }
-  }
-
-  // Titles tab
-  const titlesGrid = $('#titles-grid');
-  titlesGrid.innerHTML = '';
-  const activeTitle = loadTitle();
-  const titleDisplay = $('#active-title-display');
-
-  for (const [titleId, title] of Object.entries(TITLES)) {
-    const titleUnlocked = isTitleUnlocked(titleId);
-    const card = document.createElement('div');
-    card.className = 'title-card' + (titleId === activeTitle ? ' active' : '') + (!titleUnlocked ? ' locked' : '');
-    card.innerHTML = `<span class="title-name">${title.name}</span>` +
-      (!titleUnlocked ? `<span class="title-lock">🔒 Lv.${title.unlock.value}</span>` : '');
-    card.addEventListener('click', () => {
-      if (!titleUnlocked) {
-        card.classList.add('swatch-shake');
-        setTimeout(() => card.classList.remove('swatch-shake'), 400);
-        return;
-      }
-      saveTitle(titleId);
-      for (const c of titlesGrid.querySelectorAll('.title-card')) c.classList.remove('active');
-      card.classList.add('active');
-      if (titleDisplay) titleDisplay.textContent = `Active: ${title.name}`;
-    });
-    titlesGrid.appendChild(card);
-  }
-
-  if (titleDisplay) {
-    const t = TITLES[activeTitle];
-    titleDisplay.textContent = t ? `Active: ${t.name}` : '';
   }
 }
 
@@ -2200,13 +2105,21 @@ document.addEventListener('keydown', (e) => {
 });
 $('#btn-help')?.addEventListener('click', () => { setActiveHelpTab('basics'); showModal('help-modal'); });
 $('#title-bar').addEventListener('click', () => showModal('about-modal'));
+// Settings → About. The in-game wordmark (the other About entry) is
+// hidden on phones to give the board its space, so Settings must carry
+// the path everywhere. Hide Settings first: about-modal sits EARLIER
+// in the DOM, so stacked it would paint underneath.
+$('#btn-about')?.addEventListener('click', () => {
+  hideModal('settings-modal');
+  showModal('about-modal');
+});
 
 // The Lexicon — generated single-technique lessons behind the
 // deducibility click-gate. Lazy-loaded: it never touches the boot path,
 // game state, or the par pipeline.
-const titleLexiconBtn = $('#title-lexicon-btn');
-if (titleLexiconBtn) {
-  titleLexiconBtn.addEventListener('click', () => {
+const gymCard = $('#mode-card-gym');
+if (gymCard) {
+  gymCard.addEventListener('click', () => {
     import('./ui/lexiconUI.js').then(m => m.openLexicon())
       .catch(err => reportCaughtError('lexicon-import', err));
   });
@@ -2222,22 +2135,6 @@ if (stuckBtn) {
   stuckBtn.addEventListener('click', () => {
     import('./ui/receiptRenderer.js').then(m => m.handleLensRequest())
       .catch(err => reportCaughtError('lens-import', err));
-  });
-}
-
-// Collection tab switching
-for (const tab of $$('.collection-tab')) {
-  tab.addEventListener('click', () => {
-    for (const t of $$('.collection-tab')) {
-      t.classList.remove('active');
-      t.setAttribute('aria-selected', 'false');
-    }
-    tab.classList.add('active');
-    tab.setAttribute('aria-selected', 'true');
-    const panels = ['themes', 'emoji', 'effects', 'titles'];
-    for (const p of panels) {
-      $(`#collection-${p}`).classList.toggle('hidden', p !== tab.dataset.tab);
-    }
   });
 }
 
@@ -2271,19 +2168,6 @@ for (const tab of $$('.timed-tab')) {
     // Sync settings modal buttons
     for (const d of $$('.timed-diff-btn')) d.classList.toggle('active', parseInt(d.dataset.level, 10) === level);
     newGame();
-  });
-}
-
-// Quick Play timer toggle
-const timerToggleBtn = $('#timer-toggle');
-if (timerToggleBtn) {
-  timerToggleBtn.addEventListener('click', () => {
-    state.timerHidden = !state.timerHidden;
-    timerToggleBtn.classList.toggle('timer-off', state.timerHidden);
-    const timerEl = $('#timer-display');
-    if (timerEl) {
-      timerEl.style.visibility = state.timerHidden ? 'hidden' : 'visible';
-    }
   });
 }
 
@@ -2632,33 +2516,80 @@ const titleHelpBtn = $('#title-help-btn');
 if (titleHelpBtn) {
   titleHelpBtn.addEventListener('click', () => { setActiveHelpTab('basics'); showModalFromTitle('help-modal'); });
 }
-const titleSettingsBtn = $('#title-settings-btn');
-if (titleSettingsBtn) {
-  titleSettingsBtn.addEventListener('click', () => {
-    // Load saved player name into settings input
-    const nameInput = $('#player-name-input');
-    if (nameInput) nameInput.value = getPlayerName();
-    setActiveSettingsTab('general');
-    showModalFromTitle('settings-modal');
-    syncReminderUI();
-    _updateSettingsUid();
-    _updateSettingsAccount();
-  });
+
+// The Modifiers help tab renders straight from the gimmick registry so
+// the reference can never drift from the actual rules. Rendered once at
+// boot — the registry is static. Sorted by Challenge intro level so the
+// list reads in the order players actually meet them; chaos-only types
+// sink to the end (mineShift carries a vestigial intro level, so the
+// chaosOnly flag is the sort signal, not the level).
+const helpModifierList = $('#help-modifier-list');
+if (helpModifierList) {
+  const introRank = (d) => (d.chaosOnly ? 999 : (d.intro ?? 998));
+  helpModifierList.innerHTML = Object.values(getGimmickDefs())
+    .sort((a, b) => introRank(a) - introRank(b))
+    .map(def => `<p>${def.icon} <strong>${def.name}</strong>: ${def.desc}</p>`)
+    .join('');
 }
-const titleWhatsnewBtn = $('#title-whatsnew-btn');
-if (titleWhatsnewBtn) {
-  titleWhatsnewBtn.addEventListener('click', () => {
+
+// Progress and More sheets — the grouped footer. A sheet row hides its
+// sheet (plain hideModal, NOT closeModalAndReturn: the _returnToTitle
+// flag must survive the hop) and opens the destination modal, whose
+// close button then returns to the title screen as before.
+const titleProgressBtn = $('#title-progress-btn');
+if (titleProgressBtn) {
+  titleProgressBtn.addEventListener('click', () => showModalFromTitle('progress-sheet'));
+}
+const titleMoreBtn = $('#title-more-btn');
+if (titleMoreBtn) {
+  titleMoreBtn.addEventListener('click', () => showModalFromTitle('more-sheet'));
+}
+function _sheetRowOpens(rowId, sheetId, openFn) {
+  const row = $(rowId);
+  if (row) row.addEventListener('click', () => { hideModal(sheetId); openFn(); });
+}
+_sheetRowOpens('#sheet-stats-btn', 'progress-sheet', () => {
+  updateStatsDisplay();
+  showModalFromTitle('stats-modal');
+});
+_sheetRowOpens('#sheet-achievements-btn', 'progress-sheet', () => {
+  updateAchievementsDisplay();
+  showModalFromTitle('achievements-modal');
+});
+_sheetRowOpens('#sheet-leaderboard-btn', 'progress-sheet', () => {
+  updateLeaderboardDisplay();
+  showModalFromTitle('leaderboard-modal');
+});
+_sheetRowOpens('#sheet-collection-btn', 'more-sheet', () => {
+  renderCollectionModal();
+  showModalFromTitle('collection-modal');
+});
+_sheetRowOpens('#sheet-settings-btn', 'more-sheet', () => {
+  // Load saved player name into settings input
+  const nameInput = $('#player-name-input');
+  if (nameInput) nameInput.value = getPlayerName();
+  setActiveSettingsTab('general');
+  showModalFromTitle('settings-modal');
+  syncReminderUI();
+  _updateSettingsUid();
+  _updateSettingsAccount();
+});
+const sheetWhatsnewBtn = $('#sheet-whatsnew-btn');
+if (sheetWhatsnewBtn) {
+  sheetWhatsnewBtn.addEventListener('click', () => {
     setLastSeenVersion(CURRENT_VERSION);
-    // Remove NEW badge if present
-    const badge = titleWhatsnewBtn.querySelector('.whatsnew-badge');
-    if (badge) badge.remove();
+    sheetWhatsnewBtn.querySelector('.whatsnew-badge')?.remove();
+    $('#more-btn-dot')?.classList.add('hidden');
+    hideModal('more-sheet');
     showModalFromTitle('whatsnew-modal');
   });
   // Show NEW badge ONLY for returning visitors who saw an older
   // version. First-time visitors (lastSeen empty) get no badge —
   // they haven't missed anything, the NEW label would just confuse.
   // Mark them as "having seen" the current version so the badge
-  // never fires for them retroactively after the next deploy.
+  // never fires for them retroactively after the next deploy. The
+  // row's badge lives behind the More button now, so a dot on More
+  // makes the news visible before the sheet is opened.
   const lastSeen = getLastSeenVersion();
   if (!lastSeen) {
     setLastSeenVersion(CURRENT_VERSION);
@@ -2666,36 +2597,9 @@ if (titleWhatsnewBtn) {
     const badge = document.createElement('span');
     badge.className = 'whatsnew-badge';
     badge.textContent = 'NEW';
-    titleWhatsnewBtn.appendChild(badge);
+    sheetWhatsnewBtn.appendChild(badge);
+    $('#more-btn-dot')?.classList.remove('hidden');
   }
-}
-const titleStatsBtn = $('#title-stats-btn');
-if (titleStatsBtn) {
-  titleStatsBtn.addEventListener('click', () => {
-    updateStatsDisplay();
-    showModalFromTitle('stats-modal');
-  });
-}
-const titleCollectionBtn = $('#title-collection-btn');
-if (titleCollectionBtn) {
-  titleCollectionBtn.addEventListener('click', () => {
-    renderCollectionModal();
-    showModalFromTitle('collection-modal');
-  });
-}
-const titleAchievementsBtn = $('#title-achievements-btn');
-if (titleAchievementsBtn) {
-  titleAchievementsBtn.addEventListener('click', () => {
-    updateAchievementsDisplay();
-    showModalFromTitle('achievements-modal');
-  });
-}
-const titleLeaderboardBtn = $('#title-leaderboard-btn');
-if (titleLeaderboardBtn) {
-  titleLeaderboardBtn.addEventListener('click', () => {
-    updateLeaderboardDisplay();
-    showModalFromTitle('leaderboard-modal');
-  });
 }
 
 // Clear Cache & Reload

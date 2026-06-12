@@ -1,25 +1,8 @@
 import { state } from '../state/gameState.js';
-import { boardEl, zoomControls, zoomLevelDisplay, boardScrollWrapper } from './domHelpers.js';
+import { boardEl, zoomControls, boardScrollWrapper } from './domHelpers.js';
 import { THEME_UNLOCKS } from './themeManager.js';
-import { loadEmojiPack, getActiveEmojiPack } from './collectionManager.js';
 import { applyIcon } from './spriteLoader.js';
 import { applyThemeEffects } from './themeEffects.js';
-// ── Emoji Cache (avoid per-cell localStorage reads) ────
-let _emojiCache = null;
-let _emojiCacheValid = false;
-
-export function invalidateEmojiCache() {
-  _emojiCacheValid = false;
-}
-
-function getCachedEmoji() {
-  if (!_emojiCacheValid) {
-    const packId = loadEmojiPack();
-    _emojiCache = packId !== 'default' ? getActiveEmojiPack() : null;
-    _emojiCacheValid = true;
-  }
-  return _emojiCache;
-}
 
 // ── Board Rendering ────────────────────────────────────
 
@@ -195,11 +178,9 @@ export function renderWallOverlays() {
 }
 
 export function getThemeEmoji(type) {
-  // Check for active emoji pack override (cached to avoid per-cell localStorage reads)
-  const pack = getCachedEmoji();
-  if (pack && pack[type]) return pack[type];
-
-  // Fall through to theme-based emoji
+  // Theme-owned objects only. Emoji packs (the old per-player override
+  // layer) were cut with the Collection declutter — the theme IS the
+  // object identity now, which also means theme sprites always match.
   const currentTheme = document.documentElement.getAttribute('data-theme') || 'classic';
   const themeInfo = THEME_UNLOCKS[currentTheme];
   if (type === 'mine') return themeInfo?.mine || '💣';
@@ -462,7 +443,6 @@ export function updateZoom() {
     const scale = state.zoomLevel / 100;
     boardEl.style.transform = `scale(${scale})`;
     boardEl.style.transformOrigin = 'top left';
-    zoomLevelDisplay.textContent = `${state.zoomLevel}%`;
   } else {
     zoomControls.classList.add('hidden');
     boardScrollWrapper.classList.remove('zoomed');

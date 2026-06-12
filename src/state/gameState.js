@@ -47,6 +47,15 @@ export const state = {
   // times, and an uninstrumented hint system would quietly corrupt the
   // model the whole game stands on.
   hintEvents: [],
+  // The no-guess certificate for the CURRENT board: { clicks, tier }.
+  // clicks is the certifying solver run's totalClicks (entry click +
+  // provable reveals); tier is the hardest technique on that path
+  // (0/1 counting and subsets, 2 case-by-case enumeration, 3 liar
+  // reasoning). Stamped from the bestStart full-solve check on daily /
+  // weekly and from the accepted generation check on challenge / timed.
+  // Null in chaos and on any board the solver did not certify — the
+  // Certified chip simply doesn't render rather than overclaim.
+  boardCertificate: null,
   // Timed mode: par + feature vector for the CURRENT board, computed at
   // generation from the same PAR_MODEL as daily (timed boards are
   // gimmick-free, so gimmick terms are zero). Powers the par-relative
@@ -85,9 +94,6 @@ export const state = {
   chaosRound: 0,          // current board number in the run (1-based)
   chaosModifiers: [],     // modifiers rolled for current board
   chaosTotalTime: 0,      // cumulative time across all boards in the run
-
-  // Quick Play timer toggle
-  timerHidden: false,     // true = hide timer LCD in Quick Play mode
 
   // Keyboard navigation
   focusedRow: 0,

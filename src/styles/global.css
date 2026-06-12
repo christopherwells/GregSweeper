@@ -622,50 +622,17 @@ body::before {
   -webkit-overflow-scrolling: touch;
 }
 
-/* Zoom controls */
+/* Zoom controls ride the bottom nav (Expert/Extreme Quick Play only).
+   display:contents makes the two buttons direct flex items of the nav;
+   the wrapper exists so updateZoom can show/hide the pair at once
+   (the global .hidden !important wins over display:contents). The
+   buttons themselves are .nav-btn — .zoom-btn only bolds the glyphs. */
 #zoom-controls {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  margin-top: 8px;
-}
-
-#zoom-controls.hidden {
-  display: none;
+  display: contents;
 }
 
 .zoom-btn {
-  width: 44px;
-  height: 44px;
-  border: 1px solid var(--color-border);
-  background: var(--color-btn-gradient);
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 18px;
   font-weight: bold;
-  color: var(--color-text);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all var(--transition-fast);
-}
-
-.zoom-btn:hover {
-  background: var(--color-btn-hover);
-  transform: translateY(-1px);
-}
-
-.zoom-btn:active {
-  transform: translateY(0);
-}
-
-#zoom-level {
-  font-size: 13px;
-  font-weight: bold;
-  color: var(--color-text-muted);
-  min-width: 45px;
-  text-align: center;
 }
 
 #streak-border {
@@ -1052,14 +1019,25 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 /* The coach line: one slot under the board, updated in place (never
    queued like toasts, so the note lands the instant the move does).
    Reserved height keeps the card from jumping as notes come and go. */
-.lexicon-coach {
-  min-height: 3.4em;
-  margin: 10px 0 0;
+.lexicon-coach, .board-coach {
   font-size: 0.88em;
   line-height: 1.35;
   color: var(--color-text, #eee);
 }
-.lexicon-coach.coach-pop { animation: lexCoachPop 0.25s ease-out; }
+.lexicon-coach {
+  min-height: 3.4em;
+  margin: 10px 0 0;
+}
+/* The board coach line: the Lens answers here, under the live board.
+   Hidden (display:none via [hidden]) when empty so it costs no height
+   until a hint is actually showing. */
+.board-coach {
+  margin: 8px auto 0;
+  max-width: 520px;
+  padding: 0 10px;
+  text-align: center;
+}
+.lexicon-coach.coach-pop, .board-coach.coach-pop { animation: lexCoachPop 0.25s ease-out; }
 @keyframes lexCoachPop {
   0% { transform: translateY(4px); opacity: 0.3; }
   100% { transform: translateY(0); opacity: 1; }
@@ -3909,6 +3887,35 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   #app {
     padding: 12px 10px 10px;
     border-radius: 12px;
+    gap: 6px;
+  }
+
+  /* In-game, on a phone, every row above the board is rent. The
+     wordmark block is the one purely decorative tenant: the title
+     screen owns the brand, the Certified chip carries the contract,
+     and About is reachable from Settings. Desktop keeps the wordmark
+     (and its tap-for-About) — space is free there. */
+  #app #title-bar {
+    display: none;
+  }
+
+  #game-header {
+    padding: 6px 10px;
+  }
+
+  #game-info-bar {
+    padding: 2px 12px;
+  }
+
+  .header-icon-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 15px;
+  }
+
+  .active-gimmick-bar {
+    margin: 2px auto;
+    padding: 3px 10px;
   }
 
   #game-title {
@@ -3952,6 +3959,12 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
     font-size: 18px;
   }
 
+  /* Seven buttons when the zoom pair is visible (Expert/Extreme Quick
+     Play) must fit a 360px row without wrapping. */
+  #bottom-nav {
+    gap: 8px;
+  }
+
   .timed-size-tabs {
     gap: 4px;
   }
@@ -3960,12 +3973,6 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
     padding: 8px 10px;
     font-size: 11px;
     min-height: 38px;
-  }
-
-  .timer-toggle {
-    padding: 6px 10px;
-    min-height: 38px;
-    min-width: 38px;
   }
 }
 
@@ -4035,46 +4042,41 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   color: var(--color-accent);
 }
 
-/* ── Flag Mode Toggle ───────────────────────────────── */
-#flag-mode-bar {
+/* ── Header icon buttons (flag toggle + Stuck?) ─────────
+   They flank the smiley in the LCD row. The Stuck? button is quieter
+   than the toggle (the toggle is the every-few-seconds control;
+   Stuck? is the once-in-a-while ask), distinguished by tone. */
+.header-icon-btn {
+  width: 40px;
+  height: 40px;
   display: flex;
+  align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 4px 0;
+  border: 2px solid var(--color-border);
+  background: var(--color-btn-gradient);
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 17px;
+  color: var(--color-text);
+  transition: all 0.2s;
+  flex-shrink: 0;
 }
-/* The Stuck? pill sits beside the flag toggle — quieter than it (the
-   flag toggle is the every-few-seconds control; Stuck? is the
-   once-in-a-while ask), distinguished by tone, not loudness. */
+.header-icon-btn:hover {
+  border-color: var(--color-accent);
+}
+.header-icon-btn.flag-active {
+  border-color: #e53935;
+  background: linear-gradient(135deg, rgba(229,57,53,0.15), rgba(229,57,53,0.05));
+  box-shadow: 0 0 8px rgba(229,57,53,0.2);
+}
 .stuck-btn {
   opacity: 0.85;
 }
 .stuck-btn:active {
   transform: scale(0.97);
 }
-.flag-toggle-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 14px;
-  min-height: 44px;
-  border: 2px solid var(--color-border);
-  background: var(--color-btn-gradient);
-  border-radius: 20px;
-  cursor: pointer;
-  font-size: 13px;
-  color: var(--color-text);
-  transition: all 0.2s;
-}
-.flag-toggle-btn:hover {
-  border-color: var(--color-accent);
-}
-.flag-toggle-btn.flag-active {
-  border-color: #e53935;
-  background: linear-gradient(135deg, rgba(229,57,53,0.15), rgba(229,57,53,0.05));
-  box-shadow: 0 0 8px rgba(229,57,53,0.2);
-}
 #flag-mode-icon {
-  font-size: 16px;
+  font-size: 17px;
 }
 
 /* ── Mode Pill Sizing ───────────────────────────────── */
@@ -4317,6 +4319,32 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 .active-gimmick-icon:hover, .active-gimmick-icon:active {
   transform: scale(1.25);
 }
+/* The no-guess certificate chip (and its Chaos inverse). A real button
+   so keyboard and screen-reader users get activation for free; styled
+   as a quiet pill that invites a tap without shouting. */
+.cert-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(76, 175, 80, 0.55);
+  background: rgba(76, 175, 80, 0.14);
+  color: var(--color-text, #333);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  line-height: 1.6;
+  cursor: pointer;
+  font-family: inherit;
+}
+.cert-chip:hover, .cert-chip:focus-visible { filter: brightness(1.12); }
+.cert-chip-none {
+  border-color: var(--timer-warning, #ff9800);
+  background: rgba(255, 152, 0, 0.12);
+}
+.cert-modal-content { max-width: 420px; }
+.cert-recheck { font-size: 0.85em; opacity: 0.75; }
 
 .chaos-run-summary {
   display: flex;
@@ -4534,17 +4562,16 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   letter-spacing: 3px;
   text-transform: uppercase;
 }
-/* One-line objective so a newcomer knows the goal before picking a mode. */
-.title-screen-goal {
+/* The proof line: substantiates the headline claim directly under it. */
+.title-screen-proof {
   font-size: 13px;
   color: var(--color-text-secondary, #888);
-  margin-top: 8px;
-  max-width: 30ch;
+  margin-top: 6px;
+  max-width: 34ch;
   margin-left: auto;
   margin-right: auto;
   line-height: 1.4;
 }
-
 .title-screen-modes {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -4695,6 +4722,60 @@ button:focus-visible {
   pointer-events: none;
 }
 
+/* ── Title-screen sheets (Progress / More) ──────────────
+   Small action sheets behind the grouped footer: a short list of
+   rows, each opening an existing modal. */
+.sheet-content {
+  max-width: 300px;
+}
+.sheet-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sheet-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 13px 16px;
+  border: 1px solid var(--color-border, #333);
+  border-radius: 10px;
+  background: var(--color-btn-gradient);
+  color: var(--color-text, #eee);
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+.sheet-row:hover {
+  border-color: var(--color-accent, #e94560);
+}
+/* On a sheet row the NEW badge sits inline at the row's end, not
+   floated off a corner. */
+.sheet-row .whatsnew-badge {
+  position: static;
+  margin-left: auto;
+}
+/* News dot on the More button: the What's New badge lives behind the
+   sheet now, so the button itself has to carry the signal. */
+.more-dot {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #e94560;
+  pointer-events: none;
+}
+
+/* An odd card count (chaos hidden until L50) leaves an orphan cell in
+   the 2-column grid; let the last card span the row instead. */
+.title-screen-modes .mode-card:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
 /* What's New modal body */
 .whatsnew-body h3 {
   margin: 0 0 8px;
@@ -4767,27 +4848,6 @@ button:focus-visible {
   box-shadow: 0 0 8px var(--color-accent-glow, rgba(233,69,96,0.3));
 }
 .timed-tab:hover:not(.active) {
-  border-color: var(--color-text-secondary, #666);
-}
-
-/* Timer toggle button */
-.timer-toggle {
-  padding: 8px 12px;
-  min-height: 44px;
-  min-width: 44px;
-  border-radius: 20px;
-  border: 2px solid var(--color-border, #333);
-  background: transparent;
-  font-size: 16px;
-  cursor: pointer;
-  transition: all 0.2s;
-  opacity: 1;
-}
-.timer-toggle.timer-off {
-  opacity: 0.4;
-  text-decoration: line-through;
-}
-.timer-toggle:hover {
   border-color: var(--color-text-secondary, #666);
 }
 
@@ -5180,173 +5240,13 @@ button:focus-visible {
   accent-color: var(--color-accent, #e94560);
 }
 
-/* ── Collection Modal ─────────────────────────────── */
+/* ── Collection Modal (themes only) ───────────────── */
 .collection-content {
   max-height: 80vh;
-}
-.collection-tabs {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 14px;
-  background: var(--color-surface, #1a1a2e);
-  border-radius: 8px;
-  padding: 3px;
-}
-.collection-tab {
-  flex: 1;
-  padding: 8px 0;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--color-text-secondary, #aaa);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.collection-tab.active {
-  background: var(--color-accent, #e94560);
-  color: #fff;
 }
 .collection-panel {
   max-height: 55vh;
   overflow-y: auto;
-}
-.collection-subheader {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-text-secondary, #aaa);
-  margin: 12px 0 6px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-/* ── Emoji Pack Grid ──────────────────────────────── */
-.emoji-pack-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 8px;
-}
-.emoji-pack-card {
-  background: var(--color-surface, #1a1a2e);
-  border: 2px solid transparent;
-  border-radius: 10px;
-  padding: 12px 8px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.emoji-pack-card:hover:not(.locked) {
-  border-color: var(--color-accent, #e94560);
-  transform: translateY(-2px);
-}
-.emoji-pack-card.active {
-  border-color: var(--color-accent, #e94560);
-  box-shadow: 0 0 12px var(--color-accent, #e94560)40;
-}
-.emoji-pack-card.locked {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.emoji-pack-preview {
-  font-size: 22px;
-  margin-bottom: 6px;
-  letter-spacing: 4px;
-}
-.emoji-pack-name {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text, #eee);
-}
-.emoji-pack-lock {
-  font-size: 10px;
-  color: var(--color-text-secondary, #888);
-  margin-top: 4px;
-}
-
-/* ── Effects Grid ─────────────────────────────────── */
-.effects-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 8px;
-}
-.effect-option {
-  background: var(--color-surface, #1a1a2e);
-  border: 2px solid transparent;
-  border-radius: 8px;
-  padding: 8px 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.effect-option:hover:not(.locked) {
-  border-color: var(--color-accent, #e94560);
-}
-.effect-option.active {
-  border-color: var(--color-accent, #e94560);
-  background: var(--color-accent, #e94560)15;
-}
-.effect-option.locked {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.effect-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-text, #eee);
-}
-.effect-lock {
-  font-size: 10px;
-  color: var(--color-text-secondary, #888);
-}
-
-/* ── Titles Grid ──────────────────────────────────── */
-.titles-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 6px;
-  margin-bottom: 10px;
-}
-.title-card {
-  background: var(--color-surface, #1a1a2e);
-  border: 2px solid transparent;
-  border-radius: 8px;
-  padding: 10px 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.title-card:hover:not(.locked) {
-  border-color: var(--color-accent, #e94560);
-}
-.title-card.active {
-  border-color: var(--color-accent, #e94560);
-  background: var(--color-accent, #e94560)15;
-}
-.title-card.locked {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.title-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-text, #eee);
-}
-.title-lock {
-  font-size: 10px;
-  color: var(--color-text-secondary, #888);
-}
-.active-title-display {
-  text-align: center;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-accent, #e94560);
-  padding: 8px 0;
 }
 
 /* ══════════════════════════════════════════════════════ */
@@ -5547,7 +5447,7 @@ button:focus-visible {
   .title-screen-header { margin-bottom: 0; }
   .title-screen-logo { font-size: clamp(24px, 6vw, 34px); }
   .title-screen-subtitle { font-size: 12px; }
-  .title-screen-goal { margin-top: 5px; font-size: 12px; }
+  .title-screen-proof { margin-top: 4px; font-size: 12px; }
   .title-screen-modes { margin-bottom: 0; }
   .mode-card { padding: 11px 10px; }
   .mode-card-icon { font-size: 24px; margin-bottom: 2px; }
@@ -5683,24 +5583,6 @@ button:focus-visible {
   color: var(--color-text, #eee);
 }
 
-/* Collection modal — card hover effects */
-.emoji-pack-card:hover:not(.locked),
-.effect-option:hover:not(.locked),
-.title-card:hover:not(.locked) {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-}
-
-/* Collection subheaders */
-.collection-subheader {
-  font-family: var(--font-display, 'Fredoka'), sans-serif;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text-secondary, #aaa);
-  margin: 14px 0 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
 
 /* Action buttons — unified */
 .action-btn {

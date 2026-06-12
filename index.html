@@ -285,8 +285,8 @@
   <div id="title-screen" class="title-screen">
     <div class="title-screen-header">
       <h1 class="title-screen-logo">GregSweeper</h1>
-      <p class="title-screen-subtitle">Modern Minesweeper</p>
-      <p class="title-screen-goal">Clear every safe cell. The numbers show where the mines are.</p>
+      <p class="title-screen-subtitle">No guesses. Ever.</p>
+      <p class="title-screen-proof">Every board is proven solvable before you see it.</p>
     </div>
     <div class="title-screen-modes">
       <!-- Mode-card icons are drawn SVG sprites (Tier 3 of the sprite
@@ -319,30 +319,44 @@
         <div class="mode-card-name">Chaos</div>
         <div class="mode-card-progress" id="title-chaos-progress">Reach Level 50</div>
       </button>
+      <!-- The Gym is a play destination (practice lessons), so it lives
+           with the modes, not in the footer. No data-mode: it opens the
+           lesson overlay, not a game mode. -->
+      <button class="mode-card" id="mode-card-gym" type="button">
+        <div class="mode-card-icon">🏋️</div>
+        <div class="mode-card-name">Greg's Gym</div>
+        <div class="mode-card-progress">Practice the patterns</div>
+      </button>
     </div>
+    <!-- Three footer buttons since the 2026-06-12 grouping: play stays
+         one tap (the cards), everything secondary is two. Progress and
+         More open small sheets listing the existing modals. -->
     <div class="title-screen-footer">
       <button id="title-help-btn" class="title-footer-btn">❓ How to Play</button>
-      <button id="title-stats-btn" class="title-footer-btn">📊 Stats</button>
-      <button id="title-achievements-btn" class="title-footer-btn">🏅 Achievements</button>
-      <button id="title-leaderboard-btn" class="title-footer-btn">🏆 Leaderboard</button>
-      <button id="title-collection-btn" class="title-footer-btn">🎁 Collection</button>
-      <button id="title-lexicon-btn" class="title-footer-btn">🏋️ Greg's Gym</button>
-      <button id="title-settings-btn" class="title-footer-btn">⚙️ Settings</button>
-      <button id="title-whatsnew-btn" class="title-footer-btn">📋 What's New</button>
+      <button id="title-progress-btn" class="title-footer-btn">📊 Progress</button>
+      <button id="title-more-btn" class="title-footer-btn">⚙️ More<span id="more-btn-dot" class="more-dot hidden"></span></button>
     </div>
   </div>
 
   <div id="app" class="hidden">
     <div id="title-bar">
       <h1 id="game-title" title="About GregSweeper">GregSweeper</h1>
-      <div id="title-subtitle">Modern Minesweeper</div>
+      <div id="title-subtitle">No guesses. Ever.</div>
     </div>
     <div id="screen-shake-wrapper">
+      <!-- The flag toggle and the Lens flank the smiley: game actions
+           at thumb height in a row that already exists, not a row of
+           their own. Both hide on win/loss (the old flag-mode-bar
+           semantics) and the header reflows to the classic three. -->
       <header id="game-header">
         <div class="header-left">
           <div id="mine-counter" class="lcd-display">010</div>
         </div>
+        <button id="flag-mode-toggle" class="header-icon-btn" aria-label="Flag mode off: taps reveal" aria-pressed="false">
+          <span id="flag-mode-icon">👆</span>
+        </button>
         <button id="reset-btn" class="smiley-btn" aria-label="New Game">😊</button>
+        <button id="stuck-btn" class="header-icon-btn stuck-btn" aria-label="Stuck? Shows where to look, never what to click" title="Stuck?">🤔</button>
         <div class="header-right">
           <div id="timer-display" class="lcd-display">000</div>
         </div>
@@ -355,6 +369,11 @@
         <span id="max-level-display" class="hidden"></span>
         <span id="best-time-display" class="hidden"></span>
         <span id="cells-remaining" class="hidden"></span>
+        <!-- The no-guess certificate chip rides this existing row instead
+             of adding one of its own: phone screens have no rows to
+             spare, and on gimmick-free boards (timed, most dailies) a
+             dedicated bar would cost the board real estate. -->
+        <button id="cert-chip" class="cert-chip hidden" type="button" aria-label="This board is checked: solvable without guessing. Tap for details.">✓ Certified</button>
         <!-- Mode switching handled by Home → title screen -->
       </div>
 
@@ -392,35 +411,23 @@
         </button>
       </div>
 
-      <div id="flag-mode-bar" class="hidden">
-        <button id="flag-mode-toggle" class="flag-toggle-btn" aria-label="Toggle flag mode">
-          <span id="flag-mode-icon">👆</span>
-          <span id="flag-mode-label">Tap to Reveal</span>
-        </button>
-        <!-- The Lens lives HERE, beside the board, as a game action —
-             not as a tenth icon in the nav. Same visibility as the flag
-             toggle: shown while a game is live, gone on win/loss. -->
-        <button id="stuck-btn" class="flag-toggle-btn stuck-btn" aria-label="Stuck? Shows where to look, never what to click">
-          <span>🤔</span>
-          <span>Stuck?</span>
-        </button>
-      </div>
-
       <div id="timed-size-tabs" class="timed-size-tabs hidden" role="tablist" aria-label="Quick Play difficulty">
         <button class="timed-tab active" data-level="1" role="tab" aria-selected="true">Beginner</button>
         <button class="timed-tab" data-level="2" role="tab" aria-selected="false">Intermediate</button>
         <button class="timed-tab" data-level="3" role="tab" aria-selected="false">Expert</button>
         <button class="timed-tab" data-level="4" role="tab" aria-selected="false">Extreme</button>
-        <button class="timer-toggle" id="timer-toggle" title="Toggle timer display">⏱️</button>
       </div>
 
       <div id="chaos-modifier-bar" class="chaos-modifier-bar hidden">
         <span class="chaos-round-label" id="chaos-round-label">Round 1</span>
         <span class="chaos-modifier-icons" id="chaos-modifier-icons"></span>
+        <button id="chaos-no-cert-chip" class="cert-chip cert-chip-none" type="button" aria-label="Chaos boards are not checked by the solver. Tap for details.">No guarantees</button>
       </div>
 
       <!-- Persistent active-gimmick reminder for daily / weekly / challenge.
-           Chaos uses its own bar above. Hidden when no gimmicks are active. -->
+           Chaos uses its own bar above. Hidden when no gimmicks are active
+           (the Certified chip lives in #game-info-bar, not here, so
+           gimmick-free boards don't pay for an extra row). -->
       <div id="active-gimmick-bar" class="active-gimmick-bar hidden">
         <span class="active-gimmick-label">Modifiers:</span>
         <span class="active-gimmick-icons" id="active-gimmick-icons"></span>
@@ -433,12 +440,13 @@
         </div>
         <canvas id="particle-canvas"></canvas>
         <div id="scan-toast" class="hidden"></div>
-        <div id="zoom-controls" class="hidden">
-          <button id="zoom-out" class="zoom-btn" title="Zoom Out">−</button>
-          <span id="zoom-level">100%</span>
-          <button id="zoom-in" class="zoom-btn" title="Zoom In">+</button>
-        </div>
       </div>
+
+      <!-- The board coach line: the Lens answers here, one persistent
+           sentence under the board, updated in place (same job and look
+           as the Gym's .lexicon-coach). Cleared on the next reveal or
+           flag — a hint should outlive a toast, not the move it shaped. -->
+      <p id="board-coach" class="board-coach" aria-live="polite" hidden></p>
     </div>
 
     <!-- In-game nav: FIVE large targets, sized for a phone. Stats,
@@ -452,6 +460,15 @@
       <button id="btn-collection" class="nav-btn" title="Collection">🎨</button>
       <button id="btn-mute" class="nav-btn" title="Mute">🔊</button>
       <button id="btn-settings" class="nav-btn" title="Settings">⚙️</button>
+      <!-- Zoom rides the nav row instead of owning one under the board.
+           display:contents makes the pair direct flex items; the
+           wrapper only exists so updateZoom can show/hide both at once
+           (visible only on Expert/Extreme Quick Play boards). The %
+           readout is gone — the board itself shows the zoom level. -->
+      <span id="zoom-controls" class="hidden">
+        <button id="zoom-out" class="nav-btn zoom-btn" title="Zoom Out">−</button>
+        <button id="zoom-in" class="nav-btn zoom-btn" title="Zoom In">+</button>
+      </span>
     </nav>
 
     <!-- Live theme carousel: flip themes on the real board (swipe / arrows / buttons) -->
@@ -618,20 +635,33 @@
       <div class="modal-body help-body">
         <div class="help-tabs" role="tablist" aria-label="Help topic">
           <button class="help-tab active" data-tab="basics" role="tab" aria-selected="true">Basics</button>
+          <button class="help-tab" data-tab="modes" role="tab" aria-selected="false">Modes</button>
           <button class="help-tab" data-tab="modifiers" role="tab" aria-selected="false">Modifiers</button>
           <button class="help-tab" data-tab="powerups" role="tab" aria-selected="false">Power-Ups</button>
-          <button class="help-tab" data-tab="modes" role="tab" aria-selected="false">Modes</button>
         </div>
         <div id="help-panel-basics" class="help-panel">
           <div class="help-section">
+            <h3>The Guarantee</h3>
+            <p>Every standard board is checked by a solver before you play it. From the marked start square (or your first click in Challenge and Quick Play) there is always a next square you can prove safe, all the way to the end. You never have to gamble.</p>
+            <p>If you get stuck, tap the <strong>🤔 button</strong> beside the smiley and the game lights up the clues that prove the next move. The ✓ Certified chip above the board opens the board&rsquo;s own check. Chaos is the one exception to the guarantee, and it says so.</p>
+          </div>
+          <div class="help-section">
             <h3>Goal</h3>
-            <p>Reveal every safe cell without hitting a mine.</p>
+            <p>Reveal every safe square without hitting a mine. Each number counts the mines touching it, diagonals included. Blank squares touch no mines at all; the numbers are your clues.</p>
           </div>
           <div class="help-section">
             <h3>Controls</h3>
-            <p><strong>Tap / Click</strong> a cell to reveal it</p>
-            <p><strong>Long-press / Right-click</strong> to flag a suspected mine. On a phone you can also tap the 🚩 toggle, then tap cells to flag.</p>
-            <p><strong>Tap a number</strong> whose mines are all flagged to clear the rest (chord). Chording with the wrong flags will detonate.</p>
+            <p><strong>Tap / Click</strong> a square to reveal it</p>
+            <p><strong>Long-press / Right-click</strong> to flag a mine you have worked out. Or tap the <strong>👆 button</strong> in the top row: it switches to 🚩 and every tap flags instead.</p>
+            <p><strong>Tap a revealed number</strong> whose mines are all flagged to open its remaining neighbors at once (a chord). Chording with wrong flags detonates.</p>
+          </div>
+          <div class="help-section">
+            <h3>Mines in Daily and Weekly</h3>
+            <p>Hitting a mine in Daily or Weekly is not the end. The mine is marked where it blew, a time penalty is added (sized by how much that mine was hiding), and you keep playing. In Challenge and Quick Play, a mine ends the run.</p>
+          </div>
+          <div class="help-section">
+            <h3>Par</h3>
+            <p>The Daily carries a par time: the predicted clean-solve time for that exact board, refit nightly from real plays. After a win you see the board&rsquo;s par next to your time, and your personal par drifts toward your own pace as you play more.</p>
           </div>
           <div class="help-section help-keyboard-only">
             <h3>Keyboard</h3>
@@ -639,39 +669,85 @@
             <p><strong>R</strong> restart &bull; <strong>1-5</strong> power-ups &bull; <strong>Esc</strong> close</p>
           </div>
         </div>
+        <div id="help-panel-modes" class="help-panel hidden">
+          <div class="help-section">
+            <h3>Modes</h3>
+            <p><strong>Daily:</strong> one puzzle a day, the same board for everyone, online leaderboard and streaks</p>
+            <p><strong>Weekly:</strong> one puzzle for the whole week, one try a day, your best time counts</p>
+            <p><strong>Challenge:</strong> 120 levels that introduce the modifiers one at a time, with power-ups and checkpoints</p>
+            <p><strong>Quick Play:</strong> race the clock for a speed rating (💎 best, then 🥇 🥈 🥉)</p>
+            <p><strong>Greg&rsquo;s Gym:</strong> short practice boards that teach one deduction pattern at a time. A square only opens when the clues prove it is safe, so you cannot luck through.</p>
+            <p><strong>Chaos:</strong> fast rounds of random modifiers (unlocks at Challenge Level 50). The one mode OUTSIDE the no-guess guarantee: boards are not verified solvable, and mines can move.</p>
+          </div>
+        </div>
         <div id="help-panel-modifiers" class="help-panel hidden">
           <div class="help-section">
-            <h3>Numbers</h3>
-            <p>Each number tells you how many of its 8 neighbors are mines. Use logic to deduce which cells are safe!</p>
-          </div>
-          <div class="help-section">
             <h3>Modifiers</h3>
-            <p>Some boards add Modifiers: special cells that bend the rules, like a liar that&rsquo;s off by one or a wormhole that shares counts. The first time each one appears, GregSweeper explains it. You can skip the explainers from the popup or in Settings.</p>
+            <p>Some boards add Modifiers: special squares that bend the rules. The first time each one appears, GregSweeper explains it in full; the list below is the quick reference. Mid-game, tap a modifier&rsquo;s icon above the board to re-read its rule.</p>
           </div>
+          <!-- Rendered from the gimmick registry at load so this list
+               can never drift from the actual rules. -->
+          <div class="help-section" id="help-modifier-list"></div>
         </div>
         <div id="help-panel-powerups" class="help-panel hidden">
           <div class="help-section">
             <h3>Power-Ups</h3>
-            <p>🔍 <strong>Reveal Safe</strong>: reveals a random safe cell</p>
-            <p>🛡️ <strong>Shield</strong>: blocks one mine hit</p>
-            <p>🎯 <strong>Scan</strong>: shows mine count in a row or column</p>
-            <p>🧲 <strong>Magnet</strong>: extracts every mine in a 3&times;3 area off the board</p>
-            <p>🔬 <strong>X-Ray</strong>: reveals mines in a 5&times;5 area</p>
-            <p>❤️ <strong>Lifeline</strong>: auto-saves you from one mine</p>
-            <p class="help-note">Win games to earn power-ups!</p>
-          </div>
-        </div>
-        <div id="help-panel-modes" class="help-panel hidden">
-          <div class="help-section">
-            <h3>Modes</h3>
-            <p><strong>Challenge:</strong> 120 levels with modifiers &amp; power-ups</p>
-            <p><strong>Quick Play:</strong> race the clock for a speed rating (💎 best, then 🥇 🥈 🥉)</p>
-            <p><strong>Daily:</strong> one puzzle a day, same board for everyone, online leaderboard</p>
-            <p><strong>Weekly:</strong> one puzzle all week, one try a day, your best time wins</p>
-            <p><strong>Chaos:</strong> fast rounds of random modifiers (unlocks at Challenge Level 50). The one mode OUTSIDE the no-guess guarantee: boards are not verified solvable, and mines can move.</p>
+            <!-- Same drawn sprites as the in-game bar, same emoji
+                 fallback, so the reference looks like the buttons. -->
+            <p><img class="powerup-img" src="assets/sprites/pow-revealsafe.svg" alt="" draggable="false" onerror="this.replaceWith('🔍')"> <strong>Reveal Safe</strong>: opens a square the clues already prove safe, a worked example rather than a random gift</p>
+            <p><img class="powerup-img" src="assets/sprites/pow-shield.svg" alt="" draggable="false" onerror="this.replaceWith('🛡️')"> <strong>Shield</strong>: blocks one mine hit</p>
+            <p><img class="powerup-img" src="assets/sprites/pow-scan.svg" alt="" draggable="false" onerror="this.replaceWith('🎯')"> <strong>Scan</strong>: shows mine count in a row or column</p>
+            <p><img class="powerup-img" src="assets/sprites/pow-magnet.svg" alt="" draggable="false" onerror="this.replaceWith('🧲')"> <strong>Magnet</strong>: extracts every mine in a 3&times;3 area off the board</p>
+            <p><img class="powerup-img" src="assets/sprites/pow-xray.svg" alt="" draggable="false" onerror="this.replaceWith('🔬')"> <strong>X-Ray</strong>: reveals mines in a 5&times;5 area</p>
+            <p><img class="powerup-img" src="assets/sprites/pow-lifeline.svg" alt="" draggable="false" onerror="this.replaceWith('❤️')"> <strong>Lifeline</strong>: auto-saves you from one mine</p>
+            <p class="help-note">Earned by winning Challenge levels, and spent there too. Daily, Weekly, and Quick Play are played clean.</p>
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Title-screen sheets: the grouped footer's two destinations.
+       Each row opens an existing modal; the sheet hides first so the
+       destination's close button returns to the title screen. -->
+  <div id="progress-sheet" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content sheet-content">
+      <div class="modal-header">
+        <h2>Progress</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body sheet-rows">
+        <button class="sheet-row" id="sheet-stats-btn">📊 Stats</button>
+        <button class="sheet-row" id="sheet-achievements-btn">🏅 Achievements</button>
+        <button class="sheet-row" id="sheet-leaderboard-btn">🏆 Leaderboard</button>
+      </div>
+    </div>
+  </div>
+  <div id="more-sheet" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content sheet-content">
+      <div class="modal-header">
+        <h2>More</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body sheet-rows">
+        <button class="sheet-row" id="sheet-collection-btn">🎁 Collection</button>
+        <button class="sheet-row" id="sheet-settings-btn">⚙️ Settings</button>
+        <button class="sheet-row" id="sheet-whatsnew-btn">📋 What's New</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Certificate modal — opened from the ✓ Certified chip (and the
+       Chaos "No guarantees" chip). Body is rendered per-board by
+       showCertificateModal() in headerRenderer.js. Outside #app for
+       the same reason as the help modal. -->
+  <div id="cert-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content cert-modal-content">
+      <div class="modal-header">
+        <h2 id="cert-modal-title">This board is checked</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body" id="cert-modal-body"></div>
     </div>
   </div>
 
@@ -822,6 +898,11 @@
           <h3>Tutorial</h3>
           <button id="btn-replay-tutorial" class="clear-cache-btn">▶️ Replay tutorial</button>
           <p class="reset-hint">Walk through the basics again.</p>
+        </div>
+        <div class="setting-group">
+          <h3>About</h3>
+          <button id="btn-about" class="clear-cache-btn">ℹ️ About GregSweeper</button>
+          <p class="reset-hint">Version and credits.</p>
         </div>
         </div>
         <div id="settings-panel-alerts" class="settings-panel hidden">
@@ -1241,29 +1322,12 @@
         <button class="modal-close">&times;</button>
       </div>
       <div class="modal-body">
-        <div class="collection-tabs" role="tablist" aria-label="Collection category">
-          <button class="collection-tab active" data-tab="themes" role="tab" aria-selected="true">Themes</button>
-          <button class="collection-tab" data-tab="emoji" role="tab" aria-selected="false">Emoji</button>
-          <button class="collection-tab" data-tab="effects" role="tab" aria-selected="false">Effects</button>
-          <button class="collection-tab" data-tab="titles" role="tab" aria-selected="false">Titles</button>
-        </div>
+        <!-- Themes only. The emoji-pack / effects / titles tabs were
+             cut 2026-06-12: themes carry the whole identity now, and
+             three tabs of selection chaff diluted the one that
+             matters. -->
         <div id="collection-themes" class="collection-panel">
           <div id="collection-theme-grid" class="theme-swatches"></div>
-        </div>
-        <div id="collection-emoji" class="collection-panel hidden">
-          <div id="emoji-pack-grid" class="emoji-pack-grid"></div>
-        </div>
-        <div id="collection-effects" class="collection-panel hidden">
-          <h3 class="collection-subheader">Win Particles</h3>
-          <div id="effects-particles" class="effects-grid"></div>
-          <h3 class="collection-subheader">Board Border</h3>
-          <div id="effects-borders" class="effects-grid"></div>
-          <h3 class="collection-subheader">Reveal Animation</h3>
-          <div id="effects-reveals" class="effects-grid"></div>
-        </div>
-        <div id="collection-titles" class="collection-panel hidden">
-          <div id="titles-grid" class="titles-grid"></div>
-          <div id="active-title-display" class="active-title-display"></div>
         </div>
       </div>
     </div>
