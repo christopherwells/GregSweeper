@@ -319,16 +319,22 @@
         <div class="mode-card-name">Chaos</div>
         <div class="mode-card-progress" id="title-chaos-progress">Reach Level 50</div>
       </button>
+      <!-- The Gym is a play destination (practice lessons), so it lives
+           with the modes, not in the footer. No data-mode: it opens the
+           lesson overlay, not a game mode. -->
+      <button class="mode-card" id="mode-card-gym" type="button">
+        <div class="mode-card-icon">🏋️</div>
+        <div class="mode-card-name">Greg's Gym</div>
+        <div class="mode-card-progress">Practice the patterns</div>
+      </button>
     </div>
+    <!-- Three footer buttons since the 2026-06-12 grouping: play stays
+         one tap (the cards), everything secondary is two. Progress and
+         More open small sheets listing the existing modals. -->
     <div class="title-screen-footer">
       <button id="title-help-btn" class="title-footer-btn">❓ How to Play</button>
-      <button id="title-stats-btn" class="title-footer-btn">📊 Stats</button>
-      <button id="title-achievements-btn" class="title-footer-btn">🏅 Achievements</button>
-      <button id="title-leaderboard-btn" class="title-footer-btn">🏆 Leaderboard</button>
-      <button id="title-collection-btn" class="title-footer-btn">🎁 Collection</button>
-      <button id="title-lexicon-btn" class="title-footer-btn">🏋️ Greg's Gym</button>
-      <button id="title-settings-btn" class="title-footer-btn">⚙️ Settings</button>
-      <button id="title-whatsnew-btn" class="title-footer-btn">📋 What's New</button>
+      <button id="title-progress-btn" class="title-footer-btn">📊 Progress</button>
+      <button id="title-more-btn" class="title-footer-btn">⚙️ More<span id="more-btn-dot" class="more-dot hidden"></span></button>
     </div>
   </div>
 
@@ -629,25 +635,33 @@
       <div class="modal-body help-body">
         <div class="help-tabs" role="tablist" aria-label="Help topic">
           <button class="help-tab active" data-tab="basics" role="tab" aria-selected="true">Basics</button>
+          <button class="help-tab" data-tab="modes" role="tab" aria-selected="false">Modes</button>
           <button class="help-tab" data-tab="modifiers" role="tab" aria-selected="false">Modifiers</button>
           <button class="help-tab" data-tab="powerups" role="tab" aria-selected="false">Power-Ups</button>
-          <button class="help-tab" data-tab="modes" role="tab" aria-selected="false">Modes</button>
         </div>
         <div id="help-panel-basics" class="help-panel">
           <div class="help-section">
             <h3>The Guarantee</h3>
             <p>Every standard board is checked by a solver before you play it. From the marked start square (or your first click in Challenge and Quick Play) there is always a next square you can prove safe, all the way to the end. You never have to gamble.</p>
-            <p>If you get stuck, tap the <strong>🤔 button</strong> beside the smiley and the game lights up the clues that prove the next move. Chaos is the one exception to the guarantee, and it says so.</p>
+            <p>If you get stuck, tap the <strong>🤔 button</strong> beside the smiley and the game lights up the clues that prove the next move. The ✓ Certified chip above the board opens the board&rsquo;s own check. Chaos is the one exception to the guarantee, and it says so.</p>
           </div>
           <div class="help-section">
             <h3>Goal</h3>
-            <p>Reveal every safe cell without hitting a mine.</p>
+            <p>Reveal every safe square without hitting a mine. Each number counts the mines touching it, diagonals included. Blank squares touch no mines at all; the numbers are your clues.</p>
           </div>
           <div class="help-section">
             <h3>Controls</h3>
-            <p><strong>Tap / Click</strong> a cell to reveal it</p>
-            <p><strong>Long-press / Right-click</strong> to flag a suspected mine. On a phone you can also tap the 🚩 toggle, then tap cells to flag.</p>
-            <p><strong>Tap a number</strong> whose mines are all flagged to clear the rest (chord). Chording with the wrong flags will detonate.</p>
+            <p><strong>Tap / Click</strong> a square to reveal it</p>
+            <p><strong>Long-press / Right-click</strong> to flag a mine you have worked out. Or tap the <strong>👆 button</strong> in the top row: it switches to 🚩 and every tap flags instead.</p>
+            <p><strong>Tap a revealed number</strong> whose mines are all flagged to open its remaining neighbors at once (a chord). Chording with wrong flags detonates.</p>
+          </div>
+          <div class="help-section">
+            <h3>Mines in Daily and Weekly</h3>
+            <p>Hitting a mine in Daily or Weekly is not the end. The mine is marked where it blew, a time penalty is added (sized by how much that mine was hiding), and you keep playing. In Challenge and Quick Play, a mine ends the run.</p>
+          </div>
+          <div class="help-section">
+            <h3>Par</h3>
+            <p>The Daily carries a par time: the predicted clean-solve time for that exact board, refit nightly from real plays. After a win you see the board&rsquo;s par next to your time, and your personal par drifts toward your own pace as you play more.</p>
           </div>
           <div class="help-section help-keyboard-only">
             <h3>Keyboard</h3>
@@ -655,15 +669,25 @@
             <p><strong>R</strong> restart &bull; <strong>1-5</strong> power-ups &bull; <strong>Esc</strong> close</p>
           </div>
         </div>
+        <div id="help-panel-modes" class="help-panel hidden">
+          <div class="help-section">
+            <h3>Modes</h3>
+            <p><strong>Daily:</strong> one puzzle a day, the same board for everyone, online leaderboard and streaks</p>
+            <p><strong>Weekly:</strong> one puzzle for the whole week, one try a day, your best time counts</p>
+            <p><strong>Challenge:</strong> 120 levels that introduce the modifiers one at a time, with power-ups and checkpoints</p>
+            <p><strong>Quick Play:</strong> race the clock for a speed rating (💎 best, then 🥇 🥈 🥉)</p>
+            <p><strong>Greg&rsquo;s Gym:</strong> short practice boards that teach one deduction pattern at a time. A square only opens when the clues prove it is safe, so you cannot luck through.</p>
+            <p><strong>Chaos:</strong> fast rounds of random modifiers (unlocks at Challenge Level 50). The one mode OUTSIDE the no-guess guarantee: boards are not verified solvable, and mines can move.</p>
+          </div>
+        </div>
         <div id="help-panel-modifiers" class="help-panel hidden">
           <div class="help-section">
-            <h3>Numbers</h3>
-            <p>Each number tells you how many of its 8 neighbors are mines. Use logic to deduce which cells are safe!</p>
-          </div>
-          <div class="help-section">
             <h3>Modifiers</h3>
-            <p>Some boards add Modifiers: special cells that bend the rules, like a liar that&rsquo;s off by one or a wormhole that shares counts. The first time each one appears, GregSweeper explains it. You can skip the explainers from the popup or in Settings.</p>
+            <p>Some boards add Modifiers: special squares that bend the rules. The first time each one appears, GregSweeper explains it in full; the list below is the quick reference. Mid-game, tap a modifier&rsquo;s icon above the board to re-read its rule.</p>
           </div>
+          <!-- Rendered from the gimmick registry at load so this list
+               can never drift from the actual rules. -->
+          <div class="help-section" id="help-modifier-list"></div>
         </div>
         <div id="help-panel-powerups" class="help-panel hidden">
           <div class="help-section">
@@ -674,19 +698,39 @@
             <p>🧲 <strong>Magnet</strong>: extracts every mine in a 3&times;3 area off the board</p>
             <p>🔬 <strong>X-Ray</strong>: reveals mines in a 5&times;5 area</p>
             <p>❤️ <strong>Lifeline</strong>: auto-saves you from one mine</p>
-            <p class="help-note">Win games to earn power-ups!</p>
+            <p class="help-note">Earned by winning Challenge levels, and spent there too. Daily, Weekly, and Quick Play are played clean.</p>
           </div>
         </div>
-        <div id="help-panel-modes" class="help-panel hidden">
-          <div class="help-section">
-            <h3>Modes</h3>
-            <p><strong>Challenge:</strong> 120 levels with modifiers &amp; power-ups</p>
-            <p><strong>Quick Play:</strong> race the clock for a speed rating (💎 best, then 🥇 🥈 🥉)</p>
-            <p><strong>Daily:</strong> one puzzle a day, same board for everyone, online leaderboard</p>
-            <p><strong>Weekly:</strong> one puzzle all week, one try a day, your best time wins</p>
-            <p><strong>Chaos:</strong> fast rounds of random modifiers (unlocks at Challenge Level 50). The one mode OUTSIDE the no-guess guarantee: boards are not verified solvable, and mines can move.</p>
-          </div>
-        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Title-screen sheets: the grouped footer's two destinations.
+       Each row opens an existing modal; the sheet hides first so the
+       destination's close button returns to the title screen. -->
+  <div id="progress-sheet" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content sheet-content">
+      <div class="modal-header">
+        <h2>Progress</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body sheet-rows">
+        <button class="sheet-row" id="sheet-stats-btn">📊 Stats</button>
+        <button class="sheet-row" id="sheet-achievements-btn">🏅 Achievements</button>
+        <button class="sheet-row" id="sheet-leaderboard-btn">🏆 Leaderboard</button>
+      </div>
+    </div>
+  </div>
+  <div id="more-sheet" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content sheet-content">
+      <div class="modal-header">
+        <h2>More</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body sheet-rows">
+        <button class="sheet-row" id="sheet-collection-btn">🎁 Collection</button>
+        <button class="sheet-row" id="sheet-settings-btn">⚙️ Settings</button>
+        <button class="sheet-row" id="sheet-whatsnew-btn">📋 What's New</button>
       </div>
     </div>
   </div>
