@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <!--
-  og-card comparison: the original photographic card (from main) next
-  to the drawn draft, at full size and timeline-thumbnail size. Open
-  via the local server: http://localhost:8080/scripts/og-compare.html
-  The original is extracted to .playwright-mcp/og-original.png by
-  `git show main:assets/og-card.png` (gitignored scratch dir); if that
-  file is missing, re-extract it.
+  og-card decision: the original photographic card untouched, next to
+  the same photo with the contract headline typeset into the open water
+  (matching the baked title's white + yellow). The drawn flat-style
+  card was rejected on review and is gone. Open via the local server:
+  http://localhost:8080/scripts/og-compare.html
+  Both reference images live in .playwright-mcp/ (gitignored scratch):
+  og-original.png from `git show main:assets/og-card.png`, and
+  og-overlay-mock.png rendered from og-overlay-build.html.
 -->
 <html lang="en">
 <head>
@@ -22,16 +24,16 @@
 </style>
 </head>
 <body>
-<h1>og-card: original photo vs drawn draft</h1>
+<h1>og-card: original untouched vs original plus headline</h1>
 <h2>Full size (1200x630, shown at 560 wide)</h2>
 <div class="pair">
   <figure>
     <img src="../.playwright-mcp/og-original.png" width="560">
-    <figcaption>Original (photographic, currently live on main)</figcaption>
+    <figcaption>Original, untouched (currently live)</figcaption>
   </figure>
   <figure>
-    <img src="../assets/og-card.png" width="560">
-    <figcaption>Drawn draft (this branch)</figcaption>
+    <img src="../.playwright-mcp/og-overlay-mock.png" width="560">
+    <figcaption>Original plus the contract headline, typeset to match the baked title</figcaption>
   </figure>
 </div>
 <h2>Timeline-thumbnail size (roughly how a link preview renders)</h2>
@@ -41,8 +43,8 @@
     <figcaption>Original</figcaption>
   </figure>
   <figure>
-    <img src="../assets/og-card.png" width="280">
-    <figcaption>Drawn draft</figcaption>
+    <img src="../.playwright-mcp/og-overlay-mock.png" width="280">
+    <figcaption>With headline</figcaption>
   </figure>
 </div>
 </body>
