@@ -451,7 +451,7 @@ export function clearGameState(mode) {
     safeRemove(gameStateKey(mode));
   } else {
     // Clear all mode states (used by reset)
-    for (const m of ['challenge', 'timed', 'daily', 'skillTrainer', 'chaos']) {
+    for (const m of ['challenge', 'timed', 'daily', 'weekly', 'skillTrainer', 'chaos']) {
       safeRemove(gameStateKey(m));
     }
     safeRemove(LEGACY_GAME_STATE_KEY);

@@ -2,7 +2,8 @@ import { state } from '../state/gameState.js';
 import {
   saveGameState, loadGameState, loadDailyPar,
 } from '../storage/statsStorage.js';
-import { getLocalDateString } from '../logic/seededRandom.js';
+import { getLocalDateString, getWeekStart, getWeekDayIndex } from '../logic/seededRandom.js';
+import { isSaveResumable } from '../logic/resumeEligibility.js';
 import { recomputeDisplayedMines } from '../logic/gimmicks.js';
 import {
   adjustCellSize, renderBoard, updateAllCells, updateZoom, renderWallOverlays,
@@ -77,67 +78,28 @@ export function persistGameState() {
 }
 
 export function tryResumeGame(mode) {
-  const gs = loadGameState(mode || state.gameMode);
-  if (!gs || !gs.board || !gs.gameMode) return false;
+  const slot = mode || state.gameMode;
+  const gs = loadGameState(slot);
 
-  // Stale daily check: if saved daily seed doesn't match today's ET date,
-  // discard. dailyRngSeed is populated by newGame's daily branch, so its
-  // presence is the fingerprint for a real daily save — without it, a
-  // cross-mode persisted state (e.g. challenge board written under the
-  // 'daily' localStorage key) would match the seed and resume the wrong
-  // board.
-  if (gs.gameMode === 'daily' && gs.dailySeed) {
-    const expectedSeed = state.dailySeed || getLocalDateString();
-    if (gs.dailySeed !== expectedSeed) return false;
-    if (!gs.dailyRngSeed) return false;
-  }
-
-  // Weekly resume: only valid if both the week AND the day-index match,
-  // AND the saved board actually came from the weekly branch (it has
-  // a populated weeklyRngSeed). Without that last check, a stale cross-
-  // mode persisted state — written by switchMode's persistGameState
-  // call when the click handler set state.gameMode='weekly' before the
-  // weekly branch had a chance to populate the real board — would pass
-  // the seed/day checks and resume a 5×5 challenge L1 board.
-  // Crossing midnight ET into the next ET day forfeits the in-progress
-  // attempt — saved game must be discarded and the player gets a fresh
-  // attempt on the new day. Crossing into a new ISO week (Sunday →
-  // Monday) does the same since weeklySeed changes too.
-  if (gs.gameMode === 'weekly' && gs.weeklySeed != null) {
-    const expectedSeed = state.weeklySeed || gs.weeklySeed;
-    const expectedDay = state.weeklyDay != null ? state.weeklyDay : gs.weeklyDay;
-    if (gs.weeklySeed !== expectedSeed) return false;
-    if (gs.weeklyDay !== expectedDay) return false;
-    if (!gs.weeklyRngSeed) return false;
-  }
-
-  // Divergent-canonical check: if the saved daily was generated against
-  // a different `:trialN` seed than today's canonical board on Firebase,
-  // discard the local save and let newGame() pull the canonical.
-  // Without this, a player whose previous load lost a Firebase race
-  // (and silently fell through to local generation) would keep playing
-  // the wrong board on every return visit until they manually cleared
-  // their cache. Kate hit exactly this scenario on 2026-05-06 — saved
-  // trial3 in her browser even though canonical was trial5.
-  if (gs.gameMode === 'daily'
-      && gs.dailyRngSeed
-      && state.canonicalDailyBoard?.raw?.rngSeed
-      && state.canonicalDailyBoard.date === gs.dailySeed
-      && state.canonicalDailyBoard.raw.rngSeed !== gs.dailyRngSeed) {
-    return false;
-  }
-
-  // Detect cells corrupted by the v1.5.19 canonical-board deserializer
-  // bug (cells without row/col). If found, return false so newGame()
-  // runs a fresh canonical fetch with the FIXED deserializer instead
-  // of resuming an unplayable board where reveal cascades never
-  // visually update.
-  if (Array.isArray(gs.board) && gs.board[0] && gs.board[0][0]) {
-    const c0 = gs.board[0][0];
-    if (typeof c0.row !== 'number' || typeof c0.col !== 'number') {
-      return false;
-    }
-  }
+  // All resume-eligibility rules (date anchors, seed-identity
+  // fingerprints, canonical divergence, corrupt cells) live in
+  // resumeEligibility.js — pure and node-tested. The context anchors
+  // to the CLOCK, not to live state: a session that survived midnight
+  // ET still carries yesterday's dailySeed in state, and trusting it
+  // is how yesterday's unfinished daily once resurrected as "today's"
+  // puzzle. Practice (?seed=) is the one caller-owned seed, so its
+  // live flag and seed are the only state fields consulted.
+  const resumable = isSaveResumable(gs, {
+    mode: slot,
+    today: getLocalDateString(),
+    weekStart: getWeekStart(),
+    weekDayIndex: getWeekDayIndex(),
+    isDailyPractice: !!state.isDailyPractice,
+    practiceSeed: state.dailySeed || null,
+    canonicalDate: state.canonicalDailyBoard?.date || null,
+    canonicalRngSeed: state.canonicalDailyBoard?.raw?.rngSeed || null,
+  });
+  if (!resumable) return false;
 
   state.board = gs.board;
   state.rows = gs.rows;

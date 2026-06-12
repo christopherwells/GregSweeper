@@ -31,13 +31,14 @@ import {
   loadDailyLeaderboard, addDailyLeaderboardEntry,
   saveModePowerUps, loadGameState,
   isOnboarded, setOnboarded,
-  isDailyCompleted,
+  isDailyCompleted, markDailyCompleted,
   getDailyStreak,
   getPlayerName, setPlayerName,
   getLastSeenVersion, setLastSeenVersion,
   saveDailyPar, loadDailyPar, pruneOldDailyKeys, applyCloudProgress, resetDailyStatsForAccountSwitch,
   reconcileStreakFromHistory,
   hasSeenNotice, markNoticeSeen,
+  clearGameState,
 } from './storage/statsStorage.js';
 
 const CURRENT_VERSION = 'v1.7';
@@ -76,7 +77,9 @@ import {
 } from './ui/collectionManager.js';
 import { isModifierPopupDisabled, setModifierPopupDisabled, getGimmickDefs, getDailyGimmick, applyGimmicks } from './logic/gimmicks.js';
 import { isStorageFailing, safeGet, safeSet, safeRemove, requestPersistentStorage } from './storage/storageAdapter.js';
-import { pauseTimer, resumeTimer, recordInteraction } from './game/timerManager.js';
+import { pauseTimer, resumeTimer, stopTimer, recordInteraction } from './game/timerManager.js';
+import { isLiveGameExpired } from './logic/resumeEligibility.js';
+import { findRowByUid, findRowForBoard } from './logic/scoreRowMatch.js';
 import { startTutorial, startWarmup } from './ui/tutorialManager.js';
 import { initErrorReporter, setErrorReporterCodeVersion, reportTestError, reportCaughtError } from './diagnostics/errorReporter.js';
 
@@ -333,46 +336,62 @@ async function runStartupGate() {
     }
   }
 
-  // Stale-completion check: only clear the local "completed today"
-  // flag when we POSITIVELY confirm a divergent rngSeed on a Firebase
-  // score we've matched to this user. If we can't find a score (uid
-  // mismatch, network race, fresh device, offline submission, etc.)
-  // we trust the local flag — it's set because the user on this
-  // device actually completed the daily, and absence of a Firebase
-  // record is more often a sync issue than a server-side deletion.
+  // Completion ↔ cloud reconciliation (one read, both directions).
+  // "Completed today" is a per-ACCOUNT fact; the localStorage flag is
+  // just this device's cache of it. Two ways they can disagree:
   //
-  // The earlier version of this check cleared the flag on any "non-
-  // clean" outcome including missing-score, which let the user replay
-  // a daily they had already completed when their uid lookup raced.
-  if (firebaseReady && !customSeed && isDailyCompleted(today)) {
-    setBootStatus('Verifying today\'s play…');
-    const myUid = await _waitForUid(3000);
+  //  - Local flag SET, cloud row DIVERGENT (different rngSeed than the
+  //    canonical): the player completed a wrong board (cold-load race,
+  //    pre-canonical client). Clear the flag + cached par/moves so they
+  //    can play the real canonical. Only a POSITIVELY divergent row
+  //    clears — a missing row (uid mismatch, network race, offline
+  //    submission) trusts the local flag; an earlier version cleared on
+  //    missing-score and let raced lookups unlock replays.
+  //
+  //  - Local flag UNSET, cloud row MATCHING the canonical: this account
+  //    already completed today's board on ANOTHER device. Adopt the
+  //    completion locally (mark + drop any in-progress daily save) so
+  //    the Daily card reads "Completed!" and the player can't finish
+  //    the same board twice and double-submit. Adoption requires an
+  //    explicit effective-seed match — a divergent row must NOT lock
+  //    the player out of the canonical (that is exactly what the clear
+  //    branch unlocks). The submission-level dedupe in
+  //    firebaseLeaderboard backs this up for mid-session races the
+  //    boot check can't see.
+  //
+  // Test env: skipped entirely — isDailyCompleted/markDailyCompleted
+  // are no-ops there, and clearGameState would touch localStorage
+  // shared with the production origin.
+  if (firebaseReady && !customSeed && !isTestEnvironment()) {
     const canonicalSeed = state.canonicalDailyBoard?.raw?.rngSeed || null;
-    if (myUid && canonicalSeed) {
-      try {
-        const snap = await firebase.database().ref(`daily/${today}`).once('value');
-        let myScore = null;
-        snap.forEach((child) => {
-          const v = child.val();
-          if (v && v.uid === myUid) {
-            myScore = v;
-            return true; // stop iteration
+    if (canonicalSeed) {
+      setBootStatus('Verifying today\'s play…');
+      const myUid = await _waitForUid(3000);
+      if (myUid) {
+        try {
+          const snap = await firebase.database().ref(`daily/${today}`).once('value');
+          const rows = snap.val();
+          if (isDailyCompleted(today)) {
+            const myScore = findRowByUid(rows, myUid);
+            const myScoreSeed = myScore?.rngSeed || null;
+            if (myScore && myScoreSeed && myScoreSeed !== canonicalSeed) {
+              // Confirmed divergent — clear the completion flag plus the
+              // cached par/moves so newGame recomputes them against the
+              // canonical layout. Don't touch streak fields; replaying
+              // maintains the streak via lastDailyDate === today.
+              safeRemove('minesweeper_daily_completed_date');
+              safeRemove('minesweeper_daily_par_' + today);
+              safeRemove('minesweeper_daily_moves_' + today);
+            }
+          } else if (findRowForBoard(rows, myUid, today, canonicalSeed)) {
+            // Completed on another device — adopt. Any in-progress local
+            // attempt is moot; first completion wins.
+            markDailyCompleted(today);
+            clearGameState('daily');
           }
-          return undefined;
-        });
-        const myScoreSeed = myScore?.rngSeed || null;
-        const isDivergent = myScore && myScoreSeed && myScoreSeed !== canonicalSeed;
-        if (isDivergent) {
-          // Confirmed divergent — clear the completion flag plus the
-          // cached par/moves so newGame recomputes them against the
-          // canonical layout. Don't touch streak fields; replaying
-          // maintains the streak via lastDailyDate === today.
-          safeRemove('minesweeper_daily_completed_date');
-          safeRemove('minesweeper_daily_par_' + today);
-          safeRemove('minesweeper_daily_moves_' + today);
+        } catch (err) {
+          console.warn('startup gate: completion verification failed:', err.message);
         }
-      } catch (err) {
-        console.warn('startup gate: completion verification failed:', err.message);
       }
     }
   }
@@ -2571,22 +2590,26 @@ for (const card of $$('.mode-card')) {
         showToast("Already done for today. Weekly's open if you want more.");
         return;
       }
-      state.dailySeed = null;
-      state.dailyRngSeed = null;
+      // Entering via the card is always the OFFICIAL daily, even after
+      // a practice (?seed=) session earlier in this tab. Don't touch
+      // dailySeed/dailyRngSeed here: switchMode persists the outgoing
+      // game first, and nulling the live seeds beforehand used to strip
+      // the date fingerprint off that snapshot — the undated save then
+      // bypassed every stale-save guard and resumed yesterday's board
+      // as "today's" daily. newGame derives the seed from the clock.
+      state.isDailyPractice = false;
     }
     if (mode === 'weekly') {
-      const weekStart = getWeekStart();
-      const dayIdx = getWeekDayIndex();
       // Cloud-synced gate: refuse a second attempt on the same day.
-      if (state.cachedWeeklyDayAttempts && state.cachedWeeklyDayAttempts[dayIdx]) {
+      if (state.cachedWeeklyDayAttempts && state.cachedWeeklyDayAttempts[getWeekDayIndex()]) {
         showToast("You've already played today's weekly puzzle. Come back tomorrow!");
         return;
       }
-      // Set up weekly state BEFORE switchMode so newGame's weekly branch
-      // sees the weekStart + day index when it resolves the canonical.
-      state.gameMode = 'weekly';
-      state.weeklySeed = weekStart;
-      state.weeklyDay = dayIdx;
+      // No identity pre-set here (same trap as daily: switchMode
+      // persists the outgoing game first, and stamping the new
+      // gameMode/weekStart/dayIndex onto live state beforehand forged
+      // the old game's snapshot as current). newGame's weekly branch
+      // derives weekStart + day index from the clock.
       state.isDailyPractice = false;
       hideTitleScreen();
       switchMode('weekly');
@@ -3202,13 +3225,19 @@ $('#gameover-submit-daily').addEventListener('click', async (e) => {
       rngSeed: state.dailyRngSeed || dateStr,
     });
     // Skip personal-history write for practice dailies — they play on a
-    // custom seed and don't belong on the regular daily timeline.
-    if (!state.isDailyPractice) {
+    // custom seed and don't belong on the regular daily timeline. Also
+    // skipped on 'duplicate' (this account already posted this board
+    // from another device): first completion wins the history slot.
+    if (!state.isDailyPractice && submitOk !== 'duplicate') {
       saveDailyHistoryEntry(dateStr, { time: scoreTime });
     }
     const dailySubmitForm = $('#daily-submit-form');
     if (dailySubmitForm) dailySubmitForm.classList.add('hidden');
-    showToast(submitOk ? '✅ Score submitted!' : '📡 Saved. Uploads when you reconnect');
+    if (submitOk === 'duplicate') {
+      showToast('Already on the board from another device');
+    } else {
+      showToast(submitOk ? '✅ Score submitted!' : '📡 Saved. Uploads when you reconnect');
+    }
   }
 });
 
@@ -3669,19 +3698,28 @@ async function init() {
     // under a non-today seed (e.g. after you've finished today's). Practice
     // runs submit to Firebase so the backend gets your uid, but don't
     // touch streak, bestTimes, completion flags, or personal history.
-    state.gameMode = 'daily';
     const customSeed = urlParams.get('seed');
-    if (customSeed) {
-      state.dailySeed = customSeed;
-      state.isDailyPractice = true;
+    if (!customSeed && isDailyCompleted(getLocalDateString())) {
+      // Already completed (possibly adopted from another device by the
+      // startup gate) — the Daily card gates this, and a notification
+      // tap must not bypass it into a replay + duplicate submission.
+      // Mirror the weekly already-played branch: title screen + toast.
+      showTitleScreen();
+      showToast("Already done for today. Weekly's open if you want more.");
+      if (!tryResumeGame()) await newGame(); else rearmPlateTimers();
+    } else {
+      state.gameMode = 'daily';
+      if (customSeed) {
+        state.dailySeed = customSeed;
+        state.isDailyPractice = true;
+      }
+      hideTitleScreen();
+      if (!tryResumeGame()) await newGame(); else rearmPlateTimers();
     }
-    hideTitleScreen();
-    if (!tryResumeGame()) await newGame(); else rearmPlateTimers();
   } else if (deepLinkMode === 'weekly') {
     // Deep link to weekly mode (used by push notifications and direct
     // shares). Drop into the weekly card's click-handler equivalent
     // state setup, then route through the daily flow.
-    const weekStart = getWeekStart();
     const dayIdx = getWeekDayIndex();
     if (state.cachedWeeklyDayAttempts && state.cachedWeeklyDayAttempts[dayIdx]) {
       // Already played today — show the title screen with the weekly
@@ -3689,9 +3727,9 @@ async function init() {
       showTitleScreen();
       if (!tryResumeGame()) await newGame(); else rearmPlateTimers();
     } else {
+      // gameMode routes tryResumeGame to the weekly save slot; the
+      // weekStart/dayIndex identity is clock-derived inside newGame.
       state.gameMode = 'weekly';
-      state.weeklySeed = weekStart;
-      state.weeklyDay = dayIdx;
       hideTitleScreen();
       if (!tryResumeGame()) await newGame(); else rearmPlateTimers();
     }
@@ -3716,6 +3754,38 @@ async function init() {
   }, 5000); // Every 5s for reliable mobile persistence
 }
 
+// Forfeit a live date-anchored game whose ET anchor has lapsed — the
+// session slept through midnight in a background tab or suspended PWA,
+// so the daily on screen is yesterday's (or the weekly attempt belongs
+// to a previous day). A fresh load would reach the same verdict from
+// the persisted save via isSaveResumable; this is the live-session
+// equivalent. Clears the persisted save, marks the live game expired
+// (persistGameState only writes playing/idle, so the dead state can
+// never be re-saved), and routes to the title screen. Returns true
+// when a game was expired.
+function expireRolledOverGame() {
+  const expired = isLiveGameExpired(state, {
+    today: getLocalDateString(),
+    weekStart: getWeekStart(),
+    weekDayIndex: getWeekDayIndex(),
+  });
+  // The title screen is date-sensitive even with no game in progress
+  // ("Completed today!", par line, weekly attempts) — refresh its cards
+  // on every wake so midnight can't leave stale copy up.
+  const titleScreen = $('#title-screen');
+  const titleVisible = titleScreen && !titleScreen.classList.contains('hidden');
+  if (!expired) {
+    if (titleVisible) updateTitleProgress();
+    return false;
+  }
+  stopTimer();
+  state.status = 'expired';
+  clearGameState(state.gameMode);
+  showTitleScreen();
+  showToast("New day! Yesterday's unfinished puzzle has expired.");
+  return true;
+}
+
 // Pause timer + persist when app loses focus; resume when visible
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') {
@@ -3726,6 +3796,9 @@ document.addEventListener('visibilitychange', () => {
     // this, the idle-pause timer would fire ~30s after refocus because
     // lastInteractionTime froze when we went hidden.
     recordInteraction();
+    // Date-rollover check FIRST, so a stale game can't get its timer
+    // resumed moments before being torn down.
+    if (expireRolledOverGame()) return;
     if (state.status === 'playing' && !state.idlePaused) {
       resumeTimer();
     }

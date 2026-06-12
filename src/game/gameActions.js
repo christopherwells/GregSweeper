@@ -22,7 +22,7 @@ import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getChaosD
 import { computeDailyFeatures, predictPar } from '../logic/dailyFeatures.js';
 import { shieldDefuse } from '../logic/powerUps.js';
 import { getGimmicksForLevel, applyGimmicks, applyWalls, isLockedCell, hasWallBetween, hasSeenGimmick, markGimmickSeen, getGimmickDef, isModifierPopupDisabled, setModifierPopupDisabled, getDailyGimmick, getWeeklyGimmicks, getChaosGimmicks, clearGimmickProperties, recomputeDisplayedMines, getIntensity } from '../logic/gimmicks.js';
-import { createDailyRNG, getLocalDateString, getWeekStart } from '../logic/seededRandom.js';
+import { createDailyRNG, getLocalDateString, getWeekStart, getWeekDayIndex } from '../logic/seededRandom.js';
 import { selectDailyRngSeed } from '../logic/selectDailyRngSeed.js';
 import { selectWeeklyRngSeed } from '../logic/selectWeeklyRngSeed.js';
 import { getTargetGimmickName, getMissionForSeed } from '../logic/experimentDesign.js';
@@ -282,17 +282,22 @@ export async function newGame() {
   state.showParticles = false;
   state.hitMine = null;
   state.suggestedMove = null;
-  // Practice-daily sets state.dailySeed (and state.isDailyPractice) BEFORE
-  // newGame runs, so don't stomp on it here. For a normal daily we always
-  // use today's local date string.
+  // Daily identity is derived HERE, from the ET clock, never trusted
+  // from whoever called newGame: a live session that crossed midnight
+  // still carries yesterday's date in state.dailySeed, and the old
+  // keep-if-set logic would regenerate yesterday's board as "today's".
+  // Practice (?seed= deep link) is the one caller-owned seed — it sets
+  // isDailyPractice before newGame runs.
   if (state.gameMode !== 'daily') {
     state.dailySeed = null;
     state.dailyRngSeed = null;
     state.isDailyPractice = false;
-  } else if (!state.dailySeed) {
+  } else if (!state.isDailyPractice) {
     state.dailySeed = getLocalDateString();
   }
-  // Reset weekly mode state when leaving weekly (mirrors the daily reset).
+  // Weekly identity is likewise clock-derived at creation (callers used
+  // to pre-set it, which left a stale weeklySeed/weeklyDay possible in
+  // a midnight-crossing session). Reset weekly state when leaving weekly.
   if (state.gameMode !== 'weekly') {
     state.weeklySeed = null;
     state.weeklyDay = null;
@@ -302,6 +307,9 @@ export async function newGame() {
     state.weeklyDayTimes = {};
     state.weeklyDayBombHits = {};
     state.weeklyFeatures = null;
+  } else {
+    state.weeklySeed = getWeekStart();
+    state.weeklyDay = getWeekDayIndex();
   }
   state.dailyBombHits = 0;
   state.dailyBombHitEvents = [];
