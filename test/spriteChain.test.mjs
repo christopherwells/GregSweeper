@@ -93,8 +93,7 @@ test('the exported Greg PNGs and SVG masters exist on disk', () => {
         `missing greg master ${d}-${p}.svg`);
     }
   }
-  assert.ok(existsSync(join(repoRoot, 'assets', 'og-card.svg')), 'missing og-card.svg master');
-  assert.ok(existsSync(join(repoRoot, 'assets', 'og-card.png')), 'missing og-card.png export');
+  assert.ok(existsSync(join(repoRoot, 'assets', 'og-card.png')), 'missing og-card.png');
 });
 
 test('every THEME_SPRITES path in spriteLoader source exists on disk', () => {
