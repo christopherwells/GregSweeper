@@ -54,25 +54,32 @@ export function updateProgressBar() {
   }
 }
 
-// Persistent reminder of which modifiers are active in this game.
-// Renders icon chips into #active-gimmick-bar. Hidden when no gimmicks
-// are active, when in chaos mode (chaos has its own bar), or when in
-// timed mode (no gimmicks). Daily / weekly / challenge with at least
-// one active gimmick all render here.
+// Persistent reminder of which modifiers are active in this game,
+// plus the ✓ Certified chip when the board carries a no-guess
+// certificate. Renders into #active-gimmick-bar. The bar shows when
+// EITHER is present: gimmicks (daily / weekly / challenge) or a
+// certificate (those three plus timed — gimmick-free but certified).
+// Chaos keeps its own bar, which carries the inverse chip instead.
 export function updateActiveGimmickBar() {
   const bar = document.getElementById('active-gimmick-bar');
   const icons = document.getElementById('active-gimmick-icons');
   if (!bar || !icons) return;
+  const label = bar.querySelector('.active-gimmick-label');
+  const chip = document.getElementById('cert-chip');
   const eligibleMode = state.gameMode === 'normal'
     || state.gameMode === 'daily'
     || state.gameMode === 'weekly';
   const list = Array.isArray(state.activeGimmicks) ? state.activeGimmicks : [];
-  if (!eligibleMode || list.length === 0) {
+  const showGimmicks = eligibleMode && list.length > 0;
+  const showChip = !!state.boardCertificate;
+  if (!showGimmicks && !showChip) {
     bar.classList.add('hidden');
     icons.innerHTML = '';
     return;
   }
-  icons.innerHTML = list.map(g => {
+  if (label) label.classList.toggle('hidden', !showGimmicks);
+  if (chip) chip.classList.toggle('hidden', !showChip);
+  icons.innerHTML = !showGimmicks ? '' : list.map(g => {
     const def = getGimmickDef(g);
     if (!def) return '';
     const tooltip = (def.name + ': ' + (def.desc || '')).replace(/"/g, '&quot;');
@@ -82,6 +89,58 @@ export function updateActiveGimmickBar() {
     return '<span class="active-gimmick-icon" role="button" tabindex="0" data-gimmick="' + g + '" title="' + tooltip + '">' + def.icon + '</span>';
   }).join('');
   bar.classList.remove('hidden');
+}
+
+// ── Certificate modal ─────────────────────────────────
+// Opened from the ✓ Certified chip (and the Chaos "No guarantees"
+// chip). One plain-language paragraph plus the board facts the solver
+// actually proved — the copy can never outrun the certificate.
+const CERT_TIER_LINES = {
+  low: 'Counting the clues is enough to walk the whole chain.',
+  enumerate: 'Some steps take case-by-case thinking: trying the possibilities until only one survives.',
+  liar: 'Some steps take liar reasoning: weighing both values a lying number could mean.',
+};
+
+export function showCertificateModal() {
+  const body = document.getElementById('cert-modal-body');
+  const title = document.getElementById('cert-modal-title');
+  if (!body || !title) return;
+  const cert = state.boardCertificate;
+  if (state.gameMode === 'chaos' || !cert) {
+    title.textContent = 'No guarantees here';
+    body.innerHTML = '<p>Chaos boards are the one exception to the no-guess rule: '
+      + 'they are not checked by the solver, 50/50s can happen, and mines can move.</p>'
+      + '<p>Every other mode keeps the guarantee.</p>';
+  } else {
+    const deductions = Math.max(0, (cert.clicks || 1) - 1);
+    const fromWhere = (state.gameMode === 'daily' || state.gameMode === 'weekly')
+      ? 'from the marked start square'
+      : 'from your first click';
+    const tierLine = cert.tier >= 3 ? CERT_TIER_LINES.liar
+      : cert.tier === 2 ? CERT_TIER_LINES.enumerate
+      : CERT_TIER_LINES.low;
+    const chainLine = deductions === 0
+      ? 'the opening reveal clears the whole board on its own'
+      : deductions === 1
+        ? 'a single provable move finishes the board'
+        : 'a chain of <strong>' + deductions + ' provable moves</strong> clears the whole board';
+    title.textContent = 'This board is checked';
+    let html = '<p>The solver played this board to the end before you saw it. '
+      + 'Starting ' + fromWhere + ', ' + chainLine + '. No step needs a guess.</p>'
+      + '<p>' + tierLine + '</p>';
+    if (state.gameMode === 'daily' || state.gameMode === 'weekly') {
+      html += '<p class="cert-recheck">Checked when the board was generated, and checked again when your device loaded it.</p>';
+    }
+    body.innerHTML = html;
+  }
+  import('./modalManager.js').then(m => m.showModal('cert-modal'));
+}
+
+// Both chips are static elements, so bind once at module load (same
+// pattern as the gimmick-icons delegation below).
+for (const chipId of ['cert-chip', 'chaos-no-cert-chip']) {
+  const el = document.getElementById(chipId);
+  if (el) el.addEventListener('click', showCertificateModal);
 }
 
 // Tap (or Enter on a focused chip) → toast the modifier's name + rule.

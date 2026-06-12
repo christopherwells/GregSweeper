@@ -285,7 +285,8 @@
   <div id="title-screen" class="title-screen">
     <div class="title-screen-header">
       <h1 class="title-screen-logo">GregSweeper</h1>
-      <p class="title-screen-subtitle">Modern Minesweeper</p>
+      <p class="title-screen-subtitle">No guesses. Ever.</p>
+      <p class="title-screen-proof">Every board is proven solvable before you see it.</p>
       <p class="title-screen-goal">Clear every safe cell. The numbers show where the mines are.</p>
     </div>
     <div class="title-screen-modes">
@@ -335,7 +336,7 @@
   <div id="app" class="hidden">
     <div id="title-bar">
       <h1 id="game-title" title="About GregSweeper">GregSweeper</h1>
-      <div id="title-subtitle">Modern Minesweeper</div>
+      <div id="title-subtitle">No guesses. Ever.</div>
     </div>
     <div id="screen-shake-wrapper">
       <header id="game-header">
@@ -417,13 +418,17 @@
       <div id="chaos-modifier-bar" class="chaos-modifier-bar hidden">
         <span class="chaos-round-label" id="chaos-round-label">Round 1</span>
         <span class="chaos-modifier-icons" id="chaos-modifier-icons"></span>
+        <button id="chaos-no-cert-chip" class="cert-chip cert-chip-none" type="button" aria-label="Chaos boards are not checked by the solver. Tap for details.">No guarantees</button>
       </div>
 
       <!-- Persistent active-gimmick reminder for daily / weekly / challenge.
-           Chaos uses its own bar above. Hidden when no gimmicks are active. -->
+           Chaos uses its own bar above. Shown when gimmicks are active OR
+           the board carries a no-guess certificate (the ✓ chip — timed
+           included, gimmick-free but certified). -->
       <div id="active-gimmick-bar" class="active-gimmick-bar hidden">
         <span class="active-gimmick-label">Modifiers:</span>
         <span class="active-gimmick-icons" id="active-gimmick-icons"></span>
+        <button id="cert-chip" class="cert-chip hidden" type="button" aria-label="This board is checked: solvable without guessing. Tap for details.">✓ Certified</button>
       </div>
 
       <div id="board-container">
@@ -439,6 +444,12 @@
           <button id="zoom-in" class="zoom-btn" title="Zoom In">+</button>
         </div>
       </div>
+
+      <!-- The board coach line: the Lens answers here, one persistent
+           sentence under the board, updated in place (same job and look
+           as the Gym's .lexicon-coach). Cleared on the next reveal or
+           flag — a hint should outlive a toast, not the move it shaped. -->
+      <p id="board-coach" class="board-coach" aria-live="polite" hidden></p>
     </div>
 
     <!-- In-game nav: FIVE large targets, sized for a phone. Stats,
@@ -624,6 +635,11 @@
         </div>
         <div id="help-panel-basics" class="help-panel">
           <div class="help-section">
+            <h3>The Guarantee</h3>
+            <p>Every standard board is checked by a solver before you play it. From the marked start square (or your first click in Challenge and Quick Play) there is always a next square you can prove safe, all the way to the end. You never have to gamble.</p>
+            <p>If you get stuck, tap <strong>Stuck?</strong> and the game lights up the clues that prove the next move. Chaos is the one exception to the guarantee, and it says so.</p>
+          </div>
+          <div class="help-section">
             <h3>Goal</h3>
             <p>Reveal every safe cell without hitting a mine.</p>
           </div>
@@ -652,7 +668,7 @@
         <div id="help-panel-powerups" class="help-panel hidden">
           <div class="help-section">
             <h3>Power-Ups</h3>
-            <p>🔍 <strong>Reveal Safe</strong>: reveals a random safe cell</p>
+            <p>🔍 <strong>Reveal Safe</strong>: opens a square the clues already prove safe, a worked example rather than a random gift</p>
             <p>🛡️ <strong>Shield</strong>: blocks one mine hit</p>
             <p>🎯 <strong>Scan</strong>: shows mine count in a row or column</p>
             <p>🧲 <strong>Magnet</strong>: extracts every mine in a 3&times;3 area off the board</p>
@@ -672,6 +688,20 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Certificate modal — opened from the ✓ Certified chip (and the
+       Chaos "No guarantees" chip). Body is rendered per-board by
+       showCertificateModal() in headerRenderer.js. Outside #app for
+       the same reason as the help modal. -->
+  <div id="cert-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content cert-modal-content">
+      <div class="modal-header">
+        <h2 id="cert-modal-title">This board is checked</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body" id="cert-modal-body"></div>
     </div>
   </div>
 

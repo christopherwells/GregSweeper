@@ -81,6 +81,16 @@ const STEPS = [
     buttonText: 'Got it!',
   },
   {
+    // The promise beat: the one thing that separates GregSweeper from
+    // every Minesweeper the player has rage-quit. Deliberately not a
+    // numbered "Step": it teaches the contract, not a mechanic.
+    id: 'promise',
+    title: 'You never have to guess',
+    text: 'Every standard board is checked before you play it: from your start there is always a square you can prove safe, all the way to the end. In a real game, if you get stuck, the Stuck? button lights up the clues that prove the next move.',
+    action: 'next',
+    buttonText: 'Good to know',
+  },
+  {
     id: 'flag',
     title: 'Step 3: Flag a Mine',
     text: "The top-left corner is boxed in by 1s, and the only hidden cell they all touch is that corner. A 1 means exactly one mine, so the corner has to be one. Long-press it to flag it (right-click on desktop).",

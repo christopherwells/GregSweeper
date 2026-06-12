@@ -533,6 +533,19 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
   return buildResult(false, totalSafe - revealedCount);
 }
 
+// The player-facing certificate summary of a solver check: how long the
+// proven chain is (totalClicks = entry click + deductions) and the
+// hardest technique it needed. Returns null unless the check actually
+// certified a full clear — a certificate must never overclaim, so a
+// failed or partial check produces NO stamp rather than a hedged one.
+// (The acceptance condition mirrors the generation loops: solvable, or
+// zero unknowns remaining.)
+export function certificateFromCheck(check) {
+  if (!check) return null;
+  if (!(check.solvable || check.remainingUnknowns === 0)) return null;
+  return { clicks: check.totalClicks, tier: check.techniqueLevel ?? 0 };
+}
+
 // Gimmick types that meaningfully contribute info the player uses for
 // deduction. The "load-bearing" filter strips one of these at a time and
 // re-runs the solver: if the board is still solvable without that gimmick's

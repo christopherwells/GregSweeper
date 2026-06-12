@@ -1,7 +1,7 @@
 {
   "name": "GregSweeper",
   "short_name": "GregSweeper",
-  "description": "The daily Minesweeper, no guesses required. Every board guaranteed solvable. Ten optional modifiers, worldwide leaderboard. Free in your browser.",
+  "description": "The daily Minesweeper, no guesses required. Every standard board guaranteed solvable. Ten optional modifiers, worldwide leaderboard. Free in your browser.",
   "categories": ["games", "entertainment"],
   "lang": "en-US",
   "dir": "ltr",
