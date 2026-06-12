@@ -1020,7 +1020,16 @@ async function renderWeeklyLeaderboard(weekStart, friendCtx = null, emptyText = 
   // par (solved once per session via computeWeeklyPar).
   const weeklyPar = await computeWeeklyPar(weekStart);
   const myUidW = getUid();
+  // Greg's ghost row, same contract as the daily table: par-sorted
+  // position, ties go to the player, no Played count (he generated the
+  // board, he does not get attempts).
+  const gregTrailingW = `<td>-</td>${_parDeltaCell(weeklyPar, weeklyPar)}`;
+  let gregPlacedW = !(weeklyPar > 0);
   entries.forEach((entry, i) => {
+    if (!gregPlacedW && entry.bestTime > weeklyPar) {
+      tbody.appendChild(_gregGhostRow(weeklyPar, gregTrailingW));
+      gregPlacedW = true;
+    }
     const tr = document.createElement('tr');
     if (myUidW && entry.uid === myUidW) tr.classList.add('lb-row-mine');
     const used = entry.attemptsUsed || 0;
@@ -1028,6 +1037,7 @@ async function renderWeeklyLeaderboard(weekStart, friendCtx = null, emptyText = 
     tr.innerHTML = `${_rankCell(i)}${_nameCell(entry.name)}<td>${entry.bestTime.toFixed(1)}s</td><td>${used}/7</td>${parCol}`;
     tbody.appendChild(tr);
   });
+  if (!gregPlacedW) tbody.appendChild(_gregGhostRow(weeklyPar, gregTrailingW));
 }
 
 // Pick the default leaderboard tab based on current mode. Player in
@@ -1167,6 +1177,21 @@ function _nameCell(name) {
   return `<td class="lb-name-cell"><span class="lb-name">${escapeHtml(name)}</span></td>`;
 }
 
+// Greg's ghost row: the par rendered as a competitor at its sorted
+// position. Non-interactive, dashed border, NO rank number, so humans
+// keep their ranks and Greg just shows where his time would land.
+// Rendered in the daily and weekly scores tables, Friends view
+// included (Greg is everyone's rival). Callers supply the cells after
+// the Time column because the two tables differ there.
+function _gregGhostRow(par, trailingCells) {
+  const tr = document.createElement('tr');
+  tr.className = 'greg-row';
+  tr.title = "Greg's time is the model's par for this board";
+  tr.innerHTML = `<td class="lb-rank-cell">${spriteImgHTML('smiley', 'sprite-greg-row', 'Greg')}</td>`
+    + _nameCell('Greg') + `<td>${par.toFixed(1)}s</td>` + trailingCells;
+  return tr;
+}
+
 // Par-delta cell, shared by daily/weekly/friends tables.
 function _parDeltaCell(time, par) {
   if (!(par > 0)) return '<td>-</td>';
@@ -1290,7 +1315,16 @@ async function _renderDailyScores(friendCtx = null, emptyText = null) {
   const handicapMap = friendCtx ? await loadHandicaps() : null;
 
   const myUid = getUid();
+  // Greg rides the table at his par-sorted position. Ties go to the
+  // player: Greg only slots in once a time is strictly slower.
+  const gregTrailing = _parDeltaCell(dailyPar, dailyPar)
+    + (friendCtx ? '<td class="lb-adjusted">-</td>' : '');
+  let gregPlaced = !(dailyPar > 0);
   entries.forEach((entry, i) => {
+    if (!gregPlaced && entry.time > dailyPar) {
+      tbody.appendChild(_gregGhostRow(dailyPar, gregTrailing));
+      gregPlaced = true;
+    }
     const tr = document.createElement('tr');
     if (myUid && entry.uid === myUid) tr.classList.add('lb-row-mine');
     const parCol = _parDeltaCell(entry.time, dailyPar);
@@ -1304,6 +1338,7 @@ async function _renderDailyScores(friendCtx = null, emptyText = null) {
     tr.innerHTML = `${_rankCell(i)}${_nameCell(entry.name)}<td>${entry.time}s</td>${parCol}${adjCol}`;
     tbody.appendChild(tr);
   });
+  if (!gregPlaced) tbody.appendChild(_gregGhostRow(dailyPar, gregTrailing));
 }
 
 // Handicap-adjusted view: time − fitted handicap, ranked. Uses the
@@ -2200,7 +2235,7 @@ function updateTitleProgress() {
       ? `<span class="mode-card-par">Par: ${_titleDailyPar.secs} seconds</span>`
       : '';
     const fieldNote = (_titleDailyPar.date === today && _titleDailyPar.note)
-      ? `<span class="mode-card-fieldnote">${_titleDailyPar.note}</span>`
+      ? `<span class="mode-card-fieldnote">${spriteImgHTML('smiley', 'sprite-greg-note', 'Greg')}${_titleDailyPar.note}</span>`
       : '';
     const completed = isDailyCompleted(today);
     let descriptor;
@@ -2293,6 +2328,16 @@ function showTitleScreen() {
   refreshTitleDailyPar(); // fills in "Par: N seconds" once resolved
   titleScreen.classList.remove('hidden');
   app.classList.add('hidden');
+
+  // One-time character introduction: the first title-screen view once
+  // onboarding is done. For a brand-new player that lands right after
+  // the tutorial, before the daily-card spotlight fades, so they meet
+  // the character whose par they are about to race. Marked before the
+  // modal opens so a mid-modal tab close can't re-show it.
+  if (isOnboarded() && !hasSeenNotice('meet_greg')) {
+    markNoticeSeen('meet_greg');
+    showModal('meet-greg-modal');
+  }
 }
 
 // Resolve today's Greg-par for the Daily card, once per date per
