@@ -7,6 +7,7 @@
 //
 // Scans:
 //   • daily/{date}/{pushId}.name   — every entry whose uid matches
+//   • timed/{pushId}.name          — quick-play rows (same uid match)
 //   • weekly/{weekStart}/{uid}.name
 //   • users/*/friends/{uid}.name   — how the player appears in OTHERS'
 //     friend lists (display fallback; live leaderboard names win when
@@ -106,6 +107,15 @@ async function dbPatch(updates, token) {
     if (row && row.name !== newName) {
       console.log(`  weekly/${weekStart}/${uid}: "${row.name}" -> "${newName}"`);
       updates[`weekly/${weekStart}/${uid}/name`] = newName;
+    }
+  }
+
+  const timed = (await dbGet('timed', token)) || {};
+  for (const pushId of Object.keys(timed)) {
+    const row = timed[pushId];
+    if (row && row.uid === uid && row.name !== newName) {
+      console.log(`  timed/${pushId}: "${row.name}" -> "${newName}"`);
+      updates[`timed/${pushId}/name`] = newName;
     }
   }
 
