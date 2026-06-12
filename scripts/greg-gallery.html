@@ -45,11 +45,13 @@ wide-set eyes too much; antennae and sheen dropped because they do not read
 at the sizes that matter. This is what the live sprite slots carry.</p>
 <div id="current"></div>
 <h2>Per-theme Greg: the character in each world's material</h2>
-<p class="note">Demo wave, idle pose only, drawn in the same material language
-as each world's mine and flag: chalk on slate, drafted cyanotype lines, heavy
-comic ink with halftone, sumi-e wash with the hanko. The THEME_SPRITES
-registry already accepts smiley slots, so shipping a world is one registry
-line plus its win and loss poses. Nothing is wired yet.</p>
+<p class="note">Seven worlds, all three poses, each drawn in the same material
+language as that world's mine and flag. Round 2 corrections: sumi-e rebuilt
+as one loaded press with tonal gradation and white space; blueprint is a
+solid contour (dashes mean hidden edges); comic re-inked with spot blacks
+and varied line weight, no screen tone. The THEME_SPRITES registry already
+accepts smiley slots, so shipping a world is one registry line. Nothing is
+wired yet.</p>
 <div id="themed"></div>
 <h2>Stage 3: micro-variants on the blend</h2>
 <p class="note">One change each, against the a7 base. Open smile (b) won;
@@ -65,20 +67,23 @@ and pencil. Win and loss poses derive from the same body.</p>
 <div id="out"></div>
 <script>
 const THEMED = [
-  ['themed-chalkboard', '#2e4038', 'Chalkboard: doubled chalk line, hatch shading, yellow chalk stick'],
-  ['themed-blueprint', '#0c2a47', 'Blueprint: dashed outline, centerlines, dimension ticks, leader'],
-  ['themed-comic', '#f5efdf', 'Comic: heavy ink, flat color, halftone, speed marks'],
-  ['themed-sumie', '#f2ede1', 'Sumi-e: layered wash, paper-reserve eyes, the hanko'],
+  ['themed-chalkboard', '#2e4038', 'Chalkboard: doubled chalk line, hatch shading, yellow chalk accents'],
+  ['themed-blueprint', '#0c2a47', 'Blueprint: solid drafted contour, drafted asterisk sparks'],
+  ['themed-comic', '#f5efdf', 'Comic: heavy ink, flat color, spot blacks, varied line weight'],
+  ['themed-sumie', '#f2ede1', 'Sumi-e: one loaded press, tonal gradation, paper reserves, the hanko'],
+  ['themed-editorial', '#f0ece2', 'Editorial: press ink, paper-reserve face, splatter, pen nib'],
+  ['themed-cartography', '#e6d5ac', 'Cartography: sepia chart beast on the swell, red ink accents'],
+  ['themed-galaxy', '#0b0714', 'Galaxy: a constellation, star nodes at the joints, the eyes brightest'],
 ];
 const themed = document.getElementById('themed');
 const tt = document.createElement('table');
-tt.innerHTML = '<tr><th>World</th><th>130px on its board</th><th>48px</th><th>32px (reset button)</th><th>22px</th></tr>' +
+tt.innerHTML = '<tr><th>World</th><th>idle</th><th>win</th><th>loss</th><th>32px idle</th><th>32px win</th><th>32px loss</th></tr>' +
   THEMED.map(([slug, bg, label]) => {
-    const src = `../assets/sprites/greg/${slug}-idle.svg`;
-    const sw = (size) => `<td style="background:${bg};border-radius:8px;"><img src="${src}" width="${size}" height="${size}"></td>`;
+    const sw = (pose, size) => `<td style="background:${bg};border-radius:8px;"><img src="../assets/sprites/greg/${slug}-${pose}.svg" width="${size}" height="${size}"></td>`;
     return `<tr>
-      <td class="name" style="max-width:260px;white-space:normal;">${label}</td>
-      ${sw(130)}${sw(48)}${sw(32)}${sw(22)}
+      <td class="name" style="max-width:240px;white-space:normal;">${label}</td>
+      ${sw('idle', 110)}${sw('win', 110)}${sw('loss', 110)}
+      ${sw('idle', 32)}${sw('win', 32)}${sw('loss', 32)}
     </tr>`;
   }).join('');
 themed.appendChild(tt);

@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Editorial Greg: a press-ink spot illustration. Solid black figure,
+     paper-reserve face, a stray splatter from the platen. -->
+<!-- Legs, solid ink -->
+<g fill="none" stroke="#1a1714" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M19 41 L13 47 L11 52"/>
+  <path d="M24 43.5 L20 50 L19 55"/>
+  <path d="M45 41 L51 47 L53 52"/>
+  <path d="M40 43.5 L44 50 L45 55"/>
+</g>
+<!-- Arms -->
+<g fill="none" stroke="#1a1714" stroke-width="3.4" stroke-linecap="round">
+  <path d="M17 32 L12 27"/>
+  <path d="M47 32 L52 26"/>
+</g>
+<!-- Eye stalks + eyes: ink rings, paper centers -->
+<g fill="none" stroke="#1a1714" stroke-width="3" stroke-linecap="round">
+  <path d="M25 18.5 L23 12.5"/>
+  <path d="M39 18.5 L41 12.5"/>
+</g>
+<circle cx="22.5" cy="9.5" r="4.4" fill="#f0ece2" stroke="#1a1714" stroke-width="2.6"/>
+<circle cx="41.5" cy="9.5" r="4.4" fill="#f0ece2" stroke="#1a1714" stroke-width="2.6"/>
+<circle cx="23.2" cy="10.2" r="1.8" fill="#1a1714"/>
+<circle cx="40.8" cy="10.2" r="1.8" fill="#1a1714"/>
+<!-- Shell: solid ink mass, slightly blotted edge -->
+<path d="M11 31 C11 24 16 19 22 17.5 Q27 15 32 15 Q37 15 42 17.5 C48 19 53 24 53 31 C53 37.5 45.5 43 32.5 43 C19 43 11 38 11 31 Z"
+      fill="#1a1714"/>
+<!-- Paper-reserve smile -->
+<path d="M27 31 Q32 37.5 37 31 Z" fill="#f0ece2"/>
+<!-- Gray ink highlight, one pass -->
+<path d="M17 24 C22 19.5 28 18 33 18.5" stroke="#4a443c" stroke-width="2.2" fill="none" stroke-linecap="round" opacity="0.8"/>
+<!-- Pincers, solid -->
+<ellipse cx="54" cy="22" rx="6" ry="4.8" fill="#1a1714" transform="rotate(-35 54 22)"/>
+<ellipse cx="14" cy="21" rx="5.6" ry="4.6" fill="#1a1714" transform="rotate(28 14 21)"/>
+<!-- Pen nib in the right claw: the editorial instrument -->
+<g transform="rotate(-58 54 19)">
+  <path d="M50 17.5 L60 15.5 L62.5 19 L60 22.5 L50 20.5 Z" fill="#1a1714"/>
+  <path d="M60 17.2 L60 20.8" stroke="#f0ece2" stroke-width="0.9"/>
+</g>
+<!-- Clipboard: paper sheet with column rules -->
+<g transform="rotate(-12 8 30)">
+  <rect x="0" y="19" width="16" height="22" rx="1" fill="#f0ece2" stroke="#1a1714" stroke-width="2.4"/>
+  <path d="M3 24.5 L13 24.5 M3 28 L13 28 M3 31.5 L13 31.5 M3 35 L9 35" stroke="#1a1714" stroke-width="1.1" opacity="0.75"/>
+</g>
+<!-- Splatter -->
+<circle cx="58" cy="38" r="1.8" fill="#1a1714"/>
+<circle cx="61" cy="43" r="1" fill="#1a1714"/>
+<circle cx="6" cy="14" r="1.3" fill="#1a1714"/>
+</svg>

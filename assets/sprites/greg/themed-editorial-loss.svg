@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Editorial Greg, loss: the figure overturned, a misprint. Paper
+     X eyes, ink running. -->
+<g fill="none" stroke="#1a1714" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M21 35 L17 28 L19 23"/>
+  <path d="M27.5 34 L25.5 26 L28.5 21"/>
+  <path d="M36.5 34 L38.5 26 L35.5 21"/>
+  <path d="M43 35 L47 28 L45 23"/>
+</g>
+<g fill="none" stroke="#1a1714" stroke-width="3.4" stroke-linecap="round">
+  <path d="M15 39 L9 36"/>
+  <path d="M49 39 L55 36"/>
+</g>
+<ellipse cx="6.5" cy="33.5" rx="5.2" ry="4.2" fill="#1a1714" transform="rotate(-30 6.5 33.5)"/>
+<ellipse cx="57.5" cy="33.5" rx="5.2" ry="4.2" fill="#1a1714" transform="rotate(30 57.5 33.5)"/>
+<!-- Overturned mass with the belly as a paper band -->
+<path d="M12 38 C12 42 15 46 20 48.5 Q26 51 32 51 Q38 51 44 48.5 C49 46 52 42 52 38 L52 37 L12 37 Z"
+      fill="#1a1714"/>
+<ellipse cx="32" cy="37" rx="20" ry="3.6" fill="#f0ece2" stroke="#1a1714" stroke-width="2"/>
+<!-- Flopped stalks + paper X eyes -->
+<g fill="none" stroke="#1a1714" stroke-width="3" stroke-linecap="round">
+  <path d="M17 37 L11.5 30"/>
+  <path d="M22.5 36 L21 27.5"/>
+</g>
+<circle cx="10.5" cy="26.5" r="4.4" fill="#f0ece2" stroke="#1a1714" stroke-width="2.6"/>
+<path d="M8.7 24.7 L12.3 28.3 M12.3 24.7 L8.7 28.3" stroke="#1a1714" stroke-width="1.8" stroke-linecap="round"/>
+<circle cx="20.5" cy="24" r="4.4" fill="#f0ece2" stroke="#1a1714" stroke-width="2.6"/>
+<path d="M18.7 22.2 L22.3 25.8 M22.3 22.2 L18.7 25.8" stroke="#1a1714" stroke-width="1.8" stroke-linecap="round"/>
+<!-- Dropped sheet -->
+<g transform="rotate(10 50 57)">
+  <rect x="40" y="53" width="17" height="9" rx="1" fill="#f0ece2" stroke="#1a1714" stroke-width="1.8"/>
+  <path d="M43 56 L54 56 M43 58.5 L51 58.5" stroke="#1a1714" stroke-width="0.9" opacity="0.75"/>
+</g>
+<!-- Ink running: drips off the overturned figure -->
+<path d="M28 51 C28 54 27.6 56 27.3 57.5" stroke="#1a1714" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+<circle cx="27.2" cy="59" r="1.2" fill="#1a1714"/>
+<circle cx="37" cy="54" r="1" fill="#1a1714"/>
+<path d="M26 13 Q30 10 34 13 Q38 16 42 13" fill="none" stroke="#4a443c" stroke-width="1.8" stroke-linecap="round" opacity="0.8"/>
+</svg>

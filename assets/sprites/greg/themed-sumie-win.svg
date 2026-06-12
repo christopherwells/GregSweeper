@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Sumi-e Greg, win: the same loaded press, claw daubs swept high,
+     a fleck of spatter, the grin reserve wide. -->
+<defs>
+  <linearGradient id="inkMw" x1="0.15" y1="0" x2="0.9" y2="1">
+    <stop offset="0" stop-color="#0d0d0d"/>
+    <stop offset="0.55" stop-color="#2e2e2e"/>
+    <stop offset="1" stop-color="#484848"/>
+  </linearGradient>
+  <linearGradient id="inkCw" x1="0" y1="0" x2="0.8" y2="1">
+    <stop offset="0" stop-color="#171717"/>
+    <stop offset="1" stop-color="#4a4a4a"/>
+  </linearGradient>
+</defs>
+<g fill="none" stroke="#1c1c1c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M17 39 L11 45 L9 52"/>
+  <path d="M22 42.5 L18 49 L17.5 55"/>
+  <path d="M47 39 L53 45 L55 52"/>
+  <path d="M42 42.5 L46 49 L46.5 55"/>
+</g>
+<!-- Claw daubs thrown up -->
+<path d="M16 27 C12 20 10.5 12.5 12.5 9 C15.5 8.5 18.5 12.5 19.5 18 C20 22 18.5 25.5 16 27 Z" fill="url(#inkCw)"/>
+<path d="M11.5 8.5 L9.5 4.5" stroke="#1c1c1c" stroke-width="1.7" stroke-linecap="round" opacity="0.7"/>
+<path d="M48 27 C52 20 53.5 12.5 51.5 9 C48.5 8.5 45.5 12.5 44.5 18 C44 22 45.5 25.5 48 27 Z" fill="url(#inkCw)"/>
+<path d="M52.5 8.5 L54.5 4.5" stroke="#1c1c1c" stroke-width="1.7" stroke-linecap="round" opacity="0.7"/>
+<!-- Body -->
+<path d="M16 25 C20 20.5 27 19 32 19 C37 19 44 20.5 48 25 C50.5 29.5 50.5 36 48 40.5 C44 44.5 37 45.5 32 45.5 C27 45.5 20 44.5 16 40.5 C13.5 36 13.5 29.5 16 25 Z"
+      fill="url(#inkMw)"/>
+<!-- Eye flicks, lifted -->
+<path d="M26 19.5 Q25 16 24 13" stroke="#141414" stroke-width="2" fill="none" stroke-linecap="round"/>
+<path d="M38 19.5 Q39 16 40 13" stroke="#141414" stroke-width="2" fill="none" stroke-linecap="round"/>
+<circle cx="23.5" cy="11.6" r="2.6" fill="#0d0d0d"/>
+<circle cx="40.5" cy="11.6" r="2.6" fill="#0d0d0d"/>
+<!-- Grin reserve -->
+<path d="M26 34.5 Q32 40 38 34.5" fill="none" stroke="#f2ede1" stroke-width="2.8" stroke-linecap="round" opacity="0.95"/>
+<!-- Spatter -->
+<circle cx="32" cy="6" r="1.5" fill="#1c1c1c" opacity="0.75"/>
+<circle cx="36.5" cy="3.8" r="0.9" fill="#1c1c1c" opacity="0.55"/>
+<!-- The hanko -->
+<rect x="51" y="50" width="9" height="9" rx="1.2" fill="#b03020"/>
+<path d="M53.5 52.5 L57.5 52.5 M55.5 52.5 L55.5 56.5 M53.5 56.5 L57.5 56.5" stroke="#f2ede1" stroke-width="1.1"/>
+</svg>
