@@ -208,25 +208,28 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
     return true;
   }
 
-  // Try to unlock locked cells whose conditions are met, cascading
+  // Unlock locked cells whose conditions are met. Unlocking follows the
+  // BOARD's mechanics (ground truth is fine - the lock itself opens),
+  // but the certifier must NEVER auto-reveal the freed cell: in
+  // gameplay the player has to CLICK it, and a click without proof is
+  // a guess. An unlocked cell becomes an ordinary unknown the passes
+  // must prove safe (or prove mine) like any other - that was the
+  // locked-cell certification oracle (closed 2026-06-12; previously
+  // the solver revealed freed cells via isMine ground truth, so a
+  // board could certify even when the freed cell was a 50/50).
+  // Unlock chains can't cascade without reveals (a freed-but-unrevealed
+  // cell blocks its locked neighbors), so a single sweep suffices.
+  // Returns whether anything unlocked - callers treat that as round
+  // progress so the passes re-run over the loosened board.
   function tryUnlockAll() {
-    let progress = true;
-    while (progress) {
-      progress = false;
-      for (let i = 0; i < rows * cols; i++) {
-        if (isLocked[i] && sim[i] === 0 && canUnlock(i)) {
-          isLocked[i] = 0; // unlock
-          if (!isMine[i]) {
-            revealQueue.push(i);
-            progress = true;
-          }
-          // Locked mines: unlocked but not revealed (player must flag)
-        }
-      }
-      while (revealQueue.length > 0) {
-        revealCell(revealQueue.pop());
+    let unlockedAny = false;
+    for (let i = 0; i < rows * cols; i++) {
+      if (isLocked[i] && sim[i] === 0 && canUnlock(i)) {
+        isLocked[i] = 0;
+        unlockedAny = true;
       }
     }
+    return unlockedAny;
   }
 
   // Reveal a cell (simulate); if it's a zero, flood-fill
@@ -313,7 +316,12 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
     // wormhole) is a single-value constraint. We deduce flags and reveals
     // when the constraint pins a cell uniquely.
     const passACells = (i) => {
-      const ok = sim[i] === 1 && adjCount[i] !== 0 && adjCount[i] !== UNKNOWN;
+      // Zeros are normally moot (the flood already cleared their
+      // neighbors) but a zero ADJACENT TO A LOCKED CELL is a real
+      // proving constraint - the lock blocked the flood, and "the 0
+      // touches it" is exactly how a player proves the freed cell
+      // safe. Zero sources with no unknown neighbors no-op instantly.
+      const ok = sim[i] === 1 && adjCount[i] !== UNKNOWN;
       if (!ok) return null;
       return { nbrs: neighborCache[i], expected: adjCount[i] };
     };
@@ -357,6 +365,10 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
       // Rule 2: All mines accounted for — remaining unknowns are safe
       if (remaining === 0 && unknowns > 0) {
         for (const ni of nbrs) {
+          // Still-locked cells stay unknowns: provably safe but
+          // unclickable until their lock opens. Skipping (not counting)
+          // also keeps the round's progress flag honest.
+          if (sim[ni] === 0 && isLocked[ni]) continue;
           if (sim[ni] === 0) {
             totalClicks++;
             passAMoves++;
@@ -371,8 +383,8 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
       }
     }
 
-    tryUnlockAll(); // check if reveals freed any locked cells
-      if (revealedCount === totalSafe) return buildResult(true, 0);
+    if (tryUnlockAll()) progress = true; // freed locks = new deduction surface
+    if (revealedCount === totalSafe) return buildResult(true, 0);
     if (progress) continue;
 
     // ── Pass B: Subset / superset constraint analysis ──
@@ -428,6 +440,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
           // real scanning and are grouped under "generic subset".
           const isCanonical = cB.unknowns.length <= 3;
           for (const di of diff) {
+            if (sim[di] === 0 && isLocked[di]) continue; // unclickable until unlocked
             if (sim[di] === 0) {
               totalClicks++;
               if (isCanonical) canonicalSubsetMoves++;
@@ -449,10 +462,10 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
       }
     }
 
-    tryUnlockAll();
+    const unlockedAfterB = tryUnlockAll(); // progress, but not a subset TECHNIQUE
     if (subsetProgress) techniqueLevel = Math.max(techniqueLevel, 1);
-      if (revealedCount === totalSafe) return buildResult(true, 0);
-    if (subsetProgress) continue;
+    if (revealedCount === totalSafe) return buildResult(true, 0);
+    if (subsetProgress || unlockedAfterB) continue;
 
     // ── Pass C: Advanced solver (Gauss + Tank) ──
     // Combine exact constraints from non-liar cells, exact constraints from
@@ -486,6 +499,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
     }
 
     for (const cellIdx of solved.safe) {
+      if (sim[cellIdx] === 0 && isLocked[cellIdx]) continue; // unclickable until unlocked
       if (sim[cellIdx] === 0) {
         totalClicks++;
         const disj = isDisjDeduction(cellIdx);
@@ -507,10 +521,10 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
       revealCell(revealQueue.pop());
     }
 
-    tryUnlockAll();
+    const unlockedAfterC = tryUnlockAll(); // progress, but not an advanced TECHNIQUE
     if (advancedProgress) techniqueLevel = Math.max(techniqueLevel, anyDisjThisRound ? 3 : 2);
-      if (revealedCount === totalSafe) return buildResult(true, 0);
-    if (advancedProgress) continue;
+    if (revealedCount === totalSafe) return buildResult(true, 0);
+    if (advancedProgress || unlockedAfterC) continue;
 
     // No progress from any layer — board requires guessing
     break;
