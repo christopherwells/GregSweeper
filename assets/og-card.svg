@@ -1,0 +1,129 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <!-- Social-preview master (og-card.png is exported from this at
+       1200x630 via scripts/export-og-card.ps1). Greg's benthic
+       minefield in the drawn house style: the contract headline up
+       front, the field scientist beside it. -->
+  <defs>
+    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0d4254"/>
+      <stop offset="0.55" stop-color="#093243"/>
+      <stop offset="1" stop-color="#062331"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.32" cy="0" r="0.9">
+      <stop offset="0" stop-color="#1b6075" stop-opacity="0.55"/>
+      <stop offset="0.6" stop-color="#1b6075" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#sea)"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+
+  <!-- Light shafts -->
+  <g fill="#bfe3ef" opacity="0.05">
+    <path d="M240 0 L320 0 L210 630 L150 630 Z"/>
+    <path d="M520 0 L570 0 L500 630 L460 630 Z"/>
+  </g>
+
+  <!-- Seafloor -->
+  <path d="M0 560 Q180 535 360 552 Q560 570 760 550 Q980 532 1200 556 L1200 630 L0 630 Z" fill="#0b3a4c"/>
+  <path d="M0 590 Q220 570 430 584 Q680 600 900 582 Q1060 570 1200 586 L1200 630 L0 630 Z" fill="#082a3a"/>
+
+  <!-- Moored naval mine, mid-floor between the copy and Greg -->
+  <g transform="translate(672 500) scale(0.82)">
+    <path d="M0 72 L0 110" stroke="#10222e" stroke-width="7" stroke-dasharray="2 9" stroke-linecap="round"/>
+    <circle cx="0" cy="0" r="64" fill="#1d2735" stroke="#10222e" stroke-width="8"/>
+    <circle cx="-22" cy="-22" r="18" fill="#2c3a4e"/>
+    <g fill="#1d2735" stroke="#10222e" stroke-width="6" stroke-linejoin="round">
+      <path d="M-8 -72 L8 -72 L4 -56 L-4 -56 Z"/>
+      <path d="M46 -50 L58 -38 L44 -30 L38 -42 Z"/>
+      <path d="M62 -6 L78 -2 L72 12 L58 6 Z"/>
+      <path d="M-46 -50 L-58 -38 L-44 -30 L-38 -42 Z"/>
+      <path d="M-62 -6 L-78 -2 L-72 12 L-58 6 Z"/>
+    </g>
+  </g>
+
+  <!-- Moored naval mine, right of Greg, smaller -->
+  <g>
+    <path d="M1118 540 L1118 576" stroke="#10222e" stroke-width="6" stroke-dasharray="2 8" stroke-linecap="round"/>
+    <circle cx="1118" cy="490" r="46" fill="#1d2735" stroke="#10222e" stroke-width="7"/>
+    <circle cx="1102" cy="474" r="13" fill="#2c3a4e"/>
+    <g fill="#1d2735" stroke="#10222e" stroke-width="5" stroke-linejoin="round">
+      <path d="M1112 438 L1124 438 L1121 450 L1115 450 Z"/>
+      <path d="M1152 454 L1162 462 L1152 470 L1146 460 Z"/>
+      <path d="M1084 454 L1074 462 L1084 470 L1090 460 Z"/>
+    </g>
+  </g>
+
+  <!-- Bubbles -->
+  <g fill="none" stroke="#bfe3ef" stroke-width="4" opacity="0.35">
+    <circle cx="1030" cy="240" r="10"/>
+    <circle cx="1054" cy="190" r="7"/>
+    <circle cx="1040" cy="140" r="5"/>
+    <circle cx="240" cy="330" r="8"/>
+    <circle cx="258" cy="292" r="5"/>
+  </g>
+
+  <!-- Greg, the field scientist (direction C idle, scaled) -->
+  <g transform="translate(790 170) scale(2.75)">
+    <g fill="none" stroke-linecap="round">
+      <g stroke="#232838" stroke-width="8">
+        <path d="M36 102 L30 114"/>
+        <path d="M48 106 L45 118"/>
+        <path d="M92 102 L98 114"/>
+        <path d="M80 106 L83 118"/>
+      </g>
+      <g stroke="#53a05b" stroke-width="3.8">
+        <path d="M36 102 L30 114"/>
+        <path d="M48 106 L45 118"/>
+        <path d="M92 102 L98 114"/>
+        <path d="M80 106 L83 118"/>
+      </g>
+    </g>
+    <g fill="none" stroke-linecap="round">
+      <path d="M22 88 L14 96" stroke="#232838" stroke-width="10"/>
+      <path d="M106 88 L112 96" stroke="#232838" stroke-width="10"/>
+      <path d="M22 88 L14 96" stroke="#53a05b" stroke-width="5"/>
+      <path d="M106 88 L112 96" stroke="#53a05b" stroke-width="5"/>
+    </g>
+    <ellipse cx="46" cy="24" rx="7" ry="8" fill="#53a05b" stroke="#232838" stroke-width="5"/>
+    <ellipse cx="82" cy="24" rx="7" ry="8" fill="#53a05b" stroke="#232838" stroke-width="5"/>
+    <path d="M14 68 C14 40 36 25 64 25 C92 25 114 40 114 68 C114 92 94 106 64 106 C34 106 14 92 14 68 Z"
+          fill="#53a05b" stroke="#232838" stroke-width="6"/>
+    <path d="M22 80 C34 96 94 96 106 80 C98 98 82 104 64 104 C46 104 30 98 22 80 Z" fill="#3e7f46"/>
+    <g fill="#7cc184">
+      <circle cx="32" cy="48" r="3.6"/>
+      <circle cx="46" cy="38" r="2.8"/>
+      <circle cx="96" cy="48" r="3.2"/>
+      <circle cx="84" cy="38" r="2.4"/>
+    </g>
+    <circle cx="46" cy="58" r="12" fill="#ffffff" stroke="#232838" stroke-width="5"/>
+    <circle cx="82" cy="58" r="12" fill="#ffffff" stroke="#232838" stroke-width="5"/>
+    <circle cx="48" cy="60" r="4.6" fill="#232838"/>
+    <circle cx="80" cy="60" r="4.6" fill="#232838"/>
+    <circle cx="50" cy="58" r="1.6" fill="#ffffff"/>
+    <circle cx="82" cy="58" r="1.6" fill="#ffffff"/>
+    <path d="M48 78 Q64 90 80 78" fill="none" stroke="#232838" stroke-width="5.5" stroke-linecap="round"/>
+    <ellipse cx="12" cy="100" rx="8.5" ry="6.5" fill="#53a05b" stroke="#232838" stroke-width="5" transform="rotate(-35 12 100)"/>
+    <ellipse cx="8" cy="94" rx="4" ry="3.2" fill="#e8873a" stroke="#232838" stroke-width="3.5" transform="rotate(-35 8 94)"/>
+    <g transform="rotate(18 114 104)">
+      <rect x="102" y="88" width="21" height="27" rx="3" fill="#f3f6fb" stroke="#232838" stroke-width="4"/>
+      <rect x="108" y="84" width="9" height="7" rx="2" fill="#b9c2d4" stroke="#232838" stroke-width="3"/>
+      <g fill="#d4dae6">
+        <rect x="106" y="95" width="5" height="5" rx="1"/>
+        <rect x="113" y="95" width="5" height="5" rx="1"/>
+        <rect x="106" y="102" width="5" height="5" rx="1"/>
+      </g>
+      <rect x="113" y="102" width="5" height="5" rx="1" fill="#ffd23e"/>
+    </g>
+    <ellipse cx="106" cy="99" rx="8" ry="6" fill="#53a05b" stroke="#232838" stroke-width="5" transform="rotate(35 106 99)"/>
+    <ellipse cx="110" cy="93" rx="3.8" ry="3" fill="#e8873a" stroke="#232838" stroke-width="3.5" transform="rotate(35 110 93)"/>
+  </g>
+
+  <!-- Copy block -->
+  <g font-family="'Segoe UI', system-ui, sans-serif">
+    <text x="80" y="158" font-size="54" font-weight="700" fill="#bfe3ef" letter-spacing="1">GregSweeper</text>
+    <text x="78" y="272" font-size="104" font-weight="800" fill="#ffffff">No guesses.</text>
+    <text x="78" y="384" font-size="104" font-weight="800" fill="#ffd23e">Ever.</text>
+    <text x="80" y="452" font-size="34" font-weight="500" fill="#bfe3ef">Every board proven solvable before you see it.</text>
+    <text x="80" y="510" font-size="27" font-weight="500" fill="#7fa8b8">One daily puzzle · ten modifiers · par that adapts to you</text>
+  </g>
+</svg>

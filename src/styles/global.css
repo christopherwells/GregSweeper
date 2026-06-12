@@ -3139,6 +3139,53 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   font-weight: 700;
 }
 
+/* Greg's ghost row: the par rendered as a competitor at its sorted
+   position. Dashed and muted so it reads as a benchmark, not a player;
+   the crab sprite sits where a rank number would (he holds no rank,
+   humans keep theirs). */
+.greg-row td {
+  border-top: 1px dashed var(--color-text-secondary, #888);
+  border-bottom: 1px dashed var(--color-text-secondary, #888);
+  background: var(--color-surface, rgba(255, 255, 255, 0.04));
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+.greg-row .lb-name { font-weight: 700; }
+.sprite-greg-row {
+  width: 20px;
+  height: 20px;
+  vertical-align: middle;
+}
+
+/* Greg avatar beside his Time line on the win modal, and beside the
+   field note on the Daily card. Small, inline, text-anchored. */
+.sprite-greg-par {
+  width: 19px;
+  height: 19px;
+  vertical-align: -4px;
+  margin-right: 3px;
+}
+.sprite-greg-note {
+  width: 15px;
+  height: 15px;
+  vertical-align: -3px;
+  margin-right: 4px;
+}
+
+/* Meet-Greg one-time introduction card. */
+.meet-greg-content { max-width: 340px; }
+.meet-greg-body { text-align: center; }
+.meet-greg-img {
+  width: 120px;
+  height: 120px;
+  margin: 4px auto 10px;
+  display: block;
+}
+.meet-greg-body p {
+  margin: 8px 0;
+  line-height: 1.45;
+}
+
 /* 7-dot history strip on the daily-win modal. Compact glance at the
    player's recent trajectory. Today's just-completed play is the
    rightmost dot, scaled up so it reads as "this play vs. recent

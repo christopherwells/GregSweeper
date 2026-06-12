@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Greg direction B, "Goggles Greg": naturalist Carcinus silhouette.
+       Wide serrated carapace, safety goggles pushed up, heterochelous
+       claws (big left holds the clipboard), deadpan field energy. -->
+  <!-- Walking legs, three per side -->
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke="#232838" stroke-width="8">
+      <path d="M36 86 L24 98 L20 109"/>
+      <path d="M46 91 L38 104 L36 114"/>
+      <path d="M58 94 L54 107 L55 117"/>
+      <path d="M92 86 L104 98 L108 109"/>
+      <path d="M82 91 L90 104 L92 114"/>
+      <path d="M70 94 L74 107 L73 117"/>
+    </g>
+    <g stroke="#5f9344" stroke-width="3.8">
+      <path d="M36 86 L24 98 L20 109"/>
+      <path d="M46 91 L38 104 L36 114"/>
+      <path d="M58 94 L54 107 L55 117"/>
+      <path d="M92 86 L104 98 L108 109"/>
+      <path d="M82 91 L90 104 L92 114"/>
+      <path d="M70 94 L74 107 L73 117"/>
+    </g>
+  </g>
+  <!-- Arms -->
+  <g fill="none" stroke-linecap="round">
+    <path d="M34 72 L18 62" stroke="#232838" stroke-width="10"/>
+    <path d="M96 74 L110 64" stroke="#232838" stroke-width="10"/>
+    <path d="M34 72 L18 62" stroke="#5f9344" stroke-width="5"/>
+    <path d="M96 74 L110 64" stroke="#5f9344" stroke-width="5"/>
+  </g>
+  <!-- Carapace: wide pentagon, true to the beach crab -->
+  <path d="M20 66 L33 42 Q47 32 64 32 Q81 32 95 42 L108 66 Q108 84 88 92 Q64 98 40 92 Q20 84 20 66 Z"
+        fill="#5f9344" stroke="#232838" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M28 74 C40 88 88 88 100 74 C92 88 78 94 64 94 C50 94 36 88 28 74 Z" fill="#46702e"/>
+  <!-- Anterolateral teeth: three notches per front edge -->
+  <g fill="none" stroke="#232838" stroke-width="3.5" stroke-linecap="round">
+    <path d="M25 61 L31 59"/>
+    <path d="M28 54 L34 52"/>
+    <path d="M31 47 L37 45"/>
+    <path d="M103 61 L97 59"/>
+    <path d="M100 54 L94 52"/>
+    <path d="M97 47 L91 45"/>
+  </g>
+  <!-- Speckles -->
+  <g fill="#8fbf72">
+    <circle cx="46" cy="50" r="2.6"/>
+    <circle cx="60" cy="44" r="2.2"/>
+    <circle cx="74" cy="50" r="2.6"/>
+    <circle cx="54" cy="58" r="2"/>
+    <circle cx="82" cy="58" r="2.2"/>
+  </g>
+  <!-- Goggles pushed up, strapped across the shell -->
+  <path d="M30 41 Q64 27 98 41" fill="none" stroke="#232838" stroke-width="4.5"/>
+  <circle cx="52" cy="31" r="8" fill="#bfe3ef" stroke="#232838" stroke-width="4.5"/>
+  <circle cx="76" cy="31" r="8" fill="#bfe3ef" stroke="#232838" stroke-width="4.5"/>
+  <path d="M60 31 L68 31" stroke="#232838" stroke-width="4" stroke-linecap="round"/>
+  <path d="M48.5 28 L52.5 25" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M72.5 28 L76.5 25" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Deadpan eyes -->
+  <circle cx="52" cy="53" r="7" fill="#ffffff" stroke="#232838" stroke-width="4.5"/>
+  <circle cx="76" cy="53" r="7" fill="#ffffff" stroke="#232838" stroke-width="4.5"/>
+  <path d="M45 50 A 7 7 0 0 1 59 50 L 59 47.5 L 45 47.5 Z" fill="#46702e"/>
+  <path d="M69 50 A 7 7 0 0 1 83 50 L 83 47.5 L 69 47.5 Z" fill="#46702e"/>
+  <circle cx="53" cy="55" r="2.8" fill="#232838"/>
+  <circle cx="77" cy="55" r="2.8" fill="#232838"/>
+  <!-- Flat field-notes mouth -->
+  <path d="M58 70 L70 70" fill="none" stroke="#232838" stroke-width="4.5" stroke-linecap="round"/>
+  <!-- Small right pincer with pencil -->
+  <ellipse cx="113" cy="61" rx="7.5" ry="6" fill="#5f9344" stroke="#232838" stroke-width="4.5" transform="rotate(-30 113 61)"/>
+  <g transform="rotate(-58 113 59)">
+    <rect x="104" y="55.5" width="20" height="6" rx="1.6" fill="#ffd23e" stroke="#232838" stroke-width="3"/>
+    <path d="M124 55.5 L130 58.5 L124 61.5 Z" fill="#232838"/>
+  </g>
+  <!-- Clipboard in the BIG left claw -->
+  <g transform="rotate(-6 16 60)">
+    <rect x="2" y="40" width="26" height="36" rx="3.5" fill="#f3f6fb" stroke="#232838" stroke-width="4.5"/>
+    <rect x="9" y="35" width="12" height="8" rx="2.5" fill="#b9c2d4" stroke="#232838" stroke-width="3.5"/>
+    <g fill="#d4dae6">
+      <rect x="7" y="49" width="6" height="6" rx="1.2"/>
+      <rect x="15" y="49" width="6" height="6" rx="1.2"/>
+      <rect x="23" y="49" width="6" height="6" rx="1.2"/>
+      <rect x="7" y="57" width="6" height="6" rx="1.2"/>
+      <rect x="23" y="57" width="6" height="6" rx="1.2"/>
+    </g>
+    <rect x="15" y="57" width="6" height="6" rx="1.2" fill="#ffd23e"/>
+    <path d="M9 71 L9 64 L16 66 L9 68" fill="#e4453a"/>
+  </g>
+  <!-- Big left pincer gripping it -->
+  <ellipse cx="26" cy="44" rx="10.5" ry="8" fill="#5f9344" stroke="#232838" stroke-width="5" transform="rotate(30 26 44)"/>
+  <ellipse cx="32" cy="37" rx="5" ry="4" fill="#e8873a" stroke="#232838" stroke-width="4" transform="rotate(30 32 37)"/>
+</svg>

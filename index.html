@@ -737,6 +737,24 @@
     </div>
   </div>
 
+  <!-- Meet Greg — one-time character introduction, shown on the first
+       title-screen view once onboarding is done (showTitleScreen in
+       main.js, hasSeenNotice('meet_greg')). Outside #app so it can
+       render over the title screen. -->
+  <div id="meet-greg-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content meet-greg-content">
+      <div class="modal-header">
+        <h2>This is Greg</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body meet-greg-body">
+        <img class="meet-greg-img" src="assets/sprites/idle.png" alt="Greg, a green crab holding a clipboard" draggable="false">
+        <p>Greg checks every board before you play it, and keeps notes on how you solve.</p>
+        <p>His time on the daily is the par you race.</p>
+      </div>
+    </div>
+  </div>
+
   <!-- Certificate modal — opened from the ✓ Certified chip (and the
        Chaos "No guarantees" chip). Body is rendered per-board by
        showCertificateModal() in headerRenderer.js. Outside #app for

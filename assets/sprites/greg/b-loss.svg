@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Greg direction B, loss: flipped on his back, goggles flung off,
+       segmented belly up, X eyes on drooped stalks. The data did not
+       support the click. -->
+  <!-- Legs curled up unevenly -->
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke="#232838" stroke-width="8">
+      <path d="M42 70 L34 56 L38 46"/>
+      <path d="M54 68 L50 52 L56 42"/>
+      <path d="M68 67 L68 52 L64 42"/>
+      <path d="M80 68 L84 52 L80 44"/>
+      <path d="M92 70 L100 58 L98 48"/>
+    </g>
+    <g stroke="#5f9344" stroke-width="3.8">
+      <path d="M42 70 L34 56 L38 46"/>
+      <path d="M54 68 L50 52 L56 42"/>
+      <path d="M68 67 L68 52 L64 42"/>
+      <path d="M80 68 L84 52 L80 44"/>
+      <path d="M92 70 L100 58 L98 48"/>
+    </g>
+  </g>
+  <!-- Limp claw arms -->
+  <g fill="none" stroke-linecap="round">
+    <path d="M32 80 L18 74" stroke="#232838" stroke-width="10"/>
+    <path d="M98 80 L110 76" stroke="#232838" stroke-width="10"/>
+    <path d="M32 80 L18 74" stroke="#5f9344" stroke-width="5"/>
+    <path d="M98 80 L110 76" stroke="#5f9344" stroke-width="5"/>
+  </g>
+  <!-- Big left pincer, limp -->
+  <ellipse cx="14" cy="70" rx="10" ry="7.5" fill="#5f9344" stroke="#232838" stroke-width="5" transform="rotate(-25 14 70)"/>
+  <ellipse cx="9" cy="64" rx="4.5" ry="3.6" fill="#e8873a" stroke="#232838" stroke-width="3.5" transform="rotate(-25 9 64)"/>
+  <!-- Small right pincer, limp -->
+  <ellipse cx="113" cy="73" rx="6.5" ry="5" fill="#5f9344" stroke="#232838" stroke-width="4.5" transform="rotate(25 113 73)"/>
+  <!-- Shell, dome down (wide pentagon silhouette inverted) -->
+  <path d="M26 78 L36 100 Q48 110 64 110 Q80 110 92 100 L102 78 Z"
+        fill="#5f9344" stroke="#232838" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M34 90 C44 104 84 104 94 90 C86 104 76 108 64 108 C52 108 42 104 34 90 Z" fill="#46702e"/>
+  <!-- Pale belly facing up, with abdomen flap lines -->
+  <ellipse cx="64" cy="78" rx="38" ry="8" fill="#dce8b4" stroke="#232838" stroke-width="5"/>
+  <path d="M48 75 Q64 80 80 75" fill="none" stroke="#b5c48c" stroke-width="2.8" stroke-linecap="round"/>
+  <path d="M52 80 Q64 84 76 80" fill="none" stroke="#b5c48c" stroke-width="2.8" stroke-linecap="round"/>
+  <!-- X eyes on drooped stalks, poking past the left rim -->
+  <g fill="none" stroke-linecap="round">
+    <path d="M36 76 L26 64" stroke="#232838" stroke-width="9"/>
+    <path d="M46 74 L44 60" stroke="#232838" stroke-width="9"/>
+    <path d="M36 76 L26 64" stroke="#5f9344" stroke-width="4.5"/>
+    <path d="M46 74 L44 60" stroke="#5f9344" stroke-width="4.5"/>
+  </g>
+  <circle cx="24" cy="57" r="8" fill="#ffffff" stroke="#232838" stroke-width="4.5"/>
+  <path d="M21 54 L27 60 M27 54 L21 60" stroke="#232838" stroke-width="3.2" stroke-linecap="round"/>
+  <circle cx="44" cy="53" r="8" fill="#ffffff" stroke="#232838" stroke-width="4.5"/>
+  <path d="M41 50 L47 56 M47 50 L41 56" stroke="#232838" stroke-width="3.2" stroke-linecap="round"/>
+  <!-- Goggles flung off, lying on the ground at right -->
+  <g transform="rotate(-14 98 114)">
+    <circle cx="90" cy="114" r="7" fill="#bfe3ef" stroke="#232838" stroke-width="3.5"/>
+    <circle cx="106" cy="114" r="7" fill="#bfe3ef" stroke="#232838" stroke-width="3.5"/>
+    <path d="M97 114 L99 114" stroke="#232838" stroke-width="3.2"/>
+    <path d="M83 114 Q77 110 78 104" fill="none" stroke="#232838" stroke-width="2.8" stroke-linecap="round"/>
+  </g>
+  <!-- Wobble + sweat -->
+  <path d="M50 26 Q58 20 66 26 Q74 32 82 26" fill="none" stroke="#9fb0d8" stroke-width="4" stroke-linecap="round" opacity="0.8"/>
+  <path d="M102 36 C102 31 106 26 106 26 C106 26 110 31 110 36 A4 4.4 0 1 1 102 36 Z" fill="#4a78c8" stroke="#232838" stroke-width="3"/>
+</svg>
