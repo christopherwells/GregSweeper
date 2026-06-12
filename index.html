@@ -692,12 +692,14 @@
         <div id="help-panel-powerups" class="help-panel hidden">
           <div class="help-section">
             <h3>Power-Ups</h3>
-            <p>🔍 <strong>Reveal Safe</strong>: opens a square the clues already prove safe, a worked example rather than a random gift</p>
-            <p>🛡️ <strong>Shield</strong>: blocks one mine hit</p>
-            <p>🎯 <strong>Scan</strong>: shows mine count in a row or column</p>
-            <p>🧲 <strong>Magnet</strong>: extracts every mine in a 3&times;3 area off the board</p>
-            <p>🔬 <strong>X-Ray</strong>: reveals mines in a 5&times;5 area</p>
-            <p>❤️ <strong>Lifeline</strong>: auto-saves you from one mine</p>
+            <!-- Same drawn sprites as the in-game bar, same emoji
+                 fallback, so the reference looks like the buttons. -->
+            <p><img class="powerup-img" src="assets/sprites/pow-revealsafe.svg" alt="" draggable="false" onerror="this.replaceWith('🔍')"> <strong>Reveal Safe</strong>: opens a square the clues already prove safe, a worked example rather than a random gift</p>
+            <p><img class="powerup-img" src="assets/sprites/pow-shield.svg" alt="" draggable="false" onerror="this.replaceWith('🛡️')"> <strong>Shield</strong>: blocks one mine hit</p>
+            <p><img class="powerup-img" src="assets/sprites/pow-scan.svg" alt="" draggable="false" onerror="this.replaceWith('🎯')"> <strong>Scan</strong>: shows mine count in a row or column</p>
+            <p><img class="powerup-img" src="assets/sprites/pow-magnet.svg" alt="" draggable="false" onerror="this.replaceWith('🧲')"> <strong>Magnet</strong>: extracts every mine in a 3&times;3 area off the board</p>
+            <p><img class="powerup-img" src="assets/sprites/pow-xray.svg" alt="" draggable="false" onerror="this.replaceWith('🔬')"> <strong>X-Ray</strong>: reveals mines in a 5&times;5 area</p>
+            <p><img class="powerup-img" src="assets/sprites/pow-lifeline.svg" alt="" draggable="false" onerror="this.replaceWith('❤️')"> <strong>Lifeline</strong>: auto-saves you from one mine</p>
             <p class="help-note">Earned by winning Challenge levels, and spent there too. Daily, Weekly, and Quick Play are played clean.</p>
           </div>
         </div>
