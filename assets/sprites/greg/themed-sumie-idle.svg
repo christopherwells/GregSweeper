@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Greg in five brush gestures: a wash shell, flick stalks and legs,
+     two claw daubs, and the hanko. Monochrome ink on paper. -->
+<!-- Legs: tapered brush flicks -->
+<g fill="none" stroke="#2a2a2a" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M19 41 Q14 46 11.5 51.5" stroke-width="2.6" opacity="0.8"/>
+  <path d="M24 43.5 Q20.5 49 19.2 54.5" stroke-width="2.4" opacity="0.7"/>
+  <path d="M45 41 Q50 46 52.5 51.5" stroke-width="2.6" opacity="0.8"/>
+  <path d="M40 43.5 Q43.5 49 44.8 54.5" stroke-width="2.4" opacity="0.7"/>
+</g>
+<!-- Shell: layered wash, wet edge -->
+<ellipse cx="32" cy="29.5" rx="22" ry="14.5" fill="#2a2a2a" opacity="0.3"/>
+<path d="M12.5 30.5 C12.5 24 17.5 19.5 23 18 Q27.5 16 32 16 Q36.5 16 41 18 C46.5 19.5 51.5 24 51.5 30.5 C51.5 37 44 41.8 32 41.8 C20 41.8 12.5 37 12.5 30.5 Z"
+      fill="#2a2a2a" opacity="0.62"/>
+<path d="M16 29 C17 23.5 22 19.8 28 18.4 Q32 17.5 36 18.2 C42 19.4 47 23 48 28 C48.5 33.5 42 38.5 32 38.5 C22 38.5 15.5 34 16 29 Z"
+      fill="#222222" opacity="0.85"/>
+<!-- Eye stalks: thin flicks; eyes: paper reserves with ink dots -->
+<path d="M25 18.5 Q24 15 23 12.5" stroke="#2a2a2a" stroke-width="2.2" fill="none" stroke-linecap="round" opacity="0.85"/>
+<path d="M39 18.5 Q40 15 41 12.5" stroke="#2a2a2a" stroke-width="2.2" fill="none" stroke-linecap="round" opacity="0.85"/>
+<circle cx="22.5" cy="9.5" r="4.2" fill="#f2ede1" stroke="#2a2a2a" stroke-width="1.8" opacity="0.95"/>
+<circle cx="41.5" cy="9.5" r="4.2" fill="#f2ede1" stroke="#2a2a2a" stroke-width="1.8" opacity="0.95"/>
+<circle cx="23" cy="10" r="1.7" fill="#222222"/>
+<circle cx="41" cy="10" r="1.7" fill="#222222"/>
+<!-- Open smile: one brush press, paper showing through -->
+<path d="M27.5 30.5 Q32 36 36.5 30.5 Z" fill="#f2ede1" opacity="0.9"/>
+<!-- Claws: two wet daubs with feather flicks -->
+<ellipse cx="13.5" cy="21" rx="5.8" ry="4.6" fill="#2a2a2a" opacity="0.75" transform="rotate(28 13.5 21)"/>
+<ellipse cx="54" cy="22" rx="6" ry="4.8" fill="#2a2a2a" opacity="0.75" transform="rotate(-35 54 22)"/>
+<path d="M9.5 16.5 L6.5 13.5" stroke="#2a2a2a" stroke-width="1.8" stroke-linecap="round" opacity="0.5"/>
+<path d="M58.5 17.5 L61.5 14.5" stroke="#2a2a2a" stroke-width="1.8" stroke-linecap="round" opacity="0.5"/>
+<!-- The hanko -->
+<rect x="50" y="48" width="9" height="9" rx="1.2" fill="#b03020"/>
+<path d="M52.5 50.5 L56.5 50.5 M54.5 50.5 L54.5 54.5 M52.5 54.5 L56.5 54.5" stroke="#f2ede1" stroke-width="1.1"/>
+</svg>
