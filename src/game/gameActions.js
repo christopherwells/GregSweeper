@@ -1041,85 +1041,16 @@ export function revealCell(row, col) {
     startTimer();
 
   } else if (state.status === 'idle' && (state.gameMode === 'daily' || state.gameMode === 'weekly')) {
-    // Daily / weekly mode: board was pre-generated (canonical) so the
-    // generic first-click path above didn't fire. Relocate a mine away
-    // from the click cell deterministically, then start the timer.
-    // Source the RNG from whichever seed the mode owns.
-    const isWeekly = state.gameMode === 'weekly';
-    const seed = isWeekly
-      ? (state.weeklyRngSeed || state.weeklySeed)
-      : (state.dailyRngSeed || state.dailySeed);
-    const clickedCell = state.board[row][col];
-    if (clickedCell.isMine) {
-      // NOTE: relocation MUTATES the canonical board for this player —
-      // their layout diverges from everyone else's and from the features
-      // already computed for par. The no-guess contract is preserved
-      // below by re-certifying the relocated layout from the player's
-      // click; the divergence itself is a known design tension.
-      clickedCell.isMine = false;
-      const relocRng = createDailyRNG(seed + '-reloc-' + row + '-' + col);
-      const candidates = [];
-      for (let r = 0; r < state.rows; r++) {
-        for (let c = 0; c < state.cols; c++) {
-          if (!state.board[r][c].isMine &&
-              (Math.abs(r - row) > 1 || Math.abs(c - col) > 1)) {
-            candidates.push({ r, c });
-          }
-        }
-      }
-      // Try relocation destinations until the relocated board is
-      // certified solvable from the PLAYER'S click (their actual entry
-      // point) — without this, a gimmick-free relocated board shipped
-      // unverified and could contain a genuine 50/50. Bounded: a
-      // candidate set this size virtually always certifies within a few
-      // picks; if every destination fails we keep the least-bad board
-      // and report, rather than hanging the page.
-      const RELOC_VERIFY_ATTEMPTS = Math.min(40, candidates.length);
-      let relocCertified = candidates.length === 0;
-      let lastPick = null;
-      for (let attempt = 0; attempt < RELOC_VERIFY_ATTEMPTS; attempt++) {
-        if (lastPick) state.board[lastPick.r][lastPick.c].isMine = false;
-        const pick = candidates[Math.floor(relocRng() * candidates.length)];
-        state.board[pick.r][pick.c].isMine = true;
-        lastPick = pick;
-        calculateAdjacency(state.board);
-
-        if (state.activeGimmicks.length > 0) {
-          // Re-apply gimmicks that depend on adjacency (liar, wormhole,
-          // mirror) — clearing the prior placements FIRST. Re-applying
-          // over live gimmick properties stacks a second set of modifier
-          // cells on top of the canonical ones (applyGimmicks never
-          // clears), shipping a board with ~double modifiers that
-          // matches neither the canonical nor the submitted features.
-          let gimmickOk = false;
-          const GIMMICK_RETRIES = 25;
-          for (let g = 0; g < GIMMICK_RETRIES; g++) {
-            for (const brow of state.board) for (const c of brow) clearGimmickProperties(c);
-            // First try keeps the canonical wall layout (least divergence);
-            // later retries re-roll walls too, matching the old loop.
-            if (g > 0) state.board._wallEdges = null;
-            calculateAdjacency(state.board);
-            const gRng = createDailyRNG(seed + `-gimmick-reloc-${attempt}-${g}`);
-            state.gimmickData = applyGimmicks(state.board, 1, state.activeGimmicks, gRng);
-            const check = isBoardSolvable(state.board, state.rows, state.cols, row, col);
-            cleanSolverArtifacts(state.board);
-            if (check.solvable || check.remainingUnknowns === 0) { gimmickOk = true; break; }
-          }
-          if (gimmickOk) { relocCertified = true; break; }
-        } else {
-          const check = isBoardSolvable(state.board, state.rows, state.cols, row, col);
-          cleanSolverArtifacts(state.board);
-          if (check.solvable || check.remainingUnknowns === 0) { relocCertified = true; break; }
-        }
-      }
-      if (!relocCertified && candidates.length > 0) {
-        // Every destination failed certification (statistically ~never).
-        // The board still plays — bombs cost time, not the game — but
-        // the contract is not certified for this layout; make it visible.
-        reportCaughtError('daily-reloc-unverified',
-          new Error(`mode=${state.gameMode} seed=${seed} click=${row},${col}`));
-      }
-    }
+    // Daily / weekly: the canonical board is FROZEN. It never mutates,
+    // so every player on the date plays the identical layout and the
+    // submitted features always describe the board that was actually
+    // played. The marked start cell is the certified safe entry; a
+    // first click that ignores it and lands on a mine falls through to
+    // the standard bomb-hit path below (info-value penalty, strike
+    // marker, no game over) exactly like any later mine click - that
+    // is on the player, by design (decided 2026-06-12). The previous
+    // behavior relocated the mine and re-certified, silently diverging
+    // this player's board from the canonical.
     state.status = 'playing';
     startTimer();
 
