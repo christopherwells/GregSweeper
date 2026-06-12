@@ -4722,6 +4722,60 @@ button:focus-visible {
   pointer-events: none;
 }
 
+/* ── Title-screen sheets (Progress / More) ──────────────
+   Small action sheets behind the grouped footer: a short list of
+   rows, each opening an existing modal. */
+.sheet-content {
+  max-width: 300px;
+}
+.sheet-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sheet-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 13px 16px;
+  border: 1px solid var(--color-border, #333);
+  border-radius: 10px;
+  background: var(--color-btn-gradient);
+  color: var(--color-text, #eee);
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+.sheet-row:hover {
+  border-color: var(--color-accent, #e94560);
+}
+/* On a sheet row the NEW badge sits inline at the row's end, not
+   floated off a corner. */
+.sheet-row .whatsnew-badge {
+  position: static;
+  margin-left: auto;
+}
+/* News dot on the More button: the What's New badge lives behind the
+   sheet now, so the button itself has to carry the signal. */
+.more-dot {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #e94560;
+  pointer-events: none;
+}
+
+/* An odd card count (chaos hidden until L50) leaves an orphan cell in
+   the 2-column grid; let the last card span the row instead. */
+.title-screen-modes .mode-card:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
 /* What's New modal body */
 .whatsnew-body h3 {
   margin: 0 0 8px;

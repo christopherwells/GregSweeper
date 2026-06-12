@@ -2117,9 +2117,9 @@ $('#btn-about')?.addEventListener('click', () => {
 // The Lexicon — generated single-technique lessons behind the
 // deducibility click-gate. Lazy-loaded: it never touches the boot path,
 // game state, or the par pipeline.
-const titleLexiconBtn = $('#title-lexicon-btn');
-if (titleLexiconBtn) {
-  titleLexiconBtn.addEventListener('click', () => {
+const gymCard = $('#mode-card-gym');
+if (gymCard) {
+  gymCard.addEventListener('click', () => {
     import('./ui/lexiconUI.js').then(m => m.openLexicon())
       .catch(err => reportCaughtError('lexicon-import', err));
   });
@@ -2516,33 +2516,75 @@ const titleHelpBtn = $('#title-help-btn');
 if (titleHelpBtn) {
   titleHelpBtn.addEventListener('click', () => { setActiveHelpTab('basics'); showModalFromTitle('help-modal'); });
 }
-const titleSettingsBtn = $('#title-settings-btn');
-if (titleSettingsBtn) {
-  titleSettingsBtn.addEventListener('click', () => {
-    // Load saved player name into settings input
-    const nameInput = $('#player-name-input');
-    if (nameInput) nameInput.value = getPlayerName();
-    setActiveSettingsTab('general');
-    showModalFromTitle('settings-modal');
-    syncReminderUI();
-    _updateSettingsUid();
-    _updateSettingsAccount();
-  });
+
+// The Modifiers help tab renders straight from the gimmick registry so
+// the reference can never drift from the actual rules. Rendered once at
+// boot — the registry is static.
+const helpModifierList = $('#help-modifier-list');
+if (helpModifierList) {
+  helpModifierList.innerHTML = Object.values(getGimmickDefs())
+    .map(def => `<p>${def.icon} <strong>${def.name}</strong>: ${def.desc}</p>`)
+    .join('');
 }
-const titleWhatsnewBtn = $('#title-whatsnew-btn');
-if (titleWhatsnewBtn) {
-  titleWhatsnewBtn.addEventListener('click', () => {
+
+// Progress and More sheets — the grouped footer. A sheet row hides its
+// sheet (plain hideModal, NOT closeModalAndReturn: the _returnToTitle
+// flag must survive the hop) and opens the destination modal, whose
+// close button then returns to the title screen as before.
+const titleProgressBtn = $('#title-progress-btn');
+if (titleProgressBtn) {
+  titleProgressBtn.addEventListener('click', () => showModalFromTitle('progress-sheet'));
+}
+const titleMoreBtn = $('#title-more-btn');
+if (titleMoreBtn) {
+  titleMoreBtn.addEventListener('click', () => showModalFromTitle('more-sheet'));
+}
+function _sheetRowOpens(rowId, sheetId, openFn) {
+  const row = $(rowId);
+  if (row) row.addEventListener('click', () => { hideModal(sheetId); openFn(); });
+}
+_sheetRowOpens('#sheet-stats-btn', 'progress-sheet', () => {
+  updateStatsDisplay();
+  showModalFromTitle('stats-modal');
+});
+_sheetRowOpens('#sheet-achievements-btn', 'progress-sheet', () => {
+  updateAchievementsDisplay();
+  showModalFromTitle('achievements-modal');
+});
+_sheetRowOpens('#sheet-leaderboard-btn', 'progress-sheet', () => {
+  updateLeaderboardDisplay();
+  showModalFromTitle('leaderboard-modal');
+});
+_sheetRowOpens('#sheet-collection-btn', 'more-sheet', () => {
+  renderCollectionModal();
+  showModalFromTitle('collection-modal');
+});
+_sheetRowOpens('#sheet-settings-btn', 'more-sheet', () => {
+  // Load saved player name into settings input
+  const nameInput = $('#player-name-input');
+  if (nameInput) nameInput.value = getPlayerName();
+  setActiveSettingsTab('general');
+  showModalFromTitle('settings-modal');
+  syncReminderUI();
+  _updateSettingsUid();
+  _updateSettingsAccount();
+});
+const sheetWhatsnewBtn = $('#sheet-whatsnew-btn');
+if (sheetWhatsnewBtn) {
+  sheetWhatsnewBtn.addEventListener('click', () => {
     setLastSeenVersion(CURRENT_VERSION);
-    // Remove NEW badge if present
-    const badge = titleWhatsnewBtn.querySelector('.whatsnew-badge');
-    if (badge) badge.remove();
+    sheetWhatsnewBtn.querySelector('.whatsnew-badge')?.remove();
+    $('#more-btn-dot')?.classList.add('hidden');
+    hideModal('more-sheet');
     showModalFromTitle('whatsnew-modal');
   });
   // Show NEW badge ONLY for returning visitors who saw an older
   // version. First-time visitors (lastSeen empty) get no badge —
   // they haven't missed anything, the NEW label would just confuse.
   // Mark them as "having seen" the current version so the badge
-  // never fires for them retroactively after the next deploy.
+  // never fires for them retroactively after the next deploy. The
+  // row's badge lives behind the More button now, so a dot on More
+  // makes the news visible before the sheet is opened.
   const lastSeen = getLastSeenVersion();
   if (!lastSeen) {
     setLastSeenVersion(CURRENT_VERSION);
@@ -2550,36 +2592,9 @@ if (titleWhatsnewBtn) {
     const badge = document.createElement('span');
     badge.className = 'whatsnew-badge';
     badge.textContent = 'NEW';
-    titleWhatsnewBtn.appendChild(badge);
+    sheetWhatsnewBtn.appendChild(badge);
+    $('#more-btn-dot')?.classList.remove('hidden');
   }
-}
-const titleStatsBtn = $('#title-stats-btn');
-if (titleStatsBtn) {
-  titleStatsBtn.addEventListener('click', () => {
-    updateStatsDisplay();
-    showModalFromTitle('stats-modal');
-  });
-}
-const titleCollectionBtn = $('#title-collection-btn');
-if (titleCollectionBtn) {
-  titleCollectionBtn.addEventListener('click', () => {
-    renderCollectionModal();
-    showModalFromTitle('collection-modal');
-  });
-}
-const titleAchievementsBtn = $('#title-achievements-btn');
-if (titleAchievementsBtn) {
-  titleAchievementsBtn.addEventListener('click', () => {
-    updateAchievementsDisplay();
-    showModalFromTitle('achievements-modal');
-  });
-}
-const titleLeaderboardBtn = $('#title-leaderboard-btn');
-if (titleLeaderboardBtn) {
-  titleLeaderboardBtn.addEventListener('click', () => {
-    updateLeaderboardDisplay();
-    showModalFromTitle('leaderboard-modal');
-  });
 }
 
 // Clear Cache & Reload
