@@ -864,6 +864,75 @@ if (length(handicaps) > 0) {
   message("No new handicaps to write — keeping existing handicaps.json.")
 }
 
+# ── Timed-mode offset (secModeTimed) ──────────────────────────────────
+# One model serves both modes via an extra coefficient (Christopher,
+# 2026-06-12). The brms fixed effects carry a class-wide lb = 0 (the
+# lognormal positivity bound), but a MODE OFFSET must be sign-free —
+# quick play could run faster or slower than dailies — so it is
+# estimated in a second stage that leaves the main fit untouched:
+# the shrunken mean of timed-row residuals against each player's
+# PERSONAL par (global par + their CLEAN handicap component, so player
+# skill nets out; timed has no bombs, so the bomb factor is excluded).
+# Shrinkage n/(n+K) pulls toward 0 at small n; below
+# TIMED_FIT_THRESHOLD usable rows the coefficient ships as 0 (the
+# documented activation gate). Client side, predictPar adds
+# secModeTimed × features.modeTimed; daily features carry modeTimed 0.
+TIMED_SHRINK_K <- 10
+sec_mode_timed <- 0
+timed_n_used   <- 0
+if (length(timed_raw) > 0) {
+  timed_df <- tryCatch({
+    tibble(entry = map(timed_raw, ~ .x)) |>
+      mutate(
+        time     = map_dbl(entry, ~ .x$time %||% NA_real_),
+        uid      = map_chr(entry, ~ .x$uid %||% NA_character_),
+        features = map(entry, ~ .x$features)
+      ) |>
+      filter(!is.na(time), time >= 5, time <= 3600, !map_lgl(features, is.null)) |>
+      select(-entry) |>
+      unnest_wider(features)
+  }, error = function(e) NULL)
+  if (!is.null(timed_df) && nrow(timed_df) > 0) {
+    timed_needed <- c("passAMoves", "canonicalSubsetMoves", "genericSubsetMoves",
+                      "advancedLogicMoves", "totalMines", "cellCount", "wallEdgeCount",
+                      "mysteryCellCount", "liarCellCount", "lockedCellCount",
+                      "wormholePairCount", "mirrorPairCount", "sonarCellCount",
+                      "compassCellCount", "zeroClusterCount")
+    for (f in timed_needed) if (!f %in% colnames(timed_df)) timed_df[[f]] <- 0
+    timed_df <- timed_df |>
+      mutate(across(all_of(timed_needed), ~ ifelse(is.na(.x), 0, as.numeric(.x)))) |>
+      mutate(
+        patternMoves = canonicalSubsetMoves + genericSubsetMoves,
+        searchMoves  = advancedLogicMoves
+      )
+    # Personal par = global par under the JUST-EMITTED coefficients plus
+    # the player's clean-skill handicap. Players with no handicap entry
+    # (under the play threshold) are excluded — their residual would mix
+    # skill into the mode effect.
+    timed_clean_handicap <- function(u) {
+      det <- handicap_details[[u]]
+      if (!is.null(det) && !is.null(det$clean)) return(as.numeric(det$clean))
+      h <- handicaps[[u]]
+      if (!is.null(h)) return(as.numeric(h))
+      NA_real_
+    }
+    timed_df$personalPar <- apply_par_model(timed_df, new_coefs) +
+      vapply(timed_df$uid, timed_clean_handicap, numeric(1))
+    timed_df <- timed_df |> filter(!is.na(personalPar))
+    timed_n_used <- nrow(timed_df)
+    if (timed_n_used >= TIMED_FIT_THRESHOLD) {
+      timed_resid_mean <- mean(timed_df$time - timed_df$personalPar)
+      sec_mode_timed <- (timed_n_used / (timed_n_used + TIMED_SHRINK_K)) * timed_resid_mean
+      message(sprintf("  modeTimed ACTIVE: n=%d usable rows, mean personal-par residual=%.2fs, shrunken secModeTimed=%.2fs",
+                      timed_n_used, timed_resid_mean, sec_mode_timed))
+    } else {
+      message(sprintf("  modeTimed inactive: %d usable timed rows (< %d) — shipping 0",
+                      timed_n_used, TIMED_FIT_THRESHOLD))
+    }
+  }
+}
+new_coefs$secModeTimed <- round(sec_mode_timed, 3)
+
 # ── 5. Emit per-refit diagnostics row to modelHistory.json ──
 #
 # Backend timeline of how the model is doing over time, surfaced only in
@@ -978,6 +1047,11 @@ block <- sprintf(
   secPerMirrorPair:    %.3f,
   secPerSonarCell:     %.3f,
   secPerCompassCell:   %.3f,
+
+  // Mode offset: quick-play pace vs daily. Two-stage personal-par
+  // residual estimate (sign-free; the brms b-class is lb=0), shrunken
+  // n/(n+10), shipped 0 until >= 20 usable timed rows exist.
+  secModeTimed:        %.3f,
 };',
   Sys.Date(), method_str, n_scores, n_dates, n_players, r2_str,
   new_coefs$intercept,
@@ -993,7 +1067,8 @@ block <- sprintf(
   new_coefs$secPerWormholePair,
   new_coefs$secPerMirrorPair,
   new_coefs$secPerSonarCell,
-  new_coefs$secPerCompassCell
+  new_coefs$secPerCompassCell,
+  new_coefs$secModeTimed
 )
 
 src <- paste(readLines(DIFFICULTY_PATH, warn = FALSE, encoding = "UTF-8"),

@@ -89,6 +89,11 @@ export const PAR_MODEL = {
   secPerMirrorPair:    1.878,
   secPerSonarCell:     0.811,
   secPerCompassCell:   0.763,
+
+  // Mode offset: quick-play pace vs daily. Two-stage personal-par
+  // residual estimate (sign-free; the brms b-class is lb=0), shrunken
+  // n/(n+10), shipped 0 until >= 20 usable timed rows exist.
+  secModeTimed:        0,
 };
 // PAR_MODEL:END
 
