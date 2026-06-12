@@ -5,7 +5,7 @@ export const state = {
   rows: 10,
   cols: 10,
   totalMines: 10,
-  status: 'idle',       // idle | playing | won | lost
+  status: 'idle',       // idle | playing | won | lost | expired (date-anchored game lapsed at midnight ET)
   firstClick: true,
   flagCount: 0,
   revealedCount: 0,
