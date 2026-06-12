@@ -4,7 +4,7 @@ import {
   streakDisplayEl, cellsRemainingEl, progressBarContainer,
   progressBarFill, progressBarMarkers, bestTimeDisplay,
   maxLevelDisplay, resetBtn, streakBorder,
-  flagModeBar, flagModeToggle, flagModeIcon, flagModeLabel,
+  flagModeToggle, flagModeIcon,
 } from './domHelpers.js';
 import { getThemeEmoji } from './boardRenderer.js';
 import { applyIcon } from './spriteLoader.js';
@@ -311,33 +311,34 @@ export function updateStreakBorder() {
   streakBorder.dataset.prevStreak = streak;
 }
 
-// ── Flag Mode Toggle ──────────────────────────────────
-
+// ── Flag Mode Toggle + Lens (header icon buttons) ─────
+// The toggle and the Stuck? button flank the smiley in the LCD row —
+// the dedicated flag-mode-bar row was removed to give phones the
+// vertical space. Same visibility semantics the bar had: shown on all
+// devices during gameplay (touch has no right-click for flagging, and
+// desktop beginners benefit too; right-click still works alongside),
+// hidden on win/loss so the header reflows to the classic three.
 export function updateFlagModeBar() {
-  if (!flagModeBar) return;
-  // Show on all devices during gameplay. The toggle started as a
-  // mobile-only affordance (touch has no right-click for flagging),
-  // but desktop users without easy right-click — Chromebooks, beginners
-  // who don't know about it — benefit too. Right-click-to-flag still
-  // works alongside the toggle.
-  if (state.status !== 'won' && state.status !== 'lost') {
-    flagModeBar.classList.remove('hidden');
-  } else {
-    flagModeBar.classList.add('hidden');
-  }
+  const over = state.status === 'won' || state.status === 'lost';
   if (flagModeToggle) {
+    flagModeToggle.classList.toggle('hidden', over);
     flagModeToggle.classList.toggle('flag-active', state.flagMode);
     flagModeToggle.setAttribute('aria-pressed', state.flagMode ? 'true' : 'false');
+    // Icon-only button, so the state lives in the label. "Tap" reads
+    // wrong with a mouse; "Click" reads wrong on a phone.
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    const verb = isTouchDevice ? 'Taps' : 'Clicks';
+    const label = state.flagMode
+      ? `Flag mode on: ${verb.toLowerCase()} place flags`
+      : `Flag mode off: ${verb.toLowerCase()} reveal`;
+    flagModeToggle.setAttribute('aria-label', label);
+    flagModeToggle.title = label;
   }
   if (flagModeIcon) {
     flagModeIcon.textContent = state.flagMode ? '🚩' : '👆';
   }
-  if (flagModeLabel) {
-    // "Tap" reads wrong with a mouse; "Click" reads wrong on a phone.
-    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    const verb = isTouchDevice ? 'Tap' : 'Click';
-    flagModeLabel.textContent = state.flagMode ? `${verb} to Flag` : `${verb} to Reveal`;
-  }
+  const stuckBtn = document.getElementById('stuck-btn');
+  if (stuckBtn) stuckBtn.classList.toggle('hidden', over);
 }
 
 // Internal: updateHeader calls updateTimerDisplay for the timer section

@@ -12,7 +12,6 @@ const timedDiffPanel = $('#timed-difficulty');
 const timedSizeTabs = $('#timed-size-tabs');
 const boardContainer = $('#board-container');
 const powerUpBar = $('#powerup-bar');
-const flagModeBar = $('#flag-mode-bar');
 const gameHeader = $('#game-header');
 const gameInfoBar = $('#game-info-bar');
 const progressBarContainer = $('#progress-bar-container');
