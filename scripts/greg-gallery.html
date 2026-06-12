@@ -39,6 +39,11 @@ ONE axis per candidate so the keepers can be named trait by trait (for
 example: A3's shell with A4's colors and A2's eyes). Idle pose only at this
 stage; the chosen blend gets its win and loss poses in stage 2. The original
 three-direction round is kept underneath for reference.</p>
+<h2>Stage 3: micro-variants on the blend</h2>
+<p class="note">One change each, against the a7 base. Mix and match again:
+mouth (b open or c crab), shell (d flatter), detail (e antennae, f sheen),
+eyes (g wide-set).</p>
+<div id="stage3"></div>
 <h2>Stage 2 blend: wide carapace, long stalks, big claws and board</h2>
 <p class="note">The trait picks composited: A3's wide shell with a clean front
 edge (no lobe arcs), A1's long eye stalks, A5's big pincers, big clipboard,
@@ -48,6 +53,31 @@ and pencil. Win and loss poses derive from the same body.</p>
 <div id="drill"></div>
 <div id="out"></div>
 <script>
+const S3 = [
+  ['a7',  'a7 base (stage 2 blend)'],
+  ['a7b', 'b open smile'],
+  ['a7c', 'c crab mouth, two bumps'],
+  ['a7d', 'd flatter wider shell'],
+  ['a7e', 'e antennae'],
+  ['a7f', 'f shell sheen'],
+  ['a7g', 'g wide-set eyes'],
+];
+const s3 = document.getElementById('stage3');
+const s3t = document.createElement('table');
+s3t.innerHTML = '<tr><th>Variant</th><th>110px</th><th>48px</th><th>32px (reset button)</th><th>22px (inline row)</th><th>On light tile</th><th>On button bg</th></tr>' +
+  S3.map(([slug, label]) => {
+    const src = `../assets/sprites/greg/${slug}-idle.svg`;
+    return `<tr>
+      <td class="name" style="max-width:240px;white-space:normal;">${label}</td>
+      <td><img src="${src}" width="110" height="110"></td>
+      <td><img src="${src}" width="48" height="48"></td>
+      <td><img src="${src}" width="32" height="32"></td>
+      <td><img src="${src}" width="22" height="22"></td>
+      <td class="on-light"><img src="${src}" width="40" height="40"></td>
+      <td class="on-btn"><img src="${src}" width="32" height="32"></td>
+    </tr>`;
+  }).join('');
+s3.appendChild(s3t);
 const s2 = document.getElementById('stage2');
 const strip2 = document.createElement('div');
 strip2.className = 'strip';
