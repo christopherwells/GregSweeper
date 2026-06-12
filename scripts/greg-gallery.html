@@ -39,10 +39,36 @@ ONE axis per candidate so the keepers can be named trait by trait (for
 example: A3's shell with A4's colors and A2's eyes). Idle pose only at this
 stage; the chosen blend gets its win and loss poses in stage 2. The original
 three-direction round is kept underneath for reference.</p>
+<h2>Stage 2 blend: wide carapace, long stalks, big claws and board</h2>
+<p class="note">The trait picks composited: A3's wide shell with a clean front
+edge (no lobe arcs), A1's long eye stalks, A5's big pincers, big clipboard,
+and pencil. Win and loss poses derive from the same body.</p>
+<div id="stage2"></div>
 <h2>Direction A drill-down, stage 1</h2>
 <div id="drill"></div>
 <div id="out"></div>
 <script>
+const s2 = document.getElementById('stage2');
+const strip2 = document.createElement('div');
+strip2.className = 'strip';
+strip2.innerHTML = ['idle', 'win', 'loss'].map(pose =>
+  `<div class="pose"><img src="../assets/sprites/greg/a7-${pose}.svg" width="130" height="130"><span>${pose}</span></div>`
+).join('');
+s2.appendChild(strip2);
+const s2t = document.createElement('table');
+s2t.innerHTML = '<tr><th>Pose</th><th>48px</th><th>32px (reset button)</th><th>22px (inline row)</th><th>On light tile</th><th>On button bg</th></tr>' +
+  ['idle', 'win', 'loss'].map(pose => {
+    const src = `../assets/sprites/greg/a7-${pose}.svg`;
+    return `<tr>
+      <td class="name">${pose}</td>
+      <td><img src="${src}" width="48" height="48"></td>
+      <td><img src="${src}" width="32" height="32"></td>
+      <td><img src="${src}" width="22" height="22"></td>
+      <td class="on-light"><img src="${src}" width="40" height="40"></td>
+      <td class="on-btn"><img src="${src}" width="32" height="32"></td>
+    </tr>`;
+  }).join('');
+s2.appendChild(s2t);
 const VARIANTS = [
   ['a',  'A1 baseline: the committed Field Greg'],
   ['a2', 'A2 grounded eyes: short thick stalks, eyes grow out of the shell'],
