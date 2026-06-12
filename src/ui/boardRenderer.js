@@ -1,5 +1,5 @@
 import { state } from '../state/gameState.js';
-import { boardEl, zoomControls, zoomLevelDisplay, boardScrollWrapper } from './domHelpers.js';
+import { boardEl, zoomControls, boardScrollWrapper } from './domHelpers.js';
 import { THEME_UNLOCKS } from './themeManager.js';
 import { loadEmojiPack, getActiveEmojiPack } from './collectionManager.js';
 import { applyIcon } from './spriteLoader.js';
@@ -462,7 +462,6 @@ export function updateZoom() {
     const scale = state.zoomLevel / 100;
     boardEl.style.transform = `scale(${scale})`;
     boardEl.style.transformOrigin = 'top left';
-    zoomLevelDisplay.textContent = `${state.zoomLevel}%`;
   } else {
     zoomControls.classList.add('hidden');
     boardScrollWrapper.classList.remove('zoomed');

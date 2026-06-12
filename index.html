@@ -338,11 +338,19 @@
       <div id="title-subtitle">No guesses. Ever.</div>
     </div>
     <div id="screen-shake-wrapper">
+      <!-- The flag toggle and the Lens flank the smiley: game actions
+           at thumb height in a row that already exists, not a row of
+           their own. Both hide on win/loss (the old flag-mode-bar
+           semantics) and the header reflows to the classic three. -->
       <header id="game-header">
         <div class="header-left">
           <div id="mine-counter" class="lcd-display">010</div>
         </div>
+        <button id="flag-mode-toggle" class="header-icon-btn" aria-label="Flag mode off: taps reveal" aria-pressed="false">
+          <span id="flag-mode-icon">👆</span>
+        </button>
         <button id="reset-btn" class="smiley-btn" aria-label="New Game">😊</button>
+        <button id="stuck-btn" class="header-icon-btn stuck-btn" aria-label="Stuck? Shows where to look, never what to click" title="Stuck?">🤔</button>
         <div class="header-right">
           <div id="timer-display" class="lcd-display">000</div>
         </div>
@@ -397,20 +405,6 @@
         </button>
       </div>
 
-      <div id="flag-mode-bar" class="hidden">
-        <button id="flag-mode-toggle" class="flag-toggle-btn" aria-label="Toggle flag mode">
-          <span id="flag-mode-icon">👆</span>
-          <span id="flag-mode-label">Tap to Reveal</span>
-        </button>
-        <!-- The Lens lives HERE, beside the board, as a game action —
-             not as a tenth icon in the nav. Same visibility as the flag
-             toggle: shown while a game is live, gone on win/loss. -->
-        <button id="stuck-btn" class="flag-toggle-btn stuck-btn" aria-label="Stuck? Shows where to look, never what to click">
-          <span>🤔</span>
-          <span>Stuck?</span>
-        </button>
-      </div>
-
       <div id="timed-size-tabs" class="timed-size-tabs hidden" role="tablist" aria-label="Quick Play difficulty">
         <button class="timed-tab active" data-level="1" role="tab" aria-selected="true">Beginner</button>
         <button class="timed-tab" data-level="2" role="tab" aria-selected="false">Intermediate</button>
@@ -440,11 +434,6 @@
         </div>
         <canvas id="particle-canvas"></canvas>
         <div id="scan-toast" class="hidden"></div>
-        <div id="zoom-controls" class="hidden">
-          <button id="zoom-out" class="zoom-btn" title="Zoom Out">−</button>
-          <span id="zoom-level">100%</span>
-          <button id="zoom-in" class="zoom-btn" title="Zoom In">+</button>
-        </div>
       </div>
 
       <!-- The board coach line: the Lens answers here, one persistent
@@ -465,6 +454,15 @@
       <button id="btn-collection" class="nav-btn" title="Collection">🎨</button>
       <button id="btn-mute" class="nav-btn" title="Mute">🔊</button>
       <button id="btn-settings" class="nav-btn" title="Settings">⚙️</button>
+      <!-- Zoom rides the nav row instead of owning one under the board.
+           display:contents makes the pair direct flex items; the
+           wrapper only exists so updateZoom can show/hide both at once
+           (visible only on Expert/Extreme Quick Play boards). The %
+           readout is gone — the board itself shows the zoom level. -->
+      <span id="zoom-controls" class="hidden">
+        <button id="zoom-out" class="nav-btn zoom-btn" title="Zoom Out">−</button>
+        <button id="zoom-in" class="nav-btn zoom-btn" title="Zoom In">+</button>
+      </span>
     </nav>
 
     <!-- Live theme carousel: flip themes on the real board (swipe / arrows / buttons) -->
@@ -639,7 +637,7 @@
           <div class="help-section">
             <h3>The Guarantee</h3>
             <p>Every standard board is checked by a solver before you play it. From the marked start square (or your first click in Challenge and Quick Play) there is always a next square you can prove safe, all the way to the end. You never have to gamble.</p>
-            <p>If you get stuck, tap <strong>Stuck?</strong> and the game lights up the clues that prove the next move. Chaos is the one exception to the guarantee, and it says so.</p>
+            <p>If you get stuck, tap the <strong>🤔 button</strong> beside the smiley and the game lights up the clues that prove the next move. Chaos is the one exception to the guarantee, and it says so.</p>
           </div>
           <div class="help-section">
             <h3>Goal</h3>
