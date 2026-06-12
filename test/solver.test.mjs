@@ -9,7 +9,7 @@ import './helpers.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-const { isBoardSolvable } = await import('../src/logic/boardSolver.js');
+const { isBoardSolvable, certificateFromCheck } = await import('../src/logic/boardSolver.js');
 const { generateBoard, cleanSolverArtifacts } = await import('../src/logic/boardGenerator.js');
 const { createDailyRNG } = await import('../src/logic/seededRandom.js');
 
@@ -39,6 +39,37 @@ for (const { rows, cols, mines, seed } of CASES) {
     }
   });
 }
+
+// The no-guess certificate the Certified chip shows. A certificate may
+// only exist for a check that actually certified a full clear, and its
+// fields must mirror the check verbatim — the chip's claim ("N provable
+// moves, hardest tier T") is only as honest as this mapping.
+test('certificateFromCheck mirrors a certifying check and refuses everything else', () => {
+  const rows = 9, cols = 9, mines = 12, fr = 4, fc = 4;
+  const board = generateBoard(rows, cols, mines, fr, fc, createDailyRNG('unit-cert-1'));
+  cleanSolverArtifacts(board);
+  const check = isBoardSolvable(board, rows, cols, fr, fc);
+  cleanSolverArtifacts(board);
+  assert.ok(check.solvable, 'generator should hand back a solvable board');
+  const cert = certificateFromCheck(check);
+  assert.ok(cert, 'a solvable check must produce a certificate');
+  assert.equal(cert.clicks, check.totalClicks, 'clicks must be the solver totalClicks verbatim');
+  assert.equal(cert.tier, check.techniqueLevel ?? 0, 'tier must be the solver techniqueLevel verbatim');
+  assert.ok(Number.isInteger(cert.clicks) && cert.clicks >= 1, 'clicks must count the entry click');
+  assert.ok([0, 1, 2, 3].includes(cert.tier), `tier out of range: ${cert.tier}`);
+
+  // Refusals: no check, and a check that did not certify. A failed
+  // solve must NEVER stamp — the chip simply not rendering is the
+  // honest outcome.
+  assert.equal(certificateFromCheck(null), null);
+  assert.equal(certificateFromCheck(undefined), null);
+  assert.equal(certificateFromCheck({ solvable: false, remainingUnknowns: 7, totalClicks: 3, techniqueLevel: 2 }), null);
+
+  // The remainingUnknowns === 0 acceptance mirror (generation loops
+  // accept either form).
+  const zeroLeft = certificateFromCheck({ solvable: false, remainingUnknowns: 0, totalClicks: 5, techniqueLevel: 1 });
+  assert.deepEqual(zeroLeft, { clicks: 5, tier: 1 });
+});
 
 test('pre-flagging a mine never raises the solver workload (info-value is ≥ 0 by construction)', () => {
   // The bomb info-value relies on pre-flagging a mine making the board no

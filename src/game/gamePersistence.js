@@ -56,6 +56,7 @@ export function persistGameState() {
     dailyBombHits: state.dailyBombHits,
     dailyBombHitEvents: state.dailyBombHitEvents || [],
     clickTimeline: state.clickTimeline || [],
+    boardCertificate: state.boardCertificate || null,
     weeklySeed: state.weeklySeed || null,
     weeklyDay: state.weeklyDay,
     weeklyRngSeed: state.weeklyRngSeed || null,
@@ -155,6 +156,10 @@ export function tryResumeGame(mode) {
   state.dailyBombHits = gs.dailyBombHits || 0;
   state.dailyBombHitEvents = Array.isArray(gs.dailyBombHitEvents) ? gs.dailyBombHitEvents : [];
   state.clickTimeline = Array.isArray(gs.clickTimeline) ? gs.clickTimeline : [];
+  // Restore the no-guess certificate so the Certified chip survives a
+  // resume (updateActiveGimmickBar below re-renders it). Saves from
+  // before the chip shipped lack the field and resume chipless.
+  state.boardCertificate = gs.boardCertificate || null;
   state.weeklySeed = gs.weeklySeed || null;
   state.weeklyDay = typeof gs.weeklyDay === 'number' ? gs.weeklyDay : null;
   state.weeklyRngSeed = gs.weeklyRngSeed || null;

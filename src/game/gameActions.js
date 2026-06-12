@@ -10,13 +10,14 @@ import {
   updateFlagModeBar, updateActiveGimmickBar,
 } from '../ui/headerRenderer.js';
 import { updatePowerUpBar } from '../ui/powerUpBar.js';
+import { clearBoardCoach } from '../ui/boardCoach.js';
 import { hideAllModals, showModal, hideModal } from '../ui/modalManager.js';
 import { showLevelInfoToast } from '../ui/toastManager.js';
 import { startTimer, stopTimer, pauseTimer, resumeTimer, startMineShift, updateTimerDisplay } from './timerManager.js';
 import { handleWin, handleLoss, handleDailyBombHit } from './winLossHandler.js';
 import { performScan, performXRay, performMagnet, tryLifeline } from './powerUpActions.js';
 import { generateBoard, createEmptyBoard, calculateAdjacency, cleanSolverArtifacts } from '../logic/boardGenerator.js';
-import { floodFillReveal, checkWin, chordReveal, isBoardSolvable, estimatePlateMovesToDisarm, buildNeighborCache, findDecorativeGimmicks } from '../logic/boardSolver.js';
+import { floodFillReveal, checkWin, chordReveal, isBoardSolvable, estimatePlateMovesToDisarm, buildNeighborCache, findDecorativeGimmicks, certificateFromCheck } from '../logic/boardSolver.js';
 import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getChaosDifficulty, getRequiredTechnique, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE, WEEKLY_MIN_SIZE, WEEKLY_SIZE_RANGE, BOARD_WIDTH_CAP, plateSeconds } from '../logic/difficulty.js';
 import { computeDailyFeatures, predictPar } from '../logic/dailyFeatures.js';
 import { shieldDefuse } from '../logic/powerUps.js';
@@ -306,6 +307,8 @@ export async function newGame() {
   state.dailyBombHitEvents = [];
   state.clickTimeline = [];
   state.hintEvents = [];
+  state.boardCertificate = null;
+  clearBoardCoach();
   state.timedPar = 0;
   state.timedFeatures = null;
 
@@ -505,10 +508,12 @@ export async function newGame() {
 
     let bestStart = null;
     let bestStartUnknowns = Infinity;
+    let bestStartCheck = null;
     for (const cand of ordered) {
       const result = isBoardSolvable(state.board, state.rows, state.cols, cand.r, cand.c, nbrCache);
       if (result.solvable && result.remainingUnknowns === 0) {
         bestStart = cand;
+        bestStartCheck = result;
         break;
       }
       if (result.remainingUnknowns < bestStartUnknowns) {
@@ -517,6 +522,11 @@ export async function newGame() {
       }
     }
     cleanSolverArtifacts(state.board);
+    // The Certified chip's claim is "solvable without guessing from the
+    // marked start", so the certificate is the marked start's OWN full
+    // solve — not the center check above, which feeds features/par. A
+    // board with no full-solve anchor stamps nothing (chip absent).
+    state.boardCertificate = certificateFromCheck(bestStartCheck);
     state.revealedCount = 0;
     if (bestStart) {
       state.board[bestStart.r][bestStart.c].suggestedStart = true;
@@ -696,10 +706,12 @@ export async function newGame() {
 
     let bestStart = null;
     let bestStartUnknowns = Infinity;
+    let bestStartCheck = null;
     for (const cand of ordered) {
       const result = isBoardSolvable(state.board, state.rows, state.cols, cand.r, cand.c, nbrCache);
       if (result.solvable && result.remainingUnknowns === 0) {
         bestStart = cand;
+        bestStartCheck = result;
         break;
       }
       if (result.remainingUnknowns < bestStartUnknowns) {
@@ -708,6 +720,9 @@ export async function newGame() {
       }
     }
     cleanSolverArtifacts(state.board);
+    // Same contract as daily: the certificate is the marked start's own
+    // full solve, or nothing.
+    state.boardCertificate = certificateFromCheck(bestStartCheck);
     state.revealedCount = 0;
     if (bestStart) {
       state.board[bestStart.r][bestStart.c].suggestedStart = true;
@@ -845,6 +860,8 @@ export function revealCell(row, col) {
   // Past every intercept — this click is a real reveal action. Recorded
   // BEFORE processing so a bomb hit still logs the click that caused it.
   recordPlayerAction('r', row, col);
+  // The coach line answered the question this action resolves.
+  clearBoardCoach();
 
   // First click — generate board (or start pre-generated daily board)
   if (state.firstClick) {
@@ -900,6 +917,7 @@ export function revealCell(row, col) {
     const baseTechniqueFloor = state.gameMode === 'normal' ? getRequiredTechnique(state.currentLevel) : 0;
     const RELAX_AFTER_BASES = 15;
     let postGimmickSolvable = false;
+    let acceptedCheck = null; // the solver run that certified the accepted board
     let baseAttempt = 0;
     outer: for (;;) {
       state.board = generateBoard(state.rows, state.cols, state.totalMines, row, col,
@@ -915,6 +933,7 @@ export function revealCell(row, col) {
         cleanSolverArtifacts(state.board);
         if ((check.solvable || check.remainingUnknowns === 0) && (check.techniqueLevel ?? 0) >= techniqueFloor) {
           postGimmickSolvable = true;
+          acceptedCheck = check;
           break;
         }
         continue;
@@ -953,10 +972,23 @@ export function revealCell(row, col) {
             if (decorative.length > 0) continue;
           }
           postGimmickSolvable = true;
+          acceptedCheck = check;
           break outer;
         }
       }
       // Exhausted gimmick retries on this base board — regenerate.
+    }
+
+    // Stamp the no-guess certificate from the accepted check — the
+    // contract here runs from the player's ACTUAL first click. Chaos is
+    // excluded: its modifiers are applied AFTER this loop without
+    // re-verification, so the base-board check certifies nothing about
+    // the board the player ends up on. The bar update makes the chip
+    // appear now for timed too (challenge refreshes it again below with
+    // its settled gimmicks; chaos stays on its own bar).
+    if (state.gameMode === 'normal' || state.gameMode === 'timed') {
+      state.boardCertificate = certificateFromCheck(acceptedCheck);
+      updateActiveGimmickBar();
     }
 
     // Timed mode: compute features + par for THIS board (same PAR_MODEL
@@ -1323,6 +1355,7 @@ export function toggleFlag(row, col) {
   cell.isFlagged = !cell.isFlagged;
   state.flagCount += cell.isFlagged ? 1 : -1;
   recordPlayerAction(cell.isFlagged ? 'f' : 'u', row, col);
+  clearBoardCoach();
   if (cell.isFlagged) playFlag(); else playUnflag();
   updateCell(row, col);
   // Flag pop / unflag shrink animation
@@ -1366,6 +1399,7 @@ export function handleChordReveal(row, col) {
   const result = chordReveal(state.board, row, col);
   if (!result || !result.revealed) return;
   recordPlayerAction('c', row, col);
+  clearBoardCoach();
 
   state.revealedCount += result.revealed.filter(c => !c.isMine).length;
 

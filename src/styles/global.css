@@ -1052,14 +1052,25 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 /* The coach line: one slot under the board, updated in place (never
    queued like toasts, so the note lands the instant the move does).
    Reserved height keeps the card from jumping as notes come and go. */
-.lexicon-coach {
-  min-height: 3.4em;
-  margin: 10px 0 0;
+.lexicon-coach, .board-coach {
   font-size: 0.88em;
   line-height: 1.35;
   color: var(--color-text, #eee);
 }
-.lexicon-coach.coach-pop { animation: lexCoachPop 0.25s ease-out; }
+.lexicon-coach {
+  min-height: 3.4em;
+  margin: 10px 0 0;
+}
+/* The board coach line: the Lens answers here, under the live board.
+   Hidden (display:none via [hidden]) when empty so it costs no height
+   until a hint is actually showing. */
+.board-coach {
+  margin: 8px auto 0;
+  max-width: 520px;
+  padding: 0 10px;
+  text-align: center;
+}
+.lexicon-coach.coach-pop, .board-coach.coach-pop { animation: lexCoachPop 0.25s ease-out; }
 @keyframes lexCoachPop {
   0% { transform: translateY(4px); opacity: 0.3; }
   100% { transform: translateY(0); opacity: 1; }
@@ -4317,6 +4328,32 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 .active-gimmick-icon:hover, .active-gimmick-icon:active {
   transform: scale(1.25);
 }
+/* The no-guess certificate chip (and its Chaos inverse). A real button
+   so keyboard and screen-reader users get activation for free; styled
+   as a quiet pill that invites a tap without shouting. */
+.cert-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(76, 175, 80, 0.55);
+  background: rgba(76, 175, 80, 0.14);
+  color: var(--color-text, #333);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  line-height: 1.6;
+  cursor: pointer;
+  font-family: inherit;
+}
+.cert-chip:hover, .cert-chip:focus-visible { filter: brightness(1.12); }
+.cert-chip-none {
+  border-color: var(--timer-warning, #ff9800);
+  background: rgba(255, 152, 0, 0.12);
+}
+.cert-modal-content { max-width: 420px; }
+.cert-recheck { font-size: 0.85em; opacity: 0.75; }
 
 .chaos-run-summary {
   display: flex;
@@ -4533,6 +4570,16 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   margin-top: 4px;
   letter-spacing: 3px;
   text-transform: uppercase;
+}
+/* The proof line: substantiates the headline claim directly under it. */
+.title-screen-proof {
+  font-size: 13px;
+  color: var(--color-text-secondary, #888);
+  margin-top: 6px;
+  max-width: 34ch;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.4;
 }
 /* One-line objective so a newcomer knows the goal before picking a mode. */
 .title-screen-goal {
@@ -5547,6 +5594,7 @@ button:focus-visible {
   .title-screen-header { margin-bottom: 0; }
   .title-screen-logo { font-size: clamp(24px, 6vw, 34px); }
   .title-screen-subtitle { font-size: 12px; }
+  .title-screen-proof { margin-top: 4px; font-size: 12px; }
   .title-screen-goal { margin-top: 5px; font-size: 12px; }
   .title-screen-modes { margin-bottom: 0; }
   .mode-card { padding: 11px 10px; }
