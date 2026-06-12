@@ -1,14 +1,15 @@
-# Exports the chosen Greg direction's SVG masters to the three PNG
+# Exports the chosen Greg candidate's SVG masters to the three PNG
 # sprite slots (assets/sprites/idle.png, win.png, loss.png) at 512x512
 # with a transparent background, via headless Chrome.
 #
 # Usage (from the repo root):
-#   powershell -File scripts/export-greg-sprites.ps1 -Direction c
+#   powershell -File scripts/export-greg-sprites.ps1 -Direction a7
 #
-# The direction letter matches the candidate files in
-# assets/sprites/greg/ (a-idle.svg, b-idle.svg, c-idle.svg, ...).
+# The direction prefix matches the candidate files in
+# assets/sprites/greg/ ({prefix}-idle.svg, {prefix}-win.svg,
+# {prefix}-loss.svg); any prefix with all three poses works.
 param(
-  [Parameter(Mandatory = $true)][ValidateSet('a', 'b', 'c')]
+  [Parameter(Mandatory = $true)]
   [string]$Direction
 )
 
