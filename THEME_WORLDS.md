@@ -68,8 +68,9 @@ luggage tag / module shattering mid-flip), galaxy (black hole / planted survey
 probe / collapsing-star flash), circuitboard (a literal bug on the silicon /
 probe clip / burnt-out chip), comic (classic fused bomb / exclamation balloon
 / BOOM star), and noir's losses now leave a **chalk body outline** at every
-detonation — the crime scene accumulates. A player's emoji-pack override still
-wins, and undrawn themes keep their emoji.
+detonation — the crime scene accumulates. Undrawn themes keep their emoji.
+(Emoji packs were cut 2026-06-12 with the Collection declutter; the theme
+is the only object-emoji source now.)
 
 ---
 
