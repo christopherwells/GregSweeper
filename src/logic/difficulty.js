@@ -89,13 +89,37 @@ export const PAR_MODEL = {
   secPerMirrorPair:    1.878,
   secPerSonarCell:     0.811,
   secPerCompassCell:   0.763,
-
-  // Mode offset: quick-play pace vs daily. Two-stage personal-par
-  // residual estimate (sign-free; the brms b-class is lb=0), shrunken
-  // n/(n+10), shipped 0 until >= 20 usable timed rows exist.
-  secModeTimed:        0,
 };
 // PAR_MODEL:END
+
+// Quick play has its OWN equation (Christopher, 2026-06-12): timed
+// rows exist only when someone WINS — losses die on a mine and never
+// report — so the sample is win-censored and cannot be pooled with
+// the (effectively uncensored) daily completions. PAR_MODEL_TIMED is
+// therefore "par for a WINNING quick-play run": fitted by the nightly
+// refit on handicap-adjusted timed wins with priors centered on the
+// daily posterior, two-tailed outlier screening (AFK rows like a 181s
+// beginner board are dropped), and shipped as a verbatim copy of
+// PAR_MODEL until TIMED_FIT_THRESHOLD usable rows exist. The block
+// between the markers is refit-owned, same contract as PAR_MODEL.
+// TIMED_PAR_MODEL:START
+export const PAR_MODEL_TIMED = {
+  intercept: -11.21,
+  secPerCell:        0.143,
+  secPerMineFlag:    3.042,
+  secPerPatternMove: 2.210,
+  secPerSearchMove:  1.358,
+  secPerWallEdge:    0.157,
+  secPerZeroCluster: 0.533,
+  secPerMysteryCell:   0.874,
+  secPerLiarCell:      0.748,
+  secPerLockedCell:    0.692,
+  secPerWormholePair:  0.735,
+  secPerMirrorPair:    1.878,
+  secPerSonarCell:     0.811,
+  secPerCompassCell:   0.763,
+};
+// TIMED_PAR_MODEL:END
 
 // Bomb-hit penalty: flat component added on top of the info-value cost
 // computed by src/logic/bombInfoValue.js. The info-value alone can be 0

@@ -864,22 +864,30 @@ if (length(handicaps) > 0) {
   message("No new handicaps to write — keeping existing handicaps.json.")
 }
 
-# ── Timed-mode offset (secModeTimed) ──────────────────────────────────
-# One model serves both modes via an extra coefficient (Christopher,
-# 2026-06-12). The brms fixed effects carry a class-wide lb = 0 (the
-# lognormal positivity bound), but a MODE OFFSET must be sign-free —
-# quick play could run faster or slower than dailies — so it is
-# estimated in a second stage that leaves the main fit untouched:
-# the shrunken mean of timed-row residuals against each player's
-# PERSONAL par (global par + their CLEAN handicap component, so player
-# skill nets out; timed has no bombs, so the bomb factor is excluded).
-# Shrinkage n/(n+K) pulls toward 0 at small n; below
-# TIMED_FIT_THRESHOLD usable rows the coefficient ships as 0 (the
-# documented activation gate). Client side, predictPar adds
-# secModeTimed × features.modeTimed; daily features carry modeTimed 0.
-TIMED_SHRINK_K <- 10
-sec_mode_timed <- 0
-timed_n_used   <- 0
+# ── Quick-play model (PAR_MODEL_TIMED) ────────────────────────────────
+# Timed rows exist only when someone WINS (a loss dies on a mine and
+# never reports), so the sample is win-censored and CANNOT be pooled
+# with the effectively-uncensored daily completions (Christopher,
+# 2026-06-12). Quick play gets its own equation, interpreted honestly
+# as "par for a WINNING run":
+#   - response: handicap-adjusted winning time (time minus the player's
+#     CLEAN handicap component; timed has no bombs). Rows from players
+#     without a fitted handicap are excluded - their skill would leak
+#     into the coefficients.
+#   - outlier screen, TWO-tailed, against the daily-model prediction:
+#     rows outside [0.3x, 3x] predicted are dropped. The slow tail is
+#     the AFK case (a 181s beginner board with par 31s); the fast tail
+#     mirrors the daily fit's impossibly-fast screen.
+#   - priors centered on the CURRENT daily posterior (lognormal,
+#     log(daily coef), sigma 0.7): the daily model is the best
+#     available prior for what makes boards hard; timed wins pull the
+#     coefficients only where they carry real signal.
+#   - below TIMED_FIT_THRESHOLD usable rows, PAR_MODEL_TIMED ships as a
+#     verbatim copy of PAR_MODEL (today's behavior, unchanged).
+TIMED_PRIOR_SIGMA <- 0.7
+timed_coefs  <- new_coefs    # default: copy of the daily model
+timed_method <- "copy-of-daily"
+timed_n_used <- 0
 if (length(timed_raw) > 0) {
   timed_df <- tryCatch({
     tibble(entry = map(timed_raw, ~ .x)) |>
@@ -905,10 +913,6 @@ if (length(timed_raw) > 0) {
         patternMoves = canonicalSubsetMoves + genericSubsetMoves,
         searchMoves  = advancedLogicMoves
       )
-    # Personal par = global par under the JUST-EMITTED coefficients plus
-    # the player's clean-skill handicap. Players with no handicap entry
-    # (under the play threshold) are excluded — their residual would mix
-    # skill into the mode effect.
     timed_clean_handicap <- function(u) {
       det <- handicap_details[[u]]
       if (!is.null(det) && !is.null(det$clean)) return(as.numeric(det$clean))
@@ -916,22 +920,91 @@ if (length(timed_raw) > 0) {
       if (!is.null(h)) return(as.numeric(h))
       NA_real_
     }
-    timed_df$personalPar <- apply_par_model(timed_df, new_coefs) +
-      vapply(timed_df$uid, timed_clean_handicap, numeric(1))
-    timed_df <- timed_df |> filter(!is.na(personalPar))
-    timed_n_used <- nrow(timed_df)
+    timed_df$cleanHandicap <- vapply(timed_df$uid, timed_clean_handicap, numeric(1))
+    timed_df <- timed_df |> filter(!is.na(cleanHandicap))
+    if (nrow(timed_df) > 0) {
+      # Two-tailed outlier screen vs the daily model's prediction + skill.
+      timed_df$predicted <- apply_par_model(timed_df, new_coefs) + timed_df$cleanHandicap
+      n_before <- nrow(timed_df)
+      timed_df <- timed_df |>
+        filter(time >= pmax(5, 0.3 * predicted), time <= 3 * predicted)
+      n_outliers <- n_before - nrow(timed_df)
+      if (n_outliers > 0) {
+        message(sprintf("  timed: dropped %d outlier row(s) outside [0.3x, 3x] predicted (AFK / misclick screen)", n_outliers))
+      }
+      timed_df$adjTime <- timed_df$time - timed_df$cleanHandicap
+      timed_n_used <- nrow(timed_df)
+    }
     if (timed_n_used >= TIMED_FIT_THRESHOLD) {
-      timed_resid_mean <- mean(timed_df$time - timed_df$personalPar)
-      sec_mode_timed <- (timed_n_used / (timed_n_used + TIMED_SHRINK_K)) * timed_resid_mean
-      message(sprintf("  modeTimed ACTIVE: n=%d usable rows, mean personal-par residual=%.2fs, shrunken secModeTimed=%.2fs",
-                      timed_n_used, timed_resid_mean, sec_mode_timed))
+      timed_formula <- adjTime ~
+        cellCount + totalMines + patternMoves + searchMoves +
+        wallEdgeCount + mysteryCellCount + liarCellCount + lockedCellCount +
+        wormholePairCount + mirrorPairCount + sonarCellCount +
+        compassCellCount + zeroClusterCount
+      # Priors centered on the just-emitted DAILY coefficients.
+      daily_center <- list(
+        cellCount = new_coefs$secPerCell, totalMines = new_coefs$secPerMineFlag,
+        patternMoves = new_coefs$secPerPatternMove, searchMoves = new_coefs$secPerSearchMove,
+        wallEdgeCount = new_coefs$secPerWallEdge, mysteryCellCount = new_coefs$secPerMysteryCell,
+        liarCellCount = new_coefs$secPerLiarCell, lockedCellCount = new_coefs$secPerLockedCell,
+        wormholePairCount = new_coefs$secPerWormholePair, mirrorPairCount = new_coefs$secPerMirrorPair,
+        sonarCellCount = new_coefs$secPerSonarCell, compassCellCount = new_coefs$secPerCompassCell,
+        zeroClusterCount = new_coefs$secPerZeroCluster
+      )
+      timed_priors_parts <- list(set_prior("", class = "b", lb = 0))
+      for (nm in names(daily_center)) {
+        m_center <- max(daily_center[[nm]], 0.01)  # lognormal needs > 0
+        timed_priors_parts[[length(timed_priors_parts) + 1]] <-
+          set_prior(sprintf("lognormal(%f, %f)", log(m_center), TIMED_PRIOR_SIGMA),
+                    class = "b", coef = nm)
+      }
+      timed_priors_parts[[length(timed_priors_parts) + 1]] <-
+        set_prior(sprintf("normal(%f, %f)", new_coefs$intercept, PRIOR_INTERCEPT_SD), class = "Intercept")
+      timed_priors_parts[[length(timed_priors_parts) + 1]] <- set_prior("normal(0, 20)", class = "sigma")
+      timed_priors <- do.call(c, timed_priors_parts)
+      message(sprintf("Fitting quick-play model on %d handicap-adjusted wins…", timed_n_used))
+      timed_fit <- tryCatch(
+        brm(timed_formula, data = timed_df, prior = timed_priors,
+            chains = N_CHAINS, iter = N_ITER, warmup = N_WARMUP,
+            control = list(adapt_delta = ADAPT_DELTA),
+            silent = 2, refresh = 0),
+        error = function(e) { message("  timed fit FAILED: ", conditionMessage(e)); NULL }
+      )
+      if (!is.null(timed_fit)) {
+        ts <- summary(timed_fit)
+        t_rhat_ok <- all(ts$fixed[, "Rhat"] < 1.05, na.rm = TRUE)
+        t_ess_ok  <- all(ts$fixed[, "Bulk_ESS"] > 400, na.rm = TRUE)
+        if (t_rhat_ok && t_ess_ok) {
+          tco <- fixef(timed_fit)[, "Estimate"]
+          tnn <- function(v, fallback) if (!is.na(v)) round(as.numeric(v), 3) else fallback
+          timed_coefs <- list(
+            intercept          = tnn(tco["Intercept"],         new_coefs$intercept),
+            secPerCell         = tnn(tco["cellCount"],         new_coefs$secPerCell),
+            secPerMineFlag     = tnn(tco["totalMines"],        new_coefs$secPerMineFlag),
+            secPerPatternMove  = tnn(tco["patternMoves"],      new_coefs$secPerPatternMove),
+            secPerSearchMove   = tnn(tco["searchMoves"],       new_coefs$secPerSearchMove),
+            secPerWallEdge     = tnn(tco["wallEdgeCount"],     new_coefs$secPerWallEdge),
+            secPerMysteryCell  = tnn(tco["mysteryCellCount"],  new_coefs$secPerMysteryCell),
+            secPerLiarCell     = tnn(tco["liarCellCount"],     new_coefs$secPerLiarCell),
+            secPerLockedCell   = tnn(tco["lockedCellCount"],   new_coefs$secPerLockedCell),
+            secPerWormholePair = tnn(tco["wormholePairCount"], new_coefs$secPerWormholePair),
+            secPerMirrorPair   = tnn(tco["mirrorPairCount"],   new_coefs$secPerMirrorPair),
+            secPerSonarCell    = tnn(tco["sonarCellCount"],    new_coefs$secPerSonarCell),
+            secPerCompassCell  = tnn(tco["compassCellCount"],  new_coefs$secPerCompassCell),
+            secPerZeroCluster  = tnn(tco["zeroClusterCount"],  new_coefs$secPerZeroCluster)
+          )
+          timed_method <- sprintf("brms-timed (n=%d)", timed_n_used)
+          message(sprintf("  quick-play model ACTIVE: %s", timed_method))
+        } else {
+          message("  timed fit rejected on diagnostics — keeping copy-of-daily")
+        }
+      }
     } else {
-      message(sprintf("  modeTimed inactive: %d usable timed rows (< %d) — shipping 0",
+      message(sprintf("  quick-play model inactive: %d usable rows (< %d) — shipping copy of daily",
                       timed_n_used, TIMED_FIT_THRESHOLD))
     }
   }
 }
-new_coefs$secModeTimed <- round(sec_mode_timed, 3)
 
 # ── 5. Emit per-refit diagnostics row to modelHistory.json ──
 #
@@ -1048,10 +1121,6 @@ block <- sprintf(
   secPerSonarCell:     %.3f,
   secPerCompassCell:   %.3f,
 
-  // Mode offset: quick-play pace vs daily. Two-stage personal-par
-  // residual estimate (sign-free; the brms b-class is lb=0), shrunken
-  // n/(n+10), shipped 0 until >= 20 usable timed rows exist.
-  secModeTimed:        %.3f,
 };',
   Sys.Date(), method_str, n_scores, n_dates, n_players, r2_str,
   new_coefs$intercept,
@@ -1067,8 +1136,7 @@ block <- sprintf(
   new_coefs$secPerWormholePair,
   new_coefs$secPerMirrorPair,
   new_coefs$secPerSonarCell,
-  new_coefs$secPerCompassCell,
-  new_coefs$secModeTimed
+  new_coefs$secPerCompassCell
 )
 
 src <- paste(readLines(DIFFICULTY_PATH, warn = FALSE, encoding = "UTF-8"),
@@ -1087,13 +1155,65 @@ new_src <- paste0(
   substr(src, end_loc[1, "end"] + 1, nchar(src))
 )
 
+# ── Quick-play block (TIMED_PAR_MODEL markers) ──
+# Same marker contract as PAR_MODEL. Below the activation threshold
+# timed_coefs is a verbatim copy of the daily model, so the shipped
+# block always exists and always parses.
+timed_block <- sprintf(
+'export const PAR_MODEL_TIMED = {
+  // Last refit: %s | %s
+  intercept: %.2f,
+  secPerCell:        %.3f,
+  secPerMineFlag:    %.3f,
+  secPerPatternMove: %.3f,
+  secPerSearchMove:  %.3f,
+  secPerWallEdge:    %.3f,
+  secPerZeroCluster: %.3f,
+  secPerMysteryCell:   %.3f,
+  secPerLiarCell:      %.3f,
+  secPerLockedCell:    %.3f,
+  secPerWormholePair:  %.3f,
+  secPerMirrorPair:    %.3f,
+  secPerSonarCell:     %.3f,
+  secPerCompassCell:   %.3f,
+};',
+  Sys.Date(), timed_method,
+  timed_coefs$intercept,
+  timed_coefs$secPerCell,
+  timed_coefs$secPerMineFlag,
+  timed_coefs$secPerPatternMove,
+  timed_coefs$secPerSearchMove,
+  timed_coefs$secPerWallEdge,
+  timed_coefs$secPerZeroCluster,
+  timed_coefs$secPerMysteryCell,
+  timed_coefs$secPerLiarCell,
+  timed_coefs$secPerLockedCell,
+  timed_coefs$secPerWormholePair,
+  timed_coefs$secPerMirrorPair,
+  timed_coefs$secPerSonarCell,
+  timed_coefs$secPerCompassCell
+)
+
+t_start_marker <- "// TIMED_PAR_MODEL:START"
+t_end_marker   <- "// TIMED_PAR_MODEL:END"
+t_start_loc <- str_locate(new_src, fixed(t_start_marker))
+t_end_loc   <- str_locate(new_src, fixed(t_end_marker))
+if (is.na(t_start_loc[1, "start"]) || is.na(t_end_loc[1, "end"])) {
+  stop("Could not find TIMED_PAR_MODEL markers in ", DIFFICULTY_PATH)
+}
+new_src <- paste0(
+  substr(new_src, 1, t_start_loc[1, "start"] - 1),
+  t_start_marker, "\n", timed_block, "\n", t_end_marker,
+  substr(new_src, t_end_loc[1, "end"] + 1, nchar(new_src))
+)
+
 if (identical(new_src, src)) {
   message("No coefficient changes — file already up to date.")
   quit(status = 0)
 }
 
 writeLines(new_src, DIFFICULTY_PATH, useBytes = TRUE)
-message(sprintf("Wrote updated PAR_MODEL to %s", DIFFICULTY_PATH))
+message(sprintf("Wrote updated PAR_MODEL + PAR_MODEL_TIMED to %s", DIFFICULTY_PATH))
 
 # Fail the workflow loudly if the brms fit was rejected for diagnostic
 # reasons. The previous PAR_MODEL stays in effect (good), but the run
