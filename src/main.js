@@ -7,7 +7,7 @@
 
 import { state } from './state/gameState.js';
 import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn, escapeHtml } from './ui/domHelpers.js';
-import { resizeCells, updateAllCells, getThemeEmoji, needsZoom, updateZoom, zoomIn, zoomOut, invalidateEmojiCache, setFocusedCell, announceGame } from './ui/boardRenderer.js';
+import { resizeCells, updateAllCells, getThemeEmoji, needsZoom, updateZoom, zoomIn, zoomOut, setFocusedCell, announceGame } from './ui/boardRenderer.js';
 import { preloadSprites, spriteImgHTML, medalImgForEmoji } from './ui/spriteLoader.js';
 import { updateHeader, updateStreakBorder, updateFlagModeBar, getCheckpointForLevel, CHECKPOINT_INTERVAL } from './ui/headerRenderer.js';
 import { updatePowerUpBar } from './ui/powerUpBar.js';
@@ -69,12 +69,6 @@ import { loadExperimentTarget, getTargetGimmickName, getMissionForSeed } from '.
 import { loadDailyBoard, deserializeBoard, prefetchUpcomingDailyBoards } from './firebase/dailyBoardSync.js';
 import { loadWeeklyBoard, prefetchUpcomingWeeklyBoards } from './firebase/weeklyBoardSync.js';
 import { pruneOldCachedBoards } from './firebase/boardCache.js';
-import {
-  EMOJI_PACKS, EFFECTS, TITLES,
-  loadEmojiPack, saveEmojiPack, getActiveEmojiPack, isPackUnlocked,
-  isEffectUnlocked, isTitleUnlocked,
-  loadEffects, saveEffects, loadTitle, saveTitle,
-} from './ui/collectionManager.js';
 import { isModifierPopupDisabled, setModifierPopupDisabled, getGimmickDefs, getDailyGimmick, applyGimmicks } from './logic/gimmicks.js';
 import { isStorageFailing, safeGet, safeSet, safeRemove, requestPersistentStorage } from './storage/storageAdapter.js';
 import { pauseTimer, resumeTimer, stopTimer, recordInteraction } from './game/timerManager.js';
@@ -1442,10 +1436,8 @@ async function _renderFriendsView() {
 // ── Collection Display ───────────────────────────────
 
 function renderCollectionModal() {
-  const stats = loadStats();
-  const maxLevel = stats.maxLevelReached || 1;
-
-  // Themes tab — clone theme swatches from THEME_UNLOCKS
+  // Themes only — the emoji-pack / effects / titles tabs were cut
+  // 2026-06-12 (selection chaff; themes carry the whole identity).
   for (const t of Object.keys(THEME_UNLOCKS)) loadThemeCSS(t);
   const themeGrid = $('#collection-theme-grid');
   themeGrid.innerHTML = '';
@@ -1487,93 +1479,6 @@ function renderCollectionModal() {
       btn.classList.add('active');
     });
     themeGrid.appendChild(btn);
-  }
-
-  // Emoji tab
-  const emojiGrid = $('#emoji-pack-grid');
-  emojiGrid.innerHTML = '';
-  const activePack = loadEmojiPack();
-
-  for (const [packId, pack] of Object.entries(EMOJI_PACKS)) {
-    const card = document.createElement('div');
-    const packUnlocked = isPackUnlocked(packId);
-    card.className = 'emoji-pack-card' + (packId === activePack ? ' active' : '') + (!packUnlocked ? ' locked' : '');
-    card.innerHTML = `
-      <div class="emoji-pack-preview">${pack.mine} ${pack.flag} ${pack.smiley}</div>
-      <div class="emoji-pack-name">${pack.name}</div>
-      ${!packUnlocked ? `<div class="emoji-pack-lock">🔒 Lv.${pack.unlock.value}</div>` : ''}
-    `;
-    card.addEventListener('click', () => {
-      if (!packUnlocked) {
-        card.classList.add('swatch-shake');
-        setTimeout(() => card.classList.remove('swatch-shake'), 400);
-        return;
-      }
-      saveEmojiPack(packId);
-      invalidateEmojiCache();
-      for (const c of emojiGrid.querySelectorAll('.emoji-pack-card')) c.classList.remove('active');
-      card.classList.add('active');
-      showToast(`Emoji pack: ${pack.name}`);
-    });
-    emojiGrid.appendChild(card);
-  }
-
-  // Effects tab
-  const effectsConfig = loadEffects();
-  for (const [category, options] of Object.entries(EFFECTS)) {
-    const grid = $(`#effects-${category}`);
-    if (!grid) continue;
-    grid.innerHTML = '';
-    for (const [effectId, effect] of Object.entries(options)) {
-      const effUnlocked = isEffectUnlocked(category, effectId);
-      const opt = document.createElement('div');
-      opt.className = 'effect-option' + (effectsConfig[category] === effectId ? ' active' : '') + (!effUnlocked ? ' locked' : '');
-      opt.innerHTML = `<span class="effect-name">${effect.name}</span>` +
-        (!effUnlocked ? `<span class="effect-lock">🔒 Lv.${effect.unlock.value}</span>` : '');
-      opt.addEventListener('click', () => {
-        if (!effUnlocked) {
-          opt.classList.add('swatch-shake');
-          setTimeout(() => opt.classList.remove('swatch-shake'), 400);
-          return;
-        }
-        effectsConfig[category] = effectId;
-        saveEffects(effectsConfig);
-        for (const o of grid.querySelectorAll('.effect-option')) o.classList.remove('active');
-        opt.classList.add('active');
-      });
-      grid.appendChild(opt);
-    }
-  }
-
-  // Titles tab
-  const titlesGrid = $('#titles-grid');
-  titlesGrid.innerHTML = '';
-  const activeTitle = loadTitle();
-  const titleDisplay = $('#active-title-display');
-
-  for (const [titleId, title] of Object.entries(TITLES)) {
-    const titleUnlocked = isTitleUnlocked(titleId);
-    const card = document.createElement('div');
-    card.className = 'title-card' + (titleId === activeTitle ? ' active' : '') + (!titleUnlocked ? ' locked' : '');
-    card.innerHTML = `<span class="title-name">${title.name}</span>` +
-      (!titleUnlocked ? `<span class="title-lock">🔒 Lv.${title.unlock.value}</span>` : '');
-    card.addEventListener('click', () => {
-      if (!titleUnlocked) {
-        card.classList.add('swatch-shake');
-        setTimeout(() => card.classList.remove('swatch-shake'), 400);
-        return;
-      }
-      saveTitle(titleId);
-      for (const c of titlesGrid.querySelectorAll('.title-card')) c.classList.remove('active');
-      card.classList.add('active');
-      if (titleDisplay) titleDisplay.textContent = `Active: ${title.name}`;
-    });
-    titlesGrid.appendChild(card);
-  }
-
-  if (titleDisplay) {
-    const t = TITLES[activeTitle];
-    titleDisplay.textContent = t ? `Active: ${t.name}` : '';
   }
 }
 
@@ -2230,22 +2135,6 @@ if (stuckBtn) {
   stuckBtn.addEventListener('click', () => {
     import('./ui/receiptRenderer.js').then(m => m.handleLensRequest())
       .catch(err => reportCaughtError('lens-import', err));
-  });
-}
-
-// Collection tab switching
-for (const tab of $$('.collection-tab')) {
-  tab.addEventListener('click', () => {
-    for (const t of $$('.collection-tab')) {
-      t.classList.remove('active');
-      t.setAttribute('aria-selected', 'false');
-    }
-    tab.classList.add('active');
-    tab.setAttribute('aria-selected', 'true');
-    const panels = ['themes', 'emoji', 'effects', 'titles'];
-    for (const p of panels) {
-      $(`#collection-${p}`).classList.toggle('hidden', p !== tab.dataset.tab);
-    }
   });
 }
 

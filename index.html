@@ -1276,29 +1276,12 @@
         <button class="modal-close">&times;</button>
       </div>
       <div class="modal-body">
-        <div class="collection-tabs" role="tablist" aria-label="Collection category">
-          <button class="collection-tab active" data-tab="themes" role="tab" aria-selected="true">Themes</button>
-          <button class="collection-tab" data-tab="emoji" role="tab" aria-selected="false">Emoji</button>
-          <button class="collection-tab" data-tab="effects" role="tab" aria-selected="false">Effects</button>
-          <button class="collection-tab" data-tab="titles" role="tab" aria-selected="false">Titles</button>
-        </div>
+        <!-- Themes only. The emoji-pack / effects / titles tabs were
+             cut 2026-06-12: themes carry the whole identity now, and
+             three tabs of selection chaff diluted the one that
+             matters. -->
         <div id="collection-themes" class="collection-panel">
           <div id="collection-theme-grid" class="theme-swatches"></div>
-        </div>
-        <div id="collection-emoji" class="collection-panel hidden">
-          <div id="emoji-pack-grid" class="emoji-pack-grid"></div>
-        </div>
-        <div id="collection-effects" class="collection-panel hidden">
-          <h3 class="collection-subheader">Win Particles</h3>
-          <div id="effects-particles" class="effects-grid"></div>
-          <h3 class="collection-subheader">Board Border</h3>
-          <div id="effects-borders" class="effects-grid"></div>
-          <h3 class="collection-subheader">Reveal Animation</h3>
-          <div id="effects-reveals" class="effects-grid"></div>
-        </div>
-        <div id="collection-titles" class="collection-panel hidden">
-          <div id="titles-grid" class="titles-grid"></div>
-          <div id="active-title-display" class="active-title-display"></div>
         </div>
       </div>
     </div>

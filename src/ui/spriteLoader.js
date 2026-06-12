@@ -1,16 +1,18 @@
 // Sprite loader for the Tier 1 default-look icons AND the per-theme
 // object sets.
 //
-// Tier 1 sprites render only when the resolved emoji (after theme +
-// emoji-pack overrides) equals the canonical default for that key —
-// Classic/Dark theme plus the Default pack.
+// Tier 1 sprites render only when the resolved emoji equals the
+// canonical default for that key (Classic/Dark themes). Emoji packs —
+// the old per-player override layer — were cut with the 2026-06-12
+// Collection declutter, so the theme is the only source of object
+// emoji now; the equality checks below remain as the identity
+// contract between getThemeEmoji and THEME_UNLOCKS.
 //
 // THEME_SPRITES (below) are each world's objects drawn in its material
 // language — the editorial ink blot, the sumi-e hanko stroke, the
 // blueprint drafted bomb. A theme sprite renders only when the resolved
-// emoji equals THAT THEME's own object emoji, so a player's emoji-pack
-// override always wins, and undrawn themes fall back to their emoji
-// untouched. Ship world by world.
+// emoji equals THAT THEME's own object emoji; undrawn themes fall back
+// to their emoji untouched. Ship world by world.
 
 import { THEME_UNLOCKS } from './themeManager.js';
 
@@ -92,8 +94,9 @@ export function getThemeSpriteUrl(key, resolvedEmoji) {
   const theme = document.documentElement.getAttribute('data-theme') || 'classic';
   const set = THEME_SPRITES[theme];
   if (!set || !set[key]) return null;
-  // resolvedEmoji differing from the theme's own object means an
-  // emoji-pack override is active — the player's choice wins.
+  // Defensive identity check: the sprite only replaces the theme's own
+  // object emoji (always true since emoji packs were cut, but keeps
+  // getThemeEmoji and THEME_UNLOCKS honest with each other).
   return resolvedEmoji === themeDefaultEmoji(THEME_UNLOCKS[theme], key) ? set[key] : null;
 }
 

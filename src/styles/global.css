@@ -5186,173 +5186,13 @@ button:focus-visible {
   accent-color: var(--color-accent, #e94560);
 }
 
-/* ── Collection Modal ─────────────────────────────── */
+/* ── Collection Modal (themes only) ───────────────── */
 .collection-content {
   max-height: 80vh;
-}
-.collection-tabs {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 14px;
-  background: var(--color-surface, #1a1a2e);
-  border-radius: 8px;
-  padding: 3px;
-}
-.collection-tab {
-  flex: 1;
-  padding: 8px 0;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--color-text-secondary, #aaa);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.collection-tab.active {
-  background: var(--color-accent, #e94560);
-  color: #fff;
 }
 .collection-panel {
   max-height: 55vh;
   overflow-y: auto;
-}
-.collection-subheader {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-text-secondary, #aaa);
-  margin: 12px 0 6px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-/* ── Emoji Pack Grid ──────────────────────────────── */
-.emoji-pack-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 8px;
-}
-.emoji-pack-card {
-  background: var(--color-surface, #1a1a2e);
-  border: 2px solid transparent;
-  border-radius: 10px;
-  padding: 12px 8px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.emoji-pack-card:hover:not(.locked) {
-  border-color: var(--color-accent, #e94560);
-  transform: translateY(-2px);
-}
-.emoji-pack-card.active {
-  border-color: var(--color-accent, #e94560);
-  box-shadow: 0 0 12px var(--color-accent, #e94560)40;
-}
-.emoji-pack-card.locked {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.emoji-pack-preview {
-  font-size: 22px;
-  margin-bottom: 6px;
-  letter-spacing: 4px;
-}
-.emoji-pack-name {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text, #eee);
-}
-.emoji-pack-lock {
-  font-size: 10px;
-  color: var(--color-text-secondary, #888);
-  margin-top: 4px;
-}
-
-/* ── Effects Grid ─────────────────────────────────── */
-.effects-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 8px;
-}
-.effect-option {
-  background: var(--color-surface, #1a1a2e);
-  border: 2px solid transparent;
-  border-radius: 8px;
-  padding: 8px 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.effect-option:hover:not(.locked) {
-  border-color: var(--color-accent, #e94560);
-}
-.effect-option.active {
-  border-color: var(--color-accent, #e94560);
-  background: var(--color-accent, #e94560)15;
-}
-.effect-option.locked {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.effect-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-text, #eee);
-}
-.effect-lock {
-  font-size: 10px;
-  color: var(--color-text-secondary, #888);
-}
-
-/* ── Titles Grid ──────────────────────────────────── */
-.titles-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 6px;
-  margin-bottom: 10px;
-}
-.title-card {
-  background: var(--color-surface, #1a1a2e);
-  border: 2px solid transparent;
-  border-radius: 8px;
-  padding: 10px 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.title-card:hover:not(.locked) {
-  border-color: var(--color-accent, #e94560);
-}
-.title-card.active {
-  border-color: var(--color-accent, #e94560);
-  background: var(--color-accent, #e94560)15;
-}
-.title-card.locked {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.title-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-text, #eee);
-}
-.title-lock {
-  font-size: 10px;
-  color: var(--color-text-secondary, #888);
-}
-.active-title-display {
-  text-align: center;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-accent, #e94560);
-  padding: 8px 0;
 }
 
 /* ══════════════════════════════════════════════════════ */
@@ -5689,24 +5529,6 @@ button:focus-visible {
   color: var(--color-text, #eee);
 }
 
-/* Collection modal — card hover effects */
-.emoji-pack-card:hover:not(.locked),
-.effect-option:hover:not(.locked),
-.title-card:hover:not(.locked) {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-}
-
-/* Collection subheaders */
-.collection-subheader {
-  font-family: var(--font-display, 'Fredoka'), sans-serif;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text-secondary, #aaa);
-  margin: 14px 0 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
 
 /* Action buttons — unified */
 .action-btn {

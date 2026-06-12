@@ -39,7 +39,6 @@ import {
 import {
   playReveal, playFlag, playUnflag, playCascade, playShieldBreak,
 } from '../audio/sounds.js';
-import { loadEffects } from '../ui/collectionManager.js';
 
 let _lastInputTime = 0;
 
@@ -799,13 +798,6 @@ export async function newGame() {
   updateFlagModeBar();
   updateActiveGimmickBar();
   updateZoom();
-
-  // Apply board border effect from collection
-  const effects = loadEffects();
-  boardEl.classList.remove('border-glow', 'border-pulse', 'border-rainbow');
-  if (effects.borders && effects.borders !== 'none') {
-    boardEl.classList.add(`border-${effects.borders}`);
-  }
 
   // Clear saved game state for current mode (new game = fresh start)
   clearGameState(state.gameMode);

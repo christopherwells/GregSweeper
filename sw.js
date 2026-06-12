@@ -43,7 +43,6 @@ const ASSETS = [
   //   './src/ui/charts.js',
   //   './src/ui/statsRenderer.js',
   //   './src/ui/diagnosticsModal.js',
-  './src/ui/collectionManager.js',
   './src/ui/receiptRenderer.js',
   './src/logic/gregVoice.js',
   './src/logic/proofExplainer.js',
