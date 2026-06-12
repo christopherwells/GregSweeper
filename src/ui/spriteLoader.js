@@ -126,6 +126,16 @@ export function applyIcon(el, key, resolvedEmoji, { extraClass = '', sizeClass =
   }
 }
 
+// Medal emoji -> drawn medal sprite (the four ranks the medal set
+// covers). Returns null for non-medal emoji (platinum/emerald keep
+// their emoji until drawn). TEXT surfaces (share strings) must stay
+// emoji - callers choose by simply not using this.
+const MEDAL_BY_EMOJI = { '🥉': 'medalBronze', '🥈': 'medalSilver', '🥇': 'medalGold', '💎': 'medalDiamond' };
+export function medalImgForEmoji(emoji, sizeClass = 'sprite-rank', alt = '') {
+  const key = MEDAL_BY_EMOJI[emoji];
+  return key ? spriteImgHTML(key, sizeClass, alt) : null;
+}
+
 // Theme-agnostic HTML snippet for surfaces that always show the sprite
 // (leaderboard column header, daily/weekly bomb-hit popup).
 export function spriteImgHTML(key, sizeClass = '', alt = '') {
