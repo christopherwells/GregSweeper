@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- A drill-down, variant 4: OLIVE NATURALIST PALETTE. A1's geometry
+       in the real beach-crab colors: olive-green carapace, dark
+       irregular mottling, pale speckles, orange-red claw tips. -->
+  <!-- Walking legs -->
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke="#232838" stroke-width="9">
+      <path d="M42 84 L30 96 L26 107"/>
+      <path d="M50 88 L42 101 L40 111"/>
+      <path d="M86 84 L98 96 L102 107"/>
+      <path d="M78 88 L86 101 L88 111"/>
+    </g>
+    <g stroke="#6b9344" stroke-width="4.5">
+      <path d="M42 84 L30 96 L26 107"/>
+      <path d="M50 88 L42 101 L40 111"/>
+      <path d="M86 84 L98 96 L102 107"/>
+      <path d="M78 88 L86 101 L88 111"/>
+    </g>
+  </g>
+  <!-- Arms -->
+  <g fill="none" stroke-linecap="round">
+    <path d="M40 66 L26 56" stroke="#232838" stroke-width="10"/>
+    <path d="M88 66 L102 54" stroke="#232838" stroke-width="10"/>
+    <path d="M40 66 L26 56" stroke="#6b9344" stroke-width="5"/>
+    <path d="M88 66 L102 54" stroke="#6b9344" stroke-width="5"/>
+  </g>
+  <!-- Eye stalks -->
+  <g fill="none" stroke-linecap="round">
+    <path d="M52 40 L47 27" stroke="#232838" stroke-width="10"/>
+    <path d="M76 40 L81 27" stroke="#232838" stroke-width="10"/>
+    <path d="M52 40 L47 27" stroke="#6b9344" stroke-width="5"/>
+    <path d="M76 40 L81 27" stroke="#6b9344" stroke-width="5"/>
+  </g>
+  <circle cx="46" cy="21" r="9" fill="#ffffff" stroke="#232838" stroke-width="5"/>
+  <circle cx="82" cy="21" r="9" fill="#ffffff" stroke="#232838" stroke-width="5"/>
+  <circle cx="47.5" cy="22.5" r="3.4" fill="#232838"/>
+  <circle cx="80.5" cy="22.5" r="3.4" fill="#232838"/>
+  <circle cx="49" cy="21" r="1.2" fill="#ffffff"/>
+  <circle cx="82" cy="21" r="1.2" fill="#ffffff"/>
+  <!-- Carapace, olive -->
+  <path d="M30 62 C30 41 45 31 64 31 C83 31 98 41 98 62 C98 78 84 89 64 89 C44 89 30 78 30 62 Z"
+        fill="#6b9344" stroke="#232838" stroke-width="6"/>
+  <path d="M36 70 C44 80 84 80 92 70 C88 82 78 87 64 87 C50 87 40 82 36 70 Z" fill="#52742f"/>
+  <!-- Real maenas mottling: small dark flecks + pale speckles, texture
+       rather than spots -->
+  <g fill="#4c6b2c">
+    <path d="M45 43 Q48 41 50 44 Q48 47 45 46 Z"/>
+    <path d="M71 39 Q74 37 76 40 Q74 43 71 42 Z"/>
+    <path d="M59 55 Q62 53 64 56 Q62 59 59 58 Z"/>
+    <path d="M83 53 Q86 51 88 54 Q86 57 83 56 Z"/>
+    <path d="M52 62 Q54 60.5 55.5 63 Q54 65 52 64 Z"/>
+    <path d="M38 56 Q40 54.5 41.5 57 Q40 59 38 58 Z"/>
+  </g>
+  <g fill="#9cbf72">
+    <circle cx="40" cy="48" r="1.6"/>
+    <circle cx="52" cy="37" r="1.4"/>
+    <circle cx="64" cy="46" r="1.6"/>
+    <circle cx="76" cy="58" r="1.4"/>
+    <circle cx="88" cy="44" r="1.5"/>
+    <circle cx="70" cy="62" r="1.3"/>
+  </g>
+  <!-- Smile -->
+  <path d="M54 70 Q64 78 74 70" fill="none" stroke="#232838" stroke-width="5" stroke-linecap="round"/>
+  <!-- Right pincer gripping pencil, orange-red tipped -->
+  <ellipse cx="106" cy="49" rx="9.5" ry="7.5" fill="#6b9344" stroke="#232838" stroke-width="5" transform="rotate(-35 106 49)"/>
+  <ellipse cx="111" cy="42" rx="4.8" ry="3.8" fill="#d96a2a" stroke="#232838" stroke-width="4" transform="rotate(-35 111 42)"/>
+  <g transform="rotate(-55 106 47)">
+    <rect x="96" y="43.5" width="24" height="7" rx="2" fill="#ffd23e" stroke="#232838" stroke-width="3.5"/>
+    <path d="M120 43.5 L127 47 L120 50.5 Z" fill="#232838"/>
+    <rect x="91" y="43.5" width="5.5" height="7" rx="2" fill="#e88a8a" stroke="#232838" stroke-width="3"/>
+  </g>
+  <!-- Clipboard -->
+  <g transform="rotate(-8 18 62)">
+    <rect x="5" y="44" width="27" height="37" rx="3.5" fill="#f3f6fb" stroke="#232838" stroke-width="4.5"/>
+    <rect x="13" y="39" width="11" height="8" rx="2.5" fill="#b9c2d4" stroke="#232838" stroke-width="3.5"/>
+    <g fill="#d4dae6">
+      <rect x="10" y="53" width="6" height="6" rx="1.2"/>
+      <rect x="18" y="53" width="6" height="6" rx="1.2"/>
+      <rect x="26" y="53" width="6" height="6" rx="1.2"/>
+      <rect x="10" y="61" width="6" height="6" rx="1.2"/>
+      <rect x="26" y="61" width="6" height="6" rx="1.2"/>
+    </g>
+    <rect x="18" y="61" width="6" height="6" rx="1.2" fill="#ffd23e"/>
+    <path d="M12 76 L12 68 L19 70 L12 72" fill="#e4453a"/>
+  </g>
+  <ellipse cx="29" cy="49" rx="8.5" ry="7" fill="#6b9344" stroke="#232838" stroke-width="5" transform="rotate(28 29 49)"/>
+  <ellipse cx="34" cy="43" rx="4.2" ry="3.4" fill="#d96a2a" stroke="#232838" stroke-width="4" transform="rotate(28 34 43)"/>
+</svg>
