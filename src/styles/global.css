@@ -3972,12 +3972,6 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
     font-size: 11px;
     min-height: 38px;
   }
-
-  .timer-toggle {
-    padding: 6px 10px;
-    min-height: 38px;
-    min-width: 38px;
-  }
 }
 
 @media (min-width: 481px) and (max-width: 768px) {
@@ -4814,27 +4808,6 @@ button:focus-visible {
   box-shadow: 0 0 8px var(--color-accent-glow, rgba(233,69,96,0.3));
 }
 .timed-tab:hover:not(.active) {
-  border-color: var(--color-text-secondary, #666);
-}
-
-/* Timer toggle button */
-.timer-toggle {
-  padding: 8px 12px;
-  min-height: 44px;
-  min-width: 44px;
-  border-radius: 20px;
-  border: 2px solid var(--color-border, #333);
-  background: transparent;
-  font-size: 16px;
-  cursor: pointer;
-  transition: all 0.2s;
-  opacity: 1;
-}
-.timer-toggle.timer-off {
-  opacity: 0.4;
-  text-decoration: line-through;
-}
-.timer-toggle:hover {
   border-color: var(--color-text-secondary, #666);
 }
 

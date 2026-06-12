@@ -29,22 +29,12 @@ export function updateTimedDiffVisibility() {
 }
 
 export function updateModeUI(mode) {
-  // Quick Play size tabs + timer toggle
+  // Quick Play size tabs
   if (timedSizeTabs) {
     timedSizeTabs.classList.toggle('hidden', mode !== 'timed');
   }
 
-  // Reset timer visibility when leaving Quick Play
-  const timerEl = document.getElementById('timer-display');
-  const timerToggle = document.getElementById('timer-toggle');
-  if (mode !== 'timed') {
-    state.timerHidden = false;
-    if (timerEl) timerEl.style.visibility = 'visible';
-    if (timerToggle) timerToggle.classList.remove('timer-off');
-  } else {
-    // Restore Quick Play timer state
-    if (timerEl) timerEl.style.visibility = state.timerHidden ? 'hidden' : 'visible';
-    if (timerToggle) timerToggle.classList.toggle('timer-off', state.timerHidden);
+  if (mode === 'timed') {
     // Sync active tab highlight to match state.currentLevel
     for (const t of document.querySelectorAll('.timed-tab')) {
       const isActive = parseInt(t.dataset.level, 10) === state.currentLevel;

@@ -95,9 +95,6 @@ export const state = {
   chaosModifiers: [],     // modifiers rolled for current board
   chaosTotalTime: 0,      // cumulative time across all boards in the run
 
-  // Quick Play timer toggle
-  timerHidden: false,     // true = hide timer LCD in Quick Play mode
-
   // Keyboard navigation
   focusedRow: 0,
   focusedCol: 0,
