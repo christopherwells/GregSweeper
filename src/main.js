@@ -2519,10 +2519,15 @@ if (titleHelpBtn) {
 
 // The Modifiers help tab renders straight from the gimmick registry so
 // the reference can never drift from the actual rules. Rendered once at
-// boot — the registry is static.
+// boot — the registry is static. Sorted by Challenge intro level so the
+// list reads in the order players actually meet them; chaos-only types
+// sink to the end (mineShift carries a vestigial intro level, so the
+// chaosOnly flag is the sort signal, not the level).
 const helpModifierList = $('#help-modifier-list');
 if (helpModifierList) {
+  const introRank = (d) => (d.chaosOnly ? 999 : (d.intro ?? 998));
   helpModifierList.innerHTML = Object.values(getGimmickDefs())
+    .sort((a, b) => introRank(a) - introRank(b))
     .map(def => `<p>${def.icon} <strong>${def.name}</strong>: ${def.desc}</p>`)
     .join('');
 }
