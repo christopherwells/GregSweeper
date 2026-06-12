@@ -1,6 +1,7 @@
 import { safeGet, safeSet, safeRemove, safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js';
 import { isTestEnvironment } from './env.js';
 import { reportCaughtError } from '../diagnostics/errorReporter.js';
+import { findRowForBoard } from '../logic/scoreRowMatch.js';
 /**
  * Firebase Online Daily Leaderboard
  * Uses Firebase Realtime Database (compat SDK loaded via CDN in index.html).
@@ -196,6 +197,27 @@ async function _doSubmitOnlineScore(dateString, name, time, bombHits, extras) {
       payload.rngSeed = extras.rngSeed;
     }
 
+    // One row per (player, board): if this uid already has a row for the
+    // SAME effective board seed, the score was already recorded —
+    // typically by another device signed into the same account, or by a
+    // queued retry whose original push actually landed. Skip the push
+    // and report 'duplicate' so callers can toast honestly instead of
+    // claiming a fresh submission. Matching is per BOARD, not per uid
+    // (see scoreRowMatch.js): a practice (?seed=) row can never block
+    // the real daily, and a player with a divergent historical row can
+    // still land their canonical replay. A failed read falls open to
+    // the push — a flaky read must not eat a real score.
+    if (extras.uid) {
+      try {
+        const existing = await db.ref(`daily/${dateString}`).once('value');
+        const dup = findRowForBoard(
+          existing.val(), String(extras.uid), dateString,
+          typeof extras.rngSeed === 'string' ? extras.rngSeed : dateString,
+        );
+        if (dup) return 'duplicate';
+      } catch { /* read failed — proceed with the push */ }
+    }
+
     const ref = db.ref(`daily/${dateString}`);
     await ref.push(payload);
 
@@ -237,10 +259,13 @@ export async function submitOnlineScore(dateString, name, time, bombHits = 0, ex
     return false;
   }
 
+  // Three-way outcome: true (pushed), false (failed — queued for retry),
+  // 'duplicate' (this account already has a row for this exact board —
+  // definitive, not queued, no cooldown burned).
   const ok = await _doSubmitOnlineScore(dateString, name, time, bombHits, extras);
-  if (ok) {
+  if (ok === true) {
     _lastSubmitTime = now;
-  } else {
+  } else if (ok === false) {
     // Push failed mid-flight (transient network, auth race, or post-deploy
     // rule rejection on a stale client). Queue for retry.
     _queueFailedSubmission(dateString, name, time, bombHits, extras);
@@ -329,6 +354,9 @@ export async function flushPendingSubmissions() {
       entry.bombHits,
       entry.extras || {}
     );
+    // 'duplicate' resolves the entry too: the score is already on the
+    // board (the original push landed, or another device submitted
+    // while this one was offline) — retrying would only re-read.
     if (ok) flushed++;
     else stillPending.push(entry);
   }
