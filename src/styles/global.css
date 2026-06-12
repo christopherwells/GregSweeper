@@ -4607,17 +4607,6 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   margin-right: auto;
   line-height: 1.4;
 }
-/* One-line objective so a newcomer knows the goal before picking a mode. */
-.title-screen-goal {
-  font-size: 13px;
-  color: var(--color-text-secondary, #888);
-  margin-top: 8px;
-  max-width: 30ch;
-  margin-left: auto;
-  margin-right: auto;
-  line-height: 1.4;
-}
-
 .title-screen-modes {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -5600,7 +5589,6 @@ button:focus-visible {
   .title-screen-logo { font-size: clamp(24px, 6vw, 34px); }
   .title-screen-subtitle { font-size: 12px; }
   .title-screen-proof { margin-top: 4px; font-size: 12px; }
-  .title-screen-goal { margin-top: 5px; font-size: 12px; }
   .title-screen-modes { margin-bottom: 0; }
   .mode-card { padding: 11px 10px; }
   .mode-card-icon { font-size: 24px; margin-bottom: 2px; }
