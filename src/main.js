@@ -8,7 +8,7 @@
 import { state } from './state/gameState.js';
 import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn, escapeHtml } from './ui/domHelpers.js';
 import { resizeCells, updateAllCells, getThemeEmoji, needsZoom, updateZoom, zoomIn, zoomOut, invalidateEmojiCache, setFocusedCell, announceGame } from './ui/boardRenderer.js';
-import { preloadSprites, spriteImgHTML } from './ui/spriteLoader.js';
+import { preloadSprites, spriteImgHTML, medalImgForEmoji } from './ui/spriteLoader.js';
 import { updateHeader, updateStreakBorder, updateFlagModeBar, getCheckpointForLevel, CHECKPOINT_INTERVAL } from './ui/headerRenderer.js';
 import { updatePowerUpBar } from './ui/powerUpBar.js';
 import { showModal, hideModal, hideAllModals } from './ui/modalManager.js';
@@ -1622,7 +1622,7 @@ function updateAchievementsDisplay() {
     }
 
     row.innerHTML = `
-      <span class="ach-medal${ach.tierIndex < 0 ? ' none' : ''}">${ach.tierIndex >= 0 ? ach.currentTierIcon : ach.icon}</span>
+      <span class="ach-medal${ach.tierIndex < 0 ? ' none' : ''}">${ach.tierIndex >= 0 ? (medalImgForEmoji(ach.currentTierIcon, 'sprite-medal') || ach.currentTierIcon) : ach.icon}</span>
       <div class="ach-main">
         <div class="ach-name-line"><span class="ach-name">${ach.name}</span>${track}</div>
         <div class="ach-sub">${ach.desc} · <span class="ach-next${!ach.nextTier ? ' ach-maxed' : ''}">${nextLine}</span></div>

@@ -1,7 +1,7 @@
 import { state, ENCOURAGEMENT_LINES, getActiveBombPenaltyTotal } from '../state/gameState.js';
 import { $, $$, boardEl, resetBtn, scanToast, escapeHtml } from '../ui/domHelpers.js';
 import { getThemeEmoji, updateAllCells, announceGame } from '../ui/boardRenderer.js';
-import { applyIcon, spriteImgHTML } from '../ui/spriteLoader.js';
+import { applyIcon, spriteImgHTML, medalImgForEmoji } from '../ui/spriteLoader.js';
 import { updateHeader, updateStreakBorder, updateCheckpointDisplay, getCheckpointForLevel } from '../ui/headerRenderer.js';
 import { updatePowerUpBar } from '../ui/powerUpBar.js';
 import { showModal, hideModal } from '../ui/modalManager.js';
@@ -488,7 +488,7 @@ export function handleWin() {
   if (state.gameMode === 'timed') {
     const precise = state.preciseTime || state.elapsedTime;
     const rating = getSpeedRating(state.currentLevel, precise);
-    gameoverTime.textContent = `Time: ${precise.toFixed(1)}s · ${rating.icon} ${rating.name}!`;
+    gameoverTime.innerHTML = `Time: ${precise.toFixed(1)}s · ${medalImgForEmoji(rating.icon, 'sprite-rank', rating.name) || rating.icon} ${rating.name}!`;
     if (parEl && state.timedPar > 0) {
       const tDelta = precise - state.timedPar;
       const tAbs = Math.abs(tDelta).toFixed(1);
@@ -760,7 +760,7 @@ export function handleWin() {
   if (isNewRecord) {
     if (state.gameMode === 'timed') {
       const rating = getSpeedRating(state.currentLevel, state.elapsedTime);
-      gameoverRecord.textContent = `🏆 New Record: ${state.elapsedTime}s ${rating.icon}`;
+      gameoverRecord.innerHTML = `🏆 New Record: ${state.elapsedTime}s ${medalImgForEmoji(rating.icon, 'sprite-rank', rating.name) || rating.icon}`;
     } else {
       gameoverRecord.textContent = '🎉 New Record!';
     }

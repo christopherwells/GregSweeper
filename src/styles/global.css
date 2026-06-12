@@ -2427,6 +2427,11 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   vertical-align: middle;
 }
 .lb-rank-cell { line-height: 1; }
+.sprite-medal {
+  width: 26px;
+  height: 26px;
+  vertical-align: middle;
+}
 
 /* Long names scroll horizontally (hidden scrollbar) instead of
    truncating, so the full name is always reachable by swipe/trackpad. */
