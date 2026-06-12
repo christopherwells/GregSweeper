@@ -14,7 +14,7 @@
 // counts are secondary features that the regression can weight or trim as
 // the data warrants.
 
-import { PAR_MODEL } from './difficulty.js';
+import { PAR_MODEL, PAR_MODEL_TIMED } from './difficulty.js';
 
 // ── Feature extraction ────────────────────────────────
 
@@ -188,10 +188,6 @@ export function computeDailyFeatures(state, solverResult) {
 // disjunctiveMoves remains unmodeled (dropped 2026-05-04, confounded with
 // liarCellCount). The solver still counts it for diagnostics.
 const COEF_TERMS = [
-  // Mode offset: 1 on quick-play boards (features.modeTimed, stamped by
-  // the timed path in gameActions), 0/absent on daily/weekly. Folded
-  // into the baseline chip — a mode constant, not a reasoning term.
-  { coef: 'secModeTimed',      value: f => (f.modeTimed ? 1 : 0),                                  displayGroup: 'baseline', baseline: true },
   // Size / density — the baseline block.
   { coef: 'secPerCell',        value: f => f.cellCount || 0,                                       displayGroup: 'baseline', baseline: true },
   { coef: 'secPerMineFlag',    value: f => f.totalMines || 0,                                       displayGroup: 'baseline', baseline: true },
@@ -216,9 +212,13 @@ const COEF_TERMS = [
  * Rounded to 0.1s to match how par is displayed.
  */
 export function predictPar(features) {
-  let par = PAR_MODEL.intercept;
+  // Quick play has its own win-conditional equation (features.modeTimed
+  // is stamped by the timed path); daily/weekly use the main model.
+  // Same terms, different coefficients.
+  const model = features && features.modeTimed ? PAR_MODEL_TIMED : PAR_MODEL;
+  let par = model.intercept;
   for (const { coef, value } of COEF_TERMS) {
-    par += (PAR_MODEL[coef] || 0) * value(features);
+    par += (model[coef] || 0) * value(features);
   }
   return Math.round(par * 10) / 10;
 }
