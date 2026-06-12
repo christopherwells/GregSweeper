@@ -115,27 +115,23 @@ export function magnetPull(board, centerRow, centerCol) {
     }
   }
 
-  if (minesInArea.length === 0) return { movedMines: [], affectedArea: [] };
+  if (minesInArea.length === 0) return { extractedMines: [], affectedArea: [] };
 
-  // Find destinations: unrevealed non-mine non-flagged cells outside 3x3, prefer edges
-  const candidates = [];
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      if (Math.abs(r - centerRow) <= 1 && Math.abs(c - centerCol) <= 1) continue;
-      if (board[r][c].isMine || board[r][c].isRevealed || board[r][c].isFlagged) continue;
-      const edgeScore = (r === 0 || r === rows - 1 ? 1 : 0) + (c === 0 || c === cols - 1 ? 1 : 0);
-      candidates.push({ row: r, col: c, score: edgeScore });
-    }
-  }
-  candidates.sort((a, b) => b.score - a.score);
-
-  // Relocate mines
-  for (let i = 0; i < minesInArea.length && i < candidates.length; i++) {
-    const from = minesInArea[i];
-    const to = candidates[i];
-    board[from.row][from.col].isMine = false;
-    board[to.row][to.col].isMine = true;
-    movedMines.push({ from, to });
+    // EXTRACTION, not relocation (redesigned 2026-06-11): the magnet
+  // pulls mines OFF the board entirely. Removal is information-
+  // monotone - numbers only drop, no mine ever lands on a cell the
+  // player had proven safe - so the no-guess certificate survives.
+  // (The old relocation could certify a safe cell as a provable mine
+  // via the liar display clamp; that whole class of bug is gone.)
+  // Extracted cells reveal as defused markers, the same treatment as
+  // shield defuse, so the player sees exactly what the magnet took.
+  const extractedMines = [];
+  for (const m of minesInArea) {
+    const cell = board[m.row][m.col];
+    cell.isMine = false;
+    cell.isDefused = true;
+    cell.isRevealed = true;
+    extractedMines.push(m);
   }
 
   // Full adjacency recalculation (wall-aware).
@@ -168,7 +164,7 @@ export function magnetPull(board, centerRow, centerCol) {
     }
   }
 
-  return { movedMines, affectedArea };
+  return { extractedMines, affectedArea };
 }
 
 // ── X-Ray Power-Up ────────────────────────────────────
