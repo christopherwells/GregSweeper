@@ -1175,10 +1175,11 @@ export function estimatePlateMovesToDisarm(board, plateRow, plateCol) {
     if (batchMoves > 0) totalSteps++;
   }
 
-  // If solver couldn't resolve all targets, estimate remaining as 2 steps each
-  totalMoves += remaining.size * 2;
-  totalSteps += remaining.size;
-
+  // Targets this Pass-A-only estimator could NOT resolve need subset /
+  // tank reasoning. They are returned in `unsolved` and priced by
+  // plateSeconds() at the par model's tier rate — the old flat
+  // "+2 steps each" fudge systematically under-timed exactly the
+  // plates that need the hardest thinking (the contract gap).
   return { moves: totalMoves, steps: totalSteps, unsolved: remaining.size };
 }
 
