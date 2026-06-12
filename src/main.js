@@ -2200,6 +2200,14 @@ document.addEventListener('keydown', (e) => {
 });
 $('#btn-help')?.addEventListener('click', () => { setActiveHelpTab('basics'); showModal('help-modal'); });
 $('#title-bar').addEventListener('click', () => showModal('about-modal'));
+// Settings → About. The in-game wordmark (the other About entry) is
+// hidden on phones to give the board its space, so Settings must carry
+// the path everywhere. Hide Settings first: about-modal sits EARLIER
+// in the DOM, so stacked it would paint underneath.
+$('#btn-about')?.addEventListener('click', () => {
+  hideModal('settings-modal');
+  showModal('about-modal');
+});
 
 // The Lexicon — generated single-technique lessons behind the
 // deducibility click-gate. Lazy-loaded: it never touches the boot path,
