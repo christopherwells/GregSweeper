@@ -16,7 +16,7 @@ import { showToast, showLevelUpToast, showCheckpointToast } from './ui/toastMana
 import { showCelebration, haptic } from './ui/effectsRenderer.js';
 import { THEME_UNLOCKS, getUnlockedThemes, loadThemeCSS } from './ui/themeManager.js';
 import { applyThemeEffects, clearThemeEffects } from './ui/themeEffects.js';
-import { newGame, revealCell, toggleFlag, handleChordReveal } from './game/gameActions.js';
+import { newGame, revealCell, toggleFlag, handleChordReveal, rearmPlateTimers } from './game/gameActions.js';
 import './game/winLossHandler.js'; // side-effect: registers handleWin with powerUpActions
 import { useRevealSafe, useShield, activateScan, activateXRay, activateMagnet } from './game/powerUpActions.js';
 import { switchMode, isChaosUnlocked, updateModeUI } from './game/modeManager.js';
@@ -3676,7 +3676,7 @@ async function init() {
       state.isDailyPractice = true;
     }
     hideTitleScreen();
-    if (!tryResumeGame()) await newGame();
+    if (!tryResumeGame()) await newGame(); else rearmPlateTimers();
   } else if (deepLinkMode === 'weekly') {
     // Deep link to weekly mode (used by push notifications and direct
     // shares). Drop into the weekly card's click-handler equivalent
@@ -3687,19 +3687,19 @@ async function init() {
       // Already played today — show the title screen with the weekly
       // card surfacing the "Played today" status. Don't auto-launch.
       showTitleScreen();
-      if (!tryResumeGame()) await newGame();
+      if (!tryResumeGame()) await newGame(); else rearmPlateTimers();
     } else {
       state.gameMode = 'weekly';
       state.weeklySeed = weekStart;
       state.weeklyDay = dayIdx;
       hideTitleScreen();
-      if (!tryResumeGame()) await newGame();
+      if (!tryResumeGame()) await newGame(); else rearmPlateTimers();
     }
   } else {
     // Returning user — show title screen
     showTitleScreen();
     // Pre-load the game in background so it's ready
-    if (!tryResumeGame()) await newGame();
+    if (!tryResumeGame()) await newGame(); else rearmPlateTimers();
   }
 
   // All routing settled and the appropriate UI surface (tutorial /

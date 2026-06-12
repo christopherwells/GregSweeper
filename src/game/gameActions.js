@@ -1250,6 +1250,24 @@ export function revealCell(row, col) {
 
 const activePlates = new Map(); // cell -> timerId
 
+// Re-arm timers on revealed, undisarmed plates after a save restore.
+// startPressurePlateTimer was only ever called from the live reveal
+// path, so a resumed game showed armed plates with no timer at all
+// (and they never detonated). Fresh estimate from the current board -
+// resuming resets the countdown, the lenient direction.
+export function rearmPlateTimers() {
+  if (!state.board || state.status !== 'playing') return;
+  for (let r = 0; r < state.rows; r++) {
+    for (let c = 0; c < state.cols; c++) {
+      const cell = state.board[r][c];
+      if (cell.isPressurePlate && !cell.plateDisarmed && cell.isRevealed) {
+        if (cell.row == null) { cell.row = r; cell.col = c; }
+        if (!activePlates.has(cell)) startPressurePlateTimer(cell);
+      }
+    }
+  }
+}
+
 // Defensive teardown helper. Daily/weekly modes do not currently include
 // pressure plates in their gimmick subset, but if a future change ever
 // surfaces a plate during a daily/weekly bomb-hit refog, the per-cell
@@ -1262,7 +1280,7 @@ export function clearAllPlateTimers() {
 }
 
 function startPressurePlateTimer(cell) {
-  const cellEl = boardEl.children[cell.row * state.cols + cell.col];
+  let cellEl = boardEl.children[cell.row * state.cols + cell.col];
   if (!cellEl) return;
 
   cellEl.classList.add('plate-active');
@@ -1286,6 +1304,19 @@ function startPressurePlateTimer(cell) {
       clearInterval(tick);
       activePlates.delete(cell);
       return;
+    }
+
+    // Self-heal: any board re-render (updateAllCells, a magnet pull, a
+    // theme change) rebuilds the cell element and silently destroys the
+    // bar while this interval keeps ticking - the deadline must never
+    // run invisibly. Re-attach to the live element when that happens.
+    const liveEl = boardEl.children[cell.row * state.cols + cell.col];
+    if (liveEl && liveEl !== cellEl) {
+      cellEl = liveEl;
+    }
+    if (cellEl && !cellEl.contains(timerBar)) {
+      cellEl.classList.add('plate-active');
+      cellEl.appendChild(timerBar);
     }
 
     remaining = Math.max(0, cell.plateTimer - (Date.now() - startTime) / 1000);
