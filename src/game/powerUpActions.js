@@ -219,7 +219,9 @@ export function performMagnet(row, col) {
   saveModePowerUps(state.gameMode, state.powerUps);
   saveProgress({ powerUps: loadPowerUps() });
 
-  const { movedMines, affectedArea } = magnetPull(state.board, row, col);
+  const { extractedMines, affectedArea } = magnetPull(state.board, row, col);
+  // Mines left the board: keep the LCD mine counter honest.
+  state.totalMines -= extractedMines.length;
 
   // Highlight the 3x3 area with magnet animation
   for (const cell of affectedArea) {
@@ -230,7 +232,7 @@ export function performMagnet(row, col) {
     }
   }
 
-  scanToast.textContent = `🧲 Pulled ${movedMines.length} mine${movedMines.length !== 1 ? 's' : ''} away`;
+  scanToast.textContent = `🧲 Extracted ${extractedMines.length} mine${extractedMines.length !== 1 ? 's' : ''}`;
   scanToast.classList.remove('hidden');
   setTimeout(() => scanToast.classList.add('hidden'), 2500);
 
