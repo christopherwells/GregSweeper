@@ -34,14 +34,40 @@
 </head>
 <body>
 <h1>Greg the field scientist: candidate gallery</h1>
-<p class="note">Three directions, three poses each. A is the full-body cartoon
-surveyor. B is the naturalist build: true beach-crab carapace shape with
-serrated front edges, safety goggles, and the real green-crab detail of one
-big claw and one small one. C is face-forward, built for the tiny reset
-button (it replaces a smiley, so it reads as a face first and a crab
-second). The win and loss poses are the contract: claws up on a win,
-flipped on his back on a loss.</p>
+<p class="note">Direction A won the first round; the drill-down below varies
+ONE axis per candidate so the keepers can be named trait by trait (for
+example: A3's shell with A4's colors and A2's eyes). Idle pose only at this
+stage; the chosen blend gets its win and loss poses in stage 2. The original
+three-direction round is kept underneath for reference.</p>
+<h2>Direction A drill-down, stage 1</h2>
+<div id="drill"></div>
 <div id="out"></div>
+<script>
+const VARIANTS = [
+  ['a',  'A1 baseline: the committed Field Greg'],
+  ['a2', 'A2 grounded eyes: short thick stalks, eyes grow out of the shell'],
+  ['a3', 'A3 wide carapace: true crab proportions, soft front lobes'],
+  ['a4', 'A4 olive naturalist: real beach-crab colors, dark mottling, orange-red claw tips'],
+  ['a5', 'A5 big claws: pincers and props scaled up, readable mini-board on the clipboard'],
+  ['a6', 'A6 chunky minimal: heavier outline, simplified detail, maximum small-size punch'],
+];
+const drill = document.getElementById('drill');
+const dt = document.createElement('table');
+dt.innerHTML = '<tr><th>Variant</th><th>110px</th><th>48px</th><th>32px (reset button)</th><th>22px (inline row)</th><th>On light tile</th><th>On button bg</th></tr>' +
+  VARIANTS.map(([slug, label]) => {
+    const src = `../assets/sprites/greg/${slug}-idle.svg`;
+    return `<tr>
+      <td class="name" style="max-width:280px;white-space:normal;">${label}</td>
+      <td><img src="${src}" width="110" height="110"></td>
+      <td><img src="${src}" width="48" height="48"></td>
+      <td><img src="${src}" width="32" height="32"></td>
+      <td><img src="${src}" width="22" height="22"></td>
+      <td class="on-light"><img src="${src}" width="40" height="40"></td>
+      <td class="on-btn"><img src="${src}" width="32" height="32"></td>
+    </tr>`;
+  }).join('');
+drill.appendChild(dt);
+</script>
 <script>
 const DIRECTIONS = [
   ['A', 'Field Greg: full-body surveyor, clipboard and pencil in claw'],

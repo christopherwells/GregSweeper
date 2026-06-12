@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- A drill-down, variant 5: BIG CLAWS, BIG PROPS. A1's body, but the
+       pincers scale up to crab-at-a-distance proportions, the clipboard
+       grows so its mini-grid reads, and the pencil is held high. -->
+  <!-- Walking legs -->
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke="#232838" stroke-width="9">
+      <path d="M44 86 L34 98 L30 109"/>
+      <path d="M52 90 L46 103 L44 113"/>
+      <path d="M84 86 L94 98 L98 109"/>
+      <path d="M76 90 L82 103 L84 113"/>
+    </g>
+    <g stroke="#53a05b" stroke-width="4.5">
+      <path d="M44 86 L34 98 L30 109"/>
+      <path d="M52 90 L46 103 L44 113"/>
+      <path d="M84 86 L94 98 L98 109"/>
+      <path d="M76 90 L82 103 L84 113"/>
+    </g>
+  </g>
+  <!-- Arms, thicker -->
+  <g fill="none" stroke-linecap="round">
+    <path d="M40 68 L27 58" stroke="#232838" stroke-width="12"/>
+    <path d="M88 68 L100 56" stroke="#232838" stroke-width="12"/>
+    <path d="M40 68 L27 58" stroke="#53a05b" stroke-width="6"/>
+    <path d="M88 68 L100 56" stroke="#53a05b" stroke-width="6"/>
+  </g>
+  <!-- Eye stalks -->
+  <g fill="none" stroke-linecap="round">
+    <path d="M53 42 L48 30" stroke="#232838" stroke-width="10"/>
+    <path d="M75 42 L80 30" stroke="#232838" stroke-width="10"/>
+    <path d="M53 42 L48 30" stroke="#53a05b" stroke-width="5"/>
+    <path d="M75 42 L80 30" stroke="#53a05b" stroke-width="5"/>
+  </g>
+  <circle cx="47" cy="24" r="9" fill="#ffffff" stroke="#232838" stroke-width="5"/>
+  <circle cx="81" cy="24" r="9" fill="#ffffff" stroke="#232838" stroke-width="5"/>
+  <circle cx="48.5" cy="25.5" r="3.4" fill="#232838"/>
+  <circle cx="79.5" cy="25.5" r="3.4" fill="#232838"/>
+  <circle cx="50" cy="24" r="1.2" fill="#ffffff"/>
+  <circle cx="81" cy="24" r="1.2" fill="#ffffff"/>
+  <!-- Carapace -->
+  <path d="M32 64 C32 44 46 34 64 34 C82 34 96 44 96 64 C96 79 83 90 64 90 C45 90 32 79 32 64 Z"
+        fill="#53a05b" stroke="#232838" stroke-width="6"/>
+  <path d="M38 72 C46 82 82 82 90 72 C86 84 76 88 64 88 C52 88 42 84 38 72 Z" fill="#3e7f46"/>
+  <!-- Mottling -->
+  <g fill="#7cc184">
+    <circle cx="50" cy="48" r="3.2"/>
+    <circle cx="70" cy="44" r="2.8"/>
+    <circle cx="79" cy="55" r="2.8"/>
+  </g>
+  <!-- Smile -->
+  <path d="M55 72 Q64 80 73 72" fill="none" stroke="#232838" stroke-width="5" stroke-linecap="round"/>
+  <!-- BIG right pincer holding the pencil high -->
+  <ellipse cx="106" cy="46" rx="12.5" ry="10" fill="#53a05b" stroke="#232838" stroke-width="5.5" transform="rotate(-35 106 46)"/>
+  <ellipse cx="113" cy="37" rx="6" ry="4.8" fill="#e8873a" stroke="#232838" stroke-width="4.5" transform="rotate(-35 113 37)"/>
+  <g transform="rotate(-62 104 42)">
+    <rect x="92" y="38" width="28" height="8" rx="2.2" fill="#ffd23e" stroke="#232838" stroke-width="3.8"/>
+    <path d="M120 38 L128 42 L120 46 Z" fill="#232838"/>
+    <rect x="86" y="38" width="6" height="8" rx="2.2" fill="#e88a8a" stroke="#232838" stroke-width="3.2"/>
+  </g>
+  <!-- BIG clipboard with a readable mini-board -->
+  <g transform="rotate(-12 18 60)">
+    <rect x="0" y="38" width="32" height="44" rx="4" fill="#f3f6fb" stroke="#232838" stroke-width="5"/>
+    <rect x="9" y="32" width="14" height="9" rx="3" fill="#b9c2d4" stroke="#232838" stroke-width="3.8"/>
+    <g fill="#d4dae6">
+      <rect x="5" y="48" width="7" height="7" rx="1.4"/>
+      <rect x="14" y="48" width="7" height="7" rx="1.4"/>
+      <rect x="23" y="48" width="7" height="7" rx="1.4"/>
+      <rect x="5" y="57" width="7" height="7" rx="1.4"/>
+      <rect x="23" y="57" width="7" height="7" rx="1.4"/>
+      <rect x="5" y="66" width="7" height="7" rx="1.4"/>
+      <rect x="14" y="66" width="7" height="7" rx="1.4"/>
+    </g>
+    <rect x="14" y="57" width="7" height="7" rx="1.4" fill="#ffd23e"/>
+    <path d="M24 73 L24 65 L31 67.5 L24 70" fill="#e4453a"/>
+  </g>
+  <!-- BIG left pincer gripping it -->
+  <ellipse cx="30" cy="44" rx="11.5" ry="9.5" fill="#53a05b" stroke="#232838" stroke-width="5.5" transform="rotate(28 30 44)"/>
+  <ellipse cx="37" cy="36" rx="5.5" ry="4.4" fill="#e8873a" stroke="#232838" stroke-width="4.5" transform="rotate(28 37 36)"/>
+</svg>

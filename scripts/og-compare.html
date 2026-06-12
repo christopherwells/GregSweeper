@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<!--
+  og-card comparison: the original photographic card (from main) next
+  to the drawn draft, at full size and timeline-thumbnail size. Open
+  via the local server: http://localhost:8080/scripts/og-compare.html
+  The original is extracted to .playwright-mcp/og-original.png by
+  `git show main:assets/og-card.png` (gitignored scratch dir); if that
+  file is missing, re-extract it.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>og-card comparison</title>
+<style>
+  body { font: 14px/1.5 system-ui, sans-serif; background: #1d2030; color: #e8eaf2; padding: 24px; }
+  h1 { font-size: 20px; }
+  h2 { font-size: 15px; margin-top: 26px; color: #9fb0d8; }
+  img { display: block; border-radius: 10px; border: 1px solid #323850; }
+  .pair { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+  .pair figure { margin: 0; }
+  figcaption { font-size: 12px; color: #9fb0d8; margin-top: 6px; }
+</style>
+</head>
+<body>
+<h1>og-card: original photo vs drawn draft</h1>
+<h2>Full size (1200x630, shown at 560 wide)</h2>
+<div class="pair">
+  <figure>
+    <img src="../.playwright-mcp/og-original.png" width="560">
+    <figcaption>Original (photographic, currently live on main)</figcaption>
+  </figure>
+  <figure>
+    <img src="../assets/og-card.png" width="560">
+    <figcaption>Drawn draft (this branch)</figcaption>
+  </figure>
+</div>
+<h2>Timeline-thumbnail size (roughly how a link preview renders)</h2>
+<div class="pair">
+  <figure>
+    <img src="../.playwright-mcp/og-original.png" width="280">
+    <figcaption>Original</figcaption>
+  </figure>
+  <figure>
+    <img src="../assets/og-card.png" width="280">
+    <figcaption>Drawn draft</figcaption>
+  </figure>
+</div>
+</body>
+</html>
