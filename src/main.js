@@ -2274,19 +2274,6 @@ for (const tab of $$('.timed-tab')) {
   });
 }
 
-// Quick Play timer toggle
-const timerToggleBtn = $('#timer-toggle');
-if (timerToggleBtn) {
-  timerToggleBtn.addEventListener('click', () => {
-    state.timerHidden = !state.timerHidden;
-    timerToggleBtn.classList.toggle('timer-off', state.timerHidden);
-    const timerEl = $('#timer-display');
-    if (timerEl) {
-      timerEl.style.visibility = state.timerHidden ? 'hidden' : 'visible';
-    }
-  });
-}
-
 // ── Title Screen ──────────────────────────────────────
 
 // Today's Greg-par for the Daily card subtitle. Resolved once per date

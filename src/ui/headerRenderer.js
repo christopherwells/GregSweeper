@@ -54,32 +54,29 @@ export function updateProgressBar() {
   }
 }
 
-// Persistent reminder of which modifiers are active in this game,
-// plus the ✓ Certified chip when the board carries a no-guess
-// certificate. Renders into #active-gimmick-bar. The bar shows when
-// EITHER is present: gimmicks (daily / weekly / challenge) or a
-// certificate (those three plus timed — gimmick-free but certified).
-// Chaos keeps its own bar, which carries the inverse chip instead.
+// Persistent reminder of which modifiers are active in this game.
+// Renders icon chips into #active-gimmick-bar. Hidden when no gimmicks
+// are active or in chaos mode (chaos has its own bar) — the Certified
+// chip lives in #game-info-bar precisely so gimmick-free boards never
+// pay a row for it. The chip is toggled here because every call site
+// that settles gimmicks (newGame, first-click generation, resume) is
+// also where the certificate is settled.
 export function updateActiveGimmickBar() {
   const bar = document.getElementById('active-gimmick-bar');
   const icons = document.getElementById('active-gimmick-icons');
   if (!bar || !icons) return;
-  const label = bar.querySelector('.active-gimmick-label');
   const chip = document.getElementById('cert-chip');
+  if (chip) chip.classList.toggle('hidden', !state.boardCertificate);
   const eligibleMode = state.gameMode === 'normal'
     || state.gameMode === 'daily'
     || state.gameMode === 'weekly';
   const list = Array.isArray(state.activeGimmicks) ? state.activeGimmicks : [];
-  const showGimmicks = eligibleMode && list.length > 0;
-  const showChip = !!state.boardCertificate;
-  if (!showGimmicks && !showChip) {
+  if (!eligibleMode || list.length === 0) {
     bar.classList.add('hidden');
     icons.innerHTML = '';
     return;
   }
-  if (label) label.classList.toggle('hidden', !showGimmicks);
-  if (chip) chip.classList.toggle('hidden', !showChip);
-  icons.innerHTML = !showGimmicks ? '' : list.map(g => {
+  icons.innerHTML = list.map(g => {
     const def = getGimmickDef(g);
     if (!def) return '';
     const tooltip = (def.name + ': ' + (def.desc || '')).replace(/"/g, '&quot;');
