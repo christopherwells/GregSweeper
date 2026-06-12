@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Greg as a drafted specimen, plan view: dashed body outline,
+     centerlines, dimension ticks, leader to the clipboard. -->
+<!-- Centerlines through the body -->
+<path d="M32 6 L32 58 M6 30 L58 30" stroke="#dceeff" stroke-width="1.2" stroke-dasharray="8 2.5 2 2.5" opacity="0.65"/>
+<!-- Legs, thin solid -->
+<g fill="none" stroke="#dceeff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M19 41 L13 47 L11 52"/>
+  <path d="M24 43.5 L20 50 L19 55"/>
+  <path d="M45 41 L51 47 L53 52"/>
+  <path d="M40 43.5 L44 50 L45 55"/>
+</g>
+<!-- Arms -->
+<g fill="none" stroke="#dceeff" stroke-width="2" stroke-linecap="round">
+  <path d="M17 32 L12 27"/>
+  <path d="M47 32 L52 26"/>
+</g>
+<!-- Eye stalks + eyes -->
+<g fill="none" stroke="#dceeff" stroke-width="2" stroke-linecap="round">
+  <path d="M25 18.5 L23 12.5"/>
+  <path d="M39 18.5 L41 12.5"/>
+</g>
+<circle cx="22.5" cy="9.5" r="4.2" fill="none" stroke="#dceeff" stroke-width="2"/>
+<circle cx="41.5" cy="9.5" r="4.2" fill="none" stroke="#dceeff" stroke-width="2"/>
+<circle cx="22.5" cy="9.5" r="1.4" fill="#dceeff"/>
+<circle cx="41.5" cy="9.5" r="1.4" fill="#dceeff"/>
+<!-- Shell: dashed drafted outline -->
+<path d="M11 31 C11 24 16 19 22 17.5 Q27 15 32 15 Q37 15 42 17.5 C48 19 53 24 53 31 C53 38 45 43 32 43 C19 43 11 38 11 31 Z"
+      fill="none" stroke="#dceeff" stroke-width="2.2" stroke-dasharray="6 3"/>
+<!-- Smile -->
+<path d="M27.5 31.5 Q32 36.5 36.5 31.5" fill="none" stroke="#dceeff" stroke-width="2" stroke-linecap="round"/>
+<!-- Dimension ticks across the shell width -->
+<path d="M11 47 L11 50 M53 47 L53 50 M11 48.5 L53 48.5" stroke="#dceeff" stroke-width="1" opacity="0.7"/>
+<path d="M14 46.8 L11 48.5 L14 50.2 M50 46.8 L53 48.5 L50 50.2" stroke="#dceeff" stroke-width="1" fill="none" opacity="0.7"/>
+<!-- Pincers, dashed -->
+<ellipse cx="54" cy="22" rx="6" ry="4.8" fill="none" stroke="#dceeff" stroke-width="1.8" stroke-dasharray="4 2" transform="rotate(-35 54 22)"/>
+<ellipse cx="14" cy="21" rx="5.6" ry="4.6" fill="none" stroke="#dceeff" stroke-width="1.8" stroke-dasharray="4 2" transform="rotate(28 14 21)"/>
+<!-- Clipboard as a drafted detail, with leader line -->
+<g transform="rotate(-12 8 30)">
+  <rect x="0" y="19" width="16" height="22" rx="1.5" fill="none" stroke="#dceeff" stroke-width="1.8"/>
+  <path d="M3 25 L13 25 M3 30 L13 30 M3 35 L13 35" stroke="#dceeff" stroke-width="1" opacity="0.7"/>
+</g>
+<path d="M16 14 L24 7 L30 7" stroke="#dceeff" stroke-width="1.4" fill="none" opacity="0.85"/>
+<circle cx="16" cy="14" r="1.5" fill="#dceeff"/>
+</svg>

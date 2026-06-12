@@ -44,6 +44,13 @@ three-direction round is kept underneath for reference.</p>
 wide-set eyes too much; antennae and sheen dropped because they do not read
 at the sizes that matter. This is what the live sprite slots carry.</p>
 <div id="current"></div>
+<h2>Per-theme Greg: the character in each world's material</h2>
+<p class="note">Demo wave, idle pose only, drawn in the same material language
+as each world's mine and flag: chalk on slate, drafted cyanotype lines, heavy
+comic ink with halftone, sumi-e wash with the hanko. The THEME_SPRITES
+registry already accepts smiley slots, so shipping a world is one registry
+line plus its win and loss poses. Nothing is wired yet.</p>
+<div id="themed"></div>
 <h2>Stage 3: micro-variants on the blend</h2>
 <p class="note">One change each, against the a7 base. Open smile (b) won;
 the rest were declined.</p>
@@ -57,6 +64,24 @@ and pencil. Win and loss poses derive from the same body.</p>
 <div id="drill"></div>
 <div id="out"></div>
 <script>
+const THEMED = [
+  ['themed-chalkboard', '#2e4038', 'Chalkboard: doubled chalk line, hatch shading, yellow chalk stick'],
+  ['themed-blueprint', '#0c2a47', 'Blueprint: dashed outline, centerlines, dimension ticks, leader'],
+  ['themed-comic', '#f5efdf', 'Comic: heavy ink, flat color, halftone, speed marks'],
+  ['themed-sumie', '#f2ede1', 'Sumi-e: layered wash, paper-reserve eyes, the hanko'],
+];
+const themed = document.getElementById('themed');
+const tt = document.createElement('table');
+tt.innerHTML = '<tr><th>World</th><th>130px on its board</th><th>48px</th><th>32px (reset button)</th><th>22px</th></tr>' +
+  THEMED.map(([slug, bg, label]) => {
+    const src = `../assets/sprites/greg/${slug}-idle.svg`;
+    const sw = (size) => `<td style="background:${bg};border-radius:8px;"><img src="${src}" width="${size}" height="${size}"></td>`;
+    return `<tr>
+      <td class="name" style="max-width:260px;white-space:normal;">${label}</td>
+      ${sw(130)}${sw(48)}${sw(32)}${sw(22)}
+    </tr>`;
+  }).join('');
+themed.appendChild(tt);
 const cur = document.getElementById('current');
 const curStrip = document.createElement('div');
 curStrip.className = 'strip';
