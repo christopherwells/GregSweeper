@@ -1280,6 +1280,10 @@ export function clearAllPlateTimers() {
 }
 
 function startPressurePlateTimer(cell) {
+  // Idempotent: a doubly-armed plate would stack a second interval the
+  // Map overwrite then leaks forever. Whatever path calls this twice
+  // (reveal + rearm + chord), only the first arms.
+  if (activePlates.has(cell)) return;
   let cellEl = boardEl.children[cell.row * state.cols + cell.col];
   if (!cellEl) return;
 
@@ -1459,6 +1463,17 @@ export function handleChordReveal(row, col) {
             cellEl.style.animationDelay = '';
           }, 350 + dist * 40);
         }
+      }
+    }
+  }
+
+  // Activate plates revealed BY THE CHORD - chording is a separate
+  // reveal path that never ran the plate-activation loop, so chord-
+  // revealed plates sat armed with no timer and never detonated.
+  if (!result.hitMine) {
+    for (const c of result.revealed) {
+      if (c.isPressurePlate && !c.plateDisarmed && !c.isMine) {
+        startPressurePlateTimer(c);
       }
     }
   }
