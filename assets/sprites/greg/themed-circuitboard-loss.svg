@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-<!-- Circuit Greg, loss: fried. Flipped board, a scorched crater sparking, a popped capacitor, red X LED eyes. -->
+<!-- Circuit Greg, loss: the board flipped on its back, the same circuitry now upside down and dead, LEDs out. -->
 <!-- Copper trace legs up -->
 <g fill="none" stroke="#8a5a28" stroke-width="2" stroke-linecap="square">
   <path d="M21 35 L21 30 L19 26 L19 23"/>
@@ -17,24 +17,31 @@
 <path d="M12 38 C12 42 15 46 20 48.5 Q26 51 32 51 Q38 51 44 48.5 C49 46 52 42 52 38 L52 37 L12 37 Z"
       fill="#14502c" stroke="#0c3a20" stroke-width="2.4" stroke-linejoin="round"/>
 <ellipse cx="32" cy="37" rx="20" ry="4" fill="#1a6b3a" stroke="#0c3a20" stroke-width="1.8"/>
-<!-- Scorch crater, sparking -->
-<circle cx="30" cy="43" r="7" fill="#2a1408" opacity="0.7"/>
-<circle cx="30" cy="43" r="4.4" fill="#0a0a0a"/>
-<path d="M30 43 m-4.4 0 a4.4 4.4 0 0 1 8.8 0" fill="none" stroke="#ff7a26" stroke-width="1.6"/>
-<g stroke="#ffd23e" stroke-width="1.6" stroke-linecap="round"><path d="M30 36 L28 32 M34 38 L38 35 M26 40 L22 39"/></g>
-<!-- Popped electrolytic capacitor, tipped over -->
-<g transform="rotate(40 44 47)">
-  <rect x="40" y="43" width="6" height="9" rx="1.5" fill="#2a3a8a" stroke="#13245a" stroke-width="1.2"/>
-  <path d="M40 44 L46 44" stroke="#9fb6e8" stroke-width="0.9"/>
-  <path d="M41.5 43 L43 40 L44.5 43" fill="none" stroke="#c0c0c0" stroke-width="1.2"/>
+<!-- The SAME circuitry, flipped upside down into the board, dead and dim -->
+<clipPath id="ccLoss"><path d="M12 38 C12 42 15 46 20 48.5 Q26 51 32 51 Q38 51 44 48.5 C49 46 52 42 52 38 L52 37 L12 37 Z"/></clipPath>
+<g clip-path="url(#ccLoss)" transform="translate(0 73) scale(1 -1)">
+  <g fill="none" stroke="#8a5a28" stroke-width="1.3" stroke-linecap="square">
+    <path d="M16 28 L22 28 L25 31 L31 31"/>
+    <path d="M48 26 L42 26 L39 29 L33 29"/>
+    <path d="M20 36 L28 36 L30 34"/>
+    <path d="M44 37 L37 37 L35 35"/>
+    <path d="M22.4 34.8 L26 34.8 L26 32"/><path d="M41.8 34 L40 34 L40 31"/><path d="M20 24 L20 21 L26 21"/>
+  </g>
+  <g fill="#6a4a28"><circle cx="16" cy="28" r="1.3"/><circle cx="48" cy="26" r="1.3"/><circle cx="31" cy="31" r="1.3"/><circle cx="33" cy="29" r="1.3"/><circle cx="20" cy="21" r="1.1"/></g>
+  <rect x="16" y="33.5" width="6.4" height="2.6" rx="0.6" fill="#7a5a32" stroke="#4a3010" stroke-width="0.7"/>
+  <circle cx="44" cy="34" r="2.2" fill="#1a2a4a" stroke="#0a1530" stroke-width="0.8"/>
+  <rect x="27" y="24" width="10" height="9" rx="1" fill="#111" stroke="#333" stroke-width="1"/>
+  <g stroke="#555" stroke-width="0.9"><path d="M27 26 L24.5 26 M27 30 L24.5 30 M37 26 L39.5 26 M37 30 L39.5 30"/></g>
 </g>
-<!-- Flopped LED stalks + red X eyes -->
+<!-- a small scorch where it shorted -->
+<circle cx="38" cy="44" r="3" fill="#0a0a0a"/><circle cx="38" cy="44" r="4.4" fill="#2a1408" opacity="0.6"/>
+<!-- Flopped LED stalks + dark X eyes -->
 <g fill="none" stroke="#8a5a28" stroke-width="2" stroke-linecap="square">
   <path d="M17 37 L13 33 L11.5 30"/>
   <path d="M22.5 36 L21.5 31 L21 27.5"/>
 </g>
-<rect x="7" y="23" width="7" height="7" rx="1" fill="#3a1414" stroke="#1a0808" stroke-width="1.4"/>
-<path d="M8.5 24.5 L12.5 28.5 M12.5 24.5 L8.5 28.5" stroke="#ff5a5a" stroke-width="1.5" stroke-linecap="round"/>
-<rect x="17" y="20.5" width="7" height="7" rx="1" fill="#3a1414" stroke="#1a0808" stroke-width="1.4"/>
-<path d="M18.5 22 L22.5 26 M22.5 22 L18.5 26" stroke="#ff5a5a" stroke-width="1.5" stroke-linecap="round"/>
+<rect x="7" y="23" width="7" height="7" rx="1" fill="#163a26" stroke="#0c2416" stroke-width="1.4"/>
+<path d="M8.5 24.5 L12.5 28.5 M12.5 24.5 L8.5 28.5" stroke="#5a7a66" stroke-width="1.4" stroke-linecap="round"/>
+<rect x="17" y="20.5" width="7" height="7" rx="1" fill="#163a26" stroke="#0c2416" stroke-width="1.4"/>
+<path d="M18.5 22 L22.5 26 M22.5 22 L18.5 26" stroke="#5a7a66" stroke-width="1.4" stroke-linecap="round"/>
 </svg>

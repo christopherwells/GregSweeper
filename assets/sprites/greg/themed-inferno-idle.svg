@@ -1,48 +1,33 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-<!-- Inferno Greg, idle: obsidian crab veined with lava, embers rising, ember eyes, a cracked-stone tablet. -->
-<g fill="none" stroke="#120b08" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+<!-- Inferno Greg, idle: the head of a fire snake, a living flame with tongues licking up, a hot yellow core. -->
+<defs>
+  <linearGradient id="ifFlame" x1="0" y1="1" x2="0" y2="0">
+    <stop offset="0" stop-color="#d93410"/>
+    <stop offset="0.5" stop-color="#ff8a2e"/>
+    <stop offset="1" stop-color="#ffd23e"/>
+  </linearGradient>
+</defs>
+<!-- Ember legs / claws -->
+<g fill="none" stroke="#7a3010" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
   <path d="M19 41 L13 47 L11 52"/><path d="M24 43.5 L20 50 L19 55"/><path d="M45 41 L51 47 L53 52"/><path d="M40 43.5 L44 50 L45 55"/>
-  <path d="M17 32 L12 27"/><path d="M47 32 L52 26"/><path d="M25 18.5 L23 12.5"/><path d="M39 18.5 L41 12.5"/>
+  <path d="M17 33 L12 28"/><path d="M47 33 L52 28"/>
 </g>
-<!-- Ember eyes -->
-<circle cx="22.5" cy="9.5" r="3.4" fill="#ff7a26" opacity="0.4"/>
-<circle cx="41.5" cy="9.5" r="3.4" fill="#ff7a26" opacity="0.4"/>
-<circle cx="22.5" cy="9.5" r="2" fill="#ffd23e"/>
-<circle cx="41.5" cy="9.5" r="2" fill="#ffd23e"/>
-<!-- Claws (charcoal, red tips) -->
-<ellipse cx="14" cy="21" rx="5.6" ry="4.6" fill="#2a201c" stroke="#120b08" stroke-width="2.4" transform="rotate(28 14 21)"/>
-<ellipse cx="54" cy="22" rx="6" ry="4.8" fill="#2a201c" stroke="#120b08" stroke-width="2.4" transform="rotate(-35 54 22)"/>
-<path d="M9 18 L10.5 16" stroke="#a8431a" stroke-width="2" stroke-linecap="round"/>
-<path d="M58 19 L56.5 17" stroke="#a8431a" stroke-width="2" stroke-linecap="round"/>
-<!-- Obsidian shell -->
-<path d="M11 31 C11 24 16 19 22 17.5 Q27 15 32 15 Q37 15 42 17.5 C48 19 53 24 53 31 C53 38 45 43 32 43 C19 43 11 38 11 31 Z"
-      fill="#2a201c" stroke="#120b08" stroke-width="2.6"/>
-<!-- Lava cracks: dark molten glow underlay, bright core, hot centerline -->
-<g fill="none" stroke-linecap="round" stroke-linejoin="round">
-  <g stroke="#7a2e0e" stroke-width="3.6" opacity="0.85">
-    <path d="M32 16 L30 24 L34 30 L31 38"/>
-    <path d="M30 24 L20 25"/>
-    <path d="M34 30 L43 31"/>
-    <path d="M18 22 L24 28"/>
-    <path d="M47 22 L41 28"/>
-  </g>
-  <g stroke="#ff8a2e" stroke-width="1.8">
-    <path d="M32 16 L30 24 L34 30 L31 38"/>
-    <path d="M30 24 L20 25"/>
-    <path d="M34 30 L43 31"/>
-    <path d="M18 22 L24 28"/>
-    <path d="M47 22 L41 28"/>
-  </g>
-  <path d="M32 16 L30 24 L34 30 L31 38" stroke="#ffe08a" stroke-width="0.7"/>
-</g>
-<!-- Smile (molten seam) -->
-<path d="M28 33 Q32 36.5 36 33" fill="none" stroke="#7a2e0e" stroke-width="3.2" stroke-linecap="round"/>
-<path d="M28 33 Q32 36.5 36 33" fill="none" stroke="#ff8a2e" stroke-width="1.6" stroke-linecap="round"/>
-<!-- Cracked stone tablet -->
-<g transform="rotate(-10 8 31)">
-  <rect x="2" y="21" width="12" height="16" rx="1" fill="#3a322c" stroke="#120b08" stroke-width="2"/>
-  <path d="M8 21 L6 28 L9 33 L7 37" stroke="#ff7a26" stroke-width="1.2" fill="none" stroke-linecap="round"/>
-</g>
-<!-- Embers rising -->
-<g fill="#ffb347"><circle cx="50" cy="13" r="1.4"/><circle cx="55" cy="8" r="1"/><circle cx="46" cy="9" r="0.8"/></g>
+<ellipse cx="13" cy="22" rx="5.4" ry="4.4" fill="#e0521a" stroke="#7a3010" stroke-width="2.2" transform="rotate(28 13 22)"/>
+<ellipse cx="55" cy="22" rx="5.4" ry="4.4" fill="#e0521a" stroke="#7a3010" stroke-width="2.2" transform="rotate(-28 55 22)"/>
+<!-- Flame body with licking tongues across the top -->
+<path d="M14 40 C11 33 12 25 17 21 L20 27 L24 16 L28 25 L32 13 L36 25 L40 16 L44 27 L47 21 C52 25 53 33 50 40 C46 44 38 45 32 45 C26 45 18 44 14 40 Z"
+      fill="url(#ifFlame)" stroke="#a8431a" stroke-width="2"/>
+<!-- Inner hot core -->
+<path d="M20 39 C18 33 20 28 24 25 L26 29 L29 22 L32 28 L35 22 L38 29 L40 25 C44 28 46 33 44 39 C40 42 36 43 32 43 C28 43 24 42 20 39 Z"
+      fill="#ffe89a" opacity="0.85"/>
+<!-- Eyes -->
+<circle cx="25" cy="31" r="4" fill="#fff" stroke="#7a3010" stroke-width="1.8"/>
+<circle cx="39" cy="31" r="4" fill="#fff" stroke="#7a3010" stroke-width="1.8"/>
+<circle cx="25.6" cy="31.6" r="1.6" fill="#3a1808"/>
+<circle cx="38.4" cy="31.6" r="1.6" fill="#3a1808"/>
+<!-- Grin with little fangs -->
+<path d="M27 37 Q32 41 37 37" fill="none" stroke="#7a3010" stroke-width="2" stroke-linecap="round"/>
+<path d="M29 37.6 L30 39.4 L31 37.8 Z M34 37.6 L35 39.4 L36 37.8 Z" fill="#fff"/>
+<!-- A rising ember -->
+<g fill="#ffb347"><circle cx="50" cy="13" r="1.4"/><circle cx="54" cy="8" r="1"/></g>
 </svg>
