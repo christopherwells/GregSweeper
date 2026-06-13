@@ -1,36 +1,47 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-<!-- Sakura Greg, idle: blossom crab, carapace of five overlapping petals on twig legs, paper hanging tag in the big claw. -->
+<!-- Sakura Greg, idle: the carapace is one clean cherry blossom, five notched petals round a stamen center, on branch legs. -->
 <g fill="none" stroke="#7a5a48" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M19 41 L13 47 L11 52"/>
   <path d="M24 43.5 L20 50 L19 55"/>
   <path d="M45 41 L51 47 L53 52"/>
   <path d="M40 43.5 L44 50 L45 55"/>
-</g>
-<g fill="none" stroke="#7a5a48" stroke-width="2.2" stroke-linecap="round">
   <path d="M17 32 L12 27"/>
   <path d="M47 32 L52 26"/>
-  <path d="M25.5 20.5 L23 12.5"/>
-  <path d="M38.5 20.5 L41 12.5"/>
+  <path d="M25 18.5 L23 12.5"/>
+  <path d="M39 18.5 L41 12.5"/>
 </g>
-<ellipse cx="14" cy="21" rx="5.6" ry="4.6" fill="#f4a7bd" stroke="#e07e9d" stroke-width="1.6" transform="rotate(28 14 21)"/>
-<ellipse cx="54" cy="22" rx="6" ry="4.8" fill="#f4a7bd" stroke="#e07e9d" stroke-width="1.6" transform="rotate(-35 54 22)"/>
-<g fill="#f4a7bd" stroke="#e07e9d" stroke-width="1.6">
-  <ellipse cx="20" cy="27" rx="9" ry="7" transform="rotate(18 20 27)"/>
-  <ellipse cx="44" cy="27" rx="9" ry="7" transform="rotate(-18 44 27)"/>
-  <ellipse cx="25" cy="36" rx="8.5" ry="7" transform="rotate(-50 25 36)"/>
-  <ellipse cx="39" cy="36" rx="8.5" ry="7" transform="rotate(50 39 36)"/>
-  <ellipse cx="32" cy="21.5" rx="7" ry="9"/>
-</g>
-<circle cx="32" cy="28.5" r="2.4" fill="#d96a8e"/>
-<path d="M27.5 31.5 Q32 37 36.5 31.5 Z" fill="none" stroke="#7a5a48" stroke-width="2" stroke-linejoin="round"/>
-<circle cx="22.5" cy="9.5" r="4.2" fill="#ffffff" stroke="#7a5a48" stroke-width="2"/>
-<circle cx="41.5" cy="9.5" r="4.2" fill="#ffffff" stroke="#7a5a48" stroke-width="2"/>
+<g fill="#e07e9d"><circle cx="14" cy="42" r="1.2"/><circle cx="50" cy="42" r="1.2"/></g>
+<circle cx="22.5" cy="9.5" r="4.2" fill="#fff" stroke="#7a5a48" stroke-width="2"/>
+<circle cx="41.5" cy="9.5" r="4.2" fill="#fff" stroke="#7a5a48" stroke-width="2"/>
 <circle cx="23.2" cy="10.2" r="1.5" fill="#4a3328"/>
 <circle cx="40.8" cy="10.2" r="1.5" fill="#4a3328"/>
-<path d="M12 24 Q10 26 9.3 28.5" fill="none" stroke="#7a5a48" stroke-width="1.2"/>
-<g transform="rotate(-10 9 36)">
-  <rect x="3" y="28.5" width="12" height="15" rx="2" fill="#fffafc" stroke="#d96a8e" stroke-width="1.6"/>
-  <circle cx="9" cy="31.5" r="1.1" fill="none" stroke="#7a5a48" stroke-width="1.2"/>
-  <path d="M5.5 35.5 L12.5 35.5 M5.5 39 L12.5 39" stroke="#e07e9d" stroke-width="1" opacity="0.7"/>
+<!-- Petal claws -->
+<path d="M14 21 C10 17 10 23 12 25 C16 25 18 21 14 16 C12 18 12 20 14 21 Z" fill="#f6b6c8" stroke="#e07e9d" stroke-width="1.4" transform="rotate(20 14 21)"/>
+<path d="M54 22 C58 18 58 24 56 26 C52 26 50 22 54 17 C56 19 56 21 54 22 Z" fill="#f6b6c8" stroke="#e07e9d" stroke-width="1.4" transform="rotate(-20 54 22)"/>
+<!-- Five-petal blossom carapace -->
+<g fill="#f4a7bd" stroke="#e07e9d" stroke-width="1.8" stroke-linejoin="round">
+  <path d="M32 14 C28 14 27 19 28.5 22 C30 24.5 34 24.5 35.5 22 C37 19 36 14 32 14 Z"/>
+  <path d="M49 24 C50 20 46 17 43 18.5 C40 20 39.5 24 42 26 C44.5 28 49 27.5 49 24 Z"/>
+  <path d="M44 41 C47 38 45 33 42 32.5 C39 32 36 35 37 38 C38 41 41.5 43 44 41 Z"/>
+  <path d="M20 41 C17 38 19 33 22 32.5 C25 32 28 35 27 38 C26 41 22.5 43 20 41 Z"/>
+  <path d="M15 24 C14 20 18 17 21 18.5 C24 20 24.5 24 22 26 C19.5 28 15 27.5 15 24 Z"/>
+</g>
+<!-- Petal-tip notches -->
+<g fill="#fff0f5">
+  <path d="M30.5 14.4 L32 16.4 L33.5 14.4 Z"/>
+  <path d="M48.4 22.6 L46.6 23.8 L48.8 25 Z"/>
+  <path d="M43.6 41.8 L42.2 39.8 L40.8 41.8 Z"/>
+  <path d="M20.4 41.8 L21.8 39.8 L23.2 41.8 Z"/>
+  <path d="M15.6 22.6 L17.4 23.8 L15.2 25 Z"/>
+</g>
+<!-- Stamen center + smile -->
+<circle cx="32" cy="27.5" r="3.4" fill="#ffd86a"/>
+<g stroke="#e0a020" stroke-width="0.8" stroke-linecap="round"><path d="M32 24.5 L32 22.5 M35 27.5 L37 27.5 M29 27.5 L27 27.5 M34 25.5 L35.5 24"/></g>
+<path d="M28.5 31.5 Q32 35 35.5 31.5" fill="none" stroke="#7a5a48" stroke-width="1.8" stroke-linecap="round"/>
+<!-- Paper tag prop -->
+<g transform="rotate(-10 9 35)">
+  <rect x="3" y="28.5" width="11" height="14" rx="2" fill="#fffafc" stroke="#d96a8e" stroke-width="1.6"/>
+  <circle cx="8.5" cy="31" r="1" fill="none" stroke="#7a5a48" stroke-width="1"/>
+  <path d="M5.5 35 L11.5 35 M5.5 38 L11.5 38" stroke="#e07e9d" stroke-width="1" opacity="0.7"/>
 </g>
 </svg>

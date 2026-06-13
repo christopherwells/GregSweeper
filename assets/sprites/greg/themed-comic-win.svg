@@ -39,7 +39,6 @@
       fill="#4d9e57" stroke="#1d1812" stroke-width="3.2"/>
 <path d="M14 38 C18 43.5 27 45.5 32 45.5 C37 45.5 46 43.5 50 38 C47 44 39 46.5 32 46.5 C25 46.5 17 44 14 38 Z"
       fill="#1d1812"/>
-<path d="M18 27 Q32 21 46 27" fill="none" stroke="#1d1812" stroke-width="1.4" opacity="0.85"/>
 <!-- Grin -->
 <path d="M25 34 Q32 42.5 39 34 Z" fill="#1d1812" stroke="#1d1812" stroke-width="2" stroke-linejoin="round"/>
 <path d="M28.5 38 Q32 40.5 35.5 38 Q33.5 40 32 40 Q30.5 40 28.5 38 Z" fill="#c0392b"/>

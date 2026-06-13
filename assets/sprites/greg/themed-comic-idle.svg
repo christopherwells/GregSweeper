@@ -40,8 +40,6 @@
 <!-- Spot black: shadow crescent along the lower shell -->
 <path d="M14 35 C18 40.5 27 42.5 32 42.5 C37 42.5 46 40.5 50 35 C47 41 39 43.5 32 43.5 C25 43.5 17 41 14 35 Z"
       fill="#1d1812"/>
-<!-- Thin interior stroke: shell ridge -->
-<path d="M18 24 Q32 18 46 24" fill="none" stroke="#1d1812" stroke-width="1.4" opacity="0.85"/>
 <!-- Open smile, solid black with tongue -->
 <path d="M27 31 Q32 38 37 31 Z" fill="#1d1812" stroke="#1d1812" stroke-width="1.8" stroke-linejoin="round"/>
 <path d="M29.5 34 Q32 36 34.5 34 Q33 35.6 32 35.6 Q31 35.6 29.5 34 Z" fill="#c0392b"/>

@@ -19,6 +19,4 @@
 <path d="M8.7 24.7 L12.3 28.3 M12.3 24.7 L8.7 28.3" stroke="#ffb347" stroke-width="1.5" stroke-linecap="round"/>
 <circle cx="20.5" cy="24" r="4.2" fill="#5a4a42" stroke="#120b08" stroke-width="2"/>
 <path d="M18.7 22.2 L22.3 25.8 M22.3 22.2 L18.7 25.8" stroke="#ffb347" stroke-width="1.5" stroke-linecap="round"/>
-<!-- Embers resting on the ground beside him -->
-<g fill="#a8431a"><circle cx="49" cy="55" r="1.6"/><circle cx="53" cy="57" r="1.2"/><circle cx="45" cy="57" r="1"/></g>
 </svg>

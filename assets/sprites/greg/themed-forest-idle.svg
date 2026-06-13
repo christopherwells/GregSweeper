@@ -23,13 +23,13 @@
 <!-- Acorn claws -->
 <g transform="rotate(28 14 21)"><ellipse cx="14" cy="21.5" rx="5" ry="4.4" fill="#a9743f" stroke="#6b4a2e" stroke-width="2"/><path d="M9 19.5 L19 19.5" stroke="#7a4f28" stroke-width="2.2"/><path d="M14 17 L14 15" stroke="#6b4a2e" stroke-width="1.6" stroke-linecap="round"/></g>
 <g transform="rotate(-35 54 22)"><ellipse cx="54" cy="22.5" rx="5.4" ry="4.6" fill="#a9743f" stroke="#6b4a2e" stroke-width="2"/><path d="M48.5 20.5 L59.5 20.5" stroke="#7a4f28" stroke-width="2.2"/></g>
-<!-- Leaf shell with central vein and ribs -->
+<!-- Leaf shell: two-tone halves split at the midrib, ribs spanning the whole leaf -->
 <path d="M11 31 C11 23 18 16 32 15 C46 16 53 23 53 31 C53 38 45 43 32 43 C19 43 11 38 11 31 Z"
-      fill="#6aa84f" stroke="#3f6b2e" stroke-width="2.4"/>
-<path d="M32 15 C40 16 46 22 47 30 C46 38 40 42 32 42.5 Z" fill="#5c9a44"/>
-<g fill="none" stroke="#3f6b2e" stroke-width="1.3" stroke-linecap="round" opacity="0.8">
-  <path d="M32 16 L32 42"/>
-  <path d="M32 22 L22 19 M32 22 L42 19 M32 29 L19 28 M32 29 L45 28 M32 36 L23 38 M32 36 L41 38"/>
+      fill="#79bd5b" stroke="#3f6b2e" stroke-width="2.4"/>
+<path d="M32 15 C46 16 53 23 53 31 C53 38 45 43 32 43 Z" fill="#4d8a3a"/>
+<g fill="none" stroke="#2f5722" stroke-width="1.3" stroke-linecap="round" opacity="0.85">
+  <path d="M32 15.5 L32 42.5"/>
+  <path d="M32 20 L14 17 M32 20 L50 17 M32 27 L11.5 27 M32 27 L52.5 27 M32 34 L15 38 M32 34 L49 38"/>
 </g>
 <!-- Smile -->
 <path d="M27.5 32 Q32 36.5 36.5 32" fill="none" stroke="#3f6b2e" stroke-width="2" stroke-linecap="round"/>
