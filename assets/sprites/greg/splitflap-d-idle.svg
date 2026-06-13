@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Splitflap airplane D: a side-profile plane in flight, nose to the right, a propeller up front, clouds below. -->
+<!-- Clouds drifting -->
+<g fill="#c8d2dc" opacity="0.5"><ellipse cx="14" cy="52" rx="8" ry="3"/><ellipse cx="46" cy="56" rx="9" ry="3.5"/></g>
+<!-- Tail at the left -->
+<path d="M10 30 L4 22 L8 23 L12 28 Z" fill="#9aa4b0" stroke="#3a4350" stroke-width="2" stroke-linejoin="round"/>
+<path d="M10 34 L3 36 L9 38 Z" fill="#9aa4b0" stroke="#3a4350" stroke-width="2" stroke-linejoin="round"/>
+<!-- Wing -->
+<path d="M28 33 L18 44 L26 42 L36 34 Z" fill="#b8c0ca" stroke="#3a4350" stroke-width="2" stroke-linejoin="round"/>
+<!-- Fuselage, horizontal, nose right -->
+<path d="M9 31 C9 26 16 26 26 26 C40 26 50 28 53 31 C50 34 40 36 26 36 C16 36 9 36 9 31 Z" fill="#eef2f6" stroke="#3a4350" stroke-width="2.4"/>
+<path d="M11 32.5 Q30 33.5 50 31.5" stroke="#e0466b" stroke-width="1.8" fill="none"/>
+<!-- cabin windows -->
+<g fill="#3a78c8"><circle cx="20" cy="31" r="1"/><circle cx="25" cy="31" r="1"/><circle cx="30" cy="31" r="1"/></g>
+<!-- Propeller spinner at the nose (right) -->
+<g transform="rotate(90 54 31)"><path d="M54 25 L54 37 M48 31 L60 31" stroke="#3a4350" stroke-width="2.4" stroke-linecap="round"/></g>
+<circle cx="54" cy="31" r="2.2" fill="#3a4350"/>
+<!-- One eye + smile facing us, on the nose -->
+<circle cx="44" cy="30" r="3.4" fill="#bfe0f0" stroke="#3a4350" stroke-width="2"/>
+<circle cx="45" cy="30.5" r="1.3" fill="#3a4350"/>
+<path d="M40 34 Q44 36.5 48 34" fill="none" stroke="#3a4350" stroke-width="1.8" stroke-linecap="round"/>
+<!-- Gear tucked -->
+<g fill="#2a2d36" stroke="#3a4350" stroke-width="1.1"><circle cx="30" cy="38" r="2.2"/></g>
+<path d="M30 36 L30 37" stroke="#3a4350" stroke-width="1.3"/>
+</svg>

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Splitflap airplane E: a chunky cartoon prop plane, a big friendly nose-face, stubby wings. -->
+<!-- Stubby swept wings -->
+<path d="M16 33 L4 36 L6 41 L18 38 Z" fill="#b8c0ca" stroke="#3a4350" stroke-width="2.2" stroke-linejoin="round"/>
+<path d="M48 33 L60 36 L58 41 L46 38 Z" fill="#b8c0ca" stroke="#3a4350" stroke-width="2.2" stroke-linejoin="round"/>
+<!-- Tail fin -->
+<path d="M29 16 L35 16 L33 8 L31 8 Z" fill="#9aa4b0" stroke="#3a4350" stroke-width="2.2" stroke-linejoin="round"/>
+<!-- Big rounded nose-body -->
+<path d="M12 32 C12 22 19 15 32 15 C45 15 52 22 52 32 C52 42 44 47 32 47 C20 47 12 42 12 32 Z" fill="#eef2f6" stroke="#3a4350" stroke-width="2.6"/>
+<path d="M12 36 C18 43 26 45 32 45 C38 45 46 43 52 36 C49 41 41 42.5 32 42.5 C23 42.5 15 41 12 36 Z" fill="#3a78c8"/>
+<!-- Big cockpit eyes -->
+<circle cx="23" cy="26" r="4.4" fill="#bfe0f0" stroke="#3a4350" stroke-width="2.2"/>
+<circle cx="41" cy="26" r="4.4" fill="#bfe0f0" stroke="#3a4350" stroke-width="2.2"/>
+<circle cx="24" cy="26.6" r="1.8" fill="#3a4350"/><circle cx="42" cy="26.6" r="1.8" fill="#3a4350"/>
+<path d="M21 24.5 L23 23.5" stroke="#fff" stroke-width="1.1" stroke-linecap="round"/>
+<!-- Big smile -->
+<path d="M26 34 Q32 38 38 34" fill="none" stroke="#3a4350" stroke-width="2.2" stroke-linecap="round"/>
+<!-- Nose propeller -->
+<g transform="rotate(20 32 47)"><path d="M32 41 L32 53 M26 47 L38 47" stroke="#3a4350" stroke-width="2.6" stroke-linecap="round"/></g>
+<circle cx="32" cy="47" r="2.4" fill="#3a4350"/>
+<!-- Gear -->
+<g fill="#2a2d36" stroke="#3a4350" stroke-width="1.3"><circle cx="22" cy="49" r="2.6"/><circle cx="42" cy="49" r="2.6"/></g>
+</svg>

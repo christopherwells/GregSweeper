@@ -12,16 +12,16 @@
 </g>
 <!-- Open raised claws -->
 <path d="M12.5 25 C7 25 4.5 20 7.5 15.5 L11 18.5 L10 13 C15 11.5 18.5 16 17 21 C16 24 15 25 12.5 25 Z"
-      fill="#3a3a42" stroke="#ececed" stroke-width="2.2" stroke-linejoin="round"/>
+      fill="#54545e" stroke="#ececed" stroke-width="2.2" stroke-linejoin="round"/>
 <path d="M51.5 25 C57 25 59.5 20 56.5 15.5 L53 18.5 L54 13 C49 11.5 45.5 16 47 21 C48 24 49 25 51.5 25 Z"
-      fill="#3a3a42" stroke="#ececed" stroke-width="2.2" stroke-linejoin="round"/>
-<!-- Shell base -->
+      fill="#54545e" stroke="#ececed" stroke-width="2.2" stroke-linejoin="round"/>
+<!-- Shell base, fully filled grey -->
 <path d="M11 34 C11 27 16 22 22 20.5 Q27 18 32 18 Q37 18 42 20.5 C48 22 53 27 53 34 C53 41 45 46 32 46 C19 46 11 41 11 34 Z"
-      fill="#3a3a42"/>
+      fill="#54545e"/>
 <clipPath id="noirShellW"><path d="M11 34 C11 27 16 22 22 20.5 Q27 18 32 18 Q37 18 42 20.5 C48 22 53 27 53 34 C53 41 45 46 32 46 C19 46 11 41 11 34 Z"/></clipPath>
 <g clip-path="url(#noirShellW)">
-  <path d="M36 15 L60 41 L60 15 Z" fill="#121216"/>
-  <g stroke="#0c0c10" stroke-width="2.4" opacity="0.5">
+  <path d="M36 15 L60 41 L60 15 Z" fill="#34343c"/>
+  <g stroke="#26262e" stroke-width="2.4" opacity="0.65">
     <path d="M8 25 L56 25"/>
     <path d="M8 31 L56 31"/>
     <path d="M8 37 L56 37"/>
