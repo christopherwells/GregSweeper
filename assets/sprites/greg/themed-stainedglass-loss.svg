@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Stainedglass Greg, loss: leaded glass crab flipped on his back, one pane carrying thin white crack lines. -->
+<g fill="none" stroke="#26262e" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M21 35 L17 28 L19 23"/>
+  <path d="M27.5 34 L25.5 26 L28.5 21"/>
+  <path d="M36.5 34 L38.5 26 L35.5 21"/>
+  <path d="M43 35 L47 28 L45 23"/>
+  <path d="M15 39 L9 36"/>
+  <path d="M49 39 L55 36"/>
+  <path d="M17 37 L11.5 30"/>
+  <path d="M22.5 36 L21 27.5"/>
+</g>
+<g fill="none" stroke="#6fb87a" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M21 35 L17 28 L19 23"/>
+  <path d="M27.5 34 L25.5 26 L28.5 21"/>
+  <path d="M36.5 34 L38.5 26 L35.5 21"/>
+  <path d="M43 35 L47 28 L45 23"/>
+  <path d="M15 39 L9 36"/>
+  <path d="M49 39 L55 36"/>
+  <path d="M17 37 L11.5 30"/>
+  <path d="M22.5 36 L21 27.5"/>
+</g>
+<ellipse cx="6.5" cy="33.5" rx="5.2" ry="4.2" fill="#4f9e5c" stroke="#26262e" stroke-width="2.2" transform="rotate(-30 6.5 33.5)"/>
+<ellipse cx="57.5" cy="33.5" rx="5.2" ry="4.2" fill="#4f9e5c" stroke="#26262e" stroke-width="2.2" transform="rotate(30 57.5 33.5)"/>
+<path d="M12 37 L24 37 L24 49.9 C17 47.8 12 42.5 12 38 Z" fill="#3a7d49" stroke="#26262e" stroke-width="2.6"/>
+<path d="M24 37 L40 37 L40 49.9 Q32 51.8 24 49.9 Z" fill="#4f9e5c" stroke="#26262e" stroke-width="2.6"/>
+<path d="M40 37 L52 37 L52 38 C52 42.5 47 47.8 40 49.9 Z" fill="#6fb87a" stroke="#26262e" stroke-width="2.6"/>
+<ellipse cx="32" cy="37" rx="20" ry="4" fill="#d9a73a" stroke="#26262e" stroke-width="2.4"/>
+<path d="M12 38 C12 42 15 46 20 48.5 Q26 51 32 51 Q38 51 44 48.5 C49 46 52 42 52 38 L52 37 L12 37 Z"
+      fill="none" stroke="#26262e" stroke-width="3"/>
+<path d="M28 42 L31 45.5 L29.5 49 M31 45.5 L34.5 47" fill="none" stroke="#ffffff" stroke-width="1" stroke-linecap="round" opacity="0.7"/>
+<circle cx="10.5" cy="26.5" r="4.2" fill="#ffffff" stroke="#26262e" stroke-width="2.2"/>
+<path d="M8.8 24.8 L12.2 28.2 M12.2 24.8 L8.8 28.2" stroke="#26262e" stroke-width="1.6" stroke-linecap="round"/>
+<circle cx="20.5" cy="24" r="4.2" fill="#ffffff" stroke="#26262e" stroke-width="2.2"/>
+<path d="M18.8 22.3 L22.2 25.7 M22.2 22.3 L18.8 25.7" stroke="#26262e" stroke-width="1.6" stroke-linecap="round"/>
+<g transform="rotate(10 50 57)">
+  <rect x="40" y="53" width="17" height="9" rx="1" fill="#6fb87a" stroke="#26262e" stroke-width="2.2"/>
+  <path d="M48.5 53 L48.5 62 M40 57.5 L57 57.5" stroke="#26262e" stroke-width="1.8"/>
+</g>
+</svg>

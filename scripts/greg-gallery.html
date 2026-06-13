@@ -44,14 +44,12 @@ three-direction round is kept underneath for reference.</p>
 wide-set eyes too much; antennae and sheen dropped because they do not read
 at the sizes that matter. This is what the live sprite slots carry.</p>
 <div id="current"></div>
-<h2>Per-theme Greg: the character in each world's material</h2>
-<p class="note">Seven worlds, all three poses, each drawn in the same material
-language as that world's mine and flag. Round 2 corrections: sumi-e rebuilt
-as one loaded press with tonal gradation and white space; blueprint is a
-solid contour (dashes mean hidden edges); comic re-inked with spot blacks
-and varied line weight, no screen tone. The THEME_SPRITES registry already
-accepts smiley slots, so shipping a world is one registry line. Nothing is
-wired yet.</p>
+<h2>Per-theme Greg: all 24 worlds, every pose</h2>
+<p class="note">Greg redrawn in each world's own material, on that world's true
+board color, idle / win / loss. Listed in unlock order. The THEME_SPRITES
+registry already accepts smiley slots, so shipping a world is one registry
+line per world. Nothing is wired into the game yet; this is the art for
+your review.</p>
 <div id="themed"></div>
 <h2>Stage 3: micro-variants on the blend</h2>
 <p class="note">One change each, against the a7 base. Open smile (b) won;
@@ -67,13 +65,30 @@ and pencil. Win and loss poses derive from the same body.</p>
 <div id="out"></div>
 <script>
 const THEMED = [
-  ['themed-chalkboard', '#2e4038', 'Chalkboard: doubled chalk line, hatch shading, yellow chalk accents'],
-  ['themed-blueprint', '#0c2a47', 'Blueprint: solid drafted contour, drafted asterisk sparks'],
-  ['themed-comic', '#f5efdf', 'Comic: heavy ink, flat color, spot blacks, varied line weight'],
-  ['themed-sumie', '#f2ede1', 'Sumi-e: one loaded press, tonal gradation, paper reserves, the hanko'],
-  ['themed-editorial', '#f0ece2', 'Editorial: press ink, paper-reserve face, splatter, pen nib'],
-  ['themed-cartography', '#e6d5ac', 'Cartography: sepia chart beast on the swell, red ink accents'],
-  ['themed-galaxy', '#0b0714', 'Galaxy: a constellation, star nodes at the joints, the eyes brightest'],
+  ['themed-editorial', '#ddd6c8', 'Editorial: press ink, paper-reserve face, splatter, pen nib'],
+  ['themed-sumie', '#e6dfce', 'Sumi-e: one loaded press, tonal gradation, paper reserves, the hanko'],
+  ['themed-blueprint', '#08203a', 'Blueprint: solid drafted contour, drafted asterisk sparks'],
+  ['themed-cartography', '#c9b896', 'Cartography: sepia chart beast on the swell, red ink accents'],
+  ['themed-origami', '#e6e2da', 'Origami: folded-paper facets, crease lines, a launched crane on win'],
+  ['themed-chalkboard', '#283832', 'Chalkboard: doubled chalk line, hatch shading, yellow chalk accents'],
+  ['themed-noir', '#14141a', 'Noir: chiaroscuro + venetian blinds, a magnifier, a chalk-outline loss'],
+  ['themed-ocean', '#1b3a4b', 'Ocean: brass-rimmed porthole, bioluminescence, bubbles, a dive slate'],
+  ['themed-forest', '#2d3a2e', 'Forest: a leaf-shell with veins, twig legs, acorn claws, a toadstool loss'],
+  ['themed-sakura', '#12101e', 'Sakura: a blossom-petal carapace on twig legs, a paper tag'],
+  ['themed-apothecary', '#1c140b', 'Apothecary: gold-ink engraving, hatched shading, a ruled label'],
+  ['themed-splitflap', '#161616', 'Split-flap: a mosaic of departure-board tiles, one yellow flap'],
+  ['themed-stainedglass', '#0e0b16', 'Stained glass: leaded glass panes, one amber face pane'],
+  ['themed-aurora', '#0b1628', 'Aurora: northern-lights ribbon strokes, a light tablet'],
+  ['themed-galaxy', '#0a0015', 'Galaxy: a constellation, star nodes at the joints, the eyes brightest'],
+  ['themed-candy', '#fff0f5', 'Candy: glossy shell, peppermint swirl, sprinkles, a lollipop, a melt loss'],
+  ['themed-comic', '#d8ccb0', 'Comic: heavy ink, flat color, spot blacks, varied line weight, a POW loss'],
+  ['themed-circuitboard', '#0a2418', 'Circuit: copper traces, solder pads, an IC, LED eyes, magic-smoke loss'],
+  ['themed-matrix', '#000000', 'Matrix: a crab of digital rain, glyph columns, red-corruption loss'],
+  ['themed-neon', '#0a0a0a', 'Neon: bent-tube sign with glow, mounting studs, a dead-tube loss'],
+  ['themed-synthwave', '#0a0020', 'Synthwave: sunset gradient + scanlines, a grid, a cassette, chrome triangle'],
+  ['themed-inferno', '#0d0000', 'Inferno: obsidian veined with lava, embers, ember eyes, flame claws on win'],
+  ['themed-supernova', '#1a0808', 'Supernova: a burning star-core shell, burst rays, a violet-collapse loss'],
+  ['themed-legendary', '#0e0618', 'Legendary: heraldic gold crest, red banner, a crown on win'],
 ];
 const themed = document.getElementById('themed');
 const tt = document.createElement('table');

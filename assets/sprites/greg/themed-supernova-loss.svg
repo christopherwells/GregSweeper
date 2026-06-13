@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Supernova Greg, loss: the star collapses. Flipped, rays drooping inward, the core dimmed to violet, faint X eyes. -->
+<g fill="none" stroke="#8a7aa0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M21 35 L17 28 L19 23"/><path d="M27.5 34 L25.5 26 L28.5 21"/><path d="M36.5 34 L38.5 26 L35.5 21"/><path d="M43 35 L47 28 L45 23"/>
+  <path d="M15 39 L9 36"/><path d="M49 39 L55 36"/>
+</g>
+<path d="M9 33 L16 31 L13 35 Z" fill="#6b4e8a"/>
+<path d="M55 33 L48 31 L51 35 Z" fill="#6b4e8a"/>
+<!-- Collapsing inward rays around the overturned core -->
+<g fill="#6b4e8a" opacity="0.85">
+  <path d="M32 51 L29 43 L35 43 Z"/><path d="M16 47 L24 41 L21 44 Z"/><path d="M48 47 L40 41 L43 44 Z"/>
+  <path d="M12 38 L22 39 L18 41 Z"/><path d="M52 38 L42 39 L46 41 Z"/>
+</g>
+<!-- Dimmed overturned core -->
+<path d="M14 38 C14 42 17 46 22 48 Q27 50 32 50 Q37 50 42 48 C47 46 50 42 50 38 L50 37 L14 37 Z" fill="#6b4e8a" stroke="#4a3560" stroke-width="2.2" stroke-linejoin="round"/>
+<ellipse cx="32" cy="37" rx="18" ry="3.6" fill="#8a7aa0"/>
+<g fill="none" stroke="#8a7aa0" stroke-width="2" stroke-linecap="round">
+  <path d="M17 37 L11.5 30"/><path d="M22.5 36 L21 27.5"/>
+</g>
+<circle cx="10.5" cy="26.5" r="3.8" fill="#3a2c4e"/>
+<path d="M8.9 24.9 L12.1 28.1 M12.1 24.9 L8.9 28.1" stroke="#cdbfe0" stroke-width="1.4" stroke-linecap="round"/>
+<circle cx="20.5" cy="24" r="3.8" fill="#3a2c4e"/>
+<path d="M18.9 22.4 L22.1 25.6 M22.1 22.4 L18.9 25.6" stroke="#cdbfe0" stroke-width="1.4" stroke-linecap="round"/>
+</svg>

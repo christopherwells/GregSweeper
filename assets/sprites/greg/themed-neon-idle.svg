@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Neon Greg, idle: a bent-tube sign, pink shell and cyan limbs with glow, mounting studs, a neon-sign slate. -->
+<!-- GLOW underlays -->
+<g fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.3">
+  <g stroke="#41e0e8" stroke-width="6">
+    <path d="M19 41 Q15 47 11 52"/><path d="M24 43.5 Q20 50 19 55"/><path d="M45 41 Q49 47 53 52"/><path d="M40 43.5 Q44 50 45 55"/>
+    <path d="M17 32 Q14 29 12 27"/><path d="M47 32 Q50 29 52 26"/>
+    <path d="M25 18.5 Q24 15 23 12.5"/><path d="M39 18.5 Q40 15 41 12.5"/>
+  </g>
+  <path d="M11 31 C11 24 16 19 22 17.5 Q27 15 32 15 Q37 15 42 17.5 C48 19 53 24 53 31 C53 38 45 43 32 43 C19 43 11 38 11 31 Z" stroke="#ff4fa3" stroke-width="6"/>
+</g>
+<!-- Cyan tube limbs -->
+<g fill="none" stroke="#41e0e8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M19 41 Q15 47 11 52"/><path d="M24 43.5 Q20 50 19 55"/><path d="M45 41 Q49 47 53 52"/><path d="M40 43.5 Q44 50 45 55"/>
+  <path d="M17 32 Q14 29 12 27"/><path d="M47 32 Q50 29 52 26"/>
+  <path d="M25 18.5 Q24 15 23 12.5"/><path d="M39 18.5 Q40 15 41 12.5"/>
+</g>
+<!-- Pink tube shell -->
+<path d="M11 31 C11 24 16 19 22 17.5 Q27 15 32 15 Q37 15 42 17.5 C48 19 53 24 53 31 C53 38 45 43 32 43 C19 43 11 38 11 31 Z"
+      fill="none" stroke="#ff4fa3" stroke-width="2.6"/>
+<!-- Mounting studs -->
+<g fill="#5a5a66"><circle cx="14" cy="22" r="0.9"/><circle cx="50" cy="22" r="0.9"/><circle cx="32" cy="15.5" r="0.9"/><circle cx="13" cy="36" r="0.9"/><circle cx="51" cy="36" r="0.9"/></g>
+<!-- Cyan eyes with glow -->
+<circle cx="22.5" cy="9.5" r="3.6" fill="#41e0e8" opacity="0.3"/>
+<circle cx="41.5" cy="9.5" r="3.6" fill="#41e0e8" opacity="0.3"/>
+<circle cx="22.5" cy="9.5" r="2.1" fill="none" stroke="#9af4f8" stroke-width="1.8"/>
+<circle cx="41.5" cy="9.5" r="2.1" fill="none" stroke="#9af4f8" stroke-width="1.8"/>
+<!-- Claws (cyan tube loops) -->
+<ellipse cx="14" cy="21" rx="5.2" ry="4.2" fill="none" stroke="#41e0e8" stroke-width="2.2" transform="rotate(28 14 21)"/>
+<ellipse cx="54" cy="22" rx="5.6" ry="4.4" fill="none" stroke="#41e0e8" stroke-width="2.2" transform="rotate(-35 54 22)"/>
+<!-- Smile tube -->
+<path d="M27.5 31.5 Q32 36.5 36.5 31.5" fill="none" stroke="#ff4fa3" stroke-width="2.2" stroke-linecap="round"/>
+<!-- Neon-sign slate -->
+<g transform="rotate(-10 8 31)">
+  <rect x="2" y="21" width="12" height="16" rx="2" fill="none" stroke="#41e0e8" stroke-width="1.8"/>
+  <path d="M4.5 27 L11.5 27 M4.5 31 L9 31" stroke="#ff4fa3" stroke-width="1.4" stroke-linecap="round"/>
+</g>
+</svg>

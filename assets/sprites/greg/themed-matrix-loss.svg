@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Matrix Greg, loss: the code corrupts. Flipped, the rain glitching red, X eyes as error cells. -->
+<g fill="none" stroke="#1f7a3a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M21 35 L17 28 L19 23"/>
+  <path d="M27.5 34 L25.5 26 L28.5 21"/>
+  <path d="M36.5 34 L38.5 26 L35.5 21"/>
+  <path d="M43 35 L47 28 L45 23"/>
+  <path d="M15 39 L9 36"/>
+  <path d="M49 39 L55 36"/>
+</g>
+<ellipse cx="6.5" cy="33.5" rx="5" ry="4.2" fill="#03140a" stroke="#1f7a3a" stroke-width="1.8" transform="rotate(-30 6.5 33.5)"/>
+<ellipse cx="57.5" cy="33.5" rx="5" ry="4.2" fill="#03140a" stroke="#1f7a3a" stroke-width="1.8" transform="rotate(30 57.5 33.5)"/>
+<!-- Overturned shell -->
+<path d="M12 38 C12 42 15 46 20 48.5 Q26 51 32 51 Q38 51 44 48.5 C49 46 52 42 52 38 L52 37 L12 37 Z"
+      fill="#03140a" stroke="#1f7a3a" stroke-width="2" stroke-linejoin="round"/>
+<ellipse cx="32" cy="37" rx="20" ry="4" fill="#0a2414" stroke="#1f7a3a" stroke-width="1.6"/>
+<!-- Glitch marks: green going red -->
+<g stroke-width="2" stroke-linecap="round">
+  <path d="M22 41 L22 43" stroke="#33ff66" opacity="0.5"/>
+  <path d="M28 42 L28 44" stroke="#ff3b3b"/>
+  <path d="M36 41 L36 43" stroke="#33ff66" opacity="0.5"/>
+  <path d="M42 42 L42 44" stroke="#ff3b3b"/>
+</g>
+<!-- Flopped stalks + error X cells -->
+<g fill="none" stroke="#1f7a3a" stroke-width="1.6" stroke-linecap="round">
+  <path d="M17 37 L11.5 30"/>
+  <path d="M22.5 36 L21 27.5"/>
+</g>
+<rect x="7" y="23" width="7" height="7" rx="0.6" fill="#03140a" stroke="#ff3b3b" stroke-width="1.4"/>
+<path d="M8.5 24.5 L12.5 28.5 M12.5 24.5 L8.5 28.5" stroke="#ff3b3b" stroke-width="1.4" stroke-linecap="round"/>
+<rect x="17" y="20.5" width="7" height="7" rx="0.6" fill="#03140a" stroke="#ff3b3b" stroke-width="1.4"/>
+<path d="M18.5 22 L22.5 26 M22.5 22 L18.5 26" stroke="#ff3b3b" stroke-width="1.4" stroke-linecap="round"/>
+</svg>

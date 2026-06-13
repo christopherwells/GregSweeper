@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Neon Greg, win: tubes raised, a pink neon star kindled above, the whole sign blazing. -->
+<g fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.3">
+  <g stroke="#41e0e8" stroke-width="6">
+    <path d="M19 44 Q15 50 11 55"/><path d="M24 46.5 Q20 53 19 58"/><path d="M45 44 Q49 50 53 55"/><path d="M40 46.5 Q44 53 45 58"/>
+    <path d="M18 34 Q15 29 13.5 25"/><path d="M46 34 Q49 29 50.5 25"/>
+    <path d="M25 21.5 Q24 18 23 15.5"/><path d="M39 21.5 Q40 18 41 15.5"/>
+  </g>
+  <path d="M11 34 C11 27 16 22 22 20.5 Q27 18 32 18 Q37 18 42 20.5 C48 22 53 27 53 34 C53 41 45 46 32 46 C19 46 11 41 11 34 Z" stroke="#ff4fa3" stroke-width="6"/>
+</g>
+<g fill="none" stroke="#41e0e8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M19 44 Q15 50 11 55"/><path d="M24 46.5 Q20 53 19 58"/><path d="M45 44 Q49 50 53 55"/><path d="M40 46.5 Q44 53 45 58"/>
+  <path d="M18 34 Q15 29 13.5 25"/><path d="M46 34 Q49 29 50.5 25"/>
+  <path d="M25 21.5 Q24 18 23 15.5"/><path d="M39 21.5 Q40 18 41 15.5"/>
+</g>
+<!-- Open tube claws raised -->
+<path d="M13.5 25 C8.5 24 6 19 9.5 15 L12.5 18 L12 12.5 C17 12 19.5 16.5 17.5 21 C16.5 24 15.5 25.5 13.5 25 Z"
+      fill="none" stroke="#41e0e8" stroke-width="2.2"/>
+<path d="M50.5 25 C55.5 24 58 19 54.5 15 L51.5 18 L52 12.5 C47 12 44.5 16.5 46.5 21 C47.5 24 48.5 25.5 50.5 25 Z"
+      fill="none" stroke="#41e0e8" stroke-width="2.2"/>
+<path d="M11 34 C11 27 16 22 22 20.5 Q27 18 32 18 Q37 18 42 20.5 C48 22 53 27 53 34 C53 41 45 46 32 46 C19 46 11 41 11 34 Z"
+      fill="none" stroke="#ff4fa3" stroke-width="2.6"/>
+<!-- Eyes -->
+<circle cx="22.5" cy="12.5" r="3.6" fill="#41e0e8" opacity="0.3"/>
+<circle cx="41.5" cy="12.5" r="3.6" fill="#41e0e8" opacity="0.3"/>
+<path d="M20.5 12.5 Q22.5 10 24.5 12.5" fill="none" stroke="#9af4f8" stroke-width="1.8" stroke-linecap="round"/>
+<path d="M39.5 12.5 Q41.5 10 43.5 12.5" fill="none" stroke="#9af4f8" stroke-width="1.8" stroke-linecap="round"/>
+<!-- Grin tube -->
+<path d="M26 34 Q32 40 38 34" fill="none" stroke="#ff4fa3" stroke-width="2.4" stroke-linecap="round"/>
+<!-- Neon star above -->
+<path transform="translate(32 7)" d="M0,-6 L1.76,-1.85 L5.71,-1.85 L2.85,0.71 L3.53,4.85 L0,2.4 L-3.53,4.85 L-2.85,0.71 L-5.71,-1.85 L-1.76,-1.85 Z" fill="#ff4fa3" opacity="0.3"/>
+<path transform="translate(32 7)" d="M0,-6 L1.76,-1.85 L5.71,-1.85 L2.85,0.71 L3.53,4.85 L0,2.4 L-3.53,4.85 L-2.85,0.71 L-5.71,-1.85 L-1.76,-1.85 Z" fill="none" stroke="#ff8fc4" stroke-width="1.6" stroke-linejoin="round"/>
+</svg>

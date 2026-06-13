@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Sakura Greg, win: blossom crab with petal claws thrown open, two loose petals drifting beside him. -->
+<g fill="none" stroke="#7a5a48" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M19 44 L13 50 L11 55"/>
+  <path d="M24 46.5 L20 53 L19 58"/>
+  <path d="M45 44 L51 50 L53 55"/>
+  <path d="M40 46.5 L44 53 L45 58"/>
+</g>
+<g fill="none" stroke="#7a5a48" stroke-width="2.2" stroke-linecap="round">
+  <path d="M18 34 L13.5 25"/>
+  <path d="M46 34 L50.5 25"/>
+  <path d="M25.5 23.5 L23 15.5"/>
+  <path d="M38.5 23.5 L41 15.5"/>
+</g>
+<path d="M12.5 25 C7 25 4.5 20 7.5 15.5 L11 18.5 L10 13 C15 11.5 18.5 16 17 21 C16 24 15 25 12.5 25 Z"
+      fill="#f4a7bd" stroke="#e07e9d" stroke-width="1.6" stroke-linejoin="round"/>
+<path d="M51.5 25 C57 25 59.5 20 56.5 15.5 L53 18.5 L54 13 C49 11.5 45.5 16 47 21 C48 24 49 25 51.5 25 Z"
+      fill="#f4a7bd" stroke="#e07e9d" stroke-width="1.6" stroke-linejoin="round"/>
+<g fill="#f4a7bd" stroke="#e07e9d" stroke-width="1.6">
+  <ellipse cx="20" cy="30" rx="9" ry="7" transform="rotate(18 20 30)"/>
+  <ellipse cx="44" cy="30" rx="9" ry="7" transform="rotate(-18 44 30)"/>
+  <ellipse cx="25" cy="39" rx="8.5" ry="7" transform="rotate(-50 25 39)"/>
+  <ellipse cx="39" cy="39" rx="8.5" ry="7" transform="rotate(50 39 39)"/>
+  <ellipse cx="32" cy="24.5" rx="7" ry="9"/>
+</g>
+<circle cx="32" cy="31.2" r="2.2" fill="#d96a8e"/>
+<path d="M25 34 Q32 42 39 34 Z" fill="#d96a8e" stroke="#7a5a48" stroke-width="1.6" stroke-linejoin="round"/>
+<circle cx="22.5" cy="12.5" r="4.2" fill="#ffffff" stroke="#7a5a48" stroke-width="2"/>
+<circle cx="41.5" cy="12.5" r="4.2" fill="#ffffff" stroke="#7a5a48" stroke-width="2"/>
+<path d="M20 13.5 Q22.5 10.5 25 13.5" fill="none" stroke="#4a3328" stroke-width="1.8" stroke-linecap="round"/>
+<path d="M39 13.5 Q41.5 10.5 44 13.5" fill="none" stroke="#4a3328" stroke-width="1.8" stroke-linecap="round"/>
+<ellipse cx="7" cy="9" rx="3.4" ry="2.2" fill="#f4a7bd" stroke="#e07e9d" stroke-width="1.2" transform="rotate(-30 7 9)"/>
+<ellipse cx="56.5" cy="8" rx="3.4" ry="2.2" fill="#f4a7bd" stroke="#e07e9d" stroke-width="1.2" transform="rotate(25 56.5 8)"/>
+</svg>

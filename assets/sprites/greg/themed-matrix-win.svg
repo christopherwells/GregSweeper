@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Matrix Greg, win: claws up, the rain surges bright, a glowing 1 0 cascade. -->
+<g fill="none" stroke="#1f7a3a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M19 44 L13 50 L11 55"/>
+  <path d="M24 46.5 L20 53 L19 58"/>
+  <path d="M45 44 L51 50 L53 55"/>
+  <path d="M40 46.5 L44 53 L45 58"/>
+  <path d="M18 34 L13.5 25"/>
+  <path d="M46 34 L50.5 25"/>
+  <path d="M25 21.5 L23 15.5"/>
+  <path d="M39 21.5 L41 15.5"/>
+</g>
+<path d="M12.5 25 C7 25 4.5 20 7.5 15.5 L11 18.5 L10 13 C15 11.5 18.5 16 17 21 C16 24 15 25 12.5 25 Z"
+      fill="#03140a" stroke="#33ff66" stroke-width="1.8" stroke-linejoin="round"/>
+<path d="M51.5 25 C57 25 59.5 20 56.5 15.5 L53 18.5 L54 13 C49 11.5 45.5 16 47 21 C48 24 49 25 51.5 25 Z"
+      fill="#03140a" stroke="#33ff66" stroke-width="1.8" stroke-linejoin="round"/>
+<rect x="19.5" y="9.5" width="6" height="6" rx="0.6" fill="#03140a" stroke="#33ff66" stroke-width="1.4"/>
+<rect x="38.5" y="9.5" width="6" height="6" rx="0.6" fill="#03140a" stroke="#33ff66" stroke-width="1.4"/>
+<path d="M21 12.5 Q22.5 10.5 24 12.5" fill="none" stroke="#9dffb8" stroke-width="1.5" stroke-linecap="round"/>
+<path d="M40 12.5 Q41.5 10.5 43 12.5" fill="none" stroke="#9dffb8" stroke-width="1.5" stroke-linecap="round"/>
+<path d="M11 34 C11 27 16 22 22 20.5 Q27 18 32 18 Q37 18 42 20.5 C48 22 53 27 53 34 C53 41 45 46 32 46 C19 46 11 41 11 34 Z"
+      fill="#03140a" stroke="#1f7a3a" stroke-width="2"/>
+<clipPath id="mxShellW"><path d="M11 34 C11 27 16 22 22 20.5 Q27 18 32 18 Q37 18 42 20.5 C48 22 53 27 53 34 C53 41 45 46 32 46 C19 46 11 41 11 34 Z"/></clipPath>
+<g clip-path="url(#mxShellW)" stroke="#9dffb8" stroke-width="2" stroke-linecap="round">
+  <path d="M17 22 L17 25"/><path d="M24 26 L24 29"/><path d="M32 22 L32 25"/><path d="M40 26 L40 29"/><path d="M47 22 L47 25"/>
+  <path d="M17 30 L17 33"/><path d="M40 33 L40 36"/>
+</g>
+<path d="M25 34 Q32 41 39 34 Z" fill="#33ff66" stroke="#33ff66" stroke-width="1.2" stroke-linejoin="round"/>
+<!-- Glowing binary cascade -->
+<g fill="#9dffb8" font-family="monospace" font-size="6" font-weight="700">
+  <text x="6" y="9">1</text><text x="55" y="8">0</text><text x="31" y="5">1</text>
+</g>
+</svg>

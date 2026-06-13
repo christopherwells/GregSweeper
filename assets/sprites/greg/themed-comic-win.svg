@@ -43,7 +43,9 @@
 <!-- Grin -->
 <path d="M25 34 Q32 42.5 39 34 Z" fill="#1d1812" stroke="#1d1812" stroke-width="2" stroke-linejoin="round"/>
 <path d="M28.5 38 Q32 40.5 35.5 38 Q33.5 40 32 40 Q30.5 40 28.5 38 Z" fill="#c0392b"/>
-<!-- Inked starburst, the comic-mine spark -->
-<path d="M52 4 L55 10 L60 7 L56 13 L61 15 L54 15" fill="#f0c43a" stroke="#1d1812" stroke-width="1.6" stroke-linejoin="round"/>
-<path d="M10 6 L12 10 L16 8 L13 12 L16 14 L11 14" fill="#f0c43a" stroke="#1d1812" stroke-width="1.4" stroke-linejoin="round"/>
+<!-- Full five-point stars -->
+<path transform="translate(55 9)" d="M0,-6 L1.76,-1.85 L5.71,-1.85 L2.85,0.71 L3.53,4.85 L0,2.4 L-3.53,4.85 L-2.85,0.71 L-5.71,-1.85 L-1.76,-1.85 Z"
+      fill="#f0c43a" stroke="#1d1812" stroke-width="1.6" stroke-linejoin="round"/>
+<path transform="translate(11 9) scale(0.78)" d="M0,-6 L1.76,-1.85 L5.71,-1.85 L2.85,0.71 L3.53,4.85 L0,2.4 L-3.53,4.85 L-2.85,0.71 L-5.71,-1.85 L-1.76,-1.85 Z"
+      fill="#f0c43a" stroke="#1d1812" stroke-width="1.8" stroke-linejoin="round"/>
 </svg>
