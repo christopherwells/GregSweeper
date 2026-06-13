@@ -1,24 +1,46 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-<!-- Supernova Greg, loss: the star collapses. Flipped, rays drooping inward, the core dimmed to violet, faint X eyes. -->
-<g fill="none" stroke="#8a7aa0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <path d="M21 35 L17 28 L19 23"/><path d="M27.5 34 L25.5 26 L28.5 21"/><path d="M36.5 34 L38.5 26 L35.5 21"/><path d="M43 35 L47 28 L45 23"/>
-  <path d="M15 39 L9 36"/><path d="M49 39 L55 36"/>
+<!-- Supernova Greg, loss: all that remains is the remnant. A Crab Nebula, blue synchrotron core webbed in red-orange filaments. -->
+<defs>
+  <radialGradient id="snrCore" cx="0.5" cy="0.5" r="0.55">
+    <stop offset="0" stop-color="#7fe0ff"/>
+    <stop offset="0.5" stop-color="#3a7fb0" stop-opacity="0.7"/>
+    <stop offset="1" stop-color="#2a4a8a" stop-opacity="0"/>
+  </radialGradient>
+</defs>
+<!-- Diffuse blue core -->
+<ellipse cx="32" cy="33" rx="24" ry="19" fill="url(#snrCore)"/>
+<!-- Red-orange filament web -->
+<g fill="none" stroke-linecap="round" opacity="0.92">
+  <g stroke="#e85a32" stroke-width="1.5">
+    <path d="M10 28 C16 22 22 24 26 30 C30 36 28 44 22 46"/>
+    <path d="M54 30 C49 24 43 25 39 31 C35 37 38 45 44 46"/>
+    <path d="M16 44 C22 40 26 42 30 46 C33 49 31 52 27 52"/>
+    <path d="M48 42 C42 39 38 41 36 45"/>
+    <path d="M20 18 C26 20 30 26 31 32"/>
+    <path d="M46 20 C40 22 36 27 34 33"/>
+  </g>
+  <g stroke="#ffae5a" stroke-width="1">
+    <path d="M12 30 C18 25 23 27 26 32"/>
+    <path d="M52 32 C46 27 41 28 38 33"/>
+    <path d="M24 44 C28 41 31 43 33 47"/>
+    <path d="M22 20 C27 23 30 28 31 33"/>
+    <path d="M44 22 C39 25 36 29 34 34"/>
+  </g>
+  <g stroke="#c0392b" stroke-width="0.9" opacity="0.8">
+    <path d="M14 38 C20 34 26 36 30 40"/>
+    <path d="M50 38 C44 35 39 36 36 40"/>
+  </g>
 </g>
-<path d="M9 33 L16 31 L13 35 Z" fill="#6b4e8a"/>
-<path d="M55 33 L48 31 L51 35 Z" fill="#6b4e8a"/>
-<!-- Collapsing inward rays around the overturned core -->
-<g fill="#6b4e8a" opacity="0.85">
-  <path d="M32 51 L29 43 L35 43 Z"/><path d="M16 47 L24 41 L21 44 Z"/><path d="M48 47 L40 41 L43 44 Z"/>
-  <path d="M12 38 L22 39 L18 41 Z"/><path d="M52 38 L42 39 L46 41 Z"/>
+<!-- Teal wisps near the pulsar -->
+<g fill="none" stroke="#aef0ff" stroke-width="0.9" opacity="0.75" stroke-linecap="round">
+  <path d="M28 31 Q32 33 36 31"/><path d="M30 36 Q32 34 34 36"/>
 </g>
-<!-- Dimmed overturned core -->
-<path d="M14 38 C14 42 17 46 22 48 Q27 50 32 50 Q37 50 42 48 C47 46 50 42 50 38 L50 37 L14 37 Z" fill="#6b4e8a" stroke="#4a3560" stroke-width="2.2" stroke-linejoin="round"/>
-<ellipse cx="32" cy="37" rx="18" ry="3.6" fill="#8a7aa0"/>
-<g fill="none" stroke="#8a7aa0" stroke-width="2" stroke-linecap="round">
-  <path d="M17 37 L11.5 30"/><path d="M22.5 36 L21 27.5"/>
+<!-- Pulsar + scattered stars -->
+<circle cx="32" cy="33" r="1.4" fill="#ffffff"/>
+<g fill="#dff2ff"><circle cx="12" cy="16" r="1"/><circle cx="52" cy="14" r="0.9"/><circle cx="56" cy="50" r="1"/><circle cx="9" cy="48" r="0.8"/><circle cx="44" cy="9" r="0.8"/><circle cx="22" cy="54" r="0.7"/></g>
+<!-- Faint ghost of Greg's eyes, dissolved into the cloud -->
+<g opacity="0.32" stroke="#dff2ff" stroke-width="1.2" stroke-linecap="round">
+  <path d="M24 28 L27 31 M27 28 L24 31"/>
+  <path d="M37 28 L40 31 M40 28 L37 31"/>
 </g>
-<circle cx="10.5" cy="26.5" r="3.8" fill="#3a2c4e"/>
-<path d="M8.9 24.9 L12.1 28.1 M12.1 24.9 L8.9 28.1" stroke="#cdbfe0" stroke-width="1.4" stroke-linecap="round"/>
-<circle cx="20.5" cy="24" r="3.8" fill="#3a2c4e"/>
-<path d="M18.9 22.4 L22.1 25.6 M22.1 22.4 L18.9 25.6" stroke="#cdbfe0" stroke-width="1.4" stroke-linecap="round"/>
 </svg>

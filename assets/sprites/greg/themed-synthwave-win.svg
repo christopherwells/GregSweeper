@@ -5,9 +5,6 @@
     <stop offset="0" stop-color="#ff3e8a"/><stop offset="1" stop-color="#ff9a3e"/>
   </linearGradient>
 </defs>
-<!-- Chrome triangle behind -->
-<path d="M32 5 L45 22 L19 22 Z" fill="#9fb8e8" stroke="#2bd6e0" stroke-width="1.4"/>
-<path d="M32 5 L32 22 L19 22 Z" fill="#cfe0f8"/>
 <g fill="none" stroke="#2bd6e0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M19 44 L13 50 L11 55"/><path d="M24 46.5 L20 53 L19 58"/><path d="M45 44 L51 50 L53 55"/><path d="M40 46.5 L44 53 L45 58"/>
   <path d="M18 34 L13.5 25"/><path d="M46 34 L50.5 25"/><path d="M25 21.5 L23 15.5"/><path d="M39 21.5 L41 15.5"/>

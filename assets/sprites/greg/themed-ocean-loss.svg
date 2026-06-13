@@ -14,8 +14,6 @@
 <path d="M12 38 C12 42 15 46 20 48.5 Q26 51 32 51 Q38 51 44 48.5 C49 46 52 42 52 38 L52 37 L12 37 Z"
       fill="#2e8ba0" stroke="#15485a" stroke-width="2.6" stroke-linejoin="round"/>
 <ellipse cx="32" cy="37" rx="20" ry="4" fill="#9fd8e2" stroke="#15485a" stroke-width="2"/>
-<!-- Dark porthole on the underside -->
-<circle cx="32" cy="44" r="6" fill="#123642" stroke="#d9b24a" stroke-width="2"/>
 <!-- Flopped stalks + X eyes -->
 <g fill="none" stroke="#15485a" stroke-width="2.6" stroke-linecap="round">
   <path d="M17 37 L11.5 30"/>

@@ -17,17 +17,27 @@
 <!-- Obsidian shell -->
 <path d="M11 31 C11 24 16 19 22 17.5 Q27 15 32 15 Q37 15 42 17.5 C48 19 53 24 53 31 C53 38 45 43 32 43 C19 43 11 38 11 31 Z"
       fill="#2a201c" stroke="#120b08" stroke-width="2.6"/>
-<!-- Branching lava cracks -->
-<g fill="none" stroke="#ff7a26" stroke-width="1.6" stroke-linecap="round">
-  <path d="M32 21 L29 27 L31 31 L27 36"/>
-  <path d="M29 27 L23 28"/>
-  <path d="M31 31 L37 32 L41 29"/>
-  <path d="M27 36 L33 37"/>
-  <path d="M18 25 L22 30"/>
-  <path d="M46 26 L42 31"/>
+<!-- Lava cracks: dark molten glow underlay, bright core, hot centerline -->
+<g fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <g stroke="#7a2e0e" stroke-width="3.6" opacity="0.85">
+    <path d="M32 16 L30 24 L34 30 L31 38"/>
+    <path d="M30 24 L20 25"/>
+    <path d="M34 30 L43 31"/>
+    <path d="M18 22 L24 28"/>
+    <path d="M47 22 L41 28"/>
+  </g>
+  <g stroke="#ff8a2e" stroke-width="1.8">
+    <path d="M32 16 L30 24 L34 30 L31 38"/>
+    <path d="M30 24 L20 25"/>
+    <path d="M34 30 L43 31"/>
+    <path d="M18 22 L24 28"/>
+    <path d="M47 22 L41 28"/>
+  </g>
+  <path d="M32 16 L30 24 L34 30 L31 38" stroke="#ffe08a" stroke-width="0.7"/>
 </g>
-<!-- Smile (lava line) -->
-<path d="M28 33 Q32 36.5 36 33" fill="none" stroke="#ff7a26" stroke-width="2" stroke-linecap="round"/>
+<!-- Smile (molten seam) -->
+<path d="M28 33 Q32 36.5 36 33" fill="none" stroke="#7a2e0e" stroke-width="3.2" stroke-linecap="round"/>
+<path d="M28 33 Q32 36.5 36 33" fill="none" stroke="#ff8a2e" stroke-width="1.6" stroke-linecap="round"/>
 <!-- Cracked stone tablet -->
 <g transform="rotate(-10 8 31)">
   <rect x="2" y="21" width="12" height="16" rx="1" fill="#3a322c" stroke="#120b08" stroke-width="2"/>

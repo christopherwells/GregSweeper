@@ -45,10 +45,10 @@
   <rect x="44" y="55.5" width="3" height="3" rx="0.6" fill="#f0c43a"/>
   <rect x="48.5" y="55.5" width="3" height="3" rx="0.6" fill="#1d1812" opacity="0.3"/>
 </g>
-<!-- POW burst -->
-<g transform="translate(34 11) rotate(-8)">
-  <path d="M0,-9 L3,-4.5 L8.5,-7 L6.5,-2 L13,-1 L7.5,2 L11,6.5 L4.5,5 L4,10 L0,6 L-4,10 L-4.5,5 L-11,6.5 L-7.5,2 L-13,-1 L-6.5,-2 L-8.5,-7 L-3,-4.5 Z"
-        fill="#f0c43a" stroke="#1d1812" stroke-width="1.7" stroke-linejoin="round"/>
-  <text x="0" y="2.6" text-anchor="middle" font-family="Arial, sans-serif" font-size="7.2" font-weight="900" font-style="italic" fill="#1d1812">POW</text>
+<!-- POW burst: bigger, red, legible -->
+<g transform="translate(33 12) rotate(-8)">
+  <path d="M0,-13 L4.2,-6.5 L12,-10 L9,-3 L18.5,-1.5 L10.5,3 L15.5,9.5 L6.5,7 L6,14.5 L0,8.5 L-6,14.5 L-6.5,7 L-15.5,9.5 L-10.5,3 L-18.5,-1.5 L-9,-3 L-12,-10 L-4.2,-6.5 Z"
+        fill="#e22" stroke="#1d1812" stroke-width="2" stroke-linejoin="round"/>
+  <text x="0" y="3.4" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="900" font-style="italic" fill="#fff" stroke="#1d1812" stroke-width="0.6">POW!</text>
 </g>
 </svg>

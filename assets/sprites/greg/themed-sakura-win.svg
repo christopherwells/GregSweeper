@@ -1,34 +1,44 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-<!-- Sakura Greg, win: blossom crab with petal claws thrown open, two loose petals drifting beside him. -->
+<!-- Sakura Greg, win: claws up, the blossom carapace bright, petals drifting down. -->
 <g fill="none" stroke="#7a5a48" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M19 44 L13 50 L11 55"/>
   <path d="M24 46.5 L20 53 L19 58"/>
   <path d="M45 44 L51 50 L53 55"/>
   <path d="M40 46.5 L44 53 L45 58"/>
-</g>
-<g fill="none" stroke="#7a5a48" stroke-width="2.2" stroke-linecap="round">
   <path d="M18 34 L13.5 25"/>
   <path d="M46 34 L50.5 25"/>
-  <path d="M25.5 23.5 L23 15.5"/>
-  <path d="M38.5 23.5 L41 15.5"/>
+  <path d="M25 21.5 L23 15.5"/>
+  <path d="M39 21.5 L41 15.5"/>
 </g>
-<path d="M12.5 25 C7 25 4.5 20 7.5 15.5 L11 18.5 L10 13 C15 11.5 18.5 16 17 21 C16 24 15 25 12.5 25 Z"
-      fill="#f4a7bd" stroke="#e07e9d" stroke-width="1.6" stroke-linejoin="round"/>
-<path d="M51.5 25 C57 25 59.5 20 56.5 15.5 L53 18.5 L54 13 C49 11.5 45.5 16 47 21 C48 24 49 25 51.5 25 Z"
-      fill="#f4a7bd" stroke="#e07e9d" stroke-width="1.6" stroke-linejoin="round"/>
-<g fill="#f4a7bd" stroke="#e07e9d" stroke-width="1.6">
-  <ellipse cx="20" cy="30" rx="9" ry="7" transform="rotate(18 20 30)"/>
-  <ellipse cx="44" cy="30" rx="9" ry="7" transform="rotate(-18 44 30)"/>
-  <ellipse cx="25" cy="39" rx="8.5" ry="7" transform="rotate(-50 25 39)"/>
-  <ellipse cx="39" cy="39" rx="8.5" ry="7" transform="rotate(50 39 39)"/>
-  <ellipse cx="32" cy="24.5" rx="7" ry="9"/>
+<!-- Raised petal claws -->
+<path d="M13.5 25 C9 20 11 14 14 12 C15 16 14 20 17 22 C14 24 11 25 13.5 25 Z" fill="#f6b6c8" stroke="#e07e9d" stroke-width="1.5" stroke-linejoin="round"/>
+<path d="M50.5 25 C55 20 53 14 50 12 C49 16 50 20 47 22 C50 24 53 25 50.5 25 Z" fill="#f6b6c8" stroke="#e07e9d" stroke-width="1.5" stroke-linejoin="round"/>
+<circle cx="22.5" cy="12.5" r="4.2" fill="#fff" stroke="#7a5a48" stroke-width="2"/>
+<circle cx="41.5" cy="12.5" r="4.2" fill="#fff" stroke="#7a5a48" stroke-width="2"/>
+<path d="M20.5 12.5 Q22.5 10 24.5 12.5" fill="none" stroke="#4a3328" stroke-width="1.6" stroke-linecap="round"/>
+<path d="M39.5 12.5 Q41.5 10 43.5 12.5" fill="none" stroke="#4a3328" stroke-width="1.6" stroke-linecap="round"/>
+<!-- Blossom carapace -->
+<g fill="#f4a7bd" stroke="#e07e9d" stroke-width="1.8" stroke-linejoin="round">
+  <path d="M32 17 C28 17 27 22 28.5 25 C30 27.5 34 27.5 35.5 25 C37 22 36 17 32 17 Z"/>
+  <path d="M49 27 C50 23 46 20 43 21.5 C40 23 39.5 27 42 29 C44.5 31 49 30.5 49 27 Z"/>
+  <path d="M44 44 C47 41 45 36 42 35.5 C39 35 36 38 37 41 C38 44 41.5 46 44 44 Z"/>
+  <path d="M20 44 C17 41 19 36 22 35.5 C25 35 28 38 27 41 C26 44 22.5 46 20 44 Z"/>
+  <path d="M15 27 C14 23 18 20 21 21.5 C24 23 24.5 27 22 29 C19.5 31 15 30.5 15 27 Z"/>
 </g>
-<circle cx="32" cy="31.2" r="2.2" fill="#d96a8e"/>
-<path d="M25 34 Q32 42 39 34 Z" fill="#d96a8e" stroke="#7a5a48" stroke-width="1.6" stroke-linejoin="round"/>
-<circle cx="22.5" cy="12.5" r="4.2" fill="#ffffff" stroke="#7a5a48" stroke-width="2"/>
-<circle cx="41.5" cy="12.5" r="4.2" fill="#ffffff" stroke="#7a5a48" stroke-width="2"/>
-<path d="M20 13.5 Q22.5 10.5 25 13.5" fill="none" stroke="#4a3328" stroke-width="1.8" stroke-linecap="round"/>
-<path d="M39 13.5 Q41.5 10.5 44 13.5" fill="none" stroke="#4a3328" stroke-width="1.8" stroke-linecap="round"/>
-<ellipse cx="7" cy="9" rx="3.4" ry="2.2" fill="#f4a7bd" stroke="#e07e9d" stroke-width="1.2" transform="rotate(-30 7 9)"/>
-<ellipse cx="56.5" cy="8" rx="3.4" ry="2.2" fill="#f4a7bd" stroke="#e07e9d" stroke-width="1.2" transform="rotate(25 56.5 8)"/>
+<g fill="#fff0f5">
+  <path d="M30.5 17.4 L32 19.4 L33.5 17.4 Z"/>
+  <path d="M48.4 25.6 L46.6 26.8 L48.8 28 Z"/>
+  <path d="M43.6 44.8 L42.2 42.8 L40.8 44.8 Z"/>
+  <path d="M20.4 44.8 L21.8 42.8 L23.2 44.8 Z"/>
+  <path d="M15.6 25.6 L17.4 26.8 L15.2 28 Z"/>
+</g>
+<circle cx="32" cy="30.5" r="3.4" fill="#ffd86a"/>
+<g stroke="#e0a020" stroke-width="0.8" stroke-linecap="round"><path d="M32 27.5 L32 25.5 M35 30.5 L37 30.5 M29 30.5 L27 30.5"/></g>
+<path d="M27.5 34 Q32 39 36.5 34 Z" fill="#7a5a48" stroke="#7a5a48" stroke-width="1" stroke-linejoin="round"/>
+<!-- Drifting petals -->
+<g fill="#f6b6c8" stroke="#e07e9d" stroke-width="0.9">
+  <path d="M8 9 C6 6 10 5 11 8 C10 11 7 11 8 9 Z"/>
+  <path d="M55 7 C53 4 57 3 58 6 C57 9 54 9 55 7 Z"/>
+  <path d="M33 4 C31 1 35 0 36 3 C35 6 32 6 33 4 Z"/>
+</g>
 </svg>

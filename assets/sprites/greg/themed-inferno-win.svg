@@ -16,10 +16,21 @@
 <path d="M20.5 12.5 Q22.5 10 24.5 12.5" fill="none" stroke="#ffd23e" stroke-width="1.8" stroke-linecap="round"/>
 <path d="M39.5 12.5 Q41.5 10 43.5 12.5" fill="none" stroke="#ffd23e" stroke-width="1.8" stroke-linecap="round"/>
 <path d="M11 34 C11 27 16 22 22 20.5 Q27 18 32 18 Q37 18 42 20.5 C48 22 53 27 53 34 C53 41 45 46 32 46 C19 46 11 41 11 34 Z" fill="#2a201c" stroke="#120b08" stroke-width="2.6"/>
-<g fill="none" stroke="#ffd23e" stroke-width="1.8" stroke-linecap="round">
-  <path d="M32 24 L29 30 L31 34 L27 39"/>
-  <path d="M29 30 L23 31"/>
-  <path d="M31 34 L37 35 L41 32"/>
+<g fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <g stroke="#9a4410" stroke-width="3.6">
+    <path d="M32 19 L30 27 L34 33 L31 41"/>
+    <path d="M30 27 L20 28"/>
+    <path d="M34 33 L43 34"/>
+    <path d="M18 25 L24 31"/>
+    <path d="M47 25 L41 31"/>
+  </g>
+  <g stroke="#ffd23e" stroke-width="1.8">
+    <path d="M32 19 L30 27 L34 33 L31 41"/>
+    <path d="M30 27 L20 28"/>
+    <path d="M34 33 L43 34"/>
+    <path d="M18 25 L24 31"/>
+    <path d="M47 25 L41 31"/>
+  </g>
 </g>
 <path d="M26 36 Q32 42 38 36 Z" fill="#ff7a26" stroke="#ff7a26" stroke-width="1.2" stroke-linejoin="round"/>
 </svg>
