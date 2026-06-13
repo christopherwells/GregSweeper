@@ -1,51 +1,46 @@
 {
-  "updatedAt": "2026-06-12T16:47:20Z",
-  "target": "liarCellCount",
-  "reason": "highest posterior CV (0.919) excluding last 3 targets",
+  "updatedAt": "2026-06-13T15:45:03Z",
+  "target": "lockedCellCount",
+  "reason": "highest posterior CV (1.161) excluding last 3 targets",
   "recentTargets": [
+    "lockedCellCount",
     "liarCellCount",
-    "sonarCellCount",
-    "compassCellCount"
+    "sonarCellCount"
   ],
   "candidates": [
     {
       "feature": "lockedCellCount",
-      "mean": 0.685,
-      "sd": 0.756,
-      "cv": 1.104
+      "mean": 0.696,
+      "sd": 0.808,
+      "cv": 1.161
     },
     {
       "feature": "sonarCellCount",
-      "mean": 0.816,
-      "sd": 0.879,
-      "cv": 1.077
+      "mean": 0.801,
+      "sd": 0.827,
+      "cv": 1.032
     },
     {
       "feature": "compassCellCount",
-      "mean": 0.738,
-      "sd": 0.766,
-      "cv": 1.038
+      "mean": 0.775,
+      "sd": 0.788,
+      "cv": 1.017
     },
     {
       "feature": "liarCellCount",
-      "mean": 0.741,
-      "sd": 0.681,
-      "cv": 0.919
+      "mean": 0.727,
+      "sd": 0.683,
+      "cv": 0.939
     },
     {
       "feature": "mysteryCellCount",
-      "mean": 0.858,
-      "sd": 0.762,
-      "cv": 0.889
+      "mean": 0.817,
+      "sd": 0.733,
+      "cv": 0.897
     }
   ],
   "coverage_targets": [
     {
-      "feature": "lockedCellCount",
-      "n_boards": 6,
-      "deficit_weight": 0.1429
-    },
-    {
       "feature": "sonarCellCount",
       "n_boards": 6,
       "deficit_weight": 0.1429
@@ -54,16 +49,21 @@
       "feature": "compassCellCount",
       "n_boards": 6,
       "deficit_weight": 0.1429
-    },
-    {
-      "feature": "mirrorPairCount",
-      "n_boards": 7,
-      "deficit_weight": 0.125
     },
     {
       "feature": "mysteryCellCount",
       "n_boards": 8,
       "deficit_weight": 0.1111
+    },
+    {
+      "feature": "mirrorPairCount",
+      "n_boards": 8,
+      "deficit_weight": 0.1111
+    },
+    {
+      "feature": "liarCellCount",
+      "n_boards": 9,
+      "deficit_weight": 0.1
     },
     {
       "feature": "wormholePairCount",
