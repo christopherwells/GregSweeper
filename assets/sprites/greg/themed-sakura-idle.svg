@@ -1,6 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-<!-- Sakura Greg, idle: the carapace is one clean cherry blossom, five notched petals round a stamen center, on branch legs. -->
-<g fill="none" stroke="#7a5a48" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<!-- Sakura Greg, idle: a soft pink carapace with a single blossom crest, branch legs, a blossom tucked by one eye. -->
+<!-- Branch legs / arms / stalks -->
+<g fill="none" stroke="#8a6048" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M19 41 L13 47 L11 52"/>
   <path d="M24 43.5 L20 50 L19 55"/>
   <path d="M45 41 L51 47 L53 52"/>
@@ -10,38 +11,41 @@
   <path d="M25 18.5 L23 12.5"/>
   <path d="M39 18.5 L41 12.5"/>
 </g>
-<g fill="#e07e9d"><circle cx="14" cy="42" r="1.2"/><circle cx="50" cy="42" r="1.2"/></g>
-<circle cx="22.5" cy="9.5" r="4.2" fill="#fff" stroke="#7a5a48" stroke-width="2"/>
-<circle cx="41.5" cy="9.5" r="4.2" fill="#fff" stroke="#7a5a48" stroke-width="2"/>
-<circle cx="23.2" cy="10.2" r="1.5" fill="#4a3328"/>
-<circle cx="40.8" cy="10.2" r="1.5" fill="#4a3328"/>
+<g fill="none" stroke="#8a6048" stroke-width="1.2" stroke-linecap="round"><path d="M16 44 L14 42 M48 44 L50 42 M21 49 L23 48"/></g>
+<!-- Eyes -->
+<circle cx="22.5" cy="9.5" r="4.2" fill="#fff" stroke="#8a6048" stroke-width="2"/>
+<circle cx="41.5" cy="9.5" r="4.2" fill="#fff" stroke="#8a6048" stroke-width="2"/>
+<circle cx="23.2" cy="10.2" r="1.5" fill="#5a3a28"/>
+<circle cx="40.8" cy="10.2" r="1.5" fill="#5a3a28"/>
 <!-- Petal claws -->
-<path d="M14 21 C10 17 10 23 12 25 C16 25 18 21 14 16 C12 18 12 20 14 21 Z" fill="#f6b6c8" stroke="#e07e9d" stroke-width="1.4" transform="rotate(20 14 21)"/>
-<path d="M54 22 C58 18 58 24 56 26 C52 26 50 22 54 17 C56 19 56 21 54 22 Z" fill="#f6b6c8" stroke="#e07e9d" stroke-width="1.4" transform="rotate(-20 54 22)"/>
-<!-- Five-petal blossom carapace -->
-<g fill="#f4a7bd" stroke="#e07e9d" stroke-width="1.8" stroke-linejoin="round">
-  <path d="M32 14 C28 14 27 19 28.5 22 C30 24.5 34 24.5 35.5 22 C37 19 36 14 32 14 Z"/>
-  <path d="M49 24 C50 20 46 17 43 18.5 C40 20 39.5 24 42 26 C44.5 28 49 27.5 49 24 Z"/>
-  <path d="M44 41 C47 38 45 33 42 32.5 C39 32 36 35 37 38 C38 41 41.5 43 44 41 Z"/>
-  <path d="M20 41 C17 38 19 33 22 32.5 C25 32 28 35 27 38 C26 41 22.5 43 20 41 Z"/>
-  <path d="M15 24 C14 20 18 17 21 18.5 C24 20 24.5 24 22 26 C19.5 28 15 27.5 15 24 Z"/>
+<ellipse cx="14" cy="21" rx="5.6" ry="4.6" fill="#f4a7bd" stroke="#d07a96" stroke-width="1.8" transform="rotate(28 14 21)"/>
+<ellipse cx="54" cy="22" rx="6" ry="4.8" fill="#f4a7bd" stroke="#d07a96" stroke-width="1.8" transform="rotate(-35 54 22)"/>
+<!-- Soft pink carapace -->
+<path d="M11 31 C11 24 16 19 22 17.5 Q27 15 32 15 Q37 15 42 17.5 C48 19 53 24 53 31 C53 38 45 43 32 43 C19 43 11 38 11 31 Z"
+      fill="#f9c3d2" stroke="#d07a96" stroke-width="2.4"/>
+<path d="M14 35 C18 40.5 27 42.5 32 42.5 C37 42.5 46 40.5 50 35 C47 41 39 43 32 43 C25 43 17 41 14 35 Z" fill="#f2aec0"/>
+<!-- Smile -->
+<path d="M27.5 36 Q32 39.5 36.5 36" fill="none" stroke="#b05a76" stroke-width="2" stroke-linecap="round"/>
+<!-- Blossom crest on the shell -->
+<g fill="#ffffff" stroke="#e89ab0" stroke-width="1.2">
+  <ellipse cx="32" cy="22" rx="3" ry="4.4"/>
+  <ellipse cx="38" cy="26" rx="3" ry="4.4" transform="rotate(72 38 26)"/>
+  <ellipse cx="35.5" cy="32" rx="3" ry="4.4" transform="rotate(144 35.5 32)"/>
+  <ellipse cx="28.5" cy="32" rx="3" ry="4.4" transform="rotate(216 28.5 32)"/>
+  <ellipse cx="26" cy="26" rx="3" ry="4.4" transform="rotate(288 26 26)"/>
 </g>
-<!-- Petal-tip notches -->
-<g fill="#fff0f5">
-  <path d="M30.5 14.4 L32 16.4 L33.5 14.4 Z"/>
-  <path d="M48.4 22.6 L46.6 23.8 L48.8 25 Z"/>
-  <path d="M43.6 41.8 L42.2 39.8 L40.8 41.8 Z"/>
-  <path d="M20.4 41.8 L21.8 39.8 L23.2 41.8 Z"/>
-  <path d="M15.6 22.6 L17.4 23.8 L15.2 25 Z"/>
+<circle cx="32" cy="27" r="2" fill="#ffd86a"/>
+<!-- A blossom tucked by the left eye -->
+<g fill="#ffffff" stroke="#e89ab0" stroke-width="1">
+  <ellipse cx="16" cy="9" rx="1.8" ry="2.6"/>
+  <ellipse cx="19" cy="11" rx="1.8" ry="2.6" transform="rotate(72 19 11)"/>
+  <ellipse cx="14" cy="12" rx="1.8" ry="2.6" transform="rotate(216 14 12)"/>
 </g>
-<!-- Stamen center + smile -->
-<circle cx="32" cy="27.5" r="3.4" fill="#ffd86a"/>
-<g stroke="#e0a020" stroke-width="0.8" stroke-linecap="round"><path d="M32 24.5 L32 22.5 M35 27.5 L37 27.5 M29 27.5 L27 27.5 M34 25.5 L35.5 24"/></g>
-<path d="M28.5 31.5 Q32 35 35.5 31.5" fill="none" stroke="#7a5a48" stroke-width="1.8" stroke-linecap="round"/>
-<!-- Paper tag prop -->
-<g transform="rotate(-10 9 35)">
-  <rect x="3" y="28.5" width="11" height="14" rx="2" fill="#fffafc" stroke="#d96a8e" stroke-width="1.6"/>
-  <circle cx="8.5" cy="31" r="1" fill="none" stroke="#7a5a48" stroke-width="1"/>
-  <path d="M5.5 35 L11.5 35 M5.5 38 L11.5 38" stroke="#e07e9d" stroke-width="1" opacity="0.7"/>
+<circle cx="16.5" cy="10.5" r="1" fill="#ffd86a"/>
+<!-- Branch sprig prop -->
+<g transform="rotate(-12 8 33)">
+  <path d="M9 39 L7 26" stroke="#8a6048" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+  <g fill="#fff" stroke="#e89ab0" stroke-width="0.9"><circle cx="6" cy="25" r="2.4"/><circle cx="10" cy="28" r="2.4"/></g>
+  <circle cx="6" cy="25" r="0.9" fill="#ffd86a"/><circle cx="10" cy="28" r="0.9" fill="#ffd86a"/>
 </g>
 </svg>

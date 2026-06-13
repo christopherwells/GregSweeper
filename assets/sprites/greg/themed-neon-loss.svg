@@ -26,6 +26,4 @@
 </g>
 <path d="M8.7 24.7 L12.3 28.3 M12.3 24.7 L8.7 28.3" stroke="#9af4f8" stroke-width="1.8" stroke-linecap="round"/>
 <path d="M18.7 22.2 L22.3 25.8 M22.3 22.2 L18.7 25.8" stroke="#9af4f8" stroke-width="1.8" stroke-linecap="round" opacity="0.4"/>
-<!-- a dropped Zzz-style spark fizzle -->
-<path d="M50 50 L54 50 L50 54 L54 54" fill="none" stroke="#3a4046" stroke-width="1.6" stroke-linecap="round"/>
 </svg>
