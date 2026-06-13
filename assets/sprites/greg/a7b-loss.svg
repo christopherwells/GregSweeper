@@ -55,6 +55,5 @@
     <rect x="48" y="113" width="20" height="6" rx="1.8" fill="#ffd23e" stroke="#232838" stroke-width="3.2"/>
     <path d="M68 113 L73 116 L68 119 Z" fill="#232838"/>
   </g>
-  <path d="M52 26 Q60 20 68 26 Q76 32 84 26" fill="none" stroke="#9fb0d8" stroke-width="4" stroke-linecap="round" opacity="0.8"/>
   <path d="M100 38 C100 33 104 28 104 28 C104 28 108 33 108 38 A4 4.4 0 1 1 100 38 Z" fill="#4a78c8" stroke="#232838" stroke-width="3"/>
 </svg>

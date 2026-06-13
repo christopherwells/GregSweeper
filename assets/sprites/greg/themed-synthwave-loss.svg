@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Synthwave Greg, loss: signal lost. Flipped, the gradient still glowing but the scanlines tearing, cyan X eyes, no grid. -->
+<defs>
+  <linearGradient id="swLoss" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#ff3e8a"/><stop offset="1" stop-color="#ff9a3e"/>
+  </linearGradient>
+</defs>
+<g fill="none" stroke="#2bd6e0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M21 35 L17 28 L19 23"/><path d="M27.5 34 L25.5 26 L28.5 21"/><path d="M36.5 34 L38.5 26 L35.5 21"/><path d="M43 35 L47 28 L45 23"/>
+  <path d="M15 39 L9 36"/><path d="M49 39 L55 36"/>
+</g>
+<ellipse cx="6.5" cy="33.5" rx="5.2" ry="4.2" fill="url(#swLoss)" stroke="#2bd6e0" stroke-width="1.8" transform="rotate(-30 6.5 33.5)"/>
+<ellipse cx="57.5" cy="33.5" rx="5.2" ry="4.2" fill="url(#swLoss)" stroke="#2bd6e0" stroke-width="1.8" transform="rotate(30 57.5 33.5)"/>
+<path d="M12 38 C12 42 15 46 20 48.5 Q26 51 32 51 Q38 51 44 48.5 C49 46 52 42 52 38 L52 37 L12 37 Z" fill="url(#swLoss)" stroke="#2bd6e0" stroke-width="2.2" stroke-linejoin="round"/>
+<ellipse cx="32" cy="37" rx="20" ry="4" fill="#2a1a3e" stroke="#2bd6e0" stroke-width="1.6"/>
+<!-- Torn scanlines (offset segments) -->
+<g fill="#1a0b2e" opacity="0.55"><rect x="14" y="41" width="14" height="1.6"/><rect x="32" y="43" width="16" height="1.6"/><rect x="20" y="45" width="12" height="1.6"/></g>
+<g fill="none" stroke="#2bd6e0" stroke-width="2.2" stroke-linecap="round">
+  <path d="M17 37 L11.5 30"/><path d="M22.5 36 L21 27.5"/>
+</g>
+<circle cx="10.5" cy="26.5" r="4.2" fill="#fff" stroke="#2bd6e0" stroke-width="1.8"/>
+<path d="M8.7 24.7 L12.3 28.3 M12.3 24.7 L8.7 28.3" stroke="#1a0b2e" stroke-width="1.6" stroke-linecap="round"/>
+<circle cx="20.5" cy="24" r="4.2" fill="#fff" stroke="#2bd6e0" stroke-width="1.8"/>
+<path d="M18.7 22.2 L22.3 25.8 M22.3 22.2 L18.7 25.8" stroke="#1a0b2e" stroke-width="1.6" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Splitflap Greg, idle: a crab mosaic of departure-board flap tiles, one yellow flap on the shell, painted-on face. -->
+<g fill="#2a2f3a" stroke="#4c4c52" stroke-width="0.6">
+  <rect x="13.9" y="40.5" width="2.2" height="12" rx="0.7" transform="rotate(36 15 46.5)"/>
+  <rect x="20.4" y="43" width="2.2" height="12.5" rx="0.7" transform="rotate(23 21.5 49.25)"/>
+  <rect x="47.9" y="40.5" width="2.2" height="12" rx="0.7" transform="rotate(-36 49 46.5)"/>
+  <rect x="41.4" y="43" width="2.2" height="12.5" rx="0.7" transform="rotate(-23 42.5 49.25)"/>
+  <rect x="13.4" y="25.5" width="2.2" height="8" rx="0.7" transform="rotate(-45 14.5 29.5)"/>
+  <rect x="48.4" y="25" width="2.2" height="8" rx="0.7" transform="rotate(40 49.5 29)"/>
+  <rect x="9.5" y="18.25" width="4" height="5.5" rx="0.8" transform="rotate(-22 11.5 21)"/>
+  <rect x="14" y="16.25" width="4" height="5.5" rx="0.8" transform="rotate(25 16 19)"/>
+  <rect x="50.5" y="18.25" width="4" height="5.5" rx="0.8" transform="rotate(22 52.5 21)"/>
+  <rect x="46" y="16.25" width="4" height="5.5" rx="0.8" transform="rotate(-25 48 19)"/>
+  <rect x="23.1" y="12" width="1.8" height="7" rx="0.7" transform="rotate(-18 24 15.5)"/>
+  <rect x="39.1" y="12" width="1.8" height="7" rx="0.7" transform="rotate(18 40 15.5)"/>
+  <rect x="20" y="6" width="5" height="6.5" rx="0.8"/>
+  <rect x="39" y="6" width="5" height="6.5" rx="0.8"/>
+  <rect x="20.5" y="15" width="5" height="6.5" rx="0.8"/>
+  <rect x="26.5" y="15" width="5" height="6.5" rx="0.8"/>
+  <rect x="32.5" y="15" width="5" height="6.5" rx="0.8"/>
+  <rect x="38.5" y="15" width="5" height="6.5" rx="0.8"/>
+  <rect x="14.5" y="22.5" width="5" height="6.5" rx="0.8"/>
+  <rect x="20.5" y="22.5" width="5" height="6.5" rx="0.8"/>
+  <rect x="26.5" y="22.5" width="5" height="6.5" rx="0.8"/>
+  <rect x="32.5" y="22.5" width="5" height="6.5" rx="0.8"/>
+  <rect x="38.5" y="22.5" width="5" height="6.5" rx="0.8"/>
+  <rect x="44.5" y="22.5" width="5" height="6.5" rx="0.8" fill="#e8b73a"/>
+  <rect x="11.5" y="30" width="5" height="6.5" rx="0.8"/>
+  <rect x="17.5" y="30" width="5" height="6.5" rx="0.8"/>
+  <rect x="23.5" y="30" width="5" height="6.5" rx="0.8"/>
+  <rect x="29.5" y="30" width="5" height="6.5" rx="0.8"/>
+  <rect x="35.5" y="30" width="5" height="6.5" rx="0.8"/>
+  <rect x="41.5" y="30" width="5" height="6.5" rx="0.8"/>
+  <rect x="47.5" y="30" width="5" height="6.5" rx="0.8"/>
+  <rect x="17.5" y="37.5" width="5" height="6.5" rx="0.8"/>
+  <rect x="23.5" y="37.5" width="5" height="6.5" rx="0.8"/>
+  <rect x="29.5" y="37.5" width="5" height="6.5" rx="0.8"/>
+  <rect x="35.5" y="37.5" width="5" height="6.5" rx="0.8"/>
+  <rect x="41.5" y="37.5" width="5" height="6.5" rx="0.8"/>
+</g>
+<path d="M20 9.25 L25 9.25 M39 9.25 L44 9.25 M20.5 18.25 L25.5 18.25 M26.5 18.25 L31.5 18.25 M32.5 18.25 L37.5 18.25 M38.5 18.25 L43.5 18.25 M14.5 25.75 L19.5 25.75 M20.5 25.75 L25.5 25.75 M26.5 25.75 L31.5 25.75 M32.5 25.75 L37.5 25.75 M38.5 25.75 L43.5 25.75 M44.5 25.75 L49.5 25.75 M11.5 33.25 L16.5 33.25 M17.5 33.25 L22.5 33.25 M23.5 33.25 L28.5 33.25 M29.5 33.25 L34.5 33.25 M35.5 33.25 L40.5 33.25 M41.5 33.25 L46.5 33.25 M47.5 33.25 L52.5 33.25 M17.5 40.75 L22.5 40.75 M23.5 40.75 L28.5 40.75 M29.5 40.75 L34.5 40.75 M35.5 40.75 L40.5 40.75 M41.5 40.75 L46.5 40.75"
+      stroke="#11141a" stroke-width="0.8"/>
+<circle cx="23.2" cy="10.2" r="1.7" fill="#f2f3f5"/>
+<circle cx="40.8" cy="10.2" r="1.7" fill="#f2f3f5"/>
+<path d="M27.5 31.5 Q32 36 36.5 31.5" fill="none" stroke="#f2f3f5" stroke-width="2" stroke-linecap="round"/>
+</svg>

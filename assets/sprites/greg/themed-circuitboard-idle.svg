@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Circuit Greg, idle: a PCB crab, copper-trace legs with solder pads, a green solder-mask shell, an IC chip and LED eyes, a breadboard slate. -->
+<!-- Copper trace legs / arms / stalks (right-angle traces) -->
+<g fill="none" stroke="#d98a3a" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
+  <path d="M19 41 L14 41 L11 47 L11 52"/>
+  <path d="M24 43.5 L21 48 L19 48 L19 55"/>
+  <path d="M45 41 L50 41 L53 47 L53 52"/>
+  <path d="M40 43.5 L43 48 L45 48 L45 55"/>
+  <path d="M17 32 L13 28 L12 27"/>
+  <path d="M47 32 L51 28 L52 26"/>
+  <path d="M25 18.5 L24 14 L23 12.5"/>
+  <path d="M39 18.5 L40 14 L41 12.5"/>
+</g>
+<!-- Solder pads -->
+<g fill="#e8b96a" stroke="#9a6420" stroke-width="0.8">
+  <circle cx="11" cy="52" r="1.6"/><circle cx="19" cy="55" r="1.6"/><circle cx="53" cy="52" r="1.6"/><circle cx="45" cy="55" r="1.6"/>
+</g>
+<!-- LED eyes -->
+<rect x="19" y="6.5" width="6" height="6" rx="1" fill="#1a3a26" stroke="#0c2416" stroke-width="1.4"/>
+<rect x="39" y="6.5" width="6" height="6" rx="1" fill="#1a3a26" stroke="#0c2416" stroke-width="1.4"/>
+<circle cx="22" cy="9.5" r="1.8" fill="#7fffb0"/>
+<circle cx="42" cy="9.5" r="1.8" fill="#7fffb0"/>
+<!-- Chip claws -->
+<rect x="9" y="17.5" width="9" height="7" rx="1" fill="#222" stroke="#d98a3a" stroke-width="1.6" transform="rotate(20 13.5 21)"/>
+<rect x="46" y="18" width="9" height="7" rx="1" fill="#222" stroke="#d98a3a" stroke-width="1.6" transform="rotate(-20 50.5 21.5)"/>
+<!-- Solder-mask shell -->
+<path d="M11 31 C11 24 16 19 22 17.5 Q27 15 32 15 Q37 15 42 17.5 C48 19 53 24 53 31 C53 38 45 43 32 43 C19 43 11 38 11 31 Z"
+      fill="#1a6b3a" stroke="#0c3a20" stroke-width="2.4"/>
+<!-- Trace pattern on the shell -->
+<g fill="none" stroke="#d98a3a" stroke-width="1.3" stroke-linecap="square">
+  <path d="M16 28 L22 28 L25 31 L31 31"/>
+  <path d="M48 26 L42 26 L39 29 L33 29"/>
+  <path d="M20 36 L28 36 L30 34"/>
+  <path d="M44 37 L37 37 L35 35"/>
+</g>
+<g fill="#e8b96a"><circle cx="16" cy="28" r="1.3"/><circle cx="48" cy="26" r="1.3"/><circle cx="31" cy="31" r="1.3"/><circle cx="33" cy="29" r="1.3"/></g>
+<!-- Central IC -->
+<rect x="27" y="24" width="10" height="9" rx="1" fill="#1a1a1a" stroke="#444" stroke-width="1"/>
+<g stroke="#c0c0c0" stroke-width="0.9"><path d="M27 26 L24.5 26 M27 30 L24.5 30 M37 26 L39.5 26 M37 30 L39.5 30"/></g>
+<!-- Smile -->
+<path d="M28 37 Q32 40.5 36 37" fill="none" stroke="#7fffb0" stroke-width="1.8" stroke-linecap="round"/>
+<!-- Breadboard slate -->
+<g transform="rotate(-10 8 31)">
+  <rect x="2" y="21" width="12" height="16" rx="1" fill="#2a6b46" stroke="#0c3a20" stroke-width="1.8"/>
+  <g fill="#e8b96a"><circle cx="5" cy="25" r="0.8"/><circle cx="9" cy="25" r="0.8"/><circle cx="13" cy="25" r="0.8"/><circle cx="5" cy="29" r="0.8"/><circle cx="9" cy="29" r="0.8"/><circle cx="13" cy="29" r="0.8"/><circle cx="5" cy="33" r="0.8"/><circle cx="9" cy="33" r="0.8"/></g>
+</g>
+</svg>

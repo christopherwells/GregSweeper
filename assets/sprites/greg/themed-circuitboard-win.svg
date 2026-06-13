@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Circuit Greg, win: claws up, LEDs blazing, traces lit, power-on sparks. -->
+<g fill="none" stroke="#d98a3a" stroke-width="2" stroke-linecap="square">
+  <path d="M19 44 L14 44 L11 50 L11 55"/>
+  <path d="M24 46.5 L21 51 L19 51 L19 58"/>
+  <path d="M45 44 L50 44 L53 50 L53 55"/>
+  <path d="M40 46.5 L43 51 L45 51 L45 58"/>
+  <path d="M18 34 L15 30 L13.5 25"/>
+  <path d="M46 34 L49 30 L50.5 25"/>
+  <path d="M25 21.5 L24 17 L23 15.5"/>
+  <path d="M39 21.5 L40 17 L41 15.5"/>
+</g>
+<g fill="#e8b96a" stroke="#9a6420" stroke-width="0.8"><circle cx="11" cy="55" r="1.6"/><circle cx="19" cy="58" r="1.6"/><circle cx="53" cy="55" r="1.6"/><circle cx="45" cy="58" r="1.6"/></g>
+<!-- Open chip-claws raised -->
+<path d="M12.5 25 C7 25 4.5 20 7.5 15.5 L11 18.5 L10 13 C15 11.5 18.5 16 17 21 C16 24 15 25 12.5 25 Z"
+      fill="#1a6b3a" stroke="#d98a3a" stroke-width="2" stroke-linejoin="round"/>
+<path d="M51.5 25 C57 25 59.5 20 56.5 15.5 L53 18.5 L54 13 C49 11.5 45.5 16 47 21 C48 24 49 25 51.5 25 Z"
+      fill="#1a6b3a" stroke="#d98a3a" stroke-width="2" stroke-linejoin="round"/>
+<!-- LED eyes blazing -->
+<rect x="19" y="9.5" width="6" height="6" rx="1" fill="#1a3a26" stroke="#0c2416" stroke-width="1.4"/>
+<rect x="39" y="9.5" width="6" height="6" rx="1" fill="#1a3a26" stroke="#0c2416" stroke-width="1.4"/>
+<circle cx="22" cy="12.5" r="3.4" fill="#7fffb0" opacity="0.35"/>
+<circle cx="42" cy="12.5" r="3.4" fill="#7fffb0" opacity="0.35"/>
+<circle cx="22" cy="12.5" r="1.9" fill="#caffe0"/>
+<circle cx="42" cy="12.5" r="1.9" fill="#caffe0"/>
+<!-- Shell -->
+<path d="M11 34 C11 27 16 22 22 20.5 Q27 18 32 18 Q37 18 42 20.5 C48 22 53 27 53 34 C53 41 45 46 32 46 C19 46 11 41 11 34 Z"
+      fill="#1a6b3a" stroke="#0c3a20" stroke-width="2.4"/>
+<g fill="none" stroke="#ffd23e" stroke-width="1.4" stroke-linecap="square">
+  <path d="M16 31 L22 31 L25 34 L31 34"/>
+  <path d="M48 29 L42 29 L39 32 L33 32"/>
+</g>
+<g fill="#ffe89a"><circle cx="16" cy="31" r="1.3"/><circle cx="48" cy="29" r="1.3"/></g>
+<rect x="27" y="27" width="10" height="9" rx="1" fill="#1a1a1a" stroke="#666" stroke-width="1"/>
+<path d="M25 38 Q32 44 39 38 Z" fill="#7fffb0" stroke="#7fffb0" stroke-width="1.2" stroke-linejoin="round"/>
+<!-- Power sparks -->
+<g stroke="#ffd23e" stroke-width="1.6" stroke-linecap="round"><path d="M8 9 L11 12 M11 9 L8 12"/><path d="M54 8 L57 11 M57 8 L54 11"/></g>
+</svg>

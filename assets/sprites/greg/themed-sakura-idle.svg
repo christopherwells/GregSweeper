@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Sakura Greg, idle: blossom crab, carapace of five overlapping petals on twig legs, paper hanging tag in the big claw. -->
+<g fill="none" stroke="#7a5a48" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M19 41 L13 47 L11 52"/>
+  <path d="M24 43.5 L20 50 L19 55"/>
+  <path d="M45 41 L51 47 L53 52"/>
+  <path d="M40 43.5 L44 50 L45 55"/>
+</g>
+<g fill="none" stroke="#7a5a48" stroke-width="2.2" stroke-linecap="round">
+  <path d="M17 32 L12 27"/>
+  <path d="M47 32 L52 26"/>
+  <path d="M25.5 20.5 L23 12.5"/>
+  <path d="M38.5 20.5 L41 12.5"/>
+</g>
+<ellipse cx="14" cy="21" rx="5.6" ry="4.6" fill="#f4a7bd" stroke="#e07e9d" stroke-width="1.6" transform="rotate(28 14 21)"/>
+<ellipse cx="54" cy="22" rx="6" ry="4.8" fill="#f4a7bd" stroke="#e07e9d" stroke-width="1.6" transform="rotate(-35 54 22)"/>
+<g fill="#f4a7bd" stroke="#e07e9d" stroke-width="1.6">
+  <ellipse cx="20" cy="27" rx="9" ry="7" transform="rotate(18 20 27)"/>
+  <ellipse cx="44" cy="27" rx="9" ry="7" transform="rotate(-18 44 27)"/>
+  <ellipse cx="25" cy="36" rx="8.5" ry="7" transform="rotate(-50 25 36)"/>
+  <ellipse cx="39" cy="36" rx="8.5" ry="7" transform="rotate(50 39 36)"/>
+  <ellipse cx="32" cy="21.5" rx="7" ry="9"/>
+</g>
+<circle cx="32" cy="28.5" r="2.4" fill="#d96a8e"/>
+<path d="M27.5 31.5 Q32 37 36.5 31.5 Z" fill="none" stroke="#7a5a48" stroke-width="2" stroke-linejoin="round"/>
+<circle cx="22.5" cy="9.5" r="4.2" fill="#ffffff" stroke="#7a5a48" stroke-width="2"/>
+<circle cx="41.5" cy="9.5" r="4.2" fill="#ffffff" stroke="#7a5a48" stroke-width="2"/>
+<circle cx="23.2" cy="10.2" r="1.5" fill="#4a3328"/>
+<circle cx="40.8" cy="10.2" r="1.5" fill="#4a3328"/>
+<path d="M12 24 Q10 26 9.3 28.5" fill="none" stroke="#7a5a48" stroke-width="1.2"/>
+<g transform="rotate(-10 9 36)">
+  <rect x="3" y="28.5" width="12" height="15" rx="2" fill="#fffafc" stroke="#d96a8e" stroke-width="1.6"/>
+  <circle cx="9" cy="31.5" r="1.1" fill="none" stroke="#7a5a48" stroke-width="1.2"/>
+  <path d="M5.5 35.5 L12.5 35.5 M5.5 39 L12.5 39" stroke="#e07e9d" stroke-width="1" opacity="0.7"/>
+</g>
+</svg>

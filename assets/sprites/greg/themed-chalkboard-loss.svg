@@ -35,7 +35,6 @@
   <rect x="40" y="53" width="17" height="9" rx="1.5" fill="none" stroke="#f0ebe0" stroke-width="1.8"/>
   <path d="M43 57.5 L54 57.5" stroke="#f0ebe0" stroke-width="1.1" opacity="0.7"/>
 </g>
-<!-- Yellow chalk wobble + drop -->
-<path d="M26 13 Q30 10 34 13 Q38 16 42 13" fill="none" stroke="#ffe066" stroke-width="2" stroke-linecap="round"/>
+<!-- Chalk sweat drop -->
 <path d="M52 17 C52 14.5 54 12 54 12 C54 12 56 14.5 56 17 A2 2.2 0 1 1 52 17 Z" fill="none" stroke="#f0ebe0" stroke-width="1.6"/>
 </svg>
