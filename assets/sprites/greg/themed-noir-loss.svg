@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-<!-- Noir Greg, loss: the body of the case. A crime-scene chalk outline, hollow, with a red pool seeping from the flipped shell. -->
-<!-- Chalk-outline legs (up) -->
-<g fill="none" stroke="#dadadc" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity="0.92">
+<!-- Noir Greg, loss: down for the count under the hard light, flipped on his back, a red pool spreading. X eyes. -->
+<!-- White legs up -->
+<g fill="none" stroke="#ececed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M21 35 L17 28 L19 23"/>
   <path d="M27.5 34 L25.5 26 L28.5 21"/>
   <path d="M36.5 34 L38.5 26 L35.5 21"/>
@@ -9,27 +9,31 @@
   <path d="M15 39 L9 36"/>
   <path d="M49 39 L55 36"/>
 </g>
-<!-- Limp chalk claws -->
-<ellipse cx="6.5" cy="33.5" rx="5.2" ry="4.2" fill="none" stroke="#dadadc" stroke-width="2.4" transform="rotate(-30 6.5 33.5)" opacity="0.92"/>
-<ellipse cx="57.5" cy="33.5" rx="5.2" ry="4.2" fill="none" stroke="#dadadc" stroke-width="2.4" transform="rotate(30 57.5 33.5)" opacity="0.92"/>
-<!-- Red pool seeping beneath -->
-<path d="M22 49 C18 49 16 52 20 53.5 C26 55 40 55 46 53 C49 52 47 49 43 49 C38 50 28 50 22 49 Z" fill="#7a1f24" opacity="0.85"/>
-<!-- Chalk-outline overturned shell (hollow) -->
+<ellipse cx="6.5" cy="33.5" rx="5.2" ry="4.2" fill="#54545e" stroke="#ececed" stroke-width="2.2" transform="rotate(-30 6.5 33.5)"/>
+<ellipse cx="57.5" cy="33.5" rx="5.2" ry="4.2" fill="#54545e" stroke="#ececed" stroke-width="2.2" transform="rotate(30 57.5 33.5)"/>
+<!-- Red pool spreading beneath -->
+<path d="M22 49 C18 49 16 52 20 53.5 C26 55 40 55 46 53 C49 52 47 49 43 49 C38 50 28 50 22 49 Z" fill="#7a1f24" opacity="0.9"/>
+<!-- Overturned grey shell, filled -->
 <path d="M12 38 C12 42 15 46 20 48.5 Q26 51 32 51 Q38 51 44 48.5 C49 46 52 42 52 38 L52 37 L12 37 Z"
-      fill="none" stroke="#dadadc" stroke-width="2.4" stroke-linejoin="round" opacity="0.92"/>
-<path d="M12 37 L52 37" stroke="#dadadc" stroke-width="2.4" opacity="0.92"/>
-<!-- Flopped chalk stalks + X eyes -->
-<g fill="none" stroke="#dadadc" stroke-width="2.4" stroke-linecap="round" opacity="0.92">
+      fill="#54545e" stroke="#ececed" stroke-width="2.4" stroke-linejoin="round"/>
+<clipPath id="noirShellL"><path d="M12 38 C12 42 15 46 20 48.5 Q26 51 32 51 Q38 51 44 48.5 C49 46 52 42 52 38 L52 37 L12 37 Z"/></clipPath>
+<g clip-path="url(#noirShellL)">
+  <path d="M36 37 L56 51 L56 37 Z" fill="#34343c"/>
+  <g stroke="#26262e" stroke-width="2.2" opacity="0.6"><path d="M8 41 L56 41"/><path d="M8 46 L56 46"/></g>
+</g>
+<ellipse cx="32" cy="37" rx="20" ry="3.6" fill="#6a6a74" stroke="#ececed" stroke-width="2"/>
+<!-- Flopped stalks + X eyes -->
+<g fill="none" stroke="#ececed" stroke-width="2.2" stroke-linecap="round">
   <path d="M17 37 L11.5 30"/>
   <path d="M22.5 36 L21 27.5"/>
 </g>
-<circle cx="10.5" cy="26.5" r="4.2" fill="none" stroke="#dadadc" stroke-width="2.2" opacity="0.92"/>
-<path d="M8.7 24.7 L12.3 28.3 M12.3 24.7 L8.7 28.3" stroke="#dadadc" stroke-width="1.8" stroke-linecap="round" opacity="0.92"/>
-<circle cx="20.5" cy="24" r="4.2" fill="none" stroke="#dadadc" stroke-width="2.2" opacity="0.92"/>
-<path d="M18.7 22.2 L22.3 25.8 M22.3 22.2 L18.7 25.8" stroke="#dadadc" stroke-width="1.8" stroke-linecap="round" opacity="0.92"/>
+<circle cx="10.5" cy="26.5" r="4.2" fill="#ececed"/>
+<path d="M8.7 24.7 L12.3 28.3 M12.3 24.7 L8.7 28.3" stroke="#1a1a1f" stroke-width="1.7" stroke-linecap="round"/>
+<circle cx="20.5" cy="24" r="4.2" fill="#ececed"/>
+<path d="M18.7 22.2 L22.3 25.8 M22.3 22.2 L18.7 25.8" stroke="#1a1a1f" stroke-width="1.7" stroke-linecap="round"/>
 <!-- Dropped magnifier -->
 <g transform="rotate(14 50 57)">
-  <circle cx="48" cy="55" r="5" fill="none" stroke="#dadadc" stroke-width="2.2" opacity="0.92"/>
-  <path d="M51.5 58.5 L56 62" stroke="#dadadc" stroke-width="2.4" stroke-linecap="round" opacity="0.92"/>
+  <circle cx="48" cy="55" r="5" fill="#1a1a1f" stroke="#ececed" stroke-width="2.2"/>
+  <path d="M51.5 58.5 L56 62" stroke="#ececed" stroke-width="2.4" stroke-linecap="round"/>
 </g>
 </svg>
