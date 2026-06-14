@@ -10,7 +10,8 @@
 // the live board: the route refuses today and later (see main.js), and
 // the date is only ever yesterday-or-earlier here.
 
-import { loadCrux } from '../firebase/dailyBoardSync.js';
+import { loadCrux, loadDailyBoard, deserializeBoard } from '../firebase/dailyBoardSync.js';
+import { extractCrux } from '../logic/cruxExtract.js';
 import { CRUX_VIEWED_KEY_PREFIX } from '../logic/archiveEligibility.js';
 import { safeSet } from '../storage/storageAdapter.js';
 import { reportCaughtError } from '../diagnostics/errorReporter.js';
@@ -82,7 +83,24 @@ export async function showCruxTeaser(date) {
   } catch (err) {
     reportCaughtError('crux-teaser-load', err);
   }
-  renderCruxTeaser(date, payload);
+  // No crux node has two honest causes: the board was a BREATHER (every
+  // square fell to plain counting, so there's no harder step to show), or
+  // its crux just couldn't be cropped to a mini (the rare liar case). Tell
+  // them apart by solving the canonical here — extractCrux === null means
+  // breather — so a breather day reads as intentional, not broken. (A
+  // crux that exists but didn't crop keeps the plain fallback; we never
+  // call such a board a breather.)
+  let breather = false;
+  if (!payload) {
+    try {
+      const raw = await loadDailyBoard(date);
+      if (raw) {
+        const { board, rows, cols } = deserializeBoard(raw);
+        breather = extractCrux(board, rows, cols) === null;
+      }
+    } catch { /* leave breather false — the generic fallback still fits */ }
+  }
+  renderCruxTeaser(date, payload, breather);
 }
 
 /**
@@ -90,7 +108,7 @@ export async function showCruxTeaser(date) {
  * for the fallback). Split out from showCruxTeaser so it can be driven
  * with a fixture in tests without a Firebase round-trip.
  */
-export function renderCruxTeaser(date, payload) {
+export function renderCruxTeaser(date, payload, breather = false) {
   // Viewing a date's crux marks it: a later archive replay of THIS date
   // is dropped from the par fit (a previewed answer changes the time).
   try { safeSet(CRUX_VIEWED_KEY_PREFIX + date, '1'); } catch { /* storage off — fine */ }
@@ -114,7 +132,9 @@ export function renderCruxTeaser(date, payload) {
             <div class="crux-teaser-tagline">No guesses. Ever.</div>
           </div>
         </div>
-        <p class="crux-teaser-prompt">No teaser for ${_label(date)}, but every board is proven solvable before you play it.</p>
+        <p class="crux-teaser-prompt">${breather
+          ? `${_label(date)} was a breather: every square fell to plain counting, no harder step to show. Every board is still proven solvable before you play it.`
+          : `No teaser for ${_label(date)}, but every board is proven solvable before you play it.`}</p>
         <div class="crux-teaser-actions"><a class="action-btn primary" href="${_ctaHref()}">Play today's board</a></div>
       </div>`;
     return;
