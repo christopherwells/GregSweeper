@@ -1,17 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-<!-- Aurora Greg, loss: the lights fade out. The curtain inverts and dims, wisps rising off as it dissolves, X eyes. -->
+<!-- Aurora Greg, loss: the lights fade out. The curtain inverts and dims to cold tones, X eyes. -->
 <defs>
   <linearGradient id="auLoss" x1="0" y1="0" x2="0" y2="1">
     <stop offset="0" stop-color="#8a6fe0" stop-opacity="0.5"/>
     <stop offset="1" stop-color="#2a6a78" stop-opacity="0.5"/>
   </linearGradient>
 </defs>
-<!-- rising dissolve wisps -->
-<g fill="none" stroke="#7fe0d0" stroke-width="1.6" stroke-linecap="round" opacity="0.4">
-  <path d="M24 30 C22 24 25 19 23 14"/>
-  <path d="M32 28 C30 22 33 17 31 12"/>
-  <path d="M40 30 C42 24 39 19 41 14"/>
-</g>
 <!-- dimmed light limbs to the sides -->
 <g fill="none" stroke="#6fc8c0" stroke-width="2" stroke-linecap="round" opacity="0.65">
   <path d="M21 35 C19 28 16 23 18.5 22.5"/>
