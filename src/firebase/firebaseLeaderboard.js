@@ -274,6 +274,114 @@ export async function submitOnlineScore(dateString, name, time, bombHits = 0, ex
 }
 
 /**
+ * Build the `dailyArchive/{date}` row payload. Extracted from
+ * submitArchiveScore so the data contract (the exact fields the dailyArchive
+ * rules require and allow) is unit-testable without a live Firebase: a dropped
+ * `archivePlay` or a stray field would otherwise only surface as a silent
+ * rules rejection on a real write. `timestamp` is passed in (the caller
+ * supplies firebase.database.ServerValue.TIMESTAMP) so this stays pure.
+ * Assumes `name` is already non-empty.
+ *
+ * @param {string} date YYYY-MM-DD of the replayed board
+ * @param {string} name sanitized player name
+ * @param {number} time completion seconds
+ * @param {number} bombHits strike count
+ * @param {Object} extras { uid, par, cruxViewed, bombHitEvents, hintEvents, rngSeed }
+ * @param {*} timestamp the server timestamp sentinel
+ * @returns {Object} the payload to push
+ */
+export function buildArchivePayload(date, name, time, bombHits, extras = {}, timestamp) {
+  const payload = {
+    name: String(name).slice(0, 20).trim(),
+    time,
+    bombHits,
+    archivePlay: true,
+    timestamp,
+  };
+  if (extras.uid) payload.uid = String(extras.uid);
+  if (typeof extras.par === 'number') payload.par = extras.par;
+  // Set by PR 4's `?crux=` route (localStorage flag). The refit drops archive
+  // rows for a date whose crux the player saw (previewing changes the time).
+  if (extras.cruxViewed === true) payload.cruxViewed = true;
+  if (Array.isArray(extras.bombHitEvents) && extras.bombHitEvents.length > 0) {
+    payload.bombHitEvents = extras.bombHitEvents;
+    let totalPenalty = 0;
+    for (const e of extras.bombHitEvents) {
+      if (e && typeof e.penalty === 'number') totalPenalty += e.penalty;
+    }
+    if (totalPenalty > 0) payload.totalBombPenalty = Math.round(totalPenalty * 10) / 10;
+  }
+  if (Array.isArray(extras.hintEvents) && extras.hintEvents.length > 0) {
+    payload.hintEvents = extras.hintEvents;
+  }
+  // Archive boards are PAST dates, so the effective seed routinely differs
+  // from `date` (the daily flips `:trialN` on experiment days). Store it only
+  // when it differs so the refit can reproduce the exact board.
+  if (typeof extras.rngSeed === 'string' && extras.rngSeed !== date) {
+    payload.rngSeed = extras.rngSeed;
+  }
+  return payload;
+}
+
+/**
+ * Submit an archive replay of a PAST daily to `dailyArchive/{date}/{pushId}`.
+ *
+ * Separate from `daily/` by design: the live day-of leaderboard never shows
+ * replay rows (an old cached client reading `daily/` simply never sees them),
+ * so the leaderboard stays day-of by construction. These rows feed the
+ * par-model fit as nuisance-corrected data: the R refit binds them with an
+ * `archive = 1` marker and an `archivePlay` fixed effect that absorbs any
+ * systematic late-play offset and never ships in PAR_MODEL.
+ *
+ * First-completion dedup is the CALLER's job (it submits only when the player
+ * has no dailyHistory row for the date yet), so this is a plain push with no
+ * per-board read. Fire-and-forget like submitTimedScore: a lost archive row
+ * is statistically replaceable, so there is no retry queue.
+ *
+ * @param {string} date YYYY-MM-DD (ET) of the replayed board
+ * @param {string} name player name (max 20 chars)
+ * @param {number} time completion time in seconds
+ * @param {number} bombHits strike count
+ * @param {Object} extras { uid, par, features, bombHitEvents, hintEvents, rngSeed, cruxViewed }
+ * @returns {Promise<boolean>}
+ */
+export async function submitArchiveScore(date, name, time, bombHits = 0, extras = {}) {
+  if (isTestEnvironment()) return false;
+  if (!isFirebaseOnline()) return false;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
+  if (typeof time !== 'number' || time < MIN_VALID_TIME || time > MAX_VALID_TIME) return false;
+
+  const now = Date.now();
+  if (now - _lastSubmitTime < SUBMIT_COOLDOWN_MS) return false;
+
+  try {
+    const sanitizedName = String(name).slice(0, 20).trim();
+    if (!sanitizedName) return false;
+
+    const payload = buildArchivePayload(date, sanitizedName, time, bombHits, extras,
+      firebase.database.ServerValue.TIMESTAMP);
+
+    await db.ref(`dailyArchive/${date}`).push(payload);
+    _lastSubmitTime = now;
+
+    // Ensure the date's feature meta exists so the archive row can join the
+    // fit. Archive dates were canonical, so meta usually already exists
+    // (write-once makes this a no-op); only a gap gets filled.
+    if (extras.features && typeof extras.features === 'object') {
+      upsertDailyMeta(date, extras.features).catch(err => {
+        const msg = String((err && err.code) || (err && err.message) || '');
+        if (!/permission[ _]?denied/i.test(msg)) reportCaughtError('archive-meta-upsert', err);
+      });
+    }
+
+    return true;
+  } catch (err) {
+    console.warn('Archive score submission failed:', err && err.message);
+    return false;
+  }
+}
+
+/**
  * Submit a timed-mode run to `timed/{pushId}`. Unlike daily, every timed
  * board is unique, so the feature vector rides the row itself (there is
  * no per-date meta bucket to join against). These rows are fit-data

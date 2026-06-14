@@ -19,7 +19,8 @@ import { applyThemeEffects, clearThemeEffects } from './ui/themeEffects.js';
 import { newGame, revealCell, toggleFlag, handleChordReveal, rearmPlateTimers } from './game/gameActions.js';
 import './game/winLossHandler.js'; // side-effect: registers handleWin with powerUpActions
 import { useRevealSafe, useShield, activateScan, activateXRay, activateMagnet } from './game/powerUpActions.js';
-import { switchMode, isChaosUnlocked, updateModeUI } from './game/modeManager.js';
+import { switchMode, launchDailyArchive, isChaosUnlocked, updateModeUI } from './game/modeManager.js';
+import { FIRST_ARCHIVE_DATE, isArchivableDate } from './logic/archiveEligibility.js';
 import { persistGameState, tryResumeGame } from './game/gamePersistence.js';
 import { getDifficultyForLevel, getTimedDifficulty, getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, CHAOS_UNLOCK_LEVEL, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE } from './logic/difficulty.js';
 import { computeDailyFeatures, predictPar } from './logic/dailyFeatures.js';
@@ -2231,8 +2232,9 @@ function updateTitleProgress() {
     const today = getLocalDateString();
     const dailyCard = $('.mode-card[data-mode="daily"]');
     const { streak } = getDailyStreak();
-    const parLine = (_titleDailyPar.date === today && _titleDailyPar.secs > 0)
-      ? `<span class="mode-card-par">Par: ${_titleDailyPar.secs} seconds</span>`
+    // Par rides the status line as a quiet suffix instead of its own row.
+    const parSuffix = (_titleDailyPar.date === today && _titleDailyPar.secs > 0)
+      ? ` <span class="mode-card-par-inline">· Par ${_titleDailyPar.secs}s</span>`
       : '';
     const fieldNote = (_titleDailyPar.date === today && _titleDailyPar.note)
       ? `<span class="mode-card-fieldnote">${spriteImgHTML('smiley', 'sprite-greg-note', 'Greg')}${_titleDailyPar.note}</span>`
@@ -2244,7 +2246,9 @@ function updateTitleProgress() {
     } else {
       descriptor = streak > 0 ? `🔥 ${streak} day streak` : 'Same puzzle worldwide';
     }
-    dailyEl.innerHTML = descriptor + parLine + fieldNote;
+    // Two rows only: status (+ par) and Greg's note. "Past dailies" is a
+    // corner chip in the card markup, so it never enters this stack.
+    dailyEl.innerHTML = `<span class="mode-card-status">${descriptor}${parSuffix}</span>` + fieldNote;
     if (dailyCard) dailyCard.classList.toggle('daily-completed', completed);
   }
 
@@ -2547,6 +2551,134 @@ for (const card of $$('.mode-card')) {
     hideTitleScreen();
     switchMode(mode);
   });
+}
+
+// ── Past Dailies (archive) calendar ─────────────────────
+// Opens from the "Past dailies" link on the Daily card. The grid offers every
+// stored past board (FIRST_ARCHIVE_DATE through yesterday); a tap probes the
+// canonical and hands it to launchDailyArchive. Completed dates are marked
+// from the player's dailyHistory. Archive plays never touch streak/completion
+// (enforced in winLossHandler via state.isArchivePlay).
+let _archiveView = null;            // { year, month(0-11) } currently shown
+let _archiveCompleted = new Set();  // YYYY-MM-DD the player has finished
+
+function _archiveYmd(y, m, d) {
+  return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+function _archiveMonthLabel(y, m) {
+  // Day 1 at local noon: a plain month/year label, no timezone edge cases.
+  return new Date(y, m, 1, 12).toLocaleString(undefined, { month: 'long', year: 'numeric' });
+}
+function _archiveCanGoPrev() {
+  const [fy, fm] = FIRST_ARCHIVE_DATE.split('-').map(Number);
+  return (_archiveView.year * 12 + _archiveView.month) > (fy * 12 + (fm - 1));
+}
+function _archiveCanGoNext() {
+  // Never past the current month — today is the live Daily's job, not the archive's.
+  const [ty, tm] = getLocalDateString().split('-').map(Number);
+  return (_archiveView.year * 12 + _archiveView.month) < (ty * 12 + (tm - 1));
+}
+
+async function openArchiveCalendar() {
+  // Refresh the completed-set so the marks reflect the latest cloud state.
+  // Keep whatever we had on a failed/offline read rather than clearing marks.
+  try {
+    const dates = await loadDailyHistory();
+    if (Array.isArray(dates)) _archiveCompleted = new Set(dates);
+  } catch { /* keep prior marks */ }
+  const [ty, tm] = getLocalDateString().split('-').map(Number);
+  _archiveView = { year: ty, month: tm - 1 };
+  showModalFromTitle('archive-modal');
+  renderArchiveCalendar();
+}
+
+function renderArchiveCalendar() {
+  const grid = $('#archive-grid');
+  if (!grid || !_archiveView) return;
+  const { year, month } = _archiveView;
+  const label = $('#archive-month-label');
+  if (label) label.textContent = _archiveMonthLabel(year, month);
+  const prevBtn = $('#archive-prev');
+  const nextBtn = $('#archive-next');
+  if (prevBtn) prevBtn.disabled = !_archiveCanGoPrev();
+  if (nextBtn) nextBtn.disabled = !_archiveCanGoNext();
+
+  const today = getLocalDateString();
+  const firstDow = new Date(year, month, 1, 12).getDay(); // 0=Sun
+  const daysInMonth = new Date(year, month + 1, 0, 12).getDate();
+  let html = '';
+  for (let i = 0; i < firstDow; i++) html += '<span class="archive-day empty"></span>';
+  let anyPlayable = false;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = _archiveYmd(year, month, d);
+    if (isArchivableDate(ds, today)) {
+      anyPlayable = true;
+      const done = _archiveCompleted.has(ds);
+      html += `<button type="button" class="archive-day playable${done ? ' completed' : ''}" data-date="${ds}" aria-label="${ds}${done ? ', completed' : ''}">${d}${done ? '<span class="archive-check">✓</span>' : ''}</button>`;
+    } else {
+      const isToday = ds === today;
+      html += `<span class="archive-day ${isToday ? 'today' : 'blocked'}" aria-hidden="true">${d}</span>`;
+    }
+  }
+  grid.innerHTML = html;
+  const emptyNote = $('#archive-empty-note');
+  if (emptyNote) emptyNote.classList.toggle('hidden', anyPlayable);
+}
+
+const _archivePrevBtn = $('#archive-prev');
+if (_archivePrevBtn) _archivePrevBtn.addEventListener('click', () => {
+  if (!_archiveView || !_archiveCanGoPrev()) return;
+  if (_archiveView.month === 0) { _archiveView.month = 11; _archiveView.year--; }
+  else _archiveView.month--;
+  renderArchiveCalendar();
+});
+const _archiveNextBtn = $('#archive-next');
+if (_archiveNextBtn) _archiveNextBtn.addEventListener('click', () => {
+  if (!_archiveView || !_archiveCanGoNext()) return;
+  if (_archiveView.month === 11) { _archiveView.month = 0; _archiveView.year++; }
+  else _archiveView.month++;
+  renderArchiveCalendar();
+});
+
+const _archiveGridEl = $('#archive-grid');
+if (_archiveGridEl) _archiveGridEl.addEventListener('click', async (e) => {
+  const cell = e.target.closest('.archive-day.playable');
+  if (!cell || cell.disabled) return;
+  const date = cell.dataset.date;
+  if (!date) return;
+  cell.disabled = true;
+  cell.classList.add('loading');
+  // Archive has no local-gen fallback: a missing canonical means the date
+  // isn't offered. Probe before committing to the launch.
+  const raw = await loadDailyBoard(date).catch(() => null);
+  if (!raw) {
+    cell.disabled = false;
+    cell.classList.remove('loading');
+    showToast('That day’s board isn’t available.');
+    return;
+  }
+  _returnToTitle = false; // entering a game, not bouncing back to the title
+  hideModal('archive-modal');
+  hideTitleScreen();
+  launchDailyArchive(date, raw);
+});
+
+// The "Past dailies" corner chip opens the calendar instead of launching
+// today's board. The card is a <button>, so the chip is a role=button span
+// inside it; a capture-phase listener catches the tap before the card's own
+// (bubble-phase) launch handler and stops it.
+const _dailyCardEl = $('.mode-card[data-mode="daily"]');
+if (_dailyCardEl) {
+  const _openArchiveFromLink = (e) => {
+    if (!e.target.closest('.card-archive-btn')) return;
+    e.stopPropagation();
+    e.preventDefault();
+    openArchiveCalendar();
+  };
+  _dailyCardEl.addEventListener('click', _openArchiveFromLink, true);
+  _dailyCardEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') _openArchiveFromLink(e);
+  }, true);
 }
 
 // Title screen footer buttons — open modals on top of title screen
@@ -3147,6 +3279,14 @@ $('#gameover-nextlevel').addEventListener('click', () => {
 
 $('#gameover-submit-daily').addEventListener('click', async (e) => {
   e.currentTarget.disabled = true;
+  // Archive replays never use this manual form (it stays hidden for them and
+  // records through submitArchiveCompletion on the auto path). Guard anyway
+  // so a stale-visible form can never post an archive run into daily/.
+  if (state.isArchivePlay) {
+    const f = $('#daily-submit-form');
+    if (f) f.classList.add('hidden');
+    return;
+  }
   const nameInput = $('#daily-name-input');
   const name = nameInput ? nameInput.value : '';
   if (name && name.trim()) {

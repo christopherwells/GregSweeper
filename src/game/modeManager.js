@@ -84,6 +84,11 @@ export function switchMode(mode) {
   }
 
   state.gameMode = mode;
+  // A normal mode switch is never an archive replay (those go through
+  // launchDailyArchive). Clear the flag so a resumed real daily can't
+  // inherit a prior archive's identity and submit to the wrong path.
+  state.isArchivePlay = false;
+  state._archiveRaw = null;
   updateModeUI(mode);
 
   // Chaos mode: always start a fresh run (no resume)
@@ -115,6 +120,29 @@ export function switchMode(mode) {
     }
     newGame();
   }
+}
+
+/**
+ * Launch a replay of a PAST daily. The date's canonical `raw` is already
+ * fetched and validated by the calendar caller (archive has no local-gen
+ * fallback). Unlike switchMode('daily'), this does NOT resume the saved real
+ * daily: it forces a fresh newGame with the archive flag and the caller-set
+ * past date. The outgoing real game is persisted first, so returning to
+ * today's daily resumes intact.
+ *
+ * @param {string} date YYYY-MM-DD (ET) of the past board
+ * @param {Object} raw  serialized canonical board from loadDailyBoard
+ */
+export function launchDailyArchive(date, raw) {
+  persistGameState();
+  if (state.gameMode === 'chaos') restorePreChaosTheme();
+  state.gameMode = 'daily';
+  state.isDailyPractice = false;
+  state.isArchivePlay = true;
+  state.dailySeed = date;
+  state._archiveRaw = { date, raw };
+  updateModeUI('daily');
+  newGame();
 }
 
 export function isChaosUnlocked() {

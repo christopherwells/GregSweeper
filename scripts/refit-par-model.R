@@ -136,6 +136,14 @@ PRIOR_MEANS <- list(
   # explains the legacy cohort. Fit-only — folded into each player's
   # handicap, not shipped to predictPar.
   legacy_bombs         = 15.0,
+  # archivePlay: per-row offset for archive replays (PR 3 daily archive). A
+  # replay carries no day-of stakes (no streak, separate leaderboard), so a
+  # relaxed, slightly-slower pace is the expected direction; seed it small and
+  # let the data move it. Fit-only — NEVER shipped to predictPar (predictPar
+  # is day-of par). NOTE: build_priors bounds every b-coef at lb=0, so this
+  # asserts a NON-NEGATIVE offset; revisit the prior family if pooled archive
+  # plays turn out systematically faster once real data lands.
+  archivePlay          = 2.0,
   zeroClusterCount     = 1.0
 )
 
@@ -167,6 +175,7 @@ PRIOR_SIGMAS <- list(
   # Tighter prior on legacy_bombs (sigma=0.4): OLS on legacy data gives a
   # clean ~15s estimate, with little need for the wide spread the others get.
   legacy_bombs         = 0.4,
+  archivePlay          = 1.0,   # wide: little prior knowledge of the offset size
   zeroClusterCount     = 1.0
 )
 
@@ -274,6 +283,21 @@ message(sprintf("  daily score dates: %d", length(scores_raw)))
 message(sprintf("  timed rows: %d (modeTimed effect activates at >= %d)",
                 length(timed_raw), TIMED_FIT_THRESHOLD))
 
+# Daily archive rows (dailyArchive/{date}/{pushId}): replays of PAST dailies
+# (PR 3). Same board features as the day-of play, so they sharpen the
+# board-difficulty coefficients — especially the sparse modifiers a replay
+# happens to land on. Instrument-first like timed mode: accumulated and logged
+# now, pooled into the fit only once >= ARCHIVE_FIT_THRESHOLD rows exist (the
+# replay-pace offset needs data to be identifiable, and a tiny biased stream
+# shouldn't move the shared coefficients).
+ARCHIVE_FIT_THRESHOLD <- 20
+archive_raw <- tryCatch(
+  fromJSON(paste0(DB_URL, "/dailyArchive.json"), simplifyVector = FALSE) %||% list(),
+  error = function(e) list()
+)
+message(sprintf("  archive rows: %d (pooled into the fit at >= %d)",
+                sum(map_int(archive_raw, length)), ARCHIVE_FIT_THRESHOLD))
+
 if (length(meta_raw) == 0 || length(scores_raw) == 0) {
   message("Empty dataset — nothing to fit. Exiting cleanly.")
   quit(status = 0)
@@ -286,42 +310,65 @@ meta <- tibble(
   filter(!map_lgl(features, is.null)) |>
   unnest_wider(features)
 
-scores_df <- tibble(
-  date  = rep(names(scores_raw), map_int(scores_raw, length)),
-  entry = flatten(map(scores_raw, ~ .x))
-) |>
-  mutate(
-    time              = map_dbl(entry, ~ .x$time %||% NA_real_),
-    uid               = map_chr(entry, ~ .x$uid  %||% NA_character_),
-    bombHits          = map_dbl(entry, ~ .x$bombHits %||% 0),
-    # v1.5.149+ (info-value bomb mechanic): totalBombPenalty is the sum
-    # of per-hit deterministic penalties already added to `time`. Legacy
-    # plays (re-fog / +10s mechanic) don't have this field — they're
-    # detected by `bombHits > 0 & totalBombPenalty == 0` and continue to
-    # contribute to a `legacy_bombs` regressor.
-    totalBombPenalty  = map_dbl(entry, ~ .x$totalBombPenalty %||% 0),
-    # v1.6.12+ Lens hints: rows carry hintEvents only when the player
-    # invoked the in-game lens. A hinted completion is not an honest
-    # observation of board difficulty for that player, so hinted plays
-    # are EXCLUDED from the fit (cheaper and more defensible than a
-    # hint regressor until hinted plays are numerous enough to model).
-    n_hints           = map_int(entry, ~ length(.x$hintEvents %||% list())),
+# Both day-of (daily/) and archive (dailyArchive/) entries carry the same
+# score shape, so one parser extracts both. cruxViewed is archive-only (the
+# PR 4 `?crux=` preview marker; absent → FALSE). Returns a typed 0-row tibble
+# for an empty node so bind_rows works when no archive rows exist yet.
+parse_score_rows <- function(raw) {
+  if (length(raw) == 0) {
+    return(tibble(date = character(), time = double(), uid = character(),
+                  bombHits = double(), totalBombPenalty = double(),
+                  n_hints = integer(), cruxViewed = logical()))
+  }
+  tibble(
+    date  = rep(names(raw), map_int(raw, length)),
+    entry = flatten(map(raw, ~ .x))
   ) |>
-  select(-entry) |>
+    mutate(
+      time              = map_dbl(entry, ~ .x$time %||% NA_real_),
+      uid               = map_chr(entry, ~ .x$uid  %||% NA_character_),
+      bombHits          = map_dbl(entry, ~ .x$bombHits %||% 0),
+      # v1.5.149+ (info-value bomb mechanic): totalBombPenalty is the sum of
+      # per-hit deterministic penalties already added to `time`. Legacy plays
+      # (re-fog / +10s mechanic) don't have this field — detected by
+      # `bombHits > 0 & totalBombPenalty == 0` and carried by `legacy_bombs`.
+      totalBombPenalty  = map_dbl(entry, ~ .x$totalBombPenalty %||% 0),
+      # v1.6.12+ Lens hints: rows carry hintEvents only when the player used
+      # the in-game lens. A hinted completion is not an honest observation of
+      # board difficulty, so hinted plays are EXCLUDED from the fit.
+      n_hints           = map_int(entry, ~ length(.x$hintEvents %||% list())),
+      # PR 4 crux preview: an archive row whose crux the player saw is dropped
+      # from the fit (previewing the answer changes the completion time).
+      cruxViewed        = map_lgl(entry, ~ isTRUE(.x$cruxViewed)),
+    ) |>
+    select(-entry)
+}
+
+# Day-of plays (archive = 0) and archive replays (archive = 1), filtered and
+# bomb-corrected together. The pooling gate (after the meta join) decides
+# whether the archive rows actually enter the fit.
+scores_df <- bind_rows(
+  parse_score_rows(scores_raw)  |> mutate(archive = 0L),
+  parse_score_rows(archive_raw) |> mutate(archive = 1L)
+) |>
   filter(!is.na(time), time >= 5, time <= 3600) |>
   filter(n_hints == 0) |>
+  # Drop archive rows whose crux was previewed; day-of rows never carry the
+  # flag, so this only ever removes archive rows.
+  filter(!(archive == 1L & cruxViewed)) |>
   mutate(
+    archivePlay    = as.numeric(archive),  # nuisance dummy; in the fit only when pooled
     is_legacy_bomb = bombHits > 0 & totalBombPenalty == 0,
     legacy_bombs   = if_else(is_legacy_bomb, bombHits, 0),
     # clean_time = the time the player would have scored solving the FULL
     # board with no bomb hits. For a new-mechanic play, `time` already
     # includes Σ(infoValue + base) of penalty; the infoValue part exactly
-    # offsets the deduction time the player skipped by bombing, so the
-    # only true added cost is BOMB_PENALTY_BASE per hit. Subtract just
-    # that — NOT totalBombPenalty (which would over-subtract by Σ infoValue
-    # and make bomb-hit plays look artificially fast, dragging the
-    # coefficients down). Legacy plays keep their full `time` here and
-    # contribute their cost through the `legacy_bombs` regressor instead.
+    # offsets the deduction time the player skipped by bombing, so the only
+    # true added cost is BOMB_PENALTY_BASE per hit. Subtract just that — NOT
+    # totalBombPenalty (which would over-subtract by Σ infoValue and make
+    # bomb-hit plays look artificially fast, dragging the coefficients down).
+    # Legacy plays keep their full `time` here and contribute their cost
+    # through the `legacy_bombs` regressor instead.
     clean_time     = time - if_else(totalBombPenalty > 0, BOMB_PENALTY_BASE * bombHits, 0),
   )
 
@@ -334,6 +381,33 @@ if (legacy_n > 0 || new_n > 0) {
 
 df <- scores_df |>
   inner_join(meta, by = "date")
+
+# Archive pooling gate (instrument-first, same philosophy as timed mode and
+# new feature coefficients): until archive replays are numerous enough to fit
+# their replay-pace offset, hold them out of the fit entirely so n_scores, the
+# outlier screen, and every board-difficulty coefficient see day-of plays
+# only. They keep accumulating in Firebase; the fetch log above tracks the
+# count. Once pooled, an archivePlay dummy absorbs the offset (in the fit
+# block below).
+n_archive <- sum(df$archive)
+pool_archive <- n_archive >= ARCHIVE_FIT_THRESHOLD
+if (pool_archive) {
+  # First-completion-only is enforced client-side, but a falls-open history
+  # read could leave an archive row for a date the player also has a day-of
+  # row for. Drop those archive duplicates so a board is never double-counted;
+  # day-of rows are never touched.
+  dayof_keys <- df |> filter(archive == 0L) |> distinct(uid, date) |>
+    mutate(.has_dayof = TRUE)
+  df <- df |>
+    left_join(dayof_keys, by = c("uid", "date")) |>
+    filter(!(archive == 1L & !is.na(.has_dayof))) |>
+    select(-.has_dayof)
+} else {
+  df <- df |> filter(archive == 0L)
+}
+message(sprintf("  archive: %d row(s) after filters — %s", n_archive,
+                if (pool_archive) "POOLED into the fit (archivePlay offset)"
+                else sprintf("held out of the fit (< %d to pool)", ARCHIVE_FIT_THRESHOLD)))
 
 # v1.5.16+ structural features may not exist in older dailyMeta records
 # (the field is write-once per Firebase rules). Default missing columns
@@ -446,9 +520,20 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
   # sd(uid) gives it enough structure to separate "two players differ
   # by X" from "zero handicap variance, pure residual".
   df_fit <- df |> filter(uid %in% eligible_uids)
-  fit_formula <- update(fit_formula_fixed, ~ . + (1 | uid))
+  # The archivePlay offset enters the fixed effects only when archive rows
+  # were pooled (gate above) AND at least one survived the eligible-user
+  # filter — an all-one-value column would be a zero-variance predictor brms
+  # rejects. all.vars on the active formula drives both the prior list and the
+  # coefficient extraction, so the term is consistently present or absent.
+  add_archive_term <- pool_archive && length(unique(df_fit$archive)) > 1
+  fit_formula_fixed_active <- if (add_archive_term) {
+    update(fit_formula_fixed, ~ . + archivePlay)
+  } else {
+    fit_formula_fixed
+  }
+  fit_formula <- update(fit_formula_fixed_active, ~ . + (1 | uid))
 
-  priors <- build_priors(c("Intercept", all.vars(fit_formula_fixed)[-1]))
+  priors <- build_priors(c("Intercept", all.vars(fit_formula_fixed_active)[-1]))
 
   message("Fitting brms model (this takes ~1-2 min on first run)…")
   fit <- brm(
@@ -722,8 +807,18 @@ if (fit_method == "brms-ranef") {
   } else {
     0
   }
+  # archivePlay offset (PR 3): present only when archive rows were pooled.
+  # Netted out of the bias-correction below (like legacy_bombs) so the archive
+  # cohort's replay-pace shift can't bias the intercept; logged but NEVER
+  # shipped to predictPar. 0 when the term wasn't in the fit, so the
+  # subtraction is then a no-op (archivePlay is also 0 for every day-of row).
+  archive_coef <- if ("archivePlay" %in% rownames(fixef(fit))) {
+    as.numeric(fixef(fit)["archivePlay", "Estimate"])
+  } else {
+    0
+  }
   biased_pred <- apply_par_model(df_fit, new_coefs)
-  bomb_adjusted_time <- df_fit$clean_time - bomb_coef * df_fit$legacy_bombs
+  bomb_adjusted_time <- df_fit$clean_time - bomb_coef * df_fit$legacy_bombs - archive_coef * df_fit$archivePlay
   bias <- mean(bomb_adjusted_time) - mean(biased_pred)
   # Apply the bias straight, no max(0, ...) clamp. Earlier code clamped
   # at zero "for theoretical purity" but that broke calibration whenever
@@ -736,6 +831,10 @@ if (fit_method == "brms-ranef") {
   new_coefs$intercept <- new_coefs$intercept + bias
   message(sprintf("  legacy_bombs coef: +%.2fs/hit (legacy +10s/re-fog cohort only) | intercept bias-correction: %+.2fs (clean-time-equivalent mean matches mean predicted par)",
                   bomb_coef, bias))
+  if (archive_coef != 0) {
+    message(sprintf("  archivePlay coef: %+.2fs (archive-replay offset, fit-only, not shipped)",
+                    archive_coef))
+  }
 
   # Bombs are part of your HANDICAP, not par. predictPar stays clean board
   # difficulty (untouched above); each player's typical bomb cost is added

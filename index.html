@@ -306,6 +306,10 @@
         <div class="mode-card-icon"><img class="mode-card-img" src="assets/sprites/mode-daily.svg" alt="" draggable="false" onerror="this.replaceWith('📅')"></div>
         <div class="mode-card-name">Daily</div>
         <div class="mode-card-progress" id="title-daily-progress">Today's challenge</div>
+        <!-- Past dailies lives in the card corner, not the content stack, so
+             it never adds a row. A capture-phase handler on the card routes
+             its taps to the calendar instead of launching today's board. -->
+        <span class="card-archive-btn" role="button" tabindex="0" aria-label="Play a past daily" title="Past dailies">Past ›</span>
       </button>
       <!-- Weekly puzzle card — same single board for the whole ET week
            (Mon-Sun), one attempt per day, best time wins. No streak. -->
@@ -751,6 +755,32 @@
         <img class="meet-greg-img" src="assets/sprites/idle.png" alt="Greg, a green crab holding a clipboard" draggable="false">
         <p>Greg checks every board before you play it, and keeps notes on how you solve.</p>
         <p>His time on the daily is the par you race.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Past Dailies calendar — replay any stored past board. Opens from the
+       "Past dailies" link on the Daily card. Outside #app so it renders over
+       the title screen. The month grid is built by renderArchiveCalendar()
+       in main.js; a tap probes the canonical and launches an archive play. -->
+  <div id="archive-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content archive-modal-content">
+      <div class="modal-header">
+        <h2>Past Dailies</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="archive-intro">Replay any past board. Archive runs never touch your streak or your daily completion, and Greg still keeps your time.</p>
+        <div class="archive-nav">
+          <button id="archive-prev" class="archive-nav-btn" type="button" aria-label="Previous month">&lsaquo;</button>
+          <span id="archive-month-label" class="archive-month-label"></span>
+          <button id="archive-next" class="archive-nav-btn" type="button" aria-label="Next month">&rsaquo;</button>
+        </div>
+        <div class="archive-weekdays" aria-hidden="true">
+          <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+        </div>
+        <div id="archive-grid" class="archive-grid"></div>
+        <p id="archive-empty-note" class="archive-empty-note hidden">No past boards in this month.</p>
       </div>
     </div>
   </div>

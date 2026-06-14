@@ -291,7 +291,11 @@ export async function newGame() {
     state.dailySeed = null;
     state.dailyRngSeed = null;
     state.isDailyPractice = false;
-  } else if (!state.isDailyPractice) {
+    state.isArchivePlay = false;
+    state._archiveRaw = null;
+  } else if (!state.isDailyPractice && !state.isArchivePlay) {
+    // Archive replays carry a caller-set PAST date in state.dailySeed
+    // (launched from the calendar). Only a live daily derives today's date.
     state.dailySeed = getLocalDateString();
   }
   // Weekly identity is likewise clock-derived at creation (callers used
@@ -336,14 +340,20 @@ export async function newGame() {
     if (wantCanonical) {
       try {
         let canonicalRaw = null;
-        if (state.canonicalDailyBoard
+        if (state.isArchivePlay && state._archiveRaw && state._archiveRaw.date === state.dailySeed) {
+          // Archive replay: the calendar already fetched and validated this
+          // PAST board, so use it verbatim and never touch the today-stash.
+          canonicalRaw = state._archiveRaw.raw;
+        } else if (state.canonicalDailyBoard
             && state.canonicalDailyBoard.date === state.dailySeed
             && state.canonicalDailyBoard.raw) {
           canonicalRaw = state.canonicalDailyBoard.raw;
         } else {
           canonicalRaw = await loadDailyBoard(state.dailySeed);
           if (staleRun()) return; // a newer newGame superseded this run mid-fetch
-          if (canonicalRaw) {
+          // Only the live daily seeds the today-stash. An archive fetch is a
+          // past date and must never overwrite today's canonical.
+          if (canonicalRaw && !state.isArchivePlay) {
             state.canonicalDailyBoard = { date: state.dailySeed, raw: canonicalRaw };
           }
         }
@@ -354,6 +364,19 @@ export async function newGame() {
         // daily for everyone.
         console.warn('canonical board load/deserialize failed, regenerating:', err.message);
       }
+    }
+
+    // Archive replays REQUIRE the canonical: there is no local-gen fallback.
+    // A regenerated past board could diverge from what actually shipped that
+    // day, and we must never write a board into the archive's date slot. The
+    // calendar only offers dates whose canonical exists, so reaching here
+    // means a fetch failed between the calendar's probe and this generation.
+    if (state.isArchivePlay && !reconstructed) {
+      console.warn('archive: canonical missing for', state.dailySeed, '— aborting');
+      state.isArchivePlay = false;
+      state._archiveRaw = null;
+      import('../ui/toastManager.js').then(m => m.showToast('That day’s board could not be loaded.'));
+      return;
     }
 
     if (reconstructed) {
