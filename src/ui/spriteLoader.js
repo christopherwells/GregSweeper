@@ -62,24 +62,48 @@ export function preloadSprites() {
   }
 }
 
-// Per-theme object sets: theme -> { mine, flag, strikeCell } -> svg.
-// Batch 1 (2026-06-11): the eight concept worlds + chalkboard's chalk
-// set + noir's chalk-outline strike.
+// Per-theme object sets AND per-theme Greg: theme ->
+// { mine, flag, strikeCell, smiley, smileyWin, smileyLoss } -> svg.
+// Object sprites are drawn world by world (batch 1, 2026-06-11: the
+// concept worlds + chalkboard's chalk set + noir's chalk-outline
+// strike). The three Greg smiley slots are wired for ALL 24 themed
+// worlds (2026-06-13): a themed player sees Greg redrawn in that world's
+// material. Classic/Dark have no entry here and keep the canonical Greg
+// PNGs; avatar surfaces always use spriteImgHTML (canonical) regardless
+// of theme, so the field note / win modal / ghost row stay green-crab.
 const T = 'assets/sprites/themes/';
+const G = 'assets/sprites/greg/';
+// The three themed-Greg smiley slots for a world (idle/win/loss).
+const greg = (t) => ({
+  smiley:     `${G}themed-${t}-idle.svg`,
+  smileyWin:  `${G}themed-${t}-win.svg`,
+  smileyLoss: `${G}themed-${t}-loss.svg`,
+});
 const THEME_SPRITES = {
-  editorial:    { mine: T + 'editorial-mine.svg',    flag: T + 'editorial-flag.svg',    strikeCell: T + 'editorial-strike.svg' },
-  sumie:        { mine: T + 'sumie-mine.svg',        flag: T + 'sumie-flag.svg',        strikeCell: T + 'sumie-strike.svg' },
-  blueprint:    { mine: T + 'blueprint-mine.svg',    flag: T + 'blueprint-flag.svg',    strikeCell: T + 'blueprint-strike.svg' },
-  cartography:  { mine: T + 'cartography-mine.svg',  flag: T + 'cartography-flag.svg',  strikeCell: T + 'cartography-strike.svg' },
-  chalkboard:   { mine: T + 'chalkboard-mine.svg',   flag: T + 'chalkboard-flag.svg',   strikeCell: T + 'chalkboard-strike.svg' },
-  noir:         { strikeCell: T + 'noir-strike.svg' },
-  sakura:       { mine: T + 'sakura-mine.svg',       flag: T + 'sakura-flag.svg',       strikeCell: T + 'sakura-strike.svg' },
-  apothecary:   { mine: T + 'apothecary-mine.svg',   strikeCell: T + 'apothecary-strike.svg' },
-  aurora:       { mine: T + 'aurora-mine.svg',       flag: T + 'aurora-flag.svg',       strikeCell: T + 'aurora-strike.svg' },
-  splitflap:    { mine: T + 'splitflap-mine.svg',    flag: T + 'splitflap-flag.svg',    strikeCell: T + 'splitflap-strike.svg' },
-  galaxy:       { mine: T + 'galaxy-mine.svg',       flag: T + 'galaxy-flag.svg',       strikeCell: T + 'galaxy-strike.svg' },
-  circuitboard: { mine: T + 'circuitboard-mine.svg', flag: T + 'circuitboard-flag.svg', strikeCell: T + 'circuitboard-strike.svg' },
-  comic:        { mine: T + 'comic-mine.svg',        flag: T + 'comic-flag.svg',        strikeCell: T + 'comic-strike.svg' },
+  editorial:    { mine: T + 'editorial-mine.svg',    flag: T + 'editorial-flag.svg',    strikeCell: T + 'editorial-strike.svg',    ...greg('editorial') },
+  sumie:        { mine: T + 'sumie-mine.svg',        flag: T + 'sumie-flag.svg',        strikeCell: T + 'sumie-strike.svg',        ...greg('sumie') },
+  blueprint:    { mine: T + 'blueprint-mine.svg',    flag: T + 'blueprint-flag.svg',    strikeCell: T + 'blueprint-strike.svg',    ...greg('blueprint') },
+  cartography:  { mine: T + 'cartography-mine.svg',  flag: T + 'cartography-flag.svg',  strikeCell: T + 'cartography-strike.svg',  ...greg('cartography') },
+  origami:      { ...greg('origami') },
+  chalkboard:   { mine: T + 'chalkboard-mine.svg',   flag: T + 'chalkboard-flag.svg',   strikeCell: T + 'chalkboard-strike.svg',   ...greg('chalkboard') },
+  noir:         { strikeCell: T + 'noir-strike.svg', ...greg('noir') },
+  ocean:        { ...greg('ocean') },
+  forest:       { ...greg('forest') },
+  sakura:       { mine: T + 'sakura-mine.svg',       flag: T + 'sakura-flag.svg',       strikeCell: T + 'sakura-strike.svg',       ...greg('sakura') },
+  apothecary:   { mine: T + 'apothecary-mine.svg',   strikeCell: T + 'apothecary-strike.svg',                                      ...greg('apothecary') },
+  splitflap:    { mine: T + 'splitflap-mine.svg',    flag: T + 'splitflap-flag.svg',    strikeCell: T + 'splitflap-strike.svg',    ...greg('splitflap') },
+  stainedglass: { ...greg('stainedglass') },
+  aurora:       { mine: T + 'aurora-mine.svg',       flag: T + 'aurora-flag.svg',       strikeCell: T + 'aurora-strike.svg',       ...greg('aurora') },
+  galaxy:       { mine: T + 'galaxy-mine.svg',       flag: T + 'galaxy-flag.svg',       strikeCell: T + 'galaxy-strike.svg',       ...greg('galaxy') },
+  candy:        { ...greg('candy') },
+  comic:        { mine: T + 'comic-mine.svg',        flag: T + 'comic-flag.svg',        strikeCell: T + 'comic-strike.svg',        ...greg('comic') },
+  circuitboard: { mine: T + 'circuitboard-mine.svg', flag: T + 'circuitboard-flag.svg', strikeCell: T + 'circuitboard-strike.svg', ...greg('circuitboard') },
+  matrix:       { ...greg('matrix') },
+  neon:         { ...greg('neon') },
+  synthwave:    { ...greg('synthwave') },
+  inferno:      { ...greg('inferno') },
+  supernova:    { ...greg('supernova') },
+  legendary:    { ...greg('legendary') },
 };
 
 // The theme's OWN emoji for a key (strikeCell falls back to mine, the
