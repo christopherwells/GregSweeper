@@ -16,8 +16,6 @@
   <!-- LOWER wing, bent, the right tip dug into the dirt -->
   <path d="M11 39 L30 38 L30 42 L12 43 Z" fill="#b8c0ca" stroke="#3a4350" stroke-width="2" stroke-linejoin="round"/>
   <path d="M34 38 L55 43 L52 47 L34 42 Z" fill="#a8b0ba" stroke="#3a4350" stroke-width="2" stroke-linejoin="round"/>
-  <!-- bent tail fin -->
-  <path d="M29 13 L33 12 L34 5 L30 7 Z" fill="#9aa4b0" stroke="#3a4350" stroke-width="2" stroke-linejoin="round"/>
   <!-- fuselage -->
   <path d="M17 32 C17 25 22 20 31 19 C44 20 48 25 48 32 C48 40 42 45 31 45 C21 45 17 40 17 32 Z" fill="#e6ebf0" stroke="#3a4350" stroke-width="2.4"/>
   <path d="M18 34 C23 40 27 42 31 42 C36 42 42 40 46 34 C43 39 38 40.5 31 40.5 C24 40.5 20 39 18 34 Z" fill="#3a78c8"/>
