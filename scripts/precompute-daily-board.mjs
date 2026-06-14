@@ -17,6 +17,7 @@ import {
   TARGET_TO_GIMMICK, loadExperimentSpec, selectBestCandidate,
   readCodeVersion, buildCanonicalPayload, buildCandidateFeatures,
 } from './daily-board-pipeline.mjs';
+import { cruxPayloadFromBoard } from '../src/logic/cruxExtract.js';
 
 const FIREBASE_API_KEY = 'AIzaSyBhiFPIUA0u021Yh7eA35N2nQOIUPVPtpo';
 const DB_BASE = 'https://gregsweeper-66d02-default-rtdb.firebaseio.com';
@@ -79,6 +80,31 @@ async function writeDailyMeta(date, idToken, features) {
   console.log('  dailyMeta written');
 }
 
+// Write the day's crux teaser — a self-contained "find the safe square"
+// mini-puzzle of the board's hardest step, shown by the ?crux= share
+// route. Reuses cruxExtract (the same finder the win receipt uses), so
+// the teaser and the receipt can never disagree. A null payload (breather
+// board, or a crux too entangled to crop cleanly) simply ships no teaser
+// for the date — the route handles a missing node gracefully.
+async function writeCrux(date, idToken, payload) {
+  if (!payload) {
+    console.log('  crux: no materializable teaser — skipped');
+    return;
+  }
+  const url = `${DB_BASE}/cruxes/${date}.json?auth=${encodeURIComponent(idToken)}`;
+  const body = JSON.stringify({ ...payload, writtenAt: { '.sv': 'timestamp' } });
+  const r = await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body });
+  if (!r.ok) {
+    if (r.status === 401 || r.status === 403) {
+      console.log('  crux already written — skipped');
+      return;
+    }
+    const txt = await r.text();
+    throw new Error(`crux write failed: ${r.status} ${txt}`);
+  }
+  console.log(`  crux written (tier ${payload.tier}, ${payload.rows}x${payload.cols})`);
+}
+
 (async () => {
   const date = process.argv[2];
   if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
@@ -110,6 +136,7 @@ async function writeDailyMeta(date, idToken, features) {
   console.log('  written');
 
   await writeDailyMeta(date, idToken, buildCandidateFeatures(cand));
+  await writeCrux(date, idToken, cruxPayloadFromBoard(cand.board, cand.rows, cand.cols));
 })().catch(err => {
   console.error('precompute failed:', err.message);
   process.exit(1);

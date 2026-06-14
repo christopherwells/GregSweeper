@@ -68,6 +68,7 @@ import { createDailyRNG, getLocalDateString, getWeekStart, getWeekDayIndex } fro
 import { selectDailyRngSeed } from './logic/selectDailyRngSeed.js';
 import { loadExperimentTarget, getTargetGimmickName, getMissionForSeed } from './logic/experimentDesign.js';
 import { loadDailyBoard, deserializeBoard, prefetchUpcomingDailyBoards } from './firebase/dailyBoardSync.js';
+import { showCruxTeaser } from './ui/cruxTeaser.js';
 import { loadWeeklyBoard, prefetchUpcomingWeeklyBoards } from './firebase/weeklyBoardSync.js';
 import { pruneOldCachedBoards } from './firebase/boardCache.js';
 import { isModifierPopupDisabled, setModifierPopupDisabled, getGimmickDefs, getDailyGimmick, applyGimmicks } from './logic/gimmicks.js';
@@ -137,6 +138,16 @@ function setBootStatus(text) {
 function hideBootOverlay() {
   const el = document.getElementById('boot-overlay');
   if (el) el.remove();
+}
+
+// Add (or subtract) calendar days to a YYYY-MM-DD string, anchored at
+// local noon so a DST boundary can't shift the result a day. Used to
+// resolve "yesterday ET" for the ?crux= share route.
+function _addCalendarDays(date, delta) {
+  const [y, m, d] = date.split('-').map(Number);
+  const dt = new Date(y, m - 1, d, 12);
+  dt.setDate(dt.getDate() + delta);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
 }
 
 // ── Service-worker update gate ────────────────────────
@@ -1634,22 +1645,24 @@ function generateShareCard() {
   const levelLabel = diff.label || `Level ${level}`;
 
   if (mode === 'daily') {
-    // Four-line Wordle-style card: title + par comparison + pace bar +
-    // (optional) strikes + URL. The pace bar is 8 dots where each dot
-    // represents 2.5% of par (so the bar fills completely at ±20%).
-    // Green fills for under-par, red for over-par; an empty bar means
-    // the player landed within a couple of tenths of par exactly.
+    // Wordle-style card, HARD CEILING of five lines plus the URL:
+    //   1 title + date
+    //   2 time vs Greg (par), Beat-Greg framing with the crab
+    //   3 pace bar (8 dots, each 2.5% of par; full at ±20%)
+    //   4 modifiers + the board's hardest step in plain words
+    //   5 strikes (only when the player hit a mine)
     const date = getLocalDateString();
     const par = state.dailyPar || 0;
     const lines = [`${getThemeEmoji('mine')} GregSweeper · ${date}`];
 
     if (par > 0) {
       const delta = time - par;
-      const sign = delta >= 0 ? '+' : '−';
       const absDelta = Math.abs(delta).toFixed(1);
-      lines.push(`⏱ ${time}s · par ${par.toFixed(1)}s (${sign}${absDelta}s)`);
+      // Greg IS par: under par beats Greg, over par he wins.
+      lines.push(delta <= 0
+        ? `⏱ ${time}s · beat Greg by ${absDelta}s 🦀`
+        : `⏱ ${time}s · Greg won by ${absDelta}s 🦀`);
 
-      // Pace bar. 8 dots, each = 2.5% of par. Full bar at ±20% delta.
       const magnitude = Math.min(1, Math.abs(delta) / (par * 0.2));
       const filled = Math.round(magnitude * 8);
       const fillDot = delta <= 0 ? '🟢' : '🔴';
@@ -1657,6 +1670,21 @@ function generateShareCard() {
     } else {
       lines.push(`⏱ ${time}s`);
     }
+
+    // Line 4: modifier icons + the hardest step the board required, in
+    // plain words (the certified tier — never more than the solver proved).
+    const defs = getGimmickDefs();
+    const icons = (state.activeGimmicks || [])
+      .map(g => defs[g] && defs[g].icon)
+      .filter(Boolean)
+      .join('');
+    const tier = state.boardCertificate ? state.boardCertificate.tier : 0;
+    const stepPhrase = tier >= 3 ? 'hardest step: liar logic'
+      : tier === 2 ? 'hardest step: region logic'
+      : tier === 1 ? 'hardest step: clue-comparison'
+      : '';
+    const line4 = [icons, stepPhrase].filter(Boolean).join(' · ');
+    if (line4) lines.push(line4);
 
     if (state.dailyBombHits > 0) {
       lines.push(`💥×${state.dailyBombHits}`);
@@ -3332,6 +3360,14 @@ $('#gameover-submit-daily').addEventListener('click', async (e) => {
 
 $('#gameover-share').addEventListener('click', () => handleShare());
 
+// Copy a link to YESTERDAY's crux teaser (a past board — never today's).
+// The hardcoded prod base matches the share card; cruxes are read from
+// prod even on the test build, so the link works wherever it's opened.
+$('#gameover-crux-challenge')?.addEventListener('click', () => {
+  const yesterday = _addCalendarDays(getLocalDateString(), -1);
+  copyToClipboard(`https://christopherwells.github.io/GregSweeper/?crux=${yesterday}`);
+});
+
 $('#gameover-done').addEventListener('click', () => {
   hideModal('gameover-overlay');
   showTitleScreen();
@@ -3744,6 +3780,23 @@ async function init() {
     // Usage: open DevTools, run `gsTestError('label')`, then check
     // Firebase Console → errors/{uid}/{timestamp} for the row.
     window.gsTestError = (label) => reportTestError(label);
+  }
+
+  // ?crux= share route — a standalone teaser of a PAST daily's hardest
+  // step. Resolve the date (empty / "1" = yesterday ET), refuse today and
+  // later so the live board is never spoiled, then render and STOP: no
+  // startup gate, no game init, works logged-out (cruxes is world-read).
+  const cruxParam = urlParams.get('crux');
+  if (cruxParam !== null) {
+    const todayET = getLocalDateString();
+    const yesterdayET = _addCalendarDays(todayET, -1);
+    let cruxDate = /^\d{4}-\d{2}-\d{2}$/.test(cruxParam) ? cruxParam : yesterdayET;
+    // Spoiler + range guard: only yesterday-or-earlier, never before the
+    // first canonical. Anything out of range falls back to yesterday.
+    if (cruxDate >= todayET || cruxDate < FIRST_ARCHIVE_DATE) cruxDate = yesterdayET;
+    hideBootOverlay();
+    await showCruxTeaser(cruxDate);
+    return;
   }
 
   // Startup gate — block rendering until the SW is current, Firebase is

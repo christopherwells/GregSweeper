@@ -342,6 +342,12 @@
     </div>
   </div>
 
+  <!-- Crux teaser (?crux=YYYY-MM-DD share route): a standalone "find the
+       safe square" view of a past daily's hardest step. Filled by
+       src/ui/cruxTeaser.js; sibling of #app so it renders while #app is
+       hidden, same as #title-screen and the modals. -->
+  <div id="crux-teaser" class="crux-teaser hidden"></div>
+
   <div id="app" class="hidden">
     <div id="title-bar">
       <h1 id="game-title" title="About GregSweeper">GregSweeper</h1>
@@ -554,6 +560,7 @@
                than the same toggle buried in Settings. -->
           <button id="gameover-remind-tomorrow" class="action-btn primary hidden">🔔 Remind me tomorrow</button>
           <button id="gameover-share" class="action-btn share-btn hidden">📋 Share</button>
+          <button id="gameover-crux-challenge" class="action-btn hidden">🦀 Challenge a friend</button>
           <button id="gameover-done" class="action-btn hidden">Done</button>
         </div>
       </div>

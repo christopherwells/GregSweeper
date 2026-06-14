@@ -26,6 +26,7 @@ import {
 } from './daily-board-pipeline.mjs';
 import { isBoardSolvable } from '../src/logic/boardSolver.js';
 import { cleanSolverArtifacts } from '../src/logic/boardGenerator.js';
+import { cruxPayloadFromBoard } from '../src/logic/cruxExtract.js';
 import { createSign } from 'node:crypto';
 
 const DB_BASE = 'https://gregsweeper-66d02-default-rtdb.firebaseio.com';
@@ -130,6 +131,11 @@ function todayET() {
   const payload = buildCanonicalPayload(cand, readCodeVersion());
   console.log(`  payload size: ${JSON.stringify(payload).length} bytes, gatedCert=${payload.gatedCert === true}`);
 
+  // The crux teaser rides along: regenerating a board must refresh (or
+  // clear) its ?crux= mini-puzzle so it never describes the stale layout.
+  const crux = cruxPayloadFromBoard(cand.board, cand.rows, cand.cols);
+  console.log(`  crux teaser: ${crux ? `tier ${crux.tier}, ${crux.rows}x${crux.cols}` : 'none (breather or too entangled to crop)'}`);
+
   if (dryRun) {
     console.log('DRY RUN — nothing written.');
     return;
@@ -142,14 +148,19 @@ function todayET() {
   }
   const accessToken = await getAccessToken(JSON.parse(saJson));
 
-  console.log('  deleting existing dailyBoard + dailyMeta (if any)…');
+  console.log('  deleting existing dailyBoard + dailyMeta + crux (if any)…');
   await adminDelete(accessToken, `dailyBoard/${date}`);
   await adminDelete(accessToken, `dailyMeta/${date}`);
+  await adminDelete(accessToken, `cruxes/${date}`);
 
   console.log('  writing new canonical…');
   await adminWrite(accessToken, `dailyBoard/${date}`, payload);
   console.log('  writing dailyMeta…');
   await adminWrite(accessToken, `dailyMeta/${date}`, { features: buildCandidateFeatures(cand) });
+  if (crux) {
+    console.log('  writing crux…');
+    await adminWrite(accessToken, `cruxes/${date}`, crux);
+  }
   console.log('Done.');
 })().catch(err => {
   console.error('regenerate-daily-board failed:', err.message);
