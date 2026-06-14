@@ -274,6 +274,56 @@ export async function submitOnlineScore(dateString, name, time, bombHits = 0, ex
 }
 
 /**
+ * Build the `dailyArchive/{date}` row payload. Extracted from
+ * submitArchiveScore so the data contract (the exact fields the dailyArchive
+ * rules require and allow) is unit-testable without a live Firebase: a dropped
+ * `archivePlay` or a stray field would otherwise only surface as a silent
+ * rules rejection on a real write. `timestamp` is passed in (the caller
+ * supplies firebase.database.ServerValue.TIMESTAMP) so this stays pure.
+ * Assumes `name` is already non-empty.
+ *
+ * @param {string} date YYYY-MM-DD of the replayed board
+ * @param {string} name sanitized player name
+ * @param {number} time completion seconds
+ * @param {number} bombHits strike count
+ * @param {Object} extras { uid, par, cruxViewed, bombHitEvents, hintEvents, rngSeed }
+ * @param {*} timestamp the server timestamp sentinel
+ * @returns {Object} the payload to push
+ */
+export function buildArchivePayload(date, name, time, bombHits, extras = {}, timestamp) {
+  const payload = {
+    name: String(name).slice(0, 20).trim(),
+    time,
+    bombHits,
+    archivePlay: true,
+    timestamp,
+  };
+  if (extras.uid) payload.uid = String(extras.uid);
+  if (typeof extras.par === 'number') payload.par = extras.par;
+  // Set by PR 4's `?crux=` route (localStorage flag). The refit drops archive
+  // rows for a date whose crux the player saw (previewing changes the time).
+  if (extras.cruxViewed === true) payload.cruxViewed = true;
+  if (Array.isArray(extras.bombHitEvents) && extras.bombHitEvents.length > 0) {
+    payload.bombHitEvents = extras.bombHitEvents;
+    let totalPenalty = 0;
+    for (const e of extras.bombHitEvents) {
+      if (e && typeof e.penalty === 'number') totalPenalty += e.penalty;
+    }
+    if (totalPenalty > 0) payload.totalBombPenalty = Math.round(totalPenalty * 10) / 10;
+  }
+  if (Array.isArray(extras.hintEvents) && extras.hintEvents.length > 0) {
+    payload.hintEvents = extras.hintEvents;
+  }
+  // Archive boards are PAST dates, so the effective seed routinely differs
+  // from `date` (the daily flips `:trialN` on experiment days). Store it only
+  // when it differs so the refit can reproduce the exact board.
+  if (typeof extras.rngSeed === 'string' && extras.rngSeed !== date) {
+    payload.rngSeed = extras.rngSeed;
+  }
+  return payload;
+}
+
+/**
  * Submit an archive replay of a PAST daily to `dailyArchive/{date}/{pushId}`.
  *
  * Separate from `daily/` by design: the live day-of leaderboard never shows
@@ -308,36 +358,8 @@ export async function submitArchiveScore(date, name, time, bombHits = 0, extras 
     const sanitizedName = String(name).slice(0, 20).trim();
     if (!sanitizedName) return false;
 
-    const payload = {
-      name: sanitizedName,
-      time,
-      bombHits,
-      archivePlay: true,
-      timestamp: firebase.database.ServerValue.TIMESTAMP,
-    };
-    if (extras.uid) payload.uid = String(extras.uid);
-    if (typeof extras.par === 'number') payload.par = extras.par;
-    // Set by PR 4's `?crux=` route (localStorage flag). The refit drops
-    // archive rows for a date whose crux the player saw, since previewing
-    // the crux changes the completion time.
-    if (extras.cruxViewed === true) payload.cruxViewed = true;
-    if (Array.isArray(extras.bombHitEvents) && extras.bombHitEvents.length > 0) {
-      payload.bombHitEvents = extras.bombHitEvents;
-      let totalPenalty = 0;
-      for (const e of extras.bombHitEvents) {
-        if (e && typeof e.penalty === 'number') totalPenalty += e.penalty;
-      }
-      if (totalPenalty > 0) payload.totalBombPenalty = Math.round(totalPenalty * 10) / 10;
-    }
-    if (Array.isArray(extras.hintEvents) && extras.hintEvents.length > 0) {
-      payload.hintEvents = extras.hintEvents;
-    }
-    // Archive boards are PAST dates, so the effective seed routinely differs
-    // from `date` (the daily flips `:trialN` on experiment days). Store it
-    // whenever it differs so the refit can reproduce the exact board.
-    if (typeof extras.rngSeed === 'string' && extras.rngSeed !== date) {
-      payload.rngSeed = extras.rngSeed;
-    }
+    const payload = buildArchivePayload(date, sanitizedName, time, bombHits, extras,
+      firebase.database.ServerValue.TIMESTAMP);
 
     await db.ref(`dailyArchive/${date}`).push(payload);
     _lastSubmitTime = now;
