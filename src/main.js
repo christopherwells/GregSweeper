@@ -2232,8 +2232,9 @@ function updateTitleProgress() {
     const today = getLocalDateString();
     const dailyCard = $('.mode-card[data-mode="daily"]');
     const { streak } = getDailyStreak();
-    const parLine = (_titleDailyPar.date === today && _titleDailyPar.secs > 0)
-      ? `<span class="mode-card-par">Par: ${_titleDailyPar.secs} seconds</span>`
+    // Par rides the status line as a quiet suffix instead of its own row.
+    const parSuffix = (_titleDailyPar.date === today && _titleDailyPar.secs > 0)
+      ? ` <span class="mode-card-par-inline">· Par ${_titleDailyPar.secs}s</span>`
       : '';
     const fieldNote = (_titleDailyPar.date === today && _titleDailyPar.note)
       ? `<span class="mode-card-fieldnote">${spriteImgHTML('smiley', 'sprite-greg-note', 'Greg')}${_titleDailyPar.note}</span>`
@@ -2245,8 +2246,9 @@ function updateTitleProgress() {
     } else {
       descriptor = streak > 0 ? `🔥 ${streak} day streak` : 'Same puzzle worldwide';
     }
-    dailyEl.innerHTML = descriptor + parLine + fieldNote
-      + '<span class="card-archive-link" role="button" tabindex="0">Past dailies ›</span>';
+    // Two rows only: status (+ par) and Greg's note. "Past dailies" is a
+    // corner chip in the card markup, so it never enters this stack.
+    dailyEl.innerHTML = `<span class="mode-card-status">${descriptor}${parSuffix}</span>` + fieldNote;
     if (dailyCard) dailyCard.classList.toggle('daily-completed', completed);
   }
 
@@ -2661,14 +2663,14 @@ if (_archiveGridEl) _archiveGridEl.addEventListener('click', async (e) => {
   launchDailyArchive(date, raw);
 });
 
-// "Past dailies" link on the Daily card opens the calendar instead of
-// launching today's board. The card is a <button>, so the link is a
-// role=button span inside it; a capture-phase listener catches the tap
-// before the card's own (bubble-phase) launch handler and stops it.
+// The "Past dailies" corner chip opens the calendar instead of launching
+// today's board. The card is a <button>, so the chip is a role=button span
+// inside it; a capture-phase listener catches the tap before the card's own
+// (bubble-phase) launch handler and stops it.
 const _dailyCardEl = $('.mode-card[data-mode="daily"]');
 if (_dailyCardEl) {
   const _openArchiveFromLink = (e) => {
-    if (!e.target.closest('.card-archive-link')) return;
+    if (!e.target.closest('.card-archive-btn')) return;
     e.stopPropagation();
     e.preventDefault();
     openArchiveCalendar();
