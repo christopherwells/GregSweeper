@@ -1,9 +1,13 @@
-// Sprite resolution chain: the Greg Tier 1 sprites (idle/win/loss.png)
-// render ONLY when the resolved emoji equals the canonical default
-// (😊/😎/😵 — i.e. the Classic/Dark themes), and a theme's own object
-// sprite always wins over the Tier 1 set. Greg must never override a
-// theme's smiley identity; themes that override the smiley emoji keep
-// their emoji (or their own drawn sprite) verbatim.
+// Sprite resolution chain:
+//  - The canonical Greg PNGs (idle/win/loss.png) render ONLY on
+//    Classic/Dark, where the smiley resolves to 😊/😎/😵.
+//  - Every other (themed) world renders its OWN themed Greg SVG in the
+//    three smiley slots (assets/sprites/greg/themed-<world>-<pose>.svg),
+//    wired for all 24 worlds 2026-06-13.
+//  - A theme's own object sprite (mine/flag/strike) still wins over the
+//    Tier 1 set.
+//  - Avatar surfaces (field note, win modal, ghost row) use spriteImgHTML
+//    and ALWAYS show the canonical Greg PNG regardless of theme.
 //
 // Run: node --test test/spriteChain.test.mjs
 
@@ -46,23 +50,25 @@ test('classic theme resolves the three Greg smiley slots to the PNG files', () =
   assert.equal(getSpriteUrl('smileyLoss', '😵'), 'assets/sprites/loss.png');
 });
 
-test('a theme that overrides the smiley emoji keeps it: Greg never renders there', () => {
+test('every themed world renders its own themed Greg in all three smiley slots', () => {
+  const poseFor = { smiley: 'idle', smileyWin: 'win', smileyLoss: 'loss' };
   for (const [theme, info] of Object.entries(THEME_UNLOCKS)) {
     if (theme === 'classic' || theme === 'dark') continue;
     currentTheme = theme;
     for (const key of ['smiley', 'smileyWin', 'smileyLoss']) {
       const resolved = info[key];
       assert.ok(resolved, `${theme} must define ${key}`);
-      assert.notEqual(
-        getSpriteUrl(key, resolved), `assets/sprites/idle.png`,
-        `${theme}'s ${key} (${resolved}) must not resolve to Greg's idle sprite`);
-      // Theme smiley emoji are never the canonical defaults, so the
-      // Tier 1 sprites must not fire at all on these themes.
       const url = getSpriteUrl(key, resolved);
-      assert.ok(url === null || !url.startsWith('assets/sprites/idle')
-        && !String(url).startsWith('assets/sprites/win')
-        && !String(url).startsWith('assets/sprites/loss'),
-        `${theme}'s ${key} resolved to a Greg slot: ${url}`);
+      const expected = `assets/sprites/greg/themed-${theme}-${poseFor[key]}.svg`;
+      assert.equal(url, expected,
+        `${theme}'s ${key} (${resolved}) must resolve to its themed Greg, got ${url}`);
+      // The canonical Greg PNGs must never leak into a theme.
+      for (const canon of ['idle', 'win', 'loss']) {
+        assert.notEqual(url, `assets/sprites/${canon}.png`,
+          `${theme}'s ${key} leaked the canonical Greg`);
+      }
+      // ...and the themed file must exist on disk.
+      assert.ok(existsSync(join(repoRoot, url)), `missing ${url}`);
     }
   }
 });
