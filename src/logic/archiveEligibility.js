@@ -10,11 +10,14 @@
 // YYYY-MM-DD strings compare correctly with < and >= because they are
 // fixed-width and zero-padded, so no Date parsing is needed.
 
-// The first ET date with a canonical daily board. Earlier dates were never
-// stored on Firebase, so they can never be reconstructed and replayed.
-// 2026-04-27 is the first canonical (bootstrapped from Chris's actual played
-// board); see the Canonical Daily Board section of CLAUDE.md.
-export const FIRST_ARCHIVE_DATE = '2026-04-27';
+// The first ET date the archive offers — the app's launch (2026-03-06, v0.1).
+// Canonical storage only began 2026-04-27; the launch..04-26 boards were
+// regenerated from each date's seed with the current pipeline and written by
+// scripts/backfill-old-dailies.mjs. Those are fresh no-guess dailies stamped
+// with old dates, NOT recreations of the per-device boards originally played
+// (unrecoverable — never stored), and they're all below ARCHIVE_FIT_EPOCH so
+// they never feed the par fit. See the Daily Archive section of CLAUDE.md.
+export const FIRST_ARCHIVE_DATE = '2026-03-06';
 
 // Archive completions only feed the par fit from the date per-user
 // dailyHistory began recording (the dailyHistory ship, 2026-05-07). A

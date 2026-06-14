@@ -13,9 +13,10 @@ import {
 } from '../src/logic/archiveEligibility.js';
 
 test('constants: first archive date and fit epoch are the documented anchors', () => {
-  // 2026-04-27 is the first canonical board; 2026-05-07 is the dailyHistory
-  // ship. Changing either silently widens or narrows the archive.
-  assert.equal(FIRST_ARCHIVE_DATE, '2026-04-27');
+  // 2026-03-06 is the app launch (boards before 04-27 were regenerated and
+  // backfilled); 2026-05-07 is the dailyHistory ship. Changing either
+  // silently widens or narrows the archive.
+  assert.equal(FIRST_ARCHIVE_DATE, '2026-03-06');
   assert.equal(ARCHIVE_FIT_EPOCH, '2026-05-07');
   // The epoch can never precede the first archivable date, or a date could be
   // offered yet never able to earn a fit row for a reason that is not the
@@ -27,10 +28,13 @@ test('isArchivableDate: stored past dates only, today and the future excluded', 
   const today = '2026-06-14';
   // A normal past date inside the window.
   assert.equal(isArchivableDate('2026-05-10', today), true);
-  // The first canonical is inclusive.
+  // The first archivable date (app launch) is inclusive.
   assert.equal(isArchivableDate(FIRST_ARCHIVE_DATE, today), true);
-  // The day before the first canonical never had a stored board.
-  assert.equal(isArchivableDate('2026-04-26', today), false);
+  // The day before launch was never a daily at all.
+  assert.equal(isArchivableDate('2026-03-05', today), false);
+  // Dates before canonical storage (04-27) are now offered too — their
+  // boards were regenerated and backfilled.
+  assert.equal(isArchivableDate('2026-04-26', today), true);
   // Today is the live Daily's job, never the archive's.
   assert.equal(isArchivableDate(today, today), false);
   // The future is never archivable.
