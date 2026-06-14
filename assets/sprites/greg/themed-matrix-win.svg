@@ -17,13 +17,7 @@
 <path d="M39.5 12.5 Q41.5 10 43.5 12.5" fill="none" stroke="#ffb0b0" stroke-width="1.6" stroke-linecap="round"/>
 <path d="M11 34 C11 27 16 22 22 20.5 Q27 18 32 18 Q37 18 42 20.5 C48 22 53 27 53 34 C53 41 45 46 32 46 C19 46 11 41 11 34 Z"
       fill="#1a0606" stroke="#ff4a4a" stroke-width="2"/>
-<!-- the red pill, glowing on his chest -->
-<g transform="rotate(-8 32 30)">
-  <rect x="25" y="27" width="14" height="6" rx="3" fill="#ee2424"/>
-  <rect x="25" y="27" width="7" height="6" rx="3" fill="#ff7070"/>
-  <ellipse cx="28" cy="29" rx="1.8" ry="0.7" fill="#fff" opacity="0.6"/>
-</g>
-<path d="M25 37 Q32 43 39 37 Z" fill="#ff4a4a" stroke="#ff4a4a" stroke-width="1" stroke-linejoin="round"/>
+<path d="M25 36 Q32 42 39 36 Z" fill="#ff4a4a" stroke="#ff4a4a" stroke-width="1" stroke-linejoin="round"/>
 <!-- breaking code, red -->
 <g fill="#ff8a8a" font-family="monospace" font-size="6" font-weight="700"><text x="5" y="10">1</text><text x="55" y="9">0</text><text x="31" y="5">1</text></g>
 </svg>
