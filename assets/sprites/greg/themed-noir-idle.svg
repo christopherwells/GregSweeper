@@ -17,14 +17,15 @@
 <!-- Hard shadow half (chiaroscuro), still clearly grey -->
 <clipPath id="noirShell"><path d="M11 31 C11 24 16 19 22 17.5 Q27 15 32 15 Q37 15 42 17.5 C48 19 53 24 53 31 C53 38 45 43 32 43 C19 43 11 38 11 31 Z"/></clipPath>
 <g clip-path="url(#noirShell)">
-  <path d="M34 12 L60 38 L60 12 Z" fill="#34343c"/>
-  <path d="M30 46 L52 46 L52 30 Z" fill="#34343c" opacity="0.9"/>
-  <!-- venetian-blind bars -->
-  <g stroke="#26262e" stroke-width="2.4" opacity="0.7">
-    <path d="M8 22 L56 22"/>
-    <path d="M8 28 L56 28"/>
-    <path d="M8 34 L56 34"/>
-    <path d="M8 40 L56 40"/>
+  <!-- core shadow, right side, clean diagonal terminator (light comes from upper-left) -->
+  <path d="M38 13 L32 45 L57 45 L57 13 Z" fill="#45454f"/>
+  <!-- lit bloom, upper-left -->
+  <ellipse cx="23" cy="25" rx="9" ry="6.5" fill="#64646e" opacity="0.55"/>
+  <!-- venetian-blind bars, thin accents not heavy stripes -->
+  <g stroke="#33333b" stroke-width="1.6" opacity="0.5" stroke-linecap="round">
+    <path d="M8 24 L56 24"/>
+    <path d="M8 30 L56 30"/>
+    <path d="M8 36 L56 36"/>
   </g>
 </g>
 <!-- Shell outline on top -->

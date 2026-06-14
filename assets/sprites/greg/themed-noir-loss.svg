@@ -18,8 +18,12 @@
       fill="#54545e" stroke="#ececed" stroke-width="2.4" stroke-linejoin="round"/>
 <clipPath id="noirShellL"><path d="M12 38 C12 42 15 46 20 48.5 Q26 51 32 51 Q38 51 44 48.5 C49 46 52 42 52 38 L52 37 L12 37 Z"/></clipPath>
 <g clip-path="url(#noirShellL)">
-  <path d="M36 37 L56 51 L56 37 Z" fill="#34343c"/>
-  <g stroke="#26262e" stroke-width="2.2" opacity="0.6"><path d="M8 41 L56 41"/><path d="M8 46 L56 46"/></g>
+  <!-- core shadow, right side -->
+  <path d="M41 37 L37 51 L56 51 L56 37 Z" fill="#45454f"/>
+  <!-- lit bloom, upper-left of the overturned shell -->
+  <ellipse cx="22" cy="42" rx="9" ry="4.5" fill="#64646e" opacity="0.5"/>
+  <!-- venetian-blind bars, thin accents -->
+  <g stroke="#33333b" stroke-width="1.5" opacity="0.5" stroke-linecap="round"><path d="M8 42 L56 42"/><path d="M8 47 L56 47"/></g>
 </g>
 <ellipse cx="32" cy="37" rx="20" ry="3.6" fill="#6a6a74" stroke="#ececed" stroke-width="2"/>
 <!-- Flopped stalks + X eyes -->

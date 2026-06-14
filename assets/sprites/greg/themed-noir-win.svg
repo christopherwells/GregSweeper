@@ -20,12 +20,15 @@
       fill="#54545e"/>
 <clipPath id="noirShellW"><path d="M11 34 C11 27 16 22 22 20.5 Q27 18 32 18 Q37 18 42 20.5 C48 22 53 27 53 34 C53 41 45 46 32 46 C19 46 11 41 11 34 Z"/></clipPath>
 <g clip-path="url(#noirShellW)">
-  <path d="M36 15 L60 41 L60 15 Z" fill="#34343c"/>
-  <g stroke="#26262e" stroke-width="2.4" opacity="0.65">
-    <path d="M8 25 L56 25"/>
-    <path d="M8 31 L56 31"/>
-    <path d="M8 37 L56 37"/>
-    <path d="M8 43 L56 43"/>
+  <!-- core shadow, right side, clean terminator -->
+  <path d="M38 16 L32 48 L57 48 L57 16 Z" fill="#45454f"/>
+  <!-- lit bloom, upper-left -->
+  <ellipse cx="23" cy="28" rx="9" ry="6.5" fill="#64646e" opacity="0.55"/>
+  <!-- venetian-blind bars, thin accents -->
+  <g stroke="#33333b" stroke-width="1.6" opacity="0.5" stroke-linecap="round">
+    <path d="M8 27 L56 27"/>
+    <path d="M8 33 L56 33"/>
+    <path d="M8 39 L56 39"/>
   </g>
 </g>
 <path d="M11 34 C11 27 16 22 22 20.5 Q27 18 32 18 Q37 18 42 20.5 C48 22 53 27 53 34 C53 41 45 46 32 46 C19 46 11 41 11 34 Z"
