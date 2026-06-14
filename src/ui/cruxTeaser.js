@@ -132,6 +132,14 @@ export async function showCruxTeaser(date) {
   renderCruxTeaser(date, payload, breather);
 }
 
+// Plain-language name for the hardest deduction tier on the board (matches
+// the win receipt's vocabulary). Board-level, never about one square.
+const TIER_PHRASE = {
+  1: 'comparing two clues',
+  2: 'weighing a whole region at once',
+  3: 'seeing through a liar',
+};
+
 /**
  * Render the teaser for `date` from an already-fetched payload (or null
  * for the fallback). Split out from showCruxTeaser so it can be driven
@@ -180,6 +188,11 @@ export function renderCruxTeaser(date, payload, breather = false) {
   const mineKeys = new Set(frontier.mines.map(m => key(m.row, m.col)));
   const totalSafe = safeKeys.size;
   const totalMines = mineKeys.size;
+  // The hardest single deduction the SHOWN puzzle needs (board-level, not
+  // about any one square) — replaces the old per-cell "this square" line,
+  // which had no referent once the teaser stopped featuring one answer.
+  const tiers = [...frontier.safe, ...frontier.mines].map(x => x.tier);
+  const maxTier = tiers.length ? Math.max(...tiers) : 0;
 
   const minesClause = totalMines > 0
     ? ` and <strong>${totalMines}</strong> ${totalMines === 1 ? 'a mine' : 'mines'}`
@@ -274,7 +287,10 @@ export function renderCruxTeaser(date, payload, breather = false) {
         ? `Greg proved every one: ${totalSafe} safe and ${totalMines} ${totalMines === 1 ? 'mine' : 'mines'}, no guessing.`
         : `All ${totalSafe} safe ${totalSafe === 1 ? 'square' : 'squares'}, proven not guessed.`;
     }
-    if (coachEl) coachEl.textContent = payload.sentence || '';
+    if (coachEl) {
+      const phrase = TIER_PHRASE[maxTier];
+      coachEl.textContent = phrase ? `The hardest of these needed ${phrase}.` : '';
+    }
     if (progressEl) progressEl.textContent = `${totalSafe} / ${totalSafe} safe found`;
     if (revealAllBtn) revealAllBtn.classList.add('hidden');
     if (ctaEl) ctaEl.classList.remove('hidden');
