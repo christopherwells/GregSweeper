@@ -214,7 +214,7 @@ function getModeKey(gameMode) {
   return gameMode;
 }
 
-export function saveGameResult(won, time, level, { isDaily = false, usedPowerUps = false, gameMode = 'normal', hadGimmicks = false, skillFeats = {}, dailySeed = null } = {}) {
+export function saveGameResult(won, time, level, { isDaily = false, isArchive = false, usedPowerUps = false, gameMode = 'normal', hadGimmicks = false, skillFeats = {}, dailySeed = null } = {}) {
   const stats = loadStats();
   const modeKey = getModeKey(gameMode);
   const modeStats = stats.modeStats[modeKey];
@@ -264,8 +264,13 @@ export function saveGameResult(won, time, level, { isDaily = false, usedPowerUps
     stats.recentGames = stats.recentGames.slice(-50);
   }
 
-  // Update per-mode stats
-  if (modeStats) {
+  // Update per-mode stats. Archive replays are EXCLUDED here: a replayed past
+  // daily counts as a generic win in the global stats above (so achievements
+  // still fire) but must never touch any daily-mode counter — the daily-date
+  // streak, completion totals, or daily win totals all live in this block,
+  // and the daily-streak sub-block keys on modeKey, not the isDaily flag. See
+  // the Daily Archive section in CLAUDE.md.
+  if (modeStats && !isArchive) {
     modeStats.totalGames++;
     if (won) {
       modeStats.wins++;

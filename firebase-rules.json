@@ -60,6 +60,72 @@
         }
       }
     },
+    "dailyArchive": {
+      ".read": true,
+      "$date": {
+        ".read": true,
+        ".indexOn": ["time"],
+        ".validate": "$date.matches(/^\\d{4}-\\d{2}-\\d{2}$/)",
+        "$entry": {
+          ".write": "auth != null && !data.exists() && newData.child('uid').val() === auth.uid",
+          ".validate": "newData.hasChildren(['name', 'time', 'timestamp', 'uid', 'archivePlay'])",
+          "name": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 20 && newData.val().matches(/^[^<>&\"'`@]+$/)"
+          },
+          "time": {
+            ".validate": "newData.isNumber() && newData.val() >= 5 && newData.val() <= 3600"
+          },
+          "bombHits": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 50"
+          },
+          "par": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600"
+          },
+          "uid": {
+            ".validate": "newData.isString() && newData.val() === auth.uid"
+          },
+          "timestamp": {
+            ".validate": "newData.val() === now"
+          },
+          "archivePlay": {
+            ".validate": "newData.isBoolean() && newData.val() === true"
+          },
+          "cruxViewed": {
+            ".validate": "newData.isBoolean()"
+          },
+          "bombHitEvents": {
+            ".validate": "newData.hasChildren() || newData.val() === null",
+            "$idx": {
+              ".validate": "newData.hasChildren(['t', 'row', 'col'])",
+              "t": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600" },
+              "row": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 99" },
+              "col": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 99" },
+              "penalty": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600" },
+              "infoValue": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600" },
+              "$other": { ".validate": false }
+            }
+          },
+          "totalBombPenalty": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600"
+          },
+          "hintEvents": {
+            ".validate": "newData.hasChildren() || newData.val() === null",
+            "$idx": {
+              ".validate": "newData.hasChildren(['t', 'kind'])",
+              "t": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600" },
+              "kind": { ".validate": "newData.isString() && newData.val().length <= 16" },
+              "$other": { ".validate": false }
+            }
+          },
+          "rngSeed": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 64"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
     "timed": {
       ".read": true,
       "$entry": {

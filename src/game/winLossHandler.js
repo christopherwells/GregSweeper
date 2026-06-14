@@ -31,11 +31,12 @@ import {
   getAchievementState, getAllTierNames, getTierIcon, getTierColor,
 } from '../logic/achievements.js';
 import { checkThemeUnlocks, showThemeUnlockToasts } from '../ui/themeManager.js';
-import { submitOnlineScore, submitTimedScore, submitWeeklyScore, fetchWeeklyLeaderboard } from '../firebase/firebaseLeaderboard.js';
+import { submitOnlineScore, submitArchiveScore, submitTimedScore, submitWeeklyScore, fetchWeeklyLeaderboard } from '../firebase/firebaseLeaderboard.js';
 
 // (HTML escaping for the weekly leaderboard rows now comes from
 // ui/domHelpers.js's escapeHtml — single source of truth.)
-import { saveProgress, saveDailyHistoryEntry, getUid, markWeeklyDayAttempted } from '../firebase/firebaseProgress.js';
+import { saveProgress, saveDailyHistoryEntry, fetchDailyHistoryEntry, getUid, markWeeklyDayAttempted } from '../firebase/firebaseProgress.js';
+import { archiveSubmitPlan, CRUX_VIEWED_KEY_PREFIX } from '../logic/archiveEligibility.js';
 import { isTestEnvironment } from '../firebase/env.js';
 import { reportCaughtError } from '../diagnostics/errorReporter.js';
 import { breakdownPar } from '../logic/dailyFeatures.js';
@@ -249,6 +250,47 @@ function _renderWinReceipt() {
   }, 80);
 }
 
+/**
+ * Record an archive replay completion with first-completion-only semantics.
+ * Reads the player's dailyHistory for the date (the dedup key); on a fresh
+ * date it submits a dailyArchive fit row (when the date is at or after the
+ * fit epoch) and writes the dailyHistory row. A replay (history present)
+ * records nothing. Streak, daily-completed, and the residual cache are never
+ * touched here — those are gated off upstream by isArchivePlay.
+ *
+ * @param {string} dateStr   YYYY-MM-DD of the replayed board
+ * @param {string} name      player handle
+ * @param {number} scoreTime completion seconds (already rounded)
+ */
+export async function submitArchiveCompletion(dateStr, name, scoreTime) {
+  const existing = await fetchDailyHistoryEntry(dateStr);
+  const plan = archiveSubmitPlan(dateStr, !!existing);
+  if (!plan.submitFit && !plan.writeHistory) {
+    showToast('Your first run on this day is already recorded.');
+    return;
+  }
+  if (plan.submitFit) {
+    let cruxViewed = false;
+    try { cruxViewed = localStorage.getItem(CRUX_VIEWED_KEY_PREFIX + dateStr) === '1'; }
+    catch { /* storage unavailable — treat as not viewed */ }
+    await submitArchiveScore(dateStr, name, scoreTime, state.dailyBombHits || 0, {
+      uid: getUid(),
+      par: state.dailyPar,
+      features: state.dailyFeatures,
+      bombHitEvents: state.dailyBombHitEvents || [],
+      hintEvents: state.hintEvents || [],
+      rngSeed: state.dailyRngSeed || dateStr,
+      cruxViewed,
+    });
+  }
+  // dailyHistory is durable (its own retry queue), so the completion and the
+  // delta-chart entry survive even if the fit-row upload failed.
+  if (plan.writeHistory) {
+    saveDailyHistoryEntry(dateStr, { time: scoreTime });
+  }
+  showToast('Archive run recorded.');
+}
+
 // ── Handle Win ─────────────────────────────────────────
 
 export function handleWin() {
@@ -272,7 +314,12 @@ export function handleWin() {
   // stats, streak, completion flags, or personal history — it exists for
   // replaying after today's real daily has already been won. Weekly is its
   // own world entirely — see the dedicated weekly branch below.
-  const isRealDaily = isDaily && !state.isDailyPractice;
+  // Archive replay: a PAST daily relaunched from the calendar. It looks like
+  // a daily (board, par, features) but must never touch streak, completion,
+  // or the residual cache, and it submits to dailyArchive/ instead of daily/.
+  // It DOES earn one fit row on first completion (the submit block below).
+  const isArchivePlay = isDaily && !!state.isArchivePlay;
+  const isRealDaily = isDaily && !state.isDailyPractice && !isArchivePlay;
   // Skill feats — honestly detectable from the click timeline + the
   // board's certified solve, never from heuristics:
   //   flagless  — the recorded timeline contains no flag action.
@@ -303,6 +350,7 @@ export function handleWin() {
   };
   const stats = saveGameResult(true, state.elapsedTime, state.currentLevel, {
     isDaily: isRealDaily,
+    isArchive: isArchivePlay,
     usedPowerUps: state.usedPowerUps,
     gameMode: state.gameMode,
     hadGimmicks: state.activeGimmicks && state.activeGimmicks.length > 0,
@@ -509,9 +557,14 @@ export function handleWin() {
     // Daily: show precise time + par comparison
     const precise = state.preciseTime || state.elapsedTime;
     gameoverTime.textContent = `Time: ${precise.toFixed(1)}s${strikesInfo}`;
-    const { streak } = getDailyStreak();
-    if (streak > 0) {
-      gameoverTime.textContent += ` | \u{1F525} ${streak} day streak`;
+    // The streak suffix implies "this counts toward your streak" — true for a
+    // live daily, false for an archive replay (archive never touches the
+    // streak), so suppress it on archive to avoid the wrong implication.
+    if (!isArchivePlay) {
+      const { streak } = getDailyStreak();
+      if (streak > 0) {
+        gameoverTime.textContent += ` | \u{1F525} ${streak} day streak`;
+      }
     }
     // Greg's Time = global par from the current PAR_MODEL applied to today's
     // board features. Personal par = Greg's + your handicap (your typical
@@ -529,13 +582,18 @@ export function handleWin() {
       // handicap so the current play counts toward the running mean. We
       // dedupe by date inside appendDailyResidual, so replaying after a
       // resume doesn't double-count.
-      appendDailyResidual({
-        date: state.dailySeed,
-        time: precise,
-        par: state.dailyPar,
-        bombHits: state.dailyBombHits || 0,
-        bombPenalty: getActiveBombPenaltyTotal(),
-      });
+      // Archive replays stay out of the residual cache: the provisional
+      // handicap is built from day-of plays, so an old, easy board should
+      // not shift it. (The par line below still renders for archive.)
+      if (!isArchivePlay) {
+        appendDailyResidual({
+          date: state.dailySeed,
+          time: precise,
+          par: state.dailyPar,
+          bombHits: state.dailyBombHits || 0,
+          bombPenalty: getActiveBombPenaltyTotal(),
+        });
+      }
 
       // Handicap resolution: prefer the refit value from handicaps.json
       // (set by the nightly Bayesian fit once the user crosses
@@ -850,7 +908,20 @@ export function handleWin() {
   const dailySubmitForm = $('#daily-submit-form');
   if (isDaily && dailySubmitForm) {
     const savedName = getPlayerName();
-    if (savedName) {
+    if (isArchivePlay) {
+      // Archive replay: no manual name form (archive is a later-game feature
+      // and the player already has a handle). Record only with a saved name,
+      // through the first-completion-only path — never the daily/ submitters.
+      dailySubmitForm.classList.add('hidden');
+      if (savedName) {
+        const aDate = state.dailySeed || getLocalDateString();
+        const aTime = Math.round((state.preciseTime || state.elapsedTime) * 10) / 10;
+        submitArchiveCompletion(aDate, savedName, aTime)
+          .catch(err => reportCaughtError('archive-completion', err));
+      } else {
+        showToast('Set a name in Settings to record archive runs.');
+      }
+    } else if (savedName) {
       // Auto-submit with saved name
       dailySubmitForm.classList.add('hidden');
       // Anchor to the puzzle's seed, not the current local date (same as

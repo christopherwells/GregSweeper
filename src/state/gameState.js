@@ -66,6 +66,8 @@ export const state = {
   dailyMoves: 0,     // solver totalClicks for pace calculation
   dailyFeatures: null, // full feature vector from computeDailyFeatures — used for par breakdown, Firebase meta upload, and the R refit training set
   isDailyPractice: false, // set when the URL carries ?seed=<custom>: play a custom-seed board but skip streak/completion/history side effects. Submissions still go to Firebase (under the custom seed path) so the session still tags a uid.
+  isArchivePlay: false, // set when a PAST daily is replayed from the calendar: keeps the caller-set date, requires the canonical (no local-gen), never touches streak/completion, never persists, and submits to dailyArchive/ instead of daily/. See archiveEligibility.js + the Daily Archive section of CLAUDE.md.
+  _archiveRaw: null, // { date, raw } — the past board the calendar fetched, handed to newGame so it doesn't refetch or pollute canonicalDailyBoard (today's stash).
 
   powerUps: { revealSafe: 0, shield: 0, lifeline: 0, scanRowCol: 0, magnet: 0, xray: 0 },
   shieldActive: false,

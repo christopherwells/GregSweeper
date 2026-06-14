@@ -4715,6 +4715,122 @@ button:focus-visible {
   opacity: 0.7;
 }
 
+/* ── Past Dailies calendar ─────────────────────────────── */
+/* "Past dailies" affordance on the Daily card. The card is a <button>, so
+   this is a role=button span; a capture-phase handler routes its taps to the
+   calendar instead of launching today's board. */
+.card-archive-link {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 0.78em;
+  font-weight: 600;
+  color: var(--color-accent, #4a90d9);
+  opacity: 0.9;
+  cursor: pointer;
+}
+.card-archive-link:hover { opacity: 1; text-decoration: underline; }
+.card-archive-link:focus-visible {
+  outline: 2px solid var(--color-accent, #4a90d9);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+.archive-modal-content { max-width: 440px; }
+.archive-intro {
+  font-size: 0.82rem;
+  opacity: 0.8;
+  line-height: 1.4;
+  margin: 0 0 14px;
+}
+.archive-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.archive-nav-btn {
+  background: var(--color-cell-hidden, #cfd8e3);
+  color: var(--color-text, #222);
+  border: none;
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.archive-nav-btn:disabled { opacity: 0.3; cursor: default; }
+.archive-month-label {
+  font-weight: 700;
+  font-size: 0.98rem;
+  min-width: 150px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.archive-weekdays,
+.archive-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+}
+.archive-weekdays { margin-bottom: 5px; }
+.archive-weekdays span {
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  opacity: 0.5;
+}
+.archive-day {
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  font-size: 0.85rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text, #222);
+  font-variant-numeric: tabular-nums;
+}
+.archive-day.empty { visibility: hidden; }
+.archive-day.blocked { opacity: 0.22; }
+.archive-day.today {
+  opacity: 0.55;
+  font-weight: 700;
+  outline: 1px dashed var(--color-accent, #4a90d9);
+}
+.archive-day.playable {
+  background: var(--color-cell-hidden, #cfd8e3);
+  cursor: pointer;
+  font-weight: 600;
+  transition: transform 0.08s ease, filter 0.08s ease;
+}
+.archive-day.playable:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.archive-day.playable:focus-visible {
+  outline: 2px solid var(--color-accent, #4a90d9);
+  outline-offset: 1px;
+}
+.archive-day.completed {
+  background: var(--color-accent, #4a90d9);
+  color: #fff;
+}
+.archive-day.loading { opacity: 0.6; cursor: progress; }
+.archive-check {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-size: 0.58rem;
+  line-height: 1;
+}
+.archive-empty-note {
+  text-align: center;
+  opacity: 0.6;
+  font-size: 0.8rem;
+  margin-top: 12px;
+}
+
 /* Greg's yesterday note in the leaderboard modal — the closed loop of
    the daily experiment, rendered once per session. */
 .greg-yesterday-note {
