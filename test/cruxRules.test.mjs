@@ -43,6 +43,13 @@ test('cruxes.$date: tier bounded 1..3, answer is an {r,c} pair', () => {
   assert.equal(ans?.$other?.['.validate'], false, 'answer must reject extra keys');
 });
 
+test('cruxes.$date: walls is an optional, whitelisted field', () => {
+  const node = rules.cruxes?.$date;
+  assert.ok(node.walls, 'walls must be whitelisted (the strict $other:false would reject it otherwise)');
+  assert.ok(!node['.validate'].includes("'walls'"),
+    'walls stays optional — boards without walls omit it');
+});
+
 test('cruxes.$date: server-sentinel timestamp + strict whitelist', () => {
   const node = rules.cruxes?.$date;
   assert.equal(node.writtenAt?.['.validate'], 'newData.val() === now',

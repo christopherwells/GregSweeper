@@ -22,6 +22,15 @@ import { explainDeduction } from './proofExplainer.js';
 
 const rc = (i, cols) => ({ row: Math.floor(i / cols), col: i % cols });
 
+// Mirror gimmicks.js wallKey: an orthogonal-edge key with the smaller
+// endpoint written first. Kept inline so this module stays decoupled from
+// the walls implementation — only the string format is shared. Used to
+// remap in-crop wall edges into mini coordinates.
+function wallKey(r1, c1, r2, c2) {
+  if (r1 < r2 || (r1 === r2 && c1 < c2)) return `${r1},${c1}-${r2},${c2}`;
+  return `${r2},${c2}-${r1},${c1}`;
+}
+
 // Teaser sizing. The crop must stay a glanceable phone-sized grid; if the
 // crux's proving region is wider than this, no teaser is offered for the
 // date (better none than an unreadable one).
@@ -124,23 +133,31 @@ function _buildMini(board, rows, cols, sim, isMine, wallEdges, r0, c0, R, C, ans
     mini[mr] = row;
   }
 
-  // The teaser renders a plain OPEN grid (no wall lines), so a wall that
-  // changes adjacency INSIDE the crop would leave the shown numbers
-  // inconsistent with what the player can see and count. Refuse such a
-  // crop: the caller widens (a wider crop only ever adds in-crop walls,
-  // so it stays refused) and the date ends up with no teaser. Walls
-  // OUTSIDE the crop don't affect in-crop counts, so those boards are
-  // fine. (Drawing the walls in the mini, to keep walls-board cruxes, is
-  // a future step.)
+  // Carry every wall whose BOTH endpoints fall in the crop, remapped to
+  // mini coordinates: buildNeighborCache reads mini._wallEdges, so the
+  // recompute and the solver are wall-aware, and the payload ships the
+  // same edges so the teaser DRAWS the lines (numbers, adjacency, and what
+  // the player sees all agree). A wall with one endpoint outside the crop
+  // can't affect any in-crop count (the outside neighbor isn't a mini
+  // cell), so it's dropped.
+  let miniWalls = [];
   if (wallEdges && wallEdges.size > 0) {
+    const set = new Set();
     for (const key of wallEdges) {
       const m = /^(\d+),(\d+)-(\d+),(\d+)$/.exec(key);
       if (!m) continue;
-      if (inCrop(+m[1], +m[2]) && inCrop(+m[3], +m[4])) return null;
+      const a1 = +m[1], b1 = +m[2], a2 = +m[3], b2 = +m[4];
+      if (inCrop(a1, b1) && inCrop(a2, b2)) {
+        set.add(wallKey(a1 - r0, b1 - c0, a2 - r0, b2 - c0));
+      }
+    }
+    if (set.size > 0) {
+      mini._wallEdges = set;
+      miniWalls = [...set];
     }
   }
 
-  // Recompute every cell's adjacency over its open-grid mini neighbors.
+  // Recompute every cell's adjacency over its wall-aware mini neighbors.
   const nbr = buildNeighborCache(mini, R, C);
   for (let mr = 0; mr < R; mr++) {
     for (let mc = 0; mc < C; mc++) {
@@ -177,7 +194,9 @@ function _buildMini(board, rows, cols, sim, isMine, wallEdges, r0, c0, R, C, ans
     .map(p => ({ r: p.row - r0, c: p.col - c0 }))
     .filter(p => p.r >= 0 && p.r < R && p.c >= 0 && p.c < C);
 
-  return { rows: R, cols: C, cells, answer: { r: ansR, c: ansC }, sources: srcMini };
+  const out = { rows: R, cols: C, cells, answer: { r: ansR, c: ansC }, sources: srcMini };
+  if (miniWalls.length > 0) out.walls = miniWalls;
+  return out;
 }
 
 /**

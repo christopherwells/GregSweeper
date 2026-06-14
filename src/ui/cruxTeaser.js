@@ -30,6 +30,47 @@ function _ctaHref() {
   return `${location.pathname}?mode=daily`;
 }
 
+// Draw the board's walls over the mini grid: a bar in the gap of each
+// walled edge, midway between the two cells (the same idea as the game's
+// renderWallOverlays, adapted to the teaser's own grid). Without this the
+// numbers — which are computed wall-aware — wouldn't reconcile with what
+// the player can count. Cells must already be laid out: reading
+// offsetWidth forces the layout this needs.
+function _renderMiniWalls(boardEl, walls, cols) {
+  if (!Array.isArray(walls) || walls.length === 0) return;
+  boardEl.style.position = 'relative';
+  const at = (r, c) => boardEl.children[r * cols + c];
+  for (const key of walls) {
+    const m = /^(\d+),(\d+)-(\d+),(\d+)$/.exec(key);
+    if (!m) continue;
+    const r1 = +m[1], c1 = +m[2], r2 = +m[3], c2 = +m[4];
+    const e1 = at(r1, c1), e2 = at(r2, c2);
+    if (!e1 || !e2) continue;
+    const line = document.createElement('div');
+    line.className = 'crux-wall';
+    if (r1 === r2) {
+      // Vertical wall between two columns: a bar in the gap, full cell height.
+      const left = c1 < c2 ? e1 : e2;
+      const right = c1 < c2 ? e2 : e1;
+      const x = (left.offsetLeft + left.offsetWidth + right.offsetLeft) / 2;
+      line.style.left = (x - 1.5) + 'px';
+      line.style.top = e1.offsetTop + 'px';
+      line.style.width = '3px';
+      line.style.height = e1.offsetHeight + 'px';
+    } else {
+      // Horizontal wall between two rows: a bar in the gap, full cell width.
+      const top = r1 < r2 ? e1 : e2;
+      const bot = r1 < r2 ? e2 : e1;
+      const y = (top.offsetTop + top.offsetHeight + bot.offsetTop) / 2;
+      line.style.left = e1.offsetLeft + 'px';
+      line.style.top = (y - 1.5) + 'px';
+      line.style.width = e1.offsetWidth + 'px';
+      line.style.height = '3px';
+    }
+    boardEl.appendChild(line);
+  }
+}
+
 /**
  * Fetch the date's crux and render the teaser. Safe to call logged-out;
  * a missing crux renders the graceful fallback.
@@ -132,6 +173,8 @@ export function renderCruxTeaser(date, payload) {
       boardEl.appendChild(div);
     }
   }
+  // Walls (if any) ride over the laid-out grid.
+  _renderMiniWalls(boardEl, payload.walls, payload.cols);
 
   const pulseSources = () => {
     for (const el of srcCells) {

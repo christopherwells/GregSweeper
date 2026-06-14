@@ -16,6 +16,7 @@ import { dirname, join } from 'node:path';
 import { extractCrux, materializeCrux, cruxPayloadFromBoard } from '../src/logic/cruxExtract.js';
 import { isBoardSolvable, findDeducibleFrontier } from '../src/logic/boardSolver.js';
 import { generateBoard, cleanSolverArtifacts } from '../src/logic/boardGenerator.js';
+import { getDailyGimmick, applyGimmicks } from '../src/logic/gimmicks.js';
 import { createDailyRNG } from '../src/logic/seededRandom.js';
 import { serializeBoard, deserializeBoard } from '../src/firebase/dailyBoardSync.js';
 import { makeBoard, recalcAdjacency } from './helpers.mjs';
@@ -45,12 +46,36 @@ function firstCruxBoard() {
   throw new Error('fixed seed sweep found no tier>=1 crux board');
 }
 
-// Rebuild the OPEN grid the teaser renderer shows from a payload (numbers
-// only — no mines, no walls) and ask the solver to prove the answer. This
-// is the strongest check: it proves the SHIPPED payload is solvable to the
-// answer exactly as the player sees it.
+// A solvable walls board for a seed (walls force-injected, like a daily
+// walls mission). Returns the board with _wallEdges populated.
+function buildWallsBoard(seed) {
+  const rows = 9, cols = 9, totalMines = 12, fr = 4, fc = 4;
+  let board = generateBoard(rows, cols, totalMines, fr, fc, createDailyRNG(seed));
+  cleanSolverArtifacts(board);
+  const gims = getDailyGimmick(seed, createDailyRNG, 'walls', true);
+  let check = null;
+  for (let a = 0; a < 60; a++) {
+    if (a > 0) {
+      board = generateBoard(rows, cols, totalMines, fr, fc, createDailyRNG(`${seed}-r-${a}`));
+      cleanSolverArtifacts(board);
+    }
+    if (gims.length) applyGimmicks(board, 1, gims, createDailyRNG(`${seed}-g-${a}`));
+    check = isBoardSolvable(board, rows, cols, fr, fc);
+    cleanSolverArtifacts(board);
+    if (check.solvable || check.remainingUnknowns === 0) break;
+  }
+  return { board, rows, cols, solvable: check && (check.solvable || check.remainingUnknowns === 0) };
+}
+
+// Rebuild the grid the teaser renderer shows from a payload (numbers only,
+// no mines — plus the walls it ships) and ask the solver to prove the
+// answer. This is the strongest check: it proves the SHIPPED payload is
+// solvable to the answer exactly as the player sees it, walls included.
 function answerProvableFromPayload(payload) {
   const board = makeBoard(payload.rows, payload.cols);
+  if (Array.isArray(payload.walls) && payload.walls.length) {
+    board._wallEdges = new Set(payload.walls);
+  }
   const revealed = new Map();
   for (const cell of payload.cells) revealed.set(`${cell.r},${cell.c}`, cell.n);
   for (let r = 0; r < payload.rows; r++) {
@@ -104,6 +129,25 @@ test('materializeCrux ships a payload that re-proves the answer as rendered', ()
   assert.ok(proven.tier >= 1, 'the answer must take more than a single clue (never a tier-0 giveaway)');
   // Payload stays small.
   assert.ok(JSON.stringify(payload).length < 2000, 'payload under 2KB');
+});
+
+test('a walls board ships a wall-aware teaser that re-proves WITH the walls drawn', () => {
+  let payload = null;
+  for (let i = 0; i < 60 && !payload; i++) {
+    const b = buildWallsBoard(`cruxwalls-${i}`);
+    if (!b.solvable || !(b.board._wallEdges && b.board._wallEdges.size)) continue;
+    const crux = extractCrux(b.board, b.rows, b.cols);
+    if (!crux || crux.tier < 1) continue;
+    const p = materializeCrux(b.board, b.rows, b.cols, crux);
+    if (p && Array.isArray(p.walls) && p.walls.length) payload = p;
+  }
+  assert.ok(payload, 'expected at least one walls-in-crop teaser across the seed sweep');
+  // The teaser ships its walls, and the answer re-proves from the shown
+  // numbers WITH those walls (the render and the numbers agree).
+  assert.ok(payload.walls.length > 0, 'walls are carried into the payload');
+  const proven = answerProvableFromPayload(payload);
+  assert.ok(proven, 'answer provable from the wall-aware grid the player sees');
+  assert.ok(proven.tier >= 1);
 });
 
 test('a breather board (everything falls to counting) yields no crux', () => {
