@@ -350,6 +350,7 @@ export function handleWin() {
   };
   const stats = saveGameResult(true, state.elapsedTime, state.currentLevel, {
     isDaily: isRealDaily,
+    isArchive: isArchivePlay,
     usedPowerUps: state.usedPowerUps,
     gameMode: state.gameMode,
     hadGimmicks: state.activeGimmicks && state.activeGimmicks.length > 0,
