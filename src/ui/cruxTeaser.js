@@ -12,9 +12,38 @@
 
 import { loadCrux, loadDailyBoard, deserializeBoard } from '../firebase/dailyBoardSync.js';
 import { extractCrux } from '../logic/cruxExtract.js';
+import { findDeducibleFrontier } from '../logic/boardSolver.js';
 import { CRUX_VIEWED_KEY_PREFIX } from '../logic/archiveEligibility.js';
 import { safeSet } from '../storage/storageAdapter.js';
 import { reportCaughtError } from '../diagnostics/errorReporter.js';
+
+// Rebuild a plain board (numbers + walls, no mine layout) from a crux
+// payload, so findDeducibleFrontier can recompute EVERYTHING the shown
+// clues force — every safe square and every mine. The teaser shows the
+// player the full reach of the proof, not a single answer.
+function _boardFromPayload(payload) {
+  const board = [];
+  for (let r = 0; r < payload.rows; r++) {
+    const row = [];
+    for (let c = 0; c < payload.cols; c++) {
+      row.push({
+        row: r, col: c, isMine: false, isRevealed: false, isFlagged: false,
+        adjacentMines: 0, displayedMines: 0,
+        isMystery: false, isLiar: false, isLocked: false,
+        isWormhole: false, isSonar: false, isCompass: false,
+      });
+    }
+    board.push(row);
+  }
+  for (const cell of payload.cells) {
+    const b = board[cell.r] && board[cell.r][cell.c];
+    if (b) { b.isRevealed = true; b.adjacentMines = cell.n; b.displayedMines = cell.n; }
+  }
+  if (Array.isArray(payload.walls) && payload.walls.length) {
+    board._wallEdges = new Set(payload.walls);
+  }
+  return board;
+}
 
 // Human date label ("Sat, Jun 13") from a YYYY-MM-DD string, anchored at
 // local noon so it never slips a day across a timezone boundary.
@@ -140,7 +169,23 @@ export function renderCruxTeaser(date, payload, breather = false) {
     return;
   }
 
-  const promptText = 'One of these squares is provably safe. Tap the one you can prove.';
+  // Recompute the FULL reach of the proof from the shown numbers: every
+  // square the clues force safe, and every forced mine. This is the whole
+  // pitch — not "find the one safe cell" (a real position has many), but
+  // "look how much is provable without a single guess".
+  const board = _boardFromPayload(payload);
+  const frontier = findDeducibleFrontier(board, { respectFlags: false });
+  const key = (r, c) => `${r},${c}`;
+  const safeKeys = new Set(frontier.safe.map(s => key(s.row, s.col)));
+  const mineKeys = new Set(frontier.mines.map(m => key(m.row, m.col)));
+  const totalSafe = safeKeys.size;
+  const totalMines = mineKeys.size;
+
+  const minesClause = totalMines > 0
+    ? ` and <strong>${totalMines}</strong> ${totalMines === 1 ? 'a mine' : 'mines'}`
+    : '';
+  const promptText = `No guessing needed. Greg can prove <strong>${totalSafe}</strong> ${totalSafe === 1 ? 'square' : 'squares'} safe${minesClause} here. Tap the safe ones.`;
+
   root.innerHTML = `
     <div class="crux-teaser-card">
       <div class="crux-teaser-brand">
@@ -150,11 +195,13 @@ export function renderCruxTeaser(date, payload, breather = false) {
           <div class="crux-teaser-tagline">No guesses. Ever.</div>
         </div>
       </div>
-      <p class="crux-teaser-date">${_label(date)} · the board's hardest step</p>
+      <p class="crux-teaser-date">${_label(date)} · what Greg can prove</p>
       <p class="crux-teaser-prompt" id="crux-teaser-prompt">${promptText}</p>
-      <div class="crux-board" id="crux-board" role="group" aria-label="Find the safe square"></div>
+      <div class="crux-board" id="crux-board" role="group" aria-label="Find the provably safe squares"></div>
+      <p class="crux-progress" id="crux-progress">0 / ${totalSafe} safe found</p>
       <p class="crux-coach" id="crux-coach" aria-live="polite"></p>
       <div class="crux-teaser-actions">
+        <button type="button" class="crux-reveal-all" id="crux-reveal-all">Show me all of them</button>
         <a class="action-btn primary crux-cta hidden" id="crux-play-cta" href="${_ctaHref()}">Play today's board</a>
       </div>
     </div>`;
@@ -162,16 +209,15 @@ export function renderCruxTeaser(date, payload, breather = false) {
   const boardEl = document.getElementById('crux-board');
   const coachEl = document.getElementById('crux-coach');
   const promptEl = document.getElementById('crux-teaser-prompt');
+  const progressEl = document.getElementById('crux-progress');
   const ctaEl = document.getElementById('crux-play-cta');
+  const revealAllBtn = document.getElementById('crux-reveal-all');
 
-  const key = (r, c) => `${r},${c}`;
   const revealed = new Map();
   for (const cell of payload.cells) revealed.set(key(cell.r, cell.c), cell.n);
-  const srcCells = [];
+  const cellEls = new Map(); // "r,c" -> div, for the reveal-all sweep
 
   boardEl.style.gridTemplateColumns = `repeat(${payload.cols}, 1fr)`;
-  const srcSet = new Set((payload.sources || []).map(s => key(s.r, s.c)));
-
   for (let r = 0; r < payload.rows; r++) {
     for (let c = 0; c < payload.cols; c++) {
       const div = document.createElement('div');
@@ -188,48 +234,68 @@ export function renderCruxTeaser(date, payload, breather = false) {
         div.tabIndex = 0;
         div.dataset.r = String(r);
         div.dataset.c = String(c);
+        cellEls.set(k, div);
       }
-      if (srcSet.has(k)) srcCells.push(div);
       boardEl.appendChild(div);
     }
   }
   // Walls (if any) ride over the laid-out grid.
   _renderMiniWalls(boardEl, payload.walls, payload.cols);
 
-  const pulseSources = () => {
-    for (const el of srcCells) {
-      el.classList.remove('crux-pulse');
-      // reflow so the animation can re-trigger on repeated misses
-      void el.offsetWidth;
-      el.classList.add('crux-pulse');
-    }
+  let found = 0;
+  let done = false;
+
+  const markSafe = (div) => {
+    div.classList.remove('crux-fog');
+    div.classList.add('revealed', 'crux-found');
+    div.textContent = '✓';
+    div.removeAttribute('role');
+    div.tabIndex = -1;
+  };
+  const markMine = (div) => {
+    div.classList.remove('crux-fog');
+    div.classList.add('crux-mine');
+    div.textContent = '🚩';
+    div.removeAttribute('role');
+    div.tabIndex = -1;
   };
 
-  let solved = false;
-  let misses = 0;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    // Light up the full proof: every remaining safe square and every mine.
+    for (const [k, div] of cellEls) {
+      if (div.classList.contains('crux-found') || div.classList.contains('crux-mine')) continue;
+      if (safeKeys.has(k)) markSafe(div);
+      else if (mineKeys.has(k)) markMine(div);
+    }
+    if (promptEl) {
+      promptEl.textContent = totalMines > 0
+        ? `Greg proved every one: ${totalSafe} safe and ${totalMines} ${totalMines === 1 ? 'mine' : 'mines'}, no guessing.`
+        : `All ${totalSafe} safe ${totalSafe === 1 ? 'square' : 'squares'}, proven not guessed.`;
+    }
+    if (coachEl) coachEl.textContent = payload.sentence || '';
+    if (progressEl) progressEl.textContent = `${totalSafe} / ${totalSafe} safe found`;
+    if (revealAllBtn) revealAllBtn.classList.add('hidden');
+    if (ctaEl) ctaEl.classList.remove('hidden');
+  };
+
   const onTap = (r, c, div) => {
-    if (solved) return;
-    if (r === payload.answer.r && c === payload.answer.c) {
-      solved = true;
-      div.classList.remove('crux-fog');
-      div.classList.add('revealed', 'crux-found');
-      div.removeAttribute('role');
-      div.tabIndex = -1;
-      div.textContent = '✓';
-      if (promptEl) promptEl.textContent = 'Proven safe. No guess needed.';
-      if (coachEl) coachEl.textContent = payload.sentence || 'The clues around it settle this square.';
-      pulseSources();
-      if (ctaEl) ctaEl.classList.remove('hidden');
+    if (done) return;
+    const k = key(r, c);
+    if (safeKeys.has(k)) {
+      markSafe(div);
+      found++;
+      if (progressEl) progressEl.textContent = `${found} / ${totalSafe} safe found`;
+      if (coachEl) coachEl.textContent = 'Proven safe.';
+      if (found >= totalSafe) finish();
+    } else if (mineKeys.has(k)) {
+      markMine(div);
+      if (coachEl) coachEl.textContent = 'A forced mine. Flagged, never guessed.';
     } else {
-      misses++;
       div.classList.add('crux-bounce');
       setTimeout(() => div.classList.remove('crux-bounce'), 320);
-      pulseSources();
-      if (coachEl) {
-        coachEl.textContent = misses === 1 && payload.sentenceSocratic
-          ? payload.sentenceSocratic
-          : 'Not that one. The glowing clues point to the square you can prove.';
-      }
+      if (coachEl) coachEl.textContent = "The numbers don't force this one. Take the squares they do.";
     }
   };
 
@@ -245,4 +311,5 @@ export function renderCruxTeaser(date, payload, breather = false) {
     e.preventDefault();
     onTap(Number(div.dataset.r), Number(div.dataset.c), div);
   });
+  if (revealAllBtn) revealAllBtn.addEventListener('click', finish);
 }

@@ -1101,6 +1101,7 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 .crux-cell.crux-fog:hover { background: var(--color-cell-hidden-hover, #666); }
 .crux-cell.revealed { background: var(--color-cell-revealed, #333); cursor: default; }
 .crux-cell.crux-found { background: var(--overlay-suggest-start, #2e7d32); color: #fff; }
+.crux-cell.crux-mine { background: #8a3b3b; color: #fff; }
 .crux-cell[data-num="1"] { color: var(--color-num-1, #6baed6); }
 .crux-cell[data-num="2"] { color: var(--color-num-2, #66bb6a); }
 .crux-cell[data-num="3"] { color: var(--color-num-3, #ff6b6b); }
@@ -1111,7 +1112,13 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 .crux-cell[data-num="8"] { color: var(--color-num-8, #b0bec5); }
 .crux-cell.crux-bounce { animation: lexiconBounce 0.3s ease-out; }
 .crux-cell.crux-pulse { animation: receiptSourcePulse 0.9s ease-in-out 2; }
-.crux-coach { min-height: 3em; margin: 12px 0 6px; font-size: 0.9em; line-height: 1.4; }
+.crux-progress { font-size: 0.85em; font-weight: 700; color: var(--color-text-secondary, #999); margin: 8px 0 2px; }
+.crux-coach { min-height: 3em; margin: 8px 0 6px; font-size: 0.9em; line-height: 1.4; }
+.crux-teaser-actions { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.crux-reveal-all {
+  background: none; border: none; cursor: pointer; padding: 2px 6px;
+  color: var(--color-accent, #6cf); font-size: 0.85em; text-decoration: underline;
+}
 .crux-cta { display: inline-block; text-decoration: none; }
 /* Walls drawn over the mini grid (positioned by cruxTeaser._renderMiniWalls).
    pointer-events:none so a wall over a gap never eats a tap. */
