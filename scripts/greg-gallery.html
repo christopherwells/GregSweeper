@@ -34,14 +34,6 @@
 </head>
 <body>
 <h1>Greg the field scientist: candidate gallery</h1>
-<h2>Pick one: Sakura, five versions (idle)</h2>
-<p class="note">Variations around the clean blossom-crest direction. Each on the
-sakura board color.</p>
-<div id="sakpanel"></div>
-<h2>Pick one: Split-flap airplane, five versions (idle)</h2>
-<p class="note">The departures-board world sends Greg out as a plane. Five takes:
-front prop plane, jet airliner, biplane, side-profile in flight, chunky cartoon.</p>
-<div id="sfpanel"></div>
 <p class="note">Direction A won the first round; the drill-down below varies
 ONE axis per candidate so the keepers can be named trait by trait (for
 example: A3's shell with A4's colors and A2's eyes). Idle pose only at this
@@ -72,32 +64,6 @@ and pencil. Win and loss poses derive from the same body.</p>
 <div id="drill"></div>
 <div id="out"></div>
 <script>
-// Two five-version pick panels.
-function renderPanel(elId, bg, items) {
-  const el = document.getElementById(elId);
-  const t = document.createElement('table');
-  t.innerHTML = '<tr><th>Version</th><th>110px</th><th>48px</th><th>32px</th><th>22px</th></tr>' +
-    items.map(([file, label]) => {
-      const src = `../assets/sprites/greg/${file}`;
-      const sw = (size) => `<td style="background:${bg};border-radius:8px;"><img src="${src}" width="${size}" height="${size}"></td>`;
-      return `<tr><td class="name" style="max-width:160px;white-space:normal;">${label}</td>${sw(110)}${sw(48)}${sw(32)}${sw(22)}</tr>`;
-    }).join('');
-  el.appendChild(t);
-}
-renderPanel('sakpanel', '#12101e', [
-  ['themed-sakura-idle.svg', 'A: white crest + side blossom + sprig (current)'],
-  ['sakura-b-idle.svg', 'B: deeper pink shell, pink crest, paper fan'],
-  ['sakura-c-idle.svg', 'C: pale shell, scattered small blossoms, round claws'],
-  ['sakura-d-idle.svg', 'D: the whole shell is one big blossom'],
-  ['sakura-e-idle.svg', 'E: detailed notched crest, blossoms by both eyes'],
-]);
-renderPanel('sfpanel', '#161616', [
-  ['themed-splitflap-idle.svg', 'A: front prop plane (current)'],
-  ['splitflap-b-idle.svg', 'B: jet airliner, engine pods, cabin windows'],
-  ['splitflap-c-idle.svg', 'C: vintage biplane on struts'],
-  ['splitflap-d-idle.svg', 'D: side-profile, in flight over clouds'],
-  ['splitflap-e-idle.svg', 'E: chunky cartoon, big friendly face'],
-]);
 const THEMED = [
   ['themed-editorial', '#ddd6c8', 'Editorial: press ink, paper-reserve face, splatter, pen nib'],
   ['themed-sumie', '#e6dfce', 'Sumi-e: one loaded press, tonal gradation, paper reserves, the hanko'],

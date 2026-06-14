@@ -1,30 +1,29 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-<!-- Splitflap Greg, idle: the departures board sends Greg out as a little airplane, claws for wings, ready on the apron. -->
-<!-- Swept wings (the claws) -->
-<path d="M18 30 L2 35 L4 39 L20 35 Z" fill="#b8c0ca" stroke="#3a4350" stroke-width="2" stroke-linejoin="round"/>
-<path d="M46 30 L62 35 L60 39 L44 35 Z" fill="#b8c0ca" stroke="#3a4350" stroke-width="2" stroke-linejoin="round"/>
-<path d="M9 36 L7 39 M55 36 L57 39" stroke="#e0466b" stroke-width="1.6" stroke-linecap="round"/>
+<!-- Splitflap Greg, idle: the departures board sends Greg out as a vintage biplane, two stacked wings on struts, a nose propeller, goggles on. -->
+<!-- Upper wing -->
+<rect x="6" y="18" width="52" height="5" rx="2.5" fill="#c2cad4" stroke="#3a4350" stroke-width="2"/>
+<!-- Struts -->
+<g stroke="#3a4350" stroke-width="2" stroke-linecap="round"><path d="M16 23 L18 30 M48 23 L46 30 M28 23 L29 29 M36 23 L35 29"/></g>
+<!-- Lower wing -->
+<rect x="10" y="36" width="44" height="5" rx="2.5" fill="#b8c0ca" stroke="#3a4350" stroke-width="2"/>
 <!-- Tail fin -->
-<path d="M30 17 L34 17 L33 7 L31 7 Z" fill="#9aa4b0" stroke="#3a4350" stroke-width="2" stroke-linejoin="round"/>
-<path d="M30 17 L34 17 L34 22 L30 22 Z" fill="#9aa4b0" stroke="#3a4350" stroke-width="2" stroke-linejoin="round"/>
-<!-- Fuselage / nose -->
-<path d="M13 31 C13 23 19 17 32 16 C45 17 51 23 51 31 C51 39 44 44 32 44 C20 44 13 39 13 31 Z"
-      fill="#e6ebf0" stroke="#3a4350" stroke-width="2.4"/>
-<!-- Belly cheatline -->
-<path d="M15 35 C20 41 27 43 32 43 C37 43 44 41 49 35 C46 40 39 41.5 32 41.5 C25 41.5 18 40 15 35 Z" fill="#3a78c8"/>
-<path d="M14 32 Q32 30 50 32" stroke="#3a78c8" stroke-width="1.6" fill="none"/>
+<path d="M30 16 L34 16 L33 9 L31 9 Z" fill="#9aa4b0" stroke="#3a4350" stroke-width="2" stroke-linejoin="round"/>
+<!-- Fuselage -->
+<path d="M18 31 C18 24 23 19 32 18 C41 19 46 24 46 31 C46 38 41 43 32 43 C23 43 18 38 18 31 Z" fill="#eef2f6" stroke="#3a4350" stroke-width="2.4"/>
+<path d="M18 31 Q32 33 46 31" stroke="#e0466b" stroke-width="1.8" fill="none"/>
 <!-- Propeller spinner at the nose -->
-<g transform="rotate(20 32 44)"><path d="M32 38 L32 50 M26 44 L38 44" stroke="#3a4350" stroke-width="2.4" stroke-linecap="round"/></g>
-<circle cx="32" cy="44" r="2.2" fill="#3a4350"/>
-<!-- Cockpit-window eyes -->
-<circle cx="24" cy="25" r="3.6" fill="#bfe0f0" stroke="#3a4350" stroke-width="2"/>
-<circle cx="40" cy="25" r="3.6" fill="#bfe0f0" stroke="#3a4350" stroke-width="2"/>
-<circle cx="24.7" cy="25.5" r="1.4" fill="#3a4350"/>
-<circle cx="40.7" cy="25.5" r="1.4" fill="#3a4350"/>
-<path d="M22.5 23.5 L24 22.5" stroke="#fff" stroke-width="1" stroke-linecap="round"/>
-<!-- Smile on the nose -->
-<path d="M28 33 Q32 36 36 33" fill="none" stroke="#3a4350" stroke-width="2" stroke-linecap="round"/>
-<!-- Landing gear wheels -->
-<g fill="#2a2d36" stroke="#3a4350" stroke-width="1.2"><circle cx="22" cy="47" r="2.6"/><circle cx="42" cy="47" r="2.6"/><circle cx="32" cy="50" r="2.4"/></g>
-<g stroke="#3a4350" stroke-width="1.4"><path d="M22 44 L22 45 M42 44 L42 45 M32 46 L32 48"/></g>
+<g transform="rotate(20 32 43)"><path d="M32 37 L32 49 M26 43 L38 43" stroke="#3a4350" stroke-width="2.4" stroke-linecap="round"/></g>
+<circle cx="32" cy="43" r="2.2" fill="#3a4350"/>
+<!-- Goggles strap -->
+<path d="M19 23 Q32 21 45 23" stroke="#5a4a3a" stroke-width="1.6" fill="none"/>
+<!-- Open-cockpit eyes -->
+<circle cx="25" cy="26" r="3.4" fill="#bfe0f0" stroke="#3a4350" stroke-width="2"/>
+<circle cx="39" cy="26" r="3.4" fill="#bfe0f0" stroke="#3a4350" stroke-width="2"/>
+<circle cx="25.6" cy="26.5" r="1.3" fill="#3a4350"/><circle cx="39.6" cy="26.5" r="1.3" fill="#3a4350"/>
+<path d="M23.5 24.5 L25 23.5" stroke="#fff" stroke-width="1" stroke-linecap="round"/>
+<!-- Smile -->
+<path d="M28 32 Q32 35 36 32" fill="none" stroke="#3a4350" stroke-width="2" stroke-linecap="round"/>
+<!-- Gear -->
+<g fill="#2a2d36" stroke="#3a4350" stroke-width="1.2"><circle cx="24" cy="47" r="2.6"/><circle cx="40" cy="47" r="2.6"/></g>
+<g stroke="#3a4350" stroke-width="1.4"><path d="M24 41 L24 45 M40 41 L40 45 M24 45 L40 45"/></g>
 </svg>
