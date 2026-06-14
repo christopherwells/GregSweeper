@@ -415,6 +415,27 @@ export function saveDailyHistoryEntry(date, entry) {
     });
 }
 
+/**
+ * Read this user's dailyHistory row for one date, or null. The daily archive
+ * uses it for first-completion-only: a present row means the player already
+ * finished this date (live, or via a prior archive replay), so the replay
+ * submits nothing. A not-ready or failed read returns null and falls OPEN to
+ * "no history" — the worst case is a duplicate archive row the refit dedups,
+ * never a lost real completion.
+ * @param {string} date YYYY-MM-DD
+ * @returns {Promise<Object|null>}
+ */
+export async function fetchDailyHistoryEntry(date) {
+  if (!date || !_ready || !_uid || !_db) return null;
+  try {
+    const snap = await _db.ref('users/' + _uid + '/dailyHistory/' + date).once('value');
+    return snap.val();
+  } catch (err) {
+    console.warn('Daily history read failed:', err && err.message);
+    return null;
+  }
+}
+
 // ── Durable daily-history retry queue ─────────────────
 // RTDB's web SDK has no on-disk offline persistence, so a completion
 // recorded while offline (or during a flaky write) must survive a page

@@ -755,6 +755,32 @@
     </div>
   </div>
 
+  <!-- Past Dailies calendar — replay any stored past board. Opens from the
+       "Past dailies" link on the Daily card. Outside #app so it renders over
+       the title screen. The month grid is built by renderArchiveCalendar()
+       in main.js; a tap probes the canonical and launches an archive play. -->
+  <div id="archive-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content archive-modal-content">
+      <div class="modal-header">
+        <h2>Past Dailies</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="archive-intro">Replay any past board. Archive runs never touch your streak or your daily completion, and Greg still keeps your time.</p>
+        <div class="archive-nav">
+          <button id="archive-prev" class="archive-nav-btn" type="button" aria-label="Previous month">&lsaquo;</button>
+          <span id="archive-month-label" class="archive-month-label"></span>
+          <button id="archive-next" class="archive-nav-btn" type="button" aria-label="Next month">&rsaquo;</button>
+        </div>
+        <div class="archive-weekdays" aria-hidden="true">
+          <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+        </div>
+        <div id="archive-grid" class="archive-grid"></div>
+        <p id="archive-empty-note" class="archive-empty-note hidden">No past boards in this month.</p>
+      </div>
+    </div>
+  </div>
+
   <!-- Certificate modal — opened from the ✓ Certified chip (and the
        Chaos "No guarantees" chip). Body is rendered per-board by
        showCertificateModal() in headerRenderer.js. Outside #app for

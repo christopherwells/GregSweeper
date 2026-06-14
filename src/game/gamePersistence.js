@@ -22,6 +22,11 @@ export function persistGameState() {
   // Persist for 'playing' and 'idle' (pre-first-click) states
   if (state.status !== 'playing' && state.status !== 'idle') return;
   if (!state.board || state.board.length === 0) return;
+  // Archive replays never persist: they share the daily slot, so saving one
+  // would clobber an in-progress real daily, and a past-date save would be
+  // rejected on resume anyway (resumeEligibility anchors daily saves to
+  // today's clock). Archive is always re-launched from the calendar.
+  if (state.isArchivePlay) return;
   const gs = {
     board: state.board.map(row => row.map(c => ({
       isMine: c.isMine, isRevealed: c.isRevealed, isFlagged: c.isFlagged,
