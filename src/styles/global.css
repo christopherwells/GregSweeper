@@ -1042,6 +1042,86 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   0% { transform: translateY(4px); opacity: 0.3; }
   100% { transform: translateY(0); opacity: 1; }
 }
+
+/* ── Crux teaser (?crux= share route) ──────────────────
+   A standalone "find the safe square" view of a past daily's hardest
+   step. Mirrors the Gym mini-board's visual language so the two practice
+   surfaces feel like one game. */
+.crux-teaser {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  overflow-y: auto;
+  background: var(--color-bg, #1a1a1a);
+  z-index: 50;
+}
+.crux-teaser.hidden { display: none; }
+.crux-teaser-card {
+  background: var(--color-modal-bg, #2a2a2a);
+  color: var(--color-text, #eee);
+  border-radius: 16px;
+  padding: 22px;
+  max-width: 380px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4);
+}
+.crux-teaser-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+.crux-greg { width: 44px; height: 44px; object-fit: contain; flex: none; }
+.crux-teaser-logo { font-weight: 800; font-size: 1.3em; line-height: 1.1; text-align: left; }
+.crux-teaser-tagline { font-size: 0.85em; color: var(--color-text-secondary, #999); text-align: left; }
+.crux-teaser-date { font-size: 0.8em; color: var(--color-text-secondary, #999); margin: 12px 0 2px; }
+.crux-teaser-prompt { font-size: 0.98em; margin: 4px 0 14px; line-height: 1.35; }
+.crux-board {
+  display: grid;
+  gap: 3px;
+  max-width: 280px;
+  margin: 0 auto;
+}
+.crux-cell {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.05em;
+  border-radius: var(--cell-shape-radius, 4px);
+  user-select: none;
+}
+.crux-cell.crux-fog { background: var(--color-cell-hidden, #555); cursor: pointer; }
+.crux-cell.crux-fog:hover { background: var(--color-cell-hidden-hover, #666); }
+.crux-cell.revealed { background: var(--color-cell-revealed, #333); cursor: default; }
+.crux-cell.crux-found { background: var(--overlay-suggest-start, #2e7d32); color: #fff; }
+.crux-cell[data-num="1"] { color: var(--color-num-1, #6baed6); }
+.crux-cell[data-num="2"] { color: var(--color-num-2, #66bb6a); }
+.crux-cell[data-num="3"] { color: var(--color-num-3, #ff6b6b); }
+.crux-cell[data-num="4"] { color: var(--color-num-4, #ce93d8); }
+.crux-cell[data-num="5"] { color: var(--color-num-5, #f48fb1); }
+.crux-cell[data-num="6"] { color: var(--color-num-6, #4dd0e1); }
+.crux-cell[data-num="7"] { color: var(--color-num-7, #cfd8dc); }
+.crux-cell[data-num="8"] { color: var(--color-num-8, #b0bec5); }
+.crux-cell.crux-bounce { animation: lexiconBounce 0.3s ease-out; }
+.crux-cell.crux-pulse { animation: receiptSourcePulse 0.9s ease-in-out 2; }
+.crux-coach { min-height: 3em; margin: 12px 0 6px; font-size: 0.9em; line-height: 1.4; }
+.crux-cta { display: inline-block; text-decoration: none; }
+/* Walls drawn over the mini grid (positioned by cruxTeaser._renderMiniWalls).
+   pointer-events:none so a wall over a gap never eats a tap. */
+.crux-wall {
+  position: absolute;
+  background: var(--color-wall, #6b5a3e);
+  border-radius: 1px;
+  z-index: 2;
+  pointer-events: none;
+}
 .lexicon-naming {
   margin: 12px 0 4px;
   font-size: 0.92em;

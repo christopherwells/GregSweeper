@@ -13,7 +13,8 @@ import { showToast } from '../ui/toastManager.js';
 import { stopTimer, pauseTimer, resumeTimer, updateTimerDisplay } from './timerManager.js';
 import { awardPowerUps } from './powerUpActions.js';
 import { setHandleWin } from './powerUpActions.js';
-import { findNextSafeMove, isBoardSolvable, gradeGimmickContribution } from '../logic/boardSolver.js';
+import { findNextSafeMove, gradeGimmickContribution } from '../logic/boardSolver.js';
+import { extractCrux } from '../logic/cruxExtract.js';
 import { prepareLossReceipt, bombStrikeVerdict } from '../ui/receiptRenderer.js';
 import { computeBombInfoValue } from '../logic/bombInfoValue.js';
 import { getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, getChaosDifficulty, LIFELINE_WIN_REWARD_CHANCE, BOMB_PENALTY_BASE } from '../logic/difficulty.js';
@@ -186,24 +187,19 @@ function _renderWinReceipt() {
       // The solver simulates in its own arrays — live revealed state is
       // untouched (and cleanSolverArtifacts must NOT run here: it would
       // wipe cell.isRevealed on the live, fully-revealed board).
-      const traced = isBoardSolvable(board, rows, cols, fr, fc, undefined, { trace: true });
+      // extractCrux is the SAME crux finder the daily teaser uses, so the
+      // receipt and the teaser can never disagree about the crux square.
+      const crux = extractCrux(board, rows, cols, fr, fc);
       const parts = [];
       let cruxJump = null;
-      if (traced.solvable && Array.isArray(traced.trace)) {
-        const crux = traced.trace.find(e => e.tier >= 1);
-        if (crux) {
-          // Coordinates mean nothing to a player; take them THERE
-          // instead. Tapping the line hides the modal, pulses the crux
-          // square and the clues that prove it, then brings the modal
-          // back.
-          parts.push(`Hardest step: the first square that took ${TIER_PHRASE[crux.tier] || 'real thought'} (tap to see it)`);
-          cruxJump = {
-            cell: { row: Math.floor(crux.cell / cols), col: crux.cell % cols },
-            sources: (crux.sources || []).map(i => ({ row: Math.floor(i / cols), col: i % cols })),
-          };
-        } else {
-          parts.push('Every square here fell to plain counting. A breather board');
-        }
+      if (crux) {
+        // Coordinates mean nothing to a player; take them THERE instead.
+        // Tapping the line hides the modal, pulses the crux square and
+        // the clues that prove it, then brings the modal back.
+        parts.push(`Hardest step: the first square that took ${TIER_PHRASE[crux.tier] || 'real thought'} (tap to see it)`);
+        cruxJump = { cell: crux.cell, sources: crux.sources };
+      } else {
+        parts.push('Every square here fell to plain counting. A breather board');
       }
       const testable = (state.activeGimmicks || [])
         .filter(g => ['sonar', 'compass', 'wormhole', 'liar', 'mirror'].includes(g));
@@ -983,6 +979,12 @@ export function handleWin() {
   // Always show share button on win
   shareBtn.classList.remove('hidden');
 
+  // Daily/weekly wins offer a one-tap "challenge a friend" that copies a
+  // link to YESTERDAY's crux teaser — a real puzzle, never today's board
+  // (the route refuses today and later). Other modes have no crux to share.
+  const cruxChallengeBtn = $('#gameover-crux-challenge');
+  if (cruxChallengeBtn) cruxChallengeBtn.classList.toggle('hidden', !(isDaily || isWeekly));
+
   // Daily-win opt-in CTA — shown on daily/weekly wins ONLY when push
   // notifications are currently disabled. Best single moment to convert
   // a one-off player into a returning one. Hidden by default; the show
@@ -1175,6 +1177,7 @@ export function handleLoss(mineRow, mineCol) {
   if (dailySubmitForm) dailySubmitForm.classList.add('hidden');
   $('#gameover-powerup-earned').classList.add('hidden');
   $('#gameover-share').classList.add('hidden');
+  $('#gameover-crux-challenge')?.classList.add('hidden');
   const doneBtnLoss = $('#gameover-done');
   if (doneBtnLoss) doneBtnLoss.classList.add('hidden');
   $('#gameover-achievements').classList.add('hidden');
@@ -1272,6 +1275,7 @@ export function handleTimedLoss() {
   if (dailySubmitForm2) dailySubmitForm2.classList.add('hidden');
   $('#gameover-powerup-earned').classList.add('hidden');
   $('#gameover-share').classList.add('hidden');
+  $('#gameover-crux-challenge')?.classList.add('hidden');
   const doneBtnLoss = $('#gameover-done');
   if (doneBtnLoss) doneBtnLoss.classList.add('hidden');
   $('#gameover-achievements').classList.add('hidden');
