@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Sakura Greg, idle: a little cherry-blossom tree in full bloom, a face in the trunk, field notes leaning at the roots. -->
+<defs>
+  <g id="sakBlsm">
+    <g fill="#ffffff" stroke="#f4a7bd" stroke-width="0.5">
+      <circle cx="0" cy="-2" r="1.4"/><circle cx="1.9" cy="-0.6" r="1.4"/><circle cx="1.2" cy="1.7" r="1.4"/><circle cx="-1.2" cy="1.7" r="1.4"/><circle cx="-1.9" cy="-0.6" r="1.4"/>
+    </g>
+    <circle cx="0" cy="0" r="0.7" fill="#ffcf4a"/>
+  </g>
+</defs>
+<!-- ground shadow -->
+<ellipse cx="32" cy="57.5" rx="15" ry="2.4" fill="#000000" opacity="0.12"/>
+<!-- roots / feet -->
+<g stroke="#8a5a38" stroke-width="3.4" stroke-linecap="round"><path d="M29 54 L24 58"/><path d="M32 55 L32 59"/><path d="M35 54 L40 58"/></g>
+<!-- branches into the canopy -->
+<g stroke="#8a5a38" stroke-width="3" stroke-linecap="round" fill="none"><path d="M30 39 C27 34 24 32 22 29"/><path d="M32 38 L32 27"/><path d="M34 39 C37 34 40 32 42 29"/></g>
+<!-- trunk -->
+<path d="M26 55 C25 49 25 43 27 37 L37 37 C39 43 39 49 38 55 Z" fill="#9a6a44" stroke="#6e4626" stroke-width="2" stroke-linejoin="round"/>
+<!-- bark -->
+<g stroke="#6e4626" stroke-width="0.8" opacity="0.5" fill="none"><path d="M30 53 C29 48 29 43 31 39"/><path d="M34 53 C35 48 35 43 34 39"/></g>
+<!-- canopy: a pink blossom cloud -->
+<g fill="#f2aec0"><circle cx="23" cy="24" r="8"/><circle cx="41" cy="24" r="8"/><circle cx="32" cy="27" r="8.5"/></g>
+<g fill="#f9c3d2"><circle cx="22" cy="19" r="9"/><circle cx="32" cy="14" r="10"/><circle cx="42" cy="19" r="9"/><circle cx="28" cy="22" r="8"/><circle cx="38" cy="22" r="8"/></g>
+<g fill="#ffd9e4"><circle cx="24" cy="14" r="4.5"/><circle cx="34" cy="11" r="5"/><circle cx="43" cy="15" r="4"/></g>
+<!-- scattered blossoms -->
+<use href="#sakBlsm" transform="translate(20 18)"/>
+<use href="#sakBlsm" transform="translate(31 13)"/>
+<use href="#sakBlsm" transform="translate(41 18)"/>
+<use href="#sakBlsm" transform="translate(26 25)"/>
+<use href="#sakBlsm" transform="translate(37 25)"/>
+<use href="#sakBlsm" transform="translate(33 20) scale(0.85)"/>
+<!-- face on the trunk -->
+<circle cx="29.5" cy="42" r="2.6" fill="#fff" stroke="#6e4626" stroke-width="0.8"/>
+<circle cx="34.5" cy="42" r="2.6" fill="#fff" stroke="#6e4626" stroke-width="0.8"/>
+<circle cx="29.8" cy="42.4" r="1.2" fill="#5a3a28"/><circle cx="34.8" cy="42.4" r="1.2" fill="#5a3a28"/>
+<path d="M29.5 46.5 Q32 48.8 34.5 46.5" fill="none" stroke="#5a3a28" stroke-width="1.6" stroke-linecap="round"/>
+<!-- field notes leaning at the roots -->
+<g transform="rotate(-12 13 49)">
+  <rect x="8" y="43" width="9" height="12" rx="1" fill="#7ec8c0" stroke="#3a8078" stroke-width="1.4"/>
+  <path d="M10 46.5 L15 46.5 M10 49 L15 49 M10 51.5 L13.5 51.5" stroke="#2f6e66" stroke-width="0.8"/>
+  <rect x="10.5" y="42" width="4" height="1.6" rx="0.6" fill="#3a8078"/>
+</g>
+<!-- a couple of drifting petals -->
+<g fill="#f9c3d2" stroke="#e89ab0" stroke-width="0.4">
+  <path d="M48 31 C46 29 50 28 51 31 C50 34 46 33 48 31 Z"/>
+  <path d="M16 34 C14 32 18 31 19 34 C18 37 14 36 16 34 Z"/>
+</g>
+</svg>

@@ -494,7 +494,7 @@ export function handleWin() {
       const tAbs = Math.abs(tDelta).toFixed(1);
       const tClass = tDelta < -0.5 ? 'par-under' : tDelta > 0.5 ? 'par-over' : 'par-even';
       const tText = tDelta < -0.5 ? `${tAbs}s under par` : tDelta > 0.5 ? `${tAbs}s over par` : 'Even par!';
-      parEl.innerHTML = `Greg's Time: ${state.timedPar.toFixed(1)}s · <span class="${tClass}">${tText}</span>`;
+      parEl.innerHTML = `${spriteImgHTML('smiley', 'sprite-greg-par', 'Greg')}Greg's Time: ${state.timedPar.toFixed(1)}s · <span class="${tClass}">${tText}</span>`;
       parEl.classList.remove('hidden');
     }
     if (state.timedFeatures && state.timedPar > 0) {
@@ -615,6 +615,7 @@ export function handleWin() {
         const details = getHandicapDetails(getUid());
         const itemized = details ? labFileLine(state.dailyPar, details) : null;
         parEl.innerHTML = parPrimer +
+          spriteImgHTML('smiley', 'sprite-greg-par', 'Greg') +
           (itemized
             ? itemized + ' · '
             : "Greg's Time: " + state.dailyPar.toFixed(1) + 's · ' +
@@ -629,6 +630,7 @@ export function handleWin() {
           ? ' <span class="par-hint">· 1 more daily and your personal par appears</span>'
           : '';
         parEl.innerHTML = parPrimer +
+          spriteImgHTML('smiley', 'sprite-greg-par', 'Greg') +
           "Greg's Time: " + state.dailyPar.toFixed(1) + 's · ' +
           '<span class="' + parClass + '">' + deltaText + '</span>' + needHint;
       }

@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Forest Greg, idle: a woodland crab, a single leaf for a shell with veins, twig legs, an acorn, a bark-slab field slate. -->
+<!-- Twig legs / arms / stalks -->
+<g fill="none" stroke="#6b4a2e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M19 41 L13 47 L11 52"/>
+  <path d="M24 43.5 L20 50 L19 55"/>
+  <path d="M45 41 L51 47 L53 52"/>
+  <path d="M40 43.5 L44 50 L45 55"/>
+  <path d="M17 32 L12 27"/>
+  <path d="M47 32 L52 26"/>
+  <path d="M25 18.5 L23 12.5"/>
+  <path d="M39 18.5 L41 12.5"/>
+</g>
+<!-- little twig nubs -->
+<g fill="none" stroke="#6b4a2e" stroke-width="1.4" stroke-linecap="round">
+  <path d="M16 44 L14 42 M48 44 L50 42"/>
+</g>
+<!-- Eyes -->
+<circle cx="22.5" cy="9.5" r="4.2" fill="#fcf6e8" stroke="#6b4a2e" stroke-width="2"/>
+<circle cx="41.5" cy="9.5" r="4.2" fill="#fcf6e8" stroke="#6b4a2e" stroke-width="2"/>
+<circle cx="23.2" cy="10.2" r="1.5" fill="#3a2a18"/>
+<circle cx="40.8" cy="10.2" r="1.5" fill="#3a2a18"/>
+<!-- Acorn claws -->
+<g transform="rotate(28 14 21)"><ellipse cx="14" cy="21.5" rx="5" ry="4.4" fill="#a9743f" stroke="#6b4a2e" stroke-width="2"/><path d="M9 19.5 L19 19.5" stroke="#7a4f28" stroke-width="2.2"/><path d="M14 17 L14 15" stroke="#6b4a2e" stroke-width="1.6" stroke-linecap="round"/></g>
+<g transform="rotate(-35 54 22)"><ellipse cx="54" cy="22.5" rx="5.4" ry="4.6" fill="#a9743f" stroke="#6b4a2e" stroke-width="2"/><path d="M48.5 20.5 L59.5 20.5" stroke="#7a4f28" stroke-width="2.2"/></g>
+<!-- Leaf shell: two-tone halves split at the midrib, ribs spanning the whole leaf -->
+<path d="M11 31 C11 23 18 16 32 15 C46 16 53 23 53 31 C53 38 45 43 32 43 C19 43 11 38 11 31 Z"
+      fill="#79bd5b" stroke="#3f6b2e" stroke-width="2.4"/>
+<path d="M32 15 C46 16 53 23 53 31 C53 38 45 43 32 43 Z" fill="#4d8a3a"/>
+<g fill="none" stroke="#2f5722" stroke-width="1.3" stroke-linecap="round" opacity="0.85">
+  <path d="M32 15.5 L32 42.5"/>
+  <path d="M32 20 L14 17 M32 20 L50 17 M32 27 L11.5 27 M32 27 L52.5 27 M32 34 L15 38 M32 34 L49 38"/>
+</g>
+<!-- Smile -->
+<path d="M27.5 32 Q32 36.5 36.5 32" fill="none" stroke="#3f6b2e" stroke-width="2" stroke-linecap="round"/>
+<!-- Bark-slab field slate in left claw -->
+<g transform="rotate(-10 8 32)">
+  <rect x="2" y="22" width="12" height="16" rx="1.5" fill="#caa472" stroke="#6b4a2e" stroke-width="2"/>
+  <path d="M4 27 L12 27 M4 31 L12 31 M4 35 L9 35" stroke="#6b4a2e" stroke-width="1" opacity="0.55"/>
+</g>
+<!-- A spore mote drifting -->
+<circle cx="56" cy="12" r="1.4" fill="#cfe6b0" opacity="0.8"/>
+</svg>

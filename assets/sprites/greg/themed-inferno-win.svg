@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Inferno Greg, win: the flame flares tall and bright, sparks bursting all around. -->
+<defs>
+  <linearGradient id="ifFlameW" x1="0" y1="1" x2="0" y2="0">
+    <stop offset="0" stop-color="#e0481a"/>
+    <stop offset="0.5" stop-color="#ff9a3a"/>
+    <stop offset="1" stop-color="#ffe24a"/>
+  </linearGradient>
+</defs>
+<!-- Burst of sparks all around -->
+<g fill="#ffd23e"><circle cx="7" cy="14" r="1.5"/><circle cx="12" cy="7" r="1.2"/><circle cx="57" cy="14" r="1.5"/><circle cx="52" cy="7" r="1.2"/><circle cx="32" cy="3" r="1.3"/><circle cx="4" cy="30" r="1.2"/><circle cx="60" cy="30" r="1.2"/><circle cx="22" cy="5" r="1"/><circle cx="42" cy="5" r="1"/></g>
+<g stroke="#ff8a2e" stroke-width="1.4" stroke-linecap="round"><path d="M6 20 L9 23 M58 20 L55 23 M9 34 L12 32 M55 34 L52 32"/></g>
+<!-- Ember legs / raised claws -->
+<g fill="none" stroke="#7a3010" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M19 44 L13 50 L11 55"/><path d="M24 46.5 L20 53 L19 58"/><path d="M45 44 L51 50 L53 55"/><path d="M40 46.5 L44 53 L45 58"/>
+  <path d="M18 35 L13.5 26"/><path d="M46 35 L50.5 26"/>
+</g>
+<path d="M12.5 26 C7 26 4.5 21 7.5 16.5 L11 19.5 L10 14 C15 12.5 18.5 17 17 22 C16 25 15 26 12.5 26 Z" fill="#e0521a" stroke="#7a3010" stroke-width="2" stroke-linejoin="round"/>
+<path d="M51.5 26 C57 26 59.5 21 56.5 16.5 L53 19.5 L54 14 C49 12.5 45.5 17 47 22 C48 25 49 26 51.5 26 Z" fill="#e0521a" stroke="#7a3010" stroke-width="2" stroke-linejoin="round"/>
+<!-- Taller flame body -->
+<path d="M14 43 C11 35 12 25 17 20 L20 27 L24 12 L28 24 L32 8 L36 24 L40 12 L44 27 L47 20 C52 25 53 35 50 43 C46 47 38 48 32 48 C26 48 18 47 14 43 Z"
+      fill="url(#ifFlameW)" stroke="#a8431a" stroke-width="2"/>
+<path d="M20 42 C18 35 20 29 24 25 L26 30 L29 20 L32 28 L35 20 L38 30 L40 25 C44 29 46 35 44 42 C40 45 36 46 32 46 C28 46 24 45 20 42 Z"
+      fill="#ffe89a" opacity="0.9"/>
+<circle cx="25" cy="33" r="4" fill="#fff" stroke="#7a3010" stroke-width="1.8"/>
+<circle cx="39" cy="33" r="4" fill="#fff" stroke="#7a3010" stroke-width="1.8"/>
+<path d="M23 33 Q25 31 27 33" fill="none" stroke="#3a1808" stroke-width="1.6" stroke-linecap="round"/>
+<path d="M37 33 Q39 31 41 33" fill="none" stroke="#3a1808" stroke-width="1.6" stroke-linecap="round"/>
+<path d="M26 38 Q32 43 38 38 Z" fill="#7a3010" stroke="#7a3010" stroke-width="1" stroke-linejoin="round"/>
+</svg>

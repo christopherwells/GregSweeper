@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Apothecary Greg, idle: a crab-shaped glass specimen jar, half-filled with blue tincture, corked, with a ruled label. -->
+<!-- Glass legs / arms / stalks -->
+<g fill="none" stroke="#9fcdd8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M19 41 L13 47 L11 52"/>
+  <path d="M24 43.5 L20 50 L19 55"/>
+  <path d="M45 41 L51 47 L53 52"/>
+  <path d="M40 43.5 L44 50 L45 55"/>
+  <path d="M17 32 L12 27"/>
+  <path d="M47 32 L52 26"/>
+  <path d="M25 18.5 L23 12.5"/>
+  <path d="M39 18.5 L41 12.5"/>
+</g>
+<!-- Glass claws -->
+<ellipse cx="14" cy="21" rx="5.6" ry="4.6" fill="#cfeaf0" opacity="0.5" stroke="#9fcdd8" stroke-width="2" transform="rotate(28 14 21)"/>
+<ellipse cx="54" cy="22" rx="6" ry="4.8" fill="#cfeaf0" opacity="0.5" stroke="#9fcdd8" stroke-width="2" transform="rotate(-35 54 22)"/>
+<!-- Glass eye-bulbs -->
+<circle cx="22.5" cy="9.5" r="4.2" fill="#eaf7fa" stroke="#9fcdd8" stroke-width="1.8"/>
+<circle cx="41.5" cy="9.5" r="4.2" fill="#eaf7fa" stroke="#9fcdd8" stroke-width="1.8"/>
+<circle cx="23.2" cy="10.2" r="1.5" fill="#2a4a52"/>
+<circle cx="40.8" cy="10.2" r="1.5" fill="#2a4a52"/>
+<!-- Cork stopper -->
+<path d="M28 15 L36 15 L35 9 L29 9 Z" fill="#b5854a" stroke="#7a5630" stroke-width="1.4" stroke-linejoin="round"/>
+<path d="M29 11.5 L35 11.5" stroke="#7a5630" stroke-width="0.9" opacity="0.7"/>
+<!-- Jar body (glass) -->
+<path d="M11 31 C11 24 16 19 22 17.5 Q27 15 32 15 Q37 15 42 17.5 C48 19 53 24 53 31 C53 38 45 43 32 43 C19 43 11 38 11 31 Z"
+      fill="#dff0f4" opacity="0.32"/>
+<!-- Blue tincture, half full -->
+<clipPath id="apoJar"><path d="M11 31 C11 24 16 19 22 17.5 Q27 15 32 15 Q37 15 42 17.5 C48 19 53 24 53 31 C53 38 45 43 32 43 C19 43 11 38 11 31 Z"/></clipPath>
+<g clip-path="url(#apoJar)">
+  <path d="M9 29 Q20 26 32 29 Q44 32 55 29 L55 45 L9 45 Z" fill="#3f98d6"/>
+  <path d="M9 29 Q20 26 32 29 Q44 32 55 29" fill="none" stroke="#7fc3ee" stroke-width="1.2" opacity="0.8"/>
+</g>
+<!-- Jar outline + glass highlight -->
+<path d="M11 31 C11 24 16 19 22 17.5 Q27 15 32 15 Q37 15 42 17.5 C48 19 53 24 53 31 C53 38 45 43 32 43 C19 43 11 38 11 31 Z"
+      fill="none" stroke="#9fcdd8" stroke-width="2.4"/>
+<path d="M17 24 C20 20 25 18 29 18" stroke="#ffffff" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.7"/>
+<!-- Painted smile -->
+<path d="M28 35 Q32 38 36 35" fill="none" stroke="#2a4a52" stroke-width="1.8" stroke-linecap="round"/>
+<!-- Gold label on the glass -->
+<g transform="rotate(-8 8.5 31)">
+  <rect x="2" y="22" width="11" height="14" rx="1" fill="#e8d4a0" stroke="#c89030" stroke-width="1.6"/>
+  <path d="M4 27 L11 27 M4 30 L11 30 M4 33 L8 33" stroke="#9a6a20" stroke-width="0.9" opacity="0.8"/>
+</g>
+</svg>

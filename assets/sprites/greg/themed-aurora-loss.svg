@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Aurora Greg, loss: the lights fade out. The curtain inverts and dims to cold tones, X eyes. -->
+<defs>
+  <linearGradient id="auLoss" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#8a6fe0" stop-opacity="0.5"/>
+    <stop offset="1" stop-color="#2a6a78" stop-opacity="0.5"/>
+  </linearGradient>
+</defs>
+<!-- dimmed light limbs to the sides -->
+<g fill="none" stroke="#6fc8c0" stroke-width="2" stroke-linecap="round" opacity="0.65">
+  <path d="M21 35 C19 28 16 23 18.5 22.5"/>
+  <path d="M27.5 34 C26 26 27 19.5 28.5 21"/>
+  <path d="M36.5 34 C38 26 37 19.5 35.5 21"/>
+  <path d="M43 35 C45 28 48 23 45.5 22.5"/>
+  <path d="M15 39 C12 38 10 37 8 36"/>
+  <path d="M49 39 C52 38 54 37 56 36"/>
+</g>
+<!-- inverted gradient shell, faded -->
+<path d="M12 38 C12 42 15 46 20 48.5 Q26 51 32 51 Q38 51 44 48.5 C49 46 52 42 52 38 L52 37 L12 37 Z"
+      fill="url(#auLoss)" stroke="#6fc8c0" stroke-width="1.8" stroke-linejoin="round" opacity="0.9"/>
+<ellipse cx="32" cy="37" rx="20" ry="4" fill="#3a7a88" opacity="0.5"/>
+<!-- flopped stalks + faint X eyes -->
+<g fill="none" stroke="#6fc8c0" stroke-width="2" stroke-linecap="round" opacity="0.7">
+  <path d="M17 37 C15 35 13 32 11.5 30"/>
+  <path d="M22.5 36 C22 33.5 21.5 30 21 27.5"/>
+</g>
+<circle cx="10.5" cy="26.5" r="3.4" fill="#7fe0d0" opacity="0.12"/>
+<circle cx="20.5" cy="24" r="3.4" fill="#7fe0d0" opacity="0.12"/>
+<path d="M8.8 24.8 L12.2 28.2 M12.2 24.8 L8.8 28.2" stroke="#cdefff" stroke-width="1.4" stroke-linecap="round" opacity="0.85"/>
+<path d="M18.8 22.3 L22.2 25.7 M22.2 22.3 L18.8 25.7" stroke="#cdefff" stroke-width="1.4" stroke-linecap="round" opacity="0.85"/>
+<!-- a couple sinking stars -->
+<g fill="#cdefff" opacity="0.6"><circle cx="48" cy="50" r="1"/><circle cx="54" cy="20" r="0.9"/></g>
+</svg>

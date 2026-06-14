@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- A drill-down, variant 2: GROUNDED EYES. Same body as A1, but the
+       eye stalks are short and thick and the eyes sit low, visibly
+       growing out of the carapace instead of floating above it. -->
+  <!-- Walking legs -->
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke="#232838" stroke-width="9">
+      <path d="M42 84 L30 96 L26 107"/>
+      <path d="M50 88 L42 101 L40 111"/>
+      <path d="M86 84 L98 96 L102 107"/>
+      <path d="M78 88 L86 101 L88 111"/>
+    </g>
+    <g stroke="#53a05b" stroke-width="4.5">
+      <path d="M42 84 L30 96 L26 107"/>
+      <path d="M50 88 L42 101 L40 111"/>
+      <path d="M86 84 L98 96 L102 107"/>
+      <path d="M78 88 L86 101 L88 111"/>
+    </g>
+  </g>
+  <!-- Arms -->
+  <g fill="none" stroke-linecap="round">
+    <path d="M40 66 L26 56" stroke="#232838" stroke-width="10"/>
+    <path d="M88 66 L102 54" stroke="#232838" stroke-width="10"/>
+    <path d="M40 66 L26 56" stroke="#53a05b" stroke-width="5"/>
+    <path d="M88 66 L102 54" stroke="#53a05b" stroke-width="5"/>
+  </g>
+  <!-- Short thick eye stalks growing from the shell -->
+  <g fill="none" stroke-linecap="round">
+    <path d="M52 40 L49 30" stroke="#232838" stroke-width="12"/>
+    <path d="M76 40 L79 30" stroke="#232838" stroke-width="12"/>
+    <path d="M52 40 L49 30" stroke="#53a05b" stroke-width="6.5"/>
+    <path d="M76 40 L79 30" stroke="#53a05b" stroke-width="6.5"/>
+  </g>
+  <circle cx="48" cy="24" r="10" fill="#ffffff" stroke="#232838" stroke-width="5"/>
+  <circle cx="80" cy="24" r="10" fill="#ffffff" stroke="#232838" stroke-width="5"/>
+  <circle cx="49.5" cy="26" r="3.8" fill="#232838"/>
+  <circle cx="78.5" cy="26" r="3.8" fill="#232838"/>
+  <circle cx="51.2" cy="24.4" r="1.3" fill="#ffffff"/>
+  <circle cx="80.2" cy="24.4" r="1.3" fill="#ffffff"/>
+  <!-- Carapace -->
+  <path d="M30 62 C30 41 45 31 64 31 C83 31 98 41 98 62 C98 78 84 89 64 89 C44 89 30 78 30 62 Z"
+        fill="#53a05b" stroke="#232838" stroke-width="6"/>
+  <path d="M36 70 C44 80 84 80 92 70 C88 82 78 87 64 87 C50 87 40 82 36 70 Z" fill="#3e7f46"/>
+  <!-- Mottling -->
+  <g fill="#7cc184">
+    <circle cx="48" cy="46" r="3.4"/>
+    <circle cx="70" cy="41" r="2.8"/>
+    <circle cx="57" cy="53" r="2.4"/>
+    <circle cx="80" cy="52" r="3"/>
+  </g>
+  <!-- Smile -->
+  <path d="M54 70 Q64 78 74 70" fill="none" stroke="#232838" stroke-width="5" stroke-linecap="round"/>
+  <!-- Right pincer gripping pencil -->
+  <ellipse cx="106" cy="49" rx="9.5" ry="7.5" fill="#53a05b" stroke="#232838" stroke-width="5" transform="rotate(-35 106 49)"/>
+  <ellipse cx="111" cy="42" rx="4.8" ry="3.8" fill="#e8873a" stroke="#232838" stroke-width="4" transform="rotate(-35 111 42)"/>
+  <g transform="rotate(-55 106 47)">
+    <rect x="96" y="43.5" width="24" height="7" rx="2" fill="#ffd23e" stroke="#232838" stroke-width="3.5"/>
+    <path d="M120 43.5 L127 47 L120 50.5 Z" fill="#232838"/>
+    <rect x="91" y="43.5" width="5.5" height="7" rx="2" fill="#e88a8a" stroke="#232838" stroke-width="3"/>
+  </g>
+  <!-- Clipboard -->
+  <g transform="rotate(-8 18 62)">
+    <rect x="5" y="44" width="27" height="37" rx="3.5" fill="#f3f6fb" stroke="#232838" stroke-width="4.5"/>
+    <rect x="13" y="39" width="11" height="8" rx="2.5" fill="#b9c2d4" stroke="#232838" stroke-width="3.5"/>
+    <g fill="#d4dae6">
+      <rect x="10" y="53" width="6" height="6" rx="1.2"/>
+      <rect x="18" y="53" width="6" height="6" rx="1.2"/>
+      <rect x="26" y="53" width="6" height="6" rx="1.2"/>
+      <rect x="10" y="61" width="6" height="6" rx="1.2"/>
+      <rect x="26" y="61" width="6" height="6" rx="1.2"/>
+    </g>
+    <rect x="18" y="61" width="6" height="6" rx="1.2" fill="#ffd23e"/>
+    <path d="M12 76 L12 68 L19 70 L12 72" fill="#e4453a"/>
+  </g>
+  <ellipse cx="29" cy="49" rx="8.5" ry="7" fill="#53a05b" stroke="#232838" stroke-width="5" transform="rotate(28 29 49)"/>
+  <ellipse cx="34" cy="43" rx="4.2" ry="3.4" fill="#e8873a" stroke="#232838" stroke-width="4" transform="rotate(28 34 43)"/>
+</svg>

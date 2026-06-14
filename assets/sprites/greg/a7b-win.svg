@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Win pose for the a7b blend (a7 body + open-smile idle): wide
+       shell, long stalks, BIG open pincers thrown up, happy squeezed
+       eyes, the open smile escalated to a full grin. -->
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke="#232838" stroke-width="9">
+      <path d="M38 88 L26 100 L22 111"/>
+      <path d="M48 93 L40 106 L38 116"/>
+      <path d="M90 88 L102 100 L106 111"/>
+      <path d="M80 93 L88 106 L90 116"/>
+    </g>
+    <g stroke="#53a05b" stroke-width="4.5">
+      <path d="M38 88 L26 100 L22 111"/>
+      <path d="M48 93 L40 106 L38 116"/>
+      <path d="M90 88 L102 100 L106 111"/>
+      <path d="M80 93 L88 106 L90 116"/>
+    </g>
+  </g>
+  <g fill="none" stroke-linecap="round">
+    <path d="M36 68 L27 50" stroke="#232838" stroke-width="12"/>
+    <path d="M92 68 L101 50" stroke="#232838" stroke-width="12"/>
+    <path d="M36 68 L27 50" stroke="#53a05b" stroke-width="6"/>
+    <path d="M92 68 L101 50" stroke="#53a05b" stroke-width="6"/>
+  </g>
+  <g transform="rotate(-12 25 38)">
+    <path d="M25 50 C13 50 8 39 14 30 L21 36 L19 24 C30 21 37 30 34 41 C32 48 30 50 25 50 Z"
+          fill="#53a05b" stroke="#232838" stroke-width="4.8" stroke-linejoin="round"/>
+  </g>
+  <g transform="rotate(12 103 38) scale(-1 1) translate(-206 0)">
+    <path d="M103 50 C91 50 86 39 92 30 L99 36 L97 24 C108 21 115 30 112 41 C110 48 108 50 103 50 Z"
+          fill="#53a05b" stroke="#232838" stroke-width="4.8" stroke-linejoin="round"/>
+  </g>
+  <g fill="none" stroke-linecap="round">
+    <path d="M50 43 L46 31" stroke="#232838" stroke-width="10"/>
+    <path d="M78 43 L82 31" stroke="#232838" stroke-width="10"/>
+    <path d="M50 43 L46 31" stroke="#53a05b" stroke-width="5"/>
+    <path d="M78 43 L82 31" stroke="#53a05b" stroke-width="5"/>
+  </g>
+  <circle cx="45" cy="25" r="9" fill="#ffffff" stroke="#232838" stroke-width="5"/>
+  <circle cx="83" cy="25" r="9" fill="#ffffff" stroke="#232838" stroke-width="5"/>
+  <path d="M40 27 Q45 21 50 27" fill="none" stroke="#232838" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M78 27 Q83 21 88 27" fill="none" stroke="#232838" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M22 68 C22 54 32 44 44 41 Q54 36 64 36 Q74 36 84 41 C96 44 106 54 106 68 C106 82 90 92 64 92 C38 92 22 82 22 68 Z"
+        fill="#53a05b" stroke="#232838" stroke-width="6"/>
+  <path d="M30 74 C40 84 88 84 98 74 C92 86 80 90 64 90 C48 90 36 86 30 74 Z" fill="#3e7f46"/>
+  <g fill="#7cc184">
+    <circle cx="44" cy="52" r="3.2"/>
+    <circle cx="66" cy="46" r="2.8"/>
+    <circle cx="86" cy="54" r="3"/>
+  </g>
+  <path d="M50 68 Q64 84 78 68 Z" fill="#232838" stroke="#232838" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M58 75 Q64 80 70 75 Q67 78 64 78 Q61 78 58 75 Z" fill="#e4453a"/>
+  <g fill="#ffd23e" stroke="#b8860b" stroke-width="2.5" stroke-linejoin="round">
+    <path d="M11 20 L14 27 L21 28 L15 32 L16 40 L10 35 L4 39 L6 31 L1 26 L8 26 Z"/>
+    <path d="M117 18 L119 23 L124 24 L120 27 L121 33 L116 29 L111 32 L113 26 L109 22 L114 22 Z"/>
+    <path d="M62 6 L64 11 L69 12 L65 15 L66 21 L61 17 L56 20 L58 14 L54 10 L59 10 Z"/>
+  </g>
+</svg>

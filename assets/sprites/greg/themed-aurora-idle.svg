@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Aurora Greg, idle: a crab made of northern-lights, the shell a glowing curtain of green-to-violet over arctic night. -->
+<defs>
+  <linearGradient id="auIdle" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#5cf0bf"/>
+    <stop offset="0.5" stop-color="#2bb6d9"/>
+    <stop offset="1" stop-color="#8a6fe0"/>
+  </linearGradient>
+</defs>
+<!-- glow halo -->
+<path d="M11 31 C11 24 16 19 22 17.5 Q27 15 32 15 Q37 15 42 17.5 C48 19 53 24 53 31 C53 38 45 43 32 43 C19 43 11 38 11 31 Z"
+      fill="none" stroke="#37e6a8" stroke-width="6" opacity="0.22"/>
+<!-- light limbs -->
+<g fill="none" stroke="#7fe0d0" stroke-width="2.2" stroke-linecap="round">
+  <path d="M19 41 C16 44 12.5 48 11 52"/><path d="M24 43.5 C21.5 47.5 19.5 51 19 55"/>
+  <path d="M45 41 C48 44 51.5 48 53 52"/><path d="M40 43.5 C42.5 47.5 44.5 51 45 55"/>
+  <path d="M17 32 C15.5 30.5 13.5 28.5 12 27"/><path d="M47 32 C48.5 30 50.5 28 52 26"/>
+  <path d="M25 18.5 C24.3 16.5 23.6 14.5 23 12.5"/><path d="M39 18.5 C39.6 16.5 40.4 14.5 41 12.5"/>
+</g>
+<!-- light claws -->
+<ellipse cx="14" cy="21" rx="5.4" ry="4.4" fill="none" stroke="#7fe0d0" stroke-width="2.2" transform="rotate(28 14 21)"/>
+<ellipse cx="54" cy="22" rx="5.8" ry="4.6" fill="none" stroke="#7fe0d0" stroke-width="2.2" transform="rotate(-35 54 22)"/>
+<!-- aurora-gradient shell -->
+<path d="M11 31 C11 24 16 19 22 17.5 Q27 15 32 15 Q37 15 42 17.5 C48 19 53 24 53 31 C53 38 45 43 32 43 C19 43 11 38 11 31 Z"
+      fill="url(#auIdle)" stroke="#7fe0d0" stroke-width="2"/>
+<!-- vertical curtain streaks -->
+<clipPath id="auShell"><path d="M11 31 C11 24 16 19 22 17.5 Q27 15 32 15 Q37 15 42 17.5 C48 19 53 24 53 31 C53 38 45 43 32 43 C19 43 11 38 11 31 Z"/></clipPath>
+<g clip-path="url(#auShell)" stroke="#cdfff0" stroke-width="1.2" opacity="0.45" stroke-linecap="round">
+  <path d="M18 16 L18 43"/><path d="M24 15 L24 43"/><path d="M32 15 L32 43"/><path d="M40 15 L40 43"/><path d="M46 16 L46 43"/>
+</g>
+<!-- glowing eyes -->
+<circle cx="22.5" cy="9.5" r="3.4" fill="#ffffff" opacity="0.25"/>
+<circle cx="41.5" cy="9.5" r="3.4" fill="#ffffff" opacity="0.25"/>
+<circle cx="22.5" cy="9.5" r="1.9" fill="#ffffff"/>
+<circle cx="41.5" cy="9.5" r="1.9" fill="#ffffff"/>
+<!-- smile -->
+<path d="M27.5 31.5 Q32 36 36.5 31.5" fill="none" stroke="#0a2a3a" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+<!-- stars -->
+<g fill="#cdefff"><circle cx="56" cy="14" r="1.1"/><circle cx="8" cy="13" r="0.9"/><circle cx="58" cy="40" r="0.8"/><circle cx="6" cy="40" r="0.8"/></g>
+</svg>

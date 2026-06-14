@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Inferno Greg, idle: the head of a fire snake, a living flame with tongues licking up, a hot yellow core. -->
+<defs>
+  <linearGradient id="ifFlame" x1="0" y1="1" x2="0" y2="0">
+    <stop offset="0" stop-color="#d93410"/>
+    <stop offset="0.5" stop-color="#ff8a2e"/>
+    <stop offset="1" stop-color="#ffd23e"/>
+  </linearGradient>
+</defs>
+<!-- Ember legs / claws -->
+<g fill="none" stroke="#7a3010" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M19 41 L13 47 L11 52"/><path d="M24 43.5 L20 50 L19 55"/><path d="M45 41 L51 47 L53 52"/><path d="M40 43.5 L44 50 L45 55"/>
+  <path d="M17 33 L12 28"/><path d="M47 33 L52 28"/>
+</g>
+<ellipse cx="13" cy="22" rx="5.4" ry="4.4" fill="#e0521a" stroke="#7a3010" stroke-width="2.2" transform="rotate(28 13 22)"/>
+<ellipse cx="55" cy="22" rx="5.4" ry="4.4" fill="#e0521a" stroke="#7a3010" stroke-width="2.2" transform="rotate(-28 55 22)"/>
+<!-- Flame body with licking tongues across the top -->
+<path d="M14 40 C11 33 12 25 17 21 L20 27 L24 16 L28 25 L32 13 L36 25 L40 16 L44 27 L47 21 C52 25 53 33 50 40 C46 44 38 45 32 45 C26 45 18 44 14 40 Z"
+      fill="url(#ifFlame)" stroke="#a8431a" stroke-width="2"/>
+<!-- Inner hot core -->
+<path d="M20 39 C18 33 20 28 24 25 L26 29 L29 22 L32 28 L35 22 L38 29 L40 25 C44 28 46 33 44 39 C40 42 36 43 32 43 C28 43 24 42 20 39 Z"
+      fill="#ffe89a" opacity="0.85"/>
+<!-- Eyes -->
+<circle cx="25" cy="31" r="4" fill="#fff" stroke="#7a3010" stroke-width="1.8"/>
+<circle cx="39" cy="31" r="4" fill="#fff" stroke="#7a3010" stroke-width="1.8"/>
+<circle cx="25.6" cy="31.6" r="1.6" fill="#3a1808"/>
+<circle cx="38.4" cy="31.6" r="1.6" fill="#3a1808"/>
+<!-- Grin with little fangs -->
+<path d="M27 37 Q32 41 37 37" fill="none" stroke="#7a3010" stroke-width="2" stroke-linecap="round"/>
+<path d="M29 37.6 L30 39.4 L31 37.8 Z M34 37.6 L35 39.4 L36 37.8 Z" fill="#fff"/>
+<!-- A rising ember -->
+<g fill="#ffb347"><circle cx="50" cy="13" r="1.4"/><circle cx="54" cy="8" r="1"/></g>
+</svg>

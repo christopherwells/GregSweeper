@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Stage 3, variant d: FLATTER, WIDER SHELL. The a7 blend with the
+       carapace pushed further toward true crab proportions: wider
+       still, shallower, smile raised to fit. -->
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke="#232838" stroke-width="9">
+      <path d="M38 80 L26 92 L22 103"/>
+      <path d="M48 84 L40 98 L38 108"/>
+      <path d="M90 80 L102 92 L106 103"/>
+      <path d="M80 84 L88 98 L90 108"/>
+    </g>
+    <g stroke="#53a05b" stroke-width="4.5">
+      <path d="M38 80 L26 92 L22 103"/>
+      <path d="M48 84 L40 98 L38 108"/>
+      <path d="M90 80 L102 92 L106 103"/>
+      <path d="M80 84 L88 98 L90 108"/>
+    </g>
+  </g>
+  <g fill="none" stroke-linecap="round">
+    <path d="M32 62 L22 53" stroke="#232838" stroke-width="12"/>
+    <path d="M96 62 L106 51" stroke="#232838" stroke-width="12"/>
+    <path d="M32 62 L22 53" stroke="#53a05b" stroke-width="6"/>
+    <path d="M96 62 L106 51" stroke="#53a05b" stroke-width="6"/>
+  </g>
+  <g fill="none" stroke-linecap="round">
+    <path d="M50 38 L46 25" stroke="#232838" stroke-width="10"/>
+    <path d="M78 38 L82 25" stroke="#232838" stroke-width="10"/>
+    <path d="M50 38 L46 25" stroke="#53a05b" stroke-width="5"/>
+    <path d="M78 38 L82 25" stroke="#53a05b" stroke-width="5"/>
+  </g>
+  <circle cx="45" cy="19" r="9" fill="#ffffff" stroke="#232838" stroke-width="5"/>
+  <circle cx="83" cy="19" r="9" fill="#ffffff" stroke="#232838" stroke-width="5"/>
+  <circle cx="46.5" cy="20.5" r="3.4" fill="#232838"/>
+  <circle cx="81.5" cy="20.5" r="3.4" fill="#232838"/>
+  <circle cx="48" cy="19" r="1.2" fill="#ffffff"/>
+  <circle cx="83" cy="19" r="1.2" fill="#ffffff"/>
+  <!-- Flatter, wider carapace -->
+  <path d="M16 60 C16 48 27 39 42 36 Q53 32 64 32 Q75 32 86 36 C101 39 112 48 112 60 C112 72 92 81 64 81 C36 81 16 72 16 60 Z"
+        fill="#53a05b" stroke="#232838" stroke-width="6"/>
+  <path d="M24 65 C36 74 92 74 104 65 C96 76 82 79 64 79 C46 79 32 76 24 65 Z" fill="#3e7f46"/>
+  <g fill="#7cc184">
+    <circle cx="42" cy="46" r="3.2"/>
+    <circle cx="66" cy="41" r="2.8"/>
+    <circle cx="88" cy="48" r="3"/>
+    <circle cx="54" cy="54" r="2.2"/>
+  </g>
+  <!-- Smile -->
+  <path d="M54 63 Q64 71 74 63" fill="none" stroke="#232838" stroke-width="5" stroke-linecap="round"/>
+  <ellipse cx="108" cy="44" rx="12.5" ry="10" fill="#53a05b" stroke="#232838" stroke-width="5.5" transform="rotate(-35 108 44)"/>
+  <ellipse cx="115" cy="35" rx="6" ry="4.8" fill="#e8873a" stroke="#232838" stroke-width="4.5" transform="rotate(-35 115 35)"/>
+  <g transform="rotate(-62 106 40)">
+    <rect x="94" y="36" width="28" height="8" rx="2.2" fill="#ffd23e" stroke="#232838" stroke-width="3.8"/>
+    <path d="M122 36 L128 40 L122 44 Z" fill="#232838"/>
+    <rect x="88" y="36" width="6" height="8" rx="2.2" fill="#e88a8a" stroke="#232838" stroke-width="3.2"/>
+  </g>
+  <g transform="rotate(-12 18 58)">
+    <rect x="0" y="36" width="32" height="44" rx="4" fill="#f3f6fb" stroke="#232838" stroke-width="5"/>
+    <rect x="9" y="30" width="14" height="9" rx="3" fill="#b9c2d4" stroke="#232838" stroke-width="3.8"/>
+    <g fill="#d4dae6">
+      <rect x="5" y="46" width="7" height="7" rx="1.4"/>
+      <rect x="14" y="46" width="7" height="7" rx="1.4"/>
+      <rect x="23" y="46" width="7" height="7" rx="1.4"/>
+      <rect x="5" y="55" width="7" height="7" rx="1.4"/>
+      <rect x="23" y="55" width="7" height="7" rx="1.4"/>
+      <rect x="5" y="64" width="7" height="7" rx="1.4"/>
+      <rect x="14" y="64" width="7" height="7" rx="1.4"/>
+    </g>
+    <rect x="14" y="55" width="7" height="7" rx="1.4" fill="#ffd23e"/>
+    <path d="M24 71 L24 63 L31 65.5 L24 68" fill="#e4453a"/>
+  </g>
+  <ellipse cx="26" cy="41" rx="11.5" ry="9.5" fill="#53a05b" stroke="#232838" stroke-width="5.5" transform="rotate(28 26 41)"/>
+  <ellipse cx="33" cy="33" rx="5.5" ry="4.4" fill="#e8873a" stroke="#232838" stroke-width="4.5" transform="rotate(28 33 33)"/>
+</svg>

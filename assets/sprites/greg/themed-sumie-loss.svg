@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Sumi-e Greg, loss: the press inverted, tone pooled at the bottom
+     edge as the wash settled; legs trail skyward, the eye dots crossed
+     out, one drip runs with gravity. -->
+<defs>
+  <linearGradient id="inkMl" x1="0.15" y1="1" x2="0.9" y2="0">
+    <stop offset="0" stop-color="#0d0d0d"/>
+    <stop offset="0.55" stop-color="#2e2e2e"/>
+    <stop offset="1" stop-color="#484848"/>
+  </linearGradient>
+  <linearGradient id="inkCl" x1="0" y1="1" x2="0.8" y2="0">
+    <stop offset="0" stop-color="#171717"/>
+    <stop offset="1" stop-color="#4a4a4a"/>
+  </linearGradient>
+</defs>
+<!-- Legs trailing up -->
+<g fill="none" stroke="#1c1c1c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M20 28 L15 21 L16.5 14"/>
+  <path d="M26 26.5 L24 18 L27 12"/>
+  <path d="M38 26.5 L40 18 L37 12"/>
+  <path d="M44 28 L49 21 L47.5 14"/>
+</g>
+<!-- Claw daubs, slack -->
+<path d="M14 36 C9 34 4.5 30.5 4.5 27 C7 25.5 11.5 27.5 14.5 31 C16.5 33.5 16.5 35 14 36 Z" fill="url(#inkCl)"/>
+<path d="M50 36 C55 34 59.5 30.5 59.5 27 C57 25.5 52.5 27.5 49.5 31 C47.5 33.5 47.5 35 50 36 Z" fill="url(#inkCl)"/>
+<!-- Body inverted, ink pooled along the lower edge -->
+<path d="M16 33 C20 29.5 27 28.5 32 28.5 C37 28.5 44 29.5 48 33 C50.5 37.5 50.5 43.5 48 47.5 C44 51 37 52 32 52 C27 52 20 51 16 47.5 C13.5 43.5 13.5 37.5 16 33 Z"
+      fill="url(#inkMl)"/>
+<!-- Eye flicks hanging slack, dots crossed out -->
+<path d="M22 31 Q19 28 16.5 26.5" stroke="#141414" stroke-width="2" fill="none" stroke-linecap="round"/>
+<path d="M28 30 Q27 26.5 25.5 24" stroke="#141414" stroke-width="2" fill="none" stroke-linecap="round"/>
+<path d="M13.6 23.6 L17.4 27.4 M17.4 23.6 L13.6 27.4" stroke="#0d0d0d" stroke-width="1.9" stroke-linecap="round"/>
+<path d="M23.1 20.1 L26.9 23.9 M26.9 20.1 L23.1 23.9" stroke="#0d0d0d" stroke-width="1.9" stroke-linecap="round"/>
+<!-- One drip running with gravity -->
+<path d="M40 52 C40 55.5 39.6 58 39.2 60" stroke="#1c1c1c" stroke-width="1.9" fill="none" stroke-linecap="round" opacity="0.75"/>
+<circle cx="39.1" cy="61" r="1.3" fill="#1c1c1c" opacity="0.75"/>
+<!-- The hanko -->
+<rect x="51" y="50" width="9" height="9" rx="1.2" fill="#b03020"/>
+<path d="M53.5 52.5 L57.5 52.5 M55.5 52.5 L55.5 56.5 M53.5 56.5 L57.5 56.5" stroke="#f2ede1" stroke-width="1.1"/>
+</svg>

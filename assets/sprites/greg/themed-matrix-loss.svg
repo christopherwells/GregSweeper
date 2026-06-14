@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Matrix Greg, loss: he took the blue pill. Back to sleep in the foggy farce, edged in blue, the dream closing over. -->
+<!-- blue haze -->
+<ellipse cx="32" cy="32" rx="30" ry="26" fill="#1f6fd0" opacity="0.12"/>
+<ellipse cx="32" cy="33" rx="22" ry="18" fill="#1f6fd0" opacity="0.12"/>
+<!-- dim blue wireframe, flipped -->
+<g fill="none" stroke="#3a7fc8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.9">
+  <path d="M21 35 L17 28 L19 23"/><path d="M27.5 34 L25.5 26 L28.5 21"/><path d="M36.5 34 L38.5 26 L35.5 21"/><path d="M43 35 L47 28 L45 23"/>
+  <path d="M15 39 L9 36"/><path d="M49 39 L55 36"/>
+</g>
+<ellipse cx="6.5" cy="33.5" rx="5" ry="4.2" fill="#06121f" stroke="#3a7fc8" stroke-width="1.8" transform="rotate(-30 6.5 33.5)"/>
+<ellipse cx="57.5" cy="33.5" rx="5" ry="4.2" fill="#06121f" stroke="#3a7fc8" stroke-width="1.8" transform="rotate(30 57.5 33.5)"/>
+<path d="M12 38 C12 42 15 46 20 48.5 Q26 51 32 51 Q38 51 44 48.5 C49 46 52 42 52 38 L52 37 L12 37 Z"
+      fill="#06121f" stroke="#3a7fc8" stroke-width="2" stroke-linejoin="round" opacity="0.95"/>
+<ellipse cx="32" cy="37" rx="20" ry="4" fill="#13314f" stroke="#3a7fc8" stroke-width="1.4"/>
+<!-- flopped stalks + sleepy closed eyes -->
+<g fill="none" stroke="#3a7fc8" stroke-width="2" stroke-linecap="round">
+  <path d="M17 37 L11.5 30"/><path d="M22.5 36 L21 27.5"/>
+</g>
+<circle cx="10.5" cy="26.5" r="3.8" fill="#06121f" stroke="#3a7fc8" stroke-width="1.8"/>
+<path d="M8 26.5 Q10.5 29 13 26.5" fill="none" stroke="#9fc8f0" stroke-width="1.4" stroke-linecap="round"/>
+<circle cx="20.5" cy="24" r="3.8" fill="#06121f" stroke="#3a7fc8" stroke-width="1.8"/>
+<path d="M18 24 Q20.5 26.5 23 24" fill="none" stroke="#9fc8f0" stroke-width="1.4" stroke-linecap="round"/>
+<!-- fading 0s of the dream -->
+<g fill="#3a7fc8" font-family="monospace" font-size="6" font-weight="700" opacity="0.7"><text x="46" y="16">0</text><text x="10" y="14">0</text></g>
+</svg>

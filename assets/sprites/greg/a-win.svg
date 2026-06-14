@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Greg direction A, win: both claws thrown up, happy squeezed
+       eyes, big open grin. Props down, arms up. -->
+  <!-- Walking legs -->
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke="#232838" stroke-width="9">
+      <path d="M42 90 L30 102 L26 113"/>
+      <path d="M50 94 L42 107 L40 117"/>
+      <path d="M86 90 L98 102 L102 113"/>
+      <path d="M78 94 L86 107 L88 117"/>
+    </g>
+    <g stroke="#53a05b" stroke-width="4.5">
+      <path d="M42 90 L30 102 L26 113"/>
+      <path d="M50 94 L42 107 L40 117"/>
+      <path d="M86 90 L98 102 L102 113"/>
+      <path d="M78 94 L86 107 L88 117"/>
+    </g>
+  </g>
+  <!-- Arms raised -->
+  <g fill="none" stroke-linecap="round">
+    <path d="M40 68 L29 49" stroke="#232838" stroke-width="10"/>
+    <path d="M88 68 L99 49" stroke="#232838" stroke-width="10"/>
+    <path d="M40 68 L29 49" stroke="#53a05b" stroke-width="5"/>
+    <path d="M88 68 L99 49" stroke="#53a05b" stroke-width="5"/>
+  </g>
+  <!-- Open pincers, raised -->
+  <g transform="rotate(-12 27 40)">
+    <path d="M27 50 C17 50 13 41 18 33 L24 38 L22 28 C31 26 37 33 35 42 C33 48 31 50 27 50 Z"
+          fill="#53a05b" stroke="#232838" stroke-width="4.5" stroke-linejoin="round"/>
+  </g>
+  <g transform="rotate(12 101 40) scale(-1 1) translate(-202 0)">
+    <path d="M101 50 C91 50 87 41 92 33 L98 38 L96 28 C105 26 111 33 109 42 C107 48 105 50 101 50 Z"
+          fill="#53a05b" stroke="#232838" stroke-width="4.5" stroke-linejoin="round"/>
+  </g>
+  <!-- Eye stalks -->
+  <g fill="none" stroke-linecap="round">
+    <path d="M52 46 L47 33" stroke="#232838" stroke-width="10"/>
+    <path d="M76 46 L81 33" stroke="#232838" stroke-width="10"/>
+    <path d="M52 46 L47 33" stroke="#53a05b" stroke-width="5"/>
+    <path d="M76 46 L81 33" stroke="#53a05b" stroke-width="5"/>
+  </g>
+  <!-- Happy squeezed eyes: white eyeballs, arc lids -->
+  <circle cx="46" cy="27" r="9" fill="#ffffff" stroke="#232838" stroke-width="5"/>
+  <circle cx="82" cy="27" r="9" fill="#ffffff" stroke="#232838" stroke-width="5"/>
+  <path d="M41 29 Q46 23 51 29" fill="none" stroke="#232838" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M77 29 Q82 23 87 29" fill="none" stroke="#232838" stroke-width="3.8" stroke-linecap="round"/>
+  <!-- Carapace -->
+  <path d="M30 68 C30 47 45 37 64 37 C83 37 98 47 98 68 C98 84 84 95 64 95 C44 95 30 84 30 68 Z"
+        fill="#53a05b" stroke="#232838" stroke-width="6"/>
+  <path d="M36 76 C44 86 84 86 92 76 C88 88 78 93 64 93 C50 93 40 88 36 76 Z" fill="#3e7f46"/>
+  <!-- Mottling -->
+  <g fill="#7cc184">
+    <circle cx="48" cy="52" r="3.4"/>
+    <circle cx="70" cy="47" r="2.8"/>
+    <circle cx="80" cy="58" r="3"/>
+  </g>
+  <!-- Big grin -->
+  <path d="M50 72 Q64 88 78 72 Z" fill="#232838" stroke="#232838" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M58 79 Q64 84 70 79 Q67 82 64 82 Q61 82 58 79 Z" fill="#e4453a"/>
+  <!-- Confetti sparks -->
+  <g fill="#ffd23e" stroke="#b8860b" stroke-width="2.5" stroke-linejoin="round">
+    <path d="M13 22 L16 29 L23 30 L17 34 L18 42 L12 37 L6 41 L8 33 L3 28 L10 28 Z"/>
+    <path d="M115 20 L117 25 L122 26 L118 29 L119 35 L114 31 L109 34 L111 28 L107 24 L112 24 Z"/>
+    <path d="M62 8 L64 13 L69 14 L65 17 L66 23 L61 19 L56 22 L58 16 L54 12 L59 12 Z"/>
+  </g>
+</svg>

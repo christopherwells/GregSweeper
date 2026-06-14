@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Candy Greg, idle: a wrapped hard candy. The carapace is the sweet, the claws are the twisted cellophane ends. -->
+<!-- Thin candy legs -->
+<g fill="none" stroke="#7a2a44" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M22 40 L17 47 L15 52"/>
+  <path d="M28 42 L25 50 L24 55"/>
+  <path d="M42 40 L47 47 L49 52"/>
+  <path d="M36 42 L39 50 L40 55"/>
+</g>
+<!-- Eye stalks -->
+<g fill="none" stroke="#7a2a44" stroke-width="2.4" stroke-linecap="round">
+  <path d="M26 19 L24 12"/>
+  <path d="M38 19 L40 12"/>
+</g>
+<circle cx="23.5" cy="9" r="4" fill="#fff5fa" stroke="#7a2a44" stroke-width="2"/>
+<circle cx="40.5" cy="9" r="4" fill="#fff5fa" stroke="#7a2a44" stroke-width="2"/>
+<circle cx="24.2" cy="9.7" r="1.5" fill="#7a2a44"/>
+<circle cx="39.8" cy="9.7" r="1.5" fill="#7a2a44"/>
+<!-- Twisted wrapper ends (the claws) -->
+<g stroke="#7a2a44" stroke-width="1.8" stroke-linejoin="round">
+  <path d="M14 29 L4 23 L7 29 L4 35 Z" fill="#ffc2d4"/>
+  <path d="M14 29 L6 28 M14 29 L6 30.5" stroke-width="1.1"/>
+  <path d="M50 29 L60 23 L57 29 L60 35 Z" fill="#ffc2d4"/>
+  <path d="M50 29 L58 28 M50 29 L58 30.5" stroke-width="1.1"/>
+</g>
+<!-- pinch cinch -->
+<g fill="none" stroke="#7a2a44" stroke-width="1.6"><path d="M14 26 L14 32"/><path d="M50 26 L50 32"/></g>
+<!-- Hard-candy body -->
+<ellipse cx="32" cy="29" rx="18" ry="13" fill="#ff6f91" stroke="#7a2a44" stroke-width="2.6"/>
+<!-- Swirl stripe + sheen -->
+<path d="M20 24 Q32 20 44 24" fill="none" stroke="#ffd0de" stroke-width="2.6" stroke-linecap="round" opacity="0.9"/>
+<path d="M22 34 Q32 38 42 34" fill="none" stroke="#e0466b" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+<ellipse cx="25" cy="23" rx="5" ry="2.4" fill="#fff" opacity="0.5" transform="rotate(-20 25 23)"/>
+<!-- Smile -->
+<path d="M27.5 31 Q32 35 36.5 31" fill="none" stroke="#7a2a44" stroke-width="2" stroke-linecap="round"/>
+</svg>

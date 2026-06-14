@@ -1,64 +1,243 @@
 <!DOCTYPE html>
+<!--
+  Greg candidate gallery: the green-crab field scientist, three design
+  directions x three poses. (The pre-decision concept spitball that used
+  to live here — pufferfish / anemone / human / hermit crab — is in git
+  history; the 2026-06-12 interview locked the crab.)
+  Open via the local server (python -m http.server 8080 ->
+  http://localhost:8080/scripts/greg-gallery.html) or on a deploy at
+  /scripts/greg-gallery.html. Judge the small sizes first: the reset
+  button is where these live, and the win/loss swap has to read in
+  under a second there.
+-->
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Greg concepts — mascot spitball</title>
+<meta charset="utf-8">
+<title>Greg gallery</title>
 <style>
-  body { margin: 0; padding: 24px; font: 14px/1.5 system-ui, sans-serif; background: #20242c; color: #e8e8ee; }
-  h1 { font-size: 20px; margin: 0 0 4px; }
-  .hint { opacity: 0.75; margin: 0 0 20px; max-width: 64em; }
-  h2 { font-size: 15px; margin: 26px 0 8px; color: #ffd95e; }
-  .row { display: flex; gap: 14px; flex-wrap: wrap; }
-  .card { background: #2a2f3a; border-radius: 14px; padding: 14px 16px; text-align: center; width: 150px; }
-  .card svg { width: 84px; height: 84px; display: block; margin: 0 auto 8px; }
-  .card .state { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.7; }
-  .card .note { font-size: 11px; opacity: 0.85; margin-top: 6px; line-height: 1.35; }
-  .label { font-weight: 700; margin: 2px 0 10px; }
-  .dressed { background: #232830; }
-  .dressed.chalk { background: #2e4038; }
-  .dressed.blue { background: #0c2a47; }
-  .dressed.comic { background: #f5efdf; color: #2a2218; }
-  .dressed.sumie { background: #f2ede1; color: #3a342c; }
+  body { font: 14px/1.5 system-ui, sans-serif; background: #1d2030; color: #e8eaf2; padding: 24px; }
+  h1 { font-size: 20px; }
+  h2 { font-size: 16px; margin-top: 30px; color: #9fb0d8; }
+  p.note { color: #aab3cc; max-width: 760px; }
+  table { border-collapse: collapse; }
+  td, th { padding: 10px 14px; border-bottom: 1px solid #323850; text-align: center; vertical-align: middle; }
+  th { color: #9fb0d8; font-weight: 600; font-size: 12px; }
+  td.name { text-align: left; font-weight: 600; white-space: nowrap; }
+  img { vertical-align: middle; }
+  .on-light { background: #e8e2d4; border-radius: 8px; padding: 6px; }
+  .on-btn { background: #3a3f55; border-radius: 8px; padding: 4px; border: 1px solid #4a5070; }
+  .strip { display: flex; gap: 18px; align-items: center; margin: 10px 0 4px; }
+  .strip .pose { text-align: center; }
+  .strip .pose span { display: block; font-size: 11px; color: #9fb0d8; margin-top: 4px; }
+  .emoji-md { font-size: 28px; }
 </style>
 </head>
 <body>
-<h1>Greg — mascot concepts</h1>
-<p class="hint">Four candidate Gregs, three states each (idle / win / loss — the smiley button's three faces). Bottom row: ONE candidate dressed in four theme materials, showing how per-theme Greg would work — the THEME_SPRITES registry already has smiley slots, so each world can re-draw Greg in its own medium with zero new plumbing. Nothing here is wired into the game.</p>
+<h1>Greg the field scientist: candidate gallery</h1>
+<p class="note">Direction A won the first round; the drill-down below varies
+ONE axis per candidate so the keepers can be named trait by trait (for
+example: A3's shell with A4's colors and A2's eyes). Idle pose only at this
+stage; the chosen blend gets its win and loss poses in stage 2. The original
+three-direction round is kept underneath for reference.</p>
+<h2>Current Greg: the a7 blend with the open smile</h2>
+<p class="note">Stage 3 verdicts: open smile adopted; flatter shell and
+wide-set eyes too much; antennae and sheen dropped because they do not read
+at the sizes that matter. This is what the live sprite slots carry.</p>
+<div id="current"></div>
+<h2>Per-theme Greg: all 24 worlds, every pose</h2>
+<p class="note">Greg redrawn in each world's own material, on that world's true
+board color, idle / win / loss. Listed in unlock order. The THEME_SPRITES
+registry already accepts smiley slots, so shipping a world is one registry
+line per world. Nothing is wired into the game yet; this is the art for
+your review.</p>
+<div id="themed"></div>
+<h2>Stage 3: micro-variants on the blend</h2>
+<p class="note">One change each, against the a7 base. Open smile (b) won;
+the rest were declined.</p>
+<div id="stage3"></div>
+<h2>Stage 2 blend: wide carapace, long stalks, big claws and board</h2>
+<p class="note">The trait picks composited: A3's wide shell with a clean front
+edge (no lobe arcs), A1's long eye stalks, A5's big pincers, big clipboard,
+and pencil. Win and loss poses derive from the same body.</p>
+<div id="stage2"></div>
+<h2>Direction A drill-down, stage 1</h2>
+<div id="drill"></div>
+<div id="out"></div>
+<script>
+const THEMED = [
+  ['themed-editorial', '#ddd6c8', 'Editorial: press ink, paper-reserve face, splatter, pen nib'],
+  ['themed-sumie', '#e6dfce', 'Sumi-e: one loaded press, tonal gradation, paper reserves, the hanko'],
+  ['themed-blueprint', '#08203a', 'Blueprint: solid drafted contour, drafted asterisk sparks'],
+  ['themed-cartography', '#c9b896', 'Cartography: sepia chart beast on the swell, red ink accents'],
+  ['themed-origami', '#e6e2da', 'Origami: folded-paper facets, crease lines, a launched crane on win'],
+  ['themed-chalkboard', '#283832', 'Chalkboard: doubled chalk line, hatch shading, yellow chalk accents'],
+  ['themed-noir', '#14141a', 'Noir: chiaroscuro + venetian blinds, a magnifier, a chalk-outline loss'],
+  ['themed-ocean', '#1b3a4b', 'Ocean: brass-rimmed porthole, bioluminescence, bubbles, a dive slate'],
+  ['themed-forest', '#2d3a2e', 'Forest: a leaf-shell with veins, twig legs, acorn claws, a toadstool loss'],
+  ['themed-sakura', '#12101e', 'Sakura: a blossom-petal carapace on twig legs, a paper tag'],
+  ['themed-apothecary', '#1c140b', 'Apothecary: gold-ink engraving, hatched shading, a ruled label'],
+  ['themed-splitflap', '#161616', 'Split-flap: a mosaic of departure-board tiles, one yellow flap'],
+  ['themed-stainedglass', '#0e0b16', 'Stained glass: leaded glass panes, one amber face pane'],
+  ['themed-aurora', '#0b1628', 'Aurora: northern-lights ribbon strokes, a light tablet'],
+  ['themed-galaxy', '#0a0015', 'Galaxy: a constellation, star nodes at the joints, the eyes brightest'],
+  ['themed-candy', '#fff0f5', 'Candy: glossy shell, peppermint swirl, sprinkles, a lollipop, a melt loss'],
+  ['themed-comic', '#d8ccb0', 'Comic: heavy ink, flat color, spot blacks, varied line weight, a POW loss'],
+  ['themed-circuitboard', '#0a2418', 'Circuit: copper traces, solder pads, an IC, LED eyes, magic-smoke loss'],
+  ['themed-matrix', '#000000', 'Matrix: a crab of digital rain, glyph columns, red-corruption loss'],
+  ['themed-neon', '#0a0a0a', 'Neon: bent-tube sign with glow, mounting studs, a dead-tube loss'],
+  ['themed-synthwave', '#0a0020', 'Synthwave: sunset gradient + scanlines, a grid, a cassette, chrome triangle'],
+  ['themed-inferno', '#0d0000', 'Inferno: obsidian veined with lava, embers, ember eyes, flame claws on win'],
+  ['themed-supernova', '#1a0808', 'Supernova: a burning star-core shell, burst rays, a violet-collapse loss'],
+  ['themed-legendary', '#0e0618', 'Legendary: heraldic gold crest, red banner, a crown on win'],
+];
+const themed = document.getElementById('themed');
+const tt = document.createElement('table');
+tt.innerHTML = '<tr><th>World</th><th>idle</th><th>win</th><th>loss</th><th>32px idle</th><th>32px win</th><th>32px loss</th></tr>' +
+  THEMED.map(([slug, bg, label]) => {
+    const sw = (pose, size) => `<td style="background:${bg};border-radius:8px;"><img src="../assets/sprites/greg/${slug}-${pose}.svg" width="${size}" height="${size}"></td>`;
+    return `<tr>
+      <td class="name" style="max-width:240px;white-space:normal;">${label}</td>
+      ${sw('idle', 110)}${sw('win', 110)}${sw('loss', 110)}
+      ${sw('idle', 32)}${sw('win', 32)}${sw('loss', 32)}
+    </tr>`;
+  }).join('');
+themed.appendChild(tt);
+const cur = document.getElementById('current');
+const curStrip = document.createElement('div');
+curStrip.className = 'strip';
+curStrip.innerHTML = ['idle', 'win', 'loss'].map(pose =>
+  `<div class="pose"><img src="../assets/sprites/greg/a7b-${pose}.svg" width="130" height="130"><span>${pose}</span></div>`
+).join('');
+cur.appendChild(curStrip);
+const curT = document.createElement('table');
+curT.innerHTML = '<tr><th>Pose</th><th>48px</th><th>32px (reset button)</th><th>22px (inline row)</th><th>On light tile</th><th>On button bg</th></tr>' +
+  ['idle', 'win', 'loss'].map(pose => {
+    const src = `../assets/sprites/greg/a7b-${pose}.svg`;
+    return `<tr>
+      <td class="name">${pose}</td>
+      <td><img src="${src}" width="48" height="48"></td>
+      <td><img src="${src}" width="32" height="32"></td>
+      <td><img src="${src}" width="22" height="22"></td>
+      <td class="on-light"><img src="${src}" width="40" height="40"></td>
+      <td class="on-btn"><img src="${src}" width="32" height="32"></td>
+    </tr>`;
+  }).join('');
+cur.appendChild(curT);
+const S3 = [
+  ['a7',  'a7 base (stage 2 blend)'],
+  ['a7b', 'b open smile'],
+  ['a7c', 'c crab mouth, two bumps'],
+  ['a7d', 'd flatter wider shell'],
+  ['a7e', 'e antennae'],
+  ['a7f', 'f shell sheen'],
+  ['a7g', 'g wide-set eyes'],
+];
+const s3 = document.getElementById('stage3');
+const s3t = document.createElement('table');
+s3t.innerHTML = '<tr><th>Variant</th><th>110px</th><th>48px</th><th>32px (reset button)</th><th>22px (inline row)</th><th>On light tile</th><th>On button bg</th></tr>' +
+  S3.map(([slug, label]) => {
+    const src = `../assets/sprites/greg/${slug}-idle.svg`;
+    return `<tr>
+      <td class="name" style="max-width:240px;white-space:normal;">${label}</td>
+      <td><img src="${src}" width="110" height="110"></td>
+      <td><img src="${src}" width="48" height="48"></td>
+      <td><img src="${src}" width="32" height="32"></td>
+      <td><img src="${src}" width="22" height="22"></td>
+      <td class="on-light"><img src="${src}" width="40" height="40"></td>
+      <td class="on-btn"><img src="${src}" width="32" height="32"></td>
+    </tr>`;
+  }).join('');
+s3.appendChild(s3t);
+const s2 = document.getElementById('stage2');
+const strip2 = document.createElement('div');
+strip2.className = 'strip';
+strip2.innerHTML = ['idle', 'win', 'loss'].map(pose =>
+  `<div class="pose"><img src="../assets/sprites/greg/a7-${pose}.svg" width="130" height="130"><span>${pose}</span></div>`
+).join('');
+s2.appendChild(strip2);
+const s2t = document.createElement('table');
+s2t.innerHTML = '<tr><th>Pose</th><th>48px</th><th>32px (reset button)</th><th>22px (inline row)</th><th>On light tile</th><th>On button bg</th></tr>' +
+  ['idle', 'win', 'loss'].map(pose => {
+    const src = `../assets/sprites/greg/a7-${pose}.svg`;
+    return `<tr>
+      <td class="name">${pose}</td>
+      <td><img src="${src}" width="48" height="48"></td>
+      <td><img src="${src}" width="32" height="32"></td>
+      <td><img src="${src}" width="22" height="22"></td>
+      <td class="on-light"><img src="${src}" width="40" height="40"></td>
+      <td class="on-btn"><img src="${src}" width="32" height="32"></td>
+    </tr>`;
+  }).join('');
+s2.appendChild(s2t);
+const VARIANTS = [
+  ['a',  'A1 baseline: the committed Field Greg'],
+  ['a2', 'A2 grounded eyes: short thick stalks, eyes grow out of the shell'],
+  ['a3', 'A3 wide carapace: true crab proportions, soft front lobes'],
+  ['a4', 'A4 olive naturalist: real beach-crab colors, dark mottling, orange-red claw tips'],
+  ['a5', 'A5 big claws: pincers and props scaled up, readable mini-board on the clipboard'],
+  ['a6', 'A6 chunky minimal: heavier outline, simplified detail, maximum small-size punch'],
+];
+const drill = document.getElementById('drill');
+const dt = document.createElement('table');
+dt.innerHTML = '<tr><th>Variant</th><th>110px</th><th>48px</th><th>32px (reset button)</th><th>22px (inline row)</th><th>On light tile</th><th>On button bg</th></tr>' +
+  VARIANTS.map(([slug, label]) => {
+    const src = `../assets/sprites/greg/${slug}-idle.svg`;
+    return `<tr>
+      <td class="name" style="max-width:280px;white-space:normal;">${label}</td>
+      <td><img src="${src}" width="110" height="110"></td>
+      <td><img src="${src}" width="48" height="48"></td>
+      <td><img src="${src}" width="32" height="32"></td>
+      <td><img src="${src}" width="22" height="22"></td>
+      <td class="on-light"><img src="${src}" width="40" height="40"></td>
+      <td class="on-btn"><img src="${src}" width="32" height="32"></td>
+    </tr>`;
+  }).join('');
+drill.appendChild(dt);
+</script>
+<script>
+const DIRECTIONS = [
+  ['A', 'Field Greg: full-body surveyor, clipboard and pencil in claw'],
+  ['B', 'Goggles Greg: naturalist silhouette, goggles up idle and down on win, one big claw one small'],
+  ['C', 'Face Greg: shell-as-face, reset-button first'],
+];
+const POSES = [['idle', '😊'], ['win', '😎'], ['loss', '😵']];
+const out = document.getElementById('out');
+for (const [key, blurb] of DIRECTIONS) {
+  const h = document.createElement('h2');
+  h.textContent = `Direction ${key}`;
+  out.appendChild(h);
+  const p = document.createElement('p');
+  p.className = 'note';
+  p.textContent = blurb;
+  out.appendChild(p);
 
-<h2>A · Greg the Pufferfish</h2>
-<div class="row">
-  <div class="card"><svg viewBox="0 0 64 64"><ellipse cx="30" cy="34" rx="20" ry="16" fill="#e8c46a" stroke="#232838" stroke-width="3"/><path d="M48 30 L60 24 L58 34 L60 44 L48 38 Z" fill="#d9a83e" stroke="#232838" stroke-width="2.5"/><circle cx="22" cy="30" r="3.4" fill="#232838"/><circle cx="34" cy="30" r="3.4" fill="#232838"/><path d="M24 41 C27 44 31 44 34 41" fill="none" stroke="#232838" stroke-width="2.5" stroke-linecap="round"/><circle cx="16" cy="38" r="2" fill="#d9a83e"/><circle cx="40" cy="38" r="2" fill="#d9a83e"/></svg><div class="state">idle</div></div>
-  <div class="card"><svg viewBox="0 0 64 64"><ellipse cx="30" cy="34" rx="20" ry="16" fill="#e8c46a" stroke="#232838" stroke-width="3"/><path d="M48 30 L60 24 L58 34 L60 44 L48 38 Z" fill="#d9a83e" stroke="#232838" stroke-width="2.5"/><rect x="14" y="26" width="16" height="8" rx="2.5" fill="#232838"/><rect x="28" y="26" width="14" height="8" rx="2.5" fill="#232838"/><path d="M12 27 L44 27" stroke="#232838" stroke-width="2.5"/><path d="M22 42 C26 46 32 46 36 41" fill="none" stroke="#232838" stroke-width="2.5" stroke-linecap="round"/></svg><div class="state">win</div></div>
-  <div class="card"><svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="19" fill="#e8c46a" stroke="#232838" stroke-width="3"/><g stroke="#232838" stroke-width="2.6" stroke-linecap="round"><path d="M32 13 L32 5 M32 51 L32 59 M13 32 L5 32 M51 32 L59 32 M19 19 L13 13 M45 19 L51 13 M19 45 L13 51 M45 45 L51 51"/></g><path d="M24 28 L29 33 M29 28 L24 33 M36 28 L41 33 M41 28 L36 33" stroke="#232838" stroke-width="2.4" stroke-linecap="round"/><circle cx="32" cy="41" r="3" fill="none" stroke="#232838" stroke-width="2.2"/></svg><div class="state">loss</div><div class="note">Puffs into a MINE on loss — the gag is the brand.</div></div>
-</div>
+  // The character strip: all three poses side by side at display size,
+  // judged as one character.
+  const strip = document.createElement('div');
+  strip.className = 'strip';
+  strip.innerHTML = POSES.map(([pose]) => {
+    const src = `../assets/sprites/greg/${key.toLowerCase()}-${pose}.svg`;
+    return `<div class="pose"><img src="${src}" width="110" height="110"><span>${pose}</span></div>`;
+  }).join('');
+  out.appendChild(strip);
 
-<h2>B · Greg the Anemone</h2>
-<div class="row">
-  <div class="card"><svg viewBox="0 0 64 64"><path d="M14 50 C14 38 20 30 32 30 C44 30 50 38 50 50 Z" fill="#e08ab0" stroke="#232838" stroke-width="3"/><g stroke="#d9608c" stroke-width="3.6" stroke-linecap="round" fill="none"><path d="M18 34 C16 28 17 23 20 19"/><path d="M26 31 C25 24 26 19 28 15"/><path d="M34 30 C34 23 35 18 37 14"/><path d="M42 33 C43 26 45 21 48 18"/></g><circle cx="26" cy="42" r="3" fill="#232838"/><circle cx="38" cy="42" r="3" fill="#232838"/><path d="M28 48 C30 50 34 50 36 48" fill="none" stroke="#232838" stroke-width="2.4" stroke-linecap="round"/><path d="M10 52 L54 52" stroke="#8a6a52" stroke-width="4" stroke-linecap="round"/></svg><div class="state">idle</div></div>
-  <div class="card"><svg viewBox="0 0 64 64"><path d="M14 50 C14 38 20 30 32 30 C44 30 50 38 50 50 Z" fill="#e08ab0" stroke="#232838" stroke-width="3"/><g stroke="#d9608c" stroke-width="3.6" stroke-linecap="round" fill="none"><path d="M18 33 C13 28 11 23 12 18"/><path d="M25 31 C23 23 24 16 27 11"/><path d="M33 30 C34 22 36 15 40 11"/><path d="M41 33 C46 28 50 24 53 22"/></g><rect x="18" y="38" width="13" height="7" rx="2.4" fill="#232838"/><rect x="33" y="38" width="13" height="7" rx="2.4" fill="#232838"/><path d="M16 39 L48 39" stroke="#232838" stroke-width="2.2"/><path d="M26 48 C29 51 35 51 38 47" fill="none" stroke="#232838" stroke-width="2.4" stroke-linecap="round"/><path d="M10 52 L54 52" stroke="#8a6a52" stroke-width="4" stroke-linecap="round"/></svg><div class="state">win</div></div>
-  <div class="card"><svg viewBox="0 0 64 64"><path d="M18 50 C16 42 20 36 32 36 C44 36 48 42 46 50 Z" fill="#c9789e" stroke="#232838" stroke-width="3"/><path d="M24 36 C26 33 30 32 32 33 C34 32 38 33 40 36" fill="none" stroke="#d9608c" stroke-width="3.4" stroke-linecap="round"/><path d="M25 43 L30 43 M34 43 L39 43" stroke="#232838" stroke-width="2.6" stroke-linecap="round"/><path d="M28 49 C30 47.5 34 47.5 36 49" fill="none" stroke="#232838" stroke-width="2.4" stroke-linecap="round"/><path d="M10 52 L54 52" stroke="#8a6a52" stroke-width="4" stroke-linecap="round"/></svg><div class="state">loss</div><div class="note">Closes up tight when it goes wrong. The anemone-guy's pick?</div></div>
-</div>
-
-<h2>C · Greg the Marine Biologist</h2>
-<div class="row">
-  <div class="card"><svg viewBox="0 0 64 64"><circle cx="32" cy="36" r="18" fill="#f0c9a0" stroke="#232838" stroke-width="3"/><path d="M14 32 C14 20 22 13 32 13 C42 13 50 20 50 32 L46 32 C46 24 40 19 32 19 C24 19 18 24 18 32 Z" fill="#d9583a" stroke="#232838" stroke-width="2.6"/><path d="M14 32 L50 32" stroke="#232838" stroke-width="2.6"/><circle cx="25" cy="38" r="4.6" fill="none" stroke="#232838" stroke-width="2.4"/><circle cx="39" cy="38" r="4.6" fill="none" stroke="#232838" stroke-width="2.4"/><path d="M29.6 38 L34.4 38" stroke="#232838" stroke-width="2.2"/><circle cx="25" cy="38" r="1.6" fill="#232838"/><circle cx="39" cy="38" r="1.6" fill="#232838"/><path d="M27 48 C30 50 34 50 37 48" fill="none" stroke="#232838" stroke-width="2.4" stroke-linecap="round"/></svg><div class="state">idle</div></div>
-  <div class="card"><svg viewBox="0 0 64 64"><circle cx="32" cy="36" r="18" fill="#f0c9a0" stroke="#232838" stroke-width="3"/><path d="M14 32 C14 20 22 13 32 13 C42 13 50 20 50 32 L46 32 C46 24 40 19 32 19 C24 19 18 24 18 32 Z" fill="#d9583a" stroke="#232838" stroke-width="2.6"/><path d="M14 32 L50 32" stroke="#232838" stroke-width="2.6"/><rect x="18" y="35" width="13" height="7.6" rx="2.4" fill="#232838"/><rect x="33" y="35" width="13" height="7.6" rx="2.4" fill="#232838"/><path d="M16 36 L48 36" stroke="#232838" stroke-width="2.2"/><path d="M26 48 C30 51 36 50 38 47" fill="none" stroke="#232838" stroke-width="2.4" stroke-linecap="round"/></svg><div class="state">win</div></div>
-  <div class="card"><svg viewBox="0 0 64 64"><circle cx="32" cy="36" r="18" fill="#f0c9a0" stroke="#232838" stroke-width="3"/><circle cx="32" cy="30" r="14" fill="rgba(140,210,240,0.45)" stroke="#232838" stroke-width="2.6"/><path d="M20 26 C24 30 28 31 32 31 C36 31 40 30 44 26" fill="none" stroke="#6ab8dc" stroke-width="2.4"/><path d="M25 27 L30 32 M30 27 L25 32 M35 27 L40 32 M40 27 L35 32" stroke="#232838" stroke-width="2.2" stroke-linecap="round"/><circle cx="32" cy="46" r="2.8" fill="none" stroke="#232838" stroke-width="2.2"/><circle cx="46" cy="18" r="2.2" fill="none" stroke="#6ab8dc" stroke-width="1.8"/><circle cx="50" cy="12" r="1.6" fill="none" stroke="#6ab8dc" stroke-width="1.6"/></svg><div class="state">loss</div><div class="note">Mask flooded. Human Greg, beanie and all.</div></div>
-</div>
-
-<h2>D · Greg the Hermit Crab</h2>
-<div class="row">
-  <div class="card"><svg viewBox="0 0 64 64"><path d="M30 46 C16 46 10 38 12 29 C14 21 22 17 30 19 C26 22 24 26 26 30 C28 34 33 35 36 32 C38 29 37 25 34 24 C38 23 43 26 44 31 C45 38 40 46 30 46 Z" fill="#d9a85e" stroke="#232838" stroke-width="3"/><circle cx="46" cy="40" r="9" fill="#e88a6a" stroke="#232838" stroke-width="3"/><path d="M44 31 C43 26 44 22 46 19 M50 32 C50 27 52 23 54 21" stroke="#232838" stroke-width="2.4" fill="none" stroke-linecap="round"/><circle cx="46" cy="18" r="2.6" fill="#232838"/><circle cx="54" cy="20" r="2.6" fill="#232838"/><path d="M43 43 C45 45 48 45 50 43" fill="none" stroke="#232838" stroke-width="2.2" stroke-linecap="round"/><path d="M8 50 L58 50" stroke="#8a6a52" stroke-width="4" stroke-linecap="round"/></svg><div class="state">idle</div></div>
-  <div class="card"><svg viewBox="0 0 64 64"><path d="M30 46 C16 46 10 38 12 29 C14 21 22 17 30 19 C26 22 24 26 26 30 C28 34 33 35 36 32 C38 29 37 25 34 24 C38 23 43 26 44 31 C45 38 40 46 30 46 Z" fill="#d9a85e" stroke="#232838" stroke-width="3"/><circle cx="46" cy="40" r="9" fill="#e88a6a" stroke="#232838" stroke-width="3"/><path d="M44 31 C43 26 44 22 46 19 M50 32 C50 27 52 23 54 21" stroke="#232838" stroke-width="2.4" fill="none" stroke-linecap="round"/><rect x="42" y="16" width="8" height="5" rx="1.8" fill="#232838"/><rect x="51" y="18" width="7" height="5" rx="1.8" fill="#232838"/><path d="M42 44 C45 46 49 45 51 42" fill="none" stroke="#232838" stroke-width="2.2" stroke-linecap="round"/><path d="M56 36 L62 30 M58 38 L63 36" stroke="#232838" stroke-width="2.4" stroke-linecap="round"/><path d="M8 50 L58 50" stroke="#8a6a52" stroke-width="4" stroke-linecap="round"/></svg><div class="state">win</div></div>
-  <div class="card"><svg viewBox="0 0 64 64"><path d="M32 47 C18 47 12 39 14 30 C16 22 24 18 32 20 C28 23 26 27 28 31 C30 35 35 36 38 33 C40 30 39 26 36 25 C40 24 45 27 46 32 C47 39 42 47 32 47 Z" fill="#d9a85e" stroke="#232838" stroke-width="3"/><circle cx="40" cy="40" r="2.4" fill="#232838"/><circle cx="46" cy="41" r="2.4" fill="#232838"/><path d="M8 51 L58 51" stroke="#8a6a52" stroke-width="4" stroke-linecap="round"/></svg><div class="state">loss</div><div class="note">Fully retracted — just eyes peeking out of the shell.</div></div>
-</div>
-
-<h2>Per-theme Greg — pufferfish dressed in four worlds</h2>
-<div class="row">
-  <div class="card dressed chalk"><svg viewBox="0 0 64 64"><ellipse cx="30" cy="34" rx="20" ry="16" fill="none" stroke="#f0ebe0" stroke-width="2.6"/><ellipse cx="30.6" cy="33.5" rx="19" ry="15" fill="none" stroke="#f0ebe0" stroke-width="1" opacity="0.5"/><path d="M48 30 L60 24 L58 34 L60 44 L48 38 Z" fill="none" stroke="#f0ebe0" stroke-width="2.2"/><circle cx="22" cy="30" r="2.6" fill="#f0ebe0"/><circle cx="34" cy="30" r="2.6" fill="#f0ebe0"/><path d="M24 41 C27 44 31 44 34 41" fill="none" stroke="#f0ebe0" stroke-width="2.2" stroke-linecap="round"/></svg><div class="label">Chalkboard</div><div class="note">Chalk-line Greg, doubled stroke.</div></div>
-  <div class="card dressed blue"><svg viewBox="0 0 64 64"><ellipse cx="30" cy="34" rx="20" ry="16" fill="none" stroke="#dceeff" stroke-width="2.2" stroke-dasharray="6 3"/><path d="M30 14 L30 54 M8 34 L52 34" stroke="#dceeff" stroke-width="1" stroke-dasharray="8 2.5 2 2.5" opacity="0.7"/><path d="M48 30 L60 24 L58 34 L60 44 L48 38 Z" fill="none" stroke="#dceeff" stroke-width="2"/><circle cx="22" cy="30" r="2.4" fill="#dceeff"/><circle cx="34" cy="30" r="2.4" fill="#dceeff"/><path d="M24 41 C27 44 31 44 34 41" fill="none" stroke="#dceeff" stroke-width="2" stroke-linecap="round"/></svg><div class="label">Blueprint</div><div class="note">Drafted Greg: dashed outline + centerlines.</div></div>
-  <div class="card dressed comic"><svg viewBox="0 0 64 64"><defs><pattern id="gh" width="5" height="5" patternUnits="userSpaceOnUse"><circle cx="2.5" cy="2.5" r="1" fill="rgba(29,24,18,0.35)"/></pattern></defs><ellipse cx="30" cy="34" rx="20" ry="16" fill="#f0c43a" stroke="#1d1812" stroke-width="3.4"/><ellipse cx="36" cy="40" rx="10" ry="7" fill="url(#gh)"/><path d="M48 30 L60 24 L58 34 L60 44 L48 38 Z" fill="#e0a82a" stroke="#1d1812" stroke-width="3"/><circle cx="22" cy="30" r="3.2" fill="#1d1812"/><circle cx="34" cy="30" r="3.2" fill="#1d1812"/><path d="M24 41 C27 44 31 44 34 41" fill="none" stroke="#1d1812" stroke-width="3" stroke-linecap="round"/></svg><div class="label">Comic</div><div class="note">Heavy ink + halftone shading.</div></div>
-  <div class="card dressed sumie"><svg viewBox="0 0 64 64"><ellipse cx="30" cy="34" rx="20" ry="16" fill="rgba(42,42,42,0.12)" stroke="#2a2a2a" stroke-width="3" opacity="0.9"/><path d="M48 31 C54 27 58 25 61 25 C58 30 55 33 49 36" fill="#2a2a2a" opacity="0.75"/><circle cx="22" cy="30" r="2.8" fill="#2a2a2a"/><circle cx="34" cy="30" r="2.8" fill="#2a2a2a"/><path d="M24 41 C27 43 31 43 34 41" fill="none" stroke="#2a2a2a" stroke-width="2.4" stroke-linecap="round"/><rect x="50" y="48" width="9" height="9" rx="1.5" fill="#b03020"/></svg><div class="label">Sumi-e</div><div class="note">One wet brush pass + the hanko.</div></div>
-</div>
+  const t = document.createElement('table');
+  t.innerHTML = '<tr><th>Emoji slot</th><th>Pose</th><th>96px</th><th>48px</th><th>32px (reset button)</th><th>22px (inline row)</th><th>On light tile</th><th>On button bg</th></tr>' +
+    POSES.map(([pose, emoji]) => {
+      const src = `../assets/sprites/greg/${key.toLowerCase()}-${pose}.svg`;
+      return `<tr>
+        <td class="emoji-md">${emoji}</td>
+        <td class="name">${pose}</td>
+        <td><img src="${src}" width="96" height="96"></td>
+        <td><img src="${src}" width="48" height="48"></td>
+        <td><img src="${src}" width="32" height="32"></td>
+        <td><img src="${src}" width="22" height="22"></td>
+        <td class="on-light"><img src="${src}" width="40" height="40"></td>
+        <td class="on-btn"><img src="${src}" width="32" height="32"></td>
+      </tr>`;
+    }).join('');
+  out.appendChild(t);
+}
+</script>
 </body>
 </html>

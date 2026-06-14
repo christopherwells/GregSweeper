@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Sakura Greg, win: the tree in full burst, petals flying up, a happy face in the trunk. -->
+<defs>
+  <g id="sakBlsmW">
+    <g fill="#ffffff" stroke="#f4a7bd" stroke-width="0.5">
+      <circle cx="0" cy="-2" r="1.4"/><circle cx="1.9" cy="-0.6" r="1.4"/><circle cx="1.2" cy="1.7" r="1.4"/><circle cx="-1.2" cy="1.7" r="1.4"/><circle cx="-1.9" cy="-0.6" r="1.4"/>
+    </g>
+    <circle cx="0" cy="0" r="0.7" fill="#ffcf4a"/>
+  </g>
+  <g id="sakPetalW"><path d="M0 0 C-2.4 -2 2.4 -3 3.4 0 C2.4 3 -2.4 2 0 0 Z" fill="#f9c3d2" stroke="#e89ab0" stroke-width="0.4"/></g>
+</defs>
+<!-- ground shadow -->
+<ellipse cx="32" cy="57.5" rx="15" ry="2.4" fill="#000000" opacity="0.12"/>
+<!-- petals flying up and out -->
+<use href="#sakPetalW" transform="translate(9 20) rotate(40)"/>
+<use href="#sakPetalW" transform="translate(54 18) rotate(-35)"/>
+<use href="#sakPetalW" transform="translate(14 8) rotate(15)"/>
+<use href="#sakPetalW" transform="translate(50 7) rotate(-20)"/>
+<use href="#sakPetalW" transform="translate(6 34) rotate(70)"/>
+<use href="#sakPetalW" transform="translate(57 33) rotate(-60)"/>
+<!-- roots / feet -->
+<g stroke="#8a5a38" stroke-width="3.4" stroke-linecap="round"><path d="M29 54 L24 58"/><path d="M32 55 L32 59"/><path d="M35 54 L40 58"/></g>
+<!-- branches raised into the canopy -->
+<g stroke="#8a5a38" stroke-width="3" stroke-linecap="round" fill="none"><path d="M30 39 C26 33 22 31 19 27"/><path d="M32 38 L32 25"/><path d="M34 39 C38 33 42 31 45 27"/></g>
+<!-- trunk -->
+<path d="M26 55 C25 49 25 43 27 37 L37 37 C39 43 39 49 38 55 Z" fill="#9a6a44" stroke="#6e4626" stroke-width="2" stroke-linejoin="round"/>
+<g stroke="#6e4626" stroke-width="0.8" opacity="0.5" fill="none"><path d="M30 53 C29 48 29 43 31 39"/><path d="M34 53 C35 48 35 43 34 39"/></g>
+<!-- canopy: fuller, brighter bloom -->
+<g fill="#f2aec0"><circle cx="21" cy="23" r="8.5"/><circle cx="43" cy="23" r="8.5"/><circle cx="32" cy="26" r="9"/></g>
+<g fill="#f9c3d2"><circle cx="20" cy="17" r="9.5"/><circle cx="32" cy="12" r="10.5"/><circle cx="44" cy="17" r="9.5"/><circle cx="27" cy="21" r="8.5"/><circle cx="38" cy="21" r="8.5"/></g>
+<g fill="#ffd9e4"><circle cx="22" cy="12" r="5"/><circle cx="33" cy="9" r="5.5"/><circle cx="44" cy="13" r="4.5"/></g>
+<!-- blossoms -->
+<use href="#sakBlsmW" transform="translate(18 16)"/>
+<use href="#sakBlsmW" transform="translate(31 11)"/>
+<use href="#sakBlsmW" transform="translate(44 16)"/>
+<use href="#sakBlsmW" transform="translate(25 23)"/>
+<use href="#sakBlsmW" transform="translate(39 23)"/>
+<use href="#sakBlsmW" transform="translate(33 18) scale(0.85)"/>
+<!-- happy face on the trunk -->
+<path d="M27.5 42.5 Q29.8 40 32.1 42.5" fill="none" stroke="#5a3a28" stroke-width="1.8" stroke-linecap="round"/>
+<path d="M32.4 42.5 Q34.7 40 37 42.5" fill="none" stroke="#5a3a28" stroke-width="1.8" stroke-linecap="round"/>
+<path d="M29 46 Q32 49.5 35 46 Z" fill="#5a3a28"/>
+<!-- gold sparkles -->
+<g stroke="#ffcf4a" stroke-width="1.4" stroke-linecap="round"><path d="M11 14 L11 18 M9 16 L13 16"/><path d="M53 12 L53 16 M51 14 L55 14"/></g>
+</svg>

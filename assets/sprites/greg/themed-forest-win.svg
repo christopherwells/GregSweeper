@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Forest Greg, win: claws up, leaves tumbling down, the leaf-shell bright. -->
+<g fill="none" stroke="#6b4a2e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M19 44 L13 50 L11 55"/>
+  <path d="M24 46.5 L20 53 L19 58"/>
+  <path d="M45 44 L51 50 L53 55"/>
+  <path d="M40 46.5 L44 53 L45 58"/>
+  <path d="M18 34 L13.5 25"/>
+  <path d="M46 34 L50.5 25"/>
+  <path d="M25 21.5 L23 15.5"/>
+  <path d="M39 21.5 L41 15.5"/>
+</g>
+<!-- Open acorn-tone claws raised -->
+<path d="M12.5 25 C7 25 4.5 20 7.5 15.5 L11 18.5 L10 13 C15 11.5 18.5 16 17 21 C16 24 15 25 12.5 25 Z"
+      fill="#a9743f" stroke="#6b4a2e" stroke-width="2.2" stroke-linejoin="round"/>
+<path d="M51.5 25 C57 25 59.5 20 56.5 15.5 L53 18.5 L54 13 C49 11.5 45.5 16 47 21 C48 24 49 25 51.5 25 Z"
+      fill="#a9743f" stroke="#6b4a2e" stroke-width="2.2" stroke-linejoin="round"/>
+<circle cx="22.5" cy="12.5" r="4.2" fill="#fcf6e8" stroke="#6b4a2e" stroke-width="2"/>
+<circle cx="41.5" cy="12.5" r="4.2" fill="#fcf6e8" stroke="#6b4a2e" stroke-width="2"/>
+<path d="M20.5 12.5 Q22.5 10 24.5 12.5" fill="none" stroke="#3a2a18" stroke-width="1.7" stroke-linecap="round"/>
+<path d="M39.5 12.5 Q41.5 10 43.5 12.5" fill="none" stroke="#3a2a18" stroke-width="1.7" stroke-linecap="round"/>
+<!-- Leaf shell: two-tone halves + full-span ribs -->
+<path d="M11 34 C11 26 18 19 32 18 C46 19 53 26 53 34 C53 41 45 46 32 46 C19 46 11 41 11 34 Z"
+      fill="#79bd5b" stroke="#3f6b2e" stroke-width="2.4"/>
+<path d="M32 18 C46 19 53 26 53 34 C53 41 45 46 32 46 Z" fill="#4d8a3a"/>
+<g fill="none" stroke="#2f5722" stroke-width="1.3" stroke-linecap="round" opacity="0.85">
+  <path d="M32 18.5 L32 45.5"/>
+  <path d="M32 23 L14 20 M32 23 L50 20 M32 30 L11.5 30 M32 30 L52.5 30 M32 37 L15 41 M32 37 L49 41"/>
+</g>
+<path d="M25 34 Q32 41 39 34 Z" fill="#3f6b2e" stroke="#3f6b2e" stroke-width="1.2" stroke-linejoin="round"/>
+<!-- Tumbling leaves -->
+<g stroke="#3f6b2e" stroke-width="1" fill="#7fbf5a">
+  <path d="M8 8 C11 6 14 8 13 12 C10 13 7 11 8 8 Z"/>
+  <path d="M55 6 C58 4 61 6 60 10 C57 11 54 9 55 6 Z" fill="#d98f3a"/>
+  <path d="M33 4 C36 2 39 4 38 8 C35 9 32 7 33 4 Z" fill="#c9a23a"/>
+</g>
+</svg>

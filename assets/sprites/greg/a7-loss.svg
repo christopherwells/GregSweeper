@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Stage 2 blend, loss: the wide shell flipped on its back, BIG
+       pincers limp, long stalks flopped with spiral eyes, the big
+       clipboard and pencil dropped on the seafloor. -->
+  <!-- Legs waving up from the underside, wide spread -->
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke="#232838" stroke-width="9">
+      <path d="M42 70 L34 56 L38 46"/>
+      <path d="M55 68 L51 52 L57 42"/>
+      <path d="M73 68 L77 52 L71 42"/>
+      <path d="M86 70 L94 56 L90 46"/>
+    </g>
+    <g stroke="#53a05b" stroke-width="4.5">
+      <path d="M42 70 L34 56 L38 46"/>
+      <path d="M55 68 L51 52 L57 42"/>
+      <path d="M73 68 L77 52 L71 42"/>
+      <path d="M86 70 L94 56 L90 46"/>
+    </g>
+  </g>
+  <!-- Limp claw arms, thick -->
+  <g fill="none" stroke-linecap="round">
+    <path d="M30 78 L18 72" stroke="#232838" stroke-width="12"/>
+    <path d="M98 78 L110 72" stroke="#232838" stroke-width="12"/>
+    <path d="M30 78 L18 72" stroke="#53a05b" stroke-width="6"/>
+    <path d="M98 78 L110 72" stroke="#53a05b" stroke-width="6"/>
+  </g>
+  <!-- BIG limp pincers -->
+  <ellipse cx="13" cy="67" rx="10.5" ry="8.5" fill="#53a05b" stroke="#232838" stroke-width="5.5" transform="rotate(-30 13 67)"/>
+  <ellipse cx="8" cy="60" rx="5" ry="4" fill="#e8873a" stroke="#232838" stroke-width="4" transform="rotate(-30 8 60)"/>
+  <ellipse cx="115" cy="67" rx="10.5" ry="8.5" fill="#53a05b" stroke="#232838" stroke-width="5.5" transform="rotate(30 115 67)"/>
+  <ellipse cx="120" cy="60" rx="5" ry="4" fill="#e8873a" stroke="#232838" stroke-width="4" transform="rotate(30 120 60)"/>
+  <!-- Wide shell, dome down -->
+  <path d="M24 76 C24 84 30 92 40 97 Q52 102 64 102 Q76 102 88 97 C98 92 104 84 104 76 L104 74 L24 74 Z"
+        fill="#53a05b" stroke="#232838" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M32 86 C44 98 84 98 96 86 C88 98 76 100 64 100 C52 100 40 98 32 86 Z" fill="#3e7f46"/>
+  <!-- Pale underside facing up -->
+  <ellipse cx="64" cy="74" rx="40" ry="8" fill="#dce8b4" stroke="#232838" stroke-width="5"/>
+  <path d="M42 74 Q64 80 86 74" fill="none" stroke="#b5c48c" stroke-width="3" stroke-linecap="round"/>
+  <!-- Long stalks flopped past the left rim, spiral eyes -->
+  <g fill="none" stroke-linecap="round">
+    <path d="M34 74 L23 60" stroke="#232838" stroke-width="10"/>
+    <path d="M45 72 L42 55" stroke="#232838" stroke-width="10"/>
+    <path d="M34 74 L23 60" stroke="#53a05b" stroke-width="5"/>
+    <path d="M45 72 L42 55" stroke="#53a05b" stroke-width="5"/>
+  </g>
+  <circle cx="21" cy="53" r="8.5" fill="#ffffff" stroke="#232838" stroke-width="5"/>
+  <path d="M21 53 m 4.2 0 a 4.2 4.2 0 1 1 -4.2 -4.2 a 2.7 2.7 0 1 1 -2.7 2.7" fill="none" stroke="#232838" stroke-width="2.6" stroke-linecap="round"/>
+  <circle cx="42" cy="48" r="8.5" fill="#ffffff" stroke="#232838" stroke-width="5"/>
+  <path d="M42 48 m 4.2 0 a 4.2 4.2 0 1 1 -4.2 -4.2 a 2.7 2.7 0 1 1 -2.7 2.7" fill="none" stroke="#232838" stroke-width="2.6" stroke-linecap="round"/>
+  <!-- Dropped clipboard and pencil -->
+  <g transform="rotate(12 96 112)">
+    <rect x="78" y="104" width="34" height="18" rx="3" fill="#f3f6fb" stroke="#232838" stroke-width="4.5"/>
+    <g fill="#d4dae6">
+      <rect x="84" y="109" width="6" height="6" rx="1.2"/>
+      <rect x="92" y="109" width="6" height="6" rx="1.2"/>
+      <rect x="100" y="109" width="6" height="6" rx="1.2"/>
+    </g>
+    <rect x="92" y="109" width="6" height="6" rx="1.2" fill="#ffd23e"/>
+  </g>
+  <g transform="rotate(8 60 116)">
+    <rect x="48" y="113" width="20" height="6" rx="1.8" fill="#ffd23e" stroke="#232838" stroke-width="3.2"/>
+    <path d="M68 113 L73 116 L68 119 Z" fill="#232838"/>
+  </g>
+  <!-- Sweat drop -->
+  <path d="M100 38 C100 33 104 28 104 28 C104 28 108 33 108 38 A4 4.4 0 1 1 100 38 Z" fill="#4a78c8" stroke="#232838" stroke-width="3"/>
+</svg>

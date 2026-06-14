@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Comic Greg, win: claws up, big grin, an inked starburst. Spot
+     blacks, varied line weight, no screen tone. -->
+<g fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <g stroke="#1d1812" stroke-width="4.6">
+    <path d="M19 44 L13 50 L11 55"/>
+    <path d="M24 46.5 L20 53 L19 58"/>
+    <path d="M45 44 L51 50 L53 55"/>
+    <path d="M40 46.5 L44 53 L45 58"/>
+  </g>
+  <g stroke="#4d9e57" stroke-width="2">
+    <path d="M19 44 L13 50 L11 55"/>
+    <path d="M24 46.5 L20 53 L19 58"/>
+    <path d="M45 44 L51 50 L53 55"/>
+    <path d="M40 46.5 L44 53 L45 58"/>
+  </g>
+</g>
+<g fill="none" stroke-linecap="round">
+  <path d="M18 34 L13.5 25" stroke="#1d1812" stroke-width="5.5"/>
+  <path d="M46 34 L50.5 25" stroke="#1d1812" stroke-width="5.5"/>
+  <path d="M18 34 L13.5 25" stroke="#4d9e57" stroke-width="2.4"/>
+  <path d="M46 34 L50.5 25" stroke="#4d9e57" stroke-width="2.4"/>
+</g>
+<path d="M12.5 25 C7 25 4.5 20 7.5 15.5 L11 18.5 L10 13 C15 11.5 18.5 16 17 21 C16 24 15 25 12.5 25 Z"
+      fill="#4d9e57" stroke="#1d1812" stroke-width="2.6" stroke-linejoin="round"/>
+<path d="M51.5 25 C57 25 59.5 20 56.5 15.5 L53 18.5 L54 13 C49 11.5 45.5 16 47 21 C48 24 49 25 51.5 25 Z"
+      fill="#4d9e57" stroke="#1d1812" stroke-width="2.6" stroke-linejoin="round"/>
+<g fill="none" stroke-linecap="round">
+  <path d="M25 21.5 L23 15.5" stroke="#1d1812" stroke-width="5"/>
+  <path d="M39 21.5 L41 15.5" stroke="#1d1812" stroke-width="5"/>
+  <path d="M25 21.5 L23 15.5" stroke="#4d9e57" stroke-width="2.2"/>
+  <path d="M39 21.5 L41 15.5" stroke="#4d9e57" stroke-width="2.2"/>
+</g>
+<circle cx="22.5" cy="12.5" r="4.6" fill="#f5efdf" stroke="#1d1812" stroke-width="2.8"/>
+<circle cx="41.5" cy="12.5" r="4.6" fill="#f5efdf" stroke="#1d1812" stroke-width="2.8"/>
+<path d="M20 13.5 Q22.5 10 25 13.5" fill="none" stroke="#1d1812" stroke-width="2" stroke-linecap="round"/>
+<path d="M39 13.5 Q41.5 10 44 13.5" fill="none" stroke="#1d1812" stroke-width="2" stroke-linecap="round"/>
+<path d="M11 34 C11 27 16 22 22 20.5 Q27 18 32 18 Q37 18 42 20.5 C48 22 53 27 53 34 C53 41 45 46 32 46 C19 46 11 41 11 34 Z"
+      fill="#4d9e57" stroke="#1d1812" stroke-width="3.2"/>
+<path d="M14 38 C18 43.5 27 45.5 32 45.5 C37 45.5 46 43.5 50 38 C47 44 39 46.5 32 46.5 C25 46.5 17 44 14 38 Z"
+      fill="#1d1812"/>
+<!-- Grin -->
+<path d="M25 34 Q32 42.5 39 34 Z" fill="#1d1812" stroke="#1d1812" stroke-width="2" stroke-linejoin="round"/>
+<path d="M28.5 38 Q32 40.5 35.5 38 Q33.5 40 32 40 Q30.5 40 28.5 38 Z" fill="#c0392b"/>
+<!-- Full five-point stars -->
+<path transform="translate(55 9)" d="M0,-6 L1.76,-1.85 L5.71,-1.85 L2.85,0.71 L3.53,4.85 L0,2.4 L-3.53,4.85 L-2.85,0.71 L-5.71,-1.85 L-1.76,-1.85 Z"
+      fill="#f0c43a" stroke="#1d1812" stroke-width="1.6" stroke-linejoin="round"/>
+<path transform="translate(11 9) scale(0.78)" d="M0,-6 L1.76,-1.85 L5.71,-1.85 L2.85,0.71 L3.53,4.85 L0,2.4 L-3.53,4.85 L-2.85,0.71 L-5.71,-1.85 L-1.76,-1.85 Z"
+      fill="#f0c43a" stroke="#1d1812" stroke-width="1.8" stroke-linejoin="round"/>
+</svg>

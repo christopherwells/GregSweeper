@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Sakura Greg, loss: the bloom is over. Bare droopy branches, every petal fallen into a heap at the roots, X eyes. -->
+<!-- ground shadow -->
+<ellipse cx="32" cy="57.5" rx="16" ry="2.6" fill="#000000" opacity="0.12"/>
+<!-- fallen petal heap at the base -->
+<g fill="#e7a9bd"><circle cx="20" cy="54" r="4"/><circle cx="27" cy="55" r="4.5"/><circle cx="35" cy="55" r="4.5"/><circle cx="43" cy="54" r="4"/><circle cx="31" cy="52.5" r="4"/></g>
+<g fill="#f4bccd"><circle cx="23" cy="53" r="2.4"/><circle cx="33" cy="53.5" r="2.6"/><circle cx="40" cy="53" r="2.2"/></g>
+<!-- roots / feet -->
+<g stroke="#7a4e30" stroke-width="3.4" stroke-linecap="round"><path d="M29 54 L24 58"/><path d="M32 55 L32 59"/><path d="M35 54 L40 58"/></g>
+<!-- bare droopy branches -->
+<g stroke="#7a4e30" stroke-width="2.6" stroke-linecap="round" fill="none">
+  <path d="M30 39 C26 34 22 33 18 34"/>
+  <path d="M32 38 C32 32 31 28 29 25"/>
+  <path d="M34 39 C38 34 42 33 46 34"/>
+  <path d="M31 31 C28 30 25 31 23 33"/>
+  <path d="M33 29 C36 28 39 29 41 31"/>
+</g>
+<!-- trunk -->
+<path d="M26 55 C25 49 25 43 27 37 L37 37 C39 43 39 49 38 55 Z" fill="#8a5e3c" stroke="#5e3c22" stroke-width="2" stroke-linejoin="round"/>
+<g stroke="#5e3c22" stroke-width="0.8" opacity="0.5" fill="none"><path d="M30 53 C29 48 29 43 31 39"/><path d="M34 53 C35 48 35 43 34 39"/></g>
+<!-- one last clinging blossom and a couple falling -->
+<g fill="#f9c3d2" stroke="#e89ab0" stroke-width="0.4">
+  <path d="M19 35 C17 33 21 32 22 35 C21 38 17 37 19 35 Z"/>
+  <path d="M44 38 C42 36 46 35 47 38 C46 41 42 40 44 38 Z"/>
+  <path d="M37 45 C35 43 39 42 40 45 C39 48 35 47 37 45 Z"/>
+</g>
+<!-- X eyes + frown on the trunk -->
+<g fill="none" stroke="#3e2818" stroke-width="1.8" stroke-linecap="round">
+  <path d="M28 40.5 L31 43.5 M31 40.5 L28 43.5"/>
+  <path d="M33 40.5 L36 43.5 M36 40.5 L33 43.5"/>
+  <path d="M30 48 Q32 46 34 48"/>
+</g>
+</svg>

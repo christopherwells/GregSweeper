@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Greg direction B, win: goggles snapped DOWN (science complete),
+       both claws up, grin breaks the deadpan. -->
+  <!-- Walking legs -->
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke="#232838" stroke-width="8">
+      <path d="M36 92 L24 104 L20 115"/>
+      <path d="M46 97 L38 110 L36 120"/>
+      <path d="M58 100 L54 113 L55 122"/>
+      <path d="M92 92 L104 104 L108 115"/>
+      <path d="M82 97 L90 110 L92 120"/>
+      <path d="M70 100 L74 113 L73 122"/>
+    </g>
+    <g stroke="#5f9344" stroke-width="3.8">
+      <path d="M36 92 L24 104 L20 115"/>
+      <path d="M46 97 L38 110 L36 120"/>
+      <path d="M58 100 L54 113 L55 122"/>
+      <path d="M92 92 L104 104 L108 115"/>
+      <path d="M82 97 L90 110 L92 120"/>
+      <path d="M70 100 L74 113 L73 122"/>
+    </g>
+  </g>
+  <!-- Arms raised -->
+  <g fill="none" stroke-linecap="round">
+    <path d="M34 76 L23 57" stroke="#232838" stroke-width="10"/>
+    <path d="M96 78 L105 61" stroke="#232838" stroke-width="10"/>
+    <path d="M34 76 L23 57" stroke="#5f9344" stroke-width="5"/>
+    <path d="M96 78 L105 61" stroke="#5f9344" stroke-width="5"/>
+  </g>
+  <!-- Big left pincer, open, raised -->
+  <path d="M23 57 C13 55 9 45 15 37 L21 43 L19 32 C29 30 35 38 32 47 C30 54 27 58 23 57 Z"
+        fill="#5f9344" stroke="#232838" stroke-width="4.5" stroke-linejoin="round"/>
+  <!-- Small right pincer, open, raised -->
+  <path d="M105 63 C112 62 115 55 111 49 L107 53 L108 46 C101 45 97 50 99 56 C100 61 102 63 105 63 Z"
+        fill="#5f9344" stroke="#232838" stroke-width="4" stroke-linejoin="round"/>
+  <!-- Carapace -->
+  <path d="M20 72 L33 48 Q47 38 64 38 Q81 38 95 48 L108 72 Q108 90 88 98 Q64 104 40 98 Q20 90 20 72 Z"
+        fill="#5f9344" stroke="#232838" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M28 80 C40 94 88 94 100 80 C92 94 78 100 64 100 C50 100 36 94 28 80 Z" fill="#46702e"/>
+  <!-- Anterolateral teeth -->
+  <g fill="none" stroke="#232838" stroke-width="3.5" stroke-linecap="round">
+    <path d="M25 67 L31 65"/>
+    <path d="M28 60 L34 58"/>
+    <path d="M31 53 L37 51"/>
+    <path d="M103 67 L97 65"/>
+    <path d="M100 60 L94 58"/>
+    <path d="M97 53 L91 51"/>
+  </g>
+  <!-- Speckles -->
+  <g fill="#8fbf72">
+    <circle cx="46" cy="56" r="2.6"/>
+    <circle cx="60" cy="50" r="2.2"/>
+    <circle cx="82" cy="64" r="2.2"/>
+  </g>
+  <!-- Goggles DOWN over the eyes, happy arcs behind the lenses -->
+  <path d="M34 56 Q64 48 94 56" fill="none" stroke="#232838" stroke-width="4.5"/>
+  <circle cx="52" cy="58" r="9.5" fill="#bfe3ef" stroke="#232838" stroke-width="4.5"/>
+  <circle cx="76" cy="58" r="9.5" fill="#bfe3ef" stroke="#232838" stroke-width="4.5"/>
+  <path d="M61.5 58 L66.5 58" stroke="#232838" stroke-width="4" stroke-linecap="round"/>
+  <path d="M47 59.5 Q52 53.5 57 59.5" fill="none" stroke="#232838" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M71 59.5 Q76 53.5 81 59.5" fill="none" stroke="#232838" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M46.5 52.5 L50.5 49.5" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M70.5 52.5 L74.5 49.5" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Grin -->
+  <path d="M54 76 Q64 86 74 76 Z" fill="#232838" stroke="#232838" stroke-width="4" stroke-linejoin="round"/>
+  <!-- Sparks -->
+  <g fill="#ffd23e" stroke="#b8860b" stroke-width="2.5" stroke-linejoin="round">
+    <path d="M11 22 L14 29 L21 30 L15 34 L16 42 L10 37 L4 41 L6 33 L1 28 L8 28 Z"/>
+    <path d="M114 28 L116 33 L121 34 L117 37 L118 43 L113 39 L108 42 L110 36 L106 32 L111 32 Z"/>
+  </g>
+</svg>

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Forest Greg, loss: tipped over like a fallen log, the leaf-shell underside up, a toadstool sprouting, X eyes. -->
+<g fill="none" stroke="#6b4a2e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M21 35 L17 28 L19 23"/>
+  <path d="M27.5 34 L25.5 26 L28.5 21"/>
+  <path d="M36.5 34 L38.5 26 L35.5 21"/>
+  <path d="M43 35 L47 28 L45 23"/>
+  <path d="M15 39 L9 36"/>
+  <path d="M49 39 L55 36"/>
+</g>
+<g transform="rotate(-30 6.5 33.5)"><ellipse cx="6.5" cy="33.5" rx="5" ry="4.2" fill="#a9743f" stroke="#6b4a2e" stroke-width="2"/></g>
+<g transform="rotate(30 57.5 33.5)"><ellipse cx="57.5" cy="33.5" rx="5" ry="4.2" fill="#a9743f" stroke="#6b4a2e" stroke-width="2"/></g>
+<!-- Overturned leaf-shell -->
+<path d="M12 38 C12 42 15 46 20 48.5 Q26 51 32 51 Q38 51 44 48.5 C49 46 52 42 52 38 L52 37 L12 37 Z"
+      fill="#5c9a44" stroke="#3f6b2e" stroke-width="2.4" stroke-linejoin="round"/>
+<ellipse cx="32" cy="37" rx="20" ry="4" fill="#8fc46e" stroke="#3f6b2e" stroke-width="1.8"/>
+<path d="M22 41 L42 41" stroke="#3f6b2e" stroke-width="1.2" opacity="0.7"/>
+<!-- Toadstool sprouting from the underside -->
+<g transform="translate(36 33)">
+  <rect x="-1.4" y="-2" width="2.8" height="6" rx="1" fill="#f2e6cf"/>
+  <path d="M-6 -2 C-6 -6 6 -6 6 -2 C4 0 -4 0 -6 -2 Z" fill="#c0392b" stroke="#7a1f24" stroke-width="1"/>
+  <g fill="#f2e6cf"><circle cx="-3" cy="-3.5" r="0.8"/><circle cx="1.5" cy="-4" r="0.7"/><circle cx="4" cy="-2.5" r="0.6"/></g>
+</g>
+<!-- Flopped stalks + X eyes -->
+<g fill="none" stroke="#6b4a2e" stroke-width="2.2" stroke-linecap="round">
+  <path d="M17 37 L11.5 30"/>
+  <path d="M22.5 36 L21 27.5"/>
+</g>
+<circle cx="10.5" cy="26.5" r="4.2" fill="#fcf6e8" stroke="#6b4a2e" stroke-width="2"/>
+<path d="M8.7 24.7 L12.3 28.3 M12.3 24.7 L8.7 28.3" stroke="#3a2a18" stroke-width="1.5" stroke-linecap="round"/>
+<circle cx="20.5" cy="24" r="4.2" fill="#fcf6e8" stroke="#6b4a2e" stroke-width="2"/>
+<path d="M18.7 22.2 L22.3 25.8 M22.3 22.2 L18.7 25.8" stroke="#3a2a18" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Supernova Greg, loss: the Crab Nebula remnant. A mottled cloud of warm and cool gas woven together, all soft gradient, no spokes. -->
+<defs>
+  <radialGradient id="nVeil" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#6a2f9a" stop-opacity="0.5"/><stop offset="0.6" stop-color="#3f2080" stop-opacity="0.3"/><stop offset="1" stop-color="#1a1450" stop-opacity="0"/></radialGradient>
+  <radialGradient id="nTeal" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#8af0ff" stop-opacity="0.78"/><stop offset="0.5" stop-color="#33b6e0" stop-opacity="0.4"/><stop offset="1" stop-color="#2070b0" stop-opacity="0"/></radialGradient>
+  <radialGradient id="nBlue" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#c4e8ff" stop-opacity="0.78"/><stop offset="0.5" stop-color="#5a8ce0" stop-opacity="0.4"/><stop offset="1" stop-color="#3050b0" stop-opacity="0"/></radialGradient>
+  <radialGradient id="nOrange" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#ffc070" stop-opacity="0.82"/><stop offset="0.5" stop-color="#ff7e36" stop-opacity="0.42"/><stop offset="1" stop-color="#d8402e" stop-opacity="0"/></radialGradient>
+  <radialGradient id="nRed" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#ff7a5a" stop-opacity="0.76"/><stop offset="0.5" stop-color="#e0362c" stop-opacity="0.4"/><stop offset="1" stop-color="#a01818" stop-opacity="0"/></radialGradient>
+  <radialGradient id="nGold" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#ffe888" stop-opacity="0.8"/><stop offset="0.5" stop-color="#ffc24a" stop-opacity="0.4"/><stop offset="1" stop-color="#ff8a36" stop-opacity="0"/></radialGradient>
+  <radialGradient id="nPink" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#ffc8e6" stop-opacity="0.72"/><stop offset="0.5" stop-color="#ff7ec0" stop-opacity="0.38"/><stop offset="1" stop-color="#c850a0" stop-opacity="0"/></radialGradient>
+  <radialGradient id="nCore" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#eafdff" stop-opacity="0.6"/><stop offset="0.5" stop-color="#9fe6f4" stop-opacity="0.28"/><stop offset="1" stop-color="#5ab6e0" stop-opacity="0"/></radialGradient>
+</defs>
+<g transform="rotate(-20 32 32)">
+  <ellipse cx="32" cy="32" rx="28" ry="22" fill="url(#nVeil)"/>
+  <!-- mottled gas field: warm and cool woven across the whole face -->
+  <ellipse cx="18" cy="21" rx="8" ry="7" fill="url(#nOrange)"/>
+  <ellipse cx="28" cy="18" rx="7" ry="6" fill="url(#nTeal)"/>
+  <ellipse cx="38" cy="19" rx="8" ry="7" fill="url(#nGold)"/>
+  <ellipse cx="46" cy="22" rx="8" ry="7" fill="url(#nRed)"/>
+  <ellipse cx="14" cy="31" rx="7" ry="7" fill="url(#nRed)"/>
+  <ellipse cx="23" cy="28" rx="8" ry="7" fill="url(#nTeal)"/>
+  <ellipse cx="33" cy="26" rx="7" ry="6" fill="url(#nPink)"/>
+  <ellipse cx="42" cy="29" rx="8" ry="7" fill="url(#nOrange)"/>
+  <ellipse cx="50" cy="32" rx="7" ry="7" fill="url(#nTeal)"/>
+  <ellipse cx="17" cy="41" rx="8" ry="7" fill="url(#nGold)"/>
+  <ellipse cx="27" cy="39" rx="8" ry="7" fill="url(#nOrange)"/>
+  <ellipse cx="35" cy="38" rx="7" ry="6" fill="url(#nBlue)"/>
+  <ellipse cx="44" cy="41" rx="8" ry="7" fill="url(#nRed)"/>
+  <ellipse cx="23" cy="47" rx="7" ry="6" fill="url(#nPink)"/>
+  <ellipse cx="32" cy="46" rx="7" ry="6" fill="url(#nTeal)"/>
+  <ellipse cx="40" cy="46" rx="7" ry="6" fill="url(#nGold)"/>
+  <ellipse cx="30" cy="32" rx="6" ry="5" fill="url(#nBlue)"/>
+  <ellipse cx="36" cy="33" rx="6" ry="5" fill="url(#nOrange)"/>
+  <!-- gentle luminous heart, not a headlight -->
+  <ellipse cx="32" cy="31" rx="12" ry="10" fill="url(#nCore)"/>
+  <!-- bright knots scattered in the gas -->
+  <g fill="#fff2da" opacity="0.9"><circle cx="20" cy="38" r="1"/><circle cx="44" cy="36" r="0.9"/><circle cx="19" cy="24" r="0.8"/><circle cx="45" cy="24" r="0.8"/><circle cx="35" cy="44" r="0.8"/><circle cx="29" cy="22" r="0.7"/><circle cx="38" cy="31" r="0.7"/></g>
+</g>
+<!-- pulsar -->
+<circle cx="32" cy="32" r="1.4" fill="#ffffff"/>
+<g stroke="#e4f6ff" stroke-width="0.7" stroke-linecap="round" opacity="0.6"><path d="M32 28.5 L32 35.5 M28.5 32 L35.5 32"/></g>
+<!-- field stars -->
+<g fill="#eaf6ff"><circle cx="8" cy="13" r="1.1"/><circle cx="56" cy="11" r="1"/><circle cx="59" cy="49" r="1.1"/><circle cx="6" cy="50" r="0.9"/><circle cx="49" cy="7" r="0.8"/><circle cx="19" cy="57" r="0.8"/><circle cx="42" cy="57" r="0.7"/><circle cx="3" cy="33" r="0.7"/><circle cx="61" cy="33" r="0.7"/><circle cx="13" cy="6" r="0.6"/></g>
+</svg>

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<!--
+  og-card decision: the original photographic card untouched, next to
+  the same photo with the contract headline typeset into the open water
+  (matching the baked title's white + yellow). The drawn flat-style
+  card was rejected on review and is gone. Open via the local server:
+  http://localhost:8080/scripts/og-compare.html
+  Both reference images live in .playwright-mcp/ (gitignored scratch):
+  og-original.png from `git show main:assets/og-card.png`, and
+  og-overlay-mock.png rendered from og-overlay-build.html.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>og-card comparison</title>
+<style>
+  body { font: 14px/1.5 system-ui, sans-serif; background: #1d2030; color: #e8eaf2; padding: 24px; }
+  h1 { font-size: 20px; }
+  h2 { font-size: 15px; margin-top: 26px; color: #9fb0d8; }
+  img { display: block; border-radius: 10px; border: 1px solid #323850; }
+  .pair { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+  .pair figure { margin: 0; }
+  figcaption { font-size: 12px; color: #9fb0d8; margin-top: 6px; }
+</style>
+</head>
+<body>
+<h1>og-card: original untouched vs original plus headline</h1>
+<h2>Full size (1200x630, shown at 560 wide)</h2>
+<div class="pair">
+  <figure>
+    <img src="../.playwright-mcp/og-original.png" width="560">
+    <figcaption>Original, untouched (currently live)</figcaption>
+  </figure>
+  <figure>
+    <img src="../.playwright-mcp/og-new.png" width="560">
+    <figcaption>Fresh composite from the textless source: full lockup typeset clean</figcaption>
+  </figure>
+</div>
+<h2>Timeline-thumbnail size (roughly how a link preview renders)</h2>
+<div class="pair">
+  <figure>
+    <img src="../.playwright-mcp/og-original.png" width="280">
+    <figcaption>Original</figcaption>
+  </figure>
+  <figure>
+    <img src="../.playwright-mcp/og-new.png" width="280">
+    <figcaption>Fresh composite</figcaption>
+  </figure>
+</div>
+</body>
+</html>
