@@ -19,6 +19,11 @@
 // flag's lie.
 
 import { buildNeighborCache } from './boardSolver.js';
+import { classifyPattern } from './patternNames.js';
+
+// Player-known shape names the receipt may speak by name; anything else
+// (a 2-3 overlap, a shapeless region) stays described, never named.
+const NAMED_SHAPES = new Set(['1-1', '1-2', '1-2-1', '1-2-2-1']);
 
 // The number the player sees on a revealed cell (liar/mirror display
 // included — the explanation should reference what's on screen).
@@ -63,6 +68,15 @@ export function explainDeduction(board, ded, opts = {}) {
   const cols = board[0].length;
   const neighborCache = buildNeighborCache(board, rows, cols);
 
+  // The board's own confession may name the shape ("that is the 1-2-1
+  // pattern") — but only in the full style (the Socratic Lens must never
+  // resolve), and only when the geometry detector actually confirms a
+  // player-known shape on the board, so the copy can never overclaim.
+  const shape = style === 'full'
+    ? classifyPattern(board, { row: ded.row, col: ded.col, tier: ded.tier, sources: ded.sources, kind }, { rows, cols, neighborCache }).name
+    : null;
+  const nameClause = NAMED_SHAPES.has(shape) ? ` That is the ${shape} pattern.` : '';
+
   // ── Tier 0: one number settles it ──
   if (ded.tier === 0) {
     const origin = ded.sources[0];
@@ -102,7 +116,7 @@ export function explainDeduction(board, ded, opts = {}) {
     if (style === 'socratic') {
       return `Two of the highlighted clues overlap. What does subtracting one from the other leave?`;
     }
-    return `Compare ${nameOf(a)} and ${nameOf(b)}: they share hidden squares, and the difference between their counts settles this one.`;
+    return `Compare ${nameOf(a)} and ${nameOf(b)}: they share hidden squares, and the difference between their counts settles this one.${nameClause}`;
   }
 
   // ── Tier 2: the whole region at once ──
@@ -112,8 +126,8 @@ export function explainDeduction(board, ded, opts = {}) {
       return `No single clue cracks this. Try mine layouts that satisfy ALL ${k} highlighted clues at once.`;
     }
     return kind === 'safe'
-      ? `No single clue settles this square, but only one mine layout fits all ${k} highlighted clues at once, and in it this square is clear.`
-      : `Only one mine layout fits all ${k} highlighted clues at once, and in it this square is a mine.`;
+      ? `No single clue settles this square, but only one mine layout fits all ${k} highlighted clues at once, and in it this square is clear.${nameClause}`
+      : `Only one mine layout fits all ${k} highlighted clues at once, and in it this square is a mine.${nameClause}`;
   }
 
   // ── Tier 3: the region contains a liar ──
