@@ -9,9 +9,20 @@ import './helpers.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-const { classifyPattern, isOneTwoOne, isOneThreeOneCorner, boardContainsNamedPattern } = await import('../src/logic/patternNames.js');
+const { classifyPattern, isOneTwoOne, isOneThreeOneCorner, isTwoTwoTwoCorner, boardContainsNamedPattern } = await import('../src/logic/patternNames.js');
 const { findDeducibleFrontier } = await import('../src/logic/boardSolver.js');
+const { generateBoard, cleanSolverArtifacts } = await import('../src/logic/boardGenerator.js');
+const { createDailyRNG } = await import('../src/logic/seededRandom.js');
 const { makeBoard, recalcAdjacency } = await import('./helpers.mjs');
+
+function floodOpen(board, rows, cols, fr, fc) {
+  const q = [[fr, fc]];
+  while (q.length) {
+    const [r, c] = q.pop(); const cell = board[r][c];
+    if (cell.isRevealed || cell.isMine) continue; cell.isRevealed = true;
+    if (cell.adjacentMines === 0) for (let dr=-1;dr<=1;dr++) for (let dc=-1;dc<=1;dc++) if(dr||dc){const nr=r+dr,nc=c+dc; if(nr>=0&&nr<rows&&nc>=0&&nc<cols) q.push([nr,nc]);}
+  }
+}
 
 // Reveal a cell as a plain clue with an explicit displayed count.
 function clue(board, r, c, n) {
@@ -51,10 +62,13 @@ test('1-1: a real two-clue subset surfaces and is named from the digits', () => 
   assert.equal(family, '1-1');
 });
 
-test('1-2: a two-clue overlap of a 1 and a 2 (no line shape) is named 1-2', () => {
+test('1-2: a canonical two-clue overlap of a 1 and a 2 is named 1-2', () => {
+  // The wide clue must see <=3 (canonical); reveal (2,2) so the 2 sees 3,
+  // else a 4-cell wide clue would correctly read as a hole.
   const board = makeBoard(3, 3);
   clue(board, 2, 0, 1);
   clue(board, 2, 1, 2);
+  clue(board, 2, 2, 2);
   const ded = { row: 0, col: 0, tier: 1, kind: 'safe', sources: [{ row: 2, col: 0 }, { row: 2, col: 1 }] };
   assert.equal(classifyPattern(board, ded).name, '1-2');
 });
@@ -83,17 +97,45 @@ test('NEGATIVE: a saturated 3 (three hidden squares) is not a 1-3-1 corner', () 
 
 test('a bigger pair carries its family: 2-2 is the 1-1 family, 2-3 the 1-2 family', () => {
   // The gym's "1-1/1-2 in disguise" nod keys on this family.
+  // (2,2) revealed so the wider clue stays canonical (<=3 cells) — a
+  // 4-cell wide clue would read as a hole, which is a different lesson.
   const eq = makeBoard(3, 3);
-  clue(eq, 2, 0, 2); clue(eq, 2, 1, 2);
+  clue(eq, 2, 0, 2); clue(eq, 2, 1, 2); clue(eq, 2, 2, 2);
   const a = classifyPattern(eq, { row: 0, col: 0, tier: 1, kind: 'safe', sources: [{ row: 2, col: 0 }, { row: 2, col: 1 }] });
   assert.equal(a.name, 'pair');
   assert.equal(a.family, '1-1');
 
   const uneq = makeBoard(3, 3);
-  clue(uneq, 2, 0, 2); clue(uneq, 2, 1, 3);
+  clue(uneq, 2, 0, 2); clue(uneq, 2, 1, 3); clue(uneq, 2, 2, 2);
   const b = classifyPattern(uneq, { row: 0, col: 0, tier: 1, kind: 'safe', sources: [{ row: 2, col: 0 }, { row: 2, col: 1 }] });
   assert.equal(b.name, 'pair');
   assert.equal(b.family, '1-2');
+});
+
+test('hole: a boxed 1 sharing a 2-cell pocket with a wide 1 is named a hole', () => {
+  // H1 from minesweeper.online: a bottom 1 touches only the 2-cell pocket;
+  // the 1 above touches the pocket + a row of cells, so those extra cells
+  // are safe. The boxed clue sees 2, the wide clue sees 5 (generic).
+  const board = makeBoard(4, 5);
+  for (let c = 0; c < 5; c++) clue(board, 3, c, 1); // bottom row of 1s
+  clue(board, 2, 2, 1);                              // the boxed 1, between the pocket cells
+  const f = findDeducibleFrontier(board, { respectFlags: false });
+  const green = f.safe.find(s => s.row === 1 && s.col >= 1 && s.col <= 3);
+  assert.ok(green, 'a cell above is provably safe');
+  assert.equal(classifyPattern(board, { ...green, kind: 'safe' }, { rows: 4, cols: 5 }).name, 'hole');
+});
+
+test('triangle: a boxed-3 clue sharing its pocket with a wide clue is named a triangle', () => {
+  // Boxed clue (3,2) sees exactly the 3-cell pocket (2,1),(2,2),(2,3); the
+  // wide clue (1,2) sees those three plus the greens above (6 hidden), so
+  // the greens are safe. The recognizer scans the board for the boxed-3
+  // structure, independent of the frontier's chosen sources.
+  const board = makeBoard(4, 5);
+  clue(board, 1, 1, 1); clue(board, 1, 2, 1); clue(board, 1, 3, 1); // wide clue + flanks
+  clue(board, 3, 1, 1); clue(board, 3, 2, 1); clue(board, 3, 3, 1); // boxed clue + flanks
+  // pocket (2,1),(2,2),(2,3) and greens (0,1),(0,2),(0,3) stay hidden
+  const ded = { row: 0, col: 2, tier: 1, kind: 'safe', sources: [{ row: 3, col: 2 }, { row: 1, col: 2 }] };
+  assert.equal(classifyPattern(board, ded, { rows: 4, cols: 5 }).name, 'triangle');
 });
 
 test('NEGATIVE: an incidental 1,2,1 with hidden on BOTH sides is not a 1-2-1', () => {
@@ -128,6 +170,38 @@ test('flag-reduction: a clue with a known (revealed) mine neighbor', () => {
   clue(board, 0, 0, 1);
   const ded = { row: 1, col: 0, tier: 0, kind: 'safe', sources: [{ row: 0, col: 0 }] };
   assert.equal(classifyPattern(board, ded).name, 'flag-reduction');
+});
+
+test('2-2-2 recognizer is SOUND: every cell it names is provably safe', () => {
+  // The honesty guard for the hardest recognizer. Sweep generated boards,
+  // replay the greedy solve, and at each step assert every cell
+  // isTwoTwoTwoCorner flags is in the flags-blind safe frontier — i.e. it
+  // never claims a square the solver cannot independently prove safe.
+  const rows = 7, cols = 7;
+  let fired = 0;
+  for (let s = 0; s < 120; s++) {
+    const board = generateBoard(rows, cols, 10, 3, 3, createDailyRNG(`222-sound-${s}`));
+    cleanSolverArtifacts(board);
+    floodOpen(board, rows, cols, 3, 3);
+    let guard = 60;
+    while (guard-- > 0) {
+      const f = findDeducibleFrontier(board, { respectFlags: false });
+      const safeSet = new Set(f.safe.map(x => x.row * cols + x.col));
+      for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+        const cell = board[r][c];
+        if (cell.isRevealed || cell.isFlagged) continue;
+        if (isTwoTwoTwoCorner(board, rows, cols, undefined, r * cols + c)) {
+          fired++;
+          assert.ok(safeSet.has(r * cols + c), `(${r},${c}) named 2-2-2 but solver cannot prove it safe (seed ${s})`);
+        }
+      }
+      if (f.safe.length === 0) break;
+      let progressed = false;
+      for (const x of f.safe) { if (!board[x.row][x.col].isRevealed) { board[x.row][x.col].isRevealed = true; progressed = true; } }
+      if (!progressed) break;
+    }
+  }
+  assert.ok(fired > 0, 'the sweep should exercise the recognizer at least once');
 });
 
 test('malformed input returns a null name, never throws', () => {

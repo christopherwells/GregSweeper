@@ -25,7 +25,7 @@ import { classifyPattern } from './patternNames.js';
 
 // The curriculum, easiest first. lexiconUI renders the lesson-select
 // screen in this order; the Field Notebook lists techniques in it too.
-export const LESSON_ORDER = ['countingBasics', 'subset11', 'subset12', 'oneTwoOne', 'oneTwoTwoOne', 'oneThreeOneCorner'];
+export const LESSON_ORDER = ['countingBasics', 'subset11', 'subset12', 'holes', 'triangles', 'oneTwoOne', 'oneTwoTwoOne', 'oneThreeOneCorner', 'twoTwoTwoCorner'];
 
 // Each lesson's `accepts(r)` is the bucket gate over the isBoardSolvable
 // result. Named-shape lessons additionally set `requiresPattern`, which
@@ -148,21 +148,103 @@ export const LESSONS = {
       && r.disjunctiveMoves === 0
       && r.techniqueLevel <= 2,
   },
+
+  // Holes and triangles are the 1-1/1-2 OVERLAP read in a boxed-pocket
+  // shape: a clue boxed to a small pocket pins its mine count, and a wider
+  // clue sharing the pocket clears every other square it touches. Same
+  // logic as subset11/subset12, but the wider clue is GENERIC (>=4 cells —
+  // the cell cluster the canonical lessons cap out before), so these clear
+  // several squares at once. A 2-cell pocket is a hole; a 3-cell a
+  // triangle (classifyPattern names them by the boxed clue's size).
+  holes: {
+    id: 'holes',
+    name: 'Holes',
+    blurb: 'A boxed-in clue.',
+    rule: 'When a clue is boxed in so it touches only a small pocket of squares, it counts the mines in that pocket exactly. A wider clue that shares the pocket then has its mine accounted for, so every other square it touches is safe.',
+    naming: 'That was a hole: the boxed-in clue pinned the pocket, and the wider clue sharing it had nothing left for its other squares, so they were all safe.',
+    rows: 7, cols: 7, mines: 9,
+    requiresPattern: 'hole',
+    attempts: 1500,
+    accepts: (r) =>
+      (r.solvable || r.remainingUnknowns === 0)
+      && r.disjunctiveMoves === 0
+      && r.advancedLogicMoves === 0
+      && r.techniqueLevel <= 1,
+  },
+
+  triangles: {
+    id: 'triangles',
+    name: 'Triangles',
+    blurb: 'A three-square pocket.',
+    rule: 'Same read as a hole, but the shared pocket is three squares. A boxed clue counts the mines in the three, and a wider clue overlapping them clears everything else it touches.',
+    naming: 'That was a triangle: one clue counted the three-square pocket, and the wider clue that shares it cleared every square beyond.',
+    rows: 7, cols: 7, mines: 9,
+    requiresPattern: 'triangle',
+    attempts: 1500,
+    accepts: (r) =>
+      (r.solvable || r.remainingUnknowns === 0)
+      && r.disjunctiveMoves === 0
+      && r.advancedLogicMoves === 0
+      && r.techniqueLevel <= 1,
+  },
+
+  // Advanced: the 2-2-2 corner is a tier-2 multi-clue read — a corner 2
+  // whose two flanking 2s each force a mine into their own squares,
+  // accounting for both of the corner 2's mines and freeing its last
+  // square. Allows tier 2 (it needs the joint reasoning); no liar.
+  twoTwoTwoCorner: {
+    id: 'twoTwoTwoCorner',
+    name: 'The 2-2-2 corner',
+    blurb: 'Three 2s at a corner.',
+    advanced: true,
+    rule: 'When a 2 in a corner shares its squares with two flanking 2s, each flanking 2 forces a mine into its own pair of squares. That uses up both of the corner 2\'s mines, so the square only the corner 2 can see is safe.',
+    naming: 'That was a 2-2-2 corner: the two flanking 2s each forced a mine into their own squares, accounting for both of the corner 2\'s mines, so its last square was safe.',
+    rows: 7, cols: 7, mines: 10,
+    requiresPattern: '2-2-2',
+    attempts: 2500,
+    accepts: (r) =>
+      (r.solvable || r.remainingUnknowns === 0)
+      && r.disjunctiveMoves === 0
+      && r.techniqueLevel <= 2,
+  },
 };
 
 const MAX_GENERATION_ATTEMPTS = 400; // yield ~1-in-3 for the bucket lessons
 
-// Does the OPENED board put the lesson's named shape on the current
-// deducible frontier? Ties admission to the exact classifier the gym
-// coaching and receipts use, so the three can never disagree.
-function lessonShowsPattern(lessonBoard, patternName) {
+// Does the lesson's named shape appear ANYWHERE on the board's no-guess
+// solve path (not just the opening)? Many shapes — triangles especially —
+// form only after a few reveals, so an opening-only check missed them
+// entirely (measured: 0 triangles at the opening, ~40% on the path). We
+// replay the greedy solve and classify the frontier at each step; the
+// player works into the board and hits the shape there. Ties admission to
+// the exact classifier the gym coaching and receipts use. The reveal
+// state is snapshotted and restored, so the board handed back to the gym
+// still starts at the opening. Exported so the yield script measures the
+// same thing.
+export function lessonShowsPattern(lessonBoard, patternName) {
   const { board, rows, cols } = lessonBoard;
-  const f = findDeducibleFrontier(board, { respectFlags: false });
-  const candidates = [
-    ...f.safe.map(s => ({ ...s, kind: 'safe' })),
-    ...f.mines.map(m => ({ ...m, kind: 'mine' })),
-  ];
-  return candidates.some(d => classifyPattern(board, d, { rows, cols }).name === patternName);
+  const snapshot = board.map(row => row.map(c => c.isRevealed));
+  let found = false;
+  let guard = 400;
+  while (guard-- > 0) {
+    const f = findDeducibleFrontier(board, { respectFlags: false });
+    const candidates = [
+      ...f.safe.map(s => ({ ...s, kind: 'safe' })),
+      ...f.mines.map(m => ({ ...m, kind: 'mine' })),
+    ];
+    if (candidates.some(d => classifyPattern(board, d, { rows, cols }).name === patternName)) {
+      found = true;
+      break;
+    }
+    if (f.safe.length === 0) break;
+    let progressed = false;
+    for (const s of f.safe) {
+      if (!board[s.row][s.col].isRevealed) { board[s.row][s.col].isRevealed = true; progressed = true; }
+    }
+    if (!progressed) break;
+  }
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) board[r][c].isRevealed = snapshot[r][c];
+  return found;
 }
 
 /**
