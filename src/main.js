@@ -3375,11 +3375,29 @@ $('#gameover-share').addEventListener('click', () => handleShare());
 // Copy a link to YESTERDAY's crux teaser (a past board — never today's).
 // The hardcoded prod base matches the share card; cruxes are read from
 // prod even on the test build, so the link works wherever it's opened.
-$('#gameover-crux-challenge')?.addEventListener('click', () => {
+$('#gameover-crux-challenge')?.addEventListener('click', async () => {
   const yesterday = _addCalendarDays(getLocalDateString(), -1);
-  const link = `https://christopherwells.github.io/GregSweeper/?crux=${yesterday}`;
-  copyToClipboard(link);                      // link in your clipboard to send
-  window.open(link, '_blank', 'noopener');    // and opened so you see what you're sharing
+  const url = `https://christopherwells.github.io/GregSweeper/?crux=${yesterday}`;
+  const shareData = {
+    title: 'GregSweeper',
+    text: 'Greg already proved this one. See how many squares you can prove without a guess.',
+    url,
+  };
+  // Open the native share sheet so the player picks an app (Messages,
+  // WhatsApp, email...). Falls back to a clipboard copy with feedback
+  // where Web Share isn't available (e.g. desktop Firefox). The old path
+  // copied silently AND opened the crux in a new tab, which read as
+  // "nothing happened" — never share to anyone.
+  if (navigator.share && (!navigator.canShare || navigator.canShare(shareData))) {
+    try {
+      await navigator.share(shareData);
+    } catch (e) {
+      // User dismissed the sheet, or share failed — stay quiet.
+    }
+  } else {
+    copyToClipboard(url);
+    showToast('Challenge link copied. Paste it to a friend.');
+  }
 });
 
 $('#gameover-done').addEventListener('click', () => {
