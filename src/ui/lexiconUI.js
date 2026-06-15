@@ -32,6 +32,7 @@ let _pulseTimer = null;
 let _coachTimer = null;
 let _lpTimer = null;   // long-press flag timer (touch)
 let _lpFired = false;  // swallow the click that follows a long-press
+let _flagMode = false; // tap-to-flag mode (the reliable touch path; long-press still works)
 // Per-board coaching state: the first cheer of a board carries the
 // recognition tip; later ones get short rotating affirmations.
 let _firstTipPending = true;
@@ -128,8 +129,20 @@ const TECHNIQUE_KEYS = {
 export function openLexicon() {
   _boardsDone = 0;
   _lesson = null;
+  _flagMode = false;   // every gym session starts in reveal ("Dig") mode
   _buildOverlay();
   _showView('select');
+}
+
+// Reflect flag-mode state on the toggle: the label says what a tap will do
+// ("Dig" reveals, "Flag" arms flagging), plus pressed state and styling.
+function _updateFlagToggle() {
+  if (!_overlay) return;
+  const btn = _overlay.querySelector('.lexicon-flag-toggle');
+  if (!btn) return;
+  btn.classList.toggle('active', _flagMode);
+  btn.setAttribute('aria-pressed', _flagMode ? 'true' : 'false');
+  btn.textContent = _flagMode ? '🚩 Flag' : '⛏️ Dig';
 }
 
 function _buildOverlay() {
@@ -151,9 +164,10 @@ function _buildOverlay() {
       </div>
 
       <div class="lexicon-view lexicon-drill" hidden>
-        <p class="lexicon-instruction">Open every safe square to finish the board. A square only opens when the clues prove it is safe. If it bounces, look at the clues that light up. Right-click or hold to flag a proven mine, then tap a number whose mines are all flagged to open the rest around it.</p>
+        <p class="lexicon-instruction">Open every safe square to finish the board. A square only opens when the clues prove it is safe. If it bounces, look at the clues that light up. To flag a proven mine, tap the 🚩 button then tap the square (or long-press it); then tap a number whose mines are all flagged to open the rest around it.</p>
         <div class="lexicon-status">
           <span class="lexicon-mines-left"></span>
+          <button class="lexicon-flag-toggle" type="button" aria-pressed="false">⛏️ Dig</button>
           <span class="lexicon-board-count"></span>
         </div>
         <div class="lexicon-grid" role="grid"></div>
@@ -181,12 +195,24 @@ function _buildOverlay() {
   // is swallowed instead of triggering a reveal attempt.
   grid.addEventListener('contextmenu', (e) => {
     e.preventDefault();
+    // On touch, a long-press fires BOTH the timer below AND this native
+    // contextmenu event for the same press. Without a guard the second
+    // _tryFlag toggles the just-placed flag right back off — the praise
+    // shows but the flag vanishes (the exact Android bug). If the timer
+    // already flagged this press, ignore the contextmenu; otherwise
+    // (desktop right-click, or a contextmenu that beat the timer) flag once
+    // and cancel the pending timer so it can't double-fire.
+    if (_lpFired) return;
+    if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
     const el = e.target.closest('.lexicon-cell');
     if (el) _tryFlag(parseInt(el.dataset.row, 10), parseInt(el.dataset.col, 10));
   });
   grid.addEventListener('pointerdown', (e) => {
     const el = e.target.closest('.lexicon-cell');
-    if (!el || e.pointerType === 'mouse') return;
+    if (!el) return;
+    _lpFired = false;                       // fresh gesture; clear any stale swallow flag
+    if (e.pointerType === 'mouse') return;  // mouse flags via contextmenu / flag-mode click
+    if (_lpTimer) clearTimeout(_lpTimer);
     _lpTimer = setTimeout(() => {
       _lpFired = true;
       _tryFlag(parseInt(el.dataset.row, 10), parseInt(el.dataset.col, 10));
@@ -196,6 +222,14 @@ function _buildOverlay() {
   grid.addEventListener('pointerup', cancelLp);
   grid.addEventListener('pointerleave', cancelLp);
   grid.addEventListener('pointercancel', cancelLp);
+
+  // Flag-mode toggle: the reliable touch path. A plain tap can't be stolen
+  // by a scroll or doubled by a contextmenu the way a long-press can, and
+  // flagging is a core taught move, so it gets a visible button (mirrors the
+  // main game). When on, a tap on a hidden square flags a proven mine.
+  const flagToggle = _overlay.querySelector('.lexicon-flag-toggle');
+  flagToggle.addEventListener('click', () => { _flagMode = !_flagMode; _updateFlagToggle(); });
+  _updateFlagToggle();
 
   _renderLessonList();
 }
@@ -551,6 +585,10 @@ function _onCellClick(e) {
   if (!cell) return;
   // Tap on an open number: chord, just like the real game.
   if (cell.isRevealed) { _tryChord(row, col); return; }
+  // Flag mode (the 🚩 toggle): a tap flags a proven mine, or unflags. Routes
+  // through the same gate as long-press, so a tap on a non-mine still bounces
+  // and teaches rather than sticking a guess.
+  if (_flagMode) { _tryFlag(row, col); return; }
   // A tap on a flagged square unflags it (flags never block proof — the
   // gate below recomputes from the clues alone).
   if (cell.isFlagged) { cell.isFlagged = false; playUnflag(); _render(); return; }
