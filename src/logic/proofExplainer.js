@@ -23,7 +23,7 @@ import { classifyPattern } from './patternNames.js';
 
 // Player-known shape names the receipt may speak by name; anything else
 // (a 2-3 overlap, a shapeless region) stays described, never named.
-const NAMED_SHAPES = new Set(['1-1', '1-2', '1-2-1', '1-2-2-1']);
+const NAMED_SHAPES = new Set(['1-1', '1-2', '1-2-1', '1-2-2-1', '1-3-1']);
 
 // The number the player sees on a revealed cell (liar/mirror display
 // included — the explanation should reference what's on screen).

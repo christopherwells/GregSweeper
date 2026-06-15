@@ -1190,6 +1190,7 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 .lexicon-sketch .sk-safe { color: var(--color-accent, #4caf50); }
 .lexicon-sketch .sk-num[data-num="1"] { color: var(--color-num-1, #6baed6); }
 .lexicon-sketch .sk-num[data-num="2"] { color: var(--color-num-2, #66bb6a); }
+.lexicon-sketch .sk-num[data-num="3"] { color: var(--color-num-3, #ff6b6b); }
 
 .cell.suggested-start {
   background: var(--overlay-suggest-start-fill, rgba(76, 175, 80, 0.35));

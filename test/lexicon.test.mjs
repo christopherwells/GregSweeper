@@ -29,7 +29,7 @@ test('curriculum order lists exactly the registered lessons', () => {
   assert.deepEqual([...LESSON_ORDER].sort(), Object.keys(LESSONS).sort());
 });
 
-for (const id of ['countingBasics', 'subset11', 'subset12', 'oneTwoOne', 'oneTwoTwoOne']) {
+for (const id of ['countingBasics', 'subset11', 'subset12', 'oneTwoOne', 'oneTwoTwoOne', 'oneThreeOneCorner']) {
   test(`${id}: generates deterministically and re-verifies its predicate`, () => {
     const lesson = LESSONS[id];
     const a = generateLessonBoard(lesson, 'unit-1');
@@ -66,7 +66,7 @@ test('counting board needs no pattern, only single-number counting', () => {
 });
 
 test('named-shape lessons actually put their shape on the deducible frontier', () => {
-  for (const [id, name] of [['oneTwoOne', '1-2-1'], ['oneTwoTwoOne', '1-2-2-1']]) {
+  for (const [id, name] of [['oneTwoOne', '1-2-1'], ['oneTwoTwoOne', '1-2-2-1'], ['oneThreeOneCorner', '1-3-1']]) {
     const lb = generateLessonBoard(LESSONS[id], 'unit-4');
     assert.ok(lb, `${id} must generate`);
     // generateLessonBoard already opened it for named-shape lessons.

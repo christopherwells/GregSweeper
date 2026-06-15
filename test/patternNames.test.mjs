@@ -9,7 +9,7 @@ import './helpers.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-const { classifyPattern, isOneTwoOne, boardContainsNamedPattern } = await import('../src/logic/patternNames.js');
+const { classifyPattern, isOneTwoOne, isOneThreeOneCorner, boardContainsNamedPattern } = await import('../src/logic/patternNames.js');
 const { findDeducibleFrontier } = await import('../src/logic/boardSolver.js');
 const { makeBoard, recalcAdjacency } = await import('./helpers.mjs');
 
@@ -57,6 +57,28 @@ test('1-2: a two-clue overlap of a 1 and a 2 (no line shape) is named 1-2', () =
   clue(board, 2, 1, 2);
   const ded = { row: 0, col: 0, tier: 1, kind: 'safe', sources: [{ row: 2, col: 0 }, { row: 2, col: 1 }] };
   assert.equal(classifyPattern(board, ded).name, '1-2');
+});
+
+test('1-3-1 corner: the square only the 3 sees is a mine, the 1s far squares safe', () => {
+  // Christopher's layout: 3 at (2,2) is the corner of an L, a 1 above it
+  // (1,2) and a 1 to its left (2,1). The 3 sees five hidden squares; the
+  // corner (3,3) is forced mine, (0,3) and (3,0) are forced safe.
+  const board = makeBoard(4, 4);
+  clue(board, 0, 0, 0); clue(board, 0, 1, 0); clue(board, 0, 2, 1);
+  clue(board, 1, 0, 0); clue(board, 1, 1, 0); clue(board, 1, 2, 1);
+  clue(board, 2, 0, 1); clue(board, 2, 1, 1); clue(board, 2, 2, 3);
+  assert.equal(classifyPattern(board, { row: 3, col: 3, tier: 2, kind: 'mine', sources: [] }).name, '1-3-1');
+  assert.equal(classifyPattern(board, { row: 0, col: 3, tier: 2, kind: 'safe', sources: [] }).name, '1-3-1');
+  assert.equal(classifyPattern(board, { row: 3, col: 0, tier: 2, kind: 'safe', sources: [] }).name, '1-3-1');
+});
+
+test('NEGATIVE: a saturated 3 (three hidden squares) is not a 1-3-1 corner', () => {
+  // A corner 3 that sees exactly three squares is plain counting (all
+  // mines), not the five-square corner insight.
+  const board = makeBoard(3, 3);
+  clue(board, 0, 0, 3); // sees (0,1),(1,0),(1,1) only
+  assert.equal(isOneThreeOneCorner(board, 3, 3, undefined, 1 * 3 + 1, 'mine'), false);
+  assert.notEqual(classifyPattern(board, { row: 1, col: 1, tier: 2, kind: 'mine', sources: [] }).name, '1-3-1');
 });
 
 test('NEGATIVE: an incidental 1,2,1 with hidden on BOTH sides is not a 1-2-1', () => {
