@@ -102,6 +102,8 @@ export const LESSONS = {
     naming: 'That was a 1-2-1: the only way to give the 2 its two mines while keeping both 1s honest is a mine under each 1, which leaves the middle square safe.',
     rows: 6, cols: 6, mines: 6,
     requiresPattern: '1-2-1',
+    requireShape: true,
+    attempts: 2000,
     accepts: (r) =>
       (r.solvable || r.remainingUnknowns === 0)
       && r.disjunctiveMoves === 0
@@ -122,7 +124,8 @@ export const LESSONS = {
     naming: 'That was a 1-2-2-1: the only layout that satisfies all four numbers at once puts both mines in the center, under the 2s, and clears the rest.',
     rows: 7, cols: 7, mines: 9,
     requiresPattern: '1-2-2-1',
-    attempts: 800,
+    requireShape: true,
+    attempts: 4000,
     accepts: (r) =>
       (r.solvable || r.remainingUnknowns === 0)
       && r.disjunctiveMoves === 0
@@ -142,7 +145,8 @@ export const LESSONS = {
     naming: 'That was a 1-3-1 corner: the two 1s hold four of the 3\'s squares to two mines between them, so the fifth square, the one only the 3 sees, is a mine, and the 1s\' far squares are safe.',
     rows: 7, cols: 7, mines: 9,
     requiresPattern: '1-3-1',
-    attempts: 1500,
+    requireShape: true,
+    attempts: 6000,
     accepts: (r) =>
       (r.solvable || r.remainingUnknowns === 0)
       && r.disjunctiveMoves === 0
@@ -164,7 +168,8 @@ export const LESSONS = {
     naming: 'That was a hole: the boxed-in clue pinned the pocket, and the wider clue sharing it had nothing left for its other squares, so they were all safe.',
     rows: 7, cols: 7, mines: 9,
     requiresPattern: 'hole',
-    attempts: 1500,
+    requireShape: true,
+    attempts: 2500,
     accepts: (r) =>
       (r.solvable || r.remainingUnknowns === 0)
       && r.disjunctiveMoves === 0
@@ -180,7 +185,8 @@ export const LESSONS = {
     naming: 'That was a triangle: one clue counted the three-square pocket, and the wider clue that shares it cleared every square beyond.',
     rows: 7, cols: 7, mines: 9,
     requiresPattern: 'triangle',
-    attempts: 1500,
+    requireShape: true,
+    attempts: 4000,
     accepts: (r) =>
       (r.solvable || r.remainingUnknowns === 0)
       && r.disjunctiveMoves === 0
@@ -201,7 +207,8 @@ export const LESSONS = {
     naming: 'That was a 2-2-2 corner: the two flanking 2s each forced a mine into their own squares, accounting for both of the corner 2\'s mines, so its last square was safe.',
     rows: 7, cols: 7, mines: 10,
     requiresPattern: '2-2-2',
-    attempts: 2500,
+    requireShape: true,
+    attempts: 4000,
     accepts: (r) =>
       (r.solvable || r.remainingUnknowns === 0)
       && r.disjunctiveMoves === 0
@@ -270,6 +277,44 @@ export function lessonShowsPattern(lessonBoard, patternName) {
   return found;
 }
 
+// Does the board REQUIRE the shape, not merely show it? The lighter
+// "appears on a path" check (lessonShowsPattern) admitted boards where the
+// shape was a cameo off the critical path — measured, 44% of Holes boards,
+// 77% of Triangles, 60-78% of the corner shapes were finishable WITHOUT
+// ever performing the shape (the player solves around it by counting and
+// simple pairs, and never sees the lesson's technique). This gate models
+// that directly: play the board gated, revealing every provably-safe cell
+// EXCEPT ones whose top read is the target shape. If that play completes the
+// board, the shape was avoidable → reject. If it stalls at a state whose only
+// remaining progress is a target-shape cell (a safe reveal, or a forced mine
+// flag — triangles often resolve as a forced mine), the player is forced to
+// perform the shape → admit. Used for the GEOMETRY shapes (hole / triangle /
+// 1-2-1 / 1-2-2-1 / 1-3-1 / 2-2-2), whose recognizers read the board, not the
+// frontier's chosen sources. NOT used for the bare 1-1/1-2 pair lessons: their
+// classification IS source-dependent, so this gate misreads them. Exported so
+// the yield script and tests measure exactly what generation enforces.
+export function lessonRequiresShape(lessonBoard, shapeNames) {
+  const { board, rows, cols } = lessonBoard;
+  const snapshot = board.map(row => row.map(c => c.isRevealed));
+  const isTarget = (d, kind) =>
+    shapeNames.includes(classifyPattern(board, { ...d, kind }, { rows, cols }).name);
+  let required = false;
+  let guard = 400;
+  while (guard-- > 0) {
+    const f = findDeducibleFrontier(board, { respectFlags: false });
+    const allowed = f.safe.filter(s => !isTarget(s, 'safe'));
+    if (allowed.length === 0) {
+      // No non-shape progress left: the player is forced to the shape iff one
+      // is on the frontier (as a safe reveal or a provable mine to flag).
+      required = f.safe.some(s => isTarget(s, 'safe')) || f.mines.some(m => isTarget(m, 'mine'));
+      break;
+    }
+    for (const s of allowed) board[s.row][s.col].isRevealed = true;
+  }
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) board[r][c].isRevealed = snapshot[r][c];
+  return required;
+}
+
 /**
  * Generate one lesson board for a lesson def. Deterministic per
  * seedTag. Returns { board, rows, cols, fr, fc } or null if the
@@ -292,7 +337,12 @@ export function generateLessonBoard(lesson, seedTag) {
     const lessonBoard = { board, rows, cols, fr, fc };
     if (lesson.requiresPattern) {
       applyLessonOpening(lessonBoard);
-      if (!lessonShowsPattern(lessonBoard, lesson.requiresPattern)) continue;
+      // Geometry shapes must be REQUIRED (the board can't be finished without
+      // them); the bare 1-1/1-2 pairs keep the lighter "shows it" check.
+      const ok = lesson.requireShape
+        ? lessonRequiresShape(lessonBoard, [lesson.requiresPattern])
+        : lessonShowsPattern(lessonBoard, lesson.requiresPattern);
+      if (!ok) continue;
     }
     return lessonBoard;
   }

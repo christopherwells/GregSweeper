@@ -8,7 +8,7 @@ import './helpers.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-const { LESSONS, LESSON_ORDER, generateLessonBoard, applyLessonOpening, lessonComplete, lessonShowsPattern } = await import('../src/logic/lexicon.js');
+const { LESSONS, LESSON_ORDER, generateLessonBoard, applyLessonOpening, lessonComplete, lessonShowsPattern, lessonRequiresShape } = await import('../src/logic/lexicon.js');
 const { isBoardSolvable, findDeducibleFrontier } = await import('../src/logic/boardSolver.js');
 const { cleanSolverArtifacts } = await import('../src/logic/boardGenerator.js');
 const { classifyPattern } = await import('../src/logic/patternNames.js');
@@ -65,12 +65,26 @@ test('counting board needs no pattern, only single-number counting', () => {
   assert.equal(r.genericSubsetMoves, 0);
 });
 
-test('named-shape lessons actually put their shape on the solve path', () => {
-  // Path-aware: triangles (and some holes) form mid-solve, not at the
-  // opening, so this uses the same lessonShowsPattern the admission does.
-  for (const [id, name] of [['holes', 'hole'], ['triangles', 'triangle'], ['oneTwoOne', '1-2-1'], ['oneTwoTwoOne', '1-2-2-1'], ['oneThreeOneCorner', '1-3-1'], ['twoTwoTwoCorner', '2-2-2']]) {
+test('pair lessons put their pattern on the solve path', () => {
+  // subset11/subset12 keep the lighter "shows it" gate — their 1-1/1-2
+  // classification is source-dependent, so the require-gate (below) would
+  // misread them. Path-aware, same lessonShowsPattern the admission uses.
+  for (const [id, name] of [['subset11', '1-1'], ['subset12', '1-2']]) {
     const lb = generateLessonBoard(LESSONS[id], 'unit-4');
     assert.ok(lb, `${id} must generate`);
     assert.ok(lessonShowsPattern(lb, name), `${id} board must show a ${name} on the solve path`);
+  }
+});
+
+test('geometry-shape lessons REQUIRE their shape (not just show it)', () => {
+  // The require-gate: the board cannot be finished without performing the
+  // shape (a board solvable around the shape is rejected). Stronger than
+  // "shows it" — this is what stops boards where the shape is an incidental
+  // cameo off the critical path.
+  for (const [id, name] of [['holes', 'hole'], ['triangles', 'triangle'], ['oneTwoOne', '1-2-1'], ['oneTwoTwoOne', '1-2-2-1'], ['oneThreeOneCorner', '1-3-1'], ['twoTwoTwoCorner', '2-2-2']]) {
+    assert.equal(LESSONS[id].requireShape, true, `${id} must use the require-gate`);
+    const lb = generateLessonBoard(LESSONS[id], 'unit-5');
+    assert.ok(lb, `${id} must generate`);
+    assert.ok(lessonRequiresShape(lb, [name]), `${id} board must REQUIRE a ${name}, not merely show one`);
   }
 });
