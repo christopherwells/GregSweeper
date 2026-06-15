@@ -985,6 +985,27 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 }
 .lexicon-mines-left { font-weight: 700; color: var(--color-text, #eee); }
 .lexicon-board-count { font-size: 0.85em; color: var(--color-text-secondary, #999); }
+/* Flag-mode toggle: the reliable touch path for flagging. Active state is
+   high-contrast (inverted) so the player always knows a tap will flag. */
+.lexicon-flag-toggle {
+  font: inherit;
+  font-size: 0.85em;
+  font-weight: 700;
+  padding: 4px 14px;
+  border-radius: 999px;
+  border: 1.5px solid var(--color-border, #555);
+  background: var(--color-cell-revealed, #333);
+  color: var(--color-text, #eee);
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.lexicon-flag-toggle.active {
+  background: var(--color-text, #eee);
+  color: var(--color-cell-revealed, #333);
+  border-color: var(--color-text, #eee);
+}
 .lexicon-grid {
   display: grid;
   gap: 3px;
@@ -998,6 +1019,8 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   border-radius: var(--cell-shape-radius, 4px);
   cursor: pointer;
   user-select: none;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
 }
 .lexicon-cell.unrevealed { background: var(--color-cell-hidden, #555); }
 .lexicon-cell.revealed { background: var(--color-cell-revealed, #333); cursor: default; }
