@@ -75,12 +75,27 @@ const PATTERN_COACH = {
     tip: 'A 3 at the bend of an L with a 1 on each arm. The two 1s hold four of the 3\'s five squares to one mine each, so the fifth, the square only the 3 can see, is a mine, and each 1\'s far square is safe.',
     again: 'Another 1-3-1 corner.',
   },
+  hole: {
+    cheer: 'A hole.',
+    tip: 'A clue boxed in to a small pocket counts that pocket\'s mines exactly; a wider clue that shares the pocket has its mine accounted for, so every other square it touches is safe. Watch for two clues near each other around an enclosed gap.',
+    again: 'Another hole read.',
+  },
+  triangle: {
+    cheer: 'A triangle.',
+    tip: 'Same read as a hole, but the boxed clue pins a three-square pocket. The wider clue sharing those three has nothing left for the rest, so everything beyond clears at once.',
+    again: 'Another triangle.',
+  },
+  '2-2-2': {
+    cheer: 'A 2-2-2 corner.',
+    tip: 'Three 2s meeting at a corner: each outer 2 forces a mine into its own squares, which uses up the corner 2\'s two mines, so the square only the corner 2 can see is safe.',
+    again: 'Another 2-2-2 corner.',
+  },
 };
 
 // The named line/corner shapes a move can be cheered as (counting is
 // handled separately). A move classifying as one of these is recorded and
 // celebrated whether the player revealed a safe square or flagged a mine.
-const PATTERN_SHAPE_NAMES = new Set(['1-1', '1-2', '1-2-1', '1-2-2-1', '1-3-1']);
+const PATTERN_SHAPE_NAMES = new Set(['1-1', '1-2', '1-2-1', '1-2-2-1', '1-3-1', 'hole', 'triangle', '2-2-2']);
 
 // Notebook sketches: a tiny board picture per technique. Chars: digit = a
 // revealed number, M = mine, S = a square the pattern proves safe, . = a
@@ -89,9 +104,12 @@ const SKETCHES = {
   countingBasics: ['1S', 'MS'],
   subset11: ['11.', 'M.S'],
   subset12: ['12.', 'SMM'],
+  holes: ['1SS', 'M1.'],
+  triangles: ['1SSS', 'M.1.'],
   oneTwoOne: ['121', 'MSM'],
   oneTwoTwoOne: ['1221', 'SMMS'],
   oneThreeOneCorner: ['.1S', '13.', 'S.M'],
+  twoTwoTwoCorner: ['22', '2S'],
 };
 
 // Which classifier names count toward each lesson's notebook tally.
@@ -99,9 +117,12 @@ const TECHNIQUE_KEYS = {
   countingBasics: ['count'],
   subset11: ['1-1'],
   subset12: ['1-2'],
+  holes: ['hole'],
+  triangles: ['triangle'],
   oneTwoOne: ['1-2-1'],
   oneTwoTwoOne: ['1-2-2-1'],
   oneThreeOneCorner: ['1-3-1'],
+  twoTwoTwoCorner: ['2-2-2'],
 };
 
 export function openLexicon() {

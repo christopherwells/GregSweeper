@@ -183,6 +183,105 @@ export function isOneThreeOneCorner(board, rows, cols, neighborCache, targetIdx,
   return false;
 }
 
+// Hole / triangle: the 1-1/1-2 OVERLAP read in a boxed-pocket shape. A
+// revealed clue is BOXED so its only hidden neighbors are a pocket of
+// exactly k cells (k=2 hole, k=3 triangle); a WIDER revealed clue (>=4
+// hidden — the cell cluster the canonical 1-1/1-2 lessons never reach)
+// shares that pocket, so once the boxed clue pins the pocket's mines, the
+// wider clue's extra cells are all forced. We SCAN the board for this
+// structure rather than read the frontier's chosen sources: the frontier
+// attributes each cell to the FIRST (usually smallest) subset that proves
+// it, which shadows the boxed-3 triangle behind a 2-cell subset (that is
+// why a count-based read of the sources found zero triangles). Returns the
+// family ('1-1' equal digits / '1-2' differ) when the target is a forced
+// cell of such a structure, else null. Honest: only a genuine cA-subset-cB
+// forcing (the wide clue's extra is all-safe or all-mine) matches.
+function matchesPocket(board, rows, cols, neighborCache, targetIdx, k) {
+  const at = (i) => board[Math.floor(i / cols)][i % cols];
+  const total = rows * cols;
+  for (let i = 0; i < total; i++) {
+    if (!isPlainClue(at(i))) continue;
+    const P = hiddenNeighbors(board, cols, neighborCache, i);
+    if (P.length !== k) continue;            // boxed to exactly the pocket
+    const Pset = new Set(P);
+    for (let j = 0; j < total; j++) {
+      if (j === i || !isPlainClue(at(j))) continue;
+      const W = hiddenNeighbors(board, cols, neighborCache, j);
+      if (W.length < 4) continue;            // the wider clue must be GENERIC
+      if (!P.every(x => W.includes(x))) continue; // pocket ⊆ wide
+      const extra = W.filter(x => !Pset.has(x));
+      if (!extra.includes(targetIdx)) continue;
+      // Exact constraints: mines(pocket) = box value, so mines(extra) =
+      // wideValue - boxValue. The target is forced only when that is 0
+      // (extra all safe) or === extra.length (extra all mines).
+      const diffMines = vis(at(j)) - vis(at(i));
+      if (diffMines === 0 || diffMines === extra.length) {
+        return vis(at(i)) === vis(at(j)) ? '1-1' : '1-2';
+      }
+    }
+  }
+  return null;
+}
+
+export function isHole(board, rows, cols, neighborCache, targetIdx) {
+  const nc = neighborCache || buildNeighborCache(board, rows, cols);
+  return matchesPocket(board, rows, cols, nc, targetIdx, 2);
+}
+
+export function isTriangle(board, rows, cols, neighborCache, targetIdx) {
+  const nc = neighborCache || buildNeighborCache(board, rows, cols);
+  return matchesPocket(board, rows, cols, nc, targetIdx, 3);
+}
+
+// The 2-2-2 corner: a central 2 (C) adjacent to the safe target X, whose
+// OTHER hidden cells (`rest`) split into two disjoint groups each forced
+// to hold >=1 mine by a flanking 2. Those two groups then already hold
+// C's two mines, so X is clear. Sound by construction: two disjoint
+// subsets of `rest`, each lower-bounded >=1, give rest >= 2 = C's full
+// count, leaving 0 for X. A flanking 2 (D) forces its share g = rest ∩
+// D.hidden to >= Deff - |D.hidden \ g| (Deff = 2 minus D's revealed-mine
+// neighbors); >=1 means D sees at most one cell outside g. Flags-blind
+// (revealed/strike mines only), matching the gate. Names the move '2-2-2'.
+export function isTwoTwoTwoCorner(board, rows, cols, neighborCache, targetIdx) {
+  const nc = neighborCache || buildNeighborCache(board, rows, cols);
+  const at = (i) => board[Math.floor(i / cols)][i % cols];
+  const total = rows * cols;
+  const knownMines = (i) => {
+    let n = 0;
+    for (const ni of nc[i]) { const c = at(ni); if (c.isRevealed && c.isMine) n++; }
+    return n;
+  };
+  for (let ci = 0; ci < total; ci++) {
+    if (!isPlainClue(at(ci)) || vis(at(ci)) !== 2) continue;
+    const Chid = hiddenNeighbors(board, cols, nc, ci);
+    if (!Chid.includes(targetIdx)) continue;
+    const Ceff = 2 - knownMines(ci);
+    if (Ceff < 1) continue;
+    const rest = Chid.filter(x => x !== targetIdx);
+    if (rest.length < Ceff) continue;
+    const restSet = new Set(rest);
+    // Flanking 2s and the part of `rest` each forces to >=1.
+    const gs = [];
+    for (let di = 0; di < total; di++) {
+      if (di === ci || !isPlainClue(at(di)) || vis(at(di)) !== 2) continue;
+      const Dhid = hiddenNeighbors(board, cols, nc, di);
+      const g = Dhid.filter(x => restSet.has(x));
+      if (g.length === 0) continue;
+      const lb = (2 - knownMines(di)) - (Dhid.length - g.length);
+      if (lb >= 1) gs.push(new Set(g));
+    }
+    // Two DISJOINT forced groups cover C's two mines inside `rest`.
+    for (let a = 0; a < gs.length; a++) {
+      for (let b = a + 1; b < gs.length; b++) {
+        let disjoint = true;
+        for (const x of gs[a]) { if (gs[b].has(x)) { disjoint = false; break; } }
+        if (disjoint) return true;
+      }
+    }
+  }
+  return false;
+}
+
 /**
  * Classify one deduction into a named pattern.
  * @param {Array} board live board (target cells still hidden)
@@ -190,9 +289,9 @@ export function isOneThreeOneCorner(board, rows, cols, neighborCache, targetIdx,
  *                       findDeducibleFrontier, or a trace entry mapped to it
  * @param {Object} opts { rows?, cols?, neighborCache? }
  * @returns {{name: string, family: string|null}}
- *   name: '1-1' | '1-2' | '1-2-1' | '1-2-2-1' | 'flag-reduction'
- *       | 'pair' (tier-1, non-canonical e.g. 2-3) | 'region' (tier-2/3,
- *       enumeration, deliberately unnamed) | 'count' (tier-0)
+ *   name: '1-1' | '1-2' | '1-2-1' | '1-2-2-1' | '1-3-1' | 'hole' | 'triangle'
+ *       | 'flag-reduction' | 'pair' (tier-1, non-canonical e.g. 2-3)
+ *       | 'region' (tier-2/3, enumeration, unnamed) | 'count' (tier-0)
  */
 export function classifyPattern(board, ded, opts = {}) {
   if (!ded || typeof ded.row !== 'number' || typeof ded.col !== 'number') {
@@ -232,6 +331,16 @@ export function classifyPattern(board, ded, opts = {}) {
     if (isOneThreeOneCorner(board, rows, cols, neighborCache, targetIdx, kind)) {
       return { name: '1-3-1', family: '1-2' };
     }
+    // Boxed-pocket overlaps: triangle (3-cell pocket) checked before hole
+    // (2-cell) so the rarer shape is never shadowed by the commoner one.
+    const triFam = isTriangle(board, rows, cols, neighborCache, targetIdx);
+    if (triFam) return { name: 'triangle', family: triFam };
+    const holeFam = isHole(board, rows, cols, neighborCache, targetIdx);
+    if (holeFam) return { name: 'hole', family: holeFam };
+    // The 2-2-2 corner (tier-2 multi-clue) proves a safe cell only.
+    if (kind === 'safe' && isTwoTwoTwoCorner(board, rows, cols, neighborCache, targetIdx)) {
+      return { name: '2-2-2', family: 'enumeration' };
+    }
   }
 
   // Tier 1, no line shape: a two-clue overlap. Name the digit pair.
@@ -239,6 +348,8 @@ export function classifyPattern(board, ded, opts = {}) {
     const a = board[ded.sources[0].row]?.[ded.sources[0].col];
     const b = board[ded.sources[1].row]?.[ded.sources[1].col];
     if (isPlainClue(a) && isPlainClue(b)) {
+      // Holes/triangles (boxed-pocket overlaps) were already caught in the
+      // geometry block above; here it is an ordinary adjacent pair.
       const d = [vis(a), vis(b)].sort((x, y) => x - y);
       if (d[0] === 1 && d[1] === 1) return { name: '1-1', family: '1-1' };
       if (d[0] === 1 && d[1] === 2) return { name: '1-2', family: '1-2' };

@@ -8,7 +8,7 @@ import './helpers.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-const { LESSONS, LESSON_ORDER, generateLessonBoard, applyLessonOpening, lessonComplete } = await import('../src/logic/lexicon.js');
+const { LESSONS, LESSON_ORDER, generateLessonBoard, applyLessonOpening, lessonComplete, lessonShowsPattern } = await import('../src/logic/lexicon.js');
 const { isBoardSolvable, findDeducibleFrontier } = await import('../src/logic/boardSolver.js');
 const { cleanSolverArtifacts } = await import('../src/logic/boardGenerator.js');
 const { classifyPattern } = await import('../src/logic/patternNames.js');
@@ -29,7 +29,7 @@ test('curriculum order lists exactly the registered lessons', () => {
   assert.deepEqual([...LESSON_ORDER].sort(), Object.keys(LESSONS).sort());
 });
 
-for (const id of ['countingBasics', 'subset11', 'subset12', 'oneTwoOne', 'oneTwoTwoOne', 'oneThreeOneCorner']) {
+for (const id of ['countingBasics', 'subset11', 'subset12', 'holes', 'triangles', 'oneTwoOne', 'oneTwoTwoOne', 'oneThreeOneCorner', 'twoTwoTwoCorner']) {
   test(`${id}: generates deterministically and re-verifies its predicate`, () => {
     const lesson = LESSONS[id];
     const a = generateLessonBoard(lesson, 'unit-1');
@@ -65,14 +65,12 @@ test('counting board needs no pattern, only single-number counting', () => {
   assert.equal(r.genericSubsetMoves, 0);
 });
 
-test('named-shape lessons actually put their shape on the deducible frontier', () => {
-  for (const [id, name] of [['oneTwoOne', '1-2-1'], ['oneTwoTwoOne', '1-2-2-1'], ['oneThreeOneCorner', '1-3-1']]) {
+test('named-shape lessons actually put their shape on the solve path', () => {
+  // Path-aware: triangles (and some holes) form mid-solve, not at the
+  // opening, so this uses the same lessonShowsPattern the admission does.
+  for (const [id, name] of [['holes', 'hole'], ['triangles', 'triangle'], ['oneTwoOne', '1-2-1'], ['oneTwoTwoOne', '1-2-2-1'], ['oneThreeOneCorner', '1-3-1'], ['twoTwoTwoCorner', '2-2-2']]) {
     const lb = generateLessonBoard(LESSONS[id], 'unit-4');
     assert.ok(lb, `${id} must generate`);
-    // generateLessonBoard already opened it for named-shape lessons.
-    const f = findDeducibleFrontier(lb.board, { respectFlags: false });
-    const found = [...f.safe.map(s => ({ ...s, kind: 'safe' })), ...f.mines.map(m => ({ ...m, kind: 'mine' }))]
-      .some(d => classifyPattern(lb.board, d, { rows: lb.rows, cols: lb.cols }).name === name);
-    assert.ok(found, `${id} board must show a ${name} on the frontier`);
+    assert.ok(lessonShowsPattern(lb, name), `${id} board must show a ${name} on the solve path`);
   }
 });

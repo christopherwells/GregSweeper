@@ -14,19 +14,9 @@ import '../test/helpers.mjs';
 const { isBoardSolvable, findDeducibleFrontier } = await import('../src/logic/boardSolver.js');
 const { generateBoard, cleanSolverArtifacts } = await import('../src/logic/boardGenerator.js');
 const { createDailyRNG } = await import('../src/logic/seededRandom.js');
-const { LESSONS, LESSON_ORDER, applyLessonOpening } = await import('../src/logic/lexicon.js');
-const { classifyPattern } = await import('../src/logic/patternNames.js');
+const { LESSONS, LESSON_ORDER, applyLessonOpening, lessonShowsPattern } = await import('../src/logic/lexicon.js');
 
 const ATTEMPTS = 4000;
-
-function showsPattern(board, rows, cols, name) {
-  const f = findDeducibleFrontier(board, { respectFlags: false });
-  const cands = [
-    ...f.safe.map(s => ({ ...s, kind: 'safe' })),
-    ...f.mines.map(m => ({ ...m, kind: 'mine' })),
-  ];
-  return cands.some(d => classifyPattern(board, d, { rows, cols }).name === name);
-}
 
 for (const id of LESSON_ORDER) {
   const lesson = LESSONS[id];
@@ -45,7 +35,7 @@ for (const id of LESSON_ORDER) {
     if (lesson.requiresPattern) {
       const lb = { board, rows, cols, fr, fc };
       applyLessonOpening(lb);
-      if (!showsPattern(board, rows, cols, lesson.requiresPattern)) continue;
+      if (!lessonShowsPattern(lb, lesson.requiresPattern)) continue;
     }
     fullHits++;
   }
