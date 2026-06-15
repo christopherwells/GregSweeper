@@ -4930,6 +4930,19 @@ button:focus-visible {
   font-size: 0.8rem;
   margin-top: 12px;
 }
+/* In-app entry to the crux teaser, below the calendar. */
+.archive-crux-btn {
+  display: block;
+  margin: 16px auto 0;
+  padding: 8px 14px;
+  background: none;
+  border: 1px solid var(--color-border, #555);
+  border-radius: 8px;
+  color: var(--color-text, #eee);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.archive-crux-btn:hover { background: var(--color-cell-hidden, #555); }
 
 /* Greg's yesterday note in the leaderboard modal — the closed loop of
    the daily experiment, rendered once per session. */

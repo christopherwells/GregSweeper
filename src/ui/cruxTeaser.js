@@ -216,6 +216,7 @@ export function renderCruxTeaser(date, payload, breather = false) {
       <div class="crux-teaser-actions">
         <button type="button" class="crux-reveal-all" id="crux-reveal-all">Show me all of them</button>
         <a class="action-btn primary crux-cta hidden" id="crux-play-cta" href="${_ctaHref()}">Play today's board</a>
+        <button type="button" class="crux-reveal-all" id="crux-copy-link">Copy challenge link</button>
       </div>
     </div>`;
 
@@ -225,6 +226,16 @@ export function renderCruxTeaser(date, payload, breather = false) {
   const progressEl = document.getElementById('crux-progress');
   const ctaEl = document.getElementById('crux-play-cta');
   const revealAllBtn = document.getElementById('crux-reveal-all');
+  const copyBtn = document.getElementById('crux-copy-link');
+
+  // Anyone viewing a crux can re-share it — the prod link for THIS date, so
+  // a link copied from /test/ still points at the public page.
+  if (copyBtn) copyBtn.addEventListener('click', () => {
+    const link = `https://christopherwells.github.io/GregSweeper/?crux=${date}`;
+    const flash = () => { copyBtn.textContent = 'Link copied'; setTimeout(() => { copyBtn.textContent = 'Copy challenge link'; }, 2000); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(flash, flash);
+    else flash();
+  });
 
   const revealed = new Map();
   for (const cell of payload.cells) revealed.set(key(cell.r, cell.c), cell.n);
