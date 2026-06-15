@@ -211,16 +211,23 @@ export const LESSONS = {
 
 const MAX_GENERATION_ATTEMPTS = 400; // yield ~1-in-3 for the bucket lessons
 
-// Does the lesson's named shape appear ANYWHERE on the board's no-guess
-// solve path (not just the opening)? Many shapes — triangles especially —
-// form only after a few reveals, so an opening-only check missed them
-// entirely (measured: 0 triangles at the opening, ~40% on the path). We
-// replay the greedy solve and classify the frontier at each step; the
-// player works into the board and hits the shape there. Ties admission to
-// the exact classifier the gym coaching and receipts use. The reveal
-// state is snapshotted and restored, so the board handed back to the gym
-// still starts at the opening. Exported so the yield script measures the
-// same thing.
+// Will the lesson's named shape actually be PERFORMABLE during real play?
+// Admission models the gym the way it is played: ONE cell at a time, not a
+// whole frontier wave. This matters because some shapes are transient — a
+// hole/triangle is a clue boxed to a pocket sitting inside a WIDER clue, and
+// the instant a player reveals one of that wider clue's other neighbors it
+// drops below four hidden cells and dissolves into a plain 1-1 pair. A
+// wave-mode check (reveal the entire frontier each step, classify at its
+// peak) sees the shape where a one-at-a-time player never gets to perform it
+// (measured: triangles surfaced in ~100% of wave checks but only ~80% of
+// one-at-a-time play; 2-2-2 corners ~67%). So we step one reveal at a time:
+// at each step, if the target shape is the TOP read of any provable cell, the
+// player could perform it right now → admit; otherwise make a single move and
+// look again, letting fragile structures dissolve exactly as they would in
+// play. A board admits only if the shape survives to a moment a player can
+// actually do it. The reveal state is snapshotted and restored, so the board
+// handed back to the gym still starts at the opening. Exported so the yield
+// script and tests measure the same thing.
 export function lessonShowsPattern(lessonBoard, patternName) {
   const { board, rows, cols } = lessonBoard;
   const snapshot = board.map(row => row.map(c => c.isRevealed));
@@ -237,11 +244,27 @@ export function lessonShowsPattern(lessonBoard, patternName) {
       break;
     }
     if (f.safe.length === 0) break;
-    let progressed = false;
-    for (const s of f.safe) {
-      if (!board[s.row][s.col].isRevealed) { board[s.row][s.col].isRevealed = true; progressed = true; }
+    // Make exactly ONE move (flood from a single safe cell, like one click),
+    // then re-look. One at a time so revealing a neighbor can collapse a
+    // pocket before the player reaches it — the whole point of the faithful
+    // model.
+    const s = f.safe[0];
+    const queue = [[s.row, s.col]];
+    while (queue.length) {
+      const [r, c] = queue.pop();
+      const cc = board[r][c];
+      if (cc.isRevealed || cc.isMine) continue;
+      cc.isRevealed = true;
+      if (cc.adjacentMines === 0) {
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            const nr = r + dr, nc = c + dc;
+            if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) queue.push([nr, nc]);
+          }
+        }
+      }
     }
-    if (!progressed) break;
   }
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) board[r][c].isRevealed = snapshot[r][c];
   return found;
