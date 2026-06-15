@@ -347,11 +347,12 @@ function _finishMove(opened) {
 // first per board carrying the recognition tip); proven-mine flags get
 // their reasoning once per board, then a nod; trivial counting reveals
 // are voiced only in the counting lesson, where they ARE the technique.
-function _celebrate(ded, kind, precomputedName) {
+function _celebrate(ded, kind, precomputedCls) {
   if (!ded) return;
   const { board, rows, cols } = _lessonBoard;
-  const name = precomputedName
-    || classifyPattern(board, { row: ded.row, col: ded.col, tier: ded.tier, sources: ded.sources, kind }, { rows, cols }).name;
+  const cls = precomputedCls
+    || classifyPattern(board, { row: ded.row, col: ded.col, tier: ded.tier, sources: ded.sources, kind }, { rows, cols });
+  const name = cls.name;
 
   // The Counting lesson frames every safe reveal as counting: its tier-0
   // boards route through subsets flags-blind, but the player's process
@@ -363,6 +364,11 @@ function _celebrate(ded, kind, precomputedName) {
   // 1-3-1's key move is FLAGGING the forced corner) — earns its cheer and
   // is recorded.
   if (PATTERN_SHAPE_NAMES.has(name)) { _cheerShape(name); return; }
+
+  // A bigger pair (2-2, 3-2, ...) is a 1-1 or 1-2 wearing bigger numbers.
+  // Nod to it so the player learns to see the basic pattern through the
+  // larger digits — sometimes a 1-1 or 1-2 is just a little hidden.
+  if (name === 'pair' && (cls.family === '1-1' || cls.family === '1-2')) { _nodPair(ded, cls.family); return; }
 
   // A proven-mine flag with no named shape: the reasoning, once per board.
   if (kind === 'mine') {
@@ -402,6 +408,41 @@ function _cheerShape(name) {
   }
 }
 
+// The two clue digits behind a subset move, e.g. "2-3", read from the
+// source clues (which stay revealed through the move). Null if unreadable.
+function _clueDigits(ded) {
+  if (!ded.sources || ded.sources.length < 2) return null;
+  const board = _lessonBoard.board;
+  const ds = ded.sources
+    .map(s => { const cc = board[s.row]?.[s.col]; return cc && cc.isRevealed && !cc.isMine ? (cc.displayedMines != null ? cc.displayedMines : cc.adjacentMines) : null; })
+    .filter(n => typeof n === 'number')
+    .sort((a, b) => a - b);
+  return ds.length >= 2 ? `${ds[0]}-${ds[1]}` : null;
+}
+
+// A bigger pair is a basic pattern in disguise: nod to it (recorded under
+// the family) so the player learns to read past the larger digits. The
+// first of each family on a board carries the why; repeats get a short
+// nod. Lighter than a full lesson cheer, and it never consumes the
+// first-tip slot the lesson's own pattern is owed.
+function _nodPair(ded, family) {
+  recordGymTechnique(family);
+  const digits = _clueDigits(ded);
+  const lead = digits ? `A ${digits} is` : 'That is';
+  const key = `pair-${family}`;
+  if (_namesUsed.has(key)) {
+    _coach(`💪 Another ${family} hiding behind bigger numbers.`, 2400);
+    _namesUsed.add(key);
+    return;
+  }
+  _namesUsed.add(key);
+  if (family === '1-1') {
+    _coach(`💪 ${lead} a 1-1 wearing bigger numbers: two clues that need the same amount and watch the same squares, so the shared squares satisfy both and the extra one is safe. What matters is that they match, not their size.`, 5200);
+  } else {
+    _coach(`💪 ${lead} a 1-2 wearing bigger numbers: one clue needs more than its neighbor, so its extra mines hide in the squares only it can see, and the smaller one's far square is safe. Read the gap between them, not their size.`, 5200);
+  }
+}
+
 // Gated flagging: a flag only sticks on a square the clues can settle as
 // a MINE. Tapping a flagged square unflags it.
 function _tryFlag(row, col) {
@@ -436,13 +477,13 @@ function _tryFlag(row, col) {
   // Classify BEFORE the flag lands — flagging removes the square from its
   // clues' hidden sets and dissolves the shape (the 1-3-1's forced corner
   // would otherwise read as a bare tier-2 region once flagged).
-  const moveName = ded
-    ? classifyPattern(board, { row, col, tier: ded.tier, sources: ded.sources, kind: 'mine' }, { rows: _lessonBoard.rows, cols: _lessonBoard.cols }).name
+  const moveCls = ded
+    ? classifyPattern(board, { row, col, tier: ded.tier, sources: ded.sources, kind: 'mine' }, { rows: _lessonBoard.rows, cols: _lessonBoard.cols })
     : null;
   cell.isFlagged = true;
   playFlag();
   _render();
-  _celebrate(ded, 'mine', moveName);
+  _celebrate(ded, 'mine', moveCls);
 }
 
 function _bounce(row, col) {
@@ -515,13 +556,13 @@ function _onCellClick(e) {
   // fall back to the bare digit pair (1-1). Name the move from the state
   // the player actually solved.
   const { rows, cols } = _lessonBoard;
-  const moveName = classifyPattern(
+  const moveCls = classifyPattern(
     board, { row, col, tier: ded.tier, sources: ded.sources, kind: 'safe' }, { rows, cols },
-  ).name;
+  );
   _finishMove(_floodOpen(row, col));
   // The cheer rides the coach line; the completion naming (if the board
   // just finished) rides its own line below, so both can show at once.
-  _celebrate(ded, 'safe', moveName);
+  _celebrate(ded, 'safe', moveCls);
 }
 
 // Chord on an open number. Gym flags are gate-proven mines, so a number
