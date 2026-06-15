@@ -3553,6 +3553,12 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   align-items: center;
   text-align: center;
 }
+.about-greg {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  margin-bottom: 6px;
+}
 
 .about-photo-wrapper {
   width: 120px;
