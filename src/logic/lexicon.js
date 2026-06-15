@@ -299,13 +299,27 @@ export function lessonShowsPattern(lessonBoard, patternName) {
 // the yield script and tests measure exactly what generation enforces.
 export function lessonRequiresShape(lessonBoard, shapeNames) {
   const { board, rows, cols } = lessonBoard;
-  const snapshot = board.map(row => row.map(c => c.isRevealed));
+  // Snapshot BOTH revealed and flagged state — this sim flags proven mines.
+  const snapRevealed = board.map(row => row.map(c => c.isRevealed));
+  const snapFlagged = board.map(row => row.map(c => c.isFlagged));
   const isTarget = (d, kind) =>
     shapeNames.includes(classifyPattern(board, { ...d, kind }, { rows, cols }).name);
+  // Only the POCKET family (hole/triangle) uses effective values (face minus
+  // marked mines), so only it needs proven mines flagged. Other shapes —
+  // notably the 1-3-1 corner, whose pattern INCLUDES a forced-mine corner
+  // that must stay hidden for its recognizer — break if we flag, so don't.
+  const flagMines = shapeNames.some(n => n === 'hole' || n === 'triangle');
   let required = false;
   let guard = 400;
   while (guard-- > 0) {
     const f = findDeducibleFrontier(board, { respectFlags: false });
+    // Flag every PROVEN mine before classifying (pocket family only). A
+    // larger-number hole/triangle only reads as such once its marked mine is
+    // accounted for, and a player flags proven mines as they go. Proven mines
+    // are sound to mark; the safe frontier stays flags-blind (respectFlags:
+    // false), so this never unlocks a cell — it only lets the recognizer see
+    // the marked mine.
+    if (flagMines) for (const m of f.mines) board[m.row][m.col].isFlagged = true;
     const allowed = f.safe.filter(s => !isTarget(s, 'safe'));
     if (allowed.length === 0) {
       // No non-shape progress left: the player is forced to the shape iff one
@@ -335,7 +349,10 @@ export function lessonRequiresShape(lessonBoard, shapeNames) {
       }
     }
   }
-  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) board[r][c].isRevealed = snapshot[r][c];
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    board[r][c].isRevealed = snapRevealed[r][c];
+    board[r][c].isFlagged = snapFlagged[r][c];
+  }
   return required;
 }
 
