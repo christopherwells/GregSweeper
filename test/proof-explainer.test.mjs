@@ -91,6 +91,29 @@ test('tier-2 copy: names the clue count, full resolves and socratic does not', (
   assert.ok(!JARGON.test(socratic));
 });
 
+test('full sentence names a 1-2-1 it can see; socratic never does', () => {
+  // Wall 1-2-1: rows 0-1 revealed (wall + clue row 1,2,1), row 2 hidden.
+  const board = makeBoard(3, 5);
+  for (let c = 0; c < 5; c++) { board[0][c].isRevealed = true; board[0][c].adjacentMines = 0; }
+  const vals = [0, 1, 2, 1, 0];
+  for (let c = 0; c < 5; c++) { board[1][c].isRevealed = true; board[1][c].adjacentMines = vals[c]; }
+  const ded = { row: 2, col: 2, tier: 2, sources: [{ row: 1, col: 1 }, { row: 1, col: 2 }, { row: 1, col: 3 }] };
+  const full = explainDeduction(board, ded, { style: 'full', kind: 'safe' });
+  assert.match(full, /That is the 1-2-1 pattern\./);
+  assert.ok(!JARGON.test(full), `jargon leaked: ${full}`);
+  const socratic = explainDeduction(board, ded, { style: 'socratic', kind: 'safe' });
+  assert.ok(!/pattern/.test(socratic), 'socratic must not name the pattern');
+  assert.ok(!/this square/.test(socratic), 'socratic must not resolve the square');
+});
+
+test('a shapeless region is described, never named', () => {
+  const board = makeBoard(3, 3);
+  recalcAdjacency(board);
+  const ded = { row: 0, col: 0, tier: 2, sources: [{ row: 1, col: 0 }, { row: 1, col: 1 }, { row: 1, col: 2 }, { row: 2, col: 0 }, { row: 2, col: 1 }, { row: 2, col: 2 }] };
+  const full = explainDeduction(board, ded, { style: 'full', kind: 'safe' });
+  assert.ok(!/That is the/.test(full), `must not name a shapeless region: ${full}`);
+});
+
 test('graceful null on malformed input', () => {
   const board = makeBoard(3, 3);
   recalcAdjacency(board);

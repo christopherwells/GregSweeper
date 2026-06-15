@@ -56,6 +56,27 @@ export function loadDailyResiduals() {
   return Array.isArray(arr) ? arr.filter(e => e && typeof e.time === 'number' && typeof e.par === 'number') : [];
 }
 
+// ── Greg's Gym technique counts ──────────────────────────────────
+// How many times the player has PERFORMED each named technique in the
+// gym (the deducibility gate guarantees every count is a real worked
+// deduction, never a guess). Local-only by design — the gym never
+// touches scores, the par pipeline, or Firebase. Keyed by the
+// patternNames classifier name ('count', '1-1', '1-2', '1-2-1',
+// '1-2-2-1'). Read by the Field Notebook.
+const GYM_TECHNIQUES_KEY = 'minesweeper_gym_techniques';
+
+export function recordGymTechnique(name) {
+  if (!name) return;
+  const counts = safeGetJSON(GYM_TECHNIQUES_KEY, {});
+  counts[name] = (counts[name] || 0) + 1;
+  safeSetJSON(GYM_TECHNIQUES_KEY, counts);
+}
+
+export function getGymTechniqueCounts() {
+  const counts = safeGetJSON(GYM_TECHNIQUES_KEY, {});
+  return counts && typeof counts === 'object' ? counts : {};
+}
+
 export function saveDailyPar(dateStr, par, moves, features) {
   safeSet(DAILY_PAR_KEY_PREFIX + dateStr, String(par));
   safeSet(DAILY_MOVES_KEY_PREFIX + dateStr, String(moves));
