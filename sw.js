@@ -47,6 +47,7 @@ const ASSETS = [
   './src/ui/cruxTeaser.js',
   './src/logic/gregVoice.js',
   './src/logic/proofExplainer.js',
+  './src/logic/patternNames.js',
   './src/logic/cruxExtract.js',
   './src/logic/powerUps.js',
   './src/logic/seededRandom.js',

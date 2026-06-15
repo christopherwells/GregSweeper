@@ -5,10 +5,11 @@
 // the shared geometry detector (patternNames.js) — the SAME classifier
 // the gym coaching and the receipts use, so a lesson can never teach a
 // shape the receipts cannot recognize. Measured yield
-// (scripts/measure-lexicon-yield.mjs, 2026-06-15): countingBasics 1-in-3
-// (~0.4ms), subset12 1-in-3 (~1ms), oneTwoOne 1-in-5 (~3ms), oneTwoTwoOne
-// 1-in-12 (~44ms/board — the geometry check runs per candidate, ~12
-// attempts typical, so live generation stays imperceptible).
+// (scripts/measure-lexicon-yield.mjs, 2026-06-15): countingBasics 1-in-3,
+// subset11 1-in-4, subset12 1-in-21 (~9ms/board — 2s are rarer than 1s on
+// a sparse board, but a 400-attempt budget never gets close to
+// exhausting), oneTwoOne 1-in-5, oneTwoTwoOne 1-in-12 (~30-44ms/board, the
+// geometry check runs per candidate). All live, no pre-baked content.
 //
 // The teaching mechanic is the deducibility CLICK-GATE (lexiconUI.js):
 // a click on a cell that is not currently provably safe bounces and the
@@ -23,7 +24,7 @@ import { classifyPattern } from './patternNames.js';
 
 // The curriculum, easiest first. lexiconUI renders the lesson-select
 // screen in this order; the Field Notebook lists techniques in it too.
-export const LESSON_ORDER = ['countingBasics', 'subset12', 'oneTwoOne', 'oneTwoTwoOne'];
+export const LESSON_ORDER = ['countingBasics', 'subset11', 'subset12', 'oneTwoOne', 'oneTwoTwoOne'];
 
 // Each lesson's `accepts(r)` is the bucket gate over the isBoardSolvable
 // result. Named-shape lessons additionally set `requiresPattern`, which
@@ -47,15 +48,39 @@ export const LESSONS = {
       && r.passAMoves >= 3,
   },
 
-  // Tier 1 — two numbers looking at the same squares (the 1-1 / 1-2
-  // family). Unchanged admission from the original prototype.
+  // Tier 1 — two EQUAL numbers looking at the same squares. The mine that
+  // satisfies the first satisfies the second too, so the second's far
+  // square is safe. The bucket gate (a canonical subset, nothing harder)
+  // is shared with the 1-2; requiresPattern splits them by the two clue
+  // digits, so the 1-1 lesson always features an actual 1-1.
+  subset11: {
+    id: 'subset11',
+    name: 'The 1-1 pattern',
+    blurb: 'Two equal neighbors.',
+    rule: 'When two 1s sit side by side looking at the same squares, the mine that satisfies the first already satisfies the second. The square only the second 1 can see is safe.',
+    naming: 'That was a 1-1: the first 1\'s mine sits in the squares both share, which satisfies the second 1 too, so its far square is safe.',
+    rows: 6, cols: 6, mines: 6,
+    requiresPattern: '1-1',
+    accepts: (r) =>
+      (r.solvable || r.remainingUnknowns === 0)
+      && r.canonicalSubsetMoves >= 1
+      && r.genericSubsetMoves === 0
+      && r.advancedLogicMoves === 0
+      && r.disjunctiveMoves === 0
+      && r.techniqueLevel === 1,
+  },
+
+  // Tier 1 — two numbers off by one. The bigger number's extra mine can
+  // only sit in the square the smaller one cannot see; the smaller one's
+  // far square is safe.
   subset12: {
     id: 'subset12',
     name: 'The 1-2 pattern',
-    blurb: 'Compare two neighbors.',
+    blurb: 'A 1 beside a 2.',
     rule: 'When two numbers look at the same squares, the smaller one\'s mines fit inside the squares they share. The square only the bigger number sees holds its extra mine, and the square only the smaller number sees is safe.',
-    naming: 'That was a pair read: two numbers looking at the same squares, where the smaller one\'s mines settle what the bigger one has left.',
+    naming: 'That was a 1-2: the 2 needs one mine more than the 1, so it sits in the square only the 2 can see, and the 1\'s far square is safe.',
     rows: 6, cols: 6, mines: 6,
+    requiresPattern: '1-2',
     accepts: (r) =>
       (r.solvable || r.remainingUnknowns === 0)
       && r.canonicalSubsetMoves >= 1

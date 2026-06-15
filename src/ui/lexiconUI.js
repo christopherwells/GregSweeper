@@ -77,6 +77,7 @@ const PATTERN_COACH = {
 // plain hidden square. The rule text carries the precise reasoning.
 const SKETCHES = {
   countingBasics: ['1S', 'MS'],
+  subset11: ['11.', 'M.S'],
   subset12: ['12.', 'SMM'],
   oneTwoOne: ['121', 'MSM'],
   oneTwoTwoOne: ['1221', 'SMMS'],
@@ -85,7 +86,8 @@ const SKETCHES = {
 // Which classifier names count toward each lesson's notebook tally.
 const TECHNIQUE_KEYS = {
   countingBasics: ['count'],
-  subset12: ['1-1', '1-2'],
+  subset11: ['1-1'],
+  subset12: ['1-2'],
   oneTwoOne: ['1-2-1'],
   oneTwoTwoOne: ['1-2-2-1'],
 };

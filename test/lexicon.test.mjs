@@ -29,7 +29,7 @@ test('curriculum order lists exactly the registered lessons', () => {
   assert.deepEqual([...LESSON_ORDER].sort(), Object.keys(LESSONS).sort());
 });
 
-for (const id of ['countingBasics', 'subset12', 'oneTwoOne', 'oneTwoTwoOne']) {
+for (const id of ['countingBasics', 'subset11', 'subset12', 'oneTwoOne', 'oneTwoTwoOne']) {
   test(`${id}: generates deterministically and re-verifies its predicate`, () => {
     const lesson = LESSONS[id];
     const a = generateLessonBoard(lesson, 'unit-1');
