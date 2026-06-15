@@ -199,10 +199,27 @@ export function isOneThreeOneCorner(board, rows, cols, neighborCache, targetIdx,
 function matchesPocket(board, rows, cols, neighborCache, targetIdx, k) {
   const at = (i) => board[Math.floor(i / cols)][i % cols];
   const total = rows * cols;
+  // Mines already KNOWN adjacent to a clue: a marked (flagged) mine, or a
+  // revealed / strike mine. A clue's EFFECTIVE value is its face value minus
+  // these. A "3 with a marked mine beside it" effectively needs 2 more mines
+  // among its hidden cells — this is what lets triangles (and holes) carry
+  // LARGER NUMBERS while their pocket stays ambiguous.
+  const knownMines = (i) => {
+    let n = 0;
+    for (const ni of neighborCache[i]) { const c = at(ni); if (c.isFlagged || (c.isRevealed && c.isMine)) n++; }
+    return n;
+  };
   for (let i = 0; i < total; i++) {
     if (!isPlainClue(at(i))) continue;
     const P = hiddenNeighbors(board, cols, neighborCache, i);
     if (P.length !== k) continue;            // boxed to exactly the pocket
+    // A genuine hole/triangle: the boxed clue's pocket is AMBIGUOUS — its
+    // EFFECTIVE value is LESS than its k cells, so a mine is in there but you
+    // don't know which (that ambiguity IS the hole/triangle). effective ===
+    // k would mean the pocket is ALL mines (unambiguous) — a plain reduction,
+    // NOT a hole; that false match is exactly what slipped non-holes through.
+    const boxEff = vis(at(i)) - knownMines(i);
+    if (!(boxEff >= 1 && boxEff < k)) continue;
     const Pset = new Set(P);
     for (let j = 0; j < total; j++) {
       if (j === i || !isPlainClue(at(j))) continue;
@@ -211,17 +228,11 @@ function matchesPocket(board, rows, cols, neighborCache, targetIdx, k) {
       if (!P.every(x => W.includes(x))) continue; // pocket ⊆ wide
       const extra = W.filter(x => !Pset.has(x));
       if (!extra.includes(targetIdx)) continue;
-      // A genuine hole/triangle: the boxed clue's pocket is AMBIGUOUS — its
-      // value is LESS than its k cells, so a mine is in there but you don't
-      // know which (that ambiguity IS the hole). The wider clue of the SAME
-      // value (diff 0) has all its mines inside that pocket, so its extra
-      // squares are SAFE. boxVal === k would mean the pocket is ALL mines
-      // (unambiguous) — a plain 2-2 reduction wearing the wider clue, NOT a
-      // hole; that false match is exactly what slipped non-holes through.
-      const boxVal = vis(at(i));
-      const diffMines = vis(at(j)) - boxVal;   // mines in the wider clue's extra
-      if (diffMines === 0 && boxVal >= 1 && boxVal < k) {
-        return '1-1';                          // same value by construction
+      // The wider clue of the SAME EFFECTIVE value has all its mines inside
+      // the shared pocket, so its extra squares are SAFE (the freed cells).
+      const widerEff = vis(at(j)) - knownMines(j);
+      if (widerEff === boxEff) {
+        return '1-1';                        // equal effective value by construction
       }
     }
   }
