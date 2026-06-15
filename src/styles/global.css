@@ -1101,7 +1101,10 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 .crux-cell.crux-fog:hover { background: var(--color-cell-hidden-hover, #666); }
 .crux-cell.revealed { background: var(--color-cell-revealed, #333); cursor: default; }
 .crux-cell.crux-found { background: var(--overlay-suggest-start, #2e7d32); color: #fff; }
-.crux-cell.crux-mine { background: #8a3b3b; color: #fff; }
+/* A flagged mine reads like the game's flagged cell: the hidden-cell ground
+   with the drawn flag sprite on top (not an emoji). */
+.crux-cell.crux-mine { background: var(--color-cell-hidden, #555); }
+.crux-cell .crux-marker-img { width: 72%; height: 72%; object-fit: contain; }
 .crux-cell[data-num="1"] { color: var(--color-num-1, #6baed6); }
 .crux-cell[data-num="2"] { color: var(--color-num-2, #66bb6a); }
 .crux-cell[data-num="3"] { color: var(--color-num-3, #ff6b6b); }
@@ -3550,6 +3553,12 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   align-items: center;
   text-align: center;
 }
+.about-greg {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  margin-bottom: 6px;
+}
 
 .about-photo-wrapper {
   width: 120px;
@@ -4930,6 +4939,19 @@ button:focus-visible {
   font-size: 0.8rem;
   margin-top: 12px;
 }
+/* In-app entry to the crux teaser, below the calendar. */
+.archive-crux-btn {
+  display: block;
+  margin: 16px auto 0;
+  padding: 8px 14px;
+  background: none;
+  border: 1px solid var(--color-border, #555);
+  border-radius: 8px;
+  color: var(--color-text, #eee);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.archive-crux-btn:hover { background: var(--color-cell-hidden, #555); }
 
 /* Greg's yesterday note in the leaderboard modal — the closed loop of
    the daily experiment, rendered once per session. */

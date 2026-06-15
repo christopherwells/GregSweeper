@@ -1689,7 +1689,10 @@ function generateShareCard() {
     if (state.dailyBombHits > 0) {
       lines.push(`💥×${state.dailyBombHits}`);
     }
-    lines.push(`https://christopherwells.github.io/GregSweeper/?mode=daily`);
+    // The card's single link is a crux challenge: a softer hook than a bare
+    // play link, and the teaser's own "Play today's board" CTA still routes
+    // the recipient to the daily.
+    lines.push(`🦀 Try yesterday's crux: https://christopherwells.github.io/GregSweeper/?crux=${_addCalendarDays(getLocalDateString(), -1)}`);
     return lines.join('\n');
   }
 
@@ -2668,6 +2671,15 @@ if (_archiveNextBtn) _archiveNextBtn.addEventListener('click', () => {
   renderArchiveCalendar();
 });
 
+// In-app entry to the crux teaser: open yesterday's crux in a new tab so
+// the calendar stays put. Same-origin so it works on whichever build
+// (the crux data is read from prod either way).
+const _archiveCruxBtn = $('#archive-crux-btn');
+if (_archiveCruxBtn) _archiveCruxBtn.addEventListener('click', () => {
+  const y = _addCalendarDays(getLocalDateString(), -1);
+  window.open(`${location.pathname}?crux=${y}`, '_blank', 'noopener');
+});
+
 const _archiveGridEl = $('#archive-grid');
 if (_archiveGridEl) _archiveGridEl.addEventListener('click', async (e) => {
   const cell = e.target.closest('.archive-day.playable');
@@ -3365,7 +3377,9 @@ $('#gameover-share').addEventListener('click', () => handleShare());
 // prod even on the test build, so the link works wherever it's opened.
 $('#gameover-crux-challenge')?.addEventListener('click', () => {
   const yesterday = _addCalendarDays(getLocalDateString(), -1);
-  copyToClipboard(`https://christopherwells.github.io/GregSweeper/?crux=${yesterday}`);
+  const link = `https://christopherwells.github.io/GregSweeper/?crux=${yesterday}`;
+  copyToClipboard(link);                      // link in your clipboard to send
+  window.open(link, '_blank', 'noopener');    // and opened so you see what you're sharing
 });
 
 $('#gameover-done').addEventListener('click', () => {
