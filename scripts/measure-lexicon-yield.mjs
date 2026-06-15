@@ -14,7 +14,7 @@ import '../test/helpers.mjs';
 const { isBoardSolvable, findDeducibleFrontier } = await import('../src/logic/boardSolver.js');
 const { generateBoard, cleanSolverArtifacts } = await import('../src/logic/boardGenerator.js');
 const { createDailyRNG } = await import('../src/logic/seededRandom.js');
-const { LESSONS, LESSON_ORDER, applyLessonOpening, lessonShowsPattern } = await import('../src/logic/lexicon.js');
+const { LESSONS, LESSON_ORDER, applyLessonOpening, lessonShowsPattern, lessonRequiresShape } = await import('../src/logic/lexicon.js');
 
 const ATTEMPTS = 4000;
 
@@ -35,7 +35,12 @@ for (const id of LESSON_ORDER) {
     if (lesson.requiresPattern) {
       const lb = { board, rows, cols, fr, fc };
       applyLessonOpening(lb);
-      if (!lessonShowsPattern(lb, lesson.requiresPattern)) continue;
+      // Match generateLessonBoard: geometry shapes must be REQUIRED, pair
+      // shapes only need to appear.
+      const ok = lesson.requireShape
+        ? lessonRequiresShape(lb, [lesson.requiresPattern])
+        : lessonShowsPattern(lb, lesson.requiresPattern);
+      if (!ok) continue;
     }
     fullHits++;
   }

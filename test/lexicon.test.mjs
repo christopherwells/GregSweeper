@@ -8,7 +8,7 @@ import './helpers.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-const { LESSONS, LESSON_ORDER, generateLessonBoard, applyLessonOpening, lessonComplete, lessonShowsPattern } = await import('../src/logic/lexicon.js');
+const { LESSONS, LESSON_ORDER, generateLessonBoard, applyLessonOpening, lessonComplete, lessonShowsPattern, lessonRequiresShape } = await import('../src/logic/lexicon.js');
 const { isBoardSolvable, findDeducibleFrontier } = await import('../src/logic/boardSolver.js');
 const { cleanSolverArtifacts } = await import('../src/logic/boardGenerator.js');
 const { classifyPattern } = await import('../src/logic/patternNames.js');
@@ -65,12 +65,18 @@ test('counting board needs no pattern, only single-number counting', () => {
   assert.equal(r.genericSubsetMoves, 0);
 });
 
-test('named-shape lessons actually put their shape on the solve path', () => {
-  // Path-aware: triangles (and some holes) form mid-solve, not at the
-  // opening, so this uses the same lessonShowsPattern the admission does.
-  for (const [id, name] of [['holes', 'hole'], ['triangles', 'triangle'], ['oneTwoOne', '1-2-1'], ['oneTwoTwoOne', '1-2-2-1'], ['oneThreeOneCorner', '1-3-1'], ['twoTwoTwoCorner', '2-2-2']]) {
-    const lb = generateLessonBoard(LESSONS[id], 'unit-4');
+test('EVERY named-shape lesson REQUIRES its shape (a lesson must force its technique)', () => {
+  // The require-gate: the board cannot be finished without performing the
+  // shape (a board solvable around the shape is rejected). This is what
+  // stops boards where the shape is an incidental cameo off the critical
+  // path. Covers the bare pairs too: 1-1/1-2 are recognized by the overlap
+  // geometry (matchesOverlapPair), not the shadow-prone frontier sources, so
+  // 1-2 — whose freed SAFE square is the square only the 1 sees — finally
+  // surfaces and can be required (it measured 0% required before this).
+  for (const [id, name] of [['subset11', '1-1'], ['subset12', '1-2'], ['holes', 'hole'], ['triangles', 'triangle'], ['oneTwoOne', '1-2-1'], ['oneTwoTwoOne', '1-2-2-1'], ['oneThreeOneCorner', '1-3-1'], ['twoTwoTwoCorner', '2-2-2']]) {
+    assert.equal(LESSONS[id].requireShape, true, `${id} must use the require-gate`);
+    const lb = generateLessonBoard(LESSONS[id], 'unit-5');
     assert.ok(lb, `${id} must generate`);
-    assert.ok(lessonShowsPattern(lb, name), `${id} board must show a ${name} on the solve path`);
+    assert.ok(lessonRequiresShape(lb, [name]), `${id} board must REQUIRE a ${name}, not merely show one`);
   }
 });

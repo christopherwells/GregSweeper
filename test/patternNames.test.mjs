@@ -9,7 +9,7 @@ import './helpers.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-const { classifyPattern, isOneTwoOne, isOneThreeOneCorner, isTwoTwoTwoCorner, boardContainsNamedPattern } = await import('../src/logic/patternNames.js');
+const { classifyPattern, isOneTwoOne, isOneThreeOneCorner, isTwoTwoTwoCorner, matchesOverlapPair, boardContainsNamedPattern } = await import('../src/logic/patternNames.js');
 const { findDeducibleFrontier } = await import('../src/logic/boardSolver.js');
 const { generateBoard, cleanSolverArtifacts } = await import('../src/logic/boardGenerator.js');
 const { createDailyRNG } = await import('../src/logic/seededRandom.js');
@@ -202,6 +202,44 @@ test('2-2-2 recognizer is SOUND: every cell it names is provably safe', () => {
     }
   }
   assert.ok(fired > 0, 'the sweep should exercise the recognizer at least once');
+});
+
+test('1-1 / 1-2 overlap recognizer is SOUND: a named safe square is provably safe', () => {
+  // Checked against GROUND TRUTH, not the solver frontier: the recognizer
+  // can out-prove the frontier (gauss is incomplete on big components), so
+  // "named safe" must mean the cell is genuinely NOT a mine, and "named
+  // mine" must mean it genuinely IS one. Reveals FLOOD zeros (like real
+  // play) so a revealed 0-clue never sits with hidden neighbors — that
+  // impossible state is what first tripped this.
+  const rows = 7, cols = 7;
+  let firedSafe = 0, firedMine = 0;
+  for (let s = 0; s < 150; s++) {
+    const board = generateBoard(rows, cols, 9, 3, 3, createDailyRNG(`pair-sound-${s}`));
+    cleanSolverArtifacts(board);
+    floodOpen(board, rows, cols, 3, 3);
+    let guard = 60;
+    while (guard-- > 0) {
+      const f = findDeducibleFrontier(board, { respectFlags: false });
+      for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+        const cell = board[r][c];
+        if (cell.isRevealed || cell.isFlagged) continue;
+        const idx = r * cols + c;
+        if (matchesOverlapPair(board, rows, cols, undefined, idx, 'safe')) {
+          firedSafe++;
+          assert.ok(!cell.isMine, `(${r},${c}) named a SAFE pair but is actually a mine (seed ${s})`);
+        }
+        if (matchesOverlapPair(board, rows, cols, undefined, idx, 'mine')) {
+          firedMine++;
+          assert.ok(cell.isMine, `(${r},${c}) named a MINE pair but is actually safe (seed ${s})`);
+        }
+      }
+      if (f.safe.length === 0) break;
+      const before = board.flat().filter(x => x.isRevealed).length;
+      for (const x of f.safe) floodOpen(board, rows, cols, x.row, x.col);
+      if (board.flat().filter(x => x.isRevealed).length === before) break;
+    }
+  }
+  assert.ok(firedSafe > 0 && firedMine > 0, 'the sweep should exercise both safe and mine namings');
 });
 
 test('malformed input returns a null name, never throws', () => {
