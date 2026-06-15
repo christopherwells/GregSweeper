@@ -233,6 +233,49 @@ export function isTriangle(board, rows, cols, neighborCache, targetIdx) {
   return matchesPocket(board, rows, cols, nc, targetIdx, 3);
 }
 
+// The bare 1-1 / 1-2 OVERLAP, read by geometry. Two plain clues A (value
+// <= B) sharing at least one hidden square. Writing each clue's hidden set
+// as shared + its own exclusive cells, subtracting the clues gives
+// mines(exclB) - mines(exclA) = valB - valA. When valB - valA === |exclB|,
+// every exclB cell is a mine and every exclA cell is SAFE — the classic
+// reading "the square only the smaller clue sees is safe; the square only
+// the bigger sees is a mine." (1-1 is the equal-value case: exclB empty, B's
+// hidden a subset of A's, so A's exclusive square is safe.) Returns the
+// sorted [lo, hi] clue digits when the target is the forced cell (safe in
+// exclA, or mine in exclB), else null. This reads the real overlap — the old
+// source-based pair naming was shadow-prone (a 1-2 board's freed square got
+// attributed to a 1-1 elsewhere), and a subset-only model misses the 1-2's
+// safe square entirely. Exported so the require-gate and tests share it.
+export function matchesOverlapPair(board, rows, cols, neighborCache, targetIdx, kind) {
+  const nc = neighborCache || buildNeighborCache(board, rows, cols);
+  const at = (i) => board[Math.floor(i / cols)][i % cols];
+  const total = rows * cols;
+  for (let a = 0; a < total; a++) {
+    if (!isPlainClue(at(a))) continue;
+    if (vis(at(a)) < 1) continue;                   // a 0-clue is counting, not a pair (and A is the smaller)
+    const HA = hiddenNeighbors(board, cols, nc, a);
+    if (HA.length === 0) continue;
+    const HAset = new Set(HA);
+    for (let b = 0; b < total; b++) {
+      if (b === a || !isPlainClue(at(b))) continue;
+      const vA = vis(at(a)), vB = vis(at(b));
+      if (vA > vB) continue;                        // each unordered pair once, A is the smaller
+      const HB = hiddenNeighbors(board, cols, nc, b);
+      if (HB.length === 0) continue;
+      const HBset = new Set(HB);
+      const shared = HA.filter(x => HBset.has(x));
+      if (shared.length === 0) continue;            // the clues must overlap
+      const exclB = HB.filter(x => !HAset.has(x));   // only the bigger clue sees these
+      if (vB - vA !== exclB.length) continue;        // forces exclA all-safe, exclB all-mine
+      const exclA = HA.filter(x => !HBset.has(x));   // only the smaller clue sees these
+      const forcedSafe = exclA.includes(targetIdx);
+      const forcedMine = exclB.includes(targetIdx);
+      if ((kind === 'mine' ? forcedMine : forcedSafe)) return [vA, vB];
+    }
+  }
+  return null;
+}
+
 // The 2-2-2 corner: a central 2 (C) adjacent to the safe target X, whose
 // OTHER hidden cells (`rest`) split into two disjoint groups each forced
 // to hold >=1 mine by a flanking 2. Those two groups then already hold
@@ -341,9 +384,20 @@ export function classifyPattern(board, ded, opts = {}) {
     if (kind === 'safe' && isTwoTwoTwoCorner(board, rows, cols, neighborCache, targetIdx)) {
       return { name: '2-2-2', family: 'enumeration' };
     }
+    // The bare 1-1 / 1-2 overlap, by geometry — surfaces reliably where the
+    // source-based naming below was shadow-prone. A 2-2 / 3-2 etc. returns
+    // 'pair' carrying the basic family it disguises.
+    const op = matchesOverlapPair(board, rows, cols, neighborCache, targetIdx, kind);
+    if (op) {
+      const [lo, hi] = op;
+      if (lo === 1 && hi === 1) return { name: '1-1', family: '1-1' };
+      if (lo === 1 && hi === 2) return { name: '1-2', family: '1-2' };
+      return { name: 'pair', family: lo === hi ? '1-1' : '1-2' };
+    }
   }
 
-  // Tier 1, no line shape: a two-clue overlap. Name the digit pair.
+  // Tier 1, no line shape: a two-clue overlap the geometry scan did not pin.
+  // Name the digit pair from the frontier's own sources (a deeper fallback).
   if (tier === 1 && ded.sources && ded.sources.length >= 2) {
     const a = board[ded.sources[0].row]?.[ded.sources[0].col];
     const b = board[ded.sources[1].row]?.[ded.sources[1].col];

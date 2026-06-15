@@ -62,6 +62,8 @@ export const LESSONS = {
     naming: 'That was a 1-1: the first 1\'s mine sits in the squares both share, which satisfies the second 1 too, so its far square is safe.',
     rows: 6, cols: 6, mines: 6,
     requiresPattern: '1-1',
+    requireShape: true,
+    attempts: 2000,
     accepts: (r) =>
       (r.solvable || r.remainingUnknowns === 0)
       && r.canonicalSubsetMoves >= 1
@@ -82,6 +84,8 @@ export const LESSONS = {
     naming: 'That was a 1-2: the 2 needs one mine more than the 1, so it sits in the square only the 2 can see, and the 1\'s far square is safe.',
     rows: 6, cols: 6, mines: 6,
     requiresPattern: '1-2',
+    requireShape: true,
+    attempts: 3000,
     accepts: (r) =>
       (r.solvable || r.remainingUnknowns === 0)
       && r.canonicalSubsetMoves >= 1
@@ -309,7 +313,27 @@ export function lessonRequiresShape(lessonBoard, shapeNames) {
       required = f.safe.some(s => isTarget(s, 'safe')) || f.mines.some(m => isTarget(m, 'mine'));
       break;
     }
-    for (const s of allowed) board[s.row][s.col].isRevealed = true;
+    // Reveal each allowed cell by FLOODING zeros, exactly as a real click
+    // does — otherwise a revealed 0 can sit with hidden neighbors, an
+    // impossible board state that confuses the recognizers.
+    for (const s of allowed) {
+      const queue = [[s.row, s.col]];
+      while (queue.length) {
+        const [r, c] = queue.pop();
+        const cc = board[r][c];
+        if (cc.isRevealed || cc.isMine) continue;
+        cc.isRevealed = true;
+        if (cc.adjacentMines === 0) {
+          for (let dr = -1; dr <= 1; dr++) {
+            for (let dc = -1; dc <= 1; dc++) {
+              if (dr === 0 && dc === 0) continue;
+              const nr = r + dr, nc = c + dc;
+              if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) queue.push([nr, nc]);
+            }
+          }
+        }
+      }
+    }
   }
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) board[r][c].isRevealed = snapshot[r][c];
   return required;
