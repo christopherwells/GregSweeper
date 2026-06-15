@@ -16,6 +16,7 @@ import { findDeducibleFrontier } from '../logic/boardSolver.js';
 import { CRUX_VIEWED_KEY_PREFIX } from '../logic/archiveEligibility.js';
 import { safeSet } from '../storage/storageAdapter.js';
 import { reportCaughtError } from '../diagnostics/errorReporter.js';
+import { spriteImgHTML } from './spriteLoader.js';
 
 // Rebuild a plain board (numbers + walls, no mine layout) from a crux
 // payload, so findDeducibleFrontier can recompute EVERYTHING the shown
@@ -163,7 +164,7 @@ export function renderCruxTeaser(date, payload, breather = false) {
     root.innerHTML = `
       <div class="crux-teaser-card">
         <div class="crux-teaser-brand">
-          <img class="crux-greg" src="assets/sprites/idle.png" alt="Greg" draggable="false" onerror="this.remove()">
+          ${spriteImgHTML('smiley', 'crux-greg', 'Greg')}
           <div>
             <div class="crux-teaser-logo">GregSweeper</div>
             <div class="crux-teaser-tagline">No guesses. Ever.</div>
@@ -202,7 +203,7 @@ export function renderCruxTeaser(date, payload, breather = false) {
   root.innerHTML = `
     <div class="crux-teaser-card">
       <div class="crux-teaser-brand">
-        <img class="crux-greg" src="assets/sprites/idle.png" alt="Greg" draggable="false" onerror="this.remove()">
+        ${spriteImgHTML('smiley', 'crux-greg', 'Greg')}
         <div>
           <div class="crux-teaser-logo">GregSweeper</div>
           <div class="crux-teaser-tagline">No guesses. Ever.</div>
@@ -279,7 +280,7 @@ export function renderCruxTeaser(date, payload, breather = false) {
   const markMine = (div) => {
     div.classList.remove('crux-fog');
     div.classList.add('crux-mine');
-    div.textContent = '🚩';
+    div.innerHTML = spriteImgHTML('flag', 'crux-marker-img', 'flagged mine');
     div.removeAttribute('role');
     div.tabIndex = -1;
   };
@@ -307,7 +308,17 @@ export function renderCruxTeaser(date, payload, breather = false) {
     if (ctaEl) ctaEl.classList.remove('hidden');
   };
 
-  const onTap = (r, c, div) => {
+  const bounce = (div, msg) => {
+    div.classList.add('crux-bounce');
+    setTimeout(() => div.classList.remove('crux-bounce'), 320);
+    if (coachEl) coachEl.textContent = msg;
+  };
+
+  // Left tap / Enter OPENS a square you can prove SAFE. Right-click or
+  // long-press FLAGS a square you can prove is a MINE. Both gate on the
+  // proof, like the Gym and the real game: you never open a mine or flag a
+  // safe square. Completion is opening every safe square; flags are a bonus.
+  const onReveal = (r, c, div) => {
     if (done) return;
     const k = key(r, c);
     if (safeKeys.has(k)) {
@@ -317,26 +328,61 @@ export function renderCruxTeaser(date, payload, breather = false) {
       if (coachEl) coachEl.textContent = 'Proven safe.';
       if (found >= totalSafe) finish();
     } else if (mineKeys.has(k)) {
-      markMine(div);
-      if (coachEl) coachEl.textContent = 'A forced mine. Flagged, never guessed.';
+      bounce(div, 'That one is a mine. Long-press or right-click to flag it, never open it.');
     } else {
-      div.classList.add('crux-bounce');
-      setTimeout(() => div.classList.remove('crux-bounce'), 320);
-      if (coachEl) coachEl.textContent = "The numbers don't force this one. Take the squares they do.";
+      bounce(div, "The numbers don't force this one. Take the squares they do.");
     }
   };
 
+  const onFlag = (r, c, div) => {
+    if (done) return;
+    const k = key(r, c);
+    if (mineKeys.has(k)) {
+      markMine(div);
+      if (coachEl) coachEl.textContent = 'A forced mine. Flagged, never guessed.';
+    } else if (safeKeys.has(k)) {
+      bounce(div, 'That one is provably safe. Open it instead.');
+    } else {
+      bounce(div, 'Nothing here forces a mine. Flag only what the numbers pin down.');
+    }
+  };
+
+  // Long-press (touch) is the flag gesture; lpFired swallows the synthetic
+  // click that follows so it does not also try to open the square.
+  let lpTimer = null;
+  let lpFired = false;
+
   boardEl.addEventListener('click', (e) => {
+    if (lpFired) { lpFired = false; return; }
     const div = e.target.closest('.crux-cell.crux-fog');
     if (!div) return;
-    onTap(Number(div.dataset.r), Number(div.dataset.c), div);
+    onReveal(Number(div.dataset.r), Number(div.dataset.c), div);
   });
   boardEl.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
     const div = e.target.closest('.crux-cell.crux-fog');
     if (!div) return;
     e.preventDefault();
-    onTap(Number(div.dataset.r), Number(div.dataset.c), div);
+    onReveal(Number(div.dataset.r), Number(div.dataset.c), div);
   });
+  boardEl.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    const div = e.target.closest('.crux-cell.crux-fog');
+    if (!div) return;
+    onFlag(Number(div.dataset.r), Number(div.dataset.c), div);
+  });
+  boardEl.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse') return; // mouse flags via right-click
+    const div = e.target.closest('.crux-cell.crux-fog');
+    if (!div) return;
+    lpTimer = setTimeout(() => {
+      lpFired = true;
+      onFlag(Number(div.dataset.r), Number(div.dataset.c), div);
+    }, 450);
+  });
+  const cancelLp = () => { if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; } };
+  boardEl.addEventListener('pointerup', cancelLp);
+  boardEl.addEventListener('pointerleave', cancelLp);
+  boardEl.addEventListener('pointercancel', cancelLp);
   if (revealAllBtn) revealAllBtn.addEventListener('click', finish);
 }
