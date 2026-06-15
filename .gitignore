@@ -1,6 +1,7 @@
 .claude/
 .playwright-mcp/
 .polish/
+*.docx
 *.png
 # Marketing / app assets ship with the repo even though the global *.png
 # rule above would otherwise exclude them. Anything not under assets/
