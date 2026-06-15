@@ -211,12 +211,17 @@ function matchesPocket(board, rows, cols, neighborCache, targetIdx, k) {
       if (!P.every(x => W.includes(x))) continue; // pocket ⊆ wide
       const extra = W.filter(x => !Pset.has(x));
       if (!extra.includes(targetIdx)) continue;
-      // Exact constraints: mines(pocket) = box value, so mines(extra) =
-      // wideValue - boxValue. The target is forced only when that is 0
-      // (extra all safe) or === extra.length (extra all mines).
-      const diffMines = vis(at(j)) - vis(at(i));
-      if (diffMines === 0 || diffMines === extra.length) {
-        return vis(at(i)) === vis(at(j)) ? '1-1' : '1-2';
+      // A genuine hole/triangle: the boxed clue's pocket is AMBIGUOUS — its
+      // value is LESS than its k cells, so a mine is in there but you don't
+      // know which (that ambiguity IS the hole). The wider clue of the SAME
+      // value (diff 0) has all its mines inside that pocket, so its extra
+      // squares are SAFE. boxVal === k would mean the pocket is ALL mines
+      // (unambiguous) — a plain 2-2 reduction wearing the wider clue, NOT a
+      // hole; that false match is exactly what slipped non-holes through.
+      const boxVal = vis(at(i));
+      const diffMines = vis(at(j)) - boxVal;   // mines in the wider clue's extra
+      if (diffMines === 0 && boxVal >= 1 && boxVal < k) {
+        return '1-1';                          // same value by construction
       }
     }
   }

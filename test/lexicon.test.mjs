@@ -14,13 +14,31 @@ const { cleanSolverArtifacts } = await import('../src/logic/boardGenerator.js');
 const { classifyPattern } = await import('../src/logic/patternNames.js');
 
 // Greedy provably-safe play must reach completion — if it stalls, the
-// gate would soft-lock the player.
+// gate would soft-lock the player. Reveals FLOOD zeros, exactly as a real
+// click does: without flooding, a revealed 0-clue sits with hidden
+// neighbors (an impossible state) and the solver spuriously stalls.
+function floodReveal(board, rows, cols, r, c) {
+  const q = [[r, c]];
+  while (q.length) {
+    const [rr, cc] = q.pop();
+    const cell = board[rr][cc];
+    if (cell.isRevealed || cell.isMine) continue;
+    cell.isRevealed = true;
+    if (cell.adjacentMines === 0) {
+      for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+        if (!dr && !dc) continue;
+        const nr = rr + dr, nc = cc + dc;
+        if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) q.push([nr, nc]);
+      }
+    }
+  }
+}
 function playToCompletion(lb) {
   let guard = 400;
   while (!lessonComplete(lb) && guard-- > 0) {
     const f = findDeducibleFrontier(lb.board, { respectFlags: false });
     assert.ok(f.safe.length > 0, 'frontier must never be empty before completion');
-    for (const s of f.safe) lb.board[s.row][s.col].isRevealed = true;
+    for (const s of f.safe) floodReveal(lb.board, lb.rows, lb.cols, s.row, s.col);
   }
   assert.ok(lessonComplete(lb), 'greedy provably-safe play must complete the lesson');
 }
