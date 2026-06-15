@@ -9,7 +9,7 @@ import './helpers.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-const { classifyPattern, isOneTwoOne, isOneThreeOneCorner, isTwoTwoTwoCorner, matchesOverlapPair, boardContainsNamedPattern } = await import('../src/logic/patternNames.js');
+const { classifyPattern, isOneTwoOne, isOneThreeOneCorner, isTwoTwoTwoCorner, matchesOverlapPair, isHole, isTriangle, boardContainsNamedPattern } = await import('../src/logic/patternNames.js');
 const { findDeducibleFrontier } = await import('../src/logic/boardSolver.js');
 const { generateBoard, cleanSolverArtifacts } = await import('../src/logic/boardGenerator.js');
 const { createDailyRNG } = await import('../src/logic/seededRandom.js');
@@ -258,4 +258,65 @@ test('boardContainsNamedPattern finds the wall 1-2-1 and rejects a blank board',
   const blank = makeBoard(3, 5);
   recalcAdjacency(blank);
   assert.equal(boardContainsNamedPattern(blank, 3, 5, '1-2-1'), false);
+});
+
+test('a hole needs an AMBIGUOUS pocket (box value < pocket size); a 2-2 is not a hole', () => {
+  // Christopher's hole spec:  ?kkk? / ?h1h? / 11111  — a stick-out 1 sees two
+  // hidden cells (one is a mine, you don't know which: the "hole"), and a
+  // wider 1 sharing them frees its other cells (the k's). Build clue cells
+  // directly (isHole reads clue values + hidden flags).
+  const mk = (rowsSpec) => rowsSpec.map((row, r) => row.map((v, c) => ({
+    row: r, col: c, isRevealed: v >= 0, isMine: false, isFlagged: false,
+    adjacentMines: v >= 0 ? v : 0, displayedMines: v >= 0 ? v : null,
+  })));
+  const H = -1; // hidden (hole / freed cell / unknown)
+  // ?kkk? / ?h1h? / 11111  — k's at (0,1..3), holes at (1,1),(1,3), stick-out 1 at (1,2)
+  const hole = mk([
+    [0, H, H, H, 0],
+    [0, H, 1, H, 0],
+    [1, 1, 1, 1, 1],
+  ]);
+  assert.ok(isHole(hole, 3, 5, undefined, 0 * 5 + 2), 'the freed k square IS a hole');
+  assert.ok(isHole(hole, 3, 5, undefined, 0 * 5 + 1), 'all freed squares are holes');
+
+  // The same frame with 2s: a 2 boxed to two cells means BOTH are mines
+  // (unambiguous) — a plain 2-2 reduction, NOT a hole.
+  const twoTwo = mk([
+    [0, H, H, H, 0],
+    [0, H, 2, H, 0],
+    [2, 2, 2, 2, 2],
+  ]);
+  assert.equal(isHole(twoTwo, 3, 5, undefined, 0 * 5 + 2), null, 'a 2-2 reduction is not a hole');
+});
+
+test('triangles allow LARGER NUMBERS via a marked mine (effective value)', () => {
+  // Christopher's triangle ex2/ex3: a marked mine beside the boxed clue
+  // absorbs part of its count, so the EFFECTIVE value (face minus marked
+  // mine) is what makes the 3-cell pocket ambiguous. Without the marked
+  // mine the boxed 3 would look like 3-mines-in-3-cells (unambiguous).
+  const mk = (rowsSpec) => rowsSpec.map((row, r) => row.map((tok, c) => {
+    const isNum = typeof tok === 'number';
+    return {
+      row: r, col: c, isRevealed: isNum || tok === '.', isMine: false,
+      isFlagged: tok === 'm', adjacentMines: isNum ? tok : 0,
+      displayedMines: isNum ? tok : (tok === '.' ? 0 : null),
+    };
+  }));
+  // ex3: ?kkk? / ?t2t? / ?t311 / ?m200  — box 3 with a marked mine -> effective 2
+  const ex3 = mk([
+    ['.', 'h', 'h', 'h', '.'],
+    ['.', 'h',  2, 'h', '.'],
+    ['.', 'h',  3,  1,  1],
+    ['.', 'm',  2,  0,  0],
+  ]);
+  assert.ok(isTriangle(ex3, 4, 5, undefined, 0 * 5 + 2), 'a 3-with-marked-mine frees the triangle (larger numbers)');
+  // Sanity: with the marked mine REMOVED (just hidden), the 3 reads as
+  // 3-in-3 (unambiguous) and it is NOT a triangle.
+  const noMark = mk([
+    ['.', 'h', 'h', 'h', '.'],
+    ['.', 'h',  2, 'h', '.'],
+    ['.', 'h',  3,  1,  1],
+    ['.', 'h',  2,  0,  0],
+  ]);
+  assert.equal(isTriangle(noMark, 4, 5, undefined, 0 * 5 + 2), null, 'without the marked mine the 3 is unambiguous, not a triangle');
 });
