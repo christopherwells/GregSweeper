@@ -57,3 +57,16 @@ test('replaying the same daily date does not double-count the streak', () => {
   stats.saveGameResult(true, 45, 1, { isDaily: true, gameMode: 'daily', dailySeed: '2026-06-01' });
   assert.equal(stats.loadStats().modeStats.daily.dailyStreak, 1, 'same-day replay keeps streak at 1');
 });
+
+test('gym technique counts accumulate per name and ignore junk', () => {
+  localStorage.clear();
+  assert.deepEqual(stats.getGymTechniqueCounts(), {}, 'starts empty');
+  stats.recordGymTechnique('1-2-1');
+  stats.recordGymTechnique('1-2-1');
+  stats.recordGymTechnique('count');
+  stats.recordGymTechnique(null); // ignored, never throws
+  const counts = stats.getGymTechniqueCounts();
+  assert.equal(counts['1-2-1'], 2);
+  assert.equal(counts['count'], 1);
+  assert.equal(counts['nope'], undefined);
+});

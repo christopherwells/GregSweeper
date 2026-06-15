@@ -2529,6 +2529,14 @@ if (cpModal) {
 for (const card of $$('.mode-card')) {
   card.addEventListener('click', () => {
     const mode = card.dataset.mode;
+    // The Gym card is a .mode-card (for the grid layout) but carries NO
+    // data-mode and has its own handler (openLexicon). Without this guard
+    // it falls through every branch below to switchMode(undefined), which
+    // started a hidden challenge game UNDER the gym overlay and hid the
+    // title — so closing the gym revealed that game, and the idle clock
+    // painted its pause overlay over the gym. A mode-less card does
+    // nothing here; its own handler owns the click.
+    if (!mode) return;
     if (mode === 'normal') {
       showCheckpointSelector();
       return;

@@ -1140,6 +1140,58 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 }
 .lexicon-actions { display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
 
+/* ── Lesson-select + Field Notebook views ───────────────── */
+.lexicon-back {
+  background: none; border: none; color: var(--color-text-secondary, #999);
+  font-size: 0.95em; cursor: pointer; padding: 2px 6px; font-weight: 600;
+}
+.lexicon-back:hover { color: var(--color-text, #eee); }
+.lexicon-view[hidden] { display: none; }
+.lexicon-select-intro, .lexicon-notebook-intro {
+  font-size: 0.85em; color: var(--color-text-secondary, #999); margin: 10px 0 12px;
+}
+.lexicon-lesson-list { display: flex; flex-direction: column; gap: 8px; }
+.lexicon-lesson-card {
+  display: flex; flex-direction: column; gap: 2px; text-align: left;
+  background: var(--color-cell-revealed, #333); color: inherit;
+  border: 1px solid transparent; border-radius: 10px;
+  padding: 12px 14px; cursor: pointer; transition: border-color 0.15s, transform 0.1s;
+}
+.lexicon-lesson-card:hover { border-color: var(--color-accent, #4caf50); }
+.lexicon-lesson-card:active { transform: scale(0.99); }
+.lexicon-lesson-name { font-weight: 700; font-size: 1.02em; }
+.lexicon-lesson-blurb { font-size: 0.82em; color: var(--color-text-secondary, #999); }
+.lexicon-adv {
+  font-size: 0.68em; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--color-accent, #4caf50); border: 1px solid currentColor;
+  border-radius: 6px; padding: 0 5px; margin-left: 6px; vertical-align: middle;
+}
+.lexicon-notebook-btn { width: 100%; margin-top: 14px; }
+
+.lexicon-note {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 12px 0; border-top: 1px solid var(--color-border, #444);
+}
+.lexicon-note:first-of-type { border-top: none; }
+.lexicon-note-body { flex: 1; min-width: 0; }
+.lexicon-note-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.lexicon-note-name { font-weight: 700; }
+.lexicon-note-count { font-size: 0.78em; color: var(--color-text-secondary, #999); white-space: nowrap; }
+.lexicon-note-rule { font-size: 0.82em; color: var(--color-text-secondary, #bbb); margin: 4px 0 0; line-height: 1.4; }
+.lexicon-note-sketch { flex-shrink: 0; }
+.lexicon-sketch { display: grid; gap: 2px; width: 72px; }
+.lexicon-sketch .sk {
+  aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+  font-size: 0.7em; font-weight: 700; border-radius: 3px;
+  background: var(--color-cell-revealed, #333);
+}
+.lexicon-sketch .sk-hidden { background: var(--color-cell-hidden, #555); }
+.lexicon-sketch .sk-mine { font-size: 0.6em; }
+.lexicon-sketch .sk-safe { color: var(--color-accent, #4caf50); }
+.lexicon-sketch .sk-num[data-num="1"] { color: var(--color-num-1, #6baed6); }
+.lexicon-sketch .sk-num[data-num="2"] { color: var(--color-num-2, #66bb6a); }
+.lexicon-sketch .sk-num[data-num="3"] { color: var(--color-num-3, #ff6b6b); }
+
 .cell.suggested-start {
   background: var(--overlay-suggest-start-fill, rgba(76, 175, 80, 0.35));
   border: 2px solid var(--overlay-suggest-start, #4caf50) !important;
