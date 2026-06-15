@@ -81,6 +81,21 @@ test('NEGATIVE: a saturated 3 (three hidden squares) is not a 1-3-1 corner', () 
   assert.notEqual(classifyPattern(board, { row: 1, col: 1, tier: 2, kind: 'mine', sources: [] }).name, '1-3-1');
 });
 
+test('a bigger pair carries its family: 2-2 is the 1-1 family, 2-3 the 1-2 family', () => {
+  // The gym's "1-1/1-2 in disguise" nod keys on this family.
+  const eq = makeBoard(3, 3);
+  clue(eq, 2, 0, 2); clue(eq, 2, 1, 2);
+  const a = classifyPattern(eq, { row: 0, col: 0, tier: 1, kind: 'safe', sources: [{ row: 2, col: 0 }, { row: 2, col: 1 }] });
+  assert.equal(a.name, 'pair');
+  assert.equal(a.family, '1-1');
+
+  const uneq = makeBoard(3, 3);
+  clue(uneq, 2, 0, 2); clue(uneq, 2, 1, 3);
+  const b = classifyPattern(uneq, { row: 0, col: 0, tier: 1, kind: 'safe', sources: [{ row: 2, col: 0 }, { row: 2, col: 1 }] });
+  assert.equal(b.name, 'pair');
+  assert.equal(b.family, '1-2');
+});
+
 test('NEGATIVE: an incidental 1,2,1 with hidden on BOTH sides is not a 1-2-1', () => {
   // Only the three clues revealed; rows 0 and 2 hidden, so the front is
   // not on one side and the pattern does not force.
