@@ -261,6 +261,15 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
   // Invariant on solvable boards: trace.length + 1 === totalClicks.
   const trace = options && options.trace ? [] : null;
 
+  // Opt-in pre-crux snapshot ({ captureCruxState: true }): a copy of the
+  // sim grid (0 hidden / 1 revealed / 2 flagged) taken the instant before
+  // the FIRST tier>=1 reveal — the exact state a player faces at the
+  // board's crux. cruxExtract uses it to materialize the daily teaser
+  // without re-implementing the flood/unlock logic. Like trace, this is
+  // collection-only and off in generation hot loops.
+  const captureCruxState = !!(options && options.captureCruxState);
+  let cruxSim = null;
+
   const buildResult = (solvable, remainingUnknowns) => {
     const out = {
       solvable,
@@ -274,6 +283,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
       disjunctiveMoves,
     };
     if (trace) out.trace = trace;
+    if (cruxSim) out.cruxSim = cruxSim;
     return out;
   };
   function revealCell(i) {
@@ -442,6 +452,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
           for (const di of diff) {
             if (sim[di] === 0 && isLocked[di]) continue; // unclickable until unlocked
             if (sim[di] === 0) {
+              if (captureCruxState && cruxSim === null) cruxSim = sim.slice(); // pre-crux snapshot (first tier>=1 reveal)
               totalClicks++;
               if (isCanonical) canonicalSubsetMoves++;
               else genericSubsetMoves++;
@@ -501,6 +512,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
     for (const cellIdx of solved.safe) {
       if (sim[cellIdx] === 0 && isLocked[cellIdx]) continue; // unclickable until unlocked
       if (sim[cellIdx] === 0) {
+        if (captureCruxState && cruxSim === null) cruxSim = sim.slice(); // pre-crux snapshot (first tier>=1 reveal)
         totalClicks++;
         const disj = isDisjDeduction(cellIdx);
         if (disj) { disjunctiveMoves++; anyDisjThisRound = true; }

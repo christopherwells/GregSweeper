@@ -173,6 +173,29 @@
         }
       }
     },
+    "cruxes": {
+      ".read": true,
+      "$date": {
+        ".write": "auth != null && !data.exists()",
+        ".validate": "$date.matches(/^\\d{4}-\\d{2}-\\d{2}$/) && newData.hasChildren(['rows', 'cols', 'cells', 'answer', 'sources', 'tier', 'writtenAt'])",
+        "rows":   { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 16" },
+        "cols":   { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 16" },
+        "tier":   { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 3" },
+        "cells":  { ".validate": "newData.hasChildren()" },
+        "answer": {
+          ".validate": "newData.hasChildren(['r', 'c'])",
+          "r": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 15" },
+          "c": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 15" },
+          "$other": { ".validate": false }
+        },
+        "sources":          { ".validate": "newData.hasChildren() || newData.val() === null" },
+        "walls":            { ".validate": "newData.hasChildren() || newData.val() === null" },
+        "sentence":         { ".validate": "newData.isString() && newData.val().length <= 300" },
+        "sentenceSocratic": { ".validate": "newData.isString() && newData.val().length <= 300" },
+        "writtenAt":        { ".validate": "newData.val() === now" },
+        "$other":           { ".validate": false }
+      }
+    },
     "dailyBoard": {
       ".read": true,
       "$date": {

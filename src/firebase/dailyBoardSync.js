@@ -248,6 +248,36 @@ export async function loadDailyBoard(dateString) {
 }
 
 /**
+ * Fetch the crux teaser for a date (cruxes/{date}) — the precomputed
+ * "find the safe square" mini-puzzle shown by the ?crux= share route.
+ * Returns the payload or null (no crux for the date, or Firebase
+ * unreachable). No caching: the teaser is a one-off share view, not a
+ * replayable board. World-readable, so it works logged-out.
+ *
+ * @param {string} dateString YYYY-MM-DD
+ * @returns {Promise<object|null>}
+ */
+export async function loadCrux(dateString) {
+  let db;
+  try {
+    db = await waitForFirebaseReady();
+  } catch (err) {
+    console.warn('loadCrux:', err.message);
+    return null;
+  }
+  try {
+    const snap = await Promise.race([
+      db.ref(`cruxes/${dateString}`).once('value'),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), FETCH_TIMEOUT_MS)),
+    ]);
+    return snap.exists() ? snap.val() : null;
+  } catch (err) {
+    console.warn('loadCrux fetch failed:', err.message);
+    return null;
+  }
+}
+
+/**
  * Fetch + cache the upcoming week of daily boards (today .. today+6 ET) so
  * they stay playable through an offline stretch. Best-effort, sequential,
  * and skips dates already cached — a failure just means that day isn't
