@@ -132,6 +132,57 @@ export function isOneTwoTwoOne(board, rows, cols, neighborCache, targetIdx) {
   return matchesClueLine(board, rows, cols, nc, targetIdx, [1, 2, 2, 1]);
 }
 
+// The 1-3-1 corner: a 3 at the concave corner of an L, with a 1 on each
+// orthogonal arm (one vertical neighbor, one horizontal neighbor). The 3
+// sees five hidden squares; each 1 caps a disjoint PAIR of them at one
+// mine, so the single square only the 3 can see is forced to be a MINE,
+// and each 1's far square (only it can see) is SAFE. It is the 1-2 logic
+// bent around a corner: a modified 1-2 where the bigger clue is a 3
+// seeing five cells. `kind` selects which role the target plays — the
+// corner is the mine, the two outers are the safe squares.
+export function isOneThreeOneCorner(board, rows, cols, neighborCache, targetIdx, kind) {
+  const nc = neighborCache || buildNeighborCache(board, rows, cols);
+  const at = (i) => board[Math.floor(i / cols)][i % cols];
+  for (let i = 0; i < rows * cols; i++) {
+    if (!isPlainClue(at(i)) || vis(at(i)) !== 3) continue;
+    const H3 = new Set(hiddenNeighbors(board, cols, nc, i));
+    if (H3.size < 4) continue; // a saturated 3 is plain counting, not this
+    const r = Math.floor(i / cols), c = i % cols;
+    // Orthogonal neighbors of the 3 that are wall-reachable.
+    const inLine = (idx, rr, cc) => rr >= 0 && rr < rows && cc >= 0 && cc < cols && nc[i].includes(idx);
+    const vNbrs = [];
+    if (inLine((r - 1) * cols + c, r - 1, c)) vNbrs.push((r - 1) * cols + c);
+    if (inLine((r + 1) * cols + c, r + 1, c)) vNbrs.push((r + 1) * cols + c);
+    const hNbrs = [];
+    if (inLine(r * cols + (c - 1), r, c - 1)) hNbrs.push(r * cols + (c - 1));
+    if (inLine(r * cols + (c + 1), r, c + 1)) hNbrs.push(r * cols + (c + 1));
+    for (const v of vNbrs) {
+      if (!isPlainClue(at(v)) || vis(at(v)) !== 1) continue;
+      const HV = new Set(hiddenNeighbors(board, cols, nc, v));
+      for (const h of hNbrs) {
+        if (!isPlainClue(at(h)) || vis(at(h)) !== 1) continue;
+        const HH = new Set(hiddenNeighbors(board, cols, nc, h));
+        const sharedV = [...H3].filter(x => HV.has(x));
+        const sharedH = [...H3].filter(x => HH.has(x));
+        if (sharedV.length === 0 || sharedH.length === 0) continue;
+        if (sharedV.some(x => HH.has(x))) continue; // the two pairs must be disjoint
+        const onlyThree = [...H3].filter(x => !HV.has(x) && !HH.has(x));
+        if (onlyThree.length !== 1) continue;
+        // The 3's squares are exactly the two shared pairs plus the corner.
+        if (sharedV.length + sharedH.length + 1 !== H3.size) continue;
+        if (kind === 'mine') {
+          if (onlyThree[0] === targetIdx) return true;
+        } else {
+          const outerV = [...HV].filter(x => !H3.has(x));
+          const outerH = [...HH].filter(x => !H3.has(x));
+          if (outerV.includes(targetIdx) || outerH.includes(targetIdx)) return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
 /**
  * Classify one deduction into a named pattern.
  * @param {Array} board live board (target cells still hidden)
@@ -151,6 +202,7 @@ export function classifyPattern(board, ded, opts = {}) {
   const cols = opts.cols || board[0].length;
   const neighborCache = opts.neighborCache || buildNeighborCache(board, rows, cols);
   const tier = ded.tier;
+  const kind = ded.kind === 'mine' ? 'mine' : 'safe';
   const targetIdx = ded.row * cols + ded.col;
 
   // Tier 0: a single clue settles it — counting, or flag-reduction when
@@ -176,6 +228,9 @@ export function classifyPattern(board, ded, opts = {}) {
     }
     if (isOneTwoOne(board, rows, cols, neighborCache, targetIdx)) {
       return { name: '1-2-1', family: '1-2' };
+    }
+    if (isOneThreeOneCorner(board, rows, cols, neighborCache, targetIdx, kind)) {
+      return { name: '1-3-1', family: '1-2' };
     }
   }
 

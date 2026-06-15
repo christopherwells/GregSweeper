@@ -9,7 +9,8 @@
 // subset11 1-in-4, subset12 1-in-21 (~9ms/board — 2s are rarer than 1s on
 // a sparse board, but a 400-attempt budget never gets close to
 // exhausting), oneTwoOne 1-in-5, oneTwoTwoOne 1-in-12 (~30-44ms/board, the
-// geometry check runs per candidate). All live, no pre-baked content.
+// geometry check runs per candidate), oneThreeOneCorner 1-in-6 (~13ms).
+// All live, no pre-baked content.
 //
 // The teaching mechanic is the deducibility CLICK-GATE (lexiconUI.js):
 // a click on a cell that is not currently provably safe bounces and the
@@ -24,7 +25,7 @@ import { classifyPattern } from './patternNames.js';
 
 // The curriculum, easiest first. lexiconUI renders the lesson-select
 // screen in this order; the Field Notebook lists techniques in it too.
-export const LESSON_ORDER = ['countingBasics', 'subset11', 'subset12', 'oneTwoOne', 'oneTwoTwoOne'];
+export const LESSON_ORDER = ['countingBasics', 'subset11', 'subset12', 'oneTwoOne', 'oneTwoTwoOne', 'oneThreeOneCorner'];
 
 // Each lesson's `accepts(r)` is the bucket gate over the isBoardSolvable
 // result. Named-shape lessons additionally set `requiresPattern`, which
@@ -122,6 +123,26 @@ export const LESSONS = {
     rows: 7, cols: 7, mines: 9,
     requiresPattern: '1-2-2-1',
     attempts: 800,
+    accepts: (r) =>
+      (r.solvable || r.remainingUnknowns === 0)
+      && r.disjunctiveMoves === 0
+      && r.techniqueLevel <= 2,
+  },
+
+  // Advanced: the 1-3-1 corner. A 3 at the bend of an L with a 1 on each
+  // arm sees five squares; the two 1s force the third mine into the
+  // square only the 3 can see. The 1-2 idea bent around a corner — a
+  // genuine tier-2 read, geometry-defined like the line patterns.
+  oneThreeOneCorner: {
+    id: 'oneThreeOneCorner',
+    name: 'The 1-3-1 corner',
+    blurb: 'A 3 in an L corner.',
+    advanced: true,
+    rule: 'When a 3 sits in the corner of an L with a 1 on each arm, the 3 sees five squares. Each 1 holds a pair of them to one mine, which forces a mine into the square only the 3 can see, and leaves each 1\'s far square safe.',
+    naming: 'That was a 1-3-1 corner: the two 1s hold four of the 3\'s squares to two mines between them, so the fifth square, the one only the 3 sees, is a mine, and the 1s\' far squares are safe.',
+    rows: 7, cols: 7, mines: 9,
+    requiresPattern: '1-3-1',
+    attempts: 1500,
     accepts: (r) =>
       (r.solvable || r.remainingUnknowns === 0)
       && r.disjunctiveMoves === 0

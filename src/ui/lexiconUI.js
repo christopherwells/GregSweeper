@@ -70,7 +70,17 @@ const PATTERN_COACH = {
     tip: 'Four in a row reading 1-2-2-1: the only layout that fits all four numbers puts both mines in the middle under the 2s, and clears the four outer squares.',
     again: 'The 1-2-2-1 again.',
   },
+  '1-3-1': {
+    cheer: 'The 1-3-1 corner.',
+    tip: 'A 3 at the bend of an L with a 1 on each arm. The two 1s hold four of the 3\'s five squares to one mine each, so the fifth, the square only the 3 can see, is a mine, and each 1\'s far square is safe.',
+    again: 'Another 1-3-1 corner.',
+  },
 };
+
+// The named line/corner shapes a move can be cheered as (counting is
+// handled separately). A move classifying as one of these is recorded and
+// celebrated whether the player revealed a safe square or flagged a mine.
+const PATTERN_SHAPE_NAMES = new Set(['1-1', '1-2', '1-2-1', '1-2-2-1', '1-3-1']);
 
 // Notebook sketches: a tiny board picture per technique. Chars: digit = a
 // revealed number, M = mine, S = a square the pattern proves safe, . = a
@@ -81,6 +91,7 @@ const SKETCHES = {
   subset12: ['12.', 'SMM'],
   oneTwoOne: ['121', 'MSM'],
   oneTwoTwoOne: ['1221', 'SMMS'],
+  oneThreeOneCorner: ['.1S', '13.', 'S.M'],
 };
 
 // Which classifier names count toward each lesson's notebook tally.
@@ -90,6 +101,7 @@ const TECHNIQUE_KEYS = {
   subset12: ['1-2'],
   oneTwoOne: ['1-2-1'],
   oneTwoTwoOne: ['1-2-2-1'],
+  oneThreeOneCorner: ['1-3-1'],
 };
 
 export function openLexicon() {
@@ -338,12 +350,25 @@ function _finishMove(opened) {
 function _celebrate(ded, kind, precomputedName) {
   if (!ded) return;
   const { board, rows, cols } = _lessonBoard;
+  const name = precomputedName
+    || classifyPattern(board, { row: ded.row, col: ded.col, tier: ded.tier, sources: ded.sources, kind }, { rows, cols }).name;
 
+  // The Counting lesson frames every safe reveal as counting: its tier-0
+  // boards route through subsets flags-blind, but the player's process
+  // (flag the forced mines, then clear what those numbers satisfy) IS
+  // counting. Mine flags fall through to the flag-reduction beat below.
+  if (_lesson.id === 'countingBasics' && kind === 'safe') { _cheerShape('count'); return; }
+
+  // A recognized shape — for a safe reveal OR a proven-mine flag (the
+  // 1-3-1's key move is FLAGGING the forced corner) — earns its cheer and
+  // is recorded.
+  if (PATTERN_SHAPE_NAMES.has(name)) { _cheerShape(name); return; }
+
+  // A proven-mine flag with no named shape: the reasoning, once per board.
   if (kind === 'mine') {
     if (!_flagTipShown) {
       _flagTipShown = true;
       if (_lesson.id === 'countingBasics') {
-        // The flag-reduction beat: a flag drops every neighbor's count.
         _coach('📌 Proven mine. Flag it, and every number beside it now needs one fewer, which often opens the next safe square.', 5600);
       } else {
         const why = explainDeduction(board, ded, { style: 'full', kind: 'mine' });
@@ -354,23 +379,16 @@ function _celebrate(ded, kind, precomputedName) {
     }
     return;
   }
+  // Safe reveal, no named shape, outside the counting lesson: plain
+  // propagation, stays quiet.
+}
 
-  // Safe reveals. The name is classified before the reveal dissolves the
-  // geometry (passed in from _onCellClick); fall back to a live classify
-  // only if a caller omits it. Named shapes always earn a word; plain
-  // counting is voiced only where it is the lesson.
-  let name = precomputedName
-    || classifyPattern(board, { row: ded.row, col: ded.col, tier: ded.tier, sources: ded.sources, kind: 'safe' }, { rows, cols }).name;
-  // The Counting lesson frames every reveal as counting: the board is
-  // tier-0 solvable, and the player's process (flag the forced mines,
-  // then clear what those numbers now satisfy) IS counting, even where
-  // the flags-blind gate happens to route a square through a subset.
-  if (_lesson.id === 'countingBasics' && name !== 'count') name = 'count';
-  const isCounting = name === 'count';
+// Cheer a named technique (or counting): record it, then voice it with
+// the recognition tip on the first of the board and short affirmations
+// after.
+function _cheerShape(name) {
   const copy = PATTERN_COACH[name];
-  const worthVoicing = copy && (!isCounting || _lesson.id === 'countingBasics');
-  if (!worthVoicing) return; // 'pair' / 'region' / incidental counting: quiet
-
+  if (!copy) return;
   recordGymTechnique(name);
   const firstOfName = !_namesUsed.has(name);
   _namesUsed.add(name);
@@ -414,11 +432,17 @@ function _tryFlag(row, col) {
     }
     return;
   }
+  const ded = frontier.mines.find(m => m.row === row && m.col === col);
+  // Classify BEFORE the flag lands — flagging removes the square from its
+  // clues' hidden sets and dissolves the shape (the 1-3-1's forced corner
+  // would otherwise read as a bare tier-2 region once flagged).
+  const moveName = ded
+    ? classifyPattern(board, { row, col, tier: ded.tier, sources: ded.sources, kind: 'mine' }, { rows: _lessonBoard.rows, cols: _lessonBoard.cols }).name
+    : null;
   cell.isFlagged = true;
   playFlag();
   _render();
-  const ded = frontier.mines.find(m => m.row === row && m.col === col);
-  _celebrate(ded, 'mine');
+  _celebrate(ded, 'mine', moveName);
 }
 
 function _bounce(row, col) {
