@@ -1689,10 +1689,10 @@ function generateShareCard() {
     if (state.dailyBombHits > 0) {
       lines.push(`💥×${state.dailyBombHits}`);
     }
-    lines.push(`https://christopherwells.github.io/GregSweeper/?mode=daily`);
-    // Carry a crux challenge too, so whoever you share the card with can try
-    // yesterday's hardest step, not just the day-of board.
-    lines.push(`🦀 yesterday's crux: https://christopherwells.github.io/GregSweeper/?crux=${_addCalendarDays(getLocalDateString(), -1)}`);
+    // The card's single link is a crux challenge: a softer hook than a bare
+    // play link, and the teaser's own "Play today's board" CTA still routes
+    // the recipient to the daily.
+    lines.push(`🦀 Try yesterday's crux: https://christopherwells.github.io/GregSweeper/?crux=${_addCalendarDays(getLocalDateString(), -1)}`);
     return lines.join('\n');
   }
 
