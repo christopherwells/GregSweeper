@@ -317,7 +317,7 @@ meta <- tibble(
 parse_score_rows <- function(raw) {
   if (length(raw) == 0) {
     return(tibble(date = character(), time = double(), uid = character(),
-                  bombHits = double(), totalBombPenalty = double(),
+                  bombHits = double(), totalBombPenalty = double(), bombBaseSum = double(),
                   n_hints = integer(), cruxViewed = logical()))
   }
   tibble(
@@ -333,6 +333,20 @@ parse_score_rows <- function(raw) {
       # (re-fog / +10s mechanic) don't have this field — detected by
       # `bombHits > 0 & totalBombPenalty == 0` and carried by `legacy_bombs`.
       totalBombPenalty  = map_dbl(entry, ~ .x$totalBombPenalty %||% 0),
+      # Base-only bomb surcharge actually added to `time`: Σ(penalty − infoValue)
+      # over the per-hit events. The info-value part of each penalty offsets the
+      # deduction the player skipped by bombing (real board difficulty — it stays
+      # in clean_time); only this base is a pure surcharge to remove. Reading it
+      # from the stored per-hit penalties makes it correct for BOTH cohorts with
+      # NO date split: pre-2026-06-15 rows charged a flat BOMB_PENALTY_BASE per
+      # hit (Σ = base × hits), later rows charge an escalating base × strike#
+      # (Σ = base × hits·(hits+1)/2). Legacy +10s rows have no per-hit penalty
+      # field, so this is 0 and their cost rides the `legacy_bombs` regressor.
+      bombBaseSum       = map_dbl(entry, ~ {
+        ev <- .x$bombHitEvents %||% list()
+        if (length(ev) == 0) return(0)
+        sum(map_dbl(ev, ~ (.x$penalty %||% 0) - (.x$infoValue %||% 0)))
+      }),
       # v1.6.12+ Lens hints: rows carry hintEvents only when the player used
       # the in-game lens. A hinted completion is not an honest observation of
       # board difficulty, so hinted plays are EXCLUDED from the fit.
@@ -364,12 +378,13 @@ scores_df <- bind_rows(
     # board with no bomb hits. For a new-mechanic play, `time` already
     # includes Σ(infoValue + base) of penalty; the infoValue part exactly
     # offsets the deduction time the player skipped by bombing, so the only
-    # true added cost is BOMB_PENALTY_BASE per hit. Subtract just that — NOT
-    # totalBombPenalty (which would over-subtract by Σ infoValue and make
-    # bomb-hit plays look artificially fast, dragging the coefficients down).
-    # Legacy plays keep their full `time` here and contribute their cost
-    # through the `legacy_bombs` regressor instead.
-    clean_time     = time - if_else(totalBombPenalty > 0, BOMB_PENALTY_BASE * bombHits, 0),
+    # true added cost is the base surcharge — `bombBaseSum`, which escalates
+    # per hit under the new mechanic. Subtract just that — NOT totalBombPenalty
+    # (which would over-subtract by Σ infoValue and make bomb-hit plays look
+    # artificially fast, dragging the coefficients down). Legacy plays keep
+    # their full `time` here and contribute their cost through the
+    # `legacy_bombs` regressor instead.
+    clean_time     = time - if_else(totalBombPenalty > 0, bombBaseSum, 0),
   )
 
 legacy_n <- sum(scores_df$is_legacy_bomb, na.rm = TRUE)
@@ -430,6 +445,22 @@ df <- df |>
       nonZeroSafeCellCount, zeroClusterCount),
     ~ ifelse(is.na(.x), 0, as.numeric(.x))
   ))
+
+# Anti-cheat (mirrors isBombHitCheat in difficulty.js): a run that detonated
+# more than BOMB_HIT_CHEAT_FRACTION of the board's mines was brute-forcing /
+# probing the layout, not solving it — its time is a garbage data point (tiny
+# wall-clock + every mine's info-value) no matter how it is priced, so it must
+# never anchor the model. The client now blocks these at submission; this drops
+# the historical ones (e.g. the 100%-mine brute-force on 2026-06-15). Rows with
+# unknown/zero totalMines are kept — we can't judge them.
+BOMB_HIT_CHEAT_FRACTION <- 0.30
+.n_pre_cheat <- nrow(df)
+df <- df |> filter(is.na(totalMines) | totalMines <= 0 |
+                   bombHits <= BOMB_HIT_CHEAT_FRACTION * totalMines)
+if (.n_pre_cheat - nrow(df) > 0) {
+  message(sprintf("  anti-cheat: dropped %d brute-force row(s) (> %.0f%% of mines detonated)",
+                  .n_pre_cheat - nrow(df), 100 * BOMB_HIT_CHEAT_FRACTION))
+}
 
 # Derived model predictors (2026-06-08 feature rework): reasoning pooled
 # into pattern (canonical + generic) + search (advanced). Derived from the
@@ -847,7 +878,7 @@ if (fit_method == "brms-ranef") {
   # offset + bomb factor (a steady 1-bomb/day player carries ~+3s now,
   # ~+14s on legacy plays).
   df_fit$bomb_cost <- ifelse(df_fit$totalBombPenalty > 0,
-                             BOMB_PENALTY_BASE * df_fit$bombHits,
+                             df_fit$bombBaseSum,
                              bomb_coef * df_fit$bombHits)
   bomb_cost_by_uid <- tapply(df_fit$bomb_cost, df_fit$uid, mean)
   # Emit the clean/bomb split alongside the sum (handicaps.json v2's
@@ -906,7 +937,7 @@ if (fit_method == "seed-residuals") {
   # Per-play bomb cost (time bombs add vs clean play). No fitted bomb_coef
   # in this fallback, so legacy plays use the prior legacy rate.
   df$bomb_cost   <- ifelse(df$totalBombPenalty > 0,
-                           BOMB_PENALTY_BASE * df$bombHits,
+                           df$bombBaseSum,
                            PRIOR_MEANS$legacy_bombs * df$bombHits)
   df$clean_resid <- (df$time - df$bomb_cost) - df$predicted
   per_user <- df |>

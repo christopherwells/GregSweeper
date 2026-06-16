@@ -130,6 +130,18 @@ export const PAR_MODEL_TIMED = {
 // preserves solving as the intended path.
 export const BOMB_PENALTY_BASE = 3;
 
+// Anti-cheat: a player who detonates more than this fraction of the board's
+// mines isn't playing — they're probing the layout by popping mines (daily /
+// weekly have no game-over, so nothing stops them). Such a run is never
+// leaderboarded (and so never feeds the par fit). Pure + exported so the
+// submission gate and tests share one definition.
+export const BOMB_HIT_CHEAT_FRACTION = 0.30;
+export function isBombHitCheat(bombHits, totalMines) {
+  return typeof totalMines === 'number' && totalMines > 0
+    && typeof bombHits === 'number'
+    && bombHits > BOMB_HIT_CHEAT_FRACTION * totalMines;
+}
+
 // Daily board dimension ranges (seeded RNG picks within these)
 export const DAILY_MIN_SIZE = 8;
 export const DAILY_SIZE_RANGE = 5;   // 8–12

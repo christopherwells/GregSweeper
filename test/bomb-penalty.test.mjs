@@ -70,12 +70,14 @@ test('info-value differentiates mines: some mine must price > 0 on a deduction-h
   assert.ok(positives >= 1, `expected ≥1 mine with positive info-value, got ${positives}`);
 });
 
-test('penalty = round(infoValue + base) and the accounting identity holds', { skip: !HAS_FEATURE }, () => {
-  // The core identity the timer/par/handicap pipeline depends on:
+test('first strike: penalty = round(infoValue + base) and the accounting identity holds', { skip: !HAS_FEATURE }, () => {
+  // The core identity the timer/par/handicap pipeline depends on, for the
+  // FIRST strike (the common case — most bomb-hit plays hit once):
   //   penalty added to clock = infoValue + base
   //   clean-play time (for fitting/handicap) = displayed - base*hits
   // A par-skill player who skipped `infoValue` of deduction and paid
-  // `infoValue + base` lands exactly `base` over par per hit.
+  // `infoValue + base` lands exactly `base` over par. (Later strikes escalate
+  // the base — see the next test.)
   const base = diff.BOMB_PENALTY_BASE;
   const par = 60;
   for (const infoValue of [0, 5.2, 18, 31.7]) {
@@ -87,6 +89,35 @@ test('penalty = round(infoValue + base) and the accounting identity holds', { sk
     const cleanTime = displayed - base * 1;       // handicap/refit subtraction
     assert.ok(Math.abs(cleanTime - par) < 0.05, `clean time ${cleanTime} should ≈ par ${par}`);
   }
+});
+
+test('escalating base: the Nth strike costs base × N on top of info-value', { skip: !HAS_FEATURE }, () => {
+  // handleDailyBombHit computes penalty = round((infoValue + base*strikeNumber)*10)/10,
+  // where strikeNumber = priorHits + 1 (this strike INCLUDED). So repeatedly
+  // popping mines ramps the base hard while the info-value term rides on top.
+  const base = diff.BOMB_PENALTY_BASE;
+  const penaltyFor = (infoValue, strikeNumber) => Math.round((infoValue + base * strikeNumber) * 10) / 10;
+  // Zero-info strikes cost base, 2·base, 3·base, 4·base …
+  assert.deepEqual([1, 2, 3, 4].map(n => penaltyFor(0, n)), [3, 6, 9, 12]);
+  // The first strike is identical to the old flat +base (single-hit plays
+  // price exactly as before the escalation shipped).
+  assert.equal(penaltyFor(5.2, 1), Math.round((5.2 + base) * 10) / 10);
+  // Info-value still rides on top of the escalated base.
+  assert.equal(penaltyFor(12.4, 3), 21.4);
+});
+
+test('isBombHitCheat: > 30% of mines detonated is a probing run, ≤ 30% is play', { skip: !HAS_FEATURE }, () => {
+  const { isBombHitCheat, BOMB_HIT_CHEAT_FRACTION } = diff;
+  assert.equal(BOMB_HIT_CHEAT_FRACTION, 0.30);
+  // 20 mines → 30% is exactly 6. "More than 30%" is strict, so 6 is allowed.
+  assert.equal(isBombHitCheat(6, 20), false);
+  assert.equal(isBombHitCheat(7, 20), true);
+  assert.equal(isBombHitCheat(0, 20), false);
+  // Degenerate inputs never trip — gimmick-free modes pass totalMines but 0
+  // hits, and a missing totalMines must fail open (no false cheat flag).
+  assert.equal(isBombHitCheat(0, 0), false);
+  assert.equal(isBombHitCheat(5, undefined), false);
+  assert.equal(isBombHitCheat(undefined, 20), false);
 });
 
 test('getActiveBombPenaltyTotal sums the per-hit event log', { skip: !HAS_FEATURE }, () => {
