@@ -2286,9 +2286,9 @@ function updateTitleProgress() {
     const centerText = completed ? 'Played today' : (note || 'Same puzzle worldwide');
 
     const streakBL = streak > 0
-      ? `<span class="daily-streak">🔥<span class="daily-streak-n">${streak}</span><span class="daily-streak-label">day streak</span></span>`
+      ? `<span class="daily-stat-pill" title="Your daily streak">${streak} day${streak === 1 ? '' : 's'}</span>`
       : '<span></span>';
-    const parBR = hasPar ? `<span class="daily-par">Par ${_titleDailyPar.secs}s</span>` : '<span></span>';
+    const parBR = hasPar ? `<span class="daily-stat-pill" title="Greg’s par for today">Par ${_titleDailyPar.secs}s</span>` : '<span></span>';
     const statusRow = (streak > 0 || hasPar)
       ? `<span class="daily-status-row">${streakBL}${parBR}</span>`
       : '';
