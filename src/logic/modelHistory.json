@@ -5745,5 +5745,92 @@
         "cv": 0.1257
       }
     ]
+  },
+  {
+    "date": "2026-06-16",
+    "updatedAt": "2026-06-16T18:30:05Z",
+    "method": "brms-ranef",
+    "n_scores": 208,
+    "n_dates": 99,
+    "n_players": 5,
+    "n_eligible": 3,
+    "rmse": 34.42,
+    "bias": -0,
+    "diagnostics": "max Rhat = 1.003, min ESS = 1285, divergent = 0/4000",
+    "target": "liarCellCount",
+    "candidates": [
+      {
+        "feature": "lockedCellCount",
+        "mean": 0.7297,
+        "sd": 0.823,
+        "cv": 1.1279
+      },
+      {
+        "feature": "compassCellCount",
+        "mean": 0.8264,
+        "sd": 0.8676,
+        "cv": 1.0498
+      },
+      {
+        "feature": "sonarCellCount",
+        "mean": 0.7692,
+        "sd": 0.7949,
+        "cv": 1.0335
+      },
+      {
+        "feature": "liarCellCount",
+        "mean": 0.73,
+        "sd": 0.6684,
+        "cv": 0.9157
+      },
+      {
+        "feature": "mysteryCellCount",
+        "mean": 0.8233,
+        "sd": 0.7436,
+        "cv": 0.9031
+      },
+      {
+        "feature": "wallEdgeCount",
+        "mean": 0.153,
+        "sd": 0.1373,
+        "cv": 0.8977
+      },
+      {
+        "feature": "mirrorPairCount",
+        "mean": 1.4666,
+        "sd": 1.2712,
+        "cv": 0.8668
+      },
+      {
+        "feature": "wormholePairCount",
+        "mean": 0.7509,
+        "sd": 0.6467,
+        "cv": 0.8612
+      },
+      {
+        "feature": "zeroClusterCount",
+        "mean": 0.516,
+        "sd": 0.3673,
+        "cv": 0.7118
+      },
+      {
+        "feature": "searchMoves",
+        "mean": 1.1242,
+        "sd": 0.4583,
+        "cv": 0.4076
+      },
+      {
+        "feature": "patternMoves",
+        "mean": 2.0728,
+        "sd": 0.6797,
+        "cv": 0.3279
+      },
+      {
+        "feature": "totalMines",
+        "mean": 3.3076,
+        "sd": 0.4143,
+        "cv": 0.1253
+      }
+    ]
   }
 ]
