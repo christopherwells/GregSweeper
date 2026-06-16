@@ -2,6 +2,7 @@ import { safeGet, safeSet, safeRemove, safeGetJSON, safeSetJSON } from '../stora
 import { isTestEnvironment } from './env.js';
 import { reportCaughtError } from '../diagnostics/errorReporter.js';
 import { findRowForBoard } from '../logic/scoreRowMatch.js';
+import { isBombHitCheat } from '../logic/difficulty.js';
 /**
  * Firebase Online Daily Leaderboard
  * Uses Firebase Realtime Database (compat SDK loaded via CDN in index.html).
@@ -245,6 +246,12 @@ export async function submitOnlineScore(dateString, name, time, bombHits = 0, ex
   // (fetchOnlineLeaderboard) still work so the modal still shows
   // current standings, but no test score lands in the bucket.
   if (isTestEnvironment()) return false;
+  // Anti-cheat: a run that detonated > BOMB_HIT_CHEAT_FRACTION of the board's
+  // mines was probing the layout, not playing — never leaderboard it, and
+  // never queue it for retry. Returns 'cheat' (not false) so the wrapper's
+  // failure-queue path is skipped. Daily/weekly_first only; gimmick-free
+  // modes pass totalMines too but bombHits is 0, so this never trips.
+  if (isBombHitCheat(bombHits, extras.totalMines)) return 'cheat';
   // Offline / Firebase not ready — queue and retry on next successful boot
   if (!isFirebaseOnline()) {
     _queueFailedSubmission(dateString, name, time, bombHits, extras);
@@ -347,6 +354,10 @@ export function buildArchivePayload(date, name, time, bombHits, extras = {}, tim
  */
 export async function submitArchiveScore(date, name, time, bombHits = 0, extras = {}) {
   if (isTestEnvironment()) return false;
+  // Anti-cheat: same probing guard as the live daily — a mine-popping run
+  // never feeds the par fit either (dailyArchive rows are nuisance-corrected
+  // fit data).
+  if (isBombHitCheat(bombHits, extras.totalMines)) return false;
   if (!isFirebaseOnline()) return false;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
   if (typeof time !== 'number' || time < MIN_VALID_TIME || time > MAX_VALID_TIME) return false;
@@ -497,6 +508,11 @@ export async function flushPendingSubmissions() {
 export async function submitWeeklyScore(weekStart, uid, name, bestTime, dayTimes, extras = {}) {
   // Test branch: don't write to the production weekly leaderboard.
   if (isTestEnvironment()) return false;
+  // Anti-cheat: if THIS attempt detonated > BOMB_HIT_CHEAT_FRACTION of the
+  // board's mines, skip recording it — the day-time writes are additive, so
+  // skipping leaves prior honest days on the row untouched while the probing
+  // attempt never lands.
+  if (isBombHitCheat(extras.attemptBombHits, extras.totalMines)) return false;
   if (!weekStart || !uid) return false;
   if (typeof bestTime !== 'number' || bestTime < MIN_VALID_TIME || bestTime > MAX_VALID_TIME) {
     console.warn(`Weekly bestTime ${bestTime}s outside valid range`);

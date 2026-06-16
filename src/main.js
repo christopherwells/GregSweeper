@@ -3360,18 +3360,22 @@ $('#gameover-submit-daily').addEventListener('click', async (e) => {
       bombHitEvents: state.dailyBombHitEvents || [],
       hintEvents: state.hintEvents || [],
       rngSeed: state.dailyRngSeed || dateStr,
+      totalMines: state.totalMines,
     });
     // Skip personal-history write for practice dailies — they play on a
     // custom seed and don't belong on the regular daily timeline. Also
-    // skipped on 'duplicate' (this account already posted this board
-    // from another device): first completion wins the history slot.
-    if (!state.isDailyPractice && submitOk !== 'duplicate') {
+    // skipped on 'duplicate' (this account already posted this board from
+    // another device): first completion wins the history slot. And on
+    // 'cheat' (a > 30%-mines probing run) — kept out of the timeline too.
+    if (!state.isDailyPractice && submitOk !== 'duplicate' && submitOk !== 'cheat') {
       saveDailyHistoryEntry(dateStr, { time: scoreTime });
     }
     const dailySubmitForm = $('#daily-submit-form');
     if (dailySubmitForm) dailySubmitForm.classList.add('hidden');
     if (submitOk === 'duplicate') {
       showToast('Already on the board from another device');
+    } else if (submitOk === 'cheat') {
+      showToast('Too many mines hit — this run won\'t be ranked');
     } else {
       showToast(submitOk ? '✅ Score submitted!' : '📡 Saved. Uploads when you reconnect');
     }
