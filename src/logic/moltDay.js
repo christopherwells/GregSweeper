@@ -56,6 +56,22 @@ function clampBank(banked) {
 }
 
 /**
+ * One-time launch grant for players who already hold a streak when molt days
+ * ship: a streak past one earn cycle (> MOLT_EARN_EVERY-1) is worth 1, past two
+ * (> 2*MOLT_EARN_EVERY-1) is worth the full cap. Mirrors what they would have
+ * banked had the mechanic always existed. Pure; the caller guards idempotency.
+ *
+ * @param {number} streak the player's current daily streak
+ * @returns {number} molt days to grant (0..MOLT_CAP)
+ */
+export function backfillGrant(streak) {
+  const s = Math.max(0, Math.floor(streak || 0));
+  if (s > 2 * MOLT_EARN_EVERY - 1) return MOLT_CAP; // > 9 -> 2
+  if (s > MOLT_EARN_EVERY - 1) return 1;            // > 4 -> 1
+  return 0;
+}
+
+/**
  * Apply a real daily completion on `today` to the stored streak and molt bank.
  * Earn (the streak reaching a multiple of MOLT_EARN_EVERY) is applied AFTER any
  * spend or increment, and only on a completion that advances the streak, so a

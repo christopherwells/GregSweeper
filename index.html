@@ -771,6 +771,24 @@
     </div>
   </div>
 
+  <!-- Earned-molt-day celebration. Fires once on the title screen after the
+       completion that banks a molt day (every 5 in a row). On dismiss, the
+       crab drops into the Daily card's top-left corner. -->
+  <div id="molt-earned-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="molt-earned-title">
+    <div class="modal-content meet-greg-content molt-earned-content">
+      <div class="modal-header">
+        <h2 id="molt-earned-title">Molt day earned</h2>
+        <button class="modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body meet-greg-body">
+        <div class="molt-earned-crab" aria-hidden="true">🦀</div>
+        <p>Greg banked you a molt day. Miss a day and it covers you, so your streak lives on.</p>
+        <p>You can hold two.</p>
+        <button id="molt-earned-done" type="button" class="molt-earned-done">Got it</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Past Dailies calendar — replay any stored past board. Opens from the
        "Past dailies" link on the Daily card. Outside #app so it renders over
        the title screen. The month grid is built by renderArchiveCalendar()
