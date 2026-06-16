@@ -2263,34 +2263,39 @@ function updateTitleProgress() {
     const today = getLocalDateString();
     const dailyCard = $('.mode-card[data-mode="daily"]');
     const { streak, banked } = getDailyStreak();
-    // Par rides the status line as a quiet suffix instead of its own row.
-    const parSuffix = (_titleDailyPar.date === today && _titleDailyPar.secs > 0)
-      ? ` <span class="mode-card-par-inline">· Par ${_titleDailyPar.secs}s</span>`
-      : '';
-    const fieldNote = (_titleDailyPar.date === today && _titleDailyPar.note)
-      ? `<span class="mode-card-fieldnote">${spriteImgHTML('smiley', 'sprite-greg-note', 'Greg')}${_titleDailyPar.note}</span>`
-      : '';
     const completed = isDailyCompleted(today);
-    // Molt-day tokens ride the existing streak line (no new row). Held back
-    // when a molt day is actively holding the streak (the provisional line
-    // below says so instead).
-    const tokens = banked > 0
-      ? ` <span class="molt-tokens" title="Molt days banked. Earned every 5 days in a row, spent automatically when you miss a day. Holds 2.">${'🦀'.repeat(banked)}</span>`
-      : '';
     const provisional = completed ? null : getMoltProvisionalNotice();
-    let descriptor;
-    if (provisional) {
-      // A molt day is holding the streak over a missed gap — surface the save
-      // before the player plays, in place of the plain streak line.
-      descriptor = `🦀 Molt day holds your ${provisional.streakHeld} day streak`;
-    } else if (completed) {
-      descriptor = streak > 0 ? `Completed! 🔥 ${streak} day streak${tokens}` : 'Completed today!';
-    } else {
-      descriptor = streak > 0 ? `🔥 ${streak} day streak${tokens}` : 'Same puzzle worldwide';
-    }
-    // Two rows only: status (+ par) and Greg's note. "Past dailies" is a
-    // corner chip in the card markup, so it never enters this stack.
-    dailyEl.innerHTML = `<span class="mode-card-status">${descriptor}${parSuffix}</span>` + fieldNote;
+    const hasPar = _titleDailyPar.date === today && _titleDailyPar.secs > 0;
+    const note = (_titleDailyPar.date === today && _titleDailyPar.note) ? _titleDailyPar.note : '';
+
+    // Corner-anchored stats keep the center clean: molt tokens top-left
+    // (mirroring the Past chip top-right), the streak (emphasized) and par
+    // along the bottom edge, and Greg's note as the one center descriptor.
+    // The numbers ride the corners instead of stacking their own rows, so the
+    // Daily card stays the same height as its siblings. The molt tooltip
+    // carries the banked-vs-holding nuance so the face copy stays quiet.
+    const moltTitle = provisional
+      ? `A molt day is holding your ${provisional.streakHeld} day streak. Play today to keep it going.`
+      : 'Molt days banked. Earned every 5 days in a row, spent automatically when you miss a day. Holds 2.';
+    const moltCorner = banked > 0
+      ? `<span class="daily-corner-molt" title="${moltTitle}">${'🦀'.repeat(banked)}</span>`
+      : '';
+
+    // Once played, the card's job is to say so (the dimmed .daily-completed
+    // style reinforces it); before play, Greg's note entices.
+    const centerText = completed ? 'Played today' : (note || 'Same puzzle worldwide');
+
+    const streakBL = streak > 0
+      ? `<span class="daily-streak">🔥<span class="daily-streak-n">${streak}</span><span class="daily-streak-label">day streak</span></span>`
+      : '<span></span>';
+    const parBR = hasPar ? `<span class="daily-par">Par ${_titleDailyPar.secs}s</span>` : '<span></span>';
+    const statusRow = (streak > 0 || hasPar)
+      ? `<span class="daily-status-row">${streakBL}${parBR}</span>`
+      : '';
+
+    dailyEl.innerHTML = moltCorner
+      + `<span class="mode-card-fieldnote">${centerText}</span>`
+      + statusRow;
     if (dailyCard) dailyCard.classList.toggle('daily-completed', completed);
   }
 
