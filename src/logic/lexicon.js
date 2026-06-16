@@ -22,6 +22,9 @@ import { isBoardSolvable, findDeducibleFrontier } from './boardSolver.js';
 import { generateBoard, cleanSolverArtifacts } from './boardGenerator.js';
 import { createDailyRNG } from './seededRandom.js';
 import { classifyPattern } from './patternNames.js';
+import { simplestGatingRank, SHAPE_RANK } from './proofClassify.js';
+import { clueUniverse } from './minimalProof.js';
+import { buildNeighborCache } from './boardSolver.js';
 
 // The curriculum, easiest first. lexiconUI renders the lesson-select
 // screen in this order; the Field Notebook lists techniques in it too.
@@ -95,9 +98,14 @@ export const LESSONS = {
       && r.techniqueLevel === 1,
   },
 
-  // The iconic 1-2-1. The shape can resolve at tier 1 or tier 2 depending
-  // on the flanking clues, so the gate is "solvable, no liar" plus the
-  // geometry check — never a tier number.
+  // The iconic 1-2-1 — a RECOGNITION lesson, not a forced one. A 1-2-1
+  // ALWAYS decomposes: its two outer mines are each a plain 1-2 (the 1 is a
+  // subset of the 2), so a flagging player flags those and the middle counts
+  // out. It can never be REQUIRED the way holes or the 1-3-1 corner are
+  // (proven impossible 2026-06-16) — it IS just a pair of 1-2s. So the gate
+  // is "needs real subset reasoning (techniqueLevel >= 1, not pure counting)
+  // + a 1-2-1 is on the solving path" (lessonShowsPattern, requireShape off),
+  // and the coaching celebrates spotting the shape as a unit.
   oneTwoOne: {
     id: 'oneTwoOne',
     name: 'The 1-2-1',
@@ -106,19 +114,18 @@ export const LESSONS = {
     naming: 'That was a 1-2-1: the only way to give the 2 its two mines while keeping both 1s honest is a mine under each 1, which leaves the middle square safe.',
     rows: 6, cols: 6, mines: 6,
     requiresPattern: '1-2-1',
-    requireShape: true,
+    requireShape: false,
     attempts: 2000,
     accepts: (r) =>
       (r.solvable || r.remainingUnknowns === 0)
       && r.disjunctiveMoves === 0
+      && r.techniqueLevel >= 1
       && r.techniqueLevel <= 2,
   },
 
-  // Advanced: the 1-2-2-1 needs the whole four-clue region weighed at
-  // once (neither 2 settles alone), so it is a genuine tier-2 lesson.
-  // Yield is lower; generateLessonBoard gets a deeper attempt budget and
-  // falls back to curated seeds if measurement shows live sampling is too
-  // thin.
+  // The 1-2-2-1 — also a RECOGNITION lesson, for the same reason as the
+  // 1-2-1: it decomposes into 1-2s plus counting, so it can't be forced.
+  // Gate: needs subset reasoning + the shape is on the solving path.
   oneTwoTwoOne: {
     id: 'oneTwoTwoOne',
     name: 'The 1-2-2-1',
@@ -128,11 +135,12 @@ export const LESSONS = {
     naming: 'That was a 1-2-2-1: the only layout that satisfies all four numbers at once puts both mines in the center, under the 2s, and clears the rest.',
     rows: 7, cols: 7, mines: 9,
     requiresPattern: '1-2-2-1',
-    requireShape: true,
+    requireShape: false,
     attempts: 4000,
     accepts: (r) =>
       (r.solvable || r.remainingUnknowns === 0)
       && r.disjunctiveMoves === 0
+      && r.techniqueLevel >= 1
       && r.techniqueLevel <= 2,
   },
 
@@ -302,52 +310,58 @@ export function lessonRequiresShape(lessonBoard, shapeNames) {
   // Snapshot BOTH revealed and flagged state — this sim flags proven mines.
   const snapRevealed = board.map(row => row.map(c => c.isRevealed));
   const snapFlagged = board.map(row => row.map(c => c.isFlagged));
-  const isTarget = (d, kind) =>
-    shapeNames.includes(classifyPattern(board, { ...d, kind }, { rows, cols }).name);
-  // Only the POCKET family (hole/triangle) uses effective values (face minus
-  // marked mines), so only it needs proven mines flagged. Other shapes —
-  // notably the 1-3-1 corner, whose pattern INCLUDES a forced-mine corner
-  // that must stay hidden for its recognizer — break if we flag, so don't.
-  const flagMines = shapeNames.some(n => n === 'hole' || n === 'triangle');
-  let required = false;
-  let guard = 400;
-  while (guard-- > 0) {
-    const f = findDeducibleFrontier(board, { respectFlags: false });
-    // Flag every PROVEN mine before classifying (pocket family only). A
-    // larger-number hole/triangle only reads as such once its marked mine is
-    // accounted for, and a player flags proven mines as they go. Proven mines
-    // are sound to mark; the safe frontier stays flags-blind (respectFlags:
-    // false), so this never unlocks a cell — it only lets the recognizer see
-    // the marked mine.
-    if (flagMines) for (const m of f.mines) board[m.row][m.col].isFlagged = true;
-    const allowed = f.safe.filter(s => !isTarget(s, 'safe'));
-    if (allowed.length === 0) {
-      // No non-shape progress left: the player is forced to the shape iff one
-      // is on the frontier (as a safe reveal or a provable mine to flag).
-      required = f.safe.some(s => isTarget(s, 'safe')) || f.mines.some(m => isTarget(m, 'mine'));
-      break;
-    }
-    // Reveal each allowed cell by FLOODING zeros, exactly as a real click
-    // does — otherwise a revealed 0 can sit with hidden neighbors, an
-    // impossible board state that confuses the recognizers.
-    for (const s of allowed) {
-      const queue = [[s.row, s.col]];
-      while (queue.length) {
-        const [r, c] = queue.pop();
-        const cc = board[r][c];
-        if (cc.isRevealed || cc.isMine) continue;
-        cc.isRevealed = true;
-        if (cc.adjacentMines === 0) {
-          for (let dr = -1; dr <= 1; dr++) {
-            for (let dc = -1; dc <= 1; dc++) {
-              if (dr === 0 && dc === 0) continue;
-              const nr = r + dr, nc = c + dc;
-              if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) queue.push([nr, nc]);
-            }
-          }
+  const R = SHAPE_RANK[shapeNames[0]];
+  const nc = buildNeighborCache(board, rows, cols);
+  // SOUND, flags-AWARE, CHEAPEST-read classification (see proofClassify.js): a
+  // cell counts as the target only when the target shape is the SIMPLEST thing
+  // that provably forces it — nothing easier works. The old gate read the
+  // ungated geometry namer FLAGS-BLIND, so a cell a real player flags-then-
+  // counts looked like a subset shape, and boards solvable by pure counting
+  // were wrongly admitted as "requires the shape" (holes/triangles/1-2-1/
+  // 1-2-2-1/2-2-2 all leaked counting-solvable boards, 2026-06-15). Richest-
+  // read (classifyByProof) over-corrected the other way — a count cell with
+  // incidental shape geometry got named the shape — so the gate must rank the
+  // CHEAPEST proof and treat "cheapest == the lesson's shape" as the target.
+  const flood = (r, c) => {
+    const queue = [[r, c]];
+    while (queue.length) {
+      const [rr, cc] = queue.pop();
+      const cell = board[rr][cc];
+      if (cell.isRevealed || cell.isMine || cell.isFlagged) continue;
+      cell.isRevealed = true;
+      if (cell.adjacentMines === 0) {
+        for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue;
+          const r2 = rr + dr, c2 = cc + dc;
+          if (r2 >= 0 && r2 < rows && c2 >= 0 && c2 < cols) queue.push([r2, c2]);
         }
       }
     }
+  };
+  let required = false;
+  let guard = 400;
+  while (guard-- > 0) {
+    if (lessonComplete(lessonBoard)) { required = false; break; } // solved without the shape
+    // Flags-AWARE: a player flags proven mines and counts out the rest. Build
+    // the constraint universe once per state and reuse it for every classify.
+    const universe = clueUniverse(board, { respectFlags: true });
+    const f = findDeducibleFrontier(board, { respectFlags: true });
+    const rank = (d, kind) => simplestGatingRank(board, { ...d, kind }, { rows, cols, neighborCache: nc, universe, respectFlags: true });
+    // Avoidable = solvable by something SIMPLER than the shape (rank < R). Flag
+    // avoidable mines (a flagging player does, and it surfaces the counting
+    // reads); reveal avoidable safes. Shape-rank cells — including a 1-3-1's
+    // forced-mine corner (rank 7, only the 1-3-1 proves it) — are left
+    // untouched so they can't be "avoided" by flagging.
+    const avoidMines = f.mines.filter(m => !board[m.row][m.col].isFlagged && rank(m, 'mine') < R);
+    const avoidSafes = f.safe.filter(s => !board[s.row][s.col].isRevealed && rank(s, 'safe') < R);
+    if (avoidMines.length === 0 && avoidSafes.length === 0) {
+      // No simpler progress: the player is forced to the shape iff a shape-rank
+      // cell is provable now (a safe reveal or a mine to flag).
+      required = f.safe.some(s => rank(s, 'safe') === R) || f.mines.some(m => rank(m, 'mine') === R);
+      break;
+    }
+    for (const m of avoidMines) board[m.row][m.col].isFlagged = true;
+    for (const s of avoidSafes) flood(s.row, s.col);
   }
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
     board[r][c].isRevealed = snapRevealed[r][c];
