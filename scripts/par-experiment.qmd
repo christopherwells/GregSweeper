@@ -1,0 +1,183 @@
+---
+title: "Par-model technique-counts experiment"
+subtitle: "Do named techniques beat the pooled tiers, and do composites add anything beyond their atoms?"
+author: "Christopher D. Wells"
+format:
+  html:
+    toc: true
+    code-fold: false
+    df-print: kable
+execute:
+  warning: false
+  message: false
+---
+
+> **Status — par model stays POOLED for now, expand LATER (Christopher, 2026-06-16).**
+> The current pooled pattern/search tiers win this comparison, and per-technique
+> / nested-composite terms buy nothing — BUT that is a **power** result, not a
+> "techniques don't matter" result. Two players (Chris + Kate) carry 189 of 209
+> completions, with a five-row one-off tail, so the random intercepts and the
+> sparse technique counts have almost nothing to estimate from. The null here is
+> **"no evidence yet," not "proven zero."** The intent is to **re-run this
+> notebook as the user base grows** — more distinct players is exactly what
+> makes the per-technique and nested structure estimable. Keep the pooled model
+> shipped until then; revisit this experiment when N climbs.
+
+```{r setup}
+# INTENT: test whether the SOUND per-board technique counts (from
+# scripts/extract-par-experiment.mjs, classifyByProof — oracle-verified) are
+# better par-model predictors than the current pooled pattern/search tiers,
+# and whether the line composites (1-2-1, 1-2-2-1) carry any signal beyond the
+# 1-2 atom they decompose into (the gym work PROVED they decompose; this asks
+# whether players nonetheless pay extra time for them).
+#
+# Two flag models, per your "try both": flags-AWARE (fa_*, a flagging player —
+# count-dominant) and flags-BLIND (fb_*, credit the reasoning — note fb_count
+# is identically 0, since no clue is satisfied without a flag).
+library(tidyverse)
+library(lme4)      # fast lmer for the comparison + anova
+library(brms)      # principled shrinkage for the sparse composite terms
+
+set.seed(20260616)
+boards <- read_csv("par-experiment-boards.csv")
+scores <- read_csv("par-experiment-scores.csv")
+cat(sprintf("boards: %d dates | scores: %d completions\n", nrow(boards), nrow(scores)))
+```
+
+## Build the fit frame
+
+```{r join}
+# clean_time = time minus the bomb BASE surcharge (info-value stays in — it is
+# real skipped-deduction difficulty). Drop hinted plays (a hint changes the
+# time). Derive the current pooled tiers from the raw buckets for the baseline.
+df <- scores |>
+  filter(n_hints == 0, time >= 5, time <= 3600) |>
+  inner_join(boards, by = "date") |>
+  filter(bombHits <= 0.30 * totalMines) |>   # drop > 30%-mines brute-force probes (matches the production refit's isBombHitCheat)
+  mutate(
+    clean_time   = time - bombBaseSum,
+    patternMoves = canonicalSubsetMoves + genericSubsetMoves,  # M0 pooled "pattern"
+    searchMoves  = advancedLogicMoves,                          # M0 pooled "search"
+    archive      = factor(archive),
+    uid          = factor(uid),
+  )
+# CHECK: clean_time positive, no NA in the predictors we will use.
+stopifnot(all(df$clean_time > 0), nrow(df) > 100)
+cat(sprintf("fit rows: %d | players: %d | dates: %d\n",
+            nrow(df), n_distinct(df$uid), n_distinct(df$date)))
+```
+
+## EDA — sparsity and collinearity
+
+```{r eda}
+# How often is each fa_* technique nonzero across dates? (Sparsity is the real
+# constraint, not collinearity — confirm the earlier finding here.)
+tech_fa <- c("fa_count","fa_11","fa_12","fa_hole","fa_triangle","fa_121","fa_1221","fa_131","fa_222","fa_region")
+boards |>
+  summarise(across(all_of(tech_fa), ~ sum(. > 0))) |>
+  pivot_longer(everything(), names_to = "technique", values_to = "dates_nonzero") |>
+  arrange(desc(dates_nonzero)) |> print()
+
+# Manual VIF (base R): regress each predictor on the others, VIF = 1/(1-R^2).
+manual_vif <- function(data, preds) {
+  X <- data[, preds, drop = FALSE]
+  keep <- preds[sapply(X, function(z) var(z, na.rm = TRUE) > 0)]
+  sapply(keep, function(p) {
+    others <- setdiff(keep, p)
+    1 / (1 - summary(lm(reformulate(others, p), data = X))$r.squared)
+  }) |> round(2) |> sort(decreasing = TRUE)
+}
+cat("\nVIF — atomic fa predictors + size:\n")
+print(manual_vif(df, c("cellCount","totalMines","fa_11","fa_12","fa_hole","fa_triangle","fa_region")))
+cat("\ncorrelation of fa_count with cellCount (expect high — count is a size proxy):\n")
+print(round(cor(df$fa_count, df$cellCount), 2))
+```
+
+## Models (flags-aware) — does finer structure beat the pooled tiers?
+
+```{r lmer-compare}
+# Quick lme4 read first (fast; brms with shrinkage follows for the sparse
+# composite terms). Random intercept per player; archive as a nuisance dummy.
+# fa_count is dropped as a predictor — it is a size proxy (cellCount absorbs it).
+m0 <- lmer(clean_time ~ cellCount + totalMines + patternMoves + searchMoves + archive + (1|uid),
+           data = df, REML = FALSE)
+m1 <- lmer(clean_time ~ cellCount + totalMines + fa_11 + fa_12 + fa_hole + fa_triangle + fa_region + archive + (1|uid),
+           data = df, REML = FALSE)
+m2 <- lmer(clean_time ~ cellCount + totalMines + fa_11 + fa_12 + fa_hole + fa_triangle + fa_region +
+             fa_121 + fa_1221 + fa_131 + fa_222 + archive + (1|uid),
+           data = df, REML = FALSE)
+cat("AIC / BIC (lower = better; penalizes the extra parameters):\n")
+print(AIC(m0, m1, m2))
+print(BIC(m0, m1, m2))
+# M0 (pooled) vs M1 (atomic) are NON-NESTED (different predictor sets), so the
+# valid comparison is AIC/BIC above — NOT a likelihood-ratio test (anova() would
+# print a bogus chi-square). M1 -> M2 IS nested (M2 = M1 + the composite
+# counts), so this LRT is valid: does adding the composites significantly
+# improve the atomic model?
+cat("\nLRT m1 -> m2 (atomic -> atomic+composites; nested, valid):\n")
+print(anova(m1, m2))
+```
+
+## Principled composite test (brms shrinkage)
+
+```{r brms, eval=TRUE}
+# The composite terms are SPARSE (few nonzero dates), so an unregularized lmer
+# estimate is unstable. brms with a tight prior on the composite coefficients
+# is the partial-pooling / "nested" version: each composite is allowed to
+# deviate from 0 only as far as its thin data demands. If the posteriors hug 0,
+# composites add nothing beyond their atomic content (the decomposition holds
+# in time too); if one pulls clearly off 0, players pay extra for it.
+priors <- c(
+  prior(normal(0, 3),  class = "b"),                                  # techniques: weakly informative
+  prior(normal(0, 0.8), class = "b", coef = "fa_121"),                # composites: tight (shrink to ~0)
+  prior(normal(0, 0.8), class = "b", coef = "fa_1221"),
+  prior(normal(0, 0.8), class = "b", coef = "fa_131"),
+  prior(normal(0, 0.8), class = "b", coef = "fa_222"),
+  prior(student_t(3, 60, 40), class = "Intercept"),
+  prior(student_t(3, 0, 30), class = "sd"),
+  prior(student_t(3, 0, 30), class = "sigma")
+)
+bfit <- brm(
+  clean_time ~ cellCount + totalMines + fa_11 + fa_12 + fa_hole + fa_triangle + fa_region +
+    fa_121 + fa_1221 + fa_131 + fa_222 + archive + (1|uid),
+  data = df, prior = priors, chains = 4, iter = 2000, seed = 20260616,
+  control = list(adapt_delta = 0.95), refresh = 0
+)
+summary(bfit)
+# The verdict line: composite coefficients with 95% CrI — does any exclude 0?
+fixef(bfit)[c("fa_121","fa_1221","fa_131","fa_222"), ] |> round(2)
+```
+
+## Flags-blind cross-check
+
+```{r lmer-fb}
+# fb_count is identically 0 (no clue is satisfied without a flag), so the
+# flags-blind view is "pure reasoning": every safe reveal is a subset/region.
+# Re-run the pooled-vs-atomic comparison on fb_* to see if the conclusion is
+# robust to the flag model.
+m0b <- lmer(clean_time ~ cellCount + totalMines + patternMoves + searchMoves + archive + (1|uid),
+            data = df, REML = FALSE)  # baseline is flag-model-independent
+m1b <- lmer(clean_time ~ cellCount + totalMines + fb_11 + fb_12 + fb_hole + fb_triangle + fb_region + archive + (1|uid),
+            data = df, REML = FALSE)
+cat("flags-blind AIC (baseline vs atomic):\n"); print(AIC(m0b, m1b))
+cat("\nLRT m0 -> m1 (flags-blind atomic):\n"); print(anova(m0b, m1b))
+```
+
+## Read me
+
+INTENT for interpretation:
+
+- If **m1 ≈ m0** (no AIC/BIC drop, non-significant LRT): splitting the pooled
+  pattern tier into named atoms buys nothing — the 2026-06-08 pooling was the
+  right call, and the sparse atoms just add variance.
+- If **m2 ≈ m1** and the brms composite CrIs hug 0: the line composites carry
+  no time signal beyond their atoms — the decomposition holds in *behavior*,
+  not just in logic, so they should never be separate par terms (only the gym
+  teaches them as recognition).
+- If a composite's CrI clearly **excludes 0**: players pay measurable extra
+  time for that shape — worth a nested term (atom effect + shrunk deviation).
+
+CHECK before trusting any of this: the sample is small (~200 completions, ~5
+players, composites nonzero on a handful of dates). Treat a null as "no
+evidence yet," not "proven zero" — the honest move is to re-run as data grows.
+```
