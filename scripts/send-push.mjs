@@ -29,15 +29,27 @@
 // (FCM dedupes by tag).
 
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 import { createSign } from 'node:crypto';
+import { coversTonight } from '../src/logic/moltDay.js';
 
 const DB_BASE = 'https://gregsweeper-66d02-default-rtdb.firebaseio.com';
 const FCM_PROJECT_ID = 'gregsweeper-66d02';
 const FCM_SEND_URL = `https://fcm.googleapis.com/v1/projects/${FCM_PROJECT_ID}/messages:send`;
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// CLI flags. --dry-run prints what each pass WOULD send instead of calling FCM;
+// --fixture <path> reads the users tree from a local JSON (so a dry-run needs
+// no service account or network); --hour / --date override the ET clock so any
+// hour or day (the 8pm pass, a covered-yesterday morning) can be exercised.
+const _argv = process.argv.slice(2);
+const DRY_RUN = _argv.includes('--dry-run');
+function _flagVal(flag) { const i = _argv.indexOf(flag); return i >= 0 ? _argv[i + 1] : null; }
+const FIXTURE = _flagVal('--fixture');
+const HOUR_OVERRIDE = _flagVal('--hour');
+const DATE_OVERRIDE = _flagVal('--date');
 
 function _etDateParts() {
   // America/New_York anchored YYYY-MM-DD + hour 0..23 + day-of-week.
@@ -87,6 +99,14 @@ const STREAK_BODIES = [
   "{streak} days in a row. Don't drop it tonight.",
   "Streak alert: {streak} days going. Today's daily is still open.",
 ];
+// Covered-night nudges: a banked molt day means skipping tonight won't break
+// the streak, so the at-risk warning would be a lie. Send a calm "no pressure"
+// line instead (the player opted into streak pushes, so we still say hello).
+const STREAK_COVERED_BODIES = [
+  "No pressure tonight — your molt day's got the streak. The board's still open.",
+  "Streak's covered tonight. Play if you feel like it.",
+  "A molt day has your streak tonight. The daily's there if you want it.",
+];
 function _pickBody(date, pool) {
   // Stable per-date hash so all subscribers on the same date see the
   // same line. Sum of the year-month-day digits mod pool length.
@@ -119,6 +139,83 @@ function _streakPayload(streak, date) {
     tag: 'gregsweeper-streak',
     deepLink: './?mode=daily',
   };
+}
+
+// 8pm soft nudge when a molt day covers tonight (the streak is not at risk).
+function _coveredPayload(date) {
+  return {
+    title: 'GregSweeper — Streak covered',
+    body: _pickBody(date, STREAK_COVERED_BODIES),
+    tag: 'gregsweeper-streak',
+    deepLink: './?mode=daily',
+  };
+}
+
+// Morning acknowledgment when a molt day covered yesterday's gap.
+function _moltAckPayload(lastUse, date) {
+  return {
+    title: 'GregSweeper — Daily puzzle',
+    body: `Your molt day covered ${_coveredPhrase(lastUse.covered)}. Streak intact at ${lastUse.streakKept || 0}. Today's daily is up.`,
+    tag: 'gregsweeper-daily',
+    deepLink: './?mode=daily',
+  };
+}
+
+// Friendly weekday phrase for a covered gap (always 1-2 recent days). Parsed
+// and formatted in UTC so the weekday matches the date string deterministically
+// in the runner. Presentation only — the bank math lives in src/logic/moltDay.js.
+function _coveredPhrase(dates) {
+  const names = (dates || []).map(d =>
+    new Date(d + 'T00:00:00Z').toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' }));
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.length} days`;
+}
+
+// Shift a YYYY-MM-DD by n calendar days (UTC, so no TZ drift on the date key).
+function _shiftDate(d, n) {
+  const dt = new Date(d + 'T00:00:00Z');
+  dt.setUTCDate(dt.getUTCDate() + n);
+  return dt.toISOString().slice(0, 10);
+}
+
+// Day-of-week (Mon=1..Sun=7) for a YYYY-MM-DD, for the --date dry-run override.
+function _dowFromDate(d) {
+  const day = new Date(d + 'T12:00:00Z').getUTCDay(); // 0=Sun..6=Sat
+  return day === 0 ? 7 : day;
+}
+
+// ── Pure pass decisions (exported for test/sendPushMolt.test.mjs) ──────────
+// Both return the FCM payload to send for one user, or null to skip them.
+
+// Morning reminder: the per-category nudge, with a molt-day acknowledgment
+// swapped in when a cover saved yesterday's gap.
+export function reminderDecision({ prefs, category, hour, moltDay, date, yesterday }) {
+  if (!prefs || !prefs.enabled) return null;
+  if (prefs.hourLocal !== hour) return null;
+  if (category === 'daily' && prefs.dailyReminder === false) return null;
+  const lastUse = moltDay?.lastUse;
+  if (category === 'daily' && lastUse?.date === yesterday &&
+      Array.isArray(lastUse.covered) && lastUse.covered.length > 0) {
+    return _moltAckPayload(lastUse, date);
+  }
+  return _payloadFor(category, date);
+}
+
+// 8pm streak rescue: the at-risk warning, suppressed (replaced by a soft
+// covered-nudge) when a banked molt day means skipping tonight is safe.
+export function streakDecision({ prefs, dailyStreak, lastDailyDate, moltDay, date }) {
+  if (!prefs || !prefs.enabled) return null;
+  if (prefs.streakWarning === false) return null;
+  const streak = dailyStreak || 0;
+  if (streak < 3) return null;
+  const lastDate = lastDailyDate || '';
+  if (lastDate >= date) return null; // already played today
+  const banked = moltDay?.banked || 0;
+  if (coversTonight({ lastDailyDate: lastDate, banked, today: date })) {
+    return _coveredPayload(date);
+  }
+  return _streakPayload(streak, date);
 }
 
 // 8pm ET — late enough that a user who plays after work has had their
@@ -229,6 +326,11 @@ async function _sendPass(accessToken, users, { label, perUserPayload }) {
     const payload = perUserPayload(uid, userData);
     if (!payload) continue;
     matched++;
+    if (DRY_RUN) {
+      console.log(`  [${label}] would send → uid=${uid}: "${payload.title}" — ${payload.body} (tag=${payload.tag})`);
+      sent++;
+      continue;
+    }
     try {
       await sendOneFcmMessage(accessToken, sub.token, payload);
       sent++;
@@ -263,39 +365,43 @@ async function fetchAllUsers(accessToken) {
   return (await r.json()) || {};
 }
 
-(async () => {
-  const saJson = process.env.FIREBASE_SERVICE_ACCOUNT;
-  if (!saJson) {
-    console.error('FIREBASE_SERVICE_ACCOUNT env var not set — cannot mint access token');
-    process.exit(1);
-  }
-  let serviceAccount;
-  try { serviceAccount = JSON.parse(saJson); }
-  catch (err) {
-    console.error('FIREBASE_SERVICE_ACCOUNT is not valid JSON:', err.message);
-    process.exit(1);
+async function main() {
+  // A dry-run reading from a fixture needs no credentials or network.
+  const needSecret = !(DRY_RUN && FIXTURE);
+  let serviceAccount = null;
+  if (needSecret) {
+    const saJson = process.env.FIREBASE_SERVICE_ACCOUNT;
+    if (!saJson) {
+      console.error('FIREBASE_SERVICE_ACCOUNT env var not set — cannot mint access token');
+      process.exit(1);
+    }
+    try { serviceAccount = JSON.parse(saJson); }
+    catch (err) {
+      console.error('FIREBASE_SERVICE_ACCOUNT is not valid JSON:', err.message);
+      process.exit(1);
+    }
   }
 
-  const { date, hour, dow } = _etDateParts();
+  let { date, hour, dow } = _etDateParts();
+  if (DRY_RUN && DATE_OVERRIDE) { date = DATE_OVERRIDE; dow = _dowFromDate(date); }
+  if (DRY_RUN && HOUR_OVERRIDE != null) hour = parseInt(HOUR_OVERRIDE, 10);
   const category = _categoryFor({ date, dow });
-  const reminderPayload = _payloadFor(category, date);
+  const yesterday = _shiftDate(date, -1);
 
-  console.log(`[${date} ${String(hour).padStart(2, '0')}:00 ET] category=${category}`);
+  console.log(`[${date} ${String(hour).padStart(2, '0')}:00 ET] category=${category}${DRY_RUN ? ' (DRY RUN)' : ''}`);
 
-  const accessToken = await getAccessToken(serviceAccount);
-  const users = await fetchAllUsers(accessToken);
+  const accessToken = needSecret ? await getAccessToken(serviceAccount) : 'dry-run';
+  const users = FIXTURE ? JSON.parse(readFileSync(FIXTURE, 'utf8')) : await fetchAllUsers(accessToken);
 
   // ── Reminder pass: hourLocal-matched daily/weekly push ─────
   const r = await _sendPass(accessToken, users, {
     label: 'reminder',
-    perUserPayload(uid, userData) {
-      const prefs = userData?.notificationPrefs;
-      if (!prefs || !prefs.enabled) return null;
-      if (prefs.hourLocal !== hour) return null;
-      // Per-category opt-outs (default ON if missing — matches the toggle defaults).
-      if (category === 'daily' && prefs.dailyReminder === false) return null;
-      return reminderPayload;
-    },
+    perUserPayload: (uid, userData) => reminderDecision({
+      prefs: userData?.notificationPrefs,
+      category, hour,
+      moltDay: userData?.moltDay,
+      date, yesterday,
+    }),
   });
 
   // ── Streak-warning pass: 8pm ET evening rescue ─────────────
@@ -303,24 +409,25 @@ async function fetchAllUsers(accessToken) {
   if (hour === STREAK_WARNING_HOUR) {
     s = await _sendPass(accessToken, users, {
       label: 'streak-warning',
-      perUserPayload(uid, userData) {
-        const prefs = userData?.notificationPrefs;
-        if (!prefs || !prefs.enabled) return null;
-        // Default ON if missing — same convention as dailyReminder.
-        if (prefs.streakWarning === false) return null;
-        const streak = userData?.dailyStreak || 0;
-        if (streak < 3) return null;
-        const lastDate = userData?.lastDailyDate || '';
-        // String comparison works because YYYY-MM-DD is lexicographically
-        // ordered. If lastDate >= today, they already played today.
-        if (lastDate >= date) return null;
-        return _streakPayload(streak, date);
-      },
+      perUserPayload: (uid, userData) => streakDecision({
+        prefs: userData?.notificationPrefs,
+        dailyStreak: userData?.dailyStreak,
+        lastDailyDate: userData?.lastDailyDate,
+        moltDay: userData?.moltDay,
+        date,
+      }),
     });
   }
 
   console.log(`Done: reminder matched=${r.matched} sent=${r.sent} failed=${r.failed}; streak matched=${s.matched} sent=${s.sent} failed=${s.failed}`);
-})().catch(err => {
-  console.error('send-push failed:', err.message);
-  process.exit(1);
-});
+}
+
+// Run only when invoked directly (so test/sendPushMolt.test.mjs can import the
+// pure decision helpers without the IIFE firing and exiting).
+const _isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (_isMain) {
+  main().catch(err => {
+    console.error('send-push failed:', err.message);
+    process.exit(1);
+  });
+}

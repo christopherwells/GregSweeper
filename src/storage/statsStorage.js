@@ -1,5 +1,6 @@
 import { safeGet, safeSet, safeRemove, safeGetJSON, safeSetJSON, safeKeys } from './storageAdapter.js';
 import { getLocalDateString } from '../logic/seededRandom.js';
+import { applyStreakContinuation, projectContinuation, isStreakAlive, MOLT_CAP } from '../logic/moltDay.js';
 import { isTestEnvironment } from '../firebase/env.js';
 import { containsHateSpeech } from '../logic/nameFilter.js';
 
@@ -176,7 +177,7 @@ function createDefaultModeStats() {
     challenge: createModeStats(),
     timed: createModeStats(),
     skillTrainer: createModeStats(),
-    daily: { ...createModeStats(), dailyStreak: 0, bestDailyStreak: 0, dailiesCompleted: 0, bombHits: 0, lastDailyCompletedDate: null },
+    daily: { ...createModeStats(), dailyStreak: 0, bestDailyStreak: 0, dailiesCompleted: 0, bombHits: 0, lastDailyCompletedDate: null, moltBanked: 0, moltLastUse: null },
     chaos: { ...createModeStats(), bestRun: 0, totalRuns: 0 },
   };
 }
@@ -235,10 +236,17 @@ function getModeKey(gameMode) {
   return gameMode;
 }
 
+// Transient marker for the most recent daily completion's molt-day outcome
+// (a cover earned, covers spent). Set by saveGameResult, drained once by the
+// win handler via consumeMoltEvent(). Deliberately NOT persisted, so a stale
+// "earned" can never resurface on reload or ride along a later non-daily save.
+let _lastMoltEvent = null;
+
 export function saveGameResult(won, time, level, { isDaily = false, isArchive = false, usedPowerUps = false, gameMode = 'normal', hadGimmicks = false, skillFeats = {}, dailySeed = null } = {}) {
   const stats = loadStats();
   const modeKey = getModeKey(gameMode);
   const modeStats = stats.modeStats[modeKey];
+  _lastMoltEvent = null;
 
   // Update global stats (chaos mode is tracked per-mode only — skip global streak/bestTimes/purist)
   const isChaos = modeKey === 'chaos';
@@ -306,32 +314,36 @@ export function saveGameResult(won, time, level, { isDaily = false, isArchive = 
       if (level > modeStats.maxLevelReached) {
         modeStats.maxLevelReached = level;
       }
-      // Daily-specific: consecutive-day streak validation
+      // Daily-specific: consecutive-day streak with molt-day insurance. All
+      // the earn / spend / reset math lives in the shared pure module so the
+      // completion path, the app-load notice, and the push script agree.
       if (modeKey === 'daily') {
         modeStats.dailiesCompleted = (modeStats.dailiesCompleted || 0) + 1;
         // Use the puzzle's seed date (not current date) to avoid midnight-crossing bugs
         const today = dailySeed || getLocalDateString();
-        const lastDate = modeStats.lastDailyCompletedDate;
-        if (lastDate) {
-          const last = new Date(lastDate + 'T00:00:00');
-          const now = new Date(today + 'T00:00:00');
-          const diffDays = Math.round((now - last) / 86400000);
-          if (diffDays === 1) {
-            // Consecutive day — increment streak
-            modeStats.dailyStreak = (modeStats.dailyStreak || 0) + 1;
-          } else if (diffDays === 0) {
-            // Same day — don't change streak (already counted)
-          } else {
-            // Gap — reset streak
-            modeStats.dailyStreak = 1;
-          }
-        } else {
-          modeStats.dailyStreak = 1;
-        }
+        const cont = applyStreakContinuation({
+          lastDailyDate: modeStats.lastDailyCompletedDate,
+          streak: modeStats.dailyStreak || 0,
+          banked: modeStats.moltBanked || 0,
+          today,
+        });
+        modeStats.dailyStreak = cont.streak;
+        modeStats.moltBanked = cont.banked;
         modeStats.lastDailyCompletedDate = today;
+        if (cont.coveredDates.length > 0) {
+          // Persist the spend so the provisional notice survives a reload and
+          // the win modal can name the covered day(s).
+          modeStats.moltLastUse = { date: today, covered: cont.coveredDates, streakKept: cont.streak };
+        }
         if (modeStats.dailyStreak > (modeStats.bestDailyStreak || 0)) {
           modeStats.bestDailyStreak = modeStats.dailyStreak;
         }
+        _lastMoltEvent = {
+          earned: cont.earned,
+          coveredDates: cont.coveredDates,
+          banked: cont.banked,
+          streakKept: cont.streak,
+        };
       }
     } else {
       modeStats.losses++;
@@ -347,6 +359,16 @@ export function saveGameResult(won, time, level, { isDaily = false, isArchive = 
   setJSON(STATS_KEY, stats);
   _statsCache = stats; // Update cache
   return stats;
+}
+
+// Drain the molt-day outcome of the most recent daily completion. Returns
+// { earned, coveredDates, banked, streakKept } once, then null until the next
+// completion. The win handler calls this right after saveGameResult to decide
+// whether to show the "molt day banked" or "molt day covered X" note.
+export function consumeMoltEvent() {
+  const e = _lastMoltEvent;
+  _lastMoltEvent = null;
+  return e;
 }
 
 // ── Power-Up Persistence ──────────────────────────────
@@ -552,20 +574,39 @@ export function markNoticeSeen(name) {
 export function getDailyStreak() {
   const stats = loadStats();
   const daily = stats.modeStats?.daily;
-  if (!daily) return { streak: 0, best: 0 };
-  // Validate streak is still active (last completed was today or yesterday)
+  if (!daily) return { streak: 0, best: 0, banked: 0 };
+  const banked = Math.min(MOLT_CAP, Math.max(0, daily.moltBanked || 0));
   const today = getLocalDateString();
   const lastDate = daily.lastDailyCompletedDate;
-  if (lastDate) {
-    const last = new Date(lastDate + 'T00:00:00');
-    const now = new Date(today + 'T00:00:00');
-    const diffDays = Math.round((now - last) / 86400000);
-    if (diffDays > 1) {
-      // Streak has lapsed
-      return { streak: 0, best: daily.bestDailyStreak || 0 };
-    }
+  // The streak is live while the last completion was today or yesterday, OR a
+  // banked molt day still covers the gap (it gets spent on the next
+  // completion). Only a gap the bank cannot cover lapses to zero.
+  if (lastDate && !isStreakAlive({ lastDailyDate: lastDate, banked, today })) {
+    return { streak: 0, best: daily.bestDailyStreak || 0, banked };
   }
-  return { streak: daily.dailyStreak || 0, best: daily.bestDailyStreak || 0 };
+  return { streak: daily.dailyStreak || 0, best: daily.bestDailyStreak || 0, banked };
+}
+
+// Before the player plays today: if a molt day is currently holding the streak
+// over a missed gap, describe the save so the daily card can surface it ahead
+// of the completion. Returns { streakHeld, coveredDates } or null when there is
+// nothing provisional to show (played today, or the gap is uncoverable).
+export function getMoltProvisionalNotice() {
+  const stats = loadStats();
+  const daily = stats.modeStats?.daily;
+  if (!daily || !daily.lastDailyCompletedDate) return null;
+  const today = getLocalDateString();
+  if (daily.lastDailyCompletedDate >= today) return null; // already played today
+  const banked = Math.min(MOLT_CAP, Math.max(0, daily.moltBanked || 0));
+  const proj = projectContinuation({
+    lastDailyDate: daily.lastDailyCompletedDate,
+    streak: daily.dailyStreak || 0,
+    banked,
+    today,
+  });
+  if (!proj.willCover) return null;
+  // streakHeld is the CURRENT streak (the cover isn't spent until they play).
+  return { streakHeld: daily.dailyStreak || 0, coveredDates: proj.coveredDates };
 }
 
 // Length of the maximal run of consecutive ET dates ending at the most
@@ -663,6 +704,8 @@ export function resetDailyStatsForAccountSwitch() {
     stats.modeStats.daily.dailyStreak = 0;
     stats.modeStats.daily.bestDailyStreak = 0;
     stats.modeStats.daily.lastDailyCompletedDate = null;
+    stats.modeStats.daily.moltBanked = 0;
+    stats.modeStats.daily.moltLastUse = null;
   }
   setJSON(STATS_KEY, stats);
   _statsCache = stats;
@@ -681,7 +724,7 @@ export function resetDailyStatsForAccountSwitch() {
 // just landed), values are adopted verbatim including downgrades.
 // Otherwise an admin-side correction or a partner-device reset would
 // be silently rejected by the max-merge.
-export function applyCloudProgress({ maxCheckpoint, dailyStreak, bestDailyStreak, lastDailyDate, powerUps }, opts = {}) {
+export function applyCloudProgress({ maxCheckpoint, dailyStreak, bestDailyStreak, lastDailyDate, powerUps, moltDay }, opts = {}) {
   const overwrite = !!opts.overwrite;
   const stats = loadStats();
   let changed = false;
@@ -697,23 +740,35 @@ export function applyCloudProgress({ maxCheckpoint, dailyStreak, bestDailyStreak
     changed = true;
   }
 
-  // Daily streak sync.
+  // Daily streak sync. The molt-day bank + lastUse ride the SAME snapshot as
+  // (dailyStreak, lastDailyDate): whichever side wins by the date-anchor rules
+  // supplies ALL of them together, so the bank can never be paired with the
+  // other side's streak.
   //   overwrite=true  (listener path): adopt cloud verbatim regardless of date
   //   overwrite=false (initial-load):
-  //     - cloud date > local date → adopt cloud's streak AND date verbatim
+  //     - cloud date > local date → adopt cloud's streak + bank + date verbatim
   //       (even if the streak went DOWN — player broke it on another device).
-  //     - cloud date === local date → defensively take the higher streak.
+  //     - cloud date === local date → defensively take the higher streak, and
+  //       its bank with it.
   //     - cloud date < local date → keep local; cloud is stale.
-  // bestDailyStreak is normally a high-water mark, but with overwrite=true
-  // we adopt cloud's value verbatim (so an admin reset reflects in best too).
-  if (dailyStreak != null || bestDailyStreak != null) {
+  // bestDailyStreak is a separate high-water mark (a plain max), except under
+  // overwrite where cloud is adopted verbatim (so an admin reset reflects too).
+  const cloudMolt = (moltDay && typeof moltDay === 'object') ? moltDay : null;
+  if (dailyStreak != null || bestDailyStreak != null || cloudMolt != null) {
     if (!stats.modeStats) stats.modeStats = {};
     if (!stats.modeStats.daily) stats.modeStats.daily = {};
     const daily = stats.modeStats.daily;
+    // Adopt cloud's molt fields as a unit. A missing cloud node means the
+    // account has no molt state yet, which is a real 0 (not "keep local").
+    const adoptMolt = () => {
+      daily.moltBanked = cloudMolt ? (cloudMolt.banked || 0) : 0;
+      daily.moltLastUse = cloudMolt ? (cloudMolt.lastUse || null) : null;
+    };
     if (overwrite) {
       if (dailyStreak != null) daily.dailyStreak = dailyStreak;
       if (bestDailyStreak != null) daily.bestDailyStreak = bestDailyStreak;
       if (lastDailyDate != null) daily.lastDailyCompletedDate = lastDailyDate;
+      adoptMolt();
       changed = true;
     } else {
       const cloudDate = lastDailyDate;
@@ -721,10 +776,12 @@ export function applyCloudProgress({ maxCheckpoint, dailyStreak, bestDailyStreak
       if (cloudDate && (!localDate || cloudDate > localDate)) {
         if (dailyStreak != null) daily.dailyStreak = dailyStreak;
         daily.lastDailyCompletedDate = cloudDate;
+        adoptMolt();
         changed = true;
       } else if (cloudDate && cloudDate === localDate) {
         if (dailyStreak != null && dailyStreak > (daily.dailyStreak || 0)) {
           daily.dailyStreak = dailyStreak;
+          adoptMolt(); // the bank follows the streak it belongs to
           changed = true;
         }
       }
