@@ -83,18 +83,35 @@ test('counting board needs no pattern, only single-number counting', () => {
   assert.equal(r.genericSubsetMoves, 0);
 });
 
-test('EVERY named-shape lesson REQUIRES its shape (a lesson must force its technique)', () => {
-  // The require-gate: the board cannot be finished without performing the
-  // shape (a board solvable around the shape is rejected). This is what
-  // stops boards where the shape is an incidental cameo off the critical
-  // path. Covers the bare pairs too: 1-1/1-2 are recognized by the overlap
-  // geometry (matchesOverlapPair), not the shadow-prone frontier sources, so
-  // 1-2 — whose freed SAFE square is the square only the 1 sees — finally
-  // surfaces and can be required (it measured 0% required before this).
-  for (const [id, name] of [['subset11', '1-1'], ['subset12', '1-2'], ['holes', 'hole'], ['triangles', 'triangle'], ['oneTwoOne', '1-2-1'], ['oneTwoTwoOne', '1-2-2-1'], ['oneThreeOneCorner', '1-3-1'], ['twoTwoTwoCorner', '2-2-2']]) {
+test('STRICT lessons REQUIRE their shape (force the technique, no cheaper path)', () => {
+  // The require-gate plays flags-aware and asks the SOUND engine for each
+  // cell's CHEAPEST proof: a board is admitted only if it cannot be finished
+  // using anything simpler than the lesson's shape. These seven shapes each
+  // have a genuinely irreducible deduction — an ambiguous pocket (hole /
+  // triangle), a forced corner mine (1-3-1), a multi-clue corner (2-2-2), or
+  // the bare 1-1 / 1-2 whose payload has no cheaper proof.
+  for (const [id, name] of [['subset11', '1-1'], ['subset12', '1-2'], ['holes', 'hole'], ['triangles', 'triangle'], ['oneThreeOneCorner', '1-3-1'], ['twoTwoTwoCorner', '2-2-2']]) {
     assert.equal(LESSONS[id].requireShape, true, `${id} must use the require-gate`);
     const lb = generateLessonBoard(LESSONS[id], 'unit-5');
     assert.ok(lb, `${id} must generate`);
     assert.ok(lessonRequiresShape(lb, [name]), `${id} board must REQUIRE a ${name}, not merely show one`);
+  }
+});
+
+test('RECOGNITION lessons (1-2-1 / 1-2-2-1) SHOW their shape + need subset reasoning', () => {
+  // A 1-2-1 ALWAYS decomposes — its two outer mines are each a plain 1-2, so
+  // a flagging player flags those and the middle counts out. It can never be
+  // REQUIRED the way the strict shapes are (proven 2026-06-16); it IS a pair
+  // of 1-2s. So these two are recognition lessons: the gate is "needs real
+  // subset reasoning (techniqueLevel >= 1, not pure counting) + the shape is
+  // on the solving path" (lessonShowsPattern, requireShape off).
+  for (const [id, name] of [['oneTwoOne', '1-2-1'], ['oneTwoTwoOne', '1-2-2-1']]) {
+    assert.equal(LESSONS[id].requireShape, false, `${id} is a recognition lesson, not a forced one`);
+    const lb = generateLessonBoard(LESSONS[id], 'unit-5');
+    assert.ok(lb, `${id} must generate`);
+    assert.ok(lessonShowsPattern(lb, name), `${id} board must SHOW a ${name} on the solving path`);
+    const r = isBoardSolvable(lb.board, lb.rows, lb.cols, lb.fr, lb.fc);
+    cleanSolverArtifacts(lb.board);
+    assert.ok(r.techniqueLevel >= 1, `${id} must need real subset reasoning, not pure counting`);
   }
 });
