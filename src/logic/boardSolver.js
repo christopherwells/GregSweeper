@@ -833,32 +833,16 @@ function buildLiarConstraints(sim, liarBase, neighborCache, totalCells) {
   return constraints;
 }
 
-// ── Find Next Safe Move (for post-death analysis) ────────────
-// Analyzes the current board state and returns a deducible safe cell,
-// or null if the situation was a genuine 50/50.
-
-// Analyze the live player-visible board state and return EVERYTHING that
-// is provably deducible right now — the full safe + mine frontier, each
-// deduction carrying its proving region (constraint origin cells), plus a
-// contradiction signal.
+// ── Shared constraint-build for a live board state ───────────
+// The sim/neighborCache/constraint setup that findDeducibleFrontier (and the
+// minimal-proof classifier) both need. One source of truth: the gimmick
+// reveal-gate, the known-mine modeling of strikes, the liar disjunctions, and
+// the wall-aware neighbor cache all live here so callers can't drift.
 //
-// `respectFlags: false` runs flags-blind: player flags are treated as
-// plain unknowns. This matters because flags are CLAIMS, not facts — a
-// single wrong flag can poison the constraint system into certifying a
-// mine as "provably safe" or stamping "genuine 50/50" on a deducible
-// position. Every player-facing verdict (receipts, lens) must come from
-// the flags-blind run; the flags-respecting run's `contradiction` flag is
-// itself the signal that some flag is provably wrong.
-//
-// @returns {{
-//   safe:  Array<{row, col, tier, sources: Array<{row, col}>}>,
-//   mines: Array<{row, col, tier, sources: Array<{row, col}>}>,
-//   contradiction: boolean,
-// }}  tier 0 = a single constraint pins it; tier 2 = needed the joint
-//     constraint solve (sources = the whole component — the honest
-//     minimal explanation for enumeration); tier 3 = its component
-//     carried a liar disjunction.
-export function findDeducibleFrontier(board, opts = {}) {
+// Returns the three constraint lists keyed by origin (numbered, liar
+// disjunctive, gimmick exact) plus the raw sim/adjCount/neighborCache so a
+// caller can run its own Pass A / subset / enumeration logic over them.
+export function buildBoardConstraints(board, opts = {}) {
   const respectFlags = opts.respectFlags !== false;
   // Same per-board reveal gate as isBoardSolvable: only count sonar /
   // compass / wormhole constraints whose number is on screen. Defaults
@@ -870,7 +854,6 @@ export function findDeducibleFrontier(board, opts = {}) {
   const rows = board.length;
   const cols = board[0].length;
   const idx = (r, c) => r * cols + c;
-  const rc = (i) => ({ row: Math.floor(i / cols), col: i % cols });
   const totalCells = rows * cols;
 
   // Build simulation state from actual board — gimmick-aware (matches isBoardSolvable)
@@ -902,6 +885,48 @@ export function findDeducibleFrontier(board, opts = {}) {
   // Use wall-aware neighbor cache (matches isBoardSolvable)
   const neighborCache = buildNeighborCache(board, rows, cols);
   const gimmickConstraints = buildStaticGimmickConstraints(board, rows, cols, neighborCache);
+
+  const constraints = buildConstraints(sim, adjCount, neighborCache, totalCells);
+  const liarCs = buildLiarConstraints(sim, liarBase, neighborCache, totalCells);
+  const gimmickCs = buildGimmickRuntimeConstraints(gimmickConstraints, sim, gateGimmickOrigins);
+
+  return {
+    rows, cols, totalCells, sim, adjCount, neighborCache,
+    gimmickConstraints, constraints, liarCs, gimmickCs, gateGimmickOrigins,
+  };
+}
+
+// ── Find Next Safe Move (for post-death analysis) ────────────
+// Analyzes the current board state and returns a deducible safe cell,
+// or null if the situation was a genuine 50/50.
+
+// Analyze the live player-visible board state and return EVERYTHING that
+// is provably deducible right now — the full safe + mine frontier, each
+// deduction carrying its proving region (constraint origin cells), plus a
+// contradiction signal.
+//
+// `respectFlags: false` runs flags-blind: player flags are treated as
+// plain unknowns. This matters because flags are CLAIMS, not facts — a
+// single wrong flag can poison the constraint system into certifying a
+// mine as "provably safe" or stamping "genuine 50/50" on a deducible
+// position. Every player-facing verdict (receipts, lens) must come from
+// the flags-blind run; the flags-respecting run's `contradiction` flag is
+// itself the signal that some flag is provably wrong.
+//
+// @returns {{
+//   safe:  Array<{row, col, tier, sources: Array<{row, col}>}>,
+//   mines: Array<{row, col, tier, sources: Array<{row, col}>}>,
+//   contradiction: boolean,
+// }}  tier 0 = a single constraint pins it; tier 2 = needed the joint
+//     constraint solve (sources = the whole component — the honest
+//     minimal explanation for enumeration); tier 3 = its component
+//     carried a liar disjunction.
+export function findDeducibleFrontier(board, opts = {}) {
+  const {
+    cols, totalCells, sim, adjCount, neighborCache,
+    gimmickConstraints, constraints, liarCs, gimmickCs, gateGimmickOrigins,
+  } = buildBoardConstraints(board, opts);
+  const rc = (i) => ({ row: Math.floor(i / cols), col: i % cols });
 
   const safe = new Map();  // cellIdx -> { tier, sources: number[] }
   const mines = new Map();
@@ -943,10 +968,6 @@ export function findDeducibleFrontier(board, opts = {}) {
       for (const ci of src.cells) if (sim[ci] === 0) addTo(mines, ci, 0, [src.origin]);
     }
   }
-
-  const constraints = buildConstraints(sim, adjCount, neighborCache, totalCells);
-  const liarCs = buildLiarConstraints(sim, liarBase, neighborCache, totalCells);
-  const gimmickCs = buildGimmickRuntimeConstraints(gimmickConstraints, sim, gateGimmickOrigins);
 
   // Pass B mirror: two-clue subset deductions with the PAIR as the
   // minimal explanation (tier 1). Without this stage every subset

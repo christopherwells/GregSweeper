@@ -65,7 +65,7 @@ const AXES = [[0, 1], [1, 0], [1, 1], [1, -1]];
 // edge 1-2-1 and 1-2-2-1 families. An incidental 1,2,1 digit run in open
 // field (hidden cells on both sides of the line) fails the one-side test
 // and is not named — which is the honesty guarantee.
-function matchesClueLine(board, rows, cols, neighborCache, targetIdx, values) {
+function matchesClueLine(board, rows, cols, neighborCache, targetIdx, values, out) {
   const need = values.length;
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -115,21 +115,24 @@ function matchesClueLine(board, rows, cols, neighborCache, targetIdx, values) {
         }
         if (!sideOk) continue;
 
-        if (front.has(targetIdx)) return true;
+        if (front.has(targetIdx)) {
+          if (out) out.clues = clues.slice();
+          return true;
+        }
       }
     }
   }
   return false;
 }
 
-export function isOneTwoOne(board, rows, cols, neighborCache, targetIdx) {
+export function isOneTwoOne(board, rows, cols, neighborCache, targetIdx, out) {
   const nc = neighborCache || buildNeighborCache(board, rows, cols);
-  return matchesClueLine(board, rows, cols, nc, targetIdx, [1, 2, 1]);
+  return matchesClueLine(board, rows, cols, nc, targetIdx, [1, 2, 1], out);
 }
 
-export function isOneTwoTwoOne(board, rows, cols, neighborCache, targetIdx) {
+export function isOneTwoTwoOne(board, rows, cols, neighborCache, targetIdx, out) {
   const nc = neighborCache || buildNeighborCache(board, rows, cols);
-  return matchesClueLine(board, rows, cols, nc, targetIdx, [1, 2, 2, 1]);
+  return matchesClueLine(board, rows, cols, nc, targetIdx, [1, 2, 2, 1], out);
 }
 
 // The 1-3-1 corner: a 3 at the concave corner of an L, with a 1 on each
@@ -140,7 +143,7 @@ export function isOneTwoTwoOne(board, rows, cols, neighborCache, targetIdx) {
 // bent around a corner: a modified 1-2 where the bigger clue is a 3
 // seeing five cells. `kind` selects which role the target plays — the
 // corner is the mine, the two outers are the safe squares.
-export function isOneThreeOneCorner(board, rows, cols, neighborCache, targetIdx, kind) {
+export function isOneThreeOneCorner(board, rows, cols, neighborCache, targetIdx, kind, out) {
   const nc = neighborCache || buildNeighborCache(board, rows, cols);
   const at = (i) => board[Math.floor(i / cols)][i % cols];
   for (let i = 0; i < rows * cols; i++) {
@@ -171,11 +174,11 @@ export function isOneThreeOneCorner(board, rows, cols, neighborCache, targetIdx,
         // The 3's squares are exactly the two shared pairs plus the corner.
         if (sharedV.length + sharedH.length + 1 !== H3.size) continue;
         if (kind === 'mine') {
-          if (onlyThree[0] === targetIdx) return true;
+          if (onlyThree[0] === targetIdx) { if (out) out.clues = [i, v, h]; return true; }
         } else {
           const outerV = [...HV].filter(x => !H3.has(x));
           const outerH = [...HH].filter(x => !H3.has(x));
-          if (outerV.includes(targetIdx) || outerH.includes(targetIdx)) return true;
+          if (outerV.includes(targetIdx) || outerH.includes(targetIdx)) { if (out) out.clues = [i, v, h]; return true; }
         }
       }
     }
@@ -196,7 +199,7 @@ export function isOneThreeOneCorner(board, rows, cols, neighborCache, targetIdx,
 // family ('1-1' equal digits / '1-2' differ) when the target is a forced
 // cell of such a structure, else null. Honest: only a genuine cA-subset-cB
 // forcing (the wide clue's extra is all-safe or all-mine) matches.
-function matchesPocket(board, rows, cols, neighborCache, targetIdx, k) {
+function matchesPocket(board, rows, cols, neighborCache, targetIdx, k, out) {
   const at = (i) => board[Math.floor(i / cols)][i % cols];
   const total = rows * cols;
   // Mines already KNOWN adjacent to a clue: a marked (flagged) mine, or a
@@ -232,6 +235,7 @@ function matchesPocket(board, rows, cols, neighborCache, targetIdx, k) {
       // the shared pocket, so its extra squares are SAFE (the freed cells).
       const widerEff = vis(at(j)) - knownMines(j);
       if (widerEff === boxEff) {
+        if (out) out.clues = [i, j];
         return '1-1';                        // equal effective value by construction
       }
     }
@@ -239,14 +243,14 @@ function matchesPocket(board, rows, cols, neighborCache, targetIdx, k) {
   return null;
 }
 
-export function isHole(board, rows, cols, neighborCache, targetIdx) {
+export function isHole(board, rows, cols, neighborCache, targetIdx, out) {
   const nc = neighborCache || buildNeighborCache(board, rows, cols);
-  return matchesPocket(board, rows, cols, nc, targetIdx, 2);
+  return matchesPocket(board, rows, cols, nc, targetIdx, 2, out);
 }
 
-export function isTriangle(board, rows, cols, neighborCache, targetIdx) {
+export function isTriangle(board, rows, cols, neighborCache, targetIdx, out) {
   const nc = neighborCache || buildNeighborCache(board, rows, cols);
-  return matchesPocket(board, rows, cols, nc, targetIdx, 3);
+  return matchesPocket(board, rows, cols, nc, targetIdx, 3, out);
 }
 
 // The bare 1-1 / 1-2 OVERLAP, read by geometry. Two plain clues A (value
@@ -262,7 +266,7 @@ export function isTriangle(board, rows, cols, neighborCache, targetIdx) {
 // source-based pair naming was shadow-prone (a 1-2 board's freed square got
 // attributed to a 1-1 elsewhere), and a subset-only model misses the 1-2's
 // safe square entirely. Exported so the require-gate and tests share it.
-export function matchesOverlapPair(board, rows, cols, neighborCache, targetIdx, kind) {
+export function matchesOverlapPair(board, rows, cols, neighborCache, targetIdx, kind, out) {
   const nc = neighborCache || buildNeighborCache(board, rows, cols);
   const at = (i) => board[Math.floor(i / cols)][i % cols];
   const total = rows * cols;
@@ -286,7 +290,7 @@ export function matchesOverlapPair(board, rows, cols, neighborCache, targetIdx, 
       const exclA = HA.filter(x => !HBset.has(x));   // only the smaller clue sees these
       const forcedSafe = exclA.includes(targetIdx);
       const forcedMine = exclB.includes(targetIdx);
-      if ((kind === 'mine' ? forcedMine : forcedSafe)) return [vA, vB];
+      if ((kind === 'mine' ? forcedMine : forcedSafe)) { if (out) out.clues = [a, b]; return [vA, vB]; }
     }
   }
   return null;
@@ -301,7 +305,7 @@ export function matchesOverlapPair(board, rows, cols, neighborCache, targetIdx, 
 // D.hidden to >= Deff - |D.hidden \ g| (Deff = 2 minus D's revealed-mine
 // neighbors); >=1 means D sees at most one cell outside g. Flags-blind
 // (revealed/strike mines only), matching the gate. Names the move '2-2-2'.
-export function isTwoTwoTwoCorner(board, rows, cols, neighborCache, targetIdx) {
+export function isTwoTwoTwoCorner(board, rows, cols, neighborCache, targetIdx, out) {
   const nc = neighborCache || buildNeighborCache(board, rows, cols);
   const at = (i) => board[Math.floor(i / cols)][i % cols];
   const total = rows * cols;
@@ -327,14 +331,14 @@ export function isTwoTwoTwoCorner(board, rows, cols, neighborCache, targetIdx) {
       const g = Dhid.filter(x => restSet.has(x));
       if (g.length === 0) continue;
       const lb = (2 - knownMines(di)) - (Dhid.length - g.length);
-      if (lb >= 1) gs.push(new Set(g));
+      if (lb >= 1) gs.push({ di, set: new Set(g) });
     }
     // Two DISJOINT forced groups cover C's two mines inside `rest`.
     for (let a = 0; a < gs.length; a++) {
       for (let b = a + 1; b < gs.length; b++) {
         let disjoint = true;
-        for (const x of gs[a]) { if (gs[b].has(x)) { disjoint = false; break; } }
-        if (disjoint) return true;
+        for (const x of gs[a].set) { if (gs[b].set.has(x)) { disjoint = false; break; } }
+        if (disjoint) { if (out) out.clues = [ci, gs[a].di, gs[b].di]; return true; }
       }
     }
   }

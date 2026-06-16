@@ -17,7 +17,7 @@ import { findNextSafeMove, gradeGimmickContribution } from '../logic/boardSolver
 import { extractCrux } from '../logic/cruxExtract.js';
 import { prepareLossReceipt, bombStrikeVerdict } from '../ui/receiptRenderer.js';
 import { computeBombInfoValue } from '../logic/bombInfoValue.js';
-import { getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, getChaosDifficulty, LIFELINE_WIN_REWARD_CHANCE, BOMB_PENALTY_BASE } from '../logic/difficulty.js';
+import { getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, getChaosDifficulty, LIFELINE_WIN_REWARD_CHANCE, BOMB_PENALTY_BASE, BOMB_PENALTY_RAMP } from '../logic/difficulty.js';
 import {
   loadStats, saveGameResult, saveModePowerUps, clearGameState,
   markDailyCompleted, getDailyStreak, getPlayerName,
@@ -276,6 +276,7 @@ export async function submitArchiveCompletion(dateStr, name, scoreTime) {
       bombHitEvents: state.dailyBombHitEvents || [],
       hintEvents: state.hintEvents || [],
       rngSeed: state.dailyRngSeed || dateStr,
+      totalMines: state.totalMines,
       cruxViewed,
     });
   }
@@ -427,6 +428,8 @@ export function handleWin() {
         {
           dayBombHits: { [state.weeklyDay]: state.weeklyBombHits || 0 },
           totalMoves,
+          totalMines: state.totalMines,
+          attemptBombHits: state.weeklyBombHits || 0,
         }
       ).catch(err => reportCaughtError('weekly-score-submit', err));
 
@@ -452,6 +455,7 @@ export function handleWin() {
             features: state.weeklyFeatures,
             bombHitEvents: state.weeklyBombHitEvents || [],
             rngSeed: state.weeklyRngSeed || state.weeklySeed,
+            totalMines: state.totalMines,
           }
         ).catch(err => reportCaughtError('weekly-first-fit-submit', err));
       }
@@ -938,6 +942,7 @@ export function handleWin() {
         bombHitEvents: state.dailyBombHitEvents || [],
         hintEvents: state.hintEvents || [],
         rngSeed: state.dailyRngSeed || dateStr,
+        totalMines: state.totalMines,
       }).then((ok) => {
         // Show the REAL outcome. Previously this toasted success
         // unconditionally, so an offline player thought their score
@@ -950,6 +955,10 @@ export function handleWin() {
         // first device's time.
         if (ok === 'duplicate') {
           showToast('Already on the board from another device');
+        } else if (ok === 'cheat') {
+          // Probing run (> 30% of mines hit): kept off the leaderboard and
+          // out of the personal history timeline.
+          showToast('Too many mines hit — this run won\'t be ranked');
         } else {
           showToast(ok ? '✅ Score submitted!' : '📡 Saved. Uploads when you reconnect');
           // Per-user daily-history timeline feeds the leaderboard-modal
@@ -1351,7 +1360,16 @@ export function handleDailyBombHit(mineRow, mineCol) {
     console.warn('computeBombInfoValue failed:', err && err.message);
     reportCaughtError('bomb-info-value', err);
   }
-  const penalty = Math.round((infoValue + BOMB_PENALTY_BASE) * 10) / 10;
+  // Ramped base penalty: the n-th strike's base is BOMB_PENALTY_BASE × (1 +
+  // BOMB_PENALTY_RAMP × (n-1)) — 1st +3s, 2nd +4.5s, 3rd +6s, 4th +7.5s … The
+  // first hit costs the standard base; each later one adds half a base on top,
+  // so casual mine-popping is discouraged without clobbering a player who hits
+  // a couple legitimately (the >30% anti-cheat handles brute-forcers). The
+  // info-value term (the par-seconds the struck mine was anchoring) rides on
+  // top, unchanged.
+  const strikeNumber = priorHits + 1;
+  const rampedBase = BOMB_PENALTY_BASE * (1 + BOMB_PENALTY_RAMP * (strikeNumber - 1));
+  const penalty = Math.round((infoValue + rampedBase) * 10) / 10;
   const infoValueRounded = Math.round(infoValue * 10) / 10;
 
   // The strike verdict — computed from the board state the player SAW

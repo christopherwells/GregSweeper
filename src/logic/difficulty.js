@@ -65,30 +65,30 @@ export function applyWidthCap(rows, cols, mines) {
 // scripts/refit-par-model.R.
 // PAR_MODEL:START
 export const PAR_MODEL = {
-  // Last refit: 2026-06-14 | brms (3 users · max Rhat = 1.007, min ESS = 1079, divergent = 0/4000) | N=202 scores, 97 dates, 4 players | R²=0.571
-  intercept: -11.92,
+  // Last refit: 2026-06-15 | brms (3 users · max Rhat = 1.004, min ESS = 1222, divergent = 0/4000) | N=206 scores, 98 dates, 5 players | R²=0.565
+  intercept: -13.32,
 
   // Size baseline. cellCount is the lone size axis (it absorbs trivial
   // propagation); totalMines stays a raw count. (2026-06-08 rework.)
-  secPerCell:        0.131,
-  secPerMineFlag:    3.230,
+  secPerCell:        0.133,
+  secPerMineFlag:    3.317,
 
   // Reasoning tiers: pattern = canonical + generic subsets; search = advanced.
-  secPerPatternMove: 2.067,
-  secPerSearchMove:  1.161,
+  secPerPatternMove: 2.027,
+  secPerSearchMove:  1.119,
 
   // Board structure.
-  secPerWallEdge:    0.157,
-  secPerZeroCluster: 0.507,
+  secPerWallEdge:    0.151,
+  secPerZeroCluster: 0.510,
 
   // Modifier cells (kept split; sparse, prior-anchored until data builds).
-  secPerMysteryCell:   0.847,
-  secPerLiarCell:      0.722,
-  secPerLockedCell:    0.800,
-  secPerWormholePair:  0.776,
-  secPerMirrorPair:    1.452,
-  secPerSonarCell:     0.793,
-  secPerCompassCell:   0.763,
+  secPerMysteryCell:   0.820,
+  secPerLiarCell:      0.737,
+  secPerLockedCell:    0.803,
+  secPerWormholePair:  0.754,
+  secPerMirrorPair:    1.448,
+  secPerSonarCell:     0.802,
+  secPerCompassCell:   0.832,
 
 };
 // PAR_MODEL:END
@@ -105,21 +105,21 @@ export const PAR_MODEL = {
 // between the markers is refit-owned, same contract as PAR_MODEL.
 // TIMED_PAR_MODEL:START
 export const PAR_MODEL_TIMED = {
-  // Last refit: 2026-06-14 | copy-of-daily
-  intercept: -11.92,
-  secPerCell:        0.131,
-  secPerMineFlag:    3.230,
-  secPerPatternMove: 2.067,
-  secPerSearchMove:  1.161,
-  secPerWallEdge:    0.157,
-  secPerZeroCluster: 0.507,
-  secPerMysteryCell:   0.847,
-  secPerLiarCell:      0.722,
-  secPerLockedCell:    0.800,
-  secPerWormholePair:  0.776,
-  secPerMirrorPair:    1.452,
-  secPerSonarCell:     0.793,
-  secPerCompassCell:   0.763,
+  // Last refit: 2026-06-15 | copy-of-daily
+  intercept: -13.32,
+  secPerCell:        0.133,
+  secPerMineFlag:    3.317,
+  secPerPatternMove: 2.027,
+  secPerSearchMove:  1.119,
+  secPerWallEdge:    0.151,
+  secPerZeroCluster: 0.510,
+  secPerMysteryCell:   0.820,
+  secPerLiarCell:      0.737,
+  secPerLockedCell:    0.803,
+  secPerWormholePair:  0.754,
+  secPerMirrorPair:    1.448,
+  secPerSonarCell:     0.802,
+  secPerCompassCell:   0.832,
 };
 // TIMED_PAR_MODEL:END
 
@@ -129,6 +129,27 @@ export const PAR_MODEL_TIMED = {
 // bomb-pop slightly punishing so it's never a strict-zero shortcut, and
 // preserves solving as the intended path.
 export const BOMB_PENALTY_BASE = 3;
+
+// Escalation: each successive strike adds BOMB_PENALTY_RAMP of the base on top
+// of the previous one, so the n-th strike's base = BOMB_PENALTY_BASE × (1 +
+// BOMB_PENALTY_RAMP × (n-1)) → +3s, +4.5s, +6s, +7.5s … The first strike is
+// unchanged (a lone hit costs the standard base), and the ramp is gentle on
+// purpose: the >30% anti-cheat handles brute-forcers, so this only needs to
+// discourage casual mine-popping, not clobber a player who hits a couple
+// legitimately. (Was a steeper × n ramp; softened 2026-06-16.)
+export const BOMB_PENALTY_RAMP = 0.5;
+
+// Anti-cheat: a player who detonates more than this fraction of the board's
+// mines isn't playing — they're probing the layout by popping mines (daily /
+// weekly have no game-over, so nothing stops them). Such a run is never
+// leaderboarded (and so never feeds the par fit). Pure + exported so the
+// submission gate and tests share one definition.
+export const BOMB_HIT_CHEAT_FRACTION = 0.30;
+export function isBombHitCheat(bombHits, totalMines) {
+  return typeof totalMines === 'number' && totalMines > 0
+    && typeof bombHits === 'number'
+    && bombHits > BOMB_HIT_CHEAT_FRACTION * totalMines;
+}
 
 // Daily board dimension ranges (seeded RNG picks within these)
 export const DAILY_MIN_SIZE = 8;
