@@ -130,6 +130,15 @@ export const PAR_MODEL_TIMED = {
 // preserves solving as the intended path.
 export const BOMB_PENALTY_BASE = 3;
 
+// Escalation: each successive strike adds BOMB_PENALTY_RAMP of the base on top
+// of the previous one, so the n-th strike's base = BOMB_PENALTY_BASE × (1 +
+// BOMB_PENALTY_RAMP × (n-1)) → +3s, +4.5s, +6s, +7.5s … The first strike is
+// unchanged (a lone hit costs the standard base), and the ramp is gentle on
+// purpose: the >30% anti-cheat handles brute-forcers, so this only needs to
+// discourage casual mine-popping, not clobber a player who hits a couple
+// legitimately. (Was a steeper × n ramp; softened 2026-06-16.)
+export const BOMB_PENALTY_RAMP = 0.5;
+
 // Anti-cheat: a player who detonates more than this fraction of the board's
 // mines isn't playing — they're probing the layout by popping mines (daily /
 // weekly have no game-over, so nothing stops them). Such a run is never

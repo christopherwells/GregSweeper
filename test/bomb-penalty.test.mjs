@@ -91,19 +91,20 @@ test('first strike: penalty = round(infoValue + base) and the accounting identit
   }
 });
 
-test('escalating base: the Nth strike costs base × N on top of info-value', { skip: !HAS_FEATURE }, () => {
-  // handleDailyBombHit computes penalty = round((infoValue + base*strikeNumber)*10)/10,
-  // where strikeNumber = priorHits + 1 (this strike INCLUDED). So repeatedly
-  // popping mines ramps the base hard while the info-value term rides on top.
-  const base = diff.BOMB_PENALTY_BASE;
-  const penaltyFor = (infoValue, strikeNumber) => Math.round((infoValue + base * strikeNumber) * 10) / 10;
-  // Zero-info strikes cost base, 2·base, 3·base, 4·base …
-  assert.deepEqual([1, 2, 3, 4].map(n => penaltyFor(0, n)), [3, 6, 9, 12]);
-  // The first strike is identical to the old flat +base (single-hit plays
-  // price exactly as before the escalation shipped).
+test('ramped base: 1st strike = base, each later strike adds half a base', { skip: !HAS_FEATURE }, () => {
+  // handleDailyBombHit computes penalty = round((infoValue + rampedBase)*10)/10,
+  // rampedBase(n) = base × (1 + ramp × (n-1)), n = priorHits + 1. A gentle ramp
+  // (the >30% anti-cheat handles brute-force) while the info-value rides on top.
+  const base = diff.BOMB_PENALTY_BASE;   // 3
+  const ramp = diff.BOMB_PENALTY_RAMP;   // 0.5
+  assert.equal(ramp, 0.5);
+  const penaltyFor = (infoValue, n) => Math.round((infoValue + base * (1 + ramp * (n - 1))) * 10) / 10;
+  // Zero-info strikes cost 3, 4.5, 6, 7.5 … (base, then +half-a-base each).
+  assert.deepEqual([1, 2, 3, 4].map(n => penaltyFor(0, n)), [3, 4.5, 6, 7.5]);
+  // The first strike is exactly the standard base — a lone hit is unchanged.
   assert.equal(penaltyFor(5.2, 1), Math.round((5.2 + base) * 10) / 10);
-  // Info-value still rides on top of the escalated base.
-  assert.equal(penaltyFor(12.4, 3), 21.4);
+  // Info-value rides on top of the ramped base (3rd strike base = 6).
+  assert.equal(penaltyFor(12.4, 3), Math.round((12.4 + 6) * 10) / 10);
 });
 
 test('isBombHitCheat: > 30% of mines detonated is a probing run, ≤ 30% is play', { skip: !HAS_FEATURE }, () => {
