@@ -21,7 +21,7 @@ import { getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, getChaosDifficulty, LIFELIN
 import {
   loadStats, saveGameResult, saveModePowerUps, clearGameState,
   markDailyCompleted, getDailyStreak, getPlayerName,
-  hasSeenNotice, markNoticeSeen,
+  hasSeenNotice, markNoticeSeen, consumeMoltEvent,
 } from '../storage/statsStorage.js';
 import { safeSetJSON } from '../storage/storageAdapter.js';
 import {
@@ -52,6 +52,17 @@ import { getLocalDateString } from '../logic/seededRandom.js';
 // down — we don't want test plays with shifting rules to drag the
 // model coefficients. Flip to true when the rules are stable.
 const WEEKLY_FIT_DATA_ENABLED = false;
+
+// Friendly phrase for the molt-day covered note: a covered gap is always 1 or
+// 2 days (the bank cap), and always within the last few days, so the weekday
+// name reads naturally ("covered Tuesday", "covered Monday and Tuesday").
+function _coveredPhrase(dates) {
+  const names = (dates || []).map(d =>
+    new Date(d + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long' }));
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.length} days`;
+}
 
 // ── Achievements Display (for game over) ───────────────
 
@@ -354,6 +365,19 @@ export function handleWin() {
     skillFeats,
     dailySeed: isRealDaily ? state.dailySeed : null,
   });
+  // Drain the molt-day outcome of this completion (a cover earned, or covers
+  // spent to save the streak). Null on every non-daily / archive win, so the
+  // note below renders only where it's real.
+  const moltEvent = consumeMoltEvent();
+  let moltNote = '';
+  if (moltEvent) {
+    if (moltEvent.coveredDates && moltEvent.coveredDates.length > 0) {
+      moltNote = `<span class="molt-note">🦀 Molt day covered ${_coveredPhrase(moltEvent.coveredDates)}. Streak intact at ${moltEvent.streakKept}.</span><br>`;
+    } else if (moltEvent.earned) {
+      moltNote = '<span class="molt-note">🦀 Molt day banked. Greg covers your next missed day.</span><br>';
+    }
+  }
+
   // Skip power-up awarding for chaos AND weekly. Weekly is a pure
   // time-trial against a fixed board — power-ups would let later-week
   // attempts cheese the leaderboard against earlier days.
@@ -369,6 +393,9 @@ export function handleWin() {
       dailyStreak: streak.streak,
       bestDailyStreak: streak.best,
       lastDailyDate: state.dailySeed,
+      // The molt bank + last-use ride the same write so a cross-device merge
+      // always sees a coherent (streak, bank) snapshot.
+      moltDay: { banked: streak.banked, lastUse: stats.modeStats?.daily?.moltLastUse || null },
     });
   }
 
@@ -672,7 +699,7 @@ export function handleWin() {
         // decomposition hasn't shipped; we never fabricate a split.
         const details = getHandicapDetails(getUid());
         const itemized = details ? labFileLine(state.dailyPar, details) : null;
-        parEl.innerHTML = parPrimer +
+        parEl.innerHTML = moltNote + parPrimer +
           spriteImgHTML('smiley', 'sprite-greg-par', 'Greg') +
           (itemized
             ? itemized + ' · '
@@ -687,7 +714,7 @@ export function handleWin() {
         const needHint = residuals.length === 1
           ? ' <span class="par-hint">· 1 more daily and your personal par appears</span>'
           : '';
-        parEl.innerHTML = parPrimer +
+        parEl.innerHTML = moltNote + parPrimer +
           spriteImgHTML('smiley', 'sprite-greg-par', 'Greg') +
           "Greg's Time: " + state.dailyPar.toFixed(1) + 's · ' +
           '<span class="' + parClass + '">' + deltaText + '</span>' + needHint;

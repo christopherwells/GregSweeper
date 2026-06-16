@@ -1,0 +1,23 @@
+{
+  "uidAtRisk": {
+    "pushSubscription": { "token": "tok-at-risk" },
+    "notificationPrefs": { "enabled": true, "hourLocal": 9, "dailyReminder": true, "streakWarning": true },
+    "dailyStreak": 7,
+    "lastDailyDate": "2026-06-15",
+    "moltDay": { "banked": 0 }
+  },
+  "uidCovered": {
+    "pushSubscription": { "token": "tok-covered" },
+    "notificationPrefs": { "enabled": true, "hourLocal": 9, "dailyReminder": true, "streakWarning": true },
+    "dailyStreak": 7,
+    "lastDailyDate": "2026-06-15",
+    "moltDay": { "banked": 1 }
+  },
+  "uidSpentYesterday": {
+    "pushSubscription": { "token": "tok-ack" },
+    "notificationPrefs": { "enabled": true, "hourLocal": 9, "dailyReminder": true, "streakWarning": true },
+    "dailyStreak": 8,
+    "lastDailyDate": "2026-06-15",
+    "moltDay": { "banked": 1, "lastUse": { "date": "2026-06-15", "covered": ["2026-06-14"], "streakKept": 8 } }
+  }
+}

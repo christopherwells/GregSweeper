@@ -300,7 +300,7 @@ export async function initAnonymousAuth() {
  * Save progress to cloud. Call when checkpoint advances or daily streak updates.
  * Fire-and-forget — does not block gameplay.
  */
-export function saveProgress({ maxCheckpoint, dailyStreak, bestDailyStreak, lastDailyDate, powerUps }) {
+export function saveProgress({ maxCheckpoint, dailyStreak, bestDailyStreak, lastDailyDate, powerUps, moltDay }) {
   if (isTestEnvironment()) return;
   const data = {};
   if (maxCheckpoint != null) data.maxCheckpoint = maxCheckpoint;
@@ -308,6 +308,10 @@ export function saveProgress({ maxCheckpoint, dailyStreak, bestDailyStreak, last
   if (bestDailyStreak != null) data.bestDailyStreak = bestDailyStreak;
   if (lastDailyDate != null) data.lastDailyDate = lastDailyDate;
   if (powerUps != null && typeof powerUps === 'object') data.powerUps = powerUps;
+  // The molt-day bank + last-use ride the same write as the streak so a
+  // cross-device merge always sees a coherent snapshot. lastUse may be null
+  // (no spend yet); RTDB drops a null child, which the rule allows.
+  if (moltDay != null && typeof moltDay === 'object') data.moltDay = moltDay;
 
   if (Object.keys(data).length === 0) return;
 

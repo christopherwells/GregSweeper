@@ -299,6 +299,22 @@
         "lastDailyDate": {
           ".validate": "newData.isString() && newData.val().length === 10"
         },
+        "moltDay": {
+          ".validate": "newData.hasChildren(['banked']) || newData.val() === null",
+          "banked": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 2"
+          },
+          "lastUse": {
+            ".validate": "newData.hasChildren(['date']) || newData.val() === null",
+            "date": { ".validate": "newData.isString() && newData.val().length === 10" },
+            "covered": {
+              "$idx": { ".validate": "newData.isString() && newData.val().length === 10" }
+            },
+            "streakKept": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "$other": { ".validate": false }
+          },
+          "$other": { ".validate": false }
+        },
         "friends": {
           "$friendUid": {
             ".write": "auth != null && (auth.uid === $uid || auth.uid === $friendUid)",

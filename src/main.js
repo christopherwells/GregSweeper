@@ -33,7 +33,7 @@ import {
   saveModePowerUps, loadGameState,
   isOnboarded, setOnboarded,
   isDailyCompleted, markDailyCompleted,
-  getDailyStreak,
+  getDailyStreak, getMoltProvisionalNotice,
   getPlayerName, setPlayerName,
   getLastSeenVersion, setLastSeenVersion,
   saveDailyPar, loadDailyPar, pruneOldDailyKeys, applyCloudProgress, resetDailyStatsForAccountSwitch,
@@ -2262,7 +2262,7 @@ function updateTitleProgress() {
   if (dailyEl) {
     const today = getLocalDateString();
     const dailyCard = $('.mode-card[data-mode="daily"]');
-    const { streak } = getDailyStreak();
+    const { streak, banked } = getDailyStreak();
     // Par rides the status line as a quiet suffix instead of its own row.
     const parSuffix = (_titleDailyPar.date === today && _titleDailyPar.secs > 0)
       ? ` <span class="mode-card-par-inline">· Par ${_titleDailyPar.secs}s</span>`
@@ -2271,11 +2271,22 @@ function updateTitleProgress() {
       ? `<span class="mode-card-fieldnote">${spriteImgHTML('smiley', 'sprite-greg-note', 'Greg')}${_titleDailyPar.note}</span>`
       : '';
     const completed = isDailyCompleted(today);
+    // Molt-day tokens ride the existing streak line (no new row). Held back
+    // when a molt day is actively holding the streak (the provisional line
+    // below says so instead).
+    const tokens = banked > 0
+      ? ` <span class="molt-tokens" title="Molt days banked. Earned every 5 days in a row, spent automatically when you miss a day. Holds 2.">${'🦀'.repeat(banked)}</span>`
+      : '';
+    const provisional = completed ? null : getMoltProvisionalNotice();
     let descriptor;
-    if (completed) {
-      descriptor = streak > 0 ? `Completed! 🔥 ${streak} day streak` : 'Completed today!';
+    if (provisional) {
+      // A molt day is holding the streak over a missed gap — surface the save
+      // before the player plays, in place of the plain streak line.
+      descriptor = `🦀 Molt day holds your ${provisional.streakHeld} day streak`;
+    } else if (completed) {
+      descriptor = streak > 0 ? `Completed! 🔥 ${streak} day streak${tokens}` : 'Completed today!';
     } else {
-      descriptor = streak > 0 ? `🔥 ${streak} day streak` : 'Same puzzle worldwide';
+      descriptor = streak > 0 ? `🔥 ${streak} day streak${tokens}` : 'Same puzzle worldwide';
     }
     // Two rows only: status (+ par) and Greg's note. "Past dailies" is a
     // corner chip in the card markup, so it never enters this stack.
