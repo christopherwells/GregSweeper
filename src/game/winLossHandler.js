@@ -17,7 +17,7 @@ import { findNextSafeMove, gradeGimmickContribution } from '../logic/boardSolver
 import { extractCrux } from '../logic/cruxExtract.js';
 import { prepareLossReceipt, bombStrikeVerdict } from '../ui/receiptRenderer.js';
 import { computeBombInfoValue } from '../logic/bombInfoValue.js';
-import { getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, getChaosDifficulty, LIFELINE_WIN_REWARD_CHANCE, BOMB_PENALTY_BASE } from '../logic/difficulty.js';
+import { getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, getChaosDifficulty, LIFELINE_WIN_REWARD_CHANCE, BOMB_PENALTY_BASE, BOMB_PENALTY_RAMP } from '../logic/difficulty.js';
 import {
   loadStats, saveGameResult, saveModePowerUps, clearGameState,
   markDailyCompleted, getDailyStreak, getPlayerName,
@@ -1360,13 +1360,16 @@ export function handleDailyBombHit(mineRow, mineCol) {
     console.warn('computeBombInfoValue failed:', err && err.message);
     reportCaughtError('bomb-info-value', err);
   }
-  // Escalating base penalty: each successive strike costs BOMB_PENALTY_BASE ×
-  // the number of mines hit so far (this strike INCLUDED) — 1st +3s, 2nd +6s,
-  // 3rd +9s, … so deliberately popping mine after mine ramps up fast. The
-  // info-value term (the par-seconds the struck mine was anchoring) is added
-  // on top, unchanged.
+  // Ramped base penalty: the n-th strike's base is BOMB_PENALTY_BASE × (1 +
+  // BOMB_PENALTY_RAMP × (n-1)) — 1st +3s, 2nd +4.5s, 3rd +6s, 4th +7.5s … The
+  // first hit costs the standard base; each later one adds half a base on top,
+  // so casual mine-popping is discouraged without clobbering a player who hits
+  // a couple legitimately (the >30% anti-cheat handles brute-forcers). The
+  // info-value term (the par-seconds the struck mine was anchoring) rides on
+  // top, unchanged.
   const strikeNumber = priorHits + 1;
-  const penalty = Math.round((infoValue + BOMB_PENALTY_BASE * strikeNumber) * 10) / 10;
+  const rampedBase = BOMB_PENALTY_BASE * (1 + BOMB_PENALTY_RAMP * (strikeNumber - 1));
+  const penalty = Math.round((infoValue + rampedBase) * 10) / 10;
   const infoValueRounded = Math.round(infoValue * 10) / 10;
 
   // The strike verdict — computed from the board state the player SAW
