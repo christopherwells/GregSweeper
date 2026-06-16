@@ -3385,6 +3385,23 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   opacity: 0.8;
 }
 
+/* Molt-day moment in the win modal: a banked cover earned, or a covered gap
+   that saved the streak. A quiet positive beat above Greg's Time. */
+.molt-note {
+  display: inline-block;
+  font-size: 0.9em;
+  color: var(--color-accent, #4c8dff);
+  margin-bottom: 4px;
+}
+
+/* Banked molt days riding the daily-card streak line. Slightly smaller than
+   the streak text so 1-2 crabs read as a quiet badge, not a second headline. */
+.molt-tokens {
+  font-size: 0.9em;
+  letter-spacing: 1px;
+  cursor: default;
+}
+
 .par-breakdown {
   font-size: 11.5px;
   color: var(--color-text-secondary);
