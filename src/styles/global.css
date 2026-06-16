@@ -3394,14 +3394,6 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   margin-bottom: 4px;
 }
 
-/* Banked molt days riding the daily-card streak line. Slightly smaller than
-   the streak text so 1-2 crabs read as a quiet badge, not a second headline. */
-.molt-tokens {
-  font-size: 0.9em;
-  letter-spacing: 1px;
-  cursor: default;
-}
-
 .par-breakdown {
   font-size: 11.5px;
   color: var(--color-text-secondary);
@@ -4893,23 +4885,67 @@ button:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
-/* Greg's Field Note on the daily card — why today's board exists, in
-   one true sentence from the experiment design. Quiet, italic, ambient. */
+/* Greg's Field Note — now the daily card's single center descriptor (why
+   today's board exists, in one true sentence). Italic keeps it Greg's voice;
+   sized to read as the primary line, not a secondary afterthought. */
 .mode-card-fieldnote {
   display: block;
-  margin-top: 2px;
-  font-size: 0.86em;
+  font-size: 1em;
   font-style: italic;
-  opacity: 0.7;
+  opacity: 0.8;
+  line-height: 1.3;
 }
 
 /* ── Past Dailies calendar ─────────────────────────────── */
 /* The Daily card must be a positioning context for the corner chip below. */
 .mode-card[data-mode="daily"] { position: relative; }
-/* Par rides the status row as a quiet suffix (no longer its own row). */
-.mode-card-par-inline {
-  opacity: 0.65;
+/* ── Daily card: corner-anchored stats ──────────────────────────────────
+   Molt tokens top-left mirror the Past chip top-right; the streak (left,
+   emphasized, the motivator) and par (right) sit along the bottom edge;
+   Greg's note is the single center descriptor. The numbers ride the corners
+   so the Daily card stays as compact as its siblings. */
+.daily-corner-molt {
+  position: absolute;
+  top: 6px;
+  left: 7px;
+  font-size: 0.78rem;
+  line-height: 1;
+  letter-spacing: -2px;
+  cursor: default;
+}
+.daily-status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  width: 100%;
+  gap: 6px;
+  margin-top: 5px;
+}
+.daily-streak {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  white-space: nowrap;
+}
+.daily-streak-n {
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--color-text, #eee);
   font-variant-numeric: tabular-nums;
+}
+.daily-streak-label {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.55;
+}
+.daily-par {
+  font-size: 11px;
+  opacity: 0.65;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-secondary, #888);
 }
 /* "Past dailies" affordance: a small chip in the card corner, OUT of the
    content stack so it never adds a row. The card is a <button>, so this is a
