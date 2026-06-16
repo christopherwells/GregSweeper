@@ -1,6 +1,6 @@
 import { safeGet, safeSet, safeRemove, safeGetJSON, safeSetJSON, safeKeys } from './storageAdapter.js';
 import { getLocalDateString } from '../logic/seededRandom.js';
-import { applyStreakContinuation, projectContinuation, isStreakAlive, MOLT_CAP } from '../logic/moltDay.js';
+import { applyStreakContinuation, projectContinuation, isStreakAlive, backfillGrant, MOLT_CAP } from '../logic/moltDay.js';
 import { isTestEnvironment } from '../firebase/env.js';
 import { containsHateSpeech } from '../logic/nameFilter.js';
 
@@ -607,6 +607,40 @@ export function getMoltProvisionalNotice() {
   if (!proj.willCover) return null;
   // streakHeld is the CURRENT streak (the cover isn't spent until they play).
   return { streakHeld: daily.dailyStreak || 0, coveredDates: proj.coveredDates };
+}
+
+// One-time launch grant: an existing streak earns the molt days it would have
+// banked under the new mechanic (>4 -> 1, >9 -> 2). Self-guarding via state, so
+// it can run every boot safely: it only ever fires for a never-engaged account
+// (no bank, no prior use) that already holds a streak, and never re-grants once
+// a molt day has been banked or spent (so it can't undo a spend cross-device).
+// Local-only; the next completion syncs the bank to the cloud, and a second
+// device converges from the same shared streak. Returns true if it granted.
+export function backfillMoltDays() {
+  const stats = loadStats();
+  const daily = stats.modeStats?.daily;
+  if (!daily) return false;
+  if ((daily.moltBanked || 0) > 0 || daily.moltLastUse) return false;
+  const grant = backfillGrant(getDailyStreak().streak);
+  if (grant <= 0) return false;
+  daily.moltBanked = grant;
+  setJSON(STATS_KEY, stats);
+  _statsCache = stats;
+  return true;
+}
+
+// Transient "celebrate the molt day you just earned" flag. The win path sets
+// it on an earning completion; the title screen drains it once to show the
+// earned popup + the crab-placement animation. Persisted (survives the
+// game-over -> title hop and a reload), cleared on consume.
+const MOLT_CELEBRATE_KEY = 'minesweeper_molt_celebrate';
+export function flagMoltCelebrate() {
+  safeSet(MOLT_CELEBRATE_KEY, '1');
+}
+export function consumeMoltCelebrate() {
+  const pending = safeGet(MOLT_CELEBRATE_KEY) === '1';
+  if (pending) safeRemove(MOLT_CELEBRATE_KEY);
+  return pending;
 }
 
 // Length of the maximal run of consecutive ET dates ending at the most

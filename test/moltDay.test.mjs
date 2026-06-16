@@ -10,6 +10,7 @@ import {
   projectContinuation,
   isStreakAlive,
   coversTonight,
+  backfillGrant,
   MOLT_EARN_EVERY,
   MOLT_CAP,
 } from '../src/logic/moltDay.js';
@@ -197,4 +198,15 @@ test('coversTonight: already missed a day needs two banked to cover tonight too'
 test('coversTonight: already played today, or no history, is never at risk-to-cover', () => {
   assert.equal(coversTonight({ lastDailyDate: '2026-06-16', banked: 2, today: '2026-06-16' }), false);
   assert.equal(coversTonight({ lastDailyDate: null, banked: 2, today: '2026-06-16' }), false);
+});
+
+// ── backfillGrant (one-time launch grant) ────────────────────────────────
+test('backfillGrant: >4 grants 1, >9 grants 2, at-or-below grants 0', () => {
+  assert.equal(backfillGrant(0), 0);
+  assert.equal(backfillGrant(4), 0);
+  assert.equal(backfillGrant(5), 1);
+  assert.equal(backfillGrant(9), 1);
+  assert.equal(backfillGrant(10), 2);
+  assert.equal(backfillGrant(94), 2);
+  assert.equal(backfillGrant(2 * MOLT_EARN_EVERY), MOLT_CAP);
 });

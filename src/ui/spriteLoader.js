@@ -172,3 +172,17 @@ export function spriteImgHTML(key, sizeClass = '', alt = '') {
   const altAttr = alt ? ` alt="${alt}"` : ' alt=""';
   return `<img class="${cls}" src="${s.url}"${altAttr} decoding="async" draggable="false">`;
 }
+
+// Theme-MATCHED sprite HTML: renders the current world's sprite for a key
+// (e.g. the active theme's Greg), falling back to the emoji when no sprite is
+// drawn. The caller passes the resolved emoji (getThemeEmoji) so spriteLoader
+// stays free of a boardRenderer import cycle.
+export function themeSpriteImgHTML(key, resolvedEmoji, sizeClass = '', alt = '') {
+  const url = getSpriteUrl(key, resolvedEmoji);
+  const cls = `game-sprite ${sizeClass}`.trim();
+  if (url) {
+    const altAttr = alt ? ` alt="${alt}"` : ' alt=""';
+    return `<img class="${cls}" src="${url}"${altAttr} decoding="async" draggable="false">`;
+  }
+  return `<span class="${sizeClass}" aria-hidden="true">${resolvedEmoji || ''}</span>`;
+}
