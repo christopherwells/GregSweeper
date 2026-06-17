@@ -39,7 +39,6 @@ const SPRITES = {
   medalGold:     { defaultEmoji: '🥇', url: 'assets/sprites/medal-gold.svg' },
   medalSilver:   { defaultEmoji: '🥈', url: 'assets/sprites/medal-silver.svg' },
   medalBronze:   { defaultEmoji: '🥉', url: 'assets/sprites/medal-bronze.svg' },
-  medalPlatinum: { defaultEmoji: '⭐', url: 'assets/sprites/medal-platinum.svg' },
   medalEmerald:  { defaultEmoji: '💚', url: 'assets/sprites/medal-emerald.svg' },
 
   // ── Wave A modifier icons (2026-06-16) ──
@@ -167,11 +166,11 @@ export function applyIcon(el, key, resolvedEmoji, { extraClass = '', sizeClass =
   }
 }
 
-// Medal emoji -> drawn medal sprite (the four ranks the medal set
-// covers). Returns null for non-medal emoji (platinum/emerald keep
-// their emoji until drawn). TEXT surfaces (share strings) must stay
-// emoji - callers choose by simply not using this.
-const MEDAL_BY_EMOJI = { '🥉': 'medalBronze', '🥈': 'medalSilver', '🥇': 'medalGold', '💎': 'medalDiamond', '⭐': 'medalPlatinum', '💚': 'medalEmerald' };
+// Medal emoji -> drawn medal sprite (the five ranks the medal set
+// covers). Returns null for non-medal emoji (platinum keeps its ⭐
+// emoji until drawn). TEXT surfaces (share strings) must stay emoji -
+// callers choose by simply not using this.
+const MEDAL_BY_EMOJI = { '🥉': 'medalBronze', '🥈': 'medalSilver', '🥇': 'medalGold', '💎': 'medalDiamond', '💚': 'medalEmerald' };
 export function medalImgForEmoji(emoji, sizeClass = 'sprite-rank', alt = '') {
   const key = MEDAL_BY_EMOJI[emoji];
   return key ? spriteImgHTML(key, sizeClass, alt) : null;

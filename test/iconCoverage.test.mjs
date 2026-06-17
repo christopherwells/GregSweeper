@@ -72,7 +72,7 @@ test('all medal SVGs are in sw.js ASSETS', () => {
   const sw = readFileSync(join(repoRoot, 'sw.js'), 'utf8');
   const expected = [
     'medal-bronze.svg', 'medal-silver.svg', 'medal-gold.svg',
-    'medal-diamond.svg', 'medal-platinum.svg', 'medal-emerald.svg',
+    'medal-diamond.svg', 'medal-emerald.svg',
   ];
   const missing = expected.filter(f => !sw.includes(f));
   assert.deepStrictEqual(missing, [], 'Medal SVGs missing from sw.js: ' + missing.join(', '));
