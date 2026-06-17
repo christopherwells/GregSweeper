@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>GregSweeper Icon Gallery — Wave A</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #1a1e2e; color: #e0e0e0; margin: 0; padding: 20px; }
+  h1 { text-align: center; margin-bottom: 8px; }
+  .subtitle { text-align: center; color: #888; margin-bottom: 32px; }
+  .section { margin-bottom: 40px; }
+  .section h2 { border-bottom: 1px solid #444; padding-bottom: 8px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; }
+  .card {
+    background: #232838;
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+    border: 2px solid #333;
+  }
+  .card:hover { border-color: #5d8ad8; }
+  .preview { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 12px; }
+  .preview img { width: 64px; height: 64px; }
+  .preview .small img { width: 24px; height: 24px; }
+  .preview .tiny img { width: 16px; height: 16px; }
+  .emoji { font-size: 48px; line-height: 1; }
+  .emoji.small { font-size: 24px; }
+  .emoji.tiny { font-size: 16px; }
+  .label { font-weight: 600; margin-bottom: 4px; }
+  .file { font-size: 11px; color: #666; font-family: monospace; }
+  .sizes { display: flex; gap: 16px; align-items: flex-end; justify-content: center; margin-top: 8px; }
+  .sizes span { font-size: 10px; color: #888; }
+  .note { background: #2a3048; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #aaa; margin-bottom: 24px; }
+  .comparison { display: flex; gap: 8px; align-items: center; justify-content: center; }
+  .comparison .arrow { color: #5d8ad8; font-size: 20px; }
+  .side-by-side { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+  .sbs-card { background: #232838; border-radius: 12px; padding: 16px; border: 2px solid #333; }
+  .sbs-row { display: flex; align-items: center; gap: 12px; margin: 8px 0; }
+  .sbs-row .emoji { font-size: 28px; }
+  .sbs-row img { width: 28px; height: 28px; }
+  .sbs-row img.large { width: 48px; height: 48px; }
+  .sbs-label { flex: 1; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<h1>Wave A Icon Gallery</h1>
+<p class="subtitle">13 custom icons replacing raw emoji. Review at 64px, 24px, and 16px.</p>
+
+<div class="note">
+  <strong>Serve from a clean port</strong> (not 8080 — the SW caches assets).
+  Run <code>python -m http.server 8090</code> from the repo root, then open
+  <code>http://localhost:8090/scripts/icon-gallery.html?cb=1</code>.
+</div>
+
+<div class="section">
+  <h2>Modifier Icons (10)</h2>
+  <div class="side-by-side" id="modifiers"></div>
+</div>
+
+<div class="section">
+  <h2>Medal Tiers: Platinum + Emerald (2)</h2>
+  <div class="side-by-side" id="medals"></div>
+</div>
+
+<div class="section">
+  <h2>Mode Card: Greg's Gym (1)</h2>
+  <div class="side-by-side" id="modes"></div>
+</div>
+
+<div class="section">
+  <h2>Full Medal Family (all 6 tiers)</h2>
+  <div class="grid" id="medal-family"></div>
+</div>
+
+<script>
+const cb = `?cb=${Date.now()}`;
+
+const MODS = [
+  { name: 'Walls',           emoji: '🧱', file: 'mod-walls.svg' },
+  { name: 'Liar Cells',      emoji: '🤥', file: 'mod-liar.svg' },
+  { name: 'Mystery Cells',   emoji: '❓', file: 'mod-mystery.svg' },
+  { name: 'Mine Shift',      emoji: '💨', file: 'mod-mineshift.svg' },
+  { name: 'Locked Cells',    emoji: '🔒', file: 'mod-locked.svg' },
+  { name: 'Wormholes',       emoji: '🌀', file: 'mod-wormhole.svg' },
+  { name: 'Mirror Cells',    emoji: '🪞', file: 'mod-mirror.svg' },
+  { name: 'Pressure Plates', emoji: '🔴', file: 'mod-pressure.svg' },
+  { name: 'Sonar',           emoji: '📡', file: 'mod-sonar.svg' },
+  { name: 'Compass',         emoji: '🧭', file: 'mod-compass.svg' },
+];
+
+const MEDALS = [
+  { name: 'Platinum', emoji: '⭐', file: 'medal-platinum.svg' },
+  { name: 'Emerald',  emoji: '💚', file: 'medal-emerald.svg' },
+];
+
+const MODES = [
+  { name: "Greg's Gym", emoji: '🏋️', file: 'mode-gym.svg' },
+];
+
+const MEDAL_FAMILY = [
+  { name: 'Bronze',   emoji: '🥉', file: 'medal-bronze.svg' },
+  { name: 'Silver',   emoji: '🥈', file: 'medal-silver.svg' },
+  { name: 'Gold',     emoji: '🥇', file: 'medal-gold.svg' },
+  { name: 'Platinum', emoji: '⭐', file: 'medal-platinum.svg' },
+  { name: 'Emerald',  emoji: '💚', file: 'medal-emerald.svg' },
+  { name: 'Diamond',  emoji: '💎', file: 'medal-diamond.svg' },
+];
+
+function renderSBS(container, items) {
+  for (const item of items) {
+    const src = `../assets/sprites/${item.file}${cb}`;
+    container.innerHTML += `
+      <div class="sbs-card">
+        <div class="label">${item.name}</div>
+        <div class="sbs-row">
+          <span class="emoji">${item.emoji}</span>
+          <span class="arrow">→</span>
+          <img class="large" src="${src}" alt="${item.name}">
+          <img src="${src}" alt="${item.name}" style="width:24px;height:24px">
+          <img src="${src}" alt="${item.name}" style="width:16px;height:16px">
+        </div>
+        <div class="file">${item.file}</div>
+      </div>`;
+  }
+}
+
+function renderFamily(container, items) {
+  for (const item of items) {
+    const src = `../assets/sprites/${item.file}${cb}`;
+    container.innerHTML += `
+      <div class="card">
+        <div class="label">${item.name}</div>
+        <div class="preview">
+          <img src="${src}" alt="${item.name}">
+        </div>
+        <div class="sizes">
+          <span><img src="${src}" style="width:24px;height:24px"> 24px</span>
+          <span><img src="${src}" style="width:16px;height:16px"> 16px</span>
+        </div>
+        <div class="file">${item.file}</div>
+      </div>`;
+  }
+}
+
+renderSBS(document.getElementById('modifiers'), MODS);
+renderSBS(document.getElementById('medals'), MEDALS);
+renderSBS(document.getElementById('modes'), MODES);
+renderFamily(document.getElementById('medal-family'), MEDAL_FAMILY);
+</script>
+</body>
+</html>

@@ -35,10 +35,24 @@ const SPRITES = {
   // is registered here for the inline-text call sites (winLossHandler
   // ratings, achievement tiers, leaderboard headers) to adopt via
   // applyIcon/spriteImgHTML once the art is approved.
-  medalDiamond: { defaultEmoji: '💎', url: 'assets/sprites/medal-diamond.svg' },
-  medalGold:    { defaultEmoji: '🥇', url: 'assets/sprites/medal-gold.svg' },
-  medalSilver:  { defaultEmoji: '🥈', url: 'assets/sprites/medal-silver.svg' },
-  medalBronze:  { defaultEmoji: '🥉', url: 'assets/sprites/medal-bronze.svg' },
+  medalDiamond:  { defaultEmoji: '💎', url: 'assets/sprites/medal-diamond.svg' },
+  medalGold:     { defaultEmoji: '🥇', url: 'assets/sprites/medal-gold.svg' },
+  medalSilver:   { defaultEmoji: '🥈', url: 'assets/sprites/medal-silver.svg' },
+  medalBronze:   { defaultEmoji: '🥉', url: 'assets/sprites/medal-bronze.svg' },
+  medalPlatinum: { defaultEmoji: '⭐', url: 'assets/sprites/medal-platinum.svg' },
+  medalEmerald:  { defaultEmoji: '💚', url: 'assets/sprites/medal-emerald.svg' },
+
+  // ── Wave A modifier icons (2026-06-16) ──
+  modWalls:     { defaultEmoji: '🧱', url: 'assets/sprites/mod-walls.svg' },
+  modLiar:      { defaultEmoji: '🤥', url: 'assets/sprites/mod-liar.svg' },
+  modMystery:   { defaultEmoji: '❓', url: 'assets/sprites/mod-mystery.svg' },
+  modMineShift: { defaultEmoji: '💨', url: 'assets/sprites/mod-mineshift.svg' },
+  modLocked:    { defaultEmoji: '🔒', url: 'assets/sprites/mod-locked.svg' },
+  modWormhole:  { defaultEmoji: '🌀', url: 'assets/sprites/mod-wormhole.svg' },
+  modMirror:    { defaultEmoji: '🪞', url: 'assets/sprites/mod-mirror.svg' },
+  modPressure:  { defaultEmoji: '🔴', url: 'assets/sprites/mod-pressure.svg' },
+  modSonar:     { defaultEmoji: '📡', url: 'assets/sprites/mod-sonar.svg' },
+  modCompass:   { defaultEmoji: '🧭', url: 'assets/sprites/mod-compass.svg' },
 };
 
 // Retain Image refs until each one fires onload/onerror so the browser
@@ -157,7 +171,7 @@ export function applyIcon(el, key, resolvedEmoji, { extraClass = '', sizeClass =
 // covers). Returns null for non-medal emoji (platinum/emerald keep
 // their emoji until drawn). TEXT surfaces (share strings) must stay
 // emoji - callers choose by simply not using this.
-const MEDAL_BY_EMOJI = { '🥉': 'medalBronze', '🥈': 'medalSilver', '🥇': 'medalGold', '💎': 'medalDiamond' };
+const MEDAL_BY_EMOJI = { '🥉': 'medalBronze', '🥈': 'medalSilver', '🥇': 'medalGold', '💎': 'medalDiamond', '⭐': 'medalPlatinum', '💚': 'medalEmerald' };
 export function medalImgForEmoji(emoji, sizeClass = 'sprite-rank', alt = '') {
   const key = MEDAL_BY_EMOJI[emoji];
   return key ? spriteImgHTML(key, sizeClass, alt) : null;
@@ -185,4 +199,27 @@ export function themeSpriteImgHTML(key, resolvedEmoji, sizeClass = '', alt = '')
     return `<img class="${cls}" src="${url}"${altAttr} decoding="async" draggable="false">`;
   }
   return `<span class="${sizeClass}" aria-hidden="true">${resolvedEmoji || ''}</span>`;
+}
+
+// ── Gimmick (modifier) icon sprites ──────────────────────
+// Maps gimmick definition keys to their SPRITES registry keys.
+const GIMMICK_SPRITE_KEYS = {
+  walls: 'modWalls', liar: 'modLiar', mystery: 'modMystery',
+  mineShift: 'modMineShift', locked: 'modLocked', wormhole: 'modWormhole',
+  mirror: 'modMirror', pressurePlate: 'modPressure', sonar: 'modSonar',
+  compass: 'modCompass',
+};
+
+export function gimmickSpriteImgHTML(gimmickKey, sizeClass = 'sprite-gimmick', alt = '') {
+  const spriteKey = GIMMICK_SPRITE_KEYS[gimmickKey];
+  return spriteKey ? spriteImgHTML(spriteKey, sizeClass, alt) : null;
+}
+
+export function applyGimmickIcon(el, gimmickKey, fallbackEmoji) {
+  const spriteKey = GIMMICK_SPRITE_KEYS[gimmickKey];
+  if (spriteKey) {
+    applyIcon(el, spriteKey, SPRITES[spriteKey].defaultEmoji, { sizeClass: 'sprite-gimmick' });
+  } else if (el) {
+    el.textContent = fallbackEmoji || '';
+  }
 }

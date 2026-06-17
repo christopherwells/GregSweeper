@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Greg's Gym: a dumbbell with one weight plate on each side,
+       resting on a minesweeper cell grid to tie it back to the game.
+       The gym teaches deduction techniques through drills. -->
+  <!-- Mini grid background (3 cells suggesting the training ground) -->
+  <g stroke="#232838" stroke-width="3" stroke-linejoin="round" opacity="0.3">
+    <rect x="16" y="80" width="30" height="30" rx="4" fill="#b0c4de"/>
+    <rect x="49" y="80" width="30" height="30" rx="4" fill="#b0c4de"/>
+    <rect x="82" y="80" width="30" height="30" rx="4" fill="#b0c4de"/>
+  </g>
+  <!-- Dumbbell bar -->
+  <rect x="22" y="48" width="84" height="12" rx="5" fill="#8a8f98" stroke="#232838" stroke-width="5" stroke-linejoin="round"/>
+  <!-- Left weight plates -->
+  <rect x="10" y="32" width="20" height="44" rx="5" fill="#5d8ad8" stroke="#232838" stroke-width="5" stroke-linejoin="round"/>
+  <rect x="16" y="38" width="8" height="32" rx="3" fill="#7ea8e8" opacity="0.7"/>
+  <!-- Right weight plates -->
+  <rect x="98" y="32" width="20" height="44" rx="5" fill="#5d8ad8" stroke="#232838" stroke-width="5" stroke-linejoin="round"/>
+  <rect x="104" y="38" width="8" height="32" rx="3" fill="#7ea8e8" opacity="0.7"/>
+  <!-- Grip texture on bar -->
+  <g stroke="#6a6e78" stroke-width="2" opacity="0.5">
+    <line x1="48" y1="48" x2="48" y2="60"/>
+    <line x1="56" y1="48" x2="56" y2="60"/>
+    <line x1="64" y1="48" x2="64" y2="60"/>
+    <line x1="72" y1="48" x2="72" y2="60"/>
+    <line x1="80" y1="48" x2="80" y2="60"/>
+  </g>
+</svg>

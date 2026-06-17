@@ -2538,6 +2538,12 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   height: 21px;
   vertical-align: middle;
 }
+/* Modifier (gimmick) icon sprites — inline with text in bars, popups, help. */
+.sprite-gimmick {
+  width: 1.2em;
+  height: 1.2em;
+  vertical-align: -0.15em;
+}
 .lb-rank-cell { line-height: 1; }
 .sprite-medal {
   width: 26px;
