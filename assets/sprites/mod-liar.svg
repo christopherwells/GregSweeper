@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Liar: a cell showing a number with a theatrical mask half over it.
+       The rose-pink tint and italic lean signal deception. -->
+  <!-- Rose-tinted cell background -->
+  <rect x="18" y="22" width="92" height="84" rx="10" fill="rgba(231,76,60,0.22)" stroke="#232838" stroke-width="5" stroke-linejoin="round"/>
+  <rect x="18" y="22" width="92" height="84" rx="10" fill="#e8c4bf" stroke="#232838" stroke-width="5" stroke-linejoin="round"/>
+  <!-- Tilted number (the lie) -->
+  <text x="48" y="82" font-family="sans-serif" font-weight="900" font-size="52" fill="#232838" font-style="italic" text-decoration="underline" transform="rotate(-6,48,68)">3</text>
+  <!-- Comedy/tragedy mask fragment (top-right) — the liar's tell -->
+  <g transform="translate(78,28) scale(0.5)">
+    <ellipse cx="40" cy="36" rx="32" ry="28" fill="#f5d76e" stroke="#232838" stroke-width="7" stroke-linejoin="round"/>
+    <circle cx="28" cy="30" r="5" fill="#232838"/>
+    <circle cx="52" cy="30" r="5" fill="#232838"/>
+    <path d="M26 46 Q40 56 54 46" fill="none" stroke="#232838" stroke-width="5" stroke-linecap="round"/>
+  </g>
+</svg>

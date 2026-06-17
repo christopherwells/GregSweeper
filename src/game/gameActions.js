@@ -9,6 +9,7 @@ import {
   updateCellsRemaining, updateStreakDisplay, updateStreakBorder,
   updateFlagModeBar, updateActiveGimmickBar,
 } from '../ui/headerRenderer.js';
+import { applyGimmickIcon, gimmickSpriteImgHTML } from '../ui/spriteLoader.js';
 import { updatePowerUpBar } from '../ui/powerUpBar.js';
 import { clearBoardCoach } from '../ui/boardCoach.js';
 import { hideAllModals, showModal, hideModal } from '../ui/modalManager.js';
@@ -75,6 +76,7 @@ function showGimmickIntros(gimmickDefs, recapDefs = []) {
     cards.push({
       primer: false,
       icon: def.icon,
+      gimmickKey: def._key || null,
       name: def.name,
       body: def.longDesc || def.desc,
       exampleHtml: def.exampleHtml || '',
@@ -100,7 +102,11 @@ function showGimmickIntros(gimmickDefs, recapDefs = []) {
       return;
     }
     const card = cards[index];
-    iconEl.textContent = card.icon;
+    if (card.gimmickKey) {
+      applyGimmickIcon(iconEl, card.gimmickKey, card.icon);
+    } else {
+      iconEl.textContent = card.icon;
+    }
     nameEl.textContent = (card.primer || card.recap) ? card.name : `Modifier: ${card.name}`;
     descEl.textContent = card.body;
     if (exampleEl) {
@@ -1045,7 +1051,7 @@ export function revealCell(row, col) {
             if (!hasSeenGimmick(g)) {
               markGimmickSeen(g);
               const def = getGimmickDef(g);
-              if (def) newGimmicks.push(def);
+              if (def) newGimmicks.push({ ...def, _key: g });
             }
           }
           if (newGimmicks.length > 0) {
@@ -1086,7 +1092,9 @@ export function revealCell(row, col) {
       if (modIcons) {
         modIcons.innerHTML = state.chaosModifiers.map(g => {
           const def = getGimmickDef(g);
-          return def ? '<span class="chaos-mod-icon" title="' + def.name + '">' + def.icon + '</span>' : '';
+          if (!def) return '';
+          const iconHtml = gimmickSpriteImgHTML(g, 'sprite-gimmick', def.name) || def.icon;
+          return '<span class="chaos-mod-icon" title="' + def.name + '">' + iconHtml + '</span>';
         }).join('');
       }
       // Refresh all cells to show modifier indicators
@@ -1138,11 +1146,12 @@ export function revealCell(row, col) {
       for (const g of state.activeGimmicks) {
         const def = getGimmickDef(g);
         if (!def) continue;
+        const tagged = { ...def, _key: g };
         if (hasSeenGimmick(g)) {
-          seenDefs.push(def);
+          seenDefs.push(tagged);
         } else {
           markGimmickSeen(g);
-          unseenDefs.push(def);
+          unseenDefs.push(tagged);
         }
       }
       if (unseenDefs.length > 0) {

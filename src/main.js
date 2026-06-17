@@ -8,7 +8,7 @@
 import { state } from './state/gameState.js';
 import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn, escapeHtml } from './ui/domHelpers.js';
 import { resizeCells, updateAllCells, getThemeEmoji, needsZoom, updateZoom, zoomIn, zoomOut, setFocusedCell, announceGame } from './ui/boardRenderer.js';
-import { preloadSprites, spriteImgHTML, themeSpriteImgHTML, medalImgForEmoji } from './ui/spriteLoader.js';
+import { preloadSprites, spriteImgHTML, themeSpriteImgHTML, medalImgForEmoji, gimmickSpriteImgHTML } from './ui/spriteLoader.js';
 import { updateHeader, updateStreakBorder, updateFlagModeBar, getCheckpointForLevel, CHECKPOINT_INTERVAL } from './ui/headerRenderer.js';
 import { updatePowerUpBar } from './ui/powerUpBar.js';
 import { showModal, hideModal, hideAllModals } from './ui/modalManager.js';
@@ -2471,7 +2471,7 @@ function hideTitleScreen() {
 const GIMMICK_LABELS = (() => {
   const labels = {};
   for (const [key, def] of Object.entries(getGimmickDefs())) {
-    if (!def.chaosOnly) labels[def.intro] = { icon: def.icon, name: def.name };
+    if (!def.chaosOnly) labels[def.intro] = { key, icon: def.icon, name: def.name };
   }
   return labels;
 })()
@@ -2522,7 +2522,8 @@ function showCheckpointSelector() {
     const gimmick = GIMMICK_LABELS[cp];
     let modifierHtml = '';
     if (gimmick) {
-      modifierHtml = `<span class="cp-modifier"><span class="cp-modifier-icon">${gimmick.icon}</span> ${gimmick.name}</span>`;
+      const cpIcon = gimmickSpriteImgHTML(gimmick.key, 'sprite-gimmick', gimmick.name) || gimmick.icon;
+      modifierHtml = `<span class="cp-modifier"><span class="cp-modifier-icon">${cpIcon}</span> ${gimmick.name}</span>`;
     } else if (!unlocked) {
       modifierHtml = `<span class="cp-modifier">Reach Level ${cp}</span>`;
     }
@@ -2784,9 +2785,12 @@ if (titleHelpBtn) {
 const helpModifierList = $('#help-modifier-list');
 if (helpModifierList) {
   const introRank = (d) => (d.chaosOnly ? 999 : (d.intro ?? 998));
-  helpModifierList.innerHTML = Object.values(getGimmickDefs())
-    .sort((a, b) => introRank(a) - introRank(b))
-    .map(def => `<p>${def.icon} <strong>${def.name}</strong>: ${def.desc}</p>`)
+  helpModifierList.innerHTML = Object.entries(getGimmickDefs())
+    .sort((a, b) => introRank(a[1]) - introRank(b[1]))
+    .map(([key, def]) => {
+      const icon = gimmickSpriteImgHTML(key, 'sprite-gimmick', def.name) || def.icon;
+      return `<p>${icon} <strong>${def.name}</strong>: ${def.desc}</p>`;
+    })
     .join('');
 }
 

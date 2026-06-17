@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Speed-rating medal: emerald. Same family ribbon, but the disc
+       gives way to an emerald-cut gemstone — a step-cut rectangle with
+       clipped corners and facet lines. Green prestige. -->
+  <g stroke="#232838" stroke-width="5" stroke-linejoin="round">
+    <path d="M42 8 L60 8 L67 40 L46 46 Z" fill="#46506b"/>
+    <path d="M86 8 L68 8 L61 40 L82 46 Z" fill="#3a4258"/>
+  </g>
+  <!-- Emerald-cut stone: rectangle with clipped corners -->
+  <g stroke="#232838" stroke-width="5" stroke-linejoin="round">
+    <path d="M38 56 L50 44 L78 44 L90 56 L90 96 L78 108 L50 108 L38 96 Z" fill="#2e8b57"/>
+  </g>
+  <!-- Step-cut facet lines -->
+  <g stroke="#1f6b42" stroke-width="2.5" stroke-linejoin="round" fill="none">
+    <path d="M44 52 L56 48 L72 48 L84 52 L84 100 L72 104 L56 104 L44 100 Z"/>
+  </g>
+  <!-- Light facets -->
+  <path d="M50 44 L56 48 L44 52 L38 56 Z" fill="#50c878" opacity="0.7"/>
+  <path d="M78 44 L72 48 L84 52 L90 56 Z" fill="#3da86a" opacity="0.5"/>
+  <path d="M44 52 L56 48 L72 48 L84 52 L84 60 L44 60 Z" fill="#5ad07a" opacity="0.4"/>
+  <!-- Sparkle -->
+  <path d="M94 38 L96 44 L102 46 L96 48 L94 54 L92 48 L86 46 L92 44 Z" fill="#ffffff" opacity="0.8"/>
+</svg>
