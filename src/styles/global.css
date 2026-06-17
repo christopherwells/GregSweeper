@@ -1841,8 +1841,10 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   justify-content: center;
   z-index: 1001; /* above title screen (z-index: 1000) */
   animation: fadeIn 0.2s ease-out;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  /* No backdrop-filter blur. A full-viewport blur(4px) re-rasterizes the whole
+     title/board behind the modal — and the fadeIn re-runs it every frame — which
+     hitches every modal open on lower-end GPUs (worse on themes with a richer
+     backdrop). The dim overlay alone reads as "modal" with zero GPU cost. */
 }
 
 @keyframes fadeIn {
