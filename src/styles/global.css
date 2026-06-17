@@ -1841,8 +1841,11 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   justify-content: center;
   z-index: 1001; /* above title screen (z-index: 1000) */
   animation: fadeIn 0.2s ease-out;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  /* No backdrop-filter blur. A full-viewport blur re-rasterizes the whole
+     title/board behind the modal, and the fadeIn re-runs that every frame. When
+     Chrome composites in software (integrated graphics, or a GPU-driver
+     fallback that can hit even a strong card), it runs on the CPU and stalls
+     every modal open. The dim overlay alone reads as a modal at no blur cost. */
 }
 
 @keyframes fadeIn {
@@ -3394,14 +3397,6 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   margin-bottom: 4px;
 }
 
-/* Banked molt days riding the daily-card streak line. Slightly smaller than
-   the streak text so 1-2 crabs read as a quiet badge, not a second headline. */
-.molt-tokens {
-  font-size: 0.9em;
-  letter-spacing: 1px;
-  cursor: default;
-}
-
 .par-breakdown {
   font-size: 11.5px;
   color: var(--color-text-secondary);
@@ -4893,24 +4888,77 @@ button:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
-/* Greg's Field Note on the daily card — why today's board exists, in
-   one true sentence from the experiment design. Quiet, italic, ambient. */
+/* Greg's Field Note — now the daily card's single center descriptor (why
+   today's board exists, in one true sentence). Italic keeps it Greg's voice;
+   sized to read as the primary line, not a secondary afterthought. */
 .mode-card-fieldnote {
   display: block;
-  margin-top: 2px;
-  font-size: 0.86em;
+  font-size: 1em;
   font-style: italic;
-  opacity: 0.7;
+  opacity: 0.8;
+  line-height: 1.3;
 }
 
 /* ── Past Dailies calendar ─────────────────────────────── */
-/* The Daily card must be a positioning context for the corner chip below. */
-.mode-card[data-mode="daily"] { position: relative; }
-/* Par rides the status row as a quiet suffix (no longer its own row). */
-.mode-card-par-inline {
-  opacity: 0.65;
+/* The Daily card is the positioning context for its four corner stats, and
+   reserves a bottom band so the absolute streak/par clear Greg's note. The
+   padding-bottom outranks the responsive `.mode-card` shorthand by specificity,
+   so the band survives every breakpoint. */
+.mode-card[data-mode="daily"] { position: relative; padding-bottom: 24px; }
+/* ── Daily card: corner-anchored stats ──────────────────────────────────
+   Four corners frame Greg's note: molt tokens top-left, Past chip top-right,
+   streak bottom-left, par bottom-right. The streak + par are plain text in
+   Greg's note color (NOT pills, NOT italic), so the Past chip stays the one
+   pill that pops. */
+.daily-corner-molt {
+  position: absolute;
+  top: 6px;
+  left: 7px;
+  font-size: 0.78rem;
+  line-height: 1;
+  letter-spacing: -2px;
+  cursor: default;
+}
+.daily-corner-stat {
+  position: absolute;
+  bottom: 7px;
+  font-size: 0.72rem;
+  color: var(--color-text-secondary, #7a6e5d);
+  opacity: 0.85;
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+.daily-corner-streak { left: 11px; }
+.daily-corner-par { right: 11px; }
+/* The crab dropping into the card corner when a molt day is earned (replayed
+   when the earned popup is dismissed). Same drop used for the popup crab. */
+@keyframes moltPlace {
+  0%   { transform: translateY(-14px) scale(0.55); opacity: 0; }
+  60%  { transform: translateY(1px) scale(1.1); opacity: 1; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+.daily-corner-molt.molt-placing {
+  animation: moltPlace 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+/* Earned-molt-day popup: a big crab that drops in, and a primary action. */
+.molt-earned-crab {
+  font-size: 56px;
+  line-height: 1;
+  margin: 6px auto 12px;
+  animation: moltPlace 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.molt-earned-done {
+  margin-top: 14px;
+  padding: 9px 24px;
+  font: inherit;
+  font-weight: 600;
+  color: #fff;
+  background: var(--color-accent, #5c6bc0);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.molt-earned-done:hover { filter: brightness(1.05); }
 /* "Past dailies" affordance: a small chip in the card corner, OUT of the
    content stack so it never adds a row. The card is a <button>, so this is a
    role=button span; a capture-phase handler routes its taps to the calendar

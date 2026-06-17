@@ -21,7 +21,7 @@ import { getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, getChaosDifficulty, LIFELIN
 import {
   loadStats, saveGameResult, saveModePowerUps, clearGameState,
   markDailyCompleted, getDailyStreak, getPlayerName,
-  hasSeenNotice, markNoticeSeen, consumeMoltEvent,
+  hasSeenNotice, markNoticeSeen, consumeMoltEvent, flagMoltCelebrate,
 } from '../storage/statsStorage.js';
 import { safeSetJSON } from '../storage/storageAdapter.js';
 import {
@@ -372,9 +372,12 @@ export function handleWin() {
   let moltNote = '';
   if (moltEvent) {
     if (moltEvent.coveredDates && moltEvent.coveredDates.length > 0) {
+      // A cover saved the streak — a quiet inline confirmation here.
       moltNote = `<span class="molt-note">🦀 Molt day covered ${_coveredPhrase(moltEvent.coveredDates)}. Streak intact at ${moltEvent.streakKept}.</span><br>`;
-    } else if (moltEvent.earned) {
-      moltNote = '<span class="molt-note">🦀 Molt day banked. Greg covers your next missed day.</span><br>';
+    } else if (moltEvent.earned && isRealDaily) {
+      // Earning one is a milestone — flag the celebratory popup + the crab
+      // placement animation that play when the player lands back on the title.
+      flagMoltCelebrate();
     }
   }
 

@@ -8,7 +8,7 @@
 import { state } from './state/gameState.js';
 import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn, escapeHtml } from './ui/domHelpers.js';
 import { resizeCells, updateAllCells, getThemeEmoji, needsZoom, updateZoom, zoomIn, zoomOut, setFocusedCell, announceGame } from './ui/boardRenderer.js';
-import { preloadSprites, spriteImgHTML, medalImgForEmoji } from './ui/spriteLoader.js';
+import { preloadSprites, spriteImgHTML, themeSpriteImgHTML, medalImgForEmoji } from './ui/spriteLoader.js';
 import { updateHeader, updateStreakBorder, updateFlagModeBar, getCheckpointForLevel, CHECKPOINT_INTERVAL } from './ui/headerRenderer.js';
 import { updatePowerUpBar } from './ui/powerUpBar.js';
 import { showModal, hideModal, hideAllModals } from './ui/modalManager.js';
@@ -33,7 +33,7 @@ import {
   saveModePowerUps, loadGameState,
   isOnboarded, setOnboarded,
   isDailyCompleted, markDailyCompleted,
-  getDailyStreak, getMoltProvisionalNotice,
+  getDailyStreak, getMoltProvisionalNotice, backfillMoltDays, consumeMoltCelebrate,
   getPlayerName, setPlayerName,
   getLastSeenVersion, setLastSeenVersion,
   saveDailyPar, loadDailyPar, pruneOldDailyKeys, applyCloudProgress, resetDailyStatsForAccountSwitch,
@@ -2263,34 +2263,42 @@ function updateTitleProgress() {
     const today = getLocalDateString();
     const dailyCard = $('.mode-card[data-mode="daily"]');
     const { streak, banked } = getDailyStreak();
-    // Par rides the status line as a quiet suffix instead of its own row.
-    const parSuffix = (_titleDailyPar.date === today && _titleDailyPar.secs > 0)
-      ? ` <span class="mode-card-par-inline">· Par ${_titleDailyPar.secs}s</span>`
-      : '';
-    const fieldNote = (_titleDailyPar.date === today && _titleDailyPar.note)
-      ? `<span class="mode-card-fieldnote">${spriteImgHTML('smiley', 'sprite-greg-note', 'Greg')}${_titleDailyPar.note}</span>`
-      : '';
     const completed = isDailyCompleted(today);
-    // Molt-day tokens ride the existing streak line (no new row). Held back
-    // when a molt day is actively holding the streak (the provisional line
-    // below says so instead).
-    const tokens = banked > 0
-      ? ` <span class="molt-tokens" title="Molt days banked. Earned every 5 days in a row, spent automatically when you miss a day. Holds 2.">${'🦀'.repeat(banked)}</span>`
-      : '';
     const provisional = completed ? null : getMoltProvisionalNotice();
-    let descriptor;
-    if (provisional) {
-      // A molt day is holding the streak over a missed gap — surface the save
-      // before the player plays, in place of the plain streak line.
-      descriptor = `🦀 Molt day holds your ${provisional.streakHeld} day streak`;
-    } else if (completed) {
-      descriptor = streak > 0 ? `Completed! 🔥 ${streak} day streak${tokens}` : 'Completed today!';
-    } else {
-      descriptor = streak > 0 ? `🔥 ${streak} day streak${tokens}` : 'Same puzzle worldwide';
-    }
-    // Two rows only: status (+ par) and Greg's note. "Past dailies" is a
-    // corner chip in the card markup, so it never enters this stack.
-    dailyEl.innerHTML = `<span class="mode-card-status">${descriptor}${parSuffix}</span>` + fieldNote;
+    const hasPar = _titleDailyPar.date === today && _titleDailyPar.secs > 0;
+    const note = (_titleDailyPar.date === today && _titleDailyPar.note) ? _titleDailyPar.note : '';
+
+    // Corner-anchored stats keep the center clean: molt tokens top-left
+    // (mirroring the Past chip top-right), the streak (emphasized) and par
+    // along the bottom edge, and Greg's note as the one center descriptor.
+    // The numbers ride the corners instead of stacking their own rows, so the
+    // Daily card stays the same height as its siblings. The molt tooltip
+    // carries the banked-vs-holding nuance so the face copy stays quiet.
+    const moltTitle = provisional
+      ? `A molt day is holding your ${provisional.streakHeld} day streak. Play today to keep it going.`
+      : 'Molt days banked. Earned every 5 days in a row, spent automatically when you miss a day. Holds 2.';
+    const moltCorner = banked > 0
+      ? `<span class="daily-corner-molt" title="${moltTitle}">${'🦀'.repeat(banked)}</span>`
+      : '';
+
+    // Greg's note (the daily's character) is the center descriptor, with the
+    // theme-matched Greg beside it. Once played, the card just says so (the
+    // dimmed .daily-completed style reinforces it).
+    const showNote = !completed && !!note;
+    const gregSprite = showNote ? themeSpriteImgHTML('smiley', getThemeEmoji('smiley'), 'sprite-greg-note', 'Greg') : '';
+    const centerText = completed ? 'Played today' : (note || 'Same puzzle worldwide');
+
+    // Streak (bottom-left) + par (bottom-right) hug the card corners like the
+    // Past chip — plain text, not pills, so the Past chip stays the one pill.
+    const streakCorner = streak > 0
+      ? `<span class="daily-corner-stat daily-corner-streak" title="Your daily streak">${streak} day${streak === 1 ? '' : 's'}</span>`
+      : '';
+    const parCorner = hasPar
+      ? `<span class="daily-corner-stat daily-corner-par" title="Greg’s par for today">Par ${_titleDailyPar.secs}s</span>`
+      : '';
+
+    dailyEl.innerHTML = moltCorner + streakCorner + parCorner
+      + `<span class="mode-card-fieldnote">${gregSprite}${centerText}</span>`;
     if (dailyCard) dailyCard.classList.toggle('daily-completed', completed);
   }
 
@@ -2383,7 +2391,21 @@ function showTitleScreen() {
   if (isOnboarded() && !hasSeenNotice('meet_greg')) {
     markNoticeSeen('meet_greg');
     showModal('meet-greg-modal');
+  } else if (consumeMoltCelebrate()) {
+    // Earned a molt day on the last completion: announce it, then drop the
+    // crab into the Daily card's top-left corner on dismiss.
+    showModal('molt-earned-modal');
   }
+}
+
+// Replay the crab's "placed in the corner" animation on the Daily card. Called
+// when the earned-molt-day popup is dismissed so the player watches it land.
+function _animateMoltPlacement() {
+  const crab = $('.mode-card[data-mode="daily"] .daily-corner-molt');
+  if (!crab) return;
+  crab.classList.remove('molt-placing');
+  void crab.offsetWidth; // force reflow so the animation restarts
+  crab.classList.add('molt-placing');
 }
 
 // Resolve today's Greg-par for the Daily card, once per date per
@@ -3428,6 +3450,12 @@ $('#gameover-done').addEventListener('click', () => {
   showTitleScreen();
 });
 
+// Earned-molt-day popup: dismiss, then drop the crab into the card corner.
+$('#molt-earned-done')?.addEventListener('click', () => {
+  hideModal('molt-earned-modal');
+  _animateMoltPlacement();
+});
+
 // Daily-win opt-in CTA. Click → enable push notifications with the
 // player's preferred hour (default 9am ET). Picked here because the
 // player has just completed a daily and the dopamine moment is fresh
@@ -3776,6 +3804,9 @@ async function init() {
     // auth + cloud have settled. Recovers a streak the local counter lost
     // to an offline gap or a mid-session uid switch on a prior session.
     await _reconcileDailyStreak();
+    // One-time launch grant of molt days for an existing streak, now that the
+    // synced streak is settled. Refresh the title card if it granted any.
+    if (backfillMoltDays()) { try { updateTitleProgress(); } catch {} }
   }).catch(err => reportCaughtError('cloud-progress-load', err)); // progress stays local-only on failure — but the failure is reported
 
   // Preload handicaps so the end-of-game modal can render personal par
