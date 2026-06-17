@@ -107,7 +107,6 @@ const ASSETS = [
   './assets/sprites/medal-gold.svg',
   './assets/sprites/medal-silver.svg',
   './assets/sprites/medal-bronze.svg',
-  './assets/sprites/medal-platinum.svg',
   './assets/sprites/medal-emerald.svg',
   // Modifier (gimmick) icons — the 10 modifier types
   './assets/sprites/mod-walls.svg',

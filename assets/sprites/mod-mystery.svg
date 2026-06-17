@@ -1,17 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <!-- Mystery: a bold question mark rising from a cell. The number is
-       hidden — you can see the cell but not its value. -->
-  <!-- Cell background -->
-  <rect x="22" y="36" width="84" height="76" rx="10" fill="#b0c4de" stroke="#232838" stroke-width="5" stroke-linejoin="round"/>
-  <!-- Bold question mark -->
-  <path d="M52 42 Q52 24 64 20 Q80 16 84 30 Q88 44 68 52 L66 62"
-        fill="none" stroke="#232838" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="64" cy="76" r="5.5" fill="#232838"/>
-  <!-- Haze/fog lines radiating from the question -->
-  <g stroke="#7a8da6" stroke-width="3" stroke-linecap="round" opacity="0.55">
-    <line x1="36" y1="52" x2="28" y2="48"/>
-    <line x1="36" y1="68" x2="26" y2="72"/>
-    <line x1="92" y1="56" x2="102" y2="52"/>
-    <line x1="92" y1="72" x2="100" y2="78"/>
+  <!-- Mystery: bold calligraphic question mark materializing from fog.
+       Double-stroke (dark outline + colored fill) for weight. -->
+  <g opacity="0.18" fill="#8aa4c0">
+    <ellipse cx="44" cy="84" rx="30" ry="14" transform="rotate(-10,44,84)"/>
+    <ellipse cx="90" cy="56" rx="22" ry="10" transform="rotate(12,90,56)"/>
+    <ellipse cx="64" cy="110" rx="40" ry="12"/>
+  </g>
+  <path d="M42 40 Q42 12 64 10 Q90 10 90 38 Q90 54 72 60 L68 68"
+        fill="none" stroke="#232838" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M42 40 Q42 12 64 10 Q90 10 90 38 Q90 54 72 60 L68 68"
+        fill="none" stroke="#6a8fb5" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="68" cy="90" r="9" fill="#6a8fb5" stroke="#232838" stroke-width="5"/>
+  <g opacity="0.12" fill="#8aa4c0">
+    <ellipse cx="26" cy="52" rx="16" ry="7" transform="rotate(-15,26,52)"/>
+    <ellipse cx="102" cy="78" rx="18" ry="7" transform="rotate(10,102,78)"/>
   </g>
 </svg>

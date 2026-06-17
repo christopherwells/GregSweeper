@@ -1,16 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <!-- Wormhole: a spiral portal with depth. Two linked points connected
-       by a twisting passage — the paired-cell concept. -->
-  <!-- Outer ring -->
-  <circle cx="64" cy="64" r="46" fill="#1a1e3a" stroke="#232838" stroke-width="5"/>
-  <!-- Spiral bands (concentric, offset for depth) -->
-  <ellipse cx="64" cy="64" rx="38" ry="38" fill="none" stroke="#5d4e9e" stroke-width="5" opacity="0.8"/>
-  <ellipse cx="64" cy="64" rx="28" ry="28" fill="none" stroke="#7b6bc4" stroke-width="5" opacity="0.7"/>
-  <ellipse cx="64" cy="64" rx="18" ry="18" fill="none" stroke="#9d8edf" stroke-width="4" opacity="0.65"/>
-  <ellipse cx="64" cy="64" rx="8" ry="8" fill="#c4b8f0" stroke="#b0a0e8" stroke-width="3"/>
-  <!-- Swirl arms for motion -->
-  <path d="M64 18 Q90 30 96 64" fill="none" stroke="#ff8c00" stroke-width="4.5" stroke-linecap="round" opacity="0.75"/>
-  <path d="M64 110 Q38 98 32 64" fill="none" stroke="#ff8c00" stroke-width="4.5" stroke-linecap="round" opacity="0.75"/>
-  <!-- Small sparkle at center -->
-  <path d="M64 56 L66 62 L72 64 L66 66 L64 72 L62 66 L56 64 L62 62 Z" fill="#ffffff" opacity="0.85"/>
+  <!-- Wormhole: dimensional portal with depth perspective.
+       Concentric ellipses shrinking toward a bright center,
+       amber energy spirals, sparkle at the core. -->
+  <circle cx="64" cy="64" r="52" fill="#14102e" stroke="#232838" stroke-width="5"/>
+  <ellipse cx="64" cy="64" rx="44" ry="42" fill="none" stroke="#3a2e6e" stroke-width="6"/>
+  <ellipse cx="64" cy="64" rx="34" ry="30" fill="none" stroke="#5a4e9e" stroke-width="5"/>
+  <ellipse cx="64" cy="64" rx="24" ry="20" fill="none" stroke="#7a6ec4" stroke-width="4.5"/>
+  <ellipse cx="64" cy="64" rx="14" ry="10" fill="#9a8ede" stroke="#8a7ed4" stroke-width="3"/>
+  <ellipse cx="64" cy="64" rx="6" ry="4" fill="#d4ccff"/>
+  <path d="M64 12 Q102 26 104 64" fill="none" stroke="#ff9830" stroke-width="4" stroke-linecap="round" opacity="0.65"/>
+  <path d="M64 116 Q26 102 24 64" fill="none" stroke="#ff9830" stroke-width="4" stroke-linecap="round" opacity="0.65"/>
+  <path d="M64 56 L65.5 61.5 L72 64 L65.5 66.5 L64 72 L62.5 66.5 L56 64 L62.5 61.5 Z" fill="#fff" opacity="0.85"/>
 </svg>

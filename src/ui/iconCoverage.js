@@ -39,7 +39,6 @@ export const ICON_STATUS = {
   '🥈': 'sprite',   // silver
   '🥇': 'sprite',   // gold
   '💎': 'sprite',   // diamond
-  '⭐': 'sprite',   // platinum
   '💚': 'sprite',   // emerald
 
   // ── Modifier icons (Wave A, SVG) ──

@@ -1,17 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <!-- Pressure Plate: a cell with a countdown timer ticking. The red
-       urgency + clock hand says "solve fast or it blows." -->
-  <!-- Base plate (slightly depressed button look) -->
-  <rect x="20" y="44" width="88" height="68" rx="10" fill="#c8d8ec" stroke="#232838" stroke-width="5" stroke-linejoin="round"/>
-  <rect x="28" y="50" width="72" height="56" rx="6" fill="#dde6f0" stroke="#232838" stroke-width="3"/>
-  <!-- Timer circle (top center, overlapping the plate) -->
-  <circle cx="64" cy="44" r="28" fill="#e8e8e8" stroke="#232838" stroke-width="5"/>
-  <circle cx="64" cy="44" r="22" fill="#f5f5f5"/>
-  <!-- Clock hand -->
-  <line x1="64" y1="44" x2="64" y2="28" stroke="#e4453a" stroke-width="4" stroke-linecap="round"/>
-  <line x1="64" y1="44" x2="76" y2="44" stroke="#232838" stroke-width="3.5" stroke-linecap="round"/>
-  <circle cx="64" cy="44" r="3.5" fill="#232838"/>
-  <!-- Red warning glow at the bottom -->
-  <circle cx="64" cy="92" r="8" fill="#e4453a" stroke="#232838" stroke-width="3.5"/>
-  <circle cx="64" cy="92" r="4" fill="#ff6b6b"/>
+  <!-- Stopwatch: cream face, red minute hand pointing at danger zone,
+       dark hour hand, crown button on top. Urgency in every line. -->
+  <circle cx="64" cy="72" r="46" fill="#eae4d8" stroke="#232838" stroke-width="5"/>
+  <circle cx="64" cy="72" r="38" fill="#f5f0e8"/>
+  <rect x="58" y="16" width="12" height="14" rx="4" fill="#6a6e78" stroke="#232838" stroke-width="4"/>
+  <path d="M52 30 Q52 22 64 20 Q76 22 76 30" fill="none" stroke="#232838" stroke-width="4" stroke-linecap="round"/>
+  <g stroke="#232838" stroke-width="3.5" stroke-linecap="round">
+    <line x1="64" y1="30" x2="64" y2="38"/>
+    <line x1="64" y1="106" x2="64" y2="114"/>
+    <line x1="22" y1="72" x2="30" y2="72"/>
+    <line x1="98" y1="72" x2="106" y2="72"/>
+  </g>
+  <path d="M88 96 A38 38 0 0 0 100 72" fill="none" stroke="#e4453a" stroke-width="6" stroke-linecap="round" opacity="0.3"/>
+  <line x1="64" y1="72" x2="64" y2="42" stroke="#e4453a" stroke-width="4.5" stroke-linecap="round"/>
+  <line x1="64" y1="72" x2="84" y2="60" stroke="#232838" stroke-width="3.5" stroke-linecap="round"/>
+  <circle cx="64" cy="72" r="4" fill="#232838"/>
 </svg>
