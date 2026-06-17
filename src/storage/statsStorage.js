@@ -792,11 +792,21 @@ export function applyCloudProgress({ maxCheckpoint, dailyStreak, bestDailyStreak
     if (!stats.modeStats) stats.modeStats = {};
     if (!stats.modeStats.daily) stats.modeStats.daily = {};
     const daily = stats.modeStats.daily;
-    // Adopt cloud's molt fields as a unit. A missing cloud node means the
-    // account has no molt state yet, which is a real 0 (not "keep local").
+    // Adopt cloud's molt fields as a unit — but ONLY when the cloud actually
+    // carries molt state. A missing node, or the bare default {banked:0, no
+    // lastUse}, is the pre-molt shape every LEGACY account holds: it is absence
+    // of information, NOT an authoritative 0. Treating it as a real 0 (the
+    // overwrite listener re-applies the cloud on every snapshot) wiped the
+    // one-time backfill grant on every boot, so an existing-streak player never
+    // kept the molt days they were granted. When the cloud has nothing real to
+    // say, keep the local bank: the next completion syncs it up, and a second
+    // device converges from the same shared streak (backfillGrant is a pure
+    // function of the streak, so both devices compute the same grant).
+    const cloudHasMolt = !!cloudMolt && ((cloudMolt.banked || 0) > 0 || !!cloudMolt.lastUse);
     const adoptMolt = () => {
-      daily.moltBanked = cloudMolt ? (cloudMolt.banked || 0) : 0;
-      daily.moltLastUse = cloudMolt ? (cloudMolt.lastUse || null) : null;
+      if (!cloudHasMolt) return;
+      daily.moltBanked = cloudMolt.banked || 0;
+      daily.moltLastUse = cloudMolt.lastUse || null;
     };
     if (overwrite) {
       if (dailyStreak != null) daily.dailyStreak = dailyStreak;
