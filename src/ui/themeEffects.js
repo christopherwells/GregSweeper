@@ -4,6 +4,8 @@
  * that creates/manages its own visual elements inside the board container.
  */
 
+import { isSoftwareRendering } from '../logic/deviceCapability.js';
+
 let activeCleanup = null;
 let effectContainer = null;
 
@@ -28,6 +30,12 @@ export function applyThemeEffects(themeName) {
 
   // Respect prefers-reduced-motion
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  // Skip the per-frame particle effects when the browser composites in software
+  // (integrated/VM/remote setups, or a GPU-driver fallback). They're cheap on a
+  // GPU but stutter the whole game on the CPU. The theme keeps its colors,
+  // sprites, and static backdrop; it just loses the live particles + gap-seal.
+  if (isSoftwareRendering()) return;
 
   const effectFn = THEME_EFFECTS[themeName];
   if (!effectFn) return;
