@@ -1,42 +1,42 @@
 {
-  "updatedAt": "2026-06-17T16:57:06Z",
-  "target": "lockedCellCount",
-  "reason": "highest posterior CV (1.075) excluding last 3 targets",
+  "updatedAt": "2026-06-18T17:07:09Z",
+  "target": "compassCellCount",
+  "reason": "highest posterior CV (1.060) excluding last 3 targets",
   "recentTargets": [
+    "compassCellCount",
     "lockedCellCount",
-    "liarCellCount",
-    "sonarCellCount"
+    "liarCellCount"
   ],
   "candidates": [
     {
-      "feature": "compassCellCount",
-      "mean": 0.834,
-      "sd": 0.906,
-      "cv": 1.087
+      "feature": "lockedCellCount",
+      "mean": 0.712,
+      "sd": 0.792,
+      "cv": 1.113
     },
     {
-      "feature": "lockedCellCount",
-      "mean": 0.681,
-      "sd": 0.732,
-      "cv": 1.075
+      "feature": "compassCellCount",
+      "mean": 0.841,
+      "sd": 0.892,
+      "cv": 1.06
     },
     {
       "feature": "sonarCellCount",
-      "mean": 0.773,
-      "sd": 0.791,
-      "cv": 1.024
+      "mean": 0.785,
+      "sd": 0.83,
+      "cv": 1.058
+    },
+    {
+      "feature": "mysteryCellCount",
+      "mean": 0.819,
+      "sd": 0.752,
+      "cv": 0.918
     },
     {
       "feature": "liarCellCount",
-      "mean": 0.745,
-      "sd": 0.738,
-      "cv": 0.991
-    },
-    {
-      "feature": "wallEdgeCount",
-      "mean": 0.154,
-      "sd": 0.141,
-      "cv": 0.912
+      "mean": 0.724,
+      "sd": 0.662,
+      "cv": 0.915
     }
   ],
   "coverage_targets": [
@@ -46,12 +46,12 @@
       "deficit_weight": 0.1429
     },
     {
-      "feature": "compassCellCount",
-      "n_boards": 7,
-      "deficit_weight": 0.125
+      "feature": "mysteryCellCount",
+      "n_boards": 8,
+      "deficit_weight": 0.1111
     },
     {
-      "feature": "mysteryCellCount",
+      "feature": "lockedCellCount",
       "n_boards": 8,
       "deficit_weight": 0.1111
     },
@@ -67,8 +67,8 @@
     },
     {
       "feature": "mirrorPairCount",
-      "n_boards": 9,
-      "deficit_weight": 0.1
+      "n_boards": 10,
+      "deficit_weight": 0.0909
     }
   ]
 }
