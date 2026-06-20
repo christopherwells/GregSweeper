@@ -1,0 +1,74 @@
+name: Delete leaderboard rows for a stray uid
+
+# Generic cleanup for the recurring "played while not signed in" duplicate:
+# a daily/weekly score lands under a fresh anonymous uid in parallel to the
+# player's canonical account. Purges every leaderboard row + (optionally)
+# the users/{uid} subtree belonging to TARGET_UID, while KEEP_UID (the
+# canonical account) is preserved and verified intact.
+#
+# DEFAULTS TO DRY RUN. Run once with dry_run=true, review the planned
+# deletes in the log, then re-run with dry_run=false to apply.
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_uid:
+        description: 'Stray uid to purge (all its leaderboard rows + subtree).'
+        type: string
+        required: true
+      keep_uid:
+        description: 'Canonical uid to PRESERVE (safety guard; script refuses if equal to target).'
+        type: string
+        required: false
+        default: ''
+      daily_date:
+        description: 'Sanity anchor: the date the duplicate was reported on (YYYY-MM-DD).'
+        type: string
+        required: false
+        default: ''
+      purge_subtree:
+        description: 'Also delete users/{uid} (streak/history/push subscription).'
+        type: boolean
+        required: false
+        default: true
+      dry_run:
+        description: 'Dry run (no writes). Set false to actually delete.'
+        type: boolean
+        required: false
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: delete-leaderboard-row
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Run cleanup
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          TARGET_UID: ${{ github.event.inputs.target_uid }}
+          KEEP_UID: ${{ github.event.inputs.keep_uid }}
+          DAILY_DATE: ${{ github.event.inputs.daily_date }}
+          PURGE_SUBTREE: ${{ github.event.inputs.purge_subtree }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "FIREBASE_SERVICE_ACCOUNT secret is not set"; exit 1
+          fi
+          if [ "${{ github.event.inputs.dry_run }}" = "false" ]; then
+            echo "APPLY mode"
+            node scripts/delete-leaderboard-row.mjs --apply
+          else
+            echo "DRY RUN (default). Set dry_run=false to apply."
+            node scripts/delete-leaderboard-row.mjs
+          fi
