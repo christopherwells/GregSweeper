@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Mystery: bold calligraphic question mark materializing from fog.
+       Double-stroke (dark outline + colored fill) for weight. -->
+  <g opacity="0.18" fill="#8aa4c0">
+    <ellipse cx="44" cy="84" rx="30" ry="14" transform="rotate(-10,44,84)"/>
+    <ellipse cx="90" cy="56" rx="22" ry="10" transform="rotate(12,90,56)"/>
+    <ellipse cx="64" cy="110" rx="40" ry="12"/>
+  </g>
+  <path d="M42 40 Q42 12 64 10 Q90 10 90 38 Q90 54 72 60 L68 68"
+        fill="none" stroke="#232838" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M42 40 Q42 12 64 10 Q90 10 90 38 Q90 54 72 60 L68 68"
+        fill="none" stroke="#6a8fb5" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="68" cy="90" r="9" fill="#6a8fb5" stroke="#232838" stroke-width="5"/>
+  <g opacity="0.12" fill="#8aa4c0">
+    <ellipse cx="26" cy="52" rx="16" ry="7" transform="rotate(-15,26,52)"/>
+    <ellipse cx="102" cy="78" rx="18" ry="7" transform="rotate(10,102,78)"/>
+  </g>
+</svg>

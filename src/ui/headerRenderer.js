@@ -7,7 +7,7 @@ import {
   flagModeToggle, flagModeIcon,
 } from './domHelpers.js';
 import { getThemeEmoji } from './boardRenderer.js';
-import { applyIcon } from './spriteLoader.js';
+import { applyIcon, gimmickSpriteImgHTML } from './spriteLoader.js';
 import { getTimedDifficulty, getSpeedRating, MAX_LEVEL } from '../logic/difficulty.js';
 import { loadStats, getDailyStreak } from '../storage/statsStorage.js';
 import { getGimmickDef } from '../logic/gimmicks.js';
@@ -83,7 +83,8 @@ export function updateActiveGimmickBar() {
     // data-gimmick drives the tap-to-explain toast below. The title
     // attr only serves desktop hover — touch devices never see it,
     // which left phone players with unexplainable icons mid-game.
-    return '<span class="active-gimmick-icon" role="button" tabindex="0" data-gimmick="' + g + '" title="' + tooltip + '">' + def.icon + '</span>';
+    const iconHtml = gimmickSpriteImgHTML(g, 'sprite-gimmick', def.name) || def.icon;
+    return '<span class="active-gimmick-icon" role="button" tabindex="0" data-gimmick="' + g + '" title="' + tooltip + '">' + iconHtml + '</span>';
   }).join('');
   bar.classList.remove('hidden');
 }

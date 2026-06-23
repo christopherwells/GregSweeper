@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v1.6.65';
+const CACHE_NAME = 'gregsweeper-v1.6.66';
 const ASSETS = [
   './',
   './index.html',
@@ -97,6 +97,7 @@ const ASSETS = [
   './assets/sprites/mode-daily.svg',
   './assets/sprites/mode-weekly.svg',
   './assets/sprites/mode-chaos.svg',
+  './assets/sprites/mode-gym.svg',
   './assets/sprites/pow-revealsafe.svg',
   './assets/sprites/pow-shield.svg',
   './assets/sprites/pow-scan.svg',
@@ -107,6 +108,18 @@ const ASSETS = [
   './assets/sprites/medal-gold.svg',
   './assets/sprites/medal-silver.svg',
   './assets/sprites/medal-bronze.svg',
+  './assets/sprites/medal-emerald.svg',
+  // Modifier (gimmick) icons — the 10 modifier types
+  './assets/sprites/mod-walls.svg',
+  './assets/sprites/mod-liar.svg',
+  './assets/sprites/mod-mystery.svg',
+  './assets/sprites/mod-mineshift.svg',
+  './assets/sprites/mod-locked.svg',
+  './assets/sprites/mod-wormhole.svg',
+  './assets/sprites/mod-mirror.svg',
+  './assets/sprites/mod-pressure.svg',
+  './assets/sprites/mod-sonar.svg',
+  './assets/sprites/mod-compass.svg',
   // Per-theme object sets (batch 1) — each world's mine/flag/strike in
   // its own material language.
   './assets/sprites/themes/editorial-mine.svg',

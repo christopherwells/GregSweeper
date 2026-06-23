@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Comedy mask: full theatrical face, gold, tilted. Asymmetric
+       eyes (right squinting — the tell), wide grin, rosy cheeks. -->
+  <g transform="rotate(-5,64,64)">
+    <path d="M28 54 Q28 18 64 14 Q100 18 100 54 L100 78 Q100 108 64 114 Q28 108 28 78 Z"
+          fill="#f0d04c" stroke="#232838" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M36 52 Q36 26 64 22 Q92 26 92 52 L92 70 Q92 90 64 94 Q36 90 36 70 Z"
+          fill="#f5dc6a" opacity="0.45"/>
+    <path d="M34 44 Q44 32 56 40" fill="none" stroke="#232838" stroke-width="5" stroke-linecap="round"/>
+    <path d="M72 38 Q82 28 94 40" fill="none" stroke="#232838" stroke-width="5" stroke-linecap="round"/>
+    <ellipse cx="46" cy="54" rx="9" ry="8" fill="#232838"/>
+    <ellipse cx="82" cy="52" rx="9" ry="5.5" fill="#232838"/>
+    <path d="M60 66 Q64 74 68 66" fill="none" stroke="#232838" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M36 82 Q50 100 64 98 Q78 100 92 82" fill="none" stroke="#232838" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="36" cy="74" r="7" fill="#e8a08a" opacity="0.45"/>
+    <circle cx="92" cy="72" r="7" fill="#e8a08a" opacity="0.45"/>
+  </g>
+</svg>
