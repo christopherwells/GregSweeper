@@ -41,7 +41,9 @@ import { archiveSubmitPlan, CRUX_VIEWED_KEY_PREFIX } from '../logic/archiveEligi
 import { isTestEnvironment } from '../firebase/env.js';
 import { reportCaughtError } from '../diagnostics/errorReporter.js';
 import { breakdownPar } from '../logic/dailyFeatures.js';
-import { getHandicap, getHandicapDetails, estimateHandicapDetails } from '../logic/handicaps.js';
+import { getHandicap, getHandicapDetails } from '../logic/handicaps.js';
+import { resolveParDisplay } from '../logic/parDisplayDecision.js';
+import { buildDailyScoreExtras } from '../logic/winSubmissionPlan.js';
 import { labFileLine } from '../logic/gregVoice.js';
 import { addDailyLeaderboardEntry, appendDailyResidual, loadDailyResiduals, loadPowerUps } from '../storage/statsStorage.js';
 import { getLocalDateString } from '../logic/seededRandom.js';
@@ -647,59 +649,21 @@ export function handleWin() {
       // residual across at least 2 local plays so newcomers see a
       // "Your par" line that tightens with each daily instead of
       // staring at "Greg's Time" alone for a month.
-      const refitHandicap = getHandicap(getUid());
-      let handicap = refitHandicap;
-      let provisional = null;
-      if (refitHandicap === 0) {
-        const residuals = loadDailyResiduals();
-        // Pass bombHits per residual so the provisional handicap subtracts
-        // secPerBombHit × bombHits before averaging. Older residuals
-        // (pre-schema-bump) lack the field — defaults to 0 inside
-        // estimateHandicapDetails.
-        const pairs = residuals.map(r => ({
-          time: r.time,
-          predictedPar: r.par,
-          bombHits: r.bombHits || 0,
-        }));
-        const est = estimateHandicapDetails(pairs);
-        if (est) {
-          handicap = est.handicap;
-          provisional = est;
-        }
-      }
-      // A newcomer's first few dailies show ONLY the plain "vs Greg's
-      // Time" line (plus the one-time primer). Handicap/personal-par,
-      // the per-feature breakdown chips, and the 30-day history strip
-      // stay hidden until they have a few plays — otherwise the very
-      // first result screen is a wall of scoring jargon. The residual
-      // for this play was already appended above, so the count includes
-      // today.
-      const NEWCOMER_DAILY_LIMIT = 3;
-      const isNewcomerDaily = loadDailyResiduals().length <= NEWCOMER_DAILY_LIMIT;
-      const personalPar = state.dailyPar + handicap;
-      const useHandicap = handicap !== 0 && !isNewcomerDaily;
-      const referencePar = useHandicap ? personalPar : state.dailyPar;
-      const delta = precise - referencePar;
-      const absDelta = Math.abs(delta).toFixed(1);
-      let parClass, deltaText;
-      if (delta < -0.5) {
-        parClass = 'par-under';
-        deltaText = absDelta + 's under ' + (useHandicap ? 'your par' : 'par');
-      } else if (delta > 0.5) {
-        parClass = 'par-over';
-        deltaText = absDelta + 's over ' + (useHandicap ? 'your par' : 'par');
-      } else {
-        parClass = 'par-even';
-        deltaText = useHandicap ? 'Even with your par!' : 'Even par!';
-      }
-
-      // Provisional handicaps carry a "(based on N plays)" qualifier so
-      // the player understands the number will tighten with more data,
-      // and so we don't pretend a 2-play mean is anywhere near as
-      // trustworthy as a 30-play Bayesian random intercept.
-      const yourParLabel = provisional
-        ? 'Your par (provisional, ' + provisional.n + ' plays): '
-        : 'Your par: ';
+      // Resolve the handicap (refit value, else a provisional from local
+      // residuals), the newcomer gate, and the par-relative delta line. The
+      // residual for THIS play was appended just above, so the count passed in
+      // includes today. A newcomer's first few dailies show only the plain "vs
+      // Greg's Time" line (handicap/personal-par/breakdown/history hidden);
+      // past the gate the delta is measured against the player's personal par.
+      const {
+        isNewcomerDaily, personalPar, useHandicap,
+        parClass, deltaText, yourParLabel, showOneMoreHint,
+      } = resolveParDisplay({
+        precise,
+        dailyPar: state.dailyPar,
+        refitHandicap: getHandicap(getUid()),
+        residuals: loadDailyResiduals(),
+      });
 
       // First daily a player ever finishes: define par in one plain
       // sentence before throwing numbers at them. Shows once, ever.
@@ -728,8 +692,7 @@ export function handleWin() {
         // No handicap yet — surface a small hint about what would
         // unlock one so a brand-new player (1 daily complete) doesn't
         // think the system is just ignoring them.
-        const residuals = loadDailyResiduals();
-        const needHint = residuals.length === 1
+        const needHint = showOneMoreHint
           ? ' <span class="par-hint">· 1 more daily and your personal par appears</span>'
           : '';
         parEl.innerHTML = moltNote + parPrimer +
@@ -980,15 +943,8 @@ export function handleWin() {
       // main.js. Both need to include bombHitEvents and rngSeed —
       // missing either of those fields drops the experimental-design
       // and bomb-adjusted-model data streams silently.
-      submitOnlineScore(dateStr, savedName, scoreTime, state.dailyBombHits || 0, {
-        uid: getUid(),
-        par: state.dailyPar,
-        features: state.dailyFeatures,
-        bombHitEvents: state.dailyBombHitEvents || [],
-        hintEvents: state.hintEvents || [],
-        rngSeed: state.dailyRngSeed || dateStr,
-        totalMines: state.totalMines,
-      }).then((ok) => {
+      submitOnlineScore(dateStr, savedName, scoreTime, state.dailyBombHits || 0,
+        buildDailyScoreExtras(state, dateStr, getUid())).then((ok) => {
         // Show the REAL outcome. Previously this toasted success
         // unconditionally, so an offline player thought their score
         // uploaded when it had only been queued — that's how Kate

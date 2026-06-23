@@ -75,7 +75,8 @@ import { isModifierPopupDisabled, setModifierPopupDisabled, getGimmickDefs, getD
 import { isStorageFailing, safeGet, safeSet, safeRemove, requestPersistentStorage } from './storage/storageAdapter.js';
 import { pauseTimer, resumeTimer, stopTimer, recordInteraction } from './game/timerManager.js';
 import { isLiveGameExpired } from './logic/resumeEligibility.js';
-import { findRowByUid, findRowForBoard } from './logic/scoreRowMatch.js';
+import { planCompletionReconcile } from './logic/startupReconcilePlan.js';
+import { buildDailyScoreExtras } from './logic/winSubmissionPlan.js';
 import { startTutorial, startWarmup } from './ui/tutorialManager.js';
 import { initErrorReporter, setErrorReporterCodeVersion, reportTestError, reportCaughtError } from './diagnostics/errorReporter.js';
 
@@ -377,19 +378,19 @@ async function runStartupGate() {
         try {
           const snap = await firebase.database().ref(`daily/${today}`).once('value');
           const rows = snap.val();
-          if (isDailyCompleted(today)) {
-            const myScore = findRowByUid(rows, myUid);
-            const myScoreSeed = myScore?.rngSeed || null;
-            if (myScore && myScoreSeed && myScoreSeed !== canonicalSeed) {
-              // Confirmed divergent — clear the completion flag plus the
-              // cached par/moves so newGame recomputes them against the
-              // canonical layout. Don't touch streak fields; replaying
-              // maintains the streak via lastDailyDate === today.
-              safeRemove('minesweeper_daily_completed_date');
-              safeRemove('minesweeper_daily_par_' + today);
-              safeRemove('minesweeper_daily_moves_' + today);
-            }
-          } else if (findRowForBoard(rows, myUid, today, canonicalSeed)) {
+          const { action } = planCompletionReconcile({
+            rows, uid: myUid, dateString: today, canonicalSeed,
+            localCompleted: isDailyCompleted(today),
+          });
+          if (action === 'clearLocal') {
+            // Confirmed divergent — clear the completion flag plus the
+            // cached par/moves so newGame recomputes them against the
+            // canonical layout. Don't touch streak fields; replaying
+            // maintains the streak via lastDailyDate === today.
+            safeRemove('minesweeper_daily_completed_date');
+            safeRemove('minesweeper_daily_par_' + today);
+            safeRemove('minesweeper_daily_moves_' + today);
+          } else if (action === 'adoptCompletion') {
             // Completed on another device — adopt. Any in-progress local
             // attempt is moot; first completion wins.
             markDailyCompleted(today);
@@ -3398,15 +3399,8 @@ $('#gameover-submit-daily').addEventListener('click', async (e) => {
     const dateStr = state.dailySeed || getLocalDateString();
     const scoreTime = Math.round((state.preciseTime || state.elapsedTime) * 10) / 10;
     addDailyLeaderboardEntry(dateStr, sanitized, scoreTime);
-    const submitOk = await submitOnlineScore(dateStr, sanitized, scoreTime, state.dailyBombHits || 0, {
-      uid: getUid(),
-      par: state.dailyPar,
-      features: state.dailyFeatures,
-      bombHitEvents: state.dailyBombHitEvents || [],
-      hintEvents: state.hintEvents || [],
-      rngSeed: state.dailyRngSeed || dateStr,
-      totalMines: state.totalMines,
-    });
+    const submitOk = await submitOnlineScore(dateStr, sanitized, scoreTime, state.dailyBombHits || 0,
+      buildDailyScoreExtras(state, dateStr, getUid()));
     // Skip personal-history write for practice dailies — they play on a
     // custom seed and don't belong on the regular daily timeline. Also
     // skipped on 'duplicate' (this account already posted this board from
