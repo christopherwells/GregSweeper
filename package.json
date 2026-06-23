@@ -1,0 +1,16 @@
+{
+  "name": "gregsweeper-dev-tooling",
+  "version": "0.0.0",
+  "private": true,
+  "description": "DEV/CI TOOLING ONLY. The deployed GregSweeper app imports nothing from node_modules — it loads ES modules directly and Firebase from a CDN. This package.json exists solely for the Playwright e2e harness and the node:test runner. NEVER add a runtime `dependencies` block; the shipped app must stay dependency-free.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "test:unit": "node --test test/*.test.mjs",
+    "test:e2e": "playwright test",
+    "serve": "node scripts/serve-static.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.0"
+  }
+}

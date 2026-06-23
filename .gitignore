@@ -9,3 +9,11 @@
 # ignored. The `**` is required so sprites under assets/sprites/ and
 # any future subdir also escape the ignore.
 !assets/**/*.png
+
+# Dev/CI tooling (Playwright e2e harness) — never shipped. The deployed app
+# imports nothing from node_modules.
+node_modules/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
