@@ -76,6 +76,7 @@ import { isStorageFailing, safeGet, safeSet, safeRemove, requestPersistentStorag
 import { pauseTimer, resumeTimer, stopTimer, recordInteraction } from './game/timerManager.js';
 import { isLiveGameExpired } from './logic/resumeEligibility.js';
 import { planCompletionReconcile } from './logic/startupReconcilePlan.js';
+import { buildDailyScoreExtras } from './logic/winSubmissionPlan.js';
 import { startTutorial, startWarmup } from './ui/tutorialManager.js';
 import { initErrorReporter, setErrorReporterCodeVersion, reportTestError, reportCaughtError } from './diagnostics/errorReporter.js';
 
@@ -3398,15 +3399,8 @@ $('#gameover-submit-daily').addEventListener('click', async (e) => {
     const dateStr = state.dailySeed || getLocalDateString();
     const scoreTime = Math.round((state.preciseTime || state.elapsedTime) * 10) / 10;
     addDailyLeaderboardEntry(dateStr, sanitized, scoreTime);
-    const submitOk = await submitOnlineScore(dateStr, sanitized, scoreTime, state.dailyBombHits || 0, {
-      uid: getUid(),
-      par: state.dailyPar,
-      features: state.dailyFeatures,
-      bombHitEvents: state.dailyBombHitEvents || [],
-      hintEvents: state.hintEvents || [],
-      rngSeed: state.dailyRngSeed || dateStr,
-      totalMines: state.totalMines,
-    });
+    const submitOk = await submitOnlineScore(dateStr, sanitized, scoreTime, state.dailyBombHits || 0,
+      buildDailyScoreExtras(state, dateStr, getUid()));
     // Skip personal-history write for practice dailies — they play on a
     // custom seed and don't belong on the regular daily timeline. Also
     // skipped on 'duplicate' (this account already posted this board from

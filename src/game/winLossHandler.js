@@ -43,6 +43,7 @@ import { reportCaughtError } from '../diagnostics/errorReporter.js';
 import { breakdownPar } from '../logic/dailyFeatures.js';
 import { getHandicap, getHandicapDetails } from '../logic/handicaps.js';
 import { resolveParDisplay } from '../logic/parDisplayDecision.js';
+import { buildDailyScoreExtras } from '../logic/winSubmissionPlan.js';
 import { labFileLine } from '../logic/gregVoice.js';
 import { addDailyLeaderboardEntry, appendDailyResidual, loadDailyResiduals, loadPowerUps } from '../storage/statsStorage.js';
 import { getLocalDateString } from '../logic/seededRandom.js';
@@ -942,15 +943,8 @@ export function handleWin() {
       // main.js. Both need to include bombHitEvents and rngSeed —
       // missing either of those fields drops the experimental-design
       // and bomb-adjusted-model data streams silently.
-      submitOnlineScore(dateStr, savedName, scoreTime, state.dailyBombHits || 0, {
-        uid: getUid(),
-        par: state.dailyPar,
-        features: state.dailyFeatures,
-        bombHitEvents: state.dailyBombHitEvents || [],
-        hintEvents: state.hintEvents || [],
-        rngSeed: state.dailyRngSeed || dateStr,
-        totalMines: state.totalMines,
-      }).then((ok) => {
+      submitOnlineScore(dateStr, savedName, scoreTime, state.dailyBombHits || 0,
+        buildDailyScoreExtras(state, dateStr, getUid())).then((ok) => {
         // Show the REAL outcome. Previously this toasted success
         // unconditionally, so an offline player thought their score
         // uploaded when it had only been queued — that's how Kate
