@@ -44,6 +44,7 @@ import { breakdownPar } from '../logic/dailyFeatures.js';
 import { getHandicap, getHandicapDetails } from '../logic/handicaps.js';
 import { resolveParDisplay } from '../logic/parDisplayDecision.js';
 import { buildDailyScoreExtras } from '../logic/winSubmissionPlan.js';
+import { detectSkillFeats } from '../logic/skillFeatDetection.js';
 import { labFileLine } from '../logic/gregVoice.js';
 import { addDailyLeaderboardEntry, appendDailyResidual, loadDailyResiduals, loadPowerUps } from '../storage/statsStorage.js';
 import { getLocalDateString } from '../logic/seededRandom.js';
@@ -345,34 +346,11 @@ export function handleWin() {
   // It DOES earn one fit row on first completion (the submit block below).
   const isArchivePlay = isDaily && !!state.isArchivePlay;
   const isRealDaily = isDaily && !state.isDailyPractice && !isArchivePlay;
-  // Skill feats — honestly detectable from the click timeline + the
-  // board's certified solve, never from heuristics:
-  //   flagless  — the recorded timeline contains no flag action.
-  //   efficient — the player's reveal+chord count matched (or beat) the
-  //               certified solve's click count, reconstructed from the
-  //               stored move-type counters via the solver invariant
-  //               passA + pattern + search + disjunctive + 1 = totalClicks.
-  //   search    — the board PROVABLY required tank/gauss enumeration.
-  //   liar      — the board PROVABLY required disjunctive liar reasoning.
-  // Feature-based feats only exist where a feature vector was computed
-  // (daily / weekly / timed); challenge wins can still earn flagless.
-  const winFeatures = state.gameMode === 'daily' ? state.dailyFeatures
-    : state.gameMode === 'weekly' ? state.weeklyFeatures
-    : state.gameMode === 'timed' ? state.timedFeatures
-    : null;
-  const timeline = Array.isArray(state.clickTimeline) ? state.clickTimeline : [];
-  const certifiedClicks = winFeatures
-    ? (winFeatures.passAMoves || 0) + (winFeatures.canonicalSubsetMoves || 0)
-      + (winFeatures.genericSubsetMoves || 0) + (winFeatures.advancedLogicMoves || 0)
-      + (winFeatures.disjunctiveMoves || 0) + 1
-    : 0;
-  const playerClicks = timeline.filter(e => e.a === 'r' || e.a === 'c').length;
-  const skillFeats = state.gameMode === 'chaos' ? {} : {
-    flagless: timeline.length > 0 && !timeline.some(e => e.a === 'f'),
-    efficient: !!winFeatures && playerClicks > 0 && playerClicks <= certifiedClicks,
-    search: !!winFeatures && (winFeatures.advancedLogicMoves || 0) >= 1,
-    liar: !!winFeatures && (winFeatures.disjunctiveMoves || 0) >= 1,
-  };
+  // Skill feats — honestly detectable from the click timeline + the board's
+  // certified solve (flagless / efficient / search / liar), never heuristics;
+  // chaos earns nothing. The certifiedClicks invariant and the feature/mode
+  // gating live in (and are node-tested at) src/logic/skillFeatDetection.js.
+  const skillFeats = detectSkillFeats(state);
   const stats = saveGameResult(true, state.elapsedTime, state.currentLevel, {
     isDaily: isRealDaily,
     isArchive: isArchivePlay,
