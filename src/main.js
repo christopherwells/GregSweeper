@@ -1625,7 +1625,7 @@ function updateAchievementsDisplay() {
     grid.appendChild(h);
     for (const a of items) grid.appendChild(renderRow(a));
   };
-  section('Skill feats (certified by the board)', feats);
+  section('Skill feats', feats);
   section('Progress', progress);
 }
 
