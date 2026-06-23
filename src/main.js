@@ -20,7 +20,7 @@ import { newGame, revealCell, toggleFlag, handleChordReveal, rearmPlateTimers } 
 import './game/winLossHandler.js'; // side-effect: registers handleWin with powerUpActions
 import { useRevealSafe, useShield, activateScan, activateXRay, activateMagnet } from './game/powerUpActions.js';
 import { switchMode, launchDailyArchive, isChaosUnlocked, updateModeUI } from './game/modeManager.js';
-import { FIRST_ARCHIVE_DATE, isArchivableDate } from './logic/archiveEligibility.js';
+import { FIRST_ARCHIVE_DATE, isArchivableDate, resolveCruxDate } from './logic/archiveEligibility.js';
 import { persistGameState, tryResumeGame } from './game/gamePersistence.js';
 import { getDifficultyForLevel, getTimedDifficulty, getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, CHAOS_UNLOCK_LEVEL, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE } from './logic/difficulty.js';
 import { computeDailyFeatures, predictPar } from './logic/dailyFeatures.js';
@@ -3855,10 +3855,9 @@ async function init() {
   if (cruxParam !== null) {
     const todayET = getLocalDateString();
     const yesterdayET = _addCalendarDays(todayET, -1);
-    let cruxDate = /^\d{4}-\d{2}-\d{2}$/.test(cruxParam) ? cruxParam : yesterdayET;
-    // Spoiler + range guard: only yesterday-or-earlier, never before the
-    // first canonical. Anything out of range falls back to yesterday.
-    if (cruxDate >= todayET || cruxDate < FIRST_ARCHIVE_DATE) cruxDate = yesterdayET;
+    // Spoiler + range guard (only yesterday-or-earlier, never before the first
+    // canonical; out-of-range falls back to yesterday) — pinned in archiveEligibility.
+    const cruxDate = resolveCruxDate(cruxParam, todayET, yesterdayET);
     hideBootOverlay();
     await showCruxTeaser(cruxDate);
     return;

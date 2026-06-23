@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import {
   isArchivableDate,
   archiveSubmitPlan,
+  resolveCruxDate,
   FIRST_ARCHIVE_DATE,
   ARCHIVE_FIT_EPOCH,
 } from '../src/logic/archiveEligibility.js';
@@ -73,6 +74,31 @@ test('archiveSubmitPlan: a fresh pre-epoch date records history but never a fit 
     { submitFit: false, writeHistory: true });
   assert.deepEqual(archiveSubmitPlan(FIRST_ARCHIVE_DATE, 'absent'),
     { submitFit: false, writeHistory: true });
+});
+
+test('resolveCruxDate: a valid past date in range is shown as-is', () => {
+  const today = '2026-06-23', yesterday = '2026-06-22';
+  assert.equal(resolveCruxDate('2026-05-10', today, yesterday), '2026-05-10');
+  // The first archivable date is inclusive.
+  assert.equal(resolveCruxDate(FIRST_ARCHIVE_DATE, today, yesterday), FIRST_ARCHIVE_DATE);
+});
+
+test('resolveCruxDate: empty / non-date params default to yesterday', () => {
+  const today = '2026-06-23', yesterday = '2026-06-22';
+  assert.equal(resolveCruxDate('', today, yesterday), yesterday);   // bare ?crux=
+  assert.equal(resolveCruxDate('1', today, yesterday), yesterday);  // ?crux=1
+  assert.equal(resolveCruxDate('garbage', today, yesterday), yesterday);
+});
+
+test('REGRESSION: resolveCruxDate refuses today and later (never spoils the live board)', () => {
+  const today = '2026-06-23', yesterday = '2026-06-22';
+  assert.equal(resolveCruxDate(today, today, yesterday), yesterday, 'today must fall back to yesterday');
+  assert.equal(resolveCruxDate('2026-06-24', today, yesterday), yesterday, 'a future date must fall back');
+});
+
+test('resolveCruxDate: a date before the first canonical falls back to yesterday', () => {
+  const today = '2026-06-23', yesterday = '2026-06-22';
+  assert.equal(resolveCruxDate('2026-01-01', today, yesterday), yesterday);
 });
 
 test('REGRESSION: archiveSubmitPlan fails closed when the history read is unknown', () => {
