@@ -24,7 +24,7 @@ export const MOLT_CAP = 2;
 function dayDiff(from, to) {
   const a = new Date(from + 'T00:00:00');
   const b = new Date(to + 'T00:00:00');
-  return Math.round((b - a) / 86400000);
+  return Math.round((b.getTime() - a.getTime()) / 86400000);
 }
 
 // `date` plus `n` calendar days, formatted 'YYYY-MM-DD'. Parses and formats in
