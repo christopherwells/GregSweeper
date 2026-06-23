@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Daily Devotee: an unbroken chain of completed days (a streak). -->
+  <!-- Chain links bridging the days -->
+  <g fill="none" stroke="#232838" stroke-width="6">
+    <ellipse cx="42" cy="64" rx="10" ry="6.5"/>
+    <ellipse cx="84" cy="64" rx="10" ry="6.5"/>
+  </g>
+  <!-- Day tiles -->
+  <g stroke="#232838" stroke-width="5.5" stroke-linejoin="round">
+    <rect x="8" y="50" width="30" height="30" rx="6" fill="#f3f6fb"/>
+    <rect x="49" y="50" width="30" height="30" rx="6" fill="#f3f6fb"/>
+    <rect x="90" y="50" width="30" height="30" rx="6" fill="#5ad07a"/>
+  </g>
+  <g fill="none" stroke="#2e8b57" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M15 65 L21 71 L31 58"/>
+    <path d="M56 65 L62 71 L72 58"/>
+  </g>
+  <path d="M97 65 L103 71 L113 58" fill="none" stroke="#1d5c34" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

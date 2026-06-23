@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Fearless: the sonar power-up, struck out (won using no power-ups). -->
+  <circle cx="64" cy="64" r="40" fill="#f3f6fb" stroke="#232838" stroke-width="2"/>
+  <!-- Sonar / radar display -->
+  <circle cx="64" cy="64" r="25" fill="#0a2a2a" stroke="#232838" stroke-width="4"/>
+  <circle cx="64" cy="64" r="16" fill="none" stroke="#1a5c5c" stroke-width="2.5"/>
+  <path d="M64 64 L64 41 A23 23 0 0 1 81 49 Z" fill="#26c6da" opacity="0.3"/>
+  <path d="M64 64 L81 49" stroke="#26c6da" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="54" cy="56" r="3" fill="#26c6da"/>
+  <circle cx="64" cy="64" r="2.5" fill="#26c6da"/>
+  <!-- Prohibition ring + slash -->
+  <circle cx="64" cy="64" r="40" fill="none" stroke="#e4453a" stroke-width="9"/>
+  <path d="M36 36 L92 92" stroke="#e4453a" stroke-width="9" stroke-linecap="round"/>
+</svg>

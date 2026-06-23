@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v1.6.66';
+const CACHE_NAME = 'gregsweeper-v1.6.67';
 const ASSETS = [
   './',
   './index.html',
@@ -120,6 +120,20 @@ const ASSETS = [
   './assets/sprites/mod-pressure.svg',
   './assets/sprites/mod-sonar.svg',
   './assets/sprites/mod-compass.svg',
+  // Achievement category icons (Wave B) — the 13 achievements
+  './assets/sprites/ach-wins.svg',
+  './assets/sprites/ach-streak.svg',
+  './assets/sprites/ach-speed.svg',
+  './assets/sprites/ach-daily.svg',
+  './assets/sprites/ach-flagless.svg',
+  './assets/sprites/ach-efficient.svg',
+  './assets/sprites/ach-tankCommander.svg',
+  './assets/sprites/ach-lieDetector.svg',
+  './assets/sprites/ach-purist.svg',
+  './assets/sprites/ach-challengeClimber.svg',
+  './assets/sprites/ach-timedSpeed.svg',
+  './assets/sprites/ach-gimmickMaster.svg',
+  './assets/sprites/ach-dailyStreak.svg',
   // Per-theme object sets (batch 1) — each world's mine/flag/strike in
   // its own material language.
   './assets/sprites/themes/editorial-mine.svg',

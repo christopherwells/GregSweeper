@@ -8,7 +8,7 @@
 import { state } from './state/gameState.js';
 import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn, escapeHtml } from './ui/domHelpers.js';
 import { resizeCells, updateAllCells, getThemeEmoji, needsZoom, updateZoom, zoomIn, zoomOut, setFocusedCell, announceGame } from './ui/boardRenderer.js';
-import { preloadSprites, spriteImgHTML, themeSpriteImgHTML, medalImgForEmoji, gimmickSpriteImgHTML } from './ui/spriteLoader.js';
+import { preloadSprites, spriteImgHTML, themeSpriteImgHTML, medalImgForEmoji, gimmickSpriteImgHTML, achievementSpriteImgHTML } from './ui/spriteLoader.js';
 import { updateHeader, updateStreakBorder, updateFlagModeBar, getCheckpointForLevel, CHECKPOINT_INTERVAL } from './ui/headerRenderer.js';
 import { updatePowerUpBar } from './ui/powerUpBar.js';
 import { showModal, hideModal, hideAllModals } from './ui/modalManager.js';
@@ -1592,8 +1592,16 @@ function updateAchievementsDisplay() {
       nextLine = `${need} more for ${ach.nextTierIcon}`;
     }
 
+    // The category icon is the permanent identity (greyed while locked,
+    // full colour once earned); the earned tier rides a small corner
+    // medal badge so both the Wave B icon and the Wave A medal show.
+    const catIconHtml = achievementSpriteImgHTML(ach.id, 'sprite-medal', ach.name) || ach.icon;
+    const tierBadgeHtml = ach.tierIndex >= 0
+      ? `<span class="ach-tier-badge">${medalImgForEmoji(ach.currentTierIcon, 'sprite-tier-badge', ach.currentTier) || ach.currentTierIcon}</span>`
+      : '';
+
     row.innerHTML = `
-      <span class="ach-medal${ach.tierIndex < 0 ? ' none' : ''}">${ach.tierIndex >= 0 ? (medalImgForEmoji(ach.currentTierIcon, 'sprite-medal') || ach.currentTierIcon) : ach.icon}</span>
+      <span class="ach-medal${ach.tierIndex < 0 ? ' none' : ' earned'}">${catIconHtml}${tierBadgeHtml}</span>
       <div class="ach-main">
         <div class="ach-name-line"><span class="ach-name">${ach.name}</span>${track}</div>
         <div class="ach-sub">${ach.desc} · <span class="ach-next${!ach.nextTier ? ' ach-maxed' : ''}">${nextLine}</span></div>
@@ -1617,7 +1625,7 @@ function updateAchievementsDisplay() {
     grid.appendChild(h);
     for (const a of items) grid.appendChild(renderRow(a));
   };
-  section('Skill feats (certified by the board)', feats);
+  section('Skill feats', feats);
   section('Progress', progress);
 }
 

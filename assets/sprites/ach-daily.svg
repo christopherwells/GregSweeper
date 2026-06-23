@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Daily Player: a clean offset stack of completed day-cards (a count). -->
+  <rect x="38" y="30" width="44" height="58" rx="6" fill="#cfd7e4" stroke="#232838" stroke-width="5"/>
+  <rect x="43" y="36" width="44" height="58" rx="6" fill="#dfe5ee" stroke="#232838" stroke-width="5"/>
+  <rect x="48" y="42" width="44" height="58" rx="6" fill="#f3f6fb" stroke="#232838" stroke-width="6"/>
+  <line x1="56" y1="56" x2="84" y2="56" stroke="#b9c2d4" stroke-width="3.5" stroke-linecap="round"/>
+  <line x1="56" y1="66" x2="78" y2="66" stroke="#b9c2d4" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M57 82 L67 92 L86 70" fill="none" stroke="#2e8b57" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

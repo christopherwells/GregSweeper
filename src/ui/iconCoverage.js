@@ -51,6 +51,20 @@ export const ICON_STATUS = {
   '🔴': 'sprite',   // pressure plate
   '🧭': 'sprite',   // compass
 
+  // ── Achievement category icons (Wave B, SVG) ──
+  // Rendered by category id (achievementSpriteImgHTML), so the glyph is
+  // only a fallback. 📅 / ⛏️ / ⏱️ are shared with mode cards (already
+  // 'sprite' above); 🔥 stays 'plain' below (also used as streak fire).
+  '🏆': 'sprite',   // wins / Victory
+  '⚡': 'sprite',   // speed / Speed Demon
+  '🏳️': 'sprite',   // flagless
+  '🎯': 'sprite',   // efficient / No Wasted Clicks
+  '🧮': 'sprite',   // tankCommander / Tank Commander
+  '🕵️': 'sprite',   // lieDetector / Lie Detector
+  '💪': 'sprite',   // purist / Fearless
+  '🎪': 'sprite',   // gimmickMaster / Modifier Master
+  '📆': 'sprite',   // dailyStreak / Daily Devotee
+
   // ── Plain-text / intentional emoji ──
   // These appear in share cards, toast messages, or semantic contexts
   // where an SVG sprite would be wrong (copy-paste, accessibility).
