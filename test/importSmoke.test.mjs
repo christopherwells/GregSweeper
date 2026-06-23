@@ -104,14 +104,11 @@ if (typeof globalThis.localStorage === 'undefined') {
 const DIRS = ['logic', 'firebase', 'state', 'storage', 'game'];
 
 // Modules that can't be import-smoked headless yet, each with the reason.
-// game/modeManager.js imports restorePreChaosTheme from ../main.js, and main.js
-// runs init() at module top level — so importing modeManager boots the whole
-// app (preloadSprites → the browser-only Image constructor → throw) in Node.
-// That game-module-reaches-into-the-entry-orchestrator coupling is a real smell
-// the smoke test surfaced; breaking it belongs to the Layer-1 modeSwitchPlan
-// extraction, which will relocate restorePreChaosTheme out of main.js and
-// re-add modeManager here. Excluding is honest only because it's tracked.
-const EXCLUDE = new Set(['game/modeManager.js']);
+// (Empty: game/modeManager.js was excluded while it imported restorePreChaosTheme
+// from ../main.js — importing it booted the whole app via main.js's top-level
+// init(). That chaos-theme stash/restore now lives in ui/themeManager.js, so no
+// game module imports the entry orchestrator and modeManager loads headless.)
+const EXCLUDE = new Set();
 
 for (const dir of DIRS) {
   const files = readdirSync(new URL(`../src/${dir}/`, import.meta.url), { withFileTypes: true })

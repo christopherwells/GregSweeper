@@ -14,7 +14,7 @@ import { updatePowerUpBar } from './ui/powerUpBar.js';
 import { showModal, hideModal, hideAllModals } from './ui/modalManager.js';
 import { showToast, showLevelUpToast, showCheckpointToast } from './ui/toastManager.js';
 import { showCelebration, haptic } from './ui/effectsRenderer.js';
-import { THEME_UNLOCKS, getUnlockedThemes, loadThemeCSS } from './ui/themeManager.js';
+import { THEME_UNLOCKS, getUnlockedThemes, loadThemeCSS, updateThemeColor, enterChaosTheme, restorePreChaosTheme } from './ui/themeManager.js';
 import { applyThemeEffects, clearThemeEffects } from './ui/themeEffects.js';
 import { newGame, revealCell, toggleFlag, handleChordReveal, rearmPlateTimers } from './game/gameActions.js';
 import './game/winLossHandler.js'; // side-effect: registers handleWin with powerUpActions
@@ -427,15 +427,6 @@ async function _waitForFirebaseInit(timeoutMs = 8000) {
     await new Promise(r => setTimeout(r, 50));
   }
   return false;
-}
-
-// ── Theme-color meta tag (Android nav bar) ───────────
-function updateThemeColor() {
-  const bg = getComputedStyle(document.documentElement).getPropertyValue('--color-app-bg').trim();
-  if (bg) {
-    const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', bg);
-  }
 }
 
 // ── Stats Display ─────────────────────────────────────
@@ -1752,8 +1743,6 @@ function showShareCopiedToast() {
 
 // Track when a modal was opened from the title screen
 let _returnToTitle = false;
-// Track previous theme so we can restore it when leaving chaos
-let _previousTheme = null;
 
 function closeModalAndReturn(modalId) {
   hideModal(modalId);
@@ -2357,18 +2346,6 @@ function updateTitleProgress() {
   }
 }
 
-// Restores the pre-chaos theme if it was stashed when entering chaos.
-// Exported so it can fire on any path that leaves chaos (title screen,
-// checkpoint selector, direct switchMode), not just title-screen returns.
-// Conditional on _previousTheme so it's idempotent and safe to call always.
-export function restorePreChaosTheme() {
-  if (!_previousTheme) return;
-  document.documentElement.setAttribute('data-theme', _previousTheme);
-  applyThemeEffects(_previousTheme);
-  updateThemeColor();
-  _previousTheme = null;
-}
-
 function showTitleScreen() {
   const titleScreen = $('#title-screen');
   const app = $('#app');
@@ -2589,12 +2566,8 @@ for (const card of $$('.mode-card')) {
         showToast(`Reach Challenge Level ${CHAOS_UNLOCK_LEVEL} to unlock Chaos mode!`);
         return;
       }
-      // Apply chaos theme automatically
-      _previousTheme = state.theme;
-      document.documentElement.setAttribute('data-theme', 'chaos');
-      loadThemeCSS('chaos');
-      applyThemeEffects('chaos');
-      updateThemeColor();
+      // Apply chaos theme automatically (stash/restore lives in themeManager)
+      enterChaosTheme(state.theme);
       hideTitleScreen();
       switchMode('chaos');
       return;
