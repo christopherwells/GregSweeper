@@ -387,24 +387,28 @@ export function saveDailyHistoryEntry(date, entry) {
 }
 
 /**
- * Read this user's dailyHistory row for one date, or null. The daily archive
- * uses it for first-completion-only: a present row means the player already
- * finished this date (live, or via a prior archive replay), so the replay
- * submits nothing. A not-ready or failed read returns null and falls OPEN to
- * "no history" — the worst case is a duplicate archive row the refit dedups,
- * never a lost real completion.
+ * Read this user's dailyHistory row for one date. The daily archive uses it for
+ * first-completion-only: a present row means the player already finished this
+ * date (live, or via a prior archive replay), so the replay submits nothing.
+ *
+ * Returns the row object, or null when the read SUCCEEDS and no row exists
+ * (a confirmed-absent first completion). THROWS when Firebase isn't ready or
+ * the read fails — the caller MUST tell "confirmed absent" apart from "couldn't
+ * read". Swallowing the error to null falls OPEN to "no history", and the refit
+ * only dedups archive-vs-day-of (not archive-vs-archive), so a flaky read on a
+ * replay double-feeds the par fit and overwrites the first-completion chart row.
+ * (REGRESSION: archive dedup fail-open; see submitArchiveCompletion +
+ * archiveSubmitPlan's 'unknown' branch.)
  * @param {string} date YYYY-MM-DD
- * @returns {Promise<Object|null>}
+ * @returns {Promise<Object|null>} the row, or null when confirmed absent
+ * @throws when Firebase isn't ready or the read fails
  */
 export async function fetchDailyHistoryEntry(date) {
-  if (!date || !_ready || !_uid || !_db) return null;
-  try {
-    const snap = await _db.ref('users/' + _uid + '/dailyHistory/' + date).once('value');
-    return snap.val();
-  } catch (err) {
-    console.warn('Daily history read failed:', err && err.message);
-    return null;
+  if (!date || !_ready || !_uid || !_db) {
+    throw new Error('dailyHistory read unavailable: Firebase not ready');
   }
+  const snap = await _db.ref('users/' + _uid + '/dailyHistory/' + date).once('value');
+  return snap.val();
 }
 
 // ── Durable daily-history retry queue ─────────────────

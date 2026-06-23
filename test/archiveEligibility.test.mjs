@@ -50,18 +50,18 @@ test('isArchivableDate: non-string inputs are rejected, not coerced', () => {
 test('archiveSubmitPlan: a replay (history present) records nothing', () => {
   // First completion wins: a second run on a date the player already
   // finished (live or archived) must not submit a fit row or rewrite history.
-  assert.deepEqual(archiveSubmitPlan('2026-05-10', true),
+  assert.deepEqual(archiveSubmitPlan('2026-05-10', 'present'),
     { submitFit: false, writeHistory: false });
   // Even a pre-epoch replay records nothing.
-  assert.deepEqual(archiveSubmitPlan('2026-04-28', true),
+  assert.deepEqual(archiveSubmitPlan('2026-04-28', 'present'),
     { submitFit: false, writeHistory: false });
 });
 
 test('archiveSubmitPlan: a fresh post-epoch date submits a fit row and writes history', () => {
-  assert.deepEqual(archiveSubmitPlan('2026-05-10', false),
+  assert.deepEqual(archiveSubmitPlan('2026-05-10', 'absent'),
     { submitFit: true, writeHistory: true });
   // The epoch is inclusive: a play exactly on the epoch still feeds the fit.
-  assert.deepEqual(archiveSubmitPlan(ARCHIVE_FIT_EPOCH, false),
+  assert.deepEqual(archiveSubmitPlan(ARCHIVE_FIT_EPOCH, 'absent'),
     { submitFit: true, writeHistory: true });
 });
 
@@ -69,8 +69,24 @@ test('archiveSubmitPlan: a fresh pre-epoch date records history but never a fit 
   // The board predates per-user history, so a live play could have left no
   // row to dedupe against. It stays playable and chartable, but out of the
   // fit so it can never double-count.
-  assert.deepEqual(archiveSubmitPlan('2026-05-06', false),
+  assert.deepEqual(archiveSubmitPlan('2026-05-06', 'absent'),
     { submitFit: false, writeHistory: true });
-  assert.deepEqual(archiveSubmitPlan(FIRST_ARCHIVE_DATE, false),
+  assert.deepEqual(archiveSubmitPlan(FIRST_ARCHIVE_DATE, 'absent'),
     { submitFit: false, writeHistory: true });
+});
+
+test('REGRESSION: archiveSubmitPlan fails closed when the history read is unknown', () => {
+  // A failed/early dailyHistory read used to return null and be treated as
+  // "no prior completion" (fail-open), so a flaky read on a REPLAY double-fed
+  // the par fit (push-keyed dailyArchive rows don't overwrite) and overwrote
+  // the first-completion chart row. 'unknown' must now record NOTHING, even on
+  // a post-epoch date that would otherwise feed the fit.
+  assert.deepEqual(archiveSubmitPlan('2026-05-10', 'unknown'),
+    { submitFit: false, writeHistory: false });
+  assert.deepEqual(archiveSubmitPlan('2026-04-28', 'unknown'),
+    { submitFit: false, writeHistory: false });
+  // Any non-'absent' status is treated as "do not record" — defends against a
+  // future caller passing an unexpected value (fail closed, never open).
+  assert.deepEqual(archiveSubmitPlan('2026-05-10', undefined),
+    { submitFit: false, writeHistory: false });
 });

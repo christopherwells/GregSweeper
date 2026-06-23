@@ -64,13 +64,24 @@ export function isArchivableDate(date, today, firstDate = FIRST_ARCHIVE_DATE) {
  *
  * A replay (history already present) does neither: first completion wins.
  *
+ * Only a CONFIRMED-absent row is a first completion. 'unknown' means the
+ * dailyHistory read failed or Firebase wasn't ready, and we must FAIL CLOSED:
+ * a replay mis-read as fresh would double-feed the par fit (push-keyed
+ * dailyArchive rows don't overwrite) and overwrite the first-completion chart
+ * row. Record nothing and let a later healthy completion pick it up.
+ * (REGRESSION: archive dedup fail-open — a failed/early read returned null and
+ * was treated as "no prior completion", so a flaky read on a replay double-fed
+ * the fit.)
+ *
  * @param {string} date YYYY-MM-DD (ET) of the played board
- * @param {boolean} hasHistory does users/{uid}/dailyHistory/{date} exist?
+ * @param {'present'|'absent'|'unknown'} historyStatus does
+ *   users/{uid}/dailyHistory/{date} exist? 'present' = replay, 'absent' = first
+ *   completion, 'unknown' = read failed / Firebase not ready.
  * @param {string} [epoch] override for the fit epoch
  * @returns {{ submitFit: boolean, writeHistory: boolean }}
  */
-export function archiveSubmitPlan(date, hasHistory, epoch = ARCHIVE_FIT_EPOCH) {
-  if (hasHistory) return { submitFit: false, writeHistory: false };
+export function archiveSubmitPlan(date, historyStatus, epoch = ARCHIVE_FIT_EPOCH) {
+  if (historyStatus !== 'absent') return { submitFit: false, writeHistory: false };
   return {
     submitFit: typeof date === 'string' && date >= epoch,
     writeHistory: true,

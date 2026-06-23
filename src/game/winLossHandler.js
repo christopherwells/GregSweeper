@@ -273,10 +273,22 @@ function _renderWinReceipt() {
  * @param {number} scoreTime completion seconds (already rounded)
  */
 export async function submitArchiveCompletion(dateStr, name, scoreTime) {
-  const existing = await fetchDailyHistoryEntry(dateStr);
-  const plan = archiveSubmitPlan(dateStr, !!existing);
+  // Tell a CONFIRMED-absent row (a genuine first completion) apart from a read
+  // we couldn't complete. fetchDailyHistoryEntry throws when Firebase isn't
+  // ready or the read fails; treating that as 'absent' would double-feed the
+  // par fit on a replay (see archiveSubmitPlan's 'unknown' fail-closed branch).
+  let historyStatus;
+  try {
+    const existing = await fetchDailyHistoryEntry(dateStr);
+    historyStatus = existing ? 'present' : 'absent';
+  } catch {
+    historyStatus = 'unknown';
+  }
+  const plan = archiveSubmitPlan(dateStr, historyStatus);
   if (!plan.submitFit && !plan.writeHistory) {
-    showToast('Your first run on this day is already recorded.');
+    showToast(historyStatus === 'unknown'
+      ? "Couldn't reach the server — this run wasn't recorded."
+      : 'Your first run on this day is already recorded.');
     return;
   }
   if (plan.submitFit) {
