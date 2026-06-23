@@ -1,42 +1,42 @@
 {
-  "updatedAt": "2026-06-16T18:29:06Z",
-  "target": "liarCellCount",
-  "reason": "highest posterior CV (0.916) excluding last 3 targets",
+  "updatedAt": "2026-06-22T18:15:33Z",
+  "target": "compassCellCount",
+  "reason": "highest posterior CV (1.042) excluding last 3 targets",
   "recentTargets": [
-    "liarCellCount",
-    "sonarCellCount",
-    "compassCellCount"
+    "compassCellCount",
+    "lockedCellCount",
+    "liarCellCount"
   ],
   "candidates": [
     {
-      "feature": "lockedCellCount",
-      "mean": 0.73,
-      "sd": 0.823,
-      "cv": 1.128
+      "feature": "sonarCellCount",
+      "mean": 0.782,
+      "sd": 0.83,
+      "cv": 1.061
     },
     {
       "feature": "compassCellCount",
-      "mean": 0.826,
-      "sd": 0.868,
-      "cv": 1.05
+      "mean": 0.834,
+      "sd": 0.869,
+      "cv": 1.042
     },
     {
-      "feature": "sonarCellCount",
-      "mean": 0.769,
-      "sd": 0.795,
-      "cv": 1.033
+      "feature": "lockedCellCount",
+      "mean": 0.66,
+      "sd": 0.659,
+      "cv": 0.998
     },
     {
       "feature": "liarCellCount",
-      "mean": 0.73,
-      "sd": 0.668,
-      "cv": 0.916
+      "mean": 0.755,
+      "sd": 0.679,
+      "cv": 0.899
     },
     {
-      "feature": "mysteryCellCount",
-      "mean": 0.823,
-      "sd": 0.744,
-      "cv": 0.903
+      "feature": "wallEdgeCount",
+      "mean": 0.157,
+      "sd": 0.139,
+      "cv": 0.887
     }
   ],
   "coverage_targets": [
@@ -46,29 +46,29 @@
       "deficit_weight": 0.1429
     },
     {
-      "feature": "compassCellCount",
-      "n_boards": 7,
-      "deficit_weight": 0.125
-    },
-    {
       "feature": "mysteryCellCount",
-      "n_boards": 8,
-      "deficit_weight": 0.1111
+      "n_boards": 9,
+      "deficit_weight": 0.1
     },
     {
-      "feature": "lockedCellCount",
-      "n_boards": 8,
-      "deficit_weight": 0.1111
-    },
-    {
-      "feature": "mirrorPairCount",
-      "n_boards": 8,
-      "deficit_weight": 0.1111
+      "feature": "liarCellCount",
+      "n_boards": 9,
+      "deficit_weight": 0.1
     },
     {
       "feature": "wormholePairCount",
       "n_boards": 9,
       "deficit_weight": 0.1
+    },
+    {
+      "feature": "mirrorPairCount",
+      "n_boards": 10,
+      "deficit_weight": 0.0909
+    },
+    {
+      "feature": "lockedCellCount",
+      "n_boards": 11,
+      "deficit_weight": 0.0833
     }
   ]
 }

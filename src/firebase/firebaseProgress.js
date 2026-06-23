@@ -19,6 +19,7 @@
 
 import { isTestEnvironment } from './env.js';
 import { subscribeAuthState } from './firebaseAuth.js';
+import { bootstrapAnonymousAuth } from './anonAuthBootstrap.js';
 // Runtime-only cycle with errorReporter (it imports getUid from here);
 // both sides touch the other only inside function bodies, never at
 // module-evaluation time, so the ESM live bindings resolve safely.
@@ -238,57 +239,23 @@ export async function initAnonymousAuth() {
 
       _db = firebase.database();
 
-      // Wait for Firebase to FINISH reading its IndexedDB persistence
-      // before deciding whether to sign in anonymously. Without this,
-      // `firebase.auth().currentUser` returns null synchronously even
-      // when a persisted session exists (the IndexedDB read is async).
-      // Calling signInAnonymously while a persisted user is still
-      // loading would create a fresh anonymous account and overwrite
-      // the linked Google session — that's the "sign-in disappears
-      // after refresh" bug. Awaiting the first onAuthStateChanged fire
-      // guarantees we've seen Firebase's authoritative initial state.
-      let resolveFirstFire;
-      const firstFire = new Promise((resolve) => { resolveFirstFire = resolve; });
-      let resolveSettled;
-      const settled = new Promise((resolve) => { resolveSettled = resolve; });
-      let firstFireDone = false;
-      subscribeAuthState((snap) => {
-        _handleAuthChange(snap);
-        if (!firstFireDone) {
-          firstFireDone = true;
-          resolveFirstFire(snap);
-        }
-        if (snap.uid && resolveSettled) {
-          resolveSettled();
-          resolveSettled = null;
-        }
+      // Bootstrap the anonymous session. The decision to create a fresh
+      // anonymous account is driven by the AUTHORITATIVE first
+      // onAuthStateChanged fire (after Firebase finishes reading its
+      // IndexedDB persistence), NEVER by a timeout. A timeout-driven
+      // sign-in clobbered a still-loading linked session on slow boots —
+      // the intermittent "signed out for no reason" bug. See
+      // anonAuthBootstrap.js for the full rationale. The bounded waits
+      // here only unblock boot; the uid still arrives reactively via the
+      // listener (and loadProgress / the cloud listener pick it up) if a
+      // slow persistence read overruns them.
+      await bootstrapAnonymousAuth({
+        subscribe: subscribeAuthState,
+        signInAnon: () => firebase.auth().signInAnonymously(),
+        onAuthFire: _handleAuthChange,
+        firstFireTimeoutMs: FIREBASE_TIMEOUT_MS,
+        settleTimeoutMs: AUTH_SETTLE_TIMEOUT_MS,
       });
-
-      const initialSnap = await Promise.race([
-        firstFire,
-        new Promise((resolve) => setTimeout(() => resolve(null), FIREBASE_TIMEOUT_MS)),
-      ]);
-
-      // After Firebase finished reading persistence, kick anon only if
-      // truly no user is signed in.
-      if (!initialSnap || !initialSnap.uid) {
-        try {
-          await Promise.race([
-            firebase.auth().signInAnonymously(),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('auth timeout')), FIREBASE_TIMEOUT_MS)),
-          ]);
-        } catch (err) {
-          console.warn('Anonymous auth failed:', err && err.message);
-        }
-      }
-
-      // Wait for the listener to have set _uid before returning, so
-      // existing call sites that chain loadProgress() after init have a
-      // valid uid to work with.
-      await Promise.race([
-        settled,
-        new Promise((resolve) => setTimeout(resolve, AUTH_SETTLE_TIMEOUT_MS)),
-      ]);
     } catch (err) {
       console.warn('initAnonymousAuth failed:', err && err.message);
     }
