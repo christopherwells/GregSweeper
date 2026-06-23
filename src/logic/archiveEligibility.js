@@ -87,3 +87,22 @@ export function archiveSubmitPlan(date, historyStatus, epoch = ARCHIVE_FIT_EPOCH
     writeHistory: true,
   };
 }
+
+/**
+ * Resolve the `?crux=` share-route date with a spoiler + range guard. The route
+ * shows a PAST daily's crux, so today and later are REFUSED (never spoil the
+ * live board) and anything before the first canonical is out of range; both
+ * fall back to yesterday. An empty / non-date param ('' or '1') also defaults
+ * to yesterday. Pure string compares (fixed-width YYYY-MM-DD).
+ *
+ * @param {string} cruxParam   the raw ?crux= value ('', '1', or YYYY-MM-DD)
+ * @param {string} todayET     today's ET date
+ * @param {string} yesterdayET yesterday's ET date (the default + clamp target)
+ * @param {string} [firstDate] earliest offered date
+ * @returns {string} YYYY-MM-DD to show
+ */
+export function resolveCruxDate(cruxParam, todayET, yesterdayET, firstDate = FIRST_ARCHIVE_DATE) {
+  let cruxDate = /^\d{4}-\d{2}-\d{2}$/.test(cruxParam) ? cruxParam : yesterdayET;
+  if (cruxDate >= todayET || cruxDate < firstDate) cruxDate = yesterdayET;
+  return cruxDate;
+}

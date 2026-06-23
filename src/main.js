@@ -14,13 +14,13 @@ import { updatePowerUpBar } from './ui/powerUpBar.js';
 import { showModal, hideModal, hideAllModals } from './ui/modalManager.js';
 import { showToast, showLevelUpToast, showCheckpointToast } from './ui/toastManager.js';
 import { showCelebration, haptic } from './ui/effectsRenderer.js';
-import { THEME_UNLOCKS, getUnlockedThemes, loadThemeCSS } from './ui/themeManager.js';
+import { THEME_UNLOCKS, getUnlockedThemes, loadThemeCSS, updateThemeColor, enterChaosTheme, restorePreChaosTheme } from './ui/themeManager.js';
 import { applyThemeEffects, clearThemeEffects } from './ui/themeEffects.js';
 import { newGame, revealCell, toggleFlag, handleChordReveal, rearmPlateTimers } from './game/gameActions.js';
 import './game/winLossHandler.js'; // side-effect: registers handleWin with powerUpActions
 import { useRevealSafe, useShield, activateScan, activateXRay, activateMagnet } from './game/powerUpActions.js';
 import { switchMode, launchDailyArchive, isChaosUnlocked, updateModeUI } from './game/modeManager.js';
-import { FIRST_ARCHIVE_DATE, isArchivableDate } from './logic/archiveEligibility.js';
+import { FIRST_ARCHIVE_DATE, isArchivableDate, resolveCruxDate } from './logic/archiveEligibility.js';
 import { persistGameState, tryResumeGame } from './game/gamePersistence.js';
 import { getDifficultyForLevel, getTimedDifficulty, getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, CHAOS_UNLOCK_LEVEL, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE } from './logic/difficulty.js';
 import { computeDailyFeatures, predictPar } from './logic/dailyFeatures.js';
@@ -427,15 +427,6 @@ async function _waitForFirebaseInit(timeoutMs = 8000) {
     await new Promise(r => setTimeout(r, 50));
   }
   return false;
-}
-
-// ── Theme-color meta tag (Android nav bar) ───────────
-function updateThemeColor() {
-  const bg = getComputedStyle(document.documentElement).getPropertyValue('--color-app-bg').trim();
-  if (bg) {
-    const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', bg);
-  }
 }
 
 // ── Stats Display ─────────────────────────────────────
@@ -1752,8 +1743,6 @@ function showShareCopiedToast() {
 
 // Track when a modal was opened from the title screen
 let _returnToTitle = false;
-// Track previous theme so we can restore it when leaving chaos
-let _previousTheme = null;
 
 function closeModalAndReturn(modalId) {
   hideModal(modalId);
@@ -2357,18 +2346,6 @@ function updateTitleProgress() {
   }
 }
 
-// Restores the pre-chaos theme if it was stashed when entering chaos.
-// Exported so it can fire on any path that leaves chaos (title screen,
-// checkpoint selector, direct switchMode), not just title-screen returns.
-// Conditional on _previousTheme so it's idempotent and safe to call always.
-export function restorePreChaosTheme() {
-  if (!_previousTheme) return;
-  document.documentElement.setAttribute('data-theme', _previousTheme);
-  applyThemeEffects(_previousTheme);
-  updateThemeColor();
-  _previousTheme = null;
-}
-
 function showTitleScreen() {
   const titleScreen = $('#title-screen');
   const app = $('#app');
@@ -2589,12 +2566,8 @@ for (const card of $$('.mode-card')) {
         showToast(`Reach Challenge Level ${CHAOS_UNLOCK_LEVEL} to unlock Chaos mode!`);
         return;
       }
-      // Apply chaos theme automatically
-      _previousTheme = state.theme;
-      document.documentElement.setAttribute('data-theme', 'chaos');
-      loadThemeCSS('chaos');
-      applyThemeEffects('chaos');
-      updateThemeColor();
+      // Apply chaos theme automatically (stash/restore lives in themeManager)
+      enterChaosTheme(state.theme);
       hideTitleScreen();
       switchMode('chaos');
       return;
@@ -3882,10 +3855,9 @@ async function init() {
   if (cruxParam !== null) {
     const todayET = getLocalDateString();
     const yesterdayET = _addCalendarDays(todayET, -1);
-    let cruxDate = /^\d{4}-\d{2}-\d{2}$/.test(cruxParam) ? cruxParam : yesterdayET;
-    // Spoiler + range guard: only yesterday-or-earlier, never before the
-    // first canonical. Anything out of range falls back to yesterday.
-    if (cruxDate >= todayET || cruxDate < FIRST_ARCHIVE_DATE) cruxDate = yesterdayET;
+    // Spoiler + range guard (only yesterday-or-earlier, never before the first
+    // canonical; out-of-range falls back to yesterday) — pinned in archiveEligibility.
+    const cruxDate = resolveCruxDate(cruxParam, todayET, yesterdayET);
     hideBootOverlay();
     await showCruxTeaser(cruxDate);
     return;
