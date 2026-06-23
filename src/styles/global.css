@@ -207,6 +207,15 @@
   --marker-plate-border: rgba(255, 80, 80, 0.6);
   --marker-plate-glow: rgba(255, 50, 50, 0.4);
 
+  /* ── Greg's Gym mode-card dumbbell. The plate (weight) color is themeable;
+     the inlined gym SVG in index.html fills its plates from these tokens so a
+     theme can recolor the weights. Default is brand green; the bar stays
+     steel. A theme overrides by setting --color-gym-weight (and optionally the
+     -dark / -hi companions) in its own stylesheet. ── */
+  --color-gym-weight: #2e8b57;
+  --color-gym-weight-dark: #3a6a3a;
+  --color-gym-weight-hi: #5ad07a;
+
   /* ── Post-death analysis overlays ── */
   --overlay-wrong-flag: #ff1744;
   --overlay-wrong-flag-fill: rgba(255, 23, 68, 0.15);
@@ -254,6 +263,45 @@
   --pu-lifeline: rgba(80, 200, 120, 0.9);
   --pu-magnet: rgba(180, 130, 255, 0.6);
 }
+
+/* ── Greg's Gym dumbbell: per-theme weight (plate) color ───────────────
+   The mode-card dumbbell (inlined in index.html) fills its plates from
+   --color-gym-weight. classic/dark keep the brand green set in :root; every
+   other theme sets its signature color in ONE place here, and the outer-plate
+   (-dark) and highlight (-hi) shades auto-derive from it via color-mix, so each
+   theme is a single deliberate choice. Understated "print" worlds use their ink
+   color (black on light paper, the light ink on dark grounds); vibrant worlds
+   use their accent. The steel bar and dark outline stay constant across themes.
+   Loaded via <img> (e.g. the gallery) the vars are undefined and the SVG's own
+   green fallbacks render. */
+[data-theme]:not([data-theme="classic"]):not([data-theme="dark"]) {
+  --color-gym-weight-dark: color-mix(in srgb, var(--color-gym-weight) 70%, #000);
+  --color-gym-weight-hi:   color-mix(in srgb, var(--color-gym-weight) 55%, #fff);
+}
+[data-theme="editorial"]    { --color-gym-weight: #1a1714; } /* ink */
+[data-theme="sumie"]        { --color-gym-weight: #1c1814; } /* ink wash */
+[data-theme="cartography"]  { --color-gym-weight: #4a3420; } /* map sepia */
+[data-theme="origami"]      { --color-gym-weight: #d14a4a; } /* fold red */
+[data-theme="comic"]        { --color-gym-weight: #2f6cb0; } /* pop blue */
+[data-theme="candy"]        { --color-gym-weight: #ff4081; } /* candy pink */
+[data-theme="apothecary"]   { --color-gym-weight: #c89030; } /* amber glass */
+[data-theme="stainedglass"] { --color-gym-weight: #e0b040; } /* leaded gold */
+[data-theme="blueprint"]    { --color-gym-weight: #cfe4ff; } /* drafting white */
+[data-theme="chalkboard"]   { --color-gym-weight: #ebe6da; } /* chalk */
+[data-theme="noir"]         { --color-gym-weight: #d6a44a; } /* the one amber */
+[data-theme="splitflap"]    { --color-gym-weight: #e8b84a; } /* board amber */
+[data-theme="forest"]       { --color-gym-weight: #6abf6a; } /* leaf green */
+[data-theme="ocean"]        { --color-gym-weight: #00b4d8; } /* sea cyan */
+[data-theme="sakura"]       { --color-gym-weight: #e87090; } /* blossom pink */
+[data-theme="aurora"]       { --color-gym-weight: #00bfa5; } /* aurora teal */
+[data-theme="galaxy"]       { --color-gym-weight: #d050ff; } /* nebula violet */
+[data-theme="circuitboard"] { --color-gym-weight: #40f090; } /* trace green */
+[data-theme="matrix"]       { --color-gym-weight: #00ff00; } /* code green */
+[data-theme="neon"]         { --color-gym-weight: #ff0066; } /* neon pink */
+[data-theme="synthwave"]    { --color-gym-weight: #ff2090; } /* magenta */
+[data-theme="inferno"]      { --color-gym-weight: #ff4400; } /* flame */
+[data-theme="supernova"]    { --color-gym-weight: #ff6600; } /* blaze orange */
+[data-theme="legendary"]    { --color-gym-weight: #ffc830; } /* gold */
 
 html, body {
   height: 100%;
