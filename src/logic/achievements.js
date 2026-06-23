@@ -1,12 +1,13 @@
 // Multi-tier achievement system
-// Each achievement category has 6 tiers: bronze → silver → gold → platinum → emerald → diamond
+// Each achievement category has 5 tiers: bronze → silver → gold → emerald → diamond
+// One drawn medal per tier. Platinum was dropped (2026-06-23) so the
+// ladder matches the five-medal set — no more ⭐ emoji fallback.
 
-const TIER_NAMES = ['bronze', 'silver', 'gold', 'platinum', 'emerald', 'diamond'];
+const TIER_NAMES = ['bronze', 'silver', 'gold', 'emerald', 'diamond'];
 const TIER_ICONS = {
   bronze:   '🥉',
   silver:   '🥈',
   gold:     '🥇',
-  platinum: '⭐',
   emerald:  '💚',
   diamond:  '💎',
 };
@@ -14,7 +15,6 @@ const TIER_COLORS = {
   bronze:   '#cd7f32',
   silver:   '#c0c0c0',
   gold:     '#ffd700',
-  platinum: '#e5e4e2',
   emerald:  '#50c878',
   diamond:  '#b9f2ff',
 };
@@ -29,7 +29,7 @@ const CATEGORIES = [
     icon: '🏆',
     group: 'progress',
     desc: 'Total wins',
-    thresholds: [1, 5, 25, 50, 100, 200],
+    thresholds: [1, 5, 25, 100, 200],
     getValue: (s) => s.wins,
     format: (v) => `${v} win${v !== 1 ? 's' : ''}`,
   },
@@ -39,7 +39,7 @@ const CATEGORIES = [
     icon: '🔥',
     group: 'progress',
     desc: 'Best win streak',
-    thresholds: [3, 5, 10, 15, 25, 50],
+    thresholds: [3, 5, 10, 25, 50],
     getValue: (s) => s.bestStreak,
     format: (v) => `${v} streak`,
   },
@@ -49,7 +49,7 @@ const CATEGORIES = [
     icon: '⚡',
     group: 'progress',
     desc: 'Fastest win',
-    thresholds: [60, 45, 30, 20, 15, 10],
+    thresholds: [60, 45, 30, 15, 10],
     getValue: (s) => {
       const wins = (s.recentGames || []).filter(g => g.won);
       if (wins.length === 0) return Infinity;
@@ -64,7 +64,7 @@ const CATEGORIES = [
     icon: '📅',
     group: 'progress',
     desc: 'Daily challenges completed',
-    thresholds: [1, 5, 10, 20, 30, 50],
+    thresholds: [1, 5, 10, 30, 50],
     getValue: (s) => s.dailiesCompleted || 0,
     format: (v) => `${v} daily${v !== 1 ? 's' : ''}`,
   },
@@ -80,7 +80,7 @@ const CATEGORIES = [
     icon: '🏳️',
     group: 'feat',
     desc: 'Wins without placing a single flag',
-    thresholds: [1, 5, 15, 30, 50, 100],
+    thresholds: [1, 5, 15, 50, 100],
     getValue: (s) => s.flaglessWins || 0,
     format: (v) => `${v} flagless win${v !== 1 ? 's' : ''}`,
   },
@@ -90,7 +90,7 @@ const CATEGORIES = [
     icon: '🎯',
     group: 'feat',
     desc: 'Wins matching the certified solve’s click count',
-    thresholds: [1, 5, 15, 30, 50, 100],
+    thresholds: [1, 5, 15, 50, 100],
     getValue: (s) => s.efficientWins || 0,
     format: (v) => `${v} efficient win${v !== 1 ? 's' : ''}`,
   },
@@ -100,7 +100,7 @@ const CATEGORIES = [
     icon: '🧮',
     group: 'feat',
     desc: 'Wins on boards that provably require search reasoning',
-    thresholds: [1, 3, 10, 20, 35, 60],
+    thresholds: [1, 3, 10, 35, 60],
     getValue: (s) => s.searchWins || 0,
     format: (v) => `${v} search win${v !== 1 ? 's' : ''}`,
   },
@@ -110,7 +110,7 @@ const CATEGORIES = [
     icon: '🕵️',
     group: 'feat',
     desc: 'Wins on boards that provably require liar reasoning',
-    thresholds: [1, 3, 8, 15, 25, 50],
+    thresholds: [1, 3, 8, 25, 50],
     getValue: (s) => s.liarWins || 0,
     format: (v) => `${v} liar win${v !== 1 ? 's' : ''}`,
   },
@@ -120,7 +120,7 @@ const CATEGORIES = [
     icon: '💪',
     group: 'feat',
     desc: 'Wins without power-ups',
-    thresholds: [1, 5, 15, 30, 50, 100],
+    thresholds: [1, 5, 15, 50, 100],
     getValue: (s) => s.puristWins || 0,
     format: (v) => `${v} unaided win${v !== 1 ? 's' : ''}`,
   },
@@ -131,7 +131,7 @@ const CATEGORIES = [
     icon: '⛏️',
     group: 'progress',
     desc: 'Challenge level reached',
-    thresholds: [10, 25, 50, 75, 100, 120],
+    thresholds: [10, 25, 50, 100, 120],
     getValue: (s) => (s.modeStats?.challenge?.maxLevelReached) || (s.maxLevelReached || 1),
     format: (v) => `Level ${v}`,
   },
@@ -141,7 +141,7 @@ const CATEGORIES = [
     icon: '⏱️',
     group: 'progress',
     desc: 'Best timed win',
-    thresholds: [120, 90, 60, 40, 25, 15],
+    thresholds: [120, 90, 60, 25, 15],
     getValue: (s) => {
       const timed = s.modeStats?.timed;
       if (!timed) return Infinity;
@@ -158,7 +158,7 @@ const CATEGORIES = [
     icon: '🎪',
     group: 'progress',
     desc: 'Beat levels with modifiers active',
-    thresholds: [1, 5, 15, 30, 50, 100],
+    thresholds: [1, 5, 15, 50, 100],
     getValue: (s) => s.gimmickWins || 0,
     format: (v) => `${v} modifier win${v !== 1 ? 's' : ''}`,
   },
@@ -168,7 +168,7 @@ const CATEGORIES = [
     icon: '📆',
     group: 'progress',
     desc: 'Daily challenge streak',
-    thresholds: [3, 7, 14, 21, 30, 60],
+    thresholds: [3, 7, 14, 30, 60],
     getValue: (s) => s.modeStats?.daily?.bestDailyStreak || 0,
     format: (v) => `${v} day${v !== 1 ? 's' : ''}`,
   },
@@ -259,6 +259,7 @@ export function checkNewUnlocks(prevStats, currentStats) {
       for (let i = prevTier + 1; i <= currTier; i++) {
         newUnlocks.push({
           category: cat.name,
+          categoryId: cat.id,
           categoryIcon: cat.icon,
           tier: TIER_NAMES[i],
           tierIcon: TIER_ICONS[TIER_NAMES[i]],

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Lie Detector: a magnifier catching a clue number in a lie. -->
+  <path d="M82 82 L106 106" stroke="#232838" stroke-width="15" stroke-linecap="round"/>
+  <path d="M82 82 L106 106" stroke="#9a9a9a" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="54" cy="52" r="34" fill="#eef3fb" stroke="#232838" stroke-width="7"/>
+  <text x="54" y="68" font-family="Arial, Helvetica, sans-serif" font-size="44" font-weight="700" text-anchor="middle" fill="#232838">3</text>
+  <!-- Strike: centered on the lens, inset so it sits cleanly inside the glass -->
+  <path d="M37 69 L71 35" stroke="#e4453a" stroke-width="7" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Tank Commander: a tank. -->
+  <!-- Tread track -->
+  <rect x="8" y="76" width="108" height="28" rx="14" fill="#3e4a5a" stroke="#232838" stroke-width="5"/>
+  <circle cx="26" cy="90" r="8" fill="#9a9a9a" stroke="#232838" stroke-width="4"/>
+  <circle cx="50" cy="90" r="8" fill="#9a9a9a" stroke="#232838" stroke-width="4"/>
+  <circle cx="74" cy="90" r="8" fill="#9a9a9a" stroke="#232838" stroke-width="4"/>
+  <circle cx="98" cy="90" r="8" fill="#9a9a9a" stroke="#232838" stroke-width="4"/>
+  <!-- Hull -->
+  <path d="M14 78 L14 66 L30 54 L100 54 L112 68 L112 78 Z" fill="#53a05b" stroke="#232838" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M20 64 L34 56 L74 56" fill="none" stroke="#7cc184" stroke-width="3" stroke-linecap="round" opacity="0.5"/>
+  <!-- Turret -->
+  <rect x="42" y="34" width="40" height="24" rx="11" fill="#53a05b" stroke="#232838" stroke-width="5"/>
+  <circle cx="62" cy="40" r="4.5" fill="#3e7f46" stroke="#232838" stroke-width="3"/>
+  <!-- Cannon -->
+  <rect x="78" y="42" width="44" height="8" rx="3" fill="#9a9a9a" stroke="#232838" stroke-width="4"/>
+</svg>

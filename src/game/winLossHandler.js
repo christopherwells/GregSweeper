@@ -1,7 +1,7 @@
 import { state, ENCOURAGEMENT_LINES, getActiveBombPenaltyTotal } from '../state/gameState.js';
 import { $, $$, boardEl, resetBtn, scanToast, escapeHtml } from '../ui/domHelpers.js';
 import { getThemeEmoji, updateAllCells, announceGame } from '../ui/boardRenderer.js';
-import { applyIcon, spriteImgHTML, medalImgForEmoji } from '../ui/spriteLoader.js';
+import { applyIcon, spriteImgHTML, medalImgForEmoji, achievementSpriteImgHTML } from '../ui/spriteLoader.js';
 import { updateHeader, updateStreakBorder, updateCheckpointDisplay, getCheckpointForLevel } from '../ui/headerRenderer.js';
 import { updatePowerUpBar } from '../ui/powerUpBar.js';
 import { showModal, hideModal } from '../ui/modalManager.js';
@@ -73,7 +73,10 @@ function showAchievementToasts(unlocks) {
   function showNext() {
     if (index >= unlocks.length) return;
     const unlock = unlocks[index];
-    toast.querySelector('.achievement-toast-icon').textContent = unlock.categoryIcon;
+    const toastIcon = toast.querySelector('.achievement-toast-icon');
+    const toastIconHtml = achievementSpriteImgHTML(unlock.categoryId, 'sprite-rank', unlock.category);
+    if (toastIconHtml) toastIcon.innerHTML = toastIconHtml;
+    else toastIcon.textContent = unlock.categoryIcon;
     toast.querySelector('.achievement-toast-title').textContent = 'Achievement Unlocked!';
     toast.querySelector('.achievement-toast-name').textContent =
       `${unlock.category} · ${unlock.tier.charAt(0).toUpperCase() + unlock.tier.slice(1)} ${unlock.tierIcon}`;
@@ -901,7 +904,7 @@ export function handleWin() {
     for (const unlock of newUnlocks) {
       const badge = document.createElement('div');
       badge.className = 'gameover-achievement-badge tier-up-badge';
-      badge.innerHTML = `<span>${unlock.categoryIcon}</span><span>${unlock.category} ${unlock.tierIcon} ${unlock.tier.charAt(0).toUpperCase() + unlock.tier.slice(1)}</span>`;
+      badge.innerHTML = `<span>${achievementSpriteImgHTML(unlock.categoryId, 'sprite-rank', unlock.category) || unlock.categoryIcon}</span><span>${unlock.category} ${unlock.tierIcon} ${unlock.tier.charAt(0).toUpperCase() + unlock.tier.slice(1)}</span>`;
       achievementsDiv.appendChild(badge);
     }
     achievementsDiv.classList.remove('hidden');

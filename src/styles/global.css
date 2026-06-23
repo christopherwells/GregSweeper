@@ -3030,12 +3030,30 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   font-size: 24px;
   flex-shrink: 0;
   width: 32px;
+  height: 32px;
   text-align: center;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
+/* Locked: the category icon shows greyed — the technique you're chasing.
+   Earned: it lifts to full colour and a corner medal marks the tier. */
 .ach-medal.none {
-  opacity: 0.35;
+  opacity: 0.45;
   filter: grayscale(1);
-  font-size: 20px;
+}
+.ach-tier-badge {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  display: inline-flex;
+  line-height: 0;
+  filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.35));
+}
+.sprite-tier-badge {
+  width: 15px;
+  height: 15px;
 }
 
 .ach-main {

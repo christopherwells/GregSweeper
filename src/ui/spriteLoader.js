@@ -52,6 +52,25 @@ const SPRITES = {
   modPressure:  { defaultEmoji: '🔴', url: 'assets/sprites/mod-pressure.svg' },
   modSonar:     { defaultEmoji: '📡', url: 'assets/sprites/mod-sonar.svg' },
   modCompass:   { defaultEmoji: '🧭', url: 'assets/sprites/mod-compass.svg' },
+
+  // ── Wave B achievement category icons (2026-06-23) ──
+  // Each achievement has its own drawn identity. Several share a glyph
+  // with a mode card (📅 daily, ⛏️ challenge, ⏱️ timed), so these render
+  // by category id (achievementSpriteImgHTML), never by emoji — the
+  // defaultEmoji here is the registry fallback, not the lookup key.
+  achWins:             { defaultEmoji: '🏆', url: 'assets/sprites/ach-wins.svg' },
+  achStreak:           { defaultEmoji: '🔥', url: 'assets/sprites/ach-streak.svg' },
+  achSpeed:            { defaultEmoji: '⚡', url: 'assets/sprites/ach-speed.svg' },
+  achDaily:            { defaultEmoji: '📅', url: 'assets/sprites/ach-daily.svg' },
+  achFlagless:         { defaultEmoji: '🏳️', url: 'assets/sprites/ach-flagless.svg' },
+  achEfficient:        { defaultEmoji: '🎯', url: 'assets/sprites/ach-efficient.svg' },
+  achTankCommander:    { defaultEmoji: '🧮', url: 'assets/sprites/ach-tankCommander.svg' },
+  achLieDetector:      { defaultEmoji: '🕵️', url: 'assets/sprites/ach-lieDetector.svg' },
+  achPurist:           { defaultEmoji: '💪', url: 'assets/sprites/ach-purist.svg' },
+  achChallengeClimber: { defaultEmoji: '⛏️', url: 'assets/sprites/ach-challengeClimber.svg' },
+  achTimedSpeed:       { defaultEmoji: '⏱️', url: 'assets/sprites/ach-timedSpeed.svg' },
+  achGimmickMaster:    { defaultEmoji: '🎪', url: 'assets/sprites/ach-gimmickMaster.svg' },
+  achDailyStreak:      { defaultEmoji: '📆', url: 'assets/sprites/ach-dailyStreak.svg' },
 };
 
 // Retain Image refs until each one fires onload/onerror so the browser
@@ -166,10 +185,11 @@ export function applyIcon(el, key, resolvedEmoji, { extraClass = '', sizeClass =
   }
 }
 
-// Medal emoji -> drawn medal sprite (the five ranks the medal set
-// covers). Returns null for non-medal emoji (platinum keeps its ⭐
-// emoji until drawn). TEXT surfaces (share strings) must stay emoji -
-// callers choose by simply not using this.
+// Medal emoji -> drawn medal sprite. The five ranks ARE the full tier
+// ladder (platinum was dropped 2026-06-23), so every tier icon now
+// resolves to a medal. Returns null for any non-tier emoji. TEXT
+// surfaces (share strings) must stay emoji — callers choose by simply
+// not using this.
 const MEDAL_BY_EMOJI = { '🥉': 'medalBronze', '🥈': 'medalSilver', '🥇': 'medalGold', '💎': 'medalDiamond', '💚': 'medalEmerald' };
 export function medalImgForEmoji(emoji, sizeClass = 'sprite-rank', alt = '') {
   const key = MEDAL_BY_EMOJI[emoji];
@@ -221,4 +241,20 @@ export function applyGimmickIcon(el, gimmickKey, fallbackEmoji) {
   } else if (el) {
     el.textContent = fallbackEmoji || '';
   }
+}
+
+// ── Achievement category icon sprites (Wave B) ───────────
+// Keyed by the achievement category id (achievements.js CATEGORIES),
+// not by emoji — several categories share a glyph with a mode card, so
+// the id is the only unambiguous handle. Theme-agnostic chrome.
+const ACHIEVEMENT_SPRITE_KEYS = {
+  wins: 'achWins', streak: 'achStreak', speed: 'achSpeed', daily: 'achDaily',
+  flagless: 'achFlagless', efficient: 'achEfficient', tankCommander: 'achTankCommander',
+  lieDetector: 'achLieDetector', purist: 'achPurist', challengeClimber: 'achChallengeClimber',
+  timedSpeed: 'achTimedSpeed', gimmickMaster: 'achGimmickMaster', dailyStreak: 'achDailyStreak',
+};
+
+export function achievementSpriteImgHTML(catId, sizeClass = 'sprite-medal', alt = '') {
+  const spriteKey = ACHIEVEMENT_SPRITE_KEYS[catId];
+  return spriteKey ? spriteImgHTML(spriteKey, sizeClass, alt) : null;
 }

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Flagless: the flag in a prohibition sign (white field so the flag shows). -->
+  <circle cx="64" cy="64" r="40" fill="#f3f6fb" stroke="#232838" stroke-width="2"/>
+  <!-- Flag, centered on the white field -->
+  <rect x="46" y="42" width="9" height="46" rx="4.5" fill="#34343c" stroke="#232838" stroke-width="2.5"/>
+  <path d="M55 45 L82 56 L55 67 Z" fill="#d4291c" stroke="#232838" stroke-width="3.5" stroke-linejoin="round"/>
+  <!-- Prohibition ring + slash -->
+  <circle cx="64" cy="64" r="40" fill="none" stroke="#e4453a" stroke-width="9"/>
+  <path d="M36 36 L92 92" stroke="#e4453a" stroke-width="9" stroke-linecap="round"/>
+</svg>
