@@ -26,7 +26,7 @@ const SPRITES = {
   // The "bomb you actually hit." Triggered by the same canonical mine emoji
   // as the regular mine sprite — on Classic/Default we swap to strike.png so
   // the exploded bomb stands out from the other revealed mines. On themed
-  // alternates (e.g. Ocean 🐡), the themed mine emoji renders verbatim.
+  // alternates (e.g. Ocean's blowfish), the themed mine emoji renders verbatim.
   strikeCell: { defaultEmoji: '💣', url: 'assets/sprites/strike.png' },
 
   // ── Tiers 3-5 of the sprite inventory (drawn SVG, 2026-06-10) ──

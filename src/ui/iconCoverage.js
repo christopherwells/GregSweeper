@@ -87,6 +87,8 @@ export const ICON_STATUS = {
   '🔔': 'sprite',   // notifications on
   '🔕': 'sprite',   // notifications off
   '×':  'sprite',   // close / friend-remove (&times; entity)
+  '🏅': 'sprite',   // Achievements sheet row (renders the medal sprite; emoji is the onerror fallback)
+  'ℹ️': 'sprite',   // About row (renders Greg's sprite; emoji is the onerror fallback)
 
   // ── Plain-text / intentional emoji ──
   // These appear in share cards, toast messages, or semantic contexts
@@ -97,4 +99,20 @@ export const ICON_STATUS = {
   '✨': 'plain',    // modifier primer intro
   '🧩': 'plain',    // modifier recap intro
   '✓':  'plain',    // certified chip (text, not emoji)
+
+  // Transient text — toasts, gym headers, receipts, diagnostics, status
+  // dots. Emoji inline in a text message, where a sprite would be wrong.
+  '✅': 'plain',    // success checkmark (save / submit toasts, receipts)
+  '❤️': 'plain',    // lifeline (toast text + power-up onerror fallback)
+  '🎉': 'plain',    // new-record toast
+  '⚠️': 'plain',    // warning toasts
+  '⏳': 'plain',    // loading / pending
+  '📱': 'plain',    // install / add-to-home-screen hint
+  '🟢': 'plain',    // status dot (online)
+  '⚪': 'plain',    // status dot (idle)
+  '↔️': 'plain',    // sync direction (status text)
+  '★':  'plain',    // diagnostics star (text)
+  '📓': 'plain',    // Greg's Gym field notebook header
+  '📌': 'plain',    // gym pinned note
+  '🤷': 'plain',    // receipt copy
 };
