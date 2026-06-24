@@ -279,7 +279,7 @@
        during gameplay. Dismisses on the first interaction. -->
   <div id="idle-pause-overlay" class="hidden" aria-live="polite">
     <div class="idle-pause-card">
-      <div class="idle-pause-icon">⏸</div>
+      <div class="idle-pause-icon"><img class="ui-icon" src="assets/sprites/ui-pause.svg" alt="" draggable="false" onerror="this.replaceWith('⏸')"></div>
       <div class="idle-pause-title">Paused</div>
       <div class="idle-pause-hint">Tap anywhere to resume</div>
     </div>
@@ -343,9 +343,9 @@
          one tap (the cards), everything secondary is two. Progress and
          More open small sheets listing the existing modals. -->
     <div class="title-screen-footer">
-      <button id="title-help-btn" class="title-footer-btn">❓ How to Play</button>
-      <button id="title-progress-btn" class="title-footer-btn">📊 Progress</button>
-      <button id="title-more-btn" class="title-footer-btn">⚙️ More<span id="more-btn-dot" class="more-dot hidden"></span></button>
+      <button id="title-help-btn" class="title-footer-btn"><img class="ui-icon-label" src="assets/sprites/ui-help.svg" alt="" draggable="false" onerror="this.replaceWith('❓')">How to Play</button>
+      <button id="title-progress-btn" class="title-footer-btn"><img class="ui-icon-label" src="assets/sprites/ui-stats.svg" alt="" draggable="false" onerror="this.replaceWith('📊')">Progress</button>
+      <button id="title-more-btn" class="title-footer-btn"><img class="ui-icon-label" src="assets/sprites/ui-more.svg" alt="" draggable="false" onerror="this.replaceWith('⚙️')">More<span id="more-btn-dot" class="more-dot hidden"></span></button>
     </div>
   </div>
 
@@ -472,11 +472,11 @@
          browsed and switched mid-game (restored 2026-06-10 by request —
          the 4-icon declutter had cut it). -->
     <nav id="bottom-nav">
-      <button id="btn-home" class="nav-btn" title="Home">🏠</button>
-      <button id="btn-leaderboard" class="nav-btn" title="Leaderboard">🏆</button>
-      <button id="btn-collection" class="nav-btn" title="Collection">🎨</button>
-      <button id="btn-mute" class="nav-btn" title="Mute">🔊</button>
-      <button id="btn-settings" class="nav-btn" title="Settings">⚙️</button>
+      <button id="btn-home" class="nav-btn" title="Home"><img class="ui-icon-nav" src="assets/sprites/ui-home.svg" alt="Home" draggable="false" onerror="this.replaceWith('🏠')"></button>
+      <button id="btn-leaderboard" class="nav-btn" title="Leaderboard"><img class="ui-icon-nav" src="assets/sprites/ui-leaderboard.svg" alt="Leaderboard" draggable="false" onerror="this.replaceWith('🏆')"></button>
+      <button id="btn-collection" class="nav-btn" title="Collection"><img class="ui-icon-nav" src="assets/sprites/ui-collection.svg" alt="Collection" draggable="false" onerror="this.replaceWith('🎨')"></button>
+      <button id="btn-mute" class="nav-btn" title="Mute"><img class="ui-icon-nav" src="assets/sprites/ui-mute-on.svg" alt="Mute" draggable="false" onerror="this.replaceWith('🔊')"></button>
+      <button id="btn-settings" class="nav-btn" title="Settings"><img class="ui-icon-nav" src="assets/sprites/ui-settings.svg" alt="Settings" draggable="false" onerror="this.replaceWith('⚙️')"></button>
       <!-- Zoom rides the nav row instead of owning one under the board.
            display:contents makes the pair direct flex items; the
            wrapper only exists so updateZoom can show/hide both at once
@@ -505,7 +505,7 @@
       <div class="modal-content about-content">
         <div class="modal-header">
           <h2>About</h2>
-          <button class="modal-close">&times;</button>
+          <button class="modal-close" aria-label="Close"><img class="ui-icon-close" src="assets/sprites/ui-close.svg" alt="Close" draggable="false" onerror="this.replaceWith('×')"></button>
         </div>
         <div class="modal-body about-body">
           <img class="about-greg" src="assets/sprites/idle.png" alt="Greg the crab field scientist" draggable="false" onerror="this.remove()">
@@ -515,7 +515,7 @@
           <div class="about-divider"></div>
           <p class="about-credits">GregSweeper &copy; 2026 · Built by Christopher Wells</p>
           <p class="about-support">
-            <a href="https://github.com/sponsors/christopherwells" target="_blank" rel="noopener">💛 Support GregSweeper</a>
+            <a href="https://github.com/sponsors/christopherwells" target="_blank" rel="noopener"><img class="ui-icon-label" src="assets/sprites/ui-sponsor.svg" alt="" draggable="false" onerror="this.replaceWith('💛')">Support GregSweeper</a>
             (voluntary, helps cover domain + hosting + app-store fees).
           </p>
         </div>
@@ -566,7 +566,7 @@
                player just felt good, completion is fresh, asking for
                tomorrow's reminder right here converts at far higher rates
                than the same toggle buried in Settings. -->
-          <button id="gameover-remind-tomorrow" class="action-btn primary hidden">🔔 Remind me tomorrow</button>
+          <button id="gameover-remind-tomorrow" class="action-btn primary hidden"><img class="ui-icon-label" src="assets/sprites/ui-notify-on.svg" alt="" draggable="false" onerror="this.replaceWith('🔔')">Remind me tomorrow</button>
           <button id="gameover-share" class="action-btn share-btn hidden">📋 Share</button>
           <button id="gameover-crux-challenge" class="action-btn hidden">🦀 Challenge a friend</button>
           <button id="gameover-done" class="action-btn hidden">Done</button>
@@ -649,7 +649,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h2>How to Play</h2>
-        <button class="modal-close">&times;</button>
+        <button class="modal-close" aria-label="Close"><img class="ui-icon-close" src="assets/sprites/ui-close.svg" alt="Close" draggable="false" onerror="this.replaceWith('×')"></button>
       </div>
       <div class="modal-body help-body">
         <div class="help-tabs" role="tablist" aria-label="Help topic">
@@ -733,12 +733,12 @@
     <div class="modal-content sheet-content">
       <div class="modal-header">
         <h2>Progress</h2>
-        <button class="modal-close">&times;</button>
+        <button class="modal-close" aria-label="Close"><img class="ui-icon-close" src="assets/sprites/ui-close.svg" alt="Close" draggable="false" onerror="this.replaceWith('×')"></button>
       </div>
       <div class="modal-body sheet-rows">
-        <button class="sheet-row" id="sheet-stats-btn">📊 Stats</button>
-        <button class="sheet-row" id="sheet-achievements-btn">🏅 Achievements</button>
-        <button class="sheet-row" id="sheet-leaderboard-btn">🏆 Leaderboard</button>
+        <button class="sheet-row" id="sheet-stats-btn"><img class="ui-icon-label" src="assets/sprites/ui-stats.svg" alt="" draggable="false" onerror="this.replaceWith('📊')">Stats</button>
+        <button class="sheet-row" id="sheet-achievements-btn"><img class="ui-icon-label" src="assets/sprites/medal-gold.svg" alt="" draggable="false" onerror="this.replaceWith('🏅')">Achievements</button>
+        <button class="sheet-row" id="sheet-leaderboard-btn"><img class="ui-icon-label" src="assets/sprites/ui-leaderboard.svg" alt="" draggable="false" onerror="this.replaceWith('🏆')">Leaderboard</button>
       </div>
     </div>
   </div>
@@ -746,12 +746,12 @@
     <div class="modal-content sheet-content">
       <div class="modal-header">
         <h2>More</h2>
-        <button class="modal-close">&times;</button>
+        <button class="modal-close" aria-label="Close"><img class="ui-icon-close" src="assets/sprites/ui-close.svg" alt="Close" draggable="false" onerror="this.replaceWith('×')"></button>
       </div>
       <div class="modal-body sheet-rows">
-        <button class="sheet-row" id="sheet-collection-btn">🎁 Collection</button>
-        <button class="sheet-row" id="sheet-settings-btn">⚙️ Settings</button>
-        <button class="sheet-row" id="sheet-whatsnew-btn">📋 What's New</button>
+        <button class="sheet-row" id="sheet-collection-btn"><img class="ui-icon-label" src="assets/sprites/ui-collection.svg" alt="" draggable="false" onerror="this.replaceWith('🎁')">Collection</button>
+        <button class="sheet-row" id="sheet-settings-btn"><img class="ui-icon-label" src="assets/sprites/ui-settings.svg" alt="" draggable="false" onerror="this.replaceWith('⚙️')">Settings</button>
+        <button class="sheet-row" id="sheet-whatsnew-btn"><img class="ui-icon-label" src="assets/sprites/ui-whatsnew.svg" alt="" draggable="false" onerror="this.replaceWith('📋')">What's New</button>
       </div>
     </div>
   </div>
@@ -764,7 +764,7 @@
     <div class="modal-content meet-greg-content">
       <div class="modal-header">
         <h2>This is Greg</h2>
-        <button class="modal-close">&times;</button>
+        <button class="modal-close" aria-label="Close"><img class="ui-icon-close" src="assets/sprites/ui-close.svg" alt="Close" draggable="false" onerror="this.replaceWith('×')"></button>
       </div>
       <div class="modal-body meet-greg-body">
         <img class="meet-greg-img" src="assets/sprites/idle.png" alt="Greg, a green crab holding a clipboard" draggable="false">
@@ -781,7 +781,7 @@
     <div class="modal-content meet-greg-content molt-earned-content">
       <div class="modal-header">
         <h2 id="molt-earned-title">Molt day earned</h2>
-        <button class="modal-close" aria-label="Close">&times;</button>
+        <button class="modal-close" aria-label="Close"><img class="ui-icon-close" src="assets/sprites/ui-close.svg" alt="Close" draggable="false" onerror="this.replaceWith('×')"></button>
       </div>
       <div class="modal-body meet-greg-body">
         <div class="molt-earned-crab" aria-hidden="true">🦀</div>
@@ -800,7 +800,7 @@
     <div class="modal-content archive-modal-content">
       <div class="modal-header">
         <h2>Past Dailies</h2>
-        <button class="modal-close">&times;</button>
+        <button class="modal-close" aria-label="Close"><img class="ui-icon-close" src="assets/sprites/ui-close.svg" alt="Close" draggable="false" onerror="this.replaceWith('×')"></button>
       </div>
       <div class="modal-body">
         <p class="archive-intro">Replay any past board. Archive runs never touch your streak or your daily completion, and Greg still keeps your time.</p>
@@ -827,7 +827,7 @@
     <div class="modal-content cert-modal-content">
       <div class="modal-header">
         <h2 id="cert-modal-title">This board is checked</h2>
-        <button class="modal-close">&times;</button>
+        <button class="modal-close" aria-label="Close"><img class="ui-icon-close" src="assets/sprites/ui-close.svg" alt="Close" draggable="false" onerror="this.replaceWith('×')"></button>
       </div>
       <div class="modal-body" id="cert-modal-body"></div>
     </div>
@@ -838,7 +838,7 @@
     <div class="modal-content achievements-content">
       <div class="modal-header">
         <h2>Achievements</h2>
-        <button class="modal-close">&times;</button>
+        <button class="modal-close" aria-label="Close"><img class="ui-icon-close" src="assets/sprites/ui-close.svg" alt="Close" draggable="false" onerror="this.replaceWith('×')"></button>
       </div>
       <div class="modal-body">
         <div id="achievement-progress" class="achievement-progress-bar">
@@ -857,7 +857,7 @@
     <div class="modal-content leaderboard-modal-content">
       <div class="modal-header">
         <h2>Leaderboard</h2>
-        <button class="modal-close">&times;</button>
+        <button class="modal-close" aria-label="Close"><img class="ui-icon-close" src="assets/sprites/ui-close.svg" alt="Close" draggable="false" onerror="this.replaceWith('×')"></button>
       </div>
       <div class="modal-body">
         <div class="leaderboard-tabs lb-scope-toggle" role="tablist" aria-label="Leaderboard scope">
@@ -912,7 +912,7 @@
     <div class="modal-content checkpoint-modal-content">
       <div class="modal-header">
         <h2>⛏️ Challenge</h2>
-        <button class="modal-close">&times;</button>
+        <button class="modal-close" aria-label="Close"><img class="ui-icon-close" src="assets/sprites/ui-close.svg" alt="Close" draggable="false" onerror="this.replaceWith('×')"></button>
       </div>
       <div class="modal-body">
         <div id="checkpoint-resume" class="checkpoint-resume hidden"></div>
@@ -926,7 +926,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h2>Settings</h2>
-        <button class="modal-close">&times;</button>
+        <button class="modal-close" aria-label="Close"><img class="ui-icon-close" src="assets/sprites/ui-close.svg" alt="Close" draggable="false" onerror="this.replaceWith('×')"></button>
       </div>
       <div class="modal-body">
         <div class="settings-tabs" role="tablist" aria-label="Settings section">
@@ -978,12 +978,12 @@
         </div>
         <div class="setting-group">
           <h3>Tutorial</h3>
-          <button id="btn-replay-tutorial" class="clear-cache-btn">▶️ Replay tutorial</button>
+          <button id="btn-replay-tutorial" class="clear-cache-btn"><img class="ui-icon-label" src="assets/sprites/ui-replay.svg" alt="" draggable="false" onerror="this.replaceWith('▶️')">Replay tutorial</button>
           <p class="reset-hint">Walk through the basics again.</p>
         </div>
         <div class="setting-group">
           <h3>About</h3>
-          <button id="btn-about" class="clear-cache-btn">ℹ️ About GregSweeper</button>
+          <button id="btn-about" class="clear-cache-btn"><img class="ui-icon-label" src="assets/sprites/idle.png" alt="" draggable="false" onerror="this.replaceWith('ℹ️')">About GregSweeper</button>
           <p class="reset-hint">Version and credits.</p>
         </div>
         </div>
@@ -1038,31 +1038,31 @@
         <div id="settings-panel-data" class="settings-panel hidden">
         <div class="setting-group reset-group">
           <h3>Data</h3>
-          <button id="btn-clear-cache" class="clear-cache-btn">🔄 Check for Updates</button>
+          <button id="btn-clear-cache" class="clear-cache-btn"><img class="ui-icon-label" src="assets/sprites/ui-update.svg" alt="" draggable="false" onerror="this.replaceWith('🔄')">Check for Updates</button>
           <p class="reset-hint">Forces a fresh download. Try this first if anything looks stuck or wrong.</p>
-          <button id="btn-reset-profile" class="reset-profile-btn">🗑️ Reset Profile</button>
+          <button id="btn-reset-profile" class="reset-profile-btn"><img class="ui-icon-label" src="assets/sprites/ui-reset.svg" alt="" draggable="false" onerror="this.replaceWith('🗑️')">Reset Profile</button>
           <p class="reset-hint">Erases all stats, achievements, and leaderboard data on this device.</p>
           <div id="settings-uid-row" style="margin-top:10px;font-size:13px;color:var(--color-text-secondary);">
             <span>Your anonymous ID:</span>
             <code id="settings-uid-display" style="margin-left:6px;padding:1px 6px;background:var(--color-cell-hidden);border-radius:4px;cursor:pointer;" title="Click to copy full ID">…</code>
           </div>
-          <button id="btn-delete-my-data" class="reset-profile-btn" style="margin-top:8px;">🌐 Delete my data (server-side)</button>
+          <button id="btn-delete-my-data" class="reset-profile-btn" style="margin-top:8px;"><img class="ui-icon-label" src="assets/sprites/ui-delete.svg" alt="" draggable="false" onerror="this.replaceWith('🌐')">Delete my data (server-side)</button>
           <p class="reset-hint">Removes your leaderboard rows, weekly best-times, and progress under your anonymous ID from Firebase. Opens a pre-filled email, and your data is scrubbed within 30 days.</p>
         </div>
         </div>
         <div id="settings-panel-about" class="settings-panel hidden">
         <div class="setting-group">
           <h3>Support</h3>
-          <button id="btn-report-problem" class="clear-cache-btn">🐛 Report a problem</button>
+          <button id="btn-report-problem" class="clear-cache-btn"><img class="ui-icon-label" src="assets/sprites/ui-report.svg" alt="" draggable="false" onerror="this.replaceWith('🐛')">Report a problem</button>
           <p class="reset-hint">Opens a GitHub issue with your device state pre-filled. No personal data leaves the device until you actually submit the issue.</p>
-          <a id="link-sponsor" href="https://github.com/sponsors/christopherwells" target="_blank" rel="noopener" class="reset-hint" style="display:inline-block;margin-top:6px;text-decoration:underline;">💛 Sponsor GregSweeper →</a>
+          <a id="link-sponsor" href="https://github.com/sponsors/christopherwells" target="_blank" rel="noopener" class="reset-hint" style="display:inline-block;margin-top:6px;text-decoration:underline;"><img class="ui-icon-label" src="assets/sprites/ui-sponsor.svg" alt="" draggable="false" onerror="this.replaceWith('💛')">Sponsor GregSweeper →</a>
           <p class="reset-hint" style="margin-top:2px;">Helps cover domain, hosting, and app-store fees (optional, the game is free either way).</p>
           <a id="link-privacy" href="./privacy.html" class="reset-hint" style="display:inline-block;margin-top:6px;text-decoration:underline;">Privacy policy →</a>
           <a id="link-about-par-model" href="./about-the-par-model.html" class="reset-hint" style="display:inline-block;margin-top:6px;text-decoration:underline;margin-left:14px;">About the par model →</a>
         </div>
         <div id="settings-diagnostics-group" class="setting-group hidden">
           <h3>Diagnostics</h3>
-          <button id="btn-diagnostics" class="clear-cache-btn">🔬 Show Diagnostics</button>
+          <button id="btn-diagnostics" class="clear-cache-btn"><img class="ui-icon-label" src="assets/sprites/ui-diagnostics.svg" alt="" draggable="false" onerror="this.replaceWith('🔬')">Show Diagnostics</button>
           <p class="reset-hint">Shows what this device is running (useful if something looks off).</p>
         </div>
         </div>
@@ -1097,7 +1097,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h2>Diagnostics</h2>
-        <button class="modal-close">&times;</button>
+        <button class="modal-close" aria-label="Close"><img class="ui-icon-close" src="assets/sprites/ui-close.svg" alt="Close" draggable="false" onerror="this.replaceWith('×')"></button>
       </div>
       <div class="modal-body" id="diagnostics-body"></div>
     </div>
@@ -1108,7 +1108,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h2>What's New</h2>
-        <button class="modal-close">&times;</button>
+        <button class="modal-close" aria-label="Close"><img class="ui-icon-close" src="assets/sprites/ui-close.svg" alt="Close" draggable="false" onerror="this.replaceWith('×')"></button>
       </div>
       <div class="modal-body whatsnew-body">
         <div class="whatsnew-entry">
@@ -1157,7 +1157,7 @@
     <div class="modal-content stats-modal-content">
       <div class="modal-header">
         <h2>Statistics</h2>
-        <button class="modal-close">&times;</button>
+        <button class="modal-close" aria-label="Close"><img class="ui-icon-close" src="assets/sprites/ui-close.svg" alt="Close" draggable="false" onerror="this.replaceWith('×')"></button>
       </div>
       <div class="modal-body stats-body">
         <div class="stats-tabs" role="tablist" aria-label="Stats category">
@@ -1401,7 +1401,7 @@
     <div class="modal-content collection-content">
       <div class="modal-header">
         <h2>Collection</h2>
-        <button class="modal-close">&times;</button>
+        <button class="modal-close" aria-label="Close"><img class="ui-icon-close" src="assets/sprites/ui-close.svg" alt="Close" draggable="false" onerror="this.replaceWith('×')"></button>
       </div>
       <div class="modal-body">
         <!-- Themes only. The emoji-pack / effects / titles tabs were

@@ -8,7 +8,7 @@
 import { state } from './state/gameState.js';
 import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn, escapeHtml } from './ui/domHelpers.js';
 import { resizeCells, updateAllCells, getThemeEmoji, needsZoom, updateZoom, zoomIn, zoomOut, setFocusedCell, announceGame } from './ui/boardRenderer.js';
-import { preloadSprites, spriteImgHTML, themeSpriteImgHTML, medalImgForEmoji, gimmickSpriteImgHTML, achievementSpriteImgHTML } from './ui/spriteLoader.js';
+import { preloadSprites, spriteImgHTML, themeSpriteImgHTML, medalImgForEmoji, gimmickSpriteImgHTML, achievementSpriteImgHTML, uiSpriteImgHTML } from './ui/spriteLoader.js';
 import { updateHeader, updateStreakBorder, updateFlagModeBar, getCheckpointForLevel, CHECKPOINT_INTERVAL } from './ui/headerRenderer.js';
 import { updatePowerUpBar } from './ui/powerUpBar.js';
 import { showModal, hideModal, hideAllModals } from './ui/modalManager.js';
@@ -1455,7 +1455,7 @@ async function _renderFriendsView() {
       const row = document.createElement('div');
       row.className = 'friends-row';
       row.innerHTML = `<span class="friends-row-name">${escapeHtml(f.name)}</span>`
-        + `<button class="friends-remove" data-friend-uid="${escapeHtml(f.uid)}" title="Remove friend">✕</button>`;
+        + `<button class="friends-remove" data-friend-uid="${escapeHtml(f.uid)}" title="Remove friend" aria-label="Remove friend">${uiSpriteImgHTML('uiClose', 'ui-icon')}</button>`;
       listEl.appendChild(row);
     }
   }
@@ -2479,7 +2479,7 @@ function showCheckpointSelector() {
     resumeEl.innerHTML = '';
     const btn = document.createElement('button');
     btn.className = 'checkpoint-resume-btn';
-    btn.innerHTML = `<span class="resume-icon">▶️</span><span class="resume-label">Resume Game<br><span class="resume-level">Level ${savedGame.currentLevel}</span></span>`;
+    btn.innerHTML = `<span class="resume-icon">${uiSpriteImgHTML('uiReplay', 'ui-icon')}</span><span class="resume-label">Resume Game<br><span class="resume-level">Level ${savedGame.currentLevel}</span></span>`;
     btn.addEventListener('click', () => {
       hideModal('checkpoint-modal');
       hideTitleScreen();
@@ -3520,7 +3520,7 @@ if (muteBtn) {
   muteBtn.addEventListener('click', () => {
     const nowMuted = !isMuted();
     setMuted(nowMuted);
-    muteBtn.textContent = nowMuted ? '🔇' : '🔊';
+    muteBtn.innerHTML = uiSpriteImgHTML(nowMuted ? 'uiMuteOff' : 'uiMuteOn', 'ui-icon-nav', nowMuted ? 'Unmute' : 'Mute');
     muteBtn.title = nowMuted ? 'Unmute' : 'Mute';
   });
 }
@@ -3754,7 +3754,7 @@ async function init() {
 
   const muted = loadMuted();
   if (muteBtn) {
-    muteBtn.textContent = muted ? '🔇' : '🔊';
+    muteBtn.innerHTML = uiSpriteImgHTML(muted ? 'uiMuteOff' : 'uiMuteOn', 'ui-icon-nav', muted ? 'Unmute' : 'Mute');
     muteBtn.title = muted ? 'Unmute' : 'Mute';
   }
 

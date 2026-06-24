@@ -71,6 +71,34 @@ const SPRITES = {
   achTimedSpeed:       { defaultEmoji: '⏱️', url: 'assets/sprites/ach-timedSpeed.svg' },
   achGimmickMaster:    { defaultEmoji: '🎪', url: 'assets/sprites/ach-gimmickMaster.svg' },
   achDailyStreak:      { defaultEmoji: '📆', url: 'assets/sprites/ach-dailyStreak.svg' },
+
+  // ── Wave C chrome icons (2026-06-24) ──
+  // Theme-agnostic UI affordances, rendered BY KEY (uiSpriteImgHTML /
+  // uiSpriteUrl), never by emoji — several share a glyph with content
+  // icons (🏆 leaderboard vs Victory, ❓ help vs mystery), so no
+  // defaultEmoji here. Drawn in one house style; see ICON-STYLE-GUIDE.md.
+  uiHome:        { url: 'assets/sprites/ui-home.svg' },
+  uiStats:       { url: 'assets/sprites/ui-stats.svg' },
+  uiSettings:    { url: 'assets/sprites/ui-settings.svg' },
+  uiHelp:        { url: 'assets/sprites/ui-help.svg' },
+  uiLeaderboard: { url: 'assets/sprites/ui-leaderboard.svg' },
+  uiCollection:  { url: 'assets/sprites/ui-collection.svg' },
+  uiMuteOn:      { url: 'assets/sprites/ui-mute-on.svg' },
+  uiMuteOff:     { url: 'assets/sprites/ui-mute-off.svg' },
+  uiClose:       { url: 'assets/sprites/ui-close.svg' },
+  uiReplay:      { url: 'assets/sprites/ui-replay.svg' },
+  uiUpdate:      { url: 'assets/sprites/ui-update.svg' },
+  uiReset:       { url: 'assets/sprites/ui-reset.svg' },
+  uiDelete:      { url: 'assets/sprites/ui-delete.svg' },
+  uiReport:      { url: 'assets/sprites/ui-report.svg' },
+  uiSponsor:     { url: 'assets/sprites/ui-sponsor.svg' },
+  uiDiagnostics: { url: 'assets/sprites/ui-diagnostics.svg' },
+  uiWhatsNew:    { url: 'assets/sprites/ui-whatsnew.svg' },
+  uiMore:        { url: 'assets/sprites/ui-more.svg' },
+  uiPause:       { url: 'assets/sprites/ui-pause.svg' },
+  uiNotifyOn:    { url: 'assets/sprites/ui-notify-on.svg' },
+  uiNotifyOff:   { url: 'assets/sprites/ui-notify-off.svg' },
+  uiReveal:      { url: 'assets/sprites/ui-reveal.svg' },
 };
 
 // Retain Image refs until each one fires onload/onerror so the browser
@@ -257,4 +285,16 @@ const ACHIEVEMENT_SPRITE_KEYS = {
 export function achievementSpriteImgHTML(catId, sizeClass = 'sprite-medal', alt = '') {
   const spriteKey = ACHIEVEMENT_SPRITE_KEYS[catId];
   return spriteKey ? spriteImgHTML(spriteKey, sizeClass, alt) : null;
+}
+
+// ── Chrome icon sprites (Wave C) ─────────────────────────
+// Nav / settings / indicator affordances. uiSpriteImgHTML for HTML
+// strings; uiSpriteUrl for toggle buttons whose src flips at runtime
+// (mute, notifications). Theme-agnostic, keyed (see the SPRITES note).
+export function uiSpriteImgHTML(key, sizeClass = 'ui-icon', alt = '') {
+  return SPRITES[key] ? spriteImgHTML(key, sizeClass, alt) : '';
+}
+
+export function uiSpriteUrl(key) {
+  return SPRITES[key] ? SPRITES[key].url : null;
 }

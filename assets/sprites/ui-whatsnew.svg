@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- What's New: a sparkle/twinkle — new and shiny. -->
+  <path d="M64 12 C67 48 72 53 108 56 C72 59 67 64 64 100 C61 64 56 59 20 56 C56 53 61 48 64 12 Z" fill="#ffce3a" stroke="#232838" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M99 18 C100 29 102 31 113 33 C102 35 100 37 99 48 C98 37 96 35 85 33 C96 31 98 29 99 18 Z" fill="#ffd23e" stroke="#232838" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M32 84 C33 92 35 94 43 95 C35 96 33 98 32 106 C31 98 29 96 21 95 C29 94 31 92 32 84 Z" fill="#ffd23e" stroke="#232838" stroke-width="2.5" stroke-linejoin="round"/>
+</svg>

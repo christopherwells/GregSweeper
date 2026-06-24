@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Settings: an enamel gear with depth and a Greg-green jewel core. -->
+  <g fill="#232838">
+    <rect x="53" y="6" width="22" height="26" rx="5" transform="rotate(0 64 64)"/>
+    <rect x="53" y="6" width="22" height="26" rx="5" transform="rotate(45 64 64)"/>
+    <rect x="53" y="6" width="22" height="26" rx="5" transform="rotate(90 64 64)"/>
+    <rect x="53" y="6" width="22" height="26" rx="5" transform="rotate(135 64 64)"/>
+    <rect x="53" y="6" width="22" height="26" rx="5" transform="rotate(180 64 64)"/>
+    <rect x="53" y="6" width="22" height="26" rx="5" transform="rotate(225 64 64)"/>
+    <rect x="53" y="6" width="22" height="26" rx="5" transform="rotate(270 64 64)"/>
+    <rect x="53" y="6" width="22" height="26" rx="5" transform="rotate(315 64 64)"/>
+  </g>
+  <circle cx="64" cy="64" r="36" fill="#232838"/>
+  <g fill="#9aa3b0">
+    <rect x="58" y="12" width="12" height="23" rx="3" transform="rotate(0 64 64)"/>
+    <rect x="58" y="12" width="12" height="23" rx="3" transform="rotate(45 64 64)"/>
+    <rect x="58" y="12" width="12" height="23" rx="3" transform="rotate(90 64 64)"/>
+    <rect x="58" y="12" width="12" height="23" rx="3" transform="rotate(135 64 64)"/>
+    <rect x="58" y="12" width="12" height="23" rx="3" transform="rotate(180 64 64)"/>
+    <rect x="58" y="12" width="12" height="23" rx="3" transform="rotate(225 64 64)"/>
+    <rect x="58" y="12" width="12" height="23" rx="3" transform="rotate(270 64 64)"/>
+    <rect x="58" y="12" width="12" height="23" rx="3" transform="rotate(315 64 64)"/>
+  </g>
+  <circle cx="64" cy="64" r="30" fill="#9aa3b0"/>
+  <path d="M44 52 A24 24 0 0 1 62 38" fill="none" stroke="#cdd6e4" stroke-width="5" stroke-linecap="round" opacity="0.8"/>
+  <circle cx="64" cy="64" r="15" fill="#53a05b" stroke="#232838" stroke-width="5"/>
+  <circle cx="59" cy="59" r="4" fill="#9be0a8"/>
+</svg>

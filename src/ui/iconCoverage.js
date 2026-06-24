@@ -65,6 +65,29 @@ export const ICON_STATUS = {
   '🎪': 'sprite',   // gimmickMaster / Modifier Master
   '📆': 'sprite',   // dailyStreak / Daily Devotee
 
+  // ── Chrome / nav / indicators (Wave C, SVG) ──
+  // Rendered by key (uiSpriteImgHTML / static <img>), so the glyph is a
+  // fallback. ❓ (help) and 🏆 (leaderboard) reuse the 'sprite' rows above.
+  '🏠': 'sprite',   // home
+  '⚙️': 'sprite',   // settings gear
+  '📊': 'sprite',   // stats / progress
+  '🎨': 'sprite',   // collection (nav)
+  '🎁': 'sprite',   // collection (sheet — unified to one icon)
+  '🔊': 'sprite',   // sound on
+  '🔇': 'sprite',   // muted
+  '▶️': 'sprite',   // replay / resume
+  '🔄': 'sprite',   // check for updates
+  '🗑️': 'sprite',   // reset profile
+  '🌐': 'sprite',   // delete data (server)
+  '🐛': 'sprite',   // report a problem
+  '💛': 'sprite',   // sponsor
+  '🔬': 'sprite',   // diagnostics (own icon; X-ray power-up keeps pow-xray)
+  '📋': 'sprite',   // what's new
+  '⏸': 'sprite',    // idle / paused
+  '🔔': 'sprite',   // notifications on
+  '🔕': 'sprite',   // notifications off
+  '×':  'sprite',   // close / friend-remove (&times; entity)
+
   // ── Plain-text / intentional emoji ──
   // These appear in share cards, toast messages, or semantic contexts
   // where an SVG sprite would be wrong (copy-paste, accessibility).
@@ -74,5 +97,4 @@ export const ICON_STATUS = {
   '✨': 'plain',    // modifier primer intro
   '🧩': 'plain',    // modifier recap intro
   '✓':  'plain',    // certified chip (text, not emoji)
-  '👆': 'plain',    // flag mode off indicator
 };
