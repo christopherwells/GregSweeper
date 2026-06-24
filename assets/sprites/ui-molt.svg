@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Molt-day crab (Greg): wide carapace, big corner claws, splayed legs. -->
+  <g stroke="#232838" stroke-width="7" stroke-linecap="round"><path d="M40 70 L12 64"/><path d="M42 79 L14 86"/><path d="M47 87 L30 102"/><path d="M88 70 L116 64"/><path d="M86 79 L114 86"/><path d="M81 87 L98 102"/></g>
+  <path d="M36 56 C12 52 6 28 26 18 C37 11 49 19 44 32 L40 44 L57 36 C66 50 56 66 36 56 Z" fill="#53a05b" stroke="#232838" stroke-width="5.5" stroke-linejoin="round"/>
+  <path d="M92 56 C116 52 122 28 102 18 C91 11 79 19 84 32 L88 44 L71 36 C62 50 72 66 92 56 Z" fill="#53a05b" stroke="#232838" stroke-width="5.5" stroke-linejoin="round"/>
+  <path d="M26 70 Q26 88 64 88 Q102 88 102 70 Q102 58 64 58 Q26 58 26 70 Z" fill="#53a05b" stroke="#232838" stroke-width="6" stroke-linejoin="round"/>
+  <circle cx="56" cy="68" r="3.8" fill="#fff" stroke="#232838" stroke-width="2.4"/><circle cx="56" cy="68" r="1.5" fill="#232838"/>
+  <circle cx="72" cy="68" r="3.8" fill="#fff" stroke="#232838" stroke-width="2.4"/><circle cx="72" cy="68" r="1.5" fill="#232838"/>
+</svg>

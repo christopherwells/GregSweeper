@@ -1,7 +1,7 @@
 import { state, ENCOURAGEMENT_LINES, getActiveBombPenaltyTotal } from '../state/gameState.js';
 import { $, $$, boardEl, resetBtn, scanToast, escapeHtml } from '../ui/domHelpers.js';
 import { getThemeEmoji, updateAllCells, announceGame } from '../ui/boardRenderer.js';
-import { applyIcon, spriteImgHTML, medalImgForEmoji, achievementSpriteImgHTML } from '../ui/spriteLoader.js';
+import { applyIcon, spriteImgHTML, medalImgForEmoji, achievementSpriteImgHTML, uiSpriteImgHTML } from '../ui/spriteLoader.js';
 import { updateHeader, updateStreakBorder, updateCheckpointDisplay, getCheckpointForLevel } from '../ui/headerRenderer.js';
 import { updatePowerUpBar } from '../ui/powerUpBar.js';
 import { showModal, hideModal } from '../ui/modalManager.js';
@@ -350,7 +350,7 @@ export function handleWin() {
   if (moltEvent) {
     if (moltEvent.coveredDates && moltEvent.coveredDates.length > 0) {
       // A cover saved the streak — a quiet inline confirmation here.
-      moltNote = `<span class="molt-note">🦀 Molt day covered ${_coveredPhrase(moltEvent.coveredDates)}. Streak intact at ${moltEvent.streakKept}.</span><br>`;
+      moltNote = `<span class="molt-note">${uiSpriteImgHTML('uiMolt', 'molt-inline')} Molt day covered ${_coveredPhrase(moltEvent.coveredDates)}. Streak intact at ${moltEvent.streakKept}.</span><br>`;
     } else if (moltEvent.earned && isRealDaily) {
       // Earning one is a milestone — flag the celebratory popup + the crab
       // placement animation that play when the player lands back on the title.
@@ -487,7 +487,7 @@ export function handleWin() {
     state.powerUps.lifeline = (state.powerUps.lifeline || 0) + 1;
     saveModePowerUps(state.gameMode, state.powerUps);
   saveProgress({ powerUps: loadPowerUps() });
-    showToast('❤️ Lifeline earned!');
+    showToast('Lifeline earned!', 2000, 'uiLifeline');
   }
 
   playWin();
@@ -768,9 +768,9 @@ export function handleWin() {
   if (isNewRecord) {
     if (state.gameMode === 'timed') {
       const rating = getSpeedRating(state.currentLevel, state.elapsedTime);
-      gameoverRecord.innerHTML = `🏆 New Record: ${state.elapsedTime}s ${medalImgForEmoji(rating.icon, 'sprite-rank', rating.name) || rating.icon}`;
+      gameoverRecord.innerHTML = `${uiSpriteImgHTML('achWins', 'record-icon')} New Record: ${state.elapsedTime}s ${medalImgForEmoji(rating.icon, 'sprite-rank', rating.name) || rating.icon}`;
     } else {
-      gameoverRecord.textContent = '🎉 New Record!';
+      gameoverRecord.innerHTML = `${uiSpriteImgHTML('uiCelebrate', 'record-icon')} New Record!`;
     }
     gameoverRecord.classList.remove('hidden');
 
@@ -901,7 +901,7 @@ export function handleWin() {
           // out of the personal history timeline.
           showToast('Too many mines hit — this run won\'t be ranked');
         } else {
-          showToast(ok ? '✅ Score submitted!' : '📡 Saved. Uploads when you reconnect');
+          showToast(ok ? 'Score submitted!' : 'Saved. Uploads when you reconnect', 2000, ok ? 'uiSuccess' : 'uiCloud');
           // Per-user daily-history timeline feeds the leaderboard-modal
           // chart. Skip for practice dailies — they play on a custom seed
           // and don't belong on the player's regular history timeline.
@@ -912,7 +912,7 @@ export function handleWin() {
           }
         }
       }).catch(() => {
-        showToast('📡 Saved. Uploads when you reconnect');
+        showToast('Saved. Uploads when you reconnect', 2000, 'uiCloud');
         if (!state.isDailyPractice) {
           saveDailyHistoryEntry(dateStr, { time: scoreTime });
         }

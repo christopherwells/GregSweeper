@@ -86,7 +86,7 @@ const STEPS = [
     // numbered "Step": it teaches the contract, not a mechanic.
     id: 'promise',
     title: 'You never have to guess',
-    text: 'Every standard board is checked before you play it: from your start there is always a square you can prove safe, all the way to the end. In a real game, if you get stuck, the 🤔 button beside the smiley lights up the clues that prove the next move.',
+    text: 'Every standard board is checked before you play it: from your start there is always a square you can prove safe, all the way to the end. In a real game, if you get stuck, the Stuck button beside the smiley lights up the clues that prove the next move.',
     action: 'next',
     buttonText: 'Good to know',
   },

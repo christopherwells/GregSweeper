@@ -373,7 +373,7 @@
           <span id="flag-mode-icon"><img class="ui-icon" src="assets/sprites/ui-reveal.svg" alt="" draggable="false"></span>
         </button>
         <button id="reset-btn" class="smiley-btn" aria-label="New Game">😊</button>
-        <button id="stuck-btn" class="header-icon-btn stuck-btn" aria-label="Stuck? Shows where to look, never what to click" title="Stuck?">🤔</button>
+        <button id="stuck-btn" class="header-icon-btn stuck-btn" aria-label="Stuck? Shows where to look, never what to click" title="Stuck?"><img class="header-btn-icon" src="assets/sprites/ui-lens.svg" alt="" draggable="false" onerror="this.replaceWith('🤔')"></button>
         <div class="header-right">
           <div id="timer-display" class="lcd-display">000</div>
         </div>
@@ -567,8 +567,8 @@
                tomorrow's reminder right here converts at far higher rates
                than the same toggle buried in Settings. -->
           <button id="gameover-remind-tomorrow" class="action-btn primary hidden"><img class="ui-icon-label" src="assets/sprites/ui-notify-on.svg" alt="" draggable="false" onerror="this.replaceWith('🔔')">Remind me tomorrow</button>
-          <button id="gameover-share" class="action-btn share-btn hidden">📋 Share</button>
-          <button id="gameover-crux-challenge" class="action-btn hidden">🦀 Challenge a friend</button>
+          <button id="gameover-share" class="action-btn share-btn hidden"><img class="ui-icon-label" src="assets/sprites/ui-share.svg" alt="" draggable="false" onerror="this.replaceWith('📋')">Share</button>
+          <button id="gameover-crux-challenge" class="action-btn hidden"><img class="ui-icon-label" src="assets/sprites/ui-molt.svg" alt="" draggable="false" onerror="this.replaceWith('🦀')">Challenge a friend</button>
           <button id="gameover-done" class="action-btn hidden">Done</button>
         </div>
       </div>
@@ -662,7 +662,7 @@
           <div class="help-section">
             <h3>The Guarantee</h3>
             <p>Every standard board is checked by a solver before you play it. From the marked start square (or your first click in Challenge and Quick Play) there is always a next square you can prove safe, all the way to the end. You never have to gamble.</p>
-            <p>If you get stuck, tap the <strong>🤔 button</strong> beside the smiley and the game lights up the clues that prove the next move. The ✓ Certified chip above the board opens the board&rsquo;s own check. Chaos is the one exception to the guarantee, and it says so.</p>
+            <p>If you get stuck, tap the <strong>Stuck?</strong> button (the loupe beside the smiley) and the game lights up the clues that prove the next move. The ✓ Certified chip above the board opens the board&rsquo;s own check. Chaos is the one exception to the guarantee, and it says so.</p>
           </div>
           <div class="help-section">
             <h3>Goal</h3>
@@ -784,7 +784,7 @@
         <button class="modal-close" aria-label="Close"><img class="ui-icon-close" src="assets/sprites/ui-close.svg" alt="Close" draggable="false" onerror="this.replaceWith('×')"></button>
       </div>
       <div class="modal-body meet-greg-body">
-        <div class="molt-earned-crab" aria-hidden="true">🦀</div>
+        <div class="molt-earned-crab" aria-hidden="true"><img src="assets/sprites/ui-molt.svg" alt="" draggable="false" onerror="this.replaceWith('🦀')"></div>
         <p>Greg banked you a molt day. Miss a day and it covers you, so your streak lives on.</p>
         <p>You can hold two.</p>
         <button id="molt-earned-done" type="button" class="molt-earned-done">Got it</button>
@@ -814,7 +814,7 @@
         </div>
         <div id="archive-grid" class="archive-grid"></div>
         <p id="archive-empty-note" class="archive-empty-note hidden">No past boards in this month.</p>
-        <button id="archive-crux-btn" class="archive-crux-btn" type="button">🦀 See yesterday's crux</button>
+        <button id="archive-crux-btn" class="archive-crux-btn" type="button"><img class="ui-icon-label" src="assets/sprites/ui-molt.svg" alt="" draggable="false" onerror="this.replaceWith('🦀')">See yesterday's crux</button>
       </div>
     </div>
   </div>
@@ -1116,9 +1116,9 @@
           <ul>
             <li><strong>The board shows its proof</strong>: After a loss, every provably safe cell is outlined; tap any cell to ask &ldquo;was this knowable?&rdquo; and watch the cells that prove it light up. &ldquo;Genuine 50/50&rdquo; is now a claim the engine can back.</li>
             <li><strong>Honest bomb verdicts</strong>: Each daily/weekly mine hit says whether the mine was provable, a safe move existed elsewhere, or you were genuinely at the frontier.</li>
-            <li><strong>Stuck? Ask the board</strong>: The new 🔍 button never names the safe cell. It tells you when a flag is provably wrong, or lights up the region where the next proof lives. Hinted runs are excluded from the par model.</li>
+            <li><strong>Stuck? Ask the board</strong>: The new Stuck button never names the safe cell. It tells you when a flag is provably wrong, or lights up the region where the next proof lives. Hinted runs are excluded from the par model.</li>
             <li><strong>Greg speaks</strong>: The daily card says why today&rsquo;s board exists (&ldquo;today is a compass study&rdquo;), and the leaderboard reports what yesterday&rsquo;s runs did to the model, including the bad days.</li>
-            <li><strong>Greg&rsquo;s Gym</strong>: A new 🏋️ practice room that generates fresh drill boards where only squares the clues can settle will open. You can&rsquo;t luck through one; the pattern is named after you find it.</li>
+            <li><strong>Greg&rsquo;s Gym</strong>: A new practice room that generates fresh drill boards where only squares the clues can settle will open. You can&rsquo;t luck through one; the pattern is named after you find it.</li>
             <li><strong>Timed gets a par</strong>: Every Quick Play board now shows Greg&rsquo;s Time and your delta.</li>
             <li><strong>Achievements that mean something</strong>: New skill feats (Flagless, No Wasted Clicks, Tank Commander, Lie Detector) certified by the engine; the pure attendance badges are retired.</li>
           </ul>
