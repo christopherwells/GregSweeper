@@ -262,6 +262,13 @@ export function gimmickSpriteImgHTML(gimmickKey, sizeClass = 'sprite-gimmick', a
   return spriteKey ? spriteImgHTML(spriteKey, sizeClass, alt) : null;
 }
 
+// Raw sprite URL for a gimmick key — used by the canvas share-card
+// renderer (drawImage needs a URL, not HTML).
+export function gimmickSpriteUrl(gimmickKey) {
+  const spriteKey = GIMMICK_SPRITE_KEYS[gimmickKey];
+  return spriteKey && SPRITES[spriteKey] ? SPRITES[spriteKey].url : null;
+}
+
 export function applyGimmickIcon(el, gimmickKey, fallbackEmoji) {
   const spriteKey = GIMMICK_SPRITE_KEYS[gimmickKey];
   if (spriteKey) {
