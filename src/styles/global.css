@@ -4737,11 +4737,18 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 
 /* ── Share Card Preview ─────────────────────────────── */
 .share-card-preview {
-  margin: 10px auto;
-  padding: 8px;
-  border-radius: 8px;
-  background: var(--color-surface, rgba(0,0,0,0.05));
-  display: inline-block;
+  margin: 12px auto;
+  display: block;
+  text-align: center;
+}
+/* Wave D: the rendered share-card PNG shown in the win modal. */
+.share-card-img {
+  display: block;
+  width: 100%;
+  max-width: 300px;
+  margin: 0 auto;
+  border-radius: 12px;
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.28);
 }
 .share-card-grid {
   display: grid;

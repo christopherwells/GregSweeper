@@ -105,36 +105,17 @@ function showAchievementToasts(unlocks) {
 
 // ── Share Card Preview ─────────────────────────────────
 
+// Render the shareable card IMAGE (Wave D): a themed PNG with the real
+// sprites, painted into the preview and stashed as a File for Web Share.
+// Lazy-loaded (only needed on a win); on failure the preview hides and
+// the text card remains the share fallback.
 function renderShareCardPreview() {
   const preview = $('#share-card-preview');
-  const grid = $('#share-card-grid');
-  if (!preview || !grid) return;
-
-  const totalCells = state.rows * state.cols;
-  const mines = state.totalMines;
-  const revealed = state.revealedCount;
-  const unrevealed = totalCells - revealed - mines;
-
-  const cells = [];
-  for (let i = 0; i < mines; i++) cells.push('mine');
-  for (let i = 0; i < revealed; i++) cells.push('safe');
-  for (let i = 0; i < unrevealed; i++) cells.push('empty');
-
-  // Shuffle (Fisher-Yates)
-  for (let i = cells.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [cells[i], cells[j]] = [cells[j], cells[i]];
-  }
-
-  grid.innerHTML = '';
-  grid.style.gridTemplateColumns = `repeat(${state.cols}, 10px)`;
-  cells.slice(0, state.rows * state.cols).forEach(type => {
-    const cell = document.createElement('div');
-    cell.className = `share-card-cell ${type}`;
-    grid.appendChild(cell);
-  });
-
+  if (!preview) return;
   preview.classList.remove('hidden');
+  import('../ui/shareCardImage.js')
+    .then((m) => m.prepareShareCard(state, preview))
+    .catch(() => { preview.classList.add('hidden'); });
 }
 
 // Render the compact 7-dot daily-history strip on the win modal.
