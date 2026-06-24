@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Copy: two stacked sheets. -->
+  <rect x="22" y="34" width="52" height="64" rx="8" fill="#cdd6e4" stroke="#232838" stroke-width="6"/>
+  <rect x="46" y="22" width="52" height="64" rx="8" fill="#f3f6fb" stroke="#232838" stroke-width="6"/>
+  <g stroke="#9aa6bd" stroke-width="4" stroke-linecap="round"><path d="M58 40 L86 40"/><path d="M58 52 L86 52"/><path d="M58 64 L78 64"/></g>
+</svg>

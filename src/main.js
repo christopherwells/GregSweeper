@@ -231,7 +231,7 @@ async function ensureLatestServiceWorker(timeoutMs = 3000) {
         safeSet(SW_UPDATE_FAIL_KEY, String(fails));
         if (fails >= 3) {
           import('./ui/toastManager.js').then(m => m.showToast(
-            '⚠️ Game updates aren\'t reaching this device. Try closing every tab of the game and reopening it.', 6000));
+            'Game updates aren\'t reaching this device. Try closing every tab of the game and reopening it.', 6000, 'uiWarning'));
         }
       }
     );
@@ -1755,7 +1755,8 @@ function copyToClipboard(text) {
 function showShareCopiedToast() {
   const toast = document.createElement('div');
   toast.className = 'share-copied-toast';
-  toast.textContent = '📋 Copied to clipboard!';
+  toast.innerHTML = `${uiSpriteImgHTML('uiCopy', 'toast-icon')} Copied to clipboard!`;
+  toast.classList.add('has-icon');
   document.getElementById('app').appendChild(toast);
   setTimeout(() => toast.remove(), 2000);
 }
@@ -2297,7 +2298,7 @@ function updateTitleProgress() {
       ? `A molt day is holding your ${provisional.streakHeld} day streak. Play today to keep it going.`
       : 'Molt days banked. Earned every 5 days in a row, spent automatically when you miss a day. Holds 2.';
     const moltCorner = banked > 0
-      ? `<span class="daily-corner-molt" title="${moltTitle}">${'🦀'.repeat(banked)}</span>`
+      ? `<span class="daily-corner-molt" title="${moltTitle}">${uiSpriteImgHTML('uiMolt', 'molt-token').repeat(banked)}</span>`
       : '';
 
     // Greg's note (the daily's character) is the center descriptor, with the
@@ -3410,7 +3411,7 @@ $('#gameover-submit-daily').addEventListener('click', async (e) => {
     } else if (submitOk === 'cheat') {
       showToast('Too many mines hit — this run won\'t be ranked');
     } else {
-      showToast(submitOk ? '✅ Score submitted!' : '📡 Saved. Uploads when you reconnect');
+      showToast(submitOk ? 'Score submitted!' : 'Saved. Uploads when you reconnect', 2000, submitOk ? 'uiSuccess' : 'uiCloud');
     }
   }
 });
@@ -3464,7 +3465,7 @@ $('#gameover-remind-tomorrow').addEventListener('click', async () => {
   const btn = $('#gameover-remind-tomorrow');
   if (!btn || btn.disabled) return;
   btn.disabled = true;
-  btn.textContent = '⏳ Setting up…';
+  btn.innerHTML = `${uiSpriteImgHTML('uiLoading', 'btn-icon')} Setting up…`;
   try {
     const { enableNotifications, loadNotificationPrefs } = await import('./firebase/firebasePush.js');
     const prefs = await loadNotificationPrefs();
@@ -3474,14 +3475,14 @@ $('#gameover-remind-tomorrow').addEventListener('click', async () => {
       streakWarning: prefs.streakWarning ?? false,
     });
     if (result === true || result === 'ok') {
-      btn.textContent = '✅ Reminder set for tomorrow';
+      btn.innerHTML = `${uiSpriteImgHTML('uiSuccess', 'btn-icon')} Reminder set for tomorrow`;
       showToast('Notifications on. See you tomorrow!');
     } else if (result === 'ios-needs-install') {
-      btn.textContent = '📱 Install to home screen first';
+      btn.innerHTML = `${uiSpriteImgHTML('uiPhone', 'btn-icon')} Install to home screen first`;
       showToast('Install GregSweeper to your home screen on iOS first');
       btn.disabled = false;
     } else if (result === 'denied') {
-      btn.textContent = '⚠️ Permission blocked';
+      btn.innerHTML = `${uiSpriteImgHTML('uiWarning', 'btn-icon')} Permission blocked`;
       showToast('Notification permission was blocked in browser settings');
     } else {
       btn.textContent = 'Try again';
@@ -3672,7 +3673,7 @@ if (dailyReminderToggle) {
       const result = await enableNotifications({ hourLocal: hour, dailyReminder: true, streakWarning: streakOn });
       if (result === 'success') {
         if (streakWarningToggle) streakWarningToggle.disabled = false;
-        showToast('🔔 Daily reminders enabled');
+        showToast('Daily reminders enabled', 2000, 'uiNotifyOn');
       } else if (result === 'denied') {
         dailyReminderToggle.checked = false;
         showToast('Notifications are blocked in your browser settings. Enable them there to use this.');
@@ -3702,7 +3703,7 @@ if (dailyReminderToggle) {
           streakWarningToggle.checked = false;
           streakWarningToggle.disabled = true;
         }
-        showToast('🔕 Daily reminders disabled');
+        showToast('Daily reminders disabled', 2000, 'uiNotifyOff');
       }
     }
   });
@@ -3723,7 +3724,7 @@ if (streakWarningToggle) {
     const enabled = streakWarningToggle.checked;
     const ok = await updateStreakWarning(enabled);
     if (ok) {
-      showToast(enabled ? '🔥 Streak rescue on (8pm ET)' : 'Streak rescue off');
+      showToast(enabled ? 'Streak rescue on (8pm ET)' : 'Streak rescue off', 2000, enabled ? 'achStreak' : null);
     } else {
       streakWarningToggle.checked = !enabled;
       showToast('Could not update. Try again later.');
@@ -3835,7 +3836,7 @@ async function init() {
 
   // Warn if localStorage is broken (private browsing, quota, etc.)
   if (isStorageFailing()) {
-    showToast('⚠️ Playing in temporary mode: progress won\'t be saved', 5000);
+    showToast('Playing in temporary mode: progress won\'t be saved', 5000, 'uiWarning');
   }
 
   // Ask the browser to mark our storage as persistent so it isn't

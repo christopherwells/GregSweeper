@@ -22,6 +22,7 @@ import { classifyPattern } from '../logic/patternNames.js';
 import { LESSONS, LESSON_ORDER, generateLessonBoard, applyLessonOpening, lessonComplete } from '../logic/lexicon.js';
 import { recordGymTechnique, getGymTechniqueCounts } from '../storage/statsStorage.js';
 import { showToast } from './toastManager.js';
+import { uiSpriteUrl, uiSpriteImgHTML } from './spriteLoader.js';
 import { playReveal, playCascade, playFlag, playUnflag, playWin, playGateBounce } from '../audio/sounds.js';
 
 let _overlay = null;
@@ -160,7 +161,7 @@ function _buildOverlay() {
       <div class="lexicon-view lexicon-select">
         <p class="lexicon-select-intro">Pick a skill to drill. A square only opens when the clues prove it safe, so you cannot guess your way through. Greg names the move once you make it.</p>
         <div class="lexicon-lesson-list"></div>
-        <button class="lexicon-notebook-btn action-btn secondary">📓 Greg's Field Notebook</button>
+        <button class="lexicon-notebook-btn action-btn secondary">${uiSpriteImgHTML('uiNotebook', 'btn-icon')} Greg's Field Notebook</button>
       </div>
 
       <div class="lexicon-view lexicon-drill" hidden>
@@ -282,11 +283,24 @@ function _startLesson(id) {
 // would arrive seconds after the move it praises — exactly wrong for
 // in-the-moment coaching. One line, instantly replaced, right where the
 // player is already looking.
-function _coach(message, ms = 3200) {
+function _coach(message, ms = 3200, icon = null) {
   if (!_overlay) return;
   const el = _overlay.querySelector('.lexicon-coach');
   if (!el) return;
-  el.textContent = message;
+  el.textContent = '';
+  const iconUrl = icon ? uiSpriteUrl(icon) : null;
+  if (iconUrl) {
+    const img = document.createElement('img');
+    img.className = 'coach-icon';
+    img.src = iconUrl;
+    img.alt = '';
+    img.decoding = 'async';
+    img.draggable = false;
+    el.appendChild(img);
+    el.appendChild(document.createTextNode(message));
+  } else {
+    el.textContent = message;
+  }
   el.classList.remove('coach-pop');
   void el.offsetWidth;
   el.classList.add('coach-pop');
@@ -430,13 +444,13 @@ function _celebrate(ded, kind, precomputedCls) {
     if (!_flagTipShown) {
       _flagTipShown = true;
       if (_lesson.id === 'countingBasics') {
-        _coach('📌 Proven mine. Flag it, and every number beside it now needs one fewer, which often opens the next safe square.', 5600);
+        _coach('Proven mine. Flag it, and every number beside it now needs one fewer, which often opens the next safe square.', 5600, 'uiPin');
       } else {
         const why = explainDeduction(board, ded, { style: 'full', kind: 'mine' });
-        _coach(why ? `📌 Proven mine. ${why}` : '📌 Proven mine.', 5200);
+        _coach(why ? `Proven mine. ${why}` : 'Proven mine.', 5200, 'uiPin');
       }
     } else {
-      _coach('📌 Proven mine.', 2000);
+      _coach('Proven mine.', 2000, 'uiPin');
     }
     return;
   }
@@ -455,11 +469,11 @@ function _cheerShape(name) {
   _namesUsed.add(name);
   if (_firstTipPending) {
     _firstTipPending = false;
-    _coach(`💪 ${copy.cheer} ${copy.tip}`, 6500);
+    _coach(`${copy.cheer} ${copy.tip}`, 6500, 'uiSuccess');
   } else if (firstOfName) {
-    _coach(`💪 ${copy.cheer}`, 2600);
+    _coach(`${copy.cheer}`, 2600, 'uiSuccess');
   } else {
-    _coach(`💪 ${copy.again}`, 2400);
+    _coach(`${copy.again}`, 2400, 'uiSuccess');
   }
 }
 
@@ -486,15 +500,15 @@ function _nodPair(ded, family) {
   const lead = digits ? `A ${digits} is` : 'That is';
   const key = `pair-${family}`;
   if (_namesUsed.has(key)) {
-    _coach(`💪 Another ${family} hiding behind bigger numbers.`, 2400);
+    _coach(`Another ${family} hiding behind bigger numbers.`, 2400, 'uiSuccess');
     _namesUsed.add(key);
     return;
   }
   _namesUsed.add(key);
   if (family === '1-1') {
-    _coach(`💪 ${lead} a 1-1 wearing bigger numbers: two clues that need the same amount and watch the same squares, so the shared squares satisfy both and the extra one is safe. What matters is that they match, not their size.`, 5200);
+    _coach(`${lead} a 1-1 wearing bigger numbers: two clues that need the same amount and watch the same squares, so the shared squares satisfy both and the extra one is safe. What matters is that they match, not their size.`, 5200, 'uiSuccess');
   } else {
-    _coach(`💪 ${lead} a 1-2 wearing bigger numbers: one clue needs more than its neighbor, so its extra mines hide in the squares only it can see, and the smaller one's far square is safe. Read the gap between them, not their size.`, 5200);
+    _coach(`${lead} a 1-2 wearing bigger numbers: one clue needs more than its neighbor, so its extra mines hide in the squares only it can see, and the smaller one's far square is safe. Read the gap between them, not their size.`, 5200, 'uiSuccess');
   }
 }
 
@@ -522,9 +536,9 @@ function _tryFlag(row, col) {
         style: 'socratic',
         kind: frontier.mines.includes(hit) ? 'mine' : 'safe',
       });
-      if (ask) _coach(`🤔 The clues can't pin that square yet. ${ask}`, 5200);
+      if (ask) _coach(`The clues can't pin that square yet. ${ask}`, 5200, 'uiLens');
     } else {
-      _coach('🤔 The clues can\'t pin that square as a mine yet', 3600);
+      _coach('The clues can\'t pin that square as a mine yet', 3600, 'uiLens');
     }
     return;
   }
@@ -604,7 +618,7 @@ function _onCellClick(e) {
     if (next) {
       _pulse(next.sources);
       const ask = explainDeduction(board, next, { style: 'socratic', kind: 'safe' });
-      if (ask) _coach(`🤔 Not that one yet. ${ask}`, 5200);
+      if (ask) _coach(`Not that one yet. ${ask}`, 5200, 'uiLens');
     }
     return;
   }
@@ -650,7 +664,7 @@ function _tryChord(row, col) {
   if (flags !== cell.adjacentMines) {
     if (flags > 0) {
       _bounce(row, col);
-      _coach('🤔 Flag all of this number\'s mines first, then tap it to open the rest', 3800);
+      _coach('Flag all of this number\'s mines first, then tap it to open the rest', 3800, 'uiLens');
     }
     return;
   }
@@ -659,7 +673,7 @@ function _tryChord(row, col) {
   const completed = _finishMove(opened);
   if (!completed && opened > 0 && !_chordTipShown) {
     _chordTipShown = true;
-    _coach(`⚡ Chorded: the ${cell.adjacentMines} was fully flagged, so everything else around it opened at once`, 3600);
+    _coach(`Chorded: the ${cell.adjacentMines} was fully flagged, so everything else around it opened at once`, 3600, 'achSpeed');
   }
 }
 

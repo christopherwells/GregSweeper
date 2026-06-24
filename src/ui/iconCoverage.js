@@ -90,29 +90,23 @@ export const ICON_STATUS = {
   '🏅': 'sprite',   // Achievements sheet row (renders the medal sprite; emoji is the onerror fallback)
   'ℹ️': 'sprite',   // About row (renders Greg's sprite; emoji is the onerror fallback)
 
-  // ── Plain-text / intentional emoji ──
-  // These appear in share cards, toast messages, or semantic contexts
-  // where an SVG sprite would be wrong (copy-paste, accessibility).
-  '🔥': 'plain',    // streak fire
-  '🤔': 'plain',    // lens / stuck button
-  '🦀': 'plain',    // molt day crab
-  '✨': 'plain',    // modifier primer intro
-  '🧩': 'plain',    // modifier recap intro
-  '✓':  'plain',    // certified chip (text, not emoji)
+  // ── Wave E chrome (2026-06-24) ──
+  // Lens / Share / Copy / Notebook / molt and the ten toast-coach icons
+  // render BY KEY (ui-*.svg, no emoji), so they need no entry here. The
+  // one survivor is the Lens button's onerror fallback.
+  '🤔': 'sprite',   // Stuck button (renders ui-lens.svg; emoji is the onerror fallback)
 
-  // Transient text — toasts, gym headers, receipts, diagnostics, status
-  // dots. Emoji inline in a text message, where a sprite would be wrong.
-  '✅': 'plain',    // success checkmark (save / submit toasts, receipts)
-  '❤️': 'plain',    // lifeline (toast text + power-up onerror fallback)
-  '🎉': 'plain',    // new-record toast
-  '⚠️': 'plain',    // warning toasts
-  '⏳': 'plain',    // loading / pending
-  '📱': 'plain',    // install / add-to-home-screen hint
-  '🟢': 'plain',    // status dot (online)
-  '⚪': 'plain',    // status dot (idle)
-  '↔️': 'plain',    // sync direction (status text)
+  // ── Plain-text / intentional emoji ──
+  // What's LEFT after the Wave E squish: the share-card caption (kept by
+  // design), code comments, power-up award labels, semantic dots, and a
+  // few not-yet-squished surfaces (LCD header, power-up feedback, modifier
+  // example grids, quick-play prose) tracked for a later pass.
+  '🔥': 'plain',    // streak fire — share caption + LCD header (deferred)
+  '🦀': 'plain',    // molt crab — share caption text (UI draws uiMolt)
+  '✓':  'plain',    // certified chip (text, not emoji)
+  '❤️': 'plain',    // lifeline — power-up award label + onerror fallback
+  '🟢': 'plain',    // pace dot (share caption)
+  '⚪': 'plain',    // pace dot (share caption)
+  '↔️': 'plain',    // sync direction (code comment)
   '★':  'plain',    // diagnostics star (text)
-  '📓': 'plain',    // Greg's Gym field notebook header
-  '📌': 'plain',    // gym pinned note
-  '🤷': 'plain',    // receipt copy
 };

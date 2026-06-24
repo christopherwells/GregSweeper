@@ -6620,6 +6620,76 @@ pre.diagnostics-pre {
   margin-right: 0.25em;
 }
 
+/* ── Wave E: inline chrome + toast / coach sprites ────────────────────
+   The last plain-emoji surfaces, drawn. Sizes mirror sprite-header /
+   ui-icon-label so each icon sits on the baseline of its message. */
+.toast-icon {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  vertical-align: -4px;
+  pointer-events: none;
+}
+.queued-toast.has-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.coach-icon {
+  display: inline-block;
+  width: 1.2em;
+  height: 1.2em;
+  vertical-align: -0.25em;
+  margin-right: 0.4em;
+  pointer-events: none;
+}
+.game-sprite.btn-icon {
+  width: 20px;
+  height: 20px;
+  vertical-align: -5px;
+  margin-right: 7px;
+}
+.game-sprite.record-icon {
+  display: inline-block;
+  width: 1.35em;
+  height: 1.35em;
+  vertical-align: -0.28em;
+  margin-right: 0.25em;
+}
+.game-sprite.molt-inline {
+  display: inline-block;
+  width: 1.15em;
+  height: 1.15em;
+  vertical-align: -0.22em;
+  margin-right: 0.15em;
+}
+.game-sprite.molt-token {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  vertical-align: middle;
+}
+.game-sprite.gimmick-intro-icon {
+  display: block;
+  width: 46px;
+  height: 46px;
+  margin: 0 auto;
+}
+.header-btn-icon {
+  display: block;
+  width: 1.5em;
+  height: 1.5em;
+  margin: auto;
+  pointer-events: none;
+}
+.molt-earned-crab img {
+  display: block;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto;
+}
+
 /* ── Live theme carousel ──────────────────────────────────────────────────────
    A slim bar that floats over the bottom of the screen so the real board stays
    visible and re-themes live as you flip. Theme-NEUTRAL (its own fixed dark
