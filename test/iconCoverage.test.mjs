@@ -116,7 +116,13 @@ test('no unaccounted raw emoji on render surfaces (source scan)', () => {
   const unaccounted = new Set();
   for (const f of files) {
     const rel = relative(repoRoot, f).replace(/\\/g, '/');
-    for (const m of readFileSync(f, 'utf8').matchAll(re)) {
+    // Decode \uXXXX escapes before scanning: an escaped emoji (e.g.
+    // a sonar dish written '📡') is plain ASCII in source but
+    // renders as the emoji at runtime, so a literal-character scan alone
+    // would let it slip past.
+    const text = readFileSync(f, 'utf8')
+      .replace(/\\u([0-9a-fA-F]{4})/g, (_, h) => String.fromCharCode(parseInt(h, 16)));
+    for (const m of text.matchAll(re)) {
       const e = stripVS(m[0]);
       if (e && !accounted.has(e)) {
         unaccounted.add(`${e} (U+${e.codePointAt(0).toString(16).toUpperCase()}) in ${rel}`);

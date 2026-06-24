@@ -679,7 +679,7 @@ const THEME_EFFECTS = {
       }});
       return el;
     }, () => rand(1400, 3500));
-    // Vector petals, not the \uD83C\uDF38 glyph: a single rounded petal shape
+    // Vector petals, not the cherry-blossom glyph: a single rounded petal shape
     // (teardrop via asymmetric border-radius) in layered pinks, tumbling
     // the full board height.
     const petalCleanup = particleLoop(container, (c) => {

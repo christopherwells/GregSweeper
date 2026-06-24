@@ -1507,7 +1507,7 @@ function renderCollectionModal() {
         `<span class="cell unrevealed"></span>` +
       `</span>` +
       `<span class="swatch-name">${info.displayName}</span>` +
-      (unlocked[theme] === false ? `<span class="swatch-lock">🔒 Lv.${info.levelRequired}</span>` : '');
+      (unlocked[theme] === false ? `<span class="swatch-lock">${uiSpriteImgHTML('modLocked', 'inline-lock')} Lv.${info.levelRequired}</span>` : '');
     btn.addEventListener('click', () => {
       if (unlocked[theme] === false) {
         btn.classList.add('swatch-shake');

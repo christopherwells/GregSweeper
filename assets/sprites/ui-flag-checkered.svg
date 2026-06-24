@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Checkered finish flag — weekly mode + checkpoint LCD label. -->
+  <path d="M34 16 L34 112" stroke="#232838" stroke-width="9" stroke-linecap="round"/>
+  <path d="M34 18 L104 18 L104 66 L34 66 Z" fill="#f3f6fb" stroke="#232838" stroke-width="6" stroke-linejoin="round"/>
+  <g fill="#232838">
+    <rect x="34" y="18" width="17.5" height="12"/>
+    <rect x="69" y="18" width="17.5" height="12"/>
+    <rect x="51.5" y="30" width="17.5" height="12"/>
+    <rect x="86.5" y="30" width="17.5" height="12"/>
+    <rect x="34" y="42" width="17.5" height="12"/>
+    <rect x="69" y="42" width="17.5" height="12"/>
+    <rect x="51.5" y="54" width="17.5" height="12"/>
+    <rect x="86.5" y="54" width="17.5" height="12"/>
+  </g>
+</svg>

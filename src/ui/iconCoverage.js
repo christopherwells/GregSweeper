@@ -98,13 +98,13 @@ export const ICON_STATUS = {
 
   // ── Plain-text / intentional emoji ──
   // What's LEFT after the Wave E squish: the share-card caption (kept by
-  // design), code comments, power-up award labels, semantic dots, and a
-  // few not-yet-squished surfaces (LCD header, power-up feedback, modifier
-  // example grids, quick-play prose) tracked for a later pass.
-  '🔥': 'plain',    // streak fire — share caption + LCD header (deferred)
+  // design), code comments, and data/onerror fallbacks. Every player-facing
+  // render surface is now drawn — the literals below are caption text,
+  // comments, or registry fallbacks, not visible chrome.
+  '🔥': 'plain',    // streak fire — share-card caption text + achievement data def (UI draws achStreak)
   '🦀': 'plain',    // molt crab — share caption text (UI draws uiMolt)
   '✓':  'plain',    // certified chip (text, not emoji)
-  '❤️': 'plain',    // lifeline — power-up award label + onerror fallback
+  '❤️': 'plain',    // lifeline — onerror fallback (UI draws uiLifeline / powLifeline)
   '🟢': 'plain',    // pace dot (share caption)
   '⚪': 'plain',    // pace dot (share caption)
   '↔️': 'plain',    // sync direction (code comment)

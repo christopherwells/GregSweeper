@@ -1,7 +1,7 @@
 import { state } from '../state/gameState.js';
 import { boardEl, zoomControls, boardScrollWrapper } from './domHelpers.js';
 import { THEME_UNLOCKS } from './themeManager.js';
-import { applyIcon } from './spriteLoader.js';
+import { applyIcon, uiSpriteImgHTML } from './spriteLoader.js';
 import { applyThemeEffects } from './themeEffects.js';
 
 // ── Board Rendering ────────────────────────────────────
@@ -278,7 +278,7 @@ export function updateCell(r, c) {
         if (cell.isLiar) cellEl.classList.add('liar-cell');
         if (cell.isSonar) {
           cellEl.classList.add('sonar-cell');
-          cellEl.textContent = '📡' + displayNum;
+          cellEl.innerHTML = uiSpriteImgHTML('modSonar', 'sonar-marker') + displayNum;
         }
         if (cell.isCompass) {
           cellEl.classList.add('compass-cell');
