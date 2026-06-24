@@ -34,5 +34,15 @@ jobs:
 
       - name: Run unit tests
         # Glob the test files explicitly — `node --test <dir>` treats the
-        # directory as a module to execute rather than a test root.
+        # directory as a module to execute rather than a test root. This is
+        # the GATE: a red run blocks the merge.
         run: node --test test/*.test.mjs
+
+      - name: Coverage report (informational)
+        # Re-run with coverage instrumentation purely to print the trend as
+        # Layer-1 extractions move logic into covered pure modules. NOT a gate
+        # — continue-on-error so a coverage quirk can never block a merge, and
+        # no threshold is set (it would fight the deliberately untested DOM
+        # modules). Read the table in the log, don't act on a single number.
+        continue-on-error: true
+        run: node --test --experimental-test-coverage test/*.test.mjs

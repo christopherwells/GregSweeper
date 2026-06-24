@@ -1,5 +1,6 @@
 import { $, $$ } from './domHelpers.js';
 import { loadStats } from '../storage/statsStorage.js';
+import { applyThemeEffects } from './themeEffects.js';
 
 // ── Lazy Theme CSS Loading ────────────────────────────
 // classic + dark are eagerly loaded in index.html.
@@ -176,4 +177,42 @@ export function showThemeUnlockToasts(unlocked) {
 
   // Delay to not overlap with achievement toasts
   setTimeout(showNext, 1200);
+}
+
+// ── Android nav-bar theme-color meta tag ──────────────
+// Mirrors the active theme's app background into the <meta name="theme-color">
+// tag so the mobile browser chrome matches.
+export function updateThemeColor() {
+  const bg = getComputedStyle(document.documentElement).getPropertyValue('--color-app-bg').trim();
+  if (bg) {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', bg);
+  }
+}
+
+// ── Chaos theme override ──────────────────────────────
+// Chaos forces its own theme for the duration of a run. Entering stashes the
+// player's current theme; leaving restores it. The stash + restore live HERE,
+// not in main.js, so game modules (modeManager) can restore on exit without
+// importing the entry orchestrator — importing main.js auto-runs init() at
+// module load, which booted the whole app on any headless import.
+let _previousChaosTheme = null;
+
+export function enterChaosTheme(currentTheme) {
+  _previousChaosTheme = currentTheme;
+  document.documentElement.setAttribute('data-theme', 'chaos');
+  loadThemeCSS('chaos');
+  applyThemeEffects('chaos');
+  updateThemeColor();
+}
+
+// Restores the pre-chaos theme if one was stashed. Conditional on the stash so
+// it's idempotent and safe to call on any path that leaves chaos (title screen,
+// checkpoint selector, direct switchMode).
+export function restorePreChaosTheme() {
+  if (!_previousChaosTheme) return;
+  document.documentElement.setAttribute('data-theme', _previousChaosTheme);
+  applyThemeEffects(_previousChaosTheme);
+  updateThemeColor();
+  _previousChaosTheme = null;
 }

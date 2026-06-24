@@ -64,15 +64,45 @@ export function isArchivableDate(date, today, firstDate = FIRST_ARCHIVE_DATE) {
  *
  * A replay (history already present) does neither: first completion wins.
  *
+ * Only a CONFIRMED-absent row is a first completion. 'unknown' means the
+ * dailyHistory read failed or Firebase wasn't ready, and we must FAIL CLOSED:
+ * a replay mis-read as fresh would double-feed the par fit (push-keyed
+ * dailyArchive rows don't overwrite) and overwrite the first-completion chart
+ * row. Record nothing and let a later healthy completion pick it up.
+ * (REGRESSION: archive dedup fail-open — a failed/early read returned null and
+ * was treated as "no prior completion", so a flaky read on a replay double-fed
+ * the fit.)
+ *
  * @param {string} date YYYY-MM-DD (ET) of the played board
- * @param {boolean} hasHistory does users/{uid}/dailyHistory/{date} exist?
+ * @param {'present'|'absent'|'unknown'} historyStatus does
+ *   users/{uid}/dailyHistory/{date} exist? 'present' = replay, 'absent' = first
+ *   completion, 'unknown' = read failed / Firebase not ready.
  * @param {string} [epoch] override for the fit epoch
  * @returns {{ submitFit: boolean, writeHistory: boolean }}
  */
-export function archiveSubmitPlan(date, hasHistory, epoch = ARCHIVE_FIT_EPOCH) {
-  if (hasHistory) return { submitFit: false, writeHistory: false };
+export function archiveSubmitPlan(date, historyStatus, epoch = ARCHIVE_FIT_EPOCH) {
+  if (historyStatus !== 'absent') return { submitFit: false, writeHistory: false };
   return {
     submitFit: typeof date === 'string' && date >= epoch,
     writeHistory: true,
   };
+}
+
+/**
+ * Resolve the `?crux=` share-route date with a spoiler + range guard. The route
+ * shows a PAST daily's crux, so today and later are REFUSED (never spoil the
+ * live board) and anything before the first canonical is out of range; both
+ * fall back to yesterday. An empty / non-date param ('' or '1') also defaults
+ * to yesterday. Pure string compares (fixed-width YYYY-MM-DD).
+ *
+ * @param {string} cruxParam   the raw ?crux= value ('', '1', or YYYY-MM-DD)
+ * @param {string} todayET     today's ET date
+ * @param {string} yesterdayET yesterday's ET date (the default + clamp target)
+ * @param {string} [firstDate] earliest offered date
+ * @returns {string} YYYY-MM-DD to show
+ */
+export function resolveCruxDate(cruxParam, todayET, yesterdayET, firstDate = FIRST_ARCHIVE_DATE) {
+  let cruxDate = /^\d{4}-\d{2}-\d{2}$/.test(cruxParam) ? cruxParam : yesterdayET;
+  if (cruxDate >= todayET || cruxDate < firstDate) cruxDate = yesterdayET;
+  return cruxDate;
 }

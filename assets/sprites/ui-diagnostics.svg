@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Diagnostics: a stethoscope (its own icon, not the X-ray loupe). -->
+  <path d="M44 24 Q38 54 64 60 Q90 54 84 24" fill="none" stroke="#46506b" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="44" cy="22" r="6" fill="#232838"/><circle cx="84" cy="22" r="6" fill="#232838"/>
+  <path d="M64 60 L64 82 Q64 94 78 94" fill="none" stroke="#46506b" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="88" cy="94" r="16" fill="#9aa3b0" stroke="#232838" stroke-width="6"/>
+  <circle cx="88" cy="94" r="7" fill="#cdd6e4" stroke="#232838" stroke-width="3"/>
+</svg>

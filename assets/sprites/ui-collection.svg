@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Collection: a fan of world swatches (the theme gallery). -->
+  <g stroke="#232838" stroke-width="6" stroke-linejoin="round">
+    <rect x="24" y="42" width="44" height="60" rx="8" fill="#53a05b" transform="rotate(-14 64 92)"/>
+    <rect x="42" y="36" width="44" height="60" rx="8" fill="#5d8ad8" transform="rotate(0 64 92)"/>
+    <rect x="60" y="42" width="44" height="60" rx="8" fill="#e8709a" transform="rotate(14 64 92)"/>
+  </g>
+</svg>

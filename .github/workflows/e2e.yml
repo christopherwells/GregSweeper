@@ -1,0 +1,58 @@
+name: E2E
+
+# Browser end-to-end gate (Playwright). Kept SEPARATE from the fast unit-test
+# workflow so the pure-logic gate stays sub-minute; this one installs a browser
+# and is slower. Boots the static app in headless Chromium and asserts each
+# mode entry-point renders with zero console/page errors (the white-screen
+# guard the pure tests can't see), plus the critical user journeys.
+
+on:
+  push:
+    branches: [main, test]
+  pull_request:
+    branches: [main, test]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dev dependencies
+        run: npm ci
+
+      - name: Typecheck (tsc --checkJs on the curated src/logic set)
+        run: npm run typecheck
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: pw-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run e2e tests
+        run: npm run test:e2e
+
+      - name: Upload report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

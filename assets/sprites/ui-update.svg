@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Check for Updates: two arrows chasing around a circle. -->
+  <path d="M30 67 A34 34 0 0 1 78 33" fill="none" stroke="#53a05b" stroke-width="11" stroke-linecap="round"/>
+  <path d="M92 39 L74 42 L82 24 Z" fill="#53a05b" stroke="#232838" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M98 61 A34 34 0 0 1 50 95" fill="none" stroke="#53a05b" stroke-width="11" stroke-linecap="round"/>
+  <path d="M36 89 L54 86 L46 104 Z" fill="#53a05b" stroke="#232838" stroke-width="3" stroke-linejoin="round"/>
+</svg>

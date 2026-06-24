@@ -1,7 +1,7 @@
 import { state, ENCOURAGEMENT_LINES, getActiveBombPenaltyTotal } from '../state/gameState.js';
 import { $, $$, boardEl, resetBtn, scanToast, escapeHtml } from '../ui/domHelpers.js';
 import { getThemeEmoji, updateAllCells, announceGame } from '../ui/boardRenderer.js';
-import { applyIcon, spriteImgHTML, medalImgForEmoji } from '../ui/spriteLoader.js';
+import { applyIcon, spriteImgHTML, medalImgForEmoji, achievementSpriteImgHTML } from '../ui/spriteLoader.js';
 import { updateHeader, updateStreakBorder, updateCheckpointDisplay, getCheckpointForLevel } from '../ui/headerRenderer.js';
 import { updatePowerUpBar } from '../ui/powerUpBar.js';
 import { showModal, hideModal } from '../ui/modalManager.js';
@@ -41,7 +41,11 @@ import { archiveSubmitPlan, CRUX_VIEWED_KEY_PREFIX } from '../logic/archiveEligi
 import { isTestEnvironment } from '../firebase/env.js';
 import { reportCaughtError } from '../diagnostics/errorReporter.js';
 import { breakdownPar } from '../logic/dailyFeatures.js';
-import { getHandicap, getHandicapDetails, estimateHandicapDetails } from '../logic/handicaps.js';
+import { getHandicap, getHandicapDetails } from '../logic/handicaps.js';
+import { resolveParDisplay } from '../logic/parDisplayDecision.js';
+import { buildDailyScoreExtras } from '../logic/winSubmissionPlan.js';
+import { detectSkillFeats } from '../logic/skillFeatDetection.js';
+import { summarizeWeeklyAttempt } from '../logic/weeklyAttemptSummary.js';
 import { labFileLine } from '../logic/gregVoice.js';
 import { addDailyLeaderboardEntry, appendDailyResidual, loadDailyResiduals, loadPowerUps } from '../storage/statsStorage.js';
 import { getLocalDateString } from '../logic/seededRandom.js';
@@ -73,7 +77,10 @@ function showAchievementToasts(unlocks) {
   function showNext() {
     if (index >= unlocks.length) return;
     const unlock = unlocks[index];
-    toast.querySelector('.achievement-toast-icon').textContent = unlock.categoryIcon;
+    const toastIcon = toast.querySelector('.achievement-toast-icon');
+    const toastIconHtml = achievementSpriteImgHTML(unlock.categoryId, 'sprite-rank', unlock.category);
+    if (toastIconHtml) toastIcon.innerHTML = toastIconHtml;
+    else toastIcon.textContent = unlock.categoryIcon;
     toast.querySelector('.achievement-toast-title').textContent = 'Achievement Unlocked!';
     toast.querySelector('.achievement-toast-name').textContent =
       `${unlock.category} · ${unlock.tier.charAt(0).toUpperCase() + unlock.tier.slice(1)} ${unlock.tierIcon}`;
@@ -270,10 +277,22 @@ function _renderWinReceipt() {
  * @param {number} scoreTime completion seconds (already rounded)
  */
 export async function submitArchiveCompletion(dateStr, name, scoreTime) {
-  const existing = await fetchDailyHistoryEntry(dateStr);
-  const plan = archiveSubmitPlan(dateStr, !!existing);
+  // Tell a CONFIRMED-absent row (a genuine first completion) apart from a read
+  // we couldn't complete. fetchDailyHistoryEntry throws when Firebase isn't
+  // ready or the read fails; treating that as 'absent' would double-feed the
+  // par fit on a replay (see archiveSubmitPlan's 'unknown' fail-closed branch).
+  let historyStatus;
+  try {
+    const existing = await fetchDailyHistoryEntry(dateStr);
+    historyStatus = existing ? 'present' : 'absent';
+  } catch {
+    historyStatus = 'unknown';
+  }
+  const plan = archiveSubmitPlan(dateStr, historyStatus);
   if (!plan.submitFit && !plan.writeHistory) {
-    showToast('Your first run on this day is already recorded.');
+    showToast(historyStatus === 'unknown'
+      ? "Couldn't reach the server — this run wasn't recorded."
+      : 'Your first run on this day is already recorded.');
     return;
   }
   if (plan.submitFit) {
@@ -328,34 +347,11 @@ export function handleWin() {
   // It DOES earn one fit row on first completion (the submit block below).
   const isArchivePlay = isDaily && !!state.isArchivePlay;
   const isRealDaily = isDaily && !state.isDailyPractice && !isArchivePlay;
-  // Skill feats — honestly detectable from the click timeline + the
-  // board's certified solve, never from heuristics:
-  //   flagless  — the recorded timeline contains no flag action.
-  //   efficient — the player's reveal+chord count matched (or beat) the
-  //               certified solve's click count, reconstructed from the
-  //               stored move-type counters via the solver invariant
-  //               passA + pattern + search + disjunctive + 1 = totalClicks.
-  //   search    — the board PROVABLY required tank/gauss enumeration.
-  //   liar      — the board PROVABLY required disjunctive liar reasoning.
-  // Feature-based feats only exist where a feature vector was computed
-  // (daily / weekly / timed); challenge wins can still earn flagless.
-  const winFeatures = state.gameMode === 'daily' ? state.dailyFeatures
-    : state.gameMode === 'weekly' ? state.weeklyFeatures
-    : state.gameMode === 'timed' ? state.timedFeatures
-    : null;
-  const timeline = Array.isArray(state.clickTimeline) ? state.clickTimeline : [];
-  const certifiedClicks = winFeatures
-    ? (winFeatures.passAMoves || 0) + (winFeatures.canonicalSubsetMoves || 0)
-      + (winFeatures.genericSubsetMoves || 0) + (winFeatures.advancedLogicMoves || 0)
-      + (winFeatures.disjunctiveMoves || 0) + 1
-    : 0;
-  const playerClicks = timeline.filter(e => e.a === 'r' || e.a === 'c').length;
-  const skillFeats = state.gameMode === 'chaos' ? {} : {
-    flagless: timeline.length > 0 && !timeline.some(e => e.a === 'f'),
-    efficient: !!winFeatures && playerClicks > 0 && playerClicks <= certifiedClicks,
-    search: !!winFeatures && (winFeatures.advancedLogicMoves || 0) >= 1,
-    liar: !!winFeatures && (winFeatures.disjunctiveMoves || 0) >= 1,
-  };
+  // Skill feats — honestly detectable from the click timeline + the board's
+  // certified solve (flagless / efficient / search / liar), never heuristics;
+  // chaos earns nothing. The certifiedClicks invariant and the feature/mode
+  // gating live in (and are node-tested at) src/logic/skillFeatDetection.js.
+  const skillFeats = detectSkillFeats(state);
   const stats = saveGameResult(true, state.elapsedTime, state.currentLevel, {
     isDaily: isRealDaily,
     isArchive: isArchivePlay,
@@ -632,59 +628,21 @@ export function handleWin() {
       // residual across at least 2 local plays so newcomers see a
       // "Your par" line that tightens with each daily instead of
       // staring at "Greg's Time" alone for a month.
-      const refitHandicap = getHandicap(getUid());
-      let handicap = refitHandicap;
-      let provisional = null;
-      if (refitHandicap === 0) {
-        const residuals = loadDailyResiduals();
-        // Pass bombHits per residual so the provisional handicap subtracts
-        // secPerBombHit × bombHits before averaging. Older residuals
-        // (pre-schema-bump) lack the field — defaults to 0 inside
-        // estimateHandicapDetails.
-        const pairs = residuals.map(r => ({
-          time: r.time,
-          predictedPar: r.par,
-          bombHits: r.bombHits || 0,
-        }));
-        const est = estimateHandicapDetails(pairs);
-        if (est) {
-          handicap = est.handicap;
-          provisional = est;
-        }
-      }
-      // A newcomer's first few dailies show ONLY the plain "vs Greg's
-      // Time" line (plus the one-time primer). Handicap/personal-par,
-      // the per-feature breakdown chips, and the 30-day history strip
-      // stay hidden until they have a few plays — otherwise the very
-      // first result screen is a wall of scoring jargon. The residual
-      // for this play was already appended above, so the count includes
-      // today.
-      const NEWCOMER_DAILY_LIMIT = 3;
-      const isNewcomerDaily = loadDailyResiduals().length <= NEWCOMER_DAILY_LIMIT;
-      const personalPar = state.dailyPar + handicap;
-      const useHandicap = handicap !== 0 && !isNewcomerDaily;
-      const referencePar = useHandicap ? personalPar : state.dailyPar;
-      const delta = precise - referencePar;
-      const absDelta = Math.abs(delta).toFixed(1);
-      let parClass, deltaText;
-      if (delta < -0.5) {
-        parClass = 'par-under';
-        deltaText = absDelta + 's under ' + (useHandicap ? 'your par' : 'par');
-      } else if (delta > 0.5) {
-        parClass = 'par-over';
-        deltaText = absDelta + 's over ' + (useHandicap ? 'your par' : 'par');
-      } else {
-        parClass = 'par-even';
-        deltaText = useHandicap ? 'Even with your par!' : 'Even par!';
-      }
-
-      // Provisional handicaps carry a "(based on N plays)" qualifier so
-      // the player understands the number will tighten with more data,
-      // and so we don't pretend a 2-play mean is anywhere near as
-      // trustworthy as a 30-play Bayesian random intercept.
-      const yourParLabel = provisional
-        ? 'Your par (provisional, ' + provisional.n + ' plays): '
-        : 'Your par: ';
+      // Resolve the handicap (refit value, else a provisional from local
+      // residuals), the newcomer gate, and the par-relative delta line. The
+      // residual for THIS play was appended just above, so the count passed in
+      // includes today. A newcomer's first few dailies show only the plain "vs
+      // Greg's Time" line (handicap/personal-par/breakdown/history hidden);
+      // past the gate the delta is measured against the player's personal par.
+      const {
+        isNewcomerDaily, personalPar, useHandicap,
+        parClass, deltaText, yourParLabel, showOneMoreHint,
+      } = resolveParDisplay({
+        precise,
+        dailyPar: state.dailyPar,
+        refitHandicap: getHandicap(getUid()),
+        residuals: loadDailyResiduals(),
+      });
 
       // First daily a player ever finishes: define par in one plain
       // sentence before throwing numbers at them. Shows once, ever.
@@ -713,8 +671,7 @@ export function handleWin() {
         // No handicap yet — surface a small hint about what would
         // unlock one so a brand-new player (1 daily complete) doesn't
         // think the system is just ignoring them.
-        const residuals = loadDailyResiduals();
-        const needHint = residuals.length === 1
+        const needHint = showOneMoreHint
           ? ' <span class="par-hint">· 1 more daily and your personal par appears</span>'
           : '';
         parEl.innerHTML = moltNote + parPrimer +
@@ -751,39 +708,19 @@ export function handleWin() {
     const precise = state.preciseTime || state.elapsedTime;
     gameoverTime.textContent = `Time: ${precise.toFixed(1)}s${strikesInfo}`;
 
-    // CAPTURE the prior-times snapshot BEFORE handleWin's weekly win
-    // block mutates state.weeklyDayTimes (which it does to compute the
-    // bestTime for submitWeeklyScore). Without this snapshot, priorTimes
-    // would already include the current attempt's time and the modal
-    // would report a 1st attempt as a 2nd attempt.
-    const priorTimes = state._weeklyPriorTimesAtWin
-      || Object.values(state.weeklyDayTimes || {}).filter(t => typeof t === 'number' && Math.abs(t - precise) > 0.01);
-    const priorBest = priorTimes.length > 0 ? Math.min(...priorTimes) : null;
-    const newBest = priorBest != null ? Math.min(priorBest, precise) : precise;
-    const attemptsUsed = priorTimes.length + 1;
-
-    // Day circles: ● for played, ○ for not-yet, ◉ for the day this win
-    // landed on. After the win-flow mutation, state.weeklyDayTimes
-    // contains all played days including today. Find which one is today.
-    const playedDays = state.weeklyDayTimes || {};
-    const dayCircles = [0, 1, 2, 3, 4, 5, 6].map(d => {
-      if (d === state.weeklyDay) return '◉';
-      if (playedDays[d] != null) return '●';
-      return '○';
-    }).join(' ');
-
-    let summary;
-    if (priorBest == null) {
-      summary = `<span class="par-even">First attempt this week. You set the bar at ${precise.toFixed(1)}s.</span>`;
-    } else if (precise < priorBest) {
-      const delta = (priorBest - precise).toFixed(1);
-      summary = `<span class="par-under">${delta}s faster than your best</span> · new best ${newBest.toFixed(1)}s`;
-    } else if (precise > priorBest) {
-      const delta = (precise - priorBest).toFixed(1);
-      summary = `<span class="par-over">${delta}s off your best</span> · still ${newBest.toFixed(1)}s to beat`;
-    } else {
-      summary = `<span class="par-even">Matched your best!</span> · ${newBest.toFixed(1)}s`;
-    }
+    // Summarize this attempt from the prior-times snapshot captured BEFORE the
+    // weekly win block mutated state.weeklyDayTimes — else a 1st attempt would
+    // report as a 2nd. The DOM template below consumes the result; the
+    // attempts-count and best math are pinned in weeklyAttemptSummary.
+    const {
+      newBest, attemptsUsed, dayCircles, summaryClass, summarySpanText, summaryTrailing,
+    } = summarizeWeeklyAttempt({
+      precise,
+      priorTimesAtWin: state._weeklyPriorTimesAtWin,
+      weeklyDayTimes: state.weeklyDayTimes,
+      weeklyDay: state.weeklyDay,
+    });
+    const summary = `<span class="${summaryClass}">${summarySpanText}</span>${summaryTrailing}`;
 
     if (parEl) {
       parEl.innerHTML = `
@@ -901,7 +838,7 @@ export function handleWin() {
     for (const unlock of newUnlocks) {
       const badge = document.createElement('div');
       badge.className = 'gameover-achievement-badge tier-up-badge';
-      badge.innerHTML = `<span>${unlock.categoryIcon}</span><span>${unlock.category} ${unlock.tierIcon} ${unlock.tier.charAt(0).toUpperCase() + unlock.tier.slice(1)}</span>`;
+      badge.innerHTML = `<span>${achievementSpriteImgHTML(unlock.categoryId, 'sprite-rank', unlock.category) || unlock.categoryIcon}</span><span>${unlock.category} ${unlock.tierIcon} ${unlock.tier.charAt(0).toUpperCase() + unlock.tier.slice(1)}</span>`;
       achievementsDiv.appendChild(badge);
     }
     achievementsDiv.classList.remove('hidden');
@@ -965,15 +902,8 @@ export function handleWin() {
       // main.js. Both need to include bombHitEvents and rngSeed —
       // missing either of those fields drops the experimental-design
       // and bomb-adjusted-model data streams silently.
-      submitOnlineScore(dateStr, savedName, scoreTime, state.dailyBombHits || 0, {
-        uid: getUid(),
-        par: state.dailyPar,
-        features: state.dailyFeatures,
-        bombHitEvents: state.dailyBombHitEvents || [],
-        hintEvents: state.hintEvents || [],
-        rngSeed: state.dailyRngSeed || dateStr,
-        totalMines: state.totalMines,
-      }).then((ok) => {
+      submitOnlineScore(dateStr, savedName, scoreTime, state.dailyBombHits || 0,
+        buildDailyScoreExtras(state, dateStr, getUid())).then((ok) => {
         // Show the REAL outcome. Previously this toasted success
         // unconditionally, so an offline player thought their score
         // uploaded when it had only been queued — that's how Kate

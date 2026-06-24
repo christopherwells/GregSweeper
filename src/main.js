@@ -8,19 +8,19 @@
 import { state } from './state/gameState.js';
 import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn, escapeHtml } from './ui/domHelpers.js';
 import { resizeCells, updateAllCells, getThemeEmoji, needsZoom, updateZoom, zoomIn, zoomOut, setFocusedCell, announceGame } from './ui/boardRenderer.js';
-import { preloadSprites, spriteImgHTML, themeSpriteImgHTML, medalImgForEmoji, gimmickSpriteImgHTML } from './ui/spriteLoader.js';
+import { preloadSprites, spriteImgHTML, themeSpriteImgHTML, medalImgForEmoji, gimmickSpriteImgHTML, achievementSpriteImgHTML, uiSpriteImgHTML } from './ui/spriteLoader.js';
 import { updateHeader, updateStreakBorder, updateFlagModeBar, getCheckpointForLevel, CHECKPOINT_INTERVAL } from './ui/headerRenderer.js';
 import { updatePowerUpBar } from './ui/powerUpBar.js';
 import { showModal, hideModal, hideAllModals } from './ui/modalManager.js';
 import { showToast, showLevelUpToast, showCheckpointToast } from './ui/toastManager.js';
 import { showCelebration, haptic } from './ui/effectsRenderer.js';
-import { THEME_UNLOCKS, getUnlockedThemes, loadThemeCSS } from './ui/themeManager.js';
+import { THEME_UNLOCKS, getUnlockedThemes, loadThemeCSS, updateThemeColor, enterChaosTheme, restorePreChaosTheme } from './ui/themeManager.js';
 import { applyThemeEffects, clearThemeEffects } from './ui/themeEffects.js';
 import { newGame, revealCell, toggleFlag, handleChordReveal, rearmPlateTimers } from './game/gameActions.js';
 import './game/winLossHandler.js'; // side-effect: registers handleWin with powerUpActions
 import { useRevealSafe, useShield, activateScan, activateXRay, activateMagnet } from './game/powerUpActions.js';
 import { switchMode, launchDailyArchive, isChaosUnlocked, updateModeUI } from './game/modeManager.js';
-import { FIRST_ARCHIVE_DATE, isArchivableDate } from './logic/archiveEligibility.js';
+import { FIRST_ARCHIVE_DATE, isArchivableDate, resolveCruxDate } from './logic/archiveEligibility.js';
 import { persistGameState, tryResumeGame } from './game/gamePersistence.js';
 import { getDifficultyForLevel, getTimedDifficulty, getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, CHAOS_UNLOCK_LEVEL, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE } from './logic/difficulty.js';
 import { computeDailyFeatures, predictPar } from './logic/dailyFeatures.js';
@@ -75,7 +75,8 @@ import { isModifierPopupDisabled, setModifierPopupDisabled, getGimmickDefs, getD
 import { isStorageFailing, safeGet, safeSet, safeRemove, requestPersistentStorage } from './storage/storageAdapter.js';
 import { pauseTimer, resumeTimer, stopTimer, recordInteraction } from './game/timerManager.js';
 import { isLiveGameExpired } from './logic/resumeEligibility.js';
-import { findRowByUid, findRowForBoard } from './logic/scoreRowMatch.js';
+import { planCompletionReconcile } from './logic/startupReconcilePlan.js';
+import { buildDailyScoreExtras } from './logic/winSubmissionPlan.js';
 import { startTutorial, startWarmup } from './ui/tutorialManager.js';
 import { initErrorReporter, setErrorReporterCodeVersion, reportTestError, reportCaughtError } from './diagnostics/errorReporter.js';
 
@@ -377,19 +378,19 @@ async function runStartupGate() {
         try {
           const snap = await firebase.database().ref(`daily/${today}`).once('value');
           const rows = snap.val();
-          if (isDailyCompleted(today)) {
-            const myScore = findRowByUid(rows, myUid);
-            const myScoreSeed = myScore?.rngSeed || null;
-            if (myScore && myScoreSeed && myScoreSeed !== canonicalSeed) {
-              // Confirmed divergent — clear the completion flag plus the
-              // cached par/moves so newGame recomputes them against the
-              // canonical layout. Don't touch streak fields; replaying
-              // maintains the streak via lastDailyDate === today.
-              safeRemove('minesweeper_daily_completed_date');
-              safeRemove('minesweeper_daily_par_' + today);
-              safeRemove('minesweeper_daily_moves_' + today);
-            }
-          } else if (findRowForBoard(rows, myUid, today, canonicalSeed)) {
+          const { action } = planCompletionReconcile({
+            rows, uid: myUid, dateString: today, canonicalSeed,
+            localCompleted: isDailyCompleted(today),
+          });
+          if (action === 'clearLocal') {
+            // Confirmed divergent — clear the completion flag plus the
+            // cached par/moves so newGame recomputes them against the
+            // canonical layout. Don't touch streak fields; replaying
+            // maintains the streak via lastDailyDate === today.
+            safeRemove('minesweeper_daily_completed_date');
+            safeRemove('minesweeper_daily_par_' + today);
+            safeRemove('minesweeper_daily_moves_' + today);
+          } else if (action === 'adoptCompletion') {
             // Completed on another device — adopt. Any in-progress local
             // attempt is moot; first completion wins.
             markDailyCompleted(today);
@@ -426,15 +427,6 @@ async function _waitForFirebaseInit(timeoutMs = 8000) {
     await new Promise(r => setTimeout(r, 50));
   }
   return false;
-}
-
-// ── Theme-color meta tag (Android nav bar) ───────────
-function updateThemeColor() {
-  const bg = getComputedStyle(document.documentElement).getPropertyValue('--color-app-bg').trim();
-  if (bg) {
-    const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', bg);
-  }
 }
 
 // ── Stats Display ─────────────────────────────────────
@@ -1463,7 +1455,7 @@ async function _renderFriendsView() {
       const row = document.createElement('div');
       row.className = 'friends-row';
       row.innerHTML = `<span class="friends-row-name">${escapeHtml(f.name)}</span>`
-        + `<button class="friends-remove" data-friend-uid="${escapeHtml(f.uid)}" title="Remove friend">✕</button>`;
+        + `<button class="friends-remove" data-friend-uid="${escapeHtml(f.uid)}" title="Remove friend" aria-label="Remove friend">${uiSpriteImgHTML('uiClose', 'ui-icon')}</button>`;
       listEl.appendChild(row);
     }
   }
@@ -1592,8 +1584,16 @@ function updateAchievementsDisplay() {
       nextLine = `${need} more for ${ach.nextTierIcon}`;
     }
 
+    // The category icon is the permanent identity (greyed while locked,
+    // full colour once earned); the earned tier rides a small corner
+    // medal badge so both the Wave B icon and the Wave A medal show.
+    const catIconHtml = achievementSpriteImgHTML(ach.id, 'sprite-medal', ach.name) || ach.icon;
+    const tierBadgeHtml = ach.tierIndex >= 0
+      ? `<span class="ach-tier-badge">${medalImgForEmoji(ach.currentTierIcon, 'sprite-tier-badge', ach.currentTier) || ach.currentTierIcon}</span>`
+      : '';
+
     row.innerHTML = `
-      <span class="ach-medal${ach.tierIndex < 0 ? ' none' : ''}">${ach.tierIndex >= 0 ? (medalImgForEmoji(ach.currentTierIcon, 'sprite-medal') || ach.currentTierIcon) : ach.icon}</span>
+      <span class="ach-medal${ach.tierIndex < 0 ? ' none' : ' earned'}">${catIconHtml}${tierBadgeHtml}</span>
       <div class="ach-main">
         <div class="ach-name-line"><span class="ach-name">${ach.name}</span>${track}</div>
         <div class="ach-sub">${ach.desc} · <span class="ach-next${!ach.nextTier ? ' ach-maxed' : ''}">${nextLine}</span></div>
@@ -1617,7 +1617,7 @@ function updateAchievementsDisplay() {
     grid.appendChild(h);
     for (const a of items) grid.appendChild(renderRow(a));
   };
-  section('Skill feats (certified by the board)', feats);
+  section('Skill feats', feats);
   section('Progress', progress);
 }
 
@@ -1743,8 +1743,6 @@ function showShareCopiedToast() {
 
 // Track when a modal was opened from the title screen
 let _returnToTitle = false;
-// Track previous theme so we can restore it when leaving chaos
-let _previousTheme = null;
 
 function closeModalAndReturn(modalId) {
   hideModal(modalId);
@@ -2348,18 +2346,6 @@ function updateTitleProgress() {
   }
 }
 
-// Restores the pre-chaos theme if it was stashed when entering chaos.
-// Exported so it can fire on any path that leaves chaos (title screen,
-// checkpoint selector, direct switchMode), not just title-screen returns.
-// Conditional on _previousTheme so it's idempotent and safe to call always.
-export function restorePreChaosTheme() {
-  if (!_previousTheme) return;
-  document.documentElement.setAttribute('data-theme', _previousTheme);
-  applyThemeEffects(_previousTheme);
-  updateThemeColor();
-  _previousTheme = null;
-}
-
 function showTitleScreen() {
   const titleScreen = $('#title-screen');
   const app = $('#app');
@@ -2493,7 +2479,7 @@ function showCheckpointSelector() {
     resumeEl.innerHTML = '';
     const btn = document.createElement('button');
     btn.className = 'checkpoint-resume-btn';
-    btn.innerHTML = `<span class="resume-icon">▶️</span><span class="resume-label">Resume Game<br><span class="resume-level">Level ${savedGame.currentLevel}</span></span>`;
+    btn.innerHTML = `<span class="resume-icon">${uiSpriteImgHTML('uiReplay', 'ui-icon')}</span><span class="resume-label">Resume Game<br><span class="resume-level">Level ${savedGame.currentLevel}</span></span>`;
     btn.addEventListener('click', () => {
       hideModal('checkpoint-modal');
       hideTitleScreen();
@@ -2580,12 +2566,8 @@ for (const card of $$('.mode-card')) {
         showToast(`Reach Challenge Level ${CHAOS_UNLOCK_LEVEL} to unlock Chaos mode!`);
         return;
       }
-      // Apply chaos theme automatically
-      _previousTheme = state.theme;
-      document.documentElement.setAttribute('data-theme', 'chaos');
-      loadThemeCSS('chaos');
-      applyThemeEffects('chaos');
-      updateThemeColor();
+      // Apply chaos theme automatically (stash/restore lives in themeManager)
+      enterChaosTheme(state.theme);
       hideTitleScreen();
       switchMode('chaos');
       return;
@@ -3390,15 +3372,8 @@ $('#gameover-submit-daily').addEventListener('click', async (e) => {
     const dateStr = state.dailySeed || getLocalDateString();
     const scoreTime = Math.round((state.preciseTime || state.elapsedTime) * 10) / 10;
     addDailyLeaderboardEntry(dateStr, sanitized, scoreTime);
-    const submitOk = await submitOnlineScore(dateStr, sanitized, scoreTime, state.dailyBombHits || 0, {
-      uid: getUid(),
-      par: state.dailyPar,
-      features: state.dailyFeatures,
-      bombHitEvents: state.dailyBombHitEvents || [],
-      hintEvents: state.hintEvents || [],
-      rngSeed: state.dailyRngSeed || dateStr,
-      totalMines: state.totalMines,
-    });
+    const submitOk = await submitOnlineScore(dateStr, sanitized, scoreTime, state.dailyBombHits || 0,
+      buildDailyScoreExtras(state, dateStr, getUid()));
     // Skip personal-history write for practice dailies — they play on a
     // custom seed and don't belong on the regular daily timeline. Also
     // skipped on 'duplicate' (this account already posted this board from
@@ -3545,7 +3520,7 @@ if (muteBtn) {
   muteBtn.addEventListener('click', () => {
     const nowMuted = !isMuted();
     setMuted(nowMuted);
-    muteBtn.textContent = nowMuted ? '🔇' : '🔊';
+    muteBtn.innerHTML = uiSpriteImgHTML(nowMuted ? 'uiMuteOff' : 'uiMuteOn', 'ui-icon-nav', nowMuted ? 'Unmute' : 'Mute');
     muteBtn.title = nowMuted ? 'Unmute' : 'Mute';
   });
 }
@@ -3779,7 +3754,7 @@ async function init() {
 
   const muted = loadMuted();
   if (muteBtn) {
-    muteBtn.textContent = muted ? '🔇' : '🔊';
+    muteBtn.innerHTML = uiSpriteImgHTML(muted ? 'uiMuteOff' : 'uiMuteOn', 'ui-icon-nav', muted ? 'Unmute' : 'Mute');
     muteBtn.title = muted ? 'Unmute' : 'Mute';
   }
 
@@ -3880,10 +3855,9 @@ async function init() {
   if (cruxParam !== null) {
     const todayET = getLocalDateString();
     const yesterdayET = _addCalendarDays(todayET, -1);
-    let cruxDate = /^\d{4}-\d{2}-\d{2}$/.test(cruxParam) ? cruxParam : yesterdayET;
-    // Spoiler + range guard: only yesterday-or-earlier, never before the
-    // first canonical. Anything out of range falls back to yesterday.
-    if (cruxDate >= todayET || cruxDate < FIRST_ARCHIVE_DATE) cruxDate = yesterdayET;
+    // Spoiler + range guard (only yesterday-or-earlier, never before the first
+    // canonical; out-of-range falls back to yesterday) — pinned in archiveEligibility.
+    const cruxDate = resolveCruxDate(cruxParam, todayET, yesterdayET);
     hideBootOverlay();
     await showCruxTeaser(cruxDate);
     return;

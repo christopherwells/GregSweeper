@@ -19,6 +19,7 @@
 
 import { isTestEnvironment } from './env.js';
 import { subscribeAuthState } from './firebaseAuth.js';
+import { bootstrapAnonymousAuth } from './anonAuthBootstrap.js';
 // Runtime-only cycle with errorReporter (it imports getUid from here);
 // both sides touch the other only inside function bodies, never at
 // module-evaluation time, so the ESM live bindings resolve safely.
@@ -238,57 +239,23 @@ export async function initAnonymousAuth() {
 
       _db = firebase.database();
 
-      // Wait for Firebase to FINISH reading its IndexedDB persistence
-      // before deciding whether to sign in anonymously. Without this,
-      // `firebase.auth().currentUser` returns null synchronously even
-      // when a persisted session exists (the IndexedDB read is async).
-      // Calling signInAnonymously while a persisted user is still
-      // loading would create a fresh anonymous account and overwrite
-      // the linked Google session — that's the "sign-in disappears
-      // after refresh" bug. Awaiting the first onAuthStateChanged fire
-      // guarantees we've seen Firebase's authoritative initial state.
-      let resolveFirstFire;
-      const firstFire = new Promise((resolve) => { resolveFirstFire = resolve; });
-      let resolveSettled;
-      const settled = new Promise((resolve) => { resolveSettled = resolve; });
-      let firstFireDone = false;
-      subscribeAuthState((snap) => {
-        _handleAuthChange(snap);
-        if (!firstFireDone) {
-          firstFireDone = true;
-          resolveFirstFire(snap);
-        }
-        if (snap.uid && resolveSettled) {
-          resolveSettled();
-          resolveSettled = null;
-        }
+      // Bootstrap the anonymous session. The decision to create a fresh
+      // anonymous account is driven by the AUTHORITATIVE first
+      // onAuthStateChanged fire (after Firebase finishes reading its
+      // IndexedDB persistence), NEVER by a timeout. A timeout-driven
+      // sign-in clobbered a still-loading linked session on slow boots —
+      // the intermittent "signed out for no reason" bug. See
+      // anonAuthBootstrap.js for the full rationale. The bounded waits
+      // here only unblock boot; the uid still arrives reactively via the
+      // listener (and loadProgress / the cloud listener pick it up) if a
+      // slow persistence read overruns them.
+      await bootstrapAnonymousAuth({
+        subscribe: subscribeAuthState,
+        signInAnon: () => firebase.auth().signInAnonymously(),
+        onAuthFire: _handleAuthChange,
+        firstFireTimeoutMs: FIREBASE_TIMEOUT_MS,
+        settleTimeoutMs: AUTH_SETTLE_TIMEOUT_MS,
       });
-
-      const initialSnap = await Promise.race([
-        firstFire,
-        new Promise((resolve) => setTimeout(() => resolve(null), FIREBASE_TIMEOUT_MS)),
-      ]);
-
-      // After Firebase finished reading persistence, kick anon only if
-      // truly no user is signed in.
-      if (!initialSnap || !initialSnap.uid) {
-        try {
-          await Promise.race([
-            firebase.auth().signInAnonymously(),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('auth timeout')), FIREBASE_TIMEOUT_MS)),
-          ]);
-        } catch (err) {
-          console.warn('Anonymous auth failed:', err && err.message);
-        }
-      }
-
-      // Wait for the listener to have set _uid before returning, so
-      // existing call sites that chain loadProgress() after init have a
-      // valid uid to work with.
-      await Promise.race([
-        settled,
-        new Promise((resolve) => setTimeout(resolve, AUTH_SETTLE_TIMEOUT_MS)),
-      ]);
     } catch (err) {
       console.warn('initAnonymousAuth failed:', err && err.message);
     }
@@ -420,24 +387,28 @@ export function saveDailyHistoryEntry(date, entry) {
 }
 
 /**
- * Read this user's dailyHistory row for one date, or null. The daily archive
- * uses it for first-completion-only: a present row means the player already
- * finished this date (live, or via a prior archive replay), so the replay
- * submits nothing. A not-ready or failed read returns null and falls OPEN to
- * "no history" — the worst case is a duplicate archive row the refit dedups,
- * never a lost real completion.
+ * Read this user's dailyHistory row for one date. The daily archive uses it for
+ * first-completion-only: a present row means the player already finished this
+ * date (live, or via a prior archive replay), so the replay submits nothing.
+ *
+ * Returns the row object, or null when the read SUCCEEDS and no row exists
+ * (a confirmed-absent first completion). THROWS when Firebase isn't ready or
+ * the read fails — the caller MUST tell "confirmed absent" apart from "couldn't
+ * read". Swallowing the error to null falls OPEN to "no history", and the refit
+ * only dedups archive-vs-day-of (not archive-vs-archive), so a flaky read on a
+ * replay double-feeds the par fit and overwrites the first-completion chart row.
+ * (REGRESSION: archive dedup fail-open; see submitArchiveCompletion +
+ * archiveSubmitPlan's 'unknown' branch.)
  * @param {string} date YYYY-MM-DD
- * @returns {Promise<Object|null>}
+ * @returns {Promise<Object|null>} the row, or null when confirmed absent
+ * @throws when Firebase isn't ready or the read fails
  */
 export async function fetchDailyHistoryEntry(date) {
-  if (!date || !_ready || !_uid || !_db) return null;
-  try {
-    const snap = await _db.ref('users/' + _uid + '/dailyHistory/' + date).once('value');
-    return snap.val();
-  } catch (err) {
-    console.warn('Daily history read failed:', err && err.message);
-    return null;
+  if (!date || !_ready || !_uid || !_db) {
+    throw new Error('dailyHistory read unavailable: Firebase not ready');
   }
+  const snap = await _db.ref('users/' + _uid + '/dailyHistory/' + date).once('value');
+  return snap.val();
 }
 
 // ── Durable daily-history retry queue ─────────────────

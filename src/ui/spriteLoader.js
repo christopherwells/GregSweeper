@@ -26,7 +26,7 @@ const SPRITES = {
   // The "bomb you actually hit." Triggered by the same canonical mine emoji
   // as the regular mine sprite — on Classic/Default we swap to strike.png so
   // the exploded bomb stands out from the other revealed mines. On themed
-  // alternates (e.g. Ocean 🐡), the themed mine emoji renders verbatim.
+  // alternates (e.g. Ocean's blowfish), the themed mine emoji renders verbatim.
   strikeCell: { defaultEmoji: '💣', url: 'assets/sprites/strike.png' },
 
   // ── Tiers 3-5 of the sprite inventory (drawn SVG, 2026-06-10) ──
@@ -52,6 +52,53 @@ const SPRITES = {
   modPressure:  { defaultEmoji: '🔴', url: 'assets/sprites/mod-pressure.svg' },
   modSonar:     { defaultEmoji: '📡', url: 'assets/sprites/mod-sonar.svg' },
   modCompass:   { defaultEmoji: '🧭', url: 'assets/sprites/mod-compass.svg' },
+
+  // ── Wave B achievement category icons (2026-06-23) ──
+  // Each achievement has its own drawn identity. Several share a glyph
+  // with a mode card (📅 daily, ⛏️ challenge, ⏱️ timed), so these render
+  // by category id (achievementSpriteImgHTML), never by emoji — the
+  // defaultEmoji here is the registry fallback, not the lookup key.
+  achWins:             { defaultEmoji: '🏆', url: 'assets/sprites/ach-wins.svg' },
+  achStreak:           { defaultEmoji: '🔥', url: 'assets/sprites/ach-streak.svg' },
+  achSpeed:            { defaultEmoji: '⚡', url: 'assets/sprites/ach-speed.svg' },
+  achDaily:            { defaultEmoji: '📅', url: 'assets/sprites/ach-daily.svg' },
+  achFlagless:         { defaultEmoji: '🏳️', url: 'assets/sprites/ach-flagless.svg' },
+  achEfficient:        { defaultEmoji: '🎯', url: 'assets/sprites/ach-efficient.svg' },
+  achTankCommander:    { defaultEmoji: '🧮', url: 'assets/sprites/ach-tankCommander.svg' },
+  achLieDetector:      { defaultEmoji: '🕵️', url: 'assets/sprites/ach-lieDetector.svg' },
+  achPurist:           { defaultEmoji: '💪', url: 'assets/sprites/ach-purist.svg' },
+  achChallengeClimber: { defaultEmoji: '⛏️', url: 'assets/sprites/ach-challengeClimber.svg' },
+  achTimedSpeed:       { defaultEmoji: '⏱️', url: 'assets/sprites/ach-timedSpeed.svg' },
+  achGimmickMaster:    { defaultEmoji: '🎪', url: 'assets/sprites/ach-gimmickMaster.svg' },
+  achDailyStreak:      { defaultEmoji: '📆', url: 'assets/sprites/ach-dailyStreak.svg' },
+
+  // ── Wave C chrome icons (2026-06-24) ──
+  // Theme-agnostic UI affordances, rendered BY KEY (uiSpriteImgHTML /
+  // uiSpriteUrl), never by emoji — several share a glyph with content
+  // icons (🏆 leaderboard vs Victory, ❓ help vs mystery), so no
+  // defaultEmoji here. Drawn in one house style; see ICON-STYLE-GUIDE.md.
+  uiHome:        { url: 'assets/sprites/ui-home.svg' },
+  uiStats:       { url: 'assets/sprites/ui-stats.svg' },
+  uiSettings:    { url: 'assets/sprites/ui-settings.svg' },
+  uiHelp:        { url: 'assets/sprites/ui-help.svg' },
+  uiLeaderboard: { url: 'assets/sprites/ui-leaderboard.svg' },
+  uiCollection:  { url: 'assets/sprites/ui-collection.svg' },
+  uiMuteOn:      { url: 'assets/sprites/ui-mute-on.svg' },
+  uiMuteOff:     { url: 'assets/sprites/ui-mute-off.svg' },
+  uiClose:       { url: 'assets/sprites/ui-close.svg' },
+  uiReplay:      { url: 'assets/sprites/ui-replay.svg' },
+  uiUpdate:      { url: 'assets/sprites/ui-update.svg' },
+  uiReset:       { url: 'assets/sprites/ui-reset.svg' },
+  uiDelete:      { url: 'assets/sprites/ui-delete.svg' },
+  uiReport:      { url: 'assets/sprites/ui-report.svg' },
+  uiSponsor:     { url: 'assets/sprites/ui-sponsor.svg' },
+  uiDiagnostics: { url: 'assets/sprites/ui-diagnostics.svg' },
+  uiWhatsNew:    { url: 'assets/sprites/ui-whatsnew.svg' },
+  uiMore:        { url: 'assets/sprites/ui-more.svg' },
+  uiPause:       { url: 'assets/sprites/ui-pause.svg' },
+  uiNotifyOn:    { url: 'assets/sprites/ui-notify-on.svg' },
+  uiNotifyOff:   { url: 'assets/sprites/ui-notify-off.svg' },
+  uiReveal:      { url: 'assets/sprites/ui-reveal.svg' },
 };
 
 // Retain Image refs until each one fires onload/onerror so the browser
@@ -166,10 +213,11 @@ export function applyIcon(el, key, resolvedEmoji, { extraClass = '', sizeClass =
   }
 }
 
-// Medal emoji -> drawn medal sprite (the five ranks the medal set
-// covers). Returns null for non-medal emoji (platinum keeps its ⭐
-// emoji until drawn). TEXT surfaces (share strings) must stay emoji -
-// callers choose by simply not using this.
+// Medal emoji -> drawn medal sprite. The five ranks ARE the full tier
+// ladder (platinum was dropped 2026-06-23), so every tier icon now
+// resolves to a medal. Returns null for any non-tier emoji. TEXT
+// surfaces (share strings) must stay emoji — callers choose by simply
+// not using this.
 const MEDAL_BY_EMOJI = { '🥉': 'medalBronze', '🥈': 'medalSilver', '🥇': 'medalGold', '💎': 'medalDiamond', '💚': 'medalEmerald' };
 export function medalImgForEmoji(emoji, sizeClass = 'sprite-rank', alt = '') {
   const key = MEDAL_BY_EMOJI[emoji];
@@ -221,4 +269,32 @@ export function applyGimmickIcon(el, gimmickKey, fallbackEmoji) {
   } else if (el) {
     el.textContent = fallbackEmoji || '';
   }
+}
+
+// ── Achievement category icon sprites (Wave B) ───────────
+// Keyed by the achievement category id (achievements.js CATEGORIES),
+// not by emoji — several categories share a glyph with a mode card, so
+// the id is the only unambiguous handle. Theme-agnostic chrome.
+const ACHIEVEMENT_SPRITE_KEYS = {
+  wins: 'achWins', streak: 'achStreak', speed: 'achSpeed', daily: 'achDaily',
+  flagless: 'achFlagless', efficient: 'achEfficient', tankCommander: 'achTankCommander',
+  lieDetector: 'achLieDetector', purist: 'achPurist', challengeClimber: 'achChallengeClimber',
+  timedSpeed: 'achTimedSpeed', gimmickMaster: 'achGimmickMaster', dailyStreak: 'achDailyStreak',
+};
+
+export function achievementSpriteImgHTML(catId, sizeClass = 'sprite-medal', alt = '') {
+  const spriteKey = ACHIEVEMENT_SPRITE_KEYS[catId];
+  return spriteKey ? spriteImgHTML(spriteKey, sizeClass, alt) : null;
+}
+
+// ── Chrome icon sprites (Wave C) ─────────────────────────
+// Nav / settings / indicator affordances. uiSpriteImgHTML for HTML
+// strings; uiSpriteUrl for toggle buttons whose src flips at runtime
+// (mute, notifications). Theme-agnostic, keyed (see the SPRITES note).
+export function uiSpriteImgHTML(key, sizeClass = 'ui-icon', alt = '') {
+  return SPRITES[key] ? spriteImgHTML(key, sizeClass, alt) : '';
+}
+
+export function uiSpriteUrl(key) {
+  return SPRITES[key] ? SPRITES[key].url : null;
 }

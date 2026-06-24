@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Victory: two open laurel branches framing a star (a wreath, not a cup). -->
+  <!-- Left branch: stem + pointed leaves opening up-and-out -->
+  <path d="M50 106 C34 90 28 66 36 40" fill="none" stroke="#e0a92e" stroke-width="4" stroke-linecap="round"/>
+  <g fill="#ffce3a" stroke="#232838" stroke-width="2.5" stroke-linejoin="round">
+    <path d="M0 0 C5 -3 5 -12 0 -17 C-5 -12 -5 -3 0 0 Z" transform="translate(44 100) rotate(-28)"/>
+    <path d="M0 0 C5 -3 5 -12 0 -17 C-5 -12 -5 -3 0 0 Z" transform="translate(36 84) rotate(-45)"/>
+    <path d="M0 0 C5 -3 5 -12 0 -17 C-5 -12 -5 -3 0 0 Z" transform="translate(32 66) rotate(-65)"/>
+    <path d="M0 0 C5 -3 5 -12 0 -17 C-5 -12 -5 -3 0 0 Z" transform="translate(34 48) rotate(-88)"/>
+    <path d="M0 0 C4 -3 4 -10 0 -14 C-4 -10 -4 -3 0 0 Z" transform="translate(41 36) rotate(-108)"/>
+  </g>
+  <!-- Right branch mirror -->
+  <path d="M78 106 C94 90 100 66 92 40" fill="none" stroke="#e0a92e" stroke-width="4" stroke-linecap="round"/>
+  <g fill="#ffce3a" stroke="#232838" stroke-width="2.5" stroke-linejoin="round">
+    <path d="M0 0 C5 -3 5 -12 0 -17 C-5 -12 -5 -3 0 0 Z" transform="translate(84 100) rotate(28)"/>
+    <path d="M0 0 C5 -3 5 -12 0 -17 C-5 -12 -5 -3 0 0 Z" transform="translate(92 84) rotate(45)"/>
+    <path d="M0 0 C5 -3 5 -12 0 -17 C-5 -12 -5 -3 0 0 Z" transform="translate(96 66) rotate(65)"/>
+    <path d="M0 0 C5 -3 5 -12 0 -17 C-5 -12 -5 -3 0 0 Z" transform="translate(94 48) rotate(88)"/>
+    <path d="M0 0 C4 -3 4 -10 0 -14 C-4 -10 -4 -3 0 0 Z" transform="translate(87 36) rotate(108)"/>
+  </g>
+  <!-- Star in the open center -->
+  <path d="M64 40 L69.5 56 L86 56.5 L73 66 L78 82 L64 72 L50 82 L55 66 L42 56.5 L58.5 56 Z"
+        fill="#ffce3a" stroke="#232838" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M64 48 L67.5 57 L60.5 57 Z" fill="#fff3c4"/>
+</svg>

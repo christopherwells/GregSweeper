@@ -7,7 +7,7 @@ import {
   flagModeToggle, flagModeIcon,
 } from './domHelpers.js';
 import { getThemeEmoji } from './boardRenderer.js';
-import { applyIcon, gimmickSpriteImgHTML } from './spriteLoader.js';
+import { applyIcon, gimmickSpriteImgHTML, spriteImgHTML, uiSpriteImgHTML } from './spriteLoader.js';
 import { getTimedDifficulty, getSpeedRating, MAX_LEVEL } from '../logic/difficulty.js';
 import { loadStats, getDailyStreak } from '../storage/statsStorage.js';
 import { getGimmickDef } from '../logic/gimmicks.js';
@@ -336,7 +336,9 @@ export function updateFlagModeBar() {
     flagModeToggle.title = label;
   }
   if (flagModeIcon) {
-    flagModeIcon.textContent = state.flagMode ? '🚩' : '👆';
+    flagModeIcon.innerHTML = state.flagMode
+      ? spriteImgHTML('flag', 'ui-icon', 'Flag')
+      : uiSpriteImgHTML('uiReveal', 'ui-icon', 'Reveal');
   }
   const stuckBtn = document.getElementById('stuck-btn');
   if (stuckBtn) stuckBtn.classList.toggle('hidden', over);

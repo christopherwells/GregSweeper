@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- No Wasted Clicks: a clean cursor landing dead-center on a bullseye. -->
+  <circle cx="60" cy="56" r="38" fill="#e4453a" stroke="#232838" stroke-width="6"/>
+  <circle cx="60" cy="56" r="25" fill="#f3f6fb" stroke="#232838" stroke-width="5"/>
+  <circle cx="60" cy="56" r="12" fill="#e4453a" stroke="#232838" stroke-width="4"/>
+  <path d="M60 56 L60 94 L70 85 L77 100 L84 97 L77 82 L90 82 Z"
+        fill="#f3f6fb" stroke="#232838" stroke-width="5.5" stroke-linejoin="round"/>
+</svg>

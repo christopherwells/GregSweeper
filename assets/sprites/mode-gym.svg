@@ -1,27 +1,44 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <!-- Flexed arm curling a dumbbell. Layered strokes
-       with a circle bicep inside the bend. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-10 -10 148 148">
+  <!-- viewBox is padded (-10 .. 138) so the full-width bar's stroke and the
+       -14deg tilt don't clip the bar ends / outer plates at the frame edge. -->
+  <!-- Greg's Gym: a tilted, knurled-grip dumbbell loaded with three plates
+       per side (two equal inner + a smaller outer). The plate colors read
+       from theme tokens (var with a green fallback) so a theme can recolor
+       the weights; the bar stays steel. When this file is loaded via <img>
+       the vars are undefined and the green fallbacks render. -->
+  <g transform="rotate(-14 64 64)">
+    <!-- Bar / knurled handle (behind the plates) -->
+    <rect x="0" y="59" width="128" height="11" rx="5.5" fill="#9a9a9a" stroke="#232838" stroke-width="6"/>
 
-  <!-- === Dark outline layer === -->
-  <path d="M 58 28 L 36 74 L 84 88"
-        stroke="#232838" stroke-width="34" stroke-linecap="round"
-        stroke-linejoin="round" fill="none"/>
-  <circle cx="68" cy="56" r="26" fill="#232838"/>
+    <!-- Plates: two equal inner + small outer, each side -->
+    <rect x="31" y="30" width="15" height="69" rx="6.3" fill="var(--color-gym-weight, #2e8b57)" stroke="#232838" stroke-width="6"/>
+    <rect x="14" y="30" width="15" height="69" rx="6.3" fill="var(--color-gym-weight, #2e8b57)" stroke="#232838" stroke-width="6"/>
+    <rect x="3"  y="42" width="9"  height="45" rx="3.8" fill="var(--color-gym-weight-dark, #3a6a3a)" stroke="#232838" stroke-width="5"/>
+    <rect x="82" y="30" width="15" height="69" rx="6.3" fill="var(--color-gym-weight, #2e8b57)" stroke="#232838" stroke-width="6"/>
+    <rect x="99" y="30" width="15" height="69" rx="6.3" fill="var(--color-gym-weight, #2e8b57)" stroke="#232838" stroke-width="6"/>
+    <rect x="116" y="42" width="9" height="45" rx="3.8" fill="var(--color-gym-weight-dark, #3a6a3a)" stroke="#232838" stroke-width="5"/>
 
-  <!-- === Skin fill layer === -->
-  <path d="M 58 28 L 36 74 L 84 88"
-        stroke="#d4a068" stroke-width="26" stroke-linecap="round"
-        stroke-linejoin="round" fill="none"/>
-  <circle cx="68" cy="56" r="22" fill="#d4a068"/>
+    <!-- Highlights: one light direction (left edge of every plate) -->
+    <g fill="var(--color-gym-weight-hi, #5ad07a)" opacity="0.32">
+      <rect x="34"  y="35" width="4.8" height="59" rx="2"/>
+      <rect x="17"  y="35" width="4.8" height="59" rx="2"/>
+      <rect x="6"   y="47" width="2.9" height="35" rx="2"/>
+      <rect x="85"  y="35" width="4.8" height="59" rx="2"/>
+      <rect x="102" y="35" width="4.8" height="59" rx="2"/>
+      <rect x="119" y="47" width="2.9" height="35" rx="2"/>
+    </g>
 
-  <!-- Bicep highlight -->
-  <circle cx="64" cy="50" r="10" fill="#e0b888" opacity="0.35"/>
-
-  <!-- === Dumbbell === -->
-  <rect x="35" y="16" width="46" height="8" rx="4"
-        fill="#9a9a9a" stroke="#232838" stroke-width="3.5" stroke-linejoin="round"/>
-  <rect x="27" y="6" width="14" height="26" rx="5"
-        fill="#3a6a3a" stroke="#232838" stroke-width="4" stroke-linejoin="round"/>
-  <rect x="67" y="6" width="14" height="26" rx="5"
-        fill="#3a6a3a" stroke="#232838" stroke-width="4" stroke-linejoin="round"/>
+    <!-- Knurled grip -->
+    <g stroke="#232838" stroke-width="1.4" opacity="0.55">
+      <line x1="50" y1="60.5" x2="50" y2="68.5"/>
+      <line x1="53.5" y1="60.5" x2="53.5" y2="68.5"/>
+      <line x1="57" y1="60.5" x2="57" y2="68.5"/>
+      <line x1="60.5" y1="60.5" x2="60.5" y2="68.5"/>
+      <line x1="64" y1="60.5" x2="64" y2="68.5"/>
+      <line x1="67.5" y1="60.5" x2="67.5" y2="68.5"/>
+      <line x1="71" y1="60.5" x2="71" y2="68.5"/>
+      <line x1="74.5" y1="60.5" x2="74.5" y2="68.5"/>
+      <line x1="78" y1="60.5" x2="78" y2="68.5"/>
+    </g>
+  </g>
 </svg>

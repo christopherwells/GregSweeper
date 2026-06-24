@@ -8,9 +8,10 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+import { dirname, join, relative } from 'node:path';
+import { ICON_STATUS } from '../src/ui/iconCoverage.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(__dirname, '..');
@@ -81,4 +82,51 @@ test('all medal SVGs are in sw.js ASSETS', () => {
 test('mode-gym.svg is in sw.js ASSETS', () => {
   const sw = readFileSync(join(repoRoot, 'sw.js'), 'utf8');
   assert.ok(sw.includes('mode-gym.svg'), 'mode-gym.svg missing from sw.js ASSETS');
+});
+
+// ── Source scan: no stray raw emoji on render surfaces ──
+// Every emoji that appears in the app's source must be classified in the
+// ICON_STATUS manifest (as a drawn 'sprite' or an intentional 'plain'
+// text glyph). This is the hard gate that keeps raw emoji from silently
+// returning. Uses \p{Extended_Pictographic} so text symbols (arrows,
+// dashes, ×, ✓) are not flagged — only true emoji pictographs.
+//
+// EXCLUDED: src/ui/themeManager.js is the per-theme object-emoji registry
+// (THEME_UNLOCKS — each world's mine/flag/smiley/strikeCell). That is a
+// deliberate emoji-as-game-object layer with its own THEME_SPRITES
+// override path and is validated structurally by spriteChain.test.mjs;
+// enumerating its ~90 world glyphs here would be noise.
+const EMOJI_SCAN_EXCLUDE = ['src/ui/themeManager.js'];
+
+function collectJsFiles(dir, acc = []) {
+  for (const ent of readdirSync(dir, { withFileTypes: true })) {
+    const p = join(dir, ent.name);
+    if (ent.isDirectory()) collectJsFiles(p, acc);
+    else if (ent.name.endsWith('.js')) acc.push(p);
+  }
+  return acc;
+}
+
+test('no unaccounted raw emoji on render surfaces (source scan)', () => {
+  const files = [...collectJsFiles(join(repoRoot, 'src')), join(repoRoot, 'index.html')]
+    .filter((f) => !EMOJI_SCAN_EXCLUDE.includes(relative(repoRoot, f).replace(/\\/g, '/')));
+  const stripVS = (s) => s.replace(/[︎️]/g, ''); // drop emoji variation selectors
+  const accounted = new Set(Object.keys(ICON_STATUS).map(stripVS));
+  const re = /\p{Extended_Pictographic}/gu;
+  const unaccounted = new Set();
+  for (const f of files) {
+    const rel = relative(repoRoot, f).replace(/\\/g, '/');
+    for (const m of readFileSync(f, 'utf8').matchAll(re)) {
+      const e = stripVS(m[0]);
+      if (e && !accounted.has(e)) {
+        unaccounted.add(`${e} (U+${e.codePointAt(0).toString(16).toUpperCase()}) in ${rel}`);
+      }
+    }
+  }
+  assert.deepStrictEqual(
+    [...unaccounted],
+    [],
+    'Raw emoji not classified in ICON_STATUS — add each as a drawn sprite or an intentional plain glyph: '
+      + [...unaccounted].join('; ')
+  );
 });

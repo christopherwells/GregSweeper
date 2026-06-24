@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v1.6.65';
+const CACHE_NAME = 'gregsweeper-v1.6.73';
 const ASSETS = [
   './',
   './index.html',
@@ -61,6 +61,7 @@ const ASSETS = [
   // Other themes are lazy-loaded and cached on-demand via network-first strategy
   './src/firebase/firebaseLeaderboard.js',
   './src/firebase/firebaseProgress.js',
+  './src/firebase/anonAuthBootstrap.js',
   './src/firebase/dailyBoardSync.js',
   './src/firebase/weeklyBoardSync.js',
   './src/firebase/waitForFirebase.js',
@@ -119,6 +120,43 @@ const ASSETS = [
   './assets/sprites/mod-pressure.svg',
   './assets/sprites/mod-sonar.svg',
   './assets/sprites/mod-compass.svg',
+  // Achievement category icons (Wave B) — the 13 achievements
+  './assets/sprites/ach-wins.svg',
+  './assets/sprites/ach-streak.svg',
+  './assets/sprites/ach-speed.svg',
+  './assets/sprites/ach-daily.svg',
+  './assets/sprites/ach-flagless.svg',
+  './assets/sprites/ach-efficient.svg',
+  './assets/sprites/ach-tankCommander.svg',
+  './assets/sprites/ach-lieDetector.svg',
+  './assets/sprites/ach-purist.svg',
+  './assets/sprites/ach-challengeClimber.svg',
+  './assets/sprites/ach-timedSpeed.svg',
+  './assets/sprites/ach-gimmickMaster.svg',
+  './assets/sprites/ach-dailyStreak.svg',
+  // Chrome / nav / indicator icons (Wave C)
+  './assets/sprites/ui-home.svg',
+  './assets/sprites/ui-stats.svg',
+  './assets/sprites/ui-settings.svg',
+  './assets/sprites/ui-help.svg',
+  './assets/sprites/ui-leaderboard.svg',
+  './assets/sprites/ui-collection.svg',
+  './assets/sprites/ui-mute-on.svg',
+  './assets/sprites/ui-mute-off.svg',
+  './assets/sprites/ui-close.svg',
+  './assets/sprites/ui-replay.svg',
+  './assets/sprites/ui-update.svg',
+  './assets/sprites/ui-reset.svg',
+  './assets/sprites/ui-delete.svg',
+  './assets/sprites/ui-report.svg',
+  './assets/sprites/ui-sponsor.svg',
+  './assets/sprites/ui-diagnostics.svg',
+  './assets/sprites/ui-whatsnew.svg',
+  './assets/sprites/ui-more.svg',
+  './assets/sprites/ui-pause.svg',
+  './assets/sprites/ui-notify-on.svg',
+  './assets/sprites/ui-notify-off.svg',
+  './assets/sprites/ui-reveal.svg',
   // Per-theme object sets (batch 1) — each world's mine/flag/strike in
   // its own material language.
   './assets/sprites/themes/editorial-mine.svg',

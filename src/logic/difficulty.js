@@ -65,30 +65,30 @@ export function applyWidthCap(rows, cols, mines) {
 // scripts/refit-par-model.R.
 // PAR_MODEL:START
 export const PAR_MODEL = {
-  // Last refit: 2026-06-16 | brms (3 users · max Rhat = 1.003, min ESS = 1285, divergent = 0/4000) | N=208 scores, 99 dates, 5 players | R²=0.560
-  intercept: -12.87,
+  // Last refit: 2026-06-23 | brms (3 users · max Rhat = 1.005, min ESS = 1186, divergent = 0/4000) | N=232 scores, 106 dates, 7 players | R²=0.566
+  intercept: -15.96,
 
   // Size baseline. cellCount is the lone size axis (it absorbs trivial
   // propagation); totalMines stays a raw count. (2026-06-08 rework.)
-  secPerCell:        0.129,
-  secPerMineFlag:    3.308,
+  secPerCell:        0.118,
+  secPerMineFlag:    3.519,
 
   // Reasoning tiers: pattern = canonical + generic subsets; search = advanced.
-  secPerPatternMove: 2.073,
-  secPerSearchMove:  1.124,
+  secPerPatternMove: 1.986,
+  secPerSearchMove:  1.184,
 
   // Board structure.
-  secPerWallEdge:    0.153,
-  secPerZeroCluster: 0.516,
+  secPerWallEdge:    0.162,
+  secPerZeroCluster: 0.485,
 
   // Modifier cells (kept split; sparse, prior-anchored until data builds).
-  secPerMysteryCell:   0.823,
+  secPerMysteryCell:   0.671,
   secPerLiarCell:      0.730,
-  secPerLockedCell:    0.730,
-  secPerWormholePair:  0.751,
-  secPerMirrorPair:    1.467,
-  secPerSonarCell:     0.769,
-  secPerCompassCell:   0.826,
+  secPerLockedCell:    0.677,
+  secPerWormholePair:  0.762,
+  secPerMirrorPair:    1.226,
+  secPerSonarCell:     0.789,
+  secPerCompassCell:   0.887,
 
 };
 // PAR_MODEL:END
@@ -105,21 +105,21 @@ export const PAR_MODEL = {
 // between the markers is refit-owned, same contract as PAR_MODEL.
 // TIMED_PAR_MODEL:START
 export const PAR_MODEL_TIMED = {
-  // Last refit: 2026-06-16 | brms-timed (n=25)
-  intercept: -23.87,
-  secPerCell:        0.164,
-  secPerMineFlag:    2.461,
-  secPerPatternMove: 1.302,
-  secPerSearchMove:  3.174,
-  secPerWallEdge:    0.196,
-  secPerZeroCluster: 0.649,
-  secPerMysteryCell:   1.054,
-  secPerLiarCell:      0.940,
-  secPerLockedCell:    0.934,
-  secPerWormholePair:  0.954,
-  secPerMirrorPair:    1.866,
-  secPerSonarCell:     0.983,
-  secPerCompassCell:   1.082,
+  // Last refit: 2026-06-23 | brms-timed (n=31)
+  intercept: -44.46,
+  secPerCell:        0.155,
+  secPerMineFlag:    3.411,
+  secPerPatternMove: 3.802,
+  secPerSearchMove:  2.273,
+  secPerWallEdge:    0.205,
+  secPerZeroCluster: 0.637,
+  secPerMysteryCell:   0.836,
+  secPerLiarCell:      0.927,
+  secPerLockedCell:    0.863,
+  secPerWormholePair:  0.946,
+  secPerMirrorPair:    1.555,
+  secPerSonarCell:     1.015,
+  secPerCompassCell:   1.144,
 };
 // TIMED_PAR_MODEL:END
 

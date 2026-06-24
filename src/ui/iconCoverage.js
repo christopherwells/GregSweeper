@@ -51,6 +51,45 @@ export const ICON_STATUS = {
   '🔴': 'sprite',   // pressure plate
   '🧭': 'sprite',   // compass
 
+  // ── Achievement category icons (Wave B, SVG) ──
+  // Rendered by category id (achievementSpriteImgHTML), so the glyph is
+  // only a fallback. 📅 / ⛏️ / ⏱️ are shared with mode cards (already
+  // 'sprite' above); 🔥 stays 'plain' below (also used as streak fire).
+  '🏆': 'sprite',   // wins / Victory
+  '⚡': 'sprite',   // speed / Speed Demon
+  '🏳️': 'sprite',   // flagless
+  '🎯': 'sprite',   // efficient / No Wasted Clicks
+  '🧮': 'sprite',   // tankCommander / Tank Commander
+  '🕵️': 'sprite',   // lieDetector / Lie Detector
+  '💪': 'sprite',   // purist / Fearless
+  '🎪': 'sprite',   // gimmickMaster / Modifier Master
+  '📆': 'sprite',   // dailyStreak / Daily Devotee
+
+  // ── Chrome / nav / indicators (Wave C, SVG) ──
+  // Rendered by key (uiSpriteImgHTML / static <img>), so the glyph is a
+  // fallback. ❓ (help) and 🏆 (leaderboard) reuse the 'sprite' rows above.
+  '🏠': 'sprite',   // home
+  '⚙️': 'sprite',   // settings gear
+  '📊': 'sprite',   // stats / progress
+  '🎨': 'sprite',   // collection (nav)
+  '🎁': 'sprite',   // collection (sheet — unified to one icon)
+  '🔊': 'sprite',   // sound on
+  '🔇': 'sprite',   // muted
+  '▶️': 'sprite',   // replay / resume
+  '🔄': 'sprite',   // check for updates
+  '🗑️': 'sprite',   // reset profile
+  '🌐': 'sprite',   // delete data (server)
+  '🐛': 'sprite',   // report a problem
+  '💛': 'sprite',   // sponsor
+  '🔬': 'sprite',   // diagnostics (own icon; X-ray power-up keeps pow-xray)
+  '📋': 'sprite',   // what's new
+  '⏸': 'sprite',    // idle / paused
+  '🔔': 'sprite',   // notifications on
+  '🔕': 'sprite',   // notifications off
+  '×':  'sprite',   // close / friend-remove (&times; entity)
+  '🏅': 'sprite',   // Achievements sheet row (renders the medal sprite; emoji is the onerror fallback)
+  'ℹ️': 'sprite',   // About row (renders Greg's sprite; emoji is the onerror fallback)
+
   // ── Plain-text / intentional emoji ──
   // These appear in share cards, toast messages, or semantic contexts
   // where an SVG sprite would be wrong (copy-paste, accessibility).
@@ -60,5 +99,20 @@ export const ICON_STATUS = {
   '✨': 'plain',    // modifier primer intro
   '🧩': 'plain',    // modifier recap intro
   '✓':  'plain',    // certified chip (text, not emoji)
-  '👆': 'plain',    // flag mode off indicator
+
+  // Transient text — toasts, gym headers, receipts, diagnostics, status
+  // dots. Emoji inline in a text message, where a sprite would be wrong.
+  '✅': 'plain',    // success checkmark (save / submit toasts, receipts)
+  '❤️': 'plain',    // lifeline (toast text + power-up onerror fallback)
+  '🎉': 'plain',    // new-record toast
+  '⚠️': 'plain',    // warning toasts
+  '⏳': 'plain',    // loading / pending
+  '📱': 'plain',    // install / add-to-home-screen hint
+  '🟢': 'plain',    // status dot (online)
+  '⚪': 'plain',    // status dot (idle)
+  '↔️': 'plain',    // sync direction (status text)
+  '★':  'plain',    // diagnostics star (text)
+  '📓': 'plain',    // Greg's Gym field notebook header
+  '📌': 'plain',    // gym pinned note
+  '🤷': 'plain',    // receipt copy
 };

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- On Fire: one clean, bold flame. -->
+  <path d="M64 12 C52 34 40 42 40 68 C40 92 51 110 64 110 C77 110 88 94 88 70
+           C88 50 79 44 75 55 C75 39 71 25 64 12 Z"
+        fill="#ff6600" stroke="#232838" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M65 46 C57 60 52 66 52 82 C52 96 58 104 66 104 C76 104 82 94 82 80
+           C82 70 78 67 74 73 C74 63 70 54 65 46 Z"
+        fill="#ffce3a" stroke="#232838" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M67 74 C62 82 60 86 60 93 C60 99 63 102 68 102 C74 102 78 96 78 88 C78 82 75 80 72 84 C72 79 70 77 67 74 Z" fill="#fff3c4"/>
+</svg>

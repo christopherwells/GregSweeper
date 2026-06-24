@@ -4,7 +4,7 @@ import { newGame } from './gameActions.js';
 import { persistGameState, tryResumeGame } from './gamePersistence.js';
 import { loadCheckpoint, loadStats } from '../storage/statsStorage.js';
 import { CHAOS_UNLOCK_LEVEL } from '../logic/difficulty.js';
-import { restorePreChaosTheme } from '../main.js';
+import { restorePreChaosTheme } from '../ui/themeManager.js';
 
 // ── Mode Manager ──────────────────────────────────────
 

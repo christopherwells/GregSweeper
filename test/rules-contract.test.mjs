@@ -48,9 +48,14 @@ test('weekly/{weekStart}/{uid}: all written fields are whitelisted', () => {
 test('users/{uid}: all written progress fields are whitelisted', () => {
   // src/firebase/firebaseProgress.js saveProgress / saveDailyHistoryEntry /
   // markWeeklyDayAttempted + firebasePush pushSubscription/notificationPrefs.
+  // moltDay rides the same saveProgress write — an un-whitelisted child would
+  // make the WHOLE update() fail validation and drop silently (the 866683d
+  // class). moltDayRules.test.mjs pins its inner shape; this pins that it's in
+  // the master field list at all.
   assertWhitelist(rules.users.$uid, 'users/$uid', [
     'maxCheckpoint', 'dailyStreak', 'bestDailyStreak', 'lastDailyDate',
-    'dailyHistory', 'weeklyAttempts', 'pushSubscription', 'notificationPrefs', 'powerUps',
+    'dailyHistory', 'weeklyAttempts', 'pushSubscription', 'notificationPrefs',
+    'powerUps', 'moltDay',
   ]);
 });
 

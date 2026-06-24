@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Idle / paused. -->
+  <g fill="#9aa3b0" stroke="#232838" stroke-width="6" stroke-linejoin="round">
+    <rect x="38" y="28" width="18" height="72" rx="7"/>
+    <rect x="72" y="28" width="18" height="72" rx="7"/>
+  </g>
+</svg>
