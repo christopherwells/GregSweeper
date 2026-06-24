@@ -123,12 +123,12 @@ const SPRITES = {
   uiUnknown:   { url: 'assets/sprites/ui-unknown.svg' },
   uiPuzzle:    { url: 'assets/sprites/ui-puzzle.svg' },
   uiFlagChecked: { url: 'assets/sprites/ui-flag-checkered.svg' },
+  uiCursor:    { url: 'assets/sprites/ui-cursor.svg' },
 
   // ── Wave E pass 2: LCD header, power-up text, gym board, examples ──
   // Mode-card / power-up sprites pulled into SPRITES so their inline-text
   // call sites (LCD readout, modal title, power-up toasts) can render them
   // by key. The files already ship (mode-*, pow-*, mode-gym precached).
-  uiChallenge: { url: 'assets/sprites/mode-challenge.svg' },
   uiGym:       { url: 'assets/sprites/mode-gym.svg' },
   powReveal:   { url: 'assets/sprites/pow-revealsafe.svg' },
   powShield:   { url: 'assets/sprites/pow-shield.svg' },
