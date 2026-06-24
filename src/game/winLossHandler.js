@@ -527,7 +527,7 @@ export function handleWin() {
   const _totalPenalty = _bombEvents.reduce(
     (s, e) => s + (e && typeof e.penalty === 'number' ? e.penalty : 0), 0);
   const strikesInfo = _strikes > 0
-    ? ` | 💥 ${_strikes} strike${_strikes !== 1 ? 's' : ''}${_totalPenalty > 0 ? ` (+${_totalPenalty.toFixed(1)}s)` : ''}`
+    ? ` | ${spriteImgHTML('strike', 'inline-strike')} ${_strikes} strike${_strikes !== 1 ? 's' : ''}${_totalPenalty > 0 ? ` (+${_totalPenalty.toFixed(1)}s)` : ''}`
     : '';
 
   const parEl = $('#gameover-par');
@@ -563,7 +563,7 @@ export function handleWin() {
   } else if (state.gameMode === 'daily') {
     // Daily: show precise time + par comparison
     const precise = state.preciseTime || state.elapsedTime;
-    gameoverTime.textContent = `Time: ${precise.toFixed(1)}s${strikesInfo}`;
+    gameoverTime.innerHTML = `Time: ${precise.toFixed(1)}s${strikesInfo}`;
     // The streak suffix implies "this counts toward your streak" — true for a
     // live daily, false for an archive replay (archive never touches the
     // streak), so suppress it on archive to avoid the wrong implication.
@@ -687,7 +687,7 @@ export function handleWin() {
     // Weekly: show precise time, day-of-week dot indicators, vs-best
     // comparison, and the live leaderboard inline.
     const precise = state.preciseTime || state.elapsedTime;
-    gameoverTime.textContent = `Time: ${precise.toFixed(1)}s${strikesInfo}`;
+    gameoverTime.innerHTML = `Time: ${precise.toFixed(1)}s${strikesInfo}`;
 
     // Summarize this attempt from the prior-times snapshot captured BEFORE the
     // weekly win block mutated state.weeklyDayTimes — else a 1st attempt would
@@ -753,7 +753,7 @@ export function handleWin() {
     _renderWinReceipt();
   } else {
     const precise = state.preciseTime || state.elapsedTime;
-    gameoverTime.textContent = `Time: ${precise.toFixed(1)}s${strikesInfo}`;
+    gameoverTime.innerHTML = `Time: ${precise.toFixed(1)}s${strikesInfo}`;
   }
 
   // Stats cascade animation on time display
@@ -786,7 +786,7 @@ export function handleWin() {
   }
 
   if (earnedPowerUp) {
-    powerupEarned.textContent = `Earned: ${earnedPowerUp}`;
+    powerupEarned.innerHTML = `Earned: ${earnedPowerUp}`;
     powerupEarned.classList.remove('hidden');
     // Animate power-up buttons with earned bounce
     setTimeout(() => {

@@ -1,5 +1,5 @@
 import { toastContainer } from './domHelpers.js';
-import { uiSpriteUrl } from './spriteLoader.js';
+import { uiSpriteUrl, uiSpriteImgHTML } from './spriteLoader.js';
 
 // ── Toast Queue ────────────────────────────────────────
 const _toastQueue = [];
@@ -58,7 +58,7 @@ export function showLevelUpToast(level) {
 export function showCheckpointToast(checkpointLevel) {
   const toast = document.createElement('div');
   toast.className = 'checkpoint-toast';
-  toast.innerHTML = `🏁 Checkpoint! <span style="font-size:12px; opacity:0.8">Level ${checkpointLevel}</span>`;
+  toast.innerHTML = `${uiSpriteImgHTML('uiFlagChecked', 'toast-icon')} Checkpoint! <span style="font-size:12px; opacity:0.8">Level ${checkpointLevel}</span>`;
   document.getElementById('app').appendChild(toast);
   setTimeout(() => toast.remove(), 2500);
 }

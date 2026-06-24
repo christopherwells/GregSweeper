@@ -23,7 +23,7 @@ export function updateCheckpointDisplay() {
   if (!checkpointDisplay) return;
   const isLevelMode = state.gameMode === 'normal';
   if (isLevelMode && state.checkpoint > 1) {
-    checkpointDisplay.textContent = `🏁 CP ${state.checkpoint}`;
+    checkpointDisplay.innerHTML = `${uiSpriteImgHTML('uiFlagChecked', 'lcd-icon')} CP ${state.checkpoint}`;
     checkpointDisplay.classList.remove('hidden');
   } else {
     checkpointDisplay.classList.add('hidden');
@@ -194,7 +194,7 @@ export function updateStreakDisplay() {
   const stats = loadStats();
   const streak = stats.currentStreak || 0;
   if (streak >= 2) {
-    streakDisplayEl.textContent = `🔥 ${streak}`;
+    streakDisplayEl.innerHTML = `${uiSpriteImgHTML('achStreak', 'lcd-icon')} ${streak}`;
     streakDisplayEl.classList.remove('hidden');
   } else {
     streakDisplayEl.classList.add('hidden');
@@ -226,16 +226,20 @@ export function updateHeader() {
     // the player can see what's on the line at a glance. Suppressed at
     // streak 0/1 since "Daily · 🔥 0" reads like noise.
     const { streak } = getDailyStreak();
-    levelDisplay.textContent = streak >= 2 ? `📅 Daily · 🔥 ${streak}` : '📅 Daily';
+    const calIcon = uiSpriteImgHTML('achDaily', 'lcd-icon');
+    levelDisplay.innerHTML = streak >= 2
+      ? `${calIcon} Daily · ${uiSpriteImgHTML('achStreak', 'lcd-icon')} ${streak}`
+      : `${calIcon} Daily`;
   } else if (state.gameMode === 'weekly') {
     const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const dayLbl = state.weeklyDay != null ? dayLabels[state.weeklyDay] : '';
-    levelDisplay.textContent = dayLbl ? `🏁 Weekly · ${dayLbl}` : '🏁 Weekly';
+    const flagIcon = uiSpriteImgHTML('uiFlagChecked', 'lcd-icon');
+    levelDisplay.innerHTML = dayLbl ? `${flagIcon} Weekly · ${dayLbl}` : `${flagIcon} Weekly`;
   } else if (state.gameMode === 'timed') {
     const tdiff = getTimedDifficulty(state.currentLevel);
     levelDisplay.textContent = tdiff.label || `Level ${state.currentLevel}`;
   } else if (state.gameMode === 'chaos') {
-    levelDisplay.textContent = '🌀 Chaos';
+    levelDisplay.innerHTML = `${uiSpriteImgHTML('modWormhole', 'lcd-icon')} Chaos`;
   } else {
     levelDisplay.textContent = `Level ${state.currentLevel}`;
   }

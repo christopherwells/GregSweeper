@@ -143,7 +143,7 @@ function _updateFlagToggle() {
   if (!btn) return;
   btn.classList.toggle('active', _flagMode);
   btn.setAttribute('aria-pressed', _flagMode ? 'true' : 'false');
-  btn.textContent = _flagMode ? '🚩 Flag' : '⛏️ Dig';
+  btn.innerHTML = _flagMode ? `${uiSpriteImgHTML('flag', 'btn-icon')} Flag` : `${uiSpriteImgHTML('uiChallenge', 'btn-icon')} Dig`;
 }
 
 function _buildOverlay() {
@@ -154,7 +154,7 @@ function _buildOverlay() {
     <div class="lexicon-card">
       <div class="lexicon-header">
         <button class="lexicon-back" aria-label="Back to lessons" hidden>‹ Lessons</button>
-        <span class="lexicon-title">🏋️ Greg's Gym</span>
+        <span class="lexicon-title">${uiSpriteImgHTML('uiGym', 'lexicon-title-icon')} Greg's Gym</span>
         <button class="lexicon-close" aria-label="Close">&times;</button>
       </div>
 
@@ -165,10 +165,10 @@ function _buildOverlay() {
       </div>
 
       <div class="lexicon-view lexicon-drill" hidden>
-        <p class="lexicon-instruction">Open every safe square to finish the board. A square only opens when the clues prove it is safe. If it bounces, look at the clues that light up. To flag a proven mine, tap the 🚩 button then tap the square (or long-press it); then tap a number whose mines are all flagged to open the rest around it.</p>
+        <p class="lexicon-instruction">Open every safe square to finish the board. A square only opens when the clues prove it is safe. If it bounces, look at the clues that light up. To flag a proven mine, tap the Flag button then tap the square (or long-press it); then tap a number whose mines are all flagged to open the rest around it.</p>
         <div class="lexicon-status">
           <span class="lexicon-mines-left"></span>
-          <button class="lexicon-flag-toggle" type="button" aria-pressed="false">⛏️ Dig</button>
+          <button class="lexicon-flag-toggle" type="button" aria-pressed="false">${uiSpriteImgHTML('uiChallenge', 'btn-icon')} Dig</button>
           <span class="lexicon-board-count"></span>
         </div>
         <div class="lexicon-grid" role="grid"></div>
@@ -355,7 +355,7 @@ function _render() {
         el.textContent = cell.adjacentMines;
         el.dataset.num = cell.adjacentMines;
       } else if (!cell.isRevealed && cell.isFlagged) {
-        el.textContent = '🚩';
+        el.innerHTML = uiSpriteImgHTML('flag', 'gym-piece');
         el.classList.add('flagged');
       }
       grid.appendChild(el);
@@ -363,7 +363,7 @@ function _render() {
   }
   // The same anchor the main game's LCD gives: how many mines are
   // unaccounted for.
-  _overlay.querySelector('.lexicon-mines-left').textContent = `💣 ${mines - flags} left`;
+  _overlay.querySelector('.lexicon-mines-left').innerHTML = `${uiSpriteImgHTML('mine', 'inline-mine')} ${mines - flags} left`;
   _overlay.querySelector('.lexicon-board-count').textContent = `Board ${_boardsDone}`;
 }
 
@@ -710,7 +710,7 @@ function _sketchHTML(grid) {
   for (const rowStr of grid) {
     for (const ch of rowStr) {
       if (ch === '.') cells += '<span class="sk sk-hidden"></span>';
-      else if (ch === 'M') cells += '<span class="sk sk-mine">💣</span>';
+      else if (ch === 'M') cells += `<span class="sk sk-mine">${uiSpriteImgHTML('mine', 'gym-sketch')}</span>`;
       else if (ch === 'S') cells += '<span class="sk sk-safe">✓</span>';
       else cells += `<span class="sk sk-num" data-num="${ch}">${ch}</span>`;
     }
