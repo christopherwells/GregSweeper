@@ -9,6 +9,7 @@ import { state } from './state/gameState.js';
 import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn, escapeHtml } from './ui/domHelpers.js';
 import { resizeCells, updateAllCells, getThemeEmoji, needsZoom, updateZoom, zoomIn, zoomOut, setFocusedCell, announceGame } from './ui/boardRenderer.js';
 import { preloadSprites, spriteImgHTML, themeSpriteImgHTML, medalImgForEmoji, gimmickSpriteImgHTML, achievementSpriteImgHTML, uiSpriteImgHTML } from './ui/spriteLoader.js';
+import { getLastShareFile } from './ui/shareCardImage.js';
 import { updateHeader, updateStreakBorder, updateFlagModeBar, getCheckpointForLevel, CHECKPOINT_INTERVAL } from './ui/headerRenderer.js';
 import { updatePowerUpBar } from './ui/powerUpBar.js';
 import { showModal, hideModal, hideAllModals } from './ui/modalManager.js';
@@ -1710,8 +1711,28 @@ function generateShareCard() {
 
 function handleShare() {
   const text = generateShareCard();
+  const file = getLastShareFile();
+  // Web Share Level 2: share the rendered card IMAGE plus the caption.
+  // Must stay inside the click gesture — no await before navigator.share.
+  if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+    navigator.share({ files: [file], text }).catch((e) => {
+      if (e && e.name === 'AbortError') return; // user dismissed the sheet
+      copyToClipboard(text);
+    });
+    return;
+  }
   if (navigator.share) {
     navigator.share({ text }).catch(() => copyToClipboard(text));
+  } else if (file) {
+    // Desktop without Web Share files: download the image, copy the caption.
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(file);
+    a.download = 'gregsweeper.png';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    copyToClipboard(text);
+    showToast('Card image saved · caption copied');
   } else {
     copyToClipboard(text);
   }
