@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v1.6.78';
+const CACHE_NAME = 'gregsweeper-v1.6.79';
 const ASSETS = [
   './',
   './index.html',
@@ -174,6 +174,7 @@ const ASSETS = [
   './assets/sprites/ui-unknown.svg',
   './assets/sprites/ui-puzzle.svg',
   './assets/sprites/ui-flag-checkered.svg',
+  './assets/sprites/ui-cursor.svg',
   // Per-theme object sets (batch 1) — each world's mine/flag/strike in
   // its own material language.
   './assets/sprites/themes/editorial-mine.svg',

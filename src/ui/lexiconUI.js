@@ -143,7 +143,7 @@ function _updateFlagToggle() {
   if (!btn) return;
   btn.classList.toggle('active', _flagMode);
   btn.setAttribute('aria-pressed', _flagMode ? 'true' : 'false');
-  btn.innerHTML = _flagMode ? `${uiSpriteImgHTML('flag', 'btn-icon')} Flag` : `${uiSpriteImgHTML('uiChallenge', 'btn-icon')} Dig`;
+  btn.innerHTML = _flagMode ? `${uiSpriteImgHTML('flag', 'btn-icon')} Flag` : `${uiSpriteImgHTML('uiCursor', 'btn-icon')} Reveal`;
 }
 
 function _buildOverlay() {
@@ -168,7 +168,7 @@ function _buildOverlay() {
         <p class="lexicon-instruction">Open every safe square to finish the board. A square only opens when the clues prove it is safe. If it bounces, look at the clues that light up. To flag a proven mine, tap the Flag button then tap the square (or long-press it); then tap a number whose mines are all flagged to open the rest around it.</p>
         <div class="lexicon-status">
           <span class="lexicon-mines-left"></span>
-          <button class="lexicon-flag-toggle" type="button" aria-pressed="false">${uiSpriteImgHTML('uiChallenge', 'btn-icon')} Dig</button>
+          <button class="lexicon-flag-toggle" type="button" aria-pressed="false">${uiSpriteImgHTML('uiCursor', 'btn-icon')} Reveal</button>
           <span class="lexicon-board-count"></span>
         </div>
         <div class="lexicon-grid" role="grid"></div>
