@@ -1,7 +1,7 @@
 // Multi-tier achievement system
 // Each achievement category has 5 tiers: bronze → silver → gold → emerald → diamond
 // One drawn medal per tier. Platinum was dropped (2026-06-23) so the
-// ladder matches the five-medal set — no more ⭐ emoji fallback.
+// ladder matches the five-medal set — no more star emoji fallback.
 
 const TIER_NAMES = ['bronze', 'silver', 'gold', 'emerald', 'diamond'];
 const TIER_ICONS = {
