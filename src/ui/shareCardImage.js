@@ -13,8 +13,13 @@ import { getThemeEmoji } from './boardRenderer.js';
 import { getSpriteUrl, gimmickSpriteUrl } from './spriteLoader.js';
 import { getGimmickDefs } from '../logic/gimmicks.js';
 
-const SIZE = 1080;
-const MONTHS = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
+const LAYOUT = 1080;
+// The card is laid out on a 1080 grid but EXPORTED smaller, so the shared
+// PNG displays within a phone chat instead of spilling off both edges
+// (a phone test showed 1080 overflowing). Text stays crisp; the messaging
+// app scales the smaller image down to the bubble.
+const OUTPUT = 720;
+const MONTHS =['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
   'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
 
 function loadImage(url) {
@@ -128,9 +133,10 @@ function drawSpaced(g, text, cx, y, spacing) {
 
 export async function renderShareCardImage(data) {
   const canvas = document.createElement('canvas');
-  canvas.width = SIZE;
-  canvas.height = SIZE;
+  canvas.width = OUTPUT;
+  canvas.height = OUTPUT;
   const g = canvas.getContext('2d');
+  g.scale(OUTPUT / LAYOUT, OUTPUT / LAYOUT);
   const C = data.colors;
 
   const [gregImg, mineImg, ...modImgs] = await Promise.all([
@@ -141,27 +147,27 @@ export async function renderShareCardImage(data) {
 
   // Background
   g.fillStyle = C.bg;
-  g.fillRect(0, 0, SIZE, SIZE);
+  g.fillRect(0, 0, LAYOUT, LAYOUT);
 
   // Wordmark
   g.textAlign = 'center';
   g.textBaseline = 'alphabetic';
-  const grad = g.createLinearGradient(SIZE / 2 - 230, 0, SIZE / 2 + 230, 0);
+  const grad = g.createLinearGradient(LAYOUT / 2 - 230, 0, LAYOUT / 2 + 230, 0);
   grad.addColorStop(0, '#7b6cf0');
   grad.addColorStop(1, '#d06a8f');
   g.fillStyle = grad;
   g.font = '800 76px system-ui, "Segoe UI", sans-serif';
-  g.fillText('GregSweeper', SIZE / 2, 116);
+  g.fillText('GregSweeper', LAYOUT / 2, 116);
 
   g.fillStyle = C.textDim;
   g.font = '700 22px system-ui, sans-serif';
-  drawSpaced(g, 'NO GUESSES. EVER.', SIZE / 2, 150, 4);
+  drawSpaced(g, 'NO GUESSES. EVER.', LAYOUT / 2, 150, 4);
 
   g.font = '700 26px system-ui, sans-serif';
-  drawSpaced(g, data.dateLabel ? `${data.modeLabel} · ${data.dateLabel}` : data.modeLabel, SIZE / 2, 212, 3);
+  drawSpaced(g, data.dateLabel ? `${data.modeLabel} · ${data.dateLabel}` : data.modeLabel, LAYOUT / 2, 212, 3);
   g.strokeStyle = withAlpha(C.textDim, 0.4);
   g.lineWidth = 1.5;
-  g.beginPath(); g.moveTo(70, 240); g.lineTo(SIZE - 70, 240); g.stroke();
+  g.beginPath(); g.moveTo(70, 240); g.lineTo(LAYOUT - 70, 240); g.stroke();
 
   // Scrambled board (left). Square cells, centered in a 440px box.
   const boxX = 64, boxY = 282, box = 444;
@@ -186,7 +192,7 @@ export async function renderShareCardImage(data) {
   }
 
   // Right column: Greg + time + result
-  const rcx = (boxX + box + (SIZE - 64)) / 2;
+  const rcx = (boxX + box + (LAYOUT - 64)) / 2;
   if (gregImg) {
     const gz = 196;
     g.drawImage(gregImg, rcx - gz / 2, 300, gz, gz);
@@ -209,7 +215,7 @@ export async function renderShareCardImage(data) {
   // Divider
   g.strokeStyle = withAlpha(C.textDim, 0.4);
   g.lineWidth = 1.5;
-  g.beginPath(); g.moveTo(70, 768); g.lineTo(SIZE - 70, 768); g.stroke();
+  g.beginPath(); g.moveTo(70, 768); g.lineTo(LAYOUT - 70, 768); g.stroke();
 
   // Modifiers row: "Modifiers:" + icon/name pairs, centered.
   if (data.modifiers.length) {
@@ -221,7 +227,7 @@ export async function renderShareCardImage(data) {
     for (let i = 0; i < data.modifiers.length; i++) {
       totalW += iconSz + nameGap + g.measureText(data.modifiers[i].name).width + (i < data.modifiers.length - 1 ? pairGap : 0);
     }
-    let x = SIZE / 2 - totalW / 2;
+    let x = LAYOUT / 2 - totalW / 2;
     const y = 824;
     g.fillStyle = C.textDim;
     g.fillText(label, x, y);
@@ -246,7 +252,7 @@ export async function renderShareCardImage(data) {
   g.textAlign = 'right';
   g.fillStyle = C.textDim;
   g.font = '500 23px system-ui, sans-serif';
-  g.fillText('christopherwells.github.io/GregSweeper', SIZE - 64, fy);
+  g.fillText('christopherwells.github.io/GregSweeper', LAYOUT - 64, fy);
 
   return canvas;
 }
