@@ -18,7 +18,7 @@ const LAYOUT = 1080;
 // PNG displays within a phone chat instead of spilling off both edges
 // (a phone test showed 1080 overflowing). Text stays crisp; the messaging
 // app scales the smaller image down to the bubble.
-const OUTPUT = 720;
+const OUTPUT = 540;
 const MONTHS =['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
   'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
 
