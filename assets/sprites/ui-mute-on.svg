@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Sound on: speaker with green waves. -->
+  <path d="M24 50 L44 50 L64 30 L64 98 L44 78 L24 78 Z" fill="#9aa3b0" stroke="#232838" stroke-width="6" stroke-linejoin="round"/>
+  <g fill="none" stroke="#53a05b" stroke-width="7" stroke-linecap="round"><path d="M76 50 A20 20 0 0 1 76 78"/><path d="M88 40 A34 34 0 0 1 88 88"/></g>
+</svg>

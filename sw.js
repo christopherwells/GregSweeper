@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v1.6.71';
+const CACHE_NAME = 'gregsweeper-v1.6.72';
 const ASSETS = [
   './',
   './index.html',
@@ -134,6 +134,29 @@ const ASSETS = [
   './assets/sprites/ach-timedSpeed.svg',
   './assets/sprites/ach-gimmickMaster.svg',
   './assets/sprites/ach-dailyStreak.svg',
+  // Chrome / nav / indicator icons (Wave C)
+  './assets/sprites/ui-home.svg',
+  './assets/sprites/ui-stats.svg',
+  './assets/sprites/ui-settings.svg',
+  './assets/sprites/ui-help.svg',
+  './assets/sprites/ui-leaderboard.svg',
+  './assets/sprites/ui-collection.svg',
+  './assets/sprites/ui-mute-on.svg',
+  './assets/sprites/ui-mute-off.svg',
+  './assets/sprites/ui-close.svg',
+  './assets/sprites/ui-replay.svg',
+  './assets/sprites/ui-update.svg',
+  './assets/sprites/ui-reset.svg',
+  './assets/sprites/ui-delete.svg',
+  './assets/sprites/ui-report.svg',
+  './assets/sprites/ui-sponsor.svg',
+  './assets/sprites/ui-diagnostics.svg',
+  './assets/sprites/ui-whatsnew.svg',
+  './assets/sprites/ui-more.svg',
+  './assets/sprites/ui-pause.svg',
+  './assets/sprites/ui-notify-on.svg',
+  './assets/sprites/ui-notify-off.svg',
+  './assets/sprites/ui-reveal.svg',
   // Per-theme object sets (batch 1) — each world's mine/flag/strike in
   // its own material language.
   './assets/sprites/themes/editorial-mine.svg',

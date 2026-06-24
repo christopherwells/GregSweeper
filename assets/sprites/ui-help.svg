@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- How to Play: a raised minesweeper cell bearing a question mark. -->
+  <rect x="26" y="30" width="80" height="80" rx="11" fill="#9aa6bd" stroke="#232838" stroke-width="6"/>
+  <rect x="22" y="22" width="80" height="80" rx="11" fill="#dfe5ee" stroke="#232838" stroke-width="6"/>
+  <path d="M32 32 L92 32 L92 39 L39 39 L39 92 L32 92 Z" fill="#f5f9ff" opacity="0.75"/>
+  <path d="M49 51 A14 14 0 1 1 62 65 L62 73" fill="none" stroke="#3a5fa6" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="62" cy="88" r="7" fill="#3a5fa6"/>
+</svg>

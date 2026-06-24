@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Stats / Progress: Greg's field clipboard with a rising chart — he keeps notes on how you play. -->
+  <rect x="32" y="24" width="64" height="86" rx="8" fill="#c89456" stroke="#232838" stroke-width="6" stroke-linejoin="round"/>
+  <rect x="41" y="34" width="46" height="68" rx="4" fill="#f6f4ee" stroke="#232838" stroke-width="4"/>
+  <rect x="52" y="14" width="24" height="16" rx="5" fill="#9aa3b0" stroke="#232838" stroke-width="5"/>
+  <path d="M48 92 L60 76 L70 84 L84 58" fill="none" stroke="#53a05b" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <g fill="#53a05b" stroke="#232838" stroke-width="2"><circle cx="48" cy="92" r="3.6"/><circle cx="60" cy="76" r="3.6"/><circle cx="70" cy="84" r="3.6"/><circle cx="84" cy="58" r="3.6"/></g>
+</svg>

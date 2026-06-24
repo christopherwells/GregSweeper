@@ -2599,6 +2599,31 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   vertical-align: middle;
 }
 
+/* Wave C chrome icon sprites. Theme-agnostic affordances drawn in the
+   house style; sizing varies by host (icon-only nav button vs inline
+   label vs modal close). */
+.ui-icon {
+  width: 22px;
+  height: 22px;
+  vertical-align: middle;
+}
+.ui-icon-nav {
+  width: 28px;
+  height: 28px;
+  vertical-align: middle;
+}
+.ui-icon-label {
+  width: 22px;
+  height: 22px;
+  vertical-align: -5px;
+  margin-right: 7px;
+}
+.modal-close .ui-icon-close {
+  width: 24px;
+  height: 24px;
+  display: block;
+}
+
 /* Long names scroll horizontally (hidden scrollbar) instead of
    truncating, so the full name is always reachable by swipe/trackpad. */
 .lb-name {
