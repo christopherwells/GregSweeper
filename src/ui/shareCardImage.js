@@ -268,8 +268,10 @@ function fxRibbon(g, W, yC, h, colors) { // soft wobbly aurora band; colors[] bl
   g.filter = 'none'; g.globalCompositeOperation = 'source-over'; g.restore();
 }
 function fxBlinds(g, W, H, rgba) {
+  // Bands span far past every edge so the -0.12 rotation can't leave a corner
+  // (the bottom-left) uncovered.
   g.save(); g.rotate(-0.12); g.fillStyle = rgba;
-  for (let y = -60; y < H + 140; y += 52) g.fillRect(-80, y, W + 160, 22);
+  for (let y = -160; y < H + 240; y += 52) g.fillRect(-H, y, W + 2 * H, 22);
   g.restore();
 }
 function fxSun(g, x, y, r) {
@@ -290,6 +292,25 @@ function fxBurst(g, x, y, r, rgba) { // comic starburst (spiky polygon)
   g.save(); g.translate(x, y); g.fillStyle = rgba; g.beginPath();
   for (let i = 0; i < 24; i++) { const a = i * Math.PI / 12, rr = i % 2 ? r * 0.55 : r; g.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); }
   g.closePath(); g.fill(); g.restore();
+}
+function fxFish(g, x, y, s, rgba, flip) { // simple fish silhouette (body + tail + eye)
+  g.save(); g.translate(x, y); if (flip) g.scale(-1, 1); g.fillStyle = rgba;
+  g.beginPath(); g.ellipse(0, 0, s, s * 0.5, 0, 0, 7); g.fill();
+  g.beginPath(); g.moveTo(-s * 0.85, 0); g.lineTo(-s * 1.5, -s * 0.55); g.lineTo(-s * 1.5, s * 0.55); g.closePath(); g.fill();
+  g.fillStyle = 'rgba(255,255,255,0.75)'; g.beginPath(); g.arc(s * 0.5, -s * 0.12, s * 0.11, 0, 7); g.fill();
+  g.restore();
+}
+function fxBlossom(g, x, y, s, rgba) { // 5-petal cherry blossom with a yellow center
+  g.save(); g.translate(x, y); g.fillStyle = rgba;
+  for (let i = 0; i < 5; i++) { g.save(); g.rotate(i * 2 * Math.PI / 5); g.beginPath(); g.ellipse(0, -s * 0.6, s * 0.4, s * 0.62, 0, 0, 7); g.fill(); g.restore(); }
+  g.fillStyle = 'rgba(255,232,120,0.65)'; g.beginPath(); g.arc(0, 0, s * 0.22, 0, 7); g.fill();
+  g.restore();
+}
+function fxBottle(g, x, baseY, w, h, rgba) { // apothecary bottle/jar sitting on a shelf
+  g.fillStyle = rgba;
+  roundRect(g, x - w / 2, baseY - h, w, h, 4); g.fill();
+  g.fillRect(x - w * 0.18, baseY - h - h * 0.22, w * 0.36, h * 0.22);
+  g.beginPath(); g.ellipse(x, baseY - h - h * 0.22, w * 0.26, h * 0.09, 0, 0, 7); g.fill();
 }
 function fxCompass(g, x, y, r, rgba) {
   g.strokeStyle = rgba; g.fillStyle = rgba; g.lineWidth = 2;
@@ -317,8 +338,14 @@ const SHARE_FX = {
   forest: (g, W, H) => {
     fxGlow(g, W * 0.22, H * 0.18, 440, 'rgba(120,195,80,0.13)'); fxGlow(g, W * 0.8, H * 0.74, 400, 'rgba(80,150,70,0.11)');
     fxVignette(g, W, H, 'rgba(18,38,16,0.34)');
-    fxScatter(g, W, H, 28, (x, y) => fxEllipse(g, x, y, _rn(8, 16), _rn(5, 9), `rgba(${_pk(['120,165,75', '150,120,46', '170,104,40', '96,150,70'])},0.82)`, _rn(0, 6)));
-    fxScatter(g, W, H, 13, (x, y) => fxDot(g, x, y, _rn(2, 4.2), 'rgba(216,255,130,0.85)', 11));
+    // Keep leaves out of the centered text (header at top, result/footer at
+    // bottom); fill the margins densely instead.
+    const inText = (x, y) => x > W * 0.16 && x < W * 0.84 && (y < H * 0.19 || y > H * 0.7);
+    for (let placed = 0, tries = 0; placed < 38 && tries < 700; tries++) {
+      const x = _rn(18, W - 18), y = _rn(18, H - 18); if (inText(x, y)) continue;
+      fxEllipse(g, x, y, _rn(8, 16), _rn(5, 9), `rgba(${_pk(['120,165,75', '150,120,46', '170,104,40', '96,150,70'])},0.82)`, _rn(0, 6)); placed++;
+    }
+    fxScatter(g, W, H, 12, (x, y) => fxDot(g, x, y, _rn(2, 4.2), 'rgba(216,255,130,0.85)', 11));
   },
   galaxy: (g, W, H) => {
     fxGlow(g, W * 0.3, H * 0.32, 440, 'rgba(208,80,255,0.13)'); fxGlow(g, W * 0.74, H * 0.66, 400, 'rgba(130,177,255,0.11)');
@@ -335,11 +362,14 @@ const SHARE_FX = {
   sakura: (g, W, H) => {
     fxGlow(g, W * 0.5, H * 0.28, 470, 'rgba(232,112,144,0.10)');
     fxDot(g, W * 0.82, H * 0.12, 44, 'rgba(255,238,228,0.55)', 50);
-    fxScatter(g, W, H, 28, (x, y) => fxEllipse(g, x, y, _rn(7, 13), _rn(5, 9), `rgba(${_pk(['244,170,190', '240,150,176', '250,190,205'])},0.8)`, _rn(0, 6)));
+    fxScatter(g, W, H, 50, (x, y) => fxEllipse(g, x, y, _rn(7, 13), _rn(5, 9), `rgba(${_pk(['244,170,190', '240,150,176', '250,190,205'])},0.8)`, _rn(0, 6)));
+    fxScatter(g, W, H, 8, (x, y) => fxBlossom(g, x, y, _rn(8, 13), `rgba(${_pk(['250,180,200', '244,160,185'])},0.7)`));
   },
   ocean: (g, W, H) => {
-    const og = g.createLinearGradient(0, 0, 0, H); og.addColorStop(0, 'rgba(90,185,225,0.13)'); og.addColorStop(1, 'rgba(0,40,80,0.20)'); g.fillStyle = og; g.fillRect(0, 0, W, H);
-    g.save(); g.fillStyle = 'rgba(205,242,255,0.06)'; for (let i = 0; i < 3; i++) { g.save(); g.translate(W * (0.24 + i * 0.28), -20); g.rotate(0.12); g.fillRect(-26, 0, 52, H); g.restore(); } g.restore();
+    const og = g.createLinearGradient(0, 0, 0, H); og.addColorStop(0, 'rgba(90,185,225,0.13)'); og.addColorStop(1, 'rgba(0,40,80,0.22)'); g.fillStyle = og; g.fillRect(0, 0, W, H);
+    // Fish in the side margins (the board fills the center) + a corner fish.
+    const fish = [[W * 0.06, H * 0.3, 0], [W * 0.13, H * 0.4, 0], [W * 0.07, H * 0.52, 0], [W * 0.12, H * 0.63, 0], [W * 0.94, H * 0.34, 1], [W * 0.88, H * 0.46, 1], [W * 0.93, H * 0.58, 1], [W * 0.86, H * 0.69, 1], [W * 0.2, H * 0.13, 0]];
+    for (const [fx, fy, fl] of fish) fxFish(g, fx, fy, _rn(12, 17), 'rgba(120,185,215,0.5)', !!fl);
     fxScatter(g, W, H, 30, (x, y) => { fxRing(g, x, y, _rn(4, 11), 'rgba(205,242,255,0.55)', 1.5); fxDot(g, x - 1.6, y - 1.6, 2, 'rgba(240,252,255,0.7)'); });
   },
   inferno: (g, W, H) => {
@@ -400,10 +430,16 @@ const SHARE_FX = {
     fxScatter(g, W, H, 22, (x, y) => fxDiamond(g, x, y, _rn(5, 11), _pk(['rgba(180,80,240,0.72)', 'rgba(240,80,110,0.72)', 'rgba(80,160,240,0.68)', 'rgba(240,200,80,0.72)'])));
   },
   apothecary: (g, W, H) => {
-    fxGlow(g, W * 0.8, H * 0.14, 420, 'rgba(255,190,90,0.16)');
-    fxVignette(g, W, H, 'rgba(30,16,6,0.4)');
-    g.strokeStyle = 'rgba(150,110,60,0.35)'; g.lineWidth = 3; for (const fy of [H * 0.34, H * 0.66]) { g.beginPath(); g.moveTo(0, fy); g.lineTo(W, fy); g.stroke(); }
-    fxScatter(g, W, H, 22, (x, y) => fxDot(g, x, y, _rn(2, 4), 'rgba(232,190,110,0.5)', 6));
+    // A shop wall: shelves lined with bottles + jars, a candle, warm light.
+    fxGlow(g, W * 0.82, H * 0.12, 440, 'rgba(255,190,90,0.18)');
+    fxVignette(g, W, H, 'rgba(30,16,6,0.42)');
+    const shelves = [H * 0.3, H * 0.55, H * 0.8];
+    g.strokeStyle = 'rgba(150,110,60,0.42)'; g.lineWidth = 4;
+    for (const sy of shelves) { g.beginPath(); g.moveTo(0, sy); g.lineTo(W, sy); g.stroke(); }
+    const jarCols = ['rgba(120,90,50,0.6)', 'rgba(90,110,70,0.55)', 'rgba(110,70,55,0.6)', 'rgba(80,95,110,0.55)', 'rgba(140,110,60,0.55)'];
+    for (const sy of shelves) for (const bx of [W * 0.05, W * 0.11, W * 0.17, W * 0.83, W * 0.89, W * 0.95]) fxBottle(g, bx, sy, _rn(20, 30), _rn(38, 66), _pk(jarCols));
+    g.fillStyle = 'rgba(255,205,95,0.7)'; g.beginPath(); g.ellipse(W * 0.82, H * 0.09, 8, 15, 0, 0, 7); g.fill();
+    fxScatter(g, W, H, 12, (x, y) => fxDot(g, x, y, _rn(2, 4), 'rgba(232,190,110,0.5)', 6));
   },
   splitflap: (g, W, H) => {
     // A Solari departures board framing the card: real character tiles with the
@@ -463,9 +499,14 @@ const SHARE_FX = {
     fxScatter(g, W, H, 6, (x, y) => fxDot(g, x, y, 1.5, 'rgba(44,62,143,0.42)'));
   },
   sumie: (g, W, H) => {
-    g.save(); g.filter = 'blur(10px)'; g.fillStyle = 'rgba(42,42,42,0.22)'; g.beginPath(); g.moveTo(0, H * 0.78); g.quadraticCurveTo(W * 0.3, H * 0.58, W * 0.55, H * 0.74); g.quadraticCurveTo(W * 0.8, H * 0.9, W, H * 0.7); g.lineTo(W, H); g.lineTo(0, H); g.closePath(); g.fill(); g.filter = 'none'; g.restore();
-    g.fillStyle = 'rgba(176,48,32,0.7)'; roundRect(g, W * 0.86, H * 0.84, 36, 36, 4); g.fill();
-    fxScatter(g, W, H, 14, (x, y) => fxGlow(g, x, y, _rn(10, 24), `rgba(${Math.random() < 0.08 ? '176,48,32' : '42,42,42'},0.3)`));
+    // Bold sweeping brush strokes (the sumi-e gesture) + the artist's red seal
+    // + soft ink motes. No heavy bottom wash (the old one read as a black blob).
+    g.save(); g.lineCap = 'round'; g.filter = 'blur(2px)'; g.strokeStyle = 'rgba(42,42,42,0.2)';
+    g.lineWidth = 10; g.beginPath(); g.moveTo(W * 0.05, H * 0.13); g.quadraticCurveTo(W * 0.34, H * 0.03, W * 0.62, H * 0.15); g.stroke();
+    g.lineWidth = 6; g.beginPath(); g.moveTo(W * 0.12, H * 0.92); g.quadraticCurveTo(W * 0.32, H * 0.985, W * 0.52, H * 0.9); g.stroke();
+    g.filter = 'none'; g.restore();
+    g.fillStyle = 'rgba(176,48,32,0.72)'; roundRect(g, W * 0.87, H * 0.06, 34, 34, 4); g.fill();
+    fxScatter(g, W, H, 18, (x, y) => fxGlow(g, x, y, _rn(10, 24), `rgba(${Math.random() < 0.08 ? '176,48,32' : '42,42,42'},0.3)`));
   },
   chalkboard: (g, W, H) => {
     const ch = (a) => `rgba(240,235,224,${a})`;
