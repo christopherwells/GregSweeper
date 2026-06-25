@@ -67,7 +67,8 @@ export const THEME_UNLOCKS = {
   galaxy:           { levelRequired: 75,  displayName: 'Galaxy',         mine: '☄️', flag: '🛸', strikeCell: '💫', smiley: '🪐', smileyWin: '🌟', smileyLoss: '🌑' },
   candy:            { levelRequired: 80,  displayName: 'Candy',          mine: '🍬', flag: '🍭', strikeCell: '💥', smiley: '🧁', smileyWin: '🎂', smileyLoss: '🍩' },
   // Loud — high contrast, busy ambient animation, maximum saturation.
-  comic:            { levelRequired: 85,  displayName: 'Comic',          mine: '💣', flag: '❗', strikeCell: '💥', smiley: '😮', smileyWin: '🦸', smileyLoss: '💀' },
+  // (Nest is the gentle exception in this band — it inherited comic's L85 slot.)
+  nest:             { levelRequired: 85,  displayName: 'Nest',           mine: '🥚', flag: '🪶', strikeCell: '🍳', smiley: '🪺', smileyWin: '🐥', smileyLoss: '🪹' },
   circuitboard:     { levelRequired: 90,  displayName: 'Circuit Board',  mine: '🐛', flag: '🔧', strikeCell: '⚡', smiley: '🤖', smileyWin: '💡', smileyLoss: '🔥' },
   matrix:           { levelRequired: 95,  displayName: 'Matrix',         mine: '🟢', flag: '🔴', strikeCell: '❌', smiley: '👁️', smileyWin: '🔓', smileyLoss: '🔒' },
   neon:             { levelRequired: 100, displayName: 'Neon',           mine: '⚡', flag: '🎯', strikeCell: '💥', smiley: '💡', smileyWin: '🔆', smileyLoss: '💤' },

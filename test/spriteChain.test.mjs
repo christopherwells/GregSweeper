@@ -73,17 +73,25 @@ test('every themed world renders its own themed Greg in all three smiley slots',
   }
 });
 
-test('a theme object sprite wins over the Tier 1 set (comic mine over mine.png)', () => {
-  // Comic's mine emoji IS the canonical 💣, so this proves the theme
-  // sprite is consulted BEFORE the Tier 1 fallback would match.
-  currentTheme = 'comic';
-  assert.equal(getSpriteUrl('mine', '💣'), 'assets/sprites/themes/comic-mine.svg');
+test('a theme object sprite resolves for the theme emoji; the Tier 1 set stays for the canonical', () => {
+  // Comic's mine used to BE the canonical 💣, which proved the theme sprite is
+  // consulted before the Tier 1 fallback. Comic is retired and no surviving
+  // theme collides with a canonical emoji, so the honest assertions are:
+  //  (a) Nest's own object emoji resolve to Nest's sprites,
+  //  (b) a canonical 💣 on a themed board still falls through to mine.png — the
+  //      theme sprite is keyed to the theme's OWN emoji, not a blanket override,
+  //  (c) Classic's 💣 resolves to the Tier 1 mine.png.
+  currentTheme = 'nest';
+  assert.equal(getSpriteUrl('mine', '🥚'), 'assets/sprites/themes/nest-mine.svg');
+  assert.equal(getSpriteUrl('flag', '🪶'), 'assets/sprites/themes/nest-flag.svg');
+  assert.equal(getSpriteUrl('strikeCell', '🍳'), 'assets/sprites/themes/nest-strike.svg');
+  assert.equal(getSpriteUrl('mine', '💣'), 'assets/sprites/mine.png');
   currentTheme = 'classic';
   assert.equal(getSpriteUrl('mine', '💣'), 'assets/sprites/mine.png');
 });
 
 test('spriteImgHTML always emits the Tier 1 sprite (theme-agnostic avatar surfaces)', () => {
-  currentTheme = 'comic';
+  currentTheme = 'nest';
   const html = spriteImgHTML('smiley', 'sprite-greg-par', 'Greg');
   assert.match(html, /assets\/sprites\/idle\.png/,
     'avatar surfaces (field note, win modal, ghost row) must show Greg regardless of theme');

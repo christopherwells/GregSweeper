@@ -121,13 +121,13 @@ export const THEME_SOUND_PALETTES = {
     cascade: { base: 600, step: 120, type: 'square' },
     win: { notes: [659, 880, 1175, 1760], type: 'square', dur: 0.12 },
   },
-  // Comic: cartoon zing — the flag is an octave-drop "bonk" gag,
-  // the win a heroic fanfare with a skip in it.
-  comic: {
-    reveal: [{ freq: 880, dur: 0.05, type: 'square', vol: 0.07 }],
-    flag: [{ freq: 1047, dur: 0.05, type: 'square', vol: 0.07 }, { freq: 523, dur: 0.07, type: 'square', vol: 0.06, delay: 45 }],
-    cascade: { base: 523, step: 150, type: 'square' },
-    win: { notes: [523, 784, 659, 1047, 1319], type: 'square', dur: 0.16 },
+  // Nest: birdsong — soft high sine whistles, a two-note chirp flag, an
+  // ascending dawn-chorus win.
+  nest: {
+    reveal: [{ freq: 1397, dur: 0.05, type: 'sine', vol: 0.05 }],
+    flag: [{ freq: 1175, dur: 0.05, type: 'sine', vol: 0.06 }, { freq: 1760, dur: 0.05, type: 'sine', vol: 0.05, delay: 40 }],
+    cascade: { base: 1047, step: 120, type: 'sine' },
+    win: { notes: [1047, 1319, 1568, 2093], type: 'sine', dur: 0.18 },
   },
   // Dark: hushed night — low soft sines, falling flag, minor-lift win.
   dark: {
