@@ -443,10 +443,24 @@ const SHARE_FX = {
     fxScatter(g, W, H, 10, (x, y) => { for (let i = 0; i < 9; i++) fxDot(g, x + (i % 3) * 7, y + Math.floor(i / 3) * 7, 1.7, 'rgba(42,34,24,0.5)'); });
   },
   editorial: (g, W, H) => {
-    g.strokeStyle = 'rgba(26,26,26,0.18)'; g.lineWidth = 1.5; for (const cx of [W * 0.34, W * 0.66]) { g.beginPath(); g.moveTo(cx, 40); g.lineTo(cx, H - 40); g.stroke(); }
-    g.fillStyle = 'rgba(26,26,26,0.3)'; g.fillRect(W * 0.08, H * 0.1, W * 0.5, 10);
-    fxScatter(g, W, H, 16, (x, y) => fxHLine(g, x, y, _rn(34, 78), 'rgba(26,26,26,0.3)'));
-    fxScatter(g, W, H, 10, (x, y) => fxDot(g, x, y, _rn(1.5, 2.5), 'rgba(44,62,143,0.4)'));
+    // An actual newspaper page: four justified text columns with column rules,
+    // headline decks atop the outer columns, a masthead rule, and section
+    // labels — the NYT/online-paper structure rather than loose lines.
+    const ink = (a) => `rgba(26,26,26,${a})`;
+    const cols = 4, colW = W / cols;
+    g.strokeStyle = ink(0.16); g.lineWidth = 1.5;
+    for (let i = 1; i < cols; i++) { g.beginPath(); g.moveTo(i * colW, 56); g.lineTo(i * colW, H - 28); g.stroke(); }
+    for (let c = 0; c < cols; c++) {
+      const x0 = c * colW + 12, cw = colW - 24;
+      let y = 66;
+      if (c === 0 || c === cols - 1) { g.fillStyle = ink(0.36); g.fillRect(x0, y, cw * _rn(0.75, 1), 9); y += 15; g.fillRect(x0, y, cw * _rn(0.55, 0.85), 7); y += 18; }
+      g.fillStyle = ink(0.13);
+      while (y < H - 28) { g.fillRect(x0, y, cw * _rn(0.5, 1), 2.4); y += 7; }
+    }
+    fxText(g, 14, 24, '700 15px Georgia, serif', ink(0.5), 'O P I N I O N');
+    fxText(g, W - 116, 24, '700 15px Georgia, serif', ink(0.5), 'A R T S');
+    g.strokeStyle = ink(0.42); g.lineWidth = 1.5; g.beginPath(); g.moveTo(12, 48); g.lineTo(W - 12, 48); g.stroke();
+    fxScatter(g, W, H, 6, (x, y) => fxDot(g, x, y, 1.5, 'rgba(44,62,143,0.42)'));
   },
   sumie: (g, W, H) => {
     g.save(); g.filter = 'blur(10px)'; g.fillStyle = 'rgba(42,42,42,0.22)'; g.beginPath(); g.moveTo(0, H * 0.78); g.quadraticCurveTo(W * 0.3, H * 0.58, W * 0.55, H * 0.74); g.quadraticCurveTo(W * 0.8, H * 0.9, W, H * 0.7); g.lineTo(W, H); g.lineTo(0, H); g.closePath(); g.fill(); g.filter = 'none'; g.restore();
