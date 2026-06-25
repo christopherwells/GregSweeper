@@ -36,9 +36,30 @@ function loadImage(url) {
   });
 }
 
+// Resolve a CSS value (incl. var()) to a #hex by letting the browser compute it
+// on a throwaway element — getPropertyValue returns custom-property values with
+// var() intact. Returns hex (the palette helpers need hex, not rgb()); falls
+// back when the computed value isn't a plain rgb() (e.g. a color-mix() default).
+function resolveCssColor(value, fallback) {
+  try {
+    const el = document.createElement('span');
+    el.style.cssText = 'position:absolute;visibility:hidden;pointer-events:none;color:' + value;
+    document.body.appendChild(el);
+    const c = getComputedStyle(el).color;
+    el.remove();
+    const m = c.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+    return m ? _hex(+m[1], +m[2], +m[3]) : fallback;
+  } catch { return fallback; }
+}
+
 export function buildShareData(state) {
   const cs = getComputedStyle(document.documentElement);
   const cv = (name, fallback) => (cs.getPropertyValue(name).trim() || fallback);
+  const wm1 = resolveCssColor('var(--wordmark-from)', cv('--color-accent', '#5c6bc0'));
+  // A theme may override --wordmark-to with an explicit color; otherwise derive
+  // the gradient's light end in JS (the default color-mix() doesn't serialize as
+  // rgb, so resolveCssColor falls back here).
+  const wm2 = resolveCssColor('var(--wordmark-to)', '') || mix(wm1, '#ffffff', 0.3);
   const mode = state.gameMode;
   const modeLabel = { normal: 'CHALLENGE', timed: 'QUICK PLAY', daily: 'DAILY', weekly: 'WEEKLY', chaos: 'CHAOS' }[mode] || 'GAME';
 
@@ -67,6 +88,9 @@ export function buildShareData(state) {
 
   return {
     theme: document.documentElement.getAttribute('data-theme') || 'classic',
+    wordmarkFont: cv('--font-display', 'system-ui, "Segoe UI", sans-serif'),
+    wm1,
+    wm2,
     modeLabel,
     dateLabel,
     rows: state.rows,
@@ -585,8 +609,11 @@ export async function renderShareCardImage(data) {
   const mineCell = '#ec9a86';              // Option C: fixed warm danger tint
   const good = dark ? '#54d07e' : '#2e8b57';
   const bad = dark ? '#ff7d75' : '#e0564f';
-  const wm1 = dark ? '#9d8cff' : '#7b6cf0';
-  const wm2 = dark ? '#e88ab6' : '#d06a8f';
+  // Wordmark gradient comes themed from the tokens; nudge toward legibility if a
+  // theme's accent sits too close to its own background luminance.
+  const wmContrast = (h) => (Math.abs(lum(h) - lum(C.bg)) < 0.22 ? mix(h, dark ? '#ffffff' : '#000000', 0.4) : h);
+  const wm1 = wmContrast(data.wm1);
+  const wm2 = wmContrast(data.wm2);
 
   const [gregImg, mineImg, ...modImgs] = await Promise.all([
     loadImage(data.gregUrl),
@@ -602,11 +629,14 @@ export async function renderShareCardImage(data) {
   // ── Header ──
   g.textAlign = 'center';
   g.textBaseline = 'alphabetic';
+  // Wordmark in the theme's display font; shrink if a wide font would overflow.
+  let wmSize = 84;
+  g.font = `700 ${wmSize}px ${data.wordmarkFont}`;
+  while (g.measureText('GregSweeper').width > W - 90 && wmSize > 46) { wmSize -= 2; g.font = `700 ${wmSize}px ${data.wordmarkFont}`; }
   const grad = g.createLinearGradient(W / 2 - 250, 0, W / 2 + 250, 0);
   grad.addColorStop(0, wm1);
   grad.addColorStop(1, wm2);
   g.fillStyle = grad;
-  g.font = '800 84px system-ui, "Segoe UI", sans-serif';
   g.fillText('GregSweeper', W / 2, 112);
   g.fillStyle = dim;
   g.font = '700 24px system-ui, sans-serif';
