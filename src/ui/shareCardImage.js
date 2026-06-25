@@ -312,6 +312,18 @@ function fxBottle(g, x, baseY, w, h, rgba) { // apothecary bottle/jar sitting on
   g.fillRect(x - w * 0.18, baseY - h - h * 0.22, w * 0.36, h * 0.22);
   g.beginPath(); g.ellipse(x, baseY - h - h * 0.22, w * 0.26, h * 0.09, 0, 0, 7); g.fill();
 }
+function fxWrapper(g, x, y, s, rgba, rot) { // wrapped hard candy: oval center + twisted ends
+  g.save(); g.translate(x, y); g.rotate(rot); g.fillStyle = rgba;
+  g.beginPath(); g.ellipse(0, 0, s, s * 0.62, 0, 0, 7); g.fill();
+  for (const d of [1, -1]) { g.beginPath(); g.moveTo(d * s, 0); g.lineTo(d * s * 1.7, -s * 0.55); g.lineTo(d * s * 1.7, s * 0.55); g.closePath(); g.fill(); }
+  g.fillStyle = 'rgba(255,255,255,0.4)'; g.beginPath(); g.ellipse(-s * 0.2, -s * 0.18, s * 0.4, s * 0.22, 0, 0, 7); g.fill();
+  g.restore();
+}
+function fxCrown(g, x, y, s, rgba) { // five-point crown silhouette
+  g.save(); g.translate(x, y); g.fillStyle = rgba;
+  g.beginPath(); g.moveTo(-s, s * 0.45); g.lineTo(-s, -s * 0.35); g.lineTo(-s * 0.5, s * 0.1); g.lineTo(0, -s * 0.55); g.lineTo(s * 0.5, s * 0.1); g.lineTo(s, -s * 0.35); g.lineTo(s, s * 0.45); g.closePath(); g.fill();
+  g.restore();
+}
 function fxCompass(g, x, y, r, rgba) {
   g.strokeStyle = rgba; g.fillStyle = rgba; g.lineWidth = 2;
   g.beginPath(); g.arc(x, y, r, 0, 7); g.stroke(); g.beginPath(); g.arc(x, y, r * 0.66, 0, 7); g.stroke();
@@ -331,7 +343,7 @@ function fxWave(g, W, y, amp, rgba) {
 }
 function fxCol(g, x, y, n, fs, rgba) { // matrix code column, bright leading head
   g.font = '700 ' + fs + 'px monospace'; g.textAlign = 'center'; g.textBaseline = 'top';
-  for (let i = 0; i < n; i++) { g.fillStyle = i === n - 1 ? 'rgba(225,255,230,0.95)' : rgba; g.fillText(Math.random() < 0.5 ? '0' : '1', x, y + i * fs); }
+  for (let i = 0; i < n; i++) { g.fillStyle = i === n - 1 ? 'rgba(170,235,185,0.6)' : rgba; g.fillText(Math.random() < 0.5 ? '0' : '1', x, y + i * fs); }
 }
 
 const SHARE_FX = {
@@ -377,25 +389,30 @@ const SHARE_FX = {
     fxScatter(g, W, H, 42, (x, y) => fxDot(g, x, _rn(H * 0.32, H), _rn(1.5, 5), _pk(['rgba(255,45,0,0.8)', 'rgba(255,130,0,0.7)', 'rgba(255,80,0,0.7)']), 10));
   },
   legendary: (g, W, H) => {
-    fxGlow(g, W * 0.5, H * 0.42, 460, 'rgba(255,200,40,0.10)');
-    fxRays(g, W * 0.5, H * 0.42, 16, 70, 380, 'rgba(255,215,90,0.10)');
-    fxScatter(g, W, H, 18, (x, y) => fxStar(g, x, y, _rn(5, 11), _pk(['rgba(255,215,0,0.78)', 'rgba(255,240,150,0.65)'])));
-    fxScatter(g, W, H, 14, (x, y) => fxDot(g, x, _rn(H * 0.4, H), _rn(1.5, 3.5), 'rgba(255,140,0,0.6)', 7));
+    // Crowns + a stronger radiant sunburst + bigger gold (Christopher: make it
+    // more legendary).
+    fxGlow(g, W * 0.5, H * 0.42, 540, 'rgba(255,200,50,0.15)');
+    fxRays(g, W * 0.5, H * 0.42, 28, 64, 500, 'rgba(255,215,90,0.13)');
+    fxCrown(g, W * 0.13, H * 0.1, 36, 'rgba(255,212,70,0.55)'); fxCrown(g, W * 0.87, H * 0.1, 36, 'rgba(255,212,70,0.55)');
+    fxScatter(g, W, H, 30, (x, y) => fxStar(g, x, y, _rn(5, 13), _pk(['rgba(255,215,0,0.85)', 'rgba(255,245,160,0.72)', 'rgba(255,255,255,0.6)'])));
+    fxScatter(g, W, H, 14, (x, y) => fxDot(g, x, y, _rn(2, 4), 'rgba(255,150,0,0.6)', 8));
   },
   supernova: (g, W, H) => {
-    // The supernova world's board reads warm, but the card wants deep-space
-    // blue-black (Christopher) — lay a near-opaque blue base over the theme bg.
+    // Deep-space blue-black base (the theme board reads warm), then aurora-style
+    // ribbons in nebula blues/violets + stars — no random rings (Christopher:
+    // more aurora, supernova colors, fewer circles).
     const bg = g.createLinearGradient(0, 0, 0, H);
     bg.addColorStop(0, 'rgba(6,10,32,0.93)'); bg.addColorStop(0.5, 'rgba(12,18,52,0.9)'); bg.addColorStop(1, 'rgba(4,8,26,0.95)');
     g.fillStyle = bg; g.fillRect(0, 0, W, H);
-    fxGlow(g, W * 0.5, H * 0.46, 340, 'rgba(170,210,255,0.18)'); fxGlow(g, W * 0.5, H * 0.46, 620, 'rgba(60,110,220,0.16)');
-    fxRays(g, W * 0.5, H * 0.46, 20, 50, 470, 'rgba(150,200,255,0.10)');
-    fxScatter(g, W, H, 10, (x, y) => fxRing(g, x, y, _rn(10, 30), 'rgba(150,200,255,0.42)', 2));
-    fxScatter(g, W, H, 26, (x, y) => fxStar(g, x, y, _rn(4, 9), _pk(['rgba(205,225,255,0.85)', 'rgba(255,255,255,0.7)', 'rgba(150,200,255,0.6)'])));
+    fxRibbon(g, W, H * 0.26, 66, ['rgba(80,140,255,0)', 'rgba(80,150,255,0.36)', 'rgba(150,110,255,0.36)', 'rgba(150,110,255,0)']);
+    fxRibbon(g, W, H * 0.44, 58, ['rgba(60,200,225,0)', 'rgba(70,190,225,0.32)', 'rgba(150,150,255,0.32)', 'rgba(150,150,255,0)']);
+    fxRibbon(g, W, H * 0.64, 52, ['rgba(120,150,255,0)', 'rgba(130,160,255,0.3)', 'rgba(205,120,255,0.28)', 'rgba(205,120,255,0)']);
+    fxScatter(g, W, H, 32, (x, y) => fxStar(g, x, y, _rn(4, 9), _pk(['rgba(205,225,255,0.85)', 'rgba(255,255,255,0.7)', 'rgba(150,200,255,0.6)'])));
   },
   matrix: (g, W, H) => {
     fxVignette(g, W, H, 'rgba(0,28,6,0.42)');
-    for (let i = 0; i < 30; i++) fxCol(g, _rn(12, W - 12), _rn(-60, H - 70), Math.floor(_rn(5, 13)), 16, `rgba(120,255,150,${_rn(0.3, 0.6).toFixed(2)})`);
+    // More columns, dimmer (Christopher: more 0/1 but not as bright).
+    for (let i = 0; i < 44; i++) fxCol(g, _rn(10, W - 10), _rn(-90, H - 50), Math.floor(_rn(5, 14)), 15, `rgba(70,200,105,${_rn(0.16, 0.34).toFixed(2)})`);
   },
   neon: (g, W, H) => {
     fxPersp(g, W, H, 'rgba(0,255,136,0.18)', H * 0.6);
@@ -404,13 +421,19 @@ const SHARE_FX = {
     fxScatter(g, W, H, 4, (x, y) => fxHLine(g, 0, y, W, _pk(['rgba(0,255,136,0.4)', 'rgba(255,0,110,0.4)'])));
   },
   synthwave: (g, W, H) => {
-    fxGlow(g, W * 0.5, H * 0.55, 480, 'rgba(255,0,200,0.10)');
-    fxSun(g, W * 0.5, H * 0.16, 118);
-    fxPersp(g, W, H, 'rgba(255,0,200,0.32)', H * 0.58);
+    // A warm sunset (vs neon's cool electric grid) — the sun + warm sky are the
+    // differentiator (Christopher: make synthwave and neon more unique).
+    const sg = g.createLinearGradient(0, 0, 0, H);
+    sg.addColorStop(0, 'rgba(95,25,125,0.15)'); sg.addColorStop(0.42, 'rgba(255,70,150,0.14)'); sg.addColorStop(0.64, 'rgba(255,140,70,0.13)'); sg.addColorStop(1, 'rgba(60,20,90,0.17)');
+    g.fillStyle = sg; g.fillRect(0, 0, W, H);
+    fxSun(g, W * 0.5, H * 0.16, 122);
+    fxPersp(g, W, H, 'rgba(255,60,190,0.34)', H * 0.6);
   },
   candy: (g, W, H) => {
-    fxScatter(g, W, H, 30, (x, y) => fxCapsule(g, x, y, _rn(10, 19), `rgba(${_pk(['255,64,129', '224,64,251', '124,77,255', '255,170,40', '64,210,140', '80,170,255'])},0.82)`, _rn(0, 6)));
-    fxScatter(g, W, H, 12, (x, y) => fxDot(g, x, y, _rn(3, 6), `rgba(${_pk(['255,255,255', '255,200,230'])},0.7)`));
+    const cols = ['255,64,129', '224,64,251', '124,77,255', '255,170,40', '64,210,140', '80,170,255'];
+    fxScatter(g, W, H, 48, (x, y) => fxCapsule(g, x, y, _rn(9, 18), `rgba(${_pk(cols)},0.82)`, _rn(0, 6)));
+    fxScatter(g, W, H, 11, (x, y) => fxWrapper(g, x, y, _rn(9, 14), `rgba(${_pk(cols)},0.78)`, _rn(-0.6, 0.6)));
+    fxScatter(g, W, H, 16, (x, y) => fxDot(g, x, y, _rn(2.5, 6), `rgba(${_pk(['255,255,255', '255,200,230', '255,240,150'])},0.7)`));
   },
   circuitboard: (g, W, H) => {
     fxScatter(g, W, H, 18, (x, y) => fxTrace(g, x, y, 'rgba(64,200,120,0.42)'));
@@ -425,9 +448,10 @@ const SHARE_FX = {
     fxScatter(g, W, H, 22, (x, y) => fxDot(g, x, y, _rn(2, 4.2), _pk(['rgba(64,240,144,0.9)', 'rgba(64,200,240,0.85)', 'rgba(240,80,60,0.8)', 'rgba(240,200,64,0.85)']), 8));
   },
   stainedglass: (g, W, H) => {
-    fxGlow(g, W * 0.26, H * 0.3, 320, 'rgba(120,60,200,0.11)'); fxGlow(g, W * 0.74, H * 0.62, 320, 'rgba(200,50,70,0.10)');
+    // More, brighter, more varied jewel twinkles (Christopher: more colorful).
+    fxGlow(g, W * 0.26, H * 0.3, 320, 'rgba(120,60,200,0.12)'); fxGlow(g, W * 0.74, H * 0.62, 320, 'rgba(200,50,70,0.11)'); fxGlow(g, W * 0.5, H * 0.48, 320, 'rgba(80,160,240,0.08)');
     fxGrid(g, W, H, 'rgba(20,18,30,0.4)', 84);
-    fxScatter(g, W, H, 22, (x, y) => fxDiamond(g, x, y, _rn(5, 11), _pk(['rgba(180,80,240,0.72)', 'rgba(240,80,110,0.72)', 'rgba(80,160,240,0.68)', 'rgba(240,200,80,0.72)'])));
+    fxScatter(g, W, H, 44, (x, y) => fxDiamond(g, x, y, _rn(5, 12), _pk(['rgba(190,90,250,0.82)', 'rgba(250,90,120,0.82)', 'rgba(90,170,250,0.8)', 'rgba(250,210,90,0.82)', 'rgba(90,220,150,0.8)', 'rgba(250,140,60,0.8)'])));
   },
   apothecary: (g, W, H) => {
     // A shop wall: shelves lined with bottles + jars, a candle, warm light.
