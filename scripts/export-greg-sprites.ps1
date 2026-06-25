@@ -3,11 +3,13 @@
 # with a transparent background, via headless Chrome.
 #
 # Usage (from the repo root):
-#   powershell -File scripts/export-greg-sprites.ps1 -Direction a7
+#   powershell -File scripts/export-greg-sprites.ps1 -Direction a7b
 #
-# The direction prefix matches the candidate files in
-# assets/sprites/greg/ ({prefix}-idle.svg, {prefix}-win.svg,
-# {prefix}-loss.svg); any prefix with all three poses works.
+# a7b is the shipped master (the a7 blend with the open smile). The
+# direction prefix matches the master files in assets/sprites/greg/
+# ({prefix}-idle.svg, {prefix}-win.svg, {prefix}-loss.svg); any prefix
+# with all three poses works. Superseded exploration candidates live in
+# assets/sprites/greg/_exploration/.
 param(
   [Parameter(Mandatory = $true)]
   [string]$Direction

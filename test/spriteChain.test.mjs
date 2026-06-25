@@ -93,11 +93,13 @@ test('the exported Greg PNGs and SVG masters exist on disk', () => {
   for (const f of ['idle.png', 'win.png', 'loss.png']) {
     assert.ok(existsSync(join(repoRoot, 'assets', 'sprites', f)), `missing assets/sprites/${f}`);
   }
-  for (const d of ['a', 'b', 'c']) {
-    for (const p of ['idle', 'win', 'loss']) {
-      assert.ok(existsSync(join(repoRoot, 'assets', 'sprites', 'greg', `${d}-${p}.svg`)),
-        `missing greg master ${d}-${p}.svg`);
-    }
+  // a7b is the shipped SVG master (the a7 blend with the open smile that
+  // matches idle.png); export-greg-sprites.ps1 -Direction a7b rasterizes
+  // these to the PNGs above. Superseded first-round candidates (a/b/c and
+  // the a-a7g drill-down) live in greg/_exploration/, not greg/.
+  for (const p of ['idle', 'win', 'loss']) {
+    assert.ok(existsSync(join(repoRoot, 'assets', 'sprites', 'greg', `a7b-${p}.svg`)),
+      `missing greg master a7b-${p}.svg`);
   }
   assert.ok(existsSync(join(repoRoot, 'assets', 'og-card.png')), 'missing og-card.png');
 });

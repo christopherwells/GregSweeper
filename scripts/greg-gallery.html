@@ -64,6 +64,10 @@ and pencil. Win and loss poses derive from the same body.</p>
 <div id="drill"></div>
 <div id="out"></div>
 <script>
+// Exploration candidates were archived to greg/_exploration/ (2026-06-25).
+// The shipped a7b master and the themed-* set stay in greg/.
+const _EXP = new Set(['a','a2','a3','a4','a5','a6','a7','a7c','a7d','a7e','a7f','a7g','b','c']);
+const gsrc = (slug, pose) => `../assets/sprites/greg/${_EXP.has(slug) ? '_exploration/' : ''}${slug}-${pose}.svg`;
 const THEMED = [
   ['themed-editorial', '#ddd6c8', 'Editorial: press ink, paper-reserve face, splatter, pen nib'],
   ['themed-sumie', '#e6dfce', 'Sumi-e: one loaded press, tonal gradation, paper reserves, the hanko'],
@@ -94,7 +98,7 @@ const themed = document.getElementById('themed');
 const tt = document.createElement('table');
 tt.innerHTML = '<tr><th>World</th><th>idle</th><th>win</th><th>loss</th><th>32px idle</th><th>32px win</th><th>32px loss</th></tr>' +
   THEMED.map(([slug, bg, label]) => {
-    const sw = (pose, size) => `<td style="background:${bg};border-radius:8px;"><img src="../assets/sprites/greg/${slug}-${pose}.svg" width="${size}" height="${size}"></td>`;
+    const sw = (pose, size) => `<td style="background:${bg};border-radius:8px;"><img src="${gsrc(slug, pose)}" width="${size}" height="${size}"></td>`;
     return `<tr>
       <td class="name" style="max-width:240px;white-space:normal;">${label}</td>
       ${sw('idle', 110)}${sw('win', 110)}${sw('loss', 110)}
@@ -106,13 +110,13 @@ const cur = document.getElementById('current');
 const curStrip = document.createElement('div');
 curStrip.className = 'strip';
 curStrip.innerHTML = ['idle', 'win', 'loss'].map(pose =>
-  `<div class="pose"><img src="../assets/sprites/greg/a7b-${pose}.svg" width="130" height="130"><span>${pose}</span></div>`
+  `<div class="pose"><img src="${gsrc('a7b', pose)}" width="130" height="130"><span>${pose}</span></div>`
 ).join('');
 cur.appendChild(curStrip);
 const curT = document.createElement('table');
 curT.innerHTML = '<tr><th>Pose</th><th>48px</th><th>32px (reset button)</th><th>22px (inline row)</th><th>On light tile</th><th>On button bg</th></tr>' +
   ['idle', 'win', 'loss'].map(pose => {
-    const src = `../assets/sprites/greg/a7b-${pose}.svg`;
+    const src = `${gsrc('a7b', pose)}`;
     return `<tr>
       <td class="name">${pose}</td>
       <td><img src="${src}" width="48" height="48"></td>
@@ -136,7 +140,7 @@ const s3 = document.getElementById('stage3');
 const s3t = document.createElement('table');
 s3t.innerHTML = '<tr><th>Variant</th><th>110px</th><th>48px</th><th>32px (reset button)</th><th>22px (inline row)</th><th>On light tile</th><th>On button bg</th></tr>' +
   S3.map(([slug, label]) => {
-    const src = `../assets/sprites/greg/${slug}-idle.svg`;
+    const src = `${gsrc(slug, 'idle')}`;
     return `<tr>
       <td class="name" style="max-width:240px;white-space:normal;">${label}</td>
       <td><img src="${src}" width="110" height="110"></td>
@@ -152,13 +156,13 @@ const s2 = document.getElementById('stage2');
 const strip2 = document.createElement('div');
 strip2.className = 'strip';
 strip2.innerHTML = ['idle', 'win', 'loss'].map(pose =>
-  `<div class="pose"><img src="../assets/sprites/greg/a7-${pose}.svg" width="130" height="130"><span>${pose}</span></div>`
+  `<div class="pose"><img src="${gsrc('a7', pose)}" width="130" height="130"><span>${pose}</span></div>`
 ).join('');
 s2.appendChild(strip2);
 const s2t = document.createElement('table');
 s2t.innerHTML = '<tr><th>Pose</th><th>48px</th><th>32px (reset button)</th><th>22px (inline row)</th><th>On light tile</th><th>On button bg</th></tr>' +
   ['idle', 'win', 'loss'].map(pose => {
-    const src = `../assets/sprites/greg/a7-${pose}.svg`;
+    const src = `${gsrc('a7', pose)}`;
     return `<tr>
       <td class="name">${pose}</td>
       <td><img src="${src}" width="48" height="48"></td>
@@ -181,7 +185,7 @@ const drill = document.getElementById('drill');
 const dt = document.createElement('table');
 dt.innerHTML = '<tr><th>Variant</th><th>110px</th><th>48px</th><th>32px (reset button)</th><th>22px (inline row)</th><th>On light tile</th><th>On button bg</th></tr>' +
   VARIANTS.map(([slug, label]) => {
-    const src = `../assets/sprites/greg/${slug}-idle.svg`;
+    const src = `${gsrc(slug, 'idle')}`;
     return `<tr>
       <td class="name" style="max-width:280px;white-space:normal;">${label}</td>
       <td><img src="${src}" width="110" height="110"></td>
@@ -216,7 +220,7 @@ for (const [key, blurb] of DIRECTIONS) {
   const strip = document.createElement('div');
   strip.className = 'strip';
   strip.innerHTML = POSES.map(([pose]) => {
-    const src = `../assets/sprites/greg/${key.toLowerCase()}-${pose}.svg`;
+    const src = `${gsrc(key.toLowerCase(), pose)}`;
     return `<div class="pose"><img src="${src}" width="110" height="110"><span>${pose}</span></div>`;
   }).join('');
   out.appendChild(strip);
@@ -224,7 +228,7 @@ for (const [key, blurb] of DIRECTIONS) {
   const t = document.createElement('table');
   t.innerHTML = '<tr><th>Emoji slot</th><th>Pose</th><th>96px</th><th>48px</th><th>32px (reset button)</th><th>22px (inline row)</th><th>On light tile</th><th>On button bg</th></tr>' +
     POSES.map(([pose, emoji]) => {
-      const src = `../assets/sprites/greg/${key.toLowerCase()}-${pose}.svg`;
+      const src = `${gsrc(key.toLowerCase(), pose)}`;
       return `<tr>
         <td class="emoji-md">${emoji}</td>
         <td class="name">${pose}</td>
