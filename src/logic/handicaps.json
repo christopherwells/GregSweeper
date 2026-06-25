@@ -1,27 +1,27 @@
 {
-  "updatedAt": "2026-06-24T16:24:55Z",
-  "modelFitN": 237,
+  "updatedAt": "2026-06-25T16:28:54Z",
+  "modelFitN": 239,
   "nPlayers": 7,
   "method": "brms-ranef",
-  "diagnostics": "max Rhat = 1.004, min ESS = 1145, divergent = 0/4000",
-  "secPerBombHit": 15.36,
+  "diagnostics": "max Rhat = 1.003, min ESS = 1151, divergent = 0/4000",
+  "secPerBombHit": 15.42,
   "handicaps": {
-    "AYXrTjKPieYrZI8sksnYqbI3Pmh1": 2.07,
-    "l0szSlaOvVb67aYrDzNU7j687BC3": 50.94,
-    "V07QPXYaICOOcP5ev6DXa2yG9y92": 16.29
+    "AYXrTjKPieYrZI8sksnYqbI3Pmh1": 1.73,
+    "l0szSlaOvVb67aYrDzNU7j687BC3": 52.74,
+    "V07QPXYaICOOcP5ev6DXa2yG9y92": 15.75
   },
   "handicapDetails": {
     "AYXrTjKPieYrZI8sksnYqbI3Pmh1": {
-      "clean": -11.21,
-      "bomb": 13.28
+      "clean": -11.61,
+      "bomb": 13.34
     },
     "l0szSlaOvVb67aYrDzNU7j687BC3": {
-      "clean": 45.52,
-      "bomb": 5.42
+      "clean": 47.54,
+      "bomb": 5.2
     },
     "V07QPXYaICOOcP5ev6DXa2yG9y92": {
-      "clean": 1.22,
-      "bomb": 15.07
+      "clean": 0.73,
+      "bomb": 15.02
     }
   }
 }
