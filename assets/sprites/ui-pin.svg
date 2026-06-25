@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="12.33 9.33 103.33 103.33">
+  <!-- Pinned note (gym proven mine): a pushpin. -->
+  <circle cx="64" cy="40" r="22" fill="#e0564f" stroke="#232838" stroke-width="6"/>
+  <circle cx="58" cy="34" r="6" fill="#fff" opacity="0.6"/>
+  <rect x="55" y="56" width="18" height="14" rx="2" fill="#cdd6e4" stroke="#232838" stroke-width="4"/>
+  <path d="M64 70 L64 104" stroke="#232838" stroke-width="6" stroke-linecap="round"/>
+</svg>

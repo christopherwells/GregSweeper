@@ -86,7 +86,7 @@ const STEPS = [
     // numbered "Step": it teaches the contract, not a mechanic.
     id: 'promise',
     title: 'You never have to guess',
-    text: 'Every standard board is checked before you play it: from your start there is always a square you can prove safe, all the way to the end. In a real game, if you get stuck, the 🤔 button beside the smiley lights up the clues that prove the next move.',
+    text: 'Every standard board is checked before you play it: from your start there is always a square you can prove safe, all the way to the end. In a real game, if you get stuck, the Stuck button beside the smiley lights up the clues that prove the next move.',
     action: 'next',
     buttonText: 'Good to know',
   },
@@ -100,7 +100,7 @@ const STEPS = [
   {
     id: 'flag2',
     title: 'Step 4: Flag the Last Mine',
-    text: "Same trick: a nearby 1 touches only one hidden cell, the glowing one. So it is the last mine. Long-press it to flag it. (On a phone you can also tap the \ud83d\udea9 toggle, then tap cells to flag.)",
+    text: "Same trick: a nearby 1 touches only one hidden cell, the glowing one. So it is the last mine. Long-press it to flag it. (On a phone you can also tap the Flag toggle, then tap cells to flag.)",
     targetCell: [3, 3],
     action: 'flag',
   },
@@ -120,7 +120,7 @@ const STEPS = [
   },
   {
     id: 'complete',
-    title: 'You did it! \uD83C\uDF89',
+    title: 'You did it!',
     text: "That\u2019s it, you know how to play. Some boards add Modifiers: special cells that bend the rules. GregSweeper explains each one the first time it shows up. Today\u2019s daily is waiting, same puzzle for everyone, leaderboard inside.",
     action: 'finish',
     buttonText: "Let\u2019s go \u2192",

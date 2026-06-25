@@ -76,13 +76,13 @@ export function handleInterrogateTap(row, col) {
   const safeHit = _frontier.safe.find(s => s.row === row && s.col === col);
   const mineHit = _frontier.mines.find(m => m.row === row && m.col === col);
   if (safeHit) {
-    showToast(`✅ This was knowable. ${safeHit.why || 'The highlighted clues settle it.'}`, 4200);
+    showToast(`This was knowable. ${safeHit.why || 'The highlighted clues settle it.'}`, 4200, 'uiSuccess');
     _pulseSources(safeHit.sources);
   } else if (mineHit) {
-    showToast(`💣 This mine was catchable. ${mineHit.why || 'The highlighted clues pin it down.'}`, 4200);
+    showToast(`This mine was catchable. ${mineHit.why || 'The highlighted clues pin it down.'}`, 4200, 'mine');
     _pulseSources(mineHit.sources);
   } else {
-    showToast('🤷 Not knowable at that point. The numbers had not reached this square yet', 2800);
+    showToast('Not knowable at that point. The numbers had not reached this square yet', 2800, 'uiUnknown');
   }
   return true;
 }
@@ -106,14 +106,14 @@ export function handleInterrogateTap(row, col) {
 // hinted plays or the Lens quietly corrupts the model.
 export function handleLensRequest() {
   if (state.status !== 'playing') {
-    showToast('🔍 The lens works mid-game. Start revealing first', 2200);
+    showToast('The lens works mid-game. Start revealing first', 2200, 'uiLens');
     return;
   }
   try {
     const flagCheck = detectWrongFlags(state.board);
     if (flagCheck.wrongFlags.length > 0 || flagCheck.contradiction) {
       recordHintEvent('flag-warning');
-      showBoardCoach('🚩 One of your flags does not add up: a number near it cannot be satisfied. Re-check your flags first.');
+      showBoardCoach('One of your flags does not add up: a number near it cannot be satisfied. Re-check your flags first.', 'flag');
       return;
     }
     const frontier = findDeducibleFrontier(state.board, { respectFlags: false });
@@ -155,12 +155,12 @@ export function handleLensRequest() {
       if (startCell) {
         recordHintEvent('region');
         _pulseSources([startCell]);
-        showBoardCoach('🔍 Nothing can be worked out from here yet. The highlighted square is the guaranteed safe start, so begin there.');
+        showBoardCoach('Nothing can be worked out from here yet. The highlighted square is the guaranteed safe start, so begin there.', 'uiLens');
       } else if (state.gameMode === 'daily' || state.gameMode === 'weekly') {
-        showBoardCoach('🤔 Nothing can be worked out from here. That should not happen on this board');
+        showBoardCoach('Nothing can be worked out from here. That should not happen on this board', 'uiLens');
         reportCaughtError('lens-empty-frontier', new Error(`mode=${state.gameMode} seed=${state.dailyRngSeed || ''}`));
       } else {
-        showBoardCoach('🔍 Nothing can be worked out from this position. The provable path runs through squares you have not opened yet');
+        showBoardCoach('Nothing can be worked out from this position. The provable path runs through squares you have not opened yet', 'uiLens');
       }
       return;
     }
@@ -171,7 +171,7 @@ export function handleLensRequest() {
       style: 'socratic',
       kind: isMineDeduction ? 'mine' : 'safe',
     });
-    showBoardCoach(`🔍 ${ask || 'The highlighted clues hold the next step. Compare what they claim.'}`);
+    showBoardCoach(`${ask || 'The highlighted clues hold the next step. Compare what they claim.'}`, 'uiLens');
   } catch (err) {
     reportCaughtError('lens-request', err);
   }

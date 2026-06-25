@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="9.56 9.56 108.89 108.89">
+  <!-- Not knowable: a muted question disc (pairs with the green check). -->
+  <circle cx="64" cy="64" r="44" fill="#9aa6b5" stroke="#232838" stroke-width="6"/>
+  <path d="M50 50 C50 37 80 37 78 54 C76 65 64 62 64 74" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="64" cy="89" r="6" fill="#fff"/>
+</svg>

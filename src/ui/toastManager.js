@@ -1,21 +1,38 @@
 import { toastContainer } from './domHelpers.js';
+import { uiSpriteUrl, uiSpriteImgHTML } from './spriteLoader.js';
 
 // ── Toast Queue ────────────────────────────────────────
 const _toastQueue = [];
 let _toastActive = false;
 
-export function showToast(message, duration = 2000) {
-  _toastQueue.push({ message, duration });
+// `icon` (optional) is a SPRITES key (e.g. 'uiSuccess'). When given, a
+// drawn sprite leads the message — the message stays a TEXT NODE (never
+// innerHTML), so a dynamic message can't inject markup.
+export function showToast(message, duration = 2000, icon = null) {
+  _toastQueue.push({ message, duration, icon });
   if (!_toastActive) _processToastQueue();
 }
 
 function _processToastQueue() {
   if (_toastQueue.length === 0) { _toastActive = false; return; }
   _toastActive = true;
-  const { message, duration } = _toastQueue.shift();
+  const { message, duration, icon } = _toastQueue.shift();
   const el = document.createElement('div');
   el.className = 'queued-toast';
-  el.textContent = message;
+  const iconUrl = icon ? uiSpriteUrl(icon) : null;
+  if (iconUrl) {
+    el.classList.add('has-icon');
+    const img = document.createElement('img');
+    img.className = 'toast-icon';
+    img.src = iconUrl;
+    img.alt = '';
+    img.decoding = 'async';
+    img.draggable = false;
+    el.appendChild(img);
+    el.appendChild(document.createTextNode(message));
+  } else {
+    el.textContent = message;
+  }
   if (toastContainer) toastContainer.appendChild(el);
   setTimeout(() => {
     el.classList.add('toast-exit');
@@ -41,7 +58,7 @@ export function showLevelUpToast(level) {
 export function showCheckpointToast(checkpointLevel) {
   const toast = document.createElement('div');
   toast.className = 'checkpoint-toast';
-  toast.innerHTML = `🏁 Checkpoint! <span style="font-size:12px; opacity:0.8">Level ${checkpointLevel}</span>`;
+  toast.innerHTML = `${uiSpriteImgHTML('uiFlagChecked', 'toast-icon')} Checkpoint! <span style="font-size:12px; opacity:0.8">Level ${checkpointLevel}</span>`;
   document.getElementById('app').appendChild(toast);
   setTimeout(() => toast.remove(), 2500);
 }

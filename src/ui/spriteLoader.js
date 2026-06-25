@@ -98,7 +98,46 @@ const SPRITES = {
   uiPause:       { url: 'assets/sprites/ui-pause.svg' },
   uiNotifyOn:    { url: 'assets/sprites/ui-notify-on.svg' },
   uiNotifyOff:   { url: 'assets/sprites/ui-notify-off.svg' },
-  uiReveal:      { url: 'assets/sprites/ui-reveal.svg' },
+
+  // ── Wave E: chrome + toast/coach icons (2026-06-24) ──
+  // The last plain-emoji surfaces. Chrome: the Lens (Stuck) button, Share
+  // / Copy buttons, the gym Field Notebook, the molt-day crab token.
+  // Toast/coach: success, lifeline, new-record, warning, loading, install,
+  // offline-save, gym pin, not-knowable, modifier-intro. Rendered BY KEY
+  // (uiSpriteImgHTML / uiSpriteUrl), no defaultEmoji. Streak (achStreak),
+  // primer (uiWhatsNew), notifications (uiNotifyOn/Off) reuse existing sprites.
+  uiLens:      { url: 'assets/sprites/ui-lens.svg' },
+  uiShare:     { url: 'assets/sprites/ui-share.svg' },
+  uiCopy:      { url: 'assets/sprites/ui-copy.svg' },
+  uiNotebook:  { url: 'assets/sprites/ui-notebook.svg' },
+  uiMolt:      { url: 'assets/sprites/ui-molt.svg' },
+  uiSuccess:   { url: 'assets/sprites/ui-success.svg' },
+  uiCelebrate: { url: 'assets/sprites/ui-celebrate.svg' },
+  uiWarning:   { url: 'assets/sprites/ui-warning.svg' },
+  uiLoading:   { url: 'assets/sprites/ui-loading.svg' },
+  uiPhone:     { url: 'assets/sprites/ui-phone.svg' },
+  uiCloud:     { url: 'assets/sprites/ui-cloud.svg' },
+  uiPin:       { url: 'assets/sprites/ui-pin.svg' },
+  uiUnknown:   { url: 'assets/sprites/ui-unknown.svg' },
+  uiPuzzle:    { url: 'assets/sprites/ui-puzzle.svg' },
+  uiFlagChecked: { url: 'assets/sprites/ui-flag-checkered.svg' },
+  uiCursor:    { url: 'assets/sprites/ui-cursor.svg' },
+  uiChord:     { url: 'assets/sprites/ui-chord.svg' },
+  uiModifier:  { url: 'assets/sprites/ui-modifier.svg' },
+
+  // ── Wave E pass 2: LCD header, power-up text, gym board, examples ──
+  // Mode-card / power-up sprites pulled into SPRITES so their inline-text
+  // call sites (LCD readout, modal title, power-up toasts) can render them
+  // by key. The files already ship (mode-*, pow-*, mode-gym precached).
+  uiGym:       { url: 'assets/sprites/mode-gym.svg' },
+  uiDaily:     { url: 'assets/sprites/mode-daily.svg' },
+  uiChaos:     { url: 'assets/sprites/mode-chaos.svg' },
+  powReveal:   { url: 'assets/sprites/pow-revealsafe.svg' },
+  powShield:   { url: 'assets/sprites/pow-shield.svg' },
+  powScan:     { url: 'assets/sprites/pow-scan.svg' },
+  powLifeline: { url: 'assets/sprites/pow-lifeline.svg' },
+  powMagnet:   { url: 'assets/sprites/pow-magnet.svg' },
+  powXray:     { url: 'assets/sprites/pow-xray.svg' },
 };
 
 // Retain Image refs until each one fires onload/onerror so the browser

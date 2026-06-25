@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="2.89 -1.11 122.22 122.22">
   <!-- Mine shift: a mine leaping from one position to another.
        Ghost outline where it was, dashed arc trail, solid mine. -->
   <circle cx="30" cy="76" r="18" fill="none" stroke="#232838" stroke-width="3" stroke-dasharray="4,3" opacity="0.3"/>

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="10.67 10.67 106.67 106.67">
+  <!-- Chord: a satisfied number opening all its neighbors at once. -->
+  <rect x="46" y="46" width="36" height="36" rx="8" fill="#53a05b" stroke="#232838" stroke-width="6"/>
+  <g stroke="#232838" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M64 40 L64 20 M57 28 L64 20 L71 28"/>
+    <path d="M64 88 L64 108 M57 100 L64 108 L71 100"/>
+    <path d="M40 64 L20 64 M28 57 L20 64 L28 71"/>
+    <path d="M88 64 L108 64 M100 57 L108 64 L100 71"/>
+  </g>
+</svg>

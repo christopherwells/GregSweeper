@@ -6,6 +6,7 @@
 // looks wrong.
 
 import { $ } from './domHelpers.js';
+import { uiSpriteImgHTML } from './spriteLoader.js';
 import { showModal } from './modalManager.js';
 import { showToast } from './toastManager.js';
 import { getUid } from '../firebase/firebaseProgress.js';
@@ -232,7 +233,7 @@ function renderSnapshot(body, snap) {
   actions.className = 'diagnostics-actions';
   const copyBtn = document.createElement('button');
   copyBtn.className = 'clear-cache-btn';
-  copyBtn.textContent = '📋 Copy diagnostics as JSON';
+  copyBtn.innerHTML = `${uiSpriteImgHTML('uiCopy', 'btn-icon')} Copy diagnostics as JSON`;
   copyBtn.addEventListener('click', () => {
     const json = JSON.stringify(snap, null, 2);
     if (navigator.clipboard && navigator.clipboard.writeText) {

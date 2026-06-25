@@ -3,6 +3,7 @@ import { $, $$, boardEl, scanToast } from '../ui/domHelpers.js';
 import { updateAllCells } from '../ui/boardRenderer.js';
 import { showGreenFlash } from '../ui/effectsRenderer.js';
 import { showToast } from '../ui/toastManager.js';
+import { uiSpriteImgHTML } from '../ui/spriteLoader.js';
 import { updateHeader } from '../ui/headerRenderer.js';
 import { updatePowerUpBar } from '../ui/powerUpBar.js';
 import { findSafeCell, scanRowCol, shieldDefuse, xRayScan, magnetPull } from '../logic/powerUps.js';
@@ -108,7 +109,7 @@ export function tryLifeline(row, col) {
   showGreenFlash();
 
   // Prominent toast so user knows lifeline was used
-  showToast('❤️ Lifeline saved you! Mine auto-flagged.');
+  showToast('Lifeline saved you! Mine auto-flagged.', 2000, 'powLifeline');
 
   updateAllCells();
   updateHeader();
@@ -232,7 +233,7 @@ export function performMagnet(row, col) {
     }
   }
 
-  scanToast.textContent = `🧲 Extracted ${extractedMines.length} mine${extractedMines.length !== 1 ? 's' : ''}`;
+  scanToast.innerHTML = `${uiSpriteImgHTML('powMagnet', 'toast-icon')} Extracted ${extractedMines.length} mine${extractedMines.length !== 1 ? 's' : ''}`;
   scanToast.classList.remove('hidden');
   setTimeout(() => scanToast.classList.add('hidden'), 2500);
 
@@ -288,7 +289,7 @@ export function performXRay(row, col) {
     }, 200 + i * 80);
   });
 
-  scanToast.textContent = `🔬 X-Ray: ${mines.length} mine${mines.length !== 1 ? 's' : ''} in area`;
+  scanToast.innerHTML = `${uiSpriteImgHTML('powXray', 'toast-icon')} X-Ray: ${mines.length} mine${mines.length !== 1 ? 's' : ''} in area`;
   scanToast.classList.add('xray-toast-top');
   scanToast.classList.remove('hidden');
 
@@ -307,9 +308,10 @@ export function awardPowerUps(stats) {
   if (state.gameMode === 'timed' || state.gameMode === 'daily') return '';
 
   const types = ['revealSafe', 'shield', 'scanRowCol', 'lifeline', 'magnet', 'xray'];
+  const pu = (k, name) => `${uiSpriteImgHTML(k, 'inline-pu')} ${name}`;
   const labels = {
-    revealSafe: '🔍 Reveal Safe', shield: '🛡️ Shield', scanRowCol: '🎯 Scan',
-    lifeline: '❤️ Lifeline', magnet: '🧲 Magnet', xray: '🔬 X-Ray',
+    revealSafe: pu('powReveal', 'Reveal Safe'), shield: pu('powShield', 'Shield'), scanRowCol: pu('powScan', 'Scan'),
+    lifeline: pu('powLifeline', 'Lifeline'), magnet: pu('powMagnet', 'Magnet'), xray: pu('powXray', 'X-Ray'),
   };
 
   const awarded = [];

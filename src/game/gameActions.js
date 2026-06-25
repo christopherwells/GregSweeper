@@ -9,7 +9,7 @@ import {
   updateCellsRemaining, updateStreakDisplay, updateStreakBorder,
   updateFlagModeBar, updateActiveGimmickBar,
 } from '../ui/headerRenderer.js';
-import { applyGimmickIcon, gimmickSpriteImgHTML } from '../ui/spriteLoader.js';
+import { applyGimmickIcon, gimmickSpriteImgHTML, uiSpriteImgHTML } from '../ui/spriteLoader.js';
 import { updatePowerUpBar } from '../ui/powerUpBar.js';
 import { clearBoardCoach } from '../ui/boardCoach.js';
 import { hideAllModals, showModal, hideModal } from '../ui/modalManager.js';
@@ -66,7 +66,7 @@ function showGimmickIntros(gimmickDefs, recapDefs = []) {
   if (showPrimer) {
     cards.push({
       primer: true,
-      icon: '✨',
+      iconKey: 'uiModifier',
       name: 'Modifiers',
       body: "This board has a Modifier. GregSweeper sometimes adds special cells that bend the rules: a liar that's off by one, a wormhole that shares counts, and more. You'll get a quick explainer the first time each one appears.",
       exampleHtml: '',
@@ -87,7 +87,7 @@ function showGimmickIntros(gimmickDefs, recapDefs = []) {
   if (recapDefs && recapDefs.length > 0) {
     cards.push({
       recap: true,
-      icon: '🧩',
+      iconKey: 'uiPuzzle',
       name: 'Also on this board',
       body: recapDefs.map(d => `${d.icon} ${d.name}`).join(' · '),
       exampleHtml: '',
@@ -104,6 +104,8 @@ function showGimmickIntros(gimmickDefs, recapDefs = []) {
     const card = cards[index];
     if (card.gimmickKey) {
       applyGimmickIcon(iconEl, card.gimmickKey, card.icon);
+    } else if (card.iconKey) {
+      iconEl.innerHTML = uiSpriteImgHTML(card.iconKey, 'gimmick-intro-icon');
     } else {
       iconEl.textContent = card.icon;
     }
@@ -863,7 +865,7 @@ export function revealCell(row, col) {
   // Locked cell check
   if (cell.isLocked && isLockedCell(state.board, row, col)) {
     import('../ui/toastManager.js').then(m => {
-      m.showToast('🔒 Unlock neighbors first!', 1500);
+      m.showToast('Unlock neighbors first!', 1500, 'modLocked');
     });
     return;
   }
@@ -1336,7 +1338,7 @@ function startPressurePlateTimer(cell) {
       cellEl.style.fontWeight = '';
       timerBar.remove();
       updateCell(cell.row, cell.col);
-      import('../ui/toastManager.js').then(m => m.showToast('✅ Plate disarmed!', 1200));
+      import('../ui/toastManager.js').then(m => m.showToast('Plate disarmed!', 1200, 'uiSuccess'));
       return;
     }
 
@@ -1378,7 +1380,7 @@ export function toggleFlag(row, col) {
   // Can't flag locked cells until they're unlocked
   if (cell.isLocked && isLockedCell(state.board, row, col)) {
     import('../ui/toastManager.js').then(m => {
-      m.showToast('🔒 Unlock neighbors first!', 1500);
+      m.showToast('Unlock neighbors first!', 1500, 'modLocked');
     });
     return;
   }

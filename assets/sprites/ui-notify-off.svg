@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="4.00 -2.00 120.00 120.00">
   <!-- Notifications off: a bell crossed out. -->
   <path d="M64 18 C49 18 39 29 39 47 C39 70 29 78 25 88 L103 88 C99 78 89 70 89 47 C89 29 79 18 64 18 Z" fill="#e8b54a" stroke="#232838" stroke-width="6" stroke-linejoin="round"/>
   <circle cx="64" cy="98" r="9" fill="#e8b54a" stroke="#232838" stroke-width="6"/>
