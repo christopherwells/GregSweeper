@@ -235,96 +235,208 @@ function fxText(g, x, y, font, rgba, text) {
 }
 function fxScatter(g, W, H, n, fn) { for (let i = 0; i < n; i++) fn(_rn(40, W - 40), _rn(40, H - 40), i); }
 
+// Richer structure drawers used by the backdrops below.
+function fxVignette(g, W, H, rgba) {
+  const grd = g.createRadialGradient(W / 2, H * 0.46, H * 0.28, W / 2, H * 0.46, H * 0.78);
+  grd.addColorStop(0, rgba.replace(/[\d.]+\s*\)\s*$/, '0)')); grd.addColorStop(1, rgba);
+  g.fillStyle = grd; g.fillRect(0, 0, W, H);
+}
+function fxGrid(g, W, H, rgba, sp) {
+  g.strokeStyle = rgba; g.lineWidth = 1; g.beginPath();
+  for (let x = 0; x <= W; x += sp) { g.moveTo(x, 0); g.lineTo(x, H); }
+  for (let y = 0; y <= H; y += sp) { g.moveTo(0, y); g.lineTo(W, y); }
+  g.stroke();
+}
+function fxPersp(g, W, H, rgba, hy) { // perspective grid converging to (W/2, hy)
+  g.strokeStyle = rgba; g.lineWidth = 1.5; g.beginPath();
+  for (let i = -9; i <= 9; i++) { g.moveTo(W / 2, hy); g.lineTo(W / 2 + i * (W * 0.7 / 9), H); }
+  let y = hy + 7, step = 9;
+  while (y < H) { g.moveTo(0, y); g.lineTo(W, y); y += step; step *= 1.32; }
+  g.stroke();
+}
+function fxRibbon(g, W, yC, h, rgba) { // soft wavy aurora band
+  g.save(); g.filter = 'blur(15px)';
+  const grd = g.createLinearGradient(0, yC - h, 0, yC + h);
+  grd.addColorStop(0, rgba.replace(/[\d.]+\s*\)\s*$/, '0)')); grd.addColorStop(0.5, rgba); grd.addColorStop(1, rgba.replace(/[\d.]+\s*\)\s*$/, '0)'));
+  g.fillStyle = grd; g.beginPath(); g.moveTo(-50, yC - h);
+  for (let x = -50; x <= W + 50; x += 28) g.lineTo(x, yC - h + Math.sin(x * 0.012 + yC * 0.04) * h * 0.7);
+  for (let x = W + 50; x >= -50; x -= 28) g.lineTo(x, yC + h + Math.sin(x * 0.012 + yC * 0.04) * h * 0.7);
+  g.closePath(); g.fill(); g.filter = 'none'; g.restore();
+}
+function fxBlinds(g, W, H, rgba) {
+  g.save(); g.rotate(-0.12); g.fillStyle = rgba;
+  for (let y = -60; y < H + 140; y += 52) g.fillRect(-80, y, W + 160, 22);
+  g.restore();
+}
+function fxSun(g, x, y, r) {
+  g.save(); g.beginPath(); g.arc(x, y, r, 0, 7); g.clip();
+  const grd = g.createLinearGradient(0, y - r, 0, y + r);
+  grd.addColorStop(0, 'rgba(255,210,90,0.9)'); grd.addColorStop(0.45, 'rgba(255,110,180,0.9)'); grd.addColorStop(1, 'rgba(170,80,210,0.75)');
+  g.fillStyle = grd; g.fillRect(x - r, y - r, r * 2, r * 2);
+  g.fillStyle = 'rgba(18,10,38,0.92)';
+  for (let i = 0; i < 7; i++) g.fillRect(x - r, y + r * 0.12 + i * r * 0.13, r * 2, 2 + i * 1.5);
+  g.restore();
+}
+function fxRays(g, x, y, n, r0, r1, rgba) {
+  g.save(); g.translate(x, y); g.strokeStyle = rgba; g.lineWidth = 3;
+  for (let i = 0; i < n; i++) { const a = i * 2 * Math.PI / n; g.beginPath(); g.moveTo(Math.cos(a) * r0, Math.sin(a) * r0); g.lineTo(Math.cos(a) * r1, Math.sin(a) * r1); g.stroke(); }
+  g.restore();
+}
+function fxBurst(g, x, y, r, rgba) { // comic starburst (spiky polygon)
+  g.save(); g.translate(x, y); g.fillStyle = rgba; g.beginPath();
+  for (let i = 0; i < 24; i++) { const a = i * Math.PI / 12, rr = i % 2 ? r * 0.55 : r; g.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); }
+  g.closePath(); g.fill(); g.restore();
+}
+function fxCompass(g, x, y, r, rgba) {
+  g.strokeStyle = rgba; g.fillStyle = rgba; g.lineWidth = 2;
+  g.beginPath(); g.arc(x, y, r, 0, 7); g.stroke(); g.beginPath(); g.arc(x, y, r * 0.66, 0, 7); g.stroke();
+  for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4, lr = i % 2 ? r * 0.66 : r; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * lr, y + Math.sin(a) * lr); g.stroke(); }
+  g.beginPath(); g.moveTo(x, y - r); g.lineTo(x - r * 0.13, y); g.lineTo(x + r * 0.13, y); g.closePath(); g.fill();
+}
+function fxTrace(g, x, y, rgba) {
+  g.strokeStyle = rgba; g.lineWidth = 2; g.beginPath();
+  let cx = x, cy = y; g.moveTo(cx, cy);
+  for (let i = 0; i < 5; i++) { if (i % 2) cx += (Math.random() < 0.5 ? 1 : -1) * _rn(28, 64); else cy += (Math.random() < 0.5 ? 1 : -1) * _rn(28, 64); g.lineTo(cx, cy); }
+  g.stroke(); fxDot(g, x, y, 3, rgba); fxDot(g, cx, cy, 3, rgba);
+}
+function fxWave(g, W, y, amp, rgba) {
+  g.strokeStyle = rgba; g.lineWidth = 2; g.beginPath(); g.moveTo(-20, y);
+  for (let x = -20; x <= W + 20; x += 22) g.lineTo(x, y + Math.sin(x * 0.03 + y) * amp);
+  g.stroke();
+}
+function fxCol(g, x, y, n, fs, rgba) { // matrix code column, bright leading head
+  g.font = '700 ' + fs + 'px monospace'; g.textAlign = 'center'; g.textBaseline = 'top';
+  for (let i = 0; i < n; i++) { g.fillStyle = i === n - 1 ? 'rgba(225,255,230,0.95)' : rgba; g.fillText(Math.random() < 0.5 ? '0' : '1', x, y + i * fs); }
+}
+
 const SHARE_FX = {
   forest: (g, W, H) => {
-    fxGlow(g, W * 0.2, H * 0.2, 360, 'rgba(120,190,80,0.10)'); fxGlow(g, W * 0.82, H * 0.7, 320, 'rgba(95,165,75,0.08)');
-    fxScatter(g, W, H, 16, (x, y) => fxEllipse(g, x, y, _rn(8, 14), _rn(5, 8), `rgba(${_pk(['120,165,75', '150,120,46', '170,104,40'])},0.8)`, _rn(0, 6)));
-    fxScatter(g, W, H, 8, (x, y) => fxDot(g, x, y, _rn(2, 4), 'rgba(216,255,130,0.85)', 10));
+    fxGlow(g, W * 0.22, H * 0.18, 440, 'rgba(120,195,80,0.13)'); fxGlow(g, W * 0.8, H * 0.74, 400, 'rgba(80,150,70,0.11)');
+    fxVignette(g, W, H, 'rgba(18,38,16,0.34)');
+    fxScatter(g, W, H, 28, (x, y) => fxEllipse(g, x, y, _rn(8, 16), _rn(5, 9), `rgba(${_pk(['120,165,75', '150,120,46', '170,104,40', '96,150,70'])},0.82)`, _rn(0, 6)));
+    fxScatter(g, W, H, 13, (x, y) => fxDot(g, x, y, _rn(2, 4.2), 'rgba(216,255,130,0.85)', 11));
   },
   galaxy: (g, W, H) => {
-    fxGlow(g, W * 0.3, H * 0.35, 380, 'rgba(208,80,255,0.10)'); fxGlow(g, W * 0.72, H * 0.62, 340, 'rgba(130,177,255,0.09)');
-    fxScatter(g, W, H, 46, (x, y) => fxDot(g, x, y, _rn(1.2, 3), _pk(['rgba(255,255,255,0.85)', 'rgba(234,128,252,0.7)', 'rgba(130,177,255,0.7)']), 6));
-    fxScatter(g, W, H, 4, (x, y) => fxStar(g, x, y, _rn(7, 12), 'rgba(255,255,255,0.85)'));
+    fxGlow(g, W * 0.3, H * 0.32, 440, 'rgba(208,80,255,0.13)'); fxGlow(g, W * 0.74, H * 0.66, 400, 'rgba(130,177,255,0.11)');
+    g.save(); g.filter = 'blur(24px)'; g.translate(W / 2, H / 2); g.rotate(-0.7); g.fillStyle = 'rgba(220,205,255,0.07)'; g.fillRect(-W, -70, W * 2, 140); g.filter = 'none'; g.restore();
+    fxScatter(g, W, H, 64, (x, y) => fxDot(g, x, y, _rn(1, 3), _pk(['rgba(255,255,255,0.9)', 'rgba(234,128,252,0.72)', 'rgba(130,177,255,0.72)']), 6));
+    fxScatter(g, W, H, 6, (x, y) => fxStar(g, x, y, _rn(7, 13), 'rgba(255,255,255,0.9)'));
   },
   aurora: (g, W, H) => {
-    for (let i = 0; i < 3; i++) { g.fillStyle = _pk(['rgba(0,229,160,0.10)', 'rgba(0,188,212,0.10)', 'rgba(179,136,255,0.09)']); g.fillRect(0, H * (0.12 + i * 0.16), W, H * 0.1); }
-    fxScatter(g, W, H, 24, (x, y) => fxDot(g, x, y, _rn(1, 2.4), 'rgba(180,255,230,0.6)', 5));
+    fxRibbon(g, W, H * 0.2, 64, 'rgba(0,229,160,0.34)'); fxRibbon(g, W, H * 0.33, 54, 'rgba(0,188,212,0.30)'); fxRibbon(g, W, H * 0.5, 46, 'rgba(179,136,255,0.26)');
+    fxScatter(g, W, H, 44, (x, y) => fxDot(g, x, y, _rn(0.8, 2), 'rgba(220,255,245,0.7)', 4));
   },
   sakura: (g, W, H) => {
-    fxGlow(g, W * 0.5, H * 0.3, 420, 'rgba(232,112,144,0.08)');
-    fxScatter(g, W, H, 16, (x, y) => fxEllipse(g, x, y, _rn(7, 12), _rn(5, 8), `rgba(${_pk(['244,170,190', '240,150,176', '250,190,205'])},0.78)`, _rn(0, 6)));
+    fxGlow(g, W * 0.5, H * 0.28, 470, 'rgba(232,112,144,0.10)');
+    fxDot(g, W * 0.82, H * 0.12, 44, 'rgba(255,238,228,0.55)', 50);
+    fxScatter(g, W, H, 28, (x, y) => fxEllipse(g, x, y, _rn(7, 13), _rn(5, 9), `rgba(${_pk(['244,170,190', '240,150,176', '250,190,205'])},0.8)`, _rn(0, 6)));
   },
   ocean: (g, W, H) => {
-    fxGlow(g, W * 0.5, H * 0.85, 480, 'rgba(120,200,235,0.09)');
-    fxScatter(g, W, H, 20, (x, y) => { fxRing(g, x, y, _rn(4, 9), 'rgba(190,235,255,0.55)', 1.5); fxDot(g, x - 1, y - 1, 1.5, 'rgba(235,250,255,0.7)'); });
+    const og = g.createLinearGradient(0, 0, 0, H); og.addColorStop(0, 'rgba(90,185,225,0.13)'); og.addColorStop(1, 'rgba(0,40,80,0.20)'); g.fillStyle = og; g.fillRect(0, 0, W, H);
+    g.save(); g.fillStyle = 'rgba(205,242,255,0.06)'; for (let i = 0; i < 3; i++) { g.save(); g.translate(W * (0.24 + i * 0.28), -20); g.rotate(0.12); g.fillRect(-26, 0, 52, H); g.restore(); } g.restore();
+    fxScatter(g, W, H, 30, (x, y) => { fxRing(g, x, y, _rn(4, 11), 'rgba(205,242,255,0.55)', 1.5); fxDot(g, x - 1.6, y - 1.6, 2, 'rgba(240,252,255,0.7)'); });
   },
   inferno: (g, W, H) => {
-    fxGlow(g, W * 0.5, H * 1.02, 560, 'rgba(255,70,0,0.12)'); fxGlow(g, W * 0.5, H * 0.98, 360, 'rgba(255,160,0,0.08)');
-    fxScatter(g, W, H, 22, (x, y) => fxDot(g, x, _rn(H * 0.45, H), _rn(1.5, 4), _pk(['rgba(255,80,0,0.7)', 'rgba(255,180,0,0.6)', 'rgba(255,120,0,0.55)']), 8));
+    fxGlow(g, W * 0.5, H * 1.04, 640, 'rgba(255,70,0,0.16)'); fxGlow(g, W * 0.3, H * 1.0, 380, 'rgba(255,160,0,0.10)'); fxGlow(g, W * 0.72, H * 1.0, 380, 'rgba(255,120,0,0.10)');
+    fxScatter(g, W, H, 36, (x, y) => fxDot(g, x, _rn(H * 0.38, H), _rn(1.5, 4.5), _pk(['rgba(255,80,0,0.75)', 'rgba(255,180,0,0.65)', 'rgba(255,120,0,0.6)']), 9));
   },
   legendary: (g, W, H) => {
-    fxGlow(g, W * 0.5, H * 0.4, 420, 'rgba(255,200,40,0.08)');
-    fxScatter(g, W, H, 14, (x, y) => fxStar(g, x, y, _rn(5, 10), _pk(['rgba(255,215,0,0.75)', 'rgba(255,240,150,0.6)'])));
-    fxScatter(g, W, H, 12, (x, y) => fxDot(g, x, _rn(H * 0.4, H), _rn(1.5, 3.5), 'rgba(255,140,0,0.6)', 7));
+    fxGlow(g, W * 0.5, H * 0.42, 460, 'rgba(255,200,40,0.10)');
+    fxRays(g, W * 0.5, H * 0.42, 16, 70, 380, 'rgba(255,215,90,0.10)');
+    fxScatter(g, W, H, 18, (x, y) => fxStar(g, x, y, _rn(5, 11), _pk(['rgba(255,215,0,0.78)', 'rgba(255,240,150,0.65)'])));
+    fxScatter(g, W, H, 14, (x, y) => fxDot(g, x, _rn(H * 0.4, H), _rn(1.5, 3.5), 'rgba(255,140,0,0.6)', 7));
   },
   supernova: (g, W, H) => {
-    fxGlow(g, W * 0.5, H * 0.5, 460, 'rgba(255,120,20,0.10)');
-    fxScatter(g, W, H, 8, (x, y) => fxRing(g, x, y, _rn(10, 26), 'rgba(255,180,50,0.5)', 2));
-    fxScatter(g, W, H, 16, (x, y) => fxStar(g, x, y, _rn(4, 8), _pk(['rgba(255,200,60,0.8)', 'rgba(255,255,180,0.6)'])));
+    fxGlow(g, W * 0.5, H * 0.46, 300, 'rgba(255,225,160,0.18)'); fxGlow(g, W * 0.5, H * 0.46, 540, 'rgba(255,120,20,0.12)');
+    fxRays(g, W * 0.5, H * 0.46, 20, 50, 440, 'rgba(255,180,60,0.10)');
+    fxScatter(g, W, H, 10, (x, y) => fxRing(g, x, y, _rn(10, 30), 'rgba(255,180,50,0.45)', 2));
+    fxScatter(g, W, H, 20, (x, y) => fxStar(g, x, y, _rn(4, 9), _pk(['rgba(255,200,60,0.8)', 'rgba(255,255,180,0.6)'])));
   },
   matrix: (g, W, H) => {
-    fxScatter(g, W, H, 14, (x, y) => fxText(g, x, _rn(20, H - 120), '600 15px monospace', 'rgba(140,255,165,0.5)', Array.from({ length: Math.floor(_rn(4, 9)) }, () => _pk(['0', '1'])).join('\n')));
+    fxVignette(g, W, H, 'rgba(0,28,6,0.42)');
+    for (let i = 0; i < 30; i++) fxCol(g, _rn(12, W - 12), _rn(-60, H - 70), Math.floor(_rn(5, 13)), 16, `rgba(120,255,150,${_rn(0.3, 0.6).toFixed(2)})`);
   },
   neon: (g, W, H) => {
-    fxScatter(g, W, H, 26, (x, y) => fxStar(g, x, y, _rn(3, 7), _pk(['rgba(0,255,136,0.8)', 'rgba(0,221,255,0.7)', 'rgba(255,0,110,0.6)'])));
+    fxPersp(g, W, H, 'rgba(0,255,136,0.18)', H * 0.6);
+    fxGlow(g, W * 0.5, H * 0.6, 440, 'rgba(0,255,136,0.08)');
+    fxScatter(g, W, H, 30, (x, y) => fxStar(g, x, y, _rn(3, 7), _pk(['rgba(0,255,136,0.85)', 'rgba(0,221,255,0.75)', 'rgba(255,0,110,0.65)'])));
+    fxScatter(g, W, H, 4, (x, y) => fxHLine(g, 0, y, W, _pk(['rgba(0,255,136,0.4)', 'rgba(255,0,110,0.4)'])));
   },
   synthwave: (g, W, H) => {
-    fxGlow(g, W * 0.5, H * 1.0, 520, 'rgba(255,0,200,0.08)'); fxGlow(g, W * 0.5, H * 1.0, 380, 'rgba(0,200,255,0.05)');
-    for (let i = 0; i < 5; i++) fxHLine(g, 60, H * (0.2 + i * 0.16), W - 120, _pk(['rgba(255,0,200,0.35)', 'rgba(0,200,255,0.35)']));
+    fxGlow(g, W * 0.5, H * 0.55, 480, 'rgba(255,0,200,0.10)');
+    fxSun(g, W * 0.5, H * 0.16, 118);
+    fxPersp(g, W, H, 'rgba(255,0,200,0.32)', H * 0.58);
   },
   candy: (g, W, H) => {
-    fxScatter(g, W, H, 22, (x, y) => fxCapsule(g, x, y, _rn(10, 18), `rgba(${_pk(['255,64,129', '224,64,251', '124,77,255', '255,170,40', '64,210,140', '80,170,255'])},0.8)`, _rn(0, 6)));
+    fxScatter(g, W, H, 30, (x, y) => fxCapsule(g, x, y, _rn(10, 19), `rgba(${_pk(['255,64,129', '224,64,251', '124,77,255', '255,170,40', '64,210,140', '80,170,255'])},0.82)`, _rn(0, 6)));
+    fxScatter(g, W, H, 12, (x, y) => fxDot(g, x, y, _rn(3, 6), `rgba(${_pk(['255,255,255', '255,200,230'])},0.7)`));
   },
   circuitboard: (g, W, H) => {
-    fxScatter(g, W, H, 20, (x, y) => fxDot(g, x, y, _rn(2, 4), _pk(['rgba(64,240,144,0.85)', 'rgba(64,200,240,0.8)', 'rgba(240,80,60,0.75)', 'rgba(240,200,64,0.8)']), 7));
-    fxScatter(g, W, H, 5, (x, y) => fxHLine(g, x, y, _rn(40, 90), 'rgba(64,255,150,0.5)'));
+    fxScatter(g, W, H, 10, (x, y) => fxTrace(g, x, y, 'rgba(64,200,120,0.4)'));
+    fxScatter(g, W, H, 24, (x, y) => fxDot(g, x, y, _rn(2, 4.2), _pk(['rgba(64,240,144,0.9)', 'rgba(64,200,240,0.85)', 'rgba(240,80,60,0.8)', 'rgba(240,200,64,0.85)']), 8));
+    g.strokeStyle = 'rgba(64,200,120,0.45)'; g.lineWidth = 2; roundRect(g, W * 0.62, H * 0.08, 110, 70, 6); g.stroke();
   },
   stainedglass: (g, W, H) => {
-    fxGlow(g, W * 0.26, H * 0.3, 300, 'rgba(120,60,200,0.10)'); fxGlow(g, W * 0.74, H * 0.6, 300, 'rgba(200,50,70,0.09)');
-    fxScatter(g, W, H, 18, (x, y) => fxDiamond(g, x, y, _rn(5, 10), _pk(['rgba(180,80,240,0.7)', 'rgba(240,80,110,0.7)', 'rgba(80,160,240,0.65)', 'rgba(240,200,80,0.7)'])));
+    fxGlow(g, W * 0.26, H * 0.3, 320, 'rgba(120,60,200,0.11)'); fxGlow(g, W * 0.74, H * 0.62, 320, 'rgba(200,50,70,0.10)');
+    fxGrid(g, W, H, 'rgba(20,18,30,0.4)', 84);
+    fxScatter(g, W, H, 22, (x, y) => fxDiamond(g, x, y, _rn(5, 11), _pk(['rgba(180,80,240,0.72)', 'rgba(240,80,110,0.72)', 'rgba(80,160,240,0.68)', 'rgba(240,200,80,0.72)'])));
   },
   apothecary: (g, W, H) => {
-    fxGlow(g, W * 0.8, H * 0.16, 360, 'rgba(255,190,90,0.14)');
-    fxScatter(g, W, H, 16, (x, y) => fxDot(g, x, y, _rn(2, 4), 'rgba(232,190,110,0.5)', 6));
+    fxGlow(g, W * 0.8, H * 0.14, 420, 'rgba(255,190,90,0.16)');
+    fxVignette(g, W, H, 'rgba(30,16,6,0.4)');
+    g.strokeStyle = 'rgba(150,110,60,0.35)'; g.lineWidth = 3; for (const fy of [H * 0.34, H * 0.66]) { g.beginPath(); g.moveTo(0, fy); g.lineTo(W, fy); g.stroke(); }
+    fxScatter(g, W, H, 22, (x, y) => fxDot(g, x, y, _rn(2, 4), 'rgba(232,190,110,0.5)', 6));
   },
   splitflap: (g, W, H) => {
-    fxScatter(g, W, H, 16, (x, y) => { g.fillStyle = 'rgba(36,36,44,0.85)'; roundRect(g, x, y, 16, 20, 3); g.fill(); g.fillStyle = 'rgba(66,66,78,0.85)'; roundRect(g, x, y, 16, 9, 3); g.fill(); });
+    const mod = (x, y) => { g.fillStyle = 'rgba(30,30,38,0.9)'; roundRect(g, x, y, 17, 22, 3); g.fill(); g.fillStyle = 'rgba(70,70,84,0.9)'; roundRect(g, x, y, 17, 10, 3); g.fill(); g.strokeStyle = 'rgba(0,0,0,0.5)'; g.lineWidth = 1; g.beginPath(); g.moveTo(x, y + 11); g.lineTo(x + 17, y + 11); g.stroke(); };
+    for (const ry of [H * 0.12, H * 0.86]) for (let i = 0; i < 14; i++) mod(28 + i * (W - 56) / 13, ry);
+    fxScatter(g, W, H, 12, (x, y) => mod(x, y));
   },
   blueprint: (g, W, H) => {
-    fxScatter(g, W, H, 22, (x, y) => fxCross(g, x, y, _rn(4, 8), `rgba(${_pk(['90,208,255', '160,224,255'])},0.7)`));
+    fxGrid(g, W, H, 'rgba(150,210,255,0.12)', 40);
+    g.strokeStyle = 'rgba(140,220,255,0.5)'; g.lineWidth = 2; g.setLineDash([10, 8]); g.beginPath(); g.moveTo(60, H * 0.5); g.lineTo(W - 60, H * 0.5); g.stroke(); g.setLineDash([]);
+    g.lineWidth = 1.5; roundRect(g, W * 0.6, H * 0.84, 150, 60, 2); g.stroke();
+    fxScatter(g, W, H, 22, (x, y) => fxCross(g, x, y, _rn(4, 9), `rgba(${_pk(['90,208,255', '160,224,255'])},0.75)`));
   },
   cartography: (g, W, H) => {
-    fxScatter(g, W, H, 7, (x, y) => fxDash(g, x, y, _rn(55, 105), 'rgba(106,74,38,0.5)', _rn(-0.4, 0.4)));
-    fxScatter(g, W, H, 10, (x, y) => fxRing(g, x, y, _rn(4, 8), 'rgba(106,74,38,0.5)', 1.5));
+    fxCompass(g, W * 0.84, H * 0.14, 56, 'rgba(106,74,38,0.55)');
+    for (const wy of [H * 0.62, H * 0.74, H * 0.86]) fxWave(g, W, wy, 9, 'rgba(106,74,38,0.4)');
+    fxScatter(g, W, H, 8, (x, y) => fxDash(g, x, y, _rn(55, 110), 'rgba(106,74,38,0.5)', _rn(-0.4, 0.4)));
+    fxScatter(g, W, H, 12, (x, y) => fxRing(g, x, y, _rn(4, 8), 'rgba(106,74,38,0.5)', 1.5));
   },
   origami: (g, W, H) => {
-    fxScatter(g, W, H, 16, (x, y) => fxTri(g, x, y, _rn(7, 13), `rgba(${_pk(['209,74,74', '74,138,192', '90,160,90', '224,144,58', '154,106,192'])},0.5)`, _rn(0, 6)));
+    g.strokeStyle = 'rgba(120,120,140,0.22)'; g.lineWidth = 1.5;
+    for (let i = 0; i < 6; i++) { g.beginPath(); g.moveTo(_rn(0, W), 0); g.lineTo(_rn(0, W), H); g.stroke(); }
+    fxScatter(g, W, H, 24, (x, y) => fxTri(g, x, y, _rn(8, 16), `rgba(${_pk(['209,74,74', '74,138,192', '90,160,90', '224,144,58', '154,106,192'])},0.55)`, _rn(0, 6)));
   },
   comic: (g, W, H) => {
-    fxScatter(g, W, H, 10, (x, y) => { for (let i = 0; i < 9; i++) fxDot(g, x + (i % 3) * 7, y + Math.floor(i / 3) * 7, 1.6, 'rgba(42,34,24,0.5)'); });
+    fxBurst(g, W * 0.84, H * 0.13, 64, 'rgba(255,210,70,0.55)');
+    g.save(); g.strokeStyle = 'rgba(42,34,24,0.4)'; g.lineWidth = 3; for (let i = 0; i < 18; i++) { const a = i * Math.PI / 9; g.beginPath(); g.moveTo(W * 0.16 + Math.cos(a) * 30, H * 0.86 + Math.sin(a) * 30); g.lineTo(W * 0.16 + Math.cos(a) * 120, H * 0.86 + Math.sin(a) * 120); g.stroke(); } g.restore();
+    fxScatter(g, W, H, 10, (x, y) => { for (let i = 0; i < 9; i++) fxDot(g, x + (i % 3) * 7, y + Math.floor(i / 3) * 7, 1.7, 'rgba(42,34,24,0.5)'); });
   },
   editorial: (g, W, H) => {
-    fxScatter(g, W, H, 14, (x, y) => fxHLine(g, x, y, _rn(34, 78), 'rgba(26,26,26,0.32)'));
+    g.strokeStyle = 'rgba(26,26,26,0.18)'; g.lineWidth = 1.5; for (const cx of [W * 0.34, W * 0.66]) { g.beginPath(); g.moveTo(cx, 40); g.lineTo(cx, H - 40); g.stroke(); }
+    g.fillStyle = 'rgba(26,26,26,0.3)'; g.fillRect(W * 0.08, H * 0.1, W * 0.5, 10);
+    fxScatter(g, W, H, 16, (x, y) => fxHLine(g, x, y, _rn(34, 78), 'rgba(26,26,26,0.3)'));
     fxScatter(g, W, H, 10, (x, y) => fxDot(g, x, y, _rn(1.5, 2.5), 'rgba(44,62,143,0.4)'));
   },
   sumie: (g, W, H) => {
-    fxScatter(g, W, H, 14, (x, y) => fxGlow(g, x, y, _rn(10, 22), `rgba(${Math.random() < 0.08 ? '176,48,32' : '42,42,42'},0.28)`));
+    g.save(); g.filter = 'blur(10px)'; g.fillStyle = 'rgba(42,42,42,0.22)'; g.beginPath(); g.moveTo(0, H * 0.78); g.quadraticCurveTo(W * 0.3, H * 0.58, W * 0.55, H * 0.74); g.quadraticCurveTo(W * 0.8, H * 0.9, W, H * 0.7); g.lineTo(W, H); g.lineTo(0, H); g.closePath(); g.fill(); g.filter = 'none'; g.restore();
+    g.fillStyle = 'rgba(176,48,32,0.7)'; roundRect(g, W * 0.86, H * 0.84, 36, 36, 4); g.fill();
+    fxScatter(g, W, H, 14, (x, y) => fxGlow(g, x, y, _rn(10, 24), `rgba(${Math.random() < 0.08 ? '176,48,32' : '42,42,42'},0.3)`));
   },
   chalkboard: (g, W, H) => {
-    fxScatter(g, W, H, 24, (x, y) => fxDot(g, x, y, _rn(1, 2.5), 'rgba(240,235,224,0.45)', 3));
+    const ch = (a) => `rgba(240,235,224,${a})`;
+    fxText(g, W * 0.07, H * 0.08, '600 30px Georgia, serif', ch(0.4), 'a² + b² = c²');
+    fxText(g, W * 0.64, H * 0.84, '600 26px Georgia, serif', ch(0.34), '∑ x → ∞');
+    g.strokeStyle = ch(0.32); g.lineWidth = 2.5; g.beginPath(); g.moveTo(W * 0.1, H * 0.92); g.lineTo(W * 0.2, H * 0.79); g.lineTo(W * 0.26, H * 0.93); g.closePath(); g.stroke();
+    g.beginPath(); g.moveTo(W * 0.74, H * 0.1); g.lineTo(W * 0.9, H * 0.1); g.lineTo(W * 0.86, H * 0.07); g.moveTo(W * 0.9, H * 0.1); g.lineTo(W * 0.86, H * 0.13); g.stroke();
+    fxScatter(g, W, H, 24, (x, y) => fxDot(g, x, y, _rn(1, 2.5), ch(0.4), 3));
   },
   noir: (g, W, H) => {
-    fxScatter(g, W, H, 18, (x, y) => fxDot(g, x, y, _rn(1.5, 3), 'rgba(238,234,222,0.35)', 4));
+    fxBlinds(g, W, H, 'rgba(255,250,235,0.05)');
+    fxGlow(g, W * 0.7, H * 0.18, 360, 'rgba(255,250,235,0.07)');
+    fxScatter(g, W, H, 18, (x, y) => fxDot(g, x, y, _rn(1.5, 3), 'rgba(238,234,222,0.4)', 4));
   },
 };
 
