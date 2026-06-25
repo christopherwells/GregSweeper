@@ -104,7 +104,7 @@ export const ICON_STATUS = {
   '🔥': 'plain',    // streak fire — share-card caption text + achievement data def (UI draws achStreak)
   '🦀': 'plain',    // molt crab — share caption text (UI draws uiMolt)
   '✓':  'plain',    // certified chip (text, not emoji)
-  '❤️': 'plain',    // lifeline — onerror fallback (UI draws uiLifeline / powLifeline)
+  '❤️': 'plain',    // lifeline — onerror fallback (UI draws the powLifeline life-ring)
   '🟢': 'plain',    // pace dot (share caption)
   '⚪': 'plain',    // pace dot (share caption)
   '↔️': 'plain',    // sync direction (code comment)

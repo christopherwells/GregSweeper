@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v1.6.79';
+const CACHE_NAME = 'gregsweeper-v1.6.80';
 const ASSETS = [
   './',
   './index.html',
@@ -156,7 +156,6 @@ const ASSETS = [
   './assets/sprites/ui-pause.svg',
   './assets/sprites/ui-notify-on.svg',
   './assets/sprites/ui-notify-off.svg',
-  './assets/sprites/ui-reveal.svg',
   // Wave E chrome + toast/coach icons
   './assets/sprites/ui-lens.svg',
   './assets/sprites/ui-share.svg',
@@ -164,7 +163,6 @@ const ASSETS = [
   './assets/sprites/ui-notebook.svg',
   './assets/sprites/ui-molt.svg',
   './assets/sprites/ui-success.svg',
-  './assets/sprites/ui-lifeline.svg',
   './assets/sprites/ui-celebrate.svg',
   './assets/sprites/ui-warning.svg',
   './assets/sprites/ui-loading.svg',
@@ -175,6 +173,8 @@ const ASSETS = [
   './assets/sprites/ui-puzzle.svg',
   './assets/sprites/ui-flag-checkered.svg',
   './assets/sprites/ui-cursor.svg',
+  './assets/sprites/ui-chord.svg',
+  './assets/sprites/ui-modifier.svg',
   // Per-theme object sets (batch 1) — each world's mine/flag/strike in
   // its own material language.
   './assets/sprites/themes/editorial-mine.svg',

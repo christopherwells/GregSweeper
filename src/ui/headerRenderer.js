@@ -226,7 +226,7 @@ export function updateHeader() {
     // the player can see what's on the line at a glance. Suppressed at
     // streak 0/1 since "Daily · 🔥 0" reads like noise.
     const { streak } = getDailyStreak();
-    const calIcon = uiSpriteImgHTML('achDaily', 'lcd-icon');
+    const calIcon = uiSpriteImgHTML('uiDaily', 'lcd-icon');
     levelDisplay.innerHTML = streak >= 2
       ? `${calIcon} Daily · ${uiSpriteImgHTML('achStreak', 'lcd-icon')} ${streak}`
       : `${calIcon} Daily`;
@@ -239,7 +239,7 @@ export function updateHeader() {
     const tdiff = getTimedDifficulty(state.currentLevel);
     levelDisplay.textContent = tdiff.label || `Level ${state.currentLevel}`;
   } else if (state.gameMode === 'chaos') {
-    levelDisplay.innerHTML = `${uiSpriteImgHTML('modWormhole', 'lcd-icon')} Chaos`;
+    levelDisplay.innerHTML = `${uiSpriteImgHTML('uiChaos', 'lcd-icon')} Chaos`;
   } else {
     levelDisplay.textContent = `Level ${state.currentLevel}`;
   }
@@ -342,7 +342,7 @@ export function updateFlagModeBar() {
   if (flagModeIcon) {
     flagModeIcon.innerHTML = state.flagMode
       ? spriteImgHTML('flag', 'ui-icon', 'Flag')
-      : uiSpriteImgHTML('uiReveal', 'ui-icon', 'Reveal');
+      : uiSpriteImgHTML('uiCursor', 'ui-icon', 'Reveal');
   }
   const stuckBtn = document.getElementById('stuck-btn');
   if (stuckBtn) stuckBtn.classList.toggle('hidden', over);

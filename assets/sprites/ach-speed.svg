@@ -1,6 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <!-- Speed Demon: a clean lightning bolt, pointed top, wide margins. -->
-  <path d="M66 26 L48 62 L60 62 L52 102 L80 58 L68 58 Z"
+  <!-- Speed Demon: a bold lightning bolt. -->
+  <path d="M74 14 L36 70 L58 70 L50 114 L92 52 L66 52 L78 14 Z"
         fill="#ffce3a" stroke="#232838" stroke-width="6" stroke-linejoin="round"/>
-  <path d="M62 32 L53 56" fill="none" stroke="#fff3c4" stroke-width="3.5" stroke-linecap="round" opacity="0.8"/>
 </svg>

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Modifier primer: a special cell — a board tile with a spark. -->
+  <rect x="22" y="22" width="84" height="84" rx="13" fill="#cfe4f5" stroke="#232838" stroke-width="6"/>
+  <path d="M64 34 l6.5 19 19 6.5 -19 6.5 -6.5 19 -6.5 -19 -19 -6.5 19 -6.5 Z" fill="#ffce3a" stroke="#232838" stroke-width="3.5" stroke-linejoin="round"/>
+</svg>

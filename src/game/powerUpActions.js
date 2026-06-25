@@ -109,7 +109,7 @@ export function tryLifeline(row, col) {
   showGreenFlash();
 
   // Prominent toast so user knows lifeline was used
-  showToast('Lifeline saved you! Mine auto-flagged.', 2000, 'uiLifeline');
+  showToast('Lifeline saved you! Mine auto-flagged.', 2000, 'powLifeline');
 
   updateAllCells();
   updateHeader();

@@ -66,7 +66,7 @@ function showGimmickIntros(gimmickDefs, recapDefs = []) {
   if (showPrimer) {
     cards.push({
       primer: true,
-      iconKey: 'uiWhatsNew',
+      iconKey: 'uiModifier',
       name: 'Modifiers',
       body: "This board has a Modifier. GregSweeper sometimes adds special cells that bend the rules: a liar that's off by one, a wormhole that shares counts, and more. You'll get a quick explainer the first time each one appears.",
       exampleHtml: '',
