@@ -112,3 +112,15 @@ test('every THEME_SPRITES path in spriteLoader source exists on disk', () => {
     assert.ok(existsSync(join(repoRoot, p)), `missing ${p}`);
   }
 });
+
+test('the title mascot SVG carries its animation hooks and the unclipped viewBox', async () => {
+  // The animated front-door Greg (src/ui/gregMascot.js) finds the eyes and
+  // smile by class to blink and flip; a rename would silently kill the
+  // animation. Pin the hooks and the 2026-06-25 re-framed (unclipped) viewBox.
+  const { GREG_MASCOT_SVG } = await import('../src/ui/gregMascot.js');
+  for (const cls of ['greg-smile', 'greg-eyes-open', 'greg-eyes-closed']) {
+    assert.ok(GREG_MASCOT_SVG.includes(cls), `mascot SVG missing .${cls} — the idle animation would break`);
+  }
+  assert.match(GREG_MASCOT_SVG, /viewBox="-8\.18 -4\.71 140\.52 140\.52"/,
+    'mascot must use the re-framed unclipped viewBox so the clipboard is not cut');
+});

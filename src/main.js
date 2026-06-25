@@ -8,7 +8,8 @@
 import { state } from './state/gameState.js';
 import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn, escapeHtml } from './ui/domHelpers.js';
 import { resizeCells, updateAllCells, getThemeEmoji, needsZoom, updateZoom, zoomIn, zoomOut, setFocusedCell, announceGame } from './ui/boardRenderer.js';
-import { preloadSprites, spriteImgHTML, themeSpriteImgHTML, medalImgForEmoji, gimmickSpriteImgHTML, achievementSpriteImgHTML, uiSpriteImgHTML } from './ui/spriteLoader.js';
+import { preloadSprites, spriteImgHTML, medalImgForEmoji, gimmickSpriteImgHTML, achievementSpriteImgHTML, uiSpriteImgHTML } from './ui/spriteLoader.js';
+import { startGregMascot } from './ui/gregMascot.js';
 import { getLastShareFile } from './ui/shareCardImage.js';
 import { updateHeader, updateStreakBorder, updateFlagModeBar, getCheckpointForLevel, CHECKPOINT_INTERVAL } from './ui/headerRenderer.js';
 import { updatePowerUpBar } from './ui/powerUpBar.js';
@@ -2301,11 +2302,11 @@ function updateTitleProgress() {
       ? `<span class="daily-corner-molt" title="${moltTitle}">${uiSpriteImgHTML('uiMolt', 'molt-token').repeat(banked)}</span>`
       : '';
 
-    // Greg's note (the daily's character) is the center descriptor, with the
-    // theme-matched Greg beside it. Once played, the card just says so (the
-    // dimmed .daily-completed style reinforces it).
-    const showNote = !completed && !!note;
-    const gregSprite = showNote ? themeSpriteImgHTML('smiley', getThemeEmoji('smiley'), 'sprite-greg-note', 'Greg') : '';
+    // Greg's note (the daily's character) is the center descriptor. The Greg
+    // sprite was dropped here in the 2026-06-25 front-door rebuild — the one
+    // Greg now lives in the title header, and this card keeps its calendar
+    // icon. Once played, the card just says so (the dimmed .daily-completed
+    // style reinforces it).
     const centerText = completed ? 'Played today' : (note || 'Same puzzle worldwide');
 
     // Streak (bottom-left) + par (bottom-right) hug the card corners like the
@@ -2318,7 +2319,7 @@ function updateTitleProgress() {
       : '';
 
     dailyEl.innerHTML = moltCorner + streakCorner + parCorner
-      + `<span class="mode-card-fieldnote">${gregSprite}${centerText}</span>`;
+      + `<span class="mode-card-fieldnote">${centerText}</span>`;
     if (dailyCard) dailyCard.classList.toggle('daily-completed', completed);
   }
 
@@ -2387,6 +2388,7 @@ function showTitleScreen() {
   state.idlePaused = false;
 
   updateTitleProgress();
+  startGregMascot($('#title-greg-mascot')); // inject + animate the header Greg (idempotent)
   refreshTitleDailyPar(); // fills in "Par: N seconds" once resolved
   titleScreen.classList.remove('hidden');
   app.classList.add('hidden');
@@ -3750,6 +3752,7 @@ if (colorblindToggle) {
 
 async function init() {
   preloadSprites();
+  startGregMascot($('#title-greg-mascot')); // inject + animate the header Greg before any routing
   const theme = loadTheme();
   const unlocked = getUnlockedThemes();
 
