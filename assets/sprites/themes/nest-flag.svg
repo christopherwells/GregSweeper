@@ -1,14 +1,14 @@
 <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
-<!-- A feather — the marker. -->
-<!-- vane -->
-<path d='M44 12 C30 16 18 30 14 50 C26 46 40 40 48 26 C50 21 48 15 44 12 Z'
-      fill='#e1573c' stroke='#3a2e1e' stroke-width='3' stroke-linejoin='round'/>
-<!-- inner vane tone -->
-<path d='M44 12 C36 16 28 26 22 42 C34 37 42 32 47 22 C49 18 47 14 44 12 Z' fill='#ef8163'/>
-<!-- central shaft, extending to a quill tip -->
-<path d='M40 17 L17 52' fill='none' stroke='#3a2e1e' stroke-width='2.6' stroke-linecap='round'/>
-<!-- barb separations -->
-<g fill='none' stroke='#3a2e1e' stroke-width='1.5' stroke-linecap='round' opacity='0.85'>
-  <path d='M35 22 L26 26 M37 28 L24 33 M33 33 L21 40 M29 39 L19 46'/>
+<!-- A feather: a central shaft with barbs combing out from it toward the tip. -->
+<!-- vane, two halves around the shaft -->
+<path d='M29 11 C19 19 14 33 16 49 C23 46 29 41 32 31 Z' fill='#ef8163' stroke='#3a2e1e' stroke-width='2.6' stroke-linejoin='round'/>
+<path d='M29 11 C39 18 44 31 42 45 C35 43 31 39 32 31 Z' fill='#e1573c' stroke='#3a2e1e' stroke-width='2.6' stroke-linejoin='round'/>
+<!-- barbs: emanate from the shaft, angled up toward the tip -->
+<g stroke='#a83a24' stroke-width='1.1' stroke-linecap='round'>
+  <path d='M30 18 L25 14 M31 25 L23 20 M31.5 32 L22 29 M32 39 L24 38 M32.5 45 L26 47'/>
+  <path d='M30 18 L35 13 M31 25 L40 19 M31.5 32 L41 28 M32 39 L41 37'/>
 </g>
+<!-- shaft (rachis) drawn on top so the barbs read as coming from it, + a quill -->
+<path d='M29 12 L34 51' fill='none' stroke='#6a4a28' stroke-width='2.6' stroke-linecap='round'/>
+<path d='M34 51 L37 56' fill='none' stroke='#c8a468' stroke-width='2.8' stroke-linecap='round'/>
 </svg>

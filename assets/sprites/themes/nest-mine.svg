@@ -1,21 +1,19 @@
 <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
-<!-- A speckled egg nestled in a twig cup. The mine. -->
-<!-- nest cup -->
-<g stroke='#8a5e30' stroke-width='2.6' fill='none' stroke-linecap='round'>
-  <path d='M8 46 Q32 60 56 46'/>
-  <path d='M11 41 Q32 53 53 41'/>
-</g>
-<g stroke='#a9743f' stroke-width='2' fill='none' stroke-linecap='round'>
-  <path d='M14 48 L21 43 M27 51 L31 45 M37 51 L41 45 M44 48 L50 43'/>
-</g>
+<!-- A speckled egg cupped in a woven twig basket. The mine. -->
+<!-- back rim of the basket -->
+<path d='M6 36 Q32 45 58 36' fill='none' stroke='#8a5e30' stroke-width='2.5' stroke-linecap='round'/>
 <!-- egg -->
-<ellipse cx='32' cy='30' rx='15' ry='19' fill='#f7eedb' stroke='#3a2e1e' stroke-width='3'/>
-<!-- speckles -->
-<g fill='#b58a56'>
-  <circle cx='27' cy='22' r='1.9'/><circle cx='36' cy='26' r='1.5'/>
-  <circle cx='30' cy='32' r='2'/><circle cx='38' cy='36' r='1.7'/>
-  <circle cx='26' cy='38' r='1.5'/><circle cx='34' cy='42' r='1.8'/>
+<ellipse cx='32' cy='25' rx='13.5' ry='16.5' fill='#f7eedb' stroke='#3a2e1e' stroke-width='3'/>
+<g fill='#b58a56'><circle cx='27' cy='19' r='1.7'/><circle cx='36' cy='22' r='1.4'/><circle cx='30' cy='27' r='1.8'/><circle cx='37' cy='31' r='1.5'/><circle cx='27' cy='33' r='1.4'/></g>
+<ellipse cx='27' cy='20' rx='3' ry='4.6' fill='#ffffff' opacity='0.5'/>
+<!-- woven basket front: horizontal weavers cupping the egg's lower half -->
+<g stroke='#8a5e30' stroke-width='2.6' fill='none' stroke-linecap='round'>
+  <path d='M5 40 Q32 49 59 40'/>
+  <path d='M4 46 Q32 58 60 46'/>
+  <path d='M8 52 Q32 61 56 52'/>
 </g>
-<!-- highlight -->
-<ellipse cx='26.5' cy='23' rx='3.4' ry='5.2' fill='#ffffff' opacity='0.55'/>
+<!-- vertical twigs interlacing the weave -->
+<g stroke='#a9743f' stroke-width='1.9' fill='none' stroke-linecap='round'>
+  <path d='M13 41 L16 54 M22 43 L24 57 M32 43 L32 58 M42 43 L40 57 M51 41 L48 54'/>
+</g>
 </svg>

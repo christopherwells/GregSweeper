@@ -1052,30 +1052,48 @@ const THEME_EFFECTS = {
     }, () => rand(800, 1700));
   },
 
-  // Nest (L85): a loose flock glides across the open sky — slate gull
-  // silhouettes crossing left and right at a lazy pace, bobbing as they pass.
+  // Nest (L85): the open sky — slow soft white clouds drift across, and gulls
+  // cross both ways, sometimes singly and sometimes in a little flock of 3-5.
   nest: (container) => {
     injectStyles();
-    return particleLoop(container, (c) => {
-      const boardW = c.clientWidth || container.parentElement?.clientWidth || 400;
+    const GULL = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 12'%3E%3Cpath d='M1 9 Q5 2 10 7 Q15 2 19 9' fill='none' stroke='%23394a5c' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E\")";
+    const CLOUD = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 34'%3E%3Cg fill='%23ffffff'%3E%3Cellipse cx='22' cy='22' rx='18' ry='9'/%3E%3Cellipse cx='35' cy='15' rx='13' ry='10'/%3E%3Cellipse cx='47' cy='22' rx='15' ry='8'/%3E%3Cellipse cx='32' cy='26' rx='25' ry='6'/%3E%3C/g%3E%3C/svg%3E\")";
+    const path = (W, fromLeft, pad) => {
+      const dist = W + pad;
+      return { '--fx-x0': '0px', '--fx-x1': (fromLeft ? dist * 0.5 : -dist * 0.5) + 'px', '--fx-x2': (fromLeft ? dist : -dist) + 'px' };
+    };
+    const clouds = particleLoop(container, (c) => {
+      const W = c.clientWidth || container.parentElement?.clientWidth || 400;
       const fromLeft = pick([true, false]);
-      const dist = boardW + 90;
-      const s = rand(15, 23);
+      const w = rand(66, 124);
       return spawn(c, { style: {
-        left: fromLeft ? '-45px' : (boardW + 45) + 'px',
-        top: rand(6, 66) + '%',
-        width: s + 'px', height: (s * 0.6) + 'px',
-        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 12'%3E%3Cpath d='M1 9 Q5 2 10 7 Q15 2 19 9' fill='none' stroke='%23394a5c' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E")`,
-        backgroundRepeat: 'no-repeat', backgroundSize: 'contain',
-        animation: `fxGlide ${rand(7, 13)}s linear forwards`,
-        '--fx-x0': '0px',
-        '--fx-x1': (fromLeft ? dist * 0.5 : -dist * 0.5) + 'px',
-        '--fx-x2': (fromLeft ? dist : -dist) + 'px',
-        '--fx-bob': rand(-15, -7) + 'px',
-        '--fx-dir': fromLeft ? '1' : '-1',
-        '--fx-opacity': '0.78',
+        left: fromLeft ? (-w - 20) + 'px' : (W + 20) + 'px', top: rand(2, 56) + '%',
+        width: w + 'px', height: (w * 0.52) + 'px',
+        backgroundImage: CLOUD, backgroundRepeat: 'no-repeat', backgroundSize: 'contain',
+        animation: `fxGlide ${rand(44, 74)}s linear forwards`,
+        ...path(W, fromLeft, 220), '--fx-bob': '0px', '--fx-dir': '1', '--fx-opacity': '0.9',
       }});
-    }, () => rand(2000, 4200));
+    }, () => rand(9000, 17000));
+    const gulls = particleLoop(container, (c) => {
+      const W = c.clientWidth || container.parentElement?.clientWidth || 400;
+      const fromLeft = pick([true, false]);
+      const n = pick([1, 1, 2, 2, 3, 4, 5]);
+      const el = spawn(c, { style: {
+        left: fromLeft ? '-72px' : (W + 32) + 'px', top: rand(6, 60) + '%',
+        width: '72px', height: '46px',
+        animation: `fxGlide ${rand(8, 14)}s linear forwards`,
+        ...path(W, fromLeft, 130), '--fx-bob': rand(-13, -6) + 'px', '--fx-dir': fromLeft ? '1' : '-1', '--fx-opacity': '0.82',
+      }});
+      const mid = (n - 1) / 2;
+      for (let i = 0; i < n; i++) {
+        const g = document.createElement('div');
+        const s = rand(13, 18);
+        g.style.cssText = `position:absolute;width:${s}px;height:${s * 0.6}px;background-image:${GULL};background-repeat:no-repeat;background-size:contain;left:${i * 12}px;top:${Math.abs(i - mid) * 7 + rand(-2, 2)}px`;
+        el.appendChild(g);
+      }
+      return el;
+    }, () => rand(3500, 7000));
+    return () => { clouds(); gulls(); };
   },
 };
 
