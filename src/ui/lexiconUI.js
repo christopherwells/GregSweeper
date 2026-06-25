@@ -673,7 +673,7 @@ function _tryChord(row, col) {
   const completed = _finishMove(opened);
   if (!completed && opened > 0 && !_chordTipShown) {
     _chordTipShown = true;
-    _coach(`Chorded: the ${cell.adjacentMines} was fully flagged, so everything else around it opened at once`, 3600, 'achSpeed');
+    _coach(`Chorded: the ${cell.adjacentMines} was fully flagged, so everything else around it opened at once`, 3600, 'uiChord');
   }
 }
 

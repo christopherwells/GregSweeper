@@ -487,7 +487,7 @@ export function handleWin() {
     state.powerUps.lifeline = (state.powerUps.lifeline || 0) + 1;
     saveModePowerUps(state.gameMode, state.powerUps);
   saveProgress({ powerUps: loadPowerUps() });
-    showToast('Lifeline earned!', 2000, 'uiLifeline');
+    showToast('Lifeline earned!', 2000, 'powLifeline');
   }
 
   playWin();
@@ -768,7 +768,7 @@ export function handleWin() {
   if (isNewRecord) {
     if (state.gameMode === 'timed') {
       const rating = getSpeedRating(state.currentLevel, state.elapsedTime);
-      gameoverRecord.innerHTML = `${uiSpriteImgHTML('achWins', 'record-icon')} New Record: ${state.elapsedTime}s ${medalImgForEmoji(rating.icon, 'sprite-rank', rating.name) || rating.icon}`;
+      gameoverRecord.innerHTML = `${uiSpriteImgHTML('uiCelebrate', 'record-icon')} New Record: ${state.elapsedTime}s ${medalImgForEmoji(rating.icon, 'sprite-rank', rating.name) || rating.icon}`;
     } else {
       gameoverRecord.innerHTML = `${uiSpriteImgHTML('uiCelebrate', 'record-icon')} New Record!`;
     }
