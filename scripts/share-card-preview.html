@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Dev tool: render the share card for EVERY theme at once, no playing
+     required. <base href="../"> so the same relative paths the app uses
+     (assets/, src/) resolve from the repo root even though this file lives
+     in scripts/. Serve the repo and open scripts/share-card-preview.html,
+     or on a deploy open <site>/scripts/share-card-preview.html. -->
+<base href="../">
+<title>Share card preview — all themes</title>
+<link rel="stylesheet" href="src/styles/global.css">
+<link rel="stylesheet" id="tcss" href="src/styles/themes/dark.css">
+<style>
+  body { margin: 0; background: #262626; font-family: system-ui, sans-serif; padding: 16px; }
+  h1 { color: #eee; font-size: 15px; font-weight: 600; margin: 0 0 4px; }
+  p.note { color: #9a9a9a; font-size: 12px; margin: 0 0 16px; }
+  #grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+  .cc { text-align: center; }
+  .cc img { width: 100%; border-radius: 10px; display: block; box-shadow: 0 4px 14px rgba(0,0,0,.4); }
+  .cc span { display: block; color: #cfcfcf; font-size: 12px; margin-top: 5px; }
+</style>
+</head>
+<body>
+<h1>Share card across all 26 themes</h1>
+<p class="note">Mock daily win (walls + liar, 1 mine hit). Renders the real card per theme — tap any to zoom.</p>
+<div id="grid"></div>
+<script type="module">
+import { buildShareData, renderShareCardImage } from './src/ui/shareCardImage.js';
+import { THEME_UNLOCKS } from './src/ui/themeManager.js';
+import { state } from './src/state/gameState.js';
+
+const MOCK = {
+  gameMode: 'daily', dailySeed: '2026-06-20', weeklySeed: null,
+  rows: 11, cols: 11, totalMines: 22, revealedCount: 78,
+  elapsedTime: 88.4, dailyPar: 95, timedPar: 0,
+  activeGimmicks: ['walls', 'liar'], boardCertificate: { clicks: 60, tier: 2 }, dailyBombHits: 1,
+};
+const grid = document.getElementById('grid');
+const tcss = document.getElementById('tcss');
+
+function applyTheme(theme) {
+  return new Promise((resolve) => {
+    document.documentElement.setAttribute('data-theme', theme);
+    state.theme = theme;
+    tcss.onload = () => requestAnimationFrame(() => requestAnimationFrame(resolve));
+    tcss.onerror = () => resolve(); // classic has no file; :root defaults apply
+    tcss.href = 'src/styles/themes/' + theme + '.css';
+  });
+}
+
+for (const theme of Object.keys(THEME_UNLOCKS)) {
+  await applyTheme(theme);
+  await new Promise((r) => setTimeout(r, 120));
+  const canvas = await renderShareCardImage(buildShareData(MOCK));
+  const cc = document.createElement('div');
+  cc.className = 'cc';
+  const img = document.createElement('img');
+  img.src = canvas.toDataURL();
+  img.alt = theme + ' share card';
+  const span = document.createElement('span');
+  span.textContent = theme;
+  cc.appendChild(img);
+  cc.appendChild(span);
+  grid.appendChild(cc);
+}
+</script>
+</body>
+</html>
