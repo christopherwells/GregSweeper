@@ -1,42 +1,42 @@
 {
-  "updatedAt": "2026-06-24T16:24:55Z",
-  "target": "liarCellCount",
-  "reason": "highest posterior CV (0.928) excluding last 3 targets",
+  "updatedAt": "2026-06-25T16:28:54Z",
+  "target": "lockedCellCount",
+  "reason": "highest posterior CV (1.044) excluding last 3 targets",
   "recentTargets": [
+    "lockedCellCount",
     "liarCellCount",
-    "sonarCellCount",
-    "compassCellCount"
+    "sonarCellCount"
   ],
   "candidates": [
     {
       "feature": "sonarCellCount",
-      "mean": 0.796,
-      "sd": 0.865,
-      "cv": 1.086
+      "mean": 0.784,
+      "sd": 0.83,
+      "cv": 1.058
     },
     {
       "feature": "lockedCellCount",
-      "mean": 0.685,
-      "sd": 0.717,
-      "cv": 1.047
+      "mean": 0.667,
+      "sd": 0.696,
+      "cv": 1.044
     },
     {
       "feature": "compassCellCount",
-      "mean": 0.86,
-      "sd": 0.893,
-      "cv": 1.039
+      "mean": 0.896,
+      "sd": 0.917,
+      "cv": 1.024
     },
     {
       "feature": "liarCellCount",
-      "mean": 0.825,
-      "sd": 0.765,
-      "cv": 0.928
+      "mean": 0.821,
+      "sd": 0.77,
+      "cv": 0.938
     },
     {
       "feature": "wallEdgeCount",
       "mean": 0.155,
-      "sd": 0.143,
-      "cv": 0.923
+      "sd": 0.14,
+      "cv": 0.906
     }
   ],
   "coverage_targets": [
@@ -56,7 +56,7 @@
       "deficit_weight": 0.1
     },
     {
-      "feature": "mysteryCellCount",
+      "feature": "liarCellCount",
       "n_boards": 10,
       "deficit_weight": 0.0909
     },
@@ -66,7 +66,7 @@
       "deficit_weight": 0.0909
     },
     {
-      "feature": "lockedCellCount",
+      "feature": "mysteryCellCount",
       "n_boards": 11,
       "deficit_weight": 0.0833
     }
