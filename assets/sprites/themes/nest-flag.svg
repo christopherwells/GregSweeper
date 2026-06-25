@@ -1,0 +1,14 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
+<!-- A feather — the marker. -->
+<!-- vane -->
+<path d='M44 12 C30 16 18 30 14 50 C26 46 40 40 48 26 C50 21 48 15 44 12 Z'
+      fill='#e1573c' stroke='#3a2e1e' stroke-width='3' stroke-linejoin='round'/>
+<!-- inner vane tone -->
+<path d='M44 12 C36 16 28 26 22 42 C34 37 42 32 47 22 C49 18 47 14 44 12 Z' fill='#ef8163'/>
+<!-- central shaft, extending to a quill tip -->
+<path d='M40 17 L17 52' fill='none' stroke='#3a2e1e' stroke-width='2.6' stroke-linecap='round'/>
+<!-- barb separations -->
+<g fill='none' stroke='#3a2e1e' stroke-width='1.5' stroke-linecap='round' opacity='0.85'>
+  <path d='M35 22 L26 26 M37 28 L24 33 M33 33 L21 40 M29 39 L19 46'/>
+</g>
+</svg>

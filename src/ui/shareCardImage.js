@@ -312,10 +312,21 @@ function fxRays(g, x, y, n, r0, r1, rgba) {
   for (let i = 0; i < n; i++) { const a = i * 2 * Math.PI / n; g.beginPath(); g.moveTo(Math.cos(a) * r0, Math.sin(a) * r0); g.lineTo(Math.cos(a) * r1, Math.sin(a) * r1); g.stroke(); }
   g.restore();
 }
-function fxBurst(g, x, y, r, rgba) { // comic starburst (spiky polygon)
-  g.save(); g.translate(x, y); g.fillStyle = rgba; g.beginPath();
-  for (let i = 0; i < 24; i++) { const a = i * Math.PI / 12, rr = i % 2 ? r * 0.55 : r; g.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); }
-  g.closePath(); g.fill(); g.restore();
+function fxCloud(g, x, y, w) { // soft white cloud puff (overlapping ellipses)
+  g.fillStyle = 'rgba(255,255,255,0.5)';
+  g.beginPath();
+  g.ellipse(x, y, w * 0.5, w * 0.22, 0, 0, 7);
+  g.ellipse(x - w * 0.24, y + w * 0.04, w * 0.3, w * 0.16, 0, 0, 7);
+  g.ellipse(x + w * 0.26, y + w * 0.05, w * 0.28, w * 0.15, 0, 0, 7);
+  g.fill();
+}
+function fxGull(g, x, y, s, rgba) { // a gull silhouette (two wing arcs)
+  g.save(); g.translate(x, y); g.strokeStyle = rgba; g.lineWidth = Math.max(2, s * 0.13); g.lineCap = 'round';
+  g.beginPath();
+  g.moveTo(-s, s * 0.2);
+  g.quadraticCurveTo(-s * 0.4, -s * 0.5, 0, s * 0.05);
+  g.quadraticCurveTo(s * 0.4, -s * 0.5, s, s * 0.2);
+  g.stroke(); g.restore();
 }
 function fxFish(g, x, y, s, rgba, flip) { // simple fish silhouette (body + tail + eye)
   g.save(); g.translate(x, y); if (flip) g.scale(-1, 1); g.fillStyle = rgba;
@@ -521,10 +532,17 @@ const SHARE_FX = {
     for (let i = 0; i < 6; i++) { g.beginPath(); g.moveTo(_rn(0, W), 0); g.lineTo(_rn(0, W), H); g.stroke(); }
     fxScatter(g, W, H, 24, (x, y) => fxTri(g, x, y, _rn(8, 16), `rgba(${_pk(['209,74,74', '74,138,192', '90,160,90', '224,144,58', '154,106,192'])},0.55)`, _rn(0, 6)));
   },
-  comic: (g, W, H) => {
-    fxBurst(g, W * 0.84, H * 0.13, 64, 'rgba(255,210,70,0.55)');
-    g.save(); g.strokeStyle = 'rgba(42,34,24,0.4)'; g.lineWidth = 3; for (let i = 0; i < 18; i++) { const a = i * Math.PI / 9; g.beginPath(); g.moveTo(W * 0.16 + Math.cos(a) * 30, H * 0.86 + Math.sin(a) * 30); g.lineTo(W * 0.16 + Math.cos(a) * 120, H * 0.86 + Math.sin(a) * 120); g.stroke(); } g.restore();
-    fxScatter(g, W, H, 10, (x, y) => { for (let i = 0; i < 9; i++) fxDot(g, x + (i % 3) * 7, y + Math.floor(i / 3) * 7, 1.7, 'rgba(42,34,24,0.5)'); });
+  nest: (g, W, H) => {
+    // Open sky: a warm sun, soft clouds, and a loose flock of gulls drifting
+    // through the margins around the board.
+    fxGlow(g, W * 0.84, H * 0.11, 360, 'rgba(255,240,180,0.5)');
+    fxCloud(g, W * 0.16, H * 0.1, 130);
+    fxCloud(g, W * 0.82, H * 0.72, 150);
+    fxCloud(g, W * 0.1, H * 0.82, 110);
+    for (const [gx, gy] of [[W * 0.1, H * 0.3], [W * 0.17, H * 0.42], [W * 0.9, H * 0.34], [W * 0.84, H * 0.5], [W * 0.5, H * 0.06], [W * 0.12, H * 0.62], [W * 0.88, H * 0.64]]) {
+      fxGull(g, gx, gy, _rn(16, 26), 'rgba(55,72,92,0.6)');
+    }
+    fxScatter(g, W, H, 5, (x, y) => fxDot(g, x, y, _rn(1.5, 3), 'rgba(255,255,255,0.6)'));
   },
   editorial: (g, W, H) => {
     // An actual newspaper page: four justified text columns with column rules,

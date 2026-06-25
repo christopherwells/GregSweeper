@@ -241,6 +241,17 @@ function injectStyles() {
       82%  { opacity: 1; }
       100% { transform: rotate(var(--fx-ang, 30deg)) translateX(var(--fx-dist, 320px)); opacity: 0; }
     }
+
+    /* A bird gliding across the board: horizontal travel with a gentle mid-flight
+       bob. --fx-x0/x1/x2 give the path, --fx-dir flips the silhouette to face
+       its heading. */
+    @keyframes fxGlide {
+      0%   { transform: translate(var(--fx-x0, 0px), 0) scaleX(var(--fx-dir, 1)); opacity: 0; }
+      12%  { opacity: var(--fx-opacity, 0.75); }
+      50%  { transform: translate(var(--fx-x1, 200px), var(--fx-bob, -10px)) scaleX(var(--fx-dir, 1)); }
+      88%  { opacity: var(--fx-opacity, 0.75); }
+      100% { transform: translate(var(--fx-x2, 400px), 0) scaleX(var(--fx-dir, 1)); opacity: 0; }
+    }
   `;
 
   const style = document.createElement('style');
@@ -1041,33 +1052,30 @@ const THEME_EFFECTS = {
     }, () => rand(800, 1700));
   },
 
-  // Comic (L85): halftone clusters pulse like screen-tone shading, and
-  // a burst of speed lines streaks through on the rare beat.
-  comic: (container) => {
+  // Nest (L85): a loose flock glides across the open sky — slate gull
+  // silhouettes crossing left and right at a lazy pace, bobbing as they pass.
+  nest: (container) => {
     injectStyles();
-    const toneCleanup = particleLoop(container, (c) => {
-      const s = rand(26, 44);
+    return particleLoop(container, (c) => {
+      const boardW = c.clientWidth || container.parentElement?.clientWidth || 400;
+      const fromLeft = pick([true, false]);
+      const dist = boardW + 90;
+      const s = rand(15, 23);
       return spawn(c, { style: {
-        left: rand(4, 88) + '%', top: rand(4, 88) + '%',
-        width: s + 'px', height: s + 'px', borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(42,34,24,0.5) 1.2px, transparent 1.4px)',
-        backgroundSize: '6px 6px',
-        animation: `fxTwinkle ${rand(3, 5.5)}s ease-in-out forwards`,
-        '--fx-opacity': '0.4',
+        left: fromLeft ? '-45px' : (boardW + 45) + 'px',
+        top: rand(6, 66) + '%',
+        width: s + 'px', height: (s * 0.6) + 'px',
+        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 12'%3E%3Cpath d='M1 9 Q5 2 10 7 Q15 2 19 9' fill='none' stroke='%23394a5c' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E")`,
+        backgroundRepeat: 'no-repeat', backgroundSize: 'contain',
+        animation: `fxGlide ${rand(7, 13)}s linear forwards`,
+        '--fx-x0': '0px',
+        '--fx-x1': (fromLeft ? dist * 0.5 : -dist * 0.5) + 'px',
+        '--fx-x2': (fromLeft ? dist : -dist) + 'px',
+        '--fx-bob': rand(-15, -7) + 'px',
+        '--fx-dir': fromLeft ? '1' : '-1',
+        '--fx-opacity': '0.78',
       }});
-    }, () => rand(1300, 2600));
-    const speedCleanup = particleLoop(container, (c) => {
-      const ang = pick([-18, -8, 8, 18]);
-      return spawn(c, { style: {
-        left: '0', top: rand(15, 80) + '%',
-        width: rand(60, 100) + 'px', height: '9px',
-        background: 'repeating-linear-gradient(180deg, rgba(42,34,24,0.5) 0 1.5px, transparent 1.5px 4px)',
-        '--fx-ang': ang + 'deg',
-        '--fx-dist': rand(260, 420) + 'px',
-        animation: `fxShoot ${rand(0.9, 1.5)}s ease-out forwards`,
-      }});
-    }, () => rand(4500, 9000));
-    return () => { toneCleanup(); speedCleanup(); };
+    }, () => rand(2000, 4200));
   },
 };
 

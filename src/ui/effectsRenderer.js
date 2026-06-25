@@ -197,7 +197,7 @@ export function showConfettiBurst(originX, originY, count, opts = {}) {
     apothecary: ['#c89030', '#b03818', '#4a7028', '#2a5a8a', '#a07810', '#6a3a8a'],
     splitflap: ['#e8c84a', '#5ab0e8', '#5ad07a', '#f0ece2', '#ff7a5a', '#c89af0'],
     circuitboard: ['#40f090', '#40b0f0', '#ff5a4a', '#f0d040', '#b87838', '#50e060'],
-    comic: ['#b83320', '#2a5a8a', '#9a7818', '#3a7a3a', '#6a4a8a', '#2a2218'],
+    nest: ['#e1573c', '#4f9ad6', '#f3e7cf', '#3f9d56', '#a9743f', '#f6c542'],
     neon: ['#00ff88', '#ff0066', '#00ccff', '#ffff00', '#ff6600', '#cc44ff'],
     ocean: ['#64d2ff', '#5eead4', '#fbbf24', '#34d399', '#a78bfa', '#00e5ff'],
     candy: ['#ff69b4', '#e040fb', '#7c4dff', '#ffd740', '#69f0ae', '#ff4081'],
@@ -282,8 +282,8 @@ export function showConfettiBurst(originX, originY, count, opts = {}) {
 // a mine hit. Same particle engine as the confetti, retuned to blast OUTWARD
 // (no upward loft), fly faster, and decay quicker so it reads as a detonation
 // rather than a celebration. Colors come from the same per-theme palette, so
-// forest throws bark-and-leaf debris, inferno throws embers, comic throws
-// primary POW shards, etc.
+// forest throws bark-and-leaf debris, inferno throws embers, nest throws
+// shell-and-feather scatter, etc.
 export function showExplosionBurst(originX, originY, count = 36) {
   if (prefersReducedMotion()) return;
   showConfettiBurst(originX, originY, count, {

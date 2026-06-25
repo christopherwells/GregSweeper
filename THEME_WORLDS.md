@@ -66,8 +66,8 @@ serpent / expedition pennant / shipwreck), chalkboard (chalk-sketched bomb /
 chalk pennant / scrubbed-out burst), splitflap (cancelled flap module /
 luggage tag / module shattering mid-flip), galaxy (black hole / planted survey
 probe / collapsing-star flash), circuitboard (a literal bug on the silicon /
-probe clip / burnt-out chip), comic (classic fused bomb / exclamation balloon
-/ BOOM star), and noir's losses now leave a **chalk body outline** at every
+probe clip / burnt-out chip), nest (speckled egg in a twig cup / feather /
+folded omelette), and noir's losses now leave a **chalk body outline** at every
 detonation — the crime scene accumulates. Undrawn themes keep their emoji.
 (Emoji packs were cut 2026-06-12 with the Collection declutter; the theme
 is the only object-emoji source now.)
@@ -185,12 +185,14 @@ snappiness (dead-token fix).
 
 ## Loud (L85-120)
 
-**Comic (L85)** — A printed Sunday strip: cream paper, ink gutters, halftone.
-Voice: octave-leap square boings; the flag is a comedic octave-drop BONK; the
-win is a heroic fanfare with a skip in it. NEW ambiance: halftone screen-tone
-clusters pulse like shading; speed-line bursts streak through on a rare beat.
-Grout: the black panel gutter — cleared cells read as comic panels. Evaluate:
-the speed lines are the most "motion-comic" element — too often? too rare?
+**Nest (L85)** — A clutch under the open sky (replaced the retired comic theme
+2026-06-25): bright sky-blue unrevealed cells with drifting clouds + a corner
+sun, eggshell nest tiles below where the eggs (mines) hide. Voice: soft high
+sine birdsong; a two-note chirp flag; an ascending dawn-chorus win. Ambiance: a
+loose flock of slate gulls glides across the board, left and right. Objects: a
+speckled egg in a twig cup (mine), a folded omelette (struck mine), a feather
+(flag). Greg: a crab in a bird get-up — feathered wings, a beak, perched in a
+twig nest. Grout: twig weave — cleared cells read as nest patches.
 
 **Circuit Board (L90)** — Live PCB: copper traces, LEDs. Voice: logic-probe
 blips (pre-existing). Ambiance: LED pulses. Grout: copper trace. Evaluate:
