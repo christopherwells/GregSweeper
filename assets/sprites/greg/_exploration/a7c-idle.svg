@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <!-- Stage 3, variant e: ANTENNAE. The a7 blend plus two fine
-       antennae between the eye stalks, the real crab detail. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8.18 -8.08 136.16 136.16">
+  <!-- Stage 3, variant c: CRAB MOUTH. The a7 blend with the two-bump
+       crustacean mouth instead of a single smile arc. -->
   <g fill="none" stroke-linecap="round" stroke-linejoin="round">
     <g stroke="#232838" stroke-width="9">
       <path d="M38 82 L26 94 L22 105"/>
@@ -20,11 +20,6 @@
     <path d="M94 64 L104 52" stroke="#232838" stroke-width="12"/>
     <path d="M34 64 L24 54" stroke="#53a05b" stroke-width="6"/>
     <path d="M94 64 L104 52" stroke="#53a05b" stroke-width="6"/>
-  </g>
-  <!-- Antennae -->
-  <g fill="none" stroke="#232838" stroke-width="3" stroke-linecap="round">
-    <path d="M58 33 Q54 22 49 12"/>
-    <path d="M70 33 Q74 22 79 12"/>
   </g>
   <g fill="none" stroke-linecap="round">
     <path d="M50 37 L46 25" stroke="#232838" stroke-width="10"/>
@@ -47,7 +42,8 @@
     <circle cx="86" cy="48" r="3"/>
     <circle cx="55" cy="55" r="2.2"/>
   </g>
-  <path d="M54 66 Q64 74 74 66" fill="none" stroke="#232838" stroke-width="5" stroke-linecap="round"/>
+  <!-- Crab mouth: two bumps -->
+  <path d="M55 66 Q59.5 71 64 66 Q68.5 71 73 66" fill="none" stroke="#232838" stroke-width="4.5" stroke-linecap="round"/>
   <ellipse cx="108" cy="45" rx="12.5" ry="10" fill="#53a05b" stroke="#232838" stroke-width="5.5" transform="rotate(-35 108 45)"/>
   <ellipse cx="115" cy="36" rx="6" ry="4.8" fill="#e8873a" stroke="#232838" stroke-width="4.5" transform="rotate(-35 115 36)"/>
   <g transform="rotate(-62 106 41)">

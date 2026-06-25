@@ -5872,11 +5872,29 @@ button:focus-visible {
   color: var(--color-text, #eee);
 }
 .title-screen-header {
-  text-align: center;
-  /* The flex gap already separates header / modes / footer. The extra big
-     margin here was double-spacing, which (with the newcomer goal + Daily
-     par lines) made the column overflow shorter phones. */
+  /* Greg + the wordmark sit as one centered group (the 2026-06-25 front-door
+     rebuild). The flex gap already separates header / modes / footer. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
   margin-bottom: 4px;
+}
+.title-greg-mascot {
+  width: 100px;
+  height: 100px;
+  flex: none;
+  line-height: 0;
+}
+.title-greg-mascot svg { display: block; }
+.title-screen-wordmark {
+  text-align: left;
+}
+/* In the left-aligned wordmark the proof drops its auto-centering margins. */
+.title-screen-wordmark .title-screen-proof {
+  margin-left: 0;
+  margin-right: 0;
+  max-width: 30ch;
 }
 .title-screen-logo {
   font-family: var(--font-display, 'Fredoka'), sans-serif;
@@ -5886,8 +5904,12 @@ button:focus-visible {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  margin: 0 0 6px;
+  margin: 0 0 4px;
   letter-spacing: -0.5px;
+  /* Comfortable line-height + a hair of padding so the gradient-clipped
+     descenders (the g and p) aren't cut at the bottom of the line box. */
+  line-height: 1.15;
+  padding-bottom: 2px;
 }
 .title-screen-subtitle {
   font-size: 14px;
@@ -5973,7 +5995,8 @@ button:focus-visible {
     padding-top: max(12px, env(safe-area-inset-top));
     padding-bottom: max(12px, env(safe-area-inset-bottom));
   }
-  .title-screen-header { margin-bottom: 0; }
+  .title-screen-header { margin-bottom: 0; gap: 9px; }
+  .title-greg-mascot { width: 80px; height: 80px; }
   .title-screen-logo { font-size: clamp(24px, 6vw, 34px); }
   .title-screen-subtitle { font-size: 12px; }
   .title-screen-proof { margin-top: 4px; font-size: 12px; }
@@ -5987,6 +6010,7 @@ button:focus-visible {
    browser UI showing on top of an already-short device). */
 @media (max-height: 680px) {
   .title-screen { gap: 9px; }
+  .title-greg-mascot { width: 68px; height: 68px; }
   .title-screen-logo { font-size: clamp(22px, 6vw, 30px); }
   .mode-card { padding: 9px 8px; }
   .mode-card-icon { font-size: 22px; }

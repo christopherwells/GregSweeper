@@ -1,6 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <!-- Stage 3, variant c: CRAB MOUTH. The a7 blend with the two-bump
-       crustacean mouth instead of a single smile arc. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8.18 -7.58 136.16 136.16">
+  <!-- Stage 3, variant g: WIDER EYE SPREAD. The a7 blend with the
+       stalks angled further outward, eyes set wide at the shell's
+       corners. -->
   <g fill="none" stroke-linecap="round" stroke-linejoin="round">
     <g stroke="#232838" stroke-width="9">
       <path d="M38 82 L26 94 L22 105"/>
@@ -21,18 +22,19 @@
     <path d="M34 64 L24 54" stroke="#53a05b" stroke-width="6"/>
     <path d="M94 64 L104 52" stroke="#53a05b" stroke-width="6"/>
   </g>
+  <!-- Stalks angled outward -->
   <g fill="none" stroke-linecap="round">
-    <path d="M50 37 L46 25" stroke="#232838" stroke-width="10"/>
-    <path d="M78 37 L82 25" stroke="#232838" stroke-width="10"/>
-    <path d="M50 37 L46 25" stroke="#53a05b" stroke-width="5"/>
-    <path d="M78 37 L82 25" stroke="#53a05b" stroke-width="5"/>
+    <path d="M46 38 L39 26" stroke="#232838" stroke-width="10"/>
+    <path d="M82 38 L89 26" stroke="#232838" stroke-width="10"/>
+    <path d="M46 38 L39 26" stroke="#53a05b" stroke-width="5"/>
+    <path d="M82 38 L89 26" stroke="#53a05b" stroke-width="5"/>
   </g>
-  <circle cx="45" cy="19" r="9" fill="#ffffff" stroke="#232838" stroke-width="5"/>
-  <circle cx="83" cy="19" r="9" fill="#ffffff" stroke="#232838" stroke-width="5"/>
-  <circle cx="46.5" cy="20.5" r="3.4" fill="#232838"/>
-  <circle cx="81.5" cy="20.5" r="3.4" fill="#232838"/>
-  <circle cx="48" cy="19" r="1.2" fill="#ffffff"/>
-  <circle cx="83" cy="19" r="1.2" fill="#ffffff"/>
+  <circle cx="37" cy="20" r="9" fill="#ffffff" stroke="#232838" stroke-width="5"/>
+  <circle cx="91" cy="20" r="9" fill="#ffffff" stroke="#232838" stroke-width="5"/>
+  <circle cx="39" cy="21.5" r="3.4" fill="#232838"/>
+  <circle cx="89" cy="21.5" r="3.4" fill="#232838"/>
+  <circle cx="40.5" cy="20" r="1.2" fill="#ffffff"/>
+  <circle cx="90.5" cy="20" r="1.2" fill="#ffffff"/>
   <path d="M22 62 C22 48 32 38 44 35 Q54 30 64 30 Q74 30 84 35 C96 38 106 48 106 62 C106 76 90 86 64 86 C38 86 22 76 22 62 Z"
         fill="#53a05b" stroke="#232838" stroke-width="6"/>
   <path d="M30 68 C40 78 88 78 98 68 C92 80 80 84 64 84 C48 84 36 80 30 68 Z" fill="#3e7f46"/>
@@ -42,8 +44,7 @@
     <circle cx="86" cy="48" r="3"/>
     <circle cx="55" cy="55" r="2.2"/>
   </g>
-  <!-- Crab mouth: two bumps -->
-  <path d="M55 66 Q59.5 71 64 66 Q68.5 71 73 66" fill="none" stroke="#232838" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="M54 66 Q64 74 74 66" fill="none" stroke="#232838" stroke-width="5" stroke-linecap="round"/>
   <ellipse cx="108" cy="45" rx="12.5" ry="10" fill="#53a05b" stroke="#232838" stroke-width="5.5" transform="rotate(-35 108 45)"/>
   <ellipse cx="115" cy="36" rx="6" ry="4.8" fill="#e8873a" stroke="#232838" stroke-width="4.5" transform="rotate(-35 115 36)"/>
   <g transform="rotate(-62 106 41)">
