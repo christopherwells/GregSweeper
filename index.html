@@ -288,9 +288,15 @@
   <!-- Title Screen -->
   <div id="title-screen" class="title-screen">
     <div class="title-screen-header">
-      <h1 class="title-screen-logo">GregSweeper</h1>
-      <p class="title-screen-subtitle">No guesses. Ever.</p>
-      <p class="title-screen-proof">Every board is proven solvable before you see it.</p>
+      <!-- Greg greets the front door, centered with the wordmark. The mascot
+           is an inline animated SVG (blink + smile flip) filled by
+           src/ui/gregMascot.js — the only Greg on the title screen. -->
+      <div class="title-greg-mascot" id="title-greg-mascot" aria-hidden="true"></div>
+      <div class="title-screen-wordmark">
+        <h1 class="title-screen-logo">GregSweeper</h1>
+        <p class="title-screen-subtitle">No guesses. Ever.</p>
+        <p class="title-screen-proof">Every board is proven solvable before you see it.</p>
+      </div>
     </div>
     <div class="title-screen-modes">
       <!-- Mode-card icons are drawn SVG sprites (Tier 3 of the sprite

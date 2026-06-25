@@ -1,6 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <!-- Stage 3, variant f: SHELL SHEEN. The a7 blend with a soft light
-       band along the top of the carapace for a little depth. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8.18 -4.71 140.52 140.52">
+  <!-- A drill-down, STAGE 2 BLEND: A3's wide carapace (no lobe arcs),
+       A1's long eye stalks, A5's big claws and big readable clipboard.
+       Baseline green palette. -->
+  <!-- Walking legs, wide stance -->
   <g fill="none" stroke-linecap="round" stroke-linejoin="round">
     <g stroke="#232838" stroke-width="9">
       <path d="M38 82 L26 94 L22 105"/>
@@ -15,12 +17,14 @@
       <path d="M80 87 L88 100 L90 110"/>
     </g>
   </g>
+  <!-- Arms, thick -->
   <g fill="none" stroke-linecap="round">
     <path d="M34 64 L24 54" stroke="#232838" stroke-width="12"/>
     <path d="M94 64 L104 52" stroke="#232838" stroke-width="12"/>
     <path d="M34 64 L24 54" stroke="#53a05b" stroke-width="6"/>
     <path d="M94 64 L104 52" stroke="#53a05b" stroke-width="6"/>
   </g>
+  <!-- Long eye stalks -->
   <g fill="none" stroke-linecap="round">
     <path d="M50 37 L46 25" stroke="#232838" stroke-width="10"/>
     <path d="M78 37 L82 25" stroke="#232838" stroke-width="10"/>
@@ -33,19 +37,20 @@
   <circle cx="81.5" cy="20.5" r="3.4" fill="#232838"/>
   <circle cx="48" cy="19" r="1.2" fill="#ffffff"/>
   <circle cx="83" cy="19" r="1.2" fill="#ffffff"/>
+  <!-- Wide carapace, clean front edge -->
   <path d="M22 62 C22 48 32 38 44 35 Q54 30 64 30 Q74 30 84 35 C96 38 106 48 106 62 C106 76 90 86 64 86 C38 86 22 76 22 62 Z"
         fill="#53a05b" stroke="#232838" stroke-width="6"/>
-  <!-- Sheen band along the top -->
-  <path d="M30 44 C40 36 52 33 64 33 C76 33 88 36 98 44 C88 39 76 36.5 64 36.5 C52 36.5 40 39 30 44 Z"
-        fill="#8fcf96" opacity="0.7"/>
   <path d="M30 68 C40 78 88 78 98 68 C92 80 80 84 64 84 C48 84 36 80 30 68 Z" fill="#3e7f46"/>
+  <!-- Mottling -->
   <g fill="#7cc184">
     <circle cx="44" cy="46" r="3.2"/>
     <circle cx="66" cy="40" r="2.8"/>
     <circle cx="86" cy="48" r="3"/>
     <circle cx="55" cy="55" r="2.2"/>
   </g>
+  <!-- Smile -->
   <path d="M54 66 Q64 74 74 66" fill="none" stroke="#232838" stroke-width="5" stroke-linecap="round"/>
+  <!-- BIG right pincer holding the pencil high -->
   <ellipse cx="108" cy="45" rx="12.5" ry="10" fill="#53a05b" stroke="#232838" stroke-width="5.5" transform="rotate(-35 108 45)"/>
   <ellipse cx="115" cy="36" rx="6" ry="4.8" fill="#e8873a" stroke="#232838" stroke-width="4.5" transform="rotate(-35 115 36)"/>
   <g transform="rotate(-62 106 41)">
@@ -53,6 +58,7 @@
     <path d="M122 37 L128 41 L122 45 Z" fill="#232838"/>
     <rect x="88" y="37" width="6" height="8" rx="2.2" fill="#e88a8a" stroke="#232838" stroke-width="3.2"/>
   </g>
+  <!-- BIG clipboard with a readable mini-board -->
   <g transform="rotate(-12 18 60)">
     <rect x="0" y="38" width="32" height="44" rx="4" fill="#f3f6fb" stroke="#232838" stroke-width="5"/>
     <rect x="9" y="32" width="14" height="9" rx="3" fill="#b9c2d4" stroke="#232838" stroke-width="3.8"/>
@@ -68,6 +74,7 @@
     <rect x="14" y="57" width="7" height="7" rx="1.4" fill="#ffd23e"/>
     <path d="M24 73 L24 65 L31 67.5 L24 70" fill="#e4453a"/>
   </g>
+  <!-- BIG left pincer gripping it -->
   <ellipse cx="28" cy="42" rx="11.5" ry="9.5" fill="#53a05b" stroke="#232838" stroke-width="5.5" transform="rotate(28 28 42)"/>
   <ellipse cx="35" cy="34" rx="5.5" ry="4.4" fill="#e8873a" stroke="#232838" stroke-width="4.5" transform="rotate(28 35 34)"/>
 </svg>
