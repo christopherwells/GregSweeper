@@ -13,19 +13,27 @@
 <link rel="stylesheet" href="src/styles/global.css">
 <link rel="stylesheet" id="tcss" href="src/styles/themes/dark.css">
 <style>
-  body { margin: 0; background: #262626; font-family: system-ui, sans-serif; padding: 16px; }
-  h1 { color: #eee; font-size: 15px; font-weight: 600; margin: 0 0 4px; }
-  p.note { color: #9a9a9a; font-size: 12px; margin: 0 0 16px; }
-  #grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
-  .cc { text-align: center; }
+  body { margin: 0; background: #262626; font-family: system-ui, sans-serif; padding: 14px 16px 90px; }
+  header { position: sticky; top: 0; background: #262626; padding: 6px 0 12px; z-index: 10; }
+  h1 { color: #eee; font-size: 16px; font-weight: 600; margin: 0 0 4px; }
+  p.note { color: #9a9a9a; font-size: 12px; margin: 0; }
+  #grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px; max-width: 1500px; }
+  .cc { text-align: center; cursor: zoom-in; }
   .cc img { width: 100%; border-radius: 10px; display: block; box-shadow: 0 4px 14px rgba(0,0,0,.4); }
-  .cc span { display: block; color: #cfcfcf; font-size: 12px; margin-top: 5px; }
+  .cc span { display: block; color: #cfcfcf; font-size: 13px; margin-top: 6px; }
+  /* Click any card to zoom it full-size in an overlay. */
+  #lb { position: fixed; inset: 0; background: rgba(0,0,0,.86); display: none; align-items: center; justify-content: center; cursor: zoom-out; z-index: 99; padding: 18px; }
+  #lb img { max-height: 95vh; max-width: 95vw; border-radius: 14px; box-shadow: 0 12px 48px rgba(0,0,0,.6); }
+  #lb.show { display: flex; }
 </style>
 </head>
 <body>
-<h1>Share card across all 26 themes</h1>
-<p class="note">Mock daily win (walls + liar, 1 mine hit). Renders the real card per theme — tap any to zoom.</p>
+<header>
+  <h1>Share card across all 26 themes</h1>
+  <p class="note">Mock daily win (walls + liar, 1 mine hit). Click any card to zoom it full-size.</p>
+</header>
 <div id="grid"></div>
+<div id="lb"><img alt="zoomed card"></div>
 <script type="module">
 import { buildShareData, renderShareCardImage } from './src/ui/shareCardImage.js';
 import { THEME_UNLOCKS } from './src/ui/themeManager.js';
@@ -39,6 +47,9 @@ const MOCK = {
 };
 const grid = document.getElementById('grid');
 const tcss = document.getElementById('tcss');
+const lb = document.getElementById('lb'), lbImg = lb.querySelector('img');
+grid.addEventListener('click', (e) => { const img = e.target.closest('.cc')?.querySelector('img'); if (img) { lbImg.src = img.src; lb.classList.add('show'); } });
+lb.addEventListener('click', () => lb.classList.remove('show'));
 
 function applyTheme(theme) {
   return new Promise((resolve) => {
