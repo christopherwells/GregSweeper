@@ -1,16 +1,7 @@
 <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
-<!-- A folded omelette: the egg, cooked. The detonated mine. -->
-<!-- plate hint -->
-<ellipse cx='32' cy='46' rx='24' ry='6' fill='#e7eef2' stroke='#b9c6cd' stroke-width='2'/>
-<!-- omelette: a folded half-disc -->
-<path d='M9 44 Q14 22 32 22 Q50 22 55 44 Q55 47 50 47 L14 47 Q9 47 9 44 Z'
-      fill='#f6c542' stroke='#c98f24' stroke-width='2.8' stroke-linejoin='round'/>
-<!-- browned fold + sheen -->
-<path d='M16 40 Q32 30 48 40' fill='none' stroke='#dca42e' stroke-width='2.4' stroke-linecap='round'/>
-<path d='M20 33 Q26 28 33 29' fill='none' stroke='#ffe6a0' stroke-width='2.4' stroke-linecap='round' opacity='0.8'/>
-<!-- chive flecks -->
-<g fill='#5a8a3a'>
-  <ellipse cx='38' cy='37' rx='2.4' ry='1.1' transform='rotate(28 38 37)'/>
-  <ellipse cx='27' cy='41' rx='2.2' ry='1' transform='rotate(-20 27 41)'/>
-</g>
+<!-- A fried egg, sunny-side up: the egg, cooked. The detonated mine. -->
+<path d='M13 30 Q8 19 19 17 Q22 8 32 12 Q44 8 47 18 Q58 21 52 31 Q57 41 46 44 Q41 54 30 50 Q17 53 15 41 Q8 38 13 30 Z'
+      fill='#fbf4e2' stroke='#e3c585' stroke-width='2.4' stroke-linejoin='round'/>
+<circle cx='33' cy='31' r='10.5' fill='#f6b73c' stroke='#df8826' stroke-width='2.6'/>
+<ellipse cx='29' cy='27' rx='3.2' ry='2.4' fill='#ffe39a' opacity='0.9'/>
 </svg>
