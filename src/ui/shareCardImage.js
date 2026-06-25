@@ -254,14 +254,18 @@ function fxPersp(g, W, H, rgba, hy) { // perspective grid converging to (W/2, hy
   while (y < H) { g.moveTo(0, y); g.lineTo(W, y); y += step; step *= 1.32; }
   g.stroke();
 }
-function fxRibbon(g, W, yC, h, rgba) { // soft wavy aurora band
-  g.save(); g.filter = 'blur(15px)';
-  const grd = g.createLinearGradient(0, yC - h, 0, yC + h);
-  grd.addColorStop(0, rgba.replace(/[\d.]+\s*\)\s*$/, '0)')); grd.addColorStop(0.5, rgba); grd.addColorStop(1, rgba.replace(/[\d.]+\s*\)\s*$/, '0)'));
-  g.fillStyle = grd; g.beginPath(); g.moveTo(-50, yC - h);
-  for (let x = -50; x <= W + 50; x += 28) g.lineTo(x, yC - h + Math.sin(x * 0.012 + yC * 0.04) * h * 0.7);
-  for (let x = W + 50; x >= -50; x -= 28) g.lineTo(x, yC + h + Math.sin(x * 0.012 + yC * 0.04) * h * 0.7);
-  g.closePath(); g.fill(); g.filter = 'none'; g.restore();
+function fxRibbon(g, W, yC, h, colors) { // soft wobbly aurora band; colors[] blend along its length
+  g.save(); g.filter = 'blur(17px)'; g.globalCompositeOperation = 'lighter';
+  const grd = g.createLinearGradient(0, 0, W, 0);
+  colors.forEach((c, i) => grd.addColorStop(colors.length === 1 ? 0 : i / (colors.length - 1), c));
+  g.fillStyle = grd;
+  // Two sine terms at different frequencies → an organic, non-stripey wobble.
+  const wob = (x) => Math.sin(x * 0.014 + yC * 0.05) * h * 0.85 + Math.sin(x * 0.043 + yC) * h * 0.4;
+  g.beginPath(); g.moveTo(-60, yC - h + wob(-60));
+  for (let x = -60; x <= W + 60; x += 16) g.lineTo(x, yC - h + wob(x));
+  for (let x = W + 60; x >= -60; x -= 16) g.lineTo(x, yC + h + wob(x));
+  g.closePath(); g.fill();
+  g.filter = 'none'; g.globalCompositeOperation = 'source-over'; g.restore();
 }
 function fxBlinds(g, W, H, rgba) {
   g.save(); g.rotate(-0.12); g.fillStyle = rgba;
@@ -323,8 +327,10 @@ const SHARE_FX = {
     fxScatter(g, W, H, 6, (x, y) => fxStar(g, x, y, _rn(7, 13), 'rgba(255,255,255,0.9)'));
   },
   aurora: (g, W, H) => {
-    fxRibbon(g, W, H * 0.2, 64, 'rgba(0,229,160,0.34)'); fxRibbon(g, W, H * 0.33, 54, 'rgba(0,188,212,0.30)'); fxRibbon(g, W, H * 0.5, 46, 'rgba(179,136,255,0.26)');
-    fxScatter(g, W, H, 44, (x, y) => fxDot(g, x, y, _rn(0.8, 2), 'rgba(220,255,245,0.7)', 4));
+    fxRibbon(g, W, H * 0.2, 58, ['rgba(0,229,160,0)', 'rgba(0,229,160,0.4)', 'rgba(0,188,212,0.4)', 'rgba(120,150,255,0.3)', 'rgba(120,150,255,0)']);
+    fxRibbon(g, W, H * 0.33, 50, ['rgba(60,235,180,0)', 'rgba(40,215,180,0.36)', 'rgba(150,120,255,0.36)', 'rgba(150,120,255,0)']);
+    fxRibbon(g, W, H * 0.49, 44, ['rgba(90,255,200,0)', 'rgba(80,230,210,0.3)', 'rgba(120,160,255,0.3)', 'rgba(170,130,255,0.26)', 'rgba(170,130,255,0)']);
+    fxScatter(g, W, H, 46, (x, y) => fxDot(g, x, y, _rn(0.8, 2), 'rgba(220,255,245,0.7)', 4));
   },
   sakura: (g, W, H) => {
     fxGlow(g, W * 0.5, H * 0.28, 470, 'rgba(232,112,144,0.10)');
@@ -337,8 +343,8 @@ const SHARE_FX = {
     fxScatter(g, W, H, 30, (x, y) => { fxRing(g, x, y, _rn(4, 11), 'rgba(205,242,255,0.55)', 1.5); fxDot(g, x - 1.6, y - 1.6, 2, 'rgba(240,252,255,0.7)'); });
   },
   inferno: (g, W, H) => {
-    fxGlow(g, W * 0.5, H * 1.04, 640, 'rgba(255,70,0,0.16)'); fxGlow(g, W * 0.3, H * 1.0, 380, 'rgba(255,160,0,0.10)'); fxGlow(g, W * 0.72, H * 1.0, 380, 'rgba(255,120,0,0.10)');
-    fxScatter(g, W, H, 36, (x, y) => fxDot(g, x, _rn(H * 0.38, H), _rn(1.5, 4.5), _pk(['rgba(255,80,0,0.75)', 'rgba(255,180,0,0.65)', 'rgba(255,120,0,0.6)']), 9));
+    fxGlow(g, W * 0.5, H * 1.05, 720, 'rgba(255,35,0,0.26)'); fxGlow(g, W * 0.5, H * 0.95, 480, 'rgba(255,80,0,0.18)'); fxGlow(g, W * 0.28, H * 1.0, 380, 'rgba(255,140,0,0.10)'); fxGlow(g, W * 0.74, H * 1.0, 380, 'rgba(255,50,0,0.14)');
+    fxScatter(g, W, H, 42, (x, y) => fxDot(g, x, _rn(H * 0.32, H), _rn(1.5, 5), _pk(['rgba(255,45,0,0.8)', 'rgba(255,130,0,0.7)', 'rgba(255,80,0,0.7)']), 10));
   },
   legendary: (g, W, H) => {
     fxGlow(g, W * 0.5, H * 0.42, 460, 'rgba(255,200,40,0.10)');
@@ -347,10 +353,15 @@ const SHARE_FX = {
     fxScatter(g, W, H, 14, (x, y) => fxDot(g, x, _rn(H * 0.4, H), _rn(1.5, 3.5), 'rgba(255,140,0,0.6)', 7));
   },
   supernova: (g, W, H) => {
-    fxGlow(g, W * 0.5, H * 0.46, 300, 'rgba(255,225,160,0.18)'); fxGlow(g, W * 0.5, H * 0.46, 540, 'rgba(255,120,20,0.12)');
-    fxRays(g, W * 0.5, H * 0.46, 20, 50, 440, 'rgba(255,180,60,0.10)');
-    fxScatter(g, W, H, 10, (x, y) => fxRing(g, x, y, _rn(10, 30), 'rgba(255,180,50,0.45)', 2));
-    fxScatter(g, W, H, 20, (x, y) => fxStar(g, x, y, _rn(4, 9), _pk(['rgba(255,200,60,0.8)', 'rgba(255,255,180,0.6)'])));
+    // The supernova world's board reads warm, but the card wants deep-space
+    // blue-black (Christopher) — lay a near-opaque blue base over the theme bg.
+    const bg = g.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, 'rgba(6,10,32,0.93)'); bg.addColorStop(0.5, 'rgba(12,18,52,0.9)'); bg.addColorStop(1, 'rgba(4,8,26,0.95)');
+    g.fillStyle = bg; g.fillRect(0, 0, W, H);
+    fxGlow(g, W * 0.5, H * 0.46, 340, 'rgba(170,210,255,0.18)'); fxGlow(g, W * 0.5, H * 0.46, 620, 'rgba(60,110,220,0.16)');
+    fxRays(g, W * 0.5, H * 0.46, 20, 50, 470, 'rgba(150,200,255,0.10)');
+    fxScatter(g, W, H, 10, (x, y) => fxRing(g, x, y, _rn(10, 30), 'rgba(150,200,255,0.42)', 2));
+    fxScatter(g, W, H, 26, (x, y) => fxStar(g, x, y, _rn(4, 9), _pk(['rgba(205,225,255,0.85)', 'rgba(255,255,255,0.7)', 'rgba(150,200,255,0.6)'])));
   },
   matrix: (g, W, H) => {
     fxVignette(g, W, H, 'rgba(0,28,6,0.42)');
@@ -372,9 +383,16 @@ const SHARE_FX = {
     fxScatter(g, W, H, 12, (x, y) => fxDot(g, x, y, _rn(3, 6), `rgba(${_pk(['255,255,255', '255,200,230'])},0.7)`));
   },
   circuitboard: (g, W, H) => {
-    fxScatter(g, W, H, 10, (x, y) => fxTrace(g, x, y, 'rgba(64,200,120,0.4)'));
-    fxScatter(g, W, H, 24, (x, y) => fxDot(g, x, y, _rn(2, 4.2), _pk(['rgba(64,240,144,0.9)', 'rgba(64,200,240,0.85)', 'rgba(240,80,60,0.8)', 'rgba(240,200,64,0.85)']), 8));
-    g.strokeStyle = 'rgba(64,200,120,0.45)'; g.lineWidth = 2; roundRect(g, W * 0.62, H * 0.08, 110, 70, 6); g.stroke();
+    fxScatter(g, W, H, 18, (x, y) => fxTrace(g, x, y, 'rgba(64,200,120,0.42)'));
+    g.strokeStyle = 'rgba(64,200,120,0.32)'; g.lineWidth = 2;
+    for (let i = 0; i < 4; i++) { const yy = _rn(20, H - 20); g.beginPath(); g.moveTo(20, yy); g.lineTo(W - 20, yy); g.stroke(); }
+    g.strokeStyle = 'rgba(70,210,130,0.5)'; g.fillStyle = 'rgba(70,210,130,0.45)';
+    for (const [cx, cy, cw, ch] of [[W * 0.62, H * 0.06, 124, 78], [W * 0.07, H * 0.8, 92, 60]]) {
+      g.lineWidth = 2; roundRect(g, cx, cy, cw, ch, 6); g.stroke();
+      for (let i = 0; i < 5; i++) { const px = cx + 10 + i * (cw - 20) / 4; g.fillRect(px, cy - 6, 5, 6); g.fillRect(px, cy + ch, 5, 6); }
+    }
+    fxScatter(g, W, H, 14, (x, y) => fxRing(g, x, y, _rn(3, 5), 'rgba(64,200,120,0.5)', 1.5));
+    fxScatter(g, W, H, 22, (x, y) => fxDot(g, x, y, _rn(2, 4.2), _pk(['rgba(64,240,144,0.9)', 'rgba(64,200,240,0.85)', 'rgba(240,80,60,0.8)', 'rgba(240,200,64,0.85)']), 8));
   },
   stainedglass: (g, W, H) => {
     fxGlow(g, W * 0.26, H * 0.3, 320, 'rgba(120,60,200,0.11)'); fxGlow(g, W * 0.74, H * 0.62, 320, 'rgba(200,50,70,0.10)');
@@ -388,9 +406,19 @@ const SHARE_FX = {
     fxScatter(g, W, H, 22, (x, y) => fxDot(g, x, y, _rn(2, 4), 'rgba(232,190,110,0.5)', 6));
   },
   splitflap: (g, W, H) => {
-    const mod = (x, y) => { g.fillStyle = 'rgba(30,30,38,0.9)'; roundRect(g, x, y, 17, 22, 3); g.fill(); g.fillStyle = 'rgba(70,70,84,0.9)'; roundRect(g, x, y, 17, 10, 3); g.fill(); g.strokeStyle = 'rgba(0,0,0,0.5)'; g.lineWidth = 1; g.beginPath(); g.moveTo(x, y + 11); g.lineTo(x + 17, y + 11); g.stroke(); };
-    for (const ry of [H * 0.12, H * 0.86]) for (let i = 0; i < 14; i++) mod(28 + i * (W - 56) / 13, ry);
-    fxScatter(g, W, H, 12, (x, y) => mod(x, y));
+    // A Solari departures board framing the card: real character tiles with the
+    // top-flap highlight, the mid split seam, and a glyph.
+    const chars = 'ABCDEFGHJKLMNPRSTUVWXYZ0123456789'.split('');
+    const tile = (x, y, w, h) => {
+      g.fillStyle = 'rgba(24,24,30,0.92)'; roundRect(g, x, y, w, h, 3); g.fill();
+      g.fillStyle = 'rgba(48,48,58,0.92)'; roundRect(g, x, y, w, h * 0.47, 3); g.fill();
+      g.strokeStyle = 'rgba(0,0,0,0.55)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x + 1, y + h / 2); g.lineTo(x + w - 1, y + h / 2); g.stroke();
+      g.fillStyle = 'rgba(238,238,242,0.9)'; g.font = '700 ' + Math.round(h * 0.56) + 'px monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(_pk(chars), x + w / 2, y + h / 2 + 1);
+    };
+    const tw = 26, th = 33, gp = 5;
+    for (let i = 0, n = Math.floor((W - 24) / (tw + gp)); i < n; i++) tile(14 + i * (tw + gp), 12, tw, th);
+    for (let r = 0, n = Math.floor(710 / (th + gp)); r < n; r++) { const y = 292 + r * (th + gp); tile(12, y, tw, th); tile(W - 12 - tw, y, tw, th); }
   },
   blueprint: (g, W, H) => {
     fxGrid(g, W, H, 'rgba(150,210,255,0.12)', 40);
@@ -434,11 +462,23 @@ const SHARE_FX = {
     fxScatter(g, W, H, 24, (x, y) => fxDot(g, x, y, _rn(1, 2.5), ch(0.4), 3));
   },
   noir: (g, W, H) => {
-    fxBlinds(g, W, H, 'rgba(255,250,235,0.05)');
     fxGlow(g, W * 0.7, H * 0.18, 360, 'rgba(255,250,235,0.07)');
     fxScatter(g, W, H, 18, (x, y) => fxDot(g, x, y, _rn(1.5, 3), 'rgba(238,234,222,0.4)', 4));
   },
 };
+
+// Overlay pass — drawn ON TOP of the board + text (faint), for effects that
+// fall across the whole scene rather than sitting behind it. Noir's venetian
+// blind light rakes the entire card, board included.
+const SHARE_FX_OVERLAY = {
+  noir: (g, W, H) => fxBlinds(g, W, H, 'rgba(255,250,235,0.05)'),
+};
+function drawThemeFxOverlay(g, W, H, theme) {
+  const fn = SHARE_FX_OVERLAY[theme];
+  if (!fn) return;
+  g.save(); fn(g, W, H); g.restore();
+  g.textBaseline = 'alphabetic';
+}
 
 function drawThemeFx(g, W, H, theme) {
   const fn = SHARE_FX[theme];
@@ -601,6 +641,9 @@ export async function renderShareCardImage(data) {
   g.fillStyle = dimmer;
   g.font = '500 25px system-ui, sans-serif';
   g.fillText('christopherwells.github.io/GregSweeper', W - 90, fy);
+
+  // Overlay effects that fall across the whole card (e.g. noir blinds).
+  drawThemeFxOverlay(g, W, H, data.theme);
 
   return canvas;
 }
