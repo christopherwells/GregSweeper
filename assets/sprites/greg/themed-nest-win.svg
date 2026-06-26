@@ -1,35 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 72">
-<!-- Nest Greg, win: wings flung up, claws raised, feathers tumbling, beak open in a cheer. -->
-<!-- nest base -->
-<path d="M9 49 Q36 41 63 49" fill="none" stroke="#8a5e30" stroke-width="2.6" stroke-linecap="round"/>
-<path d="M12 52 Q36 62 60 52" fill="none" stroke="#a9743f" stroke-width="2.6" stroke-linecap="round"/>
-<!-- wings flung UP and spread, feathered -->
-<g stroke="#357aa8" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" fill="#a8d8f4">
-  <path d="M21 29 C12 18 3 17 2 23 C6 24 9 25 11 27 C3 28 2 34 5 37 C9 35 12 35 14 36 C9 39 9 43 12 44 C18 38 22 33 21 29 Z"/>
-  <path d="M51 29 C60 18 69 17 70 23 C66 24 63 25 61 27 C69 28 70 34 67 37 C63 35 60 35 58 36 C63 39 63 43 60 44 C54 38 50 33 51 29 Z"/>
-</g>
-<!-- raised open claws -->
-<path d="M13 23 C7 22 5 16 10 13 L12 17 L13 11 C18 11 20 17 17 22 Z" fill="#53a05b" stroke="#232838" stroke-width="2.8" stroke-linejoin="round"/>
-<path d="M59 23 C65 22 67 16 62 13 L60 17 L59 11 C54 11 52 17 55 22 Z" fill="#53a05b" stroke="#232838" stroke-width="2.8" stroke-linejoin="round"/>
-<!-- legs -->
-<g fill="none" stroke="#232838" stroke-width="3" stroke-linecap="round"><path d="M25 48 L21 54 M32 50 L29 56 M40 50 L43 56 M47 48 L51 54"/></g>
-<!-- body -->
-<path d="M14 37 C14 26 23 19 36 19 C49 19 58 26 58 37 C58 46 48 51 36 51 C24 51 14 46 14 37 Z" fill="#53a05b" stroke="#232838" stroke-width="3.2"/>
-<path d="M19 41 C27 48 45 48 53 41 C49 49 43 52 36 52 C29 52 23 49 19 41 Z" fill="#3e7f46"/>
-<g fill="#7cc184"><circle cx="25" cy="30" r="1.9"/><circle cx="45" cy="28" r="1.7"/><circle cx="49" cy="36" r="1.6"/></g>
-<!-- eye stalks + happy eyes -->
-<g fill="none" stroke="#232838" stroke-width="3"><path d="M28 21 L26 14"/><path d="M44 21 L46 14"/></g>
-<circle cx="26" cy="12" r="5" fill="#ffffff" stroke="#232838" stroke-width="2.6"/>
-<circle cx="46" cy="12" r="5" fill="#ffffff" stroke="#232838" stroke-width="2.6"/>
-<path d="M23.5 12.5 Q26 9.5 28.5 12.5" fill="none" stroke="#232838" stroke-width="1.9" stroke-linecap="round"/>
-<path d="M43.5 12.5 Q46 9.5 48.5 12.5" fill="none" stroke="#232838" stroke-width="1.9" stroke-linecap="round"/>
-<!-- open beak (cheer) -->
-<path d="M32.5 30 L36 36 L39.5 30 Q36 28 32.5 30 Z" fill="#f4a93a" stroke="#232838" stroke-width="2.2" stroke-linejoin="round"/>
-<path d="M33.5 36 L36 40 L38.5 36 Z" fill="#e8873a" stroke="#232838" stroke-width="2" stroke-linejoin="round"/>
-<!-- tumbling feathers -->
-<g stroke="#357aa8" stroke-width="1" stroke-linejoin="round">
-  <path d="M9 9 Q4 10 6 15 Q10 13 10 9 Z" fill="#a8d8f4"/>
-  <path d="M62 7 Q67 8 65 13 Q61 11 61 7 Z" fill="#ef8163"/>
-  <path d="M36 4 Q31 5 33 10 Q37 8 37 4 Z" fill="#a8d8f4"/>
-</g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 6 132 138">
+<!-- Nest Greg, win: open beak cheering, feathers tumbling. -->
+<path d="M6 98 Q64 85 122 98 Q122 120 110 130 Q64 141 18 130 Q6 120 6 98 Z" fill="#bd9456" stroke="#8a5e30" stroke-width="5" stroke-linejoin="round"/>
+<path d="M16 99 Q64 90 112 99 Q109 110 95 114 Q64 121 33 114 Q19 110 16 99 Z" fill="#9e7842"/>
+<g stroke="#8a6330" stroke-width="2.8" fill="none" stroke-linecap="round"><path d="M10 117 Q64 129 118 117"/><path d="M18 106 L23 125 M41 106 L46 125 M64 106 L69 125 M87 106 L92 125 M110 106 L115 125"/></g>
+<path d="M64 16 C38 16 24 40 24 72 C24 102 42 116 64 116 C86 116 104 102 104 72 C104 40 90 16 64 16 Z" fill="#53a05b" stroke="#232838" stroke-width="6"/>
+<path d="M30 78 C42 96 86 96 98 78 C94 106 80 112 64 112 C48 112 34 106 30 78 Z" fill="#3e7f46"/>
+<path d="M44 48 C28 46 14 54 13 72 C12 88 20 100 30 102 L41 90 Q45 80 45 70 Z" fill="#4a9450" stroke="#232838" stroke-width="3.5" stroke-linejoin="round"/><g fill="none" stroke="#eef3e6" stroke-width="3" stroke-linecap="round"><path d="M16 60 Q27 67 36 60"/><path d="M16 69 Q27 76 36 69"/><path d="M16 78 Q27 85 36 78"/><path d="M16 87 Q27 94 36 87"/></g>
+<g transform="matrix(-1,0,0,1,128,0)"><path d="M44 48 C28 46 14 54 13 72 C12 88 20 100 30 102 L41 90 Q45 80 45 70 Z" fill="#4a9450" stroke="#232838" stroke-width="3.5" stroke-linejoin="round"/><g fill="none" stroke="#eef3e6" stroke-width="3" stroke-linecap="round"><path d="M16 60 Q27 67 36 60"/><path d="M16 69 Q27 76 36 69"/><path d="M16 78 Q27 85 36 78"/><path d="M16 87 Q27 94 36 87"/></g></g>
+<circle cx="44" cy="46" r="10" fill="#ffffff" stroke="#232838" stroke-width="5"/>
+<circle cx="84" cy="46" r="10" fill="#ffffff" stroke="#232838" stroke-width="5"/>
+<circle cx="45.5" cy="47" r="4.2" fill="#232838"/>
+<circle cx="82.5" cy="47" r="4.2" fill="#232838"/>
+<circle cx="47" cy="45.5" r="1.4" fill="#ffffff"/>
+<circle cx="84" cy="45.5" r="1.4" fill="#ffffff"/>
+<path d="M50 55 L78 55 L64 68 Z" fill="#f6b73c" stroke="#232838" stroke-width="4" stroke-linejoin="round"/>
+<path d="M55 68 L73 68 L64 77 Z" fill="#e2913a" stroke="#232838" stroke-width="3.6" stroke-linejoin="round"/>
+<g stroke="#3a2e1e" stroke-width="1.4" stroke-linejoin="round"><path d="M14 18 Q9 22 12 27 Q17 23 16 18 Z" fill="#e1573c"/><path d="M112 14 Q117 18 114 23 Q109 19 110 14 Z" fill="#9ecde8"/><path d="M64 6 Q59 10 62 15 Q67 11 66 6 Z" fill="#f6b73c"/></g>
+<g stroke="#8a5e30" stroke-width="5" fill="none" stroke-linecap="round"><path d="M7 124 Q64 142 121 124"/></g>
 </svg>

@@ -1056,44 +1056,56 @@ const THEME_EFFECTS = {
   // cross both ways, sometimes singly and sometimes in a little flock of 3-5.
   nest: (container) => {
     injectStyles();
-    const GULL = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 12'%3E%3Cpath d='M1 9 Q5 2 10 7 Q15 2 19 9' fill='none' stroke='%23394a5c' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E\")";
+    const SL = "stroke='%23394a5c' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'";
+    const gull = (inner) => `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 12'%3E${inner}%3C/svg%3E")`;
+    // Four distant-gull silhouettes (shapes 1-4): plain M, soft, with a body, tips up.
+    const BIRDS = [
+      gull(`%3Cpath d='M2 10 Q6 3 12 8 Q18 3 22 10' ${SL}/%3E`),
+      gull(`%3Cpath d='M2 9 Q7 5 12 8 Q17 5 22 9' ${SL}/%3E`),
+      gull(`%3Cpath d='M2 9 Q7 4 11 8 M22 9 Q17 4 13 8' ${SL}/%3E%3Cellipse cx='12' cy='8' rx='1.6' ry='1' fill='%23394a5c'/%3E`),
+      gull(`%3Cpath d='M2 8 Q5 9 8 6 Q11 3 12 8 Q13 3 16 6 Q19 9 22 8' ${SL}/%3E`),
+    ];
     const CLOUD = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 34'%3E%3Cg fill='%23ffffff'%3E%3Cellipse cx='22' cy='22' rx='18' ry='9'/%3E%3Cellipse cx='35' cy='15' rx='13' ry='10'/%3E%3Cellipse cx='47' cy='22' rx='15' ry='8'/%3E%3Cellipse cx='32' cy='26' rx='25' ry='6'/%3E%3C/g%3E%3C/svg%3E\")";
-    const path = (W, fromLeft, pad) => {
-      const dist = W + pad;
-      return { '--fx-x0': '0px', '--fx-x1': (fromLeft ? dist * 0.5 : -dist * 0.5) + 'px', '--fx-x2': (fromLeft ? dist : -dist) + 'px' };
-    };
-    const clouds = particleLoop(container, (c) => {
-      const W = c.clientWidth || container.parentElement?.clientWidth || 400;
-      const fromLeft = pick([true, false]);
-      const w = rand(66, 124);
-      return spawn(c, { style: {
-        left: fromLeft ? (-w - 20) + 'px' : (W + 20) + 'px', top: rand(2, 56) + '%',
-        width: w + 'px', height: (w * 0.52) + 'px',
-        backgroundImage: CLOUD, backgroundRepeat: 'no-repeat', backgroundSize: 'contain',
-        animation: `fxGlide ${rand(44, 74)}s linear forwards`,
-        ...path(W, fromLeft, 220), '--fx-bob': '0px', '--fx-dir': '1', '--fx-opacity': '0.9',
-      }});
-    }, () => rand(9000, 17000));
-    const gulls = particleLoop(container, (c) => {
-      const W = c.clientWidth || container.parentElement?.clientWidth || 400;
-      const fromLeft = pick([true, false]);
-      const n = pick([1, 1, 2, 2, 3, 4, 5]);
+    const widthOf = (c) => c.clientWidth || container.parentElement?.clientWidth || 400;
+    const path = (W, fromLeft, pad) => { const d = W + pad; return { '--fx-x0': '0px', '--fx-x1': (fromLeft ? d * 0.5 : -d * 0.5) + 'px', '--fx-x2': (fromLeft ? d : -d) + 'px' }; };
+    // A loose flock of 1-5 mixed gulls in a random formation, gliding slowly
+    // (so they read as far away). Both directions. midFlight seeds the sky.
+    const spawnFlock = (c, midFlight) => {
+      const W = widthOf(c), fromLeft = pick([true, false]), n = pick([1, 1, 2, 3, 3, 4, 5]), form = pick(['v', 'line', 'cluster']);
+      const delay = midFlight ? ` -${rand(4, 13).toFixed(1)}s` : '';
       const el = spawn(c, { style: {
-        left: fromLeft ? '-72px' : (W + 32) + 'px', top: rand(6, 60) + '%',
-        width: '72px', height: '46px',
-        animation: `fxGlide ${rand(8, 14)}s linear forwards`,
-        ...path(W, fromLeft, 130), '--fx-bob': rand(-13, -6) + 'px', '--fx-dir': fromLeft ? '1' : '-1', '--fx-opacity': '0.82',
+        left: fromLeft ? '-84px' : (W + 40) + 'px', top: rand(5, 58) + '%',
+        width: '84px', height: '52px',
+        animation: `fxGlide ${rand(17, 27)}s linear${delay} forwards`,
+        ...path(W, fromLeft, 120), '--fx-bob': rand(-8, -4) + 'px', '--fx-dir': fromLeft ? '1' : '-1', '--fx-opacity': '0.66',
       }});
       const mid = (n - 1) / 2;
       for (let i = 0; i < n; i++) {
-        const g = document.createElement('div');
-        const s = rand(13, 18);
-        g.style.cssText = `position:absolute;width:${s}px;height:${s * 0.6}px;background-image:${GULL};background-repeat:no-repeat;background-size:contain;left:${i * 12}px;top:${Math.abs(i - mid) * 7 + rand(-2, 2)}px`;
+        const g = document.createElement('div'), s = rand(12, 18);
+        let dx, dy;
+        if (form === 'v') { dx = i * 12; dy = Math.abs(i - mid) * 7 + rand(-2, 2); }
+        else if (form === 'line') { dx = i * 14; dy = rand(-3, 3); }
+        else { dx = rand(0, 52); dy = rand(0, 28); }
+        g.style.cssText = `position:absolute;width:${s}px;height:${s * 0.55}px;left:${dx}px;top:${dy}px;background-image:${pick(BIRDS)};background-repeat:no-repeat;background-size:contain`;
         el.appendChild(g);
       }
       return el;
-    }, () => rand(3500, 7000));
-    return () => { clouds(); gulls(); };
+    };
+    // Slow white clouds, ALL drifting the same way (the wind blows one direction).
+    const spawnCloud = (c, midFlight) => {
+      const W = widthOf(c), w = rand(66, 124), delay = midFlight ? ` -${rand(10, 45).toFixed(1)}s` : '';
+      return spawn(c, { style: {
+        left: (-w - 20) + 'px', top: rand(2, 50) + '%', width: w + 'px', height: (w * 0.52) + 'px',
+        backgroundImage: CLOUD, backgroundRepeat: 'no-repeat', backgroundSize: 'contain',
+        animation: `fxGlide ${rand(54, 84)}s linear${delay} forwards`,
+        ...path(W, true, 240), '--fx-bob': '0px', '--fx-dir': '1', '--fx-opacity': '0.88',
+      }});
+    };
+    // Seed the sky so it's never empty, then keep a steady stream coming.
+    spawnFlock(container, true); spawnFlock(container, true); spawnCloud(container, true); spawnCloud(container, true);
+    const gulls = particleLoop(container, (c) => spawnFlock(c, false), () => rand(2600, 5200));
+    const clouds = particleLoop(container, (c) => spawnCloud(c, false), () => rand(9000, 16000));
+    return () => { gulls(); clouds(); };
   },
 };
 
