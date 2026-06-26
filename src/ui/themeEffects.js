@@ -4,7 +4,7 @@
  * that creates/manages its own visual elements inside the board container.
  */
 
-import { isSoftwareRendering } from '../logic/deviceCapability.js';
+import { isSoftwareRendering, forceEffectsEnabled } from '../logic/deviceCapability.js';
 
 let activeCleanup = null;
 let effectContainer = null;
@@ -35,7 +35,8 @@ export function applyThemeEffects(themeName) {
   // (integrated/VM/remote setups, or a GPU-driver fallback). They're cheap on a
   // GPU but stutter the whole game on the CPU. The theme keeps its colors,
   // sprites, and static backdrop; it just loses the live particles + gap-seal.
-  if (isSoftwareRendering()) return;
+  // `?fx=1` overrides this for review on a software-compositing machine.
+  if (isSoftwareRendering() && !forceEffectsEnabled()) return;
 
   const effectFn = THEME_EFFECTS[themeName];
   if (!effectFn) return;

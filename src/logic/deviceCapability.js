@@ -16,6 +16,24 @@ export function isSoftwareRenderer(rendererString) {
   return /swiftshader|basic render|software|llvmpipe/i.test(String(rendererString || ''));
 }
 
+// Review/debug override: force the live particle effects ON even when the
+// renderer probes software. Set once with `?fx=1` (persists in localStorage so
+// it survives in-app navigation) and clear with `?fx=0`. Off by default, so it
+// never affects ordinary players — it exists so the effects can be reviewed on
+// a machine whose Chrome has dropped to software compositing (where the gate
+// would otherwise hide them). Reduced-motion is still always respected.
+const FORCE_KEY = 'minesweeper_force_effects';
+export function forceEffectsEnabled() {
+  try {
+    if (typeof location !== 'undefined' && location.search) {
+      const fx = new URLSearchParams(location.search).get('fx');
+      if (fx === '1') { try { localStorage.setItem(FORCE_KEY, '1'); } catch {} return true; }
+      if (fx === '0') { try { localStorage.removeItem(FORCE_KEY); } catch {} return false; }
+    }
+    return typeof localStorage !== 'undefined' && localStorage.getItem(FORCE_KEY) === '1';
+  } catch { return false; }
+}
+
 // DOM probe, cached for the session (the renderer can't change mid-session).
 // True when WebGL reports a software rasterizer OR there is no WebGL context at
 // all (no GPU path). Safe to call anywhere; returns false outside a browser.
