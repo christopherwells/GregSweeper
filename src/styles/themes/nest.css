@@ -28,11 +28,11 @@
   --color-mine: #c98a4a;
   --color-mine-hit: #e08a2a;
   --color-flag: #e1573c;
-  --color-text: #3f2f1f;
-  /* Darkened so muted text (the in-game subline, "Level N", card subtitles)
-     clears AA on the theme's light-blue header/app surfaces — #7a6a52 was
-     ~3.3:1 on #bfe2f6 and read as illegible gray. */
-  --color-text-secondary: #5f4d39;
+  --color-text: #2c1f0e;
+  /* Muted text (in-game subline, "Level N", card subtitles) sits on light-blue
+     sky surfaces where a mid brown reads as gray. Kept genuinely dark (~8.5:1
+     on #bfe2f6 / the bright-sky page) so it reads as ink, not a gray wash. */
+  --color-text-secondary: #43300f;
 
   /* Numbers — vivid but warm, legible on the eggshell. */
   --color-num-1: #2b6fb0;
@@ -164,4 +164,16 @@
   68%  { transform: scale(1.18) rotate(3deg); opacity: 1; }
   84%  { transform: scale(0.96) rotate(-1deg); }
   100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+/* Sky behind the title cards. themeEffects.js mounts the ambient cloud/gull
+   layer (.theme-fx-titlescene, z-index 0) into #title-screen; #title-screen
+   becomes its containing block and every other title child lifts above it, so
+   the cards stay in front while the sky drifts behind. */
+[data-theme="nest"] #title-screen {
+  position: relative;
+}
+[data-theme="nest"] #title-screen > *:not(.theme-fx-titlescene) {
+  position: relative;
+  z-index: 1;
 }
