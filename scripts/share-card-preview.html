@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Dev tool: render the share card for EVERY theme at once, no playing
+     required. <base href="../"> so the same relative paths the app uses
+     (assets/, src/) resolve from the repo root even though this file lives
+     in scripts/. Serve the repo and open scripts/share-card-preview.html,
+     or on a deploy open <site>/scripts/share-card-preview.html. -->
+<base href="../">
+<title>Share card preview — all themes</title>
+<link rel="stylesheet" href="src/styles/global.css">
+<link rel="stylesheet" id="tcss" href="src/styles/themes/dark.css">
+<style>
+  /* global.css (loaded for the CSS var defaults) makes body an app-shell:
+     flex, fixed height, overflow hidden. Force a plain scrolling document so
+     the header stacks above the grid and the page scrolls normally. */
+  html { overflow-anchor: none; height: auto !important; overflow: auto !important; }
+  body { margin: 0 !important; background: #262626; font-family: system-ui, sans-serif; padding: 14px 16px 90px; display: block !important; height: auto !important; min-height: 100vh; overflow: visible !important; box-sizing: border-box; }
+  header { padding: 4px 0 12px; }
+  h1 { color: #eee; font-size: 16px; font-weight: 600; margin: 0 0 4px; }
+  p.note { color: #9a9a9a; font-size: 12px; margin: 0; }
+  /* Flex-wrap (not grid auto-fill, which blew out to 1400px here) — cards wrap
+     to fit any width, so the page never overflows horizontally. */
+  #grid { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
+  .cc { flex: 1 1 160px; max-width: 240px; min-width: 0; text-align: center; cursor: zoom-in; }
+  /* aspect-ratio reserves each card's height before its image loads, so the
+     page is full-height from the start and the scroll never drifts. */
+  .cc img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; background: #1c1c1c; border-radius: 10px; display: block; box-shadow: 0 4px 14px rgba(0,0,0,.4); }
+  .cc span { display: block; color: #cfcfcf; font-size: 12px; margin-top: 5px; }
+  /* Click any card to zoom it full-size in an overlay. */
+  #lb { position: fixed; inset: 0; background: rgba(0,0,0,.86); display: none; align-items: center; justify-content: center; cursor: zoom-out; z-index: 99; padding: 18px; }
+  #lb img { max-height: 95vh; max-width: 95vw; border-radius: 14px; box-shadow: 0 12px 48px rgba(0,0,0,.6); }
+  #lb.show { display: flex; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Share card across all 26 themes</h1>
+  <p class="note">Mock daily win (walls + liar, 1 mine hit). Click any card to zoom it full-size.</p>
+</header>
+<div id="grid"></div>
+<div id="lb"><img alt="zoomed card"></div>
+<script type="module">
+import { buildShareData, renderShareCardImage } from './src/ui/shareCardImage.js';
+import { THEME_UNLOCKS } from './src/ui/themeManager.js';
+import { state } from './src/state/gameState.js';
+
+const MOCK = {
+  gameMode: 'daily', dailySeed: '2026-06-20', weeklySeed: null,
+  rows: 11, cols: 11, totalMines: 22, revealedCount: 78,
+  elapsedTime: 88.4, dailyPar: 95, timedPar: 0,
+  activeGimmicks: ['walls', 'liar'], boardCertificate: { clicks: 60, tier: 2 }, dailyBombHits: 1,
+};
+const grid = document.getElementById('grid');
+const tcss = document.getElementById('tcss');
+const lb = document.getElementById('lb'), lbImg = lb.querySelector('img');
+grid.addEventListener('click', (e) => { const img = e.target.closest('.cc')?.querySelector('img'); if (img) { lbImg.src = img.src; lb.classList.add('show'); } });
+lb.addEventListener('click', () => lb.classList.remove('show'));
+
+function applyTheme(theme) {
+  return new Promise((resolve) => {
+    document.documentElement.setAttribute('data-theme', theme);
+    state.theme = theme;
+    tcss.onload = () => requestAnimationFrame(() => requestAnimationFrame(resolve));
+    tcss.onerror = () => resolve(); // classic has no file; :root defaults apply
+    tcss.href = 'src/styles/themes/' + theme + '.css';
+  });
+}
+
+const note = document.querySelector('p.note');
+const themes = Object.keys(THEME_UNLOCKS);
+// Render every card to a data URL FIRST (off-screen), THEN build the whole grid
+// in one shot. Appending progressively grew the page mid-load and drifted the
+// scroll so the top boards became unreachable; building once keeps it pinned.
+const cards = [];
+for (let i = 0; i < themes.length; i++) {
+  note.textContent = 'Rendering ' + (i + 1) + ' / ' + themes.length + '…';
+  await applyTheme(themes[i]);
+  await new Promise((r) => setTimeout(r, 120));
+  const canvas = await renderShareCardImage(buildShareData(MOCK));
+  cards.push({ theme: themes[i], url: canvas.toDataURL() });
+}
+for (const { theme, url } of cards) {
+  const cc = document.createElement('div');
+  cc.className = 'cc';
+  const img = document.createElement('img');
+  img.src = url;
+  img.alt = theme + ' share card';
+  const span = document.createElement('span');
+  span.textContent = theme;
+  cc.appendChild(img);
+  cc.appendChild(span);
+  grid.appendChild(cc);
+}
+note.textContent = 'Mock daily win (walls + liar, 1 mine hit). Click any card to zoom it full-size.';
+window.scrollTo(0, 0);
+</script>
+</body>
+</html>
