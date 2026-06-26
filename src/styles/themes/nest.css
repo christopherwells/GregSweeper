@@ -177,3 +177,15 @@
   position: relative;
   z-index: 1;
 }
+/* The cards are SOLID and OCCLUDE the sky: clouds + gulls drift in the open
+   background between/around them and vanish behind them, never bleeding
+   through. The default --color-surface is rgba(...,0.05) (near-transparent),
+   which let the sky show through — these opaque panels stop that. */
+[data-theme="nest"] .mode-card,
+[data-theme="nest"] .title-footer-btn {
+  background: #d8effb;
+}
+[data-theme="nest"] .mode-card:hover,
+[data-theme="nest"] .title-footer-btn:hover {
+  background: #e8f5ff;
+}
