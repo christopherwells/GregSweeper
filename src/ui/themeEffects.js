@@ -8,6 +8,21 @@ import { isSoftwareRendering, forceEffectsEnabled } from '../logic/deviceCapabil
 
 let activeCleanup = null;
 let effectContainer = null;
+let titleSceneCleanup = null;
+let titleSceneContainer = null;
+
+// Themes whose ambient effect also plays behind the title-screen content (the
+// sky worlds — currently nest). Most themes are board-only.
+const TITLE_SCENE_THEMES = new Set(['nest']);
+
+// The shared suppression gate: never run per-frame particles under reduced-
+// motion or software compositing (cheap on a GPU, stutters on the CPU). `?fx=1`
+// overrides the software gate for review; reduced-motion is never overridden.
+function effectsSuppressed() {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return true;
+  if (isSoftwareRendering() && !forceEffectsEnabled()) return true;
+  return false;
+}
 
 /** Remove all active effects and their DOM elements */
 export function clearThemeEffects() {
@@ -28,15 +43,7 @@ export function clearThemeEffects() {
 export function applyThemeEffects(themeName) {
   clearThemeEffects();
 
-  // Respect prefers-reduced-motion
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-  // Skip the per-frame particle effects when the browser composites in software
-  // (integrated/VM/remote setups, or a GPU-driver fallback). They're cheap on a
-  // GPU but stutter the whole game on the CPU. The theme keeps its colors,
-  // sprites, and static backdrop; it just loses the live particles + gap-seal.
-  // `?fx=1` overrides this for review on a software-compositing machine.
-  if (isSoftwareRendering() && !forceEffectsEnabled()) return;
+  if (effectsSuppressed()) return;
 
   const effectFn = THEME_EFFECTS[themeName];
   if (!effectFn) return;
@@ -55,6 +62,31 @@ export function applyThemeEffects(themeName) {
   board.classList.add('fx-on');
 
   activeCleanup = effectFn(effectContainer, board);
+}
+
+/** Play the ambient effect behind the title-screen content, for themes that opt
+ *  into TITLE_SCENE_THEMES (the sky worlds). Mounts ONLY while the title screen
+ *  is actually on screen, and is torn down by clearTitleSceneEffects when the
+ *  player leaves it — so particles never accumulate in a hidden host. Called
+ *  from showTitleScreen + the theme-apply path in main.js. */
+export function applyTitleSceneEffects(themeName) {
+  clearTitleSceneEffects();
+  if (effectsSuppressed()) return;
+  if (!TITLE_SCENE_THEMES.has(themeName)) return;
+  const effectFn = THEME_EFFECTS[themeName];
+  if (!effectFn) return;
+  const host = document.getElementById('title-screen');
+  if (!host || host.classList.contains('hidden')) return;
+  titleSceneContainer = document.createElement('div');
+  titleSceneContainer.className = 'theme-fx theme-fx-titlescene';
+  titleSceneContainer.setAttribute('aria-hidden', 'true');
+  host.appendChild(titleSceneContainer);
+  titleSceneCleanup = effectFn(titleSceneContainer, host);
+}
+
+export function clearTitleSceneEffects() {
+  if (titleSceneCleanup) { titleSceneCleanup(); titleSceneCleanup = null; }
+  if (titleSceneContainer) { titleSceneContainer.remove(); titleSceneContainer = null; }
 }
 
 // Utility helpers
@@ -149,6 +181,9 @@ function injectStyles() {
     }
     .fx-particle { z-index: 2; }
     .fx-ambient { z-index: 0; }
+    /* On the title screen the sky sits BEHIND the cards (lifted to z-index 1 in
+       the theme CSS), not between board cells. */
+    .theme-fx-titlescene { z-index: 0; }
 
     @keyframes fxFall {
       0% { transform: translate(var(--fx-x0, 0px), var(--fx-y0, -20px)) rotate(var(--fx-r0, 0deg)) scale(var(--fx-s, 1)); opacity: 0; }
@@ -1066,7 +1101,17 @@ const THEME_EFFECTS = {
       gull(`%3Cpath d='M2 9 Q7 4 11 8 M22 9 Q17 4 13 8' ${SL}/%3E%3Cellipse cx='12' cy='8' rx='1.6' ry='1' fill='%23394a5c'/%3E`),
       gull(`%3Cpath d='M2 8 Q5 9 8 6 Q11 3 12 8 Q13 3 16 6 Q19 9 22 8' ${SL}/%3E`),
     ];
-    const CLOUD = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 34'%3E%3Cg fill='%23ffffff'%3E%3Cellipse cx='22' cy='22' rx='18' ry='9'/%3E%3Cellipse cx='35' cy='15' rx='13' ry='10'/%3E%3Cellipse cx='47' cy='22' rx='15' ry='8'/%3E%3Cellipse cx='32' cy='26' rx='25' ry='6'/%3E%3C/g%3E%3C/svg%3E\")";
+    // Five cloud silhouettes — puffy, small, long stratus, tall cumulus, wispy —
+    // so the sky never repeats the same shape. Each carries its aspect (ar) so it
+    // scales without distortion.
+    const cloud = (b, ar, inner) => ({ uri: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='${b}'%3E%3Cg fill='%23ffffff'%3E${inner}%3C/g%3E%3C/svg%3E")`, ar });
+    const CLOUDS = [
+      cloud('0 0 64 34', 0.53, "%3Cellipse cx='22' cy='22' rx='18' ry='9'/%3E%3Cellipse cx='35' cy='15' rx='13' ry='10'/%3E%3Cellipse cx='47' cy='22' rx='15' ry='8'/%3E%3Cellipse cx='32' cy='26' rx='25' ry='6'/%3E"),
+      cloud('0 0 48 30', 0.62, "%3Cellipse cx='16' cy='20' rx='13' ry='8'/%3E%3Cellipse cx='29' cy='14' rx='12' ry='9'/%3E%3Cellipse cx='24' cy='24' rx='21' ry='6'/%3E"),
+      cloud('0 0 84 26', 0.31, "%3Cellipse cx='24' cy='15' rx='20' ry='8'/%3E%3Cellipse cx='52' cy='13' rx='23' ry='9'/%3E%3Cellipse cx='42' cy='20' rx='36' ry='5'/%3E"),
+      cloud('0 0 54 42', 0.78, "%3Cellipse cx='27' cy='15' rx='13' ry='12'/%3E%3Cellipse cx='17' cy='26' rx='12' ry='9'/%3E%3Cellipse cx='38' cy='26' rx='13' ry='9'/%3E%3Cellipse cx='27' cy='32' rx='23' ry='7'/%3E"),
+      cloud('0 0 76 22', 0.29, "%3Cellipse cx='20' cy='13' rx='15' ry='6'/%3E%3Cellipse cx='42' cy='11' rx='13' ry='7'/%3E%3Cellipse cx='58' cy='14' rx='14' ry='5'/%3E%3Cellipse cx='40' cy='17' rx='32' ry='4'/%3E"),
+    ];
     const widthOf = (c) => c.clientWidth || container.parentElement?.clientWidth || 400;
     const path = (W, fromLeft, pad) => { const d = W + pad; return { '--fx-x0': '0px', '--fx-x1': (fromLeft ? d * 0.5 : -d * 0.5) + 'px', '--fx-x2': (fromLeft ? d : -d) + 'px' }; };
     // A loose flock of 1-5 mixed gulls in a random formation, gliding slowly
@@ -1075,7 +1120,7 @@ const THEME_EFFECTS = {
       const W = widthOf(c), fromLeft = pick([true, false]), n = pick([1, 1, 2, 3, 3, 4, 5]), form = pick(['v', 'line', 'cluster']);
       const delay = midFlight ? ` -${rand(4, 13).toFixed(1)}s` : '';
       const el = spawn(c, { style: {
-        left: fromLeft ? '-84px' : (W + 40) + 'px', top: rand(5, 58) + '%',
+        left: fromLeft ? '-84px' : (W + 40) + 'px', top: rand(5, 85) + '%',
         width: '84px', height: '52px',
         animation: `fxGlide ${rand(17, 27)}s linear${delay} forwards`,
         ...path(W, fromLeft, 120), '--fx-bob': rand(-8, -4) + 'px', '--fx-dir': fromLeft ? '1' : '-1', '--fx-opacity': '0.66',
@@ -1094,16 +1139,17 @@ const THEME_EFFECTS = {
     };
     // Slow white clouds, ALL drifting the same way (the wind blows one direction).
     const spawnCloud = (c, midFlight) => {
-      const W = widthOf(c), w = rand(66, 124), delay = midFlight ? ` -${rand(10, 45).toFixed(1)}s` : '';
+      const W = widthOf(c), cl = pick(CLOUDS), w = rand(58, 122), delay = midFlight ? ` -${rand(10, 50).toFixed(1)}s` : '';
       return spawn(c, { style: {
-        left: (-w - 20) + 'px', top: rand(2, 50) + '%', width: w + 'px', height: (w * 0.52) + 'px',
-        backgroundImage: CLOUD, backgroundRepeat: 'no-repeat', backgroundSize: 'contain',
+        left: (-w - 20) + 'px', top: rand(2, 80) + '%', width: w + 'px', height: (w * cl.ar) + 'px',
+        backgroundImage: cl.uri, backgroundRepeat: 'no-repeat', backgroundSize: 'contain',
         animation: `fxGlide ${rand(54, 84)}s linear${delay} forwards`,
         ...path(W, true, 240), '--fx-bob': '0px', '--fx-dir': '1', '--fx-opacity': '0.88',
       }});
     };
     // Seed the sky so it's never empty, then keep a steady stream coming.
-    spawnFlock(container, true); spawnFlock(container, true); spawnCloud(container, true); spawnCloud(container, true);
+    spawnFlock(container, true); spawnFlock(container, true); spawnFlock(container, true);
+    spawnCloud(container, true); spawnCloud(container, true); spawnCloud(container, true);
     const gulls = particleLoop(container, (c) => spawnFlock(c, false), () => rand(2600, 5200));
     const clouds = particleLoop(container, (c) => spawnCloud(c, false), () => rand(9000, 16000));
     return () => { gulls(); clouds(); };

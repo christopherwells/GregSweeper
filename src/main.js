@@ -17,7 +17,7 @@ import { showModal, hideModal, hideAllModals } from './ui/modalManager.js';
 import { showToast, showLevelUpToast, showCheckpointToast } from './ui/toastManager.js';
 import { showCelebration, haptic } from './ui/effectsRenderer.js';
 import { THEME_UNLOCKS, getUnlockedThemes, loadThemeCSS, updateThemeColor, enterChaosTheme, restorePreChaosTheme } from './ui/themeManager.js';
-import { applyThemeEffects, clearThemeEffects } from './ui/themeEffects.js';
+import { applyThemeEffects, clearThemeEffects, applyTitleSceneEffects, clearTitleSceneEffects } from './ui/themeEffects.js';
 import { newGame, revealCell, toggleFlag, handleChordReveal, rearmPlateTimers } from './game/gameActions.js';
 import './game/winLossHandler.js'; // side-effect: registers handleWin with powerUpActions
 import { useRevealSafe, useShield, activateScan, activateXRay, activateMagnet } from './game/powerUpActions.js';
@@ -2137,6 +2137,7 @@ function applyThemeLive(theme) {
   loadThemeCSS(theme);
   document.documentElement.setAttribute('data-theme', theme);
   applyThemeEffects(theme);
+  applyTitleSceneEffects(theme); // refresh the title-screen sky when switching on the title
   updateThemeColor();
   saveTheme(theme);
   updateAllCells();
@@ -2392,6 +2393,8 @@ function showTitleScreen() {
   refreshTitleDailyPar(); // fills in "Par: N seconds" once resolved
   titleScreen.classList.remove('hidden');
   app.classList.add('hidden');
+  // Sky worlds (nest) drift clouds + gulls behind the title cards too.
+  applyTitleSceneEffects(document.documentElement.getAttribute('data-theme') || 'classic');
 
   // One-time character introduction: the first title-screen view once
   // onboarding is done. For a brand-new player that lands right after
@@ -2469,6 +2472,7 @@ function hideTitleScreen() {
 
   titleScreen.classList.add('hidden');
   app.classList.remove('hidden');
+  clearTitleSceneEffects(); // tear down the title-screen sky before play
 
   // Re-apply theme effects now that #board is visible
   // (applyThemeEffects silently returns if called during title screen since #board doesn't exist)
