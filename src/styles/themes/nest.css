@@ -4,7 +4,10 @@
    grout, where the eggs (mines) hide. Robin-red accents, a friendly rounded
    hand. (Replaces the retired comic theme at the same unlock slot.) */
 [data-theme="nest"] {
-  --color-bg: #58a5df;
+  /* A genuinely bright open sky. The page sits behind everything (title screen
+     + the board's frame), so it must be light enough for muted text to clear AA
+     — the old #58a5df medium blue was ~3.3:1 and read as illegible gray. */
+  --color-bg: #a9d8f4;
   --color-app-bg: #d8effb;
 
   /* THE SKY: the unrevealed board is one open sky — soft drifting clouds and a
@@ -25,8 +28,11 @@
   --color-mine: #c98a4a;
   --color-mine-hit: #e08a2a;
   --color-flag: #e1573c;
-  --color-text: #4a3826;
-  --color-text-secondary: #7a6a52;
+  --color-text: #3f2f1f;
+  /* Darkened so muted text (the in-game subline, "Level N", card subtitles)
+     clears AA on the theme's light-blue header/app surfaces — #7a6a52 was
+     ~3.3:1 on #bfe2f6 and read as illegible gray. */
+  --color-text-secondary: #5f4d39;
 
   /* Numbers — vivid but warm, legible on the eggshell. */
   --color-num-1: #2b6fb0;
