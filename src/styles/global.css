@@ -289,7 +289,7 @@
 [data-theme="sumie"]        { --color-gym-weight: #1c1814; } /* ink wash */
 [data-theme="cartography"]  { --color-gym-weight: #4a3420; } /* map sepia */
 [data-theme="origami"]      { --color-gym-weight: #d14a4a; } /* fold red */
-[data-theme="comic"]        { --color-gym-weight: #2f6cb0; } /* pop blue */
+[data-theme="nest"]         { --color-gym-weight: #d2492f; } /* robin red */
 [data-theme="candy"]        { --color-gym-weight: #ff4081; } /* candy pink */
 [data-theme="apothecary"]   { --color-gym-weight: #c89030; } /* amber glass */
 [data-theme="stainedglass"] { --color-gym-weight: #e0b040; } /* leaded gold */
@@ -724,7 +724,7 @@ body::before {
   gap: var(--grid-gap);
   /* Holistic fog art: a theme may set --bg-fog-art to ONE large vector
      drawing (data-URI SVG / gradient) that spans the whole grid — the
-     crane crease pattern, the worn chart, the comic page. Themes that
+     crane crease pattern, the worn chart, the open sky. Themes that
      use it switch their unrevealed cells to TRANSLUCENT tints so the
      drawing reads through the fog as one continuous image; revealed
      cells stay opaque (revealing = unfolding the paper / tearing away

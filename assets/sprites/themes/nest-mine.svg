@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- A speckled robin egg. The mine. -->
+<ellipse cx="32" cy="33" rx="16" ry="21" fill="#bfe0e2" stroke="#3a2e1e" stroke-width="3"/>
+<g fill="#7a9a7a"><circle cx="26" cy="24" r="2"/><circle cx="37" cy="28" r="1.6"/><circle cx="30" cy="34" r="2.2"/><circle cx="39" cy="40" r="1.8"/><circle cx="27" cy="44" r="1.7"/></g>
+<ellipse cx="26" cy="26" rx="4" ry="6" fill="#ffffff" opacity="0.5"/>
+</svg>

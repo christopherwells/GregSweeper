@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- A red flight feather. The flag. -->
+<g transform="rotate(34 32 33)">
+<path d="M33 4 Q21 30 33 57 Z" fill="#ef8163" stroke="#3a2e1e" stroke-width="2.4" stroke-linejoin="round"/>
+<path d="M33 4 Q47 30 33 57 Z" fill="#e1573c" stroke="#3a2e1e" stroke-width="2.4" stroke-linejoin="round"/>
+<path d="M33 5 L33 57" fill="none" stroke="#6a4a28" stroke-width="2" stroke-linecap="round"/>
+<path d="M33 57 L33 63" fill="none" stroke="#c8a468" stroke-width="2.6" stroke-linecap="round"/>
+</g>
+</svg>

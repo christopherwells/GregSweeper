@@ -195,7 +195,7 @@ const THEME_SPRITES = {
   aurora:       { mine: T + 'aurora-mine.svg',       flag: T + 'aurora-flag.svg',       strikeCell: T + 'aurora-strike.svg',       ...greg('aurora') },
   galaxy:       { mine: T + 'galaxy-mine.svg',       flag: T + 'galaxy-flag.svg',       strikeCell: T + 'galaxy-strike.svg',       ...greg('galaxy') },
   candy:        { ...greg('candy') },
-  comic:        { mine: T + 'comic-mine.svg',        flag: T + 'comic-flag.svg',        strikeCell: T + 'comic-strike.svg',        ...greg('comic') },
+  nest:         { mine: T + 'nest-mine.svg',         flag: T + 'nest-flag.svg',         strikeCell: T + 'nest-strike.svg',         ...greg('nest') },
   circuitboard: { mine: T + 'circuitboard-mine.svg', flag: T + 'circuitboard-flag.svg', strikeCell: T + 'circuitboard-strike.svg', ...greg('circuitboard') },
   matrix:       { ...greg('matrix') },
   neon:         { ...greg('neon') },

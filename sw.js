@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v1.6.89';
+const CACHE_NAME = 'gregsweeper-v1.6.95';
 const ASSETS = [
   './',
   './index.html',
@@ -203,9 +203,9 @@ const ASSETS = [
   './assets/sprites/themes/circuitboard-mine.svg',
   './assets/sprites/themes/circuitboard-flag.svg',
   './assets/sprites/themes/circuitboard-strike.svg',
-  './assets/sprites/themes/comic-mine.svg',
-  './assets/sprites/themes/comic-flag.svg',
-  './assets/sprites/themes/comic-strike.svg',
+  './assets/sprites/themes/nest-mine.svg',
+  './assets/sprites/themes/nest-flag.svg',
+  './assets/sprites/themes/nest-strike.svg',
   './assets/sprites/themes/sakura-mine.svg',
   './assets/sprites/themes/sakura-flag.svg',
   './assets/sprites/themes/sakura-strike.svg',
@@ -265,9 +265,9 @@ const ASSETS = [
   './assets/sprites/greg/themed-candy-idle.svg',
   './assets/sprites/greg/themed-candy-win.svg',
   './assets/sprites/greg/themed-candy-loss.svg',
-  './assets/sprites/greg/themed-comic-idle.svg',
-  './assets/sprites/greg/themed-comic-win.svg',
-  './assets/sprites/greg/themed-comic-loss.svg',
+  './assets/sprites/greg/themed-nest-idle.svg',
+  './assets/sprites/greg/themed-nest-win.svg',
+  './assets/sprites/greg/themed-nest-loss.svg',
   './assets/sprites/greg/themed-circuitboard-idle.svg',
   './assets/sprites/greg/themed-circuitboard-win.svg',
   './assets/sprites/greg/themed-circuitboard-loss.svg',

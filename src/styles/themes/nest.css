@@ -1,0 +1,191 @@
+/* Nest theme — a clutch under the open sky. The unrevealed board is bright sky
+   with soft clouds (birds glide across it, themeEffects.js); clearing it tears
+   the sky to reveal the nest below — warm eggshell tiles set in woven twig
+   grout, where the eggs (mines) hide. Robin-red accents, a friendly rounded
+   hand. (Replaces the retired comic theme at the same unlock slot.) */
+[data-theme="nest"] {
+  /* A genuinely bright open sky. The page sits behind everything (title screen
+     + the board's frame), so it must be light enough for muted text to clear AA
+     — the old #58a5df medium blue was ~3.3:1 and read as illegible gray. */
+  --color-bg: #a9d8f4;
+  --color-app-bg: #d8effb;
+
+  /* THE SKY: the unrevealed board is one open sky — soft drifting clouds and a
+     warm sun in the corner, read through translucent blue fog tiles so it holds
+     as a single scene. Revealing tears the sky open to the nest below. */
+  --bg-fog-art: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 150' preserveAspectRatio='none'%3E%3Ccircle cx='172' cy='24' r='16' fill='rgba(255,244,200,0.55)'/%3E%3Cg fill='rgba(255,255,255,0.6)'%3E%3Cellipse cx='44' cy='34' rx='34' ry='15'/%3E%3Cellipse cx='62' cy='28' rx='20' ry='12'/%3E%3Cellipse cx='150' cy='96' rx='38' ry='16'/%3E%3Cellipse cx='128' cy='90' rx='18' ry='11'/%3E%3Cellipse cx='86' cy='124' rx='30' ry='12'/%3E%3C/g%3E%3C/svg%3E");
+  --color-cell-hidden: #8fcef3;
+  --color-cell-hidden-hover: rgba(143, 206, 243, 0.5);
+  --color-cell-hidden-gradient: linear-gradient(160deg, rgba(168,220,250,0.55), rgba(118,188,236,0.42));
+
+  /* Cleared = a woven nest patch: warm eggshell tiles, the twig grout showing
+     between them (the gap-seal — a real contrast vs the tile, never grout==tile). */
+  --color-cell-revealed: #f3e7cf;
+  --cell-gap-seal: #a9743f;
+  --color-cell-border-light: #cbb488;
+  --color-cell-border-dark: #b89f72;
+
+  --color-mine: #c98a4a;
+  --color-mine-hit: #e08a2a;
+  --color-flag: #e1573c;
+  --color-text: #2c1f0e;
+  /* Muted text (in-game subline, "Level N", card subtitles) sits on light-blue
+     sky surfaces where a mid brown reads as gray. Kept genuinely dark (~8.5:1
+     on #bfe2f6 / the bright-sky page) so it reads as ink, not a gray wash. */
+  --color-text-secondary: #43300f;
+
+  /* Numbers — vivid but warm, legible on the eggshell. */
+  --color-num-1: #2b6fb0;
+  --color-num-2: #3a8a4a;
+  --color-num-3: #d2492f;
+  --color-num-4: #7a4ab0;
+  --color-num-5: #c06a20;
+  --color-num-6: #1f8a8a;
+  --color-num-7: #4a3826;
+  --color-num-8: #8a6a48;
+  --color-num-9: #b08a18;
+  --color-num-10: #2b78b0;
+  --color-num-11: #8a4ab0;
+  --color-num-12: #a07820;
+  --color-num-13: #c44a2a;
+  --color-num-14: #1f8a78;
+  --color-num-15: #6a4ab0;
+  --color-num-16: #a8662a;
+  --color-num-17: #2b6088;
+  --color-num-18: #a8407a;
+
+  --color-header-bg: #bfe2f6;
+  --color-header-gradient: linear-gradient(180deg, #d2ecfa, #b6dbf2);
+  --color-lcd-bg: #2c4a63;
+  --color-lcd-text: #eaf6ff;
+  --color-modal-bg: #eaf6fe;
+  --color-modal-overlay: rgba(40, 70, 100, 0.5);
+  --color-btn-bg: #d4ecfa;
+  --color-btn-hover: #e6f5ff;
+  --color-btn-gradient: linear-gradient(180deg, #ddf0fb, #c8e6f7);
+  --color-border: #8fb8d4;
+  --color-fog: rgba(143, 206, 243, 0.9);
+  --color-scan-highlight: rgba(225, 87, 60, 0.16);
+  --color-golden: #d8a838;
+  --color-accent: #e1573c;
+  --color-accent-hover: #c8472f;
+  --color-accent-glow: rgba(225, 87, 60, 0.22);
+  --color-win: #3f9d56;
+  --color-loss: #c0432f;
+  /* Wall = the standard line, twig-dark so it reads on both the sky and the nest. */
+  --color-wall: #5a4632;
+  --color-surface: rgba(40, 60, 80, 0.05);
+
+  --shadow-app: 0 6px 0 #8fb8d4, 0 14px 38px rgba(40, 80, 120, 0.24);
+  --text-shadow-lcd: none;
+  --text-shadow-title: 1px 2px 0 rgba(40, 70, 100, 0.18);
+  --shadow-board: 0 4px 0 #8fb8d4, 0 10px 22px rgba(40, 80, 120, 0.2);
+  --bg-modal-close-hover: rgba(225, 87, 60, 0.1);
+
+  /* ── Theme-expression layer ─────────────────────────── */
+  /* A friendly rounded hand; soft egg-rounded tiles; a springy hatch on reveal. */
+  --font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+  --font-display: 'Fredoka', 'Trebuchet MS', sans-serif;
+  --fs-cell-number: 1.0rem;
+  --cell-shape-radius: 7px;
+  --anim-reveal-dur: 0.26s;
+  --anim-reveal-ease: cubic-bezier(0.34, 1.56, 0.5, 1);
+  --anim-flag-dur: 0.24s;
+  --anim-flag-ease: cubic-bezier(0.34, 1.6, 0.5, 1);
+
+  /* A soft sky wash + a faint feather-dapple across the page. */
+  --bg-page-image:
+    radial-gradient(circle at 80% 12%, rgba(255, 244, 200, 0.18), transparent 32%),
+    radial-gradient(circle at 20% 80%, rgba(255, 255, 255, 0.12), transparent 40%);
+
+  /* Markers re-hued OFF blue — the sky background would swallow cyan/blue cues. */
+  --marker-liar-outline: rgba(225, 87, 60, 0.95);
+  --marker-sonar-tint: rgba(150, 60, 160, 0.22);
+  --marker-compass-tint: rgba(216, 168, 56, 0.26);
+  --marker-wormhole-0: rgba(200, 120, 40, 0.26);
+  --marker-wormhole-1: rgba(150, 70, 150, 0.24);
+  --marker-wormhole-2: rgba(60, 140, 90, 0.24);
+  --marker-mirror-0: rgba(180, 50, 120, 0.95);
+  --marker-mirror-1: rgba(120, 70, 160, 0.95);
+  --marker-mirror-2: rgba(40, 150, 90, 0.95);
+  --marker-plate-border: rgba(225, 87, 60, 0.9);
+  --marker-plate-timer: #e1573c;
+}
+
+/* ── Sky tiles ───────────────────────────────────────────────────────────────
+   The unrevealed board is the open sky: translucent blue so the cloud + sun
+   fog-art reads through it as one scene, with a soft top highlight. */
+[data-theme="nest"] .cell.unrevealed {
+  border: 1px solid rgba(86, 148, 198, 0.42);
+  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.45);
+}
+@media (hover: hover) and (pointer: fine) {
+  [data-theme="nest"] .cell.unrevealed:hover {
+    transform: scale(1.05);
+  }
+}
+
+/* Cleared nest tiles: clean eggshell with a soft twig edge; the woven grout
+   between them carries the nest texture. */
+[data-theme="nest"] .cell.revealed {
+  border: 1px solid #cbb488;
+}
+
+/* A marked (flagged) cell turns eggshell like a cleared tile, so the red
+   feather flag — and a struck blue egg — read against eggshell, not the sky. */
+[data-theme="nest"] .cell.flagged {
+  background: var(--color-cell-revealed);
+  border: 1px solid #cbb488;
+  box-shadow: none;
+}
+
+/* Friendly rounded numerals. */
+[data-theme="nest"] .cell {
+  font-weight: 700;
+}
+
+/* The board: a clutch tray — soft sky bed, twig edge, gentle drop. */
+[data-theme="nest"] #board {
+  background: #4f9ad6;
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 2px rgba(90, 70, 50, 0.35), 3px 3px 0 #8fb8d4, 0 10px 24px rgba(40, 80, 120, 0.22);
+}
+
+/* Rock & crack: the tile gives a quick egg-wobble (rocks left-right while
+   small) then bursts open with a bounce — like an egg hatching. */
+[data-theme="nest"] .cell.num-pop,
+[data-theme="nest"] .cell.revealing {
+  animation-name: nestHatch;
+}
+@keyframes nestHatch {
+  0%   { transform: scale(0.62) rotate(-6deg); opacity: 0; }
+  22%  { transform: scale(0.7) rotate(6deg); opacity: 0.7; }
+  42%  { transform: scale(0.68) rotate(-5deg); opacity: 0.85; }
+  68%  { transform: scale(1.18) rotate(3deg); opacity: 1; }
+  84%  { transform: scale(0.96) rotate(-1deg); }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+/* Sky behind the title cards. themeEffects.js mounts the ambient cloud/gull
+   layer (.theme-fx-titlescene, z-index 0) into #title-screen; #title-screen
+   becomes its containing block and every other title child lifts above it, so
+   the cards stay in front while the sky drifts behind. */
+[data-theme="nest"] #title-screen {
+  position: relative;
+}
+[data-theme="nest"] #title-screen > *:not(.theme-fx-titlescene) {
+  position: relative;
+  z-index: 1;
+}
+/* The cards are SOLID and OCCLUDE the sky: clouds + gulls drift in the open
+   background between/around them and vanish behind them, never bleeding
+   through. The default --color-surface is rgba(...,0.05) (near-transparent),
+   which let the sky show through — these opaque panels stop that. */
+[data-theme="nest"] .mode-card,
+[data-theme="nest"] .title-footer-btn {
+  background: #d8effb;
+}
+[data-theme="nest"] .mode-card:hover,
+[data-theme="nest"] .title-footer-btn:hover {
+  background: #e8f5ff;
+}

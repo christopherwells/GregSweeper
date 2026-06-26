@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- A fried egg, white run out. The detonated mine. -->
+<path d="M32.0 9.7 Q32.0 9.7 37.5 8.0 Q43.0 6.3 45.7 11.4 Q48.4 16.6 51.3 20.2 Q54.1 23.8 52.6 28.4 Q51.0 33.0 50.5 36.7 Q50.0 40.5 50.8 46.5 Q51.5 52.5 46.0 52.9 Q40.4 53.4 36.2 55.8 Q32.0 58.3 27.5 56.5 Q23.0 54.7 20.7 50.6 Q18.4 46.6 13.2 44.8 Q8.0 42.9 9.9 38.0 Q11.9 33.0 11.6 28.7 Q11.4 24.5 12.5 19.5 Q13.6 14.6 18.5 13.5 Q23.5 12.4 27.7 11.0 Z" fill="#fbf4e2" stroke="#c98a3a" stroke-width="2.6" stroke-linejoin="round"/>
+<circle cx="33" cy="32" r="9.5" fill="#f6b73c" stroke="#df8826" stroke-width="2.6"/>
+<ellipse cx="29.5" cy="28.5" rx="2.8" ry="2.1" fill="#ffe39a" opacity="0.9"/>
+</svg>
