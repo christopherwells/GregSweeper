@@ -2137,7 +2137,8 @@ function applyThemeLive(theme) {
   loadThemeCSS(theme);
   document.documentElement.setAttribute('data-theme', theme);
   applyThemeEffects(theme);
-  applyTitleSceneEffects(theme); // refresh the title-screen sky when switching on the title
+  applyTitleSceneEffects(theme); // refresh the title-screen background when switching on the title
+  startGregMascot($('#title-greg-mascot'), theme); // re-mount the header Greg for the new theme
   updateThemeColor();
   saveTheme(theme);
   updateAllCells();
@@ -2389,7 +2390,7 @@ function showTitleScreen() {
   state.idlePaused = false;
 
   updateTitleProgress();
-  startGregMascot($('#title-greg-mascot')); // inject + animate the header Greg (idempotent)
+  startGregMascot($('#title-greg-mascot'), document.documentElement.getAttribute('data-theme') || 'classic'); // inject + animate the header Greg (idempotent, theme-aware)
   refreshTitleDailyPar(); // fills in "Par: N seconds" once resolved
   titleScreen.classList.remove('hidden');
   app.classList.add('hidden');
