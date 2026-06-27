@@ -24,7 +24,7 @@ const SMILE_CLOSED = 'M54 66 Q64 74 74 66';
 // Themes whose themed-<theme>-idle.svg carries the animation hooks above.
 // Grows as each theme is taken to a tight finish; everything else falls back
 // to the (always-animated) crab, so no theme ever shows a dead mascot.
-const HOOKED_THEMES = new Set(['editorial']);
+const HOOKED_THEMES = new Set(['editorial', 'sumie']);
 
 // viewBox is the content-fitted square from the 2026-06-25 re-frame (nothing
 // clips). width/height 100% so the .title-greg-mascot container sizes it.
