@@ -71,17 +71,22 @@ export function applyThemeEffects(themeName) {
  *  from showTitleScreen + the theme-apply path in main.js. */
 export function applyTitleSceneEffects(themeName) {
   clearTitleSceneEffects();
-  if (effectsSuppressed()) return;
   if (!TITLE_SCENE_THEMES.has(themeName)) return;
-  const effectFn = THEME_EFFECTS[themeName];
-  if (!effectFn) return;
   const host = document.getElementById('title-screen');
   if (!host || host.classList.contains('hidden')) return;
+  // Solid cards + content lift apply whenever a theme dresses its title screen,
+  // INCLUDING a static CSS backdrop (e.g. editorial's newspaper columns). So
+  // this class is NOT gated by the particle gate below — otherwise a static
+  // background would bleed through translucent cards on a software-compositing
+  // browser (where the per-frame particles are off).
+  host.classList.add('has-title-sky');
+  if (effectsSuppressed()) return; // the per-frame PARTICLES are gated; the class above is not
+  const effectFn = THEME_EFFECTS[themeName];
+  if (!effectFn) return;
   titleSceneContainer = document.createElement('div');
   titleSceneContainer.className = 'theme-fx theme-fx-titlescene';
   titleSceneContainer.setAttribute('aria-hidden', 'true');
   host.appendChild(titleSceneContainer);
-  host.classList.add('has-title-sky'); // engages the solid-card + z-index-lift rules
   titleSceneCleanup = effectFn(titleSceneContainer, host);
 }
 
