@@ -16,12 +16,14 @@ test('the title header mounts the animated Greg mascot', async ({ page }) => {
   await page.goto('?isTest=1');
   // The mascot is injected by startGregMascot in init; its smile + eye hooks
   // appearing means the SVG mounted. A dropped call would never satisfy this.
-  await page.waitForSelector('#title-greg-mascot svg .greg-smile', { timeout: 20_000 });
+  // The smile is a two-path open/closed toggle (theme-aware rig, 2026-06-27).
+  await page.waitForSelector('#title-greg-mascot svg .greg-smile-open', { timeout: 20_000 });
   const ok = await page.evaluate(() => {
     const el = document.getElementById('title-greg-mascot');
-    return !!(el && el.querySelector('.greg-eyes-open') && el.querySelector('.greg-eyes-closed'));
+    return !!(el && el.querySelector('.greg-eyes-open') && el.querySelector('.greg-eyes-closed')
+      && el.querySelector('.greg-smile-open') && el.querySelector('.greg-smile-closed'));
   });
-  expect(ok, 'the header Greg must carry its eyes (open + closed) for the blink').toBe(true);
+  expect(ok, 'the header Greg must carry its eyes + smile (open + closed) for the blink/smile rig').toBe(true);
 });
 
 test('the Daily card keeps its calendar icon and grows no note-Greg', async ({ page }) => {

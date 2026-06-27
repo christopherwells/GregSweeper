@@ -18,15 +18,19 @@
   <path d="M25 18.5 L23 12.5"/>
   <path d="M39 18.5 L41 12.5"/>
 </g>
+<g class="greg-eyes-open">
 <circle cx="22.5" cy="9.5" r="4.4" fill="#f0ece2" stroke="#1a1714" stroke-width="2.6"/>
 <circle cx="41.5" cy="9.5" r="4.4" fill="#f0ece2" stroke="#1a1714" stroke-width="2.6"/>
 <circle cx="23.2" cy="10.2" r="1.8" fill="#1a1714"/>
 <circle cx="40.8" cy="10.2" r="1.8" fill="#1a1714"/>
+</g>
+<g class="greg-eyes-closed" style="display:none"><path d="M18.5 9.5 Q22.5 13 26.5 9.5" fill="none" stroke="#1a1714" stroke-width="2.6" stroke-linecap="round"/><path d="M37.5 9.5 Q41.5 13 45.5 9.5" fill="none" stroke="#1a1714" stroke-width="2.6" stroke-linecap="round"/></g>
 <!-- Shell: solid ink mass, slightly blotted edge -->
 <path d="M11 31 C11 24 16 19 22 17.5 Q27 15 32 15 Q37 15 42 17.5 C48 19 53 24 53 31 C53 37.5 45.5 43 32.5 43 C19 43 11 38 11 31 Z"
       fill="#1a1714"/>
-<!-- Paper-reserve smile -->
-<path d="M27 31 Q32 37.5 37 31 Z" fill="#f0ece2"/>
+<!-- Paper-reserve smile (animation hooks: open grin + closed) -->
+<path class="greg-smile-open" d="M27 31 Q32 37.5 37 31 Z" fill="#f0ece2"/>
+<path class="greg-smile-closed" d="M28.5 32 Q32 34.8 35.5 32 Z" fill="#f0ece2" style="display:none"/>
 <!-- Gray ink highlight, one pass -->
 <path d="M17 24 C22 19.5 28 18 33 18.5" stroke="#4a443c" stroke-width="2.2" fill="none" stroke-linecap="round" opacity="0.8"/>
 <!-- Pincers, solid -->

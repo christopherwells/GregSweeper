@@ -4985,6 +4985,23 @@ button:focus-visible {
   }
 }
 .mode-card-icon { font-size: 32px; }
+
+/* ── Title-screen background occlusion (generic, theme-agnostic) ────────────
+   When a theme's ambient effect plays behind the title cards, themeEffects.js
+   adds .has-title-sky to #title-screen. The cards must then be SOLID so the
+   effect drifts only in the open background and cleanly vanishes behind them.
+   Each theme's --title-card-solid sets the panel color (falls back to its
+   opaque button bg); content lifts above the z-index-0 background layer. */
+#title-screen.has-title-sky { position: relative; }
+#title-screen.has-title-sky > *:not(.theme-fx-titlescene) { position: relative; z-index: 1; }
+#title-screen.has-title-sky .mode-card,
+#title-screen.has-title-sky .title-footer-btn {
+  background: var(--title-card-solid, var(--color-btn-bg));
+}
+#title-screen.has-title-sky .mode-card:hover,
+#title-screen.has-title-sky .title-footer-btn:hover {
+  background: var(--title-card-solid-hover, var(--color-btn-hover));
+}
 .mode-card-name {
   font-weight: 700;
   font-size: 14px;

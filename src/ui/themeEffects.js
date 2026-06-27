@@ -13,7 +13,7 @@ let titleSceneContainer = null;
 
 // Themes whose ambient effect also plays behind the title-screen content (the
 // sky worlds — currently nest). Most themes are board-only.
-const TITLE_SCENE_THEMES = new Set(['nest']);
+const TITLE_SCENE_THEMES = new Set(['nest', 'editorial']);
 
 // The shared suppression gate: never run per-frame particles under reduced-
 // motion or software compositing (cheap on a GPU, stutters on the CPU). `?fx=1`
@@ -81,12 +81,14 @@ export function applyTitleSceneEffects(themeName) {
   titleSceneContainer.className = 'theme-fx theme-fx-titlescene';
   titleSceneContainer.setAttribute('aria-hidden', 'true');
   host.appendChild(titleSceneContainer);
+  host.classList.add('has-title-sky'); // engages the solid-card + z-index-lift rules
   titleSceneCleanup = effectFn(titleSceneContainer, host);
 }
 
 export function clearTitleSceneEffects() {
   if (titleSceneCleanup) { titleSceneCleanup(); titleSceneCleanup = null; }
   if (titleSceneContainer) { titleSceneContainer.remove(); titleSceneContainer = null; }
+  document.getElementById('title-screen')?.classList.remove('has-title-sky');
 }
 
 // Utility helpers
