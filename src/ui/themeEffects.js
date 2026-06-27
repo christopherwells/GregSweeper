@@ -11,9 +11,10 @@ let effectContainer = null;
 let titleSceneCleanup = null;
 let titleSceneContainer = null;
 
-// Themes whose ambient effect also plays behind the title-screen content (the
-// sky worlds — currently nest). Most themes are board-only.
-const TITLE_SCENE_THEMES = new Set(['nest', 'editorial']);
+// Themes whose ambient effect / static backdrop plays behind the title-screen
+// content. Grows one theme per polish pass (simplest→loudest). Most are
+// board-only until their turn.
+const TITLE_SCENE_THEMES = new Set(['nest', 'editorial', 'sumie']);
 
 // The shared suppression gate: never run per-frame particles under reduced-
 // motion or software compositing (cheap on a GPU, stutters on the CPU). `?fx=1`
