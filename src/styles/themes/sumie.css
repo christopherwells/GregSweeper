@@ -144,3 +144,7 @@
 
 /* In-game frame: a deeper paper tone so the light ink-painting board stands out. */
 [data-theme="sumie"] #app { background: #dcd5c4; }
+
+/* Cell numbers: Palatino reads lighter than classic's Segoe 800, so size up to
+   match its legibility (the global default is --cell-size * 0.56). */
+[data-theme="sumie"] #board .cell { font-size: calc(var(--cell-size, 40px) * 0.72); }
