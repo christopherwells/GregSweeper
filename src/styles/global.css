@@ -166,7 +166,7 @@
   /* ── Typography scale (defaults = current fixed px) ── */
   --fs-title: 28px;
   --fs-lcd: 28px;
-  --fs-cell-number: 16px;
+  --fs-cell-number: 19px;
   --fs-mine: 20px;
   --fs-flag: 18px;
 
@@ -234,6 +234,14 @@
   --overlay-suggest-start-fill: rgba(76, 175, 80, 0.35);
   --overlay-suggest-start-glow: rgba(76, 175, 80, 0.4);
   --overlay-mine-hit-glow: rgba(255, 23, 68, 0.5);
+  /* Red behind any revealed mine / strike cell — a theme-independent, ALL-MODES
+     "this is a mine" cue (the themed sprite alone, e.g. nest's fried egg, didn't
+     register). The struck/EXPLODED cell additionally gets a ring
+     (--overlay-strike-ring) so it reads as a CONFIRMED found-mine — a flag + an
+     exploded mine next to a 2 means it's satisfied (chord it). The hit mine
+     keeps its stronger --color-mine-hit glow on top. */
+  --overlay-mine-tint: rgba(206, 40, 40, 0.42);
+  --overlay-strike-ring: rgba(220, 30, 30, 0.9);
 
   /* ── Timer urgency. Defaults are the EFFECTIVE colors, which the
      .timer-warning / .timer-critical rules set with !important (those mask
@@ -925,6 +933,7 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 .cell.mine {
   font-size: var(--fs-mine, 20px);
   text-shadow: var(--text-shadow-mine);
+  background-color: var(--overlay-mine-tint, rgba(206, 40, 40, 0.3)) !important;
 }
 
 .cell.mine-hit {
@@ -6629,7 +6638,9 @@ pre.diagnostics-pre {
    they can see where it was). Soft red tint differentiates it from
    regular revealed cells without screaming. */
 .cell.strike-cell {
-  background-color: rgba(220, 80, 60, 0.22) !important;
+  background-color: var(--overlay-mine-tint, rgba(206, 40, 40, 0.42)) !important;
+  outline: 2px solid var(--overlay-strike-ring, rgba(220, 30, 30, 0.9));
+  outline-offset: -2px;
 }
 /* Use max-width/max-height + width:auto/height:auto so the sprite stays
    inside the cell on every browser, including ones where percentage

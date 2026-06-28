@@ -141,3 +141,6 @@
   background-position: center;
   background-repeat: no-repeat;
 }
+
+/* In-game frame: a deeper paper tone so the light ink-painting board stands out. */
+[data-theme="sumie"] #app { background: #c4bba4; }
