@@ -242,14 +242,15 @@ function titlePlan() {
   const bx0 = 44, by0 = 50, bx1 = 436, by1 = 310, t = 8;
   let dims = '';
   // top overall + one inner span
-  dims += dim(bx0, by0, bx1, by0, -26, 0.5, '1144');
-  dims += dim(bx0, by0, bx0 + (bx1 - bx0) * 0.46, by0, -14, 0.42, '503');
+  dims += dim(bx0, by0, bx1, by0, -26, 0.36, '1144');
+  dims += dim(bx0, by0, bx0 + (bx1 - bx0) * 0.46, by0, -14, 0.3, '503');
   // right overall + one inner span
-  dims += dim(bx1, by0, bx1, by1, 26, 0.5, '750');
-  dims += dim(bx1, by0 + (by1 - by0) * 0.52, bx1, by1, 14, 0.42, '336');
+  dims += dim(bx1, by0, bx1, by1, 26, 0.36, '750');
+  dims += dim(bx1, by0 + (by1 - by0) * 0.52, bx1, by1, 14, 0.3, '336');
   // Title plays on the BRIGHT cyanotype blue (white line work, like a real
-  // blueprint), so the lines carry more opacity here than the dim board flavor.
-  const body = planBody({ bx0, by0, bx1, by1, t, op: 0.62 });
+  // blueprint). Kept GREYED-BACK (lower opacity) so the white line work does
+  // not compete with the white wordmark sitting over it at the top of the sheet.
+  const body = planBody({ bx0, by0, bx1, by1, t, op: 0.42 });
   return (
     `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 ${vb.w} ${vb.h}'>` +
     defs() +
