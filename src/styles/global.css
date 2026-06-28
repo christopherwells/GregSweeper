@@ -166,7 +166,9 @@
   /* ── Typography scale (defaults = current fixed px) ── */
   --fs-title: 28px;
   --fs-lcd: 28px;
-  --fs-cell-number: 16px;
+  /* --fs-cell-number is superseded: the cell number now scales with --cell-size
+     (see .cell font-size) so big cells use the room. Kept for back-compat only. */
+  --fs-cell-number: 19px;
   --fs-mine: 20px;
   --fs-flag: 18px;
 
@@ -234,6 +236,14 @@
   --overlay-suggest-start-fill: rgba(76, 175, 80, 0.35);
   --overlay-suggest-start-glow: rgba(76, 175, 80, 0.4);
   --overlay-mine-hit-glow: rgba(255, 23, 68, 0.5);
+  /* Red behind any revealed mine / strike cell — a theme-independent, ALL-MODES
+     "this is a mine" cue (the themed sprite alone, e.g. nest's fried egg, didn't
+     register). The struck/EXPLODED cell additionally gets a ring
+     (--overlay-strike-ring) so it reads as a CONFIRMED found-mine — a flag + an
+     exploded mine next to a 2 means it's satisfied (chord it). The hit mine
+     keeps its stronger --color-mine-hit glow on top. */
+  --overlay-mine-tint: rgba(206, 40, 40, 0.42);
+  --overlay-strike-ring: rgba(220, 30, 30, 0.9);
 
   /* ── Timer urgency. Defaults are the EFFECTIVE colors, which the
      .timer-warning / .timer-critical rules set with !important (those mask
@@ -778,7 +788,9 @@ body::before {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: var(--fs-cell-number, 16px);
+  /* Scale the number with the cell so big cells use the room and small cells
+     stay proportional (was a fixed --fs-cell-number that left big cells empty). */
+  font-size: calc(var(--cell-size, 40px) * 0.56);
   font-weight: 800;
   cursor: pointer;
   transition: background-color var(--transition-fast), transform var(--transition-fast);
@@ -925,6 +937,7 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 .cell.mine {
   font-size: var(--fs-mine, 20px);
   text-shadow: var(--text-shadow-mine);
+  background-color: var(--overlay-mine-tint, rgba(206, 40, 40, 0.3)) !important;
 }
 
 .cell.mine-hit {
@@ -4985,6 +4998,23 @@ button:focus-visible {
   }
 }
 .mode-card-icon { font-size: 32px; }
+
+/* ── Title-screen background occlusion (generic, theme-agnostic) ────────────
+   When a theme's ambient effect plays behind the title cards, themeEffects.js
+   adds .has-title-sky to #title-screen. The cards must then be SOLID so the
+   effect drifts only in the open background and cleanly vanishes behind them.
+   Each theme's --title-card-solid sets the panel color (falls back to its
+   opaque button bg); content lifts above the z-index-0 background layer. */
+#title-screen.has-title-sky { position: relative; }
+#title-screen.has-title-sky > *:not(.theme-fx-titlescene) { position: relative; z-index: 1; }
+#title-screen.has-title-sky .mode-card,
+#title-screen.has-title-sky .title-footer-btn {
+  background: var(--title-card-solid, var(--color-btn-bg));
+}
+#title-screen.has-title-sky .mode-card:hover,
+#title-screen.has-title-sky .title-footer-btn:hover {
+  background: var(--title-card-solid-hover, var(--color-btn-hover));
+}
 .mode-card-name {
   font-weight: 700;
   font-size: 14px;
@@ -6612,7 +6642,9 @@ pre.diagnostics-pre {
    they can see where it was). Soft red tint differentiates it from
    regular revealed cells without screaming. */
 .cell.strike-cell {
-  background-color: rgba(220, 80, 60, 0.22) !important;
+  background-color: var(--overlay-mine-tint, rgba(206, 40, 40, 0.42)) !important;
+  outline: 2px solid var(--overlay-strike-ring, rgba(220, 30, 30, 0.9));
+  outline-offset: -2px;
 }
 /* Use max-width/max-height + width:auto/height:auto so the sprite stays
    inside the cell on every browser, including ones where percentage

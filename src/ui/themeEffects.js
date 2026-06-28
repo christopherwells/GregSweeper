@@ -11,9 +11,10 @@ let effectContainer = null;
 let titleSceneCleanup = null;
 let titleSceneContainer = null;
 
-// Themes whose ambient effect also plays behind the title-screen content (the
-// sky worlds — currently nest). Most themes are board-only.
-const TITLE_SCENE_THEMES = new Set(['nest']);
+// Themes whose ambient effect / static backdrop plays behind the title-screen
+// content. Grows one theme per polish pass (simplest→loudest). Most are
+// board-only until their turn.
+const TITLE_SCENE_THEMES = new Set(['nest', 'editorial', 'sumie']);
 
 // The shared suppression gate: never run per-frame particles under reduced-
 // motion or software compositing (cheap on a GPU, stutters on the CPU). `?fx=1`
@@ -71,12 +72,18 @@ export function applyThemeEffects(themeName) {
  *  from showTitleScreen + the theme-apply path in main.js. */
 export function applyTitleSceneEffects(themeName) {
   clearTitleSceneEffects();
-  if (effectsSuppressed()) return;
   if (!TITLE_SCENE_THEMES.has(themeName)) return;
-  const effectFn = THEME_EFFECTS[themeName];
-  if (!effectFn) return;
   const host = document.getElementById('title-screen');
   if (!host || host.classList.contains('hidden')) return;
+  // Solid cards + content lift apply whenever a theme dresses its title screen,
+  // INCLUDING a static CSS backdrop (e.g. editorial's newspaper columns). So
+  // this class is NOT gated by the particle gate below — otherwise a static
+  // background would bleed through translucent cards on a software-compositing
+  // browser (where the per-frame particles are off).
+  host.classList.add('has-title-sky');
+  if (effectsSuppressed()) return; // the per-frame PARTICLES are gated; the class above is not
+  const effectFn = THEME_EFFECTS[themeName];
+  if (!effectFn) return;
   titleSceneContainer = document.createElement('div');
   titleSceneContainer.className = 'theme-fx theme-fx-titlescene';
   titleSceneContainer.setAttribute('aria-hidden', 'true');
@@ -87,6 +94,7 @@ export function applyTitleSceneEffects(themeName) {
 export function clearTitleSceneEffects() {
   if (titleSceneCleanup) { titleSceneCleanup(); titleSceneCleanup = null; }
   if (titleSceneContainer) { titleSceneContainer.remove(); titleSceneContainer = null; }
+  document.getElementById('title-screen')?.classList.remove('has-title-sky');
 }
 
 // Utility helpers

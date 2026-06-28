@@ -30,13 +30,17 @@
 <!-- Body: one rounded loaded press -->
 <path d="M16 21 C20 16.5 27 15 32 15 C37 15 44 16.5 48 21 C50.5 25.5 50.5 32 48 36.5 C44 40.5 37 41.5 32 41.5 C27 41.5 20 40.5 16 36.5 C13.5 32 13.5 25.5 16 21 Z"
       fill="url(#inkM)"/>
-<!-- Eye flicks + ink dots -->
+<!-- Eye stalks (flicks) stay put; only the eye dots blink open/closed. -->
 <path d="M26 15.5 Q25 12 24 9" stroke="#141414" stroke-width="2" fill="none" stroke-linecap="round"/>
 <path d="M38 15.5 Q39 12 40 9" stroke="#141414" stroke-width="2" fill="none" stroke-linecap="round"/>
+<g class="greg-eyes-open">
 <circle cx="23.5" cy="7.6" r="2.6" fill="#0d0d0d"/>
 <circle cx="40.5" cy="7.6" r="2.6" fill="#0d0d0d"/>
-<!-- Smile: a paper reserve -->
-<path d="M27.5 31 Q32 35.5 36.5 31" fill="none" stroke="#f2ede1" stroke-width="2.4" stroke-linecap="round" opacity="0.95"/>
+</g>
+<g class="greg-eyes-closed" style="display:none"><path d="M21 7.6 Q23.5 10.2 26 7.6" stroke="#141414" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M38 7.6 Q40.5 10.2 43 7.6" stroke="#141414" stroke-width="2" fill="none" stroke-linecap="round"/></g>
+<!-- Smile: a paper reserve (animation hooks: open + closed) -->
+<path class="greg-smile-open" d="M27.5 31 Q32 35.5 36.5 31" fill="none" stroke="#f2ede1" stroke-width="2.4" stroke-linecap="round" opacity="0.95"/>
+<path class="greg-smile-closed" d="M28.5 32 Q32 33.8 35.5 32" fill="none" stroke="#f2ede1" stroke-width="2.4" stroke-linecap="round" opacity="0.95" style="display:none"/>
 <!-- The hanko -->
 <rect x="51" y="50" width="9" height="9" rx="1.2" fill="#b03020"/>
 <path d="M53.5 52.5 L57.5 52.5 M55.5 52.5 L55.5 56.5 M53.5 56.5 L57.5 56.5" stroke="#f2ede1" stroke-width="1.1"/>

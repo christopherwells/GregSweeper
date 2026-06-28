@@ -219,3 +219,7 @@
 @keyframes legendBloom {
   0%{opacity:0;transform:scale(0.6);filter:brightness(0.5)}55%{opacity:1;transform:scale(1.1);filter:brightness(1.6) drop-shadow(0 0 6px rgba(255,215,0,0.6))}100%{opacity:1;transform:scale(1);filter:brightness(1)}
 }
+
+/* Cell numbers sized to match classic's legibility (this font reads lighter
+   than Segoe 800; global default is --cell-size * 0.56). */
+[data-theme="legendary"] #board .cell { font-size: calc(var(--cell-size, 40px) * 0.72); }

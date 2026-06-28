@@ -2019,6 +2019,19 @@ boardScrollWrapper.addEventListener('touchmove', (e) => {
 $('#btn-home').addEventListener('click', () => {
   showTitleScreen();
 });
+// Prev/next theme — cycle through the unlocked themes (ladder order) in-game,
+// replacing the old in-game Collection button.
+function cycleTheme(dir) {
+  const unlocked = getUnlockedThemes();
+  const list = Object.keys(unlocked).filter((t) => unlocked[t]);
+  if (!list.length) return;
+  const cur = document.documentElement.getAttribute('data-theme') || 'classic';
+  let i = list.indexOf(cur);
+  i = ((i < 0 ? 0 : i) + dir + list.length) % list.length;
+  applyThemeLive(list[i]);
+}
+$('#btn-theme-prev')?.addEventListener('click', () => cycleTheme(-1));
+$('#btn-theme-next')?.addEventListener('click', () => cycleTheme(1));
 $('#btn-settings').addEventListener('click', () => {
   setActiveSettingsTab('general');
   showModal('settings-modal');
@@ -2137,10 +2150,12 @@ function applyThemeLive(theme) {
   loadThemeCSS(theme);
   document.documentElement.setAttribute('data-theme', theme);
   applyThemeEffects(theme);
-  applyTitleSceneEffects(theme); // refresh the title-screen sky when switching on the title
+  applyTitleSceneEffects(theme); // refresh the title-screen background when switching on the title
+  startGregMascot($('#title-greg-mascot'), theme); // re-mount the title Greg for the new theme
   updateThemeColor();
   saveTheme(theme);
   updateAllCells();
+  try { updateHeader(); } catch {} // re-render the in-game LCD Greg so it updates on theme cycle
 }
 
 let _carouselThemes = [];
@@ -2389,7 +2404,7 @@ function showTitleScreen() {
   state.idlePaused = false;
 
   updateTitleProgress();
-  startGregMascot($('#title-greg-mascot')); // inject + animate the header Greg (idempotent)
+  startGregMascot($('#title-greg-mascot'), document.documentElement.getAttribute('data-theme') || 'classic'); // inject + animate the header Greg (idempotent, theme-aware)
   refreshTitleDailyPar(); // fills in "Par: N seconds" once resolved
   titleScreen.classList.remove('hidden');
   app.classList.add('hidden');
