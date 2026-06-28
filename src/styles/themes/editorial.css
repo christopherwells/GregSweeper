@@ -152,3 +152,7 @@
   background-position: center;
   background-repeat: no-repeat;
 }
+
+/* In-game frame: a deeper kraft tone so the light newspaper board stands out
+   instead of paper-on-paper (only #app, so the title columns are untouched). */
+[data-theme="editorial"] #app { background: #c2af8b; }
