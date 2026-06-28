@@ -17,7 +17,7 @@
   --color-mine-hit: #b03020;
   --color-flag: #b03020;
   --color-text: #1c1814;
-  --color-text-secondary: #6a6252;
+  --color-text-secondary: #564e3e;
 
   /* Ink gradations with a few muted natural tones — brush, not UI. */
   --color-num-1: #3a5a6a;
@@ -143,4 +143,4 @@
 }
 
 /* In-game frame: a deeper paper tone so the light ink-painting board stands out. */
-[data-theme="sumie"] #app { background: #c4bba4; }
+[data-theme="sumie"] #app { background: #dcd5c4; }

@@ -2151,10 +2151,11 @@ function applyThemeLive(theme) {
   document.documentElement.setAttribute('data-theme', theme);
   applyThemeEffects(theme);
   applyTitleSceneEffects(theme); // refresh the title-screen background when switching on the title
-  startGregMascot($('#title-greg-mascot'), theme); // re-mount the header Greg for the new theme
+  startGregMascot($('#title-greg-mascot'), theme); // re-mount the title Greg for the new theme
   updateThemeColor();
   saveTheme(theme);
   updateAllCells();
+  try { updateHeader(); } catch {} // re-render the in-game LCD Greg so it updates on theme cycle
 }
 
 let _carouselThemes = [];
