@@ -166,6 +166,8 @@
   /* ── Typography scale (defaults = current fixed px) ── */
   --fs-title: 28px;
   --fs-lcd: 28px;
+  /* --fs-cell-number is superseded: the cell number now scales with --cell-size
+     (see .cell font-size) so big cells use the room. Kept for back-compat only. */
   --fs-cell-number: 19px;
   --fs-mine: 20px;
   --fs-flag: 18px;
@@ -786,7 +788,9 @@ body::before {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: var(--fs-cell-number, 16px);
+  /* Scale the number with the cell so big cells use the room and small cells
+     stay proportional (was a fixed --fs-cell-number that left big cells empty). */
+  font-size: calc(var(--cell-size, 40px) * 0.56);
   font-weight: 800;
   cursor: pointer;
   transition: background-color var(--transition-fast), transform var(--transition-fast);

@@ -17,7 +17,7 @@
   --color-mine-hit: #9c1006;
   --color-flag: #9c1006;
   --color-text: #1a1714;
-  --color-text-secondary: #6b6456;
+  --color-text-secondary: #574e3d;
 
   /* Editorial spot colors — refined ink tones, distinct on cream */
   --color-num-1: #2d4f6b;
@@ -155,4 +155,4 @@
 
 /* In-game frame: a deeper kraft tone so the light newspaper board stands out
    instead of paper-on-paper (only #app, so the title columns are untouched). */
-[data-theme="editorial"] #app { background: #c2af8b; }
+[data-theme="editorial"] #app { background: #dbcfb4; }
