@@ -16,6 +16,12 @@
      span the board; revealing erases the sheet back to blank stock. */
   --bg-fog-art: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 150' preserveAspectRatio='none'%3E%3Cg fill='none' stroke='%23dceeff'%3E%3Crect x='4' y='4' width='192' height='142' stroke-width='1.8' opacity='0.8'/%3E%3Crect x='8' y='8' width='184' height='134' stroke-width='0.7' opacity='0.55'/%3E%3Ccircle cx='62' cy='72' r='30' stroke-width='1.6' opacity='0.85'/%3E%3Ccircle cx='62' cy='72' r='12' stroke-width='1.1' opacity='0.7'/%3E%3Cpath d='M62 32 L62 112 M22 72 L102 72' stroke-width='0.9' stroke-dasharray='9 3 2 3' opacity='0.7'/%3E%3Cpath d='M118 28 L186 28' stroke-width='1' opacity='0.8'/%3E%3Cpath d='M118 22 L118 34 M186 22 L186 34' stroke-width='0.9' opacity='0.7'/%3E%3Cpath d='M118 28 L125 25 L125 31 Z M186 28 L179 25 L179 31 Z' fill='%23dceeff' opacity='0.8'/%3E%3Crect x='124' y='96' width='40' height='26' stroke-width='1.2' opacity='0.8'/%3E%3Cpath d='M124 102 L164 122 M124 110 L154 122 M132 96 L164 112 M144 96 L164 104' stroke-width='0.7' opacity='0.6'/%3E%3Crect x='138' y='130' width='56' height='14' stroke-width='1.2' opacity='0.85'/%3E%3Cpath d='M138 137 L194 137 M166 130 L166 144' stroke-width='0.7' opacity='0.7'/%3E%3C/g%3E%3C/svg%3E");
   --color-cell-hidden-gradient: linear-gradient(145deg, rgba(19,64,102,0.45), rgba(15,48,80,0.3));
+  /* TITLE-SCREEN BACKDROP: a drafting sheet — frame, a drafted part with
+     dash-dot centerlines, dimension lines with arrowheads, a hatched detail,
+     a corner title block, and register-tick crosses. All white line work on
+     the navy, tiling down behind the (solid) title cards. The board has its
+     own cyanotype sheet via --bg-fog-art; this dresses the title only. */
+  --theme-backdrop: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 480'%3E%3Cg fill='none' stroke='%23cfe6f7' stroke-linecap='round'%3E%3Crect x='16' y='14' width='568' height='452' stroke-width='2' opacity='0.42'/%3E%3Crect x='24' y='22' width='552' height='436' stroke-width='1' opacity='0.26'/%3E%3Ccircle cx='150' cy='156' r='74' stroke-width='1.6' opacity='0.5'/%3E%3Ccircle cx='150' cy='156' r='30' stroke-width='1.1' opacity='0.36'/%3E%3Cpath d='M58 156 L242 156 M150 64 L150 248' stroke-width='1' stroke-dasharray='14 4 3 4' opacity='0.38'/%3E%3Cpath d='M330 72 L560 72' stroke-width='1.1' opacity='0.46'/%3E%3Cpath d='M330 62 L330 82 M560 62 L560 82' stroke-width='1' opacity='0.38'/%3E%3Cpath d='M330 72 L344 67 L344 77 Z M560 72 L546 67 L546 77 Z' fill='%23cfe6f7' stroke='none' opacity='0.46'/%3E%3Cpath d='M524 150 L524 372' stroke-width='1.1' opacity='0.46'/%3E%3Cpath d='M514 150 L534 150 M514 372 L534 372' stroke-width='1' opacity='0.38'/%3E%3Cpath d='M524 150 L519 164 L529 164 Z M524 372 L519 358 L529 358 Z' fill='%23cfe6f7' stroke='none' opacity='0.46'/%3E%3Crect x='66' y='306' width='126' height='84' stroke-width='1.3' opacity='0.46'/%3E%3Cpath d='M66 326 L150 390 M66 348 L126 390 M66 370 L102 390 M88 306 L192 364 M120 306 L192 342 M152 306 L192 320' stroke-width='0.8' opacity='0.3'/%3E%3Crect x='362' y='398' width='200' height='54' stroke-width='1.4' opacity='0.5'/%3E%3Cpath d='M362 420 L562 420 M362 436 L562 436 M432 398 L432 452 M498 398 L498 452' stroke-width='0.8' opacity='0.36'/%3E%3Cpath d='M286 206 L286 222 M278 214 L294 214' stroke-width='1' opacity='0.4'/%3E%3Cpath d='M438 268 L438 284 M430 276 L446 276' stroke-width='1' opacity='0.4'/%3E%3Cpath d='M250 418 L250 434 M242 426 L258 426' stroke-width='1' opacity='0.4'/%3E%3Cpath d='M330 332 L330 348 M322 340 L338 340' stroke-width='1' opacity='0.36'/%3E%3C/g%3E%3C/svg%3E");
   --color-cell-revealed: #0a2540;
   --cell-gap-seal: #cfe6f7;
   --color-cell-border-light: #3a7ca8;
@@ -132,6 +138,18 @@
 @keyframes blueprintDraw {
   0%   { opacity: 0; transform: scale(0.86); }
   100% { opacity: 1; transform: scale(1); }
+}
+
+/* Blueprint title backdrop: the drafting sheet runs behind the (solid) cards,
+   tiling down the screen. Static CSS so it shows regardless of the particle
+   gate; the drifting register ticks layer over it when effects are on. The
+   board keeps its own cyanotype sheet (--bg-fog-art) — this dresses the title
+   only. */
+[data-theme="blueprint"] #title-screen.has-title-sky {
+  background-image: var(--theme-backdrop);
+  background-repeat: repeat-y;
+  background-size: 100% auto;
+  background-position: top center;
 }
 
 /* Cell numbers sized to match classic's legibility (this font reads lighter
