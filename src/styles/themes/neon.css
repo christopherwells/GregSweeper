@@ -183,3 +183,7 @@
 @keyframes neonBuzz {
   0%{opacity:0;filter:brightness(2)}22%{opacity:1;filter:brightness(2.2)}38%{opacity:0.35}58%{opacity:1;filter:brightness(1.6)}100%{opacity:1;filter:brightness(1)}
 }
+
+/* Cell numbers sized to match classic's legibility (this font reads lighter
+   than Segoe 800; global default is --cell-size * 0.56). */
+[data-theme="neon"] #board .cell { font-size: calc(var(--cell-size, 40px) * 0.72); }

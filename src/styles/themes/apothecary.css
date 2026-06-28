@@ -124,3 +124,7 @@
   0%   { opacity: 0; transform: translateY(-3px); filter: sepia(0.6) brightness(0.7); }
   100% { opacity: 1; transform: translateY(0); filter: sepia(0) brightness(1); }
 }
+
+/* Cell numbers sized to match classic's legibility (this font reads lighter
+   than Segoe 800; global default is --cell-size * 0.56). */
+[data-theme="apothecary"] #board .cell { font-size: calc(var(--cell-size, 40px) * 0.72); }
