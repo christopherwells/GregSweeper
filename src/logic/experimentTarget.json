@@ -1,45 +1,50 @@
 {
-  "updatedAt": "2026-06-27T15:18:26Z",
-  "target": "sonarCellCount",
-  "reason": "highest posterior CV (1.031) excluding last 3 targets",
+  "updatedAt": "2026-06-28T15:21:09Z",
+  "target": "liarCellCount",
+  "reason": "highest posterior CV (0.940) excluding last 3 targets",
   "recentTargets": [
+    "liarCellCount",
     "sonarCellCount",
-    "compassCellCount",
-    "lockedCellCount"
+    "compassCellCount"
   ],
   "candidates": [
     {
-      "feature": "lockedCellCount",
-      "mean": 0.737,
-      "sd": 0.766,
-      "cv": 1.04
-    },
-    {
       "feature": "sonarCellCount",
-      "mean": 0.806,
-      "sd": 0.831,
-      "cv": 1.031
+      "mean": 0.798,
+      "sd": 0.845,
+      "cv": 1.06
     },
     {
       "feature": "compassCellCount",
-      "mean": 0.855,
-      "sd": 0.86,
-      "cv": 1.006
+      "mean": 0.859,
+      "sd": 0.906,
+      "cv": 1.055
+    },
+    {
+      "feature": "lockedCellCount",
+      "mean": 0.656,
+      "sd": 0.668,
+      "cv": 1.018
     },
     {
       "feature": "liarCellCount",
-      "mean": 0.812,
-      "sd": 0.753,
-      "cv": 0.928
+      "mean": 0.839,
+      "sd": 0.789,
+      "cv": 0.94
     },
     {
       "feature": "wallEdgeCount",
-      "mean": 0.158,
-      "sd": 0.145,
-      "cv": 0.923
+      "mean": 0.156,
+      "sd": 0.14,
+      "cv": 0.899
     }
   ],
   "coverage_targets": [
+    {
+      "feature": "sonarCellCount",
+      "n_boards": 6,
+      "deficit_weight": 0.1429
+    },
     {
       "feature": "compassCellCount",
       "n_boards": 7,
@@ -51,19 +56,14 @@
       "deficit_weight": 0.1
     },
     {
-      "feature": "liarCellCount",
-      "n_boards": 10,
-      "deficit_weight": 0.0909
-    },
-    {
-      "feature": "mysteryCellCount",
-      "n_boards": 11,
-      "deficit_weight": 0.0833
-    },
-    {
       "feature": "mirrorPairCount",
       "n_boards": 11,
       "deficit_weight": 0.0833
+    },
+    {
+      "feature": "mysteryCellCount",
+      "n_boards": 12,
+      "deficit_weight": 0.0769
     },
     {
       "feature": "lockedCellCount",
