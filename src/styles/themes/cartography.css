@@ -23,7 +23,10 @@
   --color-mine-hit: #a02818;
   --color-flag: #8a2818;
   --color-text: #4a3420;
-  --color-text-secondary: #8a7048;
+  /* Darkened from the old mid-sepia #8a7048, which read at only ~2.4:1 on the
+     parchment (sublines + card descriptions) — now a deep sepia that clears
+     4.5:1 on both the page parchment and the lighter card stock. */
+  --color-text-secondary: #5a4124;
 
   --color-num-1: #3a5a7a;
   --color-num-2: #4a6a3a;
@@ -56,8 +59,13 @@
   --color-border: #b8a070;
   --color-fog: rgba(40, 30, 16, 0.86);
   --color-scan-highlight: rgba(138, 40, 24, 0.12);
-  --color-golden: #b8860b;
-  --color-accent: #8a2818;
+  /* Darkened from the bright #b8860b: a light "gold" is illegible on parchment
+     (the best-time + achievement text read ~1.7:1). A dark antique gold clears
+     4.5:1 as text and still reads as aged gilt on the decorative borders/glows. */
+  --color-golden: #5b4410;
+  /* A hair deeper than #8a2818 so small accent text (e.g. the streak count)
+     clears 4.5:1 on the parchment; visually the same map-red. */
+  --color-accent: #842614;
   --color-accent-hover: #6f2014;
   --color-accent-glow: rgba(138, 40, 24, 0.2);
   --color-win: #4a6a3a;
@@ -114,7 +122,7 @@
   font-family: 'Book Antiqua', Palatino, Georgia, serif;
   font-style: italic;
   letter-spacing: 2px;
-  color: #8a7048;
+  color: #5a4124;
 }
 
 /* Discover reveal — a quick unfurl. */
@@ -125,6 +133,41 @@
 @keyframes cartoReveal {
   0%   { opacity: 0; transform: scale(0.85) rotate(-3deg); }
   100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+
+/* Cartography title backdrop: the same worn nautical chart as the board
+   (--bg-fog-art) runs behind the (solid) cards, tiling down the parchment sheet
+   — charts laid out on a chart table. Static CSS so it shows regardless of the
+   particle gate; the drifting route dashes + sounding rings layer over it. */
+[data-theme="cartography"] #title-screen.has-title-sky {
+  background-image: var(--bg-fog-art);
+  background-repeat: repeat-y;
+  background-size: 100% auto;
+  background-position: top center;
+}
+
+/* Flagged cells fill with the revealed tile so a flag reads on a solid surface
+   instead of the charted parchment fog. Under an active effect (.fx-on) they
+   also take the same grout seal as revealed cells. */
+[data-theme="cartography"] .cell.flagged {
+  background: var(--color-cell-revealed) !important;
+}
+[data-theme="cartography"] #board.fx-on .cell.flagged::before {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  inset: calc(-1 * var(--grid-gap, 2px) - 1px);
+  background: var(--cell-gap-seal);
+  z-index: -2;
+}
+[data-theme="cartography"] #board.fx-on .cell.flagged::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  inset: 0;
+  background: var(--color-cell-revealed);
+  border-radius: var(--cell-shape-radius, var(--border-radius));
+  z-index: -1;
 }
 
 /* Cell numbers sized to match classic's legibility (this font reads lighter
