@@ -1037,21 +1037,12 @@ const THEME_EFFECTS = {
     return tickCleanup;
   },
 
-  // Cartography (L20): plotted routes — dashed sepia course segments
-  // drift across the chart while tiny sounding rings surface and fade.
+  // Cartography (L20): tiny sounding rings surface and fade over the chart.
+  // (The drifting dashed "course routes" were cut 2026-06-29 — they read as
+  // random lines crossing the sea; the sea serpents drawn into the map are the
+  // chart's character now.)
   cartography: (container) => {
     injectStyles();
-    const routeCleanup = particleLoop(container, (c) => {
-      const ang = rand(-24, 24);
-      return spawn(c, { style: {
-        left: rand(-5, 70) + '%', top: rand(8, 88) + '%',
-        width: rand(55, 105) + 'px', height: '2px',
-        transform: `rotate(${ang}deg)`,
-        background: 'repeating-linear-gradient(90deg, rgba(106,74,38,0.5) 0 7px, transparent 7px 13px)',
-        animation: `fxDrift ${rand(9, 15)}s ease-in-out forwards`,
-        '--fx-x0': '-12%', '--fx-x2': '12%', '--fx-opacity': '0.5',
-      }});
-    }, () => rand(2400, 4800));
     const soundingCleanup = particleLoop(container, (c) => {
       const s = rand(5, 9);
       return spawn(c, { style: {
@@ -1063,7 +1054,7 @@ const THEME_EFFECTS = {
         '--fx-opacity': '0.6',
       }});
     }, () => rand(1100, 2300));
-    return () => { routeCleanup(); soundingCleanup(); };
+    return () => { soundingCleanup(); };
   },
 
   // Origami (L25): folded paper birds — pastel clip-path triangles
