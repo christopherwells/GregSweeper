@@ -76,7 +76,7 @@ import { pruneOldCachedBoards } from './firebase/boardCache.js';
 import { isModifierPopupDisabled, setModifierPopupDisabled, getGimmickDefs, getDailyGimmick, applyGimmicks } from './logic/gimmicks.js';
 import { isStorageFailing, safeGet, safeSet, safeRemove, requestPersistentStorage } from './storage/storageAdapter.js';
 import { pauseTimer, resumeTimer, stopTimer, recordInteraction } from './game/timerManager.js';
-import { isLiveGameExpired } from './logic/resumeEligibility.js';
+import { isLiveGameExpired, isWeeklyAttemptCacheStale } from './logic/resumeEligibility.js';
 import { planCompletionReconcile } from './logic/startupReconcilePlan.js';
 import { buildDailyScoreExtras } from './logic/winSubmissionPlan.js';
 import { startTutorial, startWarmup } from './ui/tutorialManager.js';
@@ -297,6 +297,7 @@ async function runStartupGate() {
   // shared with master via the same github.io origin and we'd nuke
   // production's stored attempts).
   state.cachedWeeklyDayAttempts = isTestEnvironment() ? {} : loadLocalWeeklyAttempts(currentWeek);
+  state.cachedWeeklyAttemptsWeek = currentWeek;
   if (!isTestEnvironment()) pruneStaleLocalWeeklyAttempts(currentWeek);
   // Trim the offline board cache to its rolling window (yesterday..+7
   // dailies, prev/current/next weekly) so it can't grow unbounded.
@@ -3174,7 +3175,17 @@ subscribeToCloudProgressUpdates((cloud) => {
         if (Number.isInteger(n) && n >= 0 && n <= 6) next[n] = true;
       }
       state.cachedWeeklyDayAttempts = next;
+      state.cachedWeeklyAttemptsWeek = currentWeek;
       if (!isTestEnvironment()) replaceLocalWeeklyAttempts(currentWeek, next);
+    } else if (isWeeklyAttemptCacheStale(state.cachedWeeklyAttemptsWeek, currentWeek)) {
+      // Week rolled over and the cloud carries NO attempts for the new
+      // week yet — the snapshot is authoritative that it's empty, so
+      // clear the stale prior-week cache rather than leave it gating the
+      // player out of a week that has reset. Re-seed from localStorage
+      // (empty for a fresh week) for the synchronous gate.
+      state.cachedWeeklyDayAttempts = isTestEnvironment() ? {} : loadLocalWeeklyAttempts(currentWeek);
+      state.cachedWeeklyAttemptsWeek = currentWeek;
+      if (!isTestEnvironment()) pruneStaleLocalWeeklyAttempts(currentWeek);
     }
   } catch {}
   try { updateTitleProgress(); } catch {}
@@ -4004,6 +4015,44 @@ async function init() {
   }, 5000); // Every 5s for reliable mobile persistence
 }
 
+// Re-seed the weekly-attempt cache when the ET week has rolled over
+// while a long-lived session stayed open. The cache (state.cachedWeekly-
+// DayAttempts) is populated once at boot for that day's week; nothing
+// re-derives it afterward, so a background tab / installed PWA reopened
+// after the Sunday→Monday boundary keeps the prior week's attempts in
+// memory — the Weekly card then shows "Done N/7" and the play gate
+// refuses a new attempt on a week that has actually reset (the weekly
+// "didn't reset" bug). On a detected rollover, re-seed synchronously
+// from localStorage (empty for a fresh week → the gate opens at once),
+// then refresh authoritatively from Firebase. No-op when the week hasn't
+// changed, and skipped on the test build (weekly is freely replayable there).
+function refreshWeeklyAttemptCacheIfRolledOver() {
+  if (isTestEnvironment()) return;
+  const liveWeek = getWeekStart();
+  if (!isWeeklyAttemptCacheStale(state.cachedWeeklyAttemptsWeek, liveWeek)) return;
+
+  state.cachedWeeklyDayAttempts = loadLocalWeeklyAttempts(liveWeek);
+  state.cachedWeeklyAttemptsWeek = liveWeek;
+  pruneStaleLocalWeeklyAttempts(liveWeek);
+
+  // Authoritative refresh: a Firebase read is the source of truth for
+  // the week (an empty map legitimately clears a stale local copy).
+  // Fire-and-forget — the synchronous local seed above already unblocked
+  // the gate; this only corrects it if the cloud disagrees.
+  if (state.firebaseReady) {
+    loadWeeklyAttempts(liveWeek)
+      .then(attempts => {
+        if (!attempts) return; // null = read failed; keep the local seed
+        if (state.cachedWeeklyAttemptsWeek !== liveWeek) return; // rolled again mid-fetch
+        state.cachedWeeklyDayAttempts = attempts;
+        replaceLocalWeeklyAttempts(liveWeek, attempts);
+        const titleScreen = $('#title-screen');
+        if (titleScreen && !titleScreen.classList.contains('hidden')) updateTitleProgress();
+      })
+      .catch(err => reportCaughtError('weekly-rollover-attempts', err));
+  }
+}
+
 // Forfeit a live date-anchored game whose ET anchor has lapsed — the
 // session slept through midnight in a background tab or suspended PWA,
 // so the daily on screen is yesterday's (or the weekly attempt belongs
@@ -4014,6 +4063,14 @@ async function init() {
 // never be re-saved), and routes to the title screen. Returns true
 // when a game was expired.
 function expireRolledOverGame() {
+  // Re-derive the weekly-attempt cache first: a long-open session (a
+  // background tab or installed PWA) seeds it once at boot and never
+  // refreshes it, so crossing the ET week boundary while open leaves
+  // last week's attempts in memory and the Weekly card reports the
+  // week as already finished. This must run before the updateTitleProgress
+  // / showTitleScreen calls below so the refreshed cards read fresh data.
+  refreshWeeklyAttemptCacheIfRolledOver();
+
   const expired = isLiveGameExpired(state, {
     today: getLocalDateString(),
     weekStart: getWeekStart(),

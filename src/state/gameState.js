@@ -144,6 +144,7 @@ export const state = {
   weeklyDayBombHits: {},           // {0: 1, 3: 0, ...} per-day strike counts from Firebase
   weeklyFeatures: null,            // computed at canonical resolve, used for the first-attempt fit-data submit
   cachedWeeklyDayAttempts: {},     // {0: true, 3: true} from Firebase at startup so the gate is sync
+  cachedWeeklyAttemptsWeek: null,  // weekStart the cache above belongs to; lets a long-open session detect a week rollover and re-seed
 
   // ── Idle-pause state ─────────────────────────────────
   // Auto-pause the timer after 30s without user input so a player who
