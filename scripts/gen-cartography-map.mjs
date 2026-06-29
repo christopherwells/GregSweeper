@@ -1,107 +1,124 @@
-// Generator for the cartography theme's aged coastal-map backdrop. Emulates a
-// real antique chart (Christopher's Texas Gulf Coast reference): CALM open
-// parchment, a soft WATERCOLOR-BLUE gulf + bays in organic layered washes, a
-// COMPLEX coastline — bays biting in, barrier islands with passes, headlands —
-// clean sepia ink, a couple of rivers into the bays, a small compass rose.
-// No place labels (Christopher cut them). One map for board + title.
-//   node scripts/gen-cartography-map.mjs
-// Prints the data-URI (used for both --bg-fog-art and --theme-backdrop) and
-// writes scripts/_carto-preview.html. Only the data-URI ships.
-import { writeFileSync } from 'node:fs';
+// Generator for the cartography theme's backdrop: an antique CHART OF MOOREA,
+// traced from the island's REAL coastline. Renders it in the theme idiom —
+// sepia coastline on a cream volcanic island, a tropical TURQUOISE lagoon ring,
+// a barrier REEF (dotted sepia), the deeper OCEAN beyond, and a small compass
+// rose. The two deep north bays (Cook's + Ōpūnohu) come straight from the real
+// geometry.
+//
+// Coastline geometry: © OpenStreetMap contributors, ODbL. Fetch the source once
+// (it's a ~2 MB file, kept local/untracked — underscore-prefixed):
+//   curl -H "User-Agent: GregSweeper-dev (c.wells@bowdoin.edu)" \
+//     "https://nominatim.openstreetmap.org/search?format=json&polygon_geojson=1&q=Mo%CA%BBorea" \
+//     -o scripts/_moorea.json
+// Then:  node scripts/gen-cartography-map.mjs
+// Prints the data-URI (--bg-fog-art, reused by the title) + writes a preview.
+import { readFileSync, writeFileSync } from 'node:fs';
 
 const SEPIA = '#5c4020';
-const VB = { w: 360, h: 300 };
+const VB = 360;           // square canvas
+const ISLAND_FIT = 196;   // island longest dim fits this; ocean margin so the
+                          // `cover` crop never clips the island on tall phones
 const P = (n) => Math.round(n * 10) / 10;
 
-// Catmull-Rom bezier segments through pts, assuming the pen is already at pts[0].
-function curve(pts) {
-  let d = '';
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
-    const c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6;
-    const c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6;
-    d += `C${P(c1x)} ${P(c1y)} ${P(c2x)} ${P(c2y)} ${P(p2[0])} ${P(p2[1])}`;
+// ── load + project the real coastline ──
+const geo = JSON.parse(readFileSync(new URL('./_moorea.json', import.meta.url), 'utf8'));
+let ring = geo[0].geojson.coordinates;            // Polygon → first (outer) ring
+while (typeof ring[0][0] !== 'number') ring = ring[0]; // unwrap to [ [lon,lat], ... ]
+
+// equirectangular with longitude cos-correction at Moorea's latitude
+const lats = ring.map((p) => p[1]), lons = ring.map((p) => p[0]);
+const latMid = (Math.min(...lats) + Math.max(...lats)) / 2;
+const kx = Math.cos((latMid * Math.PI) / 180);
+let pts = ring.map(([lon, lat]) => [lon * kx, lat]);
+// bbox in projected space
+let xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+let minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+const span = Math.max(maxX - minX, maxY - minY);
+const scale = ISLAND_FIT / span;
+const offX = (VB - (maxX - minX) * scale) / 2;
+const offY = (VB - (maxY - minY) * scale) / 2;
+// project to SVG coords (flip y: north = up = smaller svg-y)
+pts = pts.map(([x, y]) => [offX + (x - minX) * scale, offY + (maxY - y) * scale]);
+
+// ── Ramer–Douglas–Peucker simplification (iterative, keeps the bays) ──
+function rdp(points, eps) {
+  const keep = new Uint8Array(points.length);
+  keep[0] = keep[points.length - 1] = 1;
+  const stack = [[0, points.length - 1]];
+  const seg = (p, a, b) => {
+    const dx = b[0] - a[0], dy = b[1] - a[1];
+    const L = Math.hypot(dx, dy) || 1e-9;
+    return Math.abs((p[0] - a[0]) * dy - (p[1] - a[1]) * dx) / L;
+  };
+  while (stack.length) {
+    const [s, e] = stack.pop();
+    let dmax = 0, idx = -1;
+    for (let i = s + 1; i < e; i++) {
+      const d = seg(points[i], points[s], points[e]);
+      if (d > dmax) { dmax = d; idx = i; }
+    }
+    if (dmax > eps && idx !== -1) { keep[idx] = 1; stack.push([s, idx], [idx, e]); }
   }
-  return d;
+  return points.filter((_, i) => keep[i]);
 }
-const smooth = (pts) => `M${P(pts[0][0])} ${P(pts[0][1])}` + curve(pts);
-
-// A thin barrier-island ribbon: offset the (vertical-ish) centerline by ±hw in
-// x, down one side and back up the other, closed.
-function ribbon(pts, hw) {
-  const right = pts.map(([x, y]) => [x + hw, y]);
-  const left = pts.slice().reverse().map(([x, y]) => [x - hw, y]);
-  return `M${P(right[0][0])} ${P(right[0][1])}` + curve(right) +
-    ` L${P(left[0][0])} ${P(left[0][1])}` + curve(left) + ' Z';
+// RDP on a CLOSED ring: drop the duplicate closing point, split the loop at the
+// point farthest from pts[0], and RDP each arc (the naive ring breaks because
+// the start==end base segment is degenerate).
+function rdpClosed(points, eps) {
+  let p = points.slice();
+  if (p.length > 1 && p[0][0] === p[p.length - 1][0] && p[0][1] === p[p.length - 1][1]) p.pop();
+  let far = 0, fd = -1;
+  for (let i = 1; i < p.length; i++) {
+    const d = (p[i][0] - p[0][0]) ** 2 + (p[i][1] - p[0][1]) ** 2;
+    if (d > fd) { fd = d; far = i; }
+  }
+  const a = rdp(p.slice(0, far + 1), eps);
+  const b = rdp(p.slice(far).concat([p[0]]), eps);
+  return a.concat(b.slice(1, -1));
 }
+let coast = rdpClosed(pts, 0.6);
+console.log('raw pts:', pts.length, '→ simplified:', coast.length);
 
-// ── COMPLEX coastline: land left, gulf right, three bays biting in. ──
-const coast = [
-  [256, -6], [270, 22], [258, 42], [214, 58], [190, 82], [210, 104],
-  [252, 120], [262, 138], [236, 156], [198, 180], [222, 202],
-  [256, 220], [244, 242], [212, 258], [238, 280], [250, 306],
-];
-const seaPath = smooth(coast) + ` L${VB.w + 6} 306 L${VB.w + 6} -6 Z`;
+// polyline path
+const poly = (p) => 'M' + p.map(([x, y]) => `${P(x)} ${P(y)}`).join(' L') + ' Z';
 
-// barrier islands guarding the bays, with passes (gaps) between them
-const islands = [
-  { c: [[296, 16], [304, 46], [307, 78], [302, 104]], hw: 5 },
-  { c: [[300, 128], [308, 156], [310, 184], [305, 202]], hw: 5.2 },
-  { c: [[296, 224], [304, 252], [308, 280], [303, 304]], hw: 5 },
-];
+// reef ring: scale the coast outward from the island centroid (stylized barrier reef)
+const cx = coast.reduce((s, p) => s + p[0], 0) / coast.length;
+const cy = coast.reduce((s, p) => s + p[1], 0) / coast.length;
+const reef = coast.map(([x, y]) => [cx + (x - cx) * 1.17, cy + (y - cy) * 1.17]);
 
-// rivers from the land into each bay head
-const rivers = [
-  [[-6, 70], [44, 82], [92, 74], [136, 86], [170, 80], [190, 82]],
-  [[-6, 200], [50, 193], [104, 203], [152, 186], [198, 180]],
-  [[-6, 262], [60, 257], [130, 263], [182, 256], [212, 258]],
-  [[96, 150], [116, 132], [134, 120], [150, 104], [162, 92]], // a tributary
-];
-
-function watercolor() {
-  // Organic washes clipped to the sea: a medium base, lighter pools in the
-  // bays, deeper pools out in the gulf — all soft-blurred so the water reads
-  // painted, not flat, and with NO artificial light band along the shore.
+function svg() {
   return (
+    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 ${VB} ${VB}' preserveAspectRatio='xMidYMid slice'>` +
     `<defs>` +
-    `<clipPath id='sea'><path d='${seaPath}'/></clipPath>` +
-    `<filter id='b1' x='-40%' y='-40%' width='180%' height='180%'><feGaussianBlur stdDeviation='11'/></filter>` +
-    `<filter id='b2' x='-50%' y='-50%' width='200%' height='200%'><feGaussianBlur stdDeviation='17'/></filter>` +
+    `<clipPath id='ocean'><rect x='0' y='0' width='${VB}' height='${VB}'/></clipPath>` +
+    `<filter id='bl' x='-30%' y='-30%' width='160%' height='160%'><feGaussianBlur stdDeviation='9'/></filter>` +
     `</defs>` +
-    `<g clip-path='url(%23sea)'>` +
-    `<rect x='0' y='0' width='${VB.w}' height='${VB.h}' fill='rgba(60,134,192,0.40)'/>` +
-    // deeper gulf pools (far right)
-    `<ellipse cx='350' cy='70' rx='64' ry='90' fill='rgba(26,88,156,0.30)' filter='url(%23b2)'/>` +
-    `<ellipse cx='352' cy='250' rx='70' ry='86' fill='rgba(28,90,158,0.28)' filter='url(%23b2)'/>` +
-    `<ellipse cx='344' cy='160' rx='44' ry='60' fill='rgba(30,92,160,0.22)' filter='url(%23b2)'/>` +
-    // lighter washes pooling in the bays
-    `<ellipse cx='224' cy='84' rx='40' ry='30' fill='rgba(120,176,210,0.26)' filter='url(%23b1)'/>` +
-    `<ellipse cx='220' cy='182' rx='38' ry='30' fill='rgba(120,176,210,0.24)' filter='url(%23b1)'/>` +
-    `<ellipse cx='232' cy='262' rx='34' ry='26' fill='rgba(122,178,212,0.22)' filter='url(%23b1)'/>` +
-    // a couple of mid mottles for granulation
-    `<ellipse cx='292' cy='120' rx='30' ry='40' fill='rgba(74,142,196,0.16)' filter='url(%23b1)'/>` +
-    `<ellipse cx='300' cy='210' rx='28' ry='36' fill='rgba(50,110,176,0.16)' filter='url(%23b1)'/>` +
-    `</g>`
+    // OCEAN — soft watercolor blue over the whole sheet, with deeper mottles
+    `<g clip-path='url(%23ocean)'>` +
+    `<rect x='0' y='0' width='${VB}' height='${VB}' fill='rgba(48,122,184,0.46)'/>` +
+    `<ellipse cx='64' cy='84' rx='130' ry='130' fill='rgba(22,80,150,0.22)' filter='url(%23bl)'/>` +
+    `<ellipse cx='306' cy='312' rx='130' ry='130' fill='rgba(22,80,150,0.22)' filter='url(%23bl)'/>` +
+    `<ellipse cx='320' cy='70' rx='90' ry='90' fill='rgba(70,150,196,0.16)' filter='url(%23bl)'/>` +
+    `</g>` +
+    // LAGOON — the famous tropical TURQUOISE inside the reef ring (reef poly,
+    // island knocked out by drawing the land on top); a touch lighter at the
+    // reef edge for the shallow-water glow.
+    `<path d='${poly(reef)}' fill='rgba(96,200,206,0.62)'/>` +
+    `<path d='${poly(reef)}' fill='none' stroke='rgba(150,224,224,0.5)' stroke-width='6' filter='url(%23bl)'/>` +
+    // ISLAND — cream volcanic land + sepia coast
+    `<path d='${poly(coast)}' fill='%23e9d9b2' stroke='${SEPIA}' stroke-width='1.4' stroke-linejoin='round'/>` +
+    // faint interior relief: a couple of hill rings near the center (Mt Tohiea / Rotui)
+    `<circle cx='${P(cx)}' cy='${P(cy + 8)}' r='30' fill='none' stroke='${SEPIA}' stroke-width='0.6' opacity='0.3'/>` +
+    `<circle cx='${P(cx)}' cy='${P(cy + 8)}' r='16' fill='none' stroke='${SEPIA}' stroke-width='0.6' opacity='0.35'/>` +
+    // REEF — dotted sepia ring just off the coast (the barrier reef)
+    `<path d='${poly(reef)}' fill='none' stroke='${SEPIA}' stroke-width='1.1' stroke-dasharray='1.5 4' opacity='0.6' stroke-linecap='round'/>` +
+    compass(54, 54, 16) +
+    `</svg>`
   );
 }
 
-function inkLayer() {
-  let s = '';
-  s += `<path d='${smooth(coast)}' fill='none' stroke='${SEPIA}' stroke-width='1.4' opacity='0.85' stroke-linecap='round'/>`;
-  for (const r of rivers) {
-    s += `<path d='${smooth(r)}' fill='none' stroke='${SEPIA}' stroke-width='1.1' opacity='0.58' stroke-linecap='round'/>`;
-    s += `<path d='${smooth(r)}' fill='none' stroke='rgba(60,134,192,0.45)' stroke-width='0.5' opacity='0.7' stroke-linecap='round'/>`;
-  }
-  // barrier islands — parchment land in the blue, sepia outline
-  for (const is of islands) {
-    s += `<path d='${ribbon(is.c, is.hw)}' fill='rgba(212,194,152,0.62)' stroke='${SEPIA}' stroke-width='1' opacity='0.78'/>`;
-  }
-  s += compass(338, 116, 15);
-  return s;
-}
-
 function compass(cx, cy, r) {
-  const r2 = r * 0.42;
   const pt = (ang, len, w) => {
     const a = (ang * Math.PI) / 180, a2 = ((ang + 90) * Math.PI) / 180;
     const tx = cx + Math.cos(a) * len, ty = cy + Math.sin(a) * len;
@@ -109,37 +126,29 @@ function compass(cx, cy, r) {
     const bx2 = cx - Math.cos(a2) * w, by2 = cy - Math.sin(a2) * w;
     return `M${P(bx)} ${P(by)} L${P(tx)} ${P(ty)} L${P(bx2)} ${P(by2)} Z`;
   };
-  let g = `<g opacity='0.55'><circle cx='${cx}' cy='${cy}' r='${r}' fill='none' stroke='${SEPIA}' stroke-width='0.8'/>`;
-  g += `<circle cx='${cx}' cy='${cy}' r='${r2}' fill='none' stroke='${SEPIA}' stroke-width='0.6'/>`;
+  let g = `<g opacity='0.5'><circle cx='${cx}' cy='${cy}' r='${r}' fill='none' stroke='${SEPIA}' stroke-width='0.8'/>`;
   for (const ang of [45, 135, 225, 315]) g += `<path d='${pt(ang, r * 0.7, 2)}' fill='%236a4a26' opacity='0.5'/>`;
-  for (const ang of [0, 90, 180]) g += `<path d='${pt(ang, r, 2.4)}' fill='${SEPIA}'/>`;
-  g += `<path d='${pt(270, r, 2.4)}' fill='%238a3020'/></g>`;
+  for (const ang of [0, 90, 180]) g += `<path d='${pt(ang, r, 2.3)}' fill='${SEPIA}'/>`;
+  g += `<path d='${pt(270, r, 2.3)}' fill='%238a3020'/></g>`;
   return g;
 }
 
-function svg() {
-  return (
-    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 ${VB.w} ${VB.h}' preserveAspectRatio='none'>` +
-    watercolor() + inkLayer() + `</svg>`
-  );
-}
+const out = svg();
+const dataUri = `url("data:image/svg+xml,${out.replace(/\n/g, '').replace(/</g, '%3C').replace(/>/g, '%3E').replace(/#/g, '%23')}")`;
 
-function toDataUri(s) {
-  return `url("data:image/svg+xml,${s.replace(/\n/g, '').replace(/</g, '%3C').replace(/>/g, '%3E').replace(/#/g, '%23')}")`;
-}
-
-const map = toDataUri(svg());
 writeFileSync(new URL('./_carto-preview.html', import.meta.url),
   `<!doctype html><meta charset=utf8><style>
    body{margin:0;background:#c9b896;font-family:monospace;color:#4a3420}
    .row{display:flex;gap:24px;flex-wrap:wrap;padding:24px}
-   .board{width:420px;height:392px;background-color:#b8a070;background-image:${map};background-repeat:no-repeat;background-size:100% 100%}
-   .title{width:480px;height:620px;background:#c9b896;background-image:${map};background-repeat:repeat-y;background-size:100% auto;background-position:top center}
+   .board{width:392px;height:392px;background-color:#b8a070;background-image:${dataUri};background-repeat:no-repeat;background-size:cover;background-position:center}
+   .title{width:430px;height:620px;background:#c9b896;background-image:${dataUri};background-repeat:no-repeat;background-size:cover;background-position:center}
+   .raw{width:360px;height:360px;background:#cbe2ee;background-image:${dataUri};background-repeat:no-repeat;background-size:contain;background-position:center}
   </style>
   <div class=row>
-   <div><div>BOARD (--bg-fog-art, stretched)</div><div class=board></div></div>
-   <div><div>TITLE (--theme-backdrop, repeat-y)</div><div class=title></div></div>
+   <div><div>RAW (contain — true Moorea shape)</div><div class=raw></div></div>
+   <div><div>BOARD (cover)</div><div class=board></div></div>
+   <div><div>TITLE (cover)</div><div class=title></div></div>
   </div>`);
 
-console.log('MAP:'); console.log(map);
-console.log('\nbytes=', map.length);
+console.log('MAP:'); console.log(dataUri);
+console.log('\nbytes=', dataUri.length);
