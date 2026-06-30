@@ -214,6 +214,18 @@ function injectStyles() {
       50% { opacity: var(--fx-opacity, 0.8); transform: scale(1); }
     }
 
+    /* A sea serpent SURFACING then submerging: rises a touch as it fades in,
+       holds, then sinks back under as it fades out. ("pop in and out") */
+    @keyframes fxSurface {
+      0%   { opacity: 0; transform: translateY(8px) scale(0.9); }
+      16%  { opacity: var(--fx-opacity, 0.82); transform: translateY(0) scale(1); }
+      80%  { opacity: var(--fx-opacity, 0.82); transform: translateY(0) scale(1); }
+      100% { opacity: 0; transform: translateY(8px) scale(0.92); }
+    }
+    /* Inner wrapper so a serpent can face left without fighting the outer
+       surfacing transform. */
+    .srp-flip { display: block; width: 100%; height: 100%; transform: scaleX(-1); }
+
     @keyframes fxDrift {
       0% { transform: translateX(var(--fx-x0, -30%)); opacity: var(--fx-opacity, 0.4); }
       50% { opacity: var(--fx-opacity, 0.7); }
@@ -371,6 +383,28 @@ function risingParticle(container, opts) {
   return el;
 }
 
+
+// A drawn antique-chart sea serpent (the cartography effect surfaces it over
+// open-ocean fog). Sepia engraving idiom: a horned dragon head with an open
+// toothy jaw + a cream eye, a frilled neck, two scaled coils breaching a wavy
+// waterline, and a webbed tail. Authored in scripts/gen-cartography-map.mjs
+// (serpentArt) and exported verbatim via PRINT_SERPENT — edit it there, not here.
+const SERPENT_SVG =
+  `<svg viewBox='-10 -36 82 44' width='100%' height='100%' style='display:block;overflow:visible' xmlns='http://www.w3.org/2000/svg'>` +
+  `<path d='M-4 1 q3 -2.4 6 0 q3 2.4 6 0 q3 -2.4 6 0' stroke='#5c4020' fill='none' stroke-linecap='round' stroke-linejoin='round' stroke-width='0.9' opacity='0.5'/>` +
+  `<path d='M26 1 q3 -2.4 6 0 q3 2.4 6 0 q3 -2.4 6 0 q3 -2.4 6 0' stroke='#5c4020' fill='none' stroke-linecap='round' stroke-linejoin='round' stroke-width='0.9' opacity='0.5'/>` +
+  `<path d='M8 -2 q-4 0 -6 -7' stroke='#5c4020' fill='none' stroke-linecap='round' stroke-linejoin='round' stroke-width='2.4'/>` +
+  `<path d='M2 -9 l-3 -6 M2 -9 l1 -7 M2 -9 l5 -5 M2 -9 l6 -2' stroke='#5c4020' fill='none' stroke-linecap='round' stroke-linejoin='round' stroke-width='1'/>` +
+  `<path d='M-1 -15 q4 1 9 5' stroke='#5c4020' fill='none' stroke-linecap='round' stroke-linejoin='round' stroke-width='0.8' opacity='0.7'/>` +
+  `<path d='M8 -2C9.3 -3.7 13.5 -12.2 16 -12C18.5 -11.8 20.3 -1 23 -1C25.7 -1 29.2 -11.8 32 -12C34.8 -12.2 37.8 -2.7 40 -2C42.2 -1.3 43.5 -5.8 45 -8C46.5 -10.2 48.3 -13.8 49 -15' stroke='#5c4020' fill='none' stroke-linecap='round' stroke-linejoin='round' stroke-width='3.8'/>` +
+  `<path d='M11 -10 L10 -15 L15.5 -10 M15 -11.5 L14 -18 L19.5 -11.5 M18.5 -10 L17.5 -15 L23 -10 M27 -10 L26 -15 L31.5 -10 M31 -11.5 L30 -18 L35.5 -11.5 M34.5 -10 L33.5 -15 L39 -10 M41 -8 L40 -12.5 L45.5 -8' stroke='#5c4020' fill='none' stroke-linecap='round' stroke-linejoin='round' stroke-width='1'/>` +
+  `<path d='M13 -9 l3 1 M18 -10 l3 1 M29 -9 l3 1 M34 -10 l3 1' stroke='#5c4020' fill='none' stroke-linecap='round' stroke-linejoin='round' stroke-width='0.8' opacity='0.6'/>` +
+  `<path d='M47 -14 Q46 -20 50 -21 Q55 -24 60 -21 Q64 -19 62 -16 Q58 -16 55 -15.5 Q51 -14 47 -14 Z' fill='#5c4020'/>` +
+  `<path d='M50 -13 Q54 -11.5 60 -12.2 Q56 -10 51 -10.6 Q49 -11.2 50 -13 Z' fill='#5c4020'/>` +
+  `<path d='M55 -15 l0.6 1.5 M58 -15 l0.5 1.5 M60.5 -15.3 l0.4 1.3' stroke='#e9d9b2' stroke-width='0.7' fill='none' stroke-linecap='round'/>` +
+  `<circle cx='51.5' cy='-18' r='1.2' fill='#e9d9b2'/><circle cx='51.7' cy='-18' r='0.45' fill='#5c4020'/>` +
+  `<path d='M50 -20 Q47 -25 49 -28 M53 -21 Q52 -26 55 -28' stroke='#5c4020' fill='none' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.3'/>` +
+  `</svg>`;
 
 // THEME EFFECT DEFINITIONS
 
@@ -1037,24 +1071,42 @@ const THEME_EFFECTS = {
     return tickCleanup;
   },
 
-  // Cartography (L20): tiny sounding rings surface and fade over the chart.
-  // (The drifting dashed "course routes" were cut 2026-06-29 — they read as
-  // random lines crossing the sea; the sea serpents drawn into the map are the
-  // chart's character now.)
+  // Cartography (L20): "here be monsters" — a drawn sea serpent SURFACES in an
+  // open-ocean patch of the chart, holds a beat, then submerges; another pops up
+  // elsewhere. (Replaced the sounding-ring dots 2026-06-29 — Christopher wanted
+  // the serpents to be the thing that pops in and out, not random dots.) The
+  // effect layer renders over the fog but UNDER revealed cells, so a serpent
+  // only shows through uncleared ocean; the zones below keep it off the centered
+  // island + the bottom-right compass.
   cartography: (container) => {
     injectStyles();
-    const soundingCleanup = particleLoop(container, (c) => {
-      const s = rand(5, 9);
-      return spawn(c, { style: {
-        left: rand(6, 92) + '%', top: rand(6, 92) + '%',
-        width: s + 'px', height: s + 'px', borderRadius: '50%',
-        border: '1.5px solid rgba(106,74,38,0.55)',
-        background: 'transparent',
-        animation: `fxTwinkle ${rand(2.5, 4.5)}s ease-in-out forwards`,
-        '--fx-opacity': '0.6',
-      }});
-    }, () => rand(1100, 2300));
-    return () => { soundingCleanup(); };
+    // peripheral ocean zones [leftRange, topRange] in %, avoiding the centered
+    // Moorea (center box) and the bottom-right compass rose.
+    const ZONES = [
+      [[3, 18], [5, 24]],   // top-left
+      [[34, 60], [3, 13]],  // top
+      [[68, 86], [6, 22]],  // top-right (water near Tahiti)
+      [[2, 15], [36, 64]],  // left
+      [[72, 89], [38, 66]], // right
+      [[5, 22], [68, 86]],  // bottom-left
+      [[36, 58], [76, 90]], // bottom
+    ];
+    const cleanup = particleLoop(container, (c) => {
+      const z = pick(ZONES);
+      const w = rand(80, 110);
+      const flip = Math.random() < 0.5;
+      return spawn(c, {
+        html: flip ? `<span class='srp-flip'>${SERPENT_SVG}</span>` : SERPENT_SVG,
+        style: {
+          left: rand(z[0][0], z[0][1]) + '%', top: rand(z[1][0], z[1][1]) + '%',
+          width: w + 'px', height: (w * 44 / 82) + 'px',
+          transformOrigin: 'center bottom',
+          animation: `fxSurface ${rand(5.5, 7.5)}s ease-in-out forwards`,
+          '--fx-opacity': '0.82',
+        },
+      });
+    }, () => rand(3800, 7200));
+    return () => { cleanup(); };
   },
 
   // Origami (L25): folded paper birds — pastel clip-path triangles

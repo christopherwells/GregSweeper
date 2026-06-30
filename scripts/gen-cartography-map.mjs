@@ -44,18 +44,6 @@ function rdpClosed(points, eps) {
 }
 const mean = (pts, i) => pts.reduce((s, p) => s + p[i], 0) / pts.length;
 const poly = (p) => 'M' + p.map(([x, y]) => `${P(x)} ${P(y)}`).join(' L') + ' Z';
-// Catmull-Rom smoothed open path (for the serpent body)
-function curve(pts) {
-  let d = '';
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
-    const c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6;
-    const c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6;
-    d += `C${P(c1x)} ${P(c1y)} ${P(c2x)} ${P(c2y)} ${P(p2[0])} ${P(p2[1])}`;
-  }
-  return d;
-}
-const smooth = (pts) => `M${P(pts[0][0])} ${P(pts[0][1])}` + curve(pts);
 
 function loadRing(name) {
   const d = JSON.parse(readFileSync(new URL(`./_${name}.json`, import.meta.url), 'utf8'));
@@ -108,44 +96,6 @@ function island(coast, peaks) {
   return s;
 }
 
-// a "here be monsters" sea serpent in the antique-engraving idiom: a horned
-// dragon head with an open toothy jaw rising on a frilled neck, two scaled
-// coils breaching a wavy waterline, and a webbed tail fin. Sepia chart ink.
-// Local coords: waterline ~y=0, body above, head at the right.
-function serpentArt() {
-  const sp = `stroke='${SEPIA}' fill='none' stroke-linecap='round' stroke-linejoin='round'`;
-  const spine = [[8, -2], [16, -12], [23, -1], [32, -12], [40, -2], [45, -8], [49, -15]];
-  const spk = (x, y, h) => `M${x - 2} ${y} L${x - 3} ${y - h} L${x + 2.5} ${y}`; // swept back
-  const frill = [[13, -10, 5], [17, -11.5, 6.5], [20.5, -10, 5], [29, -10, 5], [33, -11.5, 6.5], [36.5, -10, 5], [43, -8, 4.5]].map((s) => spk(...s)).join(' ');
-  return (
-    // waterline (behind the body)
-    `<path d='M-4 1 q3 -2.4 6 0 q3 2.4 6 0 q3 -2.4 6 0' ${sp} stroke-width='0.9' opacity='0.5'/>` +
-    `<path d='M26 1 q3 -2.4 6 0 q3 2.4 6 0 q3 -2.4 6 0 q3 -2.4 6 0' ${sp} stroke-width='0.9' opacity='0.5'/>` +
-    // tail: a stem + a webbed fan
-    `<path d='M8 -2 q-4 0 -6 -7' ${sp} stroke-width='2.4'/>` +
-    `<path d='M2 -9 l-3 -6 M2 -9 l1 -7 M2 -9 l5 -5 M2 -9 l6 -2' ${sp} stroke-width='1'/>` +
-    `<path d='M-1 -15 q4 1 9 5' ${sp} stroke-width='0.8' opacity='0.7'/>` +
-    // body tube (the two coils + neck)
-    `<path d='${smooth(spine)}' ${sp} stroke-width='3.8'/>` +
-    // swept-back dorsal frill + light scale hatching
-    `<path d='${frill}' ${sp} stroke-width='1'/>` +
-    `<path d='M13 -9 l3 1 M18 -10 l3 1 M29 -9 l3 1 M34 -10 l3 1' ${sp} stroke-width='0.8' opacity='0.6'/>` +
-    // HEAD (filled dragon head): cranium + snout
-    `<path d='M47 -14 Q46 -20 50 -21 Q55 -24 60 -21 Q64 -19 62 -16 Q58 -16 55 -15.5 Q51 -14 47 -14 Z' fill='${SEPIA}'/>` +
-    // lower jaw (open)
-    `<path d='M50 -13 Q54 -11.5 60 -12.2 Q56 -10 51 -10.6 Q49 -11.2 50 -13 Z' fill='${SEPIA}'/>` +
-    // teeth (cream) in the open mouth
-    `<path d='M55 -15 l0.6 1.5 M58 -15 l0.5 1.5 M60.5 -15.3 l0.4 1.3' stroke='%23e9d9b2' stroke-width='0.7' fill='none' stroke-linecap='round'/>` +
-    // eye (cream with a sepia pupil) + swept-back horns
-    `<circle cx='51.5' cy='-18' r='1.2' fill='%23e9d9b2'/><circle cx='51.7' cy='-18' r='0.45' fill='${SEPIA}'/>` +
-    `<path d='M50 -20 Q47 -25 49 -28 M53 -21 Q52 -26 55 -28' ${sp} stroke-width='1.3'/>`
-  );
-}
-function serpent(x, y, sc, flip) {
-  const f = flip ? -1 : 1;
-  return `<g transform='translate(${P(x)} ${P(y)}) scale(${P(sc * f)} ${P(sc)})' opacity='0.85'>${serpentArt()}</g>`;
-}
-
 function compass(cx, cy, r) {
   const pt = (ang, len, w) => {
     const a = (ang * Math.PI) / 180, a2 = ((ang + 90) * Math.PI) / 180;
@@ -180,9 +130,8 @@ function svg() {
     island(tahiti, false) +
     island(maiao, false) +
     island(moorea, true) +
-    // sea serpents in open ocean (small but visible)
-    serpent(26, 44, 0.66, false) +
-    serpent(110, 324, 0.74, false) +
+    // (the sea serpent is an animated effect now — it surfaces + submerges over
+    //  open-ocean fog tiles, drawn live in src/ui/themeEffects.js, not baked in)
     compass(316, 318, 17) +
     `</svg>`
   );
@@ -198,11 +147,8 @@ writeFileSync(new URL('./_carto-preview.html', import.meta.url),
    .raw{width:360px;height:360px;background:#cbe2ee;background-image:${dataUri};background-repeat:no-repeat;background-size:contain;background-position:center}
    .board{width:392px;height:392px;background-color:#b8a070;background-image:${dataUri};background-repeat:no-repeat;background-size:cover;background-position:center}
    .title{width:430px;height:620px;background:#c9b896;background-image:${dataUri};background-repeat:no-repeat;background-size:cover;background-position:center}
-   .serp{width:420px;height:240px;background:#5a86a8}
   </style>
   <div class=row>
-   <div><div>SERPENT (big, on ocean blue)</div>
-     <svg class=serp viewBox='-8 -34 78 42'>${serpentArt()}</svg></div>
    <div><div>RAW (full square)</div><div class=raw></div></div>
    <div><div>BOARD (cover)</div><div class=board></div></div>
    <div><div>TITLE (cover)</div><div class=title></div></div>
