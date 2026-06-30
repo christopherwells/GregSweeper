@@ -1104,7 +1104,7 @@ const THEME_EFFECTS = {
           width: w + 'px', height: (w * 44 / 82) + 'px',
           transformOrigin: 'center bottom',
           animation: `fxSurface ${rand(5.5, 7.5)}s ease-in-out forwards`,
-          '--fx-opacity': '0.82',
+          '--fx-opacity': '0.4', // faint — a ghost surfacing, not a foreground sticker
         },
       });
     }, () => rand(3800, 7200));

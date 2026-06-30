@@ -8,6 +8,9 @@
   --color-app-bg: #e0d0a8;
   --color-cell-hidden: #d8c8a0;
   --color-cell-hidden-hover: rgba(202, 184, 138, 0.55);
+  /* Parchment veil laid over the chart (board + title) so the saturated ocean
+     fades to a soft aged backdrop and the numbers read as foreground. */
+  --chart-wash: rgba(233, 221, 187, 0.46);
   /* THE CHART: an antique sea chart of MOOREA and its neighbors, traced from
      real coastlines (© OpenStreetMap contributors, ODbL). Moorea sits centered
      (cream volcanic island, its two deep north bays Cook's + Ōpūnohu, a tropical
@@ -143,15 +146,19 @@
    centered (no tiling — a stacked-island repeat looks wrong). Static CSS so it
    shows regardless of the particle gate; the drifting route dashes layer over it. */
 [data-theme="cartography"] #title-screen.has-title-sky {
-  background-image: var(--bg-fog-art);
+  background-image: linear-gradient(var(--chart-wash), var(--chart-wash)), var(--bg-fog-art);
   background-repeat: no-repeat;
   background-size: cover;
   background-position: center;
 }
 
 /* The board carries the same single island: cover (preserve aspect — the
-   island must not stretch), centered, overriding global.css's 100% 100%. */
+   island must not stretch), centered, overriding global.css's 100% 100%.
+   A parchment WASH sits over the chart (first gradient layer) so the saturated
+   ocean fades to a soft, aged backdrop and the cell numbers read as the clear
+   foreground — an antique chart is pale, not vivid. */
 [data-theme="cartography"] #board {
+  background-image: linear-gradient(var(--chart-wash), var(--chart-wash)), var(--bg-fog-art);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
