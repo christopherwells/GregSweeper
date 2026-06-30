@@ -111,3 +111,26 @@ export function isLiveGameExpired(live, clock) {
   }
   return false;
 }
+
+/**
+ * Decide whether the in-memory weekly-attempt cache
+ * (state.cachedWeeklyDayAttempts) has gone stale because the ET week
+ * rolled over while a long-lived session stayed open.
+ *
+ * The cache is seeded ONCE at boot for that day's week and never
+ * re-derived afterward. A tab or installed PWA left open across the
+ * Sunday→Monday boundary therefore keeps the PREVIOUS week's attempts
+ * in memory, so the Weekly card reports "Done N/7" and the play gate
+ * refuses a fresh attempt on a week that has in fact reset — the weekly
+ * "didn't reset" symptom. Returns true when the cache must be reloaded
+ * for `liveWeek`. A null/empty liveWeek (date helper unavailable) is
+ * never treated as a rollover.
+ *
+ * @param {string|null|undefined} cachedWeek - weekStart the cache was loaded for
+ * @param {string} liveWeek - the current ET weekStart (getWeekStart())
+ * @returns {boolean}
+ */
+export function isWeeklyAttemptCacheStale(cachedWeek, liveWeek) {
+  if (!liveWeek) return false;
+  return cachedWeek !== liveWeek;
+}

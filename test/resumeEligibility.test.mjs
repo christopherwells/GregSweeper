@@ -12,7 +12,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isSaveResumable, isLiveGameExpired } from '../src/logic/resumeEligibility.js';
+import { isSaveResumable, isLiveGameExpired, isWeeklyAttemptCacheStale } from '../src/logic/resumeEligibility.js';
 
 const TODAY = '2026-06-12';
 const YESTERDAY = '2026-06-11';
@@ -181,4 +181,32 @@ test('finished or modeless games never expire', () => {
   assert.equal(isLiveGameExpired({ gameMode: 'daily', status: 'lost', dailySeed: YESTERDAY }, CLOCK), false);
   assert.equal(isLiveGameExpired({ gameMode: 'normal', status: 'playing' }, CLOCK), false);
   assert.equal(isLiveGameExpired({ gameMode: 'timed', status: 'playing' }, CLOCK), false);
+});
+
+// ── Weekly-attempt cache rollover (long-open session) ──
+
+test('REGRESSION: weekly-attempt cache is stale when the week rolled over while open', () => {
+  // The bug: a background tab / installed PWA seeds state.cachedWeekly-
+  // DayAttempts once at boot and never re-derives it. Reopened after the
+  // Sunday→Monday boundary, it still holds last week's all-7-days map, so
+  // the Weekly card showed "Done 7/7" and the play gate refused a new
+  // attempt on a week that had actually reset ("the weekly didn't reset",
+  // reported 2026-06-29). This flag is what drives the on-wake re-seed.
+  assert.equal(isWeeklyAttemptCacheStale(LAST_WEEK, WEEK), true);
+});
+
+test('weekly-attempt cache is fresh when the cached week matches the live week', () => {
+  assert.equal(isWeeklyAttemptCacheStale(WEEK, WEEK), false);
+});
+
+test('a never-seeded weekly cache (null week) is treated as stale and re-seeds', () => {
+  assert.equal(isWeeklyAttemptCacheStale(null, WEEK), true);
+  assert.equal(isWeeklyAttemptCacheStale(undefined, WEEK), true);
+});
+
+test('missing live week (date helper unavailable) is never a rollover', () => {
+  // Guard against churn if getWeekStart() ever returns falsy — better to
+  // keep the existing cache than to wipe it to an empty map mid-session.
+  assert.equal(isWeeklyAttemptCacheStale(WEEK, ''), false);
+  assert.equal(isWeeklyAttemptCacheStale(WEEK, null), false);
 });
