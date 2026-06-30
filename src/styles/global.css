@@ -1774,6 +1774,11 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   text-decoration: underline;
   text-decoration-thickness: 2px;
   text-underline-offset: 2px;
+  /* Keep the underline CONTINUOUS. The browser default skip-ink erases the line
+     where the glyph crosses it; on large-font themes (editorial 0.67, the 0.72
+     serif themes) the number is big enough that almost the whole underline gets
+     eaten, leaving only a stub — so the liar cue read as "no underline". */
+  text-decoration-skip-ink: none;
   outline: var(--marker-liar-outline-width, 2px) solid var(--marker-liar-outline, rgba(231, 76, 60, 0.9));
   outline-offset: -2px;
 }
