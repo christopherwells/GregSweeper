@@ -3778,6 +3778,24 @@ if (colorblindToggle) {
   colorblindToggle.addEventListener('change', () => applyColorblind(colorblindToggle.checked));
 }
 
+// Classic mines & flags toggle — pins the board objects to the canonical
+// sprites on every theme (getThemeEmoji reads data-classic-objects).
+const classicObjectsToggle = $('#classic-objects-toggle');
+const CLASSIC_OBJECTS_KEY = 'minesweeper_classic_objects';
+function applyClassicObjects(enabled) {
+  document.documentElement.setAttribute('data-classic-objects', enabled ? 'true' : 'false');
+  safeSet(CLASSIC_OBJECTS_KEY, enabled ? '1' : '0');
+}
+if (classicObjectsToggle) {
+  const coEnabled = safeGet(CLASSIC_OBJECTS_KEY) === '1';
+  classicObjectsToggle.checked = coEnabled;
+  applyClassicObjects(coEnabled);
+  classicObjectsToggle.addEventListener('change', () => {
+    applyClassicObjects(classicObjectsToggle.checked);
+    try { updateAllCells(); } catch {} // re-skin a live board immediately
+  });
+}
+
 // ── Init ───────────────────────────────────────────────
 
 async function init() {

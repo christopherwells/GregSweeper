@@ -183,8 +183,14 @@ export function getThemeEmoji(type) {
   // object identity now, which also means theme sprites always match.
   const currentTheme = document.documentElement.getAttribute('data-theme') || 'classic';
   const themeInfo = THEME_UNLOCKS[currentTheme];
-  if (type === 'mine') return themeInfo?.mine || '💣';
-  if (type === 'flag') return themeInfo?.flag || '🚩';
+  // "Classic mines & flags" setting: a player who likes the themed worlds
+  // but not the recolored objects pins the mine, flag, and exploded-mine
+  // (strike) back to the canonical glyphs — these resolve to the original
+  // mine.png / flag.png / strike.png sprites on every theme. Numbers,
+  // backgrounds, and Greg (smiley) stay themed.
+  const classicObjects = document.documentElement.getAttribute('data-classic-objects') === 'true';
+  if (type === 'mine') return classicObjects ? '💣' : (themeInfo?.mine || '💣');
+  if (type === 'flag') return classicObjects ? '🚩' : (themeInfo?.flag || '🚩');
   if (type === 'smiley') return themeInfo?.smiley || '😊';
   if (type === 'smileyWin') return themeInfo?.smileyWin || '😎';
   if (type === 'smileyLoss') return themeInfo?.smileyLoss || '😵';
@@ -192,7 +198,7 @@ export function getThemeEmoji(type) {
   // (e.g. forest: acorn mine → fallen-tree strike) via `strikeCell`. Falling
   // back to the theme's mine keeps today's behavior (and the canonical 💣
   // still resolves to strike.png on Classic/Dark via the sprite path).
-  if (type === 'strikeCell') return themeInfo?.strikeCell || themeInfo?.mine || '💣';
+  if (type === 'strikeCell') return classicObjects ? '💣' : (themeInfo?.strikeCell || themeInfo?.mine || '💣');
   return '💣';
 }
 
