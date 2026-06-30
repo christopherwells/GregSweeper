@@ -132,3 +132,11 @@
 /* Cell numbers sized to match classic's legibility (this font reads lighter
    than Segoe 800; global default is --cell-size * 0.56). */
 [data-theme="origami"] #board .cell { font-size: calc(var(--cell-size, 40px) * 0.72); }
+
+/* Origami title backdrop: the folded-paper crease pattern (the board's fog-art)
+   tiles behind the (solid) cards as a continuous paper-fold texture. */
+[data-theme="origami"] #title-screen.has-title-sky {
+  background-image: var(--bg-fog-art);
+  background-repeat: repeat;
+  background-size: 200px 200px;
+}
