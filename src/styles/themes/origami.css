@@ -25,26 +25,32 @@
   --color-mine-hit: #c02828;
   --color-flag: #d14a4a;
   --color-text: #3a342c;
-  --color-text-secondary: #8a8270;
+  /* Darkened from the old mid-tone #8a8270, which only hit ~2.8:1 on the light
+     paper cards (the light-theme washout trap) — now a deep warm gray that
+     clears 4.5:1 on the card + header stock. */
+  --color-text-secondary: #5b5447;
 
-  --color-num-1: #4a8ac0;
-  --color-num-2: #5aa05a;
-  --color-num-3: #d14a4a;
-  --color-num-4: #9a6ac0;
-  --color-num-5: #e08ab0;
-  --color-num-6: #4ab0b0;
+  /* Deepened from the old pastel set: on the near-white revealed cell (#f6f3ec)
+     the pastels read at only ~2.8-4.0:1 — the green even failed the large-text
+     bar. These keep each hue but darken to clear 4.5:1 (legible like classic). */
+  --color-num-1: #3a6ba8;
+  --color-num-2: #347a38;
+  --color-num-3: #bd3838;
+  --color-num-4: #7a4aa0;
+  --color-num-5: #b23a72;
+  --color-num-6: #1d7575;
   --color-num-7: #5a5450;
-  --color-num-8: #9a9080;
-  --color-num-9: #e0903a;
-  --color-num-10: #4aa0c0;
-  --color-num-11: #a06ac0;
-  --color-num-12: #b0a040;
-  --color-num-13: #e06a4a;
-  --color-num-14: #4aa080;
-  --color-num-15: #6a6ac0;
-  --color-num-16: #d0904a;
-  --color-num-17: #4a7ac0;
-  --color-num-18: #c06a90;
+  --color-num-8: #6a6052;
+  --color-num-9: #9c5c1e;
+  --color-num-10: #287490;
+  --color-num-11: #8a4aa8;
+  --color-num-12: #7a6a20;
+  --color-num-13: #b54a2a;
+  --color-num-14: #287a5a;
+  --color-num-15: #4a4aa0;
+  --color-num-16: #9a6020;
+  --color-num-17: #3a62a8;
+  --color-num-18: #a83a6a;
 
   --color-header-bg: #e2ddd2;
   --color-header-gradient: linear-gradient(180deg, #ece7dc, #e2ddd2);
@@ -59,8 +65,10 @@
   --color-fog: rgba(40, 36, 30, 0.86);
   --color-scan-highlight: rgba(209, 74, 74, 0.12);
   --color-golden: #d0a040;
-  --color-accent: #d14a4a;
-  --color-accent-hover: #b03838;
+  /* Deepened so accent-colored chrome (the "Past" chip text) clears 4.5:1 on
+     the light cards. The brighter red lives on in --color-mine/-flag/-loss. */
+  --color-accent: #ab3535;
+  --color-accent-hover: #902c2c;
   --color-accent-glow: rgba(209, 74, 74, 0.22);
   --color-win: #5aa05a;
   --color-loss: #d14a4a;
@@ -115,7 +123,7 @@
   font-family: 'Century Gothic', 'Futura', 'Trebuchet MS', sans-serif;
   letter-spacing: 4px;
   text-transform: uppercase;
-  color: #8a8270;
+  color: #5b5447;
 }
 
 /* Unfold reveal — the tile opens flat from a crease. */
@@ -132,3 +140,40 @@
 /* Cell numbers sized to match classic's legibility (this font reads lighter
    than Segoe 800; global default is --cell-size * 0.56). */
 [data-theme="origami"] #board .cell { font-size: calc(var(--cell-size, 40px) * 0.72); }
+
+/* Origami title backdrop: the folded-paper crease pattern (the board's fog-art)
+   tiles behind the (solid) cards as a continuous paper-fold texture. */
+[data-theme="origami"] #title-screen.has-title-sky {
+  /* A parchment wash over the crease tile so the header text (which sits on the
+     backdrop, NOT a card) reads cleanly — the raw creases ran right through the
+     subtitle. The wash mutes them to a faint paper texture. */
+  background-image:
+    linear-gradient(rgba(236, 232, 223, 0.72), rgba(236, 232, 223, 0.72)),
+    var(--bg-fog-art);
+  background-repeat: no-repeat, repeat;
+  background-size: cover, 200px 200px;
+}
+
+/* Flagged cells fill with the revealed tile so the paper flag reads on a solid
+   panel, not the charted-crease fog. Under an active effect (.fx-on) they take
+   the same grout seal as revealed cells. */
+[data-theme="origami"] .cell.flagged {
+  background: var(--color-cell-revealed) !important;
+}
+[data-theme="origami"] #board.fx-on .cell.flagged::before {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  inset: calc(-1 * var(--grid-gap, 2px) - 1px);
+  background: var(--cell-gap-seal);
+  z-index: -2;
+}
+[data-theme="origami"] #board.fx-on .cell.flagged::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  inset: 0;
+  background: var(--color-cell-revealed);
+  border-radius: var(--cell-shape-radius, var(--border-radius));
+  z-index: -1;
+}

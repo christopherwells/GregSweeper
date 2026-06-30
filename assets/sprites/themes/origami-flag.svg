@@ -1,0 +1,7 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
+<!-- Origami flag: a teal folded-paper pennant on a pole; the centre crease runs to the tip. -->
+<path d='M19 8 L19 56' stroke='#6a6052' stroke-width='3' stroke-linecap='round'/>
+<path d='M19 11 L51 21 L19 31 Z' fill='#5fc0b6' stroke='#268a80' stroke-width='1.6' stroke-linejoin='round'/>
+<path d='M19 21 L51 21' stroke='#268a80' stroke-width='1' opacity='0.6'/>
+<path d='M13 56 L25 56' stroke='#6a6052' stroke-width='3' stroke-linecap='round'/>
+</svg>

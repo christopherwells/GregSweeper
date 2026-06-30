@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v1.6.118';
+const CACHE_NAME = 'gregsweeper-v1.6.124';
 const ASSETS = [
   './',
   './index.html',
@@ -190,6 +190,9 @@ const ASSETS = [
   './assets/sprites/themes/cartography-mine.svg',
   './assets/sprites/themes/cartography-flag.svg',
   './assets/sprites/themes/cartography-strike.svg',
+  './assets/sprites/themes/origami-mine.svg',
+  './assets/sprites/themes/origami-flag.svg',
+  './assets/sprites/themes/origami-strike.svg',
   './assets/sprites/themes/chalkboard-mine.svg',
   './assets/sprites/themes/chalkboard-flag.svg',
   './assets/sprites/themes/chalkboard-strike.svg',
