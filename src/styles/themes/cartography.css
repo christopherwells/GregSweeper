@@ -10,7 +10,7 @@
   --color-cell-hidden-hover: rgba(202, 184, 138, 0.55);
   /* Parchment veil laid over the chart (board + title) so the saturated ocean
      fades to a soft aged backdrop and the numbers read as foreground. */
-  --chart-wash: rgba(233, 221, 187, 0.46);
+  --chart-wash: rgba(233, 221, 187, 0.66);
   /* THE CHART: an antique sea chart of MOOREA and its neighbors, traced from
      real coastlines (© OpenStreetMap contributors, ODbL). Moorea sits centered
      (cream volcanic island, its two deep north bays Cook's + Ōpūnohu, a tropical
