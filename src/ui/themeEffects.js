@@ -387,8 +387,10 @@ function risingParticle(container, opts) {
 // A drawn antique-chart sea serpent (the cartography effect surfaces it over
 // open-ocean fog). Sepia engraving idiom: a horned dragon head with an open
 // toothy jaw + a cream eye, a frilled neck, two scaled coils breaching a wavy
-// waterline, and a webbed tail. Authored in scripts/gen-cartography-map.mjs
-// (serpentArt) and exported verbatim via PRINT_SERPENT — edit it there, not here.
+// waterline, and a webbed tail. Authored in scripts/gen-serpent.mjs and copied
+// verbatim from its `--print` output — edit the drawing THERE, not here. The
+// dorsal frill is computed along the body curve (a connected comb on each
+// breaching coil), so it can't be hand-edited sanely in this string.
 const SERPENT_SVG =
   `<svg viewBox='-10 -36 82 44' width='100%' height='100%' style='display:block;overflow:visible' xmlns='http://www.w3.org/2000/svg'>` +
   `<path d='M-4 1 q3 -2.4 6 0 q3 2.4 6 0 q3 -2.4 6 0' stroke='#5c4020' fill='none' stroke-linecap='round' stroke-linejoin='round' stroke-width='0.9' opacity='0.5'/>` +
@@ -397,7 +399,7 @@ const SERPENT_SVG =
   `<path d='M2 -9 l-3 -6 M2 -9 l1 -7 M2 -9 l5 -5 M2 -9 l6 -2' stroke='#5c4020' fill='none' stroke-linecap='round' stroke-linejoin='round' stroke-width='1'/>` +
   `<path d='M-1 -15 q4 1 9 5' stroke='#5c4020' fill='none' stroke-linecap='round' stroke-linejoin='round' stroke-width='0.8' opacity='0.7'/>` +
   `<path d='M8 -2C9.3 -3.7 13.5 -12.2 16 -12C18.5 -11.8 20.3 -1 23 -1C25.7 -1 29.2 -11.8 32 -12C34.8 -12.2 37.8 -2.7 40 -2C42.2 -1.3 43.5 -5.8 45 -8C46.5 -10.2 48.3 -13.8 49 -15' stroke='#5c4020' fill='none' stroke-linecap='round' stroke-linejoin='round' stroke-width='3.8'/>` +
-  `<path d='M11 -10 L10 -15 L15.5 -10 M15 -11.5 L14 -18 L19.5 -11.5 M18.5 -10 L17.5 -15 L23 -10 M27 -10 L26 -15 L31.5 -10 M31 -11.5 L30 -18 L35.5 -11.5 M34.5 -10 L33.5 -15 L39 -10 M41 -8 L40 -12.5 L45.5 -8' stroke='#5c4020' fill='none' stroke-linecap='round' stroke-linejoin='round' stroke-width='1'/>` +
+  `<path d='M9.01 -6.83L9.7 -13.47L12.11 -11.31L14.15 -19.91L19.05 -11.4L19.66 -13.23L21.34 -6.27M25.5 -6.47L26.23 -13.43L28.39 -11.2L30.31 -19.91L35.44 -11.7L36.38 -13.96L38.55 -6.68M42.16 -6.4L42.92 -13.43L44.93 -11.1L45.19 -19.6L47.4 -15.63' stroke='#5c4020' fill='none' stroke-linecap='round' stroke-linejoin='round' stroke-width='1'/>` +
   `<path d='M13 -9 l3 1 M18 -10 l3 1 M29 -9 l3 1 M34 -10 l3 1' stroke='#5c4020' fill='none' stroke-linecap='round' stroke-linejoin='round' stroke-width='0.8' opacity='0.6'/>` +
   `<path d='M47 -14 Q46 -20 50 -21 Q55 -24 60 -21 Q64 -19 62 -16 Q58 -16 55 -15.5 Q51 -14 47 -14 Z' fill='#5c4020'/>` +
   `<path d='M50 -13 Q54 -11.5 60 -12.2 Q56 -10 51 -10.6 Q49 -11.2 50 -13 Z' fill='#5c4020'/>` +
