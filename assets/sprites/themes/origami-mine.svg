@@ -1,12 +1,12 @@
 <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
-<!-- Origami crane (mine), traced to the reference: a long slender tail spike up-right, broad flat wings sweeping down-out, a neck up-left to an open beak, and a pleated breast. Orange folded paper. -->
-<path d='M50 5 L36 35 L39 33 Z' fill='#cf4c0e' stroke='#241405' stroke-width='1' stroke-linejoin='round'/>
-<path d='M4 43 L28 35 L31 48 Z' fill='#e8601c' stroke='#241405' stroke-width='1' stroke-linejoin='round'/>
-<path d='M7 42 L26 37' stroke='#241405' stroke-width='0.7' fill='none' opacity='0.5'/>
-<path d='M60 47 L37 35 L34 48 Z' fill='#cf4c0e' stroke='#241405' stroke-width='1' stroke-linejoin='round'/>
-<path d='M57 46 L39 38' stroke='#241405' stroke-width='0.7' fill='none' opacity='0.5'/>
-<path d='M28 36 L37 36 L33 54 Z' fill='#e8601c' stroke='#241405' stroke-width='1' stroke-linejoin='round'/>
-<path d='M33 54 L28 41 M33 54 L30 39 M33 54 L32 37 M33 54 L34 37 M33 54 L36 39 M33 54 L37 42' stroke='#241405' stroke-width='0.7' fill='none' opacity='0.6'/>
-<path d='M28 37 L31 36 L24 24 L22 26 Z' fill='#f6883c' stroke='#241405' stroke-width='1' stroke-linejoin='round'/>
-<path d='M22 25 L9 24 L13 27 L9 30 L21 29 Z' fill='#e8601c' stroke='#241405' stroke-width='1' stroke-linejoin='round'/>
+<!-- Origami crane (mine), traced to the reference: a long thin tail spike up-right, broad flat wings spread at body-height, a tall neck rising to a head that bends forward into a fine beak, and a pleated breast. Orange folded paper. -->
+<path d='M46 3 L35 33 L38 31 Z' fill='#cf4c0e' stroke='#241405' stroke-width='1' stroke-linejoin='round'/>
+<path d='M3 39 L27 32 L31 47 Z' fill='#e8601c' stroke='#241405' stroke-width='1' stroke-linejoin='round'/>
+<path d='M6 39 L25 35' stroke='#241405' stroke-width='0.7' fill='none' opacity='0.5'/>
+<path d='M61 46 L38 33 L34 47 Z' fill='#cf4c0e' stroke='#241405' stroke-width='1' stroke-linejoin='round'/>
+<path d='M58 45 L40 37' stroke='#241405' stroke-width='0.7' fill='none' opacity='0.5'/>
+<path d='M27 34 L38 34 L33 54 Z' fill='#e8601c' stroke='#241405' stroke-width='1' stroke-linejoin='round'/>
+<path d='M33 54 L28 39 M33 54 L30 37 M33 54 L32 35 M33 54 L34 35 M33 54 L36 37 M33 54 L37 40' stroke='#241405' stroke-width='0.7' fill='none' opacity='0.6'/>
+<path d='M29 35 L32 34 L26 21 L24 22 Z' fill='#f6883c' stroke='#241405' stroke-width='1' stroke-linejoin='round'/>
+<path d='M26 20 L24 22 L11 26 L16 25 L25 23 Z' fill='#e8601c' stroke='#241405' stroke-width='1' stroke-linejoin='round'/>
 </svg>
