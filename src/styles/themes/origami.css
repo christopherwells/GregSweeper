@@ -144,7 +144,12 @@
 /* Origami title backdrop: the folded-paper crease pattern (the board's fog-art)
    tiles behind the (solid) cards as a continuous paper-fold texture. */
 [data-theme="origami"] #title-screen.has-title-sky {
-  background-image: var(--bg-fog-art);
-  background-repeat: repeat;
-  background-size: 200px 200px;
+  /* A parchment wash over the crease tile so the header text (which sits on the
+     backdrop, NOT a card) reads cleanly — the raw creases ran right through the
+     subtitle. The wash mutes them to a faint paper texture. */
+  background-image:
+    linear-gradient(rgba(236, 232, 223, 0.72), rgba(236, 232, 223, 0.72)),
+    var(--bg-fog-art);
+  background-repeat: no-repeat, repeat;
+  background-size: cover, 200px 200px;
 }

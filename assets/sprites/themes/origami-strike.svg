@@ -1,0 +1,15 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
+<!-- Exploded mine (strike): a crumpled wad of red paper — faceted light/mid/dark folds so the scrunched 3-D form reads. -->
+<g stroke='#7a241e' stroke-width='1' stroke-linejoin='round'>
+<path d='M14 30 L18 16 L28 26 L22 34 Z' fill='#ef806f'/>
+<path d='M18 16 L30 12 L28 26 Z' fill='#d8554c'/>
+<path d='M30 12 L44 16 L38 30 L28 26 Z' fill='#a83a32'/>
+<path d='M44 16 L52 30 L38 30 Z' fill='#d8554c'/>
+<path d='M28 26 L38 30 L30 40 Z' fill='#ef806f'/>
+<path d='M22 34 L28 26 L30 40 Z' fill='#d8554c'/>
+<path d='M14 30 L22 34 L18 46 Z' fill='#a83a32'/>
+<path d='M22 34 L30 40 L34 54 L18 46 Z' fill='#ef806f'/>
+<path d='M30 40 L38 30 L48 46 L34 54 Z' fill='#d8554c'/>
+<path d='M38 30 L52 30 L48 46 Z' fill='#a83a32'/>
+</g>
+</svg>

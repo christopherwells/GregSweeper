@@ -183,7 +183,7 @@ const THEME_SPRITES = {
   sumie:        { mine: T + 'sumie-mine.svg',        flag: T + 'sumie-flag.svg',        strikeCell: T + 'sumie-strike.svg',        ...greg('sumie') },
   blueprint:    { mine: T + 'blueprint-mine.svg',    flag: T + 'blueprint-flag.svg',    strikeCell: T + 'blueprint-strike.svg',    ...greg('blueprint') },
   cartography:  { mine: T + 'cartography-mine.svg',  flag: T + 'cartography-flag.svg',  strikeCell: T + 'cartography-strike.svg',  ...greg('cartography') },
-  origami:      { ...greg('origami') },
+  origami:      { mine: T + 'origami-mine.svg',      flag: T + 'origami-flag.svg',      strikeCell: T + 'origami-strike.svg',      ...greg('origami') },
   chalkboard:   { mine: T + 'chalkboard-mine.svg',   flag: T + 'chalkboard-flag.svg',   strikeCell: T + 'chalkboard-strike.svg',   ...greg('chalkboard') },
   noir:         { strikeCell: T + 'noir-strike.svg', ...greg('noir') },
   ocean:        { ...greg('ocean') },

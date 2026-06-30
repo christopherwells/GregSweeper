@@ -1,0 +1,14 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
+<!-- Origami crane (mine): folded orange paper — beak up-left, tall tail spike up-right, two spread wings, pleated breast. -->
+<path d='M43 5 L33 30 L44 38 Z' fill='#d24e0f' stroke='#2a1606' stroke-width='1' stroke-linejoin='round'/>
+<path d='M2 40 L29 27 L31 47 Z' fill='#e8601c' stroke='#2a1606' stroke-width='1' stroke-linejoin='round'/>
+<path d='M5 39 L26 31' stroke='#2a1606' stroke-width='0.7' fill='none' opacity='0.5'/>
+<path d='M62 51 L37 38 L40 52 Z' fill='#e8601c' stroke='#2a1606' stroke-width='1' stroke-linejoin='round'/>
+<path d='M59 50 L40 42' stroke='#2a1606' stroke-width='0.7' fill='none' opacity='0.5'/>
+<path d='M27 38 L41 40 L37 52 L28 55 Z' fill='#f4843a' stroke='#2a1606' stroke-width='1' stroke-linejoin='round'/>
+<path d='M31 45 L27 42 M31 45 L30 39 M31 45 L35 40 M31 45 L38 43 M31 45 L36 49' stroke='#2a1606' stroke-width='0.6' fill='none' opacity='0.5'/>
+<path d='M23 24 L28 25 L32 51 L28 52 Z' fill='#e8601c' stroke='#2a1606' stroke-width='1' stroke-linejoin='round'/>
+<path d='M25 27 L29 50' stroke='#2a1606' stroke-width='0.7' fill='none' opacity='0.45'/>
+<path d='M23 23 L9 23 L16 27 L26 26 Z' fill='#e8601c' stroke='#2a1606' stroke-width='1' stroke-linejoin='round'/>
+<path d='M9 23 L14 25' stroke='#2a1606' stroke-width='0.8' fill='none' opacity='0.6'/>
+</svg>
