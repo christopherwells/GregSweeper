@@ -22,11 +22,12 @@ const base = {
 test('predictPar selects the timed model on modeTimed boards', () => {
   const daily = predictPar(base);
   const timed = predictPar({ ...base, modeTimed: 1 });
-  // Hand-compute the timed expectation from PAR_MODEL_TIMED.
-  const expect = PAR_MODEL_TIMED.intercept
+  // Hand-compute the timed linear predictor, then back-transform per scale.
+  const lp = PAR_MODEL_TIMED.intercept
     + PAR_MODEL_TIMED.secPerCell * 100 + PAR_MODEL_TIMED.secPerMineFlag * 20
     + PAR_MODEL_TIMED.secPerPatternMove * 3 + PAR_MODEL_TIMED.secPerSearchMove * 1
     + PAR_MODEL_TIMED.secPerZeroCluster * 3;
+  const expect = PAR_MODEL_TIMED.scale === 'log' ? Math.exp(lp) : lp;
   assert.equal(timed, Math.round(expect * 10) / 10);
   // Daily stays on the main model regardless of the timed block.
   assert.equal(predictPar({ ...base, modeTimed: 0 }), daily);
@@ -35,6 +36,11 @@ test('predictPar selects the timed model on modeTimed boards', () => {
 test('every daily coefficient has a timed counterpart (copy-of-daily shape)', () => {
   for (const k of Object.keys(PAR_MODEL)) {
     if (k === 'secModeTimed') continue; // retired field, must not return
+    if (k === 'scale') {
+      // The scale marker is a string, not a coefficient; both models must agree.
+      assert.equal(PAR_MODEL_TIMED.scale, PAR_MODEL.scale, 'timed scale must match daily');
+      continue;
+    }
     assert.equal(typeof PAR_MODEL_TIMED[k], 'number', `PAR_MODEL_TIMED.${k} missing`);
   }
   assert.equal(PAR_MODEL.secModeTimed, undefined, 'the offset coefficient is retired');

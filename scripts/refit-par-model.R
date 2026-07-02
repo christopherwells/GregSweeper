@@ -93,6 +93,16 @@ ADAPT_DELTA <- 0.99   # tight step-size adaptation: coefficients near their
 # not invalidate the posterior means we care about.
 MAX_DIVERGENT_FRAC <- 0.0025
 
+# NOTE (log-model migration, 2026-07): the model response is now
+# log(pure_time), so every slope is a log-MULTIPLIER, not seconds. The LIVE
+# prior CENTERS are therefore seeded per-refit from an OLS fit of
+# log(pure_time) ~ features (compute_log_ols_seeds, below) rather than from the
+# seconds-scale PRIOR_MEANS here, which are retained only as documentation of
+# the original additive intent and are NO LONGER read by build_priors. What is
+# still used: PRIOR_SIGMAS (prior WIDTHS on the log scale) and
+# PRIOR_INTERCEPT_SD. To freeze a stable non-ratcheting anchor instead of the
+# per-run OLS seeds, hardcode a log-scale PRIOR_MEANS and pass it to build_priors.
+#
 # Prior means, one per fixed-effect coefficient. These are the original
 # hand-picked seed values that were in difficulty.js before any refit ran,
 # and represent our "reasonable guess" for how many seconds each kind of
@@ -156,9 +166,10 @@ PRIOR_MEANS <- list(
 # override, tight enough to prevent the 10x fixed-effect swings that killed
 # the lme4 approach. The intercept keeps a plain normal prior (could
 # legitimately be near zero after bias correction).
-PRIOR_INTERCEPT_SD <- 15.0   # lets the intercept float freely; bias-
-                              # correction + slope priors carry the
-                              # calibration
+PRIOR_INTERCEPT_SD <- 2.0    # LOG scale now (was 15s additive): the log
+                              # baseline is ~log(30)≈3.4, so SD 2.0 is very
+                              # wide (±2SD ≈ ×[0.018, 55]) yet not degenerate;
+                              # the OLS seed + bias-correction set the level.
 PRIOR_SIGMAS <- list(
   cellCount            = 1.0,
   totalMines           = 1.0,
@@ -198,9 +209,13 @@ parse_par_model <- function(path) {
 }
 
 # Apply the full PAR_MODEL formula to every row of `df` and return predicted
-# times. Kept close to the JS predictPar so the two stay in sync.
-apply_par_model <- function(df, coefs) {
-  with(df,
+# times in SECONDS. Kept close to the JS predictPar so the two stay in sync.
+# `log_scale` selects the model form, mirroring predictPar's `scale` branch:
+#   log_scale = TRUE  -> par = exp(intercept + Σ coef·x)   (multiplicative; median)
+#   log_scale = FALSE -> par = intercept + Σ coef·x        (legacy additive seconds)
+# The linear predictor is identical either way; only the back-transform differs.
+apply_par_model <- function(df, coefs, log_scale = TRUE) {
+  lp <- with(df,
     coefs$intercept +
     coefs$secPerCell                 * cellCount +
     coefs$secPerMineFlag             * totalMines +
@@ -216,24 +231,84 @@ apply_par_model <- function(df, coefs) {
     coefs$secPerCompassCell          * compassCellCount +
     (coefs$secPerZeroCluster %||% 0) * zeroClusterCount
   )
+  if (log_scale) exp(lp) else lp
 }
 
-# Build the brms prior list. Per-coefficient priors are lognormal so they're
-# inherently positive and centered (as median) on the seed value — this is
-# what does the regularisation work. The Intercept gets a plain normal.
-# Residual SD and handicap SD get weakly informative priors appropriate for
-# variance components.
-build_priors <- function(fixed_names) {
+# Detect whether a parsed PAR_MODEL block is on the log (multiplicative) scale.
+# The refit stamps `scale: 'log'` into the emitted block; its absence means the
+# historical additive model. Drives the back-transform for the outlier screen
+# and the residual fallback, which run against the CURRENTLY shipped model.
+par_model_is_log <- function(path) {
+  src <- paste(readLines(path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  block_start <- str_locate(src, fixed("// PAR_MODEL:START"))[1, "end"]
+  block_end   <- str_locate(src, fixed("// PAR_MODEL:END"))[1, "start"]
+  if (is.na(block_start) || is.na(block_end)) return(FALSE)
+  block <- substr(src, block_start + 1, block_end - 1)
+  str_detect(block, "scale\\s*:\\s*'log'")
+}
+
+# ── Log-model constants (2026-07 migration) ─────────────
+# Legacy (+10s/re-fog, pre-2026-05-31) per-hit bomb cost in SECONDS. The
+# mechanic is frozen, so this cohort only shrinks. Under the multiplicative
+# model a seconds-scale bomb regressor no longer belongs in the log fit, so
+# legacy bomb cost is subtracted from time up front (like the new-mechanic base
+# surcharge) at this fixed rate and folded into each player's additive
+# bombSeconds. Shipped as secPerBombHit. (To make it data-driven again, fit a
+# small seconds-scale lm on legacy rows and set this from its bombHits slope.)
+LEGACY_BOMB_RATE <- 15.0
+# WIDE sanity bound on the multiplicative handicap — purely to reject a
+# degenerate/garbage value (e.g. a broken fit), NOT to shape real players. The
+# regularizer is partial pooling here (and shrinkage in the client provisional),
+# which correctly leaves a WELL-SAMPLED player on their own data however extreme;
+# clamping a confidently-fit k would censor real skill (Christopher, 2026-07-02:
+# "Kate has lots of plays. Why are we clamping?"). [0.1, 10] never bites a
+# plausible human — nobody is 10x faster or slower than Greg.
+HANDICAP_K_MIN <- 0.1
+HANDICAP_K_MAX <- 10.0
+# Floor on pure clean-play time before log() — a very fast board can be a few
+# seconds, so guard against <= 0 after subtracting bomb cost.
+PURE_TIME_FLOOR <- 1.0
+# Floor for an OLS-seeded prior mean so lognormal(log(mean), sigma) is defined
+# when a sparse/collinear predictor yields a tiny/negative slope.
+PRIOR_MEAN_FLOOR <- 1e-3
+
+# OLS-seed the prior CENTERS on the log scale: fit log(pure_time) ~ features by
+# ordinary least squares and use each slope as its lognormal prior median (the
+# "OLS-seeded priors" choice). Memoryless w.r.t. prior refits — re-derived from
+# all current data each run, never from the previous posterior, so it can't
+# ratchet. Missing/NA/non-positive slopes floor to PRIOR_MEAN_FLOOR; the wide
+# PRIOR_SIGMAS keep every prior weakly informative.
+compute_log_ols_seeds <- function(df_fit, fixed_names) {
+  f <- as.formula(paste("log(pure_time) ~", paste(fixed_names, collapse = " + ")))
+  co <- tryCatch(coef(lm(f, data = df_fit)), error = function(e) numeric(0))
+  names(co)[names(co) == "(Intercept)"] <- "Intercept"
+  out <- list()
+  out[["Intercept"]] <- if (!is.null(co["Intercept"]) && !is.na(co["Intercept"]) && is.finite(co["Intercept"])) {
+    as.numeric(co["Intercept"])
+  } else {
+    log(30)  # ~typical board par when OLS can't set a baseline
+  }
+  for (nm in fixed_names) {
+    v <- co[nm]
+    out[[nm]] <- if (!is.null(v) && !is.na(v) && is.finite(v) && v > 0) as.numeric(v) else PRIOR_MEAN_FLOOR
+  }
+  out
+}
+
+# Build the brms prior list. Per-coefficient priors are lognormal (positive,
+# median = the OLS-seeded log-multiplier) — this does the regularisation. The
+# Intercept gets a plain normal. Residual and handicap SD priors are on the LOG
+# scale (times are lognormal), NOT the old seconds scale.
+build_priors <- function(means, fixed_names) {
   parts <- list()
-  # Class-wide constraint: lognormal priors only make sense for positive
-  # parameters, so we need to tell Stan the b-class parameters are bounded
-  # below by zero. brms doesn't allow combining `coef` with `lb`, so the
-  # bound goes on a class-wide placeholder prior and the distribution
-  # specifications come through the per-coef priors below.
+  # Class-wide lower bound: log-multiplier slopes are non-negative (par is
+  # monotonic non-decreasing in every feature) and lognormal requires
+  # positivity. brms can't combine `coef` with `lb`, so the bound rides a
+  # class-wide placeholder and the distributions come through per-coef priors.
   parts[[length(parts) + 1]] <- set_prior("", class = "b", lb = 0)
 
   for (nm in fixed_names) {
-    m <- PRIOR_MEANS[[nm]]
+    m <- means[[nm]]
     if (is.null(m)) stop("Missing prior mean for ", nm)
     if (nm == "Intercept") {
       parts[[length(parts) + 1]] <- set_prior(
@@ -244,18 +319,17 @@ build_priors <- function(fixed_names) {
       sig <- PRIOR_SIGMAS[[nm]]
       if (is.null(sig)) stop("Missing prior sigma for ", nm)
       parts[[length(parts) + 1]] <- set_prior(
-        sprintf("lognormal(%f, %f)", log(m), sig),
+        sprintf("lognormal(%f, %f)", log(max(m, PRIOR_MEAN_FLOOR)), sig),
         class = "b", coef = nm
       )
     }
   }
-  # Residual SD: observation-level completion times vary on the order of
-  # tens of seconds; half-normal(0, 20) covers that with plenty of slack.
-  parts[[length(parts) + 1]] <- set_prior("normal(0, 20)", class = "sigma")
-  # Between-user SD for handicaps: student_t(3, 0, 5) is the brms default-
-  # style weakly informative prior for variance components.
+  # Residual SD on the LOG scale (completion-time log-residuals are O(0.1-0.5)).
+  parts[[length(parts) + 1]] <- set_prior("normal(0, 1)", class = "sigma")
+  # Between-user SD on the LOG scale — weakly informative for a log-scale
+  # variance component (real users' k spread sits well within the [0.5, 2] clamp).
   parts[[length(parts) + 1]] <- set_prior(
-    "student_t(3, 0, 5)", class = "sd", group = "uid"
+    "student_t(3, 0, 1)", class = "sd", group = "uid"
   )
   do.call(c, parts)
 }
@@ -385,6 +459,11 @@ scores_df <- bind_rows(
     # their full `time` here and contribute their cost through the
     # `legacy_bombs` regressor instead.
     clean_time     = time - if_else(totalBombPenalty > 0, bombBaseSum, 0),
+    # pure_time additionally removes the LEGACY per-hit cost (the new-mechanic
+    # base is already out via clean_time), so the log response below is
+    # genuinely clean-play time for BOTH cohorts and no bomb regressor is
+    # needed. Floored so log() is always defined on a very fast board.
+    pure_time      = pmax(clean_time - if_else(is_legacy_bomb, LEGACY_BOMB_RATE * bombHits, 0), PURE_TIME_FLOOR),
   )
 
 legacy_n <- sum(scores_df$is_legacy_bomb, na.rm = TRUE)
@@ -493,13 +572,19 @@ message(sprintf("  joined: N=%d scores, %d dates, %d players (%d eligible with >
 
 current_coefs <- parse_par_model(DIFFICULTY_PATH)
 new_coefs     <- current_coefs  # default: no refit, keep what's there
+# Scale of the CURRENTLY shipped PAR_MODEL, so the pre-fit outlier screen and
+# the residual fallback back-transform it correctly across the additive->log
+# transition. `new_model_is_log` tracks the scale of whatever we END UP
+# shipping: TRUE once a log brms fit succeeds, else the previous model's scale.
+prev_is_log      <- par_model_is_log(DIFFICULTY_PATH)
+new_model_is_log <- prev_is_log
 
 # CSci P0 #7: reject impossibly-fast rows BEFORE fitting. A single 4-sigma
 # lognormal outlier (e.g. 3s on a 60s daily) drags the intercept by ~0.6s
 # at N=90 — meaningful pollution. Compare against the CURRENT shipped
 # PAR_MODEL (the best estimate of "what the time should have been" before
 # this refit runs). Threshold: time < max(5s, 0.3 × predicted_par).
-df$predicted_for_outlier <- apply_par_model(df, current_coefs)
+df$predicted_for_outlier <- apply_par_model(df, current_coefs, prev_is_log)
 pre_outlier_n <- nrow(df)
 df <- df |> filter(time >= pmax(5, 0.3 * predicted_for_outlier))
 n_outliers <- pre_outlier_n - nrow(df)
@@ -514,10 +599,12 @@ df$predicted_for_outlier <- NULL
 n_scores <- nrow(df)
 n_dates  <- length(unique(df$date))
 
-handicaps        <- list()      # uid -> seconds (clean offset + bomb factor)
-handicap_details <- list()      # uid -> { clean, bomb } — the v2 split the
-                                # client itemizes ("Your par = Greg + pace
-                                # + bombs"); emitted alongside the sum.
+handicaps        <- list()      # uid -> k (multiplicative clean-skill ratio)
+handicap_details <- list()      # uid -> { k, bombSeconds } — the split the
+                                # client itemizes ("Your par = Greg × k + bombs")
+refPar           <- 60          # reference board par (seconds) for the seconds
+                                # display of a ratio; both fit paths overwrite
+                                # it from real data (median day-of par).
 fit_method    <- "seed-residuals"
 r2            <- NA_real_
 diag_note     <- ""
@@ -530,15 +617,17 @@ diagnostic_failure <- FALSE
 
 # ── 2. Fit ──────────────────────────────────────────────
 
-fit_formula_fixed <- clean_time ~
+fit_formula_fixed <- log(pure_time) ~
   cellCount + totalMines +
   patternMoves + searchMoves +
   wallEdgeCount +
   mysteryCellCount + liarCellCount + lockedCellCount +
   wormholePairCount + mirrorPairCount +
   sonarCellCount + compassCellCount +
-  zeroClusterCount +
-  legacy_bombs  # fit-only (folded into handicap), not in JS PAR_MODEL
+  zeroClusterCount
+  # Response is log(pure_time) — the multiplicative model. pure_time already
+  # has ALL bomb cost removed (new base + legacy rate), so there is NO bomb
+  # regressor; each player's bomb cost rides in their additive bombSeconds.
 
 if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
   # Bayesian mixed-effects fit on the eligible users (>=
@@ -564,7 +653,8 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
   }
   fit_formula <- update(fit_formula_fixed_active, ~ . + (1 | uid))
 
-  priors <- build_priors(c("Intercept", all.vars(fit_formula_fixed_active)[-1]))
+  ols_seeds <- compute_log_ols_seeds(df_fit, all.vars(fit_formula_fixed_active)[-1])
+  priors <- build_priors(ols_seeds, c("Intercept", all.vars(fit_formula_fixed_active)[-1]))
 
   message("Fitting brms model (this takes ~1-2 min on first run)…")
   fit <- brm(
@@ -610,6 +700,7 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
     # Estimate = posterior mean, which is what we want as the point value.
     co <- fixef(fit)[, "Estimate"]
     fit_method <- "brms-ranef"
+    new_model_is_log <- TRUE   # a log fit succeeded — we ship the log model
 
     # Random intercepts. These are the raw posterior means from brms.
     re <- ranef(fit)$uid[, , "Intercept"]
@@ -636,7 +727,11 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
     co["Intercept"] <- co["Intercept"] + weighted_mean_re
     re_values       <- re_values - weighted_mean_re
 
-    handicaps <- setNames(as.list(round(re_values, 2)), re_names)
+    # re_values are now recentered LOG offsets (Σ w·b = 0, i.e. the play-
+    # weighted GEOMETRIC mean of k is 1). The multiplicative handicap is
+    # k = exp(offset), defensively clamped to [HANDICAP_K_MIN, HANDICAP_K_MAX].
+    k_values  <- pmin(HANDICAP_K_MAX, pmax(HANDICAP_K_MIN, exp(re_values)))
+    handicaps <- setNames(as.list(round(k_values, 3)), re_names)
 
     # Marginal R² (fixed effects only): var(fixed predictions) / total var.
     # brms has bayes_R2() for conditional R², but the marginal definition
@@ -645,8 +740,9 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
     # brms names it "Intercept" — normalise before the match.
     mm <- model.matrix(fit_formula_fixed, data = df_fit)
     mm_names <- colnames(mm); mm_names[mm_names == "(Intercept)"] <- "Intercept"
-    fe_pred <- mm %*% co[match(mm_names, names(co))]
-    r2 <- as.numeric(1 - var(df_fit$time - fe_pred) / var(df_fit$time))
+    fe_pred_log <- as.numeric(mm %*% co[match(mm_names, names(co))])  # linear predictor (log scale)
+    log_y <- log(df_fit$pure_time)
+    r2 <- as.numeric(1 - var(log_y - fe_pred_log) / var(log_y))       # marginal R² on the log scale
 
     cat("\nbrms posterior means (fixed effects, post-recenter):\n")
     print(round(co, 3))
@@ -822,81 +918,60 @@ if (fit_method == "brms-ranef") {
     secPerZeroCluster  = nn(co["zeroClusterCount"],  "zeroCluster")
   )
 
-  # Bias-correct the intercept so the mean predicted par matches the
-  # CLEAN-EQUIVALENT mean actual time across the fit population. The fit
-  # has two bomb-cost sources to net out before comparing:
-  #   (a) New-mechanic plays: their info-value penalty is already in
-  #       `totalBombPenalty`, which we subtracted from `time` into
-  #       `clean_time` upstream — so clean_time is already clean for them.
-  #   (b) Legacy +10s/re-fog plays: `clean_time == time` (their
-  #       totalBombPenalty is 0) and the `legacy_bombs` regressor carries
-  #       their cost; subtract its contribution from clean_time too.
-  # Without (b) the intercept would absorb ~mean(legacy_bombs) * bombCoef
-  # ≈ +14s of legacy inflation, biasing predictPar high.
-  bomb_coef <- if ("legacy_bombs" %in% rownames(fixef(fit))) {
-    as.numeric(fixef(fit)["legacy_bombs", "Estimate"])
-  } else {
-    0
-  }
-  # archivePlay offset (PR 3): present only when archive rows were pooled.
-  # Netted out of the bias-correction below (like legacy_bombs) so the archive
-  # cohort's replay-pace shift can't bias the intercept; logged but NEVER
-  # shipped to predictPar. 0 when the term wasn't in the fit, so the
-  # subtraction is then a no-op (archivePlay is also 0 for every day-of row).
+  # Median calibration (log scale): set the log-intercept so the mean of
+  # log(pure_time) equals the mean linear predictor across DAY-OF rows. Under a
+  # symmetric-error log model that makes par = exp(Xβ) the conditional MEDIAN,
+  # the time Greg beats half the runs (the "no smearing" target). pure_time
+  # already has ALL bomb cost removed, so there is nothing bomb-related left to
+  # net out. Archive replays (a fit-only nuisance offset) are EXCLUDED here, not
+  # netted, so their replay-pace slowness can't leak into day-of par.
+  bomb_coef <- LEGACY_BOMB_RATE   # shipped as secPerBombHit (fixed legacy rate)
   archive_coef <- if ("archivePlay" %in% rownames(fixef(fit))) {
     as.numeric(fixef(fit)["archivePlay", "Estimate"])
   } else {
     0
   }
-  biased_pred <- apply_par_model(df_fit, new_coefs)
-  bomb_adjusted_time <- df_fit$clean_time - bomb_coef * df_fit$legacy_bombs - archive_coef * df_fit$archivePlay
-  bias <- mean(bomb_adjusted_time) - mean(biased_pred)
-  # Apply the bias straight, no max(0, ...) clamp. Earlier code clamped
-  # at zero "for theoretical purity" but that broke calibration whenever
-  # the feature-only sum overshot the population mean — the clamp left
-  # predictPar systematically high (mean residual ~−12s in the audit
-  # 2026-04-30). The intercept is just an additive constant; letting it
-  # absorb whatever bias remains is its only job. A small negative
-  # intercept is harmless because real boards have feature sums well
-  # above any plausible negative shift.
+  dayof <- df_fit$archive == 0
+  # log(apply_par_model(..., log_scale = TRUE)) recovers the linear predictor.
+  lp_dayof <- log(apply_par_model(df_fit[dayof, , drop = FALSE], new_coefs, TRUE))
+  bias <- mean(log(df_fit$pure_time[dayof])) - mean(lp_dayof)
   new_coefs$intercept <- new_coefs$intercept + bias
-  message(sprintf("  legacy_bombs coef: +%.2fs/hit (legacy +10s/re-fog cohort only) | intercept bias-correction: %+.2fs (clean-time-equivalent mean matches mean predicted par)",
-                  bomb_coef, bias))
+  message(sprintf("  log-intercept median bias-correction: %+.3f (mean log pure-play time matches mean predicted log-par over day-of rows)",
+                  bias))
   if (archive_coef != 0) {
-    message(sprintf("  archivePlay coef: %+.2fs (archive-replay offset, fit-only, not shipped)",
+    message(sprintf("  archivePlay coef: %+.3f log-multiplier (archive-replay offset, fit-only, not shipped)",
                     archive_coef))
   }
 
   # Bombs are part of your HANDICAP, not par. predictPar stays clean board
-  # difficulty (untouched above); each player's typical bomb cost is added
-  # onto their clean-skill random intercept here. Per-play bomb cost = the
-  # time bombs add vs clean play: BOMB_PENALTY_BASE/hit for new-mechanic
-  # plays (the info-value part is offset deduction time, not extra cost),
-  # the fitted legacy rate (bomb_coef)/hit for old +10s/re-fog plays.
-  # Net: handicaps no longer sum to zero — the clean-skill part does, and
-  # each player's absolute bomb cost lifts their number. handicap = clean
-  # offset + bomb factor (a steady 1-bomb/day player carries ~+3s now,
-  # ~+14s on legacy plays).
+  # difficulty (par = exp(Xβ)); each player's typical bomb cost rides SEPARATELY
+  # as additive seconds (personalPar = par × k + bombSeconds). Per-play bomb
+  # cost = the time bombs add vs clean play: the escalating base surcharge
+  # (bombBaseSum) for new-mechanic plays, the fixed LEGACY_BOMB_RATE/hit for old
+  # +10s/re-fog plays. The clean-skill ratio k and this bombSeconds are the two
+  # halves of handicapDetails; the shipped `handicaps` map is k alone.
   df_fit$bomb_cost <- ifelse(df_fit$totalBombPenalty > 0,
                              df_fit$bombBaseSum,
-                             bomb_coef * df_fit$bombHits)
+                             LEGACY_BOMB_RATE * df_fit$bombHits)
   bomb_cost_by_uid <- tapply(df_fit$bomb_cost, df_fit$uid, mean)
-  # Emit the clean/bomb split alongside the sum (handicaps.json v2's
-  # handicapDetails) so the client can ITEMIZE "your par" instead of
-  # presenting an oracular single number: par = Greg + pace + bombs.
+  # handicapDetails = { k (clean-skill ratio), bombSeconds } per uid, so the
+  # client can itemize "Your par = Greg × k + bombs". `handicaps[[u]]` stays k
+  # (the ratio) — bombs are NOT folded into it (they are additive, not a ratio).
   for (u in names(handicaps)) {
     bc <- bomb_cost_by_uid[[u]]
     bc <- if (is.null(bc) || is.na(bc)) 0 else bc
-    handicap_details[[u]] <- list(clean = round(handicaps[[u]], 2), bomb = round(bc, 2))
-    if (bc != 0) {
-      handicaps[[u]] <- round(handicaps[[u]] + bc, 2)
-    }
+    handicap_details[[u]] <- list(k = round(handicaps[[u]], 3), bombSeconds = round(bc, 2))
   }
   if (any(bomb_cost_by_uid > 0, na.rm = TRUE)) {
-    message(sprintf("  bomb factor folded into handicaps: %s",
+    message(sprintf("  bomb factor (additive seconds, separate from k): %s",
                     paste(sprintf("%s +%.2fs", names(bomb_cost_by_uid), bomb_cost_by_uid),
                           collapse = ", ")))
   }
+
+  # Reference par for the client's seconds display of a ratio: (k-1) × refPar.
+  # The median predicted par over day-of boards — a stable "typical board" so
+  # the handicap chip reads in comparable seconds across dates.
+  refPar <- round(median(apply_par_model(df_fit[dayof, , drop = FALSE], new_coefs, TRUE)), 1)
 
   # Guard: until enough plays have NONZERO values for each new structural
   # feature, its posterior is essentially the lognormal prior expectation
@@ -933,33 +1008,41 @@ if (fit_method == "brms-ranef") {
 # factor is absolute and lifts each handicap, matching the brms path. So the
 # handicap is clean offset + your typical bomb cost (it does NOT sum to zero).
 if (fit_method == "seed-residuals") {
-  df$predicted  <- apply_par_model(df, new_coefs)
-  # Per-play bomb cost (time bombs add vs clean play). No fitted bomb_coef
-  # in this fallback, so legacy plays use the prior legacy rate.
-  df$bomb_cost   <- ifelse(df$totalBombPenalty > 0,
-                           df$bombBaseSum,
-                           PRIOR_MEANS$legacy_bombs * df$bombHits)
-  df$clean_resid <- (df$time - df$bomb_cost) - df$predicted
+  # Fallback: no brms fit (or it failed diagnostics). Derive RATIO handicaps
+  # from residuals against the CURRENTLY shipped model. apply_par_model uses the
+  # shipped model's own scale (prev_is_log) to return SECONDS, so the ratio math
+  # is correct whether the live PAR_MODEL is still additive or already log.
+  df$predicted <- apply_par_model(df, new_coefs, prev_is_log)
+  # Per-play bomb cost in seconds (new base surcharge / fixed legacy rate).
+  df$bomb_cost <- ifelse(df$totalBombPenalty > 0,
+                         df$bombBaseSum,
+                         LEGACY_BOMB_RATE * df$bombHits)
+  # Clean-play log ratio vs par: log((time - bombs) / par).
+  df$pure_secs <- pmax(df$time - df$bomb_cost, PURE_TIME_FLOOR)
+  df$log_ratio <- log(df$pure_secs / pmax(df$predicted, PURE_TIME_FLOOR))
   per_user <- df |>
     filter(uid %in% eligible_uids) |>
     group_by(uid) |>
-    summarise(n = n(), clean_h = mean(clean_resid), bomb_h = mean(bomb_cost), .groups = "drop")
+    summarise(n = n(), mean_log = mean(log_ratio), bomb_h = mean(bomb_cost), .groups = "drop")
   if (nrow(per_user) > 0) {
     total_plays <- sum(per_user$n)
-    wm_clean <- sum(per_user$clean_h * per_user$n) / total_plays
-    per_user$handicap <- round((per_user$clean_h - wm_clean) + per_user$bomb_h, 2)
-    # Same clean/bomb split as the brms path (handicapDetails v2).
+    # Play-weighted recentering in log space (geometric-mean k = 1), matching
+    # the brms path; then k = exp(recentered offset), clamped.
+    wm_log <- sum(per_user$mean_log * per_user$n) / total_plays
+    per_user$k <- pmin(HANDICAP_K_MAX, pmax(HANDICAP_K_MIN, exp(per_user$mean_log - wm_log)))
     for (i in seq_len(nrow(per_user))) {
       handicap_details[[per_user$uid[i]]] <- list(
-        clean = round(per_user$clean_h[i] - wm_clean, 2),
-        bomb  = round(per_user$bomb_h[i], 2)
+        k = round(per_user$k[i], 3),
+        bombSeconds = round(per_user$bomb_h[i], 2)
       )
     }
+    handicaps <- setNames(as.list(round(per_user$k, 3)), per_user$uid)
+    dayof_pred <- df$predicted[df$archive == 0]
+    if (length(dayof_pred) > 0) refPar <- round(median(dayof_pred, na.rm = TRUE), 1)
   } else {
-    per_user$handicap <- numeric(0)
+    handicaps <- list()
   }
-  handicaps <- setNames(as.list(per_user$handicap), per_user$uid)
-  message(sprintf("Handicaps = clean offset + bomb factor (residuals fallback): %d users (min %d plays)",
+  message(sprintf("Ratio handicaps (residuals fallback): %d users (min %d plays)",
                   length(handicaps), MIN_PLAYS_FOR_FIT_INCLUSION))
 }
 
@@ -972,20 +1055,27 @@ if (fit_method == "seed-residuals") {
 # refresh when we actually have new handicaps to offer.
 if (length(handicaps) > 0) {
   handicaps_obj <- list(
+    # Format tag: the client's dual-reader treats a file WITHOUT this as the
+    # legacy additive seconds format and ignores it (k=1 for everyone), so an
+    # old additive file is never misread as ratios.
+    format    = "logratio-v1",
     updatedAt = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
     modelFitN = n_scores,
     nPlayers  = n_players,
     method    = fit_method,
     diagnostics = if (nchar(diag_note)) diag_note else NULL,
-    # Fitted legacy +10s/re-fog per-hit cost. Surfaces for transparency /
-    # diagnostics, and is the legacy rate used above to fold each player's
-    # bomb cost into their handicap. NOT in JS predictPar — par stays clean;
-    # bombs live in the handicap, not par.
-    secPerBombHit = if (is.na(bomb_coef)) NULL else round(bomb_coef, 2),
+    # Reference board par (seconds) for the client's seconds display of a ratio:
+    # displaySeconds = (k - 1) × refPar. Median day-of par from this fit.
+    refPar    = refPar,
+    # Fixed legacy (+10s/re-fog) per-hit cost in seconds — a frozen historical
+    # cohort, surfaced for transparency. NOT a predictPar coefficient.
+    secPerBombHit = round(LEGACY_BOMB_RATE, 2),
+    # Multiplicative clean-skill ratio per uid: k > 1 = slower than Greg, k < 1 =
+    # faster. adjusted = time / k; personalPar = par × k + bombSeconds.
     handicaps = handicaps,
-    # v2: the clean/bomb decomposition per uid, so the client can itemize
-    # "Your par" instead of presenting one oracular number. Additive —
-    # consumers of the plain `handicaps` map are unaffected.
+    # { k, bombSeconds } per uid — the split the client itemizes as
+    # "Your par = Greg × k + bombs". k mirrors the handicaps map; bombSeconds is
+    # the player's additive bomb cost (0 for a clean player).
     handicapDetails = if (length(handicap_details) > 0) handicap_details else NULL
   )
   writeLines(toJSON(handicaps_obj, auto_unbox = TRUE, pretty = TRUE),
@@ -1043,18 +1133,21 @@ if (length(timed_raw) > 0) {
         patternMoves = canonicalSubsetMoves + genericSubsetMoves,
         searchMoves  = advancedLogicMoves
       )
-    timed_clean_handicap <- function(u) {
+    # Each player's multiplicative handicap k (clean skill). handicap_details
+    # carries { k, bombSeconds }; the handicaps map is k directly.
+    timed_ratio <- function(u) {
       det <- handicap_details[[u]]
-      if (!is.null(det) && !is.null(det$clean)) return(as.numeric(det$clean))
+      if (!is.null(det) && !is.null(det$k)) return(as.numeric(det$k))
       h <- handicaps[[u]]
       if (!is.null(h)) return(as.numeric(h))
       NA_real_
     }
-    timed_df$cleanHandicap <- vapply(timed_df$uid, timed_clean_handicap, numeric(1))
-    timed_df <- timed_df |> filter(!is.na(cleanHandicap))
+    timed_df$ratioK <- vapply(timed_df$uid, timed_ratio, numeric(1))
+    timed_df <- timed_df |> filter(!is.na(ratioK), ratioK > 0)
     if (nrow(timed_df) > 0) {
-      # Two-tailed outlier screen vs the daily model's prediction + skill.
-      timed_df$predicted <- apply_par_model(timed_df, new_coefs) + timed_df$cleanHandicap
+      # Two-tailed outlier screen vs the player's PERSONAL predicted time
+      # (day-of median par × their ratio). Timed has no bombs.
+      timed_df$predicted <- apply_par_model(timed_df, new_coefs, new_model_is_log) * timed_df$ratioK
       n_before <- nrow(timed_df)
       timed_df <- timed_df |>
         filter(time >= pmax(5, 0.3 * predicted), time <= 3 * predicted)
@@ -1062,16 +1155,18 @@ if (length(timed_raw) > 0) {
       if (n_outliers > 0) {
         message(sprintf("  timed: dropped %d outlier row(s) outside [0.3x, 3x] predicted (AFK / misclick screen)", n_outliers))
       }
-      timed_df$adjTime <- timed_df$time - timed_df$cleanHandicap
+      # Divide out the multiplicative handicap: adjTime is the ratio-normalized
+      # winning time, fit on the log scale like the daily model.
+      timed_df$adjTime <- timed_df$time / timed_df$ratioK
       timed_n_used <- nrow(timed_df)
     }
     if (timed_n_used >= TIMED_FIT_THRESHOLD) {
-      timed_formula <- adjTime ~
+      timed_formula <- log(adjTime) ~
         cellCount + totalMines + patternMoves + searchMoves +
         wallEdgeCount + mysteryCellCount + liarCellCount + lockedCellCount +
         wormholePairCount + mirrorPairCount + sonarCellCount +
         compassCellCount + zeroClusterCount
-      # Priors centered on the just-emitted DAILY coefficients.
+      # Priors centered on the just-emitted DAILY LOG coefficients.
       daily_center <- list(
         cellCount = new_coefs$secPerCell, totalMines = new_coefs$secPerMineFlag,
         patternMoves = new_coefs$secPerPatternMove, searchMoves = new_coefs$secPerSearchMove,
@@ -1083,14 +1178,14 @@ if (length(timed_raw) > 0) {
       )
       timed_priors_parts <- list(set_prior("", class = "b", lb = 0))
       for (nm in names(daily_center)) {
-        m_center <- max(daily_center[[nm]], 0.01)  # lognormal needs > 0
+        m_center <- max(daily_center[[nm]], PRIOR_MEAN_FLOOR)  # lognormal needs > 0
         timed_priors_parts[[length(timed_priors_parts) + 1]] <-
           set_prior(sprintf("lognormal(%f, %f)", log(m_center), TIMED_PRIOR_SIGMA),
                     class = "b", coef = nm)
       }
       timed_priors_parts[[length(timed_priors_parts) + 1]] <-
         set_prior(sprintf("normal(%f, %f)", new_coefs$intercept, PRIOR_INTERCEPT_SD), class = "Intercept")
-      timed_priors_parts[[length(timed_priors_parts) + 1]] <- set_prior("normal(0, 20)", class = "sigma")
+      timed_priors_parts[[length(timed_priors_parts) + 1]] <- set_prior("normal(0, 1)", class = "sigma")
       timed_priors <- do.call(c, timed_priors_parts)
       message(sprintf("Fitting quick-play model on %d handicap-adjusted wins…", timed_n_used))
       timed_fit <- tryCatch(
@@ -1106,7 +1201,9 @@ if (length(timed_raw) > 0) {
         t_ess_ok  <- all(ts$fixed[, "Bulk_ESS"] > 400, na.rm = TRUE)
         if (t_rhat_ok && t_ess_ok) {
           tco <- fixef(timed_fit)[, "Estimate"]
-          tnn <- function(v, fallback) if (!is.na(v)) round(as.numeric(v), 3) else fallback
+          # 5 decimals: log-multipliers are ~0.001-0.08, so 3 places (fine for
+          # the old seconds coefficients) would lose meaningful precision here.
+          tnn <- function(v, fallback) if (!is.na(v)) round(as.numeric(v), 5) else fallback
           timed_coefs <- list(
             intercept          = tnn(tco["Intercept"],         new_coefs$intercept),
             secPerCell         = tnn(tco["cellCount"],         new_coefs$secPerCell),
@@ -1148,15 +1245,14 @@ if (length(timed_raw) > 0) {
   history_path <- "src/logic/modelHistory.json"
 
   if (fit_method == "brms-ranef") {
-    # RMSE on the bias-corrected fit data. apply_par_model uses the
-    # already-corrected new_coefs, so this is the residual the fit
-    # actually ships with — clean-time vs clean predicted par.
-    # df_fit$clean_time already nets out new-mechanic info-value
-    # penalties; subtract legacy_bombs * bomb_coef to also net out the
-    # legacy +10s/re-fog cost so the residual is pure-play vs pure-par.
-    predicted_clean   <- apply_par_model(df_fit, new_coefs)
-    pure_play_time    <- df_fit$clean_time - bomb_coef * df_fit$legacy_bombs
-    resid             <- pure_play_time - predicted_clean
+    # RMSE in SECONDS (comparable to historical rows), pure-play vs the MEDIAN
+    # par. apply_par_model back-transforms the bias-corrected log coefficients;
+    # df_fit$pure_time already nets out ALL bomb cost (new base + legacy), so
+    # the residual is pure-play vs pure-par. NOTE: under median calibration the
+    # mean residual is the expected mean−median gap (a few seconds positive) —
+    # watch bias DRIFT over time, not its absolute value.
+    predicted_clean   <- apply_par_model(df_fit, new_coefs, TRUE)
+    resid             <- df_fit$pure_time - predicted_clean
     cv_rows <- lapply(seq_len(nrow(target_candidates)), function(i) {
       list(
         feature = target_candidates$feature[i],
@@ -1167,11 +1263,10 @@ if (length(timed_raw) > 0) {
     })
     target_field <- chosen_target
   } else {
-    # Seed-residuals fallback: residuals already on df. No new fit so
-    # no candidates posterior to record; carry the previously-chosen
-    # experiment target forward so the timeline still shows what the
-    # daily was testing this day.
-    resid <- if (!is.null(df$residual)) df$residual else numeric(0)
+    # Seed-residuals fallback: seconds residual (pure-play vs par) from the
+    # columns the fallback set above. No new fit so no candidates posterior;
+    # carry the previously-chosen experiment target forward.
+    resid <- if (!is.null(df$pure_secs) && !is.null(df$predicted)) df$pure_secs - df$predicted else numeric(0)
     cv_rows <- list()
     target_field <- tryCatch({
       prev <- fromJSON("src/logic/experimentTarget.json", simplifyVector = FALSE)
@@ -1226,30 +1321,33 @@ r2_str <- if (is.na(r2)) "NA" else sprintf("%.3f", r2)
 method_str <- sprintf("brms (%d users · %s)", length(handicaps), diag_note)
 block <- sprintf(
 'export const PAR_MODEL = {
-  // Last refit: %s | %s | N=%d scores, %d dates, %d players | R\u00b2=%s
-  intercept: %.2f,
+  // Last refit: %s | %s | N=%d scores, %d dates, %d players | R\u00b2=%s (log scale)
+  // scale:"log" => par = exp(intercept + \u03a3 coef\u00b7feature): multiplicative,
+  // lognormal MEDIAN. Coefficients are LOG-MULTIPLIERS per unit, NOT seconds.
+  scale: \'log\',
+  intercept: %.4f,
 
   // Size baseline. cellCount is the lone size axis (it absorbs trivial
   // propagation); totalMines stays a raw count. (2026-06-08 rework.)
-  secPerCell:        %.3f,
-  secPerMineFlag:    %.3f,
+  secPerCell:        %.5f,
+  secPerMineFlag:    %.5f,
 
   // Reasoning tiers: pattern = canonical + generic subsets; search = advanced.
-  secPerPatternMove: %.3f,
-  secPerSearchMove:  %.3f,
+  secPerPatternMove: %.5f,
+  secPerSearchMove:  %.5f,
 
   // Board structure.
-  secPerWallEdge:    %.3f,
-  secPerZeroCluster: %.3f,
+  secPerWallEdge:    %.5f,
+  secPerZeroCluster: %.5f,
 
   // Modifier cells (kept split; sparse, prior-anchored until data builds).
-  secPerMysteryCell:   %.3f,
-  secPerLiarCell:      %.3f,
-  secPerLockedCell:    %.3f,
-  secPerWormholePair:  %.3f,
-  secPerMirrorPair:    %.3f,
-  secPerSonarCell:     %.3f,
-  secPerCompassCell:   %.3f,
+  secPerMysteryCell:   %.5f,
+  secPerLiarCell:      %.5f,
+  secPerLockedCell:    %.5f,
+  secPerWormholePair:  %.5f,
+  secPerMirrorPair:    %.5f,
+  secPerSonarCell:     %.5f,
+  secPerCompassCell:   %.5f,
 
 };',
   Sys.Date(), method_str, n_scores, n_dates, n_players, r2_str,
@@ -1292,20 +1390,23 @@ new_src <- paste0(
 timed_block <- sprintf(
 'export const PAR_MODEL_TIMED = {
   // Last refit: %s | %s
-  intercept: %.2f,
-  secPerCell:        %.3f,
-  secPerMineFlag:    %.3f,
-  secPerPatternMove: %.3f,
-  secPerSearchMove:  %.3f,
-  secPerWallEdge:    %.3f,
-  secPerZeroCluster: %.3f,
-  secPerMysteryCell:   %.3f,
-  secPerLiarCell:      %.3f,
-  secPerLockedCell:    %.3f,
-  secPerWormholePair:  %.3f,
-  secPerMirrorPair:    %.3f,
-  secPerSonarCell:     %.3f,
-  secPerCompassCell:   %.3f,
+  // Same log scale as PAR_MODEL (par = exp(intercept + Σ coef·feature)); below
+  // the activation threshold this is a verbatim copy of the daily model.
+  scale: \'log\',
+  intercept: %.4f,
+  secPerCell:        %.5f,
+  secPerMineFlag:    %.5f,
+  secPerPatternMove: %.5f,
+  secPerSearchMove:  %.5f,
+  secPerWallEdge:    %.5f,
+  secPerZeroCluster: %.5f,
+  secPerMysteryCell:   %.5f,
+  secPerLiarCell:      %.5f,
+  secPerLockedCell:    %.5f,
+  secPerWormholePair:  %.5f,
+  secPerMirrorPair:    %.5f,
+  secPerSonarCell:     %.5f,
+  secPerCompassCell:   %.5f,
 };',
   Sys.Date(), timed_method,
   timed_coefs$intercept,

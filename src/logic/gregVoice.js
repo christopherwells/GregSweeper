@@ -122,17 +122,20 @@ export function yesterdayNote(history) {
   return `Greg: yesterday’s ${runs} run${runs !== 1 ? 's' : ''} barely moved my ${name} estimate`;
 }
 
-// The Lab File line: the player's par, itemized. `details` is the
-// per-uid { clean, bomb } split from handicaps.json v2 (emitted by the
-// refit alongside the summed handicap). Returns null without details —
-// the un-itemized "Your par" line stays as-is; we never fabricate a
-// decomposition the pipeline didn't ship.
+// The Lab File line: the player's par, itemized. `details` is the per-uid
+// { k, bombSeconds } split from handicaps.json (emitted by the refit). The
+// pace term is board-scaled — `gregPar × (k - 1)` — so the line stays in
+// seconds and additive-looking even though skill is a multiplicative ratio,
+// and it sums to personalPar (`gregPar × k + bombSeconds`). Returns null
+// without details; we never fabricate a decomposition the pipeline didn't ship.
 export function labFileLine(gregPar, details) {
-  if (!details || typeof details.clean !== 'number' || typeof details.bomb !== 'number') return null;
+  if (!details || typeof details.k !== 'number' || typeof details.bombSeconds !== 'number') return null;
   if (typeof gregPar !== 'number' || gregPar <= 0) return null;
-  const total = Math.round((gregPar + details.clean + details.bomb) * 10) / 10;
+  const paceSeconds = gregPar * (details.k - 1);
+  const bomb = details.bombSeconds;
+  const total = Math.round((gregPar + paceSeconds + bomb) * 10) / 10;
   const fmt = (v) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(1)}s`;
-  const parts = [`Greg ${gregPar.toFixed(1)}s`, `your pace ${fmt(details.clean)}`];
-  if (details.bomb !== 0) parts.push(`bombs ${fmt(details.bomb)}`);
+  const parts = [`Greg ${gregPar.toFixed(1)}s`, `your pace ${fmt(paceSeconds)}`];
+  if (bomb !== 0) parts.push(`bombs ${fmt(bomb)}`);
   return `Your par ${total.toFixed(1)}s = ${parts.join(' ')}`;
 }

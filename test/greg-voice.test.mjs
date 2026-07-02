@@ -80,16 +80,19 @@ test('yesterdayNote: all four honesty branches', () => {
   assert.equal(yesterdayNote(null), null);
 });
 
-test('labFileLine itemizes only with a real decomposition', () => {
-  const line = labFileLine(96.0, { clean: 8.4, bomb: 6.1 });
+test('labFileLine itemizes only with a real {k, bombSeconds} decomposition', () => {
+  // Pace is board-scaled: gregPar × (k - 1). k=1.0875 on a 96s board = +8.4s.
+  const line = labFileLine(96.0, { k: 1.0875, bombSeconds: 6.1 });
   assert.match(line, /Your par 110\.5s = Greg 96\.0s your pace \+8\.4s bombs \+6\.1s/);
-  // Negative pace (faster than typical) renders with a minus sign.
-  assert.match(labFileLine(96.0, { clean: -6.2, bomb: 0 }), /your pace −6\.2s/);
+  // Faster-than-typical (k < 1) renders the pace with a minus sign.
+  assert.match(labFileLine(96.0, { k: 0.9354167, bombSeconds: 0 }), /your pace −6\.2s/);
   // Zero bomb factor drops the bombs term entirely.
-  assert.ok(!labFileLine(96.0, { clean: 2, bomb: 0 }).includes('bombs'));
-  // No decomposition -> null, never a fabricated split.
+  assert.ok(!labFileLine(96.0, { k: 1.02, bombSeconds: 0 }).includes('bombs'));
+  // No decomposition -> null, never a fabricated split. Old {clean,bomb}
+  // shape (missing k) also returns null.
   assert.equal(labFileLine(96.0, null), null);
-  assert.equal(labFileLine(96.0, { clean: 1 }), null);
+  assert.equal(labFileLine(96.0, { k: 1.05 }), null);
+  assert.equal(labFileLine(96.0, { clean: 1, bomb: 0 }), null);
 });
 
 test('featureName covers every push-able model feature', () => {

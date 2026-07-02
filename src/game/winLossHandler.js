@@ -41,7 +41,7 @@ import { archiveSubmitPlan, CRUX_VIEWED_KEY_PREFIX } from '../logic/archiveEligi
 import { isTestEnvironment } from '../firebase/env.js';
 import { reportCaughtError } from '../diagnostics/errorReporter.js';
 import { breakdownPar } from '../logic/dailyFeatures.js';
-import { getHandicap, getHandicapDetails } from '../logic/handicaps.js';
+import { getHandicapRatio, getHandicapDetails, isRatedHandicap } from '../logic/handicaps.js';
 import { resolveParDisplay } from '../logic/parDisplayDecision.js';
 import { buildDailyScoreExtras } from '../logic/winSubmissionPlan.js';
 import { detectSkillFeats } from '../logic/skillFeatDetection.js';
@@ -621,7 +621,9 @@ export function handleWin() {
       } = resolveParDisplay({
         precise,
         dailyPar: state.dailyPar,
-        refitHandicap: getHandicap(getUid()),
+        refitRatio: getHandicapRatio(getUid()),
+        refitBombSeconds: (getHandicapDetails(getUid()) || {}).bombSeconds || 0,
+        isRated: isRatedHandicap(getUid()),
         residuals: loadDailyResiduals(),
       });
 
@@ -1290,9 +1292,12 @@ export function handleDailyBombHit(mineRow, mineCol) {
   const fr = Math.floor(state.rows / 2);
   const fc = Math.floor(state.cols / 2);
   const priorStrikes = priorEvents.map(e => ({ row: e.row, col: e.col }));
+  // Daily and weekly both route here; the board's feature vector sets the
+  // par baseline the info-value is priced against under the log-scale model.
+  const boardFeatures = state.weeklyFeatures || state.dailyFeatures || null;
   let infoValue = 0;
   try {
-    const result = computeBombInfoValue(state.board, state.rows, state.cols, fr, fc, mineRow, mineCol, priorStrikes);
+    const result = computeBombInfoValue(state.board, state.rows, state.cols, fr, fc, mineRow, mineCol, priorStrikes, boardFeatures);
     infoValue = result.infoValue;
   } catch (err) {
     // The solver is robust on well-formed daily/weekly boards; if it

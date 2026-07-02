@@ -50,12 +50,14 @@ function emptyDiv(message) {
  * @param {Object<string, Array<{uid:string, name:string, time:number, bombHits?:number}>>} data.scoresByDate
  *        all players' scores for each date (flat across pushIds)
  * @param {string} data.uid  signed-in user's uid
- * @param {number} data.handicap  user's current handicap
- * @param {boolean} [data.handicapProvisional]  true when handicap came from
+ * @param {number} data.ratio  user's multiplicative handicap k (1 = neutral)
+ * @param {number} [data.bombSeconds]  the fit's additive bomb-seconds (0 if none)
+ * @param {number} [data.refPar]  reference par for the seconds display
+ * @param {boolean} [data.handicapProvisional]  true when the ratio came from
  *        the local-residual fallback (< MIN_PLAYS_FOR_FIT_INCLUSION plays)
  */
 export function renderDailyStatsTab(data) {
-  const { history, metaByDate, scoresByDate, uid, handicap, handicapProvisional } = data;
+  const { history, metaByDate, scoresByDate, uid, ratio = 1, bombSeconds = 0, refPar = 60, handicapProvisional } = data;
 
   const sorted = [...(history || [])].sort((a, b) => a.date.localeCompare(b.date));
 
@@ -63,7 +65,8 @@ export function renderDailyStatsTab(data) {
   const plays = sorted.map(h => {
     const features = metaByDate[h.date];
     const globalPar = features ? predictPar(features) : null;
-    const personalPar = globalPar != null ? globalPar + handicap : null;
+    // Personal par scales with the board (ratio) plus fixed bomb seconds.
+    const personalPar = globalPar != null ? globalPar * ratio + bombSeconds : null;
     const deltaGlobal = globalPar != null ? h.time - globalPar : null;
     const deltaPersonal = personalPar != null ? h.time - personalPar : null;
     const sameDayScores = scoresByDate[h.date] || [];
@@ -91,42 +94,44 @@ export function renderDailyStatsTab(data) {
     }
   }
 
-  renderHeadlineCards(plays, handicap, handicapProvisional);
+  renderHeadlineCards(plays, ratio, refPar, handicapProvisional);
   renderHandicapTrajectory(plays);
   renderHistoryChart(plays);
   renderComplexityDelta(plays);
   renderStrikeRate(plays);
   renderModifierHeatmap(plays);
-  renderDeltaDistribution(plays, handicap);
+  renderDeltaDistribution(plays);
   renderPercentileTrend(plays, scoresByDate, uid);
 }
 
 // ── Headline cards ────────────────────────────────────
 
-function renderHeadlineCards(plays, handicap, handicapProvisional) {
-  // Two-tier headline: show a real handicap number whenever we have one
-  // (refit handicap OR provisional from >= 2 plays); fall back to a
-  // "tracking" message for brand-new players. The provisional case
-  // appends a "~ (provisional)" qualifier so the player understands
-  // the number will tighten with more plays.
-  if (plays.length >= 2 && handicap !== 0) {
-    const sign = handicap >= 0 ? '+' : '';
+function renderHeadlineCards(plays, ratio, refPar, handicapProvisional) {
+  // Two-tier headline: show a real handicap whenever we have one (refit ratio
+  // OR provisional from >= 2 plays); fall back to a "tracking" message for
+  // brand-new players. The ratio is shown as a stable seconds magnitude (at a
+  // standard board) plus a percent — same form as the leaderboard chip. k > 1
+  // = typically slower than Greg → '+'. The provisional case appends a chip.
+  const hcSeconds = (ratio - 1) * refPar;
+  const hcPct = (ratio - 1) * 100;
+  if (plays.length >= 2 && ratio !== 1) {
+    const sign = hcSeconds >= 0 ? '+' : '−';
+    const chip = `${sign}${Math.abs(hcSeconds).toFixed(0)}s · ${sign}${Math.abs(hcPct).toFixed(0)}%`;
     const el = document.getElementById('stat-handicap-now');
     if (el) {
       // Provisional reads as a chip, the leaderboard's qualifier language.
       el.innerHTML = handicapProvisional
-        ? `${sign}${handicap.toFixed(1)}s <span class="lb-hc-chip lb-hc-unrated">provisional · ${plays.length} plays</span>`
-        : `${sign}${handicap.toFixed(1)}s`;
+        ? `${chip} <span class="lb-hc-chip lb-hc-unrated">provisional · ${plays.length} plays</span>`
+        : chip;
     }
   } else if (plays.length === 1) {
     setText('stat-handicap-now', '1 more daily');
   } else if (plays.length === 0) {
     setText('stat-handicap-now', '--');
   } else {
-    // 2+ plays but handicap is exactly 0 (rare — would mean perfectly
-    // average across every play). Render literal zero instead of a
-    // "need more plays" message that's misleading at this point.
-    setText('stat-handicap-now', '0.0s');
+    // 2+ plays but ratio is exactly 1 (perfectly average). Render a literal
+    // neutral figure instead of a misleading "need more plays" message.
+    setText('stat-handicap-now', '+0s · +0%');
   }
 
   // History section cards
@@ -323,7 +328,7 @@ function renderModifierHeatmap(plays) {
 
 // ── Chart: Delta distribution (histogram) ─────────────
 
-function renderDeltaDistribution(plays, handicap) {
+function renderDeltaDistribution(plays) {
   if (plays.length < 5) {
     replaceContent('chart-consistency', emptyDiv('Need at least 5 plays to see distribution shape.'));
     setText('stat-over-par-pct', '--');

@@ -21,39 +21,42 @@ export const NEWCOMER_DAILY_LIMIT = 3;
  * @param {object} args
  * @param {number} args.precise        the player's completion time (seconds)
  * @param {number} args.dailyPar       Greg's par for today's board (seconds)
- * @param {number} args.refitHandicap  getHandicap(uid); 0 when the refit hasn't included this user yet
- * @param {Array}  args.residuals      loadDailyResiduals() AFTER this play was appended (today included)
+ * @param {number} args.refitRatio      getHandicapRatio(uid); 1 (neutral) when the refit hasn't included this user
+ * @param {number} [args.refitBombSeconds] the fit's additive bomb-seconds for this user (0 if none)
+ * @param {boolean} args.isRated        isRatedHandicap(uid); true when the user is in the shipped ratio fit
+ * @param {Array}  args.residuals       loadDailyResiduals() AFTER this play was appended (today included)
  * @returns {{
- *   handicap: number, provisional: (object|null), isNewcomerDaily: boolean,
+ *   ratio: number, provisional: (object|null), isNewcomerDaily: boolean,
  *   personalPar: number, useHandicap: boolean, referencePar: number,
  *   parClass: string, deltaText: string, yourParLabel: string,
  *   showOneMoreHint: boolean,
  * }}
  */
-export function resolveParDisplay({ precise, dailyPar, refitHandicap, residuals }) {
+export function resolveParDisplay({ precise, dailyPar, refitRatio, refitBombSeconds, isRated, residuals }) {
   const safeResiduals = Array.isArray(residuals) ? residuals : [];
 
-  // Prefer the refit handicap; if the refit hasn't included this user (0),
-  // fall back to a provisional mean residual so a newcomer sees a tightening
-  // "Your par" instead of "Greg's Time" alone. (estimateHandicapDetails uses
-  // time − predictedPar; the bombHits field is carried but currently unused.)
-  let handicap = refitHandicap;
+  // Prefer the refit ratio; if the refit hasn't included this user, fall back
+  // to a provisional geometric-mean ratio from the player's own residuals so a
+  // newcomer sees a tightening "Your par" instead of "Greg's Time" alone. The
+  // provisional carries no clean/bomb split (bombs ride in the ratio); the
+  // separate bombSeconds term only exists once the fit ships it.
+  let ratio = (typeof refitRatio === 'number' && refitRatio > 0) ? refitRatio : 1;
+  let bombSeconds = typeof refitBombSeconds === 'number' ? refitBombSeconds : 0;
   let provisional = null;
-  if (refitHandicap === 0) {
+  if (!isRated) {
+    bombSeconds = 0;
     const est = estimateHandicapDetails(safeResiduals.map((r) => ({
       time: r.time,
       predictedPar: r.par,
-      bombHits: r.bombHits || 0,
     })));
-    if (est) {
-      handicap = est.handicap;
-      provisional = est;
-    }
+    ratio = est ? est.k : 1;
+    provisional = est;
   }
 
   const isNewcomerDaily = safeResiduals.length <= NEWCOMER_DAILY_LIMIT;
-  const personalPar = dailyPar + handicap;
-  const useHandicap = handicap !== 0 && !isNewcomerDaily;
+  // Skill scales with the board (ratio); bombs are a fixed seconds cost.
+  const personalPar = dailyPar * ratio + bombSeconds;
+  const useHandicap = (ratio !== 1 || bombSeconds !== 0) && !isNewcomerDaily;
   const referencePar = useHandicap ? personalPar : dailyPar;
   const delta = precise - referencePar;
   const absDelta = Math.abs(delta).toFixed(1);
@@ -81,7 +84,7 @@ export function resolveParDisplay({ precise, dailyPar, refitHandicap, residuals 
   const showOneMoreHint = safeResiduals.length === 1;
 
   return {
-    handicap, provisional, isNewcomerDaily, personalPar, useHandicap,
+    ratio, provisional, isNewcomerDaily, personalPar, useHandicap,
     referencePar, parClass, deltaText, yourParLabel, showOneMoreHint,
   };
 }
