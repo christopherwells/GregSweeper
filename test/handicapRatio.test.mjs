@@ -8,6 +8,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   estimateHandicapDetails, estimateHandicapFromHistory,
+  ratioDisplaySeconds, ratioDisplayPercent,
   HANDICAP_K_MIN, HANDICAP_K_MAX,
 } from '../src/logic/handicaps.js';
 
@@ -44,6 +45,22 @@ test('below the minimum pair count returns null; the wrapper defaults to neutral
   assert.equal(estimateHandicapDetails(null), null);
   assert.equal(estimateHandicapFromHistory(pairs([1.5])), 1);
   assert.equal(estimateHandicapFromHistory(pairs([2.0, 2.0])), estimateHandicapDetails(pairs([2.0, 2.0])).k);
+});
+
+test('REGRESSION: handicap rating sign — faster than Greg is POSITIVE, slower is NEGATIVE', () => {
+  // A player FASTER than Greg (k < 1, Kate 0.876) reads positive; a SLOWER
+  // player (k > 1, Sebastien 1.579) reads negative. The rating sign was inverted
+  // on first ship (Christopher, 2026-07-02: "he should have a negative par").
+  assert.ok(ratioDisplaySeconds(0.876, 81) > 0, 'faster player -> positive seconds');
+  assert.ok(ratioDisplaySeconds(1.579, 81) < 0, 'slower player -> negative seconds');
+  assert.ok(ratioDisplayPercent(0.876) > 0, 'faster player -> positive percent');
+  assert.ok(ratioDisplayPercent(1.579) < 0, 'slower player -> negative percent');
+  // Magnitudes at refPar 81: (1-0.876)*81 ≈ +10, (1-1.579)*81 ≈ -47.
+  assert.equal(Math.round(ratioDisplaySeconds(0.876, 81)), 10);
+  assert.equal(Math.round(ratioDisplaySeconds(1.579, 81)), -47);
+  // Neutral k=1 is exactly zero on both.
+  assert.equal(ratioDisplaySeconds(1, 81), 0);
+  assert.equal(ratioDisplayPercent(1), 0);
 });
 
 test('non-positive or malformed pairs are ignored, not counted', () => {

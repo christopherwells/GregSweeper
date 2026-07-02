@@ -6,6 +6,7 @@
 // All data fetching happens in main.js; this module is pure view + math.
 
 import { predictPar } from '../logic/dailyFeatures.js';
+import { ratioDisplaySeconds, ratioDisplayPercent } from '../logic/handicaps.js';
 import {
   lineChart, barChart, heatBars, densityChart,
 } from './charts.js';
@@ -109,11 +110,11 @@ export function renderDailyStatsTab(data) {
 function renderHeadlineCards(plays, ratio, refPar, handicapProvisional) {
   // Two-tier headline: show a real handicap whenever we have one (refit ratio
   // OR provisional from >= 2 plays); fall back to a "tracking" message for
-  // brand-new players. The ratio is shown as a stable seconds magnitude (at a
-  // standard board) plus a percent — same form as the leaderboard chip. k > 1
-  // = typically slower than Greg → '+'. The provisional case appends a chip.
-  const hcSeconds = (ratio - 1) * refPar;
-  const hcPct = (ratio - 1) * 100;
+  // brand-new players. The ratio is a RATING vs Greg — a stable seconds
+  // magnitude (at a standard board) plus a percent, same form as the leaderboard
+  // chip. POSITIVE = faster/better than Greg (k < 1), negative = slower.
+  const hcSeconds = ratioDisplaySeconds(ratio, refPar);
+  const hcPct = ratioDisplayPercent(ratio);
   if (plays.length >= 2 && ratio !== 1) {
     const sign = hcSeconds >= 0 ? '+' : '−';
     const chip = `${sign}${Math.abs(hcSeconds).toFixed(0)}s · ${sign}${Math.abs(hcPct).toFixed(0)}%`;
