@@ -26,7 +26,7 @@ import { FIRST_ARCHIVE_DATE, isArchivableDate, resolveCruxDate } from './logic/a
 import { persistGameState, tryResumeGame } from './game/gamePersistence.js';
 import { getDifficultyForLevel, getTimedDifficulty, getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, CHAOS_UNLOCK_LEVEL, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE } from './logic/difficulty.js';
 import { computeDailyFeatures, predictPar } from './logic/dailyFeatures.js';
-import { loadHandicaps, getHandicapRatio, getHandicapDetails, isRatedHandicap, getRefPar, estimateHandicapDetails } from './logic/handicaps.js';
+import { loadHandicaps, getHandicapRatio, getHandicapDetails, isRatedHandicap, getRefPar, ratioDisplaySeconds, ratioDisplayPercent, estimateHandicapDetails } from './logic/handicaps.js';
 import { rankAdjusted, filterToFriends } from './logic/leaderboardViews.js';
 import {
   loadStats, saveTheme, loadTheme, resetStats,
@@ -1377,12 +1377,13 @@ async function _renderAdjustedView() {
   ranked.forEach((entry, i) => {
     const tr = document.createElement('tr');
     if (myUid && entry.uid === myUid) tr.classList.add('lb-row-mine');
-    // HC chip: the ratio shown as a stable seconds magnitude (at a standard
-    // board) AND a percent. k > 1 = typically slower than Greg → '+'.
+    // HC chip: the ratio shown as a RATING vs Greg — a stable seconds magnitude
+    // (at a standard board) AND a percent. POSITIVE = faster/better than Greg
+    // (k < 1), negative = slower (k > 1).
     let hcChip;
     if (entry.rated) {
-      const secs = (entry.ratio - 1) * refPar;
-      const pct = (entry.ratio - 1) * 100;
+      const secs = ratioDisplaySeconds(entry.ratio, refPar);
+      const pct = ratioDisplayPercent(entry.ratio);
       const sign = secs >= 0 ? '+' : '−';
       hcChip = `<span class="lb-hc-chip">${sign}${Math.abs(secs).toFixed(0)}s · ${sign}${Math.abs(pct).toFixed(0)}%</span>`;
     } else {
@@ -1395,7 +1396,7 @@ async function _renderAdjustedView() {
 
   const foot = $('#leaderboard-footnote');
   if (foot) {
-    foot.textContent = 'Adjusted = your time at Greg’s pace · HC = typical vs Greg (+ slower / − faster) · rated after 5 plays';
+    foot.textContent = 'Adjusted = your time at Greg’s pace · HC = typical vs Greg (+ faster / − slower) · rated after 5 plays';
     foot.classList.remove('hidden');
   }
 }

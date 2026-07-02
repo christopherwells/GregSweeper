@@ -9,10 +9,10 @@
 //   personalPar = globalPar × k  (+ your additive bomb-seconds cost)
 //   adjusted    = time / k       (a Greg-equivalent time; never negative)
 //
-// A seconds MAGNITUDE is still shown for intuition, but derived from the
-// ratio at a REFERENCE par: displaySeconds = (k - 1) × refPar. So "Kate is
-// +12s / +20%" reads as "normally ~20% slower than Greg" and stays stable
-// across boards.
+// A seconds MAGNITUDE is still shown for intuition (a RATING vs Greg), derived
+// from the ratio at a REFERENCE par: displaySeconds = (1 - k) × refPar.
+// POSITIVE = faster/better than Greg, negative = slower — so a fast player reads
+// "+10s / +12%" and a slower one "−47s / −58%", stable across boards.
 //
 // Data source: src/logic/handicaps.json, refreshed daily by the "Refit
 // Greg-par" GitHub Action. The ratio file is tagged `format: "logratio-v1"`;
@@ -120,21 +120,27 @@ export function isRatedHandicap(uid) {
   return !!(_ratios && uid && typeof _ratios[uid] === 'number' && Number.isFinite(_ratios[uid]));
 }
 
+// Sign convention for the handicap RATING display, single-sourced so it can't
+// drift or invert again: POSITIVE = faster/BETTER than Greg (k < 1), negative =
+// slower/worse (k > 1). This is NOT the "your pace" par-composition line in the
+// Lab File, which must add up to personalPar and so keeps +gregPar×(k-1).
+export function ratioDisplaySeconds(k, refPar) { return (1 - k) * refPar; }
+export function ratioDisplayPercent(k) { return (1 - k) * 100; }
+
 /**
- * The user's handicap as a SECONDS magnitude at a reference par:
- * (k - 1) × refPar. Positive = typically slower than Greg. Defaults to the
- * shipped refPar (stable cross-board rating); pass a board's own par for a
- * board-scaled figure.
+ * The user's handicap as a SECONDS magnitude at a reference par, a RATING vs
+ * Greg. POSITIVE = typically FASTER/better than Greg, negative = slower.
+ * Defaults to the shipped refPar (stable cross-board rating); pass a board's own
+ * par for a board-scaled figure.
  */
 export function getHandicapSeconds(uid, refPar = _refPar) {
-  const k = getHandicapRatio(uid);
   const base = typeof refPar === 'number' && refPar > 0 ? refPar : _refPar;
-  return (k - 1) * base;
+  return ratioDisplaySeconds(getHandicapRatio(uid), base);
 }
 
-/** The user's handicap as a percent: (k - 1) × 100. Positive = slower. */
+/** The user's handicap as a percent. Positive = faster/better than Greg. */
 export function getHandicapPercent(uid) {
-  return (getHandicapRatio(uid) - 1) * 100;
+  return ratioDisplayPercent(getHandicapRatio(uid));
 }
 
 /**
