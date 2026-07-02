@@ -210,17 +210,37 @@ const COEF_TERMS = [
 /**
  * Predicted par (in seconds) for a board described by `features`.
  * Rounded to 0.1s to match how par is displayed.
+ *
+ * The model is applied either additively (`par = intercept + Σ coef·x`) or
+ * multiplicatively (`par = exp(intercept + Σ coef·x)`), selected by the
+ * model's `scale` field. `scale === 'log'` means the coefficients are
+ * log-multipliers and par is the lognormal MEDIAN (`exp(Xβ)`); any other
+ * value (or its absence) means the legacy additive seconds model. Branching
+ * on the marker keeps the additive→log swap atomic: the R refit flips the
+ * coefficients and the `scale` field together in one commit, so predictPar
+ * can never apply the wrong transform to a set of coefficients.
  */
+/**
+ * Apply a specific par model to a feature vector. Pure and injectable
+ * (predictPar picks the model; this applies it), so the log path is
+ * testable without mutating the shipped globals. Additive when
+ * `model.scale !== 'log'`, multiplicative (lognormal median) otherwise.
+ */
+export function applyParModel(features, model) {
+  let acc = model.intercept;
+  for (const { coef, value } of COEF_TERMS) {
+    acc += (model[coef] || 0) * value(features);
+  }
+  const par = model.scale === 'log' ? Math.exp(acc) : acc;
+  return Math.round(par * 10) / 10;
+}
+
 export function predictPar(features) {
   // Quick play has its own win-conditional equation (features.modeTimed
   // is stamped by the timed path); daily/weekly use the main model.
   // Same terms, different coefficients.
   const model = features && features.modeTimed ? PAR_MODEL_TIMED : PAR_MODEL;
-  let par = model.intercept;
-  for (const { coef, value } of COEF_TERMS) {
-    par += (model[coef] || 0) * value(features);
-  }
-  return Math.round(par * 10) / 10;
+  return applyParModel(features, model);
 }
 
 /**
@@ -232,30 +252,62 @@ export function predictPar(features) {
  * (intercept + board-size + flag-count) merge into a single "baseline"
  * chip so the modal stays readable on boards with many gimmicks.
  */
-export function breakdownPar(features) {
-  const byGroup = new Map();
-  let baseline = PAR_MODEL.intercept;
+export function breakdownPar(features, model = PAR_MODEL) {
+  // Daily game-over modal only; the model is injectable so the log-scale
+  // allocation is testable without mutating the shipped PAR_MODEL.
+  const isLog = model.scale === 'log';
 
+  // Accumulate each group's raw contribution. Under the additive model a
+  // contribution is already SECONDS; under the log model it is a LOG-term
+  // (`coef · x`) and the seconds conversion happens after.
+  const byGroup = new Map();
+  let baselineTerm = model.intercept;
   for (const { coef, value, displayGroup, baseline: isBaseline } of COEF_TERMS) {
-    const contribution = (PAR_MODEL[coef] || 0) * value(features);
+    const contribution = (model[coef] || 0) * value(features);
     if (isBaseline) {
-      baseline += contribution;
+      baselineTerm += contribution;
     } else if (contribution > 0) {
       byGroup.set(displayGroup, (byGroup.get(displayGroup) || 0) + contribution);
     }
   }
 
   const entries = [];
-  for (const [label, seconds] of byGroup) {
-    const rounded = Math.round(seconds * 10) / 10;
-    if (rounded > 0) entries.push({ label, seconds: rounded });
+
+  if (!isLog) {
+    // Additive: contributions ARE seconds — unchanged behavior.
+    for (const [label, seconds] of byGroup) {
+      const rounded = Math.round(seconds * 10) / 10;
+      if (rounded > 0) entries.push({ label, seconds: rounded });
+    }
+    entries.sort((a, b) => b.seconds - a.seconds);
+    if (baselineTerm > 0.05) {
+      entries.push({ label: 'baseline', seconds: Math.round(baselineTerm * 10) / 10 });
+    }
+    return entries;
   }
 
+  // Log-scale: par is multiplicative, so a term adds no fixed number of
+  // seconds. Split par into a baseline board (`exp(intercept + size terms)`)
+  // plus the difficulty above it, and allocate those above-baseline seconds
+  // to each group in proportion to its share of the log-difficulty
+  // (`coef·x / Σ coef·x`). The chips still read in seconds and still sum to
+  // par (a group accounting for 40% of the log-difficulty gets 40% of the
+  // seconds above baseline), while honestly reflecting the multiplicative model.
+  const baseline = Math.exp(baselineTerm);
+  const par = applyParModel(features, model);
+  const aboveBaseline = par - baseline;
+  const sumLog = [...byGroup.values()].reduce((s, v) => s + v, 0);
+  if (sumLog > 0 && aboveBaseline > 0) {
+    for (const [label, logContribution] of byGroup) {
+      const seconds = aboveBaseline * (logContribution / sumLog);
+      const rounded = Math.round(seconds * 10) / 10;
+      if (rounded > 0) entries.push({ label, seconds: rounded });
+    }
+  }
   entries.sort((a, b) => b.seconds - a.seconds);
-
-  if (baseline > 0.05) {
-    entries.push({ label: 'baseline', seconds: Math.round(baseline * 10) / 10 });
+  const baseRounded = Math.round(baseline * 10) / 10;
+  if (baseRounded > 0.05) {
+    entries.push({ label: 'baseline', seconds: baseRounded });
   }
-
   return entries;
 }

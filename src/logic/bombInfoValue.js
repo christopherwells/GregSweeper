@@ -22,6 +22,7 @@
 
 import { isBoardSolvable } from './boardSolver.js';
 import { PAR_MODEL } from './difficulty.js';
+import { predictPar } from './dailyFeatures.js';
 
 // Solver move-type counters → the pooled PAR_MODEL coefficients from the
 // 2026-06-08 identifiability rework (PR #36): the four raw counters pool
@@ -63,6 +64,12 @@ const RAW_DELTA_KEYS = ['passAMoves', 'canonicalSubsetMoves', 'genericSubsetMove
  *        Cells previously struck on this attempt. Pre-flagged in both
  *        runs so the returned info-value is the MARGINAL value of this
  *        hit given those prior ones, not the cumulative value.
+ * @param {object|null} [boardFeatures=null]
+ *        The board's daily/weekly feature vector (state.dailyFeatures /
+ *        state.weeklyFeatures). Sets the multiplicative par baseline used
+ *        to price the info-value under the log-scale model; ignored (all
+ *        shape terms cancel) under the additive model. Pass it so a struck
+ *        mine on a hard board is priced against that board's own par.
  *
  * @returns {{
  *   infoValue: number,    // par-seconds, clamped to ≥ 0
@@ -71,7 +78,7 @@ const RAW_DELTA_KEYS = ['passAMoves', 'canonicalSubsetMoves', 'genericSubsetMove
  *   resultB: Object,      // solver result with strike+prior pre-flagged
  * }}
  */
-export function computeBombInfoValue(board, rows, cols, safeRow, safeCol, strikeRow, strikeCol, priorStrikes = []) {
+export function computeBombInfoValue(board, rows, cols, safeRow, safeCol, strikeRow, strikeCol, priorStrikes = [], boardFeatures = null) {
   const priorFlags = Array.isArray(priorStrikes)
     ? priorStrikes
         .filter(p => p && Number.isInteger(p.row) && Number.isInteger(p.col))
@@ -90,19 +97,34 @@ export function computeBombInfoValue(board, rows, cols, safeRow, safeCol, strike
     deltas[moveKey] = (resultA[moveKey] || 0) - (resultB[moveKey] || 0);
   }
 
-  let infoValue = 0;
+  // Loud failure beats a silent zero: a missing coefficient means the
+  // PAR_MODEL names drifted (the exact regression the POOLED_TERMS guard
+  // caught). The caller (handleDailyBombHit) catches, warns, and charges
+  // the base penalty, so the player is never stranded — but the break is
+  // visible instead of quietly pricing at 0.
   for (const term of POOLED_TERMS) {
-    // Loud failure beats a silent zero: a missing coefficient means the
-    // PAR_MODEL names drifted (the exact regression this rewrite fixes).
-    // The caller (handleDailyBombHit) catches, warns, and charges the
-    // base penalty, so the player is never stranded — but the break is
-    // visible instead of quietly logging infoValue: 0 to Firebase.
     if (typeof PAR_MODEL[term.coef] !== 'number') {
       throw new Error(`PAR_MODEL is missing coefficient "${term.coef}" — bomb pricing is de-wired`);
     }
-    const pooledDelta = term.moveKeys.reduce((sum, k) => sum + deltas[k], 0);
-    infoValue += pooledDelta * PAR_MODEL[term.coef];
   }
+
+  // Price the info-value as the PAR DIFFERENCE the mine's information makes:
+  // par(with the moves it anchored) − par(without them). Scale-agnostic —
+  // under the additive model this equals Σ pooledDelta × coef (the original
+  // formula, since every board-shape term cancels and the intercept drops
+  // out); under the log model it is the correct MARGINAL seconds at the
+  // board's own par, so a struck mine on a hard board is dearer than the
+  // same deduction on an easy one. Only the pooled reasoning-move counts
+  // differ between the two vectors; boardFeatures supplies the shared
+  // shape terms that set the multiplicative baseline under the log scale.
+  const pooledMoveKeys = POOLED_TERMS.flatMap(term => term.moveKeys);
+  const featuresWith = { ...(boardFeatures || {}) };
+  const featuresWithout = { ...(boardFeatures || {}) };
+  for (const k of pooledMoveKeys) {
+    featuresWith[k] = resultA[k] || 0;
+    featuresWithout[k] = resultB[k] || 0;
+  }
+  let infoValue = predictPar(featuresWith) - predictPar(featuresWithout);
 
   // Clamp ≥ 0. A mine whose discovery somehow ADDS solver work shouldn't
   // refund time; that would imply a negative penalty and a strict

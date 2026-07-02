@@ -9,26 +9,26 @@
 export const PLATE_MIN_SECONDS = 8;
 export const PLATE_SECONDS_PER_STEP = 10;
 // Each disarm target the Pass-A estimator could NOT resolve needs
-// subset/tank reasoning; it is billed at PLATE_TIER_WEIGHT x the par
-// model's fitted per-tier cost (the dearer of pattern/search — fit-day
-// noise can invert the two). Calibration, not proof: the certificate
-// still doesn't model wall-clock, but the deadline now scales with the
-// same fitted difficulty prices par uses instead of ignoring hard
-// reasoning entirely. The cap keeps a many-hard-target plate from
-// becoming a non-event.
-export const PLATE_TIER_WEIGHT = 8;
+// subset/tank reasoning; it is billed at PLATE_TIER_SECONDS. This is
+// DECOUPLED from PAR_MODEL: under the log-scale par model the tier
+// coefficients are log-MULTIPLIERS, not seconds, so the old
+// `PLATE_TIER_WEIGHT × tier-coef` read no longer yields a seconds price.
+// The fixed value preserves the ~16s/hard-target the additive model
+// produced (max(pattern,search) ≈ 1.9s × the old weight of 8, above the
+// per-step floor). Plate timing is calibration, not proof (the certificate
+// never modeled wall-clock), so a stable fixed rate is an acceptable price
+// and no longer chases fit-day tier-coefficient noise. The cap keeps a
+// many-hard-target plate from becoming a non-event.
+export const PLATE_TIER_SECONDS = 16;
 export const PLATE_MAX_SECONDS = 90;
 
 /**
  * Seconds for a pressure-plate countdown, from the disarm estimate.
  * @param {{steps: number, unsolved: number}} est estimatePlateMovesToDisarm result
- * @param {object} model PAR_MODEL (injectable for tests)
  */
-export function plateSeconds(est, model = PAR_MODEL) {
-  const tierSec = Math.max(model.secPerPatternMove || 0, model.secPerSearchMove || 0);
-  // A stuck target can never price below the classic per-step rate,
-  // whatever the day's refit put in the tier coefficients.
-  const perHardTarget = Math.max(PLATE_SECONDS_PER_STEP, Math.ceil(PLATE_TIER_WEIGHT * tierSec));
+export function plateSeconds(est) {
+  // A stuck target can never price below the classic per-step rate.
+  const perHardTarget = Math.max(PLATE_SECONDS_PER_STEP, PLATE_TIER_SECONDS);
   const raw = est.steps * PLATE_SECONDS_PER_STEP + est.unsolved * perHardTarget;
   return Math.max(PLATE_MIN_SECONDS, Math.min(PLATE_MAX_SECONDS, Math.round(raw)));
 }
@@ -53,9 +53,12 @@ export function applyWidthCap(rows, cols, mines) {
   return { rows, cols: newCols, mines: newMines };
 }
 
-// Greg-par linear model. Coefficients are fit in R against real daily
-// completion data and written here; the JS side just applies the formula
-// via computeDailyFeatures + predictPar in src/logic/dailyFeatures.js.
+// Greg-par model. Coefficients are fit in R against real daily completion
+// data and written here; the JS side just applies the formula via
+// computeDailyFeatures + predictPar in src/logic/dailyFeatures.js. When the
+// block carries `scale: 'log'`, par = exp(intercept + Σ coef·feature) (a
+// multiplicative, lognormal-median model; coefficients are log-multipliers);
+// without that marker predictPar applies the legacy additive-seconds form.
 //
 // The block between PAR_MODEL:START and PAR_MODEL:END is OVERWRITTEN
 // AUTOMATICALLY every day at 10am ET by the "Refit Greg-par" GitHub Action
@@ -65,30 +68,33 @@ export function applyWidthCap(rows, cols, mines) {
 // scripts/refit-par-model.R.
 // PAR_MODEL:START
 export const PAR_MODEL = {
-  // Last refit: 2026-07-01 | brms (3 users · max Rhat = 1.009, min ESS = 1289, divergent = 0/4000) | N=257 scores, 114 dates, 7 players | R²=0.535
-  intercept: -16.92,
+  // Last refit: 2026-07-02 | brms (3 users · max Rhat = 1.003, min ESS = 1195, divergent = 1/4000) | N=258 scores, 114 dates, 7 players | R²=0.505 (log scale)
+  // scale:"log" => par = exp(intercept + Σ coef·feature): multiplicative,
+  // lognormal MEDIAN. Coefficients are LOG-MULTIPLIERS per unit, NOT seconds.
+  scale: 'log',
+  intercept: 2.9015,
 
   // Size baseline. cellCount is the lone size axis (it absorbs trivial
   // propagation); totalMines stays a raw count. (2026-06-08 rework.)
-  secPerCell:        0.116,
-  secPerMineFlag:    3.600,
+  secPerCell:        0.00079,
+  secPerMineFlag:    0.05576,
 
   // Reasoning tiers: pattern = canonical + generic subsets; search = advanced.
-  secPerPatternMove: 1.919,
-  secPerSearchMove:  1.637,
+  secPerPatternMove: 0.01348,
+  secPerSearchMove:  0.00732,
 
   // Board structure.
-  secPerWallEdge:    0.158,
-  secPerZeroCluster: 0.472,
+  secPerWallEdge:    0.00144,
+  secPerZeroCluster: 0.00115,
 
   // Modifier cells (kept split; sparse, prior-anchored until data builds).
-  secPerMysteryCell:   0.627,
-  secPerLiarCell:      0.845,
-  secPerLockedCell:    0.669,
-  secPerWormholePair:  0.726,
-  secPerMirrorPair:    1.555,
-  secPerSonarCell:     0.685,
-  secPerCompassCell:   0.875,
+  secPerMysteryCell:   0.00135,
+  secPerLiarCell:      0.00150,
+  secPerLockedCell:    0.03191,
+  secPerWormholePair:  0.00153,
+  secPerMirrorPair:    0.01258,
+  secPerSonarCell:     0.03180,
+  secPerCompassCell:   0.01615,
 
 };
 // PAR_MODEL:END
@@ -105,21 +111,24 @@ export const PAR_MODEL = {
 // between the markers is refit-owned, same contract as PAR_MODEL.
 // TIMED_PAR_MODEL:START
 export const PAR_MODEL_TIMED = {
-  // Last refit: 2026-07-01 | brms-timed (n=47)
-  intercept: -36.99,
-  secPerCell:        0.147,
-  secPerMineFlag:    3.425,
-  secPerPatternMove: 2.223,
-  secPerSearchMove:  2.345,
-  secPerWallEdge:    0.201,
-  secPerZeroCluster: 0.596,
-  secPerMysteryCell:   0.789,
-  secPerLiarCell:      1.066,
-  secPerLockedCell:    0.864,
-  secPerWormholePair:  0.941,
-  secPerMirrorPair:    1.996,
-  secPerSonarCell:     0.893,
-  secPerCompassCell:   1.119,
+  // Last refit: 2026-07-02 | brms-timed (n=49)
+  // Same log scale as PAR_MODEL (par = exp(intercept + Σ coef·feature)); below
+  // the activation threshold this is a verbatim copy of the daily model.
+  scale: 'log',
+  intercept: 2.1264,
+  secPerCell:        0.00132,
+  secPerMineFlag:    0.07798,
+  secPerPatternMove: 0.02394,
+  secPerSearchMove:  0.01074,
+  secPerWallEdge:    0.00185,
+  secPerZeroCluster: 0.00146,
+  secPerMysteryCell:   0.00171,
+  secPerLiarCell:      0.00190,
+  secPerLockedCell:    0.04077,
+  secPerWormholePair:  0.00198,
+  secPerMirrorPair:    0.01599,
+  secPerSonarCell:     0.04040,
+  secPerCompassCell:   0.02069,
 };
 // TIMED_PAR_MODEL:END
 

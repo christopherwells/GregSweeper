@@ -15,7 +15,7 @@ import {
   isFirebaseOnline, fetchUserDailyHistory, fetchAllDailyMeta,
 } from '../firebase/firebaseLeaderboard.js';
 import { PAR_MODEL } from '../logic/difficulty.js';
-import { loadHandicaps, getHandicap, getHandicapsMeta } from '../logic/handicaps.js';
+import { loadHandicaps, getHandicapRatio, getHandicapSeconds, getHandicapsMeta } from '../logic/handicaps.js';
 
 const UID_RETRY_MS = 1000;
 
@@ -51,9 +51,10 @@ async function collectSnapshot(currentVersion) {
     fetchAllDailyMeta(),
   ]);
 
-  // loadHandicaps has resolved, so getHandicapsMeta / getHandicap are safe.
+  // loadHandicaps has resolved, so getHandicapsMeta / getHandicapRatio are safe.
   const handicapsMeta = getHandicapsMeta();
-  const handicap = uid ? getHandicap(uid) : 0;
+  const handicapRatio = uid ? getHandicapRatio(uid) : 1;
+  const handicapSeconds = uid ? getHandicapSeconds(uid) : 0;
   const uidInHandicaps = !!(uid && uid in handicapsMap);
 
   const historyCount = Array.isArray(history) ? history.length : null;
@@ -101,7 +102,8 @@ async function collectSnapshot(currentVersion) {
       missingFeatureDates,
     },
     handicap: {
-      value: handicap,
+      ratio: handicapRatio,
+      seconds: handicapSeconds,
       uidInHandicaps,
     },
     handicapsMeta,
@@ -171,8 +173,8 @@ function renderSnapshot(body, snap) {
   }
 
   // Handicap
-  const sign = snap.handicap.value >= 0 ? '+' : '';
-  const handicapStr = `${sign}${snap.handicap.value.toFixed(2)}s · uid ${snap.handicap.uidInHandicaps ? 'in' : 'NOT in'} handicaps.json`;
+  const sign = snap.handicap.seconds >= 0 ? '+' : '−';
+  const handicapStr = `k=${snap.handicap.ratio.toFixed(3)} (${sign}${Math.abs(snap.handicap.seconds).toFixed(1)}s) · uid ${snap.handicap.uidInHandicaps ? 'in' : 'NOT in'} handicaps.json`;
   body.appendChild(row({
     label: 'Your handicap',
     value: handicapStr,

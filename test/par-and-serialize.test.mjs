@@ -12,19 +12,29 @@ const { predictPar, breakdownPar } = await import('../src/logic/dailyFeatures.js
 const { PAR_MODEL } = await import('../src/logic/difficulty.js');
 const { serializeBoard, deserializeBoard } = await import('../src/firebase/dailyBoardSync.js');
 
-test('predictPar on an all-zero feature vector returns the rounded intercept', () => {
-  assert.equal(predictPar({}), Math.round(PAR_MODEL.intercept * 10) / 10);
+test('predictPar on an all-zero feature vector returns the rounded baseline', () => {
+  // Log model: baseline par = exp(intercept). Additive: the intercept itself.
+  const expected = PAR_MODEL.scale === 'log'
+    ? Math.round(Math.exp(PAR_MODEL.intercept) * 10) / 10
+    : Math.round(PAR_MODEL.intercept * 10) / 10;
+  assert.equal(predictPar({}), expected);
 });
 
 test('predictPar is monotonic in a positive-coefficient feature', () => {
   assert.ok(PAR_MODEL.secPerSearchMove > 0, 'precondition: search coef positive');
   // advancedLogicMoves feeds the derived `search` tier (searchMoves = advanced).
+  // A wide delta keeps the gap clear of 0.1s rounding on a small baseline par.
   const lo = predictPar({ advancedLogicMoves: 1 });
-  const hi = predictPar({ advancedLogicMoves: 5 });
+  const hi = predictPar({ advancedLogicMoves: 20 });
   assert.ok(hi > lo, `par should rise with search moves: ${lo} -> ${hi}`);
-  // The increase equals coef × delta (within rounding).
-  const expected = PAR_MODEL.secPerSearchMove * 4;
-  assert.ok(Math.abs((hi - lo) - expected) < 0.15, `delta ${hi - lo} vs expected ${expected}`);
+  if (PAR_MODEL.scale === 'log') {
+    // Multiplicative: hi / lo equals exp(coef × delta) within rounding.
+    const expectedRatio = Math.exp(PAR_MODEL.secPerSearchMove * 19);
+    assert.ok(Math.abs(hi / lo - expectedRatio) < 0.05, `ratio ${hi / lo} vs expected ${expectedRatio}`);
+  } else {
+    const expected = PAR_MODEL.secPerSearchMove * 19;
+    assert.ok(Math.abs((hi - lo) - expected) < 0.3, `delta ${hi - lo} vs expected ${expected}`);
+  }
 });
 
 test('predictPar returns a finite number for a realistic feature vector', () => {

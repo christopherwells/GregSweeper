@@ -26,7 +26,7 @@ import { FIRST_ARCHIVE_DATE, isArchivableDate, resolveCruxDate } from './logic/a
 import { persistGameState, tryResumeGame } from './game/gamePersistence.js';
 import { getDifficultyForLevel, getTimedDifficulty, getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, CHAOS_UNLOCK_LEVEL, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE } from './logic/difficulty.js';
 import { computeDailyFeatures, predictPar } from './logic/dailyFeatures.js';
-import { loadHandicaps, getHandicap, estimateHandicapDetails } from './logic/handicaps.js';
+import { loadHandicaps, getHandicapRatio, getHandicapDetails, isRatedHandicap, getRefPar, estimateHandicapDetails } from './logic/handicaps.js';
 import { rankAdjusted, filterToFriends } from './logic/leaderboardViews.js';
 import {
   loadStats, saveTheme, loadTheme, resetStats,
@@ -936,34 +936,25 @@ async function populateDailyPanel() {
   // nightly refit catches up. Provisional flag tells the stats renderer
   // to qualify the number ("(provisional, N plays)") so the player
   // understands it'll tighten as more data accumulates.
-  let handicap = getHandicap(uid);
+  let ratio = getHandicapRatio(uid);
+  let bombSeconds = (getHandicapDetails(uid) || {}).bombSeconds || 0;
   let handicapProvisional = false;
-  if (handicap === 0 && history && history.length >= 2) {
+  if (!isRatedHandicap(uid) && history && history.length >= 2) {
+    // Provisional ratio from the player's own history until the nightly refit
+    // includes them: the geometric mean of time/par, shrunk toward k=1. Bombs
+    // ride in the ratio implicitly (a player who bombs is slower), so there's
+    // no clean/bomb split until the fit ships one.
     const pairs = history
       .map(h => {
         const f = metaByDate[h.date];
         if (!f) return null;
-        // Cross-reference the user's bombHits AND totalBombPenalty for this
-        // date so estimateHandicapDetails can reconstruct clean-play time:
-        // new info-value plays (bombPenalty > 0) subtract only the fixed
-        // per-hit base, while legacy +10s/re-fog plays subtract the fitted
-        // secPerBombHit. Without bombPenalty, a new-mechanic bomb day is
-        // misread as legacy and over-subtracted (~14s vs 3s per hit),
-        // making the provisional handicap too favorable until the nightly
-        // refit catches up.
-        const myScore = Array.isArray(scoresByDate?.[h.date])
-          ? scoresByDate[h.date].find(s => s.uid === uid) : null;
-        return {
-          time: h.time,
-          predictedPar: predictPar(f),
-          bombHits: myScore?.bombHits || 0,
-          bombPenalty: myScore?.totalBombPenalty || 0,
-        };
+        return { time: h.time, predictedPar: predictPar(f) };
       })
       .filter(Boolean);
     const est = estimateHandicapDetails(pairs);
     if (est) {
-      handicap = est.handicap;
+      ratio = est.k;
+      bombSeconds = 0;
       handicapProvisional = true;
     }
   }
@@ -973,7 +964,9 @@ async function populateDailyPanel() {
     metaByDate: metaByDate || {},
     scoresByDate: scoresByDate || {},
     uid,
-    handicap,
+    ratio,
+    bombSeconds,
+    refPar: getRefPar(),
     handicapProvisional,
   });
 }
@@ -1380,12 +1373,21 @@ async function _renderAdjustedView() {
   $('#leaderboard-empty').classList.toggle('hidden', hasEntries);
 
   const myUid = getUid();
+  const refPar = getRefPar();
   ranked.forEach((entry, i) => {
     const tr = document.createElement('tr');
     if (myUid && entry.uid === myUid) tr.classList.add('lb-row-mine');
-    const hcChip = entry.rated
-      ? `<span class="lb-hc-chip">${entry.handicap >= 0 ? '−' : '+'}${Math.abs(entry.handicap).toFixed(1)}s</span>`
-      : '<span class="lb-hc-chip lb-hc-unrated">unrated</span>';
+    // HC chip: the ratio shown as a stable seconds magnitude (at a standard
+    // board) AND a percent. k > 1 = typically slower than Greg → '+'.
+    let hcChip;
+    if (entry.rated) {
+      const secs = (entry.ratio - 1) * refPar;
+      const pct = (entry.ratio - 1) * 100;
+      const sign = secs >= 0 ? '+' : '−';
+      hcChip = `<span class="lb-hc-chip">${sign}${Math.abs(secs).toFixed(0)}s · ${sign}${Math.abs(pct).toFixed(0)}%</span>`;
+    } else {
+      hcChip = '<span class="lb-hc-chip lb-hc-unrated">unrated</span>';
+    }
     tr.innerHTML = `${_rankCell(i)}${_nameCell(entry.name)}`
       + `<td>${hcChip}</td><td class="lb-adjusted">${entry.adjusted.toFixed(1)}s</td>`;
     tbody.appendChild(tr);
@@ -1393,7 +1395,7 @@ async function _renderAdjustedView() {
 
   const foot = $('#leaderboard-footnote');
   if (foot) {
-    foot.textContent = 'Adjusted = time − fitted handicap · rated after 5 plays';
+    foot.textContent = 'Adjusted = your time at Greg’s pace · HC = typical vs Greg (+ slower / − faster) · rated after 5 plays';
     foot.classList.remove('hidden');
   }
 }
@@ -3862,8 +3864,8 @@ async function init() {
   }).catch(err => reportCaughtError('cloud-progress-load', err)); // progress stays local-only on failure — but the failure is reported
 
   // Preload handicaps so the end-of-game modal can render personal par
-  // without a race. Fire-and-forget; getHandicap() falls back to 0
-  // when the file hasn't loaded yet.
+  // without a race. Fire-and-forget; getHandicapRatio() falls back to a
+  // neutral k=1 when the file hasn't loaded yet.
   loadHandicaps();
 
   // Rebuild the provisional-handicap residual cache from Firebase
