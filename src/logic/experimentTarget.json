@@ -1,45 +1,50 @@
 {
-  "updatedAt": "2026-07-02T16:08:07Z",
-  "target": "sonarCellCount",
-  "reason": "highest posterior CV (0.607) excluding last 3 targets",
+  "updatedAt": "2026-07-03T15:54:41Z",
+  "target": "mirrorPairCount",
+  "reason": "highest posterior CV (0.915) excluding last 3 targets",
   "recentTargets": [
+    "mirrorPairCount",
     "sonarCellCount",
-    "compassCellCount",
-    "lockedCellCount"
+    "compassCellCount"
   ],
   "candidates": [
     {
       "feature": "mirrorPairCount",
-      "mean": 0.011,
+      "mean": 0.012,
       "sd": 0.011,
-      "cv": 0.964
+      "cv": 0.915
     },
     {
       "feature": "compassCellCount",
-      "mean": 0.025,
-      "sd": 0.017,
-      "cv": 0.674
-    },
-    {
-      "feature": "sonarCellCount",
-      "mean": 0.031,
-      "sd": 0.019,
-      "cv": 0.607
+      "mean": 0.02,
+      "sd": 0.015,
+      "cv": 0.739
     },
     {
       "feature": "lockedCellCount",
-      "mean": 0.031,
-      "sd": 0.018,
-      "cv": 0.585
+      "mean": 0.028,
+      "sd": 0.017,
+      "cv": 0.609
+    },
+    {
+      "feature": "sonarCellCount",
+      "mean": 0.032,
+      "sd": 0.02,
+      "cv": 0.605
     },
     {
       "feature": "patternMoves",
-      "mean": 0.013,
-      "sd": 0.007,
-      "cv": 0.506
+      "mean": 0.012,
+      "sd": 0.006,
+      "cv": 0.549
     }
   ],
   "coverage_targets": [
+    {
+      "feature": "sonarCellCount",
+      "n_boards": 8,
+      "deficit_weight": 0.1111
+    },
     {
       "feature": "compassCellCount",
       "n_boards": 8,
@@ -56,19 +61,14 @@
       "deficit_weight": 0.0909
     },
     {
-      "feature": "mirrorPairCount",
-      "n_boards": 11,
-      "deficit_weight": 0.0833
-    },
-    {
       "feature": "mysteryCellCount",
       "n_boards": 12,
       "deficit_weight": 0.0769
     },
     {
       "feature": "lockedCellCount",
-      "n_boards": 12,
-      "deficit_weight": 0.0769
+      "n_boards": 13,
+      "deficit_weight": 0.0714
     }
   ]
 }
