@@ -4,7 +4,7 @@ The daily Minesweeper, no guesses required. Every board guaranteed solvable. Ten
 
 ## Play it
 
-**[gregsweeper.live (or christopherwells.github.io/GregSweeper)](https://christopherwells.github.io/GregSweeper/)**
+**[gregsweeper.com](https://gregsweeper.com/)**
 
 ## What makes it different
 

@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://christopherwells.github.io/GregSweeper/</loc>
+    <loc>https://gregsweeper.com/</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://christopherwells.github.io/GregSweeper/?mode=daily</loc>
+    <loc>https://gregsweeper.com/?mode=daily</loc>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://christopherwells.github.io/GregSweeper/?mode=weekly</loc>
+    <loc>https://gregsweeper.com/?mode=weekly</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>

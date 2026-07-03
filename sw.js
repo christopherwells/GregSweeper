@@ -1,8 +1,9 @@
-const CACHE_NAME = 'gregsweeper-v1.6.127';
+const CACHE_NAME = 'gregsweeper-v1.6.128';
 const ASSETS = [
   './',
   './index.html',
   './src/main.js',
+  './src/config.js',
   './src/state/gameState.js',
   './src/ui/domHelpers.js',
   './src/ui/boardRenderer.js',

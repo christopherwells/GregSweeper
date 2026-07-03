@@ -10,6 +10,7 @@
 //   renderShareCardBlob(data)  -> Promise<Blob>  (PNG)
 
 import { getThemeEmoji } from './boardRenderer.js';
+import { PROD_SITE_DOMAIN } from '../config.js';
 import { getSpriteUrl, gimmickSpriteUrl } from './spriteLoader.js';
 import { getGimmickDefs } from '../logic/gimmicks.js';
 
@@ -767,7 +768,7 @@ export async function renderShareCardImage(data) {
   g.textAlign = 'right';
   g.fillStyle = dimmer;
   g.font = '500 25px system-ui, sans-serif';
-  g.fillText('christopherwells.github.io/GregSweeper', W - 90, fy);
+  g.fillText(PROD_SITE_DOMAIN, W - 90, fy);
 
   // Overlay effects that fall across the whole card (e.g. noir blinds).
   drawThemeFxOverlay(g, W, H, data.theme);

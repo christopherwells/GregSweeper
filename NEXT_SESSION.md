@@ -174,7 +174,7 @@ Plain ASCII renders inline; image attachments don't.
   ```
   GregSweeper #45  1:25 (par 1:47, −22s)
   💣💣 hits   ⏱️ −15% par   ⭐ +1 streak
-  https://christopherwells.github.io/GregSweeper/
+  https://gregsweeper.com/
   ```
 - Use unicode emoji that render universally. NO copyrighted color
   squares (Wordle's are theirs). Mine emoji + clock + star are fine.
@@ -379,7 +379,7 @@ MSYS_NO_PATHCONV=1 firebase deploy --only database
 MSYS_NO_PATHCONV=1 firebase database:update / update.json -f
 
 # Open diagnostics modal (one-time per device — flag persists)
-# https://christopherwells.github.io/GregSweeper/?debug=1
+# https://gregsweeper.com/?debug=1
 ```
 
 ## Who's who (current uid map)

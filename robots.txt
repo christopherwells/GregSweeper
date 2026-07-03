@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /backfill-features.html
 Disallow: /scripts/
-Sitemap: https://christopherwells.github.io/GregSweeper/sitemap.xml
+Sitemap: https://gregsweeper.com/sitemap.xml

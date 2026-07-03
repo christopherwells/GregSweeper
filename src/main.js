@@ -6,6 +6,7 @@
 // getLocalDateString imported from seededRandom.js
 
 import { state } from './state/gameState.js';
+import { PROD_SITE_BASE } from './config.js';
 import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn, escapeHtml } from './ui/domHelpers.js';
 import { resizeCells, updateAllCells, getThemeEmoji, needsZoom, updateZoom, zoomIn, zoomOut, setFocusedCell, announceGame } from './ui/boardRenderer.js';
 import { preloadSprites, spriteImgHTML, medalImgForEmoji, gimmickSpriteImgHTML, achievementSpriteImgHTML, uiSpriteImgHTML } from './ui/spriteLoader.js';
@@ -1698,7 +1699,7 @@ function generateShareCard() {
     // The card's single link is a crux challenge: a softer hook than a bare
     // play link, and the teaser's own "Play today's board" CTA still routes
     // the recipient to the daily.
-    lines.push(`🦀 Try yesterday's crux: https://christopherwells.github.io/GregSweeper/?crux=${_addCalendarDays(getLocalDateString(), -1)}`);
+    lines.push(`🦀 Try yesterday's crux: ${PROD_SITE_BASE}?crux=${_addCalendarDays(getLocalDateString(), -1)}`);
     return lines.join('\n');
   }
 
@@ -1706,12 +1707,12 @@ function generateShareCard() {
     const rating = getSpeedRating(level, time);
     return `${getThemeEmoji('mine')} GregSweeper · Timed ${levelLabel}\n` +
            `${rating.icon} ${rating.name} · ${time}s (${diff.rows}×${diff.cols})${tierText}\n\n` +
-           `https://christopherwells.github.io/GregSweeper/`;
+           PROD_SITE_BASE;
   }
 
   return `${getThemeEmoji('mine')} GregSweeper · ${modeLabel}\n` +
          `${levelLabel} (${diff.rows}x${diff.cols}) in ${time}s${streakText}${tierText}\n\n` +
-         `https://christopherwells.github.io/GregSweeper/`;
+         PROD_SITE_BASE;
 }
 
 function handleShare() {
@@ -3291,7 +3292,7 @@ $('#btn-delete-my-data').addEventListener('click', () => {
     'I understand this removes my leaderboard rows, weekly best-times,',
     'and progress from Firebase. It cannot be undone.',
     '',
-    '(Privacy policy: https://christopherwells.github.io/GregSweeper/privacy.html)',
+    `(Privacy policy: ${PROD_SITE_BASE}privacy.html)`,
   ].join('\n');
   const url = 'mailto:christopher.wells.23@gmail.com'
     + '?subject=' + encodeURIComponent(subject)
@@ -3458,7 +3459,7 @@ $('#gameover-share').addEventListener('click', () => handleShare());
 // prod even on the test build, so the link works wherever it's opened.
 $('#gameover-crux-challenge')?.addEventListener('click', async () => {
   const yesterday = _addCalendarDays(getLocalDateString(), -1);
-  const url = `https://christopherwells.github.io/GregSweeper/?crux=${yesterday}`;
+  const url = `${PROD_SITE_BASE}?crux=${yesterday}`;
   const shareData = {
     title: 'GregSweeper',
     text: 'Greg already proved this one. See how many squares you can prove without a guess.',

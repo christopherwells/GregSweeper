@@ -2,8 +2,8 @@ name: Deploy GitHub Pages
 
 # Single workflow that publishes both main (production) and test
 # (development) to GitHub Pages in one artifact:
-#   main content     →   https://christopherwells.github.io/GregSweeper/
-#   test branch      →   https://christopherwells.github.io/GregSweeper/test/
+#   main content     →   https://gregsweeper.com/
+#   test branch      →   https://gregsweeper.com/test/
 #
 # Triggered by push to either branch — both rebuild the same artifact
 # (we always pull the latest of BOTH branches) so a main push doesn't

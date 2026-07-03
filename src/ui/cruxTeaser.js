@@ -17,6 +17,7 @@ import { CRUX_VIEWED_KEY_PREFIX } from '../logic/archiveEligibility.js';
 import { safeSet } from '../storage/storageAdapter.js';
 import { reportCaughtError } from '../diagnostics/errorReporter.js';
 import { spriteImgHTML } from './spriteLoader.js';
+import { PROD_SITE_BASE } from '../config.js';
 
 // Rebuild a plain board (numbers + walls, no mine layout) from a crux
 // payload, so findDeducibleFrontier can recompute EVERYTHING the shown
@@ -232,7 +233,7 @@ export function renderCruxTeaser(date, payload, breather = false) {
   // Anyone viewing a crux can re-share it — the prod link for THIS date, so
   // a link copied from /test/ still points at the public page.
   if (copyBtn) copyBtn.addEventListener('click', () => {
-    const link = `https://christopherwells.github.io/GregSweeper/?crux=${date}`;
+    const link = `${PROD_SITE_BASE}?crux=${date}`;
     const flash = () => { copyBtn.textContent = 'Link copied'; setTimeout(() => { copyBtn.textContent = 'Copy challenge link'; }, 2000); };
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(flash, flash);
     else flash();
