@@ -799,6 +799,25 @@
     </div>
   </div>
 
+  <!-- "GregSweeper has moved" — one-time transition-window notice (main.js
+       showTitleScreen: MOVED_NOTICE_UNTIL date gate + hasSeenNotice('moved_2026')).
+       Nudges returning players to sign in so progress syncs across devices;
+       self-retires after the cutoff date. Outside #app so it renders over the
+       title screen. -->
+  <div id="moved-notice-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="moved-notice-title">
+    <div class="modal-content meet-greg-content">
+      <div class="modal-header">
+        <h2 id="moved-notice-title">GregSweeper has moved</h2>
+        <button class="modal-close" aria-label="Close"><img class="ui-icon-close" src="assets/sprites/ui-close.svg" alt="Close" draggable="false" onerror="this.replaceWith('×')"></button>
+      </div>
+      <div class="modal-body meet-greg-body">
+        <img class="meet-greg-img" src="assets/sprites/idle.png" alt="Greg, a green crab holding a clipboard" draggable="false">
+        <p>The game now lives at <strong>gregsweeper.com</strong> — you're in the right place.</p>
+        <p>Played before on the old address? A signed-in account keeps your streak and stats synced across devices. Sign in any time from <strong>Settings</strong>.</p>
+      </div>
+    </div>
+  </div>
+
   <!-- Past Dailies calendar — replay any stored past board. Opens from the
        "Past dailies" link on the Daily card. Outside #app so it renders over
        the title screen. The month grid is built by renderArchiveCalendar()

@@ -2390,6 +2390,11 @@ function updateTitleProgress() {
   }
 }
 
+// The gregsweeper.com custom-domain move (2026-07-03) title-screen notice
+// self-retires after this ET date. getLocalDateString() is 'YYYY-MM-DD', so a
+// plain string compare is date-safe.
+const MOVED_NOTICE_UNTIL = '2026-08-03';
+
 function showTitleScreen() {
   const titleScreen = $('#title-screen');
   const app = $('#app');
@@ -2424,6 +2429,13 @@ function showTitleScreen() {
   if (isOnboarded() && !hasSeenNotice('meet_greg')) {
     markNoticeSeen('meet_greg');
     showModal('meet-greg-modal');
+  } else if (getLocalDateString() < MOVED_NOTICE_UNTIL && !hasSeenNotice('moved_2026')) {
+    // The gregsweeper.com move (2026-07-03): progress is stored per-origin, so
+    // a returning anonymous player lands here with empty local stats. Nudge
+    // sign-in once, within the transition window, then auto-retire. Sits after
+    // meet_greg so a brand-new player meets Greg first.
+    markNoticeSeen('moved_2026');
+    showModal('moved-notice-modal');
   } else if (consumeMoltCelebrate()) {
     // Earned a molt day on the last completion: announce it, then drop the
     // crab into the Daily card's top-left corner on dismiss.
