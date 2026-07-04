@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v1.6.129';
+const CACHE_NAME = 'gregsweeper-v1.6.130';
 const ASSETS = [
   './',
   './index.html',
@@ -84,6 +84,7 @@ const ASSETS = [
   './src/logic/friendCodes.js',
   './src/firebase/firebaseFriends.js',
   './assets/icon.svg',
+  './assets/favicon-greg.svg',
   './assets/icon-192.png',
   './assets/icon-512.png',
   './assets/icon-maskable-512.png',
