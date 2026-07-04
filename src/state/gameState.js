@@ -164,9 +164,6 @@ export const state = {
   modalPaused: false,
 };
 
-// Total bomb-hit penalty (seconds) accrued in the CURRENT daily/weekly
-// attempt, derived from the per-hit event log. Single source of truth so
-// the live timer, the final precise time, and the score submission all
 // Record one player action on the click timeline. t mirrors the
 // bombHitEvents convention (clean wall-clock seconds, 1 decimal).
 // Capped: drop-oldest beyond 2000 entries so a pathological session
@@ -195,6 +192,9 @@ export function recordHintEvent(kind) {
   });
 }
 
+// Total bomb-hit penalty (seconds) accrued in the CURRENT daily/weekly
+// attempt, derived from the per-hit event log. Single source of truth so
+// the live timer, the final precise time, and the score submission all
 // agree. Derived from events (not a separate accumulator) so it survives
 // the daily auto-save/restore for free — the events are persisted.
 // Only one mode's events are populated at a time; summing both is safe.
@@ -208,6 +208,20 @@ export function getActiveBombPenaltyTotal() {
     if (e && typeof e.penalty === 'number') sum += e.penalty;
   }
   return Math.round(sum * 10) / 10;
+}
+
+// The number the LCD clock shows mid-game, capped at the LCD's three
+// digits. elapsedTime is PURE wall-clock (tick-driven); the daily/weekly
+// bomb penalty is held separately in the hit-event log and added here, so
+// the displayed time jumps by the penalty on a hit without mutating the
+// wall-clock counter (which would double-count on auto-save/restore).
+// Lives here — not in timerManager — because EVERY writer of the timer
+// display (timerManager's tick, headerRenderer's updateHeader) must render
+// this same value: an inlined bare-elapsedTime copy in headerRenderer used
+// to overwrite the penalized display on every reveal, flashing the clock
+// between penalized and raw time until the next tick (fixed 2026-07-04).
+export function getDisplayTime() {
+  return Math.min(Math.floor(state.elapsedTime + getActiveBombPenaltyTotal()), 999);
 }
 
 // ── Encouragement Lines ────────────────────────────────

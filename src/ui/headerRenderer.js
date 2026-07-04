@@ -1,4 +1,4 @@
-import { state } from '../state/gameState.js';
+import { state, getDisplayTime } from '../state/gameState.js';
 import {
   $, $$, mineCounterEl, levelDisplay, checkpointDisplay,
   streakDisplayEl, cellsRemainingEl, progressBarContainer,
@@ -348,12 +348,17 @@ export function updateFlagModeBar() {
   if (stuckBtn) stuckBtn.classList.toggle('hidden', over);
 }
 
-// Internal: updateHeader calls updateTimerDisplay for the timer section
-// Import from timerManager would be circular, so we inline the display logic
+// Internal: the timer section of updateHeader. Renders the SAME value as
+// timerManager's updateTimerDisplay — both read gameState.getDisplayTime,
+// the penalty-inclusive single source of truth (ui can't import from
+// game/, so the shared derivation lives in the state leaf). An inlined
+// bare-elapsedTime copy here used to overwrite the penalized display on
+// every updateHeader call — each reveal, flag, and bomb-popup close — so
+// the daily/weekly clock flashed between penalized and raw time until the
+// next tick (fixed 2026-07-04).
 function updateTimerDisplayInHeader() {
   const timerEl = document.getElementById('timer-display');
   if (!timerEl) return;
-  const display = Math.min(Math.floor(state.elapsedTime), 999);
-  timerEl.textContent = String(display).padStart(3, '0');
+  timerEl.textContent = String(getDisplayTime()).padStart(3, '0');
   timerEl.classList.remove('timer-critical', 'timer-warning');
 }
