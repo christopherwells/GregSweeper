@@ -23,7 +23,7 @@ import { newGame, revealCell, toggleFlag, handleChordReveal, rearmPlateTimers } 
 import './game/winLossHandler.js'; // side-effect: registers handleWin with powerUpActions
 import { useRevealSafe, useShield, activateScan, activateXRay, activateMagnet } from './game/powerUpActions.js';
 import { switchMode, launchDailyArchive, isChaosUnlocked, updateModeUI } from './game/modeManager.js';
-import { FIRST_ARCHIVE_DATE, isArchivableDate, resolveCruxDate } from './logic/archiveEligibility.js';
+import { FIRST_ARCHIVE_DATE, isArchivableDate, resolveCruxDate, streakBearingDates } from './logic/archiveEligibility.js';
 import { persistGameState, tryResumeGame } from './game/gamePersistence.js';
 import { getDifficultyForLevel, getTimedDifficulty, getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, CHAOS_UNLOCK_LEVEL, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE } from './logic/difficulty.js';
 import { computeDailyFeatures, predictPar } from './logic/dailyFeatures.js';
@@ -969,6 +969,9 @@ async function populateDailyPanel() {
     bombSeconds,
     refPar: getRefPar(),
     handicapProvisional,
+    // The full shipped ratio map — the percentile chart's Adjusted mode
+    // ranks the whole field by time/k, same as the leaderboard view.
+    handicaps: handicapsMap || null,
   });
 }
 
@@ -1230,10 +1233,12 @@ async function computeWeeklyPar(weekStart) {
 }
 
 // Leaderboard state: scope (daily/weekly) x view (scores/adjusted/
-// friends). Adjusted is daily-only — handicaps are fitted on daily
-// boards, so applying them to weekly best-times would be dishonest.
+// friends). Adjusted is the DEFAULT view and works under both scopes —
+// the handicap k is a dimensionless ratio, so weekly best-times divide
+// by it the same way daily times do (the fit is daily-anchored, so a
+// weekly ranking leans on the ratio generalizing across board sizes).
 let _lbScope = 'daily';
-let _lbView = 'scores';
+let _lbView = 'adjusted';
 
 function _setActiveLeaderboardView(view) {
   for (const btn of $$('.lb-view-tab')) {
@@ -1245,7 +1250,6 @@ function _setActiveLeaderboardView(view) {
 
 async function updateLeaderboardDisplay() {
   _lbScope = _defaultLeaderboardTab();
-  if (_lbView === 'adjusted' && _lbScope === 'weekly') _lbView = 'scores';
   _renderGregYesterdayNote();
   await renderLeaderboard();
 }
@@ -1253,14 +1257,6 @@ async function updateLeaderboardDisplay() {
 async function renderLeaderboard() {
   _setActiveLeaderboardTab(_lbScope);
   _setActiveLeaderboardView(_lbView);
-  const adjTab = $('.lb-view-tab[data-lb-view="adjusted"]');
-  if (adjTab) {
-    // Handicaps are fitted on daily boards: under Weekly the tab is
-    // simply gone, not greyed.
-    const off = _lbScope === 'weekly';
-    adjTab.disabled = off;
-    adjTab.classList.toggle('hidden', off);
-  }
   $('#friends-panel')?.classList.toggle('hidden', _lbView !== 'friends');
   $('#leaderboard-footnote')?.classList.add('hidden');
 
@@ -1342,16 +1338,21 @@ async function _renderDailyScores(friendCtx = null, emptyText = null) {
   if (!gregPlaced) tbody.appendChild(_gregGhostRow(dailyPar, gregTrailing));
 }
 
-// Handicap-adjusted view: time − fitted handicap, ranked. Uses the
-// SHIPPED handicaps.json (public, identical for every viewer); players
-// not in the fit (under 5 plays) rank by raw time with an unrated tag.
+// Handicap-adjusted view (the modal's default): time / fitted ratio,
+// ranked. Uses the SHIPPED handicaps.json (public, identical for every
+// viewer); players not in the fit (under 5 plays) rank by raw time with
+// an unrated tag. Scope-aware: daily ranks today's times, weekly ranks
+// the week's best times by the same dimensionless ratio.
 async function _renderAdjustedView() {
+  const isWeekly = _lbScope === 'weekly';
   const thead = $('#leaderboard-table thead');
   if (thead) {
     thead.innerHTML = '<tr><th>#</th><th>Name</th><th>HC</th><th>Adjusted</th></tr>';
   }
   const today = getLocalDateString();
-  $('#leaderboard-date').textContent = prettyDate(today);
+  const weekStart = getWeekStart();
+  $('#leaderboard-date').textContent = isWeekly
+    ? `Week of ${prettyDate(weekStart)}` : prettyDate(today);
   const tbody = $('#leaderboard-body');
   tbody.innerHTML = '';
 
@@ -1363,14 +1364,19 @@ async function _renderAdjustedView() {
   }
 
   const [entries, handicapMap] = await Promise.all([
-    fetchOnlineLeaderboard(today).then(e => e || []),
+    isWeekly
+      ? fetchWeeklyLeaderboard(weekStart).then(rows =>
+          (rows || []).map(r => ({ uid: r.uid, name: r.name, time: r.bestTime })))
+      : fetchOnlineLeaderboard(today).then(e => e || []),
     loadHandicaps(),
   ]);
   const ranked = rankAdjusted(entries, handicapMap || new Map());
 
   const hasEntries = ranked.length > 0;
   $('#leaderboard-table').classList.toggle('hidden', !hasEntries);
-  $('#leaderboard-empty').textContent = 'No times yet today. Be the first to finish it.';
+  $('#leaderboard-empty').textContent = isWeekly
+    ? 'No weekly times yet. Be the first to set one.'
+    : 'No times yet today. Be the first to finish it.';
   $('#leaderboard-empty').classList.toggle('hidden', hasEntries);
 
   const myUid = getUid();
@@ -2065,15 +2071,13 @@ $('#btn-leaderboard').addEventListener('click', () => {
 });
 
 // Leaderboard scope (Daily/Weekly) and view (Scores/Adjusted/Friends)
-// clicks re-render the body without closing the modal. Adjusted is
-// daily-only, so flipping to Weekly while on Adjusted falls back to
-// Scores.
+// clicks re-render the body without closing the modal. Every view works
+// under both scopes; the view sticks across scope flips.
 for (const tabBtn of $$('.leaderboard-tab')) {
   tabBtn.addEventListener('click', () => {
     const tab = tabBtn.dataset.lbTab;
     if (!tab) return;
     _lbScope = tab;
-    if (_lbScope === 'weekly' && _lbView === 'adjusted') _lbView = 'scores';
     renderLeaderboard();
   });
 }
@@ -2697,9 +2701,11 @@ function _archiveCanGoNext() {
 async function openArchiveCalendar() {
   // Refresh the completed-set so the marks reflect the latest cloud state.
   // Keep whatever we had on a failed/offline read rather than clearing marks.
+  // Archive-replayed dates count here (the calendar marks any completion,
+  // live or replay) — only the streak derivation excludes them.
   try {
-    const dates = await loadDailyHistory();
-    if (Array.isArray(dates)) _archiveCompleted = new Set(dates);
+    const entries = await loadDailyHistory();
+    if (Array.isArray(entries)) _archiveCompleted = new Set(entries.map((e) => e.date));
   } catch { /* keep prior marks */ }
   const [ty, tm] = getLocalDateString().split('-').map(Number);
   _archiveView = { year: ty, month: tm - 1 };
@@ -3215,9 +3221,11 @@ subscribeToCloudProgressUpdates((cloud) => {
 // reconcileStreakFromHistory). One read; call after any cloud merge.
 async function _reconcileDailyStreak() {
   try {
-    const dates = await loadDailyHistory();
-    if (!dates) return;
-    if (reconcileStreakFromHistory(dates)) {
+    const entries = await loadDailyHistory();
+    if (!entries) return;
+    // Archive replays are marked in dailyHistory and must not bear streak —
+    // a replayed gap day would otherwise splice the run together (#113).
+    if (reconcileStreakFromHistory(streakBearingDates(entries))) {
       try { updateTitleProgress(); } catch {}
       try { updateHeader(); } catch {}
     }

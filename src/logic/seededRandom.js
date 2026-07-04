@@ -35,6 +35,14 @@ export function getLocalDateString() {
   return _DAILY_DATE_FMT.format(new Date());
 }
 
+// ET calendar date of an arbitrary timestamp (ms since epoch), or null when
+// the input isn't a finite number. Same America/New_York anchoring as
+// getLocalDateString. Used to attribute an archive replay's dailyHistory row
+// to the day it was PLAYED (its submittedAt) rather than the board's date key.
+export function etDateStringOfMs(ms) {
+  return Number.isFinite(ms) ? _DAILY_DATE_FMT.format(new Date(ms)) : null;
+}
+
 // Weekly puzzle anchor: every player on the same ET week plays the
 // same single canonical board (different from daily's per-date board).
 // `weekStart` is the Monday of the current ET week as YYYY-MM-DD;

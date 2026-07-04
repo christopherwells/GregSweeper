@@ -7,6 +7,7 @@
 
 import { predictPar } from '../logic/dailyFeatures.js';
 import { ratioDisplaySeconds, ratioDisplayPercent } from '../logic/handicaps.js';
+import { rankAdjusted } from '../logic/leaderboardViews.js';
 import {
   lineChart, barChart, heatBars, densityChart,
 } from './charts.js';
@@ -58,11 +59,19 @@ function emptyDiv(message) {
  *        the local-residual fallback (< MIN_PLAYS_FOR_FIT_INCLUSION plays)
  */
 export function renderDailyStatsTab(data) {
-  const { history, metaByDate, scoresByDate, uid, ratio = 1, bombSeconds = 0, refPar = 60, handicapProvisional } = data;
+  const { history, metaByDate, scoresByDate, uid, ratio = 1, bombSeconds = 0, refPar = 60, handicapProvisional, handicaps = null } = data;
 
-  const sorted = [...(history || [])].sort((a, b) => a.date.localeCompare(b.date));
+  // Chronology is by the day the run was PLAYED (playedDate), not the board's
+  // date key — an archive replay of an old board is a play that happened
+  // today, and splicing it into the past corrupts the career/rolling averages
+  // and back-dates dots on the history chart.
+  const sorted = [...(history || [])].sort((a, b) =>
+    (a.playedDate || a.date).localeCompare(b.playedDate || b.date));
 
-  // Enrich each play with features, par, delta, and bombHits lookup.
+  // Enrich each play with features, par, delta, and bombHits lookup — all
+  // joined on the BOARD's date (h.date), preserved as boardDate below. The
+  // outgoing `date` is the played day, so every chart plots plays when they
+  // happened.
   const plays = sorted.map(h => {
     const features = metaByDate[h.date];
     const globalPar = features ? predictPar(features) : null;
@@ -73,7 +82,12 @@ export function renderDailyStatsTab(data) {
     const sameDayScores = scoresByDate[h.date] || [];
     const mine = sameDayScores.find(s => s.uid === uid && Math.abs(s.time - h.time) < 0.01);
     const bombHits = mine ? (mine.bombHits || 0) : 0;
-    return { ...h, features, globalPar, personalPar, deltaGlobal, deltaPersonal, bombHits };
+    return {
+      ...h,
+      boardDate: h.date,
+      date: h.playedDate || h.date,
+      features, globalPar, personalPar, deltaGlobal, deltaPersonal, bombHits,
+    };
   }).filter(p => p.features);
 
   // Zero-state: a brand-new player has no plays, so every chart below
@@ -102,7 +116,7 @@ export function renderDailyStatsTab(data) {
   renderStrikeRate(plays);
   renderModifierHeatmap(plays);
   renderDeltaDistribution(plays);
-  renderPercentileTrend(plays, scoresByDate, uid);
+  renderPercentileTrend(plays, scoresByDate, uid, handicaps);
 }
 
 // ── Headline cards ────────────────────────────────────
@@ -378,15 +392,50 @@ function renderDeltaDistribution(plays) {
 }
 
 // ── Chart: Percentile trend ───────────────────────────
+// Two modes, toggleable in place. Adjusted (the DEFAULT) divides each
+// player's best time by their SHIPPED handicap ratio before ranking — the
+// same rankAdjusted math as the leaderboard's Adjusted view, so the chart
+// answers "who beat their own par by more" (unrated players rank at raw
+// time, k=1). Raw ranks wall-clock times. The mode persists for the session.
+let _pctMode = 'adjusted';
+let _pctCtx = null;
 
-function renderPercentileTrend(plays, scoresByDate, uid) {
-  if (plays.length < 3) {
+function renderPercentileTrend(plays, scoresByDate, uid, handicapMap) {
+  _pctCtx = { plays, scoresByDate, uid, handicapMap };
+  _renderPercentileTrendChart();
+}
+
+function _pctToggle() {
+  const row = document.createElement('div');
+  row.className = 'chart-toggle';
+  for (const [mode, label] of [['adjusted', 'Adjusted'], ['raw', 'Raw']]) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'chart-toggle-btn' + (_pctMode === mode ? ' active' : '');
+    btn.setAttribute('aria-pressed', _pctMode === mode ? 'true' : 'false');
+    btn.textContent = label;
+    btn.addEventListener('click', () => {
+      if (_pctMode === mode) return;
+      _pctMode = mode;
+      _renderPercentileTrendChart();
+    });
+    row.appendChild(btn);
+  }
+  return row;
+}
+
+function _renderPercentileTrendChart() {
+  const { plays, scoresByDate, uid, handicapMap } = _pctCtx || {};
+  if (!plays || plays.length < 3) {
     replaceContent('chart-percentile-trend', emptyDiv('Need at least 3 plays.'));
     return;
   }
+  const adjusted = _pctMode === 'adjusted';
   const points = [];
   for (const p of plays) {
-    const dayScores = scoresByDate[p.date] || [];
+    // Rank against the BOARD's field (archive replays have no daily/ row for
+    // themselves, so they naturally drop out via the mine-check below).
+    const dayScores = scoresByDate[p.boardDate || p.date] || [];
     const bestByUid = new Map();
     for (const s of dayScores) {
       if (!s.uid || typeof s.time !== 'number') continue;
@@ -394,43 +443,56 @@ function renderPercentileTrend(plays, scoresByDate, uid) {
         bestByUid.set(s.uid, s.time);
       }
     }
-    const allTimes = [...bestByUid.values()];
-    if (allTimes.length < 2) continue;
-    const myTime = bestByUid.get(uid);
-    if (myTime == null) continue;
+    if (bestByUid.size < 2) continue;
+    // The ranked value per player: adjusted = time / k via the tested
+    // rankAdjusted, raw = wall-clock best time.
+    let valueByUid = bestByUid;
+    if (adjusted) {
+      const rows = [...bestByUid].map(([u, time]) => ({ uid: u, time }));
+      valueByUid = new Map(rankAdjusted(rows, handicapMap || {}).map(r => [r.uid, r.adjusted]));
+    }
+    const allVals = [...valueByUid.values()];
+    const mine = valueByUid.get(uid);
+    if (mine == null) continue;
     // Percentile where 100 = fastest (everyone you beat) and 0 = slowest
     // (beaten by everyone). Conventionally readable: "90th percentile"
     // means top 10%. With 2 players the axis is bimodal (0 or 100); more
     // players spread out the intermediate values.
-    const othersBelowMe = allTimes.filter(t => t > myTime).length;
-    const percentile = Math.round(100 * othersBelowMe / (allTimes.length - 1));
+    const othersBelowMe = allVals.filter(t => t > mine).length;
+    const percentile = Math.round(100 * othersBelowMe / (allVals.length - 1));
     points.push({
       x: shortDate(p.date),
       y: percentile,
-      label: `${p.date}: ${percentile}th percentile of ${allTimes.length} players`,
+      label: `${p.date}: ${percentile}th percentile of ${allVals.length} players${adjusted ? ' (adjusted)' : ''}`,
     });
   }
 
+  const wrap = document.createElement('div');
+  wrap.appendChild(_pctToggle());
   if (points.length === 0) {
-    replaceContent('chart-percentile-trend', emptyDiv('Populates when 2+ players have uid-tagged scores on the same day.'));
-    return;
+    wrap.appendChild(emptyDiv('Populates when 2+ players have uid-tagged scores on the same day.'));
+  } else {
+    wrap.appendChild(lineChart(points, {
+      ariaLabel: adjusted
+        ? 'Rank among the field over time, handicap-adjusted'
+        : 'Rank among the field over time',
+      yDomain: [0, 100],
+      yFormat: v => v + 'th',
+      // High percentile = good. Low = bad.
+      dotClassForValue: v => v >= 70 ? 'chart-dot-good' : v <= 30 ? 'chart-dot-bad' : 'chart-dot-even',
+      lineClass: 'chart-line chart-line-rank',
+    }));
   }
-  const svg = lineChart(points, {
-    ariaLabel: 'Rank among the field over time',
-    yDomain: [0, 100],
-    yFormat: v => v + 'th',
-    // High percentile = good. Low = bad.
-    dotClassForValue: v => v >= 70 ? 'chart-dot-good' : v <= 30 ? 'chart-dot-bad' : 'chart-dot-even',
-    lineClass: 'chart-line chart-line-rank',
-  });
-  replaceContent('chart-percentile-trend', svg);
+  replaceContent('chart-percentile-trend', wrap);
 }
 
 // ── Chart: Daily history (moved from leaderboard) ─────
 
 function renderHistoryChart(plays) {
   const entries = plays.map(p => ({
-    date: p.date,
+    date: p.date,               // the played day (see renderDailyStatsTab)
+    boardDate: p.boardDate,     // the replayed board, for the tooltip
+    archive: p.archive === true,
     time: p.time,
     par: p.personalPar != null ? p.personalPar : p.globalPar || 0,
     delta: p.deltaPersonal != null ? p.deltaPersonal : (p.deltaGlobal || 0),

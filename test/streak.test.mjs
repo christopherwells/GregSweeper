@@ -50,3 +50,23 @@ test('reconstructs the real incident run lengths', () => {
   while (d <= end) { dates.push(d.toISOString().slice(0, 10)); d.setUTCDate(d.getUTCDate() + 1); }
   assert.equal(computeStreakFromHistory(dates).streak, 70);
 });
+
+// Issue #113: dailyHistory rows written by ARCHIVE replays must be invisible
+// to the streak derivation. Routing the entries through streakBearingDates
+// (the filter _reconcileDailyStreak now applies) keeps a replayed gap day
+// from splicing the run together.
+const { streakBearingDates } = await import('../src/logic/archiveEligibility.js');
+
+test('REGRESSION #113: an archive-replayed gap day does not extend the derived streak', () => {
+  // Live run 06-15..06-19 with 06-14 missed, then 06-14 replayed via archive.
+  const entries = [
+    { date: '2026-06-14', archive: true },
+    { date: '2026-06-15' }, { date: '2026-06-16' }, { date: '2026-06-17' },
+    { date: '2026-06-18' }, { date: '2026-06-19' },
+  ];
+  const filtered = computeStreakFromHistory(streakBearingDates(entries));
+  assert.equal(filtered.streak, 5, 'the archive day must not count');
+  // Prove the pin bites: the unfiltered date set derives the inflated 6.
+  const unfiltered = computeStreakFromHistory(entries.map(e => e.date));
+  assert.equal(unfiltered.streak, 6);
+});

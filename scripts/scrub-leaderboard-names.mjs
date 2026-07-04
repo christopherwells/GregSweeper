@@ -1,7 +1,11 @@
 // Server-side hate-speech sweep for leaderboard display names.
 //
-// Scans daily/{date}/{pushId}.name and weekly/{weekStart}/{uid}.name,
-// and rewrites any name containing a slur to "Anonymous". This is the
+// Scans EVERY world-readable name-bearing path — daily/{date}/{pushId}.name,
+// weekly/{weekStart}/{uid}.name, timed/{pushId}.name, and
+// dailyArchive/{date}/{pushId}.name — and rewrites any name containing a
+// slur to "Anonymous". Keep that path list in sync with the rules: a new
+// world-readable leaderboard path MUST get a sweep here in the same change
+// (issue #54: timed/ shipped without one). This is the
 // authoritative backstop behind the client-side reject in
 // src/logic/nameFilter.js — it catches names written before the filter
 // shipped, clever evasions the naive client matcher misses, and direct
@@ -110,6 +114,45 @@ async function sweepWeekly() {
   return hits;
 }
 
+// timed/{pushId} is FLAT (one push per run, no date bucket).
+async function sweepTimed() {
+  const snap = await db.ref('timed').once('value');
+  const root = snap.val() || {};
+  const updates = {};
+  let hits = 0;
+  for (const pushId of Object.keys(root)) {
+    const name = root[pushId] && root[pushId].name;
+    if (isHateSpeech(name)) {
+      console.log(`  timed/${pushId}: "${name}" → ${SCRUBBED}`);
+      updates[`timed/${pushId}/name`] = SCRUBBED;
+      hits++;
+    }
+  }
+  if (!dryRun && hits > 0) await db.ref().update(updates);
+  return hits;
+}
+
+// dailyArchive/{date}/{pushId} mirrors the daily/ shape.
+async function sweepDailyArchive() {
+  const snap = await db.ref('dailyArchive').once('value');
+  const root = snap.val() || {};
+  const updates = {};
+  let hits = 0;
+  for (const date of Object.keys(root)) {
+    const entries = root[date] || {};
+    for (const pushId of Object.keys(entries)) {
+      const name = entries[pushId] && entries[pushId].name;
+      if (isHateSpeech(name)) {
+        console.log(`  dailyArchive/${date}/${pushId}: "${name}" → ${SCRUBBED}`);
+        updates[`dailyArchive/${date}/${pushId}/name`] = SCRUBBED;
+        hits++;
+      }
+    }
+  }
+  if (!dryRun && hits > 0) await db.ref().update(updates);
+  return hits;
+}
+
 // Expired friend codes: the rules read gate already hides codes older
 // than 15 minutes, so this is pure tidiness — delete codes older than
 // an hour so the node never accumulates dead entries.
@@ -136,8 +179,10 @@ async function sweepExpiredFriendCodes() {
   console.log(dryRun ? '[DRY RUN] scanning, no writes' : 'scanning + scrubbing');
   const d = await sweepDaily();
   const w = await sweepWeekly();
+  const t = await sweepTimed();
+  const a = await sweepDailyArchive();
   const c = await sweepExpiredFriendCodes();
-  console.log(`Done. daily hits: ${d}, weekly hits: ${w}, expired codes: ${c}${dryRun ? ' (dry run — nothing written)' : ''}.`);
+  console.log(`Done. daily hits: ${d}, weekly hits: ${w}, timed hits: ${t}, archive hits: ${a}, expired codes: ${c}${dryRun ? ' (dry run — nothing written)' : ''}.`);
   process.exit(0);
 })().catch(err => {
   console.error('Sweep FAILED:', err);

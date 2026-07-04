@@ -292,9 +292,12 @@ export async function submitArchiveCompletion(dateStr, name, scoreTime) {
     });
   }
   // dailyHistory is durable (its own retry queue), so the completion and the
-  // delta-chart entry survive even if the fit-row upload failed.
+  // delta-chart entry survive even if the fit-row upload failed. The archive
+  // marker keeps the row out of the streak derivation (issue #113): the date
+  // still marks the calendar and feeds the chart, but a replayed gap day must
+  // never retroactively extend the streak.
   if (plan.writeHistory) {
-    saveDailyHistoryEntry(dateStr, { time: scoreTime });
+    saveDailyHistoryEntry(dateStr, { time: scoreTime, archive: true });
   }
   showToast('Archive run recorded.');
 }
@@ -336,6 +339,7 @@ export function handleWin() {
   const stats = saveGameResult(true, state.elapsedTime, state.currentLevel, {
     isDaily: isRealDaily,
     isArchive: isArchivePlay,
+    isPractice: isDaily && !!state.isDailyPractice,
     usedPowerUps: state.usedPowerUps,
     gameMode: state.gameMode,
     hadGimmicks: state.activeGimmicks && state.activeGimmicks.length > 0,

@@ -242,7 +242,7 @@ function getModeKey(gameMode) {
 // "earned" can never resurface on reload or ride along a later non-daily save.
 let _lastMoltEvent = null;
 
-export function saveGameResult(won, time, level, { isDaily = false, isArchive = false, usedPowerUps = false, gameMode = 'normal', hadGimmicks = false, skillFeats = {}, dailySeed = null } = {}) {
+export function saveGameResult(won, time, level, { isDaily = false, isArchive = false, isPractice = false, usedPowerUps = false, gameMode = 'normal', hadGimmicks = false, skillFeats = {}, dailySeed = null } = {}) {
   const stats = loadStats();
   const modeKey = getModeKey(gameMode);
   const modeStats = stats.modeStats[modeKey];
@@ -293,13 +293,16 @@ export function saveGameResult(won, time, level, { isDaily = false, isArchive = 
     stats.recentGames = stats.recentGames.slice(-50);
   }
 
-  // Update per-mode stats. Archive replays are EXCLUDED here: a replayed past
-  // daily counts as a generic win in the global stats above (so achievements
-  // still fire) but must never touch any daily-mode counter — the daily-date
-  // streak, completion totals, or daily win totals all live in this block,
-  // and the daily-streak sub-block keys on modeKey, not the isDaily flag. See
-  // the Daily Archive section in CLAUDE.md.
-  if (modeStats && !isArchive) {
+  // Update per-mode stats. Archive replays AND practice dailies (?seed=) are
+  // EXCLUDED here: both count as a generic win in the global stats above (so
+  // achievements still fire) but must never touch any daily-mode counter —
+  // the daily-date streak, molt bank, completion totals, and daily win totals
+  // all live in this block, and the daily-streak sub-block keys on modeKey,
+  // not the isDaily flag. Without the isPractice guard a ?seed= win ran the
+  // streak block with dailySeed=null, stamping the REAL date, inflating the
+  // streak/bestDailyStreak, and spending banked molt days on a throwaway
+  // board (issue #131). See the Daily Archive section in CLAUDE.md.
+  if (modeStats && !isArchive && !isPractice) {
     modeStats.totalGames++;
     if (won) {
       modeStats.wins++;

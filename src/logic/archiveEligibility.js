@@ -106,3 +106,43 @@ export function resolveCruxDate(cruxParam, todayET, yesterdayET, firstDate = FIR
   if (cruxDate >= todayET || cruxDate < firstDate) cruxDate = yesterdayET;
   return cruxDate;
 }
+
+/**
+ * Filter a loadDailyHistory() result down to the dates the streak may derive
+ * from. Archive replays write dailyHistory rows too (the calendar's completed
+ * marks and the delta chart need them), but they carry `archive: true` and
+ * must be invisible to the streak reconciler — otherwise replaying a past gap
+ * day retroactively splices the run together and inflates the streak and the
+ * monotonic bestDailyStreak (issue #113).
+ *
+ * @param {Array<{date: string, archive?: boolean}>|null} entries
+ * @returns {string[]} the live-completion 'YYYY-MM-DD' dates
+ */
+export function streakBearingDates(entries) {
+  if (!Array.isArray(entries)) return [];
+  return entries
+    .filter((e) => e && typeof e.date === 'string' && e.archive !== true)
+    .map((e) => e.date);
+}
+
+/**
+ * The play-timeline attribution rule for a dailyHistory row. dailyHistory is
+ * keyed by the BOARD's date (the dedup key and the calendar mark), but the
+ * time-series surfaces (history chart, career-vs-rolling averages) must place
+ * a play on the day it was actually PLAYED:
+ *  - a LIVE row belongs to its board date — the run happened on that ET day
+ *    even when the write itself flushed from the retry queue days later;
+ *  - an ARCHIVE replay belongs to the ET day of its submittedAt — plotting it
+ *    at the board's date back-dates today's performance into the past and
+ *    corrupts the rolling/career averages.
+ *
+ * @param {string} dateKey       the row's YYYY-MM-DD board-date key
+ * @param {boolean} isArchive    the row's archive marker
+ * @param {number}  submittedAtMs the row's submittedAt (server ms)
+ * @param {(ms: number) => string|null} etOfMs timestamp → ET date string
+ * @returns {string} the YYYY-MM-DD day the play belongs to on a timeline
+ */
+export function attributePlayedDate(dateKey, isArchive, submittedAtMs, etOfMs) {
+  if (isArchive !== true) return dateKey;
+  return etOfMs(submittedAtMs) || dateKey;
+}
