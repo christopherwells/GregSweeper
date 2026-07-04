@@ -1,18 +1,12 @@
-import { state, getActiveBombPenaltyTotal } from '../state/gameState.js';
+import { state, getActiveBombPenaltyTotal, getDisplayTime } from '../state/gameState.js';
 import { timerEl, boardEl } from '../ui/domHelpers.js';
 import { updateAllCells } from '../ui/boardRenderer.js';
 import { performMineShift } from '../logic/gimmicks.js';
 
 // ── Timer ──────────────────────────────────────────────
-
-export function getDisplayTime() {
-  // elapsedTime is PURE wall-clock (tick-driven). The daily/weekly bomb
-  // penalty is held separately in the hit-event log and added here so the
-  // live timer jumps by the penalty on a hit without mutating the
-  // wall-clock counter (which would double-count on auto-save/restore).
-  // Timed mode counts up; getActiveBombPenaltyTotal is 0 outside daily/weekly.
-  return Math.min(Math.floor(state.elapsedTime + getActiveBombPenaltyTotal()), 999);
-}
+// The displayed value comes from gameState.getDisplayTime() — the
+// penalty-inclusive single source of truth shared with headerRenderer's
+// updateHeader, so the two timer writers can never disagree.
 
 export function updateTimerDisplay() {
   const display = getDisplayTime();
