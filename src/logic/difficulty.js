@@ -68,33 +68,33 @@ export function applyWidthCap(rows, cols, mines) {
 // scripts/refit-par-model.R.
 // PAR_MODEL:START
 export const PAR_MODEL = {
-  // Last refit: 2026-07-03 | brms (3 users · max Rhat = 1.004, min ESS = 1177, divergent = 1/4000) | N=264 scores, 116 dates, 7 players | R²=0.504 (log scale)
+  // Last refit: 2026-07-04 | brms (3 users · max Rhat = 1.002, min ESS = 1389, divergent = 0/4000) | N=265 scores, 117 dates, 7 players | R²=0.505 (log scale)
   // scale:"log" => par = exp(intercept + Σ coef·feature): multiplicative,
   // lognormal MEDIAN. Coefficients are LOG-MULTIPLIERS per unit, NOT seconds.
   scale: 'log',
-  intercept: 2.8975,
+  intercept: 2.8962,
 
   // Size baseline. cellCount is the lone size axis (it absorbs trivial
   // propagation); totalMines stays a raw count. (2026-06-08 rework.)
-  secPerCell:        0.00080,
-  secPerMineFlag:    0.05611,
+  secPerCell:        0.00081,
+  secPerMineFlag:    0.05609,
 
   // Reasoning tiers: pattern = canonical + generic subsets; search = advanced.
-  secPerPatternMove: 0.01153,
-  secPerSearchMove:  0.00803,
+  secPerPatternMove: 0.01159,
+  secPerSearchMove:  0.00806,
 
   // Board structure.
-  secPerWallEdge:    0.00150,
-  secPerZeroCluster: 0.00116,
+  secPerWallEdge:    0.00146,
+  secPerZeroCluster: 0.00113,
 
   // Modifier cells (kept split; sparse, prior-anchored until data builds).
-  secPerMysteryCell:   0.00136,
-  secPerLiarCell:      0.00159,
-  secPerLockedCell:    0.02766,
-  secPerWormholePair:  0.00153,
-  secPerMirrorPair:    0.01213,
-  secPerSonarCell:     0.03237,
-  secPerCompassCell:   0.02028,
+  secPerMysteryCell:   0.00135,
+  secPerLiarCell:      0.00156,
+  secPerLockedCell:    0.02853,
+  secPerWormholePair:  0.00148,
+  secPerMirrorPair:    0.01225,
+  secPerSonarCell:     0.03166,
+  secPerCompassCell:   0.02059,
 
 };
 // PAR_MODEL:END
@@ -111,24 +111,24 @@ export const PAR_MODEL = {
 // between the markers is refit-owned, same contract as PAR_MODEL.
 // TIMED_PAR_MODEL:START
 export const PAR_MODEL_TIMED = {
-  // Last refit: 2026-07-03 | brms-timed (n=51)
+  // Last refit: 2026-07-04 | brms-timed (n=53)
   // Same log scale as PAR_MODEL (par = exp(intercept + Σ coef·feature)); below
   // the activation threshold this is a verbatim copy of the daily model.
   scale: 'log',
-  intercept: 2.1320,
-  secPerCell:        0.00131,
-  secPerMineFlag:    0.07799,
-  secPerPatternMove: 0.02220,
-  secPerSearchMove:  0.01187,
-  secPerWallEdge:    0.00192,
-  secPerZeroCluster: 0.00150,
-  secPerMysteryCell:   0.00170,
-  secPerLiarCell:      0.00206,
-  secPerLockedCell:    0.03694,
-  secPerWormholePair:  0.00200,
-  secPerMirrorPair:    0.01550,
-  secPerSonarCell:     0.04191,
-  secPerCompassCell:   0.02607,
+  intercept: 2.1824,
+  secPerCell:        0.00137,
+  secPerMineFlag:    0.07491,
+  secPerPatternMove: 0.01961,
+  secPerSearchMove:  0.01283,
+  secPerWallEdge:    0.00190,
+  secPerZeroCluster: 0.00147,
+  secPerMysteryCell:   0.00171,
+  secPerLiarCell:      0.00193,
+  secPerLockedCell:    0.03646,
+  secPerWormholePair:  0.00189,
+  secPerMirrorPair:    0.01553,
+  secPerSonarCell:     0.04023,
+  secPerCompassCell:   0.02569,
 };
 // TIMED_PAR_MODEL:END
 
