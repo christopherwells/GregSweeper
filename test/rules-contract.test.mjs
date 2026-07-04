@@ -63,3 +63,14 @@ test('the top-level $other denies unknown roots (defense in depth)', () => {
   assert.equal(rules.$other['.read'], false);
   assert.equal(rules.$other['.write'], false);
 });
+
+test('users/{uid}/dailyHistory/{date}: time required; the #113 archive marker is whitelisted', () => {
+  const node = rules.users.$uid.dailyHistory.$date;
+  assertWhitelist(node, 'dailyHistory/$date', ['time', 'submittedAt', 'archive']);
+  // Issue #99: the rule REQUIRES time, so a time-less "completed marker"
+  // could never persist — the marker branch was removed from
+  // saveDailyHistoryEntry; every row carries a real time.
+  assert.match(node['.validate'], /hasChildren\(\['time', 'submittedAt'\]\)/);
+  // Only `true` is storable — live rows omit the marker entirely.
+  assert.equal(node.archive['.validate'], 'newData.val() === true');
+});

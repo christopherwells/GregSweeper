@@ -339,6 +339,9 @@
             "submittedAt": {
               ".validate": "newData.val() === now"
             },
+            "archive": {
+              ".validate": "newData.val() === true"
+            },
             "$other": {
               ".validate": false
             }

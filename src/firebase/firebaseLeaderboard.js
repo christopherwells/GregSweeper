@@ -3,6 +3,8 @@ import { isTestEnvironment } from './env.js';
 import { reportCaughtError } from '../diagnostics/errorReporter.js';
 import { findRowForBoard } from '../logic/scoreRowMatch.js';
 import { isBombHitCheat } from '../logic/difficulty.js';
+import { attributePlayedDate } from '../logic/archiveEligibility.js';
+import { etDateStringOfMs } from '../logic/seededRandom.js';
 /**
  * Firebase Online Daily Leaderboard
  * Uses Firebase Realtime Database (compat SDK loaded via CDN in index.html).
@@ -12,9 +14,32 @@ import { isBombHitCheat } from '../logic/difficulty.js';
 let firebaseReady = false;
 let db = null;
 
-// Client-side rate limiting: track last submission timestamp
-let _lastSubmitTime = 0;
-const SUBMIT_COOLDOWN_MS = 30000; // 30 seconds between submissions
+// Client-side rate limiting: one clock PER submission path. A single shared
+// clock let a timed (Quick Play) win suppress a daily/weekly_first submission
+// landing within the cooldown window (issue #89) — the paths look independent
+// to the player, so one must never burn the other's clock.
+const _lastSubmitByKind = { daily: 0, archive: 0, timed: 0 };
+const SUBMIT_COOLDOWN_MS = 30000; // 30 seconds between submissions per path
+
+// Exported for the #89 regression pin: the per-path clocks are independent.
+export function _submitCooldownOk(kind, now = Date.now()) {
+  return now - (_lastSubmitByKind[kind] || 0) >= SUBMIT_COOLDOWN_MS;
+}
+export function _stampSubmitCooldown(kind, now = Date.now()) {
+  _lastSubmitByKind[kind] = now;
+}
+
+// Pure identity re-stamp for queued submissions (issue #132), exported for
+// tests. The uid frozen at enqueue time is replaced with the uid the device
+// is signed in as at FLUSH time — after an account-link switch the old uid
+// fails the `uid === auth.uid` write rule forever, so identity must resolve
+// at flush, not at enqueue.
+export function restampPendingEntry(entry, uid) {
+  return { ...entry, extras: { ...(entry.extras || {}), uid } };
+}
+export function restampPendingWeeklyEntry(entry, uid) {
+  return { ...entry, uid };
+}
 
 // Score validation bounds
 const MIN_VALID_TIME = 5;    // seconds — anything faster is impossible
@@ -258,11 +283,15 @@ export async function submitOnlineScore(dateString, name, time, bombHits = 0, ex
     return false;
   }
 
-  // Client-side rate limiting — reject without queueing (user spam, not a
-  // submission worth retrying)
+  // Client-side rate limiting. Within-cooldown is usually spam, but a REAL
+  // first submission can land here too, so QUEUE it instead of dropping
+  // (issue #89: a cooldown hit used to discard the score permanently). The
+  // flush dedupes per (uid, board), so a spam retry resolves 'duplicate'
+  // instead of double-rowing.
   const now = Date.now();
-  if (now - _lastSubmitTime < SUBMIT_COOLDOWN_MS) {
-    console.warn('Score submission rate-limited — please wait before submitting again');
+  if (!_submitCooldownOk('daily', now)) {
+    console.warn('Score submission rate-limited — queued for retry');
+    _queueFailedSubmission(dateString, name, time, bombHits, extras);
     return false;
   }
 
@@ -271,7 +300,7 @@ export async function submitOnlineScore(dateString, name, time, bombHits = 0, ex
   // definitive, not queued, no cooldown burned).
   const ok = await _doSubmitOnlineScore(dateString, name, time, bombHits, extras);
   if (ok === true) {
-    _lastSubmitTime = now;
+    _stampSubmitCooldown('daily', now);
   } else if (ok === false) {
     // Push failed mid-flight (transient network, auth race, or post-deploy
     // rule rejection on a stale client). Queue for retry.
@@ -363,7 +392,7 @@ export async function submitArchiveScore(date, name, time, bombHits = 0, extras 
   if (typeof time !== 'number' || time < MIN_VALID_TIME || time > MAX_VALID_TIME) return false;
 
   const now = Date.now();
-  if (now - _lastSubmitTime < SUBMIT_COOLDOWN_MS) return false;
+  if (!_submitCooldownOk('archive', now)) return false;
 
   try {
     const sanitizedName = String(name).slice(0, 20).trim();
@@ -373,7 +402,7 @@ export async function submitArchiveScore(date, name, time, bombHits = 0, extras 
       firebase.database.ServerValue.TIMESTAMP);
 
     await db.ref(`dailyArchive/${date}`).push(payload);
-    _lastSubmitTime = now;
+    _stampSubmitCooldown('archive', now);
 
     // Ensure the date's feature meta exists so the archive row can join the
     // fit. Archive dates were canonical, so meta usually already exists
@@ -413,7 +442,7 @@ export async function submitTimedScore(name, time, level, extras = {}) {
   if (typeof time !== 'number' || time < MIN_VALID_TIME || time > MAX_VALID_TIME) return false;
 
   const now = Date.now();
-  if (now - _lastSubmitTime < SUBMIT_COOLDOWN_MS) return false;
+  if (!_submitCooldownOk('timed', now)) return false;
 
   try {
     const sanitizedName = String(name).slice(0, 20).trim();
@@ -430,7 +459,7 @@ export async function submitTimedScore(name, time, level, extras = {}) {
       payload.features = extras.features;
     }
     await db.ref('timed').push(payload);
-    _lastSubmitTime = now;
+    _stampSubmitCooldown('timed', now);
     return true;
   } catch (err) {
     console.warn('Timed score submission failed:', err && err.message);
@@ -459,13 +488,27 @@ export async function flushPendingSubmissions() {
   }
   if (!Array.isArray(pending) || pending.length === 0) return;
 
+  // Issue #132: identity resolves at FLUSH time, not enqueue time. The queue
+  // used to carry the uid frozen when the submit failed; an account-link
+  // switch then made every retry fail the `uid === auth.uid` rule until the
+  // entry aged out. The queued score belongs to whoever is signed in on this
+  // device NOW. No uid yet (auth still settling) → leave the queue untouched
+  // for a later flush instead of burning attempts on writes the rules reject.
+  let currentUid = null;
+  try {
+    const { getUid } = await import('./firebaseProgress.js');
+    currentUid = getUid();
+  } catch { /* progress module unavailable — treat as auth-not-settled */ }
+  if (!currentUid) return;
+
   const stillPending = [];
   const now = Date.now();
   let flushed = 0;
-  for (const entry of pending) {
-    if (now - entry.queuedAt > PENDING_MAX_AGE_MS) continue;
-    if (entry.attempts >= PENDING_MAX_ATTEMPTS) continue;
-    entry.attempts++;
+  for (const raw of pending) {
+    if (now - raw.queuedAt > PENDING_MAX_AGE_MS) continue;
+    if (raw.attempts >= PENDING_MAX_ATTEMPTS) continue;
+    raw.attempts++;
+    const entry = restampPendingEntry(raw, currentUid);
     const ok = await _doSubmitOnlineScore(
       entry.dateString,
       entry.name,
@@ -660,13 +703,24 @@ export async function flushPendingWeeklySubmissions() {
   }
   if (!Array.isArray(pending) || pending.length === 0) return;
 
+  // Same flush-time identity resolution as the daily queue (issue #132): the
+  // weekly row path weekly/{weekStart}/{uid} is rebuilt from the CURRENT uid,
+  // since a frozen pre-switch uid fails the `auth.uid === $uid` rule forever.
+  let currentUid = null;
+  try {
+    const { getUid } = await import('./firebaseProgress.js');
+    currentUid = getUid();
+  } catch { /* progress module unavailable — treat as auth-not-settled */ }
+  if (!currentUid) return;
+
   const stillPending = [];
   const now = Date.now();
   let flushed = 0;
-  for (const entry of pending) {
-    if (now - entry.queuedAt > PENDING_MAX_AGE_MS) continue;
-    if (entry.attempts >= PENDING_MAX_ATTEMPTS) continue;
-    entry.attempts++;
+  for (const raw of pending) {
+    if (now - raw.queuedAt > PENDING_MAX_AGE_MS) continue;
+    if (raw.attempts >= PENDING_MAX_ATTEMPTS) continue;
+    raw.attempts++;
+    const entry = restampPendingWeeklyEntry(raw, currentUid);
     const ok = await _doSubmitWeeklyScore(
       entry.weekStart, entry.uid, entry.name, entry.bestTime, entry.dayTimes, entry.extras || {}
     );
@@ -758,12 +812,17 @@ async function upsertDailyMeta(dateString, features) {
 }
 
 /**
- * Fetch the current user's daily history, most-recent-first, limited to
- * `daysBack` recent entries. Returns an array of `{ date, time }` or null
- * if Firebase is offline. Par and delta are computed at render time against
- * the current PAR_MODEL + dailyMeta features, so that older entries
- * automatically reflect the latest coefficients after a refit (no server-
- * side rewrite needed).
+ * Fetch the current user's daily history, most-recently-PLAYED-first, limited
+ * to `daysBack` recent entries. Returns an array of
+ * `{ date, time, archive, playedDate }` or null if Firebase is offline.
+ * `date` is the BOARD's date (the row key — join dailyMeta/par against this);
+ * `playedDate` is the ET day the run actually happened (equal to `date` for
+ * live rows; the submittedAt day for archive replays — see
+ * attributePlayedDate). Time-series surfaces must place plays by playedDate,
+ * or an archive replay back-dates today's performance into the past. Par and
+ * delta are computed at render time against the current PAR_MODEL + dailyMeta
+ * features, so that older entries automatically reflect the latest
+ * coefficients after a refit (no server-side rewrite needed).
  */
 export async function fetchUserDailyHistory(uid, daysBack = 30) {
   if (!isFirebaseOnline() || !uid) return null;
@@ -779,11 +838,17 @@ export async function fetchUserDailyHistory(uid, daysBack = 30) {
     snapshot.forEach((child) => {
       const v = child.val();
       if (v && typeof v.time === 'number') {
-        entries.push({ date: child.key, time: v.time });
+        const archive = v.archive === true;
+        entries.push({
+          date: child.key,
+          time: v.time,
+          archive,
+          playedDate: attributePlayedDate(child.key, archive, v.submittedAt, etDateStringOfMs),
+        });
       }
     });
 
-    entries.sort((a, b) => b.date.localeCompare(a.date));
+    entries.sort((a, b) => b.playedDate.localeCompare(a.playedDate) || b.date.localeCompare(a.date));
     return entries.slice(0, daysBack);
   } catch (err) {
     console.warn('Firebase daily-history fetch failed:', err.message);

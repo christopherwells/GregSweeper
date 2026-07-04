@@ -347,22 +347,22 @@ export function saveDailyHistoryEntry(date, entry) {
   if (isTestEnvironment()) return;
   if (!date) return;
 
-  // An entry is either a full record `{ time }` or a completion-only
-  // marker `{ completed: true }`. The marker lets us record a VERIFIED
-  // completion (e.g. an offline day recovered for a streak) without
-  // fabricating a time — fetchUserDailyHistory filters to numeric-time
-  // rows, so a marker never pollutes the delta chart but still counts
-  // toward the derived streak (computeStreakFromHistory walks the date
-  // keys, not the values).
-  // `body` holds only the meaningful content (time, or a completion
-  // marker). submittedAt is deliberately NOT in here: the rule demands
-  // submittedAt === now, so it is attached as the server sentinel at each
-  // real write (below, and in flushPendingDailyHistory). Storing a client
-  // Date.now() here is what got the write rejected.
-  let body;
-  if (typeof entry?.time === 'number') body = { time: entry.time };
-  else if (entry?.completed) body = { completed: true };
-  else return; // nothing meaningful to record
+  // An entry is always a full record `{ time }`; the deployed rule REQUIRES
+  // the time child, so any other shape would be silently rejected server-side
+  // (issue #99 — a `{ completed: true }` marker branch used to live here, but
+  // no caller ever reached it and the rule rejects it, so it was removed to
+  // keep code and rules describing one contract). Archive replays additionally
+  // carry `archive: true` (issue #113): the row still feeds the delta chart
+  // and the calendar's completed marks, but the streak reconciler skips
+  // archive-marked dates — a replayed gap day must never extend the streak.
+  // `body` holds only the meaningful content. submittedAt is deliberately NOT
+  // in here: the rule demands submittedAt === now, so it is attached as the
+  // server sentinel at each real write (below, and in
+  // flushPendingDailyHistory). Storing a client Date.now() here is what got
+  // the write rejected.
+  if (typeof entry?.time !== 'number') return; // nothing meaningful to record
+  const body = { time: entry.time };
+  if (entry.archive === true) body.archive = true;
 
   if (!_ready || !_uid) {
     // Boot-window coalescing (auth not settled). In-memory ONLY: we don't
@@ -467,10 +467,13 @@ export async function flushPendingDailyHistory() {
 
 /**
  * Read the current user's set of completed daily dates from
- * `users/{uid}/dailyHistory`. Returns an array of 'YYYY-MM-DD' strings
- * (any entry shape counts — full or completion-only marker), or null if
- * the read could not be completed (offline / not signed in / timeout).
- * This is the authoritative completed-date set the streak derives from.
+ * `users/{uid}/dailyHistory`. Returns an array of `{ date, archive }`
+ * entries ('YYYY-MM-DD' plus whether the row was written by an archive
+ * replay), or null if the read could not be completed (offline / not
+ * signed in / timeout). This is the authoritative completed-date set:
+ * the archive calendar marks EVERY date, while the streak derives only
+ * from the non-archive ones (see streakBearingDates — issue #113: a
+ * replayed gap day must never extend the streak).
  */
 export async function loadDailyHistory() {
   if (!_ready || !_uid) return null;
@@ -480,9 +483,13 @@ export async function loadDailyHistory() {
       new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), FIREBASE_TIMEOUT_MS)),
     ]);
     if (!snap.exists()) return [];
-    const dates = [];
-    snap.forEach((child) => { if (child.key) dates.push(child.key); });
-    return dates;
+    const entries = [];
+    snap.forEach((child) => {
+      if (child.key) {
+        entries.push({ date: child.key, archive: child.child('archive').val() === true });
+      }
+    });
+    return entries;
   } catch (err) {
     console.warn('loadDailyHistory failed:', err.message);
     return null;

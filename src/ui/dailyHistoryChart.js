@@ -46,29 +46,38 @@ export function renderDailyHistoryChart(entries, opts = {}) {
     return empty;
   }
 
-  // Index by date string for gap-aware rendering. We walk the last N days
-  // (today-anchored) from left to right; days without an entry just don't
-  // draw a dot.
+  // Group by date string for gap-aware rendering. We walk the last N days
+  // (today-anchored) from left to right; days without entries just don't
+  // draw dots. `date` is the day the run was PLAYED (archive replays are
+  // attributed to their play day, never back-dated to the board's date). A
+  // day can hold SEVERAL dots — a live daily plus archive replays all count.
+  // Replays sort first so the live play draws last (on top) when they overlap.
   const byDate = new Map();
-  for (const e of entries) byDate.set(e.date, e);
+  for (const e of entries) {
+    if (!byDate.has(e.date)) byDate.set(e.date, []);
+    byDate.get(e.date).push(e);
+  }
+  for (const list of byDate.values()) {
+    list.sort((a, b) => (a.archive === true ? 0 : 1) - (b.archive === true ? 0 : 1));
+  }
 
   // Build the array of N daily slots, newest-on-right. If today doesn't have
   // an entry we still reserve a slot for it — the user might complete today's
   // daily later and come back to this chart.
   const today = localDateString(new Date());
-  const slots = []; // { date, entry?: {...} }
+  const slots = []; // { date, entries: [...] }
   for (let i = daysBack - 1; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
     const dateStr = localDateString(d);
-    slots.push({ date: dateStr, entry: byDate.get(dateStr) || null });
+    slots.push({ date: dateStr, entries: byDate.get(dateStr) || [] });
   }
 
   // y-axis domain — symmetric around 0, clamped.
   let maxAbsDelta = MIN_Y_SPAN_HALF;
   for (const s of slots) {
-    if (s.entry && Math.abs(s.entry.delta) > maxAbsDelta) {
-      maxAbsDelta = Math.abs(s.entry.delta);
+    for (const e of s.entries) {
+      if (Math.abs(e.delta) > maxAbsDelta) maxAbsDelta = Math.abs(e.delta);
     }
   }
   maxAbsDelta = Math.min(maxAbsDelta, MAX_Y_SPAN_HALF);
@@ -143,26 +152,30 @@ export function renderDailyHistoryChart(entries, opts = {}) {
     svg.appendChild(label);
   }
 
-  // Dots — one per entry-bearing slot. Colour by over/under/even.
+  // Dots — one per play, stacked in the play-day's column (a live daily and
+  // any replays that day each get their own dot). Colour by over/under/even.
   for (let i = 0; i < slots.length; i++) {
     const s = slots[i];
-    if (!s.entry) continue;
     const x = xFor(i);
-    const y = yFor(s.entry.delta);
-    const cls = s.entry.delta < -0.5 ? 'dhc-dot dhc-dot-under'
-      : s.entry.delta > 0.5 ? 'dhc-dot dhc-dot-over'
-      : 'dhc-dot dhc-dot-even';
+    for (const entry of s.entries) {
+      const y = yFor(entry.delta);
+      const cls = entry.delta < -0.5 ? 'dhc-dot dhc-dot-under'
+        : entry.delta > 0.5 ? 'dhc-dot dhc-dot-over'
+        : 'dhc-dot dhc-dot-even';
 
-    const dot = document.createElementNS(svgNS, 'circle');
-    dot.setAttribute('cx', x);
-    dot.setAttribute('cy', y);
-    dot.setAttribute('r', 9);
-    dot.setAttribute('class', cls);
-    // Native SVG <title> renders a browser tooltip on hover with no extra JS.
-    const title = document.createElementNS(svgNS, 'title');
-    title.textContent = `${formatLongDate(s.date)} · ${s.entry.time.toFixed(1)}s vs par ${s.entry.par.toFixed(1)}s · ${formatDelta(s.entry.delta)}`;
-    dot.appendChild(title);
-    svg.appendChild(dot);
+      const dot = document.createElementNS(svgNS, 'circle');
+      dot.setAttribute('cx', x);
+      dot.setAttribute('cy', y);
+      dot.setAttribute('r', 9);
+      dot.setAttribute('class', cls);
+      // Native SVG <title> renders a browser tooltip on hover with no extra JS.
+      const title = document.createElementNS(svgNS, 'title');
+      const replayNote = entry.archive === true && entry.boardDate
+        ? ` · replay of ${formatShortDate(entry.boardDate, false)}` : '';
+      title.textContent = `${formatLongDate(s.date)} · ${entry.time.toFixed(1)}s vs par ${entry.par.toFixed(1)}s · ${formatDelta(entry.delta)}${replayNote}`;
+      dot.appendChild(title);
+      svg.appendChild(dot);
+    }
   }
 
   return svg;

@@ -9,6 +9,7 @@ import {
   isArchivableDate,
   archiveSubmitPlan,
   resolveCruxDate,
+  streakBearingDates,
   FIRST_ARCHIVE_DATE,
   ARCHIVE_FIT_EPOCH,
 } from '../src/logic/archiveEligibility.js';
@@ -115,4 +116,62 @@ test('REGRESSION: archiveSubmitPlan fails closed when the history read is unknow
   // future caller passing an unexpected value (fail closed, never open).
   assert.deepEqual(archiveSubmitPlan('2026-05-10', undefined),
     { submitFit: false, writeHistory: false });
+});
+
+// Issue #113: archive replays write dailyHistory rows (the calendar marks and
+// the delta chart need them), but the streak reconciler derives from date
+// keys — an unmarked replay of a gap day retroactively spliced the run
+// together and inflated the streak (and the monotonic bestDailyStreak).
+// streakBearingDates is the filter every streak derivation must go through.
+test('REGRESSION #113: streakBearingDates drops archive-marked dates from the streak set', () => {
+  const entries = [
+    { date: '2026-06-15' },
+    { date: '2026-06-16', archive: false },
+    { date: '2026-06-14', archive: true },  // the replayed gap day
+    { date: '2026-06-17' },
+  ];
+  assert.deepEqual(streakBearingDates(entries).sort(),
+    ['2026-06-15', '2026-06-16', '2026-06-17']);
+});
+
+test('streakBearingDates tolerates null / malformed input', () => {
+  assert.deepEqual(streakBearingDates(null), []);
+  assert.deepEqual(streakBearingDates(undefined), []);
+  assert.deepEqual(streakBearingDates([null, { archive: true }, { date: 7 }]), []);
+});
+
+// The play-timeline attribution rule (the "did really well way back when"
+// bug): dailyHistory is keyed by BOARD date, but time-series surfaces must
+// place a play on the day it was PLAYED. Archive replays attribute to their
+// submittedAt day; live rows keep their board date even when the write
+// flushed late (the run still happened on that ET day).
+const { attributePlayedDate } = await import('../src/logic/archiveEligibility.js');
+const { etDateStringOfMs } = await import('../src/logic/seededRandom.js');
+
+test('REGRESSION: an archive replay is attributed to its PLAY day, not the board date', () => {
+  const etOf = () => '2026-07-04';   // the day the replay actually happened
+  assert.equal(attributePlayedDate('2026-03-10', true, 1234, etOf), '2026-07-04');
+});
+
+test('a live row keeps its board date even when the write flushed days later', () => {
+  // Offline day-of play, queue flushed on the 12th: the run still belongs to
+  // the 10th — submittedAt lag must NOT re-attribute live completions.
+  const etOf = () => '2026-06-12';
+  assert.equal(attributePlayedDate('2026-06-10', false, 999, etOf), '2026-06-10');
+  assert.equal(attributePlayedDate('2026-06-10', undefined, 999, etOf), '2026-06-10');
+});
+
+test('an archive row with a missing/garbage submittedAt falls back to the board date', () => {
+  assert.equal(attributePlayedDate('2026-03-10', true, undefined, etDateStringOfMs), '2026-03-10');
+  assert.equal(attributePlayedDate('2026-03-10', true, NaN, etDateStringOfMs), '2026-03-10');
+});
+
+test('etDateStringOfMs anchors to the ET calendar across midnight (EDT and EST)', () => {
+  // July = EDT (UTC-4): 03:59Z is still the previous ET day, 04:01Z is not.
+  assert.equal(etDateStringOfMs(Date.UTC(2026, 6, 4, 3, 59)), '2026-07-03');
+  assert.equal(etDateStringOfMs(Date.UTC(2026, 6, 4, 4, 1)), '2026-07-04');
+  // January = EST (UTC-5): the boundary shifts to 05:00Z.
+  assert.equal(etDateStringOfMs(Date.UTC(2026, 0, 15, 4, 59)), '2026-01-14');
+  assert.equal(etDateStringOfMs(Date.UTC(2026, 0, 15, 5, 1)), '2026-01-15');
+  assert.equal(etDateStringOfMs(undefined), null);
 });

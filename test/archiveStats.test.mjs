@@ -39,3 +39,30 @@ test('an archive win still counts as a generic win so achievements fire', () => 
   const after = saveGameResult(true, 30, 0, { isArchive: true, gameMode: 'daily', dailySeed: '2026-05-13' });
   assert.equal((after.wins || 0), before + 1, 'archive win increments global wins');
 });
+
+// Issue #131: a practice daily (?seed=custom) keeps gameMode 'daily' but is
+// NOT archive, so before the isPractice guard it fell through into the
+// streak block — advancing/resetting the streak, stamping today as the last
+// completed date, inflating the monotonic bestDailyStreak, and spending
+// banked molt days on a throwaway board.
+test('REGRESSION #131: a practice (?seed=) daily win touches no daily-mode counter', () => {
+  const s1 = saveGameResult(true, 42, 0, { isDaily: true, gameMode: 'daily', dailySeed: '2026-08-01' });
+  const snap = { ...s1.modeStats.daily };
+
+  // The practice caller passes isDaily:false (isRealDaily), dailySeed:null.
+  const s2 = saveGameResult(true, 30, 0, { isDaily: false, isPractice: true, gameMode: 'daily', dailySeed: null });
+  const d = s2.modeStats.daily;
+  assert.equal(d.dailyStreak, snap.dailyStreak, 'dailyStreak must not change');
+  assert.equal(d.bestDailyStreak, snap.bestDailyStreak, 'bestDailyStreak must not change');
+  assert.equal(d.moltBanked, snap.moltBanked, 'molt bank must not be earned or spent');
+  assert.equal(d.dailiesCompleted, snap.dailiesCompleted, 'dailiesCompleted must not change');
+  assert.equal(d.lastDailyCompletedDate, snap.lastDailyCompletedDate, 'lastDailyCompletedDate must not move');
+  assert.equal(d.wins, snap.wins, 'daily-mode wins must not change');
+  assert.equal(d.totalGames, snap.totalGames, 'daily-mode totalGames must not change');
+});
+
+test('a practice win still counts as a generic win so achievements fire', () => {
+  const before = loadStats().wins || 0;
+  const after = saveGameResult(true, 30, 0, { isDaily: false, isPractice: true, gameMode: 'daily', dailySeed: null });
+  assert.equal((after.wins || 0), before + 1, 'practice win increments global wins');
+});
