@@ -68,33 +68,33 @@ export function applyWidthCap(rows, cols, mines) {
 // scripts/refit-par-model.R.
 // PAR_MODEL:START
 export const PAR_MODEL = {
-  // Last refit: 2026-07-05 | brms (3 users · max Rhat = 1.003, min ESS = 1331, divergent = 1/4000) | N=267 scores, 117 dates, 7 players | R²=0.499 (log scale)
+  // Last refit: 2026-07-05 | brms (3 users · max Rhat = 1.003, min ESS = 947, divergent = 0/4000) | N=268 scores, 118 dates, 7 players | R²=0.496 (log scale)
   // scale:"log" => par = exp(intercept + Σ coef·feature): multiplicative,
   // lognormal MEDIAN. Coefficients are LOG-MULTIPLIERS per unit, NOT seconds.
   scale: 'log',
-  intercept: 2.9094,
+  intercept: 2.9173,
 
   // Size baseline. cellCount is the lone size axis (it absorbs trivial
   // propagation); totalMines stays a raw count. (2026-06-08 rework.)
   secPerCell:        0.00069,
-  secPerMineFlag:    0.05618,
+  secPerMineFlag:    0.05565,
 
   // Reasoning tiers: pattern = canonical + generic subsets; search = advanced.
-  secPerPatternMove: 0.01194,
-  secPerSearchMove:  0.00761,
+  secPerPatternMove: 0.01317,
+  secPerSearchMove:  0.00835,
 
   // Board structure.
-  secPerWallEdge:    0.00147,
-  secPerZeroCluster: 0.00116,
+  secPerWallEdge:    0.00146,
+  secPerZeroCluster: 0.00114,
 
   // Modifier cells (kept split; sparse, prior-anchored until data builds).
-  secPerMysteryCell:   0.00137,
-  secPerLiarCell:      0.00156,
-  secPerLockedCell:    0.02809,
-  secPerWormholePair:  0.00160,
-  secPerMirrorPair:    0.01129,
-  secPerSonarCell:     0.03864,
-  secPerCompassCell:   0.01921,
+  secPerMysteryCell:   0.00134,
+  secPerLiarCell:      0.00148,
+  secPerLockedCell:    0.02806,
+  secPerWormholePair:  0.00154,
+  secPerMirrorPair:    0.01262,
+  secPerSonarCell:     0.04842,
+  secPerCompassCell:   0.02151,
 
 };
 // PAR_MODEL:END
@@ -115,20 +115,20 @@ export const PAR_MODEL_TIMED = {
   // Same log scale as PAR_MODEL (par = exp(intercept + Σ coef·feature)); below
   // the activation threshold this is a verbatim copy of the daily model.
   scale: 'log',
-  intercept: 2.1676,
-  secPerCell:        0.00136,
-  secPerMineFlag:    0.07550,
-  secPerPatternMove: 0.02006,
-  secPerSearchMove:  0.01207,
-  secPerWallEdge:    0.00189,
-  secPerZeroCluster: 0.00150,
-  secPerMysteryCell:   0.00175,
-  secPerLiarCell:      0.00195,
-  secPerLockedCell:    0.03574,
-  secPerWormholePair:  0.00204,
-  secPerMirrorPair:    0.01439,
-  secPerSonarCell:     0.05012,
-  secPerCompassCell:   0.02460,
+  intercept: 2.1773,
+  secPerCell:        0.00133,
+  secPerMineFlag:    0.07517,
+  secPerPatternMove: 0.02096,
+  secPerSearchMove:  0.01323,
+  secPerWallEdge:    0.00187,
+  secPerZeroCluster: 0.00145,
+  secPerMysteryCell:   0.00166,
+  secPerLiarCell:      0.00192,
+  secPerLockedCell:    0.03565,
+  secPerWormholePair:  0.00196,
+  secPerMirrorPair:    0.01610,
+  secPerSonarCell:     0.06259,
+  secPerCompassCell:   0.02718,
 };
 // TIMED_PAR_MODEL:END
 
