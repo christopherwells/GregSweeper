@@ -24,6 +24,7 @@ import {
   TARGET_TO_GIMMICK, loadExperimentSpec, selectBestCandidate,
   readCodeVersion, buildCanonicalPayload, buildCandidateFeatures,
 } from './daily-board-pipeline.mjs';
+import { signCanonicalPayload, requireSigningKey } from '../src/logic/canonicalSignature.js';
 import { isBoardSolvable } from '../src/logic/boardSolver.js';
 import { cleanSolverArtifacts } from '../src/logic/boardGenerator.js';
 import { cruxPayloadFromBoard } from '../src/logic/cruxExtract.js';
@@ -154,6 +155,9 @@ function todayET() {
   await adminDelete(accessToken, `cruxes/${date}`);
 
   console.log('  writing new canonical…');
+  // Sign the board (#114): regenerated canonicals must verify client-side
+  // exactly like precomputed ones.
+  payload.sig = await signCanonicalPayload(payload, requireSigningKey());
   await adminWrite(accessToken, `dailyBoard/${date}`, payload);
   console.log('  writing dailyMeta…');
   await adminWrite(accessToken, `dailyMeta/${date}`, { features: buildCandidateFeatures(cand) });

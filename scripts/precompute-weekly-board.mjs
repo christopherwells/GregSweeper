@@ -15,6 +15,7 @@
 // Idempotent: write-once Firebase rules silently reject duplicate
 // writes for the same weekStart.
 
+import { signCanonicalPayload, requireSigningKey } from '../src/logic/canonicalSignature.js';
 import { createDailyRNG } from '../src/logic/seededRandom.js';
 import { getWeeklyGimmicks, applyGimmicks } from '../src/logic/gimmicks.js';
 import { generateBoard, cleanSolverArtifacts } from '../src/logic/boardGenerator.js';
@@ -120,8 +121,10 @@ async function existsCanonicalBoard(weekStart) {
 
 async function writeCanonicalBoard(weekStart, idToken, payload) {
   const url = `${DB_BASE}/weeklyBoard/${weekStart}.json?auth=${encodeURIComponent(idToken)}`;
+  // Sign the board (#114) — see precompute-daily-board.mjs.
   const body = JSON.stringify({
     ...payload,
+    sig: await signCanonicalPayload(payload, requireSigningKey()),
     writtenAt: { '.sv': 'timestamp' },
   });
   const r = await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body });

@@ -20,6 +20,7 @@
 // Usage (from repo root):  node scripts/bootstrap-daily-board.mjs
 // Requires Node 18+ for native fetch.
 
+import { signCanonicalPayload, requireSigningKey, SIGNATURE_EPOCH } from '../src/logic/canonicalSignature.js';
 import { createDailyRNG } from '../src/logic/seededRandom.js';
 import { getDailyGimmick, applyGimmicks } from '../src/logic/gimmicks.js';
 import { generateBoard, cleanSolverArtifacts } from '../src/logic/boardGenerator.js';
@@ -92,6 +93,12 @@ async function signInAnonymously() {
 
 async function writeCanonicalBoard(idToken, payload) {
   const url = `${DB_BASE}/dailyBoard/${DATE_STRING}.json?auth=${encodeURIComponent(idToken)}`;
+  // Post-epoch canonicals must be signed (#114) — clients reject unsigned
+  // boards written outside their own play window. Pre-epoch bootstraps
+  // (the historical use of this tool) stay unsigned/grandfathered.
+  if (DATE_STRING >= SIGNATURE_EPOCH) {
+    payload.sig = await signCanonicalPayload(payload, requireSigningKey());
+  }
   const body = JSON.stringify({
     ...payload,
     writtenAt: { '.sv': 'timestamp' },

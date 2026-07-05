@@ -20,6 +20,39 @@
 import { waitForFirebaseReady } from './waitForFirebase.js';
 import { isTestEnvironment } from './env.js';
 import { getCachedDailyBoard, cacheDailyBoard, addDays, PREFETCH_DAILY_DAYS } from './boardCache.js';
+import { assessCanonicalTrust } from '../logic/canonicalSignature.js';
+import { etDateStringOfMs } from '../logic/seededRandom.js';
+import { reportCaughtError } from '../diagnostics/errorReporter.js';
+
+/**
+ * The #114 trust gate, applied to EVERY canonical this client is about to
+ * consume (network or cache): pre-epoch boards are grandfathered, signed
+ * boards must verify, unsigned post-epoch boards are trusted only in the
+ * first-client-fallback shape (written inside their own play window — see
+ * canonicalSignature.js). A rejected canonical is treated as MISSING, so the
+ * caller falls back to local generation instead of playing a poisoned board.
+ * Verifier-machinery exceptions fail OPEN with a report: a browser quirk
+ * must never brick a legitimate daily, and an attacker cannot trigger an
+ * exception (a bad signature is a clean `false`, not a throw).
+ *
+ * @param {object|null} raw  fetched/cached canonical payload
+ * @param {string} key       date (daily) or weekStart (weekly)
+ * @param {'daily'|'weekly'} kind
+ * @returns {Promise<object|null>} the payload, or null when untrusted
+ */
+export async function gateCanonicalTrust(raw, key, kind) {
+  if (!raw) return null;
+  try {
+    const verdict = await assessCanonicalTrust(raw, key, kind, etDateStringOfMs);
+    if (verdict.trusted) return raw;
+    console.warn(`canonical ${kind}/${key} REJECTED: ${verdict.reason}`);
+    reportCaughtError('canonical-trust-reject', new Error(`${kind}/${key}: ${verdict.reason}`));
+    return null;
+  } catch (err) {
+    reportCaughtError('canonical-trust-error', err);
+    return raw;
+  }
+}
 
 const DB_PATH = 'dailyBoard';
 const FETCH_TIMEOUT_MS = 5000;
@@ -225,7 +258,8 @@ export async function loadDailyBoard(dateString) {
     db = await waitForFirebaseReady();
   } catch (err) {
     console.warn('loadDailyBoard:', err.message);
-    return cached; // offline — the cached canonical is the best truth available
+    // offline — the cached canonical is the best truth available
+    return gateCanonicalTrust(cached, dateString, 'daily');
   }
   try {
     const ref = db.ref(`${DB_PATH}/${dateString}`);
@@ -238,12 +272,14 @@ export async function loadDailyBoard(dateString) {
     // rewrite). Don't resurrect a cached copy the server disowned —
     // fall through to the caller's local-generation path.
     if (!snap.exists()) return null;
-    const val = snap.val();
-    cacheDailyBoard(dateString, val); // refresh local cache for offline replays
+    const val = await gateCanonicalTrust(snap.val(), dateString, 'daily');
+    // An untrusted canonical is never cached — a poisoned board must not
+    // gain offline persistence.
+    if (val) cacheDailyBoard(dateString, val); // refresh local cache for offline replays
     return val;
   } catch (err) {
     console.warn('loadDailyBoard fetch failed:', err.message);
-    return cached;
+    return gateCanonicalTrust(cached, dateString, 'daily');
   }
 }
 
