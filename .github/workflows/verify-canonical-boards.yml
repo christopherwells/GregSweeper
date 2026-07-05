@@ -1,0 +1,36 @@
+name: Verify canonical boards
+
+# The DETECTION layer for issue #114: canonical paths are write-once but
+# writable by any authenticated user, and clients play them verbatim — so a
+# poisoned far-future board would sit undetected until players hit it. This
+# re-verifies every FUTURE-dated dailyBoard (+ dailyMeta + crux) and every
+# current/future weeklyBoard with the same solver the generator used, and
+# FAILS on any mismatch — a failed run is the alarm, days before the board
+# goes live. Remediation is printed in the log (the regenerate workflows can
+# replace an unplayed future canonical via the service account).
+#
+# Read-only over world-readable paths: no secrets needed.
+#
+# Runs 30 minutes after the 00:00 UTC precompute so the freshest board is in
+# the sweep, plus on demand.
+
+on:
+  schedule:
+    - cron: '30 0 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Sweep future canonicals
+        run: node scripts/verify-canonical-boards.mjs
