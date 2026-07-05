@@ -17,6 +17,7 @@ import {
   TARGET_TO_GIMMICK, loadExperimentSpec, selectBestCandidate,
   readCodeVersion, buildCanonicalPayload, buildCandidateFeatures,
 } from './daily-board-pipeline.mjs';
+import { signCanonicalPayload, requireSigningKey } from '../src/logic/canonicalSignature.js';
 import { cruxPayloadFromBoard } from '../src/logic/cruxExtract.js';
 
 const FIREBASE_API_KEY = 'AIzaSyBhiFPIUA0u021Yh7eA35N2nQOIUPVPtpo';
@@ -47,8 +48,12 @@ async function existsCanonicalBoard(date) {
 
 async function writeCanonicalBoard(date, idToken, payload) {
   const url = `${DB_BASE}/dailyBoard/${date}.json?auth=${encodeURIComponent(idToken)}`;
+  // Sign the board (#114): clients verify before playing. canonicalStringify
+  // excludes sig/writtenAt, so signing the bare payload here matches what a
+  // reader reconstructs from the stored node.
   const body = JSON.stringify({
     ...payload,
+    sig: await signCanonicalPayload(payload, requireSigningKey()),
     writtenAt: { '.sv': 'timestamp' },
   });
   const r = await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body });

@@ -50,6 +50,7 @@ jobs:
       - name: Pre-generate and upload (2-week horizon)
         env:
           OVERRIDE_WEEK: ${{ github.event.inputs.weekStart }}
+          CANONICAL_SIGNING_KEY: ${{ secrets.CANONICAL_SIGNING_KEY }}
         run: |
           # Generate the next two Mondays so a client always has the
           # current week PLUS next week cached — enough to stay playable

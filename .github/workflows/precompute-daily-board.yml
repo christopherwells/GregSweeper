@@ -55,6 +55,7 @@ jobs:
       - name: Pre-generate and upload (7-day horizon)
         env:
           OVERRIDE_DATE: ${{ github.event.inputs.date }}
+          CANONICAL_SIGNING_KEY: ${{ secrets.CANONICAL_SIGNING_KEY }}
         run: |
           # Generate the next 7 ET days so clients can pre-fetch a full
           # week of boards for offline play. Each date is idempotent

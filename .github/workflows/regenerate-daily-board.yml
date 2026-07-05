@@ -43,4 +43,5 @@ jobs:
       - name: Regenerate
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          CANONICAL_SIGNING_KEY: ${{ secrets.CANONICAL_SIGNING_KEY }}
         run: node scripts/regenerate-daily-board.mjs "${{ github.event.inputs.date }}" ${{ github.event.inputs.dryRun == 'true' && '--dry-run' || '' }}

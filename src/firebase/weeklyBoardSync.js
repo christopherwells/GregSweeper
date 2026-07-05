@@ -6,7 +6,7 @@
 // per-cell structure is identical.
 
 import { waitForFirebaseReady } from './waitForFirebase.js';
-import { serializeBoard, deserializeBoard } from './dailyBoardSync.js';
+import { serializeBoard, deserializeBoard, gateCanonicalTrust } from './dailyBoardSync.js';
 import { isTestEnvironment } from './env.js';
 import { getCachedWeeklyBoard, cacheWeeklyBoard, addDays } from './boardCache.js';
 
@@ -38,7 +38,8 @@ export async function loadWeeklyBoard(weekStart) {
     db = await waitForFirebaseReady();
   } catch (err) {
     console.warn('loadWeeklyBoard:', err.message);
-    return cached; // offline — the cached canonical is the best truth available
+    // offline — the cached canonical is the best truth available
+    return gateCanonicalTrust(cached, weekStart, 'weekly');
   }
   try {
     const ref = db.ref(`${DB_PATH}/${weekStart}`);
@@ -49,12 +50,13 @@ export async function loadWeeklyBoard(weekStart) {
     // Server reachable and empty = no canonical for this week; don't
     // resurrect a cached copy the server disowned.
     if (!snap.exists()) return null;
-    const val = snap.val();
-    cacheWeeklyBoard(weekStart, val); // refresh local cache for offline play
+    const val = await gateCanonicalTrust(snap.val(), weekStart, 'weekly');
+    // An untrusted canonical is never cached (see loadDailyBoard).
+    if (val) cacheWeeklyBoard(weekStart, val); // refresh local cache for offline play
     return val;
   } catch (err) {
     console.warn('loadWeeklyBoard fetch failed:', err.message);
-    return cached;
+    return gateCanonicalTrust(cached, weekStart, 'weekly');
   }
 }
 

@@ -12,6 +12,7 @@
 // Usage (via GH Actions workflow_dispatch):
 //   FIREBASE_SERVICE_ACCOUNT=<json> node scripts/regenerate-weekly-board.mjs YYYY-MM-DD
 
+import { signCanonicalPayload, requireSigningKey } from '../src/logic/canonicalSignature.js';
 import { createDailyRNG } from '../src/logic/seededRandom.js';
 import { getWeeklyGimmicks, applyGimmicks } from '../src/logic/gimmicks.js';
 import { generateBoard, cleanSolverArtifacts } from '../src/logic/boardGenerator.js';
@@ -180,6 +181,8 @@ function selectBestCandidate(weekStart) {
   });
   console.log(`  payload size: ${JSON.stringify(payload).length} bytes`);
 
+  // Sign the board (#114) — see regenerate-daily-board.mjs.
+  payload.sig = await signCanonicalPayload(payload, requireSigningKey());
   await adminWrite(accessToken, `weeklyBoard/${weekStart}`, payload);
   console.log('  written');
 

@@ -36,6 +36,23 @@ import { isBoardSolvable, findDeducibleFrontier } from '../src/logic/boardSolver
 import { cleanSolverArtifacts } from '../src/logic/boardGenerator.js';
 import { computeDailyFeatures } from '../src/logic/dailyFeatures.js';
 import { getLocalDateString, getWeekStart } from '../src/logic/seededRandom.js';
+import { SIGNATURE_EPOCH, verifyCanonicalPayloadSig } from '../src/logic/canonicalSignature.js';
+
+/**
+ * Signature gate for a FUTURE-dated canonical (issue #114): post-epoch it
+ * must carry a VALID signature — the unsigned first-client-fallback shape is
+ * written same-day, never ahead, so any unsigned future board is either
+ * poison or a pipeline that lost its signing key. Pre-epoch boards pass.
+ * @returns {Promise<{ok: boolean, reasons: string[]}>}
+ */
+export async function verifyFutureSignature(raw, key) {
+  if (String(key).slice(0, 10) < SIGNATURE_EPOCH) return { ok: true, reasons: [] };
+  if (!raw || typeof raw.sig !== 'string') {
+    return { ok: false, reasons: ['post-epoch future canonical is UNSIGNED'] };
+  }
+  const valid = await verifyCanonicalPayloadSig(raw);
+  return valid ? { ok: true, reasons: [] } : { ok: false, reasons: ['signature INVALID'] };
+}
 
 const DB_BASE = 'https://gregsweeper-66d02-default-rtdb.firebaseio.com';
 
@@ -207,9 +224,10 @@ async function main() {
       dbGet(`cruxes/${date}`),
     ]);
     const v = verifyCanonicalPayload(raw);
-    if (!v.ok) {
-      failures.push({ path: `dailyBoard/${date}`, reasons: v.reasons, regen: date });
-      console.log(`✗ dailyBoard/${date}: ${v.reasons.join('; ')}`);
+    const sigV = await verifyFutureSignature(raw, date);
+    if (!v.ok || !sigV.ok) {
+      failures.push({ path: `dailyBoard/${date}`, reasons: [...v.reasons, ...sigV.reasons], regen: date });
+      console.log(`✗ dailyBoard/${date}: ${[...v.reasons, ...sigV.reasons].join('; ')}`);
       continue; // meta/crux checks would just cascade off the bad board
     }
     let line = `✓ dailyBoard/${date} certifies`;
@@ -236,9 +254,13 @@ async function main() {
   for (const week of sweepWeeks) {
     const raw = await dbGet(`weeklyBoard/${week}`);
     const v = verifyCanonicalPayload(raw);
-    if (!v.ok) {
-      failures.push({ path: `weeklyBoard/${week}`, reasons: v.reasons, regen: null, liveWeek: week === thisWeek });
-      console.log(`✗ weeklyBoard/${week}: ${v.reasons.join('; ')}`);
+    // The signature gate applies only to weeks that haven't started (the
+    // current week's board legitimately predates the epoch or was written
+    // by an unsigned pipeline run before this shipped).
+    const sigV = week > thisWeek ? await verifyFutureSignature(raw, week) : { ok: true, reasons: [] };
+    if (!v.ok || !sigV.ok) {
+      failures.push({ path: `weeklyBoard/${week}`, reasons: [...v.reasons, ...sigV.reasons], regen: null, liveWeek: week === thisWeek });
+      console.log(`✗ weeklyBoard/${week}: ${[...v.reasons, ...sigV.reasons].join('; ')}`);
     } else {
       console.log(`✓ weeklyBoard/${week} certifies`);
     }
