@@ -1,0 +1,65 @@
+name: Merge two anonymous accounts (uid split)
+
+# One human, two anonymous uids: a device lost its Firebase session (storage
+# clear or the pre-#116 auth-clobber) and minted a fresh uid, splitting the
+# player's history. An anonymous account has no credential to sign back into,
+# so the merge direction is always old → new (the device's CURRENT uid
+# survives). Rewrites every leaderboard row's uid, moves weekly rows, unions
+# dailyHistory / weeklyAttempts, continues the streak with the game's own
+# molt-aware math, re-keys friendships on both sides, then purges the old
+# users/{uid} subtree. handicaps.json catches up at the next nightly refit.
+#
+# DEFAULTS TO DRY RUN. Run once with dry_run=true, review the plan in the
+# log, then re-run with dry_run=false to apply. After applying, have the
+# player link Google/email in Settings so the split cannot recur.
+
+on:
+  workflow_dispatch:
+    inputs:
+      from_uid:
+        description: 'ABANDONED uid (the old account whose data moves).'
+        type: string
+        required: true
+      to_uid:
+        description: 'SURVIVING uid (the one the device plays as now).'
+        type: string
+        required: true
+      dry_run:
+        description: 'Dry run (no writes). Set false to actually merge.'
+        type: boolean
+        required: false
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: merge-user-accounts
+  cancel-in-progress: false
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Run merge
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FROM_UID: ${{ github.event.inputs.from_uid }}
+          TO_UID: ${{ github.event.inputs.to_uid }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "FIREBASE_SERVICE_ACCOUNT secret is not set"; exit 1
+          fi
+          if [ "${{ github.event.inputs.dry_run }}" = "false" ]; then
+            echo "APPLY mode"
+            node scripts/merge-user-accounts.mjs --apply
+          else
+            echo "DRY RUN (default). Set dry_run=false to apply."
+            node scripts/merge-user-accounts.mjs
+          fi
