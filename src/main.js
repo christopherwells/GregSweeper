@@ -2392,6 +2392,17 @@ function updateTitleProgress() {
       chaosCard.style.display = 'none';
     }
   }
+
+  // A hidden card still occupies its :nth-child slot, so CSS alone can't
+  // tell 5 visible cards from 6. Count the cards actually shown and flag
+  // the grid: odd count → the last card spans the full row instead of
+  // leaving an orphan cell (the .odd-cards rule in global.css).
+  const modeGrid = $('.title-screen-modes');
+  if (modeGrid) {
+    const visibleCards = [...modeGrid.querySelectorAll('.mode-card')]
+      .filter((card) => card.style.display !== 'none').length;
+    modeGrid.classList.toggle('odd-cards', visibleCards % 2 === 1);
+  }
 }
 
 // The gregsweeper.com custom-domain move (2026-07-03) title-screen notice
