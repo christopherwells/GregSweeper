@@ -41,6 +41,24 @@ export function restampPendingWeeklyEntry(entry, uid) {
   return { ...entry, uid };
 }
 
+// Firebase App Check (abuse protection). The site key is public by design
+// (like the VAPID key in firebasePush.js); it pairs with the App Check
+// registration in the Firebase console (App Check → register the web app
+// with a reCAPTCHA provider) and paste the site key here. Empty string =
+// App Check off, activation no-ops. APP_CHECK_PROVIDER must match the
+// console registration: 'v3' (classic reCAPTCHA v3 key) or 'enterprise'
+// (reCAPTCHA Enterprise key).
+//
+// Why this exists: the Firebase config above ships to every browser, so a
+// rehosted copy of the site works against this database from any origin
+// (anonymous auth is not gated by authorized domains). App Check tokens
+// attest that traffic comes from the real app. Activation only ATTACHES
+// tokens — nothing is rejected until enforcement is turned on in the
+// console, and enforcement must wait until stale service-worker clients
+// (which lack this code) have cycled onto a build that carries it.
+const APP_CHECK_SITE_KEY = '6Lc6jUctAAAAACH5c0o-uBd5P88EBebd3mKUyeXU';
+const APP_CHECK_PROVIDER = 'enterprise';
+
 // Score validation bounds
 const MIN_VALID_TIME = 5;    // seconds — anything faster is impossible
 const MAX_VALID_TIME = 3600; // seconds — 1 hour cap
@@ -108,6 +126,8 @@ export async function initFirebase() {
       firebase.initializeApp(firebaseConfig);
     }
 
+    activateAppCheck();
+
     db = firebase.database();
 
     // Test connectivity with a quick read
@@ -133,6 +153,34 @@ export async function initFirebase() {
       console.warn('For testing, set rules to: { ".read": true, ".write": true }');
     }
     firebaseReady = false;
+  }
+}
+
+/**
+ * Activate Firebase App Check (see APP_CHECK_SITE_KEY above). Called from
+ * initFirebase() right after initializeApp, before any database handle is
+ * created, so every subsequent request carries a token. Skipped on the
+ * test build and local dev: neither is on the reCAPTCHA key's domain
+ * allowlist, and their traffic must not count against the production
+ * verified/unverified metrics that gate the enforcement decision.
+ * (When enforcement ships, local dev switches to the App Check debug
+ * provider with a debug token — not needed in monitor mode.)
+ */
+function activateAppCheck() {
+  if (!APP_CHECK_SITE_KEY) return;
+  if (isTestEnvironment()) return;
+  if (typeof location !== 'undefined' &&
+      (location.hostname === 'localhost' || location.hostname === '127.0.0.1')) return;
+  if (typeof firebase.appCheck !== 'function') return; // CDN script didn't load
+  try {
+    const provider = APP_CHECK_PROVIDER === 'enterprise'
+      ? new firebase.appCheck.ReCaptchaEnterpriseProvider(APP_CHECK_SITE_KEY)
+      : APP_CHECK_SITE_KEY; // string key = reCAPTCHA v3 provider (compat shorthand)
+    firebase.appCheck().activate(provider, /* isTokenAutoRefreshEnabled */ true);
+  } catch (err) {
+    // Activation failure must never take down the leaderboard init —
+    // in monitor mode an unattested client still works.
+    reportCaughtError('app-check-activate', err);
   }
 }
 

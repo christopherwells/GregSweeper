@@ -6045,6 +6045,15 @@ button:focus-visible {
   border-color: var(--color-accent, #e94560);
   background: var(--color-accent, #e94560)15;
 }
+/* Ownership line under the footer buttons. Deliberately quiet — it
+   asserts the copyright without competing with the mode cards. */
+.title-copyright {
+  margin-top: 10px;
+  font-size: 10px;
+  text-align: center;
+  color: var(--color-text-secondary, #888);
+  opacity: 0.7;
+}
 
 /* Phone compaction. Keyed on WIDTH, not height: a phone is a phone whether
    it reports 740px or 930px tall, and its real visible height is unknowable

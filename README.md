@@ -32,6 +32,10 @@ Installed instances get push notifications for the day's puzzle, opt-in via Sett
 
 `scripts/refit-par-model.R` runs the daily refit. `scripts/fit-par-model.qmd` is the interactive notebook with diagnostics (Rhat, ESS, divergent transitions, posterior CV, prior-vs-posterior comparison).
 
+## License
+
+Copyright © 2026 Christopher D. Wells. All rights reserved. The source is visible for transparency, but it is not open source — no license is granted to copy, modify, or rehost the game or its assets. See [LICENSE](LICENSE). For licensing questions, open an issue or email c.wells@bowdoin.edu.
+
 ## Credits
 
 GregSweeper is built by Christopher Wells. Greg dreamed up the modifiers; the mines are his fault.

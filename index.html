@@ -14,6 +14,7 @@
   <meta http-equiv="Expires" content="0">
   <title>GregSweeper: The daily Minesweeper with no guesses</title>
   <meta name="description" content="The daily Minesweeper, no guesses required. Every standard board verified solvable. Ten optional modifiers, worldwide leaderboard, free in your browser.">
+  <meta name="copyright" content="&copy; 2026 Christopher D. Wells. All rights reserved.">
   <link rel="canonical" href="https://gregsweeper.com/">
 
   <!-- Open Graph (Discord, iMessage, Slack, Facebook link previews).
@@ -241,6 +242,10 @@
   <script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <!-- FCM (Web Push). messaging-compat.js exposes firebase.messaging() -->
   <script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js"></script>
+  <!-- App Check (abuse protection). app-check-compat.js exposes
+       firebase.appCheck(); activation lives in firebaseLeaderboard.js
+       and no-ops until APP_CHECK_SITE_KEY is set there. -->
+  <script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-check-compat.js"></script>
 </head>
 <body>
   <!-- Test-environment banner. Renders when we're on the test deploy
@@ -353,6 +358,7 @@
       <button id="title-progress-btn" class="title-footer-btn"><img class="ui-icon-label" src="assets/sprites/ui-stats.svg" alt="" draggable="false" onerror="this.replaceWith('📊')">Progress</button>
       <button id="title-more-btn" class="title-footer-btn"><img class="ui-icon-label" src="assets/sprites/ui-more.svg" alt="" draggable="false" onerror="this.replaceWith('⚙️')">More<span id="more-btn-dot" class="more-dot hidden"></span></button>
     </div>
+    <div class="title-copyright">&copy; 2026 Christopher D. Wells &middot; All rights reserved</div>
   </div>
 
   <!-- Crux teaser (?crux=YYYY-MM-DD share route): a standalone "find the
@@ -520,7 +526,7 @@
           <div class="about-role">Visionary</div>
           <p class="about-tagline">Greg dreamed up the modifiers. The mines are his fault.</p>
           <div class="about-divider"></div>
-          <p class="about-credits">GregSweeper &copy; 2026 · Built by Christopher Wells</p>
+          <p class="about-credits">GregSweeper &copy; 2026 Christopher D. Wells &middot; All rights reserved</p>
           <p class="about-support">
             <a href="https://github.com/sponsors/christopherwells" target="_blank" rel="noopener"><img class="ui-icon-label" src="assets/sprites/ui-sponsor.svg" alt="" draggable="false" onerror="this.replaceWith('💛')">Support GregSweeper</a>
             (voluntary, helps cover domain + hosting + app-store fees).
