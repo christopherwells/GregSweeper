@@ -56,8 +56,8 @@ export function restampPendingWeeklyEntry(entry, uid) {
 // tokens — nothing is rejected until enforcement is turned on in the
 // console, and enforcement must wait until stale service-worker clients
 // (which lack this code) have cycled onto a build that carries it.
-const APP_CHECK_SITE_KEY = '';
-const APP_CHECK_PROVIDER = 'v3';
+const APP_CHECK_SITE_KEY = '6Lc6jUctAAAAACH5c0o-uBd5P88EBebd3mKUyeXU';
+const APP_CHECK_PROVIDER = 'enterprise';
 
 // Score validation bounds
 const MIN_VALID_TIME = 5;    // seconds — anything faster is impossible
