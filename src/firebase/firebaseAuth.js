@@ -187,7 +187,17 @@ export async function linkWithGoogle({ onCredentialConflict } = {}) {
   }
   const auth = firebase.auth();
   const current = auth.currentUser;
-  if (!current) return { status: 'error', message: 'No active user — anonymous auth has not resolved yet' };
+  if (!current) {
+    // In a test environment a fresh context stays signed out FOREVER (the
+    // boot mint is gated), so "has not resolved yet" would be a permanent
+    // lie there — say what is actually true.
+    return {
+      status: 'error',
+      message: isTestEnvironment()
+        ? 'Test builds never create accounts — sign in on the production site instead'
+        : 'No active user — anonymous auth has not resolved yet',
+    };
+  }
 
   const provider = _getGoogleProvider();
   try {
@@ -371,13 +381,18 @@ function _stripEmailLinkQuery() {
  * some uid to work with. Pre-cleans the current device's pushSubscription
  * so the cron stops sending pushes to the abandoned identity.
  *
- * Returns the new anonymous uid on success, or null on failure.
+ * Returns the new anonymous uid on success, or null on failure (or in a
+ * test environment, which signs out but never mints a replacement).
  */
 export async function signOut() {
   if (typeof firebase === 'undefined' || !firebase.auth) return null;
   try {
     await _clearCurrentDevicePushSubscription();
     await firebase.auth().signOut();
+    // Test environments never mint Auth users — same contract as the
+    // boot-time bootstrap gate in firebaseProgress.js. The session just
+    // stays signed out (all test-env writes are gated anyway).
+    if (isTestEnvironment()) return null;
     const result = await firebase.auth().signInAnonymously();
     return (result && result.user && result.user.uid) || null;
   } catch (err) {

@@ -26,24 +26,12 @@ import {
   buildCanonicalPayload,
 } from './daily-board-pipeline.mjs';
 import { cruxPayloadFromBoard } from '../src/logic/cruxExtract.js';
+import { signInAnonymously, deleteSelf } from './anon-auth-rest.mjs';
 
-const FIREBASE_API_KEY = 'AIzaSyBhiFPIUA0u021Yh7eA35N2nQOIUPVPtpo';
 const DB_BASE = 'https://gregsweeper-66d02-default-rtdb.firebaseio.com';
 
 const START = '2026-03-06'; // app launch (v0.1)
 const END = '2026-04-26';   // last date before canonical storage began (04-27)
-
-async function signInAnonymously() {
-  const url = `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${FIREBASE_API_KEY}`;
-  const r = await fetch(url, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ returnSecureToken: true }),
-  });
-  if (!r.ok) throw new Error(`anonymous sign-in failed: ${r.status} ${await r.text()}`);
-  const j = await r.json();
-  if (!j.idToken) throw new Error('anonymous sign-in: no idToken');
-  return j.idToken;
-}
 
 async function boardExists(date) {
   const r = await fetch(`${DB_BASE}/dailyBoard/${date}.json?shallow=true`);
@@ -83,23 +71,27 @@ function dateRange(start, end) {
   const idToken = dryRun ? null : await signInAnonymously();
   const tally = { boards: 0, cruxes: 0, breathers: 0, skipped: 0 };
 
-  for (const date of dates) {
-    if (await boardExists(date)) { tally.skipped++; console.log(`  ${date}: board already present — skip`); continue; }
-    const cand = selectBestCandidate(date, spec);
-    const payload = buildCanonicalPayload(cand, readCodeVersion());
-    const crux = cruxPayloadFromBoard(cand.board, cand.rows, cand.cols);
-    const gimmicks = cand.activeGimmicks.join(',') || 'none';
-    if (dryRun) {
-      console.log(`  ${date}: ${cand.rows}x${cand.cols} ${cand.totalMines}m [${gimmicks}] · crux ${crux ? `tier ${crux.tier} ${crux.rows}x${crux.cols}` : 'none'}`);
-      tally.boards++; if (crux) tally.cruxes++; else tally.breathers++;
-      continue;
+  try {
+    for (const date of dates) {
+      if (await boardExists(date)) { tally.skipped++; console.log(`  ${date}: board already present — skip`); continue; }
+      const cand = selectBestCandidate(date, spec);
+      const payload = buildCanonicalPayload(cand, readCodeVersion());
+      const crux = cruxPayloadFromBoard(cand.board, cand.rows, cand.cols);
+      const gimmicks = cand.activeGimmicks.join(',') || 'none';
+      if (dryRun) {
+        console.log(`  ${date}: ${cand.rows}x${cand.cols} ${cand.totalMines}m [${gimmicks}] · crux ${crux ? `tier ${crux.tier} ${crux.rows}x${crux.cols}` : 'none'}`);
+        tally.boards++; if (crux) tally.cruxes++; else tally.breathers++;
+        continue;
+      }
+      const br = await writeOnce(`dailyBoard/${date}`, idToken, payload);
+      if (br === 'written') tally.boards++;
+      let cr = 'none';
+      if (crux) { cr = await writeOnce(`cruxes/${date}`, idToken, crux); if (cr === 'written') tally.cruxes++; }
+      else tally.breathers++;
+      console.log(`  ${date}: board ${br}, crux ${crux ? cr : 'breather'} [${gimmicks}]`);
     }
-    const br = await writeOnce(`dailyBoard/${date}`, idToken, payload);
-    if (br === 'written') tally.boards++;
-    let cr = 'none';
-    if (crux) { cr = await writeOnce(`cruxes/${date}`, idToken, crux); if (cr === 'written') tally.cruxes++; }
-    else tally.breathers++;
-    console.log(`  ${date}: board ${br}, crux ${crux ? cr : 'breather'} [${gimmicks}]`);
+  } finally {
+    await deleteSelf(idToken);
   }
 
   console.log(`\ndone: ${tally.boards} boards, ${tally.cruxes} cruxes, ${tally.breathers} breathers, ${tally.skipped} skipped`);

@@ -27,13 +27,13 @@ import { generateBoard, cleanSolverArtifacts } from '../src/logic/boardGenerator
 import { isBoardSolvable } from '../src/logic/boardSolver.js';
 import { DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE } from '../src/logic/difficulty.js';
 import { serializeBoard } from '../src/firebase/dailyBoardSync.js';
+import { signInAnonymously, deleteSelf } from './anon-auth-rest.mjs';
 
 // Hard-coded — this script handles ONE specific bootstrap. The seed is
 // what Chris's already-submitted score on Firebase has under
 // daily/2026-04-27/{pushId}/rngSeed.
 const DATE_STRING = '2026-04-27';
 const RNG_SEED    = '2026-04-27:trial1';
-const FIREBASE_API_KEY = 'AIzaSyBhiFPIUA0u021Yh7eA35N2nQOIUPVPtpo';
 const DB_BASE = 'https://gregsweeper-66d02-default-rtdb.firebaseio.com';
 
 function buildBoard() {
@@ -73,22 +73,6 @@ function buildBoard() {
   }
 
   return { board, rows, cols, totalMines, activeGimmicks };
-}
-
-async function signInAnonymously() {
-  const url = `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${FIREBASE_API_KEY}`;
-  const r = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ returnSecureToken: true }),
-  });
-  if (!r.ok) {
-    const txt = await r.text();
-    throw new Error(`anonymous sign-in failed: ${r.status} ${txt}`);
-  }
-  const j = await r.json();
-  if (!j.idToken) throw new Error('anonymous sign-in returned no idToken');
-  return j.idToken;
 }
 
 async function writeCanonicalBoard(idToken, payload) {
@@ -144,8 +128,12 @@ async function existsCanonicalBoard() {
   const idToken = await signInAnonymously();
   console.log('  signed in anonymously');
 
-  await writeCanonicalBoard(idToken, payload);
-  console.log('  written');
+  try {
+    await writeCanonicalBoard(idToken, payload);
+    console.log('  written');
+  } finally {
+    await deleteSelf(idToken);
+  }
 
   // Verify by reading back
   const verify = await fetch(`${DB_BASE}/dailyBoard/${DATE_STRING}.json`);

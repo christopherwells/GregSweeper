@@ -29,8 +29,8 @@ import { serializeBoard } from '../src/firebase/dailyBoardSync.js';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { signInAnonymously, deleteSelf } from './anon-auth-rest.mjs';
 
-const FIREBASE_API_KEY = 'AIzaSyBhiFPIUA0u021Yh7eA35N2nQOIUPVPtpo';
 const DB_BASE = 'https://gregsweeper-66d02-default-rtdb.firebaseio.com';
 const CANDIDATE_COUNT = 10;
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -94,22 +94,6 @@ function selectBestCandidate(weekStart) {
     throw new Error(`No solvable weekly board found for ${weekStart} — refusing to write an uncertified canonical`);
   }
   return { ...best, rngSeed: bestSeed };
-}
-
-async function signInAnonymously() {
-  const url = `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${FIREBASE_API_KEY}`;
-  const r = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ returnSecureToken: true }),
-  });
-  if (!r.ok) {
-    const txt = await r.text();
-    throw new Error(`anonymous sign-in failed: ${r.status} ${txt}`);
-  }
-  const j = await r.json();
-  if (!j.idToken) throw new Error('anonymous sign-in: no idToken in response');
-  return j.idToken;
 }
 
 async function existsCanonicalBoard(weekStart) {
@@ -190,14 +174,18 @@ async function writeWeeklyMeta(weekStart, idToken, features) {
   console.log(`  payload size: ${JSON.stringify(payload).length} bytes`);
 
   const idToken = await signInAnonymously();
-  await writeCanonicalBoard(weekStart, idToken, payload);
-  console.log('  written');
+  try {
+    await writeCanonicalBoard(weekStart, idToken, payload);
+    console.log('  written');
 
-  const features = computeDailyFeatures(
-    { board: cand.board, rows: cand.rows, cols: cand.cols, totalMines: cand.totalMines, activeGimmicks: cand.activeGimmicks },
-    cand.check,
-  );
-  await writeWeeklyMeta(weekStart, idToken, features);
+    const features = computeDailyFeatures(
+      { board: cand.board, rows: cand.rows, cols: cand.cols, totalMines: cand.totalMines, activeGimmicks: cand.activeGimmicks },
+      cand.check,
+    );
+    await writeWeeklyMeta(weekStart, idToken, features);
+  } finally {
+    await deleteSelf(idToken);
+  }
 })().catch(err => {
   console.error('precompute failed:', err.message);
   process.exit(1);

@@ -1,0 +1,56 @@
+name: Purge anon auth orphans
+
+# Manual one-off: deletes orphan anonymous Firebase Auth accounts left by
+# the pre-2026-07-06 e2e harness and precompute scripts (account creation
+# was the one Firebase side effect the isTestEnvironment() write gates
+# didn't cover). Deliberately NOT scheduled — the inflow is fixed at the
+# source (the boot-time mint gate + the scripts' self-delete), so this is
+# backlog cleanup, not standing machinery.
+#
+# Safety: dry run is the default; the script only ever deletes accounts
+# that are anonymous AND older than age-days AND own no users/{uid} node
+# AND appear on no leaderboard row (daily/dailyArchive/timed/weekly) AND
+# are absent from handicaps.json — see scripts/purge-anon-orphans.mjs.
+# Review the uploaded candidate-list artifact before re-running with
+# delete=true.
+#
+# Triggered manually via:
+#   gh workflow run purge-anon-orphans.yml -f delete=false
+#   gh workflow run purge-anon-orphans.yml -f delete=true   # after review
+
+on:
+  workflow_dispatch:
+    inputs:
+      delete:
+        description: 'Actually delete (false = dry run, prints + uploads the candidate list)'
+        type: boolean
+        default: false
+      ageDays:
+        description: 'Only consider accounts older than this many days (min 7)'
+        default: '14'
+
+permissions:
+  contents: read
+
+jobs:
+  purge:
+    runs-on: [self-hosted, gregsweeper-win]
+    defaults:
+      run:
+        shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -eo pipefail "{0}"'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Purge
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node scripts/purge-anon-orphans.mjs --age-days "${{ github.event.inputs.ageDays }}" ${{ github.event.inputs.delete == 'true' && '--delete' || '' }}
+      - name: Upload candidate list
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: purge-anon-orphans-candidates
+          path: purge-anon-orphans-candidates.json
+          if-no-files-found: ignore

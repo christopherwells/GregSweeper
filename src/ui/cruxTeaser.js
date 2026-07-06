@@ -1,8 +1,13 @@
 // ── The crux teaser: yesterday's hardest step, as a share card ──
-// A standalone, logged-out, zero-write view reached by ?crux=YYYY-MM-DD
-// (default: yesterday ET). It shows a precomputed "find the safe square"
-// mini-puzzle of a past daily's crux — the first step plain counting
-// could not reach — then points the visitor at today's board.
+// A standalone view reached by ?crux=YYYY-MM-DD (default: yesterday ET).
+// Works logged-out, and the teaser itself writes nothing — though the
+// route is not fully write-free: the shared boot path in main.js runs
+// before the ?crux= branch, so a prod visitor still gets an anonymous
+// session and a users/{uid}/lastSeen stamp (deliberate — a share-page
+// visitor is a prospective player; see CLAUDE.md's Crux Teaser section).
+// It shows a precomputed "find the safe square" mini-puzzle of a past
+// daily's crux — the first step plain counting could not reach — then
+// points the visitor at today's board.
 //
 // The puzzle and its sentence come from cruxes/{date}, materialized by
 // the same cruxExtract the win receipt uses, so the teaser can never
