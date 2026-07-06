@@ -17,3 +17,11 @@ test-results/
 playwright-report/
 blob-report/
 playwright/.cache/
+
+# Local working files under scripts/: underscore-prefixed scratch harnesses
+# and data exports (Nominatim island-polygon JSON, ad-hoc Playwright
+# screenshot runners) plus par-experiment CSV extracts (the scores file
+# carries anon uids + play times — nothing secret, but not repo material).
+# No tracked file matches either pattern (verified 2026-07-06).
+scripts/_*
+scripts/par-experiment-*.csv
