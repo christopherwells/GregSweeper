@@ -5365,9 +5365,13 @@ button:focus-visible {
   pointer-events: none;
 }
 
-/* An odd card count (chaos hidden until L50) leaves an orphan cell in
-   the 2-column grid; let the last card span the row instead. */
-.title-screen-modes .mode-card:last-child:nth-child(odd) {
+/* An odd VISIBLE card count (chaos hidden until L50) leaves an orphan
+   cell in the 2-column grid; let the last card span the row instead.
+   The hidden Chaos card stays in the DOM and still occupies its
+   :nth-child slot, so CSS alone can't see the odd count —
+   updateTitleProgress() counts the cards actually shown and flags the
+   grid with .odd-cards. */
+.title-screen-modes.odd-cards .mode-card:last-child {
   grid-column: 1 / -1;
 }
 
