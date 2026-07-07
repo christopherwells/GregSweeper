@@ -1,42 +1,42 @@
 {
-  "updatedAt": "2026-07-06T16:54:42Z",
-  "target": "mirrorPairCount",
-  "reason": "highest posterior CV (0.914) excluding last 3 targets",
+  "updatedAt": "2026-07-07T16:34:25Z",
+  "target": "lockedCellCount",
+  "reason": "highest posterior CV (0.568) excluding last 3 targets",
   "recentTargets": [
+    "lockedCellCount",
     "mirrorPairCount",
-    "patternMoves",
-    "compassCellCount"
+    "patternMoves"
   ],
   "candidates": [
     {
       "feature": "mirrorPairCount",
-      "mean": 0.012,
-      "sd": 0.011,
-      "cv": 0.914
+      "mean": 0.025,
+      "sd": 0.016,
+      "cv": 0.626
     },
     {
       "feature": "compassCellCount",
-      "mean": 0.02,
-      "sd": 0.015,
-      "cv": 0.742
+      "mean": 0.032,
+      "sd": 0.019,
+      "cv": 0.602
     },
     {
       "feature": "lockedCellCount",
-      "mean": 0.027,
+      "mean": 0.029,
       "sd": 0.016,
-      "cv": 0.598
+      "cv": 0.568
     },
     {
       "feature": "patternMoves",
-      "mean": 0.013,
+      "mean": 0.012,
       "sd": 0.007,
-      "cv": 0.524
+      "cv": 0.542
     },
     {
       "feature": "sonarCellCount",
       "mean": 0.046,
-      "sd": 0.021,
-      "cv": 0.457
+      "sd": 0.022,
+      "cv": 0.47
     }
   ],
   "coverage_targets": [
@@ -44,11 +44,6 @@
       "feature": "compassCellCount",
       "n_boards": 8,
       "deficit_weight": 0.1111
-    },
-    {
-      "feature": "liarCellCount",
-      "n_boards": 10,
-      "deficit_weight": 0.0909
     },
     {
       "feature": "wormholePairCount",
@@ -61,12 +56,17 @@
       "deficit_weight": 0.0909
     },
     {
-      "feature": "mysteryCellCount",
-      "n_boards": 13,
-      "deficit_weight": 0.0714
+      "feature": "liarCellCount",
+      "n_boards": 11,
+      "deficit_weight": 0.0833
     },
     {
-      "feature": "lockedCellCount",
+      "feature": "mirrorPairCount",
+      "n_boards": 11,
+      "deficit_weight": 0.0833
+    },
+    {
+      "feature": "mysteryCellCount",
       "n_boards": 13,
       "deficit_weight": 0.0714
     }
