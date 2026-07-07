@@ -19,25 +19,9 @@ import {
 } from './daily-board-pipeline.mjs';
 import { signCanonicalPayload, requireSigningKey } from '../src/logic/canonicalSignature.js';
 import { cruxPayloadFromBoard } from '../src/logic/cruxExtract.js';
+import { signInAnonymously, deleteSelf } from './anon-auth-rest.mjs';
 
-const FIREBASE_API_KEY = 'AIzaSyBhiFPIUA0u021Yh7eA35N2nQOIUPVPtpo';
 const DB_BASE = 'https://gregsweeper-66d02-default-rtdb.firebaseio.com';
-
-async function signInAnonymously() {
-  const url = `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${FIREBASE_API_KEY}`;
-  const r = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ returnSecureToken: true }),
-  });
-  if (!r.ok) {
-    const txt = await r.text();
-    throw new Error(`anonymous sign-in failed: ${r.status} ${txt}`);
-  }
-  const j = await r.json();
-  if (!j.idToken) throw new Error('anonymous sign-in: no idToken in response');
-  return j.idToken;
-}
 
 async function existsCanonicalBoard(date) {
   const r = await fetch(`${DB_BASE}/dailyBoard/${date}.json`);
@@ -137,11 +121,15 @@ async function writeCrux(date, idToken, payload) {
   console.log(`  payload size: ${JSON.stringify(payload).length} bytes`);
 
   const idToken = await signInAnonymously();
-  await writeCanonicalBoard(date, idToken, payload);
-  console.log('  written');
+  try {
+    await writeCanonicalBoard(date, idToken, payload);
+    console.log('  written');
 
-  await writeDailyMeta(date, idToken, buildCandidateFeatures(cand));
-  await writeCrux(date, idToken, cruxPayloadFromBoard(cand.board, cand.rows, cand.cols));
+    await writeDailyMeta(date, idToken, buildCandidateFeatures(cand));
+    await writeCrux(date, idToken, cruxPayloadFromBoard(cand.board, cand.rows, cand.cols));
+  } finally {
+    await deleteSelf(idToken);
+  }
 })().catch(err => {
   console.error('precompute failed:', err.message);
   process.exit(1);

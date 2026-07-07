@@ -249,9 +249,19 @@ export async function initAnonymousAuth() {
       // here only unblock boot; the uid still arrives reactively via the
       // listener (and loadProgress / the cloud listener pick it up) if a
       // slow persistence read overruns them.
+      // Test environments never MINT: every fresh-context e2e boot used
+      // to create a real anonymous user in production Auth (~9 orphans
+      // per CI run — auth was the one Firebase side effect the per-call
+      // isTestEnvironment() write gates didn't cover). The listener
+      // stays attached either way, so a persisted session (shared
+      // origin-scoped IndexedDB — gregsweeper.com/test/ sees the prod
+      // session) is still adopted; a fresh test context simply plays
+      // signed out, which every uid consumer already handles.
       await bootstrapAnonymousAuth({
         subscribe: subscribeAuthState,
-        signInAnon: () => firebase.auth().signInAnonymously(),
+        signInAnon: isTestEnvironment()
+          ? async () => {}
+          : () => firebase.auth().signInAnonymously(),
         onAuthFire: _handleAuthChange,
         firstFireTimeoutMs: FIREBASE_TIMEOUT_MS,
         settleTimeoutMs: AUTH_SETTLE_TIMEOUT_MS,

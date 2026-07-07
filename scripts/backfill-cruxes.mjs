@@ -19,22 +19,9 @@
 
 import { deserializeBoard } from '../src/firebase/dailyBoardSync.js';
 import { cruxPayloadFromBoard } from '../src/logic/cruxExtract.js';
+import { signInAnonymously, deleteSelf } from './anon-auth-rest.mjs';
 
-const FIREBASE_API_KEY = 'AIzaSyBhiFPIUA0u021Yh7eA35N2nQOIUPVPtpo';
 const DB_BASE = 'https://gregsweeper-66d02-default-rtdb.firebaseio.com';
-
-async function signInAnonymously() {
-  const url = `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${FIREBASE_API_KEY}`;
-  const r = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ returnSecureToken: true }),
-  });
-  if (!r.ok) throw new Error(`anonymous sign-in failed: ${r.status} ${await r.text()}`);
-  const j = await r.json();
-  if (!j.idToken) throw new Error('anonymous sign-in: no idToken');
-  return j.idToken;
-}
 
 function todayET() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
@@ -88,27 +75,31 @@ async function writeCrux(date, idToken, payload) {
   const tally = { written: 0, skippedExists: 0, noCrux: 0, missingBoard: 0 };
   const tierMix = {};
 
-  for (const date of dates) {
-    if (!dryRun && await cruxExists(date)) { tally.skippedExists++; continue; }
-    const raw = await fetchBoard(date);
-    if (!raw) { tally.missingBoard++; continue; }
-    let payload = null;
-    try {
-      const { board, rows, cols } = deserializeBoard(raw);
-      payload = cruxPayloadFromBoard(board, rows, cols);
-    } catch (err) {
-      console.warn(`  ${date}: deserialize/extract failed — ${err.message}`);
+  try {
+    for (const date of dates) {
+      if (!dryRun && await cruxExists(date)) { tally.skippedExists++; continue; }
+      const raw = await fetchBoard(date);
+      if (!raw) { tally.missingBoard++; continue; }
+      let payload = null;
+      try {
+        const { board, rows, cols } = deserializeBoard(raw);
+        payload = cruxPayloadFromBoard(board, rows, cols);
+      } catch (err) {
+        console.warn(`  ${date}: deserialize/extract failed — ${err.message}`);
+      }
+      if (!payload) { tally.noCrux++; console.log(`  ${date}: no teaser (breather or too entangled)`); continue; }
+      tierMix[payload.tier] = (tierMix[payload.tier] || 0) + 1;
+      if (dryRun) {
+        console.log(`  ${date}: tier ${payload.tier}, ${payload.rows}x${payload.cols}, ${JSON.stringify(payload).length}b`);
+        tally.written++;
+        continue;
+      }
+      const res = await writeCrux(date, idToken, payload);
+      if (res === 'exists') { tally.skippedExists++; }
+      else { tally.written++; console.log(`  ${date}: written (tier ${payload.tier}, ${payload.rows}x${payload.cols})`); }
     }
-    if (!payload) { tally.noCrux++; console.log(`  ${date}: no teaser (breather or too entangled)`); continue; }
-    tierMix[payload.tier] = (tierMix[payload.tier] || 0) + 1;
-    if (dryRun) {
-      console.log(`  ${date}: tier ${payload.tier}, ${payload.rows}x${payload.cols}, ${JSON.stringify(payload).length}b`);
-      tally.written++;
-      continue;
-    }
-    const res = await writeCrux(date, idToken, payload);
-    if (res === 'exists') { tally.skippedExists++; }
-    else { tally.written++; console.log(`  ${date}: written (tier ${payload.tier}, ${payload.rows}x${payload.cols})`); }
+  } finally {
+    await deleteSelf(idToken);
   }
 
   console.log(`\ndone: ${tally.written} ${dryRun ? 'would write' : 'written'}, ${tally.skippedExists} already present, ${tally.noCrux} no-crux, ${tally.missingBoard} missing-board`);
