@@ -454,6 +454,22 @@
         }
       }
     },
+    "playerNames": {
+      ".read": true,
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['name']) || newData.val() === null",
+        "name": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 20 && newData.val().matches(/^[^<>&\"'`@]+$/)"
+        },
+        "updatedAt": {
+          ".validate": "newData.val() === now"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
     "$other": {
       ".read": false,
       ".write": false

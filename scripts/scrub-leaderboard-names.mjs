@@ -1,8 +1,9 @@
 // Server-side hate-speech sweep for leaderboard display names.
 //
 // Scans EVERY world-readable name-bearing path — daily/{date}/{pushId}.name,
-// weekly/{weekStart}/{uid}.name, timed/{pushId}.name, and
-// dailyArchive/{date}/{pushId}.name — and rewrites any name containing a
+// weekly/{weekStart}/{uid}.name, timed/{pushId}.name,
+// dailyArchive/{date}/{pushId}.name, and playerNames/{uid}.name (the canonical
+// name the leaderboards join against) — and rewrites any name containing a
 // slur to "Anonymous". Keep that path list in sync with the rules: a new
 // world-readable leaderboard path MUST get a sweep here in the same change
 // (issue #54: timed/ shipped without one). This is the
@@ -153,6 +154,27 @@ async function sweepDailyArchive() {
   return hits;
 }
 
+// playerNames/{uid} is uid-keyed and flat (the canonical display name the
+// leaderboards join against). A scrub here is what actually clears a slur from
+// the visible leaderboard now that names are joined by uid, not just read off
+// each row.
+async function sweepPlayerNames() {
+  const snap = await db.ref('playerNames').once('value');
+  const root = snap.val() || {};
+  const updates = {};
+  let hits = 0;
+  for (const uid of Object.keys(root)) {
+    const name = root[uid] && root[uid].name;
+    if (isHateSpeech(name)) {
+      console.log(`  playerNames/${uid}: "${name}" → ${SCRUBBED}`);
+      updates[`playerNames/${uid}/name`] = SCRUBBED;
+      hits++;
+    }
+  }
+  if (!dryRun && hits > 0) await db.ref().update(updates);
+  return hits;
+}
+
 // Expired friend codes: the rules read gate already hides codes older
 // than 15 minutes, so this is pure tidiness — delete codes older than
 // an hour so the node never accumulates dead entries.
@@ -181,8 +203,9 @@ async function sweepExpiredFriendCodes() {
   const w = await sweepWeekly();
   const t = await sweepTimed();
   const a = await sweepDailyArchive();
+  const p = await sweepPlayerNames();
   const c = await sweepExpiredFriendCodes();
-  console.log(`Done. daily hits: ${d}, weekly hits: ${w}, timed hits: ${t}, archive hits: ${a}, expired codes: ${c}${dryRun ? ' (dry run — nothing written)' : ''}.`);
+  console.log(`Done. daily hits: ${d}, weekly hits: ${w}, timed hits: ${t}, archive hits: ${a}, playerNames hits: ${p}, expired codes: ${c}${dryRun ? ' (dry run — nothing written)' : ''}.`);
   process.exit(0);
 })().catch(err => {
   console.error('Sweep FAILED:', err);

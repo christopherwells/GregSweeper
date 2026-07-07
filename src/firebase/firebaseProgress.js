@@ -46,6 +46,11 @@ let _hasInitialized = false;
 let _pendingSave = null;
 let _pendingHistory = null;
 let _pendingWeeklyAttempts = null;
+// The player's leaderboard name to publish to playerNames/{uid}, coalesced
+// when auth hasn't settled (boot window). Unlike the other pendings, the name
+// is a person-level fact, not uid-scoped — so on a uid SWITCH main.js
+// re-publishes it under the new uid (see subscribeToUidChanges).
+let _pendingPlayerName = null;
 
 // Listeners notified on uid changes. main.js uses this to reload progress,
 // firebasePush.js uses it to re-subscribe FCM under the new uid.
@@ -152,6 +157,11 @@ function _flushPendingWrites() {
       markWeeklyDayAttempted(weekStart, Number(day));
     }
   }
+  if (_pendingPlayerName) {
+    const nm = _pendingPlayerName;
+    _pendingPlayerName = null;
+    publishPlayerName(nm);
+  }
 }
 
 function _handleAuthChange(snap) {
@@ -194,9 +204,12 @@ function _handleAuthChange(snap) {
   } else {
     // uid changed mid-session — pending writes were intended for the OLD
     // uid (its data is no longer reachable from this device), so discard.
+    // The pending name is dropped too; main.js's uid-change handler
+    // re-publishes the current local name under the NEW uid.
     _pendingSave = null;
     _pendingHistory = null;
     _pendingWeeklyAttempts = null;
+    _pendingPlayerName = null;
   }
 
   // Attach the real-time listener AFTER _uid + _db are set so the
@@ -303,6 +316,29 @@ export function saveProgress({ maxCheckpoint, dailyStreak, bestDailyStreak, last
   _db.ref('users/' + _uid).update(data).catch(err => {
     console.warn('Cloud progress save failed:', err.message);
   });
+}
+
+/**
+ * Publish the player's leaderboard name to `playerNames/{uid}` — the
+ * world-readable canonical name every leaderboard JOINS against by uid
+ * (see resolveDisplayName in firebaseLeaderboard.js). Storing the name once
+ * here, rather than only denormalized onto each (write-once) score row, is
+ * what makes a name change in Settings show up on EVERY past record instantly
+ * without rewriting any rows. Called from the Settings name field, the win-time
+ * name gate, boot (backfill), and on a uid switch (re-publish under the new
+ * uid). Coalesced when auth hasn't settled, flushed on the initial settle.
+ * @param {string} name already-sanitized handle (re-sanitized here defensively)
+ */
+export function publishPlayerName(name) {
+  if (isTestEnvironment()) return;
+  // Match the leaderboard-name rule regex + length so the write can't be
+  // silently rejected (which would drop the whole node).
+  const clean = String(name || '').replace(/[<>&"'`@]/g, '').slice(0, 20).trim();
+  if (!clean) return;
+  if (!_ready || !_uid) { _pendingPlayerName = clean; return; }
+  _db.ref('playerNames/' + _uid)
+    .set({ name: clean, updatedAt: _serverTimestamp() })
+    .catch(err => console.warn('publishPlayerName failed:', err && err.message));
 }
 
 // ── Stale-client beacon ───────────────────────────────
