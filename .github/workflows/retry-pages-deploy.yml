@@ -1,0 +1,107 @@
+name: Retry Pages Deploy
+
+# Self-healing for the recurring Pages congestion window (observed
+# 2026-07-04..06, ~15:00-16:30 UTC): actions/deploy-pages@v4 fails ~10s
+# after creating the deployment with the generic "Deployment failed, try
+# again later." while the artifact is normal, pages/health is clean, and
+# GitHub status shows all-operational — then a later re-dispatch
+# succeeds. Before this watchdog, clearing a cluster took a human
+# noticing; the sharpest edge was the daily refit, whose explicitly
+# dispatched deploy could fail in the window and leave the new PAR_MODEL
+# committed but undeployed (the exact stale-deploy class that dispatch
+# was added to prevent, 2026-06-10).
+#
+# Shape: every FAILED "Deploy GitHub Pages" run triggers this; it waits
+# an escalating backoff sized by the consecutive-failure streak (10 → 60
+# min — RETRY_DELAYS_MINUTES in scripts/pages-deploy-retry.mjs, where the
+# decision logic lives pure and node-tested), then re-dispatches
+# deploy-pages on main. A re-dispatch always rebuilds the artifact from
+# the latest of BOTH branches (that is what deploy-pages does on every
+# run), so a retry can never ship a stale main/test composition. After
+# MAX_RETRIES consecutive failures inside one incident this goes red and
+# pings Discord instead of retrying forever — past ~3h45m it is not
+# congestion anymore. A fresh failure more than 3h after the last one
+# starts a new cycle, so an exhausted incident never eats the next day's
+# retries.
+#
+# Runs on ubuntu-latest (free minutes on a public repo): the sleep must
+# never hold the single self-hosted gregsweeper-win runner, which would
+# serialize every other deploy/refit/admin job behind it for up to an
+# hour at a time.
+#
+# Loop safety: each re-dispatch is a fresh workflow_dispatch (exempt from
+# GitHub's GITHUB_TOKEN recursion guard, same as the refit's dispatch),
+# and that run's completion fires this workflow again — a failure chains
+# into the next, longer backoff tier; a success ends the incident. The
+# consecutive-failure cap bounds the chain.
+
+on:
+  workflow_run:
+    workflows: ["Deploy GitHub Pages"]
+    types: [completed]
+
+permissions:
+  actions: write # gh run list (read) + gh workflow run (dispatch)
+
+# At most one sleeper: any newer deploy completion — success OR failure —
+# starts a new run of this workflow, which cancels the one currently
+# sleeping. A success's run then no-ops at the job `if` (but its
+# cancellation already called off the now-pointless retry); a failure's
+# run recomputes the streak and sleeps the next tier.
+concurrency:
+  group: pages-retry
+  cancel-in-progress: true
+
+jobs:
+  retry:
+    if: github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (for the decision script)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Size the backoff from the consecutive-failure streak
+        id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run list -R "$GITHUB_REPOSITORY" --workflow deploy-pages.yml \
+            --limit 20 --json status,conclusion,createdAt \
+            | node scripts/pages-deploy-retry.mjs decide >> "$GITHUB_OUTPUT"
+
+      - name: Wait out the congestion window
+        if: steps.decide.outputs.action == 'retry'
+        run: |
+          echo "Failure streak ${{ steps.decide.outputs.attempt }} — sleeping ${{ steps.decide.outputs.delay_minutes }} min before re-dispatching."
+          sleep $(( ${{ steps.decide.outputs.delay_minutes }} * 60 ))
+
+      - name: Re-dispatch the deploy (unless something newer took over)
+        if: steps.decide.outputs.action == 'retry'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          recheck=$(gh run list -R "$GITHUB_REPOSITORY" --workflow deploy-pages.yml \
+            --limit 20 --json status,conclusion,createdAt \
+            | node scripts/pages-deploy-retry.mjs recheck)
+          if echo "$recheck" | grep -qx 'action=dispatch'; then
+            gh workflow run deploy-pages.yml -R "$GITHUB_REPOSITORY" --ref main
+            echo "Re-dispatched deploy-pages."
+          else
+            echo "Skipping dispatch — a newer deploy run already handled it."
+          fi
+
+      - name: Alarm — retries exhausted
+        if: steps.decide.outputs.action == 'alert'
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          if [ -n "$DISCORD_WEBHOOK_URL" ]; then
+            curl -fsS -X POST -H "Content-Type: application/json" \
+              -d "{\"content\":\":rotating_light: GregSweeper Pages deploy still failing after ${{ steps.decide.outputs.attempt }} consecutive failures — retries exhausted, main may be undeployed: https://github.com/${{ github.repository }}/actions/workflows/deploy-pages.yml\"}" \
+              "$DISCORD_WEBHOOK_URL" || true
+          fi
+          echo "::error::Pages deploy failed ${{ steps.decide.outputs.attempt }} times in a row — giving up. Re-dispatch deploy-pages manually once the cause is fixed."
+          exit 1

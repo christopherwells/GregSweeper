@@ -12,6 +12,13 @@ name: Deploy GitHub Pages
 # One-time setup: in repo Settings → Pages, switch Source from "Deploy
 # from a branch" to "GitHub Actions". Until that flip happens, this
 # workflow runs but its deployment step has nowhere to publish.
+#
+# Failed runs self-heal: retry-pages-deploy.yml fires on every failed
+# run of this workflow and re-dispatches it with escalating backoff.
+# GitHub's Pages backend has a recurring congestion window (observed
+# 2026-07-04..06, ~15:00-16:30 UTC) where the deploy step fails in ~10s
+# with "Deployment failed, try again later." until a later re-dispatch —
+# see that file + scripts/pages-deploy-retry.mjs for the decision logic.
 
 on:
   push:
