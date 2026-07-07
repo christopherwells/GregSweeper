@@ -32,7 +32,7 @@ import { rankAdjusted, filterToFriends } from './logic/leaderboardViews.js';
 import {
   loadStats, saveTheme, loadTheme, resetStats,
   saveCheckpoint, loadCheckpoint,
-  loadDailyLeaderboard, addDailyLeaderboardEntry,
+  loadDailyLeaderboard,
   saveModePowerUps, loadGameState,
   isOnboarded, setOnboarded,
   isDailyCompleted, markDailyCompleted,
@@ -56,9 +56,10 @@ import {
   getHighestTier, getAllTierNames, getTierIcon, getTierColor,
 } from './logic/achievements.js';
 import {
-  initFirebase, isFirebaseOnline, submitOnlineScore, fetchOnlineLeaderboard, fetchUserDailyHistory, fetchAllDailyMeta, fetchAllDailyScores, fetchWeeklyLeaderboard,
+  initFirebase, isFirebaseOnline, fetchOnlineLeaderboard, fetchUserDailyHistory, fetchAllDailyMeta, fetchAllDailyScores, fetchWeeklyLeaderboard,
+  fetchPlayerNames, resolveDisplayName,
 } from './firebase/firebaseLeaderboard.js';
-import { initAnonymousAuth, loadProgress, loadDailyHistory, saveDailyHistoryEntry, getUid, loadWeeklyAttempts, loadLocalWeeklyAttempts, replaceLocalWeeklyAttempts, pruneStaleLocalWeeklyAttempts, subscribeToUidChanges, subscribeToCloudProgressUpdates, reportClientSeen } from './firebase/firebaseProgress.js';
+import { initAnonymousAuth, loadProgress, loadDailyHistory, saveDailyHistoryEntry, getUid, loadWeeklyAttempts, loadLocalWeeklyAttempts, replaceLocalWeeklyAttempts, pruneStaleLocalWeeklyAttempts, subscribeToUidChanges, subscribeToCloudProgressUpdates, reportClientSeen, publishPlayerName } from './firebase/firebaseProgress.js';
 import { getAuthState, subscribeAuthState, linkWithGoogle, sendEmailLink, tryCompleteEmailLink, signOut as authSignOut } from './firebase/firebaseAuth.js';
 import { isTestEnvironment } from './firebase/env.js';
 // Stats-tab renderer + chart toolkit are lazy-imported in populateDailyPanel
@@ -79,7 +80,6 @@ import { isStorageFailing, safeGet, safeSet, safeRemove, requestPersistentStorag
 import { pauseTimer, resumeTimer, stopTimer, recordInteraction } from './game/timerManager.js';
 import { isLiveGameExpired, isWeeklyAttemptCacheStale } from './logic/resumeEligibility.js';
 import { planCompletionReconcile } from './logic/startupReconcilePlan.js';
-import { buildDailyScoreExtras } from './logic/winSubmissionPlan.js';
 import { startTutorial, startWarmup } from './ui/tutorialManager.js';
 import { initErrorReporter, setErrorReporterCodeVersion, reportTestError, reportCaughtError } from './diagnostics/errorReporter.js';
 
@@ -1464,10 +1464,14 @@ async function _renderFriendsView() {
   } else if (list.length === 0) {
     listEl.innerHTML = '<p class="friends-empty">No friends yet — share your code or paste theirs.</p>';
   } else {
+    // Show each friend's LIVE name (playerNames join by uid), not the copy
+    // frozen into the friend entry when they were added — so a friend who
+    // renamed shows their new name here too.
+    const names = await fetchPlayerNames();
     for (const f of list) {
       const row = document.createElement('div');
       row.className = 'friends-row';
-      row.innerHTML = `<span class="friends-row-name">${escapeHtml(f.name)}</span>`
+      row.innerHTML = `<span class="friends-row-name">${escapeHtml(resolveDisplayName(f.uid, f.name, names))}</span>`
         + `<button class="friends-remove" data-friend-uid="${escapeHtml(f.uid)}" title="Remove friend" aria-label="Remove friend">${uiSpriteImgHTML('uiClose', 'ui-icon')}</button>`;
       listEl.appendChild(row);
     }
@@ -2260,7 +2264,10 @@ for (const closeBtn of $$('.modal-close')) {
 }
 for (const modal of $$('.modal')) {
   modal.addEventListener('click', (e) => {
-    if (e.target === modal && modal.id !== 'gameover-overlay') {
+    // name-capture-modal is the leaderboard-name gate — like gameover-overlay
+    // it manages its own dismissal (only a valid name closes it), so a
+    // backdrop tap must not close it.
+    if (e.target === modal && modal.id !== 'gameover-overlay' && modal.id !== 'name-capture-modal') {
       // Don't close if user is typing in an input inside the modal (mobile keyboard can cause stray taps)
       const active = document.activeElement;
       if (active && modal.contains(active) && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
@@ -3433,55 +3440,10 @@ $('#gameover-nextlevel').addEventListener('click', () => {
   newGame();
 });
 
-$('#gameover-submit-daily').addEventListener('click', async (e) => {
-  e.currentTarget.disabled = true;
-  // Archive replays never use this manual form (it stays hidden for them and
-  // records through submitArchiveCompletion on the auto path). Guard anyway
-  // so a stale-visible form can never post an archive run into daily/.
-  if (state.isArchivePlay) {
-    const f = $('#daily-submit-form');
-    if (f) f.classList.add('hidden');
-    return;
-  }
-  const nameInput = $('#daily-name-input');
-  const name = nameInput ? nameInput.value : '';
-  if (name && name.trim()) {
-    // Strip @ to defang accidental email pastes before the Firebase
-    // rules reject them. Server-side regex catches anything we miss
-    // here, but client-side strip gives a faster, friendlier path.
-    const sanitized = name.trim().replace(/@/g, '').slice(0, 20);
-    if (!sanitized) {
-      showToast('Please pick a handle (no @ symbols).');
-      e.currentTarget.disabled = false;
-      return;
-    }
-    // Anchor to the puzzle's seed, not the current local date — submitting
-    // a score at 12:00:01 AM for yesterday's puzzle would otherwise land on
-    // today's leaderboard.
-    const dateStr = state.dailySeed || getLocalDateString();
-    const scoreTime = Math.round((state.preciseTime || state.elapsedTime) * 10) / 10;
-    addDailyLeaderboardEntry(dateStr, sanitized, scoreTime);
-    const submitOk = await submitOnlineScore(dateStr, sanitized, scoreTime, state.dailyBombHits || 0,
-      buildDailyScoreExtras(state, dateStr, getUid()));
-    // Skip personal-history write for practice dailies — they play on a
-    // custom seed and don't belong on the regular daily timeline. Also
-    // skipped on 'duplicate' (this account already posted this board from
-    // another device): first completion wins the history slot. And on
-    // 'cheat' (a > 30%-mines probing run) — kept out of the timeline too.
-    if (!state.isDailyPractice && submitOk !== 'duplicate' && submitOk !== 'cheat') {
-      saveDailyHistoryEntry(dateStr, { time: scoreTime });
-    }
-    const dailySubmitForm = $('#daily-submit-form');
-    if (dailySubmitForm) dailySubmitForm.classList.add('hidden');
-    if (submitOk === 'duplicate') {
-      showToast('Already on the board from another device');
-    } else if (submitOk === 'cheat') {
-      showToast('Too many mines hit — this run won\'t be ranked');
-    } else {
-      showToast(submitOk ? 'Score submitted!' : 'Saved. Uploads when you reconnect', 2000, submitOk ? 'uiSuccess' : 'uiCloud');
-    }
-  }
-});
+// The daily win card's inline name form was removed: a nameless daily/weekly/
+// timed win is now gated by #name-capture-modal (src/ui/nameCapture.js) BEFORE
+// the card renders, so by the time the card shows, the auto-submit path in
+// winLossHandler always has a saved name. (No #gameover-submit-daily handler.)
 
 $('#gameover-share').addEventListener('click', () => handleShare());
 
@@ -3575,7 +3537,12 @@ document.addEventListener('keydown', (e) => {
 
   if (e.key === 'Escape') {
     const gameoverOpen = !$('#gameover-overlay').classList.contains('hidden');
-    if (!gameoverOpen) {
+    // The name gate is non-dismissible (like gameover-overlay) — Escape must
+    // not close it while focus sits on its Save button (its input already
+    // short-circuits above).
+    const nameGateEl = $('#name-capture-modal');
+    const nameGateOpen = nameGateEl && !nameGateEl.classList.contains('hidden');
+    if (!gameoverOpen && !nameGateOpen) {
       const visibleModals = [...$$('.modal')].filter(m => !m.classList.contains('hidden'));
       if (visibleModals.length > 0) {
         closeModalAndReturn(visibleModals[visibleModals.length - 1].id);
@@ -3627,12 +3594,16 @@ if (playerNameInput) {
   });
   // On commit (blur / Enter), if the final value was a rejected
   // hate-speech name, surface the message and revert the field to the
-  // last good saved name.
+  // last good saved name. On a good name, publish it to playerNames/{uid}
+  // so every leaderboard (including past rows) shows the new name by uid —
+  // this is what makes a name change propagate to previous records.
   playerNameInput.addEventListener('change', () => {
     const result = setPlayerName(playerNameInput.value.trim().slice(0, 20));
     if (result && result.ok === false && result.reason === 'hate') {
       showToast("That name isn't allowed. Please pick another.");
       playerNameInput.value = getPlayerName();
+    } else if (result && result.ok && result.value) {
+      publishPlayerName(result.value);
     }
   });
 }

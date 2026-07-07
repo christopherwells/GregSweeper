@@ -4813,32 +4813,68 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 .share-card-cell.mine { background: #f44336; }
 .share-card-cell.empty { background: var(--color-border, #ccc); }
 
-/* ── Daily Submit Form ──────────────────────────────── */
-.daily-submit-form {
+/* ── End-card final action row (Share / Challenge / Done) ──
+   The three ride ONE row instead of stacking (phone vertical space). Each
+   flexes to an equal share, so a single visible button (challenge/timed wins
+   show only Share here) still reads full-width like the stacked buttons above.
+   Icons show on wider screens and drop to short text-only labels on phones. */
+.gameover-final-actions {
   display: flex;
   gap: 8px;
-  align-items: center;
-  justify-content: center;
   margin-top: 8px;
 }
-.daily-name-input {
-  padding: 8px 12px;
+.gameover-final-actions .action-btn {
+  flex: 1 1 0;
+  min-width: 0;          /* allow shrink so three fit one line */
+  margin: 0;             /* the row owns spacing, not the buttons */
+  white-space: nowrap;
+}
+/* A button hidden by JS drops out of the flex row entirely. */
+.gameover-final-actions .action-btn.hidden { display: none; }
+@media (max-width: 480px) {
+  /* Short text-only labels on phones — the icon is the first thing to cut
+     when three buttons share a narrow row. */
+  .gameover-final-actions .action-btn .ui-icon-label { display: none; }
+}
+
+/* ── Leaderboard-name gate (#name-capture-modal) ────── */
+.name-capture-content {
+  text-align: center;
+  max-width: 340px;
+}
+.name-capture-sub {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  margin: 8px 0 16px;
+}
+.name-capture-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
   border: 2px solid var(--color-border);
   border-radius: 8px;
   background: var(--color-surface, rgba(0,0,0,0.05));
   color: var(--color-text);
-  font-size: 14px;
+  font-size: 16px;       /* ≥16px so iOS doesn't zoom on focus */
   font-family: inherit;
-  width: 160px;
   outline: none;
   transition: border-color 0.2s;
 }
-.daily-name-input:focus {
+.name-capture-input:focus {
   border-color: var(--color-accent);
 }
-.daily-name-input::placeholder {
+.name-capture-input::placeholder {
   color: var(--color-text-secondary);
   opacity: 0.6;
+}
+.name-capture-hint {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  opacity: 0.75;
+  margin: 8px 0 16px;
+}
+#name-capture-save {
+  width: 100%;
 }
 
 /* ── Onboarding ─────────────────────────────────────── */

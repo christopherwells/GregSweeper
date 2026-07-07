@@ -62,6 +62,24 @@ test('delta thresholds: ±0.5s is the even band, otherwise under/over', () => {
   assert.equal(resolveParDisplay({ ...base, precise: 59.4 }).parClass, 'par-under');
 });
 
+test('deltaShort drops the "par"/"your par" suffix for the simplified daily line', () => {
+  // No handicap: short form is just the magnitude + direction.
+  const plain = resolveParDisplay({ precise: 50, dailyPar: 60, refitRatio: 1, isRated: false, residuals: residualsOf(5, 60, 60) });
+  assert.equal(plain.deltaText, '10.0s under par');
+  assert.equal(plain.deltaShort, '10.0s under', 'short form omits the "par" the label already carries');
+  // With a handicap the FULL text says "your par" but the short form does not.
+  const hc = resolveParDisplay({ precise: 85, dailyPar: 100, refitRatio: 0.9, isRated: true, residuals: residualsOf(5) });
+  assert.equal(hc.deltaText, '5.0s under your par');
+  assert.equal(hc.deltaShort, '5.0s under');
+  // Even band collapses to a single word.
+  const even = resolveParDisplay({ precise: 60.2, dailyPar: 60, refitRatio: 1, isRated: false, residuals: residualsOf(5, 60, 60) });
+  assert.equal(even.parClass, 'par-even');
+  assert.equal(even.deltaShort, 'even');
+  // Over.
+  const over = resolveParDisplay({ precise: 66, dailyPar: 60, refitRatio: 1, isRated: false, residuals: residualsOf(5, 60, 60) });
+  assert.equal(over.deltaShort, '6.0s over');
+});
+
 test('even wording switches to "your par" when a handicap is in play', () => {
   const d = resolveParDisplay({ precise: 57.2, dailyPar: 60, refitRatio: 0.95, isRated: true, residuals: residualsOf(5) });
   assert.equal(d.useHandicap, true);

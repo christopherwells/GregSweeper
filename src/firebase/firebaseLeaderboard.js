@@ -14,6 +14,16 @@ import { etDateStringOfMs } from '../logic/seededRandom.js';
 let firebaseReady = false;
 let db = null;
 
+// playerNames/{uid} → name join cache. Every leaderboard resolves each row's
+// DISPLAY name by uid (resolveDisplayName), so a name change in Settings shows
+// on every past record instantly — the row's own stored name is only a
+// fallback for rows with no uid (join-at-read; see the Settings/name-gate
+// publishPlayerName writers). Cached briefly so rapid leaderboard tab-switches
+// don't re-read the whole node each time.
+let _playerNamesCache = null;
+let _playerNamesCacheAt = 0;
+const PLAYER_NAMES_TTL_MS = 60000;
+
 // Client-side rate limiting: one clock PER submission path. A single shared
 // clock let a timed (Quick Play) win suppress a daily/weekly_first submission
 // landing within the cooldown window (issue #89) — the paths look independent
@@ -835,6 +845,10 @@ export async function fetchWeeklyLeaderboard(weekStart) {
       if (a.bestTime !== b.bestTime) return a.bestTime - b.bestTime;
       return b.attemptsUsed - a.attemptsUsed; // more attempts → higher rank on tie
     });
+    // Join each row to the live name by uid (weekly rows ARE uid-keyed);
+    // the row's stored name is the fallback.
+    const names = await fetchPlayerNames();
+    for (const r of rows) r.name = resolveDisplayName(r.uid, r.name, names);
     return rows;
   } catch (err) {
     console.warn('Weekly leaderboard fetch failed:', err.message);
@@ -979,6 +993,50 @@ export async function fetchAllDailyMeta() {
 // See: https://firebase.google.com/docs/database/security
 
 /**
+ * Fetch the playerNames/{uid} → name map (world-readable). Cached for
+ * PLAYER_NAMES_TTL_MS so a burst of leaderboard renders shares one read.
+ * Returns {} (never null) so callers can look up with a fallback
+ * unconditionally. Reads the whole node — fine at this community's scale (~tens
+ * of bytes/player); if it ever grows large, switch to per-uid reads for only
+ * the uids present in the rendered leaderboard.
+ */
+export async function fetchPlayerNames({ force = false } = {}) {
+  if (!isFirebaseOnline()) return _playerNamesCache || {};
+  const now = Date.now();
+  if (!force && _playerNamesCache && now - _playerNamesCacheAt < PLAYER_NAMES_TTL_MS) {
+    return _playerNamesCache;
+  }
+  try {
+    const snap = await Promise.race([
+      db.ref('playerNames').once('value'),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000)),
+    ]);
+    const out = {};
+    if (snap.exists()) {
+      snap.forEach((child) => {
+        const v = child.val();
+        const nm = v && typeof v.name === 'string' ? v.name.trim() : '';
+        if (nm) out[child.key] = nm;
+      });
+    }
+    _playerNamesCache = out;
+    _playerNamesCacheAt = now;
+    return out;
+  } catch (err) {
+    console.warn('playerNames fetch failed:', err && err.message);
+    return _playerNamesCache || {};
+  }
+}
+
+/**
+ * Resolve a leaderboard row's display name: the live playerNames value for its
+ * uid, else the row's own stored (denormalized) name, else 'Anonymous'.
+ */
+export function resolveDisplayName(uid, storedName, namesMap) {
+  return (uid && namesMap && namesMap[uid]) || storedName || 'Anonymous';
+}
+
+/**
  * Fetch the online daily leaderboard for a given date.
  * @param {string} dateString YYYY-MM-DD format
  * @returns {Promise<Array<{name: string, time: number, bombHits: number, uid: string|null}>>}
@@ -1011,6 +1069,10 @@ export async function fetchOnlineLeaderboard(dateString) {
 
     // Already sorted by time from Firebase query, but ensure it
     entries.sort((a, b) => a.time - b.time);
+    // Join each row to the live name by uid (a Settings name change shows on
+    // every past row instantly); the row's stored name is the fallback.
+    const names = await fetchPlayerNames();
+    for (const e of entries) e.name = resolveDisplayName(e.uid, e.name, names);
     return entries;
   } catch (err) {
     console.warn('Firebase fetch failed:', err.message);

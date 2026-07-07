@@ -1,9 +1,12 @@
-// Daily score submission field-parity contract. A daily win submits via two
-// paths (auto in winLossHandler, manual in main.js) that pass an identical
-// extras object to submitOnlineScore; a field in one but not the other is
-// dropped silently (the documented bombHitEvents/rngSeed data-loss). This pins
-// the exact field set AND asserts both call sites use the shared builder, so
-// the two paths can never drift.
+// Daily score submission field-parity contract. A daily win submits from ONE
+// place (auto in winLossHandler) via the shared buildDailyScoreExtras — a field
+// missing from that extras object is dropped silently (the documented
+// bombHitEvents/rngSeed data-loss). This pins the exact field set AND asserts
+// the submit path uses the shared builder (never a hand-rolled extras).
+//
+// (Until the name-gate change there were TWO paths — the second was a
+// dismissible manual name form in main.js that also submitted; it was removed
+// once a nameless daily is gated before the end card, leaving one path.)
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -19,7 +22,7 @@ test('the extras payload carries exactly the contracted field set', () => {
   };
   const extras = buildDailyScoreExtras(state, '2026-06-23', 'uid-1');
   assert.deepEqual(Object.keys(extras).sort(), [...FIELDS].sort(),
-    'extras field set changed — update BOTH submit paths and this contract together');
+    'extras field set changed — update the submit path and this contract together');
   assert.equal(extras.uid, 'uid-1');
   assert.equal(extras.par, 90);
   assert.deepEqual(extras.features, { rows: 9 });
@@ -37,12 +40,10 @@ test('bombHitEvents and hintEvents default to empty arrays, rngSeed falls back t
   assert.deepEqual(Object.keys(extras).sort(), [...FIELDS].sort());
 });
 
-test('both submit paths call the shared builder (so they cannot drift)', () => {
-  // Source-level guard: the whole point is that neither path hand-rolls the
-  // extras object. If someone re-inlines one, this fails.
+test('the daily submit path uses the shared builder (no hand-rolled extras)', () => {
+  // Source-level guard: the auto-submit path must not hand-roll the extras
+  // object. If someone re-inlines it, this fails.
   const repoRoot = new URL('..', import.meta.url);
   const winLoss = readFileSync(new URL('src/game/winLossHandler.js', repoRoot), 'utf8');
-  const main = readFileSync(new URL('src/main.js', repoRoot), 'utf8');
   assert.ok(winLoss.includes('buildDailyScoreExtras('), 'winLossHandler auto-submit must use buildDailyScoreExtras');
-  assert.ok(main.includes('buildDailyScoreExtras('), 'main.js manual-submit must use buildDailyScoreExtras');
 });

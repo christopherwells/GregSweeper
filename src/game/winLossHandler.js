@@ -40,13 +40,12 @@ import { saveProgress, saveDailyHistoryEntry, fetchDailyHistoryEntry, getUid, ma
 import { archiveSubmitPlan, CRUX_VIEWED_KEY_PREFIX } from '../logic/archiveEligibility.js';
 import { isTestEnvironment } from '../firebase/env.js';
 import { reportCaughtError } from '../diagnostics/errorReporter.js';
-import { breakdownPar } from '../logic/dailyFeatures.js';
 import { getHandicapRatio, getHandicapDetails, isRatedHandicap } from '../logic/handicaps.js';
 import { resolveParDisplay } from '../logic/parDisplayDecision.js';
 import { buildDailyScoreExtras } from '../logic/winSubmissionPlan.js';
 import { detectSkillFeats } from '../logic/skillFeatDetection.js';
 import { summarizeWeeklyAttempt } from '../logic/weeklyAttemptSummary.js';
-import { labFileLine } from '../logic/gregVoice.js';
+import { ensureLeaderboardName } from '../ui/nameCapture.js';
 import { addDailyLeaderboardEntry, appendDailyResidual, loadDailyResiduals, loadPowerUps } from '../storage/statsStorage.js';
 import { getLocalDateString } from '../logic/seededRandom.js';
 
@@ -304,7 +303,7 @@ export async function submitArchiveCompletion(dateStr, name, scoreTime) {
 
 // ── Handle Win ─────────────────────────────────────────
 
-export function handleWin() {
+export async function handleWin() {
   state.status = 'won';
   stopTimer();
   announceGame('You won! Board cleared.');
@@ -315,6 +314,19 @@ export function handleWin() {
   applyIcon(resetBtn, 'smileyWin', getThemeEmoji('smileyWin'), { sizeClass: 'sprite-smiley' });
   resetBtn.classList.add('smiley-win-bounce');
   setTimeout(() => resetBtn.classList.remove('smiley-win-bounce'), 800);
+
+  // Name gate: daily / weekly / timed wins submit to public leaderboards, so
+  // require a handle BEFORE anything submits or the end card renders (weekly
+  // used to drop a nameless win silently, timed posted "Anonymous", and the
+  // daily's inline form was dismissible). Resolves immediately when a name is
+  // already saved or the mode isn't gated; awaited so every submission below
+  // sees the name. Fire-and-forget callers don't await handleWin, and
+  // state.status/stopTimer already ran synchronously above, so awaiting here is
+  // safe. (state.isArchivePlay is only meaningful in daily mode.)
+  await ensureLeaderboardName(state.gameMode, {
+    isArchive: !!state.isArchivePlay,
+    isPractice: !!state.isDailyPractice,
+  });
 
   const prevStats = loadStats();
   const prevMaxLevel = prevStats.maxLevelReached || 1;
@@ -557,7 +569,10 @@ export function handleWin() {
       parEl.classList.remove('hidden');
     }
     if (state.timedFeatures && state.timedPar > 0) {
-      const timedName = getPlayerName() || 'Anonymous';
+      // The name gate at the top of handleWin guarantees a handle before we
+      // get here, so no "Anonymous" fallback: submitTimedScore no-ops on an
+      // empty name rather than posting a nameless row.
+      const timedName = getPlayerName();
       submitTimedScore(timedName, Math.round(precise * 10) / 10, state.currentLevel, {
         uid: getUid(),
         par: state.timedPar,
@@ -621,7 +636,7 @@ export function handleWin() {
       // past the gate the delta is measured against the player's personal par.
       const {
         isNewcomerDaily, personalPar, useHandicap,
-        parClass, deltaText, yourParLabel, showOneMoreHint,
+        parClass, deltaShort, showOneMoreHint,
       } = resolveParDisplay({
         precise,
         dailyPar: state.dailyPar,
@@ -639,21 +654,17 @@ export function handleWin() {
         parPrimer = '<span class="par-primer">Greg’s Time is the typical solve time for today’s board. Finish faster and you’re under par.</span><br>';
       }
 
+      // Simplified par line (2026-07): the personal par + how the player did
+      // against it, on ONE line. The old Lab File decomposition ("Greg's Time X
+      // + your pace + bomb habit = Your par Y") and the per-feature breakdown
+      // chips below it were cut to keep the daily card to one screen — the full
+      // model still lives in Stats. deltaShort drops the redundant "your par"
+      // suffix since the label already carries it.
       if (useHandicap) {
-        // Lab File itemization (handicaps.json v2): when the refit has
-        // emitted the clean/bomb split, "your par" stops being one
-        // oracular number and becomes an explanation — Greg + your pace
-        // + your bomb habit. Falls back to the plain line when the
-        // decomposition hasn't shipped; we never fabricate a split.
-        const details = getHandicapDetails(getUid());
-        const itemized = details ? labFileLine(state.dailyPar, details) : null;
         parEl.innerHTML = moltNote + parPrimer +
           spriteImgHTML('smiley', 'sprite-greg-par', 'Greg') +
-          (itemized
-            ? itemized + ' · '
-            : "Greg's Time: " + state.dailyPar.toFixed(1) + 's · ' +
-              yourParLabel + personalPar.toFixed(1) + 's · ') +
-          '<span class="' + parClass + '">' + deltaText + '</span>';
+          'Your par ' + personalPar.toFixed(1) + 's · ' +
+          '<span class="' + parClass + '">' + deltaShort + '</span>';
       } else {
         // No handicap yet — surface a small hint about what would
         // unlock one so a brand-new player (1 daily complete) doesn't
@@ -663,24 +674,11 @@ export function handleWin() {
           : '';
         parEl.innerHTML = moltNote + parPrimer +
           spriteImgHTML('smiley', 'sprite-greg-par', 'Greg') +
-          "Greg's Time: " + state.dailyPar.toFixed(1) + 's · ' +
-          '<span class="' + parClass + '">' + deltaText + '</span>' + needHint;
+          "Greg's time " + state.dailyPar.toFixed(1) + 's · ' +
+          '<span class="' + parClass + '">' + deltaShort + '</span>' + needHint;
       }
       parEl.classList.remove('hidden');
 
-      // Per-feature breakdown of what drove Greg's par. Held back for a
-      // newcomer's first few dailies (jargon overload on the first
-      // result). Only shown when state.dailyFeatures is populated
-      // (older resumed games may predate features).
-      if (!isNewcomerDaily && parBreakdownEl && state.dailyFeatures) {
-        const terms = breakdownPar(state.dailyFeatures);
-        if (terms.length > 0) {
-          parBreakdownEl.innerHTML = terms
-            .map(t => '<span class="par-term" title="Extra time this part of the board adds to Greg’s Time">+' + t.seconds + 's ' + t.label + '</span>')
-            .join('<span class="par-term-sep"> · </span>');
-          parBreakdownEl.classList.remove('hidden');
-        }
-      }
       // 7-dot history strip — at-a-glance look at the player's recent
       // trajectory. Also held back until they have a few dailies under
       // their belt; one or two dots says nothing. Reads localStorage
@@ -859,14 +857,13 @@ export function handleWin() {
     }
   }
 
-  const dailySubmitForm = $('#daily-submit-form');
-  if (isDaily && dailySubmitForm) {
+  if (isDaily) {
     const savedName = getPlayerName();
     if (isArchivePlay) {
-      // Archive replay: no manual name form (archive is a later-game feature
-      // and the player already has a handle). Record only with a saved name,
-      // through the first-completion-only path — never the daily/ submitters.
-      dailySubmitForm.classList.add('hidden');
+      // Archive replay: record only with a saved name, through the
+      // first-completion-only path — never the daily/ submitters. Archive is
+      // excluded from the name gate (a later-game feature), so a nameless
+      // archive run still just nudges toward Settings.
       if (savedName) {
         const aDate = state.dailySeed || getLocalDateString();
         const aTime = Math.round((state.preciseTime || state.elapsedTime) * 10) / 10;
@@ -876,8 +873,9 @@ export function handleWin() {
         showToast('Set a name in Settings to record archive runs.');
       }
     } else if (savedName) {
-      // Auto-submit with saved name
-      dailySubmitForm.classList.add('hidden');
+      // Auto-submit with the saved name. The name gate at the top of handleWin
+      // guarantees a real daily has one, so this is the only submit path now —
+      // the old dismissible inline form (and its main.js handler) is gone.
       // Anchor to the puzzle's seed, not the current local date (same as
       // the manual-submit path in main.js) — finishing at 12:00:01 AM
       // would otherwise post yesterday's board onto today's leaderboard.
@@ -923,13 +921,10 @@ export function handleWin() {
           saveDailyHistoryEntry(dateStr, { time: scoreTime });
         }
       });
-    } else {
-      dailySubmitForm.classList.remove('hidden');
-      const nameInput = $('#daily-name-input');
-      if (nameInput) nameInput.value = '';
     }
-  } else if (dailySubmitForm) {
-    dailySubmitForm.classList.add('hidden');
+    // No else: a real daily always has a name past the gate. If the gate ever
+    // failed open (missing modal markup), we skip submission rather than
+    // posting a nameless row.
   }
 
   // Always show share button on win
@@ -1129,8 +1124,6 @@ export function handleLoss(mineRow, mineCol) {
     const chaosRunSummary = $('#chaos-run-summary');
     if (chaosRunSummary) chaosRunSummary.classList.add('hidden');
   }
-  const dailySubmitForm = $('#daily-submit-form');
-  if (dailySubmitForm) dailySubmitForm.classList.add('hidden');
   $('#gameover-powerup-earned').classList.add('hidden');
   $('#gameover-share').classList.add('hidden');
   $('#gameover-crux-challenge')?.classList.add('hidden');
@@ -1227,8 +1220,6 @@ export function handleTimedLoss() {
     const chaosRunSummary = $('#chaos-run-summary');
     if (chaosRunSummary) chaosRunSummary.classList.add('hidden');
   }
-  const dailySubmitForm2 = $('#daily-submit-form');
-  if (dailySubmitForm2) dailySubmitForm2.classList.add('hidden');
   $('#gameover-powerup-earned').classList.add('hidden');
   $('#gameover-share').classList.add('hidden');
   $('#gameover-crux-challenge')?.classList.add('hidden');

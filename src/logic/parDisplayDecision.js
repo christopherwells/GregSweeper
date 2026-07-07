@@ -28,7 +28,7 @@ export const NEWCOMER_DAILY_LIMIT = 3;
  * @returns {{
  *   ratio: number, provisional: (object|null), isNewcomerDaily: boolean,
  *   personalPar: number, useHandicap: boolean, referencePar: number,
- *   parClass: string, deltaText: string, yourParLabel: string,
+ *   parClass: string, deltaText: string, deltaShort: string, yourParLabel: string,
  *   showOneMoreHint: boolean,
  * }}
  */
@@ -61,15 +61,22 @@ export function resolveParDisplay({ precise, dailyPar, refitRatio, refitBombSeco
   const delta = precise - referencePar;
   const absDelta = Math.abs(delta).toFixed(1);
 
-  let parClass, deltaText;
+  // deltaText is the full phrase ("2.3s under your par"); deltaShort drops the
+  // "your par"/"par" suffix ("2.3s under") for the simplified daily win line,
+  // where the label already reads "Your par …" / "Greg's time …" and repeating
+  // it double-says. Both share the ±0.5s thresholds so they can't disagree.
+  let parClass, deltaText, deltaShort;
   if (delta < -0.5) {
     parClass = 'par-under';
-    deltaText = absDelta + 's under ' + (useHandicap ? 'your par' : 'par');
+    deltaShort = absDelta + 's under';
+    deltaText = deltaShort + ' ' + (useHandicap ? 'your par' : 'par');
   } else if (delta > 0.5) {
     parClass = 'par-over';
-    deltaText = absDelta + 's over ' + (useHandicap ? 'your par' : 'par');
+    deltaShort = absDelta + 's over';
+    deltaText = deltaShort + ' ' + (useHandicap ? 'your par' : 'par');
   } else {
     parClass = 'par-even';
+    deltaShort = 'even';
     deltaText = useHandicap ? 'Even with your par!' : 'Even par!';
   }
 
@@ -85,6 +92,6 @@ export function resolveParDisplay({ precise, dailyPar, refitRatio, refitBombSeco
 
   return {
     ratio, provisional, isNewcomerDaily, personalPar, useHandicap,
-    referencePar, parClass, deltaText, yourParLabel, showOneMoreHint,
+    referencePar, parClass, deltaText, deltaShort, yourParLabel, showOneMoreHint,
   };
 }
