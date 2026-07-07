@@ -3272,6 +3272,15 @@ subscribeToUidChanges(async ({ uid, isInitial }) => {
     // catches up to the new account's recent plays right away.
     const { backfillResidualsFromFirebase } = await import('./logic/handicaps.js');
     backfillResidualsFromFirebase(uid).catch(err => reportCaughtError('residuals-backfill-uidswitch', err));
+    // Re-publish this device's current leaderboard name under the NEW uid so
+    // the switched-in account's rows resolve to the player's live name via the
+    // playerNames join. The name is LOCAL (not part of the abandoned per-uid
+    // data), so it carries across the switch; without this the new uid's
+    // playerNames node stays empty and its past rows fall back to their frozen
+    // stored names — breaking the "a name change shows on every record"
+    // guarantee on exactly the cross-device link path this feature targets.
+    // This is the re-publish firebaseProgress's pending-drop-on-switch relies on.
+    publishPlayerName(getPlayerName());
     // applyCloudProgress wrote the merged streak / checkpoint values to
     // localStorage, but the UI on screen was rendered with the OLD uid's
     // numbers. Refresh the title screen + header so the player sees the
