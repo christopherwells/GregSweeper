@@ -4790,11 +4790,15 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   display: block;
   text-align: center;
 }
-/* Wave D: the rendered share-card PNG shown in the win modal. */
+/* Wave D: the rendered share-card PNG shown in the win modal. Height-capped to
+   a small thumbnail so the win card fits one screen — the full 3:4 card was
+   ~400px tall and pushed the buttons off-screen. Width follows the aspect ratio;
+   tapping Share still shares the full-size card. */
 .share-card-img {
   display: block;
-  width: 100%;
-  max-width: 300px;
+  max-height: 190px;
+  width: auto;
+  max-width: 100%;
   margin: 0 auto;
   border-radius: 12px;
   box-shadow: 0 3px 14px rgba(0, 0, 0, 0.28);
