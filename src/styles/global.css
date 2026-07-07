@@ -4822,12 +4822,32 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   display: flex;
   gap: 8px;
   margin-top: 8px;
+  /* Parent .gameover-actions is a wrap row that centers its items; without a
+     full-width basis this row would size to its content (~237px) and starve the
+     buttons. 100% claims the whole modal width so the three split it evenly. */
+  width: 100%;
 }
 .gameover-final-actions .action-btn {
   flex: 1 1 0;
   min-width: 0;          /* allow shrink so three fit one line */
   margin: 0;             /* the row owns spacing, not the buttons */
+  /* The default .action-btn 24px side padding + the 22px icon overflow a
+     one-third-width button on desktop (icon + "Challenge" spilled the box).
+     Center the content in a flex box, tighten the padding + icon so the widest
+     label ("Challenge") fits its share, and clip as a last-resort guard. */
+  padding: 12px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
   white-space: nowrap;
+  overflow: hidden;
+}
+.gameover-final-actions .action-btn .ui-icon-label {
+  margin: 0;             /* the flex gap owns icon↔label spacing */
+  width: 18px;
+  height: 18px;
+  flex: none;            /* the icon never grows or shrinks */
 }
 /* A button hidden by JS drops out of the flex row entirely. */
 .gameover-final-actions .action-btn.hidden { display: none; }
