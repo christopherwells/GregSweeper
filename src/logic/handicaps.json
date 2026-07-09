@@ -1,34 +1,34 @@
 {
   "format": "logratio-v1",
-  "updatedAt": "2026-07-08T16:05:18Z",
-  "modelFitN": 279,
+  "updatedAt": "2026-07-09T16:30:34Z",
+  "modelFitN": 281,
   "nPlayers": 5,
   "method": "brms-ranef",
-  "diagnostics": "max Rhat = 1.003, min ESS = 1315, divergent = 0/4000",
-  "refPar": 83.9,
+  "diagnostics": "max Rhat = 1.001, min ESS = 1151, divergent = 0/4000",
+  "refPar": 82.2,
   "secPerBombHit": 15,
   "handicaps": {
-    "eyqMktKTodTL6d4j5h1G7Tihgn12": 2.012,
-    "F8UjG44sGhXWFmqtKbd3h4Vpvcx1": 0.852,
-    "l0szSlaOvVb67aYrDzNU7j687BC3": 1.594,
-    "V07QPXYaICOOcP5ev6DXa2yG9y92": 0.985
+    "eyqMktKTodTL6d4j5h1G7Tihgn12": 1.99,
+    "F8UjG44sGhXWFmqtKbd3h4Vpvcx1": 0.853,
+    "l0szSlaOvVb67aYrDzNU7j687BC3": 1.603,
+    "V07QPXYaICOOcP5ev6DXa2yG9y92": 0.983
   },
   "handicapDetails": {
     "eyqMktKTodTL6d4j5h1G7Tihgn12": {
-      "k": 2.012,
+      "k": 1.99,
       "bombSeconds": 15
     },
     "F8UjG44sGhXWFmqtKbd3h4Vpvcx1": {
-      "k": 0.852,
-      "bombSeconds": 11.62
+      "k": 0.853,
+      "bombSeconds": 11.55
     },
     "l0szSlaOvVb67aYrDzNU7j687BC3": {
-      "k": 1.594,
+      "k": 1.603,
       "bombSeconds": 4.88
     },
     "V07QPXYaICOOcP5ev6DXa2yG9y92": {
-      "k": 0.985,
-      "bombSeconds": 14.02
+      "k": 0.983,
+      "bombSeconds": 13.93
     }
   }
 }
