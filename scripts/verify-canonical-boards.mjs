@@ -97,7 +97,7 @@ export function verifyCanonicalPayload(raw) {
   // the gimmick display layer), and diff.
   const storedAdj = cells.map((c) => c.adjacentMines);
   const storedDisp = cells.map((c) => c.displayedMines);
-  recalcAllAdjacency(board, rows, cols);
+  recalcAllAdjacency(board);
   recomputeDisplayedMines(board);
   const adjDiffs = cells.filter((c, i) => c.adjacentMines !== storedAdj[i]).length;
   const dispDiffs = cells.filter((c, i) => c.displayedMines !== storedDisp[i]).length;

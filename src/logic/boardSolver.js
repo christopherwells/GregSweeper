@@ -8,7 +8,7 @@
 //   C. Advanced solver (Gauss elimination + tank/partition enumeration)
 
 import { solveConstraints } from './constraintSolver.js';
-import { hasWallBetween } from './gimmicks.js';
+import { hasWallBetween, hasDisplayBlockingGimmick } from './gimmicks.js';
 
 // Sentinel: cell provides no usable number info to the solver
 const UNKNOWN = 255;
@@ -699,7 +699,7 @@ function buildConstraints(sim, adjCount, neighborCache, totalCells) {
 //     overlap (would need a weighted constraint with shared cells contributing 2).
 // The runtime constraint per Pass C/B is built from this via
 // buildGimmickRuntimeConstraints, which subtracts already-flagged/revealed cells.
-function buildStaticGimmickConstraints(board, rows, cols, neighborCache, stripGimmicks) {
+export function buildStaticGimmickConstraints(board, rows, cols, neighborCache, stripGimmicks) {
   const wallEdges = board._wallEdges || null;
   const idx = (r, c) => r * cols + c;
   const skipSonar = stripGimmicks && stripGimmicks.has('sonar');
@@ -710,6 +710,15 @@ function buildStaticGimmickConstraints(board, rows, cols, neighborCache, stripGi
     for (let c = 0; c < cols; c++) {
       const cell = board[r][c];
       if (cell.isMine || cell.displayedMines == null) continue;
+      // A mystery ("?") or pressure-plate (timer) cell REPLACES its number
+      // on screen, so the player can never read it — it must never become a
+      // certifier constraint, or we would certify a board using information
+      // the player does not have (a no-guess hole). Today the stacking rules
+      // keep mystery off base-value gimmicks, so displayedMines is undefined
+      // and the null-check above already skips it; this guard makes the
+      // SOLVER independently safe rather than trusting an invariant enforced
+      // over in gimmicks.js applyGimmicks.
+      if (hasDisplayBlockingGimmick(cell)) continue;
       // Liar stacks freely on base-value gimmicks (gimmicks.js stacking
       // rules), and displayedMines then INCLUDES the ±1 lie. Emitting
       // that as an exact constraint would let the certifier deduce from

@@ -377,7 +377,11 @@ function hasBaseValueGimmick(cell) {
 // Locked cells are intentionally NOT included here: the lock is a temporary
 // gate, and once unlocked the cell displays whatever the base/liar layers
 // dictate. That lets locked stack with wormhole/mirror/sonar/compass/liar.
-function hasDisplayBlockingGimmick(cell) {
+//
+// Exported because the solver needs it too: a cell whose number the player
+// can never read must never become a certifier constraint (boardSolver's
+// buildStaticGimmickConstraints).
+export function hasDisplayBlockingGimmick(cell) {
   return cell.isMystery || cell.isPressurePlate;
 }
 
@@ -654,7 +658,7 @@ export function applyWalls(board, rows, cols, segmentCount, rng) {
   // applyWalls). Skipping the recalc here leaves stale wall-aware counts
   // — cells would show fewer mines than actually surround them, and
   // chord would refuse to fire because counts don't match flags.
-  recalcAllAdjacency(board, rows, cols);
+  recalcAllAdjacency(board);
 
   return wallEdges;
 }
@@ -808,7 +812,7 @@ export function performMineShift(board, rng = Math.random) {
   }
 
   if (shifted.length > 0) {
-    recalcAllAdjacency(board, rows, cols);
+    recalcAllAdjacency(board);
     recomputeDisplayedMines(board);
   }
 
@@ -1043,27 +1047,44 @@ export function recomputeDisplayedMines(board) {
   }
 }
 
-export function recalcAllAdjacency(board, rows, cols) {
+// ── Adjacency: ONE counter, one convention ────────────────
+// Every adjacency recompute in the codebase routes through these two
+// functions. Four hand-rolled copies of the neighbor loop used to exist
+// (boardGenerator.calculateAdjacency, this one, and two in powerUps), and
+// they disagreed on the MINE branch: some skipped mine cells, leaving a
+// stale count on a cell swapMines had promoted from safe to mine. That
+// stale value serialized into a canonical and the nightly verify sweep
+// flagged it (dailyBoard/2026-07-16, caught 2026-07-10).
+//
+// The convention, in one place: a mine carries no number, so its
+// adjacentMines is ALWAYS 0.
+
+// Wall-aware count of the mines adjacent to (r, c). Walls block adjacency,
+// so a mine across a wall edge does not count.
+export function countAdjacentMines(board, r, c) {
+  const rows = board.length;
+  const cols = board[0].length;
   const wallEdges = board._wallEdges || null;
+  let count = 0;
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      if (dr === 0 && dc === 0) continue;
+      const nr = r + dr, nc = c + dc;
+      if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+      if (wallEdges && hasWallBetween(wallEdges, r, c, nr, nc)) continue;
+      if (board[nr][nc].isMine) count++;
+    }
+  }
+  return count;
+}
+
+// Recompute adjacentMines for every cell on the board.
+export function recalcAllAdjacency(board) {
+  const rows = board.length;
+  const cols = board[0].length;
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      if (board[r][c].isMine) {
-        board[r][c].adjacentMines = 0;
-        continue;
-      }
-      let count = 0;
-      for (let dr = -1; dr <= 1; dr++) {
-        for (let dc = -1; dc <= 1; dc++) {
-          if (dr === 0 && dc === 0) continue;
-          const nr = r + dr, nc = c + dc;
-          if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
-            // Skip neighbors separated by a wall edge
-            if (wallEdges && hasWallBetween(wallEdges, r, c, nr, nc)) continue;
-            if (board[nr][nc].isMine) count++;
-          }
-        }
-      }
-      board[r][c].adjacentMines = count;
+      board[r][c].adjacentMines = board[r][c].isMine ? 0 : countAdjacentMines(board, r, c);
     }
   }
 }
