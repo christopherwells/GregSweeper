@@ -37,6 +37,21 @@ function db() {
   return firebase.database();
 }
 
+// waitForFirebaseReady THROWS on timeout (its callers in the board-sync
+// modules wrap it), but every function in this file documents an OFFLINE
+// contract instead — fetchFriends returns null, the actions throw an error
+// whose .reason/.message is 'offline' so the UI shows "needs a connection"
+// rather than a generic failure. Before 2026-07-10 the raw throw leaked
+// through: opening the Friends tab with Firebase unreachable rejected out
+// of the click handler unhandled, and the offline copy never rendered.
+async function _readyOrNull() {
+  try {
+    return await waitForFirebaseReady();
+  } catch {
+    return null;
+  }
+}
+
 export function getCachedCode(now = Date.now()) {
   const cached = safeGetJSON(MY_CODE_KEY, null);
   if (!cached || !cached.code) return null;
@@ -52,7 +67,7 @@ export async function createFriendCode() {
   const cached = getCachedCode();
   if (cached) return cached;
 
-  const ready = await waitForFirebaseReady();
+  const ready = await _readyOrNull();
   const uid = getUid();
   if (!ready || !uid) throw new Error('offline');
 
@@ -101,7 +116,7 @@ export async function redeemFriendCode(input) {
   const code = normalizeCode(input);
   if (!code) { const e = new Error('invalid code'); e.reason = 'invalid'; throw e; }
 
-  const ready = await waitForFirebaseReady();
+  const ready = await _readyOrNull();
   const myUid = getUid();
   if (!ready || !myUid) { const e = new Error('offline'); e.reason = 'offline'; throw e; }
 
@@ -131,7 +146,7 @@ export async function redeemFriendCode(input) {
 
 /** @returns {Promise<Array<{uid, name, addedAt}>>} oldest first */
 export async function fetchFriends() {
-  const ready = await waitForFirebaseReady();
+  const ready = await _readyOrNull();
   const uid = getUid();
   if (!ready || !uid) return null; // null = offline (distinct from [])
   try {
@@ -147,7 +162,7 @@ export async function fetchFriends() {
 
 /** Unfriend — unlinks BOTH sides. */
 export async function removeFriend(theirUid) {
-  const ready = await waitForFirebaseReady();
+  const ready = await _readyOrNull();
   const myUid = getUid();
   if (!ready || !myUid) throw new Error('offline');
   await db().ref().update(buildFriendRemoveUpdate(myUid, theirUid));
