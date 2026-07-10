@@ -147,8 +147,9 @@ export const state = {
   cachedWeeklyAttemptsWeek: null,  // weekStart the cache above belongs to; lets a long-open session detect a week rollover and re-seed
 
   // ── Idle-pause state ─────────────────────────────────
-  // Auto-pause the timer after 30s without user input so a player who
-  // walks away doesn't bleed seconds into their daily/weekly time.
+  // Auto-pause the timer after 60s (timerManager's IDLE_PAUSE_MS) without
+  // user input so a player who walks away doesn't bleed seconds into
+  // their daily/weekly time.
   // `lastInteractionTime` is a Date.now() millis stamp, refreshed on
   // any pointerdown/keydown/throttled-pointermove. `idlePaused` flips
   // true when the gap exceeds the threshold and the overlay is showing.

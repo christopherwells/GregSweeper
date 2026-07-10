@@ -62,6 +62,19 @@ export function persistGameState() {
     dailyBombHits: state.dailyBombHits,
     dailyBombHitEvents: state.dailyBombHitEvents || [],
     clickTimeline: state.clickTimeline || [],
+    // Lens invocations MUST survive a resume: the score submission attaches
+    // them so the nightly refit can EXCLUDE hinted plays from the par fit.
+    // Before 2026-07-10 the snapshot dropped them, so a resumed daily that
+    // had used the Lens submitted as an unhinted play and contaminated the
+    // model — the exact corruption the instrumentation exists to prevent.
+    hintEvents: state.hintEvents || [],
+    // Purist-achievement flag: without it a resumed game that had already
+    // used a power-up counted as a purist win on completion.
+    usedPowerUps: state.usedPowerUps || false,
+    // Timed par + features: without them a resumed timed win lost its par
+    // line and its timed/{pushId} fit row.
+    timedPar: state.timedPar || 0,
+    timedFeatures: state.timedFeatures || null,
     boardCertificate: state.boardCertificate || null,
     weeklySeed: state.weeklySeed || null,
     weeklyDay: state.weeklyDay,
@@ -123,6 +136,10 @@ export function tryResumeGame(mode) {
   state.dailyBombHits = gs.dailyBombHits || 0;
   state.dailyBombHitEvents = Array.isArray(gs.dailyBombHitEvents) ? gs.dailyBombHitEvents : [];
   state.clickTimeline = Array.isArray(gs.clickTimeline) ? gs.clickTimeline : [];
+  state.hintEvents = Array.isArray(gs.hintEvents) ? gs.hintEvents : [];
+  state.usedPowerUps = gs.usedPowerUps === true;
+  state.timedPar = typeof gs.timedPar === 'number' ? gs.timedPar : 0;
+  state.timedFeatures = gs.timedFeatures || null;
   // Restore the no-guess certificate so the Certified chip survives a
   // resume (updateActiveGimmickBar below re-renders it). Saves from
   // before the chip shipped lack the field and resume chipless.

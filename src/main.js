@@ -61,6 +61,7 @@ import { isStorageFailing, safeGet, safeSet, safeRemove, requestPersistentStorag
 import { pauseTimer, resumeTimer, stopTimer, recordInteraction } from './game/timerManager.js';
 import { isLiveGameExpired, isWeeklyAttemptCacheStale } from './logic/resumeEligibility.js';
 import { blocksManualRestart } from './logic/modeRules.js';
+import { remindCtaOutcome } from './logic/remindCta.js';
 // 2026-07-10 split: main.js keeps entry wiring + init; these modules own
 // their surfaces (each also binds its own DOM wiring at import time).
 import { runStartupGate, hideBootOverlay } from './game/startupGate.js';
@@ -1561,14 +1562,19 @@ $('#gameover-remind-tomorrow').addEventListener('click', async () => {
       dailyReminder: true,
       streakWarning: prefs.streakWarning ?? false,
     });
-    if (result === true || result === 'ok') {
+    // Outcome mapping lives in the pure remindCta helper: the old inline
+    // test compared against `true`/'ok' — values enableNotifications never
+    // returns — so a SUCCESSFUL enable rendered "Try again" every time
+    // (2026-07-10 audit).
+    const outcome = remindCtaOutcome(result);
+    if (outcome === 'enabled') {
       btn.innerHTML = `${uiSpriteImgHTML('uiSuccess', 'btn-icon')} Reminder set for tomorrow`;
       showToast('Notifications on. See you tomorrow!');
-    } else if (result === 'ios-needs-install') {
+    } else if (outcome === 'install') {
       btn.innerHTML = `${uiSpriteImgHTML('uiPhone', 'btn-icon')} Install to home screen first`;
       showToast('Install GregSweeper to your home screen on iOS first');
       btn.disabled = false;
-    } else if (result === 'denied') {
+    } else if (outcome === 'blocked') {
       btn.innerHTML = `${uiSpriteImgHTML('uiWarning', 'btn-icon')} Permission blocked`;
       showToast('Notification permission was blocked in browser settings');
     } else {
