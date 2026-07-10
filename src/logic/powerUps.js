@@ -1,4 +1,4 @@
-import { recomputeDisplayedMines, hasWallBetween } from './gimmicks.js';
+import { recomputeDisplayedMines, recalcAllAdjacency, countAdjacentMines } from './gimmicks.js';
 import { findDeducibleFrontier } from './boardSolver.js';
 
 export function findSafeCell(board) {
@@ -63,33 +63,20 @@ export function shieldDefuse(board, row, col) {
   recomputeDisplayedMines(board);
 }
 
-// Recalculate adjacency counts in area around (centerRow, centerCol).
-// Walls block adjacency: a mine on the other side of a wall edge is not
-// counted, matching gimmicks.recalcAllAdjacency behaviour. Without this,
-// defuse/shield-defuse on walled boards leaves cells showing counts that
-// are off by however many wall-separated mines surround them.
+// Recalculate adjacency counts in the 3x3 area around (centerRow, centerCol) —
+// the scoped version of recalcAllAdjacency, used after a single-cell defuse so
+// we don't walk the whole board. Shares gimmicks.countAdjacentMines, so it can
+// never drift from the full recompute (walls block adjacency; a mine carries
+// no number and reads 0).
 function recalcAreaAdjacency(board, centerRow, centerCol) {
   const rows = board.length;
   const cols = board[0].length;
-  const wallEdges = board._wallEdges || null;
   for (let dr = -1; dr <= 1; dr++) {
     for (let dc = -1; dc <= 1; dc++) {
       const nr = centerRow + dr;
       const nc = centerCol + dc;
-      if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && !board[nr][nc].isMine) {
-        let count = 0;
-        for (let ddr = -1; ddr <= 1; ddr++) {
-          for (let ddc = -1; ddc <= 1; ddc++) {
-            if (ddr === 0 && ddc === 0) continue;
-            const nnr = nr + ddr;
-            const nnc = nc + ddc;
-            if (nnr < 0 || nnr >= rows || nnc < 0 || nnc >= cols) continue;
-            if (wallEdges && hasWallBetween(wallEdges, nr, nc, nnr, nnc)) continue;
-            if (board[nnr][nnc].isMine) count++;
-          }
-        }
-        board[nr][nc].adjacentMines = count;
-      }
+      if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+      board[nr][nc].adjacentMines = board[nr][nc].isMine ? 0 : countAdjacentMines(board, nr, nc);
     }
   }
 }
@@ -134,26 +121,9 @@ export function magnetPull(board, centerRow, centerCol) {
     extractedMines.push(m);
   }
 
-  // Full adjacency recalculation (wall-aware).
-  const wallEdges = board._wallEdges || null;
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      if (board[r][c].isMine) { board[r][c].adjacentMines = 0; continue; }
-      let count = 0;
-      for (let dr = -1; dr <= 1; dr++) {
-        for (let dc = -1; dc <= 1; dc++) {
-          if (dr === 0 && dc === 0) continue;
-          const nr = r + dr, nc = c + dc;
-          if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
-          if (wallEdges && hasWallBetween(wallEdges, r, c, nr, nc)) continue;
-          if (board[nr][nc].isMine) count++;
-        }
-      }
-      board[r][c].adjacentMines = count;
-    }
-  }
-
-  // Refresh gimmick cells whose displayed numbers depend on mine layout
+  // Full adjacency recalculation (wall-aware), then refresh gimmick cells
+  // whose displayed numbers depend on the mine layout.
+  recalcAllAdjacency(board);
   recomputeDisplayedMines(board);
 
   const affectedArea = [];

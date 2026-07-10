@@ -17,7 +17,7 @@ import { showLevelInfoToast } from '../ui/toastManager.js';
 import { startTimer, stopTimer, pauseTimer, resumeTimer, startMineShift, updateTimerDisplay } from './timerManager.js';
 import { handleWin, handleLoss, handleDailyBombHit } from './winLossHandler.js';
 import { performScan, performXRay, performMagnet, tryLifeline } from './powerUpActions.js';
-import { generateBoard, createEmptyBoard, calculateAdjacency, cleanSolverArtifacts } from '../logic/boardGenerator.js';
+import { generateBoard, createEmptyBoard, cleanSolverArtifacts } from '../logic/boardGenerator.js';
 import { floodFillReveal, checkWin, chordReveal, isBoardSolvable, estimatePlateMovesToDisarm, buildNeighborCache, findDecorativeGimmicks, certificateFromCheck } from '../logic/boardSolver.js';
 import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getChaosDifficulty, getRequiredTechnique, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE, WEEKLY_MIN_SIZE, WEEKLY_SIZE_RANGE, BOARD_WIDTH_CAP, plateSeconds } from '../logic/difficulty.js';
 import { computeDailyFeatures, predictPar } from '../logic/dailyFeatures.js';

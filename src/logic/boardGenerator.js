@@ -1,5 +1,5 @@
 import { isBoardSolvable, buildNeighborCache } from './boardSolver.js';
-import { hasWallBetween } from './gimmicks.js';
+import { recalcAllAdjacency } from './gimmicks.js';
 
 // ── Incremental adjacency updates ────────────────────────────
 // Recomputing the entire board's adjacency on every mine place/remove
@@ -7,7 +7,7 @@ import { hasWallBetween } from './gimmicks.js';
 // only the 8 neighbors of the changed cell, which is what actually changes.
 //
 // Both functions assume the neighbor cache is wall-aware (built from the
-// same wallEdges that calculateAdjacency would respect), so the resulting
+// same wallEdges that recalcAllAdjacency would respect), so the resulting
 // adjacentMines counts match a full recomputation exactly.
 
 function placeMineIncremental(board, r, c, neighborCache) {
@@ -94,36 +94,6 @@ export function placeMines(board, count, excludeRow, excludeCol, rng = Math.rand
   }
 }
 
-export function calculateAdjacency(board) {
-  const rows = board.length;
-  const cols = board[0].length;
-  const deltas = [-1, 0, 1];
-  const wallEdges = board._wallEdges || null;
-
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      // Mines don't display a number; canonicalize to 0 so this matches
-      // gimmicks.recalcAllAdjacency exactly (which zeroes mines). Without
-      // this, a cell that swapMines promoted to a mine keeps the neighbor
-      // count it held while safe — a stale value the canonical-board verify
-      // sweep flags as inconsistent (dailyBoard/2026-07-16, caught 2026-07-10).
-      if (board[r][c].isMine) { board[r][c].adjacentMines = 0; continue; }
-      let count = 0;
-      for (const dr of deltas) {
-        for (const dc of deltas) {
-          if (dr === 0 && dc === 0) continue;
-          const nr = r + dr;
-          const nc = c + dc;
-          if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
-            if (wallEdges && hasWallBetween(wallEdges, r, c, nr, nc)) continue;
-            if (board[nr][nc].isMine) count++;
-          }
-        }
-      }
-      board[r][c].adjacentMines = count;
-    }
-  }
-}
 
 // ── Anti-Zero-Cluster Redistribution ──────────────────
 
@@ -223,7 +193,7 @@ function redistributeMines(board, maxZeroCluster, excludeRow, excludeCol, rng = 
       if (sourceMine) {
         board[sourceMine.row][sourceMine.col].isMine = false;
         board[target.row][target.col].isMine = true;
-        calculateAdjacency(board);
+        recalcAllAdjacency(board);
       }
     }
   }
@@ -259,7 +229,7 @@ function swapMines(board, swapCount, excludeRow, excludeCol, rng) {
     safeCells[si] = mine;
   }
 
-  calculateAdjacency(board);
+  recalcAllAdjacency(board);
 }
 
 // ── Constructive Solvable Board Generator ────────────────
@@ -441,7 +411,7 @@ export function generateBoard(rows, cols, mines, excludeRow, excludeCol, rng, op
     if (attempt === 0 || attempt % 5 === 0) {
       board = createEmptyBoard(rows, cols);
       placeMines(board, mines, excludeRow, excludeCol, rng);
-      calculateAdjacency(board);
+      recalcAllAdjacency(board);
     } else if (bestBoard) {
       board = createEmptyBoard(rows, cols);
       for (let r = 0; r < rows; r++) {
@@ -455,7 +425,7 @@ export function generateBoard(rows, cols, mines, excludeRow, excludeCol, rng, op
     } else {
       board = createEmptyBoard(rows, cols);
       placeMines(board, mines, excludeRow, excludeCol, rng);
-      calculateAdjacency(board);
+      recalcAllAdjacency(board);
     }
 
     if (options.maxZeroCluster && options.maxZeroCluster < Infinity) {
@@ -485,7 +455,7 @@ export function generateBoard(rows, cols, mines, excludeRow, excludeCol, rng, op
   const finalBoard = bestBoard || (() => {
     const board = createEmptyBoard(rows, cols);
     placeMines(board, mines, excludeRow, excludeCol, rng);
-    calculateAdjacency(board);
+    recalcAllAdjacency(board);
     return board;
   })();
   cleanSolverArtifacts(finalBoard);
