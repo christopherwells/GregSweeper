@@ -78,18 +78,17 @@ test('countAdjacentMines is wall-aware: a wall edge hides the mine behind it', (
   assert.equal(board[1][1].adjacentMines, 0, 'recalcAllAdjacency must agree with the primitive');
 });
 
-test('recalcAllAdjacency agrees with countAdjacentMines on every cell (one convention)', () => {
-  // The invariant the canonical-board verify sweep enforces: the full
-  // recompute is exactly the primitive applied cell-by-cell, mines zeroed.
-  const rows = 6, cols = 7;
-  const board = boardWithMines(rows, cols, [[0, 0], [0, 5], [5, 6], [1, 1], [2, 2], [4, 0], [5, 2], [3, 3]]);
-  board._wallEdges = new Set(['2,3-2,4', '3,1-4,1']);
+test('recalcAllAdjacency is wall-aware across the whole board (concrete, hand-checked)', () => {
+  // Independent of the primitive: hand-computed expected values, and the wall
+  // demonstrably CHANGES a count (1 -> 0), so this can't pass on a no-op wall.
+  const board = boardWithMines(3, 3, [[1, 0]]); // one mine, center-left edge
   recalcAllAdjacency(board);
+  assert.equal(board[1][1].adjacentMines, 1, 'no wall yet: (1,1) sees the mine');
 
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const expect = board[r][c].isMine ? 0 : countAdjacentMines(board, r, c);
-      assert.equal(board[r][c].adjacentMines, expect, `mismatch at (${r},${c})`);
-    }
-  }
+  board._wallEdges = new Set(['1,0-1,1']); // wall on the (1,0)-(1,1) shared edge
+  recalcAllAdjacency(board);
+  assert.equal(board[1][1].adjacentMines, 0, 'wall hides the mine from (1,1)');
+  assert.equal(board[0][0].adjacentMines, 1, '(0,0) still sees the mine — no wall on its edge');
+  assert.equal(board[2][0].adjacentMines, 1, '(2,0) still sees the mine');
+  assert.equal(board[1][0].adjacentMines, 0, 'the mine itself reads 0');
 });
