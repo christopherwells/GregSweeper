@@ -79,3 +79,18 @@ export function createDailyRNG(dateString) {
   const seed = hashString(dateString);
   return mulberry32(seed);
 }
+
+/**
+ * Add (or subtract) calendar days to a YYYY-MM-DD string, anchored at local
+ * noon so a DST boundary can't shift the result a day. Shared by the ?crux=
+ * route, the share card's crux link, and the archive calendar.
+ * @param {string} date  YYYY-MM-DD
+ * @param {number} delta days to add (negative subtracts)
+ * @returns {string} YYYY-MM-DD
+ */
+export function addCalendarDays(date, delta) {
+  const [y, m, d] = date.split('-').map(Number);
+  const dt = new Date(y, m - 1, d, 12);
+  dt.setDate(dt.getDate() + delta);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+}
