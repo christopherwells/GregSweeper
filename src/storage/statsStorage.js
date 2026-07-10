@@ -236,6 +236,16 @@ function getModeKey(gameMode) {
   return gameMode;
 }
 
+// Resolve the per-mode stats block for a UI surface. The 'normal' → 'challenge'
+// key mapping lives ONLY in getModeKey; a caller that hand-rolls the key can
+// silently read the wrong node — the Challenge stats tab read
+// stats.modeStats.normal (always undefined) and fell back to the all-modes
+// aggregate for months (2026-07-10 audit). Returns null when the mode has no
+// block yet so callers keep their own fallback semantics.
+export function statsForMode(stats, gameMode) {
+  return (stats && stats.modeStats && stats.modeStats[getModeKey(gameMode)]) || null;
+}
+
 // Transient marker for the most recent daily completion's molt-day outcome
 // (a cover earned, covers spent). Set by saveGameResult, drained once by the
 // win handler via consumeMoltEvent(). Deliberately NOT persisted, so a stale

@@ -18,7 +18,7 @@ import { startTimer, stopTimer, pauseTimer, resumeTimer, startMineShift, updateT
 import { handleWin, handleLoss, handleDailyBombHit } from './winLossHandler.js';
 import { performScan, performXRay, performMagnet, tryLifeline } from './powerUpActions.js';
 import { generateBoard, createEmptyBoard, cleanSolverArtifacts } from '../logic/boardGenerator.js';
-import { floodFillReveal, checkWin, chordReveal, isBoardSolvable, estimatePlateMovesToDisarm, buildNeighborCache, findDecorativeGimmicks, certificateFromCheck } from '../logic/boardSolver.js';
+import { floodFillReveal, checkWin, chordReveal, unrevealChordMines, isBoardSolvable, estimatePlateMovesToDisarm, buildNeighborCache, findDecorativeGimmicks, certificateFromCheck } from '../logic/boardSolver.js';
 import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getChaosDifficulty, getRequiredTechnique, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE, WEEKLY_MIN_SIZE, WEEKLY_SIZE_RANGE, BOARD_WIDTH_CAP, plateSeconds } from '../logic/difficulty.js';
 import { computeDailyFeatures, predictPar } from '../logic/dailyFeatures.js';
 import { shieldDefuse } from '../logic/powerUps.js';
@@ -1010,6 +1010,17 @@ export function revealCell(row, col) {
       // Exhausted gimmick retries on this base board — regenerate.
     }
 
+    // Flags placed before the first click sat on the PLACEHOLDER board
+    // (createEmptyBoard renders plain fog until this click generates the
+    // real layout), and generateBoard returns fresh cell objects — those
+    // flags are gone. The counter must die with them or the mine counter
+    // reads totalMines - N for the whole game; the full-cell re-render
+    // clears any stale flag icons off the replaced cells (challenge and
+    // chaos re-render again after gimmicks apply; timed has no other
+    // full pass).
+    state.flagCount = 0;
+    updateAllCells();
+
     // Stamp the no-guess certificate from the accepted check — the
     // contract here runs from the player's ACTUAL first click. Chaos is
     // excluded: its modifiers are applied AFTER this loop without
@@ -1437,6 +1448,16 @@ export function handleChordReveal(row, col) {
 
   state.revealedCount += result.revealed.filter(c => !c.isMine).length;
 
+  // A chord can expose MORE than one mine (two wrong flags around a
+  // satisfied number — chordReveal keeps revealing past the first mine).
+  // Un-reveal EVERY exposed mine BEFORE anything paints: the first drives
+  // the bomb-hit / lifeline / loss flow below (whose handler re-reveals it
+  // as needed), and the rest go back under the fog. Before this, the extra
+  // mines stayed permanently revealed with no strike, no penalty, and no
+  // bombHits increment — free intel that also undercounted the daily
+  // anti-cheat fraction (2026-07-10 audit).
+  const primaryMine = result.hitMine ? unrevealChordMines(result.revealed) : null;
+
   // Wormhole: revealing one side reveals the paired cell too
   revealWormholePairs(result.revealed);
 
@@ -1480,17 +1501,16 @@ export function handleChordReveal(row, col) {
     }
   }
 
-  if (result.hitMine) {
-    const mineCell = result.revealed.find(c => c.isMine);
-    // Undo the reveal that chordReveal applied so lifeline/daily can handle it
-    mineCell.isRevealed = false;
+  if (result.hitMine && primaryMine) {
+    // Every chord-exposed mine was un-revealed above; only the primary
+    // proceeds through the standard one-mine flow.
     if (state.gameMode === 'daily' || state.gameMode === 'weekly') {
-      handleDailyBombHit(mineCell.row, mineCell.col);
-    } else if (tryLifeline(mineCell.row, mineCell.col)) {
+      handleDailyBombHit(primaryMine.row, primaryMine.col);
+    } else if (tryLifeline(primaryMine.row, primaryMine.col)) {
       // Lifeline saved — continue playing
     } else {
-      mineCell.isRevealed = true;
-      handleLoss(mineCell.row, mineCell.col);
+      primaryMine.isRevealed = true;
+      handleLoss(primaryMine.row, primaryMine.col);
     }
   } else if (checkWin(state.board)) {
     handleWin();

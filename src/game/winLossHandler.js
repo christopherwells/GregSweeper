@@ -38,6 +38,7 @@ import { submitOnlineScore, submitArchiveScore, submitTimedScore, submitWeeklySc
 // ui/domHelpers.js's escapeHtml — single source of truth.)
 import { saveProgress, saveDailyHistoryEntry, fetchDailyHistoryEntry, getUid, markWeeklyDayAttempted } from '../firebase/firebaseProgress.js';
 import { archiveSubmitPlan, CRUX_VIEWED_KEY_PREFIX } from '../logic/archiveEligibility.js';
+import { gameoverModalPlan } from '../logic/gameoverPlan.js';
 import { isTestEnvironment } from '../firebase/env.js';
 import { reportCaughtError } from '../diagnostics/errorReporter.js';
 import { getHandicapRatio, getHandicapDetails, isRatedHandicap } from '../logic/handicaps.js';
@@ -136,7 +137,9 @@ function _renderWinModalHistoryDots(todayDate) {
   // Walk the last 7 ET dates ending at today (or the play's date if it
   // differs from today — e.g., a late-night submit just after midnight).
   const dots = [];
-  const baseDate = todayDate || new Date().toISOString().slice(0, 10);
+  // Fallback anchors to the ET clock like every other daily surface — the
+  // UTC ISO date is a different calendar day from 8pm ET onward.
+  const baseDate = todayDate || getLocalDateString();
   const [by, bm, bd] = baseDate.split('-').map(Number);
   const baseUtc = Date.UTC(by, bm - 1, bd);
   for (let i = 6; i >= 0; i--) {
@@ -301,16 +304,28 @@ export async function submitArchiveCompletion(dateStr, name, scoreTime) {
   showToast('Archive run recorded.');
 }
 
+// Apply a gameoverModalPlan: one complete show/hide pass over every optional
+// section of the shared #gameover-overlay, so no render path can leak a
+// previous game's content (the stale-weekly-leaderboard / missing-retry
+// class — see gameoverPlan.js). Handlers unhide their data-dependent
+// sections AFTER this baseline.
+function _applyGameoverPlan(plan) {
+  for (const [id, visible] of Object.entries(plan)) {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('hidden', !visible);
+  }
+}
+
 // ── Handle Win ─────────────────────────────────────────
 
 export async function handleWin() {
   state.status = 'won';
   stopTimer();
   announceGame('You won! Board cleared.');
-  // Shared modal hygiene: the win receipt only renders for daily/weekly;
-  // hide it up front so a prior game's line can't bleed through.
-  const winReceiptEl = $('#gameover-receipt');
-  if (winReceiptEl) winReceiptEl.classList.add('hidden');
+  // Baseline visibility for every optional modal section (complete map).
+  // Data-dependent sections (par, record, unlocks, dots, receipt...) are
+  // unhidden below once their content actually renders.
+  _applyGameoverPlan(gameoverModalPlan('win', state.gameMode));
   applyIcon(resetBtn, 'smileyWin', getThemeEmoji('smileyWin'), { sizeClass: 'sprite-smiley' });
   resetBtn.classList.add('smiley-win-bounce');
   setTimeout(() => resetBtn.classList.remove('smiley-win-bounce'), 800);
@@ -524,7 +539,6 @@ export async function handleWin() {
   const gameoverRecord = $('#gameover-record');
   const nextLevelBtn = $('#gameover-nextlevel');
   const powerupEarned = $('#gameover-powerup-earned');
-  const shareBtn = $('#gameover-share');
   const achievementsDiv = $('#gameover-achievements');
 
   gameoverTitle.textContent = 'You Win!';
@@ -546,12 +560,8 @@ export async function handleWin() {
     ? ` | ${spriteImgHTML('strike', 'inline-strike')} ${_strikes} strike${_strikes !== 1 ? 's' : ''}${_totalPenalty > 0 ? ` (+${_totalPenalty.toFixed(1)}s)` : ''}`
     : '';
 
+  // (par / par-breakdown / history-dots start hidden via the plan above.)
   const parEl = $('#gameover-par');
-  if (parEl) parEl.classList.add('hidden');
-  const parBreakdownEl = $('#gameover-par-breakdown');
-  if (parBreakdownEl) parBreakdownEl.classList.add('hidden');
-  const historyDotsEl = document.getElementById('gameover-history-dots');
-  if (historyDotsEl) historyDotsEl.classList.add('hidden');
 
   // Timed mode: show speed rating + par-relative delta, and feed the run
   // into the fit pipeline (timed/{pushId} — the modeTimed effect
@@ -806,14 +816,6 @@ export async function handleWin() {
     powerupEarned.classList.add('hidden');
   }
 
-  // Hide loss-specific elements
-  const encouragementEl = $('#gameover-encouragement');
-  if (encouragementEl) encouragementEl.classList.add('hidden');
-  const analysisEl = $('#gameover-analysis');
-  if (analysisEl) analysisEl.classList.add('hidden');
-  const exploreBtn = $('#gameover-explore');
-  if (exploreBtn) exploreBtn.classList.add('hidden');
-
   // Show visual share card (scrambled grid)
   renderShareCardPreview();
 
@@ -834,26 +836,19 @@ export async function handleWin() {
     achievementsDiv.classList.add('hidden');
   }
 
-  // Chaos mode: show "Next Board" button, hide "Next Level"
-  const chaosNextBtn = $('#gameover-chaos-next');
-  const chaosRunSummary = $('#chaos-run-summary');
+  // Chaos win: the "Next Board" button visibility comes from the plan;
+  // update the run state + headline here.
   if (state.gameMode === 'chaos') {
-    nextLevelBtn.classList.add('hidden');
-    if (chaosNextBtn) chaosNextBtn.classList.remove('hidden');
-    if (chaosRunSummary) chaosRunSummary.classList.add('hidden');
-    // Update chaos state for next round
     const precise = state.preciseTime || state.elapsedTime;
     state.chaosTotalTime = (state.chaosTotalTime || 0) + precise;
     gameoverTitle.textContent = 'Board Cleared!';
     gameoverTime.textContent = 'Round ' + (state.chaosRound || 1) + ' · ' + precise.toFixed(1) + 's';
   } else {
-    if (chaosNextBtn) chaosNextBtn.classList.add('hidden');
-    if (chaosRunSummary) chaosRunSummary.classList.add('hidden');
+    // Next Level is data-dependent (level cap), so it unhides here rather
+    // than in the static plan.
     const maxLevel = state.gameMode === 'timed' ? MAX_TIMED_LEVEL : MAX_LEVEL;
     if (state.currentLevel < maxLevel && state.gameMode !== 'daily' && state.gameMode !== 'weekly' && state.gameMode !== 'timed') {
       nextLevelBtn.classList.remove('hidden');
-    } else {
-      nextLevelBtn.classList.add('hidden');
     }
   }
 
@@ -927,22 +922,15 @@ export async function handleWin() {
     // posting a nameless row.
   }
 
-  // Always show share button on win
-  shareBtn.classList.remove('hidden');
-
-  // Daily/weekly wins offer a one-tap "challenge a friend" that copies a
-  // link to YESTERDAY's crux teaser — a real puzzle, never today's board
-  // (the route refuses today and later). Other modes have no crux to share.
-  const cruxChallengeBtn = $('#gameover-crux-challenge');
-  if (cruxChallengeBtn) cruxChallengeBtn.classList.toggle('hidden', !(isDaily || isWeekly));
+  // (Share button + crux-challenge visibility come from the plan: share on
+  // every win, crux only for daily/weekly — other modes have no crux.)
 
   // Daily-win opt-in CTA — shown on daily/weekly wins ONLY when push
   // notifications are currently disabled. Best single moment to convert
-  // a one-off player into a returning one. Hidden by default; the show
-  // path checks notification prefs asynchronously and unhides.
+  // a one-off player into a returning one. Hidden by the plan baseline;
+  // the show path checks notification prefs asynchronously and unhides.
   const remindBtn = $('#gameover-remind-tomorrow');
   if (remindBtn) {
-    remindBtn.classList.add('hidden');
     if (isDaily || isWeekly) {
       (async () => {
         try {
@@ -957,19 +945,9 @@ export async function handleWin() {
     }
   }
 
-  // Hide "Play Again" for daily mode (can't replay today's daily)
-  const retryBtn = $('#gameover-retry');
-  if (retryBtn) {
-    if (isDaily || isWeekly) retryBtn.classList.add('hidden');
-    else retryBtn.classList.remove('hidden');
-  }
-
-  // Show "Done" button for daily mode (no next level or retry available)
-  const doneBtn = $('#gameover-done');
-  if (doneBtn) {
-    if (isDaily || isWeekly) doneBtn.classList.remove('hidden');
-    else doneBtn.classList.add('hidden');
-  }
+  // (Play Again / Done visibility comes from the plan: retry everywhere
+  // except daily/weekly, Done only there — the canonical single-puzzle
+  // modes can't be replayed today.)
 
   // Clear saved game state on win
   clearGameState(state.gameMode);
@@ -993,6 +971,10 @@ export function handleLoss(mineRow, mineCol) {
   state.status = 'lost';
   stopTimer();
   announceGame('Game over. Hit a mine.');
+  // Baseline visibility for every optional modal section — this is what
+  // clears a previous win's par line / weekly leaderboard / history dots
+  // out of the shared overlay (they were never reset on the loss paths).
+  _applyGameoverPlan(gameoverModalPlan('loss', state.gameMode));
   applyIcon(resetBtn, 'smileyLoss', getThemeEmoji('smileyLoss'), { sizeClass: 'sprite-smiley' });
   resetBtn.classList.add('smiley-loss-shake');
   setTimeout(() => resetBtn.classList.remove('smiley-loss-shake'), 500);
@@ -1066,7 +1048,9 @@ export function handleLoss(mineRow, mineCol) {
 
   if (state.gameMode === 'chaos') {
     const boardsCleared = (state.chaosRound || 1) - 1;
-    const totalTime = (state.chaosTotalTime || 0) + state.elapsedTime;
+    // chaosTotalTime accumulates precise floats — format for display or the
+    // headline can read "45.10000000000001s total".
+    const totalTime = ((state.chaosTotalTime || 0) + state.elapsedTime).toFixed(1);
     gameoverTitle.textContent = 'Run Over!';
     gameoverTime.textContent = boardsCleared > 0
       ? 'Cleared ' + boardsCleared + ' board' + (boardsCleared !== 1 ? 's' : '') + ' · ' + totalTime + 's total'
@@ -1116,24 +1100,8 @@ export function handleLoss(mineRow, mineCol) {
   gameoverTime.classList.add('stats-cascade');
   gameoverTime.style.animationDelay = '0.1s';
   setTimeout(() => gameoverTime.classList.remove('stats-cascade'), 500);
-  $('#gameover-record').classList.add('hidden');
-  $('#gameover-nextlevel').classList.add('hidden');
-  const chaosNextBtn = $('#gameover-chaos-next');
-  if (chaosNextBtn) chaosNextBtn.classList.add('hidden');
-  if (state.gameMode !== 'chaos') {
-    const chaosRunSummary = $('#chaos-run-summary');
-    if (chaosRunSummary) chaosRunSummary.classList.add('hidden');
-  }
-  $('#gameover-powerup-earned').classList.add('hidden');
-  $('#gameover-share').classList.add('hidden');
-  $('#gameover-crux-challenge')?.classList.add('hidden');
-  const doneBtnLoss = $('#gameover-done');
-  if (doneBtnLoss) doneBtnLoss.classList.add('hidden');
-  $('#gameover-achievements').classList.add('hidden');
-  const lossReceiptEl = $('#gameover-receipt');
-  if (lossReceiptEl) lossReceiptEl.classList.add('hidden');
-  const sharePreview = $('#share-card-preview');
-  if (sharePreview) sharePreview.classList.add('hidden');
+  // (Win-only sections — record, next-level, share, crux, done, unlocks,
+  // receipt, share preview — are hidden by the plan applied at the top.)
 
   // Post-death verdict — honest counts from the flags-blind frontier.
   // "Genuine 50/50" is now a TRUSTWORTHY claim: the old one-cell check
@@ -1161,13 +1129,7 @@ export function handleLoss(mineRow, mineCol) {
     analysisEl.classList.remove('hidden');
   }
 
-  // Show explore button on loss
-  const exploreBtn = $('#gameover-explore');
-  if (exploreBtn) exploreBtn.classList.remove('hidden');
-
-  // Ensure "Play Again" is visible on loss
-  const lossRetryBtn = $('#gameover-retry');
-  if (lossRetryBtn) lossRetryBtn.classList.remove('hidden');
+  // (Explore Board + Play Again visibility come from the plan.)
 
   // Clear saved game state on loss
   clearGameState(state.gameMode);
@@ -1187,6 +1149,11 @@ export function handleLoss(mineRow, mineCol) {
 export function handleTimedLoss() {
   state.status = 'lost';
   stopTimer();
+  // Baseline visibility for every optional modal section. Before this, a
+  // timed loss right after a daily/weekly win rendered with NO Play Again
+  // button (only handleWin ever touched #gameover-retry) and could carry a
+  // stale par line or post-loss analysis from the previous render.
+  _applyGameoverPlan(gameoverModalPlan('timeout', state.gameMode));
   applyIcon(resetBtn, 'smileyLoss', getThemeEmoji('smileyLoss'), { sizeClass: 'sprite-smiley' });
   resetBtn.classList.add('smiley-loss-shake');
   setTimeout(() => resetBtn.classList.remove('smiley-loss-shake'), 500);
@@ -1212,22 +1179,7 @@ export function handleTimedLoss() {
   } else {
     gameoverTime.textContent = `You ran out of time!`;
   }
-  $('#gameover-record').classList.add('hidden');
-  $('#gameover-nextlevel').classList.add('hidden');
-  const chaosNextBtn = $('#gameover-chaos-next');
-  if (chaosNextBtn) chaosNextBtn.classList.add('hidden');
-  if (state.gameMode !== 'chaos') {
-    const chaosRunSummary = $('#chaos-run-summary');
-    if (chaosRunSummary) chaosRunSummary.classList.add('hidden');
-  }
-  $('#gameover-powerup-earned').classList.add('hidden');
-  $('#gameover-share').classList.add('hidden');
-  $('#gameover-crux-challenge')?.classList.add('hidden');
-  const doneBtnLoss = $('#gameover-done');
-  if (doneBtnLoss) doneBtnLoss.classList.add('hidden');
-  $('#gameover-achievements').classList.add('hidden');
-  const sharePreview2 = $('#share-card-preview');
-  if (sharePreview2) sharePreview2.classList.add('hidden');
+  // (All win- and loss-specific sections are settled by the plan above.)
 
   // Encouragement line
   const encouragement2 = $('#gameover-encouragement');

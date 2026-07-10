@@ -42,7 +42,7 @@ import {
   saveDailyPar, loadDailyPar, pruneOldDailyKeys, applyCloudProgress, resetDailyStatsForAccountSwitch,
   reconcileStreakFromHistory,
   hasSeenNotice, markNoticeSeen,
-  clearGameState,
+  clearGameState, statsForMode,
 } from './storage/statsStorage.js';
 
 const CURRENT_VERSION = 'v1.7';
@@ -79,6 +79,8 @@ import { isModifierPopupDisabled, setModifierPopupDisabled, getGimmickDefs, getD
 import { isStorageFailing, safeGet, safeSet, safeRemove, requestPersistentStorage } from './storage/storageAdapter.js';
 import { pauseTimer, resumeTimer, stopTimer, recordInteraction } from './game/timerManager.js';
 import { isLiveGameExpired, isWeeklyAttemptCacheStale } from './logic/resumeEligibility.js';
+import { blocksManualRestart } from './logic/modeRules.js';
+import { dailyShareLines } from './logic/shareCard.js';
 import { planCompletionReconcile } from './logic/startupReconcilePlan.js';
 import { startTutorial, startWarmup } from './ui/tutorialManager.js';
 import { initErrorReporter, setErrorReporterCodeVersion, reportTestError, reportCaughtError } from './diagnostics/errorReporter.js';
@@ -827,7 +829,13 @@ async function populateModelPanel() {
 
 function populateChallengePanel() {
   const stats = loadStats();
-  const cm = stats.modeStats?.normal || stats; // fallback to legacy aggregate
+  // statsForMode owns the gameMode → modeStats key mapping ('normal' lives
+  // under 'challenge'). The old literal `modeStats?.normal` was always
+  // undefined, so this panel silently showed the ALL-MODES aggregate —
+  // every daily/weekly/timed/chaos game inflated "Played" and the win rate
+  // (2026-07-10 audit). The `|| stats` fallback survives only for a
+  // pre-modeStats legacy save.
+  const cm = statsForMode(stats, 'normal') || stats;
   $('#stat-challenge-played').textContent = cm.totalGames ?? stats.totalGames ?? 0;
   const total = cm.totalGames ?? stats.totalGames ?? 0;
   const wins = cm.wins ?? stats.wins ?? 0;
@@ -1662,55 +1670,26 @@ function generateShareCard() {
   const levelLabel = diff.label || `Level ${level}`;
 
   if (mode === 'daily') {
-    // Wordle-style card, HARD CEILING of five lines plus the URL:
-    //   1 title + date
-    //   2 time vs Greg (par), Beat-Greg framing with the crab
-    //   3 pace bar (8 dots, each 2.5% of par; full at ±20%)
-    //   4 modifiers + the board's hardest step in plain words
-    //   5 strikes (only when the player hit a mine)
-    const date = getLocalDateString();
-    const par = state.dailyPar || 0;
-    const lines = [`${getThemeEmoji('mine')} GregSweeper · ${date}`];
-
-    if (par > 0) {
-      const delta = time - par;
-      const absDelta = Math.abs(delta).toFixed(1);
-      // Greg IS par: under par beats Greg, over par he wins.
-      lines.push(delta <= 0
-        ? `⏱ ${time}s · beat Greg by ${absDelta}s 🦀`
-        : `⏱ ${time}s · Greg won by ${absDelta}s 🦀`);
-
-      const magnitude = Math.min(1, Math.abs(delta) / (par * 0.2));
-      const filled = Math.round(magnitude * 8);
-      const fillDot = delta <= 0 ? '🟢' : '🔴';
-      lines.push(fillDot.repeat(filled) + '⚪'.repeat(8 - filled));
-    } else {
-      lines.push(`⏱ ${time}s`);
-    }
-
-    // Line 4: modifier icons + the hardest step the board required, in
-    // plain words (the certified tier — never more than the solver proved).
+    // Wordle-style card, built by the pure (node-tested) dailyShareLines:
+    // HARD CEILING of five content lines plus the crux-challenge URL. The
+    // date is the BOARD's (state.dailySeed) — the same anchor as the score
+    // submission — so a finish just past midnight ET or an archive replay
+    // never stamps the wrong day on the card.
     const defs = getGimmickDefs();
     const icons = (state.activeGimmicks || [])
       .map(g => defs[g] && defs[g].icon)
       .filter(Boolean)
       .join('');
-    const tier = state.boardCertificate ? state.boardCertificate.tier : 0;
-    const stepPhrase = tier >= 3 ? 'hardest step: liar logic'
-      : tier === 2 ? 'hardest step: region logic'
-      : tier === 1 ? 'hardest step: clue-comparison'
-      : '';
-    const line4 = [icons, stepPhrase].filter(Boolean).join(' · ');
-    if (line4) lines.push(line4);
-
-    if (state.dailyBombHits > 0) {
-      lines.push(`💥×${state.dailyBombHits}`);
-    }
-    // The card's single link is a crux challenge: a softer hook than a bare
-    // play link, and the teaser's own "Play today's board" CTA still routes
-    // the recipient to the daily.
-    lines.push(`🦀 Try yesterday's crux: ${PROD_SITE_BASE}?crux=${_addCalendarDays(getLocalDateString(), -1)}`);
-    return lines.join('\n');
+    return dailyShareLines({
+      mineEmoji: getThemeEmoji('mine'),
+      dateStr: state.dailySeed || getLocalDateString(),
+      time,
+      par: state.dailyPar || 0,
+      gimmickIcons: icons,
+      certTier: state.boardCertificate ? state.boardCertificate.tier : 0,
+      bombHits: state.dailyBombHits || 0,
+      cruxUrl: `${PROD_SITE_BASE}?crux=${_addCalendarDays(getLocalDateString(), -1)}`,
+    }).join('\n');
   }
 
   if (mode === 'timed') {
@@ -1974,8 +1953,10 @@ resetBtn.addEventListener('click', () => {
   setTimeout(() => resetBtn.classList.remove('smiley-pressed'), 150);
   // Daily/Weekly are canonical single-puzzle modes — no reset. The smiley
   // is rendered disabled in these modes (see updateHeader); this guard is
-  // the parallel safeguard against any pre-first-render click.
-  if (state.gameMode === 'daily' || state.gameMode === 'weekly') return;
+  // the parallel safeguard against any pre-first-render click. Shared with
+  // the R keyboard shortcut via blocksManualRestart so no restart surface
+  // can drift from the rule.
+  if (blocksManualRestart(state.gameMode)) return;
   if (state.gameMode === 'normal') {
     state.currentLevel = state.checkpoint || loadCheckpoint(state.gameMode) || 1;
   } else {
@@ -2960,7 +2941,7 @@ $('#btn-report-problem').addEventListener('click', () => {
   const uid = getUid() || 'not-signed-in';
   const codeVersion = state.codeVersion || CURRENT_VERSION || 'unknown';
   const ua = navigator.userAgent || 'unknown';
-  const theme = localStorage.getItem('minesweeper_theme') || 'classic';
+  const theme = safeGet('minesweeper_theme') || 'classic';
   const mode = state.gameMode || 'idle';
   const url = window.location.href;
   const ts = new Date().toISOString();
@@ -3563,6 +3544,11 @@ document.addEventListener('keydown', (e) => {
   if (anyModalOpen) return;
 
   if (e.key === 'r' || e.key === 'R') {
+    // Same rule as the smiley: daily/weekly boards are canonical and the
+    // clock is the score, so a keyboard restart would be a fresh timer on
+    // a board the player has already seen. This shortcut used to skip the
+    // guard entirely (2026-07-10 audit).
+    if (blocksManualRestart(state.gameMode)) return;
     if (state.gameMode === 'normal') {
       state.currentLevel = state.checkpoint || loadCheckpoint(state.gameMode) || 1;
     } else {

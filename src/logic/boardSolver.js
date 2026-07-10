@@ -1353,3 +1353,19 @@ export function chordReveal(board, row, col) {
 
   return { revealed: allRevealed, hitMine };
 }
+
+// A chord that hits mines can hit MORE than one: chordReveal keeps revealing
+// every unflagged neighbor after the first mine, so two wrong flags around a
+// satisfied number expose BOTH real mines in one gesture. The consumer used
+// to process only the first (find + un-reveal), leaving every further mine
+// permanently revealed with no strike, no penalty, and no bombHits increment
+// — free intel that also undercounted the daily anti-cheat fraction
+// (2026-07-10 audit). This helper un-reveals EVERY mine in the revealed set
+// and returns the first as the one that drives the bomb-hit / lifeline /
+// loss flow (whose handler re-reveals it as needed). The others go back
+// under the fog exactly as if they had never been touched.
+export function unrevealChordMines(revealed) {
+  const mines = revealed.filter((c) => c.isMine);
+  for (const m of mines) m.isRevealed = false;
+  return mines.length > 0 ? mines[0] : null;
+}
