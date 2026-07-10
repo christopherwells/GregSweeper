@@ -102,7 +102,12 @@ export function calculateAdjacency(board) {
 
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      if (board[r][c].isMine) continue;
+      // Mines don't display a number; canonicalize to 0 so this matches
+      // gimmicks.recalcAllAdjacency exactly (which zeroes mines). Without
+      // this, a cell that swapMines promoted to a mine keeps the neighbor
+      // count it held while safe — a stale value the canonical-board verify
+      // sweep flags as inconsistent (dailyBoard/2026-07-16, caught 2026-07-10).
+      if (board[r][c].isMine) { board[r][c].adjacentMines = 0; continue; }
       let count = 0;
       for (const dr of deltas) {
         for (const dc of deltas) {
