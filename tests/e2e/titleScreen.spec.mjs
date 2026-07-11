@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { prepareInteractionSpec } from './helpers.mjs';
 
 // Title-screen integrity for the 2026-06-25 front-door rebuild. The boot smoke
 // proves the title renders without a console error; these prove the design
@@ -10,8 +11,10 @@ import { test, expect } from '@playwright/test';
 // of cards is VISIBLE (the 2026-07-06 orphan-cell fix).
 
 test.beforeEach(async ({ page }) => {
-  // Onboarded user lands straight on the title (skips the tutorial overlay).
-  await page.addInitScript(() => { try { localStorage.setItem('minesweeper_onboarded', 'true'); } catch {} });
+  // Onboarded + no service worker: the first-install SW claim reloads the
+  // page and destroyed this spec's evaluate context on CI (2026-07-11) —
+  // see helpers.mjs. The boot smoke keeps SW-inclusive coverage.
+  await prepareInteractionSpec(page);
 });
 
 test('the title header mounts the animated Greg mascot', async ({ page }) => {
