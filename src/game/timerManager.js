@@ -68,9 +68,9 @@ export function startTimer() {
     updateTimerDisplay();
     // Idle-pause check after the elapsedTime bump so we don't pause
     // mid-tick before incrementing. The threshold is intentionally
-    // generous (30s) — short enough that AFK doesn't bleed seconds
-    // but long enough that hard thinking on a sticky board doesn't
-    // false-trigger.
+    // generous (60s, IDLE_PAUSE_MS) — short enough that AFK doesn't
+    // bleed seconds but long enough that hard thinking on a sticky
+    // board doesn't false-trigger.
     if (state.lastInteractionTime && Date.now() - state.lastInteractionTime > IDLE_PAUSE_MS) {
       _pauseForIdle();
       return; // pauseTimer already cleared the interval; don't run the pulse
