@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { prepareInteractionSpec } from './helpers.mjs';
 
 // REGRESSION (2026-07-10 audit): the #gameover-overlay is one shared surface,
 // and its optional sections used to persist between renders — a loss after a
@@ -14,16 +15,7 @@ import { test, expect } from '@playwright/test';
 // cleared the stale sections and settled the action buttons.
 
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => {
-    try { localStorage.setItem('minesweeper_onboarded', 'true'); } catch {}
-    // No service worker in gameplay journeys: the app reloads itself when a
-    // fresh SW claims the page (by design on real boots), and under parallel
-    // e2e load that first-install reload lands MID-JOURNEY, detaching the DOM
-    // between clicks. The SW lifecycle is the boot smoke's concern.
-    if (navigator.serviceWorker) {
-      navigator.serviceWorker.register = () => new Promise(() => {});
-    }
-  });
+  await prepareInteractionSpec(page);
 });
 
 test('REGRESSION: a game-over render clears stale sections and always offers its action button', async ({ page }) => {
