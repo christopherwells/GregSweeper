@@ -165,19 +165,29 @@ if (_gimmickIconsEl) {
   });
 }
 
+// The "N left" count: safe cells still to reveal, minus the ones a lock
+// currently bars. Only locked SAFE cells subtract — a locked MINE is
+// already excluded via totalMines, and double-subtracting it made the
+// counter read low on locked boards (2026-07-11 audit). Exported pure so
+// the node suite can pin it.
+export function computeRemainingSafe(board, rows, cols, totalMines, revealedCount) {
+  let lockedSafe = 0;
+  if (board) {
+    for (const row of board) {
+      for (const cell of row) {
+        if (cell.isLocked && !cell.isRevealed && !cell.isMine) lockedSafe++;
+      }
+    }
+  }
+  return rows * cols - totalMines - lockedSafe - revealedCount;
+}
+
 export function updateCellsRemaining() {
   if (!cellsRemainingEl) return;
   if (state.status === 'playing') {
-    let lockedCount = 0;
-    if (state.board) {
-      for (const row of state.board) {
-        for (const cell of row) {
-          if (cell.isLocked && !cell.isRevealed) lockedCount++;
-        }
-      }
-    }
-    const totalSafe = state.rows * state.cols - state.totalMines - lockedCount;
-    const remaining = totalSafe - state.revealedCount;
+    const remaining = computeRemainingSafe(
+      state.board, state.rows, state.cols, state.totalMines, state.revealedCount,
+    );
     if (remaining > 0) {
       cellsRemainingEl.textContent = `${remaining} left`;
       cellsRemainingEl.classList.remove('hidden');

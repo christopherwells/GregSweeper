@@ -57,6 +57,13 @@ const CASCADE_SETTLE_MS = 1000;
 
 export function chainRevealMines(hitRow, hitCol) {
   revealAllMines(state.board);
+  // Identity of the board this cascade belongs to. The staggered timeouts
+  // below can outlive the game: a restart during the cascade window (the R
+  // key works before the modal is up) swaps state.board, and an unguarded
+  // timeout then stamps isStrike onto the NEW game's cells — a phantom
+  // strike that renders on reveal and counts as a flag for chording
+  // (2026-07-11 audit). Every deferred step checks the board is still ours.
+  const boardAtStart = state.board;
 
   // Build cascade list = mines minus correctly-flagged ones, sorted by
   // Manhattan distance from blast. Hit mine is at distance 0 and pops
@@ -95,6 +102,7 @@ export function chainRevealMines(hitRow, hitCol) {
   for (let i = 0; i < cascade.length; i++) {
     const { r, c } = cascade[i];
     setTimeout(() => {
+      if (state.board !== boardAtStart) return; // a new game replaced the board mid-cascade
       const cell = state.board[r]?.[c];
       if (!cell) return;
       cell.isStrike = true;

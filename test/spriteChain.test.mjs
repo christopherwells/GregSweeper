@@ -132,3 +132,17 @@ test('the title mascot SVG carries its animation hooks and the unclipped viewBox
   assert.match(GREG_MASCOT_SVG, /viewBox="-8\.18 -4\.71 140\.52 140\.52"/,
     'mascot must use the re-framed unclipped viewBox so the clipboard is not cut');
 });
+
+// 2026-07-11 audit hardening: spriteImgHTML builds raw HTML, so its alt
+// parameter is escaped defensively. Every current caller passes a static
+// string, but an unescaped attribute is one player-controlled call away
+// from XSS — this pin keeps the sink closed.
+test('REGRESSION: spriteImgHTML escapes its alt attribute', async () => {
+  const { spriteImgHTML, themeSpriteImgHTML } = await import('../src/ui/spriteLoader.js');
+  const hostile = '"><img src=x onerror=alert(1)>';
+  const html = spriteImgHTML('smiley', 'sprite-rank', hostile);
+  assert.ok(!html.includes('"><img'), 'raw attribute breakout must not survive');
+  assert.ok(html.includes('&quot;&gt;'), 'the hostile quote/bracket must be entity-escaped');
+  const themed = themeSpriteImgHTML('smiley', '😊', 'cls', hostile);
+  assert.ok(!themed.includes('"><img'), 'themeSpriteImgHTML shares the escaping');
+});
