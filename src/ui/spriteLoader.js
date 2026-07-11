@@ -15,6 +15,7 @@
 // to their emoji untouched. Ship world by world.
 
 import { THEME_UNLOCKS } from './themeManager.js';
+import { escapeHtml } from './domHelpers.js';
 
 const SPRITES = {
   mine:       { defaultEmoji: '💣', url: 'assets/sprites/mine.png' },
@@ -269,7 +270,10 @@ export function spriteImgHTML(key, sizeClass = '', alt = '') {
   const s = SPRITES[key];
   if (!s) return '';
   const cls = `game-sprite ${sizeClass}`.trim();
-  const altAttr = alt ? ` alt="${alt}"` : ' alt=""';
+  // alt is escaped defensively: every current caller passes a static string,
+  // but this builds raw HTML and an unescaped attribute is one forgotten
+  // call away from XSS (2026-07-11 audit hardening).
+  const altAttr = alt ? ` alt="${escapeHtml(alt)}"` : ' alt=""';
   return `<img class="${cls}" src="${s.url}"${altAttr} decoding="async" draggable="false">`;
 }
 
@@ -281,7 +285,7 @@ export function themeSpriteImgHTML(key, resolvedEmoji, sizeClass = '', alt = '')
   const url = getSpriteUrl(key, resolvedEmoji);
   const cls = `game-sprite ${sizeClass}`.trim();
   if (url) {
-    const altAttr = alt ? ` alt="${alt}"` : ' alt=""';
+    const altAttr = alt ? ` alt="${escapeHtml(alt)}"` : ' alt=""';
     return `<img class="${cls}" src="${url}"${altAttr} decoding="async" draggable="false">`;
   }
   return `<span class="${sizeClass}" aria-hidden="true">${resolvedEmoji || ''}</span>`;

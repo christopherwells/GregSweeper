@@ -121,7 +121,9 @@ export function tryLifeline(row, col) {
 export function activateScan() {
   if (state.powerUps.scanRowCol <= 0 || state.status === 'won' || state.status === 'lost') return;
   playPowerUp();
-  state.usedPowerUps = true;
+  // usedPowerUps is stamped where the charge is SPENT (performScan) — arming
+  // and disarming the mode without using it must not strip the purist feat
+  // (2026-07-11 audit; same for magnet and x-ray below).
   state.scanMode = !state.scanMode;
   if (state.magnetMode) state.magnetMode = false;
   updatePowerUpBar();
@@ -129,6 +131,7 @@ export function activateScan() {
 
 export function performScan(row, col) {
   state.powerUps.scanRowCol--;
+  state.usedPowerUps = true;
   state.scanMode = false;
   saveModePowerUps(state.gameMode, state.powerUps);
   saveProgress({ powerUps: loadPowerUps() });
@@ -206,7 +209,6 @@ export function performScan(row, col) {
 export function activateMagnet() {
   if (state.powerUps.magnet <= 0 || state.status === 'won' || state.status === 'lost') return;
   playPowerUp();
-  state.usedPowerUps = true;
   state.magnetMode = !state.magnetMode;
   if (state.scanMode) state.scanMode = false;
   if (state.xrayMode) state.xrayMode = false;
@@ -215,6 +217,7 @@ export function activateMagnet() {
 
 export function performMagnet(row, col) {
   state.powerUps.magnet--;
+  state.usedPowerUps = true;
   state.magnetMode = false;
   playMagnet();
   saveModePowerUps(state.gameMode, state.powerUps);
@@ -247,7 +250,6 @@ export function performMagnet(row, col) {
 export function activateXRay() {
   if (state.powerUps.xray <= 0 || state.status === 'won' || state.status === 'lost') return;
   playPowerUp();
-  state.usedPowerUps = true;
   state.xrayMode = !state.xrayMode;
   if (state.magnetMode) state.magnetMode = false;
   updatePowerUpBar();
@@ -255,6 +257,7 @@ export function activateXRay() {
 
 export function performXRay(row, col) {
   state.powerUps.xray--;
+  state.usedPowerUps = true;
   state.xrayMode = false;
   playXRay();
   saveModePowerUps(state.gameMode, state.powerUps);

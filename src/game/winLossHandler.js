@@ -1137,8 +1137,13 @@ export function handleLoss(mineRow, mineCol) {
   // Show the modal only after the chain-detonation cascade finishes
   // (resolved Promise from chainRevealMines). Reduced-motion path
   // resolves the promise instantly, so the modal still appears
-  // immediately for those users.
-  cascadePromise.then(() => showModal('gameover-overlay'));
+  // immediately for those users. Status guard: a restart during the
+  // cascade window (the R key works before the modal is up) starts a
+  // fresh game, and the stale loss modal must not pop over it
+  // (2026-07-11 audit).
+  cascadePromise.then(() => {
+    if (state.status === 'lost') showModal('gameover-overlay');
+  });
   updatePowerUpBar();
   updateStreakBorder();
   updateCheckpointDisplay();

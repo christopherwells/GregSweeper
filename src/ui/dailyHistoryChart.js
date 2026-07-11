@@ -6,7 +6,21 @@
 // No external dependencies. Hand-rolled SVG with a viewBox so it scales to
 // whatever container width it lives in (including tight mobile viewports).
 
+import { getLocalDateString, addCalendarDays } from '../logic/seededRandom.js';
+
 const DAYS_BACK = 30;
+
+// The chart's day columns, oldest → newest, ending at `today`. Pure ET-date
+// string arithmetic — the caller passes getLocalDateString() so the slots
+// share the app's ET anchor. The old slot walk used the BROWSER-local clock
+// (new Date + setDate), so a player west of ET finishing after midnight ET
+// had their newest dot dated outside every slot — invisible until the next
+// browser-day (2026-07-11 audit). Exported for the node suite.
+export function chartDateSlots(today, daysBack) {
+  const out = [];
+  for (let i = daysBack - 1; i >= 0; i--) out.push(addCalendarDays(today, -i));
+  return out;
+}
 
 // Layout — expressed in viewBox units, not pixels. The real rendered size is
 // controlled by the container's width via preserveAspectRatio. Aspect is
@@ -61,17 +75,13 @@ export function renderDailyHistoryChart(entries, opts = {}) {
     list.sort((a, b) => (a.archive === true ? 0 : 1) - (b.archive === true ? 0 : 1));
   }
 
-  // Build the array of N daily slots, newest-on-right. If today doesn't have
-  // an entry we still reserve a slot for it — the user might complete today's
-  // daily later and come back to this chart.
-  const today = localDateString(new Date());
-  const slots = []; // { date, entries: [...] }
-  for (let i = daysBack - 1; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const dateStr = localDateString(d);
-    slots.push({ date: dateStr, entries: byDate.get(dateStr) || [] });
-  }
+  // Build the array of N daily slots, newest-on-right, anchored to the ET
+  // clock like every other daily surface. If today doesn't have an entry we
+  // still reserve a slot for it — the user might complete today's daily
+  // later and come back to this chart.
+  const today = getLocalDateString();
+  const slots = chartDateSlots(today, daysBack)
+    .map((dateStr) => ({ date: dateStr, entries: byDate.get(dateStr) || [] }));
 
   // y-axis domain — symmetric around 0, clamped.
   let maxAbsDelta = MIN_Y_SPAN_HALF;
@@ -182,12 +192,6 @@ export function renderDailyHistoryChart(entries, opts = {}) {
 }
 
 // ── Helpers ──────────────────────────────────────────
-
-function localDateString(d) {
-  return d.getFullYear() + '-' +
-    String(d.getMonth() + 1).padStart(2, '0') + '-' +
-    String(d.getDate()).padStart(2, '0');
-}
 
 const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const LONG_MONTHS  = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];

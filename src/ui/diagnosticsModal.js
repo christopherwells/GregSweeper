@@ -195,8 +195,11 @@ function renderSnapshot(body, snap) {
   // Full handicaps map (one line per uid)
   const mapEntries = Object.entries(snap.handicapsMap);
   if (mapEntries.length > 0) {
+    // handicaps.json values are multiplicative RATIOS k (logratio-v1), not
+    // seconds — the old "+1.05s" rendering was a leftover from the additive
+    // model (2026-07-11 audit).
     const mapValue = mapEntries
-      .map(([u, v]) => `${u === snap.uid ? '★ ' : '  '}${u.slice(0, 12)}… = ${(v >= 0 ? '+' : '') + v.toFixed(2)}s`)
+      .map(([u, v]) => `${u === snap.uid ? '★ ' : '  '}${u.slice(0, 12)}… k=${typeof v === 'number' ? v.toFixed(3) : v}`)
       .join('\n');
     body.appendChild(row({
       label: 'All handicaps',
