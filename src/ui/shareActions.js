@@ -16,7 +16,9 @@ import { getLocalDateString, addCalendarDays } from '../logic/seededRandom.js';
 import { dailyShareLines } from '../logic/shareCard.js';
 import { PROD_SITE_BASE } from '../config.js';
 
-function generateShareCard() {
+// Exported for the node test that pins each mode's card facts (the weekly
+// card once stamped the stale challenge level's dimensions).
+export function generateShareCard() {
   const level = state.currentLevel;
   const time = state.elapsedTime;
   const diff = state.gameMode === 'timed'
@@ -59,6 +61,16 @@ function generateShareCard() {
     const rating = getSpeedRating(level, time);
     return `${getThemeEmoji('mine')} GregSweeper · Timed ${levelLabel}\n` +
            `${rating.icon} ${rating.name} · ${time}s (${diff.rows}×${diff.cols})${tierText}\n\n` +
+           PROD_SITE_BASE;
+  }
+
+  if (mode === 'weekly') {
+    // Weekly has no challenge level — state.currentLevel is whatever the
+    // last challenge run left behind, so the generic card below stamped
+    // that level's label and DIMENSIONS on the weekly board. Describe the
+    // board actually played instead.
+    return `${getThemeEmoji('mine')} GregSweeper · Weekly\n` +
+           `${state.rows}x${state.cols} in ${time}s${streakText}${tierText}\n\n` +
            PROD_SITE_BASE;
   }
 

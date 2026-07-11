@@ -84,7 +84,11 @@ test('tier-2 copy: names the clue count, full resolves and socratic does not', (
   const ded = { row: 0, col: 0, tier: 2, sources: [{ row: 1, col: 0 }, { row: 1, col: 1 }, { row: 1, col: 2 }, { row: 2, col: 0 }, { row: 2, col: 1 }, { row: 2, col: 2 }] };
   const full = explainDeduction(board, ded, { style: 'full', kind: 'safe' });
   assert.match(full, /all 6 highlighted clues/);
-  assert.match(full, /this square is clear/);
+  assert.match(full, /leaves this square clear/);
+  // 2026-07-11 audit (Q4): the enumeration proves the square across EVERY
+  // satisfying layout — usually several exist. Claiming a unique layout
+  // overclaimed on a proof surface.
+  assert.doesNotMatch(full, /only one/i, 'must not claim the layout is unique');
   assert.ok(!JARGON.test(full));
   const socratic = explainDeduction(board, ded, { style: 'socratic', kind: 'safe' });
   assert.ok(!/this square/.test(socratic), 'socratic must not resolve the square');

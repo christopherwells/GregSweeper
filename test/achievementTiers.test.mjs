@@ -72,11 +72,9 @@ test('normal (higher-is-better) boundaries: Victory wins [1,5,25,100,200]', () =
 });
 
 test('inverted (lower-is-better) boundaries: Speed Demon [60,45,30,15,10]', () => {
-  // speed reads the fastest win in recentGames; no wins → Infinity → locked.
-  const tier = (time) => cat({ recentGames: [{ won: true, time }] }, 'speed').tierIndex;
+  // speed reads the DURABLE bestTimes map; no recorded win → Infinity → locked.
+  const tier = (time) => cat({ bestTimes: { level3: time } }, 'speed').tierIndex;
   assert.equal(cat({}, 'speed').tierIndex, -1, 'no games is locked, not bronze');
-  assert.equal(cat({ recentGames: [{ won: false, time: 5 }] }, 'speed').tierIndex, -1,
-    'a loss does not count as a fast win');
   assert.equal(tier(61), -1, 'not fast enough for bronze stays locked');
   assert.equal(tier(60), 0, 'exactly 60s is bronze');
   assert.equal(tier(45), 1, 'silver');
@@ -84,4 +82,38 @@ test('inverted (lower-is-better) boundaries: Speed Demon [60,45,30,15,10]', () =
   assert.equal(tier(15), 3, 'emerald');
   assert.equal(tier(10), 4, 'diamond');
   assert.equal(tier(9), 4, 'faster than the top threshold stays diamond');
+  assert.equal(cat({ bestTimes: { level1: 90, level7: 28 } }, 'speed').tierIndex, 2,
+    'the fastest across all per-level bests drives the tier');
+});
+
+// 2026-07-11 audit (Q4): the speed medals must read the durable bestTimes
+// maps, not the rolling recentGames window. The window (50 global / 30
+// per-mode) silently DEMOTED a medal once the qualifying win scrolled out —
+// tiers recompute from counters, so nothing preserved the unlock — and the
+// global window includes chaos rounds, which must earn nothing.
+test('REGRESSION: a fast win keeps its medal after aging out of recentGames', () => {
+  const staleWindow = Array.from({ length: 50 }, () => ({ won: true, time: 300, mode: 'normal' }));
+  const s = cat({ recentGames: staleWindow, bestTimes: { level12: 12 } }, 'speed');
+  assert.equal(s.tierIndex, 3, 'the 12s win lives in bestTimes forever, whatever the window holds');
+});
+
+test('REGRESSION: a fast chaos round earns no Speed Demon', () => {
+  // Chaos wins land in recentGames but are excluded from bestTimes
+  // (saveGameResult skips the global bestTimes block for chaos).
+  const s = cat({ recentGames: [{ won: true, time: 4, mode: 'chaos' }], bestTimes: {} }, 'speed');
+  assert.equal(s.tierIndex, -1, 'chaos earns nothing');
+});
+
+test('REGRESSION: Speedrunner reads the timed bestTimes map, not the timed window', () => {
+  const stats = {
+    modeStats: {
+      timed: {
+        recentGames: Array.from({ length: 30 }, () => ({ won: true, time: 200 })),
+        bestTimes: { level2: 24 },
+      },
+    },
+  };
+  assert.equal(cat(stats, 'timedSpeed').tierIndex, 3, 'the aged-out 24s run still holds emerald');
+  assert.equal(cat({ modeStats: { timed: { recentGames: [{ won: true, time: 10 }], bestTimes: {} } } }, 'timedSpeed').tierIndex, -1,
+    'window-only data does not earn the medal (nothing durable recorded)');
 });
