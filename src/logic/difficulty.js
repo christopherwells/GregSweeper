@@ -68,7 +68,7 @@ export function applyWidthCap(rows, cols, mines) {
 // scripts/refit-par-model.R.
 // PAR_MODEL:START
 export const PAR_MODEL = {
-  // Last refit: 2026-07-10 | brms (4 users · max Rhat = 1.003, min ESS = 1039, divergent = 0/4000) | N=285 scores, 123 dates, 5 players | R²=0.483 (log scale)
+  // Last refit: 2026-07-11 | brms (4 users · max Rhat = 1.003, min ESS = 1039, divergent = 0/4000) | N=285 scores, 123 dates, 5 players | R²=0.483 (log scale)
   // scale:"log" => par = exp(intercept + Σ coef·feature): multiplicative,
   // lognormal MEDIAN. Coefficients are LOG-MULTIPLIERS per unit, NOT seconds.
   scale: 'log',
@@ -111,24 +111,24 @@ export const PAR_MODEL = {
 // between the markers is refit-owned, same contract as PAR_MODEL.
 // TIMED_PAR_MODEL:START
 export const PAR_MODEL_TIMED = {
-  // Last refit: 2026-07-10 | brms-timed (n=82)
+  // Last refit: 2026-07-11 | brms-timed (n=85)
   // Same log scale as PAR_MODEL (par = exp(intercept + Σ coef·feature)); below
   // the activation threshold this is a verbatim copy of the daily model.
   scale: 'log',
-  intercept: 2.5027,
-  secPerCell:        0.00136,
-  secPerMineFlag:    0.05857,
-  secPerPatternMove: 0.04695,
-  secPerSearchMove:  0.01002,
-  secPerWallEdge:    0.00206,
-  secPerZeroCluster: 0.00151,
-  secPerMysteryCell:   0.00177,
+  intercept: 2.5744,
+  secPerCell:        0.00140,
+  secPerMineFlag:    0.05369,
+  secPerPatternMove: 0.04392,
+  secPerSearchMove:  0.01153,
+  secPerWallEdge:    0.00202,
+  secPerZeroCluster: 0.00149,
+  secPerMysteryCell:   0.00180,
   secPerLiarCell:      0.00187,
-  secPerLockedCell:    0.03629,
-  secPerWormholePair:  0.00192,
-  secPerMirrorPair:    0.03228,
-  secPerSonarCell:     0.04781,
-  secPerCompassCell:   0.04290,
+  secPerLockedCell:    0.03710,
+  secPerWormholePair:  0.00199,
+  secPerMirrorPair:    0.03202,
+  secPerSonarCell:     0.04639,
+  secPerCompassCell:   0.04292,
 };
 // TIMED_PAR_MODEL:END
 
