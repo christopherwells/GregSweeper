@@ -33,6 +33,54 @@ export function featureName(feature) {
   return FEATURE_NAMES[feature] || null;
 }
 
+// Greg's working hypothesis per feature — the falsifiable, plain-language
+// framing of WHY the model studies it. Structural claims only, never
+// numbers: the number arrives later, in a verdict backed by the fitted
+// posterior. Each line is a mechanism plus what the data will decide.
+const FEATURE_HYPOTHESIS = {
+  lockedCellCount: 'Locked cells make you wait for information you would normally have. Waiting should cost time. The boards will tell me how much.',
+  sonarCellCount: 'A sonar reading covers a wide area but names no cell. I suspect it helps less than it looks like it should.',
+  compassCellCount: 'A compass points at danger without counting it. I can’t yet tell whether players read it fast or stop to puzzle over it.',
+  mirrorPairCount: 'Mirrored numbers lie about location, not amount. Players who spot the pair should lose almost no time. Should.',
+  liarCellCount: 'A liar is off by one, and one wrong number can poison a whole corner. Or players just route around it. The data decides.',
+  mysteryCellCount: 'A mystery cell hides its number entirely. Missing information has a price; I’m measuring it.',
+  wormholePairCount: 'Wormhole numbers count two places at once. Splitting one number across the board should slow the reading down.',
+  wallEdgeCount: 'Walls cut neighbors apart, so every number near one means less than it looks. Small effect or large? Not sure yet.',
+  zeroClusterCount: 'Big open areas clear themselves. More of them should mean faster boards. The question is how much faster.',
+  searchMoves: 'Some deductions need real search, not pattern reading. Those moves should be the expensive ones.',
+  patternMoves: 'Pattern reads are practiced moves. They should cost seconds, not tens of seconds.',
+  totalMines: 'More mines, more flags, more careful steps. The steady cost of density is the backbone of the model.',
+  cellCount: 'Bigger boards take longer. Obvious, but pinning the exact rate is what everything else is measured against.',
+};
+
+// The hypothesis line for a feature. Named features get their bespoke
+// claim; a studied-but-unnamed feature (the refit can target measures
+// the voice layer has no plain words for yet) gets an honest generic —
+// never the raw code name, never a fabricated mechanism.
+export function featureHypothesis(feature) {
+  if (typeof feature !== 'string' || !feature) return null;
+  if (FEATURE_HYPOTHESIS[feature]) return FEATURE_HYPOTHESIS[feature];
+  const name = featureName(feature);
+  if (name) {
+    return `I think ${name} changes how long a board takes. The data will tighten my estimate, or show there is nothing there.`;
+  }
+  return 'An experimental board measure. I’m still working out whether it matters at all.';
+}
+
+// Shared honesty primitive: what did an uncertainty (posterior SD) do
+// between two fits? Both the leaderboard's yesterday note (day-to-day,
+// ±2% verbal tier) and the Journal's study verdicts (era start-to-now,
+// higher bar) classify through this ONE function so the two surfaces
+// can never disagree about what "tightened" means. Positive deltaPct =
+// tightened (less spread), negative = widened.
+export function classifySdDelta(sdPrev, sdCur, thresholdPct = 2) {
+  if (!(sdPrev > 0) || !(sdCur > 0)) return { kind: 'invalid', deltaPct: 0 };
+  const deltaPct = Math.round(((sdPrev - sdCur) / sdPrev) * 100);
+  if (deltaPct >= thresholdPct) return { kind: 'tightened', deltaPct };
+  if (deltaPct <= -thresholdPct) return { kind: 'widened', deltaPct };
+  return { kind: 'flat', deltaPct };
+}
+
 // The morning line: why today's board exists. `mission` is the
 // getMissionForSeed result ({ target, isPrimary, ... }). Returns null
 // when there is nothing honest to say (unknown feature, no mission).
@@ -109,15 +157,15 @@ export function yesterdayNote(history) {
   const name = featureName(target);
   const sdPrev = prev.candidates.find(c => c.feature === target)?.sd;
   const sdCur = cur.candidates.find(c => c.feature === target)?.sd;
-  if (!name || !(sdPrev > 0) || !(sdCur > 0)) {
+  const delta = classifySdDelta(sdPrev, sdCur);
+  if (!name || delta.kind === 'invalid') {
     return `Greg: ${runs} run${runs !== 1 ? 's' : ''} landed in the model yesterday`;
   }
-  const deltaPct = Math.round(((sdPrev - sdCur) / sdPrev) * 100);
-  if (deltaPct >= 2) {
-    return `Greg: yesterday’s ${runs} run${runs !== 1 ? 's' : ''} tightened my ${name} estimate by ${deltaPct}%`;
+  if (delta.kind === 'tightened') {
+    return `Greg: yesterday’s ${runs} run${runs !== 1 ? 's' : ''} tightened my ${name} estimate by ${delta.deltaPct}%`;
   }
-  if (deltaPct <= -2) {
-    return `Greg: yesterday WIDENED my ${name} estimate by ${Math.abs(deltaPct)}%. More spread, not less. Science.`;
+  if (delta.kind === 'widened') {
+    return `Greg: yesterday WIDENED my ${name} estimate by ${Math.abs(delta.deltaPct)}%. More spread, not less. Science.`;
   }
   return `Greg: yesterday’s ${runs} run${runs !== 1 ? 's' : ''} barely moved my ${name} estimate`;
 }

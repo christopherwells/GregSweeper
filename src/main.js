@@ -956,6 +956,19 @@ _sheetRowOpens('#sheet-collection-btn', 'more-sheet', () => {
   renderCollectionModal();
   showModalFromTitle('collection-modal');
 });
+// Greg's Journal — the nightly experiment's notebook. The modal shell
+// opens instantly; the renderer (and its findings derivation) is
+// lazy-loaded like the Gym, since most sessions never open it.
+_sheetRowOpens('#sheet-journal-btn', 'more-sheet', () => {
+  showModalFromTitle('journal-modal');
+  import('./ui/journalView.js')
+    .then((m) => m.renderJournalModal())
+    .catch((err) => {
+      reportCaughtError('journal-import', err);
+      const body = $('#journal-body');
+      if (body) body.textContent = 'Could not open the journal. Check your connection and try again.';
+    });
+});
 _sheetRowOpens('#sheet-settings-btn', 'more-sheet', () => {
   // Load saved player name into settings input
   const nameInput = $('#player-name-input');

@@ -367,6 +367,11 @@
        hidden, same as #title-screen and the modals. -->
   <div id="crux-teaser" class="crux-teaser hidden"></div>
 
+  <!-- Journal report (?report=<feature> share route): a standalone view
+       of one finding from Greg's Journal. Populated by the ?report=
+       route (next PR); sibling of #app like #crux-teaser. -->
+  <div id="journal-report" class="journal-report hidden"></div>
+
   <div id="app" class="hidden">
     <div id="title-bar">
       <h1 id="game-title" title="About GregSweeper">GregSweeper</h1>
@@ -779,8 +784,24 @@
       <div class="modal-body sheet-rows">
         <button class="sheet-row" id="sheet-collection-btn"><img class="ui-icon-label" src="assets/sprites/ui-collection.svg" alt="" draggable="false" onerror="this.replaceWith('🎁')">Collection</button>
         <button class="sheet-row" id="sheet-settings-btn"><img class="ui-icon-label" src="assets/sprites/ui-settings.svg" alt="" draggable="false" onerror="this.replaceWith('⚙️')">Settings</button>
+        <button class="sheet-row" id="sheet-journal-btn"><img class="ui-icon-label" src="assets/sprites/ui-notebook.svg" alt="" draggable="false" onerror="this.replaceWith('📓')">Greg's Journal</button>
         <button class="sheet-row" id="sheet-whatsnew-btn"><img class="ui-icon-label" src="assets/sprites/ui-whatsnew.svg" alt="" draggable="false" onerror="this.replaceWith('📋')">What's New</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Greg's Journal — the nightly experiment's public notebook (More
+       sheet row). Findings derive client-side from the shipped
+       modelHistory.json via src/logic/journalFindings.js; the body is
+       rendered on open by src/ui/journalView.js (lazy-loaded from
+       main.js). Outside #app so it can show over the title screen. -->
+  <div id="journal-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="journal-title">
+    <div class="modal-content journal-modal-content">
+      <div class="modal-header">
+        <h2 id="journal-title">Greg's Journal</h2>
+        <button class="modal-close" aria-label="Close"><img class="ui-icon-close" src="assets/sprites/ui-close.svg" alt="Close" draggable="false" onerror="this.replaceWith('×')"></button>
+      </div>
+      <div class="modal-body journal-body" id="journal-body"></div>
     </div>
   </div>
 

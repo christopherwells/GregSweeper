@@ -6,7 +6,10 @@ import './helpers.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-const { fieldNoteLine, fieldNoteFromBoard, yesterdayNote, labFileLine, featureName } = await import('../src/logic/gregVoice.js');
+const {
+  fieldNoteLine, fieldNoteFromBoard, yesterdayNote, labFileLine, featureName,
+  featureHypothesis, classifySdDelta,
+} = await import('../src/logic/gregVoice.js');
 
 test('fieldNoteLine distinguishes primary probes from coverage studies, null on unknowns', () => {
   assert.match(fieldNoteLine({ target: 'sonarCellCount', isPrimary: true }), /probes sonar.*widest uncertainty/);
@@ -93,6 +96,38 @@ test('labFileLine itemizes only with a real {k, bombSeconds} decomposition', () 
   assert.equal(labFileLine(96.0, null), null);
   assert.equal(labFileLine(96.0, { k: 1.05 }), null);
   assert.equal(labFileLine(96.0, { clean: 1, bomb: 0 }), null);
+});
+
+test('classifySdDelta: the one shared definition of tightened/widened/flat', () => {
+  // yesterdayNote's verbal tier (default ±2%).
+  assert.deepEqual(classifySdDelta(0.9, 0.8), { kind: 'tightened', deltaPct: 11 });
+  assert.deepEqual(classifySdDelta(0.9, 1.0), { kind: 'widened', deltaPct: -11 });
+  assert.equal(classifySdDelta(0.9, 0.895).kind, 'flat');
+  // The Journal's higher bar rides the same function.
+  assert.equal(classifySdDelta(0.020, 0.016, 15).kind, 'tightened');
+  assert.equal(classifySdDelta(0.020, 0.018, 15).kind, 'flat');
+  // Garbage SDs are invalid, never a number.
+  assert.equal(classifySdDelta(0, 0.5).kind, 'invalid');
+  assert.equal(classifySdDelta(0.5, undefined).kind, 'invalid');
+  assert.equal(classifySdDelta(NaN, 0.5).kind, 'invalid');
+});
+
+test('featureHypothesis: bespoke claims are structural and plain; unnamed features get the honest generic', () => {
+  for (const f of ['lockedCellCount', 'sonarCellCount', 'compassCellCount', 'mirrorPairCount',
+    'liarCellCount', 'mysteryCellCount', 'wormholePairCount', 'wallEdgeCount',
+    'zeroClusterCount', 'searchMoves', 'patternMoves', 'totalMines', 'cellCount']) {
+    const h = featureHypothesis(f);
+    assert.ok(h && h.length > 30, `missing hypothesis for ${f}`);
+    assert.ok(!/\d+\s*%|\d+\.\d+|\bseconds\b.*\d/.test(h), `${f} hypothesis must not pose a number: "${h}"`);
+    assert.ok(!/[a-z][A-Z]/.test(h), `${f} hypothesis leaks a code name: "${h}"`);
+    assert.ok(!h.includes('—'), `${f} hypothesis carries an em-dash: "${h}"`);
+  }
+  // A studied-but-unnamed feature: honest generic, never the raw key.
+  const generic = featureHypothesis('fragmentationRatio');
+  assert.match(generic, /experimental board measure/);
+  assert.ok(!generic.includes('fragmentationRatio'));
+  assert.equal(featureHypothesis(''), null);
+  assert.equal(featureHypothesis(null), null);
 });
 
 test('featureName covers every push-able model feature', () => {
