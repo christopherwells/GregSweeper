@@ -179,18 +179,22 @@ export function showVictoryOverlay() {
   setTimeout(() => div.remove(), 3600);
 }
 
-export function showConfettiBurst(originX, originY, count, opts = {}) {
-  const canvas = particleCanvas;
-  const ctx = canvas.getContext('2d');
-  const rect = boardEl.getBoundingClientRect();
-  canvas.width = rect.width;
-  canvas.height = rect.height;
-  canvas.style.width = rect.width + 'px';
-  canvas.style.height = rect.height + 'px';
-  canvas.classList.add('active');
+// ── Shared confetti engine ──────────────────────────────
+// ONE particle pool drained by ONE animation loop on the shared
+// #particle-canvas. Every showConfettiBurst call pushes its particles in;
+// the loop clears the canvas once per frame, draws the whole pool, and
+// tears down only when EVERY particle is dead. Before this, each call ran
+// its own loop whose every frame cleared the full canvas — and since the
+// victory ceremony fires three staggered bursts (0/250/550 ms), overlap
+// was the NORM, not the edge case: earlier bursts were erased every frame
+// (only the newest showed), the canvas width-reset zeroed the bitmap
+// mid-flight, and the first loop to finish hid the shared canvas under
+// the bursts still flying (2026-07-11 audit).
+const _confettiPool = [];
+let _confettiLoopRunning = false;
 
-  // Themed particle colors
-  const themeColors = {
+// Themed particle colors
+const themeColors = {
     classic: ['#ff4444', '#4488ff', '#44cc44', '#ffdd44', '#ff44ff', '#ffd700'],
     dark: ['#e94560', '#53a8ff', '#00d4aa', '#ffd93d', '#c084fc', '#ff6b6b'],
     // New concept worlds — win-confetti palettes drawn from each theme's own ink.
@@ -220,16 +224,18 @@ export function showConfettiBurst(originX, originY, count, opts = {}) {
     synthwave: ['#ff0080', '#00ffff', '#8800ff', '#ff6600', '#ff44aa', '#00ccff'],
     supernova: ['#ffffff', '#4488ff', '#ff8800', '#aa44ff', '#ffd700', '#ff4444'],
     legendary: ['#ffd700', '#cc0000', '#8800aa', '#c0c0c0', '#ffec80', '#800080'],
-  };
-  const colors = themeColors[state.theme] || themeColors.classic;
+};
 
+// Pure: build one burst's particles. Exported for the node test that pins
+// the shared-pool contract.
+export function buildBurstParticles(count, width, height, originX, originY, colors, opts = {}) {
   const particles = [];
   for (let i = 0; i < count; i++) {
     const angle = Math.random() * Math.PI * 2;
     const speed = (opts.speedBase ?? 3) + Math.random() * (opts.speedVar ?? 8);
     particles.push({
-      x: canvas.width * originX + (Math.random() - 0.5) * (opts.spread ?? 20),
-      y: canvas.height * originY,
+      x: width * originX + (Math.random() - 0.5) * (opts.spread ?? 20),
+      y: height * originY,
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed - (opts.upwardBias ?? 3),
       gravity: (opts.gravityBase ?? 0.12) + Math.random() * 0.05,
@@ -242,21 +248,54 @@ export function showConfettiBurst(originX, originY, count, opts = {}) {
       isCircle: Math.random() > 0.5,
     });
   }
+  return particles;
+}
+
+// Pure: advance every particle one frame. Returns true while ANY particle
+// in the pool is still alive — the single loop's stop condition, so a
+// burst added mid-flight keeps the loop (and the canvas) alive until the
+// LAST burst finishes. Exported for the node test.
+export function stepParticles(pool) {
+  let alive = false;
+  for (const p of pool) {
+    if (p.life <= 0) continue;
+    alive = true;
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += p.gravity;
+    p.vx *= 0.99;
+    p.life -= p.decay;
+    p.rotation += p.rotationSpeed;
+  }
+  return alive;
+}
+
+export function showConfettiBurst(originX, originY, count, opts = {}) {
+  const canvas = particleCanvas;
+  const ctx = canvas.getContext('2d');
+  // Size the canvas only when nothing is mid-flight — assigning
+  // width/height zeroes the bitmap, which wiped in-flight bursts.
+  if (!_confettiLoopRunning) {
+    const rect = boardEl.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = rect.height + 'px';
+  }
+  canvas.classList.add('active');
+
+  const colors = themeColors[state.theme] || themeColors.classic;
+  _confettiPool.push(...buildBurstParticles(count, canvas.width, canvas.height, originX, originY, colors, opts));
+
+  if (_confettiLoopRunning) return; // the running loop picks the new particles up
+  _confettiLoopRunning = true;
 
   function animate() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    let alive = false;
+    const alive = stepParticles(_confettiPool);
 
-    for (const p of particles) {
+    for (const p of _confettiPool) {
       if (p.life <= 0) continue;
-      alive = true;
-      p.x += p.vx;
-      p.y += p.vy;
-      p.vy += p.gravity;
-      p.vx *= 0.99;
-      p.life -= p.decay;
-      p.rotation += p.rotationSpeed;
-
       ctx.globalAlpha = Math.max(0, p.life);
       ctx.fillStyle = p.color;
       ctx.save();
@@ -278,6 +317,8 @@ export function showConfettiBurst(originX, originY, count, opts = {}) {
     if (alive) {
       requestAnimationFrame(animate);
     } else {
+      _confettiLoopRunning = false;
+      _confettiPool.length = 0;
       canvas.classList.remove('active');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     }

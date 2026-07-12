@@ -1203,7 +1203,10 @@ export function revealCell(row, col) {
       updateAllCells();
       updateHeader();
       updatePowerUpBar();
-      if (checkWin(state.board)) handleWin();
+      // handleWin is async (name gate) — label the rejection path so a
+      // failure lands in errors/{uid} with a stable site tag instead of
+      // an anonymous unhandledrejection.
+      if (checkWin(state.board)) handleWin().catch(err => reportCaughtError('handle-win', err));
       return;
     }
     // Lifeline: passive save from mine death
@@ -1254,7 +1257,7 @@ export function revealCell(row, col) {
     }
   }
 
-  if (checkWin(state.board)) handleWin();
+  if (checkWin(state.board)) handleWin().catch(err => reportCaughtError('handle-win', err));
 }
 
 // ── Pressure Plate Timer ────────────────────────────────
@@ -1450,16 +1453,36 @@ export function handleChordReveal(row, col) {
 
   // A chord can expose MORE than one mine (two wrong flags around a
   // satisfied number — chordReveal keeps revealing past the first mine).
-  // Un-reveal EVERY exposed mine BEFORE anything paints: the first drives
-  // the bomb-hit / lifeline / loss flow below (whose handler re-reveals it
-  // as needed), and the rest go back under the fog. Before this, the extra
-  // mines stayed permanently revealed with no strike, no penalty, and no
-  // bombHits increment — free intel that also undercounted the daily
-  // anti-cheat fraction (2026-07-10 audit).
-  const primaryMine = result.hitMine ? unrevealChordMines(result.revealed) : null;
+  // Daily/weekly charge EVERY exposed mine as its own strike (the intel is
+  // real, so the price is too — each stays revealed as a strike marker and
+  // gets its own marginal info-value + ramped base). Challenge/timed/chaos
+  // keep the re-fog: one lifeline/loss on the first mine, the rest go back
+  // under the fog so a survived chord never grants free intel (the
+  // 2026-07-10 audit's original fix, still the right economy where a
+  // revealed mine means death rather than a priced strike).
+  const isStrikeMode = state.gameMode === 'daily' || state.gameMode === 'weekly';
+  let primaryMine = null;
+  let chordStrikes = null;
+  if (result.hitMine) {
+    if (isStrikeMode) {
+      chordStrikes = result.revealed.filter(c => c.isMine);
+    } else {
+      primaryMine = unrevealChordMines(result.revealed);
+    }
+  }
 
   // Wormhole: revealing one side reveals the paired cell too
   revealWormholePairs(result.revealed);
+
+  // Strike marking must precede the paint: handleDailyBombHit
+  // synchronously prices and stamps isStrike on every chord mine, so
+  // updateCells below renders them as strike markers, never as bare mines.
+  if (chordStrikes && chordStrikes.length > 0) {
+    handleDailyBombHit(
+      chordStrikes[0].row, chordStrikes[0].col,
+      chordStrikes.slice(1).map(c => ({ row: c.row, col: c.col })),
+    );
+  }
 
   updateCells(result.revealed);
   updateHeader();
@@ -1502,17 +1525,19 @@ export function handleChordReveal(row, col) {
   }
 
   if (result.hitMine && primaryMine) {
-    // Every chord-exposed mine was un-revealed above; only the primary
-    // proceeds through the standard one-mine flow.
-    if (state.gameMode === 'daily' || state.gameMode === 'weekly') {
-      handleDailyBombHit(primaryMine.row, primaryMine.col);
-    } else if (tryLifeline(primaryMine.row, primaryMine.col)) {
+    // Challenge/timed/chaos: every chord-exposed mine was un-revealed
+    // above; only the primary proceeds through the lifeline/loss flow.
+    if (tryLifeline(primaryMine.row, primaryMine.col)) {
       // Lifeline saved — continue playing
     } else {
       primaryMine.isRevealed = true;
       handleLoss(primaryMine.row, primaryMine.col);
     }
-  } else if (checkWin(state.board)) {
-    handleWin();
+  } else if (!result.hitMine && checkWin(state.board)) {
+    handleWin().catch(err => reportCaughtError('handle-win', err));
   }
+  // Daily/weekly chord-strike wins are detected by finishBombHit (the
+  // strike flow's teardown): a chord can reveal the board's last safe
+  // cells in the same gesture that struck the mine, and no later action
+  // exists to run win detection.
 }

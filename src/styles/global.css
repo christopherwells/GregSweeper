@@ -1299,7 +1299,10 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 }
 
 .start-here-label {
-  position: fixed;
+  /* Absolute inside #board (its positioning context) so the label rides
+     the cell through page + wrapper scrolls — fixed viewport coords went
+     stale the moment the player scrolled (2026-07-11 audit). */
+  position: absolute;
   transform: translate(-50%, -100%);
   color: var(--color-text, #333);
   font-size: 11px;
@@ -1355,7 +1358,7 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
    (floats above the cell); .label-on-cell overrides to center it
    directly on top of the cell so it visually belongs to the square. */
 .next-move-label {
-  position: fixed;
+  position: absolute; /* inside #board, same anchoring as .start-here-label */
   transform: translate(-50%, -100%);
   font-size: 10px;
   font-weight: 800;

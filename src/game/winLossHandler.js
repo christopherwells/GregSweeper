@@ -13,7 +13,7 @@ import { showToast } from '../ui/toastManager.js';
 import { stopTimer, pauseTimer, resumeTimer, updateTimerDisplay } from './timerManager.js';
 import { awardPowerUps } from './powerUpActions.js';
 import { setHandleWin } from './powerUpActions.js';
-import { findNextSafeMove, gradeGimmickContribution } from '../logic/boardSolver.js';
+import { findNextSafeMove, gradeGimmickContribution, checkWin } from '../logic/boardSolver.js';
 import { extractCrux } from '../logic/cruxExtract.js';
 import { prepareLossReceipt, bombStrikeVerdict } from '../ui/receiptRenderer.js';
 import { computeBombInfoValue } from '../logic/bombInfoValue.js';
@@ -963,7 +963,9 @@ export async function handleWin() {
 }
 
 // Register handleWin with powerUpActions to break circular dependency
-setHandleWin(handleWin);
+// Wrapped so the injected reference carries the labeled rejection path —
+// handleWin is async (name gate) and powerUpActions fires it without await.
+setHandleWin(() => handleWin().catch(err => reportCaughtError('handle-win', err)));
 
 // ── Handle Loss ────────────────────────────────────────
 
@@ -1221,16 +1223,30 @@ export function handleTimedLoss() {
 // with all the call sites; it handles both daily and weekly via the
 // isWeekly branch.
 
-export function handleDailyBombHit(mineRow, mineCol) {
+export function handleDailyBombHit(mineRow, mineCol, extraMines = []) {
   const isWeekly = state.gameMode === 'weekly';
 
+  // The batch: the primary mine plus any further mines the same gesture
+  // exposed (a chord across two wrong flags — 2026-07-11, per-mine
+  // charging). Every mine in the batch is priced, logged, and marked in
+  // ONE pass so the pause/popup/explainer machinery (which is not
+  // re-entrant) runs exactly once per gesture.
+  const mines = [{ row: mineRow, col: mineCol }];
+  for (const m of Array.isArray(extraMines) ? extraMines : []) {
+    if (m && Number.isInteger(m.row) && Number.isInteger(m.col)
+        && !mines.some(x => x.row === m.row && x.col === m.col)) {
+      mines.push({ row: m.row, col: m.col });
+    }
+  }
+
   // Prior strikes on this attempt — pre-flagged in the info-value
-  // computation so the returned value is the MARGINAL info-value of
-  // this hit given those prior hits, not the cumulative value.
+  // computation so each returned value is the MARGINAL info-value of
+  // that hit given every hit before it, not the cumulative value.
   const priorEvents = (isWeekly ? state.weeklyBombHitEvents : state.dailyBombHitEvents) || [];
   const priorHits = isWeekly ? (state.weeklyBombHits || 0) : (state.dailyBombHits || 0);
   // state.elapsedTime is pure wall-clock (penalties live in the event log,
-  // not in elapsedTime), so it already IS the clean hit timestamp.
+  // not in elapsedTime), so it already IS the clean hit timestamp. A
+  // chord's mines share the one gesture's timestamp.
   const tClean = Math.round(state.elapsedTime * 10) / 10;
 
   // Pause the timer immediately. The penalty is applied while the
@@ -1238,42 +1254,11 @@ export function handleDailyBombHit(mineRow, mineCol) {
   pauseTimer();
   state.modalPaused = true;
 
-  // Compute info-value penalty BEFORE marking the strike cell so the
-  // solver's "before" run sees the same board state the player saw.
-  // Daily / weekly always use the centre cell as the first click.
-  const fr = Math.floor(state.rows / 2);
-  const fc = Math.floor(state.cols / 2);
-  const priorStrikes = priorEvents.map(e => ({ row: e.row, col: e.col }));
-  // Daily and weekly both route here; the board's feature vector sets the
-  // par baseline the info-value is priced against under the log-scale model.
-  const boardFeatures = state.weeklyFeatures || state.dailyFeatures || null;
-  let infoValue = 0;
-  try {
-    const result = computeBombInfoValue(state.board, state.rows, state.cols, fr, fc, mineRow, mineCol, priorStrikes, boardFeatures);
-    infoValue = result.infoValue;
-  } catch (err) {
-    // The solver is robust on well-formed daily/weekly boards; if it
-    // ever does throw we'd rather charge the base penalty than crash
-    // the player's attempt.
-    console.warn('computeBombInfoValue failed:', err && err.message);
-    reportCaughtError('bomb-info-value', err);
-  }
-  // Ramped base penalty: the n-th strike's base is BOMB_PENALTY_BASE × (1 +
-  // BOMB_PENALTY_RAMP × (n-1)) — 1st +3s, 2nd +4.5s, 3rd +6s, 4th +7.5s … The
-  // first hit costs the standard base; each later one adds half a base on top,
-  // so casual mine-popping is discouraged without clobbering a player who hits
-  // a couple legitimately (the >30% anti-cheat handles brute-forcers). The
-  // info-value term (the par-seconds the struck mine was anchoring) rides on
-  // top, unchanged.
-  const strikeNumber = priorHits + 1;
-  const rampedBase = BOMB_PENALTY_BASE * (1 + BOMB_PENALTY_RAMP * (strikeNumber - 1));
-  const penalty = Math.round((infoValue + rampedBase) * 10) / 10;
-  const infoValueRounded = Math.round(infoValue * 10) / 10;
-
   // The strike verdict — computed from the board state the player SAW
-  // (before the strike cell is marked below), flags-blind so a wrong
+  // (before any strike cell is marked below), flags-blind so a wrong
   // flag can't make the receipt lie. Three honest answers: the mine was
   // provable / safe moves existed elsewhere / genuinely at the frontier.
+  // A multi-mine chord gets the primary mine's verdict.
   let strikeVerdict = null;
   try {
     strikeVerdict = bombStrikeVerdict(state.board, mineRow, mineCol);
@@ -1281,32 +1266,72 @@ export function handleDailyBombHit(mineRow, mineCol) {
     console.warn('bombStrikeVerdict failed:', err && err.message);
   }
 
-  // Bump the per-attempt strike counter + append the event with its
-  // penalty value. The penalty field is new in this mechanic; legacy
-  // events (under the old +10s/re-fog mechanic) lack it, and the R
-  // refit treats `bombHits > 0 && no penalty` as the legacy cohort.
-  const event = { t: tClean, row: mineRow, col: mineCol, penalty, infoValue: infoValueRounded };
-  if (isWeekly) {
-    state.weeklyBombHits = priorHits + 1;
-    if (!Array.isArray(state.weeklyBombHitEvents)) state.weeklyBombHitEvents = [];
-    state.weeklyBombHitEvents.push(event);
-  } else {
-    state.dailyBombHits = priorHits + 1;
-    if (!Array.isArray(state.dailyBombHitEvents)) state.dailyBombHitEvents = [];
-    state.dailyBombHitEvents.push(event);
-  }
+  // Price + log + mark each mine in the batch. computeBombInfoValue reads
+  // only structural board fields (never isRevealed/isStrike), so marking
+  // earlier mines in the loop cannot perturb later pricing — the marginal
+  // chain runs entirely through priorStrikes. Ramped base per strike: the
+  // n-th strike's base is BOMB_PENALTY_BASE × (1 + BOMB_PENALTY_RAMP ×
+  // (n-1)) — 1st +3s, 2nd +4.5s, 3rd +6s … so casual mine-popping is
+  // discouraged without clobbering a legit multi-hit day (the >30%
+  // anti-cheat handles brute-forcers). The info-value term (the
+  // par-seconds each struck mine was anchoring) rides on top, unchanged.
+  const fr = Math.floor(state.rows / 2);
+  const fc = Math.floor(state.cols / 2);
+  const priorStrikes = priorEvents.map(e => ({ row: e.row, col: e.col }));
+  // Daily and weekly both route here; the board's feature vector sets the
+  // par baseline the info-value is priced against under the log-scale model.
+  const boardFeatures = state.weeklyFeatures || state.dailyFeatures || null;
+  let totalPenalty = 0;
+  let firstInfoValueRounded = 0;
+  for (let i = 0; i < mines.length; i++) {
+    const m = mines[i];
+    let infoValue = 0;
+    try {
+      const result = computeBombInfoValue(state.board, state.rows, state.cols, fr, fc, m.row, m.col, priorStrikes, boardFeatures);
+      infoValue = result.infoValue;
+    } catch (err) {
+      // The solver is robust on well-formed daily/weekly boards; if it
+      // ever does throw we'd rather charge the base penalty than crash
+      // the player's attempt.
+      console.warn('computeBombInfoValue failed:', err && err.message);
+      reportCaughtError('bomb-info-value', err);
+    }
+    const strikeNumber = priorHits + i + 1;
+    const rampedBase = BOMB_PENALTY_BASE * (1 + BOMB_PENALTY_RAMP * (strikeNumber - 1));
+    const penalty = Math.round((infoValue + rampedBase) * 10) / 10;
+    const infoValueRounded = Math.round(infoValue * 10) / 10;
+    if (i === 0) firstInfoValueRounded = infoValueRounded;
+    totalPenalty += penalty;
 
-  // Mark the hit cell as a strike. NO re-fog: every other revealed cell
-  // stays revealed. The mine is preserved (we never call defuseMine):
-  //   (a) Adjacent numbers don't drop — a "3" next to the strike stays
-  //       a "3" because the mine is still there.
-  //   (b) Strike counts as a flag for chordReveal (sums isFlagged ||
-  //       isStrike), so chording around it works.
-  //   (c) checkWin treats isMine cells as don't-need-to-reveal; win
-  //       still requires every non-mine cell revealed.
-  const hitCell = state.board[mineRow][mineCol];
-  hitCell.isRevealed = true;
-  hitCell.isStrike = true;
+    // Append the event with its penalty value. The penalty field is new
+    // in this mechanic; legacy events (under the old +10s/re-fog
+    // mechanic) lack it, and the R refit treats `bombHits > 0 && no
+    // penalty` as the legacy cohort.
+    const event = { t: tClean, row: m.row, col: m.col, penalty, infoValue: infoValueRounded };
+    if (isWeekly) {
+      state.weeklyBombHits = priorHits + i + 1;
+      if (!Array.isArray(state.weeklyBombHitEvents)) state.weeklyBombHitEvents = [];
+      state.weeklyBombHitEvents.push(event);
+    } else {
+      state.dailyBombHits = priorHits + i + 1;
+      if (!Array.isArray(state.dailyBombHitEvents)) state.dailyBombHitEvents = [];
+      state.dailyBombHitEvents.push(event);
+    }
+    priorStrikes.push({ row: m.row, col: m.col });
+
+    // Mark the hit cell as a strike. NO re-fog: every other revealed cell
+    // stays revealed. The mine is preserved (we never call defuseMine):
+    //   (a) Adjacent numbers don't drop — a "3" next to the strike stays
+    //       a "3" because the mine is still there.
+    //   (b) Strike counts as a flag for chordReveal (sums isFlagged ||
+    //       isStrike), so chording around it works.
+    //   (c) checkWin treats isMine cells as don't-need-to-reveal; win
+    //       still requires every non-mine cell revealed.
+    const hitCell = state.board[m.row][m.col];
+    hitCell.isRevealed = true;
+    hitCell.isStrike = true;
+  }
+  totalPenalty = Math.round(totalPenalty * 10) / 10;
 
   // The penalty is NOT added to elapsedTime/preciseTime here. It lives in
   // the hit-event log (event.penalty, pushed above) and is folded into the
@@ -1334,9 +1359,17 @@ export function handleDailyBombHit(mineRow, mineCol) {
 
   function finishBombHit() {
     state.modalPaused = false;
-    resumeTimer();
     updateAllCells();
     updateHeader();
+    // A chord can clear the board's last safe cells in the same gesture
+    // that struck its mines — after the strikes are priced there may be
+    // no player action left to run win detection, so check here instead
+    // of leaving the attempt stuck at 100% revealed.
+    if (checkWin(state.board)) {
+      handleWin().catch(err => reportCaughtError('handle-win', err));
+      return; // handleWin owns the timer from here
+    }
+    resumeTimer();
   }
 
   // First-time popup. Uses a NEW notice key so existing users who saw
@@ -1393,13 +1426,17 @@ export function handleDailyBombHit(mineRow, mineCol) {
   // of mines (designed: 3.6%/2.7%); Minor runs lower than designed
   // (8.1% vs 10.4%) because Pass-A-anchoring mines price 0 under the
   // pooled model by design.
-  const bombLabel = infoValueRounded < 2   ? '' :
-                    infoValueRounded < 6.5 ? ' · Minor mine' :
-                    infoValueRounded < 13  ? ' · Key mine' :
-                                            '! Critical mine';
+  // A multi-mine chord shows the batch total + count; the per-mine tier
+  // label only renders for a single hit (labeling one mine of several
+  // would misattribute the aggregate number beside it).
+  const bombLabel = mines.length > 1 ? ` · ${mines.length} mines` :
+                    firstInfoValueRounded < 2   ? '' :
+                    firstInfoValueRounded < 6.5 ? ' · Minor mine' :
+                    firstInfoValueRounded < 13  ? ' · Key mine' :
+                                                 '! Critical mine';
   const verdictHtml = strikeVerdict
     ? `<div class="daily-bomb-verdict">${strikeVerdict.text}</div>` : '';
-  popup.innerHTML = `<div class="daily-bomb-popup-content">${spriteImgHTML('strike', 'sprite-popup', 'Mine hit')} <span class="daily-bomb-penalty">+${penalty.toFixed(1)}s${bombLabel}</span>${verdictHtml}</div>`;
+  popup.innerHTML = `<div class="daily-bomb-popup-content">${spriteImgHTML('strike', 'sprite-popup', 'Mine hit')} <span class="daily-bomb-penalty">+${totalPenalty.toFixed(1)}s${bombLabel}</span>${verdictHtml}</div>`;
   document.getElementById('app').appendChild(popup);
 
   setTimeout(() => {

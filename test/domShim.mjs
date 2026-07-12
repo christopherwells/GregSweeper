@@ -77,6 +77,7 @@ if (typeof globalThis.window === 'undefined') {
 if (typeof globalThis.navigator === 'undefined') {
   globalThis.navigator = { userAgent: 'node', platform: 'node', maxTouchPoints: 0, language: 'en-US', onLine: true };
 }
+if (typeof globalThis.location === 'undefined') globalThis.location = globalThis.window.location;
 if (typeof globalThis.requestAnimationFrame === 'undefined') globalThis.requestAnimationFrame = () => 0;
 if (typeof globalThis.getComputedStyle === 'undefined') globalThis.getComputedStyle = () => stubStyle();
 if (typeof globalThis.matchMedia === 'undefined') globalThis.matchMedia = globalThis.window.matchMedia;

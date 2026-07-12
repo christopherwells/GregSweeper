@@ -51,8 +51,11 @@ for (const [label, props] of [
 // (handleChordReveal) used to un-reveal only the FIRST mine before routing
 // it into the bomb-hit / lifeline / loss flow — every further mine stayed
 // permanently revealed with no strike, no penalty, and no bombHits
-// increment. unrevealChordMines is the shared resolution: hide EVERY
-// exposed mine, hand back the first as the one the flow processes.
+// increment. unrevealChordMines is the challenge/timed/chaos resolution:
+// hide EVERY exposed mine, hand back the first as the one the lifeline/loss
+// flow processes. (Daily/weekly stopped re-fogging 2026-07-12 — every
+// chord-exposed mine there is charged as its own strike; that batch is
+// pinned in test/chordPerMine.test.mjs.)
 
 // 3x3: center "2" with mines at (0,1) and (1,0), but the player flagged
 // (0,0) and (2,2) instead — two wrong flags satisfying the count, so the
