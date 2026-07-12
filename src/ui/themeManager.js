@@ -4,12 +4,19 @@ import { applyThemeEffects } from './themeEffects.js';
 
 // ── Lazy Theme CSS Loading ────────────────────────────
 // classic + dark are eagerly loaded in index.html.
-// All other themes are loaded on-demand here.
+// All other themes are loaded on-demand here. Returns a Promise that
+// resolves once the stylesheet has actually APPLIED (link.onload) — a
+// caller that needs to measure the new theme's live geometry (the
+// board-refit in applyThemeLive reads --grid-gap) must wait on it, or it
+// measures the OLD theme's values. Resolves immediately for eager /
+// already-loaded themes, and on error too (a failed sheet must never
+// hang a theme switch).
 const EAGER_THEMES = new Set(['classic', 'dark']);
-const _loadedThemes = new Set(['classic', 'dark']);
+const _themeCSSLoads = new Map(); // theme -> Promise (pending or settled)
 
 export function loadThemeCSS(themeName) {
-  if (EAGER_THEMES.has(themeName) || _loadedThemes.has(themeName)) return;
+  if (EAGER_THEMES.has(themeName)) return Promise.resolve();
+  if (_themeCSSLoads.has(themeName)) return _themeCSSLoads.get(themeName);
   const link = document.createElement('link');
   link.rel = 'stylesheet';
   // In live theme-preview mode (localhost + ?previewthemes=1) the service worker
@@ -20,8 +27,13 @@ export function loadThemeCSS(themeName) {
   const preview = /[?&]previewthemes=1\b/.test(location.search) &&
     /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
   link.href = 'src/styles/themes/' + themeName + '.css' + (preview ? '?v=' + Date.now() : '');
+  const p = new Promise((resolve) => {
+    link.onload = () => resolve();
+    link.onerror = () => resolve();
+  });
   document.head.appendChild(link);
-  _loadedThemes.add(themeName);
+  _themeCSSLoads.set(themeName, p);
+  return p;
 }
 
 // ── Theme Unlock Progression ──────────────────────────

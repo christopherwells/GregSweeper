@@ -1361,9 +1361,15 @@ export function chordReveal(board, row, col) {
 // permanently revealed with no strike, no penalty, and no bombHits increment
 // — free intel that also undercounted the daily anti-cheat fraction
 // (2026-07-10 audit). This helper un-reveals EVERY mine in the revealed set
-// and returns the first as the one that drives the bomb-hit / lifeline /
-// loss flow (whose handler re-reveals it as needed). The others go back
-// under the fog exactly as if they had never been touched.
+// and returns the first as the one that drives the lifeline / loss flow
+// (whose handler re-reveals it as needed). The others go back under the fog
+// exactly as if they had never been touched.
+//
+// CHALLENGE/TIMED/CHAOS ONLY since 2026-07-12: daily/weekly no longer
+// re-fog — every chord-exposed mine there is charged as its own strike
+// (handleDailyBombHit's batch), so the intel is paid for rather than
+// hidden. This helper remains the no-free-intel rule where a revealed
+// mine means death instead of a priced strike.
 export function unrevealChordMines(revealed) {
   const mines = revealed.filter((c) => c.isMine);
   for (const m of mines) m.isRevealed = false;

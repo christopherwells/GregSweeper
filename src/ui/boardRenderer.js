@@ -378,20 +378,37 @@ function _placeLabel(cellEl, id, text, className, position = "above") {
   label.id = id;
   label.textContent = text;
   label.className = className;
-  // Use viewport-relative coords with position:fixed so the label
-  // doesn't depend on whichever ancestor happens to be position:relative
-  // (the previous board-parent-relative math was off by ~130 px when
-  // the wrapping container wasn't a positioning context).
+  // Anchor INSIDE #board with board-relative coordinates so the label
+  // tracks its cell through page scroll, the inner #board-scroll-wrapper
+  // scroll (zoomed Quick Play boards), and resizes. The old
+  // position:fixed captured viewport coords ONCE and nothing repositioned
+  // on scroll — a phone player who scrolled before their first daily
+  // click saw "Start here" (the certified no-guess entry marker) hovering
+  // over the WRONG cell. The historical reason for fixed — a
+  // non-positioned ancestor made board-relative math drift ~130 px — is
+  // gone: #board itself is position:relative, and the label is absolute
+  // within it (absolutely-positioned grid children take no grid slot, so
+  // boardEl.children cell indexing is unaffected — labels append last).
   const cellRect = cellEl.getBoundingClientRect();
-  const cx = cellRect.left + cellRect.width / 2;
+  const boardRect = boardEl.getBoundingClientRect();
+  const cx = cellRect.left - boardRect.left + cellRect.width / 2;
+  const cellTop = cellRect.top - boardRect.top;
   label.style.left = cx + "px";
-  if (position === "on") {
-    label.style.top = (cellRect.top + cellRect.height / 2) + "px";
+  // #board is overflow:hidden, so an "above" label on a top-row cell
+  // would be clipped — center those on the cell instead.
+  const fitsAbove = cellTop >= 20;
+  if (position === "on" || !fitsAbove) {
+    label.style.top = (cellTop + cellRect.height / 2) + "px";
     label.classList.add("label-on-cell");
   } else {
-    label.style.top = (cellRect.top - 6) + "px";
+    label.style.top = (cellTop - 6) + "px";
   }
-  document.body.appendChild(label);
+  boardEl.appendChild(label);
+  // Clamp horizontally: an edge-column label wider than its cell would
+  // overhang the board and be clipped by the same overflow:hidden.
+  const half = label.offsetWidth / 2;
+  const clamped = Math.min(Math.max(cx, half + 2), boardRect.width - half - 2);
+  if (clamped !== cx) label.style.left = clamped + "px";
 }
 
 function updateStartHereLabel() {
@@ -432,7 +449,11 @@ export function adjustCellSize() {
   if (!state.cols || !state.rows) return;
   const maxWidth = Math.min(window.innerWidth * 0.88, 520);
   const widthBudget = maxWidth - 8; // 2px border + 2px padding, left+right
-  const cellSize = _fitCellSize(widthBudget, 2, _cellBound('--cell-fit-max-size', 40));
+  // Read the LIVE gap like resizeCells does — themes override --grid-gap
+  // (candy 3px, matrix 1px), and the old hardcoded 2 oversized the fit by
+  // (cols-1)px per extra gap pixel.
+  const gap = parseFloat(getComputedStyle(boardEl).gap) || 2;
+  const cellSize = _fitCellSize(widthBudget, gap, _cellBound('--cell-fit-max-size', 40));
   document.documentElement.style.setProperty('--cell-size', cellSize + 'px');
 }
 

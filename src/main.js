@@ -606,7 +606,7 @@ $('#btn-collection')?.addEventListener('click', () => {
 // the carousel so there is one source of truth for "switch theme".
 function applyThemeLive(theme) {
   state.theme = theme;
-  loadThemeCSS(theme);
+  const cssReady = loadThemeCSS(theme);
   document.documentElement.setAttribute('data-theme', theme);
   applyThemeEffects(theme);
   applyTitleSceneEffects(theme); // refresh the title-screen background when switching on the title
@@ -615,6 +615,14 @@ function applyThemeLive(theme) {
   saveTheme(theme);
   updateAllCells();
   try { updateHeader(); } catch {} // re-render the in-game LCD Greg so it updates on theme cycle
+  // Re-fit the board to the NEW theme's live geometry. Themes may override
+  // --grid-gap (candy 3px, matrix 1px vs the 2px default), and #board is
+  // width:fit-content — the cells were sized against the OLD theme's gap,
+  // so without a refit a wider gap pushed the board past its container
+  // (cells spilling off the side; the neon→candy carousel repro). Waits
+  // for the lazy stylesheet to actually apply, otherwise the refit still
+  // reads the old gap. resizeCells no-ops when no board is rendered.
+  cssReady.then(() => resizeCells()).catch(() => {});
 }
 
 let _carouselThemes = [];

@@ -74,6 +74,17 @@ export function generateShareCard() {
            PROD_SITE_BASE;
   }
 
+  if (mode === 'chaos') {
+    // Same class as weekly: chaos PINS currentLevel at 1 on entry and
+    // sizes its boards by chaosRound (getChaosDifficulty), so the generic
+    // card deterministically claimed "Level 1 (5x5)" for every chaos
+    // share while the image beside it drew the real 8x8+ board. Report
+    // the round and the board actually played, in the mode's own words.
+    return `${getThemeEmoji('mine')} GregSweeper · Chaos\n` +
+           `Round ${state.chaosRound || 1} · ${state.rows}x${state.cols} in ${time}s${tierText}\n\n` +
+           PROD_SITE_BASE;
+  }
+
   return `${getThemeEmoji('mine')} GregSweeper · ${modeLabel}\n` +
          `${levelLabel} (${diff.rows}x${diff.cols}) in ${time}s${streakText}${tierText}\n\n` +
          PROD_SITE_BASE;
