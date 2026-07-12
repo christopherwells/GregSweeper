@@ -89,6 +89,7 @@ export const ICON_STATUS = {
   '×':  'sprite',   // close / friend-remove (&times; entity)
   '🏅': 'sprite',   // Achievements sheet row (renders the medal sprite; emoji is the onerror fallback)
   'ℹ️': 'sprite',   // About row (renders Greg's sprite; emoji is the onerror fallback)
+  '📓': 'sprite',   // Greg's Journal sheet row (renders ui-notebook.svg; emoji is the onerror fallback)
 
   // ── Wave E chrome (2026-06-24) ──
   // Lens / Share / Copy / Notebook / molt and the ten toast-coach icons
