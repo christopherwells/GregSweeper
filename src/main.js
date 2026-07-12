@@ -2032,6 +2032,21 @@ async function init() {
     return;
   }
 
+  // ?report= share route — one finding from Greg's Journal as a
+  // standalone logged-out page. Same shape as ?crux=: no startup gate,
+  // no game init; modelHistory.json is a static bundle asset so the
+  // fetch needs no auth. The id is validated against the derived study
+  // list inside showJournalReport (findingById); an unknown or empty id
+  // renders the journal index, never an error. Lazy import — the module
+  // is only ever needed on this route or a share tap.
+  const reportParam = urlParams.get('report');
+  if (reportParam !== null) {
+    hideBootOverlay();
+    const { showJournalReport } = await import('./ui/journalReport.js');
+    await showJournalReport(reportParam);
+    return;
+  }
+
   // Startup gate — block rendering until the SW is current, Firebase is
   // ready, and the canonical board for today is in memory. Keeps the
   // boot overlay up across the whole wait so the player never sees a

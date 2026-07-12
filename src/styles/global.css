@@ -3724,6 +3724,9 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 }
 .journal-chip-settling { color: #4caf50; border-color: #4caf50; }
 .journal-chip-widened  { color: #ef5350; border-color: #ef5350; }
+/* Resting reads as calm, not alarming or triumphant — the default muted
+   chip color, just named so the two share surfaces stay in sync. */
+.journal-chip-resting  { color: var(--color-text-secondary); border-color: var(--color-text-secondary); opacity: 0.9; }
 .journal-hypothesis {
   font-style: italic;
   font-size: 13px;
@@ -3766,6 +3769,9 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   stroke-dasharray: 6 6;
 }
 .jf-dot { fill: var(--color-accent, #e94560); }
+/* Retrodicted fits (the pre-epoch sequential backfit) render dimmer than
+   live nightly fits; the card's retro caption says why. */
+.jf-dot-retro { opacity: 0.5; }
 .jf-label {
   font-size: 20px;
   font-family: inherit;
@@ -3786,6 +3792,55 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   opacity: 0.75;
   margin: 0;
 }
+.journal-share-btn {
+  background: none; border: none; cursor: pointer; padding: 2px 0;
+  color: var(--color-accent, #6cf); font-size: 12px; text-decoration: underline;
+  margin-top: 8px;
+}
+
+/* ── Journal report (?report=<feature> share route) ──
+   The logged-out one-finding page. Same standalone shell as the crux
+   teaser (it reuses the crux brand/card/action classes); the card is
+   wider because a study sparkline needs the room, and the container
+   top-aligns with the card's own margins so a tall finding scrolls
+   instead of clipping under flex centering. */
+.journal-report {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 20px;
+  overflow-y: auto;
+  background: var(--color-bg, #1a1a1a);
+  z-index: 50;
+}
+.journal-report.hidden { display: none; }
+.journal-report-card { max-width: 480px; margin: auto; }
+.journal-report-kicker { margin-top: 8px; }
+.journal-report-study { text-align: left; margin: 12px 0; }
+.journal-report-intro { text-align: left; margin: 10px 0 0; }
+.journal-report-meta { margin: 10px 0 14px; }
+.journal-report-index {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+.journal-report-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border, #333);
+  border-radius: 10px;
+  background: var(--color-btn-gradient);
+  color: var(--color-text, #eee);
+  text-decoration: none;
+}
+.journal-report-row:hover { border-color: var(--color-accent, #e94560); }
+.journal-report-row-label { font-weight: 600; font-size: 14px; }
 
 #gameover-record {
   color: var(--color-golden) !important;
