@@ -72,7 +72,10 @@ test('verdict branches: settling / widened / open at the ±15% era bar', () => {
   const settling = mk(0.020, 0.016); // -20% spread
   assert.equal(settling.kind, 'settling');
   assert.equal(settling.deltaPct, 20);
-  assert.match(settling.copy, /narrowed 20%/);
+  // The window names its REAL start date (the trajectory's first fit),
+  // never a vague "since I started measuring" that could be misread
+  // against the card's study-start line.
+  assert.match(settling.copy, /narrowed 20% since Jul 2\./);
   // Honesty: settling speaks about the ESTIMATE, never confirms the mechanism.
   assert.ok(!/confirm/i.test(settling.copy));
 

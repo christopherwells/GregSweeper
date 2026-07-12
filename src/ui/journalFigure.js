@@ -14,17 +14,10 @@ const PAD_X = 14;
 const PAD_TOP = 18;
 const PAD_BOTTOM = 34;
 
-const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-// 'YYYY-MM-DD' → 'Jul 8'. Local to the journal surfaces (the stats
-// chart and leaderboard each carry their own copy today — consolidating
-// the three is a separate cleanup).
-export function formatShortDate(dateStr) {
-  const parts = typeof dateStr === 'string' ? dateStr.split('-') : [];
-  if (parts.length !== 3) return dateStr;
-  const mo = SHORT_MONTHS[parseInt(parts[1], 10) - 1] || parts[1];
-  return `${mo} ${parseInt(parts[2], 10)}`;
-}
+// 'YYYY-MM-DD' → 'Jul 8' lives in journalFindings (the settling verdict
+// embeds it); re-exported here so journalView keeps one import site.
+import { formatShortDate } from '../logic/journalFindings.js';
+export { formatShortDate };
 
 // Build the sparkline SVG for a study, or null when there are fewer
 // than two fits to draw (the card's verdict copy already says "too

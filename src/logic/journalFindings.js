@@ -59,6 +59,19 @@ export function featureUnit(feature) {
   return FEATURE_UNITS[feature] || null;
 }
 
+const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// 'YYYY-MM-DD' → 'Jul 2'. Lives here (pure) because the settling
+// verdict embeds it; the journal UI modules import it from here. The
+// stats chart and leaderboard carry their own copies today, and
+// consolidating the three is a separate cleanup.
+export function formatShortDate(dateStr) {
+  const parts = typeof dateStr === 'string' ? dateStr.split('-') : [];
+  if (parts.length !== 3) return dateStr;
+  const mo = SHORT_MONTHS[parseInt(parts[1], 10) - 1] || parts[1];
+  return `${mo} ${parseInt(parts[2], 10)}`;
+}
+
 function currentEpoch() {
   return SCALE_EPOCHS[SCALE_EPOCHS.length - 1];
 }
@@ -135,9 +148,12 @@ export function deriveStudies(history) {
 // (Christopher's voice ruling, 2026-07-12). It never names the feature
 // (the card header does) and never claims the MECHANISM was confirmed —
 // narrowing proves the estimate is settling, not that Greg's hunch
-// about why was right. "Since I started measuring" means this
-// measurement series: the scale change restarted the clock, and the
-// trajectory only exists inside the current era.
+// about why was right. The settling verdict names its window's REAL
+// start date (the trajectory's first fit) so it can never be misread
+// against the card's study-start line: the trajectory currently begins
+// at the scale epoch, and once the sequential backfit lands
+// (candidatesLog on pre-epoch rows) the same sentence will simply
+// reach further back.
 export function classifyVerdict(study) {
   const t = study?.trajectory;
   if (!Array.isArray(t) || t.length < 2) {
@@ -154,7 +170,7 @@ export function classifyVerdict(study) {
     return {
       kind: 'settling',
       deltaPct: delta.deltaPct,
-      copy: `I’m closing in: my range for this has narrowed ${delta.deltaPct}% since I started measuring.`,
+      copy: `I’m closing in: my range for this has narrowed ${delta.deltaPct}% since ${formatShortDate(first.date)}.`,
     };
   }
   if (delta.kind === 'widened') {
