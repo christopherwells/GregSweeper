@@ -125,9 +125,13 @@ export function explainDeduction(board, ded, opts = {}) {
     if (style === 'socratic') {
       return `No single clue cracks this. Try mine layouts that satisfy ALL ${k} highlighted clues at once.`;
     }
+    // "Every layout", not "only one layout": the enumeration proves the
+    // square is invariant across ALL satisfying layouts — usually several
+    // exist. Claiming uniqueness overclaimed on a proof surface (same
+    // phrasing contract as the tier-3 liar copy below).
     return kind === 'safe'
-      ? `No single clue settles this square, but only one mine layout fits all ${k} highlighted clues at once, and in it this square is clear.${nameClause}`
-      : `Only one mine layout fits all ${k} highlighted clues at once, and in it this square is a mine.${nameClause}`;
+      ? `No single clue settles this square, but every mine layout that fits all ${k} highlighted clues at once leaves this square clear.${nameClause}`
+      : `Every mine layout that fits all ${k} highlighted clues at once puts a mine here.${nameClause}`;
   }
 
   // ── Tier 3: the region contains a liar ──

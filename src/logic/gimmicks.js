@@ -450,25 +450,19 @@ function applyLocked(board, rows, cols, count, rng) {
 
 // ── Liar Cells: adjacentMines display is off by ±1 ────
 
-function applyLiar(board, rows, cols, count, rng) {
-  // Compute the current would-be base display value for a candidate so we
-  // can sanity-check that offset ±1 stays non-negative. At this point in
-  // applyGimmicks, wormhole/mirror/sonar/compass have already marked their
-  // cells but recomputeDisplayedMines hasn't run yet, so pull the base the
-  // same way it will later.
-  const baseValue = (cell) => {
-    if (cell.isSonar && typeof cell.sonarCount === 'number') return cell.sonarCount;
-    if (cell.isCompass && typeof cell.compassCount === 'number') return cell.compassCount;
-    if (cell.isWormhole && cell.wormholePair) {
-      const p = board[cell.wormholePair.row]?.[cell.wormholePair.col];
-      return cell.adjacentMines + (p ? p.adjacentMines : 0);
-    }
-    if (cell.mirrorPair) {
-      const m = board[cell.mirrorPair.row]?.[cell.mirrorPair.col];
-      return m ? m.adjacentMines : cell.adjacentMines;
-    }
-    return cell.adjacentMines;
-  };
+export function applyLiar(board, rows, cols, count, rng) {
+  // Liar runs LAST in applyGimmicks (stacking rules), so no cell is isLiar
+  // yet — running the recompute here fills every cell's PRE-LIE display
+  // value (sonar/compass region counts, wormhole pair sums, mirror swaps),
+  // exactly the base the final recompute will stack the offset on. The old
+  // hand-rolled base closure read cell.sonarCount / cell.compassCount —
+  // fields ONLY recomputeDisplayedMines populates — so the base-≥2 guard
+  // below silently evaluated raw adjacentMines for sonar/compass cells. A
+  // compass with a 0-mine ray but ≥2 adjacent mines then took offset −1 and
+  // clamped to displayed 0 = the TRUE value: a liar that tells the truth,
+  // breaking the ±1 contract every player deduction on the cell rests on.
+  recomputeDisplayedMines(board);
+  const baseValue = (cell) => (cell.displayedMines != null ? cell.displayedMines : cell.adjacentMines);
 
   const candidates = [];
   for (let r = 0; r < rows; r++) {
@@ -617,7 +611,8 @@ export function applyWalls(board, rows, cols, segmentCount, rng) {
 
   // Verify walls don't create isolated regions — every cell must be
   // reachable from every other cell through wall-respecting paths.
-  // If walls partition the board, remove the last segment and retry.
+  // If walls partition the board, clear ALL walls (the isolation check
+  // below is all-or-nothing — it does not retry with fewer segments).
   board._wallEdges = wallEdges;
   if (wallEdges.size > 0) {
     const visited = new Set();

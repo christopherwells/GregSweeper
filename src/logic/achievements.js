@@ -50,10 +50,14 @@ const CATEGORIES = [
     group: 'progress',
     desc: 'Fastest win',
     thresholds: [60, 45, 30, 15, 10],
+    // Read the DURABLE per-level best-time map, not recentGames: the recent
+    // list is a rolling window (50 games), so a diamond-pace win silently
+    // DEMOTED the medal once it scrolled out (tiers recompute, no stored
+    // unlock state) — and the window includes chaos rounds, which must earn
+    // nothing. bestTimes records every non-chaos win forever.
     getValue: (s) => {
-      const wins = (s.recentGames || []).filter(g => g.won);
-      if (wins.length === 0) return Infinity;
-      return Math.min(...wins.map(g => g.time));
+      const times = Object.values(s.bestTimes || {});
+      return times.length > 0 ? Math.min(...times) : Infinity;
     },
     format: (v) => `Under ${v}s`,
     inverted: true, // lower is better
@@ -142,12 +146,12 @@ const CATEGORIES = [
     group: 'progress',
     desc: 'Best timed win',
     thresholds: [120, 90, 60, 25, 15],
+    // Same durable-source rule as Speed Demon: the per-mode bestTimes map
+    // records every timed win forever; recentGames caps at 30 and let the
+    // qualifying run age out.
     getValue: (s) => {
-      const timed = s.modeStats?.timed;
-      if (!timed) return Infinity;
-      const wins = (timed.recentGames || []).filter(g => g.won);
-      if (wins.length === 0) return Infinity;
-      return Math.min(...wins.map(g => g.time));
+      const times = Object.values(s.modeStats?.timed?.bestTimes || {});
+      return times.length > 0 ? Math.min(...times) : Infinity;
     },
     format: (v) => `Under ${v}s`,
     inverted: true,

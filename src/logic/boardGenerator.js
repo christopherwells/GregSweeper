@@ -379,6 +379,14 @@ export function generateBoard(rows, cols, mines, excludeRow, excludeCol, rng, op
         // Apply anti-zero-cluster if needed (skip if it breaks solvability)
         if (options.maxZeroCluster && options.maxZeroCluster < Infinity) {
           const clone = createEmptyBoard(rows, cols);
+          // Carry the walls: redistributeMines recalculates adjacency and
+          // the acceptance solve below verifies THIS clone, so a wall-less
+          // copy would (a) rewrite every number non-wall-aware and (b)
+          // certify a board other than the one shipped — the caller
+          // re-attaches the walls afterwards, but the numbers stay stale
+          // (applyGimmicks keeps pre-applied walls without a recalc) and
+          // the certifier can then "prove" cells the real topology doesn't.
+          if (constructiveBoard._wallEdges) clone._wallEdges = constructiveBoard._wallEdges;
           for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
               clone[r][c].isMine = constructiveBoard[r][c].isMine;
@@ -398,7 +406,11 @@ export function generateBoard(rows, cols, mines, excludeRow, excludeCol, rng, op
     }
   }
 
-  // Fallback: rejection sampling for low density boards
+  // Fallback: rejection sampling for low density boards. Every board built
+  // here carries the caller's walls BEFORE any adjacency pass — recalc /
+  // redistribute / swap all read board._wallEdges, and the acceptance solve
+  // must certify the board the player actually gets (this path also runs
+  // when the constructive generator exhausts its tries on a walls level).
   const maxSolveAttempts = density > 0.35 ? 500 : density > 0.30 ? 300 : density > 0.25 ? 200 : 50;
   const maxAcceptableUnknowns = 0; // no 50/50s ever
 
@@ -410,10 +422,12 @@ export function generateBoard(rows, cols, mines, excludeRow, excludeCol, rng, op
 
     if (attempt === 0 || attempt % 5 === 0) {
       board = createEmptyBoard(rows, cols);
+      if (wallEdges) board._wallEdges = wallEdges;
       placeMines(board, mines, excludeRow, excludeCol, rng);
       recalcAllAdjacency(board);
     } else if (bestBoard) {
       board = createEmptyBoard(rows, cols);
+      if (wallEdges) board._wallEdges = wallEdges;
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           board[r][c].isMine = bestBoard[r][c].isMine;
@@ -424,6 +438,7 @@ export function generateBoard(rows, cols, mines, excludeRow, excludeCol, rng, op
       swapMines(board, swapCount, excludeRow, excludeCol, rng);
     } else {
       board = createEmptyBoard(rows, cols);
+      if (wallEdges) board._wallEdges = wallEdges;
       placeMines(board, mines, excludeRow, excludeCol, rng);
       recalcAllAdjacency(board);
     }
@@ -454,6 +469,7 @@ export function generateBoard(rows, cols, mines, excludeRow, excludeCol, rng, op
 
   const finalBoard = bestBoard || (() => {
     const board = createEmptyBoard(rows, cols);
+    if (wallEdges) board._wallEdges = wallEdges;
     placeMines(board, mines, excludeRow, excludeCol, rng);
     recalcAllAdjacency(board);
     return board;

@@ -105,7 +105,10 @@ export function buildShareData(state) {
     mineUrl: 'assets/sprites/mine.png',
     modifiers,
     certified: !!state.boardCertificate,
-    bombHits: state.dailyBombHits || 0,
+    // Weekly strikes live in their own state field (same split as the win
+    // modal's strikesInfo) — reading dailyBombHits here dropped the "N mine
+    // hits" line from every weekly card.
+    bombHits: (mode === 'weekly' ? state.weeklyBombHits : state.dailyBombHits) || 0,
     colors: {
       bg: cv('--color-bg', '#e8e4da'),
       cellRevealed: cv('--color-cell-revealed', '#d6cdb9'),
