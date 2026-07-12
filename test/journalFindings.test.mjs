@@ -3,7 +3,12 @@
 // on 2026-07-02 (additive seconds → log-multipliers), so an SD from one
 // era is in different units from the other. A naive start-vs-end
 // comparison across the flip reads as a ~97% "tightening" that never
-// happened — every verdict must be scoped to the current era only.
+// happened — every trajectory therefore reads ONE consistent log-scale
+// series: live `candidates` on/after the epoch, the sequential
+// backfit's `candidatesLog` retrodiction before it, and a pre-epoch
+// row's original seconds-scale `candidates` NEVER. Retrodicted points
+// are chart history only: a sparse date's posterior mostly echoes its
+// prior, so verdict sentences stay windowed to the live era's fits.
 
 import './helpers.mjs';
 import { test } from 'node:test';
@@ -11,9 +16,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const {
-  SCALE_EPOCHS, VERDICT_THRESHOLD_PCT,
+  SCALE_EPOCHS, VERDICT_THRESHOLD_PCT, RESTING_MIN_IDLE_DAYS,
   dedupeHistory, deriveStudies, classifyVerdict, estimateSummary, estimateLine,
-  buildJournal, findingById, featureUnit,
+  buildJournal, findingById, featureUnit, retroCaption,
 } = await import('../src/logic/journalFindings.js');
 
 // Fixture rows. Dates on/after 2026-07-02 are current-era (log scale);
@@ -97,6 +102,123 @@ test('verdict branches: settling / widened / open at the ±15% era bar', () => {
   // Fewer than two era fits → early, no number.
   assert.equal(classifyVerdict({ trajectory: [{ date: '2026-07-02', mean: 0.03, sd: 0.02 }] }).kind, 'early');
   assert.equal(classifyVerdict(null).kind, 'early');
+});
+
+test('REGRESSION: pre-epoch rows contribute candidatesLog ONLY, and retrodictions never enter the verdict window', () => {
+  const history = [
+    // Pre-epoch row carrying BOTH tables. The original candidates entry is
+    // poisoned (sd 0.64, seconds scale): if the reader ever consumed it,
+    // the deepEqual below breaks. The candidatesLog sd (0.025) is also a
+    // tripwire: if retrodictions leaked into the verdict window, the
+    // delta would read 36% instead of the live era's 20%.
+    row('2026-06-30', 'sonarCellCount', [cand('sonarCellCount', 0.71, 0.64)], {
+      candidatesLog: [cand('sonarCellCount', 0.045, 0.025)],
+    }),
+    // Pre-epoch row WITHOUT candidatesLog (the backfit skipped it on a
+    // diagnostics failure) — contributes nothing, never falls back.
+    row('2026-07-01', 'compassCellCount', [cand('sonarCellCount', 0.70, 0.67)]),
+    row('2026-07-02', 'sonarCellCount', [cand('sonarCellCount', 0.043, 0.020)]),
+    row('2026-07-08', 'compassCellCount', [cand('sonarCellCount', 0.042, 0.016)]),
+  ];
+  const study = deriveStudies(history).find(s => s.feature === 'sonarCellCount');
+  assert.equal(study.trajectory.length, 3, 'the skipped date leaves a gap, not a seconds-scale point');
+  assert.deepEqual(study.trajectory[0], { date: '2026-06-30', mean: 0.045, sd: 0.025, retro: true });
+  assert.deepEqual(study.trajectory[1], { date: '2026-07-02', mean: 0.043, sd: 0.020, retro: false });
+  // The verdict windows to the LIVE fits: (0.020 − 0.016) / 0.020 = 20%,
+  // anchored at the era start, never at the retrodicted point.
+  assert.equal(study.verdict.kind, 'settling');
+  assert.equal(study.verdict.deltaPct, 20);
+  assert.match(study.verdict.copy, /narrowed 20% since Jul 2\./);
+  assert.ok(!study.verdict.copy.includes('Jun 30'), 'the sentence must not claim the retrodicted window');
+});
+
+test('retroCaption: present only when the series contains re-measured points', () => {
+  const withRetro = {
+    trajectory: [
+      { date: '2026-06-30', mean: 0.04, sd: 0.02, retro: true },
+      { date: '2026-07-02', mean: 0.04, sd: 0.018, retro: false },
+    ],
+  };
+  const caption = retroCaption(withRetro);
+  assert.match(caption, /I re-measured/, 'Greg speaks in plain first person');
+  assert.match(caption, /today’s yardstick/);
+  assert.match(caption, /Jul 2/, 'names the scale epoch');
+  assert.ok(!caption.includes('—'), `em-dash in retro caption: "${caption}"`);
+  assert.ok(!/\d+\s*%|\bseconds\b/.test(caption), 'the caption explains, it never claims a number');
+  // A study whose series is all live fits must NOT imply a re-measurement.
+  assert.equal(retroCaption({ trajectory: [{ date: '2026-07-02', mean: 0.04, sd: 0.02, retro: false }] }), null);
+  assert.equal(retroCaption(null), null);
+});
+
+test('resting: idle past the bar AND bottom-half CV rank; never over widened or early', () => {
+  assert.equal(RESTING_MIN_IDLE_DAYS, 14);
+  const base = {
+    trajectory: [
+      { date: '2026-07-02', mean: 0.03, sd: 0.020 },
+      { date: '2026-07-10', mean: 0.03, sd: 0.019 }, // ~5% move → open underneath
+    ],
+    daysIdle: 20, cvRank: 8, cvCount: 12,
+  };
+  const resting = classifyVerdict(base);
+  assert.equal(resting.kind, 'resting');
+  assert.equal(resting.deltaPct, null, 'resting claims no number');
+  assert.match(resting.copy, /sure enough .* boards elsewhere/);
+  assert.match(resting.copy, /^I’m /, 'Greg speaks in plain first person');
+  assert.ok(!resting.copy.includes('—'), `em-dash in resting copy: "${resting.copy}"`);
+
+  // Targeted recently → still an active study, not resting.
+  assert.equal(classifyVerdict({ ...base, daysIdle: RESTING_MIN_IDLE_DAYS - 1 }).kind, 'open');
+  // High uncertainty rank → the model still wants data here; boundary is
+  // ceil(12/2) = 6 (0-indexed): rank 5 is top-half, rank 6 rests.
+  assert.equal(classifyVerdict({ ...base, cvRank: 5 }).kind, 'open');
+  assert.equal(classifyVerdict({ ...base, cvRank: 6 }).kind, 'resting');
+  // Absent from the latest fit's table → no rank, never resting.
+  assert.equal(classifyVerdict({ ...base, cvRank: null }).kind, 'open');
+  // A widened picture is not "sure enough", however idle.
+  const widened = classifyVerdict({
+    ...base,
+    trajectory: [
+      { date: '2026-07-02', mean: 0.03, sd: 0.020 },
+      { date: '2026-07-10', mean: 0.03, sd: 0.026 },
+    ],
+  });
+  assert.equal(widened.kind, 'widened');
+  // Resting takes the chip over settling (the tightening stays visible on
+  // the sparkline and estimate; the chip explains why no new boards).
+  const overSettling = classifyVerdict({
+    ...base,
+    trajectory: [
+      { date: '2026-07-02', mean: 0.03, sd: 0.020 },
+      { date: '2026-07-10', mean: 0.03, sd: 0.015 },
+    ],
+  });
+  assert.equal(overSettling.kind, 'resting');
+  // Early stays early regardless — no number, no resting claim.
+  assert.equal(classifyVerdict({
+    trajectory: [{ date: '2026-07-10', mean: 0.03, sd: 0.02 }],
+    daysIdle: 40, cvRank: 11, cvCount: 12,
+  }).kind, 'early');
+});
+
+test('deriveStudies computes the resting inputs from the latest refit row', () => {
+  const history = [
+    row('2026-07-02', 'sonarCellCount', [
+      cand('sonarCellCount', 0.04, 0.020), cand('compassCellCount', 0.03, 0.020),
+    ]),
+    row('2026-07-20', 'compassCellCount', [
+      cand('compassCellCount', 0.03, 0.021), // cv 0.70 → rank 0
+      cand('sonarCellCount', 0.04, 0.008),   // cv 0.20 → rank 1 of 2 (bottom half)
+    ]),
+  ];
+  const studies = deriveStudies(history);
+  const sonar = studies.find(s => s.feature === 'sonarCellCount');
+  assert.equal(sonar.daysIdle, 18, 'idle days anchor to the latest refit date, not the wall clock');
+  assert.equal(sonar.cvRank, 1);
+  assert.equal(sonar.cvCount, 2);
+  assert.equal(sonar.verdict.kind, 'resting', 'idle + bottom-half rank rests even though the SD tightened 60%');
+  const compass = studies.find(s => s.feature === 'compassCellCount');
+  assert.equal(compass.daysIdle, 0);
+  assert.notEqual(compass.verdict.kind, 'resting', 'the live target never rests');
 });
 
 test('unnamed features derive a study but never reach a player surface', () => {
@@ -189,7 +311,8 @@ test('smoke: the real modelHistory.json derives a sane journal (structural invar
   assert.ok(journal.meta.totalRuns > 200);
 
   const epoch = SCALE_EPOCHS[SCALE_EPOCHS.length - 1];
-  const kinds = new Set(['settling', 'widened', 'open', 'early']);
+  const kinds = new Set(['settling', 'widened', 'resting', 'open', 'early']);
+  const rowsByDate = new Map(dedupeHistory(real).map(r => [r.date, r]));
   for (const s of journal.studies) {
     assert.ok(s.label, `${s.feature} has a plain name`);
     assert.ok(s.hypothesis && !/[A-Z][a-z]+Count/.test(s.hypothesis), `${s.feature} hypothesis is plain language`);
@@ -197,12 +320,32 @@ test('smoke: the real modelHistory.json derives a sane journal (structural invar
       `${s.feature} carries an em-dash in player copy`);
     assert.ok(kinds.has(s.verdict.kind), `${s.feature} verdict ${s.verdict.kind}`);
     for (const p of s.trajectory) {
-      assert.ok(p.date >= epoch, `${s.feature} trajectory leaked a pre-epoch row (${p.date})`);
+      // Provenance per point: a live point must equal the row's candidates
+      // entry, a pre-epoch point the row's candidatesLog entry — and the
+      // retro flag must say which side it came from.
+      const src = rowsByDate.get(p.date);
+      const table = p.date >= epoch ? src.candidates : src.candidatesLog;
+      assert.ok(Array.isArray(table), `${s.feature} ${p.date}: point without a log-scale source table`);
+      const entry = table.find(c => c.feature === s.feature);
+      assert.equal(p.mean, entry.mean, `${s.feature} ${p.date} mean provenance`);
+      assert.equal(p.sd, entry.sd, `${s.feature} ${p.date} sd provenance`);
+      assert.equal(p.retro, p.date < epoch, `${s.feature} ${p.date} retro flag`);
+      // Seconds-scale SDs run up to ~22; log-scale ones sit far below 1.
+      // A point at or past 1 means the old-scale candidates leaked in.
+      assert.ok(p.sd < 1, `${s.feature} ${p.date}: sd ${p.sd} looks seconds-scale`);
     }
-    // The verdict's number must match SD math computed independently here.
-    if (s.trajectory.length >= 2 && s.verdict.deltaPct !== null) {
-      const sd0 = s.trajectory[0].sd;
-      const sd1 = s.trajectory[s.trajectory.length - 1].sd;
+    const cap = retroCaption(s);
+    if (s.trajectory.some(p => p.retro)) {
+      assert.ok(cap && !cap.includes('—'), `${s.feature} retro caption: "${cap}"`);
+    } else {
+      assert.equal(cap, null, `${s.feature} must not claim a re-measurement it doesn't show`);
+    }
+    // The verdict's number must match SD math computed independently here,
+    // over the LIVE window only (retrodictions are chart history).
+    const live = s.trajectory.filter(p => !p.retro);
+    if (live.length >= 2 && s.verdict.deltaPct !== null) {
+      const sd0 = live[0].sd;
+      const sd1 = live[live.length - 1].sd;
       assert.equal(s.verdict.deltaPct, Math.round(((sd0 - sd1) / sd0) * 100), `${s.feature} deltaPct`);
     }
     // Estimates exist for every named study with era fits, with a sane band.
@@ -210,6 +353,27 @@ test('smoke: the real modelHistory.json derives a sane journal (structural invar
     if (s.latest) {
       assert.ok(est.lo < est.pct && est.pct < est.hi, `${s.feature} estimate band`);
     }
+  }
+
+  // The sequential backfit reached back: the flagship studies' series
+  // begin before the scale epoch and are genuinely long.
+  for (const f of ['sonarCellCount', 'compassCellCount']) {
+    const s = journal.studies.find(x => x.feature === f);
+    assert.ok(s.trajectory.length >= 20, `${f} unified series length ${s.trajectory.length}`);
+    assert.ok(s.trajectory[0].date < epoch, `${f} series must start before the epoch`);
+    assert.equal(s.trajectory[0].retro, true, `${f} first point is a flagged retrodiction`);
+  }
+
+  // Backfit coverage and provenance: nearly every pre-epoch row carries
+  // candidatesLog (a couple of diagnostics skips are honest), each with
+  // its fit provenance, and the original candidates stay untouched.
+  const preRows = dedupeHistory(real).filter(r => r.date < epoch);
+  const withLog = preRows.filter(r => Array.isArray(r.candidatesLog));
+  assert.ok(withLog.length >= 60, `backfit coverage: ${withLog.length}/${preRows.length} pre-epoch rows`);
+  for (const r of withLog) {
+    assert.ok(r.candidatesLogFit && r.candidatesLogFit.n_scores >= 30, `${r.date} candidatesLogFit provenance`);
+    assert.match(r.candidatesLogFit.diagnostics, /Rhat/, `${r.date} diagnostics recorded`);
+    assert.ok(Array.isArray(r.candidates) && r.candidates.length > 0, `${r.date} original candidates preserved`);
   }
 
   // fragmentationRatio (the one historical unnamed target) only ever

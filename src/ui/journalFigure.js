@@ -22,12 +22,20 @@ export { formatShortDate };
 // Build the sparkline SVG for a study, or null when there are fewer
 // than two fits to draw (the card's verdict copy already says "too
 // soon" in that case — an empty axis would just be noise).
+//
+// The 100% baseline anchors on the first LIVE fit (the current model
+// era's start) — the same anchor the verdict sentence uses. Retrodicted
+// points draw relative to it: anchoring on the series' first point
+// would let a sparse retrodiction (a posterior still hugging its prior,
+// e.g. sonar's tiny April sd) become the baseline and read every later
+// honest fit as a 900% explosion.
 export function renderStudySparkline(study) {
   const t = study?.trajectory;
   if (!Array.isArray(t) || t.length < 2) return null;
-  const base = t[0].sd;
+  const anchor = t.find(p => p.retro !== true) ?? t[0];
+  const base = anchor.sd;
   if (!(base > 0)) return null;
-  const pts = t.map(p => ({ date: p.date, rel: (p.sd / base) * 100 }));
+  const pts = t.map(p => ({ date: p.date, rel: (p.sd / base) * 100, retro: p.retro === true }));
 
   // y-domain: cover the data and always include the 100% baseline, with
   // enough padding that a nearly-flat line doesn't hug an edge.
@@ -50,10 +58,10 @@ export function renderStudySparkline(study) {
   svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
   svg.setAttribute('role', 'img');
   svg.setAttribute('aria-label',
-    `Uncertainty trend across ${pts.length} nightly fits, relative to the first fit shown`);
+    `Uncertainty trend across ${pts.length} nightly fits, relative to the current model's first fit`);
 
-  // The 100% baseline — where the era began. Above it = wider than the
-  // start, below = tighter.
+  // The 100% baseline — where the current model era began. Above it =
+  // wider than that anchor, below = tighter.
   const baseline = document.createElementNS(svgNS, 'line');
   baseline.setAttribute('x1', PAD_X);
   baseline.setAttribute('y1', yFor(100));
@@ -68,14 +76,21 @@ export function renderStudySparkline(study) {
   path.setAttribute('d', pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${xFor(i).toFixed(1)},${yFor(p.rel).toFixed(1)}`).join(' '));
   svg.appendChild(path);
 
+  // On a long series (the backfit reaches to April, ~80 fits) full-size
+  // dots would overlap into a solid bead-chain; shrink them so each fit
+  // stays an individual, hoverable point. The latest fit keeps its size.
+  const dotR = pts.length > 40 ? 3 : 5.5;
   for (let i = 0; i < pts.length; i++) {
     const dot = document.createElementNS(svgNS, 'circle');
     dot.setAttribute('cx', xFor(i));
     dot.setAttribute('cy', yFor(pts[i].rel));
-    dot.setAttribute('r', i === pts.length - 1 ? 8 : 5.5);
-    dot.setAttribute('class', 'jf-dot');
+    dot.setAttribute('r', i === pts.length - 1 ? 8 : dotR);
+    // Retrodicted fits (the pre-epoch backfit) render dimmer than live
+    // nightly fits; the card's retro caption says why.
+    dot.setAttribute('class', pts[i].retro ? 'jf-dot jf-dot-retro' : 'jf-dot');
     const title = document.createElementNS(svgNS, 'title');
-    title.textContent = `${formatShortDate(pts[i].date)} · uncertainty at ${Math.round(pts[i].rel)}% of where it started`;
+    title.textContent = `${formatShortDate(pts[i].date)} · uncertainty at ${Math.round(pts[i].rel)}% of where the current model started`
+      + (pts[i].retro ? ' · re-measured' : '');
     dot.appendChild(title);
     svg.appendChild(dot);
   }

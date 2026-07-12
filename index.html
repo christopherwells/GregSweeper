@@ -368,8 +368,9 @@
   <div id="crux-teaser" class="crux-teaser hidden"></div>
 
   <!-- Journal report (?report=<feature> share route): a standalone view
-       of one finding from Greg's Journal. Populated by the ?report=
-       route (next PR); sibling of #app like #crux-teaser. -->
+       of one finding from Greg's Journal. Filled by src/ui/journalReport.js
+       (lazy-loaded from the route branch in main.js); sibling of #app like
+       #crux-teaser so it renders while #app is hidden. -->
   <div id="journal-report" class="journal-report hidden"></div>
 
   <div id="app" class="hidden">

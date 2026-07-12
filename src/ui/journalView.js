@@ -9,16 +9,11 @@
 // the More sheet row in main.js.
 
 import { $ } from './domHelpers.js';
-import { buildJournal, estimateLine } from '../logic/journalFindings.js';
+import { buildJournal, estimateLine, retroCaption } from '../logic/journalFindings.js';
 import { loadExperimentTarget, getExperimentMeta } from '../logic/experimentDesign.js';
 import { renderStudySparkline, formatShortDate } from './journalFigure.js';
-
-const VERDICT_CHIPS = {
-  settling: 'Closing in',
-  widened: 'Widened',
-  open: 'Still open',
-  early: 'Just started',
-};
+import { shareFindingLink, VERDICT_CHIPS } from './journalReport.js';
+import { showToast } from './toastManager.js';
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -50,6 +45,8 @@ function _studyCard(study) {
     const fig = el('div', 'journal-fig');
     fig.appendChild(spark);
     fig.appendChild(el('span', 'journal-fig-caption', 'Greg’s uncertainty, night by night. A falling line means he’s homing in.'));
+    const retro = retroCaption(study);
+    if (retro) fig.appendChild(el('span', 'journal-fig-caption', retro));
     card.appendChild(fig);
   }
 
@@ -61,6 +58,17 @@ function _studyCard(study) {
   }
   if (study.allBackfilled) metaLine += ' · from Greg’s early calibration days';
   card.appendChild(el('p', 'journal-card-meta', metaLine));
+
+  // Every finding is shareable as the logged-out ?report= page — the
+  // same Web Share / clipboard flow as the crux challenge button.
+  const share = el('button', 'journal-share-btn', 'Share this finding');
+  share.type = 'button';
+  share.addEventListener('click', async () => {
+    const outcome = await shareFindingLink(study);
+    if (outcome === 'copied') showToast('Link copied. Paste it to a friend.');
+    else if (outcome === 'failed') showToast('Couldn’t share the link.', 3000, 'uiWarning');
+  });
+  card.appendChild(share);
 
   return card;
 }

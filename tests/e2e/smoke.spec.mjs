@@ -21,6 +21,10 @@ const ENTRIES = [
   { name: 'weekly deep link', q: '?isTest=1&mode=weekly' },
   { name: 'timed deep link', q: '?isTest=1&mode=timed' },
   { name: 'crux teaser route', q: '?crux=2026-06-01&isTest=1' },
+  // ?report= (PR B): a real finding id and a bogus one — the bogus id
+  // must fall back to the journal index, never a white screen.
+  { name: 'journal report route', q: '?report=sonarCellCount&isTest=1' },
+  { name: 'journal report fallback (unknown id)', q: '?report=notAFeature&isTest=1' },
 ];
 
 // Substrings of console output that are known-benign and NOT app faults. Keep
@@ -60,9 +64,9 @@ for (const { name, q } of ENTRIES) {
     const mints = attachMintCapture(page);
     await page.goto(q);
     // App is interactive once the boot overlay yields to the title screen, the
-    // in-game app, or (for the crux route) the standalone teaser.
+    // in-game app, or (for the crux/report routes) their standalone pages.
     await page.waitForSelector(
-      '#title-screen:not(.hidden), #app:not(.hidden), #crux-teaser:not(.hidden)',
+      '#title-screen:not(.hidden), #app:not(.hidden), #crux-teaser:not(.hidden), #journal-report:not(.hidden)',
       { timeout: 20_000 },
     );
     // Give any first-render microtasks a beat to flush a late throw.
