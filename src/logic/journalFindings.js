@@ -131,16 +131,20 @@ export function deriveStudies(history) {
 //   widened  — more data brought MORE spread (a finding, published like any other)
 //   open     — moved less than the threshold either way
 //   early    — fewer than two fits on the current model; no number, ever
-// The copy never names the feature (the card header does) and never
-// claims the MECHANISM was confirmed — tightening proves the estimate
-// is settling, not that Greg's hunch about why was right.
+// The copy is Greg's first person, plain register, no em-dashes
+// (Christopher's voice ruling, 2026-07-12). It never names the feature
+// (the card header does) and never claims the MECHANISM was confirmed —
+// narrowing proves the estimate is settling, not that Greg's hunch
+// about why was right. "Since I started measuring" means this
+// measurement series: the scale change restarted the clock, and the
+// trajectory only exists inside the current era.
 export function classifyVerdict(study) {
   const t = study?.trajectory;
   if (!Array.isArray(t) || t.length < 2) {
     return {
       kind: 'early',
       deltaPct: null,
-      copy: 'Too soon to say — not enough fits yet on the current model.',
+      copy: 'Too soon to say. I’ve only just started measuring this one.',
     };
   }
   const first = t[0];
@@ -150,20 +154,20 @@ export function classifyVerdict(study) {
     return {
       kind: 'settling',
       deltaPct: delta.deltaPct,
-      copy: `The picture is settling: this estimate has tightened ${delta.deltaPct}% under study.`,
+      copy: `I’m closing in: my range for this has narrowed ${delta.deltaPct}% since I started measuring.`,
     };
   }
   if (delta.kind === 'widened') {
     return {
       kind: 'widened',
       deltaPct: delta.deltaPct,
-      copy: `WIDENED by ${Math.abs(delta.deltaPct)}% — more data, more spread. That is a finding too: this effect is less regular than I thought.`,
+      copy: `My range got ${Math.abs(delta.deltaPct)}% WIDER. More plays, less certainty. That’s a real finding too: this one is messier than I thought.`,
     };
   }
   return {
     kind: 'open',
     deltaPct: delta.deltaPct,
-    copy: 'Still open. The estimate has barely moved; more boards needed.',
+    copy: 'No verdict yet. The numbers have barely budged. More boards will settle it.',
   };
 }
 
@@ -185,21 +189,22 @@ export function estimateSummary(study) {
   };
 }
 
-// The estimate as one plain sentence. When the ±1 SD band dips to or
-// below zero the honest reading is "possibly nothing at all" — tiny
-// effects (liar cells today) must never render as a fake negative.
-// Null when there is no era estimate or no unit vocabulary.
+// The estimate as one plain sentence (Greg's plain register, no
+// em-dashes). When the ±1 SD band dips to or below zero the honest
+// reading is "or nothing at all" — tiny effects (liar cells today) must
+// never render as a fake negative. "Probably no more than" is the +1 SD
+// point (~84% of the posterior sits below it): a probable edge, never
+// "at most", which would claim a bound the fit does not prove. Null
+// when there is no era estimate or no unit vocabulary.
 export function estimateLine(study) {
   const est = estimateSummary(study);
   const unit = study?.unit;
   if (!est || !unit) return null;
   const f = (x) => x.toFixed(1);
   if (est.lo <= 0) {
-    // "maybe as much as", never "at most" — hi is the +1 SD point, a
-    // give-or-take edge, not a bound the fit proves.
-    return `Each ${unit} adds about ${f(est.pct)}% to a solve — possibly nothing at all, maybe as much as ${f(est.hi)}%.`;
+    return `Each ${unit} might add about ${f(est.pct)}% to your time, or nothing at all. Probably no more than ${f(est.hi)}%.`;
   }
-  return `Each ${unit} adds about ${f(est.pct)}% to a solve, give or take (${f(est.lo)}%–${f(est.hi)}%).`;
+  return `Each ${unit} adds about ${f(est.pct)}% to your time. Could be as little as ${f(est.lo)}%, maybe as much as ${f(est.hi)}%.`;
 }
 
 // The whole journal, ready to render: named studies newest-first, the

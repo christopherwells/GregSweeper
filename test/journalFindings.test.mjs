@@ -72,18 +72,24 @@ test('verdict branches: settling / widened / open at the ±15% era bar', () => {
   const settling = mk(0.020, 0.016); // -20% spread
   assert.equal(settling.kind, 'settling');
   assert.equal(settling.deltaPct, 20);
-  assert.match(settling.copy, /tightened 20%/);
+  assert.match(settling.copy, /narrowed 20%/);
   // Honesty: settling speaks about the ESTIMATE, never confirms the mechanism.
   assert.ok(!/confirm/i.test(settling.copy));
 
   const widened = mk(0.020, 0.024); // +20% spread — published, not hidden
   assert.equal(widened.kind, 'widened');
-  assert.match(widened.copy, /WIDENED by 20%/);
+  assert.match(widened.copy, /20% WIDER/);
   assert.match(widened.copy, /finding too/i);
 
   const open = mk(0.020, 0.0195); // ~2%, inside the bar
   assert.equal(open.kind, 'open');
-  assert.match(open.copy, /barely moved/);
+  assert.match(open.copy, /barely budged/);
+
+  // Voice ruling (2026-07-12): player copy is Greg's first person with
+  // zero em-dashes.
+  for (const v of [settling, widened, open, classifyVerdict(null)]) {
+    assert.ok(!v.copy.includes('—'), `em-dash in verdict copy: "${v.copy}"`);
+  }
 
   // Fewer than two era fits → early, no number.
   assert.equal(classifyVerdict({ trajectory: [{ date: '2026-07-02', mean: 0.03, sd: 0.02 }] }).kind, 'early');
@@ -129,14 +135,17 @@ test('estimateSummary converts log coefficients to plain percentages with a ±1 
   assert.equal(estimateSummary({ latest: null }), null, 'no era fits → no estimate, never a fabricated one');
 });
 
-test('estimateLine: a band touching zero reads as "possibly nothing", never a fake negative', () => {
+test('estimateLine: a band touching zero reads as "or nothing at all", never a fake negative', () => {
   // Liar cells today: mean 0.0015 ± 0.0019 → the band dips below zero.
   const tiny = estimateLine({ unit: 'liar cell', latest: { date: '2026-07-12', mean: 0.0015, sd: 0.0019 } });
-  assert.match(tiny, /possibly nothing at all/);
+  assert.match(tiny, /might add about 0\.2% to your time, or nothing at all\. Probably no more than 0\.3%\./);
   assert.ok(!tiny.includes('-'), `no negative percentages on a player surface: "${tiny}"`);
-  // A clearly-positive band reads as give-or-take.
+  // A clearly-positive band reads as a could-be range, plain register.
   const solid = estimateLine({ unit: 'compass cell', latest: { date: '2026-07-12', mean: 0.0329, sd: 0.0189 } });
-  assert.match(solid, /Each compass cell adds about 3\.3% to a solve, give or take \(1\.4%–5\.3%\)\./);
+  assert.match(solid, /Each compass cell adds about 3\.3% to your time\. Could be as little as 1\.4%, maybe as much as 5\.3%\./);
+  for (const line of [tiny, solid]) {
+    assert.ok(!line.includes('—'), `em-dash in estimate line: "${line}"`);
+  }
   assert.equal(estimateLine({ unit: 'compass cell', latest: null }), null);
   assert.equal(estimateLine({ unit: null, latest: { date: 'x', mean: 0.03, sd: 0.01 } }), null);
 });
@@ -181,6 +190,8 @@ test('smoke: the real modelHistory.json derives a sane journal (structural invar
   for (const s of journal.studies) {
     assert.ok(s.label, `${s.feature} has a plain name`);
     assert.ok(s.hypothesis && !/[A-Z][a-z]+Count/.test(s.hypothesis), `${s.feature} hypothesis is plain language`);
+    assert.ok(!s.hypothesis.includes('—') && !s.verdict.copy.includes('—'),
+      `${s.feature} carries an em-dash in player copy`);
     assert.ok(kinds.has(s.verdict.kind), `${s.feature} verdict ${s.verdict.kind}`);
     for (const p of s.trajectory) {
       assert.ok(p.date >= epoch, `${s.feature} trajectory leaked a pre-epoch row (${p.date})`);

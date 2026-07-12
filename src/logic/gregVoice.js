@@ -38,19 +38,19 @@ export function featureName(feature) {
 // numbers: the number arrives later, in a verdict backed by the fitted
 // posterior. Each line is a mechanism plus what the data will decide.
 const FEATURE_HYPOTHESIS = {
-  lockedCellCount: 'Locked cells make you wait for information you would normally have. Waiting should cost time — the boards will tell me how much.',
+  lockedCellCount: 'Locked cells make you wait for information you would normally have. Waiting should cost time. The boards will tell me how much.',
   sonarCellCount: 'A sonar reading covers a wide area but names no cell. I suspect it helps less than it looks like it should.',
-  compassCellCount: 'A compass points at danger without counting it. I cannot yet tell whether players read it fast or stop to puzzle over it.',
+  compassCellCount: 'A compass points at danger without counting it. I can’t yet tell whether players read it fast or stop to puzzle over it.',
   mirrorPairCount: 'Mirrored numbers lie about location, not amount. Players who spot the pair should lose almost no time. Should.',
   liarCellCount: 'A liar is off by one, and one wrong number can poison a whole corner. Or players just route around it. The data decides.',
-  mysteryCellCount: 'A mystery cell hides its number entirely. Missing information has a price; I am measuring it.',
+  mysteryCellCount: 'A mystery cell hides its number entirely. Missing information has a price; I’m measuring it.',
   wormholePairCount: 'Wormhole numbers count two places at once. Splitting one number across the board should slow the reading down.',
   wallEdgeCount: 'Walls cut neighbors apart, so every number near one means less than it looks. Small effect or large? Not sure yet.',
-  zeroClusterCount: 'Big open areas clear themselves. More of them should mean faster boards — the question is how much faster.',
+  zeroClusterCount: 'Big open areas clear themselves. More of them should mean faster boards. The question is how much faster.',
   searchMoves: 'Some deductions need real search, not pattern reading. Those moves should be the expensive ones.',
   patternMoves: 'Pattern reads are practiced moves. They should cost seconds, not tens of seconds.',
   totalMines: 'More mines, more flags, more careful steps. The steady cost of density is the backbone of the model.',
-  cellCount: 'Bigger boards take longer. Obvious — but pinning the exact rate is what everything else is measured against.',
+  cellCount: 'Bigger boards take longer. Obvious, but pinning the exact rate is what everything else is measured against.',
 };
 
 // The hypothesis line for a feature. Named features get their bespoke
@@ -62,9 +62,9 @@ export function featureHypothesis(feature) {
   if (FEATURE_HYPOTHESIS[feature]) return FEATURE_HYPOTHESIS[feature];
   const name = featureName(feature);
   if (name) {
-    return `I think ${name} changes how long a board takes. The data will tighten my estimate — or show there is nothing there.`;
+    return `I think ${name} changes how long a board takes. The data will tighten my estimate, or show there is nothing there.`;
   }
-  return 'An experimental board measure. I am still working out whether it matters at all.';
+  return 'An experimental board measure. I’m still working out whether it matters at all.';
 }
 
 // Shared honesty primitive: what did an uncertainty (posterior SD) do

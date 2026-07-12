@@ -120,6 +120,7 @@ test('featureHypothesis: bespoke claims are structural and plain; unnamed featur
     assert.ok(h && h.length > 30, `missing hypothesis for ${f}`);
     assert.ok(!/\d+\s*%|\d+\.\d+|\bseconds\b.*\d/.test(h), `${f} hypothesis must not pose a number: "${h}"`);
     assert.ok(!/[a-z][A-Z]/.test(h), `${f} hypothesis leaks a code name: "${h}"`);
+    assert.ok(!h.includes('—'), `${f} hypothesis carries an em-dash: "${h}"`);
   }
   // A studied-but-unnamed feature: honest generic, never the raw key.
   const generic = featureHypothesis('fragmentationRatio');

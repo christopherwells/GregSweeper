@@ -14,7 +14,7 @@ import { loadExperimentTarget, getExperimentMeta } from '../logic/experimentDesi
 import { renderStudySparkline, formatShortDate } from './journalFigure.js';
 
 const VERDICT_CHIPS = {
-  settling: 'Settling',
+  settling: 'Closing in',
   widened: 'Widened',
   open: 'Still open',
   early: 'Just started',
@@ -49,7 +49,7 @@ function _studyCard(study) {
   if (spark) {
     const fig = el('div', 'journal-fig');
     fig.appendChild(spark);
-    fig.appendChild(el('span', 'journal-fig-caption', 'Greg’s uncertainty, night by night (100% = where this era began)'));
+    fig.appendChild(el('span', 'journal-fig-caption', 'Greg’s uncertainty, night by night. A falling line means he’s homing in.'));
     card.appendChild(fig);
   }
 
@@ -57,9 +57,9 @@ function _studyCard(study) {
   if (study.firstStudied) {
     metaLine += study.firstStudied === study.lastStudied
       ? ` · ${formatShortDate(study.firstStudied)}`
-      : ` · ${formatShortDate(study.firstStudied)} – ${formatShortDate(study.lastStudied)}`;
+      : ` · ${formatShortDate(study.firstStudied)} to ${formatShortDate(study.lastStudied)}`;
   }
-  if (study.allBackfilled) metaLine += ' · from the bootstrap era';
+  if (study.allBackfilled) metaLine += ' · from Greg’s early calibration days';
   card.appendChild(el('p', 'journal-card-meta', metaLine));
 
   return card;
@@ -85,7 +85,7 @@ export async function renderJournalModal() {
   if (!Array.isArray(history) || history.length === 0) {
     body.textContent = '';
     body.appendChild(el('p', 'journal-empty',
-      'Greg’s notes aren’t available right now. They ship with the game — try again once you’re back online.'));
+      'Greg’s notes aren’t available right now. They ship with the game, so try again once you’re back online.'));
     return;
   }
 
@@ -93,12 +93,13 @@ export async function renderJournalModal() {
   body.textContent = '';
 
   body.appendChild(el('p', 'journal-intro',
-    'Every daily board is part of a live experiment: each night the par model refits itself on real solves, '
-    + 'then picks tomorrow’s board to answer whatever it’s least sure about. These are the study notes — bad days included.'));
+    'Greg times every solve and uses the results to work out what actually makes a board hard. '
+    + 'Each day’s board helps answer whatever he’s least sure about. '
+    + 'These are his notes, including the days that didn’t go his way.'));
 
   if (journal.meta && !journal.meta.fitOk) {
     body.appendChild(el('p', 'journal-fit-warning',
-      'Last night’s fit failed Greg’s quality bar, so the previous model is still in charge.'));
+      'Last night’s fit failed my quality bar, so I kept the previous model.'));
   }
 
   if (journal.open) {
@@ -110,7 +111,7 @@ export async function renderJournalModal() {
     // targets, and most are coverage missions besides (the 2026-06-10
     // field-note drift class). The note must claim only what the live
     // target actually is: what the model wants data on next.
-    open.appendChild(el('p', 'journal-open-note', 'Where the model most wants data right now.'));
+    open.appendChild(el('p', 'journal-open-note', 'This is what I’m least sure about right now.'));
     body.appendChild(open);
   }
 
@@ -120,18 +121,18 @@ export async function renderJournalModal() {
 
   if (journal.unnamedCount > 0) {
     body.appendChild(el('p', 'journal-unnamed',
-      `…plus ${journal.unnamedCount} early experiment${journal.unnamedCount !== 1 ? 's' : ''} that never earned a name.`));
+      `Plus ${journal.unnamedCount} early experiment${journal.unnamedCount !== 1 ? 's' : ''} I never gave a name.`));
   }
 
   if (journal.meta) {
-    const bits = ['Model refit nightly'];
+    const bits = ['Greg re-checks the numbers every night'];
     // "solves", mode-neutral: n_scores counts the daily fit's rows
     // (daily completions + weekly firsts) — NOT the Timed mode, whose
     // win-censored runs feed a separate model and are excluded here.
     if (journal.meta.totalRuns != null && journal.meta.nPlayers != null) {
       bits.push(`${journal.meta.totalRuns} solves from ${journal.meta.nPlayers} players`);
     }
-    if (journal.meta.lastRefitDate) bits.push(`last fit ${formatShortDate(journal.meta.lastRefitDate)}`);
+    if (journal.meta.lastRefitDate) bits.push(`last updated ${formatShortDate(journal.meta.lastRefitDate)}`);
     body.appendChild(el('p', 'journal-meta', bits.join(' · ')));
   }
 }

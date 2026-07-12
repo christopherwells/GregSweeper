@@ -57,7 +57,7 @@ export function renderStudySparkline(study) {
   svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
   svg.setAttribute('role', 'img');
   svg.setAttribute('aria-label',
-    `Uncertainty trend across ${pts.length} nightly fits, relative to the era's first fit`);
+    `Uncertainty trend across ${pts.length} nightly fits, relative to the first fit shown`);
 
   // The 100% baseline — where the era began. Above it = wider than the
   // start, below = tighter.
@@ -82,7 +82,7 @@ export function renderStudySparkline(study) {
     dot.setAttribute('r', i === pts.length - 1 ? 8 : 5.5);
     dot.setAttribute('class', 'jf-dot');
     const title = document.createElementNS(svgNS, 'title');
-    title.textContent = `${formatShortDate(pts[i].date)} · uncertainty at ${Math.round(pts[i].rel)}% of era start`;
+    title.textContent = `${formatShortDate(pts[i].date)} · uncertainty at ${Math.round(pts[i].rel)}% of where it started`;
     dot.appendChild(title);
     svg.appendChild(dot);
   }
