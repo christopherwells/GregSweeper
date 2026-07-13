@@ -56,7 +56,7 @@ function _fullLedger(table) {
   }
   details.appendChild(tbl);
   details.appendChild(el('p', 'journal-table-note',
-    'Effect per unit on a solve, with the band the model would bet on. Greg re-fits these every night.'));
+    'Each row shows the effect per unit on a solve, with the band the model would bet on. Greg re-fits these every night.'));
   return details;
 }
 
@@ -124,7 +124,7 @@ export async function renderJournalModal() {
 
   if (screen.unnamedCount > 0) {
     body.appendChild(el('p', 'journal-unnamed',
-      `Plus ${screen.unnamedCount} early experiment${screen.unnamedCount !== 1 ? 's' : ''} I never gave a name.`));
+      `There ${screen.unnamedCount === 1 ? 'is also 1 early experiment' : `are also ${screen.unnamedCount} early experiments`} I never gave a name.`));
   }
 
   if (screen.meta) {
