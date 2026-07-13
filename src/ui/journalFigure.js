@@ -173,7 +173,7 @@ function _sdTrend(study, spec) {
 // The effect estimate over the live era, in plain percent space, with
 // the ±1 SD band shaded. The band may honestly dip below the zero line
 // (that IS the uncertainty); the tooltips speak the straddling form
-// ("nothing to X%") so no fake-negative sentence ships.
+// ("0% to X%") so no fake-negative sentence ships.
 function _estimateBand(study) {
   const live = (study?.trajectory || []).filter(p => p && p.retro !== true);
   if (live.length < 2) return null;
@@ -199,8 +199,8 @@ function _estimateBand(study) {
   const svg = _svg(VB_H,
     `The fitted effect across ${pts.length} nightly fits, with its uncertainty band`);
 
-  // Zero line: the "costs nothing" mark, so a lay reader can see when
-  // the band still allows no effect at all.
+  // Zero line: the 0% mark, so a lay reader can see when the band
+  // still allows no effect at all.
   const zero = document.createElementNS(svgNS, 'line');
   zero.setAttribute('x1', PAD_X);
   zero.setAttribute('y1', yFor(0));
@@ -231,7 +231,7 @@ function _estimateBand(study) {
     // rounding language; the band phrase carries the straddle honestly.
     const midStr = fmtPct(Math.max(0, p.mid));
     const bandStr = p.lo <= 0
-      ? `nothing to ${fmtPct(p.hi)}%`
+      ? `0% to ${fmtPct(p.hi)}%`
       : `${fmtPct(p.lo)}% to ${fmtPct(p.hi)}%`;
     _titled(node, `${formatShortDate(p.date)} · about ${midStr}%, band ${bandStr}`);
     svg.appendChild(node);
@@ -284,7 +284,7 @@ function _bandStrip(study) {
   bandRect.setAttribute('height', 18);
   bandRect.setAttribute('rx', 4);
   bandRect.setAttribute('class', 'jf-band');
-  const bandStr = est.lo <= 0 ? `nothing to ${fmtPct(est.hi)}%` : `${fmtPct(est.lo)}% to ${fmtPct(est.hi)}%`;
+  const bandStr = est.lo <= 0 ? `0% to ${fmtPct(est.hi)}%` : `${fmtPct(est.lo)}% to ${fmtPct(est.hi)}%`;
   _titled(bandRect, `The band the model would bet on: ${bandStr}`);
   svg.appendChild(bandRect);
 

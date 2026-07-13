@@ -45,7 +45,7 @@ import {
 export const MAX_LOG_ENTRIES = 6;
 
 // Below ~1% per unit, an effect is a rounding error on a real solve —
-// the bar that separates "a real cost" from "almost nothing" when a
+// the bar that separates "a real cost" from "about 0%" when a
 // hypothesis is graded. Display-only; the fit itself never rounds.
 export const NEGLIGIBLE_PCT = 1;
 
@@ -130,7 +130,7 @@ const ARCS = {
   lockedCellCount: {
     lean: 'cost',
     pos: 'I wrote that waiting should cost time. It does, and the ledger now says how much.',
-    zero: 'I wrote that waiting should cost time. The ledger read it back as almost nothing.',
+    zero: 'I wrote that waiting should cost time. The ledger read it back at about 0%.',
     out: 'Waiting costs something. Pinning down how much is the part that keeps taking boards.',
   },
   sonarCellCount: {
@@ -151,9 +151,9 @@ const ARCS = {
   },
   liarCellCount: {
     lean: 'fork',
-    pos: 'My note gave the data two doors: poison, or nothing much. It picked poison. A wrong number costs real time.',
-    zero: 'My note gave the data two doors: poison, or nothing much. It picked the second. A liar barely moves the clock.',
-    out: 'Two doors in my note, poison or nothing much, and the data still stands in the hallway.',
+    pos: 'My note gave the data two doors: poison, or a rounding error. It picked poison. A wrong number costs real time.',
+    zero: 'My note gave the data two doors: poison, or a rounding error. It picked the second. A liar barely moves the clock.',
+    out: 'Two doors in my note, poison or a rounding error, and the data still stands in the hallway.',
   },
   mysteryCellCount: {
     lean: 'cost',
@@ -170,7 +170,7 @@ const ARCS = {
   wallEdgeCount: {
     lean: 'size',
     pos: 'My note asked whether the wall discount is small or large. Large enough to bill for, it turns out.',
-    zero: 'My note asked whether the wall discount is small or large. The answer came back: small. Nearly nothing, in fact.',
+    zero: 'My note asked whether the wall discount is small or large. The answer came back: small. Nearly 0%, in fact.',
     out: 'Small or large is the whole question in this file, and the file hasn’t answered it.',
   },
   zeroClusterCount: {
@@ -211,7 +211,7 @@ const ARCS = {
 const ARC_GENERIC = {
   lean: 'size',
   pos: 'My note on this one was a question mark. The data answered with a real cost.',
-  zero: 'My note on this one was a question mark. The data answered with a shrug: almost nothing.',
+  zero: 'My note on this one was a question mark. The data answered with a shrug: about 0%.',
   neg: 'My note on this one was a question mark. The data answered with a small refund.',
   out: 'This file is mostly a question mark, and the data hasn’t picked it up yet.',
 };
@@ -224,9 +224,9 @@ function _arcFor(feature) {
 
 // The ±1 SD band in percent space, graded for prose:
 //   neg — the whole band is a refund
-//   zero — the band admits nothing and tops out below a rounding error
+//   zero — the band admits 0% and tops out below a rounding error
 //   pos — a real cost the band stands behind (a proven sub-1% effect is
-//         still pos: calling a band that EXCLUDES zero "almost nothing"
+//         still pos: calling a band that EXCLUDES zero "about 0%"
 //         would contradict the estimate sentence on the same card)
 //   ambiguous — straddles zero with a real top end; can't say
 export function bandClass(est) {
@@ -440,11 +440,11 @@ const ESTIMATE_POS = [
   'Cost per {unit}: about {pct}%, floor around {lo}%, ceiling around {hi}%.',
 ];
 const ESTIMATE_ZERO = [
-  'The effect sits somewhere between nothing and about {hi}% per {unit}.',
-  'Per {unit}, the cost reads as somewhere between nothing and about {hi}%.',
-  'Call it somewhere between nothing and about {hi}% per {unit}.',
-  'The {unit} charge reads between nothing and about {hi}%.',
-  'Between nothing and about {hi}% per {unit}. Thin, either way.',
+  'The effect sits somewhere between 0% and about {hi}% per {unit}.',
+  'Per {unit}, the cost reads as somewhere between 0% and about {hi}%.',
+  'Call it somewhere between 0% and about {hi}% per {unit}.',
+  'The {unit} charge reads between 0% and about {hi}%.',
+  'Between 0% and about {hi}% per {unit}. Thin, either way.',
 ];
 
 // The band beat's variant 0 is always study.verdict.copy — the shared
@@ -579,12 +579,12 @@ function _closerPool(state, resolution) {
 // live data parks FOUR zero-band studies at once, so that pool carries
 // the most variants — the same-screen dedup needs the headroom.
 const LEDGER_ZERO = [
-  '{Label} cost almost nothing, between nothing and about {hi}% per {unitShort}. Closed {closedDate}.',
-  '{Label} barely registered: somewhere between nothing and about {hi}% per {unitShort}. Closed {closedDate}.',
-  '{Label} came to almost nothing, probably no more than about {hi}% per {unitShort}. Closed {closedDate}.',
-  '{Label} never showed a real cost: nothing to about {hi}% per {unitShort}. Closed {closedDate}.',
-  'The {label} bill came to between nothing and about {hi}% per {unitShort}. Closed {closedDate}.',
-  '{Label}: no real charge, nothing to about {hi}% per {unitShort}. Closed {closedDate}.',
+  '{Label} cost between 0% and about {hi}% per {unitShort}. Closed {closedDate}.',
+  '{Label} barely registered: somewhere between 0% and about {hi}% per {unitShort}. Closed {closedDate}.',
+  '{Label} landed near 0%, probably no more than about {hi}% per {unitShort}. Closed {closedDate}.',
+  '{Label} never showed a real cost: 0% to about {hi}% per {unitShort}. Closed {closedDate}.',
+  'The {label} bill came to between 0% and about {hi}% per {unitShort}. Closed {closedDate}.',
+  '{Label}: no real charge, 0% to about {hi}% per {unitShort}. Closed {closedDate}.',
 ];
 const LEDGER_POS = [
   '{Label} cost real time, about {pct}% per {unitShort}. Closed {closedDate}.',
@@ -596,9 +596,9 @@ const LEDGER_POS = [
 // never a bare signed point estimate, which could put a fake negative
 // on the ledger.
 const LEDGER_PARKED = [
-  '{Label} still reads between nothing and about {hi}% per {unitShort}. Parked {closedDate}.',
-  '{Label} sits somewhere between nothing and about {hi}% per {unitShort}, steady enough to set down. Parked {closedDate}.',
-  '{Label} never picked a side: nothing to about {hi}% per {unitShort}. Parked {closedDate}.',
+  '{Label} still reads between 0% and about {hi}% per {unitShort}. Parked {closedDate}.',
+  '{Label} sits somewhere between 0% and about {hi}% per {unitShort}, steady enough to set down. Parked {closedDate}.',
+  '{Label} never picked a side: 0% to about {hi}% per {unitShort}. Parked {closedDate}.',
 ];
 // A drifted (reopened) study must not misattribute the CURRENT value to
 // the close — its line cites both figures against {refDate}, the actual

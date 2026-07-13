@@ -91,6 +91,8 @@ test('voice guards: every pool line obeys the writing rails', () => {
     }
     // Every line carries content: no line is only connective filler.
     assert.ok(line.replace(/\{[A-Za-z]+\}/g, '').trim().length >= 10, `thin pool line: "${line}"`);
+    // The 0%-not-"nothing" ruling holds at the pool level too.
+    assert.ok(!NOTHING_AS_NUMBER.test(line), `say 0%, not "nothing", in pool line: "${line}"`);
   }
 });
 
@@ -111,11 +113,17 @@ function assertDigitsDerivable(text, facts, label) {
   }
 }
 
+// "Nothing" as a stand-in for the number is banned: the bound is 0%
+// (Christopher's ruling, 2026-07-12). Ordinary uses ("nothing left to
+// squeeze") stay legal; these are the quantity phrasings.
+const NOTHING_AS_NUMBER = /\b(between nothing|nothing to about|nothing at all|almost nothing|nearly nothing|nothing much)\b/i;
+
 function assertProseRails(text, label) {
   assert.ok(!text.includes('—') && !text.includes('–'), `${label}: dash in "${text}"`);
   assert.ok(!/today.s board/i.test(text), `${label}: fieldnote-drift claim in "${text}"`);
   assert.ok(!/(?<!study )\bday\s+\d/i.test(text), `${label}: bare day-count in "${text}"`);
   assert.ok(!/\{[A-Za-z]+\}/.test(text), `${label}: unresolved template hole in "${text}"`);
+  assert.ok(!NOTHING_AS_NUMBER.test(text), `${label}: say 0%, not "nothing": "${text}"`);
 }
 
 // ── State machine ─────────────────────────────────────────────────────
@@ -605,7 +613,7 @@ test('REGRESSION: a straddling or refund band can never render a fake negative o
     const s = { ...straddling, latest: { ...straddling.latest, date: asOf } };
     const entry = composeEntry(s, {}, newSession());
     assert.ok(!/-\d/.test(entry.text), `fake negative in: "${entry.text}"`);
-    assert.match(entry.text, /between nothing and about/, 'the honest straddling form renders');
+    assert.match(entry.text, /between 0% and about/, 'the honest straddling form renders');
   }
   // A parked ambiguous study's ledger line uses the straddling form too.
   const parked = conclusionLine({
@@ -613,7 +621,7 @@ test('REGRESSION: a straddling or refund band can never render a fake negative o
     verdict: { kind: 'resting', deltaPct: null }, lastStudied: '2026-07-04',
   }, 'resting', newSession());
   assert.ok(!/-\d/.test(parked), `fake negative in ledger: "${parked}"`);
-  assert.match(parked, /nothing/);
+  assert.match(parked, /0%/);
 });
 
 test('bandClass: a band that excludes zero is pos even under 1%, zero requires lo <= 0', () => {

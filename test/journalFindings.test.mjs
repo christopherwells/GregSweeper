@@ -273,8 +273,10 @@ test('estimateLine: one sentence, whole percents, never a fake negative (copy ru
   // Liar cells today: mean 0.0015 ± 0.0019 → the band dips below zero.
   // The zero-band form is ONE sentence — the old "might add… or nothing
   // at all. Probably no more than…" hedge stack read as fake.
+  // The bound is spoken as the number 0%, never "nothing" (ruling
+  // 2026-07-12, second pass).
   const tiny = estimateLine({ unit: 'liar cell', latest: { date: '2026-07-12', mean: 0.0015, sd: 0.0019 } });
-  assert.equal(tiny, 'Each liar cell adds somewhere between nothing and about 0.3% to your time.');
+  assert.equal(tiny, 'Each liar cell adds somewhere between 0% and about 0.3% to your time.');
   assert.ok(!/-\d/.test(tiny), `no negative percentages on a player surface: "${tiny}"`);
   // A clearly-positive band: whole percents, exactly one hedge word.
   const solid = estimateLine({ unit: 'compass cell', latest: { date: '2026-07-12', mean: 0.0329, sd: 0.0189 } });

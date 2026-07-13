@@ -325,11 +325,11 @@ export function fmtPct(x) {
 
 // The estimate as ONE plain sentence (Greg's plain register, no
 // em-dashes, at most one hedge word). When the ±1 SD band dips to or
-// below zero the honest reading is "between nothing and about X%" —
-// tiny effects (liar cells today) must never render as a fake negative,
-// and the old two-sentence hedge stack ("might add… or nothing at all.
-// Probably no more than…") read as fake. Null when there is no era
-// estimate or no unit vocabulary.
+// below zero the honest reading is "between 0% and about X%" — tiny
+// effects (liar cells today) must never render as a fake negative, the
+// old two-sentence hedge stack read as fake, and the bound is spoken
+// as the number 0%, never "nothing" (Christopher's ruling, 2026-07-12).
+// Null when there is no era estimate or no unit vocabulary.
 export function estimateLine(study) {
   const est = estimateSummary(study);
   const unit = study?.unit;
@@ -340,7 +340,7 @@ export function estimateLine(study) {
     return `Each ${unit} seems to give a little time back, about ${fmtPct(Math.abs(est.pct))}%. I’m double-checking that.`;
   }
   if (est.lo <= 0) {
-    return `Each ${unit} adds somewhere between nothing and about ${fmtPct(est.hi)}% to your time.`;
+    return `Each ${unit} adds somewhere between 0% and about ${fmtPct(est.hi)}% to your time.`;
   }
   const loStr = fmtPct(est.lo);
   const hiStr = fmtPct(est.hi);
