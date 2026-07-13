@@ -93,6 +93,8 @@ test('voice guards: every pool line obeys the writing rails', () => {
     assert.ok(line.replace(/\{[A-Za-z]+\}/g, '').trim().length >= 10, `thin pool line: "${line}"`);
     // The 0%-not-"nothing" ruling holds at the pool level too.
     assert.ok(!NOTHING_AS_NUMBER.test(line), `say 0%, not "nothing", in pool line: "${line}"`);
+    // And so does the measurement-verb ruling.
+    assert.ok(!IMPRECISE_VERBS.test(line), `imprecise verb in pool line: "${line}"`);
   }
 });
 
@@ -118,12 +120,20 @@ function assertDigitsDerivable(text, facts, label) {
 // squeeze") stay legal; these are the quantity phrasings.
 const NOTHING_AS_NUMBER = /\b(between nothing|nothing to about|nothing at all|almost nothing|nearly nothing|nothing much)\b/i;
 
+// Sentences describing data, estimates, bands, or the model use
+// measurement verbs (Christopher's ruling, 2026-07-12: "Scientists
+// don't write with such imprecise verbs"). This list pins the exact
+// phrasings the verb audit removed — body/emotion verbs on numbers,
+// and invented instruments — so they can't creep back into a pool.
+const IMPRECISE_VERBS = /(\bate\b|breathe|frown|wiggle|wander|wobbl|firmed up|\bmeter\b|needle|for the pot|keeps the desk|math keeps|pushing back|sat still|range came in|band came in|changed hands|shrug|grew doubt|misbehav|doubt lives|stands in the hallway)/i;
+
 function assertProseRails(text, label) {
   assert.ok(!text.includes('—') && !text.includes('–'), `${label}: dash in "${text}"`);
   assert.ok(!/today.s board/i.test(text), `${label}: fieldnote-drift claim in "${text}"`);
   assert.ok(!/(?<!study )\bday\s+\d/i.test(text), `${label}: bare day-count in "${text}"`);
   assert.ok(!/\{[A-Za-z]+\}/.test(text), `${label}: unresolved template hole in "${text}"`);
   assert.ok(!NOTHING_AS_NUMBER.test(text), `${label}: say 0%, not "nothing": "${text}"`);
+  assert.ok(!IMPRECISE_VERBS.test(text), `${label}: imprecise verb on a measurement: "${text}"`);
 }
 
 // ── State machine ─────────────────────────────────────────────────────
@@ -451,7 +461,7 @@ test('labLog: notable days only, newest first, honest diffs', () => {
   assert.equal(switched.facts.runs, 4);
   assert.equal(switched.facts.delta, 5);
   assert.match(switched.text, /^Jul 3\./);
-  assert.match(switched.text, /file|assignment/, 'the switch is narrated');
+  assert.match(switched.text, /file|assignment|chooser/, 'the switch is narrated');
 
   for (const e of log) {
     assertProseRails(e.text, `log ${e.date}`);
@@ -831,6 +841,7 @@ test('figure captions and intro variants obey the framing-copy rails', () => {
     assert.ok(!c.includes('—') && !c.includes('–'), `dash in caption: "${c}"`);
     assert.ok(!/\d/.test(c), `caption claims a number: "${c}"`);
     assert.ok(!/today.s board/i.test(c), `fieldnote-drift claim in caption: "${c}"`);
+    assert.ok(!IMPRECISE_VERBS.test(c), `imprecise verb in caption: "${c}"`);
   }
   // The modal intro rotates by refit date but always frames the same
   // honest promise (his notes, bad days included).

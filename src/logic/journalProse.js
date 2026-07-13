@@ -32,6 +32,12 @@
 //  - Nothing ties a finding to TODAY'S BOARD (boards generate days
 //    ahead under earlier targets — the fieldnote-drift class). The
 //    queue line frames only what the model wants data on next.
+//  - Sentences whose subject is data, an estimate, a band, or the
+//    model use MEASUREMENT VERBS (narrowed, widened, moved, held,
+//    landed, reads, runs, settled, registered, resolved). Greg's
+//    stances can be colorful; the verbs describing numbers cannot
+//    (Christopher's ruling 2026-07-12: no "the model ate", "breathes
+//    easier", "wandered", invented meters or needles).
 //  - Verdicts and estimates stay windowed to live-era (non-retro) fits;
 //    everything here reads through journalFindings, which enforces it.
 
@@ -147,19 +153,19 @@ const ARCS = {
     lean: 'zero',
     pos: 'In this file I wrote that a player who spots the pair should lose almost no time. The top of the range does not read as almost no time. The Should is on notice.',
     zero: 'I wrote that a player who spots the pair should lose almost no time. So far the data lets the Should stand.',
-    out: 'The Should in my notes is unproven either way. I keep reading the range and it keeps shrugging.',
+    out: 'The Should in my notes is unproven either way. I keep reading the range and it refuses to settle.',
   },
   liarCellCount: {
     lean: 'fork',
     pos: 'My note gave the data two doors: poison, or a rounding error. It picked poison. A wrong number costs real time.',
     zero: 'My note gave the data two doors: poison, or a rounding error. It picked the second. A liar barely moves the clock.',
-    out: 'Two doors in my note, poison or a rounding error, and the data still stands in the hallway.',
+    out: 'Two doors in my note, poison or a rounding error. The data hasn’t picked one yet.',
   },
   mysteryCellCount: {
     lean: 'cost',
     pos: 'I wrote that missing information has a price. It does, and now I know the rate.',
     zero: 'I wrote that missing information has a price. I measured it, and the price is close to free.',
-    out: 'The price of a hidden number is still in dispute. The meter runs.',
+    out: 'The price of a hidden number is still in dispute. Measurement continues.',
   },
   wormholePairCount: {
     lean: 'cost',
@@ -176,7 +182,7 @@ const ARCS = {
   zeroClusterCount: {
     lean: 'faster',
     neg: 'I wrote that open areas should pay time back. They do.',
-    zero: 'I wrote that open areas should pay time back. The refund is close to zero.',
+    zero: 'I wrote that open areas should pay time back. The refund is close to 0%.',
     pos: 'I wrote that open areas should pay time back. The ledger disagrees with the sign, which is worth losing sleep over.',
     out: 'The refund per open area is still an open entry.',
   },
@@ -184,11 +190,11 @@ const ARCS = {
     lean: 'cost',
     pos: 'I wrote that the search moves should be the expensive ones. They are.',
     zero: 'I wrote that the search moves should be the expensive ones. The bill came back smaller than my sentence did.',
-    out: 'Expensive or not is still being litigated, one board at a time.',
+    out: 'Expensive or not is still unsettled, one board at a time.',
   },
   patternMoves: {
     lean: 'cost',
-    pos: 'I wrote that a practiced read should cost seconds, not tens of seconds. The meter agrees: real, and small.',
+    pos: 'I wrote that a practiced read should cost seconds, not tens of seconds. The data agrees: real, and small.',
     zero: 'I wrote that a practiced read should cost seconds, not tens of seconds. It barely even costs the seconds.',
     out: 'Practiced reads should be cheap. How cheap is the part I’m still counting.',
   },
@@ -196,7 +202,7 @@ const ARCS = {
     lean: 'cost',
     pos: 'The steady cost of density holds up the whole model, and it keeps holding.',
     zero: 'A density coefficient near zero would mean my model is broken. I’d rebuild before I believed it.',
-    out: 'The backbone number is wobbling, and that gets my attention before anything else does.',
+    out: 'The backbone number is drifting, and that gets my attention before anything else does.',
   },
   cellCount: {
     lean: 'cost',
@@ -211,9 +217,9 @@ const ARCS = {
 const ARC_GENERIC = {
   lean: 'size',
   pos: 'My note on this one was a question mark. The data answered with a real cost.',
-  zero: 'My note on this one was a question mark. The data answered with a shrug: about 0%.',
+  zero: 'My note on this one was a question mark. The data answered: about 0%.',
   neg: 'My note on this one was a question mark. The data answered with a small refund.',
-  out: 'This file is mostly a question mark, and the data hasn’t picked it up yet.',
+  out: 'This file is mostly a question mark, and the data hasn’t answered it yet.',
 };
 
 function _arcFor(feature) {
@@ -359,7 +365,7 @@ const OPENERS = {
   'active-unresolved': [
     '{DaysWord} study days on {label}, and the question in my note is still standing.',
     'The {label} file stays open on purpose.',
-    '{DaysWord} study days in, and the {label} file refuses to pick a side.',
+    '{DaysWord} study days in, and the {label} estimate still won’t resolve.',
     'The {label} question is still where I left it: open.',
     'Some files close themselves. The {label} file is not one of them.',
   ],
@@ -368,14 +374,14 @@ const OPENERS = {
     'The {label} file reads the same almost every night I open it.',
     '{DaysWord} study days in, {label} keeps telling me the same thing.',
     'The {label} numbers have stopped surprising me. I keep checking anyway.',
-    'Every fresh look at {label} lands on the same page.',
+    'Every fresh look at {label} gives the same reading.',
   ],
   anomaly: [
     'The {label} file is doing the thing measurement is not supposed to do.',
-    'The {label} file is pushing back.',
-    'I opened the {label} numbers expecting progress and found the opposite.',
+    'The {label} band is widening when it should be narrowing.',
+    'I opened the {label} file expecting progress and found the opposite.',
     'The {label} numbers moved the wrong way, and I want that on the record.',
-    'I fed the {label} file more data and it grew doubt instead of shrinking it.',
+    'More data went into the {label} file and the uncertainty went up.',
   ],
   'closed-won': [
     'The {label} case is closed.',
@@ -436,7 +442,7 @@ const ESTIMATE_POS = [
   'My current read: about {pct}% per {unit}, likely between {lo}% and {hi}%.',
   'Each {unit} costs about {pct}% of your time. The band runs {lo}% to {hi}%.',
   'The estimate sits at about {pct}% per {unit}, between {lo}% and {hi}%.',
-  'The meter says about {pct}% per {unit}, inside {lo}% to {hi}%.',
+  'The model puts it at about {pct}% per {unit}, inside {lo}% to {hi}%.',
   'Cost per {unit}: about {pct}%, floor around {lo}%, ceiling around {hi}%.',
 ];
 const ESTIMATE_ZERO = [
@@ -453,7 +459,7 @@ const ESTIMATE_ZERO = [
 // only add rotation on top.
 const BAND_SETTLING = [
   'The range has narrowed {deltaPct}% since {windowStart}.',
-  'Since {windowStart} the band has come in {deltaPct}%.',
+  'Uncertainty is down {deltaPct}% since {windowStart}.',
   'The band is {deltaPct}% narrower than it was on {windowStart}.',
 ];
 const BAND_WIDENED = [
@@ -528,9 +534,9 @@ const CLOSERS = {
   anomaly: [
     'I haven’t retracted the hypothesis. But it’s on notice.',
     'Backwards results get front-page space in this notebook.',
-    'When the data misbehaves, I take better notes.',
+    'When the data surprises me, I take better notes.',
     'Wider is still an answer. Just not the one I ordered.',
-    'Instruments drift. Hypotheses wobble. Notebooks remember.',
+    'Instruments drift. So do estimates. Notebooks remember.',
   ],
   'closed-won': [
     'Closed files make room for open ones.',
@@ -546,7 +552,7 @@ const CLOSERS = {
   ],
   resting: [
     'Parked, not forgotten.',
-    'The boards go where the doubt lives. Right now that isn’t here.',
+    'The boards go where the doubt is. Right now that isn’t here.',
     'Good enough to leave alone is its own kind of finding.',
     'Sleeping files still count as science.',
   ],
@@ -631,33 +637,33 @@ const QUEUE_CLOSED = [
 
 // Lab-log datelines, one pool per outcome class.
 const LOG_TIGHTENED = [
-  '{RunsWord} {runsNoun} landed. The range came in {delta}%.',
+  '{RunsWord} {runsNoun} landed. The range narrowed {delta}%.',
   '{RunsWord} {runsNoun} in, and the band tightened {delta}%.',
-  'Good night: {runsWord} {runsNoun}, range down {delta}%.',
+  'A good night: {runsWord} {runsNoun}, range down {delta}%.',
   '{RunsWord} {runsNoun}. {delta}% narrower. I’ll take it.',
-  'The model ate {runsWord} {runsNoun} and gave back {delta}% less doubt.',
-  '{RunsWord} {runsNoun} landed and the estimate firmed up {delta}%.',
-  '{RunsWord} {runsNoun}, and the file breathes easier: {delta}% narrower.',
+  'The model took in {runsWord} {runsNoun}. Spread down {delta}%.',
+  '{RunsWord} {runsNoun} landed and the spread shrank {delta}%.',
+  'Uncertainty down {delta}% on {runsWord} {runsNoun}.',
   'Range down {delta}% on {runsWord} {runsNoun}. Progress you can measure.',
 ];
 const LOG_WIDENED = [
   '{RunsWord} {runsNoun} landed and the range got {delta}% wider. Noted.',
   '{RunsWord} {runsNoun} in, {delta}% more spread. The backwards nights get written down too.',
   'The band grew {delta}% on {runsWord} new {runsNoun}. I don’t hide those.',
-  '{RunsWord} {runsNoun}, and more doubt, not less: {delta}% wider.',
-  'Spread up {delta}% after {runsWord} {runsNoun}. The file gets a frown.',
+  '{RunsWord} {runsNoun}, and more spread, not less: {delta}% wider.',
+  'Spread up {delta}% after {runsWord} {runsNoun}. Recorded all the same.',
   '{RunsWord} {runsNoun}. Range wider by {delta}%. Science, unfortunately.',
   '{RunsWord} {runsNoun} landed. Spread grew {delta}%. Honest ink.',
-  'Doubt up {delta}% after {runsWord} {runsNoun}. The notebook takes it.',
+  'Uncertainty up {delta}% after {runsWord} {runsNoun}. It goes in the log like everything else.',
 ];
 const LOG_FLAT = [
   '{RunsWord} {runsNoun} landed. The range didn’t blink.',
   '{RunsWord} {runsNoun}, no movement. Patience.',
   '{RunsWord} more {runsNoun} and the band held its width.',
   'Quiet math: {runsWord} {runsNoun}, nothing moved.',
-  '{RunsWord} {runsNoun} in. The estimate sat still.',
-  '{RunsWord} {runsNoun}. The needle stayed put.',
-  '{RunsWord} {runsNoun} and not a wiggle.',
+  '{RunsWord} {runsNoun} in. The estimate held.',
+  '{RunsWord} {runsNoun}. The interval stayed where it was.',
+  '{RunsWord} {runsNoun} and no measurable change.',
   'Range held. {RunsWord} {runsNoun} filed.',
 ];
 // Runs landed but this feature had no range on record for the night
@@ -667,7 +673,7 @@ const LOG_FLAT = [
 const LOG_RUNS_PLAIN = [
   '{RunsWord} {runsNoun} landed in the model.',
   '{RunsWord} {runsNoun} came in overnight.',
-  '{RunsWord} {runsNoun} for the pot.',
+  '{RunsWord} {runsNoun} into the dataset.',
   '{RunsWord} {runsNoun}, counted and filed.',
 ];
 const LOG_SWITCHED = [
@@ -675,7 +681,7 @@ const LOG_SWITCHED = [
   'Back on the case: the chooser picked this file again.',
   'This file drew the assignment again.',
   'New assignment, same old question.',
-  'Boards point this way again.',
+  'The chooser aimed boards here again.',
 ];
 const LOG_SWITCHED_FIRST = [
   'The chooser opened this file.',
@@ -683,15 +689,15 @@ const LOG_SWITCHED_FIRST = [
 ];
 const LOG_REJECTED = [
   'The fit failed my quality bar. I kept the previous model.',
-  'Diagnostics said no, so nothing changed hands.',
+  'Diagnostics said no, so nothing changed.',
   'The numbers didn’t converge cleanly. Last night’s model stands.',
-  'Bad convergence, no update. The old model keeps the desk.',
+  'Bad convergence, no update. The previous model stays in place.',
 ];
 const LOG_QUIET = [
   'No new runs. The file sits where it was.',
   'Nobody fed the model. The page stays blank.',
   'Zero runs landed. Even instruments get days off.',
-  'A blank night. The math keeps.',
+  'A blank night. The numbers hold.',
 ];
 
 // Every pool line, for the guard tests (em-dash, hedge, first-person,
@@ -958,11 +964,11 @@ const FIGURE_CAPTIONS = {
   'sd-trend': [
     'Greg’s uncertainty, night by night. A falling line means he’s homing in.',
     'How sure Greg is, fit by fit. Lower means surer.',
-    'The doubt in this file, over time. Down is progress.',
+    'The uncertainty in this file, over time. Down is progress.',
   ],
   'estimate-band': [
     'The estimate itself, night by night. The shaded band is the spread Greg would bet on.',
-    'Where the estimate has wandered since the current model began. Shade = honest spread.',
+    'Where the estimate has moved since the current model began. The shading is the honest spread.',
     'The running read on this effect. The band around the line is Greg’s uncertainty.',
   ],
   'band-strip': [
