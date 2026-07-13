@@ -248,7 +248,7 @@ export function classifyVerdict(study) {
     return {
       kind: 'early',
       deltaPct: null,
-      copy: 'Too soon to say. I’ve only just started measuring this one.',
+      copy: 'It’s too soon to say. I’ve only just started measuring this one.',
     };
   }
   const first = w[0];
@@ -258,7 +258,7 @@ export function classifyVerdict(study) {
     return {
       kind: 'widened',
       deltaPct: delta.deltaPct,
-      copy: `My range got ${Math.abs(delta.deltaPct)}% WIDER. More plays, less certainty. That’s a real finding too: this one is messier than I thought.`,
+      copy: `My range got ${Math.abs(delta.deltaPct)}% WIDER. More plays brought less certainty. That’s a real finding too: this one is messier than I thought.`,
     };
   }
   // Resting takes the card over settling/open: the chip explains why no
@@ -286,7 +286,7 @@ export function classifyVerdict(study) {
   return {
     kind: 'open',
     deltaPct: delta.deltaPct,
-    copy: 'No verdict yet. The numbers have barely budged. More boards will settle it.',
+    copy: 'There’s no verdict yet. The numbers have barely budged. More boards will settle it.',
   };
 }
 

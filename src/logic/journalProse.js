@@ -38,6 +38,13 @@
 //    stances can be colorful; the verbs describing numbers cannot
 //    (Christopher's ruling 2026-07-12: no "the model ate", "breathes
 //    easier", "wandered", invented meters or needles).
+//  - COMPLETE SENTENCES only (Christopher's ruling 2026-07-12: "It's
+//    not even complete sentences"). Every sentence carries a subject
+//    and a finite verb, or is a true imperative. The two sanctioned
+//    notations are the lab log's "Jul 12." datelines and the ledger's
+//    "Closed May 30." / "Parked Jun 8." file stamps, both from his own
+//    spec examples. Telegraphic fragments ("Just width.", "Honest
+//    ink.") are banned; the finite-verb guard test enforces it.
 //  - Verdicts and estimates stay windowed to live-era (non-retro) fits;
 //    everything here reads through journalFindings, which enforces it.
 
@@ -176,7 +183,7 @@ const ARCS = {
   wallEdgeCount: {
     lean: 'size',
     pos: 'My note asked whether the wall discount is small or large. Large enough to bill for, it turns out.',
-    zero: 'My note asked whether the wall discount is small or large. The answer came back: small. Nearly 0%, in fact.',
+    zero: 'My note asked whether the wall discount is small or large. The answer came back small, nearly 0% in fact.',
     out: 'Small or large is the whole question in this file, and the file hasn’t answered it.',
   },
   zeroClusterCount: {
@@ -194,7 +201,7 @@ const ARCS = {
   },
   patternMoves: {
     lean: 'cost',
-    pos: 'I wrote that a practiced read should cost seconds, not tens of seconds. The data agrees: real, and small.',
+    pos: 'I wrote that a practiced read should cost seconds, not tens of seconds. The data agrees: the effect is real and small.',
     zero: 'I wrote that a practiced read should cost seconds, not tens of seconds. It barely even costs the seconds.',
     out: 'Practiced reads should be cheap. How cheap is the part I’m still counting.',
   },
@@ -217,7 +224,7 @@ const ARCS = {
 const ARC_GENERIC = {
   lean: 'size',
   pos: 'My note on this one was a question mark. The data answered with a real cost.',
-  zero: 'My note on this one was a question mark. The data answered: about 0%.',
+  zero: 'My note on this one was a question mark. The data came back at about 0%.',
   neg: 'My note on this one was a question mark. The data answered with a small refund.',
   out: 'This file is mostly a question mark, and the data hasn’t answered it yet.',
 };
@@ -388,7 +395,7 @@ const OPENERS = {
     'For the record, the {label} file is settled.',
     'I closed the {label} file on {closedDate}.',
     'The {label} question got its answer.',
-    'One more file for the done drawer: {label}.',
+    'One more file goes in the done drawer: {label}.',
   ],
   'closed-lost': [
     'For the record, the {label} case is closed and my hunch lost.',
@@ -402,7 +409,7 @@ const OPENERS = {
     'I set the {label} file down on {closedDate}.',
     '{Label} rests while the boards go where the doubt is.',
     'The {label} file can sit for now.',
-    'Nothing urgent left in the {label} numbers, so they rest.',
+    'Nothing urgent is left in the {label} numbers, so they rest.',
   ],
   reopened: [
     'I closed the {label} file and it moved while I wasn’t looking.',
@@ -416,7 +423,7 @@ const OPENERS = {
   ],
   early: [
     'The {label} file barely has ink in it.',
-    'New file: {label}. Too soon for numbers.',
+    'The {label} file is new, and it’s too soon for numbers.',
     'The {label} study just opened, and I don’t publish guesses.',
     'The {label} file is mostly blank pages.',
   ],
@@ -443,14 +450,14 @@ const ESTIMATE_POS = [
   'Each {unit} costs about {pct}% of your time. The band runs {lo}% to {hi}%.',
   'The estimate sits at about {pct}% per {unit}, between {lo}% and {hi}%.',
   'The model puts it at about {pct}% per {unit}, inside {lo}% to {hi}%.',
-  'Cost per {unit}: about {pct}%, floor around {lo}%, ceiling around {hi}%.',
+  'The cost per {unit} runs about {pct}%, with a floor around {lo}% and a ceiling around {hi}%.',
 ];
 const ESTIMATE_ZERO = [
   'The effect sits somewhere between 0% and about {hi}% per {unit}.',
   'Per {unit}, the cost reads as somewhere between 0% and about {hi}%.',
   'Call it somewhere between 0% and about {hi}% per {unit}.',
   'The {unit} charge reads between 0% and about {hi}%.',
-  'Between 0% and about {hi}% per {unit}. Thin, either way.',
+  'The cost sits between 0% and about {hi}% per {unit}, which is thin either way.',
 ];
 
 // The band beat's variant 0 is always study.verdict.copy — the shared
@@ -465,7 +472,7 @@ const BAND_SETTLING = [
 const BAND_WIDENED = [
   'More plays came in and my uncertainty went up, by about {deltaPct}%. That’s backwards from how measurement is supposed to go.',
   'The range is {deltaPct}% wider than when this window opened on {windowStart}. I publish those numbers too.',
-  'Since {windowStart} the band has grown {deltaPct}%. Noted, in ink.',
+  'Since {windowStart} the band has grown {deltaPct}%. I noted it in ink.',
   'The spread has grown {deltaPct}% since {windowStart}, and I wrote it down anyway.',
 ];
 const BAND_OPEN = [
@@ -473,26 +480,26 @@ const BAND_OPEN = [
   'The range refuses to budge.',
   'Night after night, the band holds its width.',
   'The width on {windowStart} is roughly the width now.',
-  'No drama in the band. Just width.',
+  'There’s no drama in the band. The width just holds.',
 ];
 
 // "Study days" wording is load-bearing: a study day is a day the
 // experiment aimed at this feature, not a calendar day since it opened.
 const WINDOW = [
-  '{DaysWord} study days, {first} to {last}.',
+  'The study covered {daysWord} study days, {first} to {last}.',
   'The study ran {daysWord} study days, {first} to {last}.',
-  'On the books: {daysWord} study days, {first} to {last}.',
+  'The books show {daysWord} study days, {first} to {last}.',
 ];
 const WINDOW_SINGLE = [
-  'One study day on the books, {first}. Most of the data arrived on ordinary boards.',
-  'A single study day, {first}, plus every board that happened to carry one.',
+  'The file holds one study day, {first}. Most of the data arrived on ordinary boards.',
+  'The study amounts to a single study day, {first}, plus every board that happened to carry one.',
 ];
 
 const IDLE = [
   'I haven’t touched the study since {closedDate} because there’s nothing left to squeeze.',
   'The experiment hasn’t aimed at it since {closedDate}.',
   'The file has sat quiet since {closedDate}.',
-  'Not one aimed board since {closedDate}.',
+  'Not a single aimed board has gone its way since {closedDate}.',
 ];
 
 const DRIFT = [
@@ -503,7 +510,7 @@ const DRIFT = [
 const EARLY_NOTE = [
   'What my note says stands untested for now.',
   'The hypothesis is on the page. The evidence isn’t yet.',
-  'Numbers will come. Boards first.',
+  'The numbers will come once the boards do.',
 ];
 
 // Closers, per state. The grind pool splits on resolution because "an
@@ -513,19 +520,19 @@ const GRIND_CLOSERS_SIDED = [
   'A stubborn answer that flatters my hunch is exactly the kind I double-check.',
   'You’d think I’d enjoy being right. Mostly I keep checking.',
   'The estimate settled. The reason didn’t.',
-  'At some point stubborn becomes settled. Not yet.',
+  'At some point stubborn becomes settled. This one isn’t there yet.',
 ];
 const GRIND_CLOSERS_OTHER = [
   'The estimate settled. The reason didn’t.',
   'Consistency isn’t proof, but it does pay the rent.',
-  'Same answer again. I’m listening.',
+  'The same answer came back again, and I’m listening.',
   'A steady no is still information.',
 ];
 const CLOSERS = {
   'active-unresolved': [
     'A case that won’t close gets the next board.',
-    'No clever move here, just patience.',
-    'More boards. It always comes back to more boards.',
+    'There’s no clever move here, just patience.',
+    'It always comes back to more boards.',
     'The file stays open, and so does the question.',
     'The next board might be the one that settles it.',
     'I can wait. The boards keep coming.',
@@ -535,7 +542,7 @@ const CLOSERS = {
     'I haven’t retracted the hypothesis. But it’s on notice.',
     'Backwards results get front-page space in this notebook.',
     'When the data surprises me, I take better notes.',
-    'Wider is still an answer. Just not the one I ordered.',
+    'Wider is still an answer. It’s just not the one I ordered.',
     'Instruments drift. So do estimates. Notebooks remember.',
   ],
   'closed-won': [
@@ -551,7 +558,7 @@ const CLOSERS = {
     'The data owes me nothing. That’s what makes it worth asking.',
   ],
   resting: [
-    'Parked, not forgotten.',
+    'The file is parked, not forgotten.',
     'The boards go where the doubt is. Right now that isn’t here.',
     'Good enough to leave alone is its own kind of finding.',
     'Sleeping files still count as science.',
@@ -568,7 +575,7 @@ const CLOSERS = {
   ],
   early: [
     'Ask me again after a few more boards.',
-    'First boards, then numbers, then opinions.',
+    'Boards come first, then numbers, then opinions.',
     'The notebook waits for the data, always in that order.',
     'Every thick file in this notebook started thin.',
   ],
@@ -590,7 +597,7 @@ const LEDGER_ZERO = [
   '{Label} landed near 0%, probably no more than about {hi}% per {unitShort}. Closed {closedDate}.',
   '{Label} never showed a real cost: 0% to about {hi}% per {unitShort}. Closed {closedDate}.',
   'The {label} bill came to between 0% and about {hi}% per {unitShort}. Closed {closedDate}.',
-  '{Label}: no real charge, 0% to about {hi}% per {unitShort}. Closed {closedDate}.',
+  '{Label} carried no real charge, 0% to about {hi}% per {unitShort}. Closed {closedDate}.',
 ];
 const LEDGER_POS = [
   '{Label} cost real time, about {pct}% per {unitShort}. Closed {closedDate}.',
@@ -624,10 +631,10 @@ const LEDGER_NEG = [
 // board mix keeps starved features fed); those get their own honest
 // phrasing.
 const QUEUE_OPEN = [
-  'Up next: {label}. Only {nBoardsWord} {boardsNoun} so far, and I want more.',
-  'Next on the wish list: {label}. The file holds {nBoardsWord} {boardsNoun}, and thin files bother me.',
-  'More {label} boards, please. {NBoardsWord} is not a sample size, it’s an anecdote.',
-  'The thin file next in line: {label}, {nBoardsWord} {boardsNoun} deep.',
+  'Next up is {label}. I have only {nBoardsWord} {boardsNoun} so far, and I want more.',
+  'Next on the wish list is {label}. The file holds {nBoardsWord} {boardsNoun}, and thin files bother me.',
+  'I want more {label} boards. {NBoardsWord} is not a sample size, it’s an anecdote.',
+  'The thin file next in line is {label}, at {nBoardsWord} {boardsNoun}.',
 ];
 const QUEUE_CLOSED = [
   'The {label} file is closed, but only {nBoardsWord} {boardsNoun} on record, so the mix keeps feeding it anyway.',
@@ -638,33 +645,33 @@ const QUEUE_CLOSED = [
 // Lab-log datelines, one pool per outcome class.
 const LOG_TIGHTENED = [
   '{RunsWord} {runsNoun} landed. The range narrowed {delta}%.',
-  '{RunsWord} {runsNoun} in, and the band tightened {delta}%.',
-  'A good night: {runsWord} {runsNoun}, range down {delta}%.',
-  '{RunsWord} {runsNoun}. {delta}% narrower. I’ll take it.',
-  'The model took in {runsWord} {runsNoun}. Spread down {delta}%.',
+  '{RunsWord} {runsNoun} came in, and the band tightened {delta}%.',
+  'It was a good night: {runsWord} {runsNoun} landed and the range came down {delta}%.',
+  '{RunsWord} {runsNoun} landed and left the band {delta}% narrower. I’ll take it.',
+  'The model took in {runsWord} {runsNoun}, and the spread came down {delta}%.',
   '{RunsWord} {runsNoun} landed and the spread shrank {delta}%.',
-  'Uncertainty down {delta}% on {runsWord} {runsNoun}.',
-  'Range down {delta}% on {runsWord} {runsNoun}. Progress you can measure.',
+  'Uncertainty fell {delta}% on {runsWord} {runsNoun}.',
+  'The range fell {delta}% on {runsWord} {runsNoun}. That’s progress you can measure.',
 ];
 const LOG_WIDENED = [
-  '{RunsWord} {runsNoun} landed and the range got {delta}% wider. Noted.',
-  '{RunsWord} {runsNoun} in, {delta}% more spread. The backwards nights get written down too.',
+  '{RunsWord} {runsNoun} landed and the range got {delta}% wider. I noted it.',
+  '{RunsWord} {runsNoun} came in and the spread grew {delta}%. The backwards nights get written down too.',
   'The band grew {delta}% on {runsWord} new {runsNoun}. I don’t hide those.',
-  '{RunsWord} {runsNoun}, and more spread, not less: {delta}% wider.',
-  'Spread up {delta}% after {runsWord} {runsNoun}. Recorded all the same.',
-  '{RunsWord} {runsNoun}. Range wider by {delta}%. Science, unfortunately.',
-  '{RunsWord} {runsNoun} landed. Spread grew {delta}%. Honest ink.',
-  'Uncertainty up {delta}% after {runsWord} {runsNoun}. It goes in the log like everything else.',
+  '{RunsWord} {runsNoun} landed and brought more spread, not less: the band is {delta}% wider.',
+  'The spread rose {delta}% after {runsWord} {runsNoun}. I recorded it all the same.',
+  '{RunsWord} {runsNoun} landed and the range is wider by {delta}%. That’s science, unfortunately.',
+  '{RunsWord} {runsNoun} landed and the spread grew {delta}%. It goes down in honest ink.',
+  'Uncertainty rose {delta}% after {runsWord} {runsNoun}. It goes in the log like everything else.',
 ];
 const LOG_FLAT = [
   '{RunsWord} {runsNoun} landed. The range didn’t blink.',
-  '{RunsWord} {runsNoun}, no movement. Patience.',
-  '{RunsWord} more {runsNoun} and the band held its width.',
-  'Quiet math: {runsWord} {runsNoun}, nothing moved.',
-  '{RunsWord} {runsNoun} in. The estimate held.',
-  '{RunsWord} {runsNoun}. The interval stayed where it was.',
-  '{RunsWord} {runsNoun} and no measurable change.',
-  'Range held. {RunsWord} {runsNoun} filed.',
+  '{RunsWord} {runsNoun} landed with no movement. Patience is part of the method.',
+  '{RunsWord} more {runsNoun} arrived and the band held its width.',
+  'The math stayed quiet: {runsWord} {runsNoun} landed and nothing moved.',
+  '{RunsWord} {runsNoun} came in. The estimate held.',
+  '{RunsWord} {runsNoun} landed. The interval stayed where it was.',
+  '{RunsWord} {runsNoun} arrived with no measurable change.',
+  'The range held, and the new {runsNoun} went into the file.',
 ];
 // Runs landed but this feature had no range on record for the night
 // (its first appearance in the fit, or a malformed row) — say only what
@@ -673,14 +680,14 @@ const LOG_FLAT = [
 const LOG_RUNS_PLAIN = [
   '{RunsWord} {runsNoun} landed in the model.',
   '{RunsWord} {runsNoun} came in overnight.',
-  '{RunsWord} {runsNoun} into the dataset.',
-  '{RunsWord} {runsNoun}, counted and filed.',
+  '{RunsWord} {runsNoun} went into the dataset.',
+  'I counted and filed {runsWord} {runsNoun}.',
 ];
 const LOG_SWITCHED = [
   'The experiment came back to this file.',
-  'Back on the case: the chooser picked this file again.',
+  'The chooser picked this file again, so I’m back on the case.',
   'This file drew the assignment again.',
-  'New assignment, same old question.',
+  'A new assignment came in for the same old question.',
   'The chooser aimed boards here again.',
 ];
 const LOG_SWITCHED_FIRST = [
@@ -691,13 +698,13 @@ const LOG_REJECTED = [
   'The fit failed my quality bar. I kept the previous model.',
   'Diagnostics said no, so nothing changed.',
   'The numbers didn’t converge cleanly. Last night’s model stands.',
-  'Bad convergence, no update. The previous model stays in place.',
+  'Convergence was bad and nothing updated. The previous model stays in place.',
 ];
 const LOG_QUIET = [
-  'No new runs. The file sits where it was.',
+  'No new runs arrived. The file sits where it was.',
   'Nobody fed the model. The page stays blank.',
   'Zero runs landed. Even instruments get days off.',
-  'A blank night. The numbers hold.',
+  'The night came up blank. The numbers hold.',
 ];
 
 // Every pool line, for the guard tests (em-dash, hedge, first-person,
@@ -962,19 +969,19 @@ const DOT_SHAPES = ['circle', 'square', 'diamond', 'tick'];
 // the figure carries the numbers.
 const FIGURE_CAPTIONS = {
   'sd-trend': [
-    'Greg’s uncertainty, night by night. A falling line means he’s homing in.',
-    'How sure Greg is, fit by fit. Lower means surer.',
-    'The uncertainty in this file, over time. Down is progress.',
+    'This line tracks Greg’s uncertainty, night by night. A falling line means he’s homing in.',
+    'The line shows how sure Greg is, fit by fit. Lower means surer.',
+    'The uncertainty in this file is plotted over time. Down is progress.',
   ],
   'estimate-band': [
-    'The estimate itself, night by night. The shaded band is the spread Greg would bet on.',
-    'Where the estimate has moved since the current model began. The shading is the honest spread.',
-    'The running read on this effect. The band around the line is Greg’s uncertainty.',
+    'This is the estimate itself, night by night. The shaded band is the spread Greg would bet on.',
+    'The line shows where the estimate has moved since the current model began. The shading is the honest spread.',
+    'This is the running read on the effect. The band around the line is Greg’s uncertainty.',
   ],
   'band-strip': [
-    'The latest read as one range. The mark is Greg’s best single guess.',
-    'Where the cost per {unit} most likely sits, as of the latest fit.',
-    'One bar, the whole claim: the band is what the model would bet on today.',
+    'This bar shows the latest read as one range. The mark is Greg’s best single guess.',
+    'The bar shows where the cost per {unit} most likely sits, as of the latest fit.',
+    'One bar carries the whole claim: the band is what the model would bet on today.',
   ],
 };
 

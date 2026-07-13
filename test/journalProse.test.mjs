@@ -95,6 +95,8 @@ test('voice guards: every pool line obeys the writing rails', () => {
     assert.ok(!NOTHING_AS_NUMBER.test(line), `say 0%, not "nothing", in pool line: "${line}"`);
     // And so does the measurement-verb ruling.
     assert.ok(!IMPRECISE_VERBS.test(line), `imprecise verb in pool line: "${line}"`);
+    // Every pool sentence is a complete sentence (fragments banned).
+    assertCompleteSentences(line, 'pool');
   }
 });
 
@@ -127,6 +129,48 @@ const NOTHING_AS_NUMBER = /\b(between nothing|nothing to about|nothing at all|al
 // and invented instruments — so they can't creep back into a pool.
 const IMPRECISE_VERBS = /(\bate\b|breathe|frown|wiggle|wander|wobbl|firmed up|\bmeter\b|needle|for the pot|keeps the desk|math keeps|pushing back|sat still|range came in|band came in|changed hands|shrug|grew doubt|misbehav|doubt lives|stands in the hallway)/i;
 
+// Complete sentences only (Christopher's ruling 2026-07-12: "It's not
+// even complete sentences"). Every sentence must carry a finite verb
+// (or be a true imperative); the two sanctioned notations are the lab
+// log's datelines and the ledger's Closed/Parked file stamps, both from
+// his own spec examples. The verb lexicon is curated to the pools'
+// closed vocabulary — a new pool line either matches it or the failure
+// message forces a deliberate call: fix the fragment, or add the verb.
+const FINITE_VERBS = new Set(('is are was were be been am has have had do does did will would can could should must might '
+  + 'stays stayed stay stands stand stood sits sit holds hold held reads read runs run ran comes come came goes go went '
+  + 'gets get got keeps keep kept lands land landed left leaves moves move moved narrows narrowed widens widened widening '
+  + 'tightens tightened grew grow grows shrank fell rose settles settle settled closes close closed opens open opened '
+  + 'picks pick picked drew draws draw takes take took puts put says say said tells tell telling told asks ask asked '
+  + 'answers answer answered wrote writes write written predicted suspected measures measure measured knows know knew '
+  + 'wants want wanted watches watch waits wait publishes publish hides hide counts count counted costs cost carried '
+  + 'carries carry registered registers register showed shows show shown failed fails fail arrives arrive arrived brought '
+  + 'brings bring feeds feed fed filed files file aims aim aimed drifts drift drifting resolves resolve rests rest '
+  + 'remembers remember matters matter bothers bother refuses refuse budge budged pinned pins pin surprises surprise '
+  + 'survives survive teaches teach taught turns turn turned dies die died limps limp outranks outrank owes owe makes '
+  + 'make made means mean meant pays pay paid spends spend spent thought think thinks checks check checked ranking ranks '
+  + 'rank ranked listening listened ordered orders order dodges dodge talked talks talk signed slows slow helps help '
+  + 'helped looks look looked started starts start stopped stops stop found finds find blinks blink blinked points point '
+  + 'pointed converges converge converged updated update updates amounts amount covers cover covered tracks track tracked '
+  + 'plotted bets bet lets let seems seem becomes become became needs need needed works work worked disagrees disagree '
+  + 'disagreed agrees agree agreed sides side sided siding loses lose lost enjoys enjoy ate eats eat wonder wonders call '
+  + 'calls called wins win won lies lie lay figures figure figured happens happen happened wishes wish wished doubles '
+  + 'double squeeze squeezed bills bill billed notes note noted records record recorded adds add added gives give gave '
+  + 'given continues continue continued').split(' ').map(w => w.toLowerCase()));
+const CONTRACTION_VERB = /(\b\w+’(s|re|ll|d|ve|m)\b|n’t\b|’s\b)/;
+const NOTATION = /^((Closed|Parked) (\{closedDate\}|[A-Z][a-z]{2} \d{1,2})|[A-Z][a-z]{2} \d{1,2})$/;
+
+function assertCompleteSentences(text, label) {
+  for (const raw of String(text).split(/(?<=[.?!])\s+/)) {
+    const sentence = raw.replace(/[.?!…]+$/, '').trim();
+    if (!sentence || NOTATION.test(sentence)) continue;
+    if (CONTRACTION_VERB.test(sentence)) continue;
+    const hasVerb = sentence.replace(/\{[A-Za-z]+\}/g, ' ')
+      .toLowerCase().split(/[^a-z-]+/)
+      .some(w => FINITE_VERBS.has(w));
+    assert.ok(hasVerb, `${label}: sentence without a finite verb: "${sentence}" (in "${text}")`);
+  }
+}
+
 function assertProseRails(text, label) {
   assert.ok(!text.includes('—') && !text.includes('–'), `${label}: dash in "${text}"`);
   assert.ok(!/today.s board/i.test(text), `${label}: fieldnote-drift claim in "${text}"`);
@@ -134,6 +178,7 @@ function assertProseRails(text, label) {
   assert.ok(!/\{[A-Za-z]+\}/.test(text), `${label}: unresolved template hole in "${text}"`);
   assert.ok(!NOTHING_AS_NUMBER.test(text), `${label}: say 0%, not "nothing": "${text}"`);
   assert.ok(!IMPRECISE_VERBS.test(text), `${label}: imprecise verb on a measurement: "${text}"`);
+  assertCompleteSentences(text, label);
 }
 
 // ── State machine ─────────────────────────────────────────────────────
@@ -842,6 +887,7 @@ test('figure captions and intro variants obey the framing-copy rails', () => {
     assert.ok(!/\d/.test(c), `caption claims a number: "${c}"`);
     assert.ok(!/today.s board/i.test(c), `fieldnote-drift claim in caption: "${c}"`);
     assert.ok(!IMPRECISE_VERBS.test(c), `imprecise verb in caption: "${c}"`);
+    assertCompleteSentences(c, 'caption');
   }
   // The modal intro rotates by refit date but always frames the same
   // honest promise (his notes, bad days included).
