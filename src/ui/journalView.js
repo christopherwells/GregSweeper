@@ -87,10 +87,7 @@ export async function renderJournalModal() {
     return;
   }
 
-  body.appendChild(el('p', 'journal-intro',
-    'Greg times every solve and uses the results to work out what actually makes a board hard. '
-    + 'This is his notebook: the experiment he’s running now, and the files he’s closed. '
-    + 'The days that didn’t go his way are in here too.'));
+  body.appendChild(el('p', 'journal-intro', screen.intro));
 
   if (screen.meta && !screen.meta.fitOk) {
     body.appendChild(el('p', 'journal-fit-warning',

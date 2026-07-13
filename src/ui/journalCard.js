@@ -7,7 +7,8 @@
 // src/logic/journalProse.js — this module only lays it out.
 
 import { formatShortDate } from '../logic/journalFindings.js';
-import { renderStudySparkline } from './journalFigure.js';
+import { planStudyFigures } from '../logic/journalProse.js';
+import { renderStudyFigure } from './journalFigure.js';
 import { PROD_SITE_BASE } from '../config.js';
 
 // Chip labels for the verdict kinds — single-sourced here so the modal
@@ -136,12 +137,14 @@ export function buildStudyCard(study, entry, opts = {}) {
   }
   if (entry?.text) card.appendChild(el('p', 'journal-entry', entry.text));
 
-  const spark = renderStudySparkline(study);
-  if (spark) {
+  // 1-2 figures per card, planned deterministically in the pure layer
+  // (type, point shape, caption all rotate by feature + latest fit).
+  for (const spec of planStudyFigures(study)) {
+    const drawn = renderStudyFigure(study, spec);
+    if (!drawn) continue;
     const fig = el('div', 'journal-fig');
-    fig.appendChild(spark);
-    fig.appendChild(el('span', 'journal-fig-caption',
-      'Greg’s uncertainty, night by night. A falling line means he’s homing in.'));
+    fig.appendChild(drawn);
+    if (spec.caption) fig.appendChild(el('span', 'journal-fig-caption', spec.caption));
     card.appendChild(fig);
   }
 

@@ -16,6 +16,7 @@ const {
   hashStr, countWord, newSession, bandClass, resolutionFor, driftSinceClose,
   narrativeState, buildFacts, composeEntry, conclusionLine, queueLine,
   labLog, planJournalScreen, activeFeatureFrom, allProseLines,
+  planStudyFigures, allFigureCaptions, FIGURE_TYPES,
   NEGLIGIBLE_PCT, MAX_LOG_ENTRIES,
 } = await import('../src/logic/journalProse.js');
 const { estimateSummary } = await import('../src/logic/journalFindings.js');
@@ -746,6 +747,97 @@ test('activeFeatureFrom: meta target when named, latest row target otherwise, nu
   assert.equal(activeFeatureFrom(history, { target: 'fragmentationRatio' }), 'sonarCellCount', 'unnamed meta target falls back');
   assert.equal(activeFeatureFrom(history, null), 'sonarCellCount');
   assert.equal(activeFeatureFrom([{ ...row('2026-07-02', 'fragmentationRatio', [cand('x', 1, 1)]) }], null), null);
+});
+
+test('pool floors: the variety Christopher asked for is pinned, not accidental', () => {
+  // Counting templates per beat family from the guard inventory: the
+  // freshness round grew every pool; a future edit shrinking one below
+  // these floors would quietly re-stale the notebook.
+  const lines = allProseLines();
+  assert.ok(lines.length >= 150, `pool inventory shrank: ${lines.length} lines`);
+});
+
+test('planStudyFigures: deterministic, eligible-only, sometimes two, shapes rotate', () => {
+  const base = mkStudy({});
+  // Determinism.
+  assert.deepEqual(planStudyFigures(base), planStudyFigures(base));
+
+  // Eligibility: no estimate → only the sd-trend can draw; a one-point
+  // series draws nothing.
+  const noEst = mkStudy({ latest: null, trajectory: [
+    { date: '2026-07-02', mean: 0.03, sd: 0.02, retro: false },
+    { date: '2026-07-08', mean: 0.03, sd: 0.019, retro: false },
+  ] });
+  noEst.latest = null;
+  assert.ok(planStudyFigures(noEst).every(s => s.type === 'sd-trend'));
+  assert.deepEqual(planStudyFigures(mkStudy({ trajectory: [], latest: null })), []);
+  // A whole-band refund never gets the band-strip (its axis starts at 0).
+  const refund = mkStudy({ latest: { date: '2026-08-02', mean: -0.05, sd: 0.01 } });
+  assert.ok(planStudyFigures(refund).every(s => s.type !== 'band-strip'));
+
+  // Across many feature/date seeds: every figure type occurs, some cards
+  // get two figures (distinct types), and sd-trend shapes vary.
+  const types = new Set();
+  const shapes = new Set();
+  let twoFigure = 0;
+  for (let i = 0; i < 40; i++) {
+    const s = mkStudy({ feature: `feature${i}`, latest: { date: '2026-08-02', mean: 0.03, sd: 0.019 } });
+    const plan = planStudyFigures(s);
+    assert.ok(plan.length >= 1 && plan.length <= 2, `plan size ${plan.length}`);
+    assert.equal(new Set(plan.map(p => p.type)).size, plan.length, 'no duplicate figure types on one card');
+    if (plan.length === 2) twoFigure++;
+    for (const spec of plan) {
+      assert.ok(FIGURE_TYPES.includes(spec.type), spec.type);
+      assert.ok(spec.caption && spec.caption.length > 10, 'every figure carries a lay caption');
+      assert.ok(!/\{[A-Za-z]+\}/.test(spec.caption), `unresolved token in caption: "${spec.caption}"`);
+      types.add(spec.type);
+      if (spec.type === 'sd-trend') shapes.add(spec.dotShape);
+      else assert.equal(spec.dotShape, null);
+    }
+  }
+  assert.equal(types.size, FIGURE_TYPES.length, `all figure types occur: ${[...types].join(',')}`);
+  assert.ok(shapes.size >= 3, `dot shapes rotate: ${[...shapes].join(',')}`);
+  assert.ok(twoFigure >= 5 && twoFigure <= 25, `two-figure cards ~1/3: ${twoFigure}/40`);
+
+  // A series with retrodicted points never gets the bare-line style —
+  // the dimmed dot IS the retro disclosure.
+  for (let i = 0; i < 40; i++) {
+    const s = mkStudy({
+      feature: `retro${i}`,
+      trajectory: [
+        { date: '2026-06-01', mean: 0.03, sd: 0.02, retro: true },
+        { date: '2026-07-02', mean: 0.03, sd: 0.02, retro: false },
+        { date: '2026-08-02', mean: 0.03, sd: 0.019, retro: false },
+      ],
+    });
+    for (const spec of planStudyFigures(s)) {
+      if (spec.type === 'sd-trend') assert.notEqual(spec.dotShape, 'none');
+    }
+  }
+});
+
+test('figure captions and intro variants obey the framing-copy rails', () => {
+  const captions = allFigureCaptions();
+  assert.ok(captions.length >= 9, `caption pool: ${captions.length}`);
+  for (const c of captions) {
+    assert.ok(!c.includes('—') && !c.includes('–'), `dash in caption: "${c}"`);
+    assert.ok(!/\d/.test(c), `caption claims a number: "${c}"`);
+    assert.ok(!/today.s board/i.test(c), `fieldnote-drift claim in caption: "${c}"`);
+  }
+  // The modal intro rotates by refit date but always frames the same
+  // honest promise (his notes, bad days included).
+  const mk = (date) => [
+    row(date, 'sonarCellCount', [cand('sonarCellCount', 0.043, 0.020)]),
+    row('2026-07-02', 'sonarCellCount', [cand('sonarCellCount', 0.043, 0.021)]),
+  ];
+  const intros = new Set();
+  for (const d of ['2026-07-10', '2026-07-11', '2026-07-12', '2026-07-13', '2026-07-14', '2026-07-15']) {
+    const screen = planJournalScreen(mk(d), null);
+    assert.ok(screen.intro.length > 60);
+    assert.ok(!screen.intro.includes('—') && !screen.intro.includes('–'));
+    intros.add(screen.intro);
+  }
+  assert.ok(intros.size >= 2, 'the intro actually rotates across dates');
 });
 
 test('utilities: hashStr is stable, countWord spells small counts', () => {

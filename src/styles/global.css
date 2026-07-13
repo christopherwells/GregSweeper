@@ -3760,8 +3760,22 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 }
 .jf-dot { fill: var(--color-accent, #e94560); }
 /* Retrodicted fits (the pre-epoch sequential backfit) render dimmer than
-   live nightly fits; the card's retro caption says why. */
+   live nightly fits; their tooltip says "re-measured". */
 .jf-dot-retro { opacity: 0.5; }
+/* The bare-line figure style: points are invisible hover targets so the
+   per-fit tooltips survive. */
+.jf-dot-hover { opacity: 0; }
+/* estimate-band's shaded ±1 SD band, and band-strip's range bar. */
+.jf-band {
+  fill: var(--color-accent, #e94560);
+  opacity: 0.16;
+  stroke: none;
+}
+.jf-strip-track {
+  stroke: var(--color-text-secondary);
+  stroke-opacity: 0.35;
+}
+.jf-strip-marker { fill: var(--color-accent, #e94560); }
 .jf-label {
   font-size: 20px;
   font-family: inherit;
