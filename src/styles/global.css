@@ -3689,24 +3689,18 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   color: var(--timer-warning, #ff9800);
   margin: 0;
 }
-.journal-open,
 .journal-card {
   border: 1px solid var(--color-border, #333);
   border-radius: 10px;
   padding: 12px 14px;
   background: var(--color-btn-gradient);
 }
-.journal-open { border-color: var(--color-accent, #e94560); }
-.journal-open h3,
+/* The active experiment's card — the one deep card on the screen. */
+.journal-card.journal-open { border-color: var(--color-accent, #e94560); }
 .journal-card-head h3 {
   margin: 0;
   font-size: 15px;
   color: var(--color-text, #eee);
-}
-.journal-open-note {
-  font-size: 12px;
-  color: var(--color-text-secondary);
-  margin: 8px 0 0;
 }
 .journal-card-head {
   display: flex;
@@ -3733,16 +3727,12 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   color: var(--color-text-secondary);
   margin: 8px 0 0;
 }
-.journal-verdict {
+/* The composed notebook entry — the card's main prose. */
+.journal-entry {
   font-size: 13px;
+  line-height: 1.55;
   color: var(--color-text, #eee);
   margin: 8px 0 0;
-}
-.journal-verdict-widened { color: #ef5350; }
-.journal-estimate {
-  font-size: 13px;
-  color: var(--color-text, #eee);
-  margin: 6px 0 0;
 }
 .journal-fig { margin-top: 8px; }
 .journal-spark {
@@ -3770,8 +3760,22 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 }
 .jf-dot { fill: var(--color-accent, #e94560); }
 /* Retrodicted fits (the pre-epoch sequential backfit) render dimmer than
-   live nightly fits; the card's retro caption says why. */
+   live nightly fits; their tooltip says "re-measured". */
 .jf-dot-retro { opacity: 0.5; }
+/* The bare-line figure style: points are invisible hover targets so the
+   per-fit tooltips survive. */
+.jf-dot-hover { opacity: 0; }
+/* estimate-band's shaded ±1 SD band, and band-strip's range bar. */
+.jf-band {
+  fill: var(--color-accent, #e94560);
+  opacity: 0.16;
+  stroke: none;
+}
+.jf-strip-track {
+  stroke: var(--color-text-secondary);
+  stroke-opacity: 0.35;
+}
+.jf-strip-marker { fill: var(--color-accent, #e94560); }
 .jf-label {
   font-size: 20px;
   font-family: inherit;
@@ -3796,6 +3800,125 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   background: none; border: none; cursor: pointer; padding: 2px 0;
   color: var(--color-accent, #6cf); font-size: 12px; text-decoration: underline;
   margin-top: 8px;
+}
+
+/* Lab log — dated one-liners inside the active card. */
+.journal-lablog { margin-top: 10px; }
+.journal-lablog-title {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+.journal-log-line {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--color-text, #eee);
+  margin: 0 0 4px;
+  padding-left: 10px;
+  border-left: 2px solid var(--color-border, #333);
+}
+
+/* Queue line — what the model wants data on next. */
+.journal-queue {
+  font-size: 13px;
+  color: var(--color-text, #eee);
+  margin: 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--color-accent, #e94560);
+  background: var(--color-btn-gradient);
+  border-radius: 0 8px 8px 0;
+}
+
+/* Conclusions ledger — closed studies as one-liners, tap to expand. */
+.journal-section-title {
+  margin: 4px 0 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+.journal-conclusions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.journal-ledger-row {
+  border: 1px solid var(--color-border, #333);
+  border-radius: 10px;
+  background: var(--color-btn-gradient);
+}
+.journal-ledger-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 13px;
+  color: var(--color-text, #eee);
+}
+.journal-ledger-summary::-webkit-details-marker { display: none; }
+/* Flex layout drops the native disclosure marker; draw our own caret so
+   the row still reads as expandable. */
+.journal-ledger-summary::after {
+  content: '';
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid var(--color-text-secondary);
+  border-bottom: 2px solid var(--color-text-secondary);
+  transform: rotate(45deg);
+  transition: transform 0.15s ease;
+}
+/* Any journal disclosure (ledger rows AND the full-ledger table) flips
+   its caret while open. */
+details[open] > .journal-ledger-summary::after { transform: rotate(225deg); }
+.journal-ledger-line { flex: 1; }
+.journal-ledger-row .journal-ledger-body {
+  border: none;
+  border-top: 1px solid var(--color-border, #333);
+  border-radius: 0 0 10px 10px;
+}
+
+/* Full ledger — the compact parameter table behind one link. */
+.journal-full-ledger {
+  border: 1px solid var(--color-border, #333);
+  border-radius: 10px;
+  background: var(--color-btn-gradient);
+}
+.journal-full-ledger > .journal-ledger-summary { justify-content: flex-start; }
+.journal-full-ledger > .journal-ledger-summary::after { margin-left: auto; }
+.journal-table {
+  width: calc(100% - 24px);
+  margin: 0 12px 10px;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  color: var(--color-text, #eee);
+}
+.journal-table th {
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-secondary);
+  padding: 4px 8px 4px 0;
+  border-bottom: 1px solid var(--color-border, #333);
+}
+.journal-table td {
+  padding: 4px 8px 4px 0;
+  border-bottom: 1px solid var(--color-border, #333);
+}
+.journal-table tr:last-child td { border-bottom: none; }
+.journal-table-note {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  opacity: 0.75;
+  margin: 0 12px 10px;
 }
 
 /* ── Journal report (?report=<feature> share route) ──

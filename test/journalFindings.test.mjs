@@ -17,8 +17,9 @@ import { readFileSync } from 'node:fs';
 
 const {
   SCALE_EPOCHS, VERDICT_THRESHOLD_PCT, RESTING_MIN_IDLE_DAYS,
-  dedupeHistory, deriveStudies, classifyVerdict, estimateSummary, estimateLine,
-  buildJournal, findingById, featureUnit, retroCaption,
+  dedupeHistory, deriveStudies, deriveStudyForFeature, classifyVerdict,
+  estimateSummary, estimateLine, fmtPct, parameterTable,
+  buildJournal, findingById, featureUnit,
 } = await import('../src/logic/journalFindings.js');
 
 // Fixture rows. Dates on/after 2026-07-02 are current-era (log scale);
@@ -132,22 +133,20 @@ test('REGRESSION: pre-epoch rows contribute candidatesLog ONLY, and retrodiction
   assert.ok(!study.verdict.copy.includes('Jun 30'), 'the sentence must not claim the retrodicted window');
 });
 
-test('retroCaption: present only when the series contains re-measured points', () => {
-  const withRetro = {
-    trajectory: [
-      { date: '2026-06-30', mean: 0.04, sd: 0.02, retro: true },
-      { date: '2026-07-02', mean: 0.04, sd: 0.018, retro: false },
-    ],
-  };
-  const caption = retroCaption(withRetro);
-  assert.match(caption, /I re-measured/, 'Greg speaks in plain first person');
-  assert.match(caption, /today’s yardstick/);
-  assert.match(caption, /Jul 2/, 'names the scale epoch');
-  assert.ok(!caption.includes('—'), `em-dash in retro caption: "${caption}"`);
-  assert.ok(!/\d+\s*%|\bseconds\b/.test(caption), 'the caption explains, it never claims a number');
-  // A study whose series is all live fits must NOT imply a re-measurement.
-  assert.equal(retroCaption({ trajectory: [{ date: '2026-07-02', mean: 0.04, sd: 0.02, retro: false }] }), null);
-  assert.equal(retroCaption(null), null);
+test('fmtPct: whole percents at 1% and above, one decimal below, no fake 0.0', () => {
+  // Christopher's ruling (2026-07-12): tenths on five players' data are
+  // false precision — whole percents except below 1%.
+  assert.equal(fmtPct(3.34), '3');
+  assert.equal(fmtPct(4.37), '4');
+  assert.equal(fmtPct(1.41), '1');
+  assert.equal(fmtPct(0.95), '1');
+  assert.equal(fmtPct(0.34), '0.3');
+  assert.equal(fmtPct(0.15), '0.1'); // toFixed(1) gives 0.1, fine
+  assert.equal(fmtPct(0.04), '0.1', 'a positive value never renders as exactly zero');
+  assert.equal(fmtPct(0), '0');
+  assert.equal(fmtPct(-2.6), '-3');
+  assert.equal(fmtPct(NaN), null);
+  assert.equal(fmtPct('3'), null);
 });
 
 test('resting: idle past the bar AND bottom-half CV rank; never over widened or early', () => {
@@ -244,6 +243,16 @@ test('unnamed features derive a study but never reach a player surface', () => {
   assert.equal(findingById(history, 'fragmentationRatio'), null, 'unnamed ids are not shareable');
   assert.equal(findingById(history, 'sonarCellCount')?.feature, 'sonarCellCount');
   assert.equal(findingById(history, 'nonsense'), null);
+  // A NAMED feature the refit has never targeted still resolves — the
+  // active card can be exactly that study on a fresh target's first
+  // day, and its share link must not dead-end on the recipient.
+  const fresh = findingById([
+    row('2026-07-02', 'sonarCellCount', [
+      cand('sonarCellCount', 0.043, 0.020), cand('compassCellCount', 0.033, 0.021),
+    ]),
+  ], 'compassCellCount');
+  assert.equal(fresh?.feature, 'compassCellCount');
+  assert.equal(fresh?.studyDayCount, 0);
 });
 
 test('estimateSummary converts log coefficients to plain percentages with a ±1 SD band', () => {
@@ -260,19 +269,87 @@ test('estimateSummary converts log coefficients to plain percentages with a ±1 
   assert.equal(estimateSummary({ latest: null }), null, 'no era fits → no estimate, never a fabricated one');
 });
 
-test('estimateLine: a band touching zero reads as "or nothing at all", never a fake negative', () => {
+test('estimateLine: one sentence, whole percents, never a fake negative (copy ruling 2026-07-12)', () => {
   // Liar cells today: mean 0.0015 ± 0.0019 → the band dips below zero.
+  // The zero-band form is ONE sentence — the old "might add… or nothing
+  // at all. Probably no more than…" hedge stack read as fake.
+  // The bound is spoken as the number 0%, never "nothing" (ruling
+  // 2026-07-12, second pass).
   const tiny = estimateLine({ unit: 'liar cell', latest: { date: '2026-07-12', mean: 0.0015, sd: 0.0019 } });
-  assert.match(tiny, /might add about 0\.2% to your time, or nothing at all\. Probably no more than 0\.3%\./);
-  assert.ok(!tiny.includes('-'), `no negative percentages on a player surface: "${tiny}"`);
-  // A clearly-positive band reads as a could-be range, plain register.
+  assert.equal(tiny, 'Each liar cell adds somewhere between 0% and about 0.3% to your time.');
+  assert.ok(!/-\d/.test(tiny), `no negative percentages on a player surface: "${tiny}"`);
+  // A clearly-positive band: whole percents, exactly one hedge word.
   const solid = estimateLine({ unit: 'compass cell', latest: { date: '2026-07-12', mean: 0.0329, sd: 0.0189 } });
-  assert.match(solid, /Each compass cell adds about 3\.3% to your time\. Could be as little as 1\.4%, maybe as much as 5\.3%\./);
-  for (const line of [tiny, solid]) {
+  assert.equal(solid, 'Each compass cell adds about 3% to your time, likely between 1% and 5%.');
+  // A whole-band refund (no live example yet) flags itself for re-check
+  // instead of rendering a minus sign.
+  const refund = estimateLine({ unit: 'open area', latest: { date: '2026-07-12', mean: -0.02, sd: 0.005 } });
+  assert.match(refund, /give a little time back, about 2%/);
+  assert.ok(!/-\d/.test(refund), `no minus signs on a player surface: "${refund}"`);
+  for (const line of [tiny, solid, refund]) {
     assert.ok(!line.includes('—'), `em-dash in estimate line: "${line}"`);
   }
   assert.equal(estimateLine({ unit: 'compass cell', latest: null }), null);
   assert.equal(estimateLine({ unit: null, latest: { date: 'x', mean: 0.03, sd: 0.01 } }), null);
+});
+
+test('parameterTable: every named feature from the latest fit, no fake negatives, effect-sorted', () => {
+  const history = [
+    row('2026-07-12', 'compassCellCount', [
+      cand('compassCellCount', 0.0329, 0.0189),
+      cand('liarCellCount', 0.0015, 0.0019),   // band straddles zero
+      cand('totalMines', 0.0581, 0.0038),
+      cand('fragmentationRatio', 0.02, 0.01),  // unnamed — never rendered
+      { feature: 'broken', mean: 0.1 },        // no sd — dropped
+    ]),
+  ];
+  const table = parameterTable(history);
+  assert.deepEqual(table.map(r => r.feature),
+    ['totalMines', 'compassCellCount', 'liarCellCount'], 'named only, sorted by effect');
+  const liar = table.find(r => r.feature === 'liarCellCount');
+  assert.equal(liar.effect, '+0.2%'); // exp(0.0015)−1 = 0.1501% → one decimal below 1%
+  assert.equal(liar.range, '0% to 0.3%', 'straddling band floors at 0, never a minus');
+  const compass = table.find(r => r.feature === 'compassCellCount');
+  assert.equal(compass.effect, '+3%');
+  assert.equal(compass.range, '1% to 5%');
+  // Whole-band-negative renders as time saved, still without minus signs.
+  const negTable = parameterTable([
+    row('2026-07-12', 'zeroClusterCount', [cand('zeroClusterCount', -0.02, 0.001)]),
+  ]);
+  assert.equal(negTable[0].effect, 'saves 2%');
+  assert.equal(negTable[0].range, 'about 2% saved', 'equal-rounding refund ends collapse too');
+  assert.ok(!negTable[0].range.includes('-'));
+  assert.deepEqual(parameterTable([]), []);
+  // REGRESSION: a history ending on a pre-epoch row (stale cached copy)
+  // must render NO table — exponentiating seconds-scale coefficients
+  // fabricates garbage like "+348% mine density".
+  assert.deepEqual(parameterTable([
+    row('2026-06-20', 'sonarCellCount', [cand('totalMines', 1.5, 0.3)]),
+  ]), []);
+});
+
+test('estimateLine: band ends that round to the same figure collapse instead of "between 6% and 6%"', () => {
+  const tight = estimateLine({ unit: 'mine', latest: { date: '2026-07-12', mean: 0.0581, sd: 0.0038 } });
+  assert.equal(tight, 'Each mine adds about 6% to your time, and the band barely strays from that.');
+});
+
+test('deriveStudyForFeature: a never-targeted feature still gets an honest study object', () => {
+  const history = [
+    row('2026-07-02', 'sonarCellCount', [
+      cand('sonarCellCount', 0.043, 0.020), cand('compassCellCount', 0.033, 0.021),
+    ]),
+    row('2026-07-08', 'sonarCellCount', [
+      cand('sonarCellCount', 0.043, 0.018), cand('compassCellCount', 0.033, 0.019),
+    ]),
+  ];
+  const s = deriveStudyForFeature(history, 'compassCellCount');
+  assert.equal(s.feature, 'compassCellCount');
+  assert.equal(s.studyDayCount, 0, 'never targeted');
+  assert.equal(s.firstStudied, null);
+  assert.equal(s.trajectory.length, 2, 'the posterior rides in every row regardless');
+  assert.equal(s.verdict.kind, 'open', 'the trajectory alone supports a verdict');
+  assert.equal(deriveStudyForFeature(history, ''), null);
+  assert.equal(deriveStudyForFeature([], 'sonarCellCount'), null);
 });
 
 test('buildJournal: open study from the live target, unnamed target suppressed', () => {
@@ -333,12 +410,6 @@ test('smoke: the real modelHistory.json derives a sane journal (structural invar
       // Seconds-scale SDs run up to ~22; log-scale ones sit far below 1.
       // A point at or past 1 means the old-scale candidates leaked in.
       assert.ok(p.sd < 1, `${s.feature} ${p.date}: sd ${p.sd} looks seconds-scale`);
-    }
-    const cap = retroCaption(s);
-    if (s.trajectory.some(p => p.retro)) {
-      assert.ok(cap && !cap.includes('—'), `${s.feature} retro caption: "${cap}"`);
-    } else {
-      assert.equal(cap, null, `${s.feature} must not claim a re-measurement it doesn't show`);
     }
     // The verdict's number must match SD math computed independently here,
     // over the LIVE window only (retrodictions are chart history).

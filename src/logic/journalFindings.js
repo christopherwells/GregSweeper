@@ -23,8 +23,10 @@
 //    sequential backfit's retrodiction (today's model refit on just the
 //    data each date had; scripts/backfit-model-history.R). A pre-epoch
 //    row's original `candidates` is seconds-scale provenance and never
-//    enters a trajectory. Retrodicted points carry `retro: true` and
-//    every surface that draws them shows retroCaption() alongside.
+//    enters a trajectory. Retrodicted points carry `retro: true`; the
+//    sparkline draws them dimmer and its hover tooltip says
+//    "re-measured" (the standalone caption was cut 2026-07-12 —
+//    disclosure copy that raises questions it doesn't answer).
 //  - Retrodicted points are CHART HISTORY, never verdict inputs: a
 //    sparse early feature's posterior mostly echoes its prior (sonar's
 //    sd sat at prior level through Apr 24, then jumped 10x when real
@@ -173,15 +175,9 @@ function _buildStudy(feature, rows, epoch, latestContext) {
   return study;
 }
 
-// Every feature the refit has ever deliberately targeted, each as a
-// full longitudinal study, in first-targeted order. Includes unnamed
-// features — buildJournal decides what is renderable.
-export function deriveStudies(history) {
-  const rows = dedupeHistory(history);
-  if (rows.length === 0) return [];
-  const epoch = currentEpoch();
+function _latestContext(rows) {
   const latestRow = rows[rows.length - 1];
-  const latestContext = {
+  return {
     date: latestRow.date,
     // The latest fit's uncertainty ordering, sorted here rather than
     // trusting file order, so cvRank can't drift if a writer ever emits
@@ -191,6 +187,16 @@ export function deriveStudies(history) {
       .slice()
       .sort((a, b) => b.cv - a.cv),
   };
+}
+
+// Every feature the refit has ever deliberately targeted, each as a
+// full longitudinal study, in first-targeted order. Includes unnamed
+// features — buildJournal decides what is renderable.
+export function deriveStudies(history) {
+  const rows = dedupeHistory(history);
+  if (rows.length === 0) return [];
+  const epoch = currentEpoch();
+  const latestContext = _latestContext(rows);
   const targets = [];
   const seen = new Set();
   for (const row of rows) {
@@ -200,6 +206,19 @@ export function deriveStudies(history) {
     }
   }
   return targets.map(f => _buildStudy(f, rows, epoch, latestContext));
+}
+
+// A study for ANY feature, targeted or not. The live experiment target
+// can be a feature the refit has never targeted before (its first
+// stamped row lands with the next nightly run), but its posterior
+// rides in every row's candidates table, so the trajectory and
+// estimate are real; only the study-day facts are empty. The notebook's
+// active card uses this so a fresh target still gets an honest page.
+export function deriveStudyForFeature(history, feature) {
+  if (typeof feature !== 'string' || !feature) return null;
+  const rows = dedupeHistory(history);
+  if (rows.length === 0) return null;
+  return _buildStudy(feature, rows, currentEpoch(), _latestContext(rows));
 }
 
 // The study's verdict, windowed to the LIVE model era (non-retro fits
@@ -271,15 +290,6 @@ export function classifyVerdict(study) {
   };
 }
 
-// The retrodiction caption, shown wherever a trajectory with retro
-// points is drawn or summarized. Null for a study whose series is all
-// live fits — the caption must never imply a re-measurement that
-// didn't happen.
-export function retroCaption(study) {
-  if (!study?.trajectory?.some?.(p => p.retro)) return null;
-  return `Everything before ${formatShortDate(currentEpoch())} I re-measured with today’s yardstick: the same model I use now, given only what I knew each night.`;
-}
-
 // The current fitted effect as plain percentages: the model is
 // log-scale in the current era (that is what SCALE_EPOCHS marks), so a
 // coefficient is a log-multiplier and exp(coef) − 1 is "percent added
@@ -298,22 +308,93 @@ export function estimateSummary(study) {
   };
 }
 
-// The estimate as one plain sentence (Greg's plain register, no
-// em-dashes). When the ±1 SD band dips to or below zero the honest
-// reading is "or nothing at all" — tiny effects (liar cells today) must
-// never render as a fake negative. "Probably no more than" is the +1 SD
-// point (~84% of the posterior sits below it): a probable edge, never
-// "at most", which would claim a bound the fit does not prove. Null
-// when there is no era estimate or no unit vocabulary.
+// Percent formatting for player surfaces (Christopher's ruling,
+// 2026-07-12): whole percents — tenths on five players' data are false
+// precision — except below 1%, where a whole number would read as
+// exactly zero or exactly one; there a single decimal survives ("about
+// 0.3%"). A positive value that would still render "0.0" floors at
+// "0.1" — "about 0.1%" stays honest where "0%" would claim a certainty
+// the fit doesn't have.
+export function fmtPct(x) {
+  if (typeof x !== 'number' || !Number.isFinite(x)) return null;
+  if (Math.abs(x) >= 0.95) return String(Math.round(x));
+  const one = x.toFixed(1);
+  if (one === '0.0' || one === '-0.0') return x > 0 ? '0.1' : '0';
+  return one;
+}
+
+// The estimate as ONE plain sentence (Greg's plain register, no
+// em-dashes, at most one hedge word). When the ±1 SD band dips to or
+// below zero the honest reading is "between 0% and about X%" — tiny
+// effects (liar cells today) must never render as a fake negative, the
+// old two-sentence hedge stack read as fake, and the bound is spoken
+// as the number 0%, never "nothing" (Christopher's ruling, 2026-07-12).
+// Null when there is no era estimate or no unit vocabulary.
 export function estimateLine(study) {
   const est = estimateSummary(study);
   const unit = study?.unit;
   if (!est || !unit) return null;
-  const f = (x) => x.toFixed(1);
-  if (est.lo <= 0) {
-    return `Each ${unit} might add about ${f(est.pct)}% to your time, or nothing at all. Probably no more than ${f(est.hi)}%.`;
+  if (est.hi <= 0) {
+    // A whole band below zero (no live example yet): the honest claim
+    // is a small time refund, flagged as one Greg is re-checking.
+    return `Each ${unit} seems to give a little time back, about ${fmtPct(Math.abs(est.pct))}%. I’m double-checking that.`;
   }
-  return `Each ${unit} adds about ${f(est.pct)}% to your time. Could be as little as ${f(est.lo)}%, maybe as much as ${f(est.hi)}%.`;
+  if (est.lo <= 0) {
+    return `Each ${unit} adds somewhere between 0% and about ${fmtPct(est.hi)}% to your time.`;
+  }
+  const loStr = fmtPct(est.lo);
+  const hiStr = fmtPct(est.hi);
+  if (loStr === hiStr) {
+    // Both band ends round to the same figure (mine density today) —
+    // "likely between 6% and 6%" is not a sentence.
+    return `Each ${unit} adds about ${fmtPct(est.pct)}% to your time, and the band barely strays from that.`;
+  }
+  return `Each ${unit} adds about ${fmtPct(est.pct)}% to your time, likely between ${loStr}% and ${hiStr}%.`;
+}
+
+// The full-ledger table: every NAMED feature in the latest fit's
+// candidates as a compact effect + range row, sorted by effect size.
+// This is the "full parameter picture" behind the notebook's one link —
+// never-targeted features (board size, mine density) appear here even
+// though no study exists for them. A band straddling zero shows a
+// floor of 0% (same no-fake-negatives rule as estimateLine); the
+// whole-band-negative shape renders as time saved.
+export function parameterTable(history) {
+  const rows = dedupeHistory(history);
+  // Same scale rail as every other surface: a pre-epoch row's candidates
+  // are seconds-scale and exponentiating them fabricates garbage (+348%
+  // mine density), so the table reads the latest LIVE-ERA row or nothing
+  // (reachable when a stale cached history ends before the epoch).
+  const epoch = currentEpoch();
+  const liveRows = rows.filter(r => r.date >= epoch);
+  if (liveRows.length === 0) return [];
+  const last = liveRows[liveRows.length - 1];
+  const out = [];
+  for (const c of last.candidates) {
+    if (!c || typeof c.feature !== 'string' || typeof c.mean !== 'number' || !(c.sd > 0)) continue;
+    const label = featureName(c.feature);
+    if (!label) continue;
+    const pct = (Math.exp(c.mean) - 1) * 100;
+    const lo = (Math.exp(c.mean - c.sd) - 1) * 100;
+    const hi = (Math.exp(c.mean + c.sd) - 1) * 100;
+    const row = { feature: c.feature, label, pctValue: pct };
+    if (hi <= 0) {
+      row.effect = `saves ${fmtPct(Math.abs(pct))}%`;
+      const hiStr = fmtPct(Math.abs(hi));
+      const loStr = fmtPct(Math.abs(lo));
+      row.range = hiStr === loStr ? `about ${hiStr}% saved` : `${hiStr}% to ${loStr}% saved`;
+    } else {
+      row.effect = `+${fmtPct(Math.max(0, pct))}%`;
+      const loStr = fmtPct(Math.max(0, lo));
+      const hiStr = fmtPct(hi);
+      // A band whose ends round to the same figure (mine density today)
+      // must not read "6% to 6%".
+      row.range = loStr === hiStr ? `about ${hiStr}%` : `${loStr}% to ${hiStr}%`;
+    }
+    out.push(row);
+  }
+  out.sort((a, b) => b.pctValue - a.pctValue);
+  return out;
 }
 
 // The whole journal, ready to render: named studies newest-first, the
@@ -357,10 +438,14 @@ export function buildJournal(history, experimentMeta) {
 }
 
 // Resolve a shareable finding id (the feature key) to its study. Only
-// named studies are shareable surfaces; anything else is null, so a
-// mistyped or unknown id can fall back gracefully.
+// NAMED features are shareable; anything else is null, so a mistyped or
+// unknown id falls back gracefully. A named feature the refit has never
+// targeted still resolves (via deriveStudyForFeature) — the active card
+// can be exactly that study on a fresh target's first day, and its
+// Share button must not dead-end on the recipient.
 export function findingById(history, id) {
-  if (typeof id !== 'string' || !id) return null;
-  const study = deriveStudies(history).find(s => s.feature === id);
+  if (typeof id !== 'string' || !id || !featureName(id)) return null;
+  const study = deriveStudies(history).find(s => s.feature === id)
+    || deriveStudyForFeature(history, id);
   return study && study.label ? study : null;
 }

@@ -8,73 +8,26 @@
 // finding), never an error page — and the raw id is never echoed into
 // the DOM (no jargon, no injection surface).
 //
-// Everything shown derives from the same pure journalFindings functions
-// the in-app journal uses, so this page can never claim something the
-// notebook wouldn't. Deliberately NO claim tying the finding to today's
-// board: boards generate days ahead under earlier targets (the
-// 2026-06-10 field-note drift class), so the CTA sells the daily on the
-// no-guess contract, never on "today's board tests this".
+// The finding renders through the SAME journalProse composition and
+// journalCard builder the in-app notebook uses, so this page can never
+// claim something the notebook wouldn't. The active experiment (read
+// from the latest refit row — derivable from shipped data, no
+// experimentTarget fetch needed) additionally carries its dated lab
+// log. Deliberately NO claim tying the finding to today's board: boards
+// generate days ahead under earlier targets (the 2026-06-10 field-note
+// drift class), so the CTA sells the daily on the no-guess contract,
+// never on "today's board tests this".
 
+import { buildJournal, findingById } from '../logic/journalFindings.js';
+import { composeEntry, labLog, newSession, activeFeatureFrom } from '../logic/journalProse.js';
 import {
-  buildJournal, findingById, estimateLine, retroCaption, formatShortDate,
-} from '../logic/journalFindings.js';
-import { renderStudySparkline } from './journalFigure.js';
+  VERDICT_CHIPS, buildStudyCard, makeShareButton, metaSummaryLine, capitalize, el,
+} from './journalCard.js';
 import { spriteImgHTML } from './spriteLoader.js';
-import { PROD_SITE_BASE } from '../config.js';
-
-// Chip labels for the verdict kinds. journalView imports these too, so
-// the in-app cards and the share page can never disagree on a name.
-export const VERDICT_CHIPS = {
-  settling: 'Closing in',
-  widened: 'Widened',
-  resting: 'Resting',
-  open: 'Still open',
-  early: 'Just started',
-};
-
-function el(tag, className, text) {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text != null) node.textContent = text;
-  return node;
-}
-
-function capitalize(s) {
-  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
-}
 
 function _ctaHref() {
   // Drop ?report= and push to the daily; a brand-new visitor onboards first.
   return `${location.pathname}?mode=daily`;
-}
-
-// Share (or copy) a finding's public link — the same Web Share /
-// clipboard flow as the crux challenge button, with the hardcoded prod
-// base so a link copied from /test/ still points at the public site.
-// Returns 'shared' | 'dismissed' | 'copied' | 'failed'; callers own the
-// feedback (toast in-app, button flash on the standalone page).
-export async function shareFindingLink(study) {
-  const url = `${PROD_SITE_BASE}?report=${encodeURIComponent(study.feature)}`;
-  const shareData = {
-    title: 'GregSweeper',
-    text: `Greg measures what actually makes a minesweeper board hard. His notes on ${study.label}:`,
-    url,
-  };
-  if (navigator.share && (!navigator.canShare || navigator.canShare(shareData))) {
-    try {
-      await navigator.share(shareData);
-      return 'shared';
-    } catch {
-      return 'dismissed'; // user closed the sheet — stay quiet
-    }
-  }
-  try {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      await navigator.clipboard.writeText(url);
-      return 'copied';
-    }
-  } catch { /* clipboard unavailable — fall through */ }
-  return 'failed';
 }
 
 function _brandBlock() {
@@ -87,31 +40,21 @@ function _brandBlock() {
   return div;
 }
 
-// The honest context line under a finding: how much data stands behind
-// the notebook, and when it last changed. Same facts as the in-app
-// journal's meta line.
+// The honest context line under a finding — the shared builder, so the
+// report page and the in-app modal can never state different meta facts.
 function _metaLine(journal) {
-  const bits = ['Greg re-checks the numbers every night'];
-  if (journal?.meta?.totalRuns != null && journal?.meta?.nPlayers != null) {
-    bits.push(`${journal.meta.totalRuns} solves from ${journal.meta.nPlayers} players`);
-  }
-  if (journal?.meta?.lastRefitDate) bits.push(`last updated ${formatShortDate(journal.meta.lastRefitDate)}`);
-  return el('p', 'journal-meta journal-report-meta', bits.join(' · '));
+  return metaSummaryLine(journal?.meta, 'journal-meta journal-report-meta');
 }
 
 function _actions(study) {
   const wrap = el('div', 'crux-teaser-actions');
   if (study) {
-    const share = el('button', 'crux-reveal-all', 'Share this finding');
-    share.type = 'button';
-    share.addEventListener('click', async () => {
-      const outcome = await shareFindingLink(study);
-      if (outcome === 'copied' || outcome === 'failed') {
-        share.textContent = outcome === 'copied' ? 'Link copied' : 'Couldn’t copy the link';
-        setTimeout(() => { share.textContent = 'Share this finding'; }, 2000);
-      }
-    });
-    wrap.appendChild(share);
+    // The standalone page has no toast layer, so the fallback feedback
+    // is a button flash.
+    wrap.appendChild(makeShareButton(study, 'crux-reveal-all', (outcome, btn) => {
+      btn.textContent = outcome === 'copied' ? 'Link copied' : 'Couldn’t copy the link';
+      setTimeout(() => { btn.textContent = 'Share this finding'; }, 2000);
+    }));
   }
   const cta = el('a', 'action-btn primary crux-cta', "Play today's board");
   cta.href = _ctaHref();
@@ -124,44 +67,20 @@ function _actions(study) {
   return wrap;
 }
 
-function _studyArticle(study) {
-  const article = el('article', 'journal-card journal-report-study');
-  const head = el('div', 'journal-card-head');
-  head.appendChild(el('h3', null, capitalize(study.label)));
-  head.appendChild(el('span', `journal-chip journal-chip-${study.verdict.kind}`, VERDICT_CHIPS[study.verdict.kind] || ''));
-  article.appendChild(head);
-
-  article.appendChild(el('p', 'journal-hypothesis', study.hypothesis));
-  article.appendChild(el('p', `journal-verdict journal-verdict-${study.verdict.kind}`, study.verdict.copy));
-
-  const estimate = estimateLine(study);
-  if (estimate) article.appendChild(el('p', 'journal-estimate', estimate));
-
-  const spark = renderStudySparkline(study);
-  if (spark) {
-    const fig = el('div', 'journal-fig');
-    fig.appendChild(spark);
-    fig.appendChild(el('span', 'journal-fig-caption', 'Greg’s uncertainty, night by night. A falling line means he’s homing in.'));
-    const retro = retroCaption(study);
-    if (retro) fig.appendChild(el('span', 'journal-fig-caption', retro));
-    article.appendChild(fig);
-  }
-
-  let metaLine = `Studied ${study.studyDayCount} day${study.studyDayCount !== 1 ? 's' : ''}`;
-  if (study.firstStudied) {
-    metaLine += study.firstStudied === study.lastStudied
-      ? ` · ${formatShortDate(study.firstStudied)}`
-      : ` · ${formatShortDate(study.firstStudied)} to ${formatShortDate(study.lastStudied)}`;
-  }
-  if (study.allBackfilled) metaLine += ' · from Greg’s early calibration days';
-  article.appendChild(el('p', 'journal-card-meta', metaLine));
-
-  return article;
-}
-
-function _renderFinding(card, study, journal) {
+function _renderFinding(card, study, journal, history) {
   card.appendChild(el('p', 'crux-teaser-date journal-report-kicker', 'From Greg’s Journal, the nightly experiment’s notebook'));
-  card.appendChild(_studyArticle(study));
+  // The active experiment gets its lab log; closed and in-between
+  // studies read as their settled entries. activeFeatureFrom is the
+  // same resolver the in-app planner uses (meta is null here — no
+  // experimentTarget fetch on the logged-out page — so this runs one
+  // nightly cycle behind the in-app card at worst).
+  const activeFeature = activeFeatureFrom(history, null);
+  const entry = composeEntry(study, { activeFeature }, newSession());
+  const log = study.feature === activeFeature ? labLog(history, study.feature) : null;
+  card.appendChild(buildStudyCard(study, entry, {
+    className: 'journal-report-study',
+    log,
+  }));
   card.appendChild(_metaLine(journal));
   card.appendChild(_actions(study));
 }
@@ -231,7 +150,7 @@ export function renderJournalReport(featureId, history) {
   const study = findingById(history, featureId);
   const journal = buildJournal(history, null);
   if (study) {
-    _renderFinding(card, study, journal);
+    _renderFinding(card, study, journal, history);
   } else {
     _renderIndex(card, journal, typeof featureId === 'string' && featureId.length > 0);
   }

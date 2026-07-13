@@ -38,7 +38,7 @@ import {
   clearGameState,
 } from './storage/statsStorage.js';
 
-const CURRENT_VERSION = 'v1.7';
+const CURRENT_VERSION = 'v1.8';
 
 import {
   playLevelUp, isMuted, setMuted, loadMuted,
