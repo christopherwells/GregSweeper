@@ -1,76 +1,63 @@
-// ── Greg's Journal — the in-app findings surface ──────────────────────
-// The nightly experiment's public notebook: the live open study, one
-// card per named study (hypothesis → verdict → current estimate →
-// uncertainty sparkline), and the model's meta line. Every number comes
-// from the pure journalFindings derivation over the SHIPPED
-// modelHistory.json — the same honesty contract as gregVoice: nothing
-// renders that the fit didn't produce, and the bad days (widened
-// estimates, rejected fits) publish like any other. Lazy-loaded from
-// the More sheet row in main.js.
+// ── Greg's Journal — the in-app notebook surface ──────────────────────
+// Depth over breadth (the 2026-07-12 reframe): ONE deep card for the
+// active experiment (hypothesis, composed notebook entry, uncertainty
+// sparkline, dated lab log), a CONCLUSIONS LEDGER of closed studies as
+// one-line past-tense findings that expand on tap, one QUEUE line from
+// the coverage list, and the full parameter picture behind a single
+// "full ledger" link. In-between studies have no cards here — they stay
+// reachable through the table and their ?report= pages. Every word
+// comes from the pure journalProse/journalFindings derivations over the
+// SHIPPED modelHistory.json — the same honesty contract as gregVoice:
+// nothing renders that the fit didn't produce, and the bad days
+// (widened estimates, rejected fits, lost hunches) publish like any
+// other. Lazy-loaded from the More sheet row in main.js.
 
 import { $ } from './domHelpers.js';
-import { buildJournal, estimateLine, retroCaption } from '../logic/journalFindings.js';
+import { planJournalScreen } from '../logic/journalProse.js';
 import { loadExperimentTarget, getExperimentMeta } from '../logic/experimentDesign.js';
-import { renderStudySparkline, formatShortDate } from './journalFigure.js';
-import { shareFindingLink, VERDICT_CHIPS } from './journalReport.js';
+import { buildStudyCard, chipFor, el, metaSummaryLine } from './journalCard.js';
 import { showToast } from './toastManager.js';
 
-function el(tag, className, text) {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text != null) node.textContent = text;
-  return node;
+function _shareFeedback(outcome) {
+  if (outcome === 'copied') showToast('Link copied. Paste it to a friend.');
+  else if (outcome === 'failed') showToast('Couldn’t share the link.', 3000, 'uiWarning');
 }
 
-function capitalize(s) {
-  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+function _ledgerRow(item) {
+  const details = el('details', 'journal-ledger-row');
+  const summary = el('summary', 'journal-ledger-summary');
+  summary.appendChild(el('span', 'journal-ledger-line', item.line));
+  summary.appendChild(chipFor(item.study));
+  details.appendChild(summary);
+  // The expansion is pre-composed (the whole screen shares one prose
+  // session, so the collision rule holds even across cards the player
+  // hasn't opened yet). No header — the one-liner already names it.
+  details.appendChild(buildStudyCard(item.study, item.entry, {
+    head: false,
+    className: 'journal-ledger-body',
+    onShareFallback: _shareFeedback,
+  }));
+  return details;
 }
 
-function _studyCard(study) {
-  const card = el('article', 'journal-card');
-
-  const head = el('div', 'journal-card-head');
-  head.appendChild(el('h3', null, capitalize(study.label)));
-  head.appendChild(el('span', `journal-chip journal-chip-${study.verdict.kind}`, VERDICT_CHIPS[study.verdict.kind] || ''));
-  card.appendChild(head);
-
-  card.appendChild(el('p', 'journal-hypothesis', study.hypothesis));
-  card.appendChild(el('p', `journal-verdict journal-verdict-${study.verdict.kind}`, study.verdict.copy));
-
-  const estimate = estimateLine(study);
-  if (estimate) card.appendChild(el('p', 'journal-estimate', estimate));
-
-  const spark = renderStudySparkline(study);
-  if (spark) {
-    const fig = el('div', 'journal-fig');
-    fig.appendChild(spark);
-    fig.appendChild(el('span', 'journal-fig-caption', 'Greg’s uncertainty, night by night. A falling line means he’s homing in.'));
-    const retro = retroCaption(study);
-    if (retro) fig.appendChild(el('span', 'journal-fig-caption', retro));
-    card.appendChild(fig);
+function _fullLedger(table) {
+  const details = el('details', 'journal-full-ledger');
+  details.appendChild(el('summary', 'journal-ledger-summary', 'The full ledger: every number I track'));
+  const tbl = el('table', 'journal-table');
+  const head = el('tr');
+  for (const h of ['Feature', 'Effect', 'Range']) head.appendChild(el('th', null, h));
+  tbl.appendChild(head);
+  for (const r of table) {
+    const tr = el('tr');
+    tr.appendChild(el('td', null, r.label));
+    tr.appendChild(el('td', null, r.effect));
+    tr.appendChild(el('td', null, r.range));
+    tbl.appendChild(tr);
   }
-
-  let metaLine = `Studied ${study.studyDayCount} day${study.studyDayCount !== 1 ? 's' : ''}`;
-  if (study.firstStudied) {
-    metaLine += study.firstStudied === study.lastStudied
-      ? ` · ${formatShortDate(study.firstStudied)}`
-      : ` · ${formatShortDate(study.firstStudied)} to ${formatShortDate(study.lastStudied)}`;
-  }
-  if (study.allBackfilled) metaLine += ' · from Greg’s early calibration days';
-  card.appendChild(el('p', 'journal-card-meta', metaLine));
-
-  // Every finding is shareable as the logged-out ?report= page — the
-  // same Web Share / clipboard flow as the crux challenge button.
-  const share = el('button', 'journal-share-btn', 'Share this finding');
-  share.type = 'button';
-  share.addEventListener('click', async () => {
-    const outcome = await shareFindingLink(study);
-    if (outcome === 'copied') showToast('Link copied. Paste it to a friend.');
-    else if (outcome === 'failed') showToast('Couldn’t share the link.', 3000, 'uiWarning');
-  });
-  card.appendChild(share);
-
-  return card;
+  details.appendChild(tbl);
+  details.appendChild(el('p', 'journal-table-note',
+    'Effect per unit on a solve, with the band the model would bet on. Greg re-fits these every night.'));
+  return details;
 }
 
 // Fill #journal-body. The modal shell is static HTML (index.html) and
@@ -90,57 +77,60 @@ export async function renderJournalModal() {
     ]);
   } catch { /* handled below — the empty state renders */ }
 
-  if (!Array.isArray(history) || history.length === 0) {
-    body.textContent = '';
+  const screen = Array.isArray(history) && history.length > 0
+    ? planJournalScreen(history, getExperimentMeta())
+    : null;
+  body.textContent = '';
+  if (!screen) {
     body.appendChild(el('p', 'journal-empty',
       'Greg’s notes aren’t available right now. They ship with the game, so try again once you’re back online.'));
     return;
   }
 
-  const journal = buildJournal(history, getExperimentMeta());
-  body.textContent = '';
-
   body.appendChild(el('p', 'journal-intro',
     'Greg times every solve and uses the results to work out what actually makes a board hard. '
-    + 'Each day’s board helps answer whatever he’s least sure about. '
-    + 'These are his notes, including the days that didn’t go his way.'));
+    + 'This is his notebook: the experiment he’s running now, and the files he’s closed. '
+    + 'The days that didn’t go his way are in here too.'));
 
-  if (journal.meta && !journal.meta.fitOk) {
+  if (screen.meta && !screen.meta.fitOk) {
     body.appendChild(el('p', 'journal-fit-warning',
       'Last night’s fit failed my quality bar, so I kept the previous model.'));
   }
 
-  if (journal.open) {
-    const open = el('section', 'journal-open');
-    open.appendChild(el('h3', null, `Now studying: ${journal.open.label}`));
-    open.appendChild(el('p', 'journal-hypothesis', journal.open.hypothesis));
-    // Careful: this card describes the refit's LIVE priority, which is
-    // NOT today's board — boards are generated days ahead under earlier
-    // targets, and most are coverage missions besides (the 2026-06-10
-    // field-note drift class). The note must claim only what the live
-    // target actually is: what the model wants data on next.
-    open.appendChild(el('p', 'journal-open-note', 'This is what I’m least sure about right now.'));
-    body.appendChild(open);
+  // The active experiment — the one deep card. The header claims only
+  // what the live target IS (what the model wants data on), never that
+  // today's board carries it: boards generate days ahead under earlier
+  // targets (the 2026-06-10 field-note drift class).
+  if (screen.active) {
+    body.appendChild(buildStudyCard(screen.active.study, screen.active.entry, {
+      className: 'journal-open',
+      title: `Now studying: ${screen.active.study.label}`,
+      log: screen.active.log,
+      onShareFallback: _shareFeedback,
+    }));
   }
 
-  for (const study of journal.studies) {
-    body.appendChild(_studyCard(study));
+  if (screen.queue) {
+    body.appendChild(el('p', 'journal-queue', screen.queue.text));
   }
 
-  if (journal.unnamedCount > 0) {
+  if (screen.ledger.length > 0) {
+    const section = el('section', 'journal-conclusions');
+    section.appendChild(el('h3', 'journal-section-title', 'Closed files'));
+    for (const item of screen.ledger) section.appendChild(_ledgerRow(item));
+    body.appendChild(section);
+  }
+
+  if (screen.table.length > 0) {
+    body.appendChild(_fullLedger(screen.table));
+  }
+
+  if (screen.unnamedCount > 0) {
     body.appendChild(el('p', 'journal-unnamed',
-      `Plus ${journal.unnamedCount} early experiment${journal.unnamedCount !== 1 ? 's' : ''} I never gave a name.`));
+      `Plus ${screen.unnamedCount} early experiment${screen.unnamedCount !== 1 ? 's' : ''} I never gave a name.`));
   }
 
-  if (journal.meta) {
-    const bits = ['Greg re-checks the numbers every night'];
-    // "solves", mode-neutral: n_scores counts the daily fit's rows
-    // (daily completions + weekly firsts) — NOT the Timed mode, whose
-    // win-censored runs feed a separate model and are excluded here.
-    if (journal.meta.totalRuns != null && journal.meta.nPlayers != null) {
-      bits.push(`${journal.meta.totalRuns} solves from ${journal.meta.nPlayers} players`);
-    }
-    if (journal.meta.lastRefitDate) bits.push(`last updated ${formatShortDate(journal.meta.lastRefitDate)}`);
-    body.appendChild(el('p', 'journal-meta', bits.join(' · ')));
+  if (screen.meta) {
+    body.appendChild(metaSummaryLine(screen.meta));
   }
 }

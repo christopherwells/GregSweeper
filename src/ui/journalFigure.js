@@ -15,9 +15,8 @@ const PAD_TOP = 18;
 const PAD_BOTTOM = 34;
 
 // 'YYYY-MM-DD' → 'Jul 8' lives in journalFindings (the settling verdict
-// embeds it); re-exported here so journalView keeps one import site.
+// embeds it).
 import { formatShortDate } from '../logic/journalFindings.js';
-export { formatShortDate };
 
 // Build the sparkline SVG for a study, or null when there are fewer
 // than two fits to draw (the card's verdict copy already says "too
@@ -86,10 +85,11 @@ export function renderStudySparkline(study) {
     dot.setAttribute('cy', yFor(pts[i].rel));
     dot.setAttribute('r', i === pts.length - 1 ? 8 : dotR);
     // Retrodicted fits (the pre-epoch backfit) render dimmer than live
-    // nightly fits; the card's retro caption says why.
+    // nightly fits, and their tooltip says "re-measured" — the only
+    // retro disclosure left after the standalone caption was cut.
     dot.setAttribute('class', pts[i].retro ? 'jf-dot jf-dot-retro' : 'jf-dot');
     const title = document.createElementNS(svgNS, 'title');
-    title.textContent = `${formatShortDate(pts[i].date)} · uncertainty at ${Math.round(pts[i].rel)}% of where the current model started`
+    title.textContent = `${formatShortDate(pts[i].date)} · uncertainty vs ${formatShortDate(anchor.date)}: ${Math.round(pts[i].rel)}%`
       + (pts[i].retro ? ' · re-measured' : '');
     dot.appendChild(title);
     svg.appendChild(dot);
