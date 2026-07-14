@@ -1,42 +1,42 @@
 {
-  "updatedAt": "2026-07-13T16:37:43Z",
-  "target": "patternMoves",
-  "reason": "highest posterior CV (0.572) excluding last 3 targets",
+  "updatedAt": "2026-07-14T15:26:15Z",
+  "target": "mirrorPairCount",
+  "reason": "highest posterior CV (0.750) excluding last 3 targets",
   "recentTargets": [
+    "mirrorPairCount",
     "patternMoves",
-    "compassCellCount",
-    "lockedCellCount"
+    "compassCellCount"
   ],
   "candidates": [
     {
       "feature": "mirrorPairCount",
-      "mean": 0.016,
-      "sd": 0.012,
-      "cv": 0.762
-    },
-    {
-      "feature": "compassCellCount",
-      "mean": 0.034,
-      "sd": 0.02,
-      "cv": 0.575
+      "mean": 0.008,
+      "sd": 0.007,
+      "cv": 0.75
     },
     {
       "feature": "patternMoves",
-      "mean": 0.011,
+      "mean": 0.01,
       "sd": 0.006,
-      "cv": 0.572
+      "cv": 0.586
     },
     {
       "feature": "lockedCellCount",
-      "mean": 0.03,
-      "sd": 0.017,
-      "cv": 0.551
+      "mean": 0.027,
+      "sd": 0.016,
+      "cv": 0.584
+    },
+    {
+      "feature": "compassCellCount",
+      "mean": 0.033,
+      "sd": 0.019,
+      "cv": 0.564
     },
     {
       "feature": "sonarCellCount",
       "mean": 0.042,
       "sd": 0.02,
-      "cv": 0.481
+      "cv": 0.484
     }
   ],
   "coverage_targets": [
@@ -49,11 +49,6 @@
       "feature": "wormholePairCount",
       "n_boards": 10,
       "deficit_weight": 0.0909
-    },
-    {
-      "feature": "mirrorPairCount",
-      "n_boards": 12,
-      "deficit_weight": 0.0769
     },
     {
       "feature": "sonarCellCount",
@@ -72,8 +67,8 @@
     },
     {
       "feature": "lockedCellCount",
-      "n_boards": 13,
-      "deficit_weight": 0.0714
+      "n_boards": 14,
+      "deficit_weight": 0.0667
     }
   ]
 }
