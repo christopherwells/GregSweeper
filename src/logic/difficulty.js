@@ -68,7 +68,7 @@ export function applyWidthCap(rows, cols, mines) {
 // scripts/refit-par-model.R.
 // PAR_MODEL:START
 export const PAR_MODEL = {
-  // Last refit: 2026-07-15 | brms (4 users · max Rhat = 1.002, min ESS = 1265, divergent = 0/4000) | N=300 scores, 128 dates, 5 players | R²=0.489 (log scale)
+  // Last refit: 2026-07-16 | brms (4 users · max Rhat = 1.002, min ESS = 1265, divergent = 0/4000) | N=300 scores, 128 dates, 5 players | R²=0.489 (log scale)
   // scale:"log" => par = exp(intercept + Σ coef·feature): multiplicative,
   // lognormal MEDIAN. Coefficients are LOG-MULTIPLIERS per unit, NOT seconds.
   scale: 'log',
@@ -111,7 +111,7 @@ export const PAR_MODEL = {
 // between the markers is refit-owned, same contract as PAR_MODEL.
 // TIMED_PAR_MODEL:START
 export const PAR_MODEL_TIMED = {
-  // Last refit: 2026-07-15 | brms-timed (n=96)
+  // Last refit: 2026-07-16 | brms-timed (n=96)
   // Same log scale as PAR_MODEL (par = exp(intercept + Σ coef·feature)); below
   // the activation threshold this is a verbatim copy of the daily model.
   scale: 'log',

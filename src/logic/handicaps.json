@@ -1,6 +1,6 @@
 {
   "format": "logratio-v1",
-  "updatedAt": "2026-07-15T15:28:56Z",
+  "updatedAt": "2026-07-16T15:41:56Z",
   "modelFitN": 300,
   "nPlayers": 5,
   "method": "brms-ranef",
