@@ -1,11 +1,11 @@
 {
-  "updatedAt": "2026-07-16T15:41:56Z",
-  "target": "compassCellCount",
-  "reason": "highest posterior CV (0.559) excluding last 3 targets",
+  "updatedAt": "2026-07-17T06:10:00Z",
+  "target": "wormLoad",
+  "reason": "hand-pinned for the Worm Tiles launch daily (2026-07-18): every candidate slot carries worm so the regenerated board is guaranteed a worm study; the next nightly refit overwrites this organically",
   "recentTargets": [
+    "wormLoad",
     "compassCellCount",
-    "lockedCellCount",
-    "mirrorPairCount"
+    "lockedCellCount"
   ],
   "candidates": [
     {
@@ -41,34 +41,9 @@
   ],
   "coverage_targets": [
     {
-      "feature": "wormholePairCount",
-      "n_boards": 10,
-      "deficit_weight": 0.0909
-    },
-    {
-      "feature": "sonarCellCount",
-      "n_boards": 12,
-      "deficit_weight": 0.0769
-    },
-    {
-      "feature": "mysteryCellCount",
-      "n_boards": 13,
-      "deficit_weight": 0.0714
-    },
-    {
-      "feature": "liarCellCount",
-      "n_boards": 13,
-      "deficit_weight": 0.0714
-    },
-    {
-      "feature": "mirrorPairCount",
-      "n_boards": 13,
-      "deficit_weight": 0.0714
-    },
-    {
-      "feature": "lockedCellCount",
-      "n_boards": 15,
-      "deficit_weight": 0.0625
+      "feature": "wormLoad",
+      "n_boards": 0,
+      "deficit_weight": 1.0
     }
   ]
 }
