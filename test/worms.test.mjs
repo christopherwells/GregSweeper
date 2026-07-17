@@ -15,8 +15,9 @@ import {
   WORM_MIN_LEN, WORM_MAX_LEN, WORM_MAX_PER_BOARD,
   WORM_LIFETIME_MIN_MOVES, WORM_LIFETIME_MAX_MOVES, WORM_LOAD_SCALE,
   WORM_MOVE_MIN_MS, WORM_MOVE_MAX_MS,
-  wormLengthFor, wormLifetimeFor, wormLoadFor, hatchWorm, stepWorm,
-  tickWorms, rehydrateWorms, wormCoveredCells, wormOverlayLayout,
+  wormLengthFor, wormLifetimeFor, wormToneFor, wormLoadFor, mixHex,
+  hatchWorm, stepWorm, tickWorms, rehydrateWorms, wormCoveredCells,
+  wormOverlayLayout,
 } from '../src/logic/worms.js';
 import { createEmptyBoard } from '../src/logic/boardGenerator.js';
 import {
@@ -63,6 +64,36 @@ test('lifetime is per-EGG: each worm owns its 30-80 budget, identical for every 
     }
   }
   assert.ok(budgets.size > 5, 'per-egg budgets must vary within one board, not collapse');
+});
+
+test('tone is per-EGG and deterministic: a brood of siblings, identical for every player', () => {
+  assert.equal(wormToneFor('2026-07-20:trial3', 2, 2), wormToneFor('2026-07-20:trial3', 2, 2));
+  const tones = new Set();
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const t = wormToneFor('2026-07-20:trial3', r, c);
+      assert.ok(t >= 0 && t < 1, `tone ${t} outside [0, 1)`);
+      tones.add(Math.round(t * 100));
+    }
+  }
+  assert.ok(tones.size > 10, 'tones must spread across the ramp, not collapse');
+  // The hatch carries it, and old saves rehydrate to the mid-ramp default.
+  const worm = hatchWorm(2, 5, 'seed-x', mulberry32(1));
+  assert.equal(worm.tone, wormToneFor('seed-x', 2, 5));
+  const legacy = rehydrateWorms([{ segments: [{ r: 0, c: 0 }], movesLeft: 9 }], mulberry32(2));
+  assert.equal(legacy[0].tone, 0.5);
+  const kept = rehydrateWorms([{ segments: [{ r: 0, c: 0 }], movesLeft: 9, tone: 0.83 }], mulberry32(3));
+  assert.equal(kept[0].tone, 0.83);
+});
+
+test('mixHex interpolates the tone ramp endpoint-to-endpoint and clamps t', () => {
+  assert.equal(mixHex('#8f5b38', '#eedcbc', 0), '#8f5b38');
+  assert.equal(mixHex('#8f5b38', '#eedcbc', 1), '#eedcbc');
+  assert.equal(mixHex('#000000', '#ffffff', 0.5), '#808080');
+  assert.equal(mixHex('#000000', '#ffffff', -3), '#000000', 'clamps below');
+  assert.equal(mixHex('#000000', '#ffffff', 7), '#ffffff', 'clamps above');
+  // Channel padding: a mix landing under 0x100000 keeps its leading zero.
+  assert.equal(mixHex('#000000', '#0000ff', 0.5).length, 7);
 });
 
 test('wormLoadFor: sum of per-egg length x lifetime in hundreds, deterministic, zero without eggs', () => {

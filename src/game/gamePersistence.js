@@ -90,11 +90,12 @@ export function persistGameState() {
     flagMode: state.flagMode || false,
     activeGimmicks: state.activeGimmicks || [],
     gimmickData: state.gimmickData || {},
-    // Live worms persist as segments + movesLeft only; the 1-4s move
+    // Live worms persist as segments + movesLeft + tone; the 1-4s move
     // clocks re-roll on resume (rehydrateWorms), the lenient direction.
     worms: (state.worms || []).map(w => ({
       segments: w.segments.map(s => ({ r: s.r, c: s.c })),
       movesLeft: w.movesLeft,
+      tone: typeof w.tone === 'number' ? w.tone : 0.5,
     })),
     wallEdges: state.board._wallEdges ? Array.from(state.board._wallEdges) : [],
     gatedCert: !!state.board._gatedCert,

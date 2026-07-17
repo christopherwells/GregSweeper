@@ -269,14 +269,15 @@
   --receipt-verdict-border: rgba(80, 160, 255, 0.6);
   --receipt-crux-outline: rgba(255, 200, 60, 0.85);
 
-  /* ── Worm Tiles (one canonical worm; theme variants are future work).
-     Coral sandworm palette — reads on light and dark cell faces, distinct
-     from liar rose (background tint) and every marker hue. ── */
-  --worm-body: #d4766a;
-  --worm-body-dark: #a84c3f;
-  --worm-head: #c25a4c;
-  --worm-outline: rgba(88, 34, 26, 0.55);
-  --worm-eye: #2b1511;
+  /* ── Worm Tiles. Each worm's seeded tone (0..1) interpolates between
+     these two ENDPOINTS — brown to cream on the base design — so a board's
+     brood are visibly siblings, not clones (wormRenderer mixes in JS).
+     A theme recolors its whole worm family by overriding just the two
+     endpoint tokens; outline + eyes stay one consistent inking. ── */
+  --worm-tone-dark: #8f5b38;
+  --worm-tone-light: #eedcbc;
+  --worm-outline: rgba(74, 44, 24, 0.55);
+  --worm-eye: #2b1a11;
 
   /* ── Power-up feedback (solid/usage colors tokenized; deep glow alphas
      inside keyframes stay literal — partial by design). ── */
@@ -1779,7 +1780,9 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 .worm-segment {
   position: absolute;
   border-radius: 46%;
-  background: radial-gradient(circle at 35% 30%, var(--worm-body), var(--worm-body-dark));
+  /* Static fallback only — wormRenderer paints each worm's own tone
+     inline from the endpoint tokens (per-worm brown-to-cream ramp) */
+  background: radial-gradient(circle at 35% 30%, var(--worm-tone-dark), var(--worm-tone-light));
   box-shadow: inset 0 0 0 2px var(--worm-outline);
   /* The crawl tween — segment elements are reused across ticks so this
      transition carries the movement */
@@ -1787,7 +1790,6 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 }
 .worm-head {
   z-index: 1;
-  background: radial-gradient(circle at 35% 30%, var(--worm-head), var(--worm-body-dark));
 }
 /* Vector eyes — the head reads as a critter with zero glyphs */
 .worm-head::before,
@@ -6608,8 +6610,8 @@ button:focus-visible {
   position: absolute;
   inset: 4%;
   border-radius: 46%;
-  background: radial-gradient(circle at 35% 30%, var(--worm-body, #d4766a), var(--worm-body-dark, #a84c3f));
-  box-shadow: inset 0 0 0 1.5px var(--worm-outline, rgba(88, 34, 26, 0.55));
+  background: radial-gradient(circle at 35% 30%, var(--worm-tone-light, #eedcbc), var(--worm-tone-dark, #8f5b38));
+  box-shadow: inset 0 0 0 1.5px var(--worm-outline, rgba(74, 44, 24, 0.55));
 }
 .ge-worm-head::before,
 .ge-worm-head::after {

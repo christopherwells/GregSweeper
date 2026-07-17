@@ -63,6 +63,29 @@ export function wormLifetimeFor(seedIdentity, r, c) {
     + Math.floor(rng() * (WORM_LIFETIME_MAX_MOVES - WORM_LIFETIME_MIN_MOVES + 1));
 }
 
+// Deterministic per-EGG color tone in [0, 1): 0 = the theme's dark
+// endpoint (brown on the base design), 1 = the light endpoint (cream).
+// Same seeding family as length/lifetime, so a board's brood shows the
+// same mix of siblings to every player. Purely cosmetic — the walk, the
+// solver, and the par model never read it.
+export function wormToneFor(seedIdentity, r, c) {
+  return createDailyRNG(`${seedIdentity}:wormtone:${r}:${c}`)();
+}
+
+// Linear hex-color interpolation for the tone ramp (t = 0 → a, t = 1 → b).
+// Lives here (with wormOverlayLayout) so the color math is node-testable;
+// wormRenderer supplies the theme's endpoint tokens.
+export function mixHex(a, b, t) {
+  const pa = parseInt(a.slice(1), 16);
+  const pb = parseInt(b.slice(1), 16);
+  const k = Math.min(1, Math.max(0, t));
+  const ch = (sa, sb) => Math.round(sa + (sb - sa) * k);
+  const r = ch((pa >> 16) & 255, (pb >> 16) & 255);
+  const g = ch((pa >> 8) & 255, (pb >> 8) & 255);
+  const bl = ch(pa & 255, pb & 255);
+  return `#${((r << 16) | (g << 8) | bl).toString(16).padStart(6, '0')}`;
+}
+
 // The par-model exposure measure: total segment-moves the board's eggs are
 // pre-programmed to spend — Σ per-egg (length × lifetime) — in HUNDREDS
 // (so the value runs ~0.6-12, the same range as the other count features,
@@ -94,6 +117,7 @@ export function hatchWorm(r, c, seedIdentity, rng = Math.random) {
   return {
     segments,               // segments[0] is the head
     movesLeft: wormLifetimeFor(seedIdentity, r, c),
+    tone: wormToneFor(seedIdentity, r, c),
     nextMoveMs: rollMoveDelay(rng),
   };
 }
@@ -110,6 +134,8 @@ export function rehydrateWorms(saved, rng = Math.random) {
     worms.push({
       segments: w.segments.map(s => ({ r: s.r, c: s.c })),
       movesLeft,
+      // Old saves predate tones; a mid-ramp default keeps them visible.
+      tone: typeof w.tone === 'number' ? w.tone : 0.5,
       nextMoveMs: rollMoveDelay(rng),
     });
   }

@@ -16,10 +16,44 @@
 
 import { state } from '../state/gameState.js';
 import { boardEl } from './domHelpers.js';
-import { wormOverlayLayout } from '../logic/worms.js';
+import { wormOverlayLayout, mixHex } from '../logic/worms.js';
 
 const BURROW_ANIM_MS = 400;
 const HATCH_ANIM_MS = 500;
+
+// Per-worm coloring: each worm's tone (0..1, seeded per egg) interpolates
+// between the theme's two endpoint tokens — brown to cream on the base
+// design. A theme recolors its whole brood by overriding just the
+// endpoints (--worm-tone-dark / --worm-tone-light); shading derives from
+// the mixed base, so every tone self-shades consistently. Mixed in JS
+// (not CSS color-mix): a var-dependent color-mix that an older engine
+// rejects computes to NO background at all — an invisible worm — while
+// this degrades to the stylesheet's static fallback gradient.
+const TONE_DARK_FALLBACK = '#8f5b38';
+const TONE_LIGHT_FALLBACK = '#eedcbc';
+const SHADE_ANCHOR = '#4a2c18'; // deep soil brown — shading stays warm
+
+function _toneEndpoints() {
+  const cs = getComputedStyle(document.documentElement);
+  const read = (name, fallback) => {
+    const v = (cs.getPropertyValue(name) || '').trim();
+    return /^#[0-9a-fA-F]{6}$/.test(v) ? v : fallback;
+  };
+  return {
+    dark: read('--worm-tone-dark', TONE_DARK_FALLBACK),
+    light: read('--worm-tone-light', TONE_LIGHT_FALLBACK),
+  };
+}
+
+function _paintWorm(els, tone, endpoints) {
+  const base = mixHex(endpoints.dark, endpoints.light, tone);
+  const shade = mixHex(base, SHADE_ANCHOR, 0.32);
+  const headBase = mixHex(base, SHADE_ANCHOR, 0.14);
+  for (let i = 0; i < els.length; i++) {
+    const from = i === 0 ? headBase : base;
+    els[i].style.background = `radial-gradient(circle at 35% 30%, ${from}, ${shade})`;
+  }
+}
 
 // worm object -> its segment divs, in segment order. Worm objects are
 // stable identities across ticks (mutated in place), so the map holds
@@ -84,6 +118,15 @@ export function renderWormOverlays() {
       return el;
     });
     _wormEls.set(worm, els);
+  }
+
+  // Paint every worm its own tone. Re-derived on every render (a handful
+  // of elements) so a mid-game theme switch recolors the brood from the
+  // new theme's endpoints in the same refit that repositions them.
+  const endpoints = _toneEndpoints();
+  for (const worm of worms) {
+    const els = _wormEls.get(worm);
+    if (els) _paintWorm(els, typeof worm.tone === 'number' ? worm.tone : 0.5, endpoints);
   }
 
   // Position every segment from the pure layout
