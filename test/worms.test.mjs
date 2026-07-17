@@ -15,11 +15,18 @@ import {
   WORM_MIN_LEN, WORM_MAX_LEN, WORM_MAX_PER_BOARD,
   WORM_LIFETIME_MIN_MOVES, WORM_LIFETIME_MAX_MOVES, WORM_LOAD_SCALE,
   WORM_MOVE_MIN_MS, WORM_MOVE_MAX_MS,
-  WORM_PACE_MIN, WORM_PACE_MAX,
+  WORM_PACE_MIN, WORM_PACE_MAX, WORM_PERSIST_PROB,
   wormLengthFor, wormLifetimeFor, wormToneFor, wormPaceFor, wormLoadFor,
   mixHex, hatchWorm, stepWorm, tickWorms, rehydrateWorms, wormCoveredCells,
   wormOverlayLayout,
 } from '../src/logic/worms.js';
+
+// Fixed-sequence rng for pinning exact branch behavior (repeats the last
+// value once the sequence is exhausted).
+const seqRng = (...vals) => {
+  let i = 0;
+  return () => vals[Math.min(i++, vals.length - 1)];
+};
 import { createEmptyBoard } from '../src/logic/boardGenerator.js';
 import {
   applyGimmicks, clearGimmickProperties, getGimmicksForLevel, recalcAllAdjacency,
@@ -107,9 +114,10 @@ test('tone is per-EGG and deterministic: a brood of siblings, identical for ever
   const legacy = rehydrateWorms([{ segments: [{ r: 0, c: 0 }], movesLeft: 9 }], mulberry32(2));
   assert.equal(legacy[0].tone, 0.5);
   assert.equal(legacy[0].pace, 1);
-  const kept = rehydrateWorms([{ segments: [{ r: 0, c: 0 }], movesLeft: 9, tone: 0.83, pace: 1.2 }], mulberry32(3));
+  const kept = rehydrateWorms([{ segments: [{ r: 0, c: 0 }], movesLeft: 9, tone: 0.83, pace: 1.2, lastDir: { dr: -1, dc: 0 } }], mulberry32(3));
   assert.equal(kept[0].tone, 0.83);
   assert.equal(kept[0].pace, 1.2);
+  assert.deepEqual(kept[0].lastDir, { dr: -1, dc: 0 }, 'heading survives a resume');
 });
 
 test('mixHex interpolates the tone ramp endpoint-to-endpoint and clamps t', () => {
@@ -156,8 +164,63 @@ test('stepWorm moves the head only onto revealed cells; the body follows snake-s
   assert.equal(moved, true);
   assert.deepEqual(worm.segments[0], { r: 1, c: 2 }, 'head takes the one revealed neighbor');
   assert.deepEqual(worm.segments[1], { r: 1, c: 1 }, 'body follows into the old head cell');
+  assert.deepEqual(worm.lastDir, { dr: 0, dc: 1 }, 'the move sets the heading for momentum');
   assert.equal(worm.movesLeft, 4);
   assert.ok(worm.nextMoveMs >= WORM_MOVE_MIN_MS, 'a fresh move delay is rolled');
+});
+
+test('momentum: about half the steps continue the last heading, even past the aversion', () => {
+  // Head between open ground west (0) and heavy mine country east (4),
+  // heading EAST. A persist roll under WORM_PERSIST_PROB keeps it going
+  // east despite the aversion strongly preferring west.
+  const field = (r, c) => {
+    if (r !== 0) return null;
+    if (c === 0) return 0;
+    if (c === 2) return 4;
+    return null;
+  };
+  const east = { segments: [{ r: 0, c: 1 }], movesLeft: 9, lastDir: { dr: 0, dc: 1 }, nextMoveMs: 0 };
+  stepWorm(east, field, seqRng(WORM_PERSIST_PROB - 0.1, 0.5));
+  assert.deepEqual(east.segments[0], { r: 0, c: 2 }, 'kept its heading into the 4');
+
+  // A persist roll ABOVE the threshold falls through to the roulette,
+  // where the first (tiny) draw lands on the better west cell.
+  const turned = { segments: [{ r: 0, c: 1 }], movesLeft: 9, lastDir: { dr: 0, dc: 1 }, nextMoveMs: 0 };
+  stepWorm(turned, field, seqRng(WORM_PERSIST_PROB + 0.1, 0.01, 0.5));
+  assert.deepEqual(turned.segments[0], { r: 0, c: 0 }, 'roulette turned it toward open ground');
+  assert.deepEqual(turned.lastDir, { dr: 0, dc: -1 }, 'the turn becomes the new heading');
+
+  // Blocked ahead: the persist roll succeeds but the way is fog — falls
+  // back to the roulette instead of stalling.
+  const blocked = { segments: [{ r: 0, c: 1 }], movesLeft: 9, lastDir: { dr: 0, dc: 1 }, nextMoveMs: 0 };
+  const westOnly = (r, c) => (r === 0 && c === 0 ? 0 : null);
+  stepWorm(blocked, westOnly, seqRng(0.0, 0.5, 0.5));
+  assert.deepEqual(blocked.segments[0], { r: 0, c: 0 }, 'blocked heading falls back to the roulette');
+
+  // Boxed in entirely: stays put, spends the move, keeps its heading.
+  const boxed = { segments: [{ r: 0, c: 0 }], movesLeft: 3, lastDir: { dr: 0, dc: 1 }, nextMoveMs: 0 };
+  stepWorm(boxed, () => null, seqRng(0.0, 0.5));
+  assert.equal(boxed.movesLeft, 2);
+  assert.deepEqual(boxed.lastDir, { dr: 0, dc: 1 }, 'heading survives the wait');
+});
+
+test('REGRESSION: the correlated walk actually travels (pure roulette paced in place)', () => {
+  // Open field, everything walkable: over 80 moves the worm should tour,
+  // not shuffle around its egg. Deterministic under the seeded rng; the
+  // floors are loose so constant tuning cannot flake them.
+  const open = () => 0;
+  const worm = { segments: [{ r: 0, c: 0 }], movesLeft: 999, nextMoveMs: 0 };
+  const rng = mulberry32(97);
+  const visited = new Set(['0,0']);
+  let maxDist = 0;
+  for (let i = 0; i < 80; i++) {
+    stepWorm(worm, open, rng);
+    const h = worm.segments[0];
+    visited.add(`${h.r},${h.c}`);
+    maxDist = Math.max(maxDist, Math.abs(h.r) + Math.abs(h.c));
+  }
+  assert.ok(visited.size >= 30, `toured ${visited.size} distinct cells in 80 moves`);
+  assert.ok(maxDist >= 8, `ranged ${maxDist} cells from the egg`);
 });
 
 test('a boxed-in worm stays put but still spends the move (no immortal squatter)', () => {

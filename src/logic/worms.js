@@ -51,6 +51,12 @@ export const WORM_PACE_MAX = 1.3;
 // design (Christopher's spec): a 0 vs a 4 is roughly a four-to-one
 // preference, never a rule — the walk stays luck, just luck with a nose.
 export const WORM_NUMBER_AVERSION = 0.7;
+// Momentum: about half the worm's steps first try to CONTINUE its last
+// heading when the cell straight ahead is walkable; only then does the
+// aversion roulette pick. A pure roulette walk backtracks so much its net
+// travel grows like the square root of its moves — worms paced in place
+// (Christopher's report). The correlated walk actually tours the board.
+export const WORM_PERSIST_PROB = 0.5;
 
 // Deterministic 2-5 segment length for the egg at (r, c). Seeded from the
 // board's identity so every player on the same canonical board hatches the
@@ -152,50 +158,73 @@ export function rehydrateWorms(saved, rng = Math.random) {
     const movesLeft = typeof w.movesLeft === 'number' ? w.movesLeft : 0;
     if (movesLeft <= 0) continue;
     const pace = typeof w.pace === 'number' ? w.pace : 1;
-    worms.push({
+    const worm = {
       segments: w.segments.map(s => ({ r: s.r, c: s.c })),
       movesLeft,
       // Old saves predate tones/pace; neutral defaults keep them whole.
       tone: typeof w.tone === 'number' ? w.tone : 0.5,
       pace,
       nextMoveMs: rollMoveDelay(rng, pace),
-    });
+    };
+    // Heading survives a resume so momentum picks up where it left off.
+    if (w.lastDir && typeof w.lastDir.dr === 'number' && typeof w.lastDir.dc === 'number') {
+      worm.lastDir = { dr: w.lastDir.dr, dc: w.lastDir.dc };
+    }
+    worms.push(worm);
   }
   return worms;
 }
 
 const ORTHO = [[-1, 0], [1, 0], [0, -1], [0, 1]];
 
-// One crawl step: the head moves to an orthogonal REVEALED neighbor chosen
-// by mine-aversion weighting (self-overlap is fine — the worm may double
-// back over its own body), the body follows snake-style. No revealed
-// neighbor ⇒ the worm stays put but the move still counts, so a boxed-in
-// worm still burrows on schedule.
+// One crawl step: with WORM_PERSIST_PROB the head first tries to continue
+// its last heading (momentum); otherwise — or when the way ahead is not
+// walkable — an orthogonal REVEALED neighbor is chosen by mine-aversion
+// weighting. Self-overlap is fine (the worm may double back over its own
+// body); the body follows snake-style. No revealed neighbor ⇒ the worm
+// stays put but the move still counts, so a boxed-in worm still burrows
+// on schedule (its heading survives the wait).
 // `numberAt(r, c)` returns the cell's adjacent-mine count when the worm may
 // stand there (revealed), else null — including out of bounds.
 export function stepWorm(worm, numberAt, rng = Math.random) {
   const head = worm.segments[0];
-  const options = [];
-  let totalWeight = 0;
-  for (const [dr, dc] of ORTHO) {
-    const nr = head.r + dr;
-    const nc = head.c + dc;
-    const n = numberAt(nr, nc);
-    if (n === null || n === undefined) continue;
-    const weight = Math.pow(WORM_NUMBER_AVERSION, n);
-    totalWeight += weight;
-    options.push({ r: nr, c: nc, weight });
+
+  // Momentum first: keep going the way we were going, about half the time.
+  let next = null;
+  if (worm.lastDir && rng() < WORM_PERSIST_PROB) {
+    const nr = head.r + worm.lastDir.dr;
+    const nc = head.c + worm.lastDir.dc;
+    const ahead = numberAt(nr, nc);
+    if (ahead !== null && ahead !== undefined) next = { r: nr, c: nc };
   }
-  let moved = false;
-  if (options.length > 0) {
-    // Roulette pick over the aversion weights: lower numbers draw the worm,
-    // higher numbers repel it, nothing is ever off-limits.
-    let roll = rng() * totalWeight;
-    let next = options[options.length - 1];
-    for (const opt of options) {
-      roll -= opt.weight;
-      if (roll <= 0) { next = opt; break; }
+
+  if (!next) {
+    const options = [];
+    let totalWeight = 0;
+    for (const [dr, dc] of ORTHO) {
+      const nr = head.r + dr;
+      const nc = head.c + dc;
+      const n = numberAt(nr, nc);
+      if (n === null || n === undefined) continue;
+      const weight = Math.pow(WORM_NUMBER_AVERSION, n);
+      totalWeight += weight;
+      options.push({ r: nr, c: nc, weight });
     }
+    if (options.length > 0) {
+      // Roulette pick over the aversion weights: lower numbers draw the
+      // worm, higher numbers repel it, nothing is ever off-limits.
+      let roll = rng() * totalWeight;
+      next = options[options.length - 1];
+      for (const opt of options) {
+        roll -= opt.weight;
+        if (roll <= 0) { next = opt; break; }
+      }
+    }
+  }
+
+  let moved = false;
+  if (next) {
+    worm.lastDir = { dr: next.r - head.r, dc: next.c - head.c };
     worm.segments.unshift({ r: next.r, c: next.c });
     worm.segments.pop();
     moved = true;

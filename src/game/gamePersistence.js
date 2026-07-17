@@ -97,6 +97,7 @@ export function persistGameState() {
       movesLeft: w.movesLeft,
       tone: typeof w.tone === 'number' ? w.tone : 0.5,
       pace: typeof w.pace === 'number' ? w.pace : 1,
+      lastDir: w.lastDir ? { dr: w.lastDir.dr, dc: w.lastDir.dc } : null,
     })),
     wallEdges: state.board._wallEdges ? Array.from(state.board._wallEdges) : [],
     gatedCert: !!state.board._gatedCert,
