@@ -27,7 +27,7 @@ test('daily/{date}/{entry}: all written score fields are whitelisted', () => {
   // src/firebase/firebaseLeaderboard.js _doSubmitOnlineScore payload.
   assertWhitelist(rules.daily.$date.$entry, 'daily/$entry', [
     'name', 'time', 'bombHits', 'par', 'uid', 'timestamp',
-    'bombHitEvents', 'rngSeed', 'totalBombPenalty',
+    'bombHitEvents', 'rngSeed', 'totalBombPenalty', 'wormEvents',
   ]);
 });
 
@@ -36,6 +36,16 @@ test('daily bombHitEvents entries: all per-hit fields are whitelisted', () => {
   assertWhitelist(rules.daily.$date.$entry.bombHitEvents.$idx, 'daily bombHitEvents/$idx', [
     't', 'row', 'col', 'penalty', 'infoValue',
   ]);
+});
+
+test('daily + archive wormEvents entries: all per-hatch fields are whitelisted', () => {
+  // src/logic/worms.js wormHatchEvent + markWormBurrowed/finalizeWormEvents
+  // shape: { t, r, c, len, life, pace, moves, tEnd? }. A dropped field here
+  // silently kills the realized-worm-dose data stream (the bombHitEvents
+  // incident class), so both row families pin the full set.
+  const FIELDS = ['t', 'tEnd', 'r', 'c', 'len', 'life', 'pace', 'moves'];
+  assertWhitelist(rules.daily.$date.$entry.wormEvents.$idx, 'daily wormEvents/$idx', FIELDS);
+  assertWhitelist(rules.dailyArchive.$date.$entry.wormEvents.$idx, 'dailyArchive wormEvents/$idx', FIELDS);
 });
 
 test('weekly/{weekStart}/{uid}: all written fields are whitelisted', () => {

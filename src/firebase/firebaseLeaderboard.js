@@ -272,6 +272,15 @@ async function _doSubmitOnlineScore(dateString, name, time, bombHits, extras) {
     if (Array.isArray(extras.hintEvents) && extras.hintEvents.length > 0) {
       payload.hintEvents = extras.hintEvents;
     }
+    // Worm hatch log: [{ t, r, c, len, life, pace, moves, tEnd? }] — one
+    // per hatched egg, traits embedded (the refit never reimplements the
+    // seeded RNG), `moves` = exact realized move count. The refit fits on
+    // the REALIZED worm dose (Σ len × moves / 100), because the scheduled
+    // wormLoad overstates what a fast or late-hatching run experienced.
+    // Only attached when worms hatched, so worm-free rows are unchanged.
+    if (Array.isArray(extras.wormEvents) && extras.wormEvents.length > 0) {
+      payload.wormEvents = extras.wormEvents;
+    }
     // Effective RNG seed used for this daily's generation. Equal to the
     // dateString on non-experiment days, a `:trialN` variant on
     // adaptive-experiment days (see experimentDesign.js). Stored so
@@ -407,6 +416,9 @@ export function buildArchivePayload(date, name, time, bombHits, extras = {}, tim
   }
   if (Array.isArray(extras.hintEvents) && extras.hintEvents.length > 0) {
     payload.hintEvents = extras.hintEvents;
+  }
+  if (Array.isArray(extras.wormEvents) && extras.wormEvents.length > 0) {
+    payload.wormEvents = extras.wormEvents;
   }
   // Archive boards are PAST dates, so the effective seed routinely differs
   // from `date` (the daily flips `:trialN` on experiment days). Store it only

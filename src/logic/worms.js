@@ -152,8 +152,64 @@ export function hatchWorm(r, c, seedIdentity, rng = Math.random) {
     movesLeft: wormLifetimeFor(seedIdentity, r, c),
     tone: wormToneFor(seedIdentity, r, c),
     pace,
+    // Egg identity — the join key between a live worm and its hatch event
+    // (one egg per cell, so the pair is unique per board)
+    eggR: r,
+    eggC: c,
     nextMoveMs: rollMoveDelay(rng, pace),
   };
+}
+
+// ── Worm hatch events (par-model instrumentation) ──────
+// Scheduled wormLoad is the board's MAXIMUM dose; the realized dose
+// depends on WHEN each egg hatched relative to the finish — a worm
+// opened seconds before the win obscures almost nothing, and that gap is
+// systematic (fast solvers realize less), which would attenuate the
+// fitted coefficient (Christopher's call, 2026-07-17). So every hatch is
+// logged and submitted with daily/weekly scores like bombHitEvents:
+//   { t, r, c, len, life, pace, moves, tEnd? }
+// t/tEnd are wall-clock elapsed seconds (pause-excluded); traits are
+// embedded so the R refit never reimplements the seeded RNG; `moves` is
+// the EXACT realized move count (life at burrow, life - movesLeft for a
+// worm still alive at game end) — no average-pace estimate needed.
+// Realized load for a row = Σ len × moves / WORM_LOAD_SCALE.
+
+export function wormHatchEvent(t, r, c, seedIdentity) {
+  return {
+    t: Math.round(t),
+    r,
+    c,
+    len: wormLengthFor(seedIdentity, r, c),
+    life: wormLifetimeFor(seedIdentity, r, c),
+    pace: Math.round(wormPaceFor(seedIdentity, r, c) * 1000) / 1000,
+  };
+}
+
+// Stamp a burrowed worm's event: it consumed its whole move budget.
+export function markWormBurrowed(events, worm, tEnd) {
+  if (!Array.isArray(events)) return;
+  const ev = events.find(e => e && e.r === worm.eggR && e.c === worm.eggC);
+  if (ev) {
+    ev.moves = ev.life;
+    ev.tEnd = Math.round(tEnd);
+  }
+}
+
+// Finalize at teardown (stopTimer, BEFORE live worms are cleared): worms
+// still alive get their exact realized moves; an event with neither a
+// burrow stamp nor a matching live worm (state loss — should not happen)
+// conservatively counts its full budget. Returns a completed copy.
+export function finalizeWormEvents(events, liveWorms) {
+  if (!Array.isArray(events)) return [];
+  const live = new Map();
+  for (const w of (liveWorms || [])) live.set(`${w.eggR},${w.eggC}`, w);
+  return events.map(e => {
+    if (!e) return e;
+    if (typeof e.moves === 'number') return { ...e };
+    const worm = live.get(`${e.r},${e.c}`);
+    const moves = worm ? Math.max(0, e.life - worm.movesLeft) : e.life;
+    return { ...e, moves };
+  });
 }
 
 // Rebuild live worms from a persisted snapshot (segments + movesLeft only —
@@ -172,6 +228,9 @@ export function rehydrateWorms(saved, rng = Math.random) {
       // Old saves predate tones/pace; neutral defaults keep them whole.
       tone: typeof w.tone === 'number' ? w.tone : 0.5,
       pace,
+      // Egg identity joins the worm back to its hatch event at finalize
+      eggR: w.eggR,
+      eggC: w.eggC,
       nextMoveMs: rollMoveDelay(rng, pace),
     };
     // Heading survives a resume so momentum picks up where it left off.

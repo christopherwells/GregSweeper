@@ -401,6 +401,7 @@ parse_score_rows <- function(raw) {
   if (length(raw) == 0) {
     return(tibble(date = character(), time = double(), uid = character(),
                   bombHits = double(), totalBombPenalty = double(), bombBaseSum = double(),
+                  wormRealized = double(),
                   n_hints = integer(), cruxViewed = logical()))
   }
   tibble(
@@ -429,6 +430,19 @@ parse_score_rows <- function(raw) {
         ev <- .x$bombHitEvents %||% list()
         if (length(ev) == 0) return(0)
         sum(map_dbl(ev, ~ (.x$penalty %||% 0) - (.x$infoValue %||% 0)))
+      }),
+      # REALIZED worm dose (2026-07-17): Σ len × moves / 100 over the row's
+      # wormEvents — the exact pace-agnostic segment-moves this run actually
+      # experienced. The board's scheduled wormLoad (dailyMeta) is the MAX
+      # dose; a fast solver or a late hatch realizes less, and that gap is
+      # systematic (correlated with speed), so fitting on the schedule would
+      # attenuate the coefficient. NA = no events on the row (a pre-worm
+      # board, or an old client that could not log) — the join below falls
+      # back to the scheduled value for those rows.
+      wormRealized      = map_dbl(entry, ~ {
+        ev <- .x$wormEvents %||% list()
+        if (length(ev) == 0) return(NA_real_)
+        sum(map_dbl(ev, ~ (.x$len %||% 0) * (.x$moves %||% 0))) / 100
       }),
       # v1.6.12+ Lens hints: rows carry hintEvents only when the player used
       # the in-game lens. A hinted completion is not an honest observation of
@@ -525,6 +539,15 @@ NEW_STRUCTURAL_FEATURES <- c("nonZeroSafeCellCount", "zeroClusterCount",
 for (f in NEW_STRUCTURAL_FEATURES) {
   if (!f %in% colnames(df)) df[[f]] <- 0
 }
+
+# Worm dose: the FIT uses each row's realized load (from its wormEvents),
+# not the board's scheduled maximum. `wormScheduled` keeps the structural
+# value for the realization-ratio the shipped coefficient needs (predictPar
+# can only know the schedule pre-play). Rows without events (old clients on
+# a worm board) keep the scheduled value — a documented overstatement that
+# only affects the launch-day cohort.
+df$wormScheduled <- ifelse(is.na(df$wormLoad), 0, df$wormLoad)
+df$wormLoad <- ifelse(!is.na(df$wormRealized), df$wormRealized, df$wormScheduled)
 
 df <- df |>
   mutate(across(
@@ -941,7 +964,10 @@ if (fit_method == "brms-ranef") {
     secPerMirrorPair   = nn(co["mirrorPairCount"],   "mirrorPair"),
     secPerSonarCell    = nn(co["sonarCellCount"],    "sonarCell"),
     secPerCompassCell  = nn(co["compassCellCount"],  "compassCell"),
-    # NA (worm term gated out pre-first-board) maps to 0 via nn()
+    # NA (worm term gated out pre-first-board) maps to 0 via nn(). The
+    # posterior coefficient is per REALIZED wormLoad unit (the fit's
+    # regressor); the scheduled-to-realized bridge is applied below, after
+    # the realization ratio is computed.
     secPerWormLoad     = nn(co["wormLoad"],          "wormLoad"),
     secPerZeroCluster  = nn(co["zeroClusterCount"],  "zeroCluster")
   )
@@ -1010,6 +1036,24 @@ if (fit_method == "brms-ranef") {
   # once we have real variation in the feature columns, the threshold lifts
   # and the fitted coefficients flow through. Old plays don't have these
   # fields in dailyMeta (write-once) so we can only build data forward.
+  # predictPar multiplies secPerWormLoad by the board's SCHEDULED wormLoad
+  # (the only value knowable pre-play), but the coefficient was fit on the
+  # REALIZED dose. Bridge with the play-weighted realization ratio
+  # (Σ realized / Σ scheduled over worm rows), so the shipped term predicts
+  # the dose a typical run actually experiences. Both factors are printed;
+  # the ratio defaults to 1 while no worm rows exist (the coefficient is 0
+  # there anyway via the gate + zero-guard).
+  worm_rows <- df_fit$wormScheduled > 0 & !is.na(df_fit$wormRealized)
+  worm_realization_ratio <- if (any(worm_rows)) {
+    sum(df_fit$wormRealized[worm_rows]) / max(sum(df_fit$wormScheduled[worm_rows]), 1e-9)
+  } else 1
+  if (new_coefs$secPerWormLoad > 0) {
+    message(sprintf("  secPerWormLoad: %.5f per realized unit x realization ratio %.3f -> %.5f shipped",
+                    new_coefs$secPerWormLoad, worm_realization_ratio,
+                    new_coefs$secPerWormLoad * worm_realization_ratio))
+    new_coefs$secPerWormLoad <- new_coefs$secPerWormLoad * worm_realization_ratio
+  }
+
   NEW_FEATURE_DATA_THRESHOLD <- 20
   feature_data_counts <- list(
     secPerZeroCluster = sum(df_fit$zeroClusterCount > 0, na.rm = TRUE),

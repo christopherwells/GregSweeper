@@ -254,9 +254,10 @@ export async function newGame() {
   // the new board with the old cell coords.
   for (const id of activePlates.values()) clearInterval(id);
   activePlates.clear();
-  // Clear live worms from the previous game (the heartbeat itself was torn
-  // down by stopTimer above; the overlay dies with renderBoard's rebuild).
+  // Clear live worms + hatch log from the previous game (the heartbeat
+  // itself was torn down by stopTimer above).
   state.worms = [];
+  state.wormEvents = [];
   // inputLocked is set transiently during cascade/chord animations and cleared
   // by a setTimeout. Starting a new game between the lock and the timeout would
   // leave the new game with input frozen until the next interaction would
