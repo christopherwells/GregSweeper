@@ -36,9 +36,15 @@ export const WORM_MAX_PER_BOARD = 3;
 // sync.
 export const WORM_LIFETIME_MIN_MOVES = 30;
 export const WORM_LIFETIME_MAX_MOVES = 80;
-// Each move happens on its own uniform 1-4s clock.
+// Each move happens on its own uniform 1-4s clock, scaled by the worm's
+// PACE trait — a per-egg roll in [0.8, 1.3] (seeded like length/lifetime/
+// tone, so every player sees the same fast and slow worms). Noticeably
+// different, deliberately not hugely: the quickest worms average ~2.0s a
+// move, the slowest ~3.25s (Christopher's spec).
 export const WORM_MOVE_MIN_MS = 1000;
 export const WORM_MOVE_MAX_MS = 4000;
+export const WORM_PACE_MIN = 0.8;
+export const WORM_PACE_MAX = 1.3;
 // Movement bias: worms dislike mines. Each candidate cell's weight is
 // WORM_NUMBER_AVERSION^adjacentMines, so open ground (0) is favored and
 // every extra adjacent mine multiplies the cell's chance down. Light by
@@ -72,6 +78,15 @@ export function wormToneFor(seedIdentity, r, c) {
   return createDailyRNG(`${seedIdentity}:wormtone:${r}:${c}`)();
 }
 
+// Deterministic per-EGG pace factor in [WORM_PACE_MIN, WORM_PACE_MAX].
+// Multiplies every move delay: below 1 is a quick worm, above 1 a slow
+// one. NOT cosmetic — a slower worm parks on numbers longer and lives
+// longer in wall-clock, which is why wormLoadFor weights by it.
+export function wormPaceFor(seedIdentity, r, c) {
+  const rng = createDailyRNG(`${seedIdentity}:wormpace:${r}:${c}`);
+  return WORM_PACE_MIN + rng() * (WORM_PACE_MAX - WORM_PACE_MIN);
+}
+
 // Linear hex-color interpolation for the tone ramp (t = 0 → a, t = 1 → b).
 // Lives here (with wormOverlayLayout) so the color math is node-testable;
 // wormRenderer supplies the theme's endpoint tokens.
@@ -86,25 +101,28 @@ export function mixHex(a, b, t) {
   return `#${((r << 16) | (g << 8) | bl).toString(16).padStart(6, '0')}`;
 }
 
-// The par-model exposure measure: total segment-moves the board's eggs are
-// pre-programmed to spend — Σ per-egg (length × lifetime) — in HUNDREDS
-// (so the value runs ~0.6-12, the same range as the other count features,
-// and its log-multiplier coefficient lands in the family's scale). Fully
-// structural — derived from egg positions + the seed identity, no runtime
-// randomness — so dailyMeta's wormLoad is a verify-sweep hard-fail key.
+// The par-model exposure measure: pace-weighted segment-moves the board's
+// eggs are pre-programmed to spend — Σ per-egg (length × lifetime × pace)
+// — in HUNDREDS (so the value runs ~0.5-15, the same range as the other
+// count features, and its log-multiplier coefficient lands in the family's
+// scale). Pace belongs in the measure: a slow worm covers numbers longer
+// per move AND lives longer in wall-clock. Fully structural — derived from
+// egg positions + the seed identity, no runtime randomness — so
+// dailyMeta's wormLoad is a verify-sweep hard-fail key.
 export const WORM_LOAD_SCALE = 100;
 export function wormLoadFor(eggs, seedIdentity) {
   if (!Array.isArray(eggs) || eggs.length === 0) return 0;
   let segmentMoves = 0;
   for (const egg of eggs) {
     segmentMoves += wormLengthFor(seedIdentity, egg.r, egg.c)
-      * wormLifetimeFor(seedIdentity, egg.r, egg.c);
+      * wormLifetimeFor(seedIdentity, egg.r, egg.c)
+      * wormPaceFor(seedIdentity, egg.r, egg.c);
   }
   return segmentMoves / WORM_LOAD_SCALE;
 }
 
-function rollMoveDelay(rng) {
-  return WORM_MOVE_MIN_MS + Math.floor(rng() * (WORM_MOVE_MAX_MS - WORM_MOVE_MIN_MS));
+function rollMoveDelay(rng, pace = 1) {
+  return (WORM_MOVE_MIN_MS + Math.floor(rng() * (WORM_MOVE_MAX_MS - WORM_MOVE_MIN_MS))) * pace;
 }
 
 // Hatch a worm at the just-revealed egg cell. Spawns fully coiled (every
@@ -112,13 +130,15 @@ function rollMoveDelay(rng) {
 // it unspools as it finds revealed neighbors to crawl onto.
 export function hatchWorm(r, c, seedIdentity, rng = Math.random) {
   const length = wormLengthFor(seedIdentity, r, c);
+  const pace = wormPaceFor(seedIdentity, r, c);
   const segments = [];
   for (let i = 0; i < length; i++) segments.push({ r, c });
   return {
     segments,               // segments[0] is the head
     movesLeft: wormLifetimeFor(seedIdentity, r, c),
     tone: wormToneFor(seedIdentity, r, c),
-    nextMoveMs: rollMoveDelay(rng),
+    pace,
+    nextMoveMs: rollMoveDelay(rng, pace),
   };
 }
 
@@ -131,12 +151,14 @@ export function rehydrateWorms(saved, rng = Math.random) {
     if (!w || !Array.isArray(w.segments) || w.segments.length === 0) continue;
     const movesLeft = typeof w.movesLeft === 'number' ? w.movesLeft : 0;
     if (movesLeft <= 0) continue;
+    const pace = typeof w.pace === 'number' ? w.pace : 1;
     worms.push({
       segments: w.segments.map(s => ({ r: s.r, c: s.c })),
       movesLeft,
-      // Old saves predate tones; a mid-ramp default keeps them visible.
+      // Old saves predate tones/pace; neutral defaults keep them whole.
       tone: typeof w.tone === 'number' ? w.tone : 0.5,
-      nextMoveMs: rollMoveDelay(rng),
+      pace,
+      nextMoveMs: rollMoveDelay(rng, pace),
     });
   }
   return worms;
@@ -179,7 +201,7 @@ export function stepWorm(worm, numberAt, rng = Math.random) {
     moved = true;
   }
   worm.movesLeft--;
-  worm.nextMoveMs = rollMoveDelay(rng);
+  worm.nextMoveMs = rollMoveDelay(rng, worm.pace || 1);
   return moved;
 }
 

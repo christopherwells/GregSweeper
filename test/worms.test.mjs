@@ -15,8 +15,9 @@ import {
   WORM_MIN_LEN, WORM_MAX_LEN, WORM_MAX_PER_BOARD,
   WORM_LIFETIME_MIN_MOVES, WORM_LIFETIME_MAX_MOVES, WORM_LOAD_SCALE,
   WORM_MOVE_MIN_MS, WORM_MOVE_MAX_MS,
-  wormLengthFor, wormLifetimeFor, wormToneFor, wormLoadFor, mixHex,
-  hatchWorm, stepWorm, tickWorms, rehydrateWorms, wormCoveredCells,
+  WORM_PACE_MIN, WORM_PACE_MAX,
+  wormLengthFor, wormLifetimeFor, wormToneFor, wormPaceFor, wormLoadFor,
+  mixHex, hatchWorm, stepWorm, tickWorms, rehydrateWorms, wormCoveredCells,
   wormOverlayLayout,
 } from '../src/logic/worms.js';
 import { createEmptyBoard } from '../src/logic/boardGenerator.js';
@@ -41,12 +42,35 @@ test('worm length is deterministic per (seed identity, cell) and spans the 2-5 b
   assert.ok(lengths.size > 1, 'lengths must vary across cells, not collapse to one value');
 });
 
-test('hatchWorm spawns fully coiled on the egg cell with a fresh 1-4s clock', () => {
+test('hatchWorm spawns fully coiled on the egg cell with a fresh pace-scaled clock', () => {
   const worm = hatchWorm(2, 5, 'seed-x', mulberry32(1));
   assert.equal(worm.segments.length, wormLengthFor('seed-x', 2, 5));
   assert.ok(worm.segments.every(s => s.r === 2 && s.c === 5), 'coiled spawn: every segment on the egg');
   assert.equal(worm.movesLeft, wormLifetimeFor('seed-x', 2, 5));
-  assert.ok(worm.nextMoveMs >= WORM_MOVE_MIN_MS && worm.nextMoveMs < WORM_MOVE_MAX_MS);
+  assert.equal(worm.pace, wormPaceFor('seed-x', 2, 5));
+  assert.ok(worm.nextMoveMs >= WORM_MOVE_MIN_MS * worm.pace && worm.nextMoveMs < WORM_MOVE_MAX_MS * worm.pace,
+    'the first move clock is scaled by the worm\'s own pace');
+});
+
+test('pace is a per-EGG trait: noticeably fast and slow worms, identical for every player', () => {
+  assert.equal(wormPaceFor('2026-07-20:trial3', 4, 4), wormPaceFor('2026-07-20:trial3', 4, 4));
+  const paces = [];
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const p = wormPaceFor('2026-07-20:trial3', r, c);
+      assert.ok(p >= WORM_PACE_MIN && p <= WORM_PACE_MAX, `pace ${p} outside band`);
+      paces.push(p);
+    }
+  }
+  assert.ok(Math.max(...paces) - Math.min(...paces) > 0.2, 'paces must spread, not collapse');
+  // A quick worm rolls quicker clocks than a slow one, move after move.
+  const quick = { segments: [{ r: 0, c: 0 }], movesLeft: 99, pace: WORM_PACE_MIN, nextMoveMs: 0 };
+  const slow = { segments: [{ r: 0, c: 0 }], movesLeft: 99, pace: WORM_PACE_MAX, nextMoveMs: 0 };
+  stepWorm(quick, () => null, mulberry32(51));
+  stepWorm(slow, () => null, mulberry32(51)); // same rng stream -> same base roll
+  assert.ok(quick.nextMoveMs < slow.nextMoveMs, 'pace scales the rolled delay');
+  assert.ok(quick.nextMoveMs >= WORM_MOVE_MIN_MS * WORM_PACE_MIN);
+  assert.ok(slow.nextMoveMs < WORM_MOVE_MAX_MS * WORM_PACE_MAX);
 });
 
 test('lifetime is per-EGG: each worm owns its 30-80 budget, identical for every player', () => {
@@ -77,13 +101,15 @@ test('tone is per-EGG and deterministic: a brood of siblings, identical for ever
     }
   }
   assert.ok(tones.size > 10, 'tones must spread across the ramp, not collapse');
-  // The hatch carries it, and old saves rehydrate to the mid-ramp default.
+  // The hatch carries it, and old saves rehydrate to neutral defaults.
   const worm = hatchWorm(2, 5, 'seed-x', mulberry32(1));
   assert.equal(worm.tone, wormToneFor('seed-x', 2, 5));
   const legacy = rehydrateWorms([{ segments: [{ r: 0, c: 0 }], movesLeft: 9 }], mulberry32(2));
   assert.equal(legacy[0].tone, 0.5);
-  const kept = rehydrateWorms([{ segments: [{ r: 0, c: 0 }], movesLeft: 9, tone: 0.83 }], mulberry32(3));
+  assert.equal(legacy[0].pace, 1);
+  const kept = rehydrateWorms([{ segments: [{ r: 0, c: 0 }], movesLeft: 9, tone: 0.83, pace: 1.2 }], mulberry32(3));
   assert.equal(kept[0].tone, 0.83);
+  assert.equal(kept[0].pace, 1.2);
 });
 
 test('mixHex interpolates the tone ramp endpoint-to-endpoint and clamps t', () => {
@@ -96,12 +122,12 @@ test('mixHex interpolates the tone ramp endpoint-to-endpoint and clamps t', () =
   assert.equal(mixHex('#000000', '#0000ff', 0.5).length, 7);
 });
 
-test('wormLoadFor: sum of per-egg length x lifetime in hundreds, deterministic, zero without eggs', () => {
+test('wormLoadFor: sum of per-egg length x lifetime x pace in hundreds, deterministic, zero without eggs', () => {
   const seed = '2026-07-21:trial0';
   const eggs = [{ r: 2, c: 3 }, { r: 7, c: 1 }];
   const expected = (
-    wormLengthFor(seed, 2, 3) * wormLifetimeFor(seed, 2, 3)
-    + wormLengthFor(seed, 7, 1) * wormLifetimeFor(seed, 7, 1)
+    wormLengthFor(seed, 2, 3) * wormLifetimeFor(seed, 2, 3) * wormPaceFor(seed, 2, 3)
+    + wormLengthFor(seed, 7, 1) * wormLifetimeFor(seed, 7, 1) * wormPaceFor(seed, 7, 1)
   ) / WORM_LOAD_SCALE;
   assert.equal(wormLoadFor(eggs, seed), expected);
   assert.equal(wormLoadFor(eggs, seed), wormLoadFor(eggs, seed), 'stable across calls');
