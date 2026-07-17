@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="2.89 2.89 122.22 122.22">
+  <!-- Worm Tiles: an earthworm arcing up out of its burrow. Colors match
+       the base brown-to-cream tone family (worm-tone tokens in
+       global.css); in play, each worm's seeded tone picks its own spot
+       on that ramp. One canonical design; theme families come later. -->
+  <!-- burrow mound -->
+  <ellipse cx="64" cy="107" rx="46" ry="13" fill="#7a5138"/>
+  <ellipse cx="64" cy="104" rx="32" ry="8.5" fill="#3f2a1e"/>
+  <!-- body: S-curve from the burrow to the raised head -->
+  <path d="M80 104 C 98 90, 94 64, 70 58 C 46 52, 42 36, 58 28"
+        fill="none" stroke="#7d4e2d" stroke-width="30" stroke-linecap="round"/>
+  <path d="M80 104 C 98 90, 94 64, 70 58 C 46 52, 42 36, 58 28"
+        fill="none" stroke="#c99e6d" stroke-width="23" stroke-linecap="round"/>
+  <!-- segment creases -->
+  <g stroke="#7d4e2d" stroke-width="3" stroke-linecap="round" opacity="0.55" fill="none">
+    <path d="M88 92 C 92 94, 96 94, 99 92"/>
+    <path d="M84 72 C 88 71, 92 69, 94 66"/>
+    <path d="M60 50 C 61 54, 63 57, 66 59"/>
+  </g>
+  <!-- head -->
+  <circle cx="58" cy="28" r="18" fill="#b0834f" stroke="#7d4e2d" stroke-width="4"/>
+  <circle cx="51" cy="24" r="3.6" fill="#2b1a11"/>
+  <circle cx="65" cy="24" r="3.6" fill="#2b1a11"/>
+  <path d="M52 35 C 56 38.5, 61 38.5, 65 35" fill="none" stroke="#2b1a11" stroke-width="3" stroke-linecap="round"/>
+</svg>

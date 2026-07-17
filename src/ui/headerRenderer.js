@@ -83,7 +83,7 @@ export function updateActiveGimmickBar() {
     // data-gimmick drives the tap-to-explain toast below. The title
     // attr only serves desktop hover — touch devices never see it,
     // which left phone players with unexplainable icons mid-game.
-    const iconHtml = gimmickSpriteImgHTML(g, 'sprite-gimmick', def.name) || def.icon;
+    const iconHtml = gimmickSpriteImgHTML(g, 'sprite-gimmick', def.name) || def.icon || '';
     return '<span class="active-gimmick-icon" role="button" tabindex="0" data-gimmick="' + g + '" title="' + tooltip + '">' + iconHtml + '</span>';
   }).join('');
   bar.classList.remove('hidden');
@@ -151,7 +151,9 @@ function _explainGimmickChip(target) {
   const def = getGimmickDef(chip.dataset.gimmick);
   if (!def) return;
   import('./toastManager.js').then(m => {
-    m.showToast(`${def.icon} ${def.name}: ${def.desc || ''}`, 4500);
+    // Sprite-only modifiers (worm) have no icon field — name-only prefix
+    const prefix = def.icon ? `${def.icon} ` : '';
+    m.showToast(`${prefix}${def.name}: ${def.desc || ''}`, 4500);
   });
 }
 const _gimmickIconsEl = document.getElementById('active-gimmick-icons');

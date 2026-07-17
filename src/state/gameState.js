@@ -90,6 +90,12 @@ export const state = {
   activeGimmicks: [],    // ['mystery', 'walls', ...]
   gimmickData: {},       // per-gimmick applied data
   mineShiftTimerId: null,
+  worms: [],             // live hatched worms [{segments, movesLeft, nextMoveMs}]
+  wormTimerId: null,     // worm-crawl heartbeat interval id
+  // Test-build ?level= playtest runs: no stats, no progression, no
+  // challenge save slot, no power-up earns (/test/ shares this origin's
+  // localStorage with prod, so a playtest jump must never pollute it)
+  isLevelPractice: false,
   inputLocked: false,    // true during cascade/chord animations
 
   // Chaos mode (roguelike runs)

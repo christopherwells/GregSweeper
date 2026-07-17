@@ -38,6 +38,11 @@ test('fieldNoteFromBoard cannot contradict the board (regression: 2026-06-10 wor
     fieldNoteFromBoard({ activeGimmicks: ['liar', 'walls'] }),
     'Greg: today is a liar cells + walls study',
   );
+  // Worm tiles (2026-07-16) are named, never silently dropped.
+  assert.equal(
+    fieldNoteFromBoard({ activeGimmicks: ['worm'] }),
+    'Greg: today is a worm tiles study',
+  );
   // Gimmick-free board → no note, never a vague one.
   assert.equal(fieldNoteFromBoard({ activeGimmicks: [] }), null);
   assert.equal(fieldNoteFromBoard(null), null);
@@ -114,7 +119,7 @@ test('classifySdDelta: the one shared definition of tightened/widened/flat', () 
 
 test('featureHypothesis: bespoke claims are structural and plain; unnamed features get the honest generic', () => {
   for (const f of ['lockedCellCount', 'sonarCellCount', 'compassCellCount', 'mirrorPairCount',
-    'liarCellCount', 'mysteryCellCount', 'wormholePairCount', 'wallEdgeCount',
+    'liarCellCount', 'mysteryCellCount', 'wormholePairCount', 'wallEdgeCount', 'wormLoad',
     'zeroClusterCount', 'searchMoves', 'patternMoves', 'totalMines', 'cellCount']) {
     const h = featureHypothesis(f);
     assert.ok(h && h.length > 30, `missing hypothesis for ${f}`);
@@ -132,7 +137,7 @@ test('featureHypothesis: bespoke claims are structural and plain; unnamed featur
 
 test('featureName covers every push-able model feature', () => {
   for (const f of ['lockedCellCount', 'sonarCellCount', 'compassCellCount', 'mirrorPairCount',
-    'liarCellCount', 'mysteryCellCount', 'wormholePairCount', 'wallEdgeCount',
+    'liarCellCount', 'mysteryCellCount', 'wormholePairCount', 'wallEdgeCount', 'wormLoad',
     'zeroClusterCount', 'searchMoves', 'patternMoves', 'totalMines']) {
     assert.ok(featureName(f), `missing plain-English name for ${f}`);
   }

@@ -89,6 +89,9 @@ export function switchMode(mode) {
   // inherit a prior archive's identity and submit to the wrong path.
   state.isArchivePlay = false;
   state._archiveRaw = null;
+  // Likewise never a ?level= playtest (that flag is set only by the
+  // test-build deep link) — a real challenge entered afterward must record.
+  state.isLevelPractice = false;
   updateModeUI(mode);
 
   // Chaos mode: always start a fresh run (no resume)

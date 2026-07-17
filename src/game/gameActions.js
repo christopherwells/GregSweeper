@@ -14,7 +14,7 @@ import { updatePowerUpBar } from '../ui/powerUpBar.js';
 import { clearBoardCoach } from '../ui/boardCoach.js';
 import { hideAllModals, showModal, hideModal } from '../ui/modalManager.js';
 import { showLevelInfoToast } from '../ui/toastManager.js';
-import { startTimer, stopTimer, pauseTimer, resumeTimer, startMineShift, updateTimerDisplay } from './timerManager.js';
+import { startTimer, stopTimer, pauseTimer, resumeTimer, startMineShift, updateTimerDisplay, hatchWormEggs } from './timerManager.js';
 import { handleWin, handleLoss, handleDailyBombHit } from './winLossHandler.js';
 import { performScan, performXRay, performMagnet, tryLifeline } from './powerUpActions.js';
 import { generateBoard, createEmptyBoard, cleanSolverArtifacts } from '../logic/boardGenerator.js';
@@ -89,7 +89,8 @@ function showGimmickIntros(gimmickDefs, recapDefs = []) {
       recap: true,
       iconKey: 'uiPuzzle',
       name: 'Also on this board',
-      body: recapDefs.map(d => `${d.icon} ${d.name}`).join(' · '),
+      // Sprite-only modifiers (worm) have no icon field — name-only entry
+      body: recapDefs.map(d => (d.icon ? `${d.icon} ${d.name}` : d.name)).join(' · '),
       exampleHtml: '',
     });
   }
@@ -253,6 +254,9 @@ export async function newGame() {
   // the new board with the old cell coords.
   for (const id of activePlates.values()) clearInterval(id);
   activePlates.clear();
+  // Clear live worms from the previous game (the heartbeat itself was torn
+  // down by stopTimer above; the overlay dies with renderBoard's rebuild).
+  state.worms = [];
   // inputLocked is set transiently during cascade/chord animations and cleared
   // by a setTimeout. Starting a new game between the lock and the timeout would
   // leave the new game with input frozen until the next interaction would
@@ -1106,7 +1110,7 @@ export function revealCell(row, col) {
         modIcons.innerHTML = state.chaosModifiers.map(g => {
           const def = getGimmickDef(g);
           if (!def) return '';
-          const iconHtml = gimmickSpriteImgHTML(g, 'sprite-gimmick', def.name) || def.icon;
+          const iconHtml = gimmickSpriteImgHTML(g, 'sprite-gimmick', def.name) || def.icon || '';
           return '<span class="chaos-mod-icon" title="' + def.name + '">' + iconHtml + '</span>';
         }).join('');
       }
@@ -1256,6 +1260,10 @@ export function revealCell(row, col) {
       startPressurePlateTimer(cell);
     }
   }
+
+  // Hatch any worm eggs the reveal uncovered (pair/cascade cells are
+  // already folded into the batch by revealWormholePairs above)
+  hatchWormEggs(newlyRevealed);
 
   if (checkWin(state.board)) handleWin().catch(err => reportCaughtError('handle-win', err));
 }
@@ -1523,6 +1531,11 @@ export function handleChordReveal(row, col) {
       }
     }
   }
+
+  // Hatch chord-revealed worm eggs. Deliberately NOT gated on hitMine:
+  // a daily/weekly strike-chord keeps its safe reveals on the board, and
+  // the hatch filter skips mines and re-fogged cells on its own.
+  hatchWormEggs(result.revealed);
 
   if (result.hitMine && primaryMine) {
     // Challenge/timed/chaos: every chord-exposed mine was un-revealed

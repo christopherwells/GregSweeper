@@ -8,6 +8,7 @@ import { updateHeader } from '../ui/headerRenderer.js';
 import { updatePowerUpBar } from '../ui/powerUpBar.js';
 import { findSafeCell, scanRowCol, shieldDefuse, xRayScan, magnetPull } from '../logic/powerUps.js';
 import { checkWin, floodFillReveal } from '../logic/boardSolver.js';
+import { hatchWormEggs } from './timerManager.js';
 import { saveModePowerUps, loadPowerUps } from '../storage/statsStorage.js';
 import { saveProgress } from '../firebase/firebaseProgress.js';
 import {
@@ -31,6 +32,7 @@ export function useRevealSafe() {
   cell.isRevealed = true;
   cell.revealAnimDelay = 0;
   state.revealedCount++;
+  const revealedBatch = [cell];
 
   // Wormhole: revealing one side reveals the paired cell too
   if (cell.isWormhole && cell.wormholePair) {
@@ -39,13 +41,18 @@ export function useRevealSafe() {
       pair.isRevealed = true;
       pair.revealAnimDelay = 0;
       state.revealedCount++;
+      revealedBatch.push(pair);
       const pairEff = pair.displayedMines != null ? pair.displayedMines : pair.adjacentMines;
       if (pairEff === 0) {
         const cascade = floodFillReveal(state.board, pair.row, pair.col);
         state.revealedCount += cascade.length;
+        revealedBatch.push(...cascade);
       }
     }
   }
+
+  // Hatch any worm egg the power-up just uncovered
+  hatchWormEggs(revealedBatch);
 
   const cellEl = boardEl.children[cell.row * state.cols + cell.col];
   if (cellEl) {

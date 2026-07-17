@@ -32,6 +32,7 @@ export const TARGET_TO_GIMMICK = {
   sonarCellCount:    'sonar',
   compassCellCount:  'compass',
   wallEdgeCount:     'walls',
+  wormLoad:          'worm',
 };
 
 const DEFAULT_TARGET = 'advancedLogicMoves';
@@ -119,7 +120,7 @@ export function buildOneCandidate(seed, forcedGimmick, singleOnly) {
   const decorative = (check && (check.solvable || check.remainingUnknowns === 0))
     ? findDecorativeGimmicks(board, rows, cols, fr, fc, activeGimmicks)
     : [];
-  return { board, rows, cols, totalMines, activeGimmicks, check, decorative };
+  return { board, rows, cols, totalMines, activeGimmicks, check, decorative, seed };
 }
 
 export function selectBestCandidate(dateString, spec) {
@@ -145,7 +146,7 @@ export function selectBestCandidate(dateString, spec) {
     if (!cand.check.solvable && cand.check.remainingUnknowns !== 0) continue;
     totalSolvable++;
     const features = computeDailyFeatures(
-      { board: cand.board, rows: cand.rows, cols: cand.cols, totalMines: cand.totalMines, activeGimmicks: cand.activeGimmicks },
+      { board: cand.board, rows: cand.rows, cols: cand.cols, totalMines: cand.totalMines, activeGimmicks: cand.activeGimmicks, rngSeed: seed },
       cand.check,
     );
     const count = features[mission.target] || 0;
@@ -230,7 +231,7 @@ export function buildCanonicalPayload(cand, codeVersion) {
 
 export function buildCandidateFeatures(cand) {
   return computeDailyFeatures(
-    { board: cand.board, rows: cand.rows, cols: cand.cols, totalMines: cand.totalMines, activeGimmicks: cand.activeGimmicks },
+    { board: cand.board, rows: cand.rows, cols: cand.cols, totalMines: cand.totalMines, activeGimmicks: cand.activeGimmicks, rngSeed: cand.seed },
     cand.check,
   );
 }

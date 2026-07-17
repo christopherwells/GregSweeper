@@ -4,6 +4,7 @@
 
 import { safeGet, safeSet, safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js';
 import { MAX_LEVEL } from './difficulty.js';
+import { WORM_MAX_PER_BOARD } from './worms.js';
 
 // Reset all gimmick-related properties on a single cell.
 // Used when retrying gimmick placement to avoid stale markers.
@@ -28,6 +29,7 @@ export function clearGimmickProperties(cell) {
   cell.compassArrow = undefined;
   cell.compassCount = undefined;
   cell.liarOffset = undefined;
+  cell.isWormEgg = false;
 }
 
 const GIMMICK_DEFS = {
@@ -91,13 +93,28 @@ const GIMMICK_DEFS = {
     longDesc: 'Compass cells show an arrow (\u2190\u2192\u2191\u2193) and a number. The number counts every mine in that direction across the full row or column. A "4\u2190" means there are 4 mines to the left in that row. Powerful global information, but you need to cross-reference it with local numbers.',
     exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(5,32px)"><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-compass" style="color:#ffa726;font-weight:900">3\u2190</div><div class="ge-cell revealed">2</div><div class="ge-cell unrevealed"></div></div><div class="ge-caption">"3\u2190" = 3 mines to the left in this row</div>',
   },
+  // Sprite-only modifier: no `icon` emoji field, by design. Every icon
+  // surface renders assets/sprites/mod-worm.svg; def.icon consumers carry
+  // a missing-icon guard.
+  worm: {
+    intro: 101, name: 'Worm Tiles',
+    desc: 'Some cells hide a worm egg. Revealing one hatches a worm that crawls over your numbers.',
+    longDesc: 'A few safe cells hold a buried worm egg. Revealing one hatches a worm that wanders across your revealed cells, hiding the numbers it sits on for a moment. It prefers open ground and shies away from big numbers. It never changes the board and it can\'t hurt you: the numbers underneath stay exactly as they were, and the worm burrows away on its own. Remember what you read, or wait for it to move along.',
+    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-worm-covered">2<span class="ge-worm-seg"></span></div><div class="ge-cell revealed ge-worm-covered">1<span class="ge-worm-seg ge-worm-head"></span></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div></div><div class="ge-caption">The worm hides numbers as it crawls. They come back when it moves on</div>',
+  },
 };
 
 const SEEN_KEY = 'minesweeper_seen_gimmicks';
 const POPUP_DISABLED_KEY = 'minesweeper_modifier_popup_disabled';
 
-// ── Daily-safe gimmick subset (no dynamic board changes, no timers) ──
-const DAILY_SAFE_GIMMICKS = ['mystery', 'locked', 'walls', 'liar', 'wormhole', 'mirror', 'sonar', 'compass'];
+// ── Daily-safe gimmick subset ──
+// The bar: the BOARD DATA must be static and canonical (no mine movement,
+// no deadline that ends the game) so every player on the date plays the
+// byte-identical layout. Excludes mineShift (mines move) and pressurePlate
+// (a countdown can lose the game). Worm qualifies: its eggs are static
+// canonical cells and the crawling worm is a render-time overlay that
+// delays information without ever changing the board.
+const DAILY_SAFE_GIMMICKS = ['mystery', 'locked', 'walls', 'liar', 'wormhole', 'mirror', 'sonar', 'compass', 'worm'];
 
 // ── Modifier popup preference ──────────────────────────
 
@@ -192,9 +209,10 @@ export function getGimmicksForLevel(level, rng = Math.random) {
   // Old gimmicks = all introduced EXCEPT the current primary
   const oldGimmicks = introduced.filter(g => g !== primaryGimmick);
 
-  if (level < 91 || (level >= 91 && level <= 100)) {
-    // During intro blocks (L11-90) or compass intro (L91-100):
-    // Primary is always present, secondary 60%, tertiary 10%
+  if (primaryGimmick) {
+    // Inside some gimmick's 10-level intro block (L11-110 with worm as the
+    // L101-110 capstone intro): primary is always present, secondary 60%,
+    // tertiary 10%
     const active = [];
 
     // Primary: 100% always present
@@ -220,8 +238,8 @@ export function getGimmicksForLevel(level, rng = Math.random) {
     return active;
   }
 
-  // L101-120: Post-intro ramp — all gimmicks equal, ramp to guaranteed 3
-  const progress = (level - 100) / 20; // 0.0 at L101, 1.0 at L120
+  // L111-120: Post-intro ramp — all gimmicks equal, ramp to guaranteed 3
+  const progress = (level - 110) / 10; // 0.1 at L111, 1.0 at L120
   const shuffled = [...introduced].sort(() => rng() - 0.5);
   const active = [shuffled[0]]; // always at least 1
 
@@ -300,13 +318,16 @@ export function applyGimmicks(board, level, activeGimmicks, rng = Math.random) {
 
   // Order matters: walls first (affects adjacency), then cell markers that
   // hide/lock cells, then base-value gimmicks (wormhole/mirror/sonar/compass)
-  // which are mutually exclusive with each other, then liar LAST so it can
-  // stack its offset on top of whatever base value is already assigned.
+  // which are mutually exclusive with each other, then liar so it can stack
+  // its offset on top of whatever base value is already assigned. Worm goes
+  // LAST: eggs sit only on plain cells, so its candidate filter must see
+  // every other gimmick already placed.
   const ORDER = [
     'walls', 'mineShift',
     'mystery', 'locked', 'pressurePlate',
     'wormhole', 'mirror', 'sonar', 'compass',
     'liar',
+    'worm',
   ];
   const ordered = ORDER.filter(g => activeGimmicks.includes(g));
 
@@ -353,6 +374,9 @@ export function applyGimmicks(board, level, activeGimmicks, rng = Math.random) {
         break;
       case 'compass':
         applied.compass = applyCompass(board, rows, cols, intensity, rng);
+        break;
+      case 'worm':
+        applied.worm = applyWorm(board, rows, cols, Math.min(intensity, WORM_MAX_PER_BOARD), rng);
         break;
     }
   }
@@ -401,6 +425,33 @@ function applyMystery(board, rows, cols, count, rng) {
   const applied = [];
   for (let i = 0; i < Math.min(count, candidates.length); i++) {
     candidates[i].isMystery = true;
+    applied.push({ row: candidates[i].row, col: candidates[i].col });
+  }
+  return applied;
+}
+
+// ── Worm Tiles: eggs that hatch crawling worms on reveal ──
+// Eggs go on PLAIN numbered safe cells only — no mine, no other gimmick on
+// the cell — so the post-hatch cell shows an ordinary number and the solver
+// stays worm-blind. Runs LAST in ORDER, so every other gimmick's flags are
+// already set when the filter runs. Hidden eggs render as normal cells (a
+// telegraphed safe-only egg would leak "this cell is safe").
+function applyWorm(board, rows, cols, count, rng) {
+  const candidates = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const cell = board[r][c];
+      if (!cell.isMine && cell.adjacentMines > 0 &&
+          !cell.isMystery && !cell.isPressurePlate && !cell.isLocked &&
+          !cell.isLiar && !hasBaseValueGimmick(cell)) {
+        candidates.push(cell);
+      }
+    }
+  }
+  shuffle(candidates, rng);
+  const applied = [];
+  for (let i = 0; i < Math.min(count, candidates.length); i++) {
+    candidates[i].isWormEgg = true;
     applied.push({ row: candidates[i].row, col: candidates[i].col });
   }
   return applied;

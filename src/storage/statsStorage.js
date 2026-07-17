@@ -252,11 +252,16 @@ export function statsForMode(stats, gameMode) {
 // "earned" can never resurface on reload or ride along a later non-daily save.
 let _lastMoltEvent = null;
 
-export function saveGameResult(won, time, level, { isDaily = false, isArchive = false, isPractice = false, usedPowerUps = false, gameMode = 'normal', hadGimmicks = false, skillFeats = {}, dailySeed = null } = {}) {
+export function saveGameResult(won, time, level, { isDaily = false, isArchive = false, isPractice = false, isLevelPractice = false, usedPowerUps = false, gameMode = 'normal', hadGimmicks = false, skillFeats = {}, dailySeed = null } = {}) {
   const stats = loadStats();
   const modeKey = getModeKey(gameMode);
   const modeStats = stats.modeStats[modeKey];
   _lastMoltEvent = null;
+
+  // A ?level= playtest run (test builds only) records NOTHING: no games
+  // played, no streaks, no bestTimes, and above all no maxLevelReached —
+  // the checkpoint ladder must never unlock from a practice jump.
+  if (isLevelPractice) return stats;
 
   // Update global stats (chaos mode is tracked per-mode only — skip global streak/bestTimes/purist)
   const isChaos = modeKey === 'chaos';

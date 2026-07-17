@@ -41,6 +41,7 @@ export async function computeDailyParForDate(dateStr, ignoreInMemory = false) {
     try {
       let pBoard, pRows, pCols, pMines, activeGimmicks;
       let parResult;
+      let pSeed; // effective RNG seed — wormLoad derives from it
 
       const canonicalRaw = await loadDailyBoard(dateStr).catch(err => { reportCaughtError('par-canonical-fetch', err); return null; });
       if (canonicalRaw) {
@@ -50,6 +51,7 @@ export async function computeDailyParForDate(dateStr, ignoreInMemory = false) {
         pCols = r.cols;
         pMines = r.totalMines;
         activeGimmicks = r.activeGimmicks || [];
+        pSeed = r.rngSeed || dateStr;
         const pFixedR = Math.floor(pRows / 2), pFixedC = Math.floor(pCols / 2);
         parResult = isBoardSolvable(pBoard, pRows, pCols, pFixedR, pFixedC);
         cleanSolverArtifacts(pBoard);
@@ -58,6 +60,7 @@ export async function computeDailyParForDate(dateStr, ignoreInMemory = false) {
         // the computed par matches what the player will actually see when
         // they start today's daily (especially on adaptive-experiment days).
         const rngSeed = selectDailyRngSeed(dateStr);
+        pSeed = rngSeed;
         const dimRng = createDailyRNG(rngSeed);
         pRows = DAILY_MIN_SIZE + Math.floor(dimRng() * DAILY_SIZE_RANGE);
         pCols = DAILY_MIN_SIZE + Math.floor(dimRng() * DAILY_SIZE_RANGE);
@@ -89,7 +92,7 @@ export async function computeDailyParForDate(dateStr, ignoreInMemory = false) {
 
       if (parResult && (parResult.solvable || parResult.remainingUnknowns === 0)) {
         const features = computeDailyFeatures(
-          { board: pBoard, rows: pRows, cols: pCols, totalMines: pMines, activeGimmicks },
+          { board: pBoard, rows: pRows, cols: pCols, totalMines: pMines, activeGimmicks, rngSeed: pSeed },
           parResult,
         );
         dailyPar = predictPar(features);
@@ -116,7 +119,7 @@ export async function computeWeeklyPar(weekStart) {
       cleanSolverArtifacts(r.board);
       if (check.solvable || check.remainingUnknowns === 0) {
         const features = computeDailyFeatures(
-          { board: r.board, rows: r.rows, cols: r.cols, totalMines: r.totalMines, activeGimmicks: r.activeGimmicks || [] },
+          { board: r.board, rows: r.rows, cols: r.cols, totalMines: r.totalMines, activeGimmicks: r.activeGimmicks || [], rngSeed: r.rngSeed || '' },
           check,
         );
         par = predictPar(features);

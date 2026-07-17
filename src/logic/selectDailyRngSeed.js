@@ -91,7 +91,7 @@ export function selectDailyRngSeed(dateString) {
     if (!check.solvable && check.remainingUnknowns !== 0) continue;
 
     const features = computeDailyFeatures(
-      { board, rows, cols, totalMines: mines, activeGimmicks: gimmicks },
+      { board, rows, cols, totalMines: mines, activeGimmicks: gimmicks, rngSeed: seed },
       check,
     );
     const count = features[mission.target] || 0;

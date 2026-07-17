@@ -68,6 +68,7 @@ const TARGET_TO_GIMMICK = {
   sonarCellCount:    'sonar',
   compassCellCount:  'compass',
   wallEdgeCount:     'walls',
+  wormLoad:          'worm',
 };
 
 export function getTargetGimmickName(target) {
