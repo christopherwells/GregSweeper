@@ -44,34 +44,52 @@ test('hatchWorm spawns fully coiled on the egg cell with a fresh 1-4s clock', ()
   const worm = hatchWorm(2, 5, 'seed-x', mulberry32(1));
   assert.equal(worm.segments.length, wormLengthFor('seed-x', 2, 5));
   assert.ok(worm.segments.every(s => s.r === 2 && s.c === 5), 'coiled spawn: every segment on the egg');
-  assert.equal(worm.movesLeft, wormLifetimeFor('seed-x'));
+  assert.equal(worm.movesLeft, wormLifetimeFor('seed-x', 2, 5));
   assert.ok(worm.nextMoveMs >= WORM_MOVE_MIN_MS && worm.nextMoveMs < WORM_MOVE_MAX_MS);
 });
 
-test('lifetime is per-BOARD: rolled once from the seed, shared by every worm, spans 30-80', () => {
-  // Same board seed -> every egg's worm gets the identical move budget.
-  assert.equal(hatchWorm(1, 1, '2026-07-20:trial3').movesLeft, hatchWorm(8, 4, '2026-07-20:trial3').movesLeft);
-  // Deterministic per seed (every player on the canonical board agrees).
-  assert.equal(wormLifetimeFor('2026-07-20:trial3'), wormLifetimeFor('2026-07-20:trial3'));
-  // Random ACROSS boards, always inside the [30, 80] band.
-  const lifetimes = new Set();
-  for (let d = 1; d <= 25; d++) {
-    const life = wormLifetimeFor(`2026-08-${String(d).padStart(2, '0')}`);
-    assert.ok(life >= WORM_LIFETIME_MIN_MOVES && life <= WORM_LIFETIME_MAX_MOVES, `lifetime ${life} outside band`);
-    lifetimes.add(life);
+test('lifetime is per-EGG: each worm owns its 30-80 budget, identical for every player', () => {
+  // Deterministic per (seed, cell): every player on the canonical board
+  // hatches this exact worm with this exact budget.
+  assert.equal(wormLifetimeFor('2026-07-20:trial3', 1, 1), wormLifetimeFor('2026-07-20:trial3', 1, 1));
+  // Different eggs on the SAME board roll their own budgets — one worm can
+  // squat for what feels like forever while another is a short cameo.
+  const budgets = new Set();
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const life = wormLifetimeFor('2026-07-20:trial3', r, c);
+      assert.ok(life >= WORM_LIFETIME_MIN_MOVES && life <= WORM_LIFETIME_MAX_MOVES, `lifetime ${life} outside band`);
+      budgets.add(life);
+    }
   }
-  assert.ok(lifetimes.size > 5, 'lifetimes must vary across boards, not collapse');
+  assert.ok(budgets.size > 5, 'per-egg budgets must vary within one board, not collapse');
 });
 
-test('wormLoadFor: segments x lifetime in hundreds, deterministic, zero without eggs', () => {
+test('wormLoadFor: sum of per-egg length x lifetime in hundreds, deterministic, zero without eggs', () => {
   const seed = '2026-07-21:trial0';
   const eggs = [{ r: 2, c: 3 }, { r: 7, c: 1 }];
-  const expectedSegments = wormLengthFor(seed, 2, 3) + wormLengthFor(seed, 7, 1);
-  const expected = (expectedSegments * wormLifetimeFor(seed)) / WORM_LOAD_SCALE;
+  const expected = (
+    wormLengthFor(seed, 2, 3) * wormLifetimeFor(seed, 2, 3)
+    + wormLengthFor(seed, 7, 1) * wormLifetimeFor(seed, 7, 1)
+  ) / WORM_LOAD_SCALE;
   assert.equal(wormLoadFor(eggs, seed), expected);
   assert.equal(wormLoadFor(eggs, seed), wormLoadFor(eggs, seed), 'stable across calls');
   assert.equal(wormLoadFor([], seed), 0);
   assert.equal(wormLoadFor(null, seed), 0);
+});
+
+test('staggered worms count down alone: a late hatch never buries with an early one', () => {
+  // Two worms mid-life with different remaining budgets; the heartbeat
+  // steps both, and only the spent one buries — the other keeps crawling
+  // on its own count.
+  const worms = [
+    { segments: [{ r: 0, c: 0 }], movesLeft: 1, nextMoveMs: 0 },  // on its last move
+    { segments: [{ r: 3, c: 3 }], movesLeft: 40, nextMoveMs: 0 }, // mid-life
+  ];
+  const { burrowed } = tickWorms(worms, 250, () => null, mulberry32(41));
+  assert.equal(burrowed.length, 1, 'only the spent worm buries');
+  assert.equal(worms.length, 1);
+  assert.equal(worms[0].movesLeft, 39, 'the survivor keeps its own countdown');
 });
 
 test('stepWorm moves the head only onto revealed cells; the body follows snake-style', () => {

@@ -26,12 +26,14 @@ export const WORM_MAX_LEN = 5;
 // Math.min(intensity, 3)) — keeps same-day walk-luck spread small on
 // instrumented modes.
 export const WORM_MAX_PER_BOARD = 3;
-// A worm burrows after its board's move budget (boxed-in turns still
-// count, so a stranded worm can't squat forever). The budget is rolled
-// ONCE PER BOARD from the seed identity — random in [30, 80] across
-// boards, but every worm on a daily shares one value and every player
-// sees the same one (Christopher's ruling: less variability where the
-// par model is watching).
+// A worm burrows after its own move budget (boxed-in turns still count,
+// so a stranded worm can't squat forever). Each EGG gets its own roll in
+// [30, 80], seeded from the board identity + the egg's cell — one worm
+// can feel like it's around forever while another is a short cameo, but
+// every player on a canonical board sees the same budgets (Christopher's
+// ruling: per-worm variety, zero cross-player variability). Worms hatch
+// at different times and each counts down alone, so they never bury in
+// sync.
 export const WORM_LIFETIME_MIN_MOVES = 30;
 export const WORM_LIFETIME_MAX_MOVES = 80;
 // Each move happens on its own uniform 1-4s clock.
@@ -52,28 +54,30 @@ export function wormLengthFor(seedIdentity, r, c) {
   return WORM_MIN_LEN + Math.floor(rng() * (WORM_MAX_LEN - WORM_MIN_LEN + 1));
 }
 
-// Deterministic per-BOARD move budget in [30, 80]. One roll per seed
-// identity: every worm on the board lives the same number of moves, and
-// every player on a canonical board gets the same roll.
-export function wormLifetimeFor(seedIdentity) {
-  const rng = createDailyRNG(`${seedIdentity}:wormlife`);
+// Deterministic per-EGG move budget in [30, 80]. Seeded like the length:
+// each egg's worm gets its own roll, and every player on a canonical
+// board gets the same one.
+export function wormLifetimeFor(seedIdentity, r, c) {
+  const rng = createDailyRNG(`${seedIdentity}:wormlife:${r}:${c}`);
   return WORM_LIFETIME_MIN_MOVES
     + Math.floor(rng() * (WORM_LIFETIME_MAX_MOVES - WORM_LIFETIME_MIN_MOVES + 1));
 }
 
 // The par-model exposure measure: total segment-moves the board's eggs are
-// pre-programmed to spend, in HUNDREDS (so the value runs ~0.6-12, the same
-// range as the other count features, and its log-multiplier coefficient
-// lands in the family's scale). Fully structural — derived from egg
-// positions + the seed identity, no runtime randomness — so dailyMeta's
-// wormLoad is a verify-sweep hard-fail key.
+// pre-programmed to spend — Σ per-egg (length × lifetime) — in HUNDREDS
+// (so the value runs ~0.6-12, the same range as the other count features,
+// and its log-multiplier coefficient lands in the family's scale). Fully
+// structural — derived from egg positions + the seed identity, no runtime
+// randomness — so dailyMeta's wormLoad is a verify-sweep hard-fail key.
 export const WORM_LOAD_SCALE = 100;
 export function wormLoadFor(eggs, seedIdentity) {
   if (!Array.isArray(eggs) || eggs.length === 0) return 0;
-  const lifetime = wormLifetimeFor(seedIdentity);
-  let segments = 0;
-  for (const egg of eggs) segments += wormLengthFor(seedIdentity, egg.r, egg.c);
-  return (segments * lifetime) / WORM_LOAD_SCALE;
+  let segmentMoves = 0;
+  for (const egg of eggs) {
+    segmentMoves += wormLengthFor(seedIdentity, egg.r, egg.c)
+      * wormLifetimeFor(seedIdentity, egg.r, egg.c);
+  }
+  return segmentMoves / WORM_LOAD_SCALE;
 }
 
 function rollMoveDelay(rng) {
@@ -89,7 +93,7 @@ export function hatchWorm(r, c, seedIdentity, rng = Math.random) {
   for (let i = 0; i < length; i++) segments.push({ r, c });
   return {
     segments,               // segments[0] is the head
-    movesLeft: wormLifetimeFor(seedIdentity),
+    movesLeft: wormLifetimeFor(seedIdentity, r, c),
     nextMoveMs: rollMoveDelay(rng),
   };
 }
