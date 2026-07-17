@@ -103,7 +103,7 @@ function selectWithFilter(dateString, spec, useLoadBearing) {
     if (cand.decorative.length === 0) totalLoadBearing++;
     if (useLoadBearing && cand.decorative.length > 0) continue;
     const features = computeDailyFeatures(
-      { board: cand.board, rows: cand.rows, cols: cand.cols, totalMines: cand.totalMines, activeGimmicks: cand.activeGimmicks },
+      { board: cand.board, rows: cand.rows, cols: cand.cols, totalMines: cand.totalMines, activeGimmicks: cand.activeGimmicks, rngSeed: seed },
       cand.check,
     );
     const count = features[mission.target] || 0;

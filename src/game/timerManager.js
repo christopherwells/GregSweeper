@@ -224,10 +224,16 @@ export function startWormCrawl() {
     // modalPaused: a blocking popup (modifier intro, strike verdict) owns
     // the pause — the game clock stops, so worm clocks stop with it.
     if (state.status !== 'playing' || state.modalPaused) return;
-    const isRevealed = (r, c) =>
-      r >= 0 && r < state.rows && c >= 0 && c < state.cols &&
-      !!(state.board[r] && state.board[r][c] && state.board[r][c].isRevealed);
-    const { moved, burrowed } = tickWorms(state.worms, WORM_TICK_MS, isRevealed);
+    // Walkable cells report their TRUE adjacent-mine count (the worm smells
+    // actual mines, not liar-displayed values); null = not walkable. The
+    // mine-aversion weighting in stepWorm steers on this.
+    const numberAt = (r, c) => {
+      if (r < 0 || r >= state.rows || c < 0 || c >= state.cols) return null;
+      const cell = state.board[r] && state.board[r][c];
+      if (!cell || !cell.isRevealed) return null;
+      return cell.adjacentMines || 0;
+    };
+    const { moved, burrowed } = tickWorms(state.worms, WORM_TICK_MS, numberAt);
     if (burrowed.length > 0) playWormBurrow();
     if (moved.length > 0 || burrowed.length > 0) renderWormOverlays();
     if (state.worms.length === 0) stopWormCrawl();

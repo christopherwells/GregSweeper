@@ -179,7 +179,7 @@ async function writeWeeklyMeta(weekStart, idToken, features) {
     console.log('  written');
 
     const features = computeDailyFeatures(
-      { board: cand.board, rows: cand.rows, cols: cand.cols, totalMines: cand.totalMines, activeGimmicks: cand.activeGimmicks },
+      { board: cand.board, rows: cand.rows, cols: cand.cols, totalMines: cand.totalMines, activeGimmicks: cand.activeGimmicks, rngSeed: cand.rngSeed },
       cand.check,
     );
     await writeWeeklyMeta(weekStart, idToken, features);

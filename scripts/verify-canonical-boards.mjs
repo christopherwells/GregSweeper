@@ -64,7 +64,7 @@ const STRUCTURAL_FEATURE_KEYS = [
   'rows', 'cols', 'cellCount', 'totalMines', 'wallEdgeCount',
   'mysteryCellCount', 'sonarCellCount', 'compassCellCount', 'wormholeCellCount',
   'liarCellCount', 'mirrorCellCount', 'lockedCellCount',
-  'wormCellCount',
+  'wormLoad',
 ];
 
 /**
@@ -132,7 +132,9 @@ export function verifyMetaAgainstBoard(raw, meta) {
   const check = isBoardSolvable(d.board, d.rows, d.cols, fr, fc);
   cleanSolverArtifacts(d.board);
   const recomputed = computeDailyFeatures(
-    { board: d.board, rows: d.rows, cols: d.cols, totalMines: d.totalMines, activeGimmicks: d.activeGimmicks },
+    // rngSeed drives the wormLoad recompute (per-egg lengths + the board's
+    // move budget both derive from it)
+    { board: d.board, rows: d.rows, cols: d.cols, totalMines: d.totalMines, activeGimmicks: d.activeGimmicks, rngSeed: d.rngSeed || '' },
     check,
   );
   const reasons = [];
@@ -141,7 +143,7 @@ export function verifyMetaAgainstBoard(raw, meta) {
     const stored = meta.features[key];
     if (stored === val) continue;
     // A key ABSENT from the stored meta with a zero recompute is a feature
-    // that didn't exist when the meta was written (e.g. wormCellCount on a
+    // that didn't exist when the meta was written (e.g. wormLoad on a
     // board precomputed before worm tiles shipped) — pipeline vintage, not
     // tampering. A board that actually CARRIES the feature (recompute > 0)
     // against a meta without the key still hard-fails: an old pipeline

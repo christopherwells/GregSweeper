@@ -99,7 +99,7 @@ const GIMMICK_DEFS = {
   worm: {
     intro: 101, name: 'Worm Tiles',
     desc: 'Some cells hide a worm egg. Revealing one hatches a worm that crawls over your numbers.',
-    longDesc: 'A few safe cells hold a buried worm egg. Revealing one hatches a worm that wanders across your revealed cells, hiding the numbers it sits on for a moment. It never changes the board and it can\'t hurt you: the numbers underneath stay exactly as they were, and the worm burrows away on its own. Remember what you read, or wait for it to move along.',
+    longDesc: 'A few safe cells hold a buried worm egg. Revealing one hatches a worm that wanders across your revealed cells, hiding the numbers it sits on for a moment. It prefers open ground and shies away from big numbers. It never changes the board and it can\'t hurt you: the numbers underneath stay exactly as they were, and the worm burrows away on its own. Remember what you read, or wait for it to move along.',
     exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-worm-covered">2<span class="ge-worm-seg"></span></div><div class="ge-cell revealed ge-worm-covered">1<span class="ge-worm-seg ge-worm-head"></span></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div></div><div class="ge-caption">The worm hides numbers as it crawls. They come back when it moves on</div>',
   },
 };

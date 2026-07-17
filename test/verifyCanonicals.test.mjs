@@ -22,7 +22,7 @@ function recomputeFeatures(raw) {
   const check = isBoardSolvable(d.board, d.rows, d.cols, fr, fc);
   cleanSolverArtifacts(d.board);
   return computeDailyFeatures(
-    { board: d.board, rows: d.rows, cols: d.cols, totalMines: d.totalMines, activeGimmicks: d.activeGimmicks },
+    { board: d.board, rows: d.rows, cols: d.cols, totalMines: d.totalMines, activeGimmicks: d.activeGimmicks, rngSeed: d.rngSeed || '' },
     check,
   );
 }
@@ -65,12 +65,12 @@ test('REGRESSION #114: a relocated mine (stale numbers) is caught', () => {
   assert.equal(v.ok, false, 'moving a mine without fixing the numbers must fail');
 });
 
-test('REGRESSION: a pre-worm meta (no wormCellCount key) passes on an egg-free board — pipeline vintage, not tampering', () => {
+test('REGRESSION: a pre-worm meta (no wormLoad key) passes on an egg-free board — pipeline vintage, not tampering', () => {
   // Future-dated boards precomputed before worm tiles shipped carry metas
-  // without the wormCellCount key; the sweep recomputes 0 and must not
+  // without the wormLoad key; the sweep recomputes 0 and must not
   // hard-fail every one of them the night the feature merges.
   const features = recomputeFeatures(dailyRaw);
-  delete features.wormCellCount;
+  delete features.wormLoad;
   const v = verifyMetaAgainstBoard(dailyRaw, { features });
   assert.equal(v.ok, true, `vintage meta must pass: ${v.reasons.join('; ')}`);
 });
@@ -78,20 +78,20 @@ test('REGRESSION: a pre-worm meta (no wormCellCount key) passes on an egg-free b
 test('a tampered worm egg count is still a hard failure', () => {
   const features = recomputeFeatures(dailyRaw);
   // Stored claims eggs on an egg-free board.
-  const lying = { ...features, wormCellCount: 2 };
+  const lying = { ...features, wormLoad: 2 };
   const v1 = verifyMetaAgainstBoard(dailyRaw, { features: lying });
   assert.equal(v1.ok, false);
-  assert.match(v1.reasons.join(' '), /wormCellCount/);
+  assert.match(v1.reasons.join(' '), /wormLoad/);
   // Board carries an egg but the meta omits the key entirely — an old
   // pipeline cannot have produced an egg board, so vintage does not excuse it.
   const eggBoard = clone(dailyRaw);
   const safeIdx = eggBoard.cells.findIndex((c) => !c.isMine && (c.adjacentMines || 0) > 0);
   eggBoard.cells[safeIdx].isWormEgg = true;
   const vintage = recomputeFeatures(dailyRaw);
-  delete vintage.wormCellCount;
+  delete vintage.wormLoad;
   const v2 = verifyMetaAgainstBoard(eggBoard, { features: vintage });
   assert.equal(v2.ok, false, 'an egg board with a keyless meta must hard-fail');
-  assert.match(v2.reasons.join(' '), /wormCellCount/);
+  assert.match(v2.reasons.join(' '), /wormLoad/);
 });
 
 test('a structurally broken payload fails gracefully, never throws', () => {

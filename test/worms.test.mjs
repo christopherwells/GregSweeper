@@ -12,10 +12,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  WORM_MIN_LEN, WORM_MAX_LEN, WORM_MAX_PER_BOARD, WORM_LIFETIME_MOVES,
+  WORM_MIN_LEN, WORM_MAX_LEN, WORM_MAX_PER_BOARD,
+  WORM_LIFETIME_MIN_MOVES, WORM_LIFETIME_MAX_MOVES, WORM_LOAD_SCALE,
   WORM_MOVE_MIN_MS, WORM_MOVE_MAX_MS,
-  wormLengthFor, hatchWorm, stepWorm, tickWorms, rehydrateWorms,
-  wormCoveredCells, wormOverlayLayout,
+  wormLengthFor, wormLifetimeFor, wormLoadFor, hatchWorm, stepWorm,
+  tickWorms, rehydrateWorms, wormCoveredCells, wormOverlayLayout,
 } from '../src/logic/worms.js';
 import { createEmptyBoard } from '../src/logic/boardGenerator.js';
 import {
@@ -43,13 +44,39 @@ test('hatchWorm spawns fully coiled on the egg cell with a fresh 1-4s clock', ()
   const worm = hatchWorm(2, 5, 'seed-x', mulberry32(1));
   assert.equal(worm.segments.length, wormLengthFor('seed-x', 2, 5));
   assert.ok(worm.segments.every(s => s.r === 2 && s.c === 5), 'coiled spawn: every segment on the egg');
-  assert.equal(worm.movesLeft, WORM_LIFETIME_MOVES);
+  assert.equal(worm.movesLeft, wormLifetimeFor('seed-x'));
   assert.ok(worm.nextMoveMs >= WORM_MOVE_MIN_MS && worm.nextMoveMs < WORM_MOVE_MAX_MS);
+});
+
+test('lifetime is per-BOARD: rolled once from the seed, shared by every worm, spans 30-80', () => {
+  // Same board seed -> every egg's worm gets the identical move budget.
+  assert.equal(hatchWorm(1, 1, '2026-07-20:trial3').movesLeft, hatchWorm(8, 4, '2026-07-20:trial3').movesLeft);
+  // Deterministic per seed (every player on the canonical board agrees).
+  assert.equal(wormLifetimeFor('2026-07-20:trial3'), wormLifetimeFor('2026-07-20:trial3'));
+  // Random ACROSS boards, always inside the [30, 80] band.
+  const lifetimes = new Set();
+  for (let d = 1; d <= 25; d++) {
+    const life = wormLifetimeFor(`2026-08-${String(d).padStart(2, '0')}`);
+    assert.ok(life >= WORM_LIFETIME_MIN_MOVES && life <= WORM_LIFETIME_MAX_MOVES, `lifetime ${life} outside band`);
+    lifetimes.add(life);
+  }
+  assert.ok(lifetimes.size > 5, 'lifetimes must vary across boards, not collapse');
+});
+
+test('wormLoadFor: segments x lifetime in hundreds, deterministic, zero without eggs', () => {
+  const seed = '2026-07-21:trial0';
+  const eggs = [{ r: 2, c: 3 }, { r: 7, c: 1 }];
+  const expectedSegments = wormLengthFor(seed, 2, 3) + wormLengthFor(seed, 7, 1);
+  const expected = (expectedSegments * wormLifetimeFor(seed)) / WORM_LOAD_SCALE;
+  assert.equal(wormLoadFor(eggs, seed), expected);
+  assert.equal(wormLoadFor(eggs, seed), wormLoadFor(eggs, seed), 'stable across calls');
+  assert.equal(wormLoadFor([], seed), 0);
+  assert.equal(wormLoadFor(null, seed), 0);
 });
 
 test('stepWorm moves the head only onto revealed cells; the body follows snake-style', () => {
   const worm = { segments: [{ r: 1, c: 1 }, { r: 1, c: 1 }], movesLeft: 5, nextMoveMs: 0 };
-  const onlyEast = (r, c) => r === 1 && c === 2;
+  const onlyEast = (r, c) => (r === 1 && c === 2 ? 0 : null);
   const moved = stepWorm(worm, onlyEast, mulberry32(7));
   assert.equal(moved, true);
   assert.deepEqual(worm.segments[0], { r: 1, c: 2 }, 'head takes the one revealed neighbor');
@@ -60,7 +87,7 @@ test('stepWorm moves the head only onto revealed cells; the body follows snake-s
 
 test('a boxed-in worm stays put but still spends the move (no immortal squatter)', () => {
   const worm = { segments: [{ r: 0, c: 0 }, { r: 0, c: 0 }], movesLeft: 2, nextMoveMs: 0 };
-  const moved = stepWorm(worm, () => false, mulberry32(3));
+  const moved = stepWorm(worm, () => null, mulberry32(3));
   assert.equal(moved, false);
   assert.deepEqual(worm.segments, [{ r: 0, c: 0 }, { r: 0, c: 0 }]);
   assert.equal(worm.movesLeft, 1, 'boxed-in turns still count toward burrowing');
@@ -70,10 +97,47 @@ test('self-overlap: the head may crawl back over its own body', () => {
   // Only two revealed cells exist; the head's sole revealed neighbor is a
   // cell its own body occupies — the move must still be legal.
   const worm = { segments: [{ r: 0, c: 0 }, { r: 0, c: 1 }, { r: 0, c: 0 }], movesLeft: 5, nextMoveMs: 0 };
-  const twoCells = (r, c) => r === 0 && (c === 0 || c === 1);
+  const twoCells = (r, c) => (r === 0 && (c === 0 || c === 1) ? 1 : null);
   const moved = stepWorm(worm, twoCells, mulberry32(11));
   assert.equal(moved, true);
   assert.deepEqual(worm.segments[0], { r: 0, c: 1 }, 'head stacks onto its own body cell');
+});
+
+test('the walk is lightly biased: away from big numbers, toward open ground', () => {
+  // Head between open ground (0) to the west and heavy mine country (4) to
+  // the east. Aversion 0.7 weights them 1 vs 0.7^4 ≈ 0.24, so the expected
+  // west rate is ~0.81. Deterministic under the seeded rng; the loose band
+  // keeps the pin from being brittle to constant tuning (any aversion in
+  // roughly (0.55, 0.85) stays inside it).
+  const numberAt = (r, c) => {
+    if (r !== 0) return null;
+    if (c === 0) return 0;
+    if (c === 2) return 4;
+    return null;
+  };
+  const rng = mulberry32(29);
+  const TRIALS = 500;
+  let west = 0;
+  for (let i = 0; i < TRIALS; i++) {
+    const worm = { segments: [{ r: 0, c: 1 }, { r: 0, c: 1 }], movesLeft: 5, nextMoveMs: 0 };
+    stepWorm(worm, numberAt, rng);
+    if (worm.segments[0].c === 0) west++;
+  }
+  assert.ok(west / TRIALS > 0.6 && west / TRIALS < 0.95,
+    `open ground should draw the worm most but not all of the time (west rate ${west / TRIALS})`);
+
+  // Equal numbers on both sides: no systematic drift — the bias is about
+  // mines, not direction.
+  const flat = (r, c) => (r === 0 && (c === 0 || c === 2) ? 2 : null);
+  const rng2 = mulberry32(31);
+  let west2 = 0;
+  for (let i = 0; i < TRIALS; i++) {
+    const worm = { segments: [{ r: 0, c: 1 }, { r: 0, c: 1 }], movesLeft: 5, nextMoveMs: 0 };
+    stepWorm(worm, flat, rng2);
+    if (worm.segments[0].c === 0) west2++;
+  }
+  assert.ok(west2 / TRIALS > 0.4 && west2 / TRIALS < 0.6,
+    `equal numbers must stay near-uniform (west rate ${west2 / TRIALS})`);
 });
 
 test('tickWorms advances clocks, steps due worms, and splices out burrowed ones', () => {
@@ -81,7 +145,7 @@ test('tickWorms advances clocks, steps due worms, and splices out burrowed ones'
     { segments: [{ r: 0, c: 0 }], movesLeft: 1, nextMoveMs: 200 }, // due this tick, last move
     { segments: [{ r: 0, c: 1 }], movesLeft: 5, nextMoveMs: 900 }, // not due
   ];
-  const { moved, burrowed } = tickWorms(worms, 250, () => false, mulberry32(5));
+  const { moved, burrowed } = tickWorms(worms, 250, () => null, mulberry32(5));
   assert.equal(burrowed.length, 1, 'the spent worm burrows');
   assert.equal(worms.length, 1, 'burrowed worms are removed in place');
   assert.equal(worms[0].nextMoveMs, 650, 'a non-due worm only pays the tick');

@@ -56,7 +56,7 @@ for (let attempt = 0; ; attempt++) {
 }
 
 // Fake state object for computeDailyFeatures
-const state = { board, rows, cols, totalMines, activeGimmicks };
+const state = { board, rows, cols, totalMines, activeGimmicks, rngSeed: dateStr };
 const features = computeDailyFeatures(state, solverResult);
 const predicted = predictPar(features);
 const breakdown = breakdownPar(features);

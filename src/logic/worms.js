@@ -26,12 +26,23 @@ export const WORM_MAX_LEN = 5;
 // Math.min(intensity, 3)) — keeps same-day walk-luck spread small on
 // instrumented modes.
 export const WORM_MAX_PER_BOARD = 3;
-// A worm burrows after this many moves (boxed-in turns still count, so a
-// stranded worm can't squat forever).
-export const WORM_LIFETIME_MOVES = 20;
+// A worm burrows after its board's move budget (boxed-in turns still
+// count, so a stranded worm can't squat forever). The budget is rolled
+// ONCE PER BOARD from the seed identity — random in [30, 80] across
+// boards, but every worm on a daily shares one value and every player
+// sees the same one (Christopher's ruling: less variability where the
+// par model is watching).
+export const WORM_LIFETIME_MIN_MOVES = 30;
+export const WORM_LIFETIME_MAX_MOVES = 80;
 // Each move happens on its own uniform 1-4s clock.
 export const WORM_MOVE_MIN_MS = 1000;
 export const WORM_MOVE_MAX_MS = 4000;
+// Movement bias: worms dislike mines. Each candidate cell's weight is
+// WORM_NUMBER_AVERSION^adjacentMines, so open ground (0) is favored and
+// every extra adjacent mine multiplies the cell's chance down. Light by
+// design (Christopher's spec): a 0 vs a 4 is roughly a four-to-one
+// preference, never a rule — the walk stays luck, just luck with a nose.
+export const WORM_NUMBER_AVERSION = 0.7;
 
 // Deterministic 2-5 segment length for the egg at (r, c). Seeded from the
 // board's identity so every player on the same canonical board hatches the
@@ -39,6 +50,30 @@ export const WORM_MOVE_MAX_MS = 4000;
 export function wormLengthFor(seedIdentity, r, c) {
   const rng = createDailyRNG(`${seedIdentity}:worm:${r}:${c}`);
   return WORM_MIN_LEN + Math.floor(rng() * (WORM_MAX_LEN - WORM_MIN_LEN + 1));
+}
+
+// Deterministic per-BOARD move budget in [30, 80]. One roll per seed
+// identity: every worm on the board lives the same number of moves, and
+// every player on a canonical board gets the same roll.
+export function wormLifetimeFor(seedIdentity) {
+  const rng = createDailyRNG(`${seedIdentity}:wormlife`);
+  return WORM_LIFETIME_MIN_MOVES
+    + Math.floor(rng() * (WORM_LIFETIME_MAX_MOVES - WORM_LIFETIME_MIN_MOVES + 1));
+}
+
+// The par-model exposure measure: total segment-moves the board's eggs are
+// pre-programmed to spend, in HUNDREDS (so the value runs ~0.6-12, the same
+// range as the other count features, and its log-multiplier coefficient
+// lands in the family's scale). Fully structural — derived from egg
+// positions + the seed identity, no runtime randomness — so dailyMeta's
+// wormLoad is a verify-sweep hard-fail key.
+export const WORM_LOAD_SCALE = 100;
+export function wormLoadFor(eggs, seedIdentity) {
+  if (!Array.isArray(eggs) || eggs.length === 0) return 0;
+  const lifetime = wormLifetimeFor(seedIdentity);
+  let segments = 0;
+  for (const egg of eggs) segments += wormLengthFor(seedIdentity, egg.r, egg.c);
+  return (segments * lifetime) / WORM_LOAD_SCALE;
 }
 
 function rollMoveDelay(rng) {
@@ -54,7 +89,7 @@ export function hatchWorm(r, c, seedIdentity, rng = Math.random) {
   for (let i = 0; i < length; i++) segments.push({ r, c });
   return {
     segments,               // segments[0] is the head
-    movesLeft: WORM_LIFETIME_MOVES,
+    movesLeft: wormLifetimeFor(seedIdentity),
     nextMoveMs: rollMoveDelay(rng),
   };
 }
@@ -79,23 +114,37 @@ export function rehydrateWorms(saved, rng = Math.random) {
 
 const ORTHO = [[-1, 0], [1, 0], [0, -1], [0, 1]];
 
-// One crawl step: the head moves to a random orthogonal REVEALED neighbor
-// (self-overlap is fine — the worm may double back over its own body), the
-// body follows snake-style. No revealed neighbor ⇒ the worm stays put but
-// the move still counts, so a boxed-in worm still burrows on schedule.
-// `isRevealed(r, c)` must return false out of bounds.
-export function stepWorm(worm, isRevealed, rng = Math.random) {
+// One crawl step: the head moves to an orthogonal REVEALED neighbor chosen
+// by mine-aversion weighting (self-overlap is fine — the worm may double
+// back over its own body), the body follows snake-style. No revealed
+// neighbor ⇒ the worm stays put but the move still counts, so a boxed-in
+// worm still burrows on schedule.
+// `numberAt(r, c)` returns the cell's adjacent-mine count when the worm may
+// stand there (revealed), else null — including out of bounds.
+export function stepWorm(worm, numberAt, rng = Math.random) {
   const head = worm.segments[0];
   const options = [];
+  let totalWeight = 0;
   for (const [dr, dc] of ORTHO) {
     const nr = head.r + dr;
     const nc = head.c + dc;
-    if (isRevealed(nr, nc)) options.push({ r: nr, c: nc });
+    const n = numberAt(nr, nc);
+    if (n === null || n === undefined) continue;
+    const weight = Math.pow(WORM_NUMBER_AVERSION, n);
+    totalWeight += weight;
+    options.push({ r: nr, c: nc, weight });
   }
   let moved = false;
   if (options.length > 0) {
-    const next = options[Math.floor(rng() * options.length)];
-    worm.segments.unshift(next);
+    // Roulette pick over the aversion weights: lower numbers draw the worm,
+    // higher numbers repel it, nothing is ever off-limits.
+    let roll = rng() * totalWeight;
+    let next = options[options.length - 1];
+    for (const opt of options) {
+      roll -= opt.weight;
+      if (roll <= 0) { next = opt; break; }
+    }
+    worm.segments.unshift({ r: next.r, c: next.c });
     worm.segments.pop();
     moved = true;
   }
@@ -107,14 +156,14 @@ export function stepWorm(worm, isRevealed, rng = Math.random) {
 // Advance every worm's clock by dtMs; step the ones that are due; drop the
 // ones out of moves. Mutates `worms` in place (splices burrowed worms) and
 // returns { moved, burrowed } so the caller can re-render / play sounds.
-export function tickWorms(worms, dtMs, isRevealed, rng = Math.random) {
+export function tickWorms(worms, dtMs, numberAt, rng = Math.random) {
   const moved = [];
   const burrowed = [];
   for (let i = worms.length - 1; i >= 0; i--) {
     const worm = worms[i];
     worm.nextMoveMs -= dtMs;
     if (worm.nextMoveMs > 0) continue;
-    if (stepWorm(worm, isRevealed, rng)) moved.push(worm);
+    if (stepWorm(worm, numberAt, rng)) moved.push(worm);
     if (worm.movesLeft <= 0) {
       burrowed.push(worm);
       worms.splice(i, 1);

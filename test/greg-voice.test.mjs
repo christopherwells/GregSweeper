@@ -119,7 +119,7 @@ test('classifySdDelta: the one shared definition of tightened/widened/flat', () 
 
 test('featureHypothesis: bespoke claims are structural and plain; unnamed features get the honest generic', () => {
   for (const f of ['lockedCellCount', 'sonarCellCount', 'compassCellCount', 'mirrorPairCount',
-    'liarCellCount', 'mysteryCellCount', 'wormholePairCount', 'wallEdgeCount', 'wormCellCount',
+    'liarCellCount', 'mysteryCellCount', 'wormholePairCount', 'wallEdgeCount', 'wormLoad',
     'zeroClusterCount', 'searchMoves', 'patternMoves', 'totalMines', 'cellCount']) {
     const h = featureHypothesis(f);
     assert.ok(h && h.length > 30, `missing hypothesis for ${f}`);
@@ -137,7 +137,7 @@ test('featureHypothesis: bespoke claims are structural and plain; unnamed featur
 
 test('featureName covers every push-able model feature', () => {
   for (const f of ['lockedCellCount', 'sonarCellCount', 'compassCellCount', 'mirrorPairCount',
-    'liarCellCount', 'mysteryCellCount', 'wormholePairCount', 'wallEdgeCount', 'wormCellCount',
+    'liarCellCount', 'mysteryCellCount', 'wormholePairCount', 'wallEdgeCount', 'wormLoad',
     'zeroClusterCount', 'searchMoves', 'patternMoves', 'totalMines']) {
     assert.ok(featureName(f), `missing plain-English name for ${f}`);
   }
