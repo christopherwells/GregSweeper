@@ -29,6 +29,9 @@ export function persistGameState() {
   // rejected on resume anyway (resumeEligibility anchors daily saves to
   // today's clock). Archive is always re-launched from the calendar.
   if (state.isArchivePlay) return;
+  // ?level= playtest runs never persist either: they share the challenge
+  // slot, and saving one would clobber the player's real challenge game.
+  if (state.isLevelPractice) return;
   const gs = {
     board: state.board.map(row => row.map(c => ({
       isMine: c.isMine, isRevealed: c.isRevealed, isFlagged: c.isFlagged,

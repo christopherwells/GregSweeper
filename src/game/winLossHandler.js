@@ -367,6 +367,7 @@ export async function handleWin() {
     isDaily: isRealDaily,
     isArchive: isArchivePlay,
     isPractice: isDaily && !!state.isDailyPractice,
+    isLevelPractice: !!state.isLevelPractice,
     usedPowerUps: state.usedPowerUps,
     gameMode: state.gameMode,
     hadGimmicks: state.activeGimmicks && state.activeGimmicks.length > 0,
@@ -392,10 +393,11 @@ export async function handleWin() {
   // Skip power-up awarding for chaos AND weekly. Weekly is a pure
   // time-trial against a fixed board — power-ups would let later-week
   // attempts cheese the leaderboard against earlier days.
-  const earnedPowerUp = (state.gameMode === 'chaos' || state.gameMode === 'weekly') ? null : awardPowerUps(stats);
+  const earnedPowerUp = (state.gameMode === 'chaos' || state.gameMode === 'weekly' || state.isLevelPractice) ? null : awardPowerUps(stats);
 
-  // Sync progress to cloud (fire-and-forget)
-  if (state.gameMode === 'normal') {
+  // Sync progress to cloud (fire-and-forget). Never from a ?level=
+  // playtest run — its wins are not progression.
+  if (state.gameMode === 'normal' && !state.isLevelPractice) {
     saveProgress({ maxCheckpoint: stats.maxLevelReached || state.currentLevel });
   }
   if (isRealDaily) {
@@ -1023,7 +1025,7 @@ export function handleLoss(mineRow, mineCol) {
   triggerHeavyShake();
   showRedFlash();
   haptic([100, 40, 100, 40, 200]);
-  saveGameResult(false, state.elapsedTime, state.currentLevel, { gameMode: state.gameMode });
+  saveGameResult(false, state.elapsedTime, state.currentLevel, { gameMode: state.gameMode, isLevelPractice: !!state.isLevelPractice });
 
   // Power-ups persist on loss within same mode
   saveModePowerUps(state.gameMode, state.powerUps);
@@ -1168,7 +1170,7 @@ export function handleTimedLoss() {
   triggerHeavyShake();
   showRedFlash();
   haptic([100, 40, 100, 40, 200]);
-  saveGameResult(false, state.elapsedTime, state.currentLevel, { gameMode: state.gameMode });
+  saveGameResult(false, state.elapsedTime, state.currentLevel, { gameMode: state.gameMode, isLevelPractice: !!state.isLevelPractice });
   saveModePowerUps(state.gameMode, state.powerUps);
   saveProgress({ powerUps: loadPowerUps() });
 

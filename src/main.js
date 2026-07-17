@@ -818,6 +818,9 @@ function showCheckpointSelector() {
         hideTitleScreen();
         state.gameMode = 'normal';
         updateModeUI('normal');
+        // This entry path bypasses switchMode, so clear the playtest flag
+        // here too — a real checkpoint start must record progression.
+        state.isLevelPractice = false;
         state.currentLevel = cp;
         newGame();
       });
@@ -1999,6 +2002,12 @@ async function init() {
 
   const urlParams = new URLSearchParams(window.location.search);
   const deepLinkMode = urlParams.get('mode');
+  // ?level=N — test-environment-only practice jump to any challenge level
+  // (playtesting a specific gimmick block without grinding to it).
+  const _levelParam = parseInt(urlParams.get('level') || '', 10);
+  const deepLinkLevel = (isTestEnvironment() && _levelParam >= 1)
+    ? Math.min(_levelParam, MAX_LEVEL)
+    : 0;
 
   // Diagnostics button is hidden for casual users. Unhide when `?debug=1`
   // is in the URL (once per device — we persist a localStorage flag so
@@ -2086,6 +2095,19 @@ async function init() {
         toTitle();
       }
     });
+  } else if (deepLinkLevel > 0) {
+    // ?level=N playtest deep link (test builds only — the gate is in
+    // deepLinkLevel's derivation): start a PRACTICE challenge run at any
+    // level. Practice-gated end to end because /test/ shares this origin's
+    // localStorage with prod: no stats, no maxLevelReached/checkpoints, no
+    // challenge save slot, no power-up earns.
+    state.gameMode = 'normal';
+    updateModeUI('normal');
+    state.isLevelPractice = true;
+    state.currentLevel = deepLinkLevel;
+    hideTitleScreen();
+    await newGame();
+    showToast(`Practice run at Level ${deepLinkLevel}. Nothing records.`, 5000);
   } else if (deepLinkMode === 'daily') {
     // Deep link to daily mode. ?seed=<custom> lets you play a fresh puzzle
     // under a non-today seed (e.g. after you've finished today's). Practice
