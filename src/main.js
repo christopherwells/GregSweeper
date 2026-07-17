@@ -8,7 +8,7 @@
 import { state } from './state/gameState.js';
 import { PROD_SITE_BASE } from './config.js';
 import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn, escapeHtml } from './ui/domHelpers.js';
-import { resizeCells, updateAllCells, needsZoom, updateZoom, zoomIn, zoomOut, setFocusedCell } from './ui/boardRenderer.js';
+import { resizeCells, updateAllCells, needsZoom, updateZoom, zoomIn, zoomOut, setFocusedCell, renderWallOverlays } from './ui/boardRenderer.js';
 import { renderWormOverlays } from './ui/wormRenderer.js';
 import { preloadSprites, medalImgForEmoji, gimmickSpriteImgHTML, achievementSpriteImgHTML, uiSpriteImgHTML } from './ui/spriteLoader.js';
 import { startGregMascot } from './ui/gregMascot.js';
@@ -623,9 +623,9 @@ function applyThemeLive(theme) {
   // (cells spilling off the side; the neon→candy carousel repro). Waits
   // for the lazy stylesheet to actually apply, otherwise the refit still
   // reads the old gap. resizeCells no-ops when no board is rendered.
-  // Worm overlay positions are pixel-anchored to the old geometry, so
-  // reposition them in the same refit.
-  cssReady.then(() => { resizeCells(); renderWormOverlays(); }).catch(() => {});
+  // Wall-line and worm-overlay positions are pixel-anchored to the old
+  // geometry, so reposition them in the same refit.
+  cssReady.then(() => { resizeCells(); renderWallOverlays(); renderWormOverlays(); }).catch(() => {});
 }
 
 let _carouselThemes = [];
@@ -2309,7 +2309,10 @@ window.addEventListener('resize', () => {
   resizeCells();
   boardEl.style.gridTemplateColumns = `repeat(${state.cols}, var(--cell-size))`;
   boardEl.style.gridTemplateRows = `repeat(${state.rows}, var(--cell-size))`;
-  // Worm segments are pixel-anchored; re-place them against the new cell rects
+  // Wall lines and worm segments are pixel-anchored; re-place them against
+  // the new cell rects or they keep the old geometry (walls drifted off
+  // their edges on any viewport resize / phone rotation until 2026-07-17)
+  renderWallOverlays();
   renderWormOverlays();
 });
 
