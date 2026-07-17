@@ -276,6 +276,52 @@ test('narrativeState: all nine states are reachable from data', () => {
   assert.equal(narrativeState(compass, ctx), 'active-unresolved', 'the stamp never leaks to other studies');
 });
 
+// PR D — the clue-digit studies. Proves the new vocabulary (FEATURE_NAMES,
+// FEATURE_UNITS, ARCS) wires together so a digit share renders a clean study
+// card the moment the refit targets it, and that the revalidation stamp
+// promotes an active digit study. Fixture numbers mirror the real secondary
+// fit (clueShare3 ~ +30% tight; clueShare5plus ~ 0% wide).
+test('digit-share studies render clean prose and support revalidation (PR D)', () => {
+  const threes = mkStudy({
+    feature: 'clueShare3', label: 'threes', unit: 'extra three in ten clues',
+    latest: { date: '2026-08-02', mean: 0.2605, sd: 0.0465 },
+    trajectory: [
+      { date: '2026-07-17', mean: 0.28, sd: 0.055, retro: false },
+      { date: '2026-08-02', mean: 0.2605, sd: 0.0465, retro: false },
+    ],
+    verdict: { kind: 'open', deltaPct: null,
+      copy: 'There’s no verdict yet. The numbers have barely budged. More boards will settle it.' },
+  });
+  assert.equal(bandClass(estimateSummary(threes)), 'pos', 'the ~30% cost is a clean positive band');
+  const entry = composeEntry(threes, { activeFeature: 'clueShare3' }, newSession());
+  assertProseRails(entry.text, 'clueShare3 entry');
+  assertDigitsDerivable(entry.text, entry.facts, 'clueShare3 entry');
+  assert.ok(/extra three in ten clues/.test(entry.text), 'the digit unit reaches the estimate line');
+
+  // The revalidation stamp promotes the active digit study to its own state.
+  const reval = composeEntry(threes, { activeFeature: 'clueShare3', revalidation: true }, newSession());
+  assert.equal(reval.state, 'revalidation');
+  assertProseRails(reval.text, 'clueShare3 revalidation entry');
+  assertDigitsDerivable(reval.text, reval.facts, 'clueShare3 revalidation entry');
+
+  // clueShare5plus — the near-zero, sparse tail: a clean zero band renders
+  // the honest "between 0% and about X%" reading, never a floored negative.
+  const highs = mkStudy({
+    feature: 'clueShare5plus', label: 'high numbers', unit: 'extra high number in ten clues',
+    latest: { date: '2026-08-02', mean: 0.0016, sd: 0.0021 },
+    trajectory: [
+      { date: '2026-07-17', mean: 0.002, sd: 0.0025, retro: false },
+      { date: '2026-08-02', mean: 0.0016, sd: 0.0021, retro: false },
+    ],
+    verdict: { kind: 'open', deltaPct: null,
+      copy: 'There’s no verdict yet. The numbers have barely budged. More boards will settle it.' },
+  });
+  assert.equal(bandClass(estimateSummary(highs)), 'zero');
+  const highEntry = composeEntry(highs, { activeFeature: 'clueShare5plus' }, newSession());
+  assertProseRails(highEntry.text, 'clueShare5plus entry');
+  assertDigitsDerivable(highEntry.text, highEntry.facts, 'clueShare5plus entry');
+});
+
 test('driftSinceClose stays inside the live era and needs a real move', () => {
   // Retrodicted points never feed a drift claim.
   const retroHeavy = mkStudy({

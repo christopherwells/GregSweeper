@@ -28,6 +28,14 @@ const FEATURE_NAMES = {
   patternMoves: 'pattern reasoning',
   totalMines: 'mine density',
   cellCount: 'board size',
+  // Clue-digit shares (the arithmetic-load arc). Each is a study of how much
+  // the SHARE of a given clue digit costs, controlling for board size and
+  // mine count. Derived from the canonical boards in the refit; never a
+  // shipped par term, so these narrate a study without touching real par.
+  clueShare2: 'twos',
+  clueShare3: 'threes',
+  clueShare4: 'fours',
+  clueShare5plus: 'high numbers',
 };
 
 export function featureName(feature) {
@@ -53,6 +61,13 @@ const FEATURE_HYPOTHESIS = {
   patternMoves: 'Pattern reads are practiced moves. They should cost seconds, not tens of seconds.',
   totalMines: 'More mines, more flags, more careful steps. The steady cost of density is the backbone of the model.',
   cellCount: 'Bigger boards take longer. Obvious, but pinning the exact rate is what everything else is measured against.',
+  // Clue-digit arc. My first pass at "does clue magnitude cost time" was too
+  // thin to call, so each digit gets its own file now, framed by how hard a
+  // person has to work to hold that number in mind.
+  clueShare2: 'A two asks for barely more counting than a one, so boards leaning on twos should read almost as fast. I tested the whole idea once and the sample was too thin to call. More boards are in now, so I am asking again.',
+  clueShare3: 'A three means three mines to place and track, and that is real bookkeeping. I think boards that run to threes cost more than their size alone would say. My first read was too thin to trust, so I am measuring it properly.',
+  clueShare4: 'A four sits at the edge of what a person can take in at a glance, so the fours are where I would expect arithmetic load to start costing time. The question in this file is how big that cost gets, not whether it exists.',
+  clueShare5plus: 'A five or higher is past what most people count at a glance, so the high numbers are where magnitude should finally cost time if it ever does. They are rare, which makes them slow to measure.',
 };
 
 // The hypothesis line for a feature. Named features get their bespoke

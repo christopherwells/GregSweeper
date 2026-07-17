@@ -217,6 +217,31 @@ const ARCS = {
     zero: 'If board size stopped costing time I’d suspect the clock before the boards.',
     out: 'The size rate drifts a little with every refit. Everything else is measured against it, so I watch it.',
   },
+  // ── The arithmetic-load arc (clue-digit shares) ──
+  clueShare2: {
+    lean: 'zero',
+    pos: 'I wrote that a two should read almost as fast as a one. The top of the range puts the cost a shade above that.',
+    zero: 'I wrote that a two should read almost as fast as a one. The boards let that stand, give or take a rounding error.',
+    out: 'Whether a two costs more than a one is the whole question here. The boards have not answered it yet.',
+  },
+  clueShare3: {
+    lean: 'cost',
+    pos: 'I predicted that boards leaning on threes would cost more than their size alone. The data sided with me, and the cost reads as real.',
+    zero: 'I predicted that threes would cost more than size alone. The ledger read the charge back as a rounding error.',
+    out: 'The threes might cost real time, or barely any. The boards keep the file open on that.',
+  },
+  clueShare4: {
+    lean: 'size',
+    pos: 'My note asked how big the four costs, not whether it exists. The range settled big enough to bill for.',
+    zero: 'My note asked how big the four costs, not whether it exists. The answer landed at a rounding error.',
+    out: 'How big the four costs is the open question in this file. The boards have not sized it yet.',
+  },
+  clueShare5plus: {
+    lean: 'cost',
+    pos: 'I wrote that if magnitude ever costs real time, the high numbers are where it shows. And it does show.',
+    zero: 'I wrote that if magnitude costs real time, the high numbers should carry it. So far they carry a rounding error.',
+    out: 'The high numbers are rare, so their cost is slow to pin down. The file stays open while I gather them.',
+  },
 };
 
 // A studied feature with no bespoke file yet — honest generic, never a
