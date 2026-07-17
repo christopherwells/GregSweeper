@@ -1,49 +1,79 @@
 {
-  "updatedAt": "2026-07-17T06:10:00Z",
-  "target": "wormLoad",
-  "reason": "hand-pinned for the Worm Tiles launch daily (2026-07-18): every candidate slot carries worm so the regenerated board is guaranteed a worm study; the next nightly refit overwrites this organically",
+  "updatedAt": "2026-07-17T15:16:46Z",
+  "target": "mirrorPairCount",
+  "reason": "highest posterior CV (0.732) excluding last 3 targets",
   "recentTargets": [
+    "mirrorPairCount",
     "wormLoad",
-    "compassCellCount",
-    "lockedCellCount"
+    "compassCellCount"
   ],
   "candidates": [
     {
       "feature": "mirrorPairCount",
-      "mean": 0.009,
-      "sd": 0.008,
-      "cv": 0.817
+      "mean": 0.008,
+      "sd": 0.007,
+      "cv": 0.732
+    },
+    {
+      "feature": "wormLoad",
+      "mean": 0.029,
+      "sd": 0.019,
+      "cv": 0.663
     },
     {
       "feature": "lockedCellCount",
       "mean": 0.024,
       "sd": 0.014,
-      "cv": 0.596
+      "cv": 0.586
     },
     {
       "feature": "patternMoves",
       "mean": 0.009,
       "sd": 0.006,
-      "cv": 0.57
+      "cv": 0.585
     },
     {
       "feature": "compassCellCount",
-      "mean": 0.033,
+      "mean": 0.032,
       "sd": 0.018,
-      "cv": 0.559
-    },
-    {
-      "feature": "sonarCellCount",
-      "mean": 0.042,
-      "sd": 0.02,
-      "cv": 0.469
+      "cv": 0.57
     }
   ],
   "coverage_targets": [
     {
       "feature": "wormLoad",
-      "n_boards": 0,
-      "deficit_weight": 1.0
+      "n_boards": 1,
+      "deficit_weight": 0.5
+    },
+    {
+      "feature": "compassCellCount",
+      "n_boards": 9,
+      "deficit_weight": 0.1
+    },
+    {
+      "feature": "wormholePairCount",
+      "n_boards": 11,
+      "deficit_weight": 0.0833
+    },
+    {
+      "feature": "sonarCellCount",
+      "n_boards": 12,
+      "deficit_weight": 0.0769
+    },
+    {
+      "feature": "mysteryCellCount",
+      "n_boards": 13,
+      "deficit_weight": 0.0714
+    },
+    {
+      "feature": "liarCellCount",
+      "n_boards": 13,
+      "deficit_weight": 0.0714
+    },
+    {
+      "feature": "lockedCellCount",
+      "n_boards": 15,
+      "deficit_weight": 0.0625
     }
   ]
 }

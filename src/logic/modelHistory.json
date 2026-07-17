@@ -13910,5 +13910,98 @@
         "cv": 0.0644
       }
     ]
+  },
+  {
+    "date": "2026-07-17",
+    "updatedAt": "2026-07-17T15:17:48Z",
+    "method": "brms-ranef",
+    "n_scores": 305,
+    "n_dates": 130,
+    "n_players": 5,
+    "n_eligible": 4,
+    "rmse": 47.86,
+    "bias": 7.09,
+    "diagnostics": "max Rhat = 1.006, min ESS = 1054, divergent = 0/4000",
+    "target": "mirrorPairCount",
+    "candidates": [
+      {
+        "feature": "mirrorPairCount",
+        "mean": 0.0078,
+        "sd": 0.0073,
+        "cv": 0.7325
+      },
+      {
+        "feature": "wormLoad",
+        "mean": 0.0286,
+        "sd": 0.019,
+        "cv": 0.6628
+      },
+      {
+        "feature": "lockedCellCount",
+        "mean": 0.0243,
+        "sd": 0.0142,
+        "cv": 0.5856
+      },
+      {
+        "feature": "patternMoves",
+        "mean": 0.0094,
+        "sd": 0.0059,
+        "cv": 0.5854
+      },
+      {
+        "feature": "compassCellCount",
+        "mean": 0.0323,
+        "sd": 0.0184,
+        "cv": 0.5701
+      },
+      {
+        "feature": "sonarCellCount",
+        "mean": 0.0423,
+        "sd": 0.0197,
+        "cv": 0.4673
+      },
+      {
+        "feature": "searchMoves",
+        "mean": 0.0073,
+        "sd": 0.0041,
+        "cv": 0.4097
+      },
+      {
+        "feature": "wallEdgeCount",
+        "mean": 0.0016,
+        "sd": 0.0018,
+        "cv": 0.1794
+      },
+      {
+        "feature": "liarCellCount",
+        "mean": 0.0015,
+        "sd": 0.0017,
+        "cv": 0.1664
+      },
+      {
+        "feature": "wormholePairCount",
+        "mean": 0.0014,
+        "sd": 0.0015,
+        "cv": 0.1538
+      },
+      {
+        "feature": "mysteryCellCount",
+        "mean": 0.0014,
+        "sd": 0.0015,
+        "cv": 0.1466
+      },
+      {
+        "feature": "zeroClusterCount",
+        "mean": 0.0011,
+        "sd": 0.0011,
+        "cv": 0.1066
+      },
+      {
+        "feature": "totalMines",
+        "mean": 0.0575,
+        "sd": 0.0037,
+        "cv": 0.0643
+      }
+    ]
   }
 ]
