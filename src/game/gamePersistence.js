@@ -100,8 +100,13 @@ export function persistGameState() {
       movesLeft: w.movesLeft,
       tone: typeof w.tone === 'number' ? w.tone : 0.5,
       pace: typeof w.pace === 'number' ? w.pace : 1,
+      eggR: w.eggR,
+      eggC: w.eggC,
       lastDir: w.lastDir ? { dr: w.lastDir.dr, dc: w.lastDir.dc } : null,
     })),
+    // The hatch log must survive a resume — a resumed daily's submission
+    // reports the realized worm dose, same contract as bombHitEvents.
+    wormEvents: state.wormEvents || [],
     wallEdges: state.board._wallEdges ? Array.from(state.board._wallEdges) : [],
     gatedCert: !!state.board._gatedCert,
     firstClick: state.firstClick,
@@ -177,6 +182,7 @@ export function tryResumeGame(mode) {
   state.activeGimmicks = gs.activeGimmicks || [];
   state.gimmickData = gs.gimmickData || {};
   state.worms = rehydrateWorms(gs.worms);
+  state.wormEvents = Array.isArray(gs.wormEvents) ? gs.wormEvents : [];
 
   // Rehydrate par + features from the per-date cache so the resumed game's
   // end-of-game modal can render the full breakdown and the Firebase meta

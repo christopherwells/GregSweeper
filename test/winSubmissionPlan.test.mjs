@@ -13,12 +13,14 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { buildDailyScoreExtras } from '../src/logic/winSubmissionPlan.js';
 
-const FIELDS = ['uid', 'par', 'features', 'bombHitEvents', 'hintEvents', 'rngSeed', 'totalMines'];
+const FIELDS = ['uid', 'par', 'features', 'bombHitEvents', 'hintEvents', 'wormEvents', 'rngSeed', 'totalMines'];
 
 test('the extras payload carries exactly the contracted field set', () => {
   const state = {
     dailyPar: 90, dailyFeatures: { rows: 9 }, dailyBombHitEvents: [{ t: 1 }],
-    hintEvents: [{ t: 2, kind: 'region' }], dailyRngSeed: '2026-06-23:trial1', totalMines: 20,
+    hintEvents: [{ t: 2, kind: 'region' }],
+    wormEvents: [{ t: 3, r: 1, c: 2, len: 4, life: 50, pace: 1.1, moves: 12 }],
+    dailyRngSeed: '2026-06-23:trial1', totalMines: 20,
   };
   const extras = buildDailyScoreExtras(state, '2026-06-23', 'uid-1');
   assert.deepEqual(Object.keys(extras).sort(), [...FIELDS].sort(),
@@ -28,6 +30,7 @@ test('the extras payload carries exactly the contracted field set', () => {
   assert.deepEqual(extras.features, { rows: 9 });
   assert.deepEqual(extras.bombHitEvents, [{ t: 1 }]);
   assert.deepEqual(extras.hintEvents, [{ t: 2, kind: 'region' }]);
+  assert.deepEqual(extras.wormEvents, [{ t: 3, r: 1, c: 2, len: 4, life: 50, pace: 1.1, moves: 12 }]);
   assert.equal(extras.rngSeed, '2026-06-23:trial1');
   assert.equal(extras.totalMines, 20);
 });

@@ -2,7 +2,7 @@ import { state, getActiveBombPenaltyTotal, getDisplayTime } from '../state/gameS
 import { timerEl, boardEl } from '../ui/domHelpers.js';
 import { updateAllCells } from '../ui/boardRenderer.js';
 import { performMineShift } from '../logic/gimmicks.js';
-import { hatchWorm, tickWorms } from '../logic/worms.js';
+import { hatchWorm, tickWorms, wormHatchEvent, markWormBurrowed, finalizeWormEvents } from '../logic/worms.js';
 import { renderWormOverlays } from '../ui/wormRenderer.js';
 import { playWormBurrow, playWormHatch } from '../audio/sounds.js';
 
@@ -125,8 +125,11 @@ export function stopTimer() {
   stopWormCrawl();
   // stopTimer only runs at true teardown (win/loss/newGame/expiry — pauses
   // go through pauseTimer), so live worms end here and the overlay clears
-  // before receipts paint the board.
+  // before receipts paint the board. Hatch events are finalized FIRST
+  // (exact realized moves need the live worms' movesLeft) so the score
+  // submission that follows a win carries the completed log.
   if (state.worms && state.worms.length > 0) {
+    state.wormEvents = finalizeWormEvents(state.wormEvents, state.worms);
     state.worms = [];
     renderWormOverlays();
   }
@@ -234,7 +237,10 @@ export function startWormCrawl() {
       return cell.adjacentMines || 0;
     };
     const { moved, burrowed } = tickWorms(state.worms, WORM_TICK_MS, numberAt);
-    if (burrowed.length > 0) playWormBurrow();
+    if (burrowed.length > 0) {
+      playWormBurrow();
+      for (const w of burrowed) markWormBurrowed(state.wormEvents, w, state.elapsedTime);
+    }
     if (moved.length > 0 || burrowed.length > 0) renderWormOverlays();
     if (state.worms.length === 0) stopWormCrawl();
   }, WORM_TICK_MS);
@@ -260,6 +266,10 @@ export function hatchWormEggs(revealedCells) {
   for (const cell of revealedCells) {
     if (!cell || !cell.isWormEgg || cell.isMine || !cell.isRevealed) continue;
     state.worms.push(hatchWorm(cell.row, cell.col, seedIdentity));
+    // Instrumentation: WHEN the worm appeared decides how much of its
+    // scheduled load a run actually experiences — the refit fits on the
+    // realized dose, never the schedule (see wormHatchEvent in worms.js).
+    state.wormEvents.push(wormHatchEvent(state.elapsedTime, cell.row, cell.col, seedIdentity));
     hatched++;
   }
   if (hatched > 0) {

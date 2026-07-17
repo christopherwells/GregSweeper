@@ -494,6 +494,7 @@ export async function handleWin() {
             uid: getUid(),
             features: state.weeklyFeatures,
             bombHitEvents: state.weeklyBombHitEvents || [],
+            wormEvents: state.wormEvents || [],
             rngSeed: state.weeklyRngSeed || state.weeklySeed,
             totalMines: state.totalMines,
           }

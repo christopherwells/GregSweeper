@@ -18,7 +18,7 @@ import {
   WORM_PACE_MIN, WORM_PACE_MAX, WORM_PERSIST_PROB,
   wormLengthFor, wormLifetimeFor, wormToneFor, wormPaceFor, wormLoadFor,
   mixHex, hatchWorm, stepWorm, tickWorms, rehydrateWorms, wormCoveredCells,
-  wormOverlayLayout,
+  wormOverlayLayout, wormHatchEvent, markWormBurrowed, finalizeWormEvents,
 } from '../src/logic/worms.js';
 
 // Fixed-sequence rng for pinning exact branch behavior (repeats the last
@@ -356,6 +356,48 @@ test('wormOverlayLayout maps segments to cell rects, flags the head, skips missi
     wormIndex: 0, segIndex: 0, isHead: true, left: 30, top: 0, width: 30, height: 30,
   });
   assert.equal(layout[1].isHead, false);
+});
+
+// ── Hatch events (the realized-dose instrumentation) ────
+
+test('wormHatchEvent embeds the seeded traits so the refit never re-derives them', () => {
+  const seed = '2026-07-21:trial0';
+  const ev = wormHatchEvent(42.7, 3, 5, seed);
+  assert.equal(ev.t, 43, 'hatch time rounds to whole seconds');
+  assert.equal(ev.r, 3);
+  assert.equal(ev.c, 5);
+  assert.equal(ev.len, wormLengthFor(seed, 3, 5));
+  assert.equal(ev.life, wormLifetimeFor(seed, 3, 5));
+  assert.equal(ev.pace, Math.round(wormPaceFor(seed, 3, 5) * 1000) / 1000);
+  assert.equal(ev.moves, undefined, 'moves is stamped at burrow or finalize, not hatch');
+});
+
+test('burrow stamps the full budget; finalize computes exact moves for live worms', () => {
+  const seed = '2026-07-21:trial0';
+  const events = [wormHatchEvent(10, 3, 5, seed), wormHatchEvent(80, 7, 1, seed)];
+  const wormA = hatchWorm(3, 5, seed, mulberry32(1));  // will burrow
+  const wormB = hatchWorm(7, 1, seed, mulberry32(2));  // alive at game end
+  wormB.movesLeft = wormB.movesLeft - 12;              // consumed 12 moves so far
+
+  markWormBurrowed(events, wormA, 130.4);
+  assert.equal(events[0].moves, events[0].life, 'a burrowed worm consumed its whole budget');
+  assert.equal(events[0].tEnd, 130);
+
+  const done = finalizeWormEvents(events, [wormB]);
+  assert.equal(done[0].moves, done[0].life, 'the burrow stamp survives finalize');
+  assert.equal(done[1].moves, 12, 'a live worm reports life - movesLeft, exact');
+  assert.equal(done[1].tEnd, undefined, 'no burrow time for a worm alive at the end');
+  // The realized dose the refit computes: Σ len × moves / 100 — always at
+  // or below the scheduled wormLoad for these eggs.
+  const realized = done.reduce((s, e) => s + e.len * e.moves, 0) / 100;
+  const scheduled = wormLoadFor([{ r: 3, c: 5 }, { r: 7, c: 1 }], seed);
+  assert.ok(realized > 0 && realized <= scheduled / WORM_PACE_MIN,
+    `realized ${realized} bounded by the schedule`);
+  // An event with neither stamp nor live worm counts its full budget
+  // (conservative; only reachable through state loss).
+  const orphan = finalizeWormEvents([wormHatchEvent(5, 0, 0, seed)], []);
+  assert.equal(orphan[0].moves, orphan[0].life);
+  assert.deepEqual(finalizeWormEvents(null, []), [], 'garbage in, empty out');
 });
 
 // ── Egg placement (applyGimmicks path) ──────────────────

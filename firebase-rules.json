@@ -51,6 +51,21 @@
               "$other": { ".validate": false }
             }
           },
+          "wormEvents": {
+            ".validate": "newData.hasChildren() || newData.val() === null",
+            "$idx": {
+              ".validate": "newData.hasChildren(['t', 'r', 'c', 'len', 'life', 'pace', 'moves'])",
+              "t": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600" },
+              "tEnd": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600" },
+              "r": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 99" },
+              "c": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 99" },
+              "len": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 20" },
+              "life": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 500" },
+              "pace": { ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= 10" },
+              "moves": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 500" },
+              "$other": { ".validate": false }
+            }
+          },
           "rngSeed": {
             ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 64"
           },
@@ -114,6 +129,21 @@
               ".validate": "newData.hasChildren(['t', 'kind'])",
               "t": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600" },
               "kind": { ".validate": "newData.isString() && newData.val().length <= 16" },
+              "$other": { ".validate": false }
+            }
+          },
+          "wormEvents": {
+            ".validate": "newData.hasChildren() || newData.val() === null",
+            "$idx": {
+              ".validate": "newData.hasChildren(['t', 'r', 'c', 'len', 'life', 'pace', 'moves'])",
+              "t": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600" },
+              "tEnd": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600" },
+              "r": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 99" },
+              "c": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 99" },
+              "len": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 20" },
+              "life": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 500" },
+              "pace": { ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= 10" },
+              "moves": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 500" },
               "$other": { ".validate": false }
             }
           },

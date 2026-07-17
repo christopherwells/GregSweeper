@@ -92,6 +92,7 @@ export const state = {
   mineShiftTimerId: null,
   worms: [],             // live hatched worms [{segments, movesLeft, nextMoveMs}]
   wormTimerId: null,     // worm-crawl heartbeat interval id
+  wormEvents: [],        // hatch log [{t, r, c, len, life, pace, moves, tEnd?}] — submitted with scores
   // Test-build ?level= playtest runs: no stats, no progression, no
   // challenge save slot, no power-up earns (/test/ shares this origin's
   // localStorage with prod, so a playtest jump must never pollute it)
