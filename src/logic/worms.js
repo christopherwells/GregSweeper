@@ -57,6 +57,13 @@ export const WORM_NUMBER_AVERSION = 0.7;
 // travel grows like the square root of its moves — worms paced in place
 // (Christopher's report). The correlated walk actually tours the board.
 export const WORM_PERSIST_PROB = 0.5;
+// Backtracking (stepping straight back the way it came) is strongly
+// downweighted in the roulette: the reverse candidate keeps a twentieth
+// of its weight, which lands near a 5% reversal chance in a corridor and
+// under 2% in open field (Christopher's spec). A dead end is the
+// exception — when reverse is the only walkable option the worm takes it
+// rather than freezing.
+export const WORM_BACKTRACK_WEIGHT = 0.05;
 
 // Deterministic 2-5 segment length for the egg at (r, c). Seeded from the
 // board's identity so every player on the same canonical board hatches the
@@ -206,7 +213,13 @@ export function stepWorm(worm, numberAt, rng = Math.random) {
       const nc = head.c + dc;
       const n = numberAt(nr, nc);
       if (n === null || n === undefined) continue;
-      const weight = Math.pow(WORM_NUMBER_AVERSION, n);
+      let weight = Math.pow(WORM_NUMBER_AVERSION, n);
+      // Reversing the heading is a near-wasted move — suppress it hard.
+      // When it's the ONLY option the roulette still lands on it (its
+      // tiny weight is the whole total), so dead ends resolve naturally.
+      if (worm.lastDir && dr === -worm.lastDir.dr && dc === -worm.lastDir.dc) {
+        weight *= WORM_BACKTRACK_WEIGHT;
+      }
       totalWeight += weight;
       options.push({ r: nr, c: nc, weight });
     }

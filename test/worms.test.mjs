@@ -184,8 +184,9 @@ test('momentum: about half the steps continue the last heading, even past the av
   assert.deepEqual(east.segments[0], { r: 0, c: 2 }, 'kept its heading into the 4');
 
   // A persist roll ABOVE the threshold falls through to the roulette,
-  // where the first (tiny) draw lands on the better west cell.
-  const turned = { segments: [{ r: 0, c: 1 }], movesLeft: 9, lastDir: { dr: 0, dc: 1 }, nextMoveMs: 0 };
+  // where the first (tiny) draw lands on the better west cell. Heading
+  // NORTH so west is a lateral turn, not a (suppressed) reversal.
+  const turned = { segments: [{ r: 0, c: 1 }], movesLeft: 9, lastDir: { dr: -1, dc: 0 }, nextMoveMs: 0 };
   stepWorm(turned, field, seqRng(WORM_PERSIST_PROB + 0.1, 0.01, 0.5));
   assert.deepEqual(turned.segments[0], { r: 0, c: 0 }, 'roulette turned it toward open ground');
   assert.deepEqual(turned.lastDir, { dr: 0, dc: -1 }, 'the turn becomes the new heading');
@@ -202,6 +203,40 @@ test('momentum: about half the steps continue the last heading, even past the av
   stepWorm(boxed, () => null, seqRng(0.0, 0.5));
   assert.equal(boxed.movesLeft, 2);
   assert.deepEqual(boxed.lastDir, { dr: 0, dc: 1 }, 'heading survives the wait');
+});
+
+test('backtracking is strongly downweighted: ~5% in a corridor, guaranteed at a dead end', () => {
+  // Corridor: heading east, only forward and back are walkable. The
+  // reverse candidate keeps 1/20 of its weight, so the roulette reverses
+  // only when the draw lands in its ~4.8% sliver.
+  const corridor = (r, c) => (r === 0 && (c === 0 || c === 2) ? 0 : null);
+  const reversed = { segments: [{ r: 0, c: 1 }], movesLeft: 9, lastDir: { dr: 0, dc: 1 }, nextMoveMs: 0 };
+  stepWorm(reversed, corridor, seqRng(WORM_PERSIST_PROB + 0.1, 0.03, 0.5));
+  assert.deepEqual(reversed.segments[0], { r: 0, c: 0 }, 'a draw inside the sliver still reverses (never forbidden)');
+
+  const pressedOn = { segments: [{ r: 0, c: 1 }], movesLeft: 9, lastDir: { dr: 0, dc: 1 }, nextMoveMs: 0 };
+  stepWorm(pressedOn, corridor, seqRng(WORM_PERSIST_PROB + 0.1, 0.10, 0.5));
+  assert.deepEqual(pressedOn.segments[0], { r: 0, c: 2 }, 'a draw outside the sliver presses on');
+
+  // Dead end: reverse is the only walkable option — the worm takes it
+  // (stuck means turn around, not freeze).
+  const deadEnd = { segments: [{ r: 0, c: 1 }], movesLeft: 9, lastDir: { dr: 0, dc: 1 }, nextMoveMs: 0 };
+  const onlyBack = (r, c) => (r === 0 && c === 0 ? 0 : null);
+  stepWorm(deadEnd, onlyBack, seqRng(WORM_PERSIST_PROB + 0.1, 0.9, 0.5));
+  assert.deepEqual(deadEnd.segments[0], { r: 0, c: 0 }, 'a dead end resolves by turning around');
+
+  // Open field, seeded long run: reversals stay rare.
+  const open = () => 0;
+  const worm = { segments: [{ r: 0, c: 0 }], movesLeft: 9999, nextMoveMs: 0 };
+  const rng = mulberry32(83);
+  let reversals = 0;
+  const MOVES = 500;
+  for (let i = 0; i < MOVES; i++) {
+    const before = worm.lastDir ? { ...worm.lastDir } : null;
+    stepWorm(worm, open, rng);
+    if (before && worm.lastDir.dr === -before.dr && worm.lastDir.dc === -before.dc) reversals++;
+  }
+  assert.ok(reversals / MOVES <= 0.05, `reversal rate ${reversals / MOVES} must stay at or under 5%`);
 });
 
 test('REGRESSION: the correlated walk actually travels (pure roulette paced in place)', () => {
