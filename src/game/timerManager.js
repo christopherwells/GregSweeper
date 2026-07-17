@@ -211,7 +211,7 @@ export function stopMineShift() {
 
 // ── Worm Crawl Heartbeat ──────────────────────────────
 // One 250ms heartbeat drives every live worm; each worm carries its own
-// 1-4s move countdown (see logic/worms.js), so the heartbeat just advances
+// 0.5-3s move countdown (see logic/worms.js), so the heartbeat just advances
 // clocks and steps the worms that are due. Started on the first hatch
 // (gameActions) and on resume; torn down by stopTimer alongside mineShift.
 

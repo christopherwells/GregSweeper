@@ -36,13 +36,14 @@ export const WORM_MAX_PER_BOARD = 3;
 // sync.
 export const WORM_LIFETIME_MIN_MOVES = 30;
 export const WORM_LIFETIME_MAX_MOVES = 80;
-// Each move happens on its own uniform 1-4s clock, scaled by the worm's
-// PACE trait — a per-egg roll in [0.8, 1.3] (seeded like length/lifetime/
-// tone, so every player sees the same fast and slow worms). Noticeably
-// different, deliberately not hugely: the quickest worms average ~2.0s a
-// move, the slowest ~3.25s (Christopher's spec).
-export const WORM_MOVE_MIN_MS = 1000;
-export const WORM_MOVE_MAX_MS = 4000;
+// Each move happens on its own uniform 0.5-3s clock (shifted down from
+// 1-4s after playtest: worms were squatting on needed numbers too long),
+// scaled by the worm's PACE trait — a per-egg roll in [0.8, 1.3] (seeded
+// like length/lifetime/tone, so every player sees the same fast and slow
+// worms). Noticeably different, deliberately not hugely: the quickest
+// worms average ~1.4s a move, the slowest ~2.3s.
+export const WORM_MOVE_MIN_MS = 500;
+export const WORM_MOVE_MAX_MS = 3000;
 export const WORM_PACE_MIN = 0.8;
 export const WORM_PACE_MAX = 1.3;
 // Movement bias: worms dislike mines. Each candidate cell's weight is

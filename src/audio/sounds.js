@@ -359,7 +359,7 @@ export function playLevelUp() {
 }
 
 // ── Worm Tiles ───────────────────────────────────────
-// Hatch + burrow only — a per-move sound on the 1-4s crawl cadence would
+// Hatch + burrow only — a per-move sound on the sub-3s crawl cadence would
 // grate. Unthemed by default, like the other modifier/power-up voices
 // (only the four core moments are theme-voiced).
 
