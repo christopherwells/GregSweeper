@@ -71,6 +71,7 @@ test('serializeBoard ↔ deserializeBoard preserves mines, numbers, gimmicks and
   board[1][1].isMystery = true;
   board[2][2].isLiar = true;
   board[2][2].liarOffset = 1;
+  board[1][3].isWormEgg = true;
   recalcAdjacency(board);
   // Copy displayedMines for the liar cell the way the app would.
   board[2][2].displayedMines = board[2][2].adjacentMines + 1;
@@ -102,6 +103,10 @@ test('serializeBoard ↔ deserializeBoard preserves mines, numbers, gimmicks and
   assert.equal(back.board[1][1].isMystery, true);
   assert.equal(back.board[2][2].isLiar, true);
   assert.equal(back.board[2][2].displayedMines, board[2][2].displayedMines);
+  // Worm egg positions are canonical — they must survive the wire, and a
+  // non-egg cell must deserialize with the boolean default, not undefined.
+  assert.equal(back.board[1][3].isWormEgg, true);
+  assert.equal(back.board[0][1].isWormEgg, false);
   // Wall edges survive as a Set with the same members.
   assert.ok(back.board._wallEdges instanceof Set);
   assert.equal(back.board._wallEdges.size, 2);

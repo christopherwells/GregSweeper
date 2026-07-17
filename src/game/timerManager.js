@@ -2,6 +2,9 @@ import { state, getActiveBombPenaltyTotal, getDisplayTime } from '../state/gameS
 import { timerEl, boardEl } from '../ui/domHelpers.js';
 import { updateAllCells } from '../ui/boardRenderer.js';
 import { performMineShift } from '../logic/gimmicks.js';
+import { hatchWorm, tickWorms } from '../logic/worms.js';
+import { renderWormOverlays } from '../ui/wormRenderer.js';
+import { playWormBurrow, playWormHatch } from '../audio/sounds.js';
 
 // ── Timer ──────────────────────────────────────────────
 // The displayed value comes from gameState.getDisplayTime() — the
@@ -119,6 +122,14 @@ export function stopTimer() {
   }
   timerEl.classList.remove('timer-critical', 'timer-warning');
   stopMineShift();
+  stopWormCrawl();
+  // stopTimer only runs at true teardown (win/loss/newGame/expiry — pauses
+  // go through pauseTimer), so live worms end here and the overlay clears
+  // before receipts paint the board.
+  if (state.worms && state.worms.length > 0) {
+    state.worms = [];
+    renderWormOverlays();
+  }
 }
 
 // ── Pause / Resume (visibility change) ────────────────
@@ -139,6 +150,12 @@ export function pauseTimer() {
     clearInterval(state.mineShiftTimerId);
     state.mineShiftTimerId = null;
   }
+  // Worm clocks only advance inside the heartbeat, so clearing it freezes
+  // every worm mid-countdown; resume picks up exactly where they paused.
+  if (state.wormTimerId) {
+    clearInterval(state.wormTimerId);
+    state.wormTimerId = null;
+  }
 }
 
 export function resumeTimer() {
@@ -155,6 +172,11 @@ export function resumeTimer() {
   // Restart mine shift if it was active
   if (!state.mineShiftTimerId && _mineShiftInterval) {
     startMineShift(_mineShiftInterval);
+  }
+  // Restart the worm heartbeat if any worms are alive (state.worms is the
+  // presence signal — no stored interval needed, the cadence is per-worm)
+  if (!state.wormTimerId && state.worms && state.worms.length > 0) {
+    startWormCrawl();
   }
 }
 
@@ -185,4 +207,58 @@ export function stopMineShift() {
     state.mineShiftTimerId = null;
   }
   _mineShiftInterval = null;
+}
+
+// ── Worm Crawl Heartbeat ──────────────────────────────
+// One 250ms heartbeat drives every live worm; each worm carries its own
+// 1-4s move countdown (see logic/worms.js), so the heartbeat just advances
+// clocks and steps the worms that are due. Started on the first hatch
+// (gameActions) and on resume; torn down by stopTimer alongside mineShift.
+
+const WORM_TICK_MS = 250;
+
+export function startWormCrawl() {
+  if (state.wormTimerId) return;
+  if (!state.worms || state.worms.length === 0) return;
+  state.wormTimerId = setInterval(() => {
+    // modalPaused: a blocking popup (modifier intro, strike verdict) owns
+    // the pause — the game clock stops, so worm clocks stop with it.
+    if (state.status !== 'playing' || state.modalPaused) return;
+    const isRevealed = (r, c) =>
+      r >= 0 && r < state.rows && c >= 0 && c < state.cols &&
+      !!(state.board[r] && state.board[r][c] && state.board[r][c].isRevealed);
+    const { moved, burrowed } = tickWorms(state.worms, WORM_TICK_MS, isRevealed);
+    if (burrowed.length > 0) playWormBurrow();
+    if (moved.length > 0 || burrowed.length > 0) renderWormOverlays();
+    if (state.worms.length === 0) stopWormCrawl();
+  }, WORM_TICK_MS);
+}
+
+export function stopWormCrawl() {
+  if (state.wormTimerId) {
+    clearInterval(state.wormTimerId);
+    state.wormTimerId = null;
+  }
+}
+
+// Hatch any just-revealed worm eggs in a reveal batch. Called from every
+// player-path reveal site (reveal cascade, chord, Reveal Safe) AFTER
+// revealWormholePairs has folded pair/cascade reveals into the batch.
+// Reveal batches only ever contain newly revealed cells, so an egg can't
+// double-hatch. Worm length is seeded from the board identity (same
+// canonical board ⇒ same lengths for every player); the walk is luck.
+export function hatchWormEggs(revealedCells) {
+  if (!revealedCells || revealedCells.length === 0) return;
+  const seedIdentity = state.dailyRngSeed || state.weeklyRngSeed || `L${state.currentLevel}`;
+  let hatched = 0;
+  for (const cell of revealedCells) {
+    if (!cell || !cell.isWormEgg || cell.isMine || !cell.isRevealed) continue;
+    state.worms.push(hatchWorm(cell.row, cell.col, seedIdentity));
+    hatched++;
+  }
+  if (hatched > 0) {
+    playWormHatch();
+    renderWormOverlays();
+    startWormCrawl();
+  }
 }

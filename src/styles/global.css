@@ -269,6 +269,15 @@
   --receipt-verdict-border: rgba(80, 160, 255, 0.6);
   --receipt-crux-outline: rgba(255, 200, 60, 0.85);
 
+  /* ── Worm Tiles (one canonical worm; theme variants are future work).
+     Coral sandworm palette — reads on light and dark cell faces, distinct
+     from liar rose (background tint) and every marker hue. ── */
+  --worm-body: #d4766a;
+  --worm-body-dark: #a84c3f;
+  --worm-head: #c25a4c;
+  --worm-outline: rgba(88, 34, 26, 0.55);
+  --worm-eye: #2b1511;
+
   /* ── Power-up feedback (solid/usage colors tokenized; deep glow alphas
      inside keyframes stay literal — partial by design). ── */
   --pu-shield: #43a047;
@@ -1754,6 +1763,64 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   margin-top: -1px;
   padding-bottom: 2px;
   box-sizing: content-box;
+}
+
+/* ── Worm Tiles overlay ──────────────────────────────
+   Board-anchored sibling layer (wormRenderer.js). z-index 4: above
+   revealed cell faces (fx-on z-2) and walls (z-3), far below the
+   board labels (z-900) and modals. pointer-events none — a covered
+   cell stays fully clickable and chordable. */
+.worm-overlay-container {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+}
+.worm-segment {
+  position: absolute;
+  border-radius: 46%;
+  background: radial-gradient(circle at 35% 30%, var(--worm-body), var(--worm-body-dark));
+  box-shadow: inset 0 0 0 2px var(--worm-outline);
+  /* The crawl tween — segment elements are reused across ticks so this
+     transition carries the movement */
+  transition: left 0.3s ease, top 0.3s ease;
+}
+.worm-head {
+  z-index: 1;
+  background: radial-gradient(circle at 35% 30%, var(--worm-head), var(--worm-body-dark));
+}
+/* Vector eyes — the head reads as a critter with zero glyphs */
+.worm-head::before,
+.worm-head::after {
+  content: '';
+  position: absolute;
+  width: 15%;
+  height: 15%;
+  border-radius: 50%;
+  background: var(--worm-eye);
+  top: 26%;
+}
+.worm-head::before { left: 24%; }
+.worm-head::after { right: 24%; }
+.worm-hatch {
+  animation: wormHatch 0.45s var(--ease-bounce, cubic-bezier(0.34, 1.56, 0.64, 1));
+}
+@keyframes wormHatch {
+  0% { transform: scale(0.15); opacity: 0; }
+  60% { transform: scale(1.18); opacity: 1; }
+  100% { transform: scale(1); }
+}
+.worm-burrow {
+  animation: wormBurrow 0.4s ease forwards;
+}
+@keyframes wormBurrow {
+  to { transform: scale(0.15); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Movement is gameplay and can't be hidden — jump instead of tween */
+  .worm-segment { transition: none; }
+  .worm-hatch { animation: none; }
+  .worm-burrow { animation: none; opacity: 0; }
 }
 
 /* Mystery cells — revealed but showing '?' */
@@ -6533,6 +6600,29 @@ button:focus-visible {
   background: var(--color-cell-hidden, #2a2a4a);
   border: 1px dashed #fb923c !important;
 }
+/* Worm Tiles example: a segment sitting on a revealed number */
+.ge-worm-covered {
+  position: relative;
+}
+.ge-worm-seg {
+  position: absolute;
+  inset: 4%;
+  border-radius: 46%;
+  background: radial-gradient(circle at 35% 30%, var(--worm-body, #d4766a), var(--worm-body-dark, #a84c3f));
+  box-shadow: inset 0 0 0 1.5px var(--worm-outline, rgba(88, 34, 26, 0.55));
+}
+.ge-worm-head::before,
+.ge-worm-head::after {
+  content: '';
+  position: absolute;
+  width: 15%;
+  height: 15%;
+  border-radius: 50%;
+  background: var(--worm-eye, #2b1511);
+  top: 26%;
+}
+.ge-worm-head::before { left: 24%; }
+.ge-worm-head::after { right: 24%; }
 .ge-caption {
   margin-top: 8px;
   font-size: 12px;

@@ -22,6 +22,7 @@ const FEATURE_NAMES = {
   mysteryCellCount: 'mystery cells',
   wormholePairCount: 'wormholes',
   wallEdgeCount: 'walls',
+  wormCellCount: 'worm tiles',
   zeroClusterCount: 'open areas',
   searchMoves: 'search reasoning',
   patternMoves: 'pattern reasoning',
@@ -46,6 +47,7 @@ const FEATURE_HYPOTHESIS = {
   mysteryCellCount: 'A mystery cell hides its number entirely. Missing information has a price; I’m measuring it.',
   wormholePairCount: 'Wormhole numbers count two places at once. Splitting one number across the board should slow the reading down.',
   wallEdgeCount: 'Walls cut neighbors apart, so every number near one means less than it looks. Small effect or large? Not sure yet.',
+  wormCellCount: 'A worm covers numbers you have already read, then moves on. Nothing is lost, only delayed. I suspect good memory makes it nearly free.',
   zeroClusterCount: 'Big open areas clear themselves. More of them should mean faster boards. The question is how much faster.',
   searchMoves: 'Some deductions need real search, not pattern reading. Those moves should be the expensive ones.',
   patternMoves: 'Pattern reads are practiced moves. They should cost seconds, not tens of seconds.',
@@ -103,6 +105,7 @@ const GIMMICK_NAMES = {
   walls: 'walls',
   sonar: 'sonar',
   compass: 'compass',
+  worm: 'worm tiles',
 };
 
 // Field note derived from the CANONICAL BOARD itself — the only source

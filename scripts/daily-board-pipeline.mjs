@@ -32,6 +32,7 @@ export const TARGET_TO_GIMMICK = {
   sonarCellCount:    'sonar',
   compassCellCount:  'compass',
   wallEdgeCount:     'walls',
+  wormCellCount:     'worm',
 };
 
 const DEFAULT_TARGET = 'advancedLogicMoves';

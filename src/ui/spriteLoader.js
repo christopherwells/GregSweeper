@@ -53,6 +53,11 @@ const SPRITES = {
   modPressure:  { defaultEmoji: '🔴', url: 'assets/sprites/mod-pressure.svg' },
   modSonar:     { defaultEmoji: '📡', url: 'assets/sprites/mod-sonar.svg' },
   modCompass:   { defaultEmoji: '🧭', url: 'assets/sprites/mod-compass.svg' },
+  // Worm Tiles is SPRITE-ONLY: no emoji exists for it anywhere (its
+  // GIMMICK_DEFS entry has no icon field), so there is no defaultEmoji.
+  // The gimmick chain (gimmickSpriteImgHTML / applyGimmickIcon) resolves
+  // by key, and getSpriteUrl's identity check passes undefined === undefined.
+  modWorm:      { url: 'assets/sprites/mod-worm.svg' },
 
   // ── Wave B achievement category icons (2026-06-23) ──
   // Each achievement has its own drawn identity. Several share a glyph
@@ -297,7 +302,7 @@ const GIMMICK_SPRITE_KEYS = {
   walls: 'modWalls', liar: 'modLiar', mystery: 'modMystery',
   mineShift: 'modMineShift', locked: 'modLocked', wormhole: 'modWormhole',
   mirror: 'modMirror', pressurePlate: 'modPressure', sonar: 'modSonar',
-  compass: 'modCompass',
+  compass: 'modCompass', worm: 'modWorm',
 };
 
 export function gimmickSpriteImgHTML(gimmickKey, sizeClass = 'sprite-gimmick', alt = '') {

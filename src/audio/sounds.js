@@ -358,6 +358,26 @@ export function playLevelUp() {
   });
 }
 
+// ── Worm Tiles ───────────────────────────────────────
+// Hatch + burrow only — a per-move sound on the 1-4s crawl cadence would
+// grate. Unthemed by default, like the other modifier/power-up voices
+// (only the four core moments are theme-voiced).
+
+export function playWormHatch() {
+  // Egg crack, then a bright wriggle upward
+  vibrate(20);
+  playTone(240, 0.05, 'square', 0.09);
+  setTimeout(() => playTone(520, 0.07, 'triangle', 0.09), 60);
+  setTimeout(() => playTone(700, 0.09, 'triangle', 0.07), 130);
+}
+
+export function playWormBurrow() {
+  // Soft descending scurry underground
+  playTone(500, 0.06, 'triangle', 0.06);
+  setTimeout(() => playTone(360, 0.07, 'triangle', 0.05), 60);
+  setTimeout(() => playTone(240, 0.09, 'sine', 0.05), 130);
+}
+
 // ── Dedicated Power-Up Sounds ────────────────────────
 
 export function playLifelineSave() {

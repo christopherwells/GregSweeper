@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v1.6.152';
+const CACHE_NAME = 'gregsweeper-v1.6.153';
 const ASSETS = [
   './',
   './index.html',
@@ -118,7 +118,7 @@ const ASSETS = [
   './assets/sprites/medal-silver.svg',
   './assets/sprites/medal-bronze.svg',
   './assets/sprites/medal-emerald.svg',
-  // Modifier (gimmick) icons — the 10 modifier types
+  // Modifier (gimmick) icons — the 11 modifier types
   './assets/sprites/mod-walls.svg',
   './assets/sprites/mod-liar.svg',
   './assets/sprites/mod-mystery.svg',
@@ -129,6 +129,7 @@ const ASSETS = [
   './assets/sprites/mod-pressure.svg',
   './assets/sprites/mod-sonar.svg',
   './assets/sprites/mod-compass.svg',
+  './assets/sprites/mod-worm.svg',
   // Achievement category icons (Wave B) — the 13 achievements
   './assets/sprites/ach-wins.svg',
   './assets/sprites/ach-streak.svg',

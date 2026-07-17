@@ -1,8 +1,8 @@
 // Challenge mode — 120 levels with sawtooth difficulty progression.
-// Each gimmick introduction (L11, L21, ..., L91) drops the board to 11×11
-// and reduces density, creating a grace period to learn the new mechanic.
-// Between intros, board size ramps back up to ~12×14 and density climbs.
-// After all gimmicks are introduced (L91+), a final 30-level ramp reaches
+// Each gimmick introduction (L11, L21, ..., L91, L101) drops the board to
+// 11×11 and reduces density, creating a grace period to learn the new
+// mechanic. Between intros, board size ramps back up to ~12×14 and density
+// climbs. Worm Tiles own the final L101-120 capstone block, which ramps to
 // 12-wide at 34% density with heavy modifier stacking.
 
 // ── Shared constants ──────────────────────────────────
@@ -174,11 +174,12 @@ export const WEEKLY_MIN_SIZE = 8;
 export const WEEKLY_SIZE_RANGE = 7;  // 8–14
 
 // Gimmick introduction levels (non-chaosOnly)
-const GIMMICK_INTROS = [11, 21, 31, 41, 51, 61, 71, 81, 91];
+const GIMMICK_INTROS = [11, 21, 31, 41, 51, 61, 71, 81, 91, 101];
 
 // Peak density at the END of each 10-level gimmick block.
-// These ramp from 20% to 33%, with the final block (L91-120) peaking at 34%.
-const PEAK_DENSITIES = [0.20, 0.24, 0.27, 0.29, 0.30, 0.31, 0.32, 0.33, 0.34];
+// These ramp from 20% to 33.5%, with the final block (worm, L101-120)
+// peaking at the 34% hard cap.
+const PEAK_DENSITIES = [0.20, 0.24, 0.27, 0.29, 0.30, 0.31, 0.32, 0.33, 0.335, 0.34];
 
 export const MAX_LEVEL = 120;
 
@@ -204,8 +205,8 @@ export function getDifficultyForLevel(level) {
   }
 
   const blockStart = GIMMICK_INTROS[blockIdx];
-  const blockEnd = blockIdx < 8 ? GIMMICK_INTROS[blockIdx + 1] - 1 : MAX_LEVEL;
-  const blockLen = blockEnd - blockStart; // 9 for regular blocks, 29 for final
+  const blockEnd = blockIdx < GIMMICK_INTROS.length - 1 ? GIMMICK_INTROS[blockIdx + 1] - 1 : MAX_LEVEL;
+  const blockLen = blockEnd - blockStart; // 9 for regular blocks, 19 for the final (L101-120)
   const progress = blockLen > 0 ? (lv - blockStart) / blockLen : 0; // 0.0→1.0
 
   // Board size: 11 at block start, ramps to 14 at block end

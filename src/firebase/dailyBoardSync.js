@@ -82,6 +82,8 @@ const CELL_FIELDS = [
   'isCompass', 'compassDir', 'compassArrow', 'compassCount',
   // Pressure plate
   'isPressurePlate', 'plateTimer', 'plateDisarmed',
+  // Worm Tiles (egg positions are canonical; the crawling worm is runtime)
+  'isWormEgg',
 ];
 
 // waitForFirebaseReady lives in ./waitForFirebase.js so weeklyBoardSync
@@ -122,6 +124,7 @@ function _deserializeCell(raw, r, c) {
     isCompass: false,
     isPressurePlate: false,
     plateDisarmed: false,
+    isWormEgg: false,
     isFlagged: false,
     isRevealed: false,
   };

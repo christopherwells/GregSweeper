@@ -9,6 +9,7 @@ import { state } from './state/gameState.js';
 import { PROD_SITE_BASE } from './config.js';
 import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn, escapeHtml } from './ui/domHelpers.js';
 import { resizeCells, updateAllCells, needsZoom, updateZoom, zoomIn, zoomOut, setFocusedCell } from './ui/boardRenderer.js';
+import { renderWormOverlays } from './ui/wormRenderer.js';
 import { preloadSprites, medalImgForEmoji, gimmickSpriteImgHTML, achievementSpriteImgHTML, uiSpriteImgHTML } from './ui/spriteLoader.js';
 import { startGregMascot } from './ui/gregMascot.js';
 import { updateHeader, updateFlagModeBar, getCheckpointForLevel, CHECKPOINT_INTERVAL } from './ui/headerRenderer.js';
@@ -38,7 +39,7 @@ import {
   clearGameState,
 } from './storage/statsStorage.js';
 
-const CURRENT_VERSION = 'v1.8';
+const CURRENT_VERSION = 'v1.9';
 
 import {
   playLevelUp, isMuted, setMuted, loadMuted,
@@ -622,7 +623,9 @@ function applyThemeLive(theme) {
   // (cells spilling off the side; the neon→candy carousel repro). Waits
   // for the lazy stylesheet to actually apply, otherwise the refit still
   // reads the old gap. resizeCells no-ops when no board is rendered.
-  cssReady.then(() => resizeCells()).catch(() => {});
+  // Worm overlay positions are pixel-anchored to the old geometry, so
+  // reposition them in the same refit.
+  cssReady.then(() => { resizeCells(); renderWormOverlays(); }).catch(() => {});
 }
 
 let _carouselThemes = [];
@@ -801,7 +804,7 @@ function showCheckpointSelector() {
     const gimmick = GIMMICK_LABELS[cp];
     let modifierHtml = '';
     if (gimmick) {
-      const cpIcon = gimmickSpriteImgHTML(gimmick.key, 'sprite-gimmick', gimmick.name) || gimmick.icon;
+      const cpIcon = gimmickSpriteImgHTML(gimmick.key, 'sprite-gimmick', gimmick.name) || gimmick.icon || '';
       modifierHtml = `<span class="cp-modifier"><span class="cp-modifier-icon">${cpIcon}</span> ${gimmick.name}</span>`;
     } else if (!unlocked) {
       modifierHtml = `<span class="cp-modifier">Reach Level ${cp}</span>`;
@@ -918,7 +921,7 @@ if (helpModifierList) {
   helpModifierList.innerHTML = Object.entries(getGimmickDefs())
     .sort((a, b) => introRank(a[1]) - introRank(b[1]))
     .map(([key, def]) => {
-      const icon = gimmickSpriteImgHTML(key, 'sprite-gimmick', def.name) || def.icon;
+      const icon = gimmickSpriteImgHTML(key, 'sprite-gimmick', def.name) || def.icon || '';
       return `<p>${icon} <strong>${def.name}</strong>: ${def.desc}</p>`;
     })
     .join('');
@@ -2284,6 +2287,8 @@ window.addEventListener('resize', () => {
   resizeCells();
   boardEl.style.gridTemplateColumns = `repeat(${state.cols}, var(--cell-size))`;
   boardEl.style.gridTemplateRows = `repeat(${state.rows}, var(--cell-size))`;
+  // Worm segments are pixel-anchored; re-place them against the new cell rects
+  renderWormOverlays();
 });
 
 // Safety net: if init throws anywhere, drop the boot overlay so the

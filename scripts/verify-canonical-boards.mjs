@@ -64,6 +64,7 @@ const STRUCTURAL_FEATURE_KEYS = [
   'rows', 'cols', 'cellCount', 'totalMines', 'wallEdgeCount',
   'mysteryCellCount', 'sonarCellCount', 'compassCellCount', 'wormholeCellCount',
   'liarCellCount', 'mirrorCellCount', 'lockedCellCount',
+  'wormCellCount',
 ];
 
 /**

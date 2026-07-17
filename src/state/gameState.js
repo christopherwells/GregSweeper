@@ -90,6 +90,8 @@ export const state = {
   activeGimmicks: [],    // ['mystery', 'walls', ...]
   gimmickData: {},       // per-gimmick applied data
   mineShiftTimerId: null,
+  worms: [],             // live hatched worms [{segments, movesLeft, nextMoveMs}]
+  wormTimerId: null,     // worm-crawl heartbeat interval id
   inputLocked: false,    // true during cascade/chord animations
 
   // Chaos mode (roguelike runs)

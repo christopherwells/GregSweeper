@@ -14,7 +14,9 @@ import {
   updateFlagModeBar, updateActiveGimmickBar,
 } from '../ui/headerRenderer.js';
 import { updatePowerUpBar } from '../ui/powerUpBar.js';
-import { startTimer, updateTimerDisplay, seedPreciseAccumulated } from './timerManager.js';
+import { startTimer, updateTimerDisplay, seedPreciseAccumulated, startWormCrawl } from './timerManager.js';
+import { rehydrateWorms } from '../logic/worms.js';
+import { renderWormOverlays } from '../ui/wormRenderer.js';
 
 // ── Game State Persistence ────────────────────────────
 
@@ -34,6 +36,7 @@ export function persistGameState() {
       isStrike: c.isStrike || false,
       isHiddenNumber: c.isHiddenNumber || false,
       isMystery: c.isMystery || false,
+      isWormEgg: c.isWormEgg || false,
       isPressurePlate: c.isPressurePlate || false, plateDisarmed: c.plateDisarmed || false,
       plateTimer: c.plateTimer || 0,
       isSonar: c.isSonar || false, sonarCount: c.sonarCount || 0,
@@ -87,6 +90,12 @@ export function persistGameState() {
     flagMode: state.flagMode || false,
     activeGimmicks: state.activeGimmicks || [],
     gimmickData: state.gimmickData || {},
+    // Live worms persist as segments + movesLeft only; the 1-4s move
+    // clocks re-roll on resume (rehydrateWorms), the lenient direction.
+    worms: (state.worms || []).map(w => ({
+      segments: w.segments.map(s => ({ r: s.r, c: s.c })),
+      movesLeft: w.movesLeft,
+    })),
     wallEdges: state.board._wallEdges ? Array.from(state.board._wallEdges) : [],
     gatedCert: !!state.board._gatedCert,
     firstClick: state.firstClick,
@@ -161,6 +170,7 @@ export function tryResumeGame(mode) {
   state.suggestedMove = null;
   state.activeGimmicks = gs.activeGimmicks || [];
   state.gimmickData = gs.gimmickData || {};
+  state.worms = rehydrateWorms(gs.worms);
 
   // Rehydrate par + features from the per-date cache so the resumed game's
   // end-of-game modal can render the full breakdown and the Firebase meta
@@ -198,6 +208,7 @@ export function tryResumeGame(mode) {
   renderBoard();
   updateAllCells();
   renderWallOverlays();
+  renderWormOverlays();
   updateHeader();
   updateTimerDisplay();
   updatePowerUpBar();
@@ -214,6 +225,9 @@ export function tryResumeGame(mode) {
   // Daily games include time elapsed prior to the resume.
   seedPreciseAccumulated(state.elapsedTime);
   startTimer();
+  // Re-arm the worm heartbeat for restored live worms (the rearmPlateTimers
+  // precedent: data persists, the runtime timer re-instantiates).
+  startWormCrawl();
 
   return true;
 }

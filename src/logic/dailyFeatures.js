@@ -46,6 +46,7 @@ export function computeDailyFeatures(state, solverResult) {
   let mirrorCellCount = 0;
   let sonarCellCount = 0;
   let compassCellCount = 0;
+  let wormCellCount = 0;
 
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -57,6 +58,7 @@ export function computeDailyFeatures(state, solverResult) {
       if (cell.mirrorPair) mirrorCellCount++;
       if (cell.isSonar) sonarCellCount++;
       if (cell.isCompass) compassCellCount++;
+      if (cell.isWormEgg) wormCellCount++;
     }
   }
 
@@ -154,6 +156,7 @@ export function computeDailyFeatures(state, solverResult) {
     mirrorPairCount,
     sonarCellCount,
     compassCellCount,
+    wormCellCount,
 
     // Structural features (v1.5.16+ — see above for definitions)
     nonZeroSafeCellCount,
@@ -205,6 +208,10 @@ const COEF_TERMS = [
   { coef: 'secPerMirrorPair',   value: f => f.mirrorPairCount || 0,   displayGroup: 'mirror' },
   { coef: 'secPerSonarCell',    value: f => f.sonarCellCount || 0,    displayGroup: 'sonar' },
   { coef: 'secPerCompassCell',  value: f => f.compassCellCount || 0,  displayGroup: 'compass' },
+  // Worm Tiles: eggs per board. applyParModel's `(model[coef] || 0)` keeps
+  // predictPar safe until the nightly refit emits the coefficient (and the
+  // R-side 20-play zero-guard holds it at 0 until real data exists).
+  { coef: 'secPerWormCell',     value: f => f.wormCellCount || 0,     displayGroup: 'worms' },
 ];
 
 /**

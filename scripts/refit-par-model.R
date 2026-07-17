@@ -140,6 +140,11 @@ PRIOR_MEANS <- list(
   mirrorPairCount      = 1.0,
   sonarCellCount       = 0.5,
   compassCellCount     = 0.5,
+  # wormCellCount: worm tiles delay information without destroying it (a
+  # memory/patience tax, not a deduction), so the per-egg cost should sit
+  # at the light end of the modifier family. Zero-guarded in the shipped
+  # model until NEW_FEATURE_DATA_THRESHOLD plays carry nonzero values.
+  wormCellCount        = 0.3,
   # legacy_bombs: per-hit cost for plays under the old +10s/re-fog mechanic
   # (v1.5.148 and earlier). New-mechanic plays already have their info-value
   # penalty subtracted into clean_time and contribute 0 here, so this only
@@ -183,6 +188,7 @@ PRIOR_SIGMAS <- list(
   mirrorPairCount      = 1.0,
   sonarCellCount       = 1.0,
   compassCellCount     = 1.0,
+  wormCellCount        = 1.0,
   # Tighter prior on legacy_bombs (sigma=0.4): OLS on legacy data gives a
   # clean ~15s estimate, with little need for the wide spread the others get.
   legacy_bombs         = 0.4,
@@ -229,6 +235,7 @@ apply_par_model <- function(df, coefs, log_scale = TRUE) {
     coefs$secPerMirrorPair           * mirrorPairCount +
     coefs$secPerSonarCell            * sonarCellCount +
     coefs$secPerCompassCell          * compassCellCount +
+    (coefs$secPerWormCell    %||% 0) * wormCellCount +
     (coefs$secPerZeroCluster %||% 0) * zeroClusterCount
   )
   if (log_scale) exp(lp) else lp
@@ -509,7 +516,10 @@ message(sprintf("  archive: %d row(s) after filters — %s", n_archive,
 # new-feature contributions just get computed against a 0 baseline,
 # which biases the new coefficients slightly downward at first but
 # straightens out as new plays accumulate.
-NEW_STRUCTURAL_FEATURES <- c("nonZeroSafeCellCount", "zeroClusterCount")
+NEW_STRUCTURAL_FEATURES <- c("nonZeroSafeCellCount", "zeroClusterCount",
+                             # wormCellCount ships 2026-07: every dailyMeta row
+                             # before the worm-tiles release lacks the key.
+                             "wormCellCount")
 for (f in NEW_STRUCTURAL_FEATURES) {
   if (!f %in% colnames(df)) df[[f]] <- 0
 }
@@ -521,7 +531,7 @@ df <- df |>
       totalMines, cellCount, wallEdgeCount, mysteryCellCount,
       liarCellCount, lockedCellCount, wormholePairCount,
       mirrorPairCount, sonarCellCount, compassCellCount,
-      nonZeroSafeCellCount, zeroClusterCount),
+      wormCellCount, nonZeroSafeCellCount, zeroClusterCount),
     ~ ifelse(is.na(.x), 0, as.numeric(.x))
   ))
 
@@ -625,6 +635,9 @@ fit_formula_fixed <- log(pure_time) ~
   wormholePairCount + mirrorPairCount +
   sonarCellCount + compassCellCount +
   zeroClusterCount
+  # wormCellCount joins conditionally below (add_worm_term): until the first
+  # worm board's scores land it is identically zero in df_fit — a
+  # zero-variance predictor — so it gates on real data like archivePlay.
   # Response is log(pure_time) — the multiplicative model. pure_time already
   # has ALL bomb cost removed (new base + legacy rate), so there is NO bomb
   # regressor; each player's bomb cost rides in their additive bombSeconds.
@@ -650,6 +663,14 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
     update(fit_formula_fixed, ~ . + archivePlay)
   } else {
     fit_formula_fixed
+  }
+  # Worm Tiles (2026-07): enter the term only once real worm boards exist in
+  # the fit data — same zero-variance gate as archivePlay. The shipped
+  # coefficient additionally sits behind the NEW_FEATURE_DATA_THRESHOLD
+  # zero-guard until 20 plays carry nonzero values.
+  add_worm_term <- any(df_fit$wormCellCount > 0, na.rm = TRUE)
+  if (add_worm_term) {
+    fit_formula_fixed_active <- update(fit_formula_fixed_active, ~ . + wormCellCount)
   }
   fit_formula <- update(fit_formula_fixed_active, ~ . + (1 | uid))
 
@@ -759,10 +780,13 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
       "totalMines", "wallEdgeCount",
       "mysteryCellCount", "liarCellCount", "lockedCellCount",
       "wormholePairCount", "mirrorPairCount",
-      "sonarCellCount", "compassCellCount",
+      "sonarCellCount", "compassCellCount", "wormCellCount",
       "zeroClusterCount"
     )
     fe_summary <- fixef(fit)  # posterior mean + SD for every fixed effect
+    # Conditional terms (wormCellCount before its first board) are absent
+    # from the fit — subset the whitelist to what actually has a posterior.
+    target_whitelist <- intersect(target_whitelist, rownames(fe_summary))
     target_candidates <- data.frame(
       feature = target_whitelist,
       post_mean = fe_summary[target_whitelist, "Estimate"],
@@ -821,7 +845,7 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
     GIMMICK_FEATURES <- c(
       "mysteryCellCount", "liarCellCount", "lockedCellCount",
       "wallEdgeCount", "wormholePairCount", "mirrorPairCount",
-      "sonarCellCount", "compassCellCount"
+      "sonarCellCount", "compassCellCount", "wormCellCount"
     )
     coverage_features <- setdiff(GIMMICK_FEATURES, chosen_target)
     date_first <- df_fit[!duplicated(df_fit$date), , drop = FALSE]
@@ -915,6 +939,8 @@ if (fit_method == "brms-ranef") {
     secPerMirrorPair   = nn(co["mirrorPairCount"],   "mirrorPair"),
     secPerSonarCell    = nn(co["sonarCellCount"],    "sonarCell"),
     secPerCompassCell  = nn(co["compassCellCount"],  "compassCell"),
+    # NA (worm term gated out pre-first-board) maps to 0 via nn()
+    secPerWormCell     = nn(co["wormCellCount"],     "wormCell"),
     secPerZeroCluster  = nn(co["zeroClusterCount"],  "zeroCluster")
   )
 
@@ -984,7 +1010,8 @@ if (fit_method == "brms-ranef") {
   # fields in dailyMeta (write-once) so we can only build data forward.
   NEW_FEATURE_DATA_THRESHOLD <- 20
   feature_data_counts <- list(
-    secPerZeroCluster = sum(df_fit$zeroClusterCount > 0, na.rm = TRUE)
+    secPerZeroCluster = sum(df_fit$zeroClusterCount > 0, na.rm = TRUE),
+    secPerWormCell    = sum(df_fit$wormCellCount > 0, na.rm = TRUE)
   )
   for (coef_name in names(feature_data_counts)) {
     n_with_data <- feature_data_counts[[coef_name]]
@@ -1125,7 +1152,7 @@ if (length(timed_raw) > 0) {
                       "advancedLogicMoves", "totalMines", "cellCount", "wallEdgeCount",
                       "mysteryCellCount", "liarCellCount", "lockedCellCount",
                       "wormholePairCount", "mirrorPairCount", "sonarCellCount",
-                      "compassCellCount", "zeroClusterCount")
+                      "compassCellCount", "wormCellCount", "zeroClusterCount")
     for (f in timed_needed) if (!f %in% colnames(timed_df)) timed_df[[f]] <- 0
     timed_df <- timed_df |>
       mutate(across(all_of(timed_needed), ~ ifelse(is.na(.x), 0, as.numeric(.x)))) |>
@@ -1165,7 +1192,7 @@ if (length(timed_raw) > 0) {
         cellCount + totalMines + patternMoves + searchMoves +
         wallEdgeCount + mysteryCellCount + liarCellCount + lockedCellCount +
         wormholePairCount + mirrorPairCount + sonarCellCount +
-        compassCellCount + zeroClusterCount
+        compassCellCount + wormCellCount + zeroClusterCount
       # Priors centered on the just-emitted DAILY LOG coefficients.
       daily_center <- list(
         cellCount = new_coefs$secPerCell, totalMines = new_coefs$secPerMineFlag,
@@ -1174,6 +1201,7 @@ if (length(timed_raw) > 0) {
         liarCellCount = new_coefs$secPerLiarCell, lockedCellCount = new_coefs$secPerLockedCell,
         wormholePairCount = new_coefs$secPerWormholePair, mirrorPairCount = new_coefs$secPerMirrorPair,
         sonarCellCount = new_coefs$secPerSonarCell, compassCellCount = new_coefs$secPerCompassCell,
+        wormCellCount = new_coefs$secPerWormCell,
         zeroClusterCount = new_coefs$secPerZeroCluster
       )
       timed_priors_parts <- list(set_prior("", class = "b", lb = 0))
@@ -1218,6 +1246,7 @@ if (length(timed_raw) > 0) {
             secPerMirrorPair   = tnn(tco["mirrorPairCount"],   new_coefs$secPerMirrorPair),
             secPerSonarCell    = tnn(tco["sonarCellCount"],    new_coefs$secPerSonarCell),
             secPerCompassCell  = tnn(tco["compassCellCount"],  new_coefs$secPerCompassCell),
+            secPerWormCell     = tnn(tco["wormCellCount"],     new_coefs$secPerWormCell),
             secPerZeroCluster  = tnn(tco["zeroClusterCount"],  new_coefs$secPerZeroCluster)
           )
           timed_method <- sprintf("brms-timed (n=%d)", timed_n_used)
@@ -1348,6 +1377,7 @@ block <- sprintf(
   secPerMirrorPair:    %.5f,
   secPerSonarCell:     %.5f,
   secPerCompassCell:   %.5f,
+  secPerWormCell:      %.5f,
 
 };',
   Sys.Date(), method_str, n_scores, n_dates, n_players, r2_str,
@@ -1364,7 +1394,8 @@ block <- sprintf(
   new_coefs$secPerWormholePair,
   new_coefs$secPerMirrorPair,
   new_coefs$secPerSonarCell,
-  new_coefs$secPerCompassCell
+  new_coefs$secPerCompassCell,
+  new_coefs$secPerWormCell
 )
 
 src <- paste(readLines(DIFFICULTY_PATH, warn = FALSE, encoding = "UTF-8"),
@@ -1407,6 +1438,7 @@ timed_block <- sprintf(
   secPerMirrorPair:    %.5f,
   secPerSonarCell:     %.5f,
   secPerCompassCell:   %.5f,
+  secPerWormCell:      %.5f,
 };',
   Sys.Date(), timed_method,
   timed_coefs$intercept,
@@ -1422,7 +1454,8 @@ timed_block <- sprintf(
   timed_coefs$secPerWormholePair,
   timed_coefs$secPerMirrorPair,
   timed_coefs$secPerSonarCell,
-  timed_coefs$secPerCompassCell
+  timed_coefs$secPerCompassCell,
+  timed_coefs$secPerWormCell
 )
 
 t_start_marker <- "// TIMED_PAR_MODEL:START"
