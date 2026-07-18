@@ -5721,9 +5721,14 @@ button:focus-visible {
   outline: 2px solid var(--color-accent, #4a90d9);
   outline-offset: 1px;
 }
+/* A finished board. Stays prominent so the month reads as a completion
+   map, but it is a span, not a button: nothing to tap, so nothing that
+   invites a tap. */
 .archive-day.completed {
   background: var(--color-accent, #4a90d9);
   color: #fff;
+  font-weight: 600;
+  cursor: default;
 }
 .archive-day.loading { opacity: 0.6; cursor: progress; }
 .archive-check {

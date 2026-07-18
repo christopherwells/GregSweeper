@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   isArchivableDate,
+  archiveDayState,
   archiveSubmitPlan,
   resolveCruxDate,
   streakBearingDates,
@@ -174,4 +175,60 @@ test('etDateStringOfMs anchors to the ET calendar across midnight (EDT and EST)'
   assert.equal(etDateStringOfMs(Date.UTC(2026, 0, 15, 4, 59)), '2026-01-14');
   assert.equal(etDateStringOfMs(Date.UTC(2026, 0, 15, 5, 1)), '2026-01-15');
   assert.equal(etDateStringOfMs(undefined), null);
+});
+
+
+// ── archiveDayState: a finished daily is not replayable ──────────────
+// A daily is a one-off. Once a board is cleared there is nothing left to
+// find on it, and a replay records nothing anyway (archiveSubmitPlan is
+// first-completion-only), so the calendar shows the check and refuses
+// the tap (Christopher, 2026-07-18).
+
+const TODAY = '2026-07-18';
+
+test('REGRESSION: a completed past date is done, not playable', () => {
+  const done = new Set(['2026-07-10']);
+  assert.equal(archiveDayState('2026-07-10', TODAY, done), 'done');
+  assert.equal(archiveDayState('2026-07-11', TODAY, done), 'playable');
+});
+
+test('a Set and an array of completed dates behave identically', () => {
+  for (const completed of [new Set(['2026-07-10']), ['2026-07-10']]) {
+    assert.equal(archiveDayState('2026-07-10', TODAY, completed), 'done');
+    assert.equal(archiveDayState('2026-07-09', TODAY, completed), 'playable');
+  }
+});
+
+test('today is the live Daily s job, never the archive s', () => {
+  assert.equal(archiveDayState(TODAY, TODAY, new Set()), 'today');
+  assert.equal(archiveDayState(TODAY, TODAY, new Set([TODAY])), 'today',
+    'even a completed today stays the live board, not an archive cell');
+});
+
+test('dates outside the archive window are unavailable', () => {
+  assert.equal(archiveDayState('2026-07-19', TODAY, new Set()), 'unavailable', 'future');
+  assert.equal(archiveDayState('2026-03-05', TODAY, new Set()), 'unavailable', 'before launch');
+  assert.equal(archiveDayState(FIRST_ARCHIVE_DATE, TODAY, new Set()), 'playable', 'launch day itself');
+  assert.equal(archiveDayState(null, TODAY, new Set()), 'unavailable');
+  assert.equal(archiveDayState('2026-07-10', null, new Set()), 'unavailable');
+});
+
+test('unknown history fails OPEN, because the fit is protected elsewhere', () => {
+  // A signed-out player or a failed read cannot be told what they have
+  // finished. Blocking the whole calendar on a flaky read would be worse
+  // than letting a replay through, and archiveSubmitPlan already fails
+  // CLOSED on unknown history, so a replay records nothing either way.
+  assert.equal(archiveDayState('2026-07-10', TODAY, null), 'playable');
+  assert.equal(archiveDayState('2026-07-10', TODAY, undefined), 'playable');
+  assert.deepEqual(archiveSubmitPlan('2026-07-10', 'unknown'),
+    { submitFit: false, writeHistory: false },
+    'the data-integrity gate is the one that fails closed');
+});
+
+test('the two gates agree: a done date never reaches a submit plan that records', () => {
+  // Belt and braces. If the day gate ever regressed, the submit plan
+  // still refuses to record a second completion.
+  assert.equal(archiveDayState('2026-07-10', TODAY, new Set(['2026-07-10'])), 'done');
+  assert.deepEqual(archiveSubmitPlan('2026-07-10', 'present'),
+    { submitFit: false, writeHistory: false });
 });

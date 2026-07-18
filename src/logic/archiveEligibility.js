@@ -51,6 +51,41 @@ export function isArchivableDate(date, today, firstDate = FIRST_ARCHIVE_DATE) {
 }
 
 /**
+ * What the archive calendar should do with one day cell.
+ *
+ *   'playable'    — offered, tap to play
+ *   'done'        — offered but already finished, so it shows its completion
+ *                   mark and is NOT tappable. A daily is a one-off: once you
+ *                   have finished a board there is nothing left to find on it,
+ *                   and re-running it records nothing anyway (archiveSubmitPlan
+ *                   is first-completion-only). The calendar keeps showing it so
+ *                   the month reads as a completion map (Christopher, 2026-07-18).
+ *   'today'       — the live Daily's job, never the archive's
+ *   'unavailable' — outside the archive window
+ *
+ * `completed` may be a Set, an array, or null. NULL MEANS UNKNOWN, not empty:
+ * a signed-out player or a failed history read cannot be told which boards they
+ * have finished, and blocking the whole calendar on a flaky read would be worse
+ * than letting a replay through. Fail OPEN here deliberately — the data is
+ * protected either way, because archiveSubmitPlan already fails CLOSED on an
+ * unknown history and records nothing.
+ *
+ * @param {string} date  YYYY-MM-DD (ET) of the cell
+ * @param {string} today YYYY-MM-DD (ET)
+ * @param {Set<string>|string[]|null} [completed] board dates already finished
+ * @param {string} [firstDate] override for the first archivable date
+ * @returns {'playable'|'done'|'today'|'unavailable'}
+ */
+export function archiveDayState(date, today, completed = null, firstDate = FIRST_ARCHIVE_DATE) {
+  if (typeof date !== 'string' || typeof today !== 'string') return 'unavailable';
+  if (date === today) return 'today';
+  if (!isArchivableDate(date, today, firstDate)) return 'unavailable';
+  if (!completed) return 'playable';
+  const has = completed instanceof Set ? completed.has(date) : completed.includes(date);
+  return has ? 'done' : 'playable';
+}
+
+/**
  * Decide what an archive completion for `date` does, given whether the player
  * already has a dailyHistory row for it.
  *
