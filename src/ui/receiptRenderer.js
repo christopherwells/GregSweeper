@@ -9,13 +9,11 @@
 // Voice rule: receipts describe the BOARD's proof ("this was provably
 // safe — the proof lived here"), never narrate the player's reasoning.
 
-import { state, recordHintEvent } from '../state/gameState.js';
+import { state } from '../state/gameState.js';
 import { boardEl } from './domHelpers.js';
-import { findDeducibleFrontier, detectWrongFlags } from '../logic/boardSolver.js';
+import { findDeducibleFrontier } from '../logic/boardSolver.js';
 import { explainDeduction } from '../logic/proofExplainer.js';
 import { showToast } from './toastManager.js';
-import { showBoardCoach } from './boardCoach.js';
-import { reportCaughtError } from '../diagnostics/errorReporter.js';
 
 let _frontier = null; // { safe: [...], mines: [...], contradiction } at death
 let _pulseTimer = null;
@@ -87,95 +85,6 @@ export function handleInterrogateTap(row, col) {
   return true;
 }
 
-// ── The Lens: Socratic mid-game help ───────────────────
-// Three honest answers, in priority order, none of which ever names the
-// safe cell:
-//   1. "One of your flags is wrong" — the most common true cause of a
-//      stuck player, detected by the dual-solve diff. Deliberately not
-//      localized (saying WHICH flag would solve a chunk of the board).
-//   2. Pulse the proving region of the first available deduction, sized
-//      honestly by tier: a single satisfied constraint for Pass A, the
-//      constraint set for subsets, the whole component for enumeration
-//      (and the copy SAYS it needs enumeration — that teaches what tank
-//      reasoning is).
-//   3. "No safe move exists" is impossible by construction on an
-//      official board — if the frontier ever comes back empty we say so
-//      honestly and report it, because it means something broke.
-// Every invocation is recorded into state.hintEvents: hints change
-// completion times, and the nightly par fit must be able to exclude
-// hinted plays or the Lens quietly corrupts the model.
-export function handleLensRequest() {
-  if (state.status !== 'playing') {
-    showToast('The lens works mid-game. Start revealing first', 2200, 'uiLens');
-    return;
-  }
-  try {
-    const flagCheck = detectWrongFlags(state.board);
-    if (flagCheck.wrongFlags.length > 0 || flagCheck.contradiction) {
-      recordHintEvent('flag-warning');
-      showBoardCoach('One of your flags does not add up: a number near it cannot be satisfied. Re-check your flags first.', 'flag');
-      return;
-    }
-    const frontier = findDeducibleFrontier(state.board, { respectFlags: false });
-    // Teach the SIMPLEST available step, not the first-found one: pick
-    // the lowest-tier deduction across safes and mines (tie → safe).
-    // Without this, a board with a plain 1-1 available could hint the
-    // whole-region enumeration instead.
-    const lowest = (list) => list.reduce((best, d) => (!best || d.tier < best.tier ? d : best), null);
-    const bestSafe = lowest(frontier.safe.filter(s => !state.board[s.row][s.col].isFlagged))
-      || lowest(frontier.safe);
-    const bestMine = lowest(frontier.mines);
-    const next = bestSafe && bestMine
-      ? (bestSafe.tier <= bestMine.tier ? bestSafe : bestMine)
-      : (bestSafe || bestMine);
-    if (!next) {
-      // An empty frontier is NOT broken-board evidence by itself: the
-      // no-guess certificate runs from the marked start cell, and a
-      // player who first-clicked elsewhere can legitimately sit in a
-      // proof-free state (measured: most off-path first clicks do).
-      // Three honest answers:
-      //  1. The marked start is still fogged → point back to the
-      //     contract's entry. Not a spoiler — the game itself marked
-      //     that cell at the start.
-      //  2. Daily/weekly with the start already revealed → genuinely
-      //     impossible by information monotonicity; report it.
-      //  3. Challenge/timed → the player may have gambled past the
-      //     proof chain; say so plainly, no false alarm.
-      let startCell = null;
-      if (state.gameMode === 'daily' || state.gameMode === 'weekly') {
-        outer: for (let r = 0; r < state.rows; r++) {
-          for (let c = 0; c < state.cols; c++) {
-            if (state.board[r][c].suggestedStart && !state.board[r][c].isRevealed) {
-              startCell = { row: r, col: c };
-              break outer;
-            }
-          }
-        }
-      }
-      if (startCell) {
-        recordHintEvent('region');
-        _pulseSources([startCell]);
-        showBoardCoach('Nothing can be worked out from here yet. The highlighted square is the guaranteed safe start, so begin there.', 'uiLens');
-      } else if (state.gameMode === 'daily' || state.gameMode === 'weekly') {
-        showBoardCoach('Nothing can be worked out from here. That should not happen on this board', 'uiLens');
-        reportCaughtError('lens-empty-frontier', new Error(`mode=${state.gameMode} seed=${state.dailyRngSeed || ''}`));
-      } else {
-        showBoardCoach('Nothing can be worked out from this position. The provable path runs through squares you have not opened yet', 'uiLens');
-      }
-      return;
-    }
-    recordHintEvent('region');
-    _pulseSources(next.sources);
-    const isMineDeduction = next === bestMine && next !== bestSafe;
-    const ask = explainDeduction(state.board, next, {
-      style: 'socratic',
-      kind: isMineDeduction ? 'mine' : 'safe',
-    });
-    showBoardCoach(`${ask || 'The highlighted clues hold the next step. Compare what they claim.'}`, 'uiLens');
-  } catch (err) {
-    reportCaughtError('lens-request', err);
-  }
-}
 
 // One-line verdict for a struck mine (daily/weekly bomb hits). Computed
 // from the pre-strike board state the caller passes in. The three

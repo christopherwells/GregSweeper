@@ -95,7 +95,6 @@ export const ICON_STATUS = {
   // Lens / Share / Copy / Notebook / molt and the ten toast-coach icons
   // render BY KEY (ui-*.svg, no emoji), so they need no entry here. The
   // one survivor is the Lens button's onerror fallback.
-  '🤔': 'sprite',   // Stuck button (renders ui-lens.svg; emoji is the onerror fallback)
 
   // ── Plain-text / intentional emoji ──
   // What's LEFT after the Wave E squish: the share-card caption (kept by

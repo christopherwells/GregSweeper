@@ -73,7 +73,6 @@ export function persistGameState() {
     // Before 2026-07-10 the snapshot dropped them, so a resumed daily that
     // had used the Lens submitted as an unhinted play and contaminated the
     // model — the exact corruption the instrumentation exists to prevent.
-    hintEvents: state.hintEvents || [],
     // Purist-achievement flag: without it a resumed game that had already
     // used a power-up counted as a purist win on completion.
     usedPowerUps: state.usedPowerUps || false,
@@ -156,7 +155,6 @@ export function tryResumeGame(mode) {
   state.dailyBombHits = gs.dailyBombHits || 0;
   state.dailyBombHitEvents = Array.isArray(gs.dailyBombHitEvents) ? gs.dailyBombHitEvents : [];
   state.clickTimeline = Array.isArray(gs.clickTimeline) ? gs.clickTimeline : [];
-  state.hintEvents = Array.isArray(gs.hintEvents) ? gs.hintEvents : [];
   state.usedPowerUps = gs.usedPowerUps === true;
   state.timedPar = typeof gs.timedPar === 'number' ? gs.timedPar : 0;
   state.timedFeatures = gs.timedFeatures || null;

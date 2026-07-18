@@ -13,12 +13,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { buildDailyScoreExtras } from '../src/logic/winSubmissionPlan.js';
 
-const FIELDS = ['uid', 'par', 'features', 'bombHitEvents', 'hintEvents', 'wormEvents', 'rngSeed', 'totalMines'];
+const FIELDS = ['uid', 'par', 'features', 'bombHitEvents', 'wormEvents', 'rngSeed', 'totalMines'];
 
 test('the extras payload carries exactly the contracted field set', () => {
   const state = {
     dailyPar: 90, dailyFeatures: { rows: 9 }, dailyBombHitEvents: [{ t: 1 }],
-    hintEvents: [{ t: 2, kind: 'region' }],
     wormEvents: [{ t: 3, r: 1, c: 2, len: 4, life: 50, pace: 1.1, moves: 12 }],
     dailyRngSeed: '2026-06-23:trial1', totalMines: 20,
   };
@@ -29,16 +28,14 @@ test('the extras payload carries exactly the contracted field set', () => {
   assert.equal(extras.par, 90);
   assert.deepEqual(extras.features, { rows: 9 });
   assert.deepEqual(extras.bombHitEvents, [{ t: 1 }]);
-  assert.deepEqual(extras.hintEvents, [{ t: 2, kind: 'region' }]);
   assert.deepEqual(extras.wormEvents, [{ t: 3, r: 1, c: 2, len: 4, life: 50, pace: 1.1, moves: 12 }]);
   assert.equal(extras.rngSeed, '2026-06-23:trial1');
   assert.equal(extras.totalMines, 20);
 });
 
-test('bombHitEvents and hintEvents default to empty arrays, rngSeed falls back to dateStr', () => {
+test('bombHitEvents defaults to an empty array, rngSeed falls back to dateStr', () => {
   const extras = buildDailyScoreExtras({ dailyPar: 60, dailyFeatures: null, totalMines: 10 }, '2026-06-23', 'uid-2');
   assert.deepEqual(extras.bombHitEvents, []);
-  assert.deepEqual(extras.hintEvents, []);
   assert.equal(extras.rngSeed, '2026-06-23', 'a plain-date board reports its date as the seed');
   assert.deepEqual(Object.keys(extras).sort(), [...FIELDS].sort());
 });

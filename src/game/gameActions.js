@@ -11,7 +11,6 @@ import {
 } from '../ui/headerRenderer.js';
 import { applyGimmickIcon, gimmickSpriteImgHTML, uiSpriteImgHTML } from '../ui/spriteLoader.js';
 import { updatePowerUpBar } from '../ui/powerUpBar.js';
-import { clearBoardCoach } from '../ui/boardCoach.js';
 import { hideAllModals, showModal, hideModal } from '../ui/modalManager.js';
 import { showLevelInfoToast } from '../ui/toastManager.js';
 import { startTimer, stopTimer, pauseTimer, resumeTimer, startMineShift, updateTimerDisplay, hatchWormEggs } from './timerManager.js';
@@ -330,9 +329,7 @@ export async function newGame() {
   state.dailyBombHits = 0;
   state.dailyBombHitEvents = [];
   state.clickTimeline = [];
-  state.hintEvents = [];
   state.boardCertificate = null;
-  clearBoardCoach();
   state.timedPar = 0;
   state.timedFeatures = null;
 
@@ -896,8 +893,6 @@ export function revealCell(row, col) {
   // Past every intercept — this click is a real reveal action. Recorded
   // BEFORE processing so a bomb hit still logs the click that caused it.
   recordPlayerAction('r', row, col);
-  // The coach line answered the question this action resolves.
-  clearBoardCoach();
 
   // First click — generate board (or start pre-generated daily board)
   if (state.firstClick) {
@@ -1412,7 +1407,6 @@ export function toggleFlag(row, col) {
   cell.isFlagged = !cell.isFlagged;
   state.flagCount += cell.isFlagged ? 1 : -1;
   recordPlayerAction(cell.isFlagged ? 'f' : 'u', row, col);
-  clearBoardCoach();
   if (cell.isFlagged) playFlag(); else playUnflag();
   updateCell(row, col);
   // Flag pop / unflag shrink animation
@@ -1456,7 +1450,6 @@ export function handleChordReveal(row, col) {
   const result = chordReveal(state.board, row, col);
   if (!result || !result.revealed) return;
   recordPlayerAction('c', row, col);
-  clearBoardCoach();
 
   state.revealedCount += result.revealed.filter(c => !c.isMine).length;
 

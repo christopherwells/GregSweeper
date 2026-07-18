@@ -265,13 +265,6 @@ async function _doSubmitOnlineScore(dateString, name, time, bombHits, extras) {
       }
     }
     // Lens invocations: [{ t, kind }] with kind 'flag-warning' | 'region'.
-    // Hints change completion times, so the R refit EXCLUDES hinted plays
-    // from the par fit — an uninstrumented hint system would quietly
-    // corrupt the model. Only attached when the player actually used the
-    // lens, so hint-free rows stay byte-identical to before.
-    if (Array.isArray(extras.hintEvents) && extras.hintEvents.length > 0) {
-      payload.hintEvents = extras.hintEvents;
-    }
     // Worm hatch log: [{ t, r, c, len, life, pace, moves, tEnd? }] — one
     // per hatched egg, traits embedded (the refit never reimplements the
     // seeded RNG), `moves` = exact realized move count. The refit fits on
@@ -389,7 +382,7 @@ export async function submitOnlineScore(dateString, name, time, bombHits = 0, ex
  * @param {string} name sanitized player name
  * @param {number} time completion seconds
  * @param {number} bombHits strike count
- * @param {Object} extras { uid, par, cruxViewed, bombHitEvents, hintEvents, rngSeed }
+ * @param {Object} extras { uid, par, cruxViewed, bombHitEvents, rngSeed }
  * @param {*} timestamp the server timestamp sentinel
  * @returns {Object} the payload to push
  */
@@ -413,9 +406,6 @@ export function buildArchivePayload(date, name, time, bombHits, extras = {}, tim
       if (e && typeof e.penalty === 'number') totalPenalty += e.penalty;
     }
     if (totalPenalty > 0) payload.totalBombPenalty = Math.round(totalPenalty * 10) / 10;
-  }
-  if (Array.isArray(extras.hintEvents) && extras.hintEvents.length > 0) {
-    payload.hintEvents = extras.hintEvents;
   }
   if (Array.isArray(extras.wormEvents) && extras.wormEvents.length > 0) {
     payload.wormEvents = extras.wormEvents;
@@ -448,7 +438,7 @@ export function buildArchivePayload(date, name, time, bombHits, extras = {}, tim
  * @param {string} name player name (max 20 chars)
  * @param {number} time completion time in seconds
  * @param {number} bombHits strike count
- * @param {Object} extras { uid, par, features, bombHitEvents, hintEvents, rngSeed, cruxViewed }
+ * @param {Object} extras { uid, par, features, bombHitEvents, rngSeed, cruxViewed }
  * @returns {Promise<boolean>}
  */
 export async function submitArchiveScore(date, name, time, bombHits = 0, extras = {}) {

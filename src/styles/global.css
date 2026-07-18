@@ -1123,7 +1123,7 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 /* The coach line: one slot under the board, updated in place (never
    queued like toasts, so the note lands the instant the move does).
    Reserved height keeps the card from jumping as notes come and go. */
-.lexicon-coach, .board-coach {
+.lexicon-coach {
   font-size: 0.88em;
   line-height: 1.35;
   color: var(--color-text, #eee);
@@ -1135,13 +1135,7 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 /* The board coach line: the Lens answers here, under the live board.
    Hidden (display:none via [hidden]) when empty so it costs no height
    until a hint is actually showing. */
-.board-coach {
-  margin: 8px auto 0;
-  max-width: 520px;
-  padding: 0 10px;
-  text-align: center;
-}
-.lexicon-coach.coach-pop, .board-coach.coach-pop { animation: lexCoachPop 0.25s ease-out; }
+.lexicon-coach.coach-pop { animation: lexCoachPop 0.25s ease-out; }
 @keyframes lexCoachPop {
   0% { transform: translateY(4px); opacity: 0.3; }
   100% { transform: translateY(0); opacity: 1; }
@@ -4874,12 +4868,6 @@ details[open] > .journal-ledger-summary::after { transform: rotate(225deg); }
   border-color: #e53935;
   background: linear-gradient(135deg, rgba(229,57,53,0.15), rgba(229,57,53,0.05));
   box-shadow: 0 0 8px rgba(229,57,53,0.2);
-}
-.stuck-btn {
-  opacity: 0.85;
-}
-.stuck-btn:active {
-  transform: scale(0.97);
 }
 #flag-mode-icon {
   font-size: 17px;

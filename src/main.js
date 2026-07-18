@@ -699,19 +699,6 @@ if (gymCard) {
   });
 }
 
-// The Lens — Socratic mid-game help, living beside the board as the
-// "Stuck?" pill (a game action, not a nav destination). Never names the
-// safe cell: it detects wrong flags, or pulses the clues that hold the
-// next step. Every use is recorded into state.hintEvents and submitted
-// with daily scores so the par fit can exclude hinted plays.
-const stuckBtn = $('#stuck-btn');
-if (stuckBtn) {
-  stuckBtn.addEventListener('click', () => {
-    import('./ui/receiptRenderer.js').then(m => m.handleLensRequest())
-      .catch(err => reportCaughtError('lens-import', err));
-  });
-}
-
 // Close modals
 for (const closeBtn of $$('.modal-close')) {
   closeBtn.addEventListener('click', (e) => {

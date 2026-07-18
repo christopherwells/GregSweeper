@@ -550,9 +550,11 @@ parse_score_rows <- function(raw) {
         if (length(ev) == 0) return(NA_real_)
         sum(map_dbl(ev, ~ (.x$len %||% 0) * (.x$moves %||% 0))) / 100
       }),
-      # v1.6.12+ Lens hints: rows carry hintEvents only when the player used
-      # the in-game lens. A hinted completion is not an honest observation of
-      # board difficulty, so hinted plays are EXCLUDED from the fit.
+      # Lens hints (the in-game "Stuck?" helper, shipped v1.6.12 and REMOVED
+      # 2026-07-18). No new row can carry hintEvents, but the historical ones
+      # do, and a hinted completion is still not an honest observation of board
+      # difficulty. KEEP this filter: dropping it would readmit every old
+      # hinted play into the fit. It is simply a no-op on new data now.
       n_hints           = map_int(entry, ~ length(.x$hintEvents %||% list())),
       # PR 4 crux preview: an archive row whose crux the player saw is dropped
       # from the fit (previewing the answer changes the completion time).

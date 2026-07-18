@@ -46,7 +46,6 @@ export const state = {
   // nightly par fit can EXCLUDE hinted plays — hints change completion
   // times, and an uninstrumented hint system would quietly corrupt the
   // model the whole game stands on.
-  hintEvents: [],
   // The no-guess certificate for the CURRENT board: { clicks, tier }.
   // clicks is the certifying solver run's totalClicks (entry click +
   // provable reveals); tier is the hardest technique on that path
@@ -191,14 +190,6 @@ export function recordPlayerAction(action, row, col) {
 
 // Record one Lens invocation (same wall-clock convention as the click
 // timeline). Tiny payload, hard cap as a safety net.
-export function recordHintEvent(kind) {
-  if (!Array.isArray(state.hintEvents)) state.hintEvents = [];
-  if (state.hintEvents.length >= 200) return;
-  state.hintEvents.push({
-    t: Math.round((state.elapsedTime || 0) * 10) / 10,
-    kind,
-  });
-}
 
 // Total bomb-hit penalty (seconds) accrued in the CURRENT daily/weekly
 // attempt, derived from the per-hit event log. Single source of truth so
