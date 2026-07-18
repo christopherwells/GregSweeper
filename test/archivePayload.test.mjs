@@ -45,25 +45,34 @@ test('rngSeed is omitted when it equals the date, kept when it differs', () => {
 test('bomb events denormalize totalBombPenalty; events attach only when present', () => {
   const p = buildArchivePayload('2026-05-12', 'K', 60, 2, {
     bombHitEvents: [{ t: 5, row: 1, col: 1, penalty: 3.2 }, { t: 9, row: 2, col: 2, penalty: 4.0 }],
-    hintEvents: [{ t: 7, kind: 'region' }],
   }, TS);
   assert.equal(p.bombHitEvents.length, 2);
   assert.equal(p.totalBombPenalty, 7.2);
-  assert.equal(p.hintEvents.length, 1);
   const q = buildArchivePayload('2026-05-12', 'K', 60, 0, {}, TS);
   assert.equal('bombHitEvents' in q, false);
   assert.equal('totalBombPenalty' in q, false);
-  assert.equal('hintEvents' in q, false);
+});
+
+test('REGRESSION: hintEvents is never emitted, even when handed one', () => {
+  // The Lens was removed 2026-07-18. The rules still whitelist the field
+  // (a stale cached client mid-game may still submit one, and an
+  // un-whitelisted child would fail the WHOLE write), but nothing in this
+  // build produces it.
+  const p = buildArchivePayload('2026-05-12', 'K', 60, 0,
+    { hintEvents: [{ t: 7, kind: 'region' }] }, TS);
+  assert.equal('hintEvents' in p, false);
 });
 
 test('payload never emits a field outside the dailyArchive rule whitelist', () => {
   // The rule's $other catch-all rejects any extra field, so a future field
   // added to the payload but not the rules would silently fail every write.
+  // Mirrors the RULES whitelist, which still permits hintEvents for stale
+  // clients even though this build never emits it.
   const allowed = new Set(['name', 'time', 'bombHits', 'archivePlay', 'timestamp',
     'uid', 'par', 'cruxViewed', 'bombHitEvents', 'totalBombPenalty', 'hintEvents', 'rngSeed']);
   const p = buildArchivePayload('2026-05-12', 'K', 60, 1, {
     uid: 'u', par: 55, cruxViewed: true, rngSeed: '2026-05-12:trial1',
-    bombHitEvents: [{ t: 1, row: 0, col: 0, penalty: 3 }], hintEvents: [{ t: 2, kind: 'region' }],
+    bombHitEvents: [{ t: 1, row: 0, col: 0, penalty: 3 }],
   }, TS);
   for (const k of Object.keys(p)) assert.ok(allowed.has(k), `unexpected payload field: ${k}`);
 });

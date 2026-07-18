@@ -356,8 +356,6 @@ export function updateFlagModeBar() {
       ? spriteImgHTML('flag', 'ui-icon', 'Flag')
       : uiSpriteImgHTML('uiCursor', 'ui-icon', 'Reveal');
   }
-  const stuckBtn = document.getElementById('stuck-btn');
-  if (stuckBtn) stuckBtn.classList.toggle('hidden', over);
 }
 
 // Internal: the timer section of updateHeader. Renders the SAME value as

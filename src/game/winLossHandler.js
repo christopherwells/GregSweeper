@@ -287,7 +287,6 @@ export async function submitArchiveCompletion(dateStr, name, scoreTime) {
       par: state.dailyPar,
       features: state.dailyFeatures,
       bombHitEvents: state.dailyBombHitEvents || [],
-      hintEvents: state.hintEvents || [],
       rngSeed: state.dailyRngSeed || dateStr,
       totalMines: state.totalMines,
       cruxViewed,

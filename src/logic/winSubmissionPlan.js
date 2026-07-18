@@ -16,11 +16,11 @@
  * auto-submit (winLossHandler) and manual-submit (main.js) paths must use this.
  *
  * @param {object} state   live game state — reads dailyPar, dailyFeatures,
- *   dailyBombHitEvents, hintEvents, wormEvents, dailyRngSeed, totalMines
+ *   dailyBombHitEvents, wormEvents, dailyRngSeed, totalMines
  * @param {string} dateStr the board's effective date/seed key (rngSeed falls back to it)
  * @param {string} uid     the player's Firebase uid (getUid())
  * @returns {{uid: string, par: number, features: object, bombHitEvents: Array,
- *   hintEvents: Array, wormEvents: Array, rngSeed: string, totalMines: number}}
+ *   wormEvents: Array, rngSeed: string, totalMines: number}}
  */
 export function buildDailyScoreExtras(state, dateStr, uid) {
   return {
@@ -28,7 +28,6 @@ export function buildDailyScoreExtras(state, dateStr, uid) {
     par: state.dailyPar,
     features: state.dailyFeatures,
     bombHitEvents: state.dailyBombHitEvents || [],
-    hintEvents: state.hintEvents || [],
     // Worm hatch log (finalized by stopTimer before the win handler runs):
     // the refit computes each row's REALIZED worm dose from these — the
     // scheduled wormLoad alone would attenuate the coefficient, since fast

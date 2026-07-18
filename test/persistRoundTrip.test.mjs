@@ -1,10 +1,9 @@
 // Persistence round-trip for the fields the save snapshot used to DROP
 // (2026-07-10 audit):
 //
-//   - hintEvents: the Lens log rides every daily/weekly submission so the
-//     nightly refit can EXCLUDE hinted plays from the par fit. A resumed
-//     daily that had used the Lens submitted WITHOUT its log — the play
-//     entered the fit as unhinted and contaminated the model.
+//   (hintEvents was the third field here until the Lens was removed
+//   2026-07-18; nothing produces a hint log any more.)
+//
 //   - usedPowerUps: a resumed challenge game that had already used a
 //     power-up counted as a purist win on completion.
 //   - timedPar / timedFeatures: a resumed timed win lost its par line and
@@ -114,31 +113,28 @@ function setupTimedGame() {
   state.elapsedTime = 12; state.currentLevel = 2;
   state.powerUps = { revealSafe: 1, shield: 0, lifeline: 0, scanRowCol: 0, magnet: 0, xray: 0 };
   state.activeGimmicks = [];
-  state.hintEvents = [{ t: 4.2, kind: 'region' }];
   state.usedPowerUps = true;
   state.timedPar = 41.7;
   state.timedFeatures = { cellCount: 9, totalMines: 1, modeTimed: 1 };
 }
 
-test('REGRESSION: hintEvents / usedPowerUps / timedPar / timedFeatures survive the save snapshot', () => {
+test('REGRESSION: usedPowerUps / timedPar / timedFeatures survive the save snapshot', () => {
   localStorage.clear();
   setupTimedGame();
   persistGameState();
   const saved = loadGameState('timed');
   assert.ok(saved, 'the timed slot must persist');
-  assert.deepEqual(saved.hintEvents, [{ t: 4.2, kind: 'region' }], 'the Lens log must ride the save');
   assert.equal(saved.usedPowerUps, true, 'the purist flag must ride the save');
   assert.equal(saved.timedPar, 41.7);
   assert.deepEqual(saved.timedFeatures, { cellCount: 9, totalMines: 1, modeTimed: 1 });
 });
 
-test('REGRESSION: the resume path restores all four fields onto live state', () => {
+test('REGRESSION: the resume path restores all three fields onto live state', () => {
   localStorage.clear();
   setupTimedGame();
   persistGameState();
 
   // Wipe the live fields the way a fresh boot would.
-  state.hintEvents = [];
   state.usedPowerUps = false;
   state.timedPar = 0;
   state.timedFeatures = null;
@@ -149,7 +145,6 @@ test('REGRESSION: the resume path restores all four fields onto live state', () 
   if (state.timerId) { clearInterval(state.timerId); state.timerId = null; }
 
   assert.equal(resumed, true, 'the timed save must be resumable');
-  assert.deepEqual(state.hintEvents, [{ t: 4.2, kind: 'region' }]);
   assert.equal(state.usedPowerUps, true);
   assert.equal(state.timedPar, 41.7);
   assert.deepEqual(state.timedFeatures, { cellCount: 9, totalMines: 1, modeTimed: 1 });
@@ -160,7 +155,6 @@ test('a pre-fix save (fields absent) resumes with safe defaults', () => {
   setupTimedGame();
   persistGameState();
   const saved = loadGameState('timed');
-  delete saved.hintEvents;
   delete saved.usedPowerUps;
   delete saved.timedPar;
   delete saved.timedFeatures;
@@ -170,7 +164,6 @@ test('a pre-fix save (fields absent) resumes with safe defaults', () => {
   if (state.timerId) { clearInterval(state.timerId); state.timerId = null; }
 
   assert.equal(resumed, true);
-  assert.deepEqual(state.hintEvents, []);
   assert.equal(state.usedPowerUps, false);
   assert.equal(state.timedPar, 0);
   assert.equal(state.timedFeatures, null);
