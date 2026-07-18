@@ -61,13 +61,15 @@ const FEATURE_HYPOTHESIS = {
   patternMoves: 'Pattern reads are practiced moves. They should cost seconds, not tens of seconds.',
   totalMines: 'More mines, more flags, more careful steps. The steady cost of density is the backbone of the model.',
   cellCount: 'Bigger boards take longer. Obvious, but pinning the exact rate is what everything else is measured against.',
-  // Clue-digit arc. My first pass at "does clue magnitude cost time" was too
-  // thin to call, so each digit gets its own file now, framed by how hard a
-  // person has to work to hold that number in mind.
-  clueShare2: 'A two asks for barely more counting than a one, so boards leaning on twos should read almost as fast. I tested the whole idea once and the sample was too thin to call. More boards are in now, so I am asking again.',
-  clueShare3: 'A three means three mines to place and track, and that is real bookkeeping. I think boards that run to threes cost more than their size alone would say. My first read was too thin to trust, so I am measuring it properly.',
-  clueShare4: 'A four sits at the edge of what a person can take in at a glance, so the fours are where I would expect arithmetic load to start costing time. The question in this file is how big that cost gets, not whether it exists.',
-  clueShare5plus: 'A five or higher is past what most people count at a glance, so the high numbers are where magnitude should finally cost time if it ever does. They are rare, which makes them slow to measure.',
+  // Clue-digit arc. Difficulty is not the digit's size, it is how many mine
+  // arrangements a clue leaves open: a low number pins down fast, a high
+  // number is nearly all mines and pins down just as fast, so the middle is
+  // where the ambiguity lives. That inverted curve, not "bigger is harder",
+  // frames each file.
+  clueShare2: 'A two pins down quickly. Two mines among a few hidden neighbors is not much to untangle, so I expect the twos near the easy end, close to the ones.',
+  clueShare3: 'A three is where the ambiguity peaks on these boards. Few enough mines that the cell does not settle itself, not so many that almost every neighbor is one. I think the threes are the sweet spot that actually makes you work.',
+  clueShare4: 'A four sits just past that peak, with plenty of ways the mines could still fall. The open question is whether the three or the four is the real high point of the curve.',
+  clueShare5plus: 'A high number is almost all mines, so it resolves fast: flag nearly everything and move on. I expect the fives and up to cost little, the easy far end of the curve rather than the hard one.',
 };
 
 // The hypothesis line for a feature. Named features get their bespoke

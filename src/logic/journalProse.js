@@ -241,9 +241,9 @@ const ARCS = {
     out: 'How big the four costs is the open question in this file. The boards have not sized it yet.',
   },
   clueShare5plus: {
-    lean: 'cost',
-    pos: 'I wrote that if magnitude ever costs real time, the high numbers are where it shows. The range says it does, though the high numbers are rare enough that I hold the finding loosely.',
-    zero: 'I wrote that if magnitude costs real time, the high numbers should carry it. So far they carry a rounding error.',
+    lean: 'zero',
+    pos: 'I wrote that a high number is nearly all mines and resolves fast, so it should barely cost. The range reads higher than that, and I want far more of these boards before I trust it.',
+    zero: 'I wrote that a high number is nearly all mines and resolves fast. The boards agree, and the cost lands at a rounding error.',
     out: 'The high numbers are rare, so their cost is slow to pin down. The file stays open while I gather them.',
   },
 };
