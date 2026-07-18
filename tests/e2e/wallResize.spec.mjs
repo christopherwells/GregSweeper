@@ -16,7 +16,7 @@
 // its edge is — the same midpoint math renderWallOverlays uses.
 
 import { test, expect } from '@playwright/test';
-import { prepareInteractionSpec } from './helpers.mjs';
+import { prepareInteractionSpec, settleAnimations } from './helpers.mjs';
 
 test.use({ viewport: { width: 900, height: 950 } });
 
@@ -24,6 +24,10 @@ test.use({ viewport: { width: 900, height: 950 } });
 // rects put its edge (recomputing renderWallOverlays' own geometry). A
 // stale overlay shows up as a large maxDev; an aligned one is sub-pixel.
 async function wallAlignment(page) {
+  // Revealed cells run their per-theme reveal choreography, and a cell rect
+  // read mid-animation is not where the layout puts it — which is what the
+  // wall lines are measured against. Settle first (see settleAnimations).
+  await settleAnimations(page);
   return page.evaluate(async () => {
     const { state } = await import('/src/state/gameState.js');
     const boardEl = document.getElementById('board');
@@ -107,7 +111,6 @@ test('REGRESSION: wall overlays track their cells through a viewport resize', as
   await expect
     .poll(async () => (await wallAlignment(page)).cellSize, { timeout: 5_000 })
     .not.toBe(before.cellSize);
-  await page.waitForTimeout(250);
 
   const after = await wallAlignment(page);
   expect(after.lineCount, 'wall lines survive the resize').toBe(after.edgeCount);
