@@ -23,7 +23,7 @@ import {
 import { loadDailyHistory } from '../firebase/firebaseProgress.js';
 import { loadDailyBoard } from '../firebase/dailyBoardSync.js';
 import { getLocalDateString, getWeekDayIndex, addCalendarDays } from '../logic/seededRandom.js';
-import { FIRST_ARCHIVE_DATE, isArchivableDate } from '../logic/archiveEligibility.js';
+import { FIRST_ARCHIVE_DATE, archiveDayState } from '../logic/archiveEligibility.js';
 import { MAX_LEVEL } from '../logic/difficulty.js';
 
 // ── Return-to-title modal plumbing ────────────────────
@@ -357,21 +357,27 @@ function renderArchiveCalendar() {
   const daysInMonth = new Date(year, month + 1, 0, 12).getDate();
   let html = '';
   for (let i = 0; i < firstDow; i++) html += '<span class="archive-day empty"></span>';
-  let anyPlayable = false;
+  let anyArchivable = false;
   for (let d = 1; d <= daysInMonth; d++) {
     const ds = _archiveYmd(year, month, d);
-    if (isArchivableDate(ds, today)) {
-      anyPlayable = true;
-      const done = _archiveCompleted.has(ds);
-      html += `<button type="button" class="archive-day playable${done ? ' completed' : ''}" data-date="${ds}" aria-label="${ds}${done ? ', completed' : ''}">${d}${done ? '<span class="archive-check">✓</span>' : ''}</button>`;
+    // The pure layer owns the decision; this loop only paints it.
+    const dayState = archiveDayState(ds, today, _archiveCompleted);
+    if (dayState === 'playable') {
+      anyArchivable = true;
+      html += `<button type="button" class="archive-day playable" data-date="${ds}" aria-label="${ds}">${d}</button>`;
+    } else if (dayState === 'done') {
+      // Finished boards stay on the calendar so the month reads as a
+      // completion map, but they are spans rather than buttons: a daily
+      // is a one-off, and a replay records nothing anyway.
+      anyArchivable = true;
+      html += `<span class="archive-day completed" title="Already played" aria-label="${ds}, already played">${d}<span class="archive-check">✓</span></span>`;
     } else {
-      const isToday = ds === today;
-      html += `<span class="archive-day ${isToday ? 'today' : 'blocked'}" aria-hidden="true">${d}</span>`;
+      html += `<span class="archive-day ${dayState === 'today' ? 'today' : 'blocked'}" aria-hidden="true">${d}</span>`;
     }
   }
   grid.innerHTML = html;
   const emptyNote = $('#archive-empty-note');
-  if (emptyNote) emptyNote.classList.toggle('hidden', anyPlayable);
+  if (emptyNote) emptyNote.classList.toggle('hidden', anyArchivable);
 }
 
 const _archivePrevBtn = $('#archive-prev');
@@ -404,6 +410,14 @@ if (_archiveGridEl) _archiveGridEl.addEventListener('click', async (e) => {
   if (!cell || cell.disabled) return;
   const date = cell.dataset.date;
   if (!date) return;
+  // Re-derive the gate instead of trusting the class. The rendered CSS is
+  // cosmetic and can go stale (the grid is painted once per month view while
+  // the completed-set refreshes on open), so the pure decision is what
+  // actually guards the launch.
+  if (archiveDayState(date, getLocalDateString(), _archiveCompleted) !== 'playable') {
+    renderArchiveCalendar();
+    return;
+  }
   cell.disabled = true;
   cell.classList.add('loading');
   // Archive has no local-gen fallback: a missing canonical means the date
