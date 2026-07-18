@@ -201,29 +201,45 @@ export function getMissionForSeed(rngSeed) {
  * behaviour where all 10 candidates compete on the same target.
  */
 export function getMissionForSlot(slotIndex) {
-  if (slotIndex === 0) {
+  return resolveMissionForSlot(slotIndex, getCurrentTarget(), getCoverageTargets());
+}
+
+/**
+ * The slot → mission arithmetic, as a PURE function of (slotIndex, target,
+ * coverage). This is the ONE source of truth: the client selection path
+ * reaches it through getMissionForSlot (which supplies the fetch-cached
+ * target/coverage) and the Node precompute pipeline calls it directly with
+ * its own file-read spec. They used to carry separate copies and DRIFTED —
+ * the pipeline wrapped (`(slotIndex - 1) % coverage.length`) where the
+ * client returned null, so with a coverage list shorter than 9 the
+ * precompute evaluated slots 8-9 as duplicates of coverage[0]/[1] and could
+ * pick a `:trial8/9` seed the client would never choose. The canonical
+ * board still won for actual play (clients read it verbatim), but
+ * parResolve's pre-play par estimate re-ran the client's no-wrap selection
+ * and could land on a DIFFERENT board than the date's canonical. Sharing
+ * this function makes that class of divergence structurally impossible.
+ *
+ * Slot 0 → the primary high-CV target, full natural double-roll allowed.
+ * Slots 1..coverage.length → the coverage list one-to-one, single-gimmick.
+ * Slots beyond that → null, so the caller skips them; effective candidate
+ * count is 1 + coverage.length. (No-wrap is deliberate: wrapping gave the
+ * top-deficit features DOUBLE slots, silently halving the sampling rate of
+ * everything ranked below them.)
+ * An empty coverage list collapses every slot to primary, recovering the
+ * pre-multi-objective behaviour.
+ */
+export function resolveMissionForSlot(slotIndex, target, coverage) {
+  const list = Array.isArray(coverage) ? coverage : [];
+  if (slotIndex === 0 || list.length === 0) {
     return {
-      target:        getCurrentTarget(),
+      target,
       deficitWeight: PRIMARY_WEIGHT,
       singleOnly:    false,
       isPrimary:     true,
     };
   }
-  const coverage = getCoverageTargets();
-  if (coverage.length === 0) {
-    // Legacy fallback — no coverage list available, so every slot just
-    // optimises the primary target like before.
-    return {
-      target:        getCurrentTarget(),
-      deficitWeight: PRIMARY_WEIGHT,
-      singleOnly:    false,
-      isPrimary:     true,
-    };
-  }
-  // No-wrap: slot N targets coverage[N-1], or returns null if N exceeds
-  // the list. Effective candidate count becomes 1 + coverage.length.
-  if (slotIndex - 1 >= coverage.length) return null;
-  const entry = coverage[slotIndex - 1];
+  if (slotIndex - 1 >= list.length) return null;
+  const entry = list[slotIndex - 1];
   return {
     target:        entry.feature,
     deficitWeight: typeof entry.deficit_weight === 'number' ? entry.deficit_weight : 0.1,
