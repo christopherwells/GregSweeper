@@ -25,7 +25,7 @@ import { getGimmicksForLevel, applyGimmicks, applyWalls, isLockedCell, hasWallBe
 import { createDailyRNG, getLocalDateString, getWeekStart, getWeekDayIndex } from '../logic/seededRandom.js';
 import { selectDailyRngSeed } from '../logic/selectDailyRngSeed.js';
 import { selectWeeklyRngSeed } from '../logic/selectWeeklyRngSeed.js';
-import { getTargetGimmickName, getMissionForSeed } from '../logic/experimentDesign.js';
+import { getTargetGimmickName, getMissionForSeed, missionStamp } from '../logic/experimentDesign.js';
 import { loadDailyBoard, saveDailyBoard, serializeBoard, deserializeBoard } from '../firebase/dailyBoardSync.js';
 import { loadWeeklyBoard, saveWeeklyBoard } from '../firebase/weeklyBoardSync.js';
 import { fetchWeeklyLeaderboard } from '../firebase/firebaseLeaderboard.js';
@@ -507,10 +507,9 @@ export async function newGame() {
         // Stamp the mission INTO the payload so consumers (Greg's Field
         // Note) never re-derive it from the seed's slot index against an
         // experimentTarget.json that may have been refit since generation.
-        if (dailyMission && typeof dailyMission.target === 'string') {
-          fallbackPayload.missionTarget = dailyMission.target;
-          fallbackPayload.missionIsPrimary = dailyMission.isPrimary === true;
-        }
+        // Shared with the precompute's buildCanonicalPayload via missionStamp
+        // so the two writers describe a board the same way.
+        Object.assign(fallbackPayload, missionStamp(dailyMission));
         saveDailyBoard(state.dailySeed, fallbackPayload)
           .catch(err => reportCaughtError('daily-board-save', err));
       }

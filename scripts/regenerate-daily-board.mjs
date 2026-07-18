@@ -21,9 +21,10 @@
 //   node scripts/regenerate-daily-board.mjs YYYY-MM-DD [--dry-run] [--force-past]
 
 import {
-  TARGET_TO_GIMMICK, loadExperimentSpec, selectBestCandidate,
+  loadExperimentSpec, selectBestCandidate,
   readCodeVersion, buildCanonicalPayload, buildCandidateFeatures,
 } from './daily-board-pipeline.mjs';
+import { getTargetGimmickName, missionLabel } from '../src/logic/experimentDesign.js';
 import { signCanonicalPayload, requireSigningKey } from '../src/logic/canonicalSignature.js';
 import { isBoardSolvable } from '../src/logic/boardSolver.js';
 import { cleanSolverArtifacts } from '../src/logic/boardGenerator.js';
@@ -106,12 +107,16 @@ function todayET() {
 
   const spec = loadExperimentSpec();
   console.log(`regenerate dailyBoard/${date}${dryRun ? ' (DRY RUN)' : ''}`);
-  console.log(`  primary target: ${spec.target} (gimmick: ${TARGET_TO_GIMMICK[spec.target] || '(none)'})`);
+  console.log(`  primary target: ${spec.target} (gimmick: ${getTargetGimmickName(spec.target) || '(none)'})`);
   console.log(`  coverage_targets: ${spec.coverage_targets.length} entries`);
+  const dm = spec.decorrelation_mission;
+  console.log(dm
+    ? `  decorrelation: ${dm.feature} vs ${dm.confounder} (sign ${dm.sign}, weight ${dm.weight})`
+    : '  decorrelation: none in the current experiment file');
 
   const cand = selectBestCandidate(date, spec);
   const m = cand.mission || {};
-  console.log(`  selected: ${cand.rngSeed} [${m.isPrimary ? 'PRIMARY' : 'COVERAGE'} mission: ${m.target}]`);
+  console.log(`  selected: ${cand.rngSeed} [${missionLabel(m)} mission: ${m.target}${m.type === 'decorrelation' ? ` vs ${m.decorrelation.confounder}` : ''}]`);
   console.log(`  board: ${cand.rows}x${cand.cols}, ${cand.totalMines} mines, gimmicks: ${cand.activeGimmicks.join(',') || '(none)'}`);
 
   // Belt-and-braces certification report: the pipeline's acceptance is

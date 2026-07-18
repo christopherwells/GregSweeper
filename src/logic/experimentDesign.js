@@ -75,6 +75,28 @@ export function getTargetGimmickName(target) {
   return TARGET_TO_GIMMICK[target] || null;
 }
 
+// Targets that are MEASURED on every board but must never be MAXIMIZED.
+//
+// The clue-digit shares are computed for every board the fit sees, so a
+// "threes study" needs no threes-heavy board to make progress. Worse, chasing
+// a high 3-share actively harms the thing the study is stuck on: 3-share runs
+// r ≈ 0.80 against mine density, so the boards that maximize it are
+// overwhelmingly the dense ones we already have too many of, and piling more
+// on deepens the confound instead of breaking it. The decorrelation mission is
+// the sanctioned way to aim at a digit share, and it aims at the RESIDUAL, not
+// the level.
+//
+// Before the shares were ported into computeDailyFeatures this held by
+// accident (`features.clueShare3` was undefined, so the count scorer read 0).
+// Now that the client computes them, the refusal has to be explicit.
+const OBSERVATIONAL_TARGETS = new Set([
+  'clueShare2', 'clueShare3', 'clueShare4', 'clueShare5plus',
+]);
+
+export function isObservationalTarget(target) {
+  return OBSERVATIONAL_TARGETS.has(target);
+}
+
 let _cachedTarget = null;          // the `target` string from the JSON
 let _cachedMeta = null;            // the rest of the object (for debugging / diagnostics modal)
 let _loading = null;
@@ -167,6 +189,111 @@ export function getCoverageTargets() {
   return list.filter(t => t && typeof t.feature === 'string');
 }
 
+// ── Decorrelation missions ───────────────────────────────────────────
+//
+// The gap the primary and coverage missions leave open. A primary mission
+// shrinks ONE coefficient's uncertainty; a coverage mission fills ONE
+// gimmick's sample gap. Neither breaks COLLINEARITY, which is the disease that
+// actually blocks a coefficient from being identified: feeding a confounded
+// term more of the SAME correlated shape cannot separate it from its
+// confounder, no matter how many boards you spend. What separates them is an
+// observation in the design's weakest direction, which is textbook optimal
+// experimental design.
+//
+// The live instance: clue 3-share runs r ≈ 0.80 / R² ≈ 0.64 against mine
+// density on the canonical-era boards, so "3s cost time" and "3s ride on the
+// dense boards they appear on" predict nearly the same data. A board high in
+// 3-share but LOW in density tells those two apart; a board high in both tells
+// us nothing new.
+//
+// The refit does the statistics. It already runs the regression of a feature
+// on its confounder inside the digit VIF loop, so the fitted line is free, and
+// it emits that line here as `decorrelation_mission`. The client stays dumb: it
+// scores a candidate board by how far the feature sits ABOVE what the
+// confounder predicts, in residual standard deviations. No client-side fitting,
+// no eigen-decomposition, one subtraction and a divide.
+//
+// Shape (every field required except residualSd/weight):
+//   { feature, confounder, slope, intercept, sign, residualSd, weight }
+// so the residual is `feature - slope × confounder - intercept`, and `sign`
+// (+1 / -1) picks which tail of it the refit judges to be the under-sampled
+// one.
+
+// Residual scale when the refit does not supply one: score in raw feature
+// units. Emitted `residualSd` is what makes `weight` mean the same thing
+// across different (feature, confounder) pairs, so the refit always sends it.
+const DEFAULT_RESIDUAL_SD = 1;
+
+// Weight when the refit does not supply one. Sits between the primary slot's
+// fixed 0.1 and the heaviest coverage weight so a decorrelation candidate
+// competes without automatically owning every day.
+const DEFAULT_DECORRELATION_WEIGHT = 0.3;
+
+// How many candidate slots a decorrelation mission gets, on top of the primary
+// and coverage slots. Decorrelation has no gimmick to force, so unlike every
+// other mission it SELECTS rather than constructs, and the only lever on how
+// far into the corner it reaches is how many boards it gets to choose among.
+// Cost is linear in this number and is paid only on decorrelation days.
+export const DECORRELATION_SLOTS = 10;
+
+/**
+ * Validate a raw `decorrelation_mission` from experimentTarget.json. Returns a
+ * normalized mission spec, or null if anything about it is unusable — a
+ * malformed mission must degrade to "no decorrelation today", never to a
+ * NaN score that silently wins or loses every candidate.
+ *
+ * @param {any} raw
+ * @returns {{feature: string, confounder: string, slope: number, intercept: number, sign: number, residualSd: number, weight: number}|null}
+ */
+export function normalizeDecorrelationMission(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const { feature, confounder } = raw;
+  if (typeof feature !== 'string' || !feature) return null;
+  if (typeof confounder !== 'string' || !confounder) return null;
+  // Regressing a feature on itself has a zero residual by construction, so it
+  // could only ever score every candidate identically.
+  if (feature === confounder) return null;
+  const slope = Number(raw.slope);
+  const intercept = Number(raw.intercept);
+  if (!Number.isFinite(slope) || !Number.isFinite(intercept)) return null;
+  // Anything other than a clean ±1 is a corrupt file, not a weaker preference.
+  const sign = Number(raw.sign);
+  if (sign !== 1 && sign !== -1) return null;
+  const rawSd = Number(raw.residualSd);
+  const residualSd = Number.isFinite(rawSd) && rawSd > 0 ? rawSd : DEFAULT_RESIDUAL_SD;
+  const rawWeight = Number(raw.weight);
+  const weight = Number.isFinite(rawWeight) && rawWeight > 0 ? rawWeight : DEFAULT_DECORRELATION_WEIGHT;
+  return { feature, confounder, slope, intercept, sign, residualSd, weight };
+}
+
+/**
+ * The decorrelation mission from the loaded experimentTarget.json, or null.
+ */
+export function getDecorrelationMission() {
+  return normalizeDecorrelationMission(getExperimentMeta().decorrelation_mission);
+}
+
+/**
+ * How far a candidate board sits into the under-sampled corner, in residual
+ * standard deviations. Positive means the feature runs higher (for sign = +1)
+ * than the confounder predicts, which is the off-diagonal observation the fit
+ * is short of. Returns null when the board cannot be scored on this pair at
+ * all, so the caller skips the candidate rather than ranking it on a NaN.
+ *
+ * @param {Object} decorrelation normalized mission spec
+ * @param {Object} features      computeDailyFeatures output
+ * @returns {number|null}
+ */
+export function decorrelationResidualZ(decorrelation, features) {
+  if (!decorrelation || !features) return null;
+  const y = Number(features[decorrelation.feature]);
+  const x = Number(features[decorrelation.confounder]);
+  if (!Number.isFinite(y) || !Number.isFinite(x)) return null;
+  const residual = y - decorrelation.slope * x - decorrelation.intercept;
+  const z = (decorrelation.sign * residual) / decorrelation.residualSd;
+  return Number.isFinite(z) ? z : null;
+}
+
 /**
  * Resolve the mission for the candidate identified by an effective
  * RNG seed of the form `${dateString}:trial${n}`. Returns the same
@@ -201,7 +328,141 @@ export function getMissionForSeed(rngSeed) {
  * behaviour where all 10 candidates compete on the same target.
  */
 export function getMissionForSlot(slotIndex) {
-  return resolveMissionForSlot(slotIndex, getCurrentTarget(), getCoverageTargets());
+  return resolveMissionForSlot(
+    slotIndex, getCurrentTarget(), getCoverageTargets(), getDecorrelationMission(),
+  );
+}
+
+/**
+ * Saturating cap on a mission's raw score input. wallEdgeCount runs 10-30
+ * edges per board while cell-based gimmicks cap out at ~3-5 cells, so an
+ * uncapped `count × weight` lets walls dominate every selection; saturating
+ * here makes the weight (how badly the design wants this mission) the actual
+ * driver. Decorrelation shares the cap so an outlier board cannot buy an
+ * unbounded score with one freak residual.
+ *
+ * This used to be copied into selectDailyRngSeed.js and daily-board-pipeline.mjs
+ * as separate consts. It lives with the scorer now for the same reason
+ * resolveMissionForSlot does: two copies of a determinism-critical number are
+ * two chances to drift.
+ */
+export const COUNT_CAP = 5;
+
+/**
+ * Score one candidate board against its slot's mission. Higher wins the day.
+ * Returns null when the candidate cannot be scored on this mission, which the
+ * caller must treat as "skip", not as zero.
+ *
+ * Both selection paths — the client's selectDailyRngSeed and the Node
+ * precompute's selectBestCandidate — call THIS function. They previously
+ * carried the scoring expression twice; the slot arithmetic having already
+ * drifted once across exactly that mirror pair, the scoring rule is single
+ * sourced from the start.
+ *
+ * @param {Object} mission  a resolveMissionForSlot result
+ * @param {Object} features computeDailyFeatures output for the candidate
+ * @returns {number|null}
+ */
+export function missionCandidateScore(mission, features) {
+  if (!mission || !mission.target || !features) return null;
+  if (mission.type === 'decorrelation') {
+    const z = decorrelationResidualZ(mission.decorrelation, features);
+    if (z === null) return null;
+    // Deliberately NOT clamped below zero. A candidate that sits on the wrong
+    // side of the fitted line scores negative and loses to a zero-count
+    // coverage slot, which is the right outcome: on a day when no candidate
+    // reaches the corner, the board is better spent on coverage. Keeping the
+    // negatives also preserves the ordering among decorrelation candidates
+    // instead of flattening them all to a tie at zero.
+    return Math.min(z, COUNT_CAP) * mission.deficitWeight;
+  }
+  // Observational targets are measured on every board and must never be
+  // maximized — see OBSERVATIONAL_TARGETS. Scoring them 0 preserves exactly
+  // the behaviour that held before the clue shares became computable here.
+  const count = isObservationalTarget(mission.target) ? 0 : (features[mission.target] || 0);
+  return Math.min(count, COUNT_CAP) * mission.deficitWeight;
+}
+
+/**
+ * How many candidate slots to evaluate. Baseline on an ordinary day; on a
+ * decorrelation day the tail slots become decorrelation candidates and the
+ * count rises to give them a real selection pool.
+ *
+ * Decorrelation cannot force its way into a board the way a coverage mission
+ * force-injects its gimmick, so candidate count is the ONLY reach knob it has.
+ * Cost is linear and paid only when a mission is live.
+ *
+ * @param {Array}  coverage      coverage_targets list
+ * @param {Object} decorrelation normalized decorrelation mission, or null
+ * @returns {number}
+ */
+export function resolveCandidateCount(coverage, decorrelation) {
+  // Validate rather than test truthiness: `{}` and a half-filled mission are
+  // both truthy, and resolveMissionForSlot rejects them. If this function
+  // trusted them the loop would evaluate a block of extra slots that resolve
+  // to null — wasted work on an ordinary day, and the two functions would
+  // disagree about whether a mission is live.
+  if (!normalizeDecorrelationMission(decorrelation)) return CANDIDATE_COUNT;
+  const list = Array.isArray(coverage) ? coverage : [];
+  return 1 + list.length + DECORRELATION_SLOTS;
+}
+
+/**
+ * The client's candidate count for today, from the loaded experiment file.
+ */
+export function getCandidateCount() {
+  return resolveCandidateCount(getCoverageTargets(), getDecorrelationMission());
+}
+
+/**
+ * The mission fields a canonical board payload carries, as a plain object to
+ * merge in after serializeBoard (which is a strict whitelist and will not
+ * carry them for you).
+ *
+ * ONE definition, because there are TWO canonical writers: the Node precompute
+ * and the client's local-generation fallback in gameActions.js. A board written
+ * by either must be describable by the same Field Note, and the stamped mission
+ * is the ONLY drift-proof record of why a board exists — boards are generated
+ * up to 7 days ahead and the nightly refit reorders the coverage list, so
+ * re-deriving the mission from the seed's slot index against the current file
+ * names the wrong study.
+ *
+ * A decorrelation day adds `missionType` and `missionConfounder` so the note
+ * can say what the board pulls apart instead of mislabelling it a plain study
+ * of the feature. Both are whitelisted in firebase-rules.json's dailyBoard
+ * block; that block ends in `$other: false`, so an un-whitelisted child would
+ * make the WHOLE canonical write fail validation and drop silently.
+ *
+ * @param {Object} mission a resolveMissionForSlot result
+ * @returns {Object} fields to Object.assign onto the payload (empty if none)
+ */
+/**
+ * One-word label for a mission, for the precompute logs. Reads the mission's
+ * own discriminator: labelling by `isPrimary` alone printed a decorrelation
+ * winner as "COVERAGE", and the Actions log is one of the artifacts used to
+ * reconstruct why a historical board exists.
+ *
+ * @param {Object} mission a resolveMissionForSlot result
+ * @returns {string}
+ */
+export function missionLabel(mission) {
+  if (!mission) return 'NO';
+  if (mission.type === 'decorrelation') return 'DECORRELATION';
+  return mission.isPrimary ? 'PRIMARY' : 'COVERAGE';
+}
+
+export function missionStamp(mission) {
+  const m = mission || {};
+  if (typeof m.target !== 'string') return {};
+  const stamp = {
+    missionTarget: m.target,
+    missionIsPrimary: m.isPrimary === true,
+  };
+  if (m.type === 'decorrelation' && m.decorrelation) {
+    stamp.missionType = 'decorrelation';
+    stamp.missionConfounder = m.decorrelation.confounder;
+  }
+  return stamp;
 }
 
 /**
@@ -221,29 +482,52 @@ export function getMissionForSlot(slotIndex) {
  *
  * Slot 0 → the primary high-CV target, full natural double-roll allowed.
  * Slots 1..coverage.length → the coverage list one-to-one, single-gimmick.
- * Slots beyond that → null, so the caller skips them; effective candidate
- * count is 1 + coverage.length. (No-wrap is deliberate: wrapping gave the
- * top-deficit features DOUBLE slots, silently halving the sampling rate of
- * everything ranked below them.)
- * An empty coverage list collapses every slot to primary, recovering the
- * pre-multi-objective behaviour.
+ * Slots beyond that → the DECORRELATION mission when the refit emitted one,
+ *   else null so the caller skips them. (No-wrap is deliberate: wrapping gave
+ *   the top-deficit features DOUBLE slots, silently halving the sampling rate
+ *   of everything ranked below them.)
+ * An empty coverage list collapses the non-decorrelation slots to primary,
+ * recovering the pre-multi-objective behaviour.
+ *
+ * With no decorrelation mission this is byte-identical to the pre-F1 function,
+ * which is the whole back-compat story: an experimentTarget.json without the
+ * new key selects exactly the board it selected before.
  */
-export function resolveMissionForSlot(slotIndex, target, coverage) {
+export function resolveMissionForSlot(slotIndex, target, coverage, decorrelation = null) {
   const list = Array.isArray(coverage) ? coverage : [];
-  if (slotIndex === 0 || list.length === 0) {
+  const primary = () => ({
+    target,
+    deficitWeight: PRIMARY_WEIGHT,
+    singleOnly:    false,
+    isPrimary:     true,
+  });
+  if (slotIndex === 0) return primary();
+  if (slotIndex - 1 < list.length) {
+    const entry = list[slotIndex - 1];
     return {
-      target,
-      deficitWeight: PRIMARY_WEIGHT,
-      singleOnly:    false,
-      isPrimary:     true,
+      target:        entry.feature,
+      deficitWeight: typeof entry.deficit_weight === 'number' ? entry.deficit_weight : 0.1,
+      singleOnly:    true,
+      isPrimary:     false,
     };
   }
-  if (slotIndex - 1 >= list.length) return null;
-  const entry = list[slotIndex - 1];
-  return {
-    target:        entry.feature,
-    deficitWeight: typeof entry.deficit_weight === 'number' ? entry.deficit_weight : 0.1,
-    singleOnly:    true,
-    isPrimary:     false,
-  };
+  const decor = normalizeDecorrelationMission(decorrelation);
+  if (decor) {
+    return {
+      // The target IS the confounded feature, so getTargetGimmickName finds no
+      // gimmick to force (correct — there is none) and the mission stays
+      // nameable by the Field Note.
+      target:        decor.feature,
+      deficitWeight: decor.weight,
+      // The natural gimmick lottery, unforced and unconstrained: this mission
+      // is about the clue shape, and leaning on the gimmick roll either way
+      // would only add noise to the axis being separated.
+      singleOnly:    false,
+      isPrimary:     false,
+      type:          'decorrelation',
+      decorrelation: decor,
+    };
+  }
+  if (list.length === 0) return primary();
+  return null;
 }

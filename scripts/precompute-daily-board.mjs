@@ -14,9 +14,10 @@
 // writes, so re-running for the same date is a no-op (returns 0).
 
 import {
-  TARGET_TO_GIMMICK, loadExperimentSpec, selectBestCandidate,
+  loadExperimentSpec, selectBestCandidate,
   readCodeVersion, buildCanonicalPayload, buildCandidateFeatures,
 } from './daily-board-pipeline.mjs';
+import { getTargetGimmickName, missionLabel } from '../src/logic/experimentDesign.js';
 import { signCanonicalPayload, requireSigningKey } from '../src/logic/canonicalSignature.js';
 import { cruxPayloadFromBoard } from '../src/logic/cruxExtract.js';
 import { signInAnonymously, deleteSelf } from './anon-auth-rest.mjs';
@@ -109,12 +110,21 @@ async function writeCrux(date, idToken, payload) {
   }
 
   const spec = loadExperimentSpec();
-  console.log(`  primary target: ${spec.target} (gimmick: ${TARGET_TO_GIMMICK[spec.target] || '(none)'})`);
+  console.log(`  primary target: ${spec.target} (gimmick: ${getTargetGimmickName(spec.target) || '(none)'})`);
   console.log(`  coverage_targets: ${spec.coverage_targets.length} entries`);
+  const dm = spec.decorrelation_mission;
+  console.log(dm
+    ? `  decorrelation: ${dm.feature} vs ${dm.confounder} (sign ${dm.sign}, weight ${dm.weight})`
+    : '  decorrelation: none tonight');
 
   const cand = selectBestCandidate(date, spec);
   const m = cand.mission || {};
-  console.log(`  selected: ${cand.rngSeed} [${m.isPrimary ? 'PRIMARY' : 'COVERAGE'} mission: ${m.target}, weight ${m.deficitWeight}]`);
+  // Read the mission's own discriminator. Labelling by isPrimary alone
+  // printed "COVERAGE mission: clueShare3" on a decorrelation night, and a
+  // clue share can never BE a coverage entry — which would put the Actions
+  // log (a primary artifact for reconstructing why a historical board exists)
+  // at odds with the board's own stamped missionType.
+  console.log(`  selected: ${cand.rngSeed} [${missionLabel(m)} mission: ${m.target}${m.type === 'decorrelation' ? ` vs ${m.decorrelation.confounder}` : ''}, weight ${m.deficitWeight}]`);
   console.log(`  board: ${cand.rows}x${cand.cols}, ${cand.totalMines} mines, gimmicks: ${cand.activeGimmicks.join(',') || '(none)'}`);
 
   const payload = buildCanonicalPayload(cand, readCodeVersion());

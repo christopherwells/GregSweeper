@@ -116,6 +116,127 @@ DIGIT_FEATURES <- c("clueShare2", "clueShare3", "clueShare4", "clueShare5plus")
 # row (Christopher's provenance note, 2026-06-28).
 DIGIT_ERA_START <- "2026-04-27"
 
+# ── Decorrelation missions (Journal PR F1) ─────────────────────────────
+# The experiment's missions all chase either one coefficient's uncertainty
+# (the CV / revalidation primary target) or one gimmick's sample gap
+# (coverage). Neither breaks COLLINEARITY, and collinearity is what actually
+# blocks a confounded coefficient: more boards of the SAME correlated shape
+# cannot separate a feature from its confounder. What separates them is an
+# observation in the design's weakest direction.
+#
+# So each night we look for the worst-confounded pair we can actually act on,
+# fit the line between them, and hand the client that line. The client then
+# scores candidate boards by their RESIDUAL against it — how far the feature
+# sits from what the confounder predicts — and ships the board furthest into
+# the under-sampled corner. The statistics stay here; the client does one
+# subtraction and one divide, so every player resolves the same board.
+#
+# Deliberately PAIRWISE rather than a multi-term VIF: the client's scorer
+# takes exactly two features, so naming a feature whose confound is spread
+# across several terms would emit a mission it cannot act on. Pairwise R² is
+# the part of the confound a single decorrelation board can actually attack.
+DECORRELATION_FEATURES <- DIGIT_FEATURES
+# Confounder candidates must be computable client-side by computeDailyFeatures
+# under the SAME key, since the client looks them up by name in the feature
+# vector. These five are; the pooled reasoning tiers (patternMoves /
+# searchMoves) are derived at fit time and are not, so they stay out.
+DECORRELATION_CONFOUNDERS <- c("density", "cellCount", "totalMines",
+                               "wallEdgeCount", "zeroClusterCount")
+# Below this pairwise |r| the pair is not meaningfully confounded and a
+# decorrelation day would spend a board on nothing. clueShare3 vs density
+# measured r = 0.80 on the canonical-era boards, so this bar is a long way
+# below the live case it was built for.
+DECORRELATION_MIN_ABS_R <- 0.5
+# The weight is DERIVED, not guessed, because a guessed one is dead code.
+# Every mission scores `min(raw, COUNT_CAP) * weight`, but the raw inputs are
+# on different scales: a coverage count saturates the cap on almost any board
+# (wormLoad runs 0.6-12), while a residual z rarely passes 2.5. At a flat 0.3
+# a decorrelation candidate topped out around 0.75 against a coverage slot
+# sitting at 5 * 0.33 = 1.67, so it lost every single day and the mission
+# would have shipped without ever selecting a board.
+#
+# So: solve for the weight that makes a board DECORRELATION_TARGET_Z residual
+# SDs into the corner exactly tie the strongest coverage mission. A board
+# deeper than that takes the day; a shallower one leaves it to coverage. That
+# rule re-calibrates itself whenever the coverage deficits move, which a
+# hardcoded constant cannot.
+DECORRELATION_TARGET_Z <- 1.0
+# Mirrors COUNT_CAP in src/logic/experimentDesign.js, which is the source of
+# truth for the scoring formula. Only used to solve for the weight above.
+DECORRELATION_COUNT_CAP <- 5
+# Mirrors PRIMARY_WEIGHT in the same file: the floor competitor when the
+# coverage list is empty.
+DECORRELATION_PRIMARY_WEIGHT <- 0.1
+# Rows needed before the fitted line is worth shipping as a mission.
+DECORRELATION_MIN_ROWS <- 30
+# How often a decorrelation night comes round, anchored to
+# lastDecorrelationDate in experimentTarget.json exactly like the
+# revalidation clock (robust to missed refits; a missing anchor makes the
+# first run due, so the mechanism is visible right after deploy).
+#
+# This cadence is the whole frequency policy, and it exists because the
+# weight cannot express one. A confound severe enough to be worth a mission
+# is severe every night, so an always-emitted mission calibrated to actually
+# WIN takes the calendar: measured at 11 of 12 days, which would starve the
+# coverage slate while wormLoad still sits on two boards. Emitting one night
+# in seven keeps coverage at roughly six days in seven AND lets that one
+# night be decisive rather than a coin flip.
+DECORRELATION_INTERVAL <- 7
+
+# Choose tonight's decorrelation mission, or NULL.
+#
+# For every (feature, confounder) pair, regress the feature on the confounder
+# and keep the strongest confound. `sign` picks which tail of the residual to
+# chase: whichever side currently has FEWER observations past one residual SD
+# is the side the design is short of, and that is where the next board goes.
+choose_decorrelation_mission <- function(dat, features, confounders, rival_weights = numeric(0)) {
+  if (is.null(dat) || nrow(dat) < DECORRELATION_MIN_ROWS) return(NULL)
+  # The strongest mission this one has to beat on a given day.
+  top_rival <- max(c(rival_weights, DECORRELATION_PRIMARY_WEIGHT), na.rm = TRUE)
+  weight <- DECORRELATION_COUNT_CAP * top_rival / DECORRELATION_TARGET_Z
+  best <- NULL
+  for (f in intersect(features, names(dat))) {
+    for (cf in intersect(confounders, names(dat))) {
+      if (f == cf) next
+      y <- suppressWarnings(as.numeric(dat[[f]]))
+      x <- suppressWarnings(as.numeric(dat[[cf]]))
+      ok <- is.finite(y) & is.finite(x)
+      if (sum(ok) < DECORRELATION_MIN_ROWS) next
+      y <- y[ok]; x <- x[ok]
+      if (stats::sd(y) <= 0 || stats::sd(x) <= 0) next
+      r <- suppressWarnings(stats::cor(y, x))
+      if (!is.finite(r) || abs(r) < DECORRELATION_MIN_ABS_R) next
+      if (!is.null(best) && abs(r) <= best$absR) next
+      fit <- stats::lm(y ~ x)
+      slope <- unname(stats::coef(fit)[2])
+      intercept <- unname(stats::coef(fit)[1])
+      resid <- stats::residuals(fit)
+      rsd <- stats::sd(resid)
+      if (!is.finite(slope) || !is.finite(intercept) || !is.finite(rsd) || rsd <= 0) next
+      # The thinner tail is the under-sampled direction. Ties go to +1, the
+      # "feature higher than the confounder predicts" corner, which is the
+      # interpretively decisive one: it is the board that separates "threes
+      # cost time" from "threes ride on the dense boards they appear on".
+      n_hi <- sum(resid >  rsd)
+      n_lo <- sum(resid < -rsd)
+      chosen_sign <- if (n_hi <= n_lo) 1L else -1L
+      best <- list(
+        feature    = f,
+        confounder = cf,
+        slope      = round(slope, 6),
+        intercept  = round(intercept, 6),
+        sign       = chosen_sign,
+        residualSd = round(rsd, 6),
+        weight     = round(weight, 4),
+        absR       = abs(r),
+        rsq        = round(r^2, 4),
+        n          = length(y)
+      )
+    }
+  }
+  best
+}
+
 # Sampling budget. 4 chains × 2000 iterations (1000 warmup) is standard;
 # more than enough for this model size on any plausible N.
 N_CHAINS    <- 4
@@ -758,6 +879,18 @@ digit_df <- NULL
 if (!is.null(digit_shares) && nrow(digit_shares) > 0) {
   digit_df <- df |>
     filter(uid %in% eligible_uids, date >= DIGIT_ERA_START) |>
+    # Drop any meta-carried copies of the shares BEFORE the join. The client
+    # computes the same histogram now (dailyFeatures.clueShares, ported so the
+    # decorrelation mission can score a candidate board), and every feature key
+    # in dailyMeta is unnest_wider'd into df. Without this the join finds the
+    # names on both sides, dplyr suffixes them to .x/.y, digit_df$clueShare2
+    # becomes NULL, sd(NULL) is NA, and the eligibility `if` below — which sits
+    # OUTSIDE its tryCatch — dies on "missing value where TRUE/FALSE needed",
+    # taking the WHOLE refit down rather than just the digit block. The
+    # BOARD-derived shares are authoritative regardless: they cover every
+    # canonical date back to DIGIT_ERA_START, including boards written before
+    # any client could compute them.
+    select(-any_of(DIGIT_FEATURES)) |>
     inner_join(digit_shares, by = "date")
   message(sprintf("  digit frame: %d canonical-era rows, %d dates (secondary fit only)",
                   nrow(digit_df), n_distinct(digit_df$date)))
@@ -1191,6 +1324,53 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
     # exactly (planJournalScreen), so a revalidation day emits the bare tag
     # and a normal day keeps the descriptive CV sentence. lastRevalidationDate
     # is the cadence anchor the next refit reads.
+    # Tonight's decorrelation mission, if any pair is confounded badly enough
+    # to be worth a board. Computed from the digit fit FRAME, not the fit, so
+    # it survives a night when the secondary brms fit fails diagnostics — the
+    # fitted line between two columns needs no posterior. NULL on any night
+    # with too few canonical-era rows or no pair past the |r| bar, and the key
+    # is then dropped entirely, which the client reads as an ordinary day.
+    # Is a decorrelation night due? Same anchor shape as the revalidation
+    # clock above, read off the previous experiment file.
+    last_decor <- prev_experiment$lastDecorrelationDate %||% NA_character_
+    days_since_decor <- if (is.character(last_decor) && grepl("^\\d{4}-\\d{2}-\\d{2}", last_decor)) {
+      as.integer(as.Date(today_str) - as.Date(substr(last_decor, 1, 10)))
+    } else NA_integer_
+    decor_due <- is.na(days_since_decor) || days_since_decor >= DECORRELATION_INTERVAL
+
+    decor_mission <- if (!decor_due) NULL else tryCatch(
+      choose_decorrelation_mission(
+        digit_df, DECORRELATION_FEATURES, DECORRELATION_CONFOUNDERS,
+        # The coverage weights it competes against, so the emitted weight is
+        # calibrated to THIS night's slate rather than a stale constant.
+        vapply(coverage_targets, function(x) as.numeric(x$deficit_weight), numeric(1))
+      ),
+      error = function(e) {
+        message("  decorrelation mission skipped: ", conditionMessage(e))
+        NULL
+      }
+    )
+    if (!is.null(decor_mission)) {
+      message(sprintf(
+        "  decorrelation mission: %s vs %s (R2 %.2f, n=%d, sign %+d, residual sd %.3f, weight %.3f)",
+        decor_mission$feature, decor_mission$confounder, decor_mission$rsq,
+        decor_mission$n, decor_mission$sign, decor_mission$residualSd, decor_mission$weight))
+      # absR / rsq / n are diagnostics for this log line only; the client reads
+      # just the line and how to score against it.
+      decor_mission <- decor_mission[c("feature", "confounder", "slope",
+                                       "intercept", "sign", "residualSd", "weight")]
+    } else if (!decor_due) {
+      message(sprintf("  decorrelation mission: not due (%d of %d days since the last one)",
+                      days_since_decor, DECORRELATION_INTERVAL))
+    } else {
+      message("  decorrelation mission: none (no pair past the confound bar)")
+    }
+    # Advance the clock only on a night that actually SHIPPED a mission, so a
+    # night the confound bar rejected stays due tomorrow rather than burning
+    # the slot.
+    new_last_decor <- if (!is.null(decor_mission)) today_str
+                      else if (is.character(last_decor)) last_decor else NULL
+
     experiment_obj <- list(
       updatedAt = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
       target    = chosen_target,
@@ -1207,12 +1387,19 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
           cv       = round(target_candidates$cv[i], 3)
         )
       }),
-      coverage_targets = coverage_targets
+      coverage_targets = coverage_targets,
+      lastDecorrelationDate = new_last_decor,
+      decorrelation_mission = decor_mission
     )
     # A NULL anchor (no revalidation fired AND no prior valid date) would
     # serialize as an ugly empty object — drop the key entirely instead, which
     # the reader treats as "clock not started" (first run is due).
     if (is.null(new_last_reval)) experiment_obj[["lastRevalidationDate"]] <- NULL
+    # Same for a night with no decorrelation mission: absent, not empty. Both
+    # the client's normalizeDecorrelationMission and the precompute's
+    # loadExperimentSpec treat a missing key as an ordinary selection day.
+    if (is.null(decor_mission)) experiment_obj[["decorrelation_mission"]] <- NULL
+    if (is.null(new_last_decor)) experiment_obj[["lastDecorrelationDate"]] <- NULL
     writeLines(toJSON(experiment_obj, auto_unbox = TRUE, pretty = TRUE),
                "src/logic/experimentTarget.json")
   }
