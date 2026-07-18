@@ -3901,6 +3901,55 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   border-radius: 0 8px 8px 0;
 }
 
+/* Board heatmap — "where the mines went off" on one past daily. The
+   grid is square-aspect per cell and shrinks to fit the modal; the four
+   heat levels ride --color-accent so every theme tints its own map. */
+.journal-heatmap { gap: 8px; }
+.journal-heat-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text, #eee);
+}
+.journal-heat-grid {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  max-width: 320px;
+  margin: 4px auto 0;
+}
+.journal-heat-cell {
+  aspect-ratio: 1 / 1;
+  border-radius: 2px;
+  background: var(--color-cell-hidden, #2a2a3e);
+  opacity: 0.85;
+}
+.journal-heat-cell.heat-1 { background: var(--color-accent, #e94560); opacity: 0.28; }
+.journal-heat-cell.heat-2 { background: var(--color-accent, #e94560); opacity: 0.5; }
+.journal-heat-cell.heat-3 { background: var(--color-accent, #e94560); opacity: 0.75; }
+.journal-heat-cell.heat-4 { background: var(--color-accent, #e94560); opacity: 1; }
+.journal-heat-legend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 6px;
+}
+.journal-heat-legend-label {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+.journal-heat-swatch {
+  width: 14px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--color-accent, #e94560);
+}
+.journal-heat-swatch.heat-1 { opacity: 0.28; }
+.journal-heat-swatch.heat-2 { opacity: 0.5; }
+.journal-heat-swatch.heat-3 { opacity: 0.75; }
+.journal-heat-swatch.heat-4 { opacity: 1; }
+
 /* Conclusions ledger — closed studies as one-liners, tap to expand. */
 .journal-section-title {
   margin: 4px 0 0;
