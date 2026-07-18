@@ -23,23 +23,24 @@
 import { isBombHitCheat } from './difficulty.js';
 import { countWord } from './journalProse.js';
 
-// How many distinct solvers a board needs before its per-cell counts
-// get drawn. Below this the exhibit renders the honest waiting state.
-export const MIN_PLAYERS_FOR_HEATMAP = 15;
+// How many distinct solvers a board needs before the exhibit exists at
+// all. Below this NOTHING renders: no map, no waiting copy, no card.
+// The feature stays invisible until the audience can actually support a
+// population claim (Christopher, 2026-07-18).
+export const MIN_PLAYERS_FOR_HEATMAP = 30;
 
-// How many hits ONE SQUARE needs before it is shaded. The solver gate
-// above licenses the board; this one licenses the square, and the two
-// are genuinely different claims. A board can clear fifteen solvers and
-// still have every lit cell be one person's single unlucky click, and
-// scaling the shade against the board's own busiest cell would then
-// paint that one click as the darkest square on the map under a
-// population caption. A count here IS a distinct-player count: one row
-// per player, and a struck mine stays revealed, so a player can hit a
-// given square at most once.
-export const MIN_CELL_HITS_TO_DRAW = 3;
-
-// Shade buckets for the drawn grid (0 = untouched).
-export const HEAT_LEVELS = 4;
+// Shading is a RATE, not a rank: a square's level comes from the share
+// of that board's solvers who detonated it, on a fixed scale. Scaling
+// against the board's own busiest square instead would rank rather than
+// measure, so a board where three people had a bad moment and nobody
+// else did would light up as though it were brutal. On this scale one
+// hit among thirty solvers reads as the 3% it is, which is why a single
+// hit is safe to draw (Christopher's correction, 2026-07-18).
+//
+// Upper edge of each band as a fraction of solvers; the last level is
+// everything above the final edge.
+export const HEAT_BANDS = [0.05, 0.10, 0.20];
+export const HEAT_LEVELS = HEAT_BANDS.length + 1;
 
 export function cellKey(r, c) {
   return `${r}_${c}`;
@@ -105,13 +106,17 @@ export function aggregateBombHits(scoreRows, board = {}) {
   const colsMax = typeof board.cols === 'number' ? board.cols : null;
 
   const players = _onePerPlayer(Array.isArray(scoreRows) ? scoreRows : []);
+  let nPlayers = 0;
   for (const row of players) {
     const events = _eventList(row.bombHitEvents);
     // A probe run's hits describe the layout, not where the board is
-    // hard. `bombHits` is the submitted count; fall back to the event
-    // count for rows that predate the field.
+    // hard. Someone who detonates a third of the mines is messing
+    // around, not playing, so they leave the map AND the denominator
+    // (Christopher, 2026-07-18). `bombHits` is the submitted count;
+    // fall back to the event count for rows that predate the field.
     const hitCount = typeof row.bombHits === 'number' ? row.bombHits : events.length;
     if (isBombHitCheat(hitCount, board.totalMines)) { nCheatRows++; continue; }
+    nPlayers++;
 
     for (const ev of events) {
       if (!ev || !Number.isInteger(ev.row) || !Number.isInteger(ev.col)) continue;
@@ -126,18 +131,26 @@ export function aggregateBombHits(scoreRows, board = {}) {
     }
   }
 
-  return { cells, totals, nPlayers: players.length, nCheatRows, nOutOfBounds };
+  return { cells, totals, nPlayers, nCheatRows, nOutOfBounds };
 }
 
 /**
- * Shade bucket for one cell: 0 when untouched, else 1..HEAT_LEVELS
- * scaled against the board's busiest cell.
+ * Shade bucket for one square: 0 when untouched, else 1..HEAT_LEVELS by
+ * the SHARE of the board's solvers who detonated it. Fixed scale, so
+ * the same shade means the same thing on every board.
+ *
+ * @param {number} count hits on this square (= distinct players, since a
+ *   struck mine stays revealed and cannot be hit twice by one player)
+ * @param {number} nPlayers solvers of the board (the denominator)
  */
-export function heatLevel(count, max) {
-  if (!(count > 0)) return 0;
-  if (!(max > 0)) return 0;
-  const level = Math.ceil((count / max) * HEAT_LEVELS);
-  return Math.min(HEAT_LEVELS, Math.max(1, level));
+export function heatLevel(count, nPlayers) {
+  if (!Number.isFinite(count) || count <= 0) return 0;
+  if (!Number.isFinite(nPlayers) || nPlayers <= 0) return 0;
+  const share = count / nPlayers;
+  for (let i = 0; i < HEAT_BANDS.length; i++) {
+    if (share <= HEAT_BANDS[i]) return i + 1;
+  }
+  return HEAT_LEVELS;
 }
 
 export function maxCellCount(cells) {
@@ -146,29 +159,32 @@ export function maxCellCount(cells) {
   return max;
 }
 
+// The band edges as player-facing percentages, for the legend's scale
+// bar. The legend states the real numbers rather than "fewer / more" —
+// a shade nobody can convert back into a quantity is decoration.
+export function heatBandLabels() {
+  return HEAT_BANDS.map(edge => `${Math.round(edge * 100)}%`);
+}
+
 /**
- * The drawable subset of a map: squares that cleared
- * MIN_CELL_HITS_TO_DRAW, plus the denominator to shade them against.
+ * The squares worth drawing: every square anyone detonated, keyed with
+ * its count, plus the solver denominator to shade against. There is no
+ * per-square minimum, because the fixed rate scale already renders a
+ * lone hit as the small share it is.
  *
- * The denominator is floored one step above the cut so a board whose
- * squares all sit exactly at the threshold renders mid-tone instead of
- * fully saturated. A flat map should look flat, not maximal.
- *
- * @returns {{cells: Record<string, number>, max: number, nDrawn: number}}
+ * @returns {{cells: Record<string, number>, nPlayers: number, nDrawn: number}}
  */
-export function drawableCells(cells) {
+export function drawableCells(cells, nPlayers) {
   const kept = {};
   let nDrawn = 0;
-  let busiest = 0;
   for (const [key, count] of Object.entries(cells || {})) {
     // Number.isFinite, not typeof: NaN is a number and fails every
-    // comparison, so a bare `< threshold` test would let it through.
-    if (!Number.isFinite(count) || count < MIN_CELL_HITS_TO_DRAW) continue;
+    // comparison, so a bare `<= 0` test would let it through.
+    if (!Number.isFinite(count) || count <= 0) continue;
     kept[key] = count;
     nDrawn++;
-    if (count > busiest) busiest = count;
   }
-  return { cells: kept, max: Math.max(busiest, MIN_CELL_HITS_TO_DRAW + 1), nDrawn };
+  return { cells: kept, nPlayers: Number(nPlayers) || 0, nDrawn };
 }
 
 /**
@@ -197,9 +213,12 @@ export function selectHeatmapDate(entries, completedDates) {
     if (Number.isFinite(n) && n > bestPlayers) bestPlayers = n;
   }
 
+  // No board has the audience yet, so the exhibit does not exist. Not a
+  // waiting message, not an empty frame: nothing. A card whose only
+  // content is an apology is worse than no card.
   const qualified = list.filter(e => Number(e.payload.n_players) >= MIN_PLAYERS_FOR_HEATMAP);
   if (qualified.length === 0) {
-    return { state: 'sparse', date: null, payload: null, bestPlayers };
+    return { state: 'none', date: null, payload: null, bestPlayers };
   }
 
   const done = completedDates instanceof Set ? completedDates : new Set(completedDates);
@@ -210,9 +229,9 @@ export function selectHeatmapDate(entries, completedDates) {
       date: played.date,
       payload: played.payload,
       bestPlayers,
-      // The per-square gate resolves here, so no caller can draw a raw
-      // count map by reaching past it.
-      drawn: drawableCells(played.payload.cells),
+      // Counts and their denominator travel together, so no caller can
+      // shade a square without the share it represents.
+      drawn: drawableCells(played.payload.cells, played.payload.n_players),
     };
   }
   // The payload is WITHHELD, not merely hidden: the caller cannot paint
@@ -227,16 +246,6 @@ export function selectHeatmapDate(entries, completedDates) {
  */
 export function heatmapCopy(plan, dateLabel = '') {
   if (!plan || plan.state === 'none') return null;
-
-  if (plan.state === 'sparse') {
-    const best = plan.bestPlayers > 0
-      ? `The best-covered board so far has ${countWord(plan.bestPlayers)}.`
-      : 'No board has enough solvers on the books yet.';
-    return {
-      title: 'Where the mines went off',
-      body: `I map where players set off mines, but only after ${countWord(MIN_PLAYERS_FOR_HEATMAP)} people have solved the same board. ${best} I will draw the map once the rest arrive.`,
-    };
-  }
 
   if (plan.state === 'unplayed') {
     return {
@@ -256,17 +265,8 @@ export function heatmapCopy(plan, dateLabel = '') {
       body: `${opener} and not one of them set off a mine. Some boards read clean the whole way through.`,
     };
   }
-  if (!plan.drawn || plan.drawn.nDrawn === 0) {
-    // The board cleared the solver gate but no single square cleared the
-    // per-square one, so the hits that exist are scattered singles. Say
-    // that instead of drawing them.
-    return {
-      title: 'Where the mines went off',
-      body: `${opener}. No square caught ${countWord(MIN_CELL_HITS_TO_DRAW)} of them, so the misses here were scattered rather than shared.`,
-    };
-  }
   return {
     title: 'Where the mines went off',
-    body: `${opener}. Every shaded square caught at least ${countWord(MIN_CELL_HITS_TO_DRAW)} of them, and the darker it is the more it caught.`,
+    body: `${opener}. The darker a square, the bigger the share of them who set off a mine on it.`,
   };
 }

@@ -5,24 +5,23 @@
 // src/logic/boardHeatmap.js and is node-tested there. This module only
 // fetches and draws what that layer approves.
 //
-// Four things it will not do:
-//   1. Draw a board fewer than MIN_PLAYERS_FOR_HEATMAP people have
-//      solved, because a per-cell count on a thin board is one player's
-//      afternoon, and painting it as a population signal would break the
-//      same honesty contract the rest of the Journal runs on.
-//   2. Shade a square fewer than MIN_CELL_HITS_TO_DRAW players
-//      detonated. Rule 1 licenses the board; this licenses the square,
-//      and they are different claims.
-//   3. Draw a board the player has not finished. The map only lights
+// Three things it will not do:
+//   1. Exist at all until MIN_PLAYERS_FOR_HEATMAP people have solved a
+//      board. Below that there is no card, no waiting message, nothing.
+//   2. Draw a board the player has not finished. The map only lights
 //      cells that held mines, and past dailies are replayable from the
 //      Daily Archive, so an unplayed board would ship as a partial mine
 //      map for a puzzle they still have ahead.
-//   4. Draw anything without the canonical board to check the grid
+//   3. Draw anything without the canonical board to check the grid
 //      against. A map that does not describe the board under it is
 //      worse than no map.
 //
+// Shading is a RATE (share of that board's solvers, on a fixed scale),
+// never a rank against the board's own busiest square, so a board three
+// people found awkward cannot render as though it were brutal.
+//
 // Rendered as a card in the in-app notebook only. The logged-out
-// ?report= page has no play history to check rule 3 against.
+// ?report= page has no play history to check rule 2 against.
 
 import { el } from './journalCard.js';
 import { loadRecentBoardHeatmaps, loadDailyBoard, deserializeBoard } from '../firebase/dailyBoardSync.js';
@@ -31,6 +30,7 @@ import { getUid } from '../firebase/firebaseProgress.js';
 import { formatShortDate } from '../logic/journalFindings.js';
 import {
   HEAT_LEVELS,
+  heatBandLabels,
   selectHeatmapDate,
   heatmapCopy,
   heatLevel,
@@ -51,16 +51,16 @@ async function _completedDates() {
   return new Set(history.map(h => h.date));
 }
 
-// `drawn` is the pure layer's approved subset: only squares that at
-// least MIN_CELL_HITS_TO_DRAW distinct players detonated, with the shade
-// denominator it chose. The raw payload counts never reach the DOM.
+// `drawn` carries the squares to shade and the solver denominator they
+// are shaded against, so a count never reaches the DOM without the
+// share it represents.
 function _grid(drawn, rows, cols) {
   const grid = el('div', 'journal-heat-grid');
   grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
   grid.setAttribute('role', 'img');
 
   const cells = drawn.cells;
-  const max = drawn.max;
+  const nPlayers = drawn.nPlayers;
 
   // Index the sparse count map by cell so the draw stays one pass.
   const byIndex = new Map();
@@ -73,24 +73,36 @@ function _grid(drawn, rows, cols) {
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const count = byIndex.get(r * cols + c) || 0;
-      const cell = el('div', `journal-heat-cell heat-${heatLevel(count, max)}`);
-      if (count > 0) cell.title = `${count} players set off a mine here.`;
+      const cell = el('div', `journal-heat-cell heat-${heatLevel(count, nPlayers)}`);
+      // The tooltip states the fraction outright, so the shade is always
+      // convertible back into the quantity behind it.
+      if (count > 0) {
+        cell.title = count === 1
+          ? `1 of ${nPlayers} players set off a mine here.`
+          : `${count} of ${nPlayers} players set off a mine here.`;
+      }
       grid.appendChild(cell);
     }
   }
 
   grid.setAttribute('aria-label',
-    `Board grid, ${rows} by ${cols}. Darker squares are cells where more players set off a mine.`);
+    `Board grid, ${rows} by ${cols}. Darker squares are cells where a bigger share of the ${nPlayers} solvers set off a mine.`);
   return grid;
 }
 
+// A real scale bar: each swatch labeled with the share of solvers it
+// stands for, so the shading reads as a measurement rather than a rank.
 function _legend() {
   const legend = el('div', 'journal-heat-legend');
-  legend.appendChild(el('span', 'journal-heat-legend-label', 'Fewer'));
+  legend.appendChild(el('span', 'journal-heat-legend-label', 'Share of players'));
+  const labels = heatBandLabels();
   for (let lv = 1; lv <= HEAT_LEVELS; lv++) {
-    legend.appendChild(el('span', `journal-heat-swatch heat-${lv}`));
+    const step = el('span', 'journal-heat-step');
+    step.appendChild(el('span', `journal-heat-swatch heat-${lv}`));
+    step.appendChild(el('span', 'journal-heat-legend-tick',
+      lv <= labels.length ? `≤${labels[lv - 1]}` : `>${labels[labels.length - 1]}`));
+    legend.appendChild(step);
   }
-  legend.appendChild(el('span', 'journal-heat-legend-label', 'More'));
   return legend;
 }
 
@@ -121,8 +133,8 @@ export async function buildHeatmapExhibit() {
   card.appendChild(el('h3', 'journal-heat-title', copy.title));
   card.appendChild(el('p', 'journal-entry', copy.body));
 
-  // Sparse, unplayed, or nothing past the per-square floor: the sentence
-  // IS the exhibit. An empty grid would imply a board with no misses.
+  // Unplayed, or a board nobody detonated: the sentence IS the exhibit.
+  // An empty grid would imply misses that are not there.
   if (plan.state !== 'ready' || plan.drawn.nDrawn === 0) return card;
 
   // The canonical board is the authority on the grid, and it is

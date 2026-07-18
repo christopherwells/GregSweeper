@@ -3932,12 +3932,23 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  margin-top: 6px;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: 8px;
 }
 .journal-heat-legend-label {
   font-size: 11px;
   color: var(--color-text-secondary);
+}
+.journal-heat-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.journal-heat-legend-tick {
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
 }
 .journal-heat-swatch {
   width: 14px;

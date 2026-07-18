@@ -1,13 +1,14 @@
 // Board heatmap pure layer: the rollup's aggregation decisions and the
 // notebook exhibit's honesty gate.
 //
-// The gate is the point of the feature. With a small player base a
-// per-cell count of 1 is one person's bad afternoon, so painting it as a
-// population signal would fabricate exactly the kind of claim the rest
-// of the Journal refuses to make. These tests pin that the map stays
-// shut below MIN_PLAYERS_FOR_HEATMAP, that it never opens on a board the
-// player still has to solve (the map is a partial mine map and past
-// dailies are replayable), and that the waiting copy reads honestly.
+// The gate is the point of the feature. Until a board has a real
+// audience there is no honest population claim to make, so the exhibit
+// does not exist at all below MIN_PLAYERS_FOR_HEATMAP: no map, no
+// waiting copy, no card. These tests pin that, plus the rule that
+// shading is a RATE against the solver count rather than a rank against
+// the board's own busiest square, and that the map never opens on a
+// board the player still has ahead of them (it is a partial mine map,
+// and past dailies are replayable).
 //
 // Run: node --test test/heatmapAggregate.test.mjs
 
@@ -15,7 +16,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   MIN_PLAYERS_FOR_HEATMAP,
-  MIN_CELL_HITS_TO_DRAW,
+  HEAT_BANDS,
   HEAT_LEVELS,
   aggregateBombHits,
   cellKey,
@@ -94,7 +95,9 @@ test('REGRESSION: a brute-force probe run is dropped, not mapped', () => {
   assert.equal(agg.nCheatRows, 1);
   assert.equal(agg.totals, 1, 'only the honest hit survived');
   assert.equal(agg.cells[cellKey(1, 1)], 1);
-  assert.equal(agg.nPlayers, 2, 'the probe player still solved the board');
+  // Someone who detonates a third of the mines is messing around, not
+  // playing, so they leave the denominator too (Christopher, 2026-07-18).
+  assert.equal(agg.nPlayers, 1, 'the probe player is not counted as a solver');
 });
 
 test('out-of-bounds and malformed coordinates are dropped', () => {
@@ -151,73 +154,68 @@ test('cell keys round-trip and reject junk', () => {
   }
 });
 
-test('heat levels span 1..HEAT_LEVELS with 0 reserved for untouched', () => {
-  assert.equal(heatLevel(0, 8), 0);
-  assert.equal(heatLevel(8, 8), HEAT_LEVELS, 'the busiest cell is the darkest');
-  assert.equal(heatLevel(1, 8), 1, 'a single hit is the faintest shade, never invisible');
-  for (let n = 1; n <= 8; n++) {
-    const lv = heatLevel(n, 8);
-    assert.ok(lv >= 1 && lv <= HEAT_LEVELS, `level for ${n} out of range: ${lv}`);
-  }
-  assert.equal(heatLevel(3, 0), 0, 'a zero max cannot shade anything');
-});
-
 test('maxCellCount finds the busiest cell', () => {
   assert.equal(maxCellCount({ '1_1': 2, '2_2': 5, '3_3': 1 }), 5);
   assert.equal(maxCellCount({}), 0);
   assert.equal(maxCellCount(null), 0);
 });
 
-// ── the per-square gate ──────────────────────────────────────────────
+// ── shading is a rate, not a rank ────────────────────────────────────
 
-test('REGRESSION: a square only one player hit is never shaded', () => {
-  // The solver gate licenses the BOARD; this one licenses the SQUARE.
-  // Without it, a board with fifteen solvers and one unlucky click
-  // scaled that click to the darkest shade on the map, under a caption
-  // reading "the darker a square, the more of them set off a mine on
-  // it" — one person rendered as a population.
-  const drawn = drawableCells({ '3_4': 1 });
-  assert.equal(drawn.nDrawn, 0, 'a single hit draws nothing at all');
-  assert.deepEqual(drawn.cells, {});
+test('REGRESSION: shading is the share of solvers, never a rank against the busiest square', () => {
+  // Scaling to the board's own maximum made a board where three people
+  // had a bad moment and nobody else did light up as though it were
+  // brutal, because those three WERE the maximum. On a fixed rate scale
+  // three of thirty reads as the 10% it is (Christopher, 2026-07-18).
+  const lonely = heatLevel(3, 30);
+  const brutal = heatLevel(3, 3);
+  assert.ok(lonely < HEAT_LEVELS, 'three of thirty is not the top of the scale');
+  assert.equal(brutal, HEAT_LEVELS, 'three of three is');
+  assert.equal(heatLevel(1, 30), 1, 'a lone hit is drawn, at the faintest step');
 });
 
-test('REGRESSION: one player s multi-mine run cannot light up a map', () => {
-  // Five separate cells, each hit once, all by the same person.
-  const drawn = drawableCells({ '0_0': 1, '1_1': 1, '2_2': 1, '3_3': 1, '4_4': 1 });
-  assert.equal(drawn.nDrawn, 0);
+test('the same count shades differently as the denominator grows', () => {
+  const counts = [30, 60, 120].map(n => heatLevel(6, n));
+  assert.ok(counts[0] >= counts[1] && counts[1] >= counts[2],
+    'a fixed count is a smaller share of a bigger field, so it can only fade');
 });
 
-test('a square at exactly the threshold draws, and below it does not', () => {
-  const drawn = drawableCells({ at: MIN_CELL_HITS_TO_DRAW, below: MIN_CELL_HITS_TO_DRAW - 1 });
-  assert.equal(drawn.nDrawn, 1);
-  assert.equal(drawn.cells.at, MIN_CELL_HITS_TO_DRAW);
-  assert.equal(drawn.cells.below, undefined);
+test('heat levels stay inside 1..HEAT_LEVELS and honor the band edges', () => {
+  for (const edge of HEAT_BANDS) {
+    const atEdge = heatLevel(Math.round(edge * 100), 100);
+    assert.ok(atEdge >= 1 && atEdge <= HEAT_LEVELS, `level out of range at ${edge}`);
+  }
+  assert.equal(heatLevel(100, 100), HEAT_LEVELS, 'every solver hitting it is the darkest step');
+  assert.equal(heatLevel(0, 30), 0, 'untouched squares are unshaded');
+  assert.equal(heatLevel(5, 0), 0, 'a zero denominator cannot shade anything');
+  assert.equal(heatLevel(NaN, 30), 0);
 });
 
-test('a flat map at the threshold renders mid-tone, not maximal', () => {
-  const drawn = drawableCells({ a: MIN_CELL_HITS_TO_DRAW, b: MIN_CELL_HITS_TO_DRAW });
-  assert.ok(drawn.max > MIN_CELL_HITS_TO_DRAW,
-    'the denominator is floored above the cut so a flat map looks flat');
-  assert.ok(heatLevel(MIN_CELL_HITS_TO_DRAW, drawn.max) < HEAT_LEVELS,
-    'nothing hits the darkest bucket just for clearing the threshold');
+test('drawableCells keeps every touched square and carries the denominator', () => {
+  const drawn = drawableCells({ '1_1': 1, '2_2': 7 }, 30);
+  assert.equal(drawn.nDrawn, 2, 'a single hit is perfectly fine to color');
+  assert.equal(drawn.nPlayers, 30, 'the denominator travels with the counts');
+  assert.equal(drawn.cells['1_1'], 1);
 });
 
 test('drawableCells ignores junk values and empty maps', () => {
-  assert.equal(drawableCells({ a: 'x', b: null, c: NaN }).nDrawn, 0);
-  assert.equal(drawableCells({}).nDrawn, 0);
-  assert.equal(drawableCells(null).nDrawn, 0);
+  assert.equal(drawableCells({ a: 'x', b: null, c: NaN, d: 0, e: -2 }, 30).nDrawn, 0);
+  assert.equal(drawableCells({}, 30).nDrawn, 0);
+  assert.equal(drawableCells(null, 30).nDrawn, 0);
 });
 
 // ── the board gate ───────────────────────────────────────────────────
 
 const entry = (date, n) => ({ date, payload: { n_players: n, totals: n, cells: {}, rows: 10, cols: 10 } });
 
-test('REGRESSION: sparse dates never render per-cell counts', () => {
+test('REGRESSION: a board without the audience produces no exhibit at all', () => {
+  // Not a waiting message and not an empty frame. Below the threshold
+  // the feature is invisible (Christopher, 2026-07-18).
   const entries = [entry('2026-07-10', 7), entry('2026-07-11', 4)];
   const plan = selectHeatmapDate(entries, ['2026-07-10', '2026-07-11']);
-  assert.equal(plan.state, 'sparse', 'seven solvers is one afternoon, not a population');
+  assert.equal(plan.state, 'none', 'seven solvers is one afternoon, not a population');
   assert.equal(plan.payload, null, 'no payload means nothing can be painted');
-  assert.equal(plan.bestPlayers, 7, 'the copy gets the real best-covered count');
+  assert.equal(heatmapCopy(plan, ''), null, 'and no copy, so no card renders');
 });
 
 test('a qualified board the player solved renders', () => {
@@ -227,18 +225,18 @@ test('a qualified board the player solved renders', () => {
   assert.equal(plan.date, '2026-07-10', 'the most recent qualified board the player has solved');
 });
 
-test('a ready plan resolves the per-square gate for the caller', () => {
-  // The caller must not be able to reach past the gate to the raw
-  // counts, so the approved subset rides on the plan itself.
+test('a ready plan hands the caller the counts AND their denominator', () => {
   const entries = [{
     date: '2026-07-10',
     payload: { n_players: 40, totals: 9, rows: 10, cols: 10, cells: { '1_1': 8, '2_2': 1 } },
   }];
   const plan = selectHeatmapDate(entries, ['2026-07-10']);
   assert.equal(plan.state, 'ready');
-  assert.equal(plan.drawn.nDrawn, 1, 'only the well-sampled square survives');
-  assert.equal(plan.drawn.cells['2_2'], undefined, 'the single-hit square is withheld');
-  assert.equal(plan.drawn.cells['1_1'], 8);
+  assert.equal(plan.drawn.nDrawn, 2, 'every touched square is drawn');
+  assert.equal(plan.drawn.nPlayers, 40, 'a count can never be shaded without its share');
+  assert.ok(heatLevel(plan.drawn.cells['2_2'], plan.drawn.nPlayers)
+    < heatLevel(plan.drawn.cells['1_1'], plan.drawn.nPlayers),
+    'one of forty must read fainter than eight of forty');
 });
 
 test('the newest qualified board the player solved wins over an older one', () => {
@@ -271,7 +269,7 @@ test('the gate boundary is inclusive at MIN_PLAYERS_FOR_HEATMAP', () => {
   const at = selectHeatmapDate([entry('2026-07-10', MIN_PLAYERS_FOR_HEATMAP)], ['2026-07-10']);
   const below = selectHeatmapDate([entry('2026-07-10', MIN_PLAYERS_FOR_HEATMAP - 1)], ['2026-07-10']);
   assert.equal(at.state, 'ready');
-  assert.equal(below.state, 'sparse');
+  assert.equal(below.state, 'none');
 });
 
 // ── copy ─────────────────────────────────────────────────────────────
@@ -294,11 +292,8 @@ function assertVoice(text, label) {
 
 test('every copy state reads in Greg s voice', () => {
   const cases = [
-    [{ state: 'sparse', bestPlayers: 7, payload: null }, ''],
-    [{ state: 'sparse', bestPlayers: 0, payload: null }, ''],
     [{ state: 'unplayed', bestPlayers: 40, payload: { n_players: 40 } }, 'Jul 10'],
     [{ state: 'ready', bestPlayers: 40, payload: { n_players: 40, totals: 12 }, drawn: { nDrawn: 2 } }, 'Jul 10'],
-    [{ state: 'ready', bestPlayers: 40, payload: { n_players: 40, totals: 12 }, drawn: { nDrawn: 0 } }, 'Jul 10'],
     [{ state: 'ready', bestPlayers: 40, payload: { n_players: 40, totals: 0 }, drawn: { nDrawn: 0 } }, 'Jul 10'],
   ];
   for (const [plan, label] of cases) {
@@ -309,39 +304,19 @@ test('every copy state reads in Greg s voice', () => {
   }
 });
 
-test('copy speaks real counts as words, and only counts it was given', () => {
-  const sparse = heatmapCopy({ state: 'sparse', bestPlayers: 7, payload: null }, '');
-  assert.ok(sparse.body.includes('fifteen'), 'the gate threshold is named');
-  assert.ok(sparse.body.includes('seven'), 'the real best-covered count is named');
-  assert.ok(!/\d/.test(sparse.body), 'small counts render as words, not digits');
-
+test('copy speaks only counts it was given', () => {
   const clean = heatmapCopy({ state: 'ready', bestPlayers: 40, payload: { n_players: 40, totals: 0 }, drawn: { nDrawn: 0 } }, 'Jul 10');
   assert.ok(clean.body.includes('not one of them set off a mine'),
     'a board nobody detonated says so plainly');
 });
 
-test('REGRESSION: a ready board with nothing drawable says so instead of drawing', () => {
-  const scattered = heatmapCopy(
-    { state: 'ready', bestPlayers: 40, payload: { n_players: 40, totals: 6 }, drawn: { nDrawn: 0 } },
-    'Jul 10',
-  );
-  assert.ok(/scattered/.test(scattered.body),
-    'scattered single hits are described, never shaded');
-  assert.ok(!/darker/.test(scattered.body),
-    'the shading caption must not appear when nothing is shaded');
-
+test('the shading caption describes a share, not a raw count', () => {
   const drawnCopy = heatmapCopy(
     { state: 'ready', bestPlayers: 40, payload: { n_players: 40, totals: 12 }, drawn: { nDrawn: 3 } },
     'Jul 10',
   );
-  assert.ok(drawnCopy.body.includes(`at least ${['zero', 'one', 'two', 'three'][MIN_CELL_HITS_TO_DRAW]}`),
-    'the drawn caption states the per-square floor it enforced');
-});
-
-test('a zero best-covered count does not claim a board exists', () => {
-  const copy = heatmapCopy({ state: 'sparse', bestPlayers: 0, payload: null }, '');
-  assert.ok(!copy.body.includes('zero'), 'saying "the best board has zero" reads as a bug');
-  assert.ok(/no board/i.test(copy.body));
+  assert.ok(/share/.test(drawnCopy.body),
+    'the caption must promise a proportion, since that is what the shading encodes');
 });
 
 test('state none renders nothing at all', () => {
