@@ -28,6 +28,14 @@ const FEATURE_NAMES = {
   patternMoves: 'pattern reasoning',
   totalMines: 'mine density',
   cellCount: 'board size',
+  // Clue-digit shares (the arithmetic-load arc). Each is a study of how much
+  // the SHARE of a given clue digit costs, controlling for board size and
+  // mine count. Derived from the canonical boards in the refit; never a
+  // shipped par term, so these narrate a study without touching real par.
+  clueShare2: 'twos',
+  clueShare3: 'threes',
+  clueShare4: 'fours',
+  clueShare5plus: 'high numbers',
 };
 
 export function featureName(feature) {
@@ -53,6 +61,15 @@ const FEATURE_HYPOTHESIS = {
   patternMoves: 'Pattern reads are practiced moves. They should cost seconds, not tens of seconds.',
   totalMines: 'More mines, more flags, more careful steps. The steady cost of density is the backbone of the model.',
   cellCount: 'Bigger boards take longer. Obvious, but pinning the exact rate is what everything else is measured against.',
+  // Clue-digit arc. Difficulty is not the digit's size, it is how many mine
+  // arrangements a clue leaves open: a low number pins down fast, a high
+  // number is nearly all mines and pins down just as fast, so the middle is
+  // where the ambiguity lives. That inverted curve, not "bigger is harder",
+  // frames each file.
+  clueShare2: 'A two pins down quickly. Two mines among a few hidden neighbors is not much to untangle, so I expect the twos near the easy end, close to the ones.',
+  clueShare3: 'A three is where the ambiguity peaks on these boards. Few enough mines that the cell does not settle itself, not so many that almost every neighbor is one. I think the threes are the sweet spot that actually makes you work.',
+  clueShare4: 'A four sits just past that peak, with plenty of ways the mines could still fall. The open question is whether the three or the four is the real high point of the curve.',
+  clueShare5plus: 'A high number is almost all mines, so it resolves fast: flag nearly everything and move on. I expect the fives and up to cost little, the easy far end of the curve rather than the hard one.',
 };
 
 // The hypothesis line for a feature. Named features get their bespoke

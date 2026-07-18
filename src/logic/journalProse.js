@@ -217,6 +217,35 @@ const ARCS = {
     zero: 'If board size stopped costing time I’d suspect the clock before the boards.',
     out: 'The size rate drifts a little with every refit. Everything else is measured against it, so I watch it.',
   },
+  // ── The arithmetic-load arc (clue-digit shares) ──
+  // The pos lines carry proper conviction about the MEASUREMENT and honest
+  // doubt about the CAUSE: a digit share is correlational, so a real cost can
+  // still be the boards a digit rides on rather than the digit itself. Greg
+  // reports the number with a straight face and flags what it cannot yet prove.
+  clueShare2: {
+    lean: 'zero',
+    pos: 'I wrote that a two should read almost as fast as a one. The range puts it a little above that, and I cannot yet split the twos from the boards they sit on.',
+    zero: 'I wrote that a two should read almost as fast as a one. The boards let that stand, give or take a rounding error.',
+    out: 'Whether a two costs more than a one is the whole question here. The boards have not answered it yet.',
+  },
+  clueShare3: {
+    lean: 'cost',
+    pos: 'I predicted that boards leaning on threes would cost more than their size alone, and they do. Whether it is the threes doing the work or the harder boards they ride on, I cannot yet say.',
+    zero: 'I predicted that threes would cost more than size alone. The ledger read the charge back as a rounding error.',
+    out: 'The threes might cost real time, or barely any. The boards keep the file open on that.',
+  },
+  clueShare4: {
+    lean: 'size',
+    pos: 'My note asked how big the four costs, not whether it exists. The range settled on a real number, and telling the fours apart from the boards that carry them is the next job.',
+    zero: 'My note asked how big the four costs, not whether it exists. The answer landed at a rounding error.',
+    out: 'How big the four costs is the open question in this file. The boards have not sized it yet.',
+  },
+  clueShare5plus: {
+    lean: 'zero',
+    pos: 'I wrote that a high number is nearly all mines and resolves fast, so it should barely cost. The range reads higher than that, and I want far more of these boards before I trust it.',
+    zero: 'I wrote that a high number is nearly all mines and resolves fast. The boards agree, and the cost lands at a rounding error.',
+    out: 'The high numbers are rare, so their cost is slow to pin down. The file stays open while I gather them.',
+  },
 };
 
 // A studied feature with no bespoke file yet — honest generic, never a

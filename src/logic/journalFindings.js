@@ -76,6 +76,12 @@ const FEATURE_UNITS = {
   patternMoves: 'pattern read',
   totalMines: 'mine',
   cellCount: 'cell',
+  // Digit shares are fit ×10 (one unit = one more clue-in-ten of that digit),
+  // so the per-unit estimate reads as "each extra N in ten clues adds X%".
+  clueShare2: 'extra two in ten clues',
+  clueShare3: 'extra three in ten clues',
+  clueShare4: 'extra four in ten clues',
+  clueShare5plus: 'extra high number in ten clues',
 };
 
 export function featureUnit(feature) {
