@@ -21,3 +21,37 @@ export async function prepareInteractionSpec(page) {
     }
   });
 }
+
+/**
+ * Wait until every in-flight FINITE animation and transition has finished,
+ * then let one more frame land.
+ *
+ * Any spec that measures geometry needs this. The app animates the things
+ * those specs measure: the start-here label rides a 0.5s `fade-in-start`
+ * that translates it from -80% to -100% of its own height, and revealed
+ * cells run their per-theme reveal choreography. Sampling a rect mid-flight
+ * reads a position the layout does not actually hold, and — the part that
+ * makes it a FLAKE rather than a plain failure — two samples taken at
+ * different animation phases disagree by an amount that depends purely on
+ * how loaded the machine was. That is why these specs passed alone and
+ * failed in a full parallel run (root-caused 2026-07-18; the start-here
+ * label was drifting ~0.15px per sample down the tail of its ease-out, and
+ * a slow enough run pushed the gap past the spec's tolerance).
+ *
+ * INFINITE animations are skipped deliberately: theme-effect particles and
+ * the worm crawl never finish, so awaiting them would hang forever.
+ *
+ * @param {import('@playwright/test').Page} page
+ */
+export async function settleAnimations(page) {
+  await page.evaluate(async () => {
+    const finite = document.getAnimations().filter((a) => {
+      const timing = a.effect && a.effect.getComputedTiming && a.effect.getComputedTiming();
+      return timing && timing.iterations !== Infinity;
+    });
+    // A cancelled animation rejects its finished promise; that still counts
+    // as "no longer moving", so swallow it.
+    await Promise.all(finite.map((a) => a.finished.catch(() => {})));
+    await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+  });
+}

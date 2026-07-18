@@ -9,7 +9,7 @@
 // asserts the label's offset from its cell is unchanged.
 
 import { test, expect } from '@playwright/test';
-import { prepareInteractionSpec } from './helpers.mjs';
+import { prepareInteractionSpec, settleAnimations } from './helpers.mjs';
 
 test.use({ viewport: { width: 390, height: 600 } }); // phone-sized
 
@@ -25,7 +25,13 @@ test('REGRESSION: the Start-here label rides its cell when the page scrolls', as
   await expect(cell).toBeVisible({ timeout: 30_000 }); // local board gen + solver
   await expect(label).toBeVisible();
 
+  // The label enters on a 0.5s `fade-in-start` that translates it from
+  // -80% to -100% of its own height, so a rect read mid-animation is a
+  // position the layout never settles at. Both samples must be taken at
+  // rest or they disagree by however far the animation happened to have
+  // travelled between them.
   const offsetOf = async () => {
+    await settleAnimations(page);
     const c = await cell.boundingBox();
     const l = await label.boundingBox();
     return { dx: l.x - c.x, dy: l.y - c.y, cellY: c.y };
@@ -55,6 +61,9 @@ test('REGRESSION: the Start-here label rides its cell when the page scrolls', as
   const after = await offsetOf();
   // The cell moving on screen IS the proof the scroll happened.
   expect(Math.abs(after.cellY - before.cellY)).toBeGreaterThan(50);
-  expect(after.dx).toBeCloseTo(before.dx, 0);
-  expect(after.dy).toBeCloseTo(before.dy, 0); // fixed-position labels fail here: the cell moves, the label doesn't
+  // At rest the offset is EXACT, so this pins to a tenth of a pixel rather
+  // than the half-pixel the animation noise used to force. A fixed-position
+  // label fails by ~150px here: the cell moves, the label does not.
+  expect(after.dx).toBeCloseTo(before.dx, 1);
+  expect(after.dy).toBeCloseTo(before.dy, 1);
 });
