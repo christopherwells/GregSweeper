@@ -1,0 +1,51 @@
+name: Roll up board heatmaps
+
+on:
+  schedule:
+    # 15:30 UTC daily, comfortably after the 14:00 UTC par-model refit
+    # so the two Firebase jobs never overlap. Only dates strictly before
+    # today in ET are rolled up, so the map freezes on settled scores.
+    - cron: '30 15 * * *'
+  workflow_dispatch:
+    inputs:
+      dryRun:
+        description: 'Aggregate and report only — write nothing'
+        required: false
+        default: false
+        type: boolean
+      refresh:
+        description: 'Recompute dates that are already mapped (picks up later archive replays)'
+        required: false
+        default: false
+        type: boolean
+      date:
+        description: 'Limit the run to one YYYY-MM-DD date'
+        required: false
+        type: string
+
+jobs:
+  rollup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install deps
+        run: npm install firebase-admin@12
+      # Inputs ride in as env vars rather than being interpolated into
+      # the command line: `date` is free text, and ${{ }} substitution
+      # happens before the shell parses, which is the standard Actions
+      # injection surface. The script re-validates the date format.
+      - name: Roll up
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          DRY_RUN: ${{ inputs.dryRun }}
+          REFRESH: ${{ inputs.refresh }}
+          ONLY_DATE: ${{ inputs.date }}
+        run: |
+          args=""
+          if [ "$DRY_RUN" = "true" ]; then args="$args --dry-run"; fi
+          if [ "$REFRESH" = "true" ]; then args="$args --refresh"; fi
+          if [ -n "$ONLY_DATE" ]; then args="$args --date $ONLY_DATE"; fi
+          node scripts/rollup-board-heatmap.mjs $args

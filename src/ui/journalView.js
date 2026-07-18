@@ -111,6 +111,16 @@ export async function renderJournalModal() {
     body.appendChild(el('p', 'journal-queue', screen.queue.text));
   }
 
+  // The one population exhibit. It needs Firebase and the player's own
+  // history, so it lands a beat after the notes rather than holding
+  // them up, and it returns null whenever nothing honest can be drawn.
+  const heatmapSlot = el('div', 'journal-heatmap-slot');
+  body.appendChild(heatmapSlot);
+  import('./journalHeatmap.js')
+    .then(m => m.buildHeatmapExhibit())
+    .then(card => { if (card) heatmapSlot.appendChild(card); })
+    .catch(() => { /* the notebook reads fine without it */ });
+
   if (screen.ledger.length > 0) {
     const section = el('section', 'journal-conclusions');
     section.appendChild(el('h3', 'journal-section-title', 'Closed files'));

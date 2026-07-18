@@ -226,6 +226,25 @@
         "$other":           { ".validate": false }
       }
     },
+    "boardHeatmap": {
+      ".read": true,
+      "$date": {
+        ".write": false,
+        ".validate": "$date.matches(/^\\d{4}-\\d{2}-\\d{2}$/) && newData.hasChildren(['rows', 'cols', 'totals', 'n_players', 'writtenAt'])",
+        "rows":      { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 16" },
+        "cols":      { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 16" },
+        "totals":    { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000" },
+        "n_players": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000" },
+        "cells": {
+          ".validate": "newData.hasChildren() || newData.val() === null",
+          "$cell": {
+            ".validate": "$cell.matches(/^\\d{1,2}_\\d{1,2}$/) && newData.isNumber() && newData.val() >= 1 && newData.val() <= 100000"
+          }
+        },
+        "writtenAt": { ".validate": "newData.val() === now" },
+        "$other":    { ".validate": false }
+      }
+    },
     "dailyBoard": {
       ".read": true,
       "$date": {

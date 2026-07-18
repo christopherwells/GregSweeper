@@ -316,6 +316,44 @@ export async function loadCrux(dateString) {
   }
 }
 
+// How many recent rolled-up heatmaps the journal exhibit pulls. The node
+// grows one small entry per day forever, so the read is bounded by key
+// rather than fetching the whole history to draw one board.
+const HEATMAP_FETCH_LIMIT = 45;
+
+/**
+ * Fetch the most recent rolled-up board heatmaps (boardHeatmap/{date}),
+ * newest last. Written server-side by scripts/rollup-board-heatmap.mjs
+ * and world-readable, so this works without auth. Returns [] when the
+ * node is empty and [] on failure — the exhibit is decoration, and a
+ * heatmap outage must never break the notebook.
+ *
+ * @param {number} [limit]
+ * @returns {Promise<Array<{date: string, payload: object}>>}
+ */
+export async function loadRecentBoardHeatmaps(limit = HEATMAP_FETCH_LIMIT) {
+  let db;
+  try {
+    db = await waitForFirebaseReady();
+  } catch (err) {
+    console.warn('loadRecentBoardHeatmaps:', err.message);
+    return [];
+  }
+  try {
+    const snap = await Promise.race([
+      db.ref('boardHeatmap').orderByKey().limitToLast(limit).once('value'),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), FETCH_TIMEOUT_MS)),
+    ]);
+    const val = snap.val() || {};
+    return Object.keys(val)
+      .filter(date => val[date] && typeof val[date] === 'object')
+      .map(date => ({ date, payload: val[date] }));
+  } catch (err) {
+    console.warn('loadRecentBoardHeatmaps fetch failed:', err.message);
+    return [];
+  }
+}
+
 /**
  * Fetch + cache the upcoming week of daily boards (today .. today+6 ET) so
  * they stay playable through an offline stretch. Best-effort, sequential,
