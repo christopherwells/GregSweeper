@@ -12,6 +12,7 @@ import { getDailyGimmick, applyGimmicks } from '../src/logic/gimmicks.js';
 import { generateBoard, cleanSolverArtifacts } from '../src/logic/boardGenerator.js';
 import { isBoardSolvable, findDecorativeGimmicks } from '../src/logic/boardSolver.js';
 import { computeDailyFeatures } from '../src/logic/dailyFeatures.js';
+import { resolveMissionForSlot } from '../src/logic/experimentDesign.js';
 import { DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE } from '../src/logic/difficulty.js';
 import { serializeBoard } from '../src/firebase/dailyBoardSync.js';
 import { readFileSync } from 'node:fs';
@@ -36,7 +37,9 @@ export const TARGET_TO_GIMMICK = {
 };
 
 const DEFAULT_TARGET = 'advancedLogicMoves';
-const PRIMARY_WEIGHT = 0.1; // mirrors src/logic/experimentDesign.js
+// PRIMARY_WEIGHT no longer lives here: the slot arithmetic (and its weight)
+// comes from resolveMissionForSlot in experimentDesign.js, so there is one
+// source of truth instead of two copies that can drift.
 // Cap the per-feature target count in slot scoring. wallEdgeCount runs
 // 10-30 edges per board while cell-based gimmicks (compass/mystery/locked/
 // mirror/sonar/liar) cap out at ~3-5 cells, so an uncapped `count × weight`
@@ -61,26 +64,15 @@ export function loadExperimentSpec() {
   }
 }
 
-// Resolve the mission for slot index i. Mirrors getMissionForSlot in
-// experimentDesign.js — slot 0 is primary (low weight, double-allowed),
-// slots ≥1 cycle through coverage_targets (single-only). Empty
-// coverage list collapses to primary on every slot.
+// Resolve the mission for slot index i. DELEGATES to the shared pure
+// resolveMissionForSlot in experimentDesign.js rather than carrying its own
+// copy: this file used to wrap (`% coverage.length`) where the client
+// returned null, so a coverage list shorter than 9 made the precompute
+// evaluate slots 8-9 as duplicates of coverage[0]/[1] and pick seeds the
+// client would never select. Returns null for slots past the coverage list;
+// callers skip those.
 export function missionForSlot(spec, slotIndex) {
-  if (slotIndex === 0 || spec.coverage_targets.length === 0) {
-    return {
-      target:        spec.target,
-      deficitWeight: PRIMARY_WEIGHT,
-      singleOnly:    false,
-      isPrimary:     true,
-    };
-  }
-  const entry = spec.coverage_targets[(slotIndex - 1) % spec.coverage_targets.length];
-  return {
-    target:        entry.feature,
-    deficitWeight: typeof entry.deficit_weight === 'number' ? entry.deficit_weight : 0.1,
-    singleOnly:    true,
-    isPrimary:     false,
-  };
+  return resolveMissionForSlot(slotIndex, spec.target, spec.coverage_targets);
 }
 
 export function buildOneCandidate(seed, forcedGimmick, singleOnly) {
@@ -140,6 +132,10 @@ export function selectBestCandidate(dateString, spec) {
   let totalLoadBearing = 0;
   for (let i = 0; i < CANDIDATE_COUNT; i++) {
     const mission = missionForSlot(spec, i);
+    // Slots past the coverage list have no mission (no-wrap) — skip them,
+    // exactly as selectDailyRngSeed.js does. Without this the null would
+    // throw on mission.target.
+    if (!mission || !mission.target) continue;
     const forcedGimmick = TARGET_TO_GIMMICK[mission.target] || null;
     const seed = `${dateString}:trial${i}`;
     const cand = buildOneCandidate(seed, forcedGimmick, mission.singleOnly);
