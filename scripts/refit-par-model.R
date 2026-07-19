@@ -186,9 +186,11 @@ DECORRELATION_INTERVAL <- 7
 # Choose tonight's decorrelation mission, or NULL.
 #
 # For every (feature, confounder) pair, regress the feature on the confounder
-# and keep the strongest confound. `sign` picks which tail of the residual to
-# chase: whichever side currently has FEWER observations past one residual SD
-# is the side the design is short of, and that is where the next board goes.
+# and keep the strongest confound. The client scores candidate boards on the
+# MAGNITUDE of the residual against this line, so BOTH tails are in play: a
+# board below the line breaks the correlation as well as one above it
+# (Christopher's ruling, 2026-07-18). We therefore emit only the line and its
+# scale, and never a preferred direction.
 choose_decorrelation_mission <- function(dat, features, confounders, rival_weights = numeric(0)) {
   if (is.null(dat) || nrow(dat) < DECORRELATION_MIN_ROWS) return(NULL)
   # The strongest mission this one has to beat on a given day.
@@ -213,24 +215,21 @@ choose_decorrelation_mission <- function(dat, features, confounders, rival_weigh
       resid <- stats::residuals(fit)
       rsd <- stats::sd(resid)
       if (!is.finite(slope) || !is.finite(intercept) || !is.finite(rsd) || rsd <= 0) next
-      # The thinner tail is the under-sampled direction. Ties go to +1, the
-      # "feature higher than the confounder predicts" corner, which is the
-      # interpretively decisive one: it is the board that separates "threes
-      # cost time" from "threes ride on the dense boards they appear on".
-      n_hi <- sum(resid >  rsd)
-      n_lo <- sum(resid < -rsd)
-      chosen_sign <- if (n_hi <= n_lo) 1L else -1L
       best <- list(
         feature    = f,
         confounder = cf,
         slope      = round(slope, 6),
         intercept  = round(intercept, 6),
-        sign       = chosen_sign,
         residualSd = round(rsd, 6),
         weight     = round(weight, 4),
         absR       = abs(r),
         rsq        = round(r^2, 4),
-        n          = length(y)
+        n          = length(y),
+        # Diagnostics only: how the EXISTING boards sit either side of the
+        # line. Never shipped, and never used to pick a direction — it is
+        # here so the refit log says whether the design is currently lopsided.
+        n_hi       = sum(resid >  rsd),
+        n_lo       = sum(resid < -rsd)
       )
     }
   }
@@ -1352,13 +1351,15 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
     )
     if (!is.null(decor_mission)) {
       message(sprintf(
-        "  decorrelation mission: %s vs %s (R2 %.2f, n=%d, sign %+d, residual sd %.3f, weight %.3f)",
+        "  decorrelation mission: %s vs %s (R2 %.2f, n=%d, residual sd %.3f, weight %.3f; existing rows %d above / %d below 1 SD)",
         decor_mission$feature, decor_mission$confounder, decor_mission$rsq,
-        decor_mission$n, decor_mission$sign, decor_mission$residualSd, decor_mission$weight))
-      # absR / rsq / n are diagnostics for this log line only; the client reads
-      # just the line and how to score against it.
+        decor_mission$n, decor_mission$residualSd, decor_mission$weight,
+        decor_mission$n_hi, decor_mission$n_lo))
+      # absR / rsq / n / the tail counts are diagnostics for that log line
+      # only; the client reads just the line, its scale, and the weight, and
+      # scores on the residual's MAGNITUDE so both tails compete.
       decor_mission <- decor_mission[c("feature", "confounder", "slope",
-                                       "intercept", "sign", "residualSd", "weight")]
+                                       "intercept", "residualSd", "weight")]
     } else if (!decor_due) {
       message(sprintf("  decorrelation mission: not due (%d of %d days since the last one)",
                       days_since_decor, DECORRELATION_INTERVAL))

@@ -20,12 +20,16 @@
 //
 // Reported:
 //   1. The generator's natural confound (r, R²) between density and 3-share.
-//   2. Residual reach by N: mean best-of-N residual, and how often it clears
-//      the mild (1 SD) and extreme (2 SD) corners.
+//   2. Residual reach by N: mean best-of-N |residual|, how often it clears
+//      the mild (1 SD) and extreme (2 SD) corners, and WHICH TAIL it landed
+//      in. Scoring on magnitude puts both tails in play, but a magnitude rule
+//      that in practice only ever returned one side would still leave the
+//      design one-tailed, so the tail split is the number that proves it.
 //   3. The joint-distribution shift: where the selected boards actually sit
-//      in density and 3-share, versus the pool. This is the number that
-//      matters for F2 — selection that finds high-3 boards at ORDINARY
-//      density has not broken the confound, it has only ridden it.
+//      in density and 3-share, versus the pool. A two-sided residual design
+//      should add spread around the line WITHOUT dragging either marginal
+//      far, which is also what keeps a nonlinear (inverted-U) response
+//      visible rather than sampling only one side of it.
 //
 // Pure local generation: no Firebase, no network, writes nothing.
 //
@@ -138,25 +142,29 @@ console.log(`boards with no 5+ clue: ${(100 * tail.filter((v) => v === 0).length
 // ── reach by candidate count ─────────────────────────────────────────
 // Candidates within a day are independent draws from the same generator, so
 // resampling the pool without replacement is a faithful simulation of a day's
-// slate. sign = +1 throughout (the high-feature-low-confounder corner, the
-// interpretively decisive one).
+// slate. Scored on |z|, matching missionCandidateScore: both tails break the
+// correlation equally, so the furthest-off board wins whichever side it is on.
 const z = resid.map((v) => v / rsd);
 
 console.log('');
-console.log('── residual reach by candidate count (sign +1) ──');
-console.log('   N   mean best z   >= 1 SD   >= 2 SD   sel. density   sel. 3-share');
+console.log('── residual reach by candidate count (scored on |z|, both tails) ──');
+console.log('   N   mean best |z|   >= 1 SD   >= 2 SD   above line   sel. density   sel. 3-share');
 const shiftByN = new Map();
 for (const n of NS) {
-  let sumZ = 0, mild = 0, extreme = 0, sumDen = 0, sumShare = 0;
+  let sumZ = 0, mild = 0, extreme = 0, sumDen = 0, sumShare = 0, above = 0;
   for (let t = 0; t < TRIALS; t++) {
-    let bestI = -1, bestZ = -Infinity;
+    let bestI = -1, bestAbs = -Infinity;
     for (let k = 0; k < n; k++) {
       const i = Math.floor(pick() * z.length);
-      if (z[i] > bestZ) { bestZ = z[i]; bestI = i; }
+      if (Math.abs(z[i]) > bestAbs) { bestAbs = Math.abs(z[i]); bestI = i; }
     }
-    sumZ += bestZ;
-    if (bestZ >= 1) mild++;
-    if (bestZ >= 2) extreme++;
+    sumZ += bestAbs;
+    if (bestAbs >= 1) mild++;
+    if (bestAbs >= 2) extreme++;
+    // Which tail the winner landed in. Both are equally useful, but a
+    // magnitude rule that in practice only ever returns ONE side would still
+    // leave the design one-tailed, so this is the number to watch.
+    if (z[bestI] > 0) above++;
     sumDen += xs[bestI];
     sumShare += ys[bestI];
   }
@@ -164,13 +172,15 @@ for (const n of NS) {
     meanZ: sumZ / TRIALS,
     mild: mild / TRIALS,
     extreme: extreme / TRIALS,
+    above: above / TRIALS,
     den: sumDen / TRIALS,
     share: sumShare / TRIALS,
   };
   shiftByN.set(n, row);
   console.log(
-    `  ${String(n).padStart(2)}   ${row.meanZ.toFixed(2).padStart(10)}   ` +
+    `  ${String(n).padStart(2)}   ${row.meanZ.toFixed(2).padStart(12)}   ` +
     `${(100 * row.mild).toFixed(0).padStart(6)}%   ${(100 * row.extreme).toFixed(0).padStart(6)}%   ` +
+    `${(100 * row.above).toFixed(0).padStart(9)}%   ` +
     `${row.den.toFixed(3).padStart(12)}   ${row.share.toFixed(2).padStart(11)}`,
   );
 }
@@ -193,12 +203,14 @@ for (const n of NS) {
   );
 }
 
-// How much of the corner exists at all: the ceiling selection is chasing.
-const best = Math.max(...z);
+// How much of each corner exists at all: the ceiling selection is chasing,
+// reported per TAIL because a magnitude rule can only sample a side the
+// generator actually produces.
 console.log('');
-console.log(`most extreme residual in the pool: ${best.toFixed(2)} SD`);
-console.log(`pool share at >= 1 SD: ${(100 * z.filter((v) => v >= 1).length / z.length).toFixed(1)}%`);
-console.log(`pool share at >= 2 SD: ${(100 * z.filter((v) => v >= 2).length / z.length).toFixed(1)}%`);
+console.log(`furthest above the line: +${Math.max(...z).toFixed(2)} SD`);
+console.log(`furthest below the line: ${Math.min(...z).toFixed(2)} SD`);
+console.log(`pool beyond 1 SD:  ${(100 * z.filter((v) => v >= 1).length / z.length).toFixed(1)}% above, ${(100 * z.filter((v) => v <= -1).length / z.length).toFixed(1)}% below`);
+console.log(`pool beyond 2 SD:  ${(100 * z.filter((v) => v >= 2).length / z.length).toFixed(1)}% above, ${(100 * z.filter((v) => v <= -2).length / z.length).toFixed(1)}% below`);
 
 if (VERBOSE) {
   console.log('');
@@ -206,7 +218,7 @@ if (VERBOSE) {
   const idx = z.map((v, i) => i).sort((a, b) => z[b] - z[a]).slice(0, 10);
   for (const i of idx) {
     console.log(
-      `  z ${z[i].toFixed(2)}   ${CONFOUNDER} ${xs[i].toFixed(3)}   ${FEATURE} ${ys[i].toFixed(2)}   ` +
+      `  z ${z[i] >= 0 ? '+' : ''}${z[i].toFixed(2)}   ${CONFOUNDER} ${xs[i].toFixed(3)}   ${FEATURE} ${ys[i].toFixed(2)}   ` +
       `${pool[i].rows}x${pool[i].cols}  mines ${pool[i].totalMines}`,
     );
   }

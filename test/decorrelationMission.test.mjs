@@ -58,7 +58,6 @@ const MISSION = {
   confounder: 'density',
   slope: 8,
   intercept: 0.5,
-  sign: 1,
   residualSd: 0.5,
   weight: 0.3,
 };
@@ -86,8 +85,6 @@ test('a malformed mission degrades to no decorrelation, never to a NaN score', (
     { ...MISSION, feature: 'density' },        // regressed on itself
     { ...MISSION, slope: 'eight' },
     { ...MISSION, intercept: NaN },
-    { ...MISSION, sign: 0 },                   // not a clean tail choice
-    { ...MISSION, sign: 0.5 },
   ];
   for (const raw of bad) {
     assert.equal(
@@ -127,7 +124,7 @@ test('the residual measures the feature against what the confounder predicts', (
   assert.equal(decorrelationResidualZ(m, { clueShare3: 3.0, density: 0.25 }), 1,
     'threes higher than the density predicts is the under-sampled corner');
   assert.equal(decorrelationResidualZ(m, { clueShare3: 2.0, density: 0.25 }), -1,
-    'threes lower than predicted sits on the wrong side for sign +1');
+    'threes lower than the density predicts is the other corner, equally useful');
 
   // A high-3 board is only interesting if it is NOT also a high-density board.
   // 4.5 threes is far more than the 3.0 board above, yet it tells us nothing:
@@ -136,10 +133,22 @@ test('the residual measures the feature against what the confounder predicts', (
     'a board high in threes AND density is exactly the confounded shape we already have');
 });
 
-test('sign flips which tail counts as the corner', () => {
-  const m = normalizeDecorrelationMission({ ...MISSION, sign: -1 });
-  assert.equal(decorrelationResidualZ(m, { clueShare3: 2.0, density: 0.25 }), 1);
-  assert.equal(decorrelationResidualZ(m, { clueShare3: 3.0, density: 0.25 }), -1);
+test('BOTH tails score the same: a board below the line decorrelates as well as one above', () => {
+  // Christopher's ruling, 2026-07-18. What reduces the correlation is residual
+  // VARIANCE, and a board two SDs under the line adds exactly as much of it as
+  // one two SDs over. Scoring a signed residual would throw away half the
+  // reachable boards for no gain in precision, and a one-sided design is also
+  // what would hide a nonlinear response.
+  const decor = resolveMissionForSlot(9, 'p', coverage(3), MISSION);
+  const above = missionCandidateScore(decor, { clueShare3: 3.5, density: 0.25 });
+  const below = missionCandidateScore(decor, { clueShare3: 1.5, density: 0.25 });
+  assert.equal(above, below, 'symmetric residuals are worth the same');
+  assert.ok(above > 0, 'and both are worth having');
+
+  // The sign still READS off decorrelationResidualZ, which is how the reach
+  // sweep reports which corner a board landed in.
+  assert.equal(decorrelationResidualZ(decor.decorrelation, { clueShare3: 3.5, density: 0.25 }), 2);
+  assert.equal(decorrelationResidualZ(decor.decorrelation, { clueShare3: 1.5, density: 0.25 }), -2);
 });
 
 test('an unscorable board is skipped, not ranked as zero', () => {
@@ -187,16 +196,21 @@ test('the cap is shared, so no mission can buy an unbounded score', () => {
   // A freak board 50 residual SDs out must not win by 50x.
   const wild = missionCandidateScore(decor, { clueShare3: 27.5, density: 0.25 });
   assert.equal(wild, COUNT_CAP * MISSION.weight);
+  // The cap binds on the low side too, or one freak board could win by 50x
+  // from whichever direction the generator happened to overshoot.
+  const wildLow = missionCandidateScore(decor, { clueShare3: -22.5, density: 0.25 });
+  assert.equal(wildLow, COUNT_CAP * MISSION.weight);
 });
 
-test('a wrong-side board scores negative and loses the day to coverage', () => {
+test('a board sitting ON the line loses the day to coverage', () => {
+  // Nothing to learn from a board the confound already predicts, so on a day
+  // no candidate reaches either corner the board is better spent on coverage.
   const decor = resolveMissionForSlot(9, 'p', coverage(3), MISSION);
-  const wrongSide = missionCandidateScore(decor, { clueShare3: 2.0, density: 0.25 });
-  assert.ok(wrongSide < 0, 'below the fitted line is worse than useless for this study');
-  const emptyCoverage = missionCandidateScore({ target: 'feature0', deficitWeight: 0.5 }, {});
-  assert.equal(emptyCoverage, 0);
-  assert.ok(wrongSide < emptyCoverage,
-    'on a day nothing reaches the corner, the board is better spent on coverage');
+  const onLine = missionCandidateScore(decor, { clueShare3: 2.5, density: 0.25 });
+  assert.equal(onLine, 0);
+  const coverageWithCount = missionCandidateScore({ target: 'f', deficitWeight: 0.5 }, { f: 2 });
+  assert.ok(onLine < coverageWithCount,
+    'a coverage slot with real cells beats a board that teaches nothing');
 });
 
 test('REGRESSION: a decorrelation board actually beats the coverage slate', () => {
@@ -224,6 +238,11 @@ test('REGRESSION: a decorrelation board actually beats the coverage slate', () =
   const deep = missionCandidateScore(decor, { clueShare3: 3.5, density: 0.25 });
   assert.ok(deep > coverageCeiling,
     `a board 2 SD into the corner must take the day (${deep} vs ${coverageCeiling})`);
+
+  // The same must hold two SDs BELOW the line, or the mission is one-tailed
+  // in practice however the score is written.
+  const deepLow = missionCandidateScore(decor, { clueShare3: 1.5, density: 0.25 });
+  assert.equal(deepLow, deep, 'either corner takes the day');
 
   // And a board that barely clears the fitted line must NOT: a shallow
   // residual is not worth spending the day's board on.
@@ -287,7 +306,13 @@ test('an empty coverage list still yields decorrelation slots, not primary', () 
 test('a malformed mission leaves selection exactly as it was', () => {
   // The back-compat contract: anything the validator rejects has to produce
   // the pre-F1 board, not a half-configured one.
-  for (const junk of [null, undefined, {}, { feature: 'clueShare3' }, { ...MISSION, sign: 3 }]) {
+  const junkList = [
+    null, undefined, {},
+    { feature: 'clueShare3' },                  // no confounder, no line
+    { ...MISSION, slope: undefined },           // no line to measure against
+    { ...MISSION, confounder: 'clueShare3' },   // regressed on itself
+  ];
+  for (const junk of junkList) {
     for (const n of [0, 3, 8]) {
       assert.equal(candidateCountFor(spec(n, junk)), CANDIDATE_COUNT,
         'no extra candidates are evaluated');
@@ -387,4 +412,14 @@ test('the shares ride along in the feature vector without touching par', () => {
     { c2: features.clueShare2, c3: features.clueShare3 },
     { c2: clueShares(board, 3, 3).clueShare2, c3: clueShares(board, 3, 3).clueShare3 },
   );
+});
+
+test('an unknown extra field is ignored, so an older experiment file still works', () => {
+  // An earlier cut of this shipped a `sign` field picking one tail. Both tails
+  // score the same now, so the field is meaningless — but a file still
+  // carrying it must resolve exactly like one that does not, or a cached
+  // client and a fresh one would select different boards during a rollout.
+  const withStaleField = normalizeDecorrelationMission({ ...MISSION, sign: -1 });
+  assert.deepEqual(withStaleField, normalizeDecorrelationMission(MISSION));
+  assert.equal(withStaleField.sign, undefined, 'the stale field is dropped, not carried');
 });

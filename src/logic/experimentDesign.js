@@ -214,10 +214,20 @@ export function getCoverageTargets() {
 // no eigen-decomposition, one subtraction and a divide.
 //
 // Shape (every field required except residualSd/weight):
-//   { feature, confounder, slope, intercept, sign, residualSd, weight }
-// so the residual is `feature - slope × confounder - intercept`, and `sign`
-// (+1 / -1) picks which tail of it the refit judges to be the under-sampled
-// one.
+//   { feature, confounder, slope, intercept, residualSd, weight }
+// so the residual is `feature - slope × confounder - intercept`, and a
+// candidate is scored on its MAGNITUDE.
+//
+// BOTH TAILS COUNT (Christopher's ruling, 2026-07-18: "both tails should be
+// sampled... the variable space is sampled in such a way to reduce
+// correlation between variables"). What reduces the correlation is residual
+// VARIANCE, and a board two SDs BELOW the line adds exactly as much of it as
+// one two SDs above. An earlier cut scored `sign × residual`, chasing whichever
+// tail the fit judged thinner; that is worse on two counts. It throws away half
+// the reachable boards for no gain in precision, and sampling only one side
+// would extrapolate structure — which matters here specifically, because the
+// clue-ambiguity hypothesis predicts an inverted U in the digit response, and a
+// one-tailed design is exactly what would hide a curve.
 
 // Residual scale when the refit does not supply one: score in raw feature
 // units. Emitted `residualSd` is what makes `weight` mean the same thing
@@ -243,7 +253,7 @@ export const DECORRELATION_SLOTS = 10;
  * NaN score that silently wins or loses every candidate.
  *
  * @param {any} raw
- * @returns {{feature: string, confounder: string, slope: number, intercept: number, sign: number, residualSd: number, weight: number}|null}
+ * @returns {{feature: string, confounder: string, slope: number, intercept: number, residualSd: number, weight: number}|null}
  */
 export function normalizeDecorrelationMission(raw) {
   if (!raw || typeof raw !== 'object') return null;
@@ -256,14 +266,11 @@ export function normalizeDecorrelationMission(raw) {
   const slope = Number(raw.slope);
   const intercept = Number(raw.intercept);
   if (!Number.isFinite(slope) || !Number.isFinite(intercept)) return null;
-  // Anything other than a clean ±1 is a corrupt file, not a weaker preference.
-  const sign = Number(raw.sign);
-  if (sign !== 1 && sign !== -1) return null;
   const rawSd = Number(raw.residualSd);
   const residualSd = Number.isFinite(rawSd) && rawSd > 0 ? rawSd : DEFAULT_RESIDUAL_SD;
   const rawWeight = Number(raw.weight);
   const weight = Number.isFinite(rawWeight) && rawWeight > 0 ? rawWeight : DEFAULT_DECORRELATION_WEIGHT;
-  return { feature, confounder, slope, intercept, sign, residualSd, weight };
+  return { feature, confounder, slope, intercept, residualSd, weight };
 }
 
 /**
@@ -274,11 +281,15 @@ export function getDecorrelationMission() {
 }
 
 /**
- * How far a candidate board sits into the under-sampled corner, in residual
- * standard deviations. Positive means the feature runs higher (for sign = +1)
- * than the confounder predicts, which is the off-diagonal observation the fit
- * is short of. Returns null when the board cannot be scored on this pair at
- * all, so the caller skips the candidate rather than ranking it on a NaN.
+ * How far a candidate board sits OFF the fitted line, in residual standard
+ * deviations. SIGNED: positive means the feature runs higher than the
+ * confounder predicts, negative means lower. Both are equally useful
+ * observations, so scoring takes the magnitude (see missionCandidateScore);
+ * the sign is preserved here because it is what tells a caller WHICH corner a
+ * board landed in, which the reach sweep reports.
+ *
+ * Returns null when the board cannot be scored on this pair at all, so the
+ * caller skips the candidate rather than ranking it on a NaN.
  *
  * @param {Object} decorrelation normalized mission spec
  * @param {Object} features      computeDailyFeatures output
@@ -290,7 +301,7 @@ export function decorrelationResidualZ(decorrelation, features) {
   const x = Number(features[decorrelation.confounder]);
   if (!Number.isFinite(y) || !Number.isFinite(x)) return null;
   const residual = y - decorrelation.slope * x - decorrelation.intercept;
-  const z = (decorrelation.sign * residual) / decorrelation.residualSd;
+  const z = residual / decorrelation.residualSd;
   return Number.isFinite(z) ? z : null;
 }
 
@@ -368,13 +379,13 @@ export function missionCandidateScore(mission, features) {
   if (mission.type === 'decorrelation') {
     const z = decorrelationResidualZ(mission.decorrelation, features);
     if (z === null) return null;
-    // Deliberately NOT clamped below zero. A candidate that sits on the wrong
-    // side of the fitted line scores negative and loses to a zero-count
-    // coverage slot, which is the right outcome: on a day when no candidate
-    // reaches the corner, the board is better spent on coverage. Keeping the
-    // negatives also preserves the ordering among decorrelation candidates
-    // instead of flattening them all to a tie at zero.
-    return Math.min(z, COUNT_CAP) * mission.deficitWeight;
+    // MAGNITUDE, not the signed residual: a board two SDs below the fitted
+    // line breaks the correlation exactly as well as one two SDs above, so
+    // both tails compete and the furthest-off board wins. A board sitting ON
+    // the line scores ~0 and loses to any coverage slot with a count, which
+    // is the right outcome — on a day nothing reaches a corner, the board is
+    // better spent on coverage.
+    return Math.min(Math.abs(z), COUNT_CAP) * mission.deficitWeight;
   }
   // Observational targets are measured on every board and must never be
   // maximized — see OBSERVATIONAL_TARGETS. Scoring them 0 preserves exactly
