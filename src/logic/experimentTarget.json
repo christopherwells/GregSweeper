@@ -1,12 +1,12 @@
 {
-  "updatedAt": "2026-07-18T14:58:39Z",
-  "target": "wallEdgeCount",
-  "reason": "revalidation",
+  "updatedAt": "2026-07-19T15:00:52Z",
+  "target": "clueShare4",
+  "reason": "highest posterior CV (0.623) excluding last 3 targets",
   "lastRevalidationDate": "2026-07-18",
   "recentTargets": [
+    "clueShare4",
     "wallEdgeCount",
-    "mirrorPairCount",
-    "wormLoad"
+    "mirrorPairCount"
   ],
   "candidates": [
     {
@@ -81,5 +81,14 @@
       "n_boards": 15,
       "deficit_weight": 0.0625
     }
-  ]
+  ],
+  "lastDecorrelationDate": "2026-07-19",
+  "decorrelation_mission": {
+    "feature": "clueShare3",
+    "confounder": "density",
+    "slope": 11.8464,
+    "intercept": -1.0387,
+    "residualSd": 0.4107,
+    "weight": 1.6665
+  }
 }
