@@ -21,7 +21,7 @@ import { floodFillReveal, checkWin, chordReveal, unrevealChordMines, isBoardSolv
 import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getChaosDifficulty, getRequiredTechnique, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE, WEEKLY_MIN_SIZE, WEEKLY_SIZE_RANGE, BOARD_WIDTH_CAP, plateSeconds } from '../logic/difficulty.js';
 import { computeDailyFeatures, predictPar } from '../logic/dailyFeatures.js';
 import { shieldDefuse } from '../logic/powerUps.js';
-import { getGimmicksForLevel, applyGimmicks, applyWalls, isLockedCell, hasWallBetween, hasSeenGimmick, markGimmickSeen, getGimmickDef, isModifierPopupDisabled, setModifierPopupDisabled, getDailyGimmick, getWeeklyGimmicks, getChaosGimmicks, clearGimmickProperties, recomputeDisplayedMines, getIntensity } from '../logic/gimmicks.js';
+import { getGimmicksForLevel, applyGimmicks, applyWalls, isLockedCell, hasSeenGimmick, markGimmickSeen, getGimmickDef, isModifierPopupDisabled, setModifierPopupDisabled, getDailyGimmick, getWeeklyGimmicks, getChaosGimmicks, clearGimmickProperties, recomputeDisplayedMines, getIntensity } from '../logic/gimmicks.js';
 import { createDailyRNG, getLocalDateString, getWeekStart, getWeekDayIndex } from '../logic/seededRandom.js';
 import { selectDailyRngSeed } from '../logic/selectDailyRngSeed.js';
 import { selectWeeklyRngSeed } from '../logic/selectWeeklyRngSeed.js';

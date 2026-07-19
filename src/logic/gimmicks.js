@@ -5,6 +5,7 @@
 import { safeGet, safeSet, safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js';
 import { MAX_LEVEL } from './difficulty.js';
 import { WORM_MAX_PER_BOARD } from './worms.js';
+import { wallKey, hasWallBetween, buildNeighborCache } from './adjacency.js';
 
 // Reset all gimmick-related properties on a single cell.
 // Used when retrying gimmick placement to avoid stale markers.
@@ -563,45 +564,6 @@ function computeLiarZone(board, rows, cols) {
   }
 }
 
-// ── Wall Edge Helpers ─────────────────────────────────
-
-function wallKey(r1, c1, r2, c2) {
-  // Normalize so smaller coordinate comes first
-  if (r1 < r2 || (r1 === r2 && c1 < c2)) return `${r1},${c1}-${r2},${c2}`;
-  return `${r2},${c2}-${r1},${c1}`;
-}
-
-export function hasWallBetween(wallEdges, r1, c1, r2, c2) {
-  if (!wallEdges || wallEdges.size === 0) return false;
-
-  const dr = r2 - r1;
-  const dc = c2 - c1;
-
-  // Cardinal move: check direct edge
-  if (dr === 0 || dc === 0) {
-    return wallEdges.has(wallKey(r1, c1, r2, c2));
-  }
-
-  // Diagonal move: check the 4 edges of the 2×2 square the diagonal passes through.
-  // Blocked if ANY pair of adjacent edges both exist — forming an L-corner
-  // or a continuous wall segment across the diagonal's path.
-  //
-  // Example: two adjacent horizontal walls block a diagonal through them:
-  //   X  A  F       walls: X-B and A-Y (e3 and e4)
-  //   -- --         X cannot see Y diagonally (continuous barrier)
-  //   B  Y  G       but A can see G (only one wall on that side)
-  //
-  const e1 = wallEdges.has(wallKey(r1, c1, r1, c2));  // horiz edge at source row
-  const e2 = wallEdges.has(wallKey(r2, c1, r2, c2));  // horiz edge at dest row
-  const e3 = wallEdges.has(wallKey(r1, c1, r2, c1));  // vert edge at source col
-  const e4 = wallEdges.has(wallKey(r1, c2, r2, c2));  // vert edge at dest col
-
-  return (e1 && e3)    // L-corner at source cell
-      || (e2 && e4)    // L-corner at dest cell
-      || (e3 && e4)    // continuous wall spanning the row boundary
-      || (e1 && e2);   // continuous wall spanning the column boundary
-}
-
 // ── Walls: edges between adjacent cells ──────────────
 
 export function applyWalls(board, rows, cols, segmentCount, rng) {
@@ -1107,19 +1069,18 @@ export function recomputeDisplayedMines(board) {
 
 // Wall-aware count of the mines adjacent to (r, c). Walls block adjacency,
 // so a mine across a wall edge does not count.
-export function countAdjacentMines(board, r, c) {
+// Counts the mines a cell can see, through the board's own topology.
+//
+// `neighborCache` is optional but should be passed by any caller in a loop:
+// without it every call derives the whole board's neighbor lists, turning an
+// O(cells) sweep into O(cells²).
+export function countAdjacentMines(board, r, c, neighborCache) {
   const rows = board.length;
   const cols = board[0].length;
-  const wallEdges = board._wallEdges || null;
+  const nbrs = (neighborCache || buildNeighborCache(board, rows, cols))[r * cols + c];
   let count = 0;
-  for (let dr = -1; dr <= 1; dr++) {
-    for (let dc = -1; dc <= 1; dc++) {
-      if (dr === 0 && dc === 0) continue;
-      const nr = r + dr, nc = c + dc;
-      if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
-      if (wallEdges && hasWallBetween(wallEdges, r, c, nr, nc)) continue;
-      if (board[nr][nc].isMine) count++;
-    }
+  for (const ni of nbrs) {
+    if (board[(ni / cols) | 0][ni % cols].isMine) count++;
   }
   return count;
 }
@@ -1128,9 +1089,10 @@ export function countAdjacentMines(board, r, c) {
 export function recalcAllAdjacency(board) {
   const rows = board.length;
   const cols = board[0].length;
+  const nbrCache = buildNeighborCache(board, rows, cols);
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      board[r][c].adjacentMines = board[r][c].isMine ? 0 : countAdjacentMines(board, r, c);
+      board[r][c].adjacentMines = board[r][c].isMine ? 0 : countAdjacentMines(board, r, c, nbrCache);
     }
   }
 }

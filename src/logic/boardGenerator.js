@@ -100,35 +100,38 @@ export function placeMines(board, count, excludeRow, excludeCol, rng = Math.rand
 function findZeroClusters(board) {
   const rows = board.length;
   const cols = board[0].length;
+  // Deliberately WALL-BLIND: this BFS walks zero clusters straight through
+  // wall edges, and has since walls shipped. It is a generation heuristic
+  // (how big is the largest opening?), not adjacency truth, and changing it
+  // would change which boards the generator accepts on every walls date. The
+  // `ignoreWalls` cache preserves that behavior exactly while still routing
+  // the traversal through the board's topology rather than r/c arithmetic.
+  // Whether it SHOULD be wall-aware is a real open question, filed separately.
+  const neighborCache = buildNeighborCache(board, rows, cols, { ignoreWalls: true });
   const visited = new Set();
   const clusters = [];
 
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      const key = `${r},${c}`;
-      if (visited.has(key)) continue;
+      const i = r * cols + c;
+      if (visited.has(i)) continue;
       if (board[r][c].isMine || board[r][c].adjacentMines !== 0) continue;
 
       const cluster = [];
       const queue = [{ row: r, col: c }];
-      visited.add(key);
+      visited.add(i);
 
       while (queue.length > 0) {
         const { row, col } = queue.shift();
         cluster.push({ row, col });
 
-        for (let dr = -1; dr <= 1; dr++) {
-          for (let dc = -1; dc <= 1; dc++) {
-            if (dr === 0 && dc === 0) continue;
-            const nr = row + dr;
-            const nc = col + dc;
-            const nkey = `${nr},${nc}`;
-            if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && !visited.has(nkey)) {
-              visited.add(nkey);
-              if (!board[nr][nc].isMine && board[nr][nc].adjacentMines === 0) {
-                queue.push({ row: nr, col: nc });
-              }
-            }
+        for (const ni of neighborCache[row * cols + col]) {
+          if (visited.has(ni)) continue;
+          visited.add(ni);
+          const nr = (ni / cols) | 0;
+          const nc = ni % cols;
+          if (!board[nr][nc].isMine && board[nr][nc].adjacentMines === 0) {
+            queue.push({ row: nr, col: nc });
           }
         }
       }
