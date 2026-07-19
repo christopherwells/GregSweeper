@@ -69,6 +69,25 @@ test('users/{uid}: all written progress fields are whitelisted', () => {
   ]);
 });
 
+test('dailyBoard/{date}: every stamped canonical field is whitelisted', () => {
+  // Written by TWO paths — the Node precompute (daily-board-pipeline
+  // buildCanonicalPayload) and the client's local-generation fallback
+  // (gameActions), both stamping through experimentDesign.missionStamp on top
+  // of serializeBoard's own fields. This node carries the same strict $other
+  // as the score rows, so an un-whitelisted child drops the WHOLE canonical
+  // write and the date silently falls back to per-client local generation.
+  //
+  // missionType / missionConfounder arrived with decorrelation missions
+  // (Journal PR F1): a decorrelation board is not a study OF its feature, it
+  // is a study of that feature apart from its confounder, and the Field Note
+  // needs both names to say so without overclaiming.
+  assertWhitelist(rules.dailyBoard.$date, 'dailyBoard/$date', [
+    'rows', 'cols', 'totalMines', 'cells', 'writtenAt',
+    'rngSeed', 'codeVersion', 'activeGimmicks', 'wallEdges', 'gatedCert', 'sig',
+    'missionTarget', 'missionIsPrimary', 'missionType', 'missionConfounder',
+  ]);
+});
+
 test('the top-level $other denies unknown roots (defense in depth)', () => {
   assert.equal(rules.$other['.read'], false);
   assert.equal(rules.$other['.write'], false);

@@ -2,19 +2,22 @@
 // CANDIDATE_COUNT variant seeds, scoring each against its assigned
 // mission, and returning the seed of the best-scoring candidate.
 //
-// The 10 slots split into one PRIMARY mission (slot 0, force-injects
-// the high-CV target's gimmick, allowed to roll a second gimmick at
-// the natural ~10% rate) and nine COVERAGE missions (slots 1-9, each
-// force-injects a different undersampled gimmick from the ranked
-// coverage_targets list, single-gimmick only). Scoring is:
+// The slots split into one PRIMARY mission (slot 0, force-injects the
+// high-CV target's gimmick, allowed to roll a second gimmick at the
+// natural ~10% rate), a block of COVERAGE missions (each force-injects
+// a different undersampled gimmick from the ranked coverage_targets
+// list, single-gimmick only), and — on days the refit emits one — a
+// block of DECORRELATION missions past the coverage list, which chase
+// the residual of a confounded feature against its confounder rather
+// than any feature's level.
 //
-//   score = min(target_count_in_features, COUNT_CAP) × deficit_weight
+// Scoring and the slot→mission mapping both live in experimentDesign.js
+// (missionCandidateScore / resolveMissionForSlot). They are NOT
+// reimplemented here: this file and scripts/daily-board-pipeline.mjs are
+// a mirror pair that must pick the same seed, and the slot arithmetic
+// having already drifted once across exactly that pair is why both now
+// delegate. The candidate with the highest score is the daily.
 //
-// where target/deficit_weight come from getMissionForSlot(i). The
-// candidate with the highest score is the daily. The cap stops
-// wallEdgeCount (10-30 edges per board) from dwarfing cell-based
-// gimmicks (3-5 cells max) and lets deficit_weight actually drive the
-// rotation; an uncapped product made walls win nearly every slot.
 // Coverage slots' deficit weights are heavier than the primary slot's
 // fixed low weight, so coverage missions win most days; the primary
 // slot only wins when its target's cell count is high enough to
@@ -43,18 +46,20 @@ import {
   DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE,
 } from './difficulty.js';
 import {
-  candidateSeed, CANDIDATE_COUNT, getTargetGimmickName, getMissionForSlot,
+  candidateSeed, getCandidateCount, getTargetGimmickName, getMissionForSlot,
+  missionCandidateScore,
 } from './experimentDesign.js';
-
-// Saturating cap on a slot's target count in the score formula. See the
-// header comment for why; mirrors COUNT_CAP in scripts/precompute-daily-board.mjs.
-const COUNT_CAP = 5;
 
 export function selectDailyRngSeed(dateString) {
   let bestSeed = null;
   let bestScore = -Infinity;
 
-  for (let i = 0; i < CANDIDATE_COUNT; i++) {
+  // Ordinary days evaluate CANDIDATE_COUNT slots; a decorrelation day adds a
+  // block of decorrelation slots past the coverage list, since selection depth
+  // is the only reach that mission has.
+  const candidateCount = getCandidateCount();
+
+  for (let i = 0; i < candidateCount; i++) {
     const mission = getMissionForSlot(i);
     if (!mission || !mission.target) continue;
     const forcedGimmick = getTargetGimmickName(mission.target);
@@ -94,8 +99,8 @@ export function selectDailyRngSeed(dateString) {
       { board, rows, cols, totalMines: mines, activeGimmicks: gimmicks, rngSeed: seed },
       check,
     );
-    const count = features[mission.target] || 0;
-    const score = Math.min(count, COUNT_CAP) * mission.deficitWeight;
+    const score = missionCandidateScore(mission, features);
+    if (score === null) continue;
     if (score > bestScore) {
       bestScore = score;
       bestSeed = seed;

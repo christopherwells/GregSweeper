@@ -12,40 +12,27 @@ import { getDailyGimmick, applyGimmicks } from '../src/logic/gimmicks.js';
 import { generateBoard, cleanSolverArtifacts } from '../src/logic/boardGenerator.js';
 import { isBoardSolvable, findDecorativeGimmicks } from '../src/logic/boardSolver.js';
 import { computeDailyFeatures } from '../src/logic/dailyFeatures.js';
-import { resolveMissionForSlot } from '../src/logic/experimentDesign.js';
+import {
+  resolveMissionForSlot, resolveCandidateCount, missionCandidateScore,
+  getTargetGimmickName, missionStamp,
+} from '../src/logic/experimentDesign.js';
 import { DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE } from '../src/logic/difficulty.js';
 import { serializeBoard } from '../src/firebase/dailyBoardSync.js';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-const CANDIDATE_COUNT = 10;
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// Mirror src/logic/experimentDesign.js TARGET_TO_GIMMICK. Kept inline
-// to avoid pulling in the browser-only fetch path.
-export const TARGET_TO_GIMMICK = {
-  mysteryCellCount:  'mystery',
-  liarCellCount:     'liar',
-  lockedCellCount:   'locked',
-  wormholePairCount: 'wormhole',
-  mirrorPairCount:   'mirror',
-  sonarCellCount:    'sonar',
-  compassCellCount:  'compass',
-  wallEdgeCount:     'walls',
-  wormLoad:          'worm',
-};
-
 const DEFAULT_TARGET = 'advancedLogicMoves';
-// PRIMARY_WEIGHT no longer lives here: the slot arithmetic (and its weight)
-// comes from resolveMissionForSlot in experimentDesign.js, so there is one
-// source of truth instead of two copies that can drift.
-// Cap the per-feature target count in slot scoring. wallEdgeCount runs
-// 10-30 edges per board while cell-based gimmicks (compass/mystery/locked/
-// mirror/sonar/liar) cap out at ~3-5 cells, so an uncapped `count × weight`
-// score lets walls dominate every selection. Saturating at COUNT_CAP makes
-// the deficit_weight (= how undersampled the feature is) the actual driver.
-const COUNT_CAP = 5;
+// Nothing about mission resolution or scoring lives in this file any more.
+// The slot arithmetic (resolveMissionForSlot), the target→gimmick table
+// (getTargetGimmickName), the score formula and its cap (missionCandidateScore
+// / COUNT_CAP), and the candidate count (resolveCandidateCount) all come from
+// experimentDesign.js, so this precompute and the client's selectDailyRngSeed
+// cannot disagree about which board a date gets. They used to keep private
+// copies of the slot mapping and it drifted; the rest followed it here for the
+// same reason before it could.
 
 export function loadExperimentSpec() {
   // Mirror experimentDesign.js: load the static JSON. Returns the full
@@ -58,9 +45,13 @@ export function loadExperimentSpec() {
     return {
       target: data.target || DEFAULT_TARGET,
       coverage_targets: Array.isArray(data.coverage_targets) ? data.coverage_targets : [],
+      // Optional; absent on an ordinary day and on any file written before F1.
+      // resolveMissionForSlot validates it, so a malformed one degrades to
+      // "no decorrelation today" rather than poisoning the selection.
+      decorrelation_mission: data.decorrelation_mission || null,
     };
   } catch {
-    return { target: DEFAULT_TARGET, coverage_targets: [] };
+    return { target: DEFAULT_TARGET, coverage_targets: [], decorrelation_mission: null };
   }
 }
 
@@ -72,7 +63,16 @@ export function loadExperimentSpec() {
 // client would never select. Returns null for slots past the coverage list;
 // callers skip those.
 export function missionForSlot(spec, slotIndex) {
-  return resolveMissionForSlot(slotIndex, spec.target, spec.coverage_targets);
+  return resolveMissionForSlot(
+    slotIndex, spec.target, spec.coverage_targets, spec.decorrelation_mission,
+  );
+}
+
+// How many slots this spec's selection evaluates. Delegates for the same
+// reason missionForSlot does — the client reads the identical rule out of
+// resolveCandidateCount, so the two loops run the same number of times.
+export function candidateCountFor(spec) {
+  return resolveCandidateCount(spec.coverage_targets, spec.decorrelation_mission);
 }
 
 export function buildOneCandidate(seed, forcedGimmick, singleOnly) {
@@ -130,13 +130,14 @@ export function selectBestCandidate(dateString, spec) {
   let anyBest = null, anyScore = -Infinity, anySeed = null, anyMission = null;
   let totalSolvable = 0;
   let totalLoadBearing = 0;
-  for (let i = 0; i < CANDIDATE_COUNT; i++) {
+  const candidateCount = candidateCountFor(spec);
+  for (let i = 0; i < candidateCount; i++) {
     const mission = missionForSlot(spec, i);
     // Slots past the coverage list have no mission (no-wrap) — skip them,
     // exactly as selectDailyRngSeed.js does. Without this the null would
     // throw on mission.target.
     if (!mission || !mission.target) continue;
-    const forcedGimmick = TARGET_TO_GIMMICK[mission.target] || null;
+    const forcedGimmick = getTargetGimmickName(mission.target);
     const seed = `${dateString}:trial${i}`;
     const cand = buildOneCandidate(seed, forcedGimmick, mission.singleOnly);
     if (!cand.check.solvable && cand.check.remainingUnknowns !== 0) continue;
@@ -145,8 +146,8 @@ export function selectBestCandidate(dateString, spec) {
       { board: cand.board, rows: cand.rows, cols: cand.cols, totalMines: cand.totalMines, activeGimmicks: cand.activeGimmicks, rngSeed: seed },
       cand.check,
     );
-    const count = features[mission.target] || 0;
-    const score = Math.min(count, COUNT_CAP) * mission.deficitWeight;
+    const score = missionCandidateScore(mission, features);
+    if (score === null) continue;
     if (score > anyScore) {
       anyScore = score;
       anySeed = seed;
@@ -173,7 +174,7 @@ export function selectBestCandidate(dateString, spec) {
       // No solvable candidate — fall back to the plain dateString. This
       // shouldn't happen often; the gameActions retry loop would also
       // have to dig harder if it did.
-      const fallbackForced = TARGET_TO_GIMMICK[spec.target] || null;
+      const fallbackForced = getTargetGimmickName(spec.target);
       const cand = buildOneCandidate(dateString, fallbackForced, false);
       best = cand;
       bestSeed = dateString;
@@ -217,11 +218,7 @@ export function buildCanonicalPayload(cand, codeVersion) {
     activeGimmicks: cand.activeGimmicks,
     codeVersion,
   });
-  const m = cand.mission || {};
-  if (m && typeof m.target === 'string') {
-    payload.missionTarget = m.target;
-    payload.missionIsPrimary = m.isPrimary === true;
-  }
+  Object.assign(payload, missionStamp(cand.mission));
   return payload;
 }
 

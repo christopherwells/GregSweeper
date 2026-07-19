@@ -18,6 +18,56 @@ test('fieldNoteLine distinguishes primary probes from coverage studies, null on 
   assert.equal(fieldNoteLine(null), null);
 });
 
+test('a decorrelation day says what it pulls apart, and never calls itself a study of the feature', () => {
+  // The claim has to match the board. A decorrelation board was not picked
+  // for carrying many threes; it was picked for having threes and density
+  // disagree. Calling it "a threes study" would be the wrong sentence, and
+  // it is the sentence the ordinary coverage branch would produce.
+  const line = fieldNoteLine({
+    target: 'clueShare3', isPrimary: false,
+    type: 'decorrelation', confounder: 'density',
+  });
+  assert.match(line, /pulls threes apart from mine density/);
+  assert.ok(!/threes study/.test(line), 'a decorrelation board is not a study of its feature');
+
+  // Both names must be sayable in plain words or Greg says nothing. An
+  // unnamed confounder is the case a raw code name would leak through.
+  assert.equal(fieldNoteLine({
+    target: 'clueShare3', isPrimary: false,
+    type: 'decorrelation', confounder: 'someUnnamedAxis',
+  }), null);
+  assert.equal(fieldNoteLine({
+    target: 'someUnnamedFeature', isPrimary: false,
+    type: 'decorrelation', confounder: 'density',
+  }), null);
+
+  // Voice rails, same bar as the rest of the notebook copy.
+  assert.ok(!line.includes('—') && !line.includes('–'), 'zero em-dashes and en-dashes');
+  assert.ok(!/\d/.test(line), 'the Field Note never states a number the board has not earned');
+  const hedges = (line.match(/\b(maybe|perhaps|possibly|might|somewhat|fairly|rather)\b/gi) || []);
+  assert.ok(hedges.length <= 1, 'at most one hedge per sentence');
+});
+
+test('fieldNoteFromBoard carries the decorrelation stamp through from the payload', () => {
+  // The stamped mission is the only drift-proof record of why a board exists:
+  // boards generate up to 7 days ahead and the nightly refit reorders the
+  // targets, so re-deriving from the seed names the wrong study.
+  assert.match(
+    fieldNoteFromBoard({
+      missionTarget: 'clueShare3', missionIsPrimary: false,
+      missionType: 'decorrelation', missionConfounder: 'density',
+      activeGimmicks: ['sonar'],
+    }),
+    /pulls threes apart from mine density/,
+  );
+  // A board stamped by an older pipeline has no type, so it reads as the
+  // ordinary study it was.
+  assert.match(
+    fieldNoteFromBoard({ missionTarget: 'sonarCellCount', missionIsPrimary: false }),
+    /sonar study/,
+  );
+});
+
 test('fieldNoteFromBoard cannot contradict the board (regression: 2026-06-10 wormhole board labeled compass)', () => {
   // Stamped mission wins when present (boards written after the fix).
   assert.match(

@@ -28,6 +28,11 @@ const FEATURE_NAMES = {
   patternMoves: 'pattern reasoning',
   totalMines: 'mine density',
   cellCount: 'board size',
+  // `density` is the same quantity as totalMines normalized by board size, and
+  // reads the same in plain words. It is never a study target of its own; it is
+  // here because it is the CONFOUNDER a decorrelation mission names, and that
+  // mission's Field Note has to be able to say what it is pulling apart from.
+  density: 'mine density',
   // Clue-digit shares (the arithmetic-load arc). Each is a study of how much
   // the SHARE of a given clue digit costs, controlling for board size and
   // mine count. Derived from the canonical boards in the refit; never a
@@ -100,13 +105,24 @@ export function classifySdDelta(sdPrev, sdCur, thresholdPct = 2) {
   return { kind: 'flat', deltaPct };
 }
 
-// The morning line: why today's board exists. `mission` is the
-// getMissionForSeed result ({ target, isPrimary, ... }). Returns null
-// when there is nothing honest to say (unknown feature, no mission).
+// The morning line: why today's board exists. `mission` is the FLAT shape
+// { target, isPrimary, type?, confounder? } that fieldNoteFromBoard builds
+// from the stamped payload. Returns null when there is nothing honest to say
+// (unknown feature, unnamed confounder, no mission).
 export function fieldNoteLine(mission) {
   if (!mission || typeof mission.target !== 'string') return null;
   const name = featureName(mission.target);
   if (!name) return null;
+  // A decorrelation day is not a study OF the feature, it is a study of the
+  // feature APART from something it usually travels with, so it gets its own
+  // sentence. Saying "a threes study" here would be the wrong claim: the board
+  // was not picked for having many threes, it was picked for having threes and
+  // density disagree. Needs BOTH plain names, or there is nothing honest to say.
+  if (mission.type === 'decorrelation') {
+    const confounder = featureName(mission.confounder);
+    if (!confounder) return null;
+    return `Greg: today pulls ${name} apart from ${confounder}. I need boards where the two disagree`;
+  }
   return mission.isPrimary
     ? `Greg: today probes ${name}, my widest uncertainty`
     : `Greg: today is a ${name} study. My model wants more data there`;
@@ -140,7 +156,13 @@ const GIMMICK_NAMES = {
 export function fieldNoteFromBoard(raw) {
   if (!raw) return null;
   if (typeof raw.missionTarget === 'string') {
-    const line = fieldNoteLine({ target: raw.missionTarget, isPrimary: raw.missionIsPrimary === true });
+    const line = fieldNoteLine({
+      target:     raw.missionTarget,
+      isPrimary:  raw.missionIsPrimary === true,
+      // Present only on decorrelation-day boards (missionStamp adds the pair).
+      type:       raw.missionType,
+      confounder: raw.missionConfounder,
+    });
     if (line) return line;
   }
   const gimmicks = Array.isArray(raw.activeGimmicks) ? raw.activeGimmicks : [];
