@@ -168,3 +168,88 @@ test('a pre-fix save (fields absent) resumes with safe defaults', () => {
   assert.equal(state.timedPar, 0);
   assert.equal(state.timedFeatures, null);
 });
+
+// ── Explicit topology (Coastline tiling boards) ────────────────────────
+//
+// The snapshot is JSON, and JSON.stringify drops properties stamped on the
+// board ARRAY — which is why _wallEdges rides as its own top-level field.
+// _cellNeighbors had no such field, so a tiling game saved and resumed came
+// back RECTANGULAR mid-play, with no error: the board silently changes shape
+// under the player, and the adjacency it was certified under is gone.
+// Found in the Coastline Phase 1 adversarial review, 2026-07-19.
+
+const { buildNeighborCache } = await import('../src/logic/adjacency.js');
+const { buildTiling488 } = await import('./fixtures/tiling488.mjs');
+const { defineCellNeighbors } = await import('../src/logic/adjacency.js');
+
+function setupTilingGame() {
+  // 3x3 octagons + 4 interstitial squares = 13 cells, in a 13x1 container.
+  const T = buildTiling488(3, 3);
+  state.gameMode = 'timed';
+  state.status = 'playing';
+  state.isArchivePlay = false;
+  state.isDailyPractice = false;
+  state.board = makeBoard(T.total, 1);
+  state.rows = T.total; state.cols = 1; state.totalMines = 2;
+  defineCellNeighbors(state.board, T.total, 1, T.adj);
+  state.flagCount = 0; state.revealedCount = 0;
+  state.elapsedTime = 5; state.currentLevel = 1;
+  state.powerUps = { revealSafe: 0, shield: 0, lifeline: 0, scanRowCol: 0, magnet: 0, xray: 0 };
+  state.activeGimmicks = [];
+  state.usedPowerUps = false;
+  state.timedPar = 0;
+  state.timedFeatures = null;
+  return T;
+}
+
+test('REGRESSION: an explicit topology survives the save snapshot', () => {
+  localStorage.clear();
+  const T = setupTilingGame();
+  persistGameState();
+
+  const saved = loadGameState('timed');
+  assert.ok(saved, 'the slot must persist');
+  assert.ok(saved.cellNeighbors, 'the topology must ride the save as its own field');
+  assert.equal(saved.cellNeighbors.length, T.total);
+  assert.deepEqual(saved.cellNeighbors, T.adj);
+});
+
+test('REGRESSION: a resumed tiling board keeps its topology, not a rectangle', () => {
+  localStorage.clear();
+  const T = setupTilingGame();
+  persistGameState();
+
+  // Wipe live state the way a fresh boot would.
+  state.board = null;
+  state.status = 'idle';
+
+  const resumed = tryResumeGame('timed');
+  if (state.timerId) { clearInterval(state.timerId); state.timerId = null; }
+
+  assert.equal(resumed, true, 'the tiling save must be resumable');
+  assert.ok(state.board._cellNeighbors, 'the restored board must carry its topology');
+  assert.deepEqual(state.board._cellNeighbors, T.adj);
+
+  // The thing that actually matters: every adjacency question asked of the
+  // resumed board resolves through the tiling, not through its container.
+  const cache = buildNeighborCache(state.board, state.rows, state.cols);
+  assert.deepEqual(cache, T.adj);
+  // A 13x1 container's own 8-neighborhood would give the middle cell 2
+  // neighbors; the tiling gives the centre octagon 8.
+  assert.equal(cache[T.octIndex(1, 1)].length, 8,
+    'the centre octagon sees 8 — a rectangular read of a 13x1 strip could never');
+});
+
+test('an ordinary rectangular save carries no topology and resumes unchanged', () => {
+  localStorage.clear();
+  setupTimedGame();
+  persistGameState();
+
+  const saved = loadGameState('timed');
+  assert.equal(saved.cellNeighbors, null, 'no topology field on an ordinary board');
+
+  const resumed = tryResumeGame('timed');
+  if (state.timerId) { clearInterval(state.timerId); state.timerId = null; }
+  assert.equal(resumed, true);
+  assert.equal(state.board._cellNeighbors, undefined, 'rectangular boards stay implicit');
+});

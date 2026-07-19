@@ -155,7 +155,7 @@ export function buildNeighborCache(board, rows, cols, options) {
 }
 
 /**
- * Stamp an explicit topology onto a board, validating it first.
+ * Validate an explicit topology, returning a defensive copy.
  *
  * The validation is the point. A malformed edge list does not crash — it
  * quietly certifies a board nobody can actually solve, because the solver
@@ -164,8 +164,78 @@ export function buildNeighborCache(board, rows, cols, options) {
  * A, or the constraint system describes a board that cannot exist and every
  * downstream proof is meaningless.
  *
- * Called once at board construction, never in a hot loop, so it can afford to
- * be thorough.
+ * Runs at board construction and on restore from a save, never in a hot loop,
+ * so it can afford to be thorough.
+ *
+ * @param {number} rows
+ * @param {number} cols
+ * @param {Array<number[]>} neighbors
+ * @returns {Array<number[]>}
+ * @throws {Error} naming the specific violation
+ */
+function validateCellNeighbors(rows, cols, neighbors) {
+  const total = rows * cols;
+  if (!Array.isArray(neighbors) || neighbors.length !== total) {
+    throw new Error(`cellNeighbors: expected ${total} entries, got ${Array.isArray(neighbors) ? neighbors.length : typeof neighbors}`);
+  }
+
+  const copy = new Array(total);
+  for (let i = 0; i < total; i++) {
+    const list = neighbors[i];
+    if (!Array.isArray(list)) {
+      throw new Error(`cellNeighbors: entry ${i} is not an array`);
+    }
+    const seen = new Set();
+    for (const n of list) {
+      if (!Number.isInteger(n) || n < 0 || n >= total) {
+        throw new Error(`cellNeighbors: cell ${i} lists out-of-range neighbor ${n}`);
+      }
+      if (n === i) {
+        throw new Error(`cellNeighbors: cell ${i} lists itself as a neighbor`);
+      }
+      if (seen.has(n)) {
+        throw new Error(`cellNeighbors: cell ${i} lists neighbor ${n} twice`);
+      }
+      seen.add(n);
+    }
+    copy[i] = list.slice();
+  }
+
+  // Symmetry, checked both ways so the error names the missing direction.
+  for (let i = 0; i < total; i++) {
+    for (const n of copy[i]) {
+      if (!copy[n].includes(i)) {
+        throw new Error(`cellNeighbors: adjacency is not symmetric — ${i} lists ${n}, but ${n} does not list ${i}`);
+      }
+    }
+  }
+
+  return copy;
+}
+
+/**
+ * Boolean form, for callers deciding whether to TRUST a topology that arrived
+ * from outside the process — a game save, a stored payload. A save whose
+ * topology is truncated or corrupt must be dropped, not resumed: restoring it
+ * would hand the player a board whose adjacency disagrees with the one it was
+ * certified under, which is the no-guess promise breaking silently.
+ *
+ * @param {number} rows
+ * @param {number} cols
+ * @param {any} neighbors
+ * @returns {boolean}
+ */
+export function isValidCellNeighbors(rows, cols, neighbors) {
+  try {
+    validateCellNeighbors(rows, cols, neighbors);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Stamp a validated explicit topology onto a board.
  *
  * @param {Board} board                 the container (rows × cols)
  * @param {number} rows
@@ -174,42 +244,6 @@ export function buildNeighborCache(board, rows, cols, options) {
  * @returns {Board} the same board, with _cellNeighbors stamped
  */
 export function defineCellNeighbors(board, rows, cols, neighbors) {
-  const total = rows * cols;
-  if (!Array.isArray(neighbors) || neighbors.length !== total) {
-    throw new Error(`defineCellNeighbors: expected ${total} entries, got ${Array.isArray(neighbors) ? neighbors.length : typeof neighbors}`);
-  }
-
-  const frozen = new Array(total);
-  for (let i = 0; i < total; i++) {
-    const list = neighbors[i];
-    if (!Array.isArray(list)) {
-      throw new Error(`defineCellNeighbors: entry ${i} is not an array`);
-    }
-    const seen = new Set();
-    for (const n of list) {
-      if (!Number.isInteger(n) || n < 0 || n >= total) {
-        throw new Error(`defineCellNeighbors: cell ${i} lists out-of-range neighbor ${n}`);
-      }
-      if (n === i) {
-        throw new Error(`defineCellNeighbors: cell ${i} lists itself as a neighbor`);
-      }
-      if (seen.has(n)) {
-        throw new Error(`defineCellNeighbors: cell ${i} lists neighbor ${n} twice`);
-      }
-      seen.add(n);
-    }
-    frozen[i] = list.slice();
-  }
-
-  // Symmetry, checked both ways so the error names the missing direction.
-  for (let i = 0; i < total; i++) {
-    for (const n of frozen[i]) {
-      if (!frozen[n].includes(i)) {
-        throw new Error(`defineCellNeighbors: adjacency is not symmetric — ${i} lists ${n}, but ${n} does not list ${i}`);
-      }
-    }
-  }
-
-  board._cellNeighbors = frozen;
+  board._cellNeighbors = validateCellNeighbors(rows, cols, neighbors);
   return board;
 }
