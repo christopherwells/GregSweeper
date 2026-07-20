@@ -17,6 +17,7 @@ import { startTimer, stopTimer, pauseTimer, resumeTimer, startMineShift, updateT
 import { handleWin, handleLoss, handleDailyBombHit } from './winLossHandler.js';
 import { performScan, performXRay, performMagnet, tryLifeline } from './powerUpActions.js';
 import { generateBoard, createEmptyBoard, cleanSolverArtifacts } from '../logic/boardGenerator.js';
+import { generateTilingBoard } from '../logic/tilingGenerator.js';
 import { floodFillReveal, checkWin, chordReveal, unrevealChordMines, isBoardSolvable, estimatePlateMovesToDisarm, buildNeighborCache, findDecorativeGimmicks, certificateFromCheck } from '../logic/boardSolver.js';
 import { plateDisarmCells, cellAt } from '../logic/adjacency.js';
 import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getChaosDifficulty, getRequiredTechnique, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE, WEEKLY_MIN_SIZE, WEEKLY_SIZE_RANGE, BOARD_WIDTH_CAP, plateSeconds } from '../logic/difficulty.js';
@@ -333,6 +334,37 @@ export async function newGame() {
   state.boardCertificate = null;
   state.timedPar = 0;
   state.timedFeatures = null;
+
+  // Project Coastline (test-only): a frozen Archimedean-tiling board, generated
+  // HERE like daily/weekly rather than on first click. gameMode stays 'normal'
+  // + isLevelPractice so nothing records; state.coastlinePractice routes the
+  // frozen first-click path in revealCell. The whole surface is unreachable in
+  // production — the ?coastline=1 deep link is isTestEnvironment()-gated.
+  if (state.coastlinePractice) {
+    const seed = state.coastlineSeed || 'coastline-1';
+    const res = generateTilingBoard({ M: 6, N: 7, mines: 11, seed });
+    if (!res) {
+      import('../ui/toastManager.js').then(m => m.showToast('Could not generate a tiling board.'));
+      return;
+    }
+    state.rows = res.rows;
+    state.cols = res.cols;
+    let mineCount = 0;
+    for (const brow of res.board) for (const bcell of brow) if (bcell.isMine) mineCount++;
+    state.totalMines = mineCount;
+    state.board = res.board;
+    state.activeGimmicks = [];
+    state.gimmickData = {};
+    state.firstClick = false;
+    state.status = 'idle';
+    // The certificate is the certified opener's own full solve, same contract
+    // as daily/weekly: this board proves no-guess from the center octagon.
+    state.boardCertificate = certificateFromCheck(res.check);
+    const oc = res.firstClick;
+    const oRow = Math.floor(oc / res.cols), oCol = oc % res.cols;
+    state.board[oRow][oCol].suggestedStart = true;
+    setDailySuggestedCell({ r: oRow, c: oCol });
+  }
 
   // Daily mode: vary board dimensions using the daily seed
   if (state.gameMode === 'daily' && state.dailySeed) {
@@ -1119,8 +1151,8 @@ export function revealCell(row, col) {
     state.status = 'playing';
     startTimer();
 
-  } else if (state.status === 'idle' && (state.gameMode === 'daily' || state.gameMode === 'weekly')) {
-    // Daily / weekly: the canonical board is FROZEN. It never mutates,
+  } else if (state.status === 'idle' && (state.gameMode === 'daily' || state.gameMode === 'weekly' || state.coastlinePractice)) {
+    // Daily / weekly / coastline: the board is FROZEN. It never mutates,
     // so every player on the date plays the identical layout and the
     // submitted features always describe the board that was actually
     // played. The marked start cell is the certified safe entry; a

@@ -1995,6 +1995,10 @@ async function init() {
   const deepLinkLevel = (isTestEnvironment() && _levelParam >= 1)
     ? Math.min(_levelParam, MAX_LEVEL)
     : 0;
+  // ?coastline= — test-environment-only Archimedean tiling board (Project
+  // Coastline Phase 2). Gated exactly like ?level=, so it is UNREACHABLE in
+  // production; the player-facing surface is a later release step.
+  const coastlinePractice = isTestEnvironment() && urlParams.get('coastline') != null;
 
   // Diagnostics button is hidden for casual users. Unhide when `?debug=1`
   // is in the URL (once per device — we persist a localStorage flag so
@@ -2082,6 +2086,21 @@ async function init() {
         toTitle();
       }
     });
+  } else if (coastlinePractice) {
+    // ?coastline= test board (test builds only — gate in the derivation
+    // above): a frozen Archimedean-tiling board played as an isLevelPractice
+    // run, so nothing records (same localStorage-safety rationale as ?level=).
+    // gameMode stays 'normal'; state.coastlinePractice routes newGame's
+    // generation + revealCell's frozen first-click path onto the tiling.
+    state.gameMode = 'normal';
+    updateModeUI('normal');
+    state.isLevelPractice = true;
+    state.coastlinePractice = true;
+    state.coastlineSeed = urlParams.get('seed') || null;
+    state.currentLevel = 1;
+    hideTitleScreen();
+    await newGame();
+    showToast('Coastline test board — Archimedean tiling. Nothing records.', 6000);
   } else if (deepLinkLevel > 0) {
     // ?level=N playtest deep link (test builds only — the gate is in
     // deepLinkLevel's derivation): start a PRACTICE challenge run at any

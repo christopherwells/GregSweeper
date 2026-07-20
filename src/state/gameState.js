@@ -96,6 +96,13 @@ export const state = {
   // challenge save slot, no power-up earns (/test/ shares this origin's
   // localStorage with prod, so a playtest jump must never pollute it)
   isLevelPractice: false,
+  // Project Coastline (test-only, ?coastline=1): a frozen Archimedean-tiling
+  // board played as an isLevelPractice run (records nothing). The flag routes
+  // newGame's generation + revealCell's frozen first-click path onto the tiling
+  // without introducing a new gameMode. UNREACHABLE in production — the deep
+  // link is isTestEnvironment()-gated (mirrors ?level=).
+  coastlinePractice: false,
+  coastlineSeed: null,   // seed for the tiling board (stable across reloads)
   inputLocked: false,    // true during cascade/chord animations
 
   // Chaos mode (roguelike runs)

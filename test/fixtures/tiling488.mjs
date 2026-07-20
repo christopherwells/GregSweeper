@@ -43,50 +43,13 @@
 // and a neighbor list.
 
 import { defineCellNeighbors } from '../../src/logic/adjacency.js';
-
-/**
- * Build the 4.8.8 topology over an M×N lattice of octagons.
- *
- * Cell indices are laid out octagons-first, then squares:
- *   octagon (i, j) -> i * N + j                    for 0 <= i < M, 0 <= j < N
- *   square  (i, j) -> M*N + i * (N-1) + j          for 0 <= i < M-1, 0 <= j < N-1
- * where square (i, j) is the one bounded by octagons (i,j), (i,j+1),
- * (i+1,j) and (i+1,j+1).
- *
- * @returns {{total:number, nOct:number, nSq:number, adj:Array<number[]>,
- *            octIndex:(i:number,j:number)=>number,
- *            sqIndex:(i:number,j:number)=>number}}
- */
-export function buildTiling488(M, N) {
-  const nOct = M * N;
-  const nSq = (M - 1) * (N - 1);
-  const total = nOct + nSq;
-  const octIndex = (i, j) => i * N + j;
-  const sqIndex = (i, j) => nOct + i * (N - 1) + j;
-
-  const adj = Array.from({ length: total }, () => []);
-  const link = (a, b) => { adj[a].push(b); adj[b].push(a); };
-
-  // Octagon to octagon: the four orthogonal sides.
-  for (let i = 0; i < M; i++) {
-    for (let j = 0; j < N; j++) {
-      if (j + 1 < N) link(octIndex(i, j), octIndex(i, j + 1));
-      if (i + 1 < M) link(octIndex(i, j), octIndex(i + 1, j));
-    }
-  }
-  // Square to its four surrounding octagons.
-  for (let i = 0; i < M - 1; i++) {
-    for (let j = 0; j < N - 1; j++) {
-      const s = sqIndex(i, j);
-      link(s, octIndex(i, j));
-      link(s, octIndex(i, j + 1));
-      link(s, octIndex(i + 1, j));
-      link(s, octIndex(i + 1, j + 1));
-    }
-  }
-
-  return { total, nOct, nSq, adj, octIndex, sqIndex };
-}
+// buildTiling488 was promoted to src/ in Coastline Phase 2 (it now also emits a
+// geometry layer for the renderer). This fixture imports and re-exports it so
+// the Phase 1 gate keeps exercising the SAME builder the shipped generator and
+// renderer use — what stays local here is the frozen mine layout (FIXTURE) and
+// the rectangular control that proves the gate reads the tiling.
+import { buildTiling488 } from '../../src/logic/tilingGeometry.js';
+export { buildTiling488 };
 
 // ── The frozen fixture board ───────────────────────────────────────────────
 //
