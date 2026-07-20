@@ -1,43 +1,43 @@
 {
-  "updatedAt": "2026-07-19T15:00:52Z",
-  "target": "clueShare4",
-  "reason": "highest posterior CV (0.623) excluding last 3 targets",
+  "updatedAt": "2026-07-20T15:55:32Z",
+  "target": "compassCellCount",
+  "reason": "highest posterior CV (0.741) excluding last 3 targets",
   "lastRevalidationDate": "2026-07-18",
   "recentTargets": [
+    "compassCellCount",
     "clueShare4",
-    "wallEdgeCount",
-    "mirrorPairCount"
+    "wallEdgeCount"
   ],
   "candidates": [
     {
       "feature": "mirrorPairCount",
-      "mean": 0.009,
-      "sd": 0.008,
-      "cv": 0.786
+      "mean": 0.011,
+      "sd": 0.009,
+      "cv": 0.879
     },
     {
       "feature": "clueShare4",
-      "mean": 0.078,
-      "sd": 0.048,
-      "cv": 0.623
+      "mean": 0.054,
+      "sd": 0.04,
+      "cv": 0.748
     },
     {
-      "feature": "lockedCellCount",
-      "mean": 0.024,
-      "sd": 0.015,
-      "cv": 0.597
+      "feature": "compassCellCount",
+      "mean": 0.015,
+      "sd": 0.011,
+      "cv": 0.741
     },
     {
       "feature": "wormLoad",
       "mean": 0.026,
       "sd": 0.015,
-      "cv": 0.584
+      "cv": 0.603
     },
     {
-      "feature": "compassCellCount",
-      "mean": 0.033,
-      "sd": 0.019,
-      "cv": 0.583
+      "feature": "lockedCellCount",
+      "mean": 0.026,
+      "sd": 0.015,
+      "cv": 0.574
     }
   ],
   "coverage_targets": [
@@ -45,11 +45,6 @@
       "feature": "wormLoad",
       "n_boards": 2,
       "deficit_weight": 0.3333
-    },
-    {
-      "feature": "compassCellCount",
-      "n_boards": 9,
-      "deficit_weight": 0.1
     },
     {
       "feature": "wormholePairCount",
@@ -82,13 +77,5 @@
       "deficit_weight": 0.0625
     }
   ],
-  "lastDecorrelationDate": "2026-07-19",
-  "decorrelation_mission": {
-    "feature": "clueShare3",
-    "confounder": "density",
-    "slope": 11.8464,
-    "intercept": -1.0387,
-    "residualSd": 0.4107,
-    "weight": 1.6665
-  }
+  "lastDecorrelationDate": "2026-07-19"
 }
