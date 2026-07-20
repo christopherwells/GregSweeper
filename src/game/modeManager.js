@@ -95,6 +95,7 @@ export function switchMode(mode) {
   // Never carry a ?coastline= tiling practice into a real mode either.
   state.coastlinePractice = false;
   state.coastlineSeed = null;
+  state.coastlineGimmicks = null;
   updateModeUI(mode);
 
   // Chaos mode: always start a fresh run (no resume)

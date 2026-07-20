@@ -103,6 +103,7 @@ export const state = {
   // link is isTestEnvironment()-gated (mirrors ?level=).
   coastlinePractice: false,
   coastlineSeed: null,   // seed for the tiling board (stable across reloads)
+  coastlineGimmicks: null, // modifier list to place on the tiling test board
   inputLocked: false,    // true during cascade/chord animations
 
   // Chaos mode (roguelike runs)

@@ -2097,10 +2097,18 @@ async function init() {
     state.isLevelPractice = true;
     state.coastlinePractice = true;
     state.coastlineSeed = urlParams.get('seed') || null;
+    // ?coastline=<modifier>[,<modifier>...] places those modifiers on the
+    // tiling test board (e.g. ?coastline=sonar,mirror); ?coastline=1 or bare
+    // is a plain board. Passed through to generateTilingBoard verbatim.
+    const _coastVal = urlParams.get('coastline') || '';
+    state.coastlineGimmicks = _coastVal.split(',').map(s => s.trim()).filter(s => s && s !== '1');
     state.currentLevel = 1;
     hideTitleScreen();
     await newGame();
-    showToast('Coastline test board — Archimedean tiling. Nothing records.', 6000);
+    const _cg = state.coastlineGimmicks;
+    showToast(_cg.length
+      ? `Coastline test board — tiling + ${_cg.join(', ')}. Nothing records.`
+      : 'Coastline test board — Archimedean tiling. Nothing records.', 6000);
   } else if (deepLinkLevel > 0) {
     // ?level=N playtest deep link (test builds only — the gate is in
     // deepLinkLevel's derivation): start a PRACTICE challenge run at any

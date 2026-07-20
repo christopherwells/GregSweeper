@@ -342,7 +342,10 @@ export async function newGame() {
   // production — the ?coastline=1 deep link is isTestEnvironment()-gated.
   if (state.coastlinePractice) {
     const seed = state.coastlineSeed || 'coastline-1';
-    const res = generateTilingBoard({ M: 6, N: 7, mines: 11, seed });
+    const res = generateTilingBoard({
+      M: 6, N: 7, mines: 11, seed,
+      gimmicks: Array.isArray(state.coastlineGimmicks) ? state.coastlineGimmicks : [],
+    });
     if (!res) {
       import('../ui/toastManager.js').then(m => m.showToast('Could not generate a tiling board.'));
       return;
@@ -353,8 +356,8 @@ export async function newGame() {
     for (const brow of res.board) for (const bcell of brow) if (bcell.isMine) mineCount++;
     state.totalMines = mineCount;
     state.board = res.board;
-    state.activeGimmicks = [];
-    state.gimmickData = {};
+    state.activeGimmicks = res.activeGimmicks || [];
+    state.gimmickData = res.applied || {};
     state.firstClick = false;
     state.status = 'idle';
     // The certificate is the certified opener's own full solve, same contract

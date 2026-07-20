@@ -13,11 +13,17 @@
 //     (and later the compass ray + worm momentum), never by the certifier.
 
 import { createEmptyBoard, cleanSolverArtifacts } from './boardGenerator.js';
-import { recalcAllAdjacency } from './gimmicks.js';
+import { recalcAllAdjacency, applyGimmicks } from './gimmicks.js';
 import { defineCellNeighbors } from './adjacency.js';
 import { isBoardSolvable } from './boardSolver.js';
 import { createDailyRNG } from './seededRandom.js';
 import { buildTiling488, containerFor } from './tilingGeometry.js';
+
+// Gimmicks that are safe on a tiling today. Compass, walls, and worm each need
+// their own tiling port (geometric compass ray, edge-severing walls, geometric
+// worm momentum) and are added to this set as those land. Mystery/liar/locked/
+// sonar/mirror ride Phase 1's topology-aware placement + number recompute.
+export const TILING_SAFE_GIMMICKS = ['mystery', 'liar', 'locked', 'sonar', 'mirror'];
 
 export { buildTiling488, containerFor };
 
@@ -31,12 +37,13 @@ export { buildTiling488, containerFor };
  * the first click never relocates one. The center octagon and its neighbors are
  * kept mine-free so the opener cascades.
  *
- * @param {{M:number, N:number, mines:number, seed:string,
+ * @param {{M:number, N:number, mines:number, seed:string, gimmicks?:string[],
  *          techniqueFloor?:number, maxAttempts?:number}} opts
  * @returns {{board:Array, rows:number, cols:number, firstClick:number,
- *            tiling:object, check:object} | null}  null if nothing certified
+ *            tiling:object, check:object, activeGimmicks:string[],
+ *            applied:object} | null}  null if nothing certified
  */
-export function generateTilingBoard({ M, N, mines, seed, techniqueFloor = 0, maxAttempts = 600 }) {
+export function generateTilingBoard({ M, N, mines, seed, gimmicks = [], techniqueFloor = 0, maxAttempts = 600 }) {
   const T = buildTiling488(M, N);
   const total = T.total;
   const { rows, cols } = containerFor(total);
@@ -73,16 +80,28 @@ export function generateTilingBoard({ M, N, mines, seed, techniqueFloor = 0, max
 
     recalcAllAdjacency(board);
 
-    // _cellNeighbors makes buildNeighborCache return T.adj verbatim, so pass it
-    // straight through as the cache.
-    const check = isBoardSolvable(board, rows, cols, fr, fc, T.adj);
+    // Apply gimmicks (if any) on the pre-numbered board — applyGimmicks reads
+    // the board's own topology (_cellNeighbors) for placement and recomputes
+    // displayed numbers through it, so sonar/mirror/liar etc. certify against
+    // exactly what the player sees.
+    let applied = {};
+    if (gimmicks.length > 0) {
+      const gRng = createDailyRNG(`${seed}:tiling488-gimmick:${attempt}`);
+      applied = applyGimmicks(board, 1, gimmicks, gRng);
+    }
+
+    // Certify from the opener against the board's LIVE topology (a wall gimmick
+    // would have severed edges from _cellNeighbors before this point).
+    const check = isBoardSolvable(board, rows, cols, fr, fc, board._cellNeighbors);
     cleanSolverArtifacts(board);
 
     const certified = check.solvable && check.remainingUnknowns === 0;
     if (certified && (check.techniqueLevel || 0) >= techniqueFloor) {
-      return { board, rows, cols, firstClick, tiling: T, check };
+      return { board, rows, cols, firstClick, tiling: T, check, activeGimmicks: gimmicks.slice(), applied };
     }
-    if (certified && !best) best = { board, rows, cols, firstClick, tiling: T, check };
+    if (certified && !best) {
+      best = { board, rows, cols, firstClick, tiling: T, check, activeGimmicks: gimmicks.slice(), applied };
+    }
   }
   // A certified board below the technique floor beats nothing; the caller
   // decides what to do with a null (a precompute throws, a practice board
