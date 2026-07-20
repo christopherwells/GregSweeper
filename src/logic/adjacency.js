@@ -8,11 +8,16 @@
 // the mine-carries-no-number incident in CLAUDE.md, where a stale count
 // serialized into a canonical board.
 //
-// It is NOT yet every such site. The plate estimator, the locked-cell and
-// mirror-pair placement checks, and sonar's/compass's scans still derive
-// neighbors from coordinates; CLAUDE.md's "still rectangular" list under Board
-// Topology is the authoritative inventory. Do not read this module as a
-// guarantee that a board's topology is honored everywhere.
+// Sonar's and compass's regions live here too (sonarScanCells /
+// compassRayCells) — not because they are adjacency, but because BOTH the
+// display layer and the certifier need the identical answer and used to keep
+// hand-copied copies of it.
+//
+// It is NOT yet every such site. The plate estimator and the locked-cell and
+// mirror-pair placement checks still derive neighbors from coordinates;
+// CLAUDE.md's "still rectangular" list under Board Topology is the
+// authoritative inventory. Do not read this module as a guarantee that a
+// board's topology is honored everywhere.
 //
 // This is a LEAF module: it imports nothing. gimmicks.js and boardSolver.js
 // both depend on it, which is what breaks the cycle that kept the adjacency
@@ -53,6 +58,124 @@
  *   _gatedCert?: boolean,
  * }} Board
  */
+
+/**
+ * The cells a SONAR reading covers — everything within two steps.
+ *
+ * ONE definition, consumed by both the display layer (recomputeDisplayedMines
+ * in gimmicks.js) and the certifier (buildStaticGimmickConstraints in
+ * boardSolver.js). Those were two hand-copied loops until Coastline; if they
+ * ever drift the certifier proves a deduction from a number the board does not
+ * display, which is a no-guess hole that no test would notice.
+ *
+ * On an EXPLICIT topology, "within two steps" is graph distance — a breadth-
+ * first walk of depth 2. That is the honest generalization: on an unwalled
+ * rectangular board the depth-2 closure of the 8-neighborhood is EXACTLY the
+ * 5×5 block, so the graph reading and the geometric one already agree wherever
+ * both are defined.
+ *
+ * On an IMPLICIT rectangular topology it stays the literal 5×5 block, walls
+ * severing only the inner ring, preserved verbatim. That is not the same as
+ * graph distance once walls exist (the outer ring reaches through a wall the
+ * inner ring is blocked by), so routing rectangular boards through the graph
+ * reading would change a shipped, documented mechanic — the help text promises
+ * "a 5×5 area". The inner-ring-only wall rule looks more like an accident than
+ * a principle, but it is the accident players have been solving against, and
+ * changing it is Christopher's call, not a refactor's side effect.
+ *
+ * @param {Board} board
+ * @param {number} rows
+ * @param {number} cols
+ * @param {number} r
+ * @param {number} c
+ * @returns {number[]} flat indices, never including the origin
+ */
+export function sonarScanCells(board, rows, cols, r, c) {
+  const origin = r * cols + c;
+
+  if (board._cellNeighbors) {
+    const adj = board._cellNeighbors;
+    const seen = new Set([origin]);
+    const out = [];
+    for (const n1 of adj[origin]) {
+      if (seen.has(n1)) continue;
+      seen.add(n1);
+      out.push(n1);
+    }
+    for (const n1 of adj[origin]) {
+      for (const n2 of adj[n1]) {
+        if (seen.has(n2)) continue;
+        seen.add(n2);
+        out.push(n2);
+      }
+    }
+    return out;
+  }
+
+  // Rectangular: the 5×5 block, row-major, walls severing only the inner ring.
+  const wallEdges = board._wallEdges || null;
+  const out = [];
+  for (let dr = -2; dr <= 2; dr++) {
+    for (let dc = -2; dc <= 2; dc++) {
+      if (dr === 0 && dc === 0) continue;
+      const nr = r + dr, nc = c + dc;
+      if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+      if (Math.abs(dr) <= 1 && Math.abs(dc) <= 1 && wallEdges && hasWallBetween(wallEdges, r, c, nr, nc)) continue;
+      out.push(nr * cols + nc);
+    }
+  }
+  return out;
+}
+
+/**
+ * The cells a COMPASS ray crosses — straight out from the cell until the edge.
+ *
+ * Same single-definition contract as sonarScanCells: display and certifier read
+ * this one function or they can disagree.
+ *
+ * A compass ray is NOT a topological property, and that is a real limit rather
+ * than an unfinished piece of work. Sonar asks "how far", which a graph answers;
+ * a compass asks "which way", which it cannot. Direction needs an embedding —
+ * positions, or at minimum a consistent angular order on each cell's edges — and
+ * an explicit topology carries neither. So this REFUSES on a topology board
+ * instead of walking (r + dr, c + dc) through a container whose indices mean
+ * nothing spatially: that walk does not crash, it returns a plausible number
+ * describing no region on the board, and the certifier would then emit a
+ * matching constraint, leaving display and proof in perfect agreement about
+ * something meaningless. A loud throw is the only safe failure here.
+ *
+ * Defining it properly is Phase 2 work, and it belongs there for a second
+ * reason: whether a ray reads as "straight" across octagons and squares is a
+ * question about what a player SEES, so it cannot be validated before there is
+ * a renderer to look at.
+ *
+ * @param {Board} board
+ * @param {number} rows
+ * @param {number} cols
+ * @param {number} r
+ * @param {number} c
+ * @param {{dr: number, dc: number}} dir
+ * @returns {number[]} flat indices, in order outward from the origin
+ */
+export function compassRayCells(board, rows, cols, r, c, dir) {
+  if (board._cellNeighbors) {
+    throw new Error(
+      'compassRayCells: a compass has no meaning on an explicit topology — a ray '
+      + 'needs a direction, and a neighbor graph carries no geometry to take one from. '
+      + 'Keep compass off tiling boards until Phase 2 defines it against cell positions.'
+    );
+  }
+
+  const out = [];
+  let nr = r + dir.dr;
+  let nc = c + dir.dc;
+  while (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+    out.push(nr * cols + nc);
+    nr += dir.dr;
+    nc += dir.dc;
+  }
+  return out;
+}
 
 /**
  * Canonical key for the wall edge between two ORTHOGONALLY adjacent cells.

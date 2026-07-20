@@ -5,7 +5,7 @@
 import { safeGet, safeSet, safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js';
 import { MAX_LEVEL } from './difficulty.js';
 import { WORM_MAX_PER_BOARD } from './worms.js';
-import { wallKey, hasWallBetween, buildNeighborCache } from './adjacency.js';
+import { wallKey, hasWallBetween, buildNeighborCache, sonarScanCells, compassRayCells } from './adjacency.js';
 
 // Reset all gimmick-related properties on a single cell.
 // Used when retrying gimmick placement to avoid stale markers.
@@ -1010,26 +1010,18 @@ export function recomputeDisplayedMines(board) {
       // ── Pass 1: base value ─────────────────────────────
       let base;
       if (cell.isSonar) {
+        // Region geometry lives in adjacency.js so the certifier's copy of
+        // this scan cannot drift from the number actually displayed here.
         let count = 0;
-        for (let dr = -2; dr <= 2; dr++) {
-          for (let dc = -2; dc <= 2; dc++) {
-            if (dr === 0 && dc === 0) continue;
-            const nr = r + dr, nc = c + dc;
-            if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
-            if (Math.abs(dr) <= 1 && Math.abs(dc) <= 1 && wallEdges && hasWallBetween(wallEdges, r, c, nr, nc)) continue;
-            if (board[nr][nc].isMine) count++;
-          }
+        for (const ni of sonarScanCells(board, rows, cols, r, c)) {
+          if (board[Math.floor(ni / cols)][ni % cols].isMine) count++;
         }
         cell.sonarCount = count;
         base = count;
       } else if (cell.isCompass && cell.compassDir) {
         let count = 0;
-        let rr = r + cell.compassDir.dr;
-        let cc = c + cell.compassDir.dc;
-        while (rr >= 0 && rr < rows && cc >= 0 && cc < cols) {
-          if (board[rr][cc].isMine) count++;
-          rr += cell.compassDir.dr;
-          cc += cell.compassDir.dc;
+        for (const ni of compassRayCells(board, rows, cols, r, c, cell.compassDir)) {
+          if (board[Math.floor(ni / cols)][ni % cols].isMine) count++;
         }
         cell.compassCount = count;
         base = count;

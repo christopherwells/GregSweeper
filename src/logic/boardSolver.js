@@ -9,7 +9,7 @@
 
 import { solveConstraints } from './constraintSolver.js';
 import { hasDisplayBlockingGimmick } from './gimmicks.js';
-import { hasWallBetween, buildNeighborCache } from './adjacency.js';
+import { hasWallBetween, buildNeighborCache, sonarScanCells, compassRayCells } from './adjacency.js';
 
 // Re-exported for the many modules that reach for the solver's neighbor lists
 // (patternNames, proofClassify, minimalProof, cruxExtract, lexicon, …). The
@@ -706,26 +706,13 @@ export function buildStaticGimmickConstraints(board, rows, cols, neighborCache, 
       if (cell.isLiar) continue;
 
       if (cell.isSonar && !skipSonar) {
-        const cells = [];
-        for (let dr = -2; dr <= 2; dr++) {
-          for (let dc = -2; dc <= 2; dc++) {
-            if (dr === 0 && dc === 0) continue;
-            const nr = r + dr, nc = c + dc;
-            if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
-            if (Math.abs(dr) <= 1 && Math.abs(dc) <= 1 && wallEdges && hasWallBetween(wallEdges, r, c, nr, nc)) continue;
-            cells.push(nr * cols + nc);
-          }
-        }
+        // Shared with recomputeDisplayedMines: the certifier must reason about
+        // exactly the region whose count the player is shown, or it proves from
+        // a premise the board never stated.
+        const cells = sonarScanCells(board, rows, cols, r, c);
         if (cells.length > 0) out.push({ cells, expected: cell.displayedMines, origin: idx(r, c) });
       } else if (cell.isCompass && cell.compassDir && !skipCompass) {
-        const cells = [];
-        let nr = r + cell.compassDir.dr;
-        let nc = c + cell.compassDir.dc;
-        while (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
-          cells.push(nr * cols + nc);
-          nr += cell.compassDir.dr;
-          nc += cell.compassDir.dc;
-        }
+        const cells = compassRayCells(board, rows, cols, r, c, cell.compassDir);
         if (cells.length > 0) out.push({ cells, expected: cell.displayedMines, origin: idx(r, c) });
       } else if (cell.isWormhole && cell.wormholePair && !skipWormhole) {
         const myIdx = idx(r, c);
