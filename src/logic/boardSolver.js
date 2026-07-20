@@ -9,7 +9,7 @@
 
 import { solveConstraints } from './constraintSolver.js';
 import { hasDisplayBlockingGimmick } from './gimmicks.js';
-import { hasWallBetween, buildNeighborCache, sonarScanCells, compassRayCells } from './adjacency.js';
+import { hasWallBetween, buildNeighborCache, sonarScanCells, compassRayCells, plateDisarmCells, cellAt } from './adjacency.js';
 
 // Re-exported for the many modules that reach for the solver's neighbor lists
 // (patternNames, proofClassify, minimalProof, cruxExtract, lexicon, …). The
@@ -1072,19 +1072,17 @@ export function floodFillReveal(board, startRow, startCol, preNeighborCache) {
 // snapshot of the current board state without mutating the real board.
 export function estimatePlateMovesToDisarm(board, plateRow, plateCol) {
   const rows = board.length, cols = board[0].length;
-  const wallEdges = board._wallEdges || null;
+  // Deduction and cascade below walk the board's real adjacency (walls sever
+  // it); the plate's own demand region deliberately does not. Both read a
+  // shared definition, so neither can drift from the live game.
+  const nbrCache = buildNeighborCache(board, rows, cols);
 
-  // Identify the safe neighbors we need revealed
+  // Identify the safe neighbors we need revealed — the same set the live
+  // checkPlateDisarmed polls, so the countdown is priced for the actual job.
   const targets = new Set();
-  for (let dr = -1; dr <= 1; dr++) {
-    for (let dc = -1; dc <= 1; dc++) {
-      if (dr === 0 && dc === 0) continue;
-      const nr = plateRow + dr, nc = plateCol + dc;
-      if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
-        const adj = board[nr][nc];
-        if (!adj.isMine && !adj.isRevealed) targets.add(`${nr},${nc}`);
-      }
-    }
+  for (const ni of plateDisarmCells(board, rows, cols, plateRow, plateCol)) {
+    const adj = cellAt(board, cols, ni);
+    if (!adj.isMine && !adj.isRevealed) targets.add(`${adj.row},${adj.col}`);
   }
   if (targets.size === 0) return { moves: 0, steps: 0, unsolved: 0 };
 
@@ -1129,16 +1127,11 @@ export function estimatePlateMovesToDisarm(board, plateRow, plateCol) {
 
       let fCount = 0;
       const unknowns = [];
-      for (let dr = -1; dr <= 1; dr++) {
-        for (let dc = -1; dc <= 1; dc++) {
-          if (dr === 0 && dc === 0) continue;
-          const nr = r + dr, nc = c + dc;
-          if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
-          if (wallEdges && hasWallBetween(wallEdges, r, c, nr, nc)) continue;
-          const nk = `${nr},${nc}`;
-          if (flagged.has(nk)) fCount++;
-          else if (!revealed.has(nk)) unknowns.push(nk);
-        }
+      for (const ni of nbrCache[r * cols + c]) {
+        const n = cellAt(board, cols, ni);
+        const nk = `${n.row},${n.col}`;
+        if (flagged.has(nk)) fCount++;
+        else if (!revealed.has(nk)) unknowns.push(nk);
       }
 
       if (fCount === adj && unknowns.length > 0) {
@@ -1168,20 +1161,15 @@ export function estimatePlateMovesToDisarm(board, plateRow, plateCol) {
         const queue = [[r, c]];
         while (queue.length > 0) {
           const [cr, cc] = queue.shift();
-          for (let dr = -1; dr <= 1; dr++) {
-            for (let dc = -1; dc <= 1; dc++) {
-              if (dr === 0 && dc === 0) continue;
-              const nr = cr + dr, nc = cc + dc;
-              if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
-              if (wallEdges && hasWallBetween(wallEdges, cr, cc, nr, nc)) continue;
-              const nk = `${nr},${nc}`;
-              if (revealed.has(nk) || flagged.has(nk)) continue;
-              if (board[nr][nc].isMine) continue;
-              revealed.add(nk);
-              remaining.delete(nk);
-              batchMoves++;
-              if (getAdj(nr, nc) === 0) queue.push([nr, nc]);
-            }
+          for (const ni of nbrCache[cr * cols + cc]) {
+            const n = cellAt(board, cols, ni);
+            const nk = `${n.row},${n.col}`;
+            if (revealed.has(nk) || flagged.has(nk)) continue;
+            if (n.isMine) continue;
+            revealed.add(nk);
+            remaining.delete(nk);
+            batchMoves++;
+            if (getAdj(n.row, n.col) === 0) queue.push([n.row, n.col]);
           }
         }
       }

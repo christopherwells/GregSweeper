@@ -18,6 +18,7 @@ import { handleWin, handleLoss, handleDailyBombHit } from './winLossHandler.js';
 import { performScan, performXRay, performMagnet, tryLifeline } from './powerUpActions.js';
 import { generateBoard, createEmptyBoard, cleanSolverArtifacts } from '../logic/boardGenerator.js';
 import { floodFillReveal, checkWin, chordReveal, unrevealChordMines, isBoardSolvable, estimatePlateMovesToDisarm, buildNeighborCache, findDecorativeGimmicks, certificateFromCheck } from '../logic/boardSolver.js';
+import { plateDisarmCells, cellAt } from '../logic/adjacency.js';
 import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getChaosDifficulty, getRequiredTechnique, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE, WEEKLY_MIN_SIZE, WEEKLY_SIZE_RANGE, BOARD_WIDTH_CAP, plateSeconds } from '../logic/difficulty.js';
 import { computeDailyFeatures, predictPar } from '../logic/dailyFeatures.js';
 import { shieldDefuse } from '../logic/powerUps.js';
@@ -1372,17 +1373,15 @@ function startPressurePlateTimer(cell) {
 }
 
 function checkPlateDisarmed(cell) {
-  // Disarmed when all non-mine adjacent cells are revealed
+  // Disarmed when all non-mine adjacent cells are revealed. Reads the same
+  // demand region the par estimator prices (plateDisarmCells), so the
+  // countdown can never be timed for a different job than this one, and a
+  // plate on a tiling polls the cells it actually touches.
   const rows = state.board.length;
   const cols = state.board[0].length;
-  for (let dr = -1; dr <= 1; dr++) {
-    for (let dc = -1; dc <= 1; dc++) {
-      if (dr === 0 && dc === 0) continue;
-      const nr = cell.row + dr, nc = cell.col + dc;
-      if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
-        if (!state.board[nr][nc].isMine && !state.board[nr][nc].isRevealed) return false;
-      }
-    }
+  for (const ni of plateDisarmCells(state.board, rows, cols, cell.row, cell.col)) {
+    const n = cellAt(state.board, cols, ni);
+    if (!n.isMine && !n.isRevealed) return false;
   }
   return true;
 }

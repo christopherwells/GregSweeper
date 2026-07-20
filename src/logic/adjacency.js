@@ -72,6 +72,49 @@ export function cellAt(board, cols, i) {
 }
 
 /**
+ * The cells a PRESSURE PLATE demands be revealed before it disarms.
+ *
+ * ONE definition, shared by the live disarm check (checkPlateDisarmed in
+ * gameActions.js) and the par estimator's target set
+ * (estimatePlateMovesToDisarm in boardSolver.js). Those were two copies of the
+ * same rule; had they drifted, the countdown would have been priced for a
+ * different job than the one the player actually has to finish.
+ *
+ * On a rectangle this is the plain 8-neighborhood and is deliberately NOT
+ * wall-aware, preserved verbatim: a plate demands every coordinate neighbor,
+ * walls or not. That is a real asymmetry with the estimator's DEDUCTION and
+ * CASCADE loops, which do respect walls — but it is coherent rather than a
+ * bug. The plate states what must end up revealed; walls constrain the
+ * reasoning and the flood that get you there. A cell severed by a wall is
+ * still reachable from its own side, so the demand stays satisfiable.
+ *
+ * On an explicit topology the distinction dissolves, since a severed link is
+ * simply absent from the edge list, and the plate reads the cells it actually
+ * touches.
+ *
+ * @param {Board} board
+ * @param {number} rows
+ * @param {number} cols
+ * @param {number} r
+ * @param {number} c
+ * @returns {number[]} flat indices
+ */
+export function plateDisarmCells(board, rows, cols, r, c) {
+  if (board._cellNeighbors) return board._cellNeighbors[r * cols + c];
+
+  const out = [];
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      if (dr === 0 && dc === 0) continue;
+      const nr = r + dr, nc = c + dc;
+      if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+      out.push(nr * cols + nc);
+    }
+  }
+  return out;
+}
+
+/**
  * The cells a SONAR reading covers — everything within two steps.
  *
  * ONE definition, consumed by both the display layer (recomputeDisplayedMines

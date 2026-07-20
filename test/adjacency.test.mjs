@@ -101,8 +101,9 @@ test('recalcAllAdjacency is wall-aware across the whole board (concrete, hand-ch
 // between them is a silent no-guess hole — the certifier would deduce from a
 // premise the board never displayed — so they now read one definition.
 
-const { sonarScanCells, compassRayCells, defineCellNeighbors, wallKey } =
+const { sonarScanCells, compassRayCells, defineCellNeighbors, wallKey, plateDisarmCells } =
   await import('../src/logic/adjacency.js');
+const { estimatePlateMovesToDisarm } = await import('../src/logic/boardSolver.js');
 const { buildTiling488 } = await import('./fixtures/tiling488.mjs');
 const { recomputeDisplayedMines } = await import('../src/logic/gimmicks.js');
 const { buildStaticGimmickConstraints, buildNeighborCache } =
@@ -345,6 +346,75 @@ test('REGRESSION: locked placement on a tiling ignores the CONTAINER border', ()
   assert.ok(placedAnywhere > 0, 'the fixture must place locked cells at all');
   assert.ok(placedOnBorder > 0,
     'a tiling cell sitting on the container border must be eligible for a lock');
+});
+
+// ── Pressure plates (Coastline) ───────────────────────────────────────
+//
+// The plate's demand region and the par estimator's target set were two copies
+// of one rule. Drift between them prices the countdown for a different job
+// than the player actually has to finish, which is a mis-timed board rather
+// than a broken one — but silently so.
+
+test('a plate demand region on a rectangle is the plain 8-neighborhood', () => {
+  const b = plain(7, 7);
+  assert.equal(plateDisarmCells(b, 7, 7, 3, 3).length, 8);
+  assert.equal(plateDisarmCells(b, 7, 7, 0, 0).length, 3, 'a corner has three');
+});
+
+test('a plate demand region deliberately IGNORES walls on a rectangle', () => {
+  // The asymmetry with the estimator's deduction and cascade loops, which DO
+  // respect walls. It is coherent rather than a bug: the plate states what must
+  // end up revealed, walls constrain the reasoning that gets you there, and a
+  // severed cell is still reachable from its own side. Pinned because a
+  // well-meaning refactor would "fix" it and quietly re-time every plate.
+  const b = plain(7, 7);
+  b._wallEdges = new Set([wallKey(3, 3, 3, 4)]);
+  assert.equal(plateDisarmCells(b, 7, 7, 3, 3).length, 8,
+    'the walled neighbor is still demanded');
+  assert.ok(plateDisarmCells(b, 7, 7, 3, 3).includes(3 * 7 + 4));
+});
+
+test('REGRESSION: a plate on a tiling demands the cells it actually touches', () => {
+  const { board, topology } = buildFixtureBoard();
+  const { rows, cols } = FIXTURE;
+  const target = topology.octIndex(3, 3);
+
+  const got = plateDisarmCells(board, rows, cols, Math.floor(target / cols), target % cols);
+  assert.deepEqual([...got].sort((x, y) => x - y),
+    [...topology.adj[target]].sort((x, y) => x - y));
+
+  // And it genuinely differs from the container reading, or this proves nothing.
+  const rectangular = buildFixtureBoard({ topology: 'rectangular' }).board;
+  const viaContainer = plateDisarmCells(rectangular, rows, cols,
+    Math.floor(target / cols), target % cols);
+  assert.notDeepEqual([...got].sort((x, y) => x - y),
+    [...viaContainer].sort((x, y) => x - y));
+});
+
+test('REGRESSION: the plate price is estimated for the region the game polls', () => {
+  // The estimator's target set and the live disarm condition must agree. If
+  // the estimator counted a different set, the countdown would be priced for
+  // work the player is not being asked to do.
+  const { board, topology } = buildFixtureBoard();
+  const { rows, cols } = FIXTURE;
+  recalcAllAdjacency(board);
+
+  const target = topology.octIndex(3, 3);
+  const pr = Math.floor(target / cols), pc = target % cols;
+
+  // Fogged: every non-mine neighbor is outstanding, so the estimate must have
+  // real work in it.
+  const est = estimatePlateMovesToDisarm(board, pr, pc);
+  assert.ok(est.moves + est.unsolved > 0, 'a fogged plate must cost something');
+
+  // Reveal exactly the topological neighbors and the work drops to nothing.
+  for (const ni of topology.adj[target]) {
+    const n = cellOf(board, cols, ni);
+    if (!n.isMine) n.isRevealed = true;
+  }
+  const after = estimatePlateMovesToDisarm(board, pr, pc);
+  assert.deepEqual(after, { moves: 0, steps: 0, unsolved: 0 },
+    'revealing the true neighbors must leave nothing to price');
 });
 
 test('REGRESSION: every mirror pair on a tiling is genuinely adjacent', () => {
