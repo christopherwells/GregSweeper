@@ -210,3 +210,61 @@ test('missing live week (date helper unavailable) is never a rollover', () => {
   assert.equal(isWeeklyAttemptCacheStale(WEEK, ''), false);
   assert.equal(isWeeklyAttemptCacheStale(WEEK, null), false);
 });
+
+// ── Explicit topology (Coastline tiling saves) ─────────
+//
+// The save snapshot is JSON, and JSON.stringify drops properties stamped on
+// the board ARRAY — which is why wallEdges rides as its own top-level field.
+// _cellNeighbors had no such field, so a tiling game saved and resumed came
+// back RECTANGULAR mid-play: the board silently changes shape under the
+// player and the adjacency it was certified under is gone (found in the
+// Coastline Phase 1 adversarial review, 2026-07-19).
+
+// A tiny but real 4.8.8 patch: 4 octagons in a square, 1 interstitial square
+// cell touching all four. Indices 0-3 octagons, 4 the square.
+const TILING_5 = [
+  [1, 2, 4],
+  [0, 3, 4],
+  [0, 3, 4],
+  [1, 2, 4],
+  [0, 1, 2, 3],
+];
+
+function tilingSave(overrides = {}) {
+  return dailySave({ rows: 5, cols: 1, board: mkBoard(5, 1), cellNeighbors: TILING_5, ...overrides });
+}
+
+test('a save carrying a valid explicit topology resumes', () => {
+  assert.equal(isSaveResumable(tilingSave(), ctx()), true);
+});
+
+test('REGRESSION: a save whose topology is TRUNCATED never resumes', () => {
+  // The shape a partial write or a quota-clipped save leaves behind.
+  // Restoring it would hand the player a board whose adjacency disagrees
+  // with the one it was certified under — the no-guess promise breaking
+  // silently rather than loudly.
+  assert.equal(isSaveResumable(tilingSave({ cellNeighbors: TILING_5.slice(0, 3) }), ctx()), false);
+});
+
+test('REGRESSION: a save whose topology is ASYMMETRIC never resumes', () => {
+  // One direction severed: 0 still lists 1, but 1 no longer lists 0. A board
+  // like this solves happily for the certifier and is unsolvable in the hand,
+  // because one cell's clue counts a mine the mine's own neighborhood does not.
+  const broken = TILING_5.map(l => l.slice());
+  broken[1] = broken[1].filter(x => x !== 0);
+  assert.equal(isSaveResumable(tilingSave({ cellNeighbors: broken }), ctx()), false);
+});
+
+test('a save whose topology names an out-of-range cell never resumes', () => {
+  const broken = TILING_5.map(l => l.slice());
+  broken[0] = [...broken[0], 99];
+  assert.equal(isSaveResumable(tilingSave({ cellNeighbors: broken }), ctx()), false);
+});
+
+test('ordinary rectangular saves carry no topology and are unaffected', () => {
+  // The field is absent on every board shipped today; its absence must never
+  // be read as a corrupt topology.
+  assert.equal(isSaveResumable(dailySave(), ctx()), true);
+  assert.equal(isSaveResumable(dailySave({ cellNeighbors: null }), ctx()), true);
+  assert.equal(isSaveResumable(dailySave({ cellNeighbors: undefined }), ctx()), true);
+});

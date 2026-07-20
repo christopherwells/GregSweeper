@@ -8,7 +8,14 @@
 //   C. Advanced solver (Gauss elimination + tank/partition enumeration)
 
 import { solveConstraints } from './constraintSolver.js';
-import { hasWallBetween, hasDisplayBlockingGimmick } from './gimmicks.js';
+import { hasDisplayBlockingGimmick } from './gimmicks.js';
+import { hasWallBetween, buildNeighborCache, sonarScanCells, compassRayCells, plateDisarmCells, cellAt } from './adjacency.js';
+
+// Re-exported for the many modules that reach for the solver's neighbor lists
+// (patternNames, proofClassify, minimalProof, cruxExtract, lexicon, …). The
+// implementation now lives in adjacency.js so gimmicks.js can share it without
+// importing the solver.
+export { buildNeighborCache };
 
 // Sentinel: cell provides no usable number info to the solver
 const UNKNOWN = 255;
@@ -45,34 +52,6 @@ function isPureLiar(cell, stripGimmicks) {
   return cell.isLiar
     && !cell.isMystery && !cell.isSonar && !cell.isCompass
     && !cell.isWormhole && !cell.mirrorPair;
-}
-
-/**
- * Pre-compute wall-aware neighbor lists for every cell.
- * Reuse across multiple isBoardSolvable() calls on the same board
- * to avoid redundant O(rows*cols*8) computation.
- */
-export function buildNeighborCache(board, rows, cols) {
-  const wallEdges = board._wallEdges || null;
-  const cache = new Array(rows * cols);
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const nbrs = [];
-      for (let dr = -1; dr <= 1; dr++) {
-        for (let dc = -1; dc <= 1; dc++) {
-          if (dr === 0 && dc === 0) continue;
-          const nr = r + dr;
-          const nc = c + dc;
-          if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
-            if (wallEdges && hasWallBetween(wallEdges, r, c, nr, nc)) continue;
-            nbrs.push(nr * cols + nc);
-          }
-        }
-      }
-      cache[r * cols + c] = nbrs;
-    }
-  }
-  return cache;
 }
 
 /**
@@ -727,26 +706,13 @@ export function buildStaticGimmickConstraints(board, rows, cols, neighborCache, 
       if (cell.isLiar) continue;
 
       if (cell.isSonar && !skipSonar) {
-        const cells = [];
-        for (let dr = -2; dr <= 2; dr++) {
-          for (let dc = -2; dc <= 2; dc++) {
-            if (dr === 0 && dc === 0) continue;
-            const nr = r + dr, nc = c + dc;
-            if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
-            if (Math.abs(dr) <= 1 && Math.abs(dc) <= 1 && wallEdges && hasWallBetween(wallEdges, r, c, nr, nc)) continue;
-            cells.push(nr * cols + nc);
-          }
-        }
+        // Shared with recomputeDisplayedMines: the certifier must reason about
+        // exactly the region whose count the player is shown, or it proves from
+        // a premise the board never stated.
+        const cells = sonarScanCells(board, rows, cols, r, c);
         if (cells.length > 0) out.push({ cells, expected: cell.displayedMines, origin: idx(r, c) });
       } else if (cell.isCompass && cell.compassDir && !skipCompass) {
-        const cells = [];
-        let nr = r + cell.compassDir.dr;
-        let nc = c + cell.compassDir.dc;
-        while (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
-          cells.push(nr * cols + nc);
-          nr += cell.compassDir.dr;
-          nc += cell.compassDir.dc;
-        }
+        const cells = compassRayCells(board, rows, cols, r, c, cell.compassDir);
         if (cells.length > 0) out.push({ cells, expected: cell.displayedMines, origin: idx(r, c) });
       } else if (cell.isWormhole && cell.wormholePair && !skipWormhole) {
         const myIdx = idx(r, c);
@@ -1062,14 +1028,14 @@ export function detectWrongFlags(board) {
 
 // ── Game-play reveal / chord functions ──────────────────────
 
-export function floodFillReveal(board, startRow, startCol) {
+export function floodFillReveal(board, startRow, startCol, preNeighborCache) {
   const rows = board.length;
   const cols = board[0].length;
-  const wallEdges = board._wallEdges || null;
+  const neighborCache = preNeighborCache || buildNeighborCache(board, rows, cols);
   const revealed = [];
   const visited = new Set();
   const queue = [{ row: startRow, col: startCol, distance: 0 }];
-  visited.add(`${startRow},${startCol}`);
+  visited.add(startRow * cols + startCol);
 
   while (queue.length > 0) {
     const { row, col, distance } = queue.shift();
@@ -1084,20 +1050,15 @@ export function floodFillReveal(board, startRow, startCol) {
     // Cascade on displayed value (mirror cells show swapped numbers)
     const effectiveMines = cell.displayedMines != null ? cell.displayedMines : cell.adjacentMines;
     if (effectiveMines === 0) {
-      for (let dr = -1; dr <= 1; dr++) {
-        for (let dc = -1; dc <= 1; dc++) {
-          if (dr === 0 && dc === 0) continue;
-          const nr = row + dr;
-          const nc = col + dc;
-          // Don't propagate across wall edges
-          if (wallEdges && hasWallBetween(wallEdges, row, col, nr, nc)) continue;
-          const key = `${nr},${nc}`;
-          if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && !visited.has(key)) {
-            visited.add(key);
-            if (!board[nr][nc].isRevealed && !board[nr][nc].isFlagged) {
-              queue.push({ row: nr, col: nc, distance: distance + 1 });
-            }
-          }
+      // Neighbor lists already exclude wall-severed edges, so the cascade
+      // stops at a wall without consulting one.
+      for (const ni of neighborCache[row * cols + col]) {
+        if (visited.has(ni)) continue;
+        visited.add(ni);
+        const nr = (ni / cols) | 0;
+        const nc = ni % cols;
+        if (!board[nr][nc].isRevealed && !board[nr][nc].isFlagged) {
+          queue.push({ row: nr, col: nc, distance: distance + 1 });
         }
       }
     }
@@ -1111,19 +1072,17 @@ export function floodFillReveal(board, startRow, startCol) {
 // snapshot of the current board state without mutating the real board.
 export function estimatePlateMovesToDisarm(board, plateRow, plateCol) {
   const rows = board.length, cols = board[0].length;
-  const wallEdges = board._wallEdges || null;
+  // Deduction and cascade below walk the board's real adjacency (walls sever
+  // it); the plate's own demand region deliberately does not. Both read a
+  // shared definition, so neither can drift from the live game.
+  const nbrCache = buildNeighborCache(board, rows, cols);
 
-  // Identify the safe neighbors we need revealed
+  // Identify the safe neighbors we need revealed — the same set the live
+  // checkPlateDisarmed polls, so the countdown is priced for the actual job.
   const targets = new Set();
-  for (let dr = -1; dr <= 1; dr++) {
-    for (let dc = -1; dc <= 1; dc++) {
-      if (dr === 0 && dc === 0) continue;
-      const nr = plateRow + dr, nc = plateCol + dc;
-      if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
-        const adj = board[nr][nc];
-        if (!adj.isMine && !adj.isRevealed) targets.add(`${nr},${nc}`);
-      }
-    }
+  for (const ni of plateDisarmCells(board, rows, cols, plateRow, plateCol)) {
+    const adj = cellAt(board, cols, ni);
+    if (!adj.isMine && !adj.isRevealed) targets.add(`${adj.row},${adj.col}`);
   }
   if (targets.size === 0) return { moves: 0, steps: 0, unsolved: 0 };
 
@@ -1168,16 +1127,11 @@ export function estimatePlateMovesToDisarm(board, plateRow, plateCol) {
 
       let fCount = 0;
       const unknowns = [];
-      for (let dr = -1; dr <= 1; dr++) {
-        for (let dc = -1; dc <= 1; dc++) {
-          if (dr === 0 && dc === 0) continue;
-          const nr = r + dr, nc = c + dc;
-          if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
-          if (wallEdges && hasWallBetween(wallEdges, r, c, nr, nc)) continue;
-          const nk = `${nr},${nc}`;
-          if (flagged.has(nk)) fCount++;
-          else if (!revealed.has(nk)) unknowns.push(nk);
-        }
+      for (const ni of nbrCache[r * cols + c]) {
+        const n = cellAt(board, cols, ni);
+        const nk = `${n.row},${n.col}`;
+        if (flagged.has(nk)) fCount++;
+        else if (!revealed.has(nk)) unknowns.push(nk);
       }
 
       if (fCount === adj && unknowns.length > 0) {
@@ -1207,20 +1161,15 @@ export function estimatePlateMovesToDisarm(board, plateRow, plateCol) {
         const queue = [[r, c]];
         while (queue.length > 0) {
           const [cr, cc] = queue.shift();
-          for (let dr = -1; dr <= 1; dr++) {
-            for (let dc = -1; dc <= 1; dc++) {
-              if (dr === 0 && dc === 0) continue;
-              const nr = cr + dr, nc = cc + dc;
-              if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
-              if (wallEdges && hasWallBetween(wallEdges, cr, cc, nr, nc)) continue;
-              const nk = `${nr},${nc}`;
-              if (revealed.has(nk) || flagged.has(nk)) continue;
-              if (board[nr][nc].isMine) continue;
-              revealed.add(nk);
-              remaining.delete(nk);
-              batchMoves++;
-              if (getAdj(nr, nc) === 0) queue.push([nr, nc]);
-            }
+          for (const ni of nbrCache[cr * cols + cc]) {
+            const n = cellAt(board, cols, ni);
+            const nk = `${n.row},${n.col}`;
+            if (revealed.has(nk) || flagged.has(nk)) continue;
+            if (n.isMine) continue;
+            revealed.add(nk);
+            remaining.delete(nk);
+            batchMoves++;
+            if (getAdj(n.row, n.col) === 0) queue.push([n.row, n.col]);
           }
         }
       }
@@ -1263,19 +1212,18 @@ export function revealAllMines(board) {
   return mines;
 }
 
-export function countAdjacentFlags(board, row, col) {
+// NOTE (2026-07-19): this has NO callers anywhere in the repo, and routing it
+// through the topology deliberately changed its semantics from wall-BLIND to
+// wall-aware. That resolves a real disagreement — chordReveal has always
+// counted its own adjacent flags wall-aware, so the two would have disagreed
+// on any walled board had this ever been wired up. Flagged for deletion.
+export function countAdjacentFlags(board, row, col, preNeighborCache) {
   const rows = board.length;
   const cols = board[0].length;
+  const nbrs = (preNeighborCache || buildNeighborCache(board, rows, cols))[row * cols + col];
   let count = 0;
-  for (let dr = -1; dr <= 1; dr++) {
-    for (let dc = -1; dc <= 1; dc++) {
-      if (dr === 0 && dc === 0) continue;
-      const nr = row + dr;
-      const nc = col + dc;
-      if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && board[nr][nc].isFlagged) {
-        count++;
-      }
-    }
+  for (const ni of nbrs) {
+    if (board[(ni / cols) | 0][ni % cols].isFlagged) count++;
   }
   return count;
 }
@@ -1294,9 +1242,8 @@ export function chordReveal(board, row, col) {
   // base-value set recomputeDisplayedMines (gimmicks.js) treats specially.
   if (cell.isLiar || cell.isMystery || cell.isSonar || cell.isCompass || cell.isWormhole || cell.mirrorPair) return [];
 
-  const wallEdges = board._wallEdges || null;
-
-  // Count adjacent flags (respecting wall edges). Strike cells —
+  // Count adjacent flags (through the board's topology, so wall-severed
+  // neighbors are excluded). Strike cells —
   // mines the player previously hit in daily/weekly — count as flags
   // too: the player has visually confirmed the mine is there, the
   // bomb-hit handler leaves the cell as `isMine: true` so adjacent
@@ -1307,15 +1254,11 @@ export function chordReveal(board, row, col) {
   let flagCount = 0;
   const rows = board.length;
   const cols = board[0].length;
-  for (let dr = -1; dr <= 1; dr++) {
-    for (let dc = -1; dc <= 1; dc++) {
-      if (dr === 0 && dc === 0) continue;
-      const nr = row + dr, nc = col + dc;
-      if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
-        if (wallEdges && hasWallBetween(wallEdges, row, col, nr, nc)) continue;
-        if (board[nr][nc].isFlagged || board[nr][nc].isStrike) flagCount++;
-      }
-    }
+  const neighborCache = buildNeighborCache(board, rows, cols);
+  const nbrs = neighborCache[row * cols + col];
+  for (const ni of nbrs) {
+    const n = board[(ni / cols) | 0][ni % cols];
+    if (n.isFlagged || n.isStrike) flagCount++;
   }
 
   if (flagCount !== effectiveCount) return [];
@@ -1323,30 +1266,23 @@ export function chordReveal(board, row, col) {
   const allRevealed = [];
   let hitMine = false;
 
-  for (let dr = -1; dr <= 1; dr++) {
-    for (let dc = -1; dc <= 1; dc++) {
-      if (dr === 0 && dc === 0) continue;
-      const nr = row + dr;
-      const nc = col + dc;
-      if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
-        // Don't chord across wall edges
-        if (wallEdges && hasWallBetween(wallEdges, row, col, nr, nc)) continue;
-        const neighbor = board[nr][nc];
-        // Don't chord-reveal locked cells (must unlock first)
-        if (!neighbor.isRevealed && !neighbor.isFlagged && !neighbor.isLocked) {
-          if (neighbor.isMine) {
-            hitMine = true;
-            neighbor.isRevealed = true;
-            allRevealed.push(neighbor);
-          } else if ((neighbor.displayedMines != null ? neighbor.displayedMines : neighbor.adjacentMines) === 0) {
-            const filled = floodFillReveal(board, nr, nc);
-            allRevealed.push(...filled);
-          } else {
-            neighbor.isRevealed = true;
-            neighbor.revealAnimDelay = 0;
-            allRevealed.push(neighbor);
-          }
-        }
+  for (const ni of nbrs) {
+    const nr = (ni / cols) | 0;
+    const nc = ni % cols;
+    const neighbor = board[nr][nc];
+    // Don't chord-reveal locked cells (must unlock first)
+    if (!neighbor.isRevealed && !neighbor.isFlagged && !neighbor.isLocked) {
+      if (neighbor.isMine) {
+        hitMine = true;
+        neighbor.isRevealed = true;
+        allRevealed.push(neighbor);
+      } else if ((neighbor.displayedMines != null ? neighbor.displayedMines : neighbor.adjacentMines) === 0) {
+        const filled = floodFillReveal(board, nr, nc, neighborCache);
+        allRevealed.push(...filled);
+      } else {
+        neighbor.isRevealed = true;
+        neighbor.revealAnimDelay = 0;
+        allRevealed.push(neighbor);
       }
     }
   }

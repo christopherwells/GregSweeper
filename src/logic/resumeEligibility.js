@@ -15,6 +15,8 @@
 // how yesterday's unfinished daily once resurrected as "today's"
 // puzzle. Pure functions — node-tested in test/resumeEligibility.test.mjs.
 
+import { isValidCellNeighbors } from './adjacency.js';
+
 /**
  * Decide whether a persisted save may be resumed.
  *
@@ -84,6 +86,16 @@ export function isSaveResumable(gs, ctx) {
   if (Array.isArray(gs.board) && gs.board[0] && gs.board[0][0]) {
     const c0 = gs.board[0][0];
     if (typeof c0.row !== 'number' || typeof c0.col !== 'number') return false;
+  }
+
+  // A save carrying an explicit topology (a Coastline tiling board) is only
+  // resumable if that topology still validates — right length, in range,
+  // symmetric. A truncated or corrupt edge list would restore a board whose
+  // adjacency disagrees with the one it was certified under, which breaks the
+  // no-guess promise silently rather than loudly. Drop it and let newGame()
+  // rebuild. Ordinary rectangular saves carry no such field and skip this.
+  if (gs.cellNeighbors != null && !isValidCellNeighbors(gs.rows, gs.cols, gs.cellNeighbors)) {
+    return false;
   }
 
   return true;

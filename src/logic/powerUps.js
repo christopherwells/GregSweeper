@@ -1,4 +1,5 @@
 import { recomputeDisplayedMines, recalcAllAdjacency, countAdjacentMines } from './gimmicks.js';
+import { buildNeighborCache } from './adjacency.js';
 import { findDeducibleFrontier } from './boardSolver.js';
 
 export function findSafeCell(board) {
@@ -71,12 +72,16 @@ export function shieldDefuse(board, row, col) {
 function recalcAreaAdjacency(board, centerRow, centerCol) {
   const rows = board.length;
   const cols = board[0].length;
+  // One cache for the whole area: countAdjacentMines derives the board's
+  // neighbor lists when it isn't handed any, so calling it bare in a loop
+  // would rebuild them on every iteration.
+  const nbrCache = buildNeighborCache(board, rows, cols);
   for (let dr = -1; dr <= 1; dr++) {
     for (let dc = -1; dc <= 1; dc++) {
       const nr = centerRow + dr;
       const nc = centerCol + dc;
       if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
-      board[nr][nc].adjacentMines = board[nr][nc].isMine ? 0 : countAdjacentMines(board, nr, nc);
+      board[nr][nc].adjacentMines = board[nr][nc].isMine ? 0 : countAdjacentMines(board, nr, nc, nbrCache);
     }
   }
 }

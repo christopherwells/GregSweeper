@@ -15,6 +15,7 @@
   },
   "include": [
     "types/globals.d.ts",
+    "src/logic/adjacency.js",
     "src/logic/archiveEligibility.js",
     "src/logic/scoreRowMatch.js",
     "src/logic/resumeEligibility.js",

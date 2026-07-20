@@ -5,6 +5,7 @@ import {
 import { getLocalDateString, getWeekStart, getWeekDayIndex } from '../logic/seededRandom.js';
 import { isSaveResumable } from '../logic/resumeEligibility.js';
 import { recomputeDisplayedMines } from '../logic/gimmicks.js';
+import { defineCellNeighbors } from '../logic/adjacency.js';
 import {
   adjustCellSize, renderBoard, updateAllCells, updateZoom, renderWallOverlays,
 } from '../ui/boardRenderer.js';
@@ -107,6 +108,14 @@ export function persistGameState() {
     // reports the realized worm dose, same contract as bombHitEvents.
     wormEvents: state.wormEvents || [],
     wallEdges: state.board._wallEdges ? Array.from(state.board._wallEdges) : [],
+    // An explicit topology (Coastline tiling boards) rides the save the same
+    // way wallEdges does, and for the same reason: the snapshot is JSON, and
+    // JSON.stringify drops properties stamped on the board ARRAY. Without
+    // this a tiling game saved and resumed comes back RECTANGULAR mid-play —
+    // the board silently changes shape under the player, and the adjacency it
+    // was certified under is gone. Null on every ordinary board, which is
+    // every board shipped today.
+    cellNeighbors: state.board._cellNeighbors || null,
     gatedCert: !!state.board._gatedCert,
     firstClick: state.firstClick,
     savedStatus: state.status,
@@ -198,6 +207,15 @@ export function tryResumeGame(mode) {
   // produce zero edges in some random rolls.
   if (gs.wallEdges) {
     state.board._wallEdges = new Set(gs.wallEdges);
+  }
+
+  // Restore an explicit topology before anything reads the board. Every
+  // adjacency question downstream — the flood, the chord, the mine counters,
+  // the certifier — resolves through this, so it has to be in place first.
+  // isSaveResumable already refused a save whose topology failed validation,
+  // so this cannot silently stamp a corrupt one.
+  if (gs.cellNeighbors) {
+    defineCellNeighbors(state.board, gs.rows, gs.cols, gs.cellNeighbors);
   }
 
   // Restore the certification-contract flag (boardSolver reads it as its
