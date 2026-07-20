@@ -239,3 +239,126 @@ test('the sonar region the player SEES is the region the certifier PROVES from',
   assert.equal(b[3][3].displayedMines, trueMines, 'the shown number counts that region');
   assert.equal(sonarC.expected, trueMines, 'the certifier expects the same number');
 });
+
+// ── Locked + mirror placement follow the topology (Coastline) ─────────
+//
+// applyLocked, isLockedCell and applyMirrorPairs each walked the 8
+// neighborhood by coordinate. On a tiling that polls cells the board does not
+// touch, so a locked cell unlocks early or never, and a "mirror pair" can be
+// two cells with no shared edge. All three now read the board's own topology.
+//
+// isLockedCell in particular must agree with the certifier's unlock model
+// (canUnlock in boardSolver.js, which has always read the neighbor cache): if
+// they disagree, the solver certifies an unlock order the live game refuses.
+
+const { isLockedCell, applyGimmicks } = await import('../src/logic/gimmicks.js');
+const { buildFixtureBoard, FIXTURE } = await import('./fixtures/tiling488.mjs');
+const { createDailyRNG } = await import('../src/logic/seededRandom.js');
+
+const cellOf = (board, cols, i) => board[Math.floor(i / cols)][i % cols];
+
+test('REGRESSION: a locked cell on a tiling polls the cells it actually touches', () => {
+  const { board, topology } = buildFixtureBoard();
+  const { cols } = FIXTURE;
+  recalcAllAdjacency(board);
+
+  const target = topology.octIndex(3, 3);
+  const tr = Math.floor(target / cols), tc = target % cols;
+  board[tr][tc].isLocked = true;
+
+  // Reveal every cell the TOPOLOGY says touches it (skipping mines, which
+  // never block an unlock). That must be sufficient to unlock.
+  for (const ni of topology.adj[target]) {
+    const n = cellOf(board, cols, ni);
+    if (!n.isMine) n.isRevealed = true;
+  }
+  assert.equal(isLockedCell(board, tr, tc), false,
+    'revealing its true neighbors must unlock it');
+
+  // Re-fog one genuine topological neighbor: it must lock again.
+  const someNbr = topology.adj[target].find((ni) => !cellOf(board, cols, ni).isMine);
+  cellOf(board, cols, someNbr).isRevealed = false;
+  assert.equal(isLockedCell(board, tr, tc), true,
+    'a hidden true neighbor must keep it locked');
+});
+
+test('REGRESSION: a container neighbor that is NOT a topological one cannot hold a lock shut', () => {
+  // The sharp case. In an 8x9 container the coordinate 8-neighborhood of a
+  // cell and its 4.8.8 neighborhood genuinely disagree; the old reader polled
+  // the former. The test asserts they disagree before relying on it, so it
+  // cannot pass vacuously.
+  const { board, topology } = buildFixtureBoard();
+  const { rows, cols } = FIXTURE;
+  recalcAllAdjacency(board);
+
+  const target = topology.octIndex(3, 3);
+  const tr = Math.floor(target / cols), tc = target % cols;
+  board[tr][tc].isLocked = true;
+
+  const containerNbrs = [];
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      if (!dr && !dc) continue;
+      const nr = tr + dr, nc = tc + dc;
+      if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+      containerNbrs.push(nr * cols + nc);
+    }
+  }
+  const strangers = containerNbrs.filter((i) => !topology.adj[target].includes(i));
+  assert.ok(strangers.length > 0,
+    'the container and the tiling must genuinely disagree here, or this proves nothing');
+
+  // Reveal the true neighbors only; every stranger stays fogged.
+  for (const ni of topology.adj[target]) {
+    const n = cellOf(board, cols, ni);
+    if (!n.isMine) n.isRevealed = true;
+  }
+  assert.equal(isLockedCell(board, tr, tc), false,
+    'fogged non-neighbors must not hold the lock shut');
+});
+
+test('REGRESSION: locked placement on a tiling ignores the CONTAINER border', () => {
+  // The interior-only candidate rule is a statement about a rectangle. Left in
+  // place on a topology board it filters by the container's border, which is
+  // an arbitrary set of cells with respect to the graph — perfectly ordinary
+  // tiling cells become unplaceable for no reason the board can express.
+  //
+  // Sweeping seeds rather than asserting on one: placement is random, so the
+  // honest claim is that border cells are ELIGIBLE, which shows up as some
+  // seed eventually placing one there. Under the old rule this is unreachable,
+  // no matter how many seeds are tried.
+  const { rows, cols } = FIXTURE;
+  const onBorder = (r, c) => r === 0 || r === rows - 1 || c === 0 || c === cols - 1;
+
+  let placedAnywhere = 0;
+  let placedOnBorder = 0;
+  for (let s = 0; s < 40; s++) {
+    const { board } = buildFixtureBoard();
+    recalcAllAdjacency(board);
+    const applied = applyGimmicks(board, 75, ['locked'], createDailyRNG(`coastline:locked:${s}`));
+    for (const p of applied.locked || []) {
+      placedAnywhere++;
+      if (onBorder(p.row, p.col)) placedOnBorder++;
+    }
+  }
+
+  assert.ok(placedAnywhere > 0, 'the fixture must place locked cells at all');
+  assert.ok(placedOnBorder > 0,
+    'a tiling cell sitting on the container border must be eligible for a lock');
+});
+
+test('REGRESSION: every mirror pair on a tiling is genuinely adjacent', () => {
+  const { board, topology } = buildFixtureBoard();
+  const { cols } = FIXTURE;
+  recalcAllAdjacency(board);
+  const applied = applyGimmicks(board, 75, ['mirror'], createDailyRNG('coastline:mirror'));
+  assert.ok(applied.mirror && applied.mirror.length > 0, 'the fixture must produce pairs');
+
+  for (const p of applied.mirror) {
+    const ai = p.a.row * cols + p.a.col;
+    const bi = p.b.row * cols + p.b.col;
+    assert.ok(topology.adj[ai].includes(bi),
+      `mirror pair ${ai}/${bi} must share an edge in the tiling, not just in the container`);
+    assert.ok(topology.adj[bi].includes(ai), 'and symmetrically');
+  }
+});

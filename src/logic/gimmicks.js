@@ -5,7 +5,7 @@
 import { safeGet, safeSet, safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js';
 import { MAX_LEVEL } from './difficulty.js';
 import { WORM_MAX_PER_BOARD } from './worms.js';
-import { wallKey, hasWallBetween, buildNeighborCache, sonarScanCells, compassRayCells } from './adjacency.js';
+import { wallKey, hasWallBetween, buildNeighborCache, sonarScanCells, compassRayCells, cellAt } from './adjacency.js';
 
 // Reset all gimmick-related properties on a single cell.
 // Used when retrying gimmick placement to avoid stale markers.
@@ -467,29 +467,30 @@ function applyLocked(board, rows, cols, count, rng) {
   // every safe neighbor lives behind a wall), the cell can never unlock —
   // dead end for the player. Pre-filter out those placements so the
   // generator never ships an undeadlockable locked cell.
-  const wallEdges = board._wallEdges || null;
+  //
+  // Walls are applied before locked in ORDER, so the cache is final here.
+  // buildNeighborCache walks dr/dc in the same order the hand-rolled loop
+  // did, so candidates land in the same sequence and the seeded shuffle
+  // consumes the RNG identically — same board, same seed, as before.
+  const nbrs = buildNeighborCache(board, rows, cols);
+  const explicitTopology = !!board._cellNeighbors;
   const candidates = [];
-  for (let r = 1; r < rows - 1; r++) {
-    for (let c = 1; c < cols - 1; c++) {
-      const cell = board[r][c];
-      // Allow mines AND numbered cells to be locked
-      if (!(cell.isMine || cell.adjacentMines > 0)) continue;
-      // Confirm at least one accessible safe neighbor exists.
-      let hasAccessibleSafe = false;
-      for (let dr = -1; dr <= 1 && !hasAccessibleSafe; dr++) {
-        for (let dc = -1; dc <= 1; dc++) {
-          if (dr === 0 && dc === 0) continue;
-          const nr = r + dr, nc = c + dc;
-          if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
-          const n = board[nr][nc];
-          if (n.isMine) continue;
-          if (wallEdges && hasWallBetween(wallEdges, r, c, nr, nc)) continue;
-          hasAccessibleSafe = true;
-          break;
-        }
-      }
-      if (hasAccessibleSafe) candidates.push(cell);
-    }
+  for (let i = 0; i < rows * cols; i++) {
+    const r = Math.floor(i / cols), c = i % cols;
+    // Rectangular boards keep the interior-only rule verbatim. On an explicit
+    // topology it means nothing: the container's border is an arbitrary set of
+    // cells with respect to the graph (and on a degenerate N x 1 container it
+    // is EVERY cell, so locked would silently place nothing at all). The
+    // accessible-safe-neighbor test below is the constraint that actually
+    // matters, and it applies either way.
+    if (!explicitTopology && (r === 0 || r === rows - 1 || c === 0 || c === cols - 1)) continue;
+    const cell = board[r][c];
+    // Allow mines AND numbered cells to be locked
+    if (!(cell.isMine || cell.adjacentMines > 0)) continue;
+    // Confirm at least one accessible safe neighbor exists. Walls are already
+    // absent from the neighbor list, so only mines need filtering here.
+    if (!nbrs[i].some((ni) => !cellAt(board, cols, ni).isMine)) continue;
+    candidates.push(cell);
   }
   shuffle(candidates, rng);
   const applied = [];
@@ -723,7 +724,10 @@ function applyMirrorPairs(board, rows, cols, pairCount, rng) {
   // Each pair is two adjacent (8-connected) non-mine numbered cells. The
   // pair swaps displayed adjacency: each cell shows the partner's true
   // adjacentMines. Numbers must differ so the swap is actually informative.
-  const wallEdges = board._wallEdges || null;
+  // Same ordering guarantee as applyLocked: the cache walks dr/dc in the order
+  // the hand-rolled partner search did, so partners are collected in the same
+  // sequence and rng() picks the same one.
+  const nbrs = buildNeighborCache(board, rows, cols);
 
   const candidates = [];
   for (let r = 0; r < rows; r++) {
@@ -744,20 +748,16 @@ function applyMirrorPairs(board, rows, cols, pairCount, rng) {
     if (used.has(aKey)) continue;
 
     // Look for an adjacent partner with a different adjacentMines value.
+    // "Adjacent" is the board's own topology, so a mirror pair on a tiling is
+    // two cells that genuinely touch. Walls are already absent from the list.
     const partners = [];
-    for (let dr = -1; dr <= 1; dr++) {
-      for (let dc = -1; dc <= 1; dc++) {
-        if (dr === 0 && dc === 0) continue;
-        const nr = a.row + dr, nc = a.col + dc;
-        if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
-        if (wallEdges && hasWallBetween(wallEdges, a.row, a.col, nr, nc)) continue;
-        const b = board[nr][nc];
-        if (b.isMine || b.adjacentMines <= 0) continue;
-        if (hasBaseValueGimmick(b) || hasDisplayBlockingGimmick(b)) continue;
-        if (used.has(`${nr},${nc}`)) continue;
-        if (b.adjacentMines === a.adjacentMines) continue; // swap would be a no-op
-        partners.push(b);
-      }
+    for (const ni of nbrs[a.row * cols + a.col]) {
+      const b = cellAt(board, cols, ni);
+      if (b.isMine || b.adjacentMines <= 0) continue;
+      if (hasBaseValueGimmick(b) || hasDisplayBlockingGimmick(b)) continue;
+      if (used.has(`${b.row},${b.col}`)) continue;
+      if (b.adjacentMines === a.adjacentMines) continue; // swap would be a no-op
+      partners.push(b);
     }
     if (partners.length === 0) continue;
 
@@ -928,28 +928,28 @@ function applyCompass(board, rows, cols, count, rng) {
 
 // ── Locked Cell Check ──────────────────────────────────
 
-export function isLockedCell(board, row, col) {
+export function isLockedCell(board, row, col, neighborCache) {
   const cell = board[row][col];
   if (!cell.isLocked) return false;
 
   const rows = board.length;
   const cols = board[0].length;
 
-  // Check if all safe neighbors are revealed (mines and wall-edges don't block unlock)
-  const wallEdges = board._wallEdges || null;
-  for (let dr = -1; dr <= 1; dr++) {
-    for (let dc = -1; dc <= 1; dc++) {
-      if (dr === 0 && dc === 0) continue;
-      const nr = row + dr, nc = col + dc;
-      if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
-        // Wall edge between these cells = treat as satisfied
-        if (wallEdges && hasWallBetween(wallEdges, row, col, nr, nc)) continue;
-        const neighbor = board[nr][nc];
-        // Mines and other locked cells don't block unlock
-        // (prevents circular deadlock between adjacent locked cells)
-        if (!neighbor.isRevealed && !neighbor.isMine && !neighbor.isLocked) return true; // Still locked
-      }
-    }
+  // Reads the board's topology, so a locked cell on a tiling polls the cells
+  // it actually touches. This must agree with the certifier's own unlock model
+  // (canUnlock in boardSolver.js, which has always read the neighbor cache) —
+  // if the two disagree, the solver certifies an unlock order the live game
+  // will not perform. A severed wall edge is simply absent from the list,
+  // which is the same "treat as satisfied" the coordinate walk spelled out.
+  //
+  // Pass a cache when calling in a loop; bare it derives the whole board's
+  // lists per call. Both current callers are single-cell click checks.
+  const nbrs = (neighborCache || buildNeighborCache(board, rows, cols))[row * cols + col];
+  for (const ni of nbrs) {
+    const neighbor = cellAt(board, cols, ni);
+    // Mines and other locked cells don't block unlock
+    // (prevents circular deadlock between adjacent locked cells)
+    if (!neighbor.isRevealed && !neighbor.isMine && !neighbor.isLocked) return true; // Still locked
   }
 
   return false; // All safe neighbors revealed — unlocked!
@@ -1000,7 +1000,6 @@ function shuffle(arr, rng) {
 export function recomputeDisplayedMines(board) {
   const rows = board.length;
   const cols = board[0].length;
-  const wallEdges = board._wallEdges || null;
 
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -1014,14 +1013,14 @@ export function recomputeDisplayedMines(board) {
         // this scan cannot drift from the number actually displayed here.
         let count = 0;
         for (const ni of sonarScanCells(board, rows, cols, r, c)) {
-          if (board[Math.floor(ni / cols)][ni % cols].isMine) count++;
+          if (cellAt(board, cols, ni).isMine) count++;
         }
         cell.sonarCount = count;
         base = count;
       } else if (cell.isCompass && cell.compassDir) {
         let count = 0;
         for (const ni of compassRayCells(board, rows, cols, r, c, cell.compassDir)) {
-          if (board[Math.floor(ni / cols)][ni % cols].isMine) count++;
+          if (cellAt(board, cols, ni).isMine) count++;
         }
         cell.compassCount = count;
         base = count;

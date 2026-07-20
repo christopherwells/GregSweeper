@@ -60,6 +60,18 @@
  */
 
 /**
+ * The cell at a flat index. Pure container indexing — says nothing about what
+ * that cell touches, which is the whole point of keeping the two ideas apart.
+ *
+ * @param {Board} board
+ * @param {number} cols
+ * @param {number} i
+ */
+export function cellAt(board, cols, i) {
+  return board[Math.floor(i / cols)][i % cols];
+}
+
+/**
  * The cells a SONAR reading covers — everything within two steps.
  *
  * ONE definition, consumed by both the display layer (recomputeDisplayedMines
