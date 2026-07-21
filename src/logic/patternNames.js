@@ -380,6 +380,18 @@ export function classifyPattern(board, ded, opts = {}) {
     return { name: 'count', family: 'count' };
   }
 
+  // On an explicit topology (a tiling — Coastline) the shape recognizers below
+  // are rectangular geometry: the collinear 1-2-1 / 1-2-2-1 and the L-bend
+  // 1-3-1 read (r+dr, c+dc) through a container whose indices carry no spatial
+  // meaning, and even the topology-sound overlap names ('1-1', '1-2', hole,
+  // triangle) describe a square-grid shape a tiling player never sees. So a
+  // tiling board names only the honest tier — a two-clue 'pair' or an
+  // enumeration 'region' — never a specific shape. Receipts and the crux fire
+  // on any board; the Gym (which requires these shapes) is square-only.
+  if (board._cellNeighbors) {
+    return { name: tier === 1 ? 'pair' : 'region', family: null };
+  }
+
   // Named line geometry takes priority — it is the player's vocabulary
   // and the honest source of truth (the shape is literally on the board),
   // regardless of which tier the engine used to resolve it. Check the

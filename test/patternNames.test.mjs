@@ -30,6 +30,21 @@ function clue(board, r, c, n) {
   board[r][c].adjacentMines = n;
 }
 
+test('Coastline: an explicit topology names only pair/region, never a square-grid shape', () => {
+  // A board carrying _cellNeighbors is a tiling; the rectangular shape names
+  // (1-2-1, 1-3-1, hole, ...) describe geometry it does not have, so the guard
+  // suppresses them and names only the honest tier. Fires on topology alone.
+  const board = [[{}, {}], [{}, {}]];
+  board._cellNeighbors = [[1, 2], [0, 3], [0, 3], [1, 2]]; // symmetric graph
+  const t1 = classifyPattern(board, { row: 0, col: 0, tier: 1, sources: [{ row: 0, col: 1 }] }, { rows: 2, cols: 2 });
+  assert.equal(t1.name, 'pair', 'a tiling tier-1 deduction is a plain pair, not a 1-2-1');
+  const t2 = classifyPattern(board, { row: 0, col: 0, tier: 2, sources: [] }, { rows: 2, cols: 2 });
+  assert.equal(t2.name, 'region', 'a tiling tier-2 deduction is an unnamed region');
+  // Tier 0 still counts honestly (topology-agnostic).
+  const t0 = classifyPattern(board, { row: 0, col: 0, tier: 0, sources: [{ row: 1, col: 0 }] }, { rows: 2, cols: 2 });
+  assert.equal(t0.name, 'count');
+});
+
 test('1-2-1: a wall pattern (clues 1,2,1, hidden front below) is named', () => {
   // Rows 0-1 revealed (the wall + the clue row), row 2 hidden below.
   const board = makeBoard(3, 5);
