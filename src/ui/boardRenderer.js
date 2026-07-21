@@ -3,6 +3,8 @@ import { boardEl, zoomControls, boardScrollWrapper } from './domHelpers.js';
 import { THEME_UNLOCKS } from './themeManager.js';
 import { applyIcon, uiSpriteImgHTML } from './spriteLoader.js';
 import { applyThemeEffects } from './themeEffects.js';
+import { octagonClipPath, DIAMOND_CLIP_PATH, SQ_BOX_FRAC } from '../logic/tilingGeometry.js';
+import { sonarScanCells, compassRayCells } from '../logic/adjacency.js';
 
 // ── Board Rendering ────────────────────────────────────
 
@@ -45,12 +47,39 @@ function _fitCellSize(widthBudget, gap, maxCap) {
   return Math.min(maxCap, Math.max(min, Math.min(widthFit, heightFit)));
 }
 
+// A board declares a non-rectangular topology by carrying per-cell GEOMETRY
+// (_cellPos) — Project Coastline's tiling boards. The renderer keys off the
+// board itself, NOT the game mode, so the same layout path serves a test board
+// today and daily/weekly/challenge tiling boards later.
+function _isTiling() {
+  return !!(state.board && state.board._cellPos);
+}
+
+// Largest octagon PITCH (px) that fits an M×N tiling in both the width and the
+// height budget. The tiling spans N×pitch wide and M×pitch tall; the octagon
+// flat width IS the pitch, so pitch plays the role of --cell-size for font
+// scaling and the legibility clamp. Same [min, maxCap] band as a square cell.
+function _fitTilingPitch(widthBudget, heightBudget, maxCap) {
+  const min = _cellBound('--cell-min-size', 18);
+  const M = state.board._tiling?.M || state.rows;
+  const N = state.board._tiling?.N || state.cols;
+  const pw = Math.floor(widthBudget / N);
+  const ph = Math.floor(heightBudget / M);
+  return Math.min(maxCap, Math.max(min, Math.min(pw, ph)));
+}
+
 export function resizeCells() {
   const container = document.getElementById('board-container');
   if (!container || !state.cols || !state.rows) return;
-  const gap = parseFloat(getComputedStyle(boardEl).gap) || 2;
   const borderPad = 8; // 2px border + 2px padding on each side
   const availableWidth = container.clientWidth - borderPad;
+  if (_isTiling()) {
+    const heightBudget = _boardHeightBudget() - 8;
+    const pitch = _fitTilingPitch(availableWidth, heightBudget, _cellBound('--cell-max-size', 50));
+    document.documentElement.style.setProperty('--cell-size', `${pitch}px`);
+    return;
+  }
+  const gap = parseFloat(getComputedStyle(boardEl).gap) || 2;
   const capped = _fitCellSize(availableWidth, gap, _cellBound('--cell-max-size', 50));
   document.documentElement.style.setProperty('--cell-size', `${capped}px`);
 }
@@ -58,33 +87,46 @@ export function resizeCells() {
 export function renderBoard() {
   boardEl.innerHTML = '';
   resizeCells();
-  boardEl.style.gridTemplateColumns = `repeat(${state.cols}, var(--cell-size))`;
-  boardEl.style.gridTemplateRows = `repeat(${state.rows}, var(--cell-size))`;
 
-  // ARIA grid semantics
-  boardEl.setAttribute('role', 'grid');
-  boardEl.setAttribute('aria-label', 'Minesweeper board');
+  if (_isTiling()) {
+    _renderTilingBoard();
+  } else {
+    // Rectangular CSS grid. Reset any tiling inline layout a prior game set
+    // (the surface swaps between board shapes within one session).
+    boardEl.classList.remove('tiling-board');
+    boardEl.style.display = '';
+    boardEl.style.width = '';
+    boardEl.style.height = '';
+    boardEl.style.boxSizing = '';
+    boardEl.style.padding = '';
+    boardEl.style.gridTemplateColumns = `repeat(${state.cols}, var(--cell-size))`;
+    boardEl.style.gridTemplateRows = `repeat(${state.rows}, var(--cell-size))`;
 
-  const shouldAnimate = state._initialized;
-  for (let r = 0; r < state.rows; r++) {
-    for (let c = 0; c < state.cols; c++) {
-      const cellEl = document.createElement('div');
-      cellEl.className = 'cell unrevealed';
-      cellEl.dataset.row = r;
-      cellEl.dataset.col = c;
-      cellEl.setAttribute('role', 'gridcell');
-      cellEl.setAttribute('aria-rowindex', r + 1);
-      cellEl.setAttribute('aria-colindex', c + 1);
-      cellEl.setAttribute('aria-label', 'Unrevealed cell');
-      // Roving tabindex: focused cell = 0, all others = -1
-      cellEl.tabIndex = (r === state.focusedRow && c === state.focusedCol) ? 0 : -1;
-      if (shouldAnimate) {
-        const delay = (r + c) * 12; // diagonal wave
-        cellEl.classList.add('cascade-in');
-        cellEl.style.animationDelay = `${delay}ms`;
-        setTimeout(() => cellEl.classList.remove('cascade-in'), 300 + delay);
+    // ARIA grid semantics
+    boardEl.setAttribute('role', 'grid');
+    boardEl.setAttribute('aria-label', 'Minesweeper board');
+
+    const shouldAnimate = state._initialized;
+    for (let r = 0; r < state.rows; r++) {
+      for (let c = 0; c < state.cols; c++) {
+        const cellEl = document.createElement('div');
+        cellEl.className = 'cell unrevealed';
+        cellEl.dataset.row = r;
+        cellEl.dataset.col = c;
+        cellEl.setAttribute('role', 'gridcell');
+        cellEl.setAttribute('aria-rowindex', r + 1);
+        cellEl.setAttribute('aria-colindex', c + 1);
+        cellEl.setAttribute('aria-label', 'Unrevealed cell');
+        // Roving tabindex: focused cell = 0, all others = -1
+        cellEl.tabIndex = (r === state.focusedRow && c === state.focusedCol) ? 0 : -1;
+        if (shouldAnimate) {
+          const delay = (r + c) * 12; // diagonal wave
+          cellEl.classList.add('cascade-in');
+          cellEl.style.animationDelay = `${delay}ms`;
+          setTimeout(() => cellEl.classList.remove('cascade-in'), 300 + delay);
+        }
+        boardEl.appendChild(cellEl);
       }
-      boardEl.appendChild(cellEl);
     }
   }
 
@@ -94,6 +136,77 @@ export function renderBoard() {
   // the next theme switch — and so the previous particle loops get torn down
   // rather than firing forever into a detached node.
   applyThemeEffects(document.documentElement.getAttribute('data-theme') || 'classic');
+}
+
+// ── Tiling layout ────────────────────────────────────
+// A non-rectangular (Archimedean tiling) board: cells stay DOM <div>s in
+// flat-index order — so updateCell, getCellElement, setFocusedCell, the click
+// handler (dataset.row/col), and the rect-reading overlays (walls, worms, the
+// start-here label) all keep working unchanged — but they are POSITIONED
+// absolutely from their unit-pitch geometry and shaped with a clip-path
+// (octagon / diamond) instead of flowing in a CSS grid of uniform squares. All
+// per-cell layout is INLINE style, which survives updateCell's className rebuilds.
+function _renderTilingBoard() {
+  const board = state.board;
+  const M = board._tiling?.M || state.rows;
+  const N = board._tiling?.N || state.cols;
+  const P = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cell-size')) || 40;
+
+  boardEl.classList.add('tiling-board');
+  // content-box + no padding so the board's own width IS the tiling's extent
+  // and the edge octagons land exactly inside it (no hairline overflow clip).
+  boardEl.style.display = 'block';
+  boardEl.style.boxSizing = 'content-box';
+  boardEl.style.padding = '0';
+  boardEl.style.gridTemplateColumns = '';
+  boardEl.style.gridTemplateRows = '';
+  boardEl.style.width = (N * P) + 'px';
+  boardEl.style.height = (M * P) + 'px';
+  boardEl.setAttribute('role', 'grid');
+  boardEl.setAttribute('aria-label', 'Minesweeper board');
+
+  const clipOct = octagonClipPath();
+  const shouldAnimate = state._initialized;
+  for (let r = 0; r < state.rows; r++) {
+    for (let c = 0; c < state.cols; c++) {
+      const pos = board._cellPos[r * state.cols + c];
+      const cellEl = document.createElement('div');
+      cellEl.className = 'cell unrevealed';
+      cellEl.dataset.row = r;
+      cellEl.dataset.col = c;
+      cellEl.setAttribute('role', 'gridcell');
+      cellEl.setAttribute('aria-rowindex', r + 1);
+      cellEl.setAttribute('aria-colindex', c + 1);
+      cellEl.setAttribute('aria-label', 'Unrevealed cell');
+      cellEl.tabIndex = (r === state.focusedRow && c === state.focusedCol) ? 0 : -1;
+
+      cellEl.style.position = 'absolute';
+      if (pos && pos.shape === 'sq') {
+        const box = SQ_BOX_FRAC * P;
+        cellEl.style.left = ((pos.cx - SQ_BOX_FRAC / 2) * P) + 'px';
+        cellEl.style.top = ((pos.cy - SQ_BOX_FRAC / 2) * P) + 'px';
+        cellEl.style.width = box + 'px';
+        cellEl.style.height = box + 'px';
+        cellEl.style.clipPath = DIAMOND_CLIP_PATH;
+        cellEl.style.fontSize = (box * 0.5) + 'px';
+      } else if (pos) {
+        cellEl.style.left = ((pos.cx - 0.5) * P) + 'px';
+        cellEl.style.top = ((pos.cy - 0.5) * P) + 'px';
+        cellEl.style.width = P + 'px';
+        cellEl.style.height = P + 'px';
+        cellEl.style.clipPath = clipOct;
+        cellEl.style.fontSize = (P * 0.5) + 'px';
+      }
+
+      if (shouldAnimate) {
+        const delay = (r + c) * 12;
+        cellEl.classList.add('cascade-in');
+        cellEl.style.animationDelay = `${delay}ms`;
+        setTimeout(() => cellEl.classList.remove('cascade-in'), 300 + delay);
+      }
+      boardEl.appendChild(cellEl);
+    }
+  }
 }
 
 // ── Wall Overlay Rendering ──────────────────────────
@@ -106,6 +219,14 @@ export function renderWallOverlays() {
   if (!board) return;
   const oldOverlay = board.querySelector('.wall-overlay-container');
   if (oldOverlay) oldOverlay.remove();
+
+  // Tiling boards sever graph edges (board._tilingWalls, flat index pairs)
+  // instead of the rectangular "r,c-r,c" edge set — draw a bar across the shared
+  // boundary of each severed pair rather than a horizontal/vertical grid line.
+  if (state.board?._tilingWalls && state.board._tilingWalls.length > 0) {
+    _renderTilingWalls(board);
+    return;
+  }
 
   const wallEdges = state.board?._wallEdges;
   if (!wallEdges || wallEdges.size === 0) return;
@@ -175,6 +296,47 @@ export function renderWallOverlays() {
   }
 
   board.appendChild(overlay);
+}
+
+// Draw a wall bar on the TRUE shared edge of each severed pair. Each wall carries
+// the edge's two endpoints in unit-pitch coords (board._tilingWalls, set by
+// applyWallsTiling); the bar lies exactly along that segment, so octagon/octagon
+// walls are axis-aligned and octagon/square walls sit on the real 45° boundary.
+// Continuous walls share endpoints, so the bars connect end to end. Unit coords
+// are anchored to octagon(0,0) = DOM cell 0 (whose box IS the pitch P), so this
+// re-lays correctly on resize / theme refit like the other overlays.
+function _renderTilingWalls(boardParent) {
+  const walls = state.board._tilingWalls;
+  boardParent.style.position = 'relative';
+  const overlay = document.createElement('div');
+  overlay.className = 'wall-overlay-container';
+
+  const ref = boardEl.children[0];
+  if (ref && ref.classList && ref.classList.contains('cell') && walls.length) {
+    const boardRect = boardEl.getBoundingClientRect();
+    const boardX = boardEl.offsetLeft, boardY = boardEl.offsetTop;
+    const r0 = ref.getBoundingClientRect();
+    const P = r0.width; // octagon box = pitch
+    const ox = (r0.left - boardRect.left + boardX) + P / 2; // pixel of unit (0.5, 0.5)
+    const oy = (r0.top - boardRect.top + boardY) + P / 2;
+    const toPx = (x, y) => ({ x: ox + (x - 0.5) * P, y: oy + (y - 0.5) * P });
+
+    const THICK = 4;
+    for (const wl of walls) {
+      const p1 = toPx(wl.x1, wl.y1), p2 = toPx(wl.x2, wl.y2);
+      const mx = (p1.x + p2.x) / 2, my = (p1.y + p2.y) / 2;
+      const len = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+      const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180 / Math.PI;
+      const line = document.createElement('div');
+      line.className = 'tiling-wall-line';
+      line.style.left = (mx - len / 2) + 'px';
+      line.style.top = (my - THICK / 2) + 'px';
+      line.style.width = len + 'px';
+      line.style.transform = `rotate(${angle}deg)`; // bar lies along the edge itself
+      overlay.appendChild(line);
+    }
+  }
+  boardParent.appendChild(overlay);
 }
 
 export function getThemeEmoji(type) {
@@ -284,11 +446,27 @@ export function updateCell(r, c) {
         if (cell.isLiar) cellEl.classList.add('liar-cell');
         if (cell.isSonar) {
           cellEl.classList.add('sonar-cell');
-          cellEl.innerHTML = uiSpriteImgHTML('modSonar', 'sonar-marker') + displayNum;
+          if (_isTiling()) {
+            // Side-by-side sprite + number overran the small clipped cell, so
+            // OVERLAP them: the sonar symbol as a centered watermark, the number
+            // bold on top. Both the identity (the symbol) and the count survive,
+            // and the combined footprint fits the clip — no new colors needed.
+            cellEl.classList.add('sonar-tiling');
+            cellEl.innerHTML = uiSpriteImgHTML('modSonar', 'sonar-bg')
+              + `<span class="sonar-num">${displayNum}</span>`;
+          } else {
+            cellEl.innerHTML = uiSpriteImgHTML('modSonar', 'sonar-marker') + displayNum;
+          }
         }
         if (cell.isCompass) {
           cellEl.classList.add('compass-cell');
-          cellEl.textContent = displayNum + (cell.compassArrow || '');
+          const arrow = cell.compassArrow || '';
+          if (_isTiling() && arrow) {
+            // A smaller arrow so the number + direction both fit inside the clip.
+            cellEl.innerHTML = `${displayNum}<span class="compass-dir-sm">${arrow}</span>`;
+          } else {
+            cellEl.textContent = displayNum + arrow;
+          }
         }
         if (cell.isPressurePlate && !cell.plateDisarmed) {
           cellEl.classList.add('pressure-plate');
@@ -339,7 +517,7 @@ export function updateCell(r, c) {
     // not just the one NEXT MOVE chip.
     if (cell.frontierSafe) cellEl.classList.add('frontier-safe');
     // Daily / weekly suggested start cell (shows when board is fresh or re-fogged)
-    if (cell.suggestedStart && (state.gameMode === 'daily' || state.gameMode === 'weekly') &&
+    if (cell.suggestedStart && (state.gameMode === 'daily' || state.gameMode === 'weekly' || state.coastlinePractice) &&
         (state.status === 'idle' || (state.status === 'playing' && state.revealedCount <= 1))) {
       cellEl.classList.add('suggested-start');
     }
@@ -419,7 +597,7 @@ function updateStartHereLabel() {
 
   // Daily "Start here" — pre-first-click marker for the solver's best
   // opener. Only shows on daily mode while the board is fresh.
-  if (state.gameMode === "daily" &&
+  if ((state.gameMode === "daily" || state.coastlinePractice) &&
       (state.status === "idle" || (state.status === "playing" && state.revealedCount <= 1))) {
     const startCell = boardEl.querySelector(".suggested-start");
     if (startCell) _placeLabel(startCell, "start-here-label", "Start here", "start-here-label");
@@ -444,11 +622,75 @@ export function updateCells(cells) {
   }
 }
 
+// ── Sonar / compass region reveal ────────────────────
+// A sonar or compass number counts mines over a REGION the player can't always
+// eyeball — a 5×5 block on a square grid, an irregular graph blob on a tiling.
+// Hovering (desktop) or tapping (mobile) the cell lights up exactly the cells
+// its number counts. Single-sourced from adjacency.js (sonarScanCells /
+// compassRayCells), so the highlight shows precisely what the certifier proved
+// from — it hands over the AREA, never which cells hold the mines.
+
+/**
+ * Flat indices of the cells a revealed sonar/compass cell's number counts, or
+ * null if the cell references no region.
+ */
+export function gimmickRegionCells(row, col) {
+  const cell = state.board?.[row]?.[col];
+  if (!cell || !cell.isRevealed) return null;
+  const { rows, cols } = state;
+  if (cell.isSonar) return sonarScanCells(state.board, rows, cols, row, col);
+  if (cell.isCompass) {
+    // On an explicit topology the ray was precomputed and stored at generation
+    // (compassRayCells throws there); a rectangle walks it from the direction.
+    if (state.board._cellNeighbors) return cell.compassRay || null;
+    if (cell.compassDir) return compassRayCells(state.board, rows, cols, row, col, cell.compassDir);
+  }
+  return null;
+}
+
+let _regionShown = null; // { row, col } currently highlighted, else null
+
+/** Highlight the region a sonar/compass cell counts (no-op for other cells). */
+export function showGimmickRegion(row, col) {
+  clearGimmickRegion();
+  const region = gimmickRegionCells(row, col);
+  if (!region || region.length === 0) return;
+  for (const idx of region) {
+    const el = boardEl.children[idx];
+    if (el && el.classList && el.classList.contains('cell')) el.classList.add('region-highlight');
+  }
+  const src = boardEl.children[row * state.cols + col];
+  if (src && src.classList && src.classList.contains('cell')) src.classList.add('region-source');
+  _regionShown = { row, col };
+}
+
+/** Remove any active region highlight. */
+export function clearGimmickRegion() {
+  // Nothing is highlighted → skip the board-wide DOM query. This runs on every
+  // hover onto a non-region cell, so the early-out keeps cursor movement cheap.
+  if (!boardEl || !_regionShown) return;
+  for (const el of boardEl.querySelectorAll('.region-highlight, .region-source')) {
+    el.classList.remove('region-highlight', 'region-source');
+  }
+  _regionShown = null;
+}
+
+/** The cell whose region is currently highlighted, or null. */
+export function regionShownFor() {
+  return _regionShown;
+}
+
 // Dynamically adjust cell size to fit the board on screen
 export function adjustCellSize() {
   if (!state.cols || !state.rows) return;
   const maxWidth = Math.min(window.innerWidth * 0.88, 520);
   const widthBudget = maxWidth - 8; // 2px border + 2px padding, left+right
+  if (_isTiling()) {
+    const heightBudget = _boardHeightBudget() - 8;
+    const pitch = _fitTilingPitch(widthBudget, heightBudget, _cellBound('--cell-fit-max-size', 40));
+    document.documentElement.style.setProperty('--cell-size', pitch + 'px');
+    return;
+  }
   // Read the LIVE gap like resizeCells does — themes override --grid-gap
   // (candy 3px, matrix 1px), and the old hardcoded 2 oversized the fit by
   // (cols-1)px per extra gap pixel.

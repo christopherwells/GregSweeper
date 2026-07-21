@@ -197,20 +197,22 @@ test('a compass ray runs straight to the edge on a rectangle', () => {
   assert.deepEqual(compassRayCells(b, 7, 7, 0, 0, { dr: -1, dc: 0 }), [], 'a ray off the edge is empty');
 });
 
-test('REGRESSION: a compass REFUSES on an explicit topology rather than lying', () => {
-  // A ray needs a direction; a neighbor graph carries no geometry to take one
-  // from. Before this guard, the walk stepped (r + dr, c + dc) through the
-  // CONTAINER — on a 13x1 strip that produced a plausible number describing no
-  // region on the board, and the certifier emitted a matching constraint, so
-  // display and proof agreed perfectly about something meaningless. It did not
-  // crash, which is exactly what made it dangerous.
+test('a compass reads its PRECOMPUTED ray on an explicit topology (Coastline Phase 2)', () => {
+  // A ray needs a direction; a neighbor graph carries none, so Phase 1 THREW
+  // here rather than walk (r + dr, c + dc) through a container whose indices
+  // mean nothing spatially. Phase 2 computes the ray from cell POSITIONS at
+  // generation and stores it on the cell (cell.compassRay); compassRayCells
+  // returns that stored list, so the certifier and the display read the
+  // identical region and can never disagree about a geometry neither can see.
   const T = buildTiling488(3, 3);
   const b = plain(T.total, 1);
   defineCellNeighbors(b, T.total, 1, T.adj);
-  assert.throws(
-    () => compassRayCells(b, T.total, 1, T.octIndex(1, 1), 0, { dr: 1, dc: 0 }),
-    /no meaning on an explicit topology/,
-  );
+  const idx = T.octIndex(1, 1);
+  // No ray stored yet -> empty, never a fabricated container walk.
+  assert.deepEqual(compassRayCells(b, T.total, 1, idx, 0, { dr: 1, dc: 0 }), []);
+  // With a stored ray, it returns exactly that list, verbatim.
+  b[idx][0].compassRay = [0, 2, 5];
+  assert.deepEqual(compassRayCells(b, T.total, 1, idx, 0, { dr: 1, dc: 0 }), [0, 2, 5]);
 });
 
 test('the sonar region the player SEES is the region the certifier PROVES from', () => {

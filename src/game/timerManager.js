@@ -236,7 +236,16 @@ export function startWormCrawl() {
       if (!cell || !cell.isRevealed) return null;
       return cell.adjacentMines || 0;
     };
-    const { moved, burrowed } = tickWorms(state.worms, WORM_TICK_MS, numberAt);
+    // On a tiling the worm walks the neighbor graph with geometric momentum, so
+    // hand tickWorms the board's topology (neighbors + positions). Null on an
+    // ordinary rectangular board, where stepWorm keeps its dr/dc walk verbatim.
+    const cols = state.cols;
+    const topology = state.board && state.board._cellNeighbors ? {
+      neighborsOf: (r, c) => state.board._cellNeighbors[r * cols + c]
+        .map(idx => ({ r: Math.floor(idx / cols), c: idx % cols })),
+      posOf: (r, c) => { const p = state.board._cellPos[r * cols + c]; return { x: p.cx, y: p.cy }; },
+    } : null;
+    const { moved, burrowed } = tickWorms(state.worms, WORM_TICK_MS, numberAt, undefined, topology);
     if (burrowed.length > 0) {
       playWormBurrow();
       for (const w of burrowed) markWormBurrowed(state.wormEvents, w, state.elapsedTime);

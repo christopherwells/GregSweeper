@@ -212,6 +212,12 @@
   --marker-mirror-1: rgba(155, 89, 182, 0.85);
   --marker-mirror-2: rgba(46, 204, 113, 0.85);
   --marker-mirror-width: 2.5px;
+  /* Faint per-pair fills for tiling mirror cells, where the dashed border is
+     clipped away — the inset ring carries octagons, this tint carries the
+     small diamonds (Coastline). */
+  --marker-mirror-0-fill: rgba(52, 152, 219, 0.22);
+  --marker-mirror-1-fill: rgba(155, 89, 182, 0.22);
+  --marker-mirror-2-fill: rgba(46, 204, 113, 0.22);
   --marker-plate-timer: #ff4444;
   --marker-plate-border: rgba(255, 80, 80, 0.6);
   --marker-plate-glow: rgba(255, 50, 50, 0.4);
@@ -1001,6 +1007,44 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   animation: receiptSourcePulse 0.9s ease-in-out 3;
   z-index: 4;
 }
+
+/* Sonar / compass region reveal — the cells a gimmick number counts, lit on
+   hover (desktop) or tap (mobile). A background tint reads on octagon/diamond
+   clip-paths, where an outline or border would be clipped away. Tokens let a
+   theme world revoice it; the fallbacks are the shipped default. */
+.cell.region-highlight {
+  background: var(--region-highlight-bg, rgba(38, 180, 222, 0.42)) !important;
+}
+.cell.region-source {
+  box-shadow: inset 0 0 0 3px var(--region-source-ring, rgba(255, 143, 32, 0.95)) !important;
+}
+
+/* Coastline: a smaller compass arrow so the number + direction both fit inside a
+   clipped octagon/diamond cell without being cut off. */
+.cell.compass-cell .compass-dir-sm {
+  font-size: 0.62em;
+  line-height: 1;
+}
+
+/* Coastline: on a tiling the sonar SYMBOL is a centered watermark behind the
+   number (side-by-side overran the small clipped cell). Same symbol + number,
+   both fit — the symbol keeps its identity, the number stays the focus. */
+.cell.sonar-tiling .sonar-bg {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 70%;
+  height: 70%;
+  transform: translate(-50%, -50%);
+  opacity: 0.5;
+  pointer-events: none;
+}
+.cell.sonar-tiling .sonar-num {
+  position: relative;
+  z-index: 1;
+  /* A soft light halo keeps the count crisp over the symbol behind it. */
+  text-shadow: 0 0 3px var(--color-cell-revealed, #fff), 0 0 3px var(--color-cell-revealed, #fff);
+}
 .gameover-receipt-tappable {
   cursor: pointer;
   text-decoration: underline;
@@ -1760,6 +1804,20 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   box-sizing: content-box;
 }
 
+/* Coastline: a tiling wall is a rotated bar across the shared edge of two
+   severed cells (boardRenderer._renderTilingWalls sets left/top/width + the
+   rotate). Same colors + two-tone outline as the rectangular grid lines. */
+.tiling-wall-line {
+  position: absolute;
+  height: 4px;
+  background: var(--color-wall, #c9a96e);
+  border-radius: 2px;
+  transform-origin: center center;
+  pointer-events: none;
+  z-index: 3;
+  box-shadow: 0 0 0 1.5px var(--color-wall-outline, transparent);
+}
+
 /* ── Worm Tiles overlay ──────────────────────────────
    Board-anchored sibling layer (wormRenderer.js). z-index 4: above
    revealed cell faces (fx-on z-2) and walls (z-3), far below the
@@ -1921,6 +1979,24 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 .cell.mirror-cell.mirror-pair-0 { border: var(--marker-mirror-width, 2.5px) dashed var(--marker-mirror-0, rgba(52, 152, 219, 0.85)) !important; }
 .cell.mirror-cell.mirror-pair-1 { border: var(--marker-mirror-width, 2.5px) dashed var(--marker-mirror-1, rgba(155, 89, 182, 0.85)) !important; }
 .cell.mirror-cell.mirror-pair-2 { border: var(--marker-mirror-width, 2.5px) dashed var(--marker-mirror-2, rgba(46, 204, 113, 0.85)) !important; }
+
+/* Coastline: a clip-path cuts the dashed border off, so on a tiling a mirror
+   pair reads as an inset ring inside the shape (clean on octagons, whose flat
+   sides align with the box) plus a faint pair tint (which carries the small
+   rotated diamonds, where the box-inset ring lands outside the clip). */
+#board.tiling-board .cell.mirror-cell { border-color: transparent !important; }
+#board.tiling-board .cell.mirror-cell.mirror-pair-0 {
+  box-shadow: inset 0 0 0 var(--marker-mirror-width, 2.5px) var(--marker-mirror-0) !important;
+  background: var(--marker-mirror-0-fill, rgba(52, 152, 219, 0.22)) !important;
+}
+#board.tiling-board .cell.mirror-cell.mirror-pair-1 {
+  box-shadow: inset 0 0 0 var(--marker-mirror-width, 2.5px) var(--marker-mirror-1) !important;
+  background: var(--marker-mirror-1-fill, rgba(155, 89, 182, 0.22)) !important;
+}
+#board.tiling-board .cell.mirror-cell.mirror-pair-2 {
+  box-shadow: inset 0 0 0 var(--marker-mirror-width, 2.5px) var(--marker-mirror-2) !important;
+  background: var(--marker-mirror-2-fill, rgba(46, 204, 113, 0.22)) !important;
+}
 
 /* Mine shift shimmer */
 .mine-shift-shimmer {

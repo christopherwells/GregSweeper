@@ -8,7 +8,7 @@
 import { state } from './state/gameState.js';
 import { PROD_SITE_BASE } from './config.js';
 import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn, escapeHtml } from './ui/domHelpers.js';
-import { resizeCells, updateAllCells, needsZoom, updateZoom, zoomIn, zoomOut, setFocusedCell, renderWallOverlays } from './ui/boardRenderer.js';
+import { resizeCells, updateAllCells, needsZoom, updateZoom, zoomIn, zoomOut, setFocusedCell, renderWallOverlays, showGimmickRegion, clearGimmickRegion } from './ui/boardRenderer.js';
 import { renderWormOverlays } from './ui/wormRenderer.js';
 import { preloadSprites, medalImgForEmoji, gimmickSpriteImgHTML, achievementSpriteImgHTML, uiSpriteImgHTML } from './ui/spriteLoader.js';
 import { startGregMascot } from './ui/gregMascot.js';
@@ -315,6 +315,39 @@ let longPressTimer = null;
 let longPressTriggered = false;
 let lastTouchTime = 0;
 
+// Sonar / compass region reveal: hover (desktop) or tap (mobile) a revealed
+// sonar/compass cell to light up the cells its number counts. A tap toggles a
+// PINNED region (touch has no hover to fall back to); hover previews it live.
+let _pinnedRegionCell = null;
+function _isRegionCell(row, col) {
+  const cell = state.board?.[row]?.[col];
+  return !!(cell && cell.isRevealed && (cell.isSonar || cell.isCompass));
+}
+function _toggleRegionPin(row, col) {
+  if (_pinnedRegionCell && _pinnedRegionCell.row === row && _pinnedRegionCell.col === col) {
+    _pinnedRegionCell = null;
+    clearGimmickRegion();
+  } else {
+    _pinnedRegionCell = { row, col };
+    showGimmickRegion(row, col);
+  }
+}
+if (window.matchMedia && window.matchMedia('(hover: hover)').matches) {
+  boardEl.addEventListener('mouseover', (e) => {
+    const cellEl = e.target.closest('.cell');
+    if (!cellEl) return;
+    const row = parseInt(cellEl.dataset.row, 10);
+    const col = parseInt(cellEl.dataset.col, 10);
+    if (_isRegionCell(row, col)) showGimmickRegion(row, col);
+    else if (_pinnedRegionCell) showGimmickRegion(_pinnedRegionCell.row, _pinnedRegionCell.col);
+    else clearGimmickRegion();
+  });
+  boardEl.addEventListener('mouseleave', () => {
+    if (_pinnedRegionCell) showGimmickRegion(_pinnedRegionCell.row, _pinnedRegionCell.col);
+    else clearGimmickRegion();
+  });
+}
+
 boardEl.addEventListener('mousedown', (e) => {
   if (Date.now() - lastTouchTime < 500) return;
   const cellEl = e.target.closest('.cell');
@@ -324,6 +357,12 @@ boardEl.addEventListener('mousedown', (e) => {
 
   if (e.button === 0) {
     const cell = state.board[row]?.[col];
+    // A sonar/compass number counts a REGION, not its neighbors, so chording it
+    // is meaningless — the click toggles its region highlight instead.
+    if (cell && cell.isRevealed && (cell.isSonar || cell.isCompass)) {
+      _toggleRegionPin(row, col);
+      return;
+    }
     if (cell && cell.isRevealed && cell.adjacentMines > 0) {
       handleChordReveal(row, col);
     } else if (state.flagMode && !cell?.isRevealed) {
@@ -401,6 +440,10 @@ boardEl.addEventListener('touchend', (e) => {
   touchedCellCol = null;
 
   const cell = state.board[row]?.[col];
+  if (cell && cell.isRevealed && (cell.isSonar || cell.isCompass)) {
+    _toggleRegionPin(row, col);
+    return;
+  }
   if (cell && cell.isRevealed && cell.adjacentMines > 0) {
     handleChordReveal(row, col);
   } else if (state.flagMode && !cell?.isRevealed) {
@@ -448,9 +491,11 @@ boardEl.addEventListener('keydown', (e) => {
     case 'ArrowRight': c = Math.min(state.cols - 1, c + 1); break;
     case 'Enter':
     case ' ': {
-      // Reveal or chord
+      // Reveal, chord, or (sonar/compass) toggle the counted region.
       const cell = state.board[r]?.[c];
-      if (cell && cell.isRevealed && cell.adjacentMines > 0) {
+      if (cell && cell.isRevealed && (cell.isSonar || cell.isCompass)) {
+        _toggleRegionPin(r, c);
+      } else if (cell && cell.isRevealed && cell.adjacentMines > 0) {
         handleChordReveal(r, c);
       } else {
         revealCell(r, c);
@@ -1995,6 +2040,10 @@ async function init() {
   const deepLinkLevel = (isTestEnvironment() && _levelParam >= 1)
     ? Math.min(_levelParam, MAX_LEVEL)
     : 0;
+  // ?coastline= — test-environment-only Archimedean tiling board (Project
+  // Coastline Phase 2). Gated exactly like ?level=, so it is UNREACHABLE in
+  // production; the player-facing surface is a later release step.
+  const coastlinePractice = isTestEnvironment() && urlParams.get('coastline') != null;
 
   // Diagnostics button is hidden for casual users. Unhide when `?debug=1`
   // is in the URL (once per device — we persist a localStorage flag so
@@ -2082,6 +2131,29 @@ async function init() {
         toTitle();
       }
     });
+  } else if (coastlinePractice) {
+    // ?coastline= test board (test builds only — gate in the derivation
+    // above): a frozen Archimedean-tiling board played as an isLevelPractice
+    // run, so nothing records (same localStorage-safety rationale as ?level=).
+    // gameMode stays 'normal'; state.coastlinePractice routes newGame's
+    // generation + revealCell's frozen first-click path onto the tiling.
+    state.gameMode = 'normal';
+    updateModeUI('normal');
+    state.isLevelPractice = true;
+    state.coastlinePractice = true;
+    state.coastlineSeed = urlParams.get('seed') || null;
+    // ?coastline=<modifier>[,<modifier>...] places those modifiers on the
+    // tiling test board (e.g. ?coastline=sonar,mirror); ?coastline=1 or bare
+    // is a plain board. Passed through to generateTilingBoard verbatim.
+    const _coastVal = urlParams.get('coastline') || '';
+    state.coastlineGimmicks = _coastVal.split(',').map(s => s.trim()).filter(s => s && s !== '1');
+    state.currentLevel = 1;
+    hideTitleScreen();
+    await newGame();
+    const _cg = state.coastlineGimmicks;
+    showToast(_cg.length
+      ? `Coastline test board — tiling + ${_cg.join(', ')}. Nothing records.`
+      : 'Coastline test board — Archimedean tiling. Nothing records.', 6000);
   } else if (deepLinkLevel > 0) {
     // ?level=N playtest deep link (test builds only — the gate is in
     // deepLinkLevel's derivation): start a PRACTICE challenge run at any
