@@ -195,6 +195,45 @@ test('a compass tiling board certifies and every compass cell stores a colinear 
   assert.ok(compassCells >= 1);
 });
 
+// ── Walls sever graph edges ─────────────────────────────────────────────────
+
+test('walls sever graph edges (symmetric, connected, absent) and the board certifies', () => {
+  let res = null;
+  for (let s = 0; s < 16; s++) {
+    const r = generateTilingBoard({ M: 6, N: 7, mines: 10, seed: `walls-${s}`, gimmicks: ['walls'] });
+    if (r && r.board._tilingWalls && r.board._tilingWalls.length > 0) { res = r; break; }
+    if (r && !res) res = r;
+  }
+  assert.ok(res, 'a walls board certified');
+  const { board, rows, cols } = res;
+  const adj = board._cellNeighbors;
+  const total = rows * cols;
+
+  assert.ok(Array.isArray(board._tilingWalls) && board._tilingWalls.length > 0, 'walls were placed');
+
+  // Symmetry survived the severing (an asymmetric edge would certify a board
+  // nobody can solve).
+  for (let i = 0; i < total; i++) {
+    for (const n of adj[i]) assert.ok(adj[n].includes(i), `edge ${i}-${n} symmetric`);
+  }
+  // Each walled pair is ABSENT from the neighbor list — the wall is BAKED into
+  // the graph, not consulted alongside it.
+  for (const [a, b] of board._tilingWalls) {
+    assert.ok(!adj[a].includes(b) && !adj[b].includes(a), `walled edge ${a}-${b} absent`);
+  }
+  // Still fully connected (all-or-nothing isolation rule).
+  const seen = new Uint8Array(total);
+  const stack = [0]; seen[0] = 1; let count = 1;
+  while (stack.length) { const u = stack.pop(); for (const v of adj[u]) if (!seen[v]) { seen[v] = 1; count++; stack.push(v); } }
+  assert.equal(count, total, 'the board stays connected through the walls');
+
+  // Certifies from the opener against the reduced graph.
+  const fr = Math.floor(res.firstClick / cols), fc = res.firstClick % cols;
+  const check = isBoardSolvable(board, rows, cols, fr, fc, adj);
+  assert.equal(check.solvable, true);
+  assert.equal(check.remainingUnknowns, 0);
+});
+
 test('techniqueFloor can demand real reasoning (tank/gauss), like the fixture', () => {
   // Not every seed reaches level 2 at this density, so search a few. This mirrors
   // the fixture being a deliberately harder certified layout.

@@ -220,6 +220,14 @@ export function renderWallOverlays() {
   const oldOverlay = board.querySelector('.wall-overlay-container');
   if (oldOverlay) oldOverlay.remove();
 
+  // Tiling boards sever graph edges (board._tilingWalls, flat index pairs)
+  // instead of the rectangular "r,c-r,c" edge set — draw a bar across the shared
+  // boundary of each severed pair rather than a horizontal/vertical grid line.
+  if (state.board?._tilingWalls && state.board._tilingWalls.length > 0) {
+    _renderTilingWalls(board);
+    return;
+  }
+
   const wallEdges = state.board?._wallEdges;
   if (!wallEdges || wallEdges.size === 0) return;
 
@@ -288,6 +296,50 @@ export function renderWallOverlays() {
   }
 
   board.appendChild(overlay);
+}
+
+// Draw a wall bar across each severed edge of a tiling board. The bar sits at
+// the midpoint of the two cells' centers, perpendicular to the line between
+// them (i.e. along their shared polygon boundary), so a wall reads as blocking
+// passage between exactly those two cells. Pixel-anchored to live cell rects
+// like the rectangular overlay, so it re-lays on resize / theme refit.
+function _renderTilingWalls(boardParent) {
+  const walls = state.board._tilingWalls;
+  boardParent.style.position = 'relative';
+  const overlay = document.createElement('div');
+  overlay.className = 'wall-overlay-container';
+
+  const boardRect = boardEl.getBoundingClientRect();
+  const boardX = boardEl.offsetLeft;
+  const boardY = boardEl.offsetTop;
+  const centerOf = (idx) => {
+    const el = boardEl.children[idx];
+    if (!el || !el.classList || !el.classList.contains('cell')) return null;
+    const rect = el.getBoundingClientRect();
+    return {
+      x: rect.left - boardRect.left + boardX + rect.width / 2,
+      y: rect.top - boardRect.top + boardY + rect.height / 2,
+      w: rect.width,
+    };
+  };
+
+  const THICK = 4;
+  for (const [a, b] of walls) {
+    const ca = centerOf(a), cb = centerOf(b);
+    if (!ca || !cb) continue;
+    const mx = (ca.x + cb.x) / 2, my = (ca.y + cb.y) / 2;
+    const angle = Math.atan2(cb.y - ca.y, cb.x - ca.x) * 180 / Math.PI;
+    const len = Math.min(ca.w, cb.w) * 0.62;
+    const line = document.createElement('div');
+    line.className = 'tiling-wall-line';
+    line.style.left = (mx - len / 2) + 'px';
+    line.style.top = (my - THICK / 2) + 'px';
+    line.style.width = len + 'px';
+    // Perpendicular to the a-b connection = along the shared edge.
+    line.style.transform = `rotate(${angle + 90}deg)`;
+    overlay.appendChild(line);
+  }
+  boardParent.appendChild(overlay);
 }
 
 export function getThemeEmoji(type) {

@@ -1777,6 +1777,20 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   box-sizing: content-box;
 }
 
+/* Coastline: a tiling wall is a rotated bar across the shared edge of two
+   severed cells (boardRenderer._renderTilingWalls sets left/top/width + the
+   rotate). Same colors + two-tone outline as the rectangular grid lines. */
+.tiling-wall-line {
+  position: absolute;
+  height: 4px;
+  background: var(--color-wall, #c9a96e);
+  border-radius: 2px;
+  transform-origin: center center;
+  pointer-events: none;
+  z-index: 3;
+  box-shadow: 0 0 0 1.5px var(--color-wall-outline, transparent);
+}
+
 /* ── Worm Tiles overlay ──────────────────────────────
    Board-anchored sibling layer (wormRenderer.js). z-index 4: above
    revealed cell faces (fx-on z-2) and walls (z-3), far below the

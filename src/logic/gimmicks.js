@@ -5,7 +5,7 @@
 import { safeGet, safeSet, safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js';
 import { MAX_LEVEL } from './difficulty.js';
 import { WORM_MAX_PER_BOARD } from './worms.js';
-import { wallKey, hasWallBetween, buildNeighborCache, sonarScanCells, compassRayCells, cellAt } from './adjacency.js';
+import { wallKey, hasWallBetween, buildNeighborCache, sonarScanCells, compassRayCells, cellAt, defineCellNeighbors } from './adjacency.js';
 import { computeCompassRay } from './tilingGeometry.js';
 
 // Reset all gimmick-related properties on a single cell.
@@ -569,7 +569,79 @@ function computeLiarZone(board, rows, cols) {
 
 // ── Walls: edges between adjacent cells ──────────────
 
+// Walls on a TILING (Coastline Phase 2): a wall SEVERS an edge from the
+// neighbor graph — both directions, so symmetry holds — in contiguous "reef"
+// chains that snake between cells. The certifier and recalcAllAdjacency then see
+// a graph with fewer edges and need NO wall logic at all: a severed link is
+// simply absent (the memory's "walls baked into the neighbor list"), with none
+// of the rectangular diagonal ambiguity and no "r,c-r,c" string contract. The
+// removed pairs ride a render-only board._tilingWalls so the renderer can draw a
+// bar on each shared edge. Isolation is all-or-nothing, like the rectangular
+// path: a wall set that disconnects the board ships as no walls.
+function applyWallsTiling(board, rows, cols, segmentCount, rng) {
+  const total = rows * cols;
+  const adj = board._cellNeighbors.map(l => l.slice()); // work on a copy of the full topology
+  const severedSet = new Set();
+  const severed = [];
+  const key = (a, b) => (a < b ? `${a}-${b}` : `${b}-${a}`);
+  const sever = (a, b) => {
+    const k = key(a, b);
+    if (severedSet.has(k)) return;
+    adj[a] = adj[a].filter(x => x !== b);
+    adj[b] = adj[b].filter(x => x !== a);
+    severedSet.add(k);
+    severed.push([a, b]);
+  };
+
+  const maxSegments = Math.min(segmentCount, 5);
+  const baseLength = Math.min(2 + Math.floor(segmentCount / 2), 5);
+  for (let s = 0; s < maxSegments; s++) {
+    const length = baseLength + Math.floor(rng() * 2);
+    let cur = Math.floor(rng() * total);
+    let prev = -1;
+    for (let i = 0; i < length; i++) {
+      const opts = adj[cur].filter(n => n !== prev); // don't immediately double back
+      if (opts.length === 0) break;
+      const nxt = opts[Math.floor(rng() * opts.length)];
+      sever(cur, nxt);
+      prev = cur;
+      cur = nxt;
+    }
+  }
+
+  // Connectivity: flood the reduced graph; ship the walls only if every cell is
+  // still reachable, matching the rectangular all-or-nothing rule.
+  let commit = severed.length > 0;
+  if (commit) {
+    const seen = new Uint8Array(total);
+    const stack = [0];
+    seen[0] = 1;
+    let count = 1;
+    while (stack.length) {
+      const u = stack.pop();
+      for (const v of adj[u]) if (!seen[v]) { seen[v] = 1; count++; stack.push(v); }
+    }
+    commit = count === total;
+  }
+
+  if (commit) {
+    defineCellNeighbors(board, rows, cols, adj); // re-validate symmetry, then stamp
+    board._tilingWalls = severed.slice();
+  } else {
+    severed.length = 0;
+    board._tilingWalls = [];
+  }
+  // Numbers must reflect the reduced topology (a mine across a severed edge no
+  // longer counts) — recalcAllAdjacency reads the board's own neighbor list.
+  recalcAllAdjacency(board);
+  return severed.map(([a, b]) => key(a, b));
+}
+
 export function applyWalls(board, rows, cols, segmentCount, rng) {
+  // A tiling declares its topology explicitly; walls there sever graph edges
+  // rather than build the rectangular "r,c-r,c" edge set + diagonal rule.
+  if (board._cellPos) return applyWallsTiling(board, rows, cols, segmentCount, rng);
+
   const wallEdges = new Set();
   // Difficulty scales both count and length of wall segments
   const maxSegments = Math.min(segmentCount, 6);
