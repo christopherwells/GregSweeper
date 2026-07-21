@@ -1001,6 +1001,17 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   animation: receiptSourcePulse 0.9s ease-in-out 3;
   z-index: 4;
 }
+
+/* Sonar / compass region reveal — the cells a gimmick number counts, lit on
+   hover (desktop) or tap (mobile). A background tint reads on octagon/diamond
+   clip-paths, where an outline or border would be clipped away. Tokens let a
+   theme world revoice it; the fallbacks are the shipped default. */
+.cell.region-highlight {
+  background: var(--region-highlight-bg, rgba(38, 180, 222, 0.42)) !important;
+}
+.cell.region-source {
+  box-shadow: inset 0 0 0 3px var(--region-source-ring, rgba(255, 143, 32, 0.95)) !important;
+}
 .gameover-receipt-tappable {
   cursor: pointer;
   text-decoration: underline;

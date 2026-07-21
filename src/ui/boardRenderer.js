@@ -4,6 +4,7 @@ import { THEME_UNLOCKS } from './themeManager.js';
 import { applyIcon, uiSpriteImgHTML } from './spriteLoader.js';
 import { applyThemeEffects } from './themeEffects.js';
 import { octagonClipPath, DIAMOND_CLIP_PATH, SQ_BOX_FRAC } from '../logic/tilingGeometry.js';
+import { sonarScanCells, compassRayCells } from '../logic/adjacency.js';
 
 // ── Board Rendering ────────────────────────────────────
 
@@ -554,6 +555,62 @@ export function updateCells(cells) {
   for (const c of cells) {
     updateCell(c.row, c.col);
   }
+}
+
+// ── Sonar / compass region reveal ────────────────────
+// A sonar or compass number counts mines over a REGION the player can't always
+// eyeball — a 5×5 block on a square grid, an irregular graph blob on a tiling.
+// Hovering (desktop) or tapping (mobile) the cell lights up exactly the cells
+// its number counts. Single-sourced from adjacency.js (sonarScanCells /
+// compassRayCells), so the highlight shows precisely what the certifier proved
+// from — it hands over the AREA, never which cells hold the mines.
+
+/**
+ * Flat indices of the cells a revealed sonar/compass cell's number counts, or
+ * null if the cell references no region.
+ */
+export function gimmickRegionCells(row, col) {
+  const cell = state.board?.[row]?.[col];
+  if (!cell || !cell.isRevealed) return null;
+  const { rows, cols } = state;
+  if (cell.isSonar) return sonarScanCells(state.board, rows, cols, row, col);
+  if (cell.isCompass) {
+    // On an explicit topology the ray was precomputed and stored at generation
+    // (compassRayCells throws there); a rectangle walks it from the direction.
+    if (state.board._cellNeighbors) return cell.compassRay || null;
+    if (cell.compassDir) return compassRayCells(state.board, rows, cols, row, col, cell.compassDir);
+  }
+  return null;
+}
+
+let _regionShown = null; // { row, col } currently highlighted, else null
+
+/** Highlight the region a sonar/compass cell counts (no-op for other cells). */
+export function showGimmickRegion(row, col) {
+  clearGimmickRegion();
+  const region = gimmickRegionCells(row, col);
+  if (!region || region.length === 0) return;
+  for (const idx of region) {
+    const el = boardEl.children[idx];
+    if (el && el.classList && el.classList.contains('cell')) el.classList.add('region-highlight');
+  }
+  const src = boardEl.children[row * state.cols + col];
+  if (src && src.classList && src.classList.contains('cell')) src.classList.add('region-source');
+  _regionShown = { row, col };
+}
+
+/** Remove any active region highlight. */
+export function clearGimmickRegion() {
+  if (!boardEl) return;
+  for (const el of boardEl.querySelectorAll('.region-highlight, .region-source')) {
+    el.classList.remove('region-highlight', 'region-source');
+  }
+  _regionShown = null;
+}
+
+/** The cell whose region is currently highlighted, or null. */
+export function regionShownFor() {
+  return _regionShown;
 }
 
 // Dynamically adjust cell size to fit the board on screen
