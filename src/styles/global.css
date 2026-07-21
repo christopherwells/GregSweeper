@@ -1018,6 +1018,13 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 .cell.region-source {
   box-shadow: inset 0 0 0 3px var(--region-source-ring, rgba(255, 143, 32, 0.95)) !important;
 }
+
+/* Coastline: a smaller compass arrow so the number + direction both fit inside a
+   clipped octagon/diamond cell without being cut off. */
+.cell.compass-cell .compass-dir-sm {
+  font-size: 0.62em;
+  line-height: 1;
+}
 .gameover-receipt-tappable {
   cursor: pointer;
   text-decoration: underline;

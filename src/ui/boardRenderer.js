@@ -446,11 +446,23 @@ export function updateCell(r, c) {
         if (cell.isLiar) cellEl.classList.add('liar-cell');
         if (cell.isSonar) {
           cellEl.classList.add('sonar-cell');
-          cellEl.innerHTML = uiSpriteImgHTML('modSonar', 'sonar-marker') + displayNum;
+          // On a tiling the small squares can't hold the sprite AND the number
+          // without the clip-path cutting them off. Keep the number (set above),
+          // let the cyan sonar TINT mark the cell, and the tap-to-reveal region
+          // does the rest — no cramped, clipped sprite.
+          if (!_isTiling()) {
+            cellEl.innerHTML = uiSpriteImgHTML('modSonar', 'sonar-marker') + displayNum;
+          }
         }
         if (cell.isCompass) {
           cellEl.classList.add('compass-cell');
-          cellEl.textContent = displayNum + (cell.compassArrow || '');
+          const arrow = cell.compassArrow || '';
+          if (_isTiling() && arrow) {
+            // A smaller arrow so the number + direction both fit inside the clip.
+            cellEl.innerHTML = `${displayNum}<span class="compass-dir-sm">${arrow}</span>`;
+          } else {
+            cellEl.textContent = displayNum + arrow;
+          }
         }
         if (cell.isPressurePlate && !cell.plateDisarmed) {
           cellEl.classList.add('pressure-plate');
