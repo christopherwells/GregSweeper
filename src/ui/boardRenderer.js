@@ -666,7 +666,9 @@ export function showGimmickRegion(row, col) {
 
 /** Remove any active region highlight. */
 export function clearGimmickRegion() {
-  if (!boardEl) return;
+  // Nothing is highlighted → skip the board-wide DOM query. This runs on every
+  // hover onto a non-region cell, so the early-out keeps cursor movement cheap.
+  if (!boardEl || !_regionShown) return;
   for (const el of boardEl.querySelectorAll('.region-highlight, .region-source')) {
     el.classList.remove('region-highlight', 'region-source');
   }
