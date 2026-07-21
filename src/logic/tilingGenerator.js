@@ -19,12 +19,13 @@ import { isBoardSolvable } from './boardSolver.js';
 import { createDailyRNG } from './seededRandom.js';
 import { buildTiling488, containerFor } from './tilingGeometry.js';
 
-// Gimmicks that are safe on a tiling today. Walls and worm still need their own
-// tiling ports (edge-severing walls, geometric worm momentum) and are added to
-// this set as those land. Mystery/liar/locked/sonar/mirror ride Phase 1's
-// topology-aware placement + number recompute; compass rides its Phase 2
-// geometric ray (computeCompassRay, precomputed + stored per cell).
-export const TILING_SAFE_GIMMICKS = ['mystery', 'liar', 'locked', 'sonar', 'mirror', 'compass'];
+// Gimmicks that are safe on a tiling today. Walls still needs its own tiling
+// port (edge-severing) and is added when it lands. Mystery/liar/locked/sonar/
+// mirror ride Phase 1's topology-aware placement + number recompute; compass
+// rides its Phase 2 geometric ray (computeCompassRay); worm crawls the neighbor
+// graph with geometric momentum (stepWorm's tiling branch) and stays solver-
+// blind, so it can never affect certification.
+export const TILING_SAFE_GIMMICKS = ['mystery', 'liar', 'locked', 'sonar', 'mirror', 'compass', 'worm'];
 
 export { buildTiling488, containerFor };
 

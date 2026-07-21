@@ -253,8 +253,14 @@ const ORTHO = [[-1, 0], [1, 0], [0, -1], [0, 1]];
 // on schedule (its heading survives the wait).
 // `numberAt(r, c)` returns the cell's adjacent-mine count when the worm may
 // stand there (revealed), else null — including out of bounds.
-export function stepWorm(worm, numberAt, rng = Math.random) {
+export function stepWorm(worm, numberAt, rng = Math.random, topology = null) {
   const head = worm.segments[0];
+
+  // On a tiling the worm walks the neighbor GRAPH (an octagon touches 4 octagons
+  // and 4 squares, a square touches 4 octagons), and "heading" is a geometric
+  // direction rather than a dr/dc step — see _stepWormTiling. The rectangular
+  // path below is untouched, so seeded square-board worms never move.
+  if (topology) return _stepWormTiling(worm, head, numberAt, rng, topology);
 
   // Momentum first: keep going the way we were going, about half the time.
   let next = null;
@@ -307,17 +313,82 @@ export function stepWorm(worm, numberAt, rng = Math.random) {
   return moved;
 }
 
+// One crawl step on a TILING (Coastline Phase 2). Candidates are the head's
+// REVEALED graph neighbors; momentum is geometric — with WORM_PERSIST_PROB the
+// worm continues toward the neighbor best aligned with its last heading (a unit
+// vector in position space), and the mine-aversion roulette otherwise picks,
+// with the neighbor pointing most backward downweighted (the graph equivalent
+// of the rectangular reverse). `topology` supplies neighborsOf(r,c) -> [{r,c}]
+// and posOf(r,c) -> {x,y}.
+function _stepWormTiling(worm, head, numberAt, rng, topology) {
+  const hp = topology.posOf(head.r, head.c);
+  const dirTo = (cand) => {
+    const p = topology.posOf(cand.r, cand.c);
+    let dx = p.x - hp.x, dy = p.y - hp.y;
+    const m = Math.hypot(dx, dy) || 1;
+    return { dx: dx / m, dy: dy / m };
+  };
+
+  const cands = [];
+  for (const nb of topology.neighborsOf(head.r, head.c)) {
+    const n = numberAt(nb.r, nb.c);
+    if (n === null || n === undefined) continue;
+    cands.push({ r: nb.r, c: nb.c, n });
+  }
+
+  let next = null;
+  // Momentum: continue roughly the way we were going, about half the time.
+  if (worm.lastHeading && rng() < WORM_PERSIST_PROB) {
+    let bestDot = 0.3, best = null; // require "roughly forward"
+    for (const cand of cands) {
+      const d = dirTo(cand);
+      const dot = d.dx * worm.lastHeading.dx + d.dy * worm.lastHeading.dy;
+      if (dot > bestDot) { bestDot = dot; best = cand; }
+    }
+    if (best) next = best;
+  }
+  if (!next && cands.length > 0) {
+    let total = 0;
+    const opts = [];
+    for (const cand of cands) {
+      let weight = Math.pow(WORM_NUMBER_AVERSION, cand.n);
+      if (worm.lastHeading) {
+        const d = dirTo(cand);
+        const dot = d.dx * worm.lastHeading.dx + d.dy * worm.lastHeading.dy;
+        if (dot < -0.4) weight *= WORM_BACKTRACK_WEIGHT; // going back the way it came
+      }
+      total += weight;
+      opts.push({ cand, weight });
+    }
+    let roll = rng() * total;
+    next = opts[opts.length - 1].cand;
+    for (const o of opts) { roll -= o.weight; if (roll <= 0) { next = o.cand; break; } }
+  }
+
+  let moved = false;
+  if (next) {
+    worm.lastHeading = dirTo(next);
+    worm.segments.unshift({ r: next.r, c: next.c });
+    worm.segments.pop();
+    moved = true;
+  }
+  worm.movesLeft--;
+  worm.nextMoveMs = rollMoveDelay(rng, worm.pace || 1);
+  return moved;
+}
+
 // Advance every worm's clock by dtMs; step the ones that are due; drop the
 // ones out of moves. Mutates `worms` in place (splices burrowed worms) and
 // returns { moved, burrowed } so the caller can re-render / play sounds.
-export function tickWorms(worms, dtMs, numberAt, rng = Math.random) {
+// `topology` (tiling only) is forwarded to stepWorm; null = rectangular.
+export function tickWorms(worms, dtMs, numberAt, rng = Math.random, topology = null) {
   const moved = [];
   const burrowed = [];
   for (let i = worms.length - 1; i >= 0; i--) {
     const worm = worms[i];
     worm.nextMoveMs -= dtMs;
     if (worm.nextMoveMs > 0) continue;
-    if (stepWorm(worm, numberAt, rng)) moved.push(worm);
+    if (stepWorm(worm, numberAt, rng, topology)) moved.push(worm);
     if (worm.movesLeft <= 0) {
       burrowed.push(worm);
       worms.splice(i, 1);

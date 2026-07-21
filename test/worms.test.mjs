@@ -20,6 +20,7 @@ import {
   mixHex, hatchWorm, stepWorm, tickWorms, rehydrateWorms, wormCoveredCells,
   wormOverlayLayout, wormHatchEvent, markWormBurrowed, finalizeWormEvents,
 } from '../src/logic/worms.js';
+import { buildTiling488, containerFor } from '../src/logic/tilingGeometry.js';
 
 // Fixed-sequence rng for pinning exact branch behavior (repeats the last
 // value once the sequence is exhausted).
@@ -311,6 +312,38 @@ test('the walk is lightly biased: away from big numbers, toward open ground', ()
   }
   assert.ok(west2 / TRIALS > 0.4 && west2 / TRIALS < 0.6,
     `equal numbers must stay near-uniform (west rate ${west2 / TRIALS})`);
+});
+
+test('REGRESSION: a tiling worm crawls only to REVEALED graph neighbors (Coastline)', () => {
+  // On a 4.8.8 tiling the worm walks the neighbor GRAPH, not a dr/dc step, so
+  // every move must land on a graph neighbor of the previous head — including
+  // moves onto the small interstitial SQUARES, which are graph-neighbors of the
+  // octagons around them.
+  const T = buildTiling488(4, 5);
+  const { cols } = containerFor(T.total);
+  const idxToRC = (i) => ({ r: Math.floor(i / cols), c: i % cols });
+  const rcToIdx = (r, c) => r * cols + c;
+  const topology = {
+    neighborsOf: (r, c) => T.adj[rcToIdx(r, c)].map(idxToRC),
+    posOf: (r, c) => { const p = T.cellPos[rcToIdx(r, c)]; return { x: p.cx, y: p.cy }; },
+  };
+  const numberAt = () => 0; // whole board revealed, no mines: always walkable
+  const start = idxToRC(T.octIndex(1, 2));
+  const worm = { segments: [{ ...start }, { ...start }, { ...start }], movesLeft: 60, pace: 1, nextMoveMs: 0 };
+  const rng = mulberry32(7);
+  let landedOnSquare = false;
+  for (let step = 0; step < 60; step++) {
+    const prev = { ...worm.segments[0] };
+    stepWorm(worm, numberAt, rng, topology);
+    const head = worm.segments[0];
+    if (head.r === prev.r && head.c === prev.c) continue; // stayed put
+    const nbrs = T.adj[rcToIdx(prev.r, prev.c)].map(idxToRC);
+    assert.ok(nbrs.some(n => n.r === head.r && n.c === head.c),
+      `step ${step}: head moved to a real graph neighbor of the previous head`);
+    if (T.cellPos[rcToIdx(head.r, head.c)].shape === 'sq') landedOnSquare = true;
+  }
+  // Over 60 moves on a mixed lattice a worm should visit at least one square.
+  assert.ok(landedOnSquare, 'a tiling worm crawls onto interstitial squares, not just octagons');
 });
 
 test('tickWorms advances clocks, steps due worms, and splices out burrowed ones', () => {
