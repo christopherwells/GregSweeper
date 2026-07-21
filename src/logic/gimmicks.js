@@ -6,7 +6,7 @@ import { safeGet, safeSet, safeGetJSON, safeSetJSON } from '../storage/storageAd
 import { MAX_LEVEL } from './difficulty.js';
 import { WORM_MAX_PER_BOARD } from './worms.js';
 import { wallKey, hasWallBetween, buildNeighborCache, sonarScanCells, compassRayCells, cellAt, defineCellNeighbors } from './adjacency.js';
-import { computeCompassRay } from './tilingGeometry.js';
+import { computeCompassRay, buildTiling488, buildWireframe } from './tilingGeometry.js';
 
 // Reset all gimmick-related properties on a single cell.
 // Used when retrying gimmick placement to avoid stale markers.
@@ -580,61 +580,88 @@ function computeLiarZone(board, rows, cols) {
 // path: a wall set that disconnects the board ships as no walls.
 function applyWallsTiling(board, rows, cols, segmentCount, rng) {
   const total = rows * cols;
-  const adj = board._cellNeighbors.map(l => l.slice()); // work on a copy of the full topology
-  const severedSet = new Set();
-  const severed = [];
-  const key = (a, b) => (a < b ? `${a}-${b}` : `${b}-${a}`);
-  const sever = (a, b) => {
-    const k = key(a, b);
-    if (severedSet.has(k)) return;
-    adj[a] = adj[a].filter(x => x !== b);
-    adj[b] = adj[b].filter(x => x !== a);
-    severedSet.add(k);
-    severed.push([a, b]);
-  };
+  // The wireframe gives every cell-boundary edge tagged with the two cells it
+  // separates, so a wall is a CONTINUOUS run of edges sharing vertices — the
+  // bars connect end to end, and each sits on the TRUE shared boundary
+  // (including the 45° octagon/square edges).
+  const tiling = buildTiling488(board._tiling.M, board._tiling.N);
+  const { edges, vertEdges } = buildWireframe(tiling);
+  const verts = tiling.verts;
 
-  const maxSegments = Math.min(segmentCount, 5);
-  const baseLength = Math.min(2 + Math.floor(segmentCount / 2), 5);
-  for (let s = 0; s < maxSegments; s++) {
-    const length = baseLength + Math.floor(rng() * 2);
-    let cur = Math.floor(rng() * total);
-    let prev = -1;
-    for (let i = 0; i < length; i++) {
-      const opts = adj[cur].filter(n => n !== prev); // don't immediately double back
-      if (opts.length === 0) break;
-      const nxt = opts[Math.floor(rng() * opts.length)];
-      sever(cur, nxt);
-      prev = cur;
-      cur = nxt;
-    }
-  }
+  const adj = board._cellNeighbors.map(l => l.slice()); // working copy of the full topology
+  const usedEdge = new Set();
+  const wallEdges = []; // committed walls: { a, b, x1, y1, x2, y2 } in unit coords
 
-  // Connectivity: flood the reduced graph; ship the walls only if every cell is
-  // still reachable, matching the rectangular all-or-nothing rule.
-  let commit = severed.length > 0;
-  if (commit) {
+  const isConnected = () => {
     const seen = new Uint8Array(total);
-    const stack = [0];
-    seen[0] = 1;
-    let count = 1;
+    const stack = [0]; seen[0] = 1; let count = 1;
     while (stack.length) {
       const u = stack.pop();
       for (const v of adj[u]) if (!seen[v]) { seen[v] = 1; count++; stack.push(v); }
     }
-    commit = count === total;
+    return count === total;
+  };
+
+  // Grow a continuous polyline of boundary edges from a start edge, following
+  // shared vertices (with a little branching where a vertex offers a choice).
+  const grow = (startEi, length) => {
+    const chain = [startEi];
+    let tip = edges[startEi].v2;
+    for (let i = 1; i < length; i++) {
+      const opts = (vertEdges.get(tip) || []).filter(e => !usedEdge.has(e) && !chain.includes(e));
+      if (opts.length === 0) break;
+      const nextEi = opts[Math.floor(rng() * opts.length)];
+      const e = edges[nextEi];
+      tip = (e.v1 === tip) ? e.v2 : e.v1;
+      chain.push(nextEi);
+    }
+    return chain;
+  };
+
+  const numWalls = Math.min(1 + Math.floor(segmentCount / 2), 3); // 1-3 continuous walls
+  for (let w = 0; w < numWalls; w++) {
+    const avail = [];
+    for (let ei = 0; ei < edges.length; ei++) if (!usedEdge.has(ei)) avail.push(ei);
+    if (avail.length === 0) break;
+    const start = avail[Math.floor(rng() * avail.length)];
+    const length = 3 + Math.floor(rng() * (2 + Math.min(segmentCount, 3))); // 3-7 edges
+    const chain = grow(start, length);
+
+    // Tentatively sever the chain; keep it only if the board stays connected.
+    const applied = [];
+    for (const ei of chain) {
+      const e = edges[ei];
+      adj[e.cellA] = adj[e.cellA].filter(x => x !== e.cellB);
+      adj[e.cellB] = adj[e.cellB].filter(x => x !== e.cellA);
+      applied.push(ei);
+    }
+    if (isConnected()) {
+      for (const ei of applied) {
+        usedEdge.add(ei);
+        const e = edges[ei];
+        const p1 = verts[e.v1], p2 = verts[e.v2];
+        wallEdges.push({ a: e.cellA, b: e.cellB, x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y });
+      }
+    } else {
+      // Undo this wall — restore its severed edges (order-independent for the solver).
+      for (const ei of applied) {
+        const e = edges[ei];
+        adj[e.cellA].push(e.cellB);
+        adj[e.cellB].push(e.cellA);
+      }
+    }
   }
 
-  if (commit) {
+  if (wallEdges.length > 0) {
     defineCellNeighbors(board, rows, cols, adj); // re-validate symmetry, then stamp
-    board._tilingWalls = severed.slice();
+    board._tilingWalls = wallEdges;
   } else {
-    severed.length = 0;
     board._tilingWalls = [];
   }
   // Numbers must reflect the reduced topology (a mine across a severed edge no
   // longer counts) — recalcAllAdjacency reads the board's own neighbor list.
   recalcAllAdjacency(board);
-  return severed.map(([a, b]) => key(a, b));
+  return board._tilingWalls.map(w => `${Math.min(w.a, w.b)}-${Math.max(w.a, w.b)}`);
 }
 
 export function applyWalls(board, rows, cols, segmentCount, rng) {
@@ -1014,6 +1041,14 @@ function applyCompass(board, rows, cols, count, rng) {
       const idx = cell.row * cols + cell.col;
       const dirs = COMPASS_DIRS_8.slice();
       shuffle(dirs, rng);
+      // The FIRST compass cell prefers a diagonal (octagon/square staircase ray)
+      // so any compass board reliably shows that distinctive tiling ray at least
+      // once; later cells stay fully random. Stable sort keeps the shuffle order
+      // within each group.
+      if (i === 0) {
+        const isDiag = (d) => (d.dx !== 0 && d.dy !== 0 ? 1 : 0);
+        dirs.sort((x, y) => isDiag(y) - isDiag(x));
+      }
       let best = null, bestRay = null;
       for (const d of dirs) {
         const ray = computeCompassRay(board._cellPos, idx, d.dx, d.dy);

@@ -11,6 +11,7 @@ import assert from 'node:assert/strict';
 
 import {
   buildTiling488, containerFor, OCT_CUT, SQ_BOX_FRAC, computeCompassRay,
+  sharedEdge, buildWireframe,
 } from '../src/logic/tilingGeometry.js';
 import { generateTilingBoard } from '../src/logic/tilingGenerator.js';
 import { isBoardSolvable } from '../src/logic/boardSolver.js';
@@ -66,10 +67,12 @@ test('positions match the lattice and no two centers coincide', () => {
   }
 });
 
-test('shape constants are the regular-octagon values', () => {
-  // s = 1/(1+√2); corner cut a = (1-s)/2; diamond box = 2a.
-  assert.ok(Math.abs(OCT_CUT - 0.29289) < 1e-4);
-  assert.ok(Math.abs(SQ_BOX_FRAC - 0.58579) < 1e-4);
+test('shape constants: square box is twice the cut, cut in the valid tiling range', () => {
+  // OCT_CUT is tuned up from the regular-octagon 0.293 for legibility (bigger
+  // squares); the tiling is valid for any cut in (0, 0.5) and the diamond box is
+  // always 2x the cut so it fills the gap exactly.
+  assert.ok(OCT_CUT > 0 && OCT_CUT < 0.5, 'cut in the valid range');
+  assert.ok(Math.abs(SQ_BOX_FRAC - 2 * OCT_CUT) < 1e-9, 'square box = 2 x cut');
 });
 
 // ── The container ──────────────────────────────────────────────────────────
@@ -195,6 +198,31 @@ test('a compass tiling board certifies and every compass cell stores a colinear 
   assert.ok(compassCells >= 1);
 });
 
+// ── Cell vertices + wireframe (walls draw on the real shared edges) ─────────
+
+test('every adjacency shares exactly one edge (two vertices)', () => {
+  const T = buildTiling488(4, 5);
+  for (let a = 0; a < T.total; a++) {
+    for (const b of T.adj[a]) {
+      if (b <= a) continue;
+      const e = sharedEdge(T.cellVerts, a, b);
+      assert.ok(e && e.length === 2, `cells ${a},${b} share exactly an edge`);
+    }
+  }
+});
+
+test('the wireframe has one boundary edge per adjacency, each separating two adjacent cells', () => {
+  const T = buildTiling488(4, 5);
+  const { edges } = buildWireframe(T);
+  let adjCount = 0;
+  for (let a = 0; a < T.total; a++) for (const b of T.adj[a]) if (b > a) adjCount++;
+  assert.equal(edges.length, adjCount, 'one boundary edge per undirected adjacency');
+  for (const e of edges) {
+    assert.ok(T.adj[e.cellA].includes(e.cellB), 'edge separates two adjacent cells');
+    assert.ok(e.v1 !== e.v2, 'edge has two distinct vertices');
+  }
+});
+
 // ── Walls sever graph edges ─────────────────────────────────────────────────
 
 test('walls sever graph edges (symmetric, connected, absent) and the board certifies', () => {
@@ -216,16 +244,29 @@ test('walls sever graph edges (symmetric, connected, absent) and the board certi
   for (let i = 0; i < total; i++) {
     for (const n of adj[i]) assert.ok(adj[n].includes(i), `edge ${i}-${n} symmetric`);
   }
-  // Each walled pair is ABSENT from the neighbor list — the wall is BAKED into
-  // the graph, not consulted alongside it.
-  for (const [a, b] of board._tilingWalls) {
-    assert.ok(!adj[a].includes(b) && !adj[b].includes(a), `walled edge ${a}-${b} absent`);
+  // Each wall carries its severed pair AND the shared-edge segment it's drawn on.
+  for (const wl of board._tilingWalls) {
+    assert.ok(!adj[wl.a].includes(wl.b) && !adj[wl.b].includes(wl.a), `walled edge ${wl.a}-${wl.b} absent`);
+    for (const k of ['x1', 'y1', 'x2', 'y2']) assert.equal(typeof wl[k], 'number', `wall carries ${k}`);
+    assert.ok(wl.x1 !== wl.x2 || wl.y1 !== wl.y2, 'wall segment has length');
   }
   // Still fully connected (all-or-nothing isolation rule).
   const seen = new Uint8Array(total);
   const stack = [0]; seen[0] = 1; let count = 1;
   while (stack.length) { const u = stack.pop(); for (const v of adj[u]) if (!seen[v]) { seen[v] = 1; count++; stack.push(v); } }
   assert.equal(count, total, 'the board stays connected through the walls');
+
+  // Continuity: a continuous wall shares endpoints between its consecutive bars,
+  // so at least one endpoint is used by two or more segments (not scattered).
+  const endpointCount = new Map();
+  for (const wl of board._tilingWalls) {
+    for (const [x, y] of [[wl.x1, wl.y1], [wl.x2, wl.y2]]) {
+      const k = `${Math.round(x * 1e4)},${Math.round(y * 1e4)}`;
+      endpointCount.set(k, (endpointCount.get(k) || 0) + 1);
+    }
+  }
+  const junctions = [...endpointCount.values()].filter(c => c >= 2).length;
+  assert.ok(junctions >= 1, 'wall bars connect at shared vertices (continuous), not scattered');
 
   // Certifies from the opener against the reduced graph.
   const fr = Math.floor(res.firstClick / cols), fc = res.firstClick % cols;

@@ -15,13 +15,21 @@
 
 // ── Shape geometry (unit pitch) ────────────────────────────────────────────
 //
-// A regular octagon inscribed in its unit box has side s = 1/(1+√2); the box
-// corners are cut at a = (1 - s)/2 from each corner. OCT_CUT is that fraction.
-export const OCT_CUT = (1 - 1 / (1 + Math.SQRT2)) / 2; // ≈ 0.29289
+// OCT_CUT is the fraction cut off each corner of an octagon's unit box. The
+// tiling is valid for any value in (0, 0.5): a bigger cut gives ROUNDER octagons
+// (shorter flat sides) and BIGGER interstitial squares, and the square always
+// tiles the gap exactly because its corner reaches the octagon vertex for any
+// cut (verified in the tests). A *regular* octagon is (1 - 1/(1+√2))/2 ≈ 0.293,
+// but that leaves the squares too small to hold a number + a gimmick sprite, so
+// this is tuned UP for legibility — the octagons and squares read as closer in
+// size (Christopher's call: "the octagons need to be smaller and the squares
+// bigger"). Tune this one number to rebalance.
+export const OCT_CUT = 0.37;
 
-// The interstitial square is a diamond whose four corners reach the octagon
-// vertices around it. Its axis-aligned bounding box is 2·OCT_CUT of the pitch.
-export const SQ_BOX_FRAC = 2 * OCT_CUT; // ≈ 0.58579
+// The interstitial square is a diamond whose four corners reach the surrounding
+// octagon vertices. Its axis-aligned bounding box is 2·OCT_CUT of the pitch, so
+// it grows with the cut.
+export const SQ_BOX_FRAC = 2 * OCT_CUT; // 0.74 at OCT_CUT 0.37
 
 // Octagon clip-path as a CSS polygon() over the cell's own box.
 export function octagonClipPath() {
@@ -100,7 +108,87 @@ export function buildTiling488(M, N) {
     }
   }
 
-  return { total, nOct, nSq, adj, octIndex, sqIndex, cellPos, width: N, height: M };
+  // Per-cell POLYGON vertices, over one deduped global vertex list — so two
+  // adjacent cells share the exact two vertex indices of the edge between them.
+  // This is what lets a wall sit on the TRUE shared boundary (including the 45°
+  // octagon/square edges) and lets continuous walls be built by walking the
+  // wireframe (buildWireframe). A vertex shared by several cells collapses to
+  // one index.
+  const a = OCT_CUT, f = 0.5 - a;
+  const verts = [];
+  const vertKey = new Map();
+  const vIdx = (x, y) => {
+    const k = `${Math.round(x * 1e6)},${Math.round(y * 1e6)}`;
+    let idx = vertKey.get(k);
+    if (idx === undefined) { idx = verts.length; verts.push({ x, y }); vertKey.set(k, idx); }
+    return idx;
+  };
+  const cellVerts = new Array(total);
+  for (let i = 0; i < M; i++) {
+    for (let j = 0; j < N; j++) {
+      const cx = j + 0.5, cy = i + 0.5;
+      cellVerts[octIndex(i, j)] = [
+        vIdx(cx - f, cy - 0.5), vIdx(cx + f, cy - 0.5), // top flat
+        vIdx(cx + 0.5, cy - f), vIdx(cx + 0.5, cy + f), // right flat
+        vIdx(cx + f, cy + 0.5), vIdx(cx - f, cy + 0.5), // bottom flat
+        vIdx(cx - 0.5, cy + f), vIdx(cx - 0.5, cy - f), // left flat
+      ];
+    }
+  }
+  for (let i = 0; i < M - 1; i++) {
+    for (let j = 0; j < N - 1; j++) {
+      const sx = j + 1, sy = i + 1;
+      cellVerts[sqIndex(i, j)] = [
+        vIdx(sx, sy - a), vIdx(sx + a, sy), vIdx(sx, sy + a), vIdx(sx - a, sy),
+      ];
+    }
+  }
+
+  return { total, nOct, nSq, adj, octIndex, sqIndex, cellPos, cellVerts, verts, width: N, height: M };
+}
+
+/**
+ * The two shared vertex indices of the edge between adjacent cells a and b, or
+ * null if they don't share exactly an edge.
+ */
+export function sharedEdge(cellVerts, a, b) {
+  const setB = new Set(cellVerts[b]);
+  const shared = cellVerts[a].filter(v => setB.has(v));
+  return shared.length === 2 ? shared : null;
+}
+
+/**
+ * The tiling's WIREFRAME: every cell-boundary edge once, tagged with the two
+ * cells it separates, plus a vertex -> incident-edge index. Walking connected
+ * runs of these edges (edges sharing a vertex) is how a wall becomes a
+ * continuous barrier rather than scattered severings.
+ *
+ * @returns {{edges: Array<{v1:number,v2:number,cellA:number,cellB:number}>,
+ *            vertEdges: Map<number, number[]>}}
+ */
+export function buildWireframe(tiling) {
+  const { adj, cellVerts, total } = tiling;
+  const edges = [];
+  const edgeKey = new Map();
+  const vertEdges = new Map();
+  for (let a = 0; a < total; a++) {
+    for (const b of adj[a]) {
+      if (b <= a) continue;
+      const shared = sharedEdge(cellVerts, a, b);
+      if (!shared) continue;
+      const [v1, v2] = shared;
+      const ek = v1 < v2 ? `${v1}-${v2}` : `${v2}-${v1}`;
+      if (edgeKey.has(ek)) continue;
+      const ei = edges.length;
+      edges.push({ v1, v2, cellA: a, cellB: b });
+      edgeKey.set(ek, ei);
+      for (const v of [v1, v2]) {
+        if (!vertEdges.has(v)) vertEdges.set(v, []);
+        vertEdges.get(v).push(ei);
+      }
+    }
+  }
+  return { edges, vertEdges };
 }
 
 /**

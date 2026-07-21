@@ -410,16 +410,24 @@ export function wormCoveredCells(worms) {
 // Pure overlay layout: map every worm segment to its cell's rect via the
 // injected `cellRect(r, c) -> {left, top, width, height} | null` (the DOM
 // half lives in wormRenderer). Segments whose cell has no rect are skipped.
-export function wormOverlayLayout(worms, cellRect) {
+export function wormOverlayLayout(worms, cellRect, uniformSize = null) {
   const out = [];
   worms.forEach((worm, wormIndex) => {
     worm.segments.forEach((seg, segIndex) => {
       const rect = cellRect(seg.r, seg.c);
       if (!rect) return;
-      out.push({
-        wormIndex, segIndex, isHead: segIndex === 0,
-        left: rect.left, top: rect.top, width: rect.width, height: rect.height,
-      });
+      let { left, top, width, height } = rect;
+      // On a tiling the cells differ in size (octagons vs the small squares), so
+      // a per-cell segment would grow and shrink as the worm crawls. A uniform
+      // size (constrained to the smallest shape) keeps every worm circle the
+      // same, centered in whatever cell it sits on.
+      if (uniformSize != null) {
+        left = rect.left + (rect.width - uniformSize) / 2;
+        top = rect.top + (rect.height - uniformSize) / 2;
+        width = uniformSize;
+        height = uniformSize;
+      }
+      out.push({ wormIndex, segIndex, isHead: segIndex === 0, left, top, width, height });
     });
   });
   return out;

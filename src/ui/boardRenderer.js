@@ -298,46 +298,43 @@ export function renderWallOverlays() {
   board.appendChild(overlay);
 }
 
-// Draw a wall bar across each severed edge of a tiling board. The bar sits at
-// the midpoint of the two cells' centers, perpendicular to the line between
-// them (i.e. along their shared polygon boundary), so a wall reads as blocking
-// passage between exactly those two cells. Pixel-anchored to live cell rects
-// like the rectangular overlay, so it re-lays on resize / theme refit.
+// Draw a wall bar on the TRUE shared edge of each severed pair. Each wall carries
+// the edge's two endpoints in unit-pitch coords (board._tilingWalls, set by
+// applyWallsTiling); the bar lies exactly along that segment, so octagon/octagon
+// walls are axis-aligned and octagon/square walls sit on the real 45° boundary.
+// Continuous walls share endpoints, so the bars connect end to end. Unit coords
+// are anchored to octagon(0,0) = DOM cell 0 (whose box IS the pitch P), so this
+// re-lays correctly on resize / theme refit like the other overlays.
 function _renderTilingWalls(boardParent) {
   const walls = state.board._tilingWalls;
   boardParent.style.position = 'relative';
   const overlay = document.createElement('div');
   overlay.className = 'wall-overlay-container';
 
-  const boardRect = boardEl.getBoundingClientRect();
-  const boardX = boardEl.offsetLeft;
-  const boardY = boardEl.offsetTop;
-  const centerOf = (idx) => {
-    const el = boardEl.children[idx];
-    if (!el || !el.classList || !el.classList.contains('cell')) return null;
-    const rect = el.getBoundingClientRect();
-    return {
-      x: rect.left - boardRect.left + boardX + rect.width / 2,
-      y: rect.top - boardRect.top + boardY + rect.height / 2,
-      w: rect.width,
-    };
-  };
+  const ref = boardEl.children[0];
+  if (ref && ref.classList && ref.classList.contains('cell') && walls.length) {
+    const boardRect = boardEl.getBoundingClientRect();
+    const boardX = boardEl.offsetLeft, boardY = boardEl.offsetTop;
+    const r0 = ref.getBoundingClientRect();
+    const P = r0.width; // octagon box = pitch
+    const ox = (r0.left - boardRect.left + boardX) + P / 2; // pixel of unit (0.5, 0.5)
+    const oy = (r0.top - boardRect.top + boardY) + P / 2;
+    const toPx = (x, y) => ({ x: ox + (x - 0.5) * P, y: oy + (y - 0.5) * P });
 
-  const THICK = 4;
-  for (const [a, b] of walls) {
-    const ca = centerOf(a), cb = centerOf(b);
-    if (!ca || !cb) continue;
-    const mx = (ca.x + cb.x) / 2, my = (ca.y + cb.y) / 2;
-    const angle = Math.atan2(cb.y - ca.y, cb.x - ca.x) * 180 / Math.PI;
-    const len = Math.min(ca.w, cb.w) * 0.62;
-    const line = document.createElement('div');
-    line.className = 'tiling-wall-line';
-    line.style.left = (mx - len / 2) + 'px';
-    line.style.top = (my - THICK / 2) + 'px';
-    line.style.width = len + 'px';
-    // Perpendicular to the a-b connection = along the shared edge.
-    line.style.transform = `rotate(${angle + 90}deg)`;
-    overlay.appendChild(line);
+    const THICK = 4;
+    for (const wl of walls) {
+      const p1 = toPx(wl.x1, wl.y1), p2 = toPx(wl.x2, wl.y2);
+      const mx = (p1.x + p2.x) / 2, my = (p1.y + p2.y) / 2;
+      const len = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+      const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180 / Math.PI;
+      const line = document.createElement('div');
+      line.className = 'tiling-wall-line';
+      line.style.left = (mx - len / 2) + 'px';
+      line.style.top = (my - THICK / 2) + 'px';
+      line.style.width = len + 'px';
+      line.style.transform = `rotate(${angle}deg)`; // bar lies along the edge itself
+      overlay.appendChild(line);
+    }
   }
   boardParent.appendChild(overlay);
 }
@@ -504,7 +501,7 @@ export function updateCell(r, c) {
     // not just the one NEXT MOVE chip.
     if (cell.frontierSafe) cellEl.classList.add('frontier-safe');
     // Daily / weekly suggested start cell (shows when board is fresh or re-fogged)
-    if (cell.suggestedStart && (state.gameMode === 'daily' || state.gameMode === 'weekly') &&
+    if (cell.suggestedStart && (state.gameMode === 'daily' || state.gameMode === 'weekly' || state.coastlinePractice) &&
         (state.status === 'idle' || (state.status === 'playing' && state.revealedCount <= 1))) {
       cellEl.classList.add('suggested-start');
     }
@@ -584,7 +581,7 @@ function updateStartHereLabel() {
 
   // Daily "Start here" — pre-first-click marker for the solver's best
   // opener. Only shows on daily mode while the board is fresh.
-  if (state.gameMode === "daily" &&
+  if ((state.gameMode === "daily" || state.coastlinePractice) &&
       (state.status === "idle" || (state.status === "playing" && state.revealedCount <= 1))) {
     const startCell = boardEl.querySelector(".suggested-start");
     if (startCell) _placeLabel(startCell, "start-here-label", "Start here", "start-here-label");

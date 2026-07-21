@@ -17,6 +17,7 @@
 import { state } from '../state/gameState.js';
 import { boardEl } from './domHelpers.js';
 import { wormOverlayLayout, mixHex } from '../logic/worms.js';
+import { SQ_BOX_FRAC } from '../logic/tilingGeometry.js';
 
 const BURROW_ANIM_MS = 400;
 const HATCH_ANIM_MS = 500;
@@ -129,8 +130,15 @@ export function renderWormOverlays() {
     if (els) _paintWorm(els, typeof worm.tone === 'number' ? worm.tone : 0.5, endpoints);
   }
 
-  // Position every segment from the pure layout
-  for (const item of wormOverlayLayout(worms, cellRect)) {
+  // Position every segment from the pure layout. On a tiling, size every
+  // segment uniformly to fit the SMALLEST shape (the interstitial square) so a
+  // worm's circles don't grow and shrink as it crawls octagon <-> square.
+  let uniformSize = null;
+  if (state.board && state.board._cellPos) {
+    const P = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cell-size')) || 40;
+    uniformSize = SQ_BOX_FRAC * P * 0.78;
+  }
+  for (const item of wormOverlayLayout(worms, cellRect, uniformSize)) {
     const els = _wormEls.get(worms[item.wormIndex]);
     const el = els && els[item.segIndex];
     if (!el) continue;
