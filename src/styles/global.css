@@ -1025,6 +1025,26 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   font-size: 0.62em;
   line-height: 1;
 }
+
+/* Coastline: on a tiling the sonar SYMBOL is a centered watermark behind the
+   number (side-by-side overran the small clipped cell). Same symbol + number,
+   both fit — the symbol keeps its identity, the number stays the focus. */
+.cell.sonar-tiling .sonar-bg {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 70%;
+  height: 70%;
+  transform: translate(-50%, -50%);
+  opacity: 0.5;
+  pointer-events: none;
+}
+.cell.sonar-tiling .sonar-num {
+  position: relative;
+  z-index: 1;
+  /* A soft light halo keeps the count crisp over the symbol behind it. */
+  text-shadow: 0 0 3px var(--color-cell-revealed, #fff), 0 0 3px var(--color-cell-revealed, #fff);
+}
 .gameover-receipt-tappable {
   cursor: pointer;
   text-decoration: underline;

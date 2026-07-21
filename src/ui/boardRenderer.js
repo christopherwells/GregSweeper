@@ -446,11 +446,15 @@ export function updateCell(r, c) {
         if (cell.isLiar) cellEl.classList.add('liar-cell');
         if (cell.isSonar) {
           cellEl.classList.add('sonar-cell');
-          // On a tiling the small squares can't hold the sprite AND the number
-          // without the clip-path cutting them off. Keep the number (set above),
-          // let the cyan sonar TINT mark the cell, and the tap-to-reveal region
-          // does the rest — no cramped, clipped sprite.
-          if (!_isTiling()) {
+          if (_isTiling()) {
+            // Side-by-side sprite + number overran the small clipped cell, so
+            // OVERLAP them: the sonar symbol as a centered watermark, the number
+            // bold on top. Both the identity (the symbol) and the count survive,
+            // and the combined footprint fits the clip — no new colors needed.
+            cellEl.classList.add('sonar-tiling');
+            cellEl.innerHTML = uiSpriteImgHTML('modSonar', 'sonar-bg')
+              + `<span class="sonar-num">${displayNum}</span>`;
+          } else {
             cellEl.innerHTML = uiSpriteImgHTML('modSonar', 'sonar-marker') + displayNum;
           }
         }
