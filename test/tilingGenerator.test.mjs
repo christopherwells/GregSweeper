@@ -10,7 +10,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  buildTiling488, containerFor, OCT_CUT, SQ_BOX_FRAC,
+  buildTiling488, containerFor, OCT_CUT, SQ_BOX_FRAC, computeCompassRay,
 } from '../src/logic/tilingGeometry.js';
 import { generateTilingBoard } from '../src/logic/tilingGenerator.js';
 import { isBoardSolvable } from '../src/logic/boardSolver.js';
@@ -127,6 +127,72 @@ test('generateTilingBoard reliably finds a certified board across seeds', () => 
   // reliably get one. If this ever drops, tune density / attempts / add a
   // constructive placer (out of scope for the first slice).
   assert.ok(found >= trials - 1, `expected most seeds to certify, got ${found}/${trials}`);
+});
+
+// ── Compass geometric ray ──────────────────────────────────────────────────
+
+test('computeCompassRay: orthogonal ray hits octagons only, in order', () => {
+  const T = buildTiling488(6, 7);
+  // Octagon (2,1); go east. Only octagons share its center row (cy = 2.5);
+  // squares sit at integer cy, so they are off the horizontal line.
+  const origin = T.octIndex(2, 1);
+  const ray = computeCompassRay(T.cellPos, origin, 1, 0);
+  assert.deepEqual(ray, [T.octIndex(2, 2), T.octIndex(2, 3), T.octIndex(2, 4), T.octIndex(2, 5), T.octIndex(2, 6)]);
+});
+
+test('computeCompassRay: diagonal ray alternates octagon and square', () => {
+  const T = buildTiling488(6, 7);
+  const origin = T.octIndex(1, 1);
+  const ray = computeCompassRay(T.cellPos, origin, 1, 1); // south-east
+  // sq(1,1), oct(2,2), sq(2,2), oct(3,3), sq(3,3), oct(4,4), ...
+  assert.equal(ray[0], T.sqIndex(1, 1));
+  assert.equal(ray[1], T.octIndex(2, 2));
+  assert.equal(ray[2], T.sqIndex(2, 2));
+  assert.equal(ray[3], T.octIndex(3, 3));
+});
+
+test('computeCompassRay: every returned cell is colinear and forward (honesty)', () => {
+  const T = buildTiling488(6, 7);
+  const dirs = [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[1,-1],[-1,1],[1,1]];
+  for (let origin = 0; origin < T.total; origin++) {
+    const o = T.cellPos[origin];
+    for (const [dx, dy] of dirs) {
+      const ray = computeCompassRay(T.cellPos, origin, dx, dy);
+      let lastT = 0;
+      for (const idx of ray) {
+        const p = T.cellPos[idx];
+        const rx = p.cx - o.cx, ry = p.cy - o.cy;
+        assert.equal(rx * dy - ry * dx, 0, 'colinear');
+        const t = rx * dx + ry * dy;
+        assert.ok(t > lastT, 'strictly outward, ordered');
+        lastT = t;
+      }
+    }
+  }
+});
+
+test('a compass tiling board certifies and every compass cell stores a colinear ray', () => {
+  let res = null;
+  for (let s = 0; s < 8 && !res; s++) {
+    res = generateTilingBoard({ M: 6, N: 7, mines: 11, seed: `compass-${s}`, gimmicks: ['compass'] });
+  }
+  assert.ok(res, 'a compass board certified');
+  const { board, cols } = res;
+  let compassCells = 0;
+  for (let i = 0; i < board._cellPos.length; i++) {
+    const cell = board[(i / cols) | 0][i % cols];
+    if (!cell.isCompass) continue;
+    compassCells++;
+    assert.ok(Array.isArray(cell.compassRay) && cell.compassRay.length >= 1, 'ray stored');
+    const o = board._cellPos[i];
+    const { dr, dc } = cell.compassDir;
+    for (const idx of cell.compassRay) {
+      const p = board._cellPos[idx];
+      // compassDir is {dr: dy, dc: dx}
+      assert.equal((p.cx - o.cx) * dr - (p.cy - o.cy) * dc, 0, 'stored ray colinear with stored direction');
+    }
+  }
+  assert.ok(compassCells >= 1);
 });
 
 test('techniqueFloor can demand real reasoning (tank/gauss), like the fixture', () => {

@@ -121,3 +121,36 @@ export function containerFor(total) {
   }
   return best;
 }
+
+/**
+ * The cells a compass ray crosses on a tiling: every cell whose CENTER lies on
+ * the straight line out of the origin in direction (dx, dy), ordered outward.
+ *
+ * A compass is a geometry question ("which way"), which a neighbor graph can't
+ * answer — so the ray is computed HERE, from cell positions, once at generation,
+ * and stored on the cell. The certifier and the display then both read the
+ * stored ray (compassRayCells returns it on an explicit topology) and can never
+ * disagree. Positions are exact half/integer lattice values, so the colinearity
+ * cross-product is exact — no float slop.
+ *
+ * @param {Array<{cx:number,cy:number}>} cellPos
+ * @param {number} originIdx
+ * @param {number} dx  one of -1, 0, 1
+ * @param {number} dy  one of -1, 0, 1
+ * @returns {number[]} flat indices, nearest first
+ */
+export function computeCompassRay(cellPos, originIdx, dx, dy) {
+  const o = cellPos[originIdx];
+  const hits = [];
+  for (let i = 0; i < cellPos.length; i++) {
+    if (i === originIdx) continue;
+    const p = cellPos[i];
+    const rx = p.cx - o.cx, ry = p.cy - o.cy;
+    if (rx * dy - ry * dx !== 0) continue;   // off the line
+    const t = rx * dx + ry * dy;             // signed distance along the ray
+    if (t <= 0) continue;                    // behind the origin
+    hits.push({ i, t });
+  }
+  hits.sort((a, b) => a.t - b.t);
+  return hits.map(h => h.i);
+}

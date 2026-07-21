@@ -188,21 +188,17 @@ export function sonarScanCells(board, rows, cols, r, c) {
  * Same single-definition contract as sonarScanCells: display and certifier read
  * this one function or they can disagree.
  *
- * A compass ray is NOT a topological property, and that is a real limit rather
- * than an unfinished piece of work. Sonar asks "how far", which a graph answers;
- * a compass asks "which way", which it cannot. Direction needs an embedding —
- * positions, or at minimum a consistent angular order on each cell's edges — and
- * an explicit topology carries neither. So this REFUSES on a topology board
- * instead of walking (r + dr, c + dc) through a container whose indices mean
- * nothing spatially: that walk does not crash, it returns a plausible number
- * describing no region on the board, and the certifier would then emit a
- * matching constraint, leaving display and proof in perfect agreement about
- * something meaningless. A loud throw is the only safe failure here.
- *
- * Defining it properly is Phase 2 work, and it belongs there for a second
- * reason: whether a ray reads as "straight" across octagons and squares is a
- * question about what a player SEES, so it cannot be validated before there is
- * a renderer to look at.
+ * A compass ray is NOT a topological property. Sonar asks "how far", which a
+ * graph answers; a compass asks "which way", which it cannot — direction needs
+ * an embedding the neighbor list does not carry. So on an explicit topology the
+ * ray is NOT walked here: it was computed from cell POSITIONS at generation
+ * (computeCompassRay in tilingGeometry.js, Coastline Phase 2) and stored on the
+ * cell as `compassRay`, and this returns that stored list. Display
+ * (recomputeDisplayedMines) and the certifier (buildStaticGimmickConstraints)
+ * both read it, so they can never disagree about a region computed from geometry
+ * neither of them can see. Before Phase 2 this THREW rather than walk (r+dr,c+dc)
+ * through a container whose indices mean nothing spatially — a walk that would
+ * have returned a plausible number describing no region on the board.
  *
  * @param {Board} board
  * @param {number} rows
@@ -214,11 +210,8 @@ export function sonarScanCells(board, rows, cols, r, c) {
  */
 export function compassRayCells(board, rows, cols, r, c, dir) {
   if (board._cellNeighbors) {
-    throw new Error(
-      'compassRayCells: a compass has no meaning on an explicit topology — a ray '
-      + 'needs a direction, and a neighbor graph carries no geometry to take one from. '
-      + 'Keep compass off tiling boards until Phase 2 defines it against cell positions.'
-    );
+    const cell = board[r] && board[r][c];
+    return (cell && cell.compassRay) ? cell.compassRay : [];
   }
 
   const out = [];

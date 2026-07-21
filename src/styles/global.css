@@ -212,6 +212,12 @@
   --marker-mirror-1: rgba(155, 89, 182, 0.85);
   --marker-mirror-2: rgba(46, 204, 113, 0.85);
   --marker-mirror-width: 2.5px;
+  /* Faint per-pair fills for tiling mirror cells, where the dashed border is
+     clipped away — the inset ring carries octagons, this tint carries the
+     small diamonds (Coastline). */
+  --marker-mirror-0-fill: rgba(52, 152, 219, 0.22);
+  --marker-mirror-1-fill: rgba(155, 89, 182, 0.22);
+  --marker-mirror-2-fill: rgba(46, 204, 113, 0.22);
   --marker-plate-timer: #ff4444;
   --marker-plate-border: rgba(255, 80, 80, 0.6);
   --marker-plate-glow: rgba(255, 50, 50, 0.4);
@@ -1932,6 +1938,24 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 .cell.mirror-cell.mirror-pair-0 { border: var(--marker-mirror-width, 2.5px) dashed var(--marker-mirror-0, rgba(52, 152, 219, 0.85)) !important; }
 .cell.mirror-cell.mirror-pair-1 { border: var(--marker-mirror-width, 2.5px) dashed var(--marker-mirror-1, rgba(155, 89, 182, 0.85)) !important; }
 .cell.mirror-cell.mirror-pair-2 { border: var(--marker-mirror-width, 2.5px) dashed var(--marker-mirror-2, rgba(46, 204, 113, 0.85)) !important; }
+
+/* Coastline: a clip-path cuts the dashed border off, so on a tiling a mirror
+   pair reads as an inset ring inside the shape (clean on octagons, whose flat
+   sides align with the box) plus a faint pair tint (which carries the small
+   rotated diamonds, where the box-inset ring lands outside the clip). */
+#board.tiling-board .cell.mirror-cell { border-color: transparent !important; }
+#board.tiling-board .cell.mirror-cell.mirror-pair-0 {
+  box-shadow: inset 0 0 0 var(--marker-mirror-width, 2.5px) var(--marker-mirror-0) !important;
+  background: var(--marker-mirror-0-fill, rgba(52, 152, 219, 0.22)) !important;
+}
+#board.tiling-board .cell.mirror-cell.mirror-pair-1 {
+  box-shadow: inset 0 0 0 var(--marker-mirror-width, 2.5px) var(--marker-mirror-1) !important;
+  background: var(--marker-mirror-1-fill, rgba(155, 89, 182, 0.22)) !important;
+}
+#board.tiling-board .cell.mirror-cell.mirror-pair-2 {
+  box-shadow: inset 0 0 0 var(--marker-mirror-width, 2.5px) var(--marker-mirror-2) !important;
+  background: var(--marker-mirror-2-fill, rgba(46, 204, 113, 0.22)) !important;
+}
 
 /* Mine shift shimmer */
 .mine-shift-shimmer {

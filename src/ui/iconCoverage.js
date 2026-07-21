@@ -108,5 +108,9 @@ export const ICON_STATUS = {
   '🟢': 'plain',    // pace dot (share caption)
   '⚪': 'plain',    // pace dot (share caption)
   '↔️': 'plain',    // sync direction (code comment)
+  '↖': 'plain',    // compass diagonal arrows — text drawn on a tiling compass
+  '↗': 'plain',    // cell (Coastline Phase 2); the cardinal ←→↑↓ aren't
+  '↙': 'plain',    // Extended_Pictographic, but these diagonals are
+  '↘': 'plain',
   '★':  'plain',    // diagnostics star (text)
 };

@@ -6,6 +6,7 @@ import { safeGet, safeSet, safeGetJSON, safeSetJSON } from '../storage/storageAd
 import { MAX_LEVEL } from './difficulty.js';
 import { WORM_MAX_PER_BOARD } from './worms.js';
 import { wallKey, hasWallBetween, buildNeighborCache, sonarScanCells, compassRayCells, cellAt } from './adjacency.js';
+import { computeCompassRay } from './tilingGeometry.js';
 
 // Reset all gimmick-related properties on a single cell.
 // Used when retrying gimmick placement to avoid stale markers.
@@ -29,6 +30,7 @@ export function clearGimmickProperties(cell) {
   cell.compassDir = undefined;
   cell.compassArrow = undefined;
   cell.compassCount = undefined;
+  cell.compassRay = undefined;
   cell.liarOffset = undefined;
   cell.isWormEgg = false;
 }
@@ -902,6 +904,22 @@ const COMPASS_DIRS = [
   { arrow: '↓', dr: 1, dc: 0 },
 ];
 
+// Eight directions for a tiling compass (Coastline Phase 2): the four
+// orthogonal octagon axes plus the four diagonals (which alternate octagon and
+// square). dx/dy are geometric (dx = +col, dy = +row). The ray itself is
+// computed from cell POSITIONS and stored on the cell, so display and certifier
+// read the same list — see computeCompassRay / compassRayCells.
+const COMPASS_DIRS_8 = [
+  { arrow: '←', dx: -1, dy: 0 },
+  { arrow: '→', dx: 1, dy: 0 },
+  { arrow: '↑', dx: 0, dy: -1 },
+  { arrow: '↓', dx: 0, dy: 1 },
+  { arrow: '↖', dx: -1, dy: -1 },
+  { arrow: '↗', dx: 1, dy: -1 },
+  { arrow: '↙', dx: -1, dy: 1 },
+  { arrow: '↘', dx: 1, dy: 1 },
+];
+
 function applyCompass(board, rows, cols, count, rng) {
   const candidates = [];
   for (let r = 0; r < rows; r++) {
@@ -913,15 +931,36 @@ function applyCompass(board, rows, cols, count, rng) {
     }
   }
   shuffle(candidates, rng);
+  const tiling = !!board._cellPos;
   const applied = [];
   for (let i = 0; i < Math.min(count, candidates.length); i++) {
     const cell = candidates[i];
-    const dir = COMPASS_DIRS[Math.floor(rng() * COMPASS_DIRS.length)];
-    cell.isCompass = true;
-    cell.compassDir = dir;
-    cell.compassArrow = dir.arrow;
-    // compassCount + displayedMines are set by recomputeDisplayedMines
-    applied.push({ row: cell.row, col: cell.col, arrow: dir.arrow });
+    if (tiling) {
+      // Pick a geometric direction whose ray is non-trivial (>= 2 cells) —
+      // else the longest available — and store the precomputed ray. The cell's
+      // number then counts mines along exactly this stored list.
+      const idx = cell.row * cols + cell.col;
+      const dirs = COMPASS_DIRS_8.slice();
+      shuffle(dirs, rng);
+      let best = null, bestRay = null;
+      for (const d of dirs) {
+        const ray = computeCompassRay(board._cellPos, idx, d.dx, d.dy);
+        if (ray.length >= 2) { best = d; bestRay = ray; break; }
+        if (!best || ray.length > bestRay.length) { best = d; bestRay = ray; }
+      }
+      cell.isCompass = true;
+      cell.compassDir = { dr: best.dy, dc: best.dx };
+      cell.compassArrow = best.arrow;
+      cell.compassRay = bestRay;
+      applied.push({ row: cell.row, col: cell.col, arrow: best.arrow });
+    } else {
+      const dir = COMPASS_DIRS[Math.floor(rng() * COMPASS_DIRS.length)];
+      cell.isCompass = true;
+      cell.compassDir = dir;
+      cell.compassArrow = dir.arrow;
+      // compassCount + displayedMines are set by recomputeDisplayedMines
+      applied.push({ row: cell.row, col: cell.col, arrow: dir.arrow });
+    }
   }
   return applied;
 }
