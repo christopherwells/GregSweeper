@@ -2145,15 +2145,34 @@ async function init() {
     // ?coastline=<modifier>[,<modifier>...] places those modifiers on the
     // tiling test board (e.g. ?coastline=sonar,mirror); ?coastline=1 or bare
     // is a plain board. Passed through to generateTilingBoard verbatim.
-    const _coastVal = urlParams.get('coastline') || '';
-    state.coastlineGimmicks = _coastVal.split(',').map(s => s.trim()).filter(s => s && s !== '1');
+    //
+    // An optional "<tiling>:" prefix picks the SHAPE, so
+    // ?coastline=hex:sonar,walls is a 6.6.6 honeycomb with those modifiers and
+    // a bare ?coastline=hex is a plain honeycomb. Without a prefix the tiling is
+    // the 4.8.8, so every existing test link keeps working unchanged.
+    const _coastRaw = urlParams.get('coastline') || '';
+    const _coastLower = _coastRaw.trim().toLowerCase();
+    const _isHexTok = (s) => s === 'hex' || s === '6.6.6' || s === '666';
+    let _coastType = '4.8.8';
+    let _coastMods = _coastRaw;
+    const _colon = _coastRaw.indexOf(':');
+    if (_colon >= 0 && _isHexTok(_coastRaw.slice(0, _colon).trim().toLowerCase())) {
+      _coastType = 'hex';
+      _coastMods = _coastRaw.slice(_colon + 1);
+    } else if (_isHexTok(_coastLower)) {
+      _coastType = 'hex';
+      _coastMods = '';
+    }
+    state.coastlineType = _coastType;
+    state.coastlineGimmicks = _coastMods.split(',').map(s => s.trim()).filter(s => s && s !== '1');
     state.currentLevel = 1;
     hideTitleScreen();
     await newGame();
     const _cg = state.coastlineGimmicks;
+    const _shape = state.coastlineType === 'hex' ? 'hexagonal (6.6.6)' : 'octagons (4.8.8)';
     showToast(_cg.length
-      ? `Coastline test board — tiling + ${_cg.join(', ')}. Nothing records.`
-      : 'Coastline test board — Archimedean tiling. Nothing records.', 6000);
+      ? `Coastline test board — ${_shape} + ${_cg.join(', ')}. Nothing records.`
+      : `Coastline test board — ${_shape}. Nothing records.`, 6000);
   } else if (deepLinkLevel > 0) {
     // ?level=N playtest deep link (test builds only — the gate is in
     // deepLinkLevel's derivation): start a PRACTICE challenge run at any

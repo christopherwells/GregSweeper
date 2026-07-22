@@ -96,6 +96,7 @@ export function switchMode(mode) {
   state.coastlinePractice = false;
   state.coastlineSeed = null;
   state.coastlineGimmicks = null;
+  state.coastlineType = null;
   updateModeUI(mode);
 
   // Chaos mode: always start a fresh run (no resume)

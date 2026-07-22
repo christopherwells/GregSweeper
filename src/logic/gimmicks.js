@@ -6,7 +6,7 @@ import { safeGet, safeSet, safeGetJSON, safeSetJSON } from '../storage/storageAd
 import { MAX_LEVEL } from './difficulty.js';
 import { WORM_MAX_PER_BOARD } from './worms.js';
 import { wallKey, hasWallBetween, buildNeighborCache, sonarScanCells, compassRayCells, cellAt, defineCellNeighbors } from './adjacency.js';
-import { computeCompassRay, buildTiling488, buildWireframe } from './tilingGeometry.js';
+import { computeCompassRay, buildTiling, buildWireframe, HEX_ROW_H } from './tilingGeometry.js';
 
 // Reset all gimmick-related properties on a single cell.
 // Used when retrying gimmick placement to avoid stale markers.
@@ -584,7 +584,10 @@ function applyWallsTiling(board, rows, cols, segmentCount, rng) {
   // separates, so a wall is a CONTINUOUS run of edges sharing vertices — the
   // bars connect end to end, and each sits on the TRUE shared boundary
   // (including the 45° octagon/square edges).
-  const tiling = buildTiling488(board._tiling.M, board._tiling.N);
+  // Rebuild the SAME tiling the board was generated on — the wireframe (and so
+  // every wall segment) is geometry-specific, and a 4.8.8 wireframe over a
+  // honeycomb would draw walls on edges that do not exist.
+  const tiling = buildTiling(board._tiling.type, board._tiling.M, board._tiling.N);
   const { edges, vertEdges } = buildWireframe(tiling);
   const verts = tiling.verts;
 
@@ -1019,6 +1022,20 @@ const COMPASS_DIRS_8 = [
   { arrow: '↘', dx: 1, dy: 1 },
 ];
 
+// A honeycomb has SIX straight lines of cell centers, not eight: the horizontal
+// row plus the four half-step diagonals. There is deliberately no due-north or
+// due-south ray on a pointy-top hex lattice, because the row above is offset by
+// half a hex and no column of centers runs vertically. dy uses the real row
+// spacing (sqrt(3)/2 pitch units) so the ray direction IS the lattice axis.
+const COMPASS_DIRS_HEX = [
+  { arrow: '←', dx: -1, dy: 0 },
+  { arrow: '→', dx: 1, dy: 0 },
+  { arrow: '↖', dx: -0.5, dy: -HEX_ROW_H },
+  { arrow: '↗', dx: 0.5, dy: -HEX_ROW_H },
+  { arrow: '↙', dx: -0.5, dy: HEX_ROW_H },
+  { arrow: '↘', dx: 0.5, dy: HEX_ROW_H },
+];
+
 function applyCompass(board, rows, cols, count, rng) {
   const candidates = [];
   for (let r = 0; r < rows; r++) {
@@ -1039,7 +1056,9 @@ function applyCompass(board, rows, cols, count, rng) {
       // else the longest available — and store the precomputed ray. The cell's
       // number then counts mines along exactly this stored list.
       const idx = cell.row * cols + cell.col;
-      const dirs = COMPASS_DIRS_8.slice();
+      // Direction set follows the lattice: 8 for 4.8.8, the 6 hex axes for a
+      // honeycomb (a due-north ray would hit nothing there).
+      const dirs = (board._tiling?.type === 'hex' ? COMPASS_DIRS_HEX : COMPASS_DIRS_8).slice();
       shuffle(dirs, rng);
       // The FIRST compass cell prefers a diagonal (octagon/square staircase ray)
       // so any compass board reliably shows that distinctive tiling ray at least

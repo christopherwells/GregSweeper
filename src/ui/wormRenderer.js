@@ -130,13 +130,18 @@ export function renderWormOverlays() {
     if (els) _paintWorm(els, typeof worm.tone === 'number' ? worm.tone : 0.5, endpoints);
   }
 
-  // Position every segment from the pure layout. On a tiling, size every
-  // segment uniformly to fit the SMALLEST shape (the interstitial square) so a
-  // worm's circles don't grow and shrink as it crawls octagon <-> square.
+  // Position every segment from the pure layout. On a tiling, size every segment
+  // uniformly so a worm's circles don't grow and shrink as it crawls between
+  // cells of different sizes — the clamp is the SMALLEST shape that tiling has.
+  // On 4.8.8 that is the interstitial square; a honeycomb has no small cell at
+  // all (every hexagon is one full pitch wide, and a circle of diameter P is
+  // exactly its inscribed circle), so clamping a hex worm to the square's box
+  // would draw it at ~58% of the cell it is sitting on.
   let uniformSize = null;
   if (state.board && state.board._cellPos) {
     const P = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cell-size')) || 40;
-    uniformSize = SQ_BOX_FRAC * P * 0.78;
+    const boxFrac = state.board._tiling?.type === 'hex' ? 1 : SQ_BOX_FRAC;
+    uniformSize = boxFrac * P * 0.78;
   }
   for (const item of wormOverlayLayout(worms, cellRect, uniformSize)) {
     const els = _wormEls.get(worms[item.wormIndex]);

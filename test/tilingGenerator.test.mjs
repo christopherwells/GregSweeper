@@ -11,9 +11,9 @@ import assert from 'node:assert/strict';
 
 import {
   buildTiling488, containerFor, OCT_CUT, SQ_BOX_FRAC, computeCompassRay,
-  sharedEdge, buildWireframe,
+  sharedEdge, buildWireframe, buildTiling, buildHexTiling, HEX_ROW_H, HEX_R,
 } from '../src/logic/tilingGeometry.js';
-import { generateTilingBoard } from '../src/logic/tilingGenerator.js';
+import { generateTilingBoard, TILING_SAFE_GIMMICKS } from '../src/logic/tilingGenerator.js';
 import { isBoardSolvable } from '../src/logic/boardSolver.js';
 
 // ── Topology is preserved through promotion ────────────────────────────────
@@ -96,7 +96,9 @@ test('generateTilingBoard yields a board that INDEPENDENTLY re-certifies', () =>
   const { board, rows, cols, firstClick, check } = res;
   assert.equal(board._cellNeighbors.length, rows * cols, 'topology stamped');
   assert.equal(board._cellPos.length, rows * cols, 'geometry stamped');
-  assert.deepEqual(board._tiling, { type: '4.8.8', M, N });
+  // _tiling now carries the renderer's pitch-unit extent (wUnits/hUnits); for
+  // 4.8.8 that is exactly N x M.
+  assert.deepEqual(board._tiling, { type: '4.8.8', M, N, wUnits: N, hUnits: M });
   assert.equal(board._gatedCert, true, 'created via createEmptyBoard');
 
   // Mine count is exactly what was asked (11 fits on 72 cells easily).
@@ -273,6 +275,221 @@ test('walls sever graph edges (symmetric, connected, absent) and the board certi
   const check = isBoardSolvable(board, rows, cols, fr, fc, adj);
   assert.equal(check.solvable, true);
   assert.equal(check.remainingUnknowns, 0);
+});
+
+// ── Tiling #2: the 6.6.6 honeycomb through the same generator ──────────────
+//
+// The certifier-transfers question for hexagons is its own gate
+// (tilingCertificationHex.test.mjs). What matters here is that the SHARED
+// generator, wall placer and compass produce honest honeycomb boards without
+// any 4.8.8 assumption leaking in.
+
+test('the dispatcher returns each tiling by name, and both share one descriptor shape', () => {
+  const hex = buildTiling('hex', 5, 5);
+  const oct = buildTiling('4.8.8', 5, 5);
+  assert.equal(hex.type, 'hex');
+  assert.equal(oct.type, '4.8.8');
+  assert.equal(buildTiling('6.6.6', 4, 4).type, 'hex');
+  assert.equal(buildTiling(undefined, 4, 4).type, '4.8.8', 'default stays the shipped tiling');
+
+  // Every consumer (generator, renderer, wall wireframe) reads only these, so
+  // both builders must supply all of them or a tiling silently misrenders.
+  for (const T of [hex, oct]) {
+    for (const k of ['total', 'adj', 'cellPos', 'cellVerts', 'verts', 'wUnits', 'hUnits', 'centerIndex', 'type']) {
+      assert.ok(T[k] !== undefined, `${T.type} exposes ${k}`);
+    }
+    assert.equal(T.cellPos.length, T.total);
+    assert.equal(T.cellVerts.length, T.total);
+    assert.equal(T.adj.length, T.total);
+    assert.ok(T.centerIndex >= 0 && T.centerIndex < T.total, `${T.type} centerIndex on the board`);
+  }
+});
+
+test('hex extent is the real geometry, not the cell counts (the renderer reads this)', () => {
+  const M = 7, N = 7;
+  const T = buildHexTiling(M, N);
+  // Odd rows are offset half a hex, so the tiling is WIDER than N pitches...
+  assert.ok(Math.abs(T.wUnits - (N + 0.5)) < 1e-9, 'width = N + half a hex');
+  // ...and rows overlap vertically, so it is SHORTER than M pitches.
+  assert.ok(Math.abs(T.hUnits - (2 * HEX_R + (M - 1) * HEX_ROW_H)) < 1e-9, 'height = 2R + (M-1)*rowH');
+  assert.ok(T.hUnits < M, 'a honeycomb is shorter than its row count in pitch units');
+
+  // Every cell is the same shape, and no two centers coincide.
+  const seen = new Set();
+  for (const p of T.cellPos) {
+    assert.equal(p.shape, 'hex');
+    const key = `${p.cx.toFixed(6)},${p.cy.toFixed(6)}`;
+    assert.ok(!seen.has(key), `two hexes share center ${key}`);
+    seen.add(key);
+  }
+});
+
+test('generateTilingBoard builds a hex board that INDEPENDENTLY re-certifies', () => {
+  const M = 7, N = 7, mines = 10;
+  const res = generateTilingBoard({ type: 'hex', M, N, mines, seed: 'hex-seed-1' });
+  assert.ok(res, 'a certified honeycomb was found');
+
+  const { board, rows, cols, firstClick, check } = res;
+  assert.equal(rows * cols, M * N, 'container holds every hexagon');
+  assert.equal(board._cellNeighbors.length, rows * cols, 'topology stamped');
+  assert.equal(board._cellPos.length, rows * cols, 'geometry stamped');
+  assert.equal(board._tiling.type, 'hex');
+  assert.equal(board._tiling.M, M);
+  assert.equal(board._tiling.N, N);
+  assert.equal(board._gatedCert, true);
+
+  let mineCount = 0;
+  for (const row of board) for (const cell of row) if (cell.isMine) mineCount++;
+  assert.equal(mineCount, mines);
+
+  // Interior valence is 6 — no rectangular 8-neighborhood leaked in.
+  assert.ok(Math.max(...board._cellNeighbors.map(l => l.length)) === 6,
+    'no cell on a honeycomb ever sees more than 6');
+
+  const opener = board[(firstClick / cols) | 0][firstClick % cols];
+  assert.equal(opener.isMine, false);
+  for (const ni of board._cellNeighbors[firstClick]) {
+    assert.equal(board[(ni / cols) | 0][ni % cols].isMine, false, 'opener neighbor mine-free');
+  }
+
+  const fr = (firstClick / cols) | 0, fc = firstClick % cols;
+  const recheck = isBoardSolvable(board, rows, cols, fr, fc, board._cellNeighbors);
+  assert.equal(recheck.solvable, true);
+  assert.equal(recheck.remainingUnknowns, 0);
+  assert.equal(recheck.totalClicks, check.totalClicks, 'accept loop and re-cert agree');
+});
+
+test('generateTilingBoard reliably finds a certified hex board across seeds', () => {
+  let found = 0;
+  const trials = 8;
+  for (let s = 0; s < trials; s++) {
+    if (generateTilingBoard({ type: 'hex', M: 7, N: 7, mines: 10, seed: `hexyield-${s}` })) found++;
+  }
+  assert.ok(found >= trials - 1, `expected most hex seeds to certify, got ${found}/${trials}`);
+});
+
+test('a hex compass board certifies and every stored ray follows a real hex axis', () => {
+  let res = null;
+  for (let s = 0; s < 12 && !res; s++) {
+    res = generateTilingBoard({ type: 'hex', M: 7, N: 7, mines: 10, seed: `hexcompass-${s}`, gimmicks: ['compass'] });
+  }
+  assert.ok(res, 'a hex compass board certified');
+  const { board, cols } = res;
+
+  // The six hex axes. A pointy-top honeycomb has NO vertical line of centers,
+  // so a due-north/south ray must never be chosen.
+  const AXES = [[1, 0], [-1, 0], [0.5, HEX_ROW_H], [0.5, -HEX_ROW_H], [-0.5, HEX_ROW_H], [-0.5, -HEX_ROW_H]];
+  let compassCells = 0;
+  for (let i = 0; i < board._cellPos.length; i++) {
+    const cell = board[(i / cols) | 0][i % cols];
+    if (!cell.isCompass) continue;
+    compassCells++;
+    assert.ok(Array.isArray(cell.compassRay) && cell.compassRay.length >= 1, 'ray stored');
+
+    const { dr, dc } = cell.compassDir;
+    assert.ok(AXES.some(([dx, dy]) => Math.abs(dx - dc) < 1e-9 && Math.abs(dy - dr) < 1e-9),
+      `compass direction (${dc}, ${dr}) is one of the six hex axes`);
+    assert.ok(!(Math.abs(dc) < 1e-9), 'never a vertical ray on a pointy-top honeycomb');
+
+    // Stored ray is colinear with the stored direction and strictly outward.
+    const o = board._cellPos[i];
+    let lastT = -Infinity;
+    for (const idx of cell.compassRay) {
+      const p = board._cellPos[idx];
+      const rx = p.cx - o.cx, ry = p.cy - o.cy;
+      assert.ok(Math.abs(rx * dr - ry * dc) < 1e-9, 'stored ray colinear with stored direction');
+      const t = rx * dc + ry * dr;
+      assert.ok(t > lastT, 'ray ordered outward');
+      lastT = t;
+    }
+  }
+  assert.ok(compassCells >= 1);
+});
+
+test('hex walls sever real hexagon edges, stay connected, and the board certifies', () => {
+  let res = null;
+  for (let s = 0; s < 20; s++) {
+    const r = generateTilingBoard({ type: 'hex', M: 7, N: 7, mines: 9, seed: `hexwalls-${s}`, gimmicks: ['walls'] });
+    if (r && r.board._tilingWalls && r.board._tilingWalls.length > 0) { res = r; break; }
+    if (r && !res) res = r;
+  }
+  assert.ok(res, 'a hex walls board certified');
+  const { board, rows, cols } = res;
+  const adj = board._cellNeighbors;
+  const total = rows * cols;
+  assert.ok(Array.isArray(board._tilingWalls) && board._tilingWalls.length > 0, 'walls were placed');
+
+  for (let i = 0; i < total; i++) {
+    for (const n of adj[i]) assert.ok(adj[n].includes(i), `edge ${i}-${n} symmetric`);
+  }
+  // Each wall sits on a REAL shared hexagon edge, whose length is the hexagon
+  // side (1/sqrt(3) pitch units) — proof the 4.8.8 wireframe did not leak in.
+  const side = HEX_R;
+  for (const wl of board._tilingWalls) {
+    assert.ok(!adj[wl.a].includes(wl.b) && !adj[wl.b].includes(wl.a), `walled edge ${wl.a}-${wl.b} absent`);
+    const len = Math.hypot(wl.x2 - wl.x1, wl.y2 - wl.y1);
+    assert.ok(Math.abs(len - side) < 1e-6, `wall bar is one hexagon side long (got ${len})`);
+  }
+
+  const seen = new Uint8Array(total);
+  const stack = [0]; seen[0] = 1; let count = 1;
+  while (stack.length) { const u = stack.pop(); for (const v of adj[u]) if (!seen[v]) { seen[v] = 1; count++; stack.push(v); } }
+  assert.equal(count, total, 'the honeycomb stays connected through the walls');
+
+  const fr = Math.floor(res.firstClick / cols), fc = res.firstClick % cols;
+  const check = isBoardSolvable(board, rows, cols, fr, fc, adj);
+  assert.equal(check.solvable, true);
+  assert.equal(check.remainingUnknowns, 0);
+});
+
+// How to SEE each modifier on a finished board. Without this the certification
+// assertion below is unfailable: a modifier that places nothing at all leaves a
+// plain board, and a plain board certifies trivially — so the test would pass
+// precisely when the modifier is most broken (break-tested: stubbing
+// applyMirrorPairs to a no-op on hex kept the old version green).
+const MODIFIER_PRESENT = {
+  mystery: (b) => _countCells(b, c => c.isMystery),
+  liar: (b) => _countCells(b, c => c.isLiar),
+  locked: (b) => _countCells(b, c => c.isLocked),
+  sonar: (b) => _countCells(b, c => c.isSonar),
+  mirror: (b) => _countCells(b, c => !!c.mirrorPair),
+  compass: (b) => _countCells(b, c => c.isCompass),
+  worm: (b) => _countCells(b, c => c.isWormEgg),
+  walls: (b) => (b._tilingWalls || []).length,
+};
+function _countCells(board, pred) {
+  let n = 0;
+  for (const row of board) for (const cell of row) if (pred(cell)) n++;
+  return n;
+}
+
+test('every tiling-safe modifier PLACES on a honeycomb and the board still certifies', () => {
+  // Each modifier gets its own board (stacking is a separate question); the
+  // point is that no modifier's placement or number-recompute carries a 4.8.8
+  // or rectangular assumption that breaks on hexagons.
+  for (const g of TILING_SAFE_GIMMICKS) {
+    assert.ok(MODIFIER_PRESENT[g], `no presence detector for modifier ${g} — add one`);
+
+    // Search seeds for a board where the modifier ACTUALLY landed. Placement is
+    // candidate-dependent, so a single seed legitimately may place none; a
+    // modifier that never places across every seed is the real finding.
+    let res = null, placed = 0;
+    for (let s = 0; s < 12; s++) {
+      const r = generateTilingBoard({ type: 'hex', M: 7, N: 7, mines: 9, seed: `hexmod-${g}-${s}`, gimmicks: [g] });
+      if (!r) continue;
+      const n = MODIFIER_PRESENT[g](r.board);
+      if (n > 0) { res = r; placed = n; break; }
+      if (!res) res = r;
+    }
+    assert.ok(res, `a hex board with ${g} certified`);
+    assert.ok(placed > 0, `${g} never placed a single cell on any hex board — it is a no-op here`);
+
+    const { board, rows, cols, firstClick } = res;
+    const fr = Math.floor(firstClick / cols), fc = firstClick % cols;
+    const check = isBoardSolvable(board, rows, cols, fr, fc, board._cellNeighbors);
+    assert.equal(check.solvable, true, `${g} board re-certifies`);
+    assert.equal(check.remainingUnknowns, 0, `${g} board fully clears`);
+  }
 });
 
 test('techniqueFloor can demand real reasoning (tank/gauss), like the fixture', () => {

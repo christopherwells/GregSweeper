@@ -104,6 +104,7 @@ export const state = {
   coastlinePractice: false,
   coastlineSeed: null,   // seed for the tiling board (stable across reloads)
   coastlineGimmicks: null, // modifier list to place on the tiling test board
+  coastlineType: null,   // which tiling: '4.8.8' (default) or 'hex' (6.6.6)
   inputLocked: false,    // true during cascade/chord animations
 
   // Chaos mode (roguelike runs)
