@@ -19,6 +19,10 @@
 // (heartbeat) and gameActions (hatch triggers); rendering in wormRenderer.
 
 import { createDailyRNG } from './seededRandom.js';
+// tilingGeometry is a LEAF (it imports nothing), so depending on it here for the
+// 4.8.8 square-box fraction cannot create a cycle, and it keeps that constant
+// single-sourced rather than re-stating a value derived from OCT_CUT.
+import { SQ_BOX_FRAC } from './tilingGeometry.js';
 
 export const WORM_MIN_LEN = 2;
 export const WORM_MAX_LEN = 5;
@@ -410,6 +414,34 @@ export function wormCoveredCells(worms) {
 // Pure overlay layout: map every worm segment to its cell's rect via the
 // injected `cellRect(r, c) -> {left, top, width, height} | null` (the DOM
 // half lives in wormRenderer). Segments whose cell has no rect are skipped.
+/**
+ * The diameter a worm segment should be drawn at, in pixels.
+ *
+ * This is a LOOK decision with one governing property: consecutive segments
+ * must very nearly touch, or the worm stops reading as a body and becomes a row
+ * of beads sliding independently. On the square grid that falls out for free —
+ * a segment is the cell rect and cells sit one grid-gap apart (measured 0.95 of
+ * the step) — so a tiling has to reproduce the same ratio deliberately.
+ *
+ * A tiling additionally needs every segment the SAME size, or it would pulse as
+ * the worm crawls between cells of different sizes. On 4.8.8 that means
+ * clamping to the small interstitial square. A honeycomb has exactly one cell
+ * size and therefore needs no clamp: a hexagon's inscribed circle is one full
+ * pitch across, which is also the distance to each of its six neighbours, so a
+ * hex segment sized to the pitch fills its cell AND leaves consecutive segments
+ * tangent. Clamping hexagons to the 4.8.8 square instead drew them at 0.78 of
+ * the step, an 11px gap at a 50px pitch.
+ *
+ * @param {number} pitch  the live --cell-size in px
+ * @param {string|null} tilingType  board._tiling?.type, or null on a rectangle
+ * @returns {number|null} uniform diameter, or null to use each cell's own rect
+ */
+export function wormSegmentSize(pitch, tilingType) {
+  if (!tilingType) return null;                 // square grid: segment = cell rect
+  if (tilingType === 'hex') return pitch;       // inscribed circle == neighbour spacing
+  return SQ_BOX_FRAC * pitch * 0.78;            // 4.8.8: clamp to the small square
+}
+
 export function wormOverlayLayout(worms, cellRect, uniformSize = null) {
   const out = [];
   worms.forEach((worm, wormIndex) => {

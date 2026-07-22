@@ -18,7 +18,7 @@ import {
   WORM_PACE_MIN, WORM_PACE_MAX, WORM_PERSIST_PROB,
   wormLengthFor, wormLifetimeFor, wormToneFor, wormPaceFor, wormLoadFor,
   mixHex, hatchWorm, stepWorm, tickWorms, rehydrateWorms, wormCoveredCells,
-  wormOverlayLayout, wormHatchEvent, markWormBurrowed, finalizeWormEvents,
+  wormOverlayLayout, wormHatchEvent, markWormBurrowed, finalizeWormEvents, wormSegmentSize,
 } from '../src/logic/worms.js';
 import { buildTiling488, containerFor } from '../src/logic/tilingGeometry.js';
 
@@ -515,4 +515,39 @@ test('the capstone block keeps the sawtooth: intro dip at L101, density capped a
     assert.ok(d.mines <= Math.round(d.rows * d.cols * 0.34) + 1, `L${lv} density over the cap`);
   }
   assert.ok(getDifficultyForLevel(120).mines > d101.mines, 'the block ramps up toward L120');
+});
+
+// ── Segment size: the worm must read as a BODY, not a row of beads ─────────
+//
+// REGRESSION (2026-07-22, Christopher: "why does the worm motion look so much
+// worse than the original?"): on the 6.6.6 honeycomb every segment was clamped
+// to the 4.8.8 interstitial-square box — a shape that does not exist on a
+// honeycomb — so segments were 0.78 of the distance to the next segment and the
+// worm crawled as separated dots. Measured against the square grid, where a
+// segment IS the cell rect and consecutive segments sit at 0.95 of the step.
+
+test('wormSegmentSize keeps consecutive segments touching on every board shape', () => {
+  const P = 50;
+
+  // Square grid: null means "use each cell's own rect", which is what makes the
+  // original worm continuous (cells are one grid-gap apart).
+  assert.equal(wormSegmentSize(P, null), null, 'rectangular boards use the cell rect');
+
+  // A honeycomb's six neighbours are all exactly ONE PITCH away, so the segment
+  // must span a full pitch for consecutive segments to touch.
+  const hex = wormSegmentSize(P, 'hex');
+  const hexNeighbourStep = P;
+  const hexContinuity = hex / hexNeighbourStep;
+  assert.ok(hexContinuity >= 0.95,
+    `hex worm must read as a body: continuity ${hexContinuity} (was 0.78 when clamped to the 4.8.8 square)`);
+  assert.ok(hexContinuity <= 1.05, 'but not so large it spills out of the hexagon');
+
+  // It is also exactly the hexagon's inscribed circle, so it fills its cell
+  // without crossing an edge.
+  assert.ok(Math.abs(hex - P) < 1e-9, 'hex segment == the hexagon inscribed circle (one pitch)');
+
+  // 4.8.8 legitimately keeps the clamp — its cells really are two different
+  // sizes, so an unclamped segment would pulse as the worm crawls.
+  const oct = wormSegmentSize(P, '4.8.8');
+  assert.ok(oct > 0 && oct < P, '4.8.8 stays clamped to the small interstitial square');
 });
