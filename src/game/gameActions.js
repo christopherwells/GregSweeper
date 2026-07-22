@@ -1,4 +1,4 @@
-import { state, getRevealedCells, recordPlayerAction } from '../state/gameState.js';
+import { state, getRevealedCells, recordPlayerAction, modifiersPreResolved } from '../state/gameState.js';
 import { $, $$, boardEl, resetBtn } from '../ui/domHelpers.js';
 import {
   renderBoard, updateCell, updateAllCells, updateCells, getThemeEmoji,
@@ -342,8 +342,15 @@ export async function newGame() {
   // production — the ?coastline=1 deep link is isTestEnvironment()-gated.
   if (state.coastlinePractice) {
     const seed = state.coastlineSeed || 'coastline-1';
+    // Per-tiling board shape. A honeycomb cell is one shape and one size, so it
+    // takes a taller, slightly denser grid than the 4.8.8 (whose cell count is
+    // inflated by the small interstitial squares) to feel like the same board.
+    const tilingType = state.coastlineType === 'hex' ? 'hex' : '4.8.8';
+    const dims = tilingType === 'hex'
+      ? { M: 9, N: 7, mines: 13 }   // 63 hexagons
+      : { M: 6, N: 7, mines: 11 };  // 42 octagons + 30 squares
     const res = generateTilingBoard({
-      M: 6, N: 7, mines: 11, seed,
+      type: tilingType, ...dims, seed,
       gimmicks: Array.isArray(state.coastlineGimmicks) ? state.coastlineGimmicks : [],
     });
     if (!res) {
@@ -361,7 +368,7 @@ export async function newGame() {
     state.firstClick = false;
     state.status = 'idle';
     // The certificate is the certified opener's own full solve, same contract
-    // as daily/weekly: this board proves no-guess from the center octagon.
+    // as daily/weekly: this board proves no-guess from the center cell.
     state.boardCertificate = certificateFromCheck(res.check);
     const oc = res.firstClick;
     const oRow = Math.floor(oc / res.cols), oCol = oc % res.cols;
@@ -821,10 +828,12 @@ export async function newGame() {
     };
   }
 
-  // Gimmicks / modifiers (set by challenge mode on first click, or
-  // daily/weekly mode above). Weekly is added so the canonical-resolved
-  // gimmicks aren't blown away after the weekly branch sets them.
-  if (state.gameMode !== 'daily' && state.gameMode !== 'weekly') {
+  // Gimmicks / modifiers: reset here ONLY for modes that resolve them on the
+  // first click (challenge / timed / chaos). Daily/weekly canonical boards and
+  // coastline tiling boards resolve their modifiers during pre-generation (the
+  // branches above already set activeGimmicks / gimmickData), so wiping here
+  // would leave the active-modifier bar empty on a board that has modifiers.
+  if (!modifiersPreResolved(state.gameMode, state.coastlinePractice)) {
     state.activeGimmicks = [];
     state.gimmickData = {};
   }

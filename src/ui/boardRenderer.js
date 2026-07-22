@@ -3,7 +3,10 @@ import { boardEl, zoomControls, boardScrollWrapper } from './domHelpers.js';
 import { THEME_UNLOCKS } from './themeManager.js';
 import { applyIcon, uiSpriteImgHTML } from './spriteLoader.js';
 import { applyThemeEffects } from './themeEffects.js';
-import { octagonClipPath, DIAMOND_CLIP_PATH, SQ_BOX_FRAC } from '../logic/tilingGeometry.js';
+import {
+  octagonClipPath, DIAMOND_CLIP_PATH, SQ_BOX_FRAC,
+  HEXAGON_CLIP_PATH, HEX_R, HEX_BOX_H,
+} from '../logic/tilingGeometry.js';
 import { sonarScanCells, compassRayCells } from '../logic/adjacency.js';
 
 // ── Board Rendering ────────────────────────────────────
@@ -61,11 +64,24 @@ function _isTiling() {
 // scaling and the legibility clamp. Same [min, maxCap] band as a square cell.
 function _fitTilingPitch(widthBudget, heightBudget, maxCap) {
   const min = _cellBound('--cell-min-size', 18);
-  const M = state.board._tiling?.M || state.rows;
-  const N = state.board._tiling?.N || state.cols;
-  const pw = Math.floor(widthBudget / N);
-  const ph = Math.floor(heightBudget / M);
+  const { wUnits, hUnits } = _tilingExtent();
+  const pw = Math.floor(widthBudget / wUnits);
+  const ph = Math.floor(heightBudget / hUnits);
   return Math.min(maxCap, Math.max(min, Math.min(pw, ph)));
+}
+
+// The tiling's extent in PITCH UNITS (multiples of --cell-size). A 4.8.8 spans
+// exactly N x M pitches, so its extent is its octagon-lattice size; a honeycomb
+// is wider than N (odd rows are offset half a hex) and shorter than M (rows
+// overlap vertically), so the extent has to come from the geometry rather than
+// the cell counts. Falls back to the old N/M reading for any board that predates
+// the descriptor.
+function _tilingExtent() {
+  const t = (state.board && state.board._tiling) || {};
+  return {
+    wUnits: t.wUnits || t.N || state.cols,
+    hUnits: t.hUnits || t.M || state.rows,
+  };
 }
 
 export function resizeCells() {
@@ -148,8 +164,7 @@ export function renderBoard() {
 // per-cell layout is INLINE style, which survives updateCell's className rebuilds.
 function _renderTilingBoard() {
   const board = state.board;
-  const M = board._tiling?.M || state.rows;
-  const N = board._tiling?.N || state.cols;
+  const { wUnits, hUnits } = _tilingExtent();
   const P = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cell-size')) || 40;
 
   boardEl.classList.add('tiling-board');
@@ -160,8 +175,8 @@ function _renderTilingBoard() {
   boardEl.style.padding = '0';
   boardEl.style.gridTemplateColumns = '';
   boardEl.style.gridTemplateRows = '';
-  boardEl.style.width = (N * P) + 'px';
-  boardEl.style.height = (M * P) + 'px';
+  boardEl.style.width = (wUnits * P) + 'px';
+  boardEl.style.height = (hUnits * P) + 'px';
   boardEl.setAttribute('role', 'grid');
   boardEl.setAttribute('aria-label', 'Minesweeper board');
 
@@ -189,6 +204,17 @@ function _renderTilingBoard() {
         cellEl.style.height = box + 'px';
         cellEl.style.clipPath = DIAMOND_CLIP_PATH;
         cellEl.style.fontSize = (box * 0.5) + 'px';
+      } else if (pos && pos.shape === 'hex') {
+        // Pointy-top hexagon: the box is one pitch WIDE and 2R tall, centered on
+        // the cell's geometric center, so the number lands dead center. Boxes of
+        // neighboring hexes overlap, but the clip-paths tile exactly — which is
+        // also what makes pointer hit-testing land on the right hexagon.
+        cellEl.style.left = ((pos.cx - 0.5) * P) + 'px';
+        cellEl.style.top = ((pos.cy - HEX_R) * P) + 'px';
+        cellEl.style.width = P + 'px';
+        cellEl.style.height = (HEX_BOX_H * P) + 'px';
+        cellEl.style.clipPath = HEXAGON_CLIP_PATH;
+        cellEl.style.fontSize = (P * 0.5) + 'px';
       } else if (pos) {
         cellEl.style.left = ((pos.cx - 0.5) * P) + 'px';
         cellEl.style.top = ((pos.cy - 0.5) * P) + 'px';
@@ -316,10 +342,15 @@ function _renderTilingWalls(boardParent) {
     const boardRect = boardEl.getBoundingClientRect();
     const boardX = boardEl.offsetLeft, boardY = boardEl.offsetTop;
     const r0 = ref.getBoundingClientRect();
-    const P = r0.width; // octagon box = pitch
-    const ox = (r0.left - boardRect.left + boardX) + P / 2; // pixel of unit (0.5, 0.5)
-    const oy = (r0.top - boardRect.top + boardY) + P / 2;
-    const toPx = (x, y) => ({ x: ox + (x - 0.5) * P, y: oy + (y - 0.5) * P });
+    const P = r0.width; // both tilings: cell 0's box is exactly one pitch wide
+    // Anchor on cell 0's OWN geometric center rather than assuming unit
+    // (0.5, 0.5). Every shape's box is centered on its cell center, but a
+    // hexagon's box is taller than it is wide (its center sits at cy = R), so
+    // hard-coding half a pitch vertically would offset every hex wall.
+    const p0 = (state.board._cellPos && state.board._cellPos[0]) || { cx: 0.5, cy: 0.5 };
+    const ox = (r0.left - boardRect.left + boardX) + r0.width / 2;
+    const oy = (r0.top - boardRect.top + boardY) + r0.height / 2;
+    const toPx = (x, y) => ({ x: ox + (x - p0.cx) * P, y: oy + (y - p0.cy) * P });
 
     const THICK = 4;
     for (const wl of walls) {

@@ -104,6 +104,7 @@ export const state = {
   coastlinePractice: false,
   coastlineSeed: null,   // seed for the tiling board (stable across reloads)
   coastlineGimmicks: null, // modifier list to place on the tiling test board
+  coastlineType: null,   // which tiling: '4.8.8' (default) or 'hex' (6.6.6)
   inputLocked: false,    // true during cascade/chord animations
 
   // Chaos mode (roguelike runs)
@@ -198,6 +199,29 @@ export function recordPlayerAction(action, row, col) {
 
 // Record one Lens invocation (same wall-clock convention as the click
 // timeline). Tiny payload, hard cap as a safety net.
+
+// Clear the ?coastline= tiling-practice routing flags. One source of truth for
+// the reset because forgetting to clear ONE of these on a real-game entry
+// routes newGame into the tiling branch (or records a test board): exactly the
+// bug that shipped when coastlineType was added to switchMode but not to the
+// checkpoint-selector entry path. Called from every path that leaves coastline
+// practice for a real mode (switchMode + the checkpoint selector, which bypasses
+// switchMode).
+export function clearCoastlinePractice() {
+  state.coastlinePractice = false;
+  state.coastlineSeed = null;
+  state.coastlineGimmicks = null;
+  state.coastlineType = null;
+}
+
+// True when a board's modifiers were resolved during PRE-generation
+// (daily/weekly canonical boards, and coastline tiling boards) rather than on
+// the first click (challenge / timed / chaos). newGame's per-game reset must
+// NOT wipe activeGimmicks for these, or the active-modifier bar renders empty
+// on a board that plainly has modifiers.
+export function modifiersPreResolved(gameMode, coastlinePractice) {
+  return gameMode === 'daily' || gameMode === 'weekly' || !!coastlinePractice;
+}
 
 // Total bomb-hit penalty (seconds) accrued in the CURRENT daily/weekly
 // attempt, derived from the per-hit event log. Single source of truth so

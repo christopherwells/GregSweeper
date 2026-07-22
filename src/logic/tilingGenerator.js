@@ -17,7 +17,7 @@ import { recalcAllAdjacency, applyGimmicks } from './gimmicks.js';
 import { defineCellNeighbors } from './adjacency.js';
 import { isBoardSolvable } from './boardSolver.js';
 import { createDailyRNG } from './seededRandom.js';
-import { buildTiling488, containerFor } from './tilingGeometry.js';
+import { buildTiling, buildTiling488, containerFor } from './tilingGeometry.js';
 
 // Gimmicks that work on a tiling. Mystery/liar/locked/sonar/mirror ride Phase
 // 1's topology-aware placement + number recompute; compass rides its Phase 2
@@ -27,7 +27,7 @@ import { buildTiling488, containerFor } from './tilingGeometry.js';
 // wall logic. Every modifier now has a tiling story.
 export const TILING_SAFE_GIMMICKS = ['mystery', 'liar', 'locked', 'sonar', 'mirror', 'compass', 'worm', 'walls'];
 
-export { buildTiling488, containerFor };
+export { buildTiling, buildTiling488, containerFor };
 
 /**
  * Generate a certified no-guess 4.8.8 tiling board by seeded search — the same
@@ -39,21 +39,21 @@ export { buildTiling488, containerFor };
  * the first click never relocates one. The center octagon and its neighbors are
  * kept mine-free so the opener cascades.
  *
- * @param {{M:number, N:number, mines:number, seed:string, gimmicks?:string[],
- *          techniqueFloor?:number, maxAttempts?:number}} opts
+ * @param {{type?:string, M:number, N:number, mines:number, seed:string,
+ *          gimmicks?:string[], techniqueFloor?:number, maxAttempts?:number}} opts
+ *          type selects the tiling ('4.8.8' default, 'hex' for 6.6.6).
  * @returns {{board:Array, rows:number, cols:number, firstClick:number,
  *            tiling:object, check:object, activeGimmicks:string[],
  *            applied:object} | null}  null if nothing certified
  */
-export function generateTilingBoard({ M, N, mines, seed, gimmicks = [], techniqueFloor = 0, maxAttempts = 600 }) {
-  const T = buildTiling488(M, N);
+export function generateTilingBoard({ type = '4.8.8', M, N, mines, seed, gimmicks = [], techniqueFloor = 0, maxAttempts = 600 }) {
+  const T = buildTiling(type, M, N);
   const total = T.total;
   const { rows, cols } = containerFor(total);
 
-  // Center octagon is the fixed opener.
-  const ci = Math.floor((M - 1) / 2);
-  const cj = Math.floor((N - 1) / 2);
-  const firstClick = T.octIndex(ci, cj);
+  // The middle cell is the fixed opener (centerIndex is tiling-specific: the
+  // center octagon for 4.8.8, the center hexagon for 6.6.6).
+  const firstClick = T.centerIndex;
   const fr = Math.floor(firstClick / cols);
   const fc = firstClick % cols;
 
@@ -65,11 +65,13 @@ export function generateTilingBoard({ M, N, mines, seed, gimmicks = [], techniqu
 
   let best = null;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const rng = createDailyRNG(`${seed}:tiling488:${attempt}`);
+    const rng = createDailyRNG(`${seed}:tiling:${T.type}:${attempt}`);
     const board = createEmptyBoard(rows, cols);
     defineCellNeighbors(board, rows, cols, T.adj);
     board._cellPos = T.cellPos;
-    board._tiling = { type: '4.8.8', M, N };
+    // The renderer reads wUnits/hUnits (pitch-unit board extent) off _tiling;
+    // applyWallsTiling reads type/M/N to rebuild the wireframe.
+    board._tiling = { type: T.type, M, N, wUnits: T.wUnits, hUnits: T.hUnits };
 
     // Fisher-Yates over the placeable set, then take the first nMines.
     const pool = placeable.slice();
@@ -88,7 +90,7 @@ export function generateTilingBoard({ M, N, mines, seed, gimmicks = [], techniqu
     // exactly what the player sees.
     let applied = {};
     if (gimmicks.length > 0) {
-      const gRng = createDailyRNG(`${seed}:tiling488-gimmick:${attempt}`);
+      const gRng = createDailyRNG(`${seed}:tiling-gimmick:${T.type}:${attempt}`);
       applied = applyGimmicks(board, 1, gimmicks, gRng);
     }
 

@@ -41,6 +41,23 @@ export function octagonClipPath() {
 // The interstitial square is drawn as a diamond in its own (already shrunk) box.
 export const DIAMOND_CLIP_PATH = 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)';
 
+// ── Hexagon geometry (6.6.6 regular hexagonal, Coastline tiling #2) ─────────
+//
+// Pointy-top hexagons in offset rows (a vertex points up). The pitch P (the
+// renderer's --cell-size) is the hex WIDTH (flat-to-flat horizontally), so a
+// hexagon reads as "one P wide" exactly like a 4.8.8 octagon is one P wide,
+// keeping number/sprite legibility comparable across tilings. Given hex width
+// = sqrt(3)*R = 1 pitch unit, the circumradius R = 1/sqrt(3) and the row-to-row
+// vertical spacing is 1.5*R.
+export const HEX_R = 1 / Math.sqrt(3);        // circumradius, pitch units (~0.5774)
+export const HEX_ROW_H = 1.5 * HEX_R;         // row vertical spacing (~0.8660)
+export const HEX_BOX_H = 2 * HEX_R;           // hex box height as a multiple of pitch (~1.1547)
+
+// Pointy-top hexagon clip-path over its own box (width = P, height = HEX_BOX_H*P).
+// The two side vertices sit at 25% / 75% of the box height (y = R/2 and 3R/2 of
+// the 2R-tall box); the top and bottom vertices are centered.
+export const HEXAGON_CLIP_PATH = 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)';
+
 /**
  * Build the 4.8.8 topology + geometry over an M×N lattice of octagons.
  *
@@ -144,7 +161,108 @@ export function buildTiling488(M, N) {
     }
   }
 
-  return { total, nOct, nSq, adj, octIndex, sqIndex, cellPos, cellVerts, verts, width: N, height: M };
+  // centerIndex / wUnits / hUnits / type are the tiling-agnostic descriptor the
+  // generator and renderer consume (so neither has to know it is a 4.8.8). For
+  // this tiling the pitch-unit extent is exactly N x M (octagon pitch = 1) and
+  // the opener is the middle octagon.
+  const centerIndex = octIndex(Math.floor((M - 1) / 2), Math.floor((N - 1) / 2));
+  return {
+    total, nOct, nSq, adj, octIndex, sqIndex, cellPos, cellVerts, verts,
+    width: N, height: M, wUnits: N, hUnits: M, centerIndex, type: '4.8.8',
+  };
+}
+
+/**
+ * Build the 6.6.6 regular-hexagonal topology + geometry over an M x N grid of
+ * pointy-top hexagons in offset rows (odd rows shifted right by half a hex).
+ *
+ * Every cell is one shape and one size, and valence is a constant 6 in the
+ * interior (fewer than the square grid's 8, and with NO diagonals: a hexagon's
+ * six neighbors are all edge-neighbors, so the corner-touch ambiguity of square
+ * minesweeper is simply absent). The board array stays pure STORAGE exactly as
+ * for 4.8.8 (see containerFor / the Board Topology contract): adjacency is the
+ * returned `adj`, geometry is `cellPos`, and only the flat index i*N+j matters.
+ *
+ * @returns the same shape as buildTiling488 (adj + cellPos + cellVerts + verts +
+ *   wUnits/hUnits/centerIndex/type), so buildTiling can return either
+ *   interchangeably.
+ */
+export function buildHexTiling(M, N) {
+  const total = M * N;
+  const idx = (i, j) => i * N + j;
+  const inb = (i, j) => i >= 0 && i < M && j >= 0 && j < N;
+
+  const adj = Array.from({ length: total }, () => []);
+  const link = (a, b) => { adj[a].push(b); adj[b].push(a); };
+
+  // Odd-r offset, pointy-top. Link each undirected edge once, from its upper /
+  // left cell: the right neighbor plus the two LOWER-diagonal neighbors (whose
+  // parity-dependent columns are the standard offset-grid formula). Every edge
+  // is then counted exactly once and adj comes out symmetric.
+  for (let i = 0; i < M; i++) {
+    for (let j = 0; j < N; j++) {
+      if (inb(i, j + 1)) link(idx(i, j), idx(i, j + 1));           // right
+      const lowCols = (i % 2 === 0) ? [j - 1, j] : [j, j + 1];      // two below
+      for (const jc of lowCols) if (inb(i + 1, jc)) link(idx(i, j), idx(i + 1, jc));
+    }
+  }
+
+  // Geometry, pitch units (P = hex width = 1). Hex (i,j) center; odd rows are
+  // shifted right by half a hex. Even rows span x in [0, N]; odd rows in
+  // [0.5, N+0.5]; y runs [0, 2R + (M-1)*rowH].
+  const R = HEX_R, rowH = HEX_ROW_H, half = 0.5;
+  const cellPos = new Array(total);
+  for (let i = 0; i < M; i++) {
+    for (let j = 0; j < N; j++) {
+      cellPos[idx(i, j)] = { cx: 0.5 + j + (i % 2) * 0.5, cy: R + i * rowH, shape: 'hex' };
+    }
+  }
+
+  // Per-cell polygon vertices over one deduped global vertex list, so two
+  // adjacent hexes share the exact two vertex indices of the edge between them
+  // (what buildWireframe / continuous walls rely on). Adjacent hexes compute the
+  // shared vertices from R and integers, so they coincide to the dedup rounding.
+  const verts = [];
+  const vertKey = new Map();
+  const vIdx = (x, y) => {
+    const k = `${Math.round(x * 1e6)},${Math.round(y * 1e6)}`;
+    let v = vertKey.get(k);
+    if (v === undefined) { v = verts.length; verts.push({ x, y }); vertKey.set(k, v); }
+    return v;
+  };
+  const cellVerts = new Array(total);
+  for (let i = 0; i < M; i++) {
+    for (let j = 0; j < N; j++) {
+      const { cx, cy } = cellPos[idx(i, j)];
+      cellVerts[idx(i, j)] = [
+        vIdx(cx, cy - R),          // top
+        vIdx(cx + half, cy - R / 2), // upper-right
+        vIdx(cx + half, cy + R / 2), // lower-right
+        vIdx(cx, cy + R),          // bottom
+        vIdx(cx - half, cy + R / 2), // lower-left
+        vIdx(cx - half, cy - R / 2), // upper-left
+      ];
+    }
+  }
+
+  const centerIndex = idx(Math.floor((M - 1) / 2), Math.floor((N - 1) / 2));
+  const wUnits = N + (M > 1 ? 0.5 : 0);       // odd rows stick out half a hex
+  const hUnits = 2 * R + (M - 1) * rowH;
+  return {
+    total, adj, cellPos, cellVerts, verts,
+    width: wUnits, height: hUnits, wUnits, hUnits, centerIndex, type: 'hex',
+    M, N, cellIndex: idx,
+  };
+}
+
+/**
+ * Tiling dispatcher: return the topology + geometry for a named tiling. Both
+ * builders emit the same shape, so every consumer (generator, renderer, wall
+ * wireframe) is tiling-agnostic and picks the tiling by `type` alone.
+ */
+export function buildTiling(type, M, N) {
+  if (type === 'hex' || type === '6.6.6') return buildHexTiling(M, N);
+  return buildTiling488(M, N);
 }
 
 /**
@@ -221,22 +339,33 @@ export function containerFor(total) {
  * disagree. Positions are exact half/integer lattice values, so the colinearity
  * cross-product is exact — no float slop.
  *
+ * On the 4.8.8 lattice positions are exact half/integer values so the colinearity
+ * cross-product is exactly zero; on a hexagonal lattice the row spacing is
+ * sqrt(3)/2, so a colinear cell's cross-product is only zero to floating point.
+ * The tolerance bridges that: the nearest OFF-axis lattice cell has a
+ * cross-product of order ~0.4 (the lattice's minimal off-line distance), orders
+ * of magnitude above any float error, so this can never misclassify. Both the
+ * display and the certifier read the SAME stored ray, so whatever this returns
+ * is self-consistent regardless.
+ *
  * @param {Array<{cx:number,cy:number}>} cellPos
  * @param {number} originIdx
- * @param {number} dx  one of -1, 0, 1
- * @param {number} dy  one of -1, 0, 1
+ * @param {number} dx  direction x-component
+ * @param {number} dy  direction y-component
  * @returns {number[]} flat indices, nearest first
  */
 export function computeCompassRay(cellPos, originIdx, dx, dy) {
   const o = cellPos[originIdx];
   const hits = [];
+  const EPS = 1e-9;
+  const norm = Math.hypot(dx, dy) || 1;
   for (let i = 0; i < cellPos.length; i++) {
     if (i === originIdx) continue;
     const p = cellPos[i];
     const rx = p.cx - o.cx, ry = p.cy - o.cy;
-    if (rx * dy - ry * dx !== 0) continue;   // off the line
-    const t = rx * dx + ry * dy;             // signed distance along the ray
-    if (t <= 0) continue;                    // behind the origin
+    if (Math.abs(rx * dy - ry * dx) / norm > EPS) continue;  // off the line
+    const t = rx * dx + ry * dy;                             // signed distance along the ray
+    if (t <= EPS) continue;                                  // behind / at the origin
     hits.push({ i, t });
   }
   hits.sort((a, b) => a.t - b.t);
