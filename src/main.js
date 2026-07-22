@@ -5,7 +5,7 @@
 // ── Local Date Utility ──────────────────────────────
 // getLocalDateString imported from seededRandom.js
 
-import { state } from './state/gameState.js';
+import { state, clearCoastlinePractice } from './state/gameState.js';
 import { PROD_SITE_BASE } from './config.js';
 import { $, $$, boardEl, resetBtn, flagModeToggle, boardScrollWrapper, muteBtn, escapeHtml } from './ui/domHelpers.js';
 import { resizeCells, updateAllCells, needsZoom, updateZoom, zoomIn, zoomOut, setFocusedCell, renderWallOverlays, showGimmickRegion, clearGimmickRegion } from './ui/boardRenderer.js';
@@ -850,9 +850,12 @@ function showCheckpointSelector() {
         hideTitleScreen();
         state.gameMode = 'normal';
         updateModeUI('normal');
-        // This entry path bypasses switchMode, so clear the playtest flag
-        // here too — a real checkpoint start must record progression.
+        // This entry path bypasses switchMode, so clear the playtest flags
+        // here too — a real checkpoint start must record progression, and must
+        // not inherit a ?coastline= tiling practice (which would route newGame
+        // into the tiling branch and record a challenge run on a test board).
         state.isLevelPractice = false;
+        clearCoastlinePractice();
         state.currentLevel = cp;
         newGame();
       });

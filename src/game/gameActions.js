@@ -1,4 +1,4 @@
-import { state, getRevealedCells, recordPlayerAction } from '../state/gameState.js';
+import { state, getRevealedCells, recordPlayerAction, modifiersPreResolved } from '../state/gameState.js';
 import { $, $$, boardEl, resetBtn } from '../ui/domHelpers.js';
 import {
   renderBoard, updateCell, updateAllCells, updateCells, getThemeEmoji,
@@ -828,10 +828,12 @@ export async function newGame() {
     };
   }
 
-  // Gimmicks / modifiers (set by challenge mode on first click, or
-  // daily/weekly mode above). Weekly is added so the canonical-resolved
-  // gimmicks aren't blown away after the weekly branch sets them.
-  if (state.gameMode !== 'daily' && state.gameMode !== 'weekly') {
+  // Gimmicks / modifiers: reset here ONLY for modes that resolve them on the
+  // first click (challenge / timed / chaos). Daily/weekly canonical boards and
+  // coastline tiling boards resolve their modifiers during pre-generation (the
+  // branches above already set activeGimmicks / gimmickData), so wiping here
+  // would leave the active-modifier bar empty on a board that has modifiers.
+  if (!modifiersPreResolved(state.gameMode, state.coastlinePractice)) {
     state.activeGimmicks = [];
     state.gimmickData = {};
   }

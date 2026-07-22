@@ -1,4 +1,4 @@
-import { state } from '../state/gameState.js';
+import { state, clearCoastlinePractice } from '../state/gameState.js';
 import { $, $$ } from '../ui/domHelpers.js';
 import { newGame } from './gameActions.js';
 import { persistGameState, tryResumeGame } from './gamePersistence.js';
@@ -93,10 +93,7 @@ export function switchMode(mode) {
   // test-build deep link) — a real challenge entered afterward must record.
   state.isLevelPractice = false;
   // Never carry a ?coastline= tiling practice into a real mode either.
-  state.coastlinePractice = false;
-  state.coastlineSeed = null;
-  state.coastlineGimmicks = null;
-  state.coastlineType = null;
+  clearCoastlinePractice();
   updateModeUI(mode);
 
   // Chaos mode: always start a fresh run (no resume)
