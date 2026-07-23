@@ -549,7 +549,28 @@ export function applyLiar(board, rows, cols, count, rng) {
 // Marks all cells within 1 cell of any liar cell as inLiarZone.
 // This gives players a visual cue about which area has unreliable numbers.
 
-function computeLiarZone(board, rows, cols) {
+export function computeLiarZone(board, rows, cols) {
+  // On a TILING the container's (row, col) is pure storage — it says nothing
+  // about what a cell touches — so a coordinate walk marks cells that are not
+  // the liar's neighbours and misses ones that are. Follow the board's own
+  // neighbour graph instead (walls there are simply absent edges).
+  if (board._cellNeighbors) {
+    const cache = buildNeighborCache(board, rows, cols);
+    const total = rows * cols;
+    for (let i = 0; i < total; i++) {
+      const cell = cellAt(board, cols, i);
+      if (!cell || !cell.isLiar) continue;
+      cell.inLiarZone = true;
+      for (const ni of cache[i]) cellAt(board, cols, ni).inLiarZone = true;
+    }
+    return;
+  }
+
+  // Rectangular boards keep the literal 8-neighbourhood walk VERBATIM. It is
+  // deliberately wall-BLIND: the zone is a spatial cue ("numbers around here are
+  // unreliable"), not an adjacency claim, and a liar's tint has always spilled
+  // across a wall. Routing this through the wall-aware buildNeighborCache would
+  // silently restyle every walled square board.
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       if (!board[r][c].isLiar) continue;

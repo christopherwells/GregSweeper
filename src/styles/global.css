@@ -1807,6 +1807,36 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 /* Coastline: a tiling wall is a rotated bar across the shared edge of two
    severed cells (boardRenderer._renderTilingWalls sets left/top/width + the
    rotate). Same colors + two-tone outline as the rectangular grid lines. */
+/* Keyboard focus on a TILING cell.
+
+   An outline is painted on the element's BOX and the cell's clip-path then cuts
+   it away, leaving only the slivers where the polygon meets the box edge — which
+   read as cell seams, so a keyboard player cannot tell what is focused. A
+   drop-shadow filter is applied to the ALREADY-CLIPPED silhouette, so it traces
+   the hexagon / octagon / diamond itself whatever the shape. Stacked so the ring
+   reads solid rather than as a faint haze, and lifted above the walls (z-3) and
+   worms (z-4) so the focused cell is never buried. */
+#board.tiling-board .cell:focus-visible {
+  outline: none;
+  /* The indicator has to live INSIDE the clip. CSS applies filter first and
+     clip-path second, so a drop-shadow ring around the silhouette is cut away
+     entirely; and an outline (or any box-edge shadow) survives only where the
+     polygon meets the box, which is the sliver problem this rule exists to fix.
+     An inset shadow with a huge spread is a wash over the cell's whole painted
+     area, so it takes the hexagon / octagon / diamond shape exactly. It sits
+     above the background but BELOW the cell's text, so the number, flag or
+     watermark the player is navigating by stays fully legible. The scale lifts
+     the cell clear of its gapless neighbours. */
+  transform: scale(1.12);
+  box-shadow: inset 0 0 0 999px rgba(92, 107, 192, 0.42);
+  box-shadow: inset 0 0 0 999px color-mix(in srgb, var(--color-accent) 42%, transparent);
+  z-index: 6;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* The lift is a state cue, not decoration, so it stays — only the tween goes. */
+  #board.tiling-board .cell:focus-visible { transition: none; }
+}
+
 .tiling-wall-line {
   position: absolute;
   height: 4px;
