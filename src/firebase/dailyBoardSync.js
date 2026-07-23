@@ -21,6 +21,11 @@ import { waitForFirebaseReady } from './waitForFirebase.js';
 import { isTestEnvironment } from './env.js';
 import { getCachedDailyBoard, cacheDailyBoard, addDays, PREFETCH_DAILY_DAYS } from './boardCache.js';
 import { assessCanonicalTrust } from '../logic/canonicalSignature.js';
+// adjacency.js is a LEAF module (imports nothing), so this cannot cycle.
+import { defineCellNeighbors } from '../logic/adjacency.js';
+// tilingGeometry.js is likewise a leaf; only the storability predicate and its
+// bounds are used here, not the builders.
+import { containerIsStorable, CANONICAL_MIN_DIM, CANONICAL_MAX_DIM } from '../logic/tilingGeometry.js';
 import { etDateStringOfMs } from '../logic/seededRandom.js';
 import { reportCaughtError } from '../diagnostics/errorReporter.js';
 
@@ -78,8 +83,17 @@ const CELL_FIELDS = [
   'mirrorPair', 'mirrorZone',
   // Sonar
   'isSonar', 'sonarCount',
-  // Compass
-  'isCompass', 'compassDir', 'compassArrow', 'compassCount',
+  // Compass. `compassRay` is the STORED ray — on an explicit topology a
+  // compass is a geometry question the neighbor graph cannot answer, so
+  // applyGimmicks computes the ray once from cell positions and stamps it,
+  // and BOTH the displayed number (recomputeDisplayedMines) and the certifier
+  // (buildStaticGimmickConstraints) read it back through compassRayCells.
+  // Dropping it here does not fail loudly: compassRayCells returns [] for a
+  // cell without one, so every compass number on a restored tiling board would
+  // quietly become 0 and the certifier would prove from a premise the board
+  // never displayed. Absent on rectangles (they derive the ray from row/col),
+  // where _serializeCell prunes it as undefined.
+  'isCompass', 'compassDir', 'compassArrow', 'compassCount', 'compassRay',
   // Pressure plate
   'isPressurePlate', 'plateTimer', 'plateDisarmed',
   // Worm Tiles (egg positions are canonical; the crawling worm is runtime)
@@ -153,7 +167,7 @@ function _deserializeCell(raw, r, c) {
  * @param {string} [args.codeVersion] — for forensic provenance only
  * @returns {object}
  */
-export function serializeBoard({ board, rows, cols, totalMines, rngSeed, activeGimmicks, codeVersion }) {
+export function serializeBoard({ board, rows, cols, totalMines, rngSeed, activeGimmicks, codeVersion, firstClick }) {
   const cells = [];
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -176,6 +190,72 @@ export function serializeBoard({ board, rows, cols, totalMines, rngSeed, activeG
   // because a gated certificate implies an ungated one (gating only
   // removes constraints).
   if (board._gatedCert) out.gatedCert = true;
+
+  // ── Explicit topology + geometry (Project Coastline tiling boards) ──
+  //
+  // A tiling board's adjacency is a GRAPH stamped on the board ARRAY, and
+  // JSON.stringify drops properties stamped on an array — the same trap the
+  // game save hit in Phase 1, where a saved tiling game resumed RECTANGULAR
+  // mid-play. Here it would be worse than mid-play: the canonical IS the
+  // board, so every client would deserialize a rectangle, recompute both
+  // number layers against the 8-neighborhood, and disagree with the layout
+  // the board was certified under.
+  //
+  // These are STORED rather than rebuilt from the {type, M, N} descriptor,
+  // even though buildTiling is pure and reproduces them exactly (measured, to
+  // 9 decimal places). Re-deriving is precisely what the canonical-board
+  // architecture exists to prevent — "same seed + different code = different
+  // board" is its founding divergence source — and `cellNeighbors` is the
+  // adjacency the certificate was issued against, so it must be frozen
+  // bytes, not a function call whose definition can move underneath it. The
+  // game save stores `cellNeighbors` verbatim for the same reason. The cost
+  // is ~4 KB on a tiling day against ~1-3 KB for a rectangle, paid only on
+  // the days that carry a tiling; a rectangular board emits none of these
+  // fields and its payload is byte-identical to before.
+  if (board._cellNeighbors) {
+    // A container the canonical rules would reject means this board can never
+    // be stored, and the only symptom of letting it through is a write that
+    // silently fails and a canonical that never appears. Fail here instead,
+    // naming the reason. (Depends only on the cell count's factors — see
+    // containerIsStorable.)
+    if (!containerIsStorable(rows * cols)) {
+      throw new Error(
+        `serializeBoard: ${rows}x${cols} container (${rows * cols} cells) is outside the `
+        + `canonical dimension bounds [${CANONICAL_MIN_DIM}, ${CANONICAL_MAX_DIM}]; `
+        + 'pick tiling dimensions whose cell count factors more evenly',
+      );
+    }
+    // Post-wall-severing: a wall on a tiling removes the edge from the graph
+    // outright, so this list already IS the walled topology and the certifier
+    // needs nothing else to agree with the generator.
+    out.cellNeighbors = board._cellNeighbors.map((list) => [...list]);
+  }
+  if (board._cellPos) {
+    out.cellPos = board._cellPos.map((p) => ({ cx: p.cx, cy: p.cy, shape: p.shape }));
+  }
+  if (board._tiling) {
+    const t = board._tiling;
+    // M and N are load-bearing, not documentation: applyWallsTiling rebuilds
+    // the wireframe through buildTiling(type, M, N).
+    out.tiling = { type: t.type, M: t.M, N: t.N, wUnits: t.wUnits, hUnits: t.hUnits };
+  }
+  // The cell this board was CERTIFIED from, as a flat index. Daily and weekly
+  // certify from the board's centre, and on a rectangle that is the container
+  // centre — which is why it has never needed storing. On a tiling the
+  // container is an arbitrary exact factorization (63 hexagons ship as 7×9), so
+  // the container centre is an unrelated cell and re-certifying from it proves
+  // nothing about the board the player opens. The generator alone knows the
+  // real opener (`buildTiling(...).centerIndex`), so it travels with the board
+  // rather than being re-derived from a builder whose indexing could move.
+  if (Number.isInteger(firstClick)) out.firstClick = firstClick;
+  if (Array.isArray(board._tilingWalls) && board._tilingWalls.length > 0) {
+    // Render geometry for the wall bars, plus the severed pair (a/b) that
+    // `wallEdgeCount` counts. Derivable from the topology diff, but shipping
+    // it keeps the restore path a pure data load with no rebuild step.
+    out.tilingWalls = board._tilingWalls.map((w) => ({
+      a: w.a, b: w.b, x1: w.x1, y1: w.y1, x2: w.x2, y2: w.y2,
+    }));
+  }
   return out;
 }
 
@@ -216,6 +296,52 @@ export function deserializeBoard(raw) {
   // certified ungated and must keep that contract on every solver
   // surface (historical canonicals predate reveal gating).
   if (raw.gatedCert === true) board._gatedCert = true;
+
+  // ── Explicit topology + geometry (Coastline tiling canonicals) ──
+  //
+  // Stamped BEFORE anything reads the board, exactly as tryResumeGame does
+  // for the game save: every adjacency question downstream — the flood, the
+  // chord, the mine counters, the certifier, the feature vector — resolves
+  // through this, so a board that is going to be non-rectangular has to be
+  // non-rectangular from its first read.
+  //
+  // defineCellNeighbors VALIDATES (length, bounds, no self-loops, no
+  // duplicates, and above all SYMMETRY) and THROWS naming the violation. That
+  // is deliberate: this payload arrived from outside the process, and an
+  // asymmetric edge list does not crash, it quietly certifies a board nobody
+  // can solve, because one cell's clue counts a mine the mine's own
+  // neighborhood does not count back. Throwing routes a corrupt topology into
+  // the same path as any other malformed canonical — the caller treats the
+  // board as MISSING and falls back to local generation, rather than shipping
+  // a board whose adjacency disagrees with its numbers.
+  if (raw.cellNeighbors !== undefined) {
+    if (!Array.isArray(raw.cellNeighbors)) {
+      throw new Error('deserializeBoard: cellNeighbors must be an array');
+    }
+    defineCellNeighbors(board, rows, cols, raw.cellNeighbors);
+  }
+  if (Array.isArray(raw.cellPos)) board._cellPos = raw.cellPos;
+  if (raw.tiling && typeof raw.tiling === 'object') board._tiling = { ...raw.tiling };
+  // Always an ARRAY on a tiling board (applyWallsTiling writes [] when no wall
+  // survives its connectivity check), because two live consumers branch on it:
+  // the renderer routes wall drawing on its length, and computeDailyFeatures
+  // derives wallEdgeCount from it. Left undefined on a rectangle so that
+  // feature keeps reading _wallEdges.
+  if (Array.isArray(raw.tilingWalls)) board._tilingWalls = raw.tilingWalls;
+  else if (board._cellNeighbors) board._tilingWalls = [];
+
+  // The certified opener, as a flat index, with ONE definition for every
+  // consumer. A stored `firstClick` wins; otherwise it is the container centre,
+  // which is the historical contract and stays exactly right for every
+  // rectangular canonical ever written. Returned rather than left to callers
+  // because the container-centre formula was hand-copied into the nightly
+  // sweep twice and its test once, and on a tiling all three were wrong.
+  const centreIndex = Math.floor(rows / 2) * cols + Math.floor(cols / 2);
+  const firstClick = Number.isInteger(raw.firstClick)
+    && raw.firstClick >= 0 && raw.firstClick < rows * cols
+    ? raw.firstClick
+    : centreIndex;
+
   return {
     board,
     rows,
@@ -223,6 +349,7 @@ export function deserializeBoard(raw) {
     totalMines: Number(totalMines) || 0,
     activeGimmicks: Array.isArray(activeGimmicks) ? activeGimmicks : [],
     rngSeed: typeof rngSeed === 'string' ? rngSeed : '',
+    firstClick,
   };
 }
 

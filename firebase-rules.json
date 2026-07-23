@@ -262,6 +262,11 @@
         "missionType":     { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 32" },
         "missionConfounder":{ ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 32" },
         "gatedCert":       { ".validate": "newData.isBoolean()" },
+        "firstClick":      { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 900" },
+        "tiling":          { ".validate": "newData.hasChildren(['type', 'M', 'N'])" },
+        "cellNeighbors":   { ".validate": "newData.hasChildren()" },
+        "cellPos":         { ".validate": "newData.hasChildren()" },
+        "tilingWalls":     { ".validate": "newData.hasChildren()" },
         "sig":             { ".validate": "newData.isString() && newData.val().length >= 64 && newData.val().length <= 256" },
         "cells": {
           ".validate": "newData.hasChildren()"
@@ -324,6 +329,11 @@
         "activeGimmicks":{ ".validate": "newData.hasChildren() || newData.val() === null" },
         "wallEdges":     { ".validate": "newData.hasChildren() || newData.val() === null" },
         "gatedCert":     { ".validate": "newData.isBoolean()" },
+        "firstClick":    { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 900" },
+        "tiling":        { ".validate": "newData.hasChildren(['type', 'M', 'N'])" },
+        "cellNeighbors": { ".validate": "newData.hasChildren()" },
+        "cellPos":       { ".validate": "newData.hasChildren()" },
+        "tilingWalls":   { ".validate": "newData.hasChildren()" },
         "sig":           { ".validate": "newData.isString() && newData.val().length >= 64 && newData.val().length <= 256" },
         "cells": {
           ".validate": "newData.hasChildren()"
