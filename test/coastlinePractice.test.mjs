@@ -34,7 +34,8 @@ test('the coastline flag group is exactly the fields the router reads', () => {
   // author that BOTH the default and the reset must cover it.
   assert.deepEqual(
     coastlineKeys().slice().sort(),
-    ['coastlineGimmicks', 'coastlinePractice', 'coastlineSeed', 'coastlineType'].sort(),
+    ['coastlineFeatures', 'coastlineGimmicks', 'coastlinePar', 'coastlinePractice',
+      'coastlineSeed', 'coastlineType'].sort(),
   );
 });
 
@@ -44,16 +45,24 @@ test('clearCoastlinePractice resets EVERY coastline field (field-drift guard)', 
   state.coastlineSeed = 'hexfix-9';
   state.coastlineGimmicks = ['sonar', 'walls'];
   state.coastlineType = 'hex';
+  state.coastlineFeatures = { cellCount: 63, totalMines: 13, tilingType: 'hex' };
+  state.coastlinePar = 88.4;
 
   clearCoastlinePractice();
 
   // The bug was clearing SOME but not all; assert the whole group is neutral.
+  // `coastlinePar` is a number, so ITS neutral value is 0 rather than null —
+  // matching timedPar, whose reset is the same shape.
   for (const k of coastlineKeys()) {
-    assert.ok(state[k] === false || state[k] === null,
+    assert.ok(state[k] === false || state[k] === null || state[k] === 0,
       `clearCoastlinePractice left ${k} = ${JSON.stringify(state[k])} (a real entry path would inherit it)`);
   }
   assert.equal(state.coastlinePractice, false);
   assert.equal(state.coastlineType, null);
+  // Spelled out, because the loop above would accept a null par too: a stale
+  // par leaking into a real game is exactly what this guard exists to stop.
+  assert.equal(state.coastlineFeatures, null);
+  assert.equal(state.coastlinePar, 0);
 });
 
 test('modifiersPreResolved: pre-generated modes keep their bar, first-click modes reset', () => {

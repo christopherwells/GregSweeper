@@ -105,6 +105,12 @@ export const state = {
   coastlineSeed: null,   // seed for the tiling board (stable across reloads)
   coastlineGimmicks: null, // modifier list to place on the tiling test board
   coastlineType: null,   // which tiling: '4.8.8' (default) or 'hex' (6.6.6)
+  // Feature vector + par for the tiling board. Nothing submits them (a
+  // coastline run records nothing); they exist so the par chain is exercised
+  // and visible on a non-rectangular board. Kept in their OWN slots rather
+  // than borrowing timedFeatures/timedPar, which carry a submission contract.
+  coastlineFeatures: null,
+  coastlinePar: 0,
   inputLocked: false,    // true during cascade/chord animations
 
   // Chaos mode (roguelike runs)
@@ -212,6 +218,8 @@ export function clearCoastlinePractice() {
   state.coastlineSeed = null;
   state.coastlineGimmicks = null;
   state.coastlineType = null;
+  state.coastlineFeatures = null;
+  state.coastlinePar = 0;
 }
 
 // True when a board's modifiers were resolved during PRE-generation

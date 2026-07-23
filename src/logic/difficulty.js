@@ -97,6 +97,12 @@ export const PAR_MODEL = {
   secPerCompassCell:   0.01288,
   secPerWormLoad:      0.00000,
 
+  // Board shape (Project Coastline). One log-multiplier per non-rectangular
+  // tiling, rectangles the omitted reference — held at 0 until tiling boards
+  // have produced real completions, so par is unchanged on every board to date.
+  secPerShape488:      0.00000,
+  secPerShapeHex:      0.00000,
+
 };
 // PAR_MODEL:END
 
@@ -131,6 +137,8 @@ export const PAR_MODEL_TIMED = {
   secPerSonarCell:     0.05787,
   secPerCompassCell:   0.01636,
   secPerWormLoad:      0.00127,
+  secPerShape488:      0.00000,
+  secPerShapeHex:      0.00000,
 };
 // TIMED_PAR_MODEL:END
 
