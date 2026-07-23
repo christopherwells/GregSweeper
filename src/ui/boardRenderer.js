@@ -93,6 +93,12 @@ export function resizeCells() {
     const heightBudget = _boardHeightBudget() - 8;
     const pitch = _fitTilingPitch(availableWidth, heightBudget, _cellBound('--cell-max-size', 50));
     document.documentElement.style.setProperty('--cell-size', `${pitch}px`);
+    // A tiling cell's position/size is INLINE px computed from the pitch, so a
+    // new pitch means nothing until the cells are re-laid — the rectangular
+    // board gets this free because its cells read var(--cell-size) through the
+    // grid. Without this the board kept its old geometry through every resize
+    // and phone rotation while its container changed size around it.
+    layoutTilingCells();
     return;
   }
   const gap = parseFloat(getComputedStyle(boardEl).gap) || 2;
@@ -162,11 +168,61 @@ export function renderBoard() {
 // absolutely from their unit-pitch geometry and shaped with a clip-path
 // (octagon / diamond) instead of flowing in a CSS grid of uniform squares. All
 // per-cell layout is INLINE style, which survives updateCell's className rebuilds.
-function _renderTilingBoard() {
+// Position every tiling cell (and the board box) from the unit-pitch geometry at
+// the CURRENT --cell-size. Split out of _renderTilingBoard so a pitch change can
+// re-lay the EXISTING cells: rebuilding the board instead would drop keyboard
+// focus, restart the cascade animation, and detach the wall/worm overlays'
+// reference cell. Safe to call before the cells exist (it no-ops).
+export function layoutTilingCells() {
   const board = state.board;
+  if (!board || !board._cellPos || !boardEl || !boardEl.children.length) return;
   const { wUnits, hUnits } = _tilingExtent();
   const P = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cell-size')) || 40;
 
+  boardEl.style.width = (wUnits * P) + 'px';
+  boardEl.style.height = (hUnits * P) + 'px';
+
+  const clipOct = octagonClipPath();
+  const total = state.rows * state.cols;
+  for (let i = 0; i < total; i++) {
+    const cellEl = boardEl.children[i];
+    // #board also holds the .theme-fx layer, which is appended after the cells.
+    if (!cellEl || !cellEl.classList || !cellEl.classList.contains('cell')) continue;
+    const pos = board._cellPos[i];
+    if (!pos) continue;
+
+    cellEl.style.position = 'absolute';
+    if (pos.shape === 'sq') {
+      const box = SQ_BOX_FRAC * P;
+      cellEl.style.left = ((pos.cx - SQ_BOX_FRAC / 2) * P) + 'px';
+      cellEl.style.top = ((pos.cy - SQ_BOX_FRAC / 2) * P) + 'px';
+      cellEl.style.width = box + 'px';
+      cellEl.style.height = box + 'px';
+      cellEl.style.clipPath = DIAMOND_CLIP_PATH;
+      cellEl.style.fontSize = (box * 0.5) + 'px';
+    } else if (pos.shape === 'hex') {
+      // Pointy-top hexagon: the box is one pitch WIDE and 2R tall, centered on
+      // the cell's geometric center, so the number lands dead center. Boxes of
+      // neighboring hexes overlap, but the clip-paths tile exactly — which is
+      // also what makes pointer hit-testing land on the right hexagon.
+      cellEl.style.left = ((pos.cx - 0.5) * P) + 'px';
+      cellEl.style.top = ((pos.cy - HEX_R) * P) + 'px';
+      cellEl.style.width = P + 'px';
+      cellEl.style.height = (HEX_BOX_H * P) + 'px';
+      cellEl.style.clipPath = HEXAGON_CLIP_PATH;
+      cellEl.style.fontSize = (P * 0.5) + 'px';
+    } else {
+      cellEl.style.left = ((pos.cx - 0.5) * P) + 'px';
+      cellEl.style.top = ((pos.cy - 0.5) * P) + 'px';
+      cellEl.style.width = P + 'px';
+      cellEl.style.height = P + 'px';
+      cellEl.style.clipPath = clipOct;
+      cellEl.style.fontSize = (P * 0.5) + 'px';
+    }
+  }
+}
+
+function _renderTilingBoard() {
   boardEl.classList.add('tiling-board');
   // content-box + no padding so the board's own width IS the tiling's extent
   // and the edge octagons land exactly inside it (no hairline overflow clip).
@@ -175,16 +231,12 @@ function _renderTilingBoard() {
   boardEl.style.padding = '0';
   boardEl.style.gridTemplateColumns = '';
   boardEl.style.gridTemplateRows = '';
-  boardEl.style.width = (wUnits * P) + 'px';
-  boardEl.style.height = (hUnits * P) + 'px';
   boardEl.setAttribute('role', 'grid');
   boardEl.setAttribute('aria-label', 'Minesweeper board');
 
-  const clipOct = octagonClipPath();
   const shouldAnimate = state._initialized;
   for (let r = 0; r < state.rows; r++) {
     for (let c = 0; c < state.cols; c++) {
-      const pos = board._cellPos[r * state.cols + c];
       const cellEl = document.createElement('div');
       cellEl.className = 'cell unrevealed';
       cellEl.dataset.row = r;
@@ -195,35 +247,6 @@ function _renderTilingBoard() {
       cellEl.setAttribute('aria-label', 'Unrevealed cell');
       cellEl.tabIndex = (r === state.focusedRow && c === state.focusedCol) ? 0 : -1;
 
-      cellEl.style.position = 'absolute';
-      if (pos && pos.shape === 'sq') {
-        const box = SQ_BOX_FRAC * P;
-        cellEl.style.left = ((pos.cx - SQ_BOX_FRAC / 2) * P) + 'px';
-        cellEl.style.top = ((pos.cy - SQ_BOX_FRAC / 2) * P) + 'px';
-        cellEl.style.width = box + 'px';
-        cellEl.style.height = box + 'px';
-        cellEl.style.clipPath = DIAMOND_CLIP_PATH;
-        cellEl.style.fontSize = (box * 0.5) + 'px';
-      } else if (pos && pos.shape === 'hex') {
-        // Pointy-top hexagon: the box is one pitch WIDE and 2R tall, centered on
-        // the cell's geometric center, so the number lands dead center. Boxes of
-        // neighboring hexes overlap, but the clip-paths tile exactly — which is
-        // also what makes pointer hit-testing land on the right hexagon.
-        cellEl.style.left = ((pos.cx - 0.5) * P) + 'px';
-        cellEl.style.top = ((pos.cy - HEX_R) * P) + 'px';
-        cellEl.style.width = P + 'px';
-        cellEl.style.height = (HEX_BOX_H * P) + 'px';
-        cellEl.style.clipPath = HEXAGON_CLIP_PATH;
-        cellEl.style.fontSize = (P * 0.5) + 'px';
-      } else if (pos) {
-        cellEl.style.left = ((pos.cx - 0.5) * P) + 'px';
-        cellEl.style.top = ((pos.cy - 0.5) * P) + 'px';
-        cellEl.style.width = P + 'px';
-        cellEl.style.height = P + 'px';
-        cellEl.style.clipPath = clipOct;
-        cellEl.style.fontSize = (P * 0.5) + 'px';
-      }
-
       if (shouldAnimate) {
         const delay = (r + c) * 12;
         cellEl.classList.add('cascade-in');
@@ -233,6 +256,7 @@ function _renderTilingBoard() {
       boardEl.appendChild(cellEl);
     }
   }
+  layoutTilingCells();
 }
 
 // ── Wall Overlay Rendering ──────────────────────────
