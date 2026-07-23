@@ -106,10 +106,14 @@ export function verifyCanonicalPayload(raw) {
   if (dispDiffs > 0) reasons.push(`${dispDiffs} cell(s) with inconsistent displayedMines`);
   if (reasons.length) return { ok: false, reasons, check: null };
 
-  // 3. Re-certify from board center under the board's own contract flag
-  // (deserializeBoard restored _gatedCert). Same acceptance as the
-  // generator's hard gate.
-  const fr = Math.floor(rows / 2), fc = Math.floor(cols / 2);
+  // 3. Re-certify from the board's certified opener under its own contract
+  // flag (deserializeBoard restored _gatedCert). Same acceptance as the
+  // generator's hard gate. The opener comes from deserializeBoard so this
+  // cannot drift from what the generator certified: on a rectangle it is the
+  // container centre exactly as before, and on a tiling it is the stored
+  // centre cell, since a tiling's container is an arbitrary factorization and
+  // its "middle" slot is an unrelated cell.
+  const fr = Math.floor(d.firstClick / cols), fc = d.firstClick % cols;
   const check = isBoardSolvable(board, rows, cols, fr, fc);
   cleanSolverArtifacts(board);
   if (!(check.solvable || check.remainingUnknowns === 0)) {
@@ -128,7 +132,8 @@ export function verifyMetaAgainstBoard(raw, meta) {
     return { ok: false, reasons: ['dailyMeta missing or has no features node'], warnings: [] };
   }
   const d = deserializeBoard(raw);
-  const fr = Math.floor(d.rows / 2), fc = Math.floor(d.cols / 2);
+  // Same single definition of the certified opener as verifyCanonicalPayload.
+  const fr = Math.floor(d.firstClick / d.cols), fc = d.firstClick % d.cols;
   const check = isBoardSolvable(d.board, d.rows, d.cols, fr, fc);
   cleanSolverArtifacts(d.board);
   const recomputed = computeDailyFeatures(

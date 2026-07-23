@@ -328,6 +328,35 @@ export function containerFor(total) {
   return best;
 }
 
+// Dimension bounds the canonical-board rules enforce on `rows` and `cols`
+// (`firebase-rules.json`, the dailyBoard and weeklyBoard blocks). Mirrored here
+// so a board that could never be STORED is refused where it is built rather
+// than by a silent write rejection; `test/tilingCanonicalRoundTrip.test.mjs`
+// reads the rules file and asserts these two still match it.
+export const CANONICAL_MIN_DIM = 5;
+export const CANONICAL_MAX_DIM = 30;
+
+/**
+ * Can a tiling of `total` cells be stored as a canonical board?
+ *
+ * The container is an arbitrary exact factorization, so this is a question
+ * about `total`'s FACTORS, not about the tiling: a PRIME cell count forces
+ * `1 × total`, and the rules require every dimension in
+ * [CANONICAL_MIN_DIM, CANONICAL_MAX_DIM]. A 4.8.8 at M=8, N=8 is
+ * 2·8·8−8−8+1 = 113 cells — prime — so it ships as 1×113 and the write is
+ * rejected wholesale. Nothing about the board is wrong; it simply cannot be a
+ * daily, and without this check the only symptom is a canonical that never
+ * appears.
+ *
+ * @param {number} total cell count
+ * @returns {boolean}
+ */
+export function containerIsStorable(total) {
+  const { rows, cols } = containerFor(total);
+  return rows >= CANONICAL_MIN_DIM && rows <= CANONICAL_MAX_DIM
+    && cols >= CANONICAL_MIN_DIM && cols <= CANONICAL_MAX_DIM;
+}
+
 /**
  * The cells a compass ray crosses on a tiling: every cell whose CENTER lies on
  * the straight line out of the origin in direction (dx, dy), ordered outward.
