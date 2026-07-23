@@ -16,6 +16,7 @@
 
 import { PAR_MODEL, PAR_MODEL_TIMED } from './difficulty.js';
 import { wormLoadFor } from './worms.js';
+import { buildNeighborCache } from './adjacency.js';
 
 // ── Clue-digit shares ─────────────────────────────────
 //
@@ -124,7 +125,22 @@ export function computeDailyFeatures(state, solverResult) {
   const wormholePairCount = Math.floor(wormholeCellCount / 2);
   const mirrorPairCount = Math.floor(mirrorCellCount / 2);
 
-  const wallEdgeCount = board._wallEdges ? board._wallEdges.size : 0;
+  // Severed edges, asked of whichever wall layer the board actually carries.
+  // A rectangular board stores them as `"r,c-r,c"` keys in `_wallEdges`; a
+  // tiling stores index pairs in `_tilingWalls`, because `applyWallsTiling`
+  // severs links straight out of `_cellNeighbors` and keeps the removed pairs
+  // only so the renderer can draw them. Reading `_wallEdges` alone reported
+  // every walled tiling board as wall-FREE — a plausible-looking zero rather
+  // than an error (found 2026-07-23).
+  //
+  // The two units are not identical and the model should not pretend they are:
+  // a rectangular wall edge blocks one orthogonal step plus up to two diagonal
+  // ones, while a tiling wall edge blocks exactly one graph edge. Sharing
+  // `secPerWallEdge` across topologies is a modelling assumption, and the
+  // per-shape offset below is what absorbs the average of that difference.
+  const wallEdgeCount = board._tilingWalls
+    ? board._tilingWalls.length
+    : (board._wallEdges ? board._wallEdges.size : 0);
   const gimmickTypeCount = Array.isArray(state.activeGimmicks) ? state.activeGimmicks.length : 0;
 
   // ── Structural features (added v1.5.16+) ─────────────
@@ -157,32 +173,46 @@ export function computeDailyFeatures(state, solverResult) {
     }
   }
 
-  // Count connected components of adj=0 safe cells via BFS.
-  const dirs = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
-  const visited = Array.from({ length: rows }, () => new Array(cols).fill(false));
+  // Count connected components of adj=0 safe cells, flooding along the BOARD'S
+  // OWN adjacency rather than a hardcoded 8-neighborhood over (row, col).
+  //
+  // This used to walk a literal `dirs` array with rectangular bounds checks,
+  // which was wrong two separate ways. On a TILING, `rows`/`cols` are pure
+  // storage — `containerFor` returns any exact factorization, so 63 hexagons
+  // ship as a 7×9 container and a prime cell count ships as 1×N — so the walk
+  // counted components of a grid the board is not (measured: 8 vs 5 on a plain
+  // 4.8.8, 3 vs 2 on a plain honeycomb, and 2.6× off on the 1×113 container).
+  // On a walled RECTANGLE it was wall-BLIND, so it merged clusters that walls
+  // genuinely separate and disagreed with the cascade the player actually sees.
+  //
+  // `buildNeighborCache` answers both: it derives the wall-severed
+  // 8-neighborhood on a rectangle and returns the explicit edge list on a
+  // tiling, so this is now one flood over whatever the board says touches what.
+  // Fixing the rectangular half is a deliberate behavior change — it moves
+  // `zeroClusterCount` on 8 of the 147 shipped canonicals, all by +1 cluster
+  // (≈ +0.11% par at the current coefficient), and every one of those 8 carries
+  // walls. Christopher's call, 2026-07-23: fix it properly rather than branch.
+  const neighborCache = buildNeighborCache(board, rows, cols);
+  const cellAtIndex = (i) => board[(i / cols) | 0][i % cols];
+  const isZeroSafe = (cell) => !cell.isMine && (cell.adjacentMines || 0) === 0;
+  const visited = new Uint8Array(rows * cols);
   let zeroClusterCount = 0;
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      if (visited[r][c]) continue;
-      const cell = board[r][c];
-      if (cell.isMine || (cell.adjacentMines || 0) !== 0) continue;
-      // BFS-flood this cluster
-      const queue = [[r, c]];
-      visited[r][c] = true;
-      while (queue.length > 0) {
-        const [cr, cc] = queue.shift();
-        for (const [dr, dc] of dirs) {
-          const nr = cr + dr, nc = cc + dc;
-          if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
-          if (visited[nr][nc]) continue;
-          const nb = board[nr][nc];
-          if (nb.isMine || (nb.adjacentMines || 0) !== 0) continue;
-          visited[nr][nc] = true;
-          queue.push([nr, nc]);
-        }
+  for (let i = 0; i < rows * cols; i++) {
+    if (visited[i]) continue;
+    if (!isZeroSafe(cellAtIndex(i))) continue;
+    // Flood this cluster. A stack rather than the old `queue.shift()` — the
+    // component is the same either way, and shift() on an array is O(n).
+    const stack = [i];
+    visited[i] = 1;
+    while (stack.length > 0) {
+      for (const nb of neighborCache[stack.pop()]) {
+        if (visited[nb]) continue;
+        if (!isZeroSafe(cellAtIndex(nb))) continue;
+        visited[nb] = 1;
+        stack.push(nb);
       }
-      zeroClusterCount++;
     }
+    zeroClusterCount++;
   }
 
   return {
@@ -218,6 +248,20 @@ export function computeDailyFeatures(state, solverResult) {
     // Structural features (v1.5.16+ — see above for definitions)
     nonZeroSafeCellCount,
     zeroClusterCount,
+
+    // Board SHAPE, present only on a non-rectangular board. DERIVED from the
+    // board's own `_tiling` descriptor rather than stamped by the caller (the
+    // way `modeTimed` is), because a daily board's features are recomputed
+    // independently by every client, by the precompute pipeline, and by the
+    // nightly verify sweep — a caller-stamped shape could differ between them,
+    // and a derived one cannot.
+    //
+    // ABSENT on rectangles, never `'rect'`. The verify sweep's vintage escape
+    // hatch is `stored === undefined && recomputed === 0`, so a key that
+    // recomputed to a non-zero value on a historical board would hard-fail
+    // every past date. Omitting it entirely keeps `Object.entries(recomputed)`
+    // byte-identical on every rectangular board ever written.
+    ...(board._tiling && board._tiling.type ? { tilingType: board._tiling.type } : {}),
 
     // Clue-digit shares. Measured, never maximized: the count-based candidate
     // scorer deliberately refuses to read these (OBSERVATIONAL_TARGETS in
@@ -280,6 +324,33 @@ const COEF_TERMS = [
   // emits the coefficient (and the R-side 20-play zero-guard holds it at
   // 0 until real data exists).
   { coef: 'secPerWormLoad',     value: f => f.wormLoad || 0,          displayGroup: 'worms' },
+  // Board shape — one 0/1 indicator per non-rectangular tiling, rectangles the
+  // omitted reference. Christopher's ruling, 2026-07-23: a tiling board is
+  // priced by the SHIPPED model plus a per-shape offset, not by a parallel
+  // PAR_MODEL_TILING block.
+  //
+  // Why an offset and not its own equation. The reasoning tiers already
+  // transfer in MEANING — a search move is a search move on any lattice — so
+  // where a shape does less reasoning the vector says so on its own and the
+  // term contributes `coef × 0`. Measured over 1200 unfiltered layouts: a
+  // honeycomb certifies at techniqueLevel 0 on 95-99% of boards and produced
+  // ZERO tier-2 boards at any density, while 4.8.8 spans the full range much
+  // like a rectangle (33/40/27 across tiers 0/1/2 at density 0.20). So a
+  // separate hex model would be fitting two CONSTANT-ZERO columns and would
+  // ship its priors back as if they were a fit; and the two tilings differ
+  // from each other about as much as either differs from a square, so "one
+  // tiling model" was never one population to begin with.
+  //
+  // What the offset buys is the thing no feature can express: the parse cost
+  // of an unfamiliar lattice, which in a log model is exactly an intercept
+  // shift. It is also the honest TEST of the null that the par model is
+  // geometry-blind the way the solver turned out to be — if these earn out at
+  // ~0, that is the finding. Rectangular boards contribute 0 to both terms, so
+  // par on every board shipped to date is byte-identical, and each shape earns
+  // out independently under the usual zero-guard (the R refit holds the
+  // coefficient at 0 until the rows exist). A third tiling is one more line.
+  { coef: 'secPerShape488',    value: f => (f.tilingType === '4.8.8' ? 1 : 0), displayGroup: 'board shape' },
+  { coef: 'secPerShapeHex',    value: f => (f.tilingType === 'hex'   ? 1 : 0), displayGroup: 'board shape' },
 ];
 
 /**

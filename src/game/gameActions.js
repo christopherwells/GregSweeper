@@ -334,6 +334,8 @@ export async function newGame() {
   state.boardCertificate = null;
   state.timedPar = 0;
   state.timedFeatures = null;
+  state.coastlinePar = 0;
+  state.coastlineFeatures = null;
 
   // Project Coastline (test-only): a frozen Archimedean-tiling board, generated
   // HERE like daily/weekly rather than on first click. gameMode stays 'normal'
@@ -374,6 +376,26 @@ export async function newGame() {
     const oRow = Math.floor(oc / res.cols), oCol = oc % res.cols;
     state.board[oRow][oCol].suggestedStart = true;
     setDailySuggestedCell({ r: oRow, c: oCol });
+
+    // Features + par for the tiling board. Nothing submits these — a coastline
+    // run is isLevelPractice and records nothing — but computing them here is
+    // what makes the par chain PROVABLE on a non-rectangular board rather than
+    // merely intended: computeDailyFeatures reads the board's own topology for
+    // wall edges and zero clusters and derives `tilingType` from `_tiling`, so
+    // a wrong number shows up as a wrong par on the test build instead of
+    // waiting to surface in a fit months from now.
+    //
+    // Computed HERE rather than on first click because a tiling board is
+    // frozen at generation like daily/weekly, not resolved on the opening
+    // click the way challenge and timed boards are.
+    try {
+      state.coastlineFeatures = computeDailyFeatures(state, res.check);
+      state.coastlinePar = predictPar(state.coastlineFeatures);
+    } catch (err) {
+      state.coastlineFeatures = null;
+      state.coastlinePar = 0;
+      reportCaughtError('coastline-par-compute', err);
+    }
   }
 
   // Daily mode: vary board dimensions using the daily seed

@@ -321,7 +321,20 @@ PRIOR_MEANS <- list(
   # asserts a NON-NEGATIVE offset; revisit the prior family if pooled archive
   # plays turn out systematically faster once real data lands.
   archivePlay          = 2.0,
-  zeroClusterCount     = 1.0
+  zeroClusterCount     = 1.0,
+  # shape488 / shapeHex: per-board offset for a non-rectangular tiling
+  # (Project Coastline), rectangles the omitted reference. This is NOT board
+  # difficulty — the reasoning tiers already measure that on any lattice, and a
+  # honeycomb's near-total absence of subset/search moves shows up in those
+  # columns on its own. What is left for the offset is the parse cost of an
+  # unfamiliar geometry, so seed it small and let the data move it.
+  # NOTE, same caveat as archivePlay: build_priors bounds every b-coef at
+  # lb = 0, so this asserts a NON-NEGATIVE offset — "a tiling board never
+  # takes LESS time than a rectangle with the same measured work". That is the
+  # a-priori direction for an unfamiliarity tax, but if a shape's coefficient
+  # piles up at zero once real boards land, the bound is the thing to revisit.
+  shape488             = 0.05,
+  shapeHex             = 0.05
 )
 
 # Per-coefficient prior *log-scale* sigmas. Each non-intercept prior is
@@ -356,6 +369,9 @@ PRIOR_SIGMAS <- list(
   legacy_bombs         = 0.4,
   archivePlay          = 1.0,   # wide: little prior knowledge of the offset size
   zeroClusterCount     = 1.0,
+  # Board-shape offsets — wide, so the tiling boards (not the prior) decide.
+  shape488             = 1.0,
+  shapeHex             = 1.0,
   # Digit shares — wide, so the canonical-era data (not the prior) decides.
   # Used only in the secondary digit fit; never shipped to predictPar.
   clueShare2           = 1.0,
@@ -389,6 +405,15 @@ parse_par_model <- function(path) {
 #   log_scale = FALSE -> par = intercept + Σ coef·x        (legacy additive seconds)
 # The linear predictor is identical either way; only the back-transform differs.
 apply_par_model <- function(df, coefs, log_scale = TRUE) {
+  # Board-shape indicators (Project Coastline). Defaulted HERE rather than
+  # relied upon from the caller because `with(df, ...)` errors on a missing
+  # column — this function runs against several frames (df, df_fit, timed_df,
+  # the residual fallback), and a rectangles-only frame legitimately has no
+  # shape column at all. Same defensive shape as the `timed_needed` loop.
+  for (.f in c("shape488", "shapeHex")) {
+    if (!.f %in% colnames(df)) df[[.f]] <- 0
+    df[[.f]] <- ifelse(is.na(df[[.f]]), 0, as.numeric(df[[.f]]))
+  }
   lp <- with(df,
     coefs$intercept +
     coefs$secPerCell                 * cellCount +
@@ -404,7 +429,13 @@ apply_par_model <- function(df, coefs, log_scale = TRUE) {
     coefs$secPerSonarCell            * sonarCellCount +
     coefs$secPerCompassCell          * compassCellCount +
     (coefs$secPerWormLoad    %||% 0) * wormLoad +
-    (coefs$secPerZeroCluster %||% 0) * zeroClusterCount
+    (coefs$secPerZeroCluster %||% 0) * zeroClusterCount +
+    # Board-shape offsets. The coefficient is `%||% 0` so this stays correct
+    # against a shipped PAR_MODEL block predating Coastline; the columns are
+    # guaranteed present by the defaulting loop above. Mirrors predictPar's
+    # COEF_TERMS, which reads `f.tilingType` and contributes 0 on a rectangle.
+    (coefs$secPerShape488    %||% 0) * shape488 +
+    (coefs$secPerShapeHex    %||% 0) * shapeHex
   )
   if (log_scale) exp(lp) else lp
 }
@@ -788,6 +819,19 @@ df <- df |>
     ~ ifelse(is.na(.x), 0, as.numeric(.x))
   ))
 
+# Board shape (Project Coastline). computeDailyFeatures emits `tilingType`
+# ONLY on a non-rectangular board — absent, never "rect" — so a missing column
+# here is the normal all-rectangles case, not a parse failure. Expanded into
+# one 0/1 indicator per shipped tiling with rectangles as the omitted
+# reference, exactly as COEF_TERMS does on the client. A third tiling adds one
+# line on each side.
+if (!"tilingType" %in% colnames(df)) df$tilingType <- NA_character_
+df$tilingType <- as.character(df$tilingType)
+df$shape488 <- as.numeric(!is.na(df$tilingType) & df$tilingType == "4.8.8")
+df$shapeHex <- as.numeric(!is.na(df$tilingType) & df$tilingType == "hex")
+message(sprintf("  tiling rows: %d (4.8.8) + %d (hex) of %d total",
+                sum(df$shape488), sum(df$shapeHex), nrow(df)))
+
 # Anti-cheat (mirrors isBombHitCheat in difficulty.js): a run that detonated
 # more than BOMB_HIT_CHEAT_FRACTION of the board's mines was brute-forcing /
 # probing the layout, not solving it — its time is a garbage data point (tiny
@@ -957,6 +1001,23 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
   add_worm_term <- any(df_fit$wormLoad > 0, na.rm = TRUE)
   if (add_worm_term) {
     fit_formula_fixed_active <- update(fit_formula_fixed_active, ~ . + wormLoad)
+  }
+  # Board shape (Project Coastline): one offset per tiling, entering the fixed
+  # effects only once that shape has rows in the fit data — the same
+  # zero-variance gate as archivePlay and wormLoad. Gated PER SHAPE rather than
+  # as one "is a tiling" flag on purpose: the two shipped tilings behave
+  # nothing like each other (a honeycomb certifies at technique level 0 on
+  # 95-99% of boards and produced no tier-2 board at any density in a 1200-
+  # layout sweep, while 4.8.8 spans the full range much as a rectangle does),
+  # so pooling them would average two genuinely different worlds into one
+  # meaningless number, and whichever shape shipped first would set it.
+  add_shape488_term <- any(df_fit$shape488 > 0, na.rm = TRUE)
+  add_shapeHex_term <- any(df_fit$shapeHex > 0, na.rm = TRUE)
+  if (add_shape488_term) {
+    fit_formula_fixed_active <- update(fit_formula_fixed_active, ~ . + shape488)
+  }
+  if (add_shapeHex_term) {
+    fit_formula_fixed_active <- update(fit_formula_fixed_active, ~ . + shapeHex)
   }
   fit_formula <- update(fit_formula_fixed_active, ~ . + (1 | uid))
 
@@ -1444,7 +1505,12 @@ if (fit_method == "brms-ranef") {
     # regressor); the scheduled-to-realized bridge is applied below, after
     # the realization ratio is computed.
     secPerWormLoad     = nn(co["wormLoad"],          "wormLoad"),
-    secPerZeroCluster  = nn(co["zeroClusterCount"],  "zeroCluster")
+    secPerZeroCluster  = nn(co["zeroClusterCount"],  "zeroCluster"),
+    # NA (shape term gated out because that tiling has no rows yet) maps to 0
+    # via nn(), so a rectangles-only fit emits an explicit 0.00000 and par is
+    # unchanged on every board shipped to date.
+    secPerShape488     = nn(co["shape488"],          "shape488"),
+    secPerShapeHex     = nn(co["shapeHex"],          "shapeHex")
   )
 
   # Median calibration (log scale): set the log-intercept so the mean of
@@ -1532,7 +1598,14 @@ if (fit_method == "brms-ranef") {
   NEW_FEATURE_DATA_THRESHOLD <- 20
   feature_data_counts <- list(
     secPerZeroCluster = sum(df_fit$zeroClusterCount > 0, na.rm = TRUE),
-    secPerWormLoad    = sum(df_fit$wormLoad > 0, na.rm = TRUE)
+    secPerWormLoad    = sum(df_fit$wormLoad > 0, na.rm = TRUE),
+    # A board-shape offset ships only once that tiling has real completions
+    # behind it. Until then predictPar prices a tiling board on the shared
+    # coefficients alone, which is the design's own null hypothesis (the par
+    # model is geometry-blind the way the solver turned out to be) rather than
+    # a placeholder — so the zero here is a claim we are content to ship.
+    secPerShape488    = sum(df_fit$shape488 > 0, na.rm = TRUE),
+    secPerShapeHex    = sum(df_fit$shapeHex > 0, na.rm = TRUE)
   )
   for (coef_name in names(feature_data_counts)) {
     n_with_data <- feature_data_counts[[coef_name]]
@@ -1900,6 +1973,12 @@ block <- sprintf(
   secPerCompassCell:   %.5f,
   secPerWormLoad:      %.5f,
 
+  // Board shape (Project Coastline). One log-multiplier per non-rectangular
+  // tiling, rectangles the omitted reference — held at 0 until tiling boards
+  // have produced real completions, so par is unchanged on every board to date.
+  secPerShape488:      %.5f,
+  secPerShapeHex:      %.5f,
+
 };',
   Sys.Date(), method_str, n_scores, n_dates, n_players, r2_str,
   new_coefs$intercept,
@@ -1916,7 +1995,9 @@ block <- sprintf(
   new_coefs$secPerMirrorPair,
   new_coefs$secPerSonarCell,
   new_coefs$secPerCompassCell,
-  new_coefs$secPerWormLoad
+  new_coefs$secPerWormLoad,
+  new_coefs$secPerShape488,
+  new_coefs$secPerShapeHex
 )
 
 src <- paste(readLines(DIFFICULTY_PATH, warn = FALSE, encoding = "UTF-8"),
@@ -1960,6 +2041,8 @@ timed_block <- sprintf(
   secPerSonarCell:     %.5f,
   secPerCompassCell:   %.5f,
   secPerWormLoad:      %.5f,
+  secPerShape488:      %.5f,
+  secPerShapeHex:      %.5f,
 };',
   Sys.Date(), timed_method,
   timed_coefs$intercept,
@@ -1976,7 +2059,13 @@ timed_block <- sprintf(
   timed_coefs$secPerMirrorPair,
   timed_coefs$secPerSonarCell,
   timed_coefs$secPerCompassCell,
-  timed_coefs$secPerWormLoad
+  timed_coefs$secPerWormLoad,
+  # Quick play is rectangles-only, so these are carried purely to keep the two
+  # blocks the same shape (COEF_TERMS is shared, and test/timedModel.test.mjs
+  # pins that every PAR_MODEL key has a PAR_MODEL_TIMED counterpart). The
+  # copy-of-daily default supplies them when no timed fit ran.
+  timed_coefs$secPerShape488 %||% 0,
+  timed_coefs$secPerShapeHex %||% 0
 )
 
 t_start_marker <- "// TIMED_PAR_MODEL:START"
