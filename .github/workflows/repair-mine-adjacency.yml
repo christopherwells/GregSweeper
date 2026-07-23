@@ -1,0 +1,48 @@
+name: Repair mine adjacency
+
+# Manual one-off: clears the stale `adjacentMines` counts left on MINE cells in
+# historical canonical boards. The invariant is "a mine carries no number, so
+# its adjacentMines is ALWAYS 0"; the old `calculateAdjacency` SKIPPED mine
+# cells, so a cell that `swapMines` promoted from safe to mine kept the count it
+# held while safe, and that value was serialized into the canonical.
+#
+# Deliberately NOT scheduled. The producer was fixed on 2026-07-10 (one
+# adjacency primitive), so no board written since can carry it — this is backlog
+# cleanup, and once it has run there is nothing left for it to do.
+#
+# Safety: dry run is the DEFAULT, and the script re-proves per board that the
+# repair is unobservable (identical displayed numbers, certification, feature
+# vector and par) and REFUSES any board that fails that proof or carries a
+# signature. Measured 2026-07-23: 15 dailyBoard dates, 43 cells, 0 weekly, all
+# inert. Review the dry-run log before re-running with apply=true.
+#
+# Triggered manually via:
+#   gh workflow run repair-mine-adjacency.yml -f apply=false
+#   gh workflow run repair-mine-adjacency.yml -f apply=true   # after review
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: 'Actually write (false = dry run, prints the per-board proof)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  repair:
+    runs-on: [self-hosted, gregsweeper-win]
+    defaults:
+      run:
+        shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -eo pipefail "{0}"'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Repair
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node scripts/repair-mine-adjacency.mjs ${{ github.event.inputs.apply == 'true' && '--apply' || '' }}
