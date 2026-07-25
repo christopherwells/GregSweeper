@@ -14822,5 +14822,122 @@
         "cv": 0.0655
       }
     ]
+  },
+  {
+    "date": "2026-07-25",
+    "updatedAt": "2026-07-25T15:08:36Z",
+    "method": "brms-ranef",
+    "n_scores": 326,
+    "n_dates": 138,
+    "n_players": 5,
+    "n_eligible": 4,
+    "rmse": 47.66,
+    "bias": 7.26,
+    "diagnostics": "max Rhat = 1.004, min ESS = 1469, divergent = 0/4000",
+    "target": "lockedCellCount",
+    "candidates": [
+      {
+        "feature": "compassCellCount",
+        "mean": 0.0177,
+        "sd": 0.0122,
+        "cv": 0.6868
+      },
+      {
+        "feature": "clueShare4",
+        "mean": 0.0811,
+        "sd": 0.0506,
+        "cv": 0.6244
+      },
+      {
+        "feature": "wormLoad",
+        "mean": 0.0264,
+        "sd": 0.0152,
+        "cv": 0.5772
+      },
+      {
+        "feature": "lockedCellCount",
+        "mean": 0.0341,
+        "sd": 0.0172,
+        "cv": 0.5053
+      },
+      {
+        "feature": "patternMoves",
+        "mean": 0.0132,
+        "sd": 0.0065,
+        "cv": 0.4961
+      },
+      {
+        "feature": "searchMoves",
+        "mean": 0.0098,
+        "sd": 0.0047,
+        "cv": 0.4669
+      },
+      {
+        "feature": "sonarCellCount",
+        "mean": 0.0468,
+        "sd": 0.0216,
+        "cv": 0.4607
+      },
+      {
+        "feature": "clueShare2",
+        "mean": 0.0715,
+        "sd": 0.0295,
+        "cv": 0.4122
+      },
+      {
+        "feature": "mirrorPairCount",
+        "mean": 0.0032,
+        "sd": 0.0038,
+        "cv": 0.3797
+      },
+      {
+        "feature": "clueShare5plus",
+        "mean": 0.0016,
+        "sd": 0.0019,
+        "cv": 0.1945
+      },
+      {
+        "feature": "wallEdgeCount",
+        "mean": 0.0017,
+        "sd": 0.0019,
+        "cv": 0.1895
+      },
+      {
+        "feature": "wormholePairCount",
+        "mean": 0.0015,
+        "sd": 0.0018,
+        "cv": 0.1844
+      },
+      {
+        "feature": "clueShare3",
+        "mean": 0.2787,
+        "sd": 0.0482,
+        "cv": 0.173
+      },
+      {
+        "feature": "mysteryCellCount",
+        "mean": 0.0014,
+        "sd": 0.0017,
+        "cv": 0.1664
+      },
+      {
+        "feature": "liarCellCount",
+        "mean": 0.0015,
+        "sd": 0.0016,
+        "cv": 0.1617
+      },
+      {
+        "feature": "zeroClusterCount",
+        "mean": 0.0012,
+        "sd": 0.0012,
+        "cv": 0.1153
+      },
+      {
+        "feature": "totalMines",
+        "mean": 0.0566,
+        "sd": 0.0038,
+        "cv": 0.0676
+      }
+    ]
   }
 ]

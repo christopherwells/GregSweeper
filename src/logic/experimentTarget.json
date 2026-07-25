@@ -1,50 +1,50 @@
 {
-  "updatedAt": "2026-07-24T15:30:00Z",
-  "target": "compassCellCount",
-  "reason": "highest posterior CV (0.680) excluding last 3 targets",
+  "updatedAt": "2026-07-25T15:07:34Z",
+  "target": "lockedCellCount",
+  "reason": "highest posterior CV (0.505) excluding last 3 targets",
   "lastRevalidationDate": "2026-07-18",
   "recentTargets": [
+    "lockedCellCount",
     "compassCellCount",
-    "clueShare4",
-    "wormLoad"
+    "clueShare4"
   ],
   "candidates": [
     {
       "feature": "compassCellCount",
-      "mean": 0.016,
-      "sd": 0.011,
-      "cv": 0.68
+      "mean": 0.018,
+      "sd": 0.012,
+      "cv": 0.687
     },
     {
       "feature": "clueShare4",
-      "mean": 0.079,
+      "mean": 0.081,
       "sd": 0.051,
-      "cv": 0.648
+      "cv": 0.624
     },
     {
       "feature": "wormLoad",
-      "mean": 0.028,
-      "sd": 0.017,
-      "cv": 0.589
+      "mean": 0.026,
+      "sd": 0.015,
+      "cv": 0.577
     },
     {
       "feature": "lockedCellCount",
-      "mean": 0.032,
-      "sd": 0.016,
-      "cv": 0.513
+      "mean": 0.034,
+      "sd": 0.017,
+      "cv": 0.505
     },
     {
       "feature": "patternMoves",
       "mean": 0.013,
-      "sd": 0.006,
-      "cv": 0.485
+      "sd": 0.007,
+      "cv": 0.496
     }
   ],
   "coverage_targets": [
     {
       "feature": "wormLoad",
-      "n_boards": 2,
-      "deficit_weight": 0.3333
+      "n_boards": 3,
+      "deficit_weight": 0.25
     },
     {
       "feature": "wormholePairCount",
@@ -62,6 +62,11 @@
       "deficit_weight": 0.0714
     },
     {
+      "feature": "compassCellCount",
+      "n_boards": 13,
+      "deficit_weight": 0.0714
+    },
+    {
       "feature": "liarCellCount",
       "n_boards": 14,
       "deficit_weight": 0.0667
@@ -70,11 +75,6 @@
       "feature": "mirrorPairCount",
       "n_boards": 14,
       "deficit_weight": 0.0667
-    },
-    {
-      "feature": "lockedCellCount",
-      "n_boards": 16,
-      "deficit_weight": 0.0588
     }
   ],
   "lastDecorrelationDate": "2026-07-19"
