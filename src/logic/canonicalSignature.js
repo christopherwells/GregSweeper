@@ -65,27 +65,143 @@ function _bytesToB64(bytes) {
 }
 
 /**
+ * Values Firebase Realtime DB cannot hold, and therefore DROPS on write:
+ * there is no empty node in RTDB, so writing `[]`, `{}` or `null` to a child
+ * path deletes that child rather than storing it.
+ *
+ * This is a storage fact, not a preference, and it is why signing has to know
+ * about it — see canonicalStringify.
+ */
+function _droppedByFirebase(v) {
+  if (v === null || v === undefined) return true;
+  // A non-finite number has no JSON form — JSON.stringify renders NaN and
+  // ±Infinity as `null`, and Firebase drops nulls — so it reproduces #143
+  // exactly. The two writer paths do not even agree on it: the JS SDK rejects
+  // a non-finite outright while a REST PUT silently sends `null`, which is why
+  // signing refuses one rather than quietly signing around it.
+  if (typeof v === 'number' && !Number.isFinite(v)) return true;
+  if (Array.isArray(v)) return v.length === 0;
+  if (typeof v === 'object') return Object.keys(v).length === 0;
+  return false;
+}
+
+/**
+ * Key-sorted (Firebase does not preserve object key order) and normalized for
+ * the storage round-trip: any property whose value Firebase would drop is
+ * dropped here too, bottom-up, so a container that becomes empty only after
+ * its own children are dropped goes with them.
+ */
+function _normalizeForStorage(v) {
+  if (Array.isArray(v)) return v.map(_normalizeForStorage);
+  if (v && typeof v === 'object') {
+    const out = {};
+    for (const k of Object.keys(v).sort()) {
+      const nv = _normalizeForStorage(v[k]);
+      if (_droppedByFirebase(nv)) continue;
+      out[k] = nv;
+    }
+    return out;
+  }
+  return v;
+}
+
+/**
  * Deterministic serialization of a canonical payload for signing/verifying.
- * Recursively key-sorted (Firebase does not preserve object key order), and
- * the two fields that legitimately differ between signing time and read time
- * are excluded: `sig` (the signature itself) and `writtenAt` (writers send
- * the server-timestamp sentinel; the stored value is the resolved number).
+ * Recursively key-sorted, and the two fields that legitimately differ between
+ * signing time and read time are excluded: `sig` (the signature itself) and
+ * `writtenAt` (writers send the server-timestamp sentinel; the stored value is
+ * the resolved number).
+ *
+ * It ALSO normalizes what the Firebase round-trip does to empty values (see
+ * _droppedByFirebase). Without that, signing and verifying disagree about any
+ * field the database silently discards: `serializeBoard` sent
+ * `activeGimmicks: []` for a gimmick-free daily, Firebase stored no such key,
+ * and every client rejected a legitimate signed board as tampered. Dropping
+ * the same values on both sides makes the signed string invariant under
+ * storage for every field, present and future, rather than relying on each
+ * new field remembering to be omitted-when-empty (issue #143).
+ *
+ * Deliberately TOTAL — never throws. The client verifier runs this on payloads
+ * fetched from the network, and gateCanonicalTrust fails OPEN on an exception,
+ * so a throw here would TRUST a malformed board. The one shape this cannot
+ * model (an empty value at an ARRAY-ELEMENT position, which RTDB turns into a
+ * sparse object rather than a shorter array) is caught at signing time instead
+ * — see unstorableShapeReason.
  *
  * @param {Object} payload the canonical node
  * @returns {string}
  */
 export function canonicalStringify(payload) {
-  const sort = (v) => {
-    if (Array.isArray(v)) return v.map(sort);
-    if (v && typeof v === 'object') {
-      const out = {};
-      for (const k of Object.keys(v).sort()) out[k] = sort(v[k]);
-      return out;
-    }
-    return v;
-  };
   const { sig, writtenAt, ...rest } = payload || {};
-  return JSON.stringify(sort(rest));
+  return JSON.stringify(_normalizeForStorage(rest));
+}
+
+/**
+ * Why a payload could not survive the Firebase round-trip at all, or null when
+ * it can.
+ *
+ * canonicalStringify absorbs empty values at OBJECT-PROPERTY positions, which
+ * is what Firebase does to them. At an ARRAY-ELEMENT position it cannot: RTDB
+ * stores an array as an object with numeric keys, so dropping element `i`
+ * leaves a HOLE, and the node reads back as a sparse object rather than a
+ * shorter array. `deserializeBoard` would reject that outright, and no
+ * normalization can paper over a shape change. So a writer that builds one has
+ * a bug, and must hear about it loudly at signing time rather than write a
+ * canonical nobody can load.
+ *
+ * @param {Object} payload the canonical node
+ * @returns {string|null}
+ */
+export function unstorableShapeReason(payload) {
+  const { sig, writtenAt, ...rest } = payload || {};
+
+  // A non-finite number anywhere. Normalization treats it as dropped, which is
+  // faithful to what storage does to it, but a NaN in a canonical is always a
+  // generator bug — silently signing around it would hide the bug and hand
+  // every client a board missing a field it expects.
+  const scanNonFinite = (v, path) => {
+    if (typeof v === 'number' && !Number.isFinite(v)) {
+      return `${path} is ${String(v)} — Firebase cannot store a non-finite number`;
+    }
+    if (Array.isArray(v)) {
+      for (let i = 0; i < v.length; i++) {
+        const r = scanNonFinite(v[i], `${path}[${i}]`);
+        if (r) return r;
+      }
+      return null;
+    }
+    if (v && typeof v === 'object') {
+      for (const k of Object.keys(v)) {
+        const r = scanNonFinite(v[k], path ? `${path}.${k}` : k);
+        if (r) return r;
+      }
+    }
+    return null;
+  };
+  const nonFinite = scanNonFinite(rest, '');
+  if (nonFinite) return nonFinite;
+
+  const walk = (v, path) => {
+    if (Array.isArray(v)) {
+      for (let i = 0; i < v.length; i++) {
+        if (_droppedByFirebase(v[i])) {
+          return `${path}[${i}] is empty/null — Firebase drops it and returns the array as a `
+            + 'sparse object, so this payload cannot round-trip';
+        }
+        const r = walk(v[i], `${path}[${i}]`);
+        if (r) return r;
+      }
+      return null;
+    }
+    if (v && typeof v === 'object') {
+      for (const k of Object.keys(v)) {
+        const r = walk(v[k], path ? `${path}.${k}` : k);
+        if (r) return r;
+      }
+    }
+    return null;
+  };
+  return walk(_normalizeForStorage(rest), '');
 }
 
 /**
@@ -97,6 +213,12 @@ export function canonicalStringify(payload) {
  * @returns {Promise<string>} base64 raw r||s signature
  */
 export async function signCanonicalPayload(payload, privateKeyPkcs8B64) {
+  // Server-side, so this can afford to be strict: refuse to sign a payload the
+  // database cannot return unchanged. Signing one produces a canonical that
+  // fails to load for every player, and the failure would surface days later
+  // as a nightly-sweep alarm rather than here, at the writer.
+  const unstorable = unstorableShapeReason(payload);
+  if (unstorable) throw new Error(`signCanonicalPayload: ${unstorable}`);
   const key = await crypto.subtle.importKey(
     'pkcs8', _b64ToBytes(privateKeyPkcs8B64),
     { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign'],

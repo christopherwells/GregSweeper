@@ -66,6 +66,48 @@ export function clueShares(board, rows, cols) {
 // ── Feature extraction ────────────────────────────────
 
 /**
+ * The keys below whose values come from the SOLVER (the `solverResult`
+ * argument) rather than from the board itself. Everything else
+ * computeDailyFeatures emits is pure structure: the same board, dimensions and
+ * rngSeed produce the same number under any version of the solver.
+ *
+ * The PRODUCER declares this, and the nightly canonical sweep
+ * (scripts/verify-canonical-boards.mjs) reads it, because the sweep's whole
+ * hard-fail-vs-warn split turns on the distinction: a structural mismatch
+ * between a stored dailyMeta and a recompute can only be tampering or a
+ * generator bug, while a solver-derived count drifts legitimately when a
+ * solver change lands between a board's precompute night and the sweep.
+ *
+ * It lives here, and the sweep DEFAULTS to hard-fail for anything absent from
+ * it, because the reverse arrangement already failed once: the sweep kept its
+ * own hand-written allowlist of structural keys, two entries named fields this
+ * function does not emit, and both real modifier counts silently fell through
+ * to warn-only with nothing failing (issue #180). With the default inverted, a
+ * newly-emitted structural feature is guarded the moment it exists, and the
+ * failure mode of getting this list wrong is a LOUD false alarm rather than a
+ * silently disarmed check.
+ *
+ * `test/dailyFeaturesClassification.test.mjs` pins the membership by
+ * DIFFERENTIAL rather than by eye: it computes the vector twice over one board
+ * with two different solverResults and asserts that exactly these keys move.
+ *
+ * Adding a feature key touches two more places that cannot import this list:
+ * `FEATURES_EPOCH` in scripts/verify-canonical-boards.mjs (so the seven-day
+ * precompute horizon is not read as tampering) and `NEW_STRUCTURAL_FEATURES`
+ * in scripts/refit-par-model.R (so older rows get a 0 rather than an NA).
+ */
+export const SOLVER_DERIVED_FEATURE_KEYS = Object.freeze([
+  'passAMoves',
+  'canonicalSubsetMoves',
+  'genericSubsetMoves',
+  'advancedLogicMoves',
+  'disjunctiveMoves',
+  'totalClicks',
+  'remainingUnknowns',
+  'techniqueLevel',
+]);
+
+/**
  * Build the feature vector for a daily board at the moment it has been
  * generated, gimmicks applied, and the solver has confirmed solvability.
  *
