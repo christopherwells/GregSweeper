@@ -549,7 +549,12 @@ export function certificateFromCheck(check) {
 //   - pressurePlate: challenge L71+ and chaos. It adds a real-time
 //     deadline, not a deduction constraint — the load-bearing question
 //     doesn't apply. mineShift: chaos-only.
-const TESTABLE_GIMMICK_TYPES = ['sonar', 'compass', 'wormhole', 'liar', 'mirror'];
+// Exported so a caller can tell in advance whether findDecorativeGimmicks has
+// anything to say about a board: it runs a BASELINE solve before testing
+// anything, so calling it on a board whose modifiers are all exempt (mystery,
+// worm, locked, walls) doubles the solve count of a generation attempt to
+// return an unconditional empty list.
+export const TESTABLE_GIMMICK_TYPES = ['sonar', 'compass', 'wormhole', 'liar', 'mirror'];
 
 // A gimmick "contributes" to the solve if stripping it does any of:
 //   1. Makes the board unsolvable (strict load-bearing).
