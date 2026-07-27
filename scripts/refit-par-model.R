@@ -791,6 +791,13 @@ message(sprintf("  archive: %d row(s) after filters — %s", n_archive,
 # new-feature contributions just get computed against a 0 baseline,
 # which biases the new coefficients slightly downward at first but
 # straightens out as new plays accumulate.
+# NOTE: this is the THIRD place that answers "a new structural feature is
+# missing from older dailyMeta rows", and R cannot import the other two. The
+# nightly sweep (scripts/verify-canonical-boards.mjs) answers it with
+# FEATURES_EPOCH against each meta's writtenAt, and dailyFeatures.js exports
+# SOLVER_DERIVED_FEATURE_KEYS for the structural-vs-solver split. Adding a
+# feature key means visiting all three; they are independent by necessity, not
+# by design.
 NEW_STRUCTURAL_FEATURES <- c("nonZeroSafeCellCount", "zeroClusterCount",
                              # wormLoad ships 2026-07: every dailyMeta row
                              # before the worm-tiles release lacks the key.

@@ -177,9 +177,19 @@ export function serializeBoard({ board, rows, cols, totalMines, rngSeed, activeG
   const out = {
     rows, cols, totalMines,
     rngSeed: rngSeed || '',
-    activeGimmicks: Array.isArray(activeGimmicks) ? [...activeGimmicks] : [],
     cells,
   };
+  // Omitted when empty, exactly like wallEdges / gatedCert / false-valued
+  // booleans — and here it is a correctness requirement, not tidiness.
+  // Firebase has no empty node, so an `activeGimmicks: []` written for a
+  // gimmick-free daily is DROPPED on the way to storage; the payload that
+  // came back therefore no longer matched the one that was signed, and every
+  // client rejected a legitimate canonical as tampered (issue #143, live on
+  // dailyBoard/2026-08-03). canonicalStringify now normalizes that round-trip
+  // for any field; this keeps the written payload honest about what lands.
+  if (Array.isArray(activeGimmicks) && activeGimmicks.length > 0) {
+    out.activeGimmicks = [...activeGimmicks];
+  }
   if (codeVersion) out.codeVersion = codeVersion;
   if (board._wallEdges instanceof Set && board._wallEdges.size > 0) {
     out.wallEdges = Array.from(board._wallEdges);

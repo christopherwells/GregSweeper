@@ -21,9 +21,11 @@
 //      the liar offset is stored per cell, so recompute is deterministic)
 //   3. certifies from board center under the board's own gatedCert contract
 //      (same acceptance as the generator: solvable || remainingUnknowns === 0)
-//   4. dailyMeta features: STRUCTURAL keys must match a recompute exactly;
-//      solver-derived move counts are warn-only (a solver change landing
-//      mid-week may legitimately drift counts on boards written days ago)
+//   4. dailyMeta features: every key must match a recompute exactly UNLESS
+//      computeDailyFeatures declares it solver-derived, in which case it warns
+//      (a solver change landing mid-week may legitimately drift counts on
+//      boards written days ago). Structural is the DEFAULT, so a feature added
+//      to the vector is guarded without anyone remembering to list it here.
 //   5. cruxes payload is SOUND: its own numbers admit at least one provably
 //      safe cell, and the claimed answer (when present) is among them
 //
@@ -34,7 +36,7 @@ import { deserializeBoard } from '../src/firebase/dailyBoardSync.js';
 import { recomputeDisplayedMines, recalcAllAdjacency } from '../src/logic/gimmicks.js';
 import { isBoardSolvable, findDeducibleFrontier } from '../src/logic/boardSolver.js';
 import { cleanSolverArtifacts } from '../src/logic/boardGenerator.js';
-import { computeDailyFeatures } from '../src/logic/dailyFeatures.js';
+import { computeDailyFeatures, SOLVER_DERIVED_FEATURE_KEYS } from '../src/logic/dailyFeatures.js';
 import { getLocalDateString, getWeekStart } from '../src/logic/seededRandom.js';
 import { SIGNATURE_EPOCH, verifyCanonicalPayloadSig } from '../src/logic/canonicalSignature.js';
 import { CANONICAL_ERA_START } from '../src/logic/archiveEligibility.js';
@@ -57,28 +59,71 @@ export async function verifyFutureSignature(raw, key) {
 
 const DB_BASE = 'https://gregsweeper-66d02-default-rtdb.firebaseio.com';
 
-// Feature keys that are pure structure — identical under any solver version,
-// so a mismatch can only be tampering (or a real generator bug). The
-// solver-derived move-type counts drift legitimately when solver changes
-// land between a board's precompute night and this sweep, so they warn.
-// NOTE the two PAIR names: computeDailyFeatures emits `wormholePairCount` and
-// `mirrorPairCount` (a player reasons about a pair, not a cell), never the
-// ...CellCount forms. This list carried the cell names, which appear in no
-// feature vector, and the comparison loop iterates the RECOMPUTED keys — so
-// those two entries matched nothing and both modifier counts silently fell
-// through to the warn-only branch. A fabricated wormhole or mirror count in a
-// stored meta would not have failed the sweep (fixed 2026-07-23).
-const STRUCTURAL_FEATURE_KEYS = [
-  'rows', 'cols', 'cellCount', 'totalMines', 'wallEdgeCount',
-  'mysteryCellCount', 'sonarCellCount', 'compassCellCount', 'wormholePairCount',
-  'liarCellCount', 'mirrorPairCount', 'lockedCellCount',
-  'wormLoad',
-  // Board shape (Coastline). Pure structure — it is derived from the board's
-  // own _tiling descriptor, so a disagreement is the stored meta claiming a
-  // different LATTICE than the canonical carries, which is tampering rather
-  // than solver drift.
-  'tilingType',
-];
+// A feature key is STRUCTURAL — identical under any solver version, so a
+// mismatch can only be tampering or a real generator bug — unless
+// computeDailyFeatures declares it solver-derived. Solver-derived counts drift
+// legitimately when a solver change lands between a board's precompute night
+// and this sweep, so those warn instead of failing.
+//
+// The default is deliberately HARD-FAIL, and the tag list is imported from the
+// producer rather than kept here. This sweep used to hold its own hand-written
+// ALLOWLIST of structural names, which failed twice over in the same stroke
+// (issue #180): two entries named fields computeDailyFeatures never emits
+// (`wormholeCellCount`/`mirrorCellCount` — it emits the PAIR counts, since a
+// player reasons about a pair), and because the comparison loop iterates the
+// RECOMPUTED keys those dead names matched nothing while both real modifier
+// counts fell through to warn-only with the workflow staying green. Every
+// structural feature the allowlist simply never mentioned — density,
+// gimmickTypeCount, nonZeroSafeCellCount, zeroClusterCount (a SHIPPED par
+// predictor) and the four clueShare* — was unguarded the same way.
+//
+// Inverting it fixes the class, not the instance: a structural feature added
+// to computeDailyFeatures tomorrow is guarded the moment it exists, and the
+// cost of mis-tagging is now a loud false alarm rather than a silent hole.
+function isSolverDerived(key) {
+  return SOLVER_DERIVED_FEATURE_KEYS.includes(key);
+}
+
+// The ship date (ET) of the newest key computeDailyFeatures emits.
+//
+// It exists because inverting the default above collides with the precompute
+// HORIZON. A stored meta cannot carry a feature that did not exist when it was
+// written, `dailyMeta/{date}` is write-once, and the pipeline writes up to
+// seven days ahead — so for a week after any new feature key ships, every
+// future board in flight has a meta that legitimately lacks it. That is
+// pipeline vintage, not tampering, and hard-failing it would wedge this alarm
+// on exactly the false positives that make an alarm worth ignoring. MEASURED:
+// with the clue shares (shipped 2026-07-18) and an absence-hard-fails rule,
+// dailyMeta/2026-07-19..22 all fail on `clueShare2: stored undefined`, and the
+// printed remediation would have regenerated four perfectly good boards.
+//
+// `writtenAt` is the honest discriminator: the rules validate it as
+// `=== now` on a write-once path, so it is a server stamp a poisoner cannot
+// backdate.
+//
+// BUMP THIS in the same commit as any new feature key. Forgetting it turns the
+// nightly red for up to a week on legitimate boards — loud and self-announcing,
+// which is the safe direction to fail, but it is the maintenance this costs.
+const FEATURES_EPOCH = '2026-07-23';   // tilingType; clueShare* 07-18; wormLoad 07-16
+const FEATURES_EPOCH_MS = Date.parse(`${FEATURES_EPOCH}T00:00:00Z`);
+
+/**
+ * Is an ABSENT feature key silence rather than a lie?
+ *
+ * Two ways it can be. The recompute is ZERO — the board does not carry the
+ * thing, so a pipeline that never knew the key is indistinguishable from one
+ * that wrote 0. Or the meta predates the key existing at all. Anything else —
+ * a meta written by a pipeline that knew the key, on a board that carries it —
+ * is lying BY OMISSION, and still hard-fails: without that, a poisoner could
+ * zero any feature simply by leaving it out.
+ *
+ * A meta with no usable `writtenAt` is treated as RECENT (strict). Every real
+ * meta carries one; only hand-built test payloads do not.
+ */
+function isVintageAbsence(meta, recomputedValue) {
+  if (recomputedValue === 0) return true;
+  return typeof meta.writtenAt === 'number' && meta.writtenAt < FEATURES_EPOCH_MS;
+}
 
 /**
  * Verify one canonical board payload (daily or weekly — same format).
@@ -182,17 +227,21 @@ export function verifyMetaAgainstBoard(raw, meta, date = null) {
   for (const [key, val] of Object.entries(recomputed)) {
     const stored = meta.features[key];
     if (stored === val) continue;
-    // A key ABSENT from the stored meta with a zero recompute is a feature
-    // that didn't exist when the meta was written (e.g. wormLoad on a
-    // board precomputed before worm tiles shipped) — pipeline vintage, not
-    // tampering. A board that actually CARRIES the feature (recompute > 0)
-    // against a meta without the key still hard-fails: an old pipeline
-    // cannot have produced it.
-    if (stored === undefined && val === 0) continue;
-    if (STRUCTURAL_FEATURE_KEYS.includes(key)) {
-      reasons.push(`features.${key}: stored ${stored} !== recomputed ${val}`);
-    } else {
+    // A key ABSENT from the stored meta is pipeline vintage rather than
+    // tampering when the board does not carry the feature, or when the meta
+    // was written before the feature existed — see isVintageAbsence.
+    if (stored === undefined) {
+      if (isVintageAbsence(meta, val)) {
+        warnings.push(`features.${key}: absent from the stored meta, recomputes ${val} (pipeline vintage)`);
+        continue;
+      }
+      reasons.push(`features.${key}: absent from a meta written after the feature shipped (recomputes ${val})`);
+      continue;
+    }
+    if (isSolverDerived(key)) {
       warnings.push(`features.${key}: stored ${stored} vs recomputed ${val} (solver-derived; drift possible)`);
+    } else {
+      reasons.push(`features.${key}: stored ${stored} !== recomputed ${val}`);
     }
   }
   return { ok: reasons.length === 0, reasons, warnings };

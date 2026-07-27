@@ -192,8 +192,23 @@ test('a shape coefficient moves par ONLY on its own shape', () => {
   const hex = applyParModel({ ...base, tilingType: 'hex' }, model);
 
   // Log scale: an offset is a multiplier, so each shape lifts par by exp(coef).
-  assert.ok(Math.abs(oct - rect * Math.exp(0.2)) < 0.05, `4.8.8 offset: ${oct} vs ${rect * Math.exp(0.2)}`);
-  assert.ok(Math.abs(hex - rect * Math.exp(0.5)) < 0.05, `hex offset: ${hex} vs ${rect * Math.exp(0.5)}`);
+  //
+  // The tolerance is DERIVED, not picked. applyParModel quantizes par to 0.1s,
+  // so `rect` is already rounded and `rect * exp(coef)` amplifies that rounding
+  // by exp(coef) while `oct`/`hex` carry a rounding of their own: the honest
+  // error budget is 0.05 * (1 + exp(coef)), not a flat 0.05. The flat version
+  // sat right on the quantum and so passed or failed according to where the
+  // CURRENT PAR_MODEL happened to put `rect` — which the nightly refit rewrites
+  // every day, making this a coin-flip on main (it went red on the 2026-07-26
+  // refit at rect = 61.9). Sizing the budget from the quantum keeps the
+  // assertion tight — ~0.13s against a ~40s effect — and stops the shipped
+  // model's value from deciding whether CI is green.
+  const parQuantum = 0.05;   // half of applyParModel's 0.1s step
+  const budget = (coef) => parQuantum * (1 + Math.exp(coef));
+  assert.ok(Math.abs(oct - rect * Math.exp(0.2)) < budget(0.2),
+    `4.8.8 offset: ${oct} vs ${rect * Math.exp(0.2)} (rect=${rect})`);
+  assert.ok(Math.abs(hex - rect * Math.exp(0.5)) < budget(0.5),
+    `hex offset: ${hex} vs ${rect * Math.exp(0.5)} (rect=${rect})`);
 
   // An unknown shape falls back to the rectangular reference rather than
   // silently picking up another tiling's offset — a third tiling that ships

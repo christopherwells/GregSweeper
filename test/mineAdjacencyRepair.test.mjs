@@ -12,10 +12,25 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import { staleMineCells, repairPayload, proveRepairInert } from '../scripts/repair-mine-adjacency.mjs';
+import { verifyMetaAgainstBoard } from '../scripts/verify-canonical-boards.mjs';
 import { serializeBoard, deserializeBoard } from '../src/firebase/dailyBoardSync.js';
-import { generateBoard } from '../src/logic/boardGenerator.js';
+import { generateBoard, cleanSolverArtifacts } from '../src/logic/boardGenerator.js';
 import { isBoardSolvable } from '../src/logic/boardSolver.js';
+import { computeDailyFeatures } from '../src/logic/dailyFeatures.js';
 import { CANONICAL_ERA_START } from '../src/logic/archiveEligibility.js';
+
+// Mirror verifyMetaAgainstBoard's own recompute so a test can build an
+// exactly-matching "stored" features object and then perturb one key.
+function recomputeFeatures(raw) {
+  const d = deserializeBoard(raw);
+  const fr = Math.floor(d.firstClick / d.cols), fc = d.firstClick % d.cols;
+  const check = isBoardSolvable(d.board, d.rows, d.cols, fr, fc);
+  cleanSolverArtifacts(d.board);
+  return computeDailyFeatures(
+    { board: d.board, rows: d.rows, cols: d.cols, totalMines: d.totalMines, activeGimmicks: d.activeGimmicks, rngSeed: d.rngSeed || '' },
+    check,
+  );
+}
 
 function rectPayload() {
   const board = generateBoard(9, 9, 12, 4, 4);
@@ -93,19 +108,31 @@ test('a mine\'s own count is read by NOTHING in the display path', () => {
 // ── The sweep guards ─────────────────────────────────────────────
 
 test('REGRESSION: the sweep guards the PAIR feature names, not the dead cell names', () => {
-  // computeDailyFeatures emits wormholePairCount / mirrorPairCount; the list
-  // carried wormholeCellCount / mirrorCellCount, which appear in no feature
-  // vector. The comparison loop iterates the RECOMPUTED keys, so those entries
-  // matched nothing and both modifier counts fell through to warn-only — a
-  // fabricated wormhole or mirror count would not have failed the sweep.
-  const src = readFileSync(new URL('../scripts/verify-canonical-boards.mjs', import.meta.url), 'utf8');
-  const block = src.slice(src.indexOf('const STRUCTURAL_FEATURE_KEYS'), src.indexOf('];', src.indexOf('const STRUCTURAL_FEATURE_KEYS')));
+  // computeDailyFeatures emits wormholePairCount / mirrorPairCount; the sweep's
+  // old allowlist carried wormholeCellCount / mirrorCellCount, which appear in
+  // no feature vector. The comparison loop iterates the RECOMPUTED keys, so
+  // those entries matched nothing and both modifier counts fell through to
+  // warn-only — a fabricated wormhole or mirror count did not fail the sweep.
+  //
+  // Asserted by BEHAVIOR rather than by reading the list out of the source,
+  // because there is no list any more: the sweep now defaults to hard-fail and
+  // reads only the solver-derived tag from the producer (#180). A name-based
+  // check could not have survived that, and a behavioural one is what the guard
+  // was always trying to say.
+  const payload = rectPayload();
+  const meta = { writtenAt: Date.now(), features: recomputeFeatures(payload) };
+  assert.equal(verifyMetaAgainstBoard(payload, meta).ok, true, 'the honest meta must pass');
 
-  for (const live of ['wormholePairCount', 'mirrorPairCount', 'tilingType']) {
-    assert.ok(block.includes(`'${live}'`), `${live} must be guarded as structural`);
+  for (const live of ['wormholePairCount', 'mirrorPairCount']) {
+    assert.ok(live in meta.features, `${live} must be a real emitted feature`);
+    const lying = { ...meta, features: { ...meta.features, [live]: meta.features[live] + 2 } };
+    const v = verifyMetaAgainstBoard(payload, lying);
+    assert.equal(v.ok, false, `a fabricated ${live} must FAIL the sweep`);
+    assert.match(v.reasons.join(' '), new RegExp(`features\\.${live}\\b`));
   }
   for (const dead of ['wormholeCellCount', 'mirrorCellCount']) {
-    assert.ok(!block.includes(`'${dead}'`), `${dead} is not a feature key — a dead guard entry`);
+    assert.ok(!(dead in meta.features),
+      `${dead} is not a feature key — guarding that name guards nothing`);
   }
 });
 
