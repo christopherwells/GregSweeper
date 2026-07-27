@@ -1,31 +1,31 @@
 {
-  "updatedAt": "2026-07-26T15:10:17Z",
-  "target": "wormLoad",
-  "reason": "highest posterior CV (0.569) excluding last 3 targets",
+  "updatedAt": "2026-07-27T16:27:48Z",
+  "target": "clueShare4",
+  "reason": "highest posterior CV (0.625) excluding last 3 targets",
   "lastRevalidationDate": "2026-07-18",
   "recentTargets": [
+    "clueShare4",
     "wormLoad",
-    "lockedCellCount",
-    "compassCellCount"
+    "lockedCellCount"
   ],
   "candidates": [
     {
       "feature": "compassCellCount",
       "mean": 0.018,
-      "sd": 0.013,
-      "cv": 0.684
+      "sd": 0.012,
+      "cv": 0.675
     },
     {
       "feature": "clueShare4",
-      "mean": 0.082,
-      "sd": 0.052,
-      "cv": 0.628
+      "mean": 0.085,
+      "sd": 0.053,
+      "cv": 0.625
     },
     {
       "feature": "wormLoad",
       "mean": 0.026,
       "sd": 0.015,
-      "cv": 0.569
+      "cv": 0.574
     },
     {
       "feature": "mirrorPairCount",
@@ -37,22 +37,27 @@
       "feature": "lockedCellCount",
       "mean": 0.035,
       "sd": 0.017,
-      "cv": 0.489
+      "cv": 0.478
     }
   ],
   "coverage_targets": [
+    {
+      "feature": "wormLoad",
+      "n_boards": 4,
+      "deficit_weight": 0.2
+    },
     {
       "feature": "wormholePairCount",
       "n_boards": 11,
       "deficit_weight": 0.0833
     },
     {
-      "feature": "sonarCellCount",
-      "n_boards": 12,
-      "deficit_weight": 0.0769
+      "feature": "mysteryCellCount",
+      "n_boards": 13,
+      "deficit_weight": 0.0714
     },
     {
-      "feature": "mysteryCellCount",
+      "feature": "sonarCellCount",
       "n_boards": 13,
       "deficit_weight": 0.0714
     },
@@ -77,13 +82,5 @@
       "deficit_weight": 0.0588
     }
   ],
-  "lastDecorrelationDate": "2026-07-26",
-  "decorrelation_mission": {
-    "feature": "clueShare3",
-    "confounder": "density",
-    "slope": 11.6047,
-    "intercept": -0.9705,
-    "residualSd": 0.4158,
-    "weight": 0.5
-  }
+  "lastDecorrelationDate": "2026-07-26"
 }
