@@ -240,25 +240,54 @@ function swapMines(board, swapCount, excludeRow, excludeCol, rng) {
 // and verifying solvability after each placement. Falls back to rejection
 // sampling for low-density boards where random generation works fine.
 
-function generateConstructive(rows, cols, targetMines, excludeRow, excludeCol, rng, wallEdges) {
+export function generateConstructive(rows, cols, targetMines, excludeRow, excludeCol, rng, wallEdges, topo = null) {
   const MAX_RESTARTS = 50;
   const totalCells = rows * cols;
 
-  // Wall-aware neighbor cache depends only on dimensions and walls (not mine
-  // positions), so build it once here and reuse it across every solver call
-  // and every incremental adjacency update for all restarts.
-  const neighborCache = buildNeighborCache({ _wallEdges: wallEdges || null }, rows, cols);
+  // ── The three things that are geometry-dependent ──────────────────────
+  //
+  // Everything else in this function is already topology-agnostic: the
+  // incremental adjacency helpers and isBoardSolvable all read a neighbor
+  // CACHE, and the (row, col) loops below are pure container sweeps that visit
+  // every cell exactly once on any shape. `topo` (Project Coastline) supplies
+  // the three that are not, and its absence is the rectangular behavior
+  // verbatim — same code, same order, same RNG draws, so a square board is
+  // byte-identical to before.
+  //
+  //  1. ADJACENCY. The rectangular path synthesizes a wall-aware
+  //     8-neighborhood from a bare `{_wallEdges}` stand-in; a tiling's
+  //     adjacency is an explicit edge list that cannot be derived from
+  //     dimensions at all.
+  //  2. THE OPENER'S SAFE ZONE. `|r-er| <= 1 && |c-ec| <= 1` is the 3x3 block
+  //     around the first click, which on a tiling is a set of cells that are
+  //     mostly not even adjacent to the opener (the container is storage, not
+  //     geometry). A tiling passes the opener plus its true graph neighbors.
+  //  3. BOARD CONSTRUCTION. A tiling board carries `_cellNeighbors` /
+  //     `_cellPos` / `_tiling`, which must be stamped before anything reads it.
+  const neighborCache = topo
+    ? topo.neighborCache
+    : buildNeighborCache({ _wallEdges: wallEdges || null }, rows, cols);
+  const inSafeZone = topo
+    ? (r, c) => topo.excluded.has(r * cols + c)
+    : (r, c) => Math.abs(r - excludeRow) <= 1 && Math.abs(c - excludeCol) <= 1;
+  const newBoard = topo ? topo.makeBoard : () => {
+    const b = createEmptyBoard(rows, cols);
+    // Apply pre-existing wall edges so adjacency is wall-aware from the start
+    if (wallEdges) b._wallEdges = wallEdges;
+    return b;
+  };
 
   for (let restart = 0; restart < MAX_RESTARTS; restart++) {
-    const board = createEmptyBoard(rows, cols);
-    // Apply pre-existing wall edges so adjacency is wall-aware from the start
-    if (wallEdges) board._wallEdges = wallEdges;
+    const board = newBoard();
 
-    // Build shuffled candidate list (excluding first-click safe zone)
+    // Build shuffled candidate list (excluding first-click safe zone).
+    // The row-major build order is load-bearing: the Fisher-Yates below
+    // consumes one rng() per candidate, so changing the order (or the count)
+    // would change every subsequent draw and thus the board itself.
     const candidates = [];
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
-        if (Math.abs(r - excludeRow) <= 1 && Math.abs(c - excludeCol) <= 1) continue;
+        if (inSafeZone(r, c)) continue;
         candidates.push({ row: r, col: c });
       }
     }
@@ -281,7 +310,7 @@ function generateConstructive(rows, cols, targetMines, excludeRow, excludeCol, r
         for (let r = 0; r < rows; r++) {
           for (let c = 0; c < cols; c++) {
             if (board[r][c].isMine) continue;
-            if (Math.abs(r - excludeRow) <= 1 && Math.abs(c - excludeCol) <= 1) continue;
+            if (inSafeZone(r, c)) continue;
             candidates.push({ row: r, col: c });
           }
         }

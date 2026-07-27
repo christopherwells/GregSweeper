@@ -12,7 +12,7 @@
 //   - GEOMETRY (`board._cellPos` + `board._tiling`): read only by the renderer
 //     (and later the compass ray + worm momentum), never by the certifier.
 
-import { createEmptyBoard, cleanSolverArtifacts } from './boardGenerator.js';
+import { createEmptyBoard, cleanSolverArtifacts, generateConstructive } from './boardGenerator.js';
 import { recalcAllAdjacency, applyGimmicks } from './gimmicks.js';
 import { defineCellNeighbors } from './adjacency.js';
 import { isBoardSolvable } from './boardSolver.js';
@@ -26,6 +26,12 @@ import { buildTiling, buildTiling488, containerFor } from './tilingGeometry.js';
 // graph (applyWallsTiling), so the certifier sees a smaller graph and needs no
 // wall logic. Every modifier now has a tiling story.
 export const TILING_SAFE_GIMMICKS = ['mystery', 'liar', 'locked', 'sonar', 'mirror', 'compass', 'worm', 'walls'];
+
+// Density above which mine placement CONSTRUCTS rather than samples. Matches
+// generateBoard's own rectangular threshold so the two shapes switch strategy
+// at the same difficulty, rather than a tiling silently getting a weaker
+// generator than a square board at identical density.
+export const CONSTRUCTIVE_DENSITY_THRESHOLD = 0.22;
 
 export { buildTiling, buildTiling488, containerFor };
 
@@ -63,24 +69,54 @@ export function generateTilingBoard({ type = '4.8.8', M, N, mines, seed, gimmick
   for (let i = 0; i < total; i++) if (!excluded.has(i)) placeable.push(i);
   const nMines = Math.min(mines, placeable.length);
 
+  // Stamping a fresh tiling board is needed by both placement paths.
+  const makeBoard = () => {
+    const b = createEmptyBoard(rows, cols);
+    defineCellNeighbors(b, rows, cols, T.adj);
+    b._cellPos = T.cellPos;
+    // The renderer reads wUnits/hUnits (pitch-unit board extent) off _tiling;
+    // applyWallsTiling reads type/M/N to rebuild the wireframe.
+    b._tiling = { type: T.type, M, N, wUnits: T.wUnits, hUnits: T.hUnits };
+    return b;
+  };
+
+  // Above this density, random layouts almost never certify and the search has
+  // to CONSTRUCT instead — mirroring generateBoard's own `density > 0.22 ||
+  // hasGimmicks` rule, which is why a rectangle ships at 30% density and a
+  // tiling did not. Measured on 4.8.8 before this path existed: per-layout
+  // certification falls to ~0.7% at density 0.22 and to zero in 363,000
+  // layouts at 0.30, so rejection sampling was not slow there, it was
+  // asymptotically dead. Below the threshold random layouts certify readily and
+  // are much cheaper, so the cheap path stays the default exactly as it does
+  // for rectangles.
+  const density = nMines / total;
+  const useConstructive = density > CONSTRUCTIVE_DENSITY_THRESHOLD;
+  const topo = { neighborCache: T.adj, excluded, makeBoard };
+
   let best = null;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const rng = createDailyRNG(`${seed}:tiling:${T.type}:${attempt}`);
-    const board = createEmptyBoard(rows, cols);
-    defineCellNeighbors(board, rows, cols, T.adj);
-    board._cellPos = T.cellPos;
-    // The renderer reads wUnits/hUnits (pitch-unit board extent) off _tiling;
-    // applyWallsTiling reads type/M/N to rebuild the wireframe.
-    board._tiling = { type: T.type, M, N, wUnits: T.wUnits, hUnits: T.hUnits };
+    let board;
 
-    // Fisher-Yates over the placeable set, then take the first nMines.
-    const pool = placeable.slice();
-    for (let i = pool.length - 1; i > 0; i--) {
-      const j = Math.floor(rng() * (i + 1));
-      [pool[i], pool[j]] = [pool[j], pool[i]];
+    if (useConstructive) {
+      // Place mines one at a time, keeping the board solvable, with
+      // backtracking. `excluded` is the opener plus its true GRAPH neighbors,
+      // which is what the rectangular 3x3 safe zone means on a lattice that
+      // has one. A null here means this attempt found nothing; fall through to
+      // the next seed rather than giving up, same as a failed random layout.
+      board = generateConstructive(rows, cols, nMines, fr, fc, rng, null, topo);
+      if (!board) continue;
+    } else {
+      board = makeBoard();
+      // Fisher-Yates over the placeable set, then take the first nMines.
+      const pool = placeable.slice();
+      for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+      const at = (i) => board[(i / cols) | 0][i % cols];
+      for (let k = 0; k < nMines; k++) at(pool[k]).isMine = true;
     }
-    const at = (i) => board[(i / cols) | 0][i % cols];
-    for (let k = 0; k < nMines; k++) at(pool[k]).isMine = true;
 
     recalcAllAdjacency(board);
 
