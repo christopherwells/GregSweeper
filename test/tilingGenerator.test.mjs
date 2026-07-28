@@ -75,6 +75,40 @@ test('shape constants: square box is twice the cut, cut in the valid tiling rang
   assert.ok(Math.abs(SQ_BOX_FRAC - 2 * OCT_CUT) < 1e-9, 'square box = 2 x cut');
 });
 
+// The 4.8.8 is the only tiling whose cells are two SIZES, so it is the only one
+// where a number can be legible in one cell and cramped in the one beside it.
+// OCT_CUT is the single knob controlling that balance, and it is tuned by eye —
+// which means the thing worth pinning is not the value but the two properties
+// the value was chosen to trade off. Both directions of drift are real: cut it
+// smaller and the diamond's number shrinks toward the 41% it had at a regular
+// octagon; cut it larger and the octagon's flat sides vanish until the board
+// reads as a lattice of diamonds rather than a 4.8.8.
+test('the 4.8.8 keeps its two cells close in size, and its octagons octagonal', () => {
+  const f = 0.5 - OCT_CUT;
+  // Above the regular-octagon cut the 45-degree edges bind, not the flats.
+  const octInscribed = 2 * Math.min(0.5, (0.5 + f) / Math.SQRT2);
+  const sqInscribed = SQ_BOX_FRAC / Math.SQRT2;
+
+  // A number is drawn in its cell's inscribed circle, so this ratio is what
+  // "the squares and octagons read as the same size" actually means.
+  const circleRatio = sqInscribed / octInscribed;
+  assert.ok(circleRatio >= 0.70,
+    `the diamond's number circle is only ${(100 * circleRatio).toFixed(0)}% of the octagon's `
+    + '— raise OCT_CUT to even them out');
+
+  // And the octagon must still be one. flat/diagonal is 1.0 at a regular
+  // octagon and falls as the cut rises; below about a fifth the flats stop
+  // reading and the tiling looks like rotated squares.
+  const flatShare = (1 - 2 * OCT_CUT) / (OCT_CUT * Math.SQRT2);
+  assert.ok(flatShare >= 0.22,
+    `the octagon's flat sides are ${flatShare.toFixed(2)} of its diagonals — it now reads `
+    + 'as a rounded diamond, not an octagon; lower OCT_CUT');
+
+  // Areas follow the same trade and are the plainest statement of it.
+  const areaRatio = (1 - 2 * OCT_CUT * OCT_CUT) / (2 * OCT_CUT * OCT_CUT);
+  assert.ok(areaRatio <= 2.0, `octagon is ${areaRatio.toFixed(2)}x the diamond's area`);
+});
+
 // ── The container ──────────────────────────────────────────────────────────
 
 test('containerFor holds exactly `total` cells, near-square', () => {
