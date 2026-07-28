@@ -1,50 +1,50 @@
 {
-  "updatedAt": "2026-07-27T16:27:48Z",
-  "target": "clueShare4",
-  "reason": "highest posterior CV (0.625) excluding last 3 targets",
+  "updatedAt": "2026-07-28T16:08:48Z",
+  "target": "mirrorPairCount",
+  "reason": "highest posterior CV (0.671) excluding last 3 targets",
   "lastRevalidationDate": "2026-07-18",
   "recentTargets": [
+    "mirrorPairCount",
     "clueShare4",
-    "wormLoad",
-    "lockedCellCount"
+    "wormLoad"
   ],
   "candidates": [
     {
+      "feature": "mirrorPairCount",
+      "mean": 0.007,
+      "sd": 0.007,
+      "cv": 0.671
+    },
+    {
       "feature": "compassCellCount",
-      "mean": 0.018,
+      "mean": 0.019,
       "sd": 0.012,
-      "cv": 0.675
+      "cv": 0.642
     },
     {
       "feature": "clueShare4",
-      "mean": 0.085,
-      "sd": 0.053,
-      "cv": 0.625
+      "mean": 0.082,
+      "sd": 0.049,
+      "cv": 0.597
     },
     {
       "feature": "wormLoad",
       "mean": 0.026,
       "sd": 0.015,
-      "cv": 0.574
-    },
-    {
-      "feature": "mirrorPairCount",
-      "mean": 0.005,
-      "sd": 0.005,
-      "cv": 0.501
+      "cv": 0.594
     },
     {
       "feature": "lockedCellCount",
-      "mean": 0.035,
+      "mean": 0.036,
       "sd": 0.017,
-      "cv": 0.478
+      "cv": 0.482
     }
   ],
   "coverage_targets": [
     {
       "feature": "wormLoad",
-      "n_boards": 4,
-      "deficit_weight": 0.2
+      "n_boards": 5,
+      "deficit_weight": 0.1667
     },
     {
       "feature": "wormholePairCount",
@@ -68,11 +68,6 @@
     },
     {
       "feature": "liarCellCount",
-      "n_boards": 14,
-      "deficit_weight": 0.0667
-    },
-    {
-      "feature": "mirrorPairCount",
       "n_boards": 14,
       "deficit_weight": 0.0667
     },
