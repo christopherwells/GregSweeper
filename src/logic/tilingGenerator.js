@@ -1,9 +1,14 @@
-// ── Archimedean tiling board generator (Project Coastline, Phase 2) ─────────
+// ── Tiling board generator (Project Coastline, Phase 2) ────────────────────
 //
 // Builds a certified no-guess board on a tiling topology. The pure topology +
 // geometry live in the leaf module tilingGeometry.js (which the renderer and
 // the Phase 1 fixture also import, without pulling the solver); this module is
 // the SOLVER-using half — it exists to place mines and prove the board.
+//
+// Nothing here is per-tiling: the type is a string it hands to buildTiling and
+// stamps into the RNG seeds, so the six shipped lattices (two Archimedean,
+// 4.8.8 and 6.6.6, plus their four Laves cousins) run byte-identical code and a
+// seventh costs a builder, not a branch.
 //
 // A tiling board is otherwise an ordinary board: createEmptyBoard's container +
 // gatedCert flag, recalcAllAdjacency's topology-aware numbers, and the shipped
@@ -24,13 +29,34 @@ import { buildTiling, buildTiling488, containerFor } from './tilingGeometry.js';
 // geometric ray (computeCompassRay); worm crawls the neighbor graph with
 // geometric momentum (stepWorm's tiling branch); walls SEVER edges from the
 // graph (applyWallsTiling), so the certifier sees a smaller graph and needs no
-// wall logic. Every modifier now has a tiling story.
+// wall logic. Every modifier has a tiling story.
+//
+// The list stays one list for six lattices, and that was measured rather than
+// assumed when the four Laves tilings landed: every modifier here was run on
+// every lattice, 30 seeds each singly plus sonar+walls and liar+mystery+locked
+// stacked. All 1800 runs returned a CERTIFIED board (this function returns one
+// only when the shipped certifier cleared it), and every modifier appeared in
+// the `applied` payload on every lattice, so none of them silently placed
+// nothing.
+//
+// The one thing per-lattice is the COMPASS's direction set, and it lives in
+// gimmicks.js beside the other direction tables. Picking the wrong set does not
+// fail here, it returns short rays that read as plausible, which is what
+// test/tilingCompass.test.mjs exists to catch.
 export const TILING_SAFE_GIMMICKS = ['mystery', 'liar', 'locked', 'sonar', 'mirror', 'compass', 'worm', 'walls'];
 
 // Density above which mine placement CONSTRUCTS rather than samples. Matches
 // generateBoard's own rectangular threshold so the two shapes switch strategy
 // at the same difficulty, rather than a tiling silently getting a weaker
 // generator than a square board at identical density.
+//
+// The four Laves lattices need the constructive path far MORE than the two
+// Archimedean ones do, not less: measured over 12 seeds on the sampling side,
+// floret certifies 7/12 at density 0.208, deltoidal 8/12 at 0.181 and rhombille
+// 0/12 at 0.211, while the same boards go 30/30 on the constructive side. The
+// threshold is therefore left where it is and the practice boards are sized to
+// sit above it (see COASTLINE_BOARDS in coastlineLink.js). Lowering it for
+// their sake would change every rectangular board's generator too.
 export const CONSTRUCTIVE_DENSITY_THRESHOLD = 0.22;
 
 // Attempts that must produce a board whose every testable modifier is
@@ -43,19 +69,22 @@ export const TILING_LOAD_BEARING_BUDGET = 25;
 export { buildTiling, buildTiling488, containerFor };
 
 /**
- * Generate a certified no-guess 4.8.8 tiling board by seeded search — the same
- * way the Phase 1 fixture was found, and the same way a rectangular daily is
- * accepted: try seeded mine layouts, keep the first the SHIPPED certifier clears
- * with no guesses from the fixed center-octagon opener.
+ * Generate a certified no-guess tiling board by seeded search — the same way the
+ * Phase 1 fixture was found, and the same way a rectangular daily is accepted:
+ * try seeded mine layouts, keep the first the SHIPPED certifier clears with no
+ * guesses from the fixed center-cell opener.
  *
  * Frozen-board contract (like daily/weekly): mines are placed at generation and
- * the first click never relocates one. The center octagon and its neighbors are
+ * the first click never relocates one. The center cell and its neighbors are
  * kept mine-free so the opener cascades.
  *
  * @param {{type?:string, M:number, N:number, mines:number, seed:string,
  *          gimmicks?:string[], techniqueFloor?:number, maxAttempts?:number,
  *          loadBearingBudget?:number}} opts
- *          type selects the tiling ('4.8.8' default, 'hex' for 6.6.6).
+ *          type names the tiling: any entry of TILING_TYPES, defaulting to the
+ *          4.8.8. M and N are that tiling's LATTICE dimensions, which are not
+ *          the container's and mean something different per tiling (its own
+ *          cell-count formula is in containerIsStorable's note).
  *          loadBearingBudget: attempts that must ALSO have every testable
  *          modifier load-bearing; 0 disables the requirement entirely.
  * @returns {{board:Array, rows:number, cols:number, firstClick:number,
@@ -70,8 +99,10 @@ export function generateTilingBoard({
   const total = T.total;
   const { rows, cols } = containerFor(total);
 
-  // The middle cell is the fixed opener (centerIndex is tiling-specific: the
-  // center octagon for 4.8.8, the center hexagon for 6.6.6).
+  // The middle cell is the fixed opener. centerIndex is the tiling's OWN center
+  // (the cell nearest its patch's center of mass), never the container's middle
+  // slot. A container is an arbitrary exact factorization, so whether the two
+  // coincide is arithmetic luck that varies with M and N.
   const firstClick = T.centerIndex;
   const fr = Math.floor(firstClick / cols);
   const fc = firstClick % cols;
@@ -164,7 +195,13 @@ export function generateTilingBoard({
       // its cache into isBoardSolvable, and buildNeighborCache reads
       // `board._cellNeighbors` when present, so the tiling's own adjacency is
       // used whether or not a cache is passed. It is passed anyway, to skip
-      // rebuilding it on every strip-test.
+      // rebuilding it on every strip-test. That held when the four Laves
+      // lattices landed, with no edit here: measured across all six over 25
+      // seeds each, the filter takes sonar / compass / liar / mirror from 0-96%
+      // decorative with the budget disabled to 0% with it on. The one exception
+      // is rhombille (3/25 sonar, 6/25 compass), and it is the budget below
+      // expiring rather than the filter missing: a rhombille attempt is the
+      // dearest of the six, so a run has time for fewer of them.
       //
       // Budgeted, not absolute (mirrors LOAD_BEARING_BUDGET): past the budget
       // the requirement drops so generation cannot spin forever, and a

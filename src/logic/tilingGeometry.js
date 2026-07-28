@@ -1,4 +1,9 @@
-// ── Archimedean tiling geometry + topology (Project Coastline, Phase 2) ─────
+// ── Tiling geometry + topology (Project Coastline) ─────────────────────────
+//
+// Six tilings live here: the two Archimedean ones this module shipped with
+// (4.8.8 and the 6.6.6 honeycomb) and the four Laves tilings below (cairo,
+// floret, rhombille, deltoidal). Adding one is a builder plus a dispatcher
+// entry; nothing downstream learns a tiling's name.
 //
 // A LEAF module: it imports nothing, so the renderer (a UI module), the board
 // generator (which also pulls the solver), and the Phase 1 test fixture can all
@@ -255,14 +260,543 @@ export function buildHexTiling(M, N) {
   };
 }
 
+// ── Laves tilings (Coastline #3-#6) ────────────────────────────────────────
+//
+// cairo [3².4.3.4], floret [3⁴.6], rhombille [3.6.3.6] and deltoidal
+// trihexagonal [3.4.6.4]. Each is isohedral — ONE cell shape at one size — so
+// every interior cell reasons about an identical neighborhood, and unlike the
+// two Archimedean tilings above there are no diagonals to disambiguate and no
+// second cell size to keep legible.
+//
+// They share three things the first two tilings did not need, so the machinery
+// below is written once and called four times.
+//
+// 1. CORNER-INCLUSIVE ADJACENCY. Cells touching at a single VERTEX are
+//    neighbors, exactly as diagonal cells are on a square grid (Christopher's
+//    rule, 2026-07-27: "corners are adjacent in mine counts"). On 4.8.8 and on
+//    the honeycomb this rule is a strict NO-OP — both are trivalent, so at every
+//    vertex the incident cells already share edges and there is nothing for it
+//    to add (measured: zero vertex-only pairs on either, at every patch size and
+//    every value of OCT_CUT short of the degenerate 0.5). On these four it is
+//    the whole point: interior valence goes 5 → 7 (cairo), 5 → 8 (floret),
+//    4 → 10 (rhombille) and 4 → 9 (deltoidal), which is Σ_v (deg(v) − 1) minus
+//    the side count for each Laves face. Rhombille and deltoidal are therefore
+//    the first tilings to carry a clue ABOVE 8.
+// 2. EXACT VERTEX KEYS. See latticeVertices.
+// 3. A NORMALIZATION to pitch units. See assembleTiling.
+//
+// A consequence worth stating because it looks like an omission: buildWireframe
+// only ever emits an edge for a pair that shares exactly TWO vertices, so a
+// corner-only link has no wireframe edge and no wall can sever it. That is
+// right — a wall is a line drawn along a shared boundary, and two cells meeting
+// at a point have none — but it does mean walls cut a strict subset of the
+// adjacency graph here, where on the shipped two the two graphs coincide.
+
 /**
- * Tiling dispatcher: return the topology + geometry for a named tiling. Both
- * builders emit the same shape, so every consumer (generator, renderer, wall
+ * A deduped vertex list addressed by the EXACT integer coordinates of the
+ * lattice rather than by a rounded float.
+ *
+ * The 4.8.8 and hex builders key `vIdx` on `Math.round(x * 1e6)`, and a rounded
+ * key is a bet that no coordinate ever lands near a half-step. Losing that bet
+ * does not throw: it splits one corner into two vertices, which DROPS the
+ * adjacency the cells had through it, so the board certifies against a
+ * neighborhood the player is never shown — the one failure the no-guess contract
+ * cannot absorb.
+ *
+ * The bet is not lost today, but the margin narrows exactly where it matters.
+ * Measured over these four lattices built with float coordinates: the closest
+ * any vertex comes to a 1e-6 rounding boundary is 5.8e-8 at M=N=6 and 2.1e-8 at
+ * M=N=12, while the spread between independent computations of one shared corner
+ * grows from 8.9e-16 to 3.6e-15 over the same range (floret is tightest, 1.6e-9
+ * against 2.1e-14). Those two numbers converge with patch size, and nothing here
+ * bounds the gap.
+ *
+ * So each builder picks integer coordinates for its own lattice, keys on those,
+ * and derives the float exactly once per vertex. Then there is no rounding
+ * decision to get right and no size at which it starts being wrong.
+ *
+ * @param {(...key:number[]) => {x:number,y:number}} toXY integer key -> position
+ */
+function latticeVertices(toXY) {
+  const verts = [];
+  const seen = new Map();
+  return {
+    verts,
+    /** @param {...number} key */
+    at(...key) {
+      const k = key.join(',');
+      let i = seen.get(k);
+      if (i === undefined) { i = verts.length; verts.push(toXY(...key)); seen.set(k, i); }
+      return i;
+    },
+  };
+}
+
+/**
+ * Turn a raw Laves patch into the descriptor every consumer reads: reading
+ * order, corner-inclusive adjacency, the opener, and the normalization to pitch
+ * units.
+ *
+ * @param {string} type
+ * @param {number} M
+ * @param {number} N
+ * @param {{verts:Array<{x:number,y:number}>, cellVerts:Array<number[]>,
+ *          cellPos:Array<{cx:number,cy:number,ax?:number,ay?:number}>}} raw
+ *        native lattice units; cellPos holds each cell's incircle center and,
+ *        where the two differ, its compass ray anchor
+ * @param {number} scale native units -> pitch units
+ */
+function assembleTiling(type, M, N, raw, scale) {
+  const total = raw.cellVerts.length;
+
+  // READING ORDER: ascending centroid y, ties by centroid x. Taken in the
+  // builder's own lattice units and BEFORE normalization, so the order is a
+  // property of the lattice and cannot move if `scale` is ever retuned. This is
+  // load-bearing rather than cosmetic — a frozen certification fixture's mine
+  // list is a list of INDICES, and it means nothing except against this order.
+  const centroid = raw.cellVerts.map(cv => {
+    let x = 0, y = 0;
+    for (const vi of cv) { x += raw.verts[vi].x; y += raw.verts[vi].y; }
+    return { cx: x / cv.length, cy: y / cv.length };
+  });
+  const order = centroid
+    .map((p, i) => ({ i, ky: Math.round(p.cy * 1e4), kx: Math.round(p.cx * 1e4) }))
+    .sort((a, b) => a.ky - b.ky || a.kx - b.kx)
+    .map(o => o.i);
+
+  const cellVerts = new Array(total);
+  const cellPos = new Array(total);
+  const mid = new Array(total);
+  order.forEach((from, to) => {
+    cellVerts[to] = raw.cellVerts[from];
+    cellPos[to] = raw.cellPos[from];
+    mid[to] = centroid[from];
+  });
+
+  // Corner-inclusive adjacency: every pair of cells sharing at least one vertex.
+  // Derived from an unordered pair map, so symmetry is structural and
+  // defineCellNeighbors cannot be handed an asymmetric list; sorted ascending so
+  // neighbor ORDER is deterministic (applyMirrorPairs takes the first eligible
+  // neighbor in list order, so a reshuffle would move mirror boards).
+  const vertCells = new Map();
+  cellVerts.forEach((cv, ci) => {
+    for (const v of cv) {
+      let users = vertCells.get(v);
+      if (!users) { users = []; vertCells.set(v, users); }
+      users.push(ci);
+    }
+  });
+  const nbrs = Array.from({ length: total }, () => new Set());
+  for (const users of vertCells.values()) {
+    for (let a = 0; a < users.length; a++) {
+      for (let b = a + 1; b < users.length; b++) {
+        nbrs[users[a]].add(users[b]);
+        nbrs[users[b]].add(users[a]);
+      }
+    }
+  }
+  const adj = nbrs.map(s => [...s].sort((x, y) => x - y));
+
+  // The opener: the cell nearest the patch's own center of mass. A patch with a
+  // mirror symmetry can tie two cells EXACTLY (deltoidal at M=3,N=4 ties cells
+  // 31 and 39 across its center), and because the centroids come from exact
+  // lattice integers the tie is bitwise rather than float noise — so it has to
+  // be broken here instead of being handed to whichever distance happens to
+  // round a hair smaller. The later cell in reading order wins, which is what
+  // the frozen gate fixtures were found against.
+  let mx = 0, my = 0;
+  for (const p of mid) { mx += p.cx; my += p.cy; }
+  mx /= total; my /= total;
+  let centerIndex = 0, bestD = Infinity;
+  for (let i = 0; i < total; i++) {
+    const d = (mid[i].cx - mx) ** 2 + (mid[i].cy - my) ** 2;
+    if (d <= bestD) { bestD = d; centerIndex = i; }
+  }
+
+  // NORMALIZE to pitch units: translate the patch's bounding box to the origin
+  // (the renderer places every cell at unit × pitch from the board's own origin,
+  // exactly as the 4.8.8 spans [0,N] × [0,M]), then scale so the cell's
+  // INSCRIBED DIAMETER is one pitch unit. That is already the hexagon's rule —
+  // HEX_R = 1/√3 makes a hex one pitch flat-to-flat and one pitch inscribed — so
+  // a number sized at half the pitch reads the same on every one of these
+  // tilings, and their cell areas land within 25% of the hexagon's. The 4.8.8
+  // deliberately keeps its own tuning: OCT_CUT 0.37 cuts the octagon's inscribed
+  // diameter to 0.891 pitch, and retrofitting this rule there would shrink the
+  // octagon's font 11% and the interstitial diamond's 29%.
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const v of raw.verts) {
+    if (v.x < minX) minX = v.x;
+    if (v.x > maxX) maxX = v.x;
+    if (v.y < minY) minY = v.y;
+    if (v.y > maxY) maxY = v.y;
+  }
+  const px = x => (x - minX) * scale;
+  const py = y => (y - minY) * scale;
+  const verts = raw.verts.map(v => ({ x: px(v.x), y: py(v.y) }));
+  for (const p of cellPos) {
+    p.cx = px(p.cx);
+    p.cy = py(p.cy);
+    if (p.ax !== undefined) { p.ax = px(p.ax); p.ay = py(p.ay); }
+    // Each of these four is isohedral, so the cell's shape name IS the tiling's.
+    p.shape = type;
+  }
+  const wUnits = (maxX - minX) * scale;
+  const hUnits = (maxY - minY) * scale;
+
+  return {
+    total, adj, cellPos, cellVerts, verts,
+    width: wUnits, height: hUnits, wUnits, hUnits, centerIndex, type, M, N,
+  };
+}
+
+// The Cairo pentagon is TANGENTIAL: four sides of length 1 and one of length
+// √3 − 1, all five touching a circle of radius (3 − √3)/2. Its center sits on
+// the pentagon's mirror axis, √3 − 3/2 off the lattice edge the pentagon spans,
+// on the side away from the apex.
+const CAIRO_INSET = Math.sqrt(3) - 1.5;                 // ~0.2321, lattice units
+const CAIRO_SCALE = (3 + Math.sqrt(3)) / 6;             // 1 / (3 − √3), inscribed diameter -> 1
+
+/**
+ * Build the Cairo pentagonal tiling, Laves [3².4.3.4], over an M×N lattice.
+ *
+ * The degree-4 vertices sit on a square lattice of spacing √3, and exactly ONE
+ * pentagon spans each lattice EDGE — M(N−1) horizontal plus (M−1)N vertical, so
+ * 2MN − M − N cells. The pinwheel handedness alternates with site parity (the
+ * p4g symmetry); getting that alternation wrong looks fine cell by cell and
+ * makes the pentagons overlap.
+ *
+ * Every vertex is (a + b√3)/2 with a and b integers, which is the exact key.
+ *
+ * @returns the same descriptor shape as buildTiling488 / buildHexTiling.
+ */
+export function buildCairoTiling(M, N) {
+  const S3 = Math.sqrt(3);
+  const V = latticeVertices((a, b, c, d) => ({ x: (a + b * S3) / 2, y: (c + d * S3) / 2 }));
+  const cellVerts = [];
+  const cellPos = [];
+
+  // RAY ANCHOR. A compass asks "which way", which only a straight line of cell
+  // centers can answer, and the Cairo pentagons' incircle centers do not lie on
+  // usable ones: measured from them, every direction keeps less of its drawn ray
+  // inside the cells it counts (53.9% on the diagonals, 64.1% on the axes) than
+  // the hex directions that were REJECTED at 66.3%. The pentagon's two
+  // LATTICE-SITE vertices do sit on a clean 45°-rotated square lattice, so the
+  // ray is taken from the midpoint of its long diagonal instead: 100.0% on the
+  // diagonals and 87.9% on the axes, against the shipped 4.8.8 axes' 90.4%.
+  // Splitting anchor from drawn center costs nothing, measured with the ray taken
+  // from the anchor and the LINE traced between incircle centers. And it is a
+  // midpoint of two exact lattice points, which matters as much as where it
+  // lands (computeCompassRay says why a searched center is not allowed).
+  for (let i = 0; i < M; i++) {
+    for (let j = 0; j < N; j++) {
+      const even = ((i + j) % 2) === 0;
+      const sx = S3 * j, sy = S3 * i;
+
+      if (j + 1 < N) {                       // pentagon on the horizontal lattice edge
+        const sg = even ? -1 : 1;            // which side of the edge the wide end sits on
+        cellVerts.push([
+          V.at(0, 2 * j, 0, 2 * i),
+          V.at(1, 2 * j, 0, 2 * i + sg),
+          V.at(-1, 2 * j + 2, 0, 2 * i + sg),
+          V.at(0, 2 * j + 2, 0, 2 * i),
+          V.at(0, 2 * j + 1, -sg, 2 * i),
+        ]);
+        cellPos.push({
+          cx: sx + S3 / 2, cy: sy + sg * CAIRO_INSET,
+          ax: sx + S3 / 2, ay: sy,
+        });
+      }
+      if (i + 1 < M) {                       // pentagon on the vertical lattice edge
+        const tg = even ? 1 : -1;
+        cellVerts.push([
+          V.at(0, 2 * j, 0, 2 * i),
+          V.at(0, 2 * j + tg, 1, 2 * i),
+          V.at(0, 2 * j + tg, -1, 2 * i + 2),
+          V.at(0, 2 * j, 0, 2 * i + 2),
+          V.at(-tg, 2 * j, 0, 2 * i + 1),
+        ]);
+        cellPos.push({
+          cx: sx + tg * CAIRO_INSET, cy: sy + S3 / 2,
+          ax: sx, ay: sy + S3 / 2,
+        });
+      }
+    }
+  }
+
+  return assembleTiling('cairo', M, N, { verts: V.verts, cellVerts, cellPos }, CAIRO_SCALE);
+}
+
+// The floret pentagon is TANGENTIAL too: sides 2:1:1:1:2 around a circle of
+// radius √3/2 whose center is the vertex centroid, at (1, 1) on the triangular
+// basis below.
+const FLORET_BASE = [[0, 0], [2, 0], [2, 1], [1, 2], [0, 2]];
+const FLORET_INCENTER = [1, 1];
+const FLORET_SCALE = 1 / Math.sqrt(3);                  // inscribed diameter -> 1
+
+// A 60° rotation on the triangular basis e1 = (1, 0), e2 = (1/2, √3/2) is
+// e1 -> e2 and e2 -> e2 − e1, so it maps integers to integers exactly.
+const rotate60 = ([p, q]) => [-q, p + q];
+
+/**
+ * Build the floret pentagonal tiling, Laves [3⁴.6], over an M×N lattice of
+ * rosettes: six congruent pentagons pinwheeled around each center, 6MN cells.
+ *
+ * It is the dual of the snub hexagonal tiling, which is what pins the
+ * pentagon's sides at 2:1:1:1:2 and the rosette lattice at L1 = 4e1 + e2,
+ * L2 = −e1 + 5e2. Working on that triangular basis makes every vertex a PAIR OF
+ * INTEGERS, because the pinwheel's 60° rotation is exact there; rotating with
+ * cos/sin instead would put float noise on every shared corner and hand the
+ * dedupe a rounding decision it must not have to make.
+ *
+ * The tiling is chiral, and its rosette phase decides which direction set the
+ * compass can use (here 30/90/150 and their opposites) — a 30° re-derivation
+ * would swap the clean set for 0/60/120 and the wrong choice reads as plausible
+ * rather than empty, so the direction set must be derived from what this builder
+ * actually emits.
+ *
+ * ROWS ARE RE-SEATED so the patch is a RECTANGLE. L1 and L2 sit at 60° to each
+ * other, so laying rosettes at plain m·L1 + n·L2 gives a sheared PARALLELOGRAM:
+ * measured on a 3×4 patch it left roughly a third of the board box empty as two
+ * opposite triangular wedges, which no other tiling here does and which reads as
+ * a broken board rather than a lattice. L2 drifts x by exactly L1/3 per row, so
+ * subtracting round(n/3)·L1 pulls every row back into column and bounds the
+ * remaining stagger at ±L1/3 — the same shape of fix as the honeycomb's half-hex
+ * row offset, and like it a change of WHICH lattice points are used, not of the
+ * lattice. The cells stay congruent, the adjacency rule is untouched, and the
+ * compass phase is unaffected because whole-L1 translations are lattice
+ * symmetries.
+ *
+ * @returns the same descriptor shape as buildTiling488 / buildHexTiling.
+ */
+export function buildFloretTiling(M, N) {
+  const S3 = Math.sqrt(3);
+  const V = latticeVertices((p, q) => ({ x: p + q / 2, y: q * S3 / 2 }));
+  const cellVerts = [];
+  const cellPos = [];
+
+  for (let m = 0; m < M; m++) {
+    for (let n = 0; n < N; n++) {
+      const k = Math.round(n / 3);                      // whole-L1 row re-seat
+      const op = 4 * (m - k) - n, oq = (m - k) + 5 * n; // rosette center, (m−k)·L1 + n·L2
+      let poly = FLORET_BASE, center = FLORET_INCENTER;
+      for (let k = 0; k < 6; k++) {
+        cellVerts.push(poly.map(([p, q]) => V.at(op + p, oq + q)));
+        const cp = op + center[0], cq = oq + center[1];
+        cellPos.push({ cx: cp + cq / 2, cy: cq * S3 / 2 });
+        poly = poly.map(rotate60);
+        center = rotate60(center);
+      }
+    }
+  }
+
+  return assembleTiling('floret', M, N, { verts: V.verts, cellVerts, cellPos }, FLORET_SCALE);
+}
+
+// Pointy-top hexagons of circumradius 1 in offset rows (odd rows shifted right
+// by half a hex) are the substrate BOTH rhombille and deltoidal subdivide. Every
+// point either builder needs — hex center, hex vertex, edge midpoint — has x a
+// multiple of √3/4 and y a multiple of 1/4, so the integer pair (B, C) with
+// x = B√3/4 and y = C/4 addresses it exactly.
+const hexLavesSite = (i, j) => [4 * j + 2 * (i % 2), 6 * i];
+const HEX_LAVES_VERT = [[0, 4], [-2, 2], [-2, -2], [0, -4], [2, -2], [2, 2]];
+const HEX_LAVES_MID = [[-1, 3], [-2, 0], [-1, -3], [1, -3], [2, 0], [1, 3]];
+const hexLavesXY = (B, C) => ({ x: B * Math.sqrt(3) / 4, y: C / 4 });
+
+const RHOMBILLE_SCALE = 2 / Math.sqrt(3);               // inscribed diameter -> 1
+
+/**
+ * Build the rhombille tiling, Laves [3.6.3.6], over an M×N hexagon lattice:
+ * each hexagon cut into three 60/120 rhombi, 3MN cells.
+ *
+ * The rhombus is centrally symmetric, so its incircle center, its centroid and
+ * its bounding-box center are all the same point and there is no compass anchor
+ * to split off — the six directions 0/60/120 and their opposites work straight
+ * off the drawn center, at hex quality (100% of the drawn ray inside counted
+ * cells, mean length 4.45 to 5.89).
+ *
+ * It is also the densest of these lattices to reason on: interior valence 10,
+ * against the rectangle's 8. Two consequences that are properties of the
+ * tiling rather than of this builder — a rhombille clue can read 9 or 10, and
+ * Pass B is structurally almost dead here (its subset pairs rarely resolve, so
+ * its ladder runs Pass A straight to Pass C).
+ *
+ * @returns the same descriptor shape as buildTiling488 / buildHexTiling.
+ */
+export function buildRhombilleTiling(M, N) {
+  const V = latticeVertices(hexLavesXY);
+  const cellVerts = [];
+  const cellPos = [];
+
+  for (let i = 0; i < M; i++) {
+    for (let j = 0; j < N; j++) {
+      const [B0, C0] = hexLavesSite(i, j);
+      for (let k = 0; k < 6; k += 2) {
+        const a = HEX_LAVES_VERT[k];
+        const b = HEX_LAVES_VERT[(k + 1) % 6];
+        const c = HEX_LAVES_VERT[(k + 2) % 6];
+        cellVerts.push([
+          V.at(B0, C0),
+          V.at(B0 + a[0], C0 + a[1]),
+          V.at(B0 + b[0], C0 + b[1]),
+          V.at(B0 + c[0], C0 + c[1]),
+        ]);
+        // A rhombus's center is the midpoint of its long diagonal, which runs
+        // from the hexagon's center to the vertex between a and c.
+        const mid = hexLavesXY(B0 + b[0] / 2, C0 + b[1] / 2);
+        cellPos.push({ cx: mid.x, cy: mid.y });
+      }
+    }
+  }
+
+  return assembleTiling('rhombille', M, N, { verts: V.verts, cellVerts, cellPos }, RHOMBILLE_SCALE);
+}
+
+// The kite is tangential (every kite is), inscribed radius (3 − √3)/4 with its
+// center at (3 − √3)/2 along hexCenter -> hexVertex; the vertex centroid sits
+// slightly short of that, at 5/8.
+const DELTOIDAL_INCENTER_R = (3 - Math.sqrt(3)) / 2;    // ~0.6340 of the circumradius
+const DELTOIDAL_ANCHOR_R = 0.5;                         // long-diagonal midpoint
+const DELTOIDAL_SCALE = (3 + Math.sqrt(3)) / 3;         // 2 / (3 − √3), inscribed diameter -> 1
+
+/**
+ * Build the deltoidal trihexagonal tiling, Laves [3.4.6.4], over an M×N hexagon
+ * lattice: each hexagon cut into six congruent kites (center, edge midpoint,
+ * vertex, next edge midpoint), 6MN cells.
+ *
+ * Richest of the four to solve — 62% of constructively generated certified
+ * boards reach techniqueLevel 2, against 6% on rhombille — and its interior
+ * valence of 9 also carries clues above the classic ceiling of 8.
+ *
+ * @returns the same descriptor shape as buildTiling488 / buildHexTiling.
+ */
+export function buildDeltoidalTiling(M, N) {
+  const V = latticeVertices(hexLavesXY);
+  const cellVerts = [];
+  const cellPos = [];
+
+  // RAY ANCHOR, and the one number here that is a coincidence rather than a
+  // choice. Sweeping the anchor radius from 0.30 to 0.866 puts EVERY value below
+  // the shipped bar except exactly 1/2 — including the vertex centroid (0.625)
+  // and the incircle center (0.634), whose best direction keeps 67.2% of its
+  // drawn ray inside counted cells, under the 66.3% that got hex's 30/90/150
+  // rejected. At radius 1/2, the kite's long-diagonal midpoint, the same
+  // directions reach 89.8-91.3%. So this is not a tunable to nudge for
+  // legibility: it is where the kite centers happen to fall on straight lines,
+  // and moving it in either direction breaks the compass rather than trading
+  // against something.
+  for (let i = 0; i < M; i++) {
+    for (let j = 0; j < N; j++) {
+      const [B0, C0] = hexLavesSite(i, j);
+      const hub = hexLavesXY(B0, C0);
+      for (let k = 0; k < 6; k++) {
+        const m0 = HEX_LAVES_MID[(k + 5) % 6];
+        const v = HEX_LAVES_VERT[k];
+        const m1 = HEX_LAVES_MID[k];
+        cellVerts.push([
+          V.at(B0, C0),
+          V.at(B0 + m0[0], C0 + m0[1]),
+          V.at(B0 + v[0], C0 + v[1]),
+          V.at(B0 + m1[0], C0 + m1[1]),
+        ]);
+        // The kite's long diagonal is hexCenter -> hexVertex, and the hexagon's
+        // circumradius is 1, so this offset is already a unit vector.
+        const u = hexLavesXY(v[0], v[1]);
+        cellPos.push({
+          cx: hub.x + DELTOIDAL_INCENTER_R * u.x, cy: hub.y + DELTOIDAL_INCENTER_R * u.y,
+          ax: hub.x + DELTOIDAL_ANCHOR_R * u.x, ay: hub.y + DELTOIDAL_ANCHOR_R * u.y,
+        });
+      }
+    }
+  }
+
+  return assembleTiling('deltoidal', M, N, { verts: V.verts, cellVerts, cellPos }, DELTOIDAL_SCALE);
+}
+
+/**
+ * Every tiling the dispatcher builds, canonical names only — `'6.6.6'` is
+ * accepted as an alias for `'hex'` but is not a separate tiling. Single-sourced
+ * here so the deep-link parser and any per-type table can be checked against the
+ * builders rather than against a hand-copied list.
+ */
+export const TILING_TYPES = ['4.8.8', 'hex', 'cairo', 'floret', 'rhombille', 'deltoidal'];
+
+const TILING_BUILDERS = {
+  '4.8.8': buildTiling488,
+  hex: buildHexTiling,
+  '6.6.6': buildHexTiling,
+  cairo: buildCairoTiling,
+  floret: buildFloretTiling,
+  rhombille: buildRhombilleTiling,
+  deltoidal: buildDeltoidalTiling,
+};
+
+/**
+ * Tiling dispatcher: return the topology + geometry for a named tiling. Every
+ * builder emits the same descriptor, so each consumer (generator, renderer, wall
  * wireframe) is tiling-agnostic and picks the tiling by `type` alone.
+ *
+ * An unrecognized type falls through to the shipped 4.8.8 rather than throwing,
+ * which is the contract the generator's own `type = '4.8.8'` default relies on.
+ * With six types that fallback is a real hazard — a typo produces a 4.8.8 with
+ * no error anywhere — so callers that take a type from OUTSIDE the code (the
+ * `?coastline=` token parser is the only one) must validate against
+ * TILING_TYPES before they get here.
  */
 export function buildTiling(type, M, N) {
-  if (type === 'hex' || type === '6.6.6') return buildHexTiling(M, N);
-  return buildTiling488(M, N);
+  return (TILING_BUILDERS[type] || buildTiling488)(M, N);
+}
+
+/**
+ * A cell's own box and clip-path, derived from that cell's polygon.
+ *
+ * The renderer picks a clip-path per SHAPE NAME today, which holds only while
+ * every cell of a shape is identical up to TRANSLATION — true of the octagon,
+ * the interstitial diamond and the hexagon, false of all four Laves tilings,
+ * whose one cell shape appears in several rotations (cairo 4, floret 6,
+ * rhombille 3, deltoidal 6). Box size does not identify the rotation either:
+ * rhombille's 0° and 60° rhombi share a 1 × 1.732 box and need different
+ * clip-paths, so anything keyed on box dimensions mis-shapes half the board
+ * without erroring.
+ *
+ * So derive both from the vertices: the box is their tight axis-aligned bounding
+ * box in PITCH units, and the clip-path is each vertex as a percentage of that
+ * box in the polygon's own order. This is not a new rule for the shipped shapes,
+ * it is the rule their three hand-inlined branches are cases of — SQ_BOX_FRAC IS
+ * the diamond's bbox width and HEX_BOX_H IS the hexagon's bbox height — and it
+ * reproduces all three to 0 percentage points across every cell of a full board,
+ * and to 0 differing pixels over 711,000 in a headless-Chromium comparison.
+ *
+ * Percentages are trimmed of trailing zeros so the two shipped shapes that CAN
+ * match do, byte for byte. The octagon still differs as a string, because
+ * octagonClipPath() mixes toFixed(3) values with bare 0%/100% literals; Chromium
+ * normalizes both spellings to the same computed value, so nothing that can read
+ * a clip-path can tell them apart.
+ *
+ * @param {Array<{x:number,y:number}>} verts the tiling's deduped vertex list
+ * @param {number[]} cellVertIndices one cell's entry of the tiling's `cellVerts`
+ * @returns {{left:number, top:number, width:number, height:number, clipPath:string}}
+ *   left/top/width/height in PITCH units — multiply by the live pitch for px.
+ */
+export function cellOutline(verts, cellVertIndices) {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const vi of cellVertIndices) {
+    const v = verts[vi];
+    if (v.x < minX) minX = v.x;
+    if (v.x > maxX) maxX = v.x;
+    if (v.y < minY) minY = v.y;
+    if (v.y > maxY) maxY = v.y;
+  }
+  const width = maxX - minX, height = maxY - minY;
+  const points = cellVertIndices.map(vi => {
+    const v = verts[vi];
+    return `${trimPct((v.x - minX) / width)}% ${trimPct((v.y - minY) / height)}%`;
+  });
+  return { left: minX, top: minY, width, height, clipPath: `polygon(${points.join(', ')})` };
+}
+
+function trimPct(fraction) {
+  const s = (fraction * 100).toFixed(3);
+  return s.includes('.') ? s.replace(/\.?0+$/, '') : s;
 }
 
 /**
@@ -348,6 +882,12 @@ export const CANONICAL_MAX_DIM = 30;
  * daily, and without this check the only symptom is a canonical that never
  * appears.
  *
+ * Cell counts per tiling, so a size choice can be checked before it is made:
+ * 4.8.8 `2MN − M − N + 1`, hex `MN`, cairo `2MN − M − N`, floret `6MN`,
+ * rhombille `3MN`, deltoidal `6MN`. The three multiples of 3 and 6 are storable
+ * across the whole useful band; 4.8.8 and cairo are the two that can land on a
+ * prime, so they are the two worth checking (cairo M=4,N=7 is 41, prime).
+ *
  * @param {number} total cell count
  * @returns {boolean}
  */
@@ -377,7 +917,22 @@ export function containerIsStorable(total) {
  * display and the certifier read the SAME stored ray, so whatever this returns
  * is self-consistent regardless.
  *
- * @param {Array<{cx:number,cy:number}>} cellPos
+ * A cell may nominate a RAY ANCHOR (`cellPos[i].ax/ay`) distinct from the point
+ * its number is drawn at, and where one is present it is used for the origin and
+ * for every candidate. Cairo and deltoidal need this: the point a player reads
+ * the number at is the cell's incircle center, and on those two lattices the
+ * incircle centers do not lie on usable straight lines while another exactly
+ * computable point of the same cell does (see each builder's anchor note for the
+ * measurements). The two Archimedean tilings, floret and rhombille emit no
+ * anchor and are byte-identical either way.
+ *
+ * The anchor must be CLOSED FORM, never a numerical search. A pattern-search
+ * incircle carries around 1.5e-9 of error, which is larger than the EPS below,
+ * and measuring deltoidal that way silently destroyed 4 of its 6 direction
+ * families — the rays came back short and plausible rather than empty, which is
+ * exactly the failure a review does not catch.
+ *
+ * @param {Array<{cx:number,cy:number,ax?:number,ay?:number}>} cellPos
  * @param {number} originIdx
  * @param {number} dx  direction x-component
  * @param {number} dy  direction y-component
@@ -385,13 +940,14 @@ export function containerIsStorable(total) {
  */
 export function computeCompassRay(cellPos, originIdx, dx, dy) {
   const o = cellPos[originIdx];
+  const ox = o.ax ?? o.cx, oy = o.ay ?? o.cy;
   const hits = [];
   const EPS = 1e-9;
   const norm = Math.hypot(dx, dy) || 1;
   for (let i = 0; i < cellPos.length; i++) {
     if (i === originIdx) continue;
     const p = cellPos[i];
-    const rx = p.cx - o.cx, ry = p.cy - o.cy;
+    const rx = (p.ax ?? p.cx) - ox, ry = (p.ay ?? p.cy) - oy;
     if (Math.abs(rx * dy - ry * dx) / norm > EPS) continue;  // off the line
     const t = rx * dx + ry * dy;                             // signed distance along the ray
     if (t <= EPS) continue;                                  // behind / at the origin

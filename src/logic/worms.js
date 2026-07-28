@@ -438,8 +438,22 @@ export function wormCoveredCells(worms) {
  */
 export function wormSegmentSize(pitch, tilingType) {
   if (!tilingType) return null;                 // square grid: segment = cell rect
-  if (tilingType === 'hex') return pitch;       // inscribed circle == neighbour spacing
-  return SQ_BOX_FRAC * pitch * 0.78;            // 4.8.8: clamp to the small square
+  // The 4.8.8 is the ONLY tiling with two cell sizes, and there the small
+  // interstitial square is what binds: a segment wide enough for an octagon
+  // overflows the diamond beside it. Every other tiling is isohedral and its
+  // geometry is normalized so the cell's inscribed diameter is exactly one
+  // pitch, so a segment sized to the pitch fills its cell AND leaves
+  // consecutive segments tangent.
+  //
+  // Defaulting the other way is what caused this twice. The hexagon was clamped
+  // to the 4.8.8 square until 2026-07-22 and drew at 0.78 of the step, an 11px
+  // gap at a 50px pitch; the four Laves tilings then inherited the same clamp on
+  // arrival and drew at 0.40 to 0.52 of their step, gaps of 27 to 44px, three to
+  // four times worse than the bug that had already been fixed once. The
+  // companion test now derives the step from each registered tiling's own
+  // geometry, so a tiling added later cannot quietly repeat it.
+  if (tilingType === '4.8.8') return SQ_BOX_FRAC * pitch * 0.78;
+  return pitch;
 }
 
 export function wormOverlayLayout(worms, cellRect, uniformSize = null) {

@@ -322,19 +322,27 @@ PRIOR_MEANS <- list(
   # plays turn out systematically faster once real data lands.
   archivePlay          = 2.0,
   zeroClusterCount     = 1.0,
-  # shape488 / shapeHex: per-board offset for a non-rectangular tiling
-  # (Project Coastline), rectangles the omitted reference. This is NOT board
-  # difficulty — the reasoning tiers already measure that on any lattice, and a
-  # honeycomb's near-total absence of subset/search moves shows up in those
-  # columns on its own. What is left for the offset is the parse cost of an
-  # unfamiliar geometry, so seed it small and let the data move it.
+  # shape488 / shapeHex / shapeCairo / shapeFloret / shapeRhombille /
+  # shapeDeltoidal: per-board offset for a non-rectangular tiling (Project
+  # Coastline), rectangles the omitted reference. This is NOT board difficulty —
+  # the reasoning tiers already measure that on any lattice, and a honeycomb's
+  # near-total absence of subset/search moves shows up in those columns on its
+  # own. What is left for the offset is the parse cost of an unfamiliar
+  # geometry, so seed each small and let the data move it. Every shape gets the
+  # SAME seed: an unfamiliarity tax has no reason to be larger for one lattice
+  # than another before any of them has a completion, and seeding them apart
+  # would be the prior deciding an ordering the data is meant to.
   # NOTE, same caveat as archivePlay: build_priors bounds every b-coef at
   # lb = 0, so this asserts a NON-NEGATIVE offset — "a tiling board never
   # takes LESS time than a rectangle with the same measured work". That is the
   # a-priori direction for an unfamiliarity tax, but if a shape's coefficient
   # piles up at zero once real boards land, the bound is the thing to revisit.
   shape488             = 0.05,
-  shapeHex             = 0.05
+  shapeHex             = 0.05,
+  shapeCairo           = 0.05,
+  shapeFloret          = 0.05,
+  shapeRhombille       = 0.05,
+  shapeDeltoidal       = 0.05
 )
 
 # Per-coefficient prior *log-scale* sigmas. Each non-intercept prior is
@@ -370,8 +378,15 @@ PRIOR_SIGMAS <- list(
   archivePlay          = 1.0,   # wide: little prior knowledge of the offset size
   zeroClusterCount     = 1.0,
   # Board-shape offsets — wide, so the tiling boards (not the prior) decide.
+  # build_priors stop()s on a missing sigma, so a shape name that reaches the
+  # formula without an entry here aborts the WHOLE nightly refit rather than
+  # dropping its own term.
   shape488             = 1.0,
   shapeHex             = 1.0,
+  shapeCairo           = 1.0,
+  shapeFloret          = 1.0,
+  shapeRhombille       = 1.0,
+  shapeDeltoidal       = 1.0,
   # Digit shares — wide, so the canonical-era data (not the prior) decides.
   # Used only in the secondary digit fit; never shipped to predictPar.
   clueShare2           = 1.0,
@@ -410,7 +425,8 @@ apply_par_model <- function(df, coefs, log_scale = TRUE) {
   # column — this function runs against several frames (df, df_fit, timed_df,
   # the residual fallback), and a rectangles-only frame legitimately has no
   # shape column at all. Same defensive shape as the `timed_needed` loop.
-  for (.f in c("shape488", "shapeHex")) {
+  for (.f in c("shape488", "shapeHex", "shapeCairo", "shapeFloret",
+               "shapeRhombille", "shapeDeltoidal")) {
     if (!.f %in% colnames(df)) df[[.f]] <- 0
     df[[.f]] <- ifelse(is.na(df[[.f]]), 0, as.numeric(df[[.f]]))
   }
@@ -434,8 +450,12 @@ apply_par_model <- function(df, coefs, log_scale = TRUE) {
     # against a shipped PAR_MODEL block predating Coastline; the columns are
     # guaranteed present by the defaulting loop above. Mirrors predictPar's
     # COEF_TERMS, which reads `f.tilingType` and contributes 0 on a rectangle.
-    (coefs$secPerShape488    %||% 0) * shape488 +
-    (coefs$secPerShapeHex    %||% 0) * shapeHex
+    (coefs$secPerShape488       %||% 0) * shape488 +
+    (coefs$secPerShapeHex       %||% 0) * shapeHex +
+    (coefs$secPerShapeCairo     %||% 0) * shapeCairo +
+    (coefs$secPerShapeFloret    %||% 0) * shapeFloret +
+    (coefs$secPerShapeRhombille %||% 0) * shapeRhombille +
+    (coefs$secPerShapeDeltoidal %||% 0) * shapeDeltoidal
   )
   if (log_scale) exp(lp) else lp
 }
@@ -540,28 +560,46 @@ build_priors <- function(means, fixed_names) {
   do.call(c, parts)
 }
 
-# ── Clue-digit histogram (ported from clueHistogram in
+# ── Clue-digit buckets (ported from clueHistogram in
 # scripts/extract-par-experiment.mjs, commit 51d451f) ──────────────────
-# Bin the TRUE adjacency count (adjacentMines, always 0-8) of every non-mine
-# cell that eventually shows a NUMBER to the player: exclude mines (no clue),
-# mystery (number hidden), and pressure plates (a timer, not a count). Reads
-# the SERIALIZED canonical cells directly — serializeBoard drops false
-# booleans, so a missing isMine/isMystery/isPressurePlate is false and
-# adjacentMines is always present. Whole-board (every such cell), and the
-# TRUE count, kept independent of the gimmick-DISPLAY magnitude (wormhole
-# pair sums, sonar 5x5 counts) that the modifier terms already model.
-clue_histogram <- function(board) {
-  h <- integer(9)  # indices 1..9 hold digits 0..8
+# Bin the TRUE adjacency count (adjacentMines) of every non-mine cell that
+# eventually shows a NUMBER to the player: exclude mines (no clue), mystery
+# (number hidden), and pressure plates (a timer, not a count). Reads the
+# SERIALIZED canonical cells directly — serializeBoard drops false booleans, so
+# a missing isMine/isMystery/isPressurePlate is false and adjacentMines is
+# always present. Whole-board (every such cell), and the TRUE count, kept
+# independent of the gimmick-DISPLAY magnitude (wormhole pair sums, sonar 5x5
+# counts) that the modifier terms already model.
+#
+# Counted into the four reported buckets plus a denominator, with NO upper bound
+# on the digit. This used to be a nine-wide histogram indexed 0-8, which quietly
+# assumed no cell can touch more than eight others — true on a rectangle and on
+# both tilings shipped through 2026-07-22, false on a lattice of higher valence
+# (a rhombille rhombus has ten corner-inclusive neighbors, a deltoidal kite
+# nine). A dropped digit vanished from numerator AND denominator, so all four
+# shares described a smaller board than the one stored, silently. This function
+# and dailyFeatures.clueShares are ONE definition in two languages: the client
+# scores a candidate board on its copy and the fit measures the same board on
+# this one, so they must change together or only the fit ever finds out.
+clue_digit_counts <- function(board) {
+  counts <- c(nz = 0L, d2 = 0L, d3 = 0L, d4 = 0L, d5plus = 0L)
   cells <- board$cells
-  if (is.null(cells)) return(h)
+  if (is.null(cells)) return(counts)
   for (cell in cells) {
     if (isTRUE(cell$isMine) || isTRUE(cell$isMystery) || isTRUE(cell$isPressurePlate)) next
     v <- cell$adjacentMines
     if (is.null(v)) v <- 0
     v <- as.integer(v)
-    if (!is.na(v) && v >= 0 && v <= 8) h[v + 1] <- h[v + 1] + 1L
+    # Zeros cascade away and are already told as zeroClusterCount; the
+    # denominator is the cells that show a NUMBER.
+    if (is.na(v) || v <= 0) next
+    counts["nz"] <- counts["nz"] + 1L
+    if (v == 2) counts["d2"] <- counts["d2"] + 1L
+    else if (v == 3) counts["d3"] <- counts["d3"] + 1L
+    else if (v == 4) counts["d4"] <- counts["d4"] + 1L
+    else if (v >= 5) counts["d5plus"] <- counts["d5plus"] + 1L
   }
-  h
+  counts
 }
 
 # Per-date nonzero-digit shares from the canonical boards, canonical era
@@ -574,15 +612,15 @@ digit_shares_from_boards <- function(db_raw, cutoff_date) {
   dates <- dates[grepl("^\\d{4}-\\d{2}-\\d{2}$", dates) &
                    dates >= DIGIT_ERA_START & dates <= cutoff_date]
   rows <- lapply(dates, function(d) {
-    h <- clue_histogram(db_raw[[d]])
-    nz <- sum(h[2:9])  # clue1..clue8: cells that show a NUMBER
+    h <- clue_digit_counts(db_raw[[d]])
+    nz <- h[["nz"]]
     if (nz == 0) return(NULL)
     data.frame(
       date           = d,
-      clueShare2     = 10 * h[3] / nz,
-      clueShare3     = 10 * h[4] / nz,
-      clueShare4     = 10 * h[5] / nz,
-      clueShare5plus = 10 * sum(h[6:9]) / nz,
+      clueShare2     = 10 * h[["d2"]] / nz,
+      clueShare3     = 10 * h[["d3"]] / nz,
+      clueShare4     = 10 * h[["d4"]] / nz,
+      clueShare5plus = 10 * h[["d5plus"]] / nz,
       stringsAsFactors = FALSE
     )
   })
@@ -830,14 +868,28 @@ df <- df |>
 # ONLY on a non-rectangular board — absent, never "rect" — so a missing column
 # here is the normal all-rectangles case, not a parse failure. Expanded into
 # one 0/1 indicator per shipped tiling with rectangles as the omitted
-# reference, exactly as COEF_TERMS does on the client. A third tiling adds one
+# reference, exactly as COEF_TERMS does on the client. Another tiling adds one
 # line on each side.
 if (!"tilingType" %in% colnames(df)) df$tilingType <- NA_character_
 df$tilingType <- as.character(df$tilingType)
-df$shape488 <- as.numeric(!is.na(df$tilingType) & df$tilingType == "4.8.8")
-df$shapeHex <- as.numeric(!is.na(df$tilingType) & df$tilingType == "hex")
-message(sprintf("  tiling rows: %d (4.8.8) + %d (hex) of %d total",
-                sum(df$shape488), sum(df$shapeHex), nrow(df)))
+df$shape488       <- as.numeric(!is.na(df$tilingType) & df$tilingType == "4.8.8")
+df$shapeHex       <- as.numeric(!is.na(df$tilingType) & df$tilingType == "hex")
+df$shapeCairo     <- as.numeric(!is.na(df$tilingType) & df$tilingType == "cairo")
+df$shapeFloret    <- as.numeric(!is.na(df$tilingType) & df$tilingType == "floret")
+df$shapeRhombille <- as.numeric(!is.na(df$tilingType) & df$tilingType == "rhombille")
+df$shapeDeltoidal <- as.numeric(!is.na(df$tilingType) & df$tilingType == "deltoidal")
+# One count per shape, built as name/value pairs rather than a hand-kept
+# sprintf: this message grew its own slot/arg count alongside the PAR_MODEL
+# template's, and a message whose format string and argument list drift apart
+# either errors or prints the wrong shape's total.
+message(sprintf("  tiling rows: %s of %d total",
+                paste(sprintf("%d (%s)",
+                              c(sum(df$shape488), sum(df$shapeHex), sum(df$shapeCairo),
+                                sum(df$shapeFloret), sum(df$shapeRhombille),
+                                sum(df$shapeDeltoidal)),
+                              c("4.8.8", "hex", "cairo", "floret", "rhombille", "deltoidal")),
+                      collapse = " + "),
+                nrow(df)))
 
 # Anti-cheat (mirrors isBombHitCheat in difficulty.js): a run that detonated
 # more than BOMB_HIT_CHEAT_FRACTION of the board's mines was brute-forcing /
@@ -1012,19 +1064,36 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
   # Board shape (Project Coastline): one offset per tiling, entering the fixed
   # effects only once that shape has rows in the fit data — the same
   # zero-variance gate as archivePlay and wormLoad. Gated PER SHAPE rather than
-  # as one "is a tiling" flag on purpose: the two shipped tilings behave
-  # nothing like each other (a honeycomb certifies at technique level 0 on
-  # 95-99% of boards and produced no tier-2 board at any density in a 1200-
-  # layout sweep, while 4.8.8 spans the full range much as a rectangle does),
-  # so pooling them would average two genuinely different worlds into one
-  # meaningless number, and whichever shape shipped first would set it.
-  add_shape488_term <- any(df_fit$shape488 > 0, na.rm = TRUE)
-  add_shapeHex_term <- any(df_fit$shapeHex > 0, na.rm = TRUE)
+  # as one "is a tiling" flag on purpose: the shipped tilings behave nothing
+  # like each other (a honeycomb certifies at technique level 0 on 95-99% of
+  # boards and produced no tier-2 board at any density in a 1200-layout sweep,
+  # while 4.8.8 spans the full range much as a rectangle does), so pooling them
+  # would average genuinely different worlds into one meaningless number, and
+  # whichever shape shipped first would set it. That argument only gets stronger
+  # with six shapes whose interior valences run from 6 to 10.
+  add_shape488_term       <- any(df_fit$shape488 > 0, na.rm = TRUE)
+  add_shapeHex_term       <- any(df_fit$shapeHex > 0, na.rm = TRUE)
+  add_shapeCairo_term     <- any(df_fit$shapeCairo > 0, na.rm = TRUE)
+  add_shapeFloret_term    <- any(df_fit$shapeFloret > 0, na.rm = TRUE)
+  add_shapeRhombille_term <- any(df_fit$shapeRhombille > 0, na.rm = TRUE)
+  add_shapeDeltoidal_term <- any(df_fit$shapeDeltoidal > 0, na.rm = TRUE)
   if (add_shape488_term) {
     fit_formula_fixed_active <- update(fit_formula_fixed_active, ~ . + shape488)
   }
   if (add_shapeHex_term) {
     fit_formula_fixed_active <- update(fit_formula_fixed_active, ~ . + shapeHex)
+  }
+  if (add_shapeCairo_term) {
+    fit_formula_fixed_active <- update(fit_formula_fixed_active, ~ . + shapeCairo)
+  }
+  if (add_shapeFloret_term) {
+    fit_formula_fixed_active <- update(fit_formula_fixed_active, ~ . + shapeFloret)
+  }
+  if (add_shapeRhombille_term) {
+    fit_formula_fixed_active <- update(fit_formula_fixed_active, ~ . + shapeRhombille)
+  }
+  if (add_shapeDeltoidal_term) {
+    fit_formula_fixed_active <- update(fit_formula_fixed_active, ~ . + shapeDeltoidal)
   }
   fit_formula <- update(fit_formula_fixed_active, ~ . + (1 | uid))
 
@@ -1516,8 +1585,12 @@ if (fit_method == "brms-ranef") {
     # NA (shape term gated out because that tiling has no rows yet) maps to 0
     # via nn(), so a rectangles-only fit emits an explicit 0.00000 and par is
     # unchanged on every board shipped to date.
-    secPerShape488     = nn(co["shape488"],          "shape488"),
-    secPerShapeHex     = nn(co["shapeHex"],          "shapeHex")
+    secPerShape488       = nn(co["shape488"],       "shape488"),
+    secPerShapeHex       = nn(co["shapeHex"],       "shapeHex"),
+    secPerShapeCairo     = nn(co["shapeCairo"],     "shapeCairo"),
+    secPerShapeFloret    = nn(co["shapeFloret"],    "shapeFloret"),
+    secPerShapeRhombille = nn(co["shapeRhombille"], "shapeRhombille"),
+    secPerShapeDeltoidal = nn(co["shapeDeltoidal"], "shapeDeltoidal")
   )
 
   # Median calibration (log scale): set the log-intercept so the mean of
@@ -1611,8 +1684,12 @@ if (fit_method == "brms-ranef") {
     # coefficients alone, which is the design's own null hypothesis (the par
     # model is geometry-blind the way the solver turned out to be) rather than
     # a placeholder — so the zero here is a claim we are content to ship.
-    secPerShape488    = sum(df_fit$shape488 > 0, na.rm = TRUE),
-    secPerShapeHex    = sum(df_fit$shapeHex > 0, na.rm = TRUE)
+    secPerShape488       = sum(df_fit$shape488 > 0, na.rm = TRUE),
+    secPerShapeHex       = sum(df_fit$shapeHex > 0, na.rm = TRUE),
+    secPerShapeCairo     = sum(df_fit$shapeCairo > 0, na.rm = TRUE),
+    secPerShapeFloret    = sum(df_fit$shapeFloret > 0, na.rm = TRUE),
+    secPerShapeRhombille = sum(df_fit$shapeRhombille > 0, na.rm = TRUE),
+    secPerShapeDeltoidal = sum(df_fit$shapeDeltoidal > 0, na.rm = TRUE)
   )
   for (coef_name in names(feature_data_counts)) {
     n_with_data <- feature_data_counts[[coef_name]]
@@ -1985,6 +2062,10 @@ block <- sprintf(
   // have produced real completions, so par is unchanged on every board to date.
   secPerShape488:      %.5f,
   secPerShapeHex:      %.5f,
+  secPerShapeCairo:      %.5f,
+  secPerShapeFloret:     %.5f,
+  secPerShapeRhombille:  %.5f,
+  secPerShapeDeltoidal:  %.5f,
 
 };',
   Sys.Date(), method_str, n_scores, n_dates, n_players, r2_str,
@@ -2004,7 +2085,11 @@ block <- sprintf(
   new_coefs$secPerCompassCell,
   new_coefs$secPerWormLoad,
   new_coefs$secPerShape488,
-  new_coefs$secPerShapeHex
+  new_coefs$secPerShapeHex,
+  new_coefs$secPerShapeCairo,
+  new_coefs$secPerShapeFloret,
+  new_coefs$secPerShapeRhombille,
+  new_coefs$secPerShapeDeltoidal
 )
 
 src <- paste(readLines(DIFFICULTY_PATH, warn = FALSE, encoding = "UTF-8"),
@@ -2050,6 +2135,10 @@ timed_block <- sprintf(
   secPerWormLoad:      %.5f,
   secPerShape488:      %.5f,
   secPerShapeHex:      %.5f,
+  secPerShapeCairo:      %.5f,
+  secPerShapeFloret:     %.5f,
+  secPerShapeRhombille:  %.5f,
+  secPerShapeDeltoidal:  %.5f,
 };',
   Sys.Date(), timed_method,
   timed_coefs$intercept,
@@ -2071,8 +2160,12 @@ timed_block <- sprintf(
   # blocks the same shape (COEF_TERMS is shared, and test/timedModel.test.mjs
   # pins that every PAR_MODEL key has a PAR_MODEL_TIMED counterpart). The
   # copy-of-daily default supplies them when no timed fit ran.
-  timed_coefs$secPerShape488 %||% 0,
-  timed_coefs$secPerShapeHex %||% 0
+  timed_coefs$secPerShape488       %||% 0,
+  timed_coefs$secPerShapeHex       %||% 0,
+  timed_coefs$secPerShapeCairo     %||% 0,
+  timed_coefs$secPerShapeFloret    %||% 0,
+  timed_coefs$secPerShapeRhombille %||% 0,
+  timed_coefs$secPerShapeDeltoidal %||% 0
 )
 
 t_start_marker <- "// TIMED_PAR_MODEL:START"

@@ -25,6 +25,19 @@ const ENTRIES = [
   // must fall back to the journal index, never a white screen.
   { name: 'journal report route', q: '?report=sonarCellCount&isTest=1' },
   { name: 'journal report fallback (unknown id)', q: '?report=notAFeature&isTest=1' },
+  // Every tiling (2026-07-27). No tiling board had ever had a boot gate, and
+  // there are now SIX renderer paths behind ?coastline= — each one generating a
+  // certified board and laying out per-cell clip-paths at first render. That is
+  // exactly the white-screen class this file exists for, and it is the one
+  // surface where a broken build would look fine to every pure test: the four
+  // Laves tilings certify by CONSTRUCTION, so a generation fault surfaces as a
+  // hang or a throw at boot rather than as a failing assertion.
+  { name: 'coastline 4.8.8', q: '?isTest=1&coastline=1' },
+  { name: 'coastline hex', q: '?isTest=1&coastline=hex' },
+  { name: 'coastline cairo', q: '?isTest=1&coastline=cairo' },
+  { name: 'coastline floret', q: '?isTest=1&coastline=floret' },
+  { name: 'coastline rhombille', q: '?isTest=1&coastline=rhombille' },
+  { name: 'coastline deltoidal', q: '?isTest=1&coastline=deltoidal' },
 ];
 
 // Substrings of console output that are known-benign and NOT app faults. Keep

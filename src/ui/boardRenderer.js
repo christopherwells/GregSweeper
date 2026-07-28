@@ -3,10 +3,7 @@ import { boardEl, zoomControls, boardScrollWrapper } from './domHelpers.js';
 import { THEME_UNLOCKS } from './themeManager.js';
 import { applyIcon, uiSpriteImgHTML } from './spriteLoader.js';
 import { applyThemeEffects } from './themeEffects.js';
-import {
-  octagonClipPath, DIAMOND_CLIP_PATH, SQ_BOX_FRAC,
-  HEXAGON_CLIP_PATH, HEX_R, HEX_BOX_H,
-} from '../logic/tilingGeometry.js';
+import { buildTiling, cellOutline, SQ_BOX_FRAC } from '../logic/tilingGeometry.js';
 import { sonarScanCells, compassRayCells } from '../logic/adjacency.js';
 
 // ── Board Rendering ────────────────────────────────────
@@ -68,6 +65,15 @@ function _fitTilingPitch(widthBudget, heightBudget, maxCap) {
   const pw = Math.floor(widthBudget / wUnits);
   const ph = Math.floor(heightBudget / hUnits);
   return Math.min(maxCap, Math.max(min, Math.min(pw, ph)));
+}
+
+// The live pitch in px. JS owns --cell-size at runtime (resizeCells /
+// adjustCellSize set it), so every tiling surface that converts unit coords to
+// pixels reads it through here rather than keeping its own copy — the cell
+// layout and the wall overlay have to agree on it exactly or the bars land off
+// their edges.
+function _pitch() {
+  return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cell-size')) || 40;
 }
 
 // The tiling's extent in PITCH UNITS (multiples of --cell-size). A 4.8.8 spans
@@ -161,13 +167,86 @@ export function renderBoard() {
 }
 
 // ── Tiling layout ────────────────────────────────────
-// A non-rectangular (Archimedean tiling) board: cells stay DOM <div>s in
-// flat-index order — so updateCell, getCellElement, setFocusedCell, the click
-// handler (dataset.row/col), and the rect-reading overlays (walls, worms, the
-// start-here label) all keep working unchanged — but they are POSITIONED
-// absolutely from their unit-pitch geometry and shaped with a clip-path
-// (octagon / diamond) instead of flowing in a CSS grid of uniform squares. All
-// per-cell layout is INLINE style, which survives updateCell's className rebuilds.
+// A non-rectangular tiling board: cells stay DOM <div>s in flat-index order —
+// so updateCell, getCellElement, setFocusedCell, the click handler
+// (dataset.row/col), and the rect-reading overlays (worms, the start-here
+// label) all keep working unchanged — but they are POSITIONED absolutely from
+// their unit-pitch geometry and shaped with a clip-path instead of flowing in a
+// CSS grid of uniform squares. All per-cell layout is INLINE style, which
+// survives updateCell's className rebuilds.
+
+// Every cell's own box and clip-path, in PITCH UNITS — the pitch-independent
+// half of the layout, so a resize only has to multiply.
+//
+// This used to be a per-SHAPE constant plus a hand-inlined box, which holds only
+// while every cell of a shape is identical up to TRANSLATION: true of the 4.8.8
+// octagon and interstitial diamond and of the hexagon, false of all four Laves
+// tilings, whose single cell shape appears in several ROTATIONS (cairo 4, floret
+// 6, rhombille 3, deltoidal 6). Box size does not identify the rotation either —
+// rhombille's 0° and 60° rhombi share a 1 × 1.732 box and need different
+// clip-paths — so anything keyed on the shape name or the box dimensions
+// mis-shapes half the board without erroring. cellOutline derives both from the
+// cell's own polygon, which is the rule those three branches were hand-inlined
+// cases of (SQ_BOX_FRAC IS the diamond's bbox width, HEX_BOX_H IS the hexagon's
+// bbox height). Verified in Chromium against the branch it replaced: every cell
+// of a 4.8.8 and of a honeycomb, plain and modifier-laden, keeps a byte-identical
+// inline style string AND computed clip-path / box / font-size. The octagon's
+// string does differ before the browser sees it — octagonClipPath() mixed
+// toFixed(3) with bare 0%/100% literals — but Chromium normalizes 37.000% to 37%,
+// so nothing that can read a clip-path can tell.
+//
+// The polygons do not ride the board — the canonical payload carries cellPos and
+// the {type, M, N} descriptor, not the vertex list — so they are rebuilt through
+// buildTiling, exactly as applyWallsTiling rebuilds the wall wireframe. One
+// memo slot is enough: a single board is on screen at a time, and this is asked
+// again on every resize.
+let _outlineKey = null;
+let _outlines = null;
+function _tilingOutlines(tiling) {
+  const key = `${tiling.type}|${tiling.M}|${tiling.N}`;
+  if (_outlineKey !== key) {
+    const T = buildTiling(tiling.type, tiling.M, tiling.N);
+    _outlines = T.cellVerts.map((cv) => cellOutline(T.verts, cv));
+    _outlineKey = key;
+  }
+  return _outlines;
+}
+
+// Number size in PITCH units, by cell shape. Half a pitch everywhere but the
+// 4.8.8's interstitial diamond, whose box is only SQ_BOX_FRAC of a pitch across
+// and whose number is half of THAT.
+//
+// For the hexagon and the four Laves tilings half a pitch is exactly half the
+// INSCRIBED-CIRCLE diameter — the largest circle the cell can hold, which is
+// what tilingGeometry normalizes each of them to, and the right measure for
+// "will a digit plus a modifier watermark fit". The 4.8.8 is not on that rule
+// and deliberately stays off it: OCT_CUT 0.37 cuts past the regular-octagon
+// value, so the shipped octagon's inscribed diameter is 0.891 pitch rather than
+// a full one, and applying the inscribed rule to the 4.8.8 would shrink the
+// octagon's number 11% and the diamond's 29% on boards that read correctly
+// today. So this is two tunings that agree everywhere except the diamond, not
+// one rule with an exception.
+const FONT_UNITS = 0.5;
+const FONT_UNITS_SQ = SQ_BOX_FRAC * 0.5;
+
+// Below this the drawn center IS the box center and no padding is emitted. It
+// is a float-noise floor, not a design tolerance: on a centrally symmetric cell
+// the two coincide exactly in real arithmetic and disagree by ~1e-15px in
+// doubles, while the smallest real offset (cairo, at the minimum pitch) is
+// still most of a pixel.
+const ANCHOR_EPS = 1e-6; // px
+
+// Move a cell's CONTENT (the number, the sprite, the modifier watermark) off the
+// box center by (dx, dy) px. `.cell` centers its content with flex, so a
+// one-sided pad shifts it by half the pad; box-sizing is border-box globally, so
+// the border box — and with it the clip-path — does not move at all.
+function _anchorPadding(dx, dy) {
+  if (Math.abs(dx) < ANCHOR_EPS && Math.abs(dy) < ANCHOR_EPS) return '';
+  const top = dy > 0 ? 2 * dy : 0, bottom = dy < 0 ? -2 * dy : 0;
+  const left = dx > 0 ? 2 * dx : 0, right = dx < 0 ? -2 * dx : 0;
+  return `${top}px ${right}px ${bottom}px ${left}px`;
+}
+
 // Position every tiling cell (and the board box) from the unit-pitch geometry at
 // the CURRENT --cell-size. Split out of _renderTilingBoard so a pitch change can
 // re-lay the EXISTING cells: rebuilding the board instead would drop keyboard
@@ -175,50 +254,49 @@ export function renderBoard() {
 // reference cell. Safe to call before the cells exist (it no-ops).
 export function layoutTilingCells() {
   const board = state.board;
-  if (!board || !board._cellPos || !boardEl || !boardEl.children.length) return;
+  if (!board || !board._cellPos || !board._tiling || !boardEl || !boardEl.children.length) return;
   const { wUnits, hUnits } = _tilingExtent();
-  const P = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cell-size')) || 40;
+  const P = _pitch();
 
   boardEl.style.width = (wUnits * P) + 'px';
   boardEl.style.height = (hUnits * P) + 'px';
 
-  const clipOct = octagonClipPath();
+  const outlines = _tilingOutlines(board._tiling);
   const total = state.rows * state.cols;
   for (let i = 0; i < total; i++) {
     const cellEl = boardEl.children[i];
     // #board also holds the .theme-fx layer, which is appended after the cells.
     if (!cellEl || !cellEl.classList || !cellEl.classList.contains('cell')) continue;
     const pos = board._cellPos[i];
-    if (!pos) continue;
+    const box = outlines[i];
+    if (!pos || !box) continue;
 
+    // Boxes of neighboring cells OVERLAP (a hexagon's does with all six of its
+    // neighbors, a kite's with most of them) while the clip-paths tile exactly.
+    // That is also what makes pointer hit-testing land on the right cell:
+    // clip-path clips pointer events, so the part of a box outside its own
+    // polygon is not a hit target at all.
+    const w = box.width * P, h = box.height * P;
     cellEl.style.position = 'absolute';
-    if (pos.shape === 'sq') {
-      const box = SQ_BOX_FRAC * P;
-      cellEl.style.left = ((pos.cx - SQ_BOX_FRAC / 2) * P) + 'px';
-      cellEl.style.top = ((pos.cy - SQ_BOX_FRAC / 2) * P) + 'px';
-      cellEl.style.width = box + 'px';
-      cellEl.style.height = box + 'px';
-      cellEl.style.clipPath = DIAMOND_CLIP_PATH;
-      cellEl.style.fontSize = (box * 0.5) + 'px';
-    } else if (pos.shape === 'hex') {
-      // Pointy-top hexagon: the box is one pitch WIDE and 2R tall, centered on
-      // the cell's geometric center, so the number lands dead center. Boxes of
-      // neighboring hexes overlap, but the clip-paths tile exactly — which is
-      // also what makes pointer hit-testing land on the right hexagon.
-      cellEl.style.left = ((pos.cx - 0.5) * P) + 'px';
-      cellEl.style.top = ((pos.cy - HEX_R) * P) + 'px';
-      cellEl.style.width = P + 'px';
-      cellEl.style.height = (HEX_BOX_H * P) + 'px';
-      cellEl.style.clipPath = HEXAGON_CLIP_PATH;
-      cellEl.style.fontSize = (P * 0.5) + 'px';
-    } else {
-      cellEl.style.left = ((pos.cx - 0.5) * P) + 'px';
-      cellEl.style.top = ((pos.cy - 0.5) * P) + 'px';
-      cellEl.style.width = P + 'px';
-      cellEl.style.height = P + 'px';
-      cellEl.style.clipPath = clipOct;
-      cellEl.style.fontSize = (P * 0.5) + 'px';
-    }
+    cellEl.style.left = (box.left * P) + 'px';
+    cellEl.style.top = (box.top * P) + 'px';
+    cellEl.style.width = w + 'px';
+    cellEl.style.height = h + 'px';
+    cellEl.style.clipPath = box.clipPath;
+    cellEl.style.fontSize = ((pos.shape === 'sq' ? FONT_UNITS_SQ : FONT_UNITS) * P) + 'px';
+    // The number is drawn at the cell's own VISUAL center — cellPos.cx/cy, the
+    // incircle center — never at the box center, and never at the compass RAY
+    // ANCHOR (cellPos.ax/ay), which is a different point on cairo and deltoidal
+    // on purpose. The two centers coincide on every centrally symmetric cell
+    // (both shipped tilings, and rhombille) and separate on the asymmetric ones:
+    // measured worst-case over all orientations, 0.25 of a pitch on a floret
+    // pentagon, 0.21 on a deltoidal kite, 0.04 on a cairo pentagon. Against an
+    // inscribed radius of half a pitch, the first two read as a number shoved
+    // toward the point.
+    cellEl.style.padding = _anchorPadding(
+      (pos.cx - box.left) * P - w / 2,
+      (pos.cy - box.top) * P - h / 2,
+    );
   }
 }
 
@@ -352,29 +430,33 @@ export function renderWallOverlays() {
 // the edge's two endpoints in unit-pitch coords (board._tilingWalls, set by
 // applyWallsTiling); the bar lies exactly along that segment, so octagon/octagon
 // walls are axis-aligned and octagon/square walls sit on the real 45° boundary.
-// Continuous walls share endpoints, so the bars connect end to end. Unit coords
-// are anchored to octagon(0,0) = DOM cell 0 (whose box IS the pitch P), so this
-// re-lays correctly on resize / theme refit like the other overlays.
+// Continuous walls share endpoints, so the bars connect end to end.
+//
+// Unit coords map straight from #board's own content-box origin, which is where
+// layoutTilingCells places every cell box, so this re-lays correctly on resize /
+// theme refit like the other overlays. It used to go through DOM cell 0's rect
+// instead, taking its WIDTH as the pitch and its rect center as unit cellPos[0].
+// Both assumptions are properties of the shipped two rather than of a tiling:
+// cell 0's box is one pitch wide on 4.8.8 and hex, but 1.366 on cairo and
+// deltoidal, 1.155 on floret and a full 2.000 on rhombille — so every wall would
+// be scaled by up to DOUBLE and land nowhere near its edge. And a cell's rect
+// center IS its cellPos only
+// while the cell is centrally symmetric, which the Laves kite and pentagons are
+// not. Reading the origin instead removes both rather than patching them.
 function _renderTilingWalls(boardParent) {
   const walls = state.board._tilingWalls;
   boardParent.style.position = 'relative';
   const overlay = document.createElement('div');
   overlay.className = 'wall-overlay-container';
 
-  const ref = boardEl.children[0];
-  if (ref && ref.classList && ref.classList.contains('cell') && walls.length) {
-    const boardRect = boardEl.getBoundingClientRect();
-    const boardX = boardEl.offsetLeft, boardY = boardEl.offsetTop;
-    const r0 = ref.getBoundingClientRect();
-    const P = r0.width; // both tilings: cell 0's box is exactly one pitch wide
-    // Anchor on cell 0's OWN geometric center rather than assuming unit
-    // (0.5, 0.5). Every shape's box is centered on its cell center, but a
-    // hexagon's box is taller than it is wide (its center sits at cy = R), so
-    // hard-coding half a pitch vertically would offset every hex wall.
-    const p0 = (state.board._cellPos && state.board._cellPos[0]) || { cx: 0.5, cy: 0.5 };
-    const ox = (r0.left - boardRect.left + boardX) + r0.width / 2;
-    const oy = (r0.top - boardRect.top + boardY) + r0.height / 2;
-    const toPx = (x, y) => ({ x: ox + (x - p0.cx) * P, y: oy + (y - p0.cy) * P });
+  if (walls.length) {
+    // #board keeps its border in tiling mode (only the padding is zeroed), so
+    // the content-box origin the cells are laid out from sits one border width
+    // inside the board's own offset position.
+    const P = _pitch();
+    const ox = boardEl.offsetLeft + boardEl.clientLeft;
+    const oy = boardEl.offsetTop + boardEl.clientTop;
+    const toPx = (x, y) => ({ x: ox + x * P, y: oy + y * P });
 
     const THICK = 4;
     for (const wl of walls) {

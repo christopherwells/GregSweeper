@@ -26,8 +26,8 @@ import { buildNeighborCache } from './adjacency.js';
 // of that digit". Raw counts are density in disguise (mean clue ≈ 8 × density,
 // r ≈ 0.94), so only the SHAPE at fixed density can carry signal.
 //
-// This is a straight port of `clue_histogram` / `digit_shares_from_boards` in
-// scripts/refit-par-model.R, and the two MUST agree cell-for-cell: R derives
+// This is a straight port of `clue_digit_counts` / `digit_shares_from_boards`
+// in scripts/refit-par-model.R, and the two MUST agree cell-for-cell: R derives
 // the shares from the stored canonical board for the fit (authoritative, full
 // history back to DIGIT_ERA_START), while this copy exists so the axis is
 // scorable at SELECTION time, before a board is written. Same rule on both
@@ -41,25 +41,42 @@ export const CLUE_SHARE_KEYS = ['clueShare2', 'clueShare3', 'clueShare4', 'clueS
 
 // Shares are per-ten-clues, so a board with no numbered clue at all has no
 // denominator; R drops that date, and here every share is simply 0.
+//
+// Counted into the four reported buckets plus a running denominator, with NO
+// upper bound on the digit. This used to be a fixed nine-wide histogram
+// (`if (v >= 0 && v <= 8) hist[v]++`), which quietly assumed no cell can touch
+// more than eight others. True on a rectangle and on both tilings shipped
+// through 2026-07-22, and false the moment a lattice with a higher valence
+// arrives: a rhombille rhombus has ten corner-inclusive neighbors and a
+// deltoidal kite nine, so a 9 or a 10 was dropped from the numerator AND the
+// denominator and all four shares were computed over a smaller board than the
+// one that exists. Nothing would have thrown, the shares would still have summed
+// to at most ten, and the wrong number would have landed in a write-once
+// dailyMeta row (the zeroClusterCount precedent). Bucketing has no ceiling to
+// get wrong, so the next lattice cannot reintroduce one.
 export function clueShares(board, rows, cols) {
-  const hist = new Array(9).fill(0); // hist[d] = cells showing digit d (0..8)
+  let nz = 0, n2 = 0, n3 = 0, n4 = 0, n5plus = 0;
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const cell = board[r][c];
       if (cell.isMine || cell.isMystery || cell.isPressurePlate) continue;
       const v = cell.adjacentMines || 0;
-      if (v >= 0 && v <= 8) hist[v]++;
+      // Denominator is the cells that show a NUMBER. Zeros cascade away and are
+      // already told as `zeroClusterCount`.
+      if (v <= 0) continue;
+      nz++;
+      if (v === 2) n2++;
+      else if (v === 3) n3++;
+      else if (v === 4) n4++;
+      else if (v >= 5) n5plus++;
     }
   }
-  // Denominator is the cells that show a NUMBER: digits 1..8. Zeros cascade
-  // away and are already told as `zeroClusterCount`.
-  const nz = hist[1] + hist[2] + hist[3] + hist[4] + hist[5] + hist[6] + hist[7] + hist[8];
   if (nz === 0) return { clueShare2: 0, clueShare3: 0, clueShare4: 0, clueShare5plus: 0 };
   return {
-    clueShare2: (10 * hist[2]) / nz,
-    clueShare3: (10 * hist[3]) / nz,
-    clueShare4: (10 * hist[4]) / nz,
-    clueShare5plus: (10 * (hist[5] + hist[6] + hist[7] + hist[8])) / nz,
+    clueShare2: (10 * n2) / nz,
+    clueShare3: (10 * n3) / nz,
+    clueShare4: (10 * n4) / nz,
+    clueShare5plus: (10 * n5plus) / nz,
   };
 }
 
@@ -379,20 +396,32 @@ const COEF_TERMS = [
   // ZERO tier-2 boards at any density, while 4.8.8 spans the full range much
   // like a rectangle (33/40/27 across tiers 0/1/2 at density 0.20). So a
   // separate hex model would be fitting two CONSTANT-ZERO columns and would
-  // ship its priors back as if they were a fit; and the two tilings differ
-  // from each other about as much as either differs from a square, so "one
-  // tiling model" was never one population to begin with.
+  // ship its priors back as if they were a fit; and the tilings differ from
+  // each other about as much as any of them differs from a square, so "one
+  // tiling model" was never one population to begin with. Six shapes whose
+  // interior valences run 6 to 10 only make that argument stronger.
   //
   // What the offset buys is the thing no feature can express: the parse cost
   // of an unfamiliar lattice, which in a log model is exactly an intercept
   // shift. It is also the honest TEST of the null that the par model is
   // geometry-blind the way the solver turned out to be — if these earn out at
-  // ~0, that is the finding. Rectangular boards contribute 0 to both terms, so
-  // par on every board shipped to date is byte-identical, and each shape earns
-  // out independently under the usual zero-guard (the R refit holds the
-  // coefficient at 0 until the rows exist). A third tiling is one more line.
-  { coef: 'secPerShape488',    value: f => (f.tilingType === '4.8.8' ? 1 : 0), displayGroup: 'board shape' },
-  { coef: 'secPerShapeHex',    value: f => (f.tilingType === 'hex'   ? 1 : 0), displayGroup: 'board shape' },
+  // ~0, that is the finding. Each shape earns out independently under the usual
+  // zero-guard (the R refit holds the coefficient at 0 until that shape has
+  // rows). Another tiling is one more line here and one more column in the R
+  // refit; the six below are what that costs.
+  //
+  // Each reads `f.tilingType`, which computeDailyFeatures DERIVES from the
+  // board's own `_tiling` descriptor and OMITS on a rectangle — so a rectangle
+  // contributes 0 to all six and par on every board shipped to date is
+  // byte-identical. A shape whose coefficient has not shipped yet prices the
+  // same way, as the omitted reference, rather than borrowing another lattice's
+  // offset.
+  { coef: 'secPerShape488',       value: f => (f.tilingType === '4.8.8'     ? 1 : 0), displayGroup: 'board shape' },
+  { coef: 'secPerShapeHex',       value: f => (f.tilingType === 'hex'       ? 1 : 0), displayGroup: 'board shape' },
+  { coef: 'secPerShapeCairo',     value: f => (f.tilingType === 'cairo'     ? 1 : 0), displayGroup: 'board shape' },
+  { coef: 'secPerShapeFloret',    value: f => (f.tilingType === 'floret'    ? 1 : 0), displayGroup: 'board shape' },
+  { coef: 'secPerShapeRhombille', value: f => (f.tilingType === 'rhombille' ? 1 : 0), displayGroup: 'board shape' },
+  { coef: 'secPerShapeDeltoidal', value: f => (f.tilingType === 'deltoidal' ? 1 : 0), displayGroup: 'board shape' },
 ];
 
 /**

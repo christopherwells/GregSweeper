@@ -63,6 +63,7 @@ import { pauseTimer, resumeTimer, stopTimer, recordInteraction } from './game/ti
 import { isLiveGameExpired, isWeeklyAttemptCacheStale } from './logic/resumeEligibility.js';
 import { blocksManualRestart } from './logic/modeRules.js';
 import { remindCtaOutcome } from './logic/remindCta.js';
+import { parseCoastlineParam, tilingLabel } from './logic/coastlineLink.js';
 // 2026-07-10 split: main.js keeps entry wiring + init; these modules own
 // their surfaces (each also binds its own DOM wiring at import time).
 import { runStartupGate, hideBootOverlay } from './game/startupGate.js';
@@ -2043,9 +2044,10 @@ async function init() {
   const deepLinkLevel = (isTestEnvironment() && _levelParam >= 1)
     ? Math.min(_levelParam, MAX_LEVEL)
     : 0;
-  // ?coastline= — test-environment-only Archimedean tiling board (Project
-  // Coastline Phase 2). Gated exactly like ?level=, so it is UNREACHABLE in
-  // production; the player-facing surface is a later release step.
+  // ?coastline= — test-environment-only tiling board (Project Coastline
+  // Phase 2). Gated exactly like ?level=, so it is UNREACHABLE in production
+  // no matter which of the six lattices the link names; the player-facing
+  // surface is a later release step.
   const coastlinePractice = isTestEnvironment() && urlParams.get('coastline') != null;
 
   // Diagnostics button is hidden for casual users. Unhide when `?debug=1`
@@ -2136,8 +2138,8 @@ async function init() {
     });
   } else if (coastlinePractice) {
     // ?coastline= test board (test builds only — gate in the derivation
-    // above): a frozen Archimedean-tiling board played as an isLevelPractice
-    // run, so nothing records (same localStorage-safety rationale as ?level=).
+    // above): a frozen tiling board played as an isLevelPractice run, so
+    // nothing records (same localStorage-safety rationale as ?level=).
     // gameMode stays 'normal'; state.coastlinePractice routes newGame's
     // generation + revealCell's frozen first-click path onto the tiling.
     state.gameMode = 'normal';
@@ -2151,28 +2153,18 @@ async function init() {
     //
     // An optional "<tiling>:" prefix picks the SHAPE, so
     // ?coastline=hex:sonar,walls is a 6.6.6 honeycomb with those modifiers and
-    // a bare ?coastline=hex is a plain honeycomb. Without a prefix the tiling is
-    // the 4.8.8, so every existing test link keeps working unchanged.
-    const _coastRaw = urlParams.get('coastline') || '';
-    const _coastLower = _coastRaw.trim().toLowerCase();
-    const _isHexTok = (s) => s === 'hex' || s === '6.6.6' || s === '666';
-    let _coastType = '4.8.8';
-    let _coastMods = _coastRaw;
-    const _colon = _coastRaw.indexOf(':');
-    if (_colon >= 0 && _isHexTok(_coastRaw.slice(0, _colon).trim().toLowerCase())) {
-      _coastType = 'hex';
-      _coastMods = _coastRaw.slice(_colon + 1);
-    } else if (_isHexTok(_coastLower)) {
-      _coastType = 'hex';
-      _coastMods = '';
-    }
-    state.coastlineType = _coastType;
-    state.coastlineGimmicks = _coastMods.split(',').map(s => s.trim()).filter(s => s && s !== '1');
+    // a bare ?coastline=rhombille is a plain rhombille board. Without a prefix
+    // the tiling is the 4.8.8, so every existing test link keeps working
+    // unchanged. The parse itself is pure and node-tested in logic/coastlineLink
+    // (it is the one place a tiling name reaches the code from outside it).
+    const _coast = parseCoastlineParam(urlParams.get('coastline'));
+    state.coastlineType = _coast.type;
+    state.coastlineGimmicks = _coast.gimmicks;
     state.currentLevel = 1;
     hideTitleScreen();
     await newGame();
     const _cg = state.coastlineGimmicks;
-    const _shape = state.coastlineType === 'hex' ? 'hexagonal (6.6.6)' : 'octagons (4.8.8)';
+    const _shape = tilingLabel(state.coastlineType);
     showToast(_cg.length
       ? `Coastline test board — ${_shape} + ${_cg.join(', ')}. Nothing records.`
       : `Coastline test board — ${_shape}. Nothing records.`, 6000);

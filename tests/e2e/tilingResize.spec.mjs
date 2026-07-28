@@ -11,8 +11,13 @@
 // than its 284px container. The fix extracts layoutTilingCells() and calls it
 // from resizeCells, so every path that changes the pitch re-lays the cells.
 //
-// Both shipped tilings are covered: the hexagonal 6.6.6 and the 4.8.8, since
-// the frozen-geometry bug was in the shared tiling layout path.
+// Every tiling is covered, because the frozen-geometry bug was in the shared
+// tiling layout path. The four Laves tilings (2026-07-27) matter here beyond
+// repeating the original bug: their cells occur in several ORIENTATIONS, so each
+// one carries a per-cell clip-path and a per-cell box rather than the single
+// per-shape constant the first two tilings could share. A re-lay that recomputed
+// the box but reused a stale clip-path would leave the polygon and its box
+// disagreeing, which is exactly the class this spec is here to catch.
 
 import { test, expect } from '@playwright/test';
 import { prepareInteractionSpec, settleAnimations } from './helpers.mjs';
@@ -38,6 +43,13 @@ async function boardFit(page) {
       boardW: br.width,
       boardH: br.height,
       containerW: cr.width,
+      // Clip-paths are expressed in percentages of each cell's OWN box, so they
+      // are scale-free and must be identical at every pitch. The count of
+      // DISTINCT ones is the tiling's orientation count, which is the thing a
+      // per-cell derivation can get wrong by collapsing every cell onto one
+      // orientation — a fault no rect measurement can see, because clip-path is
+      // paint and getBoundingClientRect reports the unclipped box.
+      clips: [...new Set(cells.map(c => c.style.clipPath).filter(Boolean))].sort().join('|'),
       spillRight: Math.max(...rects.map(r => r.right)) - br.right,
       spillBottom: Math.max(...rects.map(r => r.bottom)) - br.bottom,
       docScrollsX: document.documentElement.scrollWidth > document.documentElement.clientWidth,
@@ -45,7 +57,20 @@ async function boardFit(page) {
   });
 }
 
-for (const [label, param] of [['6.6.6 hexagonal', 'hex'], ['4.8.8', '1']]) {
+// Orientation counts, measured from the shipped builders. A cell's shape is one
+// polygon per ORIENTATION, and only the two Archimedean tilings have a single
+// orientation per shape — which is why the per-shape clip-path constants they
+// shipped with had to become a per-cell derivation.
+const ORIENTATIONS = { hex: 1, 1: 2, cairo: 4, floret: 6, rhombille: 3, deltoidal: 6 };
+
+for (const [label, param] of [
+  ['6.6.6 hexagonal', 'hex'],
+  ['4.8.8', '1'],
+  ['Cairo pentagonal', 'cairo'],
+  ['floret pentagonal', 'floret'],
+  ['rhombille', 'rhombille'],
+  ['deltoidal trihexagonal', 'deltoidal'],
+]) {
   test(`REGRESSION: a ${label} tiling board re-lays itself on resize and rotation`, async ({ page }) => {
     await prepareInteractionSpec(page);
     await page.goto(`/?isTest=1&coastline=${param}`);
@@ -58,14 +83,27 @@ for (const [label, param] of [['6.6.6 hexagonal', 'hex'], ['4.8.8', '1']]) {
     expect(portrait.pitch).toBeGreaterThan(0);
     expect(portrait.boardW).toBeLessThanOrEqual(portrait.containerW + 1);
 
-    // Rotate to landscape. The height budget collapses, so the pitch must
-    // shrink AND the board must shrink with it.
+    // Every orientation this lattice has is actually drawn. Collapsing the
+    // per-cell derivation onto one orientation leaves boxes and rects untouched,
+    // so without this the spec's own claim to guard the clip-path was empty.
+    expect(portrait.clips.split('|').length).toBe(ORIENTATIONS[param]);
+
+    // The board's box IS the tiling's extent times the pitch, so the ratio
+    // boardW/pitch is a constant of the tiling and must survive every re-lay.
+    // That is the invariant the frozen-layout bug actually broke, and unlike a
+    // directional claim it holds for every board shape: rhombille and deltoidal
+    // are WIDE AND SHORT, so rotating to landscape hands them more room and
+    // their pitch GROWS (measured 26 -> 35 and 27 -> 33) where the hexagon's
+    // shrinks. Asserting "the pitch went down on rotation" passed only because
+    // both shipped tilings happen to be tall.
+    const ratio = portrait.boardW / portrait.pitch;
+
     await page.setViewportSize({ width: 844, height: 390 });
     await page.waitForTimeout(300);
     const landscape = await boardFit(page);
-    expect(landscape.pitch).toBeLessThan(portrait.pitch);
-    expect(landscape.boardW).toBeLessThan(portrait.boardW);
-    expect(landscape.boardH).toBeLessThan(portrait.boardH);
+    expect(landscape.pitch).not.toBeCloseTo(portrait.pitch, 1);
+    expect(landscape.boardW / landscape.pitch).toBeCloseTo(ratio, 1);
+    expect(landscape.boardW).toBeLessThanOrEqual(landscape.containerW + 1);
 
     // Narrow portrait: the container is narrower than the original board, so a
     // frozen board would now overflow it. This is the case that actually broke.
@@ -74,6 +112,12 @@ for (const [label, param] of [['6.6.6 hexagonal', 'hex'], ['4.8.8', '1']]) {
     const narrow = await boardFit(page);
     expect(narrow.boardW).toBeLessThanOrEqual(narrow.containerW + 1);
     expect(narrow.docScrollsX).toBe(false);
+    expect(narrow.boardW / narrow.pitch).toBeCloseTo(ratio, 1);
+    // Percentage clip-paths are scale-free, so a re-lay must reproduce them
+    // exactly. A re-lay that recomputed the box but reused a stale clip-path
+    // would leave the polygon and its box disagreeing.
+    expect(narrow.clips).toBe(portrait.clips);
+    expect(landscape.clips).toBe(portrait.clips);
 
     // Cells always stay within the board box they were laid into.
     for (const state of [portrait, landscape, narrow]) {

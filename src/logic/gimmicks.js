@@ -1027,11 +1027,31 @@ const COMPASS_DIRS = [
   { arrow: '↓', dr: 1, dc: 0 },
 ];
 
-// Eight directions for a tiling compass (Coastline Phase 2): the four
-// orthogonal octagon axes plus the four diagonals (which alternate octagon and
-// square). dx/dy are geometric (dx = +col, dy = +row). The ray itself is
-// computed from cell POSITIONS and stored on the cell, so display and certifier
-// read the same list — see computeCompassRay / compassRayCells.
+// ── Which straight lines a compass may point along ─────
+//
+// A compass ray is measured, not chosen by taste. The metric is how much of the
+// straight line the arrow draws actually lies inside the cells the number
+// counts: the shipped 4.8.8 diagonals keep 100% of it, the shipped 4.8.8 axes
+// about 90%, and the hex verticals that were REJECTED keep about 66%. Every set
+// below clears 88% and every alternative dropped from one scores 53-69%. (The
+// figures move by about a point with patch size; the gap does not.)
+//
+// dx/dy are geometric (dx = +col, dy = +row). The ray itself is computed from
+// cell POSITIONS and stored on the cell, so display and certifier read the same
+// list — see computeCompassRay / compassRayCells.
+
+// sin 60 degrees in pitch units. This IS a honeycomb's row spacing (HEX_ROW_H)
+// and it is also the long leg of every 30/60 degree lattice axis on the Laves
+// tilings, so both six-direction tables below take it from one constant rather
+// than each spelling sqrt(3)/2 for itself.
+const SIN_60 = HEX_ROW_H;
+
+// Eight directions — four axes, four diagonals — for the two lattices whose
+// compass-bearing points sit on a SQUARE grid: the 4.8.8 (the orthogonal octagon
+// axes plus the diagonals, which alternate octagon and square) and cairo (whose
+// ray anchors are the midpoints of the underlying square lattice's edges, so
+// they sit on a 45-degree-rotated square lattice of their own — its diagonals
+// score 100.0% and its axes about 88%).
 const COMPASS_DIRS_8 = [
   { arrow: '←', dx: -1, dy: 0 },
   { arrow: '→', dx: 1, dy: 0 },
@@ -1043,19 +1063,63 @@ const COMPASS_DIRS_8 = [
   { arrow: '↘', dx: 1, dy: 1 },
 ];
 
-// A honeycomb has SIX straight lines of cell centers, not eight: the horizontal
-// row plus the four half-step diagonals. There is deliberately no due-north or
-// due-south ray on a pointy-top hex lattice, because the row above is offset by
-// half a hex and no column of centers runs vertically. dy uses the real row
-// spacing (sqrt(3)/2 pitch units) so the ray direction IS the lattice axis.
-const COMPASS_DIRS_HEX = [
+// Six directions at 0/60/120 and their opposites: the three lines of centers on
+// a honeycomb (the horizontal row plus the four half-step diagonals) and,
+// numerically identical, on rhombille.
+//
+// There is deliberately no due-north or due-south ray here, and the reason is
+// NOT the one this comment used to give ("no column of centers runs vertically"
+// — that is simply false; in odd-r offset rows i and i+2 share cx, so the column
+// exists and a vertical ray reaches something from 77 of 121 origins). The real
+// reason is that the column runs along the shared VERTICAL EDGES of the row
+// between: only about 66% of the drawn line lies inside counted cells and not
+// one step of it lands on a cell touching the last, so the player cannot follow
+// it. Same for 30/150. That number is the reject side of the shipped bar.
+const COMPASS_DIRS_60 = [
   { arrow: '←', dx: -1, dy: 0 },
   { arrow: '→', dx: 1, dy: 0 },
-  { arrow: '↖', dx: -0.5, dy: -HEX_ROW_H },
-  { arrow: '↗', dx: 0.5, dy: -HEX_ROW_H },
-  { arrow: '↙', dx: -0.5, dy: HEX_ROW_H },
-  { arrow: '↘', dx: 0.5, dy: HEX_ROW_H },
+  { arrow: '↖', dx: -0.5, dy: -SIN_60 },
+  { arrow: '↗', dx: 0.5, dy: -SIN_60 },
+  { arrow: '↙', dx: -0.5, dy: SIN_60 },
+  { arrow: '↘', dx: 0.5, dy: SIN_60 },
 ];
+
+// The same three axes turned 30 degrees — 30/90/150 and their opposites — for
+// floret and deltoidal. The exact complement of COMPASS_DIRS_60: this set has a
+// true due-north/south and no due-east/west.
+//
+// Which of the two a lattice takes is fixed by its builder's ROTATIONAL PHASE,
+// and picking wrong is the silent failure here: the rejected set still returns
+// rays (mean length 1.3 to 2.8 on the fixture patches) rather than nothing, so
+// it reads as plausible on review. test/tilingCompass.test.mjs is the guard — it
+// re-measures both candidate sets against the builders' actual output.
+//
+// Deltoidal reaches this quality only from the ray ANCHOR that tilingGeometry
+// stores alongside the drawn center (cellPos[i].ax/ay, the kite's long-diagonal
+// midpoint). Compute the ray from the drawn center instead and its best
+// direction keeps 67.2%, under the bar that rejected the hex verticals. Cairo's
+// eight directions depend on its own anchor the same way. See each builder's
+// anchor note in tilingGeometry.js.
+const COMPASS_DIRS_30 = [
+  { arrow: '↑', dx: 0, dy: -1 },
+  { arrow: '↓', dx: 0, dy: 1 },
+  { arrow: '↖', dx: -SIN_60, dy: -0.5 },
+  { arrow: '↗', dx: SIN_60, dy: -0.5 },
+  { arrow: '↙', dx: -SIN_60, dy: 0.5 },
+  { arrow: '↘', dx: SIN_60, dy: 0.5 },
+];
+
+// The set each lattice may point along, keyed by the tiling's own type. Exported
+// so the guard test measures THIS table rather than a copy of it — a second copy
+// is precisely the drift the guard exists to catch.
+export const COMPASS_DIRS_BY_TILING = {
+  '4.8.8': COMPASS_DIRS_8,
+  cairo: COMPASS_DIRS_8,
+  hex: COMPASS_DIRS_60,
+  rhombille: COMPASS_DIRS_60,
+  floret: COMPASS_DIRS_30,
+  deltoidal: COMPASS_DIRS_30,
+};
 
 function applyCompass(board, rows, cols, count, rng) {
   const candidates = [];
@@ -1077,13 +1141,15 @@ function applyCompass(board, rows, cols, count, rng) {
       // else the longest available — and store the precomputed ray. The cell's
       // number then counts mines along exactly this stored list.
       const idx = cell.row * cols + cell.col;
-      // Direction set follows the lattice: 8 for 4.8.8, the 6 hex axes for a
-      // honeycomb (a due-north ray would hit nothing there).
-      const dirs = (board._tiling?.type === 'hex' ? COMPASS_DIRS_HEX : COMPASS_DIRS_8).slice();
+      // Direction set follows the LATTICE, not the container: which straight
+      // lines of centers exist is a property of the tiling. An unrecognized type
+      // takes the 8-direction set, matching buildTiling's own 4.8.8 fallback.
+      const dirs = (COMPASS_DIRS_BY_TILING[board._tiling?.type] || COMPASS_DIRS_8).slice();
       shuffle(dirs, rng);
-      // The FIRST compass cell prefers a diagonal (octagon/square staircase ray)
-      // so any compass board reliably shows that distinctive tiling ray at least
-      // once; later cells stay fully random. Stable sort keeps the shuffle order
+      // The FIRST compass cell prefers an off-axis direction (the 4.8.8's
+      // octagon/square staircase, a Laves lattice's 30/60 degree run) so any
+      // compass board reliably shows that distinctive tiling ray at least once;
+      // later cells stay fully random. Stable sort keeps the shuffle order
       // within each group.
       if (i === 0) {
         const isDiag = (d) => (d.dx !== 0 && d.dy !== 0 ? 1 : 0);
