@@ -25,12 +25,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { computeDailyFeatures, predictPar, applyParModel } from '../src/logic/dailyFeatures.js';
+import { computeDailyFeatures, predictPar, applyParModel, clueShares } from '../src/logic/dailyFeatures.js';
 import { PAR_MODEL } from '../src/logic/difficulty.js';
 import { generateTilingBoard } from '../src/logic/tilingGenerator.js';
-import { buildTiling } from '../src/logic/tilingGeometry.js';
-import { buildNeighborCache } from '../src/logic/adjacency.js';
-import { generateBoard } from '../src/logic/boardGenerator.js';
+import { buildTiling, containerFor } from '../src/logic/tilingGeometry.js';
+import { buildNeighborCache, defineCellNeighbors } from '../src/logic/adjacency.js';
+import { generateBoard, createEmptyBoard } from '../src/logic/boardGenerator.js';
+import { recalcAllAdjacency } from '../src/logic/gimmicks.js';
 import { isBoardSolvable } from '../src/logic/boardSolver.js';
 
 // A tiling board plus the state shim computeDailyFeatures expects.
@@ -247,20 +248,59 @@ test('a tiling board produces a complete, sane feature vector and a positive par
 test('clue-digit shares stay within the digit range each lattice can produce', () => {
   // A hexagon tops out at 6 neighbors and a 4.8.8 interstitial square at 4, so
   // the shares are computed over a narrower support than a rectangle's 0-8.
-  // clueShares caps its histogram at digit 8; a future tiling above valence 8
-  // (a 3.12.12 dodecagon is 12) would silently drop those clues from BOTH the
-  // numerator and the denominator. Pin the assumption for the shipped pair.
   for (const [type, M, N, maxValence] of [['hex', 9, 7, 6], ['4.8.8', 6, 7, 8]]) {
     const T = buildTiling(type, M, N);
     const observed = Math.max(...T.adj.map(n => n.length));
     assert.ok(observed <= maxValence, `${type}: valence ${observed} exceeds expected ${maxValence}`);
-    assert.ok(observed <= 8, `${type}: clueShares' histogram caps at digit 8`);
 
     const { features } = tilingFixture(type, M, N);
     const total = features.clueShare2 + features.clueShare3
       + features.clueShare4 + features.clueShare5plus;
     // Shares are scaled x10 and 1s are the omitted reference, so the four
     // reported shares sum to at most 10.
+    assert.ok(total >= 0 && total <= 10 + 1e-9, `${type}: shares sum to ${total}`);
+  }
+});
+
+// REGRESSION (2026-07-27): clueShares sized its histogram at digit 8 and DROPPED
+// anything larger from the numerator AND the denominator, so a clue of 9 or 10
+// did not merely miss its own bucket, it shifted all four reported shares. That
+// was harmless while every lattice topped out at 8, and CLAUDE.md carried it as a
+// latent rectangular assumption for exactly that reason. Corner-inclusive
+// adjacency ended the reprieve: rhombille's interior valence is 10 and
+// deltoidal's is 9.
+//
+// The four frozen gate fixtures cannot cover this — every one of them tops out
+// at a clue of 5 — so the boards here are built to order, with mines on EVERY
+// neighbor of one interior cell, which is the only way to force the maximum
+// clue a lattice can print.
+test('REGRESSION: a clue above 8 counts, rather than skewing every clue share', () => {
+  for (const [type, M, N, expectedMax] of [['rhombille', 6, 6, 10], ['deltoidal', 5, 5, 9]]) {
+    const T = buildTiling(type, M, N);
+    const { rows, cols } = containerFor(T.total);
+
+    // Pick an interior cell with the lattice's full valence and surround it.
+    const hub = T.adj.findIndex(n => n.length === expectedMax);
+    assert.ok(hub >= 0, `${type}: expected an interior cell of valence ${expectedMax}`);
+
+    const board = createEmptyBoard(rows, cols);
+    defineCellNeighbors(board, rows, cols, T.adj);
+    const at = (i) => board[(i / cols) | 0][i % cols];
+    for (const n of T.adj[hub]) at(n).isMine = true;
+    recalcAllAdjacency(board);
+
+    assert.equal(at(hub).adjacentMines, expectedMax,
+      `${type}: the hub must actually read ${expectedMax}, or this proves nothing`);
+
+    const shares = clueShares(board, rows, cols);
+    const total = shares.clueShare2 + shares.clueShare3
+      + shares.clueShare4 + shares.clueShare5plus;
+
+    // The hub's clue is above 8 and belongs in the 5plus bucket. Under the old
+    // cap it vanished from both sides of every ratio; the tell is that 5plus
+    // reads zero on a board that demonstrably carries a 9 or a 10.
+    assert.ok(shares.clueShare5plus > 0,
+      `${type}: a clue of ${expectedMax} must land in clueShare5plus, got ${shares.clueShare5plus}`);
     assert.ok(total >= 0 && total <= 10 + 1e-9, `${type}: shares sum to ${total}`);
   }
 });

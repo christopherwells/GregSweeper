@@ -18,6 +18,7 @@ import { handleWin, handleLoss, handleDailyBombHit } from './winLossHandler.js';
 import { performScan, performXRay, performMagnet, tryLifeline } from './powerUpActions.js';
 import { generateBoard, createEmptyBoard, cleanSolverArtifacts } from '../logic/boardGenerator.js';
 import { generateTilingBoard } from '../logic/tilingGenerator.js';
+import { coastlineBoardFor, DEFAULT_TILING } from '../logic/coastlineLink.js';
 import { floodFillReveal, checkWin, chordReveal, unrevealChordMines, isBoardSolvable, estimatePlateMovesToDisarm, buildNeighborCache, findDecorativeGimmicks, certificateFromCheck } from '../logic/boardSolver.js';
 import { plateDisarmCells, cellAt } from '../logic/adjacency.js';
 import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getChaosDifficulty, getRequiredTechnique, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE, WEEKLY_MIN_SIZE, WEEKLY_SIZE_RANGE, BOARD_WIDTH_CAP, plateSeconds } from '../logic/difficulty.js';
@@ -337,20 +338,21 @@ export async function newGame() {
   state.coastlinePar = 0;
   state.coastlineFeatures = null;
 
-  // Project Coastline (test-only): a frozen Archimedean-tiling board, generated
-  // HERE like daily/weekly rather than on first click. gameMode stays 'normal'
-  // + isLevelPractice so nothing records; state.coastlinePractice routes the
+  // Project Coastline (test-only): a frozen tiling board, generated HERE like
+  // daily/weekly rather than on first click. gameMode stays 'normal' +
+  // isLevelPractice so nothing records; state.coastlinePractice routes the
   // frozen first-click path in revealCell. The whole surface is unreachable in
   // production — the ?coastline=1 deep link is isTestEnvironment()-gated.
   if (state.coastlinePractice) {
     const seed = state.coastlineSeed || 'coastline-1';
-    // Per-tiling board shape. A honeycomb cell is one shape and one size, so it
-    // takes a taller, slightly denser grid than the 4.8.8 (whose cell count is
-    // inflated by the small interstitial squares) to feel like the same board.
-    const tilingType = state.coastlineType === 'hex' ? 'hex' : '4.8.8';
-    const dims = tilingType === 'hex'
-      ? { M: 9, N: 7, mines: 13 }   // 63 hexagons
-      : { M: 6, N: 7, mines: 11 };  // 42 octagons + 30 squares
+    // Per-tiling board shape and mine count. Six lattices need six different
+    // answers: a honeycomb cell is one shape and one size where a 4.8.8's cell
+    // count is inflated by its small interstitial squares, and the four Laves
+    // lattices need a density that puts them on the constructive placer at all.
+    // The table and the measurements behind every number live in coastlineLink,
+    // beside the parser that produced the type.
+    const tilingType = state.coastlineType || DEFAULT_TILING;
+    const dims = coastlineBoardFor(tilingType);
     const res = generateTilingBoard({
       type: tilingType, ...dims, seed,
       gimmicks: Array.isArray(state.coastlineGimmicks) ? state.coastlineGimmicks : [],

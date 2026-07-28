@@ -11,12 +11,29 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { PAR_MODEL, PAR_MODEL_TIMED } from '../src/logic/difficulty.js';
+import { TILING_TYPES } from '../src/logic/tilingGeometry.js';
 
 const R_SRC = readFileSync(new URL('../scripts/refit-par-model.R', import.meta.url), 'utf8');
 const JS_SRC = readFileSync(new URL('../src/logic/difficulty.js', import.meta.url), 'utf8');
 
-const SHAPE_COEFS = ['secPerShape488', 'secPerShapeHex'];
-const SHAPE_PREDICTORS = ['shape488', 'shapeHex'];
+// DERIVED from the tiling registry, never hand-listed. Every non-rectangular
+// tiling carries one par offset, so the two arrays below must grow with
+// TILING_TYPES or the per-coefficient tripwires below silently stop covering the
+// newest shapes — which is exactly what happened when the four Laves tilings
+// landed against a hardcoded ['secPerShape488', 'secPerShapeHex']: the nightly
+// refit rewrites the whole marker block, so a coefficient dropped from the R
+// template would have vanished from difficulty.js with the block still parsing.
+// The generic slot-vs-arg count check cannot catch that, because deleting a
+// %.5f AND its argument together leaves the counts equal.
+const SHAPE_KEY = { '4.8.8': '488', hex: 'Hex', cairo: 'Cairo', floret: 'Floret',
+  rhombille: 'Rhombille', deltoidal: 'Deltoidal' };
+const SHAPE_NAMES = TILING_TYPES.map((t) => {
+  const key = SHAPE_KEY[t];
+  if (!key) throw new Error(`tiling '${t}' has no par-offset key — add it to SHAPE_KEY`);
+  return key;
+});
+const SHAPE_COEFS = SHAPE_NAMES.map(k => `secPerShape${k}`);
+const SHAPE_PREDICTORS = SHAPE_NAMES.map(k => `shape${k}`);
 
 test('both models ship the shape coefficients, at zero until data earns them', () => {
   for (const coef of SHAPE_COEFS) {

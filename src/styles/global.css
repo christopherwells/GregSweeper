@@ -1030,12 +1030,18 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
    number (side-by-side overran the small clipped cell). Same symbol + number,
    both fit — the symbol keeps its identity, the number stays the focus. */
 .cell.sonar-tiling .sonar-bg {
+  /* Absolute, but with every offset left AUTO on purpose. An abspos child of a
+     flex container falls at its STATIC position, which the flex box centers in
+     the CONTENT box — the same place the number lands. Naming left/top 50%
+     instead would center it on the PADDING box, which the anchor padding
+     (boardRenderer._anchorPadding, which moves a cell's content to the shape's
+     drawn center) does not move: on a floret pentagon the symbol would sit 12px
+     from its own number at a 48px pitch, and on a deltoidal kite 8.9px, each
+     spilling out of the clip on one side. Zero on every centrally symmetric
+     cell, where padding is never emitted and the two boxes coincide. */
   position: absolute;
-  left: 50%;
-  top: 50%;
   width: 70%;
   height: 70%;
-  transform: translate(-50%, -50%);
   opacity: 0.5;
   pointer-events: none;
 }
@@ -1802,6 +1808,35 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   margin-top: -1px;
   padding-bottom: 2px;
   box-sizing: content-box;
+}
+
+/* Coastline: a tiling cell's SHAPE is its clip-path, so a box radius can only
+   eat into it. It bites wherever a polygon vertex reaches its own box corner —
+   the rounded rect drops the corner and the clip cannot put it back, so the tip
+   is truncated and the board background shows through as a speck, with a
+   hit-test dead zone at the same spot. That is every high-valence vertex of
+   three of the four Laves tilings: the six kite tips meeting at a deltoidal
+   hexagon center, the six pentagon tips at a floret rosette center, the
+   rhombille cube corners. Measured exactly (polygon ∩ the rounded-off corner
+   region, over a full board at pitches 18 to 50): deltoidal loses up to
+   12.9px² on 48 of 72 cells, rhombille 9.7px² on 60 of 90, floret 4.9px² on 48
+   of 72 — and after this rule, nothing. It reclaims no AREA on the shipped two,
+   whose polygons cut well clear of a box corner (the hexagon only at the 18px
+   minimum, recovering 0.09px² a cell). It is not, however, a literal no-op on
+   them: dropping the second rounded-rect clip changes how the remaining clip
+   composites, which shifts sub-1/255 shading across every hex cell at every
+   pitch (measured 10.5% of board pixels touched at pitch 50, mean channel delta
+   below 1/255, max 12/255 at scattered edge pixels). No shape moves and nothing
+   is visible side by side, but the rule is worth describing as what it is
+   rather than as costing nothing.
+
+   Zeroing the TOKEN as well as the property is what reaches the effect-theme
+   gap seal: the `.fx-on ... ::after` body layer reads --cell-shape-radius off
+   its originating cell, and it is inset to the same box, so a radius left there
+   would nick the same tips again on any theme with an ambient effect. */
+#board.tiling-board .cell {
+  --cell-shape-radius: 0px;
+  border-radius: 0;
 }
 
 /* Coastline: a tiling wall is a rotated bar across the shared edge of two

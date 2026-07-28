@@ -102,6 +102,10 @@ export const PAR_MODEL = {
   // have produced real completions, so par is unchanged on every board to date.
   secPerShape488:      0.00000,
   secPerShapeHex:      0.00000,
+  secPerShapeCairo:      0.00000,
+  secPerShapeFloret:     0.00000,
+  secPerShapeRhombille:  0.00000,
+  secPerShapeDeltoidal:  0.00000,
 
 };
 // PAR_MODEL:END
@@ -139,6 +143,10 @@ export const PAR_MODEL_TIMED = {
   secPerWormLoad:      0.00130,
   secPerShape488:      0.00000,
   secPerShapeHex:      0.00000,
+  secPerShapeCairo:      0.00000,
+  secPerShapeFloret:     0.00000,
+  secPerShapeRhombille:  0.00000,
+  secPerShapeDeltoidal:  0.00000,
 };
 // TIMED_PAR_MODEL:END
 

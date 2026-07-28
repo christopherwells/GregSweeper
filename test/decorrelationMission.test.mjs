@@ -377,7 +377,7 @@ test('clue shares are per-ten of the cells that show a number', () => {
 });
 
 test('a cell that never shows the player a number is not a clue', () => {
-  // Mirrors clue_histogram in scripts/refit-par-model.R exactly: mines carry
+  // Mirrors clue_digit_counts in scripts/refit-par-model.R exactly: mines carry
   // no clue, mystery hides its number, a plate shows a timer. If the two
   // copies disagreed, the client would score a candidate on one histogram and
   // the fit would measure it on another.

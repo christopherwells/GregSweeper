@@ -20,7 +20,7 @@ import {
   mixHex, hatchWorm, stepWorm, tickWorms, rehydrateWorms, wormCoveredCells,
   wormOverlayLayout, wormHatchEvent, markWormBurrowed, finalizeWormEvents, wormSegmentSize,
 } from '../src/logic/worms.js';
-import { buildTiling488, containerFor } from '../src/logic/tilingGeometry.js';
+import { buildTiling488, buildTiling, containerFor, TILING_TYPES } from '../src/logic/tilingGeometry.js';
 
 // Fixed-sequence rng for pinning exact branch behavior (repeats the last
 // value once the sequence is exhausted).
@@ -550,4 +550,47 @@ test('wormSegmentSize keeps consecutive segments touching on every board shape',
   // sizes, so an unclamped segment would pulse as the worm crawls.
   const oct = wormSegmentSize(P, '4.8.8');
   assert.ok(oct > 0 && oct < P, '4.8.8 stays clamped to the small interstitial square');
+});
+
+// REGRESSION (2026-07-27): the fix above was written as "hex gets a pitch-wide
+// segment, everything else gets the 4.8.8 clamp", so when the four Laves tilings
+// arrived they silently inherited a clamp shaped for an interstitial square none
+// of them has. Measured at a 50px pitch: cairo 0.52 of its step, floret 0.43,
+// rhombille 0.40, deltoidal 0.41 — gaps of 27 to 44px, three to four times worse
+// than the honeycomb bug this section already exists for.
+//
+// The pin is deliberately DERIVED rather than a table of names: it walks every
+// tiling the dispatcher registers, measures that tiling's own mean
+// centre-to-centre step from its geometry, and requires the segment to span it.
+// A seventh tiling added tomorrow is covered the day it is registered, which a
+// hand-maintained list is exactly what failed to do twice.
+test('REGRESSION: wormSegmentSize spans the step on EVERY registered tiling', () => {
+  const P = 50;
+
+  for (const type of TILING_TYPES) {
+    const T = buildTiling(type, 6, 6);
+
+    // Mean distance between adjacent cell centres, in pitch units, taken over
+    // the real adjacency so it reflects what the worm actually crawls along.
+    let sum = 0, n = 0;
+    for (let i = 0; i < T.total; i++) {
+      for (const j of T.adj[i]) {
+        if (j <= i) continue;
+        sum += Math.hypot(T.cellPos[i].cx - T.cellPos[j].cx, T.cellPos[i].cy - T.cellPos[j].cy);
+        n++;
+      }
+    }
+    const stepPx = (sum / n) * P;
+    const size = wormSegmentSize(P, type);
+    const continuity = size / stepPx;
+
+    // 0.68 is the 4.8.8's own shipped ratio, which reads as a body: it is the
+    // floor this lattice family has always been held to, not a fresh allowance.
+    assert.ok(continuity >= 0.68,
+      `${type}: segment ${size.toFixed(1)}px spans only ${continuity.toFixed(2)} of its `
+      + `${stepPx.toFixed(1)}px step — the worm reads as beads`);
+
+    // And never so wide it crosses its own cell edge.
+    assert.ok(size <= P + 1e-9, `${type}: segment must stay inside the cell`);
+  }
 });
