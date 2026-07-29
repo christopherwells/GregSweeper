@@ -1,50 +1,50 @@
 {
-  "updatedAt": "2026-07-28T16:08:48Z",
-  "target": "mirrorPairCount",
-  "reason": "highest posterior CV (0.671) excluding last 3 targets",
+  "updatedAt": "2026-07-29T15:53:27Z",
+  "target": "compassCellCount",
+  "reason": "highest posterior CV (0.631) excluding last 3 targets",
   "lastRevalidationDate": "2026-07-18",
   "recentTargets": [
+    "compassCellCount",
     "mirrorPairCount",
-    "clueShare4",
-    "wormLoad"
+    "clueShare4"
   ],
   "candidates": [
+    {
+      "feature": "clueShare4",
+      "mean": 0.062,
+      "sd": 0.043,
+      "cv": 0.694
+    },
     {
       "feature": "mirrorPairCount",
       "mean": 0.007,
       "sd": 0.007,
-      "cv": 0.671
-    },
-    {
-      "feature": "compassCellCount",
-      "mean": 0.019,
-      "sd": 0.012,
-      "cv": 0.642
-    },
-    {
-      "feature": "clueShare4",
-      "mean": 0.082,
-      "sd": 0.049,
-      "cv": 0.597
+      "cv": 0.661
     },
     {
       "feature": "wormLoad",
-      "mean": 0.026,
-      "sd": 0.015,
-      "cv": 0.594
+      "mean": 0.015,
+      "sd": 0.01,
+      "cv": 0.66
     },
     {
-      "feature": "lockedCellCount",
-      "mean": 0.036,
-      "sd": 0.017,
-      "cv": 0.482
+      "feature": "compassCellCount",
+      "mean": 0.02,
+      "sd": 0.013,
+      "cv": 0.631
+    },
+    {
+      "feature": "clueShare2",
+      "mean": 0.053,
+      "sd": 0.026,
+      "cv": 0.49
     }
   ],
   "coverage_targets": [
     {
       "feature": "wormLoad",
-      "n_boards": 5,
-      "deficit_weight": 0.1667
+      "n_boards": 6,
+      "deficit_weight": 0.1429
     },
     {
       "feature": "wormholePairCount",
@@ -62,12 +62,12 @@
       "deficit_weight": 0.0714
     },
     {
-      "feature": "compassCellCount",
-      "n_boards": 13,
-      "deficit_weight": 0.0714
+      "feature": "liarCellCount",
+      "n_boards": 14,
+      "deficit_weight": 0.0667
     },
     {
-      "feature": "liarCellCount",
+      "feature": "mirrorPairCount",
       "n_boards": 14,
       "deficit_weight": 0.0667
     },
