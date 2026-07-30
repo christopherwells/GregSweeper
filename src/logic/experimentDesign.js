@@ -18,11 +18,12 @@
 // stops wallEdgeCount (10-30 edges per board) from dwarfing the cell-based
 // gimmicks (3-5 cells max) — without it, walls' coverage slot wins nearly
 // every selection because its raw count is several times anyone else's.
-// Slot 0's weight is fixed low (PRIMARY_WEIGHT) so it only wins when its
-// target count saturates against a coverage candidate with a much lower
-// deficit weight. Coverage slots use the deficit weight from the ranked
-// list — heavier for the most undersampled features. The candidate with
-// the highest score is the daily.
+// Slot 0's weight is fixed low (PRIMARY_WEIGHT). Coverage slots use the
+// deficit weight from the ranked list — heavier for the most undersampled
+// features. The day's winner is DRAWN from the scored candidates by a
+// date-seeded weighted lottery (selectMissionWinner), so a score is a
+// mission's frequency, not a fixed rank — see that function for why the
+// argmax this replaced served a monoculture.
 //
 // Constraints this module respects:
 // - Identical result on every client. All logic is a pure function of
@@ -34,6 +35,8 @@
 //   (currently advancedLogicMoves) and an empty coverage_targets list,
 //   in which case ALL slots fall back to the primary target — same
 //   behaviour as the pre-multi-objective design.
+
+import { createDailyRNG } from './seededRandom.js';
 
 const EXPERIMENT_PATH = './src/logic/experimentTarget.json';
 
@@ -392,6 +395,74 @@ export function missionCandidateScore(mission, features) {
   // the behaviour that held before the clue shares became computable here.
   const count = isObservationalTarget(mission.target) ? 0 : (features[mission.target] || 0);
   return Math.min(count, COUNT_CAP) * mission.deficitWeight;
+}
+
+/**
+ * Pick the day's winning candidate from the scored slots — a date-seeded
+ * WEIGHTED LOTTERY, not an argmax.
+ *
+ * The argmax this replaced was a monoculture machine: coverage deficit
+ * weights move slowly (deficit = 1/(n_boards+1), and n_boards grows about
+ * one per day), so whichever mission scored highest on Monday scored
+ * highest on Tuesday too, and the top-deficit gimmick owned every daily
+ * until it saturated. Measured 2026-07-30: worm won 10 of the previous 12
+ * dates and every precomputed future board, because min(wormLoad, CAP) ×
+ * 0.143 ≈ 0.71 against every other slot's ceiling of ~0.36. This is the
+ * same lesson as PR F1's weight tuning, from the other side: a weight sets
+ * who wins a contest, never how often a mission runs. Sampling ∝ score IS
+ * the frequency mechanism — the most undersampled gimmick is still the most
+ * likely daily, but never the only one, and the mix self-corrects nightly
+ * as the refit moves the weights.
+ *
+ * Two deliberate edges:
+ * - DECORRELATION keeps its argmax supremacy: when a decorrelation slot
+ *   holds the top score outright, it wins outright. Its R-derived weight is
+ *   calibrated to "tie the strongest coverage mission at the target residual
+ *   depth" under exactly that contest, and its frequency is already owned by
+ *   its own mechanism (the 7-day cadence). Running it through the lottery
+ *   would quietly re-tune both.
+ * - An all-zero pool draws UNIFORMLY. Zero total weight carries no signal,
+ *   and falling back to "first slot" would freeze rotation on exactly the
+ *   days the scores can't discriminate.
+ *
+ * Determinism: one rng stream seeded from the date (`:missionDraw`
+ * namespace, disjoint from the `:trialN` candidate seeds), consumed by at
+ * most one draw — every client and the precompute resolve the same winner
+ * for the same date and pool. Both selection paths (selectDailyRngSeed.js
+ * and scripts/daily-board-pipeline.mjs) call THIS function; the winner-pick
+ * used to exist as two argmax copies, the same mirror-pair shape whose slot
+ * arithmetic had already drifted once.
+ *
+ * @param {Array<{score: number, mission: Object}>} entries scored candidates
+ *   in slot order (each carries whatever else the caller needs back)
+ * @param {string} dateString YYYY-MM-DD, the lottery's seed anchor
+ * @returns {Object|null} the winning entry, or null for an empty pool
+ */
+export function selectMissionWinner(entries, dateString) {
+  const pool = (Array.isArray(entries) ? entries : [])
+    .filter(e => e && typeof e.score === 'number' && e.score >= 0);
+  if (pool.length === 0) return null;
+
+  // First-max, matching the strict `>` the old argmax used (ties favored
+  // the earlier slot).
+  let top = pool[0];
+  for (const e of pool) { if (e.score > top.score) top = e; }
+  if (top.mission?.type === 'decorrelation') return top;
+
+  // Ordinary days: weighted draw over the non-decorrelation slots. A
+  // decorrelation slot that did NOT take the top score stays out of the
+  // draw — it wins outright at depth or not at all, per its calibration.
+  const drawPool = pool.filter(e => e.mission?.type !== 'decorrelation');
+  if (drawPool.length === 0) return top;
+  const total = drawPool.reduce((s, e) => s + e.score, 0);
+  const rng = createDailyRNG(`${dateString}:missionDraw`);
+  if (total <= 0) return drawPool[Math.min(drawPool.length - 1, Math.floor(rng() * drawPool.length))];
+  let r = rng() * total;
+  for (const e of drawPool) {
+    r -= e.score;
+    if (r <= 0) return e;
+  }
+  return drawPool[drawPool.length - 1]; // float-edge fallback
 }
 
 /**

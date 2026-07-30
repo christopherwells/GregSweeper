@@ -1354,15 +1354,27 @@ export function rearmPlateTimers() {
   }
 }
 
-// Defensive teardown helper. Daily/weekly modes do not currently include
-// pressure plates in their gimmick subset, but if a future change ever
-// surfaces a plate during a daily/weekly bomb-hit refog, the per-cell
-// interval would keep ticking on a now-hidden cell and potentially
-// trigger handleLoss after the refog. Exposed for winLossHandler's
-// handleDailyBombHit to call as a safety net.
+// Teardown for every path that LEAVES the board without starting a new
+// game (issue #192): showTitleScreen (Home button) and switchMode both
+// call this, because neither changes state.status — the tick's own
+// `status !== 'playing'` guard never fires on those paths, and the
+// deadline is raw wall-clock, so an orphaned plate detonated on the
+// title screen (loss recorded, save cleared, the explaining modal
+// unrenderable inside the hidden #app) or mid-way through whatever game
+// was loaded next. Also the safety net for winLossHandler's
+// handleDailyBombHit refog path. Re-arming on resume is
+// rearmPlateTimers' job, with a fresh countdown — the lenient direction.
 export function clearAllPlateTimers() {
   for (const id of activePlates.values()) clearInterval(id);
   activePlates.clear();
+}
+
+// Test-only visibility into the module-private interval map, so the
+// lifecycle regression tests (test/plateTimerLifecycle.test.mjs) can
+// assert teardown actually happened rather than inferring it from
+// side effects that take seconds to fire.
+export function countActivePlateTimers() {
+  return activePlates.size;
 }
 
 function startPressurePlateTimer(cell) {
@@ -1391,6 +1403,18 @@ function startPressurePlateTimer(cell) {
 
   const tick = setInterval(() => {
     if (state.status !== 'playing') {
+      clearInterval(tick);
+      activePlates.delete(cell);
+      return;
+    }
+    // Identity guard (issue #192): this interval must only ever act on the
+    // board its cell belongs to. If the live board no longer holds THIS
+    // cell object at these coords — a mode switch resumed a different
+    // game, a new board replaced this one — the plate is an orphan and
+    // self-destructs instead of detonating someone else's game. The
+    // teardown calls in newGame/switchMode/showTitleScreen should make
+    // this unreachable; it exists so no future caller has to remember.
+    if (state.board?.[cell.row]?.[cell.col] !== cell) {
       clearInterval(tick);
       activePlates.delete(cell);
       return;

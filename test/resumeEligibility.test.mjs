@@ -230,12 +230,42 @@ const TILING_5 = [
   [0, 1, 2, 3],
 ];
 
+// Matching geometry for the 5-cell patch (values only need the right SHAPE
+// here — eligibility validates presence and length, not coordinates).
+const TILING_POS = [
+  { cx: 0.5, cy: 0.5, shape: 'oct' }, { cx: 1.5, cy: 0.5, shape: 'oct' },
+  { cx: 0.5, cy: 1.5, shape: 'oct' }, { cx: 1.5, cy: 1.5, shape: 'oct' },
+  { cx: 1.0, cy: 1.0, shape: 'sq' },
+];
+
 function tilingSave(overrides = {}) {
-  return dailySave({ rows: 5, cols: 1, board: mkBoard(5, 1), cellNeighbors: TILING_5, ...overrides });
+  return dailySave({
+    rows: 5, cols: 1, board: mkBoard(5, 1),
+    cellNeighbors: TILING_5,
+    cellPos: TILING_POS,
+    tiling: { type: '4.8.8', M: 2, N: 2, wUnits: 2, hUnits: 2 },
+    tilingWalls: [],
+    ...overrides,
+  });
 }
 
 test('a save carrying a valid explicit topology resumes', () => {
   assert.equal(isSaveResumable(tilingSave(), ctx()), true);
+});
+
+test('REGRESSION #189: a topology without its geometry never resumes', () => {
+  // The pre-fix save shape: cellNeighbors persisted, cellPos/tiling dropped.
+  // Restoring it hands the renderer a board whose own tiling test
+  // (_cellPos) fails, so hexagons come back as a rectangular CSS grid whose
+  // hit-testing is not the board — refuse and let newGame() rebuild.
+  assert.equal(isSaveResumable(tilingSave({ cellPos: undefined, tiling: undefined }), ctx()), false);
+  assert.equal(isSaveResumable(tilingSave({ cellPos: null }), ctx()), false);
+  assert.equal(isSaveResumable(tilingSave({ tiling: null }), ctx()), false);
+  // A geometry list that does not cover every cell is as unrenderable as a
+  // missing one.
+  assert.equal(isSaveResumable(tilingSave({ cellPos: TILING_POS.slice(0, 3) }), ctx()), false);
+  // And a descriptor without the fields applyWallsTiling rebuilds from.
+  assert.equal(isSaveResumable(tilingSave({ tiling: { type: '4.8.8' } }), ctx()), false);
 });
 
 test('REGRESSION: a save whose topology is TRUNCATED never resumes', () => {

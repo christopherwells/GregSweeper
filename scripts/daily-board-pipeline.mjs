@@ -14,7 +14,7 @@ import { isBoardSolvable, findDecorativeGimmicks } from '../src/logic/boardSolve
 import { computeDailyFeatures } from '../src/logic/dailyFeatures.js';
 import {
   resolveMissionForSlot, resolveCandidateCount, missionCandidateScore,
-  getTargetGimmickName, missionStamp,
+  selectMissionWinner, getTargetGimmickName, missionStamp,
 } from '../src/logic/experimentDesign.js';
 import { DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE } from '../src/logic/difficulty.js';
 import { serializeBoard } from '../src/firebase/dailyBoardSync.js';
@@ -117,19 +117,19 @@ export function buildOneCandidate(seed, forcedGimmick, singleOnly) {
 
 export function selectBestCandidate(dateString, spec) {
   // Mirror selectDailyRngSeed.js: per-slot missions (1 primary + 9
-  // coverage), score = min(target_count, COUNT_CAP) × deficit_weight, pick
-  // max. The cap stops wallEdgeCount (10-30 edges/board) from dwarfing
-  // cell-based gimmicks (3-5 cells max) and lets deficit_weight drive.
+  // coverage), score = min(target_count, COUNT_CAP) × deficit_weight, and
+  // the winner drawn by selectMissionWinner's date-seeded weighted lottery
+  // (P ∝ score; decorrelation keeps argmax supremacy — the argmax this
+  // replaced served worm 10 of 12 days straight, 2026-07-30). The cap stops
+  // wallEdgeCount (10-30 edges/board) from dwarfing cell-based gimmicks
+  // (3-5 cells max) and lets deficit_weight drive.
   //
-  // Two-tier preference: among solvable candidates, prefer those whose
-  // every non-mystery modifier is load-bearing (no decorative modifiers).
-  // Fall back to highest-scoring decorative candidate if no load-bearing
-  // candidate exists. This avoids shipping boards where, say, the sonar
-  // cell is window-dressing the player can ignore.
-  let loadBearingBest = null, loadBearingScore = -Infinity, loadBearingSeed = null, loadBearingMission = null;
-  let anyBest = null, anyScore = -Infinity, anySeed = null, anyMission = null;
-  let totalSolvable = 0;
-  let totalLoadBearing = 0;
+  // Two-tier preference: among solvable candidates, the lottery draws from
+  // those whose every non-mystery modifier is load-bearing (no decorative
+  // modifiers). Fall back to a draw over all solvable candidates if no
+  // load-bearing candidate exists. This avoids shipping boards where, say,
+  // the sonar cell is window-dressing the player can ignore.
+  const scored = [];
   const candidateCount = candidateCountFor(spec);
   for (let i = 0; i < candidateCount; i++) {
     const mission = missionForSlot(spec, i);
@@ -141,45 +141,36 @@ export function selectBestCandidate(dateString, spec) {
     const seed = `${dateString}:trial${i}`;
     const cand = buildOneCandidate(seed, forcedGimmick, mission.singleOnly);
     if (!cand.check.solvable && cand.check.remainingUnknowns !== 0) continue;
-    totalSolvable++;
     const features = computeDailyFeatures(
       { board: cand.board, rows: cand.rows, cols: cand.cols, totalMines: cand.totalMines, activeGimmicks: cand.activeGimmicks, rngSeed: seed },
       cand.check,
     );
     const score = missionCandidateScore(mission, features);
     if (score === null) continue;
-    if (score > anyScore) {
-      anyScore = score;
-      anySeed = seed;
-      anyBest = cand;
-      anyMission = mission;
-    }
-    if (cand.decorative.length === 0) {
-      totalLoadBearing++;
-      if (score > loadBearingScore) {
-        loadBearingScore = score;
-        loadBearingSeed = seed;
-        loadBearingBest = cand;
-        loadBearingMission = mission;
-      }
-    }
+    scored.push({ score, mission, seed, cand });
   }
-  console.log(`  candidates: ${totalSolvable} solvable, ${totalLoadBearing} fully load-bearing`);
-  let best = loadBearingBest, bestSeed = loadBearingSeed, bestMission = loadBearingMission;
-  if (!best) {
-    if (anyBest) {
-      console.log(`  no fully load-bearing candidate; falling back to highest-scoring (decorative=${anyBest.decorative.join(',')})`);
-      best = anyBest; bestSeed = anySeed; bestMission = anyMission;
-    } else {
-      // No solvable candidate — fall back to the plain dateString. This
-      // shouldn't happen often; the gameActions retry loop would also
-      // have to dig harder if it did.
-      const fallbackForced = getTargetGimmickName(spec.target);
-      const cand = buildOneCandidate(dateString, fallbackForced, false);
-      best = cand;
-      bestSeed = dateString;
-      bestMission = missionForSlot(spec, 0);
+  const loadBearing = scored.filter(e => e.cand.decorative.length === 0);
+  console.log(`  candidates: ${scored.length} solvable, ${loadBearing.length} fully load-bearing`);
+  // The lottery seed is the DATE, so the load-bearing pool and the
+  // all-solvable fallback pool resolve through the same single draw —
+  // one rng stream, one consumer, exactly like the client path.
+  const winner = selectMissionWinner(loadBearing.length > 0 ? loadBearing : scored, dateString);
+  let best = null, bestSeed = null, bestMission = null;
+  if (winner) {
+    if (loadBearing.length === 0) {
+      console.log(`  no fully load-bearing candidate; drawing over all solvable (decorative=${winner.cand.decorative.join(',')})`);
     }
+    best = winner.cand; bestSeed = winner.seed; bestMission = winner.mission;
+  }
+  if (!best) {
+    // No solvable candidate — fall back to the plain dateString. This
+    // shouldn't happen often; the gameActions retry loop would also
+    // have to dig harder if it did.
+    const fallbackForced = getTargetGimmickName(spec.target);
+    const cand = buildOneCandidate(dateString, fallbackForced, false);
+    best = cand;
+    bestSeed = dateString;
+    bestMission = missionForSlot(spec, 0);
   }
   // HARD GATE: never write an uncertified canonical. buildOneCandidate
   // returns its last attempt even when all attempts failed, so the

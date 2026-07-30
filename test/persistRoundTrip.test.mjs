@@ -184,6 +184,10 @@ const { defineCellNeighbors } = await import('../src/logic/adjacency.js');
 
 function setupTilingGame() {
   // 3x3 octagons + 4 interstitial squares = 13 cells, in a 13x1 container.
+  // Stamped with the FULL board-identity contract the generator emits —
+  // topology AND geometry — because that is the only shape a real tiling
+  // board ever has, and isSaveResumable now refuses a topology without its
+  // geometry (issue #189).
   const T = buildTiling488(3, 3);
   state.gameMode = 'timed';
   state.status = 'playing';
@@ -192,6 +196,15 @@ function setupTilingGame() {
   state.board = makeBoard(T.total, 1);
   state.rows = T.total; state.cols = 1; state.totalMines = 2;
   defineCellNeighbors(state.board, T.total, 1, T.adj);
+  state.board._cellPos = T.cellPos;
+  state.board._tiling = { type: T.type, M: 3, N: 3, wUnits: T.wUnits, hUnits: T.hUnits };
+  state.board._tilingWalls = [];
+  // A stored compass ray on one cell — on an explicit topology the ray is
+  // stamped geometry, and dropping it from the save silently zeroed every
+  // compass number on resume (the CELL_FIELDS defect replayed, issue #189).
+  state.board[2][0].isCompass = true;
+  state.board[2][0].compassArrow = '←';
+  state.board[2][0].compassRay = [1, 0];
   state.flagCount = 0; state.revealedCount = 0;
   state.elapsedTime = 5; state.currentLevel = 1;
   state.powerUps = { revealSafe: 0, shield: 0, lifeline: 0, scanRowCol: 0, magnet: 0, xray: 0 };
@@ -212,6 +225,17 @@ test('REGRESSION: an explicit topology survives the save snapshot', () => {
   assert.ok(saved.cellNeighbors, 'the topology must ride the save as its own field');
   assert.equal(saved.cellNeighbors.length, T.total);
   assert.deepEqual(saved.cellNeighbors, T.adj);
+
+  // REGRESSION #189: the GEOMETRY rides alongside the graph. Without these a
+  // resumed board carried a hexagonal adjacency but rendered as a
+  // rectangular CSS grid (_cellPos is the renderer's own tiling test), with
+  // walls invisible and no descriptor to rebuild from.
+  assert.deepEqual(saved.cellPos, T.cellPos, 'cellPos must ride the save');
+  assert.equal(saved.tiling.type, T.type, 'the tiling descriptor must ride the save');
+  assert.deepEqual(saved.tilingWalls, [], 'the severed-edge list must ride the save');
+  // And the stored compass ray survives per-cell — dropping it silently
+  // zeroed every compass number when resume recomputed displayedMines.
+  assert.deepEqual(saved.board[2][0].compassRay, [1, 0], 'compassRay must ride the cell snapshot');
 });
 
 test('REGRESSION: a resumed tiling board keeps its topology, not a rectangle', () => {
@@ -229,6 +253,15 @@ test('REGRESSION: a resumed tiling board keeps its topology, not a rectangle', (
   assert.equal(resumed, true, 'the tiling save must be resumable');
   assert.ok(state.board._cellNeighbors, 'the restored board must carry its topology');
   assert.deepEqual(state.board._cellNeighbors, T.adj);
+
+  // REGRESSION #189: the geometry restores WITH the graph, so the renderer's
+  // own tiling test (_cellPos) passes and the board draws as its lattice.
+  assert.deepEqual(state.board._cellPos, T.cellPos, 'the restored board must carry its geometry');
+  assert.equal(state.board._tiling.type, T.type, 'the restored board must carry its descriptor');
+  assert.deepEqual(state.board._tilingWalls, [], 'the restored board must carry its wall list (as an array)');
+  // The stored compass ray came back, so the resume's recomputeDisplayedMines
+  // read the same premise the board displayed before the save.
+  assert.deepEqual(state.board[2][0].compassRay, [1, 0], 'the restored cell must keep its stored ray');
 
   // The thing that actually matters: every adjacency question asked of the
   // resumed board resolves through the tiling, not through its container.

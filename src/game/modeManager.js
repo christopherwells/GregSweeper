@@ -1,6 +1,6 @@
 import { state, clearCoastlinePractice } from '../state/gameState.js';
 import { $, $$ } from '../ui/domHelpers.js';
-import { newGame } from './gameActions.js';
+import { newGame, clearAllPlateTimers, rearmPlateTimers } from './gameActions.js';
 import { persistGameState, tryResumeGame } from './gamePersistence.js';
 import { loadCheckpoint, loadStats } from '../storage/statsStorage.js';
 import { CHAOS_UNLOCK_LEVEL } from '../logic/difficulty.js';
@@ -75,6 +75,15 @@ export function switchMode(mode) {
   // Save current game state before switching (guard is inside persistGameState)
   persistGameState();
 
+  // The outgoing game's pressure-plate intervals must die here (issue
+  // #192): their deadline is raw wall-clock and their only self-check is
+  // `state.status !== 'playing'` — which a successful tryResumeGame below
+  // sets right back to 'playing', so an orphaned plate would keep counting
+  // through the mode switch and detonate handleLoss on the RESUMED game
+  // (a daily has no loss state at all). The resumed game's own plates are
+  // re-armed fresh below, matching the init-time resume sites in main.js.
+  clearAllPlateTimers();
+
   // If we were in chaos and aren't anymore, undo the chaos theme override
   // before the new mode takes effect. Without this, returning to title later
   // could re-apply a stale "previous theme" over a theme the player chose
@@ -111,11 +120,14 @@ export function switchMode(mode) {
   // confirms `weeklySeed` and `weeklyDay` match the live values.
   if (mode === 'weekly') {
     if (!tryResumeGame(mode)) newGame();
+    else rearmPlateTimers();
     return;
   }
 
   // Try to resume saved state for the target mode
-  if (!tryResumeGame(mode)) {
+  if (tryResumeGame(mode)) {
+    rearmPlateTimers();
+  } else {
     if (mode === 'normal') {
       // Fall back to last checkpoint (not Level 1) so mobile swipe-kill
       // doesn't lose all progress

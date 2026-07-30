@@ -19,23 +19,38 @@ test('REGRESSION: a daily bomb-hit strike marker persists past boot-time cleanup
     // Popup path, not the first-strike explainer modal.
     try { localStorage.setItem('minesweeper_seen_bombhit_explainer_v2', 'true'); } catch {}
   });
-  // fitF practice daily: deterministic board, mine at (0,0) — and the
-  // daily board is FROZEN, so a first-click mine is a bomb hit by design.
+  // fitF practice daily: a deterministic FROZEN board, so a first-click
+  // mine is a bomb hit by design. The mine is LOCATED at runtime rather
+  // than hardcoded: which cell holds one depends on the candidate-seed
+  // selection, and pinning a coordinate coupled this spec to the selector
+  // (the 2026-07-30 mission-lottery change moved fitF's board and broke a
+  // (0,0) assumption that had nothing to do with what this spec pins).
   await page.goto('/?mode=daily&seed=fitF&isTest=1');
-  const firstCell = page.locator('#board .cell').first();
-  await expect(firstCell).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('#board .cell').first()).toBeVisible({ timeout: 30_000 });
 
-  await firstCell.click(); // (0,0) is a mine on this seed
-  await expect(firstCell).toHaveClass(/strike-cell/, { timeout: 5_000 });
+  const mine = await page.evaluate(async () => {
+    const { state } = await import('./src/state/gameState.js');
+    for (let r = 0; r < state.rows; r++) {
+      for (let c = 0; c < state.cols; c++) {
+        if (state.board[r][c].isMine) return { r, c, idx: r * state.cols + c };
+      }
+    }
+    return null;
+  });
+  expect(mine).not.toBeNull();
+  const mineCell = page.locator('#board .cell').nth(mine.idx);
+
+  await mineCell.click(); // first action, inside the old script's firing window
+  await expect(mineCell).toHaveClass(/strike-cell/, { timeout: 5_000 });
 
   // Outlive the popup teardown (2s) AND the old cleanup timers.
   await page.waitForTimeout(2_600);
-  await expect(firstCell).toHaveClass(/strike-cell/);
-  const cellState = await page.evaluate(async () => {
+  await expect(mineCell).toHaveClass(/strike-cell/);
+  const cellState = await page.evaluate(async ({ r, c }) => {
     const { state } = await import('./src/state/gameState.js');
-    const c = state.board[0][0];
-    return { isRevealed: c.isRevealed, isStrike: c.isStrike, hits: state.dailyBombHits, status: state.status };
-  });
+    const cell = state.board[r][c];
+    return { isRevealed: cell.isRevealed, isStrike: cell.isStrike, hits: state.dailyBombHits, status: state.status };
+  }, { r: mine.r, c: mine.c });
   expect(cellState.isRevealed).toBe(true);
   expect(cellState.isStrike).toBe(true);
   expect(cellState.hits).toBe(1);
