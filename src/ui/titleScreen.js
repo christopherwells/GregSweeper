@@ -14,6 +14,7 @@ import { startGregMascot } from './gregMascot.js';
 import { restorePreChaosTheme } from './themeManager.js';
 import { applyThemeEffects, applyTitleSceneEffects, clearTitleSceneEffects } from './themeEffects.js';
 import { persistGameState } from '../game/gamePersistence.js';
+import { clearAllPlateTimers } from '../game/gameActions.js';
 import { isChaosUnlocked, launchDailyArchive } from '../game/modeManager.js';
 import { computeDailyParForDate } from '../game/parResolve.js';
 import {
@@ -184,6 +185,16 @@ export function showTitleScreen() {
 
   // Persist current game state before showing title (guard is inside persistGameState)
   persistGameState();
+
+  // Kill any armed pressure-plate intervals from the game being left
+  // (issue #192): showTitleScreen never changes state.status, so an armed
+  // plate's wall-clock deadline kept counting behind the title screen and
+  // detonated handleLoss with #app hidden — a silent loss (the gameover
+  // modal lives inside #app and cannot render), the save cleared, the
+  // level rolled back to checkpoint, and nothing on screen to say why.
+  // Resuming the game re-arms them with a fresh countdown (rearmPlateTimers
+  // at every resume site), the documented lenient direction.
+  clearAllPlateTimers();
 
   restorePreChaosTheme();
 
