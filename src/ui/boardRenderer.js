@@ -220,12 +220,14 @@ function _tilingOutlines(tiling) {
 // INSCRIBED-CIRCLE diameter — the largest circle the cell can hold, which is
 // what tilingGeometry normalizes each of them to, and the right measure for
 // "will a digit plus a modifier watermark fit". The 4.8.8 is not on that rule
-// and deliberately stays off it: OCT_CUT 0.37 cuts past the regular-octagon
-// value, so the shipped octagon's inscribed diameter is 0.891 pitch rather than
-// a full one, and applying the inscribed rule to the 4.8.8 would shrink the
-// octagon's number 11% and the diamond's 29% on boards that read correctly
-// today. So this is two tunings that agree everywhere except the diamond, not
-// one rule with an exception.
+// and deliberately stays off it: OCT_CUT cuts well past the regular-octagon
+// value, so the shipped octagon's inscribed diameter is 0.820 pitch rather than
+// a full one (0.891 before the cut was raised to 0.42), and applying the
+// inscribed rule to the 4.8.8 would shrink the octagon's number 18% and the
+// diamond's 29% on boards that read correctly today. So this is two tunings that
+// agree everywhere except the diamond, not one rule with an exception. Raising
+// the cut narrows the gap on its own: the diamond's number is half its own box,
+// so it went from 74% of the octagon's to 84% without touching this rule.
 const FONT_UNITS = 0.5;
 const FONT_UNITS_SQ = SQ_BOX_FRAC * 0.5;
 
