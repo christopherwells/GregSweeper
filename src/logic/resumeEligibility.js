@@ -94,8 +94,25 @@ export function isSaveResumable(gs, ctx) {
   // adjacency disagrees with the one it was certified under, which breaks the
   // no-guess promise silently rather than loudly. Drop it and let newGame()
   // rebuild. Ordinary rectangular saves carry no such field and skip this.
-  if (gs.cellNeighbors != null && !isValidCellNeighbors(gs.rows, gs.cols, gs.cellNeighbors)) {
-    return false;
+  if (gs.cellNeighbors != null) {
+    if (!isValidCellNeighbors(gs.rows, gs.cols, gs.cellNeighbors)) {
+      return false;
+    }
+    // An explicit topology without the GEOMETRY to draw it is the issue-#189
+    // shape: the graph restores but _cellPos is the renderer's own test for
+    // "is this a tiling board", so the hexagons would come back as a
+    // rectangular CSS grid whose hit-testing is not the board. A pre-fix save
+    // (topology only) is refused rather than half-restored; no such save can
+    // exist in the wild — coastline runs never persist — so this rejects
+    // corruption, not history.
+    if (!Array.isArray(gs.cellPos) || gs.cellPos.length !== gs.rows * gs.cols) {
+      return false;
+    }
+    const t = gs.tiling;
+    if (!t || typeof t.type !== 'string'
+        || !Number.isFinite(t.M) || !Number.isFinite(t.N)) {
+      return false;
+    }
   }
 
   return true;

@@ -46,6 +46,15 @@ export function persistGameState() {
       isSonar: c.isSonar || false, sonarCount: c.sonarCount || 0,
       isCompass: c.isCompass || false, compassCount: c.compassCount || 0,
       compassArrow: c.compassArrow || undefined, compassDir: c.compassDir || undefined,
+      // The STORED compass ray (explicit-topology boards): on a tiling the
+      // ray is a geometry question the neighbor graph cannot answer, so it
+      // is computed once at generation and stamped, and BOTH the displayed
+      // number and the certifier read it back through compassRayCells —
+      // which returns [] for a cell without one. Dropping it here was the
+      // CELL_FIELDS defect (issue #189) replayed on the save: the resume's
+      // recomputeDisplayedMines silently turned every tiling compass number
+      // into 0. Absent on rectangles (they derive the ray from row/col).
+      compassRay: Array.isArray(c.compassRay) ? c.compassRay : undefined,
       isLiar: c.isLiar || false, isLocked: c.isLocked || false,
       isWormhole: c.isWormhole || false,
       displayedMines: c.displayedMines != null ? c.displayedMines : undefined,
@@ -115,7 +124,20 @@ export function persistGameState() {
     // the board silently changes shape under the player, and the adjacency it
     // was certified under is gone. Null on every ordinary board, which is
     // every board shipped today.
+    //
+    // The GEOMETRY rides alongside (issue #189 — the Phase-1 bug re-opened
+    // through the half of the contract added later): _cellPos is the
+    // renderer's own test for "is this a tiling board", _tiling is what
+    // applyWallsTiling / the outline memo rebuild from, and _tilingWalls is
+    // the severed-edge list the wall overlay draws (a tiling board does not
+    // use _wallEdges). Same field set the canonical payload carries; the
+    // save stores _cellPos VERBATIM, so cairo/deltoidal keep their compass
+    // ray anchors (ax/ay) — the canonical path's documented residual does
+    // not apply here. All null/absent on every rectangular board.
     cellNeighbors: state.board._cellNeighbors || null,
+    cellPos: state.board._cellPos || null,
+    tiling: state.board._tiling || null,
+    tilingWalls: Array.isArray(state.board._tilingWalls) ? state.board._tilingWalls : null,
     gatedCert: !!state.board._gatedCert,
     firstClick: state.firstClick,
     savedStatus: state.status,
@@ -216,6 +238,15 @@ export function tryResumeGame(mode) {
   // so this cannot silently stamp a corrupt one.
   if (gs.cellNeighbors) {
     defineCellNeighbors(state.board, gs.rows, gs.cols, gs.cellNeighbors);
+    // The geometry restores with the graph (issue #189): _cellPos routes the
+    // renderer onto the tiling layout path, _tiling feeds the outline memo and
+    // the wall wireframe rebuild, and _tilingWalls is the drawn severed-edge
+    // list — always an ARRAY on a tiling board (two consumers branch on its
+    // length), mirroring deserializeBoard. isSaveResumable refused any save
+    // claiming a topology without cellPos + tiling, so these reads are safe.
+    state.board._cellPos = gs.cellPos;
+    state.board._tiling = { ...gs.tiling };
+    state.board._tilingWalls = Array.isArray(gs.tilingWalls) ? gs.tilingWalls : [];
   }
 
   // Restore the certification-contract flag (boardSolver reads it as its
