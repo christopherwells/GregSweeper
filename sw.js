@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v1.9.16';
+const CACHE_NAME = 'gregsweeper-v1.9.18';
 const ASSETS = [
   './',
   './index.html',
@@ -92,6 +92,43 @@ const ASSETS = [
   './src/logic/leaderboardViews.js',
   './src/logic/friendCodes.js',
   './src/firebase/firebaseFriends.js',
+  // The rest of main.js's static import closure (issue #191). ASSETS is
+  // the only cache content guaranteed to survive a CACHE_NAME bump —
+  // activate deletes every other cache — so EVERY hard static import of
+  // main.js must be here or the app cannot boot offline right after a
+  // deploy. This list had drifted 29 modules behind (the whole 2026-07-10
+  // main.js split plus every pure-logic helper added since);
+  // test/swPrecache.test.mjs now walks the real import graph and fails
+  // the suite the moment a new static module is not precached.
+  './src/game/parResolve.js',
+  './src/game/startupGate.js',
+  './src/logic/archiveEligibility.js',
+  './src/logic/canonicalSignature.js',
+  './src/logic/coastlineLink.js',
+  './src/logic/deviceCapability.js',
+  './src/logic/gameoverPlan.js',
+  './src/logic/modeRules.js',
+  './src/logic/moltDay.js',
+  './src/logic/parDisplayDecision.js',
+  './src/logic/remindCta.js',
+  './src/logic/resumeEligibility.js',
+  './src/logic/scoreRowMatch.js',
+  './src/logic/shareCard.js',
+  './src/logic/shouldPromptForName.js',
+  './src/logic/skillFeatDetection.js',
+  './src/logic/startupReconcilePlan.js',
+  './src/logic/tilingGenerator.js',
+  './src/logic/tilingGeometry.js',
+  './src/logic/weeklyAttemptSummary.js',
+  './src/logic/winSubmissionPlan.js',
+  './src/logic/worms.js',
+  './src/ui/leaderboardModal.js',
+  './src/ui/nameCapture.js',
+  './src/ui/shareActions.js',
+  './src/ui/shareCardImage.js',
+  './src/ui/statsModal.js',
+  './src/ui/titleScreen.js',
+  './src/ui/wormRenderer.js',
   './assets/icon.svg',
   './assets/favicon-greg.svg',
   './assets/icon-192.png',
