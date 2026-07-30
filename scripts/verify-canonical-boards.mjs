@@ -107,7 +107,13 @@ function isSolverDerived(key) {
 // Exported so the vintage-vs-lying tests anchor to the LIVE epoch rather
 // than the clock — a bump here must never break the pin that post-epoch
 // omission hard-fails.
-export const FEATURES_EPOCH = '2026-08-02';   // contribution keys + locked split (ship buffer); tilingType 07-23; clueShare* 07-18
+//
+// The date is a soft MERGE DEADLINE: metas written after it by a pipeline
+// that predates the newest keys hard-fail as lying-by-omission, so if the
+// PR carrying a bump has not deployed by the epoch's 00:00 UTC precompute,
+// move the date forward. Failing red-on-legit is the designed loud
+// direction, but there is no reason to walk into it.
+export const FEATURES_EPOCH = '2026-08-04';   // contribution keys + locked split (ship buffer); tilingType 07-23; clueShare* 07-18
 const FEATURES_EPOCH_MS = Date.parse(`${FEATURES_EPOCH}T00:00:00Z`);
 
 /**

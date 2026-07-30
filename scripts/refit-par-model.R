@@ -151,8 +151,15 @@ CONTRIB_FEATURES <- c(
 )
 CONTRIB_BACKFILL_PATH <- "scripts/data/gimmick-contribution.json"
 # A column enters the study formula only with real variation behind it:
-# nonzero on at least this many distinct dates (wormhole/mirror Required is 1
-# on literally every shipped board — a constant column fits nothing).
+# nonzero on at least this many distinct dates. What this gate actually drops
+# on today's data is the thin/empty ClicksSaved columns (sonar has 2 shortcut
+# dates; wormhole/liar/mirror have none). It does NOT drop the Required
+# flags: wormholeRequired is 1 on 11 of 13 wormhole boards and mirrorRequired
+# on 17 of 18 mirror boards, so both pass easily — but they are then
+# NEAR-collinear with their own pair-count controls (Required ≈ presence for
+# those types), so read their posteriors as "the pair count and the flag
+# share one effect", not as separated quantities, until a shipped
+# non-required wormhole/mirror board exists to split them.
 CONTRIB_MIN_NONZERO_DATES <- 3
 
 # ── Decorrelation missions (Journal PR F1) ─────────────────────────────
@@ -1050,7 +1057,13 @@ contrib_df <- tryCatch({
     NULL
   } else {
     bf <- bf[, c("date", intersect(CONTRIB_FEATURES, colnames(bf)))]
-    cdf <- df |> filter(uid %in% eligible_uids, date >= DIGIT_ERA_START)
+    # No archive replays: a replay of a known board is not a first-encounter
+    # observation, and this frame has no archivePlay offset to absorb the
+    # cohort's pace shift — once pool_archive flips TRUE upstream, df keeps
+    # those rows and an unfiltered study would read the shift as a finding
+    # arriving mid-series. (The digit frame shares this latent gap;
+    # flagged 2026-07-30, fix it there when archive pooling actually opens.)
+    cdf <- df |> filter(uid %in% eligible_uids, date >= DIGIT_ERA_START, archivePlay == 0)
     for (f in CONTRIB_FEATURES) {
       if (!f %in% colnames(cdf)) cdf[[f]] <- NA_real_
       if (!f %in% colnames(bf)) bf[[f]] <- NA_real_
@@ -1394,9 +1407,17 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
           message("  contribution study inactive: no column with real variation")
           NULL
         } else {
+          # NO lockedCellCount control: the study columns lockedMineCount +
+          # lockedNumberCount sum to it EXACTLY (the JS derives one from the
+          # other; the partition is test-pinned), so keeping all three makes
+          # the design matrix rank-deficient — the data then identifies only
+          # sums and contrasts, and the individual locked posteriors written
+          # to modelHistory would be prior-blend artifacts whose bands can
+          # never narrow (verified: QR rank 2 of 3 on the committed backfill).
+          # In this fit the SPLIT replaces the pooled count.
           contrib_controls <- c("cellCount", "totalMines", "patternMoves", "searchMoves",
                                 "wallEdgeCount", "mysteryCellCount", "liarCellCount",
-                                "lockedCellCount", "wormholePairCount", "mirrorPairCount",
+                                "wormholePairCount", "mirrorPairCount",
                                 "sonarCellCount", "compassCellCount", "zeroClusterCount")
           contrib_fixed <- c(contrib_controls, active_contrib)
           # UNBOUNDED normal priors, deliberately NOT build_priors' lb=0
