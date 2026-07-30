@@ -593,7 +593,12 @@ export async function newGame() {
     // generated) for features + par + best-start cell.
     const check = isBoardSolvable(state.board, state.rows, state.cols, fixedRow, fixedCol);
     cleanSolverArtifacts(state.board);
-    state.dailyFeatures = computeDailyFeatures(state, check);
+    state.dailyFeatures = computeDailyFeatures(state, check, {
+      // The certified opener: the contribution features strip-solve from the
+      // same anchor the certificate and par features use. Paid once per FINAL
+      // board, never in the candidate loops.
+      contributionOpener: { row: fixedRow, col: fixedCol },
+    });
     state.dailyPar = predictPar(state.dailyFeatures);
     state.dailyMoves = check.totalClicks;
     saveDailyPar(state.dailySeed, state.dailyPar, state.dailyMoves, state.dailyFeatures);
@@ -776,7 +781,9 @@ export async function newGame() {
     // synthetic-daily path.
     const wcheck = isBoardSolvable(state.board, state.rows, state.cols, fixedRow, fixedCol);
     cleanSolverArtifacts(state.board);
-    state.weeklyFeatures = computeDailyFeatures(state, wcheck);
+    state.weeklyFeatures = computeDailyFeatures(state, wcheck, {
+      contributionOpener: { row: fixedRow, col: fixedCol },
+    });
 
     // Pre-fetch the player's existing weekly row from Firebase so the
     // win handler can compute bestTime correctly. If we're offline or

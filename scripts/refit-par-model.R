@@ -116,6 +116,45 @@ DIGIT_FEATURES <- c("clueShare2", "clueShare3", "clueShare4", "clueShare5plus")
 # row (Christopher's provenance note, 2026-06-28).
 DIGIT_ERA_START <- "2026-04-27"
 
+# ── Gimmick-contribution study (2026-07-30, secondary fit only) ────────
+# Christopher's hypothesis: an INTEGRAL gimmick (one the solve needs) and an
+# incidental one price differently, and the raw cell counts cannot see it —
+# force-injection holds them nearly constant (every compass daily ships
+# exactly 3 compass cells). The client now records the strip-and-resolve
+# counterfactual the load-bearing filter always computed and discarded:
+# per testable type, `<g>Required` (board unsolvable without the gimmick's
+# information) and `<g>ClicksSaved` (deduction clicks it spares — reported 0
+# when required, where the quantity is undefined; the pair must be read
+# jointly). Plus the locked split: what is UNDER a lock (a mine to prove vs
+# a number delayed) is different work, and lockedCellCount pools them.
+#
+# Sources, in precedence order: dailyMeta-carried keys (the generation-time
+# solver of record, prospective rows) then scripts/data/gimmick-contribution.json
+# (the committed Node backfill over stored canonicals — a re-measure under
+# the backfill run's solver, covering the canonical era R itself cannot
+# compute, since the solver is JS). Same provenance floor as the digit
+# study: DIGIT_ERA_START, below which stored boards are not the boards the
+# scores describe.
+#
+# These are NEVER emitted into PAR_MODEL, and deliberately NOT merged into
+# target_candidates either (a contribution feature is not force-injectable
+# by the candidate scorer, which never computes these keys — a mission
+# targeting one would occupy a slot it can never win). The posteriors land
+# in modelHistory rows under `contribution` for longitudinal reading.
+CONTRIB_FEATURES <- c(
+  "sonarRequired",    "sonarClicksSaved",
+  "compassRequired",  "compassClicksSaved",
+  "wormholeRequired", "wormholeClicksSaved",
+  "liarRequired",     "liarClicksSaved",
+  "mirrorRequired",   "mirrorClicksSaved",
+  "lockedMineCount",  "lockedNumberCount"
+)
+CONTRIB_BACKFILL_PATH <- "scripts/data/gimmick-contribution.json"
+# A column enters the study formula only with real variation behind it:
+# nonzero on at least this many distinct dates (wormhole/mirror Required is 1
+# on literally every shipped board — a constant column fits nothing).
+CONTRIB_MIN_NONZERO_DATES <- 3
+
 # ── Decorrelation missions (Journal PR F1) ─────────────────────────────
 # The experiment's missions all chase either one coefficient's uncertainty
 # (the CV / revalidation primary target) or one gimmick's sample gap
@@ -998,6 +1037,44 @@ if (!is.null(digit_shares) && nrow(digit_shares) > 0) {
                   nrow(digit_df), n_distinct(digit_df$date)))
 }
 
+# ── Contribution-study fit frame (secondary, canonical-era) ─────────────
+# Meta-carried keys win over the backfill file (generation-time solver of
+# record vs a later re-measure); rows with neither source drop. The whole
+# build is failure-tolerant — a missing/malformed backfill file just means
+# the study doesn't run tonight, never that the refit dies (the digit
+# block's select(-any_of()) join-suffix lesson applies here too, so the
+# meta copies are renamed aside before the join rather than dropped).
+contrib_df <- tryCatch({
+  bf <- fromJSON(CONTRIB_BACKFILL_PATH, simplifyDataFrame = TRUE)$rows
+  if (!is.data.frame(bf) || nrow(bf) == 0) {
+    NULL
+  } else {
+    bf <- bf[, c("date", intersect(CONTRIB_FEATURES, colnames(bf)))]
+    cdf <- df |> filter(uid %in% eligible_uids, date >= DIGIT_ERA_START)
+    for (f in CONTRIB_FEATURES) {
+      if (!f %in% colnames(cdf)) cdf[[f]] <- NA_real_
+      if (!f %in% colnames(bf)) bf[[f]] <- NA_real_
+    }
+    cdf <- cdf |>
+      rename_with(~ paste0(.x, "_ctmeta"), all_of(CONTRIB_FEATURES)) |>
+      left_join(bf, by = "date")
+    for (f in CONTRIB_FEATURES) {
+      cdf[[f]] <- dplyr::coalesce(as.numeric(cdf[[paste0(f, "_ctmeta")]]),
+                                  as.numeric(cdf[[f]]))
+      cdf[[paste0(f, "_ctmeta")]] <- NULL
+    }
+    cdf <- cdf |> filter(!is.na(.data[[CONTRIB_FEATURES[1]]]))
+    if (nrow(cdf) > 0) cdf else NULL
+  }
+}, error = function(e) {
+  message("  contribution frame unavailable (", conditionMessage(e), ") — study skipped tonight")
+  NULL
+})
+if (!is.null(contrib_df)) {
+  message(sprintf("  contribution frame: %d canonical-era rows, %d dates (secondary fit only)",
+                  nrow(contrib_df), n_distinct(contrib_df$date)))
+}
+
 handicaps        <- list()      # uid -> k (multiplicative clean-skill ratio)
 handicap_details <- list()      # uid -> { k, bombSeconds } — the split the
                                 # client itemizes ("Your par = Greg × k + bombs")
@@ -1295,6 +1372,84 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
     if (!is.null(digit_candidates)) {
       target_candidates <- rbind(target_candidates, digit_candidates)
     }
+
+    # ── Contribution study fit (secondary; posteriors → modelHistory only,
+    # NEVER target_candidates, NEVER PAR_MODEL — see CONTRIB_FEATURES) ────
+    # The whole block, INCLUDING its eligibility checks, lives inside one
+    # tryCatch: the digit block's eligibility `if` once sat outside its
+    # tryCatch and a NULL comparison there could kill the entire nightly.
+    contribution_candidates <- tryCatch({
+      if (is.null(contrib_df) || nrow(contrib_df) < MIN_SCORES_TO_FIT ||
+          n_distinct(contrib_df$uid) < 2) {
+        message(sprintf("  contribution study inactive: %s usable rows",
+                        if (is.null(contrib_df)) "no" else nrow(contrib_df)))
+        NULL
+      } else {
+        active_contrib <- CONTRIB_FEATURES[vapply(CONTRIB_FEATURES, function(f) {
+          v <- contrib_df[[f]]
+          isTRUE(stats::sd(v) > 0) &&
+            n_distinct(contrib_df$date[v != 0]) >= CONTRIB_MIN_NONZERO_DATES
+        }, logical(1))]
+        if (length(active_contrib) == 0) {
+          message("  contribution study inactive: no column with real variation")
+          NULL
+        } else {
+          contrib_controls <- c("cellCount", "totalMines", "patternMoves", "searchMoves",
+                                "wallEdgeCount", "mysteryCellCount", "liarCellCount",
+                                "lockedCellCount", "wormholePairCount", "mirrorPairCount",
+                                "sonarCellCount", "compassCellCount", "zeroClusterCount")
+          contrib_fixed <- c(contrib_controls, active_contrib)
+          # UNBOUNDED normal priors, deliberately NOT build_priors' lb=0
+          # lognormals: a contribution effect has no a-priori sign. A
+          # required gimmick plausibly costs time (+) while a big shortcut
+          # plausibly refunds it — the 7-click-shortcut compass day ran
+          # 0.39× par — and a zero lower bound would forbid the hypothesis
+          # half this study exists to test. Study-only, so the controls
+          # share the unbounded prior rather than importing the shipped
+          # model's monotonicity assumption.
+          contrib_priors <- c(
+            set_prior("normal(0, 1)", class = "b"),
+            set_prior(sprintf("normal(%f, 1.5)", log(30)), class = "Intercept"),
+            set_prior("normal(0, 1)", class = "sigma"),
+            set_prior("student_t(3, 0, 1)", class = "sd", group = "uid")
+          )
+          contrib_formula <- as.formula(paste("log(pure_time) ~",
+                                              paste(c(contrib_fixed, "(1 | uid)"), collapse = " + ")))
+          message(sprintf("Fitting secondary contribution model on %d canonical-era rows (%s)…",
+                          nrow(contrib_df), paste(active_contrib, collapse = ", ")))
+          contrib_fit <- brm(
+            contrib_formula, data = contrib_df, prior = contrib_priors,
+            chains = N_CHAINS, iter = N_ITER, warmup = N_WARMUP,
+            control = list(adapt_delta = ADAPT_DELTA),
+            cores = min(N_CHAINS, parallel::detectCores()),
+            refresh = 0, seed = 20260730, silent = 2
+          )
+          cps <- posterior::summarise_draws(as_draws_array(contrib_fit), c("rhat", "ess_bulk"))
+          c_diverge <- sum(nuts_params(contrib_fit)$Value[nuts_params(contrib_fit)$Parameter == "divergent__"])
+          c_total   <- N_CHAINS * (N_ITER - N_WARMUP)
+          if (any(cps$rhat > 1.05, na.rm = TRUE) || any(cps$ess_bulk < 400, na.rm = TRUE) ||
+              (c_diverge / c_total) > MAX_DIVERGENT_FRAC) {
+            message("  secondary contribution fit failed diagnostics — study skipped tonight")
+            NULL
+          } else {
+            cfe <- fixef(contrib_fit)
+            message(sprintf("  contribution posteriors (log scale, signed): %s",
+                            paste(sprintf("%s=%.3f±%.3f", active_contrib,
+                                          cfe[active_contrib, "Estimate"], cfe[active_contrib, "Est.Error"]),
+                                  collapse = ", ")))
+            data.frame(
+              feature   = active_contrib,
+              post_mean = cfe[active_contrib, "Estimate"],
+              post_sd   = cfe[active_contrib, "Est.Error"],
+              stringsAsFactors = FALSE
+            )
+          }
+        }
+      }
+    }, error = function(e) {
+      message("  secondary contribution fit errored — study skipped tonight: ", conditionMessage(e))
+      NULL
+    })
 
     target_candidates$cv <- target_candidates$post_sd / pmax(abs(target_candidates$post_mean), 0.01)
     target_candidates <- target_candidates[order(-target_candidates$cv), ]
@@ -1998,6 +2153,19 @@ if (length(timed_raw) > 0) {
     target      = target_field,
     candidates  = cv_rows
   )
+  # Contribution-study posteriors (signed log scale) ride the history row —
+  # their only longitudinal home, since they never enter target_candidates
+  # or PAR_MODEL. Additive field: every modelHistory consumer reads named
+  # fields, so old rows without it and new rows with it coexist.
+  if (exists("contribution_candidates") && !is.null(contribution_candidates)) {
+    new_row$contribution <- lapply(seq_len(nrow(contribution_candidates)), function(i) {
+      list(
+        feature = contribution_candidates$feature[i],
+        mean    = round(contribution_candidates$post_mean[i], 4),
+        sd      = round(contribution_candidates$post_sd[i], 4)
+      )
+    })
+  }
 
   history <- tryCatch(
     fromJSON(history_path, simplifyVector = FALSE),

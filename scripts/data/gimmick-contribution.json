@@ -1,0 +1,2119 @@
+{
+ "generatedAt": "2026-07-30T22:02:08.369Z",
+ "note": "Historical contribution measure under the solver at generatedAt; dailyMeta-carried keys (generation-time solver of record) take precedence in the R join.",
+ "rows": [
+  {
+   "date": "2026-04-27",
+   "gimmicks": [],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-04-28",
+   "gimmicks": [
+    "sonar"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-04-29",
+   "gimmicks": [
+    "walls"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-04-30",
+   "gimmicks": [
+    "wormhole"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 1,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-05-01",
+   "gimmicks": [
+    "compass"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-05-02",
+   "gimmicks": [
+    "locked"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 1,
+   "lockedNumberCount": 2
+  },
+  {
+   "date": "2026-05-03",
+   "gimmicks": [
+    "sonar"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 1,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-05-04",
+   "gimmicks": [
+    "compass"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-05-04_weekly_first",
+   "gimmicks": [
+    "wormhole",
+    "mirror",
+    "sonar"
+   ],
+   "sonarRequired": 1,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 1,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-05-05",
+   "gimmicks": [
+    "liar"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-05-06",
+   "gimmicks": [
+    "walls"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-05-07",
+   "gimmicks": [
+    "liar"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 1,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-05-08",
+   "gimmicks": [
+    "walls"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-05-09",
+   "gimmicks": [
+    "walls"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-05-10",
+   "gimmicks": [
+    "mirror"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 1,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-05-11",
+   "gimmicks": [
+    "walls"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-05-11_weekly_first",
+   "gimmicks": [
+    "walls",
+    "mirror",
+    "wormhole"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 1,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 1,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-05-12",
+   "gimmicks": [
+    "walls"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-05-13",
+   "gimmicks": [
+    "walls"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-05-14",
+   "gimmicks": [
+    "liar"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 1,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-05-15",
+   "gimmicks": [
+    "locked"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 1,
+   "lockedNumberCount": 2
+  },
+  {
+   "date": "2026-05-16",
+   "gimmicks": [
+    "walls"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-05-17",
+   "gimmicks": [
+    "wormhole"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 1,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-05-18",
+   "gimmicks": [
+    "mirror"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 1,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-05-18_weekly_first",
+   "gimmicks": [
+    "mirror",
+    "mystery"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 1,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-05-19",
+   "gimmicks": [
+    "walls"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-05-20",
+   "gimmicks": [
+    "locked"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 1,
+   "lockedNumberCount": 2
+  },
+  {
+   "date": "2026-05-21",
+   "gimmicks": [
+    "mirror"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 1,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-05-22",
+   "gimmicks": [
+    "liar"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 1,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-05-23",
+   "gimmicks": [
+    "walls"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-05-24",
+   "gimmicks": [
+    "locked"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 1,
+   "lockedNumberCount": 2
+  },
+  {
+   "date": "2026-05-25",
+   "gimmicks": [
+    "liar"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 1,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-05-25_weekly_first",
+   "gimmicks": [
+    "sonar",
+    "compass",
+    "locked"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 3,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 2,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-05-26",
+   "gimmicks": [
+    "walls"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-05-27",
+   "gimmicks": [
+    "walls"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-05-28",
+   "gimmicks": [
+    "walls"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-05-29",
+   "gimmicks": [
+    "liar"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 1,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-05-30",
+   "gimmicks": [
+    "walls"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-05-31",
+   "gimmicks": [
+    "walls"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-06-01",
+   "gimmicks": [
+    "liar"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 1,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-06-01_weekly_first",
+   "gimmicks": [
+    "wormhole",
+    "locked",
+    "walls"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 1,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 2,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-06-02",
+   "gimmicks": [
+    "walls"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-06-03",
+   "gimmicks": [
+    "wormhole"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 1,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-06-04",
+   "gimmicks": [
+    "walls"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-06-05",
+   "gimmicks": [
+    "wormhole"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 1,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-06-06",
+   "gimmicks": [
+    "walls"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-06-07",
+   "gimmicks": [
+    "mystery"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-06-08",
+   "gimmicks": [
+    "wormhole"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 1,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-06-08_weekly_first",
+   "gimmicks": [
+    "mystery",
+    "sonar",
+    "locked"
+   ],
+   "sonarRequired": 1,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 2,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-06-09",
+   "gimmicks": [
+    "mystery"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-06-10",
+   "gimmicks": [
+    "wormhole"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 1,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-06-11",
+   "gimmicks": [
+    "mirror"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 1,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-06-12",
+   "gimmicks": [
+    "compass"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 1,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-06-13",
+   "gimmicks": [
+    "mirror"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 1,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-06-14",
+   "gimmicks": [
+    "locked"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 1,
+   "lockedNumberCount": 2
+  },
+  {
+   "date": "2026-06-15",
+   "gimmicks": [
+    "compass"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 1,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-06-15_weekly_first",
+   "gimmicks": [
+    "mirror",
+    "locked",
+    "sonar"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 1,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 1,
+   "lockedNumberCount": 1
+  },
+  {
+   "date": "2026-06-16",
+   "gimmicks": [
+    "locked"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 3
+  },
+  {
+   "date": "2026-06-17",
+   "gimmicks": [
+    "mirror"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 1,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-06-18",
+   "gimmicks": [
+    "mirror"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 1,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-06-19",
+   "gimmicks": [
+    "locked"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 2,
+   "lockedNumberCount": 1
+  },
+  {
+   "date": "2026-06-20",
+   "gimmicks": [
+    "locked"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 3
+  },
+  {
+   "date": "2026-06-21",
+   "gimmicks": [
+    "mystery"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-06-22",
+   "gimmicks": [
+    "locked"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 1,
+   "lockedNumberCount": 2
+  },
+  {
+   "date": "2026-06-22_weekly_first",
+   "gimmicks": [
+    "sonar",
+    "wormhole",
+    "walls"
+   ],
+   "sonarRequired": 1,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-06-23",
+   "gimmicks": [
+    "mystery"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-06-24",
+   "gimmicks": [
+    "liar"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 1,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-06-25",
+   "gimmicks": [
+    "mystery"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-06-26",
+   "gimmicks": [
+    "locked"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 1,
+   "lockedNumberCount": 2
+  },
+  {
+   "date": "2026-06-27",
+   "gimmicks": [
+    "mirror"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 1,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-06-28",
+   "gimmicks": [
+    "mystery"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-06-29",
+   "gimmicks": [
+    "sonar"
+   ],
+   "sonarRequired": 1,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-06-29_weekly_first",
+   "gimmicks": [
+    "locked",
+    "liar",
+    "mirror"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 1,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 1,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 3
+  },
+  {
+   "date": "2026-06-30",
+   "gimmicks": [
+    "sonar"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 2,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-07-01",
+   "gimmicks": [
+    "wormhole"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 1,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-07-02",
+   "gimmicks": [
+    "compass"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 1,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-07-03",
+   "gimmicks": [
+    "locked"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 1,
+   "lockedNumberCount": 1
+  },
+  {
+   "date": "2026-07-04",
+   "gimmicks": [
+    "sonar"
+   ],
+   "sonarRequired": 1,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-07-05",
+   "gimmicks": [
+    "sonar"
+   ],
+   "sonarRequired": 1,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-07-06",
+   "gimmicks": [
+    "mystery"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-07-06_weekly_first",
+   "gimmicks": [
+    "mystery",
+    "mirror",
+    "locked"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 1,
+   "lockedNumberCount": 1
+  },
+  {
+   "date": "2026-07-07",
+   "gimmicks": [
+    "liar"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 1,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-07-08",
+   "gimmicks": [
+    "liar"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 1,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-07-09",
+   "gimmicks": [
+    "sonar"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-07-10",
+   "gimmicks": [
+    "compass"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 2,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-07-11",
+   "gimmicks": [
+    "sonar"
+   ],
+   "sonarRequired": 1,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-07-12",
+   "gimmicks": [
+    "liar"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 1,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-07-13",
+   "gimmicks": [
+    "mirror"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 1,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-07-13_weekly_first",
+   "gimmicks": [
+    "mystery",
+    "compass",
+    "locked"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 1,
+   "lockedNumberCount": 2
+  },
+  {
+   "date": "2026-07-14",
+   "gimmicks": [
+    "mirror",
+    "locked"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 1,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 1,
+   "lockedNumberCount": 1
+  },
+  {
+   "date": "2026-07-15",
+   "gimmicks": [
+    "locked"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 3
+  },
+  {
+   "date": "2026-07-16",
+   "gimmicks": [
+    "wormhole"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 1,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-07-17",
+   "gimmicks": [
+    "worm"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-07-18",
+   "gimmicks": [
+    "worm"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-07-19",
+   "gimmicks": [
+    "compass"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 7,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-07-20",
+   "gimmicks": [
+    "compass"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 1,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-07-20_weekly_first",
+   "gimmicks": [
+    "compass",
+    "mystery",
+    "walls"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-07-21",
+   "gimmicks": [
+    "compass"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 1,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-07-22",
+   "gimmicks": [
+    "mirror"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 1,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-07-23",
+   "gimmicks": [
+    "liar"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 1,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-07-24",
+   "gimmicks": [
+    "compass",
+    "locked"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 1,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 1,
+   "lockedNumberCount": 2
+  },
+  {
+   "date": "2026-07-25",
+   "gimmicks": [
+    "worm"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-07-26",
+   "gimmicks": [
+    "worm"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-07-27",
+   "gimmicks": [
+    "sonar"
+   ],
+   "sonarRequired": 1,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-07-27_weekly_first",
+   "gimmicks": [
+    "liar",
+    "sonar",
+    "locked"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 2
+  },
+  {
+   "date": "2026-07-28",
+   "gimmicks": [
+    "worm"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-07-29",
+   "gimmicks": [
+    "worm"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-07-30",
+   "gimmicks": [
+    "worm"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-07-31",
+   "gimmicks": [
+    "liar"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 1,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-08-01",
+   "gimmicks": [
+    "worm"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-08-02",
+   "gimmicks": [
+    "mystery"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-08-03",
+   "gimmicks": [],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-08-03_weekly_first",
+   "gimmicks": [
+    "wormhole",
+    "locked",
+    "compass"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 1,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 1,
+   "lockedNumberCount": 1
+  },
+  {
+   "date": "2026-08-04",
+   "gimmicks": [
+    "mystery"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-08-05",
+   "gimmicks": [
+    "worm"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-08-06",
+   "gimmicks": [
+    "mirror"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 1,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  }
+ ]
+}

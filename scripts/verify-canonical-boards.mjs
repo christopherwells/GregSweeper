@@ -104,7 +104,10 @@ function isSolverDerived(key) {
 // BUMP THIS in the same commit as any new feature key. Forgetting it turns the
 // nightly red for up to a week on legitimate boards — loud and self-announcing,
 // which is the safe direction to fail, but it is the maintenance this costs.
-const FEATURES_EPOCH = '2026-07-23';   // tilingType; clueShare* 07-18; wormLoad 07-16
+// Exported so the vintage-vs-lying tests anchor to the LIVE epoch rather
+// than the clock — a bump here must never break the pin that post-epoch
+// omission hard-fails.
+export const FEATURES_EPOCH = '2026-08-02';   // contribution keys + locked split (ship buffer); tilingType 07-23; clueShare* 07-18
 const FEATURES_EPOCH_MS = Date.parse(`${FEATURES_EPOCH}T00:00:00Z`);
 
 /**
@@ -221,6 +224,10 @@ export function verifyMetaAgainstBoard(raw, meta, date = null) {
     // move budget both derive from it)
     { board: d.board, rows: d.rows, cols: d.cols, totalMines: d.totalMines, activeGimmicks: d.activeGimmicks, rngSeed: d.rngSeed || '' },
     check,
+    // The contribution keys recompute from the same stored opener the
+    // certification check above uses. They are solver-derived, so a stored
+    // value that drifts after a solver change WARNS rather than fails.
+    { contributionOpener: { row: fr, col: fc } },
   );
   const reasons = [];
   const warnings = [];

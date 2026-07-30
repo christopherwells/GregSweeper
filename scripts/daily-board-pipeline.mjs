@@ -217,5 +217,9 @@ export function buildCandidateFeatures(cand) {
   return computeDailyFeatures(
     { board: cand.board, rows: cand.rows, cols: cand.cols, totalMines: cand.totalMines, activeGimmicks: cand.activeGimmicks, rngSeed: cand.seed },
     cand.check,
+    // Winner-only (this feeds the dailyMeta write, never the per-candidate
+    // scoring pass), so the contribution strip-solves are paid once per date.
+    // Same center opener the pipeline certifies from.
+    { contributionOpener: { row: Math.floor(cand.rows / 2), col: Math.floor(cand.cols / 2) } },
   );
 }

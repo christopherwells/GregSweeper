@@ -21,8 +21,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const { computeDailyFeatures, SOLVER_DERIVED_FEATURE_KEYS } =
+const { computeDailyFeatures, SOLVER_DERIVED_FEATURE_KEYS, RESULT_DRIVEN_FEATURE_KEYS } =
   await import('../src/logic/dailyFeatures.js');
+const { CONTRIBUTION_FEATURE_KEYS } = await import('../src/logic/boardSolver.js');
 const { deserializeBoard } = await import('../src/firebase/dailyBoardSync.js');
 
 const dailyRaw = JSON.parse(readFileSync(new URL('./fixtures/dailyBoard-2026-06-14.json', import.meta.url), 'utf8'));
@@ -50,25 +51,55 @@ const SOLVER_B = {
   remainingUnknowns: 29, techniqueLevel: 3,
 };
 
-test('REGRESSION #180: exactly the tagged keys move when the solver verdict changes', () => {
+test('REGRESSION #180: exactly the result-driven keys move when the solver verdict changes', () => {
   const a = computeDailyFeatures(stateFor(dailyRaw), SOLVER_A);
   const b = computeDailyFeatures(stateFor(dailyRaw), SOLVER_B);
 
   const moved = Object.keys(b).filter((k) => a[k] !== b[k]).sort();
-  const tagged = [...SOLVER_DERIVED_FEATURE_KEYS].sort();
+  const tagged = [...RESULT_DRIVEN_FEATURE_KEYS].sort();
 
   // Both directions matter, and they catch opposite bugs. A tagged key that
   // does NOT move is a dead name — the #180 defect exactly, a guard that
   // cannot fire. An untagged key that DOES move would be silently warned
   // when the sweep should be failing on it.
+  //
+  // The CONTRIBUTION keys are the second solver-derived sub-class and are
+  // deliberately absent from this differential: they are a function of the
+  // solver's CODE (their own strip-solves), not of the solverResult argument,
+  // so varying the result object cannot move them. Their handle is the
+  // opener option, pinned below.
   assert.deepEqual(moved, tagged,
-    'the keys that follow the solver must be exactly SOLVER_DERIVED_FEATURE_KEYS');
+    'the keys that follow the solverResult must be exactly RESULT_DRIVEN_FEATURE_KEYS');
+});
+
+test('SOLVER_DERIVED is the two sub-classes, whole and disjoint', () => {
+  assert.deepEqual(
+    [...SOLVER_DERIVED_FEATURE_KEYS].sort(),
+    [...RESULT_DRIVEN_FEATURE_KEYS, ...CONTRIBUTION_FEATURE_KEYS].sort(),
+    'the sweep-facing tag list must be exactly result-driven + contribution');
+  const overlap = RESULT_DRIVEN_FEATURE_KEYS.filter((k) => CONTRIBUTION_FEATURE_KEYS.includes(k));
+  assert.deepEqual(overlap, [], 'the sub-classes must not share keys');
+});
+
+test('contribution keys are emitted exactly when the opener is passed', () => {
+  const s = stateFor(dailyRaw);
+  const opener = { row: Math.floor(s.rows / 2), col: Math.floor(s.cols / 2) };
+  const withOpener = computeDailyFeatures(stateFor(dailyRaw), SOLVER_A, { contributionOpener: opener });
+  const without = computeDailyFeatures(stateFor(dailyRaw), SOLVER_A);
+  for (const key of CONTRIBUTION_FEATURE_KEYS) {
+    assert.ok(key in withOpener, `${key} must be emitted when the opener is passed`);
+    assert.ok(!(key in without),
+      `${key} must be OMITTED without an opener — candidate-loop vectors never carry a half-measured zero`);
+  }
 });
 
 test('REGRESSION #180: every tagged key is actually emitted by computeDailyFeatures', () => {
   // The literal #180 failure: a name in the list that the producer never
   // emits matches nothing, so the guard it stands for silently does not exist.
-  const emitted = computeDailyFeatures(stateFor(dailyRaw), SOLVER_B);
+  const s = stateFor(dailyRaw);
+  const emitted = computeDailyFeatures(stateFor(dailyRaw), SOLVER_B, {
+    contributionOpener: { row: Math.floor(s.rows / 2), col: Math.floor(s.cols / 2) },
+  });
   for (const key of SOLVER_DERIVED_FEATURE_KEYS) {
     assert.ok(key in emitted, `SOLVER_DERIVED_FEATURE_KEYS names "${key}", which is never emitted`);
   }

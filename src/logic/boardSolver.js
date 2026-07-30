@@ -600,6 +600,83 @@ export function gradeGimmickContribution(board, rows, cols, safeRow, safeCol, ty
   return { tier: 'decorative' };
 }
 
+// ── Contribution features (instrument-first, 2026-07-30) ─────────────
+//
+// The par model's gimmick features are raw cell counts, and force-injection
+// holds those nearly constant (every compass daily ships exactly 3 compass
+// cells) — so within a gimmick type, the count carries no difficulty signal
+// at all. Meanwhile the strip-and-resolve analysis above already computes the
+// counterfactual that DOES vary — what the board would cost without the
+// gimmick — and throws it away after the accept/reject decision. These
+// features keep it: per testable type, was the gimmick REQUIRED (board
+// unsolvable without its information), and if not, how many deduction clicks
+// did it SAVE. Measured 2026-07-30 across all shipped compass dailies: the
+// one 7-click-shortcut board was the fastest day on record vs par (0.39×)
+// while required-grade boards dominate the slow tail — the axis exists and
+// no stored feature could see it (audit under issue-era notes; Christopher's
+// hypothesis).
+//
+// clicksSaved is UNDEFINED on a required board (the stripped solve never
+// finishes), so it is reported 0 there and the Required flag carries that
+// case — a fit must read the pair jointly, never clicksSaved alone. There is
+// deliberately no technique-delta output (Christopher's ruling, 2026-07-30).
+//
+// These keys feed dailyMeta + the R refit's SECONDARY contribution fit only
+// (the clueShare discipline): nothing here enters PAR_MODEL until it earns
+// out, and no selection path scores on them.
+export const CONTRIBUTION_FEATURE_KEYS = Object.freeze(
+  TESTABLE_GIMMICK_TYPES.flatMap((g) => [`${g}Required`, `${g}ClicksSaved`]),
+);
+
+/**
+ * Compute the per-type contribution features for a board, from the same
+ * opener and under the same gating contract (`board._gatedCert`) as the
+ * certified solve. Always returns ALL keys (zeros for absent types), so the
+ * feature vector's shape is stable.
+ *
+ * Cost: one baseline solve plus one strip-solve per testable type present —
+ * the same bill the load-bearing filter already pays per accepted board.
+ *
+ * @param {Array<Array<Object>>} board
+ * @param {number} rows
+ * @param {number} cols
+ * @param {number} safeRow  first-click row (the certified opener)
+ * @param {number} safeCol  first-click col
+ * @param {string[]} activeGimmicks
+ * @param {Array} [preNeighborCache]
+ * @returns {Object} { sonarRequired, sonarClicksSaved, compassRequired, ... }
+ */
+export function computeContributionFeatures(board, rows, cols, safeRow, safeCol, activeGimmicks, preNeighborCache) {
+  const out = {};
+  for (const g of TESTABLE_GIMMICK_TYPES) {
+    out[`${g}Required`] = 0;
+    out[`${g}ClicksSaved`] = 0;
+  }
+  const present = (Array.isArray(activeGimmicks) ? activeGimmicks : [])
+    .filter((g) => TESTABLE_GIMMICK_TYPES.includes(g));
+  if (present.length === 0) return out;
+
+  const nbrCache = preNeighborCache || buildNeighborCache(board, rows, cols);
+  const withCheck = isBoardSolvable(board, rows, cols, safeRow, safeCol, nbrCache);
+  if (!withCheck.solvable && withCheck.remainingUnknowns > 0) {
+    // Unsolvable baseline — the caller should never hand us one (every
+    // shipped board certifies), and comparing strips against it would
+    // report noise as measurement. All-zeros is the honest null.
+    return out;
+  }
+  for (const g of present) {
+    const stripped = isBoardSolvable(board, rows, cols, safeRow, safeCol, nbrCache, {
+      stripGimmicks: [g],
+    });
+    if (!stripped.solvable && stripped.remainingUnknowns > 0) {
+      out[`${g}Required`] = 1;
+      continue;
+    }
+    out[`${g}ClicksSaved`] = Math.max(0, (stripped.totalClicks ?? 0) - (withCheck.totalClicks ?? 0));
+  }
+  return out;
+}
+
 /**
  * Returns the subset of activeGimmicks that are decorative on this board —
  * i.e. stripping them changes nothing meaningful (board still solvable at
