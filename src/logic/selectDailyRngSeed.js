@@ -11,18 +11,19 @@
 // the residual of a confounded feature against its confounder rather
 // than any feature's level.
 //
-// Scoring and the slot→mission mapping both live in experimentDesign.js
-// (missionCandidateScore / resolveMissionForSlot). They are NOT
-// reimplemented here: this file and scripts/daily-board-pipeline.mjs are
-// a mirror pair that must pick the same seed, and the slot arithmetic
-// having already drifted once across exactly that pair is why both now
-// delegate. The candidate with the highest score is the daily.
+// Scoring, the slot→mission mapping, AND the winner-pick all live in
+// experimentDesign.js (missionCandidateScore / resolveMissionForSlot /
+// selectMissionWinner). They are NOT reimplemented here: this file and
+// scripts/daily-board-pipeline.mjs are a mirror pair that must pick the
+// same seed, and the slot arithmetic having already drifted once across
+// exactly that pair is why all three now delegate.
 //
-// Coverage slots' deficit weights are heavier than the primary slot's
-// fixed low weight, so coverage missions win most days; the primary
-// slot only wins when its target's cell count is high enough to
-// overcome the weight gap — roughly 10% of the time when the coverage
-// list is well-populated.
+// The winner is drawn by a date-seeded weighted lottery over the scored
+// slots (P ∝ score), not an argmax — deficit weights set each mission's
+// FREQUENCY, so the most undersampled gimmick is the likeliest daily but
+// never a monoculture (the argmax served worm 10 of 12 days straight,
+// 2026-07-30). Decorrelation slots keep argmax supremacy; see
+// selectMissionWinner for the full rationale.
 //
 // Called from two places: gameActions.js (the actual play flow) and
 // main.js (the on-demand par calculation for the leaderboard when the
@@ -47,12 +48,11 @@ import {
 } from './difficulty.js';
 import {
   candidateSeed, getCandidateCount, getTargetGimmickName, getMissionForSlot,
-  missionCandidateScore,
+  missionCandidateScore, selectMissionWinner,
 } from './experimentDesign.js';
 
 export function selectDailyRngSeed(dateString) {
-  let bestSeed = null;
-  let bestScore = -Infinity;
+  const scored = [];
 
   // Ordinary days evaluate CANDIDATE_COUNT slots; a decorrelation day adds a
   // block of decorrelation slots past the coverage list, since selection depth
@@ -101,14 +101,14 @@ export function selectDailyRngSeed(dateString) {
     );
     const score = missionCandidateScore(mission, features);
     if (score === null) continue;
-    if (score > bestScore) {
-      bestScore = score;
-      bestSeed = seed;
-    }
+    scored.push({ score, mission, seed });
   }
 
-  // If every candidate was unsolvable on first-pass gimmicks (extremely
-  // rare), fall back to the plain dateString — the main generation path
-  // has its own retry loop that'll sort it out.
-  return bestSeed || dateString;
+  // Date-seeded weighted lottery over the scored slots (decorrelation
+  // keeps argmax supremacy) — see selectMissionWinner. If every candidate
+  // was unsolvable on first-pass gimmicks (extremely rare), fall back to
+  // the plain dateString — the main generation path has its own retry
+  // loop that'll sort it out.
+  const winner = selectMissionWinner(scored, dateString);
+  return winner ? winner.seed : dateString;
 }
