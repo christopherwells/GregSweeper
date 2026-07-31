@@ -17,6 +17,7 @@
 import { PAR_MODEL, PAR_MODEL_TIMED } from './difficulty.js';
 import { wormLoadFor } from './worms.js';
 import { buildNeighborCache } from './adjacency.js';
+import { computeContributionFeatures, CONTRIBUTION_FEATURE_KEYS } from './boardSolver.js';
 
 // ── Clue-digit shares ─────────────────────────────────
 //
@@ -113,7 +114,7 @@ export function clueShares(board, rows, cols) {
  * precompute horizon is not read as tampering) and `NEW_STRUCTURAL_FEATURES`
  * in scripts/refit-par-model.R (so older rows get a 0 rather than an NA).
  */
-export const SOLVER_DERIVED_FEATURE_KEYS = Object.freeze([
+export const RESULT_DRIVEN_FEATURE_KEYS = Object.freeze([
   'passAMoves',
   'canonicalSubsetMoves',
   'genericSubsetMoves',
@@ -124,15 +125,41 @@ export const SOLVER_DERIVED_FEATURE_KEYS = Object.freeze([
   'techniqueLevel',
 ]);
 
+// Solver-derived splits into two sub-classes with different test handles but
+// the same sweep treatment (warn on drift, never hard-fail):
+//  - RESULT_DRIVEN: read straight off the passed solverResult — the
+//    differential test varies the result object and watches them move.
+//  - CONTRIBUTION: computed by their OWN strip-solves from the opener passed
+//    via opts (see computeDailyFeatures below) — a function of the solver's
+//    CODE, not of the solverResult argument, so they drift exactly when a
+//    solver change lands mid-horizon, which is the sweep's warn case.
+export const SOLVER_DERIVED_FEATURE_KEYS = Object.freeze([
+  ...RESULT_DRIVEN_FEATURE_KEYS,
+  ...CONTRIBUTION_FEATURE_KEYS,
+]);
+
 /**
  * Build the feature vector for a daily board at the moment it has been
  * generated, gimmicks applied, and the solver has confirmed solvability.
  *
  * @param {Object} state          live game state (after board/gimmicks set)
  * @param {Object} solverResult   return value of isBoardSolvable(...)
+ * @param {Object} [opts]
+ * @param {{row: number, col: number}} [opts.contributionOpener]
+ *   When present, the certified opener the CONTRIBUTION features
+ *   (`<g>Required` / `<g>ClicksSaved`, see boardSolver's
+ *   computeContributionFeatures) are strip-solved from, and the ten keys are
+ *   emitted; absent, they are OMITTED entirely (like tilingType). The split
+ *   is deliberate: the strip solves cost one extra solver run per testable
+ *   type, so the candidate-scoring hot loops (selectDailyRngSeed, the
+ *   pipeline's per-candidate pass) never pay it — only the sites that WRITE
+ *   a features record do (final daily/weekly boards, the meta writers, the
+ *   nightly verify sweep). A candidate vector therefore lacks the keys,
+ *   which is safe: no mission scores on them, and missionCandidateScore
+ *   reads only its own target key.
  * @returns {Object}              plain data object, safe to JSON-serialise
  */
-export function computeDailyFeatures(state, solverResult) {
+export function computeDailyFeatures(state, solverResult, opts = {}) {
   const board = state.board;
   const rows = state.rows;
   const cols = state.cols;
@@ -148,6 +175,7 @@ export function computeDailyFeatures(state, solverResult) {
   let mysteryCellCount = 0;
   let liarCellCount = 0;
   let lockedCellCount = 0;
+  let lockedMineCount = 0;
   let wormholeCellCount = 0;
   let mirrorCellCount = 0;
   let sonarCellCount = 0;
@@ -159,7 +187,16 @@ export function computeDailyFeatures(state, solverResult) {
       const cell = board[r][c];
       if (cell.isMystery) mysteryCellCount++;
       if (cell.isLiar) liarCellCount++;
-      if (cell.isLocked) lockedCellCount++;
+      if (cell.isLocked) {
+        lockedCellCount++;
+        // What is UNDER the lock changes the work: a locked number is
+        // delayed information, a locked mine is a cell the player must
+        // PROVE is a mine and never open (applyLocked places both —
+        // "Allow mines AND numbered cells to be locked"). The split is
+        // Christopher's observation, 2026-07-30; lockedNumberCount is
+        // derived below so the pair always sums to lockedCellCount.
+        if (cell.isMine) lockedMineCount++;
+      }
       if (cell.isWormhole) wormholeCellCount++;
       if (cell.mirrorPair) mirrorCellCount++;
       if (cell.isSonar) sonarCellCount++;
@@ -167,6 +204,7 @@ export function computeDailyFeatures(state, solverResult) {
       if (cell.isWormEgg) wormEggs.push({ r, c });
     }
   }
+  const lockedNumberCount = lockedCellCount - lockedMineCount;
 
   // Worm exposure: total pre-programmed segment-moves in hundreds (see
   // wormLoadFor). Egg count alone can't carry the burden now that the
@@ -298,6 +336,8 @@ export function computeDailyFeatures(state, solverResult) {
     mysteryCellCount,
     liarCellCount,
     lockedCellCount,
+    lockedMineCount,
+    lockedNumberCount,
     wormholePairCount,
     mirrorPairCount,
     sonarCellCount,
@@ -330,6 +370,20 @@ export function computeDailyFeatures(state, solverResult) {
     // at selection time, and so the shares land in dailyMeta alongside every
     // other feature.
     ...clueShares(board, rows, cols),
+
+    // Contribution features (`<g>Required` / `<g>ClicksSaved`) — the
+    // counterfactual the load-bearing filter computes and discards, kept as
+    // data. Emitted only when the caller passes the certified opener; see the
+    // opts doc above for which call sites do and why. Fed to the R refit's
+    // SECONDARY contribution fit only — never a PAR_MODEL term until it earns
+    // out (the clueShare discipline).
+    ...(opts.contributionOpener
+      ? computeContributionFeatures(
+          board, rows, cols,
+          opts.contributionOpener.row, opts.contributionOpener.col,
+          state.activeGimmicks, neighborCache,
+        )
+      : {}),
   };
 }
 

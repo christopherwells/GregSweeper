@@ -181,6 +181,10 @@ async function writeWeeklyMeta(weekStart, idToken, features) {
     const features = computeDailyFeatures(
       { board: cand.board, rows: cand.rows, cols: cand.cols, totalMines: cand.totalMines, activeGimmicks: cand.activeGimmicks, rngSeed: cand.rngSeed },
       cand.check,
+      // Weekly boards stack 2-4 modifiers, so the contribution features are
+      // at their most informative here; same center opener the board
+      // certifies from.
+      { contributionOpener: { row: Math.floor(cand.rows / 2), col: Math.floor(cand.cols / 2) } },
     );
     await writeWeeklyMeta(weekStart, idToken, features);
   } finally {

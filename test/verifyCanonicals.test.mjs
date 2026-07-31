@@ -7,7 +7,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const { verifyCanonicalPayload, verifyCruxPayload, verifyMetaAgainstBoard } =
+const { verifyCanonicalPayload, verifyCruxPayload, verifyMetaAgainstBoard, FEATURES_EPOCH } =
   await import('../scripts/verify-canonical-boards.mjs');
 const { deserializeBoard } = await import('../src/firebase/dailyBoardSync.js');
 const { isBoardSolvable } = await import('../src/logic/boardSolver.js');
@@ -24,6 +24,10 @@ function recomputeFeatures(raw) {
   return computeDailyFeatures(
     { board: d.board, rows: d.rows, cols: d.cols, totalMines: d.totalMines, activeGimmicks: d.activeGimmicks, rngSeed: d.rngSeed || '' },
     check,
+    // The sweep passes the stored opener, so the mirror must too — without
+    // it the "stored" meta lacks the contribution keys the recompute now
+    // emits, and every fixture reads as lying-by-omission.
+    { contributionOpener: { row: fr, col: fc } },
   );
 }
 
@@ -137,9 +141,13 @@ test('REGRESSION #180: a meta written BEFORE a feature shipped is vintage, not t
 
   // The other side of the same rule: a meta written by a pipeline that KNEW the
   // key is lying by omission, which is how a poisoner would otherwise zero a
-  // feature without ever stating a false number.
+  // feature without ever stating a false number. "Knew" means written after
+  // the LIVE epoch — anchored to the sweep's own export, because the epoch
+  // legitimately sits a few days in the FUTURE right after a new feature key
+  // ships (the deploy buffer), and a clock-anchored writtenAt would read as
+  // vintage exactly then.
   const recent = verifyMetaAgainstBoard(dailyRaw, {
-    features: withoutShare, writtenAt: Date.now(),
+    features: withoutShare, writtenAt: Date.parse(`${FEATURES_EPOCH}T00:00:00Z`) + 86400000,
   });
   assert.equal(recent.ok, false, 'omitting a key a recent pipeline knew must hard-fail');
   assert.match(recent.reasons.join(' '), /features\.clueShare2/);
