@@ -373,8 +373,20 @@ export function parameterTable(history) {
   // (reachable when a stale cached history ends before the epoch).
   const epoch = currentEpoch();
   const liveRows = rows.filter(r => r.date >= epoch);
-  if (liveRows.length === 0) return [];
-  const last = liveRows[liveRows.length - 1];
+  // Walk BACK to the most recent row that carries a real fit. A
+  // diagnostics-rejected refit appends a thin fallback row with an EMPTY
+  // candidates list (method seed-residuals — the safety gate keeping the
+  // previous model), and because dedupeHistory keeps the LAST row per date,
+  // one rejected re-run can shadow the same day's good fit. Reading that row
+  // blanked the whole parameter ledger the first night it happened
+  // (2026-08-01, the rejected run after the per-shape rework): the table
+  // must show the last real fit, not an empty page for a night the gate did
+  // its job.
+  let last = null;
+  for (let i = liveRows.length - 1; i >= 0; i--) {
+    if (liveRows[i].candidates.length > 0) { last = liveRows[i]; break; }
+  }
+  if (!last) return [];
   const out = [];
   for (const c of last.candidates) {
     if (!c || typeof c.feature !== 'string' || typeof c.mean !== 'number' || !(c.sd > 0)) continue;
