@@ -76,8 +76,12 @@ for (const { key, raw } of boards) {
     continue;
   }
   const { board, rows, cols } = parsed;
-  const fr = Math.floor(rows / 2);
-  const fc = Math.floor(cols / 2);
+  // The certified opener deserializeBoard returns (stored firstClick, else the
+  // container centre) — the #195/#201 rule. Identical on every rectangular
+  // canonical; on a tiling date the hand-derived centre prices from a solve
+  // that stalls at click 1.
+  const fr = Math.floor(parsed.firstClick / cols);
+  const fc = parsed.firstClick % cols;
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       if (!board[r][c].isMine) continue;

@@ -1950,6 +1950,31 @@ if (classicObjectsToggle) {
 
 // ── Init ───────────────────────────────────────────────
 
+// Background-resume the mode slot's save behind the TITLE SCREEN, landing it
+// in the same paused state Home produces (issue #200 — the #197 leak through
+// the boot door). Three routing branches below show the title and then warm
+// the saved game up behind it so entering is instant; tryResumeGame ends in
+// the deliberately UNGATED startTimer (every other resume site runs with
+// #app visible and must tick immediately), so the boot resume left the LCD
+// counting behind the title from boot until the player entered the game —
+// title minutes charged to the challenge clock, and the worm heartbeat
+// burning movesLeft the player never saw (the realized dose the refit fits
+// on). Pause right AFTER the resume rather than gating startTimer:
+// showTitleScreen has already run at every caller, so #app is hidden and
+// resumeTimer's #197 gate holds the pause through title taps and tab
+// returns; entering the game re-runs the resume with #app visible
+// (hideTitleScreen → switchMode → tryResumeGame → startTimer +
+// rearmPlateTimers), waking the clock from the frozen value. Plates are
+// deliberately NOT re-armed here, unlike the hideTitleScreen resume sites:
+// their deadline is raw wall-clock with no pause, so a plate armed behind
+// the title detonates a game the player cannot see (the #192 incident
+// shape) — showTitleScreen already tore them down, and the entry path
+// re-arms with a fresh countdown, the documented lenient direction.
+async function resumeSaveBehindTitle() {
+  if (!tryResumeGame()) await newGame();
+  else pauseTimer();
+}
+
 async function init() {
   preloadSprites();
   startGregMascot($('#title-greg-mascot')); // inject + animate the header Greg before any routing
@@ -2208,7 +2233,7 @@ async function init() {
       // Mirror the weekly already-played branch: title screen + toast.
       showTitleScreen();
       showToast("Already done for today. Weekly's open if you want more.");
-      if (!tryResumeGame()) await newGame(); else rearmPlateTimers();
+      await resumeSaveBehindTitle();
     } else {
       state.gameMode = 'daily';
       if (customSeed) {
@@ -2227,7 +2252,7 @@ async function init() {
       // Already played today — show the title screen with the weekly
       // card surfacing the "Played today" status. Don't auto-launch.
       showTitleScreen();
-      if (!tryResumeGame()) await newGame(); else rearmPlateTimers();
+      await resumeSaveBehindTitle();
     } else {
       // gameMode routes tryResumeGame to the weekly save slot; the
       // weekStart/dayIndex identity is clock-derived inside newGame.
@@ -2238,8 +2263,8 @@ async function init() {
   } else {
     // Returning user — show title screen
     showTitleScreen();
-    // Pre-load the game in background so it's ready
-    if (!tryResumeGame()) await newGame(); else rearmPlateTimers();
+    // Pre-load the game in background so it's ready — paused, not ticking
+    await resumeSaveBehindTitle();
   }
 
   // All routing settled and the appropriate UI surface (tutorial /
