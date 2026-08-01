@@ -324,8 +324,20 @@ function _isRegionCell(row, col) {
   const cell = state.board?.[row]?.[col];
   return !!(cell && cell.isRevealed && (cell.isSonar || cell.isCompass));
 }
+// A pin outlives the game it was set in (nothing clears it on newGame), and on
+// the NEXT board those coordinates are just some cell — which could legitimately
+// become a revealed sonar later, at which point the hover fallback would light a
+// region the player never pinned. Dropping a pin the moment its cell stops
+// being a region cell keeps the pin's meaning tied to the click that set it.
+function _pinnedRegion() {
+  if (_pinnedRegionCell && !_isRegionCell(_pinnedRegionCell.row, _pinnedRegionCell.col)) {
+    _pinnedRegionCell = null;
+  }
+  return _pinnedRegionCell;
+}
 function _toggleRegionPin(row, col) {
-  if (_pinnedRegionCell && _pinnedRegionCell.row === row && _pinnedRegionCell.col === col) {
+  const pinned = _pinnedRegion();
+  if (pinned && pinned.row === row && pinned.col === col) {
     _pinnedRegionCell = null;
     clearGimmickRegion();
   } else {
@@ -339,12 +351,14 @@ if (window.matchMedia && window.matchMedia('(hover: hover)').matches) {
     if (!cellEl) return;
     const row = parseInt(cellEl.dataset.row, 10);
     const col = parseInt(cellEl.dataset.col, 10);
+    const pinned = _pinnedRegion();
     if (_isRegionCell(row, col)) showGimmickRegion(row, col);
-    else if (_pinnedRegionCell) showGimmickRegion(_pinnedRegionCell.row, _pinnedRegionCell.col);
+    else if (pinned) showGimmickRegion(pinned.row, pinned.col);
     else clearGimmickRegion();
   });
   boardEl.addEventListener('mouseleave', () => {
-    if (_pinnedRegionCell) showGimmickRegion(_pinnedRegionCell.row, _pinnedRegionCell.col);
+    const pinned = _pinnedRegion();
+    if (pinned) showGimmickRegion(pinned.row, pinned.col);
     else clearGimmickRegion();
   });
 }

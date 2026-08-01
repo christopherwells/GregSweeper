@@ -164,6 +164,14 @@ export function renderBoard() {
   // the next theme switch — and so the previous particle loops get torn down
   // rather than firing forever into a detached node.
   applyThemeEffects(document.documentElement.getAttribute('data-theme') || 'classic');
+
+  // The rebuild also destroyed any live sonar/compass region highlight, which
+  // must only die by clearGimmickRegion (mid-game rebuilds: resume, theme
+  // switch). Re-deriving through showGimmickRegion rather than repainting the
+  // cached set is deliberate — it re-checks the cell against the CURRENT board,
+  // so a highlight carried from a PREVIOUS game (its cell no longer a revealed
+  // sonar/compass) clears itself instead of lighting a region nobody asked for.
+  if (_regionShown) showGimmickRegion(_regionShown.row, _regionShown.col);
 }
 
 // ── Tiling layout ────────────────────────────────────
@@ -662,6 +670,10 @@ export function updateCell(r, c) {
     }
   }
   // Wall overlays rendered separately by renderWallOverlays()
+  // An active sonar/compass region highlight survives this rebuild — every
+  // branch above assigns className wholesale, which is what used to strip the
+  // highlight from a cell the moment it was flagged.
+  _reapplyRegionClasses(cellEl, r * state.cols + c);
   // Update ARIA label for screen readers
   cellEl.setAttribute('aria-label', getCellAriaLabel(cell, r, c));
 }
@@ -787,7 +799,9 @@ export function gimmickRegionCells(row, col) {
   return null;
 }
 
-let _regionShown = null; // { row, col } currently highlighted, else null
+let _regionShown = null;     // { row, col } currently highlighted, else null
+let _regionCellSet = null;   // Set<flat index> of the shown region's members
+let _regionSourceIdx = null; // flat index of the sonar/compass cell itself
 
 /** Highlight the region a sonar/compass cell counts (no-op for other cells). */
 export function showGimmickRegion(row, col) {
@@ -801,6 +815,15 @@ export function showGimmickRegion(row, col) {
   const src = boardEl.children[row * state.cols + col];
   if (src && src.classList && src.classList.contains('cell')) src.classList.add('region-source');
   _regionShown = { row, col };
+  // Membership is CACHED so updateCell can restore the class in O(1). The
+  // classes live on cell elements, and every targeted re-render rebuilds
+  // className wholesale — so before this cache existed, flagging a cell inside
+  // a pinned region quietly stripped the highlight from exactly the cell the
+  // player was counting (the flag-counting use is the point of pinning;
+  // Christopher's report, 2026-08-01). The highlight must outlive every
+  // re-render and die only by clearGimmickRegion.
+  _regionCellSet = new Set(region);
+  _regionSourceIdx = row * state.cols + col;
 }
 
 /** Remove any active region highlight. */
@@ -812,6 +835,20 @@ export function clearGimmickRegion() {
     el.classList.remove('region-highlight', 'region-source');
   }
   _regionShown = null;
+  _regionCellSet = null;
+  _regionSourceIdx = null;
+}
+
+/**
+ * Restore a live region highlight onto one just-rebuilt cell element. Called
+ * from updateCell's shared tail, so every path that rewrites a cell's className
+ * (flag, unflag, reveal, strike, re-fog) puts the highlight back before the
+ * frame paints.
+ */
+function _reapplyRegionClasses(cellEl, flatIdx) {
+  if (!_regionShown) return;
+  if (_regionCellSet.has(flatIdx)) cellEl.classList.add('region-highlight');
+  if (flatIdx === _regionSourceIdx) cellEl.classList.add('region-source');
 }
 
 /** The cell whose region is currently highlighted, or null. */
