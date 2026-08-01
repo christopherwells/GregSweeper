@@ -15795,5 +15795,19 @@
         "sd": 0.0357
       }
     ]
+  },
+  {
+    "date": "2026-08-01",
+    "updatedAt": "2026-08-01T21:00:26Z",
+    "method": "seed-residuals",
+    "n_scores": 348,
+    "n_dates": 145,
+    "n_players": 5,
+    "n_eligible": 4,
+    "rmse": 55.82,
+    "bias": 9.35,
+    "diagnostics": "max Rhat = 1.006, min ESS = 464, divergent = 14/4000",
+    "target": "wormholePairCount",
+    "candidates": []
   }
 ]
