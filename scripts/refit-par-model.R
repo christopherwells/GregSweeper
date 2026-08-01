@@ -367,8 +367,8 @@ PRIOR_MEANS <- list(
   # is day-of par). NOTE: archivePlay's lognormal prior has support only above
   # zero, so this asserts a NON-NEGATIVE offset; revisit the prior family if
   # pooled archive plays turn out systematically faster once real data lands.
-  # (Non-negativity used to ride the class-wide lb = 0 bound as well; that
-  # blanket is gone — see build_priors — and the support now bounds alone.)
+  # (Non-negativity also rides the class bound — the flat path's class-wide
+  # lb = 0 blanket, or the base nlpar's bound on the nl path; see build_priors.)
   archivePlay          = 2.0,
   zeroClusterCount     = 1.0
   # The old per-shape intercept offsets (shape488..shapeDeltoidal, seeded 0.05
@@ -668,80 +668,124 @@ compute_log_ols_seeds <- function(df_fit, fixed_names) {
   out
 }
 
-# Build the brms prior list. Per-coefficient priors on the BASE model terms
-# are lognormal (positive support, median = the OLS-seeded log-multiplier) —
-# this does the regularization. Shape DEVIATION terms (`deviation_names`) are
-# SIGNED — a lattice can make a feature cheaper as well as dearer — so each
-# gets normal(0, INTERACTION_PRIOR_SD) centered at ZERO: that center is the
-# "priors informed by the square fit" mechanism, since at zero data every
-# deviation posterior sits at 0 and the shape's equation IS the square's.
-# The Intercept gets a plain normal. Residual and handicap SD priors are on
-# the LOG scale (times are lognormal), NOT the old seconds scale.
+# Build the brms prior list — the geometry-critical half of the TWO-PATH fit
+# design (path selection lives in the fit block; the paths differ only in how
+# the formula and priors are constructed, everything downstream is shared).
 #
-# The class-wide `set_prior("", class = "b", lb = 0)` blanket that used to
-# open this list is deliberately GONE (2026-08-01). It existed because brms
-# cannot combine `coef` with `lb`, so non-negativity of the per-coef lognormal
-# slopes rode a class-wide bound — but a class bound binds EVERY population
-# effect in class b, and the signed deviations cannot live under it. Removing
-# it is safe for the base coefficients because their lognormal priors have
-# zero density below 0: the support does the bounding, and the bound was
-# belt-and-braces. The one thing the bound also did was transform class b to
-# the positive half-line, which made Stan's default random inits valid — see
-# make_positive_init below for the landmine its removal opens and the fix.
+# FLAT path (`deviation_names` empty — every night until tiling scores exist):
+# per-coefficient lognormals (positive support, median = the OLS-seeded
+# log-multiplier) under the restored class-wide blanket, bit-identical to the
+# construction that fit cleanly for months before PR #203. The blanket looks
+# redundant next to positive-support priors; it is not. The bound is a
+# TRANSFORM statement, support only a density statement: bounded, Stan samples
+# each coefficient through a log transform — smooth unconstrained geometry
+# however close the mass sits to zero — while unbounded, the lognormal density
+# is a HARD WALL at zero in the sampled space, with several OLS-seeded medians
+# (~exp(-6.9) ≈ 0.001) pressed right against it. PR #203 removed the blanket
+# so signed shape deviations could share class b, betting on support-as-bound;
+# the first dispatched run (2026-08-01) was REJECTED — divergent 14/4000
+# (gate 10), 2950/4000 max-treedepth exceedances, min ESS 464 — on the SAME
+# data the bounded setup had fit twelve hours earlier at Rhat 1.007 /
+# ESS 1060 / 0 divergent, with brms itself warning that a lower-bounded prior
+# sat on an unbounded parameter. The blanket may therefore only exist while
+# class b carries NO signed term, which the flat path guarantees by
+# construction (deviations are the only signed terms, and they force the nl
+# path).
+#
+# NL path (`deviation_names` non-empty): bounds in brms attach per parameter
+# CLASS, and a non-linear formula gives each nlpar its OWN class b — the
+# sanctioned way to bound one group of fixed effects and not another. Base
+# terms keep their lognormals plus the class blanket under nlpar = "base"
+# (constrained transform restored); deviations get zero-centered SIGNED
+# normals under nlpar = "dev" with NO bound — a lattice can make a feature
+# cheaper as well as dearer, and the zero center is the "priors informed by
+# the square fit" mechanism (at zero data every deviation posterior sits at 0
+# and the shape's equation IS the square's). With nl = TRUE there is no
+# global Intercept class: the base intercept is an ordinary class-b
+# coefficient (coef = "Intercept", nlpar = "base"), so its normal prior moves
+# there and picks up the class bound — harmless, the log baseline sits at
+# ~log(30) ≈ 3.4, far from zero. The (1|uid) random intercept rides the base
+# nlpar, so its sd prior carries the same tag. sigma is response-level and
+# stays untagged on both paths. Residual and handicap SD priors are on the
+# LOG scale (times are lognormal), NOT the old seconds scale.
 build_priors <- function(means, fixed_names, deviation_names = character(0)) {
+  nl <- length(deviation_names) > 0
   parts <- list()
+  if (!nl) {
+    # Class-wide lower bound: log-multiplier slopes are non-negative (par is
+    # monotonic non-decreasing in every feature) and lognormal requires
+    # positivity. brms can't combine `coef` with `lb`, so the bound rides a
+    # class-wide placeholder and the distributions come through per-coef priors.
+    parts[[length(parts) + 1]] <- set_prior("", class = "b", lb = 0)
+  } else {
+    # Same bound, scoped to the base nlpar's own class b so the signed
+    # deviations in the dev nlpar stay unbounded.
+    parts[[length(parts) + 1]] <- set_prior("", class = "b", nlpar = "base", lb = 0)
+  }
   for (nm in fixed_names) {
+    m <- means[[nm]]
+    if (is.null(m)) stop("Missing prior mean for ", nm)
     if (nm == "Intercept") {
-      m <- means[[nm]]
-      if (is.null(m)) stop("Missing prior mean for ", nm)
-      parts[[length(parts) + 1]] <- set_prior(
-        sprintf("normal(%f, %f)", m, PRIOR_INTERCEPT_SD),
-        class = "Intercept"
-      )
-    } else if (nm %in% deviation_names) {
-      # No means/PRIOR_SIGMAS lookup: a deviation's center is fixed at zero by
-      # design and its width is the one documented INTERACTION_PRIOR_SD.
-      parts[[length(parts) + 1]] <- set_prior(
-        sprintf("normal(0, %f)", INTERACTION_PRIOR_SD),
-        class = "b", coef = nm
-      )
+      parts[[length(parts) + 1]] <- if (nl) {
+        set_prior(sprintf("normal(%f, %f)", m, PRIOR_INTERCEPT_SD),
+                  class = "b", coef = "Intercept", nlpar = "base")
+      } else {
+        set_prior(sprintf("normal(%f, %f)", m, PRIOR_INTERCEPT_SD),
+                  class = "Intercept")
+      }
     } else {
-      m <- means[[nm]]
-      if (is.null(m)) stop("Missing prior mean for ", nm)
       sig <- PRIOR_SIGMAS[[nm]]
       if (is.null(sig)) stop("Missing prior sigma for ", nm)
-      parts[[length(parts) + 1]] <- set_prior(
-        sprintf("lognormal(%f, %f)", log(max(m, PRIOR_MEAN_FLOOR)), sig),
-        class = "b", coef = nm
-      )
+      parts[[length(parts) + 1]] <- if (nl) {
+        set_prior(sprintf("lognormal(%f, %f)", log(max(m, PRIOR_MEAN_FLOOR)), sig),
+                  class = "b", coef = nm, nlpar = "base")
+      } else {
+        set_prior(sprintf("lognormal(%f, %f)", log(max(m, PRIOR_MEAN_FLOOR)), sig),
+                  class = "b", coef = nm)
+      }
     }
+  }
+  for (nm in deviation_names) {
+    # No means/PRIOR_SIGMAS lookup: a deviation's center is fixed at zero by
+    # design and its width is the one documented INTERACTION_PRIOR_SD.
+    parts[[length(parts) + 1]] <- set_prior(
+      sprintf("normal(0, %f)", INTERACTION_PRIOR_SD),
+      class = "b", coef = nm, nlpar = "dev"
+    )
   }
   # Residual SD on the LOG scale (completion-time log-residuals are O(0.1-0.5)).
   parts[[length(parts) + 1]] <- set_prior("normal(0, 1)", class = "sigma")
   # Between-user SD on the LOG scale — weakly informative for a log-scale
   # variance component (real users' k spread sits well within the [0.5, 2] clamp).
-  parts[[length(parts) + 1]] <- set_prior(
-    "student_t(3, 0, 1)", class = "sd", group = "uid"
-  )
+  parts[[length(parts) + 1]] <- if (nl) {
+    set_prior("student_t(3, 0, 1)", class = "sd", group = "uid", nlpar = "base")
+  } else {
+    set_prior("student_t(3, 0, 1)", class = "sd", group = "uid")
+  }
   do.call(c, parts)
 }
 
-# With the class-wide lb = 0 gone, Stan's class-b vector is UNCONSTRAINED even
-# though every base coefficient's lognormal prior has zero density below zero.
-# Stan's default init draws each unconstrained parameter from uniform(-2, 2);
-# an attempt with ANY negative base coefficient evaluates a lognormal at a
-# non-positive value, the log-density is -Inf, and the whole attempt is
-# rejected. With ~14 base coefficients the chance a random attempt lands
-# all-positive is ~2^-14, and Stan gives up after 100 tries — so without this,
-# every fit that relies on lognormal support instead of the bound would die at
-# initialization, every night. Class b is therefore initialized explicitly at
-# small positive values: inside every lognormal's support, and harmless for
-# the signed deviation normals (defined everywhere). Other parameters keep
-# their default random inits — both rstan and cmdstanr accept a partial init
-# list. `n_b` is the number of population-level effects excluding the
-# intercept (brms's `b` vector under the default centered parameterization).
-make_positive_init <- function(n_b) {
-  function() list(b = as.array(runif(n_b, 0.001, 0.05)))
+# ── NL-path name normalization (the extraction boundary) ────────────────
+# On the nl path brms prefixes every population-level name with its nlpar:
+# fixef rows read `base_Intercept`, `base_cellCount`, `dev_shape488_x_...`,
+# and the uid random-intercept slice in ranef is keyed `base_Intercept`. ONE
+# normalization at the extraction boundary strips the prefixes back to the
+# flat names, so new_coefs, shape_dev_summary, earned_shape_devs,
+# apply_par_model and the emitter all see exactly the names they see today —
+# never scattered renames (a bare fixef/ranef read on the nl path would miss
+# every coefficient SOFTLY, through the %||% 0 and %in% lookups, not loudly).
+# On the flat path both helpers are no-ops: no coefficient of ours begins
+# with "base_" or "dev_", so the strip cannot collide.
+strip_nlpar_prefix <- function(x) sub("^(base|dev)_", "", x)
+flat_fixef <- function(f) {
+  fe <- fixef(f)
+  rownames(fe) <- strip_nlpar_prefix(rownames(fe))
+  fe
+}
+flat_ranef_uid <- function(f) {
+  arr <- ranef(f)$uid
+  dimnames(arr)[[3]] <- strip_nlpar_prefix(dimnames(arr)[[3]])
+  arr
 }
 
 # ── Clue-digit buckets (ported from clueHistogram in
@@ -1311,7 +1355,8 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
   }
   # Board shape (per-shape par equations, 2026-08-01): the shape indicator
   # (that shape's intercept deviation — the old offset relocated) and every
-  # shape-by-feature interaction enter the fixed effects under the same
+  # shape-by-feature interaction enter the fit (through the dev nlpar — see
+  # the path selection below) under the same
   # zero-variance gate as archivePlay and wormLoad, applied PER COLUMN. An
   # interaction of a shape is nonzero only on that shape's rows, so per-column
   # gating suffices — and with no tiling rows at all the whole layer collapses
@@ -1324,30 +1369,53 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
   # genuinely different worlds into one meaningless number.
   active_shape_cols <- SHAPE_DEV_NAMES[vapply(SHAPE_DEV_NAMES, function(cn)
     any(df_fit[[cn]] > 0, na.rm = TRUE), logical(1))]
-  if (length(active_shape_cols) > 0) {
-    fit_formula_fixed_active <- update(
-      fit_formula_fixed_active,
-      as.formula(paste("~ . +", paste(active_shape_cols, collapse = " + ")))
-    )
-  }
-  fit_formula <- update(fit_formula_fixed_active, ~ . + (1 | uid))
 
+  # ── Path selection: ONE boolean, chosen here where the formula is built ──
+  # Both paths flow into the same downstream extraction through
+  # flat_fixef/flat_ranef_uid, so the split is a formula-construction detail,
+  # not two pipelines. build_priors keys the same condition off its
+  # deviation_names argument (empty on path A, active_shape_cols on path B).
+  #
+  # Path A (no active deviation column — every night until tiling scores
+  # exist): the flat formula under build_priors' class-wide lb = 0 blanket,
+  # bit-identical in specification to the setup that fit this data cleanly
+  # before PR #203. See build_priors for the 2026-08-01 incident that forced
+  # the split.
+  #
+  # Path B (active deviation columns): a brms non-linear split. Bounds attach
+  # per parameter class, and bf(..., nl = TRUE) gives each nlpar its own
+  # class b — base keeps the bounded lognormal geometry, dev carries the
+  # signed deviations unbounded. base owns the intercept and (1|uid); dev is
+  # `0 +` the active columns, so the deviations stay pure interaction terms.
+  #
+  # NO custom init on either path: with the bound restored (flat class b on
+  # path A, the base nlpar's class b on path B), Stan samples the bounded
+  # block through its log transform and its default random inits are valid
+  # again — the retired make_positive_init only patched initialization, never
+  # the boundary geometry, which is why the 2026-08-01 run initialized fine
+  # and then diverged.
+  use_nl_split <- length(active_shape_cols) > 0
+  base_terms <- all.vars(fit_formula_fixed_active)[-1]
   # OLS seeds cover the BASE terms only: a deviation's prior center is fixed
   # at zero (build_priors routes deviation_names around the means lookup).
-  ols_seeds <- compute_log_ols_seeds(
-    df_fit, setdiff(all.vars(fit_formula_fixed_active)[-1], active_shape_cols))
-  priors <- build_priors(ols_seeds,
-                         c("Intercept", all.vars(fit_formula_fixed_active)[-1]),
+  ols_seeds <- compute_log_ols_seeds(df_fit, base_terms)
+  priors <- build_priors(ols_seeds, c("Intercept", base_terms),
                          deviation_names = active_shape_cols)
+  fit_formula <- if (use_nl_split) {
+    bf(log(pure_time) ~ base + dev,
+       as.formula(paste("base ~", paste(c("1", base_terms, "(1 | uid)"),
+                                        collapse = " + "))),
+       as.formula(paste("dev ~ 0 +", paste(active_shape_cols, collapse = " + "))),
+       nl = TRUE)
+  } else {
+    update(fit_formula_fixed_active, ~ . + (1 | uid))
+  }
 
   message("Fitting brms model (this takes ~1-2 min on first run)…")
   fit <- brm(
     fit_formula,
     data    = df_fit,
     prior   = priors,
-    # Explicit positive init for class b — required now that the class-wide
-    # lb = 0 is gone; see make_positive_init for the arithmetic.
-    init    = make_positive_init(length(all.vars(fit_formula_fixed_active)) - 1),
     chains  = N_CHAINS,
     iter    = N_ITER,
     warmup  = N_WARMUP,
@@ -1383,14 +1451,17 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
     fit_method <- "seed-residuals"   # trigger residual fallback below
     diagnostic_failure <- TRUE       # surface as workflow failure at end of script
   } else {
-    # fixef() on a brmsfit returns a matrix with Estimate / Est.Error / CIs.
+    # fixef() on a brmsfit returns a matrix with Estimate / Est.Error / CIs;
     # Estimate = posterior mean, which is what we want as the point value.
-    co <- fixef(fit)[, "Estimate"]
+    # flat_fixef/flat_ranef_uid are the extraction boundary — on the nl path
+    # they strip the base_/dev_ prefixes back to the flat names, on the flat
+    # path they are no-ops (see their definition beside build_priors).
+    co <- flat_fixef(fit)[, "Estimate"]
     fit_method <- "brms-ranef"
     new_model_is_log <- TRUE   # a log fit succeeded — we ship the log model
 
     # Random intercepts. These are the raw posterior means from brms.
-    re <- ranef(fit)$uid[, , "Intercept"]
+    re <- flat_ranef_uid(fit)[, , "Intercept"]
     re_values <- if (is.matrix(re)) re[, "Estimate"] else re["Estimate"]
     re_names  <- if (is.matrix(re)) rownames(re) else names(re_values)
 
@@ -1449,7 +1520,7 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
       "sonarCellCount", "compassCellCount", "wormLoad",
       "zeroClusterCount"
     )
-    fe_summary <- fixef(fit)  # posterior mean + SD for every fixed effect
+    fe_summary <- flat_fixef(fit)  # posterior mean + SD for every fixed effect
     # Conditional terms (wormLoad before its first board) are absent
     # from the fit — subset the whitelist to what actually has a posterior.
     target_whitelist <- intersect(target_whitelist, rownames(fe_summary))
@@ -1487,12 +1558,13 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
         digit_formula <- as.formula(paste("log(pure_time) ~",
                                           paste(c(digit_fixed, "(1 | uid)"), collapse = " + ")))
         message(sprintf("Fitting secondary digit model on %d canonical-era rows…", nrow(digit_df)))
+        # The digit fit is always FLAT — its fixed effects are the lognormal
+        # controls plus the four lognormal digit shares, no signed term
+        # anywhere — so build_priors' flat path gives it the class-wide
+        # lb = 0 blanket and brms default inits are valid (no custom init;
+        # see build_priors for the 2026-08-01 geometry incident).
         digit_fit <- brm(
           digit_formula, data = digit_df, prior = digit_priors,
-          # All-lognormal class b relies on prior support instead of the
-          # retired class-wide lb = 0, so it needs the same positive init as
-          # the primary fit (see make_positive_init).
-          init = make_positive_init(length(digit_fixed)),
           chains = N_CHAINS, iter = N_ITER, warmup = N_WARMUP,
           control = list(adapt_delta = ADAPT_DELTA),
           cores = min(N_CHAINS, parallel::detectCores()),
@@ -1942,7 +2014,7 @@ if (fit_method == "brms-ranef") {
     sum(df_fit$wormRealized[worm_rows]) / max(sum(df_fit$wormScheduled[worm_rows]), 1e-9)
   } else 1
 
-  fe_all <- fixef(fit)
+  fe_all <- flat_fixef(fit)
   shape_dev_summary <- list()
   earned_shape_devs <- list()
   for (nm in intersect(SHAPE_DEV_NAMES, rownames(fe_all))) {
@@ -1969,8 +2041,8 @@ if (fit_method == "brms-ranef") {
   # net out. Archive replays (a fit-only nuisance offset) are EXCLUDED here, not
   # netted, so their replay-pace slowness can't leak into day-of par.
   bomb_coef <- LEGACY_BOMB_RATE   # shipped as secPerBombHit (fixed legacy rate)
-  archive_coef <- if ("archivePlay" %in% rownames(fixef(fit))) {
-    as.numeric(fixef(fit)["archivePlay", "Estimate"])
+  archive_coef <- if ("archivePlay" %in% rownames(fe_all)) {
+    as.numeric(fe_all["archivePlay", "Estimate"])
   } else {
     0
   }

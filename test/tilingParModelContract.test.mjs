@@ -15,9 +15,13 @@
 //  - the registry lockstep (blocks exactly cover TILING_TYPES, JS and R);
 //  - the DEATH of the two hand-maintained sprintf templates the generated
 //    emitter replaced (their slot/arg counts silently drifted twice);
-//  - the R-side plumbing a deviation needs in order to ever be fit: signed
-//    priors (the lb blanket gone), interaction columns, per-column gates,
-//    the init fix, the earn guard, and the modelHistory shapeDeviations
+//  - the R-side plumbing a deviation needs in order to ever be fit: the
+//    TWO-PATH sampling geometry (the flat formula under the class-wide lb
+//    blanket while no deviation column is active — restored after the
+//    2026-08-01 divergence incident — and a brms non-linear split with a
+//    bounded base nlpar and an unbounded dev nlpar when one is), the name
+//    normalization at the extraction boundary, interaction columns,
+//    per-column gates, the earn guard, and the modelHistory shapeDeviations
 //    record that never reaches target_candidates.
 
 import { test } from 'node:test';
@@ -225,36 +229,119 @@ test('R derives the indicator AND every shape-by-feature interaction from the re
     'every deviation column must gate on having nonzero rows');
 });
 
-test('the lb blanket is gone from build_priors; deviations get signed normal(0, INTERACTION_PRIOR_SD)', () => {
+test('two-path priors: the flat path keeps the class-wide lb blanket; the nl path bounds base and frees dev', () => {
   const body = R_SRC.slice(R_SRC.indexOf('build_priors <- function'),
-    R_SRC.indexOf('make_positive_init <- function'));
+    R_SRC.indexOf('strip_nlpar_prefix <- function'));
   assert.ok(body.length > 100, 'build_priors not found');
-  // Match the literal blanket, not the words: the surrounding comments
-  // legitimately DISCUSS "lb = 0" (they document why it is gone).
-  assert.ok(!body.includes('set_prior("", class = "b", lb = 0)'),
-    'the class-wide lb blanket must stay gone — signed deviations share class b, and base positivity rides the lognormal support');
-  assert.ok(body.includes('deviation_names'), 'build_priors must take deviation_names');
+  // FLAT path (every night until tiling scores exist): the pre-#203 blanket
+  // literal, RESTORED after the 2026-08-01 incident. Support-only geometry
+  // was rejected live — divergent 14/4000 against a gate of 10, 2950/4000
+  // max-treedepth exceedances, min ESS 464 — on the SAME data the bounded
+  // setup had fit twelve hours earlier (Rhat 1.007, ESS 1060, 0 divergent).
+  // lb is a TRANSFORM statement, support only a density statement; HMC needs
+  // the transform.
+  assert.ok(body.includes('set_prior("", class = "b", lb = 0)'),
+    'the flat path must keep the class-wide lb = 0 blanket — removing it re-runs the 2026-08-01 divergence incident');
+  // NL path: bounds attach per parameter class, and a non-linear formula
+  // gives each nlpar its own class b — the sanctioned way to bound one group
+  // of fixed effects and not another.
+  assert.ok(body.includes('set_prior("", class = "b", nlpar = "base", lb = 0)'),
+    'the nl path must restore the constrained transform on the base nlpar');
+  // The dev nlpar is signed and UNBOUNDED: the only lb literals in the body
+  // are the two base blankets.
+  assert.equal((body.match(/lb = 0/g) || []).length, 2,
+    'exactly two lb blankets (flat class b, nl base nlpar) — a bound reaching the dev nlpar would forbid negative deviations');
+  assert.ok(body.includes('class = "b", coef = nm, nlpar = "dev"'),
+    'deviations must live on the dev nlpar');
   assert.ok(body.includes('normal(0, %f)') && body.includes('INTERACTION_PRIOR_SD'),
     'deviations must get the zero-centered signed normal');
+  assert.ok(body.includes('deviation_names'), 'build_priors must take deviation_names');
   assert.ok(/INTERACTION_PRIOR_SD <- /.test(R_SRC), 'INTERACTION_PRIOR_SD must be a documented constant');
+  // With nl = TRUE there is no global Intercept class: the base intercept is
+  // an ordinary class-b coef under the base nlpar, and the (1|uid) sd prior
+  // carries the same tag.
+  assert.ok(body.includes('class = "b", coef = "Intercept", nlpar = "base"'),
+    'the base intercept prior must relocate to coef = "Intercept", nlpar = "base"');
+  assert.ok(body.includes('class = "sd", group = "uid", nlpar = "base"'),
+    'the uid random intercept must ride the base nlpar');
   // stop()-on-missing discipline survives for non-deviation names.
   assert.ok(body.includes('stop("Missing prior sigma for '), 'sigma stop() discipline lost');
 });
 
-test('the unconstrained class b gets an explicit positive init (the landmine the blanket hid)', () => {
-  // Without lb = 0, Stan inits class b uniform(-2, 2); ~14 lognormal-prior
-  // coefficients all need a positive draw at once (~2^-14 per attempt), so
-  // default inits would kill the fit at initialization. Both fits that rely
-  // on lognormal support must pass the explicit init.
-  assert.ok(/make_positive_init <- function/.test(R_SRC), 'make_positive_init missing');
-  const initCalls = (R_SRC.match(/init\s*=\s*make_positive_init\(/g) || []).length;
-  assert.ok(initCalls >= 2,
-    `both the primary and the digit brm() calls need the positive init (found ${initCalls})`);
-  // The timed fit deliberately KEEPS its own lb blanket (untouched code
-  // path, no deviations there), so its default inits remain valid.
+test('path selection is ONE boolean at formula construction; the nl split has the right shapes', () => {
+  const i = R_SRC.indexOf('use_nl_split <- length(active_shape_cols) > 0');
+  assert.ok(i > 0, 'the one path-selection boolean is missing');
+  const block = R_SRC.slice(i, R_SRC.indexOf('message("Fitting brms model'));
+  assert.ok(block.length > 100 && block.length < 4000, 'path-selection region not found');
+  // Path B: the brms non-linear split (per-nlpar class b is what lets base
+  // stay bounded while dev is signed).
+  assert.ok(block.includes('bf(log(pure_time) ~ base + dev'),
+    'the nl branch must exist (bf main formula: base + dev)');
+  assert.ok(block.includes('nl = TRUE'), 'the split must be a non-linear formula');
+  assert.ok(block.includes('"base ~"') && block.includes('"(1 | uid)"'),
+    'the base nlpar must carry the intercept and (1 | uid)');
+  assert.ok(block.includes('"dev ~ 0 +"'),
+    'the dev nlpar must be intercept-free (0 +) — base owns the one intercept');
+  // Path A: the flat pre-incident formula, selected whenever no deviation
+  // column is active.
+  assert.ok(block.includes('update(fit_formula_fixed_active, ~ . + (1 | uid))'),
+    'the flat path formula must survive verbatim');
+  // Both paths hand build_priors the same base names; only deviation_names
+  // differs (empty selects the flat prior construction — same boolean fact).
+  assert.ok(block.includes('deviation_names = active_shape_cols'),
+    'the prior construction must key off the same condition as the formula');
+});
+
+test('make_positive_init is GONE and no fit passes a custom init', () => {
+  // The init only patched initialization, never the boundary geometry — the
+  // 2026-08-01 run initialized fine and then diverged. With the bound
+  // restored on both paths (flat class b / the base nlpar), Stan samples the
+  // bounded block through its log transform and default inits are valid.
+  assert.ok(!/make_positive_init <- function/.test(R_SRC),
+    'make_positive_init must stay removed — reintroducing it means the bound went missing again');
+  assert.ok(!/\binit\s*=/.test(R_SRC), 'no brm() call may pass a custom init');
+  // The timed fit keeps its own lb blanket (no deviations on that path), so
+  // its default inits remain valid.
   const timedBlock = R_SRC.slice(R_SRC.indexOf('timed_priors_parts <- list('));
   assert.ok(timedBlock.slice(0, 200).includes('lb = 0'),
-    'the timed prior blanket is intentionally retained — do not "clean it up" without adding an init');
+    'the timed prior blanket is intentionally retained');
+  // The digit fit is always FLAT (lognormal controls + the four lognormal
+  // digit shares, no signed term), so build_priors' flat path restores its
+  // class-wide blanket; it must never pass deviation_names. Capture to the
+  // END OF THE LINE, not to the first `)` — the call's own `c("Intercept",
+  // digit_fixed)` closes a paren mid-argument, so a first-paren capture reads
+  // only the inner arguments and a `deviation_names = ...` appended AFTER them
+  // sailed straight past the old pin. That exact edit puts nlpar-tagged priors
+  // on a flat formula, brms errors at fit time, the digit tryCatch swallows
+  // it, and the digit studies silently stop — the failure this pin exists for.
+  const digitLine = R_SRC.match(/digit_priors <- build_priors\(.*$/m);
+  assert.ok(digitLine, 'digit build_priors call missing');
+  assert.ok(!digitLine[0].includes('deviation_names'),
+    'the digit fit must use the flat path — its priors are all lognormal');
+});
+
+test('nl-path names are normalized at ONE extraction boundary', () => {
+  // On the nl path brms prefixes every population-level name with its nlpar
+  // (b_base_cellCount, b_dev_shape488_x_...). One normalization strips the
+  // prefixes back to the flat names, so new_coefs, shape_dev_summary,
+  // earned_shape_devs, apply_par_model and the emitter see exactly the names
+  // they see today — never scattered renames.
+  for (const fn of ['strip_nlpar_prefix', 'flat_fixef', 'flat_ranef_uid']) {
+    assert.ok(new RegExp(`${fn} <- function`).test(R_SRC), `${fn} missing`);
+  }
+  assert.ok(R_SRC.includes('sub("^(base|dev)_", "", x)'),
+    'the strip must target exactly the two nlpar prefixes, anchored');
+  // Every primary-fit read goes through the normalization — a bare
+  // fixef(fit)/ranef(fit) would miss every coefficient on path B SOFTLY
+  // (through %||% 0 and %in% lookups), not loudly.
+  // \b: underscore is a word char, so flat_fixef(fit)/flat_ranef_uid(fit)
+  // do not match — only a BARE read does.
+  assert.equal((R_SRC.match(/\bfixef\(fit\)/g) || []).length, 0,
+    'primary fixef reads must go through flat_fixef');
+  assert.equal((R_SRC.match(/\branef\(fit\)/g) || []).length, 0,
+    'primary ranef reads must go through flat_ranef_uid');
+  assert.ok(R_SRC.includes('flat_fixef(fit)'), 'flat_fixef must actually be used on the primary fit');
+  assert.ok(R_SRC.includes('flat_ranef_uid(fit)'), 'flat_ranef_uid must actually be used on the primary fit');
 });
 
 test('apply_par_model stays ONE equation: defaults every deviation column and adds them to the lp', () => {

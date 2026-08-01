@@ -328,6 +328,28 @@ test('parameterTable: every named feature from the latest fit, no fake negatives
   ]), []);
 });
 
+test('REGRESSION: a diagnostics-rejected night cannot blank the parameter ledger', () => {
+  // 2026-08-01: the first refit after the per-shape rework was rejected on
+  // diagnostics, and the safety gate appended a thin seed-residuals row with
+  // an EMPTY candidates list. dedupeHistory keeps the LAST row per date, so
+  // that fallback row shadowed the same day's good fit and parameterTable —
+  // which read the latest live row unconditionally — rendered zero rows. The
+  // table must walk back to the most recent row carrying a real fit: a night
+  // the gate did its job is not a night the ledger goes blank.
+  const goodDay = row('2026-07-30', 'sonarCellCount', [
+    cand('totalMines', 0.0581, 0.0038),
+    cand('sonarCellCount', 0.0329, 0.0189),
+  ]);
+  const rejectedNight = row('2026-07-31', 'sonarCellCount', []);
+  const table = parameterTable([goodDay, rejectedNight]);
+  assert.deepEqual(table.map(r => r.feature), ['totalMines', 'sonarCellCount'],
+    'the last REAL fit renders, not the thin fallback row');
+
+  // Control: a history that is nothing but thin rows still renders nothing —
+  // the walk-back must not invent a table out of a candidates-less era.
+  assert.deepEqual(parameterTable([row('2026-07-31', 'sonarCellCount', [])]), []);
+});
+
 test('estimateLine: band ends that round to the same figure collapse instead of "between 6% and 6%"', () => {
   const tight = estimateLine({ unit: 'mine', latest: { date: '2026-07-12', mean: 0.0581, sd: 0.0038 } });
   assert.equal(tight, 'Each mine adds about 6% to your time, and the band barely strays from that.');
