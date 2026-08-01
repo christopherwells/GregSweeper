@@ -167,6 +167,22 @@ export function resumeTimer() {
   // interaction restart the clock behind it — the popup clears this
   // flag itself right before its own resumeTimer call.
   if (state.modalPaused) return;
+  // The game surface being off screen IS the "player left the board"
+  // condition (issue #197): showTitleScreen pauses the clock, and this gate
+  // is what keeps it paused — the document-level interaction listeners call
+  // recordInteraction on any title-screen tap and visibilitychange fires on
+  // any tab return, and either would silently restart the hidden game's
+  // clock (title-screen minutes then rode the auto-persist into the save
+  // and the submitted daily/{date} time). Read from #app rather than
+  // tracked as a flag so no entry path has to remember to clear it: every
+  // return to the game un-hides #app before restarting the clock, and the
+  // resume-from-save sites call startTimer directly, which this never
+  // gates. The status guard above cannot carry this: status stays
+  // 'playing' behind the title screen (persistGameState only saves
+  // playing/idle games, so flipping it would drop the Home-path save —
+  // the wider status question is deferred in #197).
+  const app = document.getElementById('app');
+  if (app && app.classList && app.classList.contains('hidden')) return;
   // Restart game timer if not already running
   if (!state.timerId) {
     _preciseStartTime = Date.now(); // resume precise tracking

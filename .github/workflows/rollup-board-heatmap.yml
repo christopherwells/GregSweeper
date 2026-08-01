@@ -2,7 +2,7 @@ name: Roll up board heatmaps
 
 on:
   schedule:
-    # 15:30 UTC daily, comfortably after the 14:00 UTC par-model refit
+    # 15:30 UTC daily, comfortably after the 13:13 UTC par-model refit
     # so the two Firebase jobs never overlap. Only dates strictly before
     # today in ET are rolled up, so the map freezes on settled scores.
     - cron: '30 15 * * *'

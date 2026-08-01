@@ -4,13 +4,21 @@ name: Refit Greg-par
 # between its PAR_MODEL:START / PAR_MODEL:END markers, and pushes the
 # change straight to main (GitHub Pages then redeploys automatically).
 #
-# 10am America/New_York is 14:00 UTC in EDT and 15:00 UTC in EST. GitHub
-# Actions cron does not observe DST, so the pinned 14:00 UTC slot fires at
-# 10am ET in summer and 9am ET in winter — close enough for a daily refit.
-# Change the cron if you move timezones.
+# The TARGET is 10am America/New_York, but the cron is pinned 47 minutes
+# EARLY and off the top of the hour, for a measured reason: GitHub queues
+# top-of-hour crons behind everyone else's, and the old '0 14' slot fired
+# 60-120 minutes late all week (measured 2026-07-30..08-01: 15:51, 16:01,
+# 15:00 UTC) — so "the 10am refit" reliably had NOT run when checked at
+# 10-11am ET, which reads as a failed refit even though every run was
+# green. Off-peak minutes drift far less; the early anchor spends the
+# residual drift before 10am instead of after it.
+#
+# Actions cron does not observe DST, so this fires ~9:13am ET in summer
+# and ~8:13am ET in winter, plus drift. Change the cron if you move
+# timezones.
 on:
   schedule:
-    - cron: '0 14 * * *'
+    - cron: '13 13 * * *'
   workflow_dispatch: {}
 
 permissions:

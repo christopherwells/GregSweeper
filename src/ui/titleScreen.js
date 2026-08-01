@@ -15,6 +15,7 @@ import { restorePreChaosTheme } from './themeManager.js';
 import { applyThemeEffects, applyTitleSceneEffects, clearTitleSceneEffects } from './themeEffects.js';
 import { persistGameState } from '../game/gamePersistence.js';
 import { clearAllPlateTimers } from '../game/gameActions.js';
+import { pauseTimer } from '../game/timerManager.js';
 import { isChaosUnlocked, launchDailyArchive } from '../game/modeManager.js';
 import { computeDailyParForDate } from '../game/parResolve.js';
 import {
@@ -195,6 +196,24 @@ export function showTitleScreen() {
   // Resuming the game re-arms them with a fresh countdown (rearmPlateTimers
   // at every resume site), the documented lenient direction.
   clearAllPlateTimers();
+
+  // Leaving the board pauses the game clock — the second consequence of the
+  // same #192 root, filed as issue #197: with status still 'playing', the 1s
+  // tick kept counting behind the title screen, the 5s auto-persist wrote
+  // the inflated elapsedTime into the save, and a resumed daily folded
+  // title-screen minutes into the preciseTime submitted to the write-once
+  // daily/{date} row and the par fit (a two-minute leaderboard visit charged
+  // ~120s, permanently). One pauseTimer call tears down timer + mine-shift +
+  // worm intervals (the worm heartbeat matters for data too: wormEvents[].
+  // moves is the REALIZED dose the refit fits on, and moves ticked behind
+  // the title screen are dose the player never saw) and folds wall-clock
+  // into the precise accumulator. The pause is NOT undone by title-screen
+  // interaction: resumeTimer refuses while #app is hidden (see
+  // timerManager), so the document-level recordInteraction listeners and
+  // visibilitychange cannot restart the hidden game's clock — only an
+  // actual return to the game does (tryResumeGame's startTimer +
+  // startWormCrawl, or the first click of a fresh board).
+  pauseTimer();
 
   restorePreChaosTheme();
 
