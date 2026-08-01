@@ -32,8 +32,8 @@
 // a relabelled grid: **the pentagon has five sides but eight neighbors.** Three
 // of every interior cell's links are CORNER-ONLY, cells meeting at a single
 // point and adjacent under Christopher's rule (2026-07-27, "corners are adjacent
-// in mine counts") exactly as diagonal cells are on a square grid. 108 of this
-// patch's 249 links exist only under that rule. On 4.8.8 and on the honeycomb
+// in mine counts") exactly as diagonal cells are on a square grid. 78 of this
+// patch's 233 links exist only under that rule. On 4.8.8 and on the honeycomb
 // the same rule is a strict no-op, because both are trivalent and at every
 // vertex the incident cells already share sides, so this is the first fixture
 // that certifies against an adjacency the two shipped tilings cannot express.
@@ -74,7 +74,7 @@ export { buildFloretTiling };
 // normalization). Reorder the builder and this fixture describes a different
 // board while still looking like a valid one, so the gate pins that order
 // explicitly rather than trusting it. The edge list this layout was frozen
-// against hashes to 62d239296f7d43a4 (sha256 of `JSON.stringify(adj)`, first 16
+// against hashes to c5bae2edbce28d4d (sha256 of `JSON.stringify(adj)`, first 16
 // hex).
 
 export const FIXTURE = {
@@ -83,18 +83,18 @@ export const FIXTURE = {
   rows: 8,
   cols: 9,
   /** Flat indices of the mines. */
-  mines: [3, 4, 5, 11, 13, 15, 17, 20, 23, 32, 33, 41, 43, 44, 47, 53, 56, 68, 69],
+  mines: [1, 4, 7, 9, 11, 13, 19, 20, 34, 42, 48, 49, 55, 56, 58, 60, 61, 65, 68],
   /** Flat index of the certified first click — the pentagon nearest the patch center. */
-  firstClick: 40,
+  firstClick: 32,
   /** What the shipped certifier returns for this board. */
   expected: {
     solvable: true,
     remainingUnknowns: 0,
-    totalClicks: 26,
+    totalClicks: 35,
     techniqueLevel: 2,
-    passAMoves: 19,
+    passAMoves: 27,
     canonicalSubsetMoves: 1,
-    genericSubsetMoves: 3,
+    genericSubsetMoves: 4,
     advancedLogicMoves: 2,
     disjunctiveMoves: 0,
   },
