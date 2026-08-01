@@ -37,6 +37,7 @@ import { submitOnlineScore, submitArchiveScore, submitTimedScore, submitWeeklySc
 // (HTML escaping for the weekly leaderboard rows now comes from
 // ui/domHelpers.js's escapeHtml — single source of truth.)
 import { saveProgress, saveDailyHistoryEntry, fetchDailyHistoryEntry, getUid, markWeeklyDayAttempted } from '../firebase/firebaseProgress.js';
+import { deserializeBoard } from '../firebase/dailyBoardSync.js';
 import { archiveSubmitPlan, CRUX_VIEWED_KEY_PREFIX } from '../logic/archiveEligibility.js';
 import { gameoverModalPlan } from '../logic/gameoverPlan.js';
 import { isTestEnvironment } from '../firebase/env.js';
@@ -161,6 +162,48 @@ function _renderWinModalHistoryDots(todayDate) {
   el.classList.remove('hidden');
 }
 
+// ── The live board's certified opener ──────────────────
+// The anchor the play path solved from, as a flat index (issue #201, the
+// #195 class). A canonical daily/weekly board's opener comes from
+// deserializeBoard — the ONE definition: stored firstClick on a tiling,
+// container centre on every rectangle — read back here from the same raw
+// payload newGame consumed (the today-stash, the weekly stash, or the
+// archive stash). The win receipt and the bomb strike pricing below used
+// to re-derive floor(rows/2), floor(cols/2), which on a tiling canonical
+// is an unrelated container slot where the solve stalls at click 1: the
+// receipt would confess a breather on a board with a real crux, and every
+// strike's info-value — which rides into the SUBMITTED time — would come
+// off the failed solve. A board with no matching canonical (local-gen
+// fallback, practice ?seed=, challenge/timed) was generated around the
+// container centre, which stays its opener — and a rectangular canonical
+// stores no firstClick, so deserializeBoard returns the centre there too:
+// byte-identical on every rectangular board either way.
+export function liveBoardOpener() {
+  const centre = Math.floor(state.rows / 2) * state.cols + Math.floor(state.cols / 2);
+  let raw = null;
+  if (state.gameMode === 'daily' && !state.isDailyPractice) {
+    // Archive replays carry a PAST date; the calendar's fetch lives in the
+    // archive stash and must never be confused with the today-stash.
+    raw = state.isArchivePlay
+      ? (state._archiveRaw && state._archiveRaw.date === state.dailySeed
+          ? state._archiveRaw.raw : null)
+      : (state.canonicalDailyBoard && state.canonicalDailyBoard.date === state.dailySeed
+          ? state.canonicalDailyBoard.raw : null);
+  } else if (state.gameMode === 'weekly') {
+    raw = state.canonicalWeeklyBoard && state.canonicalWeeklyBoard.weekStart === state.weeklySeed
+      ? state.canonicalWeeklyBoard.raw : null;
+  }
+  if (!raw) return centre;
+  try {
+    const d = deserializeBoard(raw);
+    // The stash can outlive a failed adoption (deserialize threw in newGame
+    // and local generation took over): only trust an opener that describes
+    // the container actually in play.
+    if (d.rows === state.rows && d.cols === state.cols) return d.firstClick;
+  } catch { /* corrupt canonical — the play path fell back to local gen too */ }
+  return centre;
+}
+
 // ── Win receipt: the board's confession ────────────────
 // One line on the daily/weekly win modal naming (a) the board's crux —
 // the first deduction trivial propagation couldn't reach — and (b) the
@@ -175,14 +218,20 @@ const TIER_PHRASE = {
   3: 'seeing through the liar',
 };
 
-function _renderWinReceipt() {
+// Exported for the headless call-test (canonicalOpenerResiduals) — the
+// receipt's false-breather claim is only observable through the render.
+export function _renderWinReceipt() {
   const el = $('#gameover-receipt');
   if (!el) return;
   el.classList.add('hidden');
   el.onclick = null;
   const board = state.board;
   const rows = state.rows, cols = state.cols;
-  const fr = Math.floor(rows / 2), fc = Math.floor(cols / 2);
+  // The certified opener, never the container centre (issue #201): a
+  // centre-anchored solve stalls on a tiling canonical, extractCrux
+  // returns null, and the receipt calls a real crux board a breather.
+  const opener = liveBoardOpener();
+  const fr = Math.floor(opener / cols), fc = opener % cols;
   setTimeout(() => {
     try {
       // The solver simulates in its own arrays — live revealed state is
@@ -1277,8 +1326,15 @@ export function handleDailyBombHit(mineRow, mineCol, extraMines = []) {
   // discouraged without clobbering a legit multi-hit day (the >30%
   // anti-cheat handles brute-forcers). The info-value term (the
   // par-seconds each struck mine was anchoring) rides on top, unchanged.
-  const fr = Math.floor(state.rows / 2);
-  const fc = Math.floor(state.cols / 2);
+  // Anchor the pricing solves on the certified opener, never the container
+  // centre (issue #201): on a tiling canonical the centre solve stalls at
+  // click 1, both info-value runs count nothing, and every strike would be
+  // priced off the failed solve — a wrong number riding into the submitted
+  // time. On every rectangular board the opener IS the centre, so pricing
+  // is byte-identical there (pinned with a rectangle control).
+  const opener = liveBoardOpener();
+  const fr = Math.floor(opener / state.cols);
+  const fc = opener % state.cols;
   const priorStrikes = priorEvents.map(e => ({ row: e.row, col: e.col }));
   // Daily and weekly both route here; the board's feature vector sets the
   // par baseline the info-value is priced against under the log-scale model.

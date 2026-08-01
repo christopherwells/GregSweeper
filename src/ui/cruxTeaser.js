@@ -131,8 +131,15 @@ export async function showCruxTeaser(date) {
     try {
       const raw = await loadDailyBoard(date);
       if (raw) {
-        const { board, rows, cols } = deserializeBoard(raw);
-        breather = extractCrux(board, rows, cols) === null;
+        // Solve from the certified opener the payload carries — with no
+        // anchor extractCrux defaults to the container centre, which on a
+        // tiling canonical is an unrelated slot where the solve stalls and
+        // the date reads as a breather it never was (issue #201, the #195
+        // class). A rectangular canonical stores no firstClick, so
+        // deserializeBoard returns the centre there — byte-identical.
+        const { board, rows, cols, firstClick } = deserializeBoard(raw);
+        breather = extractCrux(board, rows, cols,
+          Math.floor(firstClick / cols), firstClick % cols) === null;
       }
     } catch { /* leave breather false — the generic fallback still fits */ }
   }
