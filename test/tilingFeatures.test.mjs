@@ -25,8 +25,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { computeDailyFeatures, predictPar, applyParModel, clueShares } from '../src/logic/dailyFeatures.js';
-import { PAR_MODEL } from '../src/logic/difficulty.js';
+import { computeDailyFeatures, predictPar, applyParModel, modelFor, clueShares } from '../src/logic/dailyFeatures.js';
+import { PAR_MODEL, PAR_MODEL_SHAPES } from '../src/logic/difficulty.js';
 import { generateTilingBoard } from '../src/logic/tilingGenerator.js';
 import { buildTiling, containerFor } from '../src/logic/tilingGeometry.js';
 import { buildNeighborCache, defineCellNeighbors } from '../src/logic/adjacency.js';
@@ -165,56 +165,52 @@ test('tilingType is derived from the board and ABSENT on a rectangle', () => {
     'a rectangular board must not emit tilingType at all');
 });
 
-// ── 3. Rectangles are untouched ──────────────────────────────────
+// ── 3. Rectangles are untouched, shape prices by DISPATCH ────────
+//
+// 2026-08-01: the per-shape 0/1 indicator terms are gone. A tiling now
+// prices by SELECTING its own full equation from PAR_MODEL_SHAPES (modelFor
+// in dailyFeatures.js); the deep dispatch/parity pins live in
+// test/tilingParModelContract.test.mjs. What this file keeps is the two
+// halves that touch real boards: a rectangle prices on PAR_MODEL exactly,
+// and a shape reaches its own block ONLY on its own tilingType.
 
-test('the shape terms leave par byte-identical on every rectangular board', () => {
+test('a rectangular board prices on PAR_MODEL, byte-identical, with no shape term in the equation', () => {
   const rectBoard = generateBoard(9, 9, 12, 4, 4);
   const check = isBoardSolvable(rectBoard, 9, 9, 4, 4);
   const features = computeDailyFeatures(
     { board: rectBoard, rows: 9, cols: 9, totalMines: 12, activeGimmicks: [] }, check);
 
-  // A model without the shape coefficients at all — i.e. the shipped block as
-  // it stood before Coastline. Par must be unchanged, which is what makes
-  // "rectangles are the omitted reference" a property rather than an intention.
-  const preCoastline = { ...PAR_MODEL };
-  delete preCoastline.secPerShape488;
-  delete preCoastline.secPerShapeHex;
+  // predictPar must be exactly applyParModel(features, PAR_MODEL): the
+  // dispatcher returns the base model for a vector without tilingType, and
+  // no shape indicator term exists to contribute anything.
+  assert.equal(predictPar(features), applyParModel(features, PAR_MODEL));
 
-  assert.equal(applyParModel(features, PAR_MODEL), applyParModel(features, preCoastline));
-  assert.equal(predictPar(features), applyParModel(features, preCoastline));
+  // A model doped with a retired offset key must be inert — the COEF_TERMS
+  // entry that read it is gone (the term-level half of the retirement; the
+  // source-level half is pinned in the contract suite).
+  const doped = { ...PAR_MODEL, secPerShape488: 0.5, secPerShapeHex: 0.5 };
+  assert.equal(applyParModel(features, doped), applyParModel(features, PAR_MODEL));
 });
 
-test('a shape coefficient moves par ONLY on its own shape', () => {
+test('a shape reaches its own equation only on its own tilingType, unknown types price as rectangles', () => {
   const base = { cellCount: 100, totalMines: 20, canonicalSubsetMoves: 2, advancedLogicMoves: 1 };
-  const model = { ...PAR_MODEL, secPerShape488: 0.2, secPerShapeHex: 0.5 };
+  const rect = predictPar(base);
 
-  const rect = applyParModel(base, model);
-  const oct = applyParModel({ ...base, tilingType: '4.8.8' }, model);
-  const hex = applyParModel({ ...base, tilingType: 'hex' }, model);
-
-  // Log scale: an offset is a multiplier, so each shape lifts par by exp(coef).
-  //
-  // The tolerance is DERIVED, not picked. applyParModel quantizes par to 0.1s,
-  // so `rect` is already rounded and `rect * exp(coef)` amplifies that rounding
-  // by exp(coef) while `oct`/`hex` carry a rounding of their own: the honest
-  // error budget is 0.05 * (1 + exp(coef)), not a flat 0.05. The flat version
-  // sat right on the quantum and so passed or failed according to where the
-  // CURRENT PAR_MODEL happened to put `rect` — which the nightly refit rewrites
-  // every day, making this a coin-flip on main (it went red on the 2026-07-26
-  // refit at rect = 61.9). Sizing the budget from the quantum keeps the
-  // assertion tight — ~0.13s against a ~40s effect — and stops the shipped
-  // model's value from deciding whether CI is green.
-  const parQuantum = 0.05;   // half of applyParModel's 0.1s step
-  const budget = (coef) => parQuantum * (1 + Math.exp(coef));
-  assert.ok(Math.abs(oct - rect * Math.exp(0.2)) < budget(0.2),
-    `4.8.8 offset: ${oct} vs ${rect * Math.exp(0.2)} (rect=${rect})`);
-  assert.ok(Math.abs(hex - rect * Math.exp(0.5)) < budget(0.5),
-    `hex offset: ${hex} vs ${rect * Math.exp(0.5)} (rect=${rect})`);
+  // While every deviation is unearned the blocks equal PAR_MODEL, so the
+  // observable dispatch claim is exact equality per shape plus identity of
+  // the RESOLVED model object (the contract suite pins block === base
+  // numerically; here we pin the routing on a real feature vector).
+  assert.equal(modelFor({ ...base, tilingType: '4.8.8' }), PAR_MODEL_SHAPES['4.8.8']);
+  assert.equal(modelFor({ ...base, tilingType: 'hex' }), PAR_MODEL_SHAPES.hex);
+  assert.equal(predictPar({ ...base, tilingType: '4.8.8' }), rect);
+  assert.equal(predictPar({ ...base, tilingType: 'hex' }), rect);
 
   // An unknown shape falls back to the rectangular reference rather than
-  // silently picking up another tiling's offset — a third tiling that ships
-  // its feature before its coefficient must price as a plain board.
-  assert.equal(applyParModel({ ...base, tilingType: '3.12.12' }, model), rect);
+  // silently picking up another tiling's equation — a tiling that ships its
+  // feature before its block must price as a plain board. Same hazard shape
+  // as buildTiling's silent 4.8.8 fallback, documented on modelFor.
+  assert.equal(modelFor({ ...base, tilingType: '3.12.12' }), PAR_MODEL);
+  assert.equal(predictPar({ ...base, tilingType: '3.12.12' }), rect);
 });
 
 // ── 4. The whole chain on a real tiling ──────────────────────────

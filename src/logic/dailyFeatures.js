@@ -14,7 +14,7 @@
 // counts are secondary features that the regression can weight or trim as
 // the data warrants.
 
-import { PAR_MODEL, PAR_MODEL_TIMED } from './difficulty.js';
+import { PAR_MODEL, PAR_MODEL_TIMED, PAR_MODEL_SHAPES } from './difficulty.js';
 import { wormLoadFor } from './worms.js';
 import { buildNeighborCache } from './adjacency.js';
 import { computeContributionFeatures, CONTRIBUTION_FEATURE_KEYS } from './boardSolver.js';
@@ -232,9 +232,10 @@ export function computeDailyFeatures(state, solverResult, opts = {}) {
   //
   // The two units are not identical and the model should not pretend they are:
   // a rectangular wall edge blocks one orthogonal step plus up to two diagonal
-  // ones, while a tiling wall edge blocks exactly one graph edge. Sharing
-  // `secPerWallEdge` across topologies is a modelling assumption, and the
-  // per-shape offset below is what absorbs the average of that difference.
+  // ones, while a tiling wall edge blocks exactly one graph edge. Sharing the
+  // COEFFICIENT NAME across topologies is a modelling assumption, and each
+  // shape's own secPerWallEdge in PAR_MODEL_SHAPES (base + that shape's
+  // earned wall deviation) is what absorbs the difference once data lands.
   const wallEdgeCount = board._tilingWalls
     ? board._tilingWalls.length
     : (board._wallEdges ? board._wallEdges.size : 0);
@@ -437,45 +438,13 @@ const COEF_TERMS = [
   // emits the coefficient (and the R-side 20-play zero-guard holds it at
   // 0 until real data exists).
   { coef: 'secPerWormLoad',     value: f => f.wormLoad || 0,          displayGroup: 'worms' },
-  // Board shape — one 0/1 indicator per non-rectangular tiling, rectangles the
-  // omitted reference. Christopher's ruling, 2026-07-23: a tiling board is
-  // priced by the SHIPPED model plus a per-shape offset, not by a parallel
-  // PAR_MODEL_TILING block.
-  //
-  // Why an offset and not its own equation. The reasoning tiers already
-  // transfer in MEANING — a search move is a search move on any lattice — so
-  // where a shape does less reasoning the vector says so on its own and the
-  // term contributes `coef × 0`. Measured over 1200 unfiltered layouts: a
-  // honeycomb certifies at techniqueLevel 0 on 95-99% of boards and produced
-  // ZERO tier-2 boards at any density, while 4.8.8 spans the full range much
-  // like a rectangle (33/40/27 across tiers 0/1/2 at density 0.20). So a
-  // separate hex model would be fitting two CONSTANT-ZERO columns and would
-  // ship its priors back as if they were a fit; and the tilings differ from
-  // each other about as much as any of them differs from a square, so "one
-  // tiling model" was never one population to begin with. Six shapes whose
-  // interior valences run 6 to 10 only make that argument stronger.
-  //
-  // What the offset buys is the thing no feature can express: the parse cost
-  // of an unfamiliar lattice, which in a log model is exactly an intercept
-  // shift. It is also the honest TEST of the null that the par model is
-  // geometry-blind the way the solver turned out to be — if these earn out at
-  // ~0, that is the finding. Each shape earns out independently under the usual
-  // zero-guard (the R refit holds the coefficient at 0 until that shape has
-  // rows). Another tiling is one more line here and one more column in the R
-  // refit; the six below are what that costs.
-  //
-  // Each reads `f.tilingType`, which computeDailyFeatures DERIVES from the
-  // board's own `_tiling` descriptor and OMITS on a rectangle — so a rectangle
-  // contributes 0 to all six and par on every board shipped to date is
-  // byte-identical. A shape whose coefficient has not shipped yet prices the
-  // same way, as the omitted reference, rather than borrowing another lattice's
-  // offset.
-  { coef: 'secPerShape488',       value: f => (f.tilingType === '4.8.8'     ? 1 : 0), displayGroup: 'board shape' },
-  { coef: 'secPerShapeHex',       value: f => (f.tilingType === 'hex'       ? 1 : 0), displayGroup: 'board shape' },
-  { coef: 'secPerShapeCairo',     value: f => (f.tilingType === 'cairo'     ? 1 : 0), displayGroup: 'board shape' },
-  { coef: 'secPerShapeFloret',    value: f => (f.tilingType === 'floret'    ? 1 : 0), displayGroup: 'board shape' },
-  { coef: 'secPerShapeRhombille', value: f => (f.tilingType === 'rhombille' ? 1 : 0), displayGroup: 'board shape' },
-  { coef: 'secPerShapeDeltoidal', value: f => (f.tilingType === 'deltoidal' ? 1 : 0), displayGroup: 'board shape' },
+  // Board shape is NOT a term here anymore. The six per-shape 0/1 indicator
+  // terms (2026-07-23) were superseded on 2026-08-01 by whole per-shape
+  // equations: `modelFor` below dispatches a tiling feature vector to its own
+  // full coefficient block in PAR_MODEL_SHAPES, so shape enters by SELECTING
+  // the model rather than by a term inside one. COEF_TERMS therefore stays a
+  // pure description of the shared equation shape, identical across
+  // PAR_MODEL, PAR_MODEL_TIMED and every PAR_MODEL_SHAPES block.
 ];
 
 /**
@@ -506,12 +475,50 @@ export function applyParModel(features, model) {
   return Math.round(par * 10) / 10;
 }
 
+// ── Model dispatch ────────────────────────────────────
+
+// '6.6.6' is the deep-link alias for the honeycomb (TILING_TYPES in
+// tilingGeometry.js keeps canonical names only and documents the alias). A
+// STORED tilingType can only ever be canonical — every builder stamps
+// `board._tiling.type` itself, and computeDailyFeatures derives from that —
+// so this map is defensive normalization for any caller that hands modelFor
+// a raw link token instead of a feature-vector type.
+const TILING_TYPE_ALIASES = { '6.6.6': 'hex' };
+
+/**
+ * The par model a feature vector prices under (per-shape par equations,
+ * Christopher's ruling 2026-08-01, replacing the six per-shape intercept
+ * offset terms). Precedence:
+ *   1. `modeTimed` — quick play has its own win-censored equation and is
+ *      rectangles-only, so it wins outright;
+ *   2. `tilingType` — a non-rectangular board prices on its OWN full
+ *      equation in PAR_MODEL_SHAPES (base fit + that shape's earned
+ *      deviations, composed by the nightly refit);
+ *   3. PAR_MODEL — rectangles, and the FALLBACK for an unknown type.
+ *
+ * The fallback is the same hazard buildTiling documents: an unrecognized
+ * type does not throw, it silently prices as a rectangle. That is the right
+ * default for the one real case (a tiling that ships its feature before its
+ * block must price as a plain board, never borrow another lattice's
+ * equation), but it means a typo'd type produces a plausible par with no
+ * error anywhere — so any caller taking a type from OUTSIDE the code must
+ * validate against TILING_TYPES first.
+ */
+export function modelFor(features) {
+  if (features && features.modeTimed) return PAR_MODEL_TIMED;
+  const t = features && features.tilingType;
+  if (t) {
+    const model = PAR_MODEL_SHAPES[TILING_TYPE_ALIASES[t] || t];
+    if (model) return model;
+  }
+  return PAR_MODEL;
+}
+
 export function predictPar(features) {
-  // Quick play has its own win-conditional equation (features.modeTimed
-  // is stamped by the timed path); daily/weekly use the main model.
-  // Same terms, different coefficients.
-  const model = features && features.modeTimed ? PAR_MODEL_TIMED : PAR_MODEL;
-  return applyParModel(features, model);
+  // Dispatch through modelFor (timed first, then shape, then the base
+  // model), so a tiling daily's par is automatically its shape's own
+  // equation with no caller involvement.
+  return applyParModel(features, modelFor(features));
 }
 
 /**
@@ -523,9 +530,12 @@ export function predictPar(features) {
  * (intercept + board-size + flag-count) merge into a single "baseline"
  * chip so the modal stays readable on boards with many gimmicks.
  */
-export function breakdownPar(features, model = PAR_MODEL) {
-  // Daily game-over modal only; the model is injectable so the log-scale
-  // allocation is testable without mutating the shipped PAR_MODEL.
+export function breakdownPar(features, model = null) {
+  // The model is injectable so the log-scale allocation is testable without
+  // mutating the shipped globals; the DEFAULT resolves through modelFor, so
+  // a breakdown for a tiling board reads that shape's own equation exactly
+  // as predictPar does (no caller passes a model today).
+  if (!model) model = modelFor(features);
   const isLog = model.scale === 'log';
 
   // Accumulate each group's raw contribution. Under the additive model a

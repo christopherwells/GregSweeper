@@ -73,40 +73,20 @@ export const PAR_MODEL = {
   // lognormal MEDIAN. Coefficients are LOG-MULTIPLIERS per unit, NOT seconds.
   scale: 'log',
   intercept: 2.9273,
-
-  // Size baseline. cellCount is the lone size axis (it absorbs trivial
-  // propagation); totalMines stays a raw count. (2026-06-08 rework.)
-  secPerCell:        0.00065,
-  secPerMineFlag:    0.05369,
-
-  // Reasoning tiers: pattern = canonical + generic subsets; search = advanced.
+  secPerCell: 0.00065,
+  secPerMineFlag: 0.05369,
   secPerPatternMove: 0.01750,
-  secPerSearchMove:  0.01263,
-
-  // Board structure.
-  secPerWallEdge:    0.00175,
+  secPerSearchMove: 0.01263,
+  secPerWallEdge: 0.00175,
   secPerZeroCluster: 0.00111,
-
-  // Modifier cells (kept split; sparse, prior-anchored until data builds).
-  secPerMysteryCell:   0.00141,
-  secPerLiarCell:      0.00132,
-  secPerLockedCell:    0.04086,
-  secPerWormholePair:  0.00156,
-  secPerMirrorPair:    0.01027,
-  secPerSonarCell:     0.04832,
-  secPerCompassCell:   0.02394,
-  secPerWormLoad:      0.00613,
-
-  // Board shape (Project Coastline). One log-multiplier per non-rectangular
-  // tiling, rectangles the omitted reference — held at 0 until tiling boards
-  // have produced real completions, so par is unchanged on every board to date.
-  secPerShape488:      0.00000,
-  secPerShapeHex:      0.00000,
-  secPerShapeCairo:      0.00000,
-  secPerShapeFloret:     0.00000,
-  secPerShapeRhombille:  0.00000,
-  secPerShapeDeltoidal:  0.00000,
-
+  secPerMysteryCell: 0.00141,
+  secPerLiarCell: 0.00132,
+  secPerLockedCell: 0.04086,
+  secPerWormholePair: 0.00156,
+  secPerMirrorPair: 0.01027,
+  secPerSonarCell: 0.04832,
+  secPerCompassCell: 0.02394,
+  secPerWormLoad: 0.00613,
 };
 // PAR_MODEL:END
 
@@ -123,32 +103,169 @@ export const PAR_MODEL = {
 // TIMED_PAR_MODEL:START
 export const PAR_MODEL_TIMED = {
   // Last refit: 2026-08-01 | brms-timed (n=121)
-  // Same log scale as PAR_MODEL (par = exp(intercept + Σ coef·feature)); below
-  // the activation threshold this is a verbatim copy of the daily model.
+  // scale:"log" => par = exp(intercept + Σ coef·feature): multiplicative,
+  // lognormal MEDIAN. Coefficients are LOG-MULTIPLIERS per unit, NOT seconds.
+  // Below the activation threshold this is a verbatim copy of the daily model.
   scale: 'log',
   intercept: 2.6772,
-  secPerCell:        0.00133,
-  secPerMineFlag:    0.04799,
+  secPerCell: 0.00133,
+  secPerMineFlag: 0.04799,
   secPerPatternMove: 0.04723,
-  secPerSearchMove:  0.01802,
-  secPerWallEdge:    0.00221,
+  secPerSearchMove: 0.01802,
+  secPerWallEdge: 0.00221,
   secPerZeroCluster: 0.00147,
-  secPerMysteryCell:   0.00182,
-  secPerLiarCell:      0.00170,
-  secPerLockedCell:    0.05285,
-  secPerWormholePair:  0.00200,
-  secPerMirrorPair:    0.01299,
-  secPerSonarCell:     0.06219,
-  secPerCompassCell:   0.03078,
-  secPerWormLoad:      0.00778,
-  secPerShape488:      0.00000,
-  secPerShapeHex:      0.00000,
-  secPerShapeCairo:      0.00000,
-  secPerShapeFloret:     0.00000,
-  secPerShapeRhombille:  0.00000,
-  secPerShapeDeltoidal:  0.00000,
+  secPerMysteryCell: 0.00182,
+  secPerLiarCell: 0.00170,
+  secPerLockedCell: 0.05285,
+  secPerWormholePair: 0.00200,
+  secPerMirrorPair: 0.01299,
+  secPerSonarCell: 0.06219,
+  secPerCompassCell: 0.03078,
+  secPerWormLoad: 0.00778,
 };
 // TIMED_PAR_MODEL:END
+
+// Per-shape par equations (Project Coastline; Christopher's ruling
+// 2026-08-01: "we might just want different par equations for each shape...
+// priors can be informed by the square tilings"). One FULL coefficient set
+// per non-rectangular tiling, keyed by the exact TILING_TYPES strings from
+// src/logic/tilingGeometry.js — the registry lockstep is pinned by
+// test/tilingParModelContract.test.mjs rather than an import, because this
+// module sits in the typecheck gate's curated set and must stay leaf-light.
+// ('6.6.6' is a deep-link alias for 'hex' and deliberately NOT a key here;
+// modelFor in dailyFeatures.js normalizes it.)
+//
+// This replaces the six secPerShape* intercept offsets, which asserted a
+// lattice can only shift par by a constant. The nightly R refit fits ONE
+// joint model — the base features plus, per shape, a 0/1 indicator (the old
+// offset relocated as that shape's intercept deviation) and a SIGNED
+// shape-by-feature interaction deviation per coefficient, with the player
+// random intercept shared so handicaps stay jointly estimated — then ships
+// each block here as base + EARNED deviations. A deviation is zeroed until
+// its own column — the shape indicator for an intercept deviation, the
+// interaction column for a slope — has NEW_FEATURE_DATA_THRESHOLD (20) nonzero fit
+// rows, so an unearned block is numerically IDENTICAL to PAR_MODEL: at zero
+// data a shape's equation collapses to the square's, which is what "priors
+// informed by the square fit" means operationally (deviation priors are
+// normal(0, INTERACTION_PRIOR_SD), centered at zero).
+//
+// The block between the markers is refit-owned, same contract as PAR_MODEL.
+// PAR_MODEL_SHAPES:START
+export const PAR_MODEL_SHAPES = {
+  // Last refit: 2026-08-01 | composed: PAR_MODEL base + earned per-shape deviations
+  // A deviation ships only once its own column (indicator or interaction) has 20 nonzero fit
+  // rows (NEW_FEATURE_DATA_THRESHOLD); unearned deviations leave a block
+  // numerically IDENTICAL to PAR_MODEL (the parity property).
+  '4.8.8': {
+    scale: 'log',
+    intercept: 2.9273,
+    secPerCell: 0.00065,
+    secPerMineFlag: 0.05369,
+    secPerPatternMove: 0.01750,
+    secPerSearchMove: 0.01263,
+    secPerWallEdge: 0.00175,
+    secPerZeroCluster: 0.00111,
+    secPerMysteryCell: 0.00141,
+    secPerLiarCell: 0.00132,
+    secPerLockedCell: 0.04086,
+    secPerWormholePair: 0.00156,
+    secPerMirrorPair: 0.01027,
+    secPerSonarCell: 0.04832,
+    secPerCompassCell: 0.02394,
+    secPerWormLoad: 0.00613,
+  },
+  hex: {
+    scale: 'log',
+    intercept: 2.9273,
+    secPerCell: 0.00065,
+    secPerMineFlag: 0.05369,
+    secPerPatternMove: 0.01750,
+    secPerSearchMove: 0.01263,
+    secPerWallEdge: 0.00175,
+    secPerZeroCluster: 0.00111,
+    secPerMysteryCell: 0.00141,
+    secPerLiarCell: 0.00132,
+    secPerLockedCell: 0.04086,
+    secPerWormholePair: 0.00156,
+    secPerMirrorPair: 0.01027,
+    secPerSonarCell: 0.04832,
+    secPerCompassCell: 0.02394,
+    secPerWormLoad: 0.00613,
+  },
+  cairo: {
+    scale: 'log',
+    intercept: 2.9273,
+    secPerCell: 0.00065,
+    secPerMineFlag: 0.05369,
+    secPerPatternMove: 0.01750,
+    secPerSearchMove: 0.01263,
+    secPerWallEdge: 0.00175,
+    secPerZeroCluster: 0.00111,
+    secPerMysteryCell: 0.00141,
+    secPerLiarCell: 0.00132,
+    secPerLockedCell: 0.04086,
+    secPerWormholePair: 0.00156,
+    secPerMirrorPair: 0.01027,
+    secPerSonarCell: 0.04832,
+    secPerCompassCell: 0.02394,
+    secPerWormLoad: 0.00613,
+  },
+  floret: {
+    scale: 'log',
+    intercept: 2.9273,
+    secPerCell: 0.00065,
+    secPerMineFlag: 0.05369,
+    secPerPatternMove: 0.01750,
+    secPerSearchMove: 0.01263,
+    secPerWallEdge: 0.00175,
+    secPerZeroCluster: 0.00111,
+    secPerMysteryCell: 0.00141,
+    secPerLiarCell: 0.00132,
+    secPerLockedCell: 0.04086,
+    secPerWormholePair: 0.00156,
+    secPerMirrorPair: 0.01027,
+    secPerSonarCell: 0.04832,
+    secPerCompassCell: 0.02394,
+    secPerWormLoad: 0.00613,
+  },
+  rhombille: {
+    scale: 'log',
+    intercept: 2.9273,
+    secPerCell: 0.00065,
+    secPerMineFlag: 0.05369,
+    secPerPatternMove: 0.01750,
+    secPerSearchMove: 0.01263,
+    secPerWallEdge: 0.00175,
+    secPerZeroCluster: 0.00111,
+    secPerMysteryCell: 0.00141,
+    secPerLiarCell: 0.00132,
+    secPerLockedCell: 0.04086,
+    secPerWormholePair: 0.00156,
+    secPerMirrorPair: 0.01027,
+    secPerSonarCell: 0.04832,
+    secPerCompassCell: 0.02394,
+    secPerWormLoad: 0.00613,
+  },
+  deltoidal: {
+    scale: 'log',
+    intercept: 2.9273,
+    secPerCell: 0.00065,
+    secPerMineFlag: 0.05369,
+    secPerPatternMove: 0.01750,
+    secPerSearchMove: 0.01263,
+    secPerWallEdge: 0.00175,
+    secPerZeroCluster: 0.00111,
+    secPerMysteryCell: 0.00141,
+    secPerLiarCell: 0.00132,
+    secPerLockedCell: 0.04086,
+    secPerWormholePair: 0.00156,
+    secPerMirrorPair: 0.01027,
+    secPerSonarCell: 0.04832,
+    secPerCompassCell: 0.02394,
+    secPerWormLoad: 0.00613,
+  },
+};
+// PAR_MODEL_SHAPES:END
 
 // Bomb-hit penalty: flat component added on top of the info-value cost
 // computed by src/logic/bombInfoValue.js. The info-value alone can be 0

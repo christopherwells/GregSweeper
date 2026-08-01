@@ -9,7 +9,7 @@
 #
 # Why Bayesian: the previous lme4 approach produced wild coefficients at
 # N=62 (canonical 2.0 -> 14.77, wormhole 0.8 -> 32) because ordinary maximum
-# likelihood has no regularisation on the fixed effects. Priors centered on
+# likelihood has no regularization on the fixed effects. Priors centered on
 # the seed values pull the fit toward sensible numbers whenever the data
 # isn't yet strong enough to override them, so we can refit at low N without
 # catastrophic drift and decommission the hard MAX_COEF_DRIFT = 10 clamp.
@@ -287,9 +287,10 @@ choose_decorrelation_mission <- function(dat, features, confounders, rival_weigh
 N_CHAINS    <- 4
 N_ITER      <- 2000
 N_WARMUP    <- 1000
-ADAPT_DELTA <- 0.99   # tight step-size adaptation: coefficients near their
-                      # lb = 0 boundary (cellCount ~ 0.02, etc.) create
-                      # sharp curvature in the log-posterior, and looser
+ADAPT_DELTA <- 0.99   # tight step-size adaptation: coefficients near the
+                      # zero edge of their positive-support lognormal
+                      # priors (cellCount ~ 0.02, etc.) create sharp
+                      # curvature in the log-posterior, and looser
                       # adaptation produces a handful of divergent
                       # transitions. 0.99 is the usual fix.
 
@@ -363,32 +364,20 @@ PRIOR_MEANS <- list(
   # replay carries no day-of stakes (no streak, separate leaderboard), so a
   # relaxed, slightly-slower pace is the expected direction; seed it small and
   # let the data move it. Fit-only — NEVER shipped to predictPar (predictPar
-  # is day-of par). NOTE: build_priors bounds every b-coef at lb=0, so this
-  # asserts a NON-NEGATIVE offset; revisit the prior family if pooled archive
-  # plays turn out systematically faster once real data lands.
+  # is day-of par). NOTE: archivePlay's lognormal prior has support only above
+  # zero, so this asserts a NON-NEGATIVE offset; revisit the prior family if
+  # pooled archive plays turn out systematically faster once real data lands.
+  # (Non-negativity used to ride the class-wide lb = 0 bound as well; that
+  # blanket is gone — see build_priors — and the support now bounds alone.)
   archivePlay          = 2.0,
-  zeroClusterCount     = 1.0,
-  # shape488 / shapeHex / shapeCairo / shapeFloret / shapeRhombille /
-  # shapeDeltoidal: per-board offset for a non-rectangular tiling (Project
-  # Coastline), rectangles the omitted reference. This is NOT board difficulty —
-  # the reasoning tiers already measure that on any lattice, and a honeycomb's
-  # near-total absence of subset/search moves shows up in those columns on its
-  # own. What is left for the offset is the parse cost of an unfamiliar
-  # geometry, so seed each small and let the data move it. Every shape gets the
-  # SAME seed: an unfamiliarity tax has no reason to be larger for one lattice
-  # than another before any of them has a completion, and seeding them apart
-  # would be the prior deciding an ordering the data is meant to.
-  # NOTE, same caveat as archivePlay: build_priors bounds every b-coef at
-  # lb = 0, so this asserts a NON-NEGATIVE offset — "a tiling board never
-  # takes LESS time than a rectangle with the same measured work". That is the
-  # a-priori direction for an unfamiliarity tax, but if a shape's coefficient
-  # piles up at zero once real boards land, the bound is the thing to revisit.
-  shape488             = 0.05,
-  shapeHex             = 0.05,
-  shapeCairo           = 0.05,
-  shapeFloret          = 0.05,
-  shapeRhombille       = 0.05,
-  shapeDeltoidal       = 0.05
+  zeroClusterCount     = 1.0
+  # The old per-shape intercept offsets (shape488..shapeDeltoidal, seeded 0.05
+  # each) are GONE (2026-08-01): board shape is now a full per-shape equation,
+  # fit as SIGNED deviations from the square fit with centers FIXED at zero
+  # (normal(0, INTERACTION_PRIOR_SD) — see the shape registry below). A
+  # deviation has no prior-mean entry because a zero center IS the design:
+  # "priors informed by the square fit" means a shape's equation starts as the
+  # square's and peels away only as its own data justifies.
 )
 
 # Per-coefficient prior *log-scale* sigmas. Each non-intercept prior is
@@ -423,16 +412,11 @@ PRIOR_SIGMAS <- list(
   legacy_bombs         = 0.4,
   archivePlay          = 1.0,   # wide: little prior knowledge of the offset size
   zeroClusterCount     = 1.0,
-  # Board-shape offsets — wide, so the tiling boards (not the prior) decide.
-  # build_priors stop()s on a missing sigma, so a shape name that reaches the
-  # formula without an entry here aborts the WHOLE nightly refit rather than
-  # dropping its own term.
-  shape488             = 1.0,
-  shapeHex             = 1.0,
-  shapeCairo           = 1.0,
-  shapeFloret          = 1.0,
-  shapeRhombille       = 1.0,
-  shapeDeltoidal       = 1.0,
+  # No shape entries here: shape terms are DEVIATIONS (normal(0,
+  # INTERACTION_PRIOR_SD), signed) routed around the lognormal machinery by
+  # build_priors' deviation_names argument. build_priors still stop()s on any
+  # non-deviation name that reaches the formula without a sigma, so the
+  # abort-don't-degrade discipline is unchanged.
   # Digit shares — wide, so the canonical-era data (not the prior) decides.
   # Used only in the secondary digit fit; never shipped to predictPar.
   clueShare2           = 1.0,
@@ -440,6 +424,90 @@ PRIOR_SIGMAS <- list(
   clueShare4           = 1.0,
   clueShare5plus       = 1.0
 )
+
+# ── Per-shape par equations (2026-08-01) ───────────────────────────────
+# Christopher's ruling, 2026-08-01: "we might just want different par
+# equations for each shape... priors can be informed by the square tilings."
+# This replaces the six secPerShape* intercept offsets, which asserted a
+# lattice can only shift par by a constant. The joint fit below instead
+# estimates, per shape, a SIGNED deviation of every feature's log-multiplier
+# from the square fit's (shape-by-feature interactions) plus the old intercept
+# offset relocated as the shape's intercept deviation. It stays ONE fit, not
+# six per-shape fits, because the player random intercept (1|uid) must be
+# estimated across every board a player touches — six slices would ship six
+# disagreeing handicaps.
+
+# JS coefficient key -> R model predictor, in EMISSION ORDER. One table drives
+# the fit extraction, the emitted difficulty.js blocks, the per-shape
+# composition and apply_par_model, so adding a coefficient here adds it
+# everywhere at once — the property the two hand-maintained sprintf templates
+# this replaced did not have (their slot/arg counts silently drifted twice,
+# each drift shifting every later coefficient one slot).
+COEF_TO_PREDICTOR <- c(
+  secPerCell         = "cellCount",
+  secPerMineFlag     = "totalMines",
+  secPerPatternMove  = "patternMoves",
+  secPerSearchMove   = "searchMoves",
+  secPerWallEdge     = "wallEdgeCount",
+  secPerZeroCluster  = "zeroClusterCount",
+  secPerMysteryCell  = "mysteryCellCount",
+  secPerLiarCell     = "liarCellCount",
+  secPerLockedCell   = "lockedCellCount",
+  secPerWormholePair = "wormholePairCount",
+  secPerMirrorPair   = "mirrorPairCount",
+  secPerSonarCell    = "sonarCellCount",
+  secPerCompassCell  = "compassCellCount",
+  secPerWormLoad     = "wormLoad"
+)
+BASE_MODEL_FEATURES <- unname(COEF_TO_PREDICTOR)
+
+# JS tilingType string (the PAR_MODEL_SHAPES key) -> R predictor stem. Must
+# stay in lockstep with TILING_TYPES in src/logic/tilingGeometry.js — R cannot
+# import the registry, so test/tilingParModelContract.test.mjs pins the two
+# against each other. '6.6.6' has no row here on purpose: it is a deep-link
+# alias for 'hex' that never reaches a stored tilingType (builders stamp
+# canonical names); the client's modelFor normalizes it.
+SHAPE_TABLE <- c(
+  "4.8.8"     = "shape488",
+  "hex"       = "shapeHex",
+  "cairo"     = "shapeCairo",
+  "floret"    = "shapeFloret",
+  "rhombille" = "shapeRhombille",
+  "deltoidal" = "shapeDeltoidal"
+)
+SHAPE_PREDICTORS <- unname(SHAPE_TABLE)
+
+# Every shape-by-feature interaction column: shape<S>_x_<F> = indicator x
+# feature. A column is all-zero until that shape has fit rows, so the
+# per-column zero-variance gate in the fit block collapses the whole layer to
+# nothing today. wormLoad is included: its interaction can be nonzero only on
+# rows where wormLoad itself is, so the base term's own gate (add_worm_term)
+# is implied whenever the interaction's passes.
+SHAPE_INTERACTION_COLS <- as.vector(t(outer(SHAPE_PREDICTORS, BASE_MODEL_FEATURES,
+                                            paste, sep = "_x_")))
+SHAPE_DEV_NAMES <- c(SHAPE_PREDICTORS, SHAPE_INTERACTION_COLS)
+
+# Prior SD for every SIGNED deviation term (each shape indicator and each
+# shape-by-feature interaction): normal(0, INTERACTION_PRIOR_SD). Why 0.5
+# against PRIOR_SIGMAS' 1.0: those sigmas are MULTIPLICATIVE widths around a
+# nonzero lognormal median (roughly a CV), while this is an ABSOLUTE width
+# around zero on the same log-multiplier axis, so the two numbers are not
+# directly comparable and quoting them side by side overstates how much
+# tighter this is. Half the lognormal sigma encodes "the deviation of a
+# shape's per-unit cost from the square's is plausibly smaller than the cost
+# itself" — the reasoning tiers transfer in meaning across lattices, so most
+# of what a shape changes is already carried by the feature values and the
+# deviation holds only the remainder. It still cannot bind: the largest base
+# coefficient ever shipped is ~0.05 per unit, so ±1 SD here is ten times the
+# whole cost of the dearest feature.
+INTERACTION_PRIOR_SD <- 0.5
+
+# Ship guard threshold, shared by the base new-feature zero-guard and the
+# per-deviation earn guard (hoisted from the extraction block so both layers
+# and the emitted header read one value): a coefficient/deviation ships only
+# once its column has this many nonzero fit rows, else it is zeroed and the
+# lognormal-prior median (or a prior-blend deviation) never reaches predictPar.
+NEW_FEATURE_DATA_THRESHOLD <- 20
 
 # Parse the current PAR_MODEL block out of difficulty.js. Used as the
 # "previous values" baseline for the drift sanity check and as the fallback
@@ -465,45 +533,78 @@ parse_par_model <- function(path) {
 #   log_scale = TRUE  -> par = exp(intercept + Σ coef·x)   (multiplicative; median)
 #   log_scale = FALSE -> par = intercept + Σ coef·x        (legacy additive seconds)
 # The linear predictor is identical either way; only the back-transform differs.
-apply_par_model <- function(df, coefs, log_scale = TRUE) {
-  # Board-shape indicators (Project Coastline). Defaulted HERE rather than
-  # relied upon from the caller because `with(df, ...)` errors on a missing
-  # column — this function runs against several frames (df, df_fit, timed_df,
-  # the residual fallback), and a rectangles-only frame legitimately has no
-  # shape column at all. Same defensive shape as the `timed_needed` loop.
-  for (.f in c("shape488", "shapeHex", "shapeCairo", "shapeFloret",
-               "shapeRhombille", "shapeDeltoidal")) {
+#
+# `shape_devs` is a named list of shape DEVIATION terms (indicator +
+# interaction names from SHAPE_DEV_NAMES) added to the linear predictor. This
+# keeps the function ONE equation mirroring the FIT rather than six shipped
+# blocks: base + dev·indicator + Σ dev_F·indicator·F is algebraically the same
+# as applying the composed shape block to that shape's rows, and pricing rows
+# exactly as the fit sees them is what the outlier screen and the residual
+# fallback need. NULL (or empty) prices everything on the base equation.
+apply_par_model <- function(df, coefs, log_scale = TRUE, shape_devs = NULL) {
+  # Default every model column, every shape indicator, and every interaction
+  # column. Defaulted HERE rather than relied upon from the caller because
+  # this function runs against several frames (df, df_fit, timed_df, the
+  # residual fallback) and a rectangles-only frame legitimately carries none
+  # of the shape columns; the old with(df, ...) form errored on any missing
+  # name, which is why the loop is explicit.
+  for (.f in c(BASE_MODEL_FEATURES, SHAPE_DEV_NAMES)) {
     if (!.f %in% colnames(df)) df[[.f]] <- 0
     df[[.f]] <- ifelse(is.na(df[[.f]]), 0, as.numeric(df[[.f]]))
   }
-  lp <- with(df,
-    coefs$intercept +
-    coefs$secPerCell                 * cellCount +
-    coefs$secPerMineFlag             * totalMines +
-    (coefs$secPerPatternMove %||% 0)  * patternMoves +
-    (coefs$secPerSearchMove  %||% 0)  * searchMoves +
-    coefs$secPerWallEdge             * wallEdgeCount +
-    coefs$secPerMysteryCell          * mysteryCellCount +
-    coefs$secPerLiarCell             * liarCellCount +
-    coefs$secPerLockedCell           * lockedCellCount +
-    coefs$secPerWormholePair         * wormholePairCount +
-    coefs$secPerMirrorPair           * mirrorPairCount +
-    coefs$secPerSonarCell            * sonarCellCount +
-    coefs$secPerCompassCell          * compassCellCount +
-    (coefs$secPerWormLoad    %||% 0) * wormLoad +
-    (coefs$secPerZeroCluster %||% 0) * zeroClusterCount +
-    # Board-shape offsets. The coefficient is `%||% 0` so this stays correct
-    # against a shipped PAR_MODEL block predating Coastline; the columns are
-    # guaranteed present by the defaulting loop above. Mirrors predictPar's
-    # COEF_TERMS, which reads `f.tilingType` and contributes 0 on a rectangle.
-    (coefs$secPerShape488       %||% 0) * shape488 +
-    (coefs$secPerShapeHex       %||% 0) * shapeHex +
-    (coefs$secPerShapeCairo     %||% 0) * shapeCairo +
-    (coefs$secPerShapeFloret    %||% 0) * shapeFloret +
-    (coefs$secPerShapeRhombille %||% 0) * shapeRhombille +
-    (coefs$secPerShapeDeltoidal %||% 0) * shapeDeltoidal
-  )
+  # Data-driven off COEF_TO_PREDICTOR — the same table the emitter and the
+  # extraction read, so a coefficient cannot exist in the shipped block
+  # without being priced here. `%||% 0` keeps it correct against a parsed
+  # block predating any given coefficient.
+  lp <- rep(as.numeric(coefs$intercept), nrow(df))
+  for (k in names(COEF_TO_PREDICTOR)) {
+    lp <- lp + (coefs[[k]] %||% 0) * df[[COEF_TO_PREDICTOR[[k]]]]
+  }
+  for (cn in names(shape_devs %||% list())) {
+    lp <- lp + as.numeric(shape_devs[[cn]]) * df[[cn]]
+  }
   if (log_scale) exp(lp) else lp
+}
+
+# Recover the SHIPPED shape deviations from the PAR_MODEL_SHAPES block:
+# parse each per-shape coefficient set and difference it against the base
+# coefficients, mapping back to fit-term names (shape<S> for the intercept,
+# shape<S>_x_<F> for a slope). The outlier screen and the residual fallback
+# price rows against the previously shipped model, and a tiling row must be
+# priced on its own shipped equation — not the base one — or a shape with a
+# real earned deviation would screen its own rows against the wrong par.
+# Returns an empty list when the markers are missing or every shipped
+# deviation is zero (today), both meaning "price on the base equation".
+parse_par_model_shapes_devs <- function(path, base_coefs) {
+  src <- paste(readLines(path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  s <- str_locate(src, fixed("// PAR_MODEL_SHAPES:START"))[1, "end"]
+  e <- str_locate(src, fixed("// PAR_MODEL_SHAPES:END"))[1, "start"]
+  if (is.na(s) || is.na(e)) return(list())
+  block <- substr(src, s + 1, e - 1)
+  devs <- list()
+  for (js_key in names(SHAPE_TABLE)) {
+    stem <- SHAPE_TABLE[[js_key]]
+    # Each entry is `'4.8.8': { ... },` or `hex: { ... },` — take its body up
+    # to the first closing brace (the entries are flat, no nesting inside).
+    key_rx <- paste0("(?:'", gsub(".", "\\.", js_key, fixed = TRUE), "'|",
+                     gsub(".", "\\.", js_key, fixed = TRUE), ")\\s*:\\s*\\{")
+    m <- str_locate(block, regex(key_rx))
+    if (is.na(m[1, "end"])) next
+    rest <- substr(block, m[1, "end"] + 1, nchar(block))
+    close_at <- str_locate(rest, fixed("}"))[1, "start"]
+    if (is.na(close_at)) next
+    body <- substr(rest, 1, close_at - 1)
+    kv <- str_match_all(body, "(\\w+)\\s*:\\s*(-?[0-9]+(?:\\.[0-9]+)?)")[[1]]
+    if (nrow(kv) == 0) next
+    vals <- setNames(as.list(as.numeric(kv[, 3])), kv[, 2])
+    d_int <- (vals$intercept %||% base_coefs$intercept) - base_coefs$intercept
+    if (d_int != 0) devs[[stem]] <- d_int
+    for (k in names(COEF_TO_PREDICTOR)) {
+      d <- (vals[[k]] %||% base_coefs[[k]] %||% 0) - (base_coefs[[k]] %||% 0)
+      if (d != 0) devs[[paste0(stem, "_x_", COEF_TO_PREDICTOR[[k]])]] <- d
+    }
+  }
+  devs
 }
 
 # Detect whether a parsed PAR_MODEL block is on the log (multiplicative) scale.
@@ -567,27 +668,46 @@ compute_log_ols_seeds <- function(df_fit, fixed_names) {
   out
 }
 
-# Build the brms prior list. Per-coefficient priors are lognormal (positive,
-# median = the OLS-seeded log-multiplier) — this does the regularisation. The
-# Intercept gets a plain normal. Residual and handicap SD priors are on the LOG
-# scale (times are lognormal), NOT the old seconds scale.
-build_priors <- function(means, fixed_names) {
+# Build the brms prior list. Per-coefficient priors on the BASE model terms
+# are lognormal (positive support, median = the OLS-seeded log-multiplier) —
+# this does the regularization. Shape DEVIATION terms (`deviation_names`) are
+# SIGNED — a lattice can make a feature cheaper as well as dearer — so each
+# gets normal(0, INTERACTION_PRIOR_SD) centered at ZERO: that center is the
+# "priors informed by the square fit" mechanism, since at zero data every
+# deviation posterior sits at 0 and the shape's equation IS the square's.
+# The Intercept gets a plain normal. Residual and handicap SD priors are on
+# the LOG scale (times are lognormal), NOT the old seconds scale.
+#
+# The class-wide `set_prior("", class = "b", lb = 0)` blanket that used to
+# open this list is deliberately GONE (2026-08-01). It existed because brms
+# cannot combine `coef` with `lb`, so non-negativity of the per-coef lognormal
+# slopes rode a class-wide bound — but a class bound binds EVERY population
+# effect in class b, and the signed deviations cannot live under it. Removing
+# it is safe for the base coefficients because their lognormal priors have
+# zero density below 0: the support does the bounding, and the bound was
+# belt-and-braces. The one thing the bound also did was transform class b to
+# the positive half-line, which made Stan's default random inits valid — see
+# make_positive_init below for the landmine its removal opens and the fix.
+build_priors <- function(means, fixed_names, deviation_names = character(0)) {
   parts <- list()
-  # Class-wide lower bound: log-multiplier slopes are non-negative (par is
-  # monotonic non-decreasing in every feature) and lognormal requires
-  # positivity. brms can't combine `coef` with `lb`, so the bound rides a
-  # class-wide placeholder and the distributions come through per-coef priors.
-  parts[[length(parts) + 1]] <- set_prior("", class = "b", lb = 0)
-
   for (nm in fixed_names) {
-    m <- means[[nm]]
-    if (is.null(m)) stop("Missing prior mean for ", nm)
     if (nm == "Intercept") {
+      m <- means[[nm]]
+      if (is.null(m)) stop("Missing prior mean for ", nm)
       parts[[length(parts) + 1]] <- set_prior(
         sprintf("normal(%f, %f)", m, PRIOR_INTERCEPT_SD),
         class = "Intercept"
       )
+    } else if (nm %in% deviation_names) {
+      # No means/PRIOR_SIGMAS lookup: a deviation's center is fixed at zero by
+      # design and its width is the one documented INTERACTION_PRIOR_SD.
+      parts[[length(parts) + 1]] <- set_prior(
+        sprintf("normal(0, %f)", INTERACTION_PRIOR_SD),
+        class = "b", coef = nm
+      )
     } else {
+      m <- means[[nm]]
+      if (is.null(m)) stop("Missing prior mean for ", nm)
       sig <- PRIOR_SIGMAS[[nm]]
       if (is.null(sig)) stop("Missing prior sigma for ", nm)
       parts[[length(parts) + 1]] <- set_prior(
@@ -604,6 +724,24 @@ build_priors <- function(means, fixed_names) {
     "student_t(3, 0, 1)", class = "sd", group = "uid"
   )
   do.call(c, parts)
+}
+
+# With the class-wide lb = 0 gone, Stan's class-b vector is UNCONSTRAINED even
+# though every base coefficient's lognormal prior has zero density below zero.
+# Stan's default init draws each unconstrained parameter from uniform(-2, 2);
+# an attempt with ANY negative base coefficient evaluates a lognormal at a
+# non-positive value, the log-density is -Inf, and the whole attempt is
+# rejected. With ~14 base coefficients the chance a random attempt lands
+# all-positive is ~2^-14, and Stan gives up after 100 tries — so without this,
+# every fit that relies on lognormal support instead of the bound would die at
+# initialization, every night. Class b is therefore initialized explicitly at
+# small positive values: inside every lognormal's support, and harmless for
+# the signed deviation normals (defined everywhere). Other parameters keep
+# their default random inits — both rstan and cmdstanr accept a partial init
+# list. `n_b` is the number of population-level effects excluding the
+# intercept (brms's `b` vector under the default centered parameterization).
+make_positive_init <- function(n_b) {
+  function() list(b = as.array(runif(n_b, 0.001, 0.05)))
 }
 
 # ── Clue-digit buckets (ported from clueHistogram in
@@ -914,26 +1052,22 @@ df <- df |>
 # ONLY on a non-rectangular board — absent, never "rect" — so a missing column
 # here is the normal all-rectangles case, not a parse failure. Expanded into
 # one 0/1 indicator per shipped tiling with rectangles as the omitted
-# reference, exactly as COEF_TERMS does on the client. Another tiling adds one
-# line on each side.
+# reference. SHAPE_TABLE is the one list to grow when a tiling lands; the
+# indicator columns, interaction columns, gates, priors, extraction and
+# emission all derive from it.
 if (!"tilingType" %in% colnames(df)) df$tilingType <- NA_character_
 df$tilingType <- as.character(df$tilingType)
-df$shape488       <- as.numeric(!is.na(df$tilingType) & df$tilingType == "4.8.8")
-df$shapeHex       <- as.numeric(!is.na(df$tilingType) & df$tilingType == "hex")
-df$shapeCairo     <- as.numeric(!is.na(df$tilingType) & df$tilingType == "cairo")
-df$shapeFloret    <- as.numeric(!is.na(df$tilingType) & df$tilingType == "floret")
-df$shapeRhombille <- as.numeric(!is.na(df$tilingType) & df$tilingType == "rhombille")
-df$shapeDeltoidal <- as.numeric(!is.na(df$tilingType) & df$tilingType == "deltoidal")
+for (.js_key in names(SHAPE_TABLE)) {
+  df[[SHAPE_TABLE[[.js_key]]]] <- as.numeric(!is.na(df$tilingType) & df$tilingType == .js_key)
+}
 # One count per shape, built as name/value pairs rather than a hand-kept
-# sprintf: this message grew its own slot/arg count alongside the PAR_MODEL
-# template's, and a message whose format string and argument list drift apart
-# either errors or prints the wrong shape's total.
+# sprintf: this message once grew its own slot/arg count alongside the old
+# PAR_MODEL template's, and a message whose format string and argument list
+# drift apart either errors or prints the wrong shape's total.
 message(sprintf("  tiling rows: %s of %d total",
                 paste(sprintf("%d (%s)",
-                              c(sum(df$shape488), sum(df$shapeHex), sum(df$shapeCairo),
-                                sum(df$shapeFloret), sum(df$shapeRhombille),
-                                sum(df$shapeDeltoidal)),
-                              c("4.8.8", "hex", "cairo", "floret", "rhombille", "deltoidal")),
+                              vapply(SHAPE_PREDICTORS, function(p) sum(df[[p]]), numeric(1)),
+                              names(SHAPE_TABLE)),
                       collapse = " + "),
                 nrow(df)))
 
@@ -963,6 +1097,17 @@ df <- df |>
     searchMoves  = advancedLogicMoves
   )
 
+# Shape-by-feature interaction columns (per-shape par equations): indicator ×
+# feature, giving the joint fit one SIGNED deviation of that feature's
+# log-multiplier from the square fit's per shape. Built AFTER the
+# patternMoves/searchMoves derivation and the realized-wormLoad substitution,
+# because the interactions must multiply exactly the columns the fit consumes.
+for (.s in SHAPE_PREDICTORS) {
+  for (.f in BASE_MODEL_FEATURES) {
+    df[[paste0(.s, "_x_", .f)]] <- df[[.s]] * df[[.f]]
+  }
+}
+
 n_scores  <- nrow(df)
 n_dates   <- n_distinct(df$date)
 n_players <- df |> filter(!is.na(uid), uid != "") |> pull(uid) |> n_distinct()
@@ -984,6 +1129,9 @@ message(sprintf("  joined: N=%d scores, %d dates, %d players (%d eligible with >
 
 current_coefs <- parse_par_model(DIFFICULTY_PATH)
 new_coefs     <- current_coefs  # default: no refit, keep what's there
+# Shipped per-shape deviations (PAR_MODEL_SHAPES minus PAR_MODEL) — empty
+# today, since every deviation is unearned and the blocks are identical.
+current_shape_devs <- parse_par_model_shapes_devs(DIFFICULTY_PATH, current_coefs)
 # Scale of the CURRENTLY shipped PAR_MODEL, so the pre-fit outlier screen and
 # the residual fallback back-transform it correctly across the additive->log
 # transition. `new_model_is_log` tracks the scale of whatever we END UP
@@ -996,7 +1144,7 @@ new_model_is_log <- prev_is_log
 # at N=90 — meaningful pollution. Compare against the CURRENT shipped
 # PAR_MODEL (the best estimate of "what the time should have been" before
 # this refit runs). Threshold: time < max(5s, 0.3 × predicted_par).
-df$predicted_for_outlier <- apply_par_model(df, current_coefs, prev_is_log)
+df$predicted_for_outlier <- apply_par_model(df, current_coefs, prev_is_log, current_shape_devs)
 pre_outlier_n <- nrow(df)
 df <- df |> filter(time >= pmax(5, 0.3 * predicted_for_outlier))
 n_outliers <- pre_outlier_n - nrow(df)
@@ -1027,6 +1175,16 @@ digit_df <- NULL
 if (!is.null(digit_shares) && nrow(digit_shares) > 0) {
   digit_df <- df |>
     filter(uid %in% eligible_uids, date >= DIGIT_ERA_START) |>
+    # RECTANGLES ONLY (2026-08-01). At fixed density the digit shares differ
+    # BY LATTICE — rhombille's 5plus share measured 4.4x the 4.8.8's and 15x
+    # the hex's — so tiling rows would turn the digit coefficients into
+    # part-shape indicators, and the pairwise decorrelation machinery, which
+    # takes exactly two features, cannot see a third axis. The decorrelation
+    # line fitted from this same frame stays rectangles-only for the same
+    # reason. The cost: under a 50/50 tiling rotation the digit studies
+    # accrue data at half speed — accepted until the shape confound gets a
+    # design of its own.
+    filter(is.na(tilingType)) |>
     # Drop any meta-carried copies of the shares BEFORE the join. The client
     # computes the same histogram now (dailyFeatures.clueShares, ported so the
     # decorrelation mission can score a candidate board), and every feature key
@@ -1151,50 +1309,45 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
   if (add_worm_term) {
     fit_formula_fixed_active <- update(fit_formula_fixed_active, ~ . + wormLoad)
   }
-  # Board shape (Project Coastline): one offset per tiling, entering the fixed
-  # effects only once that shape has rows in the fit data — the same
-  # zero-variance gate as archivePlay and wormLoad. Gated PER SHAPE rather than
-  # as one "is a tiling" flag on purpose: the shipped tilings behave nothing
-  # like each other (a honeycomb certifies at technique level 0 on 95-99% of
-  # boards and produced no tier-2 board at any density in a 1200-layout sweep,
-  # while 4.8.8 spans the full range much as a rectangle does), so pooling them
-  # would average genuinely different worlds into one meaningless number, and
-  # whichever shape shipped first would set it. That argument only gets stronger
-  # with six shapes whose interior valences run from 6 to 10.
-  add_shape488_term       <- any(df_fit$shape488 > 0, na.rm = TRUE)
-  add_shapeHex_term       <- any(df_fit$shapeHex > 0, na.rm = TRUE)
-  add_shapeCairo_term     <- any(df_fit$shapeCairo > 0, na.rm = TRUE)
-  add_shapeFloret_term    <- any(df_fit$shapeFloret > 0, na.rm = TRUE)
-  add_shapeRhombille_term <- any(df_fit$shapeRhombille > 0, na.rm = TRUE)
-  add_shapeDeltoidal_term <- any(df_fit$shapeDeltoidal > 0, na.rm = TRUE)
-  if (add_shape488_term) {
-    fit_formula_fixed_active <- update(fit_formula_fixed_active, ~ . + shape488)
-  }
-  if (add_shapeHex_term) {
-    fit_formula_fixed_active <- update(fit_formula_fixed_active, ~ . + shapeHex)
-  }
-  if (add_shapeCairo_term) {
-    fit_formula_fixed_active <- update(fit_formula_fixed_active, ~ . + shapeCairo)
-  }
-  if (add_shapeFloret_term) {
-    fit_formula_fixed_active <- update(fit_formula_fixed_active, ~ . + shapeFloret)
-  }
-  if (add_shapeRhombille_term) {
-    fit_formula_fixed_active <- update(fit_formula_fixed_active, ~ . + shapeRhombille)
-  }
-  if (add_shapeDeltoidal_term) {
-    fit_formula_fixed_active <- update(fit_formula_fixed_active, ~ . + shapeDeltoidal)
+  # Board shape (per-shape par equations, 2026-08-01): the shape indicator
+  # (that shape's intercept deviation — the old offset relocated) and every
+  # shape-by-feature interaction enter the fixed effects under the same
+  # zero-variance gate as archivePlay and wormLoad, applied PER COLUMN. An
+  # interaction of a shape is nonzero only on that shape's rows, so per-column
+  # gating suffices — and with no tiling rows at all the whole layer collapses
+  # to nothing and this is exactly the pre-shape fit. Gated per shape rather
+  # than pooled into one "is a tiling" flag for the measured reason the old
+  # offsets were: the shipped tilings behave nothing like each other (a
+  # honeycomb certifies at technique level 0 on 95-99% of boards and produced
+  # no tier-2 board at any density in a 1200-layout sweep, while 4.8.8 spans
+  # the full range much as a rectangle does), so pooling would average
+  # genuinely different worlds into one meaningless number.
+  active_shape_cols <- SHAPE_DEV_NAMES[vapply(SHAPE_DEV_NAMES, function(cn)
+    any(df_fit[[cn]] > 0, na.rm = TRUE), logical(1))]
+  if (length(active_shape_cols) > 0) {
+    fit_formula_fixed_active <- update(
+      fit_formula_fixed_active,
+      as.formula(paste("~ . +", paste(active_shape_cols, collapse = " + ")))
+    )
   }
   fit_formula <- update(fit_formula_fixed_active, ~ . + (1 | uid))
 
-  ols_seeds <- compute_log_ols_seeds(df_fit, all.vars(fit_formula_fixed_active)[-1])
-  priors <- build_priors(ols_seeds, c("Intercept", all.vars(fit_formula_fixed_active)[-1]))
+  # OLS seeds cover the BASE terms only: a deviation's prior center is fixed
+  # at zero (build_priors routes deviation_names around the means lookup).
+  ols_seeds <- compute_log_ols_seeds(
+    df_fit, setdiff(all.vars(fit_formula_fixed_active)[-1], active_shape_cols))
+  priors <- build_priors(ols_seeds,
+                         c("Intercept", all.vars(fit_formula_fixed_active)[-1]),
+                         deviation_names = active_shape_cols)
 
   message("Fitting brms model (this takes ~1-2 min on first run)…")
   fit <- brm(
     fit_formula,
     data    = df_fit,
     prior   = priors,
+    # Explicit positive init for class b — required now that the class-wide
+    # lb = 0 is gone; see make_positive_init for the arithmetic.
+    init    = make_positive_init(length(all.vars(fit_formula_fixed_active)) - 1),
     chains  = N_CHAINS,
     iter    = N_ITER,
     warmup  = N_WARMUP,
@@ -1336,6 +1489,10 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
         message(sprintf("Fitting secondary digit model on %d canonical-era rows…", nrow(digit_df)))
         digit_fit <- brm(
           digit_formula, data = digit_df, prior = digit_priors,
+          # All-lognormal class b relies on prior support instead of the
+          # retired class-wide lb = 0, so it needs the same positive init as
+          # the primary fit (see make_positive_init).
+          init = make_positive_init(length(digit_fixed)),
           chains = N_CHAINS, iter = N_ITER, warmup = N_WARMUP,
           control = list(adapt_delta = ADAPT_DELTA),
           cores = min(N_CHAINS, parallel::detectCores()),
@@ -1727,8 +1884,10 @@ if (n_scores >= MIN_SCORES_TO_FIT && n_eligible >= 2) {
 # ── 3. Build new_coefs from the fit (if any) ─────────────
 
 if (fit_method == "brms-ranef") {
-  # Non-negative clamp — our priors are truncated at 0 so this should never
-  # trigger, but cheap insurance against a future prior change.
+  # Non-negative clamp for BASE coefficients — their lognormal priors have
+  # support only above zero so this should never trigger; cheap insurance
+  # against a future prior change. Shape DEVIATIONS are signed by design and
+  # are handled separately below — never through nn().
   nn <- function(x, name) {
     v <- if (is.na(x)) 0 else as.numeric(x)
     if (v < 0) {
@@ -1738,36 +1897,69 @@ if (fit_method == "brms-ranef") {
     v
   }
 
-  new_coefs <- list(
-    intercept          = nn(co["Intercept"],         "intercept"),
-    secPerCell         = nn(co["cellCount"],         "cell"),
-    secPerMineFlag     = nn(co["totalMines"],        "mineFlag"),
-    secPerPatternMove  = nn(co["patternMoves"],      "patternMove"),
-    secPerSearchMove   = nn(co["searchMoves"],       "searchMove"),
-    secPerWallEdge     = nn(co["wallEdgeCount"],     "wallEdge"),
-    secPerMysteryCell  = nn(co["mysteryCellCount"],  "mysteryCell"),
-    secPerLiarCell     = nn(co["liarCellCount"],     "liarCell"),
-    secPerLockedCell   = nn(co["lockedCellCount"],   "lockedCell"),
-    secPerWormholePair = nn(co["wormholePairCount"], "wormholePair"),
-    secPerMirrorPair   = nn(co["mirrorPairCount"],   "mirrorPair"),
-    secPerSonarCell    = nn(co["sonarCellCount"],    "sonarCell"),
-    secPerCompassCell  = nn(co["compassCellCount"],  "compassCell"),
-    # NA (worm term gated out pre-first-board) maps to 0 via nn(). The
-    # posterior coefficient is per REALIZED wormLoad unit (the fit's
-    # regressor); the scheduled-to-realized bridge is applied below, after
-    # the realization ratio is computed.
-    secPerWormLoad     = nn(co["wormLoad"],          "wormLoad"),
-    secPerZeroCluster  = nn(co["zeroClusterCount"],  "zeroCluster"),
-    # NA (shape term gated out because that tiling has no rows yet) maps to 0
-    # via nn(), so a rectangles-only fit emits an explicit 0.00000 and par is
-    # unchanged on every board shipped to date.
-    secPerShape488       = nn(co["shape488"],       "shape488"),
-    secPerShapeHex       = nn(co["shapeHex"],       "shapeHex"),
-    secPerShapeCairo     = nn(co["shapeCairo"],     "shapeCairo"),
-    secPerShapeFloret    = nn(co["shapeFloret"],    "shapeFloret"),
-    secPerShapeRhombille = nn(co["shapeRhombille"], "shapeRhombille"),
-    secPerShapeDeltoidal = nn(co["shapeDeltoidal"], "shapeDeltoidal")
+  # TABLE-DRIVEN off COEF_TO_PREDICTOR, never a hand-written list. The hand
+  # list this replaced was the one remaining place a coefficient could exist in
+  # the formula, the priors and the extraction yet silently VANISH from every
+  # emitted block, because ordered_model_fields iterates only the table's keys
+  # — exactly the silent-drop class the generated emitter was built to kill.
+  # Now the table IS the extraction, so a key missing from it never has a
+  # posterior to lose in the first place, and adding a coefficient is one
+  # table entry plus its prior. NA (a term gated out of the formula, e.g. the
+  # worm term pre-first-board) maps to 0 via nn(). secPerWormLoad's posterior
+  # is per REALIZED wormLoad unit (the fit's regressor); the
+  # scheduled-to-realized bridge is applied below, after the realization ratio
+  # is computed.
+  new_coefs <- c(
+    list(intercept = nn(co["Intercept"], "intercept")),
+    setNames(
+      lapply(names(COEF_TO_PREDICTOR), function(k) {
+        nn(co[COEF_TO_PREDICTOR[[k]]], k)
+      }),
+      names(COEF_TO_PREDICTOR)
+    )
   )
+
+  # ── Shape deviations (per-shape par equations) ────────────────────────
+  # `shape_dev_summary` records {mean, sd} for every deviation term that
+  # actually entered the fit — the modelHistory row's `shapeDeviations` field,
+  # its only longitudinal home (NEVER target_candidates: a deviation is not
+  # force-injectable, and the target chooser must not see it).
+  # `earned_shape_devs` is the SHIPPED subset after the same two-layer guard
+  # wormLoad uses: a deviation is zeroed until its own column has
+  # NEW_FEATURE_DATA_THRESHOLD nonzero fit rows, so a thin first week of
+  # tiling boards ships the square's equation, never a prior-blend artifact.
+  # Earned values stay on the FIT scale here (the wormLoad deviation is per
+  # REALIZED unit, like the base term before its bridge); the composition
+  # step below is where a wormLoad deviation gets the realization-ratio
+  # bridge, so internal apply_par_model calls on fit frames stay consistent
+  # with the realized wormLoad column they multiply.
+  #
+  # Play-weighted worm realization ratio (Σ realized / Σ scheduled over worm
+  # rows) — hoisted above the bias correction because both the base
+  # secPerWormLoad bridge and the composed shape blocks read it.
+  worm_rows <- df_fit$wormScheduled > 0 & !is.na(df_fit$wormRealized)
+  worm_realization_ratio <- if (any(worm_rows)) {
+    sum(df_fit$wormRealized[worm_rows]) / max(sum(df_fit$wormScheduled[worm_rows]), 1e-9)
+  } else 1
+
+  fe_all <- fixef(fit)
+  shape_dev_summary <- list()
+  earned_shape_devs <- list()
+  for (nm in intersect(SHAPE_DEV_NAMES, rownames(fe_all))) {
+    shape_dev_summary[[nm]] <- list(
+      mean = round(as.numeric(fe_all[nm, "Estimate"]), 4),
+      sd   = round(as.numeric(fe_all[nm, "Est.Error"]), 4)
+    )
+    n_dev <- sum(df_fit[[nm]] != 0, na.rm = TRUE)
+    if (n_dev >= NEW_FEATURE_DATA_THRESHOLD) {
+      earned_shape_devs[[nm]] <- as.numeric(fe_all[nm, "Estimate"])
+      message(sprintf("  shape deviation %s: %+.5f (earned on %d nonzero rows)",
+                      nm, earned_shape_devs[[nm]], n_dev))
+    } else {
+      message(sprintf("  shape deviation %s: unearned (%d nonzero rows; need %d) — shipping 0",
+                      nm, n_dev, NEW_FEATURE_DATA_THRESHOLD))
+    }
+  }
 
   # Median calibration (log scale): set the log-intercept so the mean of
   # log(pure_time) equals the mean linear predictor across DAY-OF rows. Under a
@@ -1784,7 +1976,10 @@ if (fit_method == "brms-ranef") {
   }
   dayof <- df_fit$archive == 0
   # log(apply_par_model(..., log_scale = TRUE)) recovers the linear predictor.
-  lp_dayof <- log(apply_par_model(df_fit[dayof, , drop = FALSE], new_coefs, TRUE))
+  # Earned deviations ride along so a tiling day-of row is calibrated on the
+  # equation it will actually ship under, not the base one.
+  lp_dayof <- log(apply_par_model(df_fit[dayof, , drop = FALSE], new_coefs, TRUE,
+                                  earned_shape_devs))
   bias <- mean(log(df_fit$pure_time[dayof])) - mean(lp_dayof)
   new_coefs$intercept <- new_coefs$intercept + bias
   message(sprintf("  log-intercept median bias-correction: %+.3f (mean log pure-play time matches mean predicted log-par over day-of rows)",
@@ -1822,7 +2017,8 @@ if (fit_method == "brms-ranef") {
   # Reference par for the client's seconds display of a ratio: (k-1) × refPar.
   # The median predicted par over day-of boards — a stable "typical board" so
   # the handicap chip reads in comparable seconds across dates.
-  refPar <- round(median(apply_par_model(df_fit[dayof, , drop = FALSE], new_coefs, TRUE)), 1)
+  refPar <- round(median(apply_par_model(df_fit[dayof, , drop = FALSE], new_coefs, TRUE,
+                                         earned_shape_devs)), 1)
 
   # Guard: until enough plays have NONZERO values for each new structural
   # feature, its posterior is essentially the lognormal prior expectation
@@ -1835,37 +2031,25 @@ if (fit_method == "brms-ranef") {
   # fields in dailyMeta (write-once) so we can only build data forward.
   # predictPar multiplies secPerWormLoad by the board's SCHEDULED wormLoad
   # (the only value knowable pre-play), but the coefficient was fit on the
-  # REALIZED dose. Bridge with the play-weighted realization ratio
-  # (Σ realized / Σ scheduled over worm rows), so the shipped term predicts
-  # the dose a typical run actually experiences. Both factors are printed;
-  # the ratio defaults to 1 while no worm rows exist (the coefficient is 0
-  # there anyway via the gate + zero-guard).
-  worm_rows <- df_fit$wormScheduled > 0 & !is.na(df_fit$wormRealized)
-  worm_realization_ratio <- if (any(worm_rows)) {
-    sum(df_fit$wormRealized[worm_rows]) / max(sum(df_fit$wormScheduled[worm_rows]), 1e-9)
-  } else 1
+  # REALIZED dose. Bridge with the play-weighted realization ratio (computed
+  # above, beside the shape-deviation guard that also reads it), so the
+  # shipped term predicts the dose a typical run actually experiences. The
+  # ratio defaults to 1 while no worm rows exist (the coefficient is 0 there
+  # anyway via the gate + zero-guard).
   if (new_coefs$secPerWormLoad > 0) {
-    message(sprintf("  secPerWormLoad: %.5f per realized unit x realization ratio %.3f -> %.5f shipped",
+    message(sprintf("  secPerWormLoad: %.5g per realized unit x realization ratio %.3g -> %.5g shipped",
                     new_coefs$secPerWormLoad, worm_realization_ratio,
                     new_coefs$secPerWormLoad * worm_realization_ratio))
     new_coefs$secPerWormLoad <- new_coefs$secPerWormLoad * worm_realization_ratio
   }
 
-  NEW_FEATURE_DATA_THRESHOLD <- 20
+  # (NEW_FEATURE_DATA_THRESHOLD is defined with the shape registry up top —
+  # the per-deviation earn guard above shares it.) The per-shape data counts
+  # that used to sit here as secPerShape* entries are superseded: the
+  # deviation guard tracks every shape indicator and interaction separately.
   feature_data_counts <- list(
     secPerZeroCluster = sum(df_fit$zeroClusterCount > 0, na.rm = TRUE),
-    secPerWormLoad    = sum(df_fit$wormLoad > 0, na.rm = TRUE),
-    # A board-shape offset ships only once that tiling has real completions
-    # behind it. Until then predictPar prices a tiling board on the shared
-    # coefficients alone, which is the design's own null hypothesis (the par
-    # model is geometry-blind the way the solver turned out to be) rather than
-    # a placeholder — so the zero here is a claim we are content to ship.
-    secPerShape488       = sum(df_fit$shape488 > 0, na.rm = TRUE),
-    secPerShapeHex       = sum(df_fit$shapeHex > 0, na.rm = TRUE),
-    secPerShapeCairo     = sum(df_fit$shapeCairo > 0, na.rm = TRUE),
-    secPerShapeFloret    = sum(df_fit$shapeFloret > 0, na.rm = TRUE),
-    secPerShapeRhombille = sum(df_fit$shapeRhombille > 0, na.rm = TRUE),
-    secPerShapeDeltoidal = sum(df_fit$shapeDeltoidal > 0, na.rm = TRUE)
+    secPerWormLoad    = sum(df_fit$wormLoad > 0, na.rm = TRUE)
   )
   for (coef_name in names(feature_data_counts)) {
     n_with_data <- feature_data_counts[[coef_name]]
@@ -1877,6 +2061,29 @@ if (fit_method == "brms-ranef") {
       message(sprintf("  %s: %.3f (fit on %d plays with nonzero data)",
                       coef_name, new_coefs[[coef_name]], n_with_data))
     }
+  }
+
+  # ── Compose the per-shape equations (PAR_MODEL_SHAPES) ────────────────
+  # shape coefficient = final shipped base + earned deviation, per key. Every
+  # deviation unearned -> every block is numerically IDENTICAL to PAR_MODEL,
+  # which is the architecture's parity property (pinned by
+  # test/tilingParModelContract.test.mjs): at zero data a shape's equation
+  # collapses to the square's. Composed AFTER the bias correction, the worm
+  # bridge and the zero-guards, so a block is base-consistent with what
+  # actually ships in PAR_MODEL.
+  shape_models <- list()
+  for (js_key in names(SHAPE_TABLE)) {
+    stem <- SHAPE_TABLE[[js_key]]
+    blk <- list(intercept = new_coefs$intercept + (earned_shape_devs[[stem]] %||% 0))
+    for (k in names(COEF_TO_PREDICTOR)) {
+      d <- earned_shape_devs[[paste0(stem, "_x_", COEF_TO_PREDICTOR[[k]])]] %||% 0
+      # A wormLoad deviation was fit per REALIZED unit like the base term;
+      # bridge it with the same realization ratio so the composed coefficient
+      # predicts the scheduled dose predictPar can actually know.
+      if (k == "secPerWormLoad") d <- d * worm_realization_ratio
+      blk[[k]] <- (new_coefs[[k]] %||% 0) + d
+    }
+    shape_models[[js_key]] <- blk
   }
 }
 
@@ -1893,7 +2100,9 @@ if (fit_method == "seed-residuals") {
   # from residuals against the CURRENTLY shipped model. apply_par_model uses the
   # shipped model's own scale (prev_is_log) to return SECONDS, so the ratio math
   # is correct whether the live PAR_MODEL is still additive or already log.
-  df$predicted <- apply_par_model(df, new_coefs, prev_is_log)
+  # new_coefs is still the shipped model here, so its shipped deviations
+  # (empty until a shape earns one) price any tiling row on its own equation.
+  df$predicted <- apply_par_model(df, new_coefs, prev_is_log, current_shape_devs)
   # Per-play bomb cost in seconds (new base surcharge / fixed legacy rate).
   df$bomb_cost <- ifelse(df$totalBombPenalty > 0,
                          df$bombBaseSum,
@@ -2134,7 +2343,7 @@ if (length(timed_raw) > 0) {
     # the residual is pure-play vs pure-par. NOTE: under median calibration the
     # mean residual is the expected mean−median gap (a few seconds positive) —
     # watch bias DRIFT over time, not its absolute value.
-    predicted_clean   <- apply_par_model(df_fit, new_coefs, TRUE)
+    predicted_clean   <- apply_par_model(df_fit, new_coefs, TRUE, earned_shape_devs)
     resid             <- df_fit$pure_time - predicted_clean
     cv_rows <- lapply(seq_len(nrow(target_candidates)), function(i) {
       list(
@@ -2187,6 +2396,14 @@ if (length(timed_raw) > 0) {
       )
     })
   }
+  # Fitted per-shape deviations (signed log scale) ride the row the same
+  # additive way `contribution` does — their only longitudinal home. NEVER
+  # merged into target_candidates: a deviation is not force-injectable, so a
+  # mission targeting one could never win a day, and the Journal reads
+  # candidates only.
+  if (exists("shape_dev_summary") && length(shape_dev_summary) > 0) {
+    new_row$shapeDeviations <- shape_dev_summary
+  }
 
   history <- tryCatch(
     fromJSON(history_path, simplifyVector = FALSE),
@@ -2206,7 +2423,8 @@ if (length(timed_raw) > 0) {
                   if (is.na(target_field)) "NA" else target_field))
 }
 
-# ── 6. Write updated PAR_MODEL block (only if fit produced new coefs) ──
+# ── 6. Write the PAR_MODEL / PAR_MODEL_TIMED / PAR_MODEL_SHAPES blocks
+#       (only if the fit produced new coefficients) ──
 
 if (fit_method != "brms-ranef") {
   message("No new coefficients — difficulty.js untouched.")
@@ -2215,160 +2433,135 @@ if (fit_method != "brms-ranef") {
 
 r2_str <- if (is.na(r2)) "NA" else sprintf("%.3f", r2)
 method_str <- sprintf("brms (%d users · %s)", length(handicaps), diag_note)
-block <- sprintf(
-'export const PAR_MODEL = {
-  // Last refit: %s | %s | N=%d scores, %d dates, %d players | R\u00b2=%s (log scale)
-  // scale:"log" => par = exp(intercept + \u03a3 coef\u00b7feature): multiplicative,
-  // lognormal MEDIAN. Coefficients are LOG-MULTIPLIERS per unit, NOT seconds.
-  scale: \'log\',
-  intercept: %.4f,
 
-  // Size baseline. cellCount is the lone size axis (it absorbs trivial
-  // propagation); totalMines stays a raw count. (2026-06-08 rework.)
-  secPerCell:        %.5f,
-  secPerMineFlag:    %.5f,
+# EMITTER:START
+# ---- Emitted-block generator -------------------------------------------
+# ONE generator for every refit-owned block in difficulty.js. The two blocks
+# used to be hand-maintained sprintf templates whose numeric slot counts and
+# argument lists drifted apart twice, each drift silently shifting every later
+# coefficient one slot. A generated block cannot shift a neighbor: each key
+# carries its own value, and adding a coefficient is adding one entry to
+# COEF_TO_PREDICTOR. The EMITTER markers on this section are load-bearing:
+# the scratch parity harness behind test/tilingParModelContract.test.mjs
+# extracts and evals exactly this region, so the emitter that is tested IS
+# the emitter that runs.
+JS_INTERCEPT_DIGITS <- 4
+JS_COEF_DIGITS      <- 5   # log-multipliers run ~0.001-0.08; four places
+                           # would round the smallest to one significant digit
 
-  // Reasoning tiers: pattern = canonical + generic subsets; search = advanced.
-  secPerPatternMove: %.5f,
-  secPerSearchMove:  %.5f,
+fmt_js_number <- function(key, value) {
+  digits <- if (identical(key, "intercept")) JS_INTERCEPT_DIGITS else JS_COEF_DIGITS
+  formatC(as.numeric(value), format = "f", digits = digits)
+}
 
-  // Board structure.
-  secPerWallEdge:    %.5f,
-  secPerZeroCluster: %.5f,
+# One `key: value,` line per entry of an ORDERED named list, preceded by the
+# fixed `scale: 'log'` line predictPar branches on.
+format_model_fields <- function(coefs, indent = "  ") {
+  lines <- c(paste0(indent, "scale: 'log',"),
+             vapply(names(coefs), function(k)
+               paste0(indent, k, ": ", fmt_js_number(k, coefs[[k]]), ","),
+               character(1)))
+  paste(lines, collapse = "\n")
+}
 
-  // Modifier cells (kept split; sparse, prior-anchored until data builds).
-  secPerMysteryCell:   %.5f,
-  secPerLiarCell:      %.5f,
-  secPerLockedCell:    %.5f,
-  secPerWormholePair:  %.5f,
-  secPerMirrorPair:    %.5f,
-  secPerSonarCell:     %.5f,
-  secPerCompassCell:   %.5f,
-  secPerWormLoad:      %.5f,
+# A flat refit-owned block: PAR_MODEL and PAR_MODEL_TIMED.
+emit_model_block <- function(const_name, header_lines, coefs) {
+  paste0(
+    "export const ", const_name, " = {\n",
+    paste0("  // ", header_lines, collapse = "\n"), "\n",
+    format_model_fields(coefs), "\n",
+    "};"
+  )
+}
 
-  // Board shape (Project Coastline). One log-multiplier per non-rectangular
-  // tiling, rectangles the omitted reference — held at 0 until tiling boards
-  // have produced real completions, so par is unchanged on every board to date.
-  secPerShape488:      %.5f,
-  secPerShapeHex:      %.5f,
-  secPerShapeCairo:      %.5f,
-  secPerShapeFloret:     %.5f,
-  secPerShapeRhombille:  %.5f,
-  secPerShapeDeltoidal:  %.5f,
+# The nested per-shape block: one full composed coefficient set per tiling,
+# keyed by the exact TILING_TYPES strings ('4.8.8' needs quoting; the rest
+# are valid identifiers).
+emit_shape_models_block <- function(const_name, header_lines, models) {
+  entries <- vapply(names(models), function(js_key) {
+    key_lit <- if (grepl("^[A-Za-z_$][A-Za-z0-9_$]*$", js_key)) js_key
+               else paste0("'", js_key, "'")
+    paste0("  ", key_lit, ": {\n",
+           format_model_fields(models[[js_key]], indent = "    "), "\n",
+           "  },")
+  }, character(1))
+  paste0(
+    "export const ", const_name, " = {\n",
+    paste0("  // ", header_lines, collapse = "\n"), "\n",
+    paste(entries, collapse = "\n"), "\n",
+    "};"
+  )
+}
 
-};',
-  Sys.Date(), method_str, n_scores, n_dates, n_players, r2_str,
-  new_coefs$intercept,
-  new_coefs$secPerCell,
-  new_coefs$secPerMineFlag,
-  new_coefs$secPerPatternMove,
-  new_coefs$secPerSearchMove,
-  new_coefs$secPerWallEdge,
-  new_coefs$secPerZeroCluster,
-  new_coefs$secPerMysteryCell,
-  new_coefs$secPerLiarCell,
-  new_coefs$secPerLockedCell,
-  new_coefs$secPerWormholePair,
-  new_coefs$secPerMirrorPair,
-  new_coefs$secPerSonarCell,
-  new_coefs$secPerCompassCell,
-  new_coefs$secPerWormLoad,
-  new_coefs$secPerShape488,
-  new_coefs$secPerShapeHex,
-  new_coefs$secPerShapeCairo,
-  new_coefs$secPerShapeFloret,
-  new_coefs$secPerShapeRhombille,
-  new_coefs$secPerShapeDeltoidal
+# Marker-bounded splice, shared by all three artifacts.
+patch_js_markers <- function(src, start_marker, end_marker, block) {
+  s <- str_locate(src, fixed(start_marker))
+  e <- str_locate(src, fixed(end_marker))
+  if (is.na(s[1, "start"]) || is.na(e[1, "end"])) {
+    stop("Could not find ", start_marker, " markers in difficulty.js")
+  }
+  paste0(substr(src, 1, s[1, "start"] - 1),
+         start_marker, "\n", block, "\n", end_marker,
+         substr(src, e[1, "end"] + 1, nchar(src)))
+}
+
+# Coefficient list in EMISSION ORDER: intercept first, then
+# COEF_TO_PREDICTOR's own order. The one place field order is decided.
+ordered_model_fields <- function(coefs) {
+  out <- list(intercept = coefs$intercept)
+  for (k in names(COEF_TO_PREDICTOR)) out[[k]] <- coefs[[k]] %||% 0
+  out
+}
+# EMITTER:END
+
+# The two fixed doc lines every flat block carries under its header.
+scale_doc <- c(
+  "scale:\"log\" => par = exp(intercept + Σ coef·feature): multiplicative,",
+  "lognormal MEDIAN. Coefficients are LOG-MULTIPLIERS per unit, NOT seconds."
 )
+
+daily_header <- c(
+  sprintf("Last refit: %s | %s | N=%d scores, %d dates, %d players | R²=%s (log scale)",
+          Sys.Date(), method_str, n_scores, n_dates, n_players, r2_str),
+  scale_doc
+)
+block <- emit_model_block("PAR_MODEL", daily_header, ordered_model_fields(new_coefs))
 
 src <- paste(readLines(DIFFICULTY_PATH, warn = FALSE, encoding = "UTF-8"),
              collapse = "\n")
-start_marker <- "// PAR_MODEL:START"
-end_marker   <- "// PAR_MODEL:END"
-start_loc <- str_locate(src, fixed(start_marker))
-end_loc   <- str_locate(src, fixed(end_marker))
-if (is.na(start_loc[1, "start"]) || is.na(end_loc[1, "end"])) {
-  stop("Could not find PAR_MODEL markers in ", DIFFICULTY_PATH)
-}
+new_src <- patch_js_markers(src, "// PAR_MODEL:START", "// PAR_MODEL:END", block)
 
-new_src <- paste0(
-  substr(src, 1, start_loc[1, "start"] - 1),
-  start_marker, "\n", block, "\n", end_marker,
-  substr(src, end_loc[1, "end"] + 1, nchar(src))
-)
-
-# ── Quick-play block (TIMED_PAR_MODEL markers) ──
+# ---- Quick-play block (TIMED_PAR_MODEL markers) ----
 # Same marker contract as PAR_MODEL. Below the activation threshold
-# timed_coefs is a verbatim copy of the daily model, so the shipped
-# block always exists and always parses.
-timed_block <- sprintf(
-'export const PAR_MODEL_TIMED = {
-  // Last refit: %s | %s
-  // Same log scale as PAR_MODEL (par = exp(intercept + Σ coef·feature)); below
-  // the activation threshold this is a verbatim copy of the daily model.
-  scale: \'log\',
-  intercept: %.4f,
-  secPerCell:        %.5f,
-  secPerMineFlag:    %.5f,
-  secPerPatternMove: %.5f,
-  secPerSearchMove:  %.5f,
-  secPerWallEdge:    %.5f,
-  secPerZeroCluster: %.5f,
-  secPerMysteryCell:   %.5f,
-  secPerLiarCell:      %.5f,
-  secPerLockedCell:    %.5f,
-  secPerWormholePair:  %.5f,
-  secPerMirrorPair:    %.5f,
-  secPerSonarCell:     %.5f,
-  secPerCompassCell:   %.5f,
-  secPerWormLoad:      %.5f,
-  secPerShape488:      %.5f,
-  secPerShapeHex:      %.5f,
-  secPerShapeCairo:      %.5f,
-  secPerShapeFloret:     %.5f,
-  secPerShapeRhombille:  %.5f,
-  secPerShapeDeltoidal:  %.5f,
-};',
-  Sys.Date(), timed_method,
-  timed_coefs$intercept,
-  timed_coefs$secPerCell,
-  timed_coefs$secPerMineFlag,
-  timed_coefs$secPerPatternMove,
-  timed_coefs$secPerSearchMove,
-  timed_coefs$secPerWallEdge,
-  timed_coefs$secPerZeroCluster,
-  timed_coefs$secPerMysteryCell,
-  timed_coefs$secPerLiarCell,
-  timed_coefs$secPerLockedCell,
-  timed_coefs$secPerWormholePair,
-  timed_coefs$secPerMirrorPair,
-  timed_coefs$secPerSonarCell,
-  timed_coefs$secPerCompassCell,
-  timed_coefs$secPerWormLoad,
-  # Quick play is rectangles-only, so these are carried purely to keep the two
-  # blocks the same shape (COEF_TERMS is shared, and test/timedModel.test.mjs
-  # pins that every PAR_MODEL key has a PAR_MODEL_TIMED counterpart). The
-  # copy-of-daily default supplies them when no timed fit ran.
-  timed_coefs$secPerShape488       %||% 0,
-  timed_coefs$secPerShapeHex       %||% 0,
-  timed_coefs$secPerShapeCairo     %||% 0,
-  timed_coefs$secPerShapeFloret    %||% 0,
-  timed_coefs$secPerShapeRhombille %||% 0,
-  timed_coefs$secPerShapeDeltoidal %||% 0
+# timed_coefs is a verbatim copy of the daily model, so the shipped block
+# always exists and always parses. Quick play is rectangles-only, so there is
+# no per-shape variant of this block and no shape keys in it.
+timed_header <- c(
+  sprintf("Last refit: %s | %s", Sys.Date(), timed_method),
+  scale_doc,
+  "Below the activation threshold this is a verbatim copy of the daily model."
 )
+timed_block <- emit_model_block("PAR_MODEL_TIMED", timed_header,
+                                ordered_model_fields(timed_coefs))
+new_src <- patch_js_markers(new_src, "// TIMED_PAR_MODEL:START",
+                            "// TIMED_PAR_MODEL:END", timed_block)
 
-t_start_marker <- "// TIMED_PAR_MODEL:START"
-t_end_marker   <- "// TIMED_PAR_MODEL:END"
-t_start_loc <- str_locate(new_src, fixed(t_start_marker))
-t_end_loc   <- str_locate(new_src, fixed(t_end_marker))
-if (is.na(t_start_loc[1, "start"]) || is.na(t_end_loc[1, "end"])) {
-  stop("Could not find TIMED_PAR_MODEL markers in ", DIFFICULTY_PATH)
-}
-new_src <- paste0(
-  substr(new_src, 1, t_start_loc[1, "start"] - 1),
-  t_start_marker, "\n", timed_block, "\n", t_end_marker,
-  substr(new_src, t_end_loc[1, "end"] + 1, nchar(new_src))
+# ---- Per-shape block (PAR_MODEL_SHAPES markers) ----
+# One full composed equation per tiling (base + earned deviations, composed
+# in section 3). With every deviation unearned the six blocks are numerically
+# identical to PAR_MODEL, which is the parity property the contract test pins.
+shapes_header <- c(
+  sprintf("Last refit: %s | composed: PAR_MODEL base + earned per-shape deviations",
+          Sys.Date()),
+  sprintf("A deviation ships only once its interaction column has %d nonzero fit",
+          NEW_FEATURE_DATA_THRESHOLD),
+  "rows (NEW_FEATURE_DATA_THRESHOLD); unearned deviations leave a block",
+  "numerically IDENTICAL to PAR_MODEL (the parity property)."
 )
+shapes_block <- emit_shape_models_block("PAR_MODEL_SHAPES", shapes_header,
+                                        lapply(shape_models, ordered_model_fields))
+new_src <- patch_js_markers(new_src, "// PAR_MODEL_SHAPES:START",
+                            "// PAR_MODEL_SHAPES:END", shapes_block)
 
 if (identical(new_src, src)) {
   message("No coefficient changes — file already up to date.")
@@ -2376,7 +2569,8 @@ if (identical(new_src, src)) {
 }
 
 writeLines(new_src, DIFFICULTY_PATH, useBytes = TRUE)
-message(sprintf("Wrote updated PAR_MODEL + PAR_MODEL_TIMED to %s", DIFFICULTY_PATH))
+message(sprintf("Wrote updated PAR_MODEL + PAR_MODEL_TIMED + PAR_MODEL_SHAPES to %s",
+                DIFFICULTY_PATH))
 
 # Fail the workflow loudly if the brms fit was rejected for diagnostic
 # reasons. The previous PAR_MODEL stays in effect (good), but the run

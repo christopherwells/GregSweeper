@@ -1,140 +1,302 @@
-// The refit contract for the board-shape terms (Project Coastline).
+// The refit contract for per-shape par equations (Project Coastline,
+// architecture of 2026-08-01 — Christopher: "we might just want different par
+// equations for each shape... priors can be informed by the square tilings").
 //
-// PAR_MODEL lives between markers that the nightly R refit OVERWRITES in full
-// from a hardcoded sprintf template. So a coefficient added to difficulty.js
-// but not to that template survives exactly until the next nightly refit, then silently
-// vanishes — the block still parses, predictPar still runs, and the term is
-// just gone. These tests are the tripwire for that, and for the corresponding
-// R-side plumbing a shape offset needs in order to ever be fit.
+// A tiling board no longer prices as PAR_MODEL plus a secPerShape* intercept
+// offset. Instead PAR_MODEL_SHAPES carries one FULL coefficient set per
+// tiling, composed by the nightly refit as base + EARNED deviations (a
+// deviation is a signed shape-by-feature interaction in ONE joint brms fit,
+// zeroed until its column has NEW_FEATURE_DATA_THRESHOLD nonzero rows), and
+// modelFor dispatches a feature vector to its block. These tests pin:
+//
+//  - the PARITY property: while every deviation is unearned, every shape
+//    block is numerically identical to PAR_MODEL, so par on every board is
+//    byte-identical to the pre-shape model;
+//  - the registry lockstep (blocks exactly cover TILING_TYPES, JS and R);
+//  - the DEATH of the two hand-maintained sprintf templates the generated
+//    emitter replaced (their slot/arg counts silently drifted twice);
+//  - the R-side plumbing a deviation needs in order to ever be fit: signed
+//    priors (the lb blanket gone), interaction columns, per-column gates,
+//    the init fix, the earn guard, and the modelHistory shapeDeviations
+//    record that never reaches target_candidates.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { PAR_MODEL, PAR_MODEL_TIMED } from '../src/logic/difficulty.js';
+import {
+  PAR_MODEL, PAR_MODEL_TIMED, PAR_MODEL_SHAPES,
+} from '../src/logic/difficulty.js';
+import {
+  modelFor, predictPar, applyParModel, breakdownPar,
+} from '../src/logic/dailyFeatures.js';
 import { TILING_TYPES } from '../src/logic/tilingGeometry.js';
 
 const R_SRC = readFileSync(new URL('../scripts/refit-par-model.R', import.meta.url), 'utf8');
 const JS_SRC = readFileSync(new URL('../src/logic/difficulty.js', import.meta.url), 'utf8');
+const DF_SRC = readFileSync(new URL('../src/logic/dailyFeatures.js', import.meta.url), 'utf8');
 
-// DERIVED from the tiling registry, never hand-listed. Every non-rectangular
-// tiling carries one par offset, so the two arrays below must grow with
-// TILING_TYPES or the per-coefficient tripwires below silently stop covering the
-// newest shapes — which is exactly what happened when the four Laves tilings
-// landed against a hardcoded ['secPerShape488', 'secPerShapeHex']: the nightly
-// refit rewrites the whole marker block, so a coefficient dropped from the R
-// template would have vanished from difficulty.js with the block still parsing.
-// The generic slot-vs-arg count check cannot catch that, because deleting a
-// %.5f AND its argument together leaves the counts equal.
+// The retired offset keys. They must never come back: the emitter would not
+// emit them, so a hand-added key would silently vanish on the next nightly.
+const RETIRED_SHAPE_COEFS = ['secPerShape488', 'secPerShapeHex', 'secPerShapeCairo',
+  'secPerShapeFloret', 'secPerShapeRhombille', 'secPerShapeDeltoidal'];
+
+// R predictor stems, derived from the registry exactly as the R SHAPE_TABLE
+// must map them — the same SHAPE_KEY discipline the offset-era test used.
 const SHAPE_KEY = { '4.8.8': '488', hex: 'Hex', cairo: 'Cairo', floret: 'Floret',
   rhombille: 'Rhombille', deltoidal: 'Deltoidal' };
-const SHAPE_NAMES = TILING_TYPES.map((t) => {
+const SHAPE_PREDICTORS = TILING_TYPES.map((t) => {
   const key = SHAPE_KEY[t];
-  if (!key) throw new Error(`tiling '${t}' has no par-offset key — add it to SHAPE_KEY`);
-  return key;
-});
-const SHAPE_COEFS = SHAPE_NAMES.map(k => `secPerShape${k}`);
-const SHAPE_PREDICTORS = SHAPE_NAMES.map(k => `shape${k}`);
-
-test('both models ship the shape coefficients, at zero until data earns them', () => {
-  for (const coef of SHAPE_COEFS) {
-    assert.equal(typeof PAR_MODEL[coef], 'number', `PAR_MODEL.${coef} missing`);
-    assert.equal(typeof PAR_MODEL_TIMED[coef], 'number', `PAR_MODEL_TIMED.${coef} missing`);
-    // Not a permanent assertion about the value — it is the instrument-first
-    // contract. If a refit ever ships a NON-zero shape coefficient this test
-    // should be updated deliberately, having looked at the fit that earned it.
-    assert.equal(PAR_MODEL[coef], 0,
-      `${coef} is non-zero — a tiling fit has landed; confirm it earned out before relaxing this`);
-  }
+  if (!key) throw new Error(`tiling '${t}' has no predictor stem — add it to SHAPE_KEY`);
+  return `shape${key}`;
 });
 
-test('REGRESSION: the R refit EMITS the shape coefficients (else the nightly wipes them)', () => {
-  // Both marker blocks are rewritten wholesale, so both templates need them.
-  for (const coef of SHAPE_COEFS) {
-    assert.ok(R_SRC.includes(`${coef}:`),
-      `the R sprintf template must contain a ${coef}: line or the refit drops it`);
-    assert.ok(R_SRC.includes(`new_coefs$${coef}`),
-      `the R template args must pass new_coefs$${coef}`);
-    assert.ok(R_SRC.includes(`timed_coefs$${coef}`),
-      `the timed template args must pass timed_coefs$${coef}`);
-  }
+// Realistic-ish feature vectors for the behavioral assertions.
+const FEATS = [
+  { cellCount: 100, totalMines: 20, canonicalSubsetMoves: 2, genericSubsetMoves: 1,
+    advancedLogicMoves: 1, wallEdgeCount: 3, zeroClusterCount: 2 },
+  { cellCount: 63, totalMines: 13, canonicalSubsetMoves: 5, genericSubsetMoves: 0,
+    advancedLogicMoves: 0, sonarCellCount: 3, zeroClusterCount: 4 },
+  { cellCount: 144, totalMines: 40, canonicalSubsetMoves: 0, genericSubsetMoves: 0,
+    advancedLogicMoves: 9, lockedCellCount: 2, wormLoad: 4.2 },
+];
 
-  // The count of %.5f slots must match the count of supplied args, which is
-  // the actual failure mode of a hand-maintained sprintf: a missed arg shifts
-  // EVERY subsequent coefficient by one position, silently.
-  for (const [startMarker, argPrefix] of [['export const PAR_MODEL = {', 'new_coefs$'],
-    ['export const PAR_MODEL_TIMED = {', 'timed_coefs$']]) {
-    const start = R_SRC.indexOf(startMarker);
-    assert.ok(start > 0, `R template for ${startMarker} not found`);
-    const end = R_SRC.indexOf('\n)', start);
-    const chunk = R_SRC.slice(start, end);
-    // The intercept is %.4f and every coefficient is %.5f; the remaining
-    // slots (%s / %d in the header comment) are fed by non-coefficient args
-    // and are correctly excluded from BOTH sides of this count.
-    const slots = (chunk.match(/%\.[45]f/g) || []).length;
-    // `$` is a regex metacharacter and the prefix ends in one, so escape it.
-    const args = (chunk.match(new RegExp(argPrefix.replace('$', '\\$'), 'g')) || []).length;
-    assert.equal(slots, args,
-      `${startMarker}: ${slots} numeric slots but ${args} ${argPrefix} args — the emitted coefficients would shift`);
+// ── The shipped artifact ─────────────────────────────────────────────
+
+test('PAR_MODEL_SHAPES covers exactly TILING_TYPES', () => {
+  assert.ok(PAR_MODEL_SHAPES && typeof PAR_MODEL_SHAPES === 'object');
+  assert.deepEqual(Object.keys(PAR_MODEL_SHAPES).sort(), [...TILING_TYPES].sort(),
+    'one block per registry tiling, no extras (the alias 6.6.6 must NOT be a key — modelFor normalizes it)');
+});
+
+test('every shape block has exactly PAR_MODEL’s key set', () => {
+  const baseKeys = Object.keys(PAR_MODEL).sort();
+  for (const t of TILING_TYPES) {
+    assert.deepEqual(Object.keys(PAR_MODEL_SHAPES[t]).sort(), baseKeys,
+      `${t}: a shape block is a FULL equation — same keys as PAR_MODEL, always`);
   }
 });
 
-test('R derives the shape indicators from tilingType and gates them on real rows', () => {
-  // Derivation: computeDailyFeatures emits `tilingType` only on a tiling, so R
-  // must expand it into the 0/1 columns rather than expect them pre-split.
-  assert.ok(R_SRC.includes('tilingType'), 'R must read the stored tilingType feature');
-  for (const p of SHAPE_PREDICTORS) {
-    assert.ok(R_SRC.includes(`df$${p}`), `R must derive the ${p} indicator column`);
-    // Zero-variance gate: the term enters the formula only once that shape has
-    // rows, the same guard archivePlay and wormLoad use. Without it brms is
-    // handed an all-zero column and rejects the fit.
-    assert.ok(new RegExp(`add_${p}_term\\s*<-`).test(R_SRC),
-      `R must gate the ${p} term on that shape actually having rows`);
-  }
-  // Priors: build_priors stop()s on a missing sigma, so an ungated name would
-  // abort the whole nightly refit rather than degrade.
-  for (const p of SHAPE_PREDICTORS) {
-    assert.ok(new RegExp(`${p}\\s*=`).test(R_SRC), `PRIOR_SIGMAS/PRIOR_MEANS need a ${p} entry`);
+test('PARITY: every shape block is numerically identical to PAR_MODEL while its deviations are unearned', () => {
+  // This is the architecture's safety property: composed = base + earned
+  // deviations, and no deviation has earned out, so the six blocks ARE the
+  // base model and par is byte-identical on every board.
+  //
+  // A refit that earns a REAL deviation (>= NEW_FEATURE_DATA_THRESHOLD
+  // nonzero rows for that shape x feature column) will deliberately relax
+  // this assertion — update it then, having looked at the fit that earned it,
+  // to pin only the still-unearned blocks.
+  for (const t of TILING_TYPES) {
+    assert.deepEqual(PAR_MODEL_SHAPES[t], PAR_MODEL,
+      `${t}: block diverges from PAR_MODEL with no earned deviation to justify it`);
   }
 });
 
-test('the shipped shape coefficient sits behind the new-feature zero-guard', () => {
-  const guard = R_SRC.slice(R_SRC.indexOf('feature_data_counts <- list('));
-  for (const coef of SHAPE_COEFS) {
-    assert.ok(guard.slice(0, 1200).includes(coef),
-      `${coef} must be in feature_data_counts so it ships as 0 below NEW_FEATURE_DATA_THRESHOLD`);
+test('the retired secPerShape* offsets are GONE from both flat blocks and from COEF_TERMS', () => {
+  for (const coef of RETIRED_SHAPE_COEFS) {
+    assert.equal(PAR_MODEL[coef], undefined, `${coef} must not return to PAR_MODEL`);
+    assert.equal(PAR_MODEL_TIMED[coef], undefined, `${coef} must not return to PAR_MODEL_TIMED`);
   }
+  // COEF_TERMS is module-private, so pin it two ways: the source must not
+  // mention the keys, and behaviorally a model carrying one must not move par
+  // on its shape (the term no longer exists to read it).
+  assert.ok(!DF_SRC.includes('secPerShape'),
+    'dailyFeatures.js must not carry shape indicator terms — shape now selects the MODEL');
+  const doped = { ...PAR_MODEL, secPerShape488: 0.5 };
+  const f = { ...FEATS[0], tilingType: '4.8.8' };
+  assert.equal(applyParModel(f, doped), applyParModel(f, PAR_MODEL),
+    'a secPerShape* key on a model must be inert — the indicator term is retired');
 });
 
-test('apply_par_model mirrors predictPar, including the shape terms', () => {
-  // The R-side predictor is used for the outlier screen and the residual
-  // handicap fallback. If it drifts from predictPar, rows get screened against
-  // a par the client never quoted.
-  const fn = R_SRC.slice(R_SRC.indexOf('apply_par_model <- function('),
-    R_SRC.indexOf('# Detect whether a parsed PAR_MODEL block'));
-  for (const coef of SHAPE_COEFS) {
-    assert.ok(fn.includes(coef), `apply_par_model must include ${coef}`);
-  }
-  // with(df, ...) errors on an absent column, and this function runs against
-  // frames that legitimately have no tiling rows, so the columns must be
-  // defaulted inside the function rather than assumed from the caller.
-  for (const p of SHAPE_PREDICTORS) {
-    assert.ok(fn.includes(`"${p}"`),
-      `apply_par_model must default the ${p} column (with(df,...) throws on a missing name)`);
-  }
-});
-
-test('the shape coefficients live INSIDE the refit-owned markers', () => {
-  // Anchor on the full comment marker: bare 'PAR_MODEL:START' also matches the
-  // prose above the block ("The block between PAR_MODEL:START and ...") and is
-  // a substring of 'TIMED_PAR_MODEL:START', so either would slice the wrong
-  // region and pass or fail for the wrong reason.
-  const start = JS_SRC.indexOf('// PAR_MODEL:START');
-  const end = JS_SRC.indexOf('// PAR_MODEL:END');
-  assert.ok(start > 0 && end > start, 'daily PAR_MODEL markers not found');
+test('the shapes block lives INSIDE its refit-owned markers', () => {
+  const start = JS_SRC.indexOf('// PAR_MODEL_SHAPES:START');
+  const end = JS_SRC.indexOf('// PAR_MODEL_SHAPES:END');
+  assert.ok(start > 0 && end > start, 'PAR_MODEL_SHAPES markers not found');
   const block = JS_SRC.slice(start, end);
-  assert.ok(!block.includes('PAR_MODEL_TIMED'), 'sliced the wrong block — timed leaked in');
-  for (const coef of SHAPE_COEFS) {
-    assert.ok(block.includes(coef),
-      `${coef} must sit inside the markers, or the refit's rewrite would delete it`);
+  assert.ok(block.includes('export const PAR_MODEL_SHAPES'),
+    'the export must sit inside the markers, or the refit’s rewrite would strand it');
+  for (const t of TILING_TYPES) {
+    const lit = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(t) ? `${t}:` : `'${t}':`;
+    assert.ok(block.includes(lit), `${t} entry must sit inside the markers`);
   }
+});
+
+// ── Dispatch ─────────────────────────────────────────────────────────
+
+test('modelFor: tilingType dispatches to its block, unknown falls back, modeTimed wins', () => {
+  for (const t of TILING_TYPES) {
+    assert.equal(modelFor({ tilingType: t }), PAR_MODEL_SHAPES[t],
+      `${t} must price on its own block`);
+  }
+  // Unknown / absent shape -> the base model. Same documented hazard as
+  // buildTiling's fallback: a tiling that ships its feature before its block
+  // prices as a plain board, never borrows another lattice's equation.
+  assert.equal(modelFor({ tilingType: '3.12.12' }), PAR_MODEL);
+  assert.equal(modelFor({}), PAR_MODEL);
+  assert.equal(modelFor(null), PAR_MODEL);
+  // Quick play is rectangles-only and win-censored; it wins outright even if
+  // a tilingType somehow rides along.
+  assert.equal(modelFor({ modeTimed: 1, tilingType: 'hex' }), PAR_MODEL_TIMED);
+});
+
+test('the 6.6.6 alias resolves to the hex block via modelFor normalization', () => {
+  // Decision, documented in dailyFeatures.js: PAR_MODEL_SHAPES carries ONLY
+  // canonical TILING_TYPES keys (so the covers-exactly test above stays
+  // exact) and modelFor normalizes the deep-link alias. A stored tilingType
+  // can never be '6.6.6' (builders stamp canonical names); this is defense
+  // for callers holding a raw link token.
+  assert.equal(modelFor({ tilingType: '6.6.6' }), PAR_MODEL_SHAPES.hex);
+  assert.equal(PAR_MODEL_SHAPES['6.6.6'], undefined, 'the alias must not be a block key');
+});
+
+test('predictPar PARITY: with and without tilingType, par is identical while deviations are unearned', () => {
+  // Structural parity (block values === PAR_MODEL values), not absolute
+  // numbers — PAR_MODEL's values are refit-owned and move nightly.
+  for (const base of FEATS) {
+    const rectPar = predictPar(base);
+    assert.equal(rectPar, applyParModel(base, PAR_MODEL), 'rectangles price on PAR_MODEL');
+    for (const t of [...TILING_TYPES, '6.6.6']) {
+      assert.equal(predictPar({ ...base, tilingType: t }), rectPar,
+        `${t}: an unearned shape block must reproduce the base par exactly`);
+    }
+  }
+});
+
+test('breakdownPar resolves the shape block by default and yields a sane breakdown', () => {
+  const f = { ...FEATS[1], tilingType: 'hex' };
+  const chips = breakdownPar(f);
+  assert.ok(Array.isArray(chips) && chips.length > 0, 'expected breakdown chips');
+  for (const c of chips) {
+    assert.equal(typeof c.label, 'string');
+    assert.ok(Number.isFinite(c.seconds) && c.seconds > 0, `${c.label}: ${c.seconds}`);
+  }
+  // The chips (groups + baseline) still sum to par under the log allocation,
+  // within the 0.1s rounding each chip carries.
+  const par = predictPar(f);
+  const sum = chips.reduce((s, c) => s + c.seconds, 0);
+  assert.ok(Math.abs(sum - par) <= 0.05 * (chips.length + 1),
+    `chips sum ${sum} should reconstruct par ${par}`);
+  // And matches the rectangle breakdown exactly while parity holds.
+  assert.deepEqual(chips, breakdownPar({ ...FEATS[1] }),
+    'unearned shape breakdown must equal the rectangle breakdown');
+});
+
+// ── The R side ───────────────────────────────────────────────────────
+
+test('REGRESSION: both hand sprintf templates are dead; the generator exists', () => {
+  // The hand templates' fingerprint was literal %.5f/%.4f slots whose count
+  // had to match a parallel argument list by eye — the drift class this
+  // architecture removes. The generator formats per key (formatC), so ANY
+  // %.Nf literal reappearing in the R source means a hand template is back.
+  assert.equal((R_SRC.match(/%\.[45]f/g) || []).length, 0,
+    'no %.4f/%.5f template slots may exist — blocks are emitted per key');
+  assert.ok(!R_SRC.includes("'export const PAR_MODEL"),
+    'no inline JS template literals — emit_model_block builds the block');
+  for (const fn of ['emit_model_block', 'emit_shape_models_block',
+    'patch_js_markers', 'ordered_model_fields', 'fmt_js_number']) {
+    assert.ok(new RegExp(`${fn} <- function`).test(R_SRC), `generator ${fn} missing`);
+  }
+  // The harness contract: the emitter region is extractable by its markers.
+  assert.ok(R_SRC.includes('# EMITTER:START') && R_SRC.includes('# EMITTER:END'),
+    'EMITTER markers are load-bearing — the parity harness evals that region');
+  // All three artifacts are emitted through the marker patcher.
+  for (const marker of ['// PAR_MODEL:START', '// TIMED_PAR_MODEL:START',
+    '// PAR_MODEL_SHAPES:START']) {
+    assert.ok(R_SRC.includes(`"${marker}"`), `patch_js_markers must target ${marker}`);
+  }
+});
+
+test('R derives the indicator AND every shape-by-feature interaction from the registry', () => {
+  // SHAPE_TABLE must map every TILING_TYPES string to its predictor stem —
+  // the R-side half of the registry lockstep.
+  const tbl = R_SRC.match(/SHAPE_TABLE <- c\(([\s\S]*?)\)/);
+  assert.ok(tbl, 'SHAPE_TABLE missing from the R refit');
+  for (let i = 0; i < TILING_TYPES.length; i++) {
+    assert.ok(tbl[1].includes(`"${TILING_TYPES[i]}"`), `SHAPE_TABLE lacks ${TILING_TYPES[i]}`);
+    assert.ok(tbl[1].includes(`"${SHAPE_PREDICTORS[i]}"`), `SHAPE_TABLE lacks ${SHAPE_PREDICTORS[i]}`);
+  }
+  // Interaction columns are an outer product over the registry, not a hand
+  // list — one line covers every shape x every base feature.
+  assert.ok(/SHAPE_INTERACTION_COLS <- as\.vector\(t\(outer\(SHAPE_PREDICTORS, BASE_MODEL_FEATURES/.test(R_SRC),
+    'interaction columns must be derived by outer product over the registry');
+  assert.ok(R_SRC.includes('paste0(.s, "_x_", .f)'),
+    'df must gain the shape<S>_x_<F> columns');
+  // Per-COLUMN zero-variance gate (collapses to nothing with no tiling rows).
+  assert.ok(/active_shape_cols <- SHAPE_DEV_NAMES\[/.test(R_SRC),
+    'every deviation column must gate on having nonzero rows');
+});
+
+test('the lb blanket is gone from build_priors; deviations get signed normal(0, INTERACTION_PRIOR_SD)', () => {
+  const body = R_SRC.slice(R_SRC.indexOf('build_priors <- function'),
+    R_SRC.indexOf('make_positive_init <- function'));
+  assert.ok(body.length > 100, 'build_priors not found');
+  // Match the literal blanket, not the words: the surrounding comments
+  // legitimately DISCUSS "lb = 0" (they document why it is gone).
+  assert.ok(!body.includes('set_prior("", class = "b", lb = 0)'),
+    'the class-wide lb blanket must stay gone — signed deviations share class b, and base positivity rides the lognormal support');
+  assert.ok(body.includes('deviation_names'), 'build_priors must take deviation_names');
+  assert.ok(body.includes('normal(0, %f)') && body.includes('INTERACTION_PRIOR_SD'),
+    'deviations must get the zero-centered signed normal');
+  assert.ok(/INTERACTION_PRIOR_SD <- /.test(R_SRC), 'INTERACTION_PRIOR_SD must be a documented constant');
+  // stop()-on-missing discipline survives for non-deviation names.
+  assert.ok(body.includes('stop("Missing prior sigma for '), 'sigma stop() discipline lost');
+});
+
+test('the unconstrained class b gets an explicit positive init (the landmine the blanket hid)', () => {
+  // Without lb = 0, Stan inits class b uniform(-2, 2); ~14 lognormal-prior
+  // coefficients all need a positive draw at once (~2^-14 per attempt), so
+  // default inits would kill the fit at initialization. Both fits that rely
+  // on lognormal support must pass the explicit init.
+  assert.ok(/make_positive_init <- function/.test(R_SRC), 'make_positive_init missing');
+  const initCalls = (R_SRC.match(/init\s*=\s*make_positive_init\(/g) || []).length;
+  assert.ok(initCalls >= 2,
+    `both the primary and the digit brm() calls need the positive init (found ${initCalls})`);
+  // The timed fit deliberately KEEPS its own lb blanket (untouched code
+  // path, no deviations there), so its default inits remain valid.
+  const timedBlock = R_SRC.slice(R_SRC.indexOf('timed_priors_parts <- list('));
+  assert.ok(timedBlock.slice(0, 200).includes('lb = 0'),
+    'the timed prior blanket is intentionally retained — do not "clean it up" without adding an init');
+});
+
+test('apply_par_model stays ONE equation: defaults every deviation column and adds them to the lp', () => {
+  const fn = R_SRC.slice(R_SRC.indexOf('apply_par_model <- function('),
+    R_SRC.indexOf('parse_par_model_shapes_devs <- function'));
+  assert.ok(fn.includes('shape_devs'), 'apply_par_model must take the deviation list');
+  assert.ok(fn.includes('SHAPE_DEV_NAMES'),
+    'every indicator and interaction column must be defaulted (a rectangles-only frame carries none)');
+  assert.ok(fn.includes('COEF_TO_PREDICTOR'),
+    'the base terms must be data-driven off the same table the emitter reads');
+  // And the screens actually pass the shipped deviations through.
+  assert.ok(R_SRC.includes('prev_is_log, current_shape_devs'),
+    'the outlier screen and residual fallback must price tiling rows on the shipped shape equations');
+});
+
+test('deviation earn guard + composition: threshold per column, composed blocks, history record', () => {
+  // Two-layer guard, same shape as wormLoad's: fitted posterior recorded,
+  // shipped value zeroed until NEW_FEATURE_DATA_THRESHOLD nonzero rows.
+  assert.ok(R_SRC.includes('earned_shape_devs'), 'earned deviation set missing');
+  const guard = R_SRC.slice(R_SRC.indexOf('shape_dev_summary <- list()'),
+    R_SRC.indexOf('shape_dev_summary <- list()') + 1600);
+  assert.ok(guard.includes('NEW_FEATURE_DATA_THRESHOLD'),
+    'each deviation must earn out at the shared threshold');
+  // Composition: shape block = final shipped base + earned deviation.
+  assert.ok(R_SRC.includes('shape_models[[js_key]] <- blk'), 'per-shape composition missing');
+  // modelHistory carries the fitted deviations additively; the target chooser
+  // must never see them (not force-injectable).
+  assert.ok(R_SRC.includes('new_row$shapeDeviations'),
+    'fitted deviations must ride modelHistory as shapeDeviations');
+  const whitelist = R_SRC.match(/target_whitelist <- c\(([\s\S]*?)\)/);
+  assert.ok(whitelist, 'target_whitelist missing');
+  assert.ok(!/shape/i.test(whitelist[1]),
+    'no shape term may enter target_candidates via the whitelist');
+});
+
+test('the digit frame is rectangles-only', () => {
+  // At fixed density the digit shares differ BY LATTICE (rhombille 5plus
+  // 4.4x the 4.8.8's, 15x the hex's); tiling rows would turn the digit
+  // coefficients into part-shape indicators, and the pairwise decorrelation
+  // mission cannot see a third axis.
+  const frame = R_SRC.slice(R_SRC.indexOf('digit_df <- df |>'),
+    R_SRC.indexOf('inner_join(digit_shares, by = "date")'));
+  assert.ok(frame.includes('filter(is.na(tilingType))'),
+    'digit_df must drop tiling rows before the shares join');
 });
