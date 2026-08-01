@@ -2,7 +2,7 @@
 //
 // PAR_MODEL lives between markers that the nightly R refit OVERWRITES in full
 // from a hardcoded sprintf template. So a coefficient added to difficulty.js
-// but not to that template survives exactly until 14:00 UTC and then silently
+// but not to that template survives exactly until the next nightly refit, then silently
 // vanishes — the block still parses, predictPar still runs, and the term is
 // just gone. These tests are the tripwire for that, and for the corresponding
 // R-side plumbing a shape offset needs in order to ever be fit.

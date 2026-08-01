@@ -52,7 +52,12 @@ export async function computeDailyParForDate(dateStr, ignoreInMemory = false) {
         pMines = r.totalMines;
         activeGimmicks = r.activeGimmicks || [];
         pSeed = r.rngSeed || dateStr;
-        const pFixedR = Math.floor(pRows / 2), pFixedC = Math.floor(pCols / 2);
+        // Solve from the certified opener deserializeBoard returns — the ONE
+        // definition (stored firstClick on a tiling, container centre on a
+        // rectangle). The container-centre formula that lived here anchored a
+        // tiling canonical's par on an unrelated container slot, where the
+        // solve stalls at click 1 and par quietly comes out wrong (issue #195).
+        const pFixedR = Math.floor(r.firstClick / pCols), pFixedC = r.firstClick % pCols;
         parResult = isBoardSolvable(pBoard, pRows, pCols, pFixedR, pFixedC);
         cleanSolverArtifacts(pBoard);
       } else {
@@ -114,7 +119,9 @@ export async function computeWeeklyPar(weekStart) {
     const raw = await loadWeeklyBoard(weekStart).catch(() => null);
     if (raw) {
       const r = deserializeBoard(raw);
-      const fr = Math.floor(r.rows / 2), fc = Math.floor(r.cols / 2);
+      // Same single definition of the certified opener as the daily branch
+      // above (issue #195).
+      const fr = Math.floor(r.firstClick / r.cols), fc = r.firstClick % r.cols;
       const check = isBoardSolvable(r.board, r.rows, r.cols, fr, fc);
       cleanSolverArtifacts(r.board);
       if (check.solvable || check.remainingUnknowns === 0) {

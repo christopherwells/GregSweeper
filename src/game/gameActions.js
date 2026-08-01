@@ -586,8 +586,21 @@ export async function newGame() {
     state.firstClick = false;
     state.status = 'idle';
 
-    const fixedRow = Math.floor(state.rows / 2);
-    const fixedCol = Math.floor(state.cols / 2);
+    // The certified opener. A canonical board carries it from deserializeBoard
+    // — the ONE definition shared with the Node consumers (nightly sweep,
+    // repair, backfill): the stored firstClick on a tiling, the container
+    // centre on every rectangle. Re-deriving floor(rows/2), floor(cols/2)
+    // here anchored the solve on an unrelated container slot of a tiling
+    // canonical (measured: 12 of 18 round-trips diverge, all 12 stall at
+    // click 1, par off by up to 22% — issue #195), so features/par/moves
+    // came off a failed solve with no error anywhere. A locally generated
+    // board has no deserialize result; it was generated around the container
+    // centre above, which stays its opener (local daily gen is rectangular).
+    const dailyOpener = reconstructed
+      ? reconstructed.firstClick
+      : Math.floor(state.rows / 2) * state.cols + Math.floor(state.cols / 2);
+    const fixedRow = Math.floor(dailyOpener / state.cols);
+    const fixedCol = dailyOpener % state.cols;
 
     // Run the solver on the resolved board (canonical or freshly-
     // generated) for features + par + best-start cell.
@@ -769,8 +782,14 @@ export async function newGame() {
     state.firstClick = false;
     state.status = 'idle';
 
-    const fixedRow = Math.floor(state.rows / 2);
-    const fixedCol = Math.floor(state.cols / 2);
+    // Same certified-opener contract as the daily branch above (issue #195):
+    // a canonical board's opener comes from deserializeBoard, a locally
+    // generated one keeps the container centre it was generated around.
+    const weeklyOpener = reconstructed
+      ? reconstructed.firstClick
+      : Math.floor(state.rows / 2) * state.cols + Math.floor(state.cols / 2);
+    const fixedRow = Math.floor(weeklyOpener / state.cols);
+    const fixedCol = weeklyOpener % state.cols;
 
     // Compute features once on canonical resolve. Used by the
     // first-attempt fit-data submit in winLossHandler. Weekly doesn't
