@@ -49,7 +49,12 @@ test('every daily coefficient has a timed counterpart (copy-of-daily shape)', ()
 test('refit contract: R owns the TIMED block inside its own markers', () => {
   const r = readFileSync(new URL('../scripts/refit-par-model.R', import.meta.url), 'utf8');
   assert.ok(r.includes('TIMED_PAR_MODEL:START'), 'R must patch the timed markers');
-  assert.ok(r.includes('timed_coefs$secPerCompassCell'), 'R must emit timed coefficients');
+  // 2026-08-01: the hand sprintf template (whose fingerprint was
+  // `timed_coefs$secPerCompassCell` in an argument list) is gone; the block
+  // is emitted per key by the shared generator, so the thing to pin is that
+  // timed_coefs feeds it.
+  assert.ok(r.includes('ordered_model_fields(timed_coefs)'),
+    'R must emit the timed coefficients through the shared block generator');
   assert.ok(r.includes('time <= 3 * predicted'), 'the slow-tail (AFK) outlier screen must exist');
   const js = readFileSync(new URL('../src/logic/difficulty.js', import.meta.url), 'utf8');
   const block = js.slice(js.lastIndexOf('TIMED_PAR_MODEL:START'), js.lastIndexOf('TIMED_PAR_MODEL:END'));
