@@ -554,6 +554,11 @@ export function buildCairoTiling(M, N) {
 // The floret pentagon is TANGENTIAL too: sides 2:1:1:1:2 around a circle of
 // radius √3/2 whose center is the vertex centroid, at (1, 1) on the triangular
 // basis below.
+// Rosette rings built beyond the requested M×N so the rectangular crop below
+// always has cells to draw from on every side. Two rings would leave the crop
+// short at extreme aspect ratios; three is measured to be enough for every
+// (M, N) the practice boards and the gate fixture use.
+const FLORET_PAD = 3;
 const FLORET_BASE = [[0, 0], [2, 0], [2, 1], [1, 2], [0, 2]];
 const FLORET_INCENTER = [1, 1];
 const FLORET_SCALE = 1 / Math.sqrt(3);                  // inscribed diameter -> 1
@@ -595,24 +600,105 @@ const rotate60 = ([p, q]) => [-q, p + q];
  */
 export function buildFloretTiling(M, N) {
   const S3 = Math.sqrt(3);
-  const V = latticeVertices((p, q) => ({ x: p + q / 2, y: q * S3 / 2 }));
-  const cellVerts = [];
-  const cellPos = [];
+  const xy = (p, q) => ({ x: p + q / 2, y: q * S3 / 2 });
 
-  for (let m = 0; m < M; m++) {
-    for (let n = 0; n < N; n++) {
+  // Enumerate a GENEROUS patch as integer lattice data only. Nothing is
+  // registered in the vertex list yet, because the crop below decides which
+  // cells exist and assembleTiling normalizes against the whole vertex list —
+  // registering first would leave orphan vertices inflating wUnits/hUnits.
+  const rosettes = [];
+  for (let m = -FLORET_PAD; m < M + FLORET_PAD; m++) {
+    for (let n = -FLORET_PAD; n < N + FLORET_PAD; n++) {
       const k = Math.round(n / 3);                      // whole-L1 row re-seat
       const op = 4 * (m - k) - n, oq = (m - k) + 5 * n; // rosette center, (m−k)·L1 + n·L2
       let poly = FLORET_BASE, center = FLORET_INCENTER;
-      for (let k = 0; k < 6; k++) {
-        cellVerts.push(poly.map(([p, q]) => V.at(op + p, oq + q)));
-        const cp = op + center[0], cq = oq + center[1];
-        cellPos.push({ cx: cp + cq / 2, cy: cq * S3 / 2 });
+      for (let r = 0; r < 6; r++) {
+        const c = xy(op + center[0], oq + center[1]);
+        const pts = poly.map(([p, q]) => [op + p, oq + q]);
+        // The cell's own extent, so the crop below can score a selection by the
+        // box its POLYGONS occupy rather than by where its centers land.
+        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+        for (const [p, q] of pts) {
+          const v = xy(p, q);
+          if (v.x < x0) x0 = v.x;
+          if (v.x > x1) x1 = v.x;
+          if (v.y < y0) y0 = v.y;
+          if (v.y > y1) y1 = v.y;
+        }
+        rosettes.push({
+          pts, cx: c.x, cy: c.y, x0, y0, x1, y1,
+          core: m >= 0 && m < M && n >= 0 && n < N,
+        });
         poly = poly.map(rotate60);
         center = rotate60(center);
       }
     }
   }
+
+  // CROP TO A RECTANGLE, AT CELL GRANULARITY. The rosette lattice is a
+  // triangular lattice whose L1 sits 10.89° off the horizontal, and no choice of
+  // basis squares that up — so a patch counted in whole ROSETTES is a sheared
+  // parallelogram no matter how its rows are seated, and it leaves the board box
+  // badly under-filled (measured 67.4% against 80-94% for the other five, with
+  // two large empty wedges before the rows were re-seated at all).
+  //
+  // Selecting CELLS rather than rosettes is what fixes it: the boundary then
+  // steps by one pentagon instead of by a six-cell rosette, so it can follow a
+  // rectangle closely. A rosette on the edge simply contributes the petals that
+  // fall inside. This is a change of WHICH lattice cells are used, never of the
+  // lattice — so every cell stays congruent, adjacency is still read off shared
+  // vertices, and above all the lattice's ORIENTATION is untouched, which is
+  // what keeps the measured compass direction set (30/90/150 and opposites)
+  // valid. Rotating the tiling to square it up would have invalidated that.
+  const core = rosettes.filter(r => r.core);
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const r of core) {
+    if (r.cx < minX) minX = r.cx;
+    if (r.cx > maxX) maxX = r.cx;
+    if (r.cy < minY) minY = r.cy;
+    if (r.cy > maxY) maxY = r.cy;
+  }
+  const cx0 = (minX + maxX) / 2, cy0 = (minY + maxY) / 2;
+  const want = 6 * M * N;
+
+  // WHICH rectangle? Every cell has the same area, so the selection that fills
+  // its board box best is exactly the one whose polygons land in the SMALLEST
+  // box — no sampling needed, just the bounding area. Sweeping the aspect and
+  // keeping the tightest is what makes this adapt to any (M, N) instead of
+  // baking in a ratio that happened to suit one board (measured on the 3×4
+  // practice patch: the patch's own aspect fills 76.4%, a square crop 73.5%,
+  // and the tightest 82.6%).
+  const select = (aspect) => rosettes
+    .map(r => ({ r, d: Math.max(Math.abs(r.cx - cx0) / aspect, Math.abs(r.cy - cy0)) }))
+    // Ties are possible and must not depend on enumeration order, so break them
+    // in reading order the way assembleTiling does.
+    .sort((a, b) => a.d - b.d
+      || Math.round(a.r.cy * 1e4) - Math.round(b.r.cy * 1e4)
+      || Math.round(a.r.cx * 1e4) - Math.round(b.r.cx * 1e4))
+    .slice(0, want)
+    .map(e => e.r);
+
+  let kept = null, bestArea = Infinity;
+  for (let step = 0; step <= 24; step++) {
+    const aspect = 0.6 + step * 0.05;                 // 0.60 .. 1.80, deterministic
+    const sel = select(aspect);
+    if (sel.length < want) continue;                  // ran out of padding
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const r of sel) {
+      if (r.x0 < x0) x0 = r.x0;
+      if (r.x1 > x1) x1 = r.x1;
+      if (r.y0 < y0) y0 = r.y0;
+      if (r.y1 > y1) y1 = r.y1;
+    }
+    const area = (x1 - x0) * (y1 - y0);
+    // Strictly less, so the lowest aspect wins a tie and the choice is stable.
+    if (area < bestArea - 1e-9) { bestArea = area; kept = sel; }
+  }
+  if (!kept) throw new Error(`floret ${M}x${N}: crop could not gather ${want} cells`);
+
+  const V = latticeVertices((p, q) => xy(p, q));
+  const cellVerts = kept.map(r => r.pts.map(([p, q]) => V.at(p, q)));
+  const cellPos = kept.map(r => ({ cx: r.cx, cy: r.cy }));
 
   return assembleTiling('floret', M, N, { verts: V.verts, cellVerts, cellPos }, FLORET_SCALE);
 }

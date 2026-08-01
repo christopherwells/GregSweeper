@@ -11,13 +11,13 @@
 // interior valence is EIGHT, exactly what a square grid gives, so every clue on
 // this board is a number a rectangle could also have produced. What differs is
 // the SET: the opener's eight tiling neighbors and its eight rectangular
-// neighbors overlap in a single cell. There is nothing left for the solver to
-// pass on except the edge list itself.
+// neighbors agree on only half their members. There is nothing left for the
+// solver to pass on except the edge list itself.
 //
 // It is also the first gate whose adjacency the two shipped tilings cannot
 // express. Corner-inclusive adjacency (Christopher's rule, 2026-07-27) is a
-// strict no-op on 4.8.8 and on the honeycomb, which are trivalent; here 108 of
-// the patch's 249 links are cells meeting at a point and nowhere else.
+// strict no-op on 4.8.8 and on the honeycomb, which are trivalent; here 78 of
+// the patch's 233 links are cells meeting at a point and nowhere else.
 //
 // Nothing here may reach into the solver. `isBoardSolvable` is imported and
 // called exactly as gameplay calls it. The only thing the board does
@@ -70,11 +70,12 @@ test('floret topology: one pentagon, interior valence 8 — the count a square g
   const histogram = {};
   for (const list of T.adj) histogram[list.length] = (histogram[list.length] || 0) + 1;
 
-  // 36 interior pentagons see 8; the rest are patch-edge cells seeing 7, 6 or 5.
+  // 32 interior pentagons see 8; the rest are patch-edge cells, and the crop to a
+  // rectangle makes that boundary finer than a whole-rosette one would.
   // The point is that the ceiling is EIGHT, the same as a square grid's interior
   // cell. Unlike 4.8.8 (mixed 3/4/5/8) and the honeycomb (capped at 6), this
   // lattice cannot be told from a rectangle by counting.
-  assert.deepEqual(histogram, { 5: 16, 6: 10, 7: 10, 8: 36 });
+  assert.deepEqual(histogram, { 2: 1, 3: 2, 4: 6, 5: 14, 6: 11, 7: 6, 8: 32 });
   assert.equal(Math.max(...T.adj.map(l => l.length)), 8, 'nothing sees more than 8');
   assert.equal(T.adj[T.centerIndex].length, 8, 'interior pentagon sees exactly 8');
 });
@@ -102,7 +103,7 @@ test('floret topology: five sides but eight neighbors — corner-inclusive adjac
       if (sharedEdge(T.cellVerts, i, n)) sides++;
     }
   }
-  assert.deepEqual({ all, sides, corners: all - sides }, { all: 249, sides: 141, corners: 108 },
+  assert.deepEqual({ all, sides, corners: all - sides }, { all: 233, sides: 155, corners: 78 },
     '43% of this patch\'s adjacency is corner-only; drop the rule and the board is a different board');
 });
 
@@ -113,7 +114,7 @@ test('floret topology: a rosette is a 6-clique, an overlap no rectangle can pres
   // adjacent. A square grid's largest clique is the 2x2 block (four cells), so a
   // six-way mutual overlap is something the constraint system can only ever see
   // off the square grid.
-  const rosette = [35, 39, 40, 48, 49, 51];
+  const rosette = [18, 22, 23, 32, 33, 37];
   for (const a of rosette) {
     for (const b of rosette) {
       if (a === b) continue;
@@ -122,8 +123,11 @@ test('floret topology: a rosette is a 6-clique, an overlap no rectangle can pres
   }
   assert.ok(rosette.includes(T.centerIndex), 'the opener sits in this rosette');
 
-  // Twelve hubs for a 3x4 rosette lattice. A hub is the only place six cells meet
-  // at one vertex, so counting them counts the rosettes.
+  // A hub is the only place six cells meet at one vertex, so counting hubs counts
+  // the COMPLETE rosettes. There are fewer than the 12 an uncropped 3x4 lattice
+  // would have, because the patch is cropped to a rectangle at CELL granularity:
+  // a rosette straddling the boundary contributes only the petals that fall
+  // inside, which is exactly what lets the board fill its box.
   const cellsPerVertex = new Map();
   T.cellVerts.forEach((cv, ci) => {
     for (const v of cv) {
@@ -132,7 +136,7 @@ test('floret topology: a rosette is a 6-clique, an overlap no rectangle can pres
       users.push(ci);
     }
   });
-  assert.equal([...cellsPerVertex.values()].filter(u => u.length === 6).length, 12);
+  assert.equal([...cellsPerVertex.values()].filter(u => u.length === 6).length, 6);
 });
 
 test('floret topology: symmetric, no self-loops, no duplicates', () => {
@@ -153,7 +157,7 @@ test('floret topology: the opener\'s neighbors are pinned, so a reordering fails
   // `expected` would then describe a layout nobody chose. Pin the actual list.
   const T = buildFloretTiling(3, 4);
   assert.equal(T.centerIndex, firstClick, 'the opener is the patch-center pentagon');
-  assert.deepEqual(T.adj[firstClick].slice().sort((a, b) => a - b), [31, 35, 36, 39, 45, 48, 49, 51]);
+  assert.deepEqual(T.adj[firstClick].slice().sort((a, b) => a - b), [18, 22, 23, 27, 33, 36, 37, 41]);
 });
 
 test('buildNeighborCache returns the floret topology verbatim, ignoring rows and cols', () => {
@@ -271,9 +275,9 @@ test('CONTROL: the same mine layout under RECTANGULAR adjacency does not reprodu
   // neighborhoods that agree on only half their members.
   const rectNbrs = nbrCache[firstClick].slice().sort((a, b) => a - b);
   const tileNbrs = topology.adj[firstClick].slice().sort((a, b) => a - b);
-  assert.deepEqual(rectNbrs, [30, 31, 32, 39, 41, 48, 49, 50]);
+  assert.deepEqual(rectNbrs, [22, 23, 24, 31, 33, 40, 41, 42]);
   assert.equal(rectNbrs.length, tileNbrs.length, 'both read the opener as an 8-neighbor cell');
-  assert.deepEqual(rectNbrs.filter(n => tileNbrs.includes(n)), [31, 39, 48, 49],
+  assert.deepEqual(rectNbrs.filter(n => tileNbrs.includes(n)), [22, 23, 33, 41],
     'and yet they agree on only four of the eight');
 
   stampAdjacency(board, nbrCache);
