@@ -67,9 +67,22 @@
 // without a manual handoff. The local log doubles as the outbox: rows carry
 // an fbKey once pushed, unsynced rows flush opportunistically on every lab
 // entry and result, and the HUD's copy button stays as the offline
-// fallback. Losses and skips are recorded too (censoring information); a
-// retry after a loss gets a FRESH seed, because replaying a layout you have
-// already seen produces a time about the replay, not the board.
+// fallback.
+//
+// MINES ARE DAILY-STYLE STRIKES (Christopher's ruling, 2026-08-02): the lab
+// parameterizes the DAILY par model, so a lab mine costs what a daily mine
+// costs — revealed strike marker, info-value + ramped base logged to the
+// hit-event log, play continues, never game over. A loss-on-mine lab would
+// measure a more cautious solve than the model's own response frame. Rows
+// therefore carry bombHits + bombHitEvents, and `timeSec` is PURE wall
+// clock: unlike a submitted daily time (which bakes the penalties in), the
+// penalties here live ONLY in the events, so the offline fit uses timeSec
+// directly as pure_time with NO subtraction — and applies the same >30%
+// mine-detonation probe filter the daily fit uses (bombHits vs mines are
+// both on the row). With strikes, every played board completes; the
+// loss/retry machinery below survives as a defensive path, and Skip remains
+// the way out of a board mid-way (an abandoned board re-issues its SAME
+// seed later, so skip a board you walked away from half-seen).
 
 import { createDailyRNG } from './seededRandom.js';
 import { generateBoard, cleanSolverArtifacts } from './boardGenerator.js';
@@ -347,6 +360,7 @@ export function labProgress(rows, battery = PAR_LAB_BATTERY) {
  */
 export function buildParLabRow(spec, attempt, result, {
   timeSec = 0, features = null, par = 0, wormEvents = null, seq = 0,
+  bombHits = 0, bombHitEvents = null,
 } = {}) {
   const row = {
     id: spec.id,
@@ -357,6 +371,8 @@ export function buildParLabRow(spec, attempt, result, {
     gimmicks: Array.isArray(spec.gimmicks) ? [...spec.gimmicks] : [],
     warmup: spec.warmup === true,
     result,
+    // PURE wall clock — strike penalties live in bombHitEvents, never here
+    // (see the header: the fit reads this directly as pure_time).
     timeSec,
     seq,
     playedAt: new Date().toISOString(),
@@ -366,6 +382,10 @@ export function buildParLabRow(spec, attempt, result, {
   if (features) row.features = features;
   if (par > 0) row.par = Math.round(par * 10) / 10;
   if (Array.isArray(wormEvents) && wormEvents.length > 0) row.wormEvents = wormEvents;
+  if (bombHits > 0) {
+    row.bombHits = bombHits;
+    if (Array.isArray(bombHitEvents) && bombHitEvents.length > 0) row.bombHitEvents = bombHitEvents;
+  }
   return row;
 }
 

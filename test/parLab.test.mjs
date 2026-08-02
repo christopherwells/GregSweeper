@@ -224,8 +224,19 @@ test('rows carry what the offline fit needs and the export round-trips', () => {
     features: { tilingType: tiling.shape, totalMines: tiling.mines },
     par: 88.26,
     wormEvents: [{ t: 5, r: 1, c: 1 }],
+    // Lab mines are daily-style strikes; the fit prices these exactly like
+    // daily bombHitEvents, and timeSec stays PURE wall clock (penalties
+    // live only in the events — no subtraction on the R side).
+    bombHits: 2,
+    bombHitEvents: [
+      { t: 30.5, row: 1, col: 2, penalty: 3, infoValue: 0 },
+      { t: 61.2, row: 3, col: 4, penalty: 9.1, infoValue: 4.6 },
+    ],
     seq: 7,
   });
+  assert.equal(row.bombHits, 2);
+  assert.equal(row.bombHitEvents.length, 2);
+  assert.equal(row.timeSec, 92.4, 'timeSec is wall clock; strike penalties stay in the events');
   assert.equal(row.shape, tiling.shape);
   assert.equal(row.M, tiling.M);
   assert.equal(row.warmup, false);
@@ -268,6 +279,7 @@ test('the parLab rules block admits exactly what buildParLabRow emits', () => {
     const row = buildParLabRow(spec, 0, 'win', {
       timeSec: 60, features: { rows: 9, cols: 7, totalMines: 13 }, par: 90,
       wormEvents: [{ t: 1 }], seq: 1,
+      bombHits: 1, bombHitEvents: [{ t: 10, row: 0, col: 0, penalty: 3, infoValue: 0 }],
     });
     for (const k of Object.keys(row)) emitted.add(k);
   }
