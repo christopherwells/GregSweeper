@@ -25,9 +25,11 @@ import {
 } from '../src/logic/boardSolver.js';
 import { cleanSolverArtifacts } from '../src/logic/boardGenerator.js';
 
-// Modifiers that are BOTH tiling-safe and testable by the filter. Wormhole is
-// testable but has no tiling story, so this is deliberately derived rather than
-// hand-listed — if either list moves, the coverage moves with it.
+// Modifiers that are BOTH tiling-safe and testable by the filter. Deliberately
+// derived rather than hand-listed — if either list moves, the coverage moves
+// with it, which is exactly what happened on 2026-08-01 when wormhole gained
+// its tiling story (graph-distance pair separation) and joined this set
+// without an edit here.
 const TILING_TESTABLE = TILING_SAFE_GIMMICKS.filter((g) => TESTABLE_GIMMICK_TYPES.includes(g));
 
 function decorativeOn(res) {
@@ -47,10 +49,10 @@ function gen(type, M, N, d, gimmicks, seed, extra = {}) {
 
 test('the tiling-testable modifier set is non-empty (or every test here is vacuous)', () => {
   assert.ok(TILING_TESTABLE.length > 0);
-  // Wormhole is testable but NOT tiling-safe, so it must not appear here — if
-  // it ever does, it gained a tiling story and this comment is stale.
-  assert.equal(TILING_TESTABLE.includes('wormhole'), false);
-  for (const g of ['sonar', 'compass', 'liar', 'mirror']) {
+  // All five testable gimmick types now have tiling stories — wormhole was
+  // the last holdout (joined 2026-08-01). Its absence here would mean the
+  // load-bearing coverage silently stopped seeing it.
+  for (const g of ['sonar', 'compass', 'liar', 'mirror', 'wormhole']) {
     assert.ok(TILING_TESTABLE.includes(g), `${g} should be tiling-safe and testable`);
   }
 });

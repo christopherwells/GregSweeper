@@ -799,6 +799,24 @@ export function applyWalls(board, rows, cols, segmentCount, rng) {
 
 // ── Wormholes: paired cells show summed adjacency ──────
 
+// Cells within `radius` graph steps of `start`, inclusive of start: a plain
+// breadth-first ball over the neighbor lists. Only the explicit-topology
+// branch of applyWormholes calls this; rectangles never do.
+function graphBall(neighborCache, start, radius) {
+  const seen = new Set([start]);
+  let frontier = [start];
+  for (let d = 0; d < radius; d++) {
+    const next = [];
+    for (const i of frontier) {
+      for (const n of neighborCache[i]) {
+        if (!seen.has(n)) { seen.add(n); next.push(n); }
+      }
+    }
+    frontier = next;
+  }
+  return seen;
+}
+
 function applyWormholes(board, rows, cols, pairCount, rng) {
   const candidates = [];
   for (let r = 0; r < rows; r++) {
@@ -811,14 +829,53 @@ function applyWormholes(board, rows, cols, pairCount, rng) {
   }
   shuffle(candidates, rng);
 
+  // Pair separation is TWO rules, split by topology (the computeLiarZone
+  // pattern). The rule exists to keep a pair's endpoints apart — an adjacent
+  // pair's sum is trivially decomposable.
+  //
+  // On a RECTANGLE it is container Manhattan distance, kept VERBATIM in the
+  // else-branch below: pair placement consumes the shared RNG stream, so any
+  // change to that branch moves every shipped canonical board that carries a
+  // wormhole.
+  //
+  // On an EXPLICIT topology (a tiling) the container's (row, col) is pure
+  // storage — two cells "3 apart" by container arithmetic can be direct
+  // lattice neighbors — so the separation is GRAPH distance over the board's
+  // own neighbor lists: the partner must sit outside the 2-step ball of the
+  // first endpoint, i.e. at graph distance >= 3. There is deliberately no
+  // small-board relaxation like the rectangle's Manhattan-2 tier: distance 2
+  // on a graph means a shared neighbor, and buildStaticGimmickConstraints
+  // skips a pair whose neighborhoods overlap, so a distance-2 pair would
+  // display a sum the certifier can never use — decorative by construction.
+  // Distance >= 3 makes the union constraint always emit. The smallest
+  // shipped tiling board is 63 cells (COASTLINE_BOARDS), so the cramped
+  // boards the rectangle tier exists for do not arise here.
+  const explicitTopo = !!board._cellNeighbors;
+  const nbrs = explicitTopo ? buildNeighborCache(board, rows, cols) : null;
+
   const pairs = [];
   const used = new Set();
   for (let p = 0; p < Math.min(pairCount, Math.floor(candidates.length / 2)); p++) {
     let a = null, b = null;
+    let nearA = null;
     for (const cell of candidates) {
       const key = `${cell.row},${cell.col}`;
       if (used.has(key)) continue;
-      if (!a) { a = cell; used.add(key); continue; }
+      if (!a) {
+        a = cell;
+        used.add(key);
+        if (explicitTopo) nearA = graphBall(nbrs, a.row * cols + a.col, 2);
+        continue;
+      }
+      if (explicitTopo) {
+        // Graph separation: outside a's 2-step ball → distance >= 3.
+        if (!nearA.has(cell.row * cols + cell.col)) {
+          b = cell;
+          used.add(key);
+          break;
+        }
+        continue;
+      }
       // Ensure they're not adjacent (at least 2 cells apart on small boards, 3 on larger)
       const minDist = Math.min(rows, cols) <= 8 ? 2 : 3;
       if (Math.abs(cell.row - a.row) + Math.abs(cell.col - a.col) >= minDist) {

@@ -488,6 +488,7 @@ const MODIFIER_PRESENT = {
   sonar: (b) => _countCells(b, c => c.isSonar),
   mirror: (b) => _countCells(b, c => !!c.mirrorPair),
   compass: (b) => _countCells(b, c => c.isCompass),
+  wormhole: (b) => _countCells(b, c => c.isWormhole),
   worm: (b) => _countCells(b, c => c.isWormEgg),
   walls: (b) => (b._tilingWalls || []).length,
 };
