@@ -2209,9 +2209,15 @@ async function init() {
     state.coastlinePractice = true;
     state.currentLevel = 1;
     hideTitleScreen();
-    const { startParLab } = await import('./ui/parLabUI.js');
+    const { startParLab, performParLabRedo } = await import('./ui/parLabUI.js');
+    // ?parlabRedo=<boardNumber|id> voids a contaminated run (deliberate
+    // mine-popping, an interrupted sitting) BEFORE the session resumes:
+    // the board re-issues with a fresh layout, and the voiding syncs as an
+    // 'invalid' tombstone the analysis honors.
+    const redoToken = urlParams.get('parlabRedo');
+    if (redoToken) performParLabRedo(redoToken);
     await startParLab();
-    showToast('Par Lab: play each board straight through. Results log locally; copy them from the strip up top. Nothing records to your progression.', 7000);
+    showToast('Par Lab: play each board straight through. Strike penalties count into your time, like the daily. Nothing records to your progression.', 7000);
   } else if (coastlinePractice) {
     // ?coastline= test board (test builds only — gate in the derivation
     // above): a frozen tiling board played as an isLevelPractice run, so

@@ -226,9 +226,12 @@
           ".validate": "newData.isBoolean()"
         },
         "result": {
-          ".validate": "newData.isString() && newData.val().matches(/^(win|loss|skip)$/)"
+          ".validate": "newData.isString() && newData.val().matches(/^(win|loss|skip|invalid)$/)"
         },
         "timeSec": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 7200"
+        },
+        "penaltySec": {
           ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 7200"
         },
         "seq": {

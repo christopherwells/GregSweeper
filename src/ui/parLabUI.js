@@ -15,7 +15,7 @@
 // the lab is unreachable in production (the ?parlab= gate is in main.js's
 // test-env derivation), so production HTML carries no trace of it.
 
-import { state } from '../state/gameState.js';
+import { state, getActiveBombPenaltyTotal } from '../state/gameState.js';
 import { newGame } from '../game/gameActions.js';
 import { showToast } from './toastManager.js';
 import { safeGet, safeSet } from '../storage/storageAdapter.js';
@@ -23,7 +23,7 @@ import { tilingLabel } from '../logic/coastlineLink.js';
 import { pushParLabRow } from '../firebase/parLabSync.js';
 import {
   PAR_LAB_BATTERY, nextParLabBoard, attemptCountFor, labProgress,
-  buildParLabRow, appendParLabRow, exportParLab,
+  buildParLabRow, appendParLabRow, exportParLab, redoParLabBoard,
 } from '../logic/parLab.js';
 
 const STORE_KEY = 'gregsweeper_parlab_v1';
@@ -134,8 +134,9 @@ function renderHud() {
     nextBtn.classList.add('hidden');
     skipBtn.classList.remove('hidden');
   } else {
+    const penaltyNote = lab.lastPenalty > 0 ? `, ${lab.lastPenalty}s of it strike penalties` : '';
     status.textContent = lab.lastResult
-      ? `Recorded: win in ${lab.lastTime}s${lab.lastPar ? ` (par ${lab.lastPar}s)` : ''}.`
+      ? `Recorded: win in ${lab.lastTime}s${penaltyNote}${lab.lastPar ? ` (par ${lab.lastPar}s)` : ''}.`
       : `Recorded: loss at ${lab.lastTime}s. Retry gets a FRESH layout of the same spec.`;
     nextBtn.textContent = lab.lastResult ? 'Next board ▸' : 'Retry (fresh board) ▸';
     nextBtn.classList.remove('hidden');
@@ -188,6 +189,25 @@ function _copy() {
 }
 
 /**
+ * Void a played board and re-issue it with a fresh layout (main.js
+ * ?parlabRedo= branch — the escape hatch for a contaminated row, e.g. a
+ * deliberately mine-popped run). Accepts the board's battery number or its
+ * id. The voiding syncs as an 'invalid' tombstone; the analysis drops the
+ * original server row on sight of it.
+ */
+export function performParLabRedo(idOrSeq) {
+  const result = redoParLabBoard(loadRows(), idOrSeq);
+  if (!result) {
+    showToast(`Nothing to redo for board ${idOrSeq} — no resolved run found.`, 4000);
+    return false;
+  }
+  saveRows(result.rows);
+  flushUnsynced();
+  showToast(`Board ${result.spec.seq} (${result.spec.id}) voided — it will re-issue with a fresh layout.`, 5000);
+  return true;
+}
+
+/**
  * Entry point (main.js ?parlab= branch). Resumes at the first unresolved
  * board, so closing the tab mid-battery costs nothing.
  */
@@ -210,10 +230,17 @@ export function onParLabResult(won) {
   const lab = state.parLab;
   if (!lab?.spec) return;
   const rows = loadRows();
-  const timeSec = state.elapsedTime || 0;
+  // The DAILY time convention (his report, 2026-08-02: strike penalties
+  // must count against the time): preciseTime is what stopTimer committed —
+  // wall clock WITH the strike penalties folded in, the same number a
+  // daily submits and the win modal shows. penaltySec rides alongside so
+  // the fit can subtract back to pure play time.
+  const timeSec = Math.round((state.preciseTime || state.elapsedTime || 0) * 10) / 10;
+  const penaltySec = getActiveBombPenaltyTotal();
   if (!lab.recorded) {
     const row = buildParLabRow(lab.spec, lab.attempt, won ? 'win' : 'loss', {
       timeSec,
+      penaltySec,
       features: state.coastlineFeatures,
       par: state.coastlinePar,
       wormEvents: state.wormEvents,
@@ -231,6 +258,7 @@ export function onParLabResult(won) {
   lab.recorded = true;
   lab.lastResult = won;
   lab.lastTime = timeSec;
+  lab.lastPenalty = penaltySec;
   lab.lastPar = state.coastlinePar > 0 ? Math.round(state.coastlinePar) : 0;
   // The challenge modal's Next Level button is meaningless here (a lab board
   // has no level to advance to) — hide it for this render; the HUD owns the
