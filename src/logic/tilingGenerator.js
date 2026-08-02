@@ -29,7 +29,12 @@ import { buildTiling, buildTiling488, containerFor } from './tilingGeometry.js';
 // geometric ray (computeCompassRay); worm crawls the neighbor graph with
 // geometric momentum (stepWorm's tiling branch); walls SEVER edges from the
 // graph (applyWallsTiling), so the certifier sees a smaller graph and needs no
-// wall logic. Every modifier has a tiling story.
+// wall logic; wormhole (2026-08-01, the last daily-safe holdout) separates its
+// pair by GRAPH distance on an explicit topology (applyWormholes — container
+// Manhattan meant nothing on a lattice, so a "separated" pair could land on
+// two direct neighbors), while its certifier side needed nothing: the union
+// constraint is built from the neighbor cache and reveal-gated on either
+// endpoint's flat index, generic already. Every modifier has a tiling story.
 //
 // The list stays one list for six lattices, and that was measured rather than
 // assumed when the four Laves tilings landed: every modifier here was run on
@@ -37,13 +42,17 @@ import { buildTiling, buildTiling488, containerFor } from './tilingGeometry.js';
 // stacked. All 1800 runs returned a CERTIFIED board (this function returns one
 // only when the shipped certifier cleared it), and every modifier appeared in
 // the `applied` payload on every lattice, so none of them silently placed
-// nothing.
+// nothing. Wormhole cleared the same gate when it joined: 30 seeds x six
+// lattices, alone plus wormhole+walls and wormhole+mystery — 540/540 certified
+// with wormhole present, every pair at graph distance >= 3, one certifier
+// constraint per pair, and decorative rates of 4-28% with the load-bearing
+// budget off falling to 0% with it on.
 //
 // The one thing per-lattice is the COMPASS's direction set, and it lives in
 // gimmicks.js beside the other direction tables. Picking the wrong set does not
 // fail here, it returns short rays that read as plausible, which is what
 // test/tilingCompass.test.mjs exists to catch.
-export const TILING_SAFE_GIMMICKS = ['mystery', 'liar', 'locked', 'sonar', 'mirror', 'compass', 'worm', 'walls'];
+export const TILING_SAFE_GIMMICKS = ['mystery', 'liar', 'locked', 'sonar', 'mirror', 'compass', 'wormhole', 'worm', 'walls'];
 
 // Density above which mine placement CONSTRUCTS rather than samples. Matches
 // generateBoard's own rectangular threshold so the two shapes switch strategy

@@ -57,6 +57,10 @@
   --color-num-16: #962a00;
   --color-num-17: #0d1a6e;
   --color-num-18: #6e0a40;
+  /* 19-20: only reachable on high-valence tilings (a rhombille pair of
+     valence-10 cells sums to 20); rectangles cap at 16 */
+  --color-num-19: #2d6a00;
+  --color-num-20: #8a1010;
 
   --color-header-bg: #d4cabb;
   --color-header-gradient: linear-gradient(180deg, #ddd3c5, #c8bead);
@@ -1497,6 +1501,8 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
 .cell.num-16 { color: var(--color-num-16); }
 .cell.num-17 { color: var(--color-num-17); }
 .cell.num-18 { color: var(--color-num-18); }
+.cell.num-19 { color: var(--color-num-19); }
+.cell.num-20 { color: var(--color-num-20); }
 
 /* ── Reveal Safe Animation ─────────────────── */
 .cell.golden-reveal {
@@ -6972,6 +6978,8 @@ button:focus-visible {
   --color-num-16: #d4885e; /* clay */
   --color-num-17: #6897bb; /* steel blue */
   --color-num-18: #c97aa4; /* mauve */
+  --color-num-19: #86b03a; /* avocado */
+  --color-num-20: #cf5a70; /* raspberry */
 }
 
 /* Shape markers: small symbols in top-right corner of each numbered cell */
