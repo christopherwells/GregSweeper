@@ -22,7 +22,7 @@
 
 import {
   loadExperimentSpec, selectBestCandidate,
-  readCodeVersion, buildCanonicalPayload, buildCandidateFeatures,
+  readCodeVersion, buildCanonicalPayload, buildCandidateFeatures, candidateOpener,
 } from './daily-board-pipeline.mjs';
 import { getTargetGimmickName, missionLabel } from '../src/logic/experimentDesign.js';
 import { signCanonicalPayload, requireSigningKey } from '../src/logic/canonicalSignature.js';
@@ -122,7 +122,12 @@ function todayET() {
   // Belt-and-braces certification report: the pipeline's acceptance is
   // already gated (boards carry _gatedCert), but say so explicitly —
   // this tool exists precisely to replace a board that failed gating.
-  const fr = Math.floor(cand.rows / 2), fc = Math.floor(cand.cols / 2);
+  // The opener is the candidate's OWN certified opener (candidateOpener):
+  // the container-centre formula that lived here stalls at click 1 on a
+  // tiling candidate (the issue #195 class), and this tool would then have
+  // refused to write every tiling board as "not gated-certified".
+  const opener = candidateOpener(cand);
+  const fr = Math.floor(opener / cand.cols), fc = opener % cand.cols;
   const gated = isBoardSolvable(cand.board, cand.rows, cand.cols, fr, fc, undefined, { gateGimmickOrigins: true });
   cleanSolverArtifacts(cand.board);
   const ungated = isBoardSolvable(cand.board, cand.rows, cand.cols, fr, fc, undefined, { gateGimmickOrigins: false });

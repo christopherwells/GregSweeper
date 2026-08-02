@@ -14,6 +14,10 @@ import { stopTimer, pauseTimer, resumeTimer, updateTimerDisplay } from './timerM
 import { awardPowerUps } from './powerUpActions.js';
 import { setHandleWin } from './powerUpActions.js';
 import { findNextSafeMove, gradeGimmickContribution, checkWin } from '../logic/boardSolver.js';
+// Leaf module (imports nothing): the tiling-centre fallback in
+// liveBoardOpener re-derives a local-gen tiling board's opener from its
+// own _tiling descriptor.
+import { buildTiling } from '../logic/tilingGeometry.js';
 import { extractCrux } from '../logic/cruxExtract.js';
 import { prepareLossReceipt, bombStrikeVerdict } from '../ui/receiptRenderer.js';
 import { computeBombInfoValue } from '../logic/bombInfoValue.js';
@@ -173,13 +177,26 @@ function _renderWinModalHistoryDots(todayDate) {
 // is an unrelated container slot where the solve stalls at click 1: the
 // receipt would confess a breather on a board with a real crux, and every
 // strike's info-value — which rides into the SUBMITTED time — would come
-// off the failed solve. A board with no matching canonical (local-gen
-// fallback, practice ?seed=, challenge/timed) was generated around the
-// container centre, which stays its opener — and a rectangular canonical
-// stores no firstClick, so deserializeBoard returns the centre there too:
-// byte-identical on every rectangular board either way.
+// off the failed solve. A RECTANGULAR board with no matching canonical
+// (local-gen fallback, practice ?seed=, challenge/timed) was generated
+// around the container centre, which stays its opener — and a rectangular
+// canonical stores no firstClick, so deserializeBoard returns the centre
+// there too: byte-identical on every rectangular board either way. A
+// TILING board with no canonical (the shape rotation's local-gen fallback,
+// or a ?dailyShape= practice run) re-derives its opener from its own
+// _tiling descriptor below — buildTiling's centerIndex is exact integer
+// lattice arithmetic and is what generateTilingBoard anchored this very
+// board on, so within a session (and across its saves, which restore
+// _tiling) the derivation reproduces the generation anchor exactly.
 export function liveBoardOpener() {
   const centre = Math.floor(state.rows / 2) * state.cols + Math.floor(state.cols / 2);
+  const tilingCentre = () => {
+    const t = state.board && state.board._tiling;
+    if (!t || !t.type) return centre;
+    try {
+      return buildTiling(t.type, t.M, t.N).centerIndex;
+    } catch { return centre; }
+  };
   let raw = null;
   if (state.gameMode === 'daily' && !state.isDailyPractice) {
     // Archive replays carry a PAST date; the calendar's fetch lives in the
@@ -193,7 +210,7 @@ export function liveBoardOpener() {
     raw = state.canonicalWeeklyBoard && state.canonicalWeeklyBoard.weekStart === state.weeklySeed
       ? state.canonicalWeeklyBoard.raw : null;
   }
-  if (!raw) return centre;
+  if (!raw) return tilingCentre();
   try {
     const d = deserializeBoard(raw);
     // The stash can outlive a failed adoption (deserialize threw in newGame
@@ -201,7 +218,7 @@ export function liveBoardOpener() {
     // the container actually in play.
     if (d.rows === state.rows && d.cols === state.cols) return d.firstClick;
   } catch { /* corrupt canonical — the play path fell back to local gen too */ }
-  return centre;
+  return tilingCentre();
 }
 
 // ── Win receipt: the board's confession ────────────────

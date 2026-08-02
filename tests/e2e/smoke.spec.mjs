@@ -32,6 +32,11 @@ const ENTRIES = [
   // surface where a broken build would look fine to every pure test: the four
   // Laves tilings certify by CONSTRUCTION, so a generation fault surfaces as a
   // hang or a throw at boot rather than as a failing assertion.
+  // Shape-rotation test override on the daily deep link: in this fresh
+  // (non-onboarded) context the router lands on the tutorial branch, so this
+  // entry only gates "the params don't break boot"; the actual tiling-daily
+  // journey (onboarded, board generated and played) is tilingDaily.spec.mjs.
+  { name: 'tiling daily override (hex)', q: '?isTest=1&mode=daily&seed=rotatest1&dailyShape=hex' },
   { name: 'coastline 4.8.8', q: '?isTest=1&coastline=1' },
   { name: 'coastline hex', q: '?isTest=1&coastline=hex' },
   { name: 'coastline cairo', q: '?isTest=1&coastline=cairo' },

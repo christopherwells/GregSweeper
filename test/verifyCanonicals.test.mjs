@@ -182,6 +182,95 @@ test('a structurally broken payload fails gracefully, never throws', () => {
   assert.equal(verifyCanonicalPayload(null).ok, false);
 });
 
+// ── Tiling canonicals (Coastline shape rotation) ──────────────────────────
+// The rotation ships dark, but the sweep must already bite on the payloads it
+// will one day walk: a tiling canonical carries its topology, geometry, and
+// certified opener as data, and every tamper class the rectangular fixtures
+// pin needs its tiling counterpart — plus the two classes only a tiling has
+// (a corrupted adjacency list, a forged opener).
+
+const { buildTilingDailyBoard: _buildTiling } = await import('../src/logic/shapeRotation.js');
+const { selectBestCandidate: _sbc, buildCanonicalPayload: _bcp, buildCandidateFeatures: _bcf } =
+  await import('../scripts/daily-board-pipeline.mjs');
+const { cruxPayloadFromBoard } = await import('../src/logic/cruxExtract.js');
+
+const _tilingSpec = { target: 'sonarCellCount', coverage_targets: [] };
+const _tilingCand = _sbc('2027-06-01', _tilingSpec, 'hex');
+const tilingRaw = clone(_bcp(_tilingCand, 'test-build'));
+
+test('a tiling canonical verifies clean, end to end', () => {
+  const v = verifyCanonicalPayload(tilingRaw);
+  assert.equal(v.ok, true, `tiling payload must pass the sweep: ${v.reasons.join('; ')}`);
+  // And its meta, exactly as the pipeline writes it.
+  const m = verifyMetaAgainstBoard(tilingRaw, {
+    features: _bcf(_tilingCand), writtenAt: Date.now(),
+  }, '2027-06-01');
+  assert.equal(m.ok, true, `tiling meta must pass: ${m.reasons.join('; ')}`);
+});
+
+test('tiling tamper: a lying displayed number is caught on a lattice too', () => {
+  const tampered = clone(tilingRaw);
+  const i = tampered.cells.findIndex((c) => !c.isMine && (c.displayedMines || 0) > 0);
+  assert.ok(i >= 0);
+  tampered.cells[i].displayedMines = (tampered.cells[i].displayedMines || 0) + 1;
+  const v = verifyCanonicalPayload(tampered);
+  assert.equal(v.ok, false);
+  assert.match(v.reasons.join(' '), /inconsistent displayedMines/);
+});
+
+test('tiling tamper: a forged opener (firstClick onto a mine) fails certification', () => {
+  const tampered = clone(tilingRaw);
+  const mineIdx = tampered.cells.findIndex((c) => c.isMine);
+  assert.ok(mineIdx >= 0);
+  tampered.firstClick = mineIdx;
+  const v = verifyCanonicalPayload(tampered);
+  assert.equal(v.ok, false, 'certifying from a forged opener must fail');
+  assert.match(v.reasons.join(' '), /does NOT certify/);
+});
+
+test('tiling tamper: an asymmetric adjacency list is refused at deserialize', () => {
+  // One direction of one edge removed: cell A still counts B's mines, B no
+  // longer counts A's. This does not crash anything downstream — it quietly
+  // certifies a board nobody can solve — which is exactly why
+  // defineCellNeighbors validates symmetry and the sweep must report it as
+  // a deserialize failure, not play through it.
+  const tampered = clone(tilingRaw);
+  const a = tampered.cellNeighbors.findIndex((l) => Array.isArray(l) && l.length > 0);
+  const b = tampered.cellNeighbors[a][0];
+  tampered.cellNeighbors[a] = tampered.cellNeighbors[a].filter((n) => n !== b);
+  const v = verifyCanonicalPayload(tampered);
+  assert.equal(v.ok, false);
+  assert.match(v.reasons.join(' '), /deserialize failed/);
+});
+
+test('tiling meta tamper: a shape lie is STRUCTURAL and hard-fails', () => {
+  const features = _bcf(_tilingCand);
+  assert.equal(features.tilingType, 'hex');
+  // Claiming a different lattice: par would price under the wrong shape
+  // equation (modelFor dispatches on this key), so it must never warn.
+  const shapeLie = verifyMetaAgainstBoard(tilingRaw, {
+    features: { ...features, tilingType: 'rhombille' }, writtenAt: Date.now(),
+  }, '2027-06-01');
+  assert.equal(shapeLie.ok, false);
+  assert.match(shapeLie.reasons.join(' '), /features\.tilingType/);
+  assert.equal(shapeLie.warnings.length, 0, 'a shape lie must not be excused as solver drift');
+  // And a garden-variety count lie on the same payload.
+  const countLie = verifyMetaAgainstBoard(tilingRaw, {
+    features: { ...features, totalMines: features.totalMines + 2 }, writtenAt: Date.now(),
+  }, '2027-06-01');
+  assert.equal(countLie.ok, false);
+});
+
+test('a tiling board ships NO crux teaser (rectangular crop is meaningless on a lattice)', () => {
+  const fr = Math.floor(_tilingCand.firstClick / _tilingCand.cols);
+  const fc = _tilingCand.firstClick % _tilingCand.cols;
+  assert.equal(
+    cruxPayloadFromBoard(_tilingCand.board, _tilingCand.rows, _tilingCand.cols, fr, fc),
+    null,
+    'the precompute/regenerate crux write must skip tiling days',
+  );
+});
+
 test('crux soundness: an honest mini passes, a lying one fails', () => {
   // Classic 1-1 overlap: the corner 1 caps {(0,1),(1,0)} at one mine, a
   // subset of the center 1's neighborhood — so the center's remaining

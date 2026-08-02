@@ -117,7 +117,10 @@ const POPUP_DISABLED_KEY = 'minesweeper_modifier_popup_disabled';
 // (a countdown can lose the game). Worm qualifies: its eggs are static
 // canonical cells and the crawling worm is a render-time overlay that
 // delays information without ever changing the board.
-const DAILY_SAFE_GIMMICKS = ['mystery', 'locked', 'walls', 'liar', 'wormhole', 'mirror', 'sonar', 'compass', 'worm'];
+// Exported for the shape-rotation lockstep guard (test/shapeRotation.test.mjs):
+// every entry here must also be in tilingGenerator's TILING_SAFE_GIMMICKS, or a
+// daily mission could name a gimmick a tiling day cannot honor.
+export const DAILY_SAFE_GIMMICKS = ['mystery', 'locked', 'walls', 'liar', 'wormhole', 'mirror', 'sonar', 'compass', 'worm'];
 
 // ── Modifier popup preference ──────────────────────────
 

@@ -219,6 +219,17 @@ function _buildMini(board, rows, cols, sim, isMine, wallEdges, r0, c0, R, C, ans
  * }}
  */
 export function materializeCrux(board, rows, cols, crux) {
+  // A tiling board (explicit topology) has no crux teaser: the whole
+  // materialization below is a RECTANGULAR crop — a (row, col) window plus a
+  // widening ring — and on a tiling those coordinates are container storage,
+  // not geometry, so the "cropped" mini would pair numbers with an adjacency
+  // the teaser page (a plain rectangular mini-grid) cannot represent. The
+  // finder above (extractCrux) still works on a tiling — the win receipt
+  // uses it — but the share-page payload is rectangle-only until the teaser
+  // learns to render a lattice. Returning null ships no teaser for the date,
+  // which every consumer (precompute, regenerate, ?crux= route) already
+  // handles as the breather/no-teaser case.
+  if (board && board._cellNeighbors) return null;
   if (!crux || !crux.cruxSim || !Array.isArray(crux.sources) || crux.sources.length === 0) {
     return null;
   }

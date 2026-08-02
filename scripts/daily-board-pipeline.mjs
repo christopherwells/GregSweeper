@@ -16,6 +16,7 @@ import {
   resolveMissionForSlot, resolveCandidateCount, missionCandidateScore,
   selectMissionWinner, getTargetGimmickName, missionStamp,
 } from '../src/logic/experimentDesign.js';
+import { resolveDailyShape, buildTilingDailyBoard } from '../src/logic/shapeRotation.js';
 import { DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE } from '../src/logic/difficulty.js';
 import { serializeBoard } from '../src/firebase/dailyBoardSync.js';
 import { readFileSync } from 'node:fs';
@@ -115,7 +116,45 @@ export function buildOneCandidate(seed, forcedGimmick, singleOnly) {
   return { board, rows, cols, totalMines, activeGimmicks, check, decorative, seed };
 }
 
-export function selectBestCandidate(dateString, spec) {
+// The pipeline's uncertified-canonical hard gate, shared by both selection
+// branches below: never return a board the shipped certifier did not clear.
+function assertCertified(cand, dateString) {
+  if (!cand.check || !(cand.check.solvable || cand.check.remainingUnknowns === 0)) {
+    throw new Error(`No solvable board found for ${dateString} — refusing to write an uncertified canonical`);
+  }
+  return cand;
+}
+
+export function selectBestCandidate(dateString, spec, dailyShape = resolveDailyShape(dateString)) {
+  // Shape rotation (Project Coastline): a tiling day is SINGLE-CANDIDATE —
+  // the mission is drawn by weight (selectTilingMission) and force-injected
+  // onto the one seed, because the client fallback must replay selection
+  // deterministically and a 10-way contest would mean generating ten boards
+  // (a rhombille generation is ~seconds, not milliseconds). The shape comes
+  // from resolveDailyShape — null (rectangle, always while the rotation is
+  // dark) routes to the rectangular contest below; the parameter exists so
+  // tests can exercise the tiling branch without flipping the shipped gate.
+  if (dailyShape) {
+    const t0 = Date.now();
+    const built = buildTilingDailyBoard(dateString, dailyShape, spec);
+    if (built) {
+      console.log(`  tiling day (${dailyShape}): board generated in ${Date.now() - t0} ms`);
+      return assertCertified({
+        board: built.board, rows: built.rows, cols: built.cols,
+        totalMines: built.totalMines, activeGimmicks: built.activeGimmicks,
+        check: built.check,
+        // The modifier load-bearing filter ran INSIDE generateTilingBoard
+        // (budgeted, the same bar the rectangular candidates clear); a single
+        // candidate has no two-tier lottery to feed, so this is settled.
+        decorative: [],
+        seed: built.rngSeed, rngSeed: built.rngSeed, mission: built.mission,
+        firstClick: built.firstClick, tilingType: dailyShape,
+      }, dateString);
+    }
+    // Deterministic outcome: the same seed exhausts for every client too, so
+    // precompute and fallback clients land on the SAME rectangular board.
+    console.log(`  tiling day (${dailyShape}): generation exhausted uncertified — falling back to the rectangular contest`);
+  }
   // Mirror selectDailyRngSeed.js: per-slot missions (1 primary + 9
   // coverage), score = min(target_count, COUNT_CAP) × deficit_weight, and
   // the winner drawn by selectMissionWinner's date-seeded weighted lottery
@@ -179,10 +218,7 @@ export function selectBestCandidate(dateString, spec) {
   // on this date. Failing the workflow is the correct outcome: the
   // first client of the day falls back to (now-verified) local
   // generation instead.
-  if (!best.check || !(best.check.solvable || best.check.remainingUnknowns === 0)) {
-    throw new Error(`No solvable board found for ${dateString} — refusing to write an uncertified canonical`);
-  }
-  return { ...best, rngSeed: bestSeed, mission: bestMission };
+  return assertCertified({ ...best, rngSeed: bestSeed, mission: bestMission }, dateString);
 }
 
 export function readCodeVersion() {
@@ -208,18 +244,33 @@ export function buildCanonicalPayload(cand, codeVersion) {
     rngSeed: cand.rngSeed,
     activeGimmicks: cand.activeGimmicks,
     codeVersion,
+    // The certified opener — set only on a tiling candidate (a rectangle's
+    // opener IS the container centre, and serializeBoard omits non-integers,
+    // so rectangular payloads stay byte-identical).
+    firstClick: cand.firstClick,
   });
   Object.assign(payload, missionStamp(cand.mission));
   return payload;
 }
 
+// The candidate's certified opener as a flat index: the stored firstClick on
+// a tiling candidate, the container centre on a rectangle — the same
+// resolution deserializeBoard applies on the read side.
+export function candidateOpener(cand) {
+  return Number.isInteger(cand.firstClick)
+    ? cand.firstClick
+    : Math.floor(cand.rows / 2) * cand.cols + Math.floor(cand.cols / 2);
+}
+
 export function buildCandidateFeatures(cand) {
+  const opener = candidateOpener(cand);
   return computeDailyFeatures(
     { board: cand.board, rows: cand.rows, cols: cand.cols, totalMines: cand.totalMines, activeGimmicks: cand.activeGimmicks, rngSeed: cand.seed },
     cand.check,
     // Winner-only (this feeds the dailyMeta write, never the per-candidate
     // scoring pass), so the contribution strip-solves are paid once per date.
-    // Same center opener the pipeline certifies from.
-    { contributionOpener: { row: Math.floor(cand.rows / 2), col: Math.floor(cand.cols / 2) } },
+    // Same certified opener the pipeline certifies from — the container
+    // centre on a rectangle, the tiling's own centre cell otherwise.
+    { contributionOpener: { row: Math.floor(opener / cand.cols), col: opener % cand.cols } },
   );
 }
