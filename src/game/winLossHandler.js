@@ -575,14 +575,20 @@ export async function handleWin() {
 
   // Persist power-ups after win (award changes them). Skip for chaos
   // and weekly — neither mode uses power-ups so the saved counts would
-  // just be empty objects bouncing around localStorage.
-  if (state.gameMode !== 'chaos' && state.gameMode !== 'weekly') {
+  // just be empty objects bouncing around localStorage. Skip for Par Lab
+  // runs too: they play on a deliberately EMPTY inventory (gameActions
+  // zeroes it), and persisting those zeros under the 'normal' key would
+  // wipe the player's real challenge power-ups.
+  if (state.gameMode !== 'chaos' && state.gameMode !== 'weekly' && !state.parLab) {
     saveModePowerUps(state.gameMode, state.powerUps);
   saveProgress({ powerUps: loadPowerUps() });
   }
 
-  // 30% chance to earn a free lifeline on level completion (Challenge mode)
-  if (state.gameMode === 'normal' && Math.random() < LIFELINE_WIN_REWARD_CHANCE) {
+  // 30% chance to earn a free lifeline on level completion (Challenge mode).
+  // Never from a practice run: ?level= / ?coastline= / Par Lab wins are not
+  // progression, and the documented practice contract is "no power-up
+  // earns" — this roll was the one earn site that predated the guard.
+  if (state.gameMode === 'normal' && !state.isLevelPractice && Math.random() < LIFELINE_WIN_REWARD_CHANCE) {
     state.powerUps.lifeline = (state.powerUps.lifeline || 0) + 1;
     saveModePowerUps(state.gameMode, state.powerUps);
   saveProgress({ powerUps: loadPowerUps() });
@@ -1028,6 +1034,12 @@ export async function handleWin() {
   setTimeout(() => showModal('gameover-overlay'), 2000);
   updatePowerUpBar();
   updateStreakBorder();
+
+  // Par Lab (test-only): record the result and hand the session flow to the
+  // lab HUD. Lazy import — the module never loads outside a lab run.
+  if (state.parLab) {
+    import('../ui/parLabUI.js').then((m) => m.onParLabResult(true)).catch(() => {});
+  }
 }
 
 // Register handleWin with powerUpActions to break circular dependency
@@ -1093,9 +1105,17 @@ export function handleLoss(mineRow, mineCol) {
   haptic([100, 40, 100, 40, 200]);
   saveGameResult(false, state.elapsedTime, state.currentLevel, { gameMode: state.gameMode, isLevelPractice: !!state.isLevelPractice });
 
-  // Power-ups persist on loss within same mode
-  saveModePowerUps(state.gameMode, state.powerUps);
-  saveProgress({ powerUps: loadPowerUps() });
+  // Power-ups persist on loss within same mode — except Par Lab runs, whose
+  // deliberately-zeroed inventory must never overwrite the real one.
+  if (!state.parLab) {
+    saveModePowerUps(state.gameMode, state.powerUps);
+    saveProgress({ powerUps: loadPowerUps() });
+  }
+
+  // Par Lab (test-only): record the loss; the HUD offers a fresh-seed retry.
+  if (state.parLab) {
+    import('../ui/parLabUI.js').then((m) => m.onParLabResult(false)).catch(() => {});
+  }
 
   // Death penalty: checkpoint-aware
   const lostLevel = state.currentLevel;

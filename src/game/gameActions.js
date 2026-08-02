@@ -30,6 +30,7 @@ import { selectDailyRngSeed } from '../logic/selectDailyRngSeed.js';
 import { selectWeeklyRngSeed } from '../logic/selectWeeklyRngSeed.js';
 import { getTargetGimmickName, getMissionForSeed, missionStamp, getCurrentTarget, getCoverageTargets } from '../logic/experimentDesign.js';
 import { resolveDailyShape, buildTilingDailyBoard, getDailyShapeOverride } from '../logic/shapeRotation.js';
+import { buildParLabBoard } from '../logic/parLab.js';
 import { loadDailyBoard, saveDailyBoard, serializeBoard, deserializeBoard } from '../firebase/dailyBoardSync.js';
 import { loadWeeklyBoard, saveWeeklyBoard } from '../firebase/weeklyBoardSync.js';
 import { fetchWeeklyLeaderboard } from '../firebase/firebaseLeaderboard.js';
@@ -345,22 +346,36 @@ export async function newGame() {
   // frozen first-click path in revealCell. The whole surface is unreachable in
   // production — the ?coastline=1 deep link is isTestEnvironment()-gated.
   if (state.coastlinePractice) {
-    const seed = state.coastlineSeed || 'coastline-1';
-    // Per-tiling board shape and mine count. Six lattices need six different
-    // answers: a honeycomb cell is one shape and one size where a 4.8.8's cell
-    // count is inflated by its small interstitial squares, and the four Laves
-    // lattices need a density that puts them on the constructive placer at all.
-    // The table and the measurements behind every number live in coastlineLink,
-    // beside the parser that produced the type.
-    const tilingType = state.coastlineType || DEFAULT_TILING;
-    const dims = coastlineBoardFor(tilingType);
-    const res = generateTilingBoard({
-      type: tilingType, ...dims, seed,
-      gimmicks: Array.isArray(state.coastlineGimmicks) ? state.coastlineGimmicks : [],
-    });
-    if (!res) {
-      import('../ui/toastManager.js').then(m => m.showToast('Could not generate a tiling board.'));
-      return;
+    let res;
+    if (state.parLabSpec) {
+      // Par Lab (test-only): the battery board's own spec — shape, lattice
+      // dims, mines, modifiers, deterministic per-attempt seed — built by
+      // the ONE builder the offline validator proves (buildParLabBoard).
+      // Rect specs route through the daily-recipe rect generator inside it;
+      // everything downstream of `res` is shared with the coastline path.
+      res = buildParLabBoard(state.parLabSpec, state.parLabAttempt || 0);
+      if (!res) {
+        import('../ui/toastManager.js').then(m => m.showToast('Could not generate the lab board — skip it and tell Christopher.'));
+        return;
+      }
+    } else {
+      const seed = state.coastlineSeed || 'coastline-1';
+      // Per-tiling board shape and mine count. Six lattices need six different
+      // answers: a honeycomb cell is one shape and one size where a 4.8.8's cell
+      // count is inflated by its small interstitial squares, and the four Laves
+      // lattices need a density that puts them on the constructive placer at all.
+      // The table and the measurements behind every number live in coastlineLink,
+      // beside the parser that produced the type.
+      const tilingType = state.coastlineType || DEFAULT_TILING;
+      const dims = coastlineBoardFor(tilingType);
+      res = generateTilingBoard({
+        type: tilingType, ...dims, seed,
+        gimmicks: Array.isArray(state.coastlineGimmicks) ? state.coastlineGimmicks : [],
+      });
+      if (!res) {
+        import('../ui/toastManager.js').then(m => m.showToast('Could not generate a tiling board.'));
+        return;
+      }
     }
     state.rows = res.rows;
     state.cols = res.cols;
@@ -930,7 +945,12 @@ export async function newGame() {
   // Load per-mode power-ups
   const modePU = loadModePowerUps(state.gameMode);
   const emptyPU = { revealSafe: 0, shield: 0, lifeline: 0, scanRowCol: 0, magnet: 0, xray: 0 };
-  if (state.gameMode === 'timed' || state.gameMode === 'daily' || state.gameMode === 'weekly' || state.gameMode === 'chaos') {
+  // Par Lab boards run on EMPTY inventory: a power-up (or an auto-consumed
+  // lifeline on a mine hit) turns a measured solve time into a measurement
+  // of the inventory. The two saveModePowerUps sites in winLossHandler are
+  // parLab-guarded so these zeros can never persist over the player's real
+  // challenge inventory.
+  if (state.gameMode === 'timed' || state.gameMode === 'daily' || state.gameMode === 'weekly' || state.gameMode === 'chaos' || state.parLab) {
     state.powerUps = { ...emptyPU };
   } else {
     state.powerUps = {

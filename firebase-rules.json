@@ -187,6 +187,76 @@
         }
       }
     },
+    "parLab": {
+      ".read": true,
+      "$entry": {
+        ".write": "auth != null && !data.exists() && newData.child('uid').val() === auth.uid",
+        ".validate": "newData.hasChildren(['id', 'result', 'uid', 'timestamp'])",
+        "id": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 40"
+        },
+        "attempt": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 50"
+        },
+        "seed": {
+          ".validate": "newData.isString() && newData.val().length <= 60"
+        },
+        "shape": {
+          ".validate": "newData.isString() && newData.val().length <= 12"
+        },
+        "M": {
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 30"
+        },
+        "N": {
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 30"
+        },
+        "rows": {
+          ".validate": "newData.isNumber() && newData.val() >= 5 && newData.val() <= 30"
+        },
+        "cols": {
+          ".validate": "newData.isNumber() && newData.val() >= 5 && newData.val() <= 30"
+        },
+        "mines": {
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 200"
+        },
+        "gimmicks": {
+          ".validate": true
+        },
+        "warmup": {
+          ".validate": "newData.isBoolean()"
+        },
+        "result": {
+          ".validate": "newData.isString() && newData.val().matches(/^(win|loss|skip)$/)"
+        },
+        "timeSec": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 7200"
+        },
+        "seq": {
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 5000"
+        },
+        "playedAt": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "par": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600"
+        },
+        "features": {
+          ".validate": "newData.hasChildren(['rows', 'cols', 'totalMines'])"
+        },
+        "wormEvents": {
+          ".validate": true
+        },
+        "uid": {
+          ".validate": "newData.isString() && newData.val() === auth.uid"
+        },
+        "timestamp": {
+          ".validate": "newData.val() === now"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
     "dailyMeta": {
       ".read": true,
       "$date": {

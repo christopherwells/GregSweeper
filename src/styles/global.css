@@ -7552,3 +7552,27 @@ pre.diagnostics-pre {
 /* While the carousel is open, hint that the board is swipeable. */
 #board.tc-swipe-target { cursor: grab; }
 
+
+/* ── Par Lab HUD (test-only surface; DOM created by parLabUI.js) ────────
+   Fixed bottom strip so it never collides with the TEST-build banner, and
+   z-indexed ABOVE the gameover modal (1001): the strip owns the session
+   flow, so its Next/Skip/Copy controls must stay clickable while the win
+   or loss modal is up. */
+#parlab-hud {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  z-index: 1100;
+  background: rgba(20, 24, 28, 0.94); color: #e8edf2;
+  font-size: 13px; line-height: 1.4;
+  padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; gap: 4px;
+  border-top: 2px solid #4a90d9;
+}
+#parlab-line { font-weight: 600; }
+#parlab-status { opacity: 0.85; }
+#parlab-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+#parlab-actions button {
+  font: inherit; font-size: 13px; padding: 6px 14px;
+  border-radius: 6px; border: 1px solid #4a90d9;
+  background: #1e3a5f; color: #e8edf2; cursor: pointer;
+}
+#parlab-actions button:hover { background: #2a4d7a; }

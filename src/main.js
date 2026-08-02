@@ -2103,6 +2103,13 @@ async function init() {
   const dailyShapeOverride = (isTestEnvironment() && urlParams.get('dailyShape'))
     ? setDailyShapeOverride(urlParams.get('dailyShape'))
     : null;
+  // ?parlab=1 — test-environment-only Par Lab: the designed 100-board
+  // battery whose results seed the per-shape par priors (see
+  // src/logic/parLab.js for the design). Rides the coastline-practice lane
+  // (isLevelPractice, frozen certified boards, nothing records to real
+  // progression); results log to namespaced localStorage and export from
+  // the lab HUD. Gated at the derivation like ?level=/?coastline=.
+  const parLabMode = isTestEnvironment() && urlParams.get('parlab') != null;
 
   // Diagnostics button is hidden for casual users. Unhide when `?debug=1`
   // is in the URL (once per device — we persist a localStorage flag so
@@ -2190,6 +2197,21 @@ async function init() {
         toTitle();
       }
     });
+  } else if (parLabMode) {
+    // ?parlab=1 — the Par Lab battery (test builds only — gate in the
+    // derivation above). Same practice frame as ?coastline=: gameMode
+    // 'normal' + isLevelPractice + coastlinePractice, so the frozen-board
+    // first-click path and the no-recording contract both apply; the lab
+    // module owns board sequencing, per-board specs, and the results log.
+    state.gameMode = 'normal';
+    updateModeUI('normal');
+    state.isLevelPractice = true;
+    state.coastlinePractice = true;
+    state.currentLevel = 1;
+    hideTitleScreen();
+    const { startParLab } = await import('./ui/parLabUI.js');
+    await startParLab();
+    showToast('Par Lab: play each board straight through. Results log locally; copy them from the strip up top. Nothing records to your progression.', 7000);
   } else if (coastlinePractice) {
     // ?coastline= test board (test builds only — gate in the derivation
     // above): a frozen tiling board played as an isLevelPractice run, so
