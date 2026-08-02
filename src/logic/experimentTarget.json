@@ -1,60 +1,50 @@
 {
-  "updatedAt": "2026-08-01T21:56:33Z",
-  "target": "mirrorPairCount",
-  "reason": "highest posterior CV (0.793) excluding last 3 targets",
+  "updatedAt": "2026-08-02T14:47:53Z",
+  "target": "wormLoad",
+  "reason": "highest posterior CV (0.722) excluding last 3 targets",
   "lastRevalidationDate": "2026-08-01",
   "recentTargets": [
+    "wormLoad",
     "mirrorPairCount",
-    "wormholePairCount",
-    "clueShare4"
+    "wormholePairCount"
   ],
   "candidates": [
     {
       "feature": "mirrorPairCount",
       "mean": 0.008,
       "sd": 0.008,
-      "cv": 0.793
+      "cv": 0.786
     },
     {
       "feature": "wormLoad",
       "mean": 0.011,
       "sd": 0.008,
-      "cv": 0.688
+      "cv": 0.722
     },
     {
       "feature": "clueShare4",
       "mean": 0.067,
-      "sd": 0.046,
-      "cv": 0.681
+      "sd": 0.045,
+      "cv": 0.671
     },
     {
       "feature": "compassCellCount",
       "mean": 0.023,
       "sd": 0.014,
-      "cv": 0.629
+      "cv": 0.608
     },
     {
       "feature": "clueShare2",
       "mean": 0.048,
-      "sd": 0.024,
-      "cv": 0.508
+      "sd": 0.025,
+      "cv": 0.514
     }
   ],
   "coverage_targets": [
     {
-      "feature": "wormLoad",
-      "n_boards": 8,
-      "deficit_weight": 0.1111
-    },
-    {
       "feature": "wormholePairCount",
       "n_boards": 11,
       "deficit_weight": 0.0833
-    },
-    {
-      "feature": "mysteryCellCount",
-      "n_boards": 13,
-      "deficit_weight": 0.0714
     },
     {
       "feature": "sonarCellCount",
@@ -67,6 +57,16 @@
       "deficit_weight": 0.0714
     },
     {
+      "feature": "mysteryCellCount",
+      "n_boards": 14,
+      "deficit_weight": 0.0667
+    },
+    {
+      "feature": "mirrorPairCount",
+      "n_boards": 14,
+      "deficit_weight": 0.0667
+    },
+    {
       "feature": "liarCellCount",
       "n_boards": 15,
       "deficit_weight": 0.0625
@@ -77,5 +77,13 @@
       "deficit_weight": 0.0588
     }
   ],
-  "lastDecorrelationDate": "2026-07-26"
+  "lastDecorrelationDate": "2026-08-02",
+  "decorrelation_mission": {
+    "feature": "clueShare3",
+    "confounder": "density",
+    "slope": 11.4922,
+    "intercept": -0.9656,
+    "residualSd": 0.4205,
+    "weight": 0.5
+  }
 }
