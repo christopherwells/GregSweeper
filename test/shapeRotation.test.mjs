@@ -258,12 +258,18 @@ test('rect control: a null shape leaves the rectangular contest untouched and it
 
 // ── The test-env override ────────────────────────────────────────────────
 
-test('setDailyShapeOverride accepts tiling names and rect, rejects everything else', () => {
+test('setDailyShapeOverride accepts tiling names, lay aliases, rect/Classic — rejects everything else', () => {
   try {
     assert.equal(setDailyShapeOverride('hex'), 'hex');
     assert.equal(getDailyShapeOverride(), 'hex');
     assert.equal(setDailyShapeOverride('RHOMBILLE'), 'rhombille');
     assert.equal(setDailyShapeOverride('rect'), 'rect');
+    // The player-facing names work as override tokens too (the naming
+    // ruling, 2026-08-02): the Classic grid and the lay tiling names.
+    assert.equal(setDailyShapeOverride('classic'), 'rect');
+    assert.equal(setDailyShapeOverride('Honeycomb'), 'hex');
+    assert.equal(setDailyShapeOverride('3dcubes'), 'rhombille');
+    assert.equal(setDailyShapeOverride('kites'), 'deltoidal');
     assert.equal(setDailyShapeOverride('bogus'), null, 'an unknown token clears rather than guesses');
     assert.equal(getDailyShapeOverride(), null);
     assert.equal(setDailyShapeOverride(''), null);

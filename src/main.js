@@ -2298,7 +2298,7 @@ async function init() {
         // daily's, or a prior run under a DIFFERENT ?dailyShape=) would
         // silently ignore the requested shape.
         await newGame();
-        showToast(`Practice daily on ${dailyShapeOverride === 'rect' ? 'a square board' : tilingLabel(dailyShapeOverride)}. Nothing records.`, 5000);
+        showToast(`Practice daily on ${dailyShapeOverride === 'rect' ? 'a Classic board' : tilingLabel(dailyShapeOverride)}. Nothing records.`, 5000);
       } else if (!tryResumeGame()) {
         await newGame();
       } else {
