@@ -246,6 +246,12 @@
         "wormEvents": {
           ".validate": true
         },
+        "bombHits": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 200"
+        },
+        "bombHitEvents": {
+          ".validate": true
+        },
         "uid": {
           ".validate": "newData.isString() && newData.val() === auth.uid"
         },

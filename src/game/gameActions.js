@@ -249,6 +249,18 @@ function revealLinkedCell(revealed, link) {
 // ticket and abandons itself if a newer run has started.
 let _newGameGeneration = 0;
 
+// Mines are STRIKES — priced by info-value, marked, play continues — in the
+// canonical modes AND in Par Lab runs; everywhere else a mine is a loss.
+// The lab parameterizes the DAILY par model, so its mines must cost what
+// daily mines cost (Christopher's ruling, 2026-08-02): a loss-on-mine lab
+// measures a more cautious solve than the model's own response frame, and
+// its rows would carry that bias straight into the priors. ONE predicate for
+// the two routing sites (revealCell's mine branch and handleChordReveal's
+// strike-vs-refog split) so they can never disagree about what a mine is.
+function mineIsStrike() {
+  return state.gameMode === 'daily' || state.gameMode === 'weekly' || !!state.parLab;
+}
+
 export async function newGame() {
   const myGeneration = ++_newGameGeneration;
   const staleRun = () => myGeneration !== _newGameGeneration;
@@ -1393,7 +1405,7 @@ export function revealCell(row, col) {
     // Daily / weekly: bomb hit re-fogs and adds 10s instead of ending.
     // Without weekly here, a bomb hit drops the player to the loss
     // screen mid-attempt — and weekly forfeits that day's slot.
-    if (state.gameMode === 'daily' || state.gameMode === 'weekly') {
+    if (mineIsStrike()) {
       handleDailyBombHit(row, col);
       return;
     }
@@ -1663,7 +1675,7 @@ export function handleChordReveal(row, col) {
   // under the fog so a survived chord never grants free intel (the
   // 2026-07-10 audit's original fix, still the right economy where a
   // revealed mine means death rather than a priced strike).
-  const isStrikeMode = state.gameMode === 'daily' || state.gameMode === 'weekly';
+  const isStrikeMode = mineIsStrike();
   let primaryMine = null;
   let chordStrikes = null;
   if (result.hitMine) {

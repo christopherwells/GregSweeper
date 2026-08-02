@@ -217,6 +217,11 @@ export function onParLabResult(won) {
       features: state.coastlineFeatures,
       par: state.coastlinePar,
       wormEvents: state.wormEvents,
+      // Lab mines are daily-style strikes; the events land in the daily
+      // per-attempt log (reset by every newGame) and ride the row so the
+      // fit can price them exactly as the refit prices daily strikes.
+      bombHits: state.dailyBombHits || 0,
+      bombHitEvents: state.dailyBombHitEvents,
       seq: rows.length + 1,
     });
     const appended = appendParLabRow(rows, row);

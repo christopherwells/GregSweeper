@@ -1373,9 +1373,10 @@ export function handleDailyBombHit(mineRow, mineCol, extraMines = []) {
   const fr = Math.floor(opener / state.cols);
   const fc = opener % state.cols;
   const priorStrikes = priorEvents.map(e => ({ row: e.row, col: e.col }));
-  // Daily and weekly both route here; the board's feature vector sets the
-  // par baseline the info-value is priced against under the log-scale model.
-  const boardFeatures = state.weeklyFeatures || state.dailyFeatures || null;
+  // Daily, weekly, and Par Lab strikes all route here; the board's feature
+  // vector sets the par baseline the info-value is priced against under the
+  // log-scale model — a lab board's own features live in coastlineFeatures.
+  const boardFeatures = state.weeklyFeatures || state.dailyFeatures || state.coastlineFeatures || null;
   let totalPenalty = 0;
   let firstInfoValueRounded = 0;
   for (let i = 0; i < mines.length; i++) {
