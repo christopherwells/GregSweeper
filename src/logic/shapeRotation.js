@@ -33,7 +33,7 @@
 
 import { createDailyRNG } from './seededRandom.js';
 import { TILING_TYPES } from './tilingGeometry.js';
-import { coastlineBoardFor } from './coastlineLink.js';
+import { coastlineBoardFor, tilingTypeForToken } from './coastlineLink.js';
 import { generateTilingBoard, TILING_SAFE_GIMMICKS } from './tilingGenerator.js';
 import { getDailyGimmick } from './gimmicks.js';
 import {
@@ -110,11 +110,15 @@ let _dailyShapeOverride = null;
  */
 export function setDailyShapeOverride(token) {
   const t = String(token || '').trim().toLowerCase();
-  if (t === 'rect') {
+  if (t === 'rect' || t === 'classic') {
+    // The rectangular grid's player-facing name is "Classic"; both spellings
+    // force a square practice daily.
     _dailyShapeOverride = 'rect';
   } else {
-    // TILING_TYPES entries are already lowercase ('4.8.8', 'hex', ...).
-    _dailyShapeOverride = TILING_TYPES.includes(t) ? t : null;
+    // Accept internal types AND the player-facing alias tokens (octagons,
+    // honeycomb, paving, petals, cubes/3dcubes, kites) through the one
+    // token table the ?coastline= parser uses.
+    _dailyShapeOverride = tilingTypeForToken(t);
   }
   return _dailyShapeOverride;
 }

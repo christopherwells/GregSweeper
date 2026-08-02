@@ -17,7 +17,7 @@ import assert from 'node:assert/strict';
 
 import {
   parseCoastlineParam, coastlineBoardFor, tilingLabel,
-  COASTLINE_BOARDS, DEFAULT_TILING,
+  COASTLINE_BOARDS, DEFAULT_TILING, CLASSIC_SHAPE_LABEL, tilingTypeForToken,
 } from '../src/logic/coastlineLink.js';
 import { buildTiling, containerIsStorable, containerFor, TILING_TYPES } from '../src/logic/tilingGeometry.js';
 import { generateTilingBoard, TILING_SAFE_GIMMICKS, CONSTRUCTIVE_DENSITY_THRESHOLD } from '../src/logic/tilingGenerator.js';
@@ -87,6 +87,36 @@ test('the board table and the labels cover exactly TILING_TYPES', () => {
   }
   assert.equal(tilingLabel(null), tilingLabel(DEFAULT_TILING));
   assert.equal(coastlineBoardFor(null), COASTLINE_BOARDS[DEFAULT_TILING]);
+});
+
+test('the player-facing names are the ruled set, and their alias tokens resolve', () => {
+  // Christopher's naming ruling (2026-08-02): a lay person should know what
+  // the shapes mean — the internal identifiers stay as stored contracts, the
+  // NAMES are what the eye sees. These exact strings are the ruling.
+  assert.deepEqual(
+    Object.fromEntries(TILING_TYPES.map((t) => [t, tilingLabel(t)])),
+    {
+      '4.8.8': 'Octagons',
+      hex: 'Honeycomb',
+      cairo: 'Paving Stones',
+      floret: 'Petals',
+      rhombille: '3D Cubes',
+      deltoidal: 'Kites',
+    },
+  );
+  assert.equal(CLASSIC_SHAPE_LABEL, 'Classic', 'the rectangular grid is "Classic"');
+  // The lay names work as deep-link and override tokens (space-free forms).
+  for (const [token, type] of [
+    ['octagons', '4.8.8'], ['honeycomb', 'hex'],
+    ['paving', 'cairo'], ['pavingstones', 'cairo'],
+    ['petals', 'floret'],
+    ['cubes', 'rhombille'], ['3dcubes', 'rhombille'],
+    ['kites', 'deltoidal'],
+  ]) {
+    assert.equal(tilingTypeForToken(token), type, `token '${token}'`);
+    assert.equal(parseCoastlineParam(`${token}:sonar`).type, type, `deep link '${token}:'`);
+  }
+  assert.equal(tilingTypeForToken('bogus'), null, 'an unknown token resolves to nothing, never a guess');
 });
 
 // REGRESSION (2026-07-27): `buildTiling` resolves through

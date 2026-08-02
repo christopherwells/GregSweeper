@@ -26,27 +26,62 @@ export const DEFAULT_TILING = '4.8.8';
 // from TILING_TYPES rather than listed again, so a seventh tiling is reachable
 // by name the day its builder lands (the label and the board below are real
 // per-tiling decisions and stay hand-written, with the test asserting each
-// covers the whole list). The rest are aliases: two already accepted for the
-// honeycomb, one a reader would reasonably try for the 4.8.8. Tokens are
-// matched lowercased, and none collides with a modifier name, which is what
-// lets one string carry either.
+// covers the whole list). The rest are aliases: the lattice shorthands plus
+// the PLAYER-FACING names (space-free forms — a URL token can't carry a
+// space), so a link can say what a player would say. Tokens are matched
+// lowercased, and none collides with a modifier name, which is what lets one
+// string carry either.
 const TILING_TOKENS = {
   ...Object.fromEntries(TILING_TYPES.map(t => [t, t])),
   '488': '4.8.8',
   '6.6.6': 'hex',
   '666': 'hex',
+  octagons: '4.8.8',
+  honeycomb: 'hex',
+  paving: 'cairo',
+  pavingstones: 'cairo',
+  petals: 'floret',
+  cubes: 'rhombille',
+  '3dcubes': 'rhombille',
+  kites: 'deltoidal',
 };
 
-// What the toast calls each shape. Shape noun first, lattice name in
-// parentheses, because the name is the part a player has no way to guess.
+// The PLAYER-FACING name of each shape (Christopher's ruling, 2026-08-02: a
+// lay person should know what they mean — "4.8.8" and "deltoidal" are
+// internal identifiers, not names). The name is what the eye sees: the
+// octagon-and-square bathroom floor, a honeycomb, Cairo's street paving,
+// pentagon petals in six-flower rosettes, the tumbling-blocks illusion of
+// stacked 3D cubes, plain kites. The rectangular grid is "Classic" wherever
+// a shape name is needed beside these. Internal type strings NEVER change
+// with the display names — they are stored contracts (canonical
+// `tiling.type`, `features.tilingType`, PAR_MODEL_SHAPES keys, lab rows,
+// seed strings), and renaming them would be the wallEdges-format
+// silent-breakage class.
 const TILING_LABELS = {
-  '4.8.8': 'octagons (4.8.8)',
-  hex: 'hexagons (6.6.6)',
-  cairo: 'pentagons (Cairo)',
-  floret: 'pentagons (floret)',
-  rhombille: 'rhombi (rhombille)',
-  deltoidal: 'kites (deltoidal)',
+  '4.8.8': 'Octagons',
+  hex: 'Honeycomb',
+  cairo: 'Paving Stones',
+  floret: 'Petals',
+  rhombille: '3D Cubes',
+  deltoidal: 'Kites',
 };
+
+// The Classic (rectangular) grid's display name, exported so every surface
+// that names shapes beside the tilings says the same word.
+export const CLASSIC_SHAPE_LABEL = 'Classic';
+
+/**
+ * Resolve a raw shape token (deep-link value, test override) to an internal
+ * tiling type, honoring the player-facing aliases above. Returns null for
+ * anything unrecognized — callers must treat that as "not a tiling", never
+ * guess.
+ *
+ * @param {string|null} token
+ * @returns {string|null} a TILING_TYPES entry, or null
+ */
+export function tilingTypeForToken(token) {
+  return TILING_TOKENS[String(token || '').trim().toLowerCase()] || null;
+}
 
 /**
  * The practice board each tiling generates: lattice dimensions and mine count.

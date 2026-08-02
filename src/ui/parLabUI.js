@@ -19,7 +19,7 @@ import { state, getActiveBombPenaltyTotal } from '../state/gameState.js';
 import { newGame } from '../game/gameActions.js';
 import { showToast } from './toastManager.js';
 import { safeGet, safeSet } from '../storage/storageAdapter.js';
-import { tilingLabel } from '../logic/coastlineLink.js';
+import { tilingLabel, CLASSIC_SHAPE_LABEL } from '../logic/coastlineLink.js';
 import { pushParLabRow } from '../firebase/parLabSync.js';
 import {
   PAR_LAB_BATTERY, nextParLabBoard, attemptCountFor, labProgress,
@@ -70,7 +70,7 @@ function saveRows(rows) {
 
 function specLabel(spec) {
   const shape = spec.shape === 'rect'
-    ? `${spec.rows}×${spec.cols} square`
+    ? `${CLASSIC_SHAPE_LABEL} ${spec.rows}×${spec.cols}`
     : tilingLabel(spec.shape);
   const cells = spec.shape === 'rect' ? spec.rows * spec.cols : null;
   const mods = spec.gimmicks && spec.gimmicks.length ? ` · ${spec.gimmicks.join('+')}` : '';
