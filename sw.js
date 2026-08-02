@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v1.9.27';
+const CACHE_NAME = 'gregsweeper-v1.9.28';
 const ASSETS = [
   './',
   './index.html',
@@ -76,6 +76,7 @@ const ASSETS = [
   './src/firebase/dailyBoardSync.js',
   './src/firebase/weeklyBoardSync.js',
   './src/firebase/waitForFirebase.js',
+  './src/firebase/parLabSync.js',
   './src/firebase/firebasePush.js',
   // Hard static imports of main.js / the firebase modules — without
   // these, a first-visit install that goes offline before its first

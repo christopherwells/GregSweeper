@@ -27,7 +27,7 @@ test('the lab mounts board 1, a skip records and advances, and progress survives
 
   const hud = page.locator('#parlab-hud');
   await expect(hud).toBeVisible();
-  await expect(hud.locator('#parlab-line')).toContainText('board 1/100');
+  await expect(hud.locator('#parlab-line')).toContainText(/board 1\/\d+/);
   await expect(hud.locator('#parlab-line')).toContainText('warm-up');
 
   // Board 1 is the hex warm-up: a real tiling board, not a stub.
@@ -37,7 +37,7 @@ test('the lab mounts board 1, a skip records and advances, and progress survives
 
   // Skip records a row and advances the battery.
   await hud.locator('#parlab-skip').click();
-  await expect(hud.locator('#parlab-line')).toContainText('board 2/100');
+  await expect(hud.locator('#parlab-line')).toContainText(/board 2\/\d+/);
   const stored = await page.evaluate(() => {
     try { return JSON.parse(localStorage.getItem('gregsweeper_parlab_v1')); } catch { return null; }
   });
@@ -48,7 +48,7 @@ test('the lab mounts board 1, a skip records and advances, and progress survives
   // Progress is durable: a fresh load resumes at the first unresolved board.
   await page.goto('?isTest=1&parlab=1');
   await page.waitForSelector('#app:not(.hidden)', { timeout: 20_000 });
-  await expect(page.locator('#parlab-hud #parlab-line')).toContainText('board 2/100');
+  await expect(page.locator('#parlab-hud #parlab-line')).toContainText(/board 2\/\d+/);
 
   expect(errors, `console/page errors during the lab journey:\n${errors.join('\n')}`).toEqual([]);
 });

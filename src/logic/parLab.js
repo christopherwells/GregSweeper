@@ -10,27 +10,44 @@
 // instrument for what the live instrument structurally cannot measure, plus a
 // head start on what it measures slowly.
 //
-// THE BATTERY (100 boards, 20 chunks of 5, each block earning its place):
+// THE BATTERY (105 boards, 21 chunks of 5, each block earning its place):
 //
-//   1. WARM-UPS (12; chunks 1-3ish, `warmup: true`): two plain boards per
-//      tiling at its daily config, easiest lattice first. A first-ever cairo
-//      board measures novelty, not the lattice; these rows exist so the
-//      learning curve lands HERE and is excluded (or modeled) in the offline
-//      fit rather than contaminating the estimates.
+//   1. WARM-UPS (18; the opening chunks, `warmup: true`): THREE consecutive
+//      plain boards per tiling at its daily config, easiest lattice first.
+//      A first-ever cairo board measures novelty, not the lattice, and
+//      acclimation builds fastest on same-shape repetition — so each shape's
+//      warm-ups run back to back (Christopher's call, 2026-08-02) instead of
+//      interleaving. Three points per shape also give the offline fit a
+//      per-shape learning slope to CHECK (did the curve flatten?) rather
+//      than assume. Excluded from the estimates either way.
 //   2. PLAIN SIZE x DENSITY GRID (54): per tiling, 3 sizes x 3 densities.
 //      This is the block only the lab can supply — it breaks the
 //      size/density-vs-intercept collinearity above, so the cellCount and
 //      totalMines deviations get real priors instead of frozen zeros. It also
 //      feeds the intercept and the reasoning-tier deviations on every row.
-//   3. SQUARE ANCHORS (10, interleaved ~every 9 boards): known-model boards
+//   3. SQUARE ANCHORS (9, interleaved ~every 9 boards): known-model boards
 //      spread through the session. They calibrate HIS day-to-day pace drift
 //      across a long battery (a within-session bridge to the square model),
 //      so a slow afternoon reads as a slow afternoon instead of as six
 //      slow lattices.
-//   4. MODIFIER SINGLES (24): per tiling, four single-modifier boards at the
-//      daily config, roster rotated so all nine daily-safe modifiers appear
-//      2-3 times. Live dailies WILL estimate these eventually (modifier
-//      counts vary day to day); this block is the head start.
+//   4. MODIFIER SINGLES (24): per tiling, four single-modifier boards at
+//      the daily config, allocated by MECHANISM rather than evenly (see
+//      MODIFIER_PLAN): the gimmicks whose information REGION is a function
+//      of the lattice — sonar (depth-2 graph ball, area ~ valence²),
+//      compass (three different direction families across the six
+//      lattices), wormhole (pair-sum ceiling 20 on rhombille), worm (crawls
+//      the neighbor graph) — get 3-4 boards spread across the lattices
+//      where the mechanism diverges most, because "does sonar cost
+//      differently on a valence-10 lattice?" is a real question with a
+//      plausible yes. The mechanically shape-neutral five (mystery, liar,
+//      mirror, locked, walls — their information effect does not scale
+//      with valence) get 2 each, enough for a POOLED tilings-vs-square
+//      prior. Per-shape × per-gimmick cells (54 of them) are unpowerable
+//      at this scale and unnecessary: the offline fit estimates pooled
+//      gimmick shifts plus per-shape terms only where the mechanism block
+//      supplies real replication. Contrast comes from the model jointly —
+//      every modifier board sits at its shape's daily config, next to the
+//      grid's mid-size plains and the warm-up baselines at that config.
 //
 // CHUNK CONTRACT (the "fill gaps as we go" workflow): boards are identified
 // by stable `id`s and progress is a log of per-id results, so any UNPLAYED
@@ -43,10 +60,14 @@
 // so practice effects spread across shapes instead of loading onto whichever
 // lattice happens to come last.
 //
-// RECORDING: local only, by design. Test builds never write Firebase, and
-// these rows feed a ONE-TIME offline prior-seeding analysis (R), not the
-// nightly refit — so the log lives in localStorage and exports as JSON from
-// the HUD. Losses and skips are recorded too (censoring information); a
+// RECORDING: localStorage is the source of truth and every row also SYNCS
+// to the world-readable `parLab/` Firebase path (parLabSync.js — the one
+// deliberate exception to "test builds never write Firebase", because this
+// dataset is the product, not pollution), so the analysis can fetch results
+// without a manual handoff. The local log doubles as the outbox: rows carry
+// an fbKey once pushed, unsynced rows flush opportunistically on every lab
+// entry and result, and the HUD's copy button stays as the offline
+// fallback. Losses and skips are recorded too (censoring information); a
 // retry after a loss gets a FRESH seed, because replaying a layout you have
 // already seen produces a time about the replay, not the board.
 
@@ -121,12 +142,24 @@ const RECT_ANCHORS = [
   { rows: 10, cols: 14, density: 0.26 },
   { rows: 9,  cols: 12, density: 0.15 },
   { rows: 12, cols: 14, density: 0.24 },
-  { rows: 10, cols: 10, density: 0.20 },
 ];
 
-// Modifier roster rotation: shape i takes roster[(i*4)..(i*4+3)] mod 9, so
-// across 6 shapes x 4 boards every daily-safe modifier appears 2-3 times.
-const MODIFIER_ROSTER = ['sonar', 'compass', 'wormhole', 'liar', 'mirror', 'mystery', 'locked', 'walls', 'worm'];
+// The modifier allocation (see the header). Region-geometry gimmicks span
+// the lattices where their mechanism diverges most: sonar across the
+// valence range (rhombille 10, deltoidal 9, cairo 7, hex 6); compass across
+// all THREE direction families (8-dir: 4.8.8/cairo-family, 60°:
+// hex/rhombille, 30°: floret/deltoidal); wormhole on the sum-ceiling
+// extremes including rhombille's 20; worm across the valence extremes.
+// Each shape carries exactly four so no lattice's modifier exposure
+// confounds with its intercept more than another's.
+const MODIFIER_PLAN = {
+  hex:       ['sonar', 'compass', 'worm', 'mystery'],
+  '4.8.8':   ['compass', 'wormhole', 'liar', 'walls'],
+  cairo:     ['sonar', 'worm', 'locked', 'mirror'],
+  deltoidal: ['sonar', 'compass', 'mystery', 'liar'],
+  floret:    ['compass', 'wormhole', 'mirror', 'walls'],
+  rhombille: ['sonar', 'wormhole', 'worm', 'locked'],
+};
 
 const mineCountFor = (total, density) => Math.max(5, Math.round(total * density));
 
@@ -135,10 +168,12 @@ const mineCountFor = (total, density) => Math.max(5, Math.round(total * density)
 function buildBattery() {
   const boards = [];
 
-  // 1. Warm-ups: two rounds over the shapes at their daily configs.
-  for (let round = 0; round < 2; round++) {
-    for (const shape of SHAPES) {
-      const cfg = coastlineBoardFor(shape);
+  // 1. Warm-ups: three CONSECUTIVE boards per shape at its daily config —
+  // same-shape runs, easiest lattice first, so acclimation actually builds
+  // before the next lattice arrives.
+  for (const shape of SHAPES) {
+    const cfg = coastlineBoardFor(shape);
+    for (let round = 0; round < 3; round++) {
       boards.push({
         id: `w-${shape}-${round + 1}`,
         shape, M: cfg.M, N: cfg.N, mines: cfg.mines,
@@ -163,8 +198,7 @@ function buildBattery() {
       });
     }
     const cfg = coastlineBoardFor(shape);
-    for (let k = 0; k < 4; k++) {
-      const g = MODIFIER_ROSTER[(si * 4 + k) % MODIFIER_ROSTER.length];
+    for (const g of MODIFIER_PLAN[shape]) {
       q.push({
         id: `m-${shape}-${g}`,
         shape, M: cfg.M, N: cfg.N, mines: cfg.mines,

@@ -20,12 +20,41 @@ import { newGame } from '../game/gameActions.js';
 import { showToast } from './toastManager.js';
 import { safeGet, safeSet } from '../storage/storageAdapter.js';
 import { tilingLabel } from '../logic/coastlineLink.js';
+import { pushParLabRow } from '../firebase/parLabSync.js';
 import {
   PAR_LAB_BATTERY, nextParLabBoard, attemptCountFor, labProgress,
   buildParLabRow, appendParLabRow, exportParLab,
 } from '../logic/parLab.js';
 
 const STORE_KEY = 'gregsweeper_parlab_v1';
+
+// ── Firebase outbox flush ────────────────────────────────────────────────
+// The local log is the source of truth AND the outbox: any row without an
+// fbKey has not landed on the parLab/ node yet. Flushed opportunistically
+// on every lab entry and result — a failed push (offline, no auth session,
+// rules not yet live) just stays queued for the next flush. Sequential and
+// single-flight so two triggers can't double-push the same rows.
+let _flushing = false;
+
+async function flushUnsynced() {
+  if (_flushing) return;
+  _flushing = true;
+  try {
+    let rows = loadRows();
+    let dirty = false;
+    for (let i = 0; i < rows.length; i++) {
+      if (rows[i].fbKey) continue;
+      const { fbKey, ...bare } = rows[i];
+      const key = await pushParLabRow(bare);
+      if (!key) break; // whatever blocked this one blocks the rest too
+      rows = rows.map((r, j) => (j === i ? { ...r, fbKey: key } : r));
+      dirty = true;
+    }
+    if (dirty) { saveRows(rows); renderHud(); }
+  } finally {
+    _flushing = false;
+  }
+}
 
 function loadRows() {
   try {
@@ -82,16 +111,21 @@ function renderHud() {
   const nextBtn = hud.querySelector('#parlab-next');
   const skipBtn = hud.querySelector('#parlab-skip');
 
+  const synced = rows.filter((r) => r.fbKey).length;
+  const syncNote = rows.length ? ` · synced ${synced}/${rows.length}` : '';
+
   if (prog.complete) {
-    line.textContent = `Par Lab · battery complete · ${prog.total}/${prog.total} boards`;
-    status.textContent = 'Copy the results and hand them to the prior fit. Thank you, Greg thanks you too.';
+    line.textContent = `Par Lab · battery complete · ${prog.total}/${prog.total} boards${syncNote}`;
+    status.textContent = synced === rows.length
+      ? 'Every row is on the server. Thank you, Greg thanks you too.'
+      : 'Some rows are still queued — they upload next visit, or use Copy results.';
     nextBtn.classList.add('hidden');
     skipBtn.classList.add('hidden');
     return;
   }
   const spec = lab?.spec;
   if (!spec) return;
-  line.textContent = `Par Lab · board ${prog.resolved + 1}/${prog.total} · chunk ${spec.chunk} · ${specLabel(spec)}`;
+  line.textContent = `Par Lab · board ${prog.resolved + 1}/${prog.total} · chunk ${spec.chunk} · ${specLabel(spec)}${syncNote}`;
 
   if (!lab.recorded) {
     status.textContent = lab.attempt > 0
@@ -138,6 +172,7 @@ async function _skip() {
   const row = buildParLabRow(lab.spec, lab.attempt, 'skip', { seq: rows.length + 1 });
   saveRows(appendParLabRow(rows, row) || rows);
   showToast(`Skipped ${lab.spec.id}.`, 2000);
+  flushUnsynced();
   await _advance();
 }
 
@@ -158,6 +193,7 @@ function _copy() {
  */
 export async function startParLab() {
   ensureHud();
+  flushUnsynced(); // rows queued from an earlier visit (offline, pre-rules)
   const spec = nextParLabBoard(loadRows());
   if (!spec) { state.parLab = null; renderHud(); return; }
   await launchSpec(spec);
@@ -185,6 +221,7 @@ export function onParLabResult(won) {
     });
     const appended = appendParLabRow(rows, row);
     if (appended) saveRows(appended);
+    flushUnsynced();
   }
   lab.recorded = true;
   lab.lastResult = won;
