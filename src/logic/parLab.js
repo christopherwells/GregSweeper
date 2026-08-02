@@ -73,16 +73,31 @@
 // parameterizes the DAILY par model, so a lab mine costs what a daily mine
 // costs — revealed strike marker, info-value + ramped base logged to the
 // hit-event log, play continues, never game over. A loss-on-mine lab would
-// measure a more cautious solve than the model's own response frame. Rows
-// therefore carry bombHits + bombHitEvents, and `timeSec` is PURE wall
-// clock: unlike a submitted daily time (which bakes the penalties in), the
-// penalties here live ONLY in the events, so the offline fit uses timeSec
-// directly as pure_time with NO subtraction — and applies the same >30%
-// mine-detonation probe filter the daily fit uses (bombHits vs mines are
-// both on the row). With strikes, every played board completes; the
-// loss/retry machinery below survives as a defensive path, and Skip remains
-// the way out of a board mid-way (an abandoned board re-issues its SAME
-// seed later, so skip a board you walked away from half-seen).
+// measure a more cautious solve than the model's own response frame.
+//
+// TIME CONVENTION — the daily's, verbatim: `timeSec` is the final
+// penalty-INCLUSIVE time (state.preciseTime, the same number a daily
+// submits and the win modal shows — stopTimer folds the strike penalties
+// in), `penaltySec` is the total folded penalty, and `bombHitEvents`
+// carries the per-hit breakdown. The offline fit recovers
+// pure_time = timeSec − penaltySec (equivalently − Σ event penalties),
+// exactly the recipe the nightly refit applies to daily rows, and applies
+// the same >30% mine-detonation probe filter (bombHits vs mines are both
+// on the row). Rows recorded before 2026-08-02's fix lack `penaltySec`
+// and carry a PURE-wall-clock integer timeSec instead — for those,
+// pure_time = timeSec with no subtraction (they are all warm-ups; the
+// field's presence is the discriminator).
+//
+// With strikes, every played board completes; the loss/retry machinery
+// below survives as a defensive path, and Skip remains the way out of a
+// board mid-way (an abandoned board re-issues its SAME seed later, so skip
+// a board you walked away from half-seen). A played board that must be
+// VOIDED (deliberate mine-popping, an interrupted run, any contaminated
+// row) goes through redoParLabBoard: its resolving rows flip to 'invalid'
+// locally, an 'invalid' TOMBSTONE row syncs to the server (the original
+// synced row is append-only and cannot be edited — the analysis voids any
+// (uid, id, attempt) that has an invalid row), and the board re-issues at
+// the next attempt number, which is a FRESH layout.
 
 import { createDailyRNG } from './seededRandom.js';
 import { generateBoard, cleanSolverArtifacts } from './boardGenerator.js';
@@ -317,13 +332,22 @@ export function buildParLabBoard(spec, attempt = 0) {
 // ── Progress + recording (pure; storage I/O lives in the UI layer) ───────
 
 /**
- * A board is RESOLVED once it has a win or a skip row; losses leave it open
- * (the HUD offers a fresh-seed retry).
+ * A board is RESOLVED once it has a win or a skip row that has not been
+ * voided; losses leave it open (fresh-seed retry), and an 'invalid' row for
+ * the same (id, attempt) voids the win/skip it tombstones — the board
+ * re-issues at the next attempt.
  */
 export function resolvedIds(rows) {
+  const list = rows || [];
+  const voided = new Set();
+  for (const r of list) {
+    if (r && r.result === 'invalid') voided.add(`${r.id}#${r.attempt}`);
+  }
   const done = new Set();
-  for (const r of rows || []) {
-    if (r && (r.result === 'win' || r.result === 'skip')) done.add(r.id);
+  for (const r of list) {
+    if (r && (r.result === 'win' || r.result === 'skip') && !voided.has(`${r.id}#${r.attempt}`)) {
+      done.add(r.id);
+    }
   }
   return done;
 }
@@ -337,13 +361,20 @@ export function nextParLabBoard(rows, battery = PAR_LAB_BATTERY) {
   return null;
 }
 
-/** How many attempts (win/loss rows, not skips) this id already has. */
+/**
+ * How many layout-SEEING attempts this id already has. Wins, losses, and
+ * invalidated rows all count (each saw its layout, so the next issue must
+ * be a fresh seed); skips do not — but tombstones and their voided rows
+ * share an attempt number, so the pairs collapse to one sighting.
+ */
 export function attemptCountFor(rows, id) {
-  let n = 0;
+  const attempts = new Set();
   for (const r of rows || []) {
-    if (r && r.id === id && (r.result === 'win' || r.result === 'loss')) n++;
+    if (r && r.id === id && (r.result === 'win' || r.result === 'loss' || r.result === 'invalid')) {
+      attempts.add(r.attempt);
+    }
   }
-  return n;
+  return attempts.size;
 }
 
 export function labProgress(rows, battery = PAR_LAB_BATTERY) {
@@ -359,7 +390,7 @@ export function labProgress(rows, battery = PAR_LAB_BATTERY) {
  * `seq` is the global play counter — the offline fit's session-effect axis.
  */
 export function buildParLabRow(spec, attempt, result, {
-  timeSec = 0, features = null, par = 0, wormEvents = null, seq = 0,
+  timeSec = 0, penaltySec = 0, features = null, par = 0, wormEvents = null, seq = 0,
   bombHits = 0, bombHitEvents = null,
 } = {}) {
   const row = {
@@ -371,8 +402,9 @@ export function buildParLabRow(spec, attempt, result, {
     gimmicks: Array.isArray(spec.gimmicks) ? [...spec.gimmicks] : [],
     warmup: spec.warmup === true,
     result,
-    // PURE wall clock — strike penalties live in bombHitEvents, never here
-    // (see the header: the fit reads this directly as pure_time).
+    // The daily convention: penalty-INCLUSIVE final time (state.preciseTime
+    // — what stopTimer committed and the win modal shows). penaltySec below
+    // is what the fit subtracts back out; see the header.
     timeSec,
     seq,
     playedAt: new Date().toISOString(),
@@ -382,6 +414,7 @@ export function buildParLabRow(spec, attempt, result, {
   if (features) row.features = features;
   if (par > 0) row.par = Math.round(par * 10) / 10;
   if (Array.isArray(wormEvents) && wormEvents.length > 0) row.wormEvents = wormEvents;
+  if (penaltySec > 0) row.penaltySec = Math.round(penaltySec * 10) / 10;
   if (bombHits > 0) {
     row.bombHits = bombHits;
     if (Array.isArray(bombHitEvents) && bombHitEvents.length > 0) row.bombHitEvents = bombHitEvents;
@@ -390,20 +423,67 @@ export function buildParLabRow(spec, attempt, result, {
 }
 
 /**
- * Append with an idempotence guard: one row per (id, attempt) for
- * win/loss. A replay of an already-recorded attempt (the gameover modal's
- * own Play Again regenerates the same seed) must not produce a second row —
- * the second solve of a seen layout is not a measurement.
+ * Append with an idempotence guard: one measurement per (id, attempt).
+ * A replay of an already-recorded attempt (the gameover modal's own Play
+ * Again regenerates the same seed) must not produce a second row — the
+ * second solve of a seen layout is not a measurement, and an INVALIDATED
+ * attempt stays spent for the same reason. Skips and tombstones bypass
+ * the guard: neither claims to measure anything.
  * Returns the new rows array, or null if the row was a duplicate.
  */
 export function appendParLabRow(rows, row) {
   const list = Array.isArray(rows) ? rows : [];
-  if (row.result !== 'skip'
+  if (row.result !== 'skip' && row.result !== 'invalid'
       && list.some((r) => r && r.id === row.id && r.attempt === row.attempt
-        && (r.result === 'win' || r.result === 'loss'))) {
+        && (r.result === 'win' || r.result === 'loss' || r.result === 'invalid'))) {
     return null;
   }
   return [...list, row];
+}
+
+/**
+ * VOID a played board so it re-issues with a fresh layout — the escape
+ * hatch for a contaminated row (deliberate mine-popping, an interrupted
+ * sitting, a run the player wants stricken). Resolving rows (win/skip)
+ * for the id flip to 'invalid' IN PLACE (they keep their fbKey — the
+ * synced originals are append-only and stay on the server), and one
+ * 'invalid' TOMBSTONE row per voided attempt is appended WITHOUT an
+ * fbKey, so the sync flush publishes the voiding: the analysis drops any
+ * (uid, id, attempt) that carries an invalid row. attemptCountFor counts
+ * the voided attempt as seen, so the re-issue draws the next seed.
+ *
+ * @param {Array} rows the stored log
+ * @param {string|number} idOrSeq board id, or its 1-based battery seq
+ * @param {Array} battery
+ * @returns {null | {rows: Array, spec: Object}} null when nothing to void
+ */
+export function redoParLabBoard(rows, idOrSeq, battery = PAR_LAB_BATTERY) {
+  const seq = Number(idOrSeq);
+  const spec = Number.isInteger(seq) && String(idOrSeq).trim() === String(seq)
+    ? battery.find((b) => b.seq === seq)
+    : battery.find((b) => b.id === String(idOrSeq).trim());
+  if (!spec) return null;
+
+  const list = Array.isArray(rows) ? rows : [];
+  const alreadyVoided = new Set(
+    list.filter((r) => r && r.id === spec.id && r.result === 'invalid').map((r) => r.attempt),
+  );
+  const voidAttempts = new Set();
+  const flipped = list.map((r) => {
+    if (r && r.id === spec.id && (r.result === 'win' || r.result === 'skip')
+        && !alreadyVoided.has(r.attempt)) {
+      voidAttempts.add(r.attempt);
+      return { ...r, result: 'invalid' };
+    }
+    return r;
+  });
+  if (voidAttempts.size === 0) return null;
+
+  let out = flipped;
+  for (const attempt of [...voidAttempts].sort((a, b) => a - b)) {
+    out = appendParLabRow(out, buildParLabRow(spec, attempt, 'invalid', { seq: out.length + 1 }));
+  }
+  return { rows: out, spec };
 }
 
 /** The export payload the HUD copies to the clipboard. */

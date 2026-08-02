@@ -94,6 +94,81 @@ test('REGRESSION: a lab mine is a DAILY-style strike, never a loss', async ({ pa
   expect(errors, `console/page errors:\n${errors.join('\n')}`).toEqual([]);
 });
 
+test('REGRESSION: a struck win records the DAILY-convention time (penalty folded in) and ?parlabRedo= voids it', async ({ page }) => {
+  // His report: strike penalties were not counting against the recorded
+  // time (rows carried pure wall clock). The row must now carry the same
+  // number a daily submits — preciseTime with the penalties folded in —
+  // plus penaltySec so the fit can subtract back to pure play time. The
+  // spec solves lab board 1 outright (the layout is deterministic, so the
+  // safe set is computable in node), with one deliberate strike first.
+  const spec = PAR_LAB_BATTERY[0];
+  const built = buildParLabBoard(spec, 0);
+  const mines = [];
+  const safes = [];
+  for (let r = 0; r < built.rows; r++) {
+    for (let c = 0; c < built.cols; c++) {
+      (built.board[r][c].isMine ? mines : safes).push({ r, c });
+    }
+  }
+
+  const errors = attachErrorCapture(page);
+  await page.goto('?isTest=1&parlab=1');
+  await page.waitForSelector('#app:not(.hidden)', { timeout: 20_000 });
+
+  await page.click(`#board .cell[data-row="${mines[0].r}"][data-col="${mines[0].c}"]`);
+  await expect(page.locator('#bombhit-explainer')).toBeVisible();
+  await page.click('#bombhit-explainer-ok');
+  // The modal closes asynchronously, and finishBombHit (which resumes the
+  // paused timer) hangs off that close — wait it out, or the scripted solve
+  // wins against a paused clock, something no human hand can do.
+  await expect(page.locator('#bombhit-explainer')).toBeHidden();
+
+  // Reveal every safe cell programmatically — the board's input handler
+  // lives on mousedown, so dispatch that, and do it in one evaluate so the
+  // wall clock stays far below the >=3s strike penalty (which is what makes
+  // the inclusive-time assertion discriminating).
+  await page.evaluate((cells) => {
+    for (const { r, c } of cells) {
+      document.querySelector(`#board .cell[data-row="${r}"][data-col="${c}"]`)
+        ?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0 }));
+    }
+  }, safes);
+
+  // The win row lands via the handleWin hook; poll storage for it.
+  const row = await page.waitForFunction(() => {
+    try {
+      const rows = JSON.parse(localStorage.getItem('gregsweeper_parlab_v1'))?.rows || [];
+      return rows.find((x) => x.result === 'win') || null;
+    } catch { return null; }
+  }, undefined, { timeout: 15_000 }).then((h) => h.jsonValue());
+
+  expect(row.id).toBe(spec.id);
+  expect(row.bombHits).toBe(1);
+  expect(row.penaltySec).toBeGreaterThanOrEqual(3); // ramped base floor
+  // Penalty folded INTO the time (the daily convention). The scripted solve
+  // takes well under a second, so pre-fix this was the bare wall clock — 0 —
+  // while post-fix it is wall + penalty >= the penalty itself.
+  expect(row.timeSec).toBeGreaterThanOrEqual(row.penaltySec);
+  expect(row.bombHitEvents.length).toBe(1);
+
+  // The redo door: voiding board 1 re-issues it unresolved with the voiding
+  // tombstoned for the sync flush.
+  await page.goto('?isTest=1&parlab=1&parlabRedo=1');
+  await page.waitForSelector('#app:not(.hidden)', { timeout: 20_000 });
+  await expect(page.locator('#parlab-hud #parlab-line')).toContainText(/board 1\/\d+/);
+  const voided = await page.evaluate(() => {
+    const rows = JSON.parse(localStorage.getItem('gregsweeper_parlab_v1'))?.rows || [];
+    return {
+      invalids: rows.filter((x) => x.result === 'invalid').length,
+      wins: rows.filter((x) => x.result === 'win').length,
+    };
+  });
+  expect(voided.wins).toBe(0);
+  expect(voided.invalids).toBeGreaterThanOrEqual(2); // the flipped row + its tombstone
+
+  expect(errors, `console/page errors:\n${errors.join('\n')}`).toEqual([]);
+});
+
 test('plain boots stay lab-free — no HUD outside ?parlab=', async ({ page }) => {
   const errors = attachErrorCapture(page);
   await page.goto('?isTest=1');

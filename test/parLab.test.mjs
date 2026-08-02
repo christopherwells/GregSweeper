@@ -13,7 +13,7 @@ import { readFileSync } from 'node:fs';
 import {
   PAR_LAB_BATTERY, PAR_LAB_CHUNK_SIZE, parLabSeed, buildParLabBoard,
   resolvedIds, nextParLabBoard, attemptCountFor, labProgress,
-  buildParLabRow, appendParLabRow, exportParLab,
+  buildParLabRow, appendParLabRow, exportParLab, redoParLabBoard,
 } from '../src/logic/parLab.js';
 import { TILING_TYPES, buildTiling } from '../src/logic/tilingGeometry.js';
 import { TILING_SAFE_GIMMICKS } from '../src/logic/tilingGenerator.js';
@@ -217,16 +217,64 @@ test('REGRESSION guard: a replayed layout can never record twice', () => {
     'a fresh attempt records normally');
 });
 
+test('REGRESSION: redoParLabBoard voids a contaminated run and re-issues a fresh layout', () => {
+  // His board-15 case: boards 1-14 resolved, then a deliberately
+  // mine-popped win on board 15 that must be strickable.
+  const spec = PAR_LAB_BATTERY[14]; // battery board 15
+  let rows = [];
+  for (const earlier of PAR_LAB_BATTERY.slice(0, 14)) {
+    rows = appendParLabRow(rows, buildParLabRow(earlier, 0, 'win', { timeSec: 30, seq: rows.length + 1 }));
+  }
+  const win = { ...buildParLabRow(spec, 0, 'win', { timeSec: 40, seq: 15 }), fbKey: 'k1' };
+  rows = appendParLabRow(rows, win);
+
+  // By battery NUMBER (how he refers to boards) and only when resolved.
+  assert.equal(redoParLabBoard(rows, '999'), null, 'unknown board voids nothing');
+  assert.equal(redoParLabBoard([], 15), null, 'an unplayed board voids nothing');
+  const redone = redoParLabBoard(rows, 15);
+  assert.ok(redone, 'a resolved board voids');
+  assert.equal(redone.spec.id, spec.id);
+
+  // The synced original flips to invalid IN PLACE (fbKey kept — the server
+  // copy is append-only), and a fresh tombstone appends WITHOUT one, so the
+  // flush publishes the voiding.
+  const flipped = redone.rows.find((r) => r.fbKey === 'k1');
+  assert.equal(flipped.result, 'invalid');
+  const tombstone = redone.rows.find((r) => r.result === 'invalid' && !r.fbKey);
+  assert.ok(tombstone, 'tombstone syncs the voiding to the server');
+  assert.equal(tombstone.id, spec.id);
+  assert.equal(tombstone.attempt, 0);
+
+  // The board is unresolved again, the spent attempt still counts, so the
+  // re-issue draws a FRESH seed.
+  assert.ok(!resolvedIds(redone.rows).has(spec.id));
+  assert.equal(nextParLabBoard(redone.rows).id, spec.id, 'the voided board re-issues next');
+  assert.equal(attemptCountFor(redone.rows, spec.id), 1);
+  assert.notEqual(parLabSeed(spec, attemptCountFor(redone.rows, spec.id)), parLabSeed(spec, 0),
+    'the redo plays a layout he has not seen');
+
+  // The voided attempt stays spent (a replay of the seen layout is refused),
+  // a second redo finds nothing new, and idempotence holds.
+  assert.equal(appendParLabRow(redone.rows, buildParLabRow(spec, 0, 'win', { timeSec: 12, seq: 9 })), null,
+    'the voided attempt can never record again');
+  assert.equal(redoParLabBoard(redone.rows, 15), null, 'double-redo is a no-op');
+  const winAgain = buildParLabRow(spec, 1, 'win', { timeSec: 80, seq: 10 });
+  const after = appendParLabRow(redone.rows, winAgain);
+  assert.ok(after, 'the fresh attempt records normally');
+  assert.ok(resolvedIds(after).has(spec.id), 'and resolves the board');
+});
+
 test('rows carry what the offline fit needs and the export round-trips', () => {
   const tiling = PAR_LAB_BATTERY.find((b) => b.shape !== 'rect' && b.gimmicks.length === 1);
   const row = buildParLabRow(tiling, 0, 'win', {
+    // The DAILY convention (his report: strikes must count against the
+    // time): timeSec is the penalty-INCLUSIVE final time; penaltySec is
+    // what the fit subtracts back out to reach pure play time.
     timeSec: 92.4,
+    penaltySec: 12.1,
     features: { tilingType: tiling.shape, totalMines: tiling.mines },
     par: 88.26,
     wormEvents: [{ t: 5, r: 1, c: 1 }],
-    // Lab mines are daily-style strikes; the fit prices these exactly like
-    // daily bombHitEvents, and timeSec stays PURE wall clock (penalties
-    // live only in the events — no subtraction on the R side).
     bombHits: 2,
     bombHitEvents: [
       { t: 30.5, row: 1, col: 2, penalty: 3, infoValue: 0 },
@@ -236,7 +284,10 @@ test('rows carry what the offline fit needs and the export round-trips', () => {
   });
   assert.equal(row.bombHits, 2);
   assert.equal(row.bombHitEvents.length, 2);
-  assert.equal(row.timeSec, 92.4, 'timeSec is wall clock; strike penalties stay in the events');
+  assert.equal(row.timeSec, 92.4, 'timeSec is the daily-convention inclusive time');
+  assert.equal(row.penaltySec, 12.1, 'penaltySec lets the fit recover pure play time');
+  const clean = buildParLabRow(tiling, 0, 'win', { timeSec: 60, seq: 8 });
+  assert.equal(clean.penaltySec, undefined, 'a strike-free row carries no penaltySec');
   assert.equal(row.shape, tiling.shape);
   assert.equal(row.M, tiling.M);
   assert.equal(row.warmup, false);
@@ -277,7 +328,7 @@ test('the parLab rules block admits exactly what buildParLabRow emits', () => {
   const emitted = new Set();
   for (const spec of [tiling, rect]) {
     const row = buildParLabRow(spec, 0, 'win', {
-      timeSec: 60, features: { rows: 9, cols: 7, totalMines: 13 }, par: 90,
+      timeSec: 60, penaltySec: 3, features: { rows: 9, cols: 7, totalMines: 13 }, par: 90,
       wormEvents: [{ t: 1 }], seq: 1,
       bombHits: 1, bombHitEvents: [{ t: 10, row: 0, col: 0, penalty: 3, infoValue: 0 }],
     });
