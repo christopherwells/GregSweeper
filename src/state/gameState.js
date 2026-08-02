@@ -220,6 +220,16 @@ export function clearCoastlinePractice() {
   state.coastlineType = null;
   state.coastlineFeatures = null;
   state.coastlinePar = 0;
+  // Par Lab rides the coastline-practice lane; leaving the lane for a real
+  // mode must drop its per-board spec too, or the next practice entry would
+  // rebuild a lab board (and the lab HUD would record a run it never issued).
+  state.parLab = null;
+  state.parLabSpec = null;
+  state.parLabAttempt = 0;
+  // The lab HUD is DOM the UI layer created; tearing it down here keeps
+  // "leaving the lane" a single call site. typeof-guarded because this
+  // module is otherwise DOM-free and its headless tests import it bare.
+  if (typeof document !== 'undefined') document.getElementById('parlab-hud')?.remove();
 }
 
 // True when a board's modifiers were resolved during PRE-generation
