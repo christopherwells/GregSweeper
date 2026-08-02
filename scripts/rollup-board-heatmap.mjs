@@ -103,6 +103,7 @@ function rowsOf(bucket) {
   let written = 0;
   let skipped = 0;
   let noBoard = 0;
+  let tilingSkipped = 0;
 
   for (const date of dates) {
     // Dates inside the trailing window are always recomputed so their
@@ -115,6 +116,15 @@ function rowsOf(bucket) {
       // mine count for the probe filter. Publishing an unanchored map
       // is worse than publishing none.
       noBoard++;
+      continue;
+    }
+    if (board.tiling || board.cellNeighbors) {
+      // A tiling canonical (Coastline shape rotation): its rows×cols is
+      // container STORAGE, not geometry, and the heatmap exhibit draws a
+      // rows×cols rectangle — every cell of a lattice board would land in
+      // the wrong place. No map beats a wrong map (the alignment-gate
+      // ethic); revisit when the exhibit can draw a lattice.
+      tilingSkipped++;
       continue;
     }
 
@@ -156,7 +166,8 @@ function rowsOf(bucket) {
   if (!dryRun && written > 0) await db.ref().update(updates);
   console.log(
     `Done. dates written: ${written}, settled and skipped: ${skipped}, `
-    + `no canonical board: ${noBoard}${dryRun ? ' (dry run — nothing written)' : ''}.`,
+    + `no canonical board: ${noBoard}, tiling boards (no rectangular map): ${tilingSkipped}`
+    + `${dryRun ? ' (dry run — nothing written)' : ''}.`,
   );
   process.exit(0);
 })().catch(err => {

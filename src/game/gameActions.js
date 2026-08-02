@@ -28,7 +28,8 @@ import { getGimmicksForLevel, applyGimmicks, applyWalls, isLockedCell, hasSeenGi
 import { createDailyRNG, getLocalDateString, getWeekStart, getWeekDayIndex } from '../logic/seededRandom.js';
 import { selectDailyRngSeed } from '../logic/selectDailyRngSeed.js';
 import { selectWeeklyRngSeed } from '../logic/selectWeeklyRngSeed.js';
-import { getTargetGimmickName, getMissionForSeed, missionStamp } from '../logic/experimentDesign.js';
+import { getTargetGimmickName, getMissionForSeed, missionStamp, getCurrentTarget, getCoverageTargets } from '../logic/experimentDesign.js';
+import { resolveDailyShape, buildTilingDailyBoard, getDailyShapeOverride } from '../logic/shapeRotation.js';
 import { loadDailyBoard, saveDailyBoard, serializeBoard, deserializeBoard } from '../firebase/dailyBoardSync.js';
 import { loadWeeklyBoard, saveWeeklyBoard } from '../firebase/weeklyBoardSync.js';
 import { fetchWeeklyLeaderboard } from '../firebase/firebaseLeaderboard.js';
@@ -456,6 +457,39 @@ export async function newGame() {
       return;
     }
 
+    // Shape rotation (Project Coastline). Resolved only when the board has
+    // to be generated HERE — a fetched canonical already IS its shape, and
+    // the archive path never reaches local generation (it aborts above).
+    // The live lane asks the date-seeded draw (null for every date while
+    // TILING_ROTATION_START is unset, so this whole branch is dark in
+    // production); the practice lane asks only the test-env ?dailyShape=
+    // override, so a ?seed= practice run can never draw a shape and the
+    // override can never touch a recording daily.
+    let tilingBuilt = null;
+    if (!reconstructed) {
+      const shapeOverride = getDailyShapeOverride();
+      const rotationShape = state.isDailyPractice
+        ? (shapeOverride === 'rect' ? null : shapeOverride)
+        : resolveDailyShape(state.dailySeed);
+      if (rotationShape) {
+        try {
+          tilingBuilt = buildTilingDailyBoard(state.dailySeed, rotationShape, {
+            target: getCurrentTarget(), coverage_targets: getCoverageTargets(),
+          });
+        } catch (err) {
+          // A throw here would be deterministic too (same seed, same code on
+          // every client), so the rectangular fallback still keeps all
+          // clients in agreement — but it is a generator bug, so say so.
+          tilingBuilt = null;
+          reportCaughtError('tiling-daily-build', err);
+        }
+        // A null is deterministic (same seed, same code, same outcome on
+        // every client), so falling back to the rectangular path below keeps
+        // all clients in agreement — nobody splits.
+        if (!tilingBuilt) console.warn('tiling daily generation failed for', state.dailySeed, '— falling back to rectangular');
+      }
+    }
+
     if (reconstructed) {
       state.dailyRngSeed = reconstructed.rngSeed || state.dailySeed;
       state.rows = reconstructed.rows;
@@ -464,6 +498,34 @@ export async function newGame() {
       state.board = reconstructed.board;
       state.activeGimmicks = reconstructed.activeGimmicks || [];
       state.gimmickData = {};
+    } else if (tilingBuilt) {
+      // Single-candidate tiling day: the shared builder already ran the
+      // mission draw, the gimmick roll, certified generation, and the
+      // load-bearing filter. Mirror of the pipeline's tiling branch in
+      // scripts/daily-board-pipeline.mjs — same function, same seed, same
+      // board, byte for byte.
+      state.dailyRngSeed = tilingBuilt.rngSeed;
+      state.rows = tilingBuilt.rows;
+      state.cols = tilingBuilt.cols;
+      state.totalMines = tilingBuilt.totalMines;
+      state.board = tilingBuilt.board;
+      state.activeGimmicks = tilingBuilt.activeGimmicks || [];
+      state.gimmickData = tilingBuilt.applied || {};
+
+      if (wantCanonical) {
+        const fallbackPayload = serializeBoard({
+          board: state.board, rows: state.rows, cols: state.cols,
+          totalMines: state.totalMines, rngSeed: state.dailyRngSeed,
+          activeGimmicks: state.activeGimmicks,
+          codeVersion: state.codeVersion || 'unknown',
+          // The tiling's own certified opener — the container centre is an
+          // unrelated slot here (issue #195).
+          firstClick: tilingBuilt.firstClick,
+        });
+        Object.assign(fallbackPayload, missionStamp(tilingBuilt.mission));
+        saveDailyBoard(state.dailySeed, fallbackPayload)
+          .catch(err => reportCaughtError('daily-board-save', err));
+      }
     } else {
       // Fall through to local generation (this is the existing path —
       // we'll write the result back to Firebase below). Resolve effective
@@ -594,11 +656,14 @@ export async function newGame() {
     // canonical (measured: 12 of 18 round-trips diverge, all 12 stall at
     // click 1, par off by up to 22% — issue #195), so features/par/moves
     // came off a failed solve with no error anywhere. A locally generated
-    // board has no deserialize result; it was generated around the container
-    // centre above, which stays its opener (local daily gen is rectangular).
+    // tiling board carries its builder's opener for the same reason; a
+    // locally generated rectangle was generated around the container centre
+    // above, which stays its opener.
     const dailyOpener = reconstructed
       ? reconstructed.firstClick
-      : Math.floor(state.rows / 2) * state.cols + Math.floor(state.cols / 2);
+      : tilingBuilt
+        ? tilingBuilt.firstClick
+        : Math.floor(state.rows / 2) * state.cols + Math.floor(state.cols / 2);
     const fixedRow = Math.floor(dailyOpener / state.cols);
     const fixedCol = dailyOpener % state.cols;
 

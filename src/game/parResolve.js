@@ -10,7 +10,8 @@ import { generateBoard, cleanSolverArtifacts } from '../logic/boardGenerator.js'
 import { isBoardSolvable } from '../logic/boardSolver.js';
 import { createDailyRNG } from '../logic/seededRandom.js';
 import { selectDailyRngSeed } from '../logic/selectDailyRngSeed.js';
-import { getMissionForSeed, getTargetGimmickName } from '../logic/experimentDesign.js';
+import { getMissionForSeed, getTargetGimmickName, getCurrentTarget, getCoverageTargets } from '../logic/experimentDesign.js';
+import { resolveDailyShape, buildTilingDailyBoard } from '../logic/shapeRotation.js';
 import { getDailyGimmick, applyGimmicks } from '../logic/gimmicks.js';
 import { loadDailyBoard, deserializeBoard } from '../firebase/dailyBoardSync.js';
 import { loadWeeklyBoard } from '../firebase/weeklyBoardSync.js';
@@ -61,37 +62,65 @@ export async function computeDailyParForDate(dateStr, ignoreInMemory = false) {
         parResult = isBoardSolvable(pBoard, pRows, pCols, pFixedR, pFixedC);
         cleanSolverArtifacts(pBoard);
       } else {
-        // Mirror the daily-gen path: resolve the effective RNG seed first so
-        // the computed par matches what the player will actually see when
-        // they start today's daily (especially on adaptive-experiment days).
-        const rngSeed = selectDailyRngSeed(dateStr);
-        pSeed = rngSeed;
-        const dimRng = createDailyRNG(rngSeed);
-        pRows = DAILY_MIN_SIZE + Math.floor(dimRng() * DAILY_SIZE_RANGE);
-        pCols = DAILY_MIN_SIZE + Math.floor(dimRng() * DAILY_SIZE_RANGE);
-        const pDensity = DAILY_MIN_DENSITY + dimRng() * DAILY_DENSITY_RANGE;
-        pMines = Math.max(5, Math.round(pRows * pCols * pDensity));
-        const pFixedR = Math.floor(pRows / 2), pFixedC = Math.floor(pCols / 2);
-        // Recover the mission that won the seed selection so we
-        // force-inject the same gimmick (and respect the single-only
-        // constraint for coverage slots) the selector evaluated.
-        const parMission = getMissionForSeed(rngSeed);
-        const forcedGimmick = getTargetGimmickName(parMission.target);
-        activeGimmicks = getDailyGimmick(rngSeed, createDailyRNG, forcedGimmick, parMission.singleOnly);
+        // Shape rotation (Project Coastline): on a tiling day with no
+        // canonical, par must come from the SAME single-candidate tiling
+        // build the play path would run (the shared builder that
+        // scripts/daily-board-pipeline.mjs and gameActions.js call), never
+        // from the rectangular regeneration below — that would quote a par
+        // for a board nobody will play. Dark in production while
+        // TILING_ROTATION_START is unset. The test-env ?dailyShape=
+        // override is deliberately NOT consulted here: this resolver quotes
+        // the LIVE daily's par, and an override run's par comes from the
+        // in-memory features that run just computed.
+        const rotationShape = resolveDailyShape(dateStr);
+        const tilingBuilt = rotationShape
+          ? buildTilingDailyBoard(dateStr, rotationShape, {
+            target: getCurrentTarget(), coverage_targets: getCoverageTargets(),
+          })
+          : null;
+        if (tilingBuilt) {
+          pBoard = tilingBuilt.board;
+          pRows = tilingBuilt.rows;
+          pCols = tilingBuilt.cols;
+          pMines = tilingBuilt.totalMines;
+          activeGimmicks = tilingBuilt.activeGimmicks || [];
+          pSeed = tilingBuilt.rngSeed;
+          parResult = tilingBuilt.check;
+        } else {
+          // Mirror the daily-gen path: resolve the effective RNG seed first
+          // so the computed par matches what the player will actually see
+          // when they start today's daily (especially on adaptive-experiment
+          // days). Also the deterministic fallback for a tiling day whose
+          // generation exhausts — the play path falls back identically.
+          const rngSeed = selectDailyRngSeed(dateStr);
+          pSeed = rngSeed;
+          const dimRng = createDailyRNG(rngSeed);
+          pRows = DAILY_MIN_SIZE + Math.floor(dimRng() * DAILY_SIZE_RANGE);
+          pCols = DAILY_MIN_SIZE + Math.floor(dimRng() * DAILY_SIZE_RANGE);
+          const pDensity = DAILY_MIN_DENSITY + dimRng() * DAILY_DENSITY_RANGE;
+          pMines = Math.max(5, Math.round(pRows * pCols * pDensity));
+          const pFixedR = Math.floor(pRows / 2), pFixedC = Math.floor(pCols / 2);
+          // Recover the mission that won the seed selection so we
+          // force-inject the same gimmick (and respect the single-only
+          // constraint for coverage slots) the selector evaluated.
+          const parMission = getMissionForSeed(rngSeed);
+          const forcedGimmick = getTargetGimmickName(parMission.target);
+          activeGimmicks = getDailyGimmick(rngSeed, createDailyRNG, forcedGimmick, parMission.singleOnly);
 
-        for (let attempt = 0; attempt < 50; attempt++) {
-          const boardRng = attempt === 0
-            ? createDailyRNG(rngSeed)
-            : createDailyRNG(rngSeed + '-retry-' + attempt);
-          pBoard = generateBoard(pRows, pCols, pMines, pFixedR, pFixedC, boardRng);
-          cleanSolverArtifacts(pBoard);
-          if (activeGimmicks.length > 0) {
-            const gRng = createDailyRNG(rngSeed + '-gimmick-apply-' + attempt);
-            applyGimmicks(pBoard, 1, activeGimmicks, gRng);
+          for (let attempt = 0; attempt < 50; attempt++) {
+            const boardRng = attempt === 0
+              ? createDailyRNG(rngSeed)
+              : createDailyRNG(rngSeed + '-retry-' + attempt);
+            pBoard = generateBoard(pRows, pCols, pMines, pFixedR, pFixedC, boardRng);
+            cleanSolverArtifacts(pBoard);
+            if (activeGimmicks.length > 0) {
+              const gRng = createDailyRNG(rngSeed + '-gimmick-apply-' + attempt);
+              applyGimmicks(pBoard, 1, activeGimmicks, gRng);
+            }
+            parResult = isBoardSolvable(pBoard, pRows, pCols, pFixedR, pFixedC);
+            cleanSolverArtifacts(pBoard);
+            if (parResult.solvable || parResult.remainingUnknowns === 0) break;
           }
-          parResult = isBoardSolvable(pBoard, pRows, pCols, pFixedR, pFixedC);
-          cleanSolverArtifacts(pBoard);
-          if (parResult.solvable || parResult.remainingUnknowns === 0) break;
         }
       }
 

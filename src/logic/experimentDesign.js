@@ -466,6 +466,75 @@ export function selectMissionWinner(entries, dateString) {
 }
 
 /**
+ * The mission for a TILING day (Project Coastline shape rotation), where the
+ * day has ONE candidate instead of the rectangular 10-way contest — the
+ * client fallback must replay selection deterministically, and generating a
+ * contest's worth of rhombille boards on a phone is minutes, not milliseconds.
+ *
+ * With no candidate features to score, the rectangular lottery's
+ * `min(count, CAP) × weight` collapses to its weight term: a date-seeded
+ * weighted draw (P ∝ deficit weight) over the slots whose mission maps to a
+ * FORCE-INJECTABLE gimmick — the primary when its target is a gimmick, plus
+ * every coverage entry. That keeps the same self-correcting property the
+ * rectangular lottery has (the most undersampled gimmick is the likeliest
+ * tiling daily, never the only one, and the mix follows the refit's weights
+ * nightly) without needing boards to exist before the draw.
+ *
+ * Excluded, deliberately:
+ *  - DECORRELATION missions: they SELECT rather than construct — a residual
+ *    can only be chased across a candidate pool, and a tiling day has a pool
+ *    of one. On a tiling day the decorrelation mission simply does not run
+ *    (its 7-day cadence anchor only advances on a night that ships one, and
+ *    its live targets are digit shares the fit reads from RECTANGULAR rows
+ *    anyway — see the digit frame's rectangles-only filter).
+ *  - OBSERVATIONAL targets: measured on every board, never maximized; with
+ *    nothing to force there is nothing for this draw to pick.
+ *
+ * Returns { slot, mission } — slot feeds candidateSeed so the effective seed
+ * keeps the same `${date}:trialN` form as a rectangle day and anything
+ * inspecting a seed recovers the mission through the same arithmetic — or
+ * null when no slot qualifies (observational primary + empty coverage list),
+ * in which case the caller uses the plain dateString seed and the natural
+ * gimmick lottery, exactly like the rectangular plain-dateString fallback.
+ *
+ * Determinism: one rng stream (`:shapeMission` namespace, disjoint from
+ * `:trialN`, `:missionDraw`, and the `:shape` draw itself), at most one draw.
+ *
+ * @param {string} dateString YYYY-MM-DD
+ * @param {string|null} target the primary target feature name
+ * @param {Array} coverage coverage_targets list
+ * @returns {{slot: number, mission: Object}|null}
+ */
+export function selectTilingMission(dateString, target, coverage) {
+  const list = Array.isArray(coverage) ? coverage : [];
+  const entries = [];
+  for (let slot = 0; slot <= list.length; slot++) {
+    const mission = resolveMissionForSlot(slot, target, list, null);
+    if (!mission || !mission.target) continue;
+    if (!getTargetGimmickName(mission.target)) continue;
+    const weight = typeof mission.deficitWeight === 'number' && mission.deficitWeight > 0
+      ? mission.deficitWeight
+      : 0;
+    entries.push({ slot, mission, weight });
+  }
+  if (entries.length === 0) return null;
+
+  const rng = createDailyRNG(`${dateString}:shapeMission`);
+  const total = entries.reduce((s, e) => s + e.weight, 0);
+  if (total <= 0) {
+    // No usable weights carries no signal — draw uniformly, like
+    // selectMissionWinner's all-zero pool.
+    return entries[Math.min(entries.length - 1, Math.floor(rng() * entries.length))];
+  }
+  let r = rng() * total;
+  for (const e of entries) {
+    r -= e.weight;
+    if (r <= 0) return e;
+  }
+  return entries[entries.length - 1]; // float-edge fallback
+}
+
+/**
  * How many candidate slots to evaluate. Baseline on an ordinary day; on a
  * decorrelation day the tail slots become decorrelation candidates and the
  * count rises to give them a real selection pool.

@@ -64,6 +64,7 @@ import { isLiveGameExpired, isWeeklyAttemptCacheStale } from './logic/resumeElig
 import { blocksManualRestart } from './logic/modeRules.js';
 import { remindCtaOutcome } from './logic/remindCta.js';
 import { parseCoastlineParam, tilingLabel } from './logic/coastlineLink.js';
+import { setDailyShapeOverride } from './logic/shapeRotation.js';
 // 2026-07-10 split: main.js keeps entry wiring + init; these modules own
 // their surfaces (each also binds its own DOM wiring at import time).
 import { runStartupGate, hideBootOverlay } from './game/startupGate.js';
@@ -2088,6 +2089,20 @@ async function init() {
   // no matter which of the six lattices the link names; the player-facing
   // surface is a later release step.
   const coastlinePractice = isTestEnvironment() && urlParams.get('coastline') != null;
+  // ?dailyShape=<tiling|rect> — test-environment-only override for the daily
+  // SHAPE ROTATION (dark while TILING_ROTATION_START is unset). Gated at the
+  // derivation like ?level=/?coastline=, and doubly contained: the override
+  // only ever applies to a PRACTICE-lane daily (gameActions consults it only
+  // when state.isDailyPractice), so even in a test build it cannot touch a
+  // recording daily — /test/ shares localStorage with production, and an
+  // overridden board recording as the real date would block that day's real
+  // play (the ?level= pollution class). Reached via the daily deep link:
+  // ?mode=daily&dailyShape=hex[&seed=x] plays a forced-shape practice daily
+  // through the FULL daily code path (canonical-miss lane). A Daily-card tap
+  // in the same session stays a normal live daily.
+  const dailyShapeOverride = (isTestEnvironment() && urlParams.get('dailyShape'))
+    ? setDailyShapeOverride(urlParams.get('dailyShape'))
+    : null;
 
   // Diagnostics button is hidden for casual users. Unhide when `?debug=1`
   // is in the URL (once per device — we persist a localStorage flag so
@@ -2225,8 +2240,12 @@ async function init() {
     // under a non-today seed (e.g. after you've finished today's). Practice
     // runs submit to Firebase so the backend gets your uid, but don't
     // touch streak, bestTimes, completion flags, or personal history.
+    // ?dailyShape= (test env only — derivation above) forces the practice
+    // lane too: an overridden board is NOT the canonical, so it must never
+    // record as the real date.
     const customSeed = urlParams.get('seed');
-    if (!customSeed && isDailyCompleted(getLocalDateString())) {
+    const shapePractice = dailyShapeOverride != null;
+    if (!customSeed && !shapePractice && isDailyCompleted(getLocalDateString())) {
       // Already completed (possibly adopted from another device by the
       // startup gate) — the Daily card gates this, and a notification
       // tap must not bypass it into a replay + duplicate submission.
@@ -2236,12 +2255,27 @@ async function init() {
       await resumeSaveBehindTitle();
     } else {
       state.gameMode = 'daily';
-      if (customSeed) {
-        state.dailySeed = customSeed;
+      if (customSeed || shapePractice) {
+        // A bare ?dailyShape= run gets a synthetic practice seed, never the
+        // real date: practice writes its par cache under state.dailySeed
+        // (saveDailyPar), and /test/ shares localStorage with production, so
+        // running under today's key would stamp the override board's par
+        // onto the real daily's title-card badge.
+        state.dailySeed = customSeed || `shape-${getLocalDateString()}`;
         state.isDailyPractice = true;
       }
       hideTitleScreen();
-      if (!tryResumeGame()) await newGame(); else rearmPlateTimers();
+      if (shapePractice) {
+        // Never resume into a forced-shape run: a stale save (the real
+        // daily's, or a prior run under a DIFFERENT ?dailyShape=) would
+        // silently ignore the requested shape.
+        await newGame();
+        showToast(`Practice daily on ${dailyShapeOverride === 'rect' ? 'a square board' : tilingLabel(dailyShapeOverride)}. Nothing records.`, 5000);
+      } else if (!tryResumeGame()) {
+        await newGame();
+      } else {
+        rearmPlateTimers();
+      }
     }
   } else if (deepLinkMode === 'weekly') {
     // Deep link to weekly mode (used by push notifications and direct
