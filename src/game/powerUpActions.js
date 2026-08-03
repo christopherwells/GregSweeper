@@ -6,7 +6,7 @@ import { showToast } from '../ui/toastManager.js';
 import { uiSpriteImgHTML } from '../ui/spriteLoader.js';
 import { updateHeader } from '../ui/headerRenderer.js';
 import { updatePowerUpBar } from '../ui/powerUpBar.js';
-import { findSafeCell, scanRowCol, shieldDefuse, xRayScan, magnetPull } from '../logic/powerUps.js';
+import { findSafeCell, scanRowCol, scanBall, shieldDefuse, xRayScan, magnetPull } from '../logic/powerUps.js';
 import { checkWin, floodFillReveal } from '../logic/boardSolver.js';
 import { hatchWormEggs } from './timerManager.js';
 import { saveModePowerUps, loadPowerUps } from '../storage/statsStorage.js';
@@ -142,6 +142,47 @@ export function performScan(row, col) {
   state.scanMode = false;
   saveModePowerUps(state.gameMode, state.powerUps);
   saveProgress({ powerUps: loadPowerUps() });
+
+  // Tiling boards: a container row/column is storage, not geometry — the
+  // scan reads the depth-2 ball instead (the sonar-precedent port, his
+  // petals report 2026-08-03). Rectangles keep the row+column sweep below,
+  // verbatim.
+  if (state.board && state.board._cellNeighbors) {
+    const { cells, mines } = scanBall(state.board, state.rows, state.cols, row, col);
+    const near = new Set(state.board._cellNeighbors[row * state.cols + col]);
+    for (const idx of cells) {
+      const el = boardEl.children[idx];
+      if (!el) continue;
+      // Stagger outward: target, then its neighbors, then the second ring.
+      const depth = idx === row * state.cols + col ? 0 : near.has(idx) ? 1 : 2;
+      el.style.animationDelay = (depth * 80) + 'ms';
+      el.classList.add('scan-highlight');
+    }
+    const mineEls = [];
+    for (const idx of cells) {
+      const r = Math.floor(idx / state.cols), c = idx % state.cols;
+      if (state.board[r][c].isMine && !state.board[r][c].isRevealed) {
+        const el = boardEl.children[idx];
+        if (el) mineEls.push({ el, delay: (near.has(idx) ? 1 : 2) * 80 });
+      }
+    }
+    mineEls.forEach(({ el, delay }) => {
+      setTimeout(() => el.classList.add('xray-mine'), 200 + delay);
+    });
+    scanToast.textContent = `Scan: ${mines} mine${mines !== 1 ? 's' : ''} within 2 steps`;
+    scanToast.classList.remove('hidden');
+    setTimeout(() => {
+      scanToast.classList.add('hidden');
+      for (const el of $$('.scan-highlight')) {
+        el.classList.remove('scan-highlight');
+        el.style.animationDelay = '';
+      }
+      for (const el of $$('.xray-mine')) el.classList.remove('xray-mine');
+    }, 3000);
+    updatePowerUpBar();
+    return;
+  }
+
   const result = scanRowCol(state.board, row, col);
 
   boardEl.style.position = 'relative';
@@ -270,17 +311,14 @@ export function performXRay(row, col) {
   saveModePowerUps(state.gameMode, state.powerUps);
   saveProgress({ powerUps: loadPowerUps() });
 
-  const mines = xRayScan(state.board, row, col);
+  // The logic returns the AREA it read (5×5 on a rectangle, the depth-2
+  // ball on a tiling) so the highlight can never drift from the effect —
+  // the old inline ±2 loop here was a second copy of the geometry.
+  const { mines, area } = xRayScan(state.board, row, col);
 
-  for (let dr = -2; dr <= 2; dr++) {
-    for (let dc = -2; dc <= 2; dc++) {
-      const nr = row + dr;
-      const nc = col + dc;
-      if (nr >= 0 && nr < state.rows && nc >= 0 && nc < state.cols) {
-        const el = boardEl.children[nr * state.cols + nc];
-        if (el) el.classList.add('xray-area');
-      }
-    }
+  for (const cell of area) {
+    const el = boardEl.children[cell.row * state.cols + cell.col];
+    if (el) el.classList.add('xray-area');
   }
 
   const centerEl = boardEl.children[row * state.cols + col];

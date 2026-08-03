@@ -12,9 +12,22 @@ export function updatePowerUpBar() {
     powerUpBar.classList.remove('hidden');
   }
 
+  // The area power-ups read different shapes per board (his petals report,
+  // 2026-08-03): the tooltip must describe the shape the click will
+  // actually use, or it teaches the container geometry a tiling does not
+  // have. Static index.html titles are the rectangular defaults; a tiling
+  // board swaps them here.
+  const tiling = !!(state.board && state.board._cellNeighbors);
+  const AREA_TITLES = {
+    scanRowCol: tiling ? 'Scan (count mines within 2 steps)' : 'Scan Row/Column',
+    magnet: tiling ? 'Magnet (extract all mines next to a cell)' : 'Magnet (extract all mines from a 3x3 area)',
+    xray: tiling ? 'X-Ray (reveal mines within 2 steps)' : 'X-Ray (reveal mines in 5x5)',
+  };
+
   for (const btn of $$('.powerup-btn')) {
     const type = btn.dataset.powerup;
     const count = state.powerUps[type] || 0;
+    if (AREA_TITLES[type]) btn.title = AREA_TITLES[type];
 
     btn.querySelector('.powerup-count').textContent = count;
 

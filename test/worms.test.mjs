@@ -14,12 +14,12 @@ import assert from 'node:assert/strict';
 import {
   WORM_MIN_LEN, WORM_MAX_LEN, WORM_MAX_PER_BOARD,
   WORM_LIFETIME_MIN_MOVES, WORM_LIFETIME_MAX_MOVES, WORM_LOAD_SCALE,
-  WORM_MOVE_MIN_MS, WORM_MOVE_MAX_MS,
+  WORM_MOVE_BASE_MS,
   WORM_PACE_MIN, WORM_PACE_MAX, WORM_PERSIST_PROB,
   wormLengthFor, wormLifetimeFor, wormToneFor, wormPaceFor, wormLoadFor,
   mixHex, hatchWorm, stepWorm, tickWorms, rehydrateWorms, wormCoveredCells,
   wormOverlayLayout, wormHatchEvent, markWormBurrowed, finalizeWormEvents, wormSegmentSize,
-  buildWormCrawlTopology,
+  buildWormCrawlTopology, wormCellCenterUnitOffsets,
 } from '../src/logic/worms.js';
 import { buildWireframe } from '../src/logic/tilingGeometry.js';
 import { buildTiling488, buildTiling, containerFor, TILING_TYPES } from '../src/logic/tilingGeometry.js';
@@ -58,8 +58,8 @@ test('hatchWorm spawns fully coiled on the egg cell with a fresh pace-scaled clo
   assert.ok(worm.segments.every(s => s.r === 2 && s.c === 5), 'coiled spawn: every segment on the egg');
   assert.equal(worm.movesLeft, wormLifetimeFor('seed-x', 2, 5));
   assert.equal(worm.pace, wormPaceFor('seed-x', 2, 5));
-  assert.ok(worm.nextMoveMs >= WORM_MOVE_MIN_MS * worm.pace && worm.nextMoveMs < WORM_MOVE_MAX_MS * worm.pace,
-    'the first move clock is scaled by the worm\'s own pace');
+  assert.equal(worm.nextMoveMs, WORM_MOVE_BASE_MS * worm.pace,
+    'the first move clock is the SET cadence: base times the worm\'s own pace (his 2026-08-03 ruling)');
 });
 
 test('pace is a per-EGG trait: noticeably fast and slow worms, identical for every player', () => {
@@ -79,8 +79,8 @@ test('pace is a per-EGG trait: noticeably fast and slow worms, identical for eve
   stepWorm(quick, () => null, mulberry32(51));
   stepWorm(slow, () => null, mulberry32(51)); // same rng stream -> same base roll
   assert.ok(quick.nextMoveMs < slow.nextMoveMs, 'pace scales the rolled delay');
-  assert.ok(quick.nextMoveMs >= WORM_MOVE_MIN_MS * WORM_PACE_MIN);
-  assert.ok(slow.nextMoveMs < WORM_MOVE_MAX_MS * WORM_PACE_MAX);
+  assert.equal(quick.nextMoveMs, WORM_MOVE_BASE_MS * WORM_PACE_MIN, 'set pace: quick worm cadence is exact');
+  assert.equal(slow.nextMoveMs, WORM_MOVE_BASE_MS * WORM_PACE_MAX, 'set pace: slow worm cadence is exact');
 });
 
 test('lifetime is per-EGG: each worm owns its 30-80 budget, identical for every player', () => {
@@ -169,7 +169,7 @@ test('stepWorm moves the head only onto revealed cells; the body follows snake-s
   assert.deepEqual(worm.segments[1], { r: 1, c: 1 }, 'body follows into the old head cell');
   assert.deepEqual(worm.lastDir, { dr: 0, dc: 1 }, 'the move sets the heading for momentum');
   assert.equal(worm.movesLeft, 4);
-  assert.ok(worm.nextMoveMs >= WORM_MOVE_MIN_MS, 'a fresh move delay is rolled');
+  assert.equal(worm.nextMoveMs, WORM_MOVE_BASE_MS * (worm.pace || 1), 'a fresh SET-cadence delay is applied');
 });
 
 test('momentum: about half the steps continue the last heading, even past the aversion', () => {
@@ -370,7 +370,7 @@ test('rehydrateWorms restores segments + movesLeft with fresh clocks; drops spen
   assert.equal(live.length, 1);
   assert.deepEqual(live[0].segments, [{ r: 1, c: 2 }, { r: 1, c: 3 }]);
   assert.equal(live[0].movesLeft, 7);
-  assert.ok(live[0].nextMoveMs >= WORM_MOVE_MIN_MS && live[0].nextMoveMs < WORM_MOVE_MAX_MS);
+  assert.equal(live[0].nextMoveMs, WORM_MOVE_BASE_MS * (live[0].pace || 1));
   assert.deepEqual(rehydrateWorms(undefined), [], 'pre-worm saves rehydrate to no worms');
 });
 
@@ -724,4 +724,60 @@ test('the side-crawl is a NO-OP on the trivalent tilings, honors walls, and skip
   // Rectangles carry no explicit topology: the builder returns null and
   // stepWorm keeps its dr/dc walk verbatim.
   assert.equal(buildWormCrawlTopology([[{ isRevealed: true }]], 1, 1), null);
+});
+
+// ── Visual-centre offsets + set pace (his petals report, 2026-08-03) ────
+
+test('segment centres follow the VISUAL centre: asymmetric cells carry offsets, symmetric ones none', () => {
+  const { board: floret } = (() => {
+    const tiling = buildTiling('floret', 2, 4);
+    const board = [];
+    for (let r = 0; r < 6; r++) { const row = []; for (let c = 0; c < 8; c++) row.push({}); board.push(row); }
+    board._cellNeighbors = tiling.adj;
+    board._cellPos = tiling.cellPos;
+    board._tiling = { type: 'floret', M: 2, N: 4 };
+    return { board };
+  })();
+  const offs = wormCellCenterUnitOffsets(floret);
+  assert.ok(offs && offs.length === 48);
+  const maxOff = Math.max(...offs.map(o => Math.hypot(o.dx, o.dy)));
+  // A floret pentagon's incircle centre sits ~0.25 pitch off its box centre.
+  assert.ok(maxOff > 0.2, `floret must carry real centre offsets (max ${maxOff.toFixed(3)})`);
+
+  const { board: hex } = (() => {
+    const tiling = buildTiling('hex', 9, 7);
+    const board = [];
+    for (let r = 0; r < 7; r++) { const row = []; for (let c = 0; c < 9; c++) row.push({}); board.push(row); }
+    board._cellNeighbors = tiling.adj;
+    board._cellPos = tiling.cellPos;
+    board._tiling = { type: 'hex', M: 9, N: 7 };
+    return { board };
+  })();
+  const hexOffs = wormCellCenterUnitOffsets(hex);
+  const hexMax = Math.max(...hexOffs.map(o => Math.hypot(o.dx, o.dy)));
+  assert.ok(hexMax < 1e-9, `a hexagon's box centre IS its visual centre (max ${hexMax})`);
+
+  assert.equal(wormCellCenterUnitOffsets([[{}]]), null, 'rectangles carry no descriptor and no offsets');
+
+  // The layout applies the offset only alongside a uniform size.
+  const worm = { segments: [{ r: 0, c: 0 }] };
+  const rect = () => ({ left: 100, top: 100, width: 60, height: 50 });
+  const plain = wormOverlayLayout([worm], rect, 40)[0];
+  const shifted = wormOverlayLayout([worm], rect, 40, () => ({ dx: 7, dy: -3 }))[0];
+  assert.equal(shifted.left, plain.left + 7);
+  assert.equal(shifted.top, plain.top - 3);
+  assert.equal(shifted.width, 40);
+});
+
+test('REGRESSION: set pace — every move of one worm ticks on the same fixed clock', () => {
+  // His ruling 2026-08-03: cadence is fixed per worm (base x pace); only
+  // direction stays luck. Two steps with completely different rngs must
+  // produce the identical delay.
+  const worm = hatchWorm(1, 1, 'set-pace-seed');
+  const expected = WORM_MOVE_BASE_MS * worm.pace;
+  assert.equal(worm.nextMoveMs, expected);
+  stepWorm(worm, () => null, mulberry32(1));
+  assert.equal(worm.nextMoveMs, expected, 'first step: same fixed delay');
+  stepWorm(worm, () => null, mulberry32(999));
+  assert.equal(worm.nextMoveMs, expected, 'different rng, same fixed delay — cadence carries no luck');
 });

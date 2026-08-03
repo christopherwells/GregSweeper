@@ -16,7 +16,7 @@
 
 import { state } from '../state/gameState.js';
 import { boardEl } from './domHelpers.js';
-import { wormOverlayLayout, mixHex, wormSegmentSize } from '../logic/worms.js';
+import { wormOverlayLayout, mixHex, wormSegmentSize, wormCellCenterUnitOffsets } from '../logic/worms.js';
 
 const BURROW_ANIM_MS = 400;
 const HATCH_ANIM_MS = 500;
@@ -134,11 +134,22 @@ export function renderWormOverlays() {
   // that consecutive segments nearly touch, so the worm reads as a body rather
   // than a row of beads sliding.
   let uniformSize = null;
+  let centerOffsetPx = null;
   if (state.board && state.board._cellPos) {
     const P = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cell-size')) || 40;
     uniformSize = wormSegmentSize(P, state.board._tiling?.type || null);
+    // Asymmetric cells (floret pentagons, deltoidal kites) draw their number
+    // at the incircle centre, not the box centre — segments follow the same
+    // point so the worm sits ON the number, not beside it.
+    const offs = wormCellCenterUnitOffsets(state.board);
+    if (offs) {
+      centerOffsetPx = (r, c) => {
+        const o = offs[r * state.cols + c];
+        return o ? { dx: o.dx * P, dy: o.dy * P } : null;
+      };
+    }
   }
-  for (const item of wormOverlayLayout(worms, cellRect, uniformSize)) {
+  for (const item of wormOverlayLayout(worms, cellRect, uniformSize, centerOffsetPx)) {
     const els = _wormEls.get(worms[item.wormIndex]);
     const el = els && els[item.segIndex];
     if (!el) continue;
