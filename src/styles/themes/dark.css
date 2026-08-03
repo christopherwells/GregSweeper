@@ -45,6 +45,11 @@
   --color-btn-hover: #263052;
   --color-btn-gradient: linear-gradient(180deg, #263052, #1e2745);
   --color-border: #2a3a5e;
+  /* Tiling seams a step lighter than the border: --color-border reads fine
+     over dark's fog but nearly vanishes over its near-black REVEALED cells,
+     and the revealed region is where numbers must attribute to their tiles
+     (the petals-board legibility report, 2026-08-02). */
+  --tiling-seam-color: #45588c;
   --color-fog: rgba(0, 0, 0, 0.92);
   --color-scan-highlight: rgba(255, 215, 0, 0.2);
   --color-golden: #ffc107;

@@ -52,6 +52,11 @@ test('a forced-shape daily mounts as a hexagon lattice and plays from the marked
     [...new Set(cells.map((c) => c.style.clipPath || ''))].filter((s) => s.length > 0));
   expect(clipPaths.length, 'a honeycomb renders exactly one distinct clip-path').toBe(1);
 
+  // The seam overlay draws every shared tile edge (the clip-paths tile
+  // exactly, so without it neighboring cells have NO visible boundary —
+  // the petals-board legibility report, 2026-08-02).
+  await expect(page.locator('#board #tiling-seams path')).toHaveCount(1);
+
   // The practice lane announced itself — the recording gate the override
   // rides on (localStorage is shared with production on /test/).
   await expect(page.locator('.queued-toast')).toContainText(/Nothing records/i, { timeout: 5_000 });
@@ -79,5 +84,6 @@ test('without the override the daily stays rectangular — the rotation ships da
   await page.waitForSelector('#app:not(.hidden)', { timeout: 20_000 });
   await expect(page.locator('#board')).toBeVisible();
   await expect(page.locator('#board.tiling-board'), 'no override, no rotation start → no lattice').toHaveCount(0);
+  await expect(page.locator('#tiling-seams'), 'rectangular boards draw no seam overlay').toHaveCount(0);
   expect(errors, `console/page errors during boot:\n${errors.join('\n')}`).toEqual([]);
 });

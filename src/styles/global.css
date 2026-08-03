@@ -1845,6 +1845,39 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   border-radius: 0;
 }
 
+/* Tiling tile SEAMS (boardRenderer._renderTilingSeams): the clip-paths tile
+   exactly, so nothing else draws the boundary between two cells — on the
+   Laves lattices whole rosettes read as one solid shape and revealed regions
+   as an undivided sheet (Christopher's petals report, 2026-08-02). One SVG
+   holds every shared polygon edge; unit-coordinate viewBox + 100% sizing
+   make it rescale with every board re-lay for free, and non-scaling-stroke
+   keeps the line width in screen pixels at any pitch. Defaults to the
+   theme's own --color-border — the same color a rectangular board's grid
+   gaps show — overridable per theme via the two tokens. Sits above cell
+   bodies (including the .fx-on revealed lift at z-2, as a later sibling) so
+   the seams read across revealed regions, below walls (3) and worms (4). */
+#tiling-seams {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+#tiling-seams path {
+  fill: none;
+  stroke: var(--tiling-seam-color, var(--color-border));
+  stroke-width: var(--tiling-seam-width, 1.25px);
+  /* Half-weight by his call (2026-08-02: full-strength seams were "a little
+     too present"): the tiles should read as tiles at a glance without the
+     lattice shouting over the numbers. Opacity rather than a thinner stroke
+     so the line stays crisp at every pitch and each theme's seam color
+     keeps its hue. */
+  stroke-opacity: var(--tiling-seam-opacity, 0.55);
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
 /* Coastline: a tiling wall is a rotated bar across the shared edge of two
    severed cells (boardRenderer._renderTilingWalls sets left/top/width + the
    rotate). Same colors + two-tone outline as the rectangular grid lines. */

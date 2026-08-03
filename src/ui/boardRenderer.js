@@ -3,7 +3,7 @@ import { boardEl, zoomControls, boardScrollWrapper } from './domHelpers.js';
 import { THEME_UNLOCKS } from './themeManager.js';
 import { applyIcon, uiSpriteImgHTML } from './spriteLoader.js';
 import { applyThemeEffects } from './themeEffects.js';
-import { buildTiling, cellOutline, SQ_BOX_FRAC } from '../logic/tilingGeometry.js';
+import { buildTiling, buildWireframe, cellOutline, SQ_BOX_FRAC } from '../logic/tilingGeometry.js';
 import { sonarScanCells, compassRayCells } from '../logic/adjacency.js';
 
 // ── Board Rendering ────────────────────────────────────
@@ -122,6 +122,7 @@ export function renderBoard() {
     // Rectangular CSS grid. Reset any tiling inline layout a prior game set
     // (the surface swaps between board shapes within one session).
     boardEl.classList.remove('tiling-board');
+    document.getElementById('tiling-seams')?.remove();
     boardEl.style.display = '';
     boardEl.style.width = '';
     boardEl.style.height = '';
@@ -344,7 +345,62 @@ function _renderTilingBoard() {
       boardEl.appendChild(cellEl);
     }
   }
+  _renderTilingSeams();
   layoutTilingCells();
+}
+
+// ── Tiling seam overlay ──────────────────────────────
+// The clip-paths tile EXACTLY, so two neighboring cells share a mathematical
+// edge with no gap — and nothing draws it. On a rectangle the CSS grid's
+// --grid-gap shows --color-border between cells; a tiling had no equivalent,
+// and the cost is real legibility, worst on the Laves lattices: a floret
+// rosette's six petals read as ONE solid hexagon, and a revealed region is
+// an undivided sheet whose numbers cannot be attributed to their cells
+// (Christopher's report, 2026-08-02, off Par Lab board 25). Neither a border
+// nor an outline can fix it — both follow the BOX and are clipped away
+// except where the polygon touches it (the keyboard-focus lesson).
+//
+// So the seams are DRAWN, from the same wireframe applyWallsTiling severs
+// edges from: one SVG holding every shared polygon edge as a single path, in
+// UNIT coordinates with the tiling's extent as its viewBox. CSS sizes the
+// svg to 100% of #board, so every re-lay (resize, rotation, theme refit)
+// rescales it for free with no re-render hook, and vector-effect:
+// non-scaling-stroke keeps the line width in screen pixels at every pitch.
+// Color and width are theme tokens (--tiling-seam-color defaulting to the
+// theme's own --color-border — the same color a rectangle's gaps show — and
+// --tiling-seam-width). z-index 2: above cell bodies (including the .fx-on
+// lift) so the seam reads across REVEALED regions too, below walls (3) and
+// worms (4), so a wall still dominates the edge it sits on.
+const SVG_NS = 'http://www.w3.org/2000/svg';
+let _seamKey = null;
+let _seamPathD = null;
+
+function _renderTilingSeams() {
+  document.getElementById('tiling-seams')?.remove();
+  const t = state.board && state.board._tiling;
+  if (!t || !t.type) return;
+
+  const key = `${t.type}|${t.M}|${t.N}`;
+  if (_seamKey !== key) {
+    const T = buildTiling(t.type, t.M, t.N);
+    const { edges } = buildWireframe(T);
+    _seamPathD = edges.map((e) => {
+      const a = T.verts[e.v1], b = T.verts[e.v2];
+      return `M${a.x.toFixed(4)} ${a.y.toFixed(4)}L${b.x.toFixed(4)} ${b.y.toFixed(4)}`;
+    }).join('');
+    _seamKey = key;
+  }
+
+  const { wUnits, hUnits } = _tilingExtent();
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.id = 'tiling-seams';
+  svg.setAttribute('viewBox', `0 0 ${wUnits} ${hUnits}`);
+  svg.setAttribute('preserveAspectRatio', 'none');
+  svg.setAttribute('aria-hidden', 'true');
+  const path = document.createElementNS(SVG_NS, 'path');
+  path.setAttribute('d', _seamPathD);
+  svg.appendChild(path);
+  boardEl.appendChild(svg);
 }
 
 // ── Wall Overlay Rendering ──────────────────────────
