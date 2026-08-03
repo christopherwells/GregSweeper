@@ -286,13 +286,26 @@ export function generateTilingBoard({
         // board would pay a second full solve per attempt to be told what the
         // exemption list already says.
         let decorative = [];
+        let decorativeChecked = !hasTestableGimmick; // exempt-only boards are strict trivially
         if (hasTestableGimmick && attempt < loadBearingBudget) {
           decorative = findDecorativeGimmicks(
             b, rows, cols, fr, fc, gimmicks, b._cellNeighbors,
           );
           cleanSolverArtifacts(b);
+          decorativeChecked = true;
         }
-        const result = { board: b, rows, cols, firstClick, tiling: T, check, activeGimmicks: gimmicks.slice(), applied };
+        // `decorative` rides the result so strict callers (the Challenge
+        // 250 ladder: no relax-to-ship) can tell a load-bearing board from
+        // an exhausted-best or budget-expired one by OUTCOME rather than
+        // by code path: [] = measured strict, non-empty = the named types
+        // are decorative on this layout, null = the budget expired before
+        // this attempt so nothing was measured. Behavior of the search
+        // itself is unchanged for every existing caller.
+        const result = {
+          board: b, rows, cols, firstClick, tiling: T, check,
+          activeGimmicks: gimmicks.slice(), applied,
+          decorative: decorativeChecked ? decorative : null,
+        };
         if (decorative.length === 0 && (check.techniqueLevel || 0) >= techniqueFloor) {
           return result;
         }
