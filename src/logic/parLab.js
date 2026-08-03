@@ -20,11 +20,15 @@
 //      interleaving. Three points per shape also give the offline fit a
 //      per-shape learning slope to CHECK (did the curve flatten?) rather
 //      than assume. Excluded from the estimates either way.
-//   2. PLAIN SIZE x DENSITY GRID (54): per tiling, 3 sizes x 3 densities.
-//      This is the block only the lab can supply — it breaks the
-//      size/density-vs-intercept collinearity above, so the cellCount and
-//      totalMines deviations get real priors instead of frozen zeros. It also
-//      feeds the intercept and the reasoning-tier deviations on every row.
+//   2. PLAIN SIZE x DENSITY GRID (54): originally 3 sizes x 3 densities per
+//      tiling; redistributed at the chunk-9/10 recalibration checkpoint
+//      (2026-08-03, his call — see GRID_PLAN) to 6 boards on each pinned
+//      lattice (hex, 4.8.8, rhombille) and 12 on each noisy one (cairo,
+//      floret, deltoidal). This is the block only the lab can supply — it
+//      breaks the size/density-vs-intercept collinearity above, so the
+//      cellCount and totalMines deviations get real priors instead of
+//      frozen zeros. It also feeds the intercept and the reasoning-tier
+//      deviations on every row.
 //   3. SQUARE ANCHORS (9, interleaved ~every 9 boards): known-model boards
 //      spread through the session. They calibrate HIS day-to-day pace drift
 //      across a long battery (a within-session bridge to the square model),
@@ -153,10 +157,32 @@ const SEED_SALTS = {
   'p-deltoidal-L0': 's3',
 };
 
-// Per-shape play order through its own 13-board queue (9 plain + 4
-// modifiers): sizes and densities alternate so no chunk is all-small or
-// all-dense. Codes are `<size>-<densityIndex>`.
-const PER_SHAPE_ORDER = ['M-1', 'S-0', 'L-1', 'M-2', 'S-1', 'L-0', 'M-0', 'S-2', 'L-2'];
+// Per-shape play order through its own plain-grid queue. Codes are
+// `<size>-<densityIndex>` with an optional `r` suffix for a REPLICATE — the
+// same size x density cell under a fresh id, hence a fresh deterministic
+// layout (parLabSeed keys on the id).
+//
+// THE CHUNK-9/10 RECALIBRATION (Christopher's call, 2026-08-03, at 55/105
+// boards): hex, 4.8.8, and rhombille came back PINNED — log-spreads x/1.4
+// or tighter across their six played grid boards, gentle-or-flat size
+// slopes — so their remaining three grid boards each (M-0, S-2, L-2) would
+// have spent nine boards confirming what the fit already holds. Those nine
+// slots moved to the three noisy lattices, each noisy for a different
+// reason: cairo's uncertainty is concentrated in its LARGE corner (size
+// slope 0.56 -> 1.41 -> 2.67 with n=1 at L), so its three adds are L
+// replicates across the density row; floret is variance-and-learning
+// dominated (M1 4.62 early, M2 1.31 late), so its adds replicate the
+// mid-density cell at each size; deltoidal is the widest spread of all
+// (x/1.9) with a steep slope, same replicate pattern as floret. Grid
+// total stays 54; played ids are frozen history and keep their specs.
+const GRID_PLAN = {
+  hex:       ['M-1', 'S-0', 'L-1', 'M-2', 'S-1', 'L-0'],
+  '4.8.8':   ['M-1', 'S-0', 'L-1', 'M-2', 'S-1', 'L-0'],
+  rhombille: ['M-1', 'S-0', 'L-1', 'M-2', 'S-1', 'L-0'],
+  cairo:     ['M-1', 'S-0', 'L-1', 'M-2', 'S-1', 'L-0', 'M-0', 'L-1r', 'S-2', 'L-2', 'L-0r', 'L-2r'],
+  floret:    ['M-1', 'S-0', 'L-1', 'M-2', 'S-1', 'L-0', 'M-1r', 'S-2', 'L-1r', 'M-0', 'S-1r', 'L-2'],
+  deltoidal: ['M-1', 'S-0', 'L-1', 'M-2', 'S-1', 'L-0', 'M-1r', 'S-2', 'L-1r', 'M-0', 'S-1r', 'L-2'],
+};
 
 // Square anchors: his home turf, spanning the familiar band. Interleaved at
 // every 9th slot of the post-warm-up sequence.
@@ -210,16 +236,18 @@ function buildBattery() {
     }
   }
 
-  // 2+4. Per-shape queues: the 9-board plain grid in PER_SHAPE_ORDER, then
-  // the shape's 4 modifier boards at its daily config.
+  // 2+4. Per-shape queues: the plain grid in GRID_PLAN order (6 boards on
+  // the pinned lattices, 12 on the noisy three — see the recalibration
+  // note above), then the shape's 4 modifier boards at its daily config.
   const queues = SHAPES.map((shape, si) => {
     const q = [];
-    for (const code of PER_SHAPE_ORDER) {
-      const [size, dIdx] = code.split('-');
+    for (const code of GRID_PLAN[shape]) {
+      const m = code.match(/^([SML])-(\d)(r?)$/);
+      const [, size, dIdx, rep] = m;
       const dims = SIZES[shape][size];
       const density = DENSITIES[shape][Number(dIdx)];
       q.push({
-        id: `p-${shape}-${size}${dIdx}`,
+        id: `p-${shape}-${size}${dIdx}${rep}`,
         shape, M: dims.M, N: dims.N,
         mines: mineCountFor(dims.total, density),
         gimmicks: [], warmup: false,
@@ -238,7 +266,11 @@ function buildBattery() {
 
   // Interleave: rotate through the shapes, one board each, shifting the
   // starting shape every round so neighbors vary; drop in a square anchor at
-  // every 9th slot (78 shape boards + 10 anchors = 88 post-warm-up slots).
+  // every 9th slot (78 shape boards + 9 anchors = 87 post-warm-up slots).
+  // The pinned lattices' queues drain six rounds early now; the rotation
+  // then cycles the three noisy queues, which stay a 3-shape rotation, so
+  // the no-three-consecutive-same-shape property survives the uneven
+  // lengths.
   const interleaved = [];
   let round = 0;
   while (queues.some((q) => q.length > 0)) {

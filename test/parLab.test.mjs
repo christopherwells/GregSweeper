@@ -72,18 +72,41 @@ test('composition: 18 warm-ups in same-shape runs of three, 9 square anchors int
     assert.ok(sorted[i] - sorted[i - 1] >= 2, 'no two anchors back to back');
   }
 
+  // The chunk-9/10 recalibration (Christopher's call, 2026-08-03, at 55/105):
+  // hex/4.8.8/rhombille came back pinned (log-spread x/1.4 or tighter over
+  // their six played grid boards), so their three unplayed grid slots each
+  // moved to the noisy lattices — cairo's adds are LARGE-corner replicates
+  // (its size slope is the open question), floret's and deltoidal's replicate
+  // the mid-density cell at each size (variance dominates there). The grid
+  // total stays 54; every played id keeps its exact spec (frozen history).
+  const PINNED = ['hex', '4.8.8', 'rhombille'];
   for (const shape of TILING_TYPES) {
     const all = PAR_LAB_BATTERY.filter((b) => b.shape === shape);
-    assert.equal(all.length, 16, `${shape}: 3 warm-up + 9 plain grid + 4 modifier`);
     const plain = all.filter((b) => !b.warmup && b.gimmicks.length === 0);
-    assert.equal(plain.length, 9, `${shape}: 3 sizes x 3 densities`);
+    const pinned = PINNED.includes(shape);
+    assert.equal(all.length, pinned ? 13 : 19,
+      `${shape}: 3 warm-up + ${pinned ? 6 : 12} plain grid + 4 modifier`);
+    assert.equal(plain.length, pinned ? 6 : 12, `${shape}: recalibrated grid size`);
     const totals = new Set(plain.map((b) => `${b.M}x${b.N}`));
     assert.equal(totals.size, 3, `${shape}: three distinct sizes`);
     for (const dims of totals) {
-      assert.equal(plain.filter((b) => `${b.M}x${b.N}` === dims).length, 3,
-        `${shape} ${dims}: three density points`);
+      const n = plain.filter((b) => `${b.M}x${b.N}` === dims).length;
+      assert.ok(n >= 2, `${shape} ${dims}: at least two boards per size (got ${n})`);
+    }
+    if (shape === 'cairo') {
+      const largeDims = `${7 + 1}x${9}`; // cairo L is M:8, N:9
+      assert.equal(plain.filter((b) => `${b.M}x${b.N}` === largeDims).length, 6,
+        'cairo: the recalibration concentrates its adds in the LARGE corner');
     }
     assert.equal(all.filter((b) => b.gimmicks.length === 1).length, 4, `${shape}: four modifier singles`);
+    // Replicate ids draw fresh layouts: same cell, distinct id, distinct seed.
+    for (const b of plain.filter((x) => x.id.endsWith('r'))) {
+      const base = PAR_LAB_BATTERY.find((x) => x.id === b.id.slice(0, -1));
+      assert.ok(base, `${b.id}: its base cell exists`);
+      assert.equal(`${base.M}x${base.N}x${base.mines}`, `${b.M}x${b.N}x${b.mines}`,
+        `${b.id}: replicates its base cell's exact spec`);
+      assert.notEqual(parLabSeed(base), parLabSeed(b), `${b.id}: fresh layout`);
+    }
   }
 });
 
