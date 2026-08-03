@@ -10,7 +10,9 @@
 // instrument for what the live instrument structurally cannot measure, plus a
 // head start on what it measures slowly.
 //
-// THE BATTERY (105 boards, 21 chunks of 5, each block earning its place):
+// THE BATTERY (82 boards after the two mid-battery revisions below — the
+// chunk-9/10 recalibration at 55/105 and the board-66 trim; originally 105
+// in 21 chunks of 5 — each block earning its place):
 //
 //   1. WARM-UPS (18; the opening chunks, `warmup: true`): THREE consecutive
 //      plain boards per tiling at its daily config, easiest lattice first.
@@ -29,14 +31,15 @@
 //      cellCount and totalMines deviations get real priors instead of
 //      frozen zeros. It also feeds the intercept and the reasoning-tier
 //      deviations on every row.
-//   3. SQUARE ANCHORS (9, interleaved ~every 9 boards): known-model boards
+//   3. SQUARE ANCHORS (7 after the board-66 trim, interleaved ~every 9
+//      boards): known-model boards
 //      spread through the session. They calibrate HIS day-to-day pace drift
 //      across a long battery (a within-session bridge to the square model),
 //      so a slow afternoon reads as a slow afternoon instead of as six
 //      slow lattices.
-//   4. MODIFIER SINGLES (24): per tiling, four single-modifier boards at
-//      the daily config, allocated by MECHANISM rather than evenly (see
-//      MODIFIER_PLAN): the gimmicks whose information REGION is a function
+//   4. MODIFIER SINGLES (10 after the board-66 trim; originally 24): per
+//      tiling, single-modifier boards at the daily config, allocated by
+//      MECHANISM rather than evenly (see MODIFIER_PLAN): the gimmicks whose information REGION is a function
 //      of the lattice — sonar (depth-2 graph ball, area ~ valence²),
 //      compass (three different direction families across the six
 //      lattices), wormhole (pair-sum ceiling 20 on rhombille), worm (crawls
@@ -175,13 +178,25 @@ const SEED_SALTS = {
 // mid-density cell at each size; deltoidal is the widest spread of all
 // (x/1.9) with a steep slope, same replicate pattern as floret. Grid
 // total stays 54; played ids are frozen history and keep their specs.
+// TRIMMED at board 66 (Christopher's call, 2026-08-03: "if stuff is
+// stabilizing, I'd rather test other regions or just have less work to
+// do"). What the audit found and the trim keeps/cuts:
+// - cairo's slope came back TIGHT (M 1.47 sd 0.08 over n3, L 3.06 sd 0.19)
+//   — the three L replicates became redundant and are gone; the 0.28-density
+//   corners (S-2, L-2) stay, they are the unexplored dimension.
+// - floret's inverted slope is real (L calm at 1.30 sd 0.10) — its L boards
+//   are gone; S-1r stays to adjudicate the 1.78-vs-2.99 small-cell split,
+//   M-0 completes the mid density row.
+// - deltoidal's SMALL cell is the wildest number in the battery (sd 1.26,
+//   0.74 vs 4.42) — S-1r and S-2 attack it; M-0 and L-2 complete density
+//   rows on the steepest lattice; only L-1r was redundant.
 const GRID_PLAN = {
   hex:       ['M-1', 'S-0', 'L-1', 'M-2', 'S-1', 'L-0'],
   '4.8.8':   ['M-1', 'S-0', 'L-1', 'M-2', 'S-1', 'L-0'],
   rhombille: ['M-1', 'S-0', 'L-1', 'M-2', 'S-1', 'L-0'],
-  cairo:     ['M-1', 'S-0', 'L-1', 'M-2', 'S-1', 'L-0', 'M-0', 'L-1r', 'S-2', 'L-2', 'L-0r', 'L-2r'],
-  floret:    ['M-1', 'S-0', 'L-1', 'M-2', 'S-1', 'L-0', 'M-1r', 'S-2', 'L-1r', 'M-0', 'S-1r', 'L-2'],
-  deltoidal: ['M-1', 'S-0', 'L-1', 'M-2', 'S-1', 'L-0', 'M-1r', 'S-2', 'L-1r', 'M-0', 'S-1r', 'L-2'],
+  cairo:     ['M-1', 'S-0', 'L-1', 'M-2', 'S-1', 'L-0', 'M-0', 'S-2', 'L-2'],
+  floret:    ['M-1', 'S-0', 'L-1', 'M-2', 'S-1', 'L-0', 'M-1r', 'M-0', 'S-1r'],
+  deltoidal: ['M-1', 'S-0', 'L-1', 'M-2', 'S-1', 'L-0', 'M-1r', 'S-2', 'M-0', 'S-1r', 'L-2'],
 };
 
 // Square anchors: his home turf, spanning the familiar band. Interleaved at
@@ -192,9 +207,9 @@ const RECT_ANCHORS = [
   { rows: 10, cols: 10, density: 0.24 },
   { rows: 12, cols: 12, density: 0.18 },
   { rows: 14, cols: 14, density: 0.22 },
+  // Trimmed from nine to seven at board 66: his pace pinned at 0.55-0.57
+  // across a-03..a-05, so two drift sentinels cover the remaining stretch.
   { rows: 8,  cols: 12, density: 0.20 },
-  { rows: 10, cols: 14, density: 0.26 },
-  { rows: 9,  cols: 12, density: 0.15 },
   { rows: 12, cols: 14, density: 0.24 },
 ];
 
@@ -206,13 +221,29 @@ const RECT_ANCHORS = [
 // extremes including rhombille's 20; worm across the valence extremes.
 // Each shape carries exactly four so no lattice's modifier exposure
 // confounds with its intercept more than another's.
+// TRIMMED at board 66 to the mechanism core (played singles stay frozen:
+// hex-sonar, 4.8.8-compass, 4.8.8-wormhole, rhombille-sonar). Kept: the
+// sonar valence arc's top (deltoidal, 9 — with hex 6 and rhombille 10
+// already played), one compass block per remaining direction family (hex
+// 60°, floret 30°), wormhole's sum-20 ceiling (rhombille), and two
+// neutrality spot-checks on hard lattices (floret-liar — on floret rather
+// than deltoidal so the queue lengths keep the tail interleaved, and
+// deltoidal already hosts the sonar single — plus rhombille-locked). Cut:
+// every WORM single — his side-only crawl ruling
+// (worms cross sides, never corners; see challenge-250 design) changes the
+// mechanic they would measure, so worm timing data waits for the new crawl
+// to ship rather than recording the outgoing one. Also cut: the remaining
+// shape-neutral pairs (mystery/mirror/walls and the low-valence sonar and
+// mid wormhole cells) — pooled gimmick shifts identify from live tiling
+// dailies eventually, unlike the size/density slopes only this lab can
+// supply.
 const MODIFIER_PLAN = {
-  hex:       ['sonar', 'compass', 'worm', 'mystery'],
-  '4.8.8':   ['compass', 'wormhole', 'liar', 'walls'],
-  cairo:     ['sonar', 'worm', 'locked', 'mirror'],
-  deltoidal: ['sonar', 'compass', 'mystery', 'liar'],
-  floret:    ['compass', 'wormhole', 'mirror', 'walls'],
-  rhombille: ['sonar', 'wormhole', 'worm', 'locked'],
+  hex:       ['sonar', 'compass'],
+  '4.8.8':   ['compass', 'wormhole'],
+  cairo:     [],
+  deltoidal: ['sonar'],
+  floret:    ['compass', 'liar'],
+  rhombille: ['sonar', 'wormhole', 'locked'],
 };
 
 const mineCountFor = (total, density) => Math.max(5, Math.round(total * density));

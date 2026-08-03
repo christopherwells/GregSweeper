@@ -17,13 +17,15 @@ import {
 } from '../src/logic/parLab.js';
 import { TILING_TYPES, buildTiling } from '../src/logic/tilingGeometry.js';
 import { TILING_SAFE_GIMMICKS } from '../src/logic/tilingGenerator.js';
-import { DAILY_SAFE_GIMMICKS } from '../src/logic/gimmicks.js';
 import { coastlineBoardFor } from '../src/logic/coastlineLink.js';
 
 // ── Battery design ───────────────────────────────────────────────────────
 
-test('the battery is 105 boards in 21 chunks of 5 with stable unique ids and seeds', () => {
-  assert.equal(PAR_LAB_BATTERY.length, 105);
+test('the battery is 82 boards (post-trim) in chunks of 5 with stable unique ids and seeds', () => {
+  // 105 originally; 82 after the board-66 trim (Christopher's call,
+  // 2026-08-03: pinned cells stop buying precision — see GRID_PLAN and
+  // MODIFIER_PLAN in parLab.js for the per-cut reasoning).
+  assert.equal(PAR_LAB_BATTERY.length, 82);
   assert.equal(PAR_LAB_CHUNK_SIZE, 5);
   const ids = new Set();
   const seeds = new Set();
@@ -33,12 +35,12 @@ test('the battery is 105 boards in 21 chunks of 5 with stable unique ids and see
     ids.add(b.id);
     seeds.add(parLabSeed(b, 0));
   });
-  assert.equal(ids.size, 105, 'ids must be unique — progress is keyed on them');
-  assert.equal(seeds.size, 105, 'seeds must be unique — two boards must never share a layout');
-  assert.equal(PAR_LAB_BATTERY.at(-1).chunk, 21);
+  assert.equal(ids.size, 82, 'ids must be unique — progress is keyed on them');
+  assert.equal(seeds.size, 82, 'seeds must be unique — two boards must never share a layout');
+  assert.equal(PAR_LAB_BATTERY.at(-1).chunk, 17);
 });
 
-test('composition: 18 warm-ups in same-shape runs of three, 9 square anchors interleaved, 16 boards per tiling', () => {
+test('composition: 18 warm-ups in same-shape runs of three, 7 square anchors interleaved, per-shape trimmed grids', () => {
   const warmups = PAR_LAB_BATTERY.filter((b) => b.warmup);
   assert.equal(warmups.length, 18, 'three warm-ups per tiling');
   // The learning curve must land at the START, where the analysis excludes it.
@@ -60,12 +62,15 @@ test('composition: 18 warm-ups in same-shape runs of three, 9 square anchors int
   }
 
   const anchors = PAR_LAB_BATTERY.filter((b) => b.shape === 'rect');
-  assert.equal(anchors.length, 9, 'nine square calibration anchors');
+  // Nine originally; seven after the board-66 trim (his pace measured
+  // stable at 0.55-0.57 across a-03..a-05, so two drift sentinels cover
+  // the remaining stretch).
+  assert.equal(anchors.length, 7, 'seven square calibration anchors');
   assert.ok(anchors.every((b) => b.gimmicks.length === 0 && !b.warmup));
   // Interleaved through the session, not bunched: first soon after the
   // warm-ups, last inside the closing stretch, no two adjacent.
   const anchorSeqs = anchors.map((b) => b.seq);
-  assert.ok(Math.min(...anchorSeqs) <= 28 && Math.max(...anchorSeqs) >= 85,
+  assert.ok(Math.min(...anchorSeqs) <= 28 && Math.max(...anchorSeqs) >= PAR_LAB_BATTERY.length - 14,
     `anchors must span the session (got ${anchorSeqs.join(',')})`);
   const sorted = [...anchorSeqs].sort((a, b) => a - b);
   for (let i = 1; i < sorted.length; i++) {
@@ -79,26 +84,23 @@ test('composition: 18 warm-ups in same-shape runs of three, 9 square anchors int
   // (its size slope is the open question), floret's and deltoidal's replicate
   // the mid-density cell at each size (variance dominates there). The grid
   // total stays 54; every played id keeps its exact spec (frozen history).
-  const PINNED = ['hex', '4.8.8', 'rhombille'];
+  // Post-trim per-shape design (board-66 audit, his call): pinned lattices
+  // rest on their six played grid boards; the noisy three keep only the
+  // cells still buying information (deltoidal's wild SMALL cell, the
+  // 0.28-density corners, floret's small-cell split). Modifier singles are
+  // the mechanism core (see MODIFIER_PLAN's trim note).
+  const GRID_SIZES = { hex: 6, '4.8.8': 6, rhombille: 6, cairo: 9, floret: 9, deltoidal: 11 };
+  const MOD_SIZES = { hex: 2, '4.8.8': 2, rhombille: 3, cairo: 0, floret: 2, deltoidal: 1 };
   for (const shape of TILING_TYPES) {
     const all = PAR_LAB_BATTERY.filter((b) => b.shape === shape);
     const plain = all.filter((b) => !b.warmup && b.gimmicks.length === 0);
-    const pinned = PINNED.includes(shape);
-    assert.equal(all.length, pinned ? 13 : 19,
-      `${shape}: 3 warm-up + ${pinned ? 6 : 12} plain grid + 4 modifier`);
-    assert.equal(plain.length, pinned ? 6 : 12, `${shape}: recalibrated grid size`);
+    assert.equal(plain.length, GRID_SIZES[shape], `${shape}: trimmed grid size`);
+    assert.equal(all.filter((b) => b.gimmicks.length === 1).length, MOD_SIZES[shape],
+      `${shape}: trimmed modifier singles`);
+    assert.equal(all.length, 3 + GRID_SIZES[shape] + MOD_SIZES[shape],
+      `${shape}: warm-ups + grid + modifiers`);
     const totals = new Set(plain.map((b) => `${b.M}x${b.N}`));
     assert.equal(totals.size, 3, `${shape}: three distinct sizes`);
-    for (const dims of totals) {
-      const n = plain.filter((b) => `${b.M}x${b.N}` === dims).length;
-      assert.ok(n >= 2, `${shape} ${dims}: at least two boards per size (got ${n})`);
-    }
-    if (shape === 'cairo') {
-      const largeDims = `${7 + 1}x${9}`; // cairo L is M:8, N:9
-      assert.equal(plain.filter((b) => `${b.M}x${b.N}` === largeDims).length, 6,
-        'cairo: the recalibration concentrates its adds in the LARGE corner');
-    }
-    assert.equal(all.filter((b) => b.gimmicks.length === 1).length, 4, `${shape}: four modifier singles`);
     // Replicate ids draw fresh layouts: same cell, distinct id, distinct seed.
     for (const b of plain.filter((x) => x.id.endsWith('r'))) {
       const base = PAR_LAB_BATTERY.find((x) => x.id === b.id.slice(0, -1));
@@ -139,17 +141,25 @@ test('modifier coverage follows the mechanism: region-geometry gimmicks oversamp
       shapesFor.get(g).add(b.shape);
     }
   }
-  for (const g of DAILY_SAFE_GIMMICKS) {
-    assert.ok((counts.get(g) || 0) >= 2,
-      `'${g}' needs at least two lab boards for a usable pooled prior (got ${counts.get(g) || 0})`);
-  }
-  // The gimmicks whose information REGION is a function of the lattice get
+  // The board-66 trim cut the block to the mechanism core: the pooled-prior
+  // floor for the shape-neutral gimmicks moved to live tiling dailies (their
+  // cell counts vary board to board, so those deviations identify from live
+  // data — unlike size/density, which only this lab can supply).
+  // The gimmicks whose information REGION is a function of the lattice keep
   // the replication — they are where a per-shape effect is mechanically
   // plausible, so they are where the boards buy the most.
-  assert.ok(counts.get('sonar') >= 4, 'sonar: depth-2 graph ball scales with valence');
-  assert.ok(counts.get('compass') >= 4, 'compass: three direction families across the lattices');
-  assert.ok(counts.get('wormhole') >= 3, 'wormhole: pair-sum ceiling varies by lattice');
-  assert.ok(counts.get('worm') >= 3, 'worm: crawls the neighbor graph');
+  assert.ok(counts.get('sonar') >= 3, 'sonar: depth-2 graph ball spans the valence arc (6, 9, 10)');
+  assert.ok(counts.get('compass') >= 3, 'compass: three direction families across the lattices');
+  assert.ok(counts.get('wormhole') >= 2, 'wormhole: pair-sum ceiling varies by lattice');
+  // ASSERTED ABSENCE, not an oversight (the rhombille no-Pass-B pattern):
+  // every worm single was cut because the side-only crawl ruling
+  // (challenge-250 design, 2026-08-03 — worms cross sides, never corners)
+  // changes the mechanic they would measure. Worm timing waits for the new
+  // crawl to ship; a worm board reappearing here means someone forgot.
+  assert.equal(counts.get('worm') || 0, 0, 'worm singles wait for the side-only crawl');
+  // Neutrality spot-checks survive as exactly one each on a hard lattice.
+  assert.equal(counts.get('liar') || 0, 1, 'liar: one neutrality spot-check');
+  assert.equal(counts.get('locked') || 0, 1, 'locked: one neutrality spot-check');
   // Compass must actually SPAN its three direction families (8-dir, 60°,
   // 30°), or its boards measure one family three times.
   const compassShapes = shapesFor.get('compass');
