@@ -386,21 +386,40 @@ failed outright.
 
 The fix is the pattern the rectangular challenge path has always used:
 **re-roll the gimmicks on the SAME certified base** (challenge does up to 25
-gimmick re-rolls before rebuilding a base). With an 8-to-16x measured waste
-factor, the stacked cells should come down by roughly that order, which
-would put every stacked Cubes and Kites size back inside the cap and
-unlock the summit routes below. Build notes for that change: it reorders
-the generation search, so it lands BEFORE the flip (no tiling canonicals
-exist yet, so no stored contract moves), and the banded daily config
-calibrator plus the frozen draw goldens get re-run and re-pinned in the
-same commit. A second, orthogonal option if anything still grazes:
-pre-generate the next layout in the background during play (spec-is-
-identity makes layouts interchangeable), which hides generation time
-entirely at the cost of a worker; worth keeping in pocket for the endless
-zone's extreme boards rather than building now.
+gimmick re-rolls before rebuilding a base). **BUILT AND PROVEN (PR #224,
+2026-08-03, his make-sure-these-work directive)**: `generateTilingBoard` now
+captures each base's mine layout and re-rolls gimmick placement on it
+(`TILING_GIMMICK_REROLLS = 25`), conservative by construction (roll 0 keeps
+the legacy seed string, so any board the old search shipped first-try is
+byte-identical; plain generation is untouched; `gimmickRerolls: 1`
+reproduces the old search and is pinned as the regression control). It also
+threads `gimmickLevel` into applyGimmicks' existing intensity ramp, the
+knob ladder specs need. Measured before to after, worst-case desktop:
 
-What the cap excludes, from the full sweep (3-stack = locked+sonar+walls at
-0.28 / 0.30 / 0.34, six seeds per cell, every size):
+| Stacked cell | one-roll worst | re-roll worst |
+|---|---|---|
+| Cubes 60c at 0.28 / 0.30 / 0.34 | 2.4s / 2.7s / 9.8s | 0.15s / 0.41s / 0.54s |
+| Cubes 72c at 0.28 / 0.30 / 0.34 | 7.7s / 6.9s / 13.9s | 0.58s / 1.5s / 1.0s |
+| Kites 48c at 0.30 / 0.34 | 2.7s / 7.1s | 0.12s / 1.0s |
+| Kites 72c at 0.28 / 0.30 / 0.34 | 5.4s / 5.9s / 31.9s | 0.44s / 0.48s / 1.5s |
+| Octagons 128c at 0.34 | 4.0s | 0.93s |
+
+**Every stacked cell on every lattice now fits the 2-second cap**, so the
+stacked frontier lists above describe the RETIRED one-roll generator and
+survive only as the record of why the change exists. Downstream re-proven
+with the change in place: the Par Lab battery validates 86/86, the banded
+daily config calibrator proves all 40 committed entries clean with
+plain-probe drift x1.00, and the full suite passes with three new
+regression pins. What remains outside the cap is plain-dense only: Cubes
+72c at 0.38 (3.2s) and Kites' seed-jittery plain cells above ~0.34 — and no
+ladder spec needs either (the proven summit table below routes around
+them). The background pre-generation option stays in pocket for the endless
+zone, unneeded for the authored ladder.
+
+What the cap excluded ON THE ONE-ROLL GENERATOR (3-stack = locked+sonar+walls
+at 0.28 / 0.30 / 0.34, six seeds per cell, every size) — kept as the record
+that motivated the re-roll change in the next subsection, which retired every
+stacked exclusion below:
 
 - **Plain boards**: only the dense extremes of two lattices, 3D Cubes 72c at
   0.38 (3.2s; 0.36 grazes at 1.9s) and Kites from ~0.34 up, seed-jittery
@@ -419,11 +438,13 @@ What the cap excludes, from the full sweep (3-stack = locked+sonar+walls at
   0.30 (2.7s, then 7.1s); 72c is far out (5.4 to 31.9s, the sweep's worst
   single number).
 
-Consequences for the authored blocks: block 41's Cubes 3-stacks are 48-cell
-specs; block 44's dense Kites 2-stacks and the L250 crown live at 36 to 48
-cells (2-stacks sit between the plain and 3-stack columns and get their own
-validator timing at build); the finale gauntlet's Cubes and Kites entries
-follow the same sizes. Nothing else on the map is touched by the cap.
+Consequences for the authored blocks, REVISED after the re-roll generator
+landed: the 48-cell-only constraint on stacked Cubes and the 36-to-48-cell
+constraint on stacked Kites are GONE — every stacked size fits the cap now,
+so block 41, block 44, the L250 crown, and the gauntlet's Cubes and Kites
+entries size themselves by tier and feel rather than by generation cost.
+The build validator still times every spec (the cap stays the rule; the
+generator change just stopped it binding).
 
 ### The Classic density sweep ("revisit classic", same-day follow-up)
 
@@ -479,42 +500,50 @@ range. The findings:
   above ~0.46 price past 480s, so the densest playable Classic lives on the
   smaller sizes.
 
-### Generation cost against the cap (the two heavy lattices)
+### Generation cost against the cap (after the re-roll generator)
 
 Fast everywhere at any swept density (worst under ~0.2s desktop): Honeycomb,
-Paving Stones, Petals, Octagons up to 98c (Octagons 128c reaches ~0.5s at
-0.38). The two to watch, desktop worst cases:
+Paving Stones, Petals, Octagons up to 98c (Octagons 128c reaches ~0.9s
+stacked at 0.34). With the re-roll generator in, every STACKED cell on every
+lattice fits the cap; what remains over the line is PLAIN-DENSE only, and no
+authored spec needs those cells:
 
-- **3D Cubes**: plain 72c runs 1.7 to 1.9s at 0.34 to 0.36 (inside the cap)
-  and 3.2s at 0.38 (out); stacked it fits only at 48 cells (the frontier
-  above). Until the base-reuse generator change lands, top-tier Cubes specs
-  live at 48 cells stacked or 72 cells plain at or under 0.36; after it,
-  the whole stacked range is expected back inside the cap.
-- **Kites**: plain fine through 0.32 everywhere; above that the line gets
-  seed-jittery (48c worst swings 1.0 to 2.4s across 0.34 to 0.38; 72c
-  crosses cleanly at 0.36 with 2.2s), so plain dense Kites needs per-spec
-  validator timing rather than a density rule of thumb. Stacked 48c is far
-  out (7.5s at 0.34); dense stacked Kites stays at 36 to 48 cells and modest
-  density, which its natural T12 window (0.28 to 0.30, below) wants anyway.
+- **3D Cubes plain 72c at 0.38** (3.2s; 0.36 grazes at 1.9s, in under the
+  as-measured ruling). Plain placement has no gimmick re-rolls to amortize,
+  so this cell keeps its intrinsic constructive cost; its summit spec routes
+  through the stacked 60-cell board instead (proven table below).
+- **Kites plain above ~0.34** stays seed-jittery (48c swings 1.0 to 2.4s;
+  72c crosses at 0.36), so a plain dense Kites spec gets per-spec validator
+  timing rather than a density rule of thumb. Its T12 spec sits at 36 cells
+  and never goes near the jitter zone.
 
 ### What the sweep changes in the plan
 
-- **T12 at the ruled 3.60: five shapes have measured routes; Cubes and
-  Paving need the generator fix and a constructed spec respectively.**
-  Measured routes inside both caps: Honeycomb 110c at 0.34 (3.82, par 420s,
-  10ms); Octagons 98c at 0.34 (3.71, par 364s); Petals 72c at 0.34 (3.71,
-  par 267s) or 96c at 0.28 (3.76); Kites 36c at 0.34 to 0.36 (3.62 to 4.14,
-  fast); Classic 11×11 at ~0.45 (3.39 to 3.81, par ~450s, worst ~1.5s, in
-  under the as-measured cap ruling). **3D Cubes cannot reach 3.60 under the
-  cap with the CURRENT generator**: its plain route (72c at 0.38, ppc 3.65)
-  measures 3.2s and its stacked routes are far out, so its summit depends
-  on the base-reuse generator change (the profile above), which is expected
-  to clear it comfortably. **Paving Stones' summit must be constructed**:
-  its measured max is 1.9 stacked at 84c, so T12 needs its 112-cell rung
-  (8x8 lattice, storable) plus a heavy stack, estimated ~3.1 to 3.6,
-  validator-proven at build. Until the generator change lands and both
-  specs prove out, the honest status is: T12 = 3.60 is reachable today on
-  five of seven shapes.
+- **T12 at the ruled 3.60 is PROVEN on all seven shapes**
+  (`scripts/prove-t12-specs.mjs`, re-runnable; requires the PR #224
+  generator). Each candidate: 10 seeds, all certified, worst generation
+  inside the 2-second cap, par inside the 8-minute ceiling, median
+  par-per-cell in the summit band:
+
+  | Proven T12 spec | worst gen | par | ppc |
+  |---|---|---|---|
+  | Classic 11×11 at 0.45, plain | 948ms | 438s | 3.62 |
+  | Honeycomb 110c at 0.34, plain | 21ms | 419s | 3.81 |
+  | Octagons 98c at 0.34, plain | 84ms | 359s | 3.66 |
+  | Petals 72c at 0.34, plain | 77ms | 274s | 3.80 |
+  | Kites 36c at 0.34, plain | 215ms | 132s | 3.67 |
+  | 3D Cubes 60c at 0.38, locked+sonar+walls | 1579ms | 236s | 3.93 |
+  | Paving 112c at 0.24, locked+sonar+walls at intensity level 115 | 71ms | 381s | 3.41 |
+
+  The two former problem shapes resolved exactly as predicted: Cubes' summit
+  needed the re-roll generator (its 72c stacked variant also lands the band
+  at ppc 3.98 but one probe seed hit 3.5s, so the 60-cell route with 2x cap
+  headroom is the proven one), and Paving's needed construction — the
+  112-cell rung with the intensity ramp turned up (`gimmickLevel`, the
+  ladder's own mechanism) rather than any density, which its flat density
+  response predicted. These seven are EXISTENCE PROOFS the build starts
+  from, not final specs; the build-phase validator re-times whatever the
+  blocks actually author.
 - **Paving Stones' density insensitivity is now measured at every size**: ppc
   is flat to three densities' width across its whole row (per-mine deviation
   cancels the base rate). Density is not merely a weak lever for Paving
