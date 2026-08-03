@@ -139,7 +139,7 @@ export function selectBestCandidate(dateString, spec, dailyShape = resolveDailyS
     const t0 = Date.now();
     const built = buildTilingDailyBoard(dateString, dailyShape, spec);
     if (built) {
-      console.log(`  tiling day (${dailyShape}): board generated in ${Date.now() - t0} ms`);
+      console.log(`  tiling day (${dailyShape}): ${built.rows * built.cols} cells / ${built.totalMines} mines (banded config), generated in ${Date.now() - t0} ms`);
       return assertCertified({
         board: built.board, rows: built.rows, cols: built.cols,
         totalMines: built.totalMines, activeGimmicks: built.activeGimmicks,

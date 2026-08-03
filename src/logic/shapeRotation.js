@@ -33,8 +33,9 @@
 
 import { createDailyRNG } from './seededRandom.js';
 import { TILING_TYPES } from './tilingGeometry.js';
-import { coastlineBoardFor, tilingTypeForToken } from './coastlineLink.js';
+import { tilingTypeForToken } from './coastlineLink.js';
 import { generateTilingBoard, TILING_SAFE_GIMMICKS } from './tilingGenerator.js';
+import { drawDailyTilingConfig, tilingConfigAttempts } from './tilingBandConfigs.js';
 import { getDailyGimmick } from './gimmicks.js';
 import {
   candidateSeed, selectTilingMission, resolveMissionForSlot, getTargetGimmickName,
@@ -128,21 +129,24 @@ export function getDailyShapeOverride() {
 }
 
 /**
- * The board a tiling daily uses for a given shape: the COASTLINE_BOARDS
- * config verbatim (coastlineLink.js). Those dimensions are the measured
- * ones — storable containers, and densities that put the four Laves
- * lattices on the constructive placer (rhombille specifically at the proven
- * 72-cell / density-0.25 config; the 90-cell gate fixture measured 13.7 s
- * worst-case generation, six times the cost for 25% more cells). A daily
- * shape uses a FIXED config rather than the rectangular size/density roll:
- * the client fallback must reproduce the precompute exactly, and a fixed
- * proven config has no roll to disagree on.
+ * The board config a tiling daily uses for a given shape ON A GIVEN DATE:
+ * the banded draw from tilingBandConfigs.js (Par Bands, Phase 2). The fixed
+ * COASTLINE_BOARDS configs this replaced were the reason a deltoidal daily
+ * priced ~285 s against the 240 s band ceiling; the draw picks from each
+ * lattice's table of generation-proven configs, weighted by closeness to
+ * the date's target par at the LIVE per-shape equation. Still deterministic
+ * from the date string alone — the draw replaced the "no roll to disagree
+ * on" rationale with a seeded roll every consumer replays identically,
+ * which is the same determinism the shape draw above already relies on.
+ * (COASTLINE_BOARDS itself remains what it always was: the ?coastline=
+ * practice-board config, untouched by this.)
  *
  * @param {string} type a TILING_TYPES entry
- * @returns {{M:number, N:number, mines:number}}
+ * @param {string} dateString YYYY-MM-DD (ET)
+ * @returns {import('./tilingBandConfigs.js').BandEntry|null}
  */
-export function dailyTilingConfig(type) {
-  return coastlineBoardFor(type);
+export function dailyTilingConfig(type, dateString) {
+  return drawDailyTilingConfig(type, dateString);
 }
 
 /**
@@ -163,8 +167,14 @@ export function dailyTilingConfig(type) {
  * filter keeps every client deterministic (all of them drop the same entry)
  * instead of shipping a mission the tiling cannot honor.
  *
- * Returns null when generateTilingBoard exhausts its attempts without a
- * certified board. That outcome is DETERMINISTIC (same seed, same code, same
+ * Config: the banded draw (tilingConfigAttempts), tried in order — the drawn
+ * entry first, then the shape's designated in-band fallback entry if the
+ * draw's generation exhausts on this date's seed. Both attempts are
+ * deterministic, so every caller walks the identical list and lands on the
+ * identical board (or the identical null).
+ *
+ * Returns null when every config attempt exhausts without a certified
+ * board. That outcome is DETERMINISTIC (same seed, same code, same
  * result), so every caller falls back to the rectangular path in agreement —
  * the precompute and a fallback client cannot split.
  *
@@ -195,8 +205,14 @@ export function buildTilingDailyBoard(dateString, type, spec) {
     return false;
   });
 
-  const { M, N, mines } = dailyTilingConfig(type);
-  const result = generateTilingBoard({ type, M, N, mines, seed: rngSeed, gimmicks });
+  let result = null;
+  for (const entry of tilingConfigAttempts(type, dateString)) {
+    result = generateTilingBoard({
+      type, M: entry.M, N: entry.N, mines: entry.mines, seed: rngSeed, gimmicks,
+      forceConstructive: entry.constructive === true,
+    });
+    if (result) break;
+  }
   if (!result) return null;
 
   let totalMines = 0;
