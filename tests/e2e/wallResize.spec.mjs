@@ -9,11 +9,13 @@
 // not walls. The fix re-renders wall overlays from both paths, matching the
 // worm overlay's treatment.
 //
-// The spec plays the real journey: a challenge L15 practice board (walls
-// intro block, walls is the always-present primary modifier), first click
-// applies the modifier and paints the wall lines, then the viewport shrinks
-// and every .wall-line must still sit exactly where the live cell rects say
-// its edge is — the same midpoint math renderWallOverlays uses.
+// The spec plays the real journey: a challenge L8 practice board (the
+// Challenge 250 walls intro block — the ladder's specs author their
+// modifiers, and block 2 carries walls on every level). Under the C250
+// engine the board is FROZEN at newGame, so the wall lines paint before
+// any click (the daily contract); the viewport then shrinks and every
+// .wall-line must still sit exactly where the live cell rects say its
+// edge is — the same midpoint math renderWallOverlays uses.
 
 import { test, expect } from '@playwright/test';
 import { prepareInteractionSpec, settleAnimations } from './helpers.mjs';
@@ -80,21 +82,17 @@ test('REGRESSION: wall overlays track their cells through a viewport resize', as
     // No first-encounter modifier popup over the board mid-spec.
     try { localStorage.setItem('minesweeper_modifier_popup_disabled', 'true'); } catch {}
   });
-  await page.goto('/?isTest=1&level=15');
+  await page.goto('/?isTest=1&level=8');
   await page.waitForSelector('#boot-overlay', { state: 'detached', timeout: 20_000 });
   await page.waitForSelector('#board .cell', { timeout: 20_000 });
 
-  // First click applies the walls modifier. L15's primary gimmick is walls
-  // (100% during the L11–20 intro block), but applyWalls' isolation check
-  // can clear the rolled edges on a rare layout — regenerate and retry.
+  // The frozen L8 draw carries walls from newGame — no click needed. A
+  // rare layout can still lose its edges to applyWalls' isolation check,
+  // so redraw (reset = a fresh certified layout of the same spec) until
+  // the lines are painted.
   let ready = false;
   for (let attempt = 0; attempt < 6 && !ready; attempt++) {
     if (attempt > 0) await page.click('#reset-btn');
-    const center = await page.evaluate(async () => {
-      const { state } = await import('/src/state/gameState.js');
-      return { r: Math.floor(state.rows / 2), c: Math.floor(state.cols / 2) };
-    });
-    await page.click(`#board .cell[data-row="${center.r}"][data-col="${center.c}"]`);
     ready = await page.waitForSelector('.wall-line', { timeout: 4_000 })
       .then(() => true, () => false);
   }

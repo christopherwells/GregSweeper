@@ -25,7 +25,8 @@ import { useRevealSafe, useShield, activateScan, activateXRay, activateMagnet } 
 import { switchMode, isChaosUnlocked, updateModeUI } from './game/modeManager.js';
 import { resolveCruxDate, streakBearingDates } from './logic/archiveEligibility.js';
 import { persistGameState, tryResumeGame } from './game/gamePersistence.js';
-import { MAX_LEVEL, MAX_TIMED_LEVEL, CHAOS_UNLOCK_LEVEL } from './logic/difficulty.js';
+import { MAX_TIMED_LEVEL, CHAOS_UNLOCK_LEVEL } from './logic/difficulty.js';
+import { CHALLENGE_MAX_LEVEL, CHALLENGE_BLOCK_SIZE, MOD_INTRO_BLOCKS, SHAPE_INTRO_BLOCKS } from './logic/challenge250.js';
 import { loadHandicaps } from './logic/handicaps.js';
 import {
   loadStats, saveTheme, loadTheme, resetStats,
@@ -797,11 +798,19 @@ for (const tab of $$('.timed-tab')) {
 }
 
 // ── Checkpoint Selector (Challenge mode) ────────────────
-// Built dynamically from GIMMICK_DEFS (no duplicated icon/name data)
+// Row labels come from the Challenge 250 map's own intro blocks: modifier
+// debuts keep their GIMMICK_DEFS icon/name, shape debuts use the
+// player-facing shape names (tilingLabel — the 2026-08-02 naming ruling).
 const GIMMICK_LABELS = (() => {
   const labels = {};
-  for (const [key, def] of Object.entries(getGimmickDefs())) {
-    if (!def.chaosOnly) labels[def.intro] = { key, icon: def.icon, name: def.name };
+  const defs = getGimmickDefs();
+  for (const [block, key] of Object.entries(MOD_INTRO_BLOCKS)) {
+    const def = defs[key];
+    if (!def) continue;
+    labels[(block - 1) * CHALLENGE_BLOCK_SIZE + 1] = { key, icon: def.icon, name: def.name };
+  }
+  for (const [block, type] of Object.entries(SHAPE_INTRO_BLOCKS)) {
+    labels[(block - 1) * CHALLENGE_BLOCK_SIZE + 1] = { key: null, icon: '', name: tilingLabel(type) };
   }
   return labels;
 })()
@@ -810,7 +819,7 @@ function showCheckpointSelector() {
   const stats = loadStats();
   const maxLevel = stats.modeStats?.challenge?.maxLevelReached || 1;
   // maxLevelReached is the level you WON — the next level you'd play is maxLevel + 1
-  const nextPlayable = Math.min(maxLevel + 1, MAX_LEVEL);
+  const nextPlayable = Math.min(maxLevel + 1, CHALLENGE_MAX_LEVEL);
   const savedGame = loadGameState('normal');
   const hasSavedGame = !!(savedGame && savedGame.board && savedGame.gameMode);
 
@@ -838,15 +847,15 @@ function showCheckpointSelector() {
   listEl.innerHTML = '';
   const highestCheckpoint = getCheckpointForLevel(nextPlayable);
 
-  for (let cp = 1; cp <= MAX_LEVEL; cp += CHECKPOINT_INTERVAL) {
+  for (let cp = 1; cp <= CHALLENGE_MAX_LEVEL; cp += CHECKPOINT_INTERVAL) {
     const unlocked = cp <= highestCheckpoint || cp === 1;
     const btn = document.createElement('button');
     btn.className = 'checkpoint-btn' + (unlocked ? '' : ' checkpoint-locked');
 
     // Build label
     let levelText = `Level ${cp}`;
-    if (cp + CHECKPOINT_INTERVAL - 1 <= MAX_LEVEL) {
-      levelText = `Level ${cp}-${Math.min(cp + CHECKPOINT_INTERVAL - 1, MAX_LEVEL)}`;
+    if (cp + CHECKPOINT_INTERVAL - 1 <= CHALLENGE_MAX_LEVEL) {
+      levelText = `Level ${cp}-${Math.min(cp + CHECKPOINT_INTERVAL - 1, CHALLENGE_MAX_LEVEL)}`;
     }
 
     const gimmick = GIMMICK_LABELS[cp];
@@ -1563,7 +1572,7 @@ $('#post-death-replay').addEventListener('click', () => {
 });
 
 $('#gameover-nextlevel').addEventListener('click', () => {
-  const maxLevel = state.gameMode === 'timed' ? MAX_TIMED_LEVEL : MAX_LEVEL;
+  const maxLevel = state.gameMode === 'timed' ? MAX_TIMED_LEVEL : CHALLENGE_MAX_LEVEL;
   const completedLevel = state.currentLevel;
   if (state.currentLevel < maxLevel) state.currentLevel++;
 
@@ -2082,7 +2091,7 @@ async function init() {
   // (playtesting a specific gimmick block without grinding to it).
   const _levelParam = parseInt(urlParams.get('level') || '', 10);
   const deepLinkLevel = (isTestEnvironment() && _levelParam >= 1)
-    ? Math.min(_levelParam, MAX_LEVEL)
+    ? Math.min(_levelParam, CHALLENGE_MAX_LEVEL)
     : 0;
   // ?coastline= — test-environment-only tiling board (Project Coastline
   // Phase 2). Gated exactly like ?level=, so it is UNREACHABLE in production

@@ -8,7 +8,8 @@ import {
 } from './domHelpers.js';
 import { getThemeEmoji } from './boardRenderer.js';
 import { applyIcon, gimmickSpriteImgHTML, spriteImgHTML, uiSpriteImgHTML } from './spriteLoader.js';
-import { getTimedDifficulty, getSpeedRating, MAX_LEVEL } from '../logic/difficulty.js';
+import { getTimedDifficulty, getSpeedRating } from '../logic/difficulty.js';
+import { CHALLENGE_MAX_LEVEL } from '../logic/challenge250.js';
 import { loadStats, getDailyStreak } from '../storage/statsStorage.js';
 import { getGimmickDef } from '../logic/gimmicks.js';
 
@@ -38,17 +39,17 @@ export function updateProgressBar() {
     return;
   }
   progressBarContainer.classList.remove('hidden');
-  const pct = ((state.currentLevel - 1) / (MAX_LEVEL - 1)) * 100;
+  const pct = ((state.currentLevel - 1) / (CHALLENGE_MAX_LEVEL - 1)) * 100;
   progressBarFill.style.width = `${pct}%`;
 
   // Render checkpoint markers
   if (progressBarMarkers) {
     progressBarMarkers.innerHTML = '';
-    for (let cp = CHECKPOINT_INTERVAL + 1; cp <= MAX_LEVEL; cp += CHECKPOINT_INTERVAL) {
+    for (let cp = CHECKPOINT_INTERVAL + 1; cp <= CHALLENGE_MAX_LEVEL; cp += CHECKPOINT_INTERVAL) {
       const marker = document.createElement('div');
       marker.className = 'checkpoint-marker';
       if (state.currentLevel >= cp) marker.classList.add('reached');
-      marker.style.left = `${((cp - 1) / (MAX_LEVEL - 1)) * 100}%`;
+      marker.style.left = `${((cp - 1) / (CHALLENGE_MAX_LEVEL - 1)) * 100}%`;
       progressBarMarkers.appendChild(marker);
     }
   }

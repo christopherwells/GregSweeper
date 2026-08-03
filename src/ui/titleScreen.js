@@ -26,7 +26,7 @@ import { loadDailyHistory } from '../firebase/firebaseProgress.js';
 import { loadDailyBoard } from '../firebase/dailyBoardSync.js';
 import { getLocalDateString, getWeekDayIndex, addCalendarDays } from '../logic/seededRandom.js';
 import { FIRST_ARCHIVE_DATE, archiveDayState } from '../logic/archiveEligibility.js';
-import { MAX_LEVEL } from '../logic/difficulty.js';
+import { CHALLENGE_MAX_LEVEL } from '../logic/challenge250.js';
 
 // ── Return-to-title modal plumbing ────────────────────
 // Track when a modal was opened from the title screen so its close
@@ -68,7 +68,7 @@ export function updateTitleProgress() {
 
   if (challengeEl) {
     const cLevel = stats.modeStats?.challenge?.maxLevelReached || 1;
-    challengeEl.textContent = `Level ${cLevel} · ${Math.min(100, Math.round(cLevel / MAX_LEVEL * 100))}%`;
+    challengeEl.textContent = `Level ${cLevel} · ${Math.min(100, Math.round(cLevel / CHALLENGE_MAX_LEVEL * 100))}%`;
   }
   if (timedEl) {
     const tWins = stats.modeStats?.timed?.wins || 0;

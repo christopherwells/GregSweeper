@@ -55,6 +55,17 @@ export const CHALLENGE_MAX_LEVEL = 250;
 export const CHALLENGE_BLOCK_SIZE = 5;
 export const CHALLENGE_BLOCK_COUNT = 50;
 
+// Where each modifier and shape debuts, by BLOCK (the checkpoint selector
+// labels its rows from these; the venues themselves are pinned
+// independently in test/challenge250.test.mjs against the levels table).
+export const MOD_INTRO_BLOCKS = Object.freeze({
+  2: 'walls', 3: 'liar', 4: 'mystery', 7: 'locked', 10: 'wormhole',
+  13: 'mirror', 16: 'sonar', 19: 'compass', 22: 'worm',
+});
+export const SHAPE_INTRO_BLOCKS = Object.freeze({
+  6: 'hex', 9: '4.8.8', 12: 'rhombille', 15: 'cairo', 21: 'floret', 38: 'deltoidal',
+});
+
 // The tier ladder (s/cell). Geometric ×~1.18 steps with the larger final
 // step to the ruled summit.
 export const TIER_PPC = {

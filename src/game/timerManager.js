@@ -283,7 +283,12 @@ export function stopWormCrawl() {
 // canonical board ⇒ same lengths for every player); the walk is luck.
 export function hatchWormEggs(revealedCells) {
   if (!revealedCells || revealedCells.length === 0) return;
-  const seedIdentity = state.dailyRngSeed || state.weeklyRngSeed || `L${state.currentLevel}`;
+  // Challenge 250 boards hatch on the DRAW's seed (state.challengeBoardSeed)
+  // so the live worm traits match the wormLoad the builder priced into the
+  // level's par — the same seed-identity contract the daily fit relies on.
+  // The bare-level fallback survives for pre-engine saves restored mid-game.
+  const seedIdentity = state.dailyRngSeed || state.weeklyRngSeed
+    || state.challengeBoardSeed || `L${state.currentLevel}`;
   let hatched = 0;
   for (const cell of revealedCells) {
     if (!cell || !cell.isWormEgg || cell.isMine || !cell.isRevealed) continue;

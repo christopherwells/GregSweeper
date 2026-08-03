@@ -11,6 +11,7 @@ import {
   CHALLENGE_MAX_LEVEL, CHALLENGE_BLOCK_SIZE, CHALLENGE_BLOCK_COUNT,
   CHALLENGE_BLOCKS, TIER_PPC, challengeSpecForLevel, blockStartLevel,
   ppcBandFor, specFingerprint, OPENER_MIN_DEDUCTIONS,
+  MOD_INTRO_BLOCKS, SHAPE_INTRO_BLOCKS,
 } from '../src/logic/challenge250.js';
 import { buildTiling } from '../src/logic/tilingGeometry.js';
 import { generateTilingBoard, TILING_SAFE_GIMMICKS } from '../src/logic/tilingGenerator.js';
@@ -255,6 +256,40 @@ test('tiers never step down across blocks except at the six intro dips', () => {
     while (back >= 0 && CHALLENGE_BLOCKS[back].dip) back--;
     const anchor = back >= 0 ? CHALLENGE_BLOCKS[back].tier : prev.tier;
     assert.ok(cur.tier >= anchor, `block ${b} steps the plateau down (T${cur.tier} after T${anchor})`);
+  }
+});
+
+test('the intro-block exports match the levels table (checkpoint labels read these)', () => {
+  assert.deepEqual(MOD_INTRO_BLOCKS, {
+    2: 'walls', 3: 'liar', 4: 'mystery', 7: 'locked', 10: 'wormhole',
+    13: 'mirror', 16: 'sonar', 19: 'compass', 22: 'worm',
+  });
+  assert.deepEqual(SHAPE_INTRO_BLOCKS, {
+    6: 'hex', 9: '4.8.8', 12: 'rhombille', 15: 'cairo', 21: 'floret', 38: 'deltoidal',
+  });
+  // Cross-pin against the specs themselves: a mod-intro block's levels all
+  // carry exactly that modifier; a shape-intro block is that shape's dip.
+  for (const [block, mod] of Object.entries(MOD_INTRO_BLOCKS)) {
+    for (const s of allSpecs.filter((x) => x.block === Number(block))) {
+      assert.deepEqual(s.gimmicks, [mod]);
+    }
+  }
+  for (const [block, shape] of Object.entries(SHAPE_INTRO_BLOCKS)) {
+    const b = CHALLENGE_BLOCKS[Number(block) - 1];
+    assert.equal(b.shape, shape);
+    assert.equal(b.dip, true);
+  }
+});
+
+test('blockStartLevel agrees with the checkpoint formula (death returns to the block start)', async () => {
+  // getCheckpointForLevel (headerRenderer) and blockStartLevel are two
+  // copies of one rule — the mirror-pair drift class. Pin them to each
+  // other so "block = checkpoint = survival unit" can never silently split.
+  await import('./domShim.mjs');
+  const { getCheckpointForLevel, CHECKPOINT_INTERVAL } = await import('../src/ui/headerRenderer.js');
+  assert.equal(CHECKPOINT_INTERVAL, CHALLENGE_BLOCK_SIZE);
+  for (let lv = 1; lv <= CHALLENGE_MAX_LEVEL; lv++) {
+    assert.equal(blockStartLevel(lv), getCheckpointForLevel(lv), `L${lv}`);
   }
 });
 

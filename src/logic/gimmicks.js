@@ -3,7 +3,6 @@
 // Each gimmick has: apply (board setup), render hints, solver adjustments.
 
 import { safeGet, safeSet, safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js';
-import { MAX_LEVEL } from './difficulty.js';
 import { WORM_MAX_PER_BOARD } from './worms.js';
 import { wallKey, hasWallBetween, buildNeighborCache, sonarScanCells, compassRayCells, cellAt, defineCellNeighbors } from './adjacency.js';
 import { computeCompassRay, buildTiling, buildWireframe, HEX_ROW_H } from './tilingGeometry.js';
@@ -196,70 +195,11 @@ export function getWeeklyGimmicks(weeklySeed, createRNG) {
   return picked;
 }
 
-// ── Which gimmicks are active for a given level ────────
-
-export function getGimmicksForLevel(level, rng = Math.random) {
-  if (level <= 10) return [];
-
-  const allTypes = Object.keys(GIMMICK_DEFS);
-  // Filter out chaosOnly gimmicks (e.g., mineShift) from Challenge mode
-  const introduced = allTypes.filter(g => level >= GIMMICK_DEFS[g].intro && !GIMMICK_DEFS[g].chaosOnly);
-  if (introduced.length === 0) return [];
-
-  // Find the gimmick whose intro block contains this level (10-level blocks)
-  const primaryGimmick = introduced.find(g => {
-    const intro = GIMMICK_DEFS[g].intro;
-    return level >= intro && level <= intro + 9;
-  });
-
-  // Old gimmicks = all introduced EXCEPT the current primary
-  const oldGimmicks = introduced.filter(g => g !== primaryGimmick);
-
-  if (primaryGimmick) {
-    // Inside some gimmick's 10-level intro block (L11-110 with worm as the
-    // L101-110 capstone intro): primary is always present, secondary 60%,
-    // tertiary 10%
-    const active = [];
-
-    // Primary: 100% always present
-    if (primaryGimmick) active.push(primaryGimmick);
-
-    // Secondary: one old gimmick at 60% chance
-    if (oldGimmicks.length > 0 && rng() < 0.60) {
-      const pick = oldGimmicks[Math.floor(rng() * oldGimmicks.length)];
-      active.push(pick);
-
-      // Tertiary: another old gimmick at 10% chance
-      const remaining = oldGimmicks.filter(g => g !== pick);
-      if (remaining.length > 0 && rng() < 0.10) {
-        active.push(remaining[Math.floor(rng() * remaining.length)]);
-      }
-    }
-
-    // Guarantee at least one gimmick
-    if (active.length === 0 && introduced.length > 0) {
-      active.push(introduced[introduced.length - 1]);
-    }
-
-    return active;
-  }
-
-  // L111-120: Post-intro ramp — all gimmicks equal, ramp to guaranteed 3
-  const progress = (level - 110) / 10; // 0.1 at L111, 1.0 at L120
-  const shuffled = [...introduced].sort(() => rng() - 0.5);
-  const active = [shuffled[0]]; // always at least 1
-
-  // Second gimmick: ramp from 80% to 100%
-  if (shuffled.length > 1 && rng() < 0.80 + progress * 0.20) {
-    active.push(shuffled[1]);
-  }
-  // Third gimmick: ramp from 40% to 100%
-  if (shuffled.length > 2 && rng() < 0.40 + progress * 0.60) {
-    active.push(shuffled[2]);
-  }
-
-  return active;
-}
+// (getGimmicksForLevel — the old ladder's per-level modifier lottery — was
+// retired with the sawtooth: Challenge 250 specs AUTHOR their modifier
+// sets in challenge250.js, and no board on the ladder rolls a random
+// secondary. GIMMICK_DEFS[].intro survives as getIntensity's ramp anchor
+// and the help/popup metadata.)
 
 // ── Chaos mode: random gimmick selection (includes all types) ──
 
@@ -270,6 +210,17 @@ export function getChaosGimmicks(count, rng = Math.random) {
 }
 
 // ── Gimmick intensity (count of affected cells) ────────
+
+// The intensity ramp's ceiling, FROZEN at the old 120-level ladder's top.
+// getIntensity's whole scale — the per-type intro positions above and this
+// cap — is the UNIT the Challenge 250 spec tables author their
+// `gimmickLevel` dial in (11..120, "old-ladder levels"): the proven Paving
+// T12 spec was measured at level 115 on exactly this scale, and every
+// authored ladder spec was validated against it. Re-anchoring this to the
+// 250-level ladder would silently re-price every one of them, which is why
+// it is a local constant here rather than the ladder length import it used
+// to be.
+const INTENSITY_RAMP_MAX_LEVEL = 120;
 
 // Check if any NEW gimmick is being introduced at this level
 function isAnyGimmickIntroBlock(level) {
@@ -301,8 +252,8 @@ export function getIntensity(gimmick, level, rng) {
     return 2 + (rng() < 0.3 ? 1 : 0);
   }
 
-  // After introduction: slowly ramp toward max level
-  const progress = (level - introEnd) / (MAX_LEVEL - introEnd);
+  // After introduction: slowly ramp toward the (frozen) ramp ceiling
+  const progress = (level - introEnd) / (INTENSITY_RAMP_MAX_LEVEL - introEnd);
   const base = 1 + Math.floor(progress * 3); // 1-4
   let intensity = base + (rng() < 0.3 ? 1 : 0); // slight random boost
 

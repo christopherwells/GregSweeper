@@ -21,7 +21,8 @@ import { buildTiling } from '../logic/tilingGeometry.js';
 import { extractCrux } from '../logic/cruxExtract.js';
 import { prepareLossReceipt, bombStrikeVerdict } from '../ui/receiptRenderer.js';
 import { computeBombInfoValue } from '../logic/bombInfoValue.js';
-import { getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, getChaosDifficulty, LIFELINE_WIN_REWARD_CHANCE, BOMB_PENALTY_BASE, BOMB_PENALTY_RAMP } from '../logic/difficulty.js';
+import { getSpeedRating, MAX_TIMED_LEVEL, getChaosDifficulty, LIFELINE_WIN_REWARD_CHANCE, BOMB_PENALTY_BASE, BOMB_PENALTY_RAMP } from '../logic/difficulty.js';
+import { CHALLENGE_MAX_LEVEL } from '../logic/challenge250.js';
 import {
   loadStats, saveGameResult, saveModePowerUps, clearGameState,
   markDailyCompleted, getDailyStreak, getPlayerName,
@@ -920,7 +921,7 @@ export async function handleWin() {
   } else {
     // Next Level is data-dependent (level cap), so it unhides here rather
     // than in the static plan.
-    const maxLevel = state.gameMode === 'timed' ? MAX_TIMED_LEVEL : MAX_LEVEL;
+    const maxLevel = state.gameMode === 'timed' ? MAX_TIMED_LEVEL : CHALLENGE_MAX_LEVEL;
     if (state.currentLevel < maxLevel && state.gameMode !== 'daily' && state.gameMode !== 'weekly' && state.gameMode !== 'timed') {
       nextLevelBtn.classList.remove('hidden');
     }

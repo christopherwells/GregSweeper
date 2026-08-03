@@ -1,9 +1,8 @@
-// Challenge mode — 120 levels with sawtooth difficulty progression.
-// Each gimmick introduction (L11, L21, ..., L91, L101) drops the board to
-// 11×11 and reduces density, creating a grace period to learn the new
-// mechanic. Between intros, board size ramps back up to ~12×14 and density
-// climbs. Worm Tiles own the final L101-120 capstone block, which ramps to
-// 12-wide at 34% density with heavy modifier stacking.
+// Shared difficulty constants and the non-ladder mode tables (Quick Play,
+// Chaos), plus the refit-owned par models. The challenge ladder itself
+// lives in challenge250.js: a level is an authored par-rating spec, drawn
+// fresh and certified per attempt (the 120-level sawtooth this module used
+// to compute was retired by the Challenge 250 engine).
 
 // ── Shared constants ──────────────────────────────────
 export const PLATE_MIN_SECONDS = 8;
@@ -315,58 +314,6 @@ export const DAILY_DENSITY_RANGE = 0.16; // 14%–30%
 export const WEEKLY_MIN_SIZE = 8;
 export const WEEKLY_SIZE_RANGE = 7;  // 8–14
 
-// Gimmick introduction levels (non-chaosOnly)
-const GIMMICK_INTROS = [11, 21, 31, 41, 51, 61, 71, 81, 91, 101];
-
-// Peak density at the END of each 10-level gimmick block.
-// These ramp from 20% to 33.5%, with the final block (worm, L101-120)
-// peaking at the 34% hard cap.
-const PEAK_DENSITIES = [0.20, 0.24, 0.27, 0.29, 0.30, 0.31, 0.32, 0.33, 0.335, 0.34];
-
-export const MAX_LEVEL = 120;
-
-export function getDifficultyForLevel(level) {
-  const lv = Math.min(Math.max(level, 1), MAX_LEVEL);
-
-  // ── L1-10: Tutorial ramp (no gimmicks) ──
-  if (lv <= 10) {
-    // Size ramps 5→9, density ramps 8%→16%
-    const t = (lv - 1) / 9; // 0.0 at L1, 1.0 at L10
-    const size = Math.round(5 + t * 4);
-    const density = 0.08 + t * 0.08;
-    const mines = Math.max(2, Math.round(size * size * density));
-    return { rows: size, cols: size, mines };
-  }
-
-  // ── L11-120: Sawtooth gimmick blocks ──
-
-  // Find which block we're in
-  let blockIdx = 0;
-  for (let i = GIMMICK_INTROS.length - 1; i >= 0; i--) {
-    if (lv >= GIMMICK_INTROS[i]) { blockIdx = i; break; }
-  }
-
-  const blockStart = GIMMICK_INTROS[blockIdx];
-  const blockEnd = blockIdx < GIMMICK_INTROS.length - 1 ? GIMMICK_INTROS[blockIdx + 1] - 1 : MAX_LEVEL;
-  const blockLen = blockEnd - blockStart; // 9 for regular blocks, 19 for the final (L101-120)
-  const progress = blockLen > 0 ? (lv - blockStart) / blockLen : 0; // 0.0→1.0
-
-  // Board size: 11 at block start, ramps to 14 at block end
-  const size = Math.round(11 + progress * 3);
-
-  // Density: drops 10% (relative) from previous peak, ramps to this block's peak
-  const peakDensity = PEAK_DENSITIES[blockIdx];
-  const prevPeak = blockIdx === 0 ? 0.16 : PEAK_DENSITIES[blockIdx - 1];
-  const dropDensity = prevPeak * 0.90; // 10% relative reduction
-  const density = dropDensity + progress * (peakDensity - dropDensity);
-
-  // Compute mines, hard cap at 34%
-  const effectiveDensity = Math.min(density, 0.34);
-  const mines = Math.max(2, Math.round(size * size * effectiveDensity));
-
-  return applyWidthCap(size, size, mines);
-}
-
 // Quick Play (internally "timed") — mobile-friendly sizes, count UP (no countdown)
 const TIMED_LEVELS = [
   { rows: 9,  cols: 9,  mines: 10,  label: 'Beginner' },     // 12.3%
@@ -387,34 +334,6 @@ export function getTimedDifficulty(level) {
   const idx = Math.min(Math.max(level, 1), TIMED_LEVELS.length) - 1;
   const { rows, cols, mines, label } = TIMED_LEVELS[idx];
   return { ...applyWidthCap(rows, cols, mines), label };
-}
-
-// Minimum solver technique level required to verify a board for the given
-// challenge level. The solver returns techniqueLevel:
-//   0 = solved by simple Pass A propagation alone
-//   1 = required Pass B subset / superset analysis
-//   2 = required Pass C tank or gauss enumeration
-//   3 = required disjunctive (liar) reasoning to make a deduction
-// Boards verified below this floor are rejected by the generator and
-// regenerated, so the player at higher challenge levels actually needs
-// to apply the corresponding technique to win.
-export function getRequiredTechnique(level) {
-  if (level <= 30) return 0;   // tutorial / first 2 modifier blocks: any board OK
-  if (level <= 60) return 1;   // L31–60: must require subset reasoning
-  if (level <= 90) return 2;   // L61–90: must require advanced (tank/gauss)
-  return 2;                     // L91+: same advanced floor (pushing to 3 would
-                                //        starve generators that don't pick liar)
-}
-
-// Anti-zero-cluster thresholds per level
-export function getMaxZeroCluster(level) {
-  if (level <= 5) return Infinity;   // Tutorial: no restriction
-  if (level <= 10) return 10;
-  if (level <= 20) return 8;
-  if (level <= 30) return 6;
-  if (level <= 50) return 4;
-  if (level <= 70) return 3;
-  return 2;                          // L71–120: near-zero openings
 }
 
 export function getSpeedRating(level, time) {

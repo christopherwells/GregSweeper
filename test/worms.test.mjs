@@ -32,9 +32,9 @@ const seqRng = (...vals) => {
 };
 import { createEmptyBoard } from '../src/logic/boardGenerator.js';
 import {
-  applyGimmicks, clearGimmickProperties, getGimmicksForLevel, recalcAllAdjacency,
+  applyGimmicks, clearGimmickProperties, recalcAllAdjacency,
 } from '../src/logic/gimmicks.js';
-import { getDifficultyForLevel } from '../src/logic/difficulty.js';
+import { challengeSpecForLevel } from '../src/logic/challenge250.js';
 import { mulberry32 } from '../src/logic/seededRandom.js';
 
 // ── Pure worm logic ─────────────────────────────────────
@@ -482,41 +482,22 @@ test('clearGimmickProperties resets isWormEgg (retry loops leave no stale eggs)'
   assert.equal(cell.isWormEgg, false);
 });
 
-// ── The L101 capstone ladder ────────────────────────────
+// ── Worm's place on the ladder ────────────────────────────
+// (The old L101-120 sawtooth capstone pins died with getGimmicksForLevel /
+// getDifficultyForLevel — Challenge 250 specs AUTHOR their modifiers. The
+// worm's ladder story is now block 22's intro plus its remixes/reprise,
+// pinned structurally in test/challenge250.test.mjs; here we keep the one
+// worm-specific ladder claim that survives the engine swap.)
 
-test('worm owns the L101-110 intro block: present on every board there', () => {
-  const rng = mulberry32(17);
-  for (let lv = 101; lv <= 110; lv++) {
-    for (let i = 0; i < 20; i++) {
-      assert.ok(getGimmicksForLevel(lv, rng).includes('worm'), `L${lv} must carry worm`);
-    }
+test('the worm intro block carries worm on every level, and chaos-only types never reach a ladder spec', () => {
+  for (let lv = 106; lv <= 110; lv++) {
+    const spec = challengeSpecForLevel(lv);
+    assert.deepEqual(spec.gimmicks, ['worm'], `L${lv} is the worm intro`);
   }
-});
-
-test('L111-120 free-for-all: 1-3 introduced gimmicks, never chaos-only, guaranteed 3 at L120', () => {
-  const rng = mulberry32(19);
-  for (let lv = 111; lv <= 120; lv++) {
-    for (let i = 0; i < 20; i++) {
-      const picks = getGimmicksForLevel(lv, rng);
-      assert.ok(picks.length >= 1 && picks.length <= 3, `L${lv}: ${picks.length} gimmicks`);
-      assert.ok(!picks.includes('mineShift'), 'chaos-only never leaks into challenge');
-    }
+  for (let lv = 1; lv <= 250; lv++) {
+    const spec = challengeSpecForLevel(lv);
+    assert.ok(!spec.gimmicks.includes('mineShift'), 'chaos-only never leaks into challenge');
   }
-  // progress hits 1.0 at L120: second and third gimmicks are both certain.
-  for (let i = 0; i < 10; i++) {
-    assert.equal(getGimmicksForLevel(120, mulberry32(300 + i)).length, 3);
-  }
-});
-
-test('the capstone block keeps the sawtooth: intro dip at L101, density capped at 34%', () => {
-  const d101 = getDifficultyForLevel(101);
-  assert.equal(d101.rows, 11, 'intro drops the board to 11 wide');
-  assert.equal(d101.cols, 11);
-  for (const lv of [101, 110, 120]) {
-    const d = getDifficultyForLevel(lv);
-    assert.ok(d.mines <= Math.round(d.rows * d.cols * 0.34) + 1, `L${lv} density over the cap`);
-  }
-  assert.ok(getDifficultyForLevel(120).mines > d101.mines, 'the block ramps up toward L120');
 });
 
 // ── Segment size: the worm must read as a BODY, not a row of beads ─────────

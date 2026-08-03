@@ -111,6 +111,17 @@ export const state = {
   // than borrowing timedFeatures/timedPar, which carry a submission contract.
   coastlineFeatures: null,
   coastlinePar: 0,
+
+  // Challenge 250 (the authored ladder). The level's spec re-derives from
+  // currentLevel (challengeSpecForLevel) so it is never persisted; the
+  // board SEED is the draw's identity — worm traits and the features'
+  // wormLoad both key on it, so it must ride the save with the board.
+  // Par/features are display + validation aids (challenge never submits
+  // to the par fit).
+  challengeSpec: null,
+  challengeBoardSeed: null,
+  challengeFeatures: null,
+  challengePar: 0,
   inputLocked: false,    // true during cascade/chord animations
 
   // Chaos mode (roguelike runs)
@@ -233,12 +244,14 @@ export function clearCoastlinePractice() {
 }
 
 // True when a board's modifiers were resolved during PRE-generation
-// (daily/weekly canonical boards, and coastline tiling boards) rather than on
-// the first click (challenge / timed / chaos). newGame's per-game reset must
-// NOT wipe activeGimmicks for these, or the active-modifier bar renders empty
-// on a board that plainly has modifiers.
+// (daily/weekly canonical boards, coastline tiling boards, and — since the
+// Challenge 250 engine — challenge ladder boards, whose specs author their
+// modifiers and whose layouts are drawn frozen at newGame) rather than on
+// the first click (timed / chaos). newGame's per-game reset must NOT wipe
+// activeGimmicks for these, or the active-modifier bar renders empty on a
+// board that plainly has modifiers.
 export function modifiersPreResolved(gameMode, coastlinePractice) {
-  return gameMode === 'daily' || gameMode === 'weekly' || !!coastlinePractice;
+  return gameMode === 'daily' || gameMode === 'weekly' || gameMode === 'normal' || !!coastlinePractice;
 }
 
 // Total bomb-hit penalty (seconds) accrued in the CURRENT daily/weekly

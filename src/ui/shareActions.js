@@ -9,7 +9,7 @@ import { uiSpriteImgHTML } from './spriteLoader.js';
 import { showToast } from './toastManager.js';
 import { getLastShareFile } from './shareCardImage.js';
 import { loadStats } from '../storage/statsStorage.js';
-import { getDifficultyForLevel, getTimedDifficulty, getSpeedRating } from '../logic/difficulty.js';
+import { getTimedDifficulty, getSpeedRating } from '../logic/difficulty.js';
 import { getHighestTier } from '../logic/achievements.js';
 import { getGimmickDefs } from '../logic/gimmicks.js';
 import { getLocalDateString, addCalendarDays } from '../logic/seededRandom.js';
@@ -21,9 +21,13 @@ import { PROD_SITE_BASE } from '../config.js';
 export function generateShareCard() {
   const level = state.currentLevel;
   const time = state.elapsedTime;
+  // The card describes the PLAYED board, so it reads the live state
+  // rather than re-deriving from a level table (the Challenge 250 ladder
+  // has no level→dims function — a level is a spec, and the board on
+  // screen is its draw). Timed keeps its table read for the tab label.
   const diff = state.gameMode === 'timed'
     ? getTimedDifficulty(level)
-    : getDifficultyForLevel(level);
+    : { rows: state.rows, cols: state.cols, mines: state.totalMines };
   const mode = state.gameMode;
   const modeLabel = { normal: 'Challenge', timed: 'Timed', daily: 'Daily', weekly: 'Weekly', chaos: 'Chaos' }[mode] || 'Challenge';
 
