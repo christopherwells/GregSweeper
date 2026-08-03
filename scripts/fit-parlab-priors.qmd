@@ -906,3 +906,16 @@ A and B compose (A is the fit-side memory, B the ship-side bridge), and
 either can carry the strike re-pricing iteration later. The width
 sub-decision, the practiced-player caveat, and which gimmick cells deserve
 anything beyond zero-centered-wide are all part of the same conversation.
+
+**Decided (Christopher, 2026-08-03, after this document's first render):**
+routes A and B together (the nightly's deviation priors center on the lab
+posteriors AND the shipped blocks carry the lab centers before live rows
+exist); the primary model's numbers are the centers (strikes as symptom;
+the S4 fork stays documented, not adopted); prior widths are the lab SDs
+doubled; and the fourteen n = 1 gimmick cells stay zero-centered wide. The
+implementation lives in `scripts/refit-par-model.R` (the seeding block
+beside the shape registry, keyed on `LAB_SEED_MIN_ROWS = 5`, which routes
+the core grid terms in and the observation cells out), the seeded blocks in
+`difficulty.js` were composed by `scripts/seed-par-model-shapes.R`, and
+`test/tilingParModelContract.test.mjs` pins the shipped blocks against this
+document's frozen artifact.

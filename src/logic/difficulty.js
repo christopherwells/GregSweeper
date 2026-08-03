@@ -141,26 +141,33 @@ export const PAR_MODEL_TIMED = {
 // offset relocated as that shape's intercept deviation) and a SIGNED
 // shape-by-feature interaction deviation per coefficient, with the player
 // random intercept shared so handicaps stay jointly estimated — then ships
-// each block here as base + EARNED deviations. A deviation is zeroed until
-// its own column — the shape indicator for an intercept deviation, the
-// interaction column for a slope — has NEW_FEATURE_DATA_THRESHOLD (20) nonzero fit
-// rows, so an unearned block is numerically IDENTICAL to PAR_MODEL: at zero
-// data a shape's equation collapses to the square's, which is what "priors
-// informed by the square fit" means operationally (deviation priors are
-// normal(0, INTERACTION_PRIOR_SD), centered at zero).
+// each block here as base + deviations. Since 2026-08-03 the core
+// deviations (intercept, per-cell, per-mine, per shape) are LAB-SEEDED from
+// the completed Par Lab battery (Christopher's ruling; the fit is
+// scripts/fit-parlab-priors.qmd, its posteriors frozen in
+// scripts/data/parlab-prior-centers.json): each ships its lab center until
+// live tiling rows exist, then the fitted posterior — under a
+// normal(lab mean, 2 x lab sd) prior — takes over continuously. Negative
+// composed coefficients are expected (a lattice can price a feature BELOW
+// the square rate; hex charges less per cell, more per mine). Unseeded
+// terms, including every gimmick-by-shape cell (his n=1
+// observations-not-conclusions ruling), keep zero-centered priors and ship
+// 0 until NEW_FEATURE_DATA_THRESHOLD (20) nonzero fit rows earn them. The
+// contract test pins block minus base against the frozen lab JSON.
 //
 // The block between the markers is refit-owned, same contract as PAR_MODEL.
 // PAR_MODEL_SHAPES:START
 export const PAR_MODEL_SHAPES = {
-  // Last refit: 2026-08-02 | composed: PAR_MODEL base + earned per-shape deviations
-  // A deviation ships only once its interaction column has 20 nonzero fit
-  // rows (NEW_FEATURE_DATA_THRESHOLD); unearned deviations leave a block
-  // numerically IDENTICAL to PAR_MODEL (the parity property).
+  // Seeded 2026-08-03 from the Par Lab prior fit: PAR_MODEL base + lab deviation
+  // centers (scripts/data/parlab-prior-centers.json; scripts/fit-parlab-priors.qmd;
+  // the 2026-08-03 seeding ruling). The nightly refit recomposes this block on
+  // every fit night: fitted posterior where live rows exist, the lab center
+  // where none do, 0 for unseeded terms until they earn out.
   '4.8.8': {
     scale: 'log',
-    intercept: 2.9322,
-    secPerCell: 0.00065,
-    secPerMineFlag: 0.05368,
+    intercept: 2.7750,
+    secPerCell: -0.00258,
+    secPerMineFlag: 0.10167,
     secPerPatternMove: 0.01698,
     secPerSearchMove: 0.01269,
     secPerWallEdge: 0.00175,
@@ -176,9 +183,9 @@ export const PAR_MODEL_SHAPES = {
   },
   hex: {
     scale: 'log',
-    intercept: 2.9322,
-    secPerCell: 0.00065,
-    secPerMineFlag: 0.05368,
+    intercept: 2.5570,
+    secPerCell: -0.00503,
+    secPerMineFlag: 0.10892,
     secPerPatternMove: 0.01698,
     secPerSearchMove: 0.01269,
     secPerWallEdge: 0.00175,
@@ -194,9 +201,9 @@ export const PAR_MODEL_SHAPES = {
   },
   cairo: {
     scale: 'log',
-    intercept: 2.9322,
-    secPerCell: 0.00065,
-    secPerMineFlag: 0.05368,
+    intercept: 2.6236,
+    secPerCell: 0.02654,
+    secPerMineFlag: -0.00293,
     secPerPatternMove: 0.01698,
     secPerSearchMove: 0.01269,
     secPerWallEdge: 0.00175,
@@ -212,9 +219,9 @@ export const PAR_MODEL_SHAPES = {
   },
   floret: {
     scale: 'log',
-    intercept: 2.9322,
-    secPerCell: 0.00065,
-    secPerMineFlag: 0.05368,
+    intercept: 3.1331,
+    secPerCell: -0.00181,
+    secPerMineFlag: 0.10650,
     secPerPatternMove: 0.01698,
     secPerSearchMove: 0.01269,
     secPerWallEdge: 0.00175,
@@ -230,9 +237,9 @@ export const PAR_MODEL_SHAPES = {
   },
   rhombille: {
     scale: 'log',
-    intercept: 2.9322,
-    secPerCell: 0.00065,
-    secPerMineFlag: 0.05368,
+    intercept: 2.9815,
+    secPerCell: -0.00952,
+    secPerMineFlag: 0.12127,
     secPerPatternMove: 0.01698,
     secPerSearchMove: 0.01269,
     secPerWallEdge: 0.00175,
@@ -248,9 +255,9 @@ export const PAR_MODEL_SHAPES = {
   },
   deltoidal: {
     scale: 'log',
-    intercept: 2.9322,
-    secPerCell: 0.00065,
-    secPerMineFlag: 0.05368,
+    intercept: 3.4200,
+    secPerCell: -0.00137,
+    secPerMineFlag: 0.12398,
     secPerPatternMove: 0.01698,
     secPerSearchMove: 0.01269,
     secPerWallEdge: 0.00175,
