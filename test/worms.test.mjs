@@ -19,7 +19,9 @@ import {
   wormLengthFor, wormLifetimeFor, wormToneFor, wormPaceFor, wormLoadFor,
   mixHex, hatchWorm, stepWorm, tickWorms, rehydrateWorms, wormCoveredCells,
   wormOverlayLayout, wormHatchEvent, markWormBurrowed, finalizeWormEvents, wormSegmentSize,
+  buildWormCrawlTopology,
 } from '../src/logic/worms.js';
+import { buildWireframe } from '../src/logic/tilingGeometry.js';
 import { buildTiling488, buildTiling, containerFor, TILING_TYPES } from '../src/logic/tilingGeometry.js';
 
 // Fixed-sequence rng for pinning exact branch behavior (repeats the last
@@ -593,4 +595,133 @@ test('REGRESSION: wormSegmentSize spans the step on EVERY registered tiling', ()
     // And never so wide it crosses its own cell edge.
     assert.ok(size <= P + 1e-9, `${type}: segment must stay inside the cell`);
   }
+});
+
+// ── Side-only crawl (Christopher's ruling, 2026-08-03, from the
+// challenge-250 design interview: "worms shouldn't cross through corners,
+// only through sides like in the classic tiling") ──────────────────────
+//
+// On the Laves lattices `_cellNeighbors` is corner-inclusive (the mine-count
+// rule), but the worm is a physical crawler: buildWormCrawlTopology
+// intersects the wireframe's side-sharing pairs with the live adjacency, so
+// a Cubes rhombus offers 4 exits, not 10, and a wall-severed side stays
+// uncrossable.
+
+// A fully revealed fake tiling board over a real lattice: adjacency and
+// geometry are the builder's own, cells are plain revealed zeros so every
+// neighbor is walkable and only the topology constrains the walk.
+function fakeTilingBoard(type, M, N, rows, cols) {
+  const tiling = buildTiling(type, M, N);
+  if (rows * cols !== tiling.total) throw new Error('container mismatch');
+  const board = [];
+  for (let r = 0; r < rows; r++) {
+    const row = [];
+    for (let c = 0; c < cols; c++) row.push({ isRevealed: true, adjacentMines: 0 });
+    board.push(row);
+  }
+  board._cellNeighbors = tiling.adj.map((l) => [...l]);
+  board._cellPos = tiling.cellPos;
+  board._tiling = { type, M, N };
+  return { board, tiling };
+}
+
+function sidePairSet(tiling) {
+  const pairs = new Set();
+  for (const e of buildWireframe(tiling).edges) {
+    pairs.add(`${Math.min(e.cellA, e.cellB)}:${Math.max(e.cellA, e.cellB)}`);
+  }
+  return pairs;
+}
+
+test('REGRESSION: worms crawl through shared SIDES only, never corners (rhombille)', () => {
+  // rhombille 4x4 = 48 cells; container 6x8.
+  const { board, tiling } = fakeTilingBoard('rhombille', 4, 4, 6, 8);
+  const rows = 6, cols = 8;
+  const sides = sidePairSet(tiling);
+
+  // CONTROL 1 — the gate must have something to bite: this lattice's
+  // adjacency really does carry corner-only links (they outnumber sides on
+  // the 90-cell gate patch; plenty exist at 48 cells too).
+  let cornerLinks = 0;
+  tiling.adj.forEach((nbrs, i) => {
+    for (const j of nbrs) if (i < j && !sides.has(`${i}:${j}`)) cornerLinks++;
+  });
+  assert.ok(cornerLinks >= 20, `rhombille must have corner-only links for this test to mean anything (got ${cornerLinks})`);
+
+  const numberAt = (r, c) => {
+    if (r < 0 || r >= rows || c < 0 || c >= cols) return null;
+    const cell = board[r] && board[r][c];
+    return cell && cell.isRevealed ? (cell.adjacentMines || 0) : null;
+  };
+
+  // The crawl topology: every step the worm takes must be a side pair.
+  const topo = buildWormCrawlTopology(board, rows, cols);
+  assert.ok(topo, 'a tiling board yields a crawl topology');
+  const rng = mulberry32(20260803);
+  const worm = hatchWorm(2, 3, 'sidecrawl-test', rng);
+  worm.movesLeft = 100000; // walk far beyond any budget — the pin is the path
+  let moved = 0;
+  for (let i = 0; i < 400; i++) {
+    const before = { ...worm.segments[0] };
+    if (stepWorm(worm, numberAt, rng, topo)) {
+      const after = worm.segments[0];
+      const a = before.r * cols + before.c;
+      const b = after.r * cols + after.c;
+      assert.ok(sides.has(`${Math.min(a, b)}:${Math.max(a, b)}`),
+        `step ${i} crossed a non-side link: ${a} -> ${b}`);
+      moved++;
+    }
+  }
+  assert.ok(moved >= 300, `the worm must actually tour the board (moved ${moved})`);
+
+  // CONTROL 2 — the break-test built in: the same walk on the RAW
+  // corner-inclusive adjacency (the pre-ruling topology) crosses a corner
+  // link almost immediately, so the pin above is not vacuously satisfied.
+  const rawTopo = {
+    neighborsOf: (r, c) => board._cellNeighbors[r * cols + c]
+      .map((idx) => ({ r: Math.floor(idx / cols), c: idx % cols })),
+    posOf: (r, c) => { const p = board._cellPos[r * cols + c]; return { x: p.cx, y: p.cy }; },
+  };
+  const rawRng = mulberry32(20260803);
+  const rawWorm = hatchWorm(2, 3, 'sidecrawl-test', rawRng);
+  rawWorm.movesLeft = 100000;
+  let crossedCorner = false;
+  for (let i = 0; i < 400 && !crossedCorner; i++) {
+    const before = { ...rawWorm.segments[0] };
+    if (stepWorm(rawWorm, numberAt, rawRng, rawTopo)) {
+      const a = before.r * cols + before.c;
+      const b = rawWorm.segments[0].r * cols + rawWorm.segments[0].c;
+      if (!sides.has(`${Math.min(a, b)}:${Math.max(a, b)}`)) crossedCorner = true;
+    }
+  }
+  assert.ok(crossedCorner, 'raw corner-inclusive adjacency must cross corners, or this gate tests nothing');
+});
+
+test('the side-crawl is a NO-OP on the trivalent tilings, honors walls, and skips rectangles', () => {
+  // Honeycomb: every interior vertex has degree 3, so every neighbor is a
+  // side neighbor — the crawl lists must equal the adjacency verbatim.
+  const { board } = fakeTilingBoard('hex', 9, 7, 7, 9);
+  const topo = buildWormCrawlTopology(board, 7, 9);
+  for (let i = 0; i < 63; i++) {
+    const r = Math.floor(i / 9), c = i % 9;
+    const crawl = topo.neighborsOf(r, c).map((n) => n.r * 9 + n.c).sort((x, y) => x - y);
+    assert.deepEqual(crawl, [...board._cellNeighbors[i]].sort((x, y) => x - y),
+      `hex cell ${i}: side crawl must equal the adjacency on a trivalent lattice`);
+  }
+
+  // Walls: a side pair severed from the live adjacency (applyWallsTiling's
+  // contract — a severed link is simply absent) must stay uncrossable even
+  // though the wireframe knows the side exists.
+  const { board: walled, tiling } = fakeTilingBoard('rhombille', 4, 4, 6, 8);
+  const sides = sidePairSet(tiling);
+  const [a, b] = [...sides][0].split(':').map(Number);
+  walled._cellNeighbors[a] = walled._cellNeighbors[a].filter((x) => x !== b);
+  walled._cellNeighbors[b] = walled._cellNeighbors[b].filter((x) => x !== a);
+  const wTopo = buildWormCrawlTopology(walled, 6, 8);
+  const aList = wTopo.neighborsOf(Math.floor(a / 8), a % 8).map((n) => n.r * 8 + n.c);
+  assert.ok(!aList.includes(b), 'a wall-severed side must not be crawlable');
+
+  // Rectangles carry no explicit topology: the builder returns null and
+  // stepWorm keeps its dr/dc walk verbatim.
+  assert.equal(buildWormCrawlTopology([[{ isRevealed: true }]], 1, 1), null);
 });
