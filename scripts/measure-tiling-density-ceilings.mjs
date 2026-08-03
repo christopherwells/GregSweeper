@@ -16,10 +16,20 @@
 //     tier currency the density buys);
 //   - median techniqueLevel (does density buy reasoning or just mines).
 //
-// Plus a 3-STACK SPOT CHECK (locked+sonar+walls, a representative top-tier
-// stack) at each shape's mid size at 0.30 and 0.34 — the ladder's top tiers
-// are stacked, and a density only counts as reachable if stacked boards
-// generate there too.
+// Plus a 3-STACK CHECK (locked+sonar+walls, a representative top-tier stack)
+// at EVERY size at 0.28 / 0.30 / 0.34 — the ladder's top tiers are stacked,
+// and a density only counts as reachable if stacked boards generate there
+// too. Originally a mid-size spot check; widened to all sizes when the
+// 2-SECOND GENERATION CAP became a ruling (Christopher, 2026-08-03) and the
+// mid-size stacks on 3D Cubes and Kites blew straight past it — the stacked
+// frontier is exactly what the cap needs mapped.
+//
+// And a CLASSIC DENSITY SWEEP (his same-day follow-up: "revisit classic and
+// see what density we can get up to... might unlock more difficult boards
+// and more 6, 7, and 8 cell boards"): rectangular sizes from 9x9 to 12x12,
+// densities 0.34 through 0.50, measuring certified rate, time, par-per-cell,
+// and the per-board yield of high clue digits (6s / 7s / 8s) — the tail the
+// digit studies can't reach by selection at shipped densities.
 //
 // Cost guards, because a hopeless cell is the expensive kind (a failed seed
 // burns the full attempt budget): a cell stops early once 3 seeds have
@@ -29,6 +39,7 @@
 //
 //   node scripts/measure-tiling-density-ceilings.mjs                # full sweep
 //   node scripts/measure-tiling-density-ceilings.mjs --shape=hex    # one shape
+//   node scripts/measure-tiling-density-ceilings.mjs --shape=rect   # Classic only
 //
 // Findings are logged in CHALLENGE_250_MAP.md (density-ceiling appendix).
 // Not in CI: the full run is minutes to tens of minutes.
@@ -43,6 +54,9 @@ import { createDailyRNG } from '../src/logic/seededRandom.js';
 const K_SEEDS = 10;
 const K_STACK = 6;
 const DENSITIES = [0.28, 0.30, 0.32, 0.34, 0.36, 0.38];
+const STACK_DENSITIES = [0.28, 0.30, 0.34];
+const RECT_SIZES = [[9, 9], [11, 11], [12, 12]];
+const RECT_DENSITIES = [0.34, 0.38, 0.40, 0.42, 0.44, 0.46, 0.48, 0.50];
 const CELL_BUDGET_MS = 120000;
 const FAIL_STOP = 3;
 const STACK = ['locked', 'sonar', 'walls'];
@@ -105,8 +119,56 @@ function line(label, c, kSeeds) {
     + (Number.isFinite(c.medPpc) ? `  ppc ${c.medPpc.toFixed(2)}  tier ${c.medTier}` : '');
 }
 
+// Classic density sweep: how high can the rectangle go? generateBoard's
+// terminal fallback can return an uncertified board, so certification is
+// checked here exactly as the challenge retry loop would. Alongside rate /
+// time / par-per-cell, each certified board's HIGH CLUE DIGITS are counted
+// (safe cells whose true adjacency is 6, 7, or 8) — the tail the digit
+// studies measured as unreachable by selection at daily densities.
+function measureRectCell(rows, cols, density) {
+  const cells = rows * cols;
+  const mines = Math.round(cells * density);
+  const fr = Math.floor(rows / 2), fc = Math.floor(cols / 2);
+  const t0 = Date.now();
+  let ok = 0, fails = 0, tried = 0;
+  const times = [], ppcs = [], sixes = [], sevens = [], eights = [];
+  for (let k = 0; k < K_SEEDS; k++) {
+    if (fails >= FAIL_STOP || Date.now() - t0 > CELL_BUDGET_MS) break;
+    tried++;
+    const rng = createDailyRNG(`densitysweep:rect:${rows}x${cols}d${Math.round(density * 100)}:${k}`);
+    const s0 = Date.now();
+    const board = generateBoard(rows, cols, mines, fr, fc, rng);
+    const check = board ? isBoardSolvable(board, rows, cols, fr, fc) : null;
+    if (board) cleanSolverArtifacts(board);
+    times.push(Date.now() - s0);
+    const certified = check && check.solvable && check.remainingUnknowns === 0;
+    if (!certified) { fails++; continue; }
+    ok++;
+    let n6 = 0, n7 = 0, n8 = 0;
+    for (const row of board) for (const cell of row) {
+      if (cell.isMine) continue;
+      if (cell.adjacentMines === 6) n6++;
+      else if (cell.adjacentMines === 7) n7++;
+      else if (cell.adjacentMines === 8) n8++;
+    }
+    sixes.push(n6); sevens.push(n7); eights.push(n8);
+    const f = computeDailyFeatures(
+      { board, rows, cols, totalMines: mines, activeGimmicks: [], rngSeed: 'x' }, check,
+    );
+    ppcs.push(predictPar(f) / cells);
+  }
+  return {
+    cells, mines, ok, tried,
+    medMs: median(times), worstMs: Math.max(...times),
+    medPpc: ppcs.length ? median(ppcs) : NaN,
+    med6: sixes.length ? median(sixes) : NaN,
+    med7: sevens.length ? median(sevens) : NaN,
+    med8: eights.length ? median(eights) : NaN,
+  };
+}
+
 const shapeFilter = process.argv.find((a) => a.startsWith('--shape='))?.slice(8) || null;
-const shapes = shapeFilter ? [shapeFilter] : TILING_TYPES;
+const shapes = shapeFilter && shapeFilter !== 'rect' ? [shapeFilter] : (shapeFilter === 'rect' ? [] : TILING_TYPES);
 
 for (const type of shapes) {
   if (!SIZES[type]) { console.error(`unknown shape '${type}'`); process.exit(1); }
@@ -117,38 +179,27 @@ for (const type of shapes) {
       console.log(line(`${M}x${N} d${density.toFixed(2)}`, c, K_SEEDS));
     }
   }
-  console.log(`   -- 3-stack spot check (${STACK.join('+')}), mid size --`);
-  const mid = SIZES[type][Math.min(1, SIZES[type].length - 1)];
-  for (const density of [0.30, 0.34]) {
-    const c = measureCell(type, mid[0], mid[1], density, STACK, K_STACK, 'stack');
-    console.log(line(`${mid[0]}x${mid[1]} d${density.toFixed(2)}`, c, K_STACK));
+  console.log(`   -- 3-stack check (${STACK.join('+')}), every size --`);
+  for (const [M, N] of SIZES[type]) {
+    for (const density of STACK_DENSITIES) {
+      const c = measureCell(type, M, N, density, STACK, K_STACK, 'stack');
+      console.log(line(`${M}x${N} d${density.toFixed(2)}`, c, K_STACK));
+    }
   }
 }
 
-// Rectangular reference at the established 0.34 challenge cap and around it,
-// so the tiling numbers read against a familiar baseline. generateBoard's
-// terminal fallback can return an uncertified board, so certification is
-// checked here exactly as the challenge retry loop would.
-if (!shapeFilter) {
-  console.log('\n== Classic 12x12 reference ==');
-  for (const density of [0.30, 0.34, 0.38]) {
-    const mines = Math.round(144 * density);
-    const t0 = Date.now();
-    let ok = 0, tried = 0;
-    const times = [];
-    for (let k = 0; k < K_SEEDS; k++) {
-      if (Date.now() - t0 > CELL_BUDGET_MS) break;
-      tried++;
-      const rng = createDailyRNG(`densitysweep:rect:12x12d${Math.round(density * 100)}:${k}`);
-      const s0 = Date.now();
-      const board = generateBoard(12, 12, mines, 6, 6, rng);
-      const check = board ? isBoardSolvable(board, 12, 12, 6, 6) : null;
-      if (board) cleanSolverArtifacts(board);
-      times.push(Date.now() - s0);
-      if (check && check.solvable && check.remainingUnknowns === 0) ok++;
+if (!shapeFilter || shapeFilter === 'rect') {
+  console.log('\n== Classic density sweep (success · time · ppc · high digits) ==');
+  for (const [rows, cols] of RECT_SIZES) {
+    for (const density of RECT_DENSITIES) {
+      const c = measureRectCell(rows, cols, density);
+      const rate = `${c.ok}/${c.tried}${c.tried < K_SEEDS ? ` (stopped early of ${K_SEEDS})` : ''}`;
+      console.log(`   ${rows}x${cols} d${density.toFixed(2)}  ${String(c.cells).padStart(4)}c ${String(c.mines).padStart(3)}m`
+        + `  ${rate.padEnd(22)} med ${String(Math.round(c.medMs)).padStart(6)}ms  worst ${String(Math.round(c.worstMs)).padStart(6)}ms`
+        + (Number.isFinite(c.medPpc)
+          ? `  ppc ${c.medPpc.toFixed(2)}  6s ${c.med6}  7s ${c.med7}  8s ${c.med8}`
+          : ''));
     }
-    console.log(`   12x12 d${density.toFixed(2)}  144c ${String(mines).padStart(3)}m  ${ok}/${tried}`
-      + `  med ${String(Math.round(median(times))).padStart(6)}ms  worst ${String(Math.round(Math.max(...times))).padStart(6)}ms`);
   }
 }
 console.log('\nSweep complete.');

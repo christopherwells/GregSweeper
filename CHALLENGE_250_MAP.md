@@ -98,23 +98,26 @@ deduction-count floor (every board needs 3 to 5 real deductions, killing the
 one-click cascade levels) rather than by chasing a per-cell number on a small
 board.
 
-**Boosted Classic tops out near 3.2 to 3.4 s/cell, so T12 = 3.25 is set exactly
-there.** This is the calibration finding the sweep round asked for. Measured at
-the shipped equations: plain Classic at the 34% density cap reaches 2.45 s/cell
-(12×12, 49 mines, par 354s), and the 8-minute ceiling binds before the width cap
-does (14×12 at 34% prices 602s and is out). A strong 3-stack (locked + sonar +
-walls territory) adds roughly 30 to 50%, landing an 11-to-12-wide Classic at
-about 3.2 to 3.4 s/cell inside the ceiling. Setting the top authored tier at 4.0
-(Kites' natural daily-config number) would have made Classic structurally unable
-to reach it; at 3.25 every shape reaches T12 and Kites overshoots it on sparser
-configs (its 48-cell, 27%-density config prices 3.13). The "every shape lives at
-every tier" rule reads upward, and the probes say it also has a floor direction:
+**Classic reaches T12 plainly once the density cap is revisited (the answer
+moved, 2026-08-03).** The original calibration finding held the 34% cap fixed:
+plain Classic then capped at 2.45 s/cell (12×12, 49 mines, par 354s) and needed
+a strong 3-stack to reach about 3.2 to 3.4, which is where T12 = 3.25 was
+anchored. Christopher's follow-up ("revisit classic and see what density we can
+get up to") dissolved the premise: the Classic density sweep (section 7) finds
+certification never breaks through 0.50 density, and under the two real caps
+(the 2-second generation ruling and the 8-minute par ceiling) plain Classic
+reaches about 3.2 at 12×12 / 0.38 and about 3.8 at 11×11 / 0.46. T12 = 3.25
+therefore stays comfortably reachable by every shape, now including plain
+Classic with headroom to spare; whether the summit should instead rise toward
+~3.6 to 3.8 on the strength of the new Classic reach is his call at markup (the
+adopted anchors stand until he says otherwise). The "every shape lives at every
+tier" rule reads upward, and the probes say it also has a floor direction:
 
 ### Per-shape par-per-cell reach (measured, plain boards, shipped equations)
 
 | Shape         | Floor (gentlest proven config)   | Natural high end            | Tier range |
 |---------------|----------------------------------|-----------------------------|------------|
-| Classic       | ~0.5 (8×8 at 16%)                | 2.45 plain / ~3.3 stacked   | T1 to T12  |
+| Classic       | ~0.5 (8×8 at 16%)                | ~3.8 plain within the 2s + 8-min caps (section 7) | T1 to T12 |
 | Honeycomb     | 0.55 (49c at 18%)                | 1.98 at 0.28 / higher by density + stacks | T1 to T12 |
 | Octagons      | 0.58 (50c at 14%)                | 1.59 at 0.22 / higher by density + stacks | T1 to T12 |
 | 3D Cubes      | 0.98 (48c at 23%)                | 1.57 at 0.28 / ~3.3 with density + stacks | T5 to T12 |
@@ -337,30 +340,124 @@ are direct measurements either way.
 | Kites 48c      | 3.08 | 3.48 | 3.97 | 4.53 | 5.08 | 5.76 |
 | Kites 72c      | 5.16 | 6.62 | 7.33 | 8.49 | 10.6 | 12.3 |
 
-Classic 12×12 reference: 10/10 certified at 0.30 / 0.34 / 0.36 / 0.38, worst
-generation under half a second. The 34% cap was always a feel-and-speed
-convention; generation does not fail above it on the square grid either.
+### THE 2-SECOND GENERATION CAP (Christopher's ruling, 2026-08-03)
 
-### Generation cost (the real budget, two lattices)
+**No ladder spec ships whose measured worst-case generation exceeds 2 seconds
+in this sweep's frame** (desktop Node, production attempt budget; phone
+generation runs roughly 3 to 5 times slower, so the cap corresponds to a
+worst-case death-retry wait of very roughly 6 to 10 seconds on a phone, with
+medians far under). The cap is enforceable by measurement: the build-phase
+spec validator (the `validate-parlab-battery.mjs` pattern) times every spec
+and refuses any over the line. For reference, the shipped banded daily
+configs already comply (worst entry 827ms, dense rhombille).
 
-Fast everywhere (worst under ~0.2s desktop at any density): Honeycomb, Paving
-Stones, Petals, Octagons up to 98c (Octagons 128c reaches ~0.5s at 0.38).
-The two to watch, desktop worst cases:
+One measurement honesty note: boards are seed-deterministic but wall clock is
+not — the same 98-cell stacked Octagons cell measured 2.07s worst in one run
+and 1.70s in another (~±30% jitter). The validator should therefore hold
+specs to the cap WITH MARGIN (say, refuse above ~1.5s measured worst) rather
+than knife-edge, and cells written as "grazing" below are margin cases.
 
-- **3D Cubes**: plain 72c runs 1.7 to 3.2s at 0.34+; the 3-stack at 60c hit
-  2.4s (0.30) and 7.7s (0.34). On a phone that is tens of seconds per
-  death-retry. Planning rule: top-tier Cubes specs prefer 48 to 60 cells at
-  high density, or a 72c spec accepts multi-second regen.
-- **Kites**: plain fine to 0.32 (worst ~1.3s at 48c); the 3-stack at 48c hit
-  7.5s at 0.34. Same rule: dense stacked Kites stays at 36 to 48 cells.
+What the cap excludes, from the full sweep (3-stack = locked+sonar+walls at
+0.28 / 0.30 / 0.34, six seeds per cell, every size):
+
+- **Plain boards**: only the dense extremes of two lattices — 3D Cubes 72c at
+  0.38 (3.2s; 0.36 grazes at 1.9s) and Kites from ~0.34 up, seed-jittery
+  (48c swings 1.0 to 2.4s, 72c crosses at 0.36). Every other plain cell on
+  every lattice is comfortably under at every density through 0.38.
+- **Stacked Honeycomb, Octagons, Paving Stones, Petals: essentially
+  unconstrained.** All their stacked cells pass — Paving under 0.6s
+  everywhere, Petals under 1.8s (grazing only at 72c/0.34), Honeycomb under
+  1.8s (grazing at 110c/0.34), Octagons in through 98c/0.34 (the 1.7-to-2.1s
+  jitter case) with only its 128-cell board out at 0.34 (4.0s).
+- **Stacked 3D Cubes: 48 cells only.** 48c passes at every density (worst
+  1.2s); 60c misses at EVERY density (2.4 to 2.7s worst even at 0.28, 9.8s
+  at 0.34); 72c is far out (6.9 to 13.9s).
+- **Stacked Kites: 36 cells at any density, 48 cells only sparse.** 36c
+  passes everywhere (worst 0.8s); 48c passes at 0.28 (0.7s) and misses from
+  0.30 (2.7s, then 7.1s); 72c is far out (5.4 to 31.9s — the sweep's worst
+  single number).
+
+Consequences for the authored blocks: block 41's Cubes 3-stacks are 48-cell
+specs; block 44's dense Kites 2-stacks and the L250 crown live at 36 to 48
+cells (2-stacks sit between the plain and 3-stack columns and get their own
+validator timing at build); the finale gauntlet's Cubes and Kites entries
+follow the same sizes. Nothing else on the map is touched by the cap.
+
+### The Classic density sweep ("revisit classic", same-day follow-up)
+
+Sizes 9×9 / 11×11 / 12×12, densities 0.34 through 0.50, same instrument, plus
+the per-board yield of high clue digits (median count of 6s / 7s / 8s among
+certified boards):
+
+| Size / density | 0.34 | 0.38 | 0.40 | 0.42 | 0.44 | 0.46 | 0.48 | 0.50 |
+|---|---|---|---|---|---|---|---|---|
+| 9×9 ppc        | 1.29 | 1.41 | 1.53 | 1.67 | 1.93 | 2.00 | 2.16 | 2.37 |
+| 9×9 worst ms   | 224  | 108  | 306  | 393  | 1491 | 802  | 1797 | 943  |
+| 9×9 sixes      | 0    | 1    | 0.5  | 1.5  | 1.5  | 1    | 2    | 2    |
+| 11×11 ppc      | 1.83 | 2.39 | 2.52 | 3.02 | 3.39 | 3.81 | 4.44 | 4.98 |
+| 11×11 worst ms | 248  | 940  | 914  | 595  | 431  | 1522 | 1640 | 5863 |
+| 11×11 sixes    | 0    | 1    | 0.5  | 1    | 2    | 1.5  | 2.5  | 4.5  |
+| 12×12 ppc      | 2.52 | 3.16 | 3.96 | 4.36 | 4.86 | 5.78 | 7.23 | 7.88 |
+| 12×12 worst ms | 181  | 306  | 761  | 822  | 2004 | 2178 | 1191 | 6701 |
+| 12×12 sixes    | 1    | 2    | 2    | 2    | 2    | 3    | 3    | 4    |
+
+All 240 boards certified: **10/10 at every size and density through 0.50** —
+no-guess certification simply does not break on the square grid in this
+range. The findings:
+
+- **The 2-second cap is the binding constraint, and it lands at about 0.44 to
+  0.46 on 12×12, 0.48 on 11×11, and past 0.50 on 9×9** (smaller boards afford
+  more density). The old 34% cap was three densities' worth of headroom short
+  of the real wall.
+- **High digits arrive with density, unevenly by value.** Sixes become
+  routine from about 0.42 (medians 1.5 to 4.5 per board by 0.48); sevens stay
+  rare (median 0 almost everywhere, first nonzero medians at 0.44+); **a true
+  8 never appeared in 240 certified boards** — a safe cell ringed by eight
+  mines resists no-guess certification even at half mines, so 8s should be
+  treated as effectively out of reach rather than dialable.
+- **Plain Classic now reaches T12**: 12×12 at 0.38 prices 3.16 s/cell (par
+  455s, inside the 8-minute ceiling, worst generation 306ms), and 11×11 at
+  0.46 prices 3.81 (par 461s, worst 1522ms). Stacks become a flavor choice at
+  the summit rather than the only route. Note the extrapolation caveat at
+  full strength here: the daily fit saw densities up to ~0.30, so pricing at
+  0.42+ is far outside the fitted range — the certification, time, and digit
+  columns are direct measurements; the ppc column above ~0.38 is the model's
+  increasingly speculative guess.
+- The 8-minute par ceiling still trims the top: 12×12 above ~0.38 and 11×11
+  above ~0.46 price past 480s, so the densest playable Classic lives on the
+  smaller sizes.
+
+### Generation cost against the cap (the two heavy lattices)
+
+Fast everywhere at any swept density (worst under ~0.2s desktop): Honeycomb,
+Paving Stones, Petals, Octagons up to 98c (Octagons 128c reaches ~0.5s at
+0.38). The two to watch, desktop worst cases:
+
+- **3D Cubes**: plain 72c runs 1.7 to 1.9s at 0.34 to 0.36 (inside the cap)
+  and 3.2s at 0.38 (out); stacked, the mid-size check was already out at
+  0.30. Top-tier Cubes specs live at 48 to 60 cells when stacked, 72c only
+  plain and at or under 0.36.
+- **Kites**: plain fine through 0.32 everywhere; above that the line gets
+  seed-jittery — 48c worst swings 1.0 to 2.4s across 0.34 to 0.38, 72c
+  crosses cleanly at 0.36 (2.2s) — so plain dense Kites needs per-spec
+  validator timing rather than a density rule of thumb. Stacked 48c is far
+  out (7.5s at 0.34); dense stacked Kites stays at 36 to 48 cells and modest
+  density — which its natural T12 window (0.28 to 0.30, below) wants anyway.
 
 ### What the sweep changes in the plan
 
-- **Every T12 need is comfortably inside the proven range.** T12 = 3.25 s/cell
-  is reachable on every shape without leaving it (Honeycomb 110c at ~0.32,
-  Octagons 98c at ~0.33, Cubes 72c at ~0.36 plain or 0.34 plus a stack,
-  Petals 72c at ~0.32, Kites 36c at ~0.30, Paving and Classic via size +
-  stacks), so no spec needs a density the sweep did not prove.
+- **Every T12 need is inside the proven range, and inside the 2-second cap.**
+  T12 = 3.25 s/cell routes per shape: Honeycomb 110c at ~0.32; Octagons 98c
+  at ~0.33; Petals 72c at ~0.32 (or stacked 72c at 0.28, 3.13 at 0.4s);
+  Kites 36c at ~0.30 (its stacked 36c prices 4.25 at 0.30 with room to
+  spare); Classic plain at 12×12/0.38 or 11×11/~0.44; Paving via its 84-cell
+  rung plus stacks (stacked 84c at 0.34 prices 1.86, so Paving alone still
+  needs the bigger 112-cell board or a heavier stack — the one shape whose
+  T12 spec the build phase must construct and validate rather than read off
+  this sweep). 3D Cubes is the narrowest: 72c plain at 0.36 grazes the cap
+  (1.9s, a validator-margin case), 60c plain at 0.38 prices 3.02 just under
+  target, and its stacked route (48c) tops at 2.33 — Cubes T12 exists but
+  every route is tight, worth a deliberate build-phase pass.
 - **Paving Stones' density insensitivity is now measured at every size**: ppc
   is flat to three densities' width across its whole row (per-mine deviation
   cancels the base rate). Density is not merely a weak lever for Paving
