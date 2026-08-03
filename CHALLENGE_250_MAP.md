@@ -24,9 +24,11 @@ probe constraint stands: a shape cannot intro below its par-per-cell floor
 (section 3), and Kites cannot price below about 1.75 s/cell on any proven
 config, which keeps its intro at tier 8 or later regardless.
 
-**3. Numeric tier anchors: ADOPTED NOW (T1 0.55 through T12 3.25 s/cell).
+**3. Numeric tier anchors: ADOPTED NOW (T1 0.55 through T12 3.60 s/cell).
 RULED** on his "I think we have enough data" call, superseding the interview's
-wait-for-live-scores hedge. The reasoning: Challenge-250 ships bundled with the
+wait-for-live-scores hedge; the summit moved 3.25 to 3.60 in his second-pass
+ruling the same day, once the Classic density sweep showed the reach ("we can
+move the difficulty ceiling up some but it'd have to be 3.6 at max"). The reasoning: Challenge-250 ships bundled with the
 rotation flip, so no pre-launch live tiling data exists under any plan; the
 86-board battery is a designed instrument that measured exactly the axes the
 anchors need; challenge stays out of the par fit, so the anchors cannot pollute
@@ -57,9 +59,15 @@ that shape's specs; indices and the block map do not move.
   relax-to-ship.
 - **Pressure plates retire from the ladder** (Chaos-only). MineShift stays
   Chaos-only.
-- **Past L250 the game is endless** at the frozen top tier: mixed board lengths
-  at fixed intensity, checkpoints keep landing every 5, banked forever; max
-  level is the brag stat.
+- **Past L250 the game is endless, UNBOUNDED ABOVE T12** (his ruling
+  2026-08-03, superseding the earlier frozen-top-tier phrasing): endless
+  specs can be any difficulty at or above 3.6 s/cell that certifies, mixed
+  board lengths, checkpoints keep landing every 5, banked forever; max level
+  is the brag stat. The 5-to-12 s/cell monsters the density sweep priced are
+  exactly this zone's material. One flag for his confirmation: whether the
+  8-minute par ceiling also lifts in endless (his wording, "any difficulty
+  above 3.6 that is solveable", reads as solvability being the only
+  constraint; the 2-second generation cap is assumed to stand either way).
 - **Everyone replays from L1; no memento of the old 120 climb. Themes fully
   relock** and re-earn along a ladder re-spread over 250.
 
@@ -67,11 +75,13 @@ that shape's specs; indices and the block map do not move.
 
 ## 3. The currency: par-per-cell tiers
 
-### The ladder (numeric anchors ADOPTED 2026-08-03; lab-seeded, tuned post-flip
-only if a refit moves a shape materially)
+### The ladder (numeric anchors ADOPTED 2026-08-03; T12 raised to 3.60 in his
+same-day second-pass ruling; tuned post-flip only if a refit moves a shape
+materially)
 
-Twelve tiers, geometric steps of roughly ×1.18. Par examples show the anchor
-applied at two typical board sizes.
+Twelve tiers, geometric steps of roughly ×1.18 with a slightly larger final
+step up to the ruled summit. Par examples show the anchor applied at two
+typical board sizes.
 
 | Tier | s/cell | Par at ~72 cells | Par at ~110 cells | First reached |
 |------|--------|------------------|-------------------|---------------|
@@ -86,7 +96,7 @@ applied at two typical board sizes.
 | T9   | 2.15   | 155s             | 237s              | Block 26      |
 | T10  | 2.55   | 184s             | 281s              | Block 31      |
 | T11  | 2.90   | 209s             | 319s              | Block 36      |
-| T12  | 3.25   | 234s             | 358s              | Block 42      |
+| T12  | 3.60   | 259s             | 396s              | Block 42      |
 
 ### Two measured facts the ladder is built around
 
@@ -98,20 +108,21 @@ deduction-count floor (every board needs 3 to 5 real deductions, killing the
 one-click cascade levels) rather than by chasing a per-cell number on a small
 board.
 
-**Classic reaches T12 plainly once the density cap is revisited (the answer
-moved, 2026-08-03).** The original calibration finding held the 34% cap fixed:
-plain Classic then capped at 2.45 s/cell (12×12, 49 mines, par 354s) and needed
-a strong 3-stack to reach about 3.2 to 3.4, which is where T12 = 3.25 was
-anchored. Christopher's follow-up ("revisit classic and see what density we can
-get up to") dissolved the premise: the Classic density sweep (section 7) finds
-certification never breaks through 0.50 density, and under the two real caps
-(the 2-second generation ruling and the 8-minute par ceiling) plain Classic
-reaches about 3.2 at 12×12 / 0.38 and about 3.8 at 11×11 / 0.46. T12 = 3.25
-therefore stays comfortably reachable by every shape, now including plain
-Classic with headroom to spare; whether the summit should instead rise toward
-~3.6 to 3.8 on the strength of the new Classic reach is his call at markup (the
-adopted anchors stand until he says otherwise). The "every shape lives at every
-tier" rule reads upward, and the probes say it also has a floor direction:
+**Classic reaches T12 plainly once the density cap is revisited, and the
+summit was raised on that strength (both moves 2026-08-03).** The original
+calibration finding held the 34% cap fixed: plain Classic then capped at 2.45
+s/cell (12×12, 49 mines, par 354s) and needed a strong 3-stack to reach about
+3.2 to 3.4, which is where T12 first sat at 3.25. His follow-up ("revisit
+classic and see what density we can get up to") dissolved the premise: the
+Classic density sweep (section 7) finds certification never breaks through
+0.50 density, and under the two real caps (the 2-second generation ruling and
+the 8-minute par ceiling) plain Classic reaches about 3.2 at 12×12 / 0.38 and
+about 3.8 at 11×11 / 0.46. On that reach he raised the summit: **T12 = 3.60,
+his stated max** ("that means all the puzzles after would be super difficult"),
+with the endless zone above it unbounded. At 3.60 the 8-minute ceiling caps a
+T12 board at ~133 cells, so Classic's summit lives on 11×11. The "every shape
+lives at every tier" rule reads upward, and the probes say it also has a floor
+direction:
 
 ### Per-shape par-per-cell reach (measured, plain boards, shipped equations)
 
@@ -220,7 +231,7 @@ column = the block's plateau (parenthesized tier = intro dip below the line).
 | 48 | 236-240 | T12 | gauntlet | **FINALE I**: Classic → Honeycomb → Octagons → Paving Stones → 3D Cubes, one per level. |
 | 49 | 241-245 | T12 | gauntlet | **FINALE II**: Petals → Kites → Classic → 3D Cubes → Paving Stones. |
 | 50 | 246-250 | T12 | gauntlet | **FINALE III**: the seven-shape summit; L250 = Kites, 3-stacked, the crown. |
-| 51+ | 251+   | T12 | endless | Frozen top tier, mixed board lengths at fixed intensity; checkpoints every 5, banked forever. |
+| 51+ | 251+   | T12+ | endless | UNBOUNDED above 3.6 s/cell (his ruling): any certified spec at or past the summit, mixed board lengths; checkpoints every 5, banked forever. |
 
 ### Consistency checks the table passes
 
@@ -353,9 +364,40 @@ configs already comply (worst entry 827ms, dense rhombille).
 
 One measurement honesty note: boards are seed-deterministic but wall clock is
 not. The same 98-cell stacked Octagons cell measured 2.07s worst in one run
-and 1.70s in another (~±30% jitter). The validator should therefore hold
-specs to the cap WITH MARGIN (say, refuse above ~1.5s measured worst) rather
-than knife-edge, and cells written as "grazing" below are margin cases.
+and 1.70s in another (~±30% jitter). **His ruling on this: no margin needed.**
+The cap is 2 seconds as the validator measures it, and a board that jitters
+to under 3 seconds on some other run is fine. Cells written as "grazing"
+below are therefore simply IN; only cells that measure over 2s are out.
+
+### Why stacked Cubes is slow, and the better generator (profiled 2026-08-03)
+
+Phase-timing the stacked 60-cell Cubes cell (the "relatively small board"
+case): **99 to 100% of all time is base mine placement**
+(`generateConstructive`, the solver-in-the-loop constructive placer), and
+the dominant waste is DISCARDED BASES. The current tiling loop builds a
+certified base, applies the gimmicks, and if the gimmicked board fails
+certification or comes back decorative-only it throws the whole base away
+and constructs a new one. Measured across six seeds each: stacked Cubes 60c
+paid 97 attempts to ship 6 boards (56 certified bases discarded on
+post-gimmick certification failure, 35 more on decorative-only); 72c paid
+45 for 6; stacked Kites 48c paid 55 for 6. Gimmick application, the final
+solve, and the load-bearing strips are ~1% combined; construction never
+failed outright.
+
+The fix is the pattern the rectangular challenge path has always used:
+**re-roll the gimmicks on the SAME certified base** (challenge does up to 25
+gimmick re-rolls before rebuilding a base). With an 8-to-16x measured waste
+factor, the stacked cells should come down by roughly that order, which
+would put every stacked Cubes and Kites size back inside the cap and
+unlock the summit routes below. Build notes for that change: it reorders
+the generation search, so it lands BEFORE the flip (no tiling canonicals
+exist yet, so no stored contract moves), and the banded daily config
+calibrator plus the frozen draw goldens get re-run and re-pinned in the
+same commit. A second, orthogonal option if anything still grazes:
+pre-generate the next layout in the background during play (spec-is-
+identity makes layouts interchangeable), which hides generation time
+entirely at the cost of a worker; worth keeping in pocket for the endless
+zone's extreme boards rather than building now.
 
 What the cap excludes, from the full sweep (3-stack = locked+sonar+walls at
 0.28 / 0.30 / 0.34, six seeds per cell, every size):
@@ -412,9 +454,19 @@ range. The findings:
 - **High digits arrive with density, unevenly by value.** Sixes become
   routine from about 0.42 (medians 1.5 to 4.5 per board by 0.48); sevens stay
   rare (median 0 almost everywhere, first nonzero medians at 0.44+); **a true
-  8 never appeared in 240 certified boards**: a safe cell ringed by eight
-  mines resists no-guess certification even at half mines, so 8s should be
-  treated as effectively out of reach rather than dialable.
+  8 never appeared in 240 certified boards, and that is STRUCTURAL, not
+  statistical** (his read, verified against the solver): an 8's only route is
+  the mine-counter endgame, where every mine is puzzled out and the last
+  remaining cell is the 8, because every neighbor of an 8-cell is a mine, so
+  no revealed clue is ever adjacent to it and no local pattern can name it.
+  The certifier carries NO global mine-count constraint (boardSolver has no
+  totalMines term at all), so that endgame route does not exist in-engine and
+  a plain board containing an 8 can never certify, at any density. The one
+  theoretical exception is a gimmick whose region reaches past adjacency (a
+  sonar or wormhole constraint can name the cell), which is an exotic corner,
+  not a dial. Adding the global-count constraint to the certifier would be
+  real solver-core work with blast radius on every certificate; not worth it
+  for a novelty digit unless it earns its way in on other grounds.
 - **Plain Classic now reaches T12**: 12×12 at 0.38 prices 3.16 s/cell (par
   455s, inside the 8-minute ceiling, worst generation 306ms), and 11×11 at
   0.46 prices 3.81 (par 461s, worst 1522ms). Stacks become a flavor choice at
@@ -434,9 +486,10 @@ Paving Stones, Petals, Octagons up to 98c (Octagons 128c reaches ~0.5s at
 0.38). The two to watch, desktop worst cases:
 
 - **3D Cubes**: plain 72c runs 1.7 to 1.9s at 0.34 to 0.36 (inside the cap)
-  and 3.2s at 0.38 (out); stacked, the mid-size check was already out at
-  0.30. Top-tier Cubes specs live at 48 to 60 cells when stacked, 72c only
-  plain and at or under 0.36.
+  and 3.2s at 0.38 (out); stacked it fits only at 48 cells (the frontier
+  above). Until the base-reuse generator change lands, top-tier Cubes specs
+  live at 48 cells stacked or 72 cells plain at or under 0.36; after it,
+  the whole stacked range is expected back inside the cap.
 - **Kites**: plain fine through 0.32 everywhere; above that the line gets
   seed-jittery (48c worst swings 1.0 to 2.4s across 0.34 to 0.38; 72c
   crosses cleanly at 0.36 with 2.2s), so plain dense Kites needs per-spec
@@ -446,27 +499,31 @@ Paving Stones, Petals, Octagons up to 98c (Octagons 128c reaches ~0.5s at
 
 ### What the sweep changes in the plan
 
-- **Every T12 need is inside the proven range, and inside the 2-second cap.**
-  T12 = 3.25 s/cell routes per shape: Honeycomb 110c at ~0.32; Octagons 98c
-  at ~0.33; Petals 72c at ~0.32 (or stacked 72c at 0.28, 3.13 at 0.4s);
-  Kites 36c at ~0.30 (its stacked 36c prices 4.25 at 0.30 with room to
-  spare); Classic plain at 12×12/0.38 or 11×11/~0.44; Paving via its 84-cell
-  rung plus stacks (stacked 84c at 0.34 prices 1.86, so Paving alone still
-  needs the bigger 112-cell board or a heavier stack: the one shape whose
-  T12 spec the build phase must construct and validate rather than read off
-  this sweep). 3D Cubes is the narrowest: 72c plain at 0.36 grazes the cap
-  (1.9s, a validator-margin case), 60c plain at 0.38 prices 3.02 just under
-  target, and its stacked route (48c) tops at 2.33; Cubes T12 exists but
-  every route is tight, worth a deliberate build-phase pass.
+- **T12 at the ruled 3.60: five shapes have measured routes; Cubes and
+  Paving need the generator fix and a constructed spec respectively.**
+  Measured routes inside both caps: Honeycomb 110c at 0.34 (3.82, par 420s,
+  10ms); Octagons 98c at 0.34 (3.71, par 364s); Petals 72c at 0.34 (3.71,
+  par 267s) or 96c at 0.28 (3.76); Kites 36c at 0.34 to 0.36 (3.62 to 4.14,
+  fast); Classic 11×11 at ~0.45 (3.39 to 3.81, par ~450s, worst ~1.5s, in
+  under the as-measured cap ruling). **3D Cubes cannot reach 3.60 under the
+  cap with the CURRENT generator**: its plain route (72c at 0.38, ppc 3.65)
+  measures 3.2s and its stacked routes are far out, so its summit depends
+  on the base-reuse generator change (the profile above), which is expected
+  to clear it comfortably. **Paving Stones' summit must be constructed**:
+  its measured max is 1.9 stacked at 84c, so T12 needs its 112-cell rung
+  (8x8 lattice, storable) plus a heavy stack, estimated ~3.1 to 3.6,
+  validator-proven at build. Until the generator change lands and both
+  specs prove out, the honest status is: T12 = 3.60 is reachable today on
+  five of seven shapes.
 - **Paving Stones' density insensitivity is now measured at every size**: ppc
   is flat to three densities' width across its whole row (per-mine deviation
   cancels the base rate). Density is not merely a weak lever for Paving
   Stones; it is NOT a lever. Its tier boosts are size and stacks, full stop.
-- **Kites' natural T12 window is low density** (0.28 to 0.30 at 36 to 48
-  cells), which conveniently also keeps its generation fast. Its dense
-  extreme (72c at 0.30+ pricing 6+ s/cell) belongs to the endless zone's
-  flavor space, not the authored ladder, and would breach the 8-minute
-  ceiling anyway.
+- **Kites' T12 window at the ruled 3.60 summit is 36 cells at 0.34 to 0.36**
+  (48 cells at ~0.30 to 0.32 also lands), which conveniently also keeps its
+  generation fast. Its dense extreme (72c at 0.30+ pricing 6+ s/cell) is now
+  exactly the endless zone's material under the unbounded-above-3.6 ruling,
+  subject to the 8-minute-ceiling flag in section 2.
 - Tier-level distributions rode along: Kites 72c runs techniqueLevel 2 at
   every density (the enumeration-rich lattice); Cubes' plain sweep boards sit
   at tier 0 with its 3-stacks at tier 1 (Pass A until something forces Pass
