@@ -21,11 +21,11 @@ import { coastlineBoardFor } from '../src/logic/coastlineLink.js';
 
 // ── Battery design ───────────────────────────────────────────────────────
 
-test('the battery is 82 boards (post-trim) in chunks of 5 with stable unique ids and seeds', () => {
+test('the battery is 86 boards (post-trim + worm addendum) in chunks of 5 with stable unique ids and seeds', () => {
   // 105 originally; 82 after the board-66 trim (Christopher's call,
   // 2026-08-03: pinned cells stop buying precision — see GRID_PLAN and
   // MODIFIER_PLAN in parLab.js for the per-cut reasoning).
-  assert.equal(PAR_LAB_BATTERY.length, 82);
+  assert.equal(PAR_LAB_BATTERY.length, 86);
   assert.equal(PAR_LAB_CHUNK_SIZE, 5);
   const ids = new Set();
   const seeds = new Set();
@@ -35,9 +35,9 @@ test('the battery is 82 boards (post-trim) in chunks of 5 with stable unique ids
     ids.add(b.id);
     seeds.add(parLabSeed(b, 0));
   });
-  assert.equal(ids.size, 82, 'ids must be unique — progress is keyed on them');
-  assert.equal(seeds.size, 82, 'seeds must be unique — two boards must never share a layout');
-  assert.equal(PAR_LAB_BATTERY.at(-1).chunk, 17);
+  assert.equal(ids.size, 86, 'ids must be unique — progress is keyed on them');
+  assert.equal(seeds.size, 86, 'seeds must be unique — two boards must never share a layout');
+  assert.equal(PAR_LAB_BATTERY.at(-1).chunk, 18);
 });
 
 test('composition: 18 warm-ups in same-shape runs of three, 7 square anchors interleaved, per-shape trimmed grids', () => {
@@ -90,7 +90,7 @@ test('composition: 18 warm-ups in same-shape runs of three, 7 square anchors int
   // 0.28-density corners, floret's small-cell split). Modifier singles are
   // the mechanism core (see MODIFIER_PLAN's trim note).
   const GRID_SIZES = { hex: 6, '4.8.8': 6, rhombille: 6, cairo: 9, floret: 9, deltoidal: 11 };
-  const MOD_SIZES = { hex: 2, '4.8.8': 2, rhombille: 3, cairo: 0, floret: 2, deltoidal: 1 };
+  const MOD_SIZES = { hex: 3, '4.8.8': 2, rhombille: 4, cairo: 1, floret: 3, deltoidal: 1 };
   for (const shape of TILING_TYPES) {
     const all = PAR_LAB_BATTERY.filter((b) => b.shape === shape);
     const plain = all.filter((b) => !b.warmup && b.gimmicks.length === 0);
@@ -151,12 +151,12 @@ test('modifier coverage follows the mechanism: region-geometry gimmicks oversamp
   assert.ok(counts.get('sonar') >= 3, 'sonar: depth-2 graph ball spans the valence arc (6, 9, 10)');
   assert.ok(counts.get('compass') >= 3, 'compass: three direction families across the lattices');
   assert.ok(counts.get('wormhole') >= 2, 'wormhole: pair-sum ceiling varies by lattice');
-  // ASSERTED ABSENCE, not an oversight (the rhombille no-Pass-B pattern):
-  // every worm single was cut because the side-only crawl ruling
-  // (challenge-250 design, 2026-08-03 — worms cross sides, never corners)
-  // changes the mechanic they would measure. Worm timing waits for the new
-  // crawl to ship; a worm board reappearing here means someone forgot.
-  assert.equal(counts.get('worm') || 0, 0, 'worm singles wait for the side-only crawl');
+  // The worm addendum (his call at battery completion, 2026-08-03): the
+  // singles cut at board 66 returned once the mechanics they measure had
+  // SHIPPED — the side-only crawl (#217) and set pace (#218). Four boards
+  // across the crawl-graph extremes (hex 6 exits, cairo 5, rhombille 4 on
+  // the valence-10 lattice, floret's rotated pinwheel).
+  assert.equal(counts.get('worm') || 0, 4, 'worm singles measure the shipped side-only, set-pace crawl');
   // Neutrality spot-checks survive as exactly one each on a hard lattice.
   assert.equal(counts.get('liar') || 0, 1, 'liar: one neutrality spot-check');
   assert.equal(counts.get('locked') || 0, 1, 'locked: one neutrality spot-check');

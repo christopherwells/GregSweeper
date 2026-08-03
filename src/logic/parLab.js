@@ -237,13 +237,24 @@ const RECT_ANCHORS = [
 // mid wormhole cells) — pooled gimmick shifts identify from live tiling
 // dailies eventually, unlike the size/density slopes only this lab can
 // supply.
+// THE WORM ADDENDUM (his call at battery completion, 2026-08-03: "check
+// the worm and how it slows different games down"): the worm singles cut
+// at board 66 return now that the mechanics they measure have SHIPPED —
+// the side-only crawl (#217: a worm crosses sides, never corners) and the
+// set pace (#218: fixed cadence x pace trait). Four boards across the
+// crawl-graph extremes: hex (six equal exits, the purest crawl), cairo
+// (five-sided pentagons), rhombille (4-exit crawl on the valence-10
+// lattice — every covered number is load-bearing for the no-Pass-B
+// enumeration), and floret (the rotated pinwheel + the lattice whose
+// centering fix just landed). wormEvents ride each row, so the fit gets
+// realized doses, not just schedules.
 const MODIFIER_PLAN = {
-  hex:       ['sonar', 'compass'],
+  hex:       ['sonar', 'compass', 'worm'],
   '4.8.8':   ['compass', 'wormhole'],
-  cairo:     [],
+  cairo:     ['worm'],
   deltoidal: ['sonar'],
-  floret:    ['compass', 'liar'],
-  rhombille: ['sonar', 'wormhole', 'locked'],
+  floret:    ['compass', 'liar', 'worm'],
+  rhombille: ['sonar', 'wormhole', 'locked', 'worm'],
 };
 
 const mineCountFor = (total, density) => Math.max(5, Math.round(total * density));
