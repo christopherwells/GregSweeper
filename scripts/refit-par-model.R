@@ -509,6 +509,50 @@ INTERACTION_PRIOR_SD <- 0.5
 # lognormal-prior median (or a prior-blend deviation) never reaches predictPar.
 NEW_FEATURE_DATA_THRESHOLD <- 20
 
+# ── Par Lab prior seeding (Christopher's four rulings, 2026-08-03) ──────
+# The completed 86-board Par Lab battery (scripts/fit-parlab-priors.qmd; its
+# posteriors frozen in scripts/data/parlab-prior-centers.json) measured the
+# per-shape deviations live data structurally cannot identify: the rotation
+# ships one fixed config per shape, so a shape's cellCount/totalMines
+# deviation columns are exactly collinear with its intercept deviation. His
+# rulings on how the lab enters this fit:
+#   1. SEED THE SHIPPED BLOCKS NOW: a lab-seeded deviation ships its center
+#      even before live rows exist (the flip must not price a deltoidal
+#      daily at parity), and the fitted posterior takes over continuously
+#      as live rows accumulate.
+#   2. Strikes as symptom: the centers come from the lab's primary model
+#      (no strike regressor), matching this fit's own bombs convention.
+#   3. DOUBLED lab widths: normal(lab mean, 2 x lab sd). The center holds,
+#      live data can override at moderate evidence — honest about one
+#      practiced player's multipliers pricing everyone.
+#   4. The n=1 gimmick observation cells stay ZERO-centered wide (his
+#      small-n ruling: observations, not conclusions). Enforced by
+#      LAB_SEED_MIN_ROWS, which the core grid terms (8-12 lab rows) pass
+#      and the single-board gimmick cells (1 row) do not.
+# The loader fails SOFT — a missing/malformed file degrades to zero-centered
+# deviations, the pre-seeding behavior — because the nightly must fit either
+# way. A silently lost seeding still fails LOUDLY: the contract test pins
+# difficulty.js against the JSON, so the refit's own commit reddens CI.
+LAB_PRIORS_PATH      <- "scripts/data/parlab-prior-centers.json"
+LAB_SEED_MIN_ROWS    <- 5
+LAB_PRIOR_WIDTH_MULT <- 2
+lab_seed_devs <- tryCatch({
+  lab <- fromJSON(LAB_PRIORS_PATH, simplifyVector = FALSE)
+  out <- list()
+  for (nm in names(lab$deviations %||% list())) {
+    d <- lab$deviations[[nm]]
+    if (nm %in% SHAPE_DEV_NAMES && (d$nRows %||% 0) >= LAB_SEED_MIN_ROWS) {
+      out[[nm]] <- list(mean = as.numeric(d$mean),
+                        sd   = as.numeric(d$sd) * LAB_PRIOR_WIDTH_MULT)
+    }
+  }
+  out
+}, error = function(e) {
+  message("  lab priors unavailable (", conditionMessage(e),
+          ") — shape deviations fall back to zero-centered")
+  list()
+})
+
 # Parse the current PAR_MODEL block out of difficulty.js. Used as the
 # "previous values" baseline for the drift sanity check and as the fallback
 # when no new fit runs.
@@ -746,12 +790,19 @@ build_priors <- function(means, fixed_names, deviation_names = character(0)) {
     }
   }
   for (nm in deviation_names) {
-    # No means/PRIOR_SIGMAS lookup: a deviation's center is fixed at zero by
-    # design and its width is the one documented INTERACTION_PRIOR_SD.
-    parts[[length(parts) + 1]] <- set_prior(
-      sprintf("normal(0, %f)", INTERACTION_PRIOR_SD),
-      class = "b", coef = nm, nlpar = "dev"
-    )
+    # No means/PRIOR_SIGMAS lookup: a deviation's center is zero by design —
+    # EXCEPT the lab-seeded core terms, whose centers come from the Par Lab
+    # posteriors at doubled width (the seeding block by the shape registry).
+    # Unseeded terms, including every gimmick-by-shape cell, keep the
+    # zero-centered signed normal at the documented INTERACTION_PRIOR_SD.
+    seed <- lab_seed_devs[[nm]]
+    parts[[length(parts) + 1]] <- if (!is.null(seed)) {
+      set_prior(sprintf("normal(%f, %f)", seed$mean, seed$sd),
+                class = "b", coef = nm, nlpar = "dev")
+    } else {
+      set_prior(sprintf("normal(0, %f)", INTERACTION_PRIOR_SD),
+                class = "b", coef = nm, nlpar = "dev")
+    }
   }
   # Residual SD on the LOG scale (completion-time log-residuals are O(0.1-0.5)).
   parts[[length(parts) + 1]] <- set_prior("normal(0, 1)", class = "sigma")
@@ -2027,10 +2078,32 @@ if (fit_method == "brms-ranef") {
       earned_shape_devs[[nm]] <- as.numeric(fe_all[nm, "Estimate"])
       message(sprintf("  shape deviation %s: %+.5f (earned on %d nonzero rows)",
                       nm, earned_shape_devs[[nm]], n_dev))
+    } else if (!is.null(lab_seed_devs[[nm]])) {
+      # Lab-seeded terms have no 20-row guard: that guard exists to stop a
+      # bare prior median reaching predictPar, and a lab center is not a bare
+      # prior — it is 86 boards of designed data. Below the threshold the
+      # posterior is the lab prior gently updated by the first live rows,
+      # which is exactly what should ship.
+      earned_shape_devs[[nm]] <- as.numeric(fe_all[nm, "Estimate"])
+      message(sprintf("  shape deviation %s: %+.5f (lab-seeded prior, %d live rows)",
+                      nm, earned_shape_devs[[nm]], n_dev))
     } else {
       message(sprintf("  shape deviation %s: unearned (%d nonzero rows; need %d) — shipping 0",
                       nm, n_dev, NEW_FEATURE_DATA_THRESHOLD))
     }
+  }
+  # Lab-seeded terms with NO live rows never enter the formula at all (the
+  # per-column zero-variance gate), so they cannot appear in fe_all — ship
+  # their lab centers directly. This is the his-ruling half of the seeding:
+  # the composed blocks price the lattices from the day the rotation flips,
+  # not after each column accumulates NEW_FEATURE_DATA_THRESHOLD rows.
+  for (nm in setdiff(names(lab_seed_devs), rownames(fe_all))) {
+    earned_shape_devs[[nm]] <- lab_seed_devs[[nm]]$mean
+  }
+  if (length(lab_seed_devs) > 0) {
+    message(sprintf("  lab-seeded deviations shipping on the lab center alone: %d of %d",
+                    length(setdiff(names(lab_seed_devs), rownames(fe_all))),
+                    length(lab_seed_devs)))
   }
 
   # Median calibration (log scale): set the log-intercept so the mean of
@@ -2136,13 +2209,16 @@ if (fit_method == "brms-ranef") {
   }
 
   # ── Compose the per-shape equations (PAR_MODEL_SHAPES) ────────────────
-  # shape coefficient = final shipped base + earned deviation, per key. Every
-  # deviation unearned -> every block is numerically IDENTICAL to PAR_MODEL,
-  # which is the architecture's parity property (pinned by
-  # test/tilingParModelContract.test.mjs): at zero data a shape's equation
-  # collapses to the square's. Composed AFTER the bias correction, the worm
-  # bridge and the zero-guards, so a block is base-consistent with what
-  # actually ships in PAR_MODEL.
+  # shape coefficient = final shipped base + deviation, per key. Since the
+  # 2026-08-03 seeding ruling a deviation is the fitted posterior where its
+  # column carries live rows and the Par Lab center where it does not, so
+  # the blocks are lab-seeded rather than parity — the relationship
+  # (block minus base equals the lab center for every seeded term, exactly
+  # base for unseeded coefficients) is what
+  # test/tilingParModelContract.test.mjs pins against the frozen JSON.
+  # Composed AFTER the bias correction, the worm bridge and the
+  # zero-guards, so a block is base-consistent with what actually ships in
+  # PAR_MODEL.
   shape_models <- list()
   for (js_key in names(SHAPE_TABLE)) {
     stem <- SHAPE_TABLE[[js_key]]
@@ -2619,16 +2695,19 @@ new_src <- patch_js_markers(new_src, "// TIMED_PAR_MODEL:START",
                             "// TIMED_PAR_MODEL:END", timed_block)
 
 # ---- Per-shape block (PAR_MODEL_SHAPES markers) ----
-# One full composed equation per tiling (base + earned deviations, composed
-# in section 3). With every deviation unearned the six blocks are numerically
-# identical to PAR_MODEL, which is the parity property the contract test pins.
+# One full composed equation per tiling (base + deviations, composed in
+# section 3). The blocks are LAB-SEEDED (2026-08-03 ruling): each deviation
+# is the fitted posterior where live rows exist and the Par Lab prior center
+# where they do not, so a lattice prices as itself from the day the rotation
+# flips. The contract test pins block minus base against the frozen JSON.
 shapes_header <- c(
-  sprintf("Last refit: %s | composed: PAR_MODEL base + earned per-shape deviations",
+  sprintf("Last refit: %s | composed: PAR_MODEL base + per-shape deviations",
           Sys.Date()),
-  sprintf("A deviation ships only once its interaction column has %d nonzero fit",
+  "Deviations: fitted posterior where live rows exist; the Par Lab center",
+  "(scripts/data/parlab-prior-centers.json, the 2026-08-03 seeding ruling)",
+  sprintf("where none do; 0 for unseeded terms until %d nonzero fit rows",
           NEW_FEATURE_DATA_THRESHOLD),
-  "rows (NEW_FEATURE_DATA_THRESHOLD); unearned deviations leave a block",
-  "numerically IDENTICAL to PAR_MODEL (the parity property)."
+  "(NEW_FEATURE_DATA_THRESHOLD) earn them."
 )
 shapes_block <- emit_shape_models_block("PAR_MODEL_SHAPES", shapes_header,
                                         lapply(shape_models, ordered_model_fields))

@@ -4,14 +4,21 @@
 //
 // A tiling board no longer prices as PAR_MODEL plus a secPerShape* intercept
 // offset. Instead PAR_MODEL_SHAPES carries one FULL coefficient set per
-// tiling, composed by the nightly refit as base + EARNED deviations (a
-// deviation is a signed shape-by-feature interaction in ONE joint brms fit,
-// zeroed until its column has NEW_FEATURE_DATA_THRESHOLD nonzero rows), and
-// modelFor dispatches a feature vector to its block. These tests pin:
+// tiling, composed by the nightly refit as base + deviations (a deviation is
+// a signed shape-by-feature interaction in ONE joint brms fit), and modelFor
+// dispatches a feature vector to its block. Since 2026-08-03 the core
+// deviations are LAB-SEEDED (Christopher's seeding ruling): the completed
+// Par Lab battery's posteriors (scripts/data/parlab-prior-centers.json)
+// supply each core term's shipped center until live rows exist and its
+// prior center thereafter, while the n=1 gimmick cells stay zero-centered
+// (his observations-not-conclusions ruling) and unseeded terms keep the
+// NEW_FEATURE_DATA_THRESHOLD earn guard. These tests pin:
 //
-//  - the PARITY property: while every deviation is unearned, every shape
-//    block is numerically identical to PAR_MODEL, so par on every board is
-//    byte-identical to the pre-shape model;
+//  - the LAB-SEED property, replacing the launch parity property: block
+//    minus base equals the frozen lab center for every seeded term (within
+//    emission rounding) and exactly zero for every unseeded coefficient, so
+//    the blocks and the JSON cannot drift apart silently — and rectangles
+//    still price byte-identically to the pre-shape model;
 //  - the registry lockstep (blocks exactly cover TILING_TYPES, JS and R);
 //  - the DEATH of the two hand-maintained sprintf templates the generated
 //    emitter replaced (their slot/arg counts silently drifted twice);
@@ -54,6 +61,39 @@ const SHAPE_PREDICTORS = TILING_TYPES.map((t) => {
   return `shape${key}`;
 });
 
+// The frozen Par Lab posteriors the shipped blocks are seeded from, and the
+// two seeding constants mirrored from refit-par-model.R (which the R-side
+// test below pins against this file's values). Deviation-term names map back
+// to block coefficients through PREDICTOR_TO_COEF — the inverse of the R
+// COEF_TO_PREDICTOR table, mirrored here because the test cannot import R.
+const LAB = JSON.parse(readFileSync(
+  new URL('../scripts/data/parlab-prior-centers.json', import.meta.url), 'utf8'));
+const LAB_SEED_MIN_ROWS = 5;
+const PREDICTOR_TO_COEF = {
+  cellCount: 'secPerCell', totalMines: 'secPerMineFlag',
+  patternMoves: 'secPerPatternMove', searchMoves: 'secPerSearchMove',
+  wallEdgeCount: 'secPerWallEdge', zeroClusterCount: 'secPerZeroCluster',
+  mysteryCellCount: 'secPerMysteryCell', liarCellCount: 'secPerLiarCell',
+  lockedCellCount: 'secPerLockedCell', wormholePairCount: 'secPerWormholePair',
+  mirrorPairCount: 'secPerMirrorPair', sonarCellCount: 'secPerSonarCell',
+  compassCellCount: 'secPerCompassCell', wormLoad: 'secPerWormLoad',
+};
+// coefficient key -> lab deviation mean, per shape stem; only terms at or
+// above the seeding floor count (the n=1 gimmick cells stay zero-centered).
+function seededDevsFor(stem) {
+  const out = { intercept: 0 };
+  for (const coef of Object.values(PREDICTOR_TO_COEF)) out[coef] = 0;
+  for (const [term, d] of Object.entries(LAB.deviations)) {
+    if (d.nRows < LAB_SEED_MIN_ROWS) continue;
+    if (term === stem) out.intercept = d.mean;
+    else if (term.startsWith(`${stem}_x_`)) {
+      const coef = PREDICTOR_TO_COEF[term.slice(stem.length + 3)];
+      if (coef) out[coef] = d.mean;
+    }
+  }
+  return out;
+}
+
 // Realistic-ish feature vectors for the behavioral assertions.
 const FEATS = [
   { cellCount: 100, totalMines: 20, canonicalSubsetMoves: 2, genericSubsetMoves: 1,
@@ -80,19 +120,45 @@ test('every shape block has exactly PAR_MODEL’s key set', () => {
   }
 });
 
-test('PARITY: every shape block is numerically identical to PAR_MODEL while its deviations are unearned', () => {
-  // This is the architecture's safety property: composed = base + earned
-  // deviations, and no deviation has earned out, so the six blocks ARE the
-  // base model and par is byte-identical on every board.
+test('LAB SEED: every shape block = PAR_MODEL + its frozen lab deviation centers', () => {
+  // The seeding ruling's safety property, replacing launch parity: composed
+  // = base + deviation, where a deviation is the lab center for the 18
+  // seeded core terms (>= LAB_SEED_MIN_ROWS lab rows) and exactly zero for
+  // everything else. Pinning block minus base against the frozen JSON keeps
+  // the emitted difficulty.js and the lab artifact in lockstep — a nightly
+  // that silently lost the seeding (missing file, renamed term) reverts a
+  // block toward parity and fails here on its own commit.
   //
-  // A refit that earns a REAL deviation (>= NEW_FEATURE_DATA_THRESHOLD
-  // nonzero rows for that shape x feature column) will deliberately relax
-  // this assertion — update it then, having looked at the fit that earned it,
-  // to pin only the still-unearned blocks.
+  // Seeded terms compare within emission rounding (base and block round at
+  // 4-5 decimals, the JSON at 5); unseeded coefficients must equal the base
+  // EXACTLY, because both sides are the same float through the same
+  // formatter. Once live tiling rows accumulate and a fitted posterior
+  // replaces a lab center, relax the seeded tolerance for that term, having
+  // looked at the fit that moved it.
+  const TOL = 2e-4;
   for (const t of TILING_TYPES) {
-    assert.deepEqual(PAR_MODEL_SHAPES[t], PAR_MODEL,
-      `${t}: block diverges from PAR_MODEL with no earned deviation to justify it`);
+    const block = PAR_MODEL_SHAPES[t];
+    const devs = seededDevsFor(`shape${SHAPE_KEY[t]}`);
+    assert.equal(block.scale, 'log', `${t}: shape blocks are log-scale`);
+    for (const key of Object.keys(PAR_MODEL)) {
+      if (key === 'scale') continue;
+      const dev = devs[key] ?? 0;
+      const gap = block[key] - PAR_MODEL[key];
+      if (dev === 0) {
+        assert.equal(block[key], PAR_MODEL[key],
+          `${t}.${key}: unseeded coefficient must equal the base exactly`);
+      } else {
+        assert.ok(Math.abs(gap - dev) <= TOL,
+          `${t}.${key}: block - base = ${gap}, lab center = ${dev} (off by ${gap - dev})`);
+      }
+    }
   }
+  // The seeding floor really is doing work: the lab file must carry both
+  // sides of it (core terms above, n=1 gimmick observation cells below), or
+  // this whole pin is vacuous.
+  const rows = Object.values(LAB.deviations).map((d) => d.nRows);
+  assert.ok(rows.some((n) => n >= LAB_SEED_MIN_ROWS), 'no seeded terms in the lab file');
+  assert.ok(rows.some((n) => n < LAB_SEED_MIN_ROWS), 'no observation cells in the lab file');
 });
 
 test('the retired secPerShape* offsets are GONE from both flat blocks and from COEF_TERMS', () => {
@@ -152,16 +218,32 @@ test('the 6.6.6 alias resolves to the hex block via modelFor normalization', () 
   assert.equal(PAR_MODEL_SHAPES['6.6.6'], undefined, 'the alias must not be a block key');
 });
 
-test('predictPar PARITY: with and without tilingType, par is identical while deviations are unearned', () => {
-  // Structural parity (block values === PAR_MODEL values), not absolute
-  // numbers — PAR_MODEL's values are refit-owned and move nightly.
+test('predictPar dispatch: rectangles price on PAR_MODEL, tilings on their seeded blocks', () => {
+  // Structural relationships, not absolute numbers — every block's values
+  // are refit-owned and move nightly with the base.
   for (const base of FEATS) {
     const rectPar = predictPar(base);
-    assert.equal(rectPar, applyParModel(base, PAR_MODEL), 'rectangles price on PAR_MODEL');
-    for (const t of [...TILING_TYPES, '6.6.6']) {
-      assert.equal(predictPar({ ...base, tilingType: t }), rectPar,
-        `${t}: an unearned shape block must reproduce the base par exactly`);
+    assert.equal(rectPar, applyParModel(base, PAR_MODEL),
+      'rectangles price on PAR_MODEL, byte-identical to the pre-shape model');
+    for (const t of TILING_TYPES) {
+      const tPar = predictPar({ ...base, tilingType: t });
+      assert.equal(tPar, applyParModel({ ...base, tilingType: t }, PAR_MODEL_SHAPES[t]),
+        `${t} must price on its own block`);
+      // Every shape carries a nonzero seeded intercept deviation, so a
+      // tiling par that EQUALS the rectangle par means the dispatch or the
+      // seeding silently died (the pre-seeding parity reading of this test).
+      assert.notEqual(tPar, rectPar,
+        `${t}: a seeded block must actually move par off the rectangle price`);
     }
+    // One semantic anchor from the lab findings: deltoidal composed is
+    // dearer than hex composed at every test vector (its intercept, per-cell
+    // and per-mine deviations all sit above hex's).
+    assert.ok(predictPar({ ...base, tilingType: 'deltoidal' })
+              > predictPar({ ...base, tilingType: 'hex' }),
+      'deltoidal must price above hex under the seeded deviations');
+    // The deep-link alias still resolves to the hex block.
+    assert.equal(predictPar({ ...base, tilingType: '6.6.6' }),
+                 predictPar({ ...base, tilingType: 'hex' }));
   }
 });
 
@@ -179,9 +261,16 @@ test('breakdownPar resolves the shape block by default and yields a sane breakdo
   const sum = chips.reduce((s, c) => s + c.seconds, 0);
   assert.ok(Math.abs(sum - par) <= 0.05 * (chips.length + 1),
     `chips sum ${sum} should reconstruct par ${par}`);
-  // And matches the rectangle breakdown exactly while parity holds.
-  assert.deepEqual(chips, breakdownPar({ ...FEATS[1] }),
-    'unearned shape breakdown must equal the rectangle breakdown');
+  // The seeded hex block's negative per-cell coefficient lives on a
+  // baseline-flagged term, so it folds into the exp() baseline chip rather
+  // than surfacing as a negative chip — which is why the all-positive
+  // assertion above can hold on a seeded shape at all. Pin that the
+  // baseline chip exists and that the shape breakdown genuinely diverged
+  // from the rectangle one (the pre-seeding version of this test asserted
+  // they were deepEqual).
+  assert.ok(chips.some((c) => c.label === 'baseline'), 'baseline chip must exist');
+  assert.notDeepEqual(chips, breakdownPar({ ...FEATS[1] }),
+    'a seeded shape breakdown must differ from the rectangle breakdown');
 });
 
 // ── The R side ───────────────────────────────────────────────────────
@@ -375,6 +464,39 @@ test('deviation earn guard + composition: threshold per column, composed blocks,
   assert.ok(whitelist, 'target_whitelist missing');
   assert.ok(!/shape/i.test(whitelist[1]),
     'no shape term may enter target_candidates via the whitelist');
+});
+
+test('the R refit carries the lab-seed machinery (2026-08-03 seeding ruling)', () => {
+  // The constants, mirrored by this test's own LAB_SEED_MIN_ROWS above — the
+  // floor is what routes the core grid terms in and the n=1 gimmick cells
+  // out, so JS and R must agree on it.
+  assert.ok(R_SRC.includes('scripts/data/parlab-prior-centers.json'),
+    'the nightly must read the frozen lab posteriors');
+  const floor = R_SRC.match(/LAB_SEED_MIN_ROWS\s*<-\s*(\d+)/);
+  assert.ok(floor, 'LAB_SEED_MIN_ROWS missing');
+  assert.equal(Number(floor[1]), LAB_SEED_MIN_ROWS,
+    'the seeding floor must match this test’s mirror');
+  assert.ok(/LAB_PRIOR_WIDTH_MULT\s*<-\s*2\b/.test(R_SRC),
+    'doubled lab widths (his prior-width ruling)');
+  // build_priors: a seeded deviation gets normal(lab mean, 2 x lab sd) on
+  // the dev nlpar; unseeded terms keep the zero-centered INTERACTION_PRIOR_SD
+  // (asserted by the two-path priors test above).
+  assert.ok(R_SRC.includes('sprintf("normal(%f, %f)", seed$mean, seed$sd)'),
+    'seeded deviations must center on the lab posterior');
+  // The earn guard: a lab-seeded term ships its fitted posterior WITHOUT the
+  // 20-row guard (the guard stops bare prior medians; a lab center is data),
+  // and a seeded term whose column never entered the formula ships its lab
+  // center directly — that second branch is what makes the blocks lab-seeded
+  // on nights with zero live tiling rows.
+  assert.ok(R_SRC.includes('lab-seeded prior'),
+    'the earn guard must carry the lab-seeded bypass branch');
+  assert.ok(R_SRC.includes('setdiff(names(lab_seed_devs), rownames(fe_all))'),
+    'seeded terms outside the fit must still ship their lab centers');
+  // Fail-soft loader: a lost file degrades to zero-centered deviations (the
+  // pre-seeding behavior) instead of killing the nightly; THIS test is what
+  // then fails loudly on the refit’s own commit.
+  assert.ok(R_SRC.includes('lab priors unavailable'),
+    'the lab-priors loader must fail soft with a message');
 });
 
 test('the digit frame is rectangles-only', () => {

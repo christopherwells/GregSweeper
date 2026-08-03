@@ -169,7 +169,7 @@ test('tilingType is derived from the board and ABSENT on a rectangle', () => {
 //
 // 2026-08-01: the per-shape 0/1 indicator terms are gone. A tiling now
 // prices by SELECTING its own full equation from PAR_MODEL_SHAPES (modelFor
-// in dailyFeatures.js); the deep dispatch/parity pins live in
+// in dailyFeatures.js); the deep dispatch and lab-seed pins live in
 // test/tilingParModelContract.test.mjs. What this file keeps is the two
 // halves that touch real boards: a rectangle prices on PAR_MODEL exactly,
 // and a shape reaches its own block ONLY on its own tilingType.
@@ -196,14 +196,19 @@ test('a shape reaches its own equation only on its own tilingType, unknown types
   const base = { cellCount: 100, totalMines: 20, canonicalSubsetMoves: 2, advancedLogicMoves: 1 };
   const rect = predictPar(base);
 
-  // While every deviation is unearned the blocks equal PAR_MODEL, so the
-  // observable dispatch claim is exact equality per shape plus identity of
-  // the RESOLVED model object (the contract suite pins block === base
-  // numerically; here we pin the routing on a real feature vector).
+  // The blocks are LAB-SEEDED (2026-08-03 ruling; the block-minus-base
+  // relationship is pinned in the contract suite), so the observable
+  // dispatch claim here is identity of the RESOLVED model object plus par
+  // agreeing with the shape's own block — and no longer equaling the
+  // rectangle price, which is the pre-seeding parity this test used to pin.
   assert.equal(modelFor({ ...base, tilingType: '4.8.8' }), PAR_MODEL_SHAPES['4.8.8']);
   assert.equal(modelFor({ ...base, tilingType: 'hex' }), PAR_MODEL_SHAPES.hex);
-  assert.equal(predictPar({ ...base, tilingType: '4.8.8' }), rect);
-  assert.equal(predictPar({ ...base, tilingType: 'hex' }), rect);
+  assert.equal(predictPar({ ...base, tilingType: '4.8.8' }),
+    applyParModel({ ...base, tilingType: '4.8.8' }, PAR_MODEL_SHAPES['4.8.8']));
+  assert.equal(predictPar({ ...base, tilingType: 'hex' }),
+    applyParModel({ ...base, tilingType: 'hex' }, PAR_MODEL_SHAPES.hex));
+  assert.notEqual(predictPar({ ...base, tilingType: 'hex' }), rect,
+    'a seeded hex block must move par off the rectangle price');
 
   // An unknown shape falls back to the rectangular reference rather than
   // silently picking up another tiling's equation — a tiling that ships its

@@ -1,0 +1,190 @@
+{
+  "format": "parlab-prior-centers-v1",
+  "fitDate": "2026-08-03",
+  "baseVintage": "2026-08-02",
+  "baseModel": {
+    "intercept": 2.9322,
+    "secPerCell": 0.00065,
+    "secPerMineFlag": 0.05368,
+    "secPerPatternMove": 0.01698,
+    "secPerSearchMove": 0.01269,
+    "secPerWallEdge": 0.00175,
+    "secPerZeroCluster": 0.00114,
+    "secPerMysteryCell": 0.00146,
+    "secPerLiarCell": 0.00135,
+    "secPerLockedCell": 0.0394,
+    "secPerWormholePair": 0.00159,
+    "secPerMirrorPair": 0.0084,
+    "secPerSonarCell": 0.04791,
+    "secPerCompassCell": 0.02253,
+    "secPerWormLoad": 0.00568
+  },
+  "snapshot": "data/parlab-rows-2026-08-03.json",
+  "n_rows": 68,
+  "sigma": 0.530095964126667,
+  "practiceCenter": 2.11521525182321,
+  "sessionPace": -0.615574066825333,
+  "practiceSlope": -0.203140495319338,
+  "deviations": {
+    "shape488": {
+      "mean": -0.15719,
+      "sd": 0.37599,
+      "nRows": 8
+    },
+    "shapeHex": {
+      "mean": -0.37516,
+      "sd": 0.4066,
+      "nRows": 9
+    },
+    "shapeCairo": {
+      "mean": -0.30859,
+      "sd": 0.37051,
+      "nRows": 10
+    },
+    "shapeFloret": {
+      "mean": 0.20089,
+      "sd": 0.42014,
+      "nRows": 12
+    },
+    "shapeRhombille": {
+      "mean": 0.04927,
+      "sd": 0.43919,
+      "nRows": 10
+    },
+    "shapeDeltoidal": {
+      "mean": 0.48777,
+      "sd": 0.39008,
+      "nRows": 12
+    },
+    "shape488_x_cellCount": {
+      "mean": -0.00323,
+      "sd": 0.011,
+      "nRows": 8
+    },
+    "shape488_x_totalMines": {
+      "mean": 0.04799,
+      "sd": 0.05834,
+      "nRows": 8
+    },
+    "shapeHex_x_cellCount": {
+      "mean": -0.00568,
+      "sd": 0.01164,
+      "nRows": 9
+    },
+    "shapeHex_x_totalMines": {
+      "mean": 0.05524,
+      "sd": 0.06076,
+      "nRows": 9
+    },
+    "shapeCairo_x_cellCount": {
+      "mean": 0.02589,
+      "sd": 0.01107,
+      "nRows": 10
+    },
+    "shapeCairo_x_totalMines": {
+      "mean": -0.05661,
+      "sd": 0.04427,
+      "nRows": 10
+    },
+    "shapeFloret_x_cellCount": {
+      "mean": -0.00246,
+      "sd": 0.017,
+      "nRows": 12
+    },
+    "shapeFloret_x_totalMines": {
+      "mean": 0.05282,
+      "sd": 0.07523,
+      "nRows": 12
+    },
+    "shapeRhombille_x_cellCount": {
+      "mean": -0.01017,
+      "sd": 0.04575,
+      "nRows": 10
+    },
+    "shapeRhombille_x_totalMines": {
+      "mean": 0.06759,
+      "sd": 0.18053,
+      "nRows": 10
+    },
+    "shapeDeltoidal_x_cellCount": {
+      "mean": -0.00202,
+      "sd": 0.01478,
+      "nRows": 12
+    },
+    "shapeDeltoidal_x_totalMines": {
+      "mean": 0.0703,
+      "sd": 0.05913,
+      "nRows": 12
+    },
+    "shapeHex_x_sonarCellCount": {
+      "mean": 0.12631,
+      "sd": 0.27404,
+      "nRows": 1
+    },
+    "shapeRhombille_x_sonarCellCount": {
+      "mean": 0.1411,
+      "sd": 0.19215,
+      "nRows": 1
+    },
+    "shapeDeltoidal_x_sonarCellCount": {
+      "mean": -0.13951,
+      "sd": 0.28121,
+      "nRows": 1
+    },
+    "shape488_x_compassCellCount": {
+      "mean": 0.08151,
+      "sd": 0.28447,
+      "nRows": 1
+    },
+    "shapeHex_x_compassCellCount": {
+      "mean": 0.09367,
+      "sd": 0.2805,
+      "nRows": 1
+    },
+    "shapeFloret_x_compassCellCount": {
+      "mean": 0.09734,
+      "sd": 0.2911,
+      "nRows": 1
+    },
+    "shape488_x_wormholePairCount": {
+      "mean": 0.21937,
+      "sd": 0.28446,
+      "nRows": 1
+    },
+    "shapeRhombille_x_wormholePairCount": {
+      "mean": 0.02475,
+      "sd": 0.193,
+      "nRows": 1
+    },
+    "shapeFloret_x_liarCellCount": {
+      "mean": -0.28098,
+      "sd": 0.288,
+      "nRows": 1
+    },
+    "shapeRhombille_x_lockedCellCount": {
+      "mean": 0.04501,
+      "sd": 0.2914,
+      "nRows": 1
+    },
+    "shapeHex_x_wormLoad": {
+      "mean": 0.49494,
+      "sd": 0.47044,
+      "nRows": 1
+    },
+    "shapeCairo_x_wormLoad": {
+      "mean": -0.02309,
+      "sd": 0.41484,
+      "nRows": 1
+    },
+    "shapeFloret_x_wormLoad": {
+      "mean": 0.30364,
+      "sd": 0.44981,
+      "nRows": 1
+    },
+    "shapeRhombille_x_wormLoad": {
+      "mean": 0.21657,
+      "sd": 0.11918,
+      "nRows": 1
+    }
+  }
+}
