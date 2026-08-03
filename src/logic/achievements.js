@@ -135,7 +135,15 @@ const CATEGORIES = [
     icon: '⛏️',
     group: 'progress',
     desc: 'Challenge level reached',
-    thresholds: [10, 25, 50, 100, 120],
+    // Re-based on the Challenge 250 ladder (his build note: bronze early,
+    // diamond reaching into the endless zone). The tiers land on the
+    // ladder's own landmarks: the opener capstone L25 (the door to the
+    // shapes), the L100 and L200 milestones, the L250 crown, and 300 —
+    // fifty levels PAST the crown, so diamond can only be earned in the
+    // endless zone. Medals recompute from maxLevelReached, which the
+    // progression reset zeroes, so everyone re-earns them on the new
+    // ladder.
+    thresholds: [25, 100, 200, 250, 300],
     getValue: (s) => (s.modeStats?.challenge?.maxLevelReached) || (s.maxLevelReached || 1),
     format: (v) => `Level ${v}`,
   },
