@@ -25,3 +25,8 @@ playwright/.cache/
 # No tracked file matches either pattern (verified 2026-07-06).
 scripts/_*
 scripts/par-experiment-*.csv
+
+# Rendered Quarto output of the Par Lab prior fit (the .qmd is the tracked
+# artifact; render locally to reproduce).
+scripts/fit-parlab-priors.html
+scripts/fit-parlab-priors_files/

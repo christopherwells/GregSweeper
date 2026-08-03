@@ -1,0 +1,908 @@
+---
+title: "Par Lab prior fit: per-shape par deviations"
+author: "Christopher D. Wells"
+date: 2026-08-03
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    embed-resources: true
+execute:
+  warning: false
+  message: false
+---
+
+This document fits the completed Par Lab battery (86 boards, played 2026-08-02
+and 2026-08-03) and produces posterior centers, with honest widths, for the
+`PAR_MODEL_SHAPES` deviation terms in `src/logic/difficulty.js`. It also
+produces the par-per-config tables the Challenge-250 tier ladder and the
+Phase-2 tiling par-band configs need. Nothing here writes into the shipped
+model. The final section lays out the options for how these priors could enter
+the nightly refit; that choice is a design decision made outside this document.
+
+The deviation vocabulary is the nightly refit's own: for each tiling, an
+intercept deviation (`shapeHex`, `shapeCairo`, ...) plus per-feature slope
+deviations (`shapeHex_x_cellCount`, ...), all signed log-scale shifts from the
+square equation. A deviation of 0 means the shape prices exactly as a square
+board with the same feature vector; the shipped blocks today are all at 0.
+The lab exists because live daily data cannot identify the size and density
+deviations at all (the rotation ships one fixed config per shape, so those
+columns are exactly collinear with the shape's intercept deviation), and
+identifies everything else slowly.
+
+Rendering takes a few minutes: five small Stan models compile and sample.
+
+```{r setup}
+library(jsonlite)
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(stringr)
+library(ggplot2)
+library(knitr)
+library(brms)
+library(posterior)
+
+options(brms.backend = "cmdstanr")
+set.seed(20260803)
+
+`%||%` <- function(a, b) if (is.null(a)) b else a
+geo_mean <- function(x) exp(mean(log(x)))
+```
+
+## 1. Constants and the frozen data snapshot
+
+Two tables are mirrored verbatim from `scripts/refit-par-model.R` so this
+document speaks the nightly refit's names: `COEF_TO_PREDICTOR` (JS coefficient
+key to model predictor) and `SHAPE_TABLE` (tiling type string to deviation-term
+stem). The lockstep between those tables and the client registry is pinned by
+`test/tilingParModelContract.test.mjs`; if a seventh tiling ever lands, both
+copies grow together.
+
+The row data is a frozen snapshot of the world-readable `parLab/` node, pulled
+2026-08-03 with the battery complete at 86/86. The chunk re-downloads only if
+the snapshot file is missing, so a re-render is byte-stable and needs no
+network.
+
+```{r constants}
+DIFFICULTY_PATH <- "../src/logic/difficulty.js"
+SNAPSHOT_PATH   <- "data/parlab-rows-2026-08-03.json"
+PARLAB_URL      <- "https://gregsweeper-66d02-default-rtdb.firebaseio.com/parLab.json"
+HIS_UID_PREFIX  <- "V07QPXYa"
+
+COEF_TO_PREDICTOR <- c(
+  secPerCell         = "cellCount",
+  secPerMineFlag     = "totalMines",
+  secPerPatternMove  = "patternMoves",
+  secPerSearchMove   = "searchMoves",
+  secPerWallEdge     = "wallEdgeCount",
+  secPerZeroCluster  = "zeroClusterCount",
+  secPerMysteryCell  = "mysteryCellCount",
+  secPerLiarCell     = "liarCellCount",
+  secPerLockedCell   = "lockedCellCount",
+  secPerWormholePair = "wormholePairCount",
+  secPerMirrorPair   = "mirrorPairCount",
+  secPerSonarCell    = "sonarCellCount",
+  secPerCompassCell  = "compassCellCount",
+  secPerWormLoad     = "wormLoad"
+)
+
+SHAPE_TABLE <- c(
+  "4.8.8"     = "shape488",
+  "hex"       = "shapeHex",
+  "cairo"     = "shapeCairo",
+  "floret"    = "shapeFloret",
+  "rhombille" = "shapeRhombille",
+  "deltoidal" = "shapeDeltoidal"
+)
+
+# The gimmick features the modifier singles placed. Mystery, mirror, and walls
+# were cut from the battery at the board-66 trim, so their columns are all-zero
+# here and never enter the fit.
+GIMMICK_FEATURES <- c("sonarCellCount", "compassCellCount", "wormholePairCount",
+                      "liarCellCount", "lockedCellCount", "wormLoad")
+
+if (!file.exists(SNAPSHOT_PATH)) {
+  dir.create(dirname(SNAPSHOT_PATH), showWarnings = FALSE)
+  download.file(PARLAB_URL, SNAPSHOT_PATH, mode = "wb", quiet = TRUE)
+}
+raw <- fromJSON(SNAPSHOT_PATH, simplifyVector = FALSE)
+cat("snapshot rows:", length(raw), "\n")
+```
+
+## 2. The base equation the deviations are measured against
+
+The shipped `PAR_MODEL` block is parsed from `difficulty.js` at render time
+(the same marker-parse the nightly uses), never hand-copied, so there is no
+transcription to drift. Every deviation in this document is defined relative
+to the coefficients printed below. If a later refit moves the base and this
+document is re-rendered, the deviations shift with it; the vintage line makes
+that visible.
+
+```{r base-model}
+src <- paste(readLines(DIFFICULTY_PATH, warn = FALSE, encoding = "UTF-8"),
+             collapse = "\n")
+bs <- str_locate(src, fixed("// PAR_MODEL:START"))[1, "end"]
+be <- str_locate(src, fixed("// PAR_MODEL:END"))[1, "start"]
+stopifnot(!is.na(bs), !is.na(be))
+block <- substr(src, bs + 1, be - 1)
+stopifnot(str_detect(block, "scale\\s*:\\s*'log'"))
+kv <- str_match_all(block, "(\\w+)\\s*:\\s*(-?[0-9]+(?:\\.[0-9]+)?)")[[1]]
+PAR_MODEL <- setNames(as.list(as.numeric(kv[, 3])), kv[, 2])
+base_vintage <- str_match(block, "Last refit: (\\d{4}-\\d{2}-\\d{2})")[1, 2]
+
+stopifnot(all(names(COEF_TO_PREDICTOR) %in% names(PAR_MODEL)))
+cat("base model vintage (last refit):", base_vintage, "\n")
+kable(tibble(coefficient = c("intercept", names(COEF_TO_PREDICTOR)),
+             value = as.numeric(PAR_MODEL[c("intercept", names(COEF_TO_PREDICTOR))])),
+      digits = 5)
+```
+
+## 3. Rows, and the agreed conventions
+
+Every convention below was agreed before the battery was played, and each has
+a client-side test pinning it. In order:
+
+1. **Filter to one player.** Every row is Christopher's; the uid filter is a
+   guard, not a selection.
+2. **Tombstones first.** A `result: 'invalid'` row voids every win or skip
+   with the same `(id, attempt)`. One exists: the board-15 warm-up
+   (`w-floret-3`, attempt 0), a deliberately mine-popped board.
+3. **Probe filter.** Any row detonating more than 30% of the board's mines is
+   a layout probe, not a solve (the daily fit's rule). On this data the only
+   row past the bar is the same tombstoned board, so the two guards agree.
+4. **Pure time.** `timeSec` on rows carrying `penaltySec` is the daily
+   convention, penalty-inclusive; pure play time is `timeSec - penaltySec`.
+   Rows without the field are pure wall clock already, for either of two
+   reasons: recorded before the 2026-08-02 fix (integer wall clock, penalties
+   never folded in), or recorded after it with zero strikes (`penaltySec` is
+   only written when positive). Both read verbatim, so the rule collapses to
+   one line: subtract `penaltySec`, treating a missing field as 0.
+5. **Warm-ups are excluded from estimates** but their per-shape learning
+   slopes are checked in section 5, and warm-up plays still count toward each
+   shape's exposure when the practice covariate is built.
+
+A note on why pure time removes the whole recorded penalty rather than the
+nightly's base-only recipe. The daily fit keeps each strike's info-value in
+the response, because that part of the penalty stands in for deduction work
+the player skipped, priced by the model. Here that pricing would be circular:
+the lab's strike info-values were computed under the square model, which is
+exactly the model this fit is measuring the lattices against. So the response
+is honest wall clock with the whole penalty removed, and a strike's skipped
+deduction work is left as a small fast-bias on strike-heavy rows. Section 9's
+sensitivity S4 measures that bias directly, and re-pricing the info-values
+under the fitted per-shape model (fit, re-price, refit) remains available as a
+second pass if S4 shows it matters.
+
+```{r rows}
+rows <- tibble(pushId = names(raw), entry = unname(raw)) |>
+  mutate(
+    uid        = map_chr(entry, ~ .x$uid %||% NA_character_),
+    id         = map_chr(entry, ~ .x$id %||% NA_character_),
+    attempt    = map_int(entry, ~ as.integer(.x$attempt %||% 0)),
+    shape      = map_chr(entry, ~ .x$shape %||% NA_character_),
+    result     = map_chr(entry, ~ .x$result %||% NA_character_),
+    warmup     = map_lgl(entry, ~ isTRUE(.x$warmup)),
+    gimmick    = map_chr(entry, ~ paste(unlist(.x$gimmicks %||% list()), collapse = "+")),
+    timeSec    = map_dbl(entry, ~ .x$timeSec %||% NA_real_),
+    penaltySec = map_dbl(entry, ~ .x$penaltySec %||% 0),
+    bombHits   = map_dbl(entry, ~ .x$bombHits %||% 0),
+    seq        = map_int(entry, ~ as.integer(.x$seq %||% NA_integer_)),
+    par_row    = map_dbl(entry, ~ .x$par %||% NA_real_),
+    playedAt   = map_chr(entry, ~ .x$playedAt %||% NA_character_),
+    day        = substr(playedAt, 1, 10),
+    wormRealized = map_dbl(entry, ~ {
+      ev <- .x$wormEvents %||% list()
+      if (length(ev) == 0) return(NA_real_)
+      sum(map_dbl(ev, ~ (.x$len %||% 0) * (.x$moves %||% 0))) / 100
+    }),
+    features   = map(entry, ~ .x$features)
+  ) |>
+  filter(startsWith(uid, HIS_UID_PREFIX))
+
+# Battery-shape invariants: 86 boards, the four blocks at their post-trim,
+# post-addendum sizes, no unhandled result kinds.
+stopifnot(
+  nrow(rows) > 0,
+  n_distinct(rows$id) == 86,
+  all(rows$result %in% c("win", "invalid")),
+  sum(rows$result == "invalid") == 1
+)
+prefix_counts <- rows |> distinct(id) |>
+  count(prefix = str_extract(id, "^[a-z]+")) |>
+  arrange(prefix)
+stopifnot(identical(
+  prefix_counts,
+  tibble(prefix = c("a", "m", "p", "w"), n = c(7L, 14L, 47L, 18L))
+))
+
+# Tombstones void their (id, attempt); then wins only.
+voided_keys <- rows |> filter(result == "invalid") |> mutate(k = paste(id, attempt)) |> pull(k)
+all_plays <- rows |> filter(result == "win")   # includes the voided probe: it was still exposure
+wins <- all_plays |> filter(!paste(id, attempt) %in% voided_keys)
+
+# Features ride every win row; unnest them wide.
+feats <- wins |> select(pushId, features) |> unnest_wider(features)
+d <- wins |> select(-features) |> inner_join(feats, by = "pushId") |>
+  mutate(across(c(cellCount, totalMines, density, passAMoves, canonicalSubsetMoves,
+                  genericSubsetMoves, advancedLogicMoves, wallEdgeCount,
+                  zeroClusterCount, mysteryCellCount, liarCellCount, lockedCellCount,
+                  wormholePairCount, mirrorPairCount, sonarCellCount,
+                  compassCellCount, wormLoad),
+                ~ ifelse(is.na(.x), 0, as.numeric(.x))))
+stopifnot(nrow(d) == 86, !anyNA(d$timeSec), !anyNA(d$seq))
+
+# The probe filter (mirrors isBombHitCheat): on this battery it catches only
+# the already-tombstoned board, so nothing further drops.
+d <- d |> mutate(probe = bombHits > 0.30 * totalMines)
+stopifnot(sum(d$probe) == 0)
+
+# Pure time, and the worm realized dose. wormLoad becomes the REALIZED
+# segment-moves (sum of len x moves / 100 from the row's own wormEvents),
+# matching the nightly's realized-dose convention; the scheduled maximum is
+# kept aside for the realization table. Only the four worm singles carry
+# events, and a fast solve or a late hatch realizes far less than the
+# schedule, which is the whole case for the instrument.
+d <- d |>
+  mutate(
+    pure_time     = pmax(timeSec - penaltySec, 1),
+    wormScheduled = wormLoad,
+    wormLoad      = ifelse(!is.na(wormRealized), wormRealized, 0)
+  )
+stopifnot(all(d$pure_time > 0), sum(!is.na(d$wormRealized)) == 4)
+
+# Derived reasoning tiers, exactly as the nightly derives them.
+d <- d |> mutate(
+  patternMoves = canonicalSubsetMoves + genericSubsetMoves,
+  searchMoves  = advancedLogicMoves
+)
+
+cat(nrow(d), "usable win rows:",
+    sum(d$warmup), "warm-ups (learning check only) +",
+    sum(!d$warmup), "measured\n")
+```
+
+## 4. Parity par: the offset every row is compared against
+
+Each row's features are priced under the base model printed in section 2,
+giving the parity par: what the shipped `predictPar` says this exact board is
+worth when the shape deviations are all zero. The response the model fits is
+`log(pure_time / par_sq)`, so a coefficient of 0 anywhere means "prices like a
+square board."
+
+The rows also carry the par the client computed at play time. Those two
+disagree slightly on rows played before the 2026-08-02 nightly refit landed
+(a different coefficient vintage); recomputing every row under one vintage is
+the point, and the table below shows the drift is a few seconds at most.
+
+```{r parity-par}
+lp <- rep(PAR_MODEL$intercept, nrow(d))
+for (k in names(COEF_TO_PREDICTOR)) {
+  lp <- lp + PAR_MODEL[[k]] * d[[COEF_TO_PREDICTOR[[k]]]]
+}
+d$par_sq    <- exp(lp)
+d$ratio     <- d$pure_time / d$par_sq
+d$log_ratio <- log(d$ratio)
+
+d |>
+  mutate(drift = abs(par_row - par_sq)) |>
+  summarise(
+    rows_matching_exactly = sum(drift < 0.05, na.rm = TRUE),
+    rows_drifted          = sum(drift >= 0.05, na.rm = TRUE),
+    max_drift_sec         = max(drift, na.rm = TRUE)
+  ) |>
+  kable(digits = 1)
+```
+
+## 5. Warm-up learning check
+
+Three consecutive plain boards per shape at its daily config, played easiest
+lattice first, before any measured row. The question the design left open:
+did each shape's curve flatten by board three? These rows never enter the
+estimates either way.
+
+```{r warmups}
+warm <- d |> filter(warmup) |> arrange(seq) |>
+  group_by(shape) |> mutate(round = row_number()) |> ungroup()
+
+warm |>
+  select(shape, round, seq, pure_time, par_sq, ratio, bombHits) |>
+  kable(digits = 2)
+
+ggplot(warm, aes(round, ratio, color = shape)) +
+  geom_line() + geom_point() +
+  scale_y_log10() +
+  labs(x = "warm-up round", y = "pure time / parity par (log scale)",
+       title = "Warm-up trajectories by shape") +
+  theme_minimal()
+```
+
+The read: hex fell to about half par and stayed there; 4.8.8 held near his
+square pace throughout; cairo and deltoidal came back down after a slow middle
+board; rhombille had the steepest drop and kept falling. Floret is the
+outlier in the other direction: its third warm-up (the fresh layout issued
+after the voided probe) was its slowest, so floret entered the measured
+battery still learning. That is the direct motivation for the practice term
+in section 7, and the reason floret's deviations get the least-settled
+language in the results.
+
+The replicate pairs make the same point inside the measured rows: the same
+size and density cell, played again 30 to 50 boards later, came back far
+faster on the two lattices that were still noisy.
+
+```{r replicates}
+meas <- d |> filter(!warmup)
+
+reps <- meas |> filter(str_ends(id, "r")) |> mutate(base_id = str_remove(id, "r$"))
+reps |>
+  inner_join(meas |> select(base_id = id, seq_first = seq, ratio_first = ratio),
+             by = "base_id") |>
+  select(config = base_id, seq_first, ratio_first, seq_again = seq, ratio_again = ratio) |>
+  kable(digits = 2)
+```
+
+A halving on deltoidal and a factor of 6 to 10 on floret is some mix of
+practice and layout luck; at one replicate per cell the two cannot be
+separated, and the model's practice term plus its honest residual widths are
+how that uncertainty is carried rather than hidden.
+
+## 6. First look: anchors, grid, and raw multipliers
+
+The seven square anchors are the bridge to the base model: they measure what
+fraction of Greg par Christopher's lab pace runs, so every shape read is
+relative to his own square pace rather than to par directly. His shipped
+handicap (k = 0.971 across all his daily play) does not transfer to a focused
+lab sitting, and the anchors are the within-session instrument that replaces
+it.
+
+```{r anchors}
+anchors <- meas |> filter(shape == "rect")
+anchors |>
+  select(id, seq, day, timeSec, penaltySec, pure_time, par_sq, ratio) |>
+  kable(digits = 2)
+cat("anchor geometric mean ratio:", round(geo_mean(anchors$ratio), 3), "\n")
+```
+
+Anchor a-01 (0.32, the battery's first measured board) is well off the other
+six; the day-two anchors sit between 0.51 and 0.88 with no trend across 50
+boards, so a single session-pace intercept is a reasonable primary and
+sensitivity S2 checks a drift term. Raw geometric-mean ratios by shape, with
+the anchor pace as the yardstick:
+
+```{r raw-read}
+raw_read <- meas |>
+  group_by(shape) |>
+  summarise(n = n(), geo_ratio = geo_mean(ratio), log_sd = sd(log_ratio),
+            .groups = "drop") |>
+  mutate(vs_anchor_pace = geo_ratio / geo_mean(anchors$ratio)) |>
+  arrange(vs_anchor_pace)
+kable(raw_read, digits = 2)
+
+ggplot(meas |> filter(shape != "rect", str_starts(id, "p-")),
+       aes(cellCount, ratio, color = factor(round(density, 2)))) +
+  geom_point(size = 2.5) +
+  scale_y_log10() +
+  facet_wrap(~shape) +
+  labs(x = "cells", y = "pure time / parity par (log scale)", color = "density",
+       title = "Plain grid: where each lattice departs from square pricing") +
+  theme_minimal()
+```
+
+This is the completion read the fit has to formalize: hex prices at about his
+square pace, 4.8.8 a third dearer, rhombille and cairo about double, floret
+wide and learning-contaminated, deltoidal near five times square par with its
+worst cells at high density rather than large size.
+
+## 7. The model
+
+One Bayesian regression on the 68 measured rows (47 plain grid, 14 modifier
+singles, 7 anchors), response `log(pure_time / par_sq)`:
+
+- **Intercept**: his lab session pace on square boards, identified by the
+  anchors (all deviation columns are zero on rect rows).
+- **practice_c**: log of each tiling row's within-shape exposure (warm-ups
+  and the voided probe count as exposure), centered on the measured tiling
+  rows' mean, zero on rect rows. One shared slope: the power law of practice,
+  with squares exempt because they are his native game. Centering makes every
+  shape deviation read at battery-average proficiency rather than at either
+  extreme; section 10 returns to what that means for a live novice.
+- **Per-shape core deviations**, three per lattice in the nightly's exact
+  column names: the intercept deviation (`shapeHex`, ...), the per-cell slope
+  deviation (`shapeHex_x_cellCount`, ...), and the per-mine slope deviation
+  (`shapeHex_x_totalMines`, ...). These are what the size-by-density grid was
+  designed to identify, and they are the deliverable.
+- **Gimmick deviations** where the mechanism block placed a board, again in
+  the nightly's names (`shapeHex_x_sonarCellCount`, `shapeRhombille_x_wormLoad`,
+  ...): fourteen columns, each nonzero on exactly one row. These are
+  observations wearing coefficient clothes, and the results section treats
+  them that way.
+
+What is deliberately absent: per-shape deviations on the reasoning tiers
+(`patternMoves`, `searchMoves`) and on `zeroClusterCount`. Those features vary
+across the lab boards, but within a shape they move with size and density, and
+six to eleven grid rows per shape cannot separate five slopes. The parity
+offset already charges them at square rates; whatever a lattice does to their
+true cost lands in the three fitted core terms for now, and the residual
+diagnostic in section 8 checks whether that compromise leaves structure on
+the table. Their nightly deviations stay zero-centered until live data can
+speak to them.
+
+Priors, all on the log scale:
+
+- Core deviations: `normal(0, 0.5)`, the nightly's own `INTERACTION_PRIOR_SD`.
+  Zero-centered is the "a shape's equation starts as the square's" design; 0.5
+  is wide here (a shape would need to quadruple par before 2 SD), and for the
+  per-unit slopes it is effectively flat.
+- Gimmick deviations: `normal(0, 1)` per feature unit, wide by instruction:
+  with one board per cell the posterior is the observation, barely shrunk.
+- Intercept `normal(0, 1)`, practice slope `normal(0, 0.5)`, residual
+  `normal(0, 1)` half-normal: weakly informative throughout.
+
+All terms are signed, so there is no positivity bound anywhere and none of the
+boundary geometry that bit the nightly's 2026-08-01 run; this is plain smooth
+sampling.
+
+```{r design}
+# Within-shape exposure order (warm-ups and the voided probe both count: each
+# was a played board and practice accrued), then the centered practice axis.
+exposure <- all_plays |>
+  filter(shape != "rect") |>
+  arrange(seq) |>
+  group_by(shape) |>
+  mutate(order = row_number()) |>
+  ungroup() |>
+  select(pushId, order)
+
+fit_df <- meas |>
+  left_join(exposure, by = "pushId") |>
+  mutate(practice_raw = ifelse(shape == "rect", NA_real_, log(order)))
+practice_center <- mean(fit_df$practice_raw, na.rm = TRUE)
+fit_df <- fit_df |>
+  mutate(practice_c = ifelse(is.na(practice_raw), 0, practice_raw - practice_center))
+
+# Deviation columns, exact nightly names: indicator, indicator x cells,
+# indicator x mines, indicator x each gimmick feature.
+for (js in names(SHAPE_TABLE)) {
+  stem <- SHAPE_TABLE[[js]]
+  ind  <- as.numeric(fit_df$shape == js)
+  fit_df[[stem]] <- ind
+  fit_df[[paste0(stem, "_x_cellCount")]]  <- ind * fit_df$cellCount
+  fit_df[[paste0(stem, "_x_totalMines")]] <- ind * fit_df$totalMines
+  for (g in GIMMICK_FEATURES) {
+    fit_df[[paste0(stem, "_x_", g)]] <- ind * fit_df[[g]]
+  }
+}
+core_cols <- c(unname(SHAPE_TABLE),
+               paste0(rep(unname(SHAPE_TABLE), each = 2), "_x_",
+                      c("cellCount", "totalMines")))
+gim_cols_all <- as.vector(outer(unname(SHAPE_TABLE), GIMMICK_FEATURES,
+                                paste, sep = "_x_"))
+gim_cols <- gim_cols_all[vapply(gim_cols_all,
+                                function(cn) any(fit_df[[cn]] > 0), logical(1))]
+stopifnot(length(core_cols) == 18, length(gim_cols) == 14)
+cat("active gimmick columns:\n"); print(gim_cols)
+
+model_rhs <- paste(c("0 + Intercept", "practice_c", core_cols, gim_cols),
+                   collapse = " + ")
+f_main <- as.formula(paste("log_ratio ~", model_rhs))
+
+priors <- c(
+  set_prior("normal(0, 1)",   class = "b", coef = "Intercept"),
+  set_prior("normal(0, 0.5)", class = "b", coef = "practice_c"),
+  do.call(c, lapply(core_cols, function(cn)
+    set_prior("normal(0, 0.5)", class = "b", coef = cn))),
+  do.call(c, lapply(gim_cols, function(cn)
+    set_prior("normal(0, 1)", class = "b", coef = cn))),
+  set_prior("normal(0, 1)", class = "sigma")
+)
+```
+
+```{r fit-main, results="hide"}
+fit_main <- brm(
+  f_main, data = fit_df, prior = priors,
+  chains = 4, iter = 3000, warmup = 1500,
+  control = list(adapt_delta = 0.99),
+  cores = 4, seed = 20260803, refresh = 0
+)
+```
+
+## 8. Diagnostics
+
+Same gates as the nightly: every Rhat at or under 1.05, every bulk ESS at or
+over 400, divergent transitions under 0.25% of draws. The render stops here if
+any gate fails, so a bad fit cannot quietly reach the results.
+
+```{r diagnostics}
+ps <- summarise_draws(as_draws_array(fit_main), "rhat", "ess_bulk")
+n_div <- sum(nuts_params(fit_main)$Value[nuts_params(fit_main)$Parameter == "divergent__"])
+total_draws <- 4 * 1500
+cat(sprintf("max Rhat = %.3f, min bulk ESS = %.0f, divergent = %d/%d\n",
+            max(ps$rhat, na.rm = TRUE), min(ps$ess_bulk, na.rm = TRUE),
+            n_div, total_draws))
+stopifnot(max(ps$rhat, na.rm = TRUE) <= 1.05,
+          min(ps$ess_bulk, na.rm = TRUE) >= 400,
+          n_div / total_draws <= 0.0025)
+
+pp_check(fit_main, ndraws = 50) +
+  labs(title = "Posterior predictive check on log(pure time / parity par)")
+```
+
+```{r residual-diagnostics}
+fit_df$resid <- fit_df$log_ratio - colMeans(posterior_epred(fit_main))
+
+ggplot(fit_df |> filter(shape != "rect"), aes(order, resid)) +
+  geom_hline(yintercept = 0, linetype = 2) +
+  geom_point(aes(color = shape)) +
+  geom_smooth(method = "loess", se = FALSE, color = "grey40", span = 1) +
+  labs(x = "within-shape exposure order", y = "residual (log scale)",
+       title = "Residuals against exposure: is one practice slope enough?") +
+  theme_minimal()
+
+ggplot(fit_df |> filter(shape != "rect", str_starts(id, "p-")),
+       aes(searchMoves, resid, color = shape)) +
+  geom_hline(yintercept = 0, linetype = 2) +
+  geom_point() +
+  labs(x = "search moves (charged at square rates in the offset)",
+       y = "residual (log scale)",
+       title = "Residuals against search moves: the deviation the model omits") +
+  theme_minimal()
+```
+
+If the second panel shows a clear per-shape ramp, the omitted reasoning-tier
+deviations are real and the three core terms are absorbing them imperfectly;
+that would argue for revisiting this fit once live data can price the tiers
+per shape. A flat cloud says the compromise held at this sample size.
+
+## 9. Results
+
+### 9.1 The deviation posteriors
+
+The deliverable table. Every term is a signed log-scale shift from the square
+equation, in the exact name the nightly refit and `PAR_MODEL_SHAPES` use.
+`n_rows` is how many fit rows carry the term; treat any n = 1 line as an
+observation, not an estimate. The three core terms within a shape are jointly
+identified and strongly correlated (an intercept shift can trade against the
+two slopes across the grid's narrow config range), so their marginal widths
+overstate the uncertainty of any board-level prediction; the config table in
+9.2 is the well-identified combination.
+
+```{r posterior-table}
+fe <- fixef(fit_main)
+dev_terms <- c(core_cols, gim_cols)
+post_tbl <- tibble(
+  term   = rownames(fe),
+  mean   = fe[, "Estimate"],
+  sd     = fe[, "Est.Error"],
+  q2.5   = fe[, "Q2.5"],
+  q97.5  = fe[, "Q97.5"]
+) |>
+  filter(term %in% c("Intercept", "practice_c", dev_terms)) |>
+  mutate(n_rows = map_int(term, ~ if (.x %in% dev_terms)
+    sum(fit_df[[.x]] != 0) else nrow(fit_df))) |>
+  arrange(match(term, c("Intercept", "practice_c", dev_terms)))
+kable(post_tbl, digits = 4)
+```
+
+```{r pace-note}
+cat(sprintf("session pace: exp(Intercept) = %.2f of Greg par (the anchors' read)\n",
+            exp(fe["Intercept", "Estimate"])))
+cat(sprintf("practice slope: %.3f per log unit of exposure (negative = later boards faster)\n",
+            fe["practice_c", "Estimate"]))
+```
+
+The deviations are pace-relative, so his session speed cancels out of every
+shape read. What does not cancel is the standing assumption the ratio
+handicap already makes: that his relative cost across lattices mirrors the
+population's. One player's battery cannot test that; the live rotation will.
+
+### 9.2 Composed multipliers per config
+
+For each shape and config, the posterior of
+`exp(shape + cells x shape_x_cellCount + mines x shape_x_totalMines)`: the
+factor by which the lattice multiplies parity par at battery-average
+proficiency. `par_sq` is the parity par of the actual generated board (for
+the daily config, the mean over the three warm-up layouts), `fitted_par` is
+its product with the multiplier, and `par_per_cell` is the Challenge-250
+currency. Everything derives from the same posterior draws, so the intervals
+are honest.
+
+```{r config-table}
+draws <- as_draws_df(fit_main)
+
+mult_draws <- function(js, cells, mines) {
+  stem <- SHAPE_TABLE[[js]]
+  exp(draws[[paste0("b_", stem)]] +
+      cells * draws[[paste0("b_", stem, "_x_cellCount")]] +
+      mines * draws[[paste0("b_", stem, "_x_totalMines")]])
+}
+
+grid_cfgs <- meas |>
+  filter(str_starts(id, "p-")) |>
+  mutate(slot = str_remove(str_remove(id, "^p-[a-z0-9.]+-"), "r$")) |>
+  group_by(shape, slot) |>
+  summarise(cells = first(cellCount), mines = first(totalMines),
+            density = first(density), par_sq = mean(par_sq),
+            observed_geo_ratio = geo_mean(ratio), n_boards = n(),
+            .groups = "drop")
+daily_cfgs <- d |>
+  filter(warmup) |>
+  group_by(shape) |>
+  summarise(slot = "daily", cells = first(cellCount), mines = first(totalMines),
+            density = first(density), par_sq = mean(par_sq),
+            observed_geo_ratio = NA_real_, n_boards = 0L, .groups = "drop")
+
+# obs_mult is the model-free read of the same rows, made comparable to the
+# fitted multiplier by dividing his fitted session pace out of the observed
+# ratio; mult and obs_mult should track each other, with practice adjustment
+# and shrinkage explaining the gaps.
+config_tbl <- bind_rows(daily_cfgs, grid_cfgs) |>
+  rowwise() |>
+  mutate(
+    mult      = mean(mult_draws(shape, cells, mines)),
+    mult_lo   = quantile(mult_draws(shape, cells, mines), 0.025),
+    mult_hi   = quantile(mult_draws(shape, cells, mines), 0.975),
+    fitted_par = par_sq * mult,
+    par_per_cell = fitted_par / cells,
+    obs_mult  = observed_geo_ratio / exp(fe["Intercept", "Estimate"])
+  ) |>
+  ungroup() |>
+  arrange(shape, cells, mines)
+
+config_tbl |>
+  select(shape, slot, cells, mines, density, par_sq, mult, mult_lo, mult_hi,
+         fitted_par, par_per_cell, obs_mult) |>
+  kable(digits = 2)
+```
+
+```{r daily-summary}
+daily_mult <- config_tbl |> filter(slot == "daily") |>
+  select(shape, mult, mult_lo, mult_hi, fitted_par)
+kable(daily_mult |> arrange(mult), digits = 2)
+```
+
+Two sanity reads against the pre-fit numbers. First, the daily-config
+multipliers should land near the raw completion read (section 6's
+`vs_anchor_pace`, which is the same quantity computed without the model); a
+large gap would mean the practice term or the slopes moved something, and the
+sensitivity table in section 10 shows which. Second, deltoidal's density
+story: its per-mine deviation against its per-cell deviation is the
+model's answer to "density-dominated, not size-dominated," and the config
+table's spread across its S2/M2/L2 column against its L0 row is the direct
+check.
+
+### 9.3 Modifier singles: observations, not conclusions
+
+One board per gimmick-by-lattice cell, by design. Each line below is that one
+board: the per-unit deviation posterior (wide, barely shrunk from the data),
+the whole-board factor it implies at that board's feature count, and the raw
+ratio against the shape's own plain fit. Nothing here is an estimate of a
+population effect; these are priced observations that say which cells are
+worth live boards first.
+
+```{r gimmick-table}
+gim_rows <- meas |> filter(str_starts(id, "m-"))
+gim_tbl <- map_dfr(gim_cols, function(cn) {
+  stem_f  <- str_split_1(cn, "_x_")
+  js      <- names(SHAPE_TABLE)[SHAPE_TABLE == stem_f[1]]
+  feature <- stem_f[2]
+  row     <- gim_rows |> filter(shape == js, .data[[feature]] > 0)
+  stopifnot(nrow(row) == 1)
+  x <- row[[feature]]
+  dr <- draws[[paste0("b_", cn)]]
+  tibble(
+    term = cn, board = row$id, x_units = x,
+    dev_per_unit = mean(dr), dev_sd = sd(dr),
+    board_factor = mean(exp(dr * x)),
+    factor_lo = quantile(exp(dr * x), 0.025),
+    factor_hi = quantile(exp(dr * x), 0.975),
+    raw_ratio = row$ratio
+  )
+})
+kable(gim_tbl |> arrange(term), digits = 3)
+```
+
+The worm four additionally carry their realized-dose story: the schedule is
+what `predictPar` can know before play, the realization is what the run
+experienced, and the gap between them (22% to 94% here) is why the fit prices
+the realized dose. Rhombille's near-full dose with the battery's largest worm
+slowdown is consistent with every covered number being load-bearing on the
+lattice with no subset ladder; cairo's tiny dose with no slowdown is the same
+mechanism from the other side. Two boards, so: consistent with, not shown.
+
+```{r worm-table}
+meas |>
+  filter(wormLoad > 0) |>
+  transmute(id, shape, scheduled = wormScheduled, realized = wormLoad,
+            realization = realized / scheduled, ratio) |>
+  kable(digits = 2)
+```
+
+## 10. Sensitivities
+
+Four refits, each moving one modeling decision, compared on the daily-config
+multipliers. S1 drops the practice term (if floret collapses toward its raw
+geo-mean, the practice term is what separates its lattice cost from its
+learning curve). S2 adds a linear whole-session drift in play order. S3 swaps
+the Gaussian residual for Student-t (does a-01, or floret's wild pair, drag
+anything). S4 adds a signed per-strike nuisance term (the fast-bias question
+from section 3).
+
+```{r sensitivities, results="hide"}
+fit_df$seq_c <- as.numeric(scale(fit_df$seq))
+
+refit <- function(formula, prior_obj = priors, family = gaussian()) {
+  brm(formula, data = fit_df, family = family, prior = prior_obj,
+      chains = 4, iter = 3000, warmup = 1500,
+      control = list(adapt_delta = 0.99),
+      cores = 4, seed = 20260803, refresh = 0)
+}
+f_s1 <- as.formula(paste("log_ratio ~",
+  paste(c("0 + Intercept", core_cols, gim_cols), collapse = " + ")))
+f_s2 <- update(f_main, . ~ . + seq_c)
+f_s4 <- update(f_main, . ~ . + bombHits)
+
+fit_s1 <- refit(f_s1, prior_obj = priors[priors$coef != "practice_c", ])
+fit_s2 <- refit(f_s2, c(priors, set_prior("normal(0, 0.5)", class = "b", coef = "seq_c")))
+fit_s3 <- refit(f_main, family = student())
+fit_s4 <- refit(f_s4, c(priors, set_prior("normal(0, 0.2)", class = "b", coef = "bombHits")))
+```
+
+```{r sensitivity-table}
+daily_mult_of <- function(fit, label) {
+  dr <- as_draws_df(fit)
+  daily_cfgs |>
+    rowwise() |>
+    mutate(model = label,
+           mult = mean(exp(dr[[paste0("b_", SHAPE_TABLE[[shape]])]] +
+                       cells * dr[[paste0("b_", SHAPE_TABLE[[shape]], "_x_cellCount")]] +
+                       mines * dr[[paste0("b_", SHAPE_TABLE[[shape]], "_x_totalMines")]]))) |>
+    ungroup() |> select(model, shape, mult)
+}
+sens <- bind_rows(
+  daily_mult_of(fit_main, "main"),
+  daily_mult_of(fit_s1, "S1 no practice"),
+  daily_mult_of(fit_s2, "S2 + session drift"),
+  daily_mult_of(fit_s3, "S3 student-t"),
+  daily_mult_of(fit_s4, "S4 + strike term")
+) |>
+  pivot_wider(names_from = shape, values_from = mult)
+kable(sens, digits = 2)
+
+sens_stats <- map_dfr(
+  list(main = fit_main, s1 = fit_s1, s2 = fit_s2, s3 = fit_s3, s4 = fit_s4),
+  function(f) {
+    fe <- fixef(f)
+    tibble(practice = ifelse("practice_c" %in% rownames(fe),
+                             fe["practice_c", "Estimate"], NA),
+           drift = ifelse("seq_c" %in% rownames(fe), fe["seq_c", "Estimate"], NA),
+           strike = ifelse("bombHits" %in% rownames(fe), fe["bombHits", "Estimate"], NA))
+  }, .id = "model")
+kable(sens_stats, digits = 3)
+```
+
+Where a shape's multiplier is stable across the five rows, the number is a
+property of the data; where it moves (expect floret, and deltoidal to a
+lesser degree), the moving decision is part of the answer and the prior width
+should carry it. The novice end of the practice lever is not in this table
+because it is not in the measured range: the fitted line covers within-shape
+exposures 4 through 15, and the honest order-1 read is the warm-up table in
+section 5, not an extrapolation.
+
+## 11. What the tier ladder and the band inversion take from this
+
+Challenge-250 prices levels in par-per-cell, and the Phase-2 shape rotation
+needs per-date config tables whose fitted par lands inside the daily band (20
+to 240 s, easy-skewed). The `config_tbl` above is the input to both: fitted
+Greg par and par-per-cell for every config the lab actually proved
+generable, at the coefficients this document fits. Three constraints ride
+along:
+
+- **Density floors are real.** Rhombille has no reachable no-guess board
+  space below about 0.23 density (measured during battery design, reproduced
+  at 0.18), so its equation only describes 0.23 and up; the other Laves
+  lattices were proven down to 0.18 and the open lattices to 0.14. A band
+  inversion must respect each lattice's proven range, and any config outside
+  the lab grid needs a generation proof (the `validate-parlab-battery.mjs`
+  pattern) before it ships.
+- **Deltoidal's daily config prices near the band ceiling.** Its fitted daily
+  par sits where the current fixed config barely fits under 240 s; the
+  inversion will likely want its daily boards sparser or smaller, which the
+  S0/M0 rows of the config table cover.
+- **These are one practiced player's multipliers.** The tier ladder's
+  absolute anchors (the numeric par-per-cell tier boundaries) should be set
+  after live tiling scores exist; the map doc ships with tier indices and
+  placeholder ranges on exactly this reasoning.
+
+```{r band-check}
+config_tbl |>
+  mutate(in_daily_band = fitted_par >= 20 & fitted_par <= 240) |>
+  group_by(shape) |>
+  summarise(configs = n(), inside_band = sum(in_daily_band),
+            min_fitted = min(fitted_par), max_fitted = max(fitted_par),
+            .groups = "drop") |>
+  kable(digits = 0)
+```
+
+## 12. The prior-centers artifact
+
+The deviation posteriors, written as a machine-readable record beside the
+data snapshot. Nothing reads this file yet; it exists so the design
+conversation below has a frozen referent, pinned to the base vintage it was
+measured against.
+
+```{r write-artifact}
+artifact <- list(
+  format = "parlab-prior-centers-v1",
+  fitDate = "2026-08-03",
+  baseVintage = base_vintage,
+  baseModel = PAR_MODEL[c("intercept", names(COEF_TO_PREDICTOR))],
+  snapshot = SNAPSHOT_PATH,
+  n_rows = nrow(fit_df),
+  sigma = unname(summary(fit_main)$spec_pars["sigma", "Estimate"]),
+  practiceCenter = practice_center,
+  sessionPace = unname(fe["Intercept", "Estimate"]),
+  practiceSlope = unname(fe["practice_c", "Estimate"]),
+  deviations = post_tbl |>
+    filter(term %in% dev_terms) |>
+    transmute(term, mean = round(mean, 5), sd = round(sd, 5), n_rows) |>
+    (\(x) setNames(pmap(list(x$mean, x$sd, x$n_rows),
+                        \(m, s, n) list(mean = m, sd = s, nRows = n)), x$term))()
+)
+write_json(artifact, "data/parlab-prior-centers.json",
+           auto_unbox = TRUE, pretty = TRUE, digits = NA)
+cat("wrote data/parlab-prior-centers.json\n")
+```
+
+## 13. How these priors could enter the nightly refit
+
+The decision this document deliberately does not make. The mechanics that
+constrain every option: the nightly recomposes `PAR_MODEL_SHAPES` from its own
+fit each run, so a hand-edited block does not survive the next refit; a
+deviation column with no live rows is gated out of the nightly's formula
+entirely (the zero-variance gate); and the shipped block zeroes any deviation
+until its column has 20 nonzero fit rows (`NEW_FEATURE_DATA_THRESHOLD`).
+Whatever enters must enter through `scripts/refit-par-model.R`, or the next
+nightly reverts it.
+
+**Option A: lab posteriors as the nightly's deviation prior centers.** Replace
+`normal(0, INTERACTION_PRIOR_SD)` with `normal(lab_mean, width)` for the 18
+core terms (and any gimmick terms wanted). The zero-variance gate is the
+catch: with no live tiling rows a deviation column never enters the formula,
+so its prior never matters and the composed block stays parity. Prior centers
+alone change nothing until the flip produces rows, and then only 20-plus rows
+at a time under the ship guard.
+
+Sub-decision if A: the width. The lab posterior SDs assert one practiced
+player generalizes; `INTERACTION_PRIOR_SD` (0.5) around the lab mean keeps
+the center but lets live data walk away cheaply; something between (say
+doubling the lab SD) splits the difference.
+
+**Option B: additionally seed the shipped blocks.** Emit the lab-centered
+deviations into `PAR_MODEL_SHAPES` even before live rows exist (bypassing the
+zero-variance gate and the 20-row guard for lab-seeded terms, with the lab
+posterior standing in for the missing likelihood). This is the only option
+where the flip's first deltoidal daily ships a par near five times parity
+instead of parity; the cost is shipping one player's practiced multipliers as
+everyone's par until live data accumulates, and a real change to the refit's
+guard logic (the guards exist to stop prior medians reaching `predictPar`,
+and this deliberately routes around them for a named term set).
+
+**Option C: lab rows as data in the nightly fit.** Append these 68 rows to
+the fit frame (they are real plays under the daily time convention) with a
+lab-session nuisance offset, letting the joint fit weigh them against live
+rows forever. Statistically the cleanest long-run pooling; the costs are
+plumbing (the nightly would fetch `parLab/` and carry embedded per-row
+features, which nothing in its daily frame does today; only the separate
+timed fit works that way) and permanence (his lab pace becomes a standing
+fixture in the production fit rather than a prior that live data can retire).
+
+**Option D: nothing until live data.** The pure 20-row path. The flip then
+ships parity par on every Laves daily for weeks (deltoidal wins recorded at
+a fifth of their real difficulty, feeding the fit distorted early rows), and
+the Phase-2 band inversion has no equation to invert, which is the blocker
+that motivated this battery in the first place.
+
+A and B compose (A is the fit-side memory, B the ship-side bridge), and
+either can carry the strike re-pricing iteration later. The width
+sub-decision, the practiced-player caveat, and which gimmick cells deserve
+anything beyond zero-centered-wide are all part of the same conversation.
