@@ -20,9 +20,10 @@
 
 import { createDailyRNG } from './seededRandom.js';
 // tilingGeometry is a LEAF (it imports nothing), so depending on it here for the
-// 4.8.8 square-box fraction cannot create a cycle, and it keeps that constant
-// single-sourced rather than re-stating a value derived from OCT_CUT.
-import { SQ_BOX_FRAC } from './tilingGeometry.js';
+// 4.8.8 square-box fraction and the side-crawl graph cannot create a cycle, and
+// it keeps those single-sourced rather than re-stating values derived from
+// OCT_CUT or the wireframe.
+import { SQ_BOX_FRAC, buildTiling, buildWireframe } from './tilingGeometry.js';
 
 export const WORM_MIN_LEN = 2;
 export const WORM_MAX_LEN = 5;
@@ -244,6 +245,72 @@ export function rehydrateWorms(saved, rng = Math.random) {
     worms.push(worm);
   }
   return worms;
+}
+
+// ── Side-only crawl topology (Christopher's ruling, 2026-08-03) ────────
+// "Worms shouldn't cross through corners, only through sides like in the
+// classic tiling." The board's `_cellNeighbors` is CORNER-INCLUSIVE on the
+// four Laves lattices (cells meeting at a single vertex are neighbors, the
+// mine-count rule), but a worm is a physical crawler: its steps use the
+// side-sharing graph — the same pairs `buildWireframe` draws seams and
+// walls on — so a Cubes rhombus has 4 exits, not 10. Implemented as the
+// INTERSECTION of the wireframe's pair graph with the live
+// `_cellNeighbors`: the wireframe supplies the geometry (which pairs share
+// an edge), the live adjacency supplies the walls (a severed link is
+// absent from it), so a walled-off side stays uncrossable. On the two
+// trivalent tilings (4.8.8, honeycomb) every neighbor IS a side neighbor —
+// zero vertex-only pairs — so this is a proven no-op there, and rectangles
+// never reach it (stepWorm's dr/dc walk is already side-only).
+//
+// The side lists are rebuilt from the board's own `_tiling` descriptor
+// (`buildTiling` is pure and reproduces the geometry exactly — the same
+// rebuild the renderer uses for clip-paths and applyWallsTiling for the
+// wall wireframe) and memoized per board object. The crawl graph is
+// mechanical, not certificational — the solver is worm-blind — so
+// re-deriving it carries none of the stored-contract risk that made
+// `cellNeighbors` frozen bytes.
+const _crawlListsMemo = new WeakMap();
+
+function _sideCrawlLists(board) {
+  let lists = _crawlListsMemo.get(board);
+  if (lists) return lists;
+  const t = board._tiling;
+  const tiling = buildTiling(t.type, t.M, t.N);
+  const sidePairs = new Set();
+  for (const e of buildWireframe(tiling).edges) {
+    const a = Math.min(e.cellA, e.cellB);
+    const b = Math.max(e.cellA, e.cellB);
+    sidePairs.add(a * tiling.total + b);
+  }
+  lists = board._cellNeighbors.map((nbrs, i) => nbrs.filter((j) => {
+    const a = Math.min(i, j);
+    const b = Math.max(i, j);
+    return sidePairs.has(a * tiling.total + b);
+  }));
+  _crawlListsMemo.set(board, lists);
+  return lists;
+}
+
+/**
+ * The topology object tickWorms/stepWorm crawl on, for the board as it
+ * stands — side-sharing neighbors on a tiling, null on a rectangle (whose
+ * dr/dc walk is untouched). The one builder, so the heartbeat and the
+ * tests can never disagree about what a worm may cross.
+ *
+ * @param {Array} board  the live board (rows of cells, with `_cellNeighbors`,
+ *                       `_cellPos`, `_tiling` stamped when it is a tiling)
+ * @param {number} rows
+ * @param {number} cols
+ * @returns {{neighborsOf: Function, posOf: Function}|null}
+ */
+export function buildWormCrawlTopology(board, rows, cols) {
+  if (!board || !board._cellNeighbors || !board._cellPos || !board._tiling) return null;
+  const lists = _sideCrawlLists(board);
+  return {
+    neighborsOf: (r, c) => lists[r * cols + c]
+      .map(idx => ({ r: Math.floor(idx / cols), c: idx % cols })),
+    posOf: (r, c) => { const p = board._cellPos[r * cols + c]; return { x: p.cx, y: p.cy }; },
+  };
 }
 
 const ORTHO = [[-1, 0], [1, 0], [0, -1], [0, 1]];
