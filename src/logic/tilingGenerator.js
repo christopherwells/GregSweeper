@@ -89,20 +89,28 @@ export { buildTiling, buildTiling488, containerFor };
  *
  * @param {{type?:string, M:number, N:number, mines:number, seed:string,
  *          gimmicks?:string[], techniqueFloor?:number, maxAttempts?:number,
- *          loadBearingBudget?:number}} opts
+ *          loadBearingBudget?:number, forceConstructive?:boolean}} opts
  *          type names the tiling: any entry of TILING_TYPES, defaulting to the
  *          4.8.8. M and N are that tiling's LATTICE dimensions, which are not
  *          the container's and mean something different per tiling (its own
  *          cell-count formula is in containerIsStorable's note).
  *          loadBearingBudget: attempts that must ALSO have every testable
  *          modifier load-bearing; 0 disables the requirement entirely.
+ *          forceConstructive: route mine placement to the constructive placer
+ *          even below CONSTRUCTIVE_DENSITY_THRESHOLD. The four Laves lattices
+ *          are weak on rejection sampling exactly BELOW the threshold (floret
+ *          7/12 certified at density 0.208, deltoidal 8/12 at 0.181), while
+ *          the same boards go 30/30 constructively — so a sub-threshold Laves
+ *          config that must generate on arbitrary date seeds (the banded
+ *          daily config tables in tilingBandConfigs.js) opts in here. Default
+ *          false keeps every existing caller byte-identical.
  * @returns {{board:Array, rows:number, cols:number, firstClick:number,
  *            tiling:object, check:object, activeGimmicks:string[],
  *            applied:object} | null}  null if nothing certified
  */
 export function generateTilingBoard({
   type = '4.8.8', M, N, mines, seed, gimmicks = [], techniqueFloor = 0, maxAttempts = 600,
-  loadBearingBudget = TILING_LOAD_BEARING_BUDGET,
+  loadBearingBudget = TILING_LOAD_BEARING_BUDGET, forceConstructive = false,
 }) {
   const T = buildTiling(type, M, N);
   const total = T.total;
@@ -143,7 +151,7 @@ export function generateTilingBoard({
   // are much cheaper, so the cheap path stays the default exactly as it does
   // for rectangles.
   const density = nMines / total;
-  const useConstructive = density > CONSTRUCTIVE_DENSITY_THRESHOLD;
+  const useConstructive = forceConstructive || density > CONSTRUCTIVE_DENSITY_THRESHOLD;
   const hasTestableGimmick = gimmicks.some((g) => TESTABLE_GIMMICK_TYPES.includes(g));
   const topo = { neighborCache: T.adj, excluded, makeBoard };
 
