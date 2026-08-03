@@ -321,8 +321,8 @@ The read: hex fell to about half par and stayed there; 4.8.8 held near his
 square pace throughout; cairo and deltoidal came back down after a slow middle
 board; rhombille had the steepest drop and kept falling. Floret is the
 outlier in the other direction: its third warm-up (the fresh layout issued
-after the voided probe) was its slowest, so floret entered the measured
-battery still learning. That is the direct motivation for the practice term
+after the voided probe) was its slowest, so he reached floret's measured rows
+still learning the lattice. That is the direct motivation for the practice term
 in section 7, and the reason floret's deviations get the least-settled
 language in the results.
 
@@ -414,8 +414,8 @@ singles, 7 anchors), response `log(pure_time / par_sq)`:
 - **Gimmick deviations** where the mechanism block placed a board, again in
   the nightly's names (`shapeHex_x_sonarCellCount`, `shapeRhombille_x_wormLoad`,
   ...): fourteen columns, each nonzero on exactly one row. These are
-  observations wearing coefficient clothes, and the results section treats
-  them that way.
+  single observations recorded as coefficients, and the results section
+  treats them that way.
 
 What is deliberately absent: per-shape deviations on the reasoning tiers
 (`patternMoves`, `searchMoves`) and on `zeroClusterCount`. Those features vary
