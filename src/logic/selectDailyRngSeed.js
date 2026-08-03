@@ -41,7 +41,7 @@ import { createDailyRNG } from './seededRandom.js';
 import { generateBoard, cleanSolverArtifacts } from './boardGenerator.js';
 import { isBoardSolvable } from './boardSolver.js';
 import { getDailyGimmick, applyGimmicks } from './gimmicks.js';
-import { computeDailyFeatures } from './dailyFeatures.js';
+import { computeDailyFeatures, predictPar } from './dailyFeatures.js';
 import {
   DAILY_MIN_SIZE, DAILY_SIZE_RANGE,
   DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE,
@@ -50,6 +50,7 @@ import {
   candidateSeed, getCandidateCount, getTargetGimmickName, getMissionForSlot,
   missionCandidateScore, selectMissionWinner,
 } from './experimentDesign.js';
+import { drawDailyTargetPar, DAILY_PAR_BAND } from './parBand.js';
 
 export function selectDailyRngSeed(dateString) {
   const scored = [];
@@ -101,14 +102,21 @@ export function selectDailyRngSeed(dateString) {
     );
     const score = missionCandidateScore(mission, features);
     if (score === null) continue;
-    scored.push({ score, mission, seed });
+    // Par rides along for the band: the day's target par (parBand.js) zeroes
+    // out-of-band candidates and weights the rest by closeness inside
+    // selectMissionWinner. predictPar on already-computed features is the
+    // whole cost.
+    scored.push({ score, mission, seed, par: predictPar(features) });
   }
 
   // Date-seeded weighted lottery over the scored slots (decorrelation
-  // keeps argmax supremacy) — see selectMissionWinner. If every candidate
-  // was unsolvable on first-pass gimmicks (extremely rare), fall back to
-  // the plain dateString — the main generation path has its own retry
-  // loop that'll sort it out.
-  const winner = selectMissionWinner(scored, dateString);
+  // keeps argmax supremacy), banded toward the day's target par — see
+  // selectMissionWinner and parBand.js. If every candidate was unsolvable
+  // on first-pass gimmicks (extremely rare), fall back to the plain
+  // dateString — the main generation path has its own retry loop that'll
+  // sort it out.
+  const winner = selectMissionWinner(scored, dateString, {
+    targetPar: drawDailyTargetPar(dateString), band: DAILY_PAR_BAND,
+  });
   return winner ? winner.seed : dateString;
 }

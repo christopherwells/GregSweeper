@@ -26,13 +26,13 @@ import {
   DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE,
 } from '../src/logic/difficulty.js';
 import { serializeBoard } from '../src/firebase/dailyBoardSync.js';
+import { selectWeeklyRngSeed } from '../src/logic/selectWeeklyRngSeed.js';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { signInAnonymously, deleteSelf } from './anon-auth-rest.mjs';
 
 const DB_BASE = 'https://gregsweeper-66d02-default-rtdb.firebaseio.com';
-const CANDIDATE_COUNT = 10;
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 function buildOneCandidate(seed) {
@@ -69,31 +69,23 @@ function buildOneCandidate(seed) {
 }
 
 function selectBestCandidate(weekStart) {
-  let best = null, bestScore = -Infinity, bestSeed = null;
-  for (let i = 0; i < CANDIDATE_COUNT; i++) {
-    const seed = `${weekStart}:trial${i}`;
-    const cand = buildOneCandidate(seed);
-    if (!cand.check.solvable && cand.check.remainingUnknowns !== 0) continue;
-    // Score: gimmick count primary, advancedLogicMoves tiebreaker.
-    const score = cand.activeGimmicks.length + (cand.check.advancedLogicMoves || 0) * 0.01;
-    if (score > bestScore) {
-      bestScore = score;
-      bestSeed = seed;
-      best = cand;
-    }
-  }
-  if (!best) {
-    const cand = buildOneCandidate(weekStart);
-    best = cand;
-    bestSeed = weekStart;
-  }
+  // ONE copy of the weekly selection rule: the client's selectWeeklyRngSeed
+  // resolves the seed (banded argmax toward the week's target par — see
+  // parBand.js), and the winner is rebuilt through the same retry loop the
+  // play path runs. The private contest copy that lived here was the weekly
+  // half of the mirror-pair drift class the daily side closed when its slot
+  // arithmetic drifted; its no-solvable-candidate fallback (the bare
+  // weekStart seed) is what selectWeeklyRngSeed returns in that case, so
+  // the fallback shape is unchanged.
+  const rngSeed = selectWeeklyRngSeed(weekStart);
+  const best = buildOneCandidate(rngSeed);
   // HARD GATE: never write an uncertified canonical (buildOneCandidate
   // returns its last attempt even on exhaustion). Failing the workflow
   // is correct — Monday's first client falls back to verified local gen.
   if (!best.check || !(best.check.solvable || best.check.remainingUnknowns === 0)) {
     throw new Error(`No solvable weekly board found for ${weekStart} — refusing to write an uncertified canonical`);
   }
-  return { ...best, rngSeed: bestSeed };
+  return { ...best, rngSeed };
 }
 
 async function existsCanonicalBoard(weekStart) {

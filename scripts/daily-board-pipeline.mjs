@@ -11,11 +11,12 @@ import { createDailyRNG } from '../src/logic/seededRandom.js';
 import { getDailyGimmick, applyGimmicks } from '../src/logic/gimmicks.js';
 import { generateBoard, cleanSolverArtifacts } from '../src/logic/boardGenerator.js';
 import { isBoardSolvable, findDecorativeGimmicks } from '../src/logic/boardSolver.js';
-import { computeDailyFeatures } from '../src/logic/dailyFeatures.js';
+import { computeDailyFeatures, predictPar } from '../src/logic/dailyFeatures.js';
 import {
   resolveMissionForSlot, resolveCandidateCount, missionCandidateScore,
   selectMissionWinner, getTargetGimmickName, missionStamp,
 } from '../src/logic/experimentDesign.js';
+import { drawDailyTargetPar, DAILY_PAR_BAND } from '../src/logic/parBand.js';
 import { resolveDailyShape, buildTilingDailyBoard } from '../src/logic/shapeRotation.js';
 import { DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE } from '../src/logic/difficulty.js';
 import { serializeBoard } from '../src/firebase/dailyBoardSync.js';
@@ -186,19 +187,25 @@ export function selectBestCandidate(dateString, spec, dailyShape = resolveDailyS
     );
     const score = missionCandidateScore(mission, features);
     if (score === null) continue;
-    scored.push({ score, mission, seed, cand });
+    // Par rides along for the band, exactly as in selectDailyRngSeed.js.
+    scored.push({ score, mission, seed, cand, par: predictPar(features) });
   }
   const loadBearing = scored.filter(e => e.cand.decorative.length === 0);
-  console.log(`  candidates: ${scored.length} solvable, ${loadBearing.length} fully load-bearing`);
+  const targetPar = drawDailyTargetPar(dateString);
+  console.log(`  candidates: ${scored.length} solvable, ${loadBearing.length} fully load-bearing; par target ${targetPar.toFixed(0)}s, pool ${scored.map(e => e.par.toFixed(0)).join('/')}`);
   // The lottery seed is the DATE, so the load-bearing pool and the
   // all-solvable fallback pool resolve through the same single draw —
   // one rng stream, one consumer, exactly like the client path.
-  const winner = selectMissionWinner(loadBearing.length > 0 ? loadBearing : scored, dateString);
+  const winner = selectMissionWinner(
+    loadBearing.length > 0 ? loadBearing : scored, dateString,
+    { targetPar, band: DAILY_PAR_BAND },
+  );
   let best = null, bestSeed = null, bestMission = null;
   if (winner) {
     if (loadBearing.length === 0) {
       console.log(`  no fully load-bearing candidate; drawing over all solvable (decorative=${winner.cand.decorative.join(',')})`);
     }
+    console.log(`  par band: winner ${winner.par.toFixed(0)}s against target ${targetPar.toFixed(0)}s`);
     best = winner.cand; bestSeed = winner.seed; bestMission = winner.mission;
   }
   if (!best) {

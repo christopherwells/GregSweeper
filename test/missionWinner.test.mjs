@@ -23,6 +23,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { selectMissionWinner } from '../src/logic/experimentDesign.js';
+import { DAILY_PAR_BAND } from '../src/logic/parBand.js';
 
 // The live 2026-07-30 shape, reduced: worm's slot score dwarfs the rest but
 // is nowhere near the total. Slot order matches the coverage list.
@@ -121,6 +122,95 @@ test('an all-zero pool still rotates (uniform draw), and edge pools behave', () 
   assert.equal(selectMissionWinner(null, '2026-08-01'), null, 'no pool → null');
   const one = [{ score: 0.5, mission: { target: 'a' }, seed: 'only' }];
   assert.equal(selectMissionWinner(one, '2026-08-01').seed, 'only', 'singleton pool wins');
+});
+
+// ── Par banding (Christopher's ruling 2026-08-02, parBand.js) ─────────
+// The optional third argument multiplies each NON-decorrelation entry's
+// score by its band weight before the draw. These pins are the composition
+// rules: the band must never touch the decorrelation contest, must
+// disengage cleanly on par-less pools, and must be a provable no-op when
+// every candidate prices identically.
+
+const BAND = { targetPar: 70, band: DAILY_PAR_BAND };
+const withPars = pars => LIVE_SHAPE.map((e, i) => ({ ...e, par: pars[i] }));
+
+test('bandCtx with a par-less pool disengages — winner identical to the legacy draw', () => {
+  for (let i = 0; i < 30; i++) {
+    const date = `2026-08-${String((i % 28) + 1).padStart(2, '0')}b${i}`;
+    assert.equal(
+      selectMissionWinner(LIVE_SHAPE, date, BAND).seed,
+      selectMissionWinner(LIVE_SHAPE, date).seed,
+      'no entry carries par → the band step must not exist',
+    );
+  }
+});
+
+test('equal pars make the band a no-op — same winner, same rng stream position', () => {
+  // With every candidate at the same par the kernel is a shared constant, so
+  // the weighted draw must resolve to EXACTLY the legacy winner on the same
+  // single rng() call. This is the one-draw-per-date contract: a banded
+  // client and a pre-band client walk the same stream.
+  const flat = withPars(LIVE_SHAPE.map(() => 70));
+  for (let i = 0; i < 40; i++) {
+    const date = `2026-08-${String((i % 28) + 1).padStart(2, '0')}c${i}`;
+    assert.equal(
+      selectMissionWinner(flat, date, BAND).seed,
+      selectMissionWinner(LIVE_SHAPE, date).seed,
+    );
+  }
+});
+
+test('REGRESSION: an out-of-band candidate never wins while an in-band one exists', () => {
+  // 300s is past the 240s daily ceiling — the hard clamp, the rule that ends
+  // the 5% of past dailies that shipped above the (then-180s) line.
+  const pars = [300, 70, 300, 300, 300, 300, 300, 300];
+  const entries = withPars(pars);
+  for (let i = 0; i < 40; i++) {
+    const date = `2026-08-${String((i % 28) + 1).padStart(2, '0')}d${i}`;
+    assert.equal(selectMissionWinner(entries, date, BAND).seed, 't1',
+      'only the in-band candidate may win, regardless of scores');
+  }
+});
+
+test('decorrelation supremacy is checked on RAW scores — the band never touches it', () => {
+  // The decorrelation entry prices far outside the band; it still wins
+  // outright at depth, because its R-derived weight is calibrated against
+  // the un-banded contest and those rare days chase a residual corner.
+  const entries = [
+    ...withPars(LIVE_SHAPE.map(() => 70)),
+    { score: 0.72, mission: { target: 'clueShare3', type: 'decorrelation' }, seed: 'd0', par: 500 },
+  ];
+  for (let i = 0; i < 30; i++) {
+    const date = `2026-08-${String((i % 28) + 1).padStart(2, '0')}e${i}`;
+    assert.equal(selectMissionWinner(entries, date, BAND).seed, 'd0');
+  }
+});
+
+test('an all-zero-score pool draws by band weight, not uniformly', () => {
+  // No mission signal → the band alone decides. The out-of-band entry
+  // weighs 0, so the in-band one must win every date.
+  const zeros = [
+    { score: 0, mission: { target: 'a' }, seed: 'z0', par: 300 },
+    { score: 0, mission: { target: 'b' }, seed: 'z1', par: 70 },
+  ];
+  for (let i = 0; i < 30; i++) {
+    const date = `2026-08-${String((i % 28) + 1).padStart(2, '0')}f${i}`;
+    assert.equal(selectMissionWinner(zeros, date, BAND).seed, 'z1');
+  }
+});
+
+test('an all-out-of-band pool still resolves — nearest-in-log by the unclamped kernel', () => {
+  const entries = [
+    { score: 1, mission: { target: 'a' }, seed: 'o0', par: 700 },
+    { score: 1, mission: { target: 'b' }, seed: 'o1', par: 280 },
+  ];
+  // 280 is nearer the 70s target than 700 in log-ratio; with equal scores it
+  // must dominate the draw overwhelmingly (kernel ratio ~ e^17), so every
+  // frozen date resolves to it.
+  for (let i = 0; i < 30; i++) {
+    const date = `2026-08-${String((i % 28) + 1).padStart(2, '0')}g${i}`;
+    assert.equal(selectMissionWinner(entries, date, BAND).seed, 'o1');
+  }
 });
 
 test('both selection paths delegate the winner-pick (no argmax copies)', () => {

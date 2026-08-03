@@ -37,6 +37,7 @@
 //   behaviour as the pre-multi-objective design.
 
 import { createDailyRNG } from './seededRandom.js';
+import { bandWeightsFor } from './parBand.js';
 
 const EXPERIMENT_PATH = './src/logic/experimentTarget.json';
 
@@ -433,12 +434,31 @@ export function missionCandidateScore(mission, features) {
  * used to exist as two argmax copies, the same mirror-pair shape whose slot
  * arithmetic had already drifted once.
  *
- * @param {Array<{score: number, mission: Object}>} entries scored candidates
- *   in slot order (each carries whatever else the caller needs back)
+ * Par banding (Christopher's ruling 2026-08-02, see parBand.js): when the
+ * caller passes `bandCtx = { targetPar, band }`, each NON-decorrelation
+ * entry's score is multiplied by its band weight — 0 outside the band, a
+ * log-scale closeness kernel to the day's target inside it — before the
+ * draw, so the lottery keeps deciding WHICH mission a board studies while
+ * the band decides how LONG the board runs (measured shift in mission-win
+ * shares ≤ ~4 points). Three composition rules are load-bearing:
+ * - Decorrelation supremacy is checked on RAW scores, before any band
+ *   weight. Its R-derived weight is calibrated to "tie the strongest
+ *   coverage" under exactly that contest, and a decorrelation winner is
+ *   exempt from the band (those rare days chase a residual corner).
+ * - An all-zero-score pool draws ∝ band weight instead of uniformly — no
+ *   mission signal, so the band alone decides.
+ * - Entries without a finite `par` weigh 0; if NO entry carries one the
+ *   whole band step disengages and the legacy draw runs verbatim.
+ *
+ * @param {Array<{score: number, mission: Object, par?: number}>} entries
+ *   scored candidates in slot order (each carries whatever else the caller
+ *   needs back; `par` is required only for banding)
  * @param {string} dateString YYYY-MM-DD, the lottery's seed anchor
+ * @param {{targetPar: number, band: import('./parBand.js').ParBand}|null} [bandCtx]
+ *   the day's par target and band, or null for the pre-band contest
  * @returns {Object|null} the winning entry, or null for an empty pool
  */
-export function selectMissionWinner(entries, dateString) {
+export function selectMissionWinner(entries, dateString, bandCtx = null) {
   const pool = (Array.isArray(entries) ? entries : [])
     .filter(e => e && typeof e.score === 'number' && e.score >= 0);
   if (pool.length === 0) return null;
@@ -454,8 +474,33 @@ export function selectMissionWinner(entries, dateString) {
   // draw — it wins outright at depth or not at all, per its calibration.
   const drawPool = pool.filter(e => e.mission?.type !== 'decorrelation');
   if (drawPool.length === 0) return top;
-  const total = drawPool.reduce((s, e) => s + e.score, 0);
   const rng = createDailyRNG(`${dateString}:missionDraw`);
+
+  // Every branch below consumes exactly ONE rng() call, so a client with
+  // banding and a client without it stay on the same stream position for
+  // anything seeded after the draw.
+  const weights = bandCtx && Number.isFinite(bandCtx.targetPar) && bandCtx.band
+    ? bandWeightsFor(drawPool, bandCtx.targetPar, bandCtx.band)
+    : null;
+  if (weights !== null) {
+    const drawWeighted = ws => {
+      let r = rng() * ws.reduce((s, w) => s + w, 0);
+      let last = null;
+      for (let i = 0; i < drawPool.length; i++) {
+        if (ws[i] <= 0) continue; // a zero-weight entry must not win on the r === 0 edge
+        last = drawPool[i];
+        r -= ws[i];
+        if (r <= 0) return drawPool[i];
+      }
+      return last; // float-edge fallback
+    };
+    const eff = drawPool.map((e, i) => e.score * weights[i]);
+    if (eff.some(w => w > 0)) return drawWeighted(eff);
+    if (weights.some(w => w > 0)) return drawWeighted(weights);
+    // Unreachable while bandWeightsFor guarantees a positive weight for any
+    // finite par, but degrade to the legacy uniform draw rather than assume.
+  }
+  const total = drawPool.reduce((s, e) => s + e.score, 0);
   if (total <= 0) return drawPool[Math.min(drawPool.length - 1, Math.floor(rng() * drawPool.length))];
   let r = rng() * total;
   for (const e of drawPool) {
