@@ -29,6 +29,7 @@
     "src/logic/hateSpeechTerms.js",
     "src/logic/leaderboardViews.js",
     "src/logic/difficulty.js",
-    "src/logic/seededRandom.js"
+    "src/logic/seededRandom.js",
+    "src/logic/parBand.js"
   ]
 }
