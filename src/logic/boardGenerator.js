@@ -1,5 +1,5 @@
 import { isBoardSolvable, buildNeighborCache } from './boardSolver.js';
-import { recalcAllAdjacency } from './gimmicks.js';
+import { recalcAllAdjacency, recomputeDisplayedMines } from './gimmicks.js';
 
 // ── Incremental adjacency updates ────────────────────────────
 // Recomputing the entire board's adjacency on every mine place/remove
@@ -520,4 +520,50 @@ export function cleanSolverArtifacts(board) {
       cell.revealAnimDelay = 0;
     }
   }
+}
+
+// Place mystery cells constructively: each candidate is tentatively marked,
+// the board is verified, and the cell is kept only if solvability survives.
+// Random placement of mystery often kills solvability because mystery cells
+// hide info entirely; this approach preserves as many as possible without
+// breaking the no-guessing contract. May place fewer than `targetCount` if
+// every remaining candidate would break the board. Returns the placed cells.
+// (Extracted verbatim from gameActions' first-click flow so the Challenge
+// 250 builder and the live challenge path share the one implementation —
+// random mystery on a dense board burns whole base layouts per miss, which
+// is what blew the ladder validator's 2-second cap before this was shared.)
+export function placeMysteryConstructive(board, rows, cols, targetCount, rng, fr, fc) {
+  if (targetCount <= 0) return [];
+  const candidates = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const cell = board[r][c];
+      if (cell.isMine || cell.adjacentMines === 0) continue;
+      // Mystery is exclusive with all other gimmicks — skip cells that
+      // already carry one. Match applyMystery's spec.
+      if (cell.isLiar || cell.isLocked || cell.isWormhole || cell.isSonar
+          || cell.isCompass || cell.mirrorPair || cell.isPressurePlate) continue;
+      candidates.push(cell);
+    }
+  }
+  // Fisher-Yates with provided rng
+  for (let i = candidates.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+  }
+  const placed = [];
+  for (const cell of candidates) {
+    if (placed.length >= targetCount) break;
+    cell.isMystery = true;
+    recomputeDisplayedMines(board);
+    const result = isBoardSolvable(board, rows, cols, fr, fc);
+    cleanSolverArtifacts(board);
+    if (result.solvable || result.remainingUnknowns === 0) {
+      placed.push({ row: cell.row, col: cell.col });
+    } else {
+      cell.isMystery = false;
+      recomputeDisplayedMines(board);
+    }
+  }
+  return placed;
 }

@@ -16,7 +16,7 @@ import { showLevelInfoToast } from '../ui/toastManager.js';
 import { startTimer, stopTimer, pauseTimer, resumeTimer, startMineShift, updateTimerDisplay, hatchWormEggs } from './timerManager.js';
 import { handleWin, handleLoss, handleDailyBombHit } from './winLossHandler.js';
 import { performScan, performXRay, performMagnet, tryLifeline } from './powerUpActions.js';
-import { generateBoard, createEmptyBoard, cleanSolverArtifacts } from '../logic/boardGenerator.js';
+import { generateBoard, createEmptyBoard, cleanSolverArtifacts, placeMysteryConstructive } from '../logic/boardGenerator.js';
 import { generateTilingBoard } from '../logic/tilingGenerator.js';
 import { coastlineBoardFor, DEFAULT_TILING } from '../logic/coastlineLink.js';
 import { floodFillReveal, checkWin, chordReveal, unrevealChordMines, isBoardSolvable, estimatePlateMovesToDisarm, buildNeighborCache, findDecorativeGimmicks, certificateFromCheck } from '../logic/boardSolver.js';
@@ -179,47 +179,8 @@ function revealWormholePairs(revealed) {
   }
 }
 
-// Place mystery cells constructively: each candidate is tentatively marked,
-// the board is verified, and the cell is kept only if solvability survives.
-// Random placement of mystery often kills solvability because mystery cells
-// hide info entirely; this approach preserves as many as possible without
-// breaking the no-guessing contract. May place fewer than `targetCount` if
-// every remaining candidate would break the board. Returns the placed cells.
-function placeMysteryConstructive(board, rows, cols, targetCount, rng, fr, fc) {
-  if (targetCount <= 0) return [];
-  const candidates = [];
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const cell = board[r][c];
-      if (cell.isMine || cell.adjacentMines === 0) continue;
-      // Mystery is exclusive with all other gimmicks — skip cells that
-      // already carry one. Match applyMystery's spec.
-      if (cell.isLiar || cell.isLocked || cell.isWormhole || cell.isSonar
-          || cell.isCompass || cell.mirrorPair || cell.isPressurePlate) continue;
-      candidates.push(cell);
-    }
-  }
-  // Fisher-Yates with provided rng
-  for (let i = candidates.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
-  }
-  const placed = [];
-  for (const cell of candidates) {
-    if (placed.length >= targetCount) break;
-    cell.isMystery = true;
-    recomputeDisplayedMines(board);
-    const result = isBoardSolvable(board, rows, cols, fr, fc);
-    cleanSolverArtifacts(board);
-    if (result.solvable || result.remainingUnknowns === 0) {
-      placed.push({ row: cell.row, col: cell.col });
-    } else {
-      cell.isMystery = false;
-      recomputeDisplayedMines(board);
-    }
-  }
-  return placed;
-}
+// placeMysteryConstructive moved to boardGenerator.js (shared with the
+// Challenge 250 builder) — imported above, behavior unchanged.
 
 function revealLinkedCell(revealed, link) {
   const pair = state.board[link.row]?.[link.col];
