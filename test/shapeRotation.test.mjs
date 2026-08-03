@@ -16,9 +16,10 @@ import {
   TILING_ROTATION_START, resolveDailyShape, dailyTilingConfig,
   setDailyShapeOverride, getDailyShapeOverride, buildTilingDailyBoard,
 } from '../src/logic/shapeRotation.js';
+import { TILING_BAND_CONFIGS, drawDailyTilingConfig, tilingConfigAttempts } from '../src/logic/tilingBandConfigs.js';
 import { selectTilingMission, candidateSeed, missionStamp } from '../src/logic/experimentDesign.js';
 import { TILING_TYPES, buildTiling, containerIsStorable } from '../src/logic/tilingGeometry.js';
-import { TILING_SAFE_GIMMICKS, CONSTRUCTIVE_DENSITY_THRESHOLD } from '../src/logic/tilingGenerator.js';
+import { TILING_SAFE_GIMMICKS } from '../src/logic/tilingGenerator.js';
 import { DAILY_SAFE_GIMMICKS } from '../src/logic/gimmicks.js';
 import { serializeBoard, deserializeBoard } from '../src/firebase/dailyBoardSync.js';
 import { isBoardSolvable } from '../src/logic/boardSolver.js';
@@ -97,30 +98,33 @@ test('LOCKSTEP GUARD: every daily-safe gimmick is tiling-safe', () => {
   }
 });
 
-// ── The per-shape daily configs ──────────────────────────────────────────
+// ── The per-shape daily configs (banded draw, Par Bands Phase 2) ─────────
+// Table validity (storability, proven density ranges, constructive routing,
+// the rhombille 72-cell cost ceiling, in-band pricing) is pinned per entry
+// in test/tilingBandConfigs.test.mjs. What THIS file pins is the seam:
+// dailyTilingConfig(type, date) must BE the band module's draw — a private
+// copy here is the missionSlots drift class reborn as configs.
 
-test('every tiling has a daily config that is storable and on the right generator', () => {
+test('dailyTilingConfig is the banded draw, dated, and always a real table entry', () => {
   for (const type of TILING_TYPES) {
-    const cfg = dailyTilingConfig(type);
+    const cfg = dailyTilingConfig(type, '2027-03-01');
     assert.ok(cfg && Number.isInteger(cfg.M) && Number.isInteger(cfg.N) && Number.isInteger(cfg.mines),
       `${type} needs a daily config`);
+    assert.equal(cfg, drawDailyTilingConfig(type, '2027-03-01'),
+      `${type}: dailyTilingConfig must delegate to the band module's one draw`);
+    assert.ok(TILING_BAND_CONFIGS[type].includes(cfg),
+      `${type}: the drawn config must be a committed table entry`);
     const total = buildTiling(type, cfg.M, cfg.N).total;
     assert.ok(containerIsStorable(total),
       `${type} daily (${total} cells) must factor into a canonical-storable container`);
-    const density = cfg.mines / total;
-    // The four Laves lattices are near-dead on rejection sampling (rhombille
-    // 0/12 certified at 0.211) — their daily configs must sit ABOVE the
-    // constructive threshold, where generation is 30/30.
-    if (!['4.8.8', 'hex'].includes(type)) {
-      assert.ok(density > CONSTRUCTIVE_DENSITY_THRESHOLD,
-        `${type} daily density ${density.toFixed(3)} must exceed ${CONSTRUCTIVE_DENSITY_THRESHOLD} (constructive placer)`);
-    }
   }
-  // Christopher's rhombille ruling, pinned: the PROVEN 72-cell / 0.25 config,
-  // never the 90-cell gate fixture (13.7 s worst-case generation there).
-  const rh = dailyTilingConfig('rhombille');
-  assert.equal(buildTiling('rhombille', rh.M, rh.N).total, 72);
-  assert.equal(rh.mines, 18);
+  // Different dates draw different configs (the fixed-config era is over):
+  // over a month of dates, at least one shape must vary its config.
+  const varied = TILING_TYPES.some((type) => {
+    const ids = new Set(dates(31, '2027-03-01').map((d) => dailyTilingConfig(type, d).id));
+    return ids.size > 1;
+  });
+  assert.ok(varied, 'the banded draw must actually vary configs across dates');
 });
 
 // ── The tiling-day mission lottery ───────────────────────────────────────
@@ -164,11 +168,14 @@ test('selectTilingMission draws gimmick-bearing slots only, deterministically', 
 
 const SPEC_SONAR = { target: 'sonarCellCount', coverage_targets: [] };
 
-test('buildTilingDailyBoard produces a certified board on the config, with the mission honored', () => {
+test('buildTilingDailyBoard produces a certified board on the DATE\'s drawn config, with the mission honored', () => {
   const built = buildTilingDailyBoard('2027-03-01', 'hex', SPEC_SONAR);
   assert.ok(built, 'hex daily must generate');
-  const cfg = dailyTilingConfig('hex');
-  assert.equal(built.rows * built.cols, buildTiling('hex', cfg.M, cfg.N).total);
+  const cfg = dailyTilingConfig('hex', '2027-03-01');
+  assert.equal(built.rows * built.cols, buildTiling('hex', cfg.M, cfg.N).total,
+    'the board must be built on the banded draw for this date');
+  assert.equal(built.board._tiling.M, cfg.M);
+  assert.equal(built.board._tiling.N, cfg.N);
   assert.equal(built.firstClick, buildTiling('hex', cfg.M, cfg.N).centerIndex,
     'the opener is the tiling\'s own centre, never the container centre');
   assert.equal(built.rngSeed, candidateSeed('2027-03-01', 0), 'gimmick primary + empty coverage → slot 0 seed');
