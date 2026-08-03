@@ -411,13 +411,13 @@ with the change in place: the Par Lab battery validates 86/86, the banded
 daily config calibrator proves all 40 committed entries clean with
 plain-probe drift x1.00, and the full suite passes with three new
 regression pins. What remains outside the cap is plain-dense only: Cubes
-72c at 0.38 (3.2s) and Kites' seed-jittery plain cells above ~0.34 — and no
+72c at 0.38 (3.2s) and Kites' seed-jittery plain cells above ~0.34, and no
 ladder spec needs either (the proven summit table below routes around
 them). The background pre-generation option stays in pocket for the endless
 zone, unneeded for the authored ladder.
 
 What the cap excluded ON THE ONE-ROLL GENERATOR (3-stack = locked+sonar+walls
-at 0.28 / 0.30 / 0.34, six seeds per cell, every size) — kept as the record
+at 0.28 / 0.30 / 0.34, six seeds per cell, every size), kept as the record
 that motivated the re-roll change in the next subsection, which retired every
 stacked exclusion below:
 
@@ -440,7 +440,7 @@ stacked exclusion below:
 
 Consequences for the authored blocks, REVISED after the re-roll generator
 landed: the 48-cell-only constraint on stacked Cubes and the 36-to-48-cell
-constraint on stacked Kites are GONE — every stacked size fits the cap now,
+constraint on stacked Kites are GONE: every stacked size fits the cap now,
 so block 41, block 44, the L250 crown, and the gauntlet's Cubes and Kites
 entries size themselves by tier and feel rather than by generation cost.
 The build validator still times every spec (the cap stays the rule; the
@@ -538,7 +538,7 @@ authored spec needs those cells:
   The two former problem shapes resolved exactly as predicted: Cubes' summit
   needed the re-roll generator (its 72c stacked variant also lands the band
   at ppc 3.98 but one probe seed hit 3.5s, so the 60-cell route with 2x cap
-  headroom is the proven one), and Paving's needed construction — the
+  headroom is the proven one), and Paving's needed construction: the
   112-cell rung with the intensity ramp turned up (`gimmickLevel`, the
   ladder's own mechanism) rather than any density, which its flat density
   response predicted. These seven are EXISTENCE PROOFS the build starts
