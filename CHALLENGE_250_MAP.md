@@ -1,45 +1,41 @@
-# Challenge 250: the 45-block map (DRAFT for markup)
+# Challenge 250: the 45-block map
 
-**Status: DRAFT. Nothing builds from this document until Christopher marks it up.**
+**Status: the three open items are RULED (Christopher, 2026-08-03); the map is
+settled for planning. Nothing builds until his explicit build go.**
 Every design ruling it implements comes from the 2026-08-03 design interview; the
 numbers come from the Par Lab prior fit (PR #221, `scripts/fit-parlab-priors.qmd`,
 the lab-seeded `PAR_MODEL_SHAPES` equations) and from generation probes run at
-those equations on 2026-08-03. Where this draft had to make a call the interview
-left open, the call is marked ⚑ and listed in the first section so it can be
-approved, changed, or struck in one pass.
+those equations on 2026-08-03.
 
 ---
 
-## 1. The three open items (your markup targets)
+## 1. The three open items, now ruled (2026-08-03)
 
-**⚑ 1. Compass intro host (8-way family).** The interview fixed one compass intro
-on the 8-way direction family plus a dedicated reprise per remaining family (60°,
-30°), and left the host open between Octagons and Paving Stones. **Draft:
-Octagons (block 19).** Reasons: a diagonal ray reads as visible steps along the
-octagon/square staircase (the same legibility that drove the coastline
-compass-diagonal ruling), and Paving Stones already hosts sonar's debut, so this
-spreads the
-showcase moments. The honest counterargument: Octagons then hosts two debuts
-(wormhole and compass) while Paving Stones hosts one. Both lattices measure
-clean rays (diagonal families at 100% line-in-counted-cells). Swap to Paving
-Stones is a one-cell edit in the table.
+**1. Compass intro host: Octagons (block 19). RULED.** The reasons that carried
+it: a diagonal ray reads as visible steps along the octagon/square staircase
+(the same legibility that drove the coastline compass-diagonal ruling), and
+Paving Stones already hosts sonar's debut. The accepted cost is that Octagons
+hosts two debuts (wormhole and compass).
 
-**⚑ 2. Shape-intro block positions.** Drafted at blocks 6 (Honeycomb), 9
-(Octagons), 12 (3D Cubes), 15 (Paving Stones), 21 (Petals), 38 (Kites), in the
-fitted difficulty order (multipliers 1.02 / 1.20 / 1.77 / 2.03 / 2.77 / 5.14).
-Two specific questions: is Kites at L186 late enough to honor "much later," and
-is the three-block gap between Honeycomb and Octagons the right early pacing?
-One hard constraint discovered in the probes limits how much earlier the late
-shapes could move: a shape cannot intro below its par-per-cell floor (section 3),
-and Kites cannot price below about 1.75 s/cell on any proven config, which keeps
-its intro at tier 8 or later no matter what.
+**2. Shape-intro positions: blocks 6 / 9 / 12 / 15 / 21 / 38. RULED.**
+Honeycomb, Octagons, 3D Cubes, Paving Stones, Petals, Kites, in the fitted
+difficulty order (multipliers 1.02 / 1.20 / 1.77 / 2.03 / 2.77 / 5.14). The
+probe constraint stands: a shape cannot intro below its par-per-cell floor
+(section 3), and Kites cannot price below about 1.75 s/cell on any proven
+config, which keeps its intro at tier 8 or later regardless.
 
-**⚑ 3. Numeric tier anchors.** The interview ruled the map ships tier indices
-with placeholder ranges, anchors finalized after live tiling scores exist. The
-draft table in section 3 carries numeric anchors anyway, clearly labeled as
-one-player-seeded (the lab multipliers are practiced-Christopher play). They are
-there so the block map is checkable against real configs today; treat every
-number as provisional and the indices as the contract.
+**3. Numeric tier anchors: ADOPTED NOW (T1 0.55 through T12 3.25 s/cell).
+RULED** on his "I think we have enough data" call, superseding the interview's
+wait-for-live-scores hedge. The reasoning: Challenge-250 ships bundled with the
+rotation flip, so no pre-launch live tiling data exists under any plan; the
+86-board battery is a designed instrument that measured exactly the axes the
+anchors need; challenge stays out of the par fit, so the anchors cannot pollute
+it; and the displayed expected time is personalPar off the live equations, so
+player-facing time promises self-correct as population data accrues. The
+residual (one practiced player's cross-shape ratios standing in for
+everyone's) is a post-flip tuning-pass risk: if a refit moves a shape's
+equation enough that its authored specs drift ~20% off their tier, re-derive
+that shape's specs; indices and the block map do not move.
 
 ---
 
@@ -71,7 +67,8 @@ number as provisional and the indices as the contract.
 
 ## 3. The currency: par-per-cell tiers
 
-### The ladder (⚑ numeric anchors are draft, one-player-seeded)
+### The ladder (numeric anchors ADOPTED 2026-08-03; lab-seeded, tuned post-flip
+only if a refit moves a shape materially)
 
 Twelve tiers, geometric steps of roughly ×1.18. Par examples show the anchor
 applied at two typical board sizes.
@@ -136,12 +133,16 @@ equations independently say.
 
 ### Generation caveats that gate the build (not the map)
 
-- Densities above 0.28 are unproven on every tiling (the lab grid's ceiling).
-  T11/T12 tiling specs that want 0.30+ need a generation-proof pass first, the
-  `validate-parlab-battery.mjs` pattern; the challenge cap stays 34%.
+- Densities above 0.28 were unproven when this map was first drafted (the lab
+  grid's ceiling). The density-ceiling sweep (section 7, Christopher's ask
+  2026-08-03) has since proven certified generation to 0.38 on every lattice
+  at every ladder size, so density is not a viability constraint anywhere the
+  ladder reaches; the 34% challenge cap stays as the ladder convention because
+  no tier needs more, not because generation fails above it.
 - 3D Cubes boards stay at or under 72 cells (the 90-cell fixture measured 13.7s
   worst-case generation; ladder attempts draw fresh layouts, so per-attempt cost
-  is player-facing).
+  is player-facing). The sweep adds the cost detail: dense Cubes and dense
+  stacked Kites are the two multi-second generators (section 7).
 - Sub-0.22 density on the Laves lattices routes through the constructive placer
   (`forceConstructive`), per the banded daily config tables' finding.
 
@@ -171,22 +172,22 @@ column = the block's plateau (parenthesized tier = intro dip below the line).
 
 | Block | Levels | Tier | Shape | Beat |
 |-------|--------|------|-------|------|
-| 6  | 26-30   | (T2) | Honeycomb | **SHAPE INTRO** ⚑pos. Plain hexes; L30 tease: walls. |
+| 6  | 26-30   | (T2) | Honeycomb | **SHAPE INTRO**. Plain hexes; L30 tease: walls. |
 | 7  | 31-35   | T3 | Honeycomb | **MOD INTRO: Locked** (shape-neutral → most recent shape). |
 | 8  | 36-40   | T3 | Classic | Remix: walls+liar and walls+mystery pairs at tier. |
-| 9  | 41-45   | (T3) | Octagons | **SHAPE INTRO** ⚑pos. Plain; L45 tease: mystery. |
+| 9  | 41-45   | (T3) | Octagons | **SHAPE INTRO**. Plain; L45 tease: mystery. |
 | 10 | 46-50   | T4 | Octagons | **MOD INTRO: Wormhole** (mechanism venue: asymmetric pairs on the two cell sizes). |
 | 11 | 51-55   | T4 | Honeycomb | Remix: locked+walls; first same-shape return. |
-| 12 | 56-60   | (T4) | 3D Cubes | **SHAPE INTRO** ⚑pos (floor ~0.98 makes the dip land at T5-ish par on 48 cells). L60 tease: liar. |
+| 12 | 56-60   | (T4) | 3D Cubes | **SHAPE INTRO** (floor ~0.98 makes the dip land at T5-ish par on 48 cells). L60 tease: liar. |
 | 13 | 61-65   | T5 | 3D Cubes | **MOD INTRO: Mirror** (shape-neutral → most recent shape). |
 | 14 | 66-70   | T5 | Classic | Remix: liar+locked, mystery+mirror. |
-| 15 | 71-75   | (T5) | Paving Stones | **SHAPE INTRO** ⚑pos. Plain pentagons; L75 tease: locked. |
+| 15 | 71-75   | (T5) | Paving Stones | **SHAPE INTRO**. Plain pentagons; L75 tease: locked. |
 | 16 | 76-80   | T6 | Paving Stones | **MOD INTRO: Sonar** (mechanism venue: the valence-7 depth-2 ball). |
 | 17 | 81-85   | T6 | Octagons | Remix: wormhole+locked. |
 | 18 | 86-90   | T6 | 3D Cubes | Remix: mirror+walls, density up (Cubes' lever). |
-| 19 | 91-95   | T7 | Octagons | **MOD INTRO: Compass** ⚑host (8-way family; the diagonal ray reads as steps along the octagon/square staircase). |
+| 19 | 91-95   | T7 | Octagons | **MOD INTRO: Compass** (8-way family; the diagonal ray reads as steps along the octagon/square staircase). |
 | 20 | 96-100  | T7 | Classic | Remix: sonar+compass join the home-turf pool. Milestone L100. |
-| 21 | 101-105 | (T7) | Petals | **SHAPE INTRO** ⚑pos (floor ~1.14). Plain pinwheels; L105 tease: walls. |
+| 21 | 101-105 | (T7) | Petals | **SHAPE INTRO** (floor ~1.14). Plain pinwheels; L105 tease: walls. |
 | 22 | 106-110 | T8 | Honeycomb | **MOD INTRO: Worm** (mechanism venue: the purest six-exit crawl, side-only per the shipped ruling). |
 | 23 | 111-115 | T8 | Paving Stones | Remix: sonar+liar on the 84-cell board (Paving's size lever). |
 | 24 | 116-120 | T8 | Petals | Remix: walls+mystery on the rosettes. |
@@ -203,7 +204,7 @@ column = the block's plateau (parenthesized tier = intro dip below the line).
 | 35 | 171-175 | T10 | Paving Stones | Remix: compass+locked on the big board. |
 | 36 | 176-180 | T11 | Honeycomb | Remix: density push past 0.28 (needs the generation-proof pass), 2-stacks. |
 | 37 | 181-185 | T11 | Petals | **REPRISE: Compass 30°** (the due-north family; Kites arrives next block as a plain intro, so Petals hosts). |
-| 38 | 186-190 | (T9) | Kites | **SHAPE INTRO** ⚑pos, the one late intro with a real dip. Plain kites at the 36-cell floor config; L190 tease: mystery. |
+| 38 | 186-190 | (T9) | Kites | **SHAPE INTRO**, the one late intro with a real dip. Plain kites at the 36-cell floor config; L190 tease: mystery. |
 | 39 | 191-195 | T11 | Kites | Consolidation: density-boosted (Kites' lever), one modifier. |
 | 40 | 196-200 | T11 | Classic | **3-STACK DEBUT** on home turf. Milestone L200. |
 | 41 | 201-205 | T11 | 3D Cubes | 3-stacks: sonar+mirror+walls. |
@@ -283,3 +284,94 @@ realized load). One-player-seeded; the live rotation will move these.
 **Kites**: 36c/6m 63s (1.75) · 36c/9m 90s (2.50) · 48c/10m 106s (2.21) ·
 48c/13m 150s (3.13) · 72c/15m 194s (2.69) · 72c/18m 285s (3.96) · 72c/20m 370s
 (5.14).
+
+---
+
+## 7. Density ceilings (the sweep Christopher commissioned 2026-08-03)
+
+Question: how high can each tiling go in mine density? Instrument:
+`scripts/measure-tiling-density-ceilings.mjs` (re-runnable, deterministic
+seeds). Per lattice, per ladder-relevant size, densities 0.28 through 0.38:
+10 plain seeds through the shipped `generateTilingBoard` (production attempt
+budget), plus a locked+sonar+walls 3-stack spot check at the mid size at 0.30
+and 0.34 (6 seeds). Times are desktop Node; phone generation runs roughly 3 to
+5 times slower, and ladder death-retries draw a fresh layout, so worst-case
+time is player-facing.
+
+### The headline: no generation ceiling exists in the swept range
+
+**Every cell certified 10/10 plain and 6/6 stacked, on all six lattices, at
+every size, through density 0.38.** The constructive placer carries every
+lattice well past the 34% challenge cap. Density is therefore not a viability
+constraint anywhere the ladder reaches; what actually binds, in order, is the
+8-minute par ceiling, the tier targets themselves, and generation COST on two
+lattices (below). The 34% cap survives as the ladder convention because no
+tier needs more, not because generation fails above it.
+
+### Par-per-cell by density (probe medians; sizes are the ladder set)
+
+Values above 0.28 are EXTRAPOLATIONS of equations fit on densities up to 0.28
+(the lab grid's range): read them as the model's best guess, firm enough for
+spec drafting, re-checked once live tiling scores exist. Success rate and time
+are direct measurements either way.
+
+| Shape / size | 0.28 | 0.30 | 0.32 | 0.34 | 0.36 | 0.38 |
+|---|---|---|---|---|---|---|
+| Honeycomb 63c  | 1.06 | 1.19 | 1.32 | 1.47 | 1.83 | 2.04 |
+| Honeycomb 81c  | 1.30 | 1.45 | 1.81 | 2.25 | 2.50 | 3.11 |
+| Honeycomb 110c | 1.98 | 2.46 | 3.06 | 3.82 | 5.28 | 6.57 |
+| Octagons 72c   | 1.42 | 1.75 | 1.94 | 2.16 | 2.61 | 2.90 |
+| Octagons 98c   | 2.02 | 2.45 | 2.98 | 3.71 | 4.50 | 5.51 |
+| Octagons 128c  | 3.66 | 4.47 | 6.13 | 8.08 | 9.92 | 13.6 |
+| Paving 49c     | 0.99 | 0.99 | 0.99 | 0.99 | 0.98 | 0.98 |
+| Paving 66c     | 1.15 | 1.14 | 1.16 | 1.13 | 1.13 | 1.15 |
+| Paving 84c     | 1.46 | 1.51 | 1.52 | 1.45 | 1.42 | 1.46 |
+| Cubes 48c      | 0.99 | 1.11 | 1.23 | 1.35 | 1.62 | 1.77 |
+| Cubes 60c      | 1.46 | 1.65 | 1.86 | 2.10 | 2.68 | 3.02 |
+| Cubes 72c      | 1.56 | 1.99 | 2.25 | 2.54 | 3.23 | 3.65 |
+| Petals 36c     | 1.74 | 1.93 | 2.15 | 2.15 | 2.39 | 2.66 |
+| Petals 48c     | 1.78 | 1.98 | 2.19 | 2.49 | 2.71 | 3.04 |
+| Petals 72c     | 2.40 | 3.11 | 3.33 | 3.71 | 4.55 | 5.08 |
+| Petals 96c     | 3.76 | 4.65 | 5.89 | 7.02 | 8.52 | 9.96 |
+| Kites 36c      | 2.80 | 3.34 | 3.65 | 3.62 | 4.14 | 4.59 |
+| Kites 48c      | 3.08 | 3.48 | 3.97 | 4.53 | 5.08 | 5.76 |
+| Kites 72c      | 5.16 | 6.62 | 7.33 | 8.49 | 10.6 | 12.3 |
+
+Classic 12×12 reference: 10/10 certified at 0.30 / 0.34 / 0.36 / 0.38, worst
+generation under half a second. The 34% cap was always a feel-and-speed
+convention; generation does not fail above it on the square grid either.
+
+### Generation cost (the real budget, two lattices)
+
+Fast everywhere (worst under ~0.2s desktop at any density): Honeycomb, Paving
+Stones, Petals, Octagons up to 98c (Octagons 128c reaches ~0.5s at 0.38).
+The two to watch, desktop worst cases:
+
+- **3D Cubes**: plain 72c runs 1.7 to 3.2s at 0.34+; the 3-stack at 60c hit
+  2.4s (0.30) and 7.7s (0.34). On a phone that is tens of seconds per
+  death-retry. Planning rule: top-tier Cubes specs prefer 48 to 60 cells at
+  high density, or a 72c spec accepts multi-second regen.
+- **Kites**: plain fine to 0.32 (worst ~1.3s at 48c); the 3-stack at 48c hit
+  7.5s at 0.34. Same rule: dense stacked Kites stays at 36 to 48 cells.
+
+### What the sweep changes in the plan
+
+- **Every T12 need is comfortably inside the proven range.** T12 = 3.25 s/cell
+  is reachable on every shape without leaving it (Honeycomb 110c at ~0.32,
+  Octagons 98c at ~0.33, Cubes 72c at ~0.36 plain or 0.34 plus a stack,
+  Petals 72c at ~0.32, Kites 36c at ~0.30, Paving and Classic via size +
+  stacks), so no spec needs a density the sweep did not prove.
+- **Paving Stones' density insensitivity is now measured at every size**: ppc
+  is flat to three densities' width across its whole row (per-mine deviation
+  cancels the base rate). Density is not merely a weak lever for Paving
+  Stones; it is NOT a lever. Its tier boosts are size and stacks, full stop.
+- **Kites' natural T12 window is low density** (0.28 to 0.30 at 36 to 48
+  cells), which conveniently also keeps its generation fast. Its dense
+  extreme (72c at 0.30+ pricing 6+ s/cell) belongs to the endless zone's
+  flavor space, not the authored ladder, and would breach the 8-minute
+  ceiling anyway.
+- Tier-level distributions rode along: Kites 72c runs techniqueLevel 2 at
+  every density (the enumeration-rich lattice); Cubes' plain sweep boards sit
+  at tier 0 with its 3-stacks at tier 1 (Pass A until something forces Pass
+  C); Paving's 84-cell rung runs tier 1 at every density while its smaller
+  rungs stay tier 0.
