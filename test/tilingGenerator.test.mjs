@@ -542,3 +542,83 @@ test('techniqueFloor can demand real reasoning (tank/gauss), like the fixture', 
   // (density-dependent); the floor is best-effort, and generateTilingBoard
   // falls back to the best certified board rather than shipping uncertified.
 });
+
+// ── Gimmick re-rolls per base (the 2026-08-03 generation-cost fix) ─────────
+//
+// Profiled on the stacked density-sweep cells: 99-100% of generation time is
+// constructive base placement, and the old one-roll-per-base search DISCARDED
+// the certified base whenever the gimmicked board failed certification or was
+// decorative-only (8-16 bases paid per shipped board on stacked Cubes/Kites).
+// The fix mirrors the rectangular challenge path: re-roll gimmicks on the
+// SAME base mine layout. Measured effect: every stacked cell on every lattice
+// moved inside the 2-second generation cap (stacked Kites 72c worst went
+// 31.9s -> 1.5s).
+
+test('REGRESSION: gimmick re-rolls reuse the base mine layout the one-roll search threw away', () => {
+  const cfg = { type: 'hex', M: 9, N: 7, mines: 16, seed: 'reroll-pin:hex:2' };
+  const gimmicks = ['locked', 'sonar', 'walls'];
+  const mineSet = (r) => {
+    const out = [];
+    let i = 0;
+    for (const row of r.board) for (const c of row) { if (c.isMine) out.push(i); i++; }
+    return out.join(',');
+  };
+
+  // The base-0 layout is what a plain generation of the same seed ships.
+  const plain = generateTilingBoard({ ...cfg, gimmicks: [] });
+  assert.ok(plain, 'plain baseline must generate');
+
+  // The pre-reroll search (gimmickRerolls: 1) abandons base 0 on this seed —
+  // its first gimmick roll fails and it pays a fresh base. This is the
+  // control that the knob reproduces the old behavior AND that the pin seed
+  // actually exercises the wasteful path.
+  const oneRoll = generateTilingBoard({ ...cfg, gimmicks, gimmickRerolls: 1 });
+  assert.ok(oneRoll, 'one-roll search must still ship a board');
+  assert.notEqual(mineSet(oneRoll), mineSet(plain),
+    'pin seed must be one where the one-roll search abandoned base 0 — if this fails, find a new seed');
+
+  // The re-roll search keeps base 0 and re-rolls the gimmicks onto it.
+  const rerolled = generateTilingBoard({ ...cfg, gimmicks });
+  assert.ok(rerolled, 're-roll search must ship a board');
+  assert.equal(mineSet(rerolled), mineSet(plain),
+    'the re-roll search must ship base 0\'s mine layout instead of paying for another base');
+
+  // And the shipped board still independently re-certifies — base reuse can
+  // never trade away the no-guess contract.
+  const fr = Math.floor(rerolled.firstClick / rerolled.cols);
+  const fc = rerolled.firstClick % rerolled.cols;
+  const check = isBoardSolvable(rerolled.board, rerolled.rows, rerolled.cols, fr, fc);
+  assert.equal(check.solvable, true);
+  assert.equal(check.remainingUnknowns, 0);
+});
+
+test('a plain (gimmick-free) generation is invariant to the re-roll knob', () => {
+  const cfg = { type: 'rhombille', M: 4, N: 4, mines: 12, seed: 'reroll-plain-pin' };
+  const a = generateTilingBoard({ ...cfg, gimmicks: [] });
+  const b = generateTilingBoard({ ...cfg, gimmicks: [], gimmickRerolls: 1 });
+  assert.ok(a && b);
+  assert.deepEqual(
+    a.board.map((row) => row.map((c) => c.isMine)),
+    b.board.map((row) => row.map((c) => c.isMine)),
+    'no gimmicks -> no re-roll loop -> byte-identical search',
+  );
+});
+
+test('gimmickLevel reaches applyGimmicks\' intensity ramp and stays certified', () => {
+  const cfg = { type: 'hex', M: 9, N: 7, mines: 14, seed: 'reroll-level-pin', gimmicks: ['locked'] };
+  const low = generateTilingBoard({ ...cfg, gimmickLevel: 1 });
+  const high = generateTilingBoard({ ...cfg, gimmickLevel: 120 });
+  assert.ok(low && high, 'both intensity levels must generate');
+  for (const r of [low, high]) {
+    assert.ok(r.check.solvable && r.check.remainingUnknowns === 0, 'certified at any intensity');
+  }
+  const lockedCount = (r) => {
+    let n = 0;
+    for (const row of r.board) for (const c of row) if (c.isLocked) n++;
+    return n;
+  };
+  // Level 120 sits at the old ladder's deep end (intensity 4-5 vs the
+  // sub-intro 2-3): the same seed must place more locked cells.
+  assert.ok(lockedCount(high) > lockedCount(low),
+    `intensity must scale with gimmickLevel (got ${lockedCount(low)} vs ${lockedCount(high)})`);
+});

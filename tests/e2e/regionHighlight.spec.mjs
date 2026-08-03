@@ -27,7 +27,12 @@ import { prepareInteractionSpec, settleAnimations } from './helpers.mjs';
 
 // Frozen by the sweep: the deterministic policy reveals a sonar cell on this
 // seed with no mine hit, and its region holds at least two hidden cells.
-const SEED = 'region4';
+// Re-frozen 2026-08-03 (region4 -> region1): the gimmick re-roll generator
+// legitimately re-drew this seed's board (region4's old layout came from a
+// discarded-base search path), and the frozen policy walked onto a mine on
+// the new layout. region1 passes the policy with wide margin under the
+// re-roll generator (12-cell region, 12 hidden at pin).
+const SEED = 'region1';
 
 async function counts(page) {
   return page.evaluate(() => ({

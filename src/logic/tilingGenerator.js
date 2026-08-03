@@ -75,6 +75,19 @@ export const CONSTRUCTIVE_DENSITY_THRESHOLD = 0.22;
 // forever, so the bar is a preference with a bound, never a hard gate.
 export const TILING_LOAD_BEARING_BUDGET = 25;
 
+// Gimmick re-rolls per certified BASE before the base itself is rebuilt —
+// the rectangular challenge path's own amortization (it re-rolls up to 25
+// times per base board), ported here after the 2026-08-03 profile of the
+// stacked-Cubes generation cells: 99-100% of generation time is
+// generateConstructive base placement, and the old one-roll-per-base loop
+// DISCARDED the certified base whenever the gimmicked board failed
+// certification or came back decorative-only, paying 8-16 expensive bases
+// per shipped board (measured: stacked rhombille 60c spent 97 attempts to
+// ship 6 boards). Re-rolling on the same mine layout costs only the cheap
+// half (gimmick placement + one certification solve, ~1% of an attempt),
+// so the expensive half is paid roughly once.
+export const TILING_GIMMICK_REROLLS = 25;
+
 export { buildTiling, buildTiling488, containerFor };
 
 /**
@@ -89,7 +102,8 @@ export { buildTiling, buildTiling488, containerFor };
  *
  * @param {{type?:string, M:number, N:number, mines:number, seed:string,
  *          gimmicks?:string[], techniqueFloor?:number, maxAttempts?:number,
- *          loadBearingBudget?:number, forceConstructive?:boolean}} opts
+ *          loadBearingBudget?:number, forceConstructive?:boolean,
+ *          gimmickRerolls?:number, gimmickLevel?:number}} opts
  *          type names the tiling: any entry of TILING_TYPES, defaulting to the
  *          4.8.8. M and N are that tiling's LATTICE dimensions, which are not
  *          the container's and mean something different per tiling (its own
@@ -104,6 +118,15 @@ export { buildTiling, buildTiling488, containerFor };
  *          config that must generate on arbitrary date seeds (the banded
  *          daily config tables in tilingBandConfigs.js) opts in here. Default
  *          false keeps every existing caller byte-identical.
+ *          gimmickRerolls: gimmick placements tried per base mine layout
+ *          before the base is rebuilt (see TILING_GIMMICK_REROLLS); 1
+ *          reproduces the pre-reroll one-roll-per-base search exactly.
+ *          gimmickLevel: the challenge-level handed to applyGimmicks'
+ *          intensity ramp (getIntensity in gimmicks.js). Default 1 keeps
+ *          every existing caller byte-identical (sub-intro levels roll the
+ *          moderate 2-3 intensity dailies always have); Challenge-250 specs
+ *          pass their own level so ladder intensity scales as the old
+ *          ladder's always did.
  * @returns {{board:Array, rows:number, cols:number, firstClick:number,
  *            tiling:object, check:object, activeGimmicks:string[],
  *            applied:object} | null}  null if nothing certified
@@ -111,6 +134,7 @@ export { buildTiling, buildTiling488, containerFor };
 export function generateTilingBoard({
   type = '4.8.8', M, N, mines, seed, gimmicks = [], techniqueFloor = 0, maxAttempts = 600,
   loadBearingBudget = TILING_LOAD_BEARING_BUDGET, forceConstructive = false,
+  gimmickRerolls = TILING_GIMMICK_REROLLS, gimmickLevel = 1,
 }) {
   const T = buildTiling(type, M, N);
   const total = T.total;
@@ -155,6 +179,22 @@ export function generateTilingBoard({
   const hasTestableGimmick = gimmicks.some((g) => TESTABLE_GIMMICK_TYPES.includes(g));
   const topo = { neighborCache: T.adj, excluded, makeBoard };
 
+  // Rebuild a pristine board carrying a known mine layout — the cheap half of
+  // an attempt. The EXPENSIVE half is finding the layout (the constructive
+  // placer runs the solver in its placement loop), which is why the re-roll
+  // loop below reuses one layout across gimmick placements instead of paying
+  // for a fresh one per roll. A fresh board per roll matters because
+  // applyGimmicks MUTATES: walls sever _cellNeighbors, markers land on cells,
+  // displayedMines is rewritten.
+  const boardFromMines = (mineList) => {
+    const b = makeBoard();
+    for (const i of mineList) b[(i / cols) | 0][i % cols].isMine = true;
+    recalcAllAdjacency(b);
+    return b;
+  };
+
+  const rerolls = gimmicks.length > 0 ? Math.max(1, gimmickRerolls) : 1;
+
   let best = null;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const rng = createDailyRNG(`${seed}:tiling:${T.type}:${attempt}`);
@@ -182,65 +222,82 @@ export function generateTilingBoard({
 
     recalcAllAdjacency(board);
 
-    // Apply gimmicks (if any) on the pre-numbered board — applyGimmicks reads
-    // the board's own topology (_cellNeighbors) for placement and recomputes
-    // displayed numbers through it, so sonar/mirror/liar etc. certify against
-    // exactly what the player sees.
-    let applied = {};
-    if (gimmicks.length > 0) {
-      const gRng = createDailyRNG(`${seed}:tiling-gimmick:${T.type}:${attempt}`);
-      applied = applyGimmicks(board, 1, gimmicks, gRng);
+    // The base mine layout, captured once so gimmick re-rolls can rebuild.
+    const baseMines = [];
+    for (let i = 0; i < total; i++) {
+      if (board[(i / cols) | 0][i % cols].isMine) baseMines.push(i);
     }
 
-    // Certify from the opener against the board's LIVE topology (a wall gimmick
-    // would have severed edges from _cellNeighbors before this point).
-    const check = isBoardSolvable(board, rows, cols, fr, fc, board._cellNeighbors);
-    cleanSolverArtifacts(board);
+    for (let roll = 0; roll < rerolls; roll++) {
+      // Re-rolls after the first get a fresh pristine board on the SAME mine
+      // layout. Roll 0 uses the constructed board itself with the legacy
+      // gimmick seed string, so any (seed, config) whose first roll certified
+      // under the pre-reroll search produces the byte-identical board here —
+      // the change only reaches outcomes the old loop paid extra bases for.
+      const b = roll === 0 ? board : boardFromMines(baseMines);
 
-    const certified = check.solvable && check.remainingUnknowns === 0;
-    if (certified) {
-      // MODIFIER LOAD-BEARING FILTER — the same bar the daily play path holds
-      // rectangular boards to, which a tiling was never asked to clear. A
-      // modifier is decorative on this layout when stripping its information
-      // leaves the board solvable at the same difficulty; shipping one is a
-      // promise the board does not keep. Measured on tilings before this gate
-      // existed, over 40 seeds each: sonar was decorative on 45-60% of boards
-      // and compass on 40-88%, so roughly half of those dailies would have
-      // carried a modifier that did nothing.
-      //
-      // The topology needs no special handling: findDecorativeGimmicks threads
-      // its cache into isBoardSolvable, and buildNeighborCache reads
-      // `board._cellNeighbors` when present, so the tiling's own adjacency is
-      // used whether or not a cache is passed. It is passed anyway, to skip
-      // rebuilding it on every strip-test. That held when the four Laves
-      // lattices landed, with no edit here: measured across all six over 25
-      // seeds each, the filter takes sonar / compass / liar / mirror from 0-96%
-      // decorative with the budget disabled to 0% with it on. The one exception
-      // is rhombille (3/25 sonar, 6/25 compass), and it is the budget below
-      // expiring rather than the filter missing: a rhombille attempt is the
-      // dearest of the six, so a run has time for fewer of them.
-      //
-      // Budgeted, not absolute (mirrors LOAD_BEARING_BUDGET): past the budget
-      // the requirement drops so generation cannot spin forever, and a
-      // certified-but-decorative board is still kept as `best` so exhaustion
-      // returns a real board rather than null. We never trade the no-guess
-      // contract for this — only the modifier-means-something one.
-      // Only worth asking when a modifier on this board is actually testable —
-      // the filter opens with a baseline solve, so a walls/locked/mystery/worm
-      // board would pay a second full solve per attempt to be told what the
-      // exemption list already says.
-      let decorative = [];
-      if (hasTestableGimmick && attempt < loadBearingBudget) {
-        decorative = findDecorativeGimmicks(
-          board, rows, cols, fr, fc, gimmicks, board._cellNeighbors,
-        );
-        cleanSolverArtifacts(board);
+      // Apply gimmicks (if any) on the pre-numbered board — applyGimmicks reads
+      // the board's own topology (_cellNeighbors) for placement and recomputes
+      // displayed numbers through it, so sonar/mirror/liar etc. certify against
+      // exactly what the player sees.
+      let applied = {};
+      if (gimmicks.length > 0) {
+        const gSeed = roll === 0
+          ? `${seed}:tiling-gimmick:${T.type}:${attempt}`
+          : `${seed}:tiling-gimmick:${T.type}:${attempt}:r${roll}`;
+        applied = applyGimmicks(b, gimmickLevel, gimmicks, createDailyRNG(gSeed));
       }
-      const result = { board, rows, cols, firstClick, tiling: T, check, activeGimmicks: gimmicks.slice(), applied };
-      if (decorative.length === 0 && (check.techniqueLevel || 0) >= techniqueFloor) {
-        return result;
+
+      // Certify from the opener against the board's LIVE topology (a wall gimmick
+      // would have severed edges from _cellNeighbors before this point).
+      const check = isBoardSolvable(b, rows, cols, fr, fc, b._cellNeighbors);
+      cleanSolverArtifacts(b);
+
+      const certified = check.solvable && check.remainingUnknowns === 0;
+      if (certified) {
+        // MODIFIER LOAD-BEARING FILTER — the same bar the daily play path holds
+        // rectangular boards to, which a tiling was never asked to clear. A
+        // modifier is decorative on this layout when stripping its information
+        // leaves the board solvable at the same difficulty; shipping one is a
+        // promise the board does not keep. Measured on tilings before this gate
+        // existed, over 40 seeds each: sonar was decorative on 45-60% of boards
+        // and compass on 40-88%, so roughly half of those dailies would have
+        // carried a modifier that did nothing.
+        //
+        // The topology needs no special handling: findDecorativeGimmicks threads
+        // its cache into isBoardSolvable, and buildNeighborCache reads
+        // `board._cellNeighbors` when present, so the tiling's own adjacency is
+        // used whether or not a cache is passed. It is passed anyway, to skip
+        // rebuilding it on every strip-test. That held when the four Laves
+        // lattices landed, with no edit here: measured across all six over 25
+        // seeds each, the filter takes sonar / compass / liar / mirror from 0-96%
+        // decorative with the budget disabled to 0% with it on. The one exception
+        // is rhombille (3/25 sonar, 6/25 compass), and it is the budget below
+        // expiring rather than the filter missing: a rhombille attempt is the
+        // dearest of the six, so a run has time for fewer of them.
+        //
+        // Budgeted, not absolute (mirrors LOAD_BEARING_BUDGET): past the budget
+        // the requirement drops so generation cannot spin forever, and a
+        // certified-but-decorative board is still kept as `best` so exhaustion
+        // returns a real board rather than null. We never trade the no-guess
+        // contract for this — only the modifier-means-something one.
+        // Only worth asking when a modifier on this board is actually testable —
+        // the filter opens with a baseline solve, so a walls/locked/mystery/worm
+        // board would pay a second full solve per attempt to be told what the
+        // exemption list already says.
+        let decorative = [];
+        if (hasTestableGimmick && attempt < loadBearingBudget) {
+          decorative = findDecorativeGimmicks(
+            b, rows, cols, fr, fc, gimmicks, b._cellNeighbors,
+          );
+          cleanSolverArtifacts(b);
+        }
+        const result = { board: b, rows, cols, firstClick, tiling: T, check, activeGimmicks: gimmicks.slice(), applied };
+        if (decorative.length === 0 && (check.techniqueLevel || 0) >= techniqueFloor) {
+          return result;
+        }
+        if (!best) best = result;
       }
-      if (!best) best = result;
     }
   }
   // A certified board below the technique floor beats nothing; the caller
