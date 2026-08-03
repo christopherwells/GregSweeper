@@ -213,18 +213,36 @@ export function updateStreakDisplay() {
   }
 }
 
+/**
+ * The LCD mine counter's value: total mines minus flags minus STRIKE cells.
+ * A strike is a free flag — the mine is confirmed and stays revealed — so it
+ * must account exactly like one, or the counter stops working as an endgame
+ * mine-counting clue. Strikes are counted from the BOARD, not from the
+ * per-mode bombHits counters this used to read behind a daily/weekly gate:
+ * Par Lab strikes route through the same handleDailyBombHit but run as
+ * gameMode 'normal' on the practice lane, so they incremented a counter the
+ * display never consulted and the LCD sat stuck at the original count
+ * (Christopher's report, 2026-08-02). The board is the one source every
+ * strike surface shares, and isStrike rides the save, so a restored game
+ * counts right too. chainRevealMines also stamps isStrike, but only during
+ * the challenge/timed LOSS cascade — the counter has no caller after a loss,
+ * so the scan deliberately doesn't special-case it.
+ *
+ * @param {Array<Array<{isStrike?: boolean}>>} board
+ * @param {number} totalMines
+ * @param {number} flagCount
+ * @returns {number}
+ */
+export function mineCounterRemaining(board, totalMines, flagCount) {
+  let strikes = 0;
+  for (const row of board || []) {
+    for (const cell of row || []) if (cell && cell.isStrike) strikes++;
+  }
+  return (totalMines || 0) - (flagCount || 0) - strikes;
+}
+
 export function updateHeader() {
-  // Strike cells (daily/weekly bomb-hit markers) count as flags for
-  // mine accounting — the player has visually confirmed the mine
-  // and the chord-reveal logic treats the strike as a flag. Without
-  // subtracting strikes here the mine counter stays stuck at the
-  // original count after a bomb hit, which doesn't match the
-  // player's mental model ("I know where that one is").
-  const dailyMode = state.gameMode === 'daily' || state.gameMode === 'weekly';
-  const strikeCount = dailyMode
-    ? (state.gameMode === 'weekly' ? (state.weeklyBombHits || 0) : (state.dailyBombHits || 0))
-    : 0;
-  const remaining = state.totalMines - state.flagCount - strikeCount;
+  const remaining = mineCounterRemaining(state.board, state.totalMines, state.flagCount);
   if (remaining < 0) {
     mineCounterEl.textContent = '-' + String(Math.abs(remaining)).padStart(2, '0');
   } else {
