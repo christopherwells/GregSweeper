@@ -6,7 +6,7 @@ import { showToast } from '../ui/toastManager.js';
 import { uiSpriteImgHTML } from '../ui/spriteLoader.js';
 import { updateHeader } from '../ui/headerRenderer.js';
 import { updatePowerUpBar } from '../ui/powerUpBar.js';
-import { findSafeCell, scanRowCol, scanBall, shieldDefuse, xRayScan, magnetPull } from '../logic/powerUps.js';
+import { findSafeCell, scanRowCol, scanLines, shieldDefuse, xRayScan, magnetPull } from '../logic/powerUps.js';
 import { checkWin, floodFillReveal } from '../logic/boardSolver.js';
 import { hatchWormEggs } from './timerManager.js';
 import { saveModePowerUps, loadPowerUps } from '../storage/statsStorage.js';
@@ -144,32 +144,52 @@ export function performScan(row, col) {
   saveProgress({ powerUps: loadPowerUps() });
 
   // Tiling boards: a container row/column is storage, not geometry — the
-  // scan reads the depth-2 ball instead (the sonar-precedent port, his
-  // petals report 2026-08-03). Rectangles keep the row+column sweep below,
-  // verbatim.
-  if (state.board && state.board._cellNeighbors) {
-    const { cells, mines } = scanBall(state.board, state.rows, state.cols, row, col);
-    const near = new Set(state.board._cellNeighbors[row * state.cols + col]);
-    for (const idx of cells) {
-      const el = boardEl.children[idx];
-      if (!el) continue;
-      // Stagger outward: target, then its neighbors, then the second ring.
-      const depth = idx === row * state.cols + col ? 0 : near.has(idx) ? 1 : 2;
-      el.style.animationDelay = (depth * 80) + 'ms';
-      el.classList.add('scan-highlight');
+  // scan sweeps the true horizontal and vertical LINES through the target
+  // instead (his correction, 2026-08-03: "Scan should move in some
+  // reasonable way horizontally and vertically, not a blob"). scanLines
+  // returns every cell those lines pass through; the sweep bars and the
+  // distance-staggered highlight keep the rectangular choreography.
+  // Rectangles keep the row+column sweep below, verbatim.
+  if (state.board && state.board._cellNeighbors && state.board._tiling) {
+    const { across, down, acrossMines, downMines } = scanLines(state.board, state.rows, state.cols, row, col);
+    const pos = state.board._cellPos;
+    const o = pos[row * state.cols + col];
+
+    boardEl.style.position = 'relative';
+    const clickedEl = boardEl.children[row * state.cols + col];
+    if (clickedEl) {
+      const rect = clickedEl.getBoundingClientRect();
+      const boardRect = boardEl.getBoundingClientRect();
+      const sweepH = document.createElement('div');
+      sweepH.className = 'scan-sweep-h';
+      sweepH.style.top = (rect.top - boardRect.top + rect.height / 2) + 'px';
+      boardEl.appendChild(sweepH);
+      setTimeout(() => sweepH.remove(), 600);
+      const sweepV = document.createElement('div');
+      sweepV.className = 'scan-sweep-v';
+      sweepV.style.left = (rect.left - boardRect.left + rect.width / 2) + 'px';
+      boardEl.appendChild(sweepV);
+      setTimeout(() => sweepV.remove(), 600);
     }
+
     const mineEls = [];
-    for (const idx of cells) {
+    const light = (idx, dist) => {
+      const el = boardEl.children[idx];
+      if (!el) return;
+      el.style.animationDelay = Math.round(dist * 40) + 'ms';
+      el.classList.add('scan-highlight');
       const r = Math.floor(idx / state.cols), c = idx % state.cols;
       if (state.board[r][c].isMine && !state.board[r][c].isRevealed) {
-        const el = boardEl.children[idx];
-        if (el) mineEls.push({ el, delay: (near.has(idx) ? 1 : 2) * 80 });
+        mineEls.push({ el, delay: Math.round(dist * 40) });
       }
-    }
+    };
+    for (const idx of across) light(idx, Math.abs(pos[idx].cx - o.cx));
+    for (const idx of down) light(idx, Math.abs(pos[idx].cy - o.cy));
     mineEls.forEach(({ el, delay }) => {
       setTimeout(() => el.classList.add('xray-mine'), 200 + delay);
     });
-    scanToast.textContent = `Scan: ${mines} mine${mines !== 1 ? 's' : ''} within 2 steps`;
+
+    scanToast.textContent = `Across: ${acrossMines} mine${acrossMines !== 1 ? 's' : ''} | Down: ${downMines} mine${downMines !== 1 ? 's' : ''}`;
     scanToast.classList.remove('hidden');
     setTimeout(() => {
       scanToast.classList.add('hidden');

@@ -1,6 +1,10 @@
 import { recomputeDisplayedMines, recalcAllAdjacency, countAdjacentMines } from './gimmicks.js';
 import { buildNeighborCache, sonarScanCells } from './adjacency.js';
 import { findDeducibleFrontier } from './boardSolver.js';
+// tilingGeometry is a LEAF: scanLines rebuilds the polygon geometry from the
+// board's own _tiling descriptor (the renderer's rebuild pattern) to trace
+// its horizontal/vertical sweep lines.
+import { buildTiling } from './tilingGeometry.js';
 
 // ── Tiling area ports (Christopher's ruling, challenge-250 interview
 // 2026-08-03: "each area effect generalizes the way sonar did") ─────────
@@ -23,18 +27,50 @@ function ballArea2(board, rows, cols, row, col) {
 }
 
 /**
- * Scan on an explicit topology: mines within two steps of the target.
- * The tiling counterpart of scanRowCol — the action layer picks by board.
- * @returns {{cells: number[], mines: number}} flat cell indices (target
- *          first, then distance order) and the mine count among them
+ * Scan on an explicit topology: the tiling counterpart of scanRowCol.
+ * Scan's identity is the CROSSING SWEEP — "move in some reasonable way
+ * horizontally and vertically, not a blob" (his correction, 2026-08-03,
+ * rejecting the first-cut depth-2 ball) — so the region is the horizontal
+ * and vertical LINES through the target's center: every cell whose polygon
+ * the line passes through. Cells are convex, so "the horizontal line
+ * y = cy0 crosses this cell" is exactly "the cell's vertex y-range spans
+ * cy0" — an exact, parameter-free test that reproduces the rectangular
+ * row/column when applied to unit squares. STRICT spanning (not ≤) so a
+ * line grazing a vertex tip does not drag a neighboring row in (on the
+ * 4.8.8, the line through a diamond's center touches the adjacent
+ * octagons' tips exactly).
+ *
+ * @returns {{across: number[], down: number[], acrossMines: number,
+ *            downMines: number}} flat indices of the horizontal and
+ *          vertical line cells (target in both, as the rect row and
+ *          column both contain it) and their mine counts
  */
-export function scanBall(board, rows, cols, row, col) {
-  const cells = ballArea2(board, rows, cols, row, col);
-  let mines = 0;
-  for (const idx of cells) {
-    if (board[Math.floor(idx / cols)][idx % cols].isMine) mines++;
+export function scanLines(board, rows, cols, row, col) {
+  const t = board._tiling;
+  const tiling = buildTiling(t.type, t.M, t.N);
+  const origin = row * cols + col;
+  const { cx, cy } = tiling.cellPos[origin];
+
+  const across = [], down = [];
+  let acrossMines = 0, downMines = 0;
+  for (let i = 0; i < tiling.total; i++) {
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const vi of tiling.cellVerts[i]) {
+      const v = tiling.verts[vi];
+      if (v.x < minX) minX = v.x; if (v.x > maxX) maxX = v.x;
+      if (v.y < minY) minY = v.y; if (v.y > maxY) maxY = v.y;
+    }
+    const isMine = board[Math.floor(i / cols)][i % cols].isMine;
+    if (i === origin || (minY < cy && cy < maxY)) {
+      across.push(i);
+      if (isMine) acrossMines++;
+    }
+    if (i === origin || (minX < cx && cx < maxX)) {
+      down.push(i);
+      if (isMine) downMines++;
+    }
   }
-  return { cells, mines };
+  return { across, down, acrossMines, downMines };
 }
 
 export function findSafeCell(board) {
