@@ -457,6 +457,19 @@
           },
           "$other": { ".validate": false }
         },
+        "challenge250": {
+          ".validate": "newData.hasChildren() || newData.val() === null",
+          "epoch": {
+            ".validate": "newData.isNumber() && newData.val() >= 1"
+          },
+          "maxCheckpoint": {
+            ".validate": "newData.isNumber() && newData.val() >= 1"
+          },
+          "powerUps": {
+            "$type": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9999" }
+          },
+          "$other": { ".validate": false }
+        },
         "friends": {
           "$friendUid": {
             ".write": "auth != null && (auth.uid === $uid || auth.uid === $friendUid)",

@@ -31,7 +31,6 @@ export function plateSeconds(est) {
   const raw = est.steps * PLATE_SECONDS_PER_STEP + est.unsolved * perHardTarget;
   return Math.max(PLATE_MIN_SECONDS, Math.min(PLATE_MAX_SECONDS, Math.round(raw)));
 }
-export const LIFELINE_WIN_REWARD_CHANCE = 0.3;
 
 // Board width is hard-capped at 12 cells on every viewport. Wider boards
 // either force a scroll (rejected on mobile) or shrink cells below the iOS

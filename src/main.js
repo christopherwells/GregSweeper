@@ -31,7 +31,7 @@ import { loadHandicaps } from './logic/handicaps.js';
 import {
   loadStats, saveTheme, loadTheme, resetStats,
   saveCheckpoint, loadCheckpoint, loadGameState,
-  isOnboarded, isDailyCompleted, backfillMoltDays,
+  isOnboarded, isDailyCompleted, backfillMoltDays, applyChallenge250Reset,
   getPlayerName, setPlayerName,
   getLastSeenVersion, setLastSeenVersion,
   applyCloudProgress, resetDailyStatsForAccountSwitch,
@@ -1986,6 +1986,12 @@ async function resumeSaveBehindTitle() {
 }
 
 async function init() {
+  // Challenge 250 progression reset — FIRST, before any surface reads
+  // maxLevelReached (title progress, theme unlocks, checkpoint selector).
+  // One-time and epoch-guarded, so this line is a no-op on every boot
+  // after the one that resets. Cross-device resurrection is blocked by
+  // the epoch-gated challenge250 cloud node, not by call order.
+  applyChallenge250Reset();
   preloadSprites();
   startGregMascot($('#title-greg-mascot')); // inject + animate the header Greg before any routing
   const theme = loadTheme();

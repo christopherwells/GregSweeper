@@ -21,8 +21,8 @@ import { buildTiling } from '../logic/tilingGeometry.js';
 import { extractCrux } from '../logic/cruxExtract.js';
 import { prepareLossReceipt, bombStrikeVerdict } from '../ui/receiptRenderer.js';
 import { computeBombInfoValue } from '../logic/bombInfoValue.js';
-import { getSpeedRating, MAX_TIMED_LEVEL, getChaosDifficulty, LIFELINE_WIN_REWARD_CHANCE, BOMB_PENALTY_BASE, BOMB_PENALTY_RAMP } from '../logic/difficulty.js';
-import { CHALLENGE_MAX_LEVEL } from '../logic/challenge250.js';
+import { getSpeedRating, MAX_TIMED_LEVEL, getChaosDifficulty, BOMB_PENALTY_BASE, BOMB_PENALTY_RAMP } from '../logic/difficulty.js';
+import { CHALLENGE_MAX_LEVEL, challengeSpecForLevel, powerUpAwardCount } from '../logic/challenge250.js';
 import {
   loadStats, saveGameResult, saveModePowerUps, clearGameState,
   markDailyCompleted, getDailyStreak, getPlayerName,
@@ -458,8 +458,17 @@ export async function handleWin() {
 
   // Skip power-up awarding for chaos AND weekly. Weekly is a pure
   // time-trial against a fixed board — power-ups would let later-week
-  // attempts cheese the leaderboard against earlier days.
-  const earnedPowerUp = (state.gameMode === 'chaos' || state.gameMode === 'weekly' || state.isLevelPractice) ? null : awardPowerUps(stats);
+  // attempts cheese the leaderboard against earlier days. On the
+  // Challenge 250 ladder the award COUNT is tier-scaled (his build note:
+  // expected earns = tier/6 per win, so T1 farming yields almost nothing
+  // and the summit keeps the old two-per-win rate); this subsumes the
+  // retired flat 30% lifeline roll — lifeline is one of the six types.
+  let earnedPowerUp = null;
+  if (state.gameMode !== 'chaos' && state.gameMode !== 'weekly' && !state.isLevelPractice) {
+    const tier = state.challengeSpec?.tier ?? challengeSpecForLevel(state.currentLevel).tier;
+    const count = state.gameMode === 'normal' ? powerUpAwardCount(tier) : 0;
+    earnedPowerUp = count > 0 ? awardPowerUps(stats, count) : null;
+  }
 
   // Sync progress to cloud (fire-and-forget). Never from a ?level=
   // playtest run — its wins are not progression.
@@ -583,17 +592,6 @@ export async function handleWin() {
   if (state.gameMode !== 'chaos' && state.gameMode !== 'weekly' && !state.parLab) {
     saveModePowerUps(state.gameMode, state.powerUps);
   saveProgress({ powerUps: loadPowerUps() });
-  }
-
-  // 30% chance to earn a free lifeline on level completion (Challenge mode).
-  // Never from a practice run: ?level= / ?coastline= / Par Lab wins are not
-  // progression, and the documented practice contract is "no power-up
-  // earns" — this roll was the one earn site that predated the guard.
-  if (state.gameMode === 'normal' && !state.isLevelPractice && Math.random() < LIFELINE_WIN_REWARD_CHANCE) {
-    state.powerUps.lifeline = (state.powerUps.lifeline || 0) + 1;
-    saveModePowerUps(state.gameMode, state.powerUps);
-  saveProgress({ powerUps: loadPowerUps() });
-    showToast('Lifeline earned!', 2000, 'powLifeline');
   }
 
   playWin();

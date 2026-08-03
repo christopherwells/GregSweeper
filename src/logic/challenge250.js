@@ -55,6 +55,31 @@ export const CHALLENGE_MAX_LEVEL = 250;
 export const CHALLENGE_BLOCK_SIZE = 5;
 export const CHALLENGE_BLOCK_COUNT = 50;
 
+// THE PROGRESSION EPOCH. Challenge 250 resets EVERYONE to L1 (his ruling:
+// no memento of the old 120 climb), and the epoch marker is what keeps a
+// stale device's pre-reset progress from resurrecting through the cloud
+// max-merge (the moltDay date-anchored-snapshot lesson): maxCheckpoint and
+// the power-up inventory are adopted from the cloud ONLY when the cloud
+// snapshot carries THIS epoch. Pre-reset cloud writes have no epoch field
+// at all, so they can never win; a stale device still running old code
+// keeps writing epoch-less snapshots, which every current device ignores
+// until that device updates and resets itself. Bump this number only for
+// a future ladder-wide progression reset.
+export const CHALLENGE_250_EPOCH = 1;
+
+// Tier-scaled power-up earns (his build note: inventories wipe at the L1
+// reset, all six power-ups stay, earns become tier-scaled so early-tier
+// farming is pointless — the checkpoint selector survives on that
+// property). Expected awards per win = tier/6: about one power-up every
+// six wins at T1, one per win at T6, and two per win at T12 — the summit
+// keeps the old flat rate, the openers earn almost nothing. The fraction
+// is a Bernoulli roll so awards stay whole numbers.
+export function powerUpAwardCount(tier, rng = Math.random) {
+  const expected = Math.max(0, (tier || 1) / 6);
+  const base = Math.floor(expected);
+  return base + (rng() < expected - base ? 1 : 0);
+}
+
 // Where each modifier and shape debuts, by BLOCK (the checkpoint selector
 // labels its rows from these; the venues themselves are pinned
 // independently in test/challenge250.test.mjs against the levels table).

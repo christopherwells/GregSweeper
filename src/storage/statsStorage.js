@@ -1,6 +1,7 @@
 import { safeGet, safeSet, safeRemove, safeGetJSON, safeSetJSON, safeKeys } from './storageAdapter.js';
 import { getLocalDateString } from '../logic/seededRandom.js';
 import { applyStreakContinuation, projectContinuation, isStreakAlive, backfillGrant, MOLT_CAP } from '../logic/moltDay.js';
+import { CHALLENGE_250_EPOCH } from '../logic/challenge250.js';
 import { isTestEnvironment } from '../firebase/env.js';
 import { containsHateSpeech } from '../logic/nameFilter.js';
 
@@ -647,6 +648,40 @@ export function backfillMoltDays() {
   return true;
 }
 
+// ── Challenge 250 progression reset ─────────────────────────────────────
+// Everyone replays from L1 (his ruling: no memento of the old 120 climb).
+// One-time and epoch-guarded, so it runs safely every boot: once the stats
+// carry CHALLENGE_250_EPOCH it never fires again. What resets is
+// PROGRESSION — max level, the checkpoint ladder, per-level best times
+// (the old level numbers name different boards now), and the challenge
+// power-up inventory (wipe to zero; earns are tier-scaled from here).
+// Career counters (wins, losses, streaks, feats) survive: they are
+// history, not position. The first-encounter modifier seen-set is
+// deliberately untouched — popups do NOT re-show after the reset.
+// Cross-device: applyCloudProgress only adopts maxCheckpoint/powerUps
+// from a cloud snapshot carrying THIS epoch, so a stale device's
+// pre-reset values can never resurrect the climb (the moltDay
+// date-anchored-snapshot lesson). Returns true if it reset.
+export function applyChallenge250Reset() {
+  const stats = loadStats();
+  if (stats.challengeEpoch === CHALLENGE_250_EPOCH) return false;
+  stats.maxLevelReached = 1;
+  stats.bestTimes = {};
+  if (stats.modeStats?.challenge) {
+    stats.modeStats.challenge.maxLevelReached = 1;
+    stats.modeStats.challenge.bestTimes = {};
+  }
+  stats.challengeEpoch = CHALLENGE_250_EPOCH;
+  setJSON(STATS_KEY, stats);
+  _statsCache = stats;
+  saveCheckpoint('challenge', 1);
+  // Wipe the challenge power-up pool to zeros (all six types stay).
+  const all = loadPowerUps();
+  all.challenge = { ...DEFAULT_POWERUPS.challenge };
+  savePowerUps(all);
+  return true;
+}
+
 // Transient "celebrate the molt day you just earned" flag. The win path sets
 // it on an earning completion; the title screen drains it once to show the
 // earned popup + the crab-placement animation. Persisted (survives the
@@ -776,19 +811,32 @@ export function resetDailyStatsForAccountSwitch() {
 // just landed), values are adopted verbatim including downgrades.
 // Otherwise an admin-side correction or a partner-device reset would
 // be silently rejected by the max-merge.
-export function applyCloudProgress({ maxCheckpoint, dailyStreak, bestDailyStreak, lastDailyDate, powerUps, moltDay }, opts = {}) {
+export function applyCloudProgress({ maxCheckpoint, dailyStreak, bestDailyStreak, lastDailyDate, powerUps, moltDay, challenge250 }, opts = {}) {
   const overwrite = !!opts.overwrite;
   const stats = loadStats();
   let changed = false;
 
+  // Challenge progression adopts ONLY from the `challenge250` node (epoch
+  // + maxCheckpoint + the challenge power-up pool, written atomically by
+  // post-reset clients — see saveProgress). The legacy top-level
+  // `maxCheckpoint` and `powerUps.challenge` fields are pre-reset history
+  // by definition: old clients keep writing them, and adopting one on
+  // EITHER merge path (the overwrite listener re-applies the cloud on
+  // every snapshot) would resurrect the wiped 120-ladder climb or the
+  // old hoard. The epoch inside the node guards the NEXT reset the same
+  // way.
+  const c250 = (challenge250 && typeof challenge250 === 'object'
+    && challenge250.epoch === CHALLENGE_250_EPOCH) ? challenge250 : null;
+  const cloudCheckpoint = c250 && typeof c250.maxCheckpoint === 'number' ? c250.maxCheckpoint : null;
+
   // Challenge checkpoint
-  if (maxCheckpoint != null && (overwrite || maxCheckpoint > (stats.maxLevelReached || 1))) {
-    stats.maxLevelReached = maxCheckpoint;
+  if (cloudCheckpoint != null && (overwrite || cloudCheckpoint > (stats.maxLevelReached || 1))) {
+    stats.maxLevelReached = cloudCheckpoint;
     if (!stats.modeStats) stats.modeStats = {};
     if (!stats.modeStats.challenge) stats.modeStats.challenge = {};
-    stats.modeStats.challenge.maxLevelReached = maxCheckpoint;
+    stats.modeStats.challenge.maxLevelReached = cloudCheckpoint;
     // Also update the checkpoint storage so the player can select it
-    saveCheckpoint('challenge', maxCheckpoint);
+    saveCheckpoint('challenge', cloudCheckpoint);
     changed = true;
   }
 
@@ -866,16 +914,35 @@ export function applyCloudProgress({ maxCheckpoint, dailyStreak, bestDailyStreak
   //     two sides have had a chance to converge. Worst case: a spent
   //     power-up briefly re-appears until the next saveProgress write;
   //     that's a minor UX hiccup vs permanently losing earned power-ups.
-  if (powerUps && typeof powerUps === 'object') {
+  // The CHALLENGE pool comes exclusively from the epoch-gated challenge250
+  // node (c250 above); the legacy powerUps node's challenge key is
+  // pre-reset history and is dropped on the floor here. Non-challenge
+  // pools (chaos) still ride the legacy node — the reset never touches
+  // them.
+  const cloudChallengePU = c250 && c250.powerUps && typeof c250.powerUps === 'object' ? c250.powerUps : null;
+  const legacyPU = (powerUps && typeof powerUps === 'object') ? { ...powerUps } : null;
+  if (legacyPU) delete legacyPU.challenge;
+  const cloudPU = (cloudChallengePU || (legacyPU && Object.keys(legacyPU).length > 0))
+    ? { ...(legacyPU || {}), ...(cloudChallengePU ? { challenge: cloudChallengePU } : {}) }
+    : null;
+  if (cloudPU) {
     const local = getJSON(POWERUPS_KEY, null);
     if (overwrite || !local) {
-      setJSON(POWERUPS_KEY, powerUps);
+      // Mode-scoped verbatim: each pool the cloud actually SPEAKS for
+      // replaces the local pool wholesale (so an admin zeroing sticks),
+      // but a pool the cloud never mentions stays local — absence is
+      // absence of information, not an authoritative empty (the moltDay
+      // legacy-preserve rule; without this, any listener snapshot from a
+      // device that had not synced its pools yet wiped local inventory).
+      const base = (local && typeof local === 'object') ? { ...local } : {};
+      for (const mode of Object.keys(cloudPU)) base[mode] = cloudPU[mode];
+      setJSON(POWERUPS_KEY, base);
       changed = true;
     } else {
       // Max-merge per mode per type.
       let anyChange = false;
-      for (const mode of Object.keys(powerUps)) {
-        const cloudMode = powerUps[mode] || {};
+      for (const mode of Object.keys(cloudPU)) {
+        const cloudMode = cloudPU[mode] || {};
         const localMode = local[mode] || {};
         for (const type of Object.keys(cloudMode)) {
           const cloudVal = typeof cloudMode[type] === 'number' ? cloudMode[type] : 0;

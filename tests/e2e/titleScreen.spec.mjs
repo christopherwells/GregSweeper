@@ -85,6 +85,11 @@ test('unlocked Chaos shows its card and the Gym card stays half-width', async ({
         bestTimes: {}, recentGames: [], maxLevelReached: 50,
         dailiesCompleted: 0, puristWins: 0, gimmickWins: 0,
         flaglessWins: 0, efficientWins: 0, searchWins: 0, liarWins: 0,
+        // Post-reset profile: without the epoch stamp the Challenge 250
+        // reset (main.js init) wipes maxLevelReached back to 1 and the
+        // Chaos card relocks, which is correct behavior but not what
+        // this spec is measuring. Keep in step with CHALLENGE_250_EPOCH.
+        challengeEpoch: 1,
       }));
     } catch {}
   });

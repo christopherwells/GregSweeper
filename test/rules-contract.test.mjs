@@ -65,7 +65,7 @@ test('users/{uid}: all written progress fields are whitelisted', () => {
   assertWhitelist(rules.users.$uid, 'users/$uid', [
     'maxCheckpoint', 'dailyStreak', 'bestDailyStreak', 'lastDailyDate',
     'dailyHistory', 'weeklyAttempts', 'pushSubscription', 'notificationPrefs',
-    'powerUps', 'moltDay',
+    'powerUps', 'moltDay', 'challenge250',
   ]);
 });
 
