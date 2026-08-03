@@ -1,17 +1,20 @@
-// Power-up area shapes (Christopher's petals report, 2026-08-03: "the sonar
-// and scan for petals doesn't look right" — Scan was sweeping a container
-// row/column, and X-Ray/Magnet used container-rectangular blast shapes that
-// land on geometrically scattered cells on a lattice). The ports follow his
-// challenge-250 ruling: "each area effect generalizes the way sonar did" —
-// the MINE-INFORMATION adjacency (corner-inclusive), Scan/X-Ray reading the
-// depth-2 ball, Magnet extracting over depth-1. Rectangles keep row+column /
+// Power-up area shapes on tilings (two of Christopher's petals reports,
+// 2026-08-03). First: container-rectangular blasts land on geometrically
+// scattered cells on a lattice ("the sonar and scan for petals doesn't look
+// right"), so X-Ray reads the depth-2 corner-inclusive ball and Magnet
+// extracts over depth-1 — his challenge-250 ruling, "each area effect
+// generalizes the way sonar did". Second, correcting the first cut's Scan:
+// "Scan should move in some reasonable way horizontally and vertically, not
+// a blob" — Scan's identity is the CROSSING SWEEP, so scanLines traces the
+// true horizontal and vertical lines through the target (every convex cell
+// the line passes through, strict spanning). Rectangles keep row+column /
 // 5x5 / 3x3 verbatim.
 
 import './helpers.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { scanRowCol, scanBall, xRayScan, magnetPull } from '../src/logic/powerUps.js';
+import { scanRowCol, scanLines, xRayScan, magnetPull } from '../src/logic/powerUps.js';
 import { sonarScanCells } from '../src/logic/adjacency.js';
 import { buildTiling } from '../src/logic/tilingGeometry.js';
 
@@ -80,10 +83,33 @@ test('REGRESSION: on a tiling every area power-up reads the GRAPH, not the conta
   const board = tilingBoard('floret', 2, 4, rows, cols, [inBall, sameRowOutside]);
   const r0 = Math.floor(origin / cols), c0 = origin % cols;
 
-  const scan = scanBall(board, rows, cols, r0, c0);
-  assert.deepEqual([...scan.cells].sort((a, b) => a - b), [...ball].sort((a, b) => a - b),
-    'scan reads exactly the depth-2 ball, target included');
-  assert.equal(scan.mines, 1, 'the same-container-row mine outside the ball does NOT count');
+  // SCAN is the crossing sweep, not a blob (his correction, 2026-08-03:
+  // "Scan should move in some reasonable way horizontally and vertically").
+  // The lines must be LINE-shaped: thin in the crossing axis, long in their
+  // own — and must NOT reproduce the depth-2 ball the first cut shipped.
+  const scan = scanLines(board, rows, cols, r0, c0);
+  const posOf = (idx) => tiling.cellPos[idx];
+  const o = posOf(origin);
+  assert.ok(scan.across.includes(origin) && scan.down.includes(origin), 'target sits on both lines');
+  const acrossYSpread = Math.max(...scan.across.map(i => Math.abs(posOf(i).cy - o.cy)));
+  const acrossXSpread = Math.max(...scan.across.map(i => Math.abs(posOf(i).cx - o.cx)));
+  assert.ok(acrossYSpread < 0.75, `across is a thin band (y-spread ${acrossYSpread.toFixed(2)})`);
+  assert.ok(acrossXSpread > 2, `across runs long horizontally (x-spread ${acrossXSpread.toFixed(2)})`);
+  const downXSpread = Math.max(...scan.down.map(i => Math.abs(posOf(i).cx - o.cx)));
+  const downYSpread = Math.max(...scan.down.map(i => Math.abs(posOf(i).cy - o.cy)));
+  assert.ok(downXSpread < 0.75, `down is a thin band (x-spread ${downXSpread.toFixed(2)})`);
+  assert.ok(downYSpread > 2, `down runs long vertically (y-spread ${downYSpread.toFixed(2)})`);
+  // CONTROL vs the blob: the ball and the lines are different regions.
+  const lineUnion = new Set([...scan.across, ...scan.down]);
+  assert.ok([...ball].some(i => !lineUnion.has(i)), 'some ball cell is OFF the lines — this is not the blob');
+  assert.ok([...lineUnion].some(i => !ball.has(i)), 'some line cell is OUTSIDE the ball — the lines reach further');
+  // Mine accounting: mines count on the line that carries them.
+  const acrossSet = new Set(scan.across);
+  const expectAcross = scan.across.filter(i => board[Math.floor(i / cols)][i % cols].isMine).length;
+  const expectDown = scan.down.filter(i => board[Math.floor(i / cols)][i % cols].isMine).length;
+  assert.equal(scan.acrossMines, expectAcross);
+  assert.equal(scan.downMines, expectDown);
+  assert.ok(acrossSet.size >= 3 && scan.down.length >= 3, 'both lines actually contain cells');
 
   const xray = xRayScan(board, r0, c0);
   assert.deepEqual(xray.area.map(a => a.row * cols + a.col).sort((a, b) => a - b), [...ball].sort((a, b) => a - b),
@@ -112,4 +138,26 @@ test('REGRESSION: on a tiling every area power-up reads the GRAPH, not the conta
   // Empty pull stays a clean no-op on tilings too (the magnetExtract pin).
   const empty = magnetPull(tilingBoard('floret', 2, 4, rows, cols, []), r0, c0);
   assert.deepEqual(empty.affectedArea, []);
+});
+
+test('scan lines on the 4.8.8: an octagon-centered sweep is exactly its octagon row', () => {
+  // The crispest pin available: octagon centers in one visual row share cy
+  // exactly, the interstitial diamonds sit half a pitch off with a box too
+  // short to reach the line, and STRICT spanning keeps grazing tips out.
+  const tiling = buildTiling('4.8.8', 6, 7);
+  const { containerFor } = { containerFor: null };
+  const rows = 6, cols = 12; // 72 = 6x12
+  const board = [];
+  for (let r = 0; r < rows; r++) { const row = []; for (let c = 0; c < cols; c++) row.push({ isMine: false }); board.push(row); }
+  board._cellNeighbors = tiling.adj;
+  board._cellPos = tiling.cellPos;
+  board._tiling = { type: '4.8.8', M: 6, N: 7 };
+  const octIdx = tiling.cellPos.findIndex(p => p.shape === 'oct');
+  const scan = scanLines(board, rows, cols, Math.floor(octIdx / cols), octIdx % cols);
+  const o = tiling.cellPos[octIdx];
+  for (const i of scan.across) {
+    assert.equal(tiling.cellPos[i].shape, 'oct', `across from an octagon holds only octagons (got ${tiling.cellPos[i].shape} at ${i})`);
+    assert.ok(Math.abs(tiling.cellPos[i].cy - o.cy) < 1e-9, 'across octagons share the exact center line');
+  }
+  assert.ok(scan.across.length >= 3, 'the row has octagons on it');
 });

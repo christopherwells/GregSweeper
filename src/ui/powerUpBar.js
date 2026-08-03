@@ -19,7 +19,7 @@ export function updatePowerUpBar() {
   // board swaps them here.
   const tiling = !!(state.board && state.board._cellNeighbors);
   const AREA_TITLES = {
-    scanRowCol: tiling ? 'Scan (count mines within 2 steps)' : 'Scan Row/Column',
+    scanRowCol: tiling ? 'Scan (count mines across + down)' : 'Scan Row/Column',
     magnet: tiling ? 'Magnet (extract all mines next to a cell)' : 'Magnet (extract all mines from a 3x3 area)',
     xray: tiling ? 'X-Ray (reveal mines within 2 steps)' : 'X-Ray (reveal mines in 5x5)',
   };
