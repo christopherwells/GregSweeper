@@ -352,7 +352,7 @@ and refuses any over the line. For reference, the shipped banded daily
 configs already comply (worst entry 827ms, dense rhombille).
 
 One measurement honesty note: boards are seed-deterministic but wall clock is
-not — the same 98-cell stacked Octagons cell measured 2.07s worst in one run
+not. The same 98-cell stacked Octagons cell measured 2.07s worst in one run
 and 1.70s in another (~±30% jitter). The validator should therefore hold
 specs to the cap WITH MARGIN (say, refuse above ~1.5s measured worst) rather
 than knife-edge, and cells written as "grazing" below are margin cases.
@@ -360,12 +360,12 @@ than knife-edge, and cells written as "grazing" below are margin cases.
 What the cap excludes, from the full sweep (3-stack = locked+sonar+walls at
 0.28 / 0.30 / 0.34, six seeds per cell, every size):
 
-- **Plain boards**: only the dense extremes of two lattices — 3D Cubes 72c at
+- **Plain boards**: only the dense extremes of two lattices, 3D Cubes 72c at
   0.38 (3.2s; 0.36 grazes at 1.9s) and Kites from ~0.34 up, seed-jittery
   (48c swings 1.0 to 2.4s, 72c crosses at 0.36). Every other plain cell on
   every lattice is comfortably under at every density through 0.38.
 - **Stacked Honeycomb, Octagons, Paving Stones, Petals: essentially
-  unconstrained.** All their stacked cells pass — Paving under 0.6s
+  unconstrained.** All their stacked cells pass: Paving under 0.6s
   everywhere, Petals under 1.8s (grazing only at 72c/0.34), Honeycomb under
   1.8s (grazing at 110c/0.34), Octagons in through 98c/0.34 (the 1.7-to-2.1s
   jitter case) with only its 128-cell board out at 0.34 (4.0s).
@@ -374,7 +374,7 @@ What the cap excludes, from the full sweep (3-stack = locked+sonar+walls at
   at 0.34); 72c is far out (6.9 to 13.9s).
 - **Stacked Kites: 36 cells at any density, 48 cells only sparse.** 36c
   passes everywhere (worst 0.8s); 48c passes at 0.28 (0.7s) and misses from
-  0.30 (2.7s, then 7.1s); 72c is far out (5.4 to 31.9s — the sweep's worst
+  0.30 (2.7s, then 7.1s); 72c is far out (5.4 to 31.9s, the sweep's worst
   single number).
 
 Consequences for the authored blocks: block 41's Cubes 3-stacks are 48-cell
@@ -401,8 +401,8 @@ certified boards):
 | 12×12 worst ms | 181  | 306  | 761  | 822  | 2004 | 2178 | 1191 | 6701 |
 | 12×12 sixes    | 1    | 2    | 2    | 2    | 2    | 3    | 3    | 4    |
 
-All 240 boards certified: **10/10 at every size and density through 0.50** —
-no-guess certification simply does not break on the square grid in this
+All 240 boards certified: **10/10 at every size and density through 0.50**.
+No-guess certification simply does not break on the square grid in this
 range. The findings:
 
 - **The 2-second cap is the binding constraint, and it lands at about 0.44 to
@@ -412,7 +412,7 @@ range. The findings:
 - **High digits arrive with density, unevenly by value.** Sixes become
   routine from about 0.42 (medians 1.5 to 4.5 per board by 0.48); sevens stay
   rare (median 0 almost everywhere, first nonzero medians at 0.44+); **a true
-  8 never appeared in 240 certified boards** — a safe cell ringed by eight
+  8 never appeared in 240 certified boards**: a safe cell ringed by eight
   mines resists no-guess certification even at half mines, so 8s should be
   treated as effectively out of reach rather than dialable.
 - **Plain Classic now reaches T12**: 12×12 at 0.38 prices 3.16 s/cell (par
@@ -420,7 +420,7 @@ range. The findings:
   0.46 prices 3.81 (par 461s, worst 1522ms). Stacks become a flavor choice at
   the summit rather than the only route. Note the extrapolation caveat at
   full strength here: the daily fit saw densities up to ~0.30, so pricing at
-  0.42+ is far outside the fitted range — the certification, time, and digit
+  0.42+ is far outside the fitted range. The certification, time, and digit
   columns are direct measurements; the ppc column above ~0.38 is the model's
   increasingly speculative guess.
 - The 8-minute par ceiling still trims the top: 12×12 above ~0.38 and 11×11
@@ -438,11 +438,11 @@ Paving Stones, Petals, Octagons up to 98c (Octagons 128c reaches ~0.5s at
   0.30. Top-tier Cubes specs live at 48 to 60 cells when stacked, 72c only
   plain and at or under 0.36.
 - **Kites**: plain fine through 0.32 everywhere; above that the line gets
-  seed-jittery — 48c worst swings 1.0 to 2.4s across 0.34 to 0.38, 72c
-  crosses cleanly at 0.36 (2.2s) — so plain dense Kites needs per-spec
+  seed-jittery (48c worst swings 1.0 to 2.4s across 0.34 to 0.38; 72c
+  crosses cleanly at 0.36 with 2.2s), so plain dense Kites needs per-spec
   validator timing rather than a density rule of thumb. Stacked 48c is far
   out (7.5s at 0.34); dense stacked Kites stays at 36 to 48 cells and modest
-  density — which its natural T12 window (0.28 to 0.30, below) wants anyway.
+  density, which its natural T12 window (0.28 to 0.30, below) wants anyway.
 
 ### What the sweep changes in the plan
 
@@ -452,11 +452,11 @@ Paving Stones, Petals, Octagons up to 98c (Octagons 128c reaches ~0.5s at
   Kites 36c at ~0.30 (its stacked 36c prices 4.25 at 0.30 with room to
   spare); Classic plain at 12×12/0.38 or 11×11/~0.44; Paving via its 84-cell
   rung plus stacks (stacked 84c at 0.34 prices 1.86, so Paving alone still
-  needs the bigger 112-cell board or a heavier stack — the one shape whose
+  needs the bigger 112-cell board or a heavier stack: the one shape whose
   T12 spec the build phase must construct and validate rather than read off
   this sweep). 3D Cubes is the narrowest: 72c plain at 0.36 grazes the cap
   (1.9s, a validator-margin case), 60c plain at 0.38 prices 3.02 just under
-  target, and its stacked route (48c) tops at 2.33 — Cubes T12 exists but
+  target, and its stacked route (48c) tops at 2.33; Cubes T12 exists but
   every route is tight, worth a deliberate build-phase pass.
 - **Paving Stones' density insensitivity is now measured at every size**: ppc
   is flat to three densities' width across its whole row (per-mine deviation
