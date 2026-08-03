@@ -1,6 +1,41 @@
 import { recomputeDisplayedMines, recalcAllAdjacency, countAdjacentMines } from './gimmicks.js';
-import { buildNeighborCache } from './adjacency.js';
+import { buildNeighborCache, sonarScanCells } from './adjacency.js';
 import { findDeducibleFrontier } from './boardSolver.js';
+
+// ── Tiling area ports (Christopher's ruling, challenge-250 interview
+// 2026-08-03: "each area effect generalizes the way sonar did") ─────────
+// On an explicit topology the container's rows/cols are pure storage, so a
+// rectangular blast shape lands on scattered, geometrically meaningless
+// cells (his petals report, 2026-08-03: "the sonar and scan for petals
+// doesn't look right" — Scan was sweeping a container row/column). The
+// ports follow the MINE-INFORMATION adjacency — corner-inclusive, the same
+// `sonarScanCells` the sonar modifier displays and the certifier proves
+// from — because these are information tools: Scan and X-Ray read the
+// depth-2 ball, Magnet extracts over the depth-1 neighborhood. Only the
+// worm (a physical crawler) is side-only. Rectangular boards keep their
+// row+column / 5×5 / 3×3 shapes verbatim.
+
+// The depth-2 ball around (row, col), INCLUDING the target cell itself —
+// the aimed cell counts, exactly as the rectangular shapes include their
+// center. Flat indices, target first.
+function ballArea2(board, rows, cols, row, col) {
+  return [row * cols + col, ...sonarScanCells(board, rows, cols, row, col)];
+}
+
+/**
+ * Scan on an explicit topology: mines within two steps of the target.
+ * The tiling counterpart of scanRowCol — the action layer picks by board.
+ * @returns {{cells: number[], mines: number}} flat cell indices (target
+ *          first, then distance order) and the mine count among them
+ */
+export function scanBall(board, rows, cols, row, col) {
+  const cells = ballArea2(board, rows, cols, row, col);
+  let mines = 0;
+  for (const idx of cells) {
+    if (board[Math.floor(idx / cols)][idx % cols].isMine) mines++;
+  }
+  return { cells, mines };
+}
 
 export function findSafeCell(board) {
   // Deduction-first: prefer the next PROVABLY-safe cell (flags-blind) so
@@ -91,22 +126,36 @@ function recalcAreaAdjacency(board, centerRow, centerCol) {
 export function magnetPull(board, centerRow, centerCol) {
   const rows = board.length;
   const cols = board[0].length;
-  const movedMines = [];
 
-  // Find mines in the 3x3 area
-  const minesInArea = [];
-  for (let dr = -1; dr <= 1; dr++) {
-    for (let dc = -1; dc <= 1; dc++) {
-      const nr = centerRow + dr;
-      const nc = centerCol + dc;
-      if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
-        if (board[nr][nc].isMine && !board[nr][nc].isFlagged && !board[nr][nc].isRevealed) {
-          minesInArea.push({ row: nr, col: nc });
-        }
+  // The magnet's reach: the 3x3 block on a rectangle, the depth-1 graph
+  // neighborhood (target + its neighbors, corner-inclusive) on an explicit
+  // topology — the sonar-precedent port, one step instead of two because
+  // extraction is the strongest effect in the kit.
+  const reach = [];
+  if (board._cellNeighbors) {
+    const origin = centerRow * cols + centerCol;
+    for (const idx of [origin, ...board._cellNeighbors[origin]]) {
+      reach.push({ row: Math.floor(idx / cols), col: idx % cols });
+    }
+  } else {
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        const nr = centerRow + dr;
+        const nc = centerCol + dc;
+        if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) reach.push({ row: nr, col: nc });
       }
     }
   }
 
+  const minesInArea = [];
+  for (const { row, col } of reach) {
+    if (board[row][col].isMine && !board[row][col].isFlagged && !board[row][col].isRevealed) {
+      minesInArea.push({ row, col });
+    }
+  }
+
+  // An empty pull is a clean no-op (pinned in test/magnetExtract.test.mjs):
+  // no extraction, no highlight — the same contract on every board shape.
   if (minesInArea.length === 0) return { extractedMines: [], affectedArea: [] };
 
     // EXTRACTION, not relocation (redesigned 2026-06-11): the magnet
@@ -131,37 +180,40 @@ export function magnetPull(board, centerRow, centerCol) {
   recalcAllAdjacency(board);
   recomputeDisplayedMines(board);
 
-  const affectedArea = [];
-  for (let dr = -1; dr <= 1; dr++) {
-    for (let dc = -1; dc <= 1; dc++) {
-      const nr = centerRow + dr, nc = centerCol + dc;
-      if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) affectedArea.push({ row: nr, col: nc });
-    }
-  }
-
-  return { extractedMines, affectedArea };
+  return { extractedMines, affectedArea: reach };
 }
 
 // ── X-Ray Power-Up ────────────────────────────────────
 
 /**
- * X-Ray Scan: Returns mine positions in a 5×5 area around (row, col).
+ * X-Ray: mine positions in the effect area around (row, col) — the 5×5
+ * block on a rectangle, the depth-2 ball on an explicit topology. Returns
+ * the AREA alongside the mines so the action layer highlights exactly what
+ * the logic read (its old inline ±2 loop was a second copy of this
+ * geometry, one refactor away from drifting).
+ * @returns {{mines: Array<{row,col}>, area: Array<{row,col}>}}
  */
 export function xRayScan(board, row, col) {
   const rows = board.length;
   const cols = board[0].length;
-  const mines = [];
+  const area = [];
 
-  for (let dr = -2; dr <= 2; dr++) {
-    for (let dc = -2; dc <= 2; dc++) {
-      const nr = row + dr;
-      const nc = col + dc;
-      if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && board[nr][nc].isMine) {
-        mines.push({ row: nr, col: nc });
+  if (board._cellNeighbors) {
+    for (const idx of ballArea2(board, rows, cols, row, col)) {
+      area.push({ row: Math.floor(idx / cols), col: idx % cols });
+    }
+  } else {
+    for (let dr = -2; dr <= 2; dr++) {
+      for (let dc = -2; dc <= 2; dc++) {
+        const nr = row + dr;
+        const nc = col + dc;
+        if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) area.push({ row: nr, col: nc });
       }
     }
   }
 
-  return mines;
+  const mines = area.filter(({ row: r, col: c }) => board[r][c].isMine)
+    .map(({ row: r, col: c }) => ({ row: r, col: c }));
+  return { mines, area };
 }
 

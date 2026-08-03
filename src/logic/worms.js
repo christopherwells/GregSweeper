@@ -10,9 +10,11 @@
 // worm-blind — boardSolver never reads `isWormEgg` — so certification, the
 // Lens, receipts, and the load-bearing filter are untouched.
 //
-// Determinism split: worm LENGTH is derived from the board's seed identity
-// (same daily/weekly board ⇒ same lengths for every player); the WALK
-// (direction + cadence) is deliberately luck, so it takes an injectable rng.
+// Determinism split: worm LENGTH, lifetime, tone, and pace are derived from
+// the board's seed identity (same daily/weekly board ⇒ same traits for every
+// player), and the move CADENCE is fixed per worm (base clock × pace — his
+// set-pace ruling, 2026-08-03); only the walk DIRECTION is luck, so stepWorm
+// takes an injectable rng.
 //
 // This module is pure (no DOM, no state import) and node-tested in
 // test/worms.test.mjs. The runtime lifecycle lives in timerManager
@@ -41,14 +43,15 @@ export const WORM_MAX_PER_BOARD = 3;
 // sync.
 export const WORM_LIFETIME_MIN_MOVES = 30;
 export const WORM_LIFETIME_MAX_MOVES = 80;
-// Each move happens on its own uniform 0.5-3s clock (shifted down from
-// 1-4s after playtest: worms were squatting on needed numbers too long),
-// scaled by the worm's PACE trait — a per-egg roll in [0.8, 1.3] (seeded
-// like length/lifetime/tone, so every player sees the same fast and slow
-// worms). Noticeably different, deliberately not hugely: the quickest
-// worms average ~1.4s a move, the slowest ~2.3s.
-export const WORM_MOVE_MIN_MS = 500;
-export const WORM_MOVE_MAX_MS = 3000;
+// Each worm moves at a SET cadence: one fixed delay per move, the base
+// clock scaled by the worm's PACE trait — a per-egg roll in [0.8, 1.3]
+// (seeded like length/lifetime/tone, so every player sees the same fast
+// and slow worms). His ruling 2026-08-03: "the worms moving at a set
+// pace, but their pace can vary as it has before" — the old per-move
+// 0.5-3s roll is gone; a quick worm ticks every 1.4s, a slow one every
+// ~2.3s, metronome-steady. The base is the old roll's mean, so the
+// average crawl speed (and wormLoad's exposure math) is unchanged.
+export const WORM_MOVE_BASE_MS = 1750;
 export const WORM_PACE_MIN = 0.8;
 export const WORM_PACE_MAX = 1.3;
 // Movement bias: worms dislike mines. Each candidate cell's weight is
@@ -140,14 +143,15 @@ export function wormLoadFor(eggs, seedIdentity) {
   return segmentMoves / WORM_LOAD_SCALE;
 }
 
-function rollMoveDelay(rng, pace = 1) {
-  return (WORM_MOVE_MIN_MS + Math.floor(rng() * (WORM_MOVE_MAX_MS - WORM_MOVE_MIN_MS))) * pace;
+// The worm's fixed per-move clock: base cadence scaled by its pace trait.
+function moveDelay(pace = 1) {
+  return WORM_MOVE_BASE_MS * pace;
 }
 
 // Hatch a worm at the just-revealed egg cell. Spawns fully coiled (every
 // segment on the egg cell) so a lone revealed cell in fog can't strand it —
 // it unspools as it finds revealed neighbors to crawl onto.
-export function hatchWorm(r, c, seedIdentity, rng = Math.random) {
+export function hatchWorm(r, c, seedIdentity) {
   const length = wormLengthFor(seedIdentity, r, c);
   const pace = wormPaceFor(seedIdentity, r, c);
   const segments = [];
@@ -161,7 +165,7 @@ export function hatchWorm(r, c, seedIdentity, rng = Math.random) {
     // (one egg per cell, so the pair is unique per board)
     eggR: r,
     eggC: c,
-    nextMoveMs: rollMoveDelay(rng, pace),
+    nextMoveMs: moveDelay(pace),
   };
 }
 
@@ -219,7 +223,7 @@ export function finalizeWormEvents(events, liveWorms) {
 
 // Rebuild live worms from a persisted snapshot (segments + movesLeft only —
 // move clocks reset on resume, the lenient direction, same as plate timers).
-export function rehydrateWorms(saved, rng = Math.random) {
+export function rehydrateWorms(saved) {
   if (!Array.isArray(saved)) return [];
   const worms = [];
   for (const w of saved) {
@@ -236,7 +240,7 @@ export function rehydrateWorms(saved, rng = Math.random) {
       // Egg identity joins the worm back to its hatch event at finalize
       eggR: w.eggR,
       eggC: w.eggC,
-      nextMoveMs: rollMoveDelay(rng, pace),
+      nextMoveMs: moveDelay(pace),
     };
     // Heading survives a resume so momentum picks up where it left off.
     if (w.lastDir && typeof w.lastDir.dr === 'number' && typeof w.lastDir.dc === 'number') {
@@ -380,7 +384,7 @@ export function stepWorm(worm, numberAt, rng = Math.random, topology = null) {
     moved = true;
   }
   worm.movesLeft--;
-  worm.nextMoveMs = rollMoveDelay(rng, worm.pace || 1);
+  worm.nextMoveMs = moveDelay(worm.pace || 1);
   return moved;
 }
 
@@ -444,7 +448,7 @@ function _stepWormTiling(worm, head, numberAt, rng, topology) {
     moved = true;
   }
   worm.movesLeft--;
-  worm.nextMoveMs = rollMoveDelay(rng, worm.pace || 1);
+  worm.nextMoveMs = moveDelay(worm.pace || 1);
   return moved;
 }
 
@@ -523,7 +527,41 @@ export function wormSegmentSize(pitch, tilingType) {
   return pitch;
 }
 
-export function wormOverlayLayout(worms, cellRect, uniformSize = null) {
+// Per-cell offsets from the cell BOX's centre to its VISUAL centre, in
+// PITCH UNITS. Zero on every centrally symmetric cell (hexagon, octagon,
+// interstitial diamond, rhombille rhombus — box centre and drawn centre
+// coincide), nonzero on the asymmetric Laves cells: a floret pentagon's
+// incircle centre sits ~0.25 of a pitch off its bounding-box centre and a
+// deltoidal kite's ~0.21 (the same asymmetry _anchorPadding corrects for
+// the NUMBER). Without this the worm segment centres on the box and reads
+// off-centre and oversized on petals/kites (his report, 2026-08-03) —
+// centred on the visual centre, the pitch-sized segment is exactly the
+// cell's inscribed circle, "the hexagonish area around the number".
+// Rebuilt from the board's own _tiling descriptor (pure, the renderer's
+// rebuild pattern) and memoized per board; null on rectangles and hex/4.8.8
+// paths that carry no descriptor.
+const _centerOffsetsMemo = new WeakMap();
+
+export function wormCellCenterUnitOffsets(board) {
+  if (!board || !board._tiling || !board._cellPos) return null;
+  let offs = _centerOffsetsMemo.get(board);
+  if (offs) return offs;
+  const t = board._tiling;
+  const tiling = buildTiling(t.type, t.M, t.N);
+  offs = tiling.cellPos.map((pos, i) => {
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const vi of tiling.cellVerts[i]) {
+      const v = tiling.verts[vi];
+      if (v.x < minX) minX = v.x; if (v.x > maxX) maxX = v.x;
+      if (v.y < minY) minY = v.y; if (v.y > maxY) maxY = v.y;
+    }
+    return { dx: pos.cx - (minX + maxX) / 2, dy: pos.cy - (minY + maxY) / 2 };
+  });
+  _centerOffsetsMemo.set(board, offs);
+  return offs;
+}
+
+export function wormOverlayLayout(worms, cellRect, uniformSize = null, centerOffsetPx = null) {
   const out = [];
   worms.forEach((worm, wormIndex) => {
     worm.segments.forEach((seg, segIndex) => {
@@ -533,10 +571,12 @@ export function wormOverlayLayout(worms, cellRect, uniformSize = null) {
       // On a tiling the cells differ in size (octagons vs the small squares), so
       // a per-cell segment would grow and shrink as the worm crawls. A uniform
       // size (constrained to the smallest shape) keeps every worm circle the
-      // same, centered in whatever cell it sits on.
+      // same, centered in whatever cell it sits on — at the cell's VISUAL
+      // centre when the caller supplies per-cell offsets (asymmetric cells).
       if (uniformSize != null) {
-        left = rect.left + (rect.width - uniformSize) / 2;
-        top = rect.top + (rect.height - uniformSize) / 2;
+        const off = centerOffsetPx ? centerOffsetPx(seg.r, seg.c) : null;
+        left = rect.left + (rect.width - uniformSize) / 2 + (off ? off.dx : 0);
+        top = rect.top + (rect.height - uniformSize) / 2 + (off ? off.dy : 0);
         width = uniformSize;
         height = uniformSize;
       }
