@@ -225,17 +225,66 @@ test('across dates, the draw tracks the target par and reaches the whole table',
   }
 });
 
-// REGRESSION goldens: the drawn entry for frozen (date, shape) pairs. These
-// pin the whole deterministic chain (target draw -> pricing at the shipped
-// equations -> namespaced lottery). They move ONLY when the equations, the
-// table, or the draw change — each of which is a deliberate act.
-test('REGRESSION: frozen draw goldens', () => {
-  // Targets for these dates: 2027-01-01 -> 176s (hard day), 2027-01-05 ->
-  // 114s, 2027-01-07 -> 51s. The picks are lottery draws, not argmaxes —
-  // cairo lands its nearest rung (123s vs a 114s target) while hex's 176s
-  // day legitimately drew a 106s entry at kernel weight ~0.35.
-  assert.equal(drawDailyTilingConfig('hex', '2027-01-01').id, 'h81d28');
-  assert.equal(drawDailyTilingConfig('deltoidal', '2027-01-01').id, 'd48d21');
-  assert.equal(drawDailyTilingConfig('rhombille', '2027-01-07').id, 'r60d23');
-  assert.equal(drawDailyTilingConfig('cairo', '2027-01-05').id, 'c84d18');
+// The deterministic chain, pinned in the ONE place a refit cannot move it.
+//
+// This used to freeze the drawn entry id for a handful of (date, shape) pairs
+// and assert on those. It looked like a strong pin and was actually a trap:
+// the draw prices through the LIVE predictPar, so the nightly refit moves the
+// picks legitimately, and the goldens reddened main on 2026-08-04 for no
+// defect at all (hex's 2027-01-01 pick went h81d28 -> h110d25 when the fit
+// updated). A guard that fires on routine, correct change is a guard people
+// learn to re-baseline without reading, which is worse than not having it.
+//
+// So the pin is SPLIT. The lottery mechanism — namespace, kernel, index
+// selection — is pinned against a FIXED price vector, where a refit has no
+// say. The end-to-end draw is checked for the properties that must hold at
+// ANY pricing: it is deterministic, it returns a real table entry, and its
+// attempt list keeps the fallback contract.
+test('MECHANISM: the banded lottery is frozen against a fixed price vector', () => {
+  // Synthetic prices, so this asserts on the DRAW and nothing else. If the
+  // namespace, the kernel width, or the index arithmetic changes, these move;
+  // if a shape's equation moves, they cannot.
+  const prices = [30, 60, 90, 120, 180, 240];
+  const rngAt = (u) => () => u;
+
+  // A target sitting on an entry picks it as the lottery's mass concentrates.
+  assert.equal(pickBandedEntry(rngAt(0.0), prices, 90), 0);
+  assert.equal(pickBandedEntry(rngAt(0.999), prices, 90), prices.length - 1);
+
+  // The draw is monotone in the uniform: walking u from 0 to 1 never goes
+  // backwards through the entries.
+  let prev = -1;
+  for (let u = 0; u < 1; u += 0.02) {
+    const i = pickBandedEntry(rngAt(u), prices, 90);
+    assert.ok(i >= prev, `u=${u.toFixed(2)} picked ${i} after ${prev}`);
+    prev = i;
+  }
+
+  // Out-of-band entries take zero weight: with a target far below the whole
+  // vector, the draw cannot land on the dearest entry.
+  const picks = new Set();
+  for (let u = 0; u < 1; u += 0.01) picks.add(pickBandedEntry(rngAt(u), prices, 30));
+  assert.ok(!picks.has(prices.length - 1),
+    'a 240s entry must take no weight against a 30s target');
+});
+
+test('the end-to-end draw holds at ANY pricing', () => {
+  // Everything the frozen ids were really guarding, minus the pricing they
+  // could not help depending on.
+  for (const type of TILING_TYPES) {
+    const table = TILING_BAND_CONFIGS[type];
+    const fallback = table.find((e) => e.fallback === true) || table[0];
+    for (const date of ['2027-01-01', '2027-01-05', '2027-01-07', '2027-06-30']) {
+      const drawn = drawDailyTilingConfig(type, date);
+      assert.ok(table.includes(drawn), `${type} ${date}: drew a non-table entry`);
+      assert.equal(drawDailyTilingConfig(type, date), drawn,
+        `${type} ${date}: the draw must be deterministic`);
+
+      const attempts = tilingConfigAttempts(type, date);
+      assert.equal(attempts[0], drawn, 'the first attempt is the drawn entry');
+      assert.equal(attempts[attempts.length - 1], fallback,
+        "the last attempt is the shape's designated fallback");
+      assert.ok(attempts.length <= 2, 'at most drawn + fallback');
+    }
+  }
 });

@@ -132,13 +132,50 @@ test('LAB SEED: every shape block = PAR_MODEL + its frozen lab deviation centers
   // Seeded terms compare within emission rounding (base and block round at
   // 4-5 decimals, the JSON at 5); unseeded coefficients must equal the base
   // EXACTLY, because both sides are the same float through the same
-  // formatter. Once live tiling rows accumulate and a fitted posterior
-  // replaces a lab center, relax the seeded tolerance for that term, having
-  // looked at the fit that moved it.
+  // formatter.
+  //
+  // A LAB CENTER IS THE EXPECTATION ONLY UNTIL LIVE ROWS SPEAK. The moment a
+  // shape's column enters the fit, difficulty.js ships the FITTED posterior
+  // and the seed is history — that is the seeding ruling working, not drift.
+  // It first happened on 2026-08-04, hours after the rotation went live: the
+  // first tiling daily ever produced a row, `shapeHex` fitted to -0.408
+  // against a -0.375 lab center, and this test failed on the refit's own
+  // commit for a completely correct model update.
+  //
+  // So the expectation comes from modelHistory when the fit recorded one, and
+  // from the lab file otherwise. That keeps the pin exactly as sharp — the
+  // emitted block must equal what the fit emitted — while letting each shape
+  // graduate from seed to posterior on its own schedule. (Do NOT read an early
+  // posterior as a finding: shapeHex's sd is 0.8 on a handful of rows.)
   const TOL = 2e-4;
+  const history = JSON.parse(readFileSync('src/logic/modelHistory.json', 'utf8'));
+  const historyRows = Array.isArray(history) ? history : (history.rows || history.history || []);
+  const fitted = historyRows.length
+    ? (historyRows[historyRows.length - 1].shapeDeviations || {})
+    : {};
+
   for (const t of TILING_TYPES) {
     const block = PAR_MODEL_SHAPES[t];
-    const devs = seededDevsFor(`shape${SHAPE_KEY[t]}`);
+    const stem = `shape${SHAPE_KEY[t]}`;
+    const devs = seededDevsFor(stem);
+    // Fitted posteriors override their seeds, term by term.
+    // A fitted posterior replaces its seed ONLY for a term that is seeded.
+    // An unseeded term keeps the NEW_FEATURE_DATA_THRESHOLD earn guard and
+    // ships ZERO no matter what the fit produced — which is why the override
+    // is scoped rather than applied to everything modelHistory carries. On
+    // 2026-08-04 the fit had a shapeHex_x_zeroClusterCount posterior of
+    // -0.0072 while difficulty.js correctly shipped 0 for it.
+    const isSeeded = new Set(Object.keys(devs).filter((k) => devs[k] !== 0));
+    for (const [term, post] of Object.entries(fitted)) {
+      if (term === stem) {
+        if (isSeeded.has('intercept')) devs.intercept = post.mean;
+      } else if (term.startsWith(`${stem}_x_`)) {
+        // Fitted terms name the R PREDICTOR; the deviations map is keyed by
+        // the JS coefficient. Same translation seededDevsFor does.
+        const coef = PREDICTOR_TO_COEF[term.slice(stem.length + 3)];
+        if (coef && isSeeded.has(coef)) devs[coef] = post.mean;
+      }
+    }
     assert.equal(block.scale, 'log', `${t}: shape blocks are log-scale`);
     for (const key of Object.keys(PAR_MODEL)) {
       if (key === 'scale') continue;
