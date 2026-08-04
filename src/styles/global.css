@@ -6913,6 +6913,53 @@ button:focus-visible {
   font-style: italic;
 }
 
+/* Shape-aware modifier example: a real patch of the board's own lattice,
+   drawn as SVG polygons with an HTML marker layer on top. The overlay is
+   what lets a mark carry a sprite, an italic-underlined liar number, or a
+   worm segment — the same pieces the square example uses — while the
+   polygons underneath come from the shipped tiling builder. */
+.gimmick-example-shape {
+  position: relative;
+  display: inline-block;
+  margin: 0 auto;
+  max-width: 100%;
+}
+.gimmick-example-shape svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.ge-shape-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.ge-shape-mark {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text, #eee);
+}
+.ge-shape-liar {
+  font-style: italic;
+  text-decoration: underline;
+  color: var(--marker-liar-outline, rgba(231, 76, 60, 0.9));
+}
+/* Sonar reads as watermark plus value, the same pairing the real cell uses
+   (his ruling: in a tight cell, overlap the symbol and its number, never
+   drop the symbol). The sprite therefore has to give way to the digit. */
+.ge-shape-sonar { color: #26c6da; font-weight: 900; font-size: 13px; gap: 1px; }
+.ge-shape-compass { color: #ffa726; font-weight: 900; font-size: 13px; }
+.ge-shape-mystery { color: #a855f7; font-size: 18px; }
+.ge-shape-mark img.ge-piece { width: 12px; height: 12px; }
+.ge-shape-locked img.ge-piece { width: 17px; height: 17px; }
+
 /* Gimmick intro content sizing */
 .gimmick-intro-content {
   text-align: center;

@@ -21,6 +21,7 @@ import { generateTilingBoard, containerFor } from '../logic/tilingGenerator.js';
 import { coastlineBoardFor, DEFAULT_TILING, tilingLabel, CLASSIC_SHAPE_LABEL } from '../logic/coastlineLink.js';
 import { expectedTimeLine } from '../logic/expectedTime.js';
 import { shapeIntroCard, shapePatchSVG } from '../logic/shapeIntro.js';
+import { modifierExampleHTML } from '../logic/modifierExample.js';
 import { personalPar } from '../logic/handicaps.js';
 import { challengeSpecForLevel } from '../logic/challenge250.js';
 import { buildChallenge250Board, challengeBoardSeed } from '../logic/challenge250Builder.js';
@@ -121,14 +122,22 @@ function showGimmickIntros(gimmickDefs, recapDefs = []) {
       exampleHtml: '',
     });
   }
+  // The diagram is drawn on the shape the player is looking at. On a tiling
+  // the shipped square-grid example would show a board they are not playing,
+  // which matters most for exactly the modifiers the ladder debuts on a
+  // lattice; modifierExampleHTML returns null for a rectangle, so Classic
+  // boards keep the authored markup verbatim.
+  const tilingType = state.board && state.board._tiling ? state.board._tiling.type : null;
   for (const def of gimmickDefs) {
+    const key = def._key || null;
+    const shapeExample = (key && tilingType) ? modifierExampleHTML(key, tilingType) : null;
     cards.push({
       primer: false,
       icon: def.icon,
-      gimmickKey: def._key || null,
+      gimmickKey: key,
       name: def.name,
       body: def.longDesc || def.desc,
-      exampleHtml: def.exampleHtml || '',
+      exampleHtml: shapeExample || def.exampleHtml || '',
     });
   }
   // Modifiers the player has already learned: one compact recap line
