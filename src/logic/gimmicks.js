@@ -79,8 +79,8 @@ const GIMMICK_DEFS = {
   },
   mineShift: {
     intro: 41, name: 'Mine Shift', icon: '💨', chaosOnly: true,
-    desc: 'Every 30 to 45 seconds, unflagged mines may shift to a neighboring cell. Flagged mines stay put!',
-    longDesc: 'Mines that you haven\'t flagged will periodically move to a neighboring cell. Numbers update to reflect new positions. Flag mines quickly to pin them in place. Flagged mines never move.',
+    desc: 'Unflagged mines creep to a neighboring cell every few seconds. Flagged mines stay put!',
+    longDesc: 'A mine you have not flagged will creep to a cell it shares an edge with, one step at a time, every few seconds. The numbers update as it goes. Flag a mine to pin it in place: a flagged mine never moves.',
     exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell unrevealed"></div><div class="ge-cell unrevealed ge-mine-shift"><img class="ge-piece" src="assets/sprites/mine.png" alt="">➜</div><div class="ge-cell unrevealed ge-mine-dest"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">0</div></div><div class="ge-caption">Unflagged mines drift. Flag them to pin them down!</div>',
   },
   locked: {
@@ -345,7 +345,16 @@ export function applyGimmicks(board, level, activeGimmicks, rng = Math.random) {
         applied.mirror = applyMirrorPairs(board, rows, cols, Math.min(intensity, 3), rng);
         break;
       case 'mineShift':
-        applied.mineShift = { interval: 30 + Math.floor(rng() * 16) }; // 30-45s
+        // HOW MANY move is the difficulty dial (his ruling 2026-08-04:
+        // "multiple mines can move, if the difficulty rolls that way").
+        // getIntensity is the ladder-wide intensity ramp every other modifier
+        // reads, so mineShift now scales the same way they do instead of
+        // being a flat 1-or-2 forever.
+        applied.mineShift = {
+          interval: MINESHIFT_MIN_SECONDS
+            + Math.floor(rng() * (MINESHIFT_MAX_SECONDS - MINESHIFT_MIN_SECONDS + 1)),
+          count: Math.max(1, Math.min(intensity, MINESHIFT_MAX_MOVERS)),
+        };
         break;
       case 'pressurePlate':
         applied.pressurePlate = applyPressurePlates(board, rows, cols, intensity, rng);
@@ -934,7 +943,51 @@ function applyMirrorPairs(board, rows, cols, pairCount, rng) {
 
 // ── Mine Shift (runtime) ───────────────────────────────
 
-export function performMineShift(board, rng = Math.random) {
+// A mine shifts on its own clock, rolled once per board. Christopher's ruling
+// (2026-08-04): move like the worm, just not as often, between 2 and 20
+// seconds. The old range was 30-45s, so this is a real change in feel and he
+// said so when he asked for it.
+const ORTHO_STEPS = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+
+export const MINESHIFT_MIN_SECONDS = 2;
+export const MINESHIFT_MAX_SECONDS = 20;
+
+// The ceiling on how many mines move at once. getIntensity tops out around 5,
+// and a board where five mines relocate every few seconds is already the
+// deep end of Chaos; the cap is here so a future intensity change cannot
+// quietly turn a shift into a reshuffle.
+export const MINESHIFT_MAX_MOVERS = 5;
+
+/**
+ * One shift step: 1-2 unflagged mines each move to a cell they SHARE AN EDGE
+ * WITH, which is the worm's rule and, on a tiling, the only rule that means
+ * anything.
+ *
+ * The old walk was the rectangular 8-neighborhood by coordinate, which is
+ * fine on a square grid and nonsense on a lattice: `(row±1, col±1)` there
+ * indexes the CONTAINER, and a tiling container is an arbitrary exact
+ * factorization, so a mine would have "shifted" to a cell it does not touch
+ * and often is nowhere near. Chaos has always been rectangular, so this never
+ * manifested; it would have the moment Chaos gained the shapes.
+ *
+ * `buildWormCrawlTopology` is the one builder for "which cells may something
+ * crawl between": side-sharing neighbors on a tiling, null on a rectangle
+ * (whose orthogonal walk it leaves alone). Sharing it with the worm is the
+ * point — two crawl rules would be two chances to disagree about what a step
+ * is, and the worm's is the one that has been played.
+ *
+ * How MANY move is the difficulty dial: `count` comes from the modifier's
+ * intensity at generation, so a deep Chaos round moves several at once while
+ * an early one moves one. Fewer than `count` move when the board does not
+ * offer that many shiftable mines, which is the honest outcome rather than a
+ * retry loop.
+ *
+ * @param {Array} board
+ * @param {Function} rng
+ * @param {{neighborsOf: Function}|null} topology from buildWormCrawlTopology
+ * @param {number} count how many mines to move this tick
+ */
+export function performMineShift(board, rng = Math.random, topology = null, count = 1) {
   const rows = board.length;
   const cols = board[0].length;
 
@@ -950,24 +1003,30 @@ export function performMineShift(board, rng = Math.random) {
 
   if (shiftable.length === 0) return [];
 
-  // Pick 1-2 mines to shift
+  // Pick the movers. The old rule was a flat 1-2 regardless of difficulty.
   shuffle(shiftable, rng);
-  const toShift = shiftable.slice(0, 1 + (rng() < 0.3 ? 1 : 0));
+  const movers = Math.max(1, Math.min(Math.round(count) || 1, MINESHIFT_MAX_MOVERS));
+  const toShift = shiftable.slice(0, movers);
   const shifted = [];
 
   for (const mine of toShift) {
-    // Find adjacent unrevealed non-mine non-flagged non-wall cells
+    // Where this mine may step: the crawl graph on a tiling, the orthogonal
+    // four on a rectangle. Both are "cells sharing an edge"; the rectangular
+    // branch is written out because a rectangle carries no crawl topology.
+    const candidates = topology
+      ? topology.neighborsOf(mine.row, mine.col)
+      : ORTHO_STEPS
+        .map(([dr, dc]) => ({ r: mine.row + dr, c: mine.col + dc }))
+        .filter(({ r, c }) => r >= 0 && r < rows && c >= 0 && c < cols)
+        .map(({ r, c }) => ({ r, c }));
+
     const dests = [];
-    for (let dr = -1; dr <= 1; dr++) {
-      for (let dc = -1; dc <= 1; dc++) {
-        if (dr === 0 && dc === 0) continue;
-        const nr = mine.row + dr, nc = mine.col + dc;
-        if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
-          const dest = board[nr][nc];
-          if (!dest.isMine && !dest.isRevealed && !dest.isFlagged) {
-            dests.push({ row: nr, col: nc });
-          }
-        }
+    for (const n of candidates) {
+      const nr = n.r !== undefined ? n.r : n.row;
+      const nc = n.c !== undefined ? n.c : n.col;
+      const dest = board[nr] && board[nr][nc];
+      if (dest && !dest.isMine && !dest.isRevealed && !dest.isFlagged) {
+        dests.push({ row: nr, col: nc });
       }
     }
 

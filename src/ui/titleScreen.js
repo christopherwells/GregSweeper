@@ -68,7 +68,12 @@ export function updateTitleProgress() {
 
   if (challengeEl) {
     const cLevel = stats.modeStats?.challenge?.maxLevelReached || 1;
-    challengeEl.textContent = `Level ${cLevel} · ${Math.min(100, Math.round(cLevel / CHALLENGE_MAX_LEVEL * 100))}%`;
+    // Past the crown the ladder is endless, so a percentage has no
+    // denominator to be a percentage OF. The level number is the whole
+    // point there (his ruling: max level is the brag stat).
+    challengeEl.textContent = cLevel > CHALLENGE_MAX_LEVEL
+      ? `Level ${cLevel} · endless`
+      : `Level ${cLevel} · ${Math.round(cLevel / CHALLENGE_MAX_LEVEL * 100)}%`;
   }
   if (timedEl) {
     const tWins = stats.modeStats?.timed?.wins || 0;

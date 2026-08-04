@@ -23,7 +23,7 @@ const LAVES = ['cairo', 'floret', 'rhombille', 'deltoidal'];
 const allSpecs = [];
 for (let lv = 1; lv <= CHALLENGE_MAX_LEVEL; lv++) allSpecs.push(challengeSpecForLevel(lv));
 
-test('ladder structure: 250 levels, 50 blocks of 5, clamped accessors', () => {
+test('ladder structure: 250 authored levels, 50 blocks of 5, unbounded above', () => {
   assert.equal(CHALLENGE_MAX_LEVEL, 250);
   assert.equal(CHALLENGE_BLOCK_SIZE, 5);
   assert.equal(CHALLENGE_BLOCK_COUNT, 50);
@@ -33,13 +33,57 @@ test('ladder structure: 250 levels, 50 blocks of 5, clamped accessors', () => {
     assert.equal(spec.level, lv);
     assert.equal(spec.block, Math.floor((lv - 1) / 5) + 1);
   }
-  // Clamps mirror the old ladder's past-MAX behavior until endless lands.
+  // Below 1 still clamps. ABOVE 250 no longer does: the endless zone took
+  // over that range, and its own contract lives in test/challengeEndless.
   assert.equal(challengeSpecForLevel(0).level, 1);
-  assert.equal(challengeSpecForLevel(999).level, 250);
+  assert.equal(challengeSpecForLevel(999).level, 999);
+  assert.equal(challengeSpecForLevel(999).endless, true);
   assert.equal(blockStartLevel(1), 1);
   assert.equal(blockStartLevel(25), 21);
   assert.equal(blockStartLevel(26), 26);
   assert.equal(blockStartLevel(250), 246);
+  assert.equal(blockStartLevel(999), 996);
+});
+
+test('every shape stays in the mix after its intro, and all seven reach the finale', () => {
+  // His ask (2026-08-04): "I hope that all shapes are being incorporated into
+  // the mix in challenge mode after their entry time." They are, and this
+  // pins it — a re-authored block could otherwise quietly retire a lattice
+  // to its own intro and nothing would fail.
+  const firstBlock = {};
+  const blocksOf = {};
+  for (let lv = 1; lv <= CHALLENGE_MAX_LEVEL; lv++) {
+    const spec = challengeSpecForLevel(lv);
+    (blocksOf[spec.shape] ||= new Set()).add(spec.block);
+    if (!(spec.shape in firstBlock)) firstBlock[spec.shape] = spec.block;
+  }
+
+  const shapes = Object.keys(firstBlock);
+  assert.equal(shapes.length, 7, `the ladder uses ${shapes.length} shapes, expected all seven`);
+
+  for (const shape of shapes) {
+    const blocks = [...blocksOf[shape]].sort((a, b) => a - b);
+    const after = blocks.filter((b) => b > firstBlock[shape]);
+    // Kites introduces last (block 38) and still returns four times.
+    assert.ok(after.length >= 4,
+      `${shape} appears only ${after.length} time(s) after its block-${firstBlock[shape]} intro`);
+
+    // And it never disappears for too long a stretch. Measured worst is
+    // Octagons at 13 blocks (block 29 to 42); the bar sits just above it so
+    // a re-author that opens a bigger hole fails here.
+    let longestGap = 0;
+    let prev = firstBlock[shape];
+    for (const b of after) { longestGap = Math.max(longestGap, b - prev); prev = b; }
+    longestGap = Math.max(longestGap, CHALLENGE_BLOCK_COUNT - prev);
+    assert.ok(longestGap <= 14,
+      `${shape} vanishes for ${longestGap} blocks after its intro`);
+  }
+
+  // The three finale gauntlets between them must field every shape, which is
+  // what makes the summit read as a tour rather than a favourite.
+  const finale = new Set();
+  for (let lv = 236; lv <= CHALLENGE_MAX_LEVEL; lv++) finale.add(challengeSpecForLevel(lv).shape);
+  assert.equal(finale.size, 7, `the finale fields ${finale.size} shapes: ${[...finale].join(', ')}`);
 });
 
 test('tier ladder anchors are the adopted numbers (T1 0.55 → T12 3.60)', () => {

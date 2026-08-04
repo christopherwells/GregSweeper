@@ -818,8 +818,10 @@ const GIMMICK_LABELS = (() => {
 function showCheckpointSelector() {
   const stats = loadStats();
   const maxLevel = stats.modeStats?.challenge?.maxLevelReached || 1;
-  // maxLevelReached is the level you WON — the next level you'd play is maxLevel + 1
-  const nextPlayable = Math.min(maxLevel + 1, CHALLENGE_MAX_LEVEL);
+  // maxLevelReached is the level you WON — the next level you'd play is
+  // maxLevel + 1, and there is no ceiling on that: past the crown the
+  // endless zone banks checkpoints forever.
+  const nextPlayable = maxLevel + 1;
   const savedGame = loadGameState('normal');
   const hasSavedGame = !!(savedGame && savedGame.board && savedGame.gameMode);
 
@@ -847,16 +849,16 @@ function showCheckpointSelector() {
   listEl.innerHTML = '';
   const highestCheckpoint = getCheckpointForLevel(nextPlayable);
 
-  for (let cp = 1; cp <= CHALLENGE_MAX_LEVEL; cp += CHECKPOINT_INTERVAL) {
+  // The authored ladder always lists in full; the endless zone lists only as
+  // far as the player has actually banked, because it has no end to draw.
+  const listMax = Math.max(CHALLENGE_MAX_LEVEL, highestCheckpoint + CHECKPOINT_INTERVAL - 1);
+  for (let cp = 1; cp <= listMax; cp += CHECKPOINT_INTERVAL) {
     const unlocked = cp <= highestCheckpoint || cp === 1;
     const btn = document.createElement('button');
     btn.className = 'checkpoint-btn' + (unlocked ? '' : ' checkpoint-locked');
 
     // Build label
-    let levelText = `Level ${cp}`;
-    if (cp + CHECKPOINT_INTERVAL - 1 <= CHALLENGE_MAX_LEVEL) {
-      levelText = `Level ${cp}-${Math.min(cp + CHECKPOINT_INTERVAL - 1, CHALLENGE_MAX_LEVEL)}`;
-    }
+    let levelText = `Level ${cp}-${cp + CHECKPOINT_INTERVAL - 1}`;
 
     const gimmick = GIMMICK_LABELS[cp];
     let modifierHtml = '';
@@ -1572,9 +1574,13 @@ $('#post-death-replay').addEventListener('click', () => {
 });
 
 $('#gameover-nextlevel').addEventListener('click', () => {
-  const maxLevel = state.gameMode === 'timed' ? MAX_TIMED_LEVEL : CHALLENGE_MAX_LEVEL;
+  // Challenge has no top (the endless zone), so only Quick Play caps here.
+  // The same rule the Next Level BUTTON follows in winLossHandler; the two
+  // used to share a cap, and capping only one of them would either show a
+  // dead button or advance past a hidden one.
+  const cappedAtTop = state.gameMode === 'timed' && state.currentLevel >= MAX_TIMED_LEVEL;
   const completedLevel = state.currentLevel;
-  if (state.currentLevel < maxLevel) state.currentLevel++;
+  if (!cappedAtTop) state.currentLevel++;
 
   const isLevelMode = state.gameMode === 'normal';
   if (isLevelMode) {
@@ -2096,9 +2102,9 @@ async function init() {
   // ?level=N — test-environment-only practice jump to any challenge level
   // (playtesting a specific gimmick block without grinding to it).
   const _levelParam = parseInt(urlParams.get('level') || '', 10);
-  const deepLinkLevel = (isTestEnvironment() && _levelParam >= 1)
-    ? Math.min(_levelParam, CHALLENGE_MAX_LEVEL)
-    : 0;
+  // No upper clamp: the endless zone is a real part of the ladder and has to
+  // be reachable for playtesting like any other stretch of it.
+  const deepLinkLevel = (isTestEnvironment() && _levelParam >= 1) ? _levelParam : 0;
   // ?coastline= — test-environment-only tiling board (Project Coastline
   // Phase 2). Gated exactly like ?level=, so it is UNREACHABLE in production
   // no matter which of the six lattices the link names; the player-facing

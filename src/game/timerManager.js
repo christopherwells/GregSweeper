@@ -142,6 +142,7 @@ export function stopTimer() {
 // ── Pause / Resume (visibility change) ────────────────
 
 let _mineShiftInterval = null; // stored so we can restart on resume
+let _mineShiftCount = 1;       // how many mines move per tick (difficulty dial)
 
 export function pauseTimer() {
   if (state.timerId) {
@@ -194,7 +195,7 @@ export function resumeTimer() {
   }
   // Restart mine shift if it was active
   if (!state.mineShiftTimerId && _mineShiftInterval) {
-    startMineShift(_mineShiftInterval);
+    startMineShift(_mineShiftInterval, _mineShiftCount);
   }
   // Restart the worm heartbeat if any worms are alive (state.worms is the
   // presence signal — no stored interval needed, the cadence is per-worm)
@@ -205,12 +206,18 @@ export function resumeTimer() {
 
 // ── Mine Shift Timer ──────────────────────────────────
 
-export function startMineShift(intervalSeconds) {
+export function startMineShift(intervalSeconds, moverCount = 1) {
   _mineShiftInterval = intervalSeconds; // remember for resume
+  _mineShiftCount = moverCount;
   if (state.mineShiftTimerId) return;
   state.mineShiftTimerId = setInterval(() => {
     if (state.status !== 'playing') return;
-    const shifted = performMineShift(state.board);
+    // Mines crawl the same graph the worm does — side-sharing on a tiling,
+    // orthogonal on a rectangle (where this returns null and the rectangular
+    // walk stands). Rebuilt per tick rather than cached because the topology
+    // builder memoises per board, so this is a map lookup after the first.
+    const topology = buildWormCrawlTopology(state.board, state.rows, state.cols);
+    const shifted = performMineShift(state.board, undefined, topology, _mineShiftCount);
     if (shifted.length > 0) {
       // Brief shimmer on all unrevealed cells
       for (const child of boardEl.children) {
@@ -230,6 +237,7 @@ export function stopMineShift() {
     state.mineShiftTimerId = null;
   }
   _mineShiftInterval = null;
+  _mineShiftCount = 1;
 }
 
 // ── Worm Crawl Heartbeat ──────────────────────────────
