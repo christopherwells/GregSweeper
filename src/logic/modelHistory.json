@@ -16298,5 +16298,186 @@
         "sd": 0.4732
       }
     }
+  },
+  {
+    "date": "2026-08-04",
+    "updatedAt": "2026-08-04T15:41:14Z",
+    "method": "brms-ranef",
+    "n_scores": 389,
+    "n_dates": 162,
+    "n_players": 5,
+    "n_eligible": 4,
+    "rmse": 49.49,
+    "bias": 7.3,
+    "diagnostics": "max Rhat = 1.003, min ESS = 1373, divergent = 0/4000",
+    "target": "clueShare4",
+    "candidates": [
+      {
+        "feature": "wormLoad",
+        "mean": 0.0124,
+        "sd": 0.0083,
+        "cv": 0.6683
+      },
+      {
+        "feature": "mirrorPairCount",
+        "mean": 0.022,
+        "sd": 0.0139,
+        "cv": 0.6323
+      },
+      {
+        "feature": "compassCellCount",
+        "mean": 0.0233,
+        "sd": 0.0136,
+        "cv": 0.5869
+      },
+      {
+        "feature": "clueShare4",
+        "mean": 0.0995,
+        "sd": 0.054,
+        "cv": 0.5426
+      },
+      {
+        "feature": "lockedCellCount",
+        "mean": 0.0245,
+        "sd": 0.0131,
+        "cv": 0.5343
+      },
+      {
+        "feature": "clueShare2",
+        "mean": 0.0521,
+        "sd": 0.0259,
+        "cv": 0.4969
+      },
+      {
+        "feature": "sonarCellCount",
+        "mean": 0.0521,
+        "sd": 0.0193,
+        "cv": 0.3701
+      },
+      {
+        "feature": "wormholePairCount",
+        "mean": 0.0029,
+        "sd": 0.0037,
+        "cv": 0.3691
+      },
+      {
+        "feature": "searchMoves",
+        "mean": 0.0128,
+        "sd": 0.0045,
+        "cv": 0.3523
+      },
+      {
+        "feature": "patternMoves",
+        "mean": 0.0207,
+        "sd": 0.0065,
+        "cv": 0.3136
+      },
+      {
+        "feature": "clueShare5plus",
+        "mean": 0.0017,
+        "sd": 0.0024,
+        "cv": 0.2411
+      },
+      {
+        "feature": "wallEdgeCount",
+        "mean": 0.0017,
+        "sd": 0.0019,
+        "cv": 0.1922
+      },
+      {
+        "feature": "clueShare3",
+        "mean": 0.2423,
+        "sd": 0.0426,
+        "cv": 0.1758
+      },
+      {
+        "feature": "mysteryCellCount",
+        "mean": 0.0014,
+        "sd": 0.0015,
+        "cv": 0.1476
+      },
+      {
+        "feature": "liarCellCount",
+        "mean": 0.0013,
+        "sd": 0.0013,
+        "cv": 0.1269
+      },
+      {
+        "feature": "zeroClusterCount",
+        "mean": 0.001,
+        "sd": 0.001,
+        "cv": 0.0975
+      },
+      {
+        "feature": "totalMines",
+        "mean": 0.0496,
+        "sd": 0.0032,
+        "cv": 0.0644
+      }
+    ],
+    "contribution": [
+      {
+        "feature": "sonarRequired",
+        "mean": 0.2547,
+        "sd": 0.1095
+      },
+      {
+        "feature": "compassRequired",
+        "mean": 0.0691,
+        "sd": 0.1354
+      },
+      {
+        "feature": "compassClicksSaved",
+        "mean": -0.0705,
+        "sd": 0.0362
+      },
+      {
+        "feature": "wormholeRequired",
+        "mean": -0.4984,
+        "sd": 0.24
+      },
+      {
+        "feature": "liarRequired",
+        "mean": -0.3931,
+        "sd": 0.1651
+      },
+      {
+        "feature": "mirrorRequired",
+        "mean": -0.2522,
+        "sd": 0.2046
+      },
+      {
+        "feature": "lockedMineCount",
+        "mean": 0.0484,
+        "sd": 0.0471
+      },
+      {
+        "feature": "lockedNumberCount",
+        "mean": 0.0469,
+        "sd": 0.028
+      }
+    ],
+    "shapeDeviations": {
+      "shapeHex": {
+        "mean": -0.3634,
+        "sd": 0.7772
+      },
+      "shapeHex_x_cellCount": {
+        "mean": -0.006,
+        "sd": 0.0207
+      },
+      "shapeHex_x_totalMines": {
+        "mean": 0.0559,
+        "sd": 0.0977
+      },
+      "shapeHex_x_zeroClusterCount": {
+        "mean": -0.003,
+        "sd": 0.4363
+      },
+      "shapeHex_x_lockedCellCount": {
+        "mean": 0.0048,
+        "sd": 0.4635
+      }
+    }
   }
 ]
