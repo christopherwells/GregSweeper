@@ -2,6 +2,7 @@ import { safeGet, safeSet, safeRemove, safeGetJSON, safeSetJSON, safeKeys } from
 import { getLocalDateString } from '../logic/seededRandom.js';
 import { applyStreakContinuation, projectContinuation, isStreakAlive, backfillGrant, MOLT_CAP } from '../logic/moltDay.js';
 import { CHALLENGE_250_EPOCH } from '../logic/challenge250.js';
+import { clearSeenGimmicks } from '../logic/gimmicks.js';
 import { isTestEnvironment } from '../firebase/env.js';
 import { containsHateSpeech } from '../logic/nameFilter.js';
 
@@ -664,7 +665,32 @@ export function backfillMoltDays() {
 // date-anchored-snapshot lesson). Returns true if it reset.
 export function applyChallenge250Reset() {
   const stats = loadStats();
-  if (stats.challengeEpoch === CHALLENGE_250_EPOCH) return false;
+
+  // The first-encounter modifier cards clear on their OWN marker, deliberately
+  // separate from the progression epoch below.
+  //
+  // They were left ALONE when the reset first shipped, on the reasoning that a
+  // player who had already met walls should not be re-taught them. That was
+  // wrong, and the symptom was immediate: the ladder was rebuilt from level 1
+  // for everyone, walls now debut at L6 and liar at L11, and a returning
+  // player met both with no card at all — an opener that reads as broken
+  // rather than as familiar (his report, 2026-08-04).
+  //
+  // A separate marker is what lets this reach players whose progression reset
+  // ALREADY ran. Folding it into the epoch guard below would either miss them
+  // entirely or, if the epoch were bumped to catch them, wipe the climb they
+  // have built since. The shape cards are untouched: that set was born with
+  // this ladder, so nothing in it is stale.
+  let changed = false;
+  if (stats.challengeSeenEpoch !== CHALLENGE_250_EPOCH) {
+    clearSeenGimmicks();
+    stats.challengeSeenEpoch = CHALLENGE_250_EPOCH;
+    setJSON(STATS_KEY, stats);
+    _statsCache = stats;
+    changed = true;
+  }
+
+  if (stats.challengeEpoch === CHALLENGE_250_EPOCH) return changed;
   stats.maxLevelReached = 1;
   stats.bestTimes = {};
   if (stats.modeStats?.challenge) {

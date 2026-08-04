@@ -19,7 +19,9 @@
 //   node scripts/search-endless-specs.mjs --seeds 5        # quicker sweep
 
 import { buildChallenge250Board, challengeBoardSeed } from '../src/logic/challenge250Builder.js';
-import { ENDLESS_PAR_CEILING_SECONDS, GEN_CAP_MS, TIER_PPC } from '../src/logic/challenge250.js';
+import {
+  endlessParCeiling, endlessGenCap, ENDLESS_PPC_FLOOR,
+} from '../src/logic/challenge250.js';
 import { buildTiling } from '../src/logic/tilingGeometry.js';
 
 const args = process.argv.slice(2);
@@ -27,7 +29,7 @@ const argVal = (n) => { const i = args.indexOf(n); return i >= 0 && i + 1 < args
 const K = Number(argVal('--seeds') || 8);
 const ONLY = argVal('--shape');
 
-const SUMMIT_PPC = TIER_PPC[12]; // 3.60
+const FLOOR_PPC = ENDLESS_PPC_FLOOR;
 
 // Candidate grids per shape. Sizes are the ones the ladder already proves
 // generation-viable; densities reach past the ladder's own top because that
@@ -79,7 +81,7 @@ function measure(spec, level = 300) {
     if (ms > worstMs) worstMs = ms;
     if (!built) return { ok: false, why: `draw ${k} failed (uncertified or decorative)`, worstMs };
     pars.push(built.par);
-    if (worstMs > GEN_CAP_MS * 3) return { ok: false, why: `generation blew past the cap (${worstMs}ms)`, worstMs };
+    if (worstMs > endlessGenCap(spec.shape) * 3) return { ok: false, why: `generation blew past the cap (${worstMs}ms)`, worstMs };
   }
   pars.sort((x, y) => x - y);
   const medPar = pars[Math.floor(pars.length / 2)];
@@ -104,10 +106,13 @@ for (const shape of shapes) {
             if (process.env.VERBOSE) console.log(`  skip  ${tag}: ${r.why}`);
             continue;
           }
-          const overCeiling = r.medPar > ENDLESS_PAR_CEILING_SECONDS;
-          const overCap = r.worstMs > GEN_CAP_MS;
-          const belowSummit = r.ppc < SUMMIT_PPC;
-          const verdict = overCeiling ? 'PAR>600' : overCap ? `GEN ${r.worstMs}ms` : belowSummit ? 'below T12' : 'KEEP';
+          const ceiling = endlessParCeiling(shape);
+          const genCap = endlessGenCap(shape);
+          const overCeiling = r.medPar > ceiling;
+          const overCap = r.worstMs > genCap;
+          const belowFloor = r.ppc < FLOOR_PPC;
+          const verdict = overCeiling ? `PAR>${ceiling}` : overCap ? `GEN ${r.worstMs}ms`
+            : belowFloor ? `below ${FLOOR_PPC}` : 'KEEP';
           if (verdict !== 'KEEP') {
             if (process.env.VERBOSE) console.log(`  ${verdict.padEnd(10)} ${tag}  ppc ${r.ppc.toFixed(2)} par ${r.medPar.toFixed(0)}s`);
             continue;

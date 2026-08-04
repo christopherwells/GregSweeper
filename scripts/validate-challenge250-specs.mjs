@@ -37,7 +37,7 @@
 import {
   CHALLENGE_MAX_LEVEL, challengeSpecForLevel, specFingerprint, ppcBandFor,
   PAR_CEILING_SECONDS, GEN_CAP_MS, OPENER_MIN_DEDUCTIONS,
-  ENDLESS_SPECS, endlessParCeiling, endlessGenCap, TIER_PPC,
+  ENDLESS_SPECS, endlessParCeiling, endlessGenCap, TIER_PPC, ENDLESS_PPC_FLOOR,
 } from '../src/logic/challenge250.js';
 import { buildChallenge250Board, challengeBoardSeed } from '../src/logic/challenge250Builder.js';
 
@@ -161,7 +161,8 @@ if (!args.includes('--no-endless') && !blockFilter) {
   console.log('Rulings: certified+strict every draw · per-shape generation cap'
     + ` (${GEN_CAP_MS}ms, 3500ms for 3D Cubes) · per-shape par ceiling`
     + ' (600s, 720s for Classic and Paving Stones)'
-    + ` · ppc >= ${TIER_PPC[12]} (the summit is a FLOOR here)
+    + ` · ppc >= ${ENDLESS_PPC_FLOOR} (the pool floor; the escalation still`
+    + ` starts at the ${TIER_PPC[12]} summit)
 `);
 
   for (let i = 0; i < ENDLESS_SPECS.length; i++) {
@@ -203,8 +204,8 @@ if (!args.includes('--no-endless') && !blockFilter) {
     // a moved equation rather than sampling. The stored-vs-measured drift
     // check below is the sharper instrument for that and stays as it is.
     const floorTolerance = 0.9;
-    if (ppcs.length && medPpc < TIER_PPC[12] * floorTolerance) {
-      problems.push(`ppc ${medPpc.toFixed(2)} well below the ${TIER_PPC[12]} summit floor`);
+    if (ppcs.length && medPpc < ENDLESS_PPC_FLOOR * floorTolerance) {
+      problems.push(`ppc ${medPpc.toFixed(2)} well below the ${ENDLESS_PPC_FLOOR} pool floor`);
     }
     // The stored price is what the escalation aims at. A generous 25% drift
     // window: this is an alarm for a moved equation, not a re-measurement.

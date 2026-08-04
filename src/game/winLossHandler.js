@@ -56,12 +56,19 @@ import { ensureLeaderboardName } from '../ui/nameCapture.js';
 import { addDailyLeaderboardEntry, appendDailyResidual, loadDailyResiduals, loadPowerUps } from '../storage/statsStorage.js';
 import { getLocalDateString } from '../logic/seededRandom.js';
 
-// Weekly's first-attempt-of-the-week play is supposed to feed the
-// par-model fit pool (honest first encounter, no memorisation
-// advantage). Disabled while the weekly mode is still being shaken
-// down — we don't want test plays with shifting rules to drag the
-// model coefficients. Flip to true when the rules are stable.
-const WEEKLY_FIT_DATA_ENABLED = false;
+// Weekly's first-attempt-of-the-week play feeds the par-model fit pool: an
+// honest first encounter with no memorisation advantage, which is exactly the
+// observation the daily supplies and the reason days 2-7 are excluded.
+//
+// ENABLED 2026-08-04 (his call: "get the weeklies in to the par model"). It
+// shipped false in v1.6 as a deliberate hold while the weekly's rules were
+// still moving — gimmick count, bomb handling and the end screen all changed
+// after launch, and half-baked inputs would have dragged the coefficients.
+// The rules have been stable for two months; the flag simply outlived its
+// reason, and fourteen weeks of real completions went unrecorded because of
+// it. The history is recoverable and was recovered separately
+// (scripts/backfill-weekly-fit-rows.mjs).
+const WEEKLY_FIT_DATA_ENABLED = true;
 
 // Friendly phrase for the molt-day covered note: a covered gap is always 1 or
 // 2 days (the bank cap), and always within the last few days, so the weekday
@@ -560,12 +567,6 @@ export async function handleWin() {
         // dailyMeta/* tables the R refit already reads, with a unique
         // key suffix so it joins as its own row.
         //
-        // Currently DISABLED via WEEKLY_FIT_DATA_ENABLED. Weekly is
-        // brand-new and we're still iterating on its rules (gimmick
-        // count, bomb-hit handling, end-screen). Letting test plays
-        // pollute the par-model fit pool would skew coefficients on
-        // half-baked data. Flip the flag to true once the weekly
-        // mechanic has stabilised and we trust the inputs.
         submitOnlineScore(
           state.weeklySeed + '_weekly_first',
           playerName,

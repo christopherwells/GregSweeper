@@ -1303,17 +1303,62 @@ export function isLockedCell(board, row, col, neighborCache) {
 
 // ── First-encounter popup tracking ─────────────────────
 
+// A card is "seen" at a REVISION, not merely seen. His ruling (2026-08-04):
+// anytime a card is changed, it should be marked as not seen. A player who
+// learned the old sonar card — the one promising "a 5x5 area centered on the
+// cell" — has NOT seen the card that replaced it, and telling them they have
+// is how a correction fails to reach the people who most need it.
+//
+// The revision is DERIVED from the card's own content rather than declared,
+// so it cannot be forgotten: editing a word of `desc`, `longDesc` or the
+// example markup moves the hash and the card teaches again on the next board
+// carrying it. A declared version number is a version number somebody
+// eventually forgets to bump during a copy edit.
+//
+// Stored shape is {gimmick: revision}. The old shape was a flat array of
+// names, read as "seen at an unknown revision" — which re-shows each card
+// once. That is the honest reading rather than a lossy one: an array entry
+// genuinely does not record WHICH version of the card was read.
+
+/** FNV-1a over a card's player-visible content. Stable across engines. */
+export function cardRevision(gimmick) {
+  const def = GIMMICK_DEFS[gimmick];
+  if (!def) return '0';
+  const content = [def.name, def.desc, def.longDesc, def.exampleHtml]
+    .map((x) => x || '').join(' ');
+  let h = 0x811c9dc5;
+  for (let i = 0; i < content.length; i++) {
+    h ^= content.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(36);
+}
+
 export function hasSeenGimmick(gimmick) {
-  const seen = safeGetJSON(SEEN_KEY, []);
-  return seen.includes(gimmick);
+  const seen = safeGetJSON(SEEN_KEY, {});
+  if (Array.isArray(seen)) return false;   // legacy: no revision recorded
+  return seen[gimmick] === cardRevision(gimmick);
 }
 
 export function markGimmickSeen(gimmick) {
-  const seen = safeGetJSON(SEEN_KEY, []);
-  if (!seen.includes(gimmick)) {
-    seen.push(gimmick);
-    safeSetJSON(SEEN_KEY, seen);
-  }
+  const stored = safeGetJSON(SEEN_KEY, {});
+  const seen = (stored && !Array.isArray(stored) && typeof stored === 'object') ? stored : {};
+  seen[gimmick] = cardRevision(gimmick);
+  safeSetJSON(SEEN_KEY, seen);
+}
+
+/**
+ * Forget every first-encounter card, so the next board carrying a modifier
+ * teaches it again.
+ *
+ * Called once by the Challenge 250 epoch migration. The cards ARE the
+ * ladder's teaching moments, and the ladder was rebuilt from level 1 for
+ * everyone: a player who met walls on the old 120-level ladder meets them
+ * again at L6 on the new one, and suppressing the card there makes the
+ * opener read as broken rather than as familiar (his report, 2026-08-04).
+ */
+export function clearSeenGimmicks() {
+  safeSetJSON(SEEN_KEY, {});
 }
 
 export function getGimmickDefs() { return GIMMICK_DEFS; }

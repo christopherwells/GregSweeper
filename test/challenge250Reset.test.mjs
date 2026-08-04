@@ -19,6 +19,7 @@ const {
   loadModePowerUps, invalidateStatsCache, saveCheckpoint,
 } = stats;
 const { CHALLENGE_250_EPOCH, powerUpAwardCount } = await import('../src/logic/challenge250.js');
+const gimmicks = await import('../src/logic/gimmicks.js');
 
 const STATS_KEY = 'minesweeper_stats';
 const POWERUPS_KEY = 'minesweeper_powerups';
@@ -60,8 +61,14 @@ test('the reset wipes progression, keeps career counters, and stamps the epoch',
   const all = JSON.parse(localStorage.getItem(POWERUPS_KEY));
   assert.deepEqual(all.chaos, { shield: 2 }, 'non-challenge pools untouched');
 
-  // First-encounter popups do NOT re-show: the seen-set survives verbatim.
-  assert.deepEqual(JSON.parse(localStorage.getItem(SEEN_KEY)), ['walls', 'liar', 'mystery']);
+  // First-encounter popups DO re-show. This assertion used to demand the
+  // opposite — that the seen-set survive verbatim — on the reasoning that a
+  // returning player should not be re-taught walls. His report killed that
+  // reasoning within a day of shipping: the ladder was rebuilt from level 1
+  // for everyone, walls now debut at L6 and liar at L11, and meeting both
+  // with no card reads as broken rather than as familiar.
+  assert.deepEqual(JSON.parse(localStorage.getItem(SEEN_KEY)), {},
+    'the new ladder teaches its modifiers again');
 });
 
 test('the reset is one-time: a second boot is a no-op', () => {
@@ -128,4 +135,115 @@ test('REGRESSION: power-up earns are GUARANTEED and banded by level, never a pro
 test('the bonus lifeline rides at his 33% rate, on top of the banded award', async () => {
   const { LIFELINE_BONUS_CHANCE } = await import('../src/logic/challenge250.js');
   assert.equal(LIFELINE_BONUS_CHANCE, 0.33);
+});
+
+// ── The modifier cards come back with the new ladder ─────────────────────
+
+test('REGRESSION: the epoch migration clears the first-encounter modifier cards', async () => {
+  // His report (2026-08-04): no popup on the first walls or the first liar.
+  // The reset wiped progression but left `minesweeper_seen_gimmicks` alone, so
+  // a player who met walls on the old 120-level ladder met them again at L6 on
+  // the new one with no card. The ladder was rebuilt from level 1 for
+  // everyone and the cards ARE its teaching moments, so a stale seen-set makes
+  // the opener read as broken.
+  localStorage.clear();
+  stats.invalidateStatsCache?.();
+  gimmicks.markGimmickSeen('walls');
+  gimmicks.markGimmickSeen('liar');
+  assert.ok(gimmicks.hasSeenGimmick('walls') && gimmicks.hasSeenGimmick('liar'));
+
+  stats.applyChallenge250Reset();
+  assert.equal(gimmicks.hasSeenGimmick('walls'), false, 'walls must teach again');
+  assert.equal(gimmicks.hasSeenGimmick('liar'), false, 'liar must teach again');
+});
+
+test('the card clear reaches a player whose progression reset ALREADY ran', () => {
+  // The whole reason it has its own marker. Folding it into the epoch guard
+  // would miss everyone who reset before this shipped, and bumping the epoch
+  // to catch them would wipe the climb they have built since.
+  localStorage.clear();
+  stats.invalidateStatsCache?.();
+  const s = stats.loadStats();
+  s.challengeEpoch = CHALLENGE_250_EPOCH;      // already reset
+  s.maxLevelReached = 8;
+  s.modeStats = { ...(s.modeStats || {}), challenge: { ...(s.modeStats?.challenge || {}), maxLevelReached: 8 } };
+  delete s.challengeSeenEpoch;
+  localStorage.setItem('minesweeper_stats', JSON.stringify(s));
+  stats.invalidateStatsCache?.();
+  gimmicks.markGimmickSeen('walls');
+
+  stats.applyChallenge250Reset();
+
+  const after = stats.loadStats();
+  assert.equal(gimmicks.hasSeenGimmick('walls'), false, 'the card must come back');
+  assert.equal(after.modeStats.challenge.maxLevelReached, 8,
+    'their climb must survive — this migration costs progression nothing');
+  assert.equal(after.challengeEpoch, CHALLENGE_250_EPOCH, 'the progression epoch must not move');
+});
+
+test('the card clear runs exactly once', () => {
+  // A player who legitimately meets walls after the migration must keep that.
+  localStorage.clear();
+  stats.invalidateStatsCache?.();
+  stats.applyChallenge250Reset();
+  gimmicks.markGimmickSeen('walls');
+  stats.applyChallenge250Reset();
+  assert.equal(gimmicks.hasSeenGimmick('walls'), true,
+    're-running the migration must not forget a card seen on the NEW ladder');
+});
+
+test('REGRESSION: a card that CHANGES is marked unseen (his rule)', () => {
+  // "Anytime a card is changed, it should be marked as not seen." A player who
+  // learned the old sonar card — "a 5x5 area centered on the cell" — has not
+  // seen the card that replaced it, and the correction has to reach exactly
+  // the people carrying the wrong idea.
+  //
+  // The revision is DERIVED from the card's content, so this cannot be
+  // forgotten during a copy edit. A declared version number can.
+  localStorage.clear();
+  stats.invalidateStatsCache?.();
+  const defs = gimmicks.getGimmickDefs();
+
+  gimmicks.markGimmickSeen('sonar');
+  assert.equal(gimmicks.hasSeenGimmick('sonar'), true);
+  const before = gimmicks.cardRevision('sonar');
+
+  const original = defs.sonar.longDesc;
+  try {
+    defs.sonar.longDesc = `${original} One more sentence.`;
+    assert.notEqual(gimmicks.cardRevision('sonar'), before, 'the revision must track the copy');
+    assert.equal(gimmicks.hasSeenGimmick('sonar'), false, 'an edited card must teach again');
+  } finally {
+    defs.sonar.longDesc = original;
+  }
+  assert.equal(gimmicks.hasSeenGimmick('sonar'), true, 'restoring the copy restores the mark');
+
+  // The example diagram counts as part of the card too.
+  const ex = defs.sonar.exampleHtml;
+  try {
+    defs.sonar.exampleHtml = `${ex}<!-- x -->`;
+    assert.equal(gimmicks.hasSeenGimmick('sonar'), false, 'an edited diagram must teach again');
+  } finally {
+    defs.sonar.exampleHtml = ex;
+  }
+
+  // Marking one card must not disturb another.
+  gimmicks.markGimmickSeen('liar');
+  assert.equal(gimmicks.hasSeenGimmick('liar'), true);
+  assert.equal(gimmicks.hasSeenGimmick('walls'), false, 'an unmet card stays unmet');
+});
+
+test('the legacy flat-array seen-set reads as unseen exactly once', () => {
+  // The old shape recorded names with no revision, so it genuinely does not
+  // say WHICH version was read. Re-showing once is the honest reading; the
+  // next mark migrates the entry to the new shape.
+  localStorage.clear();
+  stats.invalidateStatsCache?.();
+  localStorage.setItem(SEEN_KEY, JSON.stringify(['walls', 'liar']));
+  assert.equal(gimmicks.hasSeenGimmick('walls'), false);
+
+  gimmicks.markGimmickSeen('walls');
+  const stored = JSON.parse(localStorage.getItem(SEEN_KEY));
+  assert.ok(!Array.isArray(stored), 'the store migrates to the revision map');
+  assert.equal(gimmicks.hasSeenGimmick('walls'), true);
 });

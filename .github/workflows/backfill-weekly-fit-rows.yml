@@ -1,0 +1,39 @@
+name: Backfill weekly fit rows
+
+# One-off recovery: the weekly's first-attempt-of-the-week row has always been
+# meant to feed the par model, but the submission sat behind a
+# WEEKLY_FIT_DATA_ENABLED flag that shipped false and was never flipped, so
+# fourteen weeks of real completions were never recorded. Everything needed to
+# recover them is stored (weekly/{weekStart} carries day-indexed times and
+# bomb counts; weeklyBoard/{weekStart} is the canonical), so this rebuilds the
+# rows the live path would have written.
+#
+# Service-account auth, because it writes daily/{weekStart}_weekly_first and
+# dailyMeta/{weekStart}_weekly_first. Idempotent: rows are keyed per uid, so a
+# re-run overwrites rather than duplicating.
+#
+#   gh workflow run backfill-weekly-fit-rows.yml -f dryRun=true
+
+on:
+  workflow_dispatch:
+    inputs:
+      dryRun:
+        description: 'Dry run (compute + print, write nothing)'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Backfill
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node scripts/backfill-weekly-fit-rows.mjs ${{ github.event.inputs.dryRun == 'true' && '--dry-run' || '' }}
