@@ -651,6 +651,21 @@
       </div>
     </div>
 
+    <!-- First-encounter SHAPE explainer (Challenge 250). The board shape
+         changes what counts as next to what, and nothing else — so the
+         card answers that one question and says the rest is unchanged.
+         Its symbol is a real tessellation of the lattice, drawn from the
+         same builder the board uses. -->
+    <div id="shape-intro-overlay" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-content shape-intro-content">
+        <div id="shape-intro-patch" class="shape-intro-patch-frame"></div>
+        <h2 id="shape-intro-name"></h2>
+        <p id="shape-intro-desc"></p>
+        <p id="shape-intro-note" class="shape-intro-note"></p>
+        <button id="shape-intro-ok" class="action-btn primary">Got it!</button>
+      </div>
+    </div>
+
     <!-- First-bomb-hit explainer (Daily / Weekly only). Shown once ever:
          a newcomer expects classic game-over here, so the rule reversal
          needs a real, dismissible explanation the first time. -->

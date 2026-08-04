@@ -6925,6 +6925,38 @@ button:focus-visible {
   margin-bottom: 4px;
 }
 
+/* Shape intro card (Challenge 250 first-encounter shape explainer).
+   Matches the modifier card's sizing so the two read as one family; the
+   symbol is a live SVG tessellation rather than a sprite, so it themes
+   itself off the same cell/border tokens the board uses. */
+.shape-intro-content {
+  text-align: center;
+  max-width: 340px;
+}
+.shape-intro-content p {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-text-secondary, #ccc);
+  margin-bottom: 4px;
+}
+.shape-intro-content h2 {
+  margin: 10px 0 8px;
+}
+.shape-intro-patch-frame {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 2px auto 0;
+}
+.shape-intro-note {
+  margin-top: 10px;
+  font-style: italic;
+  opacity: 0.85;
+}
+.shape-intro-content .action-btn {
+  margin-top: 16px;
+}
+
 /* Settings toggle label */
 .toggle-label {
   display: flex;

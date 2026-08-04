@@ -20,6 +20,7 @@ import { generateBoard, createEmptyBoard, cleanSolverArtifacts, placeMysteryCons
 import { generateTilingBoard, containerFor } from '../logic/tilingGenerator.js';
 import { coastlineBoardFor, DEFAULT_TILING, tilingLabel, CLASSIC_SHAPE_LABEL } from '../logic/coastlineLink.js';
 import { expectedTimeLine } from '../logic/expectedTime.js';
+import { shapeIntroCard, shapePatchSVG } from '../logic/shapeIntro.js';
 import { personalPar } from '../logic/handicaps.js';
 import { challengeSpecForLevel } from '../logic/challenge250.js';
 import { buildChallenge250Board, challengeBoardSeed } from '../logic/challenge250Builder.js';
@@ -56,6 +57,48 @@ let _lastInputTime = 0;
 // getLocalDateString imported from seededRandom.js
 
 // ── Gimmick Intro Popup ───────────────────────────────
+
+// First-encounter SHAPE card (Challenge 250). Shown once per shape ever,
+// tracked in its own seen-set — deliberately NOT the modifier seen-set,
+// and deliberately NOT suppressed by the "skip all modifier explainers"
+// preference: a player who has opted out of modifier cards has said
+// nothing about board shapes, and a hexagonal board arriving unannounced
+// is a bigger surprise than any modifier.
+const SHAPE_SEEN_KEY = 'minesweeper_seen_shapes';
+
+function hasSeenShape(type) {
+  try {
+    const raw = JSON.parse(localStorage.getItem(SHAPE_SEEN_KEY) || '[]');
+    return Array.isArray(raw) && raw.includes(type);
+  } catch { return false; }
+}
+
+function markShapeSeen(type) {
+  try {
+    const raw = JSON.parse(localStorage.getItem(SHAPE_SEEN_KEY) || '[]');
+    const list = Array.isArray(raw) ? raw : [];
+    if (!list.includes(type)) list.push(type);
+    localStorage.setItem(SHAPE_SEEN_KEY, JSON.stringify(list));
+  } catch { /* private browsing — the card simply shows again */ }
+}
+
+function showShapeIntro(type) {
+  const card = shapeIntroCard(type);
+  const patchEl = document.getElementById('shape-intro-patch');
+  const nameEl = document.getElementById('shape-intro-name');
+  const descEl = document.getElementById('shape-intro-desc');
+  const noteEl = document.getElementById('shape-intro-note');
+  const okBtn = document.getElementById('shape-intro-ok');
+  if (!card || !patchEl || !nameEl || !descEl || !okBtn) return;
+
+  patchEl.innerHTML = shapePatchSVG(type);
+  nameEl.textContent = card.title;
+  descEl.textContent = card.neighbors;
+  if (noteEl) noteEl.textContent = card.note;
+  const close = () => hideModal('shape-intro-overlay');
+  okBtn.onclick = close;
+  showModal('shape-intro-overlay');
+}
 
 function showGimmickIntros(gimmickDefs, recapDefs = []) {
   const iconEl = document.getElementById('gimmick-intro-icon');
@@ -434,7 +477,7 @@ export async function newGame() {
       // Validator-proven specs make this near-unreachable; if it happens,
       // say so rather than shipping an uncertified or decorative board.
       reportCaughtError('challenge-board-build', new Error(`L${spec.level} draw exhausted`));
-      import('../ui/toastManager.js').then(m => m.showToast('Could not build this level’s board — try again.'));
+      import('../ui/toastManager.js').then(m => m.showToast('Could not build this level’s board. Try again.'));
       return;
     }
 
@@ -1252,6 +1295,15 @@ export function revealCell(row, col) {
       markWeeklyDayAttempted(state.weeklySeed, state.weeklyDay);
       if (!state.cachedWeeklyDayAttempts) state.cachedWeeklyDayAttempts = {};
       state.cachedWeeklyDayAttempts[state.weeklyDay] = true;
+    }
+
+    // Shape card FIRST, before any modifier card: the shape is the frame
+    // every modifier on the board sits inside, so meeting the lattice
+    // before its modifiers is the order that reads.
+    if (state.gameMode === 'normal' && state.challengeSpec
+        && state.challengeSpec.shape !== 'rect' && !hasSeenShape(state.challengeSpec.shape)) {
+      markShapeSeen(state.challengeSpec.shape);
+      showShapeIntro(state.challengeSpec.shape);
     }
 
     // Modifier intro: full card only for modifiers the player hasn't met
