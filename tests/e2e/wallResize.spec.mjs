@@ -9,13 +9,20 @@
 // not walls. The fix re-renders wall overlays from both paths, matching the
 // worm overlay's treatment.
 //
-// The spec plays the real journey: a challenge L8 practice board (the
-// Challenge 250 walls intro block — the ladder's specs author their
-// modifiers, and block 2 carries walls on every level). Under the C250
-// engine the board is FROZEN at newGame, so the wall lines paint before
-// any click (the daily contract); the viewport then shrinks and every
-// .wall-line must still sit exactly where the live cell rects say its
-// edge is — the same midpoint math renderWallOverlays uses.
+// The spec plays the real journey: a challenge L36 practice board (the
+// Challenge 250 walls remix block — the ladder's specs author their
+// modifiers). Under the C250 engine the board is FROZEN at newGame, so
+// the wall lines paint before any click (the daily contract); the
+// viewport then shrinks and every .wall-line must still sit exactly
+// where the live cell rects say its edge is — the same midpoint math
+// renderWallOverlays uses.
+//
+// The LEVEL CHOICE is load-bearing: the assertion only has power if the
+// cells actually move, so the board must be big enough that a 900→420px
+// shrink re-fits it. The walls INTRO block (L6-10) was used until the
+// L1-10 ramp shrank those boards to 6×6-8×8, which fit at both widths
+// and left the spec asserting nothing; block 8's 11×11 is comfortably
+// constrained at 420px.
 
 import { test, expect } from '@playwright/test';
 import { prepareInteractionSpec, settleAnimations } from './helpers.mjs';
@@ -82,11 +89,11 @@ test('REGRESSION: wall overlays track their cells through a viewport resize', as
     // No first-encounter modifier popup over the board mid-spec.
     try { localStorage.setItem('minesweeper_modifier_popup_disabled', 'true'); } catch {}
   });
-  await page.goto('/?isTest=1&level=8');
+  await page.goto('/?isTest=1&level=36');
   await page.waitForSelector('#boot-overlay', { state: 'detached', timeout: 20_000 });
   await page.waitForSelector('#board .cell', { timeout: 20_000 });
 
-  // The frozen L8 draw carries walls from newGame — no click needed. A
+  // The frozen L36 draw carries walls from newGame — no click needed. A
   // rare layout can still lose its edges to applyWalls' isolation check,
   // so redraw (reset = a fresh certified layout of the same spec) until
   // the lines are painted.

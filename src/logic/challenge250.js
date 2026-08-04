@@ -27,10 +27,11 @@
 //     honest difficulty axis from ~48 cells up.
 //   - Pressure plates retire from the ladder (Chaos-only); mineShift stays
 //     Chaos-only.
-//   - Blocks 51+ are the endless zone (unbounded above 3.6 s/cell). NOT
-//     BUILT YET — the 8-minute-ceiling-in-endless flag is open with
-//     Christopher; until the endless zone lands, levels past 250 clamp to
-//     the L250 crown spec exactly as the old ladder clamped past 120.
+//   - Blocks 51+ are the endless zone: unbounded above 3.6 s/cell, par
+//     ceiling lifted to TEN minutes (his 2026-08-04 ruling), 2-second
+//     generation cap unchanged. NOT BUILT YET — until it lands, levels
+//     past 250 clamp to the L250 crown spec exactly as the old ladder
+//     clamped past 120.
 //
 // GIMMICK LEVEL UNITS: spec.gimmickLevel is measured in OLD-LADDER levels
 // (11..120) because getIntensity's ramp is anchored on the old ladder's
@@ -67,18 +68,33 @@ export const CHALLENGE_BLOCK_COUNT = 50;
 // a future ladder-wide progression reset.
 export const CHALLENGE_250_EPOCH = 1;
 
-// Tier-scaled power-up earns (his build note: inventories wipe at the L1
-// reset, all six power-ups stay, earns become tier-scaled so early-tier
-// farming is pointless — the checkpoint selector survives on that
-// property). Expected awards per win = tier/6: about one power-up every
-// six wins at T1, one per win at T6, and two per win at T12 — the summit
-// keeps the old flat rate, the openers earn almost nothing. The fraction
-// is a Bernoulli roll so awards stay whole numbers.
-export function powerUpAwardCount(tier, rng = Math.random) {
-  const expected = Math.max(0, (tier || 1) / 6);
-  const base = Math.floor(expected);
-  return base + (rng() < expected - base ? 1 : 0);
+// Power-up earns per challenge win, by LEVEL BAND (his ruling
+// 2026-08-04, after playing to L8 and earning nothing: "I should be
+// earning 1 powerup at lvl 1-100, 2 200-250, and 3 above 250"). This
+// REPLACED a tier-scaled expectation (tier/6 per win) that made the
+// openers a near-dead zone — at T1 it paid out about one power-up every
+// six wins, so eight levels of honest play could easily produce zero,
+// which is exactly what happened. A flat guaranteed award per win is
+// both more generous and more legible.
+//
+// The bands as stated leave 101-199 unnamed; read as three contiguous
+// bands over a 250-level ladder plus endless, the only self-consistent
+// reading is 1-100 / 101-250 / 251+, which is what ships.
+export const POWERUP_BAND_1_MAX = 100;
+export const POWERUP_BAND_2_MAX = CHALLENGE_MAX_LEVEL; // 250
+
+export function powerUpAwardCount(level) {
+  const lv = Math.max(1, Math.round(level || 1));
+  if (lv <= POWERUP_BAND_1_MAX) return 1;
+  if (lv <= POWERUP_BAND_2_MAX) return 2;
+  return 3;
 }
+
+// A bonus lifeline on top of the banded award (his ruling: "an extra
+// lifeline should be given at a 33% chance"). Restores the pre-C250
+// lifeline roll, which the tier-scaled experiment had folded away, at
+// his rate rather than the old 30%.
+export const LIFELINE_BONUS_CHANCE = 0.33;
 
 // Where each modifier and shape debuts, by BLOCK (the checkpoint selector
 // labels its rows from these; the venues themselves are pinned
@@ -103,9 +119,15 @@ export const TIER_PPC = {
 export const PPC_BAND_LO = 0.93;
 export const PPC_BAND_HI = 1.11;
 
-// The 8-minute absolute par ceiling and the 2-second generation cap
+// The absolute par ceiling and the 2-second generation cap
 // (validator-enforced; the cap is as-measured, no margin — his ruling).
 export const PAR_CEILING_SECONDS = 480;
+// The endless zone lifts the ceiling to TEN minutes (his ruling
+// 2026-08-04, answering the map's one open flag: "in the endless zone it
+// can go to 10 minutes"). The tier is unbounded above 3.6 s/cell there
+// and the 2-second generation cap still stands. Recorded here so the
+// endless build reads one constant rather than re-deriving the ruling.
+export const ENDLESS_PAR_CEILING_SECONDS = 600;
 export const GEN_CAP_MS = 2000;
 
 // Opener blocks: every draw must need at least this many deductions past
@@ -150,20 +172,36 @@ const GL_HIGH = 115;    // ~3 (the old ladder's deep end; the proven Paving dial
 // the opener blocks: they validate on the deduction floor instead.
 const BLOCKS = [
   // ── Opener, L1-25, all Classic ──
+  // L1-10 RAMP (his ruling 2026-08-04, after playing it: "I want the
+  // first 10 levels to be significantly easier. Perhaps a ramp up to 10
+  // instead of a plateau. When I meant lvl 1 is a few clicks, I meant
+  // just a few clicks"). The first authoring read the map's
+  // 3-to-5-deductions line as a FLOOR and sized boards at 7x7-8x8, which
+  // measured 15-39 deductions — a floor cannot make a board small, only
+  // stop it being trivial. So these ten levels are sized DOWN to the
+  // deduction count itself, and `maxDeductions` is the new dial: L1-2
+  // cap at 5 real deductions, and the cap loosens by roughly two per
+  // level until the ordinary floor-only regime resumes at L11.
   {
     block: 1, tier: 1, ppc: null, shape: 'rect',
-    beat: 'Counting fundamentals. 7×7 to 8×8, every board 3-5 real deductions.',
-    levels: [R(7, 7, 8), R(7, 7, 9), R(8, 8, 10), R(8, 8, 11), R(8, 8, 12)],
+    beat: 'First clicks. 5×5 growing to 6×6, a handful of deductions each.',
+    levels: [
+      R(5, 5, 3, [], { maxDeductions: 5 }),
+      R(5, 5, 4, [], { maxDeductions: 5 }),
+      R(6, 6, 5, [], { maxDeductions: 7 }),
+      R(6, 6, 6, [], { maxDeductions: 9 }),
+      R(6, 6, 7, [], { maxDeductions: 11 }),
+    ],
   },
   {
     block: 2, tier: 1, ppc: null, shape: 'rect',
-    beat: 'MOD INTRO: Walls. Small boards; the wall as topology, not decoration.',
+    beat: 'MOD INTRO: Walls. Still small; the wall as topology, not decoration.',
     levels: [
-      R(8, 8, 10, ['walls'], { gimmickLevel: 11, wallSegments: 1 }),
-      R(8, 8, 10, ['walls'], { gimmickLevel: 12, wallSegments: 1 }),
-      R(8, 8, 11, ['walls'], { gimmickLevel: 13, wallSegments: 2 }),
-      R(8, 8, 11, ['walls'], { gimmickLevel: 14, wallSegments: 2 }),
-      R(8, 8, 12, ['walls'], { gimmickLevel: 16, wallSegments: 3 }),
+      R(6, 6, 6, ['walls'], { gimmickLevel: 11, wallSegments: 1, maxDeductions: 11 }),
+      R(7, 7, 8, ['walls'], { gimmickLevel: 12, wallSegments: 1, maxDeductions: 13 }),
+      R(7, 7, 9, ['walls'], { gimmickLevel: 13, wallSegments: 2, maxDeductions: 15 }),
+      R(7, 7, 10, ['walls'], { gimmickLevel: 14, wallSegments: 2, maxDeductions: 17 }),
+      R(8, 8, 12, ['walls'], { gimmickLevel: 16, wallSegments: 3, maxDeductions: 20 }),
     ],
   },
   {
@@ -776,6 +814,7 @@ export function specFingerprint(spec) {
     spec.wallSegments ? `w${spec.wallSegments}` : '',
     spec.constructive ? 'con' : '',
     spec.minDeductions ? `d${spec.minDeductions}` : '',
+    spec.maxDeductions ? `D${spec.maxDeductions}` : '',
   ].filter(Boolean).join(',');
   return `${spec.shape}:${dims}:m${spec.mines}:[${spec.gimmicks.join('+')}]${opts ? ':' + opts : ''}`;
 }

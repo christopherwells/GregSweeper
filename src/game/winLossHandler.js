@@ -22,7 +22,7 @@ import { extractCrux } from '../logic/cruxExtract.js';
 import { prepareLossReceipt, bombStrikeVerdict } from '../ui/receiptRenderer.js';
 import { computeBombInfoValue } from '../logic/bombInfoValue.js';
 import { getSpeedRating, MAX_TIMED_LEVEL, getChaosDifficulty, BOMB_PENALTY_BASE, BOMB_PENALTY_RAMP } from '../logic/difficulty.js';
-import { CHALLENGE_MAX_LEVEL, challengeSpecForLevel, powerUpAwardCount } from '../logic/challenge250.js';
+import { CHALLENGE_MAX_LEVEL, powerUpAwardCount, LIFELINE_BONUS_CHANCE } from '../logic/challenge250.js';
 import {
   loadStats, saveGameResult, saveModePowerUps, clearGameState,
   markDailyCompleted, getDailyStreak, getPlayerName,
@@ -459,15 +459,21 @@ export async function handleWin() {
   // Skip power-up awarding for chaos AND weekly. Weekly is a pure
   // time-trial against a fixed board — power-ups would let later-week
   // attempts cheese the leaderboard against earlier days. On the
-  // Challenge 250 ladder the award COUNT is tier-scaled (his build note:
-  // expected earns = tier/6 per win, so T1 farming yields almost nothing
-  // and the summit keeps the old two-per-win rate); this subsumes the
-  // retired flat 30% lifeline roll — lifeline is one of the six types.
+  // Challenge 250 ladder the award COUNT is banded by level (his ruling:
+  // 1 through L100, 2 through L250, 3 in the endless zone) — a
+  // guaranteed award per win, not a probability.
   let earnedPowerUp = null;
   if (state.gameMode !== 'chaos' && state.gameMode !== 'weekly' && !state.isLevelPractice) {
-    const tier = state.challengeSpec?.tier ?? challengeSpecForLevel(state.currentLevel).tier;
-    const count = state.gameMode === 'normal' ? powerUpAwardCount(tier) : 0;
+    const count = state.gameMode === 'normal' ? powerUpAwardCount(state.currentLevel) : 0;
     earnedPowerUp = count > 0 ? awardPowerUps(stats, count) : null;
+    // Bonus lifeline on top of the banded award (his 33% ruling). Rolled
+    // here rather than in awardPowerUps so the banded count stays a
+    // clean guarantee and the bonus reads as a bonus in the win copy.
+    if (state.gameMode === 'normal' && Math.random() < LIFELINE_BONUS_CHANCE) {
+      state.powerUps.lifeline = (state.powerUps.lifeline || 0) + 1;
+      const bonus = `${uiSpriteImgHTML('powLifeline', 'inline-pu')} Lifeline`;
+      earnedPowerUp = earnedPowerUp ? `${earnedPowerUp} + ${bonus}` : bonus;
+    }
   }
 
   // Sync progress to cloud (fire-and-forget). Never from a ?level=

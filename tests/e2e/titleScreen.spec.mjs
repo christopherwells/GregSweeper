@@ -82,7 +82,9 @@ test('unlocked Chaos shows its card and the Gym card stays half-width', async ({
     try {
       localStorage.setItem('minesweeper_stats', JSON.stringify({
         totalGames: 0, wins: 0, losses: 0, currentStreak: 0, bestStreak: 0,
-        bestTimes: {}, recentGames: [], maxLevelReached: 50,
+        // Chaos unlocks at CHAOS_UNLOCK_LEVEL (100 since his 2026-08-04
+        // ruling — it was 50 on the old 120-level ladder).
+        bestTimes: {}, recentGames: [], maxLevelReached: 100,
         dailiesCompleted: 0, puristWins: 0, gimmickWins: 0,
         flaglessWins: 0, efficientWins: 0, searchWins: 0, liarWins: 0,
         // Post-reset profile: without the epoch stamp the Challenge 250

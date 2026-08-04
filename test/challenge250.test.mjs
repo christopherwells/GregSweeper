@@ -168,6 +168,31 @@ test('gauntlet blocks run the mapped shape orders; L250 is the 3-stacked Kites c
   assert.equal(crown.gimmicks.length, 3, 'the crown is 3-stacked');
 });
 
+test('the L1-10 ramp: boards and deduction caps both climb, and L1 is a handful of clicks', () => {
+  // His ruling 2026-08-04 ("when I meant lvl 1 is a few clicks, I meant
+  // just a few clicks"). A FLOOR cannot make a board short — only a cap
+  // can — so the ramp levels carry maxDeductions and it loosens monotonically.
+  const ramp = allSpecs.filter((s) => s.level <= 10);
+  assert.equal(ramp.length, 10);
+  for (const s of ramp) {
+    assert.ok(s.maxDeductions > 0, `L${s.level} must carry a deduction cap`);
+    assert.ok(s.maxDeductions >= s.minDeductions, `L${s.level} cap under its own floor`);
+  }
+  assert.equal(ramp[0].maxDeductions, 5, 'L1 is capped at five deductions');
+  assert.equal(ramp[0].cells, 25, 'L1 is a 5x5');
+  for (let i = 1; i < ramp.length; i++) {
+    assert.ok(ramp[i].maxDeductions >= ramp[i - 1].maxDeductions,
+      `L${ramp[i].level} caps tighter than L${ramp[i - 1].level} — the ramp must not step down`);
+    assert.ok(ramp[i].cells >= ramp[i - 1].cells,
+      `L${ramp[i].level} is smaller than L${ramp[i - 1].level}`);
+  }
+  assert.ok(ramp[9].cells > ramp[0].cells, 'the board grows across the ramp');
+  // Past the ramp nothing is capped — those boards run their full length.
+  for (const s of allSpecs.filter((x) => x.level > 10)) {
+    assert.equal(s.maxDeductions, undefined, `L${s.level} must not carry a ramp cap`);
+  }
+});
+
 test('opener blocks are rect-only with the deduction floor; the braid never carries it', () => {
   for (const s of allSpecs) {
     if (s.block <= 5) {

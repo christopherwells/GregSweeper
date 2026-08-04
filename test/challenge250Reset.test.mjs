@@ -102,20 +102,30 @@ test('cloud checkpoint adoption: only the epoch-matched challenge250 node counts
   assert.equal(loadStats().maxLevelReached, 20);
 });
 
-test('tier-scaled power-up earns: floor(tier/6) plus a Bernoulli fraction', () => {
-  // Deterministic rng ladders: rng below the fraction earns the extra.
-  const lo = () => 0.0;   // always wins the fractional roll
-  const hi = () => 0.999; // never wins it
-  assert.equal(powerUpAwardCount(12, hi), 2, 'the summit keeps the old two-per-win');
-  assert.equal(powerUpAwardCount(12, lo), 2, 'T12 is exactly 2 — no fraction');
-  assert.equal(powerUpAwardCount(6, hi), 1, 'T6 is exactly one per win');
-  assert.equal(powerUpAwardCount(1, hi), 0, 'T1 usually earns nothing');
-  assert.equal(powerUpAwardCount(1, lo), 1, 'T1 sometimes earns one');
-  // Expectation check: mean over the Bernoulli grid equals tier/6.
-  for (const tier of [1, 3, 5, 7, 9, 11]) {
-    let total = 0;
-    const N = 1000;
-    for (let i = 0; i < N; i++) total += powerUpAwardCount(tier, () => (i + 0.5) / N);
-    assert.ok(Math.abs(total / N - tier / 6) < 0.01, `E[awards|T${tier}] = tier/6`);
+test('REGRESSION: power-up earns are GUARANTEED and banded by level, never a probability', () => {
+  // His report 2026-08-04: played to L8 and earned nothing. The cause was
+  // a tier-scaled EXPECTATION (tier/6 per win) — at T1 that paid about
+  // one power-up every six wins, so eight honest levels could easily
+  // produce zero. Every level now earns at least one, always.
+  for (const lv of [1, 2, 8, 25, 50, 99, 100]) {
+    assert.equal(powerUpAwardCount(lv), 1, `L${lv} earns exactly one`);
   }
+  for (const lv of [101, 150, 200, 249, 250]) {
+    assert.equal(powerUpAwardCount(lv), 2, `L${lv} earns two`);
+  }
+  for (const lv of [251, 300, 1000]) {
+    assert.equal(powerUpAwardCount(lv), 3, `L${lv} (endless) earns three`);
+  }
+  // No level anywhere on the ladder earns nothing — the defect's shape.
+  for (let lv = 1; lv <= 400; lv++) {
+    assert.ok(powerUpAwardCount(lv) >= 1, `L${lv} must always earn something`);
+  }
+  // Junk clamps to the first band rather than earning zero.
+  assert.equal(powerUpAwardCount(0), 1);
+  assert.equal(powerUpAwardCount(undefined), 1);
+});
+
+test('the bonus lifeline rides at his 33% rate, on top of the banded award', async () => {
+  const { LIFELINE_BONUS_CHANCE } = await import('../src/logic/challenge250.js');
+  assert.equal(LIFELINE_BONUS_CHANCE, 0.33);
 });

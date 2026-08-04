@@ -357,4 +357,8 @@ export function getChaosDifficulty(round) {
   return { ...applyWidthCap(size, size, mines), modifierCount };
 }
 
-export const CHAOS_UNLOCK_LEVEL = 50;
+// Chaos unlocks at L100 (his ruling 2026-08-04). It was 50 on the old
+// 120-level ladder — 42% of the climb — and 50 on a 250-level ladder
+// would hand Chaos over at 20%, far earlier in the journey than it used
+// to arrive.
+export const CHAOS_UNLOCK_LEVEL = 100;
