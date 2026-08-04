@@ -37,9 +37,11 @@ test('the ladder ramps: the opener is smaller and easier than the summit', () =>
   const hexSummit = challengeSpecForLevel(246); // FINALE III honeycomb, 110 cells
   assert.ok(l1.cells < hexSummit.cells, 'L1 board should be smaller than the summit');
   assert.ok(l1.mines < hexSummit.mines, 'L1 should have fewer mines than the summit');
-  // Out-of-range levels clamp rather than throw (the old ladder's contract).
+  // Below the ladder still clamps; above it the endless zone answers, so a
+  // level past the crown is a real spec of its own rather than the crown again.
   assert.deepEqual(challengeSpecForLevel(0), challengeSpecForLevel(1));
-  assert.deepEqual(challengeSpecForLevel(999), challengeSpecForLevel(CHALLENGE_MAX_LEVEL));
+  assert.notDeepEqual(challengeSpecForLevel(999), challengeSpecForLevel(CHALLENGE_MAX_LEVEL));
+  assert.equal(challengeSpecForLevel(999).endless, true);
 });
 
 test('daily streak increments on consecutive days and resets on a gap', () => {

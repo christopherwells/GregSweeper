@@ -23,7 +23,7 @@ const LAVES = ['cairo', 'floret', 'rhombille', 'deltoidal'];
 const allSpecs = [];
 for (let lv = 1; lv <= CHALLENGE_MAX_LEVEL; lv++) allSpecs.push(challengeSpecForLevel(lv));
 
-test('ladder structure: 250 levels, 50 blocks of 5, clamped accessors', () => {
+test('ladder structure: 250 authored levels, 50 blocks of 5, unbounded above', () => {
   assert.equal(CHALLENGE_MAX_LEVEL, 250);
   assert.equal(CHALLENGE_BLOCK_SIZE, 5);
   assert.equal(CHALLENGE_BLOCK_COUNT, 50);
@@ -33,13 +33,16 @@ test('ladder structure: 250 levels, 50 blocks of 5, clamped accessors', () => {
     assert.equal(spec.level, lv);
     assert.equal(spec.block, Math.floor((lv - 1) / 5) + 1);
   }
-  // Clamps mirror the old ladder's past-MAX behavior until endless lands.
+  // Below 1 still clamps. ABOVE 250 no longer does: the endless zone took
+  // over that range, and its own contract lives in test/challengeEndless.
   assert.equal(challengeSpecForLevel(0).level, 1);
-  assert.equal(challengeSpecForLevel(999).level, 250);
+  assert.equal(challengeSpecForLevel(999).level, 999);
+  assert.equal(challengeSpecForLevel(999).endless, true);
   assert.equal(blockStartLevel(1), 1);
   assert.equal(blockStartLevel(25), 21);
   assert.equal(blockStartLevel(26), 26);
   assert.equal(blockStartLevel(250), 246);
+  assert.equal(blockStartLevel(999), 996);
 });
 
 test('tier ladder anchors are the adopted numbers (T1 0.55 → T12 3.60)', () => {

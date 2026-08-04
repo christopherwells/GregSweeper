@@ -27,11 +27,12 @@
 //     honest difficulty axis from ~48 cells up.
 //   - Pressure plates retire from the ladder (Chaos-only); mineShift stays
 //     Chaos-only.
-//   - Blocks 51+ are the endless zone: unbounded above 3.6 s/cell, par
+//   - Blocks 51+ are the ENDLESS ZONE: unbounded above 3.6 s/cell, par
 //     ceiling lifted to TEN minutes (his 2026-08-04 ruling), 2-second
-//     generation cap unchanged. NOT BUILT YET — until it lands, levels
-//     past 250 clamp to the L250 crown spec exactly as the old ladder
-//     clamped past 120.
+//     generation cap unchanged. Built as a PROVEN POOL plus a
+//     deterministic per-level draw (see ENDLESS_SPECS below) rather than
+//     as more authored blocks, because a level number has no upper bound
+//     and every ladder spec has to be proven before it ships.
 //
 // GIMMICK LEVEL UNITS: spec.gimmickLevel is measured in OLD-LADDER levels
 // (11..120) because getIntensity's ramp is anchored on the old ladder's
@@ -744,6 +745,209 @@ const BLOCKS = [
   },
 ];
 
+// ── The endless zone (blocks 51+) ───────────────────────────────
+//
+// His ruling (2026-08-03/04): past L250 the ladder is endless and UNBOUNDED
+// ABOVE T12 — any certified spec at or above 3.6 s/cell, mixed board
+// lengths, checkpoints every 5 banked forever, max level as the brag stat.
+// The par ceiling lifts to ten minutes; the 2-second generation cap stands.
+//
+// WHY A POOL AND NOT A GENERATOR. Every spec on this ladder is offline-proven
+// before it ships: certified, strictly load-bearing, inside the generation
+// cap, inside the par ceiling. A level number has no upper bound, so an
+// authored table cannot reach it — but neither can a free-parameter
+// generator, which at level 1,000 would hand the player a (shape, size,
+// density, stack) combination nobody has ever generated. So the zone is a
+// POOL of proven specs plus a deterministic draw, the same architecture as
+// TILING_BAND_CONFIGS and for the same reason.
+//
+// The pool comes from scripts/search-endless-specs.mjs, which sweeps
+// candidate specs per shape and keeps only those where every draw over K
+// seeds certifies. What ships is a log-spaced selection across each shape's
+// own reachable range, so all seven shapes appear and the ladder always has
+// a near neighbour at its current difficulty.
+//
+// ONE SELF-IMPOSED MARGIN: pool admission requires worst-measured generation
+// under ENDLESS_GEN_BUDGET_MS (1500), not the full 2000ms cap. The cap is his
+// ruling and is unchanged; the margin is judgement, because an endless board
+// is drawn fresh on every attempt AND every death-retry, so a spec sitting at
+// 1990ms on the validator's machine is one that intermittently stalls on a
+// phone. It costs the top of the range: deltoidal reaches 9.73 s/cell at
+// ~1990ms, and the shipped ceiling is 8.22 instead.
+export const ENDLESS_START_LEVEL = CHALLENGE_MAX_LEVEL + 1;   // 251
+
+// Pool-admission generation budget (see above). NOT the cap, which is
+// GEN_CAP_MS and applies to the authored ladder unchanged.
+export const ENDLESS_GEN_BUDGET_MS = 1500;
+
+// Difficulty escalation per endless BLOCK (5 levels), multiplicative on
+// par-per-cell from the T12 summit. At 1.05 the pool's ceiling is reached
+// around level 336, roughly 85 levels of climb past the crown; after that the
+// hardest material cycles, which is what "unbounded above 3.6" means in
+// practice once a proven pool runs out of ceiling.
+export const ENDLESS_PPC_GROWTH = 1.05;
+
+// How many of the nearest-priced specs the per-level draw chooses among. Wide
+// enough that a block of five is not one board five times, narrow enough that
+// every draw stays near its target.
+const ENDLESS_CANDIDATES = 10;
+
+// How far from the block's target the draw may reach to find a shape the
+// block has not used yet, as a ratio on par-per-cell. Variety is his ruling
+// ("mixed board lengths") and the pool is NOT uniform across difficulty:
+// only floret and deltoidal reach past about 6 s/cell, so a window ranked on
+// price alone collapses to two shapes at the top of the climb. This is the
+// deliberate trade — a somewhat cheaper board over a fifth repeat of the same
+// lattice — and it is bounded so a block at 8 s/cell can never reach down to
+// the summit for the sake of a new shape.
+export const ENDLESS_VARIETY_MAX_RATIO = 1.9;
+
+/** @param {number} ppc measured median par-per-cell over the search's seeds */
+const E = (ppc, spec) => Object.freeze({ ...spec, ppc, gimmicks: Object.freeze(spec.gimmicks || []) });
+
+// Measured medians from scripts/search-endless-specs.mjs, re-measured over a
+// wide seed sample by scripts/harden-endless-pool.mjs. Re-run both after any
+// refit that moves a shape's equation materially: these prices are what the
+// escalation targets, and the validator re-times them either way.
+//
+// AN ENTRY NEEDS HEADROOM, not merely a passing measurement. Price and
+// generation time both vary by seed sample, so a spec measured AT a boundary
+// lands either side of it depending on which seeds ran, and the validator
+// then fails intermittently on a pool nobody changed. Two entries were cut
+// for exactly that: a 12x13 rect priced 605s against the 600s ceiling and a
+// cairo priced 601s, both of which had passed their own search. Rect and
+// cairo are structurally pinned against that ceiling (they need ~150 cells to
+// reach the summit rate at all, and 150 x 4 s/cell IS ten minutes), which is
+// why each keeps only the few entries that clear it with room.
+export const ENDLESS_SPECS = Object.freeze([
+  E(3.60, T('deltoidal', 3, 3, 54, 15)),
+  E(3.65, T('4.8.8', 7, 8, 98, 30, ['wormhole', 'compass', 'locked'], { gimmickLevel: 120 })),
+  E(3.66, T('hex', 9, 8, 72, 31)),
+  E(3.69, T('floret', 3, 3, 54, 20, ['sonar', 'liar', 'walls'], { gimmickLevel: 100 })),
+  E(3.79, T('hex', 9, 8, 72, 31, ['worm', 'walls'], { gimmickLevel: 100 })),
+  E(3.87, T('4.8.8', 6, 7, 72, 27, ['wormhole', 'compass', 'locked'], { gimmickLevel: 120 })),
+  E(3.87, T('hex', 11, 10, 110, 37, ['walls'], { gimmickLevel: 120 })),
+  E(3.95, T('hex', 11, 10, 110, 37, ['worm', 'walls'], { gimmickLevel: 100 })),
+  E(4.05, T('deltoidal', 2, 3, 36, 12, ['mystery', 'locked'], { gimmickLevel: 100 })),
+  E(4.09, T('hex', 9, 8, 72, 31, ['compass', 'walls'], { gimmickLevel: 120 })),
+  E(4.09, T('floret', 3, 3, 54, 22)),
+  E(4.17, T('4.8.8', 6, 7, 72, 29, ['wormhole', 'locked'], { gimmickLevel: 120 })),
+  E(4.27, T('hex', 9, 8, 72, 31, ['worm', 'compass', 'walls'], { gimmickLevel: 120 })),
+  E(4.33, T('hex', 11, 10, 110, 37, ['compass', 'walls'], { gimmickLevel: 100 })),
+  E(4.38, T('4.8.8', 7, 8, 98, 33, ['wormhole', 'locked'], { gimmickLevel: 120 })),
+  E(4.44, T('hex', 11, 10, 110, 37, ['worm', 'compass', 'walls'], { gimmickLevel: 100 })),
+  E(4.50, T('deltoidal', 3, 3, 54, 15, ['locked', 'sonar', 'walls'], { gimmickLevel: 100 })),
+  E(4.55, T('floret', 3, 3, 54, 23)),
+  E(4.70, T('4.8.8', 6, 7, 72, 31, ['locked'], { gimmickLevel: 100 })),
+  E(5.09, T('4.8.8', 6, 7, 72, 31, ['locked'], { gimmickLevel: 120 })),
+  E(5.10, T('floret', 3, 3, 54, 23, ['sonar', 'liar', 'walls'], { gimmickLevel: 100 })),
+  E(5.21, T('deltoidal', 2, 4, 48, 15, ['sonar', 'walls'], { gimmickLevel: 120 })),
+  E(5.47, T('4.8.8', 7, 8, 98, 36, ['locked'], { gimmickLevel: 100 })),
+  E(5.49, T('deltoidal', 2, 3, 36, 12, ['locked', 'sonar', 'walls'], { gimmickLevel: 120 })),
+  E(5.87, T('floret', 3, 3, 54, 23, ['sonar', 'liar'], { gimmickLevel: 120 })),
+  E(6.53, T('floret', 3, 4, 72, 29, ['liar', 'walls'], { gimmickLevel: 100 })),
+  E(7.06, T('deltoidal', 2, 3, 36, 14, ['locked', 'sonar', 'walls'], { gimmickLevel: 120 })),
+]);
+
+const ENDLESS_MAX_PPC = ENDLESS_SPECS.reduce((m, e) => Math.max(m, e.ppc), 0);
+
+/** Endless block index (0-based) for a level past the crown. */
+function endlessBlockIndex(level) {
+  return Math.floor((level - ENDLESS_START_LEVEL) / CHALLENGE_BLOCK_SIZE);
+}
+
+/**
+ * The par-per-cell an endless block aims at: the T12 summit compounded by
+ * ENDLESS_PPC_GROWTH per block, clamped to what the proven pool actually
+ * holds. Clamping rather than extrapolating is the point — past the pool's
+ * ceiling the ladder stops climbing rather than promising a difficulty nobody
+ * has generated.
+ * @param {number} level
+ */
+export function endlessTargetPpc(level) {
+  const e = Math.max(0, endlessBlockIndex(level));
+  return Math.min(TIER_PPC[12] * (ENDLESS_PPC_GROWTH ** e), ENDLESS_MAX_PPC);
+}
+
+// FNV-1a, so the draw is deterministic from the level alone without this leaf
+// module importing a PRNG. Determinism matters here for a specific reason: the
+// BOARD varies per attempt (challengeBoardSeed carries per-draw entropy, so
+// nothing can be memorised), but the SPEC must not, or "max level" stops being
+// comparable between players and stops being the brag stat it is meant to be.
+function hashLevel(level, salt) {
+  let h = 0x811c9dc5;
+  const str = `${level}:${salt}`;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h >>> 0;
+}
+
+// One block of five is resolved together, because "mixed board lengths" is a
+// property of the BLOCK rather than of a level: each level prefers a shape
+// none of its earlier siblings used, falling back to the whole candidate
+// window when nothing new is left. Memoised per block, since a block gets
+// resolved on every level lookup inside it.
+const _endlessBlockMemo = new Map();
+
+function endlessBlock(blockStart) {
+  const cached = _endlessBlockMemo.get(blockStart);
+  if (cached) return cached;
+
+  const target = endlessTargetPpc(blockStart);
+  // Nearest by LOG distance, so "twice as hard" reads the same either side.
+  const byDistance = ENDLESS_SPECS
+    .map((e) => ({ e, d: Math.abs(Math.log(e.ppc / target)) }))
+    .sort((a, b) => a.d - b.d || a.e.ppc - b.e.ppc);
+  const ranked = byDistance.slice(0, ENDLESS_CANDIDATES).map((r) => r.e);
+  // The wider window the variety rule may reach into, bounded by ratio.
+  const varietyWindow = byDistance
+    .filter((r) => r.d <= Math.log(ENDLESS_VARIETY_MAX_RATIO))
+    .map((r) => r.e);
+
+  const usedShapes = new Set();
+  const out = [];
+  for (let i = 0; i < CHALLENGE_BLOCK_SIZE; i++) {
+    const level = blockStart + i;
+    // A shape this block has not used yet, preferring the close window and
+    // reaching into the bounded one only when the close window is exhausted.
+    const freshNear = ranked.filter((e) => !usedShapes.has(e.shape));
+    const freshWide = varietyWindow.filter((e) => !usedShapes.has(e.shape));
+    const from = freshNear.length ? freshNear : (freshWide.length ? freshWide : ranked);
+    const pick = from[hashLevel(level, 'endless') % from.length];
+    usedShapes.add(pick.shape);
+    out.push(Object.freeze({
+      level,
+      block: Math.floor((level - 1) / CHALLENGE_BLOCK_SIZE) + 1,
+      tier: 12,
+      endless: true,
+      targetPpc: target,
+      ppc: pick.ppc,
+      dip: false,
+      shape: pick.shape,
+      rows: pick.rows, cols: pick.cols, M: pick.M, N: pick.N,
+      cells: pick.cells, mines: pick.mines,
+      gimmicks: pick.gimmicks,
+      gimmickLevel: pick.gimmickLevel,
+      constructive: pick.constructive,
+    }));
+  }
+  const frozen = Object.freeze(out);
+  _endlessBlockMemo.set(blockStart, frozen);
+  return frozen;
+}
+
+/**
+ * The spec for a level past the crown. Deterministic from the level alone.
+ * @param {number} level >= ENDLESS_START_LEVEL
+ */
+export function endlessSpecForLevel(level) {
+  const lv = Math.max(ENDLESS_START_LEVEL, Math.round(level));
+  const blockStart = Math.floor((lv - 1) / CHALLENGE_BLOCK_SIZE) * CHALLENGE_BLOCK_SIZE + 1;
+  return endlessBlock(blockStart)[lv - blockStart];
+}
+
 // ── Expansion + accessors ──────────────────────────────────────────────
 
 // Opener blocks validate on the deduction floor, not the ppc band; stamp
@@ -780,22 +984,28 @@ export const CHALLENGE_BLOCKS = BLOCKS.map((b) => Object.freeze({
 Object.freeze(CHALLENGE_BLOCKS);
 
 /**
- * The authored spec for a ladder level. Levels below 1 clamp to 1; levels
- * past CHALLENGE_MAX_LEVEL clamp to the L250 crown until the endless zone
- * lands (the old ladder's clamp-past-MAX_LEVEL behavior, deliberately).
+ * The spec for a ladder level: the authored table through L250, then the
+ * endless pool's draw. Levels below 1 clamp to 1; there is no upper clamp,
+ * because the endless zone IS the upper end and it is unbounded by ruling.
  * @param {number} level
  * @returns {object} frozen spec: {level, block, tier, ppc, dip, shape,
  *   rows?, cols?, M?, N?, cells, mines, gimmicks, gimmickLevel?,
- *   wallSegments?, constructive?, minDeductions?}
+ *   wallSegments?, constructive?, minDeductions?, endless?, targetPpc?}
  */
 export function challengeSpecForLevel(level) {
-  const lv = Math.min(Math.max(Math.round(level || 1), 1), CHALLENGE_MAX_LEVEL);
+  const lv = Math.max(Math.round(level || 1), 1);
+  if (lv > CHALLENGE_MAX_LEVEL) return endlessSpecForLevel(lv);
   return LEVEL_SPECS[lv - 1];
 }
 
-/** First level of the block (= checkpoint = survival unit) containing a level. */
+/**
+ * First level of the block (= checkpoint = survival unit) containing a level.
+ * Unbounded above: checkpoints keep landing every 5 and bank forever (his
+ * ruling), which is also why users/{uid}/challenge250.maxCheckpoint carries
+ * no upper bound in the rules.
+ */
 export function blockStartLevel(level) {
-  const lv = Math.min(Math.max(Math.round(level || 1), 1), CHALLENGE_MAX_LEVEL);
+  const lv = Math.max(Math.round(level || 1), 1);
   return Math.floor((lv - 1) / CHALLENGE_BLOCK_SIZE) * CHALLENGE_BLOCK_SIZE + 1;
 }
 

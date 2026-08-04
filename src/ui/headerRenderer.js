@@ -42,8 +42,13 @@ export function updateProgressBar() {
     return;
   }
   progressBarContainer.classList.remove('hidden');
-  const pct = ((state.currentLevel - 1) / (CHALLENGE_MAX_LEVEL - 1)) * 100;
+  // The bar measures progress through the AUTHORED ladder, so it fills at
+  // the crown and stays full through the endless zone rather than running
+  // past 100%. Endless has no denominator by definition; the level number
+  // is the brag stat there, and it is already on screen.
+  const pct = Math.min(100, ((state.currentLevel - 1) / (CHALLENGE_MAX_LEVEL - 1)) * 100);
   progressBarFill.style.width = `${pct}%`;
+  progressBarContainer.classList.toggle('endless', state.currentLevel > CHALLENGE_MAX_LEVEL);
 
   // Render checkpoint markers
   if (progressBarMarkers) {

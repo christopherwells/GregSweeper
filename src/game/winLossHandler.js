@@ -22,7 +22,7 @@ import { extractCrux } from '../logic/cruxExtract.js';
 import { prepareLossReceipt, bombStrikeVerdict } from '../ui/receiptRenderer.js';
 import { computeBombInfoValue } from '../logic/bombInfoValue.js';
 import { getSpeedRating, MAX_TIMED_LEVEL, getChaosDifficulty, BOMB_PENALTY_BASE, BOMB_PENALTY_RAMP } from '../logic/difficulty.js';
-import { CHALLENGE_MAX_LEVEL, powerUpAwardCount, LIFELINE_BONUS_CHANCE } from '../logic/challenge250.js';
+import { powerUpAwardCount, LIFELINE_BONUS_CHANCE } from '../logic/challenge250.js';
 import {
   loadStats, saveGameResult, saveModePowerUps, clearGameState,
   markDailyCompleted, getDailyStreak, getPlayerName,
@@ -925,8 +925,12 @@ export async function handleWin() {
   } else {
     // Next Level is data-dependent (level cap), so it unhides here rather
     // than in the static plan.
-    const maxLevel = state.gameMode === 'timed' ? MAX_TIMED_LEVEL : CHALLENGE_MAX_LEVEL;
-    if (state.currentLevel < maxLevel && state.gameMode !== 'daily' && state.gameMode !== 'weekly' && state.gameMode !== 'timed') {
+    // Challenge has no top: past the L250 crown the endless zone takes over
+    // (his ruling), so only Quick Play caps here. Capping challenge at
+    // the ladder length would hide Next Level on the crown itself and make
+    // the endless zone unreachable by play.
+    const capped = state.gameMode === 'timed' && state.currentLevel >= MAX_TIMED_LEVEL;
+    if (!capped && state.gameMode !== 'daily' && state.gameMode !== 'weekly' && state.gameMode !== 'timed') {
       nextLevelBtn.classList.remove('hidden');
     }
   }
