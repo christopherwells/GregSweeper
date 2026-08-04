@@ -46,7 +46,7 @@ const START = '2027-01-01';
 
 // The flip date the v1.10 release set. The rotation shipped dark for two
 // weeks behind a null constant; this is the contract that replaced it.
-const SHIPPED_START = '2026-08-05';
+const SHIPPED_START = '2026-08-04';
 
 test('shipped contract: the rotation is LIVE from its start date, and every earlier date stays rectangular', () => {
   assert.equal(TILING_ROTATION_START, SHIPPED_START,

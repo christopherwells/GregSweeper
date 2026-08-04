@@ -9,7 +9,7 @@
 // determinism-critical, and two copies of either are two chances for the
 // precompute and a fallback client to ship different boards for the same date.
 //
-// LIVE from 2026-08-05, flipped by the v1.10 release. It shipped dark with
+// LIVE from 2026-08-04, flipped by the v1.10 release. It shipped dark with
 // TILING_ROTATION_START null; the flip is the release that set it, alongside
 // the CURRENT_VERSION bump, the What's New entry and the player-facing copy,
 // which is the coupling the constant's comment demanded and the reason it was
@@ -48,15 +48,18 @@ import {
 //
 // MOVING THIS IS A RELEASE, not a config tweak: the flip carried the v1.10
 // CURRENT_VERSION bump, its What's New entry, and the Daily-card/help copy,
-// and the same coupling applies to any future change. It is set one day ahead
-// of its own merge, so the precompute horizon and the flip agree on which
-// dates rotate: every canonical from this date forward was regenerated with
-// the rotation on, and the dates behind it keep the rectangles they were
-// written with. Never move it BACKWARD — the canonicals behind it are
-// rectangles already written to write-once nodes, and a client falling back
-// to local generation on one of those dates would build a lattice the
-// canonical is not.
-export const TILING_ROTATION_START = '2026-08-05';
+// and the same coupling applies to any future change. Every canonical from
+// this date forward was regenerated with the rotation on, and the dates
+// behind it keep the rectangles they were written with.
+//
+// It may move FORWARD freely (the dates it gives up are rectangles either
+// way) but never BACKWARD: the canonicals behind it are rectangles already
+// written to write-once nodes, and a client falling back to local generation
+// on one of those dates would build a lattice the canonical is not. The one
+// day it did move backward, hours after the flip, it moved onto a date whose
+// board had zero score rows and was regenerated in the same pass, which is
+// the only condition under which that is safe.
+export const TILING_ROTATION_START = '2026-08-04';
 
 // One rng stream per decision, each in its own namespace off the date string,
 // disjoint from every existing consumer of the date seed (`:trialN` candidate
