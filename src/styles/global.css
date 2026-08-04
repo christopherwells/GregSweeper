@@ -6957,6 +6957,8 @@ button:focus-visible {
 .ge-shape-sonar { color: #26c6da; font-weight: 900; font-size: 13px; gap: 1px; }
 .ge-shape-compass { color: #ffa726; font-weight: 900; font-size: 13px; }
 .ge-shape-mystery { color: #a855f7; font-size: 18px; }
+.ge-shape-mineshift { color: #fb923c; font-weight: 900; font-size: 15px; }
+.ge-shape-plate { color: var(--marker-plate-timer, #ff5252); font-weight: 900; font-size: 12px; gap: 1px; }
 .ge-shape-mark img.ge-piece { width: 12px; height: 12px; }
 .ge-shape-locked img.ge-piece { width: 17px; height: 17px; }
 

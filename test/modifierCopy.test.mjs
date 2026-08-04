@@ -193,9 +193,15 @@ test('rectangular boards keep the shipped square example verbatim', () => {
     assert.equal(modifierExampleHTML(g, null), null, `${g} produced a shape example for a rectangle`);
     assert.equal(modifierExampleHTML(g, 'rect'), null, `${g} treated 'rect' as a lattice`);
   }
-  // Chaos-only modifiers never reach a tiling and have no scene.
-  assert.equal(modifierExampleHTML('mineShift', 'hex'), null);
-  assert.equal(modifierExampleHTML('pressurePlate', 'hex'), null);
+  // The chaos-only modifiers have tiling scenes too, since Chaos gained the
+  // board shapes: a modifier that can appear on a lattice needs a card that
+  // shows one. They still return null for a rectangle like everything else.
+  for (const g of ['mineShift', 'pressurePlate']) {
+    assert.equal(modifierExampleHTML(g, null), null, `${g} produced a shape example for a rectangle`);
+    assert.ok(modifierExampleHTML(g, 'hex'), `${g} has no example on a lattice`);
+  }
+  // A modifier with no scene at all still returns null rather than throwing.
+  assert.equal(modifierExampleHTML('notAModifier', 'hex'), null);
 });
 
 // ── Voice guards ───────────────────────────────────────────────────────────
