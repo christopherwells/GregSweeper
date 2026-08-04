@@ -92,7 +92,24 @@ jobs:
           git config user.email "c.wells@bowdoin.edu"
           git add src/logic/difficulty.js src/logic/handicaps.json src/logic/experimentTarget.json src/logic/modelHistory.json
           git commit -m "refit PAR_MODEL, handicaps, and experiment target — $(date -u +%Y-%m-%d)"
-          git push
+          # A plain push LOSES THE WHOLE NIGHT'S FIT if a human pushed to main
+          # while Stan was sampling. That is not hypothetical: the 2026-08-03
+          # refit fit cleanly (4 files, 315 insertions) and then died on
+          # "! [rejected] main -> main (fetch first)" because a PR merged
+          # mid-run, and the model simply did not update that day. The four
+          # files this commit touches are refit-OWNED — nothing else writes
+          # them — so rebasing onto whatever landed is always the right merge.
+          pushed=false
+          for attempt in 1 2 3 4 5; do
+            if git push; then pushed=true; break; fi
+            echo "push rejected (attempt $attempt) — rebasing onto origin/main and retrying"
+            git pull --rebase --autostash origin main || exit 1
+            sleep $((attempt * 5))
+          done
+          if [ "$pushed" != "true" ]; then
+            echo "::error::refit could not push after 5 attempts"
+            exit 1
+          fi
           echo "pushed=true" >> "$GITHUB_OUTPUT"
 
       - name: Deploy the refit (GITHUB_TOKEN pushes don't trigger push workflows)

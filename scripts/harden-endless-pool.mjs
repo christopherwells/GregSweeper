@@ -28,7 +28,7 @@
 
 import { buildChallenge250Board, challengeBoardSeed } from '../src/logic/challenge250Builder.js';
 import {
-  ENDLESS_SPECS, endlessGenBudget, endlessParCeiling, TIER_PPC,
+  ENDLESS_SPECS, endlessGenBudget, endlessParCeiling, ENDLESS_PPC_FLOOR,
 } from '../src/logic/challenge250.js';
 import { readFileSync } from 'node:fs';
 
@@ -92,7 +92,7 @@ for (let i = 0; i < specs.length; i++) {
   if (worst > genBudget) problems.push(`worst ${worst}ms > ${genBudget.toFixed(0)}ms`);
   const bar = parBar(spec.shape);
   if (pars.length && medPar > bar) problems.push(`par ${medPar.toFixed(0)}s > ${bar.toFixed(0)}s bar`);
-  const ppcBar = TIER_PPC[12] * PPC_FLOOR_MARGIN;
+  const ppcBar = ENDLESS_PPC_FLOOR * PPC_FLOOR_MARGIN;
   if (pars.length && medPpc < ppcBar) {
     problems.push(`ppc ${medPpc.toFixed(2)} under the ${ppcBar.toFixed(2)} bar`);
   }

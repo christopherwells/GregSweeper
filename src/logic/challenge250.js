@@ -149,6 +149,11 @@ export const ENDLESS_PAR_CEILING_SECONDS = 600;
 export const ENDLESS_PAR_CEILING_BY_SHAPE = Object.freeze({
   rect: 720,
   cairo: 720,
+  // Petals sits just under the standard ceiling the same way, one step
+  // milder: its 72-cell boards price 7.6-7.9 s/cell at ~550s and were the
+  // pool's whole top end until the headroom rule cut them. His ruling
+  // 2026-08-04: +1 minute, not +2, because it needs less.
+  floret: 660,
 });
 
 /** The endless par ceiling that applies to a shape. */
@@ -840,6 +845,18 @@ export function endlessGenBudget(shape) {
 // par headroom became an admission rule, and a growth rate left at 1.05
 // would then have reached the top in 12 blocks instead of 17.
 export const ENDLESS_PPC_GROWTH = 1.035;
+
+// The pool's ADMISSION floor, distinct from the summit the escalation aims
+// at. His ruling 2026-08-04: drop it to 3.5 so more boards fit.
+//
+// The two numbers do different jobs and it matters that they can differ. The
+// escalation still STARTS at the T12 summit (3.6), so the zone opens exactly
+// where the authored ladder ended; the floor only says which boards may sit
+// in the pool the draw chooses from. Lowering it widens the material near the
+// bottom — the shapes pinned there by their own gentle pricing, Classic and
+// Paving Stones especially — without making the first endless block easier
+// than the crown that precedes it.
+export const ENDLESS_PPC_FLOOR = 3.5;
 
 // How many of the nearest-priced specs the per-level draw chooses among. Wide
 // enough that a block of five is not one board five times, narrow enough that

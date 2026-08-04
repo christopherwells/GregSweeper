@@ -87,7 +87,8 @@ test('the per-shape allowances are the ruled ones, and apply only where ruled', 
   // spread by accident to a shape that never needed it.
   assert.equal(endlessParCeiling('rect'), 720, 'Classic: +2 minutes');
   assert.equal(endlessParCeiling('cairo'), 720, 'Paving Stones: +2 minutes');
-  for (const t of ['hex', '4.8.8', 'floret', 'deltoidal', 'rhombille']) {
+  assert.equal(endlessParCeiling('floret'), 660, 'Petals: +1 minute (his 2026-08-04 call)');
+  for (const t of ['hex', '4.8.8', 'deltoidal', 'rhombille']) {
     assert.equal(endlessParCeiling(t), ENDLESS_PAR_CEILING_SECONDS,
       `${t} keeps the standard ten-minute ceiling`);
   }
