@@ -19,7 +19,7 @@ import {
   CHALLENGE_MAX_LEVEL, CHALLENGE_BLOCK_SIZE, TIER_PPC,
   ENDLESS_SPECS, ENDLESS_START_LEVEL, ENDLESS_PPC_GROWTH, ENDLESS_GEN_BUDGET_MS,
   ENDLESS_PAR_CEILING_SECONDS, GEN_CAP_MS, ENDLESS_VARIETY_MAX_RATIO,
-  ENDLESS_GEN_HEADROOM, endlessParCeiling, endlessGenCap, endlessGenBudget,
+  ENDLESS_GEN_HEADROOM, endlessParCeiling, endlessGenCap, endlessGenBudget, ENDLESS_PPC_FLOOR,
   challengeSpecForLevel, endlessSpecForLevel, endlessTargetPpc, blockStartLevel,
 } from '../src/logic/challenge250.js';
 import { TILING_TYPES, buildTiling, containerIsStorable } from '../src/logic/tilingGeometry.js';
@@ -34,8 +34,13 @@ test('every pool entry is a legal ladder spec at or above the summit', () => {
     // Above the floor WITH MARGIN. The summit is a floor by ruling, and an
     // entry stored at exactly 3.60 reads under it on a smaller sample — the
     // validator caught two rect entries doing exactly that at 5 seeds.
-    assert.ok(s.ppc >= SUMMIT * 1.02,
-      `${s.shape}: ppc ${s.ppc} sits on the ${SUMMIT} summit floor with no margin`);
+    // Above the POOL FLOOR with margin. The floor (3.5) is deliberately below
+    // the summit the escalation aims at (3.6): his ruling 2026-08-04, drop it
+    // so more boards fit, without making the first endless block easier than
+    // the crown before it. The margin is because an entry stored at exactly
+    // the floor reads under it on a smaller sample.
+    assert.ok(s.ppc >= ENDLESS_PPC_FLOOR * 1.02,
+      `${s.shape}: ppc ${s.ppc} sits on the ${ENDLESS_PPC_FLOOR} pool floor with no margin`);
     assert.ok(Number.isInteger(s.mines) && s.mines > 0, `${s.shape}: bad mine count`);
     assert.ok(Number.isInteger(s.cells) && s.cells > 0, `${s.shape}: bad cell count`);
 
@@ -209,11 +214,11 @@ test('GOLDEN: the first endless block is fixed', () => {
     got.push(`${s.shape}:${s.cells}c:${s.mines}m:[${s.gimmicks.join('+')}]`);
   }
   assert.deepEqual(got, [
-    'cairo:144c:48m:[]',
-    'hex:110c:37m:[worm+walls]',
-    'rect:156c:58m:[walls]',
-    '4.8.8:72c:27m:[wormhole+compass+locked]',
-    'floret:54c:22m:[]',
+    'cairo:144c:60m:[]',
+    'hex:72c:31m:[]',
+    'rect:154c:57m:[liar]',
+    'rhombille:60c:24m:[locked]',
+    'deltoidal:36c:10m:[sonar+walls]',
   ]);
 });
 
