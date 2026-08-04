@@ -12,6 +12,9 @@ import { getTimedDifficulty, getSpeedRating } from '../logic/difficulty.js';
 import { CHALLENGE_MAX_LEVEL } from '../logic/challenge250.js';
 import { loadStats, getDailyStreak } from '../storage/statsStorage.js';
 import { getGimmickDef } from '../logic/gimmicks.js';
+import { paceState, expectedTimeLine } from '../logic/expectedTime.js';
+import { personalPar } from '../logic/handicaps.js';
+import { getUid } from '../firebase/firebaseProgress.js';
 
 // ── Checkpoint Display ─────────────────────────────────
 export const CHECKPOINT_INTERVAL = 5;
@@ -390,4 +393,29 @@ function updateTimerDisplayInHeader() {
   if (!timerEl) return;
   timerEl.textContent = String(getDisplayTime()).padStart(3, '0');
   timerEl.classList.remove('timer-critical', 'timer-warning');
+}
+
+// ── Challenge 250 pace bar ─────────────────────────────
+// The expected-time cue: personalPar for the drawn board (handicap-
+// adjusted), with a quiet track that fills as the timer runs and then
+// stops. Challenge only — every other mode either has its own par
+// surface (daily/weekly/timed report against par at the END, which is
+// where those comparisons belong) or none at all. Nothing here gates or
+// records: challenge has no submission path.
+export function updatePaceBar() {
+  const bar = document.getElementById('pace-bar');
+  if (!bar) return;
+  const fill = document.getElementById('pace-bar-fill');
+  const label = document.getElementById('pace-bar-label');
+  const show = state.gameMode === 'normal' && !state.coastlinePractice && state.challengePar > 0;
+  if (!show) {
+    bar.classList.add('hidden');
+    return;
+  }
+  const expected = personalPar(state.challengePar, getUid());
+  const pace = paceState(getDisplayTime(), expected);
+  bar.classList.remove('hidden');
+  bar.classList.toggle('is-full', pace.over);
+  if (fill) fill.style.width = `${(pace.fill * 100).toFixed(1)}%`;
+  if (label) label.textContent = expectedTimeLine(expected);
 }

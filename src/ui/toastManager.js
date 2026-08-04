@@ -65,14 +65,20 @@ export function showCheckpointToast(checkpointLevel) {
 
 // ── Level Info Toast ───────────────────────────────────
 
-export function showLevelInfoToast(level, diff, label) {
+export function showLevelInfoToast(level, diff, label, extra = '') {
   const toast = document.createElement('div');
   toast.className = 'level-info-toast';
-  const sizeLabel = `${diff.rows}×${diff.cols}`;
+  // A Challenge 250 tiling board's container is storage, not geometry, so
+  // "rows×cols" would name a rectangle the player is not looking at; the
+  // caller passes a shape name instead and we show the cell count.
+  const sizeLabel = diff.shapeLabel
+    ? `${diff.shapeLabel} · ${diff.rows * diff.cols} cells`
+    : `${diff.rows}×${diff.cols}`;
   const mineLabel = `${diff.mines} mines`;
-  const timeLabel = ''; // Timed mode counts up now, no time limit to show
+  // The pre-level expected time (personalPar), when the caller has one.
+  const extraLabel = extra ? ` · ${extra}` : '';
   const title = label ? `${label}` : `Level ${level}`;
-  toast.innerHTML = `<strong>${title}</strong><br><span class="level-info-details">${sizeLabel} · ${mineLabel}${timeLabel}</span>`;
+  toast.innerHTML = `<strong>${title}</strong><br><span class="level-info-details">${sizeLabel} · ${mineLabel}${extraLabel}</span>`;
   document.getElementById('app').appendChild(toast);
   setTimeout(() => toast.remove(), 2500);
 }

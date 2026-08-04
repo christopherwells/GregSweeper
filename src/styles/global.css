@@ -4963,6 +4963,54 @@ details[open] > .journal-ledger-summary::after { transform: rotate(225deg); }
 }
 
 /* ── Progress Bar ───────────────────────────────────── */
+/* ── Challenge 250 pace bar ──────────────────
+   The expected-time cue: a quiet track that fills as the timer runs and
+   then simply stops (no punishment state — an overrun has nothing left
+   to show). It is deliberately calmer than #progress-bar-fill's accent
+   gradient: this is a glance-at cue, not the climb's headline. Theme
+   tokens so a world can re-voice it; both default to existing tokens so
+   every theme reads correctly with no per-theme work. */
+/* A FLEX ROW, not an absolutely-labeled track: the label sits beside the
+   bar and reserves its own width, so it can never be clipped by the
+   container (the first cut positioned it absolutely below a 4px track and
+   the text was cut off on a phone). The row also gives the checkpoint
+   progress bar directly above it breathing room — two thin bars flush
+   against each other read as one busy strip. */
+.pace-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 7px;
+}
+.pace-bar-track {
+  flex: 1;
+  height: 4px;
+  background: var(--pace-bar-track, var(--color-surface, rgba(0,0,0,0.1)));
+  border-radius: 2px;
+  overflow: hidden;
+}
+.pace-bar-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 2px;
+  background: var(--pace-bar-color, var(--color-text-secondary, #888));
+  opacity: 0.55;
+  /* Linear, not eased: the bar tracks a clock, and a springy fill would
+     read as an animation rather than as elapsed time. */
+  transition: width 0.25s linear, opacity 0.3s ease;
+}
+.pace-bar.is-full .pace-bar-fill { opacity: 0.35; }
+.pace-bar-label {
+  flex: 0 0 auto;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--color-text-secondary, #888);
+  opacity: 0.75;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
 #progress-bar-container {
   width: 100%;
   height: 6px;

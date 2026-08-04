@@ -18,7 +18,9 @@ import { handleWin, handleLoss, handleDailyBombHit } from './winLossHandler.js';
 import { performScan, performXRay, performMagnet, tryLifeline } from './powerUpActions.js';
 import { generateBoard, createEmptyBoard, cleanSolverArtifacts, placeMysteryConstructive } from '../logic/boardGenerator.js';
 import { generateTilingBoard, containerFor } from '../logic/tilingGenerator.js';
-import { coastlineBoardFor, DEFAULT_TILING } from '../logic/coastlineLink.js';
+import { coastlineBoardFor, DEFAULT_TILING, tilingLabel, CLASSIC_SHAPE_LABEL } from '../logic/coastlineLink.js';
+import { expectedTimeLine } from '../logic/expectedTime.js';
+import { personalPar } from '../logic/handicaps.js';
 import { challengeSpecForLevel } from '../logic/challenge250.js';
 import { buildChallenge250Board, challengeBoardSeed } from '../logic/challenge250Builder.js';
 import { floodFillReveal, checkWin, chordReveal, unrevealChordMines, isBoardSolvable, estimatePlateMovesToDisarm, buildNeighborCache, findDecorativeGimmicks, certificateFromCheck } from '../logic/boardSolver.js';
@@ -1060,13 +1062,31 @@ export async function newGame() {
     setTimeout(() => boardEl.classList.remove('board-transition'), 600);
   }
 
-  // Show level info toast on new game (except first load)
+  // Show level info toast on new game (except first load). On the
+  // Challenge 250 ladder this IS the pre-level card: it names the shape
+  // and carries the expected time (personalPar for the board just drawn,
+  // handicap-adjusted) — a pace cue, never a target the game enforces.
   if (state._initialized && state.gameMode === 'chaos') {
     const chaosRound = state.chaosRound || 1;
     showLevelInfoToast(chaosRound, diff, 'Round ' + chaosRound);
   } else if (state._initialized && (state.gameMode === 'normal' || state.gameMode === 'timed')) {
     const label = diff.label ? `${diff.label}` : null;
-    showLevelInfoToast(state.currentLevel, diff, label);
+    let card = diff;
+    let expected = '';
+    if (state.gameMode === 'normal' && !state.coastlinePractice) {
+      const spec = state.challengeSpec;
+      if (spec) {
+        card = {
+          ...diff,
+          mines: state.totalMines,
+          shapeLabel: spec.shape === 'rect' ? CLASSIC_SHAPE_LABEL : tilingLabel(spec.shape),
+        };
+      }
+      if (state.challengePar > 0) {
+        expected = expectedTimeLine(personalPar(state.challengePar, getUid()));
+      }
+    }
+    showLevelInfoToast(state.currentLevel, card, label, expected);
   }
   state._initialized = true;
 }

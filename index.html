@@ -416,6 +416,15 @@
         <div id="progress-bar-markers"></div>
       </div>
 
+      <!-- Challenge 250 pace cue: the level's expected time (personalPar,
+           handicap-adjusted) with a quiet bar that fills as the timer
+           runs. It fills and stops — nothing is enforced, nothing is
+           recorded, challenge never feeds the par fit. -->
+      <div id="pace-bar" class="pace-bar hidden">
+        <div class="pace-bar-track"><div id="pace-bar-fill" class="pace-bar-fill"></div></div>
+        <span id="pace-bar-label" class="pace-bar-label"></span>
+      </div>
+
       <!-- Power-up icons are drawn SVG sprites (Tier 4) with emoji
            fallback via onerror. -->
       <div id="powerup-bar">
