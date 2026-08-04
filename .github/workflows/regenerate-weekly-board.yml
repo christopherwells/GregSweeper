@@ -19,6 +19,15 @@ on:
       weekStart:
         description: 'Week start (YYYY-MM-DD, must be a Monday)'
         required: true
+      dryRun:
+        description: 'Dry run (generate + print, write nothing)'
+        type: boolean
+        default: false
+      shape:
+        description: 'Build the week on a board shape instead of Classic (blank = Classic)'
+        type: choice
+        default: ''
+        options: ['', 'classic', 'octagons', 'honeycomb', 'paving', 'petals', 'cubes', 'kites']
 
 permissions:
   contents: read
@@ -38,4 +47,4 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           CANONICAL_SIGNING_KEY: ${{ secrets.CANONICAL_SIGNING_KEY }}
-        run: node scripts/regenerate-weekly-board.mjs "${{ github.event.inputs.weekStart }}"
+        run: node scripts/regenerate-weekly-board.mjs "${{ github.event.inputs.weekStart }}" ${{ github.event.inputs.dryRun == 'true' && '--dry-run' || '' }} ${{ github.event.inputs.shape != '' && format('--shape={0}', github.event.inputs.shape) || '' }}

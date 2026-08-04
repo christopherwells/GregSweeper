@@ -108,9 +108,20 @@ export function updateTitleProgress() {
     const streakCorner = streak > 0
       ? `<span class="daily-corner-stat daily-corner-streak" title="Your daily streak">${streak} day${streak === 1 ? '' : 's'}</span>`
       : '';
+    // The shape shares the par corner, and ONLY when today's board is not a
+    // Classic grid — naming "Classic" on the half of days that are one would
+    // be noise on a card whose whole design is four quiet corners. It comes
+    // from the CANONICAL board (below), never from re-running the date's
+    // shape draw: a forced or fallback board can legitimately differ from
+    // the draw, and the card must describe what the player will actually
+    // open (the same rule the field note follows).
+    const shapeLabel = (_titleDailyPar.date === today && _titleDailyPar.shape) || '';
     const parCorner = hasPar
-      ? `<span class="daily-corner-stat daily-corner-par" title="Greg’s par for today">Par ${_titleDailyPar.secs}s</span>`
-      : '';
+      ? `<span class="daily-corner-stat daily-corner-par" title="Greg’s par for today">`
+        + `${shapeLabel ? `${shapeLabel} · ` : ''}Par ${_titleDailyPar.secs}s</span>`
+      : (shapeLabel
+        ? `<span class="daily-corner-stat daily-corner-par" title="Today’s board shape">${shapeLabel}</span>`
+        : '');
 
     dailyEl.innerHTML = moltCorner + streakCorner + parCorner
       + `<span class="mode-card-fieldnote">${centerText}</span>`;
@@ -290,13 +301,21 @@ async function refreshTitleDailyPar() {
       // the payload at generation and falls back to the board's actual
       // activeGimmicks; either way it cannot contradict the board.
       let note = null;
+      let shape = null;
       try {
         if (state.canonicalDailyBoard?.date === today && state.canonicalDailyBoard.raw) {
+          const raw = state.canonicalDailyBoard.raw;
           const { fieldNoteFromBoard } = await import('../logic/gregVoice.js');
-          note = fieldNoteFromBoard(state.canonicalDailyBoard.raw);
+          note = fieldNoteFromBoard(raw);
+          // Same rule, same reason: read the shape OFF the board, so the card
+          // can never name a lattice the canonical does not carry.
+          if (raw.tiling?.type) {
+            const { tilingLabel } = await import('../logic/coastlineLink.js');
+            shape = tilingLabel(raw.tiling.type);
+          }
         }
       } catch { /* no note — the par line still renders */ }
-      _titleDailyPar = { date: today, secs: Math.round(par), note };
+      _titleDailyPar = { date: today, secs: Math.round(par), note, shape };
       updateTitleProgress();
     }
   } catch { /* keep the fallback subtitle */ }

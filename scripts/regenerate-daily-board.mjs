@@ -17,14 +17,27 @@
 //     board is history, not a mistake to erase;
 //   - --dry-run generates + certifies + prints, writes nothing.
 //
+// SHAPE OVERRIDE (--shape=<token>): forces the board onto a chosen board
+// shape instead of taking the date's own rotation draw. Added for the v1.10
+// launch, where the first rotation day is deliberately a Honeycomb rather
+// than whatever the seed happened to pick, and useful thereafter for
+// re-rolling a specific date onto a specific lattice. It cannot cause
+// divergence: every client reads dailyBoard/{date} verbatim through
+// gateCanonicalTrust, so the written board IS the day's board regardless of
+// what the draw would have said. Tokens are the player-facing names
+// (honeycomb, octagons, paving, petals, cubes, kites) or 'classic'/'rect',
+// resolved through the one token table in coastlineLink.js.
+//
 // Usage (via GH Actions workflow_dispatch, FIREBASE_SERVICE_ACCOUNT set):
-//   node scripts/regenerate-daily-board.mjs YYYY-MM-DD [--dry-run] [--force-past]
+//   node scripts/regenerate-daily-board.mjs YYYY-MM-DD [--shape=hex] [--dry-run] [--force-past]
 
 import {
   loadExperimentSpec, selectBestCandidate,
   readCodeVersion, buildCanonicalPayload, buildCandidateFeatures, candidateOpener,
 } from './daily-board-pipeline.mjs';
 import { getTargetGimmickName, missionLabel } from '../src/logic/experimentDesign.js';
+import { resolveDailyShape } from '../src/logic/shapeRotation.js';
+import { tilingTypeForToken, tilingLabel, CLASSIC_SHAPE_LABEL } from '../src/logic/coastlineLink.js';
 import { signCanonicalPayload, requireSigningKey } from '../src/logic/canonicalSignature.js';
 import { isBoardSolvable } from '../src/logic/boardSolver.js';
 import { cleanSolverArtifacts } from '../src/logic/boardGenerator.js';
@@ -87,8 +100,28 @@ function todayET() {
   const dryRun = args.includes('--dry-run');
   const forcePast = args.includes('--force-past');
   if (!date) {
-    console.error('usage: node scripts/regenerate-daily-board.mjs YYYY-MM-DD [--dry-run] [--force-past]');
+    console.error('usage: node scripts/regenerate-daily-board.mjs YYYY-MM-DD [--shape=<token>] [--dry-run] [--force-past]');
     process.exit(1);
+  }
+
+  // The shape: the date's own draw unless --shape overrides it. An
+  // unrecognized token is a HARD failure rather than a silent fall-through to
+  // the 4.8.8 (buildTiling's default), which is the one place a typo would
+  // otherwise produce a plausible board on the wrong lattice with no error.
+  const shapeArg = args.find(a => a.startsWith('--shape='));
+  let shape = resolveDailyShape(date);
+  if (shapeArg) {
+    const token = shapeArg.slice('--shape='.length).trim().toLowerCase();
+    if (token === 'rect' || token === 'classic') {
+      shape = null;
+    } else {
+      shape = tilingTypeForToken(token);
+      if (!shape) {
+        console.error(`refusing: --shape=${token} names no board shape. `
+          + 'Use classic, octagons, honeycomb, paving, petals, cubes or kites.');
+        process.exit(1);
+      }
+    }
   }
 
   if (date <= todayET() && !forcePast) {
@@ -114,7 +147,14 @@ function todayET() {
     ? `  decorrelation: ${dm.feature} vs ${dm.confounder} (sign ${dm.sign}, weight ${dm.weight})`
     : '  decorrelation: none in the current experiment file');
 
-  const cand = selectBestCandidate(date, spec);
+  const drawn = resolveDailyShape(date);
+  const nameOf = (t) => (t ? tilingLabel(t) : CLASSIC_SHAPE_LABEL);
+  const shapeWhy = shapeArg
+    ? `FORCED; this date's own draw is ${nameOf(drawn)}`
+    : "this date's own rotation draw";
+  console.log(`  shape: ${nameOf(shape)} (${shapeWhy})`);
+
+  const cand = selectBestCandidate(date, spec, shape);
   const m = cand.mission || {};
   console.log(`  selected: ${cand.rngSeed} [${missionLabel(m)} mission: ${m.target}${m.type === 'decorrelation' ? ` vs ${m.decorrelation.confounder}` : ''}]`);
   console.log(`  board: ${cand.rows}x${cand.cols}, ${cand.totalMines} mines, gimmicks: ${cand.activeGimmicks.join(',') || '(none)'}`);

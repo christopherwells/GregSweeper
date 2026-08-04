@@ -9,12 +9,12 @@
 // determinism-critical, and two copies of either are two chances for the
 // precompute and a fallback client to ship different boards for the same date.
 //
-// SHIPPED DARK. TILING_ROTATION_START is null, so resolveDailyShape returns
-// null (rectangle) for every date and every path below is byte-identical to
-// the pre-rotation behaviour. Turning the rotation on is a deliberate later
-// one-line PR (set the start date) that carries the v1.10 bump, the What's New
-// entry, and the player-facing copy — never a side effect of this module
-// changing.
+// LIVE from 2026-08-05, flipped by the v1.10 release. It shipped dark with
+// TILING_ROTATION_START null; the flip is the release that set it, alongside
+// the CURRENT_VERSION bump, the What's New entry and the player-facing copy,
+// which is the coupling the constant's comment demanded and the reason it was
+// never a config tweak. Dates before the start stay rectangular forever, so
+// every board already played keeps its shape.
 //
 // The draw (Christopher's ruling, settled): 50% square, 50% one of the six
 // tilings uniformly. Deterministic from the date string alone — no target
@@ -35,22 +35,28 @@ import { createDailyRNG } from './seededRandom.js';
 import { TILING_TYPES } from './tilingGeometry.js';
 import { tilingTypeForToken } from './coastlineLink.js';
 import { generateTilingBoard, TILING_SAFE_GIMMICKS } from './tilingGenerator.js';
-import { drawDailyTilingConfig, tilingConfigAttempts } from './tilingBandConfigs.js';
-import { getDailyGimmick } from './gimmicks.js';
+import {
+  drawDailyTilingConfig, tilingConfigAttempts, tilingWeeklyConfigAttempts,
+} from './tilingBandConfigs.js';
+import { getDailyGimmick, getWeeklyGimmicks } from './gimmicks.js';
 import {
   candidateSeed, selectTilingMission, resolveMissionForSlot, getTargetGimmickName,
 } from './experimentDesign.js';
 
 // The first ET date whose daily participates in the shape rotation. Null means
-// the rotation is OFF and every daily is rectangular — the shipped state.
+// the rotation is OFF and every daily is rectangular.
 //
-// FLIPPING THIS IS A RELEASE, not a config tweak: the flip PR carries the
-// v1.10 CURRENT_VERSION bump, its What's New entry, and the Daily-card/help
-// copy, and it happens only after Christopher has playtested every shape
-// (via the test-env ?dailyShape= override below). Set it to a date at least
-// one day ahead of the merge so the precompute horizon and the flip agree on
-// which dates rotate.
-export const TILING_ROTATION_START = null;
+// MOVING THIS IS A RELEASE, not a config tweak: the flip carried the v1.10
+// CURRENT_VERSION bump, its What's New entry, and the Daily-card/help copy,
+// and the same coupling applies to any future change. It is set one day ahead
+// of its own merge, so the precompute horizon and the flip agree on which
+// dates rotate: every canonical from this date forward was regenerated with
+// the rotation on, and the dates behind it keep the rectangles they were
+// written with. Never move it BACKWARD — the canonicals behind it are
+// rectangles already written to write-once nodes, and a client falling back
+// to local generation on one of those dates would build a lattice the
+// canonical is not.
+export const TILING_ROTATION_START = '2026-08-05';
 
 // One rng stream per decision, each in its own namespace off the date string,
 // disjoint from every existing consumer of the date seed (`:trialN` candidate
@@ -86,8 +92,10 @@ export function resolveDailyShape(dateString, rotationStart = TILING_ROTATION_ST
 
 // ── Test-environment shape override (?dailyShape=) ──────────────────────
 //
-// The rotation ships dark, so playtesting a tiling daily (and the e2e journey
-// spec) needs a way to reach the path that does not exist in production.
+// The rotation now runs on its own draw, so reaching a CHOSEN shape (to
+// playtest one, or for the e2e journey spec) still needs a door that does not
+// exist in production. It was the only way to see a lattice daily at all
+// while the rotation was dark, and it survives the flip unchanged.
 // main.js sets this from the ?dailyShape= URL param UNDER isTestEnvironment()
 // — the same derivation-site gate as ?level= and ?coastline= — and the
 // override then applies ONLY to practice-lane dailies (state.isDailyPractice),
@@ -219,4 +227,57 @@ export function buildTilingDailyBoard(dateString, type, spec) {
   for (const row of result.board) for (const cell of row) if (cell.isMine) totalMines++;
 
   return { ...result, totalMines, rngSeed, mission };
+}
+
+/**
+ * The WEEKLY analogue: the one way a tiling weekly canonical gets built.
+ *
+ * There is deliberately no weekly shape ROTATION. A weekly is one board for
+ * seven days with one attempt each, so which shape it lands on is a call
+ * Christopher makes per week, not a draw; this exists so that when a tiling
+ * weekly IS wanted (the v1.10 launch week is the first), the precompute and
+ * the regenerate tool build it through ONE function instead of two copies.
+ * That is the missionSlots lesson applied before the second copy exists
+ * rather than after it drifts.
+ *
+ * What it keeps from the rectangular weekly: the modifier stack comes from
+ * getWeeklyGimmicks on the weekStart seed (2 or 3, without replacement), so a
+ * tiling weekly is as layered as a square one. What it changes: the config is
+ * drawn against the WEEKLY par band, and the board is generated and certified
+ * by the tiling generator from the lattice's own centre cell.
+ *
+ * Deterministic from the weekStart alone, including the null it returns when
+ * every config attempt exhausts — so any two producers agree, including on
+ * failure.
+ *
+ * @param {string} weekStart YYYY-MM-DD (the ET Monday)
+ * @param {string} type a TILING_TYPES entry
+ * @returns {null | {board: Array, rows: number, cols: number, totalMines: number,
+ *   firstClick: number, tiling: Object, check: Object, activeGimmicks: string[],
+ *   applied: Object, rngSeed: string}}
+ */
+export function buildTilingWeeklyBoard(weekStart, type) {
+  const rolled = getWeeklyGimmicks(weekStart, createDailyRNG);
+  const gimmicks = rolled.filter((g) => {
+    if (TILING_SAFE_GIMMICKS.includes(g)) return true;
+    // Unreachable while the DAILY_SAFE ⊆ TILING_SAFE guard holds (the weekly
+    // pool IS the daily-safe pool); loud if it ever stops.
+    console.warn(`shapeRotation: dropping non-tiling-safe gimmick '${g}' from weekly ${weekStart}`);
+    return false;
+  });
+
+  let result = null;
+  for (const entry of tilingWeeklyConfigAttempts(type, weekStart)) {
+    result = generateTilingBoard({
+      type, M: entry.M, N: entry.N, mines: entry.mines, seed: weekStart, gimmicks,
+      forceConstructive: entry.constructive === true,
+    });
+    if (result) break;
+  }
+  if (!result) return null;
+
+  let totalMines = 0;
+  for (const row of result.board) for (const cell of row) if (cell.isMine) totalMines++;
+
+  return { ...result, totalMines, rngSeed: weekStart };
 }
