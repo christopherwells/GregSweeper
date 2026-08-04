@@ -27,15 +27,22 @@
 //   node scripts/harden-endless-pool.mjs --file cands.json
 
 import { buildChallenge250Board, challengeBoardSeed } from '../src/logic/challenge250Builder.js';
-import { ENDLESS_SPECS, ENDLESS_GEN_BUDGET_MS, ENDLESS_PAR_CEILING_SECONDS, TIER_PPC } from '../src/logic/challenge250.js';
+import {
+  ENDLESS_SPECS, endlessGenBudget, endlessParCeiling, TIER_PPC,
+} from '../src/logic/challenge250.js';
 import { readFileSync } from 'node:fs';
 
 const args = process.argv.slice(2);
 const argVal = (n) => { const i = args.indexOf(n); return i >= 0 && i + 1 < args.length ? args[i + 1] : null; };
 const N = Number(argVal('--seeds') || 20);
-// Admission par bar: comfortably under the ceiling, so sample-to-sample
-// variation in the median cannot push a pool entry over it.
-const PAR_BAR = ENDLESS_PAR_CEILING_SECONDS * 0.93;   // 558s
+// Admission par bar: comfortably under the shape's own ceiling, so
+// sample-to-sample variation in the median cannot push an entry over it.
+const PAR_HEADROOM = 0.93;
+// And a margin ABOVE the summit floor, for the same reason in the other
+// direction: an entry admitted at exactly 3.60 reads below it on a smaller
+// sample, and the summit is a floor by ruling.
+const PPC_FLOOR_MARGIN = 1.03;
+const parBar = (shape) => endlessParCeiling(shape) * PAR_HEADROOM;
 const SALTS = ['harden-a', 'harden-b', 'harden-c'];
 
 const file = argVal('--file');
@@ -48,7 +55,9 @@ const median = (xs) => {
 };
 
 console.log(`Hardening ${specs.length} endless candidates: ${N} seeds x ${SALTS.length} salts`
-  + ` = ${N * SALTS.length} draws each, budget ${ENDLESS_GEN_BUDGET_MS}ms worst.\n`);
+  + ` = ${N * SALTS.length} draws each, against each shape's own generation budget`
+  + ` and a par bar at ${(PAR_HEADROOM * 100).toFixed(0)}% of its ceiling.
+`);
 
 const kept = [];
 for (let i = 0; i < specs.length; i++) {
@@ -66,7 +75,7 @@ for (let i = 0; i < specs.length; i++) {
       pars.push(res.par);
       // Bail early on a spec that is clearly out: no point spending a minute
       // proving a 9-second board is a 9-second board.
-      if (ms > ENDLESS_GEN_BUDGET_MS * 2) { bailed = true; break; }
+      if (ms > endlessGenBudget(spec.shape) * 2) { bailed = true; break; }
     }
     if (bailed) break;
   }
@@ -79,9 +88,14 @@ for (let i = 0; i < specs.length; i++) {
 
   const problems = [];
   if (refused) problems.push(`${refused} refused`);
-  if (worst > ENDLESS_GEN_BUDGET_MS) problems.push(`worst ${worst}ms`);
-  if (pars.length && medPar > PAR_BAR) problems.push(`par ${medPar.toFixed(0)}s > ${PAR_BAR.toFixed(0)}s bar`);
-  if (pars.length && medPpc < TIER_PPC[12]) problems.push(`ppc ${medPpc.toFixed(2)} under the summit`);
+  const genBudget = endlessGenBudget(spec.shape);
+  if (worst > genBudget) problems.push(`worst ${worst}ms > ${genBudget.toFixed(0)}ms`);
+  const bar = parBar(spec.shape);
+  if (pars.length && medPar > bar) problems.push(`par ${medPar.toFixed(0)}s > ${bar.toFixed(0)}s bar`);
+  const ppcBar = TIER_PPC[12] * PPC_FLOOR_MARGIN;
+  if (pars.length && medPpc < ppcBar) {
+    problems.push(`ppc ${medPpc.toFixed(2)} under the ${ppcBar.toFixed(2)} bar`);
+  }
 
   const ok = problems.length === 0;
   if (ok) kept.push({ ...spec, ppc: Number(medPpc.toFixed(2)) });

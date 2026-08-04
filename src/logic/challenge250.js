@@ -129,6 +129,32 @@ export const PAR_CEILING_SECONDS = 480;
 // and the 2-second generation cap still stands. Recorded here so the
 // endless build reads one constant rather than re-deriving the ruling.
 export const ENDLESS_PAR_CEILING_SECONDS = 600;
+
+// PER-SHAPE ceiling (his ruling 2026-08-04, after the four-shape pool came
+// back without a square board in it): a shape that needs more room to reach
+// the summit rate gets it. Classic takes +2 minutes, and Paving Stones takes
+// the same because it has the identical problem.
+//
+// Why those two and only those two. The summit rate and the ceiling are two
+// separate rulings, and for a gently-priced shape they intersect in a sliver:
+// Classic and Paving Stones need ~150 cells to reach 3.6 s/cell at all, and
+// 150 cells at that rate IS ten minutes, so every board of theirs that clears
+// the rate measures 557-601s against a 600s ceiling. Twelve minutes gives
+// them the headroom admission needs.
+//
+// 3D Cubes is NOT on this list, and raising its ceiling would not help: its
+// qualifying boards already price 222-464s, comfortably under. Its blocker is
+// generation time (2.1-9.8s against the 2-second cap), which is a different
+// ruling and is not moved here.
+export const ENDLESS_PAR_CEILING_BY_SHAPE = Object.freeze({
+  rect: 720,
+  cairo: 720,
+});
+
+/** The endless par ceiling that applies to a shape. */
+export function endlessParCeiling(shape) {
+  return ENDLESS_PAR_CEILING_BY_SHAPE[shape] || ENDLESS_PAR_CEILING_SECONDS;
+}
 export const GEN_CAP_MS = 2000;
 
 // Opener blocks: every draw must need at least this many deductions past
@@ -776,16 +802,44 @@ const BLOCKS = [
 // ~1990ms, and the shipped ceiling is 8.22 instead.
 export const ENDLESS_START_LEVEL = CHALLENGE_MAX_LEVEL + 1;   // 251
 
-// Pool-admission generation budget (see above). NOT the cap, which is
-// GEN_CAP_MS and applies to the authored ladder unchanged.
-export const ENDLESS_GEN_BUDGET_MS = 1500;
+// Pool-admission generation budget (see above), as a fraction of whatever cap
+// applies to the shape. NOT the cap itself: the authored ladder keeps
+// GEN_CAP_MS unchanged.
+export const ENDLESS_GEN_HEADROOM = 0.75;
+export const ENDLESS_GEN_BUDGET_MS = GEN_CAP_MS * ENDLESS_GEN_HEADROOM;   // 1500
+
+// PER-SHAPE generation cap in the endless zone (his ruling 2026-08-04):
+// 3D Cubes gets 3.5 seconds. It is the one shape whose exclusion was never
+// about the par ceiling — its qualifying boards price 222-464s, comfortably
+// under — but about time: its certifier has no Pass B and leans on Pass C
+// enumeration for every board, so it measured 2.1-9.8s against the 2-second
+// cap. Raising ITS cap is what lets it into the zone; raising its ceiling
+// would have done nothing.
+export const ENDLESS_GEN_CAP_BY_SHAPE = Object.freeze({
+  rhombille: 3500,
+});
+
+/** The endless generation cap that applies to a shape. */
+export function endlessGenCap(shape) {
+  return ENDLESS_GEN_CAP_BY_SHAPE[shape] || GEN_CAP_MS;
+}
+
+/** The admission budget for a shape: its cap, less the standing headroom. */
+export function endlessGenBudget(shape) {
+  return endlessGenCap(shape) * ENDLESS_GEN_HEADROOM;
+}
 
 // Difficulty escalation per endless BLOCK (5 levels), multiplicative on
-// par-per-cell from the T12 summit. At 1.05 the pool's ceiling is reached
-// around level 336, roughly 85 levels of climb past the crown; after that the
-// hardest material cycles, which is what "unbounded above 3.6" means in
-// practice once a proven pool runs out of ceiling.
-export const ENDLESS_PPC_GROWTH = 1.05;
+// par-per-cell from the T12 summit. Tuned to the pool's actual span rather
+// than picked round: the pool reaches 1.8x the summit, and at 1.035 that
+// takes about 17 blocks, so the climb runs roughly 85 levels past the crown
+// before the hardest material starts cycling. That cycling is what
+// "unbounded above 3.6" means in practice once a PROVEN pool runs out of
+// ceiling — the alternative is promising a difficulty nobody has generated.
+// Re-check this whenever the pool's top moves: it fell from 7.9 to 6.6 when
+// par headroom became an admission rule, and a growth rate left at 1.05
+// would then have reached the top in 12 blocks instead of 17.
+export const ENDLESS_PPC_GROWTH = 1.035;
 
 // How many of the nearest-priced specs the per-level draw chooses among. Wide
 // enough that a block of five is not one board five times, narrow enough that
@@ -820,33 +874,42 @@ const E = (ppc, spec) => Object.freeze({ ...spec, ppc, gimmicks: Object.freeze(s
 // reach the summit rate at all, and 150 x 4 s/cell IS ten minutes), which is
 // why each keeps only the few entries that clear it with room.
 export const ENDLESS_SPECS = Object.freeze([
-  E(3.60, T('deltoidal', 3, 3, 54, 15)),
-  E(3.65, T('4.8.8', 7, 8, 98, 30, ['wormhole', 'compass', 'locked'], { gimmickLevel: 120 })),
-  E(3.66, T('hex', 9, 8, 72, 31)),
-  E(3.69, T('floret', 3, 3, 54, 20, ['sonar', 'liar', 'walls'], { gimmickLevel: 100 })),
+  E(3.73, R(11, 14, 57, ['liar'], { gimmickLevel: 100 })),
+  E(3.73, R(11, 14, 57, ['walls', 'liar'], { gimmickLevel: 100 })),
   E(3.79, T('hex', 9, 8, 72, 31, ['worm', 'walls'], { gimmickLevel: 100 })),
-  E(3.87, T('4.8.8', 6, 7, 72, 27, ['wormhole', 'compass', 'locked'], { gimmickLevel: 120 })),
+  E(3.84, T('cairo', 9, 9, 144, 60)),
+  E(3.85, T('4.8.8', 6, 7, 72, 27, ['wormhole', 'compass', 'locked'], { gimmickLevel: 120 })),
   E(3.87, T('hex', 11, 10, 110, 37, ['walls'], { gimmickLevel: 120 })),
-  E(3.95, T('hex', 11, 10, 110, 37, ['worm', 'walls'], { gimmickLevel: 100 })),
+  E(3.91, R(12, 13, 58, ['walls'], { gimmickLevel: 100 })),
+  E(3.93, T('cairo', 9, 9, 144, 56)),
+  E(3.96, T('hex', 11, 10, 110, 37, ['worm', 'walls'], { gimmickLevel: 100 })),
+  E(4.04, T('cairo', 9, 9, 144, 48)),
   E(4.05, T('deltoidal', 2, 3, 36, 12, ['mystery', 'locked'], { gimmickLevel: 100 })),
-  E(4.09, T('hex', 9, 8, 72, 31, ['compass', 'walls'], { gimmickLevel: 120 })),
   E(4.09, T('floret', 3, 3, 54, 22)),
-  E(4.17, T('4.8.8', 6, 7, 72, 29, ['wormhole', 'locked'], { gimmickLevel: 120 })),
-  E(4.27, T('hex', 9, 8, 72, 31, ['worm', 'compass', 'walls'], { gimmickLevel: 120 })),
+  E(4.10, T('hex', 9, 8, 72, 31, ['compass', 'walls'], { gimmickLevel: 120 })),
+  E(4.13, T('cairo', 9, 9, 144, 52, ['walls'], { gimmickLevel: 100 })),
+  E(4.13, T('rhombille', 4, 5, 60, 24, ['locked', 'sonar', 'walls'], { gimmickLevel: 100 })),
+  E(4.20, T('rhombille', 4, 5, 60, 22, ['locked', 'sonar', 'walls'], { gimmickLevel: 120 })),
+  E(4.21, T('cairo', 9, 9, 144, 48, ['liar'], { gimmickLevel: 100 })),
+  E(4.25, T('hex', 9, 8, 72, 31, ['worm', 'compass', 'walls'], { gimmickLevel: 120 })),
+  E(4.28, T('4.8.8', 6, 7, 72, 29, ['wormhole', 'locked'], { gimmickLevel: 120 })),
+  E(4.28, T('cairo', 9, 9, 144, 43, ['liar'], { gimmickLevel: 100 })),
   E(4.33, T('hex', 11, 10, 110, 37, ['compass', 'walls'], { gimmickLevel: 100 })),
-  E(4.38, T('4.8.8', 7, 8, 98, 33, ['wormhole', 'locked'], { gimmickLevel: 120 })),
-  E(4.44, T('hex', 11, 10, 110, 37, ['worm', 'compass', 'walls'], { gimmickLevel: 100 })),
-  E(4.50, T('deltoidal', 3, 3, 54, 15, ['locked', 'sonar', 'walls'], { gimmickLevel: 100 })),
-  E(4.55, T('floret', 3, 3, 54, 23)),
+  E(4.36, T('deltoidal', 3, 3, 54, 15, ['locked', 'sonar', 'walls'], { gimmickLevel: 100 })),
+  E(4.38, T('rhombille', 4, 5, 60, 24, ['sonar', 'walls'], { gimmickLevel: 120 })),
+  E(4.44, T('4.8.8', 7, 8, 98, 33, ['wormhole', 'locked'], { gimmickLevel: 120 })),
+  E(4.45, T('hex', 11, 10, 110, 37, ['worm', 'compass', 'walls'], { gimmickLevel: 100 })),
+  E(4.51, T('cairo', 9, 9, 144, 48, ['locked'], { gimmickLevel: 100 })),
+  E(4.54, T('floret', 3, 3, 54, 23)),
+  E(4.56, T('cairo', 9, 9, 144, 43, ['locked'], { gimmickLevel: 100 })),
   E(4.70, T('4.8.8', 6, 7, 72, 31, ['locked'], { gimmickLevel: 100 })),
+  E(5.04, T('floret', 3, 3, 54, 23, ['sonar', 'liar', 'walls'], { gimmickLevel: 100 })),
   E(5.09, T('4.8.8', 6, 7, 72, 31, ['locked'], { gimmickLevel: 120 })),
-  E(5.10, T('floret', 3, 3, 54, 23, ['sonar', 'liar', 'walls'], { gimmickLevel: 100 })),
-  E(5.21, T('deltoidal', 2, 4, 48, 15, ['sonar', 'walls'], { gimmickLevel: 120 })),
-  E(5.47, T('4.8.8', 7, 8, 98, 36, ['locked'], { gimmickLevel: 100 })),
-  E(5.49, T('deltoidal', 2, 3, 36, 12, ['locked', 'sonar', 'walls'], { gimmickLevel: 120 })),
-  E(5.87, T('floret', 3, 3, 54, 23, ['sonar', 'liar'], { gimmickLevel: 120 })),
-  E(6.53, T('floret', 3, 4, 72, 29, ['liar', 'walls'], { gimmickLevel: 100 })),
-  E(7.06, T('deltoidal', 2, 3, 36, 14, ['locked', 'sonar', 'walls'], { gimmickLevel: 120 })),
+  E(5.19, T('deltoidal', 2, 4, 48, 15, ['sonar', 'walls'], { gimmickLevel: 120 })),
+  E(5.43, T('deltoidal', 2, 3, 36, 12, ['locked', 'sonar', 'walls'], { gimmickLevel: 120 })),
+  E(5.57, T('4.8.8', 7, 8, 98, 36, ['locked'], { gimmickLevel: 100 })),
+  E(5.86, T('floret', 3, 3, 54, 23, ['sonar', 'liar'], { gimmickLevel: 120 })),
+  E(6.56, T('floret', 3, 4, 72, 29, ['liar', 'walls'], { gimmickLevel: 100 })),
 ]);
 
 const ENDLESS_MAX_PPC = ENDLESS_SPECS.reduce((m, e) => Math.max(m, e.ppc), 0);

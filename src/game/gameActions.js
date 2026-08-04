@@ -1254,7 +1254,10 @@ export function revealCell(row, col) {
 
         // Start mine shift timer if active
         if (state.gimmickData.mineShift) {
-          startMineShift(state.gimmickData.mineShift.interval);
+          startMineShift(
+            state.gimmickData.mineShift.interval,
+            state.gimmickData.mineShift.count || 1,
+          );
         }
       }
 

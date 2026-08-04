@@ -19,6 +19,7 @@ import {
   CHALLENGE_MAX_LEVEL, CHALLENGE_BLOCK_SIZE, TIER_PPC,
   ENDLESS_SPECS, ENDLESS_START_LEVEL, ENDLESS_PPC_GROWTH, ENDLESS_GEN_BUDGET_MS,
   ENDLESS_PAR_CEILING_SECONDS, GEN_CAP_MS, ENDLESS_VARIETY_MAX_RATIO,
+  ENDLESS_GEN_HEADROOM, endlessParCeiling, endlessGenCap, endlessGenBudget,
   challengeSpecForLevel, endlessSpecForLevel, endlessTargetPpc, blockStartLevel,
 } from '../src/logic/challenge250.js';
 import { TILING_TYPES, buildTiling, containerIsStorable } from '../src/logic/tilingGeometry.js';
@@ -30,7 +31,11 @@ const SUMMIT = TIER_PPC[12];
 test('every pool entry is a legal ladder spec at or above the summit', () => {
   assert.ok(ENDLESS_SPECS.length >= 20, `the pool is only ${ENDLESS_SPECS.length} entries deep`);
   for (const s of ENDLESS_SPECS) {
-    assert.ok(s.ppc >= SUMMIT, `${s.shape}: ppc ${s.ppc} is below the ${SUMMIT} summit floor`);
+    // Above the floor WITH MARGIN. The summit is a floor by ruling, and an
+    // entry stored at exactly 3.60 reads under it on a smaller sample — the
+    // validator caught two rect entries doing exactly that at 5 seeds.
+    assert.ok(s.ppc >= SUMMIT * 1.02,
+      `${s.shape}: ppc ${s.ppc} sits on the ${SUMMIT} summit floor with no margin`);
     assert.ok(Number.isInteger(s.mines) && s.mines > 0, `${s.shape}: bad mine count`);
     assert.ok(Number.isInteger(s.cells) && s.cells > 0, `${s.shape}: bad cell count`);
 
@@ -58,38 +63,44 @@ test('every pool entry is a legal ladder spec at or above the summit', () => {
   }
 });
 
-test('the pool carries four shapes, and the other three are measured exclusions', () => {
-  // "Mixed board lengths" is his wording, and four of the seven shapes carry
-  // it. The other three are absent for MEASURED reasons rather than
-  // oversight, and all three are the same squeeze between two of his rulings
-  // — "unbounded above 3.6 s/cell" and "the par ceiling lifts to ten
-  // minutes" — which for a gently-priced shape intersect in a sliver:
+test('the pool carries all seven board shapes', () => {
+  // "Mixed board lengths" is his wording, and a pool missing a shape would
+  // quietly retire it from the back half of the game. Three shapes needed a
+  // per-shape allowance to get here, each for a measured reason:
   //
   //   - CLASSIC and PAVING STONES price so gently that reaching 3.6 s/cell
   //     takes ~150 cells, and 150 cells at that rate IS ten minutes. Their
-  //     qualifying boards measure 564-596s against a 600s ceiling, so they
-  //     clear the ruling but not the headroom admission needs (see the pool's
-  //     own note: a median par moves about +/-30s between seed samples, so an
-  //     entry measured at 595s fails validation on different seeds).
-  //   - 3D CUBES is squeezed the other way: big enough to reach the summit
-  //     rate and its generation blows the budget (2.1s to 9.8s measured),
-  //     small enough to generate fast and it cannot reach the rate at all
-  //     (0 of 96 candidates from 36 to 75 cells cleared 3.6, while only 5 of
-  //     those failed on time). Its certifier has no Pass B and leans on Pass
-  //     C enumeration for every board, which CLAUDE.md already prices at two
-  //     orders of magnitude above the 4.8.8.
-  //
-  // The consequence is real and is Christopher's to weigh rather than mine:
-  // a player past L250 sees Octagons, Honeycomb, Petals and Kites, and never
-  // a Classic board again. Widening it means moving one of the two rulings.
+  //     boards measured 557-601s against a 600s ceiling, so they cleared the
+  //     summit ruling and not the headroom. His ruling: +2 minutes each.
+  //   - 3D CUBES was never about the ceiling — its qualifying boards price
+  //     222-464s, comfortably under. Its certifier has no Pass B and leans on
+  //     Pass C for every board, so it measured 2.1-9.8s against the 2-second
+  //     generation cap. His ruling: 3.5 seconds for that shape.
   const shapes = new Set(ENDLESS_SPECS.map((s) => s.shape));
-  for (const t of ['hex', '4.8.8', 'floret', 'deltoidal']) {
+  for (const t of ['rect', ...TILING_TYPES]) {
     assert.ok(shapes.has(t), `the endless pool has no ${t} entry`);
   }
-  // Asserted absences, so a shape sneaking back in is a decision rather than
-  // a surprise: if one now qualifies, delete its line AND the note above.
-  for (const t of ['rect', 'cairo', 'rhombille']) {
-    assert.ok(!shapes.has(t), `${t} entered the endless pool — update the note above`);
+});
+
+test('the per-shape allowances are the ruled ones, and apply only where ruled', () => {
+  // Each allowance is a deliberate exception to a ruling, so it must not
+  // spread by accident to a shape that never needed it.
+  assert.equal(endlessParCeiling('rect'), 720, 'Classic: +2 minutes');
+  assert.equal(endlessParCeiling('cairo'), 720, 'Paving Stones: +2 minutes');
+  for (const t of ['hex', '4.8.8', 'floret', 'deltoidal', 'rhombille']) {
+    assert.equal(endlessParCeiling(t), ENDLESS_PAR_CEILING_SECONDS,
+      `${t} keeps the standard ten-minute ceiling`);
+  }
+
+  assert.equal(endlessGenCap('rhombille'), 3500, '3D Cubes: 3.5 seconds');
+  for (const t of ['rect', 'hex', '4.8.8', 'cairo', 'floret', 'deltoidal']) {
+    assert.equal(endlessGenCap(t), GEN_CAP_MS, `${t} keeps the standard generation cap`);
+  }
+
+  // And the admission budget tracks whatever cap applies, rather than being
+  // a second constant that can drift away from it.
+  for (const t of ['rect', 'rhombille']) {
+    assert.equal(endlessGenBudget(t), endlessGenCap(t) * ENDLESS_GEN_HEADROOM);
   }
 });
 
@@ -98,8 +109,8 @@ test('the admission budget keeps real margin under the generation cap', () => {
   // margin, or the pool has none of the headroom the comment claims.
   assert.ok(ENDLESS_GEN_BUDGET_MS < GEN_CAP_MS,
     'the pool budget must sit under the ladder cap');
-  assert.ok(ENDLESS_GEN_BUDGET_MS <= GEN_CAP_MS * 0.8,
-    `${ENDLESS_GEN_BUDGET_MS}ms is not a meaningful margin under ${GEN_CAP_MS}ms`);
+  assert.ok(ENDLESS_GEN_HEADROOM <= 0.8,
+    `${ENDLESS_GEN_HEADROOM} is not a meaningful margin`);
   assert.ok(ENDLESS_PAR_CEILING_SECONDS === 600, 'his ruling: ten minutes in the endless zone');
 });
 
@@ -197,11 +208,11 @@ test('GOLDEN: the first endless block is fixed', () => {
     got.push(`${s.shape}:${s.cells}c:${s.mines}m:[${s.gimmicks.join('+')}]`);
   }
   assert.deepEqual(got, [
-    'hex:72c:31m:[compass+walls]',
-    'floret:54c:20m:[sonar+liar+walls]',
-    'deltoidal:36c:12m:[mystery+locked]',
-    '4.8.8:98c:30m:[wormhole+compass+locked]',
+    'cairo:144c:48m:[]',
     'hex:110c:37m:[worm+walls]',
+    'rect:156c:58m:[walls]',
+    '4.8.8:72c:27m:[wormhole+compass+locked]',
+    'floret:54c:22m:[]',
   ]);
 });
 
@@ -219,6 +230,7 @@ test('a block mixes its board shapes rather than repeating one', () => {
     for (let i = 0; i < CHALLENGE_BLOCK_SIZE; i++) shapes.push(endlessSpecForLevel(start + i).shape);
     assert.equal(new Set(shapes).size, Math.min(poolShapes, CHALLENGE_BLOCK_SIZE),
       `block at L${start} used ${new Set(shapes).size} shapes: ${shapes.join(', ')}`);
+    // With seven shapes in the pool that means five distinct every time.
   }
 });
 
