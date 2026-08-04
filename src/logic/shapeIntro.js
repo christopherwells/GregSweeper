@@ -31,38 +31,23 @@ const PATCH_DIMS = {
   deltoidal: { M: 3, N: 3 },
 };
 
-// Per-shape copy. Each card answers the one question a player actually
-// has on arrival — "what counts as next to what?" — because that is the
-// only rule the shape changes. Everything else about the game is
-// identical, and saying so is what keeps the card calming rather than
-// alarming.
+// Per-shape copy: ONE description, no flavor line (his ruling
+// 2026-08-04, "only the description is necessary, not the italics
+// flavor"). The card answers the single question a player actually has
+// on arrival — what counts as next to what — because that is the only
+// rule the shape changes. A second, softer sentence was either restating
+// the first or reaching for a characterization to fill the slot, which
+// is how the deltoidal card ended up calling itself "rich".
+//
 // (No em-dashes anywhere in this table: player copy takes none, per his
 // standing voice rule.)
 const SHAPE_COPY = {
-  hex: {
-    neighbors: 'Every hexagon touches six others, and all six meet along a full edge. Nothing here touches at a corner.',
-    note: 'Six neighbors is fewer than a classic board’s eight, so the numbers run a little lower than you are used to.',
-  },
-  '4.8.8': {
-    neighbors: 'Octagons and small squares interlock. An octagon touches eight cells and a square touches four. Two octagons never meet at a corner, because a square always sits between them.',
-    note: 'Numbers on the small squares see much less than the ones on the octagons, so they settle fastest.',
-  },
-  rhombille: {
-    neighbors: 'The rhombi stack into what looks like a wall of cubes. A rhombus touches ten cells: four along its edges, six more at the shared corners.',
-    note: 'That is a wider neighborhood than a classic square grid, so numbers here run higher than they look like they should.',
-  },
-  cairo: {
-    neighbors: 'Each pentagon touches seven others: five along its edges, two more at corners.',
-    note: 'The pentagons point in four different directions, so it pays to check which edges a number actually has before counting.',
-  },
-  floret: {
-    neighbors: 'Six pentagons pinwheel around each hub. A pentagon touches eight others, edges and corners together.',
-    note: 'The rosettes are the thing to see: once you spot where one flower ends and the next begins, the board reads much faster.',
-  },
-  deltoidal: {
-    neighbors: 'Each kite touches nine others. Three kites meet at every wide corner and six at the narrow ones.',
-    note: 'This is the richest board in the game to solve, so expect to lean on the harder patterns more often than anywhere else.',
-  },
+  hex: 'Every hexagon touches six others, and all six meet along a full edge. Nothing here touches at a corner.',
+  '4.8.8': 'Octagons and small squares interlock. An octagon touches eight cells and a square touches four. Two octagons never meet at a corner, because a square always sits between them.',
+  rhombille: 'The rhombi stack into what looks like a wall of cubes. A rhombus touches ten cells: four along its edges, six more at the shared corners.',
+  cairo: 'Each pentagon touches seven others: five along its edges, two more at its corners.',
+  floret: 'Six pentagons pinwheel around each hub. A pentagon touches eight others, edges and corners together.',
+  deltoidal: 'Each kite touches nine others. Three kites meet at every wide corner and six at the narrow ones.',
 };
 
 export const SHAPE_INTRO_TYPES = Object.freeze(TILING_TYPES.slice());
@@ -145,13 +130,13 @@ export function shapePatchSVG(type, size = 96) {
 }
 
 /**
- * The card's content for a shape: its player-facing name, the adjacency
- * sentence, and the closing note.
+ * The card's content for a shape: its player-facing name and the one
+ * adjacency description.
  * @param {string} type
- * @returns {{title: string, neighbors: string, note: string} | null}
+ * @returns {{title: string, neighbors: string} | null}
  */
 export function shapeIntroCard(type) {
   const copy = SHAPE_COPY[type];
   if (!copy) return null;
-  return { title: tilingLabel(type), neighbors: copy.neighbors, note: copy.note };
+  return { title: tilingLabel(type), neighbors: copy };
 }

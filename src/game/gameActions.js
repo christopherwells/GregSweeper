@@ -87,14 +87,12 @@ function showShapeIntro(type) {
   const patchEl = document.getElementById('shape-intro-patch');
   const nameEl = document.getElementById('shape-intro-name');
   const descEl = document.getElementById('shape-intro-desc');
-  const noteEl = document.getElementById('shape-intro-note');
   const okBtn = document.getElementById('shape-intro-ok');
   if (!card || !patchEl || !nameEl || !descEl || !okBtn) return;
 
   patchEl.innerHTML = shapePatchSVG(type);
   nameEl.textContent = card.title;
   descEl.textContent = card.neighbors;
-  if (noteEl) noteEl.textContent = card.note;
   const close = () => hideModal('shape-intro-overlay');
   okBtn.onclick = close;
   showModal('shape-intro-overlay');

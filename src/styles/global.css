@@ -6948,11 +6948,6 @@ button:focus-visible {
   align-items: center;
   margin: 2px auto 0;
 }
-.shape-intro-note {
-  margin-top: 10px;
-  font-style: italic;
-  opacity: 0.85;
-}
 .shape-intro-content .action-btn {
   margin-top: 16px;
 }

@@ -18,15 +18,16 @@ test('every shipped tiling has a card, and its title is the player-facing name',
     const card = shapeIntroCard(type);
     assert.ok(card, `${type} has no card`);
     assert.equal(card.title, tilingLabel(type));
-    assert.ok(card.neighbors.length > 20 && card.note.length > 20);
+    assert.ok(card.neighbors.length > 20, `${type} description is too thin to be useful`);
+    assert.equal(card.note, undefined, 'the card carries ONE description, no flavor line');
   }
   assert.equal(shapeIntroCard('nonsense'), null, 'an unknown shape yields nothing, never a broken card');
 });
 
 test('card copy takes no em-dashes (his standing player-copy rule)', () => {
   for (const type of TILING_TYPES) {
-    const { title, neighbors, note } = shapeIntroCard(type);
-    for (const [field, text] of [['title', title], ['neighbors', neighbors], ['note', note]]) {
+    const { title, neighbors } = shapeIntroCard(type);
+    for (const [field, text] of [['title', title], ['neighbors', neighbors]]) {
       assert.ok(!text.includes('—'), `${type}.${field} carries an em-dash`);
       assert.ok(!text.includes('–'), `${type}.${field} carries an en-dash`);
     }
