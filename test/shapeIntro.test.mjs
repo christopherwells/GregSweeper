@@ -34,6 +34,48 @@ test('card copy takes no em-dashes (his standing player-copy rule)', () => {
   }
 });
 
+test('every number in the copy matches the lattice it describes', () => {
+  // Both errors in the first draft were factual, not stylistic (his
+  // catches): the honeycomb card denied corner CONTACT when what is
+  // absent is corner-ONLY neighbors, and the Octagons card said two
+  // octagons never meet at a corner when every octagon pair that touches
+  // at all shares a full edge. So the counts are measured here rather
+  // than trusted, against the same geometry the board is built from.
+  const WORD = { two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
+  for (const type of TILING_TYPES) {
+    const T = buildTiling(type, 6, 6);
+    const maxValence = Math.max(...T.adj.map((a) => a.length));
+    const c = T.cellPos[T.centerIndex];
+    let hub = T.centerIndex, best = Infinity;
+    for (let i = 0; i < T.adj.length; i++) {
+      if (T.adj[i].length !== maxValence) continue;
+      const p = T.cellPos[i];
+      const d = (p.cx - c.cx) ** 2 + (p.cy - c.cy) ** 2;
+      if (d < best) { best = d; hub = i; }
+    }
+    const hubVerts = new Set(T.cellVerts[hub]);
+    let edge = 0, cornerOnly = 0;
+    for (const n of T.adj[hub]) {
+      (T.cellVerts[n].filter((v) => hubVerts.has(v)).length >= 2 ? edge++ : cornerOnly++);
+    }
+    const text = shapeIntroCard(type).neighbors;
+    const said = [...text.matchAll(/\b(two|three|four|five|six|seven|eight|nine|ten)\b/gi)]
+      .map((m) => WORD[m[1].toLowerCase()]);
+    assert.ok(said.includes(edge + cornerOnly),
+      `${type}: copy never states the total neighbor count ${edge + cornerOnly}`);
+    if (cornerOnly > 0) {
+      assert.ok(said.includes(edge) && said.includes(cornerOnly),
+        `${type}: copy must state the ${edge} edge and ${cornerOnly} corner-only neighbors`);
+      assert.match(text, /corner/, `${type}: copy must mention corners, which it has`);
+    } else {
+      // No corner-only neighbors: the copy may say so, but must never
+      // claim the cells do not TOUCH at corners (they do).
+      assert.ok(!/(never|not|nothing)\s+\w*\s*(meet|touch)\w*\s+at a corner/i.test(text),
+        `${type}: copy denies corner contact, which is false — it is corner-ONLY neighbors that are absent`);
+    }
+  }
+});
+
 test('the symbol is the MINIMUM REPEATED UNIT: one cell plus everything it touches', () => {
   for (const type of TILING_TYPES) {
     const svg = shapePatchSVG(type);

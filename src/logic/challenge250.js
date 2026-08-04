@@ -205,13 +205,19 @@ const BLOCKS = [
     ],
   },
   {
+    // The ramp keeps climbing THROUGH the liar intro (his 2026-08-04
+    // follow-up: "the ramp is fine, but maybe smooth out the 10 to 15 a
+    // little"). L10 lands at ~16 deductions and this block used to open
+    // at ~24 on a 9x9 — a step big enough to read as a wall right where
+    // a new modifier arrives. It now opens on the 8x8 the player just
+    // finished and grows into the 9x9 across the block.
     block: 3, tier: 2, ppc: null, shape: 'rect',
     beat: 'MOD INTRO: Liar. The pink cell; ±1 as a disjunction.',
     levels: [
-      R(9, 9, 14, ['liar'], { gimmickLevel: INTRO_RAMP.liar[0] }),
-      R(9, 9, 14, ['liar'], { gimmickLevel: INTRO_RAMP.liar[1] }),
-      R(9, 9, 15, ['liar'], { gimmickLevel: INTRO_RAMP.liar[2] }),
-      R(9, 9, 15, ['liar'], { gimmickLevel: INTRO_RAMP.liar[3] }),
+      R(8, 8, 11, ['liar'], { gimmickLevel: INTRO_RAMP.liar[0], maxDeductions: 22 }),
+      R(8, 8, 12, ['liar'], { gimmickLevel: INTRO_RAMP.liar[1], maxDeductions: 24 }),
+      R(9, 9, 14, ['liar'], { gimmickLevel: INTRO_RAMP.liar[2], maxDeductions: 27 }),
+      R(9, 9, 15, ['liar'], { gimmickLevel: INTRO_RAMP.liar[3], maxDeductions: 30 }),
       R(9, 9, 16, ['liar'], { gimmickLevel: INTRO_RAMP.liar[4] }),
     ],
   },

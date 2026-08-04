@@ -187,10 +187,24 @@ test('the L1-10 ramp: boards and deduction caps both climb, and L1 is a handful 
       `L${ramp[i].level} is smaller than L${ramp[i - 1].level}`);
   }
   assert.ok(ramp[9].cells > ramp[0].cells, 'the board grows across the ramp');
-  // Past the ramp nothing is capped — those boards run their full length.
-  for (const s of allSpecs.filter((x) => x.level > 10)) {
-    assert.equal(s.maxDeductions, undefined, `L${s.level} must not carry a ramp cap`);
+});
+
+test('the ramp keeps climbing through the liar intro, then hands off uncapped', () => {
+  // His follow-up 2026-08-04: "the ramp is fine, but maybe smooth out
+  // the 10 to 15 a little." L10 lands around 16 deductions and block 3
+  // used to open near 24 on a 9x9 — a step that read as a wall right
+  // where a new modifier arrives. The caps now continue across L11-14
+  // and stop there.
+  const capped = allSpecs.filter((s) => s.maxDeductions > 0).map((s) => s.level);
+  assert.deepEqual(capped, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+    'exactly the opening ramp carries caps');
+  for (let lv = 2; lv <= 14; lv++) {
+    assert.ok(challengeSpecForLevel(lv).maxDeductions >= challengeSpecForLevel(lv - 1).maxDeductions,
+      `L${lv} caps tighter than L${lv - 1} — the ramp must not step down`);
   }
+  // L15 closes the block uncapped, so the handoff into the ordinary
+  // floor-only regime happens INSIDE a block rather than at its edge.
+  assert.equal(challengeSpecForLevel(15).maxDeductions, undefined);
 });
 
 test('opener blocks are rect-only with the deduction floor; the braid never carries it', () => {

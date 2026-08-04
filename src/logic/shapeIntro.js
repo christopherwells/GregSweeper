@@ -41,13 +41,23 @@ const PATCH_DIMS = {
 //
 // (No em-dashes anywhere in this table: player copy takes none, per his
 // standing voice rule.)
+// Every count here is MEASURED against the lattice, not asserted: the
+// test walks each shape's own geometry, splits the hub cell's neighbors
+// into edge-sharing and corner-only, and fails if the copy disagrees.
+// Two errors in the first draft are why (both his catches): the
+// honeycomb card said nothing touches at a corner, when what is true is
+// that nothing touches ONLY at a corner (three hexagons do meet at every
+// vertex, and all three also share edges); and the Octagons card said
+// two octagons never meet at a corner, when in fact every octagon pair
+// that touches at all shares a full edge, and the pairs a square
+// separates do not touch anywhere.
 const SHAPE_COPY = {
-  hex: 'Every hexagon touches six others, and all six meet along a full edge. Nothing here touches at a corner.',
-  '4.8.8': 'Octagons and small squares interlock. An octagon touches eight cells and a square touches four. Two octagons never meet at a corner, because a square always sits between them.',
-  rhombille: 'The rhombi stack into what looks like a wall of cubes. A rhombus touches ten cells: four along its edges, six more at the shared corners.',
-  cairo: 'Each pentagon touches seven others: five along its edges, two more at its corners.',
-  floret: 'Six pentagons pinwheel around each hub. A pentagon touches eight others, edges and corners together.',
-  deltoidal: 'Each kite touches nine others. Three kites meet at every wide corner and six at the narrow ones.',
+  hex: 'Every hexagon touches six others, and all six meet along a full edge. Nothing here counts as a neighbor by corner alone.',
+  '4.8.8': 'Octagons and small squares interlock. An octagon touches eight cells and a square touches four, and every one of those neighbors shares a full edge. Two octagons set apart by a square do not touch at all.',
+  rhombille: 'The rhombi stack into what looks like a wall of cubes. A rhombus touches ten cells: four along its edges, and six more that meet it only at a corner.',
+  cairo: 'Each pentagon touches seven others: five along its edges, and two more that meet it only at a corner.',
+  floret: 'Six pentagons pinwheel around each hub. A pentagon touches eight others: five along its edges, and three more that meet it only at a corner.',
+  deltoidal: 'Each kite touches nine others: four along its edges, and five more that meet it only at a corner.',
 };
 
 export const SHAPE_INTRO_TYPES = Object.freeze(TILING_TYPES.slice());
