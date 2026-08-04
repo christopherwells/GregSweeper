@@ -4,6 +4,7 @@ import {
 } from '../storage/statsStorage.js';
 import { getLocalDateString, getWeekStart, getWeekDayIndex } from '../logic/seededRandom.js';
 import { isSaveResumable } from '../logic/resumeEligibility.js';
+import { challengeSpecForLevel } from '../logic/challenge250.js';
 import { recomputeDisplayedMines } from '../logic/gimmicks.js';
 import { defineCellNeighbors } from '../logic/adjacency.js';
 import {
@@ -90,6 +91,11 @@ export function persistGameState() {
     // line and its timed/{pushId} fit row.
     timedPar: state.timedPar || 0,
     timedFeatures: state.timedFeatures || null,
+    // Challenge 250 draw identity: the seed is what live worm hatches key
+    // their traits on (matching the wormLoad the builder priced), and the
+    // par feeds the expected-time surfaces. Both must survive a resume.
+    challengeBoardSeed: state.challengeBoardSeed || null,
+    challengePar: state.challengePar || 0,
     boardCertificate: state.boardCertificate || null,
     weeklySeed: state.weeklySeed || null,
     weeklyDay: state.weeklyDay,
@@ -189,6 +195,14 @@ export function tryResumeGame(mode) {
   state.usedPowerUps = gs.usedPowerUps === true;
   state.timedPar = typeof gs.timedPar === 'number' ? gs.timedPar : 0;
   state.timedFeatures = gs.timedFeatures || null;
+  // Challenge 250 draw identity (worm-trait seed + level par). Pre-engine
+  // saves lack both; the worm chain then falls back to the bare-level
+  // identity, which is exactly what those boards hatched under.
+  state.challengeBoardSeed = gs.challengeBoardSeed || null;
+  state.challengePar = typeof gs.challengePar === 'number' ? gs.challengePar : 0;
+  if (state.gameMode === 'normal') {
+    state.challengeSpec = challengeSpecForLevel(gs.currentLevel || 1);
+  }
   // Restore the no-guess certificate so the Certified chip survives a
   // resume (updateActiveGimmickBar below re-renders it). Saves from
   // before the chip shipped lack the field and resume chipless.

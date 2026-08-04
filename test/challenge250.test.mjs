@@ -11,6 +11,7 @@ import {
   CHALLENGE_MAX_LEVEL, CHALLENGE_BLOCK_SIZE, CHALLENGE_BLOCK_COUNT,
   CHALLENGE_BLOCKS, TIER_PPC, challengeSpecForLevel, blockStartLevel,
   ppcBandFor, specFingerprint, OPENER_MIN_DEDUCTIONS,
+  MOD_INTRO_BLOCKS, SHAPE_INTRO_BLOCKS,
 } from '../src/logic/challenge250.js';
 import { buildTiling } from '../src/logic/tilingGeometry.js';
 import { generateTilingBoard, TILING_SAFE_GIMMICKS } from '../src/logic/tilingGenerator.js';
@@ -167,6 +168,45 @@ test('gauntlet blocks run the mapped shape orders; L250 is the 3-stacked Kites c
   assert.equal(crown.gimmicks.length, 3, 'the crown is 3-stacked');
 });
 
+test('the L1-10 ramp: boards and deduction caps both climb, and L1 is a handful of clicks', () => {
+  // His ruling 2026-08-04 ("when I meant lvl 1 is a few clicks, I meant
+  // just a few clicks"). A FLOOR cannot make a board short — only a cap
+  // can — so the ramp levels carry maxDeductions and it loosens monotonically.
+  const ramp = allSpecs.filter((s) => s.level <= 10);
+  assert.equal(ramp.length, 10);
+  for (const s of ramp) {
+    assert.ok(s.maxDeductions > 0, `L${s.level} must carry a deduction cap`);
+    assert.ok(s.maxDeductions >= s.minDeductions, `L${s.level} cap under its own floor`);
+  }
+  assert.equal(ramp[0].maxDeductions, 5, 'L1 is capped at five deductions');
+  assert.equal(ramp[0].cells, 25, 'L1 is a 5x5');
+  for (let i = 1; i < ramp.length; i++) {
+    assert.ok(ramp[i].maxDeductions >= ramp[i - 1].maxDeductions,
+      `L${ramp[i].level} caps tighter than L${ramp[i - 1].level} — the ramp must not step down`);
+    assert.ok(ramp[i].cells >= ramp[i - 1].cells,
+      `L${ramp[i].level} is smaller than L${ramp[i - 1].level}`);
+  }
+  assert.ok(ramp[9].cells > ramp[0].cells, 'the board grows across the ramp');
+});
+
+test('the ramp keeps climbing through the liar intro, then hands off uncapped', () => {
+  // His follow-up 2026-08-04: "the ramp is fine, but maybe smooth out
+  // the 10 to 15 a little." L10 lands around 16 deductions and block 3
+  // used to open near 24 on a 9x9 — a step that read as a wall right
+  // where a new modifier arrives. The caps now continue across L11-14
+  // and stop there.
+  const capped = allSpecs.filter((s) => s.maxDeductions > 0).map((s) => s.level);
+  assert.deepEqual(capped, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+    'exactly the opening ramp carries caps');
+  for (let lv = 2; lv <= 14; lv++) {
+    assert.ok(challengeSpecForLevel(lv).maxDeductions >= challengeSpecForLevel(lv - 1).maxDeductions,
+      `L${lv} caps tighter than L${lv - 1} — the ramp must not step down`);
+  }
+  // L15 closes the block uncapped, so the handoff into the ordinary
+  // floor-only regime happens INSIDE a block rather than at its edge.
+  assert.equal(challengeSpecForLevel(15).maxDeductions, undefined);
+});
+
 test('opener blocks are rect-only with the deduction floor; the braid never carries it', () => {
   for (const s of allSpecs) {
     if (s.block <= 5) {
@@ -255,6 +295,40 @@ test('tiers never step down across blocks except at the six intro dips', () => {
     while (back >= 0 && CHALLENGE_BLOCKS[back].dip) back--;
     const anchor = back >= 0 ? CHALLENGE_BLOCKS[back].tier : prev.tier;
     assert.ok(cur.tier >= anchor, `block ${b} steps the plateau down (T${cur.tier} after T${anchor})`);
+  }
+});
+
+test('the intro-block exports match the levels table (checkpoint labels read these)', () => {
+  assert.deepEqual(MOD_INTRO_BLOCKS, {
+    2: 'walls', 3: 'liar', 4: 'mystery', 7: 'locked', 10: 'wormhole',
+    13: 'mirror', 16: 'sonar', 19: 'compass', 22: 'worm',
+  });
+  assert.deepEqual(SHAPE_INTRO_BLOCKS, {
+    6: 'hex', 9: '4.8.8', 12: 'rhombille', 15: 'cairo', 21: 'floret', 38: 'deltoidal',
+  });
+  // Cross-pin against the specs themselves: a mod-intro block's levels all
+  // carry exactly that modifier; a shape-intro block is that shape's dip.
+  for (const [block, mod] of Object.entries(MOD_INTRO_BLOCKS)) {
+    for (const s of allSpecs.filter((x) => x.block === Number(block))) {
+      assert.deepEqual(s.gimmicks, [mod]);
+    }
+  }
+  for (const [block, shape] of Object.entries(SHAPE_INTRO_BLOCKS)) {
+    const b = CHALLENGE_BLOCKS[Number(block) - 1];
+    assert.equal(b.shape, shape);
+    assert.equal(b.dip, true);
+  }
+});
+
+test('blockStartLevel agrees with the checkpoint formula (death returns to the block start)', async () => {
+  // getCheckpointForLevel (headerRenderer) and blockStartLevel are two
+  // copies of one rule — the mirror-pair drift class. Pin them to each
+  // other so "block = checkpoint = survival unit" can never silently split.
+  await import('./domShim.mjs');
+  const { getCheckpointForLevel, CHECKPOINT_INTERVAL } = await import('../src/ui/headerRenderer.js');
+  assert.equal(CHECKPOINT_INTERVAL, CHALLENGE_BLOCK_SIZE);
+  for (let lv = 1; lv <= CHALLENGE_MAX_LEVEL; lv++) {
+    assert.equal(blockStartLevel(lv), getCheckpointForLevel(lv), `L${lv}`);
   }
 });
 

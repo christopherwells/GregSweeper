@@ -17,14 +17,20 @@ import { startTimer, stopTimer, pauseTimer, resumeTimer, startMineShift, updateT
 import { handleWin, handleLoss, handleDailyBombHit } from './winLossHandler.js';
 import { performScan, performXRay, performMagnet, tryLifeline } from './powerUpActions.js';
 import { generateBoard, createEmptyBoard, cleanSolverArtifacts, placeMysteryConstructive } from '../logic/boardGenerator.js';
-import { generateTilingBoard } from '../logic/tilingGenerator.js';
-import { coastlineBoardFor, DEFAULT_TILING } from '../logic/coastlineLink.js';
+import { generateTilingBoard, containerFor } from '../logic/tilingGenerator.js';
+import { coastlineBoardFor, DEFAULT_TILING, tilingLabel, CLASSIC_SHAPE_LABEL } from '../logic/coastlineLink.js';
+import { expectedTimeLine } from '../logic/expectedTime.js';
+import { shapeIntroCard, shapePatchSVG } from '../logic/shapeIntro.js';
+import { modifierExampleHTML } from '../logic/modifierExample.js';
+import { personalPar } from '../logic/handicaps.js';
+import { challengeSpecForLevel } from '../logic/challenge250.js';
+import { buildChallenge250Board, challengeBoardSeed } from '../logic/challenge250Builder.js';
 import { floodFillReveal, checkWin, chordReveal, unrevealChordMines, isBoardSolvable, estimatePlateMovesToDisarm, buildNeighborCache, findDecorativeGimmicks, certificateFromCheck } from '../logic/boardSolver.js';
 import { plateDisarmCells, cellAt } from '../logic/adjacency.js';
-import { getDifficultyForLevel, getTimedDifficulty, getMaxZeroCluster, getChaosDifficulty, getRequiredTechnique, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE, WEEKLY_MIN_SIZE, WEEKLY_SIZE_RANGE, BOARD_WIDTH_CAP, plateSeconds } from '../logic/difficulty.js';
+import { getTimedDifficulty, getChaosDifficulty, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE, WEEKLY_MIN_SIZE, WEEKLY_SIZE_RANGE, BOARD_WIDTH_CAP, plateSeconds } from '../logic/difficulty.js';
 import { computeDailyFeatures, predictPar } from '../logic/dailyFeatures.js';
 import { shieldDefuse } from '../logic/powerUps.js';
-import { getGimmicksForLevel, applyGimmicks, applyWalls, isLockedCell, hasSeenGimmick, markGimmickSeen, getGimmickDef, isModifierPopupDisabled, setModifierPopupDisabled, getDailyGimmick, getWeeklyGimmicks, getChaosGimmicks, clearGimmickProperties, recomputeDisplayedMines, getIntensity } from '../logic/gimmicks.js';
+import { applyGimmicks, isLockedCell, hasSeenGimmick, markGimmickSeen, getGimmickDef, isModifierPopupDisabled, setModifierPopupDisabled, getDailyGimmick, getWeeklyGimmicks, getChaosGimmicks, recomputeDisplayedMines } from '../logic/gimmicks.js';
 import { createDailyRNG, getLocalDateString, getWeekStart, getWeekDayIndex } from '../logic/seededRandom.js';
 import { selectDailyRngSeed } from '../logic/selectDailyRngSeed.js';
 import { selectWeeklyRngSeed } from '../logic/selectWeeklyRngSeed.js';
@@ -53,6 +59,46 @@ let _lastInputTime = 0;
 
 // ── Gimmick Intro Popup ───────────────────────────────
 
+// First-encounter SHAPE card (Challenge 250). Shown once per shape ever,
+// tracked in its own seen-set — deliberately NOT the modifier seen-set,
+// and deliberately NOT suppressed by the "skip all modifier explainers"
+// preference: a player who has opted out of modifier cards has said
+// nothing about board shapes, and a hexagonal board arriving unannounced
+// is a bigger surprise than any modifier.
+const SHAPE_SEEN_KEY = 'minesweeper_seen_shapes';
+
+function hasSeenShape(type) {
+  try {
+    const raw = JSON.parse(localStorage.getItem(SHAPE_SEEN_KEY) || '[]');
+    return Array.isArray(raw) && raw.includes(type);
+  } catch { return false; }
+}
+
+function markShapeSeen(type) {
+  try {
+    const raw = JSON.parse(localStorage.getItem(SHAPE_SEEN_KEY) || '[]');
+    const list = Array.isArray(raw) ? raw : [];
+    if (!list.includes(type)) list.push(type);
+    localStorage.setItem(SHAPE_SEEN_KEY, JSON.stringify(list));
+  } catch { /* private browsing — the card simply shows again */ }
+}
+
+function showShapeIntro(type) {
+  const card = shapeIntroCard(type);
+  const patchEl = document.getElementById('shape-intro-patch');
+  const nameEl = document.getElementById('shape-intro-name');
+  const descEl = document.getElementById('shape-intro-desc');
+  const okBtn = document.getElementById('shape-intro-ok');
+  if (!card || !patchEl || !nameEl || !descEl || !okBtn) return;
+
+  patchEl.innerHTML = shapePatchSVG(type);
+  nameEl.textContent = card.title;
+  descEl.textContent = card.neighbors;
+  const close = () => hideModal('shape-intro-overlay');
+  okBtn.onclick = close;
+  showModal('shape-intro-overlay');
+}
+
 function showGimmickIntros(gimmickDefs, recapDefs = []) {
   const iconEl = document.getElementById('gimmick-intro-icon');
   const nameEl = document.getElementById('gimmick-intro-name');
@@ -76,14 +122,22 @@ function showGimmickIntros(gimmickDefs, recapDefs = []) {
       exampleHtml: '',
     });
   }
+  // The diagram is drawn on the shape the player is looking at. On a tiling
+  // the shipped square-grid example would show a board they are not playing,
+  // which matters most for exactly the modifiers the ladder debuts on a
+  // lattice; modifierExampleHTML returns null for a rectangle, so Classic
+  // boards keep the authored markup verbatim.
+  const tilingType = state.board && state.board._tiling ? state.board._tiling.type : null;
   for (const def of gimmickDefs) {
+    const key = def._key || null;
+    const shapeExample = (key && tilingType) ? modifierExampleHTML(key, tilingType) : null;
     cards.push({
       primer: false,
       icon: def.icon,
-      gimmickKey: def._key || null,
+      gimmickKey: key,
       name: def.name,
       body: def.longDesc || def.desc,
-      exampleHtml: def.exampleHtml || '',
+      exampleHtml: shapeExample || def.exampleHtml || '',
     });
   }
   // Modifiers the player has already learned: one compact recap line
@@ -246,7 +300,16 @@ export async function newGame() {
   } else if (state.gameMode === 'timed') {
     diff = getTimedDifficulty(state.currentLevel);
   } else {
-    diff = getDifficultyForLevel(state.currentLevel);
+    // Challenge 250: the level's authored spec owns the dimensions (the
+    // sawtooth's getDifficultyForLevel is gone). A tiling spec's container
+    // is an exact factorization of its cell count — the same containerFor
+    // the builder itself uses — so the placeholder board that renders
+    // while the draw runs already has the final shape. The coastline
+    // branch below overwrites these for its own practice boards.
+    const spec = challengeSpecForLevel(state.currentLevel);
+    diff = spec.shape === 'rect'
+      ? { rows: spec.rows, cols: spec.cols, mines: spec.mines }
+      : { ...containerFor(spec.cells), mines: spec.mines };
   }
   const prevRows = state.rows;
   const prevCols = state.cols;
@@ -312,6 +375,10 @@ export async function newGame() {
   state.timedFeatures = null;
   state.coastlinePar = 0;
   state.coastlineFeatures = null;
+  state.challengeSpec = null;
+  state.challengeBoardSeed = null;
+  state.challengeFeatures = null;
+  state.challengePar = 0;
 
   // Project Coastline (test-only): a frozen tiling board, generated HERE like
   // daily/weekly rather than on first click. gameMode stays 'normal' +
@@ -387,6 +454,58 @@ export async function newGame() {
       state.coastlinePar = 0;
       reportCaughtError('coastline-par-compute', err);
     }
+  }
+
+  // Challenge 250: a FROZEN certified board drawn from the level's authored
+  // spec (challengeSpecForLevel), generated HERE like daily/weekly rather
+  // than on first click. Every attempt draws a fresh layout (death and
+  // retry included — the play seed carries per-draw entropy, so no
+  // memorize-through and no two players grinding the same L37 board). The
+  // builder enforces the ladder rulings per draw: certified from the fixed
+  // opener, STRICT load-bearing, the opener blocks' deduction floor.
+  if (state.gameMode === 'normal' && !state.coastlinePractice) {
+    const spec = challengeSpecForLevel(state.currentLevel);
+    state.challengeSpec = spec;
+    // Let the placeholder board paint before the CPU-bound draw — a summit
+    // spec can cost over a second on desktop, several on a phone, and a
+    // synchronous build would freeze the frame mid-transition.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    if (staleRun()) return;
+
+    let res = null;
+    for (let redraw = 0; redraw < 3 && !res; redraw++) {
+      // Per-draw entropy: the validator proves the spec's DISTRIBUTION, so
+      // the live seed only has to be unique, never reproducible.
+      const salt = `${Date.now().toString(36)}${Math.floor(Math.random() * 0xffffffff).toString(36)}`;
+      res = buildChallenge250Board(spec, challengeBoardSeed(spec.level, redraw, salt));
+    }
+    if (staleRun()) return;
+    if (!res) {
+      // Validator-proven specs make this near-unreachable; if it happens,
+      // say so rather than shipping an uncertified or decorative board.
+      reportCaughtError('challenge-board-build', new Error(`L${spec.level} draw exhausted`));
+      import('../ui/toastManager.js').then(m => m.showToast('Could not build this level’s board. Try again.'));
+      return;
+    }
+
+    state.rows = res.rows;
+    state.cols = res.cols;
+    state.totalMines = res.totalMines;
+    state.board = res.board;
+    state.activeGimmicks = res.activeGimmicks || [];
+    state.gimmickData = res.applied || {};
+    state.challengeBoardSeed = res.seed;
+    state.challengeFeatures = res.features;
+    state.challengePar = res.par || 0;
+    state.firstClick = false;
+
+    // Same contract as daily/weekly: certified from the marked opener, and
+    // the board never mutates after this point.
+    state.boardCertificate = certificateFromCheck(res.check);
+    const oc = res.firstClick;
+    const oRow = Math.floor(oc / res.cols), oCol = oc % res.cols;
+    state.board[oRow][oCol].suggestedStart = true;
+    setDailySuggestedCell({ r: oRow, c: oCol });
   }
 
   // Daily mode: vary board dimensions using the daily seed
@@ -993,13 +1112,31 @@ export async function newGame() {
     setTimeout(() => boardEl.classList.remove('board-transition'), 600);
   }
 
-  // Show level info toast on new game (except first load)
+  // Show level info toast on new game (except first load). On the
+  // Challenge 250 ladder this IS the pre-level card: it names the shape
+  // and carries the expected time (personalPar for the board just drawn,
+  // handicap-adjusted) — a pace cue, never a target the game enforces.
   if (state._initialized && state.gameMode === 'chaos') {
     const chaosRound = state.chaosRound || 1;
     showLevelInfoToast(chaosRound, diff, 'Round ' + chaosRound);
   } else if (state._initialized && (state.gameMode === 'normal' || state.gameMode === 'timed')) {
     const label = diff.label ? `${diff.label}` : null;
-    showLevelInfoToast(state.currentLevel, diff, label);
+    let card = diff;
+    let expected = '';
+    if (state.gameMode === 'normal' && !state.coastlinePractice) {
+      const spec = state.challengeSpec;
+      if (spec) {
+        card = {
+          ...diff,
+          mines: state.totalMines,
+          shapeLabel: spec.shape === 'rect' ? CLASSIC_SHAPE_LABEL : tilingLabel(spec.shape),
+        };
+      }
+      if (state.challengePar > 0) {
+        expected = expectedTimeLine(personalPar(state.challengePar, getUid()));
+      }
+    }
+    showLevelInfoToast(state.currentLevel, card, label, expected);
   }
   state._initialized = true;
 }
@@ -1046,120 +1183,25 @@ export function revealCell(row, col) {
   // BEFORE processing so a bomb hit still logs the click that caused it.
   recordPlayerAction('r', row, col);
 
-  // First click — generate board (or start pre-generated daily board)
+  // First click — generate board (timed and chaos only). Challenge 250,
+  // daily, weekly, and coastline boards are FROZEN at newGame (their
+  // branches set firstClick = false), so this branch never sees them.
   if (state.firstClick) {
-    const rng = state.dailySeed ? createDailyRNG(state.dailyRngSeed || state.dailySeed) : undefined;
-    const maxZC = state.gameMode === 'normal'
-      ? getMaxZeroCluster(state.currentLevel) : Infinity;
-    const hasGimmicks = state.gameMode === 'normal' && state.currentLevel > 10;
+    state.activeGimmicks = [];
+    state.gimmickData = {};
 
-    // Determine which gimmicks will be active
-    const gimmickRng = rng || Math.random;
-    if (state.gameMode === 'normal') {
-      state.activeGimmicks = getGimmicksForLevel(state.currentLevel, gimmickRng);
-    } else {
-      state.activeGimmicks = [];
-    }
-
-    // Generate walls FIRST so the constructive board generator builds
-    // mine layouts that are solvable WITH walls from the start.
-    let preWallEdges = null;
-    if (state.activeGimmicks.includes('walls')) {
-      // Create a temp board just to generate wall edges
-      const tempBoard = createEmptyBoard(state.rows, state.cols);
-      // Estimate wall intensity (1-5 based on level progression)
-      const wallIntensity = Math.min(1 + Math.floor((state.currentLevel - 11) / 15), 5);
-      applyWalls(tempBoard, state.rows, state.cols, wallIntensity, gimmickRng);
-      preWallEdges = tempBoard._wallEdges;
-    }
-
-    // Generate board + apply gimmicks, retry until post-gimmick is solvable
-    // AT THE REQUIRED DIFFICULTY for this level. Two layers of "smart":
-    //
-    // (B) Constructive mystery placement. Mystery cells hide info entirely,
-    //     so randomly placing them often makes the board unsolvable. Place
-    //     them one at a time and verify after each — keep the cell only if
-    //     the board stays solvable. Other gimmicks (sonar/compass/wormhole/
-    //     wall/liar/etc.) provide info, so random placement works for them.
-    //
-    // (C) Technique-floor verification. Each level demands a minimum solver
-    //     technique (see getRequiredTechnique). A board that solves with
-    //     simple Pass A propagation alone at L91 is too easy — reject it
-    //     and roll again so the player actually needs the harder reasoning.
-    //
-    // The base mine layout from generateBoard is already known solvable, so
-    // we re-roll the gimmick layer multiple times before regenerating the
-    // (expensive) base board.
-    const GIMMICK_RETRIES_PER_BOARD = 25;
-    // Relax the technique floor if we can't find a hard-enough board after
-    // many base attempts. Otherwise levels with low gimmick density can spin
-    // forever rejecting boards that are "easy" but legitimately solvable.
-    // Same relaxation applies to the load-bearing requirement: after
-    // RELAX_AFTER_BASES attempts, we accept decorative modifiers rather
-    // than spin further. Most boards converge well before this.
-    const baseTechniqueFloor = state.gameMode === 'normal' ? getRequiredTechnique(state.currentLevel) : 0;
-    const RELAX_AFTER_BASES = 15;
-    let postGimmickSolvable = false;
-    let acceptedCheck = null; // the solver run that certified the accepted board
-    let baseAttempt = 0;
-    outer: for (;;) {
-      state.board = generateBoard(state.rows, state.cols, state.totalMines, row, col,
-        rng || Math.random, { maxZeroCluster: maxZC, hasGimmicks, wallEdges: preWallEdges });
-      baseAttempt++;
-      const techniqueFloor = baseAttempt > RELAX_AFTER_BASES ? 0 : baseTechniqueFloor;
-      const requireLoadBearing = baseAttempt <= RELAX_AFTER_BASES;
-
-      // No gimmicks → use the base board if it meets the technique floor.
-      if (state.activeGimmicks.length === 0) {
-        state.gimmickData = {};
-        const check = isBoardSolvable(state.board, state.rows, state.cols, row, col);
-        cleanSolverArtifacts(state.board);
-        if ((check.solvable || check.remainingUnknowns === 0) && (check.techniqueLevel ?? 0) >= techniqueFloor) {
-          postGimmickSolvable = true;
-          acceptedCheck = check;
-          break;
-        }
-        continue;
+    // Both remaining modes generate a plain base from the actual first
+    // click; chaos rolls its modifiers AFTER this loop, outside the
+    // certification contract (its chip says "No guarantees").
+    let acceptedCheck = null;
+    for (;;) {
+      state.board = generateBoard(state.rows, state.cols, state.totalMines, row, col, Math.random, {});
+      const check = isBoardSolvable(state.board, state.rows, state.cols, row, col);
+      cleanSolverArtifacts(state.board);
+      if (check.solvable || check.remainingUnknowns === 0) {
+        acceptedCheck = check;
+        break;
       }
-
-      // With gimmicks: try several gimmick re-rolls on this base board.
-      const wantsMystery = state.activeGimmicks.includes('mystery');
-      const nonMystery = wantsMystery ? state.activeGimmicks.filter(g => g !== 'mystery') : state.activeGimmicks;
-      for (let g = 0; g < GIMMICK_RETRIES_PER_BOARD; g++) {
-        if (preWallEdges) state.board._wallEdges = preWallEdges;
-        for (const r of state.board) for (const c of r) clearGimmickProperties(c);
-
-        state.gimmickData = applyGimmicks(state.board, state.currentLevel, nonMystery, gimmickRng);
-
-        // Mystery: constructive — place one at a time, verify each, keep only
-        // those that don't break solvability. May place fewer than requested
-        // intensity if every candidate would break the board.
-        if (wantsMystery) {
-          const targetCount = getIntensity('mystery', state.currentLevel, gimmickRng);
-          const placed = placeMysteryConstructive(state.board, state.rows, state.cols, targetCount, gimmickRng, row, col);
-          state.gimmickData.mystery = placed;
-        }
-
-        const check = isBoardSolvable(state.board, state.rows, state.cols, row, col);
-        cleanSolverArtifacts(state.board);
-        if ((check.solvable || check.remainingUnknowns === 0) && (check.techniqueLevel ?? 0) >= techniqueFloor) {
-          // Load-bearing check: every non-mystery modifier on the board
-          // must contribute to deduction. Stripping any gimmick type and
-          // still solving means that type is decoration on this layout.
-          // Skipped after RELAX_AFTER_BASES base attempts so we can ship a
-          // valid board even when load-bearing is hard to satisfy.
-          if (requireLoadBearing && state.activeGimmicks.length > 0) {
-            const decorative = findDecorativeGimmicks(
-              state.board, state.rows, state.cols, row, col, state.activeGimmicks,
-            );
-            if (decorative.length > 0) continue;
-          }
-          postGimmickSolvable = true;
-          acceptedCheck = check;
-          break outer;
-        }
-      }
-      // Exhausted gimmick retries on this base board — regenerate.
     }
 
     // Flags placed before the first click sat on the PLACEHOLDER board
@@ -1167,9 +1209,8 @@ export function revealCell(row, col) {
     // real layout), and generateBoard returns fresh cell objects — those
     // flags are gone. The counter must die with them or the mine counter
     // reads totalMines - N for the whole game; the full-cell re-render
-    // clears any stale flag icons off the replaced cells (challenge and
-    // chaos re-render again after gimmicks apply; timed has no other
-    // full pass).
+    // clears any stale flag icons off the replaced cells (chaos re-renders
+    // again after gimmicks apply; timed has no other full pass).
     state.flagCount = 0;
     updateAllCells();
 
@@ -1177,10 +1218,8 @@ export function revealCell(row, col) {
     // contract here runs from the player's ACTUAL first click. Chaos is
     // excluded: its modifiers are applied AFTER this loop without
     // re-verification, so the base-board check certifies nothing about
-    // the board the player ends up on. The bar update makes the chip
-    // appear now for timed too (challenge refreshes it again below with
-    // its settled gimmicks; chaos stays on its own bar).
-    if (state.gameMode === 'normal' || state.gameMode === 'timed') {
+    // the board the player ends up on.
+    if (state.gameMode === 'timed') {
       state.boardCertificate = certificateFromCheck(acceptedCheck);
       updateActiveGimmickBar();
     }
@@ -1203,39 +1242,6 @@ export function revealCell(row, col) {
         state.timedPar = 0;
         reportCaughtError('timed-par-compute', err);
       }
-    }
-
-    // Apply gimmicks for challenge mode (show popups etc.)
-    if (state.gameMode === 'normal') {
-      if (state.activeGimmicks.length > 0) {
-
-        // Show first-encounter popup for new modifiers (unless disabled)
-        if (!isModifierPopupDisabled()) {
-          const newGimmicks = [];
-          for (const g of state.activeGimmicks) {
-            if (!hasSeenGimmick(g)) {
-              markGimmickSeen(g);
-              const def = getGimmickDef(g);
-              if (def) newGimmicks.push({ ...def, _key: g });
-            }
-          }
-          if (newGimmicks.length > 0) {
-            showGimmickIntros(newGimmicks);
-          }
-        }
-
-        // Start mine shift timer if active
-        if (state.gimmickData.mineShift) {
-          startMineShift(state.gimmickData.mineShift.interval);
-        }
-      }
-      // Refresh all cells to show liar-zone / wormhole / mirror indicators
-      updateAllCells();
-      renderWallOverlays();
-      // Challenge mode: gimmicks weren't known until just now (they're
-      // selected on first click), so the active-gimmick bar was hidden
-      // when newGame ran. Update it now that activeGimmicks is settled.
-      updateActiveGimmickBar();
     }
 
     // Apply gimmicks for chaos mode
@@ -1271,17 +1277,16 @@ export function revealCell(row, col) {
     state.status = 'playing';
     startTimer();
 
-  } else if (state.status === 'idle' && (state.gameMode === 'daily' || state.gameMode === 'weekly' || state.coastlinePractice)) {
-    // Daily / weekly / coastline: the board is FROZEN. It never mutates,
-    // so every player on the date plays the identical layout and the
-    // submitted features always describe the board that was actually
-    // played. The marked start cell is the certified safe entry; a
-    // first click that ignores it and lands on a mine falls through to
-    // the standard bomb-hit path below (info-value penalty, strike
-    // marker, no game over) exactly like any later mine click - that
-    // is on the player, by design (decided 2026-06-12). The previous
-    // behavior relocated the mine and re-certified, silently diverging
-    // this player's board from the canonical.
+  } else if (state.status === 'idle' && (state.gameMode === 'daily' || state.gameMode === 'weekly'
+      || state.gameMode === 'normal' || state.coastlinePractice)) {
+    // Daily / weekly / challenge / coastline: the board is FROZEN. It
+    // never mutates, so a daily's players all play the identical layout
+    // and the submitted features always describe the board that was
+    // actually played. The marked start cell is the certified safe entry;
+    // a first click that ignores it and lands on a mine is on the player,
+    // by design (decided 2026-06-12) — on daily/weekly it falls through
+    // to the bomb-hit strike path below, on the challenge ladder it is a
+    // classic loss (lifelines apply, never strikes — the C250 ruling).
     state.status = 'playing';
     startTimer();
 
@@ -1299,13 +1304,25 @@ export function revealCell(row, col) {
       state.cachedWeeklyDayAttempts[state.weeklyDay] = true;
     }
 
-    // Modifier intro for daily/weekly: full card only for modifiers the
-    // player hasn't met yet (mark them seen), and a single compact recap
-    // line for ones they already know. No popup at all when everything
-    // on the board is already familiar — the persistent active-modifier
-    // bar already reminds them. Stops the same explainers re-appearing
-    // every single day.
+    // Shape card FIRST, before any modifier card: the shape is the frame
+    // every modifier on the board sits inside, so meeting the lattice
+    // before its modifiers is the order that reads.
+    if (state.gameMode === 'normal' && state.challengeSpec
+        && state.challengeSpec.shape !== 'rect' && !hasSeenShape(state.challengeSpec.shape)) {
+      markShapeSeen(state.challengeSpec.shape);
+      showShapeIntro(state.challengeSpec.shape);
+    }
+
+    // Modifier intro: full card only for modifiers the player hasn't met
+    // yet (mark them seen), and a single compact recap line for ones they
+    // already know. No popup at all when everything on the board is
+    // already familiar — the persistent active-modifier bar already
+    // reminds them. The recap line is daily/weekly-only: on the ladder a
+    // known modifier appears level after level, and a recap on every one
+    // of them would be noise (the old challenge engine never recapped
+    // either — first encounters only).
     if (state.activeGimmicks.length > 0 && !isModifierPopupDisabled()) {
+      const recapWanted = state.gameMode === 'daily' || state.gameMode === 'weekly';
       const unseenDefs = [];
       const seenDefs = [];
       for (const g of state.activeGimmicks) {
@@ -1313,7 +1330,7 @@ export function revealCell(row, col) {
         if (!def) continue;
         const tagged = { ...def, _key: g };
         if (hasSeenGimmick(g)) {
-          seenDefs.push(tagged);
+          if (recapWanted) seenDefs.push(tagged);
         } else {
           markGimmickSeen(g);
           unseenDefs.push(tagged);

@@ -29,6 +29,11 @@ on:
         description: 'Allow a live/past ET date (the score-row rail still applies unconditionally)'
         type: boolean
         default: false
+      shape:
+        description: "Force a board shape instead of the date's own rotation draw (blank = the draw)"
+        type: choice
+        default: ''
+        options: ['', 'classic', 'octagons', 'honeycomb', 'paving', 'petals', 'cubes', 'kites']
 
 permissions:
   contents: read
@@ -48,4 +53,4 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           CANONICAL_SIGNING_KEY: ${{ secrets.CANONICAL_SIGNING_KEY }}
-        run: node scripts/regenerate-daily-board.mjs "${{ github.event.inputs.date }}" ${{ github.event.inputs.dryRun == 'true' && '--dry-run' || '' }} ${{ github.event.inputs.forcePast == 'true' && '--force-past' || '' }}
+        run: node scripts/regenerate-daily-board.mjs "${{ github.event.inputs.date }}" ${{ github.event.inputs.dryRun == 'true' && '--dry-run' || '' }} ${{ github.event.inputs.forcePast == 'true' && '--force-past' || '' }} ${{ github.event.inputs.shape != '' && format('--shape={0}', github.event.inputs.shape) || '' }}

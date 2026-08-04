@@ -4963,6 +4963,54 @@ details[open] > .journal-ledger-summary::after { transform: rotate(225deg); }
 }
 
 /* ── Progress Bar ───────────────────────────────────── */
+/* ── Challenge 250 pace bar ──────────────────
+   The expected-time cue: a quiet track that fills as the timer runs and
+   then simply stops (no punishment state — an overrun has nothing left
+   to show). It is deliberately calmer than #progress-bar-fill's accent
+   gradient: this is a glance-at cue, not the climb's headline. Theme
+   tokens so a world can re-voice it; both default to existing tokens so
+   every theme reads correctly with no per-theme work. */
+/* A FLEX ROW, not an absolutely-labeled track: the label sits beside the
+   bar and reserves its own width, so it can never be clipped by the
+   container (the first cut positioned it absolutely below a 4px track and
+   the text was cut off on a phone). The row also gives the checkpoint
+   progress bar directly above it breathing room — two thin bars flush
+   against each other read as one busy strip. */
+.pace-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 7px;
+}
+.pace-bar-track {
+  flex: 1;
+  height: 4px;
+  background: var(--pace-bar-track, var(--color-surface, rgba(0,0,0,0.1)));
+  border-radius: 2px;
+  overflow: hidden;
+}
+.pace-bar-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 2px;
+  background: var(--pace-bar-color, var(--color-text-secondary, #888));
+  opacity: 0.55;
+  /* Linear, not eased: the bar tracks a clock, and a springy fill would
+     read as an animation rather than as elapsed time. */
+  transition: width 0.25s linear, opacity 0.3s ease;
+}
+.pace-bar.is-full .pace-bar-fill { opacity: 0.35; }
+.pace-bar-label {
+  flex: 0 0 auto;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--color-text-secondary, #888);
+  opacity: 0.75;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
 #progress-bar-container {
   width: 100%;
   height: 6px;
@@ -6865,6 +6913,53 @@ button:focus-visible {
   font-style: italic;
 }
 
+/* Shape-aware modifier example: a real patch of the board's own lattice,
+   drawn as SVG polygons with an HTML marker layer on top. The overlay is
+   what lets a mark carry a sprite, an italic-underlined liar number, or a
+   worm segment — the same pieces the square example uses — while the
+   polygons underneath come from the shipped tiling builder. */
+.gimmick-example-shape {
+  position: relative;
+  display: inline-block;
+  margin: 0 auto;
+  max-width: 100%;
+}
+.gimmick-example-shape svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.ge-shape-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.ge-shape-mark {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text, #eee);
+}
+.ge-shape-liar {
+  font-style: italic;
+  text-decoration: underline;
+  color: var(--marker-liar-outline, rgba(231, 76, 60, 0.9));
+}
+/* Sonar reads as watermark plus value, the same pairing the real cell uses
+   (his ruling: in a tight cell, overlap the symbol and its number, never
+   drop the symbol). The sprite therefore has to give way to the digit. */
+.ge-shape-sonar { color: #26c6da; font-weight: 900; font-size: 13px; gap: 1px; }
+.ge-shape-compass { color: #ffa726; font-weight: 900; font-size: 13px; }
+.ge-shape-mystery { color: #a855f7; font-size: 18px; }
+.ge-shape-mark img.ge-piece { width: 12px; height: 12px; }
+.ge-shape-locked img.ge-piece { width: 17px; height: 17px; }
+
 /* Gimmick intro content sizing */
 .gimmick-intro-content {
   text-align: center;
@@ -6875,6 +6970,33 @@ button:focus-visible {
   line-height: 1.5;
   color: var(--color-text-secondary, #ccc);
   margin-bottom: 4px;
+}
+
+/* Shape intro card (Challenge 250 first-encounter shape explainer).
+   Matches the modifier card's sizing so the two read as one family; the
+   symbol is a live SVG tessellation rather than a sprite, so it themes
+   itself off the same cell/border tokens the board uses. */
+.shape-intro-content {
+  text-align: center;
+  max-width: 340px;
+}
+.shape-intro-content p {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-text-secondary, #ccc);
+  margin-bottom: 4px;
+}
+.shape-intro-content h2 {
+  margin: 10px 0 8px;
+}
+.shape-intro-patch-frame {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 2px auto 0;
+}
+.shape-intro-content .action-btn {
+  margin-top: 16px;
 }
 
 /* Settings toggle label */

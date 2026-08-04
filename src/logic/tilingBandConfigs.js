@@ -53,13 +53,14 @@
 // on a live date seed (deterministic, so every client retries identically),
 // before the existing rectangle fallback.
 //
-// SHIPPED DARK like the rest of the rotation: nothing reaches this module
-// while TILING_ROTATION_START is null (resolveDailyShape returns null for
-// every date, so buildTilingDailyBoard is never called in production).
-// Pinned alongside the rotation's own dark-default test.
+// LIVE with the rest of the rotation since v1.10. It shipped dark first
+// (nothing reached this module while TILING_ROTATION_START was null), and the
+// flip is what made these tables load-bearing for real boards.
 
 import { createDailyRNG } from './seededRandom.js';
-import { drawDailyTargetPar, bandWeightsFor, DAILY_PAR_BAND } from './parBand.js';
+import {
+  drawDailyTargetPar, drawWeeklyTargetPar, bandWeightsFor, DAILY_PAR_BAND, WEEKLY_PAR_BAND,
+} from './parBand.js';
 import { predictPar } from './dailyFeatures.js';
 
 // One rng stream per decision (the shapeRotation convention): the config
@@ -70,6 +71,9 @@ import { predictPar } from './dailyFeatures.js';
 // SAME stream the rectangular path reads, deliberately: a date has ONE
 // target par regardless of which shape its daily drew.
 const CONFIG_NAMESPACE = ':shapeConfig';
+// Distinct from the daily's: a weekStart IS a Monday date string, so sharing
+// the stream would tie every Monday's weekly config to that day's daily draw.
+const WEEKLY_CONFIG_NAMESPACE = ':weeklyShapeConfig';
 
 /**
  * @typedef {Object} BandEntry
@@ -208,9 +212,9 @@ export function priceBandEntry(type, entry) {
  * @param {number} targetPar
  * @returns {number} index into prices; 0 when the slate is degenerate
  */
-export function pickBandedEntry(rng, prices, targetPar) {
+export function pickBandedEntry(rng, prices, targetPar, band = DAILY_PAR_BAND) {
   const u = rng();
-  const weights = bandWeightsFor(prices.map((par) => ({ par })), targetPar, DAILY_PAR_BAND);
+  const weights = bandWeightsFor(prices.map((par) => ({ par })), targetPar, band);
   if (weights === null) return 0;
   const totalW = weights.reduce((a, b) => a + b, 0);
   if (!(totalW > 0)) return 0;
@@ -261,4 +265,44 @@ export function tilingConfigAttempts(type, dateString) {
 export function drawDailyTilingConfig(type, dateString) {
   const attempts = tilingConfigAttempts(type, dateString);
   return attempts.length ? attempts[0] : null;
+}
+
+/**
+ * The weekly analogue: the same generation-proven tables, drawn against the
+ * WEEKLY par band and the week's own target.
+ *
+ * There is no weekly shape ROTATION — a tiling weekly happens only when one
+ * is deliberately built (the v1.10 launch week) — but when one is, its config
+ * has to be chosen against the band the weekly actually lives in ([60, 360]s
+ * against the daily's [20, 240]s), or a week-long board would be priced for a
+ * daily.
+ *
+ * The namespace is distinct from the daily's for the reason parBand.js gives
+ * about its own target streams: a weekStart IS a Monday date string, so a
+ * shared namespace would lock every launch Monday's weekly to the same config
+ * its daily drew.
+ *
+ * Reach is the honest limit here. The tables were calibrated to the DAILY
+ * band and top out around 218s (Honeycomb), so a weekly target above that
+ * ships the table's hardest in-band entry — the same "the band is a
+ * constraint, not a coverage target" reading the daily side documents.
+ *
+ * @param {string} type a TILING_TYPES entry
+ * @param {string} weekStart YYYY-MM-DD (the ET Monday)
+ * @returns {BandEntry[]} drawn entry first, then the shape's fallback
+ */
+export function tilingWeeklyConfigAttempts(type, weekStart) {
+  const entries = TILING_BAND_CONFIGS[type] || [];
+  if (entries.length === 0) return [];
+  const fallback = entries.find((e) => e.fallback === true) || entries[0];
+  if (typeof weekStart !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(weekStart)) {
+    return [fallback];
+  }
+  const targetPar = drawWeeklyTargetPar(weekStart);
+  const rng = createDailyRNG(`${weekStart}${WEEKLY_CONFIG_NAMESPACE}`);
+  const idx = pickBandedEntry(
+    rng, entries.map((e) => priceBandEntry(type, e)), targetPar, WEEKLY_PAR_BAND,
+  );
+  const drawn = entries[idx];
+  return drawn === fallback ? [drawn] : [drawn, fallback];
 }

@@ -182,6 +182,11 @@ function buildTilingSpec(spec, seed) {
 
 function accepts(spec, check) {
   if (!check || !check.solvable || check.remainingUnknowns !== 0) return false;
-  if (spec.minDeductions && (check.totalClicks - 1) < spec.minDeductions) return false;
+  const deductions = check.totalClicks - 1;
+  if (spec.minDeductions && deductions < spec.minDeductions) return false;
+  // maxDeductions is the opening ramp's dial (his "a few clicks" ruling):
+  // a floor stops a board being trivial but cannot make it SHORT, and the
+  // first ten levels are defined by shortness. Only the ramp sets it.
+  if (spec.maxDeductions && deductions > spec.maxDeductions) return false;
   return true;
 }

@@ -372,7 +372,11 @@ export function performXRay(row, col) {
 }
 
 // ── Award Power-Ups ──────────────────────────────────
-export function awardPowerUps(stats) {
+// `count` comes from the caller's policy — on the Challenge 250 ladder
+// that is the tier-scaled powerUpAwardCount (expected tier/6 per win),
+// which replaced both the old flat two-per-win and the separate 30%
+// lifeline roll (lifeline is one of the six types).
+export function awardPowerUps(stats, count = 2) {
   if (state.gameMode === 'timed' || state.gameMode === 'daily') return '';
 
   const types = ['revealSafe', 'shield', 'scanRowCol', 'lifeline', 'magnet', 'xray'];
@@ -383,7 +387,7 @@ export function awardPowerUps(stats) {
   };
 
   const awarded = [];
-  for (let i = 0; i < 2; i++) {
+  for (let i = 0; i < count; i++) {
     const pick = types[Math.floor(Math.random() * types.length)];
     state.powerUps[pick] = (state.powerUps[pick] || 0) + 1;
     awarded.push(labels[pick]);

@@ -25,7 +25,11 @@ test('REGRESSION: cycling to candy (wider --grid-gap) keeps the board inside its
     try {
       localStorage.setItem('minesweeper_stats', JSON.stringify({
         totalGames: 0, wins: 0, losses: 0, currentStreak: 0, bestStreak: 0,
-        bestTimes: {}, recentGames: [], maxLevelReached: 120,
+        bestTimes: {}, recentGames: [], maxLevelReached: 250,
+        // Post-reset profile (see CHALLENGE_250_EPOCH): unstamped stats
+        // are wiped to L1 by the ladder reset at init, which would relock
+        // every theme this spec needs to cycle through.
+        challengeEpoch: 1,
       }));
     } catch {}
   });

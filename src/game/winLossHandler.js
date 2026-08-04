@@ -21,7 +21,8 @@ import { buildTiling } from '../logic/tilingGeometry.js';
 import { extractCrux } from '../logic/cruxExtract.js';
 import { prepareLossReceipt, bombStrikeVerdict } from '../ui/receiptRenderer.js';
 import { computeBombInfoValue } from '../logic/bombInfoValue.js';
-import { getSpeedRating, MAX_LEVEL, MAX_TIMED_LEVEL, getChaosDifficulty, LIFELINE_WIN_REWARD_CHANCE, BOMB_PENALTY_BASE, BOMB_PENALTY_RAMP } from '../logic/difficulty.js';
+import { getSpeedRating, MAX_TIMED_LEVEL, getChaosDifficulty, BOMB_PENALTY_BASE, BOMB_PENALTY_RAMP } from '../logic/difficulty.js';
+import { CHALLENGE_MAX_LEVEL, powerUpAwardCount, LIFELINE_BONUS_CHANCE } from '../logic/challenge250.js';
 import {
   loadStats, saveGameResult, saveModePowerUps, clearGameState,
   markDailyCompleted, getDailyStreak, getPlayerName,
@@ -457,8 +458,23 @@ export async function handleWin() {
 
   // Skip power-up awarding for chaos AND weekly. Weekly is a pure
   // time-trial against a fixed board — power-ups would let later-week
-  // attempts cheese the leaderboard against earlier days.
-  const earnedPowerUp = (state.gameMode === 'chaos' || state.gameMode === 'weekly' || state.isLevelPractice) ? null : awardPowerUps(stats);
+  // attempts cheese the leaderboard against earlier days. On the
+  // Challenge 250 ladder the award COUNT is banded by level (his ruling:
+  // 1 through L100, 2 through L250, 3 in the endless zone) — a
+  // guaranteed award per win, not a probability.
+  let earnedPowerUp = null;
+  if (state.gameMode !== 'chaos' && state.gameMode !== 'weekly' && !state.isLevelPractice) {
+    const count = state.gameMode === 'normal' ? powerUpAwardCount(state.currentLevel) : 0;
+    earnedPowerUp = count > 0 ? awardPowerUps(stats, count) : null;
+    // Bonus lifeline on top of the banded award (his 33% ruling). Rolled
+    // here rather than in awardPowerUps so the banded count stays a
+    // clean guarantee and the bonus reads as a bonus in the win copy.
+    if (state.gameMode === 'normal' && Math.random() < LIFELINE_BONUS_CHANCE) {
+      state.powerUps.lifeline = (state.powerUps.lifeline || 0) + 1;
+      const bonus = `${uiSpriteImgHTML('powLifeline', 'inline-pu')} Lifeline`;
+      earnedPowerUp = earnedPowerUp ? `${earnedPowerUp} + ${bonus}` : bonus;
+    }
+  }
 
   // Sync progress to cloud (fire-and-forget). Never from a ?level=
   // playtest run — its wins are not progression.
@@ -582,17 +598,6 @@ export async function handleWin() {
   if (state.gameMode !== 'chaos' && state.gameMode !== 'weekly' && !state.parLab) {
     saveModePowerUps(state.gameMode, state.powerUps);
   saveProgress({ powerUps: loadPowerUps() });
-  }
-
-  // 30% chance to earn a free lifeline on level completion (Challenge mode).
-  // Never from a practice run: ?level= / ?coastline= / Par Lab wins are not
-  // progression, and the documented practice contract is "no power-up
-  // earns" — this roll was the one earn site that predated the guard.
-  if (state.gameMode === 'normal' && !state.isLevelPractice && Math.random() < LIFELINE_WIN_REWARD_CHANCE) {
-    state.powerUps.lifeline = (state.powerUps.lifeline || 0) + 1;
-    saveModePowerUps(state.gameMode, state.powerUps);
-  saveProgress({ powerUps: loadPowerUps() });
-    showToast('Lifeline earned!', 2000, 'powLifeline');
   }
 
   playWin();
@@ -920,7 +925,7 @@ export async function handleWin() {
   } else {
     // Next Level is data-dependent (level cap), so it unhides here rather
     // than in the static plan.
-    const maxLevel = state.gameMode === 'timed' ? MAX_TIMED_LEVEL : MAX_LEVEL;
+    const maxLevel = state.gameMode === 'timed' ? MAX_TIMED_LEVEL : CHALLENGE_MAX_LEVEL;
     if (state.currentLevel < maxLevel && state.gameMode !== 'daily' && state.gameMode !== 'weekly' && state.gameMode !== 'timed') {
       nextLevelBtn.classList.remove('hidden');
     }

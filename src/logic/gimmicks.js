@@ -3,7 +3,6 @@
 // Each gimmick has: apply (board setup), render hints, solver adjustments.
 
 import { safeGet, safeSet, safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js';
-import { MAX_LEVEL } from './difficulty.js';
 import { WORM_MAX_PER_BOARD } from './worms.js';
 import { wallKey, hasWallBetween, buildNeighborCache, sonarScanCells, compassRayCells, cellAt, defineCellNeighbors } from './adjacency.js';
 import { computeCompassRay, buildTiling, buildWireframe, HEX_ROW_H } from './tilingGeometry.js';
@@ -35,11 +34,35 @@ export function clearGimmickProperties(cell) {
   cell.isWormEgg = false;
 }
 
+// ── Modifier copy: the rules, not one board's version of them ──────────────
+//
+// `desc` is the permanent reference (the Modifiers help tab renders it),
+// `longDesc` is the first-encounter card, and `exampleHtml` is that card's
+// diagram. All three are player copy, so all three take ZERO em-dashes and no
+// en-dashes.
+//
+// Every sentence here must be true on EVERY board shape. That is not a style
+// preference: the Challenge 250 venue rule debuts six of the nine modifiers
+// on a tiling (locked and worm on the Honeycomb, wormhole and compass on
+// Octagons, mirror on 3D Cubes, sonar on Paving Stones), so a rectangular
+// claim is a wrong claim at the moment the player first reads it. Sonar used to
+// promise "a 5×5 area centered on the cell" and compass "4 mines to the left
+// in that row"; neither survives contact with a lattice that has no rows.
+//
+// Where a shape genuinely changes the answer (how many directions a compass
+// has, what "two steps out" looks like), the copy names the Classic case as
+// the concrete anchor and states the general rule alongside it, rather than
+// forking into per-shape strings. `exampleHtml` is the ONE per-shape fork: it
+// stays the square diagram, and a tiling board swaps in a real patch of its
+// own lattice from logic/modifierExample.js.
+//
+// Any count stated here is measured against the geometry by
+// test/modifierCopy.test.mjs, the same discipline shapeIntro.js follows.
 const GIMMICK_DEFS = {
   walls: {
     intro: 11, name: 'Walls', icon: '🧱',
-    desc: 'Impassable wall edges block adjacency between cells.',
-    longDesc: 'Walls appear as thick borders between cells. Numbers on either side of a wall don\'t count mines across it. Treat walls like the edge of the board: they split the grid into sections.',
+    desc: 'Walls sit between two cells and stop each one counting the other.',
+    longDesc: 'A wall is a thick line along the boundary between two cells. Numbers on either side of it never count mines across it, so treat a wall like the edge of the board: it splits the board into sections you work through separately.',
     exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed" style="border-right:3px solid #8B7355">1</div><div class="ge-cell revealed" style="border-left:3px solid #8B7355">0</div><div class="ge-cell revealed">0</div><div class="ge-cell revealed" style="border-right:3px solid #8B7355">1</div><div class="ge-cell revealed" style="border-left:3px solid #8B7355">0</div><div class="ge-cell revealed">0</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">0</div></div><div class="ge-caption">Thick borders are walls. Numbers ignore neighbors across them</div>',
   },
   liar: {
@@ -56,7 +79,7 @@ const GIMMICK_DEFS = {
   },
   mineShift: {
     intro: 41, name: 'Mine Shift', icon: '💨', chaosOnly: true,
-    desc: 'Every 30\u201345s, unflagged mines may shift to adjacent cells. Flagged mines stay put!',
+    desc: 'Every 30 to 45 seconds, unflagged mines may shift to a neighboring cell. Flagged mines stay put!',
     longDesc: 'Mines that you haven\'t flagged will periodically move to a neighboring cell. Numbers update to reflect new positions. Flag mines quickly to pin them in place. Flagged mines never move.',
     exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell unrevealed"></div><div class="ge-cell unrevealed ge-mine-shift"><img class="ge-piece" src="assets/sprites/mine.png" alt="">➜</div><div class="ge-cell unrevealed ge-mine-dest"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">0</div></div><div class="ge-caption">Unflagged mines drift. Flag them to pin them down!</div>',
   },
@@ -68,7 +91,7 @@ const GIMMICK_DEFS = {
   },
   wormhole: {
     intro: 51, name: 'Wormholes', icon: '🌀',
-    desc: 'Paired cells share information \u2014 each shows the SUM of both cells\' real neighbor counts.',
+    desc: 'Paired cells share one number: the SUM of both cells\' real neighbor counts.',
     longDesc: 'Two cells linked by a wormhole both display the combined total of their individual mine counts. If cell A has 1 mine neighbor and cell B has 2, both show 3. Linked cells share the same colored background tint (amber, magenta, or green) so you can spot the pair. Use surrounding cells to split the sum.',
     exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(5,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed" style="background:rgba(255,140,0,0.35)">3</div><div class="ge-cell revealed">1</div><div class="ge-cell revealed" style="background:rgba(255,140,0,0.35)">3</div><div class="ge-cell revealed">2</div></div><div class="ge-caption">The two amber-tinted cells share a sum of 3 (really 1+2). Split it using their neighbors</div>',
   },
@@ -80,20 +103,20 @@ const GIMMICK_DEFS = {
   },
   pressurePlate: {
     intro: 71, name: 'Pressure Plates', icon: '🔴',
-    desc: 'Some cells start a countdown when revealed \u2014 reveal all safe neighbors before time runs out!',
+    desc: 'Some cells start a countdown when revealed. Reveal all their safe neighbors before time runs out!',
     longDesc: 'Pressure plate cells show their number like normal, but a countdown timer starts when revealed. You must reveal every non-mine neighbor before time runs out or the plate detonates. Solve the area around the plate fast!',
     exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-pressure" style="box-shadow:inset 0 0 6px rgba(255,50,50,0.5)">2<img class="ge-piece" src="assets/sprites/mod-pressure.svg" alt=""></div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">0</div></div><div class="ge-caption">Reveal all safe cells around the plate before the timer runs out!</div>',
   },
   sonar: {
     intro: 81, name: 'Sonar', icon: '📡',
-    desc: 'Some cells scan a wider area \u2014 they count mines within a 2-cell radius (5\u00d75 area).',
-    longDesc: 'Sonar cells count all mines within 2 cells in every direction (a 5\u00d75 area centered on the cell) instead of the normal 3\u00d73. Their numbers are higher because they see more territory. Look for the sonar icon to know which cells use the wider scan.',
-    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-sonar" style="color:#26c6da;font-weight:900"><img class="ge-piece" src="assets/sprites/mod-sonar.svg" alt="">5</div><div class="ge-cell revealed">2</div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">0</div><div class="ge-cell unrevealed"></div></div><div class="ge-caption">The sonar cell scans a 5\u00d75 area \u2014 "5" means 5 mines within 2 cells</div>',
+    desc: 'Sonar cells count every mine within two steps of them, not just their immediate neighbors.',
+    longDesc: 'A sonar cell reaches two steps out in every direction, so it covers far more ground than an ordinary number and its count runs higher. On a Classic board that is the 5x5 block around it, and on the other board shapes it is every cell you can get to in two moves. Tap a revealed sonar cell to light up exactly which cells it counts.',
+    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-sonar" style="color:#26c6da;font-weight:900"><img class="ge-piece" src="assets/sprites/mod-sonar.svg" alt="">5</div><div class="ge-cell revealed">2</div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">0</div><div class="ge-cell unrevealed"></div></div><div class="ge-caption">On a Classic board that is the 5\u00d75 block: this "5" counts 5 mines inside it</div>',
   },
   compass: {
     intro: 91, name: 'Compass', icon: '🧭',
-    desc: 'Cells with an arrow count ALL mines in the direction they point \u2014 across the entire board.',
-    longDesc: 'Compass cells show an arrow (\u2190\u2192\u2191\u2193) and a number. The number counts every mine in that direction across the full row or column. A "4\u2190" means there are 4 mines to the left in that row. Powerful global information, but you need to cross-reference it with local numbers.',
+    desc: 'Cells with an arrow count every mine in a straight line the way they point, out to the edge of the board.',
+    longDesc: 'A compass cell shows an arrow and a number. The number counts every mine along the straight line the arrow points down, out to the edge of the board, and nothing off that line. On a Classic board it has four directions, along the rows and columns. On the other board shapes it has six or eight, some of them running at an angle. Tap a revealed compass cell to light up the line it counts.',
     exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(5,32px)"><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-compass" style="color:#ffa726;font-weight:900">3\u2190</div><div class="ge-cell revealed">2</div><div class="ge-cell unrevealed"></div></div><div class="ge-caption">"3\u2190" = 3 mines to the left in this row</div>',
   },
   // Sprite-only modifier: no `icon` emoji field, by design. Every icon
@@ -102,7 +125,7 @@ const GIMMICK_DEFS = {
   worm: {
     intro: 101, name: 'Worm Tiles',
     desc: 'Some cells hide a worm egg. Revealing one hatches a worm that crawls over your numbers.',
-    longDesc: 'A few safe cells hold a buried worm egg. Revealing one hatches a worm that wanders across your revealed cells, hiding the numbers it sits on for a moment. It prefers open ground and shies away from big numbers. It never changes the board and it can\'t hurt you: the numbers underneath stay exactly as they were, and the worm burrows away on its own. Remember what you read, or wait for it to move along.',
+    longDesc: 'A few safe cells hold a buried worm egg. Revealing one hatches a worm that crawls across your revealed cells, one step at a time onto a cell it shares an edge with, hiding the numbers it sits on as it goes. It prefers open ground and shies away from big numbers. It can\'t hurt you and it never changes the board, so remember what you read or wait for it to move along.',
     exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-worm-covered">2<span class="ge-worm-seg"></span></div><div class="ge-cell revealed ge-worm-covered">1<span class="ge-worm-seg ge-worm-head"></span></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div></div><div class="ge-caption">The worm hides numbers as it crawls. They come back when it moves on</div>',
   },
 };
@@ -196,70 +219,11 @@ export function getWeeklyGimmicks(weeklySeed, createRNG) {
   return picked;
 }
 
-// ── Which gimmicks are active for a given level ────────
-
-export function getGimmicksForLevel(level, rng = Math.random) {
-  if (level <= 10) return [];
-
-  const allTypes = Object.keys(GIMMICK_DEFS);
-  // Filter out chaosOnly gimmicks (e.g., mineShift) from Challenge mode
-  const introduced = allTypes.filter(g => level >= GIMMICK_DEFS[g].intro && !GIMMICK_DEFS[g].chaosOnly);
-  if (introduced.length === 0) return [];
-
-  // Find the gimmick whose intro block contains this level (10-level blocks)
-  const primaryGimmick = introduced.find(g => {
-    const intro = GIMMICK_DEFS[g].intro;
-    return level >= intro && level <= intro + 9;
-  });
-
-  // Old gimmicks = all introduced EXCEPT the current primary
-  const oldGimmicks = introduced.filter(g => g !== primaryGimmick);
-
-  if (primaryGimmick) {
-    // Inside some gimmick's 10-level intro block (L11-110 with worm as the
-    // L101-110 capstone intro): primary is always present, secondary 60%,
-    // tertiary 10%
-    const active = [];
-
-    // Primary: 100% always present
-    if (primaryGimmick) active.push(primaryGimmick);
-
-    // Secondary: one old gimmick at 60% chance
-    if (oldGimmicks.length > 0 && rng() < 0.60) {
-      const pick = oldGimmicks[Math.floor(rng() * oldGimmicks.length)];
-      active.push(pick);
-
-      // Tertiary: another old gimmick at 10% chance
-      const remaining = oldGimmicks.filter(g => g !== pick);
-      if (remaining.length > 0 && rng() < 0.10) {
-        active.push(remaining[Math.floor(rng() * remaining.length)]);
-      }
-    }
-
-    // Guarantee at least one gimmick
-    if (active.length === 0 && introduced.length > 0) {
-      active.push(introduced[introduced.length - 1]);
-    }
-
-    return active;
-  }
-
-  // L111-120: Post-intro ramp — all gimmicks equal, ramp to guaranteed 3
-  const progress = (level - 110) / 10; // 0.1 at L111, 1.0 at L120
-  const shuffled = [...introduced].sort(() => rng() - 0.5);
-  const active = [shuffled[0]]; // always at least 1
-
-  // Second gimmick: ramp from 80% to 100%
-  if (shuffled.length > 1 && rng() < 0.80 + progress * 0.20) {
-    active.push(shuffled[1]);
-  }
-  // Third gimmick: ramp from 40% to 100%
-  if (shuffled.length > 2 && rng() < 0.40 + progress * 0.60) {
-    active.push(shuffled[2]);
-  }
-
-  return active;
-}
+// (getGimmicksForLevel — the old ladder's per-level modifier lottery — was
+// retired with the sawtooth: Challenge 250 specs AUTHOR their modifier
+// sets in challenge250.js, and no board on the ladder rolls a random
+// secondary. GIMMICK_DEFS[].intro survives as getIntensity's ramp anchor
+// and the help/popup metadata.)
 
 // ── Chaos mode: random gimmick selection (includes all types) ──
 
@@ -270,6 +234,17 @@ export function getChaosGimmicks(count, rng = Math.random) {
 }
 
 // ── Gimmick intensity (count of affected cells) ────────
+
+// The intensity ramp's ceiling, FROZEN at the old 120-level ladder's top.
+// getIntensity's whole scale — the per-type intro positions above and this
+// cap — is the UNIT the Challenge 250 spec tables author their
+// `gimmickLevel` dial in (11..120, "old-ladder levels"): the proven Paving
+// T12 spec was measured at level 115 on exactly this scale, and every
+// authored ladder spec was validated against it. Re-anchoring this to the
+// 250-level ladder would silently re-price every one of them, which is why
+// it is a local constant here rather than the ladder length import it used
+// to be.
+const INTENSITY_RAMP_MAX_LEVEL = 120;
 
 // Check if any NEW gimmick is being introduced at this level
 function isAnyGimmickIntroBlock(level) {
@@ -301,8 +276,8 @@ export function getIntensity(gimmick, level, rng) {
     return 2 + (rng() < 0.3 ? 1 : 0);
   }
 
-  // After introduction: slowly ramp toward max level
-  const progress = (level - introEnd) / (MAX_LEVEL - introEnd);
+  // After introduction: slowly ramp toward the (frozen) ramp ceiling
+  const progress = (level - introEnd) / (INTENSITY_RAMP_MAX_LEVEL - introEnd);
   const base = 1 + Math.floor(progress * 3); // 1-4
   let intensity = base + (rng() < 0.3 ? 1 : 0); // slight random boost
 

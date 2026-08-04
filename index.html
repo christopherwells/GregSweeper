@@ -416,6 +416,15 @@
         <div id="progress-bar-markers"></div>
       </div>
 
+      <!-- Challenge 250 pace cue: the level's expected time (personalPar,
+           handicap-adjusted) with a quiet bar that fills as the timer
+           runs. It fills and stops — nothing is enforced, nothing is
+           recorded, challenge never feeds the par fit. -->
+      <div id="pace-bar" class="pace-bar hidden">
+        <div class="pace-bar-track"><div id="pace-bar-fill" class="pace-bar-fill"></div></div>
+        <span id="pace-bar-label" class="pace-bar-label"></span>
+      </div>
+
       <!-- Power-up icons are drawn SVG sprites (Tier 4) with emoji
            fallback via onerror. -->
       <div id="powerup-bar">
@@ -642,6 +651,20 @@
       </div>
     </div>
 
+    <!-- First-encounter SHAPE explainer (Challenge 250). The board shape
+         changes what counts as next to what, and nothing else — so the
+         card answers that one question and says the rest is unchanged.
+         Its symbol is a real tessellation of the lattice, drawn from the
+         same builder the board uses. -->
+    <div id="shape-intro-overlay" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-content shape-intro-content">
+        <div id="shape-intro-patch" class="shape-intro-patch-frame"></div>
+        <h2 id="shape-intro-name"></h2>
+        <p id="shape-intro-desc"></p>
+        <button id="shape-intro-ok" class="action-btn primary">Got it!</button>
+      </div>
+    </div>
+
     <!-- First-bomb-hit explainer (Daily / Weekly only). Shown once ever:
          a newcomer expects classic game-over here, so the rule reversal
          needs a real, dismissible explanation the first time. -->
@@ -694,11 +717,16 @@
           <div class="help-section">
             <h3>The Guarantee</h3>
             <p>Every standard board is checked by a solver before you play it. From the marked start square (or your first click in Challenge and Quick Play) there is always a next square you can prove safe, all the way to the end. You never have to gamble.</p>
-            <p>If you get stuck, tap the <strong>Stuck?</strong> button (the loupe beside the smiley) and the game lights up the clues that prove the next move. The ✓ Certified chip above the board opens the board&rsquo;s own check. Chaos is the one exception to the guarantee, and it says so.</p>
+            <p>The ✓ Certified chip above the board opens that board&rsquo;s own check, and after a loss every square you could have proved safe is outlined. Chaos is the one exception to the guarantee, and it says so.</p>
           </div>
           <div class="help-section">
             <h3>Goal</h3>
-            <p>Reveal every safe square without hitting a mine. Each number counts the mines touching it, diagonals included. Blank squares touch no mines at all; the numbers are your clues.</p>
+            <p>Reveal every safe square without hitting a mine. Each number counts the mines in the squares touching it, corners included. Blank squares touch no mines at all; the numbers are your clues.</p>
+          </div>
+          <div class="help-section">
+            <h3>Board shapes</h3>
+            <p>Not every board is a square grid. Alongside <strong>Classic</strong> there are six others: <strong>Octagons</strong>, <strong>Honeycomb</strong>, <strong>Paving Stones</strong>, <strong>Petals</strong>, <strong>3D Cubes</strong> and <strong>Kites</strong>. About half of all dailies use one, and Challenge works through every one of them.</p>
+            <p>The rules do not change. The only thing a shape changes is which cells count as neighbors, and the first time you meet a shape a card shows you one cell with everything it touches. Cells that meet at just a corner are neighbors too, exactly as diagonals are on a Classic board.</p>
           </div>
           <div class="help-section">
             <h3>Controls</h3>
@@ -723,9 +751,9 @@
         <div id="help-panel-modes" class="help-panel hidden">
           <div class="help-section">
             <h3>Modes</h3>
-            <p><strong>Daily:</strong> one puzzle a day, the same board for everyone, online leaderboard and streaks</p>
+            <p><strong>Daily:</strong> one puzzle a day, the same board for everyone, online leaderboard and streaks. The board shape varies day to day.</p>
             <p><strong>Weekly:</strong> one puzzle for the whole week, one try a day, your best time counts</p>
-            <p><strong>Challenge:</strong> 120 levels that introduce the modifiers one at a time, with power-ups and checkpoints</p>
+            <p><strong>Challenge:</strong> 250 levels in blocks of five, working through all seven board shapes and introducing the modifiers one at a time, with power-ups and a checkpoint every five levels</p>
             <p><strong>Quick Play:</strong> race the clock for a speed rating (<img class="inline-medal" src="assets/sprites/medal-diamond.svg" alt="" draggable="false" onerror="this.replaceWith('💎')"> best, then <img class="inline-medal" src="assets/sprites/medal-gold.svg" alt="" draggable="false" onerror="this.replaceWith('🥇')"> <img class="inline-medal" src="assets/sprites/medal-silver.svg" alt="" draggable="false" onerror="this.replaceWith('🥈')"> <img class="inline-medal" src="assets/sprites/medal-bronze.svg" alt="" draggable="false" onerror="this.replaceWith('🥉')">)</p>
             <p><strong>Greg&rsquo;s Gym:</strong> short practice boards that teach one deduction pattern at a time. A square only opens when the clues prove it is safe, so you cannot luck through.</p>
             <p><strong>Chaos:</strong> fast rounds of random modifiers (unlocks at Challenge Level 50). The one mode OUTSIDE the no-guess guarantee: boards are not verified solvable, and mines can move.</p>
@@ -1186,6 +1214,15 @@
         <button class="modal-close" aria-label="Close"><img class="ui-icon-close" src="assets/sprites/ui-close.svg" alt="Close" draggable="false" onerror="this.replaceWith('×')"></button>
       </div>
       <div class="modal-body whatsnew-body">
+        <div class="whatsnew-entry">
+          <h3>v1.10 &middot; August 4, 2026</h3>
+          <ul>
+            <li><strong>The board changes shape</strong>: About half the dailies from here on are built on something other than a square grid. There are six: Octagons, Honeycomb, Paving Stones, Petals, 3D Cubes and Kites. Every one is still checked before you play it, and every one is still solvable without a guess. What changes is which squares count as neighbors, so the first card on a new shape shows you exactly that.</li>
+            <li><strong>Challenge is 250 levels</strong>: The old ladder is replaced. Fifty blocks of five, each block a difficulty step, working through all seven board shapes and introducing the modifiers on the shape that suits them. Every attempt draws a fresh board at that level&rsquo;s rating, so nothing can be memorized, and every board is marked with a square that is provably safe to open first. Checkpoints every five levels. Everyone starts again at Level 1.</li>
+            <li><strong>You can see the clock you are racing</strong>: Each Challenge level shows the time it should take you, and a quiet bar fills as you play. Running over costs you nothing. It is there to tell you where you are, not to scold you.</li>
+            <li><strong>Power-ups are guaranteed</strong>: A win now always pays one power-up through Level 100, two after that, three past 250, plus a chance at a spare lifeline. The old chance-based reward could leave you with nothing for a whole evening.</li>
+          </ul>
+        </div>
         <div class="whatsnew-entry">
           <h3>v1.9 &middot; July 16, 2026</h3>
           <ul>

@@ -66,14 +66,15 @@ test('clearCoastlinePractice resets EVERY coastline field (field-drift guard)', 
 });
 
 test('modifiersPreResolved: pre-generated modes keep their bar, first-click modes reset', () => {
-  // Daily/weekly canonical boards and coastline tiling boards resolve modifiers
-  // during pre-generation, so newGame must NOT wipe activeGimmicks for them.
+  // Daily/weekly canonical boards, coastline tiling boards, and — since the
+  // Challenge 250 engine — challenge ladder boards resolve modifiers during
+  // pre-generation, so newGame must NOT wipe activeGimmicks for them.
   assert.equal(modifiersPreResolved('daily', false), true);
   assert.equal(modifiersPreResolved('weekly', false), true);
   assert.equal(modifiersPreResolved('normal', true), true, 'coastline practice on a normal-mode board');
+  assert.equal(modifiersPreResolved('normal', false), true, 'the C250 ladder authors + pre-draws its modifiers');
 
-  // Challenge / timed / chaos resolve on first click — the reset is correct.
-  assert.equal(modifiersPreResolved('normal', false), false);
+  // Timed / chaos still resolve on first click — the reset is correct.
   assert.equal(modifiersPreResolved('timed', false), false);
   assert.equal(modifiersPreResolved('chaos', false), false);
 

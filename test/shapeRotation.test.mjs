@@ -1,13 +1,13 @@
-// Daily shape rotation (Project Coastline) — the date-seeded draw, its dark
+// Daily shape rotation (Project Coastline) — the date-seeded draw, its start
 // gate, the tiling-day mission lottery, the shared single-candidate builder,
 // and the pipeline↔client agreement that builder exists to guarantee.
 //
-// The rotation ships DARK (TILING_ROTATION_START = null), so the first test
-// here is the shipped contract itself: with the constant unset, every date is
-// a rectangle and production behaviour is byte-identical to pre-rotation.
-// Everything else runs the machinery through explicit rotationStart/spec
-// arguments, which is how the tests reach the tiling paths without flipping
-// the shipped gate.
+// The rotation went LIVE with v1.10, so the first test here is the shipped
+// contract that replaced "dark means dark": the start date is set, dates
+// behind it stay rectangular forever (their canonicals are already written),
+// and dates from it forward actually draw. Everything else runs the machinery
+// through explicit rotationStart/spec arguments, which is how the tests reach
+// the tiling paths without depending on the shipped date.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -42,15 +42,31 @@ function dates(n, from = '2027-01-01') {
 
 const START = '2027-01-01';
 
-// ── The shipped gate: dark means dark ────────────────────────────────────
+// ── The shipped gate: live, and the past stays rectangular ───────────────
 
-test('shipped contract: TILING_ROTATION_START is null and every date resolves rectangular', () => {
-  assert.equal(TILING_ROTATION_START, null,
-    'the rotation must ship DARK — flipping the start date is a deliberate later PR '
-    + '(v1.10 + What\'s New + player copy), never a side effect');
-  for (const d of dates(400, '2026-08-01')) {
-    assert.equal(resolveDailyShape(d), null, `${d} must be rectangular while the rotation is off`);
+// The flip date the v1.10 release set. The rotation shipped dark for two
+// weeks behind a null constant; this is the contract that replaced it.
+const SHIPPED_START = '2026-08-05';
+
+test('shipped contract: the rotation is LIVE from its start date, and every earlier date stays rectangular', () => {
+  assert.equal(TILING_ROTATION_START, SHIPPED_START,
+    'moving the start date is a release (version bump + What\'s New + player copy), never a side effect');
+
+  // Every date BEHIND the start must resolve rectangular forever. Those
+  // canonicals are rectangles already written to write-once nodes, so a
+  // client falling back to local generation on one of them would otherwise
+  // build a board the canonical is not. This is why the constant may never
+  // move backward.
+  for (const d of dates(200, '2026-01-14')) {
+    if (d >= SHIPPED_START) break;
+    assert.equal(resolveDailyShape(d), null, `${d} predates the rotation and must be rectangular`);
   }
+
+  // And from the start date the draw is actually running — a live month
+  // with no tiling day would mean the flip landed inert.
+  const live = dates(31, SHIPPED_START).map((d) => resolveDailyShape(d));
+  assert.ok(live.some((s) => s !== null), 'the first live month drew no tiling day at all');
+  assert.ok(live.some((s) => s === null), 'the first live month drew no rectangle at all');
 });
 
 test('the gate respects the start date and ignores non-dates', () => {

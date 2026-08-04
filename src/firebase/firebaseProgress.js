@@ -18,6 +18,7 @@
  */
 
 import { isTestEnvironment } from './env.js';
+import { CHALLENGE_250_EPOCH } from '../logic/challenge250.js';
 import { subscribeAuthState } from './firebaseAuth.js';
 import { bootstrapAnonymousAuth } from './anonAuthBootstrap.js';
 // Runtime-only cycle with errorReporter (it imports getUid from here);
@@ -293,11 +294,32 @@ export async function initAnonymousAuth() {
 export function saveProgress({ maxCheckpoint, dailyStreak, bestDailyStreak, lastDailyDate, powerUps, moltDay }) {
   if (isTestEnvironment()) return;
   const data = {};
-  if (maxCheckpoint != null) data.maxCheckpoint = maxCheckpoint;
+  // CHALLENGE PROGRESSION lives in its own `challenge250` node since the
+  // ladder reset (epoch + maxCheckpoint + the challenge power-up pool).
+  // The point of the separate node is that PRE-RESET CLIENTS CANNOT TOUCH
+  // IT: their old code writes the legacy top-level `maxCheckpoint` and
+  // `powerUps.challenge` fields, which post-reset code never reads — so a
+  // stale device can never resurrect the wiped climb or the old hoard,
+  // and there is no sibling-drift window where an old value sits next to
+  // a lingering epoch stamp (the moltDay atomic-snapshot lesson). Every
+  // write into the node carries the epoch, so the node is self-dating.
+  if (maxCheckpoint != null) {
+    data['challenge250/maxCheckpoint'] = maxCheckpoint;
+    data['challenge250/epoch'] = CHALLENGE_250_EPOCH;
+  }
+  if (powerUps != null && typeof powerUps === 'object') {
+    const { challenge, ...otherModes } = powerUps;
+    if (challenge && typeof challenge === 'object') {
+      data['challenge250/powerUps'] = challenge;
+      data['challenge250/epoch'] = CHALLENGE_250_EPOCH;
+    }
+    // Non-challenge pools (chaos) keep the legacy node — the reset never
+    // touches them and old/new clients agree on their meaning.
+    if (Object.keys(otherModes).length > 0) data.powerUps = otherModes;
+  }
   if (dailyStreak != null) data.dailyStreak = dailyStreak;
   if (bestDailyStreak != null) data.bestDailyStreak = bestDailyStreak;
   if (lastDailyDate != null) data.lastDailyDate = lastDailyDate;
-  if (powerUps != null && typeof powerUps === 'object') data.powerUps = powerUps;
   // The molt-day bank + last-use ride the same write as the streak so a
   // cross-device merge always sees a coherent snapshot. lastUse may be null
   // (no spend yet); RTDB drops a null child, which the rule allows.

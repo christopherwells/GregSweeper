@@ -113,6 +113,9 @@ for (const { spec, levels } of groups.values()) {
     // The builder gates per draw; a violation here means the gate broke.
     problems.push(`accepted draw under the ${OPENER_MIN_DEDUCTIONS}-deduction floor`);
   }
+  if (spec.maxDeductions && deds.length && Math.max(...deds) > spec.maxDeductions) {
+    problems.push(`accepted draw over the ${spec.maxDeductions}-deduction cap`);
+  }
 
   const pass = problems.length === 0;
   if (!pass) failures++;
@@ -120,9 +123,11 @@ for (const { spec, levels } of groups.values()) {
   const lv = levels.length === 1 ? `L${levels[0]}` : `L${levels[0]}-${levels[levels.length - 1]}`;
   const shape = spec.shape === 'rect' ? `${spec.rows}x${spec.cols}` : `${spec.shape} ${spec.cells}c`;
   const gims = spec.gimmicks.length ? spec.gimmicks.join('+') : 'plain';
+  const dedRange = deds.length ? `${Math.min(...deds)}-${Math.max(...deds)}` : '--';
   const bandTxt = band
     ? `ppc ${Number.isNaN(medPpc) ? ' -- ' : medPpc.toFixed(2)} (tgt ${spec.ppc.toFixed(2)})`
-    : `deds ${Number.isNaN(medDed) ? '--' : medDed} (floor ${OPENER_MIN_DEDUCTIONS})`;
+    : `deds ${dedRange} med ${Number.isNaN(medDed) ? '--' : medDed}`
+      + ` (floor ${OPENER_MIN_DEDUCTIONS}${spec.maxDeductions ? `, cap ${spec.maxDeductions}` : ''})`;
   console.log(`${pass ? ' PASS' : ' FAIL'}  B${String(spec.block).padStart(2)} ${lv.padEnd(9)}`
     + ` ${shape.padEnd(16)} ${gims.padEnd(28)} ${String(ok).padStart(2)}/${K}`
     + `  worst ${String(worst).padStart(5)}ms  par ${Number.isNaN(medPar) ? '  --' : medPar.toFixed(0).padStart(4)}s  ${bandTxt}`

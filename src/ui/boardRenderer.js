@@ -719,8 +719,11 @@ export function updateCell(r, c) {
     // quiet outline so the explore view shows the WHOLE proof surface,
     // not just the one NEXT MOVE chip.
     if (cell.frontierSafe) cellEl.classList.add('frontier-safe');
-    // Daily / weekly suggested start cell (shows when board is fresh or re-fogged)
-    if (cell.suggestedStart && (state.gameMode === 'daily' || state.gameMode === 'weekly' || state.coastlinePractice) &&
+    // Frozen-board suggested start cell (daily / weekly / coastline /
+    // Challenge 250 ladder — every mode that certifies from a marked
+    // opener; shows while the board is fresh or re-fogged)
+    if (cell.suggestedStart && (state.gameMode === 'daily' || state.gameMode === 'weekly'
+        || state.gameMode === 'normal' || state.coastlinePractice) &&
         (state.status === 'idle' || (state.status === 'playing' && state.revealedCount <= 1))) {
       cellEl.classList.add('suggested-start');
     }
@@ -802,9 +805,12 @@ function updateStartHereLabel() {
   document.getElementById("start-here-label")?.remove();
   document.getElementById("next-move-label")?.remove();
 
-  // Daily "Start here" — pre-first-click marker for the solver's best
-  // opener. Only shows on daily mode while the board is fresh.
-  if ((state.gameMode === "daily" || state.coastlinePractice) &&
+  // "Start here" — pre-first-click marker for the certified opener. Shows
+  // on daily, coastline practice, and the Challenge 250 ladder (every
+  // fresh-frozen board whose certificate runs from the marked cell) while
+  // the board is fresh. Weekly keeps its historical no-label behavior —
+  // the cell class alone marks it there.
+  if ((state.gameMode === "daily" || state.gameMode === "normal" || state.coastlinePractice) &&
       (state.status === "idle" || (state.status === "playing" && state.revealedCount <= 1))) {
     const startCell = boardEl.querySelector(".suggested-start");
     if (startCell) _placeLabel(startCell, "start-here-label", "Start here", "start-here-label");

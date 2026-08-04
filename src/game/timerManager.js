@@ -1,6 +1,7 @@
 import { state, getActiveBombPenaltyTotal, getDisplayTime } from '../state/gameState.js';
 import { timerEl, boardEl } from '../ui/domHelpers.js';
 import { updateAllCells } from '../ui/boardRenderer.js';
+import { updatePaceBar } from '../ui/headerRenderer.js';
 import { performMineShift } from '../logic/gimmicks.js';
 import { hatchWorm, tickWorms, wormHatchEvent, markWormBurrowed, finalizeWormEvents, buildWormCrawlTopology } from '../logic/worms.js';
 import { renderWormOverlays } from '../ui/wormRenderer.js';
@@ -16,6 +17,9 @@ export function updateTimerDisplay() {
   timerEl.textContent = String(display).padStart(3, '0');
   // No urgency classes — timed mode counts up
   timerEl.classList.remove('timer-critical', 'timer-warning');
+  // The Challenge 250 pace bar rides the same tick (it tracks the same
+  // clock); it self-hides outside challenge.
+  updatePaceBar();
 }
 
 let _preciseStartTime = null;
@@ -283,7 +287,12 @@ export function stopWormCrawl() {
 // canonical board ⇒ same lengths for every player); the walk is luck.
 export function hatchWormEggs(revealedCells) {
   if (!revealedCells || revealedCells.length === 0) return;
-  const seedIdentity = state.dailyRngSeed || state.weeklyRngSeed || `L${state.currentLevel}`;
+  // Challenge 250 boards hatch on the DRAW's seed (state.challengeBoardSeed)
+  // so the live worm traits match the wormLoad the builder priced into the
+  // level's par — the same seed-identity contract the daily fit relies on.
+  // The bare-level fallback survives for pre-engine saves restored mid-game.
+  const seedIdentity = state.dailyRngSeed || state.weeklyRngSeed
+    || state.challengeBoardSeed || `L${state.currentLevel}`;
   let hatched = 0;
   for (const cell of revealedCells) {
     if (!cell || !cell.isWormEgg || cell.isMine || !cell.isRevealed) continue;

@@ -78,12 +78,23 @@ test('a forced-shape daily mounts as a hexagon lattice and plays from the marked
   expect(errors, `console/page errors during the journey:\n${errors.join('\n')}`).toEqual([]);
 });
 
-test('without the override the daily stays rectangular — the rotation ships dark', async ({ page }) => {
+test('a practice custom seed never draws a shape, and a rect override forces a square board', async ({ page }) => {
+  // Two rectangle guarantees that survive the v1.10 flip. A custom seed is
+  // not a date, so resolveDailyShape refuses it whatever the rotation is
+  // doing; and the override's 'rect' branch, which was unreachable-in-effect
+  // while the rotation was dark, is now the only way to force a square
+  // practice daily on a date that drew a lattice.
   const errors = attachErrorCapture(page);
   await page.goto('?isTest=1&mode=daily&seed=rotatest2');
   await page.waitForSelector('#app:not(.hidden)', { timeout: 20_000 });
   await expect(page.locator('#board')).toBeVisible();
-  await expect(page.locator('#board.tiling-board'), 'no override, no rotation start → no lattice').toHaveCount(0);
+  await expect(page.locator('#board.tiling-board'), 'a custom seed is not a date and must not draw').toHaveCount(0);
   await expect(page.locator('#tiling-seams'), 'rectangular boards draw no seam overlay').toHaveCount(0);
+
+  await page.goto('?isTest=1&mode=daily&dailyShape=rect');
+  await page.waitForSelector('#app:not(.hidden)', { timeout: 20_000 });
+  await expect(page.locator('#board')).toBeVisible();
+  await expect(page.locator('#board.tiling-board'), 'the rect override must force a square board').toHaveCount(0);
+
   expect(errors, `console/page errors during boot:\n${errors.join('\n')}`).toEqual([]);
 });

@@ -1,36 +1,45 @@
-// Difficulty curve + play-time streak bookkeeping. A regression in
-// getDifficultyForLevel could ship un-playably dense boards or violate
-// the mobile width cap; saveGameResult is where the daily streak is
-// incremented/reset at play time (distinct from the history-derived
-// computeStreakFromHistory).
+// Ladder playability + play-time streak bookkeeping. A regression in the
+// Challenge 250 spec table could ship un-playably dense boards or violate
+// the mobile width cap (the sawtooth's getDifficultyForLevel is gone —
+// challengeSpecForLevel is the level→board authority now); saveGameResult
+// is where the daily streak is incremented/reset at play time (distinct
+// from the history-derived computeStreakFromHistory).
 
 import './helpers.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-const { getDifficultyForLevel, MAX_LEVEL, BOARD_WIDTH_CAP } = await import('../src/logic/difficulty.js');
+const { BOARD_WIDTH_CAP } = await import('../src/logic/difficulty.js');
+const { challengeSpecForLevel, CHALLENGE_MAX_LEVEL } = await import('../src/logic/challenge250.js');
 const stats = await import('../src/storage/statsStorage.js');
 
-test('every challenge level yields a sane, playable board within the width cap', () => {
-  for (let lv = 1; lv <= MAX_LEVEL; lv++) {
-    const { rows, cols, mines } = getDifficultyForLevel(lv);
-    assert.ok(Number.isInteger(rows) && rows >= 5, `L${lv}: rows ${rows}`);
-    assert.ok(Number.isInteger(cols) && cols >= 5, `L${lv}: cols ${cols}`);
-    assert.ok(cols <= BOARD_WIDTH_CAP, `L${lv}: cols ${cols} exceeds width cap ${BOARD_WIDTH_CAP}`);
-    assert.ok(mines >= 1 && mines < rows * cols, `L${lv}: mines ${mines} vs ${rows * cols} cells`);
-    // Density never exceeds the documented 34% hard cap (+ rounding slack).
-    assert.ok(mines / (rows * cols) <= 0.35, `L${lv}: density ${(mines / (rows * cols)).toFixed(3)} too high`);
+test('every challenge level spec yields a sane, playable board within the width cap', () => {
+  for (let lv = 1; lv <= CHALLENGE_MAX_LEVEL; lv++) {
+    const s = challengeSpecForLevel(lv);
+    assert.ok(s.mines >= 1 && s.mines < s.cells, `L${lv}: mines ${s.mines} vs ${s.cells} cells`);
+    if (s.shape === 'rect') {
+      assert.ok(Number.isInteger(s.rows) && s.rows >= 5, `L${lv}: rows ${s.rows}`);
+      assert.ok(Number.isInteger(s.cols) && s.cols >= 5, `L${lv}: cols ${s.cols}`);
+      assert.ok(s.cols <= BOARD_WIDTH_CAP, `L${lv}: cols ${s.cols} exceeds width cap ${BOARD_WIDTH_CAP}`);
+      // The classic density sweep proved certification and the 2s cap to
+      // 0.45 on 11×11; nothing authored may sit past that measured reach.
+      assert.ok(s.mines / s.cells <= 0.46, `L${lv}: density ${(s.mines / s.cells).toFixed(3)} past the proven reach`);
+    } else {
+      // Tiling boards are pitch-fitted, not CSS-grid columns, so the width
+      // cap does not apply; the density-ceiling sweep proved 0.38.
+      assert.ok(s.mines / s.cells <= 0.39, `L${lv}: tiling density ${(s.mines / s.cells).toFixed(3)} past the swept ceiling`);
+    }
   }
 });
 
-test('early levels are smaller/easier than late levels', () => {
-  const l1 = getDifficultyForLevel(1);
-  const l120 = getDifficultyForLevel(120);
-  assert.ok(l1.rows * l1.cols < l120.rows * l120.cols, 'L1 board should be smaller than L120');
-  assert.ok(l1.mines < l120.mines, 'L1 should have fewer mines than L120');
-  // Out-of-range levels clamp rather than throw.
-  assert.deepEqual(getDifficultyForLevel(0), getDifficultyForLevel(1));
-  assert.deepEqual(getDifficultyForLevel(999), getDifficultyForLevel(MAX_LEVEL));
+test('the ladder ramps: the opener is smaller and easier than the summit', () => {
+  const l1 = challengeSpecForLevel(1);
+  const hexSummit = challengeSpecForLevel(246); // FINALE III honeycomb, 110 cells
+  assert.ok(l1.cells < hexSummit.cells, 'L1 board should be smaller than the summit');
+  assert.ok(l1.mines < hexSummit.mines, 'L1 should have fewer mines than the summit');
+  // Out-of-range levels clamp rather than throw (the old ladder's contract).
+  assert.deepEqual(challengeSpecForLevel(0), challengeSpecForLevel(1));
+  assert.deepEqual(challengeSpecForLevel(999), challengeSpecForLevel(CHALLENGE_MAX_LEVEL));
 });
 
 test('daily streak increments on consecutive days and resets on a gap', () => {
