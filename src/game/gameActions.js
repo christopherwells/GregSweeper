@@ -19,6 +19,8 @@ import { performScan, performXRay, performMagnet, tryLifeline } from './powerUpA
 import { generateBoard, createEmptyBoard, cleanSolverArtifacts, placeMysteryConstructive } from '../logic/boardGenerator.js';
 import { generateTilingBoard, containerFor } from '../logic/tilingGenerator.js';
 import { coastlineBoardFor, DEFAULT_TILING, tilingLabel, CLASSIC_SHAPE_LABEL } from '../logic/coastlineLink.js';
+import { resolveChaosShape, chaosTilingPlan } from '../logic/chaosShape.js';
+import { buildTiling } from '../logic/tilingGeometry.js';
 import { expectedTimeLine } from '../logic/expectedTime.js';
 import { shapeIntroCard, shapePatchSVG } from '../logic/shapeIntro.js';
 import { modifierExampleHTML } from '../logic/modifierExample.js';
@@ -26,7 +28,7 @@ import { personalPar } from '../logic/handicaps.js';
 import { challengeSpecForLevel } from '../logic/challenge250.js';
 import { buildChallenge250Board, challengeBoardSeed } from '../logic/challenge250Builder.js';
 import { floodFillReveal, checkWin, chordReveal, unrevealChordMines, isBoardSolvable, estimatePlateMovesToDisarm, buildNeighborCache, findDecorativeGimmicks, certificateFromCheck } from '../logic/boardSolver.js';
-import { plateDisarmCells, cellAt } from '../logic/adjacency.js';
+import { plateDisarmCells, cellAt, defineCellNeighbors } from '../logic/adjacency.js';
 import { getTimedDifficulty, getChaosDifficulty, DAILY_MIN_SIZE, DAILY_SIZE_RANGE, DAILY_MIN_DENSITY, DAILY_DENSITY_RANGE, WEEKLY_MIN_SIZE, WEEKLY_SIZE_RANGE, BOARD_WIDTH_CAP, plateSeconds } from '../logic/difficulty.js';
 import { computeDailyFeatures, predictPar } from '../logic/dailyFeatures.js';
 import { shieldDefuse } from '../logic/powerUps.js';
@@ -297,6 +299,15 @@ export async function newGame() {
   let diff;
   if (state.gameMode === 'chaos') {
     diff = getChaosDifficulty(state.chaosRound || 1);
+    // Chaos rolls its own board shape per round (chaosShape.js). The plan is
+    // resolved HERE, before the placeholder board exists, because the player
+    // clicks a lattice cell to start the round: the topology has to be on
+    // screen before the first click, and the mines go into it afterwards.
+    state.chaosTiling = chaosTilingPlan(diff, resolveChaosShape(state.chaosRound || 1));
+    if (state.chaosTiling) {
+      const c = containerFor(state.chaosTiling.cells);
+      diff = { rows: c.rows, cols: c.cols, mines: state.chaosTiling.mines };
+    }
   } else if (state.gameMode === 'timed') {
     diff = getTimedDifficulty(state.currentLevel);
   } else {
@@ -318,6 +329,18 @@ export async function newGame() {
   state.cols = diff.cols;
   state.totalMines = diff.mines;
   state.board = createEmptyBoard(state.rows, state.cols);
+  if (state.gameMode === 'chaos' && state.chaosTiling) {
+    // The placeholder carries the real topology, so the fog the player clicks
+    // is already the lattice they will play. The renderer keys off _cellPos,
+    // not gameMode, so this is all it needs.
+    const T = buildTiling(state.chaosTiling.type, state.chaosTiling.M, state.chaosTiling.N);
+    defineCellNeighbors(state.board, state.rows, state.cols, T.adj);
+    state.board._cellPos = T.cellPos;
+    state.board._tiling = {
+      type: T.type, M: state.chaosTiling.M, N: state.chaosTiling.N,
+      wUnits: T.wUnits, hUnits: T.hUnits,
+    };
+  }
   state.status = 'idle';
   state.firstClick = true;
   state.flagCount = 0;
@@ -373,6 +396,7 @@ export async function newGame() {
   state.boardCertificate = null;
   state.timedPar = 0;
   state.timedFeatures = null;
+  state.chaosTiling = state.gameMode === 'chaos' ? state.chaosTiling : null;
   state.coastlinePar = 0;
   state.coastlineFeatures = null;
   state.challengeSpec = null;
@@ -1194,13 +1218,45 @@ export function revealCell(row, col) {
     // click; chaos rolls its modifiers AFTER this loop, outside the
     // certification contract (its chip says "No guarantees").
     let acceptedCheck = null;
-    for (;;) {
-      state.board = generateBoard(state.rows, state.cols, state.totalMines, row, col, Math.random, {});
-      const check = isBoardSolvable(state.board, state.rows, state.cols, row, col);
-      cleanSolverArtifacts(state.board);
-      if (check.solvable || check.remainingUnknowns === 0) {
-        acceptedCheck = check;
-        break;
+    if (state.gameMode === 'chaos' && state.chaosTiling) {
+      // A chaos lattice round. generateTilingBoard certifies from an opener
+      // like the rectangular loop does, and openerIndex is what lets that
+      // opener be the player's ACTUAL click rather than the patch centre.
+      // A null means every attempt exhausted; the round falls back to a
+      // rectangle rather than refusing the click, which is the one outcome
+      // a player must never see.
+      const plan = state.chaosTiling;
+      const res = generateTilingBoard({
+        type: plan.type, M: plan.M, N: plan.N, mines: plan.mines,
+        seed: `chaos:${state.chaosRound || 1}:${Date.now()}`,
+        gimmicks: [], openerIndex: row * state.cols + col,
+        forceConstructive: plan.constructive === true,
+      });
+      if (res) {
+        state.board = res.board;
+        acceptedCheck = res.check;
+        // The generator places min(mines, placeable) — the opener and its
+        // neighbours are excluded — so the round's requested count is a
+        // ceiling, not a promise. The LCD counter is board-derived and the
+        // win check counts safe cells, so state must agree with the board
+        // rather than with the plan.
+        let placed = 0;
+        for (const brow of res.board) for (const bcell of brow) if (bcell.isMine) placed++;
+        state.totalMines = placed;
+      } else {
+        state.chaosTiling = null;
+        reportCaughtError('chaos-tiling-generate', new Error(`${plan.type} ${plan.cells}c exhausted`));
+      }
+    }
+    if (!acceptedCheck) {
+      for (;;) {
+        state.board = generateBoard(state.rows, state.cols, state.totalMines, row, col, Math.random, {});
+        const check = isBoardSolvable(state.board, state.rows, state.cols, row, col);
+        cleanSolverArtifacts(state.board);
+        if (check.solvable || check.remainingUnknowns === 0) {
+          acceptedCheck = check;
+          break;
+        }
       }
     }
 

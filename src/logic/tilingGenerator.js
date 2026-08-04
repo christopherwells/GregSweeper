@@ -134,17 +134,25 @@ export { buildTiling, buildTiling488, containerFor };
 export function generateTilingBoard({
   type = '4.8.8', M, N, mines, seed, gimmicks = [], techniqueFloor = 0, maxAttempts = 600,
   loadBearingBudget = TILING_LOAD_BEARING_BUDGET, forceConstructive = false,
-  gimmickRerolls = TILING_GIMMICK_REROLLS, gimmickLevel = 1,
+  gimmickRerolls = TILING_GIMMICK_REROLLS, gimmickLevel = 1, openerIndex = null,
 }) {
   const T = buildTiling(type, M, N);
   const total = T.total;
   const { rows, cols } = containerFor(total);
 
-  // The middle cell is the fixed opener. centerIndex is the tiling's OWN center
-  // (the cell nearest its patch's center of mass), never the container's middle
-  // slot. A container is an arbitrary exact factorization, so whether the two
-  // coincide is arithmetic luck that varies with M and N.
-  const firstClick = T.centerIndex;
+  // The opener. By default the middle cell: centerIndex is the tiling's OWN
+  // center (the cell nearest its patch's center of mass), never the
+  // container's middle slot, since a container is an arbitrary exact
+  // factorization and whether the two coincide is arithmetic luck that varies
+  // with M and N.
+  //
+  // `openerIndex` overrides it for a mode that generates from the player's
+  // ACTUAL first click rather than from a marked start. Chaos is the one such
+  // caller: like the rectangular first-click path it opens wherever the
+  // player clicked, so the board has to be built around that cell.
+  const firstClick = (Number.isInteger(openerIndex) && openerIndex >= 0 && openerIndex < total)
+    ? openerIndex
+    : T.centerIndex;
   const fr = Math.floor(firstClick / cols);
   const fc = firstClick % cols;
 

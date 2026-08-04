@@ -16,6 +16,10 @@
 // worm's step from `buildWormCrawlTopology`. Nothing here is drawn by hand,
 // so nothing here can drift from the mechanic it illustrates.
 //
+// Chaos-only modifiers (mineShift, pressure plates) are here too, since Chaos
+// gained the board shapes: a modifier that can appear on a lattice needs a
+// card that shows one.
+//
 // RECTANGULAR BOARDS ARE UNTOUCHED. `modifierExampleHTML` returns null for a
 // board with no tiling, and the caller falls back to the shipped
 // `exampleHtml` verbatim — so the Classic debuts (walls, liar, mystery) and
@@ -221,6 +225,29 @@ function buildScene(gimmick, T, hub, dims) {
         marks: [{ cell: hub, text: SPRITE.locked, kind: 'locked' }],
         caption: 'The locked cell opens once every safe cell around it is revealed.',
       };
+    case 'mineShift': {
+      // Chaos-only, and reachable on a lattice since Chaos gained the shapes.
+      // The arrow points along a SIDE-SHARING step, because that is the only
+      // step a mine may take (the worm's crawl graph).
+      const board = stubBoard(T, dims);
+      const topo = buildWormCrawlTopology(board, 1, T.total);
+      const sides = topo ? topo.neighborsOf(0, hub).map((p) => p.c) : T.adj[hub];
+      const to = sides.length ? sides[0] : hub;
+      return {
+        focus: [hub, to], region: [],
+        marks: [{ cell: hub, text: '➤', kind: 'mineshift' }],
+        caption: 'An unflagged mine creeps one cell at a time. Flag it to pin it down.',
+      };
+    }
+    case 'pressurePlate': {
+      // The plate demands its own neighbors, so the picture is the plate and
+      // the ring it is asking for.
+      return {
+        focus: [hub], region: T.adj[hub],
+        marks: [{ cell: hub, text: `${SPRITE.plate}2`, kind: 'plate' }],
+        caption: 'Reveal every safe cell in the shaded ring before the timer runs out.',
+      };
+    }
     default:
       return null;
   }
@@ -231,6 +258,7 @@ function buildScene(gimmick, T, hub, dims) {
 const SPRITE = {
   sonar: '<img class="ge-piece" src="assets/sprites/mod-sonar.svg" alt="">',
   locked: '<img class="ge-piece" src="assets/sprites/mod-locked.svg" alt="">',
+  plate: '<img class="ge-piece" src="assets/sprites/mod-pressure.svg" alt="">',
 };
 
 const MARK_FILL = {
