@@ -101,27 +101,29 @@ export function updateTitleProgress() {
     // Greg now lives in the title header, and this card keeps its calendar
     // icon. Once played, the card just says so (the dimmed .daily-completed
     // style reinforces it).
-    const centerText = completed ? 'Played today' : (note || 'Same puzzle worldwide');
+    // The board's SHAPE leads the centre line on a lattice day, and is absent
+    // on a Classic one: naming "Classic" on the half of days that are one
+    // would be noise, and the four corners are already spoken for (measured:
+    // "Paving Stones · Par 240s" in the par corner overlaps the streak corner
+    // on a 174px card). It comes from the CANONICAL board, never from
+    // re-running the date's shape draw — a forced or fallback board can
+    // legitimately differ from the draw, and the card must describe what the
+    // player will actually open. Same rule the field note follows, same
+    // reason (the 2026-06-10 fieldnote-drift incident).
+    const shapeLabel = (_titleDailyPar.date === today && _titleDailyPar.shape) || '';
+    const body = note || 'Same puzzle worldwide.';
+    const centerText = completed
+      ? 'Played today'
+      : (shapeLabel ? `${shapeLabel} today. ${body}` : body);
 
     // Streak (bottom-left) + par (bottom-right) hug the card corners like the
     // Past chip — plain text, not pills, so the Past chip stays the one pill.
     const streakCorner = streak > 0
       ? `<span class="daily-corner-stat daily-corner-streak" title="Your daily streak">${streak} day${streak === 1 ? '' : 's'}</span>`
       : '';
-    // The shape shares the par corner, and ONLY when today's board is not a
-    // Classic grid — naming "Classic" on the half of days that are one would
-    // be noise on a card whose whole design is four quiet corners. It comes
-    // from the CANONICAL board (below), never from re-running the date's
-    // shape draw: a forced or fallback board can legitimately differ from
-    // the draw, and the card must describe what the player will actually
-    // open (the same rule the field note follows).
-    const shapeLabel = (_titleDailyPar.date === today && _titleDailyPar.shape) || '';
     const parCorner = hasPar
-      ? `<span class="daily-corner-stat daily-corner-par" title="Greg’s par for today">`
-        + `${shapeLabel ? `${shapeLabel} · ` : ''}Par ${_titleDailyPar.secs}s</span>`
-      : (shapeLabel
-        ? `<span class="daily-corner-stat daily-corner-par" title="Today’s board shape">${shapeLabel}</span>`
-        : '');
+      ? `<span class="daily-corner-stat daily-corner-par" title="Greg’s par for today">Par ${_titleDailyPar.secs}s</span>`
+      : '';
 
     dailyEl.innerHTML = moltCorner + streakCorner + parCorner
       + `<span class="mode-card-fieldnote">${centerText}</span>`;
