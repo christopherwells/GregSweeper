@@ -36,7 +36,7 @@ import {
   getPlayerName, setPlayerName,
   getLastSeenVersion, setLastSeenVersion,
   applyCloudProgress, resetDailyStatsForAccountSwitch,
-  reconcileStreakFromHistory,
+  reconcileStreakFromHistory, reconcileWeekStreakFromHistory,
   hasSeenNotice, markNoticeSeen,
   clearGameState,
 } from './storage/statsStorage.js';
@@ -51,7 +51,7 @@ import {
   getAchievementState, getTotalScore, getAllTierNames, getTierColor,
 } from './logic/achievements.js';
 import { initFirebase } from './firebase/firebaseLeaderboard.js';
-import { initAnonymousAuth, loadProgress, loadDailyHistory, getUid, loadWeeklyAttempts, loadLocalWeeklyAttempts, replaceLocalWeeklyAttempts, pruneStaleLocalWeeklyAttempts, subscribeToUidChanges, subscribeToCloudProgressUpdates, reportClientSeen, publishPlayerName } from './firebase/firebaseProgress.js';
+import { initAnonymousAuth, loadProgress, loadDailyHistory, fetchPlayedWeeks, getUid, loadWeeklyAttempts, loadLocalWeeklyAttempts, replaceLocalWeeklyAttempts, pruneStaleLocalWeeklyAttempts, subscribeToUidChanges, subscribeToCloudProgressUpdates, reportClientSeen, publishPlayerName } from './firebase/firebaseProgress.js';
 import { getAuthState, subscribeAuthState, linkWithGoogle, sendEmailLink, tryCompleteEmailLink, signOut as authSignOut } from './firebase/firebaseAuth.js';
 import { isTestEnvironment } from './firebase/env.js';
 import { getLocalDateString, getWeekStart, getWeekDayIndex, addCalendarDays } from './logic/seededRandom.js';
@@ -1403,6 +1403,22 @@ async function _reconcileDailyStreak() {
   }
 }
 
+// The weekly's counterpart: raise the week streak to the run the player's own
+// weeklyAttempts record implies. Same upward-only self-heal, same reason — a
+// counter that starts counting when it ships knows nothing about the fourteen
+// weeks already in the account. One owner-scoped read.
+async function _reconcileWeekStreak() {
+  try {
+    const weeks = await fetchPlayedWeeks();
+    if (!weeks) return;
+    if (reconcileWeekStreakFromHistory(weeks)) {
+      try { updateTitleProgress(); } catch {}
+    }
+  } catch (err) {
+    console.warn('week streak reconcile failed:', err && err.message);
+  }
+}
+
 subscribeToUidChanges(async ({ uid, isInitial }) => {
   if (isInitial) return; // initial load is handled by the existing init() chain
   if (!uid) return;
@@ -1419,6 +1435,7 @@ subscribeToUidChanges(async ({ uid, isInitial }) => {
     // history. This is what restores a long streak after signing in on a
     // device whose anonymous play history was just reset above.
     await _reconcileDailyStreak();
+    await _reconcileWeekStreak();
     // Re-prime the daily-residuals cache so the personal-par estimate
     // catches up to the new account's recent plays right away.
     const { backfillResidualsFromFirebase } = await import('./logic/handicaps.js');
@@ -2061,6 +2078,11 @@ async function init() {
     // auth + cloud have settled. Recovers a streak the local counter lost
     // to an offline gap or a mid-session uid switch on a prior session.
     await _reconcileDailyStreak();
+    // Same for the week streak, from the player's own weeklyAttempts record.
+    // Without it the counter starts at zero for everyone, which is how the
+    // feature shipped telling a player with fourteen unbroken weeks that they
+    // had no streak.
+    await _reconcileWeekStreak();
     // One-time launch grant of molt days for an existing streak, now that the
     // synced streak is settled. Refresh the title card if it granted any.
     if (backfillMoltDays()) { try { updateTitleProgress(); } catch {} }
