@@ -5780,7 +5780,13 @@ button:focus-visible {
    reserves a bottom band so the absolute streak/par clear Greg's note. The
    padding-bottom outranks the responsive `.mode-card` shorthand by specificity,
    so the band survives every breakpoint. */
-.mode-card[data-mode="daily"] { position: relative; padding-bottom: 24px; }
+/* The Weekly card carries the same furniture since 2026-08-05 (week streak,
+   par, Past weeklies), so it needs the same positioning context and the same
+   reserved band. Listed together rather than generalised to every .mode-card:
+   the other four have nothing in their corners and would just gain 24px of
+   dead space. */
+.mode-card[data-mode="daily"],
+.mode-card[data-mode="weekly"] { position: relative; padding-bottom: 24px; }
 /* ── Daily card: corner-anchored stats ──────────────────────────────────
    Four corners frame Greg's note: molt tokens top-left, Past chip top-right,
    streak bottom-left, par bottom-right. The streak + par are plain text in
@@ -5960,6 +5966,49 @@ button:focus-visible {
   font-size: 0.8rem;
   margin-top: 12px;
 }
+/* ── Past Weeklies list ─────────────────────────────────
+   A column of weeks rather than the daily's month grid: the weekly has one
+   board per week, so a calendar would be six mostly-empty cells around the one
+   row that matters. Rows share the archive modal's shell and the daily
+   calendar's ✓ mark, so the two archives read as the same feature. */
+.weekly-archive-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 52vh;
+  overflow-y: auto;
+}
+.weekly-archive-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 0.86rem;
+  text-align: left;
+  color: var(--color-text, inherit);
+  background: var(--color-cell-revealed, rgba(128, 128, 128, 0.1));
+  border: 1px solid var(--color-border, #555);
+  border-radius: 8px;
+}
+button.weekly-archive-row { cursor: pointer; }
+button.weekly-archive-row:hover { filter: brightness(1.06); }
+button.weekly-archive-row:focus-visible {
+  outline: 2px solid var(--color-accent, #4a90d9);
+  outline-offset: 2px;
+}
+.weekly-archive-row.completed { opacity: 0.62; }
+.weekly-archive-row.loading { opacity: 0.5; }
+.weekly-archive-week { font-variant-numeric: tabular-nums; }
+.weekly-archive-action {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-accent, #4a90d9);
+  white-space: nowrap;
+}
+
 /* In-app entry to the crux teaser, below the calendar. */
 .archive-crux-btn {
   display: block;

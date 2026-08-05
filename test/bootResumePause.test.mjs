@@ -33,6 +33,20 @@ import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
+// Stats consistent with the save the harness is about to write, so
+// challengeSaveIsCurrent lets it resume (see persistMidGameSave).
+function seedChallengeProgress(maxLevelReached) {
+  // Built FROM loadStats so the record keeps its full shape (bestTimes,
+  // modeStats, the rest) — a hand-rolled partial would resume into an
+  // updateHeader that reads fields the real store always has.
+  invalidateStatsCache?.();
+  const stats = loadStats();
+  stats.maxLevelReached = maxLevelReached;
+  stats.modeStats.challenge.maxLevelReached = maxLevelReached;
+  localStorage.setItem('minesweeper_stats', JSON.stringify(stats));
+  invalidateStatsCache?.();
+}
+
 function trackedEl() {
   const classes = new Set();
   return {
@@ -74,7 +88,7 @@ const { newGame } = await import('../src/game/gameActions.js');
 const { switchMode } = await import('../src/game/modeManager.js');
 const { hatchWorm } = await import('../src/logic/worms.js');
 const { getLocalDateString } = await import('../src/logic/seededRandom.js');
-const { saveDailyPar } = await import('../src/storage/statsStorage.js');
+const { saveDailyPar, invalidateStatsCache, loadStats } = await import('../src/storage/statsStorage.js');
 
 setMuted(true); // no AudioContext in node
 
@@ -148,6 +162,13 @@ test('REGRESSION: #200 — no routing site background-resumes a save UNGATED beh
 // AFTER mock.timers.enable so the cache keys on the mocked clock's date.
 function persistMidGameSave() {
   localStorage.clear();
+  // A challenge save is only resumable at a level this progression can hold
+  // (issue #239: the pre-C250 save the epoch reset never reached sat at its
+  // old-ladder level while the stats said Level 1). The harness writes a
+  // level-5 game, so it has to say the player won level 4 — otherwise the
+  // save is correctly refused and the helper falls through to a fresh
+  // newGame, which is not what these tests are pinning.
+  seedChallengeProgress(4);
   appEl.classes.clear();
   titleEl.classes.clear(); titleEl.classList.add('hidden');
   overlayEl.classes.clear(); overlayEl.classList.add('hidden');

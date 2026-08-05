@@ -2,7 +2,7 @@ import { state, getActiveBombPenaltyTotal, getDisplayTime } from '../state/gameS
 import { timerEl, boardEl } from '../ui/domHelpers.js';
 import { updateAllCells } from '../ui/boardRenderer.js';
 import { updatePaceBar } from '../ui/headerRenderer.js';
-import { performMineShift } from '../logic/gimmicks.js';
+import { performMineShift, mineShiftIsActive } from '../logic/gimmicks.js';
 import { hatchWorm, tickWorms, wormHatchEvent, markWormBurrowed, finalizeWormEvents, buildWormCrawlTopology } from '../logic/worms.js';
 import { renderWormOverlays } from '../ui/wormRenderer.js';
 import { playWormBurrow, playWormHatch } from '../audio/sounds.js';
@@ -141,9 +141,6 @@ export function stopTimer() {
 
 // ── Pause / Resume (visibility change) ────────────────
 
-let _mineShiftInterval = null; // stored so we can restart on resume
-let _mineShiftCount = 1;       // how many mines move per tick (difficulty dial)
-
 export function pauseTimer() {
   if (state.timerId) {
     clearInterval(state.timerId);
@@ -193,9 +190,15 @@ export function resumeTimer() {
     _preciseStartTime = Date.now(); // resume precise tracking
     startTimer();
   }
-  // Restart mine shift if it was active
-  if (!state.mineShiftTimerId && _mineShiftInterval) {
-    startMineShift(_mineShiftInterval, _mineShiftCount);
+  // Restart mine shift only if the LIVE game is a Chaos board that rolled it.
+  // The cadence rides game state (state.mineShiftPlan), so it dies with the
+  // game that set it, and mineShiftIsActive re-asks the board rather than
+  // trusting the plan — either check alone would have closed issue #238, and
+  // together they mean no future caller can re-open it by remembering a
+  // cadence somewhere else. See mineShiftIsActive in gimmicks.js.
+  const shiftPlan = state.mineShiftPlan;
+  if (!state.mineShiftTimerId && shiftPlan && mineShiftIsActive(state)) {
+    startMineShift(shiftPlan.interval, shiftPlan.count);
   }
   // Restart the worm heartbeat if any worms are alive (state.worms is the
   // presence signal — no stored interval needed, the cadence is per-worm)
@@ -207,17 +210,23 @@ export function resumeTimer() {
 // ── Mine Shift Timer ──────────────────────────────────
 
 export function startMineShift(intervalSeconds, moverCount = 1) {
-  _mineShiftInterval = intervalSeconds; // remember for resume
-  _mineShiftCount = moverCount;
+  // The cadence lives on GAME state, not in a module variable: the interval
+  // belongs to the board that rolled the modifier, so its restart memory has
+  // to end when that board does (issue #238).
+  state.mineShiftPlan = { interval: intervalSeconds, count: moverCount };
   if (state.mineShiftTimerId) return;
   state.mineShiftTimerId = setInterval(() => {
-    if (state.status !== 'playing') return;
+    // Status alone was the old guard, and status is 'playing' for whatever
+    // game is loaded — including one this modifier was never on.
+    if (state.status !== 'playing' || !mineShiftIsActive(state)) return;
     // Mines crawl the same graph the worm does — side-sharing on a tiling,
     // orthogonal on a rectangle (where this returns null and the rectangular
     // walk stands). Rebuilt per tick rather than cached because the topology
     // builder memoises per board, so this is a map lookup after the first.
     const topology = buildWormCrawlTopology(state.board, state.rows, state.cols);
-    const shifted = performMineShift(state.board, undefined, topology, _mineShiftCount);
+    const shifted = performMineShift(
+      state.board, undefined, topology, state.mineShiftPlan?.count || 1,
+    );
     if (shifted.length > 0) {
       // Brief shimmer on all unrevealed cells
       for (const child of boardEl.children) {
@@ -236,8 +245,7 @@ export function stopMineShift() {
     clearInterval(state.mineShiftTimerId);
     state.mineShiftTimerId = null;
   }
-  _mineShiftInterval = null;
-  _mineShiftCount = 1;
+  state.mineShiftPlan = null;
 }
 
 // ── Worm Crawl Heartbeat ──────────────────────────────

@@ -327,11 +327,15 @@
         <span class="card-archive-btn" role="button" tabindex="0" aria-label="Play a past daily" title="Past dailies">Past ›</span>
       </button>
       <!-- Weekly puzzle card — same single board for the whole ET week
-           (Mon-Sun), one attempt per day, best time wins. No streak. -->
+           (Mon-Sun), one attempt per day, best time wins. Carries the Daily
+           card's corner furniture: week streak bottom-left, par bottom-right,
+           Past weeklies top-right. No molt days — a week is already seven
+           chances at one board. -->
       <button class="mode-card" data-mode="weekly" type="button">
         <div class="mode-card-icon"><img class="mode-card-img" src="assets/sprites/mode-weekly.svg" alt="" draggable="false" onerror="this.replaceWith('🏁')"></div>
         <div class="mode-card-name">Weekly</div>
         <div class="mode-card-progress" id="title-weekly-progress">Same puzzle all week. Your best run wins.</div>
+        <span class="card-archive-btn" role="button" tabindex="0" aria-label="Play a past weekly" title="Past weeklies">Past ›</span>
       </button>
       <button class="mode-card mode-card-chaos" data-mode="chaos" type="button">
         <div class="mode-card-icon"><img class="mode-card-img" src="assets/sprites/mode-chaos.svg" alt="" draggable="false" onerror="this.replaceWith('🌀')"></div>
@@ -914,6 +918,22 @@
     </div>
   </div>
 
+  <!-- Past Weeklies — the weekly's archive. A LIST rather than a calendar:
+       one row per week, so a month grid would be six mostly-empty cells. -->
+  <div id="weekly-archive-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content archive-modal-content">
+      <div class="modal-header">
+        <h2>Past Weeklies</h2>
+        <button class="modal-close" aria-label="Close"><img class="ui-icon-close" src="assets/sprites/ui-close.svg" alt="Close" draggable="false" onerror="this.replaceWith('×')"></button>
+      </div>
+      <div class="modal-body">
+        <p class="archive-intro">Replay any past week&rsquo;s board. A week you already played keeps its check and stays put, because the week&rsquo;s board is one board. These runs use none of this week&rsquo;s attempts, never touch your week streak, and never reach the leaderboard.</p>
+        <div id="weekly-archive-list" class="weekly-archive-list"></div>
+        <p id="weekly-archive-empty" class="archive-empty-note hidden">No past weeks yet.</p>
+      </div>
+    </div>
+  </div>
+
   <!-- Certificate modal — opened from the ✓ Certified chip (and the
        Chaos "No guarantees" chip). Body is rendered per-board by
        showCertificateModal() in headerRenderer.js. Outside #app for
@@ -1214,6 +1234,14 @@
         <button class="modal-close" aria-label="Close"><img class="ui-icon-close" src="assets/sprites/ui-close.svg" alt="Close" draggable="false" onerror="this.replaceWith('×')"></button>
       </div>
       <div class="modal-body whatsnew-body">
+        <div class="whatsnew-entry">
+          <h3>v1.11 &middot; August 5, 2026</h3>
+          <ul>
+            <li><strong>Week streaks</strong>: Finish the weekly once and the week is banked. Play every week in a row and the count keeps climbing, right on the Weekly card. One of the seven attempts is all it takes.</li>
+            <li><strong>Past weeklies</strong>: Replay any earlier week&rsquo;s board from the Weekly card. Those runs use none of this week&rsquo;s attempts and stay off the leaderboard.</li>
+            <li><strong>Par on the Weekly card</strong>: See how long I take on this week&rsquo;s board before you spend an attempt on it.</li>
+          </ul>
+        </div>
         <div class="whatsnew-entry">
           <h3>v1.10 &middot; August 4, 2026</h3>
           <ul>

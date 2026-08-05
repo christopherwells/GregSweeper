@@ -1,6 +1,6 @@
 import { state } from '../state/gameState.js';
 import {
-  saveGameState, loadGameState, loadDailyPar,
+  saveGameState, loadGameState, loadDailyPar, loadStats,
 } from '../storage/statsStorage.js';
 import { getLocalDateString, getWeekStart, getWeekDayIndex } from '../logic/seededRandom.js';
 import { isSaveResumable } from '../logic/resumeEligibility.js';
@@ -31,6 +31,11 @@ export function persistGameState() {
   // rejected on resume anyway (resumeEligibility anchors daily saves to
   // today's clock). Archive is always re-launched from the calendar.
   if (state.isArchivePlay) return;
+  // Past-weekly replays likewise share the weekly slot, so persisting one
+  // would clobber an in-progress real weekly attempt — and a past-week save
+  // fails resume anyway (resumeEligibility anchors weekly saves to the live
+  // ET week). Always re-launched from the Past weeklies list.
+  if (state.isWeeklyArchive) return;
   // ?level= playtest runs never persist either: they share the challenge
   // slot, and saving one would clobber the player's real challenge game.
   if (state.isLevelPractice) return;
@@ -172,6 +177,10 @@ export function tryResumeGame(mode) {
     practiceSeed: state.dailySeed || null,
     canonicalDate: state.canonicalDailyBoard?.date || null,
     canonicalRngSeed: state.canonicalDailyBoard?.raw?.rngSeed || null,
+    // A challenge save above maxLevelReached + 1 is a position this
+    // progression cannot hold — the pre-C250 save the epoch reset never
+    // reached (issue #239).
+    maxLevelReached: loadStats().modeStats?.challenge?.maxLevelReached || 1,
   });
   if (!resumable) return false;
 
@@ -226,6 +235,12 @@ export function tryResumeGame(mode) {
   state.gimmickData = gs.gimmickData || {};
   state.worms = rehydrateWorms(gs.worms);
   state.wormEvents = Array.isArray(gs.wormEvents) ? gs.wormEvents : [];
+  // No save is ever a Chaos board (Chaos always starts fresh), so a resumed
+  // game never inherits a shift cadence. This is the one resume path that does
+  // NOT run stopTimer, which is where the leaked cadence used to survive
+  // (issue #238); clearing it here means the plan can only ever describe the
+  // board on screen.
+  state.mineShiftPlan = null;
 
   // Rehydrate par + features from the per-date cache so the resumed game's
   // end-of-game modal can render the full breakdown and the Firebase meta

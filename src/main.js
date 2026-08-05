@@ -24,6 +24,7 @@ import './game/winLossHandler.js'; // side-effect: registers handleWin with powe
 import { useRevealSafe, useShield, activateScan, activateXRay, activateMagnet } from './game/powerUpActions.js';
 import { switchMode, isChaosUnlocked, updateModeUI } from './game/modeManager.js';
 import { resolveCruxDate, streakBearingDates } from './logic/archiveEligibility.js';
+import { challengeSaveIsCurrent } from './logic/resumeEligibility.js';
 import { persistGameState, tryResumeGame } from './game/gamePersistence.js';
 import { MAX_TIMED_LEVEL, CHAOS_UNLOCK_LEVEL } from './logic/difficulty.js';
 import { CHALLENGE_MAX_LEVEL, CHALLENGE_BLOCK_SIZE, MOD_INTRO_BLOCKS, SHAPE_INTRO_BLOCKS } from './logic/challenge250.js';
@@ -40,7 +41,7 @@ import {
   clearGameState,
 } from './storage/statsStorage.js';
 
-const CURRENT_VERSION = 'v1.10';
+const CURRENT_VERSION = 'v1.11';
 
 import {
   playLevelUp, isMuted, setMuted, loadMuted,
@@ -823,7 +824,12 @@ function showCheckpointSelector() {
   // endless zone banks checkpoints forever.
   const nextPlayable = maxLevel + 1;
   const savedGame = loadGameState('normal');
-  const hasSavedGame = !!(savedGame && savedGame.board && savedGame.gameMode);
+  // The Resume button must offer only what tryResumeGame would actually
+  // restore. It used to read the slot raw, so a pre-C250 save advertised
+  // "Resume Game · Level 100" to a player the epoch reset had just returned to
+  // Level 1 — and the tap resumed it (issue #239). Same pure gate, one answer.
+  const hasSavedGame = !!(savedGame && savedGame.board && savedGame.gameMode)
+    && challengeSaveIsCurrent(savedGame, maxLevel);
 
   const resumeEl = $('#checkpoint-resume');
   const listEl = $('#checkpoint-list');

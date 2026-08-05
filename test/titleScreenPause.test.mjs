@@ -69,6 +69,15 @@ setMuted(true); // no AudioContext in node
 // mocked clock's date — the cache is what keeps refreshTitleDailyPar off
 // the Firebase / local-generation fallback (neither exists under the shim,
 // and the fallback would run the full seed-selection solver in a unit test).
+// Mine shift is Chaos-only, and since issue #238 the interval asks the LIVE
+// board for its right to run rather than remembering a cadence. A test that
+// starts one has to describe the board that would have rolled it, or it is
+// setting up the leaked state rather than the real one.
+function asChaosWithShift() {
+  state.gameMode = 'chaos';
+  state.activeGimmicks = ['mineShift'];
+}
+
 function freshGame() {
   appEl.classes.clear();                                    // #app visible (in-game)
   titleEl.classes.clear(); titleEl.classList.add('hidden'); // title hidden
@@ -214,6 +223,7 @@ test('returning to the game restarts the clock, the worm crawl, and the mine shi
     revealAll();
     state.worms = [hatchWorm(1, 1, 'test-seed')];
     timers.startTimer();
+    asChaosWithShift();
     timers.startMineShift(300);
     timers.startWormCrawl();
     mock.timers.tick(2000);
@@ -232,5 +242,19 @@ test('returning to the game restarts the clock, the worm crawl, and the mine shi
     const t = state.elapsedTime;
     mock.timers.tick(3000);
     assert.equal(state.elapsedTime, t + 3, 'clock ticks again after the return');
+
+    // REGRESSION #238, the other half: the cadence must not survive the board
+    // that rolled it. Leave the Chaos round for a resumed Daily — the exact
+    // Home-then-another-mode path — and the shifter must stay dead, or mines
+    // start moving inside a canonical board mid-play.
+    showTitleScreen();
+    state.gameMode = 'daily';
+    state.activeGimmicks = [];
+    state.mineShiftPlan = null;      // tryResumeGame clears it on the way in
+    hideTitleScreen();
+    timers.resumeTimer();
+    assert.ok(state.timerId, 'the resumed game still runs its clock');
+    assert.equal(state.mineShiftTimerId, null,
+      'the Chaos shifter never follows the player onto another board');
   } finally { mock.timers.reset(); }
 });

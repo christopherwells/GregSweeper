@@ -1,0 +1,67 @@
+name: Report player progress
+
+# Manual, READ-ONLY. Prints who plays and how far they have got, including the
+# challenge ladder position — which lives under users/{uid} and is owner-read
+# (`auth.uid === $uid`), so nothing without the service account can see it.
+#
+# The script issues GETs and nothing else. Its token is minted with DATABASE
+# scope only (see scripts/service-account-auth.mjs), so it cannot touch the
+# Auth records even by mistake, and it never prints pushSubscription tokens.
+#
+# Deliberately NOT scheduled: this answers a question when it is asked. A cron
+# would put a roster of pseudonymous player data into the run log every day
+# for nobody to read.
+#
+#   gh workflow run report-player-progress.yml
+#   gh workflow run report-player-progress.yml -f showAll=true
+#
+# Read the numbers in the run log, or download the JSON artifact.
+
+on:
+  workflow_dispatch:
+    inputs:
+      showAll:
+        description: 'Also list visitor-only uids (a browser that opened the site and left)'
+        type: boolean
+        default: false
+      limit:
+        description: 'Max rows to print'
+        default: '100'
+
+permissions:
+  contents: read
+
+jobs:
+  report:
+    runs-on: [self-hosted, gregsweeper-win]
+    defaults:
+      run:
+        shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -eo pipefail "{0}"'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      # Inputs go through the environment rather than being interpolated into
+      # the shell line — the house rule since the heatmap rollup.
+      - name: Report
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          SHOW_ALL: ${{ github.event.inputs.showAll }}
+          ROW_LIMIT: ${{ github.event.inputs.limit }}
+        run: |
+          FLAGS=""
+          if [ "$SHOW_ALL" = "true" ]; then FLAGS="--all"; fi
+          node scripts/report-player-progress.mjs --limit "${ROW_LIMIT:-100}" $FLAGS
+      - name: Report (JSON artifact)
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          ROW_LIMIT: ${{ github.event.inputs.limit }}
+        run: node scripts/report-player-progress.mjs --json --limit "${ROW_LIMIT:-100}" > player-progress.json
+      - name: Upload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: player-progress
+          path: player-progress.json
+          if-no-files-found: ignore

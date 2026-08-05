@@ -53,7 +53,8 @@ import { buildDailyScoreExtras } from '../logic/winSubmissionPlan.js';
 import { detectSkillFeats } from '../logic/skillFeatDetection.js';
 import { summarizeWeeklyAttempt } from '../logic/weeklyAttemptSummary.js';
 import { ensureLeaderboardName } from '../ui/nameCapture.js';
-import { addDailyLeaderboardEntry, appendDailyResidual, loadDailyResiduals, loadPowerUps } from '../storage/statsStorage.js';
+import { addDailyLeaderboardEntry, appendDailyResidual, loadDailyResiduals, loadPowerUps, recordWeeklyCompletion } from '../storage/statsStorage.js';
+import { weekRangeLabel } from '../logic/weeklyProgress.js';
 import { getLocalDateString } from '../logic/seededRandom.js';
 
 // Weekly's first-attempt-of-the-week play feeds the par-model fit pool: an
@@ -412,7 +413,9 @@ export async function handleWin() {
   // state.status/stopTimer already ran synchronously above, so awaiting here is
   // safe. (state.isArchivePlay is only meaningful in daily mode.)
   await ensureLeaderboardName(state.gameMode, {
-    isArchive: !!state.isArchivePlay,
+    // Either archive lane: neither posts to a leaderboard, so neither has a
+    // name to demand.
+    isArchive: !!state.isArchivePlay || !!state.isWeeklyArchive,
     isPractice: !!state.isDailyPractice,
   });
 
@@ -510,7 +513,19 @@ export async function handleWin() {
   // the player's FIRST attempt this week) submit a synthetic-daily row
   // to daily/{weekStart}_weekly_first so the par-model fit gets honest
   // first-encounter timing data.
-  if (isWeekly && state.weeklySeed != null && state.weeklyDay != null) {
+  // A past-weekly replay is walled off from the whole block below: no attempt
+  // marked, no leaderboard row, no fit row, no streak. It is the weekly's
+  // version of an archive daily, and the same rule applies — the week it
+  // belongs to is over, and its record is already written.
+  if (isWeekly && !state.isWeeklyArchive && state.weeklySeed != null && state.weeklyDay != null) {
+    // The week streak: one completion banks the week (his rule — "only need to
+    // play one of the weekly"), so this is idempotent across the week's seven
+    // attempts and the later ones simply land on the week already banked.
+    const week = recordWeeklyCompletion(state.weeklySeed);
+    saveProgress({
+      weekStreak: { streak: week.streak, best: week.best, lastWeek: week.lastWeek },
+    });
+
     // Snapshot the prior-times BEFORE we mutate state.weeklyDayTimes,
     // so the modal-render code below can compute "1st attempt" vs
     // "Nth attempt" correctly. Without this snapshot the modal would
@@ -776,6 +791,17 @@ export async function handleWin() {
       if (!isNewcomerDaily) _renderWinModalHistoryDots(state.dailySeed);
       // Win receipt: the board's confession (crux + modifier verdict).
       if (!isNewcomerDaily) _renderWinReceipt();
+    }
+  } else if (state.gameMode === 'weekly' && state.isWeeklyArchive) {
+    // A past-weekly replay has no attempts, no best-of-week and no row, so it
+    // gets none of the weekly summary below — that whole card is about a week
+    // still in progress. It says what it is and shows the time.
+    const precise = state.preciseTime || state.elapsedTime;
+    gameoverTime.innerHTML = `Time: ${precise.toFixed(1)}s${strikesInfo}`;
+    if (parEl) {
+      parEl.innerHTML = `<div class="weekly-summary-row">Replay of the week of `
+        + `${weekRangeLabel(state.weeklySeed)}. Nothing records.</div>`;
+      parEl.classList.remove('hidden');
     }
   } else if (state.gameMode === 'weekly') {
     // Weekly: show precise time, day-of-week dot indicators, vs-best

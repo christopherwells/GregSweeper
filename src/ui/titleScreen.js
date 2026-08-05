@@ -16,16 +16,21 @@ import { applyThemeEffects, applyTitleSceneEffects, clearTitleSceneEffects } fro
 import { persistGameState } from '../game/gamePersistence.js';
 import { clearAllPlateTimers } from '../game/gameActions.js';
 import { pauseTimer } from '../game/timerManager.js';
-import { isChaosUnlocked, launchDailyArchive } from '../game/modeManager.js';
-import { computeDailyParForDate } from '../game/parResolve.js';
+import { isChaosUnlocked, launchDailyArchive, launchWeeklyArchive } from '../game/modeManager.js';
+import { computeDailyParForDate, computeWeeklyPar } from '../game/parResolve.js';
 import {
   loadStats, isDailyCompleted, getDailyStreak, getMoltProvisionalNotice,
   consumeMoltCelebrate, hasSeenNotice, markNoticeSeen, isOnboarded,
+  getWeekStreak, getWeekStreakNotice,
 } from '../storage/statsStorage.js';
 import { loadDailyHistory } from '../firebase/firebaseProgress.js';
 import { loadDailyBoard } from '../firebase/dailyBoardSync.js';
-import { getLocalDateString, getWeekDayIndex, addCalendarDays } from '../logic/seededRandom.js';
+import { loadWeeklyBoard } from '../firebase/weeklyBoardSync.js';
+import { getLocalDateString, getWeekDayIndex, getWeekStart, addCalendarDays } from '../logic/seededRandom.js';
 import { FIRST_ARCHIVE_DATE, archiveDayState } from '../logic/archiveEligibility.js';
+import {
+  pastWeekStarts, weekArchiveState, weekRangeLabel,
+} from '../logic/weeklyProgress.js';
 import { CHALLENGE_MAX_LEVEL } from '../logic/challenge250.js';
 
 // ── Return-to-title modal plumbing ────────────────────
@@ -59,6 +64,10 @@ export function showModalFromTitle(modalId) {
 // per session (the solve is not free) by refreshTitleDailyPar(); read
 // synchronously by updateTitleProgress().
 let _titleDailyPar = { date: null, secs: 0 };
+// This week's Greg-par for the Weekly card corner, same contract as the daily
+// one above: resolved once per week per session by refreshTitleWeeklyPar()
+// (solving the canonical is not free), read synchronously when the card paints.
+let _titleWeeklyPar = { week: null, secs: 0 };
 
 export function updateTitleProgress() {
   const stats = loadStats();
@@ -138,23 +147,52 @@ export function updateTitleProgress() {
   // Weekly card — always visible. Shows attempts used and best time
   // when the gate has populated state.cachedWeeklyDayAttempts and
   // state.weeklyDayTimes (both pre-fetched at startup).
+  //
+  // Since 2026-08-05 it carries the Daily card's corner furniture for the same
+  // reason that card does: the numbers ride the corners so the centre line
+  // stays one descriptor and the card stays the height of its siblings. Week
+  // streak bottom-left, par bottom-right, Past weeklies top-right. The
+  // top-LEFT corner stays empty — that is the daily's molt slot, and the
+  // weekly has no molt days (a week is already seven chances at one board).
   const weeklyCard = $('.mode-card[data-mode="weekly"]');
   const weeklyProgressEl = $('#title-weekly-progress');
   if (weeklyCard && weeklyProgressEl) {
     const dayIdx = getWeekDayIndex();
+    const thisWeek = getWeekStart();
     const attempts = state.cachedWeeklyDayAttempts || {};
     const used = Object.keys(attempts).length;
     const todayAlreadyAttempted = !!attempts[dayIdx];
+
+    let centerText;
     if (todayAlreadyAttempted) {
-      weeklyProgressEl.textContent = used >= 7 ? `Done · ${used}/7` : `Played today · ${used}/7`;
+      centerText = used >= 7 ? `Done · ${used}/7` : `Played today · ${used}/7`;
       weeklyCard.classList.add('daily-completed');
     } else if (used > 0) {
-      weeklyProgressEl.textContent = `Play today · ${used}/7 used`;
+      centerText = `Play today · ${used}/7 used`;
       weeklyCard.classList.remove('daily-completed');
     } else {
-      weeklyProgressEl.textContent = 'Same puzzle all week. Your best run wins.';
+      centerText = 'Same puzzle all week. Your best run wins.';
       weeklyCard.classList.remove('daily-completed');
     }
+
+    // The week streak reads like the daily's, in weeks. A streak riding on
+    // THIS week (last completion was last week, this week still unplayed) says
+    // so, because that is the one moment the number is about to change.
+    const { streak: weekStreak } = getWeekStreak(thisWeek);
+    const atRisk = getWeekStreakNotice(thisWeek);
+    const streakTitle = atRisk
+      ? `Your ${atRisk.streakHeld} week streak rides on this week. Finish the weekly to make it ${atRisk.wouldBe}.`
+      : 'Weeks in a row you finished the weekly. One completion banks the week.';
+    const weekStreakCorner = weekStreak > 0
+      ? `<span class="daily-corner-stat daily-corner-streak" title="${streakTitle}">${weekStreak} week${weekStreak === 1 ? '' : 's'}</span>`
+      : '';
+    const hasWeekPar = _titleWeeklyPar.week === thisWeek && _titleWeeklyPar.secs > 0;
+    const weekParCorner = hasWeekPar
+      ? `<span class="daily-corner-stat daily-corner-par" title="Greg’s par for this week’s board">Par ${_titleWeeklyPar.secs}s</span>`
+      : '';
+
+    weeklyProgressEl.innerHTML = weekStreakCorner + weekParCorner
+      + `<span class="mode-card-fieldnote">${centerText}</span>`;
   }
 
   // Chaos mode card
@@ -246,6 +284,7 @@ export function showTitleScreen() {
   updateTitleProgress();
   startGregMascot($('#title-greg-mascot'), document.documentElement.getAttribute('data-theme') || 'classic'); // inject + animate the header Greg (idempotent, theme-aware)
   refreshTitleDailyPar(); // fills in "Par: N seconds" once resolved
+  refreshTitleWeeklyPar(); // same, for the Weekly card's par corner
   titleScreen.classList.remove('hidden');
   app.classList.add('hidden');
   // Sky worlds (nest) drift clouds + gulls behind the title cards too.
@@ -326,6 +365,34 @@ async function refreshTitleDailyPar() {
       updateTitleProgress();
     }
   } catch { /* keep the fallback subtitle */ }
+}
+
+// This week's par for the Weekly card corner. computeWeeklyPar solves the
+// canonical once and caches it per week, so this costs one solve per session
+// and nothing on later title-screen visits.
+//
+// The weekly deliberately does not show par at the END of a run (days 2-7 are
+// speedruns of a known board, and rating a memorised solve against a
+// first-encounter par would be meaningless). Showing it on the CARD is the
+// opposite case: it is the one number that says how big a board is waiting
+// before you commit an attempt to it, which is what the daily's par corner has
+// always been for.
+async function refreshTitleWeeklyPar() {
+  const week = getWeekStart();
+  if (_titleWeeklyPar.week === week && _titleWeeklyPar.secs > 0) return;
+  // Unlike the daily, there is no cheap local path here: the weekly's par can
+  // only come from solving the week's canonical, and that board only exists on
+  // Firebase (no local-gen fallback prices a week nobody generated). So don't
+  // start a fetch that cannot land — the card simply goes without its par
+  // corner until a later title visit finds Firebase up.
+  if (!state.firebaseReady) return;
+  try {
+    const par = await computeWeeklyPar(week);
+    if (par > 0) {
+      _titleWeeklyPar = { week, secs: Math.round(par) };
+      updateTitleProgress();
+    }
+  } catch { /* the card just goes without its par corner */ }
 }
 
 // Draw the player's eye to the Daily card after onboarding. Adds a
@@ -506,5 +573,102 @@ if (_dailyCardEl) {
   _dailyCardEl.addEventListener('click', _openArchiveFromLink, true);
   _dailyCardEl.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' || e.key === ' ') _openArchiveFromLink(e);
+  }, true);
+}
+
+// ── Past Weeklies (archive) list ────────────────────────
+// Opens from the "Past weeklies" chip on the Weekly card. A LIST rather than a
+// calendar: the weekly has one board per week, so a month grid would be six
+// mostly-empty cells with one row that matters. Each row is a week; a tap
+// probes that week's canonical and hands it to launchWeeklyArchive.
+//
+// Which weeks the player has already cleared comes from the weekly leaderboard
+// itself — a `weekly/{weekStart}/{uid}` row exists only for a week they
+// finished at least one attempt of, so it is the same fact the streak counts,
+// read from the one place both devices already share. Unknown history (signed
+// out, or a failed read) leaves the marks off and every week playable: the
+// pure gate fails open there, which costs nothing because a replay records
+// nothing either way.
+let _weeklyPlayed = null;   // Set<weekStart> | null (null = unknown)
+
+async function openWeeklyArchiveList() {
+  try {
+    const { fetchPlayedWeeks } = await import('../firebase/firebaseProgress.js');
+    const weeks = await fetchPlayedWeeks();
+    if (Array.isArray(weeks)) _weeklyPlayed = new Set(weeks);
+  } catch { /* keep whatever marks we had */ }
+  showModalFromTitle('weekly-archive-modal');
+  renderWeeklyArchiveList();
+}
+
+function renderWeeklyArchiveList() {
+  const listEl = $('#weekly-archive-list');
+  if (!listEl) return;
+  const thisWeek = getWeekStart();
+  const weeks = pastWeekStarts(thisWeek);
+  let html = '';
+  for (const w of weeks) {
+    const rowState = weekArchiveState(w, thisWeek, _weeklyPlayed);
+    const label = weekRangeLabel(w);
+    if (rowState === 'playable') {
+      html += `<button type="button" class="weekly-archive-row playable" data-week="${w}">`
+        + `<span class="weekly-archive-week">${label}</span>`
+        + '<span class="weekly-archive-action">Play ›</span></button>';
+    } else if (rowState === 'done') {
+      // Finished weeks stay listed so the column reads as a record of what the
+      // player has cleared, but they are spans rather than buttons: the week's
+      // board is one board, and a replay records nothing anyway.
+      html += '<span class="weekly-archive-row completed" title="Already played">'
+        + `<span class="weekly-archive-week">${label}</span>`
+        + '<span class="archive-check">✓</span></span>';
+    }
+  }
+  listEl.innerHTML = html;
+  const emptyNote = $('#weekly-archive-empty');
+  if (emptyNote) emptyNote.classList.toggle('hidden', weeks.length > 0);
+}
+
+const _weeklyArchiveListEl = $('#weekly-archive-list');
+if (_weeklyArchiveListEl) _weeklyArchiveListEl.addEventListener('click', async (e) => {
+  const row = e.target.closest('.weekly-archive-row.playable');
+  if (!row || row.disabled) return;
+  const week = row.dataset.week;
+  if (!week) return;
+  // Re-derive the gate rather than trusting the rendered class: the list is
+  // painted once per open while the played-set refreshes on each one.
+  if (weekArchiveState(week, getWeekStart(), _weeklyPlayed) !== 'playable') {
+    renderWeeklyArchiveList();
+    return;
+  }
+  row.disabled = true;
+  row.classList.add('loading');
+  // No local-gen fallback for a past week — probe before committing.
+  const raw = await loadWeeklyBoard(week).catch(() => null);
+  if (!raw) {
+    row.disabled = false;
+    row.classList.remove('loading');
+    showToast('That week’s board isn’t available.');
+    return;
+  }
+  _returnToTitle = false; // entering a game, not bouncing back to the title
+  hideModal('weekly-archive-modal');
+  hideTitleScreen();
+  launchWeeklyArchive(week, raw);
+});
+
+// The "Past weeklies" chip, wired exactly like the Daily card's: the card is a
+// <button>, so a capture-phase listener catches the chip's tap before the
+// card's own launch handler and stops it.
+const _weeklyCardEl = $('.mode-card[data-mode="weekly"]');
+if (_weeklyCardEl) {
+  const _openWeeklyArchiveFromLink = (e) => {
+    if (!e.target.closest('.card-archive-btn')) return;
+    e.stopPropagation();
+    e.preventDefault();
+    openWeeklyArchiveList();
+  };
+  _weeklyCardEl.addEventListener('click', _openWeeklyArchiveFromLink, true);
+  _weeklyCardEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') _openWeeklyArchiveFromLink(e);
   }, true);
 }

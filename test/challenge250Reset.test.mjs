@@ -17,6 +17,7 @@ const stats = await import('../src/storage/statsStorage.js');
 const {
   applyChallenge250Reset, applyCloudProgress, loadStats, loadCheckpoint,
   loadModePowerUps, invalidateStatsCache, saveCheckpoint,
+  saveGameState, loadGameState,
 } = stats;
 const { CHALLENGE_250_EPOCH, powerUpAwardCount } = await import('../src/logic/challenge250.js');
 const gimmicks = await import('../src/logic/gimmicks.js');
@@ -246,4 +247,95 @@ test('the legacy flat-array seen-set reads as unseen exactly once', () => {
   const stored = JSON.parse(localStorage.getItem(SEEN_KEY));
   assert.ok(!Array.isArray(stored), 'the store migrates to the revision map');
   assert.equal(gimmicks.hasSeenGimmick('walls'), true);
+});
+
+// ── What the reset never reached (issue #239) ────────────────────────────
+// The epoch migration wiped the stats object, the checkpoint and the power-up
+// pool, but the in-progress challenge SAVE is a separate storage family keyed
+// by mode rather than by epoch, and the level-advance handler had been writing
+// its checkpoint under a second key ('normal') that the reset never cleared.
+// So a returning player was back at Level 1 while the game still offered to
+// continue from their old-ladder level — and finishing that board re-stamped
+// maxLevelReached into the epoch-matched cloud node, out of the reset's reach
+// forever.
+
+test('REGRESSION #239: a pre-reset challenge save is refused and cleared', async () => {
+  const { challengeSaveIsCurrent } = await import('../src/logic/resumeEligibility.js');
+  seedPreResetState();
+  // The old ladder's leftovers: an in-progress L100 game and the checkpoint
+  // under the key the level-advance handler actually wrote.
+  saveGameState({
+    gameMode: 'normal', currentLevel: 100, checkpoint: 96,
+    board: [[{ row: 0, col: 0, isMine: false }]], rows: 1, cols: 1,
+    totalMines: 0, savedStatus: 'playing',
+  });
+  const cps = JSON.parse(localStorage.getItem('minesweeper_checkpoints') || '{}');
+  cps.normal = 96;
+  localStorage.setItem('minesweeper_checkpoints', JSON.stringify(cps));
+
+  assert.equal(applyChallenge250Reset(), true);
+  invalidateStatsCache?.();
+
+  assert.equal(loadStats().maxLevelReached, 1);
+  assert.equal(loadGameState('normal'), null,
+    'the old-ladder save is gone, not merely un-resumable');
+  assert.equal(loadCheckpoint('challenge'), 1);
+  assert.equal(loadCheckpoint('normal'), 1,
+    "both spellings resolve to one number — 'normal' can no longer hold a second copy");
+  const raw = JSON.parse(localStorage.getItem('minesweeper_checkpoints') || '{}');
+  assert.equal(raw.normal, undefined, 'the orphaned legacy entry is dropped');
+
+  // And the gate that keeps it from coming back: the position a save claims
+  // must be one this progression can hold.
+  assert.equal(challengeSaveIsCurrent({ currentLevel: 100 }, 1), false);
+  assert.equal(challengeSaveIsCurrent({ currentLevel: 100 }, 62), false,
+    'the new-ladder climb does not license the old ladder to resume');
+  assert.equal(challengeSaveIsCurrent({ currentLevel: 63 }, 62), true,
+    'playing the level above your best is the ordinary in-progress case');
+  assert.equal(challengeSaveIsCurrent({ currentLevel: 1 }, 1), true);
+});
+
+test('the artifact cleanup reaches a player whose progression reset ALREADY ran', () => {
+  seedPreResetState();
+  assert.equal(applyChallenge250Reset(), true);       // the original migration
+  // Their old save survived that first pass, exactly as it did in the wild.
+  saveGameState({
+    gameMode: 'normal', currentLevel: 100, checkpoint: 96,
+    board: [[{ row: 0, col: 0, isMine: false }]], rows: 1, cols: 1,
+    totalMines: 0, savedStatus: 'playing',
+  });
+  const s = loadStats();
+  delete s.challengeArtifactEpoch;                    // pre-fix build
+  localStorage.setItem('minesweeper_stats', JSON.stringify(s));
+  invalidateStatsCache?.();
+
+  assert.equal(applyChallenge250Reset(), true, 'the artifact marker runs on its own');
+  assert.equal(loadGameState('normal'), null);
+  assert.equal(loadStats().maxLevelReached, 1, 'the climb they built since is untouched');
+});
+
+test('a legitimate in-progress challenge game survives every pass', () => {
+  seedPreResetState();
+  applyChallenge250Reset();
+  // Post-reset play: won up to L62, now part-way through L63.
+  const s = loadStats();
+  s.maxLevelReached = 62;
+  s.modeStats.challenge.maxLevelReached = 62;
+  localStorage.setItem('minesweeper_stats', JSON.stringify(s));
+  invalidateStatsCache?.();
+  saveGameState({
+    gameMode: 'normal', currentLevel: 63, checkpoint: 61,
+    board: [[{ row: 0, col: 0, isMine: false }]], rows: 1, cols: 1,
+    totalMines: 0, savedStatus: 'playing',
+  });
+  // Re-arm the artifact pass so it gets a chance to take this save.
+  const s2 = loadStats();
+  delete s2.challengeArtifactEpoch;
+  localStorage.setItem('minesweeper_stats', JSON.stringify(s2));
+  invalidateStatsCache?.();
+
+  applyChallenge250Reset();
+  const kept = loadGameState('normal');
+  assert.ok(kept && kept.currentLevel === 63, 'a real in-progress game is never dropped');
+  assert.equal(loadStats().maxLevelReached, 62);
 });

@@ -442,6 +442,19 @@
         "lastDailyDate": {
           ".validate": "newData.isString() && newData.val().length === 10"
         },
+        "weekStreak": {
+          ".validate": "newData.hasChildren(['streak']) || newData.val() === null",
+          "streak": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 520"
+          },
+          "best": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 520"
+          },
+          "lastWeek": {
+            ".validate": "newData.isString() && newData.val().length === 10"
+          },
+          "$other": { ".validate": false }
+        },
         "moltDay": {
           ".validate": "newData.hasChildren(['banked']) || newData.val() === null",
           "banked": {

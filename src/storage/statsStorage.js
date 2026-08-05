@@ -1,8 +1,12 @@
 import { safeGet, safeSet, safeRemove, safeGetJSON, safeSetJSON, safeKeys } from './storageAdapter.js';
-import { getLocalDateString } from '../logic/seededRandom.js';
+import { getLocalDateString, getWeekStart } from '../logic/seededRandom.js';
 import { applyStreakContinuation, projectContinuation, isStreakAlive, backfillGrant, MOLT_CAP } from '../logic/moltDay.js';
+import {
+  applyWeekContinuation, liveWeekStreak, projectWeekContinuation,
+} from '../logic/weeklyProgress.js';
 import { CHALLENGE_250_EPOCH } from '../logic/challenge250.js';
 import { clearSeenGimmicks } from '../logic/gimmicks.js';
+import { challengeSaveIsCurrent } from '../logic/resumeEligibility.js';
 import { isTestEnvironment } from '../firebase/env.js';
 import { containsHateSpeech } from '../logic/nameFilter.js';
 
@@ -474,14 +478,27 @@ export function saveModeLives(gameMode, count) {
 // ── Checkpoint Storage ──────────────────────────────
 const CHECKPOINT_KEY = 'minesweeper_checkpoints';
 
+// Checkpoints are keyed by the same 'normal' → 'challenge' mapping every other
+// per-mode store uses (getModeKey, gameStateKey). They were NOT: the
+// level-advance handler wrote `saveCheckpoint(state.gameMode, …)` — i.e.
+// 'normal' — while the fresh-start reader and the C250 reset both used
+// 'challenge', so the ladder kept TWO entries for one number and the reset
+// only ever cleared one of them. The pre-C250 checkpoint sat in the other one
+// untouched (issue #239). Normalizing here is what makes it one number again;
+// any legacy 'normal' entry is orphaned by the same stroke and dropped by the
+// reset below.
+function checkpointKey(gameMode) {
+  return getModeKey(gameMode);
+}
+
 export function loadCheckpoint(gameMode) {
   const data = getJSON(CHECKPOINT_KEY) || {};
-  return data[gameMode] || 1; // default checkpoint is level 1
+  return data[checkpointKey(gameMode)] || 1; // default checkpoint is level 1
 }
 
 export function saveCheckpoint(gameMode, level) {
   const data = getJSON(CHECKPOINT_KEY) || {};
-  data[gameMode] = level;
+  data[checkpointKey(gameMode)] = level;
   setJSON(CHECKPOINT_KEY, data);
 }
 
@@ -607,6 +624,68 @@ export function getDailyStreak() {
   return { streak: daily.dailyStreak || 0, best: daily.bestDailyStreak || 0, banked };
 }
 
+// ── Week streak ───────────────────────────────────────
+// The weekly's counterpart to the daily streak: one completion banks the
+// week, and consecutive banked weeks are the streak (his rule, 2026-08-05 —
+// "only need to play one of the weekly"). No molt days: a week is already
+// seven chances at one board, so there is nothing for insurance to insure.
+//
+// It lives in a TOP-LEVEL stats field rather than in modeStats.weekly, which
+// does not exist — createDefaultModeStats has never had a weekly block, and
+// adding one would silently start routing every weekly completion through
+// saveGameResult's per-mode counters, which is a different change than this.
+// One object so the (streak, best, lastWeek) trio is always read and written
+// as one snapshot, the moltDay lesson.
+const DEFAULT_WEEK_STREAK = { streak: 0, best: 0, lastWeek: null };
+
+function readWeekStreak(stats) {
+  const w = stats.weekStreak;
+  if (!w || typeof w !== 'object') return { ...DEFAULT_WEEK_STREAK };
+  return {
+    streak: Math.max(0, Number(w.streak) || 0),
+    best: Math.max(0, Number(w.best) || 0),
+    lastWeek: typeof w.lastWeek === 'string' ? w.lastWeek : null,
+  };
+}
+
+/**
+ * The week streak as the card should show it: the stored run while it is still
+ * alive, 0 once it has lapsed. `best` is a high-water mark and never lapses.
+ */
+export function getWeekStreak(currentWeek = getWeekStart()) {
+  const rec = readWeekStreak(loadStats());
+  return { streak: liveWeekStreak(rec, currentWeek), best: rec.best, lastWeek: rec.lastWeek };
+}
+
+/**
+ * Bank a weekly completion. Idempotent within a week — later days of a week
+ * already banked leave everything where it is, which is what makes "one of the
+ * seven" the rule rather than "the first of the seven".
+ *
+ * @param {string} weekStart the completed board's week
+ * @returns {{streak: number, best: number, lastWeek: string, extended: boolean}}
+ */
+export function recordWeeklyCompletion(weekStart) {
+  const stats = loadStats();
+  const next = applyWeekContinuation(readWeekStreak(stats), weekStart);
+  stats.weekStreak = { streak: next.streak, best: next.best, lastWeek: next.lastWeek };
+  setJSON(STATS_KEY, stats);
+  _statsCache = stats;
+  return next;
+}
+
+/**
+ * Before the player has played this week: what completing it would do, so the
+ * card can say the streak is riding on this week rather than announcing it
+ * only after the fact.
+ */
+export function getWeekStreakNotice(currentWeek = getWeekStart()) {
+  const rec = readWeekStreak(loadStats());
+  if (!rec.lastWeek || rec.lastWeek === currentWeek) return null;
+  const { streak, atRisk } = projectWeekContinuation(rec, currentWeek);
+  return atRisk ? { streakHeld: streak - 1, wouldBe: streak } : null;
+}
+
 // Before the player plays today: if a molt day is currently holding the streak
 // over a missed gap, describe the save so the daily card can surface it ahead
 // of the completion. Returns { streakHeld, coveredDates } or null when there is
@@ -690,22 +769,60 @@ export function applyChallenge250Reset() {
     changed = true;
   }
 
-  if (stats.challengeEpoch === CHALLENGE_250_EPOCH) return changed;
-  stats.maxLevelReached = 1;
-  stats.bestTimes = {};
-  if (stats.modeStats?.challenge) {
-    stats.modeStats.challenge.maxLevelReached = 1;
-    stats.modeStats.challenge.bestTimes = {};
+  if (stats.challengeEpoch !== CHALLENGE_250_EPOCH) {
+    stats.maxLevelReached = 1;
+    stats.bestTimes = {};
+    if (stats.modeStats?.challenge) {
+      stats.modeStats.challenge.maxLevelReached = 1;
+      stats.modeStats.challenge.bestTimes = {};
+    }
+    stats.challengeEpoch = CHALLENGE_250_EPOCH;
+    setJSON(STATS_KEY, stats);
+    _statsCache = stats;
+    saveCheckpoint('challenge', 1);
+    // Wipe the challenge power-up pool to zeros (all six types stay).
+    const all = loadPowerUps();
+    all.challenge = { ...DEFAULT_POWERUPS.challenge };
+    savePowerUps(all);
+    changed = true;
   }
-  stats.challengeEpoch = CHALLENGE_250_EPOCH;
-  setJSON(STATS_KEY, stats);
-  _statsCache = stats;
-  saveCheckpoint('challenge', 1);
-  // Wipe the challenge power-up pool to zeros (all six types stay).
-  const all = loadPowerUps();
-  all.challenge = { ...DEFAULT_POWERUPS.challenge };
-  savePowerUps(all);
-  return true;
+
+  // The pre-reset ARTIFACTS, on their own marker for the same reason the cards
+  // have one: this has to reach players whose progression reset already ran.
+  // It runs AFTER the progression reset above, because the position it judges
+  // a save against is the post-reset one — comparing against the old ladder's
+  // maxLevelReached would find every stale save perfectly in order.
+  //
+  // The reset wiped the stats and the checkpoint, but a challenge game left in
+  // progress on the old ladder kept its level in a storage family the reset
+  // never touched, and the legacy 'normal' checkpoint entry kept the old
+  // block. So the player was back at Level 1 while the game still offered to
+  // continue from wherever they had been, and finishing that board re-stamped
+  // maxLevelReached into the epoch-matched cloud node, out of the reset's reach
+  // forever (issue #239).
+  //
+  // Dropping the save destroys nothing legitimate: challengeSaveIsCurrent is
+  // the same gate the resume now applies, so this only removes what would be
+  // refused anyway — clearing the artifact rather than leaving it sitting in
+  // the slot un-resumable.
+  if (stats.challengeArtifactEpoch !== CHALLENGE_250_EPOCH) {
+    const savedChallenge = getJSON(gameStateKey('normal'));
+    const maxWon = stats.modeStats?.challenge?.maxLevelReached || stats.maxLevelReached || 1;
+    if (savedChallenge && !challengeSaveIsCurrent(savedChallenge, maxWon)) {
+      clearGameState('normal');
+    }
+    const cps = getJSON(CHECKPOINT_KEY) || {};
+    if (cps.normal != null) {
+      delete cps.normal;          // orphaned by checkpointKey's normalization
+      setJSON(CHECKPOINT_KEY, cps);
+    }
+    stats.challengeArtifactEpoch = CHALLENGE_250_EPOCH;
+    setJSON(STATS_KEY, stats);
+    _statsCache = stats;
+    changed = true;
+  }
+
+  return changed;
 }
 
 // Transient "celebrate the molt day you just earned" flag. The win path sets
@@ -837,7 +954,7 @@ export function resetDailyStatsForAccountSwitch() {
 // just landed), values are adopted verbatim including downgrades.
 // Otherwise an admin-side correction or a partner-device reset would
 // be silently rejected by the max-merge.
-export function applyCloudProgress({ maxCheckpoint, dailyStreak, bestDailyStreak, lastDailyDate, powerUps, moltDay, challenge250 }, opts = {}) {
+export function applyCloudProgress({ maxCheckpoint, dailyStreak, bestDailyStreak, lastDailyDate, powerUps, moltDay, challenge250, weekStreak }, opts = {}) {
   const overwrite = !!opts.overwrite;
   const stats = loadStats();
   let changed = false;
@@ -926,6 +1043,41 @@ export function applyCloudProgress({ maxCheckpoint, dailyStreak, bestDailyStreak
         changed = true;
       }
     }
+  }
+
+  // Week streak. Same WEEK-anchored rules the daily streak uses on dates, and
+  // adopted as one snapshot for the same reason:
+  //   overwrite=true  (listener): cloud is authoritative, adopt verbatim.
+  //   overwrite=false (initial load): cloud week newer → adopt verbatim (even
+  //     a SHORTER streak: the other device knows something this one doesn't);
+  //     same week → keep the longer; cloud older → keep local.
+  // `best` is a high-water mark, so it maxes except under overwrite.
+  // A cloud node with no `lastWeek` says nothing about position and is
+  // ignored — absence of information is not an authoritative zero (the molt
+  // legacy-preserve lesson one field over).
+  const cloudWeek = (weekStreak && typeof weekStreak === 'object') ? weekStreak : null;
+  if (cloudWeek) {
+    const local = readWeekStreak(stats);
+    const next = { ...local };
+    if (overwrite) {
+      if (typeof cloudWeek.lastWeek === 'string') next.lastWeek = cloudWeek.lastWeek;
+      if (cloudWeek.streak != null) next.streak = Math.max(0, Number(cloudWeek.streak) || 0);
+      if (cloudWeek.best != null) next.best = Math.max(0, Number(cloudWeek.best) || 0);
+      changed = true;
+    } else if (typeof cloudWeek.lastWeek === 'string') {
+      if (!local.lastWeek || cloudWeek.lastWeek > local.lastWeek) {
+        next.lastWeek = cloudWeek.lastWeek;
+        next.streak = Math.max(0, Number(cloudWeek.streak) || 0);
+        changed = true;
+      } else if (cloudWeek.lastWeek === local.lastWeek
+          && (Number(cloudWeek.streak) || 0) > local.streak) {
+        next.streak = Math.max(0, Number(cloudWeek.streak) || 0);
+        changed = true;
+      }
+      const cloudBest = Math.max(0, Number(cloudWeek.best) || 0);
+      if (cloudBest > next.best) { next.best = cloudBest; changed = true; }
+    }
+    stats.weekStreak = next;
   }
 
   if (changed) {

@@ -18,6 +18,46 @@
 import { isValidCellNeighbors } from './adjacency.js';
 
 /**
+ * Is a saved CHALLENGE game a position the player can actually hold?
+ *
+ * The ladder advances one level at a time and every win records the level, so
+ * the level you are playing is at most one above the highest you have won.
+ * That is an invariant of how progression works, not an estimate: the
+ * checkpoint selector only unlocks blocks at or below `maxLevelReached + 1`,
+ * a death moves you DOWN to the block start, and `?level=` playtests never
+ * persist. So a save claiming a level above `maxLevelReached + 1` did not come
+ * from this progression.
+ *
+ * It is what the Challenge 250 epoch reset needed and did not have. The reset
+ * wiped stats, checkpoints and power-ups but the in-progress save is a
+ * separate storage family it never reached, so a pre-reset game sat in the
+ * slot at its old-ladder level and the very same init that ran the reset
+ * resumed it — the checkpoint modal offering "Resume Game · Level 100" to a
+ * player the reset had just put back at Level 1. Winning it re-stamped
+ * `maxLevelReached` and pushed it into the epoch-matched cloud node, which
+ * every device then adopts and no later reset can undo (issue #239).
+ *
+ * Written as an invariant rather than an epoch check because it also holds
+ * for saves written BEFORE any epoch stamp existed (every save in the wild
+ * today), works cross-device, and destroys nothing legitimate: a real
+ * in-progress game always satisfies it.
+ *
+ * @param {{currentLevel?: number}} gs the parsed save
+ * @param {number} [maxLevelReached] the player's highest won level
+ * @returns {boolean}
+ */
+export function challengeSaveIsCurrent(gs, maxLevelReached) {
+  if (!gs) return false;
+  // Unknown progression (an old caller that passes nothing) can't judge, so
+  // it doesn't: the check is a refusal of provable staleness, never a
+  // requirement that the caller supply evidence.
+  if (!Number.isFinite(maxLevelReached)) return true;
+  const level = Number(gs.currentLevel);
+  if (!Number.isFinite(level)) return true;
+  return level <= Math.max(1, maxLevelReached) + 1;
+}
+
+/**
  * Decide whether a persisted save may be resumed.
  *
  * @param {object|null} gs - the parsed save (loadGameState result)
@@ -30,6 +70,7 @@ import { isValidCellNeighbors } from './adjacency.js';
  *   practiceSeed     - the practice seed when isDailyPractice
  *   canonicalDate    - date of the cached canonical daily board, if any
  *   canonicalRngSeed - rngSeed of the cached canonical daily board, if any
+ *   maxLevelReached  - highest challenge level won (challengeSaveIsCurrent)
  * @returns {boolean}
  */
 export function isSaveResumable(gs, ctx) {
@@ -77,6 +118,10 @@ export function isSaveResumable(gs, ctx) {
     if (gs.weeklySeed == null || gs.weeklyDay == null || !gs.weeklyRngSeed) return false;
     if (gs.weeklySeed !== ctx.weekStart) return false;
     if (gs.weeklyDay !== ctx.weekDayIndex) return false;
+  }
+
+  if (gs.gameMode === 'normal' && !challengeSaveIsCurrent(gs, ctx.maxLevelReached)) {
+    return false;
   }
 
   // Cells corrupted by the v1.5.19 canonical-board deserializer bug
@@ -132,6 +177,12 @@ export function isSaveResumable(gs, ctx) {
  */
 export function isLiveGameExpired(live, clock) {
   if (live.status !== 'playing' && live.status !== 'idle') return false;
+  // An ARCHIVE replay is anchored to a past date on purpose, so the clock can
+  // never invalidate it: expiry exists to stop yesterday's unfinished attempt
+  // resurrecting as today's, and a replay is not an attempt at anything. Left
+  // in, backgrounding the tab and returning would expire the board mid-play
+  // and toast the player about a new day they were not waiting for.
+  if (live.isArchivePlay || live.isWeeklyArchive) return false;
   if (live.gameMode === 'daily' && !live.isDailyPractice && live.dailySeed) {
     return live.dailySeed !== clock.today;
   }

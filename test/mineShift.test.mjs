@@ -16,7 +16,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  performMineShift, applyGimmicks,
+  performMineShift, applyGimmicks, mineShiftIsActive,
   MINESHIFT_MIN_SECONDS, MINESHIFT_MAX_SECONDS, MINESHIFT_MAX_MOVERS,
 } from '../src/logic/gimmicks.js';
 import { generateTilingBoard } from '../src/logic/tilingGenerator.js';
@@ -232,4 +232,37 @@ test('the numbers are recomputed after a shift', () => {
         `(${nr}, ${nc}) neighbours the moved mine but counts ${board[nr][nc].adjacentMines}`);
     }
   }
+});
+
+// ── The shifter's LIFETIME (issue #238) ──────────────────────────────────
+// The interval used to remember its cadence in a module variable that only
+// stopTimer cleared, so it outlived the board that rolled it: leaving a Chaos
+// round through the title screen paused the interval but kept the memory, and
+// the next resumeTimer — a tab return, an unlocked phone, a dismissed bomb
+// popup — restarted it against whatever game had been loaded since. On a
+// resumed Daily that meant mines relocating inside a CANONICAL board mid-play.
+//
+// The predicate below is what both the restart and the tick now ask, so the
+// answer comes from the live board instead of from a remembered number.
+
+test('REGRESSION #238: only a live Chaos board that rolled mineShift may shift', () => {
+  // The leak, stated as the states it used to run in.
+  assert.equal(mineShiftIsActive({ gameMode: 'chaos', activeGimmicks: ['mineShift'] }), true,
+    'the board that rolled it is the one board that shifts');
+
+  assert.equal(mineShiftIsActive({ gameMode: 'daily', activeGimmicks: ['mineShift'] }), false,
+    'a canonical daily never shifts, even if the flag rode along');
+  assert.equal(mineShiftIsActive({ gameMode: 'weekly', activeGimmicks: ['mineShift'] }), false);
+  assert.equal(mineShiftIsActive({ gameMode: 'normal', activeGimmicks: ['mineShift'] }), false,
+    'a resumed challenge board never shifts');
+
+  // Chaos WITHOUT the modifier: the leaked cadence used to restart here too,
+  // because the old guard only asked whether the game was playing.
+  assert.equal(mineShiftIsActive({ gameMode: 'chaos', activeGimmicks: ['walls', 'liar'] }), false);
+  assert.equal(mineShiftIsActive({ gameMode: 'chaos', activeGimmicks: [] }), false);
+
+  // Malformed / absent state is never a licence to mutate a board.
+  assert.equal(mineShiftIsActive({ gameMode: 'chaos' }), false);
+  assert.equal(mineShiftIsActive(null), false);
+  assert.equal(mineShiftIsActive({}), false);
 });
