@@ -13,6 +13,7 @@ import { CHALLENGE_MAX_LEVEL } from '../logic/challenge250.js';
 import { loadStats, getDailyStreak } from '../storage/statsStorage.js';
 import { getGimmickDef } from '../logic/gimmicks.js';
 import { paceState, expectedTimeLine } from '../logic/expectedTime.js';
+import { weekStartLabel } from '../logic/weeklyProgress.js';
 import { personalPar } from '../logic/handicaps.js';
 import { getUid } from '../firebase/firebaseProgress.js';
 
@@ -273,7 +274,15 @@ export function updateHeader() {
     const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const dayLbl = state.weeklyDay != null ? dayLabels[state.weeklyDay] : '';
     const flagIcon = uiSpriteImgHTML('uiFlagChecked', 'lcd-icon');
-    levelDisplay.innerHTML = dayLbl ? `${flagIcon} Weekly · ${dayLbl}` : `${flagIcon} Weekly`;
+    if (state.isWeeklyArchive) {
+      // A past-weekly replay has no day of the week to be on — it belongs to a
+      // week that is over. Naming that week is what keeps the header from
+      // reading as this week's attempt, which is the one thing the archive
+      // must never be mistaken for.
+      levelDisplay.innerHTML = `${flagIcon} ${weekStartLabel(state.weeklySeed) || 'Past'}`;
+    } else {
+      levelDisplay.innerHTML = dayLbl ? `${flagIcon} Weekly · ${dayLbl}` : `${flagIcon} Weekly`;
+    }
   } else if (state.gameMode === 'timed') {
     const tdiff = getTimedDifficulty(state.currentLevel);
     levelDisplay.textContent = tdiff.label || `Level ${state.currentLevel}`;

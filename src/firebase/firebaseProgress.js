@@ -291,7 +291,7 @@ export async function initAnonymousAuth() {
  * Save progress to cloud. Call when checkpoint advances or daily streak updates.
  * Fire-and-forget — does not block gameplay.
  */
-export function saveProgress({ maxCheckpoint, dailyStreak, bestDailyStreak, lastDailyDate, powerUps, moltDay }) {
+export function saveProgress({ maxCheckpoint, dailyStreak, bestDailyStreak, lastDailyDate, powerUps, moltDay, weekStreak }) {
   if (isTestEnvironment()) return;
   const data = {};
   // CHALLENGE PROGRESSION lives in its own `challenge250` node since the
@@ -324,6 +324,10 @@ export function saveProgress({ maxCheckpoint, dailyStreak, bestDailyStreak, last
   // cross-device merge always sees a coherent snapshot. lastUse may be null
   // (no spend yet); RTDB drops a null child, which the rule allows.
   if (moltDay != null && typeof moltDay === 'object') data.moltDay = moltDay;
+  // The week streak rides as ONE object for the same reason moltDay does: a
+  // (streak, best, lastWeek) trio split across three writes can be merged
+  // half-and-half by a second device and end up claiming a run it never had.
+  if (weekStreak != null && typeof weekStreak === 'object') data.weekStreak = weekStreak;
 
   if (Object.keys(data).length === 0) return;
 
@@ -592,6 +596,37 @@ export async function loadWeeklyAttempts(weekStart) {
     return out;
   } catch (err) {
     console.warn('loadWeeklyAttempts failed:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Every week the player has opened an attempt on, newest order irrelevant.
+ * Read from `users/{uid}/weeklyAttempts` — the player's OWN node, already
+ * written on every first click and already cloud-synced, so the Past Weeklies
+ * list marks the weeks they have played without scanning the shared `weekly/`
+ * leaderboard (which has no uid index and grows with every player).
+ *
+ * `shallow` because only the KEYS matter: each is a weekStart.
+ *
+ * Returns null when unavailable (signed out, offline, read failed) — the list
+ * treats that as UNKNOWN and simply shows no marks, never as "played nothing".
+ *
+ * @returns {Promise<string[]|null>}
+ */
+export async function fetchPlayedWeeks() {
+  if (!_ready || !_uid) return null;
+  try {
+    const snap = await Promise.race([
+      _db.ref(`users/${_uid}/weeklyAttempts`).once('value'),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), FIREBASE_TIMEOUT_MS)),
+    ]);
+    if (!snap.exists()) return [];
+    const out = [];
+    snap.forEach((child) => { if (child.key) out.push(child.key); });
+    return out;
+  } catch (err) {
+    console.warn('fetchPlayedWeeks failed:', err.message);
     return null;
   }
 }

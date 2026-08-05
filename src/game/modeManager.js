@@ -98,6 +98,10 @@ export function switchMode(mode) {
   // inherit a prior archive's identity and submit to the wrong path.
   state.isArchivePlay = false;
   state._archiveRaw = null;
+  // Same for a past-weekly replay (those go through launchWeeklyArchive), so a
+  // resumed real weekly can't inherit a past week's identity.
+  state.isWeeklyArchive = false;
+  state._weeklyArchiveRaw = null;
   // Likewise never a ?level= playtest (that flag is set only by the
   // test-build deep link) — a real challenge entered afterward must record.
   state.isLevelPractice = false;
@@ -159,6 +163,34 @@ export function launchDailyArchive(date, raw) {
   state.dailySeed = date;
   state._archiveRaw = { date, raw };
   updateModeUI('daily');
+  newGame();
+}
+
+/**
+ * Launch a replay of a PAST weekly — the weekly's counterpart to
+ * launchDailyArchive, and deliberately its mirror image rather than a variant
+ * of switchMode('weekly'): that path resumes this week's in-progress attempt,
+ * which is exactly what a past week must not touch.
+ *
+ * The week's canonical `raw` is already fetched by the list caller (a past
+ * week has no local-gen fallback). The outgoing game is persisted first, so
+ * an in-progress real weekly attempt survives the detour and resumes intact.
+ *
+ * @param {string} weekStart YYYY-MM-DD Monday of the past week
+ * @param {Object} raw       serialized canonical board from loadWeeklyBoard
+ */
+export function launchWeeklyArchive(weekStart, raw) {
+  persistGameState();
+  if (state.gameMode === 'chaos') restorePreChaosTheme();
+  state.gameMode = 'weekly';
+  state.isArchivePlay = false;
+  state._archiveRaw = null;
+  state.isWeeklyArchive = true;
+  state.weeklySeed = weekStart;
+  state._weeklyArchiveRaw = { weekStart, raw };
+  state.isLevelPractice = false;
+  clearCoastlinePractice();
+  updateModeUI('weekly');
   newGame();
 }
 

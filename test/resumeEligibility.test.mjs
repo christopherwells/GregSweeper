@@ -298,3 +298,34 @@ test('ordinary rectangular saves carry no topology and are unaffected', () => {
   assert.equal(isSaveResumable(dailySave({ cellNeighbors: null }), ctx()), true);
   assert.equal(isSaveResumable(dailySave({ cellNeighbors: undefined }), ctx()), true);
 });
+
+// ── Archive replays are anchored to the past on purpose ──────────────────
+// Expiry exists so yesterday's unfinished attempt cannot resurrect as today's.
+// A replay of a past board is not an attempt at anything, so the clock must
+// never invalidate it — before this, backgrounding the tab during one and
+// coming back expired the board mid-play and toasted the player about a new
+// day. Found while adding the weekly's archive lane (2026-08-05); the daily
+// lane had it too.
+test('an archive replay never expires on a clock wake', () => {
+  const clock = { today: '2026-08-05', weekStart: '2026-08-03', weekDayIndex: 2 };
+
+  // Daily: a past board being replayed.
+  assert.equal(isLiveGameExpired({
+    gameMode: 'daily', status: 'playing', dailySeed: '2026-06-14', isArchivePlay: true,
+  }, clock), false);
+  // Control: the same past date WITHOUT the archive flag is a stale live
+  // daily, and must still expire — that is the case expiry was built for.
+  assert.equal(isLiveGameExpired({
+    gameMode: 'daily', status: 'playing', dailySeed: '2026-06-14',
+  }, clock), true);
+
+  // Weekly: a past week being replayed.
+  assert.equal(isLiveGameExpired({
+    gameMode: 'weekly', status: 'playing', weeklySeed: '2026-07-20', weeklyDay: null,
+    isWeeklyArchive: true,
+  }, clock), false);
+  // Control: last week's live attempt is forfeit, as it has always been.
+  assert.equal(isLiveGameExpired({
+    gameMode: 'weekly', status: 'playing', weeklySeed: '2026-07-20', weeklyDay: 2,
+  }, clock), true);
+});

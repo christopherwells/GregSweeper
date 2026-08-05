@@ -959,6 +959,35 @@ export const MINESHIFT_MAX_SECONDS = 20;
 export const MINESHIFT_MAX_MOVERS = 5;
 
 /**
+ * Is mine shift a live modifier of the game currently in state?
+ *
+ * The shifter is the one interval whose cadence used to be remembered in a
+ * MODULE variable rather than derived from the game it belongs to, so it
+ * outlived its own board: leaving a Chaos round through the title screen
+ * paused the interval but kept the memory, and the next `resumeTimer` — a tab
+ * return, an unlocked phone, a dismissed bomb popup — restarted it against
+ * whatever game had been loaded since. On a resumed Daily that meant mines
+ * relocating inside a CANONICAL board mid-play: the certificate voided, the
+ * numbers rewritten, and a submitted score whose stored feature vector
+ * describes a board that no longer exists (issue #238, the #192 shape in a
+ * different timer).
+ *
+ * The fix is to ask the LIVE game rather than a remembered cadence, which is
+ * how the worm heartbeat has always resumed (`state.worms.length > 0`). Chaos
+ * is the only mode that rolls this modifier, so both halves are checked: a
+ * board outside Chaos can never be shifting, and a Chaos board that did not
+ * roll it never starts.
+ *
+ * @param {{gameMode?: string, activeGimmicks?: string[]}} gameState
+ * @returns {boolean}
+ */
+export function mineShiftIsActive(gameState) {
+  if (!gameState || gameState.gameMode !== 'chaos') return false;
+  return Array.isArray(gameState.activeGimmicks)
+    && gameState.activeGimmicks.includes('mineShift');
+}
+
+/**
  * One shift step: 1-2 unflagged mines each move to a cell they SHARE AN EDGE
  * WITH, which is the worm's rule and, on a tiling, the only rule that means
  * anything.

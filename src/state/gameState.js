@@ -67,6 +67,14 @@ export const state = {
   isDailyPractice: false, // set when the URL carries ?seed=<custom>: play a custom-seed board but skip streak/completion/history side effects. Submissions still go to Firebase (under the custom seed path) so the session still tags a uid.
   isArchivePlay: false, // set when a PAST daily is replayed from the calendar: keeps the caller-set date, requires the canonical (no local-gen), never touches streak/completion, never persists, and submits to dailyArchive/ instead of daily/. See archiveEligibility.js + the Daily Archive section of CLAUDE.md.
   _archiveRaw: null, // { date, raw } — the past board the calendar fetched, handed to newGame so it doesn't refetch or pollute canonicalDailyBoard (today's stash).
+  // The weekly's counterpart: a PAST week's canonical replayed from the "Past
+  // weeklies" list. Keeps the caller-set weekStart, requires the canonical (no
+  // local-gen — a regenerated past week would be a board nobody played),
+  // consumes no daily attempt, never persists, and records nothing: no
+  // leaderboard row, no first-attempt fit row, no week streak. The week it
+  // belongs to is over and its record is already written.
+  isWeeklyArchive: false,
+  _weeklyArchiveRaw: null, // { weekStart, raw }
 
   powerUps: { revealSafe: 0, shield: 0, lifeline: 0, scanRowCol: 0, magnet: 0, xray: 0 },
   shieldActive: false,
@@ -89,6 +97,12 @@ export const state = {
   activeGimmicks: [],    // ['mystery', 'walls', ...]
   gimmickData: {},       // per-gimmick applied data
   mineShiftTimerId: null,
+  // The shifter's cadence {interval, count} for THIS board. Game state rather
+  // than a module variable in timerManager, so the restart memory dies with
+  // the game that rolled the modifier — a paused Chaos round used to leave its
+  // cadence behind and resume it on whatever game was loaded next, including a
+  // canonical Daily (issue #238).
+  mineShiftPlan: null,
   worms: [],             // live hatched worms [{segments, movesLeft, nextMoveMs}]
   wormTimerId: null,     // worm-crawl heartbeat interval id
   wormEvents: [],        // hatch log [{t, r, c, len, life, pace, moves, tEnd?}] — submitted with scores
