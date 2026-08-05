@@ -3,6 +3,7 @@ import { getLocalDateString, getWeekStart } from '../logic/seededRandom.js';
 import { applyStreakContinuation, projectContinuation, isStreakAlive, backfillGrant, MOLT_CAP } from '../logic/moltDay.js';
 import {
   applyWeekContinuation, liveWeekStreak, projectWeekContinuation,
+  weekStreakFromHistory,
 } from '../logic/weeklyProgress.js';
 import { CHALLENGE_250_EPOCH } from '../logic/challenge250.js';
 import { clearSeenGimmicks } from '../logic/gimmicks.js';
@@ -672,6 +673,60 @@ export function recordWeeklyCompletion(weekStart) {
   setJSON(STATS_KEY, stats);
   _statsCache = stats;
   return next;
+}
+
+/**
+ * Reconcile the stored week streak against the weeks the player has actually
+ * played (`users/{uid}/weeklyAttempts`, their own cloud-synced record).
+ *
+ * UPWARD-ONLY, exactly like reconcileStreakFromHistory: it raises a streak the
+ * counter never knew about and never lowers one, because a short derived run
+ * is not proof of a break — a failed write leaves a hole in the history, while
+ * a genuine break is handled at play time by applyWeekContinuation.
+ *
+ * This is what the feature shipped WITHOUT, and the omission was immediate:
+ * a counter that only starts counting when it ships tells a player who has
+ * never missed a weekly that they have no streak, with fourteen weeks of their
+ * own history sitting in the account (his report, 2026-08-05).
+ *
+ * ONE ASYMMETRY, stated rather than hidden. Going forward a week is banked by
+ * COMPLETING the weekly; this backfill counts a week the player ATTEMPTED,
+ * because `weeklyAttempts` is the only per-week record that exists for every
+ * player — the completion record lives on the weekly leaderboard, which a
+ * player without a name never reaches, and which grows with every player
+ * rather than with this player's weeks. So a historical week that was opened
+ * and abandoned can count. That errs generous on history the player cannot
+ * replay, which is the same direction the daily's upward-only self-heal errs.
+ *
+ * @param {string[]} weekStarts weeks the player has played
+ * @returns {boolean} true when anything moved
+ */
+export function reconcileWeekStreakFromHistory(weekStarts) {
+  const { streak, lastWeek } = weekStreakFromHistory(weekStarts);
+  if (!lastWeek || streak <= 0) return false;
+  const stats = loadStats();
+  const rec = readWeekStreak(stats);
+  const next = { ...rec };
+  let changed = false;
+
+  // A later week than the counter knows about means completions it missed.
+  if (!rec.lastWeek || lastWeek > rec.lastWeek) {
+    next.lastWeek = lastWeek;
+    next.streak = Math.max(rec.streak, streak);
+    changed = true;
+  } else if (streak > rec.streak) {
+    // Same or earlier last week, but a longer run behind it.
+    next.streak = streak;
+    changed = true;
+  }
+  if (next.streak > next.best) { next.best = next.streak; changed = true; }
+
+  if (changed) {
+    stats.weekStreak = next;
+    setJSON(STATS_KEY, stats);
+    _statsCache = stats;
+  }
+  return changed;
 }
 
 /**

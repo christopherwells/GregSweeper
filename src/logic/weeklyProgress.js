@@ -184,6 +184,35 @@ export function applyWeekContinuation(prev, week) {
 }
 
 /**
+ * The streak implied by a set of weeks already played: the maximal run of
+ * consecutive weeks ending at the most recent one.
+ *
+ * The counterpart to computeStreakFromHistory for dailies, and it exists for
+ * the same reason. A streak kept only as a counter starts at zero the day the
+ * counter ships, so the feature launched telling players who had never missed
+ * a weekly that they had no streak — fourteen weeks of history sitting in
+ * their own account, uncounted (his report, 2026-08-05). The history is the
+ * authority; the counter is a cache of it.
+ *
+ * Order and duplicates in the input do not matter.
+ *
+ * @param {string[]} weekStarts Monday anchors of weeks the player has played
+ * @returns {{streak: number, lastWeek: string|null}}
+ */
+export function weekStreakFromHistory(weekStarts) {
+  if (!Array.isArray(weekStarts)) return { streak: 0, lastWeek: null };
+  const sorted = [...new Set(weekStarts.filter(isWeekString))].sort();
+  if (!sorted.length) return { streak: 0, lastWeek: null };
+  const lastWeek = sorted[sorted.length - 1];
+  let streak = 1;
+  for (let i = sorted.length - 1; i > 0; i--) {
+    if (weeksBetween(sorted[i - 1], sorted[i]) === 1) streak++;
+    else break;
+  }
+  return { streak, lastWeek };
+}
+
+/**
  * Is a stored week streak still alive as of `currentWeek`?
  *
  * Alive means the last completion was this week or last week — while the

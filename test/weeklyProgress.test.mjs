@@ -18,6 +18,7 @@ import {
   isArchivableWeek, weekArchiveState, pastWeekStarts,
   weekStartLabel, weekRangeLabel,
   applyWeekContinuation, isWeekStreakAlive, projectWeekContinuation, liveWeekStreak,
+  weekStreakFromHistory,
 } from '../src/logic/weeklyProgress.js';
 
 // ── Week arithmetic ──────────────────────────────────────────────────────
@@ -158,4 +159,32 @@ test('a malformed record never invents a streak', () => {
   const noWeek = applyWeekContinuation({ lastWeek: '2026-07-27', streak: 3, best: 3 }, 'nope');
   assert.equal(noWeek.streak, 3, 'a bad week string commits nothing');
   assert.equal(noWeek.lastWeek, '2026-07-27');
+});
+
+// ── Deriving the streak from history (the launch omission) ───────────────
+// A streak kept only as a counter starts at zero the day the counter ships.
+// The feature launched telling a player with fourteen unbroken weeks that they
+// had no streak, with the whole history sitting in their own account (his
+// report, 2026-08-05). The history is the authority; the counter caches it.
+
+test('REGRESSION: the streak derives from the weeks already played', () => {
+  // Fourteen consecutive weeks, the real case.
+  const weeks = [];
+  let w = '2026-05-04';
+  for (let i = 0; i < 14; i++) { weeks.push(w); w = addWeeks(w, 1); }
+  assert.deepEqual(weekStreakFromHistory(weeks), { streak: 14, lastWeek: '2026-08-03' });
+
+  // Order and duplicates in the input do not matter.
+  const shuffled = [...weeks].reverse().concat(weeks[3], weeks[7]);
+  assert.deepEqual(weekStreakFromHistory(shuffled), { streak: 14, lastWeek: '2026-08-03' });
+
+  // Only the run ENDING at the most recent week counts: an older, longer run
+  // behind a gap is history, not a live streak.
+  const gapped = ['2026-05-04', '2026-05-11', '2026-05-18', '2026-06-15', '2026-06-22'];
+  assert.deepEqual(weekStreakFromHistory(gapped), { streak: 2, lastWeek: '2026-06-22' });
+
+  assert.deepEqual(weekStreakFromHistory([]), { streak: 0, lastWeek: null });
+  assert.deepEqual(weekStreakFromHistory(null), { streak: 0, lastWeek: null });
+  assert.deepEqual(weekStreakFromHistory(['nonsense']), { streak: 0, lastWeek: null });
+  assert.deepEqual(weekStreakFromHistory(['2026-08-03']), { streak: 1, lastWeek: '2026-08-03' });
 });

@@ -16,9 +16,11 @@ import { readFileSync } from 'node:fs';
 const {
   applyChallenge250Reset, applyCloudProgress, loadStats, invalidateStatsCache,
   recordWeeklyCompletion, getWeekStreak, getWeekStreakNotice,
+  reconcileWeekStreakFromHistory,
 } = await import('../src/storage/statsStorage.js');
 
 const STATS_KEY = 'minesweeper_stats';
+const { addWeeks } = await import('../src/logic/weeklyProgress.js');
 const rules = JSON.parse(readFileSync(new URL('../firebase-rules.json', import.meta.url), 'utf8')).rules;
 const user = rules.users?.['$uid'];
 
@@ -148,4 +150,52 @@ test('the C250 reset leaves the week streak alone (different mode, different lad
   invalidateStatsCache?.();
   applyChallenge250Reset();
   assert.equal(loadStats().weekStreak.streak, 1, 'the challenge epoch has nothing to do with the weekly');
+});
+
+// ── The reconcile (his report, 2026-08-05) ───────────────────────────────
+
+test('REGRESSION: a player with unbroken history gets their streak back', () => {
+  fresh();
+  // Exactly the shipped state: fourteen weeks played, counter at zero because
+  // the feature only started counting when it shipped.
+  const weeks = [];
+  let w = '2026-05-04';
+  for (let i = 0; i < 14; i++) { weeks.push(w); w = addWeeks(w, 1); }
+  assert.equal(getWeekStreak('2026-08-03').streak, 0, 'precondition: nothing counted yet');
+
+  assert.equal(reconcileWeekStreakFromHistory(weeks), true);
+  const after = getWeekStreak('2026-08-03');
+  assert.equal(after.streak, 14);
+  assert.equal(after.best, 14);
+  assert.equal(loadStats().weekStreak.lastWeek, '2026-08-03');
+});
+
+test('the reconcile is upward-only and never contradicts a live counter', () => {
+  fresh();
+  recordWeeklyCompletion('2026-08-03');           // counter says 1, this week
+  // A history read that came back SHORT (a hole from a failed write) must not
+  // demote the streak the player just earned.
+  assert.equal(reconcileWeekStreakFromHistory(['2026-08-03']), false);
+  assert.equal(getWeekStreak('2026-08-03').streak, 1);
+
+  // A history read that is LONGER raises it.
+  reconcileWeekStreakFromHistory(['2026-07-20', '2026-07-27', '2026-08-03']);
+  assert.equal(getWeekStreak('2026-08-03').streak, 3);
+  assert.equal(loadStats().weekStreak.best, 3);
+
+  // An empty or unusable read changes nothing.
+  assert.equal(reconcileWeekStreakFromHistory([]), false);
+  assert.equal(reconcileWeekStreakFromHistory(null), false);
+  assert.equal(getWeekStreak('2026-08-03').streak, 3);
+});
+
+test('a lapsed history restores the record but the card still reads 0', () => {
+  fresh();
+  // Six weeks, all long past. The run is real history and belongs in `best`,
+  // but the streak itself is over and the card must not claim it.
+  const weeks = ['2026-05-04', '2026-05-11', '2026-05-18', '2026-05-25', '2026-06-01', '2026-06-08'];
+  assert.equal(reconcileWeekStreakFromHistory(weeks), true);
+  assert.equal(loadStats().weekStreak.streak, 6, 'the record keeps the run');
+  assert.equal(getWeekStreak('2026-08-03').streak, 0, 'but it lapsed weeks ago');
+  assert.equal(getWeekStreak('2026-08-03').best, 6);
 });
