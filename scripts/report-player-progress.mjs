@@ -101,6 +101,15 @@ export function summarize(uid, rec) {
     dailiesRecorded: history.length,
     weeksAttempted: weeks.length,
     lastSeen: rec?.lastSeen ?? null,
+    // The dates themselves, JSON output only (the table shows counts). They
+    // are what identifies a DUPLICATE DEVICE of a player already in the list:
+    // one human cannot complete the same daily twice, so two uids whose
+    // completion dates are disjoint and adjacent in time are one person who
+    // changed device, while two uids that overlap heavily are two people.
+    // Nothing else distinguishes them — a uid with no name and no leaderboard
+    // row is invisible from every public path.
+    dailyDates: history.sort(),
+    weekStarts: weeks.sort(),
   };
 }
 

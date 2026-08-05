@@ -117,3 +117,16 @@ test('names join the way the leaderboard does: playerNames first, rows as fallba
   assert.equal(resolveName('u9', {}, rowNames), '(unnamed)');
   assert.equal(resolveName('u9', null, new Map()), '(unnamed)', 'a failed read is not a crash');
 });
+
+test('completion DATES ride the JSON so duplicate devices can be told apart', () => {
+  // A uid with no name and no leaderboard row is invisible from every public
+  // path, so its completion dates are the only evidence of whose device it is.
+  const s = summarize('u', {
+    dailyHistory: { '2026-05-02': {}, '2026-04-30': {}, '2026-05-01': {} },
+    weeklyAttempts: { '2026-05-04': {}, '2026-04-27': {} },
+  });
+  assert.deepEqual(s.dailyDates, ['2026-04-30', '2026-05-01', '2026-05-02'], 'sorted, for range math');
+  assert.deepEqual(s.weekStarts, ['2026-04-27', '2026-05-04']);
+  // Absent history is an empty list, never undefined — the consumer diffs it.
+  assert.deepEqual(summarize('u', { lastSeen: 1 }).dailyDates, []);
+});
