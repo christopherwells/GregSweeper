@@ -658,11 +658,11 @@ const BLOCKS = [
     block: 41, tier: 11, ppc: 2.90, shape: 'rhombille',
     beat: '3-stacks: sonar+mirror+walls.',
     levels: [
-      T('rhombille', 6, 4, 72, 24, ['sonar', 'mirror', 'walls'], { gimmickLevel: 110 }),
-      T('rhombille', 6, 4, 72, 24, ['sonar', 'mirror', 'walls'], { gimmickLevel: 110 }),
-      T('rhombille', 6, 4, 72, 24, ['sonar', 'mirror', 'walls'], { gimmickLevel: 110 }),
-      T('rhombille', 6, 4, 72, 24, ['sonar', 'mirror', 'walls'], { gimmickLevel: 110 }),
-      T('rhombille', 6, 4, 72, 24, ['sonar', 'mirror', 'walls'], { gimmickLevel: 110 }),
+      T('rhombille', 5, 5, 75, 23, ['sonar', 'mirror', 'walls'], { gimmickLevel: 120 }),
+      T('rhombille', 5, 5, 75, 23, ['sonar', 'mirror', 'walls'], { gimmickLevel: 120 }),
+      T('rhombille', 5, 5, 75, 23, ['sonar', 'mirror', 'walls'], { gimmickLevel: 120 }),
+      T('rhombille', 5, 5, 75, 23, ['sonar', 'mirror', 'walls'], { gimmickLevel: 120 }),
+      T('rhombille', 5, 5, 75, 23, ['sonar', 'mirror', 'walls'], { gimmickLevel: 120 }),
     ],
   },
   {
