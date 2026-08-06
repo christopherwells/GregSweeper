@@ -164,6 +164,36 @@ export function isSaveResumable(gs, ctx) {
 }
 
 /**
+ * What tapping the Weekly card (or following a `?mode=weekly` link) should do.
+ *
+ *   'fresh'   — no attempt used today, start this day's attempt
+ *   'resume'  — today's attempt is already committed and its board is still
+ *               open, so reopen it
+ *   'blocked' — today's attempt is spent and finished; come back tomorrow
+ *
+ * The gate used to collapse the last two: the attempt is committed on the
+ * FIRST CLICK (so a mine-hit-then-restart cannot buy a second one), and the
+ * card refused entry on that same marker before `switchMode('weekly')` could
+ * run. Since that is the only production door into weekly mode, the resume
+ * branch behind it was unreachable — one Home tap mid-attempt and the board
+ * was gone for good, with the day's cloud-recorded attempt spent on a puzzle
+ * the player never finished (issue #246). Refusing a SECOND attempt is the
+ * rule; resuming the first is not a second attempt.
+ *
+ * A finished attempt reports `resumable: false` because winning clears the
+ * slot — the same signal every other mode uses to stop re-offering a game it
+ * has already ended.
+ *
+ * @param {{attempted?: boolean, resumable?: boolean}} [ctx]
+ * @returns {'fresh'|'resume'|'blocked'}
+ */
+export function weeklyEntryPlan(ctx) {
+  const { attempted, resumable } = ctx || {};
+  if (!attempted) return 'fresh';
+  return resumable ? 'resume' : 'blocked';
+}
+
+/**
  * Decide whether a LIVE (in-memory) game has expired because its date
  * anchor no longer matches the ET clock — i.e. the session slept
  * through midnight. Only daily (non-practice) and weekly games are

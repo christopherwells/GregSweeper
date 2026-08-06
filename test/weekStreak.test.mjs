@@ -16,7 +16,7 @@ import { readFileSync } from 'node:fs';
 const {
   applyChallenge250Reset, applyCloudProgress, loadStats, invalidateStatsCache,
   recordWeeklyCompletion, getWeekStreak, getWeekStreakNotice,
-  reconcileWeekStreakFromHistory,
+  reconcileWeekStreakFromHistory, getWeekStreakRecord, getDailyCloudSnapshot,
 } = await import('../src/storage/statsStorage.js');
 
 const STATS_KEY = 'minesweeper_stats';
@@ -198,4 +198,87 @@ test('a lapsed history restores the record but the card still reads 0', () => {
   assert.equal(loadStats().weekStreak.streak, 6, 'the record keeps the run');
   assert.equal(getWeekStreak('2026-08-03').streak, 0, 'but it lapsed weeks ago');
   assert.equal(getWeekStreak('2026-08-03').best, 6);
+});
+
+// ── The heal has to reach the cloud (issue #248) ─────────────────────────
+//
+// The reconcile wrote localStorage and stopped. Nothing else pushes this
+// node — only a weekly completion does — so for the very players the
+// backfill exists for (a long history, no post-ship completion yet) the
+// cloud kept the value the heal had just disagreed with, and the progress
+// listener re-applies the cloud VERBATIM on every write to users/{uid}: a
+// lastSeen beacon, a daily completion, another device's write. The card was
+// raised at boot and knocked back down for the rest of the session.
+
+test('getWeekStreakRecord returns the STORED trio, not the lapsed view', () => {
+  fresh();
+  const weeks = ['2026-05-04', '2026-05-11', '2026-05-18'];
+  reconcileWeekStreakFromHistory(weeks);
+  const rec = getWeekStreakRecord();
+  assert.deepEqual(Object.keys(rec).sort(), ['best', 'lastWeek', 'streak']);
+  assert.equal(rec.streak, 3);
+  assert.equal(rec.best, 3);
+  assert.equal(rec.lastWeek, '2026-05-18');
+  // The card shows 0 for this long-lapsed run — writing that 0 to the cloud
+  // would make a read-side view permanent and hand every other device a
+  // break that has not happened.
+  assert.equal(getWeekStreak('2026-08-03').streak, 0);
+  assert.equal(getWeekStreakRecord().streak, 3);
+});
+
+test('the record round-trips through the cloud merge unchanged', () => {
+  fresh();
+  reconcileWeekStreakFromHistory(['2026-07-20', '2026-07-27', '2026-08-03']);
+  const pushed = getWeekStreakRecord();
+  // What a second device receives from that write, adopted verbatim by the
+  // listener, must be the same run — the push is only worth making if the
+  // shape survives the merge.
+  fresh();
+  applyCloudProgress({ weekStreak: pushed }, { overwrite: true });
+  assert.deepEqual(getWeekStreakRecord(), pushed);
+});
+
+test('REGRESSION: both streak self-heals push their corrected snapshot', () => {
+  const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  for (const [fn, payload] of [
+    ['_reconcileWeekStreak', /saveProgress\(\{ weekStreak: getWeekStreakRecord\(\) \}\)/],
+    ['_reconcileDailyStreak', /saveProgress\(snap\)/],
+  ]) {
+    const start = main.indexOf(`async function ${fn}(`);
+    assert.notEqual(start, -1, `${fn} must exist`);
+    const body = [main.slice(start, main.indexOf('\n}', start))];
+    assert.match(body[0], payload,
+      `${fn} must write the corrected value back, or the listener undoes it on the next users/{uid} write`);
+  }
+});
+
+test('the completion path and the self-heal send the SAME payload shape', () => {
+  // Two writers to one node is how a shape drifts. Both read the record back
+  // from storage rather than re-assembling it.
+  const winLoss = readFileSync(new URL('../src/game/winLossHandler.js', import.meta.url), 'utf8');
+  assert.match(winLoss, /saveProgress\(\{ weekStreak: getWeekStreakRecord\(\) \}\)/);
+  assert.equal((winLoss.match(/weekStreak:\s*\{/g) || []).length, 0,
+    'no hand-assembled weekStreak payload — one definition, in statsStorage');
+});
+
+test('a device with no daily history offers no daily snapshot to push', () => {
+  fresh();
+  assert.equal(getDailyCloudSnapshot(), null,
+    'a fresh install must not push a zeroed streak over another device\'s real one');
+});
+
+test('the daily snapshot carries the molt bank with the streak it belongs to', () => {
+  fresh();
+  applyCloudProgress({
+    dailyStreak: 9, bestDailyStreak: 12, lastDailyDate: '2026-08-05',
+    moltDay: { banked: 2, lastUse: { date: '2026-08-01', covered: ['2026-07-31'], streakKept: 7 } },
+  }, { overwrite: true });
+  const snap = getDailyCloudSnapshot();
+  assert.equal(snap.dailyStreak, 9);
+  assert.equal(snap.bestDailyStreak, 12);
+  assert.equal(snap.lastDailyDate, '2026-08-05');
+  // The bank rides the SAME snapshot as the streak and its date, or a merge
+  // can pair one side's bank with the other side's streak.
+  assert.equal(snap.moltDay.banked, 2);
+  assert.equal(snap.moltDay.lastUse.date, '2026-08-01');
 });

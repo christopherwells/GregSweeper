@@ -12,7 +12,10 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isSaveResumable, isLiveGameExpired, isWeeklyAttemptCacheStale } from '../src/logic/resumeEligibility.js';
+import { readFileSync } from 'node:fs';
+import {
+  isSaveResumable, isLiveGameExpired, isWeeklyAttemptCacheStale, weeklyEntryPlan,
+} from '../src/logic/resumeEligibility.js';
 
 const TODAY = '2026-06-12';
 const YESTERDAY = '2026-06-11';
@@ -328,4 +331,65 @@ test('an archive replay never expires on a clock wake', () => {
   assert.equal(isLiveGameExpired({
     gameMode: 'weekly', status: 'playing', weeklySeed: '2026-07-20', weeklyDay: 2,
   }, clock), true);
+});
+
+// ── The weekly's one-attempt-per-day gate (issue #246) ───────────────────
+// The attempt is committed on the FIRST CLICK, so a mine hit followed by a
+// restart cannot buy a second one. The card then refused entry on that same
+// marker — and since it is the only production door into weekly mode, the
+// resume branch behind it could never run. One Home tap mid-attempt and the
+// board was unreachable for good, with the day's cloud-recorded attempt spent
+// on a puzzle the player never finished.
+test('an unused day starts a fresh attempt', () => {
+  assert.equal(weeklyEntryPlan({ attempted: false, resumable: false }), 'fresh');
+  // A leftover save from an earlier day cannot make a fresh day look used.
+  assert.equal(weeklyEntryPlan({ attempted: false, resumable: true }), 'fresh');
+});
+
+test('REGRESSION: a committed attempt whose board is still open RESUMES', () => {
+  assert.equal(weeklyEntryPlan({ attempted: true, resumable: true }), 'resume',
+    'resuming the first attempt is not a second attempt');
+});
+
+test('a committed attempt with no live board is blocked until tomorrow', () => {
+  // Winning clears the slot, which is what makes a finished attempt
+  // unresumable — the same signal every other mode ends a game with.
+  assert.equal(weeklyEntryPlan({ attempted: true, resumable: false }), 'blocked');
+});
+
+test('a missing context blocks nothing on its own', () => {
+  assert.equal(weeklyEntryPlan(), 'fresh');
+  assert.equal(weeklyEntryPlan({}), 'fresh');
+});
+
+test('REGRESSION: every weekly entry gate routes through weeklyEntryPlan', () => {
+  // The rule being right is not enough — the defect was a caller that never
+  // asked it. Each gate that can turn a player away must consult the plan,
+  // and the plan must be able to see a live save.
+  const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  const lines = main.split('\n');
+
+  const refusals = lines
+    .map((line, i) => ({ line, i }))
+    .filter(({ line }) => line.includes("already played today's weekly puzzle"));
+  assert.ok(refusals.length >= 2, 'the mode card and the Play Again button both refuse');
+  for (const { i } of refusals) {
+    const window = lines.slice(Math.max(0, i - 4), i).join('\n');
+    assert.match(window, /weeklyEntryPlan\(/,
+      `the refusal at main.js:${i + 1} must come from the plan, not from the attempt marker alone`);
+  }
+
+  // The ?mode=weekly deep link is the door that turns players away SILENTLY,
+  // so it has no toast to find it by: locate its branch and read it directly.
+  const deepLink = main.slice(main.indexOf("deepLinkMode === 'weekly'"));
+  assert.ok(deepLink, 'the weekly deep-link branch must exist');
+  assert.match(deepLink.slice(0, 900), /weeklyEntryPlan\(/,
+    '?mode=weekly must ask the same question, or a notification tap strands an open attempt');
+
+  // And the context must actually look for a resumable board; without this
+  // the plan can only ever answer 'fresh' or 'blocked'.
+  const ctx = main.match(/function weeklyEntryContext\(\)\s*\{[\s\S]*?\n\}/);
+  assert.ok(ctx, 'weeklyEntryContext must exist as the one place the two facts are gathered');
+  assert.match(ctx[0], /canResumeMode\('weekly'\)/);
+  assert.match(ctx[0], /cachedWeeklyDayAttempts/);
 });

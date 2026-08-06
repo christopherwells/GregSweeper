@@ -1,4 +1,4 @@
-import { state } from '../state/gameState.js';
+import { state, ownsSaveSlot } from '../state/gameState.js';
 import {
   saveGameState, loadGameState, loadDailyPar, loadStats,
 } from '../storage/statsStorage.js';
@@ -26,19 +26,14 @@ export function persistGameState() {
   // Persist for 'playing' and 'idle' (pre-first-click) states
   if (state.status !== 'playing' && state.status !== 'idle') return;
   if (!state.board || state.board.length === 0) return;
-  // Archive replays never persist: they share the daily slot, so saving one
-  // would clobber an in-progress real daily, and a past-date save would be
-  // rejected on resume anyway (resumeEligibility anchors daily saves to
-  // today's clock). Archive is always re-launched from the calendar.
-  if (state.isArchivePlay) return;
-  // Past-weekly replays likewise share the weekly slot, so persisting one
-  // would clobber an in-progress real weekly attempt — and a past-week save
-  // fails resume anyway (resumeEligibility anchors weekly saves to the live
-  // ET week). Always re-launched from the Past weeklies list.
-  if (state.isWeeklyArchive) return;
-  // ?level= playtest runs never persist either: they share the challenge
-  // slot, and saving one would clobber the player's real challenge game.
-  if (state.isLevelPractice) return;
+  // A run that does not OWN this mode's slot never writes to it. Archive
+  // replays share the daily / weekly slot, and ?level= + coastline practice
+  // runs share the challenge slot, so persisting one would clobber the real
+  // in-progress game (and a past-date save fails resume anyway —
+  // resumeEligibility anchors both to the live ET clock). Those lanes are
+  // always re-launched from the calendar / list. The matching CLEAR guard
+  // lives at the win and loss ends; ownsSaveSlot is the one question.
+  if (!ownsSaveSlot(state)) return;
   const gs = {
     board: state.board.map(row => row.map(c => ({
       isMine: c.isMine, isRevealed: c.isRevealed, isFlagged: c.isFlagged,
@@ -156,19 +151,17 @@ export function persistGameState() {
   saveGameState(gs);
 }
 
-export function tryResumeGame(mode) {
-  const slot = mode || state.gameMode;
-  const gs = loadGameState(slot);
-
-  // All resume-eligibility rules (date anchors, seed-identity
-  // fingerprints, canonical divergence, corrupt cells) live in
-  // resumeEligibility.js — pure and node-tested. The context anchors
-  // to the CLOCK, not to live state: a session that survived midnight
-  // ET still carries yesterday's dailySeed in state, and trusting it
-  // is how yesterday's unfinished daily once resurrected as "today's"
-  // puzzle. Practice (?seed=) is the one caller-owned seed, so its
-  // live flag and seed are the only state fields consulted.
-  const resumable = isSaveResumable(gs, {
+// The context every resume decision is judged against. All resume-eligibility
+// rules (date anchors, seed-identity fingerprints, canonical divergence,
+// corrupt cells) live in resumeEligibility.js — pure and node-tested — and
+// this is the one place their inputs are gathered. It anchors to the CLOCK,
+// not to live state: a session that survived midnight ET still carries
+// yesterday's dailySeed in state, and trusting it is how yesterday's
+// unfinished daily once resurrected as "today's" puzzle. Practice (?seed=) is
+// the one caller-owned seed, so its live flag and seed are the only state
+// fields consulted.
+function resumeContext(slot) {
+  return {
     mode: slot,
     today: getLocalDateString(),
     weekStart: getWeekStart(),
@@ -181,8 +174,26 @@ export function tryResumeGame(mode) {
     // progression cannot hold — the pre-C250 save the epoch reset never
     // reached (issue #239).
     maxLevelReached: loadStats().modeStats?.challenge?.maxLevelReached || 1,
-  });
-  if (!resumable) return false;
+  };
+}
+
+/**
+ * Would `tryResumeGame(mode)` find something to resume? Asked by the entry
+ * gates BEFORE they decide whether to let the player in, so a gate can tell
+ * "come back tomorrow" from "your game is still open" (issue #246). Reads the
+ * same slot against the same context the resume itself uses, so the two can
+ * never disagree about what is resumable.
+ */
+export function canResumeMode(mode) {
+  const slot = mode || state.gameMode;
+  return isSaveResumable(loadGameState(slot), resumeContext(slot));
+}
+
+export function tryResumeGame(mode) {
+  const slot = mode || state.gameMode;
+  const gs = loadGameState(slot);
+
+  if (!isSaveResumable(gs, resumeContext(slot))) return false;
 
   state.board = gs.board;
   state.rows = gs.rows;
