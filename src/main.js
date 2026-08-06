@@ -25,7 +25,7 @@ import { useRevealSafe, useShield, activateScan, activateXRay, activateMagnet } 
 import { switchMode, isChaosUnlocked, updateModeUI } from './game/modeManager.js';
 import { resolveCruxDate, streakBearingDates } from './logic/archiveEligibility.js';
 import { challengeSaveIsCurrent } from './logic/resumeEligibility.js';
-import { persistGameState, tryResumeGame } from './game/gamePersistence.js';
+import { persistGameState, tryResumeGame, canResumeMode } from './game/gamePersistence.js';
 import { MAX_TIMED_LEVEL, CHAOS_UNLOCK_LEVEL } from './logic/difficulty.js';
 import { CHALLENGE_MAX_LEVEL, CHALLENGE_BLOCK_SIZE, MOD_INTRO_BLOCKS, SHAPE_INTRO_BLOCKS } from './logic/challenge250.js';
 import { loadHandicaps } from './logic/handicaps.js';
@@ -37,6 +37,7 @@ import {
   getLastSeenVersion, setLastSeenVersion,
   applyCloudProgress, resetDailyStatsForAccountSwitch,
   reconcileStreakFromHistory, reconcileWeekStreakFromHistory,
+  getDailyCloudSnapshot, getWeekStreakRecord,
   hasSeenNotice, markNoticeSeen,
   clearGameState,
 } from './storage/statsStorage.js';
@@ -51,7 +52,7 @@ import {
   getAchievementState, getTotalScore, getAllTierNames, getTierColor,
 } from './logic/achievements.js';
 import { initFirebase } from './firebase/firebaseLeaderboard.js';
-import { initAnonymousAuth, loadProgress, loadDailyHistory, fetchPlayedWeeks, getUid, loadWeeklyAttempts, loadLocalWeeklyAttempts, replaceLocalWeeklyAttempts, pruneStaleLocalWeeklyAttempts, subscribeToUidChanges, subscribeToCloudProgressUpdates, reportClientSeen, publishPlayerName } from './firebase/firebaseProgress.js';
+import { initAnonymousAuth, loadProgress, saveProgress, loadDailyHistory, fetchPlayedWeeks, getUid, loadWeeklyAttempts, loadLocalWeeklyAttempts, replaceLocalWeeklyAttempts, pruneStaleLocalWeeklyAttempts, subscribeToUidChanges, subscribeToCloudProgressUpdates, reportClientSeen, publishPlayerName } from './firebase/firebaseProgress.js';
 import { getAuthState, subscribeAuthState, linkWithGoogle, sendEmailLink, tryCompleteEmailLink, signOut as authSignOut } from './firebase/firebaseAuth.js';
 import { isTestEnvironment } from './firebase/env.js';
 import { getLocalDateString, getWeekStart, getWeekDayIndex, addCalendarDays } from './logic/seededRandom.js';
@@ -62,7 +63,7 @@ import { prefetchUpcomingWeeklyBoards } from './firebase/weeklyBoardSync.js';
 import { isModifierPopupDisabled, setModifierPopupDisabled, getGimmickDefs } from './logic/gimmicks.js';
 import { isStorageFailing, safeGet, safeSet, safeRemove, requestPersistentStorage } from './storage/storageAdapter.js';
 import { pauseTimer, resumeTimer, stopTimer, recordInteraction } from './game/timerManager.js';
-import { isLiveGameExpired, isWeeklyAttemptCacheStale } from './logic/resumeEligibility.js';
+import { isLiveGameExpired, isWeeklyAttemptCacheStale, weeklyEntryPlan } from './logic/resumeEligibility.js';
 import { blocksManualRestart } from './logic/modeRules.js';
 import { remindCtaOutcome } from './logic/remindCta.js';
 import { parseCoastlineParam, tilingLabel } from './logic/coastlineLink.js';
@@ -79,6 +80,17 @@ import {
 import { handleShare, copyToClipboard } from './ui/shareActions.js';
 import { startTutorial, startWarmup } from './ui/tutorialManager.js';
 import { initErrorReporter, setErrorReporterCodeVersion, reportTestError, reportCaughtError } from './diagnostics/errorReporter.js';
+
+// The two facts every weekly entry gate needs: has today's attempt been
+// committed, and is its board still open? Gathered in one place so the mode
+// card, the ?mode=weekly link and the Play Again button cannot drift into
+// three different readings of the one-attempt-per-day rule (issue #246).
+function weeklyEntryContext() {
+  return {
+    attempted: !!(state.cachedWeeklyDayAttempts && state.cachedWeeklyDayAttempts[getWeekDayIndex()]),
+    resumable: canResumeMode('weekly'),
+  };
+}
 
 // ── Code-version handshake with the service worker ────
 // The SW broadcasts its CACHE_NAME on activate and replies to
@@ -955,8 +967,11 @@ for (const card of $$('.mode-card')) {
       state.isDailyPractice = false;
     }
     if (mode === 'weekly') {
-      // Cloud-synced gate: refuse a second attempt on the same day.
-      if (state.cachedWeeklyDayAttempts && state.cachedWeeklyDayAttempts[getWeekDayIndex()]) {
+      // Cloud-synced gate: refuse a second attempt on the same day — but let
+      // the FIRST one back in while its board is still open. The attempt is
+      // committed on the first click, so blocking on the marker alone shut
+      // the door on every interrupted attempt (issue #246).
+      if (weeklyEntryPlan(weeklyEntryContext()) === 'blocked') {
         showToast("You've already played today's weekly puzzle. Come back tomorrow!");
         return;
       }
@@ -1395,6 +1410,14 @@ async function _reconcileDailyStreak() {
     // Archive replays are marked in dailyHistory and must not bear streak —
     // a replayed gap day would otherwise splice the run together (#113).
     if (reconcileStreakFromHistory(streakBearingDates(entries))) {
+      // Push the corrected snapshot: a self-heal that only writes localStorage
+      // leaves the cloud carrying the value it just disagreed with, and the
+      // progress listener re-applies the cloud verbatim on the next write to
+      // users/{uid} — so the heal would be undone every session (issue #248).
+      // Safe to overwrite: this runs after applyCloudProgress has already
+      // merged the cloud in, so the snapshot is cloud-merged then corrected.
+      const snap = getDailyCloudSnapshot();
+      if (snap) saveProgress(snap);
       try { updateTitleProgress(); } catch {}
       try { updateHeader(); } catch {}
     }
@@ -1412,6 +1435,12 @@ async function _reconcileWeekStreak() {
     const weeks = await fetchPlayedWeeks();
     if (!weeks) return;
     if (reconcileWeekStreakFromHistory(weeks)) {
+      // Same reason as the daily's push above (issue #248), and the weekly is
+      // where it actually bit: nothing but a completion writes this node, so
+      // for the very players the backfill exists for — a long history, no
+      // post-ship completion yet — the cloud stays behind indefinitely and
+      // every users/{uid} write knocks the card back down.
+      saveProgress({ weekStreak: getWeekStreakRecord() });
       try { updateTitleProgress(); } catch {}
     }
   } catch (err) {
@@ -1544,8 +1573,7 @@ $('#gameover-retry').addEventListener('click', () => {
   // only gameplay entry-point that didn't, so clicking Play Again
   // after a weekly win spawned a second attempt for the same day.
   if (state.gameMode === 'weekly') {
-    const dayIdx = getWeekDayIndex();
-    if (state.cachedWeeklyDayAttempts && state.cachedWeeklyDayAttempts[dayIdx]) {
+    if (weeklyEntryPlan(weeklyEntryContext()) === 'blocked') {
       showToast("You've already played today's weekly puzzle. Come back tomorrow!");
       hideModal('gameover-overlay');
       showTitleScreen();
@@ -1586,8 +1614,7 @@ $('#post-death-replay').addEventListener('click', () => {
   // it. Daily lock-out lives in newGame's daily branch; weekly needs
   // the explicit check here.
   if (state.gameMode === 'weekly') {
-    const dayIdx = getWeekDayIndex();
-    if (state.cachedWeeklyDayAttempts && state.cachedWeeklyDayAttempts[dayIdx]) {
+    if (weeklyEntryPlan(weeklyEntryContext()) === 'blocked') {
       showToast("You've already played today's weekly puzzle. Come back tomorrow!");
       showTitleScreen();
       return;
@@ -2358,10 +2385,10 @@ async function init() {
     // Deep link to weekly mode (used by push notifications and direct
     // shares). Drop into the weekly card's click-handler equivalent
     // state setup, then route through the daily flow.
-    const dayIdx = getWeekDayIndex();
-    if (state.cachedWeeklyDayAttempts && state.cachedWeeklyDayAttempts[dayIdx]) {
-      // Already played today — show the title screen with the weekly
-      // card surfacing the "Played today" status. Don't auto-launch.
+    if (weeklyEntryPlan(weeklyEntryContext()) === 'blocked') {
+      // Today's attempt is spent AND finished — show the title screen with
+      // the weekly card surfacing the "Played today" status. Don't
+      // auto-launch. An attempt still in progress falls through and resumes.
       showTitleScreen();
       await resumeSaveBehindTitle();
     } else {

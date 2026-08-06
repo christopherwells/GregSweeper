@@ -268,6 +268,24 @@ export function modifiersPreResolved(gameMode, coastlinePractice) {
   return gameMode === 'daily' || gameMode === 'weekly' || gameMode === 'normal' || !!coastlinePractice;
 }
 
+// Does the CURRENT run own the save slot its mode writes to?
+//
+// Three lanes borrow another mode's name without owning its slot: an archive
+// daily and a past-weekly replay run as 'daily' / 'weekly', and a ?level= or
+// coastline practice run as 'normal'. Each shares the live mode's storage key,
+// so neither may write to it — and, the half that was missing, neither may
+// CLEAR it. handleWin ended with an unguarded clearGameState(state.gameMode),
+// so winning a past daily deleted the in-progress real daily: the player's
+// reveals went, and the board came back with a zeroed clock in the one mode
+// where a manual restart is deliberately impossible (issue #247).
+//
+// Pure over the three flags so both ends of the slot — persistGameState and
+// the win/loss clears — ask one question and cannot drift apart again.
+export function ownsSaveSlot(s) {
+  const run = s || {};
+  return !run.isArchivePlay && !run.isWeeklyArchive && !run.isLevelPractice;
+}
+
 // Total bomb-hit penalty (seconds) accrued in the CURRENT daily/weekly
 // attempt, derived from the per-hit event log. Single source of truth so
 // the live timer, the final precise time, and the score submission all

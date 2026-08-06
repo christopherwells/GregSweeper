@@ -625,6 +625,30 @@ export function getDailyStreak() {
   return { streak: daily.dailyStreak || 0, best: daily.bestDailyStreak || 0, banked };
 }
 
+/**
+ * The STORED daily-progress snapshot in cloud-payload shape, or null when
+ * this device has no daily history to report.
+ *
+ * The molt bank and last-use ride WITH the streak and its date because a
+ * cross-device merge adopts them as one unit — a bank paired with the other
+ * side's streak is the incoherent state applyCloudProgress exists to prevent.
+ * Stored values, not the lapse-adjusted read of getDailyStreak: a lapse is a
+ * view, and writing it would make it permanent for every device.
+ */
+export function getDailyCloudSnapshot() {
+  const daily = loadStats().modeStats?.daily;
+  if (!daily || !daily.lastDailyCompletedDate) return null;
+  return {
+    dailyStreak: daily.dailyStreak || 0,
+    bestDailyStreak: daily.bestDailyStreak || 0,
+    lastDailyDate: daily.lastDailyCompletedDate,
+    moltDay: {
+      banked: Math.min(MOLT_CAP, Math.max(0, daily.moltBanked || 0)),
+      lastUse: daily.moltLastUse || null,
+    },
+  };
+}
+
 // ── Week streak ───────────────────────────────────────
 // The weekly's counterpart to the daily streak: one completion banks the
 // week, and consecutive banked weeks are the streak (his rule, 2026-08-05 —
@@ -656,6 +680,19 @@ function readWeekStreak(stats) {
 export function getWeekStreak(currentWeek = getWeekStart()) {
   const rec = readWeekStreak(loadStats());
   return { streak: liveWeekStreak(rec, currentWeek), best: rec.best, lastWeek: rec.lastWeek };
+}
+
+/**
+ * The STORED week-streak trio, exactly as the cloud node carries it — the
+ * payload shape `saveProgress({ weekStreak })` expects, defined once so the
+ * completion path and the self-heal cannot send different shapes.
+ *
+ * Deliberately NOT lapse-adjusted, unlike getWeekStreak: the card shows 0 for
+ * a lapsed run, but writing that 0 to the cloud would make a read-side view
+ * permanent and hand every other device a break that has not happened.
+ */
+export function getWeekStreakRecord() {
+  return readWeekStreak(loadStats());
 }
 
 /**

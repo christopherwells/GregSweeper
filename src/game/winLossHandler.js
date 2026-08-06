@@ -1,4 +1,4 @@
-import { state, ENCOURAGEMENT_LINES, getActiveBombPenaltyTotal } from '../state/gameState.js';
+import { state, ENCOURAGEMENT_LINES, getActiveBombPenaltyTotal, ownsSaveSlot } from '../state/gameState.js';
 import { $, $$, boardEl, resetBtn, scanToast, escapeHtml } from '../ui/domHelpers.js';
 import { getThemeEmoji, updateAllCells, announceGame } from '../ui/boardRenderer.js';
 import { applyIcon, spriteImgHTML, medalImgForEmoji, achievementSpriteImgHTML, uiSpriteImgHTML } from '../ui/spriteLoader.js';
@@ -53,7 +53,7 @@ import { buildDailyScoreExtras } from '../logic/winSubmissionPlan.js';
 import { detectSkillFeats } from '../logic/skillFeatDetection.js';
 import { summarizeWeeklyAttempt } from '../logic/weeklyAttemptSummary.js';
 import { ensureLeaderboardName } from '../ui/nameCapture.js';
-import { addDailyLeaderboardEntry, appendDailyResidual, loadDailyResiduals, loadPowerUps, recordWeeklyCompletion } from '../storage/statsStorage.js';
+import { addDailyLeaderboardEntry, appendDailyResidual, loadDailyResiduals, loadPowerUps, recordWeeklyCompletion, getWeekStreakRecord } from '../storage/statsStorage.js';
 import { weekRangeLabel } from '../logic/weeklyProgress.js';
 import { getLocalDateString } from '../logic/seededRandom.js';
 
@@ -70,6 +70,18 @@ import { getLocalDateString } from '../logic/seededRandom.js';
 // it. The history is recoverable and was recovered separately
 // (scripts/backfill-weekly-fit-rows.mjs).
 const WEEKLY_FIT_DATA_ENABLED = true;
+
+// End a game by dropping ITS OWN save, never someone else's. An archive
+// replay and a ?level= / coastline practice run borrow a live mode's name and
+// share its storage key without owning it, so ending one must leave that key
+// alone — the mirror of persistGameState's guard, which is the half that was
+// there. Unguarded, winning a past daily deleted the real daily in progress
+// (issue #247). These lanes never persist, so there is nothing of their own
+// to clean up and skipping the clear leaves nothing behind.
+function _clearOwnSave() {
+  if (!ownsSaveSlot(state)) return;
+  clearGameState(state.gameMode);
+}
 
 // Friendly phrase for the molt-day covered note: a covered gap is always 1 or
 // 2 days (the bank cap), and always within the last few days, so the weekday
@@ -521,10 +533,11 @@ export async function handleWin() {
     // The week streak: one completion banks the week (his rule — "only need to
     // play one of the weekly"), so this is idempotent across the week's seven
     // attempts and the later ones simply land on the week already banked.
-    const week = recordWeeklyCompletion(state.weeklySeed);
-    saveProgress({
-      weekStreak: { streak: week.streak, best: week.best, lastWeek: week.lastWeek },
-    });
+    recordWeeklyCompletion(state.weeklySeed);
+    // Read the payload back rather than re-shaping the return value: the
+    // self-heal in main.js pushes the same node, and one definition of the
+    // shape is what keeps the two writers from disagreeing (issue #248).
+    saveProgress({ weekStreak: getWeekStreakRecord() });
 
     // Snapshot the prior-times BEFORE we mutate state.weeklyDayTimes,
     // so the modal-render code below can compute "1st attempt" vs
@@ -1060,7 +1073,7 @@ export async function handleWin() {
   // modes can't be replayed today.)
 
   // Clear saved game state on win
-  clearGameState(state.gameMode);
+  _clearOwnSave();
 
   // Delay the modal so the VICTORY! overlay (3.6 s total) has a chance
   // to play before the modal covers it. 2 s lands the modal after the
@@ -1258,7 +1271,7 @@ export function handleLoss(mineRow, mineCol) {
   // (Explore Board + Play Again visibility come from the plan.)
 
   // Clear saved game state on loss
-  clearGameState(state.gameMode);
+  _clearOwnSave();
 
   // Show the modal only after the chain-detonation cascade finishes
   // (resolved Promise from chainRevealMines). Reduced-motion path
@@ -1320,7 +1333,7 @@ export function handleTimedLoss() {
   }
 
   // Clear saved game state
-  clearGameState(state.gameMode);
+  _clearOwnSave();
 
   setTimeout(() => showModal('gameover-overlay'), 400);
   updatePowerUpBar();
