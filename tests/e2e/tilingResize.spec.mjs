@@ -43,6 +43,13 @@ async function boardFit(page) {
       boardW: br.width,
       boardH: br.height,
       containerW: cr.width,
+      // The painted extent of the CELLS, which is exactly the tiling's wUnits
+      // times the pitch. The board's own box is that plus a fixed 4px of
+      // border, and dividing the box by the pitch therefore leaves a 4/pitch
+      // term that moves as the pitch does — invisible on a 13-unit-wide board
+      // and not on a 9-unit-wide one (2026-08-06). Measuring the cells instead
+      // makes the ratio a true constant of the tiling with nothing to tolerate.
+      cellsW: Math.max(...rects.map(r => r.right)) - Math.min(...rects.map(r => r.left)),
       // Clip-paths are expressed in percentages of each cell's OWN box, so they
       // are scale-free and must be identical at every pitch. The count of
       // DISTINCT ones is the tiling's orientation count, which is the thing a
@@ -88,21 +95,21 @@ for (const [label, param] of [
     // so without this the spec's own claim to guard the clip-path was empty.
     expect(portrait.clips.split('|').length).toBe(ORIENTATIONS[param]);
 
-    // The board's box IS the tiling's extent times the pitch, so the ratio
-    // boardW/pitch is a constant of the tiling and must survive every re-lay.
+    // The cells' painted extent IS the tiling's extent times the pitch, so the
+    // ratio cellsW/pitch is a constant of the tiling and must survive every re-lay.
     // That is the invariant the frozen-layout bug actually broke, and unlike a
     // directional claim it holds for every board shape: rhombille and deltoidal
     // are WIDE AND SHORT, so rotating to landscape hands them more room and
     // their pitch GROWS (measured 26 -> 35 and 27 -> 33) where the hexagon's
     // shrinks. Asserting "the pitch went down on rotation" passed only because
     // both shipped tilings happen to be tall.
-    const ratio = portrait.boardW / portrait.pitch;
+    const ratio = portrait.cellsW / portrait.pitch;
 
     await page.setViewportSize({ width: 844, height: 390 });
     await page.waitForTimeout(300);
     const landscape = await boardFit(page);
     expect(landscape.pitch).not.toBeCloseTo(portrait.pitch, 1);
-    expect(landscape.boardW / landscape.pitch).toBeCloseTo(ratio, 1);
+    expect(landscape.cellsW / landscape.pitch).toBeCloseTo(ratio, 2);
     expect(landscape.boardW).toBeLessThanOrEqual(landscape.containerW + 1);
 
     // Narrow portrait: the container is narrower than the original board, so a
@@ -112,7 +119,7 @@ for (const [label, param] of [
     const narrow = await boardFit(page);
     expect(narrow.boardW).toBeLessThanOrEqual(narrow.containerW + 1);
     expect(narrow.docScrollsX).toBe(false);
-    expect(narrow.boardW / narrow.pitch).toBeCloseTo(ratio, 1);
+    expect(narrow.cellsW / narrow.pitch).toBeCloseTo(ratio, 2);
     // Percentage clip-paths are scale-free, so a re-lay must reproduce them
     // exactly. A re-lay that recomputed the box but reused a stale clip-path
     // would leave the polygon and its box disagreeing.

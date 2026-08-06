@@ -22,7 +22,8 @@
 //
 // Pure: no DOM, no state, no clock. The generator does the work.
 
-import { buildTiling, TILING_TYPES, containerIsStorable } from './tilingGeometry.js';
+import { TILING_TYPES } from './tilingGeometry.js';
+import { fittingDims } from './boardFit.js';
 
 // How often a chaos round is a lattice rather than a square. Half, matching
 // the daily rotation's ruled split — chaos should feel like the rest of the
@@ -89,29 +90,26 @@ export function chaosTilingDims(type, targetCells) {
   const key = `${type}:${want}`;
   if (_dimsMemo.has(key)) return _dimsMemo.get(key);
 
-  let best = null;
-  for (let M = 2; M <= 14; M++) {
-    for (let N = 2; N <= 14; N++) {
-      let cells;
-      try {
-        cells = buildTiling(type, M, N).total;
-      } catch { continue; }
-      // Cell count rises monotonically in N for every builder here, so once
-      // this row is over the cap the rest of it is too. Without the break the
-      // search builds all 169 patches per call, and a 14x14 floret is 1,176
-      // cells of geometry to throw away.
-      if (cells > CHAOS_MAX_TILING_CELLS) break;
-      if (cells < 24) continue;
-      if (!containerIsStorable(cells)) continue;
-      // Distance to the target, PENALISED for a lopsided patch. A pure
-      // nearest-count search picks exact strips: the 4.8.8 hits 63 cells
-      // exactly at M=3, N=13, which renders as a long ribbon, while its
-      // squarer 72-cell patch is only eight cells further from a 64 target.
-      // The penalty is in cell-count units so the two are comparable.
-      const score = Math.abs(cells - want) + Math.abs(M - N) * 2.5;
-      if (!best || score < best.score) best = { M, N, cells, score };
-    }
-  }
+  // The phone cap does the work the old lopsidedness penalty was reaching for,
+  // and does it in the right space. That penalty scored |M - N|, which treats
+  // the two lattice indices as if a step in each covered the same distance on
+  // screen; they do not. A step in N moves a Kites board 2.73 pitch units wide
+  // and a step in M moves it 2.37 tall, so its "square" 4x4 patch renders half
+  // again as wide as it is tall. boardFit measures the extents themselves, and
+  // rejects outright anything whose cells would land under the tap floor
+  // (2026-08-06 — chaos was reaching an M=5, N=5 floret of 150 cells that drew
+  // at 20px a cell and overflowed its container on a small phone).
+  const best = fittingDims(type, want, {
+    minCells: 24,
+    maxCells: CHAOS_MAX_TILING_CELLS,
+    // A single row or column of lattice units is a degenerate patch rather
+    // than a board (a one-rosette-tall floret is eleven wide), which is why
+    // this search has always started at 2 on both axes.
+    minM: 2,
+    minN: 2,
+    maxM: 14,
+    maxN: 14,
+  });
   const out = best ? { M: best.M, N: best.N, cells: best.cells } : null;
   // Memoised because the answer is a pure function of (type, target) and the
   // search is the expensive part: a chaos round asks once, but the tests ask
