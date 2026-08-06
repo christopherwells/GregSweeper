@@ -151,7 +151,22 @@ test('REGRESSION: selectDailyRngSeed is banded — frozen-date golden', () => {
   assert.equal(selectDailyRngSeed('2026-09-01'), '2026-09-01:trial9');
 });
 
+// A pinned week has to have a DECISIVE winner or the pin guards nothing.
+// 2026-09-07 was replaced on 2026-08-06 for that reason rather than merely
+// re-recorded: measured, its top two candidates scored 1.434 and 1.405 — a 2%
+// margin, two 3-modifier boards on either side of the target (61s and 144s
+// against 93s). The 2026-08-06 refit moved par slightly, the tie fell the
+// other way, and the pin went red without anything being wrong. Any refit
+// that moves par by more than about 2% would flip it again, which trains
+// whoever sees it to update the number rather than read it.
+//
+// Both weeks below win by a wide margin instead: 2026-09-28 takes trial7 at
+// 1.880 against a 0.634 runner-up (197%), and 2026-09-14 takes trial4 at
+// 2.781 against 2.058 (35%). Pick replacements the same way — a margin, not
+// just a fresh recording — and note that a week can score decisively for the
+// wrong reason, since 2026-09-21's 82% margin sits on scores of 0.006 vs
+// 0.003, where nearly every candidate is out of band.
 test('REGRESSION: selectWeeklyRngSeed is banded — frozen-week goldens', () => {
   assert.equal(selectWeeklyRngSeed('2026-09-14'), '2026-09-14:trial4');
-  assert.equal(selectWeeklyRngSeed('2026-09-07'), '2026-09-07:trial1');
+  assert.equal(selectWeeklyRngSeed('2026-09-28'), '2026-09-28:trial7');
 });
