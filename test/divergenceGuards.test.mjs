@@ -92,6 +92,55 @@ test('the startup gate retries for the canonical rather than falling straight th
     'the retry must sit inside the firebaseReady branch');
 });
 
+// The DEFINITION, not the first mention: the bare name appears earlier as the
+// call inside submitWeeklyScore, and anchoring there slices a few characters of
+// wrapper instead of the function — which every assertion below would then pass
+// or fail for the wrong reason.
+function weeklyDoerBody() {
+  const start = leaderboardSrc.indexOf('async function _doSubmitWeeklyScore');
+  assert.ok(start > 0, 'expected _doSubmitWeeklyScore to still exist');
+  const end = leaderboardSrc.indexOf('\nfunction _queueFailedWeeklySubmission', start);
+  assert.ok(end > start, 'expected the doer to end before the queue helper');
+  return leaderboardSrc.slice(start, end);
+}
+
+// ── The weekly's half (2026-08-07) ───────────────────────────────────────
+// The decision is the daily's, reused — planScoreSubmission is behaviour-tested
+// in submitGate.test.mjs. What is pinned here is the wiring, which is where the
+// weekly's two ways of going wrong live: reading the wrong canonical node, and
+// writing the seed on only one of the two shapes the row is built through.
+
+test('the weekly compares against the WEEKLY canonical, not the daily one', () => {
+  const body = weeklyDoerBody();
+  assert.match(body, /weeklyBoard\/\$\{weekStart\}\/rngSeed/,
+    'a weekly row must be checked against weeklyBoard, never dailyBoard');
+  assert.doesNotMatch(body, /dailyBoard\//,
+    'reading dailyBoard here is the bug that made the weekly-first guard a no-op');
+  assert.match(body, /planScoreSubmission\(/, 'and it must reuse the one decision');
+  assert.match(body, /return 'divergent'/);
+});
+
+test("REGRESSION: the weekly seed is written on BOTH shapes the row is built through", () => {
+  // _doSubmitWeeklyScore writes through an update() map on an existing row and
+  // a set() payload on the first write of the week. A seed on only one of them
+  // means the row silently lacks it for half of all players — and an absent
+  // seed reads as "no divergence to check", the failure this whole guard exists
+  // to end.
+  const body = weeklyDoerBody();
+  assert.match(body, /updates\.rngSeed = playedSeed;/, 'the update() path must carry the seed');
+  assert.match(body, /payload\.rngSeed = playedSeed;/, 'and so must the first-write set() path');
+});
+
+test("a divergent weekly is RESOLVED, never queued for a retry that can never succeed", () => {
+  // The queue re-flushes on the next online boot. A divergent board will still
+  // be divergent then, so queuing it would retry forever. Only a falsy result —
+  // a real write failure — goes back in.
+  const idx = leaderboardSrc.indexOf('const ok = await _doSubmitWeeklyScore');
+  assert.ok(idx > 0);
+  assert.match(leaderboardSrc.slice(idx, idx + 600), /if \(!ok\) _queueFailedWeeklySubmission/,
+    "the queue must gate on falsy, so the truthy 'divergent' resolves instead of looping");
+});
+
 test('the nightly sweep scans for divergent rows, era-floored, and reports rather than deletes', () => {
   assert.match(sweepSrc, /DIVERGENT SCORE ROW/, 'the sweep must have a divergence report');
   assert.match(sweepSrc, /date < CANONICAL_ERA_START/,

@@ -653,6 +653,9 @@ export async function submitWeeklyScore(weekStart, uid, name, bestTime, dayTimes
     return false;
   }
   const ok = await _doSubmitWeeklyScore(weekStart, uid, name, bestTime, dayTimes, extras);
+  // 'divergent' is a RESOLVED outcome, not a failure to retry: the board was
+  // wrong and will still be wrong on the next flush, so queuing it would retry
+  // forever. Only a falsy result (a real write failure) goes back in the queue.
   if (!ok) _queueFailedWeeklySubmission(weekStart, uid, name, bestTime, dayTimes, extras);
   return ok;
 }
@@ -684,6 +687,35 @@ async function _doSubmitWeeklyScore(weekStart, uid, name, bestTime, dayTimes, ex
       }
     }
 
+    // A weekly set on a board that was not the week's canonical never reaches
+    // the leaderboard, for the daily's reason and then some: a week's whole
+    // leaderboard is ONE board, so a divergent row is not a slower time on the
+    // same puzzle, it is an incomparable time on a different one. The seed goes
+    // ONTO the row in the same breath, because until now a weekly row recorded
+    // nothing about which board produced it — divergence was not merely
+    // unguarded, it was undetectable afterward.
+    //
+    // The node is weeklyBoard/{weekStart}, NOT canonicalSeedPath(weekStart):
+    // that helper maps a DAILY bucket key to its canonical (and correctly sends
+    // a `_weekly_first` fit row to the weekly board). Here the bucket is
+    // already known to be weekly, so the path is direct.
+    //
+    // Fails OPEN exactly like the daily's — an unreadable canonical is
+    // "unavailable", never "mismatch". Reusing planScoreSubmission keeps that
+    // rule in one place; rows: null because a weekly row is keyed by uid, so
+    // there is no duplicate-row concept for it to test.
+    const playedSeed = typeof extras.rngSeed === 'string' ? extras.rngSeed : null;
+    if (playedSeed) {
+      let canonicalSeed = null;
+      try {
+        canonicalSeed = (await db.ref(`weeklyBoard/${weekStart}/rngSeed`).once('value')).val();
+      } catch { /* read failed — proceed with the write */ }
+      const { verdict } = planScoreSubmission({
+        rows: null, uid: null, bucketKey: weekStart, playedSeed, canonicalSeed,
+      });
+      if (verdict === 'divergent') return 'divergent';
+    }
+
     const ref = db.ref(`weekly/${weekStart}/${uid}`);
 
     // Additive per-day write: only touches the days in this submission,
@@ -692,6 +724,7 @@ async function _doSubmitWeeklyScore(weekStart, uid, name, bestTime, dayTimes, ex
       name: sanitizedName,
       timestamp: firebase.database.ServerValue.TIMESTAMP,
     };
+    if (playedSeed) updates.rngSeed = playedSeed;
     for (const [day, time] of Object.entries(safeDayTimes)) {
       updates[`dayTimes/${day}`] = time;
     }
@@ -718,6 +751,7 @@ async function _doSubmitWeeklyScore(weekStart, uid, name, bestTime, dayTimes, ex
         bestTime,
         timestamp: firebase.database.ServerValue.TIMESTAMP,
       };
+      if (playedSeed) payload.rngSeed = playedSeed;
       if (Object.keys(safeDayTimes).length > 0) payload.dayTimes = safeDayTimes;
       if (Object.keys(safeDayBombHits).length > 0) payload.dayBombHits = safeDayBombHits;
       if (typeof extras.totalMoves === 'number' && extras.totalMoves > 0 && extras.totalMoves < 1000) {

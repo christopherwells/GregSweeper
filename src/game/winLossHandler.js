@@ -591,8 +591,20 @@ export async function handleWin() {
           totalMoves,
           totalMines: state.totalMines,
           attemptBombHits: state.weeklyBombHits || 0,
+          // Which board this was played on. Same expression the weekly fit row
+          // uses below, so the two can never name different boards, and the
+          // same shape the daily has carried since the canonical era.
+          rngSeed: state.weeklyRngSeed || state.weeklySeed,
         }
-      ).catch(err => reportCaughtError('weekly-score-submit', err));
+      ).then((ok) => {
+        // The board was not the week's canonical, so it cannot be compared
+        // against anyone else's — a week's whole leaderboard is one board. The
+        // attempt still counted and the week streak is already banked above;
+        // only the comparison is refused, which is the daily's split exactly.
+        if (ok === 'divergent') {
+          showToast('That board wasn\'t this week\'s, so it can\'t be ranked.', 5000, 'uiWarning');
+        }
+      }).catch(err => reportCaughtError('weekly-score-submit', err));
 
       if (isFirstAttemptThisWeek && WEEKLY_FIT_DATA_ENABLED) {
         // Honest first encounter — qualifies for par-model fit data.
