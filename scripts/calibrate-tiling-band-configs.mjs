@@ -74,7 +74,13 @@ const CANDIDATES = {
     densities: [0.14, 0.18, 0.22, 0.25, 0.28],
   },
   cairo: {
-    sizes: [[5, 6], [6, 6], [10, 4], [7, 7]],
+    // 10x4 (66 cells) was dropped 2026-08-07: it is the tall ribbon
+    // MIN_WIDTH_USE was added to reject (204px of a 314px width budget), so
+    // boardFitsPhone refuses it and it can never be committed. Cairo's totals
+    // that are BOTH storable and phone-legal are 40, 45, 49, 60, 84, 110, 112;
+    // 110 and 112 price past the 240s ceiling at any density under the current
+    // equation, which is why the table tops out at 84.
+    sizes: [[5, 6], [6, 6], [7, 7]],
     densities: [0.18, 0.21, 0.24, 0.28],
   },
   floret: {
