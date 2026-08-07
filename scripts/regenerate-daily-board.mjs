@@ -36,6 +36,10 @@ import {
   readCodeVersion, buildCanonicalPayload, buildCandidateFeatures, candidateOpener,
 } from './daily-board-pipeline.mjs';
 import { getTargetGimmickName, missionLabel } from '../src/logic/experimentDesign.js';
+// The horizon warning derives its window from the client's own constant, so a
+// change to how far ahead clients prefetch cannot leave this tool describing
+// a window that no longer exists.
+import { PREFETCH_DAILY_DAYS, addDays } from '../src/firebase/boardCache.js';
 import { resolveDailyShape } from '../src/logic/shapeRotation.js';
 import { tilingTypeForToken, tilingLabel, CLASSIC_SHAPE_LABEL } from '../src/logic/coastlineLink.js';
 import { signCanonicalPayload, requireSigningKey } from '../src/logic/canonicalSignature.js';
@@ -136,6 +140,26 @@ function todayET() {
   if (scores && Object.keys(scores).length > 0) {
     console.error(`refusing: daily/${date} already has ${Object.keys(scores).length} score row(s) — this board has been played.`);
     process.exit(1);
+  }
+
+  // INSIDE THE PREFETCH HORIZON, a regenerated board can strand players who
+  // are already carrying the old one. Clients pull today..today+6 into their
+  // offline cache on boot, and loadDailyBoard is network-first, so anyone who
+  // comes back online picks up the replacement — but a player who prefetched
+  // the old layout and then went offline plays the board this run just
+  // replaced, and their score is refused at submit as divergent.
+  //
+  // That residual is documented and accepted, and it is also live practice:
+  // the whole horizon was regenerated on 2026-08-04 for the shape-rotation
+  // launch. So this warns rather than refuses. The point is that it should be
+  // a decision each time rather than a thing nobody was told about.
+  const horizonEnd = addDays(todayET(), PREFETCH_DAILY_DAYS - 1);
+  if (date <= horizonEnd) {
+    const days = Math.round((Date.parse(date + 'T12:00:00Z') - Date.parse(todayET() + 'T12:00:00Z')) / 86400000);
+    console.warn(`WARNING: ${date} is ${days} day(s) out, inside the ${PREFETCH_DAILY_DAYS}-day prefetch `
+      + `horizon (through ${horizonEnd}). Clients that have already cached this date and go offline `
+      + 'before reconnecting will play the OLD board, and their scores will be refused as divergent. '
+      + 'Regenerating past the horizon avoids this entirely.');
   }
 
   const spec = loadExperimentSpec();

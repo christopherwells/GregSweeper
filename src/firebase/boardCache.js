@@ -13,7 +13,7 @@
 // the prefetch helpers that DO need loadDailyBoard/loadWeeklyBoard live
 // in those modules, not here.
 
-import { safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js';
+import { safeGetJSON, safeSetJSON, safeKeys, safeRemove } from '../storage/storageAdapter.js';
 
 const DAILY_PREFIX = 'minesweeper_board_daily_';
 const WEEKLY_PREFIX = 'minesweeper_board_weekly_';
@@ -72,16 +72,20 @@ export function pruneOldCachedBoards(today, currentWeek) {
     const keepDaily = new Set();
     for (let i = -1; i <= PREFETCH_DAILY_DAYS; i++) keepDaily.add(addDays(today, i));
     const keepWeekly = new Set([addDays(currentWeek, -7), currentWeek, addDays(currentWeek, 7)]);
-    const toRemove = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (!k) continue;
-      if (k.startsWith(DAILY_PREFIX) && !keepDaily.has(k.slice(DAILY_PREFIX.length))) {
-        toRemove.push(k);
-      } else if (k.startsWith(WEEKLY_PREFIX) && !keepWeekly.has(k.slice(WEEKLY_PREFIX.length))) {
-        toRemove.push(k);
-      }
+    // Enumerated and removed through the adapter, like every other write in
+    // this module. Reaching past it to raw localStorage meant the sweep only
+    // ever saw the localStorage backend: on a device running the in-memory
+    // fallback (private browsing, or a quota failure that flipped the adapter
+    // mid-session) the boards are written into the Map, the scan finds nothing
+    // there, and the one thing keeping this cache bounded never runs on the
+    // one backend that has no eviction of its own. statsStorage's
+    // pruneOldDailyKeys — the same sweep over the sibling key family — has
+    // always gone through safeKeys; this was the odd one out.
+    for (const k of safeKeys(DAILY_PREFIX)) {
+      if (!keepDaily.has(k.slice(DAILY_PREFIX.length))) safeRemove(k);
     }
-    for (const k of toRemove) localStorage.removeItem(k);
+    for (const k of safeKeys(WEEKLY_PREFIX)) {
+      if (!keepWeekly.has(k.slice(WEEKLY_PREFIX.length))) safeRemove(k);
+    }
   } catch { /* best-effort */ }
 }
