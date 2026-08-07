@@ -137,8 +137,27 @@ export const TILING_BAND_CONFIGS = {
     { id: 'c49d18', M: 5, N: 6, mines: 9, constructive: true, features: { cellCount: 49, totalMines: 9, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 1.5 } }, // ~49s
     { id: 'c49d29', M: 5, N: 6, mines: 14, features: { cellCount: 49, totalMines: 14, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } },     // ~49s
     { id: 'c60d23', M: 6, N: 6, mines: 14, fallback: true, features: { cellCount: 60, totalMines: 14, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } }, // ~65s
-    { id: 'c110d18', M: 9, N: 7, mines: 20, constructive: true, features: { cellCount: 110, totalMines: 20, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 4 } }, // ~237s
-    { id: 'c110d28', M: 9, N: 7, mines: 31, features: { cellCount: 110, totalMines: 31, canonicalSubsetMoves: 0.5, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 4 } },  // ~220s
+    // The two 110-cell entries (9x7, ~237s and ~220s) were REMOVED 2026-08-07.
+    // The nightly refit moved cairo's equation and took them to 279s and 269s,
+    // past the 240s ceiling — and they had never been provable anyway, since 9x7
+    // was absent from the calibrator's candidate grid (exactly the "committed
+    // but never proven" hazard that grid's own comment warns about).
+    //
+    // Nothing can be promoted in their place, and the reason is arithmetic
+    // rather than taste. Cairo cells = 2MN - M - N, and of those totals only
+    // 40, 45, 49, 60, 84, 110 and 112 are BOTH canonical-storable and legal
+    // under the phone fit — every value between 84 and 110 is either prime
+    // (97, 103) or has no factorization with both container dims in [5, 30]
+    // (93, 94). Both 110 and 112 price past the ceiling at ANY density,
+    // because cairo's fitted per-mine deviation cancels the base rate (110
+    // cells prices 279s at 20 mines and 269s at 31). The 66-cell 10x4 patch
+    // the calibrator grid still lists is not an option either: it is the tall
+    // ribbon MIN_WIDTH_USE was added to reject on this very date.
+    //
+    // So cairo's reach is now [54s, 140s] in three size rungs. Harder targets
+    // ship the 140s entry through the kernel — the documented "the band is a
+    // constraint, not a coverage promise" degradation, the same shape as
+    // deltoidal's 63s floor at the other end.
     { id: 'c84d18', M: 7, N: 7, mines: 15, constructive: true, features: { cellCount: 84, totalMines: 15, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } }, // ~123s
     { id: 'c84d29', M: 7, N: 7, mines: 24, features: { cellCount: 84, totalMines: 24, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 3 } },     // ~123s
   ],
