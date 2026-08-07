@@ -153,6 +153,23 @@ const SW_UPDATE_FAIL_KEY = 'minesweeper_sw_update_fail_count';
 // only when the read comes back empty, never on the normal path.
 const CANONICAL_RETRIES = 2;
 const CANONICAL_RETRY_DELAY_MS = 500;
+
+/**
+ * Re-read one canonical after an empty first result, with linear backoff.
+ * Returns the board, or null once the budget is spent.
+ *
+ * The offline check is inside the loop condition rather than around the call,
+ * because a player can lose the network between attempts and there is no sense
+ * sleeping out the rest of a budget for a read that cannot land.
+ */
+async function retryCanonicalRead(label, load) {
+  for (let attempt = 1; attempt <= CANONICAL_RETRIES && navigator.onLine !== false; attempt++) {
+    await new Promise(r => setTimeout(r, CANONICAL_RETRY_DELAY_MS * attempt));
+    const raw = await load().catch(err => { reportCaughtError(`${label}-retry`, err); return null; });
+    if (raw) return raw;
+  }
+  return null;
+}
 // Budget for the completion-reconcile read. Matches the fetch timeout the
 // board syncs use; the gate has already spent its Firebase-ready wait by the
 // time this runs, so the only thing left to bound is the read itself.
@@ -226,14 +243,12 @@ export async function runStartupGate() {
       const weeklyAttemptsP = isTestEnvironment()
         ? Promise.resolve({})
         : loadWeeklyAttempts(currentWeek).catch(err => { reportCaughtError('gate-weekly-attempts', err); return null; });
-      const [dailyRaw, weeklyRaw, attempts] = await Promise.all([
+      let [dailyRaw, weeklyRaw, attempts] = await Promise.all([
         loadDailyBoard(today).catch(err => { reportCaughtError('gate-daily-board', err); return null; }),
         loadWeeklyBoard(currentWeek).catch(err => { reportCaughtError('gate-weekly-board', err); return null; }),
         weeklyAttemptsP,
       ]);
-      if (dailyRaw) {
-        state.canonicalDailyBoard = { date: today, raw: dailyRaw };
-      } else {
+      if (!dailyRaw || !weeklyRaw) {
         // ONE read is not enough to conclude the canonical is unavailable
         // (2026-08-07, his ask: the app should open only once it has the
         // board). Falling through to local generation is not a graceful
@@ -261,19 +276,30 @@ export async function runStartupGate() {
         // is seconds, not milliseconds. Measured: an offline boot already sits
         // ~19.5s on the overlay, which is the whole of "the PWA stops working
         // in airplane mode". Retrying is for a slow network, never for none.
-        for (let attempt = 1;
-          attempt <= CANONICAL_RETRIES && !state.canonicalDailyBoard && navigator.onLine !== false;
-          attempt++) {
-          setBootStatus('Fetching today\'s board…');
-          await new Promise(r => setTimeout(r, CANONICAL_RETRY_DELAY_MS * attempt));
-          const retryRaw = await loadDailyBoard(today)
-            .catch(err => { reportCaughtError('gate-daily-board-retry', err); return null; });
-          if (retryRaw) state.canonicalDailyBoard = { date: today, raw: retryRaw };
-        }
+        //
+        // THE WEEKLY IS RETRIED ON THE SAME TERMS, and its blast radius is
+        // wider than the daily's. A weekly miss does not merely give one player
+        // the wrong board: the local-generation fallback WRITES what it built
+        // to the write-once weeklyBoard node, so the first client to miss the
+        // read establishes the week for everyone who comes after. It is also a
+        // scarcer thing to spend, since a week holds one board and seven
+        // attempts at it.
+        //
+        // The two run CONCURRENTLY rather than one after the other. Serial
+        // retries would double the worst-case boot on exactly the slow network
+        // that triggers them, and the offline work that took the overlay from
+        // 19.5s to 4.9s is not worth giving back for a loop that spends most of
+        // its time waiting.
+        setBootStatus('Fetching today\'s board…');
+        const [dailyRetry, weeklyRetry] = await Promise.all([
+          dailyRaw ? null : retryCanonicalRead('gate-daily-board', () => loadDailyBoard(today)),
+          weeklyRaw ? null : retryCanonicalRead('gate-weekly-board', () => loadWeeklyBoard(currentWeek)),
+        ]);
+        if (dailyRetry) dailyRaw = dailyRetry;
+        if (weeklyRetry) weeklyRaw = weeklyRetry;
       }
-      if (weeklyRaw) {
-        state.canonicalWeeklyBoard = { weekStart: currentWeek, raw: weeklyRaw };
-      }
+      if (dailyRaw) state.canonicalDailyBoard = { date: today, raw: dailyRaw };
+      if (weeklyRaw) state.canonicalWeeklyBoard = { weekStart: currentWeek, raw: weeklyRaw };
       // A successful Firebase read is AUTHORITATIVE for the week (a map,
       // possibly empty). Replacing — not merging over — the localStorage
       // seed is what lets an admin-side reset / cloud deletion actually

@@ -79,17 +79,33 @@ test('a divergent submission still writes dailyHistory, so the streak survives',
     'first completion wins — a duplicate must not overwrite the first device');
 });
 
-test('the startup gate retries for the canonical rather than falling straight through', () => {
+test('the startup gate retries for BOTH canonicals rather than falling straight through', () => {
   assert.match(gateSrc, /CANONICAL_RETRIES/, 'the gate must define a retry budget');
-  assert.match(gateSrc, /gate-daily-board-retry/, 'and report a retry failure distinctly');
-  // The retry only runs when Firebase was READY — an offline player must
+  // The daily and the weekly share one retry loop, so the distinct report
+  // label is now composed inside it from the caller's own label rather than
+  // written out twice. The label each caller passes is what this checks, plus
+  // the suffix the loop appends; asserting on the literal 'gate-daily-board-
+  // retry' would only be asserting that the loop was never shared.
+  assert.match(gateSrc, /\$\{label\}-retry/, 'the shared loop must report a retry failure distinctly');
+  assert.match(gateSrc, /retryCanonicalRead\('gate-daily-board'/, 'the daily must retry');
+  // The weekly is the wider blast radius of the two: its local-generation
+  // fallback WRITES to the write-once node, so the first client to miss the
+  // read establishes the week for everyone after it.
+  assert.match(gateSrc, /retryCanonicalRead\('gate-weekly-board'/, 'and so must the weekly');
+
+  // The retries only run when Firebase was READY — an offline player must
   // still get the local fallback rather than being stalled on the boot
-  // overlay for a board that is never coming.
-  // The USE of the constant, not its declaration above the function.
-  const use = gateSrc.lastIndexOf('CANONICAL_RETRIES');
+  // overlay for a board that is never coming. Anchored on the last CALL, not
+  // on the constant: the constant now lives in the shared loop's declaration
+  // above the gate function, so it no longer says anything about placement.
+  const use = gateSrc.lastIndexOf('retryCanonicalRead(');
   const branch = gateSrc.lastIndexOf('if (firebaseReady', use);
   assert.ok(branch > 0 && branch < use,
-    'the retry must sit inside the firebaseReady branch');
+    'the retries must sit inside the firebaseReady branch');
+  // And the loop itself must stop the moment the device is known to be
+  // offline, or an airplane-mode boot pays the whole budget twice over.
+  assert.match(gateSrc, /attempt <= CANONICAL_RETRIES && navigator\.onLine !== false/,
+    'the loop must bail on a known-offline device');
 });
 
 // The DEFINITION, not the first mention: the bare name appears earlier as the
