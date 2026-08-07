@@ -304,6 +304,32 @@ async function _doSubmitOnlineScore(dateString, name, time, bombHits, extras) {
       } catch { /* read failed — proceed with the push */ }
     }
 
+    // A score set on a board that is NOT the day's canonical never reaches the
+    // leaderboard (2026-08-07). Divergence was detected at BOOT and never at
+    // submit: startupReconcilePlan spots a divergent row and unlocks a replay,
+    // which is right, but by then the row is already written and joined
+    // against the wrong feature vector in the par fit. One player's 2026-08-06
+    // row sat on `:trial6` while the canonical was `:trial13`.
+    //
+    // The board they played was legitimate — their client missed the canonical
+    // and generated locally against a stale experiment target, which the
+    // precompute horizon makes near-certain rather than unlucky (the canonical
+    // is written up to seven days ahead and the nightly refit rewrites that
+    // target file underneath it). So the DAY still counts: the caller writes
+    // dailyHistory regardless, which is what streaks read. Only the
+    // leaderboard, which compares people on one board, refuses it.
+    //
+    // Fails OPEN on a read error, exactly like the dedupe above — a flaky
+    // read must never eat a real score.
+    const playedSeed = typeof extras.rngSeed === 'string' ? extras.rngSeed : dateString;
+    try {
+      const canonical = await db.ref(`dailyBoard/${dateString}/rngSeed`).once('value');
+      const canonicalSeed = canonical.val();
+      if (typeof canonicalSeed === 'string' && canonicalSeed !== playedSeed) {
+        return 'divergent';
+      }
+    } catch { /* read failed — proceed with the push */ }
+
     const ref = db.ref(`daily/${dateString}`);
     await ref.push(payload);
 

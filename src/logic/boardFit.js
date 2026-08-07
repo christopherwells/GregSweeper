@@ -223,7 +223,32 @@ export function maxExtentUnits(type, viewport = FIT_REFERENCE) {
 const FIT_EPSILON = 1e-9;
 
 /**
- * Does an M x N patch of this shape fit a phone with tappable cells?
+ * The least of the width budget a board should occupy. Below this it is a tall
+ * ribbon: legal by the tap floor, and wrong on screen.
+ *
+ * Christopher, 2026-08-07, on the Paving Stones blocks: "too long for the
+ * screen but definitely could've been wider." Measured, that board was
+ * 204 x 510px on a 360px phone — 65% of the width used and 10% past the
+ * comfortable height. The first pass at the phone cap turned Paving Stones'
+ * 4x10 letterbox into a 10x4 ribbon, which fixed the tap size (23px -> 37px)
+ * and broke the proportion in the other direction, because a cap on the
+ * MAXIMUM extents says nothing about a board being needlessly small in one.
+ */
+const MIN_WIDTH_USE = 0.75;
+
+/**
+ * Does an M x N patch of this shape fit a phone with tappable cells, AND sit
+ * sensibly in the space?
+ *
+ * Three conditions, and the last two exist because the first is not enough:
+ *   1. every cell class clears its tap floor (the caps)
+ *   2. the board fits the COMFORTABLE height, not merely the renderer's 70vh,
+ *      so it does not need scrolling on a phone showing browser chrome
+ *   3. it uses at least MIN_WIDTH_USE of the width it is given
+ *
+ * A board can pass (1) trivially by being small in one axis, which is how a
+ * 2.5:1 ribbon shipped. Conditions (2) and (3) are the same defect seen from
+ * its two ends — too tall, and needlessly narrow.
  *
  * @param {string} type
  * @param {number} M
@@ -239,9 +264,21 @@ export function boardFitsPhone(type, M, N, viewport = FIT_REFERENCE) {
     return false;
   }
   const cap = maxExtentUnits(type, viewport);
-  return tiling.wUnits <= cap.wUnits + FIT_EPSILON
-    && tiling.hUnits <= cap.hUnits + FIT_EPSILON;
+  if (tiling.wUnits > cap.wUnits + FIT_EPSILON) return false;
+  if (tiling.hUnits > cap.hUnits + FIT_EPSILON) return false;
+
+  const { pitch } = tapSizeAt(type, M, N, viewport);
+  const comfort = comfortHeightBudget(viewport.height ?? FIT_REFERENCE.height);
+  if (tiling.hUnits * pitch > comfort + HEIGHT_SLACK_PX) return false;
+
+  const w = widthBudget(viewport.width ?? FIT_REFERENCE.width);
+  return tiling.wUnits * pitch >= w * MIN_WIDTH_USE - FIT_EPSILON;
 }
+
+// The comfortable height is an ESTIMATE — measured app chrome plus an assumed
+// browser-UI allowance — so it is not a figure to enforce to the pixel. A board
+// a hair over is not what anyone is complaining about; one 10% over is.
+const HEIGHT_SLACK_PX = 12;
 
 /**
  * The tap diameter (px) a board would actually deliver at a viewport — the
@@ -327,10 +364,13 @@ export function fittingDims(type, targetCells, opts = {}) {
         continue;
       }
       if (tiling.wUnits > cap.wUnits + FIT_EPSILON) break; // wUnits rises with N
-      if (tiling.hUnits > cap.hUnits + FIT_EPSILON) continue;
       const cells = tiling.total;
       if (cells < minCells || cells > maxCells) continue;
       if (requireStorable && !containerIsStorable(cells)) continue;
+      // The FULL predicate, not just the caps: a candidate has to be
+      // proportioned for the screen too, or the search happily returns the
+      // tall ribbons the caps alone allow (2026-08-07).
+      if (!boardFitsPhone(type, M, N, viewport)) continue;
       candidates.push({
         M, N, cells,
         distance: Math.abs(cells - targetCells),

@@ -37,7 +37,7 @@
 import {
   CHALLENGE_MAX_LEVEL, challengeSpecForLevel, specFingerprint, ppcBandFor,
   PAR_CEILING_SECONDS, GEN_CAP_MS, OPENER_MIN_DEDUCTIONS,
-  ENDLESS_SPECS, endlessParCeiling, endlessGenCap, TIER_PPC, ENDLESS_PPC_FLOOR,
+  ENDLESS_SPECS, endlessParCeiling, endlessGenCap, TIER_PPC, ENDLESS_PPC_FLOOR, endlessPpcFloor,
 } from '../src/logic/challenge250.js';
 import { buildChallenge250Board, challengeBoardSeed } from '../src/logic/challenge250Builder.js';
 
@@ -204,8 +204,12 @@ if (!args.includes('--no-endless') && !blockFilter) {
     // a moved equation rather than sampling. The stored-vs-measured drift
     // check below is the sharper instrument for that and stays as it is.
     const floorTolerance = 0.9;
-    if (ppcs.length && medPpc < ENDLESS_PPC_FLOOR * floorTolerance) {
-      problems.push(`ppc ${medPpc.toFixed(2)} well below the ${ENDLESS_PPC_FLOOR} pool floor`);
+    // A shape with its own admission floor is held to THAT (see
+    // ENDLESS_PPC_FLOOR_BY_SHAPE — cairo cannot reach the shared floor on a
+    // board a phone can hold, and every tiling has to be reachable here).
+    const shapeFloor = endlessPpcFloor(spec.shape);
+    if (ppcs.length && medPpc < shapeFloor * floorTolerance) {
+      problems.push(`ppc ${medPpc.toFixed(2)} well below the ${shapeFloor} floor for ${spec.shape}`);
     }
     // The stored price is what the escalation aims at. A generous 25% drift
     // window: this is an alarm for a moved equation, not a re-measurement.

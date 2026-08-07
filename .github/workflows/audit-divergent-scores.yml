@@ -1,0 +1,53 @@
+# Report — and, when named, delete — leaderboard rows set on a board that was
+# not that date's canonical.
+#
+# This workflow did not exist until 2026-08-07, which is half of why two real
+# divergences sat unnoticed (one for two months): the script was reachable only
+# from a laptop, and its deleting half needs the service account, which lives
+# here as a repo secret. The nightly verify-canonical-boards sweep now REPORTS
+# these; this is the remediation it points at.
+#
+# Report mode needs no inputs and no credentials — daily/ and dailyBoard/ are
+# world-readable. Deletion is opt-in per row: `rows` takes space-separated
+# <date>/<pushId> pairs, and a bare delete is refused by the script itself,
+# because 91 of the ~94 divergent rows predate the canonical era and are
+# legitimate backfill provenance.
+name: Audit divergent scores
+
+on:
+  workflow_dispatch:
+    inputs:
+      rows:
+        description: 'Rows to DELETE, space-separated <date>/<pushId>. Empty = report only.'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Report divergent rows
+        run: node scripts/audit-divergent-scores.mjs
+
+      - name: Delete the named rows
+        # Only when rows were named. The script re-runs its own audit first and
+        # refuses any --only that does not match a currently-divergent row, so
+        # a stale pushId cannot delete something that has since become correct.
+        if: inputs.rows != ''
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          ROWS: ${{ inputs.rows }}
+        run: |
+          ONLY=""
+          for row in $ROWS; do ONLY="$ONLY --only $row"; done
+          echo "deleting:$ONLY"
+          node scripts/audit-divergent-scores.mjs --delete $ONLY

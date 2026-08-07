@@ -1018,6 +1018,16 @@ export async function handleWin() {
         // first device's time.
         if (ok === 'duplicate') {
           showToast('Already on the board from another device');
+        } else if (ok === 'divergent') {
+          // The board played was not the day's canonical, so it cannot be
+          // compared against everyone else's and stays off the leaderboard
+          // and out of the par fit. The DAY still counts: the history entry
+          // below is what streaks read, which is why this branch writes it
+          // where 'duplicate' and 'cheat' deliberately do not.
+          showToast('That board wasn\'t today\'s. Your streak still counts.', 3000, 'uiCloud');
+          if (!state.isDailyPractice) {
+            saveDailyHistoryEntry(dateStr, { time: scoreTime });
+          }
         } else if (ok === 'cheat') {
           // Probing run (> 30% of mines hit): kept off the leaderboard and
           // out of the personal history timeline.

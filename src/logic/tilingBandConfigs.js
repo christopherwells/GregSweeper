@@ -114,7 +114,7 @@ export const TILING_BAND_CONFIGS = {
     // falls to 0.187, still routed constructive: rejection sampling gets less
     // reliable as the patch grows, and this is the largest 4.8.8 the table
     // ships, so it is the last entry to gamble 600 attempts on.
-    { id: '4150d19', M: 12, N: 7, mines: 28, constructive: true, features: { cellCount: 150, totalMines: 28, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 10 } }, // ~182s
+    { id: '498d28', M: 8, N: 7, mines: 27, features: { cellCount: 98, totalMines: 27, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 6 } },     // ~186s
   ],
   hex: [
     { id: 'h49d18', M: 7, N: 7, mines: 9, features: { cellCount: 49, totalMines: 9, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } },       // ~27s
@@ -137,8 +137,8 @@ export const TILING_BAND_CONFIGS = {
     { id: 'c49d18', M: 5, N: 6, mines: 9, constructive: true, features: { cellCount: 49, totalMines: 9, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 1.5 } }, // ~49s
     { id: 'c49d29', M: 5, N: 6, mines: 14, features: { cellCount: 49, totalMines: 14, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } },     // ~49s
     { id: 'c60d23', M: 6, N: 6, mines: 14, fallback: true, features: { cellCount: 60, totalMines: 14, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } }, // ~65s
-    { id: 'c66d18', M: 10, N: 4, mines: 12, constructive: true, features: { cellCount: 66, totalMines: 12, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2.5 } }, // ~77s
-    { id: 'c66d27', M: 10, N: 4, mines: 18, features: { cellCount: 66, totalMines: 18, canonicalSubsetMoves: 0.5, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 3 } },  // ~77s
+    { id: 'c110d18', M: 9, N: 7, mines: 20, constructive: true, features: { cellCount: 110, totalMines: 20, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 4 } }, // ~237s
+    { id: 'c110d28', M: 9, N: 7, mines: 31, features: { cellCount: 110, totalMines: 31, canonicalSubsetMoves: 0.5, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 4 } },  // ~220s
     { id: 'c84d18', M: 7, N: 7, mines: 15, constructive: true, features: { cellCount: 84, totalMines: 15, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } }, // ~123s
     { id: 'c84d29', M: 7, N: 7, mines: 24, features: { cellCount: 84, totalMines: 24, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 3 } },     // ~123s
   ],

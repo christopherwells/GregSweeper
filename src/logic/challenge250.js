@@ -383,11 +383,21 @@ const BLOCKS = [
     block: 16, tier: 6, ppc: 1.25, shape: 'cairo',
     beat: 'MOD INTRO: Sonar (mechanism venue: the valence-7 depth-2 ball).',
     levels: [
-      T('cairo', 10, 4, 66, 16, ['sonar'], { gimmickLevel: INTRO_RAMP.sonar[0] }),
-      T('cairo', 10, 4, 66, 16, ['sonar'], { gimmickLevel: INTRO_RAMP.sonar[1] }),
-      T('cairo', 10, 4, 66, 16, ['sonar'], { gimmickLevel: INTRO_RAMP.sonar[2] }),
-      T('cairo', 10, 4, 66, 16, ['sonar'], { gimmickLevel: INTRO_RAMP.sonar[3] }),
-      T('cairo', 10, 4, 66, 16, ['sonar'], { gimmickLevel: INTRO_RAMP.sonar[4] }),
+      // Five DISTINCT boards, one lesson — the block-3 pattern (his ruling,
+      // 2026-08-07: a training block may hold shape and modifier, but "they
+      // MUST not be the same board"). The 66-cell size these all shared is
+      // gone for a second reason: cairo has 66 cells only at 4x10 or 10x4,
+      // and both render 2.5:1.
+      //
+      // Variety here is the MINE COUNT rather than the size, because 60 is
+      // cairo's only tier-6 size once sonar is on it: 49 cells price 1.15
+      // against a 1.16 band floor, and 84 cells price 1.50-1.72 against a
+      // 1.39 ceiling. Same lever block 3 uses.
+      T('cairo', 6, 6, 60, 7, ['sonar'], { gimmickLevel: INTRO_RAMP.sonar[0], constructive: true }),
+      T('cairo', 6, 6, 60, 10, ['sonar'], { gimmickLevel: INTRO_RAMP.sonar[1], constructive: true }),
+      T('cairo', 6, 6, 60, 13, ['sonar'], { gimmickLevel: INTRO_RAMP.sonar[2], constructive: true }),
+      T('cairo', 6, 6, 60, 16, ['sonar'], { gimmickLevel: INTRO_RAMP.sonar[3] }),
+      T('cairo', 6, 6, 60, 19, ['sonar'], { gimmickLevel: INTRO_RAMP.sonar[4] }),
     ],
   },
   {
@@ -820,6 +830,32 @@ export const ENDLESS_GEN_BUDGET_MS = GEN_CAP_MS * ENDLESS_GEN_HEADROOM;   // 150
 // enumeration for every board, so it measured 2.1-9.8s against the 2-second
 // cap. Raising ITS cap is what lets it into the zone; raising its ceiling
 // would have done nothing.
+// Per-shape ADMISSION FLOOR, where a lattice cannot reach the pool floor on a
+// board a phone can hold. His ruling, 2026-08-07: every tiling must be
+// available in the endless zone, and "without sufficient data, I think it's
+// fine to put the top 10 percentile of most difficult paving stones."
+//
+// Measured after the phone cap's proportion rule: cairo's largest
+// well-proportioned patch is 112 cells, and across its legal sizes x
+// densities x the endless stacks its hardest board is ppc 3.52 — it clears
+// the 3.5 floor, but only just, and only on one stack. Admitting its top
+// decile (ppc >= 2.54 over 96 viable boards) is what gives it a real presence
+// instead of a single entry.
+//
+// The reasoning behind accepting a softer floor is his too: these rates are
+// provisional. Every shape looks dear while nobody knows its tricks, and the
+// par model is fit on play that is still learning them — Classic priced far
+// harder early on than it does now. When cairo's per-cell rate rises on real
+// data, this entry should shrink toward the shared floor and eventually go.
+export const ENDLESS_PPC_FLOOR_BY_SHAPE = Object.freeze({
+  cairo: 2.5,
+});
+
+/** The admission floor a shape is held to. */
+export function endlessPpcFloor(shape) {
+  return ENDLESS_PPC_FLOOR_BY_SHAPE[shape] ?? ENDLESS_PPC_FLOOR;
+}
+
 export const ENDLESS_GEN_CAP_BY_SHAPE = Object.freeze({
   rhombille: 3500,
   // Cairo joined this table on 2026-08-06, on the same reasoning rhombille is
@@ -917,6 +953,14 @@ const E = (ppc, spec) => Object.freeze({ ...spec, ppc, gimmicks: Object.freeze(s
 // 4.8.8 3.78 still cover. Re-run scripts/search-endless-specs.mjs if a future
 // refit reprices cairo enough to reopen a cheaper rung.
 export const ENDLESS_SPECS = Object.freeze([
+  // Paving Stones, restored 2026-08-07 under ENDLESS_PPC_FLOOR_BY_SHAPE. Its
+  // top decile begins at ppc 2.54, but the pool's margin rule (an entry AT a
+  // floor reads under it on a smaller sample) wants clearance, so the two
+  // boards sitting on 2.5 are left out and these four carry the shape.
+  E(2.62, T('cairo', 8, 8, 112, 27, ['mirror', 'liar', 'walls'], { gimmickLevel: 120 })),
+  E(2.78, T('cairo', 8, 8, 112, 27, ['locked', 'liar'], { gimmickLevel: 120 })),
+  E(3.29, T('cairo', 9, 7, 110, 26, ['locked', 'sonar', 'walls'], { gimmickLevel: 120 })),
+  E(3.52, T('cairo', 8, 8, 112, 27, ['locked', 'sonar', 'walls'], { gimmickLevel: 120 })),
   E(3.66, R(12, 12, 58, ['locked', 'liar'], { gimmickLevel: 100 })),
   E(3.67, T('hex', 9, 8, 72, 31, ['worm', 'walls'], { gimmickLevel: 120 })),
   E(3.69, T('hex', 11, 10, 110, 37, ['worm', 'walls'], { gimmickLevel: 120 })),
@@ -934,9 +978,7 @@ export const ENDLESS_SPECS = Object.freeze([
   E(4.16, T('deltoidal', 2, 3, 36, 12, ['sonar', 'walls'], { gimmickLevel: 100 })),
   E(4.22, T('deltoidal', 3, 3, 54, 15, ['locked', 'sonar', 'walls'], { gimmickLevel: 100 })),
   E(4.25, T('4.8.8', 6, 7, 72, 29, ['wormhole', 'compass', 'locked'], { gimmickLevel: 120 })),
-  E(4.39, T('cairo', 13, 7, 162, 74, ['walls'], { gimmickLevel: 100 })),
   E(4.34, T('4.8.8', 6, 7, 72, 31, ['locked'], { gimmickLevel: 100 })),
-  E(4.41, T('cairo', 13, 7, 162, 74)),
   E(4.36, T('deltoidal', 3, 3, 54, 16, ['mystery', 'locked'], { gimmickLevel: 100 })),
   E(4.55, T('4.8.8', 6, 7, 72, 31, ['locked'], { gimmickLevel: 120 })),
   E(4.66, T('floret', 3, 3, 54, 22, ['sonar', 'liar', 'walls'], { gimmickLevel: 100 })),
