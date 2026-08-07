@@ -25,7 +25,7 @@ import { getSpeedRating, MAX_TIMED_LEVEL, getChaosDifficulty, BOMB_PENALTY_BASE,
 import { powerUpAwardCount, LIFELINE_BONUS_CHANCE } from '../logic/challenge250.js';
 import {
   loadStats, saveGameResult, saveModePowerUps, clearGameState,
-  markDailyCompleted, getDailyStreak, getPlayerName,
+  markDailyCompleted, unlockDailyReplay, getDailyStreak, getPlayerName,
   hasSeenNotice, markNoticeSeen, consumeMoltEvent, flagMoltCelebrate,
 } from '../storage/statsStorage.js';
 import { safeSetJSON } from '../storage/storageAdapter.js';
@@ -515,9 +515,14 @@ export async function handleWin() {
     });
   }
 
-  // Mark daily as completed so it cannot be replayed today.
+  // Mark daily as completed so it cannot be replayed today. The board's
+  // effective seed rides along, because the lock's real question is "has this
+  // account finished TODAY'S board" and the date alone cannot answer it — a
+  // client that missed the canonical completes a different board on the same
+  // date. Same expression the score row uses (buildDailyScoreExtras), so the
+  // local record and the submitted row can never name different boards.
   if (isRealDaily && state.dailySeed) {
-    markDailyCompleted(state.dailySeed);
+    markDailyCompleted(state.dailySeed, state.dailyRngSeed || state.dailySeed);
   }
 
   // Weekly mode win: mark this day's attempt cloud-synced, update the
@@ -1024,7 +1029,15 @@ export async function handleWin() {
           // and out of the par fit. The DAY still counts: the history entry
           // below is what streaks read, which is why this branch writes it
           // where 'duplicate' and 'cheat' deliberately do not.
-          showToast('That board wasn\'t today\'s. Your streak still counts.', 3000, 'uiCloud');
+          //
+          // And the real board is still unplayed, so give it back rather than
+          // locking the day on a run that could not be ranked. Immediately,
+          // not at the next boot: this is the moment the client LEARNS the
+          // board was wrong, and the sticky unlock is what stops
+          // applyCloudProgress re-locking the card from the cloud's
+          // lastDailyDate (which the streak write above has just set to today).
+          unlockDailyReplay(dateStr);
+          showToast('That board wasn\'t today\'s, so it can\'t be ranked. Your streak counts — play today\'s real board to get on the leaderboard.', 6000, 'uiWarning');
           if (!state.isDailyPractice) {
             saveDailyHistoryEntry(dateStr, { time: scoreTime });
           }

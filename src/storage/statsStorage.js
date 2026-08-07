@@ -568,6 +568,22 @@ export function invalidateStatsCache() {
 
 // ── Daily Completion Tracking ────────────────────────
 const DAILY_COMPLETED_KEY = 'minesweeper_daily_completed_date';
+// WHICH board that completion was for. The date alone cannot answer the
+// question the daily-card lock actually asks — "has this account finished
+// TODAY'S CANONICAL board?" — because a client that missed the canonical and
+// generated locally completes a different board on the same date. Until
+// 2026-08-07 the only record of which board was played lived in the cloud
+// score row, and the submit guard (#252) stopped writing that row for exactly
+// the divergent case the unlock reads, so the fact went unrecorded everywhere.
+// Written beside the date, so an absent value means a completion recorded
+// before this shipped (vintage), never "played the canonical".
+const DAILY_COMPLETED_SEED_KEY = 'minesweeper_daily_completed_seed';
+// "This device completed a board today, but not the day's board." Set when the
+// boot gate proves divergence; read by applyCloudProgress, which would
+// otherwise re-lock the card from the cloud's `lastDailyDate` within
+// milliseconds — the divergent play still counts for the streak by design, so
+// the cloud legitimately says "played today" while the canonical sits unplayed.
+const DAILY_REPLAY_UNLOCK_KEY = 'minesweeper_daily_replay_unlocked';
 
 export function isDailyCompleted(dateStr) {
   // Test branch: report no completion so the daily can be replayed
@@ -578,9 +594,66 @@ export function isDailyCompleted(dateStr) {
   return safeGet(DAILY_COMPLETED_KEY) === dateStr;
 }
 
-export function markDailyCompleted(dateStr) {
+/**
+ * What this device remembers about today's daily: the date it recorded a
+ * completion for, and the board seed that completion was on. A null `seed` is
+ * a completion recorded before seeds were tracked — UNKNOWN, not "canonical".
+ */
+export function getDailyCompletionRecord() {
+  return {
+    date: safeGet(DAILY_COMPLETED_KEY) || null,
+    seed: safeGet(DAILY_COMPLETED_SEED_KEY) || null,
+  };
+}
+
+/**
+ * Unlock today's daily for a replay because the board this device completed
+ * was NOT the day's canonical: the score was refused at submit, so the real
+ * board is still unplayed and the player is not on the board.
+ *
+ * The unlock has to be STICKY. Clearing the completed date alone lasts
+ * milliseconds — applyCloudProgress re-derives the lock from the cloud's
+ * `lastDailyDate`, and the progress listener re-applies the cloud on every
+ * write under users/{uid} (a lastSeen beacon is enough). The divergent play
+ * deliberately still counts for the streak, so the cloud is right to say
+ * "played today"; it just cannot answer "played WHICH board". This marker is
+ * that answer, and it is what the re-lock defers to.
+ */
+export function unlockDailyReplay(dateStr) {
+  if (isTestEnvironment() || !dateStr) return;
+  safeRemove(DAILY_COMPLETED_KEY);
+  safeRemove(DAILY_COMPLETED_SEED_KEY);
+  safeSet(DAILY_REPLAY_UNLOCK_KEY, dateStr);
+  // The cached par / moves / features describe the board that was played, and
+  // it was the wrong one — leaving them would print a stale par on the Daily
+  // card and hand parResolve a feature vector for a layout the player is about
+  // to stop playing. Dropped here rather than at each call site so the boot
+  // gate and the at-submit unlock cannot disagree about what a replay resets.
+  safeRemove(DAILY_PAR_KEY_PREFIX + dateStr);
+  safeRemove(DAILY_MOVES_KEY_PREFIX + dateStr);
+  safeRemove(DAILY_FEATURES_KEY_PREFIX + dateStr);
+}
+
+export function isDailyReplayUnlocked(dateStr) {
+  return !!dateStr && safeGet(DAILY_REPLAY_UNLOCK_KEY) === dateStr;
+}
+
+/**
+ * @param {string} dateStr    the board's date (state.dailySeed)
+ * @param {string|null} seed  the effective rngSeed of the board completed —
+ *                            `${date}:trialN` on experiment days, the bare
+ *                            date otherwise. Recorded so a later boot can tell
+ *                            whether this account has finished the day's real
+ *                            board without needing a cloud row to exist.
+ */
+export function markDailyCompleted(dateStr, seed = null) {
   if (isTestEnvironment()) return;
   safeSet(DAILY_COMPLETED_KEY, dateStr);
+  if (seed) safeSet(DAILY_COMPLETED_SEED_KEY, seed);
+  else safeRemove(DAILY_COMPLETED_SEED_KEY);
+  // A completion supersedes any standing replay unlock — including the one
+  // that granted this very replay.
+  safeRemove(DAILY_REPLAY_UNLOCK_KEY);
 }
 
 // ── Onboarding ──────────────────────────────────────
@@ -1033,7 +1106,12 @@ export function resetDailyStatsForAccountSwitch() {
   _statsCache = stats;
   // Drop the per-date local caches keyed off the abandoned uid's plays —
   // the new account may have different par / move counts on the same date.
+  // The completion's board seed and any replay unlock describe the abandoned
+  // account's play, so they go with it; leaving the unlock behind would
+  // suppress the new account's own cloud re-lock.
   try { safeRemove(DAILY_COMPLETED_KEY); } catch {}
+  try { safeRemove(DAILY_COMPLETED_SEED_KEY); } catch {}
+  try { safeRemove(DAILY_REPLAY_UNLOCK_KEY); } catch {}
 }
 
 // ── Cloud Progress Merge ──────────────────────────────
@@ -1238,9 +1316,20 @@ export function applyCloudProgress({ maxCheckpoint, dailyStreak, bestDailyStreak
   // drives the streak math; DAILY_COMPLETED_KEY drives the daily-card
   // "completed" lock — but they should always agree on whether today
   // is done.
+  //
+  // `lastDailyDate` answers "played a daily today", which is the STREAK fact.
+  // It cannot answer "finished today's canonical", which is what the lock
+  // actually gates — and those came apart the moment a divergent board could
+  // count for the streak while its score was refused. So a proven-divergent
+  // completion on this device outranks the cloud's coarser date here. Without
+  // this deferral the boot gate's unlock is undone on the next write to
+  // users/{uid}, which the listener applies verbatim; a lastSeen beacon does
+  // it, so the card would flick back to "completed" seconds after unlocking.
   if (lastDailyDate && typeof lastDailyDate === 'string' && lastDailyDate.length === 10) {
     const today = getLocalDateString();
-    if (lastDailyDate === today && safeGet(DAILY_COMPLETED_KEY) !== today) {
+    if (lastDailyDate === today
+        && safeGet(DAILY_COMPLETED_KEY) !== today
+        && !isDailyReplayUnlocked(today)) {
       safeSet(DAILY_COMPLETED_KEY, today);
     }
   }
