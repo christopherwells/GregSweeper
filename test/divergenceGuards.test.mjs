@@ -33,22 +33,37 @@ const gateSrc = readFileSync(new URL('../src/game/startupGate.js', import.meta.u
 const sweepSrc = readFileSync(new URL('../scripts/verify-canonical-boards.mjs', import.meta.url), 'utf8');
 const auditSrc = readFileSync(new URL('../scripts/audit-divergent-scores.mjs', import.meta.url), 'utf8');
 
-test('the submit path compares the played seed against the canonical', () => {
-  assert.match(leaderboardSrc, /dailyBoard\/\$\{dateString\}\/rngSeed/,
-    'submit must read the canonical seed for the date');
-  assert.match(leaderboardSrc, /return 'divergent'/,
-    "a mismatch must return the 'divergent' outcome");
+// The DECISION these two used to scan for now lives in the pure
+// logic/submitGate.js and is tested by BEHAVIOR in test/submitGate.test.mjs —
+// which is the test this file could never be. What is left here is the wiring:
+// that the submit path still routes through the gate, and that the reads
+// feeding it still fall open. Those are properties of the async plumbing, which
+// is the one part a pure test cannot reach.
+
+test('the submit path routes its decision through the pure gate', () => {
+  assert.match(leaderboardSrc, /from '\.\.\/logic\/submitGate\.js'/,
+    'submit must import the gate rather than re-deciding inline');
+  assert.match(leaderboardSrc, /planScoreSubmission\(/,
+    'and must actually call it');
+  assert.match(leaderboardSrc, /canonicalSeedPath\(/,
+    'the canonical node must come from the gate, so a weekly bucket reads the WEEKLY board');
+  assert.match(leaderboardSrc, /if \(verdict !== 'proceed'\) return verdict;/,
+    "the verdict must gate the push, and be returned to the caller verbatim");
 });
 
-test("the guard fails OPEN, so a flaky read can never eat a real score", () => {
-  // The canonical read sits inside a try/catch whose catch falls through to
-  // the push. A guard that failed CLOSED would silently drop scores whenever
-  // Firebase hiccupped, which is far worse than the bad row it prevents.
-  const idx = leaderboardSrc.indexOf('dailyBoard/${dateString}/rngSeed');
-  assert.ok(idx > 0);
-  const around = leaderboardSrc.slice(idx - 400, idx + 400);
-  assert.match(around, /try\s*\{/, 'the canonical read must be inside a try');
-  assert.match(around, /catch\s*\{[^}]*\}/, 'and its catch must swallow, not rethrow');
+test("the reads feeding the guard fail OPEN, so a flaky read can never eat a real score", () => {
+  // Both reads sit in their own try/catch that leaves the seed/rows as null —
+  // "unavailable", never "mismatch". A guard that failed CLOSED would silently
+  // drop scores whenever Firebase hiccupped, far worse than the bad row it
+  // prevents. The gate's own half of this contract is behaviour-tested.
+  const idx = leaderboardSrc.indexOf('canonicalSeedPath(');
+  assert.ok(idx > 0, 'expected the canonical read to still exist');
+  const around = leaderboardSrc.slice(idx - 600, idx + 300);
+  assert.match(around, /let canonicalSeed = null;/,
+    'an unread canonical must default to null, which the gate treats as unavailable');
+  assert.match(around, /catch\s*\{[^}]*\}/, 'its catch must swallow, not rethrow');
+  assert.match(around, /let existingRows = null;/,
+    'and the dedupe read must default the same way');
 });
 
 test('a divergent submission still writes dailyHistory, so the streak survives', () => {

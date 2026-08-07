@@ -124,6 +124,7 @@ const ASSETS = [
   './src/logic/weeklyProgress.js',
   './src/logic/parLab.js',
   './src/logic/scoreRowMatch.js',
+  './src/logic/submitGate.js',
   './src/logic/shapeRotation.js',
   './src/logic/shareCard.js',
   './src/logic/shouldPromptForName.js',
