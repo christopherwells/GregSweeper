@@ -17,6 +17,22 @@ import {
 import { getChaosDifficulty } from '../src/logic/difficulty.js';
 import { buildTiling, containerIsStorable, TILING_TYPES } from '../src/logic/tilingGeometry.js';
 import { boardFitsPhone } from '../src/logic/boardFit.js';
+
+// The largest well-proportioned patch a lattice has, which is the real ceiling
+// on how big a chaos board of that shape can get.
+function largestFittingCells(type) {
+  let best = 0;
+  for (let M = 2; M <= 14; M++) {
+    for (let N = 2; N <= 14; N++) {
+      if (!boardFitsPhone(type, M, N)) continue;
+      let t;
+      try { t = buildTiling(type, M, N); } catch { continue; }
+      if (!containerIsStorable(t.total)) continue;
+      if (t.total <= 150 && t.total > best) best = t.total;
+    }
+  }
+  return best;
+}
 import { generateTilingBoard } from '../src/logic/tilingGenerator.js';
 import { createDailyRNG } from '../src/logic/seededRandom.js';
 
@@ -80,11 +96,21 @@ test('a lattice round lands near the square round it replaces, and stays storabl
         `${type} round ${round}: ${plan.cells} cells exceeds the chaos cap`);
 
       // Near the round's own size, in the only sense that transfers between a
-      // rectangle and a lattice. Capped rounds are allowed to fall short.
-      if (target <= CHAOS_MAX_TILING_CELLS) {
+      // rectangle and a lattice. Two things are allowed to fall short: a round
+      // past the chaos cap, and a SHAPE at its own ceiling. The phone cap's
+      // proportion rule (2026-08-07) gives each lattice a largest
+      // well-proportioned patch, and three of them top out under the 150-cell
+      // chaos ramp — Octagons at 98, Paving Stones at 112, Kites at 90. On a
+      // big round those boards are as large as that lattice can legibly be on
+      // a phone, which is the honest answer rather than a miss.
+      const ceiling = largestFittingCells(type);
+      if (target <= CHAOS_MAX_TILING_CELLS && target <= ceiling) {
         const ratio = plan.cells / target;
         assert.ok(ratio > 0.7 && ratio < 1.35,
           `${type} round ${round}: ${plan.cells} cells against a ${target}-cell round`);
+      } else {
+        assert.ok(plan.cells >= ceiling * 0.7,
+          `${type} round ${round}: ${plan.cells} cells is far under its own ${ceiling}-cell ceiling`);
       }
 
       // And the round's DENSITY is preserved, which is what makes a lattice

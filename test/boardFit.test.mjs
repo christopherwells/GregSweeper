@@ -20,7 +20,7 @@ import { readFileSync } from 'node:fs';
 
 import {
   boardFitsPhone, maxExtentUnits, tapRatios, tapSizeAt, fittingDims,
-  widthBudget, heightBudget, FIT_REFERENCE, MIN_TAP_MAJORITY, MIN_TAP_MINORITY,
+  widthBudget, heightBudget, comfortHeightBudget, FIT_REFERENCE, MIN_TAP_MAJORITY, MIN_TAP_MINORITY,
 } from '../src/logic/boardFit.js';
 import { buildTiling, TILING_TYPES } from '../src/logic/tilingGeometry.js';
 import { TILING_BAND_CONFIGS } from '../src/logic/tilingBandConfigs.js';
@@ -190,17 +190,33 @@ test('fittingDims never returns a board that fails the cap', () => {
   }
 });
 
-test('fittingDims prefers the portrait orientation', () => {
-  // The remedy the audit found for most violations: the same cell count laid
-  // out taller than wide is free pitch, because height is the looser budget.
-  // Paving Stones at 66 cells is the case Christopher reported.
-  const d = fittingDims('cairo', 66, { maxCells: 66, minCells: 66 });
-  assert.ok(d, 'no legal 66-cell Paving Stones board found');
+test('a board must be PROPORTIONED, not merely under the caps', () => {
+  // This test used to assert that fittingDims prefers a PORTRAIT board, which
+  // was the first pass at the cap and was wrong in the other direction
+  // (2026-08-07). Christopher, on the Paving Stones ladder blocks: "too long
+  // for the screen but definitely could've been wider." Turning the 4x10
+  // letterbox into a 10x4 ribbon fixed the tap size and broke the shape, and
+  // a cap on MAXIMUM extents could not see it — 10x4 renders 204 x 510px,
+  // using 65% of the width and overflowing the comfortable height.
+  //
+  // Both orientations of that board are now refused, and neither direction of
+  // ribbon is reachable.
+  assert.ok(!boardFitsPhone('cairo', 4, 10), 'the wide 4x10 letterbox must fail');
+  assert.ok(!boardFitsPhone('cairo', 10, 4), 'the tall 10x4 ribbon must fail too');
+
+  // What survives is squarer. Ask for that cell count and the search declines
+  // rather than returning a ribbon.
+  const exact = fittingDims('cairo', 66, { maxCells: 66, minCells: 66 });
+  assert.equal(exact, null, 'cairo has 66 cells only at 4x10 / 10x4 — both ribbons');
+
+  // And a free search near that size returns something well-shaped.
+  const d = fittingDims('cairo', 66);
+  assert.ok(d, 'no legal Paving Stones board near 66 cells');
   const g = buildTiling('cairo', d.M, d.N);
-  assert.ok(g.hUnits > g.wUnits, `expected a portrait board, got ${g.wUnits.toFixed(2)}w x ${g.hUnits.toFixed(2)}h`);
-  // And it must be a real improvement over the strip it replaces.
-  assert.ok(tapSizeAt('cairo', d.M, d.N).majority >= MIN_TAP_MAJORITY);
-  assert.ok(tapSizeAt('cairo', 4, 10).majority < MIN_TAP_MAJORITY, 'the reported 4x10 strip should still fail');
+  const { pitch, majority } = tapSizeAt('cairo', d.M, d.N);
+  assert.ok(majority >= MIN_TAP_MAJORITY, 'cells must still clear the tap floor');
+  assert.ok(g.wUnits * pitch >= widthBudget() * 0.75, 'must use the width it is given');
+  assert.ok(g.hUnits * pitch <= comfortHeightBudget() + 12, 'must fit the comfortable height');
 });
 
 // ── the deliberate exemption ───────────────────────────────────────

@@ -17,7 +17,7 @@ import assert from 'node:assert/strict';
 
 import {
   CHALLENGE_MAX_LEVEL, CHALLENGE_BLOCK_SIZE, TIER_PPC,
-  ENDLESS_SPECS, ENDLESS_START_LEVEL, ENDLESS_PPC_GROWTH, ENDLESS_GEN_BUDGET_MS,
+  ENDLESS_SPECS, endlessPpcFloor, ENDLESS_START_LEVEL, ENDLESS_PPC_GROWTH, ENDLESS_GEN_BUDGET_MS,
   ENDLESS_PAR_CEILING_SECONDS, GEN_CAP_MS, ENDLESS_VARIETY_MAX_RATIO,
   ENDLESS_GEN_HEADROOM, endlessParCeiling, endlessGenCap, endlessGenBudget, ENDLESS_PPC_FLOOR,
   challengeSpecForLevel, endlessSpecForLevel, endlessTargetPpc, blockStartLevel,
@@ -39,8 +39,12 @@ test('every pool entry is a legal ladder spec at or above the summit', () => {
     // so more boards fit, without making the first endless block easier than
     // the crown before it. The margin is because an entry stored at exactly
     // the floor reads under it on a smaller sample.
-    assert.ok(s.ppc >= ENDLESS_PPC_FLOOR * 1.02,
-      `${s.shape}: ppc ${s.ppc} sits on the ${ENDLESS_PPC_FLOOR} pool floor with no margin`);
+    // A shape may carry its own floor where it cannot reach the shared one on
+    // a board a phone can hold (ENDLESS_PPC_FLOOR_BY_SHAPE — his 2026-08-07
+    // ruling that every tiling must be reachable in the endless zone).
+    const floor = endlessPpcFloor(s.shape);
+    assert.ok(s.ppc >= floor * 1.02,
+      `${s.shape}: ppc ${s.ppc} sits on its ${floor} floor with no margin`);
     assert.ok(Number.isInteger(s.mines) && s.mines > 0, `${s.shape}: bad mine count`);
     assert.ok(Number.isInteger(s.cells) && s.cells > 0, `${s.shape}: bad cell count`);
 
@@ -81,6 +85,15 @@ test('the pool carries all seven board shapes', () => {
   //     222-464s, comfortably under. Its certifier has no Pass B and leans on
   //     Pass C for every board, so it measured 2.1-9.8s against the 2-second
   //     generation cap. His ruling: 3.5 seconds for that shape.
+  //   - PAVING STONES is the one shape carrying its own admission floor. The
+  //     phone cap's proportion rule caps it at 112 cells, where its hardest
+  //     stack reaches ppc 3.52 — over the shared floor, but on one stack
+  //     only. His ruling 2026-08-07: EVERY tiling must be available here, and
+  //     its top decile is enough to earn that. See
+  //     ENDLESS_PPC_FLOOR_BY_SHAPE.
+  //
+  // Every shape must be present. This is the assertion his ruling turns into
+  // a hard requirement rather than a preference.
   const shapes = new Set(ENDLESS_SPECS.map((s) => s.shape));
   for (const t of ['rect', ...TILING_TYPES]) {
     assert.ok(shapes.has(t), `the endless pool has no ${t} entry`);
@@ -222,12 +235,16 @@ test('GOLDEN: the first endless block is fixed', () => {
   // entries left the pool for two 13x7 ones higher up the climb, two deltoidal
   // 4x2 entries became 3x3, and every 7x8 4.8.8 turned into an 8x7. The draw
   // reads a different pool, so a different five come out.
+  // Moved again on 2026-08-07: the phone cap grew a proportion rule (no tall
+  // ribbons), which retired the 4.8.8's 150-cell and cairo's 162-cell boards,
+  // and Paving Stones came back on its own admission floor. Different pool,
+  // different five.
   assert.deepEqual(got, [
-    'hex:110c:37m:[compass+walls]',
+    'cairo:110c:26m:[locked+sonar+walls]',
     'deltoidal:36c:10m:[sonar+walls]',
-    '4.8.8:98c:33m:[wormhole+locked]',
+    '4.8.8:72c:29m:[wormhole+locked]',
     'rect:144c:58m:[locked+liar]',
-    'rhombille:60c:22m:[locked+sonar+walls]',
+    'hex:110c:37m:[worm+walls]',
   ]);
 });
 
