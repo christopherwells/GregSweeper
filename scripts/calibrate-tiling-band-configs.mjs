@@ -54,17 +54,27 @@ const STACK_PROBE = ['liar', 'mystery'];  // the stacked-pair proof, per committ
 // — 0/12 at 0.211, reproduced at 0.18); everything caps at the lab's 0.28
 // ceiling. Rhombille sizes cap at 72 cells (Christopher's ruling: the
 // 90-cell fixture measured 13.7 s worst-case generation).
+// Every size here must also clear boardFit's phone cap (2026-08-06), which is
+// what retired the landscape entries this grid used to carry — a lattice board
+// wider than the cap draws cells under the tap floor on a phone. Several are
+// simply the old size TURNED: an M x N and an N x M patch of these lattices
+// hold the same number of cells, and on a portrait phone only one of the two
+// is playable. test/boardFit.test.mjs holds the committed table to the cap;
+// this grid is kept in step by hand so the calibrator can actually PROVE the
+// sizes the table ships (a committed entry absent from the grid is measured
+// but never proven, which is how the first pass after the cap landed came back
+// clean without having touched the changed entries).
 const CANDIDATES = {
   '4.8.8': {
-    sizes: [[5, 6], [6, 7], [7, 7], [7, 8], [8, 9]],
-    densities: [0.14, 0.18, 0.22, 0.25, 0.28],
+    sizes: [[5, 6], [6, 7], [7, 7], [8, 7], [12, 7]],
+    densities: [0.14, 0.18, 0.187, 0.22, 0.25, 0.28],
   },
   hex: {
     sizes: [[7, 7], [9, 7], [9, 9], [11, 10]],
     densities: [0.14, 0.18, 0.22, 0.25, 0.28],
   },
   cairo: {
-    sizes: [[5, 6], [6, 6], [4, 10], [7, 7]],
+    sizes: [[5, 6], [6, 6], [10, 4], [7, 7]],
     densities: [0.18, 0.21, 0.24, 0.28],
   },
   floret: {
@@ -72,11 +82,11 @@ const CANDIDATES = {
     densities: [0.18, 0.21, 0.24, 0.28],
   },
   rhombille: {
-    sizes: [[4, 4], [4, 5], [4, 6]],
+    sizes: [[4, 4], [4, 5], [6, 4]],
     densities: [0.23, 0.255, 0.28],
   },
   deltoidal: {
-    sizes: [[2, 3], [2, 4], [3, 4]],
+    sizes: [[2, 3], [4, 2], [4, 3]],
     densities: [0.18, 0.21, 0.24, 0.28],
   },
 };

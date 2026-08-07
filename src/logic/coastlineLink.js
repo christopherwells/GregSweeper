@@ -116,13 +116,17 @@ export function tilingTypeForToken(token) {
  * 13.7 s worst case, six times the cost for 25% more cells. Cost is paid behind
  * the boot overlay during init, once per load, on a test-gated practice surface.
  */
+// Dimensions are held to boardFit's phone cap by test/boardFit.test.mjs.
+// 3D Cubes and Kites were transposed there (2026-08-06) at an identical cell
+// count: both were laid out landscape, which on a portrait phone is what
+// crushes the pitch.
 export const COASTLINE_BOARDS = {
   '4.8.8': { M: 6, N: 7, mines: 11 },      // 72 cells (42 octagons + 30 squares)
   hex: { M: 9, N: 7, mines: 13 },          // 63 hexagons
   cairo: { M: 7, N: 7, mines: 21 },        // 84 pentagons
   floret: { M: 3, N: 4, mines: 18 },       // 72 pentagons (12 pinwheels of 6)
-  rhombille: { M: 4, N: 6, mines: 18 },    // 72 rhombi (24 hexagons of 3)
-  deltoidal: { M: 3, N: 4, mines: 18 },    // 72 kites
+  rhombille: { M: 6, N: 4, mines: 18 },    // 72 rhombi (24 hexagons of 3)
+  deltoidal: { M: 4, N: 3, mines: 18 },    // 72 kites
 };
 
 /**

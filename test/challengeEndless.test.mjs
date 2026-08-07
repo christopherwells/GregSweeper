@@ -99,7 +99,12 @@ test('the per-shape allowances are the ruled ones, and apply only where ruled', 
   }
 
   assert.equal(endlessGenCap('rhombille'), 3500, '3D Cubes: 3.5 seconds');
-  for (const t of ['rect', 'hex', '4.8.8', 'cairo', 'floret', 'deltoidal']) {
+  // Paving Stones joined on 2026-08-06, his ruling that the budget "can be 3
+  // if it means we get diversity": the phone cap moved its endless boards to
+  // 13x7, the only legal patch that reaches the summit rate, and those cost
+  // 1709-2184ms to generate.
+  assert.equal(endlessGenCap('cairo'), 3000, 'Paving Stones: 3 seconds');
+  for (const t of ['rect', 'hex', '4.8.8', 'floret', 'deltoidal']) {
     assert.equal(endlessGenCap(t), GEN_CAP_MS, `${t} keeps the standard generation cap`);
   }
 
@@ -213,12 +218,16 @@ test('GOLDEN: the first endless block is fixed', () => {
     const s = endlessSpecForLevel(ENDLESS_START_LEVEL + i);
     got.push(`${s.shape}:${s.cells}c:${s.mines}m:[${s.gimmicks.join('+')}]`);
   }
+  // Moved wholesale on 2026-08-06 by the phone cap (boardFit): six 9x9 cairo
+  // entries left the pool for two 13x7 ones higher up the climb, two deltoidal
+  // 4x2 entries became 3x3, and every 7x8 4.8.8 turned into an 8x7. The draw
+  // reads a different pool, so a different five come out.
   assert.deepEqual(got, [
-    'rhombille:60c:22m:[locked+sonar+walls]',
-    'cairo:144c:48m:[]',
+    'hex:110c:37m:[compass+walls]',
     'deltoidal:36c:10m:[sonar+walls]',
-    'hex:110c:37m:[worm+walls]',
-    '4.8.8:72c:29m:[wormhole+locked]',
+    '4.8.8:98c:33m:[wormhole+locked]',
+    'rect:144c:58m:[locked+liar]',
+    'rhombille:60c:22m:[locked+sonar+walls]',
   ]);
 });
 

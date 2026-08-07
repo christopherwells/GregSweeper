@@ -104,13 +104,17 @@ export const TILING_BAND_CONFIGS = {
     { id: '485d14', M: 7, N: 7, mines: 12, features: { cellCount: 85, totalMines: 12, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 4 } },     // ~44s
     { id: '472d22', M: 6, N: 7, mines: 16, fallback: true, features: { cellCount: 72, totalMines: 16, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 5 } }, // ~68s
     { id: '485d22', M: 7, N: 7, mines: 19, features: { cellCount: 85, totalMines: 19, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 5.5 } },   // ~90s
-    { id: '498d22', M: 7, N: 8, mines: 22, features: { cellCount: 98, totalMines: 22, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 6 } },     // ~118s
-    { id: '498d26', M: 7, N: 8, mines: 25, features: { cellCount: 98, totalMines: 25, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 1, zeroClusterCount: 5 } },     // ~163s
-    // 0.219 sits a hair under the constructive threshold, where 4.8.8
-    // rejection sampling has a real per-seed miss rate (per-layout
-    // certification ~0.7% at density 0.22 on this size) — routed
-    // constructive explicitly rather than betting 600 attempts per date.
-    { id: '4128d22', M: 8, N: 9, mines: 28, constructive: true, features: { cellCount: 128, totalMines: 28, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 9 } }, // ~203s
+    { id: '498d22', M: 8, N: 7, mines: 22, features: { cellCount: 98, totalMines: 22, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 6 } },     // ~118s
+    { id: '498d26', M: 8, N: 7, mines: 25, features: { cellCount: 98, totalMines: 25, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 1, zeroClusterCount: 5 } },     // ~163s
+    // The table's dearest entry, and the ONE violation of the 2026-08-06 phone
+    // cap that a transpose could not fix: the old 8x9 was 9 pitch units wide
+    // against the 4.8.8's cap of 7.77, and its own transpose is square. So it
+    // is re-picked rather than turned — taller and slightly larger at the same
+    // par, which the cap allows because height is the looser budget. Density
+    // falls to 0.187, still routed constructive: rejection sampling gets less
+    // reliable as the patch grows, and this is the largest 4.8.8 the table
+    // ships, so it is the last entry to gamble 600 attempts on.
+    { id: '4150d19', M: 12, N: 7, mines: 28, constructive: true, features: { cellCount: 150, totalMines: 28, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 10 } }, // ~182s
   ],
   hex: [
     { id: 'h49d18', M: 7, N: 7, mines: 9, features: { cellCount: 49, totalMines: 9, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } },       // ~27s
@@ -133,8 +137,8 @@ export const TILING_BAND_CONFIGS = {
     { id: 'c49d18', M: 5, N: 6, mines: 9, constructive: true, features: { cellCount: 49, totalMines: 9, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 1.5 } }, // ~49s
     { id: 'c49d29', M: 5, N: 6, mines: 14, features: { cellCount: 49, totalMines: 14, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } },     // ~49s
     { id: 'c60d23', M: 6, N: 6, mines: 14, fallback: true, features: { cellCount: 60, totalMines: 14, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } }, // ~65s
-    { id: 'c66d18', M: 4, N: 10, mines: 12, constructive: true, features: { cellCount: 66, totalMines: 12, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2.5 } }, // ~77s
-    { id: 'c66d27', M: 4, N: 10, mines: 18, features: { cellCount: 66, totalMines: 18, canonicalSubsetMoves: 0.5, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 3 } },  // ~77s
+    { id: 'c66d18', M: 10, N: 4, mines: 12, constructive: true, features: { cellCount: 66, totalMines: 12, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2.5 } }, // ~77s
+    { id: 'c66d27', M: 10, N: 4, mines: 18, features: { cellCount: 66, totalMines: 18, canonicalSubsetMoves: 0.5, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 3 } },  // ~77s
     { id: 'c84d18', M: 7, N: 7, mines: 15, constructive: true, features: { cellCount: 84, totalMines: 15, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } }, // ~123s
     { id: 'c84d29', M: 7, N: 7, mines: 24, features: { cellCount: 84, totalMines: 24, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 3 } },     // ~123s
   ],
@@ -149,9 +153,9 @@ export const TILING_BAND_CONFIGS = {
   rhombille: [
     { id: 'r48d23', M: 4, N: 4, mines: 11, features: { cellCount: 48, totalMines: 11, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 1.5 } },   // ~47s
     { id: 'r60d23', M: 4, N: 5, mines: 14, fallback: true, features: { cellCount: 60, totalMines: 14, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } }, // ~61s
-    { id: 'r72d24', M: 4, N: 6, mines: 17, features: { cellCount: 72, totalMines: 17, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } },     // ~78s
+    { id: 'r72d24', M: 6, N: 4, mines: 17, features: { cellCount: 72, totalMines: 17, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } },     // ~78s
     { id: 'r60d28', M: 4, N: 5, mines: 17, features: { cellCount: 60, totalMines: 17, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } },     // ~88s
-    { id: 'r72d28', M: 4, N: 6, mines: 20, features: { cellCount: 72, totalMines: 20, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } },     // ~113s
+    { id: 'r72d28', M: 6, N: 4, mines: 20, features: { cellCount: 72, totalMines: 20, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } },     // ~113s
   ],
   // Deltoidal's cheapest proven config prices ~63 s — the lattice cannot
   // reach the easy hill's lower half, so sub-63 targets ship the 63 s entry
@@ -160,10 +164,10 @@ export const TILING_BAND_CONFIGS = {
   deltoidal: [
     { id: 'd36d17', M: 2, N: 3, mines: 6, constructive: true, fallback: true, features: { cellCount: 36, totalMines: 6, canonicalSubsetMoves: 0, genericSubsetMoves: 0.5, advancedLogicMoves: 0, zeroClusterCount: 1 } }, // ~63s
     { id: 'd36d25', M: 2, N: 3, mines: 9, features: { cellCount: 36, totalMines: 9, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 1 } },       // ~90s
-    { id: 'd48d21', M: 2, N: 4, mines: 10, constructive: true, features: { cellCount: 48, totalMines: 10, canonicalSubsetMoves: 0, genericSubsetMoves: 3, advancedLogicMoves: 0, zeroClusterCount: 3 } }, // ~106s
-    { id: 'd48d27', M: 2, N: 4, mines: 13, features: { cellCount: 48, totalMines: 13, canonicalSubsetMoves: 0, genericSubsetMoves: 1, advancedLogicMoves: 0, zeroClusterCount: 2 } },     // ~150s
-    { id: 'd72d18', M: 3, N: 4, mines: 13, constructive: true, features: { cellCount: 72, totalMines: 13, canonicalSubsetMoves: 0, genericSubsetMoves: 3, advancedLogicMoves: 2, zeroClusterCount: 2 } }, // ~153s
-    { id: 'd72d21', M: 3, N: 4, mines: 15, constructive: true, features: { cellCount: 72, totalMines: 15, canonicalSubsetMoves: 0, genericSubsetMoves: 4, advancedLogicMoves: 0, zeroClusterCount: 2 } }, // ~194s
+    { id: 'd48d21', M: 4, N: 2, mines: 10, constructive: true, features: { cellCount: 48, totalMines: 10, canonicalSubsetMoves: 0, genericSubsetMoves: 3, advancedLogicMoves: 0, zeroClusterCount: 3 } }, // ~106s
+    { id: 'd48d27', M: 4, N: 2, mines: 13, features: { cellCount: 48, totalMines: 13, canonicalSubsetMoves: 0, genericSubsetMoves: 1, advancedLogicMoves: 0, zeroClusterCount: 2 } },     // ~150s
+    { id: 'd72d18', M: 4, N: 3, mines: 13, constructive: true, features: { cellCount: 72, totalMines: 13, canonicalSubsetMoves: 0, genericSubsetMoves: 3, advancedLogicMoves: 2, zeroClusterCount: 2 } }, // ~153s
+    { id: 'd72d21', M: 4, N: 3, mines: 15, constructive: true, features: { cellCount: 72, totalMines: 15, canonicalSubsetMoves: 0, genericSubsetMoves: 4, advancedLogicMoves: 0, zeroClusterCount: 2 } }, // ~194s
   ],
 };
 

@@ -16,6 +16,7 @@ import {
 } from '../src/logic/chaosShape.js';
 import { getChaosDifficulty } from '../src/logic/difficulty.js';
 import { buildTiling, containerIsStorable, TILING_TYPES } from '../src/logic/tilingGeometry.js';
+import { boardFitsPhone } from '../src/logic/boardFit.js';
 import { generateTilingBoard } from '../src/logic/tilingGenerator.js';
 import { createDailyRNG } from '../src/logic/seededRandom.js';
 
@@ -98,15 +99,42 @@ test('a lattice round lands near the square round it replaces, and stays storabl
 
 test('patches are not long ribbons', () => {
   // A pure nearest-cell-count search picks exact strips: the 4.8.8 hits 63
-  // cells exactly at M=3, N=13. The aspect penalty exists to stop that.
+  // cells exactly at M=3, N=13. Something has to stop that.
+  //
+  // This used to score |M - N| in LATTICE indices, and that measured the wrong
+  // space (2026-08-06). A step in M and a step in N cover different distances
+  // on screen for four of the six lattices, so the ratio of the indices says
+  // little about the shape a player sees: measured, the floret's 8x2 is 4.0:1
+  // in indices and renders 314 x 471px — better proportioned than cairo's
+  // 10x5, which is 2.0:1 in indices and renders 255 x 510px. The assertion is
+  // therefore on the RENDERED extent, which is the thing the test was always
+  // trying to talk about, and is strictly stronger: it also catches a patch
+  // that is lopsided for reasons the indices cannot express.
+  //
+  // Bounds are measured over every reachable round: the shipped chooser lands
+  // between 1.00 and 2.00, all portrait. The upper bound leaves a little room;
+  // the lower bound is what fails on a wide strip.
   for (const round of ROUNDS) {
     const rect = getChaosDifficulty(round);
     for (const type of CHAOS_SHAPES) {
       const { M, N } = chaosTilingPlan(rect, type);
-      const ratio = Math.max(M, N) / Math.min(M, N);
-      assert.ok(ratio <= 3, `${type} round ${round}: ${M}x${N} is a ribbon (${ratio.toFixed(1)}:1)`);
+      const { wUnits, hUnits } = buildTiling(type, M, N);
+      const aspect = hUnits / wUnits;
+      assert.ok(aspect >= 0.8 && aspect <= 2.2,
+        `${type} round ${round}: ${M}x${N} renders ${wUnits.toFixed(1)}x${hUnits.toFixed(1)} units, `
+        + `aspect ${aspect.toFixed(2)} — a ribbon`);
     }
   }
+});
+
+test('the ribbon guard is not vacuous: the strip that motivated it still fails', () => {
+  // The 4.8.8 at M=3, N=13 — 63 cells hit exactly, and the shape that made the
+  // original guard necessary. It must fail BOTH the aspect bound above and, now
+  // that the phone cap exists, the cap itself.
+  const strip = buildTiling('4.8.8', 3, 13);
+  const aspect = strip.hUnits / strip.wUnits;
+  assert.ok(aspect < 0.8, `the motivating strip should read as a ribbon, got aspect ${aspect.toFixed(2)}`);
+  assert.ok(!boardFitsPhone('4.8.8', 3, 13), 'the motivating strip should also fail the phone cap');
 });
 
 test('a rectangular round produces no plan, leaving the existing path alone', () => {
