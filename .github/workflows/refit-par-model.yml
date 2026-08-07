@@ -4,21 +4,39 @@ name: Refit Greg-par
 # between its PAR_MODEL:START / PAR_MODEL:END markers, and pushes the
 # change straight to main (GitHub Pages then redeploys automatically).
 #
-# The TARGET is 10am America/New_York, but the cron is pinned 47 minutes
-# EARLY and off the top of the hour, for a measured reason: GitHub queues
-# top-of-hour crons behind everyone else's, and the old '0 14' slot fired
-# 60-120 minutes late all week (measured 2026-07-30..08-01: 15:51, 16:01,
-# 15:00 UTC) — so "the 10am refit" reliably had NOT run when checked at
-# 10-11am ET, which reads as a failed refit even though every run was
-# green. Off-peak minutes drift far less; the early anchor spends the
-# residual drift before 10am instead of after it.
+# THE ANCHOR IS THE PRECOMPUTE, not a wall-clock hour. This fires at 00:17
+# UTC, 2h43m before precompute-daily-board's 03:00 UTC run, so a night's
+# board is generated under the model and experiment target fit that same
+# night. The old 13:13 UTC slot put the refit AFTER the precompute it
+# should feed, leaving every board written against a model 13.8 hours old.
 #
-# Actions cron does not observe DST, so this fires ~9:13am ET in summer
-# and ~8:13am ET in winter, plus drift. Change the cron if you move
-# timezones.
+# Read what this does and does not buy. It does NOT close experiment-target
+# drift: a board written on day D is still played on D+7, under a target
+# rewritten seven times since, and that is inherent to a seven-day horizon.
+# The fix for drift is that clients no longer re-derive the board at all
+# (daily, 2026-08-07; weekly, the same arc). What the move buys is coherent
+# ordering, and his original complaint, which was that the refit reliably
+# had not run by the time he checked at 10am.
+#
+# Still 17 minutes past, never on the hour: GitHub queues top-of-hour crons
+# behind everyone else's, and the old '0 14' slot fired 60-120 minutes late
+# all week (measured 2026-07-30..08-01: 15:51, 16:01, 15:00 UTC). Off-peak
+# minutes drift far less. 00:17 UTC also sits well clear of the Pages
+# congestion window (~15:00-16:30 UTC) that the deploy watchdog exists for.
+#
+# ONE COST, stated rather than hidden. ET days roll at 04:00 UTC, so 00:17
+# UTC lands about 3h43m before the end of the ET day in progress. Plays from
+# roughly 8pm ET onward therefore miss that night's fit and land in the next
+# one. Nothing is lost, every row still reaches a fit within a day, and the
+# lag falls uniformly on late-evening play; it is a one-cycle delay on the
+# tail of each day rather than a hole.
+#
+# Actions cron does not observe DST, so this fires ~8:17pm ET the PREVIOUS
+# evening in summer and ~7:17pm ET in winter, plus drift. Change the cron if
+# you move timezones, and keep it ahead of the precompute if you do.
 on:
   schedule:
-    - cron: '13 13 * * *'
+    - cron: '17 0 * * *'
   workflow_dispatch: {}
 
 permissions:
