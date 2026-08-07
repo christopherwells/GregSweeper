@@ -158,6 +158,40 @@ test('weekly save with incomplete identity never resumes', () => {
   assert.equal(isSaveResumable(weeklySave({ weeklySeed: null }), ctx({ mode: 'weekly' })), false);
 });
 
+test('REGRESSION: a weekly save on a DIVERGENT board never resumes', () => {
+  // The weekly branch required weeklyRngSeed only to be truthy, which proves
+  // the save came from the weekly path and nothing about WHICH board. So a
+  // save generated locally against a missed canonical resumed happily every
+  // visit — the daily's Kate-on-trial3 scenario, on the mode where it costs
+  // more (one of seven attempts, one board for the whole week's leaderboard).
+  const diverged = ctx({
+    mode: 'weekly',
+    canonicalWeek: WEEK,
+    canonicalWeeklyRngSeed: `${WEEK}:weekly:trial9`, // save carries :trial2
+  });
+  assert.equal(isSaveResumable(weeklySave(), diverged), false);
+});
+
+test('a weekly save MATCHING the canonical still resumes', () => {
+  // Non-vacuity: the check must refuse a mismatch, not every weekly save.
+  const agreeing = ctx({
+    mode: 'weekly',
+    canonicalWeek: WEEK,
+    canonicalWeeklyRngSeed: `${WEEK}:weekly:trial2`,
+  });
+  assert.equal(isSaveResumable(weeklySave(), agreeing), true);
+});
+
+test('no cached weekly canonical (offline boot) leaves the save resumable', () => {
+  // Same fail-open shape as the daily's: absence of the canonical is not
+  // evidence of divergence, and a plane trip must not eat an attempt.
+  assert.equal(isSaveResumable(weeklySave(), ctx({ mode: 'weekly', canonicalWeeklyRngSeed: null })), true);
+  // A canonical cached for a DIFFERENT week says nothing about this save.
+  assert.equal(isSaveResumable(weeklySave(), ctx({
+    mode: 'weekly', canonicalWeek: LAST_WEEK, canonicalWeeklyRngSeed: 'other:trial9',
+  })), true);
+});
+
 // ── Live-session expiry (visibility wake) ──────────────
 
 const CLOCK = { today: TODAY, weekStart: WEEK, weekDayIndex: DAY_IDX };

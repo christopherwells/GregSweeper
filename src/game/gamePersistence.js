@@ -170,6 +170,10 @@ function resumeContext(slot) {
     practiceSeed: state.dailySeed || null,
     canonicalDate: state.canonicalDailyBoard?.date || null,
     canonicalRngSeed: state.canonicalDailyBoard?.raw?.rngSeed || null,
+    // The weekly's counterpart. The gate stashes this board exactly as it does
+    // the daily's, so the check costs nothing extra — it was simply never wired.
+    canonicalWeek: state.canonicalWeeklyBoard?.weekStart || null,
+    canonicalWeeklyRngSeed: state.canonicalWeeklyBoard?.raw?.rngSeed || null,
     // A challenge save above maxLevelReached + 1 is a position this
     // progression cannot hold — the pre-C250 save the epoch reset never
     // reached (issue #239).
