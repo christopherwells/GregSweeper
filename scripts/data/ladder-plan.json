@@ -1,0 +1,3375 @@
+[
+ {
+  "block": 1,
+  "lv0": 1,
+  "tier": 1,
+  "picks": [
+   {
+    "shape": "rect",
+    "rows": 5,
+    "cols": 5,
+    "cells": 25,
+    "mines": 3,
+    "gimmicks": [],
+    "gimmickLevel": null,
+    "constructive": null,
+    "maxDeductions": 5,
+    "wallSegments": null,
+    "alreadyDistinct": true
+   },
+   {
+    "shape": "rect",
+    "rows": 5,
+    "cols": 5,
+    "cells": 25,
+    "mines": 4,
+    "gimmicks": [],
+    "gimmickLevel": null,
+    "constructive": null,
+    "maxDeductions": 5,
+    "wallSegments": null,
+    "alreadyDistinct": true
+   },
+   {
+    "shape": "rect",
+    "rows": 6,
+    "cols": 6,
+    "cells": 36,
+    "mines": 5,
+    "gimmicks": [],
+    "gimmickLevel": null,
+    "constructive": null,
+    "maxDeductions": 7,
+    "wallSegments": null,
+    "alreadyDistinct": true
+   },
+   {
+    "shape": "rect",
+    "rows": 6,
+    "cols": 6,
+    "cells": 36,
+    "mines": 6,
+    "gimmicks": [],
+    "gimmickLevel": null,
+    "constructive": null,
+    "maxDeductions": 9,
+    "wallSegments": null,
+    "alreadyDistinct": true
+   },
+   {
+    "shape": "rect",
+    "rows": 6,
+    "cols": 6,
+    "cells": 36,
+    "mines": 7,
+    "gimmicks": [],
+    "gimmickLevel": null,
+    "constructive": null,
+    "maxDeductions": 11,
+    "wallSegments": null,
+    "alreadyDistinct": true
+   }
+  ],
+  "untouched": true
+ },
+ {
+  "block": 2,
+  "lv0": 6,
+  "tier": 1,
+  "picks": [
+   {
+    "shape": "rect",
+    "rows": 6,
+    "cols": 6,
+    "cells": 36,
+    "mines": 6,
+    "gimmicks": [
+     "walls"
+    ],
+    "gimmickLevel": 11,
+    "constructive": null,
+    "maxDeductions": 11,
+    "wallSegments": 1,
+    "alreadyDistinct": true
+   },
+   {
+    "shape": "rect",
+    "rows": 7,
+    "cols": 7,
+    "cells": 49,
+    "mines": 8,
+    "gimmicks": [
+     "walls"
+    ],
+    "gimmickLevel": 12,
+    "constructive": null,
+    "maxDeductions": 13,
+    "wallSegments": 1,
+    "alreadyDistinct": true
+   },
+   {
+    "shape": "rect",
+    "rows": 7,
+    "cols": 7,
+    "cells": 49,
+    "mines": 9,
+    "gimmicks": [
+     "walls"
+    ],
+    "gimmickLevel": 13,
+    "constructive": null,
+    "maxDeductions": 15,
+    "wallSegments": 2,
+    "alreadyDistinct": true
+   },
+   {
+    "shape": "rect",
+    "rows": 7,
+    "cols": 7,
+    "cells": 49,
+    "mines": 10,
+    "gimmicks": [
+     "walls"
+    ],
+    "gimmickLevel": 14,
+    "constructive": null,
+    "maxDeductions": 17,
+    "wallSegments": 2,
+    "alreadyDistinct": true
+   },
+   {
+    "shape": "rect",
+    "rows": 8,
+    "cols": 8,
+    "cells": 64,
+    "mines": 12,
+    "gimmicks": [
+     "walls"
+    ],
+    "gimmickLevel": 16,
+    "constructive": null,
+    "maxDeductions": 20,
+    "wallSegments": 3,
+    "alreadyDistinct": true
+   }
+  ],
+  "untouched": true
+ },
+ {
+  "block": 3,
+  "lv0": 11,
+  "tier": 2,
+  "picks": [
+   {
+    "shape": "rect",
+    "rows": 8,
+    "cols": 8,
+    "cells": 64,
+    "mines": 11,
+    "gimmicks": [
+     "liar"
+    ],
+    "gimmickLevel": 21,
+    "constructive": null,
+    "maxDeductions": 22,
+    "wallSegments": null,
+    "alreadyDistinct": true
+   },
+   {
+    "shape": "rect",
+    "rows": 8,
+    "cols": 8,
+    "cells": 64,
+    "mines": 12,
+    "gimmicks": [
+     "liar"
+    ],
+    "gimmickLevel": 22,
+    "constructive": null,
+    "maxDeductions": 24,
+    "wallSegments": null,
+    "alreadyDistinct": true
+   },
+   {
+    "shape": "rect",
+    "rows": 9,
+    "cols": 9,
+    "cells": 81,
+    "mines": 14,
+    "gimmicks": [
+     "liar"
+    ],
+    "gimmickLevel": 23,
+    "constructive": null,
+    "maxDeductions": 27,
+    "wallSegments": null,
+    "alreadyDistinct": true
+   },
+   {
+    "shape": "rect",
+    "rows": 9,
+    "cols": 9,
+    "cells": 81,
+    "mines": 15,
+    "gimmicks": [
+     "liar"
+    ],
+    "gimmickLevel": 24,
+    "constructive": null,
+    "maxDeductions": 30,
+    "wallSegments": null,
+    "alreadyDistinct": true
+   },
+   {
+    "shape": "rect",
+    "rows": 9,
+    "cols": 9,
+    "cells": 81,
+    "mines": 16,
+    "gimmicks": [
+     "liar"
+    ],
+    "gimmickLevel": 26,
+    "constructive": null,
+    "maxDeductions": null,
+    "wallSegments": null,
+    "alreadyDistinct": true
+   }
+  ],
+  "untouched": true
+ },
+ {
+  "block": 4,
+  "lv0": 16,
+  "tier": 2,
+  "picks": [
+   {
+    "shape": "rect",
+    "rows": 8,
+    "cols": 10,
+    "cells": 80,
+    "mines": 10,
+    "gimmicks": [
+     "mystery"
+    ],
+    "gimmickLevel": 31,
+    "constructive": null,
+    "par": 35.6,
+    "ppc": 0.445,
+    "worst": 1
+   },
+   {
+    "shape": "rect",
+    "rows": 8,
+    "cols": 10,
+    "cells": 80,
+    "mines": 20,
+    "gimmicks": [
+     "mystery"
+    ],
+    "gimmickLevel": 31,
+    "constructive": null,
+    "par": 61.7,
+    "ppc": 0.77125,
+    "worst": 14
+   },
+   {
+    "shape": "rect",
+    "rows": 9,
+    "cols": 9,
+    "cells": 81,
+    "mines": 14,
+    "gimmicks": [
+     "mystery"
+    ],
+    "gimmickLevel": 31,
+    "constructive": null,
+    "par": 43.3,
+    "ppc": 0.5345679012345679,
+    "worst": 3
+   },
+   {
+    "shape": "rect",
+    "rows": 9,
+    "cols": 9,
+    "cells": 81,
+    "mines": 24,
+    "gimmicks": [
+     "mystery"
+    ],
+    "gimmickLevel": 31,
+    "constructive": null,
+    "par": 77.5,
+    "ppc": 0.9567901234567902,
+    "worst": 12
+   },
+   {
+    "shape": "rect",
+    "rows": 9,
+    "cols": 9,
+    "cells": 81,
+    "mines": 34,
+    "gimmicks": [
+     "mystery"
+    ],
+    "gimmickLevel": 31,
+    "constructive": null,
+    "par": 135.7,
+    "ppc": 1.6753086419753085,
+    "worst": 359
+   }
+  ]
+ },
+ {
+  "block": 5,
+  "lv0": 21,
+  "tier": 3,
+  "picks": [
+   {
+    "shape": "rect",
+    "rows": 9,
+    "cols": 9,
+    "cells": 81,
+    "mines": 16,
+    "gimmicks": [
+     "walls",
+     "liar"
+    ],
+    "gimmickLevel": 45,
+    "constructive": null,
+    "maxDeductions": null,
+    "wallSegments": 2,
+    "alreadyDistinct": true
+   },
+   {
+    "shape": "rect",
+    "rows": 9,
+    "cols": 9,
+    "cells": 81,
+    "mines": 16,
+    "gimmicks": [
+     "walls",
+     "mystery"
+    ],
+    "gimmickLevel": 45,
+    "constructive": null,
+    "maxDeductions": null,
+    "wallSegments": 2,
+    "alreadyDistinct": true
+   },
+   {
+    "shape": "rect",
+    "rows": 9,
+    "cols": 9,
+    "cells": 81,
+    "mines": 17,
+    "gimmicks": [
+     "liar",
+     "mystery"
+    ],
+    "gimmickLevel": 45,
+    "constructive": null,
+    "maxDeductions": null,
+    "wallSegments": null,
+    "alreadyDistinct": true
+   },
+   {
+    "shape": "rect",
+    "rows": 10,
+    "cols": 10,
+    "cells": 100,
+    "mines": 20,
+    "gimmicks": [
+     "walls",
+     "liar"
+    ],
+    "gimmickLevel": 45,
+    "constructive": null,
+    "maxDeductions": null,
+    "wallSegments": 2,
+    "alreadyDistinct": true
+   },
+   {
+    "shape": "rect",
+    "rows": 10,
+    "cols": 10,
+    "cells": 100,
+    "mines": 21,
+    "gimmicks": [
+     "liar",
+     "mystery"
+    ],
+    "gimmickLevel": 45,
+    "constructive": null,
+    "maxDeductions": null,
+    "wallSegments": null,
+    "alreadyDistinct": true
+   }
+  ],
+  "untouched": true
+ },
+ {
+  "block": 6,
+  "lv0": 26,
+  "tier": 2,
+  "picks": [
+   {
+    "shape": "hex",
+    "M": 5,
+    "N": 9,
+    "cells": 45,
+    "mines": 7,
+    "gimmicks": [],
+    "gimmickLevel": null,
+    "constructive": null,
+    "par": 23.2,
+    "ppc": 0.5155555555555555,
+    "worst": 0
+   },
+   {
+    "shape": "hex",
+    "M": 6,
+    "N": 8,
+    "cells": 48,
+    "mines": 9,
+    "gimmicks": [],
+    "gimmickLevel": null,
+    "constructive": null,
+    "par": 28.2,
+    "ppc": 0.5875,
+    "worst": 0
+   },
+   {
+    "shape": "hex",
+    "M": 6,
+    "N": 8,
+    "cells": 48,
+    "mines": 12,
+    "gimmicks": [],
+    "gimmickLevel": null,
+    "constructive": null,
+    "par": 38.9,
+    "ppc": 0.8104166666666667,
+    "worst": 1
+   },
+   {
+    "shape": "hex",
+    "M": 7,
+    "N": 7,
+    "cells": 49,
+    "mines": 11,
+    "gimmicks": [],
+    "gimmickLevel": null,
+    "constructive": null,
+    "par": 34.7,
+    "ppc": 0.7081632653061225,
+    "worst": 1
+   },
+   {
+    "shape": "hex",
+    "M": 10,
+    "N": 5,
+    "cells": 50,
+    "mines": 12,
+    "gimmicks": [],
+    "gimmickLevel": null,
+    "constructive": null,
+    "par": 38.4,
+    "ppc": 0.768,
+    "worst": 1
+   }
+  ]
+ },
+ {
+  "block": 7,
+  "lv0": 31,
+  "tier": 3,
+  "picks": [
+   {
+    "shape": "hex",
+    "M": 7,
+    "N": 8,
+    "cells": 56,
+    "mines": 11,
+    "gimmicks": [
+     "locked"
+    ],
+    "gimmickLevel": 41,
+    "constructive": null,
+    "par": 34.4,
+    "ppc": 0.6142857142857142,
+    "worst": 8
+   },
+   {
+    "shape": "hex",
+    "M": 8,
+    "N": 7,
+    "cells": 56,
+    "mines": 15,
+    "gimmicks": [
+     "locked"
+    ],
+    "gimmickLevel": 41,
+    "constructive": null,
+    "par": 52.7,
+    "ppc": 0.9410714285714287,
+    "worst": 1
+   },
+   {
+    "shape": "hex",
+    "M": 9,
+    "N": 7,
+    "cells": 63,
+    "mines": 14,
+    "gimmicks": [
+     "locked"
+    ],
+    "gimmickLevel": 41,
+    "constructive": null,
+    "par": 45.6,
+    "ppc": 0.7238095238095238,
+    "worst": 1
+   },
+   {
+    "shape": "hex",
+    "M": 7,
+    "N": 10,
+    "cells": 70,
+    "mines": 14,
+    "gimmicks": [
+     "locked"
+    ],
+    "gimmickLevel": 41,
+    "constructive": null,
+    "par": 44,
+    "ppc": 0.6285714285714286,
+    "worst": 3
+   },
+   {
+    "shape": "hex",
+    "M": 10,
+    "N": 7,
+    "cells": 70,
+    "mines": 18,
+    "gimmicks": [
+     "locked"
+    ],
+    "gimmickLevel": 41,
+    "constructive": null,
+    "par": 67.5,
+    "ppc": 0.9642857142857143,
+    "worst": 6
+   }
+  ]
+ },
+ {
+  "block": 8,
+  "lv0": 36,
+  "tier": 3,
+  "picks": [
+   {
+    "shape": "rect",
+    "rows": 14,
+    "cols": 8,
+    "cells": 112,
+    "mines": 22,
+    "gimmicks": [
+     "walls",
+     "liar"
+    ],
+    "gimmickLevel": 47,
+    "constructive": null,
+    "par": 69.4,
+    "ppc": 0.6196428571428572,
+    "worst": 57
+   },
+   {
+    "shape": "rect",
+    "rows": 13,
+    "cols": 9,
+    "cells": 117,
+    "mines": 30,
+    "gimmicks": [
+     "walls",
+     "liar"
+    ],
+    "gimmickLevel": 47,
+    "constructive": null,
+    "par": 110.3,
+    "ppc": 0.9427350427350427,
+    "worst": 77
+   },
+   {
+    "shape": "rect",
+    "rows": 12,
+    "cols": 10,
+    "cells": 120,
+    "mines": 30,
+    "gimmicks": [
+     "walls",
+     "liar"
+    ],
+    "gimmickLevel": 47,
+    "constructive": null,
+    "par": 118,
+    "ppc": 0.9833333333333333,
+    "worst": 18
+   },
+   {
+    "shape": "rect",
+    "rows": 14,
+    "cols": 9,
+    "cells": 126,
+    "mines": 23,
+    "gimmicks": [
+     "walls",
+     "liar"
+    ],
+    "gimmickLevel": 47,
+    "constructive": null,
+    "par": 77.9,
+    "ppc": 0.6182539682539683,
+    "worst": 170
+   },
+   {
+    "shape": "rect",
+    "rows": 13,
+    "cols": 10,
+    "cells": 130,
+    "mines": 28,
+    "gimmicks": [
+     "walls",
+     "liar"
+    ],
+    "gimmickLevel": 47,
+    "constructive": null,
+    "par": 103.4,
+    "ppc": 0.7953846153846155,
+    "worst": 184
+   }
+  ]
+ },
+ {
+  "block": 9,
+  "lv0": 41,
+  "tier": 3,
+  "picks": [
+   {
+    "shape": "4.8.8",
+    "M": 5,
+    "N": 6,
+    "cells": 50,
+    "mines": 8,
+    "gimmicks": [],
+    "gimmickLevel": null,
+    "constructive": null,
+    "par": 33.1,
+    "ppc": 0.662,
+    "worst": 1
+   },
+   {
+    "shape": "4.8.8",
+    "M": 6,
+    "N": 5,
+    "cells": 50,
+    "mines": 10,
+    "gimmicks": [],
+    "gimmickLevel": null,
+    "constructive": null,
+    "par": 40.2,
+    "ppc": 0.804,
+    "worst": 3
+   },
+   {
+    "shape": "4.8.8",
+    "M": 7,
+    "N": 6,
+    "cells": 72,
+    "mines": 13,
+    "gimmicks": [],
+    "gimmickLevel": null,
+    "constructive": null,
+    "par": 50.9,
+    "ppc": 0.7069444444444444,
+    "worst": 5
+   },
+   {
+    "shape": "4.8.8",
+    "M": 9,
+    "N": 5,
+    "cells": 77,
+    "mines": 13,
+    "gimmicks": [],
+    "gimmickLevel": null,
+    "constructive": null,
+    "par": 50.4,
+    "ppc": 0.6545454545454545,
+    "worst": 1
+   },
+   {
+    "shape": "4.8.8",
+    "M": 7,
+    "N": 7,
+    "cells": 85,
+    "mines": 16,
+    "gimmicks": [],
+    "gimmickLevel": null,
+    "constructive": null,
+    "par": 66.1,
+    "ppc": 0.7776470588235294,
+    "worst": 6
+   }
+  ]
+ },
+ {
+  "block": 10,
+  "lv0": 46,
+  "tier": 4,
+  "picks": [
+   {
+    "shape": "4.8.8",
+    "M": 5,
+    "N": 6,
+    "cells": 50,
+    "mines": 8,
+    "gimmicks": [
+     "wormhole"
+    ],
+    "gimmickLevel": 51,
+    "constructive": null,
+    "par": 35.6,
+    "ppc": 0.7120000000000001,
+    "worst": 77
+   },
+   {
+    "shape": "4.8.8",
+    "M": 6,
+    "N": 5,
+    "cells": 50,
+    "mines": 12,
+    "gimmicks": [
+     "wormhole"
+    ],
+    "gimmickLevel": 51,
+    "constructive": null,
+    "par": 52.5,
+    "ppc": 1.05,
+    "worst": 3
+   },
+   {
+    "shape": "4.8.8",
+    "M": 7,
+    "N": 6,
+    "cells": 72,
+    "mines": 15,
+    "gimmicks": [
+     "wormhole"
+    ],
+    "gimmickLevel": 51,
+    "constructive": null,
+    "par": 62.4,
+    "ppc": 0.8666666666666667,
+    "worst": 83
+   },
+   {
+    "shape": "4.8.8",
+    "M": 9,
+    "N": 5,
+    "cells": 77,
+    "mines": 17,
+    "gimmicks": [
+     "wormhole"
+    ],
+    "gimmickLevel": 51,
+    "constructive": null,
+    "par": 76.4,
+    "ppc": 0.9922077922077923,
+    "worst": 3
+   },
+   {
+    "shape": "4.8.8",
+    "M": 8,
+    "N": 7,
+    "cells": 98,
+    "mines": 21,
+    "gimmicks": [
+     "wormhole"
+    ],
+    "gimmickLevel": 51,
+    "constructive": null,
+    "par": 107.1,
+    "ppc": 1.0928571428571427,
+    "worst": 359
+   }
+  ]
+ },
+ {
+  "block": 11,
+  "lv0": 51,
+  "tier": 4,
+  "picks": [
+   {
+    "shape": "hex",
+    "M": 8,
+    "N": 8,
+    "cells": 64,
+    "mines": 14,
+    "gimmicks": [
+     "locked",
+     "walls"
+    ],
+    "gimmickLevel": 75,
+    "constructive": null,
+    "par": 46,
+    "ppc": 0.71875,
+    "worst": 9
+   },
+   {
+    "shape": "hex",
+    "M": 9,
+    "N": 8,
+    "cells": 72,
+    "mines": 17,
+    "gimmicks": [
+     "locked",
+     "walls"
+    ],
+    "gimmickLevel": 75,
+    "constructive": null,
+    "par": 60.7,
+    "ppc": 0.8430555555555556,
+    "worst": 7
+   },
+   {
+    "shape": "hex",
+    "M": 8,
+    "N": 10,
+    "cells": 80,
+    "mines": 18,
+    "gimmicks": [
+     "locked",
+     "walls"
+    ],
+    "gimmickLevel": 75,
+    "constructive": null,
+    "par": 64.3,
+    "ppc": 0.80375,
+    "worst": 6
+   },
+   {
+    "shape": "hex",
+    "M": 9,
+    "N": 9,
+    "cells": 81,
+    "mines": 20,
+    "gimmicks": [
+     "locked",
+     "walls"
+    ],
+    "gimmickLevel": 75,
+    "constructive": null,
+    "par": 79,
+    "ppc": 0.9753086419753086,
+    "worst": 12
+   },
+   {
+    "shape": "hex",
+    "M": 12,
+    "N": 8,
+    "cells": 96,
+    "mines": 21,
+    "gimmicks": [
+     "locked",
+     "walls"
+    ],
+    "gimmickLevel": 75,
+    "constructive": null,
+    "par": 81.2,
+    "ppc": 0.8458333333333333,
+    "worst": 217
+   }
+  ]
+ },
+ {
+  "block": 12,
+  "lv0": 56,
+  "tier": 4,
+  "picks": [
+   {
+    "shape": "rhombille",
+    "M": 3,
+    "N": 4,
+    "cells": 36,
+    "mines": 5,
+    "gimmicks": [],
+    "gimmickLevel": null,
+    "constructive": null,
+    "par": 27,
+    "ppc": 0.75,
+    "worst": 1
+   },
+   {
+    "shape": "rhombille",
+    "M": 4,
+    "N": 3,
+    "cells": 36,
+    "mines": 7,
+    "gimmicks": [],
+    "gimmickLevel": null,
+    "constructive": null,
+    "par": 34.2,
+    "ppc": 0.9500000000000001,
+    "worst": 11
+   },
+   {
+    "shape": "rhombille",
+    "M": 3,
+    "N": 5,
+    "cells": 45,
+    "mines": 9,
+    "gimmicks": [],
+    "gimmickLevel": null,
+    "constructive": null,
+    "par": 39.6,
+    "ppc": 0.88,
+    "worst": 10
+   },
+   {
+    "shape": "rhombille",
+    "M": 5,
+    "N": 3,
+    "cells": 45,
+    "mines": 11,
+    "gimmicks": [],
+    "gimmickLevel": null,
+    "constructive": null,
+    "par": 50.1,
+    "ppc": 1.1133333333333333,
+    "worst": 15
+   },
+   {
+    "shape": "rhombille",
+    "M": 4,
+    "N": 4,
+    "cells": 48,
+    "mines": 12,
+    "gimmicks": [],
+    "gimmickLevel": null,
+    "constructive": null,
+    "par": 54.7,
+    "ppc": 1.1395833333333334,
+    "worst": 18
+   }
+  ]
+ },
+ {
+  "block": 13,
+  "lv0": 61,
+  "tier": 5,
+  "picks": [
+   {
+    "shape": "rhombille",
+    "M": 3,
+    "N": 4,
+    "cells": 36,
+    "mines": 6,
+    "gimmicks": [
+     "mirror"
+    ],
+    "gimmickLevel": 61,
+    "constructive": null,
+    "par": 31.1,
+    "ppc": 0.8638888888888889,
+    "worst": 20
+   },
+   {
+    "shape": "rhombille",
+    "M": 3,
+    "N": 4,
+    "cells": 36,
+    "mines": 9,
+    "gimmicks": [
+     "mirror"
+    ],
+    "gimmickLevel": 61,
+    "constructive": null,
+    "par": 44.2,
+    "ppc": 1.2277777777777779,
+    "worst": 1
+   },
+   {
+    "shape": "rhombille",
+    "M": 5,
+    "N": 3,
+    "cells": 45,
+    "mines": 11,
+    "gimmicks": [
+     "mirror"
+    ],
+    "gimmickLevel": 61,
+    "constructive": null,
+    "par": 51.2,
+    "ppc": 1.1377777777777778,
+    "worst": 14
+   },
+   {
+    "shape": "rhombille",
+    "M": 4,
+    "N": 4,
+    "cells": 48,
+    "mines": 13,
+    "gimmicks": [
+     "mirror"
+    ],
+    "gimmickLevel": 61,
+    "constructive": null,
+    "par": 62.9,
+    "ppc": 1.3104166666666666,
+    "worst": 6
+   },
+   {
+    "shape": "rhombille",
+    "M": 5,
+    "N": 5,
+    "cells": 75,
+    "mines": 19,
+    "gimmicks": [
+     "mirror"
+    ],
+    "gimmickLevel": 61,
+    "constructive": null,
+    "par": 98.1,
+    "ppc": 1.3079999999999998,
+    "worst": 222
+   }
+  ]
+ },
+ {
+  "block": 14,
+  "lv0": 66,
+  "tier": 5,
+  "picks": [
+   {
+    "shape": "rect",
+    "rows": 14,
+    "cols": 8,
+    "cells": 112,
+    "mines": 25,
+    "gimmicks": [
+     "liar",
+     "locked"
+    ],
+    "gimmickLevel": 55,
+    "constructive": null,
+    "par": 101.1,
+    "ppc": 0.9026785714285713,
+    "worst": 46
+   },
+   {
+    "shape": "rect",
+    "rows": 13,
+    "cols": 9,
+    "cells": 117,
+    "mines": 30,
+    "gimmicks": [
+     "liar",
+     "locked"
+    ],
+    "gimmickLevel": 55,
+    "constructive": null,
+    "par": 115.9,
+    "ppc": 0.9905982905982906,
+    "worst": 30
+   },
+   {
+    "shape": "rect",
+    "rows": 12,
+    "cols": 10,
+    "cells": 120,
+    "mines": 34,
+    "gimmicks": [
+     "liar",
+     "locked"
+    ],
+    "gimmickLevel": 55,
+    "constructive": null,
+    "par": 144.1,
+    "ppc": 1.2008333333333332,
+    "worst": 85
+   },
+   {
+    "shape": "rect",
+    "rows": 14,
+    "cols": 9,
+    "cells": 126,
+    "mines": 31,
+    "gimmicks": [
+     "liar",
+     "locked"
+    ],
+    "gimmickLevel": 55,
+    "constructive": null,
+    "par": 126.4,
+    "ppc": 1.0031746031746032,
+    "worst": 10
+   },
+   {
+    "shape": "rect",
+    "rows": 13,
+    "cols": 10,
+    "cells": 130,
+    "mines": 36,
+    "gimmicks": [
+     "liar",
+     "locked"
+    ],
+    "gimmickLevel": 55,
+    "constructive": null,
+    "par": 180.2,
+    "ppc": 1.386153846153846,
+    "worst": 67
+   }
+  ]
+ },
+ {
+  "block": 15,
+  "lv0": 71,
+  "tier": 5,
+  "picks": [
+   {
+    "shape": "cairo",
+    "M": 5,
+    "N": 6,
+    "cells": 49,
+    "mines": 6,
+    "gimmicks": [],
+    "gimmickLevel": null,
+    "constructive": null,
+    "par": 52.1,
+    "ppc": 1.063265306122449,
+    "worst": 0
+   },
+   {
+    "shape": "cairo",
+    "M": 6,
+    "N": 5,
+    "cells": 49,
+    "mines": 8,
+    "gimmicks": [],
+    "gimmickLevel": null,
+    "constructive": null,
+    "par": 51.4,
+    "ppc": 1.0489795918367346,
+    "worst": 1
+   },
+   {
+    "shape": "cairo",
+    "M": 6,
+    "N": 5,
+    "cells": 49,
+    "mines": 11,
+    "gimmicks": [],
+    "gimmickLevel": null,
+    "constructive": null,
+    "par": 50.3,
+    "ppc": 1.0265306122448978,
+    "worst": 1
+   },
+   {
+    "shape": "cairo",
+    "M": 5,
+    "N": 6,
+    "cells": 49,
+    "mines": 16,
+    "gimmicks": [],
+    "gimmickLevel": null,
+    "constructive": null,
+    "par": 48.6,
+    "ppc": 0.9918367346938776,
+    "worst": 13
+   },
+   {
+    "shape": "cairo",
+    "M": 5,
+    "N": 6,
+    "cells": 49,
+    "mines": 21,
+    "gimmicks": [],
+    "gimmickLevel": null,
+    "constructive": null,
+    "par": 46.9,
+    "ppc": 0.9571428571428571,
+    "worst": 2
+   }
+  ]
+ },
+ {
+  "block": 16,
+  "lv0": 76,
+  "tier": 6,
+  "picks": [
+   {
+    "shape": "cairo",
+    "M": 6,
+    "N": 6,
+    "cells": 60,
+    "mines": 7,
+    "gimmicks": [
+     "sonar"
+    ],
+    "gimmickLevel": 81,
+    "constructive": true,
+    "maxDeductions": null,
+    "wallSegments": null,
+    "alreadyDistinct": true
+   },
+   {
+    "shape": "cairo",
+    "M": 6,
+    "N": 6,
+    "cells": 60,
+    "mines": 10,
+    "gimmicks": [
+     "sonar"
+    ],
+    "gimmickLevel": 82,
+    "constructive": true,
+    "maxDeductions": null,
+    "wallSegments": null,
+    "alreadyDistinct": true
+   },
+   {
+    "shape": "cairo",
+    "M": 6,
+    "N": 6,
+    "cells": 60,
+    "mines": 13,
+    "gimmicks": [
+     "sonar"
+    ],
+    "gimmickLevel": 82,
+    "constructive": true,
+    "maxDeductions": null,
+    "wallSegments": null,
+    "alreadyDistinct": true
+   },
+   {
+    "shape": "cairo",
+    "M": 6,
+    "N": 6,
+    "cells": 60,
+    "mines": 16,
+    "gimmicks": [
+     "sonar"
+    ],
+    "gimmickLevel": 83,
+    "constructive": null,
+    "maxDeductions": null,
+    "wallSegments": null,
+    "alreadyDistinct": true
+   },
+   {
+    "shape": "cairo",
+    "M": 6,
+    "N": 6,
+    "cells": 60,
+    "mines": 19,
+    "gimmicks": [
+     "sonar"
+    ],
+    "gimmickLevel": 84,
+    "constructive": null,
+    "maxDeductions": null,
+    "wallSegments": null,
+    "alreadyDistinct": true
+   }
+  ],
+  "untouched": true
+ },
+ {
+  "block": 17,
+  "lv0": 81,
+  "tier": 6,
+  "picks": [
+   {
+    "shape": "4.8.8",
+    "M": 5,
+    "N": 6,
+    "cells": 50,
+    "mines": 12,
+    "gimmicks": [
+     "wormhole",
+     "locked"
+    ],
+    "gimmickLevel": 75,
+    "constructive": null,
+    "par": 50.7,
+    "ppc": 1.014,
+    "worst": 1
+   },
+   {
+    "shape": "4.8.8",
+    "M": 6,
+    "N": 5,
+    "cells": 50,
+    "mines": 16,
+    "gimmicks": [
+     "wormhole",
+     "locked"
+    ],
+    "gimmickLevel": 75,
+    "constructive": null,
+    "par": 74.8,
+    "ppc": 1.496,
+    "worst": 5
+   },
+   {
+    "shape": "4.8.8",
+    "M": 7,
+    "N": 6,
+    "cells": 72,
+    "mines": 19,
+    "gimmicks": [
+     "wormhole",
+     "locked"
+    ],
+    "gimmickLevel": 75,
+    "constructive": null,
+    "par": 94.7,
+    "ppc": 1.3152777777777778,
+    "worst": 4
+   },
+   {
+    "shape": "4.8.8",
+    "M": 9,
+    "N": 5,
+    "cells": 77,
+    "mines": 21,
+    "gimmicks": [
+     "wormhole",
+     "locked"
+    ],
+    "gimmickLevel": 75,
+    "constructive": null,
+    "par": 116,
+    "ppc": 1.5064935064935066,
+    "worst": 5
+   },
+   {
+    "shape": "4.8.8",
+    "M": 8,
+    "N": 7,
+    "cells": 98,
+    "mines": 24,
+    "gimmicks": [
+     "wormhole",
+     "locked"
+    ],
+    "gimmickLevel": 75,
+    "constructive": null,
+    "par": 144.3,
+    "ppc": 1.472448979591837,
+    "worst": 11
+   }
+  ]
+ },
+ {
+  "block": 18,
+  "lv0": 86,
+  "tier": 6,
+  "picks": [
+   {
+    "shape": "rhombille",
+    "M": 3,
+    "N": 4,
+    "cells": 36,
+    "mines": 7,
+    "gimmicks": [
+     "mirror",
+     "walls"
+    ],
+    "gimmickLevel": 70,
+    "constructive": null,
+    "par": 37,
+    "ppc": 1.0277777777777777,
+    "worst": 14
+   },
+   {
+    "shape": "rhombille",
+    "M": 3,
+    "N": 5,
+    "cells": 45,
+    "mines": 11,
+    "gimmicks": [
+     "mirror",
+     "walls"
+    ],
+    "gimmickLevel": 70,
+    "constructive": null,
+    "par": 54.4,
+    "ppc": 1.208888888888889,
+    "worst": 22
+   },
+   {
+    "shape": "rhombille",
+    "M": 4,
+    "N": 4,
+    "cells": 48,
+    "mines": 10,
+    "gimmicks": [
+     "mirror",
+     "walls"
+    ],
+    "gimmickLevel": 70,
+    "constructive": null,
+    "par": 47.1,
+    "ppc": 0.9812500000000001,
+    "worst": 312
+   },
+   {
+    "shape": "rhombille",
+    "M": 5,
+    "N": 4,
+    "cells": 60,
+    "mines": 15,
+    "gimmicks": [
+     "mirror",
+     "walls"
+    ],
+    "gimmickLevel": 70,
+    "constructive": null,
+    "par": 75.5,
+    "ppc": 1.2583333333333333,
+    "worst": 9
+   },
+   {
+    "shape": "rhombille",
+    "M": 5,
+    "N": 5,
+    "cells": 75,
+    "mines": 17,
+    "gimmicks": [
+     "mirror",
+     "walls"
+    ],
+    "gimmickLevel": 70,
+    "constructive": null,
+    "par": 82.3,
+    "ppc": 1.0973333333333333,
+    "worst": 57
+   }
+  ]
+ },
+ {
+  "block": 19,
+  "lv0": 91,
+  "tier": 7,
+  "picks": [
+   {
+    "shape": "4.8.8",
+    "M": 5,
+    "N": 6,
+    "cells": 50,
+    "mines": 14,
+    "gimmicks": [
+     "compass"
+    ],
+    "gimmickLevel": 91,
+    "constructive": null,
+    "par": 61,
+    "ppc": 1.22,
+    "worst": 15
+   },
+   {
+    "shape": "4.8.8",
+    "M": 6,
+    "N": 5,
+    "cells": 50,
+    "mines": 18,
+    "gimmicks": [
+     "compass"
+    ],
+    "gimmickLevel": 91,
+    "constructive": null,
+    "par": 90.2,
+    "ppc": 1.804,
+    "worst": 15
+   },
+   {
+    "shape": "4.8.8",
+    "M": 6,
+    "N": 7,
+    "cells": 72,
+    "mines": 23,
+    "gimmicks": [
+     "compass"
+    ],
+    "gimmickLevel": 91,
+    "constructive": null,
+    "par": 138.3,
+    "ppc": 1.9208333333333334,
+    "worst": 35
+   },
+   {
+    "shape": "4.8.8",
+    "M": 9,
+    "N": 5,
+    "cells": 77,
+    "mines": 23,
+    "gimmicks": [
+     "compass"
+    ],
+    "gimmickLevel": 91,
+    "constructive": null,
+    "par": 136.9,
+    "ppc": 1.777922077922078,
+    "worst": 15
+   },
+   {
+    "shape": "4.8.8",
+    "M": 8,
+    "N": 7,
+    "cells": 98,
+    "mines": 27,
+    "gimmicks": [
+     "compass"
+    ],
+    "gimmickLevel": 91,
+    "constructive": null,
+    "par": 194.7,
+    "ppc": 1.986734693877551,
+    "worst": 104
+   }
+  ]
+ },
+ {
+  "block": 20,
+  "lv0": 96,
+  "tier": 7,
+  "picks": [
+   {
+    "shape": "rect",
+    "rows": 12,
+    "cols": 12,
+    "cells": 144,
+    "mines": 38,
+    "gimmicks": [
+     "sonar",
+     "compass"
+    ],
+    "gimmickLevel": 105,
+    "constructive": null,
+    "maxDeductions": null,
+    "wallSegments": null,
+    "alreadyDistinct": true
+   },
+   {
+    "shape": "rect",
+    "rows": 12,
+    "cols": 12,
+    "cells": 144,
+    "mines": 39,
+    "gimmicks": [
+     "sonar",
+     "mystery"
+    ],
+    "gimmickLevel": 95,
+    "constructive": null,
+    "maxDeductions": null,
+    "wallSegments": null,
+    "alreadyDistinct": true
+   },
+   {
+    "shape": "rect",
+    "rows": 12,
+    "cols": 12,
+    "cells": 144,
+    "mines": 40,
+    "gimmicks": [
+     "sonar",
+     "liar"
+    ],
+    "gimmickLevel": 95,
+    "constructive": null,
+    "maxDeductions": null,
+    "wallSegments": null,
+    "alreadyDistinct": true
+   },
+   {
+    "shape": "rect",
+    "rows": 12,
+    "cols": 12,
+    "cells": 144,
+    "mines": 40,
+    "gimmicks": [
+     "compass",
+     "walls"
+    ],
+    "gimmickLevel": 110,
+    "constructive": null,
+    "maxDeductions": null,
+    "wallSegments": 3,
+    "alreadyDistinct": true
+   },
+   {
+    "shape": "rect",
+    "rows": 12,
+    "cols": 12,
+    "cells": 144,
+    "mines": 40,
+    "gimmicks": [
+     "compass",
+     "liar"
+    ],
+    "gimmickLevel": 105,
+    "constructive": null,
+    "maxDeductions": null,
+    "wallSegments": null,
+    "alreadyDistinct": true
+   }
+  ],
+  "untouched": true
+ },
+ {
+  "block": 21,
+  "lv0": 101,
+  "tier": 7,
+  "picks": [
+   {
+    "shape": "floret",
+    "M": 1,
+    "N": 5,
+    "cells": 30,
+    "mines": 4,
+    "gimmicks": [],
+    "gimmickLevel": null,
+    "constructive": true,
+    "par": 35.2,
+    "ppc": 1.1733333333333333,
+    "worst": 3
+   },
+   {
+    "shape": "floret",
+    "M": 2,
+    "N": 3,
+    "cells": 36,
+    "mines": 6,
+    "gimmicks": [],
+    "gimmickLevel": null,
+    "constructive": true,
+    "par": 42.7,
+    "ppc": 1.1861111111111111,
+    "worst": 3
+   },
+   {
+    "shape": "floret",
+    "M": 2,
+    "N": 3,
+    "cells": 36,
+    "mines": 8,
+    "gimmicks": [],
+    "gimmickLevel": null,
+    "constructive": true,
+    "par": 52.4,
+    "ppc": 1.4555555555555555,
+    "worst": 3
+   },
+   {
+    "shape": "floret",
+    "M": 6,
+    "N": 1,
+    "cells": 36,
+    "mines": 9,
+    "gimmicks": [],
+    "gimmickLevel": null,
+    "constructive": true,
+    "par": 59.3,
+    "ppc": 1.6472222222222221,
+    "worst": 4
+   },
+   {
+    "shape": "floret",
+    "M": 3,
+    "N": 2,
+    "cells": 36,
+    "mines": 11,
+    "gimmicks": [],
+    "gimmickLevel": null,
+    "constructive": true,
+    "par": 71.3,
+    "ppc": 1.9805555555555554,
+    "worst": 3
+   }
+  ]
+ },
+ {
+  "block": 22,
+  "lv0": 106,
+  "tier": 8,
+  "picks": [
+   {
+    "shape": "hex",
+    "M": 8,
+    "N": 9,
+    "cells": 72,
+    "mines": 23,
+    "gimmicks": [
+     "worm"
+    ],
+    "gimmickLevel": 101,
+    "constructive": null,
+    "par": 111.7,
+    "ppc": 1.551388888888889,
+    "worst": 3
+   },
+   {
+    "shape": "hex",
+    "M": 11,
+    "N": 7,
+    "cells": 77,
+    "mines": 23,
+    "gimmicks": [
+     "worm"
+    ],
+    "gimmickLevel": 101,
+    "constructive": null,
+    "par": 108.7,
+    "ppc": 1.4116883116883117,
+    "worst": 1
+   },
+   {
+    "shape": "hex",
+    "M": 10,
+    "N": 8,
+    "cells": 80,
+    "mines": 26,
+    "gimmicks": [
+     "worm"
+    ],
+    "gimmickLevel": 101,
+    "constructive": null,
+    "par": 146.9,
+    "ppc": 1.8362500000000002,
+    "worst": 4
+   },
+   {
+    "shape": "hex",
+    "M": 9,
+    "N": 9,
+    "cells": 81,
+    "mines": 28,
+    "gimmicks": [
+     "worm"
+    ],
+    "gimmickLevel": 101,
+    "constructive": null,
+    "par": 181.2,
+    "ppc": 2.237037037037037,
+    "worst": 4
+   },
+   {
+    "shape": "hex",
+    "M": 9,
+    "N": 10,
+    "cells": 90,
+    "mines": 26,
+    "gimmicks": [
+     "worm"
+    ],
+    "gimmickLevel": 101,
+    "constructive": null,
+    "par": 139.8,
+    "ppc": 1.5533333333333335,
+    "worst": 3
+   }
+  ]
+ },
+ {
+  "block": 23,
+  "lv0": 111,
+  "tier": 8,
+  "picks": [
+   {
+    "shape": "cairo",
+    "M": 7,
+    "N": 7,
+    "cells": 84,
+    "mines": 10,
+    "gimmicks": [
+     "sonar",
+     "liar"
+    ],
+    "gimmickLevel": 110,
+    "constructive": null,
+    "par": 145,
+    "ppc": 1.7261904761904763,
+    "worst": 29
+   },
+   {
+    "shape": "cairo",
+    "M": 7,
+    "N": 7,
+    "cells": 84,
+    "mines": 22,
+    "gimmicks": [
+     "sonar",
+     "liar"
+    ],
+    "gimmickLevel": 110,
+    "constructive": null,
+    "par": 135.7,
+    "ppc": 1.6154761904761903,
+    "worst": 14
+   },
+   {
+    "shape": "cairo",
+    "M": 7,
+    "N": 7,
+    "cells": 84,
+    "mines": 31,
+    "gimmicks": [
+     "sonar",
+     "liar"
+    ],
+    "gimmickLevel": 110,
+    "constructive": null,
+    "par": 133.7,
+    "ppc": 1.5916666666666666,
+    "worst": 16
+   },
+   {
+    "shape": "cairo",
+    "M": 9,
+    "N": 7,
+    "cells": 110,
+    "mines": 43,
+    "gimmicks": [
+     "sonar",
+     "liar"
+    ],
+    "gimmickLevel": 110,
+    "constructive": null,
+    "par": 249.6,
+    "ppc": 2.269090909090909,
+    "worst": 100
+   },
+   {
+    "shape": "cairo",
+    "M": 8,
+    "N": 8,
+    "cells": 112,
+    "mines": 43,
+    "gimmicks": [
+     "sonar",
+     "liar"
+    ],
+    "gimmickLevel": 110,
+    "constructive": null,
+    "par": 245.1,
+    "ppc": 2.188392857142857,
+    "worst": 216
+   }
+  ]
+ },
+ {
+  "block": 24,
+  "lv0": 116,
+  "tier": 8,
+  "picks": [
+   {
+    "shape": "floret",
+    "M": 1,
+    "N": 7,
+    "cells": 42,
+    "mines": 9,
+    "gimmicks": [
+     "walls",
+     "mystery"
+    ],
+    "gimmickLevel": 70,
+    "constructive": null,
+    "par": 60,
+    "ppc": 1.4285714285714286,
+    "worst": 197
+   },
+   {
+    "shape": "floret",
+    "M": 8,
+    "N": 1,
+    "cells": 48,
+    "mines": 11,
+    "gimmicks": [
+     "walls",
+     "mystery"
+    ],
+    "gimmickLevel": 70,
+    "constructive": null,
+    "par": 72.4,
+    "ppc": 1.5083333333333335,
+    "worst": 24
+   },
+   {
+    "shape": "floret",
+    "M": 2,
+    "N": 4,
+    "cells": 48,
+    "mines": 13,
+    "gimmicks": [
+     "walls",
+     "mystery"
+    ],
+    "gimmickLevel": 70,
+    "constructive": null,
+    "par": 86.5,
+    "ppc": 1.8020833333333333,
+    "worst": 36
+   },
+   {
+    "shape": "floret",
+    "M": 4,
+    "N": 2,
+    "cells": 48,
+    "mines": 14,
+    "gimmicks": [
+     "walls",
+     "mystery"
+    ],
+    "gimmickLevel": 70,
+    "constructive": null,
+    "par": 97,
+    "ppc": 2.0208333333333335,
+    "worst": 39
+   },
+   {
+    "shape": "floret",
+    "M": 8,
+    "N": 1,
+    "cells": 48,
+    "mines": 15,
+    "gimmicks": [
+     "walls",
+     "mystery"
+    ],
+    "gimmickLevel": 70,
+    "constructive": null,
+    "par": 105.7,
+    "ppc": 2.2020833333333334,
+    "worst": 42
+   }
+  ]
+ },
+ {
+  "block": 25,
+  "lv0": 121,
+  "tier": 8,
+  "picks": [
+   {
+    "shape": "rhombille",
+    "M": 3,
+    "N": 5,
+    "cells": 45,
+    "mines": 13,
+    "gimmicks": [
+     "wormhole"
+    ],
+    "gimmickLevel": 110,
+    "constructive": null,
+    "par": 64.5,
+    "ppc": 1.4333333333333333,
+    "worst": 10
+   },
+   {
+    "shape": "rhombille",
+    "M": 5,
+    "N": 3,
+    "cells": 45,
+    "mines": 15,
+    "gimmicks": [
+     "wormhole"
+    ],
+    "gimmickLevel": 110,
+    "constructive": null,
+    "par": 81.5,
+    "ppc": 1.8111111111111111,
+    "worst": 255
+   },
+   {
+    "shape": "rhombille",
+    "M": 4,
+    "N": 4,
+    "cells": 48,
+    "mines": 16,
+    "gimmicks": [
+     "wormhole"
+    ],
+    "gimmickLevel": 110,
+    "constructive": null,
+    "par": 89,
+    "ppc": 1.8541666666666667,
+    "worst": 27
+   },
+   {
+    "shape": "rhombille",
+    "M": 4,
+    "N": 5,
+    "cells": 60,
+    "mines": 19,
+    "gimmicks": [
+     "wormhole"
+    ],
+    "gimmickLevel": 110,
+    "constructive": null,
+    "par": 112.7,
+    "ppc": 1.8783333333333334,
+    "worst": 27
+   },
+   {
+    "shape": "rhombille",
+    "M": 6,
+    "N": 4,
+    "cells": 72,
+    "mines": 23,
+    "gimmicks": [
+     "wormhole"
+    ],
+    "gimmickLevel": 110,
+    "constructive": null,
+    "par": 160.4,
+    "ppc": 2.227777777777778,
+    "worst": 1092
+   }
+  ]
+ },
+ {
+  "block": 26,
+  "lv0": 126,
+  "tier": 9,
+  "picks": [
+   {
+    "shape": "rect",
+    "rows": 11,
+    "cols": 11,
+    "cells": 121,
+    "mines": 44,
+    "gimmicks": [
+     "mystery",
+     "liar"
+    ],
+    "gimmickLevel": 80,
+    "constructive": null,
+    "maxDeductions": null,
+    "wallSegments": null,
+    "alreadyDistinct": true
+   },
+   {
+    "shape": "rect",
+    "rows": 11,
+    "cols": 11,
+    "cells": 121,
+    "mines": 44,
+    "gimmicks": [
+     "walls",
+     "locked"
+    ],
+    "gimmickLevel": 80,
+    "constructive": null,
+    "maxDeductions": null,
+    "wallSegments": 3,
+    "alreadyDistinct": true
+   },
+   {
+    "shape": "rect",
+    "rows": 11,
+    "cols": 11,
+    "cells": 121,
+    "mines": 44,
+    "gimmicks": [
+     "liar",
+     "mirror"
+    ],
+    "gimmickLevel": 80,
+    "constructive": null,
+    "maxDeductions": null,
+    "wallSegments": null,
+    "alreadyDistinct": true
+   },
+   {
+    "shape": "rect",
+    "rows": 11,
+    "cols": 11,
+    "cells": 121,
+    "mines": 44,
+    "gimmicks": [
+     "mystery",
+     "locked"
+    ],
+    "gimmickLevel": 80,
+    "constructive": null,
+    "maxDeductions": null,
+    "wallSegments": null,
+    "alreadyDistinct": true
+   },
+   {
+    "shape": "rect",
+    "rows": 11,
+    "cols": 11,
+    "cells": 121,
+    "mines": 44,
+    "gimmicks": [
+     "walls",
+     "liar"
+    ],
+    "gimmickLevel": 80,
+    "constructive": null,
+    "maxDeductions": null,
+    "wallSegments": 3,
+    "alreadyDistinct": true
+   }
+  ],
+  "untouched": true
+ },
+ {
+  "block": 27,
+  "lv0": 131,
+  "tier": 9,
+  "picks": [
+   {
+    "shape": "hex",
+    "M": 7,
+    "N": 10,
+    "cells": 70,
+    "mines": 24,
+    "gimmicks": [
+     "worm",
+     "walls"
+    ],
+    "gimmickLevel": 108,
+    "constructive": null,
+    "par": 129.8,
+    "ppc": 1.8542857142857145,
+    "worst": 8
+   },
+   {
+    "shape": "hex",
+    "M": 9,
+    "N": 8,
+    "cells": 72,
+    "mines": 25,
+    "gimmicks": [
+     "worm",
+     "walls"
+    ],
+    "gimmickLevel": 108,
+    "constructive": null,
+    "par": 141.8,
+    "ppc": 1.9694444444444446,
+    "worst": 9
+   },
+   {
+    "shape": "hex",
+    "M": 8,
+    "N": 10,
+    "cells": 80,
+    "mines": 26,
+    "gimmicks": [
+     "worm",
+     "walls"
+    ],
+    "gimmickLevel": 108,
+    "constructive": null,
+    "par": 155.9,
+    "ppc": 1.94875,
+    "worst": 6
+   },
+   {
+    "shape": "hex",
+    "M": 9,
+    "N": 9,
+    "cells": 81,
+    "mines": 28,
+    "gimmicks": [
+     "worm",
+     "walls"
+    ],
+    "gimmickLevel": 108,
+    "constructive": null,
+    "par": 190.5,
+    "ppc": 2.3518518518518516,
+    "worst": 6
+   },
+   {
+    "shape": "hex",
+    "M": 10,
+    "N": 9,
+    "cells": 90,
+    "mines": 29,
+    "gimmicks": [
+     "worm",
+     "walls"
+    ],
+    "gimmickLevel": 108,
+    "constructive": null,
+    "par": 197.2,
+    "ppc": 2.191111111111111,
+    "worst": 18
+   }
+  ]
+ },
+ {
+  "block": 28,
+  "lv0": 136,
+  "tier": 9,
+  "picks": [
+   {
+    "shape": "rhombille",
+    "M": 3,
+    "N": 5,
+    "cells": 45,
+    "mines": 14,
+    "gimmicks": [
+     "sonar"
+    ],
+    "gimmickLevel": 100,
+    "constructive": null,
+    "par": 82.6,
+    "ppc": 1.8355555555555554,
+    "worst": 50
+   },
+   {
+    "shape": "rhombille",
+    "M": 5,
+    "N": 3,
+    "cells": 45,
+    "mines": 16,
+    "gimmicks": [
+     "sonar"
+    ],
+    "gimmickLevel": 100,
+    "constructive": null,
+    "par": 94.9,
+    "ppc": 2.108888888888889,
+    "worst": 169
+   },
+   {
+    "shape": "rhombille",
+    "M": 4,
+    "N": 4,
+    "cells": 48,
+    "mines": 17,
+    "gimmicks": [
+     "sonar"
+    ],
+    "gimmickLevel": 100,
+    "constructive": null,
+    "par": 110.4,
+    "ppc": 2.3000000000000003,
+    "worst": 18
+   },
+   {
+    "shape": "rhombille",
+    "M": 5,
+    "N": 4,
+    "cells": 60,
+    "mines": 19,
+    "gimmicks": [
+     "sonar"
+    ],
+    "gimmickLevel": 100,
+    "constructive": null,
+    "par": 133.9,
+    "ppc": 2.231666666666667,
+    "worst": 155
+   },
+   {
+    "shape": "rhombille",
+    "M": 5,
+    "N": 5,
+    "cells": 75,
+    "mines": 21,
+    "gimmicks": [
+     "sonar"
+    ],
+    "gimmickLevel": 100,
+    "constructive": null,
+    "par": 146.7,
+    "ppc": 1.9559999999999997,
+    "worst": 1079
+   }
+  ]
+ },
+ {
+  "block": 29,
+  "lv0": 141,
+  "tier": 9,
+  "picks": [
+   {
+    "shape": "4.8.8",
+    "M": 5,
+    "N": 6,
+    "cells": 50,
+    "mines": 18,
+    "gimmicks": [
+     "compass",
+     "mirror"
+    ],
+    "gimmickLevel": 115,
+    "constructive": null,
+    "par": 101.5,
+    "ppc": 2.03,
+    "worst": 6
+   },
+   {
+    "shape": "4.8.8",
+    "M": 6,
+    "N": 7,
+    "cells": 72,
+    "mines": 21,
+    "gimmicks": [
+     "compass",
+     "mirror"
+    ],
+    "gimmickLevel": 115,
+    "constructive": null,
+    "par": 131.6,
+    "ppc": 1.8277777777777777,
+    "worst": 5
+   },
+   {
+    "shape": "4.8.8",
+    "M": 6,
+    "N": 7,
+    "cells": 72,
+    "mines": 25,
+    "gimmicks": [
+     "compass",
+     "mirror"
+    ],
+    "gimmickLevel": 115,
+    "constructive": null,
+    "par": 202.7,
+    "ppc": 2.8152777777777778,
+    "worst": 17
+   },
+   {
+    "shape": "4.8.8",
+    "M": 9,
+    "N": 5,
+    "cells": 77,
+    "mines": 23,
+    "gimmicks": [
+     "compass",
+     "mirror"
+    ],
+    "gimmickLevel": 115,
+    "constructive": null,
+    "par": 158,
+    "ppc": 2.051948051948052,
+    "worst": 6
+   },
+   {
+    "shape": "4.8.8",
+    "M": 8,
+    "N": 7,
+    "cells": 98,
+    "mines": 27,
+    "gimmicks": [
+     "compass",
+     "mirror"
+    ],
+    "gimmickLevel": 115,
+    "constructive": null,
+    "par": 215.9,
+    "ppc": 2.203061224489796,
+    "worst": 32
+   }
+  ]
+ },
+ {
+  "block": 30,
+  "lv0": 146,
+  "tier": 9,
+  "picks": [
+   {
+    "shape": "rhombille",
+    "M": 3,
+    "N": 5,
+    "cells": 45,
+    "mines": 13,
+    "gimmicks": [
+     "mirror",
+     "locked"
+    ],
+    "gimmickLevel": 115,
+    "constructive": null,
+    "par": 75.9,
+    "ppc": 1.6866666666666668,
+    "worst": 8
+   },
+   {
+    "shape": "rhombille",
+    "M": 4,
+    "N": 4,
+    "cells": 48,
+    "mines": 14,
+    "gimmicks": [
+     "mirror",
+     "locked"
+    ],
+    "gimmickLevel": 115,
+    "constructive": null,
+    "par": 82.8,
+    "ppc": 1.7249999999999999,
+    "worst": 7
+   },
+   {
+    "shape": "rhombille",
+    "M": 5,
+    "N": 4,
+    "cells": 60,
+    "mines": 17,
+    "gimmicks": [
+     "mirror",
+     "locked"
+    ],
+    "gimmickLevel": 115,
+    "constructive": null,
+    "par": 104.9,
+    "ppc": 1.7483333333333335,
+    "worst": 163
+   },
+   {
+    "shape": "rhombille",
+    "M": 6,
+    "N": 4,
+    "cells": 72,
+    "mines": 21,
+    "gimmicks": [
+     "mirror",
+     "locked"
+    ],
+    "gimmickLevel": 115,
+    "constructive": null,
+    "par": 149.2,
+    "ppc": 2.072222222222222,
+    "worst": 446
+   },
+   {
+    "shape": "rhombille",
+    "M": 7,
+    "N": 4,
+    "cells": 84,
+    "mines": 25,
+    "gimmicks": [
+     "mirror",
+     "locked"
+    ],
+    "gimmickLevel": 115,
+    "constructive": null,
+    "par": 212.6,
+    "ppc": 2.530952380952381,
+    "worst": 85
+   }
+  ]
+ },
+ {
+  "block": 31,
+  "lv0": 151,
+  "tier": 10,
+  "picks": [
+   {
+    "shape": "hex",
+    "M": 11,
+    "N": 8,
+    "cells": 88,
+    "mines": 29,
+    "gimmicks": [
+     "compass"
+    ],
+    "gimmickLevel": 115,
+    "constructive": null,
+    "par": 208,
+    "ppc": 2.3636363636363638,
+    "worst": 15
+   },
+   {
+    "shape": "hex",
+    "M": 12,
+    "N": 8,
+    "cells": 96,
+    "mines": 30,
+    "gimmicks": [
+     "compass"
+    ],
+    "gimmickLevel": 115,
+    "constructive": null,
+    "par": 221.6,
+    "ppc": 2.308333333333333,
+    "worst": 27
+   },
+   {
+    "shape": "hex",
+    "M": 13,
+    "N": 8,
+    "cells": 104,
+    "mines": 33,
+    "gimmicks": [
+     "compass"
+    ],
+    "gimmickLevel": 115,
+    "constructive": null,
+    "par": 291.9,
+    "ppc": 2.806730769230769,
+    "worst": 13
+   },
+   {
+    "shape": "hex",
+    "M": 14,
+    "N": 8,
+    "cells": 112,
+    "mines": 31,
+    "gimmicks": [
+     "compass"
+    ],
+    "gimmickLevel": 115,
+    "constructive": null,
+    "par": 226.4,
+    "ppc": 2.0214285714285714,
+    "worst": 4
+   },
+   {
+    "shape": "hex",
+    "M": 13,
+    "N": 10,
+    "cells": 130,
+    "mines": 36,
+    "gimmicks": [
+     "compass"
+    ],
+    "gimmickLevel": 115,
+    "constructive": null,
+    "par": 357.9,
+    "ppc": 2.753076923076923,
+    "worst": 11
+   }
+  ]
+ },
+ {
+  "block": 32,
+  "lv0": 156,
+  "tier": 10,
+  "picks": [
+   {
+    "shape": "floret",
+    "M": 1,
+    "N": 10,
+    "cells": 60,
+    "mines": 17,
+    "gimmicks": [
+     "sonar",
+     "liar"
+    ],
+    "gimmickLevel": 100,
+    "constructive": null,
+    "par": 147.4,
+    "ppc": 2.4566666666666666,
+    "worst": 22
+   },
+   {
+    "shape": "floret",
+    "M": 1,
+    "N": 11,
+    "cells": 66,
+    "mines": 20,
+    "gimmicks": [
+     "sonar",
+     "liar"
+    ],
+    "gimmickLevel": 100,
+    "constructive": null,
+    "par": 197.1,
+    "ppc": 2.9863636363636363,
+    "worst": 69
+   },
+   {
+    "shape": "floret",
+    "M": 6,
+    "N": 2,
+    "cells": 72,
+    "mines": 19,
+    "gimmicks": [
+     "sonar",
+     "liar"
+    ],
+    "gimmickLevel": 100,
+    "constructive": null,
+    "par": 182.5,
+    "ppc": 2.5347222222222223,
+    "worst": 22
+   },
+   {
+    "shape": "floret",
+    "M": 1,
+    "N": 13,
+    "cells": 78,
+    "mines": 19,
+    "gimmicks": [
+     "sonar",
+     "liar"
+    ],
+    "gimmickLevel": 100,
+    "constructive": null,
+    "par": 185.4,
+    "ppc": 2.376923076923077,
+    "worst": 11
+   },
+   {
+    "shape": "floret",
+    "M": 2,
+    "N": 7,
+    "cells": 84,
+    "mines": 22,
+    "gimmicks": [
+     "sonar",
+     "liar"
+    ],
+    "gimmickLevel": 100,
+    "constructive": null,
+    "par": 251.5,
+    "ppc": 2.994047619047619,
+    "worst": 40
+   }
+  ]
+ },
+ {
+  "block": 33,
+  "lv0": 161,
+  "tier": 10,
+  "picks": [
+   {
+    "shape": "rect",
+    "rows": 13,
+    "cols": 10,
+    "cells": 130,
+    "mines": 48,
+    "gimmicks": [
+     "locked",
+     "liar"
+    ],
+    "gimmickLevel": 90,
+    "constructive": null,
+    "par": 322.5,
+    "ppc": 2.480769230769231,
+    "worst": 848
+   },
+   {
+    "shape": "rect",
+    "rows": 15,
+    "cols": 9,
+    "cells": 135,
+    "mines": 48,
+    "gimmicks": [
+     "locked",
+     "liar"
+    ],
+    "gimmickLevel": 90,
+    "constructive": null,
+    "par": 306.3,
+    "ppc": 2.268888888888889,
+    "worst": 273
+   },
+   {
+    "shape": "rect",
+    "rows": 13,
+    "cols": 11,
+    "cells": 143,
+    "mines": 49,
+    "gimmicks": [
+     "locked",
+     "liar"
+    ],
+    "gimmickLevel": 90,
+    "constructive": null,
+    "par": 317.9,
+    "ppc": 2.2230769230769227,
+    "worst": 280
+   },
+   {
+    "shape": "rect",
+    "rows": 16,
+    "cols": 9,
+    "cells": 144,
+    "mines": 53,
+    "gimmicks": [
+     "locked",
+     "liar"
+    ],
+    "gimmickLevel": 90,
+    "constructive": null,
+    "par": 459.2,
+    "ppc": 3.1888888888888887,
+    "worst": 511
+   },
+   {
+    "shape": "rect",
+    "rows": 13,
+    "cols": 12,
+    "cells": 156,
+    "mines": 54,
+    "gimmicks": [
+     "locked",
+     "liar"
+    ],
+    "gimmickLevel": 90,
+    "constructive": null,
+    "par": 382.5,
+    "ppc": 2.451923076923077,
+    "worst": 162
+   }
+  ]
+ },
+ {
+  "block": 34,
+  "lv0": 166,
+  "tier": 10,
+  "picks": [
+   {
+    "shape": "floret",
+    "M": 1,
+    "N": 10,
+    "cells": 60,
+    "mines": 17,
+    "gimmicks": [
+     "worm"
+    ],
+    "gimmickLevel": 118,
+    "constructive": null,
+    "par": 133.8,
+    "ppc": 2.23,
+    "worst": 7
+   },
+   {
+    "shape": "floret",
+    "M": 1,
+    "N": 11,
+    "cells": 66,
+    "mines": 18,
+    "gimmicks": [
+     "worm"
+    ],
+    "gimmickLevel": 118,
+    "constructive": null,
+    "par": 144.4,
+    "ppc": 2.187878787878788,
+    "worst": 6
+   },
+   {
+    "shape": "floret",
+    "M": 12,
+    "N": 1,
+    "cells": 72,
+    "mines": 19,
+    "gimmicks": [
+     "worm"
+    ],
+    "gimmickLevel": 118,
+    "constructive": null,
+    "par": 173,
+    "ppc": 2.4027777777777777,
+    "worst": 16
+   },
+   {
+    "shape": "floret",
+    "M": 12,
+    "N": 1,
+    "cells": 72,
+    "mines": 21,
+    "gimmicks": [
+     "worm"
+    ],
+    "gimmickLevel": 118,
+    "constructive": null,
+    "par": 203.2,
+    "ppc": 2.822222222222222,
+    "worst": 23
+   },
+   {
+    "shape": "floret",
+    "M": 2,
+    "N": 7,
+    "cells": 84,
+    "mines": 22,
+    "gimmicks": [
+     "worm"
+    ],
+    "gimmickLevel": 118,
+    "constructive": null,
+    "par": 209.2,
+    "ppc": 2.4904761904761905,
+    "worst": 7
+   }
+  ]
+ },
+ {
+  "block": 35,
+  "lv0": 171,
+  "tier": 10,
+  "picks": [
+   {
+    "shape": "cairo",
+    "M": 9,
+    "N": 7,
+    "cells": 110,
+    "mines": 13,
+    "gimmicks": [
+     "compass",
+     "locked"
+    ],
+    "gimmickLevel": 100,
+    "constructive": null,
+    "par": 307.8,
+    "ppc": 2.7981818181818183,
+    "worst": 8
+   },
+   {
+    "shape": "cairo",
+    "M": 9,
+    "N": 7,
+    "cells": 110,
+    "mines": 28,
+    "gimmicks": [
+     "compass",
+     "locked"
+    ],
+    "gimmickLevel": 100,
+    "constructive": null,
+    "par": 284.5,
+    "ppc": 2.5863636363636364,
+    "worst": 14
+   },
+   {
+    "shape": "cairo",
+    "M": 8,
+    "N": 8,
+    "cells": 112,
+    "mines": 16,
+    "gimmicks": [
+     "compass",
+     "locked"
+    ],
+    "gimmickLevel": 100,
+    "constructive": null,
+    "par": 318.1,
+    "ppc": 2.8401785714285714,
+    "worst": 30
+   },
+   {
+    "shape": "cairo",
+    "M": 8,
+    "N": 8,
+    "cells": 112,
+    "mines": 31,
+    "gimmicks": [
+     "compass",
+     "locked"
+    ],
+    "gimmickLevel": 100,
+    "constructive": null,
+    "par": 306.6,
+    "ppc": 2.7375000000000003,
+    "worst": 26
+   },
+   {
+    "shape": "cairo",
+    "M": 8,
+    "N": 8,
+    "cells": 112,
+    "mines": 46,
+    "gimmicks": [
+     "compass",
+     "locked"
+    ],
+    "gimmickLevel": 100,
+    "constructive": null,
+    "par": 255.2,
+    "ppc": 2.2785714285714285,
+    "worst": 449
+   }
+  ]
+ },
+ {
+  "block": 36,
+  "lv0": 176,
+  "tier": 11,
+  "picks": [
+   {
+    "shape": "hex",
+    "M": 9,
+    "N": 10,
+    "cells": 90,
+    "mines": 32,
+    "gimmicks": [
+     "mystery",
+     "liar"
+    ],
+    "gimmickLevel": 85,
+    "constructive": null,
+    "par": 267.4,
+    "ppc": 2.971111111111111,
+    "worst": 10
+   },
+   {
+    "shape": "hex",
+    "M": 10,
+    "N": 10,
+    "cells": 100,
+    "mines": 33,
+    "gimmicks": [
+     "mystery",
+     "liar"
+    ],
+    "gimmickLevel": 85,
+    "constructive": null,
+    "par": 281.5,
+    "ppc": 2.815,
+    "worst": 7
+   },
+   {
+    "shape": "hex",
+    "M": 11,
+    "N": 10,
+    "cells": 110,
+    "mines": 34,
+    "gimmicks": [
+     "mystery",
+     "liar"
+    ],
+    "gimmickLevel": 85,
+    "constructive": null,
+    "par": 299.1,
+    "ppc": 2.7190909090909092,
+    "worst": 23
+   },
+   {
+    "shape": "hex",
+    "M": 13,
+    "N": 9,
+    "cells": 117,
+    "mines": 38,
+    "gimmicks": [
+     "mystery",
+     "liar"
+    ],
+    "gimmickLevel": 85,
+    "constructive": null,
+    "par": 448.2,
+    "ppc": 3.8307692307692305,
+    "worst": 7
+   },
+   {
+    "shape": "hex",
+    "M": 13,
+    "N": 10,
+    "cells": 130,
+    "mines": 36,
+    "gimmicks": [
+     "mystery",
+     "liar"
+    ],
+    "gimmickLevel": 85,
+    "constructive": null,
+    "par": 333.1,
+    "ppc": 2.5623076923076926,
+    "worst": 6
+   }
+  ]
+ },
+ {
+  "block": 37,
+  "lv0": 181,
+  "tier": 11,
+  "picks": [
+   {
+    "shape": "floret",
+    "M": 1,
+    "N": 10,
+    "cells": 60,
+    "mines": 19,
+    "gimmicks": [
+     "compass"
+    ],
+    "gimmickLevel": 115,
+    "constructive": null,
+    "par": 170.2,
+    "ppc": 2.8366666666666664,
+    "worst": 12
+   },
+   {
+    "shape": "floret",
+    "M": 6,
+    "N": 2,
+    "cells": 72,
+    "mines": 19,
+    "gimmicks": [
+     "compass"
+    ],
+    "gimmickLevel": 115,
+    "constructive": null,
+    "par": 178.2,
+    "ppc": 2.4749999999999996,
+    "worst": 210
+   },
+   {
+    "shape": "floret",
+    "M": 2,
+    "N": 6,
+    "cells": 72,
+    "mines": 23,
+    "gimmicks": [
+     "compass"
+    ],
+    "gimmickLevel": 115,
+    "constructive": null,
+    "par": 255.2,
+    "ppc": 3.5444444444444443,
+    "worst": 8
+   },
+   {
+    "shape": "floret",
+    "M": 1,
+    "N": 13,
+    "cells": 78,
+    "mines": 21,
+    "gimmicks": [
+     "compass"
+    ],
+    "gimmickLevel": 115,
+    "constructive": null,
+    "par": 213.7,
+    "ppc": 2.73974358974359,
+    "worst": 17
+   },
+   {
+    "shape": "floret",
+    "M": 2,
+    "N": 7,
+    "cells": 84,
+    "mines": 25,
+    "gimmicks": [
+     "compass"
+    ],
+    "gimmickLevel": 115,
+    "constructive": null,
+    "par": 294.8,
+    "ppc": 3.5095238095238095,
+    "worst": 18
+   }
+  ]
+ },
+ {
+  "block": 38,
+  "lv0": 186,
+  "tier": 9,
+  "picks": [
+   {
+    "shape": "deltoidal",
+    "M": 2,
+    "N": 3,
+    "cells": 36,
+    "mines": 6,
+    "gimmicks": [],
+    "gimmickLevel": null,
+    "constructive": true,
+    "par": 65.6,
+    "ppc": 1.822222222222222,
+    "worst": 3
+   },
+   {
+    "shape": "deltoidal",
+    "M": 2,
+    "N": 3,
+    "cells": 36,
+    "mines": 8,
+    "gimmicks": [],
+    "gimmickLevel": null,
+    "constructive": true,
+    "par": 81.7,
+    "ppc": 2.2694444444444444,
+    "worst": 29
+   },
+   {
+    "shape": "deltoidal",
+    "M": 4,
+    "N": 2,
+    "cells": 48,
+    "mines": 7,
+    "gimmicks": [],
+    "gimmickLevel": null,
+    "constructive": true,
+    "par": 86.9,
+    "ppc": 1.8104166666666668,
+    "worst": 40
+   },
+   {
+    "shape": "deltoidal",
+    "M": 4,
+    "N": 2,
+    "cells": 48,
+    "mines": 10,
+    "gimmicks": [],
+    "gimmickLevel": null,
+    "constructive": true,
+    "par": 106.3,
+    "ppc": 2.214583333333333,
+    "worst": 33
+   },
+   {
+    "shape": "deltoidal",
+    "M": 3,
+    "N": 3,
+    "cells": 54,
+    "mines": 12,
+    "gimmicks": [],
+    "gimmickLevel": null,
+    "constructive": true,
+    "par": 140,
+    "ppc": 2.5925925925925926,
+    "worst": 32
+   }
+  ]
+ },
+ {
+  "block": 39,
+  "lv0": 191,
+  "tier": 11,
+  "picks": [
+   {
+    "shape": "deltoidal",
+    "M": 2,
+    "N": 3,
+    "cells": 36,
+    "mines": 8,
+    "gimmicks": [
+     "mystery"
+    ],
+    "gimmickLevel": 70,
+    "constructive": null,
+    "par": 87.6,
+    "ppc": 2.433333333333333,
+    "worst": 23
+   },
+   {
+    "shape": "deltoidal",
+    "M": 3,
+    "N": 2,
+    "cells": 36,
+    "mines": 9,
+    "gimmicks": [
+     "mystery"
+    ],
+    "gimmickLevel": 70,
+    "constructive": null,
+    "par": 92.3,
+    "ppc": 2.5638888888888887,
+    "worst": 23
+   },
+   {
+    "shape": "deltoidal",
+    "M": 3,
+    "N": 2,
+    "cells": 36,
+    "mines": 12,
+    "gimmicks": [
+     "mystery"
+    ],
+    "gimmickLevel": 70,
+    "constructive": null,
+    "par": 134.8,
+    "ppc": 3.744444444444445,
+    "worst": 287
+   },
+   {
+    "shape": "deltoidal",
+    "M": 4,
+    "N": 2,
+    "cells": 48,
+    "mines": 13,
+    "gimmicks": [
+     "mystery"
+    ],
+    "gimmickLevel": 70,
+    "constructive": null,
+    "par": 146.2,
+    "ppc": 3.045833333333333,
+    "worst": 367
+   },
+   {
+    "shape": "deltoidal",
+    "M": 3,
+    "N": 3,
+    "cells": 54,
+    "mines": 14,
+    "gimmicks": [
+     "mystery"
+    ],
+    "gimmickLevel": 70,
+    "constructive": null,
+    "par": 190.4,
+    "ppc": 3.525925925925926,
+    "worst": 39
+   }
+  ]
+ },
+ {
+  "block": 40,
+  "lv0": 196,
+  "tier": 11,
+  "picks": [
+   {
+    "shape": "rect",
+    "rows": 11,
+    "cols": 11,
+    "cells": 121,
+    "mines": 48,
+    "gimmicks": [
+     "walls",
+     "liar",
+     "locked"
+    ],
+    "gimmickLevel": 90,
+    "constructive": null,
+    "maxDeductions": null,
+    "wallSegments": 3,
+    "alreadyDistinct": true
+   },
+   {
+    "shape": "rect",
+    "rows": 11,
+    "cols": 11,
+    "cells": 121,
+    "mines": 49,
+    "gimmicks": [
+     "mystery",
+     "mirror",
+     "liar"
+    ],
+    "gimmickLevel": 90,
+    "constructive": null,
+    "maxDeductions": null,
+    "wallSegments": null,
+    "alreadyDistinct": true
+   },
+   {
+    "shape": "rect",
+    "rows": 11,
+    "cols": 11,
+    "cells": 121,
+    "mines": 49,
+    "gimmicks": [
+     "locked",
+     "mystery",
+     "mirror"
+    ],
+    "gimmickLevel": 90,
+    "constructive": null,
+    "maxDeductions": null,
+    "wallSegments": null,
+    "alreadyDistinct": true
+   },
+   {
+    "shape": "rect",
+    "rows": 11,
+    "cols": 11,
+    "cells": 121,
+    "mines": 49,
+    "gimmicks": [
+     "walls",
+     "liar",
+     "mystery"
+    ],
+    "gimmickLevel": 90,
+    "constructive": null,
+    "maxDeductions": null,
+    "wallSegments": 3,
+    "alreadyDistinct": true
+   },
+   {
+    "shape": "rect",
+    "rows": 11,
+    "cols": 11,
+    "cells": 121,
+    "mines": 50,
+    "gimmicks": [
+     "liar",
+     "mirror",
+     "walls"
+    ],
+    "gimmickLevel": 90,
+    "constructive": null,
+    "maxDeductions": null,
+    "wallSegments": 3,
+    "alreadyDistinct": true
+   }
+  ],
+  "untouched": true
+ },
+ {
+  "block": 41,
+  "lv0": 201,
+  "tier": 11,
+  "picks": []
+ },
+ {
+  "block": 42,
+  "lv0": 206,
+  "tier": 12,
+  "picks": []
+ },
+ {
+  "block": 43,
+  "lv0": 211,
+  "tier": 12,
+  "picks": []
+ },
+ {
+  "block": 44,
+  "lv0": 216,
+  "tier": 12,
+  "picks": []
+ },
+ {
+  "block": 45,
+  "lv0": 221,
+  "tier": 12,
+  "picks": []
+ },
+ {
+  "block": 46,
+  "lv0": 226,
+  "tier": 12,
+  "picks": []
+ },
+ {
+  "block": 47,
+  "lv0": 231,
+  "tier": 12,
+  "picks": []
+ },
+ {
+  "block": 48,
+  "lv0": 236,
+  "tier": 12,
+  "picks": []
+ },
+ {
+  "block": 49,
+  "lv0": 241,
+  "tier": 12,
+  "picks": []
+ },
+ {
+  "block": 50,
+  "lv0": 246,
+  "tier": 12,
+  "picks": []
+ }
+]
