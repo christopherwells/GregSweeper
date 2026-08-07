@@ -127,6 +127,13 @@ async function ensureLatestServiceWorker(timeoutMs = 3000) {
 const SW_UPDATE_FAIL_KEY = 'minesweeper_sw_update_fail_count';
 
 // ── The gate ──────────────────────────────────────────
+// How hard the gate tries for today's canonical before letting the daily fall
+// back to local generation. Linear backoff, so the worst case adds about a
+// second and a half to a boot that was already failing its first read — paid
+// only when the read comes back empty, never on the normal path.
+const CANONICAL_RETRIES = 2;
+const CANONICAL_RETRY_DELAY_MS = 500;
+
 export async function runStartupGate() {
   // Step 1 of the visible boot sequence ('Loading…' is the HTML
   // default before this runs): the SW-update + Firebase waits below
@@ -199,6 +206,32 @@ export async function runStartupGate() {
       ]);
       if (dailyRaw) {
         state.canonicalDailyBoard = { date: today, raw: dailyRaw };
+      } else {
+        // ONE read is not enough to conclude the canonical is unavailable
+        // (2026-08-07, his ask: the app should open only once it has the
+        // board). Falling through to local generation is not a graceful
+        // degradation for a daily — it is near-certain DIVERGENCE. The
+        // canonical is precomputed up to seven days ahead against the
+        // experiment target of that moment, and the nightly refit rewrites
+        // that file underneath it, so a client re-deriving the day's board
+        // locally is choosing from a differently-sized candidate pool and
+        // lands on another trial almost every time. That is how one player
+        // spent 2026-08-06 on `:trial6` while the day's board was
+        // `:trial13`.
+        //
+        // Firebase is READY here, so this is a slow or dropped read rather
+        // than an offline client — worth a short retry before accepting a
+        // board nobody else is playing. A genuinely offline player still
+        // gets the local fallback, which is what keeps the game playable on
+        // a plane; they simply will not be ranked (the submit path refuses
+        // a divergent row).
+        for (let attempt = 1; attempt <= CANONICAL_RETRIES && !state.canonicalDailyBoard; attempt++) {
+          setBootStatus('Fetching today\'s board…');
+          await new Promise(r => setTimeout(r, CANONICAL_RETRY_DELAY_MS * attempt));
+          const retryRaw = await loadDailyBoard(today)
+            .catch(err => { reportCaughtError('gate-daily-board-retry', err); return null; });
+          if (retryRaw) state.canonicalDailyBoard = { date: today, raw: retryRaw };
+        }
       }
       if (weeklyRaw) {
         state.canonicalWeeklyBoard = { weekStart: currentWeek, raw: weeklyRaw };
