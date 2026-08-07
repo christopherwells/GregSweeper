@@ -16841,5 +16841,206 @@
         "sd": 0.4688
       }
     }
+  },
+  {
+    "date": "2026-08-07",
+    "updatedAt": "2026-08-07T14:25:11Z",
+    "method": "brms-ranef",
+    "n_scores": 399,
+    "n_dates": 165,
+    "n_players": 6,
+    "n_eligible": 4,
+    "rmse": 49.42,
+    "bias": 7.39,
+    "diagnostics": "max Rhat = 1.005, min ESS = 1397, divergent = 0/4000",
+    "target": "wormLoad",
+    "candidates": [
+      {
+        "feature": "clueShare4",
+        "mean": 0.0554,
+        "sd": 0.0429,
+        "cv": 0.7756
+      },
+      {
+        "feature": "wormLoad",
+        "mean": 0.013,
+        "sd": 0.0088,
+        "cv": 0.6755
+      },
+      {
+        "feature": "compassCellCount",
+        "mean": 0.0247,
+        "sd": 0.0151,
+        "cv": 0.6118
+      },
+      {
+        "feature": "mirrorPairCount",
+        "mean": 0.0268,
+        "sd": 0.0154,
+        "cv": 0.5761
+      },
+      {
+        "feature": "clueShare2",
+        "mean": 0.0502,
+        "sd": 0.0256,
+        "cv": 0.5091
+      },
+      {
+        "feature": "lockedCellCount",
+        "mean": 0.0291,
+        "sd": 0.0143,
+        "cv": 0.4915
+      },
+      {
+        "feature": "sonarCellCount",
+        "mean": 0.0547,
+        "sd": 0.02,
+        "cv": 0.3649
+      },
+      {
+        "feature": "searchMoves",
+        "mean": 0.013,
+        "sd": 0.0046,
+        "cv": 0.3524
+      },
+      {
+        "feature": "patternMoves",
+        "mean": 0.0214,
+        "sd": 0.0066,
+        "cv": 0.306
+      },
+      {
+        "feature": "clueShare3",
+        "mean": 0.1317,
+        "sd": 0.0363,
+        "cv": 0.2755
+      },
+      {
+        "feature": "wormholePairCount",
+        "mean": 0.0017,
+        "sd": 0.0023,
+        "cv": 0.2301
+      },
+      {
+        "feature": "wallEdgeCount",
+        "mean": 0.0019,
+        "sd": 0.0022,
+        "cv": 0.2199
+      },
+      {
+        "feature": "clueShare5plus",
+        "mean": 0.0017,
+        "sd": 0.0021,
+        "cv": 0.2131
+      },
+      {
+        "feature": "mysteryCellCount",
+        "mean": 0.0014,
+        "sd": 0.0015,
+        "cv": 0.1494
+      },
+      {
+        "feature": "liarCellCount",
+        "mean": 0.0012,
+        "sd": 0.0012,
+        "cv": 0.1201
+      },
+      {
+        "feature": "zeroClusterCount",
+        "mean": 0.0011,
+        "sd": 0.0011,
+        "cv": 0.1066
+      },
+      {
+        "feature": "totalMines",
+        "mean": 0.0495,
+        "sd": 0.0031,
+        "cv": 0.0633
+      }
+    ],
+    "contribution": [
+      {
+        "feature": "sonarRequired",
+        "mean": 0.2564,
+        "sd": 0.1125
+      },
+      {
+        "feature": "compassRequired",
+        "mean": 0.0518,
+        "sd": 0.1302
+      },
+      {
+        "feature": "compassClicksSaved",
+        "mean": -0.0735,
+        "sd": 0.035
+      },
+      {
+        "feature": "wormholeRequired",
+        "mean": -0.5681,
+        "sd": 0.2331
+      },
+      {
+        "feature": "liarRequired",
+        "mean": -0.4262,
+        "sd": 0.1722
+      },
+      {
+        "feature": "mirrorRequired",
+        "mean": -0.1406,
+        "sd": 0.1995
+      },
+      {
+        "feature": "lockedMineCount",
+        "mean": 0.057,
+        "sd": 0.0461
+      },
+      {
+        "feature": "lockedNumberCount",
+        "mean": 0.0497,
+        "sd": 0.0278
+      }
+    ],
+    "shapeDeviations": {
+      "shapeHex": {
+        "mean": -0.353,
+        "sd": 0.8266
+      },
+      "shapeCairo": {
+        "mean": -0.2944,
+        "sd": 0.6973
+      },
+      "shapeHex_x_cellCount": {
+        "mean": -0.0054,
+        "sd": 0.021
+      },
+      "shapeHex_x_totalMines": {
+        "mean": 0.0555,
+        "sd": 0.0963
+      },
+      "shapeHex_x_zeroClusterCount": {
+        "mean": 0.0044,
+        "sd": 0.4323
+      },
+      "shapeHex_x_lockedCellCount": {
+        "mean": 0.0006,
+        "sd": 0.4661
+      },
+      "shapeCairo_x_cellCount": {
+        "mean": 0.0267,
+        "sd": 0.0193
+      },
+      "shapeCairo_x_totalMines": {
+        "mean": -0.0537,
+        "sd": 0.071
+      },
+      "shapeCairo_x_zeroClusterCount": {
+        "mean": 0.0287,
+        "sd": 0.4552
+      },
+      "shapeCairo_x_mirrorPairCount": {
+        "mean": 0.0163,
+        "sd": 0.4743
+      }
+    }
   }
 ]
