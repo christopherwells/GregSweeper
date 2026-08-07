@@ -1,0 +1,44 @@
+{
+  "uidAlpha": {
+    "1754500000000": {
+      "message": "[caught:daily-canonical-unavailable] no canonical for 2026-08-06",
+      "codeVersion": "gregsweeper-v1.10.9",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140.0 Safari/537.36",
+      "isStandalone": false,
+      "createdAt": 1754500000000
+    },
+    "1754500000001": {
+      "message": "[caught:gate-daily-board-retry] timeout",
+      "codeVersion": "gregsweeper-v1.10.9",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140.0 Safari/537.36",
+      "isStandalone": false,
+      "createdAt": 1754500000001
+    }
+  },
+  "uidBravo": {
+    "1754600000000": {
+      "message": "[caught:daily-canonical-unavailable] no canonical for 2026-08-07",
+      "codeVersion": "gregsweeper-v1.10.14",
+      "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1",
+      "isStandalone": true,
+      "createdAt": 1754600000000
+    },
+    "1754600000002": {
+      "message": "Uncaught TypeError: undefined is not a function",
+      "stack": "at boot (main.js:1)",
+      "codeVersion": "gregsweeper-v1.10.14",
+      "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1",
+      "isStandalone": true,
+      "createdAt": 1754600000002
+    }
+  },
+  "uidCharlie": {
+    "1700000000000": {
+      "message": "[caught:sw-update-check] Failed to fetch",
+      "codeVersion": "gregsweeper-v1.9.3",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/17.0 Safari/605.1.15",
+      "isStandalone": false,
+      "createdAt": 1700000000000
+    }
+  }
+}
