@@ -23,9 +23,12 @@ import {
   getUid, loadWeeklyAttempts, loadLocalWeeklyAttempts,
   replaceLocalWeeklyAttempts, pruneStaleLocalWeeklyAttempts,
 } from '../firebase/firebaseProgress.js';
-import { isDailyCompleted, markDailyCompleted, clearGameState, pruneOldDailyKeys } from '../storage/statsStorage.js';
+import {
+  isDailyCompleted, markDailyCompleted, clearGameState, pruneOldDailyKeys,
+  getDailyCompletionRecord, unlockDailyReplay,
+} from '../storage/statsStorage.js';
 import { planCompletionReconcile } from '../logic/startupReconcilePlan.js';
-import { safeGet, safeSet, safeRemove } from '../storage/storageAdapter.js';
+import { safeGet, safeSet } from '../storage/storageAdapter.js';
 import { reportCaughtError } from '../diagnostics/errorReporter.js';
 
 // ── Boot overlay helpers ──────────────────────────────
@@ -74,12 +77,22 @@ async function ensureLatestServiceWorker(timeoutMs = 3000) {
         // controllerchange didn't fire — iOS may have already swapped
         // the controller before we attached the listener. Force a
         // single reload so the new SW takes over our page state.
-        if (!sessionStorage.getItem('_gs_skip_force_reload')) {
-          sessionStorage.setItem('_gs_skip_force_reload', '1');
-          window.location.reload();
-          return; // navigation pre-empts resolve
-        }
-        sessionStorage.removeItem('_gs_skip_force_reload');
+        //
+        // Everything here is inside try/catch because a throw in a setTimeout
+        // callback does NOT reject the enclosing promise — it escapes as an
+        // uncaught error and `resolve` is simply never called, stranding the
+        // boot overlay forever. sessionStorage is the live hazard: it throws on
+        // write in a storage-restricted context (Safari private browsing, a
+        // locked-down PWA container), which is exactly where the iOS path this
+        // block exists for is taken.
+        try {
+          if (!sessionStorage.getItem('_gs_skip_force_reload')) {
+            sessionStorage.setItem('_gs_skip_force_reload', '1');
+            window.location.reload();
+            return; // navigation pre-empts resolve
+          }
+          sessionStorage.removeItem('_gs_skip_force_reload');
+        } catch { /* no session storage — fall through and boot */ }
         resolve();
       }, 2000);
       navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -140,6 +153,13 @@ const SW_UPDATE_FAIL_KEY = 'minesweeper_sw_update_fail_count';
 // only when the read comes back empty, never on the normal path.
 const CANONICAL_RETRIES = 2;
 const CANONICAL_RETRY_DELAY_MS = 500;
+// Budget for the completion-reconcile read. Matches the fetch timeout the
+// board syncs use; the gate has already spent its Firebase-ready wait by the
+// time this runs, so the only thing left to bound is the read itself.
+const RECONCILE_READ_TIMEOUT_MS = 5000;
+// One-time migration marker for completions recorded before the board seed was
+// stored beside them. See the vintageUnlock argument in startupReconcilePlan.
+const VINTAGE_UNLOCK_KEY = 'minesweeper_daily_vintage_unlock_done';
 
 export async function runStartupGate() {
   // Step 1 of the visible boot sequence ('Loading…' is the HTML
@@ -272,16 +292,21 @@ export async function runStartupGate() {
   }
 
   // Completion ↔ cloud reconciliation (one read, both directions).
-  // "Completed today" is a per-ACCOUNT fact; the localStorage flag is
-  // just this device's cache of it. Two ways they can disagree:
+  // The lock asks "has this ACCOUNT finished TODAY'S BOARD" — not "did it play
+  // a daily today", which is the separate, coarser fact the streak keeps. Those
+  // two came apart the moment a divergent board could count for the streak
+  // while its score was refused. Two ways local and cloud disagree:
   //
-  //  - Local flag SET, cloud row DIVERGENT (different rngSeed than the
-  //    canonical): the player completed a wrong board (cold-load race,
-  //    pre-canonical client). Clear the flag + cached par/moves so they
-  //    can play the real canonical. Only a POSITIVELY divergent row
-  //    clears — a missing row (uid mismatch, network race, offline
-  //    submission) trusts the local flag; an earlier version cleared on
-  //    missing-score and let raced lookups unlock replays.
+  //  - Local flag SET, but the day's real board is unplayed: the player
+  //    completed a WRONG board (cold-load race, pre-canonical client, a stale
+  //    experiment target). Unlock so they can play the real one. Three
+  //    signals, cheapest first — the board seed this device recorded, then a
+  //    positively-divergent cloud row, then the one-time vintage unlock for
+  //    completions predating the seed record. A missing row on its own never
+  //    clears (uid mismatch, network race, offline submission all produce
+  //    one); an earlier version cleared on missing-score and let raced lookups
+  //    unlock replays. The decision tree is pure and node-tested in
+  //    startupReconcilePlan.js.
   //
   //  - Local flag UNSET, cloud row MATCHING the canonical: this account
   //    already completed today's board on ANOTHER device. Adopt the
@@ -294,9 +319,9 @@ export async function runStartupGate() {
   //    firebaseLeaderboard backs this up for mid-session races the
   //    boot check can't see.
   //
-  // Test env: skipped entirely — isDailyCompleted/markDailyCompleted
-  // are no-ops there, and clearGameState would touch localStorage
-  // shared with the production origin.
+  // Test env: skipped entirely — isDailyCompleted/markDailyCompleted/
+  // unlockDailyReplay are no-ops there, and clearGameState would touch
+  // localStorage shared with the production origin.
   if (firebaseReady && !customSeed && !isTestEnvironment()) {
     const canonicalSeed = state.canonicalDailyBoard?.raw?.rngSeed || null;
     if (canonicalSeed) {
@@ -304,24 +329,56 @@ export async function runStartupGate() {
       const myUid = await waitForUid(3000);
       if (myUid) {
         try {
-          const snap = await firebase.database().ref(`daily/${today}`).once('value');
+          // TIMEOUT-RACED like every other Firebase read on the boot path.
+          // Realtime DB's once('value') does not time out on its own: on a
+          // half-open socket (a phone waking from sleep, a captive portal, a
+          // dropped wifi handover) it simply never settles. This one await was
+          // the only unbounded read left between the boot overlay going up and
+          // hideBootOverlay() at the end of init, and init's .catch safety net
+          // cannot help — it catches a THROW, and a hang is not one. The
+          // symptom is the app sitting on the loading screen forever.
+          const snap = await Promise.race([
+            firebase.database().ref(`daily/${today}`).once('value'),
+            new Promise((_, reject) => setTimeout(
+              () => reject(new Error('timeout')), RECONCILE_READ_TIMEOUT_MS)),
+          ]);
           const rows = snap.val();
+          const record = getDailyCompletionRecord();
+          const localCompleted = isDailyCompleted(today);
+          // Spend the one-time vintage unlock only where it can apply: a
+          // completion recorded for TODAY with no board seed against it. The
+          // marker is consumed either way, so this can never fire twice.
+          const vintageUnlock = localCompleted && record.date === today && !record.seed
+            && safeGet(VINTAGE_UNLOCK_KEY) !== '1';
+          if (vintageUnlock) safeSet(VINTAGE_UNLOCK_KEY, '1');
           const { action } = planCompletionReconcile({
             rows, uid: myUid, dateString: today, canonicalSeed,
-            localCompleted: isDailyCompleted(today),
+            localCompleted,
+            localSeed: record.date === today ? record.seed : null,
+            vintageUnlock,
           });
           if (action === 'clearLocal') {
-            // Confirmed divergent — clear the completion flag plus the
-            // cached par/moves so newGame recomputes them against the
-            // canonical layout. Don't touch streak fields; replaying
-            // maintains the streak via lastDailyDate === today.
-            safeRemove('minesweeper_daily_completed_date');
-            safeRemove('minesweeper_daily_par_' + today);
-            safeRemove('minesweeper_daily_moves_' + today);
+            // This account has not finished the day's real board. Unlock the
+            // replay and drop the cached par/moves so newGame recomputes them
+            // against the canonical layout. Streak fields are untouched: the
+            // divergent play still counted the day, which is the whole point of
+            // the split (his constraint — "I don't want people losing their
+            // streak, but I also don't want bad data").
+            //
+            // unlockDailyReplay, not a bare remove: the cloud's lastDailyDate
+            // still says "played today", so applyCloudProgress would re-lock
+            // the card on the next write under users/{uid} — and the progress
+            // listener applies every one of those. The sticky marker is what
+            // makes the unlock survive to the moment the player taps Daily.
+            // (unlockDailyReplay also drops the cached par / moves / features
+            // for the date — they describe the wrong board.)
+            unlockDailyReplay(today);
           } else if (action === 'adoptCompletion') {
-            // Completed on another device — adopt. Any in-progress local
-            // attempt is moot; first completion wins.
-            markDailyCompleted(today);
+            // Completed on another device — adopt, recording the board it was
+            // on so a later boot can tell it was the canonical. This is also
+            // what re-locks a player the vintage unlock touched but who had
+            // genuinely played the real board.
+            markDailyCompleted(today, canonicalSeed);
             clearGameState('daily');
           }
         } catch (err) {
