@@ -47,6 +47,13 @@ export function hideBootOverlay() {
 // is found within timeoutMs, we proceed with the current bundle.
 async function ensureLatestServiceWorker(timeoutMs = 3000) {
   if (!('serviceWorker' in navigator)) return;
+  // A known-offline boot cannot fetch an update, so waiting the full budget
+  // for one buys nothing and costs the player three seconds of "Connecting…"
+  // (2026-08-07, measured as part of his airplane-mode report). Trusted only
+  // in the negative direction: false means there is definitely no network.
+  // reg.update() below is still CALLED on a true-but-wrong reading; this only
+  // skips the WAIT, so a stale onLine can never suppress a real update.
+  if (navigator.onLine === false) return;
   let reg;
   try {
     reg = await navigator.serviceWorker.getRegistration();
@@ -225,7 +232,18 @@ export async function runStartupGate() {
         // gets the local fallback, which is what keeps the game playable on
         // a plane; they simply will not be ranked (the submit path refuses
         // a divergent row).
-        for (let attempt = 1; attempt <= CANONICAL_RETRIES && !state.canonicalDailyBoard; attempt++) {
+        // navigator.onLine is the discriminator, and it has to be checked
+        // HERE rather than relying on firebaseReady: the SDK loads from a CDN
+        // the service worker deliberately does not cache, so on a warm HTTP
+        // cache it can initialize perfectly well with no network behind it.
+        // Without this, an offline boot pays the full retry budget — and each
+        // retry re-enters loadDailyBoard's own 8s waitForFirebaseReady, so it
+        // is seconds, not milliseconds. Measured: an offline boot already sits
+        // ~19.5s on the overlay, which is the whole of "the PWA stops working
+        // in airplane mode". Retrying is for a slow network, never for none.
+        for (let attempt = 1;
+          attempt <= CANONICAL_RETRIES && !state.canonicalDailyBoard && navigator.onLine !== false;
+          attempt++) {
           setBootStatus('Fetching today\'s board…');
           await new Promise(r => setTimeout(r, CANONICAL_RETRY_DELAY_MS * attempt));
           const retryRaw = await loadDailyBoard(today)
@@ -335,9 +353,26 @@ export async function waitForUid(timeoutMs = 3000, intervalMs = 50) {
 // Wait for `firebase.initializeApp()` to have run. initFirebase() was
 // kicked off before runStartupGate; this just polls for completion.
 // Returns true on Firebase ready, false on timeout (offline mode).
+// A known-offline boot gives up on Firebase early instead of serving the
+// player eight seconds of "Connecting…" for a connection that cannot happen
+// (2026-08-07, his airplane-mode report). Measured, an offline boot sat 19.5s
+// on the overlay; gating the canonical retries took it to 8.0s and this takes
+// the rest.
+//
+// navigator.onLine is only trusted in the NEGATIVE direction — false means
+// there is definitely no network, while true promises nothing. So it is used
+// solely to shorten the wait, never to skip a wait that might have succeeded.
+// The connection is still attempted, because the SDK can initialize from a
+// warm HTTP cache and a stale onLine reading should not cost the player their
+// cloud sync; it just is not waited on for as long.
+const OFFLINE_FIREBASE_WAIT_MS = 1200;
+
 async function _waitForFirebaseInit(timeoutMs = 8000) {
+  const budget = navigator.onLine === false
+    ? Math.min(timeoutMs, OFFLINE_FIREBASE_WAIT_MS)
+    : timeoutMs;
   const startedAt = Date.now();
-  while (Date.now() - startedAt < timeoutMs) {
+  while (Date.now() - startedAt < budget) {
     if (typeof firebase !== 'undefined' && firebase.apps?.length) return true;
     await new Promise(r => setTimeout(r, 50));
   }
