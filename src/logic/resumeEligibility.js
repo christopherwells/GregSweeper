@@ -70,6 +70,8 @@ export function challengeSaveIsCurrent(gs, maxLevelReached) {
  *   practiceSeed     - the practice seed when isDailyPractice
  *   canonicalDate    - date of the cached canonical daily board, if any
  *   canonicalRngSeed - rngSeed of the cached canonical daily board, if any
+ *   canonicalWeek         - weekStart of the cached canonical weekly board, if any
+ *   canonicalWeeklyRngSeed - rngSeed of that weekly board, if any
  *   maxLevelReached  - highest challenge level won (challengeSaveIsCurrent)
  * @returns {boolean}
  */
@@ -118,6 +120,20 @@ export function isSaveResumable(gs, ctx) {
     if (gs.weeklySeed == null || gs.weeklyDay == null || !gs.weeklyRngSeed) return false;
     if (gs.weeklySeed !== ctx.weekStart) return false;
     if (gs.weeklyDay !== ctx.weekDayIndex) return false;
+
+    // Divergent-canonical check, the exact counterpart of the daily's above.
+    // The weekly branch required weeklyRngSeed only to be TRUTHY, which proves
+    // the save came from the weekly path and nothing about WHICH board it came
+    // from. So a save generated locally against a missed canonical resumed
+    // happily on every return visit — the Kate-on-trial3 scenario the daily
+    // check exists to stop, on the mode where it costs more: a weekly attempt
+    // is one of seven, committed on first click, and the whole week's
+    // leaderboard is one board.
+    if (ctx.canonicalWeeklyRngSeed
+        && ctx.canonicalWeek === gs.weeklySeed
+        && ctx.canonicalWeeklyRngSeed !== gs.weeklyRngSeed) {
+      return false;
+    }
   }
 
   if (gs.gameMode === 'normal' && !challengeSaveIsCurrent(gs, ctx.maxLevelReached)) {
