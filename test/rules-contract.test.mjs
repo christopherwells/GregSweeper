@@ -48,11 +48,42 @@ test('daily + archive wormEvents entries: all per-hatch fields are whitelisted',
   assertWhitelist(rules.dailyArchive.$date.$entry.wormEvents.$idx, 'dailyArchive wormEvents/$idx', FIELDS);
 });
 
+// The weekly row's fields are DERIVED from the writer rather than restated,
+// because a hand-kept list only ever pins the fields somebody remembered to add
+// to it — and the failure it is supposed to catch is precisely the one nobody
+// remembered. _doSubmitWeeklyScore writes through three shapes: the update()
+// map, the set() payload of the first-write fallback, and the separate
+// bestTime transaction. All three are read here.
+function weeklyRowFieldsWrittenByClient() {
+  const src = readFileSync(new URL('../src/firebase/firebaseLeaderboard.js', import.meta.url), 'utf8');
+  const start = src.indexOf('async function _doSubmitWeeklyScore');
+  assert.ok(start > 0, 'expected _doSubmitWeeklyScore to still exist');
+  const body = src.slice(start, src.indexOf('\nfunction _queueFailedWeeklySubmission', start));
+  const fields = new Set();
+  // `updates.totalMoves = ...` / `payload.dayTimes = ...`
+  for (const m of body.matchAll(/\b(?:updates|payload)\.([A-Za-z_]\w*)\s*=/g)) fields.add(m[1]);
+  // `updates[`dayTimes/${day}`] = ...` — the child path's HEAD is the row field
+  for (const m of body.matchAll(/\b(?:updates|payload)\[`([A-Za-z_]\w*)\//g)) fields.add(m[1]);
+  // object-literal keys inside `const updates = { ... }` / `const payload = { ... }`
+  for (const m of body.matchAll(/const (?:updates|payload) = \{([\s\S]*?)\n {4,6}\};/g)) {
+    for (const k of m[1].matchAll(/^\s*([A-Za-z_]\w*)\s*[,:]/gm)) fields.add(k[1]);
+  }
+  // `ref.child('bestTime').transaction(...)` — written outside both shapes
+  for (const m of body.matchAll(/\.child\('([A-Za-z_]\w*)'\)/g)) fields.add(m[1]);
+  return [...fields];
+}
+
 test('weekly/{weekStart}/{uid}: all written fields are whitelisted', () => {
-  // src/firebase/firebaseLeaderboard.js _doSubmitWeeklyScore payload.
-  assertWhitelist(rules.weekly.$weekStart.$uid, 'weekly/$uid', [
-    'name', 'bestTime', 'dayTimes', 'dayBombHits', 'totalMoves', 'timestamp',
-  ]);
+  // src/firebase/firebaseLeaderboard.js _doSubmitWeeklyScore, derived — see above.
+  const derived = weeklyRowFieldsWrittenByClient();
+  // Non-vacuity: the derivation must actually find the row's known shape. If a
+  // refactor renames `updates`/`payload` this returns a short list and the
+  // whitelist check below would pass by finding nothing to check.
+  for (const known of ['name', 'bestTime', 'dayTimes', 'dayBombHits', 'totalMoves', 'timestamp']) {
+    assert.ok(derived.includes(known),
+      `the derivation missed "${known}" — it is no longer reading the writer, so this test is inert`);
+  }
+  assertWhitelist(rules.weekly.$weekStart.$uid, 'weekly/$uid', derived);
 });
 
 test('users/{uid}: all written progress fields are whitelisted', () => {
