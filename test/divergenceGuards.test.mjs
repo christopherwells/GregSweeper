@@ -143,13 +143,51 @@ test("a divergent weekly is RESOLVED, never queued for a retry that can never su
 
 test('the nightly sweep scans for divergent rows, era-floored, and reports rather than deletes', () => {
   assert.match(sweepSrc, /DIVERGENT SCORE ROW/, 'the sweep must have a divergence report');
-  assert.match(sweepSrc, /date < CANONICAL_ERA_START/,
-    'and must skip pre-era dates, whose seeds disagree BY CONSTRUCTION');
-  // It must not delete. The remediation is a named-rows human decision.
+  // Anchored INSIDE the scan. The bare name also appears in the meta
+  // verifier's pre-canonical-era provenance branch, so a file-wide match would
+  // pass on a line that has nothing to do with this guard.
   const idx = sweepSrc.indexOf('DIVERGENT SCORE ROW');
-  const block = sweepSrc.slice(idx - 2000, idx + 2000);
+  const block = sweepSrc.slice(idx - 4000, idx + 2000);
+  assert.match(block, /bucket < CANONICAL_ERA_START/,
+    'the daily scan must skip pre-era dates, whose seeds disagree BY CONSTRUCTION');
+  // It must not delete. The remediation is a named-rows human decision.
   assert.doesNotMatch(block, /method:\s*'DELETE'/, 'the sweep must never delete');
   assert.match(block, /audit-divergent-scores\.mjs --delete/, 'it must point at the tool that can');
+});
+
+test('the sweep covers all THREE score families, not just the day-of daily', () => {
+  const idx = sweepSrc.indexOf('DIVERGENT SCORE ROW');
+  const block = sweepSrc.slice(idx - 4000, idx + 2000);
+  // The weekly leaderboard: never looked at before 2026-08-07, and a weekly
+  // attempt is one of only seven, so a row on the wrong board costs more than
+  // a daily one does.
+  assert.match(block, /dbGet\('weekly'\)/, 'the weekly leaderboard must be scanned');
+  assert.match(block, /weeklyBoard\/\$\{weekStart\}\/rngSeed/,
+    'and compared against the WEEKLY canonical');
+  assert.match(block, /weekStart < FIRST_ARCHIVE_WEEK/, 'with its own era floor');
+  // The weekly-first FIT rows live under daily/ and were silently skipped: the
+  // seed was looked up at dailyBoard/{weekStart}_weekly_first, a node that does
+  // not exist, so the "no canonical" guard dropped all 36 of them under a clean
+  // line. canonicalSeedPath is the one rule that resolves it (#260).
+  assert.match(sweepSrc, /from '\.\.\/src\/logic\/submitGate\.js'/,
+    'the bucket-to-canonical rule must be imported, not re-implemented');
+  assert.match(block, /canonicalSeedPath\(bucket\)/,
+    'the daily scan must resolve its canonical node through it');
+  assert.doesNotMatch(block, /dbGet\(`dailyBoard\/\$\{bucket\}\/rngSeed`\)/,
+    'hardcoding dailyBoard here is the bug that skipped every weekly-first row');
+});
+
+test('the sweep reports what it could NOT check, so clean never means unlooked-at', () => {
+  // 34 of 36 weekly rows carry no seed (measured against production
+  // 2026-08-07) because the weekly only started recording one in #262. Those
+  // are unverifiable, and a green line over them would be the same failure as
+  // the silent skip this replaced.
+  const idx = sweepSrc.indexOf('DIVERGENT SCORE ROW');
+  const block = sweepSrc.slice(idx - 4000, idx + 3000);
+  assert.match(block, /unverifiable/, 'the sweep must track rows it could not check');
+  assert.match(block, /could not be checked either way/, 'and must say so in the output');
+  assert.match(sweepSrc, /rowPlayedSeed/,
+    'the played-seed rule must be the pure one, which is behaviour-tested');
 });
 
 test('a sweep scan that could not run is not reported as clean', () => {

@@ -27,6 +27,42 @@ export function effectiveRowSeed(row, dateString) {
 }
 
 /**
+ * The seed a score row was played under, for DIVERGENCE checking, across all
+ * three row families the nightly sweep walks. Returns either a seed to compare
+ * or a reason it cannot be compared.
+ *
+ * effectiveRowSeed above answers the same question for the daily alone and
+ * cannot be reused here, because its "an absent seed means the bucket key"
+ * convention is a property of _doSubmitOnlineScore's daily path and does not
+ * hold for the other two:
+ *
+ *  - `daily/{weekStart}_weekly_first` — the bucket key is not a board seed and
+ *    never equals one, so the writer always stores the seed. An absent one is
+ *    a row that predates the guard, and reading it as the key would report
+ *    every single fit row as divergent.
+ *  - `weekly/{weekStart}/{uid}` — the writer stores rngSeed whenever it has
+ *    one and omits nothing by convention (#262), so absent means "written
+ *    before the weekly recorded its board", not "played the plain seed".
+ *
+ * UNVERIFIABLE IS NOT CLEAN. Returning it explicitly is what lets the sweep
+ * report how much of its sample it could not check, instead of a green line
+ * over rows it silently skipped.
+ *
+ * @param {'daily'|'weekly'} family which Firebase node the rows came from
+ * @param {string} bucketKey  the date, weekStart, or '{weekStart}_weekly_first'
+ * @param {object} row        the stored score row
+ * @returns {{seed: string}|{unverifiable: 'weeklyFirst'|'weekly'}}
+ */
+export function rowPlayedSeed(family, bucketKey, row) {
+  if (row && typeof row.rngSeed === 'string' && row.rngSeed) return { seed: row.rngSeed };
+  if (family === 'weekly') return { unverifiable: 'weekly' };
+  if (typeof bucketKey === 'string' && bucketKey.endsWith('_weekly_first')) {
+    return { unverifiable: 'weeklyFirst' };
+  }
+  return { seed: bucketKey };
+}
+
+/**
  * First row in a daily/{date} rows object belonging to this uid, or
  * null. Push keys are chronological, so "first" is the earliest
  * submission — the one that counts under first-completion-wins.

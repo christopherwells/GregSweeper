@@ -40,6 +40,21 @@ import { computeDailyFeatures, SOLVER_DERIVED_FEATURE_KEYS } from '../src/logic/
 import { getLocalDateString, getWeekStart } from '../src/logic/seededRandom.js';
 import { SIGNATURE_EPOCH, verifyCanonicalPayloadSig } from '../src/logic/canonicalSignature.js';
 import { CANONICAL_ERA_START } from '../src/logic/archiveEligibility.js';
+// The ONE rule for which canonical node a score bucket is checked against.
+// Extracted for the submit path (#260) after the weekly-first guard spent its
+// whole life reading a node that does not exist; the sweep reads it from there
+// rather than growing a second copy that can drift the same way.
+import { canonicalSeedPath } from '../src/logic/submitGate.js';
+// The one rule for 'which seed did this row play', including when that cannot
+// be answered at all. Pure, so it is tested by behaviour rather than by grep.
+import { rowPlayedSeed } from '../src/logic/scoreRowMatch.js';
+// The weekly mode's own era. Weekly canonicals were never regenerated the way
+// the pre-canonical-era dailies were, so this floor is documentation more than
+// defence, but a divergence detector without an era floor is the thing that
+// cries wolf 91 times.
+import { FIRST_ARCHIVE_WEEK } from '../src/logic/weeklyProgress.js';
+
+const WEEKLY_FIRST_SUFFIX = '_weekly_first';
 
 /**
  * Signature gate for a FUTURE-dated canonical (issue #114): post-epoch it
@@ -399,20 +414,54 @@ async function main() {
   // so its stored seed disagrees with the canonical BY CONSTRUCTION. Without
   // the floor this reports 91 rows that are all fine, and an alarm that cries
   // wolf 91 times is not an alarm.
+  // THREE row families, because the weekly has two of its own and neither was
+  // being checked. `daily/` holds the day-of rows AND the {weekStart}_weekly_
+  // first fit rows; `weekly/` holds one row per player per week. The fit rows
+  // were nominally in scope already and were silently skipped: the seed was
+  // looked up at dailyBoard/{weekStart}_weekly_first, a node that does not
+  // exist, so the `typeof canonicalSeed !== 'string'` guard dropped every one
+  // of them. That is the same defect canonicalSeedPath was extracted to fix on
+  // the submit side (#260), so the sweep reads it from there rather than
+  // growing its own second copy of the rule.
   const divergent = [];
+  // A row with no seed cannot be checked, and counting those is the difference
+  // between "nothing is wrong" and "nothing was looked at". Weekly leaderboard
+  // rows only started carrying rngSeed on 2026-08-07 (#262), so most of the
+  // existing ones land here.
+  const unverifiable = { weeklyFirst: 0, weekly: 0 };
   let divergentScanFailed = null;
   try {
     const scores = await dbGet('daily');
-    for (const [date, rows] of Object.entries(scores || {})) {
-      if (date < CANONICAL_ERA_START || !rows || typeof rows !== 'object') continue;
-      const canonicalSeed = await dbGet(`dailyBoard/${date}/rngSeed`);
+    for (const [bucket, rows] of Object.entries(scores || {})) {
+      if (bucket < CANONICAL_ERA_START || !rows || typeof rows !== 'object') continue;
+      const isWeeklyFirst = bucket.endsWith(WEEKLY_FIRST_SUFFIX);
+      const canonicalSeed = await dbGet(canonicalSeedPath(bucket));
       if (typeof canonicalSeed !== 'string') continue;  // no canonical to compare against
       for (const [pushId, row] of Object.entries(rows)) {
         if (!row || typeof row !== 'object') continue;
-        // A row omits rngSeed when it equals the dateString.
-        const played = typeof row.rngSeed === 'string' ? row.rngSeed : date;
+        const verdict = rowPlayedSeed('daily', bucket, row);
+        if (verdict.unverifiable) { unverifiable[verdict.unverifiable]++; continue; }
+        const played = verdict.seed;
         if (played !== canonicalSeed) {
-          divergent.push({ date, pushId, name: row.name || '?', played, canonical: canonicalSeed });
+          divergent.push({ path: `daily/${bucket}/${pushId}`, id: `${bucket}/${pushId}`, name: row.name || '?', played, canonical: canonicalSeed });
+        }
+      }
+    }
+
+    // The weekly leaderboard. One row per player per week, keyed by uid rather
+    // than a push id, and a weekly attempt is one of only seven, so a row on
+    // the wrong board costs more than a daily one does.
+    const weeklyScores = await dbGet('weekly');
+    for (const [weekStart, rows] of Object.entries(weeklyScores || {})) {
+      if (weekStart < FIRST_ARCHIVE_WEEK || !rows || typeof rows !== 'object') continue;
+      const canonicalSeed = await dbGet(`weeklyBoard/${weekStart}/rngSeed`);
+      if (typeof canonicalSeed !== 'string') continue;
+      for (const [uid, row] of Object.entries(rows)) {
+        if (!row || typeof row !== 'object') continue;
+        const verdict = rowPlayedSeed('weekly', weekStart, row);
+        if (verdict.unverifiable) { unverifiable[verdict.unverifiable]++; continue; }
+        if (verdict.seed !== canonicalSeed) {
+          divergent.push({ path: `weekly/${weekStart}/${uid}`, id: `${weekStart}/${uid}`, name: row.name || '?', played: verdict.seed, canonical: canonicalSeed });
         }
       }
     }
@@ -423,13 +472,13 @@ async function main() {
   if (divergent.length) {
     console.error(`\n*** ${divergent.length} DIVERGENT SCORE ROW(S) ***`);
     for (const d of divergent) {
-      console.error(`  daily/${d.date}/${d.pushId}  ${d.name}  played ${d.played}, canonical ${d.canonical}`);
+      console.error(`  ${d.path}  ${d.name}  played ${d.played}, canonical ${d.canonical}`);
     }
     // A real incident is one or two rows; a hundred means the comparison
     // itself is wrong, and printing a hundred --only flags invites pasting it.
     const remediable = divergent.slice(0, 10);
     console.error('  remediation: node scripts/audit-divergent-scores.mjs --delete '
-      + remediable.map((d) => `--only ${d.date}/${d.pushId}`).join(' '));
+      + remediable.map((d) => `--only ${d.id}`).join(' '));
     if (divergent.length > remediable.length) {
       console.error(`  (${divergent.length - remediable.length} more not listed — at this volume, check the comparison before deleting anything)`);
     }
@@ -440,7 +489,13 @@ async function main() {
     console.error('  Treat as unknown, not clean — the rows it looks for are invisible everywhere else.');
     process.exitCode = 1;
   } else {
-    console.log('No divergent score rows since the canonical era began.');
+    console.log('No divergent score rows since the canonical era began (daily, weekly-first and weekly).');
+  }
+  // Printed whether or not anything diverged, because "clean" over a sample
+  // that was mostly skipped is the reading this is here to prevent.
+  if (unverifiable.weeklyFirst || unverifiable.weekly) {
+    console.log(`  (${unverifiable.weeklyFirst} weekly-first and ${unverifiable.weekly} weekly row(s) carry no seed `
+      + 'and could not be checked either way — rows written before the weekly recorded one)');
   }
 
   if (failures.length || divergent.length) {
