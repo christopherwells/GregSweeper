@@ -1,7 +1,7 @@
 import { safeGet, safeSet, safeRemove, safeGetJSON, safeSetJSON } from '../storage/storageAdapter.js';
 import { isTestEnvironment } from './env.js';
 import { reportCaughtError } from '../diagnostics/errorReporter.js';
-import { findRowForBoard } from '../logic/scoreRowMatch.js';
+import { planScoreSubmission, canonicalSeedPath } from '../logic/submitGate.js';
 import { isBombHitCheat } from '../logic/difficulty.js';
 import { attributePlayedDate } from '../logic/archiveEligibility.js';
 import { etDateStringOfMs } from '../logic/seededRandom.js';
@@ -283,52 +283,49 @@ async function _doSubmitOnlineScore(dateString, name, time, bombHits, extras) {
       payload.rngSeed = extras.rngSeed;
     }
 
-    // One row per (player, board): if this uid already has a row for the
-    // SAME effective board seed, the score was already recorded —
-    // typically by another device signed into the same account, or by a
-    // queued retry whose original push actually landed. Skip the push
-    // and report 'duplicate' so callers can toast honestly instead of
-    // claiming a fresh submission. Matching is per BOARD, not per uid
-    // (see scoreRowMatch.js): a practice (?seed=) row can never block
-    // the real daily, and a player with a divergent historical row can
-    // still land their canonical replay. A failed read falls open to
-    // the push — a flaky read must not eat a real score.
+    // Two questions stand between this run and a leaderboard row, and the
+    // answers live in the pure logic/submitGate.js so they can be TESTED rather
+    // than grepped (the guard shipped 2026-08-07 with 22 source-scan assertions
+    // and no execution of its own logic):
+    //
+    //   DEDUPE — one row per (player, board). Matching is per BOARD, not per
+    //   uid (scoreRowMatch.js), so a practice (?seed=) row can never block the
+    //   real daily and a player with a divergent historical row can still land
+    //   their canonical replay.
+    //
+    //   DIVERGENCE — a score set on a board that was not the day's canonical
+    //   never reaches the leaderboard. Their client missed the canonical and
+    //   generated locally, which the precompute horizon makes near-certain
+    //   rather than unlucky: the board is written up to seven days ahead and
+    //   the nightly refit rewrites the experiment target underneath it, so a
+    //   client re-deriving picks from a differently-sized candidate pool. One
+    //   player's 2026-08-06 row sat on `:trial6` against a `:trial13`
+    //   canonical. The DAY still counts — the caller writes dailyHistory
+    //   regardless, which is what streaks read; only the leaderboard, which
+    //   compares people on one board, refuses it.
+    //
+    // Both reads feed ONE pure decision (logic/submitGate.js). Each is
+    // independently try/caught so an outage on either surfaces as `null` —
+    // "unavailable", never "mismatch" — and the gate falls open. That is the
+    // property that matters: dropping real scores whenever Firebase hiccups
+    // would be far worse than the bad row either guard prevents.
+    const playedSeed = typeof extras.rngSeed === 'string' ? extras.rngSeed : dateString;
+    let existingRows = null;
     if (extras.uid) {
       try {
-        const existing = await db.ref(`daily/${dateString}`).once('value');
-        const dup = findRowForBoard(
-          existing.val(), String(extras.uid), dateString,
-          typeof extras.rngSeed === 'string' ? extras.rngSeed : dateString,
-        );
-        if (dup) return 'duplicate';
-      } catch { /* read failed — proceed with the push */ }
+        existingRows = (await db.ref(`daily/${dateString}`).once('value')).val();
+      } catch { /* read failed — nothing blocks the push */ }
     }
-
-    // A score set on a board that is NOT the day's canonical never reaches the
-    // leaderboard (2026-08-07). Divergence was detected at BOOT and never at
-    // submit: startupReconcilePlan spots a divergent row and unlocks a replay,
-    // which is right, but by then the row is already written and joined
-    // against the wrong feature vector in the par fit. One player's 2026-08-06
-    // row sat on `:trial6` while the canonical was `:trial13`.
-    //
-    // The board they played was legitimate — their client missed the canonical
-    // and generated locally against a stale experiment target, which the
-    // precompute horizon makes near-certain rather than unlucky (the canonical
-    // is written up to seven days ahead and the nightly refit rewrites that
-    // target file underneath it). So the DAY still counts: the caller writes
-    // dailyHistory regardless, which is what streaks read. Only the
-    // leaderboard, which compares people on one board, refuses it.
-    //
-    // Fails OPEN on a read error, exactly like the dedupe above — a flaky
-    // read must never eat a real score.
-    const playedSeed = typeof extras.rngSeed === 'string' ? extras.rngSeed : dateString;
+    let canonicalSeed = null;
     try {
-      const canonical = await db.ref(`dailyBoard/${dateString}/rngSeed`).once('value');
-      const canonicalSeed = canonical.val();
-      if (typeof canonicalSeed === 'string' && canonicalSeed !== playedSeed) {
-        return 'divergent';
-      }
+      canonicalSeed = (await db.ref(canonicalSeedPath(dateString)).once('value')).val();
     } catch { /* read failed — proceed with the push */ }
+
+    const { verdict } = planScoreSubmission({
+      rows: existingRows, uid: extras.uid || null,
+      bucketKey: dateString, playedSeed, canonicalSeed,
+    });
+    if (verdict !== 'proceed') return verdict;
 
     const ref = db.ref(`daily/${dateString}`);
     await ref.push(payload);
