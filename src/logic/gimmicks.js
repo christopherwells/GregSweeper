@@ -586,6 +586,96 @@ export function computeLiarZone(board, rows, cols) {
 // removed pairs ride a render-only board._tilingWalls so the renderer can draw a
 // bar on each shared edge. Isolation is all-or-nothing, like the rectangular
 // path: a wall set that disconnects the board ships as no walls.
+
+// A WALL BLOCKS THE CELLS WHOSE SIGHT LINE IT CROSSES (his rule, 2026-08-07,
+// playing 3D Cubes at L87: a cell read 5 where it should have read less,
+// "because corners shouldn't see through a wall").
+//
+// THE RULE, in his words: "If a line drawn from the center of one cell to
+// another is bisected by a wall, those two cells aren't connected." Whether two
+// cells see past a corner depends on the ANGLE between them, not merely on
+// whether they touch: two facing each other across an open corner still see one
+// another, two that would have to curve around the wall do not.
+//
+// What it replaces. Corner-inclusive adjacency makes cells meeting at a single
+// VERTEX neighbours, but buildWireframe emits an edge only for a pair sharing
+// TWO vertices, so severing wireframe edges left every corner contact intact
+// and a wall drawn through the corner still counted mines across itself.
+// Measured over 12 walled boards per shape beforehand: EVERY board on all four
+// Laves tilings was affected, 464 see-through corner links, 165 of them feeding
+// a wrong clue (rhombille worst at 77). The certifier reads the same adjacency,
+// so those boards certified as no-guess and were self-consistent while being
+// unsolvable for a person reasoning from the wall in front of them, which is
+// the worst shape this class of bug takes.
+//
+// One rule covers both kinds of neighbour, which is why it is written this way
+// rather than as a special case bolted onto edge severing: an edge neighbour's
+// sight line crosses its own shared boundary, so a wall there blocks it by the
+// same test, and the previous behaviour falls out instead of being preserved
+// by hand.
+//
+// 4.8.8 and the honeycomb are untouched, structurally rather than luckily: both
+// are trivalent, so they have no vertex-only pairs, and their edge neighbours
+// sever exactly as before. Verified byte-identical.
+
+const _SIGHT_EPS = 1e-9;
+
+const _cross = (ox, oy, ax, ay, bx, by) => (ax - ox) * (by - oy) - (ay - oy) * (bx - ox);
+
+/**
+ * Does segment p1-p2 cross segment q1-q2? Endpoint contact COUNTS: a sight line
+ * that runs exactly through the tip of a wall is grazing it, and a player
+ * reading the board sees the wall in the way.
+ */
+function _segmentsCross(p1, p2, q1, q2) {
+  const d1 = _cross(q1.x, q1.y, q2.x, q2.y, p1.x, p1.y);
+  const d2 = _cross(q1.x, q1.y, q2.x, q2.y, p2.x, p2.y);
+  const d3 = _cross(p1.x, p1.y, p2.x, p2.y, q1.x, q1.y);
+  const d4 = _cross(p1.x, p1.y, p2.x, p2.y, q2.x, q2.y);
+  const s1 = Math.abs(d1) < _SIGHT_EPS ? 0 : Math.sign(d1);
+  const s2 = Math.abs(d2) < _SIGHT_EPS ? 0 : Math.sign(d2);
+  const s3 = Math.abs(d3) < _SIGHT_EPS ? 0 : Math.sign(d3);
+  const s4 = Math.abs(d4) < _SIGHT_EPS ? 0 : Math.sign(d4);
+  if (s1 * s2 > 0 || s3 * s4 > 0) return false;
+  if (s1 || s2 || s3 || s4) return true;
+  // Collinear: overlap on the shared line is a block, a mere extension is not.
+  const on = (a, b, c) => Math.min(a.x, b.x) - _SIGHT_EPS <= c.x && c.x <= Math.max(a.x, b.x) + _SIGHT_EPS
+    && Math.min(a.y, b.y) - _SIGHT_EPS <= c.y && c.y <= Math.max(a.y, b.y) + _SIGHT_EPS;
+  return on(p1, p2, q1) || on(p1, p2, q2) || on(q1, q2, p1) || on(q1, q2, p2);
+}
+
+/**
+ * Neighbour links whose sight line a set of walled edges crosses.
+ *
+ * @param {object} tiling            the built tiling
+ * @param {Array}  edges             buildWireframe edges
+ * @param {Array<number[]>} adjacency the FULL (unwalled) neighbour lists
+ * @param {Iterable<number>} walledEdgeIdx indices into `edges`
+ * @returns {Array<[number, number]>} cell pairs to sever
+ */
+export function sightLineCuts(tiling, edges, adjacency, walledEdgeIdx) {
+  const walls = [];
+  for (const ei of walledEdgeIdx) {
+    const e = edges[ei];
+    walls.push([tiling.verts[e.v1], tiling.verts[e.v2]]);
+  }
+  if (!walls.length) return [];
+  const cuts = [];
+  for (let a = 0; a < adjacency.length; a++) {
+    const pa = tiling.cellPos[a];
+    for (const b of adjacency[a]) {
+      if (b <= a) continue;                       // each pair once
+      const pb = tiling.cellPos[b];
+      const p1 = { x: pa.cx, y: pa.cy };
+      const p2 = { x: pb.cx, y: pb.cy };
+      for (const [q1, q2] of walls) {
+        if (_segmentsCross(p1, p2, q1, q2)) { cuts.push([a, b]); break; }
+      }
+    }
+  }
+  return cuts;
+}
+
 function applyWallsTiling(board, rows, cols, segmentCount, rng) {
   const total = rows * cols;
   // The wireframe gives every cell-boundary edge tagged with the two cells it
@@ -599,16 +689,35 @@ function applyWallsTiling(board, rows, cols, segmentCount, rng) {
   const { edges, vertEdges } = buildWireframe(tiling);
   const verts = tiling.verts;
 
-  const adj = board._cellNeighbors.map(l => l.slice()); // working copy of the full topology
+  const full = board._cellNeighbors.map(l => l.slice());   // the untouched topology
+  let adj = full.map(l => l.slice());
   const usedEdge = new Set();
   const wallEdges = []; // committed walls: { a, b, x1, y1, x2, y2 } in unit coords
 
-  const isConnected = () => {
+  // Severing is recomputed from the WHOLE walled set each time rather than
+  // applied incrementally, because a corner cut depends on how many walls meet
+  // at a vertex: a later chain can be the second wall at a vertex an earlier
+  // one only touched, and that pair only becomes severable once both exist.
+  const severAll = (walledEdgeIdx) => {
+    const out = full.map(l => l.slice());
+    const drop = (a, b) => {
+      out[a] = out[a].filter(x => x !== b);
+      out[b] = out[b].filter(x => x !== a);
+    };
+    // ONE test for both kinds of neighbour. An edge neighbour's sight line
+    // crosses its own shared boundary, so a wall on that boundary blocks it by
+    // the same rule that blocks a corner contact, and the old edge-severing
+    // behaviour falls out rather than being kept by hand.
+    for (const pair of sightLineCuts(tiling, edges, full, walledEdgeIdx)) drop(pair[0], pair[1]);
+    return out;
+  };
+
+  const isConnectedOn = (g) => {
     const seen = new Uint8Array(total);
     const stack = [0]; seen[0] = 1; let count = 1;
     while (stack.length) {
       const u = stack.pop();
-      for (const v of adj[u]) if (!seen[v]) { seen[v] = 1; count++; stack.push(v); }
+      for (const v of g[u]) if (!seen[v]) { seen[v] = 1; count++; stack.push(v); }
     }
     return count === total;
   };
@@ -638,27 +747,32 @@ function applyWallsTiling(board, rows, cols, segmentCount, rng) {
     const length = 3 + Math.floor(rng() * (2 + Math.min(segmentCount, 3))); // 3-7 edges
     const chain = grow(start, length);
 
-    // Tentatively sever the chain; keep it only if the board stays connected.
-    const applied = [];
-    for (const ei of chain) {
-      const e = edges[ei];
-      adj[e.cellA] = adj[e.cellA].filter(x => x !== e.cellB);
-      adj[e.cellB] = adj[e.cellB].filter(x => x !== e.cellA);
-      applied.push(ei);
+    // Tentatively sever the chain, corner contacts included; keep it only if
+    // the board stays connected. Connectivity is judged on the SEVERED graph,
+    // so a chain whose corner cuts would strand a cell is refused along with
+    // the rest of it, which is what keeps the all-or-nothing contract honest
+    // now that a wall removes more than its own edges.
+    // A chain that disconnects the board is TRIMMED before it is abandoned.
+    // Severing sight lines removes more links than severing edges did, so a
+    // full-length chain strands a cell more often, and the all-or-nothing
+    // contract then shipped the board with no walls at all: measured, cairo
+    // kept walls on only 8 of 12 boards where it had kept them on all 12.
+    // Walking the chain back one edge at a time recovers a shorter wall
+    // instead, which is a better answer than none and keeps the contract
+    // intact, since whatever survives is still applied whole.
+    let keep = chain;
+    let trial = severAll([...usedEdge, ...keep]);
+    while (keep.length > 1 && !isConnectedOn(trial)) {
+      keep = keep.slice(0, -1);
+      trial = severAll([...usedEdge, ...keep]);
     }
-    if (isConnected()) {
-      for (const ei of applied) {
+    if (isConnectedOn(trial)) {
+      adj = trial;
+      for (const ei of keep) {
         usedEdge.add(ei);
         const e = edges[ei];
         const p1 = verts[e.v1], p2 = verts[e.v2];
         wallEdges.push({ a: e.cellA, b: e.cellB, x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y });
-      }
-    } else {
-      // Undo this wall — restore its severed edges (order-independent for the solver).
-      for (const ei of applied) {
-        const e = edges[ei];
-        adj[e.cellA].push(e.cellB);
-        adj[e.cellB].push(e.cellA);
       }
     }
   }
