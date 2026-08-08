@@ -36,3 +36,5 @@ scripts/fit-parlab-priors_files/
 # ships; this is scratch, and the repo is served by GitHub Pages, so a
 # multi-megabyte derived file here is deployed weight for nothing.
 scripts/data/spec-search-cache.json
+scripts/intercept-sensitivity.html
+scripts/intercept-sensitivity_files/

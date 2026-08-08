@@ -56,6 +56,7 @@ import {
 } from '../src/logic/challengeRules.js';
 import { buildTiling, containerIsStorable, TILING_TYPES } from '../src/logic/tilingGeometry.js';
 import { boardFitsPhone } from '../src/logic/boardFit.js';
+import { referenceScale } from './ladder-reference-cohort.mjs';
 import { BOARD_WIDTH_CAP } from '../src/logic/difficulty.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -75,6 +76,12 @@ const ABSORB = hasFlag('--absorb');
 
 // 3% above whatever floor applies (see emitPool's floorFn).
 const PPC_FLOOR_MARGIN = 1.03;
+
+// The ladder is priced in the REFERENCE COHORT's seconds, not the population's
+// — see ladder-reference-cohort.mjs for why, and for what it was measured to be
+// worth. Applied at EMIT (the cache stays in population seconds), and read once
+// per run so a whole pool is emitted on one yardstick.
+const SCALE = referenceScale();
 
 // ── The legal space ────────────────────────────────────────────────────
 
@@ -227,6 +234,11 @@ function measure(spec, budgetMs) {
     pars.push(built.par);
   }
   pars.sort((x, y) => x - y);
+  // Measurement stays in POPULATION seconds — the raw `predictPar` answer. The
+  // conversion to reference-cohort seconds happens at EMIT, not here, because
+  // the cache is long-lived and resumable: baking a scale into it would leave
+  // entries measured before a refit sitting on a different yardstick than
+  // entries measured after, with nothing recording which was which.
   const medPar = pars[Math.floor(pars.length / 2)];
   return {
     ok: true, medPar, ppc: medPar / spec.cells, worstMs,
@@ -474,10 +486,13 @@ function emitPool(cache, { floorFn, ceilFn, perSlice, slices, maxPerShape = Infi
   // this filter would have caught them.
   const legal = new Map();
   for (const shape of SHAPES) legal.set(shape, new Set(legalDims(shape).map((d) => `${d.a}x${d.b}`)));
-  const ok = Object.values(cache).filter((e) => e.ok
-    && legal.get(e.shape)?.has(`${e.a}x${e.b}`)
-    && e.ppc >= floorFn(e.shape)
-    && e.medPar <= ceilFn(e.shape));
+  const ok = Object.values(cache)
+    .filter((e) => e.ok && legal.get(e.shape)?.has(`${e.a}x${e.b}`))
+    // Population seconds in, ladder seconds out. Every threshold below — the
+    // admission floor, the par ceiling, and the ppc that ships — is on the
+    // cohort's yardstick from this line on.
+    .map((e) => ({ ...e, ppc: e.ppc * SCALE, medPar: e.medPar * SCALE }))
+    .filter((e) => e.ppc >= floorFn(e.shape) && e.medPar <= ceilFn(e.shape));
   if (!ok.length) return [];
   const lo = Math.min(...ok.map((e) => e.ppc));
   const hi = Math.max(...ok.map((e) => e.ppc));
