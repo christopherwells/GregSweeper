@@ -1,0 +1,354 @@
+---
+title: "How much does the par scale move when the roster changes?"
+subtitle: "Intercept sensitivity, and whether a reference-cohort anchor absorbs it"
+date: today
+format:
+  html:
+    toc: true
+    code-fold: false
+    embed-resources: true
+---
+
+## The question
+
+Par is fit as `log(pure_time) ~ features + (1 | uid)`, and the intercept is
+recentered so that the play-weighted geometric mean of the player handicaps is
+1. That makes par the time of the *play-weighted average player in the fit*.
+
+So the absolute level of par is a property of **who is currently playing**, not
+of the boards. If three slower players join the daily roster and play
+regularly, the average slows, the intercept rises, and every board's predicted
+par rises with it.
+
+That matters here because the challenge ladder is priced in **par-seconds per
+cell**. Its tier anchors (T1 0.55 through T12 3.60), its 8-minute par ceiling,
+and the endless zone's 3.5 s/cell admission floor are all absolute numbers in
+seconds. If the second itself stretches, the ladder is being sorted and
+filtered by a ruler that moved.
+
+This document measures how far it moves, and whether pricing the ladder in
+**reference-cohort seconds** — `par x k_ref`, where `k_ref` is the handicap of
+a frozen set of consistent players — holds still while par does not.
+
+Two things it deliberately does not do. It does not change the par model:
+Christopher's ruling is that Greg stays the median of the complete population,
+so the recentering is left exactly as it is and only the *ladder's* yardstick
+is in question. And it does not use `brms`. The question is how a point
+estimate of the intercept responds to cohort composition, not what the
+posterior looks like; `lmer` answers that in seconds rather than minutes, and
+the agreement between the two is checked below rather than assumed.
+
+```{r setup, message=FALSE, warning=FALSE}
+library(jsonlite)
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(lme4)
+library(ggplot2)
+
+set.seed(20260808)
+
+`%||%` <- function(a, b) if (is.null(a)) b else a
+
+DB_URL <- "https://gregsweeper-66d02-default-rtdb.firebaseio.com"
+
+# Mirrors scripts/refit-par-model.R. Kept as a literal copy rather than sourced
+# because that script runs the whole nightly pipeline on load.
+COEF_TO_PREDICTOR <- c(
+  secPerCell         = "cellCount",
+  secPerMineFlag     = "totalMines",
+  secPerPatternMove  = "patternMoves",
+  secPerSearchMove   = "searchMoves",
+  secPerWallEdge     = "wallEdgeCount",
+  secPerZeroCluster  = "zeroClusterCount",
+  secPerMysteryCell  = "mysteryCellCount",
+  secPerLiarCell     = "liarCellCount",
+  secPerLockedCell   = "lockedCellCount",
+  secPerWormholePair = "wormholePairCount",
+  secPerMirrorPair   = "mirrorPairCount",
+  secPerSonarCell    = "sonarCellCount",
+  secPerCompassCell  = "compassCellCount",
+  secPerWormLoad     = "wormLoad"
+)
+PREDICTORS <- unname(COEF_TO_PREDICTOR)
+
+LEGACY_BOMB_RATE            <- 15.0
+BOMB_HIT_CHEAT_FRACTION     <- 0.30
+MIN_PLAYS_FOR_FIT_INCLUSION <- 5
+```
+
+## The data
+
+Both nodes are world-readable, so this needs no credentials.
+
+```{r fetch, cache=TRUE, message=FALSE}
+meta_raw   <- fromJSON(paste0(DB_URL, "/dailyMeta.json"), simplifyVector = FALSE)
+scores_raw <- fromJSON(paste0(DB_URL, "/daily.json"),     simplifyVector = FALSE)
+
+cat(sprintf("meta rows: %d | score dates: %d\n", length(meta_raw), length(scores_raw)))
+```
+
+```{r prep}
+# Features, one row per date.
+meta <- imap_dfr(meta_raw, function(m, date) {
+  f <- m$features
+  if (is.null(f)) return(NULL)
+  row <- as.list(setNames(rep(0, length(PREDICTORS)), PREDICTORS))
+  # patternMoves / searchMoves are DERIVED from the stored raw move-type
+  # counts, exactly as the shipped model derives them.
+  raw <- function(k) if (is.null(f[[k]])) 0 else as.numeric(f[[k]])
+  for (p in PREDICTORS) if (!is.null(f[[p]])) row[[p]] <- as.numeric(f[[p]])
+  row$patternMoves <- raw("canonicalSubsetMoves") + raw("genericSubsetMoves")
+  row$searchMoves  <- raw("advancedLogicMoves")
+  row$date <- date
+  as_tibble(row)
+})
+
+# Scores, one row per completion.
+scores <- imap_dfr(scores_raw, function(entries, date) {
+  imap_dfr(entries, function(e, id) {
+    if (is.null(e$uid) || is.null(e$time)) return(NULL)
+    bombBaseSum <- if (!is.null(e$bombHitEvents)) {
+      sum(map_dbl(e$bombHitEvents, ~ .x$penalty %||% 0))
+    } else NA_real_
+    tibble(
+      date     = date,
+      uid      = e$uid,
+      time     = as.numeric(e$time),
+      bombHits = as.numeric(e$bombHits %||% 0),
+      bombBase = bombBaseSum,
+      hints    = length(e$hintEvents %||% list())
+    )
+  })
+})
+
+df <- scores |>
+  inner_join(meta, by = "date") |>
+  # The shipped filters: no hinted rows, no brute-force probes.
+  filter(hints == 0, bombHits <= BOMB_HIT_CHEAT_FRACTION * totalMines) |>
+  # Bomb cost comes OUT before logging, so there is no bomb regressor.
+  mutate(
+    pure_time = time - if_else(!is.na(bombBase), bombBase, bombHits * LEGACY_BOMB_RATE),
+    pure_time = pmax(pure_time, 1)
+  ) |>
+  group_by(uid) |> filter(n() >= MIN_PLAYS_FOR_FIT_INCLUSION) |> ungroup()
+
+cat(sprintf("usable rows: %d across %d players and %d boards\n",
+            nrow(df), n_distinct(df$uid), n_distinct(df$date)))
+```
+
+## The fit, and the recentering
+
+`fit_scale()` is the whole pipeline in miniature: fit, then recenter the random
+intercepts in log space by their play-weighted geometric mean, exactly as the
+nightly refit does, and report the resulting intercept.
+
+```{r fitter}
+# Only predictors that actually vary can enter; the nightly fit applies the
+# same per-column zero-variance gate.
+live_predictors <- PREDICTORS[map_lgl(PREDICTORS, ~ sd(df[[.x]], na.rm = TRUE) > 0)]
+
+fit_scale <- function(data) {
+  form <- as.formula(paste("log(pure_time) ~", paste(live_predictors, collapse = " + "), "+ (1 | uid)"))
+  m <- lmer(form, data = data, REML = FALSE,
+            control = lmerControl(calc.derivs = FALSE))
+
+  re  <- ranef(m)$uid[, "(Intercept)"]
+  ids <- rownames(ranef(m)$uid)
+  # Play-weighted geometric-mean recentering, in log space.
+  w      <- as.numeric(table(data$uid)[ids])
+  centre <- sum(re * w) / sum(w)
+
+  list(
+    model     = m,
+    intercept = unname(fixef(m)["(Intercept)"]) + centre,
+    k         = setNames(exp(re - centre), ids),
+    coefs     = fixef(m)[live_predictors]
+  )
+}
+
+base <- fit_scale(df)
+cat(sprintf("baseline intercept (log seconds): %.4f\n", base$intercept))
+```
+
+### Does `lmer` stand in for `brms` here?
+
+The claim being leaned on is that the intercept's *response to cohort
+composition* is captured by a point estimate. Check it against the shipped
+model rather than asserting it: the shipped `PAR_MODEL` intercept was produced
+by the real brms pipeline on this same data.
+
+```{r brms-check}
+shipped <- readLines("../src/logic/difficulty.js")
+# The marker names appear in the surrounding prose too, so take the LAST match
+# of each — the markers themselves.
+i <- max(grep("PAR_MODEL:START", shipped))
+j <- max(grep("PAR_MODEL:END", shipped))
+# The first `intercept:` assignment inside the marked block. The comment
+# lines around it mention the word too, so match the assignment itself.
+shipped_intercept <- as.numeric(sub("^\\s*intercept:\\s*(-?[0-9.]+),.*$", "\\1",
+                                    grep("^\\s*intercept:", shipped[i:j], value = TRUE)[1]))
+
+cat(sprintf("shipped (brms) intercept: %.4f\nlmer intercept:           %.4f\ndifference:               %.4f log units (%.1f%% on par)\n",
+            shipped_intercept, base$intercept,
+            base$intercept - shipped_intercept,
+            100 * (exp(base$intercept - shipped_intercept) - 1)))
+```
+
+A gap here is expected and is not the thing under test — the two differ by
+priors, by the bias correction the pipeline applies afterwards, and by however
+much data has landed since the last refit. What matters is that the *shift*
+measured below is large or small relative to that gap.
+
+## The simulation
+
+Add `n_new` players, each `slowness`x the current average and each playing
+`n_plays` boards drawn from the boards already in the data, then refit and see
+where the intercept lands. Slowness is applied multiplicatively on the log
+scale, which is how the model represents a player, with realistic within-player
+noise so the new players are not implausibly consistent.
+
+```{r simulate}
+add_players <- function(data, n_new, slowness, n_plays, sigma = 0.25) {
+  boards <- data |> distinct(date, .keep_all = TRUE) |> select(-uid, -time, -bombHits, -bombBase, -hints, -pure_time)
+  # Predicted clean time for the average player on each board.
+  boards$mu <- predict(base$model, newdata = boards, re.form = NA)
+
+  map_dfr(seq_len(n_new), function(p) {
+    picks <- boards[sample(nrow(boards), n_plays, replace = nrow(boards) < n_plays), ]
+    picks |>
+      mutate(
+        uid       = paste0("sim_slow_", p),
+        pure_time = exp(mu + log(slowness) + rnorm(n(), 0, sigma)),
+        time      = pure_time, bombHits = 0, bombBase = 0, hints = 0
+      ) |>
+      select(-mu)
+  }) |>
+    bind_rows(data)
+}
+
+grid <- expand_grid(
+  n_new    = c(1, 3, 5),
+  slowness = c(1.3, 1.6, 2.0),
+  n_plays  = c(20, 60)
+)
+
+# THE REFERENCE COHORT is the CONSISTENT players, not everyone already in the
+# fit. Taking everyone folds in a marginal 6-play account whose handicap is
+# both extreme and badly estimated, which is what made the first run of this
+# document report the anchor as not working.
+plays    <- sort(table(df$uid), decreasing = TRUE)
+regulars <- names(plays)[plays >= 50]
+cat(sprintf("reference cohort: %d players with %s plays
+",
+            length(regulars), paste(plays[regulars], collapse = "/")))
+
+# The anchor's OWN baseline. Its absolute level is a one-time rescale and does
+# not matter; whether it MOVES is the whole question, so every anchored figure
+# is normalised by this.
+k_ref_base <- exp(mean(log(base$k[names(base$k) %in% regulars])))
+cat(sprintf("baseline k_ref: %.4f
+", k_ref_base))
+
+results <- pmap_dfr(grid, function(n_new, slowness, n_plays) {
+  sim <- add_players(df, n_new, slowness, n_plays)
+  f   <- fit_scale(sim)
+  tibble(
+    n_new = n_new, slowness = slowness, n_plays = n_plays,
+    intercept   = f$intercept,
+    par_inflate = exp(f$intercept - base$intercept),
+    # The proposed anchor: the reference cohort's own predicted time.
+    # k_ref is the geometric mean handicap of the players who were already
+    # in the fit before the newcomers arrived.
+    k_ref       = exp(mean(log(f$k[names(f$k) %in% regulars]))),
+  ) |>
+    mutate(anchored_inflate = par_inflate * k_ref / k_ref_base)
+})
+
+results |>
+  mutate(across(c(par_inflate, k_ref, anchored_inflate), ~ round(.x, 4))) |>
+  arrange(n_plays, slowness, n_new) |>
+  knitr::kable(caption = "Par inflation vs the reference-cohort-anchored scale")
+```
+
+## What it means for the ladder
+
+`par_inflate` is the factor every board's par is multiplied by, and therefore
+the factor its par-per-cell is multiplied by. Three consequences, all of which
+push the ladder the same way:
+
+```{r consequences}
+worst <- results |> slice_max(par_inflate, n = 1)
+
+pool <- fromJSON("data/ladder-pool-prices.json")   # written by the block below
+
+report <- results |>
+  rowwise() |>
+  mutate(
+    # A board that measures exactly at the endless floor today measures this
+    # afterwards; the floor admits everything down to 3.5 / inflate.
+    floor_admits_from = 3.5 / par_inflate,
+    # Boards that used to fit the 8-minute ceiling and no longer do.
+    ceiling_lost_pct  = 100 * mean(pool$par * par_inflate > 480) - 100 * mean(pool$par > 480)
+  ) |>
+  ungroup()
+
+report |>
+  select(n_new, slowness, n_plays, par_inflate, floor_admits_from, ceiling_lost_pct, anchored_inflate) |>
+  mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Ladder consequences: where the endless floor really sits, and what the par ceiling drops")
+```
+
+```{r plot, fig.width=8, fig.height=4}
+results |>
+  pivot_longer(c(par_inflate, anchored_inflate), names_to = "scale", values_to = "factor") |>
+  mutate(scale = recode(scale,
+                        par_inflate = "par (population-anchored)",
+                        anchored_inflate = "par x k_ref (cohort-anchored)")) |>
+  ggplot(aes(factor(slowness), factor, colour = scale, shape = factor(n_new))) +
+  geom_hline(yintercept = 1, linetype = 2, colour = "grey40") +
+  geom_point(size = 3, position = position_dodge(width = 0.4)) +
+  facet_wrap(~ n_plays, labeller = label_both) +
+  labs(x = "how much slower the newcomers are",
+       y = "scale factor vs today",
+       colour = NULL, shape = "new players") +
+  theme_minimal(base_size = 12)
+```
+
+## Reading it
+
+The dashed line is "the ruler did not move". The population-anchored series is
+what the ladder is sorted by today; the cohort-anchored series is what it would
+be sorted by under the proposed change. The gap between them is the whole
+argument.
+
+## What the numbers said
+
+Measured on the live data (399 usable rows, four players at 164/159/70/6
+plays, so three consistent ones):
+
+- **Par inflates materially.** Three newcomers at 1.6x playing 60 boards each
+  moves par by **x1.15**; the same three at 20 boards each move it x1.09; five
+  at 2.0x playing 60 boards move it **x1.46**.
+- **The endless floor is the sharpest consequence.** A 3.5 s/cell admission
+  floor would, after that middle scenario, actually be admitting boards worth
+  3.06 today — and 2.40 in the worst case. The zone softens by 13% to 31%
+  without anything about the boards changing.
+- **The par ceiling quietly deletes the large boards.** Nine percent of the
+  ladder pool crosses 480s in the middle scenario, twenty percent in the worst.
+- **The anchor holds.** `par x k_ref` moves between 0.93 and 1.08 across every
+  scenario, mostly inside two percent, against 8-46% unanchored.
+
+Three caveats, none of which change the direction:
+
+1. **These are an upper bound.** The `lmer` intercept sits well above the
+   shipped brms one, because the shipped figure carries priors, the pipeline's
+   bias correction, per-shape deviations and other data sources. The *shift* is
+   a within-estimator comparison and so is valid, but brms partial-pools
+   newcomers harder than ML does, so the real pipeline should move less than
+   this.
+2. **The sample is tiny.** Four players, one of them with six plays. The
+   baseline itself is fragile, which is part of why the ruler moves so easily.
+3. **The residual is real.** The anchor is not exact — a few percent of drift
+   survives it, because the newcomers change the feature coefficients slightly
+   as well as the intercept, and no intercept anchor can absorb that.

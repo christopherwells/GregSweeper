@@ -263,22 +263,29 @@ test('GOLDEN: the first endless block is fixed', () => {
   // Moved again on 2026-08-07 by his no-scaling ruling: with no difficulty
   // target there is no candidate window to rank against, so the draw reaches
   // the WHOLE pool and a different five come out.
+  // Moved again on 2026-08-08 by the pool rewrite: the endless zone now draws
+  // from the same stratified search the ladder does (a per-shape cap, so no
+  // shape holds a third of it), and the per-level hash pick became a DEALT
+  // DECK. Whole different pool, whole different draw.
   assert.deepEqual(got, [
-    '4.8.8:98c:33m:[wormhole+locked]',
-    'hex:72c:31m:[worm+compass+walls]',
-    'deltoidal:36c:12m:[sonar+walls]',
-    'cairo:110c:26m:[locked+sonar+walls]',
-    'rhombille:60c:22m:[locked+sonar+walls]',
+    'floret:84c:31m:[worm]',
+    'deltoidal:54c:18m:[]',
+    '4.8.8:77c:28m:[liar+locked+mirror]',
+    'hex:108c:38m:[liar]',
+    'cairo:112c:20m:[liar+wormhole+sonar]',
   ]);
+
 });
 
 test('a block mixes its board shapes rather than repeating one', () => {
-  // His ruling: mixed board lengths. The pool carries four shapes, and every
-  // block of five uses all four — measured on 80 consecutive blocks. That is
-  // a real bar rather than a formality: the pool is not uniform across
-  // difficulty (only floret and deltoidal reach past about 6 s/cell), so a
-  // draw ranked on price alone collapses to two shapes at the top of the
-  // climb, which is what ENDLESS_VARIETY_MAX_RATIO exists to prevent.
+  // His ruling: mixed board lengths. The pool carries all seven shapes, very
+  // unevenly — rhombille reaches the admission floor on two boards where
+  // cairo, floret and deltoidal reach it on sixteen each — so this is a real
+  // bar rather than a formality. It is met by the DECK (proportional fair
+  // scheduling, so every shape is spaced evenly across the whole cycle, and
+  // the cycle is padded to a whole number of blocks so the windows never
+  // drift on a wrap) plus the emitter's per-shape cap. Every greedy deck rule
+  // tried before that left a two-shape block within 400 blocks.
   const poolShapes = new Set(ENDLESS_SPECS.map((s) => s.shape)).size;
   for (let b = 0; b < 80; b++) {
     const start = ENDLESS_START_LEVEL + b * CHALLENGE_BLOCK_SIZE;

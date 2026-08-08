@@ -1,0 +1,14 @@
+base
+methods
+datasets
+utils
+grDevices
+graphics
+stats
+jsonlite
+dplyr
+tidyr
+purrr
+Matrix
+lme4
+ggplot2

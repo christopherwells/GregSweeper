@@ -30,3 +30,11 @@ scripts/par-experiment-*.csv
 # artifact; render locally to reproduce).
 scripts/fit-parlab-priors.html
 scripts/fit-parlab-priors_files/
+
+# The spec-search cache: ~4MB of local, resumable measurement state.
+# The POOL it produces (src/logic/challengePool.js) is the artifact that
+# ships; this is scratch, and the repo is served by GitHub Pages, so a
+# multi-megabyte derived file here is deployed weight for nothing.
+scripts/data/spec-search-cache.json
+scripts/intercept-sensitivity.html
+scripts/intercept-sensitivity_files/
