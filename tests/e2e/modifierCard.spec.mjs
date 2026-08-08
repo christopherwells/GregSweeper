@@ -9,6 +9,33 @@
 
 import { test, expect } from '@playwright/test';
 import { prepareInteractionSpec } from './helpers.mjs';
+import { challengeSpecForLevel, MOD_INTRO_BLOCKS, CHALLENGE_BLOCK_SIZE } from '../../src/logic/challenge250.js';
+import { buildTiling } from '../../src/logic/tilingGeometry.js';
+
+/**
+ * WHERE a modifier debuts is DERIVED from the pool now, not authored, so this
+ * file reads it rather than writing it down. Hardcoding the level is what
+ * broke these two specs when the ladder moved to a pool: sonar had been pinned
+ * to L76 on Paving Stones and compass to L91, and both levels now carry
+ * something else entirely.
+ */
+function debutOf(modifier) {
+  const block = Number(Object.entries(MOD_INTRO_BLOCKS).find(([, g]) => g === modifier)[0]);
+  const level = (block - 1) * CHALLENGE_BLOCK_SIZE + 1;
+  return { level, spec: challengeSpecForLevel(level) };
+}
+
+/**
+ * How many vertices the debut lattice's own cells have, taken from the
+ * geometry rather than written down. This is the non-vacuity guard: the square
+ * markup path renders no polygon at all, and a rectangle drawn through the new
+ * path would give four, so matching the real cell's vertex count proves the
+ * card drew THIS lattice and not merely some lattice.
+ */
+function vertexCounts(shape) {
+  const t = buildTiling(shape, 4, 4);
+  return [...new Set(t.cellVerts.map((v) => v.length))];
+}
 
 /** Open a ladder level and click through to the named modifier's own card. */
 async function openModifierCard(page, level, modifierName) {
@@ -33,20 +60,22 @@ async function openModifierCard(page, level, modifierName) {
   throw new Error(`never reached the ${modifierName} card at L${level}`);
 }
 
-test('REGRESSION: sonar debuts on Paving Stones and its card draws that lattice', async ({ page }) => {
-  await openModifierCard(page, 76, 'Sonar');
+test('REGRESSION: sonar debuts on a lattice and its card draws THAT lattice', async ({ page }) => {
+  const { level, spec } = debutOf('sonar');
+  test.skip(spec.shape === 'rect', 'sonar debuts on Classic in this pool — the square markup is correct there');
+  await openModifierCard(page, level, 'Sonar');
 
   const example = page.locator('#gimmick-intro-example');
   // The lattice diagram, not the square grid.
   await expect(example.locator('.gimmick-example-shape svg polygon').first()).toBeAttached();
   await expect(example.locator('.gimmick-example-grid')).toHaveCount(0);
 
-  // The pentagons are really pentagons: five vertices apiece. A square grid
-  // rendered as polygons would give four, so this cannot pass on the old
-  // markup or on a rectangle drawn through the new path.
+  // The cells are really that lattice's cells. Vertex counts come from the
+  // geometry, so this stays exact wherever sonar debuts and still cannot pass
+  // on the square markup (which draws no polygon) or on a rectangle.
   const sides = await example.locator('svg polygon').first()
     .evaluate((el) => el.getAttribute('points').trim().split(/\s+/).length);
-  expect(sides).toBe(5);
+  expect(vertexCounts(spec.shape)).toContain(sides);
 
   // The region is lit, and the copy no longer promises a 5x5 area outright.
   const lit = await example.locator('svg polygon[fill*="region-highlight"]').count();
@@ -54,14 +83,16 @@ test('REGRESSION: sonar debuts on Paving Stones and its card draws that lattice'
   await expect(page.locator('#gimmick-intro-desc')).not.toHaveText(/5×5 area centered/);
 });
 
-test('REGRESSION: compass debuts on Octagons and its card draws a real ray', async ({ page }) => {
-  await openModifierCard(page, 91, 'Compass');
+test('REGRESSION: compass debuts on a lattice and its card draws a real ray', async ({ page }) => {
+  const { level, spec } = debutOf('compass');
+  test.skip(spec.shape === 'rect', 'compass debuts on Classic in this pool — the square markup is correct there');
+  await openModifierCard(page, level, 'Compass');
 
   const example = page.locator('#gimmick-intro-example');
   await expect(example.locator('.gimmick-example-shape svg polygon').first()).toBeAttached();
 
-  // A ray of at least three cells, and an arrow from the 8-way set the
-  // Octagons lattice carries (the old copy promised rows and columns only).
+  // A ray of at least three cells, and an arrow from one of the direction
+  // sets a lattice can carry (the old copy promised rows and columns only).
   const lit = await example.locator('svg polygon[fill*="region-highlight"]').count();
   expect(lit).toBeGreaterThanOrEqual(3);
   await expect(example.locator('.ge-shape-compass')).toHaveText(/[←→↑↓↖↗↙↘]/);
