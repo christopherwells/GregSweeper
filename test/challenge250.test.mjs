@@ -1,8 +1,23 @@
-// Challenge 250 spec-table pins — the 50-block map (CHALLENGE_250_MAP.md,
-// Christopher's 2026-08-03 rulings) frozen as structure tests, so a table
-// edit that drifts from the map fails loudly. Generation/pricing proof
-// lives in scripts/validate-challenge250-specs.mjs (the 2s cap is a
-// measurement, not a unit test); this file pins what the table CLAIMS.
+// The Challenge ladder: authored opener (L1-25), the EMERGENT BRAID drawn
+// from the proven pool (L26-250), and the endless zone past the crown.
+//
+// What changed, and what this file therefore pins. The braid used to be a
+// hand-authored 45-block table, and it repeated: 250 levels carried 109
+// distinct boards, the worst spec appeared 8 times, and Christopher hit the
+// same one three times at L65-70. Blocks 6-50 are now DERIVED — each block
+// asks the pool what it can carry at that difficulty, a pending shape or
+// modifier debuts on the first block that can give it five distinct boards,
+// and nothing is ever drawn twice. So the tests that used to pin a fixed
+// block table now pin the PROPERTIES that table was written to have: the ramp
+// climbs, the band widens, every shape and modifier gets introduced and then
+// stays in the mix, and no board ever repeats.
+//
+// Uniqueness is judged on specFace throughout — what a player can tell apart
+// — never on specFingerprint, which separates dials nobody can see.
+//
+// Generation and pricing PROOF lives in
+// scripts/validate-challenge250-specs.mjs (the 2s cap is a measurement, not a
+// unit test); this file pins what the ladder CLAIMS.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -10,433 +25,417 @@ import assert from 'node:assert/strict';
 import {
   CHALLENGE_MAX_LEVEL, CHALLENGE_BLOCK_SIZE, CHALLENGE_BLOCK_COUNT,
   CHALLENGE_BLOCKS, TIER_PPC, challengeSpecForLevel, blockStartLevel,
-  ppcBandFor, specFingerprint, OPENER_MIN_DEDUCTIONS,
-  MOD_INTRO_BLOCKS, SHAPE_INTRO_BLOCKS,
+  specFace, specFingerprint, ppcBandFor,
+  PAR_CEILING_SECONDS, GEN_CAP_MS,
+  MOD_INTRO_BLOCKS, SHAPE_INTRO_BLOCKS, UNINTRODUCED,
+  BRAID_START_LEVEL, BRAID_START_BLOCK, braidTargetPpc, braidBand,
+  ENDLESS_START_LEVEL, endlessSpecForLevel,
 } from '../src/logic/challenge250.js';
-import { buildTiling } from '../src/logic/tilingGeometry.js';
-import { generateTilingBoard, TILING_SAFE_GIMMICKS } from '../src/logic/tilingGenerator.js';
+import { LADDER_POOL } from '../src/logic/challengePool.js';
 import { buildChallenge250Board, challengeBoardSeed } from '../src/logic/challenge250Builder.js';
+import { buildTiling, TILING_TYPES } from '../src/logic/tilingGeometry.js';
+import { generateTilingBoard, TILING_SAFE_GIMMICKS } from '../src/logic/tilingGenerator.js';
 
-const LADDER_MODIFIERS = ['walls', 'liar', 'mystery', 'locked', 'wormhole', 'mirror', 'sonar', 'compass', 'worm'];
-const LAVES = ['cairo', 'floret', 'rhombille', 'deltoidal'];
+const ladder = () => Array.from({ length: CHALLENGE_MAX_LEVEL }, (_, i) => challengeSpecForLevel(i + 1));
+const braid = () => ladder().slice(BRAID_START_LEVEL - 1);
+const ALL_SHAPES = ['rect', ...TILING_TYPES];
+const ALL_MODS = ['walls', 'liar', 'mystery', 'locked', 'wormhole', 'mirror', 'sonar', 'compass', 'worm'];
 
-const allSpecs = [];
-for (let lv = 1; lv <= CHALLENGE_MAX_LEVEL; lv++) allSpecs.push(challengeSpecForLevel(lv));
+function firstLevelOf(block) { return (block - 1) * CHALLENGE_BLOCK_SIZE + 1; }
+function levelsOfBlock(block) {
+  const first = firstLevelOf(block);
+  return Array.from({ length: CHALLENGE_BLOCK_SIZE }, (_, i) => challengeSpecForLevel(first + i));
+}
 
-test('ladder structure: 250 authored levels, 50 blocks of 5, unbounded above', () => {
+// ── The headline: nothing repeats ──────────────────────────────────────
+
+test('REGRESSION: all 250 levels are distinct boards (his L65-70 report)', () => {
+  const seen = new Map();
+  for (const s of ladder()) {
+    const f = specFace(s);
+    assert.equal(seen.has(f), false,
+      `L${s.level} repeats the board first seen at L${seen.get(f)}: ${f}`);
+    seen.set(f, s.level);
+  }
+  assert.equal(seen.size, CHALLENGE_MAX_LEVEL);
+});
+
+test('the distinctness check is NOT vacuous: specFace ignores what a player cannot see', () => {
+  // A face must COLLAPSE the dials, or "250 distinct faces" would be a claim
+  // about gimmickLevel rather than about boards. The authored table this
+  // replaced reported 130 distinct fingerprints over 109 distinct boards, so
+  // a fingerprint-based check would have passed while repeating 21 of them.
+  const base = { shape: 'rect', rows: 9, cols: 9, mines: 16, gimmicks: ['walls', 'liar'] };
+  const a = { ...base, gimmickLevel: 63, wallSegments: 2 };
+  const b = { ...base, gimmickLevel: 64, wallSegments: 3, constructive: true };
+  assert.equal(specFace(a), specFace(b));
+  assert.notEqual(specFingerprint(a), specFingerprint(b));
+  // Modifier ORDER is not a difference either.
+  assert.equal(specFace({ ...base, gimmicks: ['liar', 'walls'] }), specFace(a));
+
+  // And no single (shape, modifier set) family is big enough to have carried
+  // the ladder alone, so distinctness is a constraint the assignment actually
+  // had to satisfy rather than one the pool hands out for free.
+  const families = new Map();
+  for (const e of LADDER_POOL) {
+    const k = `${e.shape}|${[...e.gimmicks].sort().join('+')}`;
+    families.set(k, (families.get(k) || 0) + 1);
+  }
+  assert.ok(Math.max(...families.values()) < CHALLENGE_MAX_LEVEL,
+    'a single family could supply the whole ladder — the check proves nothing');
+});
+
+// ── Representation: his ruling that the search must not default ────────
+
+test('REPRESENTATION: every shape and every modifier reaches the ladder', () => {
+  // His ruling, 2026-08-08: "I would like to see somewhat equal
+  // representation of gimmicks, tilings, etc. I do not want it to default to
+  // classic compass boards or something when there is a ton of space to
+  // explore here."
+  const shapes = new Map();
+  const mods = new Map();
+  for (const s of ladder()) {
+    shapes.set(s.shape, (shapes.get(s.shape) || 0) + 1);
+    for (const g of s.gimmicks) mods.set(g, (mods.get(g) || 0) + 1);
+  }
+  for (const shape of ALL_SHAPES) {
+    assert.ok((shapes.get(shape) || 0) >= 8,
+      `${shape} appears on only ${shapes.get(shape) || 0} levels`);
+  }
+  for (const g of ALL_MODS) {
+    assert.ok((mods.get(g) || 0) >= 8,
+      `${g} appears on only ${mods.get(g) || 0} levels`);
+  }
+  // No shape may run away with the ladder either. Seven shapes over 225 braid
+  // levels is ~32 each; a third of the whole ladder is the bar for "this
+  // defaulted", and rect legitimately runs ahead because it owns the 25
+  // authored openers outright.
+  for (const [shape, n] of shapes) {
+    assert.ok(n <= CHALLENGE_MAX_LEVEL / 3,
+      `${shape} carries ${n} of ${CHALLENGE_MAX_LEVEL} levels — the ladder defaulted to it`);
+  }
+});
+
+test('nothing is left unintroduced', () => {
+  // A shape or modifier stranded here never appears on the ladder at all.
+  // That is a POOL problem — search wider — never something to route around
+  // in the assignment, which is why this asserts on the assignment's own
+  // honest report of what it could not place.
+  assert.deepEqual([...UNINTRODUCED.shapes], []);
+  assert.deepEqual([...UNINTRODUCED.gimmicks], []);
+});
+
+// ── Emergent introductions ─────────────────────────────────────────────
+
+test('every shape and modifier is introduced exactly once, on its own block', () => {
+  const introduced = [
+    ...Object.entries(SHAPE_INTRO_BLOCKS).map(([b, k]) => [Number(b), k]),
+    ...Object.entries(MOD_INTRO_BLOCKS).map(([b, k]) => [Number(b), k]),
+  ];
+  const blocks = introduced.map(([b]) => b);
+  assert.equal(new Set(blocks).size, blocks.length, 'two things debut on one block');
+  const keys = introduced.map(([, k]) => k);
+  assert.equal(new Set(keys).size, keys.length, 'something debuts twice');
+
+  // Every tiling and every modifier is covered; rect needs no debut because
+  // the opener IS Classic.
+  assert.deepEqual(Object.values(SHAPE_INTRO_BLOCKS).slice().sort(), TILING_TYPES.slice().sort());
+  assert.deepEqual(Object.values(MOD_INTRO_BLOCKS).slice().sort(), ALL_MODS.slice().sort());
+});
+
+test('an intro block is five levels that ALL carry the new thing', () => {
+  for (const [block, shape] of Object.entries(SHAPE_INTRO_BLOCKS)) {
+    const levels = levelsOfBlock(Number(block));
+    assert.equal(levels.length, CHALLENGE_BLOCK_SIZE);
+    for (const s of levels) {
+      assert.equal(s.shape, shape, `block ${block} introduces ${shape} but L${s.level} is ${s.shape}`);
+    }
+  }
+  for (const [block, mod] of Object.entries(MOD_INTRO_BLOCKS)) {
+    if (Number(block) < BRAID_START_BLOCK) continue;   // the opener's three are authored
+    for (const s of levelsOfBlock(Number(block))) {
+      assert.ok(s.gimmicks.includes(mod),
+        `block ${block} introduces ${mod} but L${s.level} does not carry it`);
+    }
+  }
+});
+
+test('nothing appears BEFORE its introduction', () => {
+  const shapeIntroLevel = {};
+  for (const [b, k] of Object.entries(SHAPE_INTRO_BLOCKS)) shapeIntroLevel[k] = firstLevelOf(Number(b));
+  const modIntroLevel = {};
+  for (const [b, k] of Object.entries(MOD_INTRO_BLOCKS)) modIntroLevel[k] = firstLevelOf(Number(b));
+
+  for (const s of ladder()) {
+    const si = shapeIntroLevel[s.shape];
+    if (si != null) assert.ok(s.level >= si, `${s.shape} appears at L${s.level}, before its L${si} debut`);
+    for (const g of s.gimmicks) {
+      const mi = modIntroLevel[g];
+      if (mi != null) assert.ok(s.level >= mi, `${g} appears at L${s.level}, before its L${mi} debut`);
+    }
+  }
+});
+
+test('after its five levels, a thing rejoins the general draw', () => {
+  // His ruling: "once a board or gimmick is introduced, it gets played 5
+  // times, then any gimmick/shape can be brought in". An introduction is a
+  // door, not a chapter that closes behind it.
+  for (const [block, shape] of Object.entries(SHAPE_INTRO_BLOCKS)) {
+    const after = ladder().filter((s) => s.block > Number(block) && s.shape === shape);
+    assert.ok(after.length >= 3, `${shape} is barely seen again after block ${block}`);
+  }
+  for (const [block, mod] of Object.entries(MOD_INTRO_BLOCKS)) {
+    const after = ladder().filter((s) => s.block > Number(block) && s.gimmicks.includes(mod));
+    assert.ok(after.length >= 3, `${mod} is barely seen again after block ${block}`);
+  }
+});
+
+// ── The ramp and the widening band ─────────────────────────────────────
+
+test('the difficulty ramp climbs from the opener exit to the T12 summit', () => {
+  assert.ok(braidTargetPpc(BRAID_START_LEVEL) < braidTargetPpc(CHALLENGE_MAX_LEVEL));
+  assert.equal(Number(braidTargetPpc(CHALLENGE_MAX_LEVEL).toFixed(2)), TIER_PPC[12]);
+  for (let lv = BRAID_START_LEVEL; lv < CHALLENGE_MAX_LEVEL; lv++) {
+    assert.ok(braidTargetPpc(lv + 1) > braidTargetPpc(lv), `ramp stalls at L${lv}`);
+  }
+});
+
+test('the band WIDENS as the ladder climbs (his "decently wide but every increased width")', () => {
+  const width = (lv) => { const [lo, hi] = braidBand(lv); return (hi - lo) / braidTargetPpc(lv); };
+  assert.ok(width(CHALLENGE_MAX_LEVEL) > width(BRAID_START_LEVEL) * 2);
+  for (let lv = BRAID_START_LEVEL; lv < CHALLENGE_MAX_LEVEL - 5; lv += 5) {
+    assert.ok(width(lv + 5) >= width(lv) - 1e-9, `band narrows at L${lv}`);
+  }
+});
+
+test('measured difficulty actually rises across the braid', () => {
+  // The band is wide and the draw is varied, so no single level is guaranteed
+  // harder than the one before it — that is the design. What must hold is
+  // that the CLIMB is real, checked on medians a third of the ladder apart.
+  const med = (arr) => arr.slice().sort((a, b) => a - b)[Math.floor(arr.length / 2)];
+  const b = braid();
+  const third = Math.floor(b.length / 3);
+  const early = med(b.slice(0, third).map((s) => s.ppc));
+  const mid = med(b.slice(third, 2 * third).map((s) => s.ppc));
+  const late = med(b.slice(2 * third).map((s) => s.ppc));
+  assert.ok(mid > early * 1.2, `mid ${mid} vs early ${early}`);
+  assert.ok(late > mid * 1.2, `late ${late} vs mid ${mid}`);
+});
+
+test('every braid level lands within reach of its own target', () => {
+  // Deliberately NOT the band itself: the assignment may widen when the pool
+  // is thin at a difficulty, and that is the honest failure mode — a board
+  // off target beats a repeat. What it may never do is hand out something
+  // from a different part of the ladder entirely.
+  for (const s of braid()) {
+    const t = braidTargetPpc(s.level);
+    const ratio = s.ppc / t;
+    assert.ok(ratio > 0.3 && ratio < 3.3,
+      `L${s.level} prices ${s.ppc.toFixed(2)} against a ${t.toFixed(2)} target`);
+  }
+});
+
+// ── Structure that survives the rewrite ────────────────────────────────
+
+test('ladder structure: 250 levels, 50 blocks of 5, unbounded above', () => {
   assert.equal(CHALLENGE_MAX_LEVEL, 250);
   assert.equal(CHALLENGE_BLOCK_SIZE, 5);
   assert.equal(CHALLENGE_BLOCK_COUNT, 50);
   assert.equal(CHALLENGE_BLOCKS.length, 50);
-  for (let lv = 1; lv <= 250; lv++) {
-    const spec = challengeSpecForLevel(lv);
-    assert.equal(spec.level, lv);
-    assert.equal(spec.block, Math.floor((lv - 1) / 5) + 1);
-  }
-  // Below 1 still clamps. ABOVE 250 no longer does: the endless zone took
-  // over that range, and its own contract lives in test/challengeEndless.
-  assert.equal(challengeSpecForLevel(0).level, 1);
-  assert.equal(challengeSpecForLevel(999).level, 999);
-  assert.equal(challengeSpecForLevel(999).endless, true);
-  assert.equal(blockStartLevel(1), 1);
-  assert.equal(blockStartLevel(25), 21);
-  assert.equal(blockStartLevel(26), 26);
-  assert.equal(blockStartLevel(250), 246);
-  assert.equal(blockStartLevel(999), 996);
-});
-
-test('every shape stays in the mix after its intro, and all seven reach the finale', () => {
-  // His ask (2026-08-04): "I hope that all shapes are being incorporated into
-  // the mix in challenge mode after their entry time." They are, and this
-  // pins it — a re-authored block could otherwise quietly retire a lattice
-  // to its own intro and nothing would fail.
-  const firstBlock = {};
-  const blocksOf = {};
   for (let lv = 1; lv <= CHALLENGE_MAX_LEVEL; lv++) {
-    const spec = challengeSpecForLevel(lv);
-    (blocksOf[spec.shape] ||= new Set()).add(spec.block);
-    if (!(spec.shape in firstBlock)) firstBlock[spec.shape] = spec.block;
+    const s = challengeSpecForLevel(lv);
+    assert.equal(s.level, lv);
+    assert.equal(s.block, Math.floor((lv - 1) / CHALLENGE_BLOCK_SIZE) + 1);
+    assert.ok(s.cells > 0 && s.mines > 0);
   }
-
-  const shapes = Object.keys(firstBlock);
-  assert.equal(shapes.length, 7, `the ladder uses ${shapes.length} shapes, expected all seven`);
-
-  for (const shape of shapes) {
-    const blocks = [...blocksOf[shape]].sort((a, b) => a - b);
-    const after = blocks.filter((b) => b > firstBlock[shape]);
-    // Kites introduces last (block 38) and still returns four times.
-    assert.ok(after.length >= 4,
-      `${shape} appears only ${after.length} time(s) after its block-${firstBlock[shape]} intro`);
-
-    // And it never disappears for too long a stretch. Measured worst is
-    // Octagons at 13 blocks (block 29 to 42); the bar sits just above it so
-    // a re-author that opens a bigger hole fails here.
-    let longestGap = 0;
-    let prev = firstBlock[shape];
-    for (const b of after) { longestGap = Math.max(longestGap, b - prev); prev = b; }
-    longestGap = Math.max(longestGap, CHALLENGE_BLOCK_COUNT - prev);
-    assert.ok(longestGap <= 14,
-      `${shape} vanishes for ${longestGap} blocks after its intro`);
-  }
-
-  // The three finale gauntlets between them must field every shape, which is
-  // what makes the summit read as a tour rather than a favourite.
-  const finale = new Set();
-  for (let lv = 236; lv <= CHALLENGE_MAX_LEVEL; lv++) finale.add(challengeSpecForLevel(lv).shape);
-  assert.equal(finale.size, 7, `the finale fields ${finale.size} shapes: ${[...finale].join(', ')}`);
+  // Past the crown the endless zone takes over, with no upper clamp.
+  assert.equal(challengeSpecForLevel(ENDLESS_START_LEVEL).level, ENDLESS_START_LEVEL);
+  assert.equal(challengeSpecForLevel(9999).endless, true);
 });
 
 test('tier ladder anchors are the adopted numbers (T1 0.55 → T12 3.60)', () => {
-  assert.deepEqual(TIER_PPC, {
-    1: 0.55, 2: 0.65, 3: 0.75, 4: 0.90, 5: 1.05, 6: 1.25,
-    7: 1.50, 8: 1.80, 9: 2.15, 10: 2.55, 11: 2.90, 12: 3.60,
-  });
-});
-
-test('block → tier/shape table matches the map', () => {
-  const expected = [
-    // [block, tier, shape]
-    [1, 1, 'rect'], [2, 1, 'rect'], [3, 2, 'rect'], [4, 2, 'rect'], [5, 3, 'rect'],
-    [6, 2, 'hex'], [7, 3, 'hex'], [8, 3, 'rect'], [9, 3, '4.8.8'], [10, 4, '4.8.8'],
-    [11, 4, 'hex'], [12, 4, 'rhombille'], [13, 5, 'rhombille'], [14, 5, 'rect'], [15, 5, 'cairo'],
-    [16, 6, 'cairo'], [17, 6, '4.8.8'], [18, 6, 'rhombille'], [19, 7, '4.8.8'], [20, 7, 'rect'],
-    [21, 7, 'floret'], [22, 8, 'hex'], [23, 8, 'cairo'], [24, 8, 'floret'], [25, 8, 'rhombille'],
-    [26, 9, 'rect'], [27, 9, 'hex'], [28, 9, 'rhombille'], [29, 9, '4.8.8'], [30, 9, 'rhombille'],
-    [31, 10, 'hex'], [32, 10, 'floret'], [33, 10, 'rect'], [34, 10, 'floret'], [35, 10, 'cairo'],
-    [36, 11, 'hex'], [37, 11, 'floret'], [38, 9, 'deltoidal'], [39, 11, 'deltoidal'], [40, 11, 'rect'],
-    [41, 11, 'rhombille'], [42, 12, '4.8.8'], [43, 12, 'cairo'], [44, 12, 'deltoidal'], [45, 12, 'hex'],
-    [46, 12, 'rect'], [47, 12, 'mixed'], [48, 12, 'gauntlet'], [49, 12, 'gauntlet'], [50, 12, 'gauntlet'],
-  ];
-  for (const [block, tier, shape] of expected) {
-    const b = CHALLENGE_BLOCKS[block - 1];
-    assert.equal(b.block, block);
-    assert.equal(b.tier, tier, `block ${block} tier`);
-    assert.equal(b.shape, shape, `block ${block} shape`);
-  }
-});
-
-test('plateau targets: non-dip braid blocks sit AT their tier anchor; dips sit at the shape floor', () => {
-  const dips = CHALLENGE_BLOCKS.filter((b) => b.dip).map((b) => b.block);
-  assert.deepEqual(dips, [6, 9, 12, 15, 21, 38]);
-  for (const b of CHALLENGE_BLOCKS) {
-    if (b.ppc === null) { assert.ok(b.block <= 5, `only openers skip ppc (block ${b.block})`); continue; }
-    if (b.dip) {
-      // A dip prices at the shape's gentlest proven config. Cubes' floor
-      // (0.98) sits a hair ABOVE its T4 label — the map's own note — so
-      // the pin is "within the label tier's band ceiling or below".
-      assert.ok(b.ppc <= TIER_PPC[b.tier] * 1.11, `dip block ${b.block} above its label band`);
-    } else {
-      assert.equal(b.ppc, TIER_PPC[b.tier], `block ${b.block} off its tier anchor`);
-    }
-  }
-});
-
-test('shape intros: 6/9/12/15/21/38, plain with a fifth-level tease', () => {
-  const intros = [
-    [6, 'hex', 'walls'], [9, '4.8.8', 'mystery'], [12, 'rhombille', 'liar'],
-    [15, 'cairo', 'locked'], [21, 'floret', 'walls'], [38, 'deltoidal', 'mystery'],
-  ];
-  for (const [block, shape, tease] of intros) {
-    const specs = allSpecs.filter((s) => s.block === block);
-    for (let i = 0; i < 4; i++) {
-      assert.equal(specs[i].shape, shape);
-      assert.equal(specs[i].gimmicks.length, 0, `block ${block} L${i + 1} must be plain`);
-    }
-    assert.deepEqual(specs[4].gimmicks, [tease], `block ${block} tease`);
-  }
-});
-
-test('modifier intro venues match the map', () => {
-  const intros = [
-    [2, 'walls', 'rect'], [3, 'liar', 'rect'], [4, 'mystery', 'rect'],
-    [7, 'locked', 'hex'], [10, 'wormhole', '4.8.8'], [13, 'mirror', 'rhombille'],
-    [16, 'sonar', 'cairo'], [19, 'compass', '4.8.8'], [22, 'worm', 'hex'],
-  ];
-  for (const [block, mod, shape] of intros) {
-    const specs = allSpecs.filter((s) => s.block === block);
-    for (const s of specs) {
-      assert.equal(s.shape, shape, `block ${block} venue`);
-      assert.deepEqual(s.gimmicks, [mod], `block ${block} carries only its intro modifier`);
-    }
-  }
-});
-
-test('the five reprises sit where the map placed them', () => {
-  const reprises = [
-    [25, 'wormhole', 'rhombille'], [28, 'sonar', 'rhombille'],
-    [31, 'compass', 'hex'], [34, 'worm', 'floret'], [37, 'compass', 'floret'],
-  ];
-  for (const [block, mod, shape] of reprises) {
-    const specs = allSpecs.filter((s) => s.block === block);
-    for (const s of specs) {
-      assert.equal(s.shape, shape, `reprise block ${block} shape`);
-      assert.deepEqual(s.gimmicks, [mod], `reprise block ${block} is single-modifier`);
-    }
-  }
-});
-
-test('stacks reach 3 only from block 40; never more than 3', () => {
-  let sawTriple = false;
-  for (const s of allSpecs) {
-    assert.ok(s.gimmicks.length <= 3, `L${s.level} stacks past 3`);
-    if (s.gimmicks.length === 3) {
-      assert.ok(s.block >= 40, `3-stack before block 40 (L${s.level})`);
-      sawTriple = true;
-    }
-  }
-  assert.ok(sawTriple, 'the 3-stack debut exists');
-  assert.ok(allSpecs.filter((s) => s.block === 40).some((s) => s.gimmicks.length === 3),
-    'block 40 is the 3-stack debut');
+  assert.equal(TIER_PPC[1], 0.55);
+  assert.equal(TIER_PPC[12], 3.60);
+  for (let t = 2; t <= 12; t++) assert.ok(TIER_PPC[t] > TIER_PPC[t - 1]);
 });
 
 test('pressure plates and mineShift never appear on the ladder', () => {
-  for (const s of allSpecs) {
-    assert.ok(!s.gimmicks.includes('pressurePlate'), `L${s.level} carries a plate`);
-    assert.ok(!s.gimmicks.includes('mineShift'), `L${s.level} carries mineShift`);
-    for (const g of s.gimmicks) {
-      assert.ok(LADDER_MODIFIERS.includes(g), `L${s.level} unknown modifier ${g}`);
-    }
+  for (const s of ladder()) {
+    assert.equal(s.gimmicks.includes('pressurePlate'), false, `L${s.level}`);
+    assert.equal(s.gimmicks.includes('mineShift'), false, `L${s.level}`);
   }
-});
-
-test('gauntlet blocks run the mapped shape orders; L250 is the 3-stacked Kites crown', () => {
-  const b48 = allSpecs.filter((s) => s.block === 48).map((s) => s.shape);
-  const b49 = allSpecs.filter((s) => s.block === 49).map((s) => s.shape);
-  const b50 = allSpecs.filter((s) => s.block === 50).map((s) => s.shape);
-  assert.deepEqual(b48, ['rect', 'hex', '4.8.8', 'cairo', 'rhombille']);
-  assert.deepEqual(b49, ['floret', 'deltoidal', 'rect', 'rhombille', 'cairo']);
-  const summit = new Set([...b48, ...b49, ...b50]);
-  assert.equal(summit.size, 7, 'all seven shapes appear across the summit trio');
-  const crown = challengeSpecForLevel(250);
-  assert.equal(crown.shape, 'deltoidal');
-  assert.equal(crown.gimmicks.length, 3, 'the crown is 3-stacked');
 });
 
 test('the L1-10 ramp: boards and deduction caps both climb, and L1 is a handful of clicks', () => {
-  // His ruling 2026-08-04 ("when I meant lvl 1 is a few clicks, I meant
-  // just a few clicks"). A FLOOR cannot make a board short — only a cap
-  // can — so the ramp levels carry maxDeductions and it loosens monotonically.
-  const ramp = allSpecs.filter((s) => s.level <= 10);
-  assert.equal(ramp.length, 10);
-  for (const s of ramp) {
-    assert.ok(s.maxDeductions > 0, `L${s.level} must carry a deduction cap`);
-    assert.ok(s.maxDeductions >= s.minDeductions, `L${s.level} cap under its own floor`);
-  }
-  assert.equal(ramp[0].maxDeductions, 5, 'L1 is capped at five deductions');
-  assert.equal(ramp[0].cells, 25, 'L1 is a 5x5');
+  const ramp = ladder().slice(0, 10);
+  assert.equal(ramp[0].cells, 25);
+  assert.equal(ramp[0].maxDeductions, 5);
   for (let i = 1; i < ramp.length; i++) {
-    assert.ok(ramp[i].maxDeductions >= ramp[i - 1].maxDeductions,
-      `L${ramp[i].level} caps tighter than L${ramp[i - 1].level} — the ramp must not step down`);
-    assert.ok(ramp[i].cells >= ramp[i - 1].cells,
-      `L${ramp[i].level} is smaller than L${ramp[i - 1].level}`);
+    assert.ok(ramp[i].cells >= ramp[i - 1].cells, `L${i + 1} shrank`);
+    assert.ok(ramp[i].maxDeductions >= ramp[i - 1].maxDeductions, `L${i + 1} cap fell`);
   }
-  assert.ok(ramp[9].cells > ramp[0].cells, 'the board grows across the ramp');
+  for (const s of ramp) assert.equal(s.shape, 'rect');
 });
 
-test('the ramp keeps climbing through the liar intro, then hands off uncapped', () => {
-  // His follow-up 2026-08-04: "the ramp is fine, but maybe smooth out
-  // the 10 to 15 a little." L10 lands around 16 deductions and block 3
-  // used to open near 24 on a 9x9 — a step that read as a wall right
-  // where a new modifier arrives. The caps now continue across L11-14
-  // and stop there.
-  const capped = allSpecs.filter((s) => s.maxDeductions > 0).map((s) => s.level);
-  assert.deepEqual(capped, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
-    'exactly the opening ramp carries caps');
-  for (let lv = 2; lv <= 14; lv++) {
-    assert.ok(challengeSpecForLevel(lv).maxDeductions >= challengeSpecForLevel(lv - 1).maxDeductions,
-      `L${lv} caps tighter than L${lv - 1} — the ramp must not step down`);
+test('opener blocks are Classic with a deduction floor; the braid never carries it', () => {
+  for (const s of ladder().slice(0, 25)) {
+    assert.equal(s.shape, 'rect', `L${s.level} is not a Classic opener`);
+    assert.ok(s.minDeductions >= 3, `L${s.level} has no deduction floor`);
   }
-  // L15 closes the block uncapped, so the handoff into the ordinary
-  // floor-only regime happens INSIDE a block rather than at its edge.
-  assert.equal(challengeSpecForLevel(15).maxDeductions, undefined);
-});
-
-test('opener blocks are rect-only with the deduction floor; the braid never carries it', () => {
-  for (const s of allSpecs) {
-    if (s.block <= 5) {
-      assert.equal(s.shape, 'rect', `opener L${s.level} must be Classic`);
-      assert.equal(s.minDeductions, OPENER_MIN_DEDUCTIONS, `opener L${s.level} floor`);
-      assert.equal(s.ppc, null);
-      assert.equal(ppcBandFor(s), null);
-    } else {
-      assert.equal(s.minDeductions, undefined, `braid L${s.level} must not carry the opener floor`);
-      assert.ok(s.ppc > 0);
-      const band = ppcBandFor(s);
-      assert.ok(band[0] < s.ppc && s.ppc < band[1]);
-    }
+  for (const s of braid()) {
+    assert.equal(s.minDeductions, undefined,
+      `L${s.level} carries the opener's deduction floor into the braid`);
+    assert.equal(s.maxDeductions, undefined, `L${s.level} caps deductions outside the ramp`);
   }
 });
 
 test('pinned cell counts match buildTiling; rect cells are rows×cols', () => {
-  const seen = new Set();
-  for (const s of allSpecs) {
+  for (const s of ladder()) {
     if (s.shape === 'rect') {
-      assert.equal(s.cells, s.rows * s.cols);
-      continue;
+      assert.equal(s.cells, s.rows * s.cols, `L${s.level}`);
+    } else {
+      assert.equal(s.cells, buildTiling(s.shape, s.M, s.N).total, `L${s.level} ${s.shape}`);
     }
-    const key = `${s.shape}:${s.M}x${s.N}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    assert.equal(buildTiling(s.shape, s.M, s.N).total, s.cells,
-      `${key} pinned cells drifted from the builder`);
+    assert.ok(s.mines < s.cells, `L${s.level} has more mines than cells`);
   }
 });
 
-test('static par sanity: authored target × cells stays inside the 8-minute ceiling', () => {
-  for (const s of allSpecs) {
-    if (s.ppc == null) continue;
-    assert.ok(s.ppc * s.cells <= 480, `L${s.level} targets past the ceiling (${(s.ppc * s.cells).toFixed(0)}s)`);
-  }
-});
-
-test('every ladder modifier appears again after its intro block', () => {
-  const introBlock = {
-    walls: 2, liar: 3, mystery: 4, locked: 7, wormhole: 10,
-    mirror: 13, sonar: 16, compass: 19, worm: 22,
-  };
-  for (const [mod, intro] of Object.entries(introBlock)) {
-    const later = allSpecs.some((s) => s.block > intro && s.gimmicks.includes(mod));
-    assert.ok(later, `${mod} never returns after its intro`);
+test('static par sanity: every braid level stays inside the 8-minute ceiling', () => {
+  for (const s of braid()) {
+    assert.ok(s.ppc * s.cells <= PAR_CEILING_SECONDS,
+      `L${s.level} targets ${(s.ppc * s.cells).toFixed(0)}s`);
   }
 });
 
 test('gimmick vocabulary and dials: tiling mods are tiling-safe, gimmickLevel stays in old-ladder units', () => {
-  for (const s of allSpecs) {
-    if (s.gimmicks.length > 0) {
-      assert.ok(s.gimmickLevel >= 11 && s.gimmickLevel <= 120,
-        `L${s.level} gimmickLevel ${s.gimmickLevel} outside old-ladder units`);
-    }
+  for (const s of ladder()) {
     if (s.shape !== 'rect') {
       for (const g of s.gimmicks) {
-        assert.ok(TILING_SAFE_GIMMICKS.includes(g), `L${s.level} ${g} not tiling-safe`);
+        assert.ok(TILING_SAFE_GIMMICKS.includes(g), `L${s.level}: ${g} is not tiling-safe`);
       }
-      assert.equal(s.wallSegments, undefined, 'wallSegments is a rect-only dial');
-    } else if (s.gimmicks.includes('walls')) {
-      assert.ok(s.wallSegments >= 1, `rect walls spec L${s.level} needs wallSegments`);
+    }
+    if (s.gimmicks.length) {
+      assert.ok(s.gimmickLevel >= 11 && s.gimmickLevel <= 120,
+        `L${s.level}: gimmickLevel ${s.gimmickLevel} is outside old-ladder units`);
     }
   }
 });
 
-test('sub-threshold Laves specs route constructive', () => {
-  for (const s of allSpecs) {
-    if (s.shape === 'rect' || !LAVES.includes(s.shape)) continue;
-    const density = s.mines / s.cells;
-    if (density < 0.22) {
+test('sub-threshold tiling specs route constructive, and rect never does', () => {
+  for (const s of ladder()) {
+    if (s.shape === 'rect') { assert.notEqual(s.constructive, true, `L${s.level}`); continue; }
+    if (s.mines / s.cells < 0.22) {
       assert.equal(s.constructive, true,
-        `L${s.level} ${s.shape} at ${(density * 100).toFixed(1)}% needs constructive: true`);
+        `L${s.level} at density ${(s.mines / s.cells).toFixed(3)} needs the constructive placer`);
     }
   }
 });
 
-test('tiers never step down across blocks except at the six intro dips', () => {
-  for (let b = 2; b <= 50; b++) {
-    const prev = CHALLENGE_BLOCKS[b - 2];
-    const cur = CHALLENGE_BLOCKS[b - 1];
-    if (cur.dip) continue;
-    // The block after a dip returns to the line; compare against the last
-    // non-dip block's tier.
-    let back = b - 2;
-    while (back >= 0 && CHALLENGE_BLOCKS[back].dip) back--;
-    const anchor = back >= 0 ? CHALLENGE_BLOCKS[back].tier : prev.tier;
-    assert.ok(cur.tier >= anchor, `block ${b} steps the plateau down (T${cur.tier} after T${anchor})`);
+test('the pool is priced within the ladder\'s own rulings', () => {
+  assert.ok(LADDER_POOL.length > CHALLENGE_MAX_LEVEL,
+    `the pool (${LADDER_POOL.length}) is smaller than the ladder it feeds`);
+  for (const e of LADDER_POOL) {
+    assert.ok(e.ppc > 0, 'a pool entry has no measured price');
+    assert.ok(e.ppc * e.cells <= PAR_CEILING_SECONDS,
+      `pool entry ${specFace(e)} prices ${(e.ppc * e.cells).toFixed(0)}s`);
+    assert.ok(ALL_SHAPES.includes(e.shape));
+    for (const g of e.gimmicks) assert.ok(ALL_MODS.includes(g), `${g} is not a ladder modifier`);
   }
+  assert.equal(new Set(LADDER_POOL.map(specFace)).size, LADDER_POOL.length,
+    'the pool itself carries duplicate faces');
 });
 
-test('the intro-block exports match the levels table (checkpoint labels read these)', () => {
-  assert.deepEqual(MOD_INTRO_BLOCKS, {
-    2: 'walls', 3: 'liar', 4: 'mystery', 7: 'locked', 10: 'wormhole',
-    13: 'mirror', 16: 'sonar', 19: 'compass', 22: 'worm',
-  });
-  assert.deepEqual(SHAPE_INTRO_BLOCKS, {
-    6: 'hex', 9: '4.8.8', 12: 'rhombille', 15: 'cairo', 21: 'floret', 38: 'deltoidal',
-  });
-  // Cross-pin against the specs themselves: a mod-intro block's levels all
-  // carry exactly that modifier; a shape-intro block is that shape's dip.
-  for (const [block, mod] of Object.entries(MOD_INTRO_BLOCKS)) {
-    for (const s of allSpecs.filter((x) => x.block === Number(block))) {
-      assert.deepEqual(s.gimmicks, [mod]);
-    }
+test('the POOL is evenly represented too, not only the ladder drawn from it', () => {
+  // The ladder could look balanced while resting on a lopsided pool, which
+  // would fail the moment the assignment changed. This is the search's own
+  // stratification, asserted where it can regress.
+  const byShape = new Map();
+  for (const e of LADDER_POOL) byShape.set(e.shape, (byShape.get(e.shape) || 0) + 1);
+  for (const shape of ALL_SHAPES) {
+    assert.ok((byShape.get(shape) || 0) >= 10,
+      `the pool holds only ${byShape.get(shape) || 0} ${shape} boards`);
   }
-  for (const [block, shape] of Object.entries(SHAPE_INTRO_BLOCKS)) {
-    const b = CHALLENGE_BLOCKS[Number(block) - 1];
-    assert.equal(b.shape, shape);
-    assert.equal(b.dip, true);
+  for (const g of ALL_MODS) {
+    const n = LADDER_POOL.filter((e) => e.gimmicks.includes(g)).length;
+    assert.ok(n >= 10, `the pool holds only ${n} boards carrying ${g}`);
   }
 });
 
 test('blockStartLevel agrees with the checkpoint formula (death returns to the block start)', async () => {
-  // getCheckpointForLevel (headerRenderer) and blockStartLevel are two
-  // copies of one rule — the mirror-pair drift class. Pin them to each
-  // other so "block = checkpoint = survival unit" can never silently split.
+  // headerRenderer owns the SECOND copy of this formula (the checkpoint
+  // selector reads it), so the two are pinned against each other here. It is
+  // a DOM module, hence the shim.
   await import('./domShim.mjs');
-  const { getCheckpointForLevel, CHECKPOINT_INTERVAL } = await import('../src/ui/headerRenderer.js');
+  const { CHECKPOINT_INTERVAL, getCheckpointForLevel } = await import('../src/ui/headerRenderer.js');
   assert.equal(CHECKPOINT_INTERVAL, CHALLENGE_BLOCK_SIZE);
-  for (let lv = 1; lv <= CHALLENGE_MAX_LEVEL; lv++) {
-    assert.equal(blockStartLevel(lv), getCheckpointForLevel(lv), `L${lv}`);
+  for (const lv of [1, 5, 6, 25, 26, 100, 250, 251, 999]) {
+    assert.equal(getCheckpointForLevel(lv), blockStartLevel(lv), `L${lv}`);
+  }
+  for (const lv of [1, 5, 6, 25, 26, 100, 250, 251, 999]) {
+    assert.equal(blockStartLevel(lv), Math.floor((lv - 1) / CHALLENGE_BLOCK_SIZE) * CHALLENGE_BLOCK_SIZE + 1);
   }
 });
 
-test('specFingerprint separates dial variants and collapses repeats', () => {
-  const a = challengeSpecForLevel(31); // liar intro ramp level 1
-  const b = challengeSpecForLevel(35); // liar intro ramp level 5 (different gl + mines)
-  assert.notEqual(specFingerprint(a), specFingerprint(b));
-  const c1 = challengeSpecForLevel(51); // block 11 constant spec
-  const c2 = challengeSpecForLevel(52);
-  assert.equal(specFingerprint(c1), specFingerprint(c2));
+test('the intro-block exports agree with the levels table (checkpoint labels read these)', () => {
+  for (const [block, shape] of Object.entries(SHAPE_INTRO_BLOCKS)) {
+    assert.equal(levelsOfBlock(Number(block))[0].shape, shape);
+    assert.equal(CHALLENGE_BLOCKS[Number(block) - 1].block, Number(block));
+  }
+  for (const [block, mod] of Object.entries(MOD_INTRO_BLOCKS)) {
+    assert.ok(levelsOfBlock(Number(block))[0].gimmicks.includes(mod), `block ${block}`);
+  }
 });
 
-// ── Builder smoke (cheap layers only; the validator owns the heavy proof) ──
+test('ppcBandFor: braid levels band around their own measured price, openers do not band', () => {
+  for (const s of ladder().slice(0, 25)) assert.equal(ppcBandFor(s), null);
+  for (const s of braid()) {
+    const [lo, hi] = ppcBandFor(s);
+    assert.ok(lo < s.ppc && s.ppc < hi, `L${s.level}`);
+  }
+});
+
+// ── The endless zone ───────────────────────────────────────────────────
+
+test('the endless zone still draws hard, varied, non-repeating blocks', () => {
+  const shapes = new Set();
+  const faces = new Set();
+  for (let lv = ENDLESS_START_LEVEL; lv < ENDLESS_START_LEVEL + CHALLENGE_BLOCK_SIZE; lv++) {
+    const s = endlessSpecForLevel(lv);
+    assert.equal(s.endless, true);
+    shapes.add(s.shape);
+    faces.add(specFace(s));
+  }
+  assert.equal(faces.size, CHALLENGE_BLOCK_SIZE, 'an endless block repeats a board');
+  assert.ok(shapes.size >= 4, 'an endless block repeats shapes while unused ones remain');
+});
+
+// ── The builder still honours every spec the ladder now produces ───────
 
 test('builder: L1 opener draw is certified, floored, and priced', () => {
   const spec = challengeSpecForLevel(1);
-  const res = buildChallenge250Board(spec, challengeBoardSeed(1, 0, 'test'));
-  assert.ok(res, 'L1 must build');
-  assert.ok(res.check.solvable && res.check.remainingUnknowns === 0);
-  assert.ok(res.check.totalClicks - 1 >= OPENER_MIN_DEDUCTIONS, 'deduction floor holds');
-  assert.equal(res.totalMines, spec.mines);
-  assert.ok(res.par > 0 && res.features, 'features + par ride the result');
-  assert.equal(res.firstClick, Math.floor(spec.rows / 2) * spec.cols + Math.floor(spec.cols / 2));
+  const built = buildChallenge250Board(spec, challengeBoardSeed(1, 0, 'test'));
+  assert.ok(built, 'L1 failed to build');
+  assert.ok(built.check.solvable);
+  assert.equal(built.check.remainingUnknowns, 0);
+  assert.ok(built.check.totalClicks - 1 >= spec.minDeductions);
+  assert.ok(built.check.totalClicks - 1 <= spec.maxDeductions);
+  assert.ok(built.par > 0);
 });
 
-test('builder: hex shape-intro draw comes back on the lattice with its own opener', () => {
-  const spec = challengeSpecForLevel(26);
-  const res = buildChallenge250Board(spec, challengeBoardSeed(26, 0, 'test'));
-  assert.ok(res, 'L26 must build');
-  assert.ok(res.board._cellNeighbors, 'explicit topology present');
-  assert.equal(res.tiling.type, 'hex');
-  assert.ok(res.features.tilingType === 'hex', 'features carry the shape');
-  assert.ok(res.par > 0);
-});
-
-test('builder: a locked intro draw is strict (locked is exempt, board certified)', () => {
-  const spec = challengeSpecForLevel(31);
-  const res = buildChallenge250Board(spec, challengeBoardSeed(31, 0, 'test'));
-  assert.ok(res, 'L31 must build');
-  assert.ok(res.check.solvable && res.check.remainingUnknowns === 0);
+test('builder: the first braid level builds on whatever the pool handed it', () => {
+  const spec = challengeSpecForLevel(BRAID_START_LEVEL);
+  const t0 = Date.now();
+  const built = buildChallenge250Board(spec, challengeBoardSeed(BRAID_START_LEVEL, 0, 'test'));
+  assert.ok(built, `L${BRAID_START_LEVEL} (${specFace(spec)}) failed to build`);
+  assert.ok(built.check.solvable);
+  assert.ok(Date.now() - t0 < GEN_CAP_MS * 3, 'generation blew past the cap');
 });
 
 test('REGRESSION: generateTilingBoard stamps its load-bearing verdict on the result', () => {
-  // Strict path: a testable gimmick under an active budget returns [].
-  const strict = generateTilingBoard({
-    type: 'hex', M: 7, N: 7, mines: 9, seed: 'c250-decor-pin',
-    gimmicks: ['sonar'],
+  const res = generateTilingBoard({
+    type: 'hex', M: 7, N: 7, mines: 9, seed: 'verdict-test',
+    gimmicks: ['sonar'], gimmickLevel: 60, loadBearingBudget: Infinity,
   });
-  assert.ok(strict, 'hex sonar board generates');
-  assert.deepEqual(strict.decorative, [], 'measured-strict boards stamp an empty list');
-
-  // Budget disabled: the verdict was never measured — null, not [].
-  const unmeasured = generateTilingBoard({
-    type: 'hex', M: 7, N: 7, mines: 9, seed: 'c250-decor-pin',
-    gimmicks: ['sonar'], loadBearingBudget: 0,
-  });
-  assert.ok(unmeasured);
-  assert.equal(unmeasured.decorative, null, 'budget-off boards stamp null (unmeasured)');
-
-  // Exempt-only boards are strict trivially.
-  const exempt = generateTilingBoard({
-    type: 'hex', M: 7, N: 7, mines: 9, seed: 'c250-decor-pin',
-    gimmicks: ['walls'],
-  });
-  assert.ok(exempt);
-  assert.deepEqual(exempt.decorative, [], 'exempt-only boards stamp []');
+  assert.ok(res, 'no board');
+  assert.ok(Array.isArray(res.decorative), 'no load-bearing verdict on the result');
 });

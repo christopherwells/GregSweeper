@@ -53,6 +53,28 @@
 //     table routes Paving's T12 through the 112-cell rung (3.41); 84c
 //     stacked reaches only ~1.9. Authored at 112c, the proven spec.
 
+import { LADDER_POOL, ENDLESS_POOL } from './challengePool.js';
+import {
+  PAR_CEILING_SECONDS, GEN_CAP_MS,
+  ENDLESS_PAR_CEILING_SECONDS, ENDLESS_PAR_CEILING_BY_SHAPE, endlessParCeiling,
+  ENDLESS_GEN_CAP_BY_SHAPE, endlessGenCap,
+  ENDLESS_GEN_HEADROOM, ENDLESS_GEN_BUDGET_MS, endlessGenBudget,
+  ENDLESS_PPC_FLOOR, ENDLESS_PPC_FLOOR_BY_SHAPE, endlessPpcFloor,
+  specFace, specFingerprint,
+} from './challengeRules.js';
+
+// The rulings live in challengeRules.js (a leaf the pool-building tools can
+// import without assembling the ladder); re-exported here so every existing
+// reader of challenge250.js is unchanged.
+export {
+  PAR_CEILING_SECONDS, GEN_CAP_MS,
+  ENDLESS_PAR_CEILING_SECONDS, ENDLESS_PAR_CEILING_BY_SHAPE, endlessParCeiling,
+  ENDLESS_GEN_CAP_BY_SHAPE, endlessGenCap,
+  ENDLESS_GEN_HEADROOM, ENDLESS_GEN_BUDGET_MS, endlessGenBudget,
+  ENDLESS_PPC_FLOOR, ENDLESS_PPC_FLOOR_BY_SHAPE, endlessPpcFloor,
+  specFace, specFingerprint,
+};
+
 export const CHALLENGE_MAX_LEVEL = 250;
 export const CHALLENGE_BLOCK_SIZE = 5;
 export const CHALLENGE_BLOCK_COUNT = 50;
@@ -97,17 +119,6 @@ export function powerUpAwardCount(level) {
 // his rate rather than the old 30%.
 export const LIFELINE_BONUS_CHANCE = 0.33;
 
-// Where each modifier and shape debuts, by BLOCK (the checkpoint selector
-// labels its rows from these; the venues themselves are pinned
-// independently in test/challenge250.test.mjs against the levels table).
-export const MOD_INTRO_BLOCKS = Object.freeze({
-  2: 'walls', 3: 'liar', 4: 'mystery', 7: 'locked', 10: 'wormhole',
-  13: 'mirror', 16: 'sonar', 19: 'compass', 22: 'worm',
-});
-export const SHAPE_INTRO_BLOCKS = Object.freeze({
-  6: 'hex', 9: '4.8.8', 12: 'rhombille', 15: 'cairo', 21: 'floret', 38: 'deltoidal',
-});
-
 // The tier ladder (s/cell). Geometric ×~1.18 steps with the larger final
 // step to the ruled summit.
 export const TIER_PPC = {
@@ -115,52 +126,28 @@ export const TIER_PPC = {
   7: 1.50, 8: 1.80, 9: 2.15, 10: 2.55, 11: 2.90, 12: 3.60,
 };
 
-// Accept band around a block's authored par-per-cell target, multiplicative.
-// At T12 this reproduces prove-t12-specs' [3.35, 4.0] summit band.
-export const PPC_BAND_LO = 0.93;
-export const PPC_BAND_HI = 1.11;
-
-// The absolute par ceiling and the 2-second generation cap
-// (validator-enforced; the cap is as-measured, no margin — his ruling).
-export const PAR_CEILING_SECONDS = 480;
-// The endless zone lifts the ceiling to TEN minutes (his ruling
-// 2026-08-04, answering the map's one open flag: "in the endless zone it
-// can go to 10 minutes"). The tier is unbounded above 3.6 s/cell there
-// and the 2-second generation cap still stands. Recorded here so the
-// endless build reads one constant rather than re-deriving the ruling.
-export const ENDLESS_PAR_CEILING_SECONDS = 600;
-
-// PER-SHAPE ceiling (his ruling 2026-08-04, after the four-shape pool came
-// back without a square board in it): a shape that needs more room to reach
-// the summit rate gets it. Classic takes +2 minutes, and Paving Stones takes
-// the same because it has the identical problem.
+// The validator's acceptance band around a level's stored price,
+// multiplicative — and it is SYMMETRIC, unlike the [0.93, 1.11] it replaced.
 //
-// Why those two and only those two. The summit rate and the ceiling are two
-// separate rulings, and for a gently-priced shape they intersect in a sliver:
-// Classic and Paving Stones need ~150 cells to reach 3.6 s/cell at all, and
-// 150 cells at that rate IS ten minutes, so every board of theirs that clears
-// the rate measures 557-601s against a 600s ceiling. Twelve minutes gives
-// them the headroom admission needs.
+// That asymmetry was right for the authored table and is wrong here. There, a
+// spec was hand-tuned to hit a TIER TARGET and being a little hard was
+// preferable to being a little easy, so the band leaned that way. Now the
+// band sits around the spec's OWN measured price, and the only thing it can
+// be testing is whether that stored price still describes the spec — for
+// which a lean in either direction is just a bias in when it fires. Measured,
+// it fired exactly that way: four levels failed a re-validation and every one
+// of them failed LOW, none high.
 //
-// 3D Cubes is NOT on this list, and raising its ceiling would not help: its
-// qualifying boards already price 222-464s, comfortably under. Its blocker is
-// generation time (2.1-9.8s against the 2-second cap), which is a different
-// ruling and is not moved here.
-export const ENDLESS_PAR_CEILING_BY_SHAPE = Object.freeze({
-  rect: 720,
-  cairo: 720,
-  // Petals sits just under the standard ceiling the same way, one step
-  // milder: its 72-cell boards price 7.6-7.9 s/cell at ~550s and were the
-  // pool's whole top end until the headroom rule cut them. His ruling
-  // 2026-08-04: +1 minute, not +2, because it needs less.
-  floret: 660,
-});
-
-/** The endless par ceiling that applies to a shape. */
-export function endlessParCeiling(shape) {
-  return ENDLESS_PAR_CEILING_BY_SHAPE[shape] || ENDLESS_PAR_CEILING_SECONDS;
-}
-export const GEN_CAP_MS = 2000;
+// The width is set from the measurement's own precision rather than picked.
+// Re-measuring the whole shipped pool at ten seeds and again at sixteen moved
+// 2 of 495 and then 8 of 494 specs by more than 5%, so sample-to-sample
+// movement past 5% runs under 2% of specs and past 12% is rarer still, while
+// the drift this check exists to catch — a refit moving a shape's equation —
+// moves prices by tens of percent. A band tighter than the noise is not a
+// stricter test, it is a test of the seed sample.
+export const PPC_BAND = 0.12;
+export const PPC_BAND_LO = 1 - PPC_BAND;
+export const PPC_BAND_HI = 1 + PPC_BAND;
 
 // Opener blocks: every draw must need at least this many deductions past
 // the opener click (check.totalClicks - 1). The 3-5 range in the map is
@@ -175,25 +162,17 @@ export const OPENER_MIN_DEDUCTIONS = 3;
 // the leaf module never imports geometry).
 const R = (rows, cols, mines, gimmicks = [], opts = {}) =>
   ({ shape: 'rect', rows, cols, cells: rows * cols, mines, gimmicks, ...opts });
-const T = (shape, M, N, cells, mines, gimmicks = [], opts = {}) =>
-  ({ shape, M, N, cells, mines, gimmicks, ...opts });
 
 // Intensity dials, in old-ladder units (see header). INTRO_RAMP[g] gives a
 // gentle 1,1,2,2,3 intensity ramp across a mod-intro block's five levels.
+// Only the three OPENER modifiers keep a hand-written ramp; every later
+// introduction is drawn from the pool, which carries its own measured dial.
 const INTRO_RAMP = {
   walls: [11, 12, 13, 14, 16],
   liar: [21, 22, 23, 24, 26],
   mystery: [31, 32, 33, 34, 36],
-  locked: [41, 42, 43, 44, 46],
-  wormhole: [51, 52, 53, 54, 56],
-  mirror: [61, 62, 63, 64, 66],
-  sonar: [81, 82, 82, 83, 84],
-  compass: [91, 92, 93, 94, 96],
-  worm: [101, 102, 103, 104, 106],
 };
 const GL_GENTLE = 45;   // post-intro intensity ~1 for every type
-const GL_MEDIUM = 80;   // ~2 for most types
-const GL_HIGH = 115;    // ~3 (the old ladder's deep end; the proven Paving dial)
 
 // ── The 50-block map ───────────────────────────────────────────────────
 // Levels are authored per block (5 each). `tier` is the map's plateau
@@ -202,8 +181,8 @@ const GL_HIGH = 115;    // ~3 (the old ladder's deep end; the proven Paving dial
 // gentlest proven config (the quantified dip: the map's parenthesized
 // tiers are narrative, the floor configs are the spec). `ppc: null` on
 // the opener blocks: they validate on the deduction floor instead.
-const BLOCKS = [
-  // ── Opener, L1-25, all Classic ──
+const OPENER_BLOCKS = [
+  // ── Opener, L1-25, all Classic. AUTHORED, not drawn. ──
   // L1-10 RAMP (his ruling 2026-08-04, after playing it: "I want the
   // first 10 levels to be significantly easier. Perhaps a ramp up to 10
   // instead of a plateau. When I meant lvl 1 is a few clicks, I meant
@@ -256,12 +235,19 @@ const BLOCKS = [
   {
     block: 4, tier: 2, ppc: null, shape: 'rect',
     beat: 'MOD INTRO: Mystery. Information delayed; solving around a hole.',
+    // Five DISTINCT boards, one lesson. The mine count is the lever, because
+    // the block deliberately holds shape and modifier — his ruling is that a
+    // training block MAY do that, but "they MUST not be the same board". This
+    // block used to repeat 15 and 16 mines back to back, which reads as one
+    // board twice however the intensity dial is set: a dial is not something
+    // a player can see, which is exactly why uniqueness is judged on
+    // specFace. Caught by that test, not by eye.
     levels: [
-      R(9, 9, 15, ['mystery'], { gimmickLevel: INTRO_RAMP.mystery[0] }),
+      R(9, 9, 14, ['mystery'], { gimmickLevel: INTRO_RAMP.mystery[0] }),
       R(9, 9, 15, ['mystery'], { gimmickLevel: INTRO_RAMP.mystery[1] }),
       R(9, 9, 16, ['mystery'], { gimmickLevel: INTRO_RAMP.mystery[2] }),
-      R(9, 9, 16, ['mystery'], { gimmickLevel: INTRO_RAMP.mystery[3] }),
-      R(9, 9, 17, ['mystery'], { gimmickLevel: INTRO_RAMP.mystery[4] }),
+      R(9, 9, 17, ['mystery'], { gimmickLevel: INTRO_RAMP.mystery[3] }),
+      R(9, 9, 18, ['mystery'], { gimmickLevel: INTRO_RAMP.mystery[4] }),
     ],
   },
   {
@@ -276,514 +262,6 @@ const BLOCKS = [
     ],
   },
 
-  // ── The braid, L26-250 ──
-  {
-    block: 6, tier: 2, ppc: 0.55, shape: 'hex', dip: true,
-    beat: 'SHAPE INTRO: Honeycomb. Plain hexes; L30 tease: walls.',
-    levels: [
-      T('hex', 7, 7, 49, 9), T('hex', 7, 7, 49, 9), T('hex', 7, 7, 49, 9),
-      T('hex', 7, 7, 49, 9),
-      T('hex', 7, 7, 49, 9, ['walls'], { gimmickLevel: GL_GENTLE }),
-    ],
-  },
-  {
-    block: 7, tier: 3, ppc: 0.75, shape: 'hex',
-    beat: 'MOD INTRO: Locked (shape-neutral → most recent shape).',
-    levels: [
-      T('hex', 9, 7, 63, 14, ['locked'], { gimmickLevel: INTRO_RAMP.locked[0] }),
-      T('hex', 9, 7, 63, 14, ['locked'], { gimmickLevel: INTRO_RAMP.locked[1] }),
-      T('hex', 9, 7, 63, 14, ['locked'], { gimmickLevel: INTRO_RAMP.locked[2] }),
-      T('hex', 9, 7, 63, 14, ['locked'], { gimmickLevel: INTRO_RAMP.locked[3] }),
-      T('hex', 9, 7, 63, 14, ['locked'], { gimmickLevel: INTRO_RAMP.locked[4] }),
-    ],
-  },
-  {
-    block: 8, tier: 3, ppc: 0.75, shape: 'rect',
-    beat: 'Remix: walls+liar and walls+mystery pairs at tier.',
-    levels: [
-      R(11, 11, 26, ['walls', 'liar'], { gimmickLevel: 47, wallSegments: 2 }),
-      R(11, 11, 26, ['walls', 'mystery'], { gimmickLevel: 47, wallSegments: 2 }),
-      R(11, 11, 27, ['walls', 'liar'], { gimmickLevel: 47, wallSegments: 2 }),
-      R(11, 11, 26, ['walls', 'mystery'], { gimmickLevel: 47, wallSegments: 2 }),
-      R(11, 11, 27, ['walls', 'liar'], { gimmickLevel: 47, wallSegments: 2 }),
-    ],
-  },
-  {
-    block: 9, tier: 3, ppc: 0.58, shape: '4.8.8', dip: true,
-    beat: 'SHAPE INTRO: Octagons. Plain; L45 tease: mystery.',
-    levels: [
-      T('4.8.8', 5, 6, 50, 7), T('4.8.8', 5, 6, 50, 7), T('4.8.8', 5, 6, 50, 7),
-      T('4.8.8', 5, 6, 50, 7),
-      T('4.8.8', 5, 6, 50, 7, ['mystery'], { gimmickLevel: GL_GENTLE }),
-    ],
-  },
-  {
-    block: 10, tier: 4, ppc: 0.90, shape: '4.8.8',
-    beat: 'MOD INTRO: Wormhole (mechanism venue: asymmetric pairs on the two cell sizes).',
-    levels: [
-      T('4.8.8', 6, 7, 72, 15, ['wormhole'], { gimmickLevel: INTRO_RAMP.wormhole[0] }),
-      T('4.8.8', 6, 7, 72, 15, ['wormhole'], { gimmickLevel: INTRO_RAMP.wormhole[1] }),
-      T('4.8.8', 6, 7, 72, 15, ['wormhole'], { gimmickLevel: INTRO_RAMP.wormhole[2] }),
-      T('4.8.8', 6, 7, 72, 15, ['wormhole'], { gimmickLevel: INTRO_RAMP.wormhole[3] }),
-      T('4.8.8', 6, 7, 72, 15, ['wormhole'], { gimmickLevel: INTRO_RAMP.wormhole[4] }),
-    ],
-  },
-  {
-    block: 11, tier: 4, ppc: 0.90, shape: 'hex',
-    beat: 'Remix: locked+walls; first same-shape return.',
-    levels: [
-      T('hex', 9, 9, 81, 19, ['locked', 'walls'], { gimmickLevel: 75 }),
-      T('hex', 9, 9, 81, 19, ['locked', 'walls'], { gimmickLevel: 75 }),
-      T('hex', 9, 9, 81, 19, ['locked', 'walls'], { gimmickLevel: 75 }),
-      T('hex', 9, 9, 81, 19, ['locked', 'walls'], { gimmickLevel: 75 }),
-      T('hex', 9, 9, 81, 19, ['locked', 'walls'], { gimmickLevel: 75 }),
-    ],
-  },
-  {
-    block: 12, tier: 4, ppc: 0.98, shape: 'rhombille', dip: true,
-    beat: 'SHAPE INTRO: 3D Cubes (floor ~0.98 lands the dip at T5-ish par on 48 cells). L60 tease: liar.',
-    levels: [
-      T('rhombille', 4, 4, 48, 11), T('rhombille', 4, 4, 48, 11),
-      T('rhombille', 4, 4, 48, 11), T('rhombille', 4, 4, 48, 11),
-      T('rhombille', 4, 4, 48, 11, ['liar'], { gimmickLevel: GL_GENTLE }),
-    ],
-  },
-  {
-    block: 13, tier: 5, ppc: 1.05, shape: 'rhombille',
-    beat: 'MOD INTRO: Mirror (shape-neutral → most recent shape).',
-    levels: [
-      T('rhombille', 4, 5, 60, 14, ['mirror'], { gimmickLevel: INTRO_RAMP.mirror[0] }),
-      T('rhombille', 4, 5, 60, 14, ['mirror'], { gimmickLevel: INTRO_RAMP.mirror[1] }),
-      T('rhombille', 4, 5, 60, 14, ['mirror'], { gimmickLevel: INTRO_RAMP.mirror[2] }),
-      T('rhombille', 4, 5, 60, 14, ['mirror'], { gimmickLevel: INTRO_RAMP.mirror[3] }),
-      T('rhombille', 4, 5, 60, 14, ['mirror'], { gimmickLevel: INTRO_RAMP.mirror[4] }),
-    ],
-  },
-  {
-    block: 14, tier: 5, ppc: 1.05, shape: 'rect',
-    beat: 'Remix: liar+locked, mystery+mirror.',
-    levels: [
-      R(11, 11, 31, ['liar', 'locked'], { gimmickLevel: 55 }),
-      R(11, 11, 31, ['mystery', 'mirror'], { gimmickLevel: 55 }),
-      R(11, 11, 31, ['liar', 'locked'], { gimmickLevel: 55 }),
-      R(11, 11, 31, ['mystery', 'mirror'], { gimmickLevel: 55 }),
-      R(11, 11, 31, ['liar', 'locked'], { gimmickLevel: 55 }),
-    ],
-  },
-  {
-    block: 15, tier: 5, ppc: 1.00, shape: 'cairo', dip: true,
-    beat: 'SHAPE INTRO: Paving Stones. Plain pentagons; L75 tease: locked.',
-    levels: [
-      T('cairo', 5, 6, 49, 12), T('cairo', 5, 6, 49, 12), T('cairo', 5, 6, 49, 12),
-      T('cairo', 5, 6, 49, 12),
-      T('cairo', 5, 6, 49, 12, ['locked'], { gimmickLevel: 55 }),
-    ],
-  },
-  {
-    block: 16, tier: 6, ppc: 1.25, shape: 'cairo',
-    beat: 'MOD INTRO: Sonar (mechanism venue: the valence-7 depth-2 ball).',
-    levels: [
-      // Five DISTINCT boards, one lesson — the block-3 pattern (his ruling,
-      // 2026-08-07: a training block may hold shape and modifier, but "they
-      // MUST not be the same board"). The 66-cell size these all shared is
-      // gone for a second reason: cairo has 66 cells only at 4x10 or 10x4,
-      // and both render 2.5:1.
-      //
-      // Variety here is the MINE COUNT rather than the size, because 60 is
-      // cairo's only tier-6 size once sonar is on it: 49 cells price 1.15
-      // against a 1.16 band floor, and 84 cells price 1.50-1.72 against a
-      // 1.39 ceiling. Same lever block 3 uses.
-      T('cairo', 6, 6, 60, 7, ['sonar'], { gimmickLevel: INTRO_RAMP.sonar[0], constructive: true }),
-      T('cairo', 6, 6, 60, 10, ['sonar'], { gimmickLevel: INTRO_RAMP.sonar[1], constructive: true }),
-      T('cairo', 6, 6, 60, 13, ['sonar'], { gimmickLevel: INTRO_RAMP.sonar[2], constructive: true }),
-      T('cairo', 6, 6, 60, 16, ['sonar'], { gimmickLevel: INTRO_RAMP.sonar[3] }),
-      T('cairo', 6, 6, 60, 19, ['sonar'], { gimmickLevel: INTRO_RAMP.sonar[4] }),
-    ],
-  },
-  {
-    block: 17, tier: 6, ppc: 1.25, shape: '4.8.8',
-    beat: 'Remix: wormhole+locked.',
-    levels: [
-      T('4.8.8', 8, 7, 98, 22, ['wormhole', 'locked'], { gimmickLevel: 75 }),
-      T('4.8.8', 8, 7, 98, 22, ['wormhole', 'locked'], { gimmickLevel: 75 }),
-      T('4.8.8', 8, 7, 98, 22, ['wormhole', 'locked'], { gimmickLevel: 75 }),
-      T('4.8.8', 8, 7, 98, 22, ['wormhole', 'locked'], { gimmickLevel: 75 }),
-      T('4.8.8', 8, 7, 98, 22, ['wormhole', 'locked'], { gimmickLevel: 75 }),
-    ],
-  },
-  {
-    block: 18, tier: 6, ppc: 1.25, shape: 'rhombille',
-    beat: 'Remix: mirror+walls, density up (Cubes’ lever).',
-    levels: [
-      T('rhombille', 4, 5, 60, 16, ['mirror', 'walls'], { gimmickLevel: 70 }),
-      T('rhombille', 4, 5, 60, 16, ['mirror', 'walls'], { gimmickLevel: 70 }),
-      T('rhombille', 4, 5, 60, 16, ['mirror', 'walls'], { gimmickLevel: 70 }),
-      T('rhombille', 4, 5, 60, 16, ['mirror', 'walls'], { gimmickLevel: 70 }),
-      T('rhombille', 4, 5, 60, 16, ['mirror', 'walls'], { gimmickLevel: 70 }),
-    ],
-  },
-  {
-    block: 19, tier: 7, ppc: 1.50, shape: '4.8.8',
-    beat: 'MOD INTRO: Compass (8-way family; the diagonal ray reads as steps along the octagon/square staircase).',
-    levels: [
-      T('4.8.8', 8, 7, 98, 24, ['compass'], { gimmickLevel: INTRO_RAMP.compass[0] }),
-      T('4.8.8', 8, 7, 98, 24, ['compass'], { gimmickLevel: INTRO_RAMP.compass[1] }),
-      T('4.8.8', 8, 7, 98, 23, ['compass'], { gimmickLevel: INTRO_RAMP.compass[2] }),
-      T('4.8.8', 8, 7, 98, 23, ['compass'], { gimmickLevel: INTRO_RAMP.compass[3] }),
-      T('4.8.8', 8, 7, 98, 23, ['compass'], { gimmickLevel: INTRO_RAMP.compass[4] }),
-    ],
-  },
-  {
-    block: 20, tier: 7, ppc: 1.50, shape: 'rect',
-    beat: 'Remix: sonar+compass join the home-turf pool. Milestone L100.',
-    levels: [
-      R(12, 12, 40, ['sonar', 'liar'], { gimmickLevel: 95 }),
-      R(12, 12, 40, ['compass', 'walls'], { gimmickLevel: 110, wallSegments: 3 }),
-      R(12, 12, 39, ['sonar', 'mystery'], { gimmickLevel: 95 }),
-      R(12, 12, 40, ['compass', 'liar'], { gimmickLevel: 105 }),
-      R(12, 12, 38, ['sonar', 'compass'], { gimmickLevel: 105 }),
-    ],
-  },
-  {
-    block: 21, tier: 7, ppc: 1.14, shape: 'floret', dip: true,
-    beat: 'SHAPE INTRO: Petals (floor ~1.14). Plain pinwheels; L105 tease: walls.',
-    levels: [
-      T('floret', 2, 3, 36, 6, [], { constructive: true }),
-      T('floret', 2, 3, 36, 6, [], { constructive: true }),
-      T('floret', 2, 3, 36, 6, [], { constructive: true }),
-      T('floret', 2, 3, 36, 6, [], { constructive: true }),
-      T('floret', 2, 3, 36, 6, ['walls'], { gimmickLevel: GL_GENTLE, constructive: true }),
-    ],
-  },
-  {
-    block: 22, tier: 8, ppc: 1.80, shape: 'hex',
-    beat: 'MOD INTRO: Worm (mechanism venue: the purest six-exit crawl, side-only per the shipped ruling).',
-    levels: [
-      T('hex', 9, 9, 81, 26, ['worm'], { gimmickLevel: INTRO_RAMP.worm[0] }),
-      T('hex', 9, 9, 81, 26, ['worm'], { gimmickLevel: INTRO_RAMP.worm[1] }),
-      T('hex', 9, 9, 81, 26, ['worm'], { gimmickLevel: INTRO_RAMP.worm[2] }),
-      T('hex', 9, 9, 81, 26, ['worm'], { gimmickLevel: INTRO_RAMP.worm[3] }),
-      T('hex', 9, 9, 81, 26, ['worm'], { gimmickLevel: INTRO_RAMP.worm[4] }),
-    ],
-  },
-  {
-    block: 23, tier: 8, ppc: 1.80, shape: 'cairo',
-    beat: 'Remix: sonar+liar on the 84-cell board (Paving’s size lever).',
-    levels: [
-      T('cairo', 7, 7, 84, 20, ['sonar', 'liar'], { gimmickLevel: 110 }),
-      T('cairo', 7, 7, 84, 20, ['sonar', 'liar'], { gimmickLevel: 110 }),
-      T('cairo', 7, 7, 84, 20, ['sonar', 'liar'], { gimmickLevel: 110 }),
-      T('cairo', 7, 7, 84, 20, ['sonar', 'liar'], { gimmickLevel: 110 }),
-      T('cairo', 7, 7, 84, 20, ['sonar', 'liar'], { gimmickLevel: 110 }),
-    ],
-  },
-  {
-    block: 24, tier: 8, ppc: 1.80, shape: 'floret',
-    beat: 'Remix: walls+mystery on the rosettes.',
-    levels: [
-      T('floret', 2, 4, 48, 13, ['walls', 'mystery'], { gimmickLevel: 70 }),
-      T('floret', 2, 4, 48, 13, ['walls', 'mystery'], { gimmickLevel: 70 }),
-      T('floret', 2, 4, 48, 13, ['walls', 'mystery'], { gimmickLevel: 70 }),
-      T('floret', 2, 4, 48, 13, ['walls', 'mystery'], { gimmickLevel: 70 }),
-      T('floret', 2, 4, 48, 13, ['walls', 'mystery'], { gimmickLevel: 70 }),
-    ],
-  },
-  {
-    block: 25, tier: 8, ppc: 1.80, shape: 'rhombille',
-    beat: 'REPRISE: Wormhole (sum ceiling 20; the two-token extreme).',
-    levels: [
-      T('rhombille', 4, 5, 60, 19, ['wormhole'], { gimmickLevel: 110 }),
-      T('rhombille', 4, 5, 60, 19, ['wormhole'], { gimmickLevel: 110 }),
-      T('rhombille', 4, 5, 60, 19, ['wormhole'], { gimmickLevel: 110 }),
-      T('rhombille', 4, 5, 60, 19, ['wormhole'], { gimmickLevel: 110 }),
-      T('rhombille', 4, 5, 60, 19, ['wormhole'], { gimmickLevel: 110 }),
-    ],
-  },
-  {
-    block: 26, tier: 9, ppc: 2.15, shape: 'rect',
-    beat: 'Remix: 2-stacks on a dense 11×11.',
-    levels: [
-      R(11, 11, 44, ['mystery', 'liar'], { gimmickLevel: GL_MEDIUM }),
-      R(11, 11, 44, ['walls', 'locked'], { gimmickLevel: GL_MEDIUM, wallSegments: 3 }),
-      R(11, 11, 44, ['liar', 'mirror'], { gimmickLevel: GL_MEDIUM }),
-      R(11, 11, 44, ['mystery', 'locked'], { gimmickLevel: GL_MEDIUM }),
-      R(11, 11, 44, ['walls', 'liar'], { gimmickLevel: GL_MEDIUM, wallSegments: 3 }),
-    ],
-  },
-  {
-    block: 27, tier: 9, ppc: 2.15, shape: 'hex',
-    beat: 'Remix: worm+walls (the crawl in corridors).',
-    levels: [
-      T('hex', 9, 9, 81, 27, ['worm', 'walls'], { gimmickLevel: 108 }),
-      T('hex', 9, 9, 81, 27, ['worm', 'walls'], { gimmickLevel: 108 }),
-      T('hex', 9, 9, 81, 27, ['worm', 'walls'], { gimmickLevel: 108 }),
-      T('hex', 9, 9, 81, 27, ['worm', 'walls'], { gimmickLevel: 108 }),
-      T('hex', 9, 9, 81, 27, ['worm', 'walls'], { gimmickLevel: 108 }),
-    ],
-  },
-  {
-    block: 28, tier: 9, ppc: 2.15, shape: 'rhombille',
-    beat: 'REPRISE: Sonar (valence-10 ball, ~31 cells; structural relief on the no-subset lattice).',
-    levels: [
-      T('rhombille', 4, 5, 60, 19, ['sonar'], { gimmickLevel: 100 }),
-      T('rhombille', 4, 5, 60, 19, ['sonar'], { gimmickLevel: 100 }),
-      T('rhombille', 4, 5, 60, 19, ['sonar'], { gimmickLevel: 100 }),
-      T('rhombille', 4, 5, 60, 19, ['sonar'], { gimmickLevel: 100 }),
-      T('rhombille', 4, 5, 60, 19, ['sonar'], { gimmickLevel: 100 }),
-    ],
-  },
-  {
-    block: 29, tier: 9, ppc: 2.15, shape: '4.8.8',
-    beat: 'Remix: compass+mirror.',
-    levels: [
-      T('4.8.8', 8, 7, 98, 27, ['compass', 'mirror'], { gimmickLevel: GL_HIGH }),
-      T('4.8.8', 8, 7, 98, 27, ['compass', 'mirror'], { gimmickLevel: GL_HIGH }),
-      T('4.8.8', 8, 7, 98, 27, ['compass', 'mirror'], { gimmickLevel: GL_HIGH }),
-      T('4.8.8', 8, 7, 98, 27, ['compass', 'mirror'], { gimmickLevel: GL_HIGH }),
-      T('4.8.8', 8, 7, 98, 27, ['compass', 'mirror'], { gimmickLevel: GL_HIGH }),
-    ],
-  },
-  {
-    block: 30, tier: 9, ppc: 2.15, shape: 'rhombille',
-    beat: 'Remix: mirror+locked, density up. Milestone L150. (Beat text said 0.28; T9 needs ~0.31 — flagged.)',
-    levels: [
-      T('rhombille', 6, 4, 72, 22, ['mirror', 'locked'], { gimmickLevel: GL_HIGH }),
-      T('rhombille', 6, 4, 72, 22, ['mirror', 'locked'], { gimmickLevel: GL_HIGH }),
-      T('rhombille', 6, 4, 72, 22, ['mirror', 'locked'], { gimmickLevel: GL_HIGH }),
-      T('rhombille', 6, 4, 72, 22, ['mirror', 'locked'], { gimmickLevel: GL_HIGH }),
-      T('rhombille', 6, 4, 72, 22, ['mirror', 'locked'], { gimmickLevel: GL_HIGH }),
-    ],
-  },
-  {
-    block: 31, tier: 10, ppc: 2.55, shape: 'hex',
-    beat: 'REPRISE: Compass 60° (the six-axis family on the lattice that defined it).',
-    levels: [
-      T('hex', 11, 10, 110, 33, ['compass'], { gimmickLevel: GL_HIGH }),
-      T('hex', 11, 10, 110, 33, ['compass'], { gimmickLevel: GL_HIGH }),
-      T('hex', 11, 10, 110, 33, ['compass'], { gimmickLevel: GL_HIGH }),
-      T('hex', 11, 10, 110, 33, ['compass'], { gimmickLevel: GL_HIGH }),
-      T('hex', 11, 10, 110, 33, ['compass'], { gimmickLevel: GL_HIGH }),
-    ],
-  },
-  {
-    block: 32, tier: 10, ppc: 2.55, shape: 'floret',
-    beat: 'Remix: sonar+liar on the pinwheel.',
-    levels: [
-      T('floret', 3, 4, 72, 19, ['sonar', 'liar'], { gimmickLevel: 100 }),
-      T('floret', 3, 4, 72, 19, ['sonar', 'liar'], { gimmickLevel: 100 }),
-      T('floret', 3, 4, 72, 19, ['sonar', 'liar'], { gimmickLevel: 100 }),
-      T('floret', 3, 4, 72, 19, ['sonar', 'liar'], { gimmickLevel: 100 }),
-      T('floret', 3, 4, 72, 19, ['sonar', 'liar'], { gimmickLevel: 100 }),
-    ],
-  },
-  {
-    block: 33, tier: 10, ppc: 2.55, shape: 'rect',
-    beat: 'Remix: 2-stacks, dense 12×12. (Beat text said toward 0.30; T10 needs 0.34 — flagged.)',
-    levels: [
-      R(12, 12, 49, ['locked', 'liar'], { gimmickLevel: 90 }),
-      R(12, 12, 49, ['mystery', 'mirror'], { gimmickLevel: 90 }),
-      R(12, 12, 49, ['walls', 'locked'], { gimmickLevel: 90, wallSegments: 4 }),
-      R(12, 12, 49, ['liar', 'mirror'], { gimmickLevel: 90 }),
-      R(12, 12, 49, ['locked', 'liar'], { gimmickLevel: 90 }),
-    ],
-  },
-  {
-    block: 34, tier: 10, ppc: 2.55, shape: 'floret',
-    beat: 'REPRISE: Worm (the rotated-pinwheel crawl; heavy realized load).',
-    levels: [
-      T('floret', 3, 4, 72, 20, ['worm'], { gimmickLevel: 118 }),
-      T('floret', 3, 4, 72, 20, ['worm'], { gimmickLevel: 118 }),
-      T('floret', 3, 4, 72, 20, ['worm'], { gimmickLevel: 118 }),
-      T('floret', 3, 4, 72, 20, ['worm'], { gimmickLevel: 118 }),
-      T('floret', 3, 4, 72, 20, ['worm'], { gimmickLevel: 118 }),
-    ],
-  },
-  {
-    block: 35, tier: 10, ppc: 2.55, shape: 'cairo',
-    beat: 'Remix: compass+locked on the big board.',
-    levels: [
-      T('cairo', 8, 8, 112, 27, ['compass', 'locked'], { gimmickLevel: 100 }),
-      T('cairo', 8, 8, 112, 27, ['compass', 'locked'], { gimmickLevel: 100 }),
-      T('cairo', 8, 8, 112, 27, ['compass', 'locked'], { gimmickLevel: 100 }),
-      T('cairo', 8, 8, 112, 27, ['compass', 'locked'], { gimmickLevel: 100 }),
-      T('cairo', 8, 8, 112, 27, ['compass', 'locked'], { gimmickLevel: 100 }),
-    ],
-  },
-  {
-    block: 36, tier: 11, ppc: 2.90, shape: 'hex',
-    beat: 'Remix: density push past 0.28, 2-stacks.',
-    levels: [
-      T('hex', 11, 10, 110, 35, ['mystery', 'liar'], { gimmickLevel: 85 }),
-      T('hex', 11, 10, 110, 35, ['mystery', 'walls'], { gimmickLevel: 85 }),
-      T('hex', 11, 10, 110, 35, ['liar', 'walls'], { gimmickLevel: 85 }),
-      T('hex', 11, 10, 110, 35, ['mystery', 'liar'], { gimmickLevel: 85 }),
-      T('hex', 11, 10, 110, 35, ['mystery', 'walls'], { gimmickLevel: 85 }),
-    ],
-  },
-  {
-    block: 37, tier: 11, ppc: 2.90, shape: 'floret',
-    beat: 'REPRISE: Compass 30° (the due-north family; Kites arrives next block, so Petals hosts).',
-    levels: [
-      T('floret', 3, 4, 72, 21, ['compass'], { gimmickLevel: GL_HIGH }),
-      T('floret', 3, 4, 72, 21, ['compass'], { gimmickLevel: GL_HIGH }),
-      T('floret', 3, 4, 72, 21, ['compass'], { gimmickLevel: GL_HIGH }),
-      T('floret', 3, 4, 72, 21, ['compass'], { gimmickLevel: GL_HIGH }),
-      T('floret', 3, 4, 72, 21, ['compass'], { gimmickLevel: GL_HIGH }),
-    ],
-  },
-  {
-    block: 38, tier: 9, ppc: 1.75, shape: 'deltoidal', dip: true,
-    beat: 'SHAPE INTRO: Kites, the one late intro with a real dip. Plain kites at the 36-cell floor; L190 tease: mystery.',
-    levels: [
-      T('deltoidal', 2, 3, 36, 6, [], { constructive: true }),
-      T('deltoidal', 2, 3, 36, 6, [], { constructive: true }),
-      T('deltoidal', 2, 3, 36, 6, [], { constructive: true }),
-      T('deltoidal', 2, 3, 36, 6, [], { constructive: true }),
-      T('deltoidal', 2, 3, 36, 6, ['mystery'], { gimmickLevel: GL_GENTLE, constructive: true }),
-    ],
-  },
-  {
-    block: 39, tier: 11, ppc: 2.90, shape: 'deltoidal',
-    beat: 'Consolidation: density-boosted (Kites’ lever), one modifier.',
-    levels: [
-      T('deltoidal', 2, 3, 36, 10, ['mystery'], { gimmickLevel: 70 }),
-      T('deltoidal', 2, 3, 36, 10, ['liar'], { gimmickLevel: 70 }),
-      T('deltoidal', 2, 3, 36, 10, ['mystery'], { gimmickLevel: 70 }),
-      T('deltoidal', 2, 3, 36, 10, ['liar'], { gimmickLevel: 70 }),
-      T('deltoidal', 2, 3, 36, 10, ['walls'], { gimmickLevel: 70 }),
-    ],
-  },
-  {
-    block: 40, tier: 11, ppc: 2.90, shape: 'rect',
-    beat: '3-STACK DEBUT on home turf. Milestone L200.',
-    levels: [
-      R(11, 11, 48, ['walls', 'liar', 'locked'], { gimmickLevel: 90, wallSegments: 3 }),
-      R(11, 11, 49, ['mystery', 'mirror', 'liar'], { gimmickLevel: 90 }),
-      R(11, 11, 49, ['locked', 'mystery', 'mirror'], { gimmickLevel: 90 }),
-      R(11, 11, 49, ['walls', 'liar', 'mystery'], { gimmickLevel: 90, wallSegments: 3 }),
-      R(11, 11, 50, ['liar', 'mirror', 'walls'], { gimmickLevel: 90, wallSegments: 3 }),
-    ],
-  },
-  {
-    block: 41, tier: 11, ppc: 2.90, shape: 'rhombille',
-    beat: '3-stacks: sonar+mirror+walls.',
-    levels: [
-      T('rhombille', 5, 5, 75, 23, ['sonar', 'mirror', 'walls'], { gimmickLevel: 120 }),
-      T('rhombille', 5, 5, 75, 23, ['sonar', 'mirror', 'walls'], { gimmickLevel: 120 }),
-      T('rhombille', 5, 5, 75, 23, ['sonar', 'mirror', 'walls'], { gimmickLevel: 120 }),
-      T('rhombille', 5, 5, 75, 23, ['sonar', 'mirror', 'walls'], { gimmickLevel: 120 }),
-      T('rhombille', 5, 5, 75, 23, ['sonar', 'mirror', 'walls'], { gimmickLevel: 120 }),
-    ],
-  },
-  {
-    block: 42, tier: 12, ppc: 3.60, shape: '4.8.8',
-    beat: '3-stacks: wormhole+compass+locked.',
-    levels: [
-      T('4.8.8', 8, 7, 98, 31, ['wormhole', 'compass', 'locked'], { gimmickLevel: GL_HIGH }),
-      T('4.8.8', 8, 7, 98, 31, ['wormhole', 'compass', 'locked'], { gimmickLevel: GL_HIGH }),
-      T('4.8.8', 8, 7, 98, 31, ['wormhole', 'compass', 'locked'], { gimmickLevel: GL_HIGH }),
-      T('4.8.8', 8, 7, 98, 31, ['wormhole', 'compass', 'locked'], { gimmickLevel: GL_HIGH }),
-      T('4.8.8', 8, 7, 98, 31, ['wormhole', 'compass', 'locked'], { gimmickLevel: GL_HIGH }),
-    ],
-  },
-  {
-    block: 43, tier: 12, ppc: 3.60, shape: 'cairo',
-    beat: '3-stacks on the size lever: the proven 112-cell heavy-stack. (Beat text said 84c; the proven T12 spec is 112c — flagged.)',
-    levels: [
-      T('cairo', 8, 8, 112, 27, ['locked', 'sonar', 'walls'], { gimmickLevel: 120 }),
-      T('cairo', 8, 8, 112, 27, ['locked', 'sonar', 'walls'], { gimmickLevel: 120 }),
-      T('cairo', 8, 8, 112, 27, ['locked', 'sonar', 'walls'], { gimmickLevel: 120 }),
-      T('cairo', 8, 8, 112, 27, ['locked', 'sonar', 'walls'], { gimmickLevel: 120 }),
-      T('cairo', 8, 8, 112, 27, ['locked', 'sonar', 'walls'], { gimmickLevel: 120 }),
-    ],
-  },
-  {
-    block: 44, tier: 12, ppc: 3.60, shape: 'deltoidal',
-    beat: '2-stacks with mines up; its 3-stack waits for the gauntlet.',
-    levels: [
-      T('deltoidal', 2, 3, 36, 12, ['mystery', 'liar'], { gimmickLevel: 75 }),
-      T('deltoidal', 2, 3, 36, 12, ['walls', 'mystery'], { gimmickLevel: 75 }),
-      T('deltoidal', 2, 3, 36, 12, ['liar', 'walls'], { gimmickLevel: 75 }),
-      T('deltoidal', 2, 3, 36, 12, ['mystery', 'liar'], { gimmickLevel: 75 }),
-      T('deltoidal', 2, 3, 36, 12, ['walls', 'mystery'], { gimmickLevel: 75 }),
-    ],
-  },
-  {
-    block: 45, tier: 12, ppc: 3.60, shape: 'hex',
-    beat: '3-stacks: worm+compass+walls at the density frontier.',
-    levels: [
-      T('hex', 11, 10, 110, 36, ['worm', 'compass', 'walls'], { gimmickLevel: GL_HIGH }),
-      T('hex', 11, 10, 110, 36, ['worm', 'compass', 'walls'], { gimmickLevel: GL_HIGH }),
-      T('hex', 11, 10, 110, 36, ['worm', 'compass', 'walls'], { gimmickLevel: GL_HIGH }),
-      T('hex', 11, 10, 110, 36, ['worm', 'compass', 'walls'], { gimmickLevel: GL_HIGH }),
-      T('hex', 11, 10, 110, 36, ['worm', 'compass', 'walls'], { gimmickLevel: GL_HIGH }),
-    ],
-  },
-  {
-    // The ceiling picks the size: at 3.60 s/cell the 8-minute cap tops out
-    // ~133 cells, so Classic's summit lives on 11×11 (the map's own note;
-    // 12×12 would target 518s). The stack composition is a MEASURED cost
-    // decision (14-seed probes per family): constructive-mystery solves on
-    // a 0.42-density classic carry 3-4s per-seed tails and sonar-strict
-    // strip-solves 3.6-10.8s — both blow the 2-second cap — while
-    // walls+locked+liar at 51 mines runs 0.75s worst across every seed
-    // family probed and prices 3.50, dead in the summit band. One spec,
-    // five levels: every attempt draws a fresh layout anyway (the ladder's
-    // whole premise), so the block's variety is layout, not dials.
-    block: 46, tier: 12, ppc: 3.60, shape: 'rect',
-    beat: '3-stacks at the boosted-Classic ceiling (11-wide, dense + heavy stacks).',
-    levels: [
-      R(11, 11, 51, ['walls', 'locked', 'liar'], { gimmickLevel: GL_HIGH, wallSegments: 3 }),
-      R(11, 11, 51, ['walls', 'locked', 'liar'], { gimmickLevel: GL_HIGH, wallSegments: 3 }),
-      R(11, 11, 51, ['walls', 'locked', 'liar'], { gimmickLevel: GL_HIGH, wallSegments: 3 }),
-      R(11, 11, 51, ['walls', 'locked', 'liar'], { gimmickLevel: GL_HIGH, wallSegments: 3 }),
-      R(11, 11, 51, ['walls', 'locked', 'liar'], { gimmickLevel: GL_HIGH, wallSegments: 3 }),
-    ],
-  },
-  {
-    block: 47, tier: 12, ppc: 3.60, shape: 'mixed',
-    beat: 'Pre-finale remix: 3-stacks drawn across all learned shapes.',
-    levels: [
-      T('hex', 11, 10, 110, 35, ['compass', 'walls', 'locked'], { gimmickLevel: GL_HIGH }),
-      T('4.8.8', 8, 7, 98, 32, ['locked', 'sonar', 'walls'], { gimmickLevel: 80 }),
-      T('cairo', 8, 8, 112, 27, ['locked', 'sonar', 'walls'], { gimmickLevel: 120 }),
-      T('floret', 3, 4, 72, 22, ['locked', 'liar', 'walls'], { gimmickLevel: GL_HIGH }),
-      T('rhombille', 4, 5, 60, 23, ['locked', 'sonar', 'walls'], { gimmickLevel: 100 }),
-    ],
-  },
-  {
-    block: 48, tier: 12, ppc: 3.60, shape: 'gauntlet',
-    beat: 'FINALE I: Classic → Honeycomb → Octagons → Paving Stones → 3D Cubes.',
-    levels: [
-      R(11, 11, 54),
-      T('hex', 11, 10, 110, 37),
-      T('4.8.8', 8, 7, 98, 33),
-      T('cairo', 8, 8, 112, 27, ['locked', 'sonar', 'walls'], { gimmickLevel: 120 }),
-      T('rhombille', 4, 5, 60, 23, ['locked', 'sonar', 'walls'], { gimmickLevel: 100 }),
-    ],
-  },
-  {
-    block: 49, tier: 12, ppc: 3.60, shape: 'gauntlet',
-    beat: 'FINALE II: Petals → Kites → Classic → 3D Cubes → Paving Stones.',
-    levels: [
-      T('floret', 3, 4, 72, 24),
-      T('deltoidal', 2, 3, 36, 12),
-      R(11, 11, 54),
-      T('rhombille', 4, 5, 60, 23, ['locked', 'sonar', 'walls'], { gimmickLevel: 100 }),
-      T('cairo', 8, 8, 112, 27, ['locked', 'sonar', 'walls'], { gimmickLevel: 120 }),
-    ],
-  },
-  {
-    block: 50, tier: 12, ppc: 3.60, shape: 'gauntlet',
-    beat: 'FINALE III: the seven-shape summit; L250 = Kites, 3-stacked, the crown.',
-    levels: [
-      T('hex', 11, 10, 110, 37),
-      T('4.8.8', 8, 7, 98, 33),
-      R(11, 11, 54),
-      T('floret', 3, 4, 72, 24),
-      T('deltoidal', 2, 3, 36, 10, ['locked', 'sonar', 'walls'], { gimmickLevel: 100 }),
-    ],
-  },
 ];
 
 // ── The endless zone (blocks 51+) ───────────────────────────────
@@ -808,197 +286,17 @@ const BLOCKS = [
 // own reachable range, so all seven shapes appear and the ladder always has
 // a near neighbour at its current difficulty.
 //
-// ONE SELF-IMPOSED MARGIN: pool admission requires worst-measured generation
-// under ENDLESS_GEN_BUDGET_MS (1500), not the full 2000ms cap. The cap is his
-// ruling and is unchanged; the margin is judgement, because an endless board
-// is drawn fresh on every attempt AND every death-retry, so a spec sitting at
-// 1990ms on the validator's machine is one that intermittently stalls on a
-// phone. It costs the top of the range: deltoidal reaches 9.73 s/cell at
-// ~1990ms, and the shipped ceiling is 8.22 instead.
 export const ENDLESS_START_LEVEL = CHALLENGE_MAX_LEVEL + 1;   // 251
 
-// Pool-admission generation budget (see above), as a fraction of whatever cap
-// applies to the shape. NOT the cap itself: the authored ladder keeps
-// GEN_CAP_MS unchanged.
-export const ENDLESS_GEN_HEADROOM = 0.75;
-export const ENDLESS_GEN_BUDGET_MS = GEN_CAP_MS * ENDLESS_GEN_HEADROOM;   // 1500
-
-// PER-SHAPE generation cap in the endless zone (his ruling 2026-08-04):
-// 3D Cubes gets 3.5 seconds. It is the one shape whose exclusion was never
-// about the par ceiling — its qualifying boards price 222-464s, comfortably
-// under — but about time: its certifier has no Pass B and leans on Pass C
-// enumeration for every board, so it measured 2.1-9.8s against the 2-second
-// cap. Raising ITS cap is what lets it into the zone; raising its ceiling
-// would have done nothing.
-// Per-shape ADMISSION FLOOR, where a lattice cannot reach the pool floor on a
-// board a phone can hold. His ruling, 2026-08-07: every tiling must be
-// available in the endless zone, and "without sufficient data, I think it's
-// fine to put the top 10 percentile of most difficult paving stones."
-//
-// Measured after the phone cap's proportion rule: cairo's largest
-// well-proportioned patch is 112 cells, and across its legal sizes x
-// densities x the endless stacks its hardest board is ppc 3.52 — it clears
-// the 3.5 floor, but only just, and only on one stack. Admitting its top
-// decile (ppc >= 2.54 over 96 viable boards) is what gives it a real presence
-// instead of a single entry.
-//
-// The reasoning behind accepting a softer floor is his too: these rates are
-// provisional. Every shape looks dear while nobody knows its tricks, and the
-// par model is fit on play that is still learning them — Classic priced far
-// harder early on than it does now. When cairo's per-cell rate rises on real
-// data, this entry should shrink toward the shared floor and eventually go.
-export const ENDLESS_PPC_FLOOR_BY_SHAPE = Object.freeze({
-  cairo: 2.5,
-});
-
-/** The admission floor a shape is held to. */
-export function endlessPpcFloor(shape) {
-  return ENDLESS_PPC_FLOOR_BY_SHAPE[shape] ?? ENDLESS_PPC_FLOOR;
-}
-
-export const ENDLESS_GEN_CAP_BY_SHAPE = Object.freeze({
-  rhombille: 3500,
-  // Cairo joined this table on 2026-08-06, on the same reasoning rhombille is
-  // here for and on Christopher's ruling that the budget "can be 3 [seconds]
-  // if it means we get diversity". The phone cap took cairo's endless boards
-  // from 9x9 to 13x7, its largest legal patch, and 162 cells only price under
-  // the 720s ceiling at a density where the certifier has to work: measured
-  // 1929ms and 2487ms for the two entries that ship. Held to 3000 rather than
-  // rhombille's 3500 because those two have real headroom at 3000 and the
-  // entry that did not (mystery, 4722ms) was dropped instead of accommodated.
-  // Endless generation happens behind a level card, never under a click.
-  cairo: 3000,
-});
-
-/** The endless generation cap that applies to a shape. */
-export function endlessGenCap(shape) {
-  return ENDLESS_GEN_CAP_BY_SHAPE[shape] || GEN_CAP_MS;
-}
-
-/** The admission budget for a shape: its cap, less the standing headroom. */
-export function endlessGenBudget(shape) {
-  return endlessGenCap(shape) * ENDLESS_GEN_HEADROOM;
-}
-
-// Difficulty escalation per endless BLOCK (5 levels), multiplicative on
-// par-per-cell from the T12 summit. Tuned to the pool's actual span rather
-// than picked round: the pool reaches 1.8x the summit, and at 1.035 that
-// takes about 17 blocks, so the climb runs roughly 85 levels past the crown
-// before the hardest material starts cycling. That cycling is what
-// "unbounded above 3.6" means in practice once a PROVEN pool runs out of
-// ceiling — the alternative is promising a difficulty nobody has generated.
-// Re-check this whenever the pool's top moves: it fell from 7.9 to 6.6 when
-// par headroom became an admission rule, and a growth rate left at 1.05
-// would then have reached the top in 12 blocks instead of 17.
-export const ENDLESS_PPC_GROWTH = 1.035;
-
-// The pool's ADMISSION floor, distinct from the summit the escalation aims
-// at. His ruling 2026-08-04: drop it to 3.5 so more boards fit.
-//
-// The two numbers do different jobs and it matters that they can differ. The
-// escalation still STARTS at the T12 summit (3.6), so the zone opens exactly
-// where the authored ladder ended; the floor only says which boards may sit
-// in the pool the draw chooses from. Lowering it widens the material near the
-// bottom — the shapes pinned there by their own gentle pricing, Classic and
-// Paving Stones especially — without making the first endless block easier
-// than the crown that precedes it.
-export const ENDLESS_PPC_FLOOR = 3.5;
-
-// How many of the nearest-priced specs the per-level draw chooses among. Wide
-// enough that a block of five is not one board five times, narrow enough that
-// every draw stays near its target.
-const ENDLESS_CANDIDATES = 10;
-
-// How far from the block's target the draw may reach to find a shape the
-// block has not used yet, as a ratio on par-per-cell. Variety is his ruling
-// ("mixed board lengths") and the pool is NOT uniform across difficulty:
-// only floret and deltoidal reach past about 6 s/cell, so a window ranked on
-// price alone collapses to two shapes at the top of the climb. This is the
-// deliberate trade — a somewhat cheaper board over a fifth repeat of the same
-// lattice — and it is bounded so a block at 8 s/cell can never reach down to
-// the summit for the sake of a new shape.
-export const ENDLESS_VARIETY_MAX_RATIO = 1.9;
-
-/** @param {number} ppc measured median par-per-cell over the search's seeds */
-const E = (ppc, spec) => Object.freeze({ ...spec, ppc, gimmicks: Object.freeze(spec.gimmicks || []) });
-
-// Measured medians from scripts/search-endless-specs.mjs, re-measured over a
-// wide seed sample by scripts/harden-endless-pool.mjs. Re-run both after any
-// refit that moves a shape's equation materially: these prices are what the
-// escalation targets, and the validator re-times them either way.
-//
-// AN ENTRY NEEDS HEADROOM, not merely a passing measurement. Price and
-// generation time both vary by seed sample, so a spec measured AT a boundary
-// lands either side of it depending on which seeds ran, and the validator
-// then fails intermittently on a pool nobody changed. Two entries were cut
-// for exactly that: a 12x13 rect priced 605s against the 600s ceiling and a
-// cairo priced 601s, both of which had passed their own search. Rect and
-// cairo are structurally pinned against that ceiling (they need ~150 cells to
-// reach the summit rate at all, and 150 x 4 s/cell IS ten minutes), which is
-// why each keeps only the few entries that clear it with room.
-//
-// CAIRO MOVED UP THE CLIMB on 2026-08-06 rather than leaving it. Its six
-// entries were all 9x9, which the phone cap refuses (12.29 pitch units wide
-// against a cap of 11.21) and which — being square in (M, N) — the transpose
-// that rescued every other violation does nothing for. Its largest legal patch
-// is 13x7 at 162 cells, and that size only works in a narrow slot: below ~74
-// mines it prices past the 720s ceiling, and above ~75 the generation cost
-// climbs steeply (3856ms at 75 mines with walls). At exactly 74 it lands at
-// 699-713s and 1447-1688ms, so three entries ship there. The 136-cell
-// alternative is cheap to generate but tops out at ppc 3.38 against the 3.5
-// floor at every density tried, so it is not an option.
-//
-// The consequence is that cairo now enters at ppc ~4.3 instead of ~3.6: it is
-// no longer part of the climb's opening rungs, which rect 3.66, hex 3.67 and
-// 4.8.8 3.78 still cover. Re-run scripts/search-endless-specs.mjs if a future
-// refit reprices cairo enough to reopen a cheaper rung.
-export const ENDLESS_SPECS = Object.freeze([
-  // Paving Stones, restored 2026-08-07 under ENDLESS_PPC_FLOOR_BY_SHAPE. Its
-  // top decile begins at ppc 2.54, but the pool's margin rule (an entry AT a
-  // floor reads under it on a smaller sample) wants clearance, so the two
-  // boards sitting on 2.5 are left out and these four carry the shape.
-  E(2.62, T('cairo', 8, 8, 112, 27, ['mirror', 'liar', 'walls'], { gimmickLevel: 120 })),
-  E(2.78, T('cairo', 8, 8, 112, 27, ['locked', 'liar'], { gimmickLevel: 120 })),
-  E(3.29, T('cairo', 9, 7, 110, 26, ['locked', 'sonar', 'walls'], { gimmickLevel: 120 })),
-  E(3.52, T('cairo', 8, 8, 112, 27, ['locked', 'sonar', 'walls'], { gimmickLevel: 120 })),
-  E(3.66, R(12, 12, 58, ['locked', 'liar'], { gimmickLevel: 100 })),
-  E(3.67, T('hex', 9, 8, 72, 31, ['worm', 'walls'], { gimmickLevel: 120 })),
-  E(3.69, T('hex', 11, 10, 110, 37, ['worm', 'walls'], { gimmickLevel: 120 })),
-  E(3.78, T('4.8.8', 6, 7, 72, 29, ['wormhole', 'locked'], { gimmickLevel: 120 })),
-  E(3.87, T('deltoidal', 2, 3, 36, 10, ['sonar', 'walls'], { gimmickLevel: 120 })),
-  E(3.89, T('rhombille', 4, 5, 60, 22, ['locked', 'sonar', 'walls'], { gimmickLevel: 120 })),
-  E(3.90, T('hex', 9, 8, 72, 31, ['compass', 'walls'], { gimmickLevel: 120 })),
-  E(3.93, T('4.8.8', 8, 7, 98, 33, ['wormhole', 'locked'], { gimmickLevel: 120 })),
-  E(3.98, T('hex', 9, 8, 72, 31, ['compass', 'walls'], { gimmickLevel: 100 })),
-  E(3.99, T('hex', 11, 10, 110, 37, ['compass', 'walls'], { gimmickLevel: 100 })),
-  E(4.08, T('hex', 9, 8, 72, 31, ['worm', 'compass', 'walls'], { gimmickLevel: 120 })),
-  E(4.10, T('floret', 3, 4, 72, 22, ['sonar', 'liar'], { gimmickLevel: 120 })),
-  E(4.10, T('floret', 3, 3, 54, 22, ['walls'], { gimmickLevel: 100 })),
-  E(4.14, T('hex', 11, 10, 110, 37, ['worm', 'compass', 'walls'], { gimmickLevel: 100 })),
-  E(4.16, T('deltoidal', 2, 3, 36, 12, ['sonar', 'walls'], { gimmickLevel: 100 })),
-  E(4.22, T('deltoidal', 3, 3, 54, 15, ['locked', 'sonar', 'walls'], { gimmickLevel: 100 })),
-  E(4.25, T('4.8.8', 6, 7, 72, 29, ['wormhole', 'compass', 'locked'], { gimmickLevel: 120 })),
-  E(4.34, T('4.8.8', 6, 7, 72, 31, ['locked'], { gimmickLevel: 100 })),
-  E(4.36, T('deltoidal', 3, 3, 54, 16, ['mystery', 'locked'], { gimmickLevel: 100 })),
-  E(4.55, T('4.8.8', 6, 7, 72, 31, ['locked'], { gimmickLevel: 120 })),
-  E(4.66, T('floret', 3, 3, 54, 22, ['sonar', 'liar', 'walls'], { gimmickLevel: 100 })),
-  E(4.73, T('deltoidal', 3, 3, 54, 17)),
-  E(4.89, T('4.8.8', 8, 7, 98, 36, ['locked'], { gimmickLevel: 100 })),
-  E(4.99, T('4.8.8', 6, 7, 72, 31, ['compass', 'locked'], { gimmickLevel: 100 })),
-  E(5.17, T('floret', 3, 3, 54, 23, ['sonar', 'liar', 'walls'], { gimmickLevel: 100 })),
-  E(5.32, T('floret', 3, 4, 72, 27, ['liar', 'walls'], { gimmickLevel: 120 })),
-  E(5.34, T('deltoidal', 2, 3, 36, 12, ['locked', 'sonar', 'walls'], { gimmickLevel: 120 })),
-  E(5.35, T('deltoidal', 3, 3, 54, 16, ['sonar', 'walls'], { gimmickLevel: 120 })),
-  E(5.66, T('deltoidal', 2, 3, 36, 14, ['locked', 'sonar', 'walls'], { gimmickLevel: 100 })),
-  E(5.88, T('floret', 3, 3, 54, 23, ['sonar', 'liar'], { gimmickLevel: 120 })),
-  E(6.14, T('deltoidal', 2, 3, 36, 13, ['locked', 'sonar', 'walls'], { gimmickLevel: 120 })),
-  E(6.50, T('floret', 3, 4, 72, 29, ['liar', 'walls'], { gimmickLevel: 100 })),
-  E(6.76, T('floret', 3, 4, 72, 29, ['sonar', 'liar'], { gimmickLevel: 100 })),
-  E(7.39, T('floret', 3, 4, 72, 31)),
-  E(7.77, T('floret', 3, 4, 72, 31, ['liar', 'walls'], { gimmickLevel: 100 })),
-]);
-
-const ENDLESS_MAX_PPC = ENDLESS_SPECS.reduce((m, e) => Math.max(m, e.ppc), 0);
+// The endless pool now comes from the SAME search the ladder draws on
+// (challengePool.js), sliced at the endless admission floor and each shape's
+// own par ceiling. It used to be a hand-pasted table, which is why it drifted
+// out of date twice: a refit re-prices every entry, and the wall sight-line
+// fix (#269) left two entries over their generation cap with no way to remove
+// them by hand — the rhombille one was the pool's entire rhombille
+// representation, so dropping it would have deleted a shape. Regenerating
+// both tables together is the answer to both.
+export const ENDLESS_SPECS = ENDLESS_POOL;
 
 /** Endless block index (0-based) for a level past the crown. */
 function endlessBlockIndex(level) {
@@ -1048,34 +346,114 @@ function hashLevel(level, salt) {
   return h >>> 0;
 }
 
-// One block of five is resolved together, because "mixed board lengths" is a
-// property of the BLOCK rather than of a level: each level prefers a shape
-// none of its earlier siblings used, falling back to the whole candidate
-// window when nothing new is left. Memoised per block, since a block gets
-// resolved on every level lookup inside it.
+// THE DRAW IS A DECK, not a hash pick per level.
+//
+// Hash-picking from the whole pool at every level is uniform only in
+// expectation, and over a pool this size the variance is exactly the
+// complaint it exists to answer: measured on the pool as it stands, 400
+// levels left 5 specs never dealt at all while one came up 14 times against
+// a fair share of 4. That is his L65-70 report again, in the zone whose
+// entire remaining job is variety.
+//
+// So the pool is dealt like a deck: a seeded shuffle, walked in order, every
+// entry appearing exactly once per cycle before any appears twice. Coverage
+// and fair share are then properties of the structure rather than things to
+// hope for and test after the fact.
+//
+// The shuffle is REPAIRED so that no group of five consecutive cards shares a
+// shape while an unused one is still reachable — "mixed board lengths" is a
+// property of the BLOCK. A repair is a swap, so it is still a permutation and
+// the exact-coverage property survives it.
+const _endlessDeck = (() => {
+  // DEALT from per-shape queues, not shuffled-then-repaired. Repairing a flat
+  // shuffle in place works at the head and starves the tail: the early
+  // windows pull the scarce shapes forward, and with one shape holding a
+  // third of the pool a late block came back three-shaped (measured at L326:
+  // floret, deltoidal, cairo, floret, floret). Dealing makes the spread a
+  // property of construction.
+  const byShape = new Map();
+  ENDLESS_SPECS.forEach((e, i) => {
+    if (!byShape.has(e.shape)) byShape.set(e.shape, []);
+    byShape.get(e.shape).push(i);
+  });
+  // Fisher-Yates within each shape, driven by the same FNV-1a the level draw
+  // uses, so the deck is identical for every player without this leaf
+  // importing a PRNG.
+  for (const [shape, list] of byShape) {
+    for (let i = list.length - 1; i > 0; i--) {
+      const k = hashLevel(i, `deck:${shape}`) % (i + 1);
+      [list[i], list[k]] = [list[k], list[i]];
+    }
+  }
+
+  // PROPORTIONAL FAIR SCHEDULING, the classic one: each shape's next card is
+  // "due" at (dealt + 0.5) / total of the way through the deck, and the
+  // earliest-due shape is dealt next. That spaces every shape EVENLY across
+  // the whole deck by construction, which is the property the window needs
+  // and the one greedy rules kept failing to give.
+  //
+  // Two greedy rules were tried and both left a bad tail. "Most cards
+  // remaining first" plus a never-twice-in-a-block exclusion cannot be
+  // satisfied at all here — floret holds about a third of the endless pool
+  // against rhombille's two entries — so floret's surplus went undealt until
+  // the end and the deck finished on a run of florets. Ranking by recency
+  // instead spread the doubling but still ran the scarce shapes out early,
+  // leaving the last twenty cards drawn from two or three shapes. Measured
+  // both times as a two-shape block at L346.
+  const totals = new Map([...byShape].map(([sh, l]) => [sh, l.length]));
+  const dealtCount = new Map([...byShape.keys()].map((sh) => [sh, 0]));
+  const out = [];
+  while (out.length < ENDLESS_SPECS.length) {
+    let best = null, bestDue = Infinity;
+    for (const [shape, list] of byShape) {
+      if (!list.length) continue;
+      const due = (dealtCount.get(shape) + 0.5) / totals.get(shape);
+      if (due < bestDue || (due === bestDue && shape < best)) { bestDue = due; best = shape; }
+    }
+    out.push(byShape.get(best).shift());
+    dealtCount.set(best, dealtCount.get(best) + 1);
+  }
+
+  // PAD TO A WHOLE NUMBER OF BLOCKS. The draw index is the level's distance
+  // past the crown modulo the deck length, so unless that length divides the
+  // block size the windows drift by two cards on every wrap and the shape
+  // spread the dealing just guaranteed is lost from the second cycle on
+  // (measured: a block down to two shapes within 200 blocks). The padding
+  // cards are ordinary deals, chosen from the shapes the seam has not just
+  // used and taking each shape's OLDEST card, so a handful of entries come
+  // up twice per cycle rather than once — invisible against the fair-share
+  // bar, where a two-shape block is not.
+  const dealt = new Map();
+  out.forEach((i, pos) => { const sh = ENDLESS_SPECS[i].shape; if (!dealt.has(sh)) dealt.set(sh, []); dealt.get(sh).push(pos); });
+  while (out.length % CHALLENGE_BLOCK_SIZE !== 0) {
+    // The pad sits at the SEAM, so it must avoid both the deck's tail and its
+    // head — the wrap puts them in one window.
+    const near = [
+      ...out.slice(-(CHALLENGE_BLOCK_SIZE - 1)),
+      ...out.slice(0, CHALLENGE_BLOCK_SIZE - 1),
+    ].map((i) => ENDLESS_SPECS[i].shape);
+    const shape = [...dealt.keys()].sort((x, y) =>
+      near.filter((r) => r === x).length - near.filter((r) => r === y).length || (x < y ? -1 : 1))[0];
+    out.push(out[dealt.get(shape).shift()]);
+  }
+  return out;
+})();
+
+// Memoised per block, since a block is resolved on every level lookup in it.
 const _endlessBlockMemo = new Map();
 
 function endlessBlock(blockStart) {
   const cached = _endlessBlockMemo.get(blockStart);
   if (cached) return cached;
 
-  // The WHOLE pool is in play at every level. With no difficulty target there
-  // is nothing to rank against, so the only job left is variety, and variety
-  // is a property of the block: no two levels in a block repeat a shape while
-  // an unused one remains, and none repeats a spec its four siblings used.
-  const pool = ENDLESS_SPECS;
-
-  const usedShapes = new Set();
-  const usedSpecs = new Set();
   const out = [];
   for (let i = 0; i < CHALLENGE_BLOCK_SIZE; i++) {
     const level = blockStart + i;
-    const freshShape = pool.filter((e) => !usedShapes.has(e.shape) && !usedSpecs.has(e));
-    const freshSpec = pool.filter((e) => !usedSpecs.has(e));
-    const from = freshShape.length ? freshShape : (freshSpec.length ? freshSpec : pool);
-    const pick = from[hashLevel(level, 'endless') % from.length];
-    usedShapes.add(pick.shape);
-    usedSpecs.add(pick);
+    // The deck position is the level's own distance past the crown, so the
+    // SPEC is fixed per level (max level stays comparable between players)
+    // while the BOARD still varies per attempt.
+    const draw = level - ENDLESS_START_LEVEL;
+    const pick = ENDLESS_SPECS[_endlessDeck[((draw % _endlessDeck.length) + _endlessDeck.length) % _endlessDeck.length]];
     out.push(Object.freeze({
       level,
       block: Math.floor((level - 1) / CHALLENGE_BLOCK_SIZE) + 1,
@@ -1088,6 +466,7 @@ function endlessBlock(blockStart) {
       cells: pick.cells, mines: pick.mines,
       gimmicks: pick.gimmicks,
       gimmickLevel: pick.gimmickLevel,
+      wallSegments: pick.wallSegments,
       constructive: pick.constructive,
     }));
   }
@@ -1106,26 +485,275 @@ export function endlessSpecForLevel(level) {
   return endlessBlock(blockStart)[lv - blockStart];
 }
 
+// ── THE EMERGENT BRAID, L26-250 ────────────────────────────────────────
+//
+// His design, 2026-08-08: past the opener the ladder is "a slow difficulty
+// ramp" over "a decently wide but every increased width" band, with
+// introductions that EMERGE from the material rather than being scheduled —
+// "when enough boards can contain the gimmick, it should be introduced",
+// "when enough boards can be a different shape, the shape should be
+// introduced", and "once a board or gimmick is introduced, it gets played 5
+// times, then any gimmick/shape can be brought in".
+//
+// So blocks 6-50 are no longer authored. Each block asks the pool what it can
+// carry at that difficulty; a pending shape or modifier debuts on the first
+// block that can give it a full five distinct boards, holds that block, and
+// afterwards joins the general draw. Where each thing lands is DERIVED and
+// moves when the pool or the par model moves — MOD_INTRO_BLOCKS and
+// SHAPE_INTRO_BLOCKS are outputs now, not inputs.
+//
+// AND NOTHING EVER REPEATS. Uniqueness is judged on specFace — the shape,
+// dimensions, mine count and modifier set a player can actually tell apart —
+// never on specFingerprint, which separates dials nobody can see. The
+// authored table this replaces carried 109 distinct boards across 250 levels
+// and repeated its worst spec eight times, which is what he hit at L65-70.
+
+export const BRAID_START_LEVEL = 26;
+export const BRAID_START_BLOCK = 6;
+
+// The ramp: par-per-cell from the opener's exit to the ruled T12 summit,
+// geometric so every block is the same step up rather than a flattening one.
+export const BRAID_PPC_START = 0.55;
+export const BRAID_PPC_END = TIER_PPC[12];
+
+// The band, a multiplicative half-width on the target that WIDENS with the
+// climb. Both ends are judgement inside his ruling, and the reasoning for
+// starting this wide is worth keeping: the old authored band was ±9/11%,
+// tighter than the par model's own accuracy, and its only real property was
+// that adjacent tiers did not overlap. That is the wrong thing to protect —
+// the ramp lives in the band's CENTRE, nobody can feel a 10% par difference,
+// and overlapping bands still climb monotonically on average.
+export const BRAID_BAND_START = 0.18;
+export const BRAID_BAND_END = 0.45;
+
+// A debut runs exactly one block, so the lesson starts ON a checkpoint (death
+// returns you to where the new thing was introduced, not into the middle of
+// it) and the checkpoint selector has a block to label.
+const INTRO_MIN_CANDIDATES = CHALLENGE_BLOCK_SIZE;
+
+// How far a DEBUT check may widen the block's band looking for its five
+// boards. The same ladder the per-level pick walks, truncated: an
+// introduction reaching further than the boards around it would land the new
+// thing at a difficulty the rest of the block does not share.
+const DEBUT_STRETCH = [1, 1.35, 1.8];
+
+// What the opener already teaches. The braid never re-introduces these.
+const OPENER_SHAPES = ['rect'];
+const OPENER_MODS = ['walls', 'liar', 'mystery'];
+
+// What is left to introduce. This order breaks TIES ONLY — when two things
+// first become viable in the same block. Which block each lands on comes from
+// the pool.
+const BRAID_SHAPES = ['hex', '4.8.8', 'cairo', 'rhombille', 'floret', 'deltoidal'];
+const BRAID_MODS = ['locked', 'wormhole', 'mirror', 'sonar', 'compass', 'worm'];
+
+/** Where the ramp is aiming at a level. */
+export function braidTargetPpc(level) {
+  const span = CHALLENGE_MAX_LEVEL - BRAID_START_LEVEL;
+  const t = Math.min(1, Math.max(0, (level - BRAID_START_LEVEL) / span));
+  return BRAID_PPC_START * Math.pow(BRAID_PPC_END / BRAID_PPC_START, t);
+}
+
+/** The widening band at a level, as [lo, hi] on par-per-cell. */
+export function braidBand(level) {
+  const span = CHALLENGE_MAX_LEVEL - BRAID_START_LEVEL;
+  const t = Math.min(1, Math.max(0, (level - BRAID_START_LEVEL) / span));
+  const half = BRAID_BAND_START + t * (BRAID_BAND_END - BRAID_BAND_START);
+  const target = braidTargetPpc(level);
+  return [target * (1 - half), target * (1 + half)];
+}
+
+/** Nearest authored tier to a measured rate — a display label, not a gate. */
+function tierForPpc(ppc) {
+  let best = 1, bestD = Infinity;
+  for (const t of Object.keys(TIER_PPC)) {
+    const d = Math.abs(Math.log(ppc / TIER_PPC[t]));
+    if (d < bestD) { bestD = d; best = Number(t); }
+  }
+  return best;
+}
+
+// hashLevel (defined with the endless draw above) is shared: both draws need
+// the same property, that the SPEC is fixed per level while the BOARD is not.
+
+/**
+ * Variety penalty for putting `entry` at `level`, given the run of levels
+ * before it. Lower is better; the draw picks among the best-scoring
+ * candidates, so this shapes the feel without collapsing the ladder onto one
+ * board per difficulty.
+ */
+function varietyPenalty(entry, recent) {
+  let p = 0;
+  for (let k = 0; k < recent.length; k++) {
+    const prev = recent[recent.length - 1 - k];
+    if (!prev) continue;
+    const decay = recent.length - k;
+    if (k < 3 && prev.shape === entry.shape) p += 6 * decay;
+    if (k < 5 && prev.gimmicks.join('+') === entry.gimmicks.join('+')) p += 4 * decay;
+    if (k < 2) for (const g of entry.gimmicks) if (prev.gimmicks.includes(g)) p += decay;
+  }
+  return p;
+}
+
+/**
+ * THE ASSIGNMENT. Runs once at module load over 225 levels — cheap, and it
+ * has to be sequential, because "nothing repeats" and "a thing joins the
+ * general draw after its debut" are both history-dependent.
+ */
+function assignBraid(pool, openerFaces) {
+  const used = new Set(openerFaces);
+  const shapesIn = new Set(OPENER_SHAPES);
+  const modsIn = new Set(OPENER_MODS);
+  const pendingShapes = BRAID_SHAPES.slice();
+  const pendingMods = BRAID_MODS.slice();
+  const modIntro = {};
+  const shapeIntro = {};
+  const out = [];
+  const recent = [];
+
+  // Only boards whose shape AND every modifier have already been introduced.
+  const known = (e) => shapesIn.has(e.shape) && e.gimmicks.every((g) => modsIn.has(g));
+
+  const pickOne = (level, eligible) => {
+    // Widen out from the level's own band until something is available.
+    // Widening is the honest failure mode: a pool thin at some difficulty
+    // gives a board off-target rather than a repeat or a hole.
+    const band = braidBand(level);
+    for (const stretch of [1, 1.35, 1.8, 2.5, Infinity]) {
+      const l = stretch === Infinity ? 0 : band[0] / stretch;
+      const h = stretch === Infinity ? Infinity : band[1] * stretch;
+      const cands = eligible.filter((e) => !used.has(e.face) && e.ppc >= l && e.ppc <= h);
+      if (!cands.length) continue;
+      let bestP = Infinity;
+      for (const c of cands) { const p = varietyPenalty(c, recent); if (p < bestP) bestP = p; }
+      const best = cands.filter((c) => varietyPenalty(c, recent) === bestP);
+      return best[hashLevel(level, 'braid') % best.length];
+    }
+    return null;
+  };
+
+  for (let block = BRAID_START_BLOCK; block <= CHALLENGE_BLOCK_COUNT; block++) {
+    const first = (block - 1) * CHALLENGE_BLOCK_SIZE + 1;
+    const last = first + CHALLENGE_BLOCK_SIZE - 1;
+    // How many unused boards matching a filter this block could reach, over
+    // the SAME widening ladder the per-level pick uses. Judging a debut on
+    // the strict band while picks are allowed to widen is what starved the
+    // first cut: introductions stalled, the introduced pool ran dry, and the
+    // assignment threw at L56.
+    const reach = (filterFn) => {
+      for (const stretch of DEBUT_STRETCH) {
+        const l = braidBand(first)[0] / stretch;
+        const h = braidBand(last)[1] * stretch;
+        const c = pool.filter((e) => !used.has(e.face) && e.ppc >= l && e.ppc <= h && filterFn(e));
+        if (c.length >= INTRO_MIN_CANDIDATES) return c;
+      }
+      return null;
+    };
+    const shapeCands = (shape) => reach((e) => e.shape === shape && e.gimmicks.every((g) => modsIn.has(g)));
+    const modCands = (mod) => reach((e) => e.gimmicks.indexOf(mod) >= 0 && shapesIn.has(e.shape)
+      && e.gimmicks.every((g) => g === mod || modsIn.has(g)));
+
+    // Which KIND goes next alternates by how many of each has debuted, so
+    // shapes and modifiers interleave instead of the six shapes arriving in
+    // one run and the six modifiers in another. Within a kind the order is
+    // the declared one, which breaks ties only.
+    const shapesDone = BRAID_SHAPES.length - pendingShapes.length;
+    const modsDone = BRAID_MODS.length - pendingMods.length;
+    const kinds = shapesDone <= modsDone ? ['shape', 'mod'] : ['mod', 'shape'];
+
+    let debut = null;
+    let eligible = null;
+    for (const kind of kinds) {
+      const pending = kind === 'shape' ? pendingShapes : pendingMods;
+      const cands = kind === 'shape' ? shapeCands : modCands;
+      for (const key of pending) {
+        const c = cands(key);
+        if (c) { debut = { kind, key }; eligible = c; break; }
+      }
+      if (debut) break;
+    }
+
+    if (!debut) {
+      eligible = pool.filter(known);
+      // NOTHING NEW WAS VIABLE, and the introduced material cannot fill the
+      // block either. That is precisely the signal to introduce something:
+      // the alternative is repeating a board, which is the one thing the
+      // ladder may not do. Take whichever pending thing the pool can supply
+      // best, at any price under this block's own ceiling.
+      const avail = eligible.filter((e) => !used.has(e.face));
+      if (avail.length < CHALLENGE_BLOCK_SIZE) {
+        const ceil = braidBand(last)[1] * DEBUT_STRETCH[DEBUT_STRETCH.length - 1];
+        let bestN = 0;
+        for (const kind of kinds) {
+          const pending = kind === 'shape' ? pendingShapes : pendingMods;
+          for (const key of pending) {
+            const c = pool.filter((e) => !used.has(e.face) && e.ppc <= ceil && (kind === 'shape'
+              ? e.shape === key && e.gimmicks.every((g) => modsIn.has(g))
+              : e.gimmicks.indexOf(key) >= 0 && shapesIn.has(e.shape)
+                && e.gimmicks.every((g) => g === key || modsIn.has(g))));
+            if (c.length > bestN) { bestN = c.length; debut = { kind, key }; eligible = c; }
+          }
+        }
+      }
+    }
+
+    for (let i = 0; i < CHALLENGE_BLOCK_SIZE; i++) {
+      const level = first + i;
+      // Last resort: any introduced board, nearest in price. Reached only if
+      // the introduced pool is exhausted, which the test treats as a hard
+      // failure rather than something to live with.
+      const pick = pickOne(level, eligible) || pickOne(level, pool.filter(known));
+      if (!pick) throw new Error('challenge ladder: pool exhausted at L' + level);
+      used.add(pick.face);
+      recent.push(pick);
+      if (recent.length > 8) recent.shift();
+      out.push(Object.freeze({
+        level, block,
+        tier: tierForPpc(pick.ppc),
+        ppc: pick.ppc,
+        dip: false,
+        intro: debut ? debut.key : null,
+        shape: pick.shape,
+        rows: pick.rows, cols: pick.cols, M: pick.M, N: pick.N,
+        cells: pick.cells, mines: pick.mines,
+        gimmicks: pick.gimmicks,
+        gimmickLevel: pick.gimmickLevel,
+        wallSegments: pick.wallSegments,
+        constructive: pick.constructive,
+      }));
+    }
+
+    if (debut) {
+      if (debut.kind === 'shape') {
+        shapesIn.add(debut.key);
+        pendingShapes.splice(pendingShapes.indexOf(debut.key), 1);
+        shapeIntro[block] = debut.key;
+      } else {
+        modsIn.add(debut.key);
+        pendingMods.splice(pendingMods.indexOf(debut.key), 1);
+        modIntro[block] = debut.key;
+      }
+    }
+  }
+  return { levels: out, modIntro, shapeIntro, pendingShapes, pendingMods };
+}
+
 // ── Expansion + accessors ──────────────────────────────────────────────
 
 // Opener blocks validate on the deduction floor, not the ppc band; stamp
 // the per-draw floor onto their specs here rather than per level above.
-for (const b of BLOCKS) {
+for (const b of OPENER_BLOCKS) {
   if (b.ppc === null) {
     for (const spec of b.levels) spec.minDeductions = OPENER_MIN_DEDUCTIONS;
   }
 }
 
 const LEVEL_SPECS = [];
-for (const b of BLOCKS) {
+for (const b of OPENER_BLOCKS) {
   for (let i = 0; i < b.levels.length; i++) {
     const level = (b.block - 1) * CHALLENGE_BLOCK_SIZE + i + 1;
     const spec = {
-      level,
-      block: b.block,
-      tier: b.tier,
-      ppc: b.ppc,
-      dip: b.dip === true,
+      level, block: b.block, tier: b.tier, ppc: b.ppc, dip: b.dip === true,
       ...b.levels[i],
       gimmicks: (b.levels[i].gimmicks || []).slice(),
     };
@@ -1133,13 +761,59 @@ for (const b of BLOCKS) {
     LEVEL_SPECS.push(Object.freeze(spec));
   }
 }
+
+const _braid = assignBraid(
+  LADDER_POOL.map((e) => Object.freeze({ ...e, face: specFace(e) })),
+  LEVEL_SPECS.map((s) => specFace(s)),
+);
+for (const spec of _braid.levels) LEVEL_SPECS.push(spec);
 Object.freeze(LEVEL_SPECS);
 
-export const CHALLENGE_BLOCKS = BLOCKS.map((b) => Object.freeze({
-  block: b.block, tier: b.tier, ppc: b.ppc, shape: b.shape,
-  beat: b.beat, dip: b.dip === true,
-}));
-Object.freeze(CHALLENGE_BLOCKS);
+/**
+ * Where each modifier and shape debuts, by BLOCK. DERIVED from the pool (see
+ * assignBraid) except for the three the opener teaches by hand. The
+ * checkpoint selector labels its rows from these.
+ */
+export const MOD_INTRO_BLOCKS = Object.freeze(
+  Object.assign({ 2: 'walls', 3: 'liar', 4: 'mystery' }, _braid.modIntro));
+export const SHAPE_INTRO_BLOCKS = Object.freeze(Object.assign({}, _braid.shapeIntro));
+
+/**
+ * Anything the pool could never carry a debut for. EMPTY is the contract and
+ * the test asserts it: a shape or modifier stranded here never appears on the
+ * ladder at all, which is a pool problem to fix by searching wider, never
+ * something to route around in the assignment.
+ */
+export const UNINTRODUCED = Object.freeze({
+  shapes: Object.freeze(_braid.pendingShapes.slice()),
+  gimmicks: Object.freeze(_braid.pendingMods.slice()),
+});
+
+export const CHALLENGE_BLOCKS = Object.freeze(
+  Array.from({ length: CHALLENGE_BLOCK_COUNT }, (_, i) => {
+    const block = i + 1;
+    const authored = OPENER_BLOCKS.find((b) => b.block === block);
+    if (authored) {
+      return Object.freeze({
+        block, tier: authored.tier, ppc: authored.ppc, shape: authored.shape,
+        beat: authored.beat, dip: authored.dip === true,
+      });
+    }
+    const levels = LEVEL_SPECS.filter((s) => s.block === block);
+    const shapes = [...new Set(levels.map((s) => s.shape))];
+    const intro = levels[0].intro;
+    const target = braidTargetPpc(levels[0].level);
+    return Object.freeze({
+      block,
+      tier: tierForPpc(target),
+      ppc: Number(target.toFixed(2)),
+      shape: shapes.length === 1 ? shapes[0] : 'mixed',
+      beat: intro ? ('Introducing ' + intro + '.')
+        : ('Drawn from the pool around ' + target.toFixed(2) + ' s/cell.'),
+      dip: false,
+    });
+  }),
+);
 
 /**
  * The spec for a ladder level: the authored table through L250, then the
@@ -1175,20 +849,4 @@ export function blockStartLevel(level) {
 export function ppcBandFor(spec) {
   if (spec.ppc == null) return null;
   return [spec.ppc * PPC_BAND_LO, spec.ppc * PPC_BAND_HI];
-}
-
-/**
- * Stable dedupe key: two levels sharing a fingerprint draw from the same
- * board distribution, so the validator proves each distinct spec once.
- */
-export function specFingerprint(spec) {
-  const dims = spec.shape === 'rect' ? `${spec.rows}x${spec.cols}` : `${spec.M}x${spec.N}`;
-  const opts = [
-    spec.gimmickLevel ? `gl${spec.gimmickLevel}` : '',
-    spec.wallSegments ? `w${spec.wallSegments}` : '',
-    spec.constructive ? 'con' : '',
-    spec.minDeductions ? `d${spec.minDeductions}` : '',
-    spec.maxDeductions ? `D${spec.maxDeductions}` : '',
-  ].filter(Boolean).join(',');
-  return `${spec.shape}:${dims}:m${spec.mines}:[${spec.gimmicks.join('+')}]${opts ? ':' + opts : ''}`;
 }

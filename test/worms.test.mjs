@@ -34,7 +34,7 @@ import { createEmptyBoard } from '../src/logic/boardGenerator.js';
 import {
   applyGimmicks, clearGimmickProperties, recalcAllAdjacency,
 } from '../src/logic/gimmicks.js';
-import { challengeSpecForLevel } from '../src/logic/challenge250.js';
+import { challengeSpecForLevel, MOD_INTRO_BLOCKS } from '../src/logic/challenge250.js';
 import { mulberry32 } from '../src/logic/seededRandom.js';
 
 // ── Pure worm logic ─────────────────────────────────────
@@ -485,14 +485,19 @@ test('clearGimmickProperties resets isWormEgg (retry loops leave no stale eggs)'
 // ── Worm's place on the ladder ────────────────────────────
 // (The old L101-120 sawtooth capstone pins died with getGimmicksForLevel /
 // getDifficultyForLevel — Challenge 250 specs AUTHOR their modifiers. The
-// worm's ladder story is now block 22's intro plus its remixes/reprise,
-// pinned structurally in test/challenge250.test.mjs; here we keep the one
+// worm's ladder story is its intro block plus everything after, pinned
+// structurally in test/challenge250.test.mjs; here we keep the one
 // worm-specific ladder claim that survives the engine swap.)
 
 test('the worm intro block carries worm on every level, and chaos-only types never reach a ladder spec', () => {
-  for (let lv = 106; lv <= 110; lv++) {
+  // WHERE worm debuts is derived from the pool now, not authored, so the
+  // block is read rather than written down — pinning L106-110 would fail
+  // every time the pool moved, which says nothing about worm.
+  const block = Number(Object.entries(MOD_INTRO_BLOCKS).find(([, g]) => g === 'worm')[0]);
+  const first = (block - 1) * 5 + 1;
+  for (let lv = first; lv < first + 5; lv++) {
     const spec = challengeSpecForLevel(lv);
-    assert.deepEqual(spec.gimmicks, ['worm'], `L${lv} is the worm intro`);
+    assert.ok(spec.gimmicks.includes('worm'), `L${lv} is in the worm intro block`);
   }
   for (let lv = 1; lv <= 250; lv++) {
     const spec = challengeSpecForLevel(lv);

@@ -61,27 +61,35 @@ test('REGRESSION: no modifier card describes a rectangle as if it were every boa
   }
 });
 
-test('REGRESSION: every modifier the ladder debuts on a tiling gets an example on that lattice', () => {
-  // The debut level and shape of each modifier, read off the shipped ladder
-  // rather than hardcoded, so a re-authored block moves this with it.
-  const debut = new Map();
+test('REGRESSION: every modifier the ladder shows on a lattice can draw its card there', () => {
+  // The debut VENUE is emergent now — the pool decides which shape a modifier
+  // first lands on — so counting how many debut on a tiling pins nothing and
+  // goes stale on every pool rebuild. The contract that actually matters is
+  // wider anyway: a modifier's card has to draw correctly on EVERY shape the
+  // ladder ever shows it on, not only the first. That also cannot go vacuous,
+  // because the pairs are read off the shipped ladder.
+  const pairs = new Map();
   for (let level = 1; level <= CHALLENGE_MAX_LEVEL; level++) {
     const spec = challengeSpecForLevel(level);
     for (const g of (spec.gimmicks || [])) {
-      if (!debut.has(g)) debut.set(g, { level, shape: spec.shape });
+      const k = `${g}|${spec.shape}`;
+      if (!pairs.has(k)) pairs.set(k, { g, shape: spec.shape, level });
     }
   }
-  // Six of the nine: only walls, liar and mystery debut on Classic. Pinning
-  // the count keeps the test honest if the ladder is ever re-authored to
-  // debut them all on Classic, where the loop below would otherwise pass
-  // vacuously.
-  const onTiling = [...debut.entries()].filter(([, d]) => d.shape !== 'rect');
-  assert.equal(onTiling.length, 6, `expected 6 tiling debuts, got ${JSON.stringify(onTiling)}`);
+  const onTiling = [...pairs.values()].filter((p) => p.shape !== 'rect');
+  assert.ok(onTiling.length >= 20,
+    `only ${onTiling.length} modifier-on-lattice pairs reach the ladder — check the pool`);
 
-  for (const [g, d] of onTiling) {
-    const html = modifierExampleHTML(g, d.shape);
-    assert.ok(html, `${g} debuts on ${d.shape} at L${d.level} with no example for that shape`);
-    assert.ok(html.includes('<polygon'), `${g} example on ${d.shape} drew no lattice`);
+  for (const { g, shape, level } of pairs.values()) {
+    const html = modifierExampleHTML(g, shape);
+    if (shape === 'rect') {
+      // Classic keeps the authored square markup verbatim; the generator
+      // returning null for it is the documented compatibility half.
+      assert.equal(html, null, `${g} on Classic (L${level}) drew a lattice example`);
+      continue;
+    }
+    assert.ok(html, `${g} appears on ${shape} at L${level} with no example for that shape`);
+    assert.ok(html.includes('<polygon'), `${g} example on ${shape} drew no lattice`);
   }
 });
 

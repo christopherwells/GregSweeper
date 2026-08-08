@@ -106,6 +106,8 @@ const ASSETS = [
   './src/logic/archiveEligibility.js',
   './src/logic/canonicalSignature.js',
   './src/logic/challenge250.js',
+  './src/logic/challengeRules.js',
+  './src/logic/challengePool.js',
   './src/logic/challenge250Builder.js',
   './src/logic/coastlineLink.js',
   './src/logic/expectedTime.js',
