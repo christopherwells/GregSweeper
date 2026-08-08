@@ -1006,16 +1006,31 @@ function endlessBlockIndex(level) {
 }
 
 /**
- * The par-per-cell an endless block aims at: the T12 summit compounded by
- * ENDLESS_PPC_GROWTH per block, clamped to what the proven pool actually
- * holds. Clamping rather than extrapolating is the point — past the pool's
- * ceiling the ladder stops climbing rather than promising a difficulty nobody
- * has generated.
- * @param {number} level
+ * THE ENDLESS ZONE DOES NOT SCALE (his ruling, 2026-08-07): "endless shouldn't
+ * need to scale. its just supposed to be hard boards and variety and some can
+ * be terribly hard."
+ *
+ * It used to compound the T12 summit by ENDLESS_PPC_GROWTH per block and clamp
+ * to the pool's ceiling, which had two bad consequences and no good one. The
+ * climb ran out around L336 and after that every block drew from the same
+ * handful of hardest specs, so the zone got LESS varied exactly as it got
+ * longer: measured over L500-750, 250 levels drew **15 distinct specs** and the
+ * worst repeated **50 times**. That is the same complaint he raised at L65-70
+ * ("I've played the same board 3 times"), at sixteen times the severity.
+ *
+ * And the climb was never the point. Past the crown the ladder has already
+ * asked everything a difficulty curve can ask; what a player wants at L500 is
+ * a different PROBLEM, not a bigger one. So every proven spec is drawable at
+ * every level, the range of the pool IS the range of the zone, and a terribly
+ * hard board is an occasional spike rather than the permanent state.
+ *
+ * Kept as an export because the validator and the endless report both read it
+ * to describe the zone's reach; it now answers with the pool's own span.
+ * @returns {{lo: number, hi: number}}
  */
-export function endlessTargetPpc(level) {
-  const e = Math.max(0, endlessBlockIndex(level));
-  return Math.min(TIER_PPC[12] * (ENDLESS_PPC_GROWTH ** e), ENDLESS_MAX_PPC);
+export function endlessPpcRange() {
+  const ppcs = ENDLESS_SPECS.map((e) => e.ppc);
+  return { lo: Math.min(...ppcs), hi: Math.max(...ppcs) };
 }
 
 // FNV-1a, so the draw is deterministic from the level alone without this leaf
@@ -1044,34 +1059,28 @@ function endlessBlock(blockStart) {
   const cached = _endlessBlockMemo.get(blockStart);
   if (cached) return cached;
 
-  const target = endlessTargetPpc(blockStart);
-  // Nearest by LOG distance, so "twice as hard" reads the same either side.
-  const byDistance = ENDLESS_SPECS
-    .map((e) => ({ e, d: Math.abs(Math.log(e.ppc / target)) }))
-    .sort((a, b) => a.d - b.d || a.e.ppc - b.e.ppc);
-  const ranked = byDistance.slice(0, ENDLESS_CANDIDATES).map((r) => r.e);
-  // The wider window the variety rule may reach into, bounded by ratio.
-  const varietyWindow = byDistance
-    .filter((r) => r.d <= Math.log(ENDLESS_VARIETY_MAX_RATIO))
-    .map((r) => r.e);
+  // The WHOLE pool is in play at every level. With no difficulty target there
+  // is nothing to rank against, so the only job left is variety, and variety
+  // is a property of the block: no two levels in a block repeat a shape while
+  // an unused one remains, and none repeats a spec its four siblings used.
+  const pool = ENDLESS_SPECS;
 
   const usedShapes = new Set();
+  const usedSpecs = new Set();
   const out = [];
   for (let i = 0; i < CHALLENGE_BLOCK_SIZE; i++) {
     const level = blockStart + i;
-    // A shape this block has not used yet, preferring the close window and
-    // reaching into the bounded one only when the close window is exhausted.
-    const freshNear = ranked.filter((e) => !usedShapes.has(e.shape));
-    const freshWide = varietyWindow.filter((e) => !usedShapes.has(e.shape));
-    const from = freshNear.length ? freshNear : (freshWide.length ? freshWide : ranked);
+    const freshShape = pool.filter((e) => !usedShapes.has(e.shape) && !usedSpecs.has(e));
+    const freshSpec = pool.filter((e) => !usedSpecs.has(e));
+    const from = freshShape.length ? freshShape : (freshSpec.length ? freshSpec : pool);
     const pick = from[hashLevel(level, 'endless') % from.length];
     usedShapes.add(pick.shape);
+    usedSpecs.add(pick);
     out.push(Object.freeze({
       level,
       block: Math.floor((level - 1) / CHALLENGE_BLOCK_SIZE) + 1,
       tier: 12,
       endless: true,
-      targetPpc: target,
       ppc: pick.ppc,
       dip: false,
       shape: pick.shape,

@@ -17,16 +17,18 @@ import assert from 'node:assert/strict';
 
 import {
   CHALLENGE_MAX_LEVEL, CHALLENGE_BLOCK_SIZE, TIER_PPC,
-  ENDLESS_SPECS, endlessPpcFloor, ENDLESS_START_LEVEL, ENDLESS_PPC_GROWTH, ENDLESS_GEN_BUDGET_MS,
-  ENDLESS_PAR_CEILING_SECONDS, GEN_CAP_MS, ENDLESS_VARIETY_MAX_RATIO,
+  ENDLESS_SPECS, endlessPpcFloor, ENDLESS_START_LEVEL, ENDLESS_GEN_BUDGET_MS,
+  ENDLESS_PAR_CEILING_SECONDS, GEN_CAP_MS, endlessPpcRange,
   ENDLESS_GEN_HEADROOM, endlessParCeiling, endlessGenCap, endlessGenBudget, ENDLESS_PPC_FLOOR,
-  challengeSpecForLevel, endlessSpecForLevel, endlessTargetPpc, blockStartLevel,
+  challengeSpecForLevel, endlessSpecForLevel, blockStartLevel,
 } from '../src/logic/challenge250.js';
 import { TILING_TYPES, buildTiling, containerIsStorable } from '../src/logic/tilingGeometry.js';
 
 const SUMMIT = TIER_PPC[12];
 
 // ── The pool ─────────────────────────────────────────────────────────────
+
+const specKey = (s) => `${s.shape}|${s.rows != null ? `${s.rows}x${s.cols}` : `${s.M}x${s.N}`}|${s.mines}|${[...s.gimmicks].sort().join('+')}`;
 
 test('every pool entry is a legal ladder spec at or above the summit', () => {
   assert.ok(ENDLESS_SPECS.length >= 20, `the pool is only ${ENDLESS_SPECS.length} entries deep`);
@@ -175,39 +177,58 @@ test('levels below 1 still clamp to 1', () => {
 
 // ── Escalation ───────────────────────────────────────────────────────────
 
-test('the target climbs from the summit and clamps at what the pool holds', () => {
-  const poolMax = Math.max(...ENDLESS_SPECS.map((s) => s.ppc));
-  assert.equal(endlessTargetPpc(ENDLESS_START_LEVEL), SUMMIT,
-    'the first endless block starts exactly at the summit');
 
-  let prev = 0;
-  for (let lv = ENDLESS_START_LEVEL; lv <= 3000; lv += CHALLENGE_BLOCK_SIZE) {
-    const t = endlessTargetPpc(lv);
-    assert.ok(t >= prev - 1e-9, `target fell from ${prev} to ${t} at L${lv}`);
-    assert.ok(t <= poolMax + 1e-9, `target ${t} at L${lv} exceeds the pool's ${poolMax}`);
-    prev = t;
-  }
-  assert.equal(prev, poolMax, 'the climb must eventually reach the pool ceiling');
-
-  // The whole block shares one target — the block is the difficulty step.
-  const start = 296;
-  for (let i = 0; i < CHALLENGE_BLOCK_SIZE; i++) {
-    assert.equal(endlessTargetPpc(start + i), endlessTargetPpc(start));
-  }
-  assert.ok(ENDLESS_PPC_GROWTH > 1, 'the zone must actually escalate');
-});
-
-test('the climb is gradual rather than jumping to the ceiling', () => {
-  // A growth rate that reached the top in two blocks would make the pool's
-  // whole low end dead weight. Ten blocks past the crown must still be
-  // meaningfully below the ceiling.
-  const poolMax = Math.max(...ENDLESS_SPECS.map((s) => s.ppc));
-  const tenBlocksIn = endlessTargetPpc(ENDLESS_START_LEVEL + 10 * CHALLENGE_BLOCK_SIZE);
-  assert.ok(tenBlocksIn < poolMax * 0.85,
-    `ten blocks in the target is already ${tenBlocksIn.toFixed(2)} of ${poolMax}`);
-});
 
 // ── The draw ─────────────────────────────────────────────────────────────
+
+test('THE ZONE DOES NOT SCALE, and the whole pool is in play at every level', () => {
+  // His ruling, 2026-08-07: "endless shouldn't need to scale. its just supposed
+  // to be hard boards and variety and some can be terribly hard."
+  //
+  // It used to compound the summit rate per block and clamp to the pool's
+  // ceiling, which made the zone LESS varied the longer it ran: measured over
+  // L500-750, 250 levels drew 15 distinct specs and the worst repeated 50
+  // times. That is his L65-70 complaint at sixteen times the severity. The
+  // tests that pinned the climb were removed with it, deliberately and by
+  // ruling rather than to get to green.
+  const seen = new Set();
+  for (let lv = ENDLESS_START_LEVEL; lv < ENDLESS_START_LEVEL + 400; lv++) {
+    seen.add(specKey(endlessSpecForLevel(lv)));
+  }
+  const poolKeys = new Set(ENDLESS_SPECS.map(specKey));
+  // Every proven spec must be reachable. A draw that could never offer part of
+  // the pool is the thin-tail failure in another form.
+  const unreachable = [...poolKeys].filter((k) => !seen.has(k));
+  assert.deepEqual(unreachable, [],
+    `${unreachable.length} pool entr(ies) are never drawn in 400 levels`);
+});
+
+test('the zone spans easy-for-a-summit to terribly hard, which is the point', () => {
+  // "some can be terribly hard" is a property of the POOL's range now, not of
+  // how far a player has climbed.
+  const { lo, hi } = endlessPpcRange();
+  assert.ok(hi / lo >= 1.5,
+    `the pool spans only ${lo.toFixed(2)}-${hi.toFixed(2)} s/cell, which is not a range`);
+  assert.ok(hi >= 5, `nothing in the pool is terribly hard (hardest ${hi.toFixed(2)} s/cell)`);
+});
+
+test('a long run does not grind the same few boards', () => {
+  // The measurement that motivated the ruling, kept as a guard. The bar is set
+  // against the pool's own size rather than a magic number: with no scaling,
+  // every entry is drawable, so a 400-level run should touch most of them and
+  // no single one should dominate.
+  const counts = new Map();
+  for (let lv = ENDLESS_START_LEVEL + 200; lv < ENDLESS_START_LEVEL + 600; lv++) {
+    const k = specKey(endlessSpecForLevel(lv));
+    counts.set(k, (counts.get(k) || 0) + 1);
+  }
+  const worst = Math.max(...counts.values());
+  const fair = 400 / ENDLESS_SPECS.length;
+  assert.ok(counts.size >= ENDLESS_SPECS.length * 0.8,
+    `only ${counts.size} of ${ENDLESS_SPECS.length} specs appear in a 400-level stretch`);
+  assert.ok(worst <= fair * 3,
+    `one spec appears ${worst} times in 400 levels (fair share is ${fair.toFixed(1)})`);
+});
 
 test('the spec for a level is deterministic, which is what makes max level a brag stat', () => {
   // The BOARD varies per attempt (challengeBoardSeed carries per-draw
@@ -239,12 +260,15 @@ test('GOLDEN: the first endless block is fixed', () => {
   // ribbons), which retired the 4.8.8's 150-cell and cairo's 162-cell boards,
   // and Paving Stones came back on its own admission floor. Different pool,
   // different five.
+  // Moved again on 2026-08-07 by his no-scaling ruling: with no difficulty
+  // target there is no candidate window to rank against, so the draw reaches
+  // the WHOLE pool and a different five come out.
   assert.deepEqual(got, [
+    '4.8.8:98c:33m:[wormhole+locked]',
+    'hex:72c:31m:[worm+compass+walls]',
+    'deltoidal:36c:12m:[sonar+walls]',
     'cairo:110c:26m:[locked+sonar+walls]',
-    'deltoidal:36c:10m:[sonar+walls]',
-    '4.8.8:72c:29m:[wormhole+locked]',
-    'rect:144c:58m:[locked+liar]',
-    'hex:110c:37m:[worm+walls]',
+    'rhombille:60c:22m:[locked+sonar+walls]',
   ]);
 });
 
@@ -272,18 +296,6 @@ test('a block mixes its board shapes rather than repeating one', () => {
   }
 });
 
-test('a drawn spec stays near its block target', () => {
-  // The draw picks among the nearest-priced entries, and reaches further only
-  // to satisfy the variety rule — bounded, so a block at the top of the climb
-  // can never reach back down to the summit for the sake of a new shape.
-  // Measured worst on the shipped pool: 1.89x, either direction.
-  for (let lv = ENDLESS_START_LEVEL; lv <= ENDLESS_START_LEVEL + 400; lv++) {
-    const s = endlessSpecForLevel(lv);
-    const ratio = Math.max(s.ppc / s.targetPpc, s.targetPpc / s.ppc);
-    assert.ok(ratio <= ENDLESS_VARIETY_MAX_RATIO + 1e-9,
-      `L${lv}: ppc ${s.ppc} against target ${s.targetPpc.toFixed(2)} (ratio ${ratio.toFixed(2)})`);
-  }
-});
 
 test('every drawn spec is an actual pool entry', () => {
   // The draw must never synthesise a spec: an unproven board is the one
