@@ -1,12 +1,12 @@
 {
-  "updatedAt": "2026-08-07T14:24:06Z",
-  "target": "wormLoad",
-  "reason": "highest posterior CV (0.675) excluding last 3 targets",
+  "updatedAt": "2026-08-08T02:30:01Z",
+  "target": "clueShare4",
+  "reason": "highest posterior CV (0.776) excluding last 3 targets",
   "lastRevalidationDate": "2026-08-01",
   "recentTargets": [
+    "clueShare4",
     "wormLoad",
-    "wormholePairCount",
-    "mirrorPairCount"
+    "wormholePairCount"
   ],
   "candidates": [
     {
@@ -19,19 +19,19 @@
       "feature": "wormLoad",
       "mean": 0.013,
       "sd": 0.009,
-      "cv": 0.675
+      "cv": 0.704
     },
     {
       "feature": "compassCellCount",
       "mean": 0.025,
       "sd": 0.015,
-      "cv": 0.612
+      "cv": 0.598
     },
     {
       "feature": "mirrorPairCount",
       "mean": 0.027,
-      "sd": 0.015,
-      "cv": 0.576
+      "sd": 0.016,
+      "cv": 0.578
     },
     {
       "feature": "clueShare2",
@@ -41,6 +41,11 @@
     }
   ],
   "coverage_targets": [
+    {
+      "feature": "wormLoad",
+      "n_boards": 8,
+      "deficit_weight": 0.1111
+    },
     {
       "feature": "wormholePairCount",
       "n_boards": 17,
