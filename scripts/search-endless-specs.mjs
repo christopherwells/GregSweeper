@@ -52,7 +52,7 @@ import { fileURLToPath } from 'node:url';
 import { buildChallenge250Board, challengeBoardSeed } from '../src/logic/challenge250Builder.js';
 import {
   endlessParCeiling, endlessGenCap, endlessGenBudget, endlessPpcFloor,
-  PAR_CEILING_SECONDS, GEN_CAP_MS, specFace,
+  PAR_CEILING_SECONDS, GEN_CAP_MS, ENDLESS_GEN_HEADROOM, specFace,
 } from '../src/logic/challengeRules.js';
 import { buildTiling, containerIsStorable, TILING_TYPES } from '../src/logic/tilingGeometry.js';
 import { boardFitsPhone } from '../src/logic/boardFit.js';
@@ -614,7 +614,9 @@ function runEmit(cache, which) {
     // endless slice, and a shape's abundance in the CACHE is a fact about
     // how cheaply it certifies, not about how much of the ladder it deserves.
     maxPerShape: 90,
-  }).filter((e) => e.worstMs <= GEN_CAP_MS * 0.75);
+    // Same headroom the endless side uses, read from the ruling rather than
+    // restated — a second copy of a margin is a second thing to keep in step.
+  }).filter((e) => e.worstMs <= GEN_CAP_MS * ENDLESS_GEN_HEADROOM);
   console.log(`\n// ${pool.length} entries, ladder pool\nexport const LADDER_POOL = Object.freeze([`);
   for (const e of pool) console.log(emitLine(e));
   console.log(']);');

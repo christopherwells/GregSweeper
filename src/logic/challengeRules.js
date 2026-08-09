@@ -75,14 +75,24 @@ export function endlessGenCap(shape) {
 }
 
 // ONE SELF-IMPOSED MARGIN: pool admission requires worst-measured generation
-// under 75% of whatever cap applies, not the cap itself. The cap is his
-// ruling and is unchanged; the margin is judgement, because a pool board is
-// drawn fresh on every attempt AND every death-retry, so a spec sitting at
-// 1990ms on the validator's machine is one that intermittently stalls on a
-// phone. Generation time is also heavy-tailed — one entry measured 1216ms in
-// a search and 9843ms in validation on different seeds — so an entry needs
-// HEADROOM, never merely a passing measurement.
-export const ENDLESS_GEN_HEADROOM = 0.75;
+// well under whatever cap applies, not merely under it. The cap is his ruling
+// and is unchanged; the margin is judgement, because a pool board is drawn
+// fresh on every attempt AND every death-retry, so a spec sitting at 1990ms on
+// the validator's machine is one that intermittently stalls on a phone.
+//
+// IT IS 35%, NOT 75%, AND THAT WAS MEASURED. Generation time is heavy-tailed,
+// so worst-of-a-few-seeds badly under-estimates worst-of-ten: two entries
+// admitted at ~1000-1500ms measured 2207ms and 2327ms on the validator's own
+// seeds, roughly 1.5-2.3x their admitted figure, and each re-emit surfaced a
+// fresh one — the loop was never going to converge by removing them one at a
+// time. 35% gives about 3x headroom against that observed tail.
+//
+// It costs almost nothing, which is why it is the right knob. Measured over
+// 18,576 cached specs, tightening the budget from 1500ms to 600ms drops 1.5%
+// of the material and leaves the thinnest shape with 727 specs: the
+// distribution is overwhelmingly fast with a thin slow tail, so cutting the
+// tail off is nearly free.
+export const ENDLESS_GEN_HEADROOM = 0.35;
 export const ENDLESS_GEN_BUDGET_MS = GEN_CAP_MS * ENDLESS_GEN_HEADROOM;
 
 /** The admission budget for a shape: its cap, less the standing headroom. */
