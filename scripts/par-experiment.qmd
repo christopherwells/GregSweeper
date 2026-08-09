@@ -53,7 +53,10 @@ cat(sprintf("boards: %d dates | scores: %d completions\n", nrow(boards), nrow(sc
 df <- scores |>
   filter(n_hints == 0, time >= 5, time <= 3600) |>
   inner_join(boards, by = "date") |>
-  filter(bombHits <= 0.30 * totalMines) |>   # drop > 30%-mines brute-force probes (matches the production refit's isBombHitCheat)
+  # Drop probing runs, matching the production refit's isBombHitCheat: far more
+  # mistakes than a bad day (floored, since a bare fraction is scale-free and
+  # small tiling boards carry as few as 6 mines), or an outright excavation.
+  filter(bombHits <= pmax(10, 0.50 * totalMines), bombHits < 0.80 * totalMines) |>
   mutate(
     clean_time   = time - bombBaseSum,
     patternMoves = canonicalSubsetMoves + genericSubsetMoves,  # M0 pooled "pattern"

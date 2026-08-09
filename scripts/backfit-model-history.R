@@ -100,7 +100,14 @@ LEGACY_BOMB_RATE <- 15.0
 PURE_TIME_FLOOR  <- 1.0
 PRIOR_MEAN_FLOOR <- 1e-3
 PRIOR_INTERCEPT_SD <- 2.0
-BOMB_HIT_CHEAT_FRACTION <- 0.30
+# Mirrors isBombHitCheat in difficulty.js — see the fuller note in
+# refit-par-model.R. Two arms: far-more-mistakes-than-a-bad-day (floored,
+# because a bare fraction is scale-free and small tiling boards carry as few
+# as 6 mines), and you-excavated-the-board (which still bites where the floor
+# exceeds the mine count).
+BOMB_HIT_CHEAT_FRACTION     <- 0.50
+BOMB_HIT_CHEAT_FLOOR        <- 10
+BOMB_HIT_EXCAVATED_FRACTION <- 0.80
 PRIOR_SIGMAS <- list(
   cellCount = 1.0, totalMines = 1.0, patternMoves = 1.0, searchMoves = 1.0,
   wallEdgeCount = 1.0, mysteryCellCount = 1.0, liarCellCount = 1.0,
@@ -305,7 +312,9 @@ df <- df |>
 
 # Anti-cheat drop (mirrors isBombHitCheat).
 df <- df |> filter(is.na(totalMines) | totalMines <= 0 |
-                   bombHits <= BOMB_HIT_CHEAT_FRACTION * totalMines)
+                   (bombHits <= pmax(BOMB_HIT_CHEAT_FLOOR,
+                                     BOMB_HIT_CHEAT_FRACTION * totalMines) &
+                    bombHits <  BOMB_HIT_EXCAVATED_FRACTION * totalMines))
 
 df <- df |>
   mutate(

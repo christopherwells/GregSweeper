@@ -73,7 +73,9 @@ COEF_TO_PREDICTOR <- c(
 PREDICTORS <- unname(COEF_TO_PREDICTOR)
 
 LEGACY_BOMB_RATE            <- 15.0
-BOMB_HIT_CHEAT_FRACTION     <- 0.30
+BOMB_HIT_CHEAT_FRACTION     <- 0.50
+BOMB_HIT_CHEAT_FLOOR        <- 10
+BOMB_HIT_EXCAVATED_FRACTION <- 0.80
 MIN_PLAYS_FOR_FIT_INCLUSION <- 5
 ```
 
@@ -125,7 +127,9 @@ scores <- imap_dfr(scores_raw, function(entries, date) {
 df <- scores |>
   inner_join(meta, by = "date") |>
   # The shipped filters: no hinted rows, no brute-force probes.
-  filter(hints == 0, bombHits <= BOMB_HIT_CHEAT_FRACTION * totalMines) |>
+  filter(hints == 0,
+         bombHits <= pmax(BOMB_HIT_CHEAT_FLOOR, BOMB_HIT_CHEAT_FRACTION * totalMines),
+         bombHits <  BOMB_HIT_EXCAVATED_FRACTION * totalMines) |>
   # Bomb cost comes OUT before logging, so there is no bomb regressor.
   mutate(
     pure_time = time - if_else(!is.na(bombBase), bombBase, bombHits * LEGACY_BOMB_RATE),

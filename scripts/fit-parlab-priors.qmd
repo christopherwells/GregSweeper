@@ -148,8 +148,9 @@ a client-side test pinning it. In order:
 2. **Tombstones first.** A `result: 'invalid'` row voids every win or skip
    with the same `(id, attempt)`. One exists: the board-15 warm-up
    (`w-floret-3`, attempt 0), a deliberately mine-popped board.
-3. **Probe filter.** Any row detonating more than 30% of the board's mines is
-   a layout probe, not a solve (the daily fit's rule). On this data the only
+3. **Probe filter.** A row that found most of the board's mines by stepping on
+   them is a layout probe, not a solve (the daily fit's rule: more than
+   `max(10, half the mines)`, or 80% of them outright). On this data the only
    row past the bar is the same tombstoned board, so the two guards agree.
 4. **Pure time.** `timeSec` on rows carrying `penaltySec` is the daily
    convention, penalty-inclusive; pure play time is `timeSec - penaltySec`.
@@ -234,7 +235,8 @@ stopifnot(nrow(d) == 86, !anyNA(d$timeSec), !anyNA(d$seq))
 
 # The probe filter (mirrors isBombHitCheat): on this battery it catches only
 # the already-tombstoned board, so nothing further drops.
-d <- d |> mutate(probe = bombHits > 0.30 * totalMines)
+d <- d |> mutate(probe = bombHits > pmax(10, 0.50 * totalMines) |
+                         bombHits >= 0.80 * totalMines)
 stopifnot(sum(d$probe) == 0)
 
 # Pure time, and the worm realized dose. wormLoad becomes the REALIZED

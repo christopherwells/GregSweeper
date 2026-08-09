@@ -107,12 +107,54 @@ test('ramped base: 1st strike = base, each later strike adds half a base', { ski
   assert.equal(penaltyFor(12.4, 3), Math.round((12.4 + 6) * 10) / 10);
 });
 
-test('isBombHitCheat: > 30% of mines detonated is a probing run, ≤ 30% is play', { skip: !HAS_FEATURE }, () => {
-  const { isBombHitCheat, BOMB_HIT_CHEAT_FRACTION } = diff;
-  assert.equal(BOMB_HIT_CHEAT_FRACTION, 0.30);
-  // 20 mines → 30% is exactly 6. "More than 30%" is strict, so 6 is allowed.
-  assert.equal(isBombHitCheat(6, 20), false);
-  assert.equal(isBombHitCheat(7, 20), true);
+test('isBombHitCheat: excavating the board is a probing run, a bad day is not', { skip: !HAS_FEATURE }, () => {
+  const {
+    isBombHitCheat, BOMB_HIT_CHEAT_FRACTION, BOMB_HIT_CHEAT_FLOOR,
+    BOMB_HIT_EXCAVATED_FRACTION,
+  } = diff;
+  assert.equal(BOMB_HIT_CHEAT_FRACTION, 0.50);
+  assert.equal(BOMB_HIT_CHEAT_FLOOR, 10);
+  assert.equal(BOMB_HIT_EXCAVATED_FRACTION, 0.80);
+
+  // REGRESSION (2026-08-09, Kate): today's daily was a 36-cell Kites board with
+  // NINE mines. Under the old flat "> 30% of mines" the gate refused a run at
+  // THREE hits — an ordinary bad day on the dearest lattice we ship — and she
+  // lost both her leaderboard row and the dot on her own history chart. The
+  // fraction was written against 25-30-mine rectangles, where it meant nine
+  // mistakes; the shape rotation moved the scale under it.
+  assert.equal(isBombHitCheat(3, 9), false, 'three hits on a 9-mine board is a bad day, not a probe');
+  assert.equal(isBombHitCheat(4, 9), false);
+  // The smallest shipped tiling configs (floret / deltoidal 2x3) carry SIX
+  // mines, where the old rule refused at two.
+  assert.equal(isBombHitCheat(2, 6), false, 'two hits on a 6-mine board is not a probe');
+  assert.equal(isBombHitCheat(3, 6), false);
+
+  // Arm 1 — far more mistakes than a bad day. The floor binds below 20 mines.
+  assert.equal(isBombHitCheat(10, 20), false, 'floor is inclusive: 10 is allowed');
+  assert.equal(isBombHitCheat(11, 20), true);
+  assert.equal(isBombHitCheat(14, 28), false, 'half of 28 is 14, and "more than" is strict');
+  assert.equal(isBombHitCheat(15, 28), true);
+  assert.equal(isBombHitCheat(21, 42), false);
+  assert.equal(isBombHitCheat(22, 42), true);
+
+  // Arm 2 — you excavated the board. This is the ONLY arm that can fire where
+  // the floor exceeds the mine count, so without it every board of 10 mines or
+  // fewer would be ungated even against a total excavation.
+  assert.equal(isBombHitCheat(7, 9), false);
+  assert.equal(isBombHitCheat(8, 9), true, '8 of 9 mines found by detonation');
+  assert.equal(isBombHitCheat(9, 9), true);
+  assert.equal(isBombHitCheat(6, 6), true, 'every mine on the board');
+  assert.equal(isBombHitCheat(5, 6), true);
+
+  // The three real probing episodes on record stay refused, which is what
+  // makes the loosening a no-op on the historical fit.
+  assert.equal(isBombHitCheat(34, 34), true);
+  assert.equal(isBombHitCheat(32, 32), true);
+  assert.equal(isBombHitCheat(34, 42), true);
+  // The worst GENUINE run on record (Kate, 2026-05-01) had two hits of headroom
+  // under the old rule and comfortably clears the new one.
+  assert.equal(isBombHitCheat(7, 28), false);
+
   assert.equal(isBombHitCheat(0, 20), false);
   // Degenerate inputs never trip — gimmick-free modes pass totalMines but 0
   // hits, and a missing totalMines must fail open (no false cheat flag).

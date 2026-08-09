@@ -1166,20 +1166,38 @@ message(sprintf("  tiling rows: %s of %d total",
                       collapse = " + "),
                 nrow(df)))
 
-# Anti-cheat (mirrors isBombHitCheat in difficulty.js): a run that detonated
-# more than BOMB_HIT_CHEAT_FRACTION of the board's mines was brute-forcing /
-# probing the layout, not solving it — its time is a garbage data point (tiny
-# wall-clock + every mine's info-value) no matter how it is priced, so it must
-# never anchor the model. The client now blocks these at submission; this drops
-# the historical ones (e.g. the 100%-mine brute-force on 2026-06-15). Rows with
-# unknown/zero totalMines are kept — we can't judge them.
-BOMB_HIT_CHEAT_FRACTION <- 0.30
+# Anti-cheat (mirrors isBombHitCheat in difficulty.js — KEEP THE TWO IN STEP):
+# a run that found most of the board's mines by stepping on them was probing the
+# layout, not solving it — its time is a garbage data point (tiny wall-clock +
+# every mine's info-value) no matter how it is priced, so it must never anchor
+# the model. The client blocks these at submission; this drops the historical
+# ones (e.g. the 100%-mine brute-force on 2026-06-15). Rows with unknown/zero
+# totalMines are kept — we can't judge them.
+#
+# TWO arms, because a bare fraction is scale-FREE and the board scale moved
+# under it (2026-08-09: the tiling rotation ships configs with as few as 6
+# mines, where the old flat 30% meant TWO hits, and it refused a real player who
+# hit 3 on a 9-mine Kites board). Arm 1 is "far more mistakes than a bad day",
+# floored because half of a 6-mine board proves nothing; arm 2 is "you excavated
+# the board", and it is the arm that still bites on boards so small that the
+# floor exceeds the mine count.
+#
+# Calibrated on every row ever submitted: worst genuine run 25% of the mines,
+# the three real probing episodes 81/100/100%. Loosening from the old flat 30%
+# changed ZERO verdicts across 602 per-attempt readings, so this fit is
+# byte-identical to the one the old threshold produced.
+BOMB_HIT_CHEAT_FRACTION    <- 0.50
+BOMB_HIT_CHEAT_FLOOR       <- 10
+BOMB_HIT_EXCAVATED_FRACTION <- 0.80
 .n_pre_cheat <- nrow(df)
 df <- df |> filter(is.na(totalMines) | totalMines <= 0 |
-                   bombHits <= BOMB_HIT_CHEAT_FRACTION * totalMines)
+                   (bombHits <= pmax(BOMB_HIT_CHEAT_FLOOR,
+                                     BOMB_HIT_CHEAT_FRACTION * totalMines) &
+                    bombHits <  BOMB_HIT_EXCAVATED_FRACTION * totalMines))
 if (.n_pre_cheat - nrow(df) > 0) {
-  message(sprintf("  anti-cheat: dropped %d brute-force row(s) (> %.0f%% of mines detonated)",
-                  .n_pre_cheat - nrow(df), 100 * BOMB_HIT_CHEAT_FRACTION))
+  message(sprintf("  anti-cheat: dropped %d probing row(s) (> max(%d, %.0f%%) or >= %.0f%% of mines detonated)",
+                  .n_pre_cheat - nrow(df), BOMB_HIT_CHEAT_FLOOR,
+                  100 * BOMB_HIT_CHEAT_FRACTION, 100 * BOMB_HIT_EXCAVATED_FRACTION))
 }
 
 # Derived model predictors (2026-06-08 feature rework): reasoning pooled

@@ -1040,7 +1040,8 @@ export async function handleWin() {
           // compared against everyone else's and stays off the leaderboard
           // and out of the par fit. The DAY still counts: the history entry
           // below is what streaks read, which is why this branch writes it
-          // where 'duplicate' and 'cheat' deliberately do not.
+          // where 'duplicate' deliberately does not ('cheat' now writes it too,
+          // for the same reason — see that branch).
           //
           // And the real board is still unplayed, so give it back rather than
           // locking the day on a run that could not be ranked. Immediately,
@@ -1054,9 +1055,18 @@ export async function handleWin() {
             saveDailyHistoryEntry(dateStr, { time: scoreTime });
           }
         } else if (ok === 'cheat') {
-          // Probing run (> 30% of mines hit): kept off the leaderboard and
-          // out of the personal history timeline.
-          showToast('Too many mines hit — this run won\'t be ranked');
+          // Probing run (see isBombHitCheat): kept off the leaderboard and out
+          // of the par fit. The DAY still counts, exactly as the 'divergent'
+          // branch above rules — the streak is a record of showing up, not a
+          // competitive claim, and dailyHistory never feeds the fit, so writing
+          // it costs no data hygiene. Withholding it is what made the 2026-08-09
+          // false positive expensive: Kate lost the leaderboard row AND the dot
+          // on her own history chart, and a hole in that node is what a later
+          // reconcile reads as a missed day.
+          showToast('You hit most of the board\'s mines, so this run can\'t be ranked. The day still counts toward your streak.', 6000, 'uiWarning');
+          if (!state.isDailyPractice) {
+            saveDailyHistoryEntry(dateStr, { time: scoreTime });
+          }
         } else {
           showToast(ok ? 'Score submitted!' : 'Saved. Uploads when you reconnect', 2000, ok ? 'uiSuccess' : 'uiCloud');
           // Per-user daily-history timeline feeds the leaderboard-modal

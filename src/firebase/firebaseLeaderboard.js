@@ -354,10 +354,12 @@ export async function submitOnlineScore(dateString, name, time, bombHits = 0, ex
   // (fetchOnlineLeaderboard) still work so the modal still shows
   // current standings, but no test score lands in the bucket.
   if (isTestEnvironment()) return false;
-  // Anti-cheat: a run that detonated > BOMB_HIT_CHEAT_FRACTION of the board's
-  // mines was probing the layout, not playing — never leaderboard it, and
-  // never queue it for retry. Returns 'cheat' (not false) so the wrapper's
-  // failure-queue path is skipped. Daily/weekly_first only; gimmick-free
+  // Anti-cheat: a run that found most of the board's mines by stepping on them
+  // was probing the layout, not playing (see isBombHitCheat for the two arms
+  // and why a bare fraction was not enough) — never leaderboard it, and never
+  // queue it for retry. Returns 'cheat' (not false) so the wrapper's
+  // failure-queue path is skipped. The caller still records the DAY.
+  // Daily/weekly_first only; gimmick-free
   // modes pass totalMines too but bombHits is 0, so this never trips.
   if (isBombHitCheat(bombHits, extras.totalMines)) return 'cheat';
   // Offline / Firebase not ready — queue and retry on next successful boot
@@ -634,8 +636,8 @@ export async function flushPendingSubmissions() {
 export async function submitWeeklyScore(weekStart, uid, name, bestTime, dayTimes, extras = {}) {
   // Test branch: don't write to the production weekly leaderboard.
   if (isTestEnvironment()) return false;
-  // Anti-cheat: if THIS attempt detonated > BOMB_HIT_CHEAT_FRACTION of the
-  // board's mines, skip recording it — the day-time writes are additive, so
+  // Anti-cheat: if THIS attempt found most of the board's mines by stepping on
+  // them, skip recording it — the day-time writes are additive, so
   // skipping leaves prior honest days on the row untouched while the probing
   // attempt never lands.
   if (isBombHitCheat(extras.attemptBombHits, extras.totalMines)) return false;

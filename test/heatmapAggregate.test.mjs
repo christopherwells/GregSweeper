@@ -82,7 +82,7 @@ test('one row per player: the archive row is used when there is no day-of row', 
 });
 
 test('REGRESSION: a brute-force probe run is dropped, not mapped', () => {
-  // A run that detonates more than 30% of the mines is reading the
+  // A run that finds most of the mines by stepping on them is reading the
   // layout, not struggling with it. The submit gate rejects these now,
   // but historical rows exist and one of them would otherwise light up
   // most of the board.

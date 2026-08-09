@@ -283,21 +283,54 @@ export const BOMB_PENALTY_BASE = 3;
 // of the previous one, so the n-th strike's base = BOMB_PENALTY_BASE × (1 +
 // BOMB_PENALTY_RAMP × (n-1)) → +3s, +4.5s, +6s, +7.5s … The first strike is
 // unchanged (a lone hit costs the standard base), and the ramp is gentle on
-// purpose: the >30% anti-cheat handles brute-forcers, so this only needs to
+// purpose: isBombHitCheat below handles brute-forcers, so this only needs to
 // discourage casual mine-popping, not clobber a player who hits a couple
 // legitimately. (Was a steeper × n ramp; softened 2026-06-16.)
+//
+// NOTE the closed form, because a backfilled row needs it: penalty − infoValue
+// is exactly this ramped base, so Σ over n strikes = 3n + 0.75n(n−1) — a pure
+// function of the strike COUNT, with no per-strike detail required.
 export const BOMB_PENALTY_RAMP = 0.5;
 
-// Anti-cheat: a player who detonates more than this fraction of the board's
-// mines isn't playing — they're probing the layout by popping mines (daily /
-// weekly have no game-over, so nothing stops them). Such a run is never
-// leaderboarded (and so never feeds the par fit). Pure + exported so the
-// submission gate and tests share one definition.
-export const BOMB_HIT_CHEAT_FRACTION = 0.30;
+// Anti-cheat: a player who finds most of the board's mines by stepping on them
+// isn't playing — they're probing the layout by popping mines (daily / weekly
+// have no game-over, so nothing stops them). Such a run is never leaderboarded
+// (and so never feeds the par fit). Pure + exported so the submission gate and
+// tests share one definition.
+//
+// THE FRACTION ALONE IS NOT ENOUGH, and shipping it that way flagged a real
+// player (2026-08-09, Kate). A bare "> 30% of mines" was written against the
+// 25-30-mine rectangles of the time, where it means nine mistakes and nobody
+// makes nine honest ones. It is scale-FREE, and the shape rotation changed the
+// scale underneath it: the small Laves configs carry as few as 6 mines, where
+// the same 30% means TWO. Kate hit 3 on a 9-mine Kites board, which is an
+// ordinary bad day on the dearest lattice we ship, and was refused.
+//
+// So two independent statements, either of which is damning at any board size:
+//   1. FAR more mistakes than a bad day  — over half the mines AND over a
+//      floor, since half of a 6-mine board is 3 and that proves nothing.
+//   2. You EXCAVATED the board           — essentially every mine found by
+//      detonation. This is the arm that covers small boards, where the floor
+//      alone can exceed the mine count and leave the gate inert.
+//
+// Calibrated against every row ever submitted (602 per-attempt readings across
+// daily, archive and weekly): the worst genuine run on record is 25% of the
+// mines, the three real probing episodes are 81%, 100% and 100%, and the two
+// populations never come near each other. Loosening to these numbers changes
+// ZERO historical verdicts — the same four readings are refused before and
+// after — so the par fit is byte-identical and only future runs are affected.
+//
+// The observed 25% is CENSORED by this very gate (a refused run was never
+// written, so the true right tail of honest play is unobservable), which is why
+// the floor sits at 10 rather than at the 8 the visible data alone would put it.
+export const BOMB_HIT_CHEAT_FRACTION = 0.50;
+export const BOMB_HIT_CHEAT_FLOOR = 10;
+export const BOMB_HIT_EXCAVATED_FRACTION = 0.80;
 export function isBombHitCheat(bombHits, totalMines) {
-  return typeof totalMines === 'number' && totalMines > 0
-    && typeof bombHits === 'number'
-    && bombHits > BOMB_HIT_CHEAT_FRACTION * totalMines;
+  if (typeof totalMines !== 'number' || totalMines <= 0) return false;
+  if (typeof bombHits !== 'number') return false;
+  return bombHits > Math.max(BOMB_HIT_CHEAT_FLOOR, BOMB_HIT_CHEAT_FRACTION * totalMines)
+    || bombHits >= BOMB_HIT_EXCAVATED_FRACTION * totalMines;
 }
 
 // Daily board dimension ranges (seeded RNG picks within these)
