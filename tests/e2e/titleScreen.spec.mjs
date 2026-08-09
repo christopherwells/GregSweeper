@@ -73,6 +73,79 @@ test('REGRESSION: locked Chaos hides its card and the Gym card spans the full ro
     .toBeGreaterThan(layout.gridWidth * 0.9);
 });
 
+// The two tests above name the cards involved, which is what makes them
+// readable and also what makes them fragile: any change to the grid's contents
+// breaks them, and the tempting fix is to loosen the numbers. This one pins the
+// PROPERTY instead -- no visible card is ever left alone on a row at half
+// width -- so it survives a card being added, removed or reordered, and it is
+// what should stay honest when the front door gains its seventh card.
+
+const CHAOS_UNLOCKED_PROFILE = {
+  totalGames: 0, wins: 0, losses: 0, currentStreak: 0, bestStreak: 0,
+  bestTimes: {}, recentGames: [], maxLevelReached: 100,
+  dailiesCompleted: 0, puristWins: 0, gimmickWins: 0,
+  flaglessWins: 0, efficientWins: 0, searchWins: 0, liarWins: 0,
+  challengeEpoch: 1,
+};
+
+// Measures the laid-out grid rather than the CSS: group the visible cards into
+// rows by their top edge, then judge each row on its own.
+async function readGridRows(page) {
+  return page.evaluate(() => {
+    const grid = document.querySelector('.title-screen-modes');
+    const gridW = grid.getBoundingClientRect().width;
+    const cards = [...grid.querySelectorAll('.mode-card')]
+      .filter((c) => getComputedStyle(c).display !== 'none');
+    const rows = new Map();
+    for (const c of cards) {
+      const r = c.getBoundingClientRect();
+      const key = Math.round(r.top);
+      if (!rows.has(key)) rows.set(key, []);
+      rows.get(key).push({ w: r.width, label: c.dataset.mode || c.id || 'card' });
+    }
+    return {
+      gridW,
+      visible: cards.length,
+      rows: [...rows.entries()].sort((a, b) => a[0] - b[0]).map(([, v]) => v),
+    };
+  });
+}
+
+for (const [w, h, label] of [[360, 740, 'reference phone'], [390, 844, 'tall phone'], [1280, 900, 'desktop']]) {
+  for (const chaos of ['locked', 'unlocked']) {
+    test(`no mode card is orphaned at half width — ${label}, Chaos ${chaos}`, async ({ page }) => {
+      if (chaos === 'unlocked') {
+        await page.addInitScript((profile) => {
+          try { localStorage.setItem('minesweeper_stats', JSON.stringify(profile)); } catch {}
+        }, CHAOS_UNLOCKED_PROFILE);
+      }
+      await page.setViewportSize({ width: w, height: h });
+      await page.goto('?isTest=1');
+      await page.waitForSelector('#boot-overlay', { state: 'detached', timeout: 20_000 });
+      await page.waitForSelector('#title-screen:not(.hidden)', { timeout: 20_000 });
+
+      const { gridW, visible, rows } = await readGridRows(page);
+      expect(visible, 'the grid must render some cards at all').toBeGreaterThan(0);
+
+      for (const row of rows) {
+        const names = row.map((c) => c.label).join(', ');
+        if (row.length === 1) {
+          // Alone on a row is only legitimate at full width. A lone half-width
+          // card IS the 2026-07-06 orphan cell.
+          expect(row[0].w, `"${names}" sits alone on its row, so it must span it`)
+            .toBeGreaterThan(gridW * 0.9);
+        } else {
+          expect(row.length, `row [${names}] should hold at most two cards`).toBe(2);
+          for (const c of row) {
+            expect(c.w, `"${c.label}" shares its row, so it must be a half cell`)
+              .toBeLessThan(gridW * 0.6);
+          }
+        }
+      }
+    });
+  }
+}
+
 test('unlocked Chaos shows its card and the Gym card stays half-width', async ({ page }) => {
   // Seed a profile AT CHAOS_UNLOCK_LEVEL (50) — the unlock is >=, so this
   // also pins the boundary. No modeStats on purpose: loadStats' migration

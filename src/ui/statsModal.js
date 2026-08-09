@@ -14,7 +14,7 @@ import {
   fetchAllDailyMeta, fetchAllDailyScores,
 } from '../firebase/firebaseLeaderboard.js';
 import { getUid } from '../firebase/firebaseProgress.js';
-import { loadStats, statsForMode } from '../storage/statsStorage.js';
+import { loadStats, statsForMode, getModeKey } from '../storage/statsStorage.js';
 import {
   loadHandicaps, getHandicapRatio, getHandicapDetails, isRatedHandicap,
   getRefPar, estimateHandicapDetails,
@@ -33,11 +33,13 @@ const OWNER_UID = '5Ht9d2io0ugU1NGsjdJmZvkJi382';
 const MODEL_HISTORY_PATH = './src/logic/modelHistory.json';
 
 // Default tab = the mode the player most recently played (when meaningful).
+// The tab ids ARE the modeStats key space (the panel is `stats-panel-${tab}`),
+// so this asks getModeKey rather than restating the normal -> challenge
+// mapping a third time.
+const STATS_TABS = new Set(['challenge', 'timed', 'weekly', 'daily']);
 function pickDefaultStatsTab() {
-  if (state.gameMode === 'timed') return 'timed';
-  if (state.gameMode === 'normal') return 'challenge';
-  if (state.gameMode === 'weekly') return 'weekly';
-  return 'daily';
+  const key = getModeKey(state.gameMode);
+  return STATS_TABS.has(key) ? key : 'daily';
 }
 
 function setActiveStatsTab(tab) {
