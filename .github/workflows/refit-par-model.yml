@@ -31,12 +31,24 @@ name: Refit Greg-par
 # lag falls uniformly on late-evening play; it is a one-cycle delay on the
 # tail of each day rather than a hole.
 #
-# Actions cron does not observe DST, so this fires ~8:17pm ET the PREVIOUS
-# evening in summer and ~7:17pm ET in winter, plus drift. Change the cron if
-# you move timezones, and keep it ahead of the precompute if you do.
+# MOVED AN HOUR EARLIER, 00:17 -> 23:17 UTC, on 2026-08-09, because the margin
+# this schedule exists to buy had almost entirely gone to GitHub's queue.
+# MEASURED over the two nights the 00:17 cron ran: it STARTED at 02:28 and
+# 02:24 UTC, a consistent ~2h10m late. The refit takes ~5 minutes, so it was
+# finishing about 25 minutes before the 03:00 precompute rather than the 2h43m
+# ahead the move was made for — and another half hour of queue delay would put
+# it AFTER the board it is meant to inform, silently. At 23:17 the same delay
+# lands it around 01:30, roughly 90 minutes clear.
+#
+# Actions cron does not observe DST, so this fires ~7:17pm ET the PREVIOUS
+# evening in summer and ~6:17pm ET in winter, plus drift. That moves the
+# one-cycle lag described above from ~8pm ET to ~7pm ET: slightly more of each
+# evening's play lands in the NEXT night's fit. Still uniform, still a delay
+# rather than a hole. Change the cron if you move timezones, and keep it ahead
+# of the precompute if you do.
 on:
   schedule:
-    - cron: '17 0 * * *'
+    - cron: '17 23 * * *'
   workflow_dispatch: {}
 
 permissions:
