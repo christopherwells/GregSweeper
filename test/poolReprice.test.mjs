@@ -34,6 +34,7 @@ import {
 } from '../src/logic/challengeRules.js';
 import { challengeSpecForLevel, CHALLENGE_MAX_LEVEL } from '../src/logic/challenge250.js';
 import { referenceScale } from '../scripts/ladder-reference-cohort.mjs';
+import { modelFingerprint } from '../src/logic/parModelFingerprint.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const STORE_PATH = path.join(__dirname, '..', 'scripts', 'data', 'pool-features.json');
@@ -90,12 +91,48 @@ test('re-pricing under TODAY\'s model reproduces the shipped prices', () => {
   // board reproduces the median par under ANY coefficients. Storing an
   // averaged feature vector instead would describe a board that was never
   // generated and would only ever be approximately right.
+  // CONDITIONAL, for a reason that bit within hours of this landing. A PR's
+  // checks run against the branch MERGED INTO MAIN, the refit lands nightly at
+  // 00:17 UTC, and a branch cut before that is therefore priced by newer
+  // coefficients than its pool was captured under. That is not a defect — it
+  // is a branch wanting a re-price before it merges, a different message and a
+  // different remedy — so the store records WHICH model it was captured with
+  // and this asks the question that is actually decidable. What must hold
+  // either way is the ruling check below.
+  if (store.model !== modelFingerprint()) return;
+
   for (const e of shipped) {
     const rec = store.entries[specFace(e)];
     const ppc = (predictPar(rec.features) * scale) / e.cells;
     assert.ok(Math.abs(ppc / rec.ppc - 1) < 1e-6,
       `${specFace(e)}: re-prices to ${ppc.toFixed(4)}, stored as ${rec.ppc.toFixed(4)}`);
   }
+});
+
+test('the store records which model it was captured under', () => {
+  // Without it, "the prices disagree with the model" cannot be told apart from
+  // "the prices are older than the model", and those want opposite responses.
+  assert.match(store.model || '', /^[0-9a-f]{8}$/,
+    'the feature store carries no model fingerprint — re-capture it');
+});
+
+test('a pool priced under an older model still respects every ruling', () => {
+  // The half that must hold WHETHER OR NOT the pool is fresh. A branch may
+  // legitimately carry yesterday's prices; it may never carry prices that
+  // break a ceiling or a floor under TODAY's model, because that is what would
+  // ship if it merged before the nightly re-price ran.
+  const entries = [
+    ...LADDER_POOL.map((e) => ({ e, pool: 'ladder' })),
+    ...ENDLESS_POOL.map((e) => ({ e, pool: 'endless' })),
+  ].map(({ e, pool }) => {
+    const rec = store.entries[specFace(e)];
+    const ppc = (predictPar(rec.features) * scale) / e.cells;
+    return { e: { ...e, ppc }, pool };
+  });
+  const found = violations(entries);
+  assert.deepEqual(found, [],
+    `${found.length} entries would break a ruling once re-priced — run `
+    + 'node scripts/reprice-challenge-pool.mjs --check');
 });
 
 test('the re-price is NOT vacuous: a moved coefficient moves every price', () => {

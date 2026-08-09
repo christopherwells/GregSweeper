@@ -36,6 +36,7 @@ import { predictPar } from '../src/logic/dailyFeatures.js';
 import {
   specFace, PAR_CEILING_SECONDS, endlessParCeiling, endlessPpcFloor,
 } from '../src/logic/challengeRules.js';
+import { modelFingerprint } from '../src/logic/parModelFingerprint.js';
 import { referenceScale } from './ladder-reference-cohort.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -128,6 +129,11 @@ function capture() {
   fs.writeFileSync(FEATURES_PATH, JSON.stringify({
     capturedAt: new Date().toISOString(),
     seeds: SEEDS,
+    // WHICH MODEL the prices were derived under. Without it there is no way to
+    // tell a pool that is correctly in sync from one that is merely stale, and
+    // the difference matters constantly: the refit runs nightly, so any branch
+    // older than a day carries a pool priced under yesterday's coefficients.
+    model: modelFingerprint(),
     note: 'Median-draw feature vectors for every shipped pool entry. Regenerate with --capture whenever the pool composition changes.',
     entries: out,
   }));
