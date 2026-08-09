@@ -296,3 +296,67 @@ test('a failed re-price does not cost the night its model fit', () => {
   assert.ok(wf.indexOf('steps.reprice.outcome') > wf.indexOf('Commit and push'),
     'the failure check runs before the commit, which is what it exists to protect');
 });
+
+// ── The search cache follows the model too ─────────────────────────────
+
+test('the search cache stores what it needs to be re-priced', () => {
+  // The pool got feature storage first and the CACHE did not, which meant a
+  // re-search after a refit selected — and applied its ceilings and floors —
+  // on yesterday's prices. It went wrong once, on 2026-08-09, and was worked
+  // around by hand.
+  //
+  // SOURCE-SCANNED, and honestly so: the cache is gitignored (~4 MB of local,
+  // resumable state), so CI has no cache file to inspect and there is nothing
+  // to assert against but the code that writes it. That is enough to catch the
+  // failure this guards — someone editing `record` or `measure` and dropping
+  // the features again — which is the only way it comes back.
+  const src = fs.readFileSync(
+    path.join(__dirname, '..', 'scripts', 'search-endless-specs.mjs'), 'utf8');
+
+  assert.match(src, /features: r\.medFeatures/,
+    'the cache no longer stores the median draw\'s features, so it cannot be re-priced');
+  assert.match(src, /model: MODEL/,
+    'the cache no longer records which equations priced it, so stale and fresh are indistinguishable');
+  assert.match(src, /const MODEL = modelFingerprint\(\)/,
+    'the fingerprint is not read, so `model:` is recording something else');
+
+  // The median DRAW, not an average of draws. Par is monotone in the linear
+  // predictor, so only the median draw's own vector re-prices exactly.
+  assert.match(src, /draws\[Math\.floor\(draws\.length \/ 2\)\]\.features/,
+    'the stored vector is no longer the median draw\'s, so re-pricing is only approximate');
+
+  assert.match(src, /--reprice-cache/, 'the re-price mode is gone');
+  assert.match(src, /e\.model !== MODEL/,
+    'the emit no longer notices that it is choosing from stale prices');
+});
+
+test('the refit cron stays ahead of the precompute it feeds', () => {
+  // The whole point of the refit's schedule is that a night's board is
+  // generated under the model fit that same night. MEASURED, and this is why
+  // the cron moved twice: GitHub queued the 00:17 slot by a consistent ~2h10m,
+  // which left about 25 minutes before the 03:00 precompute instead of the
+  // 2h43m the move was made for.
+  const refit = fs.readFileSync(
+    path.join(__dirname, '..', '.github', 'workflows', 'refit-par-model.yml'), 'utf8');
+  const pre = fs.readFileSync(
+    path.join(__dirname, '..', '.github', 'workflows', 'precompute-daily-board.yml'), 'utf8');
+
+  const at = (src) => {
+    const m = /cron: '(\d+) (\d+) \* \* \*'/.exec(src);
+    assert.ok(m, 'no daily cron found');
+    return Number(m[2]) * 60 + Number(m[1]);
+  };
+  const refitAt = at(refit);
+  const preAt = at(pre);
+
+  // Minutes from the refit's slot forward to the precompute's, wrapping the
+  // day — the refit fires the previous evening, so a plain subtraction is
+  // negative and means nothing.
+  const lead = ((preAt - refitAt) + 1440) % 1440;
+  assert.ok(lead >= 180,
+    `the refit fires only ${lead} minutes before the precompute; GitHub's queue `
+    + 'has measured ~130 minutes, which would leave almost no margin');
+  assert.ok(lead <= 720,
+    `the refit fires ${lead} minutes before the precompute, far enough ahead that `
+    + 'it is fitting on materially older play than it needs to');
+});

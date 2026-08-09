@@ -38,28 +38,19 @@
 // specFace, and --minutes caps wall clock, so the sweep can be run in
 // sittings and the pool grows across them.
 //
-// KNOWN HAZARD, READ BEFORE RE-SEARCHING AFTER A REFIT. The cache stores each
-// spec's measured PRICE, and a price is model-dependent while everything else
-// about a measurement is not. The shipped pool solved this by storing feature
-// vectors (scripts/data/pool-features.json, re-priced nightly by
-// reprice-challenge-pool.mjs); THE CACHE HAS NOT BEEN GIVEN THE SAME
-// TREATMENT. So after a refit moves the equations, every cached price is stale
-// and an emit selects — and applies its ceilings and floors — using
-// yesterday's numbers.
+// PRICES IN THE CACHE FOLLOW THE MODEL. A measurement's expensive half —
+// generation, certification, strict load-bearing, timing — is
+// MODEL-INDEPENDENT, and only its price is not. So every entry stores the
+// feature vector of its median draw alongside the price, exactly as the
+// shipped pool does, and `--reprice-cache` re-answers every one of them under
+// the current model in about a second.
 //
-// Until that is fixed, re-price the cache from the pool's feature store before
-// emitting, or accept that entries the store does not cover are being judged
-// on old prices. This was worked around by hand on 2026-08-09 and it is the
-// one piece of the re-price arc still owed: teach `record()` to keep the
-// median draw's features, exactly as the pool store does, and re-price the
-// cache from them instead of re-measuring.
-//
-//   node scripts/search-endless-specs.mjs --minutes 60
-//   node scripts/search-endless-specs.mjs --minutes 30 --shape rhombille
-//   node scripts/search-endless-specs.mjs --refine --minutes 20
-//   node scripts/search-endless-specs.mjs --report          # cache only, no measuring
-//   node scripts/search-endless-specs.mjs --absorb --seeds 10  # re-measure the SHIPPED pool
-//   node scripts/search-endless-specs.mjs --emit ladder     # print a pool table
+// Without that, a re-search after a refit selects — and applies its ceilings
+// and floors — using yesterday's numbers, on a cache that takes hours to
+// rebuild. That went wrong once, on 2026-08-09, and was worked around by hand.
+// Entries measured before this change carry no features; they keep their old
+// price, `--reprice-cache` reports how many, and the number falls to zero as
+// the sweep revisits them.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -72,6 +63,8 @@ import {
 } from '../src/logic/challengeRules.js';
 import { buildTiling, containerIsStorable, TILING_TYPES } from '../src/logic/tilingGeometry.js';
 import { boardFitsPhone } from '../src/logic/boardFit.js';
+import { predictPar } from '../src/logic/dailyFeatures.js';
+import { modelFingerprint } from '../src/logic/parModelFingerprint.js';
 import { referenceScale } from './ladder-reference-cohort.mjs';
 import { BOARD_WIDTH_CAP } from '../src/logic/difficulty.js';
 
@@ -89,6 +82,7 @@ const REFINE = hasFlag('--refine');
 const REPORT_ONLY = hasFlag('--report');
 const EMIT = argVal('--emit');
 const ABSORB = hasFlag('--absorb');
+const REPRICE = hasFlag('--reprice-cache');
 
 // 3% above whatever floor applies (see emitPool's floorFn).
 const PPC_FLOOR_MARGIN = 1.03;
@@ -106,6 +100,9 @@ const PAR_CEILING_MARGIN = 0.95;
 // worth. Applied at EMIT (the cache stays in population seconds), and read once
 // per run so a whole pool is emitted on one yardstick.
 const SCALE = referenceScale();
+
+// The equations every price in this run is answered by.
+const MODEL = modelFingerprint();
 
 // ── The legal space ────────────────────────────────────────────────────
 
@@ -245,7 +242,7 @@ function makeSpec(shape, a, b, cells, mines, gimmicks, gl) {
  * matters most, because the dear failures are the ones that eat the budget.
  */
 function measure(spec, budgetMs) {
-  const pars = [];
+  const draws = [];
   let worstMs = 0;
   for (let k = 0; k < SEEDS; k++) {
     const t0 = Date.now();
@@ -255,9 +252,16 @@ function measure(spec, budgetMs) {
     if (worstMs > budgetMs) return { ok: false, why: 'gen', worstMs };
     if (!built) return { ok: false, why: 'draw', worstMs };
     if (!built.par) return { ok: false, why: 'par', worstMs };
-    pars.push(built.par);
+    draws.push({ par: built.par, features: built.features });
   }
-  pars.sort((x, y) => x - y);
+  draws.sort((x, y) => x.par - y.par);
+  const pars = draws.map((d) => d.par);
+  // The MEDIAN DRAW's vector, not an average of the draws'. Par is exp() of
+  // the linear predictor and so monotone in it, which makes the median-par
+  // draw the median-linear-predictor draw — re-pricing that one board
+  // reproduces this median under any future coefficients. An averaged vector
+  // would describe a board that was never generated and never certified.
+  const medFeatures = draws[Math.floor(draws.length / 2)].features;
   // Measurement stays in POPULATION seconds — the raw `predictPar` answer. The
   // conversion to reference-cohort seconds happens at EMIT, not here, because
   // the cache is long-lived and resumable: baking a scale into it would leave
@@ -265,7 +269,7 @@ function measure(spec, budgetMs) {
   // entries measured after, with nothing recording which was which.
   const medPar = pars[Math.floor(pars.length / 2)];
   return {
-    ok: true, medPar, ppc: medPar / spec.cells, worstMs,
+    ok: true, medPar, ppc: medPar / spec.cells, worstMs, medFeatures,
     minPar: pars[0], maxPar: pars[pars.length - 1],
   };
 }
@@ -291,7 +295,13 @@ function record(cache, spec, r) {
     seeds: SEEDS,
     ok: r.ok,
     ...(r.ok
-      ? { ppc: Number(r.ppc.toFixed(3)), medPar: Math.round(r.medPar), worstMs: r.worstMs }
+      ? {
+        ppc: Number(r.ppc.toFixed(3)), medPar: Math.round(r.medPar), worstMs: r.worstMs,
+        // The two halves of a re-priceable measurement: WHAT was measured, and
+        // WHICH equations turned it into a price.
+        features: r.medFeatures,
+        model: MODEL,
+      }
       : { why: r.why, worstMs: r.worstMs }),
   };
 }
@@ -517,6 +527,15 @@ function emitPool(cache, { floorFn, ceilFn, perSlice, slices, maxPerShape = Infi
     // cohort's yardstick from this line on.
     .map((e) => ({ ...e, ppc: e.ppc * SCALE, medPar: e.medPar * SCALE }))
     .filter((e) => e.ppc >= floorFn(e.shape) && e.medPar <= ceilFn(e.shape) * PAR_CEILING_MARGIN);
+
+  // An entry priced under older equations is being judged by the ceilings and
+  // floors on numbers that no longer describe it. Say so rather than let it
+  // pass quietly — `--reprice-cache` fixes every entry that has features.
+  const stalePriced = ok.filter((e) => e.model !== MODEL).length;
+  if (stalePriced) {
+    console.error(`// WARNING: ${stalePriced} of ${ok.length} candidates carry prices from an older model.`);
+    console.error('// Run: node scripts/search-endless-specs.mjs --reprice-cache');
+  }
   if (!ok.length) return [];
   const lo = Math.min(...ok.map((e) => e.ppc));
   const hi = Math.max(...ok.map((e) => e.ppc));
@@ -682,6 +701,48 @@ async function absorb(cache) {
   console.log(`absorb: ${n} shipped specs re-measured at ${SEEDS} seeds — ${moved} moved >5%, ${dropped} no longer certify`);
 }
 
+/**
+ * Re-answer every cached price under the current model, from stored features.
+ *
+ * Instant, because it builds no boards. Also SEEDS itself from the shipped
+ * pool's own feature store, so the entries that matter most — the ones
+ * actually on the ladder — are re-priceable from the first run rather than
+ * waiting for the sweep to revisit them.
+ */
+function repriceCache(cache) {
+  // Seed from the pool store first.
+  let seeded = 0;
+  try {
+    const store = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'pool-features.json'), 'utf8'));
+    for (const [face, rec] of Object.entries(store.entries)) {
+      if (cache[face] && !cache[face].features && rec.features) {
+        cache[face].features = rec.features;
+        seeded++;
+      }
+    }
+  } catch { /* no store yet; nothing to seed from */ }
+
+  let priced = 0, stale = 0, moved = 0;
+  for (const e of Object.values(cache)) {
+    if (!e.ok) continue;
+    if (!e.features) { stale++; continue; }
+    const par = predictPar(e.features) * SCALE;
+    const ppc = Number((par / e.cells).toFixed(3));
+    if (Math.abs(ppc / e.ppc - 1) > 0.05) moved++;
+    e.ppc = ppc;
+    e.medPar = Math.round(par);
+    e.model = MODEL;
+    priced++;
+  }
+  saveCache(cache);
+  console.log(`re-priced ${priced} cached entries under model ${MODEL} (${moved} moved >5%)`);
+  if (seeded) console.log(`  ${seeded} of them took their features from the shipped pool's store`);
+  if (stale) {
+    console.log(`  ${stale} entries were measured before features were stored and keep their old price;`);
+    console.log('  that number falls to zero as the sweep revisits them.');
+  }
+}
+
 // ── Main ───────────────────────────────────────────────────────────────
 
 const cache = loadCache();
@@ -692,7 +753,8 @@ else {
   console.log(`legal space: ${shapes.map((s) => `${s} ${legalDims(s).length} dims`).join(', ')}`);
   const nSets = shapeGimmickSets(0).length;
   console.log(`${nSets} modifier slots x ${shapes.length} shapes = ${nSets * shapes.length} strata`);
-  if (ABSORB) await absorb(cache);
+  if (REPRICE) repriceCache(cache);
+  else if (ABSORB) await absorb(cache);
   else if (REFINE) refine(cache);
   else sweep(cache);
   report(cache);
