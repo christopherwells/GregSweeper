@@ -38,6 +38,22 @@
 // specFace, and --minutes caps wall clock, so the sweep can be run in
 // sittings and the pool grows across them.
 //
+// KNOWN HAZARD, READ BEFORE RE-SEARCHING AFTER A REFIT. The cache stores each
+// spec's measured PRICE, and a price is model-dependent while everything else
+// about a measurement is not. The shipped pool solved this by storing feature
+// vectors (scripts/data/pool-features.json, re-priced nightly by
+// reprice-challenge-pool.mjs); THE CACHE HAS NOT BEEN GIVEN THE SAME
+// TREATMENT. So after a refit moves the equations, every cached price is stale
+// and an emit selects — and applies its ceilings and floors — using
+// yesterday's numbers.
+//
+// Until that is fixed, re-price the cache from the pool's feature store before
+// emitting, or accept that entries the store does not cover are being judged
+// on old prices. This was worked around by hand on 2026-08-09 and it is the
+// one piece of the re-price arc still owed: teach `record()` to keep the
+// median draw's features, exactly as the pool store does, and re-price the
+// cache from them instead of re-measuring.
+//
 //   node scripts/search-endless-specs.mjs --minutes 60
 //   node scripts/search-endless-specs.mjs --minutes 30 --shape rhombille
 //   node scripts/search-endless-specs.mjs --refine --minutes 20
