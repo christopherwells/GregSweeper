@@ -13,6 +13,36 @@ async function enterChallengeLevel(page, level) {
   await page.waitForSelector('#board .cell', { timeout: 20_000 });
 }
 
+// The first reveal on a debut board raises the intro cards, and BOTH of them
+// stop the clock while they are read — a card is not play. So the pace bar
+// legitimately does not move until they are dismissed, and a spec that
+// measures the fill has to clear them the way a player does. The modifier
+// card is a deck (primer, one per unseen modifier, recap), so this advances
+// until nothing is left up.
+async function dismissIntroCards(page) {
+  const shape = page.locator('#shape-intro-overlay');
+  const gimmick = page.locator('#gimmick-intro-overlay');
+  for (let i = 0; i < 8; i++) {
+    if (await shape.isVisible().catch(() => false)) {
+      await page.locator('#shape-intro-ok').click();
+      // hideModal adds .modal-closing and only adds .hidden 250ms later, so
+      // the overlay is still visible right after the click; re-checking
+      // immediately would click a card that is already on its way out.
+      await expect(shape).toBeHidden({ timeout: 5_000 });
+      continue;
+    }
+    if (await gimmick.isVisible().catch(() => false)) {
+      // The modifier deck advances IN PLACE, so this one does not go hidden
+      // between cards. The loop bound is what terminates it.
+      await page.locator('#gimmick-intro-ok').click();
+      await page.waitForTimeout(350);
+      continue;
+    }
+    return;
+  }
+  throw new Error('intro cards never cleared');
+}
+
 test('the pace bar shows the expected time on a ladder board and fills as the clock runs', async ({ page }) => {
   await prepareInteractionSpec(page);
   await enterChallengeLevel(page, 26); // block 6: the Honeycomb shape intro
@@ -31,8 +61,10 @@ test('the pace bar shows the expected time on a ladder board and fills as the cl
   const before = await page.locator('#pace-bar-fill').evaluate((el) => el.getBoundingClientRect().width);
   expect(before).toBeLessThan(2);
 
-  // Play the certified opener to start the clock, then let it run.
+  // Play the certified opener to start the clock, clear the debut cards,
+  // then let it run.
   await page.click('#board .cell.suggested-start');
+  await dismissIntroCards(page);
   await expect.poll(
     async () => page.locator('#pace-bar-fill').evaluate((el) => el.getBoundingClientRect().width),
     { timeout: 8_000, message: 'the bar must fill as the timer runs' },
