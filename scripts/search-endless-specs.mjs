@@ -52,7 +52,7 @@ import { fileURLToPath } from 'node:url';
 import { buildChallenge250Board, challengeBoardSeed } from '../src/logic/challenge250Builder.js';
 import {
   endlessParCeiling, endlessGenCap, endlessGenBudget, endlessPpcFloor,
-  PAR_CEILING_SECONDS, GEN_CAP_MS, specFace,
+  PAR_CEILING_SECONDS, GEN_CAP_MS, ENDLESS_GEN_HEADROOM, specFace,
 } from '../src/logic/challengeRules.js';
 import { buildTiling, containerIsStorable, TILING_TYPES } from '../src/logic/tilingGeometry.js';
 import { boardFitsPhone } from '../src/logic/boardFit.js';
@@ -76,6 +76,14 @@ const ABSORB = hasFlag('--absorb');
 
 // 3% above whatever floor applies (see emitPool's floorFn).
 const PPC_FLOOR_MARGIN = 1.03;
+
+// And the SAME margin on the par ceiling, for the same reason and learned the
+// same way three times over — first on the generation cap, then on the endless
+// floor, now here. An entry admitted at 479s against a 480s ceiling crosses it
+// on any re-measurement and on any refit, and then the nightly re-price
+// refuses to write and the run goes red on a pool nobody changed. Admission
+// wants HEADROOM, never merely a passing measurement.
+const PAR_CEILING_MARGIN = 0.95;
 
 // The ladder is priced in the REFERENCE COHORT's seconds, not the population's
 // — see ladder-reference-cohort.mjs for why, and for what it was measured to be
@@ -492,7 +500,7 @@ function emitPool(cache, { floorFn, ceilFn, perSlice, slices, maxPerShape = Infi
     // admission floor, the par ceiling, and the ppc that ships — is on the
     // cohort's yardstick from this line on.
     .map((e) => ({ ...e, ppc: e.ppc * SCALE, medPar: e.medPar * SCALE }))
-    .filter((e) => e.ppc >= floorFn(e.shape) && e.medPar <= ceilFn(e.shape));
+    .filter((e) => e.ppc >= floorFn(e.shape) && e.medPar <= ceilFn(e.shape) * PAR_CEILING_MARGIN);
   if (!ok.length) return [];
   const lo = Math.min(...ok.map((e) => e.ppc));
   const hi = Math.max(...ok.map((e) => e.ppc));
@@ -614,7 +622,9 @@ function runEmit(cache, which) {
     // endless slice, and a shape's abundance in the CACHE is a fact about
     // how cheaply it certifies, not about how much of the ladder it deserves.
     maxPerShape: 90,
-  }).filter((e) => e.worstMs <= GEN_CAP_MS * 0.75);
+    // Same headroom the endless side uses, read from the ruling rather than
+    // restated — a second copy of a margin is a second thing to keep in step.
+  }).filter((e) => e.worstMs <= GEN_CAP_MS * ENDLESS_GEN_HEADROOM);
   console.log(`\n// ${pool.length} entries, ladder pool\nexport const LADDER_POOL = Object.freeze([`);
   for (const e of pool) console.log(emitLine(e));
   console.log(']);');

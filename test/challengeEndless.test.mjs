@@ -263,17 +263,22 @@ test('GOLDEN: the first endless block is fixed', () => {
   // Moved again on 2026-08-07 by his no-scaling ruling: with no difficulty
   // target there is no candidate window to rank against, so the draw reaches
   // the WHOLE pool and a different five come out.
-  // Moved again on 2026-08-08 by the pool rewrite: the endless zone now draws
+  // Moved again on 2026-08-09 by the nightly re-price: the refit moved cairo's
+  // equation 13.5%, seven of its entries crossed the 480s ceiling, and the
+  // rebuild that followed changed which specs the deck deals. That is the
+  // system working — a golden that moves when the model does is the point.
+  // Moved on 2026-08-08 by the pool rewrite: the endless zone now draws
   // from the same stratified search the ladder does (a per-shape cap, so no
   // shape holds a third of it), and the per-level hash pick became a DEALT
   // DECK. Whole different pool, whole different draw.
   assert.deepEqual(got, [
-    'floret:84c:31m:[worm]',
+    'floret:84c:29m:[locked+sonar]',
     'deltoidal:54c:18m:[]',
-    '4.8.8:77c:28m:[liar+locked+mirror]',
-    'hex:108c:38m:[liar]',
-    'cairo:112c:20m:[liar+wormhole+sonar]',
+    '4.8.8:98c:33m:[mirror]',
+    'hex:96c:36m:[locked+worm]',
+    'cairo:112c:30m:[liar+wormhole+mirror]',
   ]);
+
 
 });
 

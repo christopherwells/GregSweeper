@@ -59,6 +59,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # For the pool re-price below. The shipped app imports nothing from
+      # node_modules, so there is no install step — this is just a runtime for
+      # the ES modules the script reads the ladder through.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
       - uses: r-lib/actions/setup-r@v2
         with:
           r-version: release
@@ -98,18 +105,48 @@ jobs:
         timeout-minutes: 10
         run: Rscript scripts/refit-par-model.R
 
+      # THE POOL IS PRICED IN PAR-SECONDS, so a refit that moves an equation
+      # leaves every challenge-ladder entry mislabelled — the ladder's band,
+      # the endless admission floor and the validator's acceptance band all
+      # match against a number measured at yesterday's model. Nothing caught
+      # that: the validator is not in CI and takes minutes.
+      #
+      # This step costs SECONDS, not minutes, because it re-prices rather than
+      # re-measures. Generating and certifying a spec is model-INDEPENDENT and
+      # only its price is not, so scripts/data/pool-features.json carries the
+      # feature vector of each entry's median draw and predictPar re-answers
+      # instantly. Re-measuring instead would take ~20 minutes AND erode the
+      # pool, because it drops entries to seed noise.
+      #
+      # It relabels in place and never re-selects, so level assignments move
+      # only as far as prices genuinely moved. If an entry leaves the rulings
+      # the script writes nothing and exits non-zero — that is a re-SEARCH,
+      # which is a human's call, and the failed run is the alarm.
+      #
+      # continue-on-error, and checked at the END. A boundary violation means
+      # the pool needs a re-SEARCH, which is a human's call — but the model
+      # refit must not be held hostage to it. The fit also drives par, the
+      # handicaps, the experiment target and the next night's board precompute,
+      # and losing all of that because two ladder entries crossed a ceiling is
+      # the wrong trade. So the model still commits, the pool is left honestly
+      # stale at its old prices, and the run goes red with the remedy named.
+      - name: Re-price the challenge pool against the new model
+        id: reprice
+        continue-on-error: true
+        run: node scripts/reprice-challenge-pool.mjs
+
       - name: Commit and push if anything changed
         id: commit
         run: |
-          if git diff --quiet src/logic/difficulty.js src/logic/handicaps.json src/logic/experimentTarget.json src/logic/modelHistory.json; then
-            echo "No model, handicap, experiment-target, or history changes — nothing to commit."
+          if git diff --quiet src/logic/difficulty.js src/logic/handicaps.json src/logic/experimentTarget.json src/logic/modelHistory.json src/logic/challengePool.js; then
+            echo "No model, handicap, experiment-target, history, or ladder-price changes — nothing to commit."
             echo "pushed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git config user.name  "Christopher Wells"
           git config user.email "c.wells@bowdoin.edu"
-          git add src/logic/difficulty.js src/logic/handicaps.json src/logic/experimentTarget.json src/logic/modelHistory.json
-          git commit -m "refit PAR_MODEL, handicaps, and experiment target — $(date -u +%Y-%m-%d)"
+          git add src/logic/difficulty.js src/logic/handicaps.json src/logic/experimentTarget.json src/logic/modelHistory.json src/logic/challengePool.js
+          git commit -m "refit PAR_MODEL, handicaps, experiment target, and ladder prices — $(date -u +%Y-%m-%d)"
           # A plain push LOSES THE WHOLE NIGHT'S FIT if a human pushed to main
           # while Stan was sampling. That is not hypothetical: the 2026-08-03
           # refit fit cleanly (4 files, 315 insertions) and then died on
@@ -135,6 +172,17 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run deploy-pages.yml --ref main
+
+      - name: Fail the run if the pool could not be re-priced
+        if: steps.reprice.outcome == 'failure'
+        run: |
+          echo "::error::The challenge pool left its rulings under the new model and was NOT re-priced."
+          echo "The model, handicaps and experiment target committed normally; the ladder is stale."
+          echo "Remedy: node scripts/search-endless-specs.mjs --absorb --seeds 10"
+          echo "        node scripts/write-challenge-pool.mjs"
+          echo "        node scripts/reprice-challenge-pool.mjs --capture"
+          echo "        node scripts/validate-challenge250-specs.mjs"
+          exit 1
 
       - name: Notify on failure
         if: failure()
