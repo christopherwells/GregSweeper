@@ -1,43 +1,43 @@
 {
-  "updatedAt": "2026-08-08T02:30:01Z",
-  "target": "clueShare4",
-  "reason": "highest posterior CV (0.776) excluding last 3 targets",
+  "updatedAt": "2026-08-09T02:33:24Z",
+  "target": "mirrorPairCount",
+  "reason": "highest posterior CV (0.593) excluding last 3 targets",
   "lastRevalidationDate": "2026-08-01",
   "recentTargets": [
+    "mirrorPairCount",
     "clueShare4",
-    "wormLoad",
-    "wormholePairCount"
+    "wormLoad"
   ],
   "candidates": [
     {
       "feature": "clueShare4",
-      "mean": 0.055,
-      "sd": 0.043,
-      "cv": 0.776
+      "mean": 0.052,
+      "sd": 0.041,
+      "cv": 0.794
     },
     {
       "feature": "wormLoad",
-      "mean": 0.013,
-      "sd": 0.009,
-      "cv": 0.704
+      "mean": 0.016,
+      "sd": 0.01,
+      "cv": 0.627
     },
     {
-      "feature": "compassCellCount",
+      "feature": "wormholePairCount",
       "mean": 0.025,
       "sd": 0.015,
-      "cv": 0.598
+      "cv": 0.602
     },
     {
       "feature": "mirrorPairCount",
-      "mean": 0.027,
+      "mean": 0.028,
       "sd": 0.016,
-      "cv": 0.578
+      "cv": 0.593
     },
     {
-      "feature": "clueShare2",
-      "mean": 0.05,
-      "sd": 0.026,
-      "cv": 0.509
+      "feature": "compassCellCount",
+      "mean": 0.027,
+      "sd": 0.015,
+      "cv": 0.573
     }
   ],
   "coverage_targets": [
@@ -47,17 +47,17 @@
       "deficit_weight": 0.1111
     },
     {
-      "feature": "wormholePairCount",
-      "n_boards": 17,
-      "deficit_weight": 0.0556
-    },
-    {
       "feature": "compassCellCount",
       "n_boards": 17,
       "deficit_weight": 0.0556
     },
     {
       "feature": "liarCellCount",
+      "n_boards": 18,
+      "deficit_weight": 0.0526
+    },
+    {
+      "feature": "wormholePairCount",
       "n_boards": 18,
       "deficit_weight": 0.0526
     },
@@ -72,5 +72,13 @@
       "deficit_weight": 0.05
     }
   ],
-  "lastDecorrelationDate": "2026-08-02"
+  "lastDecorrelationDate": "2026-08-09",
+  "decorrelation_mission": {
+    "feature": "clueShare3",
+    "confounder": "density",
+    "slope": 10.5148,
+    "intercept": -0.6887,
+    "residualSd": 0.5154,
+    "weight": 0.5555
+  }
 }
