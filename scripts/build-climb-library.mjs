@@ -36,11 +36,31 @@ import { serializeBoard } from '../src/firebase/dailyBoardSync.js';
 import { TILING_SAFE_GIMMICKS } from '../src/logic/tilingGenerator.js';
 import {
   CHALLENGE_MAX_LEVEL, CHALLENGE_BLOCK_SIZE, CLIMB_MIN_PAR_SECONDS, specFace,
-  SHAPE_INTRO_BLOCKS, MOD_INTRO_BLOCKS,
 } from '../src/logic/challenge250.js';
 import { modelFingerprint } from '../src/logic/parModelFingerprint.js';
 
 const OUT_DIR = new URL('./data/climb-library/', import.meta.url);
+
+// ── THE LIBRARY'S OWN INTRODUCTION SCHEDULE ────────────────────────────
+// A three-cycle against the shipped braid's derived schedule (his ruling
+// 2026-08-10: "Swap sonar forward"): sonar 13 -> 6, hex 6 -> 7, locked
+// 7 -> 13. Sonar leads the braid on Classic so that hex, the first lattice
+// a player ever meets, debuts WITH its rescuer already known: hex is soft
+// on plain boards (best of 200 draws reached 3 hard decisions) and
+// liar+sonar on hex measures median 4 to 5, max 9 to 10. Hex keeps the
+// first-lattice slot because it is the gentlest introduction to new
+// adjacency; what moves is the modifier that makes it testable.
+//
+// The shipped challenge250.js schedule keeps running the live pool ladder
+// until the runtime is wired to the library; from that day this table is
+// the one source and the checkpoint labels read from the manifest.
+const LIB_SHAPE_INTROS = {
+  7: 'hex', 8: '4.8.8', 10: 'cairo', 12: 'rhombille', 14: 'floret', 16: 'deltoidal',
+};
+const LIB_MOD_INTROS = {
+  2: 'walls', 3: 'liar', 4: 'mystery', 6: 'sonar', 9: 'wormhole',
+  11: 'mirror', 13: 'locked', 15: 'compass', 17: 'worm',
+};
 
 // ── His rulings, as numbers ────────────────────────────────────────────
 // "longer than 2 minutes each", "the board can go 20 minutes of work, if
@@ -94,6 +114,29 @@ const HARD_FLOOR_TOP = 14;
 // candidates are what let every shape contribute a HARD board rather than
 // merely a board.
 const CANDIDATES_PER_KEEP = 28;
+
+// Per-shape floor relief (his ruling 2026-08-10: "I want all shapes in the
+// upper levels too so if that means dropping those shapes particular floors
+// some, that's fine"). A shape whose best candidate at a level sits under
+// the floor is admitted at this fraction of it rather than dropped from the
+// level; the log names every use. Never applied below the global two-minute
+// floor, and never applied to a shape that CAN reach the level's floor.
+const PAR_FLOOR_SHAPE_RELIEF = 0.85;
+
+// The heavy stacks the targeted pass draws from, and why they are authored
+// here rather than derived: GIMMICK_SETS tops out at three modifiers, and
+// the boards that put the constrained shapes over the high floors are the
+// FOUR and FIVE stacks (measured at density 0.36 on the largest legal
+// patches: Octagons 597 to 637s median where its plain maximum is 243s).
+// The blind rotation could never land on a set it does not contain, which
+// is why the first L250 run came back without Octagons or Paving Stones.
+const HEAVY_SETS = [
+  ['sonar', 'compass', 'locked', 'wormhole'],
+  ['liar', 'sonar', 'compass', 'mirror'],
+  ['liar', 'sonar', 'compass', 'locked', 'wormhole'],
+  ['sonar', 'compass', 'mirror', 'wormhole'],
+];
+const REP_TRIES_PER_SHAPE = 36;
 
 // ── The two floors a board must clear ──────────────────────────────────
 const MIN_WORK = 8;   // decisions. Offline the specs are big, so this is easy.
@@ -220,6 +263,7 @@ if ((process.argv[1] || '').endsWith('build-climb-library.mjs')) {
     process.exit(1);
   }
   const priced = JSON.parse(readFileSync(which, 'utf8')).entries;
+  const allPatches = legalPatches();
   console.log(`price map: ${priced.length} priced specs`
     + `${which === fastFile ? ' (FAST map: rhombille and deltoidal missing)' : ''}`);
   if (!existsSync(OUT_DIR)) mkdirSync(OUT_DIR, { recursive: true });
@@ -243,15 +287,15 @@ if ((process.argv[1] || '').endsWith('build-climb-library.mjs')) {
     // the library, the manifest this writes becomes the one source.
     const block = Math.floor((level - 1) / CHALLENGE_BLOCK_SIZE) + 1;
     const shapesIn = new Set(['rect']);
-    for (const [b, sh] of Object.entries(SHAPE_INTRO_BLOCKS)) {
+    for (const [b, sh] of Object.entries(LIB_SHAPE_INTROS)) {
       if (Number(b) <= block) shapesIn.add(sh);
     }
     const modsIn = new Set();
-    for (const [b, g] of Object.entries(MOD_INTRO_BLOCKS)) {
+    for (const [b, g] of Object.entries(LIB_MOD_INTROS)) {
       if (Number(b) <= block) modsIn.add(g);
     }
-    const debutShape = SHAPE_INTRO_BLOCKS[block] || null;
-    const debutMod = MOD_INTRO_BLOCKS[block] || null;
+    const debutShape = LIB_SHAPE_INTROS[block] || null;
+    const debutMod = LIB_MOD_INTROS[block] || null;
     const allowedSets = GIMMICK_SETS.filter((set) =>
       set.every((g) => modsIn.has(g)) && (!debutMod || set.includes(debutMod)));
 
@@ -297,17 +341,70 @@ if ((process.argv[1] || '').endsWith('build-climb-library.mjs')) {
       kept.push(c);
     }
 
-    // The FLOOR is absolute and the window top is the selection width: land
-    // inside the window first, THEN maximize hardness. Sorting by hardness
-    // before banding is what put the very first run's L26 at 375s, because
-    // the hardest boards are simply the biggest and nothing held them back.
-    const inBand = kept.filter((c) => c.par >= floorPar && c.par <= topPar);
+    // THE REPRESENTATION PASS (his ruling: all shapes in the upper levels
+    // too). The blind draw misses a shape whenever the boards that put it
+    // over the floor live in a narrow corner, which for the constrained
+    // shapes is the largest patch at high density under a heavy stack. So
+    // any introduced shape with no candidate at the floor gets targeted
+    // draws aimed at exactly that corner. Skipped on debut blocks, whose
+    // single-shape lesson outranks spread.
+    if (!debutShape && !debutMod) {
+      const missing = [...shapesIn].filter((sh) =>
+        !kept.some((c) => c.spec.shape === sh && c.par >= floorPar));
+      for (const sh of missing) {
+        const tops = allPatches.filter((q) => q.shape === sh)
+          .sort((a, b) => b.cells - a.cells).slice(0, 3);
+        const heavy = HEAVY_SETS.map((g) => g.filter((m) => modsIn.has(m)))
+          .filter((g) => g.length >= 2);
+        let tries = 0;
+        for (const q of tops) {
+          for (const dens of [0.28, 0.32, 0.36]) {
+            for (const g of heavy) {
+              if (tries >= REP_TRIES_PER_SHAPE) break;
+              const mines = Math.round(q.cells * dens);
+              if (mines < 4 || mines > q.cells * 0.42) continue;
+              tries++;
+              const c = candidate(
+                { shape: q.shape, rows: q.rows, cols: q.cols, M: q.M, N: q.N,
+                  cells: q.cells, mines, gimmicks: g, gimmickLevel: 110, constructive: true },
+                `climb:L${level}:rep:${sh}:${dens}:${g.join('.')}`);
+              if (!c) continue;
+              const n = seenFace.get(c.face) || 0;
+              if (n >= 2) continue;
+              seenFace.set(c.face, n + 1);
+              kept.push(c);
+            }
+          }
+        }
+      }
+    }
+
+    // Per-shape floor relief: only for a shape whose BEST candidate is still
+    // under the floor after the targeted pass, and never below the global
+    // two-minute floor.
+    const bestByShape = new Map();
+    for (const c of kept) {
+      bestByShape.set(c.spec.shape, Math.max(bestByShape.get(c.spec.shape) || 0, c.par));
+    }
+    const effFloor = (sh) => ((bestByShape.get(sh) || 0) >= floorPar
+      ? floorPar
+      : Math.max(MIN_PAR, floorPar * PAR_FLOOR_SHAPE_RELIEF));
+    const relieved = [...bestByShape.keys()]
+      .filter((sh) => effFloor(sh) < floorPar
+        && kept.some((c) => c.spec.shape === sh && c.par >= effFloor(sh)));
+
+    // The FLOOR is absolute (per shape, after relief) and the window top is
+    // the selection width: land inside the window first, THEN maximize
+    // hardness. Sorting by hardness before banding is what put the very
+    // first run's L26 at 375s, because the hardest boards are simply the
+    // biggest and nothing held them back.
+    const inBand = kept.filter((c) => c.par >= effFloor(c.spec.shape) && c.par <= topPar);
     // Falling back to the whole set is the honest failure mode: a level short
     // of in-band boards gets off-target ones and the log says so, rather than
     // shipping fewer than the minimum.
     // The fallback still respects the FLOOR: a short level may only err
     // LONG, never under the floor, or the ramp's own promise breaks.
-    const overFloor = kept.filter((c) => c.par >= floorPar);
+    const overFloor = kept.filter((c) => c.par >= effFloor(c.spec.shape));
     const from = inBand.length >= want ? inBand : (overFloor.length >= want ? overFloor : kept);
     from.sort((a, b) => (b.hard - a.hard) || (Math.abs(a.par - floorPar * 1.2) - Math.abs(b.par - floorPar * 1.2)));
 
@@ -345,7 +442,7 @@ if ((process.argv[1] || '').endsWith('build-climb-library.mjs')) {
       + `hard med ${String(med(chosen, 'hard')).padStart(2)} max ${chosen.length ? Math.max(...chosen.map((c) => c.hard)) : 0}  `
       + `shapes ${new Set(chosen.map((c) => c.spec.shape)).size}`
       + `  hardFloor ${floor}${belowFloor ? ` (${belowFloor} under: ${softShapes.join(',')})` : ''}`
-      + `${banded ? '' : '   OFF-BAND'}`);
+      + `${relieved.length ? `  relief ${relieved.join(',')}` : ''}${banded ? '' : '   OFF-BAND'}`);
 
     if (!dry && chosen.length) {
       const block = Math.floor((level - 1) / CHALLENGE_BLOCK_SIZE) + 1;
