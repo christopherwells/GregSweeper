@@ -135,11 +135,23 @@ export function shieldDefuse(board, row, col) {
   recomputeDisplayedMines(board);
 }
 
-// Recalculate adjacency counts in the 3x3 area around (centerRow, centerCol) —
+// Recalculate adjacency counts around a cell whose mine was just removed —
 // the scoped version of recalcAllAdjacency, used after a single-cell defuse so
 // we don't walk the whole board. Shares gimmicks.countAdjacentMines, so it can
 // never drift from the full recompute (walls block adjacency; a mine carries
 // no number and reads 0).
+//
+// The cells that can have changed are the removed mine itself and EXACTLY its
+// neighbors: adjacency is symmetric, so a cell counted the origin if and only
+// if the origin counts it. The visit set is therefore derived from the same
+// neighbor cache that answers "what touches what" (the sonarScanCells /
+// plateDisarmCells precedent), not from a container walk.
+//
+// It used to walk the container 3x3, which IS the neighborhood on a rectangle
+// and is not one on a tiling, where (row, col) is pure storage — measured, a
+// shield break there left 2 to 8 cells still counting a mine that is off the
+// board, on every lattice but the honeycomb, whose own escape rate is 38.5%
+// of cells and so was luck rather than safety.
 function recalcAreaAdjacency(board, centerRow, centerCol) {
   const rows = board.length;
   const cols = board[0].length;
@@ -147,13 +159,11 @@ function recalcAreaAdjacency(board, centerRow, centerCol) {
   // neighbor lists when it isn't handed any, so calling it bare in a loop
   // would rebuild them on every iteration.
   const nbrCache = buildNeighborCache(board, rows, cols);
-  for (let dr = -1; dr <= 1; dr++) {
-    for (let dc = -1; dc <= 1; dc++) {
-      const nr = centerRow + dr;
-      const nc = centerCol + dc;
-      if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
-      board[nr][nc].adjacentMines = board[nr][nc].isMine ? 0 : countAdjacentMines(board, nr, nc, nbrCache);
-    }
+  const origin = centerRow * cols + centerCol;
+  for (const idx of [origin, ...nbrCache[origin]]) {
+    const r = Math.floor(idx / cols);
+    const c = idx % cols;
+    board[r][c].adjacentMines = board[r][c].isMine ? 0 : countAdjacentMines(board, r, c, nbrCache);
   }
 }
 
