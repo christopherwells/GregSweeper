@@ -25,7 +25,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { LADDER_POOL, ENDLESS_POOL } from '../src/logic/challengePool.js';
+import { LADDER_POOL, ENDLESS_POOL, CHALLENGE_POOL } from '../src/logic/challengePool.js';
 import { predictPar, applyParModel } from '../src/logic/dailyFeatures.js';
 import { PAR_MODEL } from '../src/logic/difficulty.js';
 import {
@@ -39,7 +39,9 @@ import { modelFingerprint } from '../src/logic/parModelFingerprint.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const STORE_PATH = path.join(__dirname, '..', 'scripts', 'data', 'pool-features.json');
 const store = JSON.parse(fs.readFileSync(STORE_PATH, 'utf8'));
-const shipped = [...LADDER_POOL, ...ENDLESS_POOL];
+// Every pool the file ships. The re-price writer asserts it patched all of
+// them, so a pool missing from this list is one the nightly stops maintaining.
+const shipped = [...LADDER_POOL, ...ENDLESS_POOL, ...CHALLENGE_POOL];
 
 // The ladder-seconds scale, taken from the same place the pricing takes it.
 // An EARLIER version inferred it by dividing a shipped price by a predicted
@@ -124,6 +126,7 @@ test('a pool priced under an older model still respects every ruling', () => {
   const entries = [
     ...LADDER_POOL.map((e) => ({ e, pool: 'ladder' })),
     ...ENDLESS_POOL.map((e) => ({ e, pool: 'endless' })),
+    ...CHALLENGE_POOL.map((e) => ({ e, pool: 'challenge' })),
   ].map(({ e, pool }) => {
     const rec = store.entries[specFace(e)];
     const ppc = (predictPar(rec.features) * scale) / e.cells;
@@ -189,6 +192,7 @@ test('the shipped pool passes its own guards', () => {
   const all = [
     ...LADDER_POOL.map((e) => ({ e, pool: 'ladder' })),
     ...ENDLESS_POOL.map((e) => ({ e, pool: 'endless' })),
+    ...CHALLENGE_POOL.map((e) => ({ e, pool: 'challenge' })),
   ];
   assert.deepEqual(violations(all), []);
 });

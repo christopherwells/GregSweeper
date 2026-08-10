@@ -30,7 +30,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { LADDER_POOL, ENDLESS_POOL } from '../src/logic/challengePool.js';
+import { LADDER_POOL, ENDLESS_POOL, CHALLENGE_POOL } from '../src/logic/challengePool.js';
 import { buildChallenge250Board, challengeBoardSeed } from '../src/logic/challenge250Builder.js';
 import { predictPar } from '../src/logic/dailyFeatures.js';
 import {
@@ -59,9 +59,19 @@ const SEEDS = Number(argVal('--seeds', 16));
 // look different from one that did not.
 const NOTABLE_DRIFT = 0.05;
 
+// EVERY pool in the file, and the writer is why it has to be every one: it
+// asserts it patched all of them, so a pool present in challengePool.js but
+// absent here aborts the re-price with "the pool file does not match the
+// loaded pool" and the nightly refit stops updating prices altogether.
+//
+// The coverage pool takes the ladder's rules, not the endless one's: the par
+// ceiling applies (the branch below defaults to it) and there is no ppc floor,
+// since the whole point of that pool is the gentle end the ladder's slicing
+// leaves thin.
 const shipped = () => [
   ...LADDER_POOL.map((e) => ({ e, pool: 'ladder' })),
   ...ENDLESS_POOL.map((e) => ({ e, pool: 'endless' })),
+  ...CHALLENGE_POOL.map((e) => ({ e, pool: 'challenge' })),
 ];
 
 const specOf = (e) => (e.shape === 'rect'
