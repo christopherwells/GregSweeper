@@ -400,7 +400,7 @@ function populateChallengePanel() {
   chart.innerHTML = '';
   const recent = (cm.recentGames || stats.recentGames || []).slice(-20);
   if (recent.length === 0) {
-    chart.innerHTML = '<span class="chart-empty">Play some challenge games to see your history!</span>';
+    chart.innerHTML = '<span class="chart-empty">Play a few Climb levels to see your history!</span>';
     return;
   }
   const winTimes = recent.filter(g => g.won).map(g => g.time);

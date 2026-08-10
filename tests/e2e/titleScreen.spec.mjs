@@ -41,13 +41,38 @@ test('the Daily card keeps its calendar icon and grows no note-Greg', async ({ p
   expect(noteGreg, 'the Daily card note-Greg was dropped (one Greg lives in the header)').toBe(false);
 });
 
+// The front door leads with two full-width heroes (Daily, Weekly) over a
+// two-column grid of the four evergreen modes. This pins the heroes are
+// heroes AND that they come first: putting the two expiring boards anywhere
+// but the top is the thing the layout exists to prevent, and a card that
+// merely spans a row in the middle would satisfy a width-only check.
+test('the Daily and Weekly cards lead the grid at full width', async ({ page }) => {
+  await page.goto('?isTest=1');
+  await page.waitForSelector('#boot-overlay', { state: 'detached', timeout: 20_000 });
+  await page.waitForSelector('#title-screen:not(.hidden)', { timeout: 20_000 });
+
+  const { gridW, visible, rows } = await readGridRows(page);
+  expect(visible, 'the grid must render some cards at all').toBeGreaterThan(0);
+  expect(rows.length, 'the grid needs at least a hero row and a pair row').toBeGreaterThan(2);
+
+  for (const [i, mode] of ['daily', 'weekly'].entries()) {
+    expect(rows[i].map((c) => c.label), `row ${i} must be the ${mode} hero alone`).toEqual([mode]);
+    expect(rows[i][0].w, `the ${mode} hero must span the grid`).toBeGreaterThan(gridW * 0.9);
+  }
+  // Everything below the heroes shares its row, or spans as the odd one out.
+  const below = rows.slice(2).flat().map((c) => c.label);
+  expect(below, 'the four evergreen modes sit under the heroes')
+    .toEqual(expect.arrayContaining(['normal', 'timed', 'mode-card-gym']));
+});
+
 // 2026-07-06 orphan-cell incident: the old span rule
 // (.mode-card:last-child:nth-child(odd)) never fired because the locked
 // Chaos card is hidden via inline display:none but STAYS in the DOM — a
 // hidden card still occupies its :nth-child slot, so the Gym card counted
-// as an even child and every player below Challenge L50 saw it half-width
-// beside an empty cell. updateTitleProgress now counts the cards actually
-// shown and toggles .odd-cards on the grid; these pin both sides.
+// as an even child and every player below the Chaos unlock saw it half-width
+// beside an empty cell. updateTitleProgress now counts the GRID cards
+// actually shown (the heroes are excluded, since they always span) and
+// toggles .odd-cards; these pin both sides.
 
 test('REGRESSION: locked Chaos hides its card and the Gym card spans the full row', async ({ page }) => {
   await page.goto('?isTest=1');
@@ -69,7 +94,8 @@ test('REGRESSION: locked Chaos hides its card and the Gym card spans the full ro
   expect(layout.chaosHidden, 'a fresh profile keeps Chaos locked and its card hidden').toBe(true);
   // A half-width card is ~half the grid minus the gap; a full-row span is
   // the whole grid width. 90% cleanly separates the two.
-  expect(layout.gymWidth, 'the Gym card must span the full row when 5 cards are visible')
+  expect(layout.gymWidth,
+    'with Chaos hidden the grid holds three cards (The Climb, Quick Play, Gym), so the Gym spans its row')
     .toBeGreaterThan(layout.gridWidth * 0.9);
 });
 
@@ -147,7 +173,7 @@ for (const [w, h, label] of [[360, 740, 'reference phone'], [390, 844, 'tall pho
 }
 
 test('unlocked Chaos shows its card and the Gym card stays half-width', async ({ page }) => {
-  // Seed a profile AT CHAOS_UNLOCK_LEVEL (50) — the unlock is >=, so this
+  // Seed a profile AT CHAOS_UNLOCK_LEVEL (100) — the unlock is >=, so this
   // also pins the boundary. No modeStats on purpose: loadStats' migration
   // path seeds challenge stats from these top-level fields, producing a
   // fully-shaped stats object.
@@ -192,7 +218,8 @@ test('unlocked Chaos shows its card and the Gym card stays half-width', async ({
   // the proof that the seeded profile actually rendered.
   expect(layout.chaosCopy, 'the Chaos card must carry the unlock-branch copy, not the static locked text')
     .toMatch(/No guarantees/);
-  expect(layout.chaosVisible, 'an L50 profile shows the Chaos card').toBe(true);
-  expect(layout.gymWidth, 'with 6 visible cards the Gym card stays a half-width cell')
+  expect(layout.chaosVisible, 'an unlocked profile shows the Chaos card').toBe(true);
+  expect(layout.gymWidth,
+    'with Chaos shown the grid holds four cards, so the Gym stays a half-width cell')
     .toBeLessThan(layout.gridWidth * 0.6);
 });

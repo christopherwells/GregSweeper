@@ -97,12 +97,14 @@ export function updateTitleProgress() {
     const hasPar = _titleDailyPar.date === today && _titleDailyPar.secs > 0;
     const note = (_titleDailyPar.date === today && _titleDailyPar.note) ? _titleDailyPar.note : '';
 
-    // Corner-anchored stats keep the center clean: molt tokens top-left
-    // (mirroring the Past chip top-right), the streak (emphasized) and par
-    // along the bottom edge, and Greg's note as the one center descriptor.
-    // The numbers ride the corners instead of stacking their own rows, so the
-    // Daily card stays the same height as its siblings. The molt tooltip
-    // carries the banked-vs-holding nuance so the face copy stays quiet.
+    // Corner-anchored stats keep the center clean: molt tokens and the streak
+    // together at bottom-left, par at bottom-right, and Greg's note as the one
+    // center descriptor. The numbers ride the corners instead of stacking
+    // their own rows, so the card stays the height of its siblings. The molt
+    // tooltip carries the banked-vs-holding nuance so the face copy stays
+    // quiet. (Molt sat top-left until the card became a full-width hero, whose
+    // left column is the mode icon; grouping it with the streak is also the
+    // truer reading, since both describe the same streak.)
     const moltTitle = provisional
       ? `A molt day is holding your ${provisional.streakHeld} day streak. Play today to keep it going.`
       : 'Molt days banked. Earned every 5 days in a row, spent automatically when you miss a day. Holds 2.';
@@ -130,16 +132,22 @@ export function updateTitleProgress() {
       ? 'Played today'
       : (shapeLabel ? `${shapeLabel} today. ${body}` : body);
 
-    // Streak (bottom-left) + par (bottom-right) hug the card corners like the
-    // Past chip — plain text, not pills, so the Past chip stays the one pill.
+    // Streak (bottom-left, beside the molt tokens) + par (bottom-right) hug
+    // the card corners — plain text, not pills, so the Past chip stays the one
+    // pill. The bottom-left pair ships as ONE positioned group so neither has
+    // to know the other's width; a streak can be 0 while a bank survives (a
+    // lapse past the bank keeps the crabs), so neither may nest in the other.
     const streakCorner = streak > 0
       ? `<span class="daily-corner-stat daily-corner-streak" title="Your daily streak">${streak} day${streak === 1 ? '' : 's'}</span>`
       : '';
     const parCorner = hasPar
       ? `<span class="daily-corner-stat daily-corner-par" title="Greg’s par for today">Par ${_titleDailyPar.secs}s</span>`
       : '';
+    const bottomLeft = (moltCorner || streakCorner)
+      ? `<span class="daily-corner-group">${moltCorner}${streakCorner}</span>`
+      : '';
 
-    dailyEl.innerHTML = moltCorner + streakCorner + parCorner
+    dailyEl.innerHTML = bottomLeft + parCorner
       + `<span class="mode-card-fieldnote">${centerText}</span>`;
     if (dailyCard) dailyCard.classList.toggle('daily-completed', completed);
   }
@@ -222,11 +230,17 @@ export function updateTitleProgress() {
   // tell 5 visible cards from 6. Count the cards actually shown and flag
   // the grid: odd count → the last card spans the full row instead of
   // leaving an orphan cell (the .odd-cards rule in global.css).
+  //
+  // The Daily and Weekly heroes are excluded because they already span the
+  // row. Counting them happens to give the same answer today (two heroes
+  // do not change a parity), which is exactly why it is worth stating: the
+  // next hero added, or a hero hidden, would silently invert the flag for
+  // every card below it.
   const modeGrid = $('.title-screen-modes');
   if (modeGrid) {
-    const visibleCards = [...modeGrid.querySelectorAll('.mode-card')]
+    const gridCards = [...modeGrid.querySelectorAll('.mode-card:not(.mode-card-hero)')]
       .filter((card) => card.style.display !== 'none').length;
-    modeGrid.classList.toggle('odd-cards', visibleCards % 2 === 1);
+    modeGrid.classList.toggle('odd-cards', gridCards % 2 === 1);
   }
 }
 

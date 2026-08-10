@@ -942,7 +942,7 @@ for (const card of $$('.mode-card')) {
     }
     if (mode === 'chaos') {
       if (!isChaosUnlocked()) {
-        showToast(`Reach Challenge Level ${CHAOS_UNLOCK_LEVEL} to unlock Chaos mode!`);
+        showToast(`Reach Climb Level ${CHAOS_UNLOCK_LEVEL} to unlock Chaos mode!`);
         return;
       }
       // Apply chaos theme automatically (stash/restore lives in themeManager)
@@ -1679,7 +1679,7 @@ $('#gameover-crux-challenge')?.addEventListener('click', async () => {
     }
   } else {
     copyToClipboard(url);
-    showToast('Challenge link copied. Paste it to a friend.');
+    showToast('Puzzle link copied. Paste it to a friend.');
   }
 });
 

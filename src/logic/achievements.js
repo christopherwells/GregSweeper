@@ -67,7 +67,7 @@ const CATEGORIES = [
     name: 'Daily Player',
     icon: '📅',
     group: 'progress',
-    desc: 'Daily challenges completed',
+    desc: 'Dailies completed',
     thresholds: [1, 5, 10, 30, 50],
     getValue: (s) => s.dailiesCompleted || 0,
     format: (v) => `${v} daily${v !== 1 ? 's' : ''}`,
@@ -130,11 +130,13 @@ const CATEGORIES = [
   },
   // ── Mode-Specific Achievements ──────────────────────
   {
+    // The id is a stored contract, not a label: spriteLoader maps it to
+    // ach-challengeClimber.svg. Only the name and desc are player-facing.
     id: 'challengeClimber',
-    name: 'Challenger',
+    name: 'Climber',
     icon: '⛏️',
     group: 'progress',
-    desc: 'Challenge level reached',
+    desc: 'Climb level reached',
     // Re-based on the Challenge 250 ladder (his build note: bronze early,
     // diamond reaching into the endless zone). The tiers land on the
     // ladder's own landmarks: the opener capstone L25 (the door to the
@@ -179,7 +181,7 @@ const CATEGORIES = [
     name: 'Daily Devotee',
     icon: '📆',
     group: 'progress',
-    desc: 'Daily challenge streak',
+    desc: 'Daily streak',
     thresholds: [3, 7, 14, 30, 60],
     getValue: (s) => s.modeStats?.daily?.bestDailyStreak || 0,
     format: (v) => `${v} day${v !== 1 ? 's' : ''}`,

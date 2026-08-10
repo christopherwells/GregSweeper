@@ -12,6 +12,12 @@
 // measures the LAYOUT with the longest real content injected: the longest
 // shape name, a three-digit streak, a three-digit par, and a full field
 // note. If that fits, every real combination fits.
+//
+// The injected markup must match what updateTitleProgress actually emits,
+// including the .daily-corner-group wrapper that holds the molt tokens and
+// the streak together. Hand-written spans that merely look right are how a
+// layout test reports a collision the app does not have, or misses one it
+// does.
 
 import { test, expect } from '@playwright/test';
 import { prepareInteractionSpec } from './helpers.mjs';
@@ -42,20 +48,25 @@ for (const vp of VIEWPORTS) {
       const el = document.getElementById('title-daily-progress');
       const card = el.closest('.mode-card');
       const sibling = document.querySelector('.mode-card[data-mode="weekly"]');
-      el.innerHTML = `<span class="daily-corner-stat daily-corner-streak">${L.streak}</span>`
+      // A full molt bank rides the bottom-left group beside the streak, which
+      // is the widest that corner ever gets.
+      el.innerHTML = '<span class="daily-corner-group">'
+        + '<span class="daily-corner-molt">🦀🦀</span>'
+        + `<span class="daily-corner-stat daily-corner-streak">${L.streak}</span></span>`
         + `<span class="daily-corner-stat daily-corner-par">${L.par}</span>`
         + `<span class="mode-card-fieldnote">${L.note}</span>`;
       const r = (sel) => el.querySelector(sel).getBoundingClientRect();
       const cardRect = card.getBoundingClientRect();
       const par = r('.daily-corner-par');
-      const streak = r('.daily-corner-streak');
+      const bottomLeft = r('.daily-corner-group');
       const note = r('.mode-card-fieldnote');
       return {
         cardWidth: cardRect.width,
         cardHeight: cardRect.height,
+        gridWidth: document.querySelector('.title-screen-modes').getBoundingClientRect().width,
         siblingHeight: sibling.getBoundingClientRect().height,
-        cornersOverlap: par.left < streak.right,
-        noteHitsCorners: note.bottom > streak.top + 1 || note.bottom > par.top + 1,
+        cornersOverlap: par.left < bottomLeft.right,
+        noteHitsCorners: note.bottom > bottomLeft.top + 1 || note.bottom > par.top + 1,
         noteOverflows: note.bottom > cardRect.bottom || note.right > cardRect.right + 1,
         parClipped: el.querySelector('.daily-corner-par').scrollWidth
           > el.querySelector('.daily-corner-par').clientWidth + 1,
@@ -68,8 +79,15 @@ for (const vp of VIEWPORTS) {
     expect(geom.noteOverflows, 'the note must stay inside the card').toBe(false);
     expect(geom.parClipped, 'the par corner must not be clipped').toBe(false);
 
-    // The Daily card shares a grid row with Weekly, so a taller Daily must
-    // take its neighbour with it rather than breaking the row's alignment.
-    expect(Math.abs(geom.cardHeight - geom.siblingHeight)).toBeLessThan(1);
+    // Daily and Weekly are stacked full-width heroes, not row neighbours, so
+    // their heights are free to differ by however their notes wrap — the
+    // old equal-height check was pinning a shared row that no longer exists.
+    // What still has to hold is that the Daily card IS a hero, and that the
+    // longest content does not run it more than one note line away from its
+    // sibling, which is what a runaway wrap would look like.
+    expect(geom.cardWidth / geom.gridWidth,
+      'the Daily card must span the grid as a hero').toBeGreaterThan(0.9);
+    expect(Math.abs(geom.cardHeight - geom.siblingHeight),
+      'the two heroes must stay within a note line of each other').toBeLessThan(24);
   });
 }

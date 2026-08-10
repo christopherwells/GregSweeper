@@ -7,10 +7,18 @@
 import { test, expect } from '@playwright/test';
 import { prepareInteractionSpec, settleAnimations } from './helpers.mjs';
 
+// Waiting for `#board .cell` is not enough: it matches the DEFAULT level's
+// board too, and under parallel load this spec measured a Level 1 board and
+// then won it on the opening click ("You Win! Time: 0.0s"), so the clock
+// never ran and the bar never filled. `#level-display` is written from
+// state.currentLevel, so it is the signal that the requested level actually
+// landed — and asserting it also closes a vacuity hole, since the test's
+// whole premise is that level 26 is a specific kind of board.
 async function enterChallengeLevel(page, level) {
   await page.goto(`/?isTest=1&level=${level}`);
   await page.waitForSelector('#boot-overlay', { state: 'detached', timeout: 20_000 });
   await page.waitForSelector('#board .cell', { timeout: 20_000 });
+  await expect(page.locator('#level-display')).toHaveText(`Level ${level}`, { timeout: 20_000 });
 }
 
 // The first reveal on a debut board raises the intro cards, and BOTH of them

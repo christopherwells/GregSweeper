@@ -5792,6 +5792,24 @@ button:focus-visible {
    streak bottom-left, par bottom-right. The streak + par are plain text in
    Greg's note color (NOT pills, NOT italic), so the Past chip stays the one
    pill that pops. */
+/* Molt tokens and the streak share the bottom-left, in one group so neither
+   has to know the other's width. They used to be opposite corners of a tall
+   card; the hero's top-left is the icon now, and the two belong together
+   anyway — both are the same fact about the same streak, and "3 days 🦀🦀"
+   reads as one statement where two corners read as two. */
+.daily-corner-group {
+  position: absolute;
+  left: 11px;
+  bottom: 7px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.daily-corner-group .daily-corner-molt,
+.daily-corner-group .daily-corner-stat {
+  position: static;
+  inset: auto;
+}
 .daily-corner-molt {
   position: absolute;
   top: 6px;
@@ -6125,14 +6143,68 @@ button.weekly-archive-row:focus-visible {
   pointer-events: none;
 }
 
-/* An odd VISIBLE card count (chaos hidden until L50) leaves an orphan
-   cell in the 2-column grid; let the last card span the row instead.
-   The hidden Chaos card stays in the DOM and still occupies its
-   :nth-child slot, so CSS alone can't see the odd count —
-   updateTitleProgress() counts the cards actually shown and flags the
-   grid with .odd-cards. */
+/* An odd VISIBLE count among the GRID cards (chaos is hidden until its
+   unlock level) leaves an orphan cell in the 2-column grid; let the last
+   card span the row instead. The hidden Chaos card stays in the DOM and
+   still occupies its :nth-child slot, so CSS alone can't see the odd
+   count — updateTitleProgress() counts the cards actually shown and flags
+   the grid with .odd-cards. The heroes are excluded from that count:
+   they always span, so they can never be the orphan, and counting them
+   would make the parity depend on how many heroes happen to exist. */
 .title-screen-modes.odd-cards .mode-card:last-child {
   grid-column: 1 / -1;
+}
+
+/* ── Front-door heroes: Daily and Weekly ────────────────────────────────
+   The two boards that expire lead the screen at full width. Their content
+   turns on its side — icon beside the text instead of above it — which is
+   what keeps the extra rows affordable: a hero is shorter than a standard
+   card, and its note has twice the width to wrap in.
+
+   The Past chip joins the GRID here rather than staying an absolute corner.
+   On the old vertical card the top-right corner was empty space; on a hero
+   the note's first line reaches it (measured on neon, whose wider display
+   font pushed the note under the chip). Giving the chip its own track makes
+   the overlap impossible by construction instead of reserving padding and
+   hoping, and it frees the card's top padding to shrink. */
+.title-screen-modes .mode-card-hero {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas:
+    "icon name past"
+    "icon note note";
+  column-gap: 12px;
+  row-gap: 1px;
+  align-content: center;
+  justify-items: start;
+  text-align: left;
+  /* A hero's own padding, not the shared .mode-card shorthand: a horizontal
+     card needs far less vertical room than a stacked one, and paying the
+     extra grid row out of the heroes' own padding is what keeps the front
+     door the same total height it was as a flat six-card grid. The bottom
+     value is the reserved band for the streak/par line and must stay above
+     their `bottom` offset plus their line height. Specificity ties the
+     [data-mode] band rule above and wins on source order. */
+  padding-top: 12px;
+  padding-bottom: 22px;
+}
+.mode-card-hero .daily-corner-group,
+.mode-card-hero .daily-corner-par { bottom: 5px; }
+.mode-card-hero .mode-card-icon {
+  grid-area: icon;
+  align-self: center;
+  font-size: 34px;
+  margin-bottom: 0;
+}
+.mode-card-hero .mode-card-name { grid-area: name; align-self: end; margin-bottom: 0; }
+.mode-card-hero .mode-card-progress { grid-area: note; align-self: start; }
+.mode-card-hero .mode-card-fieldnote { text-align: left; }
+.mode-card-hero .card-archive-btn {
+  position: static;
+  grid-area: past;
+  justify-self: end;
+  align-self: center;
 }
 
 /* What's New modal body */
@@ -6839,8 +6911,12 @@ button.weekly-archive-row:focus-visible {
   .title-screen-logo { font-size: clamp(24px, 6vw, 34px); }
   .title-screen-subtitle { font-size: 12px; }
   .title-screen-proof { margin-top: 4px; font-size: 12px; }
-  .title-screen-modes { margin-bottom: 0; }
+  .title-screen-modes { margin-bottom: 0; gap: 10px; }
   .mode-card { padding: 11px 10px; }
+  /* 22, not 20: the band has to clear the TALLEST theme's stat line, and
+     chalkboard's Comic Sans runs ~3px taller than classic's at the same
+     font-size. Measured — 20 put the note over the streak there. */
+  .title-screen-modes .mode-card-hero { padding-top: 8px; padding-bottom: 22px; }
   .mode-card-icon { font-size: 24px; margin-bottom: 2px; }
   .mode-card-name { font-size: 14px; margin-bottom: 2px; }
   .title-footer-btn { padding: 7px 13px; }
@@ -6852,6 +6928,9 @@ button.weekly-archive-row:focus-visible {
   .title-greg-mascot { width: 68px; height: 68px; }
   .title-screen-logo { font-size: clamp(22px, 6vw, 30px); }
   .mode-card { padding: 9px 8px; }
+  .title-screen-modes { gap: 8px; }
+  .title-screen-modes .mode-card-hero { padding-top: 6px; padding-bottom: 22px; }
+  .mode-card-hero .mode-card-icon { font-size: 30px; }
   .mode-card-icon { font-size: 22px; }
   .title-footer-btn { padding: 6px 12px; }
 }
