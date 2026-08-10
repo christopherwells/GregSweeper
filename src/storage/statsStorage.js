@@ -237,8 +237,11 @@ export function loadStats() {
   return stats;
 }
 
-// Map internal gameMode values to modeStats keys
-function getModeKey(gameMode) {
+// Map internal gameMode values to modeStats keys. THE one definition: the
+// ladder runs as 'normal' at runtime and stores as 'challenge', and every
+// consumer of that fact routes through here. It is exported for the stats
+// modal, whose tab ids are the same key space.
+export function getModeKey(gameMode) {
   if (gameMode === 'normal') return 'challenge';
   return gameMode;
 }
@@ -508,8 +511,11 @@ const GAME_STATE_PREFIX = 'minesweeper_game_state_';
 const LEGACY_GAME_STATE_KEY = 'minesweeper_game_state';
 
 function gameStateKey(mode) {
-  const modeKey = mode === 'normal' ? 'challenge' : mode;
-  return GAME_STATE_PREFIX + modeKey;
+  // Routes through getModeKey rather than restating it. A second copy of this
+  // mapping is what issue #239 was: the level-advance handler wrote its
+  // checkpoint under an un-normalized key, so one number lived in two places
+  // and a returning player was offered a game the reset had already taken.
+  return GAME_STATE_PREFIX + getModeKey(mode);
 }
 
 export function saveGameState(gameState) {

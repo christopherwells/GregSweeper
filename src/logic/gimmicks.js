@@ -1468,7 +1468,7 @@ export function cardRevision(gimmick) {
   const def = GIMMICK_DEFS[gimmick];
   if (!def) return '0';
   const content = [def.name, def.desc, def.longDesc, def.exampleHtml]
-    .map((x) => x || '').join(' ');
+    .map((x) => x || '').join('\0');
   let h = 0x811c9dc5;
   for (let i = 0; i < content.length; i++) {
     h ^= content.charCodeAt(i);
