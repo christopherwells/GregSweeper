@@ -1,4 +1,4 @@
-// Challenge 250 board builder — the ONE builder for ladder specs
+// Challenge 250 board builder: the ONE builder for ladder specs
 // (challenge250.js), called by BOTH the play path (gameActions, PR 2 of the
 // build arc) and the offline spec validator
 // (scripts/validate-challenge250-specs.mjs), so the boards the validator
@@ -7,10 +7,10 @@
 //
 // Contract per draw (all rulings from CHALLENGE_250_MAP.md):
 //   - CERTIFIED no-guess from the fixed opener (the marked Start-here
-//     cell: container centre on a rectangle, the tiling's own centerIndex
-//     on a lattice), frozen board — mines never relocate.
+//     cell: container center on a rectangle, the tiling's own centerIndex
+//     on a lattice), frozen board: mines never relocate.
 //   - STRICT LOAD-BEARING: every testable modifier on the shipped board
-//     contributes a needed deduction. No relax-to-ship — a decorative
+//     contributes a needed deduction. No relax-to-ship: a decorative
 //     draw is rejected and the search continues; exhaustion returns null
 //     rather than a board that breaks the promise (unlike the daily's
 //     budgeted escape). Exempt types (mystery/worm delay or remove info,
@@ -40,7 +40,7 @@ const RECT_GIMMICK_REROLLS = 25;
 // Tiling strictness salts: generateTilingBoard runs with an INFINITE
 // load-bearing budget (every in-run attempt demands strictness), so a
 // decorative board can only come back via the exhausted-best path. Each
-// salt is a fresh 600-attempt search — by the time all are spent the spec
+// salt is a fresh 600-attempt search, by the time all are spent the spec
 // itself is broken, which is the validator's job to prevent.
 const TILING_STRICT_RETRIES = 3;
 
@@ -101,7 +101,7 @@ function buildRectSpec(spec, seed) {
 
     // Walls first, so the constructive generator builds a mine layout that
     // is solvable WITH the walls (the gameActions pre-wall pattern).
-    // wallSegments is authored per spec — the ladder's dial, decoupled
+    // wallSegments is authored per spec: the ladder's dial, decoupled
     // from the old level-derived estimate.
     let preWallEdges = null;
     if (gimmicks.includes('walls')) {
@@ -127,7 +127,7 @@ function buildRectSpec(spec, seed) {
     // gimmick layer and re-applying is the proven gameActions sequence
     // (walls survive at board level; applyGimmicks skips re-rolling a
     // populated _wallEdges and ends with recomputeDisplayedMines).
-    // Mystery is placed CONSTRUCTIVELY after the other gimmicks — the
+    // Mystery is placed CONSTRUCTIVELY after the other gimmicks, the
     // gameActions pattern, shared via boardGenerator: random mystery on a
     // dense board misses certification most rolls and burns whole bases
     // (measured 5-11s worst on the 11×11 summit stacks before this).
@@ -150,7 +150,7 @@ function buildRectSpec(spec, seed) {
       if (hasTestable) {
         const decorative = findDecorativeGimmicks(board, rows, cols, fr, fc, gimmicks);
         cleanSolverArtifacts(board);
-        if (decorative.length > 0) continue; // strict — never relax
+        if (decorative.length > 0) continue; // strict: never relax
       }
       return { board, rows, cols, firstClick: fr * cols + fc, check, activeGimmicks: gimmicks.slice(), applied };
     }
@@ -173,8 +173,15 @@ function buildTilingSpec(spec, seed) {
     // Strict load-bearing on the OUTCOME: with an infinite budget the only
     // decorative escape is the exhausted-best return, and the generator
     // stamps its verdict (empty array = strict; null = unmeasured, which
-    // an infinite budget never produces — refused defensively anyway).
+    // an infinite budget never produces, refused defensively anyway).
     if (gimmicks.length > 0 && (res.decorative === null || res.decorative.length > 0)) continue;
+    // The deduction floor, which this path did not apply until 2026-08-10.
+    // accepts() was called only from buildRectSpec, so minDeductions has never
+    // reached a lattice board, and every Climb level from L26 up that is not
+    // Classic is a lattice. That is why the boards a player could clear on the
+    // opening click were all hex and floret: the opener blocks enforced their
+    // floor and the drawn ladder had none, even in principle.
+    if (!accepts(spec, res.check)) continue;
     return res;
   }
   return null;

@@ -4,7 +4,7 @@
 // What changed, and what this file therefore pins. The braid used to be a
 // hand-authored 45-block table, and it repeated: 250 levels carried 109
 // distinct boards, the worst spec appeared 8 times, and Christopher hit the
-// same one three times at L65-70. Blocks 6-50 are now DERIVED — each block
+// same one three times at L65-70. Blocks 6-50 are now DERIVED: each block
 // asks the pool what it can carry at that difficulty, a pending shape or
 // modifier debuts on the first block that can give it five distinct boards,
 // and nothing is ever drawn twice. So the tests that used to pin a fixed
@@ -12,8 +12,8 @@
 // climbs, the band widens, every shape and modifier gets introduced and then
 // stays in the mix, and no board ever repeats.
 //
-// Uniqueness is judged on specFace throughout — what a player can tell apart
-// — never on specFingerprint, which separates dials nobody can see.
+// Uniqueness is judged on specFace throughout, what a player can tell apart,
+// never on specFingerprint, which separates dials nobody can see.
 //
 // Generation and pricing PROOF lives in
 // scripts/validate-challenge250-specs.mjs (the 2s cap is a measurement, not a
@@ -21,12 +21,13 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import {
   CHALLENGE_MAX_LEVEL, CHALLENGE_BLOCK_SIZE, CHALLENGE_BLOCK_COUNT,
   CHALLENGE_BLOCKS, TIER_PPC, challengeSpecForLevel, blockStartLevel,
   specFace, specFingerprint, ppcBandFor,
-  PAR_CEILING_SECONDS, GEN_CAP_MS,
+  PAR_CEILING_SECONDS, GEN_CAP_MS, CLIMB_MIN_DEDUCTIONS,
   MOD_INTRO_BLOCKS, SHAPE_INTRO_BLOCKS, UNINTRODUCED,
   BRAID_START_LEVEL, BRAID_START_BLOCK, braidTargetPpc, braidBand,
   ENDLESS_START_LEVEL, endlessSpecForLevel,
@@ -82,7 +83,7 @@ test('the distinctness check is NOT vacuous: specFace ignores what a player cann
     families.set(k, (families.get(k) || 0) + 1);
   }
   assert.ok(Math.max(...families.values()) < CHALLENGE_MAX_LEVEL,
-    'a single family could supply the whole ladder — the check proves nothing');
+    'a single family could supply the whole ladder, the check proves nothing');
 });
 
 // ── Representation: his ruling that the search must not default ────────
@@ -112,13 +113,13 @@ test('REPRESENTATION: every shape and every modifier reaches the ladder', () => 
   // authored openers outright.
   for (const [shape, n] of shapes) {
     assert.ok(n <= CHALLENGE_MAX_LEVEL / 3,
-      `${shape} carries ${n} of ${CHALLENGE_MAX_LEVEL} levels — the ladder defaulted to it`);
+      `${shape} carries ${n} of ${CHALLENGE_MAX_LEVEL} levels, the ladder defaulted to it`);
   }
 });
 
 test('nothing is left unintroduced', () => {
   // A shape or modifier stranded here never appears on the ladder at all.
-  // That is a POOL problem — search wider — never something to route around
+  // That is a POOL problem, search wider, never something to route around
   // in the assignment, which is why this asserts on the assignment's own
   // honest report of what it could not place.
   assert.deepEqual([...UNINTRODUCED.shapes], []);
@@ -210,7 +211,7 @@ test('the band WIDENS as the ladder climbs (his "decently wide but every increas
 
 test('measured difficulty actually rises across the braid', () => {
   // The band is wide and the draw is varied, so no single level is guaranteed
-  // harder than the one before it — that is the design. What must hold is
+  // harder than the one before it, that is the design. What must hold is
   // that the CLIMB is real, checked on medians a third of the ladder apart.
   const med = (arr) => arr.slice().sort((a, b) => a - b)[Math.floor(arr.length / 2)];
   const b = braid();
@@ -224,7 +225,7 @@ test('measured difficulty actually rises across the braid', () => {
 
 test('every braid level lands within reach of its own target', () => {
   // Deliberately NOT the band itself: the assignment may widen when the pool
-  // is thin at a difficulty, and that is the honest failure mode — a board
+  // is thin at a difficulty, and that is the honest failure mode, a board
   // off target beats a repeat. What it may never do is hand out something
   // from a different part of the ladder entirely.
   for (const s of braid()) {
@@ -277,16 +278,32 @@ test('the L1-10 ramp: boards and deduction caps both climb, and L1 is a handful 
   for (const s of ramp) assert.equal(s.shape, 'rect');
 });
 
-test('opener blocks are Classic with a deduction floor; the braid never carries it', () => {
+test('REGRESSION: EVERY level carries a deduction floor, openers and braid alike', () => {
+  // This test used to assert the opposite for the braid, that it carried no
+  // floor at all, and that assertion was the bug written down. Nothing stopped
+  // a drawn level being over on the opening click: measured before the fix,
+  // L29 cleared outright on 13% of draws and L26 on 5%, and half of L26's
+  // draws needed two decisions or fewer. His report, 2026-08-10: "one puzzle
+  // that took one button press to solve the whole thing".
+  //
+  // The openers keep the higher floor they were authored with, because their
+  // job is teaching a ramp; the braid takes the pool-feasible one.
   for (const s of ladder().slice(0, 25)) {
     assert.equal(s.shape, 'rect', `L${s.level} is not a Classic opener`);
     assert.ok(s.minDeductions >= 3, `L${s.level} has no deduction floor`);
   }
   for (const s of braid()) {
-    assert.equal(s.minDeductions, undefined,
-      `L${s.level} carries the opener's deduction floor into the braid`);
+    assert.equal(s.minDeductions, CLIMB_MIN_DEDUCTIONS,
+      `L${s.level} has no deduction floor, so a draw can be over on the opening click`);
     assert.equal(s.maxDeductions, undefined, `L${s.level} caps deductions outside the ramp`);
   }
+  // A floor nothing enforces is decoration. The builder's accept gate is the
+  // enforcer, and it reached only the rectangular path until 2026-08-10, which
+  // is why every one-click board was a lattice.
+  const builder = readFileSync(new URL('../src/logic/challenge250Builder.js', import.meta.url), 'utf8');
+  const tiling = builder.slice(builder.indexOf('function buildTilingSpec'));
+  assert.match(tiling.slice(0, tiling.indexOf('\n}')), /accepts\(spec,/,
+    'buildTilingSpec must apply the accept gate, or the floor never reaches a lattice board');
 });
 
 test('pinned cell counts match buildTiling; rect cells are rows×cols', () => {

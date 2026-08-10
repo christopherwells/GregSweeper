@@ -1,10 +1,10 @@
-// Challenge 250 — the authored 50-block ladder (Christopher's design,
+// Challenge 250, the authored 50-block ladder (Christopher's design,
 // 2026-08-03; the design authority is CHALLENGE_250_MAP.md at repo root).
 //
 // A level is a PAR RATING, not a fixed puzzle: its spec is {par-per-cell
 // tier, shape, modifier set}, and every attempt draws a FRESH certified
 // no-guess layout of the spec with the marked Start-here opener (no
-// memorize-through). This module is the PURE spec table — it imports
+// memorize-through). This module is the PURE spec table: it imports
 // nothing, so UI surfaces and tests can read the ladder without touching
 // the solver. The builder that turns a spec into a certified board lives
 // in challenge250Builder.js; the offline proof that every authored spec
@@ -15,7 +15,7 @@
 //   - Tier ladder T1 0.55 → T12 3.60 s/cell (numeric anchors adopted; the
 //     summit moved 3.25 → 3.60 in his same-day second-pass ruling).
 //   - Absolute par ceiling 8 minutes; difficulty is par-per-cell, never
-//     raw par — no giant boards just to inflate time.
+//     raw par, no giant boards just to inflate time.
 //   - THE 2-SECOND GENERATION CAP: no spec ships whose measured worst-case
 //     generation exceeds 2s in the validator's own run (as measured, no
 //     margin; jitter to under 3s on other runs is fine).
@@ -36,7 +36,7 @@
 //
 // GIMMICK LEVEL UNITS: spec.gimmickLevel is measured in OLD-LADDER levels
 // (11..120) because getIntensity's ramp is anchored on the old ladder's
-// intro positions and its 120 cap — the same knob PR #224 threaded into
+// intro positions and its 120 cap, the same knob PR #224 threaded into
 // generateTilingBoard, and the unit the proven Paving T12 spec (level 115)
 // was measured in. It is an INTENSITY DIAL, not a ladder position; the
 // C250 level number never feeds getIntensity.
@@ -45,16 +45,17 @@
 // the map disagrees with its own measured tables; flagged for Christopher
 // in the build PR):
 //   - Block 30 ("mirror+locked at 0.28"): Cubes 72c at 0.28 prices 1.56
-//     plain — no stack reaches the T9 band from there. Authored at 0.306
+//     plain, no stack reaches the T9 band from there. Authored at 0.306
 //     (22 mines), which lands the band with the beat's own pairing.
-//   - Block 33 ("12×12 toward 0.30"): 0.30 prices 1.93 — under the T10
+//   - Block 33 ("12×12 toward 0.30"): 0.30 prices 1.93, under the T10
 //     band even stacked. Authored at 0.34 (49 mines), the sweep's rung.
 //   - Block 43 ("84-cell + locked+sonar+walls"): the map's own proven-spec
 //     table routes Paving's T12 through the 112-cell rung (3.41); 84c
 //     stacked reaches only ~1.9. Authored at 112c, the proven spec.
 
-import { LADDER_POOL, ENDLESS_POOL } from './challengePool.js';
+import { LADDER_POOL, CHALLENGE_POOL, ENDLESS_POOL } from './challengePool.js';
 import {
+  CLIMB_MIN_PAR_SECONDS, CLIMB_MIN_DEDUCTIONS,
   PAR_CEILING_SECONDS, GEN_CAP_MS, GEN_CAP_PEAK_MS, GEN_SLOW_DRAW_RATE,
   ENDLESS_PAR_CEILING_SECONDS, ENDLESS_PAR_CEILING_BY_SHAPE, endlessParCeiling,
   ENDLESS_GEN_CAP_BY_SHAPE, endlessGenCap,
@@ -67,6 +68,7 @@ import {
 // import without assembling the ladder); re-exported here so every existing
 // reader of challenge250.js is unchanged.
 export {
+  CLIMB_MIN_PAR_SECONDS, CLIMB_MIN_DEDUCTIONS,
   PAR_CEILING_SECONDS, GEN_CAP_MS, GEN_CAP_PEAK_MS, GEN_SLOW_DRAW_RATE,
   ENDLESS_PAR_CEILING_SECONDS, ENDLESS_PAR_CEILING_BY_SHAPE, endlessParCeiling,
   ENDLESS_GEN_CAP_BY_SHAPE, endlessGenCap,
@@ -95,7 +97,7 @@ export const CHALLENGE_250_EPOCH = 1;
 // 2026-08-04, after playing to L8 and earning nothing: "I should be
 // earning 1 powerup at lvl 1-100, 2 200-250, and 3 above 250"). This
 // REPLACED a tier-scaled expectation (tier/6 per win) that made the
-// openers a near-dead zone — at T1 it paid out about one power-up every
+// openers a near-dead zone: at T1 it paid out about one power-up every
 // six wins, so eight levels of honest play could easily produce zero,
 // which is exactly what happened. A flat guaranteed award per win is
 // both more generous and more legible.
@@ -127,13 +129,13 @@ export const TIER_PPC = {
 };
 
 // The validator's acceptance band around a level's stored price,
-// multiplicative — and it is SYMMETRIC, unlike the [0.93, 1.11] it replaced.
+// multiplicative, and it is SYMMETRIC, unlike the [0.93, 1.11] it replaced.
 //
 // That asymmetry was right for the authored table and is wrong here. There, a
 // spec was hand-tuned to hit a TIER TARGET and being a little hard was
 // preferable to being a little easy, so the band leaned that way. Now the
-// band sits around the spec's OWN measured price, and the only thing it can
-// be testing is whether that stored price still describes the spec — for
+// band is centered on the spec's OWN measured price, and the only thing it can
+// be testing is whether that stored price still describes the spec, for
 // which a lean in either direction is just a bias in when it fires. Measured,
 // it fired exactly that way: four levels failed a re-validation and every one
 // of them failed LOW, none high.
@@ -142,7 +144,7 @@ export const TIER_PPC = {
 // Re-measuring the whole shipped pool at ten seeds and again at sixteen moved
 // 2 of 495 and then 8 of 494 specs by more than 5%, so sample-to-sample
 // movement past 5% runs under 2% of specs and past 12% is rarer still, while
-// the drift this check exists to catch — a refit moving a shape's equation —
+// the drift this check exists to catch: a refit moving a shape's equation, 
 // moves prices by tens of percent. A band tighter than the noise is not a
 // stricter test, it is a test of the seed sample.
 export const PPC_BAND = 0.12;
@@ -176,7 +178,7 @@ const GL_GENTLE = 45;   // post-intro intensity ~1 for every type
 
 // ── The 50-block map ───────────────────────────────────────────────────
 // Levels are authored per block (5 each). `tier` is the map's plateau
-// label; `ppc` is the numeric target the specs aim at — TIER_PPC[tier]
+// label; `ppc` is the numeric target the specs aim at: TIER_PPC[tier]
 // everywhere except the six SHAPE-INTRO dips, where it is the shape's
 // gentlest proven config (the quantified dip: the map's parenthesized
 // tiers are narrative, the floor configs are the spec). `ppc: null` on
@@ -188,7 +190,7 @@ const OPENER_BLOCKS = [
   // instead of a plateau. When I meant lvl 1 is a few clicks, I meant
   // just a few clicks"). The first authoring read the map's
   // 3-to-5-deductions line as a FLOOR and sized boards at 7x7-8x8, which
-  // measured 15-39 deductions — a floor cannot make a board small, only
+  // measured 15-39 deductions, a floor cannot make a board small, only
   // stop it being trivial. So these ten levels are sized DOWN to the
   // deduction count itself, and `maxDeductions` is the new dial: L1-2
   // cap at 5 real deductions, and the cap loosens by roughly two per
@@ -219,7 +221,7 @@ const OPENER_BLOCKS = [
     // The ramp keeps climbing THROUGH the liar intro (his 2026-08-04
     // follow-up: "the ramp is fine, but maybe smooth out the 10 to 15 a
     // little"). L10 lands at ~16 deductions and this block used to open
-    // at ~24 on a 9x9 — a step big enough to read as a wall right where
+    // at ~24 on a 9x9, a step big enough to read as a wall right where
     // a new modifier arrives. It now opens on the 8x8 the player just
     // finished and grows into the 9x9 across the block.
     block: 3, tier: 2, ppc: null, shape: 'rect',
@@ -236,7 +238,7 @@ const OPENER_BLOCKS = [
     block: 4, tier: 2, ppc: null, shape: 'rect',
     beat: 'MOD INTRO: Mystery. Information delayed; solving around a hole.',
     // Five DISTINCT boards, one lesson. The mine count is the lever, because
-    // the block deliberately holds shape and modifier — his ruling is that a
+    // the block deliberately holds shape and modifier: his ruling is that a
     // training block MAY do that, but "they MUST not be the same board". This
     // block used to repeat 15 and 16 mines back to back, which reads as one
     // board twice however the intensity dial is set: a dial is not something
@@ -267,14 +269,14 @@ const OPENER_BLOCKS = [
 // ── The endless zone (blocks 51+) ───────────────────────────────
 //
 // His ruling (2026-08-03/04): past L250 the ladder is endless and UNBOUNDED
-// ABOVE T12 — any certified spec at or above 3.6 s/cell, mixed board
+// ABOVE T12: any certified spec at or above 3.6 s/cell, mixed board
 // lengths, checkpoints every 5 banked forever, max level as the brag stat.
 // The par ceiling lifts to ten minutes; the 2-second generation cap stands.
 //
 // WHY A POOL AND NOT A GENERATOR. Every spec on this ladder is offline-proven
 // before it ships: certified, strictly load-bearing, inside the generation
 // cap, inside the par ceiling. A level number has no upper bound, so an
-// authored table cannot reach it — but neither can a free-parameter
+// authored table cannot reach it, but neither can a free-parameter
 // generator, which at level 1,000 would hand the player a (shape, size,
 // density, stack) combination nobody has ever generated. So the zone is a
 // POOL of proven specs plus a deterministic draw, the same architecture as
@@ -284,7 +286,7 @@ const OPENER_BLOCKS = [
 // candidate specs per shape and keeps only those where every draw over K
 // seeds certifies. What ships is a log-spaced selection across each shape's
 // own reachable range, so all seven shapes appear and the ladder always has
-// a near neighbour at its current difficulty.
+// a near neighbor at its current difficulty.
 //
 export const ENDLESS_START_LEVEL = CHALLENGE_MAX_LEVEL + 1;   // 251
 
@@ -293,7 +295,7 @@ export const ENDLESS_START_LEVEL = CHALLENGE_MAX_LEVEL + 1;   // 251
 // own par ceiling. It used to be a hand-pasted table, which is why it drifted
 // out of date twice: a refit re-prices every entry, and the wall sight-line
 // fix (#269) left two entries over their generation cap with no way to remove
-// them by hand — the rhombille one was the pool's entire rhombille
+// them by hand, the rhombille one was the pool's entire rhombille
 // representation, so dropping it would have deleted a shape. Regenerating
 // both tables together is the answer to both.
 export const ENDLESS_SPECS = ENDLESS_POOL;
@@ -361,7 +363,7 @@ function hashLevel(level, salt) {
 // hope for and test after the fact.
 //
 // The shuffle is REPAIRED so that no group of five consecutive cards shares a
-// shape while an unused one is still reachable — "mixed board lengths" is a
+// shape while an unused one is still reachable, "mixed board lengths" is a
 // property of the BLOCK. A repair is a swap, so it is still a permutation and
 // the exact-coverage property survives it.
 const _endlessDeck = (() => {
@@ -394,8 +396,8 @@ const _endlessDeck = (() => {
   //
   // Two greedy rules were tried and both left a bad tail. "Most cards
   // remaining first" plus a never-twice-in-a-block exclusion cannot be
-  // satisfied at all here — floret holds about a third of the endless pool
-  // against rhombille's two entries — so floret's surplus went undealt until
+  // satisfied at all here: floret holds about a third of the endless pool
+  // against rhombille's two entries, so floret's surplus went undealt until
   // the end and the deck finished on a run of florets. Ranking by recency
   // instead spread the doubling but still ran the scarce shapes out early,
   // leaving the last twenty cards drawn from two or three shapes. Measured
@@ -421,13 +423,13 @@ const _endlessDeck = (() => {
   // (measured: a block down to two shapes within 200 blocks). The padding
   // cards are ordinary deals, chosen from the shapes the seam has not just
   // used and taking each shape's OLDEST card, so a handful of entries come
-  // up twice per cycle rather than once — invisible against the fair-share
+  // up twice per cycle rather than once, invisible against the fair-share
   // bar, where a two-shape block is not.
   const dealt = new Map();
   out.forEach((i, pos) => { const sh = ENDLESS_SPECS[i].shape; if (!dealt.has(sh)) dealt.set(sh, []); dealt.get(sh).push(pos); });
   while (out.length % CHALLENGE_BLOCK_SIZE !== 0) {
     // The pad sits at the SEAM, so it must avoid both the deck's tail and its
-    // head — the wrap puts them in one window.
+    // head, the wrap puts them in one window.
     const near = [
       ...out.slice(-(CHALLENGE_BLOCK_SIZE - 1)),
       ...out.slice(0, CHALLENGE_BLOCK_SIZE - 1),
@@ -489,7 +491,7 @@ export function endlessSpecForLevel(level) {
 //
 // His design, 2026-08-08: past the opener the ladder is "a slow difficulty
 // ramp" over "a decently wide but every increased width" band, with
-// introductions that EMERGE from the material rather than being scheduled —
+// introductions that EMERGE from the material rather than being scheduled: 
 // "when enough boards can contain the gimmick, it should be introduced",
 // "when enough boards can be a different shape, the shape should be
 // introduced", and "once a board or gimmick is introduced, it gets played 5
@@ -499,11 +501,11 @@ export function endlessSpecForLevel(level) {
 // carry at that difficulty; a pending shape or modifier debuts on the first
 // block that can give it a full five distinct boards, holds that block, and
 // afterwards joins the general draw. Where each thing lands is DERIVED and
-// moves when the pool or the par model moves — MOD_INTRO_BLOCKS and
+// moves when the pool or the par model moves, MOD_INTRO_BLOCKS and
 // SHAPE_INTRO_BLOCKS are outputs now, not inputs.
 //
-// AND NOTHING EVER REPEATS. Uniqueness is judged on specFace — the shape,
-// dimensions, mine count and modifier set a player can actually tell apart —
+// AND NOTHING EVER REPEATS. Uniqueness is judged on specFace: the shape,
+// dimensions, mine count and modifier set a player can actually tell apart, 
 // never on specFingerprint, which separates dials nobody can see. The
 // authored table this replaces carried 109 distinct boards across 250 levels
 // and repeated its worst spec eight times, which is what he hit at L65-70.
@@ -520,8 +522,8 @@ export const BRAID_PPC_END = TIER_PPC[12];
 // climb. Both ends are judgement inside his ruling, and the reasoning for
 // starting this wide is worth keeping: the old authored band was ±9/11%,
 // tighter than the par model's own accuracy, and its only real property was
-// that adjacent tiers did not overlap. That is the wrong thing to protect —
-// the ramp lives in the band's CENTRE, nobody can feel a 10% par difference,
+// that adjacent tiers did not overlap. That is the wrong thing to protect: 
+// the ramp lives in the band's CENTER, nobody can feel a 10% par difference,
 // and overlapping bands still climb monotonically on average.
 export const BRAID_BAND_START = 0.18;
 export const BRAID_BAND_END = 0.45;
@@ -541,7 +543,7 @@ const DEBUT_STRETCH = [1, 1.35, 1.8];
 const OPENER_SHAPES = ['rect'];
 const OPENER_MODS = ['walls', 'liar', 'mystery'];
 
-// What is left to introduce. This order breaks TIES ONLY — when two things
+// What is left to introduce. This order breaks TIES ONLY, when two things
 // first become viable in the same block. Which block each lands on comes from
 // the pool.
 const BRAID_SHAPES = ['hex', '4.8.8', 'cairo', 'rhombille', 'floret', 'deltoidal'];
@@ -563,7 +565,7 @@ export function braidBand(level) {
   return [target * (1 - half), target * (1 + half)];
 }
 
-/** Nearest authored tier to a measured rate — a display label, not a gate. */
+/** Nearest authored tier to a measured rate, a display label, not a gate. */
 function tierForPpc(ppc) {
   let best = 1, bestD = Infinity;
   for (const t of Object.keys(TIER_PPC)) {
@@ -596,7 +598,7 @@ function varietyPenalty(entry, recent) {
 }
 
 /**
- * THE ASSIGNMENT. Runs once at module load over 225 levels — cheap, and it
+ * THE ASSIGNMENT. Runs once at module load over 225 levels, cheap, and it
  * has to be sequential, because "nothing repeats" and "a thing joins the
  * general draw after its debut" are both history-dependent.
  */
@@ -720,6 +722,12 @@ function assignBraid(pool, openerFaces) {
         gimmickLevel: pick.gimmickLevel,
         wallSegments: pick.wallSegments,
         constructive: pick.constructive,
+        // The per-DRAW floor. The pool filter below picks specs whose boards
+        // are long enough on average; this rejects the unlucky short draw
+        // inside a good spec, the same gate the opener blocks have always
+        // used. Without it L29 dealt a board the opening cascade cleared
+        // outright on 13% of draws.
+        minDeductions: CLIMB_MIN_DEDUCTIONS,
       }));
     }
 
@@ -762,8 +770,30 @@ for (const b of OPENER_BLOCKS) {
   }
 }
 
+// THE POOL THE CLIMB DRAWS FROM: the deduped union of the ladder's own pool
+// and the one the head-to-head mode uses.
+//
+// Both were measured by the same search through the same builder and differ
+// only in which corners each was told to cover, so the union is one space
+// rather than two. It is here because the ladder needs the width: LADDER_POOL
+// alone holds 199 faces above the two-minute target against 225 levels, and
+// while that target is not yet enforced (see CLIMB_MIN_PAR_SECONDS), drawing
+// wider is what will let it be.
+//
+// ENDLESS_POOL is deliberately left out. Those entries are the endless zone's
+// material, and borrowing them here would hand a player past L250 boards they
+// had already met on the way up.
+const CLIMB_POOL = (() => {
+  const byFace = new Map();
+  for (const e of [...LADDER_POOL, ...CHALLENGE_POOL]) {
+    const face = specFace(e);
+    if (!byFace.has(face)) byFace.set(face, Object.freeze({ ...e, face }));
+  }
+  return [...byFace.values()];
+})();
+
 const _braid = assignBraid(
-  LADDER_POOL.map((e) => Object.freeze({ ...e, face: specFace(e) })),
+  CLIMB_POOL,
   LEVEL_SPECS.map((s) => specFace(s)),
 );
 for (const spec of _braid.levels) LEVEL_SPECS.push(spec);
@@ -843,7 +873,7 @@ export function blockStartLevel(level) {
 
 /**
  * The ppc acceptance band for a non-opener spec: [lo, hi] around the
- * block's authored target. Opener specs (ppc null) return null — they
+ * block's authored target. Opener specs (ppc null) return null, they
  * validate on the deduction floor.
  */
 export function ppcBandFor(spec) {
