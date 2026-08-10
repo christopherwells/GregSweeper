@@ -621,7 +621,116 @@ function emitPool(cache, { floorFn, ceilFn, perSlice, slices, maxPerShape = Infi
   return out;
 }
 
-function runEmit(cache, which) {
+/**
+ * Admissible candidates, on the ladder's yardstick: legal today, priced under
+ * the par ceiling with its margin, and inside the generation headroom. The
+ * same gate emitPool applies, factored out so the coverage emitter cannot
+ * drift from it.
+ */
+function admissible(cache) {
+  const legal = new Map();
+  for (const shape of SHAPES) legal.set(shape, new Set(legalDims(shape).map((d) => `${d.a}x${d.b}`)));
+  return Object.values(cache)
+    .filter((e) => e.ok && legal.get(e.shape)?.has(`${e.a}x${e.b}`))
+    .map((e) => ({ ...e, ppc: e.ppc * SCALE, medPar: e.medPar * SCALE }))
+    .filter((e) => e.medPar <= PAR_CEILING_SECONDS * PAR_CEILING_MARGIN)
+    .filter((e) => e.worstMs <= GEN_CAP_MS * ENDLESS_GEN_HEADROOM);
+}
+
+// The coverage pool wants MORE generation headroom than the ladder pool, and
+// this is the fourth time the lesson has been paid for. The ladder's 0.35
+// works there because that pool has been through repeated absorb passes: its
+// entries carry a worst time measured over many seed samples. A pool emitted
+// straight from 3-seed cache measurements has not, so its boundary entries are
+// the ones whose tail nobody has seen yet. Validating at 0.35 admitted twelve
+// entries that measured 706-1534ms, and dropping those admitted seven MORE on
+// the next sample, because the boundary refills from a heavy tail.
+//
+// 0.2 of the standing cap is 400ms, which leaves room for the ~1.8x
+// cached-to-measured ratio the failures actually showed.
+const COVERAGE_GEN_HEADROOM = 0.2;
+
+// Par bands a player can actually ask for. These are the buckets the Challenge
+// setup sheet's time control selects over, so they are what "covered" has to
+// mean here.
+const COVERAGE_BANDS = [0, 30, 60, 120, 240, 480, Infinity];
+const bandOf = (par) => COVERAGE_BANDS.findIndex((b, i) => par >= b && par < COVERAGE_BANDS[i + 1]);
+
+/**
+ * Emit the SUPPLEMENTARY pool Challenge draws from, selected for COVERAGE
+ * rather than for a difficulty ramp.
+ *
+ * The ladder pool is not short of material, it is balanced for a different
+ * job: emitPool walks the ppc range in slices and spends each slice on a
+ * round-robin over (shape x modifier set), which is exactly right for a ladder
+ * that has to introduce things in order and climb. What it produces is thin at
+ * the corners a PLAYER can select — the cache holds 603 certified rect boards
+ * with no modifiers and the shipped ladder pool carries 3 of them, because
+ * plain rect is one bucket among ~130 and wins a slice slot only when the
+ * round-robin reaches it.
+ *
+ * So this walks (shape x arity x par band) instead, and takes a spread of
+ * sizes from each. It EXCLUDES everything the other two pools already ship, so
+ * the three are disjoint and Challenge draws from the union; the ladder keeps
+ * drawing from LADDER_POOL alone and does not reshuffle.
+ */
+async function emitCoveragePool(cache, { perBucket = 8 } = {}) {
+  const { LADDER_POOL, ENDLESS_POOL } = await import('../src/logic/challengePool.js');
+  const existing = [...LADDER_POOL, ...ENDLESS_POOL];
+  const shipped = new Set(existing.map((e) => specFace(e)));
+
+  // TOP UP, rather than add a flat count everywhere. The ladder pool is
+  // already rich in three-modifier boards and poor in plain ones, so a flat
+  // per-bucket quota would spend most of the payload re-covering what is
+  // covered. Counting what the union already holds is what makes this pool
+  // the COMPLEMENT of the other two instead of a second copy of them.
+  const held = new Map();
+  for (const e of existing) {
+    const cells = e.cells != null ? e.cells : e.rows * e.cols;
+    const key = `${e.shape}|${e.gimmicks.length}|${bandOf(e.ppc * cells)}`;
+    held.set(key, (held.get(key) || 0) + 1);
+  }
+
+  const buckets = new Map();
+  for (const e of admissible(cache).filter((x) => x.worstMs <= GEN_CAP_MS * COVERAGE_GEN_HEADROOM)) {
+    const face = specFace({
+      shape: e.shape, rows: e.a, cols: e.b, M: e.a, N: e.b, mines: e.mines, gimmicks: e.gimmicks,
+    });
+    if (shipped.has(face)) continue;
+    const key = `${e.shape}|${e.gimmicks.length}|${bandOf(e.medPar)}`;
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key).push({ ...e, face });
+  }
+
+  const out = [];
+  const taken = new Set();
+  for (const [key, list] of buckets) {
+    const want = perBucket - (held.get(key) || 0);
+    if (want <= 0) continue;
+    // Spread across SIZE rather than taking the smallest few: a player who
+    // asks for "short classic boards" should meet different boards, and cell
+    // count is the axis they feel most directly.
+    list.sort((a, b) => a.cells - b.cells || a.mines - b.mines);
+    const step = Math.max(1, list.length / want);
+    for (let i = 0; i < want; i++) {
+      const e = list[Math.min(list.length - 1, Math.floor(i * step))];
+      if (!e || taken.has(e.face)) continue;
+      taken.add(e.face);
+      out.push(e);
+    }
+  }
+  out.sort((a, b) => a.ppc - b.ppc);
+  return out;
+}
+
+async function runEmit(cache, which) {
+  if (which === 'challenge') {
+    const pool = await emitCoveragePool(cache, { perBucket: Number(argVal('--per-bucket', 6)) });
+    console.log(`\n// ${pool.length} entries, Challenge coverage pool\nexport const CHALLENGE_POOL = Object.freeze([`);
+    for (const e of pool) console.log(emitLine(e));
+    console.log(']);');
+    return;
+  }
   if (which === 'endless') {
     const pool = emitPool(cache, {
       // FLOOR MARGIN, not the bare floor. Price varies by seed sample, so an
@@ -746,7 +855,7 @@ function repriceCache(cache) {
 // ── Main ───────────────────────────────────────────────────────────────
 
 const cache = loadCache();
-if (EMIT) { runEmit(cache, EMIT); }
+if (EMIT) { await runEmit(cache, EMIT); }
 else if (REPORT_ONLY) { report(cache); }
 else {
   const shapes = ONLY_SHAPE ? [ONLY_SHAPE] : SHAPES;
