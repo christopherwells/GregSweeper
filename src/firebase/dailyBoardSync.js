@@ -21,6 +21,7 @@ import { waitForFirebaseReady } from './waitForFirebase.js';
 import { isTestEnvironment } from './env.js';
 import { getCachedDailyBoard, cacheDailyBoard, addDays, PREFETCH_DAILY_DAYS } from './boardCache.js';
 import { assessCanonicalTrust } from '../logic/canonicalSignature.js';
+import { canonicalReadReason, CANONICAL_ABSENT } from '../logic/canonicalRetry.js';
 // adjacency.js is a LEAF module (imports nothing), so this cannot cycle.
 import { defineCellNeighbors } from '../logic/adjacency.js';
 // tilingGeometry.js is likewise a leaf; only the storability predicate and its
@@ -382,6 +383,26 @@ export function deserializeBoard(raw) {
  * @returns {Promise<object|null>}
  */
 export async function loadDailyBoard(dateString) {
+  return (await loadDailyBoardResult(dateString)).board;
+}
+
+/**
+ * loadDailyBoard, plus WHY it produced what it did.
+ *
+ * A bare null means four different things — the date is empty, the payload
+ * failed its trust gate, the read timed out, Firebase never came ready — and
+ * only one of them is worth asking about again. Retrying an empty date cannot
+ * change the answer, and re-reading a tampered payload returns the same bytes;
+ * the startup gate used to spend its whole budget on both (issue #255).
+ *
+ * The plain loader stays the default because nine callers want a board or
+ * nothing. This sibling exists for the one caller that has to decide whether
+ * to try again.
+ *
+ * @param {string} dateString YYYY-MM-DD
+ * @returns {Promise<{board: object|null, reason: string}>} reason is a CANONICAL_* value
+ */
+export async function loadDailyBoardResult(dateString) {
   // Network-first with cache fallback. Canonical boards are write-once
   // at the RULES layer, but an admin regeneration (service-account
   // bypass — scripts/regenerate-daily-board.mjs) can replace an
@@ -399,7 +420,8 @@ export async function loadDailyBoard(dateString) {
   } catch (err) {
     console.warn('loadDailyBoard:', err.message);
     // offline — the cached canonical is the best truth available
-    return gateCanonicalTrust(cached, dateString, 'daily');
+    const board = await gateCanonicalTrust(cached, dateString, 'daily');
+    return { board, reason: canonicalReadReason({ board, reached: false }) };
   }
   try {
     const ref = db.ref(`${DB_PATH}/${dateString}`);
@@ -411,15 +433,16 @@ export async function loadDailyBoard(dateString) {
     // (admin deletions must always be followed immediately by a
     // rewrite). Don't resurrect a cached copy the server disowned —
     // fall through to the caller's local-generation path.
-    if (!snap.exists()) return null;
+    if (!snap.exists()) return { board: null, reason: CANONICAL_ABSENT };
     const val = await gateCanonicalTrust(snap.val(), dateString, 'daily');
     // An untrusted canonical is never cached — a poisoned board must not
     // gain offline persistence.
     if (val) cacheDailyBoard(dateString, val); // refresh local cache for offline replays
-    return val;
+    return { board: val, reason: canonicalReadReason({ board: val, reached: true, exists: true }) };
   } catch (err) {
     console.warn('loadDailyBoard fetch failed:', err.message);
-    return gateCanonicalTrust(cached, dateString, 'daily');
+    const board = await gateCanonicalTrust(cached, dateString, 'daily');
+    return { board, reason: canonicalReadReason({ board, reached: false }) };
   }
 }
 
