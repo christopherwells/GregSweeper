@@ -9,6 +9,7 @@ import { waitForFirebaseReady } from './waitForFirebase.js';
 import { serializeBoard, deserializeBoard, gateCanonicalTrust } from './dailyBoardSync.js';
 import { isTestEnvironment } from './env.js';
 import { getCachedWeeklyBoard, cacheWeeklyBoard, addDays } from './boardCache.js';
+import { canonicalReadReason, CANONICAL_ABSENT } from '../logic/canonicalRetry.js';
 
 const DB_PATH = 'weeklyBoard';
 const FETCH_TIMEOUT_MS = 5000;
@@ -25,6 +26,20 @@ export { serializeBoard, deserializeBoard };
  * @returns {Promise<object|null>}
  */
 export async function loadWeeklyBoard(weekStart) {
+  return (await loadWeeklyBoardResult(weekStart)).board;
+}
+
+/**
+ * loadWeeklyBoard, plus WHY it produced what it did — the weekly half of the
+ * pair described on loadDailyBoardResult (issue #255). The weekly's stake in
+ * the distinction is the larger one: its local-generation fallback WRITES the
+ * board it built to the write-once node, so the first client to give up on a
+ * slow read establishes the week for everyone behind it.
+ *
+ * @param {string} weekStart Monday's YYYY-MM-DD in ET
+ * @returns {Promise<{board: object|null, reason: string}>} reason is a CANONICAL_* value
+ */
+export async function loadWeeklyBoardResult(weekStart) {
   // Network-first with cache fallback, same rationale as loadDailyBoard:
   // the regenerate-weekly-board tool can replace a week's canonical
   // mid-week (service-account bypass of the write-once rule), and a
@@ -39,7 +54,8 @@ export async function loadWeeklyBoard(weekStart) {
   } catch (err) {
     console.warn('loadWeeklyBoard:', err.message);
     // offline — the cached canonical is the best truth available
-    return gateCanonicalTrust(cached, weekStart, 'weekly');
+    const board = await gateCanonicalTrust(cached, weekStart, 'weekly');
+    return { board, reason: canonicalReadReason({ board, reached: false }) };
   }
   try {
     const ref = db.ref(`${DB_PATH}/${weekStart}`);
@@ -49,14 +65,15 @@ export async function loadWeeklyBoard(weekStart) {
     ]);
     // Server reachable and empty = no canonical for this week; don't
     // resurrect a cached copy the server disowned.
-    if (!snap.exists()) return null;
+    if (!snap.exists()) return { board: null, reason: CANONICAL_ABSENT };
     const val = await gateCanonicalTrust(snap.val(), weekStart, 'weekly');
     // An untrusted canonical is never cached (see loadDailyBoard).
     if (val) cacheWeeklyBoard(weekStart, val); // refresh local cache for offline play
-    return val;
+    return { board: val, reason: canonicalReadReason({ board: val, reached: true, exists: true }) };
   } catch (err) {
     console.warn('loadWeeklyBoard fetch failed:', err.message);
-    return gateCanonicalTrust(cached, weekStart, 'weekly');
+    const board = await gateCanonicalTrust(cached, weekStart, 'weekly');
+    return { board, reason: canonicalReadReason({ board, reached: false }) };
   }
 }
 

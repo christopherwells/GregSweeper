@@ -103,9 +103,17 @@ test('the startup gate retries for BOTH canonicals rather than falling straight 
   assert.ok(branch > 0 && branch < use,
     'the retries must sit inside the firebaseReady branch');
   // And the loop itself must stop the moment the device is known to be
-  // offline, or an airplane-mode boot pays the whole budget twice over.
-  assert.match(gateSrc, /attempt <= CANONICAL_RETRIES && navigator\.onLine !== false/,
-    'the loop must bail on a known-offline device');
+  // offline, or an airplane-mode boot pays the whole budget twice over. The
+  // check used to be written into the loop's own condition; issue #255 moved
+  // it, with the rest of the retry rule, into the pure shouldRetryCanonical
+  // (which is unit-tested on it directly in test/canonicalRetry.test.mjs).
+  // What still has to be true HERE is that the gate feeds it the live reading
+  // on every pass rather than sampling it once before the loop.
+  assert.match(gateSrc, /shouldRetryCanonical\(\{[\s\S]{0,200}?online: navigator\.onLine !== false/,
+    'the loop must pass the live online reading into the retry rule');
+  const loopBody = gateSrc.slice(gateSrc.indexOf('async function retryCanonicalRead'));
+  assert.ok(loopBody.indexOf('shouldRetryCanonical') < loopBody.indexOf('setTimeout'),
+    'and must ask BEFORE sleeping, so a device that just went offline stops immediately');
 });
 
 // The DEFINITION, not the first mention: the bare name appears earlier as the

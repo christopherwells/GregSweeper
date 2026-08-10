@@ -16,8 +16,12 @@
 import { state } from '../state/gameState.js';
 import { isTestEnvironment } from '../firebase/env.js';
 import { getLocalDateString, getWeekStart } from '../logic/seededRandom.js';
-import { loadDailyBoard } from '../firebase/dailyBoardSync.js';
-import { loadWeeklyBoard } from '../firebase/weeklyBoardSync.js';
+import { loadDailyBoardResult } from '../firebase/dailyBoardSync.js';
+import { loadWeeklyBoardResult } from '../firebase/weeklyBoardSync.js';
+import {
+  shouldRetryCanonical, canonicalRetryDelay,
+  CANONICAL_RETRIES, CANONICAL_UNREAD,
+} from '../logic/canonicalRetry.js';
 import { pruneOldCachedBoards } from '../firebase/boardCache.js';
 import {
   getUid, loadWeeklyAttempts, loadLocalWeeklyAttempts,
@@ -147,26 +151,38 @@ async function ensureLatestServiceWorker(timeoutMs = 3000) {
 const SW_UPDATE_FAIL_KEY = 'minesweeper_sw_update_fail_count';
 
 // ── The gate ──────────────────────────────────────────
-// How hard the gate tries for today's canonical before letting the daily fall
-// back to local generation. Linear backoff, so the worst case adds about a
-// second and a half to a boot that was already failing its first read — paid
-// only when the read comes back empty, never on the normal path.
-const CANONICAL_RETRIES = 2;
-const CANONICAL_RETRY_DELAY_MS = 500;
-
 /**
- * Re-read one canonical after an empty first result, with linear backoff.
- * Returns the board, or null once the budget is spent.
+ * Re-read one canonical after a first result with no board, with linear
+ * backoff. Returns the board, or null once the budget is spent.
  *
- * The offline check is inside the loop condition rather than around the call,
- * because a player can lose the network between attempts and there is no sense
- * sleeping out the rest of a budget for a read that cannot land.
+ * WHICH failures are worth retrying is the whole point, and getting it wrong
+ * cost real boot time (issue #255). A null used to mean four things at once —
+ * the date is empty, the payload failed its trust gate, the read timed out,
+ * Firebase never came ready — so the loop spent its budget on the two cases
+ * that provably cannot improve: an empty date returns empty again, and a
+ * tampered payload returns the same bytes. The loaders now report a reason and
+ * `shouldRetryCanonical` acts on it, so only a genuine unread read is retried.
+ *
+ * The budget is wall-clock and is checked BEFORE each attempt, never raced
+ * against one in flight — truncating a read that was about to land would
+ * defeat the retry's purpose. With the loaders' 5s fetch timeout that bounds
+ * this at ~5.5s; the attempt-count version it replaced allowed 11.5s while its
+ * comment claimed "about a second and a half".
  */
-async function retryCanonicalRead(label, load) {
-  for (let attempt = 1; attempt <= CANONICAL_RETRIES && navigator.onLine !== false; attempt++) {
-    await new Promise(r => setTimeout(r, CANONICAL_RETRY_DELAY_MS * attempt));
-    const raw = await load().catch(err => { reportCaughtError(`${label}-retry`, err); return null; });
-    if (raw) return raw;
+async function retryCanonicalRead(label, loadResult, firstReason) {
+  const startedAt = Date.now();
+  let reason = firstReason;
+  for (let attempt = 1; attempt <= CANONICAL_RETRIES; attempt++) {
+    if (!shouldRetryCanonical({
+      reason, attempt, elapsedMs: Date.now() - startedAt, online: navigator.onLine !== false,
+    })) return null;
+    await new Promise(r => setTimeout(r, canonicalRetryDelay(attempt)));
+    const res = await loadResult().catch(err => {
+      reportCaughtError(`${label}-retry`, err);
+      return { board: null, reason: CANONICAL_UNREAD };
+    });
+    if (res && res.board) return res.board;
+    reason = (res && res.reason) || CANONICAL_UNREAD;
   }
   return null;
 }
@@ -243,11 +259,19 @@ export async function runStartupGate() {
       const weeklyAttemptsP = isTestEnvironment()
         ? Promise.resolve({})
         : loadWeeklyAttempts(currentWeek).catch(err => { reportCaughtError('gate-weekly-attempts', err); return null; });
-      let [dailyRaw, weeklyRaw, attempts] = await Promise.all([
-        loadDailyBoard(today).catch(err => { reportCaughtError('gate-daily-board', err); return null; }),
-        loadWeeklyBoard(currentWeek).catch(err => { reportCaughtError('gate-weekly-board', err); return null; }),
+      // The *Result loaders carry WHY a read produced no board, which is what
+      // decides whether retrying it can help at all (issue #255).
+      const failed = (label) => (err) => {
+        reportCaughtError(label, err);
+        return { board: null, reason: CANONICAL_UNREAD };
+      };
+      let [dailyRes, weeklyRes, attempts] = await Promise.all([
+        loadDailyBoardResult(today).catch(failed('gate-daily-board')),
+        loadWeeklyBoardResult(currentWeek).catch(failed('gate-weekly-board')),
         weeklyAttemptsP,
       ]);
+      let dailyRaw = dailyRes.board;
+      let weeklyRaw = weeklyRes.board;
       if (!dailyRaw || !weeklyRaw) {
         // ONE read is not enough to conclude the canonical is unavailable
         // (2026-08-07, his ask: the app should open only once it has the
@@ -267,6 +291,12 @@ export async function runStartupGate() {
         // gets the local fallback, which is what keeps the game playable on
         // a plane; they simply will not be ranked (the submit path refuses
         // a divergent row).
+        //
+        // Only an UNREAD result is retried (issue #255). The loaders report
+        // why they came back empty, and two of the reasons cannot improve on a
+        // second look: a date the server says is EMPTY answers the same way
+        // next time, and an UNTRUSTED payload returns the same bytes. Both
+        // used to consume the whole budget for nothing.
         // navigator.onLine is the discriminator, and it has to be checked
         // HERE rather than relying on firebaseReady: the SDK loads from a CDN
         // the service worker deliberately does not cache, so on a warm HTTP
@@ -292,8 +322,10 @@ export async function runStartupGate() {
         // its time waiting.
         setBootStatus('Fetching today\'s board…');
         const [dailyRetry, weeklyRetry] = await Promise.all([
-          dailyRaw ? null : retryCanonicalRead('gate-daily-board', () => loadDailyBoard(today)),
-          weeklyRaw ? null : retryCanonicalRead('gate-weekly-board', () => loadWeeklyBoard(currentWeek)),
+          dailyRaw ? null
+            : retryCanonicalRead('gate-daily-board', () => loadDailyBoardResult(today), dailyRes.reason),
+          weeklyRaw ? null
+            : retryCanonicalRead('gate-weekly-board', () => loadWeeklyBoardResult(currentWeek), weeklyRes.reason),
         ]);
         if (dailyRetry) dailyRaw = dailyRetry;
         if (weeklyRetry) weeklyRaw = weeklyRetry;
