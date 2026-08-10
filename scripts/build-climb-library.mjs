@@ -36,6 +36,7 @@ import { serializeBoard } from '../src/firebase/dailyBoardSync.js';
 import { TILING_SAFE_GIMMICKS } from '../src/logic/tilingGenerator.js';
 import {
   CHALLENGE_MAX_LEVEL, CHALLENGE_BLOCK_SIZE, CLIMB_MIN_PAR_SECONDS, specFace,
+  SHAPE_INTRO_BLOCKS, MOD_INTRO_BLOCKS,
 } from '../src/logic/challenge250.js';
 import { modelFingerprint } from '../src/logic/parModelFingerprint.js';
 
@@ -65,7 +66,20 @@ const HIGH_BAND_FROM = 200;
 // Past this point the ladder gets HARDER rather than LONGER, which is the
 // ruling's second half. Kites reaches 25 hard decisions at 90 cells, so the
 // top of the climb has plenty of room on that axis with none on this one.
-const PAR_TARGET_TOP = 500;
+//
+// 420 rather than the 500 the binding-shape math alone allows (his ruling,
+// same day): the endless zone sits past L250 and must ALSO hold every shape,
+// so the ladder's top leaves room under Paving Stones' ~546s ceiling for
+// endless to live in rather than consuming the margin itself.
+const PAR_TARGET_TOP = 420;
+
+// The endless pool's own par target, deliberately BELOW the ladder's top
+// ("for endless I'd even drop it to 400 for lots of room"). Endless carries
+// its difficulty in hardness and variety, not in length, and 400s keeps every
+// shape comfortably inside its reach so the thousand-board pool can hold the
+// even shape and modifier coverage he asked for. Consumed by the endless
+// build when it lands; recorded now so the ruling is not re-derived.
+export const ENDLESS_PAR_TARGET = 400;
 
 // The hardness ramp, which is what carries difficulty once time stops. Levels
 // select the hardest boards available in their par band regardless; this is
@@ -211,6 +225,31 @@ if ((process.argv[1] || '').endsWith('build-climb-library.mjs')) {
     if (target == null) { console.log(`L${level}: authored opener, skipped`); continue; }
     const want = minBoardsFor(level);
 
+    // THE INTRODUCTION SCHEDULE (his catch, 2026-08-10: "I don't think all
+    // shapes will have been introduced by L26... once it was introduced, it
+    // was then in the mix so that needs to not be forgotten"). The first cut
+    // of this generator ignored it and proudly reported seven shapes at L26,
+    // which breaks the five-level onboarding the ladder teaches with: at L26
+    // a player has met Classic, walls, liar, mystery and exactly one debut.
+    //
+    // A debut block's levels ALL carry the new thing; after its block, it
+    // joins the general mix. The schedule is read from the shipped ladder so
+    // the checkpoint-selector labels stay true; when the runtime switches to
+    // the library, the manifest this writes becomes the one source.
+    const block = Math.floor((level - 1) / CHALLENGE_BLOCK_SIZE) + 1;
+    const shapesIn = new Set(['rect']);
+    for (const [b, sh] of Object.entries(SHAPE_INTRO_BLOCKS)) {
+      if (Number(b) <= block) shapesIn.add(sh);
+    }
+    const modsIn = new Set();
+    for (const [b, g] of Object.entries(MOD_INTRO_BLOCKS)) {
+      if (Number(b) <= block) modsIn.add(g);
+    }
+    const debutShape = SHAPE_INTRO_BLOCKS[block] || null;
+    const debutMod = MOD_INTRO_BLOCKS[block] || null;
+    const allowedSets = GIMMICK_SETS.filter((set) =>
+      set.every((g) => modsIn.has(g)) && (!debutMod || set.includes(debutMod)));
+
     // Candidate specs come from the PRICE MAP, not from the raw patch list.
     // Sampling patches blindly is what put the first run's L26 at 375s against
     // a 120s target: the specs that cleared the floor at all were simply the
@@ -223,6 +262,7 @@ if ((process.argv[1] || '').endsWith('build-climb-library.mjs')) {
     // generous multiplier here keeps modifier-bearing specs in the running
     // rather than pre-filtering them out on their plain price.
     const pool = priced
+      .filter((e) => (debutShape ? e.shape === debutShape : shapesIn.has(e.shape)))
       .filter((e) => e.par >= target * 0.45 && e.par <= target * 1.6)
       .map((e) => ({
         shape: e.shape, rows: e.rows, cols: e.cols, M: e.M, N: e.N,
@@ -240,7 +280,7 @@ if ((process.argv[1] || '').endsWith('build-climb-library.mjs')) {
     // soft shapes get enough attempts to land a reach-modifier set.
     for (let i = 0; i < budget && kept.length < want * 8; i++) {
       const base = pool[(level * 7919 + i * 104729) % pool.length];
-      const gset = GIMMICK_SETS[(level * 31 + i * 17) % GIMMICK_SETS.length];
+      const gset = allowedSets[(level * 31 + i * 17) % allowedSets.length];
       const spec = { ...base, gimmicks: gset, gimmickLevel: 40 + (level % 60) };
       tried++;
       const c = candidate(spec, `climb:L${level}:${i}`);
@@ -294,7 +334,8 @@ if ((process.argv[1] || '').endsWith('build-climb-library.mjs')) {
     const belowFloor = chosen.filter((c) => c.hard < floor).length;
     const softShapes = [...new Set(chosen.filter((c) => c.hard < floor).map((c) => c.spec.shape))];
     const med = (a, k) => a.length ? [...a].map((x) => x[k]).sort((x, y) => x - y)[Math.floor(a.length / 2)] : 0;
-    console.log(`L${String(level).padStart(3)} target ${String(Math.round(target)).padStart(3)}s  `
+    console.log(`L${String(level).padStart(3)} target ${String(Math.round(target)).padStart(3)}s`
+      + `${debutShape || debutMod ? ` INTRO ${debutShape || debutMod}` : ''}  `
       + `tried ${String(tried).padStart(4)}  kept ${String(chosen.length).padStart(2)}/${want}  `
       + `par med ${String(Math.round(med(chosen, 'par'))).padStart(4)}s  work med ${String(med(chosen, 'work')).padStart(3)}  `
       + `hard med ${String(med(chosen, 'hard')).padStart(2)} max ${chosen.length ? Math.max(...chosen.map((c) => c.hard)) : 0}  `
@@ -307,6 +348,7 @@ if ((process.argv[1] || '').endsWith('build-climb-library.mjs')) {
       const file = new URL(`level-${String(level).padStart(3, '0')}.json`, OUT_DIR);
       writeFileSync(file, JSON.stringify({
         level, block, target: Math.round(target),
+        intro: debutShape || debutMod || null,
         parModel: modelFingerprint(),
         boards: chosen,
       }));
