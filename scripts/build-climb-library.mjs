@@ -50,36 +50,31 @@ const MIN_PAR = CLIMB_MIN_PAR_SECONDS;              // 120s
 const MIN_BOARDS = 10;
 const MIN_BOARDS_HIGH = 20;                          // from HIGH_BAND_FROM up
 const HIGH_BAND_FROM = 200;
-// Where the TIME ramp stops, set by the most constrained shape rather than
-// the most capable, because shapes must not become discontinued (his ruling
-// 2026-08-10: "Shapes should not become discontinued. They don't need to all
-// be above 900s. Drop the par time some if that's the case. The idea is to
-// have variety stay similar but difficulty ramp.").
+// THE RAMP IS A RISING FLOOR, not a target with a band around it (his
+// correction, 2026-08-10: "I thought it was a 420s floor for ladder top and
+// a 400s endless floor, right?". The first cut centered a band on 420,
+// which admitted 168s boards at L250). An L26 board is at least two minutes;
+// an L250 board is at least 420 seconds. The room ABOVE the floor is where
+// variety lives, and there is no hard max ("there's no max").
 //
-// The binding shape is Paving Stones. The phone-width cap holds it to 112
-// cells, and with a full modifier stack at density 0.36 it reaches a median
-// 419s and a maximum 546s. Every other shape clears that comfortably, so 500
-// is the highest top that keeps all seven in play. Reading the price map's
-// plain-board maxima instead would have put the ceiling at 243s, because
-// modifiers add par and the map prices bare boards.
-//
-// Past this point the ladder gets HARDER rather than LONGER, which is the
-// ruling's second half. Kites reaches 25 hard decisions at 90 cells, so the
-// top of the climb has plenty of room on that axis with none on this one.
-//
-// 420 rather than the 500 the binding-shape math alone allows (his ruling,
-// same day): the endless zone sits past L250 and must ALSO hold every shape,
-// so the ladder's top leaves room under Paving Stones' ~546s ceiling for
-// endless to live in rather than consuming the margin itself.
-const PAR_TARGET_TOP = 420;
+// Why 420 is feasible for every shape, so none is discontinued: the binding
+// shape is Paving Stones, held to 112 cells by the phone-width cap, and with
+// a full modifier stack at density 0.36 it measures median 419s, max 546s.
+// So each shape has real supply above 420, thin for Paving Stones and
+// Octagons, wide for the rest. Reading the price map's plain-board maxima
+// instead would have said 243s, because modifiers add par and the map prices
+// bare boards. Past where time stops climbing, difficulty keeps ramping on
+// HARDNESS, which is the axis with room left (Kites reaches 25 hard
+// decisions at 90 cells).
+const PAR_FLOOR_TOP = 420;
 
-// The endless pool's own par target, deliberately BELOW the ladder's top
-// ("for endless I'd even drop it to 400 for lots of room"). Endless carries
-// its difficulty in hardness and variety, not in length, and 400s keeps every
-// shape comfortably inside its reach so the thousand-board pool can hold the
-// even shape and modifier coverage he asked for. Consumed by the endless
-// build when it lands; recorded now so the ruling is not re-derived.
-export const ENDLESS_PAR_TARGET = 400;
+// The endless pool's own FLOOR, a step below the ladder top's ("for endless
+// I'd even drop it to 400 for lots of room"): the room is the range above
+// the floor, and 400 widens it so the thousand-board pool can hold even
+// shape and modifier coverage while every board still runs longer than
+// almost anything on the ladder. Consumed by the endless build when it
+// lands; recorded now so the ruling is not re-derived.
+export const ENDLESS_PAR_FLOOR = 400;
 
 // The hardness ramp, which is what carries difficulty once time stops. Levels
 // select the hardest boards available in their par band regardless; this is
@@ -103,10 +98,19 @@ const CANDIDATES_PER_KEEP = 28;
 // ── The two floors a board must clear ──────────────────────────────────
 const MIN_WORK = 8;   // decisions. Offline the specs are big, so this is easy.
 
-function parTarget(level) {
+function parFloor(level) {
   if (level < 26) return null;                       // openers keep their own rule
   const t = (level - 26) / (CHALLENGE_MAX_LEVEL - 26);
-  return MIN_PAR * Math.pow(PAR_TARGET_TOP / MIN_PAR, t);
+  return MIN_PAR * Math.pow(PAR_FLOOR_TOP / MIN_PAR, t);
+}
+// The admission window's top. Not a ruling, a selection width: without one,
+// L26 could deal a 600s board and the ramp would stop being one. It widens
+// with the climb, per "decently wide but ever increased width", and at L250
+// it sits above every constrained shape's reach, so up there it is
+// effectively open.
+function parWindowTop(level) {
+  const t = (level - 26) / (CHALLENGE_MAX_LEVEL - 26);
+  return parFloor(level) * (1.45 + t * 0.25);        // L26 [120,174] -> L250 [420,714]
 }
 function hardFloor(level) {
   if (level < 26) return 0;
@@ -185,7 +189,7 @@ function candidate(spec, seed) {
   };
 }
 
-export { parTarget, hardFloor, minBoardsFor, legalPatches, GIMMICK_SETS, candidate, hardOf,
+export { parFloor, parWindowTop, hardFloor, minBoardsFor, legalPatches, GIMMICK_SETS, candidate, hardOf,
   MIN_PAR, MIN_WORK, CANDIDATES_PER_KEEP, OUT_DIR };
 
 // ── CLI ────────────────────────────────────────────────────────────────
@@ -221,8 +225,9 @@ if ((process.argv[1] || '').endsWith('build-climb-library.mjs')) {
   if (!existsSync(OUT_DIR)) mkdirSync(OUT_DIR, { recursive: true });
 
   for (let level = range.from; level <= range.to; level++) {
-    const target = parTarget(level);
-    if (target == null) { console.log(`L${level}: authored opener, skipped`); continue; }
+    const floorPar = parFloor(level);
+    if (floorPar == null) { console.log(`L${level}: authored opener, skipped`); continue; }
+    const topPar = parWindowTop(level);
     const want = minBoardsFor(level);
 
     // THE INTRODUCTION SCHEDULE (his catch, 2026-08-10: "I don't think all
@@ -263,12 +268,12 @@ if ((process.argv[1] || '').endsWith('build-climb-library.mjs')) {
     // rather than pre-filtering them out on their plain price.
     const pool = priced
       .filter((e) => (debutShape ? e.shape === debutShape : shapesIn.has(e.shape)))
-      .filter((e) => e.par >= target * 0.45 && e.par <= target * 1.6)
+      .filter((e) => e.par >= floorPar * 0.5 && e.par <= topPar * 1.1)
       .map((e) => ({
         shape: e.shape, rows: e.rows, cols: e.cols, M: e.M, N: e.N,
         cells: e.cells, mines: e.mines, gimmicks: [], constructive: true,
       }));
-    if (!pool.length) { console.log(`L${level}: price map has nothing near ${Math.round(target)}s`); continue; }
+    if (!pool.length) { console.log(`L${level}: price map has nothing near [${Math.round(floorPar)}, ${Math.round(topPar)}]s`); continue; }
 
     const kept = [];
     const seenFace = new Map();
@@ -292,21 +297,19 @@ if ((process.argv[1] || '').endsWith('build-climb-library.mjs')) {
       kept.push(c);
     }
 
-    // The par target is a BAND, not a tiebreak. Sorting by hardness first put
-    // L26 at 375s against a 120s target, because the hardest boards are simply
-    // the biggest ones and nothing held them back. So: keep only what lands in
-    // the band, THEN maximise hardness inside it. The band widens with the
-    // climb, per his "decently wide but ever increasing width".
-    const t = (level - 26) / (CHALLENGE_MAX_LEVEL - 26);
-    const half = 0.25 + t * 0.35;
-    const lo = target * (1 - half);
-    const hi = target * (1 + half);
-    const inBand = kept.filter((c) => c.par >= Math.max(MIN_PAR, lo) && c.par <= hi);
+    // The FLOOR is absolute and the window top is the selection width: land
+    // inside the window first, THEN maximize hardness. Sorting by hardness
+    // before banding is what put the very first run's L26 at 375s, because
+    // the hardest boards are simply the biggest and nothing held them back.
+    const inBand = kept.filter((c) => c.par >= floorPar && c.par <= topPar);
     // Falling back to the whole set is the honest failure mode: a level short
     // of in-band boards gets off-target ones and the log says so, rather than
     // shipping fewer than the minimum.
-    const from = inBand.length >= want ? inBand : kept;
-    from.sort((a, b) => (b.hard - a.hard) || (Math.abs(a.par - target) - Math.abs(b.par - target)));
+    // The fallback still respects the FLOOR: a short level may only err
+    // LONG, never under the floor, or the ramp's own promise breaks.
+    const overFloor = kept.filter((c) => c.par >= floorPar);
+    const from = inBand.length >= want ? inBand : (overFloor.length >= want ? overFloor : kept);
+    from.sort((a, b) => (b.hard - a.hard) || (Math.abs(a.par - floorPar * 1.2) - Math.abs(b.par - floorPar * 1.2)));
 
     // SHAPE SPREAD, his ruling: "shapes should not become discontinued... the
     // idea is to have variety stay similar but difficulty ramp". Taking the
@@ -334,10 +337,11 @@ if ((process.argv[1] || '').endsWith('build-climb-library.mjs')) {
     const belowFloor = chosen.filter((c) => c.hard < floor).length;
     const softShapes = [...new Set(chosen.filter((c) => c.hard < floor).map((c) => c.spec.shape))];
     const med = (a, k) => a.length ? [...a].map((x) => x[k]).sort((x, y) => x - y)[Math.floor(a.length / 2)] : 0;
-    console.log(`L${String(level).padStart(3)} target ${String(Math.round(target)).padStart(3)}s`
+    console.log(`L${String(level).padStart(3)} floor ${String(Math.round(floorPar)).padStart(3)}s`
       + `${debutShape || debutMod ? ` INTRO ${debutShape || debutMod}` : ''}  `
       + `tried ${String(tried).padStart(4)}  kept ${String(chosen.length).padStart(2)}/${want}  `
-      + `par med ${String(Math.round(med(chosen, 'par'))).padStart(4)}s  work med ${String(med(chosen, 'work')).padStart(3)}  `
+      + `par min ${String(chosen.length ? Math.round(Math.min(...chosen.map((c) => c.par))) : 0).padStart(4)}s `
+      + `med ${String(Math.round(med(chosen, 'par'))).padStart(4)}s  work med ${String(med(chosen, 'work')).padStart(3)}  `
       + `hard med ${String(med(chosen, 'hard')).padStart(2)} max ${chosen.length ? Math.max(...chosen.map((c) => c.hard)) : 0}  `
       + `shapes ${new Set(chosen.map((c) => c.spec.shape)).size}`
       + `  hardFloor ${floor}${belowFloor ? ` (${belowFloor} under: ${softShapes.join(',')})` : ''}`
@@ -347,7 +351,7 @@ if ((process.argv[1] || '').endsWith('build-climb-library.mjs')) {
       const block = Math.floor((level - 1) / CHALLENGE_BLOCK_SIZE) + 1;
       const file = new URL(`level-${String(level).padStart(3, '0')}.json`, OUT_DIR);
       writeFileSync(file, JSON.stringify({
-        level, block, target: Math.round(target),
+        level, block, parFloor: Math.round(floorPar), parWindowTop: Math.round(topPar),
         intro: debutShape || debutMod || null,
         parModel: modelFingerprint(),
         boards: chosen,
