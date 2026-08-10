@@ -18,7 +18,7 @@ import {
   isArchivableWeek, weekArchiveState, pastWeekStarts,
   weekStartLabel, weekRangeLabel,
   applyWeekContinuation, isWeekStreakAlive, projectWeekContinuation, liveWeekStreak,
-  weekStreakFromHistory,
+  weekStreakFromHistory, streakBearingWeeks,
 } from '../src/logic/weeklyProgress.js';
 
 // ── Week arithmetic ──────────────────────────────────────────────────────
@@ -187,4 +187,36 @@ test('REGRESSION: the streak derives from the weeks already played', () => {
   assert.deepEqual(weekStreakFromHistory(null), { streak: 0, lastWeek: null });
   assert.deepEqual(weekStreakFromHistory(['nonsense']), { streak: 0, lastWeek: null });
   assert.deepEqual(weekStreakFromHistory(['2026-08-03']), { streak: 1, lastWeek: '2026-08-03' });
+});
+
+// ── Which weeks a streak may count (issue #254) ──────────────────────────
+
+test('streakBearingWeeks keeps past weeks and drops the live one', () => {
+  const played = ['2026-07-20', '2026-07-27', '2026-08-03', '2026-08-10'];
+  assert.deepEqual(streakBearingWeeks(played, '2026-08-10'),
+    ['2026-07-20', '2026-07-27', '2026-08-03'],
+    'the week in progress is not history — the player can still earn it');
+
+  // Nothing else about the input changes: order, duplicates and junk are the
+  // downstream derivation's problem, not this filter's.
+  assert.deepEqual(streakBearingWeeks(['2026-08-03', '2026-07-27'], '2026-08-10'),
+    ['2026-08-03', '2026-07-27']);
+  assert.deepEqual(streakBearingWeeks(['nonsense', '2026-08-03'], '2026-08-10'), ['2026-08-03']);
+});
+
+test('streakBearingWeeks drops anything dated after the current week', () => {
+  // Only a clock disagreement produces one, and it cannot be a completion.
+  assert.deepEqual(streakBearingWeeks(['2026-08-03', '2026-08-17'], '2026-08-10'), ['2026-08-03']);
+});
+
+test('streakBearingWeeks fails CLOSED without a current week', () => {
+  // This module has no clock by design, so an absent currentWeek means the
+  // caller cannot distinguish history from the live week. Returning the input
+  // would silently restore the defect; returning nothing leaves the stored
+  // record alone, which is the safe direction for an upward-only heal.
+  const played = ['2026-07-27', '2026-08-03'];
+  assert.deepEqual(streakBearingWeeks(played, undefined), []);
+  assert.deepEqual(streakBearingWeeks(played, null), []);
+  assert.deepEqual(streakBearingWeeks(played, 'not-a-week'), []);
+  assert.deepEqual(streakBearingWeeks(null, '2026-08-10'), []);
 });
