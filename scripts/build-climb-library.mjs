@@ -49,15 +49,42 @@ const MIN_PAR = CLIMB_MIN_PAR_SECONDS;              // 120s
 const MIN_BOARDS = 10;
 const MIN_BOARDS_HIGH = 20;                          // from HIGH_BAND_FROM up
 const HIGH_BAND_FROM = 200;
-// No par ceiling: his "there's no max". The ramp target below simply stops
-// climbing, and a board that prices long is kept rather than refused.
-const PAR_TARGET_TOP = 900;
+// Where the TIME ramp stops, set by the most constrained shape rather than
+// the most capable, because shapes must not become discontinued (his ruling
+// 2026-08-10: "Shapes should not become discontinued. They don't need to all
+// be above 900s. Drop the par time some if that's the case. The idea is to
+// have variety stay similar but difficulty ramp.").
+//
+// The binding shape is Paving Stones. The phone-width cap holds it to 112
+// cells, and with a full modifier stack at density 0.36 it reaches a median
+// 419s and a maximum 546s. Every other shape clears that comfortably, so 500
+// is the highest top that keeps all seven in play. Reading the price map's
+// plain-board maxima instead would have put the ceiling at 243s, because
+// modifiers add par and the map prices bare boards.
+//
+// Past this point the ladder gets HARDER rather than LONGER, which is the
+// ruling's second half. Kites reaches 25 hard decisions at 90 cells, so the
+// top of the climb has plenty of room on that axis with none on this one.
+const PAR_TARGET_TOP = 500;
+
+// The hardness ramp, which is what carries difficulty once time stops. Levels
+// select the hardest boards available in their par band regardless; this is
+// the floor that makes the top of the ladder refuse a merely-long board.
+const HARD_FLOOR_START = 3;
+const HARD_FLOOR_TOP = 14;
 
 // How many candidates to generate per kept board. Selection is the whole
-// point, so this is the knob that buys hardness: at 12 the top of the
-// distribution is reached often enough that a level's ten boards are all
-// drawn from the hard tail rather than the middle.
-const CANDIDATES_PER_KEEP = 12;
+// point, so this is the knob that buys hardness.
+//
+// It is 28 rather than 12 because of the interaction between his two rulings.
+// Shape spread means a level must take boards from Honeycomb and 3D Cubes,
+// which are soft on plain layouts (7/200 and 2/60 with any hard content) and
+// only become hard with reach modifiers. The modifier set is rotated blindly,
+// so a soft shape needs enough draws to land on one of those sets. At 12 a
+// third of each level's boards sat under the hardness floor; the extra
+// candidates are what let every shape contribute a HARD board rather than
+// merely a board.
+const CANDIDATES_PER_KEEP = 28;
 
 // ── The two floors a board must clear ──────────────────────────────────
 const MIN_WORK = 8;   // decisions. Offline the specs are big, so this is easy.
@@ -66,6 +93,11 @@ function parTarget(level) {
   if (level < 26) return null;                       // openers keep their own rule
   const t = (level - 26) / (CHALLENGE_MAX_LEVEL - 26);
   return MIN_PAR * Math.pow(PAR_TARGET_TOP / MIN_PAR, t);
+}
+function hardFloor(level) {
+  if (level < 26) return 0;
+  const t = (level - 26) / (CHALLENGE_MAX_LEVEL - 26);
+  return Math.round(HARD_FLOOR_START + t * (HARD_FLOOR_TOP - HARD_FLOOR_START));
 }
 function minBoardsFor(level) {
   return level >= HIGH_BAND_FROM ? MIN_BOARDS_HIGH : MIN_BOARDS;
@@ -139,7 +171,7 @@ function candidate(spec, seed) {
   };
 }
 
-export { parTarget, minBoardsFor, legalPatches, GIMMICK_SETS, candidate, hardOf,
+export { parTarget, hardFloor, minBoardsFor, legalPatches, GIMMICK_SETS, candidate, hardOf,
   MIN_PAR, MIN_WORK, CANDIDATES_PER_KEEP, OUT_DIR };
 
 // ── CLI ────────────────────────────────────────────────────────────────
@@ -202,7 +234,11 @@ if ((process.argv[1] || '').endsWith('build-climb-library.mjs')) {
     const seenFace = new Map();
     let tried = 0;
     const budget = want * CANDIDATES_PER_KEEP;
-    for (let i = 0; i < budget && kept.length < want * 3; i++) {
+    // The KEPT cap, not the budget, is what bounds this loop in practice, and
+    // setting it to want*3 quietly made CANDIDATES_PER_KEEP inert: the loop
+    // stopped at 30 kept having spent 90 of its 280 draws. It is want*8 so the
+    // soft shapes get enough attempts to land a reach-modifier set.
+    for (let i = 0; i < budget && kept.length < want * 8; i++) {
       const base = pool[(level * 7919 + i * 104729) % pool.length];
       const gset = GIMMICK_SETS[(level * 31 + i * 17) % GIMMICK_SETS.length];
       const spec = { ...base, gimmicks: gset, gimmickLevel: 40 + (level % 60) };
@@ -231,14 +267,40 @@ if ((process.argv[1] || '').endsWith('build-climb-library.mjs')) {
     // shipping fewer than the minimum.
     const from = inBand.length >= want ? inBand : kept;
     from.sort((a, b) => (b.hard - a.hard) || (Math.abs(a.par - target) - Math.abs(b.par - target)));
-    const chosen = from.slice(0, want);
+
+    // SHAPE SPREAD, his ruling: "shapes should not become discontinued... the
+    // idea is to have variety stay similar but difficulty ramp". Taking the
+    // top N by hardness alone collapses a level onto whichever shape happens
+    // to be hardest at that par, which at the summit was a single shape. So
+    // deal round-robin across shapes, hardest first within each, and only
+    // fall back to a straight hardness take once every shape present is
+    // exhausted. Variety is a constraint on the selection, not a hope about
+    // its output, which is the same lesson the pool search learned.
+    const byShape = new Map();
+    for (const c of from) {
+      if (!byShape.has(c.spec.shape)) byShape.set(c.spec.shape, []);
+      byShape.get(c.spec.shape).push(c);
+    }
+    const queues = [...byShape.values()];
+    const chosen = [];
+    for (let round = 0; chosen.length < want && queues.some((q) => q.length); round++) {
+      for (const q of queues) {
+        if (chosen.length >= want) break;
+        if (q.length) chosen.push(q.shift());
+      }
+    }
     const banded = inBand.length >= want;
+    const floor = hardFloor(level);
+    const belowFloor = chosen.filter((c) => c.hard < floor).length;
+    const softShapes = [...new Set(chosen.filter((c) => c.hard < floor).map((c) => c.spec.shape))];
     const med = (a, k) => a.length ? [...a].map((x) => x[k]).sort((x, y) => x - y)[Math.floor(a.length / 2)] : 0;
     console.log(`L${String(level).padStart(3)} target ${String(Math.round(target)).padStart(3)}s  `
       + `tried ${String(tried).padStart(4)}  kept ${String(chosen.length).padStart(2)}/${want}  `
       + `par med ${String(Math.round(med(chosen, 'par'))).padStart(4)}s  work med ${String(med(chosen, 'work')).padStart(3)}  `
       + `hard med ${String(med(chosen, 'hard')).padStart(2)} max ${chosen.length ? Math.max(...chosen.map((c) => c.hard)) : 0}  `
-      + `shapes ${new Set(chosen.map((c) => c.spec.shape)).size}${banded ? '' : '   OFF-BAND'}`);
+      + `shapes ${new Set(chosen.map((c) => c.spec.shape)).size}`
+      + `  hardFloor ${floor}${belowFloor ? ` (${belowFloor} under: ${softShapes.join(',')})` : ''}`
+      + `${banded ? '' : '   OFF-BAND'}`);
 
     if (!dry && chosen.length) {
       const block = Math.floor((level - 1) / CHALLENGE_BLOCK_SIZE) + 1;
