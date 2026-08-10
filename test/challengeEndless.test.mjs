@@ -271,12 +271,20 @@ test('GOLDEN: the first endless block is fixed', () => {
   // from the same stratified search the ladder does (a per-shape cap, so no
   // shape holds a third of it), and the per-level hash pick became a DEALT
   // DECK. Whole different pool, whole different draw.
+  // Moved on 2026-08-10 by the refit-drift repair. The 2026-08-09 refit moved
+  // DELTOIDAL's equation -26.6%, which put six of its endless entries under
+  // the 3.5 floor along with a hex one; the re-price refuses to write while
+  // any entry breaks a ruling, so the pool had been sitting on pre-refit
+  // prices and main was red. Dropping the eight that left the rulings and
+  // re-pricing is what let it write, and a smaller pool deals a different
+  // five. Deltoidal keeps five endless entries, so the seven-shape rule still
+  // holds — it is simply priced as an easier lattice than it was.
   assert.deepEqual(got, [
     'floret:84c:29m:[locked+sonar]',
-    'deltoidal:54c:18m:[]',
     '4.8.8:98c:33m:[mirror]',
-    'hex:96c:36m:[locked+worm]',
     'cairo:112c:30m:[liar+wormhole+mirror]',
+    'hex:104c:38m:[liar+mirror+sonar]',
+    'deltoidal:72c:19m:[locked+sonar+worm]',
   ]);
 
 
