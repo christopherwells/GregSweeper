@@ -143,8 +143,9 @@ export { parTarget, minBoardsFor, legalPatches, GIMMICK_SETS, candidate, hardOf,
   MIN_PAR, MIN_WORK, CANDIDATES_PER_KEEP, OUT_DIR };
 
 // ── CLI ────────────────────────────────────────────────────────────────
-if (import.meta.url === `file://${process.argv[1].replace(/\\/g, '/')}`
-  || process.argv[1].endsWith('build-climb-library.mjs')) {
+// Guarded so the module can be IMPORTED for its helpers without running the
+// build, and without throwing when argv[1] is absent (node -e, a test).
+if ((process.argv[1] || '').endsWith('build-climb-library.mjs')) {
   const args = process.argv.slice(2);
   const dry = args.includes('--dry-run');
   const range = (() => {
@@ -159,8 +160,18 @@ if (import.meta.url === `file://${process.argv[1].replace(/\\/g, '/')}`
     process.exit(1);
   }
 
-  const patches = legalPatches();
-  console.log(`spec space: ${patches.length} phone-legal patches x ${GIMMICK_SETS.length} modifier sets`);
+  // The price map is required, not optional: without it the generator has no
+  // way to aim and every level lands off-band (measured, first run).
+  const mapFile = new URL('./data/climb-price-map.json', import.meta.url);
+  const fastFile = new URL('./data/climb-price-map-fast.json', import.meta.url);
+  const which = existsSync(mapFile) ? mapFile : (existsSync(fastFile) ? fastFile : null);
+  if (!which) {
+    console.error('no price map. Run: node scripts/build-climb-price-map.mjs [--fast]');
+    process.exit(1);
+  }
+  const priced = JSON.parse(readFileSync(which, 'utf8')).entries;
+  console.log(`price map: ${priced.length} priced specs`
+    + `${which === fastFile ? ' (FAST map: rhombille and deltoidal missing)' : ''}`);
   if (!existsSync(OUT_DIR)) mkdirSync(OUT_DIR, { recursive: true });
 
   for (let level = range.from; level <= range.to; level++) {
@@ -168,17 +179,24 @@ if (import.meta.url === `file://${process.argv[1].replace(/\\/g, '/')}`
     if (target == null) { console.log(`L${level}: authored opener, skipped`); continue; }
     const want = minBoardsFor(level);
 
-    // Candidate specs: patches whose plausible par brackets the target, paired
-    // with a rotating modifier set so a level's ten boards are not ten
-    // variations of one face.
-    const pool = [];
-    for (const p of patches) {
-      for (const dens of [0.20, 0.24, 0.28]) {
-        const mines = Math.round(p.cells * dens);
-        if (mines < 4 || mines >= p.cells * 0.45) continue;
-        pool.push({ ...p, mines, gimmicks: [], constructive: true });
-      }
-    }
+    // Candidate specs come from the PRICE MAP, not from the raw patch list.
+    // Sampling patches blindly is what put the first run's L26 at 375s against
+    // a 120s target: the specs that cleared the floor at all were simply the
+    // biggest ones. The map says what each (shape, size, density) is worth, so
+    // a level can ask for the sizes that land near its target and let its own
+    // par measurement do the accepting.
+    //
+    // Modifiers still shift par, which is why the map prices PLAIN boards and
+    // the band is applied to the real measured candidate further down. A
+    // generous multiplier here keeps modifier-bearing specs in the running
+    // rather than pre-filtering them out on their plain price.
+    const pool = priced
+      .filter((e) => e.par >= target * 0.45 && e.par <= target * 1.6)
+      .map((e) => ({
+        shape: e.shape, rows: e.rows, cols: e.cols, M: e.M, N: e.N,
+        cells: e.cells, mines: e.mines, gimmicks: [], constructive: true,
+      }));
+    if (!pool.length) { console.log(`L${level}: price map has nothing near ${Math.round(target)}s`); continue; }
 
     const kept = [];
     const seenFace = new Map();
