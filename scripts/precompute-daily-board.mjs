@@ -21,6 +21,7 @@ import { getTargetGimmickName, missionLabel } from '../src/logic/experimentDesig
 import { signCanonicalPayload, requireSigningKey } from '../src/logic/canonicalSignature.js';
 import { cruxPayloadFromBoard } from '../src/logic/cruxExtract.js';
 import { signInAnonymously, deleteSelf } from './anon-auth-rest.mjs';
+import { mintCruxToken, writeCrux } from './crux-write.mjs';
 
 const DB_BASE = 'https://gregsweeper-66d02-default-rtdb.firebaseio.com';
 
@@ -76,23 +77,23 @@ async function writeDailyMeta(date, idToken, features) {
 // the teaser and the receipt can never disagree. A null payload (breather
 // board, or a crux too entangled to crop cleanly) simply ships no teaser
 // for the date — the route handles a missing node gracefully.
-async function writeCrux(date, idToken, payload) {
+//
+// The node is service-account-only since issue #206, so this uses its OWN
+// credential rather than the anonymous token the board and meta writes use.
+// Deliberately fail-soft: a crux is optional on any given date (coverage is
+// ~77% by design), so a missing secret costs the teaser and never the board.
+async function publishCrux(date, payload) {
   if (!payload) {
     console.log('  crux: no materializable teaser — skipped');
     return;
   }
-  const url = `${DB_BASE}/cruxes/${date}.json?auth=${encodeURIComponent(idToken)}`;
-  const body = JSON.stringify({ ...payload, writtenAt: { '.sv': 'timestamp' } });
-  const r = await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body });
-  if (!r.ok) {
-    if (r.status === 401 || r.status === 403) {
-      console.log('  crux already written — skipped');
-      return;
-    }
-    const txt = await r.text();
-    throw new Error(`crux write failed: ${r.status} ${txt}`);
+  const token = await mintCruxToken({ required: false });
+  const outcome = await writeCrux(date, token, payload);
+  if (outcome === 'written') {
+    console.log(`  crux written (tier ${payload.tier}, ${payload.rows}x${payload.cols})`);
+  } else if (outcome === 'exists') {
+    console.log('  crux already written — skipped');
   }
-  console.log(`  crux written (tier ${payload.tier}, ${payload.rows}x${payload.cols})`);
 }
 
 (async () => {
@@ -136,10 +137,13 @@ async function writeCrux(date, idToken, payload) {
     console.log('  written');
 
     await writeDailyMeta(date, idToken, buildCandidateFeatures(cand));
-    await writeCrux(date, idToken, cruxPayloadFromBoard(cand.board, cand.rows, cand.cols));
   } finally {
     await deleteSelf(idToken);
   }
+  // AFTER the anonymous session is retired, and outside its try: the crux has
+  // its own credential and its own optionality, and must not be able to take
+  // the board or the meta down with it.
+  await publishCrux(date, cruxPayloadFromBoard(cand.board, cand.rows, cand.cols));
 })().catch(err => {
   console.error('precompute failed:', err.message);
   process.exit(1);
