@@ -62,7 +62,7 @@ export function buildShareData(state) {
   // rgb, so resolveCssColor falls back here).
   const wm2 = resolveCssColor('var(--wordmark-to)', '') || mix(wm1, '#ffffff', 0.3);
   const mode = state.gameMode;
-  const modeLabel = { normal: 'CHALLENGE', timed: 'QUICK PLAY', daily: 'DAILY', weekly: 'WEEKLY', chaos: 'CHAOS' }[mode] || 'GAME';
+  const modeLabel = { normal: 'THE CLIMB', timed: 'QUICK PLAY', daily: 'DAILY', weekly: 'WEEKLY', chaos: 'CHAOS' }[mode] || 'GAME';
 
   let dateLabel = '';
   const dateSeed = mode === 'weekly' ? state.weeklySeed : state.dailySeed;

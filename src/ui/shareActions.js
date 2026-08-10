@@ -29,7 +29,7 @@ export function generateShareCard() {
     ? getTimedDifficulty(level)
     : { rows: state.rows, cols: state.cols, mines: state.totalMines };
   const mode = state.gameMode;
-  const modeLabel = { normal: 'Challenge', timed: 'Timed', daily: 'Daily', weekly: 'Weekly', chaos: 'Chaos' }[mode] || 'Challenge';
+  const modeLabel = { normal: 'The Climb', timed: 'Timed', daily: 'Daily', weekly: 'Weekly', chaos: 'Chaos' }[mode] || 'The Climb';
 
   const stats = loadStats();
   const streakText = stats.currentStreak > 1 ? ` | 🔥 ${stats.currentStreak} streak` : '';

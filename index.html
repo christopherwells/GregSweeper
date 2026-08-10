@@ -303,24 +303,20 @@
         <p class="title-screen-proof">Every board is proven solvable before you see it.</p>
       </div>
     </div>
+    <!-- Daily and Weekly lead the front door as full-width heroes; the four
+         evergreen modes sit in the two-column grid under them. The two heroes
+         are the boards that expire, so they get the width and the top of the
+         screen, and the whole set still fits one phone screen with no menu.
+         They also already carry corner furniture (streak, par, Past chip),
+         which a wide card has the room for and a half-width one did not. -->
     <div class="title-screen-modes">
       <!-- Mode-card icons are drawn SVG sprites (Tier 3 of the sprite
            inventory) with the old emoji as loading/missing-asset
            fallback via onerror. -->
-      <button class="mode-card" data-mode="normal" type="button">
-        <div class="mode-card-icon"><img class="mode-card-img" src="assets/sprites/mode-challenge.svg" alt="" draggable="false" onerror="this.replaceWith('⛏️')"></div>
-        <div class="mode-card-name">Challenge</div>
-        <div class="mode-card-progress" id="title-challenge-progress">Level 1</div>
-      </button>
-      <button class="mode-card" data-mode="timed" type="button">
-        <div class="mode-card-icon"><img class="mode-card-img" src="assets/sprites/mode-quickplay.svg" alt="" draggable="false" onerror="this.replaceWith('⏱️')"></div>
-        <div class="mode-card-name">Quick Play</div>
-        <div class="mode-card-progress" id="title-timed-progress">Race the clock</div>
-      </button>
-      <button class="mode-card" data-mode="daily" type="button">
+      <button class="mode-card mode-card-hero" data-mode="daily" type="button">
         <div class="mode-card-icon"><img class="mode-card-img" src="assets/sprites/mode-daily.svg" alt="" draggable="false" onerror="this.replaceWith('📅')"></div>
         <div class="mode-card-name">Daily</div>
-        <div class="mode-card-progress" id="title-daily-progress">Today's challenge</div>
+        <div class="mode-card-progress" id="title-daily-progress">Same puzzle worldwide.</div>
         <!-- Past dailies lives in the card corner, not the content stack, so
              it never adds a row. A capture-phase handler on the card routes
              its taps to the calendar instead of launching today's board. -->
@@ -331,16 +327,29 @@
            card's corner furniture: week streak bottom-left, par bottom-right,
            Past weeklies top-right. No molt days — a week is already seven
            chances at one board. -->
-      <button class="mode-card" data-mode="weekly" type="button">
+      <button class="mode-card mode-card-hero" data-mode="weekly" type="button">
         <div class="mode-card-icon"><img class="mode-card-img" src="assets/sprites/mode-weekly.svg" alt="" draggable="false" onerror="this.replaceWith('🏁')"></div>
         <div class="mode-card-name">Weekly</div>
         <div class="mode-card-progress" id="title-weekly-progress">Same puzzle all week. Your best run wins.</div>
         <span class="card-archive-btn" role="button" tabindex="0" aria-label="Play a past weekly" title="Past weeklies">Past ›</span>
       </button>
+      <!-- The 250-level ladder is The Climb to a player. Its runtime mode
+           value stays 'normal' and its storage name stays 'challenge' — the
+           word "Challenge" belongs to the head-to-head mode now. -->
+      <button class="mode-card" data-mode="normal" type="button">
+        <div class="mode-card-icon"><img class="mode-card-img" src="assets/sprites/mode-challenge.svg" alt="" draggable="false" onerror="this.replaceWith('⛏️')"></div>
+        <div class="mode-card-name">The Climb</div>
+        <div class="mode-card-progress" id="title-challenge-progress">Level 1</div>
+      </button>
+      <button class="mode-card" data-mode="timed" type="button">
+        <div class="mode-card-icon"><img class="mode-card-img" src="assets/sprites/mode-quickplay.svg" alt="" draggable="false" onerror="this.replaceWith('⏱️')"></div>
+        <div class="mode-card-name">Quick Play</div>
+        <div class="mode-card-progress" id="title-timed-progress">Race the clock</div>
+      </button>
       <button class="mode-card mode-card-chaos" data-mode="chaos" type="button">
         <div class="mode-card-icon"><img class="mode-card-img" src="assets/sprites/mode-chaos.svg" alt="" draggable="false" onerror="this.replaceWith('🌀')"></div>
         <div class="mode-card-name">Chaos</div>
-        <div class="mode-card-progress" id="title-chaos-progress">Reach Level 50</div>
+        <div class="mode-card-progress" id="title-chaos-progress">Reach Level 100</div>
       </button>
       <!-- The Gym is a play destination (practice lessons), so it lives
            with the modes, not in the footer. No data-mode: it opens the
@@ -592,14 +601,17 @@
                tomorrow's reminder right here converts at far higher rates
                than the same toggle buried in Settings. -->
           <button id="gameover-remind-tomorrow" class="action-btn primary hidden"><img class="ui-icon-label" src="assets/sprites/ui-notify-on.svg" alt="" draggable="false" onerror="this.replaceWith('🔔')">Remind me tomorrow</button>
-          <!-- Share / Challenge / Done ride one row: icon + label on wider
+          <!-- Share / Puzzle / Done ride one row: icon + label on wider
                screens, short text-only labels on phones (.gameover-final-actions
                hides .ui-icon-label at ≤480px). The leaderboard-name form that
                used to live here was removed — a nameless daily/weekly/timed win
-               is now gated by #name-capture-modal before this card renders. -->
+               is now gated by #name-capture-modal before this card renders.
+               The middle button sends a friend a small provable puzzle cut
+               from a past daily; it used to say "Challenge", which now names
+               the head-to-head mode and would read as an invitation to one. -->
           <div class="gameover-final-actions">
             <button id="gameover-share" class="action-btn share-btn hidden"><img class="ui-icon-label" src="assets/sprites/ui-share.svg" alt="" draggable="false" onerror="this.replaceWith('📋')">Share</button>
-            <button id="gameover-crux-challenge" class="action-btn hidden"><img class="ui-icon-label" src="assets/sprites/ui-molt.svg" alt="" draggable="false" onerror="this.replaceWith('🦀')">Challenge</button>
+            <button id="gameover-crux-challenge" class="action-btn hidden"><img class="ui-icon-label" src="assets/sprites/ui-molt.svg" alt="" draggable="false" onerror="this.replaceWith('🦀')">Puzzle a friend</button>
             <button id="gameover-done" class="action-btn hidden">Done</button>
           </div>
         </div>
@@ -720,7 +732,7 @@
         <div id="help-panel-basics" class="help-panel">
           <div class="help-section">
             <h3>The Guarantee</h3>
-            <p>Every standard board is checked by a solver before you play it. From the marked start square (or your first click in Challenge and Quick Play) there is always a next square you can prove safe, all the way to the end. You never have to gamble.</p>
+            <p>Every standard board is checked by a solver before you play it. From the marked start square (or your first click in Quick Play) there is always a next square you can prove safe, all the way to the end. You never have to gamble.</p>
             <p>The ✓ Certified chip above the board opens that board&rsquo;s own check, and after a loss every square you could have proved safe is outlined. Chaos is the one exception to the guarantee, and it says so.</p>
           </div>
           <div class="help-section">
@@ -729,7 +741,7 @@
           </div>
           <div class="help-section">
             <h3>Board shapes</h3>
-            <p>Not every board is a square grid. Alongside <strong>Classic</strong> there are six others: <strong>Octagons</strong>, <strong>Honeycomb</strong>, <strong>Paving Stones</strong>, <strong>Petals</strong>, <strong>3D Cubes</strong> and <strong>Kites</strong>. About half of all dailies use one, and Challenge works through every one of them.</p>
+            <p>Not every board is a square grid. Alongside <strong>Classic</strong> there are six others: <strong>Octagons</strong>, <strong>Honeycomb</strong>, <strong>Paving Stones</strong>, <strong>Petals</strong>, <strong>3D Cubes</strong> and <strong>Kites</strong>. About half of all dailies use one, and The Climb works through every one of them.</p>
             <p>The rules do not change. The only thing a shape changes is which cells count as neighbors, and the first time you meet a shape a card shows you one cell with everything it touches. Cells that meet at just a corner are neighbors too, exactly as diagonals are on a Classic board.</p>
           </div>
           <div class="help-section">
@@ -740,7 +752,7 @@
           </div>
           <div class="help-section">
             <h3>Mines in Daily and Weekly</h3>
-            <p>Hitting a mine in Daily or Weekly is not the end. The mine is marked where it blew, a time penalty is added (sized by how much that mine was hiding), and you keep playing. In Challenge and Quick Play, a mine ends the run.</p>
+            <p>Hitting a mine in Daily or Weekly is not the end. The mine is marked where it blew, a time penalty is added (sized by how much that mine was hiding), and you keep playing. In The Climb and Quick Play, a mine ends the run.</p>
           </div>
           <div class="help-section">
             <h3>Par</h3>
@@ -757,10 +769,10 @@
             <h3>Modes</h3>
             <p><strong>Daily:</strong> one puzzle a day, the same board for everyone, online leaderboard and streaks. The board shape varies day to day.</p>
             <p><strong>Weekly:</strong> one puzzle for the whole week, one try a day, your best time counts</p>
-            <p><strong>Challenge:</strong> 250 levels in blocks of five, working through all seven board shapes and introducing the modifiers one at a time, with power-ups and a checkpoint every five levels</p>
+            <p><strong>The Climb:</strong> 250 levels in blocks of five, working through all seven board shapes and introducing the modifiers one at a time, with power-ups and a checkpoint every five levels</p>
             <p><strong>Quick Play:</strong> race the clock for a speed rating (<img class="inline-medal" src="assets/sprites/medal-diamond.svg" alt="" draggable="false" onerror="this.replaceWith('💎')"> best, then <img class="inline-medal" src="assets/sprites/medal-gold.svg" alt="" draggable="false" onerror="this.replaceWith('🥇')"> <img class="inline-medal" src="assets/sprites/medal-silver.svg" alt="" draggable="false" onerror="this.replaceWith('🥈')"> <img class="inline-medal" src="assets/sprites/medal-bronze.svg" alt="" draggable="false" onerror="this.replaceWith('🥉')">)</p>
             <p><strong>Greg&rsquo;s Gym:</strong> short practice boards that teach one deduction pattern at a time. A square only opens when the clues prove it is safe, so you cannot luck through.</p>
-            <p><strong>Chaos:</strong> fast rounds of random modifiers (unlocks at Challenge Level 50). The one mode OUTSIDE the no-guess guarantee: boards are not verified solvable, and mines can move.</p>
+            <p><strong>Chaos:</strong> fast rounds of random modifiers (unlocks at Climb Level 100). The one mode OUTSIDE the no-guess guarantee: boards are not verified solvable, and mines can move.</p>
           </div>
         </div>
         <div id="help-panel-modifiers" class="help-panel hidden">
@@ -783,7 +795,7 @@
             <p><img class="powerup-img" src="assets/sprites/pow-magnet.svg" alt="" draggable="false" onerror="this.replaceWith('🧲')"> <strong>Magnet</strong>: extracts every mine in a 3&times;3 area off the board</p>
             <p><img class="powerup-img" src="assets/sprites/pow-xray.svg" alt="" draggable="false" onerror="this.replaceWith('🔬')"> <strong>X-Ray</strong>: reveals mines in a 5&times;5 area</p>
             <p><img class="powerup-img" src="assets/sprites/pow-lifeline.svg" alt="" draggable="false" onerror="this.replaceWith('❤️')"> <strong>Lifeline</strong>: auto-saves you from one mine</p>
-            <p class="help-note">Earned by winning Challenge levels, and spent there too. Daily, Weekly, and Quick Play are played clean.</p>
+            <p class="help-note">Earned by winning Climb levels, and spent there too. Daily, Weekly, and Quick Play are played clean.</p>
           </div>
         </div>
       </div>
@@ -1022,11 +1034,11 @@
     </div>
   </div>
 
-  <!-- Challenge Checkpoint Selector -->
+  <!-- The Climb: checkpoint selector -->
   <div id="checkpoint-modal" class="modal hidden" role="dialog" aria-modal="true">
     <div class="modal-content checkpoint-modal-content">
       <div class="modal-header">
-        <h2><img class="modal-title-icon" src="assets/sprites/mode-challenge.svg" alt="" draggable="false" onerror="this.replaceWith('⛏️')"> Challenge</h2>
+        <h2><img class="modal-title-icon" src="assets/sprites/mode-challenge.svg" alt="" draggable="false" onerror="this.replaceWith('⛏️')"> The Climb</h2>
         <button class="modal-close" aria-label="Close"><img class="ui-icon-close" src="assets/sprites/ui-close.svg" alt="Close" draggable="false" onerror="this.replaceWith('×')"></button>
       </div>
       <div class="modal-body">
@@ -1238,14 +1250,14 @@
           <h3>v1.10 &middot; August 4, 2026</h3>
           <ul>
             <li><strong>The board changes shape</strong>: About half the dailies now use one of six new shapes: Octagons, Honeycomb, Paving Stones, Petals, 3D Cubes and Kites. Still no guessing, ever. The first time you meet a shape, a card shows you what counts as a neighbor.</li>
-            <li><strong>Challenge is 250 levels</strong>: A new ladder through all seven shapes, introducing the modifiers one at a time. Every attempt draws a fresh board, so there is nothing to memorize, and each level shows the time it should take you. Checkpoints every five levels. Everyone starts again at Level 1.</li>
+            <li><strong>The Climb is 250 levels</strong>: A new ladder through all seven shapes, introducing the modifiers one at a time. Every attempt draws a fresh board, so there is nothing to memorize, and each level shows the time it should take you. Checkpoints every five levels. Everyone starts again at Level 1.</li>
             <li><strong>Power-ups every win</strong>: One through Level 100, two after that.</li>
           </ul>
         </div>
         <div class="whatsnew-entry">
           <h3>v1.9 &middot; July 16, 2026</h3>
           <ul>
-            <li><strong>Worm Tiles</strong>: A new modifier. Some safe cells hide a worm egg; reveal one and a worm hatches, crawling over your revealed numbers and covering them for a while before it burrows away. It can&rsquo;t hurt you and it never changes the board. What it tests is memory. Debuts at Challenge Level 101 and joins the daily and weekly rotations.</li>
+            <li><strong>Worm Tiles</strong>: A new modifier. Some safe cells hide a worm egg; reveal one and a worm hatches, crawling over your revealed numbers and covering them for a while before it burrows away. It can&rsquo;t hurt you and it never changes the board. What it tests is memory. Debuts at Climb Level 101 and joins the daily and weekly rotations.</li>
           </ul>
         </div>
         <div class="whatsnew-entry">
@@ -1286,7 +1298,7 @@
         <div class="whatsnew-entry">
           <h3>v1.4 &middot; March 29, 2026</h3>
           <ul>
-            <li><strong>120 levels</strong>: Challenge mode gained 20 Grandmaster levels (L101 to L120).</li>
+            <li><strong>120 levels</strong>: The Climb gained 20 Grandmaster levels (L101 to L120).</li>
             <li><strong>No more 50/50s</strong>: Every board outside Chaos is verified solvable after modifiers, so you never have to guess.</li>
             <li><strong>New modifiers</strong>: Mirror pairs swap two cells&rsquo; numbers, and redesigned pressure plates disarm when you clear their safe neighbors.</li>
           </ul>
@@ -1306,7 +1318,9 @@
         <div class="stats-tabs" role="tablist" aria-label="Stats category">
           <button class="stats-tab active" data-tab="daily" role="tab" aria-selected="true">Daily</button>
           <button class="stats-tab" data-tab="weekly" role="tab" aria-selected="false">Weekly</button>
-          <button class="stats-tab" data-tab="challenge" role="tab" aria-selected="false">Challenge</button>
+          <!-- data-tab stays "challenge": it is the stored mode key the
+               panel ids and STATS_TABS are wired to, not a label. -->
+          <button class="stats-tab" data-tab="challenge" role="tab" aria-selected="false">The Climb</button>
           <button class="stats-tab" data-tab="timed" role="tab" aria-selected="false">Quick Play</button>
           <!-- Model tab: hidden at boot. main.js unhides only when the
                signed-in uid matches OWNER_UID (Christopher's). Other

@@ -230,7 +230,7 @@ export function renderCruxTeaser(date, payload, breather = false) {
       <div class="crux-teaser-actions">
         <button type="button" class="crux-reveal-all" id="crux-reveal-all">Show me all of them</button>
         <a class="action-btn primary crux-cta hidden" id="crux-play-cta" href="${_ctaHref()}">Play today's board</a>
-        <button type="button" class="crux-reveal-all" id="crux-copy-link">Copy challenge link</button>
+        <button type="button" class="crux-reveal-all" id="crux-copy-link">Copy puzzle link</button>
       </div>
     </div>`;
 
@@ -246,7 +246,7 @@ export function renderCruxTeaser(date, payload, breather = false) {
   // a link copied from /test/ still points at the public page.
   if (copyBtn) copyBtn.addEventListener('click', () => {
     const link = `${PROD_SITE_BASE}?crux=${date}`;
-    const flash = () => { copyBtn.textContent = 'Link copied'; setTimeout(() => { copyBtn.textContent = 'Copy challenge link'; }, 2000); };
+    const flash = () => { copyBtn.textContent = 'Link copied'; setTimeout(() => { copyBtn.textContent = 'Copy puzzle link'; }, 2000); };
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(flash, flash);
     else flash();
   });
