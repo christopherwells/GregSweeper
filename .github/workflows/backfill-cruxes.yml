@@ -1,0 +1,61 @@
+name: Backfill cruxes
+
+# Manual. Fills cruxes/{date} for past canonical boards that have none.
+#
+# It needs a workflow at all because of issue #206: the node used to accept an
+# anonymous write-once, so this script could run from a laptop with nothing but
+# the public web API key. That same grant let anyone with an anonymous session
+# claim any unwritten past date permanently, on a world-readable path the
+# ?crux= share route renders verbatim. The node is now service-account-only,
+# and the service account is a repo secret, so the tool lives here.
+#
+# Coverage is ~77% BY DESIGN — breather boards have no tier>=1 step, and some
+# cruxes cannot be cropped cleanly — so "N dates got no teaser" is the normal
+# outcome, not a failure to chase.
+#
+#   gh workflow run backfill-cruxes.yml                      # dry run
+#   gh workflow run backfill-cruxes.yml -f apply=true
+#   gh workflow run backfill-cruxes.yml -f apply=true -f date=2026-03-06
+#
+# Dry run needs no credential and writes nothing; it reports the yield.
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: 'Actually write. Leave false for a dry run.'
+        type: boolean
+        default: false
+      date:
+        description: 'Single date (YYYY-MM-DD). Blank = every past canonical.'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backfill-cruxes
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Backfill
+        env:
+          APPLY: ${{ github.event.inputs.apply }}
+          ONE_DATE: ${{ github.event.inputs.date }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          ARGS=""
+          [ "$APPLY" = "true" ] || ARGS="--dry-run"
+          [ -z "$ONE_DATE" ] || ARGS="$ARGS $ONE_DATE"
+          echo "node scripts/backfill-cruxes.mjs $ARGS"
+          node scripts/backfill-cruxes.mjs $ARGS

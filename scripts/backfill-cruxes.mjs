@@ -19,7 +19,7 @@
 
 import { deserializeBoard } from '../src/firebase/dailyBoardSync.js';
 import { cruxPayloadFromBoard } from '../src/logic/cruxExtract.js';
-import { signInAnonymously, deleteSelf } from './anon-auth-rest.mjs';
+import { mintCruxToken, writeCrux, cruxExists } from './crux-write.mjs';
 
 const DB_BASE = 'https://gregsweeper-66d02-default-rtdb.firebaseio.com';
 
@@ -40,22 +40,9 @@ async function fetchBoard(date) {
   return r.json();
 }
 
-async function cruxExists(date) {
-  const r = await fetch(`${DB_BASE}/cruxes/${date}.json?shallow=true`);
-  if (!r.ok) return false;
-  return (await r.json()) !== null;
-}
-
-async function writeCrux(date, idToken, payload) {
-  const url = `${DB_BASE}/cruxes/${date}.json?auth=${encodeURIComponent(idToken)}`;
-  const body = JSON.stringify({ ...payload, writtenAt: { '.sv': 'timestamp' } });
-  const r = await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body });
-  if (!r.ok) {
-    if (r.status === 401 || r.status === 403) return 'exists';
-    throw new Error(`crux write failed: ${r.status} ${await r.text()}`);
-  }
-  return 'written';
-}
+// cruxExists / writeCrux are shared with the nightly precompute in
+// crux-write.mjs — the node is service-account-only since issue #206, and two
+// copies of that write would be two chances to get the credential wrong.
 
 (async () => {
   const args = process.argv.slice(2);
@@ -71,35 +58,34 @@ async function writeCrux(date, idToken, payload) {
 
   console.log(`backfill cruxes${dryRun ? ' (DRY RUN)' : ''}: ${dates.length} past canonical date(s)`);
 
-  const idToken = dryRun ? null : await signInAnonymously();
+  // Fail HARD without the service account: unlike the nightly precompute,
+  // where a crux is one optional part of a larger run, this tool does
+  // nothing else — silently writing zero cruxes would look like success.
+  const token = dryRun ? null : await mintCruxToken({ required: true });
   const tally = { written: 0, skippedExists: 0, noCrux: 0, missingBoard: 0 };
   const tierMix = {};
 
-  try {
-    for (const date of dates) {
-      if (!dryRun && await cruxExists(date)) { tally.skippedExists++; continue; }
-      const raw = await fetchBoard(date);
-      if (!raw) { tally.missingBoard++; continue; }
-      let payload = null;
-      try {
-        const { board, rows, cols } = deserializeBoard(raw);
-        payload = cruxPayloadFromBoard(board, rows, cols);
-      } catch (err) {
-        console.warn(`  ${date}: deserialize/extract failed — ${err.message}`);
-      }
-      if (!payload) { tally.noCrux++; console.log(`  ${date}: no teaser (breather or too entangled)`); continue; }
-      tierMix[payload.tier] = (tierMix[payload.tier] || 0) + 1;
-      if (dryRun) {
-        console.log(`  ${date}: tier ${payload.tier}, ${payload.rows}x${payload.cols}, ${JSON.stringify(payload).length}b`);
-        tally.written++;
-        continue;
-      }
-      const res = await writeCrux(date, idToken, payload);
-      if (res === 'exists') { tally.skippedExists++; }
-      else { tally.written++; console.log(`  ${date}: written (tier ${payload.tier}, ${payload.rows}x${payload.cols})`); }
+  for (const date of dates) {
+    if (!dryRun && await cruxExists(date)) { tally.skippedExists++; continue; }
+    const raw = await fetchBoard(date);
+    if (!raw) { tally.missingBoard++; continue; }
+    let payload = null;
+    try {
+      const { board, rows, cols } = deserializeBoard(raw);
+      payload = cruxPayloadFromBoard(board, rows, cols);
+    } catch (err) {
+      console.warn(`  ${date}: deserialize/extract failed — ${err.message}`);
     }
-  } finally {
-    await deleteSelf(idToken);
+    if (!payload) { tally.noCrux++; console.log(`  ${date}: no teaser (breather or too entangled)`); continue; }
+    tierMix[payload.tier] = (tierMix[payload.tier] || 0) + 1;
+    if (dryRun) {
+      console.log(`  ${date}: tier ${payload.tier}, ${payload.rows}x${payload.cols}, ${JSON.stringify(payload).length}b`);
+      tally.written++;
+      continue;
+    }
+    const res = await writeCrux(date, token, payload);
+    if (res === 'exists') { tally.skippedExists++; }
+    else { tally.written++; console.log(`  ${date}: written (tier ${payload.tier}, ${payload.rows}x${payload.cols})`); }
   }
 
   console.log(`\ndone: ${tally.written} ${dryRun ? 'would write' : 'written'}, ${tally.skippedExists} already present, ${tally.noCrux} no-crux, ${tally.missingBoard} missing-board`);

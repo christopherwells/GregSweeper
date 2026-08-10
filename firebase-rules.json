@@ -286,7 +286,7 @@
     "cruxes": {
       ".read": true,
       "$date": {
-        ".write": "auth != null && !data.exists()",
+        ".write": false,
         ".validate": "$date.matches(/^\\d{4}-\\d{2}-\\d{2}$/) && newData.hasChildren(['rows', 'cols', 'cells', 'answer', 'sources', 'tier', 'writtenAt'])",
         "rows":   { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 16" },
         "cols":   { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 16" },

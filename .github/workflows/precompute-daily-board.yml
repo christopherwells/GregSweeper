@@ -56,6 +56,13 @@ jobs:
         env:
           OVERRIDE_DATE: ${{ github.event.inputs.date }}
           CANONICAL_SIGNING_KEY: ${{ secrets.CANONICAL_SIGNING_KEY }}
+          # cruxes/{date} is service-account-only since issue #206 (it had an
+          # anonymous write-once grant with no client writer behind it, which
+          # left past dates permanently claimable on a public path). The BOARD
+          # and META writes still use anonymous auth and are unaffected, so if
+          # this secret is ever missing the run logs a skipped teaser and the
+          # day's board is generated exactly as before.
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
           # Generate the next 7 ET days so clients can pre-fetch a full
           # week of boards for offline play. Each date is idempotent
