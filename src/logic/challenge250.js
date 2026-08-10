@@ -55,7 +55,7 @@
 
 import { LADDER_POOL, ENDLESS_POOL } from './challengePool.js';
 import {
-  PAR_CEILING_SECONDS, GEN_CAP_MS,
+  PAR_CEILING_SECONDS, GEN_CAP_MS, GEN_CAP_PEAK_MS, GEN_SLOW_DRAW_RATE,
   ENDLESS_PAR_CEILING_SECONDS, ENDLESS_PAR_CEILING_BY_SHAPE, endlessParCeiling,
   ENDLESS_GEN_CAP_BY_SHAPE, endlessGenCap,
   ENDLESS_GEN_HEADROOM, ENDLESS_GEN_BUDGET_MS, endlessGenBudget,
@@ -67,7 +67,7 @@ import {
 // import without assembling the ladder); re-exported here so every existing
 // reader of challenge250.js is unchanged.
 export {
-  PAR_CEILING_SECONDS, GEN_CAP_MS,
+  PAR_CEILING_SECONDS, GEN_CAP_MS, GEN_CAP_PEAK_MS, GEN_SLOW_DRAW_RATE,
   ENDLESS_PAR_CEILING_SECONDS, ENDLESS_PAR_CEILING_BY_SHAPE, endlessParCeiling,
   ENDLESS_GEN_CAP_BY_SHAPE, endlessGenCap,
   ENDLESS_GEN_HEADROOM, ENDLESS_GEN_BUDGET_MS, endlessGenBudget,

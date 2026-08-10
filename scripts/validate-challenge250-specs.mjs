@@ -36,7 +36,7 @@
 
 import {
   CHALLENGE_MAX_LEVEL, challengeSpecForLevel, specFingerprint, ppcBandFor,
-  PAR_CEILING_SECONDS, GEN_CAP_MS, OPENER_MIN_DEDUCTIONS,
+  PAR_CEILING_SECONDS, GEN_CAP_MS, GEN_CAP_PEAK_MS, GEN_SLOW_DRAW_RATE, OPENER_MIN_DEDUCTIONS,
   ENDLESS_SPECS, endlessParCeiling, endlessGenCap, TIER_PPC, ENDLESS_PPC_FLOOR, endlessPpcFloor,
 } from '../src/logic/challenge250.js';
 import { buildChallenge250Board, challengeBoardSeed } from '../src/logic/challenge250Builder.js';
@@ -81,7 +81,7 @@ for (let level = 1; !ONLY_ENDLESS && level <= CHALLENGE_MAX_LEVEL; level++) {
 
 console.log(`Challenge 250 spec validation — ${groups.size} distinct specs`
   + `${blockFilter ? ` (blocks ${blocksArg})` : ''}, ${K} seeds each.`);
-console.log(`Rulings: certified+strict every draw · worst gen <= ${GEN_CAP_MS}ms`
+console.log(`Rulings: certified+strict every draw · median gen <= ${GEN_CAP_MS}ms, at most ${GEN_SLOW_DRAW_RATE * 100}% of draws over ${GEN_CAP_PEAK_MS}ms`
   + ` · median par <= ${PAR_CEILING_SECONDS}s · ppc band [0.93, 1.11] x target`
   + ` · opener floor ${OPENER_MIN_DEDUCTIONS} deductions\n`);
 
@@ -107,6 +107,7 @@ for (const { spec, levels } of groups.values()) {
   }
 
   const worst = Math.max(...times);
+  const medTime = median(times);
   const medPar = pars.length ? median(pars) : NaN;
   const medPpc = ppcs.length ? median(ppcs) : NaN;
   const medDed = deds.length ? median(deds) : NaN;
@@ -114,7 +115,16 @@ for (const { spec, levels } of groups.values()) {
 
   const problems = [];
   if (ok !== K) problems.push(`${K - ok}/${K} draws refused`);
-  if (worst > GEN_CAP_MS) problems.push(`worst gen ${worst}ms > ${GEN_CAP_MS}ms`);
+  // His 2026-08-10 ruling: 2.5s is fine on occasion, but must not be the
+  // norm. So the MEDIAN answers "is this spec slow" and the WORST answers
+  // "does it ever stall outright". Judging only the worst of a sample fails
+  // specs whose median is a tenth of a second, and never converges either,
+  // because dropping the boundary promotes the next tail into view.
+  if (medTime > GEN_CAP_MS) problems.push(`median gen ${medTime}ms > ${GEN_CAP_MS}ms (slow is the NORM here)`);
+  const slow = times.filter((t) => t > GEN_CAP_PEAK_MS).length;
+  if (slow / times.length > GEN_SLOW_DRAW_RATE) {
+    problems.push(`${slow}/${times.length} draws over ${GEN_CAP_PEAK_MS}ms (worst ${worst}ms) — past "on occasion"`);
+  }
   if (pars.length && medPar > PAR_CEILING_SECONDS) problems.push(`median par ${medPar.toFixed(0)}s > ${PAR_CEILING_SECONDS}s`);
   if (band && ppcs.length && (medPpc < band[0] || medPpc > band[1])) {
     problems.push(`ppc ${medPpc.toFixed(2)} outside [${band[0].toFixed(2)}, ${band[1].toFixed(2)}]`);
@@ -191,8 +201,13 @@ if (!args.includes('--no-endless') && !blockFilter) {
     // admission bars live in harden-endless-pool.mjs, so an entry that only
     // just cleared admission still has room here.
     const genCap = endlessGenCap(spec.shape);
+    const genPeak = genCap * (GEN_CAP_PEAK_MS / GEN_CAP_MS);
     const ceiling = endlessParCeiling(spec.shape);
-    if (worst > genCap) problems.push(`worst gen ${worst}ms > ${genCap}ms`);
+    if (median(times) > genCap) problems.push(`median gen ${median(times)}ms > ${genCap}ms (slow is the NORM here)`);
+    const slowN = times.filter((t) => t > genPeak).length;
+    if (slowN / times.length > GEN_SLOW_DRAW_RATE) {
+      problems.push(`${slowN}/${times.length} draws over ${Math.round(genPeak)}ms (worst ${worst}ms) — past "on occasion"`);
+    }
     if (pars.length && medPar > ceiling) {
       problems.push(`median par ${medPar.toFixed(0)}s > ${ceiling}s`);
     }
