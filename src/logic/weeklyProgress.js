@@ -199,6 +199,40 @@ export function applyWeekContinuation(prev, week) {
  * @param {string[]} weekStarts Monday anchors of weeks the player has played
  * @returns {{streak: number, lastWeek: string|null}}
  */
+/**
+ * Filter a fetchPlayedWeeks() result down to the weeks the streak may derive
+ * from — the weekly counterpart of streakBearingDates, and it exists for a
+ * near-identical reason.
+ *
+ * `weeklyAttempts` is written on the FIRST CLICK, so it records weeks OPENED,
+ * while a week is banked by COMPLETING the weekly. For a past week the
+ * backfill accepts that gap deliberately: attempts are the only per-week
+ * record every player has, and erring generous on history the player can no
+ * longer replay is the same direction the daily's upward-only self-heal errs.
+ *
+ * The CURRENT week is different in the way that matters. It is not history,
+ * the player can still earn it honestly before Sunday, and the reconcile runs
+ * on every boot — so opening this week's board and abandoning it banked the
+ * week, spliced it onto a genuine run (measured: a real 2-week run read 3),
+ * and raised the monotonic `best`, which nothing can lower again (issue #254).
+ * Anything dated after the current week is dropped for the same reason plus
+ * one more: it cannot be a completion, only a clock disagreement.
+ *
+ * `currentWeek` is required and the filter fails CLOSED without it, in keeping
+ * with this module's no-clock rule: not knowing what "now" is means not being
+ * able to tell history from the live week, and returning everything would
+ * silently restore the defect. An empty result simply leaves the stored record
+ * alone, since the reconcile treats it as nothing to derive.
+ *
+ * @param {string[]|null} weekStarts Monday anchors from fetchPlayedWeeks
+ * @param {string} currentWeek this week's Monday anchor
+ * @returns {string[]} the weeks a streak may count
+ */
+export function streakBearingWeeks(weekStarts, currentWeek) {
+  if (!Array.isArray(weekStarts) || !isWeekString(currentWeek)) return [];
+  return weekStarts.filter((w) => isWeekString(w) && w < currentWeek);
+}
+
 export function weekStreakFromHistory(weekStarts) {
   if (!Array.isArray(weekStarts)) return { streak: 0, lastWeek: null };
   const sorted = [...new Set(weekStarts.filter(isWeekString))].sort();

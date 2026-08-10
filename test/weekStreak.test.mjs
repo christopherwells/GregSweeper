@@ -189,6 +189,71 @@ test('the reconcile is upward-only and never contradicts a live counter', () => 
   assert.equal(getWeekStreak('2026-08-03').streak, 3);
 });
 
+// ── The live week is not history (issue #254) ────────────────────────────
+//
+// weeklyAttempts is written on the FIRST CLICK, so the reconcile's input is
+// weeks OPENED. For a past week that generosity is deliberate and documented.
+// For the CURRENT week it is not: the player can still earn it before Sunday,
+// the reconcile runs on every boot, and `best` is monotonic — so one click on
+// this week's board banked the week permanently.
+//
+// Every case below passes an explicit currentWeek so the arithmetic does not
+// depend on when the suite happens to run.
+
+test('REGRESSION: opening this week and abandoning it banks nothing', () => {
+  fresh();
+  // Three actions on a fresh account: open the Weekly, click one cell, reload.
+  assert.equal(reconcileWeekStreakFromHistory(['2026-08-10'], '2026-08-10'), false,
+    'an attempt on the LIVE week is not a completion');
+  const rec = getWeekStreakRecord();
+  assert.deepEqual(rec, { streak: 0, best: 0, lastWeek: null },
+    'nothing may be written from an attempt on a week still in progress');
+});
+
+test('REGRESSION: an abandoned live week does not extend a genuine run', () => {
+  fresh();
+  // A real 2-week run, then this week opened and walked away from. Measured
+  // before the fix: streak 3, best 3, lastWeek pulled onto the live week.
+  const past = ['2026-07-27', '2026-08-03'];
+  reconcileWeekStreakFromHistory(past, '2026-08-10');
+  assert.equal(getWeekStreakRecord().streak, 2, 'precondition: the real run is 2');
+
+  assert.equal(reconcileWeekStreakFromHistory([...past, '2026-08-10'], '2026-08-10'), false);
+  const rec = getWeekStreakRecord();
+  assert.equal(rec.streak, 2, 'the abandoned week must not be spliced onto the run');
+  assert.equal(rec.best, 2, 'and must not raise the high-water mark, which nothing can lower');
+  assert.equal(rec.lastWeek, '2026-08-03', 'lastWeek stays on the last week actually banked');
+});
+
+test('the backfill still works, which is what the exclusion must not break', () => {
+  // Non-vacuity: the fix would also "pass" by disabling the heal entirely.
+  fresh();
+  const weeks = ['2026-07-13', '2026-07-20', '2026-07-27', '2026-08-03'];
+  assert.equal(reconcileWeekStreakFromHistory(weeks, '2026-08-10'), true);
+  assert.equal(getWeekStreakRecord().streak, 4, 'four past weeks still restore a 4-week run');
+  assert.equal(getWeekStreak('2026-08-10').streak, 4, 'and it reads as alive, one week behind');
+});
+
+test('COMPLETING the live week still banks it — only the self-heal is gated', () => {
+  fresh();
+  reconcileWeekStreakFromHistory(['2026-07-27', '2026-08-03'], '2026-08-10');
+  recordWeeklyCompletion('2026-08-10');            // the play path, not the heal
+  const rec = getWeekStreakRecord();
+  assert.equal(rec.streak, 3, 'a real completion of this week continues the run');
+  assert.equal(rec.lastWeek, '2026-08-10');
+
+  // And a later heal that still only sees the attempt must not undo it.
+  assert.equal(reconcileWeekStreakFromHistory(['2026-07-27', '2026-08-03', '2026-08-10'], '2026-08-10'), false);
+  assert.equal(getWeekStreakRecord().streak, 3);
+});
+
+test('a week dated after the current one is dropped, not trusted', () => {
+  fresh();
+  // Only a clock disagreement can produce this, and it cannot be a completion.
+  assert.equal(reconcileWeekStreakFromHistory(['2026-08-17', '2026-08-24'], '2026-08-10'), false);
+  assert.equal(getWeekStreakRecord().streak, 0);
+});
+
 test('a lapsed history restores the record but the card still reads 0', () => {
   fresh();
   // Six weeks, all long past. The run is real history and belongs in `best`,

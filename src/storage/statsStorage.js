@@ -3,7 +3,7 @@ import { getLocalDateString, getWeekStart } from '../logic/seededRandom.js';
 import { applyStreakContinuation, projectContinuation, isStreakAlive, backfillGrant, MOLT_CAP } from '../logic/moltDay.js';
 import {
   applyWeekContinuation, liveWeekStreak, projectWeekContinuation,
-  weekStreakFromHistory,
+  weekStreakFromHistory, streakBearingWeeks,
 } from '../logic/weeklyProgress.js';
 import { CHALLENGE_250_EPOCH } from '../logic/challenge250.js';
 import { clearSeenGimmicks } from '../logic/gimmicks.js';
@@ -805,20 +805,28 @@ export function recordWeeklyCompletion(weekStart) {
  * never missed a weekly that they have no streak, with fourteen weeks of their
  * own history sitting in the account (his report, 2026-08-05).
  *
- * ONE ASYMMETRY, stated rather than hidden. Going forward a week is banked by
- * COMPLETING the weekly; this backfill counts a week the player ATTEMPTED,
- * because `weeklyAttempts` is the only per-week record that exists for every
- * player — the completion record lives on the weekly leaderboard, which a
- * player without a name never reaches, and which grows with every player
- * rather than with this player's weeks. So a historical week that was opened
- * and abandoned can count. That errs generous on history the player cannot
- * replay, which is the same direction the daily's upward-only self-heal errs.
+ * ONE ASYMMETRY, stated rather than hidden, and scoped to what it can defend.
+ * Going forward a week is banked by COMPLETING the weekly; this backfill
+ * counts a week the player ATTEMPTED, because `weeklyAttempts` is the only
+ * per-week record that exists for every player — the completion record lives
+ * on the weekly leaderboard, which a player without a name never reaches, and
+ * which grows with every player rather than with this player's weeks. So a
+ * PAST week that was opened and abandoned can count. That errs generous on
+ * history the player cannot replay, which is the same direction the daily's
+ * upward-only self-heal errs.
  *
- * @param {string[]} weekStarts weeks the player has played
+ * The CURRENT week is excluded (`streakBearingWeeks`) and is not covered by
+ * that reasoning: the player can still earn it honestly before Sunday, and
+ * this runs on every boot, so counting it banked a week for one click, spliced
+ * it onto a genuine run, and raised the monotonic `best` beyond recovery
+ * (issue #254).
+ *
+ * @param {string[]} weekStarts weeks the player has opened, from fetchPlayedWeeks
+ * @param {string} currentWeek this week's Monday anchor
  * @returns {boolean} true when anything moved
  */
-export function reconcileWeekStreakFromHistory(weekStarts) {
-  const { streak, lastWeek } = weekStreakFromHistory(weekStarts);
+export function reconcileWeekStreakFromHistory(weekStarts, currentWeek = getWeekStart()) {
+  const { streak, lastWeek } = weekStreakFromHistory(streakBearingWeeks(weekStarts, currentWeek));
   if (!lastWeek || streak <= 0) return false;
   const stats = loadStats();
   const rec = readWeekStreak(stats);
