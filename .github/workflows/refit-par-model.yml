@@ -201,11 +201,12 @@ jobs:
         continue-on-error: true
         uses: ./.github/actions/journal-llm
 
-      - name: Rewrite the journal entry into one paragraph
+      - name: Rewrite the journal entries into paragraphs
         id: journalrewrite
         if: steps.journalllm.outcome == 'success'
         continue-on-error: true
-        timeout-minutes: 15
+        # Cap 6 new completions x 2 drafts x ~90s on 4 vCPU, plus load.
+        timeout-minutes: 25
         env:
           # Provenance only: the local server ignores the id, the
           # artifact records it.

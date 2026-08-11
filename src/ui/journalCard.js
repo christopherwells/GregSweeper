@@ -62,7 +62,16 @@ export async function shareFindingLink(study) {
   return 'failed';
 }
 
-export function chipFor(study) {
+// A row's chip usually speaks the verdict; the one narrative state that
+// must override it is reopened (its verdict is technically resting, and
+// a "Resting" chip on a Need-to-revisit row would deny the reason the
+// row exists).
+export const STATE_CHIPS = { reopened: 'Drifted' };
+
+export function chipFor(study, state = null) {
+  if (state && STATE_CHIPS[state]) {
+    return el('span', `journal-chip journal-chip-${state}`, STATE_CHIPS[state]);
+  }
   return el('span', `journal-chip journal-chip-${study.verdict.kind}`, VERDICT_CHIPS[study.verdict.kind] || '');
 }
 

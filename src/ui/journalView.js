@@ -24,21 +24,34 @@ function _shareFeedback(outcome) {
   else if (outcome === 'failed') showToast('Couldn’t share the link.', 3000, 'uiWarning');
 }
 
-function _ledgerRow(item) {
+function _sectionRow(item, rewrite) {
   const details = el('details', 'journal-ledger-row');
   const summary = el('summary', 'journal-ledger-summary');
   summary.appendChild(el('span', 'journal-ledger-line', item.line));
-  summary.appendChild(chipFor(item.study));
+  summary.appendChild(chipFor(item.study, item.state));
   details.appendChild(summary);
   // The expansion is pre-composed (the whole screen shares one prose
   // session, so the collision rule holds even across cards the player
-  // hasn't opened yet). No header, the one-liner already names it.
-  details.appendChild(buildStudyCard(item.study, item.entry, {
+  // hasn't opened yet), and the nightly rewrite applies to it under
+  // the same hash-or-beats guard as the hero. No header, the one-liner
+  // already names it.
+  details.appendChild(buildStudyCard(item.study, applyJournalRewrite(item.entry, rewrite, item.study.feature), {
     head: false,
     className: 'journal-ledger-body',
     onShareFallback: _shareFeedback,
   }));
   return details;
+}
+
+// One titled section of rows (his three-bucket spec, 2026-08-11).
+// Returns null when there is nothing to put in it, so an empty section
+// never renders a lonely header.
+function _rowSection(title, rows, rewrite, className) {
+  if (!rows || rows.length === 0) return null;
+  const section = el('section', `journal-conclusions${className ? ` ${className}` : ''}`);
+  section.appendChild(el('h3', 'journal-section-title', title));
+  for (const item of rows) section.appendChild(_sectionRow(item, rewrite));
+  return section;
 }
 
 function _fullLedger(table) {
@@ -104,36 +117,49 @@ export async function renderJournalModal() {
       'Last night’s fit failed my quality bar, so I kept the previous model.'));
   }
 
-  // The active experiment, the one deep card. The header claims only
-  // what the live target IS (what Greg wants data on), never that
-  // today's board includes it: boards generate days ahead under earlier
-  // targets (the 2026-06-10 field-note drift class).
-  if (screen.active) {
-    // The nightly AI rewrite replaces the beat-assembled entry ONLY
-    // when the shipped artifact hashes to the exact entry this client
-    // just composed and re-clears the honesty rails; otherwise the
-    // beats render byte for byte (journalRewrite.js owns the guards).
-    const activeEntry = applyJournalRewrite(
-      screen.active.entry, rewrite, screen.active.study.feature,
-    );
-    body.appendChild(buildStudyCard(screen.active.study, activeEntry, {
-      className: 'journal-open',
-      title: `Now studying: ${screen.active.study.label}`,
-      log: screen.active.log,
-      onShareFallback: _shareFeedback,
-    }));
-    // Boards precompute nights ahead, so the daily card's field note and
-    // this study routinely name different questions; saying so here is
-    // what keeps that from reading as a contradiction (his question,
-    // 2026-08-11: a worm-tiles study while the daily said threes vs
-    // mine density).
-    body.appendChild(el('p', 'journal-active-note',
-      'Boards are built nights ahead, so today’s puzzle may serve an earlier question than the one Greg is on now.'));
+  // ── Collecting data ── the live section: the active experiment's
+  // deep card leads it, every other ONGOING study follows as a row,
+  // and the queue line closes it (what Greg wants data on next). The
+  // hero's header claims only what the live target IS, never that
+  // today's board includes it: boards generate days ahead under
+  // earlier targets (the 2026-06-10 field-note drift class).
+  if (screen.active || screen.collecting.length > 0 || screen.queue) {
+    const collectingSection = el('section', 'journal-conclusions journal-collecting');
+    collectingSection.appendChild(el('h3', 'journal-section-title', 'Collecting data'));
+    if (screen.active) {
+      // The nightly AI rewrite replaces a beat-assembled entry ONLY
+      // when the shipped artifact hashes to the exact entry this
+      // client just composed and re-clears the honesty rails;
+      // otherwise the beats render byte for byte (journalRewrite.js
+      // owns the guards). Same rule on every section row below.
+      const activeEntry = applyJournalRewrite(
+        screen.active.entry, rewrite, screen.active.study.feature,
+      );
+      collectingSection.appendChild(buildStudyCard(screen.active.study, activeEntry, {
+        className: 'journal-open',
+        title: `Now studying: ${screen.active.study.label}`,
+        log: screen.active.log,
+        onShareFallback: _shareFeedback,
+      }));
+      // Boards precompute nights ahead, so the daily card's field note
+      // and this study routinely name different questions; saying so
+      // here is what keeps that from reading as a contradiction (his
+      // question, 2026-08-11: a worm-tiles study while the daily said
+      // threes vs mine density).
+      collectingSection.appendChild(el('p', 'journal-active-note',
+        'Boards are built nights ahead, so today’s puzzle may serve an earlier question than the one Greg is on now.'));
+    }
+    for (const item of screen.collecting) collectingSection.appendChild(_sectionRow(item, rewrite));
+    if (screen.queue) {
+      collectingSection.appendChild(el('p', 'journal-queue', screen.queue.text));
+    }
+    body.appendChild(collectingSection);
   }
 
-  if (screen.queue) {
-    body.appendChild(el('p', 'journal-queue', screen.queue.text));
-  }
+  // ── Need to revisit ── the alarm surface: parked numbers that
+  // drifted and ranges that widened, capped in the pure layer.
+  const revisitSection = _rowSection('Need to revisit', screen.revisit, rewrite, 'journal-revisit');
+  if (revisitSection) body.appendChild(revisitSection);
 
   // The one population exhibit. It needs Firebase and the player's own
   // history, so it lands a beat after the notes rather than holding
@@ -145,12 +171,8 @@ export async function renderJournalModal() {
     .then(card => { if (card) heatmapSlot.appendChild(card); })
     .catch(() => { /* the notebook reads fine without it */ });
 
-  if (screen.ledger.length > 0) {
-    const section = el('section', 'journal-conclusions');
-    section.appendChild(el('h3', 'journal-section-title', 'Closed files'));
-    for (const item of screen.ledger) section.appendChild(_ledgerRow(item));
-    body.appendChild(section);
-  }
+  const closedSection = _rowSection('Closed for now', screen.closed, rewrite, 'journal-closed');
+  if (closedSection) body.appendChild(closedSection);
 
   if (screen.table.length > 0) {
     body.appendChild(_fullLedger(screen.table));

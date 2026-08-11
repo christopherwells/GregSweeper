@@ -18,9 +18,10 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 
 const {
-  REWRITE_FORMAT, REWRITE_ARTIFACT_PATH, MIN_SOURCE_CHARS,
+  REWRITE_FORMAT, REWRITE_ARTIFACT_PATH, MIN_SOURCE_CHARS, REWRITE_NIGHTLY_CAP,
   normalizeModelOutput, rewriteViolations, applyJournalRewrite,
-  buildRewriteArtifact, buildRewritePrompt,
+  buildRewriteArtifact, buildRewriteEntry, buildRewritePrompt,
+  planRewriteWork, rewriteEntryFor, visibleRewriteTargets,
 } = await import('../src/logic/journalRewrite.js');
 const { composeEntry, newSession, planJournalScreen, hashStr } = await import('../src/logic/journalProse.js');
 const { dashViolations } = await import('../src/logic/proseRails.js');
@@ -66,10 +67,8 @@ function entryFor(study, ctx = { activeFeature: study.feature }) {
 // quality.
 function identityArtifact(study, entry, extra = {}) {
   return buildRewriteArtifact({
-    feature: study.feature,
     date: '2026-08-02',
-    entryText: entry.text,
-    paragraph: entry.text,
+    entries: { [study.feature]: buildRewriteEntry(entry.text, entry.text) },
     extra,
   });
 }
@@ -130,12 +129,25 @@ test('validator: each rail rejects, and names its reason', () => {
     ['added indication', `${base} The range narrowed, indicating a steady no.`, /added inference/],
     ['added consistency claim', `${base} The cost stayed consistent across the window.`, /added inference/],
     ['added causal glue', `${base} The range narrowed because the boards agreed.`, /added inference/],
+    // The agency flip (a real 2026-08-11 output: "I opted for the
+    // latter" about a door the DATA picked).
+    ['agency flip', `${base} I opted for the second door.`, /added inference/],
+    // The jargon leak (a real output: "the wormholePairCount numbers").
+    ['raw feature key', `${base} The ${facts.feature} numbers moved.`, /raw feature key/],
   ];
   for (const [name, text, re] of cases) {
     const v = rewriteViolations(text, src, facts);
     assert.ok(v.length > 0, `${name}: expected a violation`);
     assert.ok(v.some(x => re.test(x)), `${name}: expected ${re}, got: ${v.join(' | ')}`);
   }
+
+  // Imported fact digit: a value that exists in the FACT OBJECT but not
+  // in the notes is still a fabrication (the 2026-08-11 compass draft
+  // built a date span out of the study-day fields).
+  const vImported = rewriteViolations(`${base} The file opened on Apr 27.`, src,
+    { ...facts, importedDate: 'Apr 27' });
+  assert.ok(vImported.some(x => /digit "27" is not in the notes/.test(x)),
+    `expected the imported-digit rail, got: ${vImported.join(' | ')}`);
 
   // Dropped source digit: strip one number the source states.
   const firstDigit = (src.match(/\d+(?:\.\d+)?/g) || [])[0];
@@ -201,24 +213,26 @@ test('applyJournalRewrite: every mismatch falls back to the beats unchanged', ()
   const entry = entryFor(study);
   const good = identityArtifact(study, entry);
 
-  // Stale artifact: built for a DIFFERENT composed entry (yesterday's
+  // Stale record: built for a DIFFERENT composed entry (yesterday's
   // data). The nightly refit moves the entry; the hash disarms the
-  // artifact on every client.
+  // record on every client.
   const yesterday = entryFor(mkStudy({ latest: { date: '2026-08-01', mean: 0.0431, sd: 0.0215 } }));
   const stale = buildRewriteArtifact({
-    feature: study.feature, date: '2026-08-01',
-    entryText: yesterday.text, paragraph: yesterday.text,
+    date: '2026-08-01',
+    entries: { [study.feature]: buildRewriteEntry(yesterday.text, yesterday.text) },
   });
   assert.notEqual(hashStr(yesterday.text), hashStr(entry.text), 'the fixture really did change the entry');
   assert.equal(applyJournalRewrite(entry, stale, study.feature), entry);
 
-  // Feature mismatch (an artifact about another study).
-  assert.equal(applyJournalRewrite(entry, { ...good, feature: 'liarCellCount' }, study.feature), entry);
+  // Feature mismatch: the map holds no record for the entry's study.
   assert.equal(applyJournalRewrite(entry, good, 'liarCellCount'), entry);
 
-  // Unknown format, missing paragraph, junk artifacts.
-  assert.equal(applyJournalRewrite(entry, { ...good, format: 'journal-rewrite-v0' }, study.feature), entry);
-  assert.equal(applyJournalRewrite(entry, { ...good, paragraph: null }, study.feature), entry);
+  // Unknown format (a cached v1 artifact included), junk records.
+  assert.equal(applyJournalRewrite(entry, { ...good, format: 'journal-rewrite-v1' }, study.feature), entry);
+  assert.equal(applyJournalRewrite(entry, { ...good, entries: null }, study.feature), entry);
+  const noParagraph = identityArtifact(study, entry);
+  noParagraph.entries[study.feature].paragraph = null;
+  assert.equal(applyJournalRewrite(entry, noParagraph, study.feature), entry);
   assert.equal(applyJournalRewrite(entry, null, study.feature), entry);
   assert.equal(applyJournalRewrite(entry, 'nonsense', study.feature), entry);
 
@@ -226,11 +240,76 @@ test('applyJournalRewrite: every mismatch falls back to the beats unchanged', ()
   // correct hash and feature (an invented number spliced into the
   // shipped file) must still fall back — the validator is the last rail
   // between the artifact and the card.
-  const tampered = { ...good, paragraph: `${entry.text} The real cost is 99%.` };
+  const tampered = identityArtifact(study, entry);
+  tampered.entries[study.feature].paragraph = `${entry.text} The real cost is 99%.`;
   assert.equal(applyJournalRewrite(entry, tampered, study.feature), entry);
 
   // And the entry itself is never mutated by any of this.
   assert.equal(entry.rewritten, undefined);
+});
+
+test('planRewriteWork: carry-forward spends nothing, the cap defers in visibility order, short entries skip', () => {
+  const heroStudy = mkStudy({});
+  const hero = entryFor(heroStudy);
+  const others = ['wormholePairCount', 'mirrorPairCount', 'liarCellCount', 'mysteryCellCount'].map(f => {
+    const study = mkStudy({ feature: f, label: 'x', unit: 'sonar cell' });
+    return { study, entry: entryFor(study) };
+  });
+  const screen = {
+    active: { study: heroStudy, entry: hero },
+    revisit: [others[0]],
+    closed: [others[1], others[2]],
+    collecting: [others[3]],
+  };
+
+  // Visibility order: hero, revisit, closed, collecting.
+  assert.deepEqual(visibleRewriteTargets(screen).map(t => t.feature),
+    [heroStudy.feature, 'wormholePairCount', 'mirrorPairCount', 'liarCellCount', 'mysteryCellCount']);
+
+  // No old artifact: everything is todo, capped.
+  const fresh = planRewriteWork(screen, null, { cap: 3 });
+  assert.deepEqual(fresh.todo.map(t => t.feature),
+    [heroStudy.feature, 'wormholePairCount', 'mirrorPairCount']);
+  assert.equal(fresh.deferred, 2, 'the tail waits for the next night');
+  assert.deepEqual(fresh.keep, {});
+
+  // An old artifact with two still-valid records: kept without a
+  // completion, and the freed cap slots go to the rest.
+  const old = buildRewriteArtifact({
+    date: 'x',
+    entries: {
+      [heroStudy.feature]: buildRewriteEntry(hero.text, hero.text),
+      wormholePairCount: buildRewriteEntry(others[0].entry.text, others[0].entry.text),
+    },
+  });
+  const carried = planRewriteWork(screen, old, { cap: 3 });
+  assert.deepEqual(Object.keys(carried.keep).sort(), [heroStudy.feature, 'wormholePairCount'].sort());
+  assert.deepEqual(carried.todo.map(t => t.feature),
+    ['mirrorPairCount', 'liarCellCount', 'mysteryCellCount']);
+  assert.equal(carried.deferred, 0);
+
+  // A kept record whose paragraph no longer validates (tampered or a
+  // rails change) is NOT carried; it re-enters the todo queue.
+  const rotten = buildRewriteArtifact({
+    date: 'x',
+    entries: { [heroStudy.feature]: { sourceHash: hashStr(hero.text), paragraph: `${hero.text} Now 99%.` } },
+  });
+  const requeued = planRewriteWork(screen, rotten, { cap: 9 });
+  assert.equal(requeued.keep[heroStudy.feature], undefined);
+  assert.equal(requeued.todo[0].feature, heroStudy.feature);
+
+  // Short entries skip entirely.
+  const shortScreen = {
+    active: { study: heroStudy, entry: { ...hero, text: 'Too short to rewrite.' } },
+    revisit: [], closed: [], collecting: [],
+  };
+  const skipped = planRewriteWork(shortScreen, null);
+  assert.deepEqual(skipped.todo, []);
+  assert.equal(skipped.skippedShort, 1);
+
+  assert.ok(REWRITE_NIGHTLY_CAP >= 1);
+  assert.equal(rewriteEntryFor({ format: REWRITE_FORMAT, entries: { a: { x: 1 } } }, 'a').x, 1);
+  assert.equal(rewriteEntryFor({ format: 'journal-rewrite-v1', entries: { a: {} } }, 'a'), null);
 });
 
 // ── The prompt ────────────────────────────────────────────────────────
@@ -244,12 +323,21 @@ test('buildRewritePrompt: facts, source, and the verb rulings reach the model; t
   assert.equal(typeof prompt.system, 'string');
   assert.equal(typeof prompt.user, 'string');
   assert.ok(prompt.user.includes(entry.text), 'the source beats are the material');
-  assert.ok(prompt.user.includes(JSON.stringify(entry.facts)), 'the fact object rides along');
+  // REGRESSION: the fact object is NOT prompt material — offered as a
+  // checking aid, its unused values kept re-surfacing as invented
+  // chronology (the compass drafts imported Apr 27/Jul 29 from the
+  // study-day fields on every attempt). The notes are the only number
+  // surface the model sees.
+  assert.ok(!prompt.user.includes('sourceHash') && !prompt.user.includes('"unit"'),
+    'no fact object in the prompt');
   // REGRESSION: the hypothesis is NOT material — offered as context, the
   // bake-off drafts recast it as a conclusion the data had reached
   // ("supports my suspicion..."), the exact fabrication class the
   // inference rail exists for. Starve the temptation at the source.
   assert.ok(!prompt.user.includes(study.hypothesis), 'the hypothesis stays out of the prompt');
+  // REGRESSION: the raw feature key is withheld too — handed the fact
+  // object whole, the model rendered "the wormholePairCount numbers".
+  assert.ok(!prompt.user.includes(study.feature), 'the raw feature key stays out of the prompt');
   // The rulings are stated: dashes, data-plural, players, today's board.
   assert.match(prompt.system, /em dash/i);
   assert.match(prompt.system, /data show/i);
@@ -263,28 +351,36 @@ test('buildRewritePrompt: facts, source, and the verb rulings reach the model; t
 
 // ── The shipped artifact and the script glue ──────────────────────────
 
-test('the committed artifact parses, and when fresh it clears the validator', () => {
+test('the committed artifact parses, and every fresh record clears the validator', () => {
   const artifact = JSON.parse(readFileSync(join(ROOT, REWRITE_ARTIFACT_PATH), 'utf8'));
   assert.equal(artifact.format, REWRITE_FORMAT);
-  assert.equal(typeof artifact.feature, 'string');
-  assert.equal(typeof artifact.sourceHash, 'number');
-  assert.equal(typeof artifact.paragraph, 'string');
+  assert.equal(typeof artifact.entries, 'object');
+  for (const [feature, rec] of Object.entries(artifact.entries)) {
+    assert.equal(typeof rec.sourceHash, 'number', `${feature}: sourceHash`);
+    assert.equal(typeof rec.paragraph, 'string', `${feature}: paragraph`);
+  }
 
   // The refit writes modelHistory.json and this artifact in ONE commit,
   // so in-repo they are normally in sync; a human PR that changes the
-  // compose output legitimately strands the artifact until the next
-  // nightly (the hash guard hides it), so staleness is NOT a failure —
-  // but a FRESH artifact that fails validation would ship a broken
-  // paragraph tonight, and that is.
+  // compose output legitimately strands records until the next nightly
+  // (the hash guard hides them), so staleness is NOT a failure — but a
+  // FRESH record that fails validation would ship a broken paragraph
+  // tonight, and that is.
   const history = JSON.parse(readFileSync(join(ROOT, 'src/logic/modelHistory.json'), 'utf8'));
   const meta = JSON.parse(readFileSync(join(ROOT, 'src/logic/experimentTarget.json'), 'utf8'));
   const screen = planJournalScreen(history, meta);
-  const entry = screen?.active?.entry;
-  if (!entry || hashStr(entry.text) !== artifact.sourceHash) return; // stale: disarmed by design
-  const v = rewriteViolations(artifact.paragraph, entry.text, entry.facts);
-  assert.deepEqual(v, [], `the shipped artifact fails its own rails: ${v.join(' | ')}`);
-  const swapped = applyJournalRewrite(entry, artifact, screen.active.study.feature);
-  assert.equal(swapped.text, artifact.paragraph, 'a fresh artifact actually renders');
+  if (!screen) return;
+  let fresh = 0;
+  for (const t of visibleRewriteTargets(screen)) {
+    const rec = artifact.entries[t.feature];
+    if (!rec || rec.sourceHash !== hashStr(t.entry.text)) continue; // stale: disarmed by design
+    fresh++;
+    const v = rewriteViolations(rec.paragraph, t.entry.text, t.entry.facts);
+    assert.deepEqual(v, [], `${t.feature}: the shipped record fails its own rails: ${v.join(' | ')}`);
+    const swapped = applyJournalRewrite(t.entry, artifact, t.feature);
+    assert.equal(swapped.text, rec.paragraph, `${t.feature}: a fresh record actually renders`);
+  }
+  console.log(`    (fresh records validated: ${fresh} of ${Object.keys(artifact.entries).length})`);
 });
 
 test('script end to end (--fixture): composes the same entry, validates, writes the artifact', (t) => {
@@ -300,7 +396,9 @@ test('script end to end (--fixture): composes the same entry, validates, writes 
   const fixture = join(dir, 'fixture.txt');
   const out = join(dir, 'artifact.json');
   // The identity rewrite as the "model output": passes every rail, so
-  // the run must WRITE. A failing fixture must NOT write.
+  // the run must WRITE, with the fixture applied to the FIRST pending
+  // entry (the hero, in visibility order, on a fresh --out). A failing
+  // fixture must NOT write.
   writeFileSync(fixture, entry.text);
   const log = execFileSync(process.execPath, [
     join(ROOT, 'scripts', 'rewrite-journal-entry.mjs'), '--fixture', fixture, '--out', out,
@@ -308,10 +406,11 @@ test('script end to end (--fixture): composes the same entry, validates, writes 
   assert.match(log, /Wrote /);
   const artifact = JSON.parse(readFileSync(out, 'utf8'));
   assert.equal(artifact.format, REWRITE_FORMAT);
-  assert.equal(artifact.feature, screen.active.study.feature);
-  assert.equal(artifact.sourceHash, hashStr(entry.text), 'the script composed the exact entry this test composed');
+  const feature = screen.active.study.feature;
+  assert.equal(artifact.entries[feature].sourceHash, hashStr(entry.text),
+    'the script composed the exact entry this test composed');
   assert.equal(artifact.model, 'fixture');
-  const swapped = applyJournalRewrite(entry, artifact, screen.active.study.feature);
+  const swapped = applyJournalRewrite(entry, artifact, feature);
   assert.equal(swapped.rewritten, true);
 
   const badFixture = join(dir, 'bad.txt');

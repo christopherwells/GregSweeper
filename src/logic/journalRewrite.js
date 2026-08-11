@@ -4,12 +4,16 @@
 // coherent paragraph"), because composeEntry's pools are independent
 // one-sentence beats by design (the collision and honesty rails made
 // them so). Coherence between sentences is exactly what the pools
-// cannot provide, so ONCE PER NIGHT the refit workflow sends the active
-// study's composed entry plus its fact object to a small model on
-// GitHub Models (scripts/rewrite-journal-entry.mjs) and ships the
-// polished paragraph as DATA in src/logic/journalRewrite.json. Clients
-// render the shipped string verbatim; nothing model-shaped ever runs on
-// a device, so every device shows the same prose.
+// cannot provide, so EACH NIGHT the refit workflow composes the whole
+// journal screen, sends every rendered entry (the active hero and each
+// section row's expansion) with its fact object to a local model
+// (scripts/rewrite-journal-entry.mjs), and ships the polished
+// paragraphs as DATA in src/logic/journalRewrite.json, a per-feature
+// map. The script keeps any paragraph whose source entry is unchanged
+// (no new completion spent), and a nightly cap bounds the rest, so the
+// steady-state cost stays about one completion a night. Clients render
+// the shipped strings verbatim; nothing model-shaped ever runs on a
+// device, so every device shows the same prose.
 //
 // THE HONESTY RAILS FLIP FROM GENERATOR CONSTRAINTS TO AN OUTPUT
 // VALIDATOR here: every digit in the paragraph must exist in the fact
@@ -40,10 +44,22 @@ import {
   templateHoleViolations, thirdPersonViolations,
 } from './proseRails.js';
 
-export const REWRITE_FORMAT = 'journal-rewrite-v1';
+// v2 (2026-08-11, same day as v1): the rewrite covers EVERY rendered
+// entry, not just the active hero, so the artifact is a per-feature
+// map {entries: {feature: {sourceHash, paragraph}}}. A v1 artifact in
+// a stale cache fails the format check and the beats render, the same
+// fallback as every other mismatch.
+export const REWRITE_FORMAT = 'journal-rewrite-v2';
 
 // One artifact, overwritten nightly; the UI fetches './' + this.
 export const REWRITE_ARTIFACT_PATH = 'src/logic/journalRewrite.json';
+
+// Completions attempted per night. Closed and resting entries barely
+// change, so after the first night or two the carry-forward keeps
+// nearly everything and a typical night rewrites zero to two entries;
+// the cap only bites when a refit moves many studies at once, and the
+// leftovers converge on the following nights.
+export const REWRITE_NIGHTLY_CAP = 6;
 
 // An entry below this length is one or two beats and reads fine as it
 // is; rewriting it would force the model to pad (the length floor would
@@ -111,28 +127,51 @@ export function rewriteViolations(text, sourceText, facts) {
     ...impreciseVerbViolations(text),
     ...playerClaimViolations(text),
     ...hedgeViolations(text),
-    // No invented numbers: every digit run must trace to a fact.
+    // Belt: no digit without a fact behind it (the composed source
+    // guarantees source digits ⊆ facts, so this can only fire on a
+    // tampered artifact whose sourceText was forged along with it).
     ...digitViolations(text, facts),
   );
 
-  // No dropped numbers: the entry's content IS its numbers, so every
-  // digit run in the source must survive into the rewrite.
+  // The rewrite's digit SET equals the source's, both directions. No
+  // dropped numbers (the entry's content IS its numbers), and no
+  // imported ones either: fact-object values the notes never cited are
+  // NOT material, and given them, a model built "the range has not
+  // moved since the first data point on April 27" out of the study-day
+  // fields, digit-honest against the facts and false against the entry
+  // (the 2026-08-11 compass draft).
   const kept = new Set(digitRuns(text));
-  for (const run of new Set(digitRuns(sourceText))) {
+  const sourceRuns = new Set(digitRuns(sourceText));
+  for (const run of sourceRuns) {
     if (!kept.has(run)) out.push(`source digit "${run}" was dropped`);
+  }
+  for (const run of kept) {
+    if (!sourceRuns.has(run)) out.push(`digit "${run}" is not in the notes`);
   }
 
   // No added inference. Every fabrication the 2026-08-11 bake-off
   // produced was the model stitching CONCLUSIONS between faithful
   // sentences ("which supports my suspicion", "indicating a steady
-  // no", "held this cost consistently"), which no per-fact rail can
-  // see. Mechanically: an inference marker may appear in the rewrite
-  // only where the notes themselves use it, so a source that says
-  // "because" keeps its because and a rewrite can never introduce one.
+  // no", "held this cost consistently", and, once the section rows
+  // joined, "I opted for the latter", an agency flip: the DATA picked
+  // that door), which no per-fact rail can see. Mechanically: an
+  // inference marker may appear in the rewrite only where the notes
+  // themselves use it, so a source that says "because" keeps its
+  // because and a rewrite can never introduce one.
   for (const marker of INFERENCE_MARKERS) {
     if (marker.test(text) && !marker.test(sourceText)) {
       out.push(`added inference ("${String(text.match(marker)?.[0])}") the notes do not state`);
     }
+  }
+
+  // No jargon: the model feature key is not prose and never renders on
+  // a player surface. The prompt withholds it; this rail is the
+  // backstop (it leaked verbatim, "the wormholePairCount numbers", the
+  // first time the fact object included it).
+  if (facts && typeof facts.feature === 'string' && facts.feature.length > 0
+    && text.toLowerCase().includes(facts.feature.toLowerCase())
+    && (typeof facts.label !== 'string' || facts.feature.toLowerCase() !== facts.label.toLowerCase())) {
+    out.push(`raw feature key "${facts.feature}" in prose`);
   }
   return out;
 }
@@ -140,52 +179,126 @@ export function rewriteViolations(text, sourceText, facts) {
 // Word-boundary, stem-tolerant forms of the inference vocabulary a
 // rewrite may not introduce. prove/proves/proved/proving is written out
 // so "provide" stays legal; "mean(s) that" is phrase-bound so "which
-// means" and "this means" are both caught.
+// means" and "this means" are both caught. The "I opted/chose/decided"
+// family is the agency flip: the notes credit the data with every
+// verdict, and a first-person choice the notes never made reassigns it
+// to Greg.
 const INFERENCE_MARKERS = [
   /\bsupport\w*/i, /\bconfirm\w*/i, /\bindicat\w*/i, /\bimpl(?:y|ies|ied|ying)\b/i,
   /\bsuggest\w*/i, /\bprov(?:e|es|ed|ing)\b/i, /\brefut\w*/i, /\bcontradict\w*/i,
   /\bconsistent\w*/i, /\bdemonstrat\w*/i, /\bbecause\b/i, /\btherefore\b/i,
   /\bmeans? that\b/i, /\bwhich means\b/i, /\bthis means\b/i,
+  /\bI opted\b/i, /\bI chose\b/i, /\bI decided\b/i, /\bI concluded\b/i, /\bI lean(?:ed)?\b/i,
+  // Explanation glue: four straight mystery-entry drafts fused "one
+  // study day" with "the data arrived on ordinary boards" into a causal
+  // claim the notes never make ("meaning the estimate is based on a
+  // single aimed study day"). The pools never use either phrase, so the
+  // source-conditional ban costs faithful drafts nothing.
+  /\bmeaning\b/i, /\bbased on\b/i,
 ];
+
+/** The artifact's record for one feature, or null. Total on junk. */
+export function rewriteEntryFor(artifact, feature) {
+  if (!artifact || typeof artifact !== 'object') return null;
+  if (artifact.format !== REWRITE_FORMAT) return null;
+  if (!artifact.entries || typeof artifact.entries !== 'object') return null;
+  const rec = artifact.entries[feature];
+  return rec && typeof rec === 'object' ? rec : null;
+}
 
 /**
  * Swap a shipped rewrite into a composed entry, or return the entry
  * unchanged. `entryFeature` is the feature of the study THIS entry
- * describes; the artifact applies only when (a) it names that same
- * feature, (b) its sourceHash equals the hash of the text THIS client
- * composed (same data, same code, same beats), and (c) the paragraph
- * still clears the validator against this client's own facts.
- * arcSpoken is re-detected on the new text so the hypothesis epigraph
- * keeps its never-print-the-premise-twice rule.
+ * describes; the artifact's record applies only when (a) one exists
+ * for that feature, (b) its sourceHash equals the hash of the text
+ * THIS client composed (same data, same code, same beats), and (c) the
+ * paragraph still clears the validator against this client's own
+ * facts. arcSpoken is re-detected on the new text so the hypothesis
+ * epigraph keeps its never-print-the-premise-twice rule.
  */
 export function applyJournalRewrite(entry, artifact, entryFeature) {
   if (!entry || typeof entry.text !== 'string') return entry;
-  if (!artifact || typeof artifact !== 'object') return entry;
-  if (artifact.format !== REWRITE_FORMAT) return entry;
-  if (typeof entryFeature !== 'string' || artifact.feature !== entryFeature) return entry;
-  if (typeof artifact.paragraph !== 'string') return entry;
-  if (artifact.sourceHash !== hashStr(entry.text)) return entry;
-  if (rewriteViolations(artifact.paragraph, entry.text, entry.facts).length > 0) return entry;
+  if (typeof entryFeature !== 'string') return entry;
+  const rec = rewriteEntryFor(artifact, entryFeature);
+  if (!rec || typeof rec.paragraph !== 'string') return entry;
+  if (rec.sourceHash !== hashStr(entry.text)) return entry;
+  if (rewriteViolations(rec.paragraph, entry.text, entry.facts).length > 0) return entry;
   return {
     ...entry,
-    text: artifact.paragraph,
+    text: rec.paragraph,
     rewritten: true,
-    arcSpoken: QUOTE_FRAME.test(artifact.paragraph),
+    arcSpoken: QUOTE_FRAME.test(rec.paragraph),
   };
 }
 
 /**
- * Assemble the artifact the nightly script writes. `extra` carries
- * provenance the pure layer has no business computing (model id,
- * generatedAt); nothing deterministic may ever read it.
+ * Every rewrite target on a planned screen, in VISIBILITY order: the
+ * hero first, then the revisit rows (the alarm surface), then closed,
+ * then collecting. The nightly cap trims from the tail, so the entries
+ * a player is most likely to read are rewritten first.
  */
-export function buildRewriteArtifact({ feature, date, entryText, paragraph, extra = {} }) {
+export function visibleRewriteTargets(screen) {
+  const out = [];
+  if (screen?.active?.entry?.text) {
+    out.push({ feature: screen.active.study.feature, entry: screen.active.entry });
+  }
+  for (const key of ['revisit', 'closed', 'collecting']) {
+    for (const item of Array.isArray(screen?.[key]) ? screen[key] : []) {
+      if (item?.study?.feature && item?.entry?.text) {
+        out.push({ feature: item.study.feature, entry: item.entry });
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Split a screen's targets into paragraphs to KEEP from the previous
+ * artifact (hash still matches and the old paragraph still validates,
+ * so no completion is spent) and entries left TO DO tonight, capped.
+ * Anything past the cap waits for the next night; short entries skip
+ * entirely (they read fine as beats).
+ */
+export function planRewriteWork(screen, oldArtifact, { cap = REWRITE_NIGHTLY_CAP } = {}) {
+  const keep = {};
+  const todo = [];
+  let skippedShort = 0;
+  let deferred = 0;
+  for (const t of visibleRewriteTargets(screen)) {
+    if (t.entry.text.length < MIN_SOURCE_CHARS) {
+      skippedShort++;
+      continue;
+    }
+    const prev = rewriteEntryFor(oldArtifact, t.feature);
+    if (prev && typeof prev.paragraph === 'string'
+      && prev.sourceHash === hashStr(t.entry.text)
+      && rewriteViolations(prev.paragraph, t.entry.text, t.entry.facts).length === 0) {
+      keep[t.feature] = { sourceHash: prev.sourceHash, paragraph: prev.paragraph };
+    } else if (todo.length < cap) {
+      todo.push(t);
+    } else {
+      deferred++;
+    }
+  }
+  return { keep, todo, skippedShort, deferred };
+}
+
+/** One accepted paragraph as the artifact's per-feature record. */
+export function buildRewriteEntry(entryText, paragraph) {
+  return { sourceHash: hashStr(entryText), paragraph };
+}
+
+/**
+ * Assemble the artifact the nightly script writes. `entries` maps
+ * feature to buildRewriteEntry records; `extra` carries provenance the
+ * pure layer has no business computing (model id, generatedAt);
+ * nothing deterministic may ever read it.
+ */
+export function buildRewriteArtifact({ date, entries, extra = {} }) {
   return {
     format: REWRITE_FORMAT,
-    feature,
     date,
-    sourceHash: hashStr(entryText),
-    paragraph,
+    entries,
     ...extra,
   };
 }
@@ -200,9 +313,10 @@ export function buildRewriteArtifact({ feature, date, entryText, paragraph, extr
 const PROMPT_RULES = [
   'Write ONE paragraph of plain text. No headings, no lists, no markdown, no quotation marks around the whole answer.',
   'Actually rewrite. Do not copy the notes sentence for sentence, and do not just splice them with commas or semicolons. Reorder the ideas into a story: what I asked, what the data read, where the estimate stands, what I make of it. Tie sentences together with connectives (so, but, and, after, which, that answer).',
-  'Keep every number, percent sign, and date from the notes exactly as written. Do not add, drop, round, or recompute any number.',
+  'Keep every number, percent sign, and date from the notes exactly as written. Do not add, drop, round, or recompute any number, and use ONLY the numbers and dates the notes use.',
   'State nothing the notes do not state. No new claims, no new dates, no new events, no mechanisms the notes do not give.',
-  'Draw no new conclusions. Never say the data support, confirm, contradict, or refute the hypothesis unless the notes say so themselves; connect sentences without adding logic between them.',
+  'Draw no new conclusions. Never say the data support, confirm, contradict, or refute the hypothesis unless the notes say so themselves; connect sentences without adding logic between them. Any verdict belongs to the data, never to a choice the writer made.',
+  'Keep every number attached to what the notes attach it to. Do not tie an estimate to a date, a day, or an event unless the notes tie them in the same sentence, and do not explain one fact with another: two facts the notes state side by side stay side by side.',
   'First person only. The writer never refers to himself by name or in the third person.',
   'Never use the em dash or the en dash. Use commas, periods, or parentheses instead.',
   'At most one hedging word (like "likely" or "seems") per sentence.',
@@ -233,7 +347,15 @@ export function buildRewritePrompt({ entryText, facts, label }) {
     + '\n\nReturn only the rewritten paragraph.';
   const lines = [];
   if (label) lines.push(`Study: ${label}`);
-  lines.push(`Fact object (every number in your paragraph must appear among these values): ${JSON.stringify(facts)}`);
+  // NO fact object in the prompt. It was offered at first as a
+  // checking aid, and every fabrication it enabled outweighed it: the
+  // raw feature key rendered verbatim ("the wormholePairCount
+  // numbers"), and unused fact dates kept surfacing as invented
+  // chronology ("since the first data point on April 27"). Under the
+  // digit-set rail the notes are the ONLY legitimate number surface,
+  // so the model reads exactly what it may cite and nothing else.
+  // `facts` stays in the signature for the validator's use downstream.
+  void facts;
   lines.push(`The notes to rewrite:\n${entryText}`);
   return { system, user: lines.join('\n\n') };
 }
