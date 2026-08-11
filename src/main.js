@@ -903,8 +903,11 @@ function showCheckpointSelector() {
         // This entry path bypasses switchMode, so clear the playtest flags
         // here too, a real checkpoint start must record progression, and must
         // not inherit a ?coastline= tiling practice (which would route newGame
-        // into the tiling branch and record a challenge run on a test board).
+        // into the tiling branch and record a challenge run on a test board)
+        // or a ?level=&board= pinned bin index (which would deal the same
+        // library board on every level of the run).
         state.isLevelPractice = false;
+        state.climbBoardIndex = null;
         clearCoastlinePractice();
         state.currentLevel = cp;
         newGame();
