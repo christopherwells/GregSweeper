@@ -223,7 +223,7 @@ jobs:
           git config user.name  "Christopher Wells"
           git config user.email "c.wells@bowdoin.edu"
           git add src/logic/difficulty.js src/logic/handicaps.json src/logic/experimentTarget.json src/logic/modelHistory.json src/logic/journalRewrite.json src/logic/challengePool.js scripts/data/climb-library
-          git commit -m "refit PAR_MODEL, handicaps, experiment target, and ladder prices — $(date -u +%Y-%m-%d)"
+          git commit -m "refit PAR_MODEL, handicaps, experiment target, ladder prices, and the journal rewrite — $(date -u +%Y-%m-%d)"
           # A plain push LOSES THE WHOLE NIGHT'S FIT if a human pushed to main
           # while Stan was sampling. That is not hypothetical: the 2026-08-03
           # refit fit cleanly (4 files, 315 insertions) and then died on
