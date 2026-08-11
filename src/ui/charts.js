@@ -120,7 +120,10 @@ function drawXTicks(svg, layout, xValues, xToPx, opts = {}) {
     const isLast = i === lastIdx;
     const isRegular = i % tickEvery === 0 && !isFirst;
     if (!isFirst && !isLast && !isRegular) continue;
-    if (isRegular && lastIdx - i < tickEvery / 2) continue;
+    // Three quarters of an interval, not half: at half, a regular tick
+    // three slots from the end still overlapped the last label (visible
+    // as "Aug 5" smearing into "Aug 11" once the pills landed).
+    if (isRegular && lastIdx - i < tickEvery * 0.75) continue;
 
     const x = xToPx(i);
     const anchor = isFirst ? 'start' : (isLast ? 'end' : 'middle');

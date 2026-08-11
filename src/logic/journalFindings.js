@@ -4,8 +4,8 @@
 // no Firebase, no network, node-testable.
 //
 // A STUDY is a per-feature longitudinal track. The rows whose `target`
-// is that feature mark the days Greg deliberately sent boards carrying
-// it (the study days); the feature's posterior mean/sd rides along in
+// is that feature mark the days Greg deliberately sent boards with
+// that feature (the study days); the feature's posterior mean/sd rides along in
 // EVERY row's `candidates` table, so the uncertainty trajectory is read
 // from all rows, not just study days. Grouping by contiguous target
 // runs would be meaningless, the refit never repeats a target within
@@ -268,7 +268,7 @@ export function classifyVerdict(study) {
     };
   }
   // Resting takes the card over settling/open: the chip explains why no
-  // new boards carry this feature. The tightening story is still on the
+  // new boards include this feature. The tightening story is still on the
   // sparkline and the estimate line; nothing is hidden, and deltaPct is
   // null because the resting copy claims no number.
   if (
@@ -302,23 +302,24 @@ export function classifyVerdict(study) {
 // per unit". lo/hi are the ±1 SD band, the give-or-take the card must
 // always show alongside the point estimate. Null when the study has no
 // era fits yet.
-// PER-TEN-TILES SCALING (his ask, 2026-08-11: "make it less decimally...
-// perhaps for every 10 tiles of that in a puzzle"). A per-cell coefficient
-// lives in decimal territory ("about 0.3% per sonar cell"), so when one
-// unit's effect is under SCALE_UP_BELOW_PCT the whole estimate speaks per
-// TEN units instead. Exact on the log scale, never approximated: the
-// model's own prediction for ten more units is exp(10 x coef), which is
-// what a reader would check it against in R. Digit shares never scale
-// (their unit is already "one extra N in ten clues", and ten of those is
-// not a quantity a board can hold).
-const SCALE_UP_BELOW_PCT = 3;
+// PER-TEN-TILES SCALING (his ask 2026-08-11, tightened the same day:
+// "I'd prefer if all are on a 10 tile basis"). EVERY estimate is quoted
+// per TEN units, uniformly, so no two journal surfaces quote the same
+// feature on different bases. Exact on the log scale, never
+// approximated: the model's own prediction for ten more units is
+// exp(10 x coef), which is what a reader would check it against in R,
+// and which compounds rather than multiplying (ten of a strong feature
+// reads large, and that is the model's honest claim, not an error).
+// The one exemption is the digit shares, whose unit is already the
+// composite "one extra N in ten clues"; ten of those is not a quantity
+// a board can hold.
+export function featureScaleOf(feature) {
+  return String(feature || '').startsWith('clueShare') ? 1 : 10;
+}
 
 function estimateScale(study) {
-  const latest = study?.latest;
-  if (!latest) return 1;
-  if (String(study?.feature || '').startsWith('clueShare')) return 1;
-  const perUnit = Math.abs((Math.exp(latest.mean) - 1) * 100);
-  return perUnit < SCALE_UP_BELOW_PCT ? 10 : 1;
+  if (!study?.latest) return 1;
+  return featureScaleOf(study?.feature);
 }
 
 // All FEATURE_UNITS nouns pluralize regularly (cell, pair, wall, area,
@@ -432,10 +433,19 @@ export function parameterTable(history) {
     if (!c || typeof c.feature !== 'string' || typeof c.mean !== 'number' || !(c.sd > 0)) continue;
     const label = featureName(c.feature);
     if (!label) continue;
-    const pct = (Math.exp(c.mean) - 1) * 100;
-    const lo = (Math.exp(c.mean - c.sd) - 1) * 100;
-    const hi = (Math.exp(c.mean + c.sd) - 1) * 100;
-    const row = { feature: c.feature, label, pctValue: pct };
+    // The same per-ten basis as every estimate line, and the row SAYS its
+    // basis (his report, 2026-08-11: "I'm not seeing any indication that
+    // the full ledger is by 10 tiles"): `per` is the phrase the renderer
+    // prints under the feature name.
+    const scale = featureScaleOf(c.feature);
+    const unit = featureUnit(c.feature);
+    const pct = (Math.exp(c.mean * scale) - 1) * 100;
+    const lo = (Math.exp((c.mean - c.sd) * scale) - 1) * 100;
+    const hi = (Math.exp((c.mean + c.sd) * scale) - 1) * 100;
+    const row = {
+      feature: c.feature, label, pctValue: pct,
+      per: unit ? (scale === 10 ? `per ten ${unit}s` : `per ${unit}`) : null,
+    };
     if (hi <= 0) {
       row.effect = `saves ${fmtPct(Math.abs(pct))}%`;
       const hiStr = fmtPct(Math.abs(hi));

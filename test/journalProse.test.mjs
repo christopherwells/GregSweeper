@@ -483,7 +483,8 @@ test('conclusionLine: past-tense finding anchored to its close date', () => {
     verdict: { kind: 'resting', deltaPct: null }, lastStudied: '2026-07-20',
     latest: { date: '2026-08-02', mean: 0.0428, sd: 0.0203 },
   }), 'closed-won', newSession());
-  assert.match(positive, /about 4% per cell/);
+  // Per ten, universally: exp(0.43) - 1 = 53.7% for the fixture's mean.
+  assert.match(positive, /about 53% per ten cells/);
   assert.match(positive, /Closed Jul 20\./);
 
   const parked = conclusionLine(mkStudy({
@@ -813,8 +814,8 @@ test('reopened ledger line cites the parked figure and the current one, never on
   });
   assert.equal(narrativeState(drifted), 'reopened');
   const line = conclusionLine(drifted, 'reopened', newSession());
-  assert.match(line, /3%/, 'the parked figure');
-  assert.match(line, /5%/, 'the current figure'); // exp(0.045)−1 = 4.6 → 5
+  assert.match(line, /35%/, 'the parked figure');   // exp(0.30) − 1 = 35.0
+  assert.match(line, /57%/, 'the current figure');  // exp(0.45) − 1 = 56.8 → 57
   assert.match(line, /watching/i);
   assert.match(line, /Jul 5/, 'anchored to the close date');
 });

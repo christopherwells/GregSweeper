@@ -31,7 +31,7 @@
 //    mention players inside a quoted hypothesis ("I wrote that…").
 //  - Nothing ties a finding to TODAY'S BOARD (boards generate days
 //    ahead under earlier targets, the fieldnote-drift class). The
-//    queue line frames only what the model wants data on next.
+//    queue line frames only what Greg wants data on next.
 //  - Sentences whose subject is data, an estimate, a band, or the
 //    model use MEASUREMENT VERBS (narrowed, widened, moved, held,
 //    landed, reads, runs, settled, registered, resolved). Greg's
@@ -148,8 +148,8 @@ const ARCS = {
   },
   sonarCellCount: {
     lean: 'cost',
-    pos: 'I suspected from the start that a sonar reading helps less than it looks. The data keeps siding with me.',
-    zero: 'I suspected a sonar reading helps less than it looks. The ledger went further: it barely costs anything at all.',
+    pos: 'I suspected from the start that a sonar reading helps less than it looks. The data keep agreeing with me.',
+    zero: 'I suspected a sonar reading helps less than it looks. The ledger reads even lower: it barely costs anything at all.',
     out: 'I still can’t tell whether the wide reading pays for itself. The file stays open.',
   },
   compassCellCount: {
@@ -159,7 +159,7 @@ const ARCS = {
   mirrorPairCount: {
     lean: 'zero',
     pos: 'In this file I wrote that a player who spots the pair should lose almost no time. The top of the range does not read as almost no time. The Should is on notice.',
-    zero: 'I wrote that a player who spots the pair should lose almost no time. So far the data lets the Should stand.',
+    zero: 'I wrote that a player who spots the pair should lose almost no time. So far the data let the Should stand.',
     out: 'The Should in my notes is unproven either way. I keep reading the range and it refuses to settle.',
   },
   liarCellCount: {
@@ -201,7 +201,7 @@ const ARCS = {
   },
   patternMoves: {
     lean: 'cost',
-    pos: 'I wrote that a practiced read should cost seconds, not tens of seconds. The data agrees: the effect is real and small.',
+    pos: 'I wrote that a practiced read should cost seconds, not tens of seconds. The data agree: the effect is real and small.',
     zero: 'I wrote that a practiced read should cost seconds, not tens of seconds. It barely even costs the seconds.',
     out: 'Practiced reads should be cheap. How cheap is the part I’m still counting.',
   },
@@ -213,7 +213,7 @@ const ARCS = {
   },
   cellCount: {
     lean: 'cost',
-    pos: 'Bigger boards take longer, and the rate is pinned. That’s all I ever asked of this file.',
+    pos: 'Bigger boards run longer, and the rate is pinned. That’s all I ever asked of this file.',
     zero: 'If board size stopped costing time I’d suspect the clock before the boards.',
     out: 'The size rate drifts a little with every refit. Everything else is measured against it, so I watch it.',
   },
@@ -232,7 +232,7 @@ const ARCS = {
     lean: 'cost',
     pos: 'I predicted that boards leaning on threes would cost more than their size alone, and they do. Whether it is the threes doing the work or the harder boards they ride on, I cannot yet say.',
     zero: 'I predicted that threes would cost more than size alone. The ledger read the charge back as a rounding error.',
-    out: 'The threes might cost real time, or barely any. The boards keep the file open on that.',
+    out: 'The threes might cost real time, or barely any. That question is still open.',
   },
   clueShare4: {
     lean: 'size',
@@ -243,7 +243,7 @@ const ARCS = {
   clueShare5plus: {
     lean: 'zero',
     pos: 'I wrote that a high number is nearly all mines and resolves fast, so it should barely cost. The range reads higher than that, and I want far more of these boards before I trust it.',
-    zero: 'I wrote that a high number is nearly all mines and resolves fast. The boards agree, and the cost lands at a rounding error.',
+    zero: 'I wrote that a high number is nearly all mines and resolves fast. The data agree, and the cost lands at a rounding error.',
     out: 'The high numbers are rare, so their cost is slow to pin down. The file stays open while I gather them.',
   },
 };
@@ -387,7 +387,7 @@ export function buildFacts(study, ctx = {}) {
     unit: estimateUnit(study) ?? study?.unit ?? null,
     // "per pair", not "per wormhole pair", for lines whose header
     // already names the feature (the conclusions ledger). Scaled the same
-    // way: "per ten pairs" when the estimate speaks per ten.
+    // way: "per ten pairs" when the estimate is quoted per ten.
     unitShort: study?.unit
       ? (est?.scale === 10 ? `ten ${study.unit.split(' ').pop()}s` : study.unit.split(' ').pop())
       : null,
@@ -478,8 +478,8 @@ const OPENERS = {
 // target gets the honest present-tense version.
 const CHOOSER_RETURNING = [
   'The nightly refit points its boards at whatever I’m least sure about, and it keeps coming back to this file.',
-  'Boards get spent where the doubt is widest, and the chooser keeps spending them here.',
-  'My doubt list keeps ranking this file near the top, so the boards keep coming.',
+  'I spend boards where the doubt is widest, and lately that is here.',
+  'My doubt list still ranks this file near the top, so I keep sending boards.',
 ];
 const CHOOSER_FRESH = [
   'The nightly refit points its boards at whatever I’m least sure about. Right now, that’s this.',
@@ -492,7 +492,7 @@ const CHOOSER_FRESH = [
 const ESTIMATE_POS = [
   'My current read: about {pct}% per {unit}, likely between {lo}% and {hi}%.',
   'The cost comes to about {pct}% per {unit}. The band runs {lo}% to {hi}%.',
-  'The estimate sits at about {pct}% per {unit}, between {lo}% and {hi}%.',
+  'The estimate stands at about {pct}% per {unit}, between {lo}% and {hi}%.',
   'The model puts it at about {pct}% per {unit}, inside {lo}% to {hi}%.',
   'The cost per {unit} runs about {pct}%, with a floor around {lo}% and a ceiling around {hi}%.',
 ];
@@ -501,7 +501,7 @@ const ESTIMATE_ZERO = [
   'Per {unit}, the cost reads as somewhere between 0% and about {hi}%.',
   'Call it somewhere between 0% and about {hi}% per {unit}.',
   'The charge per {unit} reads between 0% and about {hi}%.',
-  'The cost sits between 0% and about {hi}% per {unit}, which is thin either way.',
+  'The cost lies between 0% and about {hi}% per {unit}, which is thin either way.',
 ];
 
 // The band beat's variant 0 is always study.verdict.copy, the shared
@@ -558,7 +558,7 @@ const EARLY_NOTE = [
 ];
 
 // Closers, per state. The grind pool splits on resolution because "an
-// answer that flatters my hunch" is a lie when the data is siding
+// answer that flatters my hunch" is a lie when the data are siding
 // against it.
 const GRIND_CLOSERS_SIDED = [
   'A stubborn answer that flatters my hunch is exactly the kind I double-check.',
@@ -579,15 +579,15 @@ const CLOSERS = {
     'It always comes back to more boards.',
     'The file stays open, and so does the question.',
     'The next board might be the one that settles it.',
-    'I can wait. The boards keep coming.',
+    'I can wait. More boards arrive every night.',
   ],
   grind: GRIND_CLOSERS_SIDED, // resolved per-entry in _closerPool
   anomaly: [
     'I haven’t retracted the hypothesis. But it’s on notice.',
     'Backwards results get front-page space in this notebook.',
-    'When the data surprises me, I take better notes.',
+    'When the data surprise me, I take better notes.',
     'Wider is still an answer. It’s just not the one I ordered.',
-    'Instruments drift. So do estimates. Notebooks remember.',
+    'Instruments drift. So do estimates. The notebook is the record.',
   ],
   'closed-won': [
     'Closed files make room for open ones.',
@@ -599,7 +599,7 @@ const CLOSERS = {
     'A hunch that dies cleanly teaches more than one that limps along.',
     'The notebook keeps the losses. They’re what make the wins worth reading.',
     'I wanted an effect. I got an answer. The answer outranks the want.',
-    'The data owes me nothing. That’s what makes it worth asking.',
+    'The data owe me nothing. That’s what makes it worth asking.',
   ],
   resting: [
     'The file is parked, not forgotten.',
@@ -620,7 +620,7 @@ const CLOSERS = {
   early: [
     'Ask me again after a few more boards.',
     'Boards come first, then numbers, then opinions.',
-    'The notebook waits for the data, always in that order.',
+    'The notebook comes after the data, always in that order.',
     'Every thick file in this notebook started thin.',
   ],
 };
@@ -670,7 +670,7 @@ const LEDGER_NEG = [
   '{Label} came back as a small refund, about {pctAbs}% per {unitShort} in your favor. Closed {closedDate}.',
 ];
 
-// The queue: what the model wants data on next, never a claim about
+// The queue: what Greg wants data on next, never a claim about
 // today's board. A closed target can still top the coverage list (the
 // board mix keeps starved features fed); those get their own honest
 // phrasing.
@@ -692,7 +692,7 @@ const LOG_TIGHTENED = [
   '{RunsWord} {runsNoun} came in, and the band tightened {delta}%.',
   'It was a good night: {runsWord} {runsNoun} landed and the range came down {delta}%.',
   '{RunsWord} {runsNoun} landed and left the band {delta}% narrower. I’ll take it.',
-  'The model took in {runsWord} {runsNoun}, and the spread came down {delta}%.',
+  'The model fit {runsWord} {runsNoun}, and the spread came down {delta}%.',
   '{RunsWord} {runsNoun} landed and the spread shrank {delta}%.',
   'Uncertainty fell {delta}% on {runsWord} {runsNoun}.',
   'The range fell {delta}% on {runsWord} {runsNoun}. That’s progress you can measure.',
@@ -748,7 +748,7 @@ const LOG_QUIET = [
   'No new runs arrived. The file is where I left it.',
   'No one played, so I have nothing new to write.',
   'Zero runs landed. Even instruments get days off.',
-  'The night came up blank. The numbers hold.',
+  'No runs arrived tonight. The numbers hold.',
 ];
 
 // Every pool line, for the guard tests (em-dash, hedge, first-person,

@@ -1,16 +1,16 @@
 // ── Greg's voice ───────────────────────────────────────
 // The meta-layer made legible: Greg is the resident scientist, and the
 // few sentences he speaks are TRUE statements backed by the live
-// pipeline — the adaptive experiment design (why today's board exists)
+// pipeline, the adaptive experiment design (why today's board exists)
 // and the nightly Bayesian refit (what yesterday's runs did to the
 // model). Hard rules:
 //   - Greg never says a number the engine cannot prove.
 //   - The bad days speak too: a widened estimate, a rejected fit, or a
-//     day nobody played all get their own honest line — a Greg who only
+//     day nobody played all get their own honest line, a Greg who only
 //     reports good news is a mascot, not a scientist.
 //   - Voice budget: at most one Greg line per surface, and each surface
 //     renders once per session.
-// Pure functions over experimentTarget / modelHistory data — node-testable.
+// Pure functions over experimentTarget / modelHistory data, node-testable.
 
 // Plain-English names for the model's push-able features.
 const FEATURE_NAMES = {
@@ -47,7 +47,7 @@ export function featureName(feature) {
   return FEATURE_NAMES[feature] || null;
 }
 
-// Greg's working hypothesis per feature — the falsifiable, plain-language
+// Greg's working hypothesis per feature, the falsifiable, plain-language
 // framing of WHY the model studies it. Structural claims only, never
 // numbers: the number arrives later, in a verdict backed by the fitted
 // posterior. Each line is a mechanism plus what the data will decide.
@@ -56,7 +56,7 @@ const FEATURE_HYPOTHESIS = {
   sonarCellCount: 'A sonar reading covers a wide area but names no cell. I suspect it helps less than it looks like it should.',
   compassCellCount: 'A compass points at danger without counting it. I can’t yet tell whether players read it fast or stop to puzzle over it.',
   mirrorPairCount: 'Mirrored numbers lie about location, not amount. Players who spot the pair should lose almost no time. Should.',
-  liarCellCount: 'A liar is off by one, and one wrong number can poison a whole corner. Or players just route around it. The data decides.',
+  liarCellCount: 'A liar is off by one, and one wrong number can poison a whole corner. Or players just route around it. The data decide.',
   mysteryCellCount: 'A mystery cell hides its number entirely. Missing information has a price; I’m measuring it.',
   wormholePairCount: 'Wormhole numbers count two places at once. Splitting one number across the board should slow the reading down.',
   wallEdgeCount: 'Walls cut neighbors apart, so every number near one means less than it looks. Small effect or large? Not sure yet.',
@@ -65,7 +65,7 @@ const FEATURE_HYPOTHESIS = {
   searchMoves: 'Some deductions need real search, not pattern reading. Those moves should be the expensive ones.',
   patternMoves: 'Pattern reads are practiced moves. They should cost seconds, not tens of seconds.',
   totalMines: 'More mines, more flags, more careful steps. The steady cost of density is the backbone of the model.',
-  cellCount: 'Bigger boards take longer. Obvious, but pinning the exact rate is what everything else is measured against.',
+  cellCount: 'Bigger boards run longer. Obvious, but pinning the exact rate is what everything else is measured against.',
   // Clue-digit arc. Difficulty is not the digit's size, it is how many mine
   // arrangements a clue leaves open: a low number pins down fast, a high
   // number is nearly all mines and pins down just as fast, so the middle is
@@ -79,14 +79,14 @@ const FEATURE_HYPOTHESIS = {
 
 // The hypothesis line for a feature. Named features get their bespoke
 // claim; a studied-but-unnamed feature (the refit can target measures
-// the voice layer has no plain words for yet) gets an honest generic —
+// the voice layer has no plain words for yet) gets an honest generic,
 // never the raw code name, never a fabricated mechanism.
 export function featureHypothesis(feature) {
   if (typeof feature !== 'string' || !feature) return null;
   if (FEATURE_HYPOTHESIS[feature]) return FEATURE_HYPOTHESIS[feature];
   const name = featureName(feature);
   if (name) {
-    return `I think ${name} changes how long a board takes. The data will tighten my estimate, or show there is nothing there.`;
+    return `I think ${name} changes how long a solve runs. The data will tighten my estimate, or show there is nothing there.`;
   }
   return 'An experimental board measure. I’m still working out whether it matters at all.';
 }
@@ -125,7 +125,7 @@ export function fieldNoteLine(mission) {
   }
   return mission.isPrimary
     ? `Greg: today probes ${name}, my widest uncertainty`
-    : `Greg: today is a ${name} study. My model wants more data there`;
+    : `Greg: today is a ${name} study. I want more data there`;
 }
 
 // Gimmick ids (board.activeGimmicks) → the same plain-English names.
@@ -141,18 +141,18 @@ const GIMMICK_NAMES = {
   worm: 'worm tiles',
 };
 
-// Field note derived from the CANONICAL BOARD itself — the only source
+// Field note derived from the CANONICAL BOARD itself, the only source
 // that cannot drift. Boards are pre-generated up to 7 days ahead
 // against THAT day's experimentTarget.json, and the nightly refit
 // reorders the coverage list, so re-deriving the mission from the
 // CURRENT file via the seed's slot index names the wrong gimmick
-// (2026-06-10: board carried wormholes, note said compass).
+// (2026-06-10: the board had wormholes, the note said compass).
 // Preference order:
 //   1. The mission stamped into the payload at generation
-//      (missionTarget/missionIsPrimary — boards written after this fix).
+//      (missionTarget/missionIsPrimary, boards written after this fix).
 //   2. The board's actual activeGimmicks, in the neutral framing (we
 //      know WHAT is on the board, not why it was chosen).
-//   3. Nothing — a gimmick-free board gets no note rather than a vague one.
+//   3. Nothing, a gimmick-free board gets no note rather than a vague one.
 export function fieldNoteFromBoard(raw) {
   if (!raw) return null;
   if (typeof raw.missionTarget === 'string') {
@@ -214,7 +214,7 @@ export function yesterdayNote(history) {
 
 // The Lab File line: the player's par, itemized. `details` is the per-uid
 // { k, bombSeconds } split from handicaps.json (emitted by the refit). The
-// pace term is board-scaled — `gregPar × (k - 1)` — so the line stays in
+// pace term is board-scaled, `gregPar × (k - 1)`, so the line stays in
 // seconds and additive-looking even though skill is a multiplicative ratio,
 // and it sums to personalPar (`gregPar × k + bombSeconds`). Returns null
 // without details; we never fabricate a decomposition the pipeline didn't ship.

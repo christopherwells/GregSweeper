@@ -1,13 +1,13 @@
-// ── Greg's Journal — the in-app notebook surface ──────────────────────
+// ── Greg's Journal, the in-app notebook surface ──────────────────────
 // Depth over breadth (the 2026-07-12 reframe): ONE deep card for the
 // active experiment (hypothesis, composed notebook entry, uncertainty
 // sparkline, dated lab log), a CONCLUSIONS LEDGER of closed studies as
 // one-line past-tense findings that expand on tap, one QUEUE line from
 // the coverage list, and the full parameter picture behind a single
-// "full ledger" link. In-between studies have no cards here — they stay
+// "full ledger" link. In-between studies have no cards here, they stay
 // reachable through the table and their ?report= pages. Every word
 // comes from the pure journalProse/journalFindings derivations over the
-// SHIPPED modelHistory.json — the same honesty contract as gregVoice:
+// SHIPPED modelHistory.json, the same honesty contract as gregVoice:
 // nothing renders that the fit didn't produce, and the bad days
 // (widened estimates, rejected fits, lost hunches) publish like any
 // other. Lazy-loaded from the More sheet row in main.js.
@@ -31,7 +31,7 @@ function _ledgerRow(item) {
   details.appendChild(summary);
   // The expansion is pre-composed (the whole screen shares one prose
   // session, so the collision rule holds even across cards the player
-  // hasn't opened yet). No header — the one-liner already names it.
+  // hasn't opened yet). No header, the one-liner already names it.
   details.appendChild(buildStudyCard(item.study, item.entry, {
     head: false,
     className: 'journal-ledger-body',
@@ -49,14 +49,19 @@ function _fullLedger(table) {
   tbl.appendChild(head);
   for (const r of table) {
     const tr = el('tr');
-    tr.appendChild(el('td', null, r.label));
+    const featureCell = el('td', null, r.label);
+    // The basis reads on the row itself ("per ten liar cells"), his
+    // 2026-08-11 report that the ledger gave no indication of the
+    // ten-tile basis the estimate lines speak in.
+    if (r.per) featureCell.appendChild(el('div', 'journal-table-per', r.per));
+    tr.appendChild(featureCell);
     tr.appendChild(el('td', null, r.effect));
     tr.appendChild(el('td', null, r.range));
     tbl.appendChild(tr);
   }
   details.appendChild(tbl);
   details.appendChild(el('p', 'journal-table-note',
-    'Each row shows the effect per unit on a solve, with the band the model would bet on. Greg re-fits these every night.'));
+    'Each row shows what ten more of the feature would add to a solve, with the band the model would bet on. The clue mixes stay per one extra clue-in-ten. Greg re-fits these every night.'));
   return details;
 }
 
@@ -75,7 +80,7 @@ export async function renderJournalModal() {
       fetch('./src/logic/modelHistory.json').then(r => (r.ok ? r.json() : null)),
       loadExperimentTarget(),
     ]);
-  } catch { /* handled below — the empty state renders */ }
+  } catch { /* handled below, the empty state renders */ }
 
   const screen = Array.isArray(history) && history.length > 0
     ? planJournalScreen(history, getExperimentMeta())
@@ -94,9 +99,9 @@ export async function renderJournalModal() {
       'Last night’s fit failed my quality bar, so I kept the previous model.'));
   }
 
-  // The active experiment — the one deep card. The header claims only
-  // what the live target IS (what the model wants data on), never that
-  // today's board carries it: boards generate days ahead under earlier
+  // The active experiment, the one deep card. The header claims only
+  // what the live target IS (what Greg wants data on), never that
+  // today's board includes it: boards generate days ahead under earlier
   // targets (the 2026-06-10 field-note drift class).
   if (screen.active) {
     body.appendChild(buildStudyCard(screen.active.study, screen.active.entry, {

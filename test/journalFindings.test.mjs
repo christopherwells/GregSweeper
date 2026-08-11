@@ -260,11 +260,13 @@ test('estimateSummary converts log coefficients to plain percentages with a ±1 
     latest: { date: '2026-07-12', mean: 0.0329, sd: 0.0189 },
   };
   const est = estimateSummary(study);
-  // exp(0.0329) − 1 ≈ 3.34% per unit; the band must bracket it.
-  assert.ok(Math.abs(est.pct - 3.34) < 0.05, `pct ${est.pct}`);
+  // Per-TEN units, universally (his 2026-08-11 tightening: "all on a 10
+  // tile basis"): exp(0.329) − 1 ≈ 38.96%, and the band must bracket it.
+  assert.equal(est.scale, 10);
+  assert.ok(Math.abs(est.pct - 38.96) < 0.1, `pct ${est.pct}`);
   assert.ok(est.lo < est.pct && est.pct < est.hi);
-  assert.ok(Math.abs(est.lo - 1.41) < 0.05, `lo ${est.lo}`);
-  assert.ok(Math.abs(est.hi - 5.31) < 0.05, `hi ${est.hi}`);
+  assert.ok(Math.abs(est.lo - 15.03) < 0.1, `lo ${est.lo}`);
+  assert.ok(Math.abs(est.hi - 67.86) < 0.1, `hi ${est.hi}`);
   assert.equal(est.asOf, '2026-07-12');
   assert.equal(estimateSummary({ latest: null }), null, 'no era fits → no estimate, never a fabricated one');
 });
@@ -281,10 +283,12 @@ test('estimateLine: one sentence, whole percents, never a fake negative (copy ru
   assert.equal(tiny, 'Ten liar cells add somewhere between 0% and about 3% to your time.');
   assert.ok(!/-\d/.test(tiny), `no negative percentages on a player surface: "${tiny}"`);
   assert.ok(!/\d\.\d/.test(tiny), `the per-ten scale exists to retire decimals: "${tiny}"`);
-  // A clearly-positive band OVER the 3% per-unit bar keeps the classic
-  // per-unit voice: whole percents, exactly one hedge word.
+  // A clearly-positive band is quoted per ten like everything else (his
+  // 2026-08-11 tightening removed the size carve-out): whole percents,
+  // exactly one hedge word, exp-compounded because that is the model's
+  // own prediction for ten more units.
   const solid = estimateLine({ unit: 'compass cell', feature: 'compassCellCount', latest: { date: '2026-07-12', mean: 0.0329, sd: 0.0189 } });
-  assert.equal(solid, 'Each compass cell adds about 3% to your time, likely between 1% and 5%.');
+  assert.equal(solid, 'Ten compass cells add about 39% to your time, likely between 15% and 68%.');
   // A whole-band refund (no live example yet) flags itself for re-check
   // instead of rendering a minus sign. mean -0.02 is under the scale bar,
   // so it speaks per ten as well: exp(-0.2) is an 18% refund.
@@ -316,17 +320,23 @@ test('parameterTable: every named feature from the latest fit, no fake negatives
   assert.deepEqual(table.map(r => r.feature),
     ['totalMines', 'compassCellCount', 'liarCellCount'], 'named only, sorted by effect');
   const liar = table.find(r => r.feature === 'liarCellCount');
-  assert.equal(liar.effect, '+0.2%'); // exp(0.0015)−1 = 0.1501% → one decimal below 1%
-  assert.equal(liar.range, '0% to 0.3%', 'straddling band floors at 0, never a minus');
+  // Per-ten like every estimate surface (his 2026-08-11 report: the
+  // ledger gave no indication of the basis): exp(0.015) − 1 = 1.51%.
+  assert.equal(liar.effect, '+2%');
+  assert.equal(liar.range, '0% to 3%', 'straddling band floors at 0, never a minus');
+  assert.equal(liar.per, 'per ten liar cells', 'the row states its basis');
   const compass = table.find(r => r.feature === 'compassCellCount');
-  assert.equal(compass.effect, '+3%');
-  assert.equal(compass.range, '1% to 5%');
+  assert.equal(compass.effect, '+39%');
+  assert.equal(compass.range, '15% to 68%');
+  assert.equal(compass.per, 'per ten compass cells');
   // Whole-band-negative renders as time saved, still without minus signs.
   const negTable = parameterTable([
     row('2026-07-12', 'zeroClusterCount', [cand('zeroClusterCount', -0.02, 0.001)]),
   ]);
-  assert.equal(negTable[0].effect, 'saves 2%');
-  assert.equal(negTable[0].range, 'about 2% saved', 'equal-rounding refund ends collapse too');
+  assert.equal(negTable[0].effect, 'saves 18%');
+  // At scale ten the refund band's ends no longer round together:
+  // exp(-0.19) and exp(-0.21) sit a full point apart.
+  assert.equal(negTable[0].range, '17% to 19% saved');
   assert.ok(!negTable[0].range.includes('-'));
   assert.deepEqual(parameterTable([]), []);
   // REGRESSION: a history ending on a pre-epoch row (stale cached copy)
@@ -359,9 +369,11 @@ test('REGRESSION: a diagnostics-rejected night cannot blank the parameter ledger
   assert.deepEqual(parameterTable([row('2026-07-31', 'sonarCellCount', [])]), []);
 });
 
-test('estimateLine: band ends that round to the same figure collapse instead of "between 6% and 6%"', () => {
-  const tight = estimateLine({ unit: 'mine', latest: { date: '2026-07-12', mean: 0.0581, sd: 0.0038 } });
-  assert.equal(tight, 'Each mine adds about 6% to your time, and the band barely strays from that.');
+test('estimateLine: band ends that round to the same figure collapse instead of "between 79% and 79%"', () => {
+  // At the per-ten scale the fixture needs a tighter sd for the ends to
+  // round together: exp(0.581) − 1 ≈ 78.8%, both ends rounding to 79.
+  const tight = estimateLine({ unit: 'mine', feature: 'totalMines', latest: { date: '2026-07-12', mean: 0.0581, sd: 0.0001 } });
+  assert.equal(tight, 'Ten mines add about 79% to your time, and the band barely strays from that.');
 });
 
 test('deriveStudyForFeature: a never-targeted feature still gets an honest study object', () => {

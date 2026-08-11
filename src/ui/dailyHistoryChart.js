@@ -150,7 +150,7 @@ export function renderDailyHistoryChart(entries, opts = {}) {
     const isLast = i === lastIdx;
     const isRegular = i % xTickEvery === 0 && !isFirst;
     if (!isFirst && !isLast && !isRegular) continue;
-    if (isRegular && lastIdx - i < xTickEvery / 2) continue; // would collide with "today"
+    if (isRegular && lastIdx - i < xTickEvery * 0.75) continue; // would collide with "today" (margin widened with charts.js, 2026-08-11)
     const x = xFor(i);
     const label = document.createElementNS(svgNS, 'text');
     const anchor = isFirst ? 'start' : (isLast ? 'end' : 'middle');

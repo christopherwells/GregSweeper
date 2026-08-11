@@ -175,11 +175,51 @@ function renderHeadlineCards(plays, ratio, refPar, handicapProvisional) {
   setText('stat-mean-strikes', meanStrikes);
 }
 
+// ── Shared time-window pills (his ask, 2026-08-11: "All the dot graphs
+// should have those 30/60/90/1y pills") ────────────────────────────────
+// One factory, one window vocabulary; each dot chart keeps its own
+// session-persistent selection, 60 days the default. Series that carry
+// history in their math (the career average, the rolling means) are
+// computed over ALL plays and the window only decides which points draw,
+// so "career avg" keeps meaning career at every window.
+const TIME_WINDOWS = [[30, '30d'], [60, '60d'], [90, '90d'], [365, '1y']];
+
+function windowToggle(current, onPick) {
+  const row = document.createElement('div');
+  row.className = 'chart-toggle';
+  for (const [days, label] of TIME_WINDOWS) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'chart-toggle-btn' + (current === days ? ' active' : '');
+    btn.setAttribute('aria-pressed', current === days ? 'true' : 'false');
+    btn.textContent = label;
+    btn.addEventListener('click', () => { if (current !== days) onPick(days); });
+    row.appendChild(btn);
+  }
+  return row;
+}
+
+function windowCutoff(days) {
+  return new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+}
+
 // ── Chart: Handicap trajectory ────────────────────────
 
+let _hcDays = 60;
+let _hcCtx = null;
+
 function renderHandicapTrajectory(plays) {
+  _hcCtx = plays;
+  _renderHandicapTrajectoryInner();
+}
+
+function _renderHandicapTrajectoryInner() {
+  const plays = _hcCtx || [];
+  const wrap = document.createElement('div');
+  wrap.appendChild(windowToggle(_hcDays, (d) => { _hcDays = d; _renderHandicapTrajectoryInner(); }));
   if (plays.length < 3) {
-    replaceContent('chart-handicap-trajectory', emptyDiv('Need at least 3 plays to trace a handicap.'));
+    wrap.appendChild(emptyDiv('Need at least 3 plays to trace a handicap.'));
+    replaceContent('chart-handicap-trajectory', wrap);
     return;
   }
   // Two series on the same y-axis: cumulative mean of deltaGlobal (your
@@ -196,6 +236,7 @@ function renderHandicapTrajectory(plays) {
     cumSum += p.deltaGlobal;
     const cumMean = cumSum / (i + 1);
     cumulative.push({
+      d: p.date,
       x: shortDate(p.date),
       y: Math.round(cumMean * 10) / 10,
       label: `${p.date}: career avg ${cumMean >= 0 ? '+' : ''}${cumMean.toFixed(1)}s (after ${i + 1} plays)`,
@@ -204,20 +245,29 @@ function renderHandicapTrajectory(plays) {
     const window = plays.slice(lo, i + 1);
     const rollMean = window.reduce((s, pp) => s + pp.deltaGlobal, 0) / window.length;
     rolling.push({
+      d: p.date,
       x: shortDate(p.date),
       y: Math.round(rollMean * 10) / 10,
       label: `${p.date}: last ${window.length} plays avg ${rollMean >= 0 ? '+' : ''}${rollMean.toFixed(1)}s`,
     });
   }
-  const svg = lineChart(cumulative, {
+  const cutoff = windowCutoff(_hcDays);
+  const cumWin = cumulative.filter(pt => pt.d >= cutoff);
+  const rollWin = rolling.filter(pt => pt.d >= cutoff);
+  if (cumWin.length === 0) {
+    wrap.appendChild(emptyDiv('No plays in this window. Widen it above.'));
+    replaceContent('chart-handicap-trajectory', wrap);
+    return;
+  }
+  wrap.appendChild(lineChart(cumWin, {
     ariaLabel: 'Handicap trajectory: career average and last-10-play rolling',
     thresholdLine: 0,
     yFormat: v => (v > 0 ? '+' : '') + v + 's',
     dotClassForValue: v => v < -0.5 ? 'chart-dot-good' : v > 0.5 ? 'chart-dot-bad' : 'chart-dot-even',
     lineClass: 'chart-line chart-line-handicap',
-    secondary: rolling,
-  });
-  replaceContent('chart-handicap-trajectory', svg);
+    secondary: rollWin,
+  }));
+  replaceContent('chart-handicap-trajectory', wrap);
 }
 
 // ── Chart: Delta by reasoning type ────────────────────
@@ -273,9 +323,21 @@ function renderComplexityDelta(plays) {
 
 // ── Chart: Strike rate rolling trend ──────────────────
 
+let _strikeDays = 60;
+let _strikeCtx = null;
+
 function renderStrikeRate(plays) {
+  _strikeCtx = plays;
+  _renderStrikeRateInner();
+}
+
+function _renderStrikeRateInner() {
+  const plays = _strikeCtx || [];
+  const wrap = document.createElement('div');
+  wrap.appendChild(windowToggle(_strikeDays, (d) => { _strikeDays = d; _renderStrikeRateInner(); }));
   if (plays.length < 3) {
-    replaceContent('chart-strike-rate', emptyDiv('Need at least 3 plays.'));
+    wrap.appendChild(emptyDiv('Need at least 3 plays.'));
+    replaceContent('chart-strike-rate', wrap);
     return;
   }
   const window = 7;
@@ -284,19 +346,27 @@ function renderStrikeRate(plays) {
     const slice = plays.slice(lo, i + 1);
     const rate = slice.filter(p => p.bombHits > 0).length / slice.length;
     return {
+      d: plays[i].date,
       x: shortDate(plays[i].date),
       y: Math.round(rate * 100),
       label: `${plays[i].date}: ${Math.round(rate * 100)}% of last ${slice.length} dailies had a strike`,
     };
   });
-  const svg = lineChart(points, {
+  const cutoff = windowCutoff(_strikeDays);
+  const win = points.filter(pt => pt.d >= cutoff);
+  if (win.length === 0) {
+    wrap.appendChild(emptyDiv('No plays in this window. Widen it above.'));
+    replaceContent('chart-strike-rate', wrap);
+    return;
+  }
+  wrap.appendChild(lineChart(win, {
     ariaLabel: 'Strike rate trend (rolling 7-day %)',
     yDomain: [0, 100],
     yFormat: v => v + '%',
     dotClassForValue: v => v <= 20 ? 'chart-dot-good' : v >= 50 ? 'chart-dot-bad' : 'chart-dot-even',
     lineClass: 'chart-line chart-line-strike',
-  });
-  replaceContent('chart-strike-rate', svg);
+  }));
+  replaceContent('chart-strike-rate', wrap);
 }
 
 // ── Chart: Delta by modifier (single bar per modifier) ─
@@ -398,6 +468,7 @@ function renderDeltaDistribution(plays) {
 // answers "who beat their own par by more" (unrated players rank at raw
 // time, k=1). Raw ranks wall-clock times. The mode persists for the session.
 let _pctMode = 'adjusted';
+let _pctDays = 60;
 let _pctCtx = null;
 
 function renderPercentileTrend(plays, scoresByDate, uid, handicapMap) {
@@ -431,8 +502,9 @@ function _renderPercentileTrendChart() {
     return;
   }
   const adjusted = _pctMode === 'adjusted';
+  const cutoff = windowCutoff(_pctDays);
   const points = [];
-  for (const p of plays) {
+  for (const p of plays.filter(pp => (pp.date || '') >= cutoff)) {
     // Rank against the BOARD's field (archive replays have no daily/ row for
     // themselves, so they naturally drop out via the mine-check below).
     const dayScores = scoresByDate[p.boardDate || p.date] || [];
@@ -469,8 +541,9 @@ function _renderPercentileTrendChart() {
 
   const wrap = document.createElement('div');
   wrap.appendChild(_pctToggle());
+  wrap.appendChild(windowToggle(_pctDays, (d) => { _pctDays = d; _renderPercentileTrendChart(); }));
   if (points.length === 0) {
-    wrap.appendChild(emptyDiv('Populates when 2+ players have uid-tagged scores on the same day.'));
+    wrap.appendChild(emptyDiv('Populates when 2+ players have uid-tagged scores on the same day. If you played further back, widen the window above.'));
   } else {
     wrap.appendChild(lineChart(points, {
       ariaLabel: adjusted
@@ -496,32 +569,12 @@ function _renderPercentileTrendChart() {
 // The fetch already pulls a year (statsModal passes 365 days of history),
 // so a pill click is a pure re-render; the window persists for the
 // session, same as the percentile chart's mode.
-const HISTORY_WINDOWS = [[30, '30d'], [60, '60d'], [90, '90d'], [365, '1y']];
 let _histDays = 60;
 let _histCtx = null;
 
 function renderHistoryChart(plays) {
   _histCtx = plays;
   _renderHistoryChartInner();
-}
-
-function _histToggle() {
-  const row = document.createElement('div');
-  row.className = 'chart-toggle';
-  for (const [days, label] of HISTORY_WINDOWS) {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'chart-toggle-btn' + (_histDays === days ? ' active' : '');
-    btn.setAttribute('aria-pressed', _histDays === days ? 'true' : 'false');
-    btn.textContent = label;
-    btn.addEventListener('click', () => {
-      if (_histDays === days) return;
-      _histDays = days;
-      _renderHistoryChartInner();
-    });
-    row.appendChild(btn);
-  }
-  return row;
 }
 
 function _renderHistoryChartInner() {
@@ -535,7 +588,7 @@ function _renderHistoryChartInner() {
     delta: p.deltaPersonal != null ? p.deltaPersonal : (p.deltaGlobal || 0),
   }));
   const wrap = document.createElement('div');
-  wrap.appendChild(_histToggle());
+  wrap.appendChild(windowToggle(_histDays, (d) => { _histDays = d; _renderHistoryChartInner(); }));
   wrap.appendChild(renderDailyHistoryChart(entries, { daysBack: _histDays }));
   replaceContent('chart-daily-history', wrap);
 }
