@@ -110,6 +110,10 @@ export const state = {
   // challenge save slot, no power-up earns (/test/ shares this origin's
   // localStorage with prod, so a playtest jump must never pollute it)
   isLevelPractice: false,
+  // Test-env ?level=N&board=I: pick this bin index from the level's library
+  // file instead of rolling the seen-cycle (deterministic e2e venues).
+  // Practice-lane-only by construction; cleared wherever isLevelPractice is.
+  climbBoardIndex: null,
   // Project Coastline (test-only, ?coastline=1): a frozen Archimedean-tiling
   // board played as an isLevelPractice run (records nothing). The flag routes
   // newGame's generation + revealCell's frozen first-click path onto the tiling

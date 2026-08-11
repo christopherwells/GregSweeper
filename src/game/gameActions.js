@@ -46,6 +46,7 @@ import { fetchWeeklyLeaderboard } from '../firebase/firebaseLeaderboard.js';
 import { getUid, markWeeklyDayAttempted } from '../firebase/firebaseProgress.js';
 import { isTestEnvironment } from '../firebase/env.js';
 import { reportCaughtError } from '../diagnostics/errorReporter.js';
+import { dealClimbBoard } from './climbDeal.js';
 import {
   loadModePowerUps, loadCheckpoint, clearGameState, saveDailyPar,
   hasSeenNotice, markNoticeSeen,
@@ -562,7 +563,16 @@ export async function newGame() {
     await new Promise((resolve) => setTimeout(resolve, 0));
     if (staleRun()) return;
 
-    let res = null;
+    // THE LIBRARY IS THE PLAY PATH for L26-250 (the wiring that retires
+    // issue #286): a dealt board was selected hardest-of-many offline and
+    // re-binned nightly against the model of the day, and a deal cannot
+    // exhaust the way a draw can. The drawn path below survives as the
+    // fallback (fetch failure, corrupt file, empty bin), behind the abort
+    // contract; the openers (L1-25) and the endless zone stay drawn.
+    let res = await dealClimbBoard(state.currentLevel);
+    if (staleRun()) return;
+    const fromLibrary = !!res;
+
     for (let redraw = 0; redraw < 3 && !res; redraw++) {
       // Per-draw entropy: the validator proves the spec's DISTRIBUTION, so
       // the live seed only has to be unique, never reproducible.
@@ -593,6 +603,22 @@ export async function newGame() {
     state.challengeFeatures = res.features;
     state.challengePar = res.par || 0;
     state.firstClick = false;
+
+    if (fromLibrary) {
+      // The DEALT board is the level now, so everything that describes the
+      // level must describe the deal, not the braid's spec for that slot
+      // (the fieldnote-drift rule): the pre-level card's shape line and the
+      // shape-intro card both read challengeSpec.shape.
+      if (res.spec) state.challengeSpec = { ...res.spec, level: state.currentLevel };
+      // Par through the CLIENT's own model: the file was priced under the
+      // nightly's fingerprint, and this client's cached difficulty.js can
+      // be older or newer than the fetched JSON. Pricing the stored
+      // features locally keeps the pace bar and expected-time line
+      // coherent with every other par this client shows.
+      if (res.features) {
+        try { state.challengePar = predictPar(res.features); } catch { /* stored par stands */ }
+      }
+    }
 
     // Same contract as daily/weekly: certified from the marked opener, and
     // the board never mutates after this point.

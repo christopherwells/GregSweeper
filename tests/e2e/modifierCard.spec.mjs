@@ -8,21 +8,49 @@
 // that a Classic debut still carries the square one. That is this file.
 
 import { test, expect } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 import { prepareInteractionSpec } from './helpers.mjs';
-import { challengeSpecForLevel, MOD_INTRO_BLOCKS, CHALLENGE_BLOCK_SIZE } from '../../src/logic/challenge250.js';
+import { CHALLENGE_BLOCK_SIZE } from '../../src/logic/challenge250.js';
+import { LIB_MOD_INTROS } from '../../src/logic/climbLibrary.js';
 import { buildTiling } from '../../src/logic/tilingGeometry.js';
 
 /**
- * WHERE a modifier debuts is DERIVED from the pool now, not authored, so this
- * file reads it rather than writing it down. Hardcoding the level is what
- * broke these two specs when the ladder moved to a pool: sonar had been pinned
- * to L76 on Paving Stones and compass to L91, and both levels now carry
- * something else entirely.
+ * WHERE a modifier debuts follows the LIBRARY's schedule now: ?level= deals
+ * from the level's pre-generated bin, so the braid's spec for that slot says
+ * nothing about the board on screen. The venue is read from the committed
+ * level file itself, and the &board= practice override pins the exact bin
+ * index so the dealt lattice is deterministic per run. Hardcoding a level
+ * is what broke this spec twice (the pool move, then the library move).
  */
 function debutOf(modifier) {
-  const block = Number(Object.entries(MOD_INTRO_BLOCKS).find(([, g]) => g === modifier)[0]);
+  const block = Number(Object.entries(LIB_MOD_INTROS).find(([, g]) => g === modifier)[0]);
   const level = (block - 1) * CHALLENGE_BLOCK_SIZE + 1;
-  return { level, spec: challengeSpecForLevel(level) };
+  // Blocks 2-4 debut inside the authored openers (L1-25), which have no
+  // bin file and stay drawn; only library levels can pin a bin index.
+  if (level < 26) return { level, board: -1, spec: null };
+  const bin = JSON.parse(readFileSync(new URL(
+    `../../scripts/data/climb-library/level-${String(level).padStart(3, '0')}.json`,
+    import.meta.url), 'utf8'));
+  // A modifier-debut bin carries the debut mod on every board; take the
+  // first LATTICE board for the diagram tests, if the bin holds one.
+  const board = bin.boards.findIndex((b) => b.spec.shape !== 'rect');
+  return { level, board, spec: board >= 0 ? bin.boards[board].spec : bin.boards[0].spec };
+}
+
+/**
+ * The first modifier (in schedule order) whose debut bin holds a lattice
+ * board: sonar now debuts at L26, where only Classic is introduced, so the
+ * lattice-diagram regression keys off whichever debut genuinely lands on a
+ * lattice rather than skipping itself vacuously.
+ */
+function firstLatticeDebut() {
+  const blocks = Object.keys(LIB_MOD_INTROS).map(Number).sort((a, b) => a - b);
+  for (const b of blocks) {
+    const mod = LIB_MOD_INTROS[b];
+    const d = debutOf(mod);
+    if (d.board >= 0) return { mod, ...d };
+  }
+  return null;
 }
 
 /**
@@ -38,9 +66,10 @@ function vertexCounts(shape) {
 }
 
 /** Open a ladder level and click through to the named modifier's own card. */
-async function openModifierCard(page, level, modifierName) {
+async function openModifierCard(page, level, modifierName, board = null) {
   await prepareInteractionSpec(page);
-  await page.goto(`/?isTest=1&level=${level}`);
+  const boardParam = board != null && board >= 0 ? `&board=${board}` : '';
+  await page.goto(`/?isTest=1&level=${level}${boardParam}`);
   await page.waitForSelector('#boot-overlay', { state: 'detached', timeout: 30_000 });
   await page.waitForSelector('#board .cell', { timeout: 30_000 });
   await page.click('#board .cell.suggested-start');
@@ -60,10 +89,12 @@ async function openModifierCard(page, level, modifierName) {
   throw new Error(`never reached the ${modifierName} card at L${level}`);
 }
 
-test('REGRESSION: sonar debuts on a lattice and its card draws THAT lattice', async ({ page }) => {
-  const { level, spec } = debutOf('sonar');
-  test.skip(spec.shape === 'rect', 'sonar debuts on Classic in this pool — the square markup is correct there');
-  await openModifierCard(page, level, 'Sonar');
+test('REGRESSION: a lattice debut draws THAT lattice on its card', async ({ page }) => {
+  const d = firstLatticeDebut();
+  test.skip(!d, 'no modifier-debut bin holds a lattice board in this library');
+  const { getGimmickDefs } = await import('../../src/logic/gimmicks.js');
+  const modifierName = getGimmickDefs()[d.mod].name;
+  await openModifierCard(page, d.level, modifierName, d.board);
 
   const example = page.locator('#gimmick-intro-example');
   // The lattice diagram, not the square grid.
@@ -71,22 +102,17 @@ test('REGRESSION: sonar debuts on a lattice and its card draws THAT lattice', as
   await expect(example.locator('.gimmick-example-grid')).toHaveCount(0);
 
   // The cells are really that lattice's cells. Vertex counts come from the
-  // geometry, so this stays exact wherever sonar debuts and still cannot pass
-  // on the square markup (which draws no polygon) or on a rectangle.
+  // geometry, so this stays exact wherever the debut lands and still cannot
+  // pass on the square markup (which draws no polygon) or on a rectangle.
   const sides = await example.locator('svg polygon').first()
     .evaluate((el) => el.getAttribute('points').trim().split(/\s+/).length);
-  expect(vertexCounts(spec.shape)).toContain(sides);
-
-  // The region is lit, and the copy no longer promises a 5x5 area outright.
-  const lit = await example.locator('svg polygon[fill*="region-highlight"]').count();
-  expect(lit).toBeGreaterThan(5);
-  await expect(page.locator('#gimmick-intro-desc')).not.toHaveText(/5×5 area centered/);
+  expect(vertexCounts(d.spec.shape)).toContain(sides);
 });
 
-test('REGRESSION: compass debuts on a lattice and its card draws a real ray', async ({ page }) => {
-  const { level, spec } = debutOf('compass');
-  test.skip(spec.shape === 'rect', 'compass debuts on Classic in this pool — the square markup is correct there');
-  await openModifierCard(page, level, 'Compass');
+test('REGRESSION: compass on a lattice draws a real ray on its card', async ({ page }) => {
+  const { level, board, spec } = debutOf('compass');
+  test.skip(board < 0, 'the compass debut bin holds no lattice board in this library');
+  await openModifierCard(page, level, 'Compass', board);
 
   const example = page.locator('#gimmick-intro-example');
   await expect(example.locator('.gimmick-example-shape svg polygon').first()).toBeAttached();
