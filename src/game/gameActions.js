@@ -563,12 +563,14 @@ export async function newGame() {
     await new Promise((resolve) => setTimeout(resolve, 0));
     if (staleRun()) return;
 
-    // THE LIBRARY IS THE PLAY PATH for L26-250 (the wiring that retires
-    // issue #286): a dealt board was selected hardest-of-many offline and
-    // re-binned nightly against the model of the day, and a deal cannot
-    // exhaust the way a draw can. The drawn path below survives as the
-    // fallback (fetch failure, corrupt file, empty bin), behind the abort
-    // contract; the openers (L1-25) and the endless zone stay drawn.
+    // THE LIBRARY IS THE PLAY PATH for L26-250 AND the endless zone (the
+    // wiring that retires issue #286): a dealt board was selected
+    // hardest-of-many offline and re-binned nightly against the model of
+    // the day, and a deal cannot exhaust the way a draw can. Past the crown
+    // the deal is a random unseen board from the whole endless library
+    // (dealClimbBoard routes there itself). The drawn path below survives
+    // as the fallback (fetch failure, corrupt file, empty bin), behind the
+    // abort contract; only the openers (L1-25) stay drawn by design.
     let res = await dealClimbBoard(state.currentLevel);
     if (staleRun()) return;
     const fromLibrary = !!res;
