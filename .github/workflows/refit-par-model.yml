@@ -147,17 +147,41 @@ jobs:
         continue-on-error: true
         run: node scripts/reprice-challenge-pool.mjs
 
+      # The Climb LIBRARY follows the same night, his re-bin design
+      # (2026-08-11): every stored board re-prices from its stored features
+      # (seconds, no solving), a board whose par left its level's window
+      # moves to the level whose window now holds it, and a board no window
+      # holds waits in reserve.json rather than being tossed. Only the
+      # shortfall left after re-binning is generated, by the bounded fill
+      # below. test/climbLibrary.test.mjs holds the lockstep: a refit that
+      # lands without this step reddens CI with the remedy in the message.
+      - name: Re-price and re-bin the Climb library
+        id: libreprice
+        continue-on-error: true
+        run: node scripts/reprice-climb-library.mjs
+
+      # Generation is bounded at 20 minutes a night: a quiet refit owes a
+      # handful of boards and finishes in seconds; a model earthquake owes
+      # more, pays 20 minutes now, and the manifest carries the remainder to
+      # the next night. Deficits remaining after the budget are NOT a
+      # failure — the deal is bounded nightly progress, never a stuck run.
+      - name: Fill what the re-bin left short
+        id: libfill
+        if: steps.libreprice.outcome == 'success'
+        continue-on-error: true
+        run: node scripts/topup-climb-library.mjs --fill --minutes 20
+
       - name: Commit and push if anything changed
         id: commit
         run: |
-          if git diff --quiet src/logic/difficulty.js src/logic/handicaps.json src/logic/experimentTarget.json src/logic/modelHistory.json src/logic/challengePool.js; then
-            echo "No model, handicap, experiment-target, history, or ladder-price changes — nothing to commit."
+          if git diff --quiet src/logic/difficulty.js src/logic/handicaps.json src/logic/experimentTarget.json src/logic/modelHistory.json src/logic/challengePool.js scripts/data/climb-library; then
+            echo "No model, handicap, experiment-target, history, ladder-price, or library changes — nothing to commit."
             echo "pushed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git config user.name  "Christopher Wells"
           git config user.email "c.wells@bowdoin.edu"
-          git add src/logic/difficulty.js src/logic/handicaps.json src/logic/experimentTarget.json src/logic/modelHistory.json src/logic/challengePool.js
+          git add src/logic/difficulty.js src/logic/handicaps.json src/logic/experimentTarget.json src/logic/modelHistory.json src/logic/challengePool.js scripts/data/climb-library
           git commit -m "refit PAR_MODEL, handicaps, experiment target, and ladder prices — $(date -u +%Y-%m-%d)"
           # A plain push LOSES THE WHOLE NIGHT'S FIT if a human pushed to main
           # while Stan was sampling. That is not hypothetical: the 2026-08-03
@@ -194,6 +218,16 @@ jobs:
           echo "        node scripts/write-challenge-pool.mjs"
           echo "        node scripts/reprice-challenge-pool.mjs --capture"
           echo "        node scripts/validate-challenge250-specs.mjs"
+          exit 1
+
+      - name: Fail the run if the library could not be re-binned
+        if: steps.libreprice.outcome == 'failure' || steps.libfill.outcome == 'failure'
+        run: |
+          echo "::error::The Climb library re-bin or fill crashed. The model committed normally;"
+          echo "the library is stale under the old fingerprint and test/climbLibrary.test.mjs"
+          echo "will name it on the next PR."
+          echo "Remedy: node scripts/reprice-climb-library.mjs"
+          echo "        node scripts/topup-climb-library.mjs --fill"
           exit 1
 
       - name: Notify on failure
