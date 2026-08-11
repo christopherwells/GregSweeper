@@ -95,7 +95,7 @@ function weeklyEntryContext() {
 // ── Code-version handshake with the service worker ────
 // The SW broadcasts its CACHE_NAME on activate and replies to
 // `getCodeVersion` requests. We listen for both. `state.codeVersion`
-// is the single source of truth for which build is running — used
+// is the single source of truth for which build is running, used
 // as forensic provenance on canonical-board writes (instead of the
 // stale literal it used to hardcode) and surfaced in diagnostics.
 if ('serviceWorker' in navigator) {
@@ -128,8 +128,8 @@ if ('serviceWorker' in navigator) {
   }, 6000);
 }
 
-// Attach error listeners as early as possible — before any other module
-// runs — so init-time exceptions are captured. The reporter buffers
+// Attach error listeners as early as possible, before any other module
+// runs, so init-time exceptions are captured. The reporter buffers
 // events until uid resolves and Firebase is ready, then drains.
 initErrorReporter({ codeVersion: state.codeVersion || 'unknown' });
 
@@ -138,7 +138,7 @@ initErrorReporter({ codeVersion: state.codeVersion || 'unknown' });
 // detector) can consult the actual game state instead of probing the
 // DOM for `.cell.revealed`. The DOM heuristic mistakes "looking at a
 // finished board" or "fresh game with no reveals yet" for the wrong
-// thing — state.status is the source of truth. Inline scripts call
+// thing, state.status is the source of truth. Inline scripts call
 // this with a `?.()` so a load order race (script before main.js
 // initializes the bridge) safely defaults to "not playing".
 window._gsIsPlaying = () => state && state.status === 'playing';
@@ -168,7 +168,7 @@ function setActiveSettingsTab(tab) {
   }
 }
 
-// Tab switchers — bind once at module load.
+// Tab switchers, bind once at module load.
 for (const btn of $$('.help-tab')) {
   btn.addEventListener('click', () => setActiveHelpTab(btn.dataset.tab));
 }
@@ -179,7 +179,7 @@ for (const btn of $$('.settings-tab')) {
 // ── Collection Display ───────────────────────────────
 
 function renderCollectionModal() {
-  // Themes only — the emoji-pack / effects / titles tabs were cut
+  // Themes only, the emoji-pack / effects / titles tabs were cut
   // 2026-06-12 (selection chaff; themes carry the whole identity).
   for (const t of Object.keys(THEME_UNLOCKS)) loadThemeCSS(t);
   const themeGrid = $('#collection-theme-grid');
@@ -258,7 +258,7 @@ function updateAchievementsDisplay() {
   }
 
   // Two sections: engine-certified skill feats lead (the identity),
-  // accumulation follows. List rows, not identical cards — the earned
+  // accumulation follows. List rows, not identical cards, the earned
   // medal opens each row, the next step reads as one plain sentence,
   // and a six-dot tier track replaces the old wall of emoji badges.
   const tierNames = getAllTierNames();
@@ -289,7 +289,7 @@ function updateAchievementsDisplay() {
     }
 
     // The category icon is the permanent identity (greyed while locked,
-    // full colour once earned); the earned tier rides a small corner
+    // full color once earned); the earned tier rides a small corner
     // medal badge so both the Wave B icon and the Wave A medal show.
     const catIconHtml = achievementSpriteImgHTML(ach.id, 'sprite-medal', ach.name) || ach.icon;
     const tierBadgeHtml = ach.tierIndex >= 0
@@ -340,7 +340,7 @@ function _isRegionCell(row, col) {
   return !!(cell && cell.isRevealed && (cell.isSonar || cell.isCompass));
 }
 // A pin outlives the game it was set in (nothing clears it on newGame), and on
-// the NEXT board those coordinates are just some cell — which could legitimately
+// the NEXT board those coordinates are just some cell, which could legitimately
 // become a revealed sonar later, at which point the hover fallback would light a
 // region the player never pinned. Dropping a pin the moment its cell stops
 // being a region cell keeps the pin's meaning tied to the click that set it.
@@ -388,7 +388,7 @@ boardEl.addEventListener('mousedown', (e) => {
   if (e.button === 0) {
     const cell = state.board[row]?.[col];
     // A sonar/compass number counts a REGION, not its neighbors, so chording it
-    // is meaningless — the click toggles its region highlight instead.
+    // is meaningless, the click toggles its region highlight instead.
     if (cell && cell.isRevealed && (cell.isSonar || cell.isCompass)) {
       _toggleRegionPin(row, col);
       return;
@@ -396,7 +396,7 @@ boardEl.addEventListener('mousedown', (e) => {
     if (cell && cell.isRevealed && cell.adjacentMines > 0) {
       handleChordReveal(row, col);
     } else if (state.flagMode && !cell?.isRevealed) {
-      // Flag-mode toggle is on (set via the header bar) — left-click
+      // Flag-mode toggle is on (set via the header bar), left-click
       // flags instead of revealing. Right-click still flags directly
       // via the contextmenu handler, so users with right-click muscle
       // memory keep their workflow.
@@ -549,7 +549,7 @@ boardEl.addEventListener('keydown', (e) => {
 });
 
 // ── Post-loss tap-to-interrogate (the Receipt's explore view) ──
-// In the lost state, board clicks otherwise do nothing — route them to
+// In the lost state, board clicks otherwise do nothing, route them to
 // the receipt: tap any cell to ask "was this knowable?" and watch the
 // proving region pulse. Additive listener; live-game handlers all guard
 // away from the lost state, so there is no conflict.
@@ -568,7 +568,7 @@ boardEl.addEventListener('click', (e) => {
 resetBtn.addEventListener('click', () => {
   resetBtn.classList.add('smiley-pressed');
   setTimeout(() => resetBtn.classList.remove('smiley-pressed'), 150);
-  // Daily/Weekly are canonical single-puzzle modes — no reset. The smiley
+  // Daily/Weekly are canonical single-puzzle modes, no reset. The smiley
   // is rendered disabled in these modes (see updateHeader); this guard is
   // the parallel safeguard against any pre-first-render click. Shared with
   // the R keyboard shortcut via blocksManualRestart so no restart surface
@@ -632,7 +632,7 @@ boardScrollWrapper.addEventListener('touchmove', (e) => {
 $('#btn-home').addEventListener('click', () => {
   showTitleScreen();
 });
-// Prev/next theme — cycle through the unlocked themes (ladder order) in-game,
+// Prev/next theme, cycle through the unlocked themes (ladder order) in-game,
 // replacing the old in-game Collection button.
 function cycleTheme(dir) {
   const unlocked = getUnlockedThemes();
@@ -649,7 +649,7 @@ $('#btn-settings').addEventListener('click', () => {
   setActiveSettingsTab('general');
   showModal('settings-modal');
   // Refresh the daily-reminder toggle's state from Firebase whenever
-  // the Settings modal opens — covers the case where prefs were
+  // the Settings modal opens, covers the case where prefs were
   // updated on another device or the auth uid resolved late.
   syncReminderUI();
   _updateSettingsUid();
@@ -693,7 +693,7 @@ function applyThemeLive(theme) {
   try { updateHeader(); } catch {} // re-render the in-game LCD Greg so it updates on theme cycle
   // Re-fit the board to the NEW theme's live geometry. Themes may override
   // --grid-gap (candy 3px, matrix 1px vs the 2px default), and #board is
-  // width:fit-content — the cells were sized against the OLD theme's gap,
+  // width:fit-content, the cells were sized against the OLD theme's gap,
   // so without a refit a wider gap pushed the board past its container
   // (cells spilling off the side; the neon→candy carousel repro). Waits
   // for the lazy stylesheet to actually apply, otherwise the refit still
@@ -745,7 +745,7 @@ $('#theme-carousel-prev')?.addEventListener('click', () => cycleCarousel(-1));
 $('#theme-carousel-next')?.addEventListener('click', () => cycleCarousel(1));
 $('#theme-carousel-done')?.addEventListener('click', closeThemeCarousel);
 
-// Arrow keys flip themes; Esc closes — only while the carousel is open.
+// Arrow keys flip themes; Esc closes, only while the carousel is open.
 document.addEventListener('keydown', (e) => {
   if (!_carouselOpen) return;
   if (e.key === 'ArrowLeft') { e.preventDefault(); cycleCarousel(-1); }
@@ -763,7 +763,7 @@ $('#btn-about')?.addEventListener('click', () => {
   showModal('about-modal');
 });
 
-// The Lexicon — generated single-technique lessons behind the
+// The Lexicon, generated single-technique lessons behind the
 // deducibility click-gate. Lazy-loaded: it never touches the boot path,
 // game state, or the par pipeline.
 const gymCard = $('#mode-card-gym');
@@ -783,7 +783,7 @@ for (const closeBtn of $$('.modal-close')) {
 }
 for (const modal of $$('.modal')) {
   modal.addEventListener('click', (e) => {
-    // name-capture-modal is the leaderboard-name gate — like gameover-overlay
+    // name-capture-modal is the leaderboard-name gate, like gameover-overlay
     // it manages its own dismissal (only a valid name closes it), so a
     // backdrop tap must not close it.
     if (e.target === modal && modal.id !== 'gameover-overlay' && modal.id !== 'name-capture-modal') {
@@ -813,7 +813,7 @@ for (const tab of $$('.timed-tab')) {
 // ── Checkpoint Selector (Challenge mode) ────────────────
 // Row labels come from the Challenge 250 map's own intro blocks: modifier
 // debuts keep their GIMMICK_DEFS icon/name, shape debuts use the
-// player-facing shape names (tilingLabel — the 2026-08-02 naming ruling).
+// player-facing shape names (tilingLabel, the 2026-08-02 naming ruling).
 const GIMMICK_LABELS = (() => {
   const labels = {};
   const defs = getGimmickDefs();
@@ -831,7 +831,7 @@ const GIMMICK_LABELS = (() => {
 function showCheckpointSelector() {
   const stats = loadStats();
   const maxLevel = stats.modeStats?.challenge?.maxLevelReached || 1;
-  // maxLevelReached is the level you WON — the next level you'd play is
+  // maxLevelReached is the level you WON, the next level you'd play is
   // maxLevel + 1, and there is no ceiling on that: past the crown the
   // endless zone banks checkpoints forever.
   const nextPlayable = maxLevel + 1;
@@ -839,7 +839,7 @@ function showCheckpointSelector() {
   // The Resume button must offer only what tryResumeGame would actually
   // restore. It used to read the slot raw, so a pre-C250 save advertised
   // "Resume Game · Level 100" to a player the epoch reset had just returned to
-  // Level 1 — and the tap resumed it (issue #239). Same pure gate, one answer.
+  // Level 1, and the tap resumed it (issue #239). Same pure gate, one answer.
   const hasSavedGame = !!(savedGame && savedGame.board && savedGame.gameMode)
     && challengeSaveIsCurrent(savedGame, maxLevel);
 
@@ -896,7 +896,7 @@ function showCheckpointSelector() {
         state.gameMode = 'normal';
         updateModeUI('normal');
         // This entry path bypasses switchMode, so clear the playtest flags
-        // here too — a real checkpoint start must record progression, and must
+        // here too, a real checkpoint start must record progression, and must
         // not inherit a ?coastline= tiling practice (which would route newGame
         // into the tiling branch and record a challenge run on a test board).
         state.isLevelPractice = false;
@@ -932,7 +932,7 @@ for (const card of $$('.mode-card')) {
     // data-mode and has its own handler (openLexicon). Without this guard
     // it falls through every branch below to switchMode(undefined), which
     // started a hidden challenge game UNDER the gym overlay and hid the
-    // title — so closing the gym revealed that game, and the idle clock
+    // title, so closing the gym revealed that game, and the idle clock
     // painted its pause overlay over the gym. A mode-less card does
     // nothing here; its own handler owns the click.
     if (!mode) return;
@@ -961,13 +961,13 @@ for (const card of $$('.mode-card')) {
       // a practice (?seed=) session earlier in this tab. Don't touch
       // dailySeed/dailyRngSeed here: switchMode persists the outgoing
       // game first, and nulling the live seeds beforehand used to strip
-      // the date fingerprint off that snapshot — the undated save then
+      // the date fingerprint off that snapshot, the undated save then
       // bypassed every stale-save guard and resumed yesterday's board
       // as "today's" daily. newGame derives the seed from the clock.
       state.isDailyPractice = false;
     }
     if (mode === 'weekly') {
-      // Cloud-synced gate: refuse a second attempt on the same day — but let
+      // Cloud-synced gate: refuse a second attempt on the same day, but let
       // the FIRST one back in while its board is still open. The attempt is
       // committed on the first click, so blocking on the marker alone shut
       // the door on every interrupted attempt (issue #246).
@@ -997,7 +997,7 @@ if (titleHelpBtn) {
 
 // The Modifiers help tab renders straight from the gimmick registry so
 // the reference can never drift from the actual rules. Rendered once at
-// boot — the registry is static. Sorted by Challenge intro level so the
+// boot, the registry is static. Sorted by Challenge intro level so the
 // list reads in the order players actually meet them; chaos-only types
 // sink to the end (mineShift carries a vestigial intro level, so the
 // chaosOnly flag is the sort signal, not the level).
@@ -1013,7 +1013,7 @@ if (helpModifierList) {
     .join('');
 }
 
-// Progress and More sheets — the grouped footer. A sheet row hides its
+// Progress and More sheets, the grouped footer. A sheet row hides its
 // sheet (plain hideModal, NOT closeModalAndReturn: the _returnToTitle
 // flag must survive the hop) and opens the destination modal, whose
 // close button then returns to the title screen as before.
@@ -1045,7 +1045,7 @@ _sheetRowOpens('#sheet-collection-btn', 'more-sheet', () => {
   renderCollectionModal();
   showModalFromTitle('collection-modal');
 });
-// Greg's Journal — the nightly experiment's notebook. The modal shell
+// Greg's Journal, the nightly experiment's notebook. The modal shell
 // opens instantly; the renderer (and its findings derivation) is
 // lazy-loaded like the Gym, since most sessions never open it.
 _sheetRowOpens('#sheet-journal-btn', 'more-sheet', () => {
@@ -1078,7 +1078,7 @@ if (sheetWhatsnewBtn) {
     showModalFromTitle('whatsnew-modal');
   });
   // Show NEW badge ONLY for returning visitors who saw an older
-  // version. First-time visitors (lastSeen empty) get no badge —
+  // version. First-time visitors (lastSeen empty) get no badge,
   // they haven't missed anything, the NEW label would just confuse.
   // Mark them as "having seen" the current version so the badge
   // never fires for them retroactively after the next deploy. The
@@ -1110,7 +1110,7 @@ $('#btn-replay-tutorial').addEventListener('click', () => {
   startTutorial(() => startWarmup(() => showTitleScreen()));
 });
 
-// Diagnostics — ground-truth snapshot of what this device sees. Dynamic
+// Diagnostics, ground-truth snapshot of what this device sees. Dynamic
 // import so the module stays off the critical load path until opened.
 $('#btn-diagnostics').addEventListener('click', async () => {
   $('#settings-modal').classList.add('hidden');
@@ -1288,7 +1288,7 @@ $('#btn-signin-google')?.addEventListener('click', async () => {
   // cancelled / popup-closed → silent
 });
 
-// Email link sign-in button — reveals the email input form. Send button
+// Email link sign-in button, reveals the email input form. Send button
 // fires off the email; "Check your email" hint appears below.
 $('#btn-signin-email')?.addEventListener('click', () => {
   $('#email-link-form')?.classList.remove('hidden');
@@ -1322,7 +1322,7 @@ $('#email-link-input')?.addEventListener('keydown', (e) => {
   }
 });
 
-// Sign out — pre-clears push subscription, signs out, re-anonymizes.
+// Sign out, pre-clears push subscription, signs out, re-anonymizes.
 $('#btn-signout')?.addEventListener('click', async () => {
   const confirmed = await openAccountConfirmModal({
     title: 'Sign out?',
@@ -1358,7 +1358,7 @@ subscribeAuthState(() => {
 // counters on the title screen / header so a daily completion on PC
 // appears on phone within a second, without needing the app reopened.
 subscribeToCloudProgressUpdates((cloud) => {
-  // overwrite: true — the listener fires when cloud is the new
+  // overwrite: true, the listener fires when cloud is the new
   // authoritative state, including downgrades from admin resets or a
   // partner device. The max-merge default would stick a higher local
   // value indefinitely after such a write.
@@ -1366,7 +1366,7 @@ subscribeToCloudProgressUpdates((cloud) => {
   // applyCloudProgress only handles the stats fields (streak / lastDate
   // / checkpoint). Weekly attempts live separately under cloud's
   // weeklyAttempts[weekStart].dayAttempts subtree, and the title screen
-  // reads them from state.cachedWeeklyDayAttempts — so we also extract
+  // reads them from state.cachedWeeklyDayAttempts, so we also extract
   // and apply the current week's attempts here, otherwise a weekly day
   // attempt on device A would still show as "2/7 used" on device B.
   try {
@@ -1385,7 +1385,7 @@ subscribeToCloudProgressUpdates((cloud) => {
       if (!isTestEnvironment()) replaceLocalWeeklyAttempts(currentWeek, next);
     } else if (isWeeklyAttemptCacheStale(state.cachedWeeklyAttemptsWeek, currentWeek)) {
       // Week rolled over and the cloud carries NO attempts for the new
-      // week yet — the snapshot is authoritative that it's empty, so
+      // week yet, the snapshot is authoritative that it's empty, so
       // clear the stale prior-week cache rather than leave it gating the
       // player out of a week that has reset. Re-seed from localStorage
       // (empty for a fresh week) for the synchronous gate.
@@ -1407,13 +1407,13 @@ async function _reconcileDailyStreak() {
   try {
     const entries = await loadDailyHistory();
     if (!entries) return;
-    // Archive replays are marked in dailyHistory and must not bear streak —
+    // Archive replays are marked in dailyHistory and must not bear streak,
     // a replayed gap day would otherwise splice the run together (#113).
     if (reconcileStreakFromHistory(streakBearingDates(entries))) {
       // Push the corrected snapshot: a self-heal that only writes localStorage
       // leaves the cloud carrying the value it just disagreed with, and the
       // progress listener re-applies the cloud verbatim on the next write to
-      // users/{uid} — so the heal would be undone every session (issue #248).
+      // users/{uid}, so the heal would be undone every session (issue #248).
       // Safe to overwrite: this runs after applyCloudProgress has already
       // merged the cloud in, so the snapshot is cloud-merged then corrected.
       const snap = getDailyCloudSnapshot();
@@ -1427,7 +1427,7 @@ async function _reconcileDailyStreak() {
 }
 
 // The weekly's counterpart: raise the week streak to the run the player's own
-// weeklyAttempts record implies. Same upward-only self-heal, same reason — a
+// weeklyAttempts record implies. Same upward-only self-heal, same reason, a
 // counter that starts counting when it ships knows nothing about the fourteen
 // weeks already in the account. One owner-scoped read.
 async function _reconcileWeekStreak() {
@@ -1437,8 +1437,8 @@ async function _reconcileWeekStreak() {
     if (reconcileWeekStreakFromHistory(weeks)) {
       // Same reason as the daily's push above (issue #248), and the weekly is
       // where it actually bit: nothing but a completion writes this node, so
-      // for the very players the backfill exists for — a long history, no
-      // post-ship completion yet — the cloud stays behind indefinitely and
+      // for the very players the backfill exists for, a long history, no
+      // post-ship completion yet, the cloud stays behind indefinitely and
       // every users/{uid} write knocks the card back down.
       saveProgress({ weekStreak: getWeekStreakRecord() });
       try { updateTitleProgress(); } catch {}
@@ -1453,7 +1453,7 @@ subscribeToUidChanges(async ({ uid, isInitial }) => {
   if (!uid) return;
   try {
     // The user has explicitly chosen to adopt this account's identity,
-    // so the local daily streak / lastDailyCompletedDate are obsolete —
+    // so the local daily streak / lastDailyCompletedDate are obsolete,
     // they belonged to the device's now-abandoned anonymous uid. Reset
     // those fields so applyCloudProgress takes the new account's values
     // verbatim instead of its date-based max-merge keeping the local ones.
@@ -1474,7 +1474,7 @@ subscribeToUidChanges(async ({ uid, isInitial }) => {
     // playerNames join. The name is LOCAL (not part of the abandoned per-uid
     // data), so it carries across the switch; without this the new uid's
     // playerNames node stays empty and its past rows fall back to their frozen
-    // stored names — breaking the "a name change shows on every record"
+    // stored names, breaking the "a name change shows on every record"
     // guarantee on exactly the cross-device link path this feature targets.
     // This is the re-publish firebaseProgress's pending-drop-on-switch relies on.
     publishPlayerName(getPlayerName());
@@ -1523,7 +1523,7 @@ $('#settings-uid-display').addEventListener('click', async () => {
 // anonymous uid so Christopher can run scripts/delete-user-data.mjs against
 // it. Privacy policy commits to 30-day turnaround. Inline scrub would need
 // either a Cloud Function or a Firebase write that's broad enough to defeat
-// auth scoping — the email path keeps the user-side change tiny and the
+// auth scoping, the email path keeps the user-side change tiny and the
 // server-side change auditable.
 $('#btn-delete-my-data').addEventListener('click', () => {
   const uid = getUid() || 'unknown-uid';
@@ -1598,7 +1598,7 @@ if (chaosNextBtn) {
   });
 }
 
-// Explore Board — dismiss modal, keep board visible for analysis
+// Explore Board, dismiss modal, keep board visible for analysis
 $('#gameover-explore').addEventListener('click', () => {
   hideModal('gameover-overlay');
   const postDeathBar = $('#post-death-bar');
@@ -1609,7 +1609,7 @@ $('#gameover-explore').addEventListener('click', () => {
 $('#post-death-replay').addEventListener('click', () => {
   const postDeathBar = $('#post-death-bar');
   if (postDeathBar) postDeathBar.classList.add('hidden');
-  // Same weekly gate as the gameover-retry handler — daily/weekly use
+  // Same weekly gate as the gameover-retry handler, daily/weekly use
   // a one-attempt-per-day mechanic, so post-death replay must respect
   // it. Daily lock-out lives in newGame's daily branch; weekly needs
   // the explicit check here.
@@ -1623,16 +1623,32 @@ $('#post-death-replay').addEventListener('click', () => {
   newGame();
 });
 
-$('#gameover-nextlevel').addEventListener('click', () => {
+$('#gameover-nextlevel').addEventListener('click', async () => {
   // Challenge has no top (the endless zone), so only Quick Play caps here.
   // The same rule the Next Level BUTTON follows in winLossHandler; the two
   // used to share a cap, and capping only one of them would either show a
   // dead button or advance past a hidden one.
   const cappedAtTop = state.gameMode === 'timed' && state.currentLevel >= MAX_TIMED_LEVEL;
-  const completedLevel = state.currentLevel;
   if (!cappedAtTop) state.currentLevel++;
-
   const isLevelMode = state.gameMode === 'normal';
+
+  // Dismiss our own card rather than relying on newGame's hideAllModals
+  // (issue #285): an exhausted draw aborts before that tail runs, and this
+  // overlay is deliberately immune to backdrop and Escape, so it stayed up
+  // over the abort with "Next Level" as the only live button.
+  hideModal('gameover-overlay');
+  playLevelUp();
+  showLevelUpToast(state.currentLevel);
+  showCelebration();
+
+  await newGame();
+
+  // Bank the checkpoint only once a board actually exists for the level
+  // being entered (issue #285): banking first let an exhausted L60 draw
+  // record the block boundary for a level that was never played. An
+  // aborted draw keeps currentLevel where it is, so the next Climb entry
+  // retries the same level with fresh salts.
+  if (state.status === 'aborted') return;
   if (isLevelMode) {
     const newCheckpoint = getCheckpointForLevel(state.currentLevel);
     if (newCheckpoint > state.checkpoint) {
@@ -1641,11 +1657,6 @@ $('#gameover-nextlevel').addEventListener('click', () => {
       showCheckpointToast(newCheckpoint);
     }
   }
-
-  playLevelUp();
-  showLevelUpToast(state.currentLevel);
-  showCelebration();
-  newGame();
 });
 
 // The daily win card's inline name form was removed: a nameless daily/weekly/
@@ -1655,7 +1666,7 @@ $('#gameover-nextlevel').addEventListener('click', () => {
 
 $('#gameover-share').addEventListener('click', () => handleShare());
 
-// Copy a link to YESTERDAY's crux teaser (a past board — never today's).
+// Copy a link to YESTERDAY's crux teaser (a past board, never today's).
 // The hardcoded prod base matches the share card; cruxes are read from
 // prod even on the test build, so the link works wherever it's opened.
 $('#gameover-crux-challenge')?.addEventListener('click', async () => {
@@ -1670,12 +1681,12 @@ $('#gameover-crux-challenge')?.addEventListener('click', async () => {
   // WhatsApp, email...). Falls back to a clipboard copy with feedback
   // where Web Share isn't available (e.g. desktop Firefox). The old path
   // copied silently AND opened the crux in a new tab, which read as
-  // "nothing happened" — never share to anyone.
+  // "nothing happened", never share to anyone.
   if (navigator.share && (!navigator.canShare || navigator.canShare(shareData))) {
     try {
       await navigator.share(shareData);
     } catch (e) {
-      // User dismissed the sheet, or share failed — stay quiet.
+      // User dismissed the sheet, or share failed, stay quiet.
     }
   } else {
     copyToClipboard(url);
@@ -1691,7 +1702,7 @@ $('#gameover-done').addEventListener('click', () => {
 // Daily-win opt-in CTA. Click → enable push notifications with the
 // player's preferred hour (default 9am ET). Picked here because the
 // player has just completed a daily and the dopamine moment is fresh
-// — the same toggle in Settings converts at a fraction of this rate.
+//, the same toggle in Settings converts at a fraction of this rate.
 $('#gameover-remind-tomorrow').addEventListener('click', async () => {
   const btn = $('#gameover-remind-tomorrow');
   if (!btn || btn.disabled) return;
@@ -1706,8 +1717,8 @@ $('#gameover-remind-tomorrow').addEventListener('click', async () => {
       streakWarning: prefs.streakWarning ?? false,
     });
     // Outcome mapping lives in the pure remindCta helper: the old inline
-    // test compared against `true`/'ok' — values enableNotifications never
-    // returns — so a SUCCESSFUL enable rendered "Try again" every time
+    // test compared against `true`/'ok', values enableNotifications never
+    // returns, so a SUCCESSFUL enable rendered "Try again" every time
     // (2026-07-10 audit).
     const outcome = remindCtaOutcome(result);
     if (outcome === 'enabled') {
@@ -1744,7 +1755,7 @@ document.addEventListener('keydown', (e) => {
 
   if (e.key === 'Escape') {
     const gameoverOpen = !$('#gameover-overlay').classList.contains('hidden');
-    // The name gate is non-dismissible (like gameover-overlay) — Escape must
+    // The name gate is non-dismissible (like gameover-overlay), Escape must
     // not close it while focus sits on its Save button (its input already
     // short-circuits above).
     const nameGateEl = $('#name-capture-modal');
@@ -1799,7 +1810,7 @@ const playerNameInput = $('#player-name-input');
 if (playerNameInput) {
   playerNameInput.value = getPlayerName();
   // Live-save on each keystroke. setPlayerName silently declines to
-  // persist a hate-speech name (returns ok:false) — we stay quiet here
+  // persist a hate-speech name (returns ok:false), we stay quiet here
   // rather than toasting mid-word.
   playerNameInput.addEventListener('input', () => {
     setPlayerName(playerNameInput.value.trim().slice(0, 20));
@@ -1807,7 +1818,7 @@ if (playerNameInput) {
   // On commit (blur / Enter), if the final value was a rejected
   // hate-speech name, surface the message and revert the field to the
   // last good saved name. On a good name, publish it to playerNames/{uid}
-  // so every leaderboard (including past rows) shows the new name by uid —
+  // so every leaderboard (including past rows) shows the new name by uid,
   // this is what makes a name change propagate to previous records.
   playerNameInput.addEventListener('change', () => {
     const result = setPlayerName(playerNameInput.value.trim().slice(0, 20));
@@ -1871,7 +1882,7 @@ async function syncReminderUI() {
   if (!dailyReminderToggle) return;
   // Always leave the toggle interactive. A previous version disabled
   // it when isPushSupported() returned false at sync-time (eg before
-  // firebase-messaging-compat finished loading) — but nothing ever
+  // firebase-messaging-compat finished loading), but nothing ever
   // re-enabled it once support arrived. The toggle handler itself
   // returns a clear error toast when push isn't supported, so a
   // disabled-by-default state buys us nothing except silent failures.
@@ -1886,7 +1897,7 @@ async function syncReminderUI() {
     }
     if (streakWarningToggle) {
       streakWarningToggle.checked = !!prefs.streakWarning;
-      // Disable when notifications themselves are off — toggling
+      // Disable when notifications themselves are off, toggling
       // streak-rescue alone without parent push enabled is a no-op.
       streakWarningToggle.disabled = !prefs.enabled;
     }
@@ -1996,7 +2007,7 @@ if (colorblindToggle) {
   colorblindToggle.addEventListener('change', () => applyColorblind(colorblindToggle.checked));
 }
 
-// Classic mines & flags toggle — pins the board objects to the canonical
+// Classic mines & flags toggle, pins the board objects to the canonical
 // sprites on every theme (getThemeEmoji reads data-classic-objects).
 const classicObjectsToggle = $('#classic-objects-toggle');
 const CLASSIC_OBJECTS_KEY = 'minesweeper_classic_objects';
@@ -2017,12 +2028,12 @@ if (classicObjectsToggle) {
 // ── Init ───────────────────────────────────────────────
 
 // Background-resume the mode slot's save behind the TITLE SCREEN, landing it
-// in the same paused state Home produces (issue #200 — the #197 leak through
+// in the same paused state Home produces (issue #200, the #197 leak through
 // the boot door). Three routing branches below show the title and then warm
 // the saved game up behind it so entering is instant; tryResumeGame ends in
 // the deliberately UNGATED startTimer (every other resume site runs with
 // #app visible and must tick immediately), so the boot resume left the LCD
-// counting behind the title from boot until the player entered the game —
+// counting behind the title from boot until the player entered the game,
 // title minutes charged to the challenge clock, and the worm heartbeat
 // burning movesLeft the player never saw (the realized dose the refit fits
 // on). Pause right AFTER the resume rather than gating startTimer:
@@ -2034,7 +2045,7 @@ if (classicObjectsToggle) {
 // deliberately NOT re-armed here, unlike the hideTitleScreen resume sites:
 // their deadline is raw wall-clock with no pause, so a plate armed behind
 // the title detonates a game the player cannot see (the #192 incident
-// shape) — showTitleScreen already tore them down, and the entry path
+// shape), showTitleScreen already tore them down, and the entry path
 // re-arms with a fresh countdown, the documented lenient direction.
 async function resumeSaveBehindTitle() {
   if (!tryResumeGame()) await newGame();
@@ -2042,7 +2053,7 @@ async function resumeSaveBehindTitle() {
 }
 
 async function init() {
-  // Challenge 250 progression reset — FIRST, before any surface reads
+  // Challenge 250 progression reset, FIRST, before any surface reads
   // maxLevelReached (title progress, theme unlocks, checkpoint selector).
   // One-time and epoch-guarded, so this line is a no-op on every boot
   // after the one that resets. Cross-device resurrection is blocked by
@@ -2056,7 +2067,7 @@ async function init() {
   let activeTheme = theme;
   // Guard BOTH not-yet-unlocked and no-longer-existing themes. A saved
   // theme that was cut from the catalog (the 2026-06 trim to the kept
-  // set) is undefined in `unlocked` — without the `in` check it would
+  // set) is undefined in `unlocked`, without the `in` check it would
   // apply with no CSS file behind it and render unstyled.
   if (!(theme in THEME_UNLOCKS) || unlocked[theme] === false) {
     const stats = loadStats();
@@ -2113,7 +2124,7 @@ async function init() {
     // One-time launch grant of molt days for an existing streak, now that the
     // synced streak is settled. Refresh the title card if it granted any.
     if (backfillMoltDays()) { try { updateTitleProgress(); } catch {} }
-  }).catch(err => reportCaughtError('cloud-progress-load', err)); // progress stays local-only on failure — but the failure is reported
+  }).catch(err => reportCaughtError('cloud-progress-load', err)); // progress stays local-only on failure, but the failure is reported
 
   // Preload handicaps so the end-of-game modal can render personal par
   // without a race. Fire-and-forget; getHandicapRatio() falls back to a
@@ -2122,7 +2133,7 @@ async function init() {
 
   // Rebuild the provisional-handicap residual cache from Firebase
   // dailyHistory after anon auth resolves. Covers cache clears, private-
-  // browsing sessions, and cross-device opens — a player who finished
+  // browsing sessions, and cross-device opens, a player who finished
   // three dailies on their phone won't reset their provisional handicap
   // when they first open the PWA on their laptop. Save-scumming via a
   // uid reset legitimately resets the cache (new uid = no history to
@@ -2148,29 +2159,29 @@ async function init() {
   // evicted by the browser's storage-pressure cleanup. iOS Safari
   // grants silently for installed PWAs; desktop Chrome / Firefox grant
   // automatically once the engagement heuristic passes (no permission
-  // prompt). Fire-and-forget — the diagnostics modal can read the
+  // prompt). Fire-and-forget, the diagnostics modal can read the
   // cached result from getPersistentStorageStatus().
   requestPersistentStorage().catch(() => {});
 
   const urlParams = new URLSearchParams(window.location.search);
   const deepLinkMode = urlParams.get('mode');
-  // ?level=N — test-environment-only practice jump to any challenge level
+  // ?level=N, test-environment-only practice jump to any challenge level
   // (playtesting a specific gimmick block without grinding to it).
   const _levelParam = parseInt(urlParams.get('level') || '', 10);
   // No upper clamp: the endless zone is a real part of the ladder and has to
   // be reachable for playtesting like any other stretch of it.
   const deepLinkLevel = (isTestEnvironment() && _levelParam >= 1) ? _levelParam : 0;
-  // ?coastline= — test-environment-only tiling board (Project Coastline
+  // ?coastline=, test-environment-only tiling board (Project Coastline
   // Phase 2). Gated exactly like ?level=, so it is UNREACHABLE in production
   // no matter which of the six lattices the link names; the player-facing
   // surface is a later release step.
   const coastlinePractice = isTestEnvironment() && urlParams.get('coastline') != null;
-  // ?dailyShape=<tiling|rect> — test-environment-only override for the daily
+  // ?dailyShape=<tiling|rect>, test-environment-only override for the daily
   // SHAPE ROTATION (dark while TILING_ROTATION_START is unset). Gated at the
   // derivation like ?level=/?coastline=, and doubly contained: the override
   // only ever applies to a PRACTICE-lane daily (gameActions consults it only
   // when state.isDailyPractice), so even in a test build it cannot touch a
-  // recording daily — /test/ shares localStorage with production, and an
+  // recording daily, /test/ shares localStorage with production, and an
   // overridden board recording as the real date would block that day's real
   // play (the ?level= pollution class). Reached via the daily deep link:
   // ?mode=daily&dailyShape=hex[&seed=x] plays a forced-shape practice daily
@@ -2179,7 +2190,7 @@ async function init() {
   const dailyShapeOverride = (isTestEnvironment() && urlParams.get('dailyShape'))
     ? setDailyShapeOverride(urlParams.get('dailyShape'))
     : null;
-  // ?parlab=1 — test-environment-only Par Lab: the designed 100-board
+  // ?parlab=1, test-environment-only Par Lab: the designed 100-board
   // battery whose results seed the per-shape par priors (see
   // src/logic/parLab.js for the design). Rides the coastline-practice lane
   // (isLevelPractice, frozen certified boards, nothing records to real
@@ -2188,7 +2199,7 @@ async function init() {
   const parLabMode = isTestEnvironment() && urlParams.get('parlab') != null;
 
   // Diagnostics button is hidden for casual users. Unhide when `?debug=1`
-  // is in the URL (once per device — we persist a localStorage flag so
+  // is in the URL (once per device, we persist a localStorage flag so
   // the button stays visible on return visits without needing the param
   // again). `?debug=0` clears the flag if we ever want to re-hide it.
   const DEBUG_UI_KEY = 'gregsweeper_debug_ui';
@@ -2206,7 +2217,7 @@ async function init() {
     window.gsTestError = (label) => reportTestError(label);
   }
 
-  // ?crux= share route — a standalone teaser of a PAST daily's hardest
+  // ?crux= share route, a standalone teaser of a PAST daily's hardest
   // step. Resolve the date (empty / "1" = yesterday ET), refuse today and
   // later so the live board is never spoiled, then render and STOP: no
   // startup gate, no game init, works logged-out (cruxes is world-read).
@@ -2215,19 +2226,19 @@ async function init() {
     const todayET = getLocalDateString();
     const yesterdayET = addCalendarDays(todayET, -1);
     // Spoiler + range guard (only yesterday-or-earlier, never before the first
-    // canonical; out-of-range falls back to yesterday) — pinned in archiveEligibility.
+    // canonical; out-of-range falls back to yesterday), pinned in archiveEligibility.
     const cruxDate = resolveCruxDate(cruxParam, todayET, yesterdayET);
     hideBootOverlay();
     await showCruxTeaser(cruxDate);
     return;
   }
 
-  // ?report= share route — one finding from Greg's Journal as a
+  // ?report= share route, one finding from Greg's Journal as a
   // standalone logged-out page. Same shape as ?crux=: no startup gate,
   // no game init; modelHistory.json is a static bundle asset so the
   // fetch needs no auth. The id is validated against the derived study
   // list inside showJournalReport (findingById); an unknown or empty id
-  // renders the journal index, never an error. Lazy import — the module
+  // renders the journal index, never an error. Lazy import, the module
   // is only ever needed on this route or a share tap.
   const reportParam = urlParams.get('report');
   if (reportParam !== null) {
@@ -2237,7 +2248,7 @@ async function init() {
     return;
   }
 
-  // Startup gate — block rendering until the SW is current, Firebase is
+  // Startup gate, block rendering until the SW is current, Firebase is
   // ready, and the canonical board for today is in memory. Keeps the
   // boot overlay up across the whole wait so the player never sees a
   // flash of a divergent board.
@@ -2255,7 +2266,7 @@ async function init() {
   }
 
   if (!isOnboarded()) {
-    // First time — launch interactive tutorial, then route to the title
+    // First time, launch interactive tutorial, then route to the title
     // screen with a one-time spotlight on the Daily card. Previously this
     // flow force-launched Challenge L1 and bypassed the title screen
     // entirely, meaning first-time users never saw the Daily card on
@@ -2264,7 +2275,7 @@ async function init() {
     startTutorial(() => {
       const toTitle = () => { showTitleScreen(); spotlightDailyCard(); };
       // One gentle no-modifier warm-up board bridges the 5x5 tutorial
-      // and a full Daily. Once ever — marked before it runs so closing
+      // and a full Daily. Once ever, marked before it runs so closing
       // the tab mid-warm-up doesn't relaunch it next visit.
       if (!hasSeenNotice('warmup_done')) {
         markNoticeSeen('warmup_done');
@@ -2274,7 +2285,7 @@ async function init() {
       }
     });
   } else if (parLabMode) {
-    // ?parlab=1 — the Par Lab battery (test builds only — gate in the
+    // ?parlab=1, the Par Lab battery (test builds only, gate in the
     // derivation above). Same practice frame as ?coastline=: gameMode
     // 'normal' + isLevelPractice + coastlinePractice, so the frozen-board
     // first-click path and the no-recording contract both apply; the lab
@@ -2295,7 +2306,7 @@ async function init() {
     await startParLab();
     showToast('Par Lab: play each board straight through. Strike penalties count into your time, like the daily. Nothing records to your progression.', 7000);
   } else if (coastlinePractice) {
-    // ?coastline= test board (test builds only — gate in the derivation
+    // ?coastline= test board (test builds only, gate in the derivation
     // above): a frozen tiling board played as an isLevelPractice run, so
     // nothing records (same localStorage-safety rationale as ?level=).
     // gameMode stays 'normal'; state.coastlinePractice routes newGame's
@@ -2324,10 +2335,10 @@ async function init() {
     const _cg = state.coastlineGimmicks;
     const _shape = tilingLabel(state.coastlineType);
     showToast(_cg.length
-      ? `Coastline test board — ${_shape} + ${_cg.join(', ')}. Nothing records.`
-      : `Coastline test board — ${_shape}. Nothing records.`, 6000);
+      ? `Coastline test board, ${_shape} + ${_cg.join(', ')}. Nothing records.`
+      : `Coastline test board, ${_shape}. Nothing records.`, 6000);
   } else if (deepLinkLevel > 0) {
-    // ?level=N playtest deep link (test builds only — the gate is in
+    // ?level=N playtest deep link (test builds only, the gate is in
     // deepLinkLevel's derivation): start a PRACTICE challenge run at any
     // level. Practice-gated end to end because /test/ shares this origin's
     // localStorage with prod: no stats, no maxLevelReached/checkpoints, no
@@ -2344,14 +2355,14 @@ async function init() {
     // under a non-today seed (e.g. after you've finished today's). Practice
     // runs submit to Firebase so the backend gets your uid, but don't
     // touch streak, bestTimes, completion flags, or personal history.
-    // ?dailyShape= (test env only — derivation above) forces the practice
+    // ?dailyShape= (test env only, derivation above) forces the practice
     // lane too: an overridden board is NOT the canonical, so it must never
     // record as the real date.
     const customSeed = urlParams.get('seed');
     const shapePractice = dailyShapeOverride != null;
     if (!customSeed && !shapePractice && isDailyCompleted(getLocalDateString())) {
       // Already completed (possibly adopted from another device by the
-      // startup gate) — the Daily card gates this, and a notification
+      // startup gate), the Daily card gates this, and a notification
       // tap must not bypass it into a replay + duplicate submission.
       // Mirror the weekly already-played branch: title screen + toast.
       showTitleScreen();
@@ -2386,7 +2397,7 @@ async function init() {
     // shares). Drop into the weekly card's click-handler equivalent
     // state setup, then route through the daily flow.
     if (weeklyEntryPlan(weeklyEntryContext()) === 'blocked') {
-      // Today's attempt is spent AND finished — show the title screen with
+      // Today's attempt is spent AND finished, show the title screen with
       // the weekly card surfacing the "Played today" status. Don't
       // auto-launch. An attempt still in progress falls through and resumes.
       showTitleScreen();
@@ -2399,14 +2410,14 @@ async function init() {
       if (!tryResumeGame()) await newGame(); else rearmPlateTimers();
     }
   } else {
-    // Returning user — show title screen
+    // Returning user, show title screen
     showTitleScreen();
-    // Pre-load the game in background so it's ready — paused, not ticking
+    // Pre-load the game in background so it's ready, paused, not ticking
     await resumeSaveBehindTitle();
   }
 
   // All routing settled and the appropriate UI surface (tutorial /
-  // daily board / title screen) has rendered — release the boot overlay.
+  // daily board / title screen) has rendered, release the boot overlay.
   hideBootOverlay();
 
   // Persist game state periodically (only when actively playing)
@@ -2424,7 +2435,7 @@ async function init() {
 // DayAttempts) is populated once at boot for that day's week; nothing
 // re-derives it afterward, so a background tab / installed PWA reopened
 // after the Sunday→Monday boundary keeps the prior week's attempts in
-// memory — the Weekly card then shows "Done N/7" and the play gate
+// memory, the Weekly card then shows "Done N/7" and the play gate
 // refuses a new attempt on a week that has actually reset (the weekly
 // "didn't reset" bug). On a detected rollover, re-seed synchronously
 // from localStorage (empty for a fresh week → the gate opens at once),
@@ -2441,7 +2452,7 @@ function refreshWeeklyAttemptCacheIfRolledOver() {
 
   // Authoritative refresh: a Firebase read is the source of truth for
   // the week (an empty map legitimately clears a stale local copy).
-  // Fire-and-forget — the synchronous local seed above already unblocked
+  // Fire-and-forget, the synchronous local seed above already unblocked
   // the gate; this only corrects it if the cloud disagrees.
   if (state.firebaseReady) {
     loadWeeklyAttempts(liveWeek)
@@ -2457,7 +2468,7 @@ function refreshWeeklyAttemptCacheIfRolledOver() {
   }
 }
 
-// Forfeit a live date-anchored game whose ET anchor has lapsed — the
+// Forfeit a live date-anchored game whose ET anchor has lapsed, the
 // session slept through midnight in a background tab or suspended PWA,
 // so the daily on screen is yesterday's (or the weekly attempt belongs
 // to a previous day). A fresh load would reach the same verdict from
@@ -2481,7 +2492,7 @@ function expireRolledOverGame() {
     weekDayIndex: getWeekDayIndex(),
   });
   // The title screen is date-sensitive even with no game in progress
-  // ("Completed today!", par line, weekly attempts) — refresh its cards
+  // ("Completed today!", par line, weekly attempts), refresh its cards
   // on every wake so midnight can't leave stale copy up.
   const titleScreen = $('#title-screen');
   const titleVisible = titleScreen && !titleScreen.classList.contains('hidden');
@@ -2503,7 +2514,7 @@ document.addEventListener('visibilitychange', () => {
     if (state.status === 'playing') pauseTimer();
     persistGameState(); // Always persist (guard is inside)
   } else {
-    // Coming back from a hidden tab counts as fresh activity — without
+    // Coming back from a hidden tab counts as fresh activity, without
     // this, the idle-pause timer would fire ~30s after refocus because
     // lastInteractionTime froze when we went hidden.
     recordInteraction();
@@ -2518,7 +2529,7 @@ document.addEventListener('visibilitychange', () => {
 
 // Idle-pause: any user input refreshes the idle clock. Capture-phase
 // listeners so that the dismissing pointerdown/keydown can be swallowed
-// when we're paused — without that, tapping the overlay to resume would
+// when we're paused, without that, tapping the overlay to resume would
 // also reveal whatever cell is under the tap. pointermove doesn't have
 // board side-effects so it doesn't need swallowing; it's throttled to
 // ~1Hz since trackpads fire 60+/sec.
