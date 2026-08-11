@@ -231,6 +231,11 @@ function candidate(spec, seed) {
   return {
     par: r.par, work, hard: hardOf(r.check), tier: r.check.techniqueLevel,
     genMs: Date.now() - t0, seed,
+    // The builder already computed the feature vector that priced this
+    // board, and features are model-independent where par is not: storing
+    // them is what lets a refit re-price the whole library in seconds
+    // instead of re-solving 2,900 boards (the pool-features lesson).
+    features: r.features,
     payload: serializeBoard({
       board: r.board, rows: r.rows, cols: r.cols, totalMines: r.totalMines,
       rngSeed: seed, activeGimmicks: r.activeGimmicks, firstClick: r.firstClick,
@@ -244,8 +249,46 @@ function candidate(spec, seed) {
   };
 }
 
+/**
+ * What a level may take in, derived from its number and its file's own
+ * `intro` field. The ONE copy of the schedule-legality rule: the top-up and
+ * the reprice re-binner both place boards through this, so they can never
+ * disagree with the build about where a shape or modifier is allowed.
+ */
+function intakeRules(level, intro) {
+  const block = Math.floor((level - 1) / CHALLENGE_BLOCK_SIZE) + 1;
+  const shapesIn = new Set(['rect']);
+  for (const [b, sh] of Object.entries(LIB_SHAPE_INTROS)) {
+    if (Number(b) <= block) shapesIn.add(sh);
+  }
+  const modsIn = new Set();
+  for (const [b, g] of Object.entries(LIB_MOD_INTROS)) {
+    if (Number(b) <= block) modsIn.add(g);
+  }
+  const isModIntro = intro != null && Object.values(LIB_MOD_INTROS).includes(intro);
+  return {
+    block,
+    shapesIn,
+    modsIn,
+    // A shape-debut level is single-shape by ruling; a modifier-debut level
+    // takes any introduced shape but every stack must carry the debut mod.
+    shapeDebut: intro != null && !isModIntro ? intro : null,
+    requiredMod: isModIntro ? intro : null,
+  };
+}
+
+/** May this board sit at this level? Window is the caller's business. */
+function boardAllowedAtLevel(board, rules) {
+  const { shape, gimmicks } = board.spec;
+  if (rules.shapeDebut && shape !== rules.shapeDebut) return false;
+  if (!rules.shapesIn.has(shape)) return false;
+  if (rules.requiredMod && !(gimmicks || []).includes(rules.requiredMod)) return false;
+  return (gimmicks || []).every((g) => rules.modsIn.has(g));
+}
+
 export { parFloor, parWindowTop, hardFloor, minBoardsFor, legalPatches, GIMMICK_SETS, candidate, hardOf,
-  MIN_PAR, MIN_WORK, CANDIDATES_PER_KEEP, OUT_DIR };
+  MIN_PAR, MIN_WORK, CANDIDATES_PER_KEEP, OUT_DIR,
+  LIB_SHAPE_INTROS, LIB_MOD_INTROS, intakeRules, boardAllowedAtLevel, PAR_FLOOR_SHAPE_RELIEF };
 
 // ── CLI ────────────────────────────────────────────────────────────────
 // Guarded so the module can be IMPORTED for its helpers without running the

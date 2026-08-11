@@ -23,38 +23,33 @@
 // only takes stacks carrying the debut modifier, which is how the build
 // populated those blocks in the first place.
 //
-// Appended boards carry their own `parModel` fingerprint. The file-level
-// fingerprint describes the build that wrote the file, and the overnight
-// refit has already moved one shape's equation 21% since; a per-board stamp
-// keeps mixed vintages self-describing until the owed post-refit reprice
-// automation lands.
+// Vintage: appended boards carry stored `features`, and the reprice pass
+// (`scripts/reprice-climb-library.mjs`, run by the nightly refit) re-prices
+// and re-bins the whole library against the model of the day, so a top-up
+// run never creates a second vintage story of its own.
 
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import {
   parFloor, parWindowTop, hardFloor, legalPatches, candidate, OUT_DIR,
+  LIB_SHAPE_INTROS, intakeRules,
 } from './build-climb-library.mjs';
 import { TILING_TYPES } from '../src/logic/tilingGeometry.js';
 import { TILING_SAFE_GIMMICKS } from '../src/logic/tilingGenerator.js';
-import { CHALLENGE_BLOCK_SIZE } from '../src/logic/challenge250.js';
-import { modelFingerprint } from '../src/logic/parModelFingerprint.js';
 
 const args = process.argv.slice(2);
 const argVal = (n, d) => { const i = args.indexOf(n); return i >= 0 && i + 1 < args.length ? args[i + 1] : d; };
 const SHAPE = argVal('--shape', 'rhombille');
 const DRY = args.includes('--dry-run');
+const FILL = args.includes('--fill');
 const ADD_PER_LEVEL = Number(argVal('--add', 2));
 const BUDGET_MS = Number(argVal('--minutes', 30)) * 60000;
 const MAX_CELLS = Number(argVal('--max-cells', 120));
 
-if (!TILING_TYPES.includes(SHAPE)) {
+if (!FILL && !TILING_TYPES.includes(SHAPE)) {
   console.error(`--shape must be one of ${TILING_TYPES.join(', ')} (rect never starves; it is the pool's cheapest supply)`);
   process.exit(1);
 }
 
-// The gap's densities. The commissioned probe is 0.24-0.26; 0.28 joins it
-// because the upper windows (floor 300s+) need the extra rate and it is the
-// proven density cap for the dear shapes (REP_DENSITY_CAP in the build).
-const DENSITIES = [0.24, 0.26, 0.28];
 // Same generation bounds the build's targeted pass uses: an infeasible
 // corner must cost attempts, never salts of full certification.
 const GEN_BOUNDS = { genAttempts: 80, strictRetries: 1, constructive: true };
@@ -66,31 +61,159 @@ const FACE_CAP = 2;
 const RELIEF = 0.85; // PAR_FLOOR_SHAPE_RELIEF: a starved shape may sit a
                      // little under the strict floor rather than not appear.
 
+// ── --fill: cover the deficit manifest the reprice left behind ──────────
+// His re-bin design's second half: "if there is insufficient boards after,
+// more will be generated." Reads deficits.json (written by
+// reprice-climb-library.mjs), generates each short level back up to its
+// minimum with whatever the introduction schedule allows there, and
+// rewrites the manifest with anything still owed. Deficits after a re-bin
+// are small by construction (the first run left 12 levels short by 1-2
+// boards each), so this is a bounded errand, not a build.
+if (FILL) {
+  const { minBoardsFor } = await import('./build-climb-library.mjs');
+  const DEFICITS_URL = new URL('deficits.json', OUT_DIR);
+  const manifest = JSON.parse(readFileSync(DEFICITS_URL, 'utf8'));
+  if (!manifest.deficits.length) {
+    console.log('no deficits owed');
+    process.exit(0);
+  }
+  const t0 = Date.now();
+  const perLevelMs = Math.max(90000, BUDGET_MS / manifest.deficits.length);
+  const fnvF = (s) => {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+    return h >>> 0;
+  };
+  const allPatches = legalPatches().filter((p) => p.cells <= 110);
+  let totalAdded = 0;
+  for (const d of manifest.deficits) {
+    const file = `level-${String(d.level).padStart(3, '0')}.json`;
+    const j = JSON.parse(readFileSync(new URL(file, OUT_DIR), 'utf8'));
+    const rules = intakeRules(j.level, j.intro);
+    const lo = parFloor(j.level) * RELIEF, hi = parWindowTop(j.level);
+    const hardMin = hardFloor(j.level);
+    const need = () => Math.max(0, minBoardsFor(j.level) - j.boards.length);
+    if (!need()) continue;
+
+    // The spec grid this level may draw from: its debut rules bound the
+    // shapes, its introduced modifiers bound the stacks (a mod-debut level
+    // requires its debut mod in every stack, matching the build), and the
+    // dial is the build's own level-derived formula.
+    const shapes = rules.shapeDebut ? [rules.shapeDebut] : [...rules.shapesIn];
+    const modsHere = [...rules.modsIn];
+    const fillStacks = [];
+    for (const a of modsHere) fillStacks.push([a]);
+    for (let i = 0; i < modsHere.length; i++) {
+      for (let k = i + 1; k < modsHere.length; k++) fillStacks.push([modsHere[i], modsHere[k]]);
+    }
+    const usable = rules.requiredMod
+      ? fillStacks.filter((g) => g.includes(rules.requiredMod))
+      : fillStacks;
+    const grid = [];
+    for (const q of allPatches.filter((p) => shapes.includes(p.shape))) {
+      for (const dens of [0.16, 0.2, 0.24, 0.28]) {
+        const mines = Math.round(q.cells * dens);
+        if (mines < 4 || mines > q.cells * 0.42) continue;
+        for (const g of usable) grid.push({ q, dens, mines, g });
+      }
+    }
+    grid.sort((a, b) => fnvF(`${a.q.shape}:${a.q.cells}:${a.dens}:${a.g.join('.')}`)
+      - fnvF(`${b.q.shape}:${b.q.cells}:${b.dens}:${b.g.join('.')}`));
+
+    const lt0 = Date.now();
+    const wanted = need();
+    const faces = new Map();
+    for (const b of j.boards) faces.set(b.face, (faces.get(b.face) || 0) + 1);
+    const found = [];
+    // Census one seed per spec; specs whose draw lands in-window get mined
+    // hardest-of-6 immediately (the deficit is 1-2 boards, so depth beats
+    // breadth here and there is no separate mining phase to schedule).
+    for (const { q, dens, mines, g } of grid) {
+      if (Date.now() - lt0 > perLevelMs || found.length >= wanted + 2) break;
+      const mk = (k) => candidate(
+        { shape: q.shape, rows: q.rows, cols: q.cols, M: q.M, N: q.N,
+          cells: q.cells, mines, gimmicks: g,
+          gimmickLevel: 40 + (j.level % 60),
+          ...(q.shape === 'rect' ? {} : GEN_BOUNDS) },
+        `climbfill:L${j.level}:${q.shape}:${q.cells}c:${dens}:${g.join('.')}:${k}`);
+      const c0 = mk(0);
+      if (!c0 || c0.par < lo || c0.par > hi) continue;
+      const mined = [c0];
+      for (let k = 1; k < 6; k++) {
+        if (Date.now() - lt0 > perLevelMs) break;
+        const c = mk(k);
+        if (c && c.par >= lo && c.par <= hi) mined.push(c);
+      }
+      mined.sort((a, b) => b.hard - a.hard);
+      found.push(mined[0]);
+    }
+    found.sort((a, b) => b.hard - a.hard);
+    const takes = [];
+    // Floor-meeting boards first; soft ones only to close a hole the
+    // supply could not fill properly (same two-tier rule as the deal).
+    for (const pass of [(c) => c.hard >= hardMin, () => true]) {
+      for (const c of found) {
+        if (takes.length >= wanted) break;
+        if (takes.includes(c) || !pass(c)) continue;
+        if ((faces.get(c.face) || 0) >= FACE_CAP) continue;
+        faces.set(c.face, (faces.get(c.face) || 0) + 1);
+        takes.push(c);
+      }
+    }
+    if (takes.length && !DRY) {
+      for (const c of takes) {
+        const { used, ...board } = c;
+        j.boards.push(board);
+      }
+      writeFileSync(new URL(file, OUT_DIR), JSON.stringify(j));
+    }
+    totalAdded += takes.length;
+    console.log(`L${j.level} +${takes.length}/${d.need - d.have}`
+      + ` (${takes.map((c) => `${c.spec.shape} ${Math.round(c.par)}s/h${c.hard}`).join(', ') || 'nothing found'})`
+      + ` in ${Math.round((Date.now() - lt0) / 1000)}s`);
+  }
+  // Re-derive what is still owed, so the manifest never claims a debt that
+  // was just paid or hides one that was not.
+  const remaining = [];
+  for (const d of manifest.deficits) {
+    const file = `level-${String(d.level).padStart(3, '0')}.json`;
+    const j = JSON.parse(readFileSync(new URL(file, OUT_DIR), 'utf8'));
+    if (j.boards.length < minBoardsFor(j.level)) {
+      remaining.push({ level: j.level, have: j.boards.length, need: minBoardsFor(j.level) });
+    }
+  }
+  if (!DRY) writeFileSync(DEFICITS_URL, JSON.stringify({ parModel: manifest.parModel, deficits: remaining }));
+  console.log(`\n${DRY ? '[dry-run] ' : ''}filled ${totalAdded} boards in ${Math.round((Date.now() - t0) / 1000)}s;`
+    + ` ${remaining.length} levels still owed`);
+  process.exit(0);
+}
+
+// The gap's densities. The commissioned probe is 0.24-0.26; 0.28 joins it
+// because the upper windows (floor 300s+) need the extra rate and it is the
+// proven density cap for the dear shapes (REP_DENSITY_CAP in the build).
+const DENSITIES = [0.24, 0.26, 0.28];
+
 // ── 1. Which levels lack the shape, and what may go there ──────────────
+// Legality comes from the build script's own intakeRules (one copy): a
+// shape-debut level of another lattice is skipped outright, a
+// modifier-debut level takes the shape only inside a stack carrying its
+// debut modifier.
 const files = readdirSync(OUT_DIR).filter((f) => f.endsWith('.json')).sort();
-const SHAPE_INTRO_BLOCK = { hex: 7, '4.8.8': 8, cairo: 10, rhombille: 12, floret: 14, deltoidal: 16 };
-const MOD_INTRO_BLOCK = {
-  walls: 2, liar: 3, mystery: 4, sonar: 6, wormhole: 9,
-  mirror: 11, locked: 13, compass: 15, worm: 17,
-};
+const shapeIntroBlock = Number(Object.entries(LIB_SHAPE_INTROS)
+  .find(([, sh]) => sh === SHAPE)[0]);
 
 const targets = [];
 for (const f of files) {
   const j = JSON.parse(readFileSync(new URL(f, OUT_DIR), 'utf8'));
-  const block = Math.floor((j.level - 1) / CHALLENGE_BLOCK_SIZE) + 1;
-  if (block < SHAPE_INTRO_BLOCK[SHAPE]) continue;
+  const rules = intakeRules(j.level, j.intro);
+  if (rules.block < shapeIntroBlock) continue;
   if (j.boards.some((b) => b.spec.shape === SHAPE)) continue;
-  // A shape-debut level is single-shape by ruling; never top one up with
-  // another lattice. A modifier-debut level takes the shape only inside a
-  // stack carrying the debut modifier.
-  if (j.intro && !(j.intro in MOD_INTRO_BLOCK)) continue;
-  const modsIn = new Set(Object.entries(MOD_INTRO_BLOCK)
-    .filter(([, b]) => b <= block).map(([m]) => m));
+  if (rules.shapeDebut && rules.shapeDebut !== SHAPE) continue;
   targets.push({
-    file: f, level: j.level, block, json: j,
+    file: f, level: j.level, block: rules.block, json: j,
     floor: parFloor(j.level), top: parWindowTop(j.level), hardMin: hardFloor(j.level),
-    requiredMod: j.intro && j.intro in MOD_INTRO_BLOCK ? j.intro : null,
-    modsIn,
+    requiredMod: rules.requiredMod,
+    modsIn: rules.modsIn,
   });
 }
 console.log(`${SHAPE}: ${targets.length} levels lack it (L${targets[0]?.level}..L${targets.at(-1)?.level});`
@@ -208,7 +331,6 @@ console.log(`supply: ${supply.length} boards from ${drawn} draws in ${Math.round
   + ` max ${Math.max(...supply.map((s) => s.hard))}`);
 
 // ── 3. Deal hardest-first into each level's window ─────────────────────
-const fp = modelFingerprint();
 let filled = 0, boardsAdded = 0;
 const holes = [];
 for (const t of targets) {
@@ -247,7 +369,7 @@ for (const t of targets) {
   if (!DRY) {
     for (const c of takes) {
       const { used, ...board } = c;
-      t.json.boards.push({ ...board, parModel: fp });
+      t.json.boards.push(board);
     }
     writeFileSync(new URL(t.file, OUT_DIR), JSON.stringify(t.json));
   }
