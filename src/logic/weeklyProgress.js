@@ -1,7 +1,7 @@
 // The weekly's calendar: which past weeks are replayable, and how the week
 // streak advances.
 //
-// The daily has three of these already — archiveEligibility.js for "which
+// The daily has three of these already, archiveEligibility.js for "which
 // past boards are offered", moltDay.js for "what does completing today do to
 // the streak". The weekly gets one module for both because they are the same
 // arithmetic seen twice: everything here is a Monday `weekStart` string, and
@@ -18,7 +18,7 @@
 // seven chances at the same board, so the insurance would be insuring a
 // window that is itself the insurance.
 
-// The first weekStart with a stored canonical `weeklyBoard` — the mode's own
+// The first weekStart with a stored canonical `weeklyBoard`, the mode's own
 // launch. Earlier weeks have no board to replay, and unlike the daily there is
 // no backfill: a weekly board is one board for one week, and regenerating a
 // past week from its seed would produce a board nobody ever played.
@@ -59,13 +59,13 @@ function _labelParts(dateStr) {
   return new Date(y, m - 1, d, 12);
 }
 
-/** "May 4" — the Monday alone. */
+/** "May 4", the Monday alone. */
 export function weekStartLabel(weekStart) {
   if (!isWeekString(weekStart)) return '';
   return _labelParts(weekStart).toLocaleString(undefined, { month: 'short', day: 'numeric' });
 }
 
-/** "May 4 to May 10" — the week the board belonged to. */
+/** "May 4 to May 10", the week the board belonged to. */
 export function weekRangeLabel(weekStart) {
   if (!isWeekString(weekStart)) return '';
   const end = addWeeks(weekStart, 0);
@@ -80,7 +80,7 @@ export function weekRangeLabel(weekStart) {
 /**
  * Is `weekStart` offered in the weekly archive? A stored past week: at or
  * after the first weekly, and strictly before the current one. THIS week is
- * the live Weekly's job — it still has attempts left in it.
+ * the live Weekly's job, it still has attempts left in it.
  */
 export function isArchivableWeek(weekStart, currentWeek, firstWeek = FIRST_ARCHIVE_WEEK) {
   if (!isWeekString(weekStart) || !isWeekString(currentWeek)) return false;
@@ -90,15 +90,15 @@ export function isArchivableWeek(weekStart, currentWeek, firstWeek = FIRST_ARCHI
 /**
  * What the past-weeklies list should do with one row.
  *
- *   'playable'    — offered, tap to replay
- *   'done'        — offered but already played; shows its mark and is not
+ *   'playable'    - offered, tap to replay
+ *   'done'        - offered but already played; shows its mark and is not
  *                   tappable, exactly as a finished daily is. The week's board
  *                   is one board: once you have cleared it there is nothing
  *                   left to find, and a replay records nothing anyway.
- *   'current'     — this week, which the live Weekly card owns
- *   'unavailable' — outside the window
+ *   'current'     - this week, which the live Weekly card owns
+ *   'unavailable', outside the window
  *
- * `played` may be a Set, an array, or null. NULL MEANS UNKNOWN, not empty —
+ * `played` may be a Set, an array, or null. NULL MEANS UNKNOWN, not empty,
  * the daily calendar's rule and for the same reason: a signed-out player or a
  * failed read cannot be told what they have finished, and failing OPEN here
  * costs nothing because an archive replay records nothing either way.
@@ -131,12 +131,12 @@ export function pastWeekStarts(currentWeek, limit = 26, firstWeek = FIRST_ARCHIV
 
 // ── Week streak ──────────────────────────────────────────────────────────
 //
-// One completion in a week banks that week — his rule (2026-08-05): "only need
+// One completion in a week banks that week, his rule (2026-08-05): "only need
 // to play one of the weekly to get a week streak". The seven daily attempts
 // are the week's generosity, not seven separate obligations, so the streak
 // counts WEEKS PLAYED and never asks how many of the seven were used.
 //
-// Completion, not merely opening a board, is what banks it — the same bar the
+// Completion, not merely opening a board, is what banks it, the same bar the
 // daily streak uses. The weekly has no loss state, so an attempt either
 // finishes or is abandoned, and "played" would otherwise be satisfied by one
 // click on a board nobody solved.
@@ -165,7 +165,7 @@ export function applyWeekContinuation(prev, week) {
   let extended;
   if (lastWeek === week) {
     // Already banked this week. Hold everything, including a streak of 0 that
-    // some other path has not yet set — this branch must never invent one.
+    // some other path has not yet set, this branch must never invent one.
     streak = Math.max(1, prevStreak);
     extended = false;
   } else if (lastWeek && weeksBetween(lastWeek, week) === 1) {
@@ -190,7 +190,7 @@ export function applyWeekContinuation(prev, week) {
  * The counterpart to computeStreakFromHistory for dailies, and it exists for
  * the same reason. A streak kept only as a counter starts at zero the day the
  * counter ships, so the feature launched telling players who had never missed
- * a weekly that they had no streak — fourteen weeks of history sitting in
+ * a weekly that they had no streak, fourteen weeks of history sitting in
  * their own account, uncounted (his report, 2026-08-05). The history is the
  * authority; the counter is a cache of it.
  *
@@ -201,7 +201,7 @@ export function applyWeekContinuation(prev, week) {
  */
 /**
  * Filter a fetchPlayedWeeks() result down to the weeks the streak may derive
- * from — the weekly counterpart of streakBearingDates, and it exists for a
+ * from, the weekly counterpart of streakBearingDates, and it exists for a
  * near-identical reason.
  *
  * `weeklyAttempts` is written on the FIRST CLICK, so it records weeks OPENED,
@@ -212,7 +212,7 @@ export function applyWeekContinuation(prev, week) {
  *
  * The CURRENT week is different in the way that matters. It is not history,
  * the player can still earn it honestly before Sunday, and the reconcile runs
- * on every boot — so opening this week's board and abandoning it banked the
+ * on every boot, so opening this week's board and abandoning it banked the
  * week, spliced it onto a genuine run (measured: a real 2-week run read 3),
  * and raised the monotonic `best`, which nothing can lower again (issue #254).
  * Anything dated after the current week is dropped for the same reason plus
@@ -221,7 +221,7 @@ export function applyWeekContinuation(prev, week) {
  * `currentWeek` is required and the filter fails CLOSED without it, in keeping
  * with this module's no-clock rule: not knowing what "now" is means not being
  * able to tell history from the live week, and returning everything would
- * silently restore the defect. An empty result simply leaves the stored record
+ * silently restore the defect. An empty result leaves the stored record
  * alone, since the reconcile treats it as nothing to derive.
  *
  * @param {string[]|null} weekStarts Monday anchors from fetchPlayedWeeks
@@ -249,7 +249,7 @@ export function weekStreakFromHistory(weekStarts) {
 /**
  * Is a stored week streak still alive as of `currentWeek`?
  *
- * Alive means the last completion was this week or last week — while the
+ * Alive means the last completion was this week or last week, while the
  * current week is still running, a streak that ended last week has not been
  * broken yet, it is merely waiting. Anything older is over, and the card must
  * not keep advertising it.
@@ -280,7 +280,7 @@ export function projectWeekContinuation(prev, currentWeek) {
 
 /**
  * The streak a stored record can honestly claim right now: the stored value
- * while it is alive, 0 once it has lapsed. Read-side only — a lapsed streak is
+ * while it is alive, 0 once it has lapsed. Read-side only, a lapsed streak is
  * not rewritten to 0 in storage, because the next completion's continuation
  * math resets it anyway and a read must never mutate.
  */

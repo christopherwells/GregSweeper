@@ -3,7 +3,7 @@
  *
  * Every fresh visit gets an anonymous uid via signInAnonymously. The user
  * can later upgrade the anonymous account to a permanent identity
- * (Google, email link) via src/firebase/firebaseAuth.js — that preserves
+ * (Google, email link) via src/firebase/firebaseAuth.js, that preserves
  * the uid. On a second device, signing in with the same identity SWITCHES
  * the device's session to the existing uid, so users/{uid}/* (streak,
  * dailyHistory, weeklyAttempts, etc.) carries across devices.
@@ -36,7 +36,7 @@ let _ready = false;
 // True after the FIRST non-null auth state of this session. Distinct
 // from _uid because credential-switch flows go through a brief null
 // intermediate state (after currentUser.delete() and before
-// signInWithCredential) — without this flag, the post-switch fire
+// signInWithCredential), without this flag, the post-switch fire
 // would look like a fresh initial auth resolution and miss the
 // "treat this as a uid switch, not an initial load" branch.
 let _hasInitialized = false;
@@ -49,7 +49,7 @@ let _pendingHistory = null;
 let _pendingWeeklyAttempts = null;
 // The player's leaderboard name to publish to playerNames/{uid}, coalesced
 // when auth hasn't settled (boot window). Unlike the other pendings, the name
-// is a person-level fact, not uid-scoped — so on a uid SWITCH main.js
+// is a person-level fact, not uid-scoped, so on a uid SWITCH main.js
 // re-publishes it under the new uid (see subscribeToUidChanges).
 let _pendingPlayerName = null;
 
@@ -57,7 +57,7 @@ let _pendingPlayerName = null;
 // firebasePush.js uses it to re-subscribe FCM under the new uid.
 const _uidChangeListeners = new Set();
 
-// Listeners notified when the cloud `users/{uid}/*` subtree changes —
+// Listeners notified when the cloud `users/{uid}/*` subtree changes,
 // fires on every Firebase update under that path, including writes from
 // other devices. main.js uses this to apply the merged progress and
 // refresh on-screen counters so a daily completion on PC shows up on
@@ -68,7 +68,7 @@ let _cloudListenerRef = null;
 /**
  * Return the stable uid for this session, or null if auth has not yet
  * resolved. The uid can change at runtime when the user signs in (their
- * anonymous uid is upgraded — uid unchanged) or switches accounts (their
+ * anonymous uid is upgraded, uid unchanged) or switches accounts (their
  * old anonymous uid is abandoned and they adopt the existing uid).
  */
 export function getUid() {
@@ -80,7 +80,7 @@ export function getUid() {
  * `{ uid, previousUid, isInitial }`:
  *   - `isInitial: true` means the first time auth settles (anonymous
  *     sign-in completion on a fresh device, or persisted-session restore)
- *   - `isInitial: false` means an in-app switch — the previous uid's
+ *   - `isInitial: false` means an in-app switch, the previous uid's
  *     local state is stale and the caller should reload from the new uid
  * Returns an unsubscribe function.
  */
@@ -99,7 +99,7 @@ function _notifyUidChange(uid, previousUid, isInitial) {
 /**
  * Subscribe to real-time cloud updates of `users/{currentUid}/*`. The
  * callback fires with the snapshot value every time the subtree changes
- * — both for writes from THIS device (own writes echo back) and writes
+ *, both for writes from THIS device (own writes echo back) and writes
  * from OTHER devices signed into the same account. Returns an
  * unsubscribe function.
  */
@@ -121,7 +121,7 @@ function _attachCloudListener(uid) {
   // .on('value', ...) fires once on attach with the current snapshot,
   // then on every subsequent write. That initial fire is the same data
   // loadProgress() returned during the explicit init chain, so the
-  // double-apply is idempotent (max-merge, same data) — not worth
+  // double-apply is idempotent (max-merge, same data), not worth
   // adding state to suppress.
   const ref = _db.ref('users/' + uid);
   _cloudListenerRef = ref;
@@ -170,14 +170,14 @@ function _handleAuthChange(snap) {
   const oldUid = _uid;
 
   if (newUid === oldUid) {
-    // Same uid — either a no-op fire (e.g., a token refresh) or a link
+    // Same uid, either a no-op fire (e.g., a token refresh) or a link
     // upgrade where the providerId changed but uid stayed. Nothing to
     // reload either way; downstream code reads providerId via firebaseAuth.
     return;
   }
 
   if (!newUid) {
-    // Signed out — could be a permanent logout OR a transient
+    // Signed out, could be a permanent logout OR a transient
     // intermediate state during credential-switch (currentUser.delete()
     // then signInWithCredential). Either way drop the uid + ready
     // flag, but keep _hasInitialized true so the subsequent sign-in
@@ -199,12 +199,12 @@ function _handleAuthChange(snap) {
   _ready = true;
 
   if (isInitial) {
-    // First auth settle of the session — flush any writes queued during
+    // First auth settle of the session, flush any writes queued during
     // the boot window where saveProgress was called before auth resolved.
     _flushPendingWrites();
   } else {
-    // uid changed mid-session — pending writes were intended for the OLD
-    // uid (its data is no longer reachable from this device), so discard.
+    // uid changed mid-session, pending writes were intended for the OLD
+    // uid (whose data are no longer reachable from this device), so discard.
     // The pending name is dropped too; main.js's uid-change handler
     // re-publishes the current local name under the NEW uid.
     _pendingSave = null;
@@ -233,7 +233,7 @@ function _handleAuthChange(snap) {
 
 /**
  * Wire up the auth-state listener and bootstrap the initial anonymous
- * sign-in if no persisted session exists. Idempotent — calling twice is
+ * sign-in if no persisted session exists. Idempotent, calling twice is
  * a no-op after the first.
  *
  * Resolves when auth has settled (uid available) or after the timeout.
@@ -257,7 +257,7 @@ export async function initAnonymousAuth() {
       // anonymous account is driven by the AUTHORITATIVE first
       // onAuthStateChanged fire (after Firebase finishes reading its
       // IndexedDB persistence), NEVER by a timeout. A timeout-driven
-      // sign-in clobbered a still-loading linked session on slow boots —
+      // sign-in clobbered a still-loading linked session on slow boots,
       // the intermittent "signed out for no reason" bug. See
       // anonAuthBootstrap.js for the full rationale. The bounded waits
       // here only unblock boot; the uid still arrives reactively via the
@@ -265,11 +265,11 @@ export async function initAnonymousAuth() {
       // slow persistence read overruns them.
       // Test environments never MINT: every fresh-context e2e boot used
       // to create a real anonymous user in production Auth (~9 orphans
-      // per CI run — auth was the one Firebase side effect the per-call
+      // per CI run, auth was the one Firebase side effect the per-call
       // isTestEnvironment() write gates didn't cover). The listener
       // stays attached either way, so a persisted session (shared
-      // origin-scoped IndexedDB — gregsweeper.com/test/ sees the prod
-      // session) is still adopted; a fresh test context simply plays
+      // origin-scoped IndexedDB, gregsweeper.com/test/ sees the prod
+      // session) is still adopted; a fresh test context plays
       // signed out, which every uid consumer already handles.
       await bootstrapAnonymousAuth({
         subscribe: subscribeAuthState,
@@ -289,7 +289,7 @@ export async function initAnonymousAuth() {
 
 /**
  * Save progress to cloud. Call when checkpoint advances or daily streak updates.
- * Fire-and-forget — does not block gameplay.
+ * Fire-and-forget, does not block gameplay.
  */
 export function saveProgress({ maxCheckpoint, dailyStreak, bestDailyStreak, lastDailyDate, powerUps, moltDay, weekStreak }) {
   if (isTestEnvironment()) return;
@@ -298,9 +298,9 @@ export function saveProgress({ maxCheckpoint, dailyStreak, bestDailyStreak, last
   // ladder reset (epoch + maxCheckpoint + the challenge power-up pool).
   // The point of the separate node is that PRE-RESET CLIENTS CANNOT TOUCH
   // IT: their old code writes the legacy top-level `maxCheckpoint` and
-  // `powerUps.challenge` fields, which post-reset code never reads — so a
+  // `powerUps.challenge` fields, which post-reset code never reads, so a
   // stale device can never resurrect the wiped climb or the old hoard,
-  // and there is no sibling-drift window where an old value sits next to
+  // and there is no sibling-drift window where an old value is left next to
   // a lingering epoch stamp (the moltDay atomic-snapshot lesson). Every
   // write into the node carries the epoch, so the node is self-dating.
   if (maxCheckpoint != null) {
@@ -313,7 +313,7 @@ export function saveProgress({ maxCheckpoint, dailyStreak, bestDailyStreak, last
       data['challenge250/powerUps'] = challenge;
       data['challenge250/epoch'] = CHALLENGE_250_EPOCH;
     }
-    // Non-challenge pools (chaos) keep the legacy node — the reset never
+    // Non-challenge pools (chaos) keep the legacy node, the reset never
     // touches them and old/new clients agree on their meaning.
     if (Object.keys(otherModes).length > 0) data.powerUps = otherModes;
   }
@@ -331,7 +331,7 @@ export function saveProgress({ maxCheckpoint, dailyStreak, bestDailyStreak, last
 
   if (Object.keys(data).length === 0) return;
 
-  // Auth not ready yet — coalesce into a pending save. We always merge
+  // Auth not ready yet, coalesce into a pending save. We always merge
   // so the latest values win for each field; queueing wins exclusively
   // for that field, max-comparison is the cloud's job on flush.
   if (!_ready || !_uid) {
@@ -345,7 +345,7 @@ export function saveProgress({ maxCheckpoint, dailyStreak, bestDailyStreak, last
 }
 
 /**
- * Publish the player's leaderboard name to `playerNames/{uid}` — the
+ * Publish the player's leaderboard name to `playerNames/{uid}`, the
  * world-readable canonical name every leaderboard JOINS against by uid
  * (see resolveDisplayName in firebaseLeaderboard.js). Storing the name once
  * here, rather than only denormalized onto each (write-once) score row, is
@@ -370,7 +370,7 @@ export function publishPlayerName(name) {
 // ── Stale-client beacon ───────────────────────────────
 // users/{uid}/lastSeen = { codeVersion, at } written once per session.
 // Server-side visibility into which build each player's device is
-// actually running — the Sebastien incident (device stuck on v1.5.162
+// actually running, the Sebastien incident (device stuck on v1.5.162
 // for days because its SW update fetch kept failing) was only
 // diagnosable by spelunking captured errors. With the beacon, the
 // inspect-user-record workflow shows the stuck version directly.
@@ -396,7 +396,7 @@ function _tryWriteLastSeen() {
 // dailyHistory's rule requires `submittedAt === now`, satisfied only by
 // the server-timestamp sentinel (the server stamps its own clock). A
 // literal client Date.now() never equals the server's now, so the whole
-// write is rejected — the regression that silently froze every stats page
+// write is rejected, the regression that silently froze every stats page
 // from 2026-05-25 until this fix. Every dailyHistory write stamps
 // submittedAt with this, mirroring the leaderboard score write.
 function _serverTimestamp() {
@@ -421,12 +421,12 @@ export function saveDailyHistoryEntry(date, entry) {
 
   // An entry is always a full record `{ time }`; the deployed rule REQUIRES
   // the time child, so any other shape would be silently rejected server-side
-  // (issue #99 — a `{ completed: true }` marker branch used to live here, but
+  // (issue #99, a `{ completed: true }` marker branch used to live here, but
   // no caller ever reached it and the rule rejects it, so it was removed to
   // keep code and rules describing one contract). Archive replays additionally
   // carry `archive: true` (issue #113): the row still feeds the delta chart
   // and the calendar's completed marks, but the streak reconciler skips
-  // archive-marked dates — a replayed gap day must never extend the streak.
+  // archive-marked dates, a replayed gap day must never extend the streak.
   // `body` holds only the meaningful content. submittedAt is deliberately NOT
   // in here: the rule demands submittedAt === now, so it is attached as the
   // server sentinel at each real write (below, and in
@@ -439,8 +439,8 @@ export function saveDailyHistoryEntry(date, entry) {
   if (!_ready || !_uid) {
     // Boot-window coalescing (auth not settled). In-memory ONLY: we don't
     // know the uid yet, so we can't tag a durable entry to its owner.
-    // The window is brief — Firebase restores the anonymous session from
-    // IndexedDB within ~1s even offline — and these flush on the initial
+    // The window is brief, Firebase restores the anonymous session from
+    // IndexedDB within ~1s even offline, and these flush on the initial
     // settle via _flushPendingWrites (and are discarded on a uid switch).
     // Re-routes through this function on settle, which re-stamps submittedAt.
     if (!_pendingHistory) _pendingHistory = {};
@@ -465,7 +465,7 @@ export function saveDailyHistoryEntry(date, entry) {
  *
  * Returns the row object, or null when the read SUCCEEDS and no row exists
  * (a confirmed-absent first completion). THROWS when Firebase isn't ready or
- * the read fails — the caller MUST tell "confirmed absent" apart from "couldn't
+ * the read fails, the caller MUST tell "confirmed absent" apart from "couldn't
  * read". Swallowing the error to null falls OPEN to "no history", and the refit
  * only dedups archive-vs-day-of (not archive-vs-archive), so a flaky read on a
  * replay double-feeds the par fit and overwrites the first-completion chart row.
@@ -506,11 +506,11 @@ function _persistPendingDailyHistory(date, payload) {
 
 // Re-send queued daily-history writes for the CURRENT uid only. Each entry
 // is tagged with its owning uid; entries belonging to a different account
-// that used this device are left untouched — never cross-attributed, which
+// that used this device are left untouched, never cross-attributed, which
 // would inflate the wrong account's streak. Flushed on auth-ready.
 export async function flushPendingDailyHistory() {
   if (!_ready || !_uid) return;
-  if (isTestEnvironment()) return; // never write prod history from a test session
+  if (isTestEnvironment()) return; // never write prod history from a test build
   let q;
   try { q = safeGetJSON(PENDING_HISTORY_KEY, null); } catch { return; }
   if (!q || typeof q !== 'object') return;
@@ -525,7 +525,7 @@ export async function flushPendingDailyHistory() {
     const { uid, ...payload } = entry; // strip the owner tag before writing
     try {
       // Re-stamp submittedAt with the server sentinel: the rule rejects a
-      // stored client timestamp, and pre-fix queue entries may carry one.
+      // stored client timestamp, and pre-fix queue entries may still contain one.
       await _db.ref('users/' + _uid + '/dailyHistory/' + date)
         .set({ ...payload, submittedAt: _serverTimestamp() });
       flushed++;
@@ -544,7 +544,7 @@ export async function flushPendingDailyHistory() {
  * replay), or null if the read could not be completed (offline / not
  * signed in / timeout). This is the authoritative completed-date set:
  * the archive calendar marks EVERY date, while the streak derives only
- * from the non-archive ones (see streakBearingDates — issue #113: a
+ * from the non-archive ones (see streakBearingDates, issue #113: a
  * replayed gap day must never extend the streak).
  */
 export async function loadDailyHistory() {
@@ -572,7 +572,7 @@ export async function loadDailyHistory() {
  * Load the per-day attempt map for a given ET-week. On a SUCCESSFUL
  * cloud read returns the `{ 0: true, 3: true }` shape (numbers as keys
  * when consumed via `Object.keys`); a successful read with nothing
- * recorded returns an empty `{}` — that is an authoritative "no
+ * recorded returns an empty `{}`, that is an authoritative "no
  * attempts this week", not an error. Returns `null` when the read
  * could NOT be completed (not signed in, offline, or timed out) so the
  * caller can keep its synchronous localStorage seed instead of
@@ -602,15 +602,15 @@ export async function loadWeeklyAttempts(weekStart) {
 
 /**
  * Every week the player has opened an attempt on, newest order irrelevant.
- * Read from `users/{uid}/weeklyAttempts` — the player's OWN node, already
+ * Read from `users/{uid}/weeklyAttempts`, the player's OWN node, already
  * written on every first click and already cloud-synced, so the Past Weeklies
  * list marks the weeks they have played without scanning the shared `weekly/`
  * leaderboard (which has no uid index and grows with every player).
  *
  * `shallow` because only the KEYS matter: each is a weekStart.
  *
- * Returns null when unavailable (signed out, offline, read failed) — the list
- * treats that as UNKNOWN and simply shows no marks, never as "played nothing".
+ * Returns null when unavailable (signed out, offline, read failed), the list
+ * treats that as UNKNOWN and shows no marks, never as "played nothing".
  *
  * @returns {Promise<string[]|null>}
  */
@@ -639,7 +639,7 @@ export async function fetchPlayedWeeks() {
  */
 export function markWeeklyDayAttempted(weekStart, day) {
   if (typeof weekStart !== 'string' || !Number.isInteger(day) || day < 0 || day > 6) return;
-  // Test branch: skip Firebase write and skip localStorage too —
+  // Test branch: skip Firebase write and skip localStorage too,
   // otherwise the test deployment would gate the player out of weekly
   // mode on test even though no real attempt was recorded.
   if (isTestEnvironment()) return;
@@ -700,7 +700,7 @@ export function saveLocalWeeklyAttempt(weekStart, day) {
     const current = loadLocalWeeklyAttempts(weekStart);
     current[day] = true;
     localStorage.setItem(LS_WEEKLY_ATTEMPTS_PREFIX + weekStart, JSON.stringify(current));
-  } catch { /* private browsing / quota — best-effort */ }
+  } catch { /* private browsing / quota, best-effort */ }
 }
 
 // Overwrite the localStorage mirror for a week with an authoritative
@@ -717,7 +717,7 @@ export function replaceLocalWeeklyAttempts(weekStart, dayMap) {
       if (Number.isInteger(n) && n >= 0 && n <= 6 && dayMap[k]) clean[n] = true;
     }
     localStorage.setItem(LS_WEEKLY_ATTEMPTS_PREFIX + weekStart, JSON.stringify(clean));
-  } catch { /* private browsing / quota — best-effort */ }
+  } catch { /* private browsing / quota, best-effort */ }
 }
 
 // Sweep localStorage entries for weeks we're no longer tracking. Called

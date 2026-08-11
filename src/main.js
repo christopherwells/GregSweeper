@@ -417,7 +417,7 @@ boardEl.addEventListener('contextmenu', (e) => {
   toggleFlag(row, col);
 });
 
-// Touch support: tap to reveal, long press to flag
+// Touch support: long press to flag, tap to reveal
 let touchedCellRow = null;
 let touchedCellCol = null;
 let touchStartX = 0;
@@ -939,8 +939,8 @@ for (const card of $$('.mode-card')) {
     // The Gym card is a .mode-card (for the grid layout) but carries NO
     // data-mode and has its own handler (openLexicon). Without this guard
     // it falls through every branch below to switchMode(undefined), which
-    // started a hidden challenge game UNDER the gym overlay and hid the
-    // title, so closing the gym revealed that game, and the idle clock
+    // started a hidden challenge game UNDER the gym overlay and left the
+    // title hidden, so closing the gym revealed that game, and the idle clock
     // painted its pause overlay over the gym. A mode-less card does
     // nothing here; its own handler owns the click.
     if (!mode) return;
@@ -1021,7 +1021,7 @@ if (helpModifierList) {
     .join('');
 }
 
-// Progress and More sheets, the grouped footer. A sheet row hides its
+// Progress and More sheets, the grouped footer. A sheet row closes its
 // sheet (plain hideModal, NOT closeModalAndReturn: the _returnToTitle
 // flag must survive the hop) and opens the destination modal, whose
 // close button then returns to the title screen as before.
@@ -2217,7 +2217,7 @@ async function init() {
   // Diagnostics button is hidden for casual users. Unhide when `?debug=1`
   // is in the URL (once per device, we persist a localStorage flag so
   // the button stays visible on return visits without needing the param
-  // again). `?debug=0` clears the flag if we ever want to re-hide it.
+  // again). `?debug=0` clears the flag if we ever want it hidden again.
   const DEBUG_UI_KEY = 'gregsweeper_debug_ui';
   if (urlParams.get('debug') === '1') {
     safeSet(DEBUG_UI_KEY, '1');
@@ -2241,7 +2241,7 @@ async function init() {
   if (cruxParam !== null) {
     const todayET = getLocalDateString();
     const yesterdayET = addCalendarDays(todayET, -1);
-    // Spoiler + range guard (only yesterday-or-earlier, never before the first
+    // Spoiler + range gate (only yesterday-or-earlier, never before the first
     // canonical; out-of-range falls back to yesterday), pinned in archiveEligibility.
     const cruxDate = resolveCruxDate(cruxParam, todayET, yesterdayET);
     hideBootOverlay();
@@ -2547,8 +2547,8 @@ document.addEventListener('visibilitychange', () => {
 // Idle-pause: any user input refreshes the idle clock. Capture-phase
 // listeners so that the dismissing pointerdown/keydown can be swallowed
 // when we're paused, without that, tapping the overlay to resume would
-// also reveal whatever cell is under the tap. pointermove doesn't have
-// board side-effects so it doesn't need swallowing; it's throttled to
+// also reveal whatever cell is under the tap. pointermove mutates
+// nothing on the board, so it doesn't need swallowing; it's throttled to
 // ~1Hz since trackpads fire 60+/sec.
 let _lastMoveStamp = 0;
 document.addEventListener('pointerdown', (ev) => {

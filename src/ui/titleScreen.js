@@ -50,7 +50,7 @@ export function closeModalAndReturn(modalId) {
   }
 }
 
-// Title screen footer buttons — open modals on top of title screen.
+// Title screen footer buttons, open modals on top of title screen.
 // Settings/Stats/Collection modals live outside #app (in the HTML) so they
 // render regardless of #app's visibility, with z-index above the title screen.
 export function showModalFromTitle(modalId) {
@@ -113,16 +113,16 @@ export function updateTitleProgress() {
       : '';
 
     // Greg's note (the daily's character) is the center descriptor. The Greg
-    // sprite was dropped here in the 2026-06-25 front-door rebuild — the one
+    // sprite was dropped here in the 2026-06-25 front-door rebuild, the one
     // Greg now lives in the title header, and this card keeps its calendar
     // icon. Once played, the card just says so (the dimmed .daily-completed
     // style reinforces it).
-    // The board's SHAPE leads the centre line on a lattice day, and is absent
+    // The board's SHAPE leads the center line on a lattice day, and is absent
     // on a Classic one: naming "Classic" on the half of days that are one
     // would be noise, and the four corners are already spoken for (measured:
     // "Paving Stones · Par 240s" in the par corner overlaps the streak corner
     // on a 174px card). It comes from the CANONICAL board, never from
-    // re-running the date's shape draw — a forced or fallback board can
+    // re-running the date's shape draw, a forced or fallback board can
     // legitimately differ from the draw, and the card must describe what the
     // player will actually open. Same rule the field note follows, same
     // reason (the 2026-06-10 fieldnote-drift incident).
@@ -133,7 +133,7 @@ export function updateTitleProgress() {
       : (shapeLabel ? `${shapeLabel} today. ${body}` : body);
 
     // Streak (bottom-left, beside the molt tokens) + par (bottom-right) hug
-    // the card corners — plain text, not pills, so the Past chip stays the one
+    // the card corners, plain text, not pills, so the Past chip stays the one
     // pill. The bottom-left pair ships as ONE positioned group so neither has
     // to know the other's width; a streak can be 0 while a bank survives (a
     // lapse past the bank keeps the crabs), so neither may nest in the other.
@@ -152,15 +152,15 @@ export function updateTitleProgress() {
     if (dailyCard) dailyCard.classList.toggle('daily-completed', completed);
   }
 
-  // Weekly card — always visible. Shows attempts used and best time
+  // Weekly card, always visible. Shows attempts used and best time
   // when the gate has populated state.cachedWeeklyDayAttempts and
   // state.weeklyDayTimes (both pre-fetched at startup).
   //
-  // Since 2026-08-05 it carries the Daily card's corner furniture for the same
-  // reason that card does: the numbers ride the corners so the centre line
+  // Since 2026-08-05 it has the Daily card's corner furniture too, for the same
+  // reason that card does: the numbers ride the corners so the center line
   // stays one descriptor and the card stays the height of its siblings. Week
   // streak bottom-left, par bottom-right, Past weeklies top-right. The
-  // top-LEFT corner stays empty — that is the daily's molt slot, and the
+  // top-LEFT corner stays empty, that is the daily's molt slot, and the
   // weekly has no molt days (a week is already seven chances at one board).
   const weeklyCard = $('.mode-card[data-mode="weekly"]');
   const weeklyProgressEl = $('#title-weekly-progress');
@@ -183,7 +183,7 @@ export function updateTitleProgress() {
       weeklyCard.classList.remove('daily-completed');
     }
 
-    // The week streak reads like the daily's, in weeks. A streak riding on
+    // The week streak follows the daily's pattern, in weeks. A streak riding on
     // THIS week (last completion was last week, this week still unplayed) says
     // so, because that is the one moment the number is about to change.
     const { streak: weekStreak } = getWeekStreak(thisWeek);
@@ -244,7 +244,7 @@ export function updateTitleProgress() {
   }
 }
 
-// The gregsweeper.com custom-domain move (2026-07-03) title-screen notice
+// The one-time notice for the gregsweeper.com custom-domain move (2026-07-03)
 // self-retires after this ET date. getLocalDateString() is 'YYYY-MM-DD', so a
 // plain string compare is date-safe.
 const MOVED_NOTICE_UNTIL = '2026-08-03';
@@ -260,14 +260,14 @@ export function showTitleScreen() {
   // Kill any armed pressure-plate intervals from the game being left
   // (issue #192): showTitleScreen never changes state.status, so an armed
   // plate's wall-clock deadline kept counting behind the title screen and
-  // detonated handleLoss with #app hidden — a silent loss (the gameover
+  // detonated handleLoss with #app hidden, a silent loss (the gameover
   // modal lives inside #app and cannot render), the save cleared, the
   // level rolled back to checkpoint, and nothing on screen to say why.
   // Resuming the game re-arms them with a fresh countdown (rearmPlateTimers
   // at every resume site), the documented lenient direction.
   clearAllPlateTimers();
 
-  // Leaving the board pauses the game clock — the second consequence of the
+  // Leaving the board pauses the game clock, the second consequence of the
   // same #192 root, filed as issue #197: with status still 'playing', the 1s
   // tick kept counting behind the title screen, the 5s auto-persist wrote
   // the inflated elapsedTime into the save, and a resumed daily folded
@@ -280,15 +280,15 @@ export function showTitleScreen() {
   // into the precise accumulator. The pause is NOT undone by title-screen
   // interaction: resumeTimer refuses while #app is hidden (see
   // timerManager), so the document-level recordInteraction listeners and
-  // visibilitychange cannot restart the hidden game's clock — only an
+  // visibilitychange cannot restart the hidden game's clock, only an
   // actual return to the game does (tryResumeGame's startTimer +
   // startWormCrawl, or the first click of a fresh board).
   pauseTimer();
 
   restorePreChaosTheme();
 
-  // Idle-pause overlay is a gameplay-only surface — if it was left up by
-  // a paused-then-Home-buttoned game, hide it explicitly when the title
+  // Idle-pause overlay is a gameplay-only surface, if it was left up by
+  // a paused-then-Home-buttoned game, clear it explicitly when the title
   // screen comes back. The _pauseForIdle path is already status-gated to
   // 'playing', so this only matters when stale state survives navigation.
   const idleOverlay = document.getElementById('idle-pause-overlay');
@@ -351,12 +351,12 @@ async function refreshTitleDailyPar() {
   try {
     const { par } = await computeDailyParForDate(today, true);
     if (par > 0) {
-      // Greg's Field Note — derived from the CANONICAL BOARD, never by
+      // Greg's Field Note, derived from the CANONICAL BOARD, never by
       // re-running the seed→mission lookup. Boards are pre-generated up
       // to 7 days ahead against THAT day's experimentTarget.json, and
       // the nightly refit reorders the coverage list, so resolving the
       // seed's slot against the CURRENT file names the wrong gimmick
-      // (2026-06-10: the board carried wormholes, the note said
+      // (2026-06-10: the board had wormholes, the note said
       // compass). fieldNoteFromBoard prefers the mission stamped into
       // the payload at generation and falls back to the board's actual
       // activeGimmicks; either way it cannot contradict the board.
@@ -374,7 +374,7 @@ async function refreshTitleDailyPar() {
             shape = tilingLabel(raw.tiling.type);
           }
         }
-      } catch { /* no note — the par line still renders */ }
+      } catch { /* no note, the par line still renders */ }
       _titleDailyPar = { date: today, secs: Math.round(par), note, shape };
       updateTitleProgress();
     }
@@ -388,7 +388,7 @@ async function refreshTitleDailyPar() {
 // The weekly deliberately does not show par at the END of a run (days 2-7 are
 // speedruns of a known board, and rating a memorised solve against a
 // first-encounter par would be meaningless). Showing it on the CARD is the
-// opposite case: it is the one number that says how big a board is waiting
+// opposite case: it is the one number that says how big the board ahead is
 // before you commit an attempt to it, which is what the daily's par corner has
 // always been for.
 async function refreshTitleWeeklyPar() {
@@ -397,7 +397,7 @@ async function refreshTitleWeeklyPar() {
   // Unlike the daily, there is no cheap local path here: the weekly's par can
   // only come from solving the week's canonical, and that board only exists on
   // Firebase (no local-gen fallback prices a week nobody generated). So don't
-  // start a fetch that cannot land — the card simply goes without its par
+  // start a fetch that cannot land, the card goes without its par
   // corner until a later title visit finds Firebase up.
   if (!state.firebaseReady) return;
   try {
@@ -458,7 +458,7 @@ function _archiveCanGoPrev() {
   return (_archiveView.year * 12 + _archiveView.month) > (fy * 12 + (fm - 1));
 }
 function _archiveCanGoNext() {
-  // Never past the current month — today is the live Daily's job, not the archive's.
+  // Never past the current month, today is the live Daily's job, not the archive's.
   const [ty, tm] = getLocalDateString().split('-').map(Number);
   return (_archiveView.year * 12 + _archiveView.month) < (ty * 12 + (tm - 1));
 }
@@ -467,7 +467,7 @@ async function openArchiveCalendar() {
   // Refresh the completed-set so the marks reflect the latest cloud state.
   // Keep whatever we had on a failed/offline read rather than clearing marks.
   // Archive-replayed dates count here (the calendar marks any completion,
-  // live or replay) — only the streak derivation excludes them.
+  // live or replay), only the streak derivation excludes them.
   try {
     const entries = await loadDailyHistory();
     if (Array.isArray(entries)) _archiveCompleted = new Set(entries.map((e) => e.date));
@@ -534,7 +534,7 @@ if (_archiveNextBtn) _archiveNextBtn.addEventListener('click', () => {
 
 // In-app entry to the crux teaser: open yesterday's crux in a new tab so
 // the calendar stays put. Same-origin so it works on whichever build
-// (the crux data is read from prod either way).
+// (the crux payload is read from prod either way).
 const _archiveCruxBtn = $('#archive-crux-btn');
 if (_archiveCruxBtn) _archiveCruxBtn.addEventListener('click', () => {
   const y = addCalendarDays(getLocalDateString(), -1);
@@ -597,7 +597,7 @@ if (_dailyCardEl) {
 // probes that week's canonical and hands it to launchWeeklyArchive.
 //
 // Which weeks the player has already cleared comes from the weekly leaderboard
-// itself — a `weekly/{weekStart}/{uid}` row exists only for a week they
+// itself, a `weekly/{weekStart}/{uid}` row exists only for a week they
 // finished at least one attempt of, so it is the same fact the streak counts,
 // read from the one place both devices already share. Unknown history (signed
 // out, or a failed read) leaves the marks off and every week playable: the
@@ -656,7 +656,7 @@ if (_weeklyArchiveListEl) _weeklyArchiveListEl.addEventListener('click', async (
   }
   row.disabled = true;
   row.classList.add('loading');
-  // No local-gen fallback for a past week — probe before committing.
+  // No local-gen fallback for a past week, probe before committing.
   const raw = await loadWeeklyBoard(week).catch(() => null);
   if (!raw) {
     row.disabled = false;
