@@ -20,6 +20,7 @@
 
 import { buildJournal, findingById } from '../logic/journalFindings.js';
 import { composeEntry, labLog, newSession, activeFeatureFrom } from '../logic/journalProse.js';
+import { applyJournalRewrite, REWRITE_ARTIFACT_PATH } from '../logic/journalRewrite.js';
 import {
   VERDICT_CHIPS, buildStudyCard, makeShareButton, metaSummaryLine, capitalize, el,
 } from './journalCard.js';
@@ -67,7 +68,7 @@ function _actions(study) {
   return wrap;
 }
 
-function _renderFinding(card, study, journal, history) {
+function _renderFinding(card, study, journal, history, rewrite) {
   card.appendChild(el('p', 'crux-teaser-date journal-report-kicker', 'From Greg’s Journal, the nightly experiment’s notebook'));
   // The active experiment gets its lab log; closed and in-between
   // studies read as their settled entries. activeFeatureFrom is the
@@ -77,7 +78,12 @@ function _renderFinding(card, study, journal, history) {
   const activeFeature = activeFeatureFrom(history, null);
   const entry = composeEntry(study, { activeFeature }, newSession());
   const log = study.feature === activeFeature ? labLog(history, study.feature) : null;
-  card.appendChild(buildStudyCard(study, entry, {
+  // The nightly AI rewrite applies here exactly as in the notebook: only
+  // when the artifact hashes to the entry this page just composed and
+  // re-clears the honesty rails. On a revalidation night the in-app
+  // entry differs from this page's (no experimentTarget here), so the
+  // hash guard leaves this page on its beats; honest either way.
+  card.appendChild(buildStudyCard(study, applyJournalRewrite(entry, rewrite, study.feature), {
     className: 'journal-report-study',
     log,
   }));
@@ -114,10 +120,14 @@ function _renderIndex(card, journal, unknownId) {
  */
 export async function showJournalReport(featureId) {
   let history = null;
+  let rewrite = null;
   try {
-    history = await fetch('./src/logic/modelHistory.json').then(r => (r.ok ? r.json() : null));
+    [history, rewrite] = await Promise.all([
+      fetch('./src/logic/modelHistory.json').then(r => (r.ok ? r.json() : null)),
+      fetch(`./${REWRITE_ARTIFACT_PATH}`).then(r => (r.ok ? r.json() : null)).catch(() => null),
+    ]);
   } catch { /* handled below, the offline state renders */ }
-  renderJournalReport(featureId, history);
+  renderJournalReport(featureId, history, rewrite);
 }
 
 /**
@@ -125,7 +135,7 @@ export async function showJournalReport(featureId) {
  * null for the offline state). Split from showJournalReport so tests
  * can drive it with a fixture, mirroring renderCruxTeaser.
  */
-export function renderJournalReport(featureId, history) {
+export function renderJournalReport(featureId, history, rewrite = null) {
   const titleScreen = document.getElementById('title-screen');
   const app = document.getElementById('app');
   if (titleScreen) titleScreen.classList.add('hidden');
@@ -150,7 +160,7 @@ export function renderJournalReport(featureId, history) {
   const study = findingById(history, featureId);
   const journal = buildJournal(history, null);
   if (study) {
-    _renderFinding(card, study, journal, history);
+    _renderFinding(card, study, journal, history, rewrite);
   } else {
     _renderIndex(card, journal, typeof featureId === 'string' && featureId.length > 0);
   }

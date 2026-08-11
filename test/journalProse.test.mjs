@@ -20,6 +20,13 @@ const {
   NEGLIGIBLE_PCT, MAX_LOG_ENTRIES,
 } = await import('../src/logic/journalProse.js');
 const { estimateSummary } = await import('../src/logic/journalFindings.js');
+// The writing rails come from the ONE shared module (src/logic/proseRails.js),
+// the same predicates the nightly AI-rewrite validator and the client
+// re-check run, so this file and the validator can never drift apart.
+const {
+  checkPoolLine, checkRenderedProse, digitViolations, incompleteSentences,
+  dashViolations, impreciseVerbViolations, thirdPersonViolations,
+} = await import('../src/logic/proseRails.js');
 
 // ── Fixture helpers ───────────────────────────────────────────────────
 
@@ -65,120 +72,31 @@ function mkStudy(over = {}) {
 
 // ── Voice guards over every pool line ─────────────────────────────────
 
-const HEDGES = /\b(might|maybe|probably|perhaps|possibly|likely|seems?|appears?|suspect(?:ed)?|presumably|I think|I guess)\b/gi;
-
 test('voice guards: every pool line obeys the writing rails', () => {
   const lines = allProseLines();
   assert.ok(lines.length >= 90, `pool inventory looks wrong: ${lines.length} lines`);
   for (const line of lines) {
     assert.equal(typeof line, 'string');
-    assert.ok(!line.includes('—'), `em-dash in pool line: "${line}"`);
-    assert.ok(!line.includes('–'), `en-dash in pool line: "${line}"`);
-    assert.ok(!/\bGreg\b/.test(line), `third-person Greg in first-person prose: "${line}"`);
-    assert.ok(!/today.s board/i.test(line), `fieldnote-drift claim in pool line: "${line}"`);
-    // Day counts must be study days; a bare "Day N" reads as calendar days.
-    assert.ok(!/(?<!study )\bday\s+\d/i.test(line), `bare day-count in pool line: "${line}"`);
-    // Player behavior is never claimed from a band — a pool line may
-    // only mention players inside a quoted hypothesis.
-    if (/\bplayers?\b/i.test(line)) {
-      assert.ok(/(I wrote|my note)/i.test(line),
-        `player-behavior claim outside a quoted hypothesis: "${line}"`);
-    }
-    // Max ONE hedge word per sentence (hedge-stacking reads as fake).
-    for (const sentence of line.split(/(?<=[.?!])\s+/)) {
-      const hedges = sentence.match(HEDGES) || [];
-      assert.ok(hedges.length <= 1, `hedge stack (${hedges.join(', ')}) in: "${sentence}"`);
-    }
-    // Every line carries content: no line is only connective filler.
-    assert.ok(line.replace(/\{[A-Za-z]+\}/g, '').trim().length >= 10, `thin pool line: "${line}"`);
-    // The 0%-not-"nothing" ruling holds at the pool level too.
-    assert.ok(!NOTHING_AS_NUMBER.test(line), `say 0%, not "nothing", in pool line: "${line}"`);
-    // And so does the measurement-verb ruling.
-    assert.ok(!IMPRECISE_VERBS.test(line), `imprecise verb in pool line: "${line}"`);
-    // Every pool sentence is a complete sentence (fragments banned).
-    assertCompleteSentences(line, 'pool');
+    const v = checkPoolLine(line);
+    assert.deepEqual(v, [], `pool line "${line}" violates: ${v.join(' | ')}`);
   }
 });
 
-// ── Digit honesty ─────────────────────────────────────────────────────
-
-function digitRuns(s) {
-  return String(s).match(/\d+(?:\.\d+)?/g) || [];
-}
+// ── Assertion wrappers over the shared rails ──────────────────────────
 
 function assertDigitsDerivable(text, facts, label) {
-  const allowed = new Set();
-  for (const v of Object.values(facts)) {
-    if (v === null || v === undefined) continue;
-    for (const run of digitRuns(v)) allowed.add(run);
-  }
-  for (const run of digitRuns(text)) {
-    assert.ok(allowed.has(run), `${label}: digit "${run}" in "${text}" has no source fact`);
-  }
+  const v = digitViolations(text, facts);
+  assert.deepEqual(v, [], `${label}: in "${text}": ${v.join(' | ')}`);
 }
 
-// "Nothing" as a stand-in for the number is banned: the bound is 0%
-// (Christopher's ruling, 2026-07-12). Ordinary uses ("nothing left to
-// squeeze") stay legal; these are the quantity phrasings.
-const NOTHING_AS_NUMBER = /\b(between nothing|nothing to about|nothing at all|almost nothing|nearly nothing|nothing much)\b/i;
-
-// Sentences describing data, estimates, bands, or the model use
-// measurement verbs (Christopher's ruling, 2026-07-12: "Scientists
-// don't write with such imprecise verbs"). This list pins the exact
-// phrasings the verb audit removed — body/emotion verbs on numbers,
-// and invented instruments — so they can't creep back into a pool.
-const IMPRECISE_VERBS = /(\bate\b|breathe|frown|wiggle|wander|wobbl|firmed up|\bmeter\b|needle|for the pot|keeps the desk|math keeps|pushing back|sat still|range came in|band came in|changed hands|shrug|grew doubt|misbehav|doubt lives|stands in the hallway)/i;
-
-// Complete sentences only (Christopher's ruling 2026-07-12: "It's not
-// even complete sentences"). Every sentence must carry a finite verb
-// (or be a true imperative); the two sanctioned notations are the lab
-// log's datelines and the ledger's Closed/Parked file stamps, both from
-// his own spec examples. The verb lexicon is curated to the pools'
-// closed vocabulary — a new pool line either matches it or the failure
-// message forces a deliberate call: fix the fragment, or add the verb.
-const FINITE_VERBS = new Set(('is are was were be been am has have had do does did will would can could should must might '
-  + 'stays stayed stay stands stand stood sits sit holds hold held reads read runs run ran comes come came goes go went '
-  + 'gets get got keeps keep kept lands land landed left leaves moves move moved narrows narrowed widens widened widening '
-  + 'tightens tightened grew grow grows shrank fell rose settles settle settled closes close closed opens open opened '
-  + 'picks pick picked drew draws draw takes take took puts put says say said tells tell telling told asks ask asked '
-  + 'answers answer answered wrote writes write written predicted suspected measures measure measured knows know knew '
-  + 'wants want wanted watches watch waits wait publishes publish hides hide counts count counted costs cost carried '
-  + 'carries carry registered registers register showed shows show shown failed fails fail arrives arrive arrived brought '
-  + 'brings bring feeds feed fed filed files file aims aim aimed drifts drift drifting resolves resolve rests rest '
-  + 'remembers remember matters matter bothers bother refuses refuse budge budged pinned pins pin surprises surprise '
-  + 'survives survive teaches teach taught turns turn turned dies die died limps limp outranks outrank owes owe makes '
-  + 'make made means mean meant pays pay paid spends spend spent thought think thinks checks check checked ranking ranks '
-  + 'rank ranked listening listened ordered orders order dodges dodge talked talks talk signed slows slow helps help '
-  + 'helped looks look looked started starts start stopped stops stop found finds find blinks blink blinked points point '
-  + 'pointed converges converge converged updated update updates amounts amount covers cover covered tracks track tracked '
-  + 'plotted bets bet lets let seems seem becomes become became needs need needed works work worked disagrees disagree '
-  + 'disagreed agrees agree agreed sides side sided siding loses lose lost enjoys enjoy ate eats eat wonder wonders call '
-  + 'calls called wins win won lies lie lay figures figure figured happens happen happened wishes wish wished doubles '
-  + 'double squeeze squeezed bills bill billed notes note noted records record recorded adds add added gives give gave '
-  + 'given continues continue continued').split(' ').map(w => w.toLowerCase()));
-const CONTRACTION_VERB = /(\b\w+’(s|re|ll|d|ve|m)\b|n’t\b|’s\b)/;
-const NOTATION = /^((Closed|Parked) (\{closedDate\}|[A-Z][a-z]{2} \d{1,2})|[A-Z][a-z]{2} \d{1,2})$/;
-
 function assertCompleteSentences(text, label) {
-  for (const raw of String(text).split(/(?<=[.?!])\s+/)) {
-    const sentence = raw.replace(/[.?!…]+$/, '').trim();
-    if (!sentence || NOTATION.test(sentence)) continue;
-    if (CONTRACTION_VERB.test(sentence)) continue;
-    const hasVerb = sentence.replace(/\{[A-Za-z]+\}/g, ' ')
-      .toLowerCase().split(/[^a-z-]+/)
-      .some(w => FINITE_VERBS.has(w));
-    assert.ok(hasVerb, `${label}: sentence without a finite verb: "${sentence}" (in "${text}")`);
-  }
+  const v = incompleteSentences(text);
+  assert.deepEqual(v, [], `${label}: ${v.join(' | ')} (in "${text}")`);
 }
 
 function assertProseRails(text, label) {
-  assert.ok(!text.includes('—') && !text.includes('–'), `${label}: dash in "${text}"`);
-  assert.ok(!/today.s board/i.test(text), `${label}: fieldnote-drift claim in "${text}"`);
-  assert.ok(!/(?<!study )\bday\s+\d/i.test(text), `${label}: bare day-count in "${text}"`);
-  assert.ok(!/\{[A-Za-z]+\}/.test(text), `${label}: unresolved template hole in "${text}"`);
-  assert.ok(!NOTHING_AS_NUMBER.test(text), `${label}: say 0%, not "nothing": "${text}"`);
-  assert.ok(!IMPRECISE_VERBS.test(text), `${label}: imprecise verb on a measurement: "${text}"`);
-  assertCompleteSentences(text, label);
+  const v = checkRenderedProse(text);
+  assert.deepEqual(v, [], `${label}: "${text}" violates: ${v.join(' | ')}`);
 }
 
 // ── State machine ─────────────────────────────────────────────────────
@@ -381,7 +299,7 @@ test('composeEntry is deterministic and honest about its digits', () => {
     assertProseRails(a.text, study.feature);
     assertDigitsDerivable(a.text, a.facts, study.feature);
     // First person: an entry speaks as Greg, never about him.
-    assert.ok(!/\bGreg\b/.test(a.text), `${study.feature}: third person in entry`);
+    assert.deepEqual(thirdPersonViolations(a.text), [], `${study.feature}: third person in entry`);
     // arcSpoken drives the card's epigraph: when the entry quotes the
     // hunch ("I wrote that…"), the separate hypothesis line hides.
     assert.equal(typeof a.arcSpoken, 'boolean', `${study.feature}: arcSpoken flag`);
@@ -933,10 +851,10 @@ test('figure captions and intro variants obey the framing-copy rails', () => {
   const captions = allFigureCaptions();
   assert.ok(captions.length >= 9, `caption pool: ${captions.length}`);
   for (const c of captions) {
-    assert.ok(!c.includes('—') && !c.includes('–'), `dash in caption: "${c}"`);
+    assert.deepEqual(dashViolations(c), [], `dash in caption: "${c}"`);
     assert.ok(!/\d/.test(c), `caption claims a number: "${c}"`);
     assert.ok(!/today.s board/i.test(c), `fieldnote-drift claim in caption: "${c}"`);
-    assert.ok(!IMPRECISE_VERBS.test(c), `imprecise verb in caption: "${c}"`);
+    assert.deepEqual(impreciseVerbViolations(c), [], `imprecise verb in caption: "${c}"`);
     assertCompleteSentences(c, 'caption');
   }
   // The modal intro rotates by refit date but always frames the same
@@ -949,7 +867,7 @@ test('figure captions and intro variants obey the framing-copy rails', () => {
   for (const d of ['2026-07-10', '2026-07-11', '2026-07-12', '2026-07-13', '2026-07-14', '2026-07-15']) {
     const screen = planJournalScreen(mk(d), null);
     assert.ok(screen.intro.length > 60);
-    assert.ok(!screen.intro.includes('—') && !screen.intro.includes('–'));
+    assert.deepEqual(dashViolations(screen.intro), []);
     intros.add(screen.intro);
   }
   assert.ok(intros.size >= 2, 'the intro actually rotates across dates');
