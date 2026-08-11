@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-07-30T22:02:08.369Z",
+ "generatedAt": "2026-08-11T19:45:16.740Z",
  "note": "Historical contribution measure under the solver at generatedAt; dailyMeta-carried keys (generation-time solver of record) take precedence in the R join.",
  "rows": [
   {
@@ -2064,6 +2064,131 @@
   {
    "date": "2026-08-04",
    "gimmicks": [
+    "locked"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 1,
+   "lockedNumberCount": 2
+  },
+  {
+   "date": "2026-08-05",
+   "gimmicks": [
+    "wormhole"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 1,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-08-06",
+   "gimmicks": [
+    "liar"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 1,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-08-07",
+   "gimmicks": [
+    "mirror"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 1,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-08-08",
+   "gimmicks": [
+    "wormhole"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 1,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-08-09",
+   "gimmicks": [
+    "wormhole"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 1,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-08-10",
+   "gimmicks": [],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-08-10_weekly_first",
+   "gimmicks": [
+    "walls",
     "mystery"
    ],
    "sonarRequired": 0,
@@ -2080,7 +2205,23 @@
    "lockedNumberCount": 0
   },
   {
-   "date": "2026-08-05",
+   "date": "2026-08-11",
+   "gimmicks": [],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-08-12",
    "gimmicks": [
     "worm"
    ],
@@ -2098,7 +2239,7 @@
    "lockedNumberCount": 0
   },
   {
-   "date": "2026-08-06",
+   "date": "2026-08-13",
    "gimmicks": [
     "mirror"
    ],
@@ -2111,6 +2252,116 @@
    "liarRequired": 0,
    "liarClicksSaved": 0,
    "mirrorRequired": 1,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-08-14",
+   "gimmicks": [
+    "wormhole"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 1,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-08-15",
+   "gimmicks": [
+    "sonar"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-08-16",
+   "gimmicks": [
+    "worm"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-08-17",
+   "gimmicks": [
+    "worm"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 0
+  },
+  {
+   "date": "2026-08-17_weekly_first",
+   "gimmicks": [
+    "locked",
+    "compass",
+    "liar"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 0,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 1,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
+   "mirrorClicksSaved": 0,
+   "lockedMineCount": 0,
+   "lockedNumberCount": 2
+  },
+  {
+   "date": "2026-08-18",
+   "gimmicks": [
+    "wormhole"
+   ],
+   "sonarRequired": 0,
+   "sonarClicksSaved": 0,
+   "compassRequired": 0,
+   "compassClicksSaved": 0,
+   "wormholeRequired": 1,
+   "wormholeClicksSaved": 0,
+   "liarRequired": 0,
+   "liarClicksSaved": 0,
+   "mirrorRequired": 0,
    "mirrorClicksSaved": 0,
    "lockedMineCount": 0,
    "lockedNumberCount": 0
