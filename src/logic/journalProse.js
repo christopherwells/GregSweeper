@@ -1,16 +1,16 @@
-// ── Greg's Journal — the prose engine ─────────────────────────────────
+// ── Greg's Journal, the prose engine ─────────────────────────────────
 // Pure, node-tested. Turns the journalFindings derivations into notebook
 // entries: a deep card for the active experiment (with a dated lab log
 // from consecutive refit-row diffs), one-line past-tense conclusions for
 // the closed studies, a queue line from the coverage list, and the full
-// parameter table. No DOM, no fetch — journalView/journalReport render
+// parameter table. No DOM, no fetch, journalView/journalReport render
 // what this module composes.
 //
 // HOW AN ENTRY IS BUILT. Every study gets a NARRATIVE STATE computed
 // from its data (verdict, hypothesis lean, band class, idle drift). Each
 // state owns 2-3 SKELETONS (beat orderings) assigned deterministically
 // by feature hash, and every beat draws a phrasing from a seeded pool
-// rotated by feature+date (the DAILY_BODIES pattern) — same data in,
+// rotated by feature+date (the DAILY_BODIES pattern), same data in,
 // same prose out, on every device. A shared per-screen session enforces
 // the hard rule that no two entries visible together share a skeleton
 // or a closer.
@@ -22,7 +22,7 @@
 //  - At most ONE hedge word per sentence; every line carries a fact or
 //    a stance, never a pure connective.
 //  - Greg never states a number, date, or event the input facts don't
-//    carry — every digit sequence in rendered prose must exist in the
+//    carry, every digit sequence in rendered prose must exist in the
 //    entry's fact object (counts up to twenty render as words via
 //    countWord, honest by construction).
 //  - Day counts render as "study day N" / "N study days", never a bare
@@ -30,7 +30,7 @@
 //  - Never claim player BEHAVIOR from a band. A pool line may only
 //    mention players inside a quoted hypothesis ("I wrote that…").
 //  - Nothing ties a finding to TODAY'S BOARD (boards generate days
-//    ahead under earlier targets — the fieldnote-drift class). The
+//    ahead under earlier targets, the fieldnote-drift class). The
 //    queue line frames only what the model wants data on next.
 //  - Sentences whose subject is data, an estimate, a band, or the
 //    model use MEASUREMENT VERBS (narrowed, widened, moved, held,
@@ -39,7 +39,7 @@
 //    (Christopher's ruling 2026-07-12: no "the model ate", "breathes
 //    easier", "wandered", invented meters or needles).
 //  - COMPLETE SENTENCES only (Christopher's ruling 2026-07-12: "It's
-//    not even complete sentences"). Every sentence carries a subject
+//    not even complete sentences"). Every sentence has a subject
 //    and a finite verb, or is a true imperative. The two sanctioned
 //    notations are the lab log's "Jul 12." datelines and the ledger's
 //    "Closed May 30." / "Parked Jun 8." file stamps, both from his own
@@ -52,12 +52,12 @@ import { featureName, classifySdDelta } from './gregVoice.js';
 import { hashString } from './seededRandom.js';
 import {
   SCALE_EPOCHS, dedupeHistory, deriveStudyForFeature, buildJournal,
-  estimateSummary, estimateLine, formatShortDate, fmtPct, parameterTable,
+  estimateSummary, estimateLine, estimateUnit, formatShortDate, fmtPct, parameterTable,
 } from './journalFindings.js';
 
 export const MAX_LOG_ENTRIES = 6;
 
-// Below ~1% per unit, an effect is a rounding error on a real solve —
+// Below ~1% per unit, an effect is a rounding error on a real solve,
 // the bar that separates "a real cost" from "about 0%" when a
 // hypothesis is graded. Display-only; the fit itself never rounds.
 export const NEGLIGIBLE_PCT = 1;
@@ -66,7 +66,7 @@ export const NEGLIGIBLE_PCT = 1;
 
 // The repo's one string hash (seededRandom's djb2), coerced unsigned so
 // it can index a pool. Stable across sessions and devices; the only
-// source of variety in the whole module (no Date.now, no Math.random —
+// source of variety in the whole module (no Date.now, no Math.random,
 // cross-client determinism depends on it).
 export function hashStr(s) {
   return hashString(s) >>> 0;
@@ -84,7 +84,7 @@ export function countWord(n) {
 
 // {token} substitution. A capitalized token ({Label}) capitalizes the
 // value. Unresolvable tokens are left in place so _renderable can veto
-// the line — a template must never ship with a hole in it.
+// the line, a template must never ship with a hole in it.
 function tpl(str, facts) {
   return str.replace(/\{([A-Za-z]+)\}/g, (m, key) => {
     const lower = key.charAt(0).toLowerCase() + key.slice(1);
@@ -130,12 +130,12 @@ function pickLine(pool, seed, facts, usedSet = null) {
 // ── Hypothesis arcs (bespoke, per feature) ────────────────────────────
 // Each feature's written hunch crossed with what the data did. `lean`
 // grades the band against the hypothesis:
-//   cost     — the file predicts a real positive cost
-//   zero     — the file predicts almost no cost (mirrors' "Should")
-//   faster   — the file predicts a time refund (open areas)
-//   size     — the file asks how big; any clean answer settles it
-//   fork     — the file offers two outcomes; either clean band answers
-//   question — a mechanism question no band sign can settle (compass)
+//   cost    , the file predicts a real positive cost
+//   zero    , the file predicts almost no cost (mirrors' "Should")
+//   faster  , the file predicts a time refund (open areas)
+//   size    , the file asks how big; any clean answer settles it
+//   fork    , the file offers two outcomes; either clean band answers
+//   question, a mechanism question no band sign can settle (compass)
 // The lines are keyed by BAND CLASS (pos/zero/neg) with `out` for an
 // ambiguous band, so a fork can speak differently per door. Player
 // mentions live only inside quoted hypotheses ("I wrote that…").
@@ -236,7 +236,7 @@ const ARCS = {
   },
   clueShare4: {
     lean: 'size',
-    pos: 'My note asked how big the four costs, not whether it exists. The range settled on a real number, and telling the fours apart from the boards that carry them is the next job.',
+    pos: 'My note asked how big the four costs, not whether it exists. The range settled on a real number, and telling the fours apart from the boards around them is the next job.',
     zero: 'My note asked how big the four costs, not whether it exists. The answer landed at a rounding error.',
     out: 'How big the four costs is the open question in this file. The boards have not sized it yet.',
   },
@@ -248,7 +248,7 @@ const ARCS = {
   },
 };
 
-// A studied feature with no bespoke file yet — honest generic, never a
+// A studied feature with no bespoke file yet, honest generic, never a
 // fabricated mechanism.
 const ARC_GENERIC = {
   lean: 'size',
@@ -265,17 +265,24 @@ function _arcFor(feature) {
 // ── Narrative state ───────────────────────────────────────────────────
 
 // The ±1 SD band in percent space, graded for prose:
-//   neg — the whole band is a refund
-//   zero — the band admits 0% and tops out below a rounding error
-//   pos — a real cost the band stands behind (a proven sub-1% effect is
+//   neg, the whole band is a refund
+//   zero, the band includes 0% and tops out below a rounding error
+//   pos, a real cost the band stands behind (a proven sub-1% effect is
 //         still pos: calling a band that EXCLUDES zero "about 0%"
 //         would contradict the estimate sentence on the same card)
-//   ambiguous — straddles zero with a real top end; can't say
+//   ambiguous, straddles zero with a real top end; can't say
 export function bandClass(est) {
   if (!est) return 'none';
   if (est.hi <= 0) return 'neg';
   if (est.lo > 0) return 'pos';
-  if (est.hi < NEGLIGIBLE_PCT) return 'zero';
+  // The negligible bar is a judgment about the PER-UNIT effect, so it
+  // scales with the estimate: under the per-ten-tiles voice (2026-08-11)
+  // the same tiny per-tile coefficient reads ten-ish times larger, and
+  // classifying that against the per-unit bar would flip a study from
+  // "zero" to "ambiguous" with nothing about the model having moved.
+  // Exact on the log scale, like the scaling itself.
+  const bar = (Math.pow(1 + NEGLIGIBLE_PCT / 100, est.scale || 1) - 1) * 100;
+  if (est.hi < bar) return 'zero';
   return 'ambiguous';
 }
 
@@ -289,7 +296,7 @@ export function resolutionFor(study) {
     case 'cost': return band === 'pos' ? 'sided' : 'against';
     case 'zero': return band === 'zero' ? 'sided' : band === 'pos' ? 'against' : 'out';
     // A faster-lean's zero band (lo <= 0, tiny top) can hide a real
-    // refund below its floor — only a whole-band refund sides with the
+    // refund below its floor, only a whole-band refund sides with the
     // hypothesis, only a proven cost contradicts it.
     case 'faster': return band === 'neg' ? 'sided' : band === 'pos' ? 'against' : 'out';
     case 'size': return 'answered';
@@ -357,12 +364,14 @@ export function buildFacts(study, ctx = {}) {
   const est = estimateSummary(study);
   const live = (study?.trajectory || []).filter(p => p && p.retro !== true);
   const drift = driftSinceClose(study);
-  const pctOfMean = (m) => fmtPct((Math.exp(m) - 1) * 100);
+  // Drift lines quote the same per-N-units scale as the estimate, or the
+  // sentence would pair a per-ten unit phrase with a per-one percent.
+  const pctOfMean = (m) => fmtPct((Math.exp(m * (est?.scale || 1)) - 1) * 100);
   const days = study?.studyDayCount ?? 0;
   // A band whose ends round to the same figure must not render "6% to
   // 6%": nulling lo/hi makes every {lo}/{hi} template unresolvable, so
   // pickLine skips them and the beat falls back to the canonical
-  // estimateLine (which carries its own equal-ends form).
+  // estimateLine (which has its own equal-ends form).
   let lo = est ? fmtPct(Math.max(0, est.lo)) : null;
   let hi = est ? fmtPct(est.hi) : null;
   if (lo !== null && lo === hi) {
@@ -372,10 +381,16 @@ export function buildFacts(study, ctx = {}) {
   return {
     feature: study?.feature ?? null,
     label: study?.label ?? null,
-    unit: study?.unit ?? null,
-    // "per pair", not "per wormhole pair" — for lines whose header
-    // already names the feature (the conclusions ledger).
-    unitShort: study?.unit ? study.unit.split(' ').pop() : null,
+    // The unit phrase carries the per-ten scale when the estimate does
+    // ("ten sonar cells"), so every "per {unit}" template stays honest at
+    // either scale without knowing which one it got.
+    unit: estimateUnit(study) ?? study?.unit ?? null,
+    // "per pair", not "per wormhole pair", for lines whose header
+    // already names the feature (the conclusions ledger). Scaled the same
+    // way: "per ten pairs" when the estimate speaks per ten.
+    unitShort: study?.unit
+      ? (est?.scale === 10 ? `ten ${study.unit.split(' ').pop()}s` : study.unit.split(' ').pop())
+      : null,
     days,
     daysWord: days > 0 ? countWord(days) : null,
     first: study?.firstStudied ? formatShortDate(study.firstStudied) : null,
@@ -406,7 +421,7 @@ const OPENERS = {
     'Some files close themselves. The {label} file is not one of them.',
   ],
   grind: [
-    '{DaysWord} study days on {label}, and the answer refuses to change.',
+    '{DaysWord} study days on {label}, and the answer is the same every time.',
     'The {label} file reads the same almost every night I open it.',
     '{DaysWord} study days in, {label} keeps telling me the same thing.',
     'The {label} numbers have stopped surprising me. I keep checking anyway.',
@@ -458,7 +473,7 @@ const OPENERS = {
   ],
 };
 
-// Why boards keep arriving — active card only. The returning pool needs
+// Why boards keep arriving, active card only. The returning pool needs
 // a real history of study days behind "keeps coming back"; a fresh
 // target gets the honest present-tense version.
 const CHOOSER_RETURNING = [
@@ -476,7 +491,7 @@ const CHOOSER_FRESH = [
 // ruled sentence forms).
 const ESTIMATE_POS = [
   'My current read: about {pct}% per {unit}, likely between {lo}% and {hi}%.',
-  'Each {unit} costs about {pct}% of your time. The band runs {lo}% to {hi}%.',
+  'The cost comes to about {pct}% per {unit}. The band runs {lo}% to {hi}%.',
   'The estimate sits at about {pct}% per {unit}, between {lo}% and {hi}%.',
   'The model puts it at about {pct}% per {unit}, inside {lo}% to {hi}%.',
   'The cost per {unit} runs about {pct}%, with a floor around {lo}% and a ceiling around {hi}%.',
@@ -485,12 +500,12 @@ const ESTIMATE_ZERO = [
   'The effect sits somewhere between 0% and about {hi}% per {unit}.',
   'Per {unit}, the cost reads as somewhere between 0% and about {hi}%.',
   'Call it somewhere between 0% and about {hi}% per {unit}.',
-  'The {unit} charge reads between 0% and about {hi}%.',
+  'The charge per {unit} reads between 0% and about {hi}%.',
   'The cost sits between 0% and about {hi}% per {unit}, which is thin either way.',
 ];
 
-// The band beat's variant 0 is always study.verdict.copy — the shared
-// canonical sentence classifyVerdict already tests for honesty — so the
+// The band beat's variant 0 is always study.verdict.copy, the shared
+// canonical sentence classifyVerdict already tests for honesty, so the
 // ruled verdict phrasings stay live and single-sourced; these pools
 // only add rotation on top.
 const BAND_SETTLING = [
@@ -506,8 +521,8 @@ const BAND_WIDENED = [
 ];
 const BAND_OPEN = [
   'The band has barely moved since {windowStart}.',
-  'The range refuses to budge.',
-  'Night after night, the band holds its width.',
+  'The range has not moved.',
+  'Night after night, the width stays the same.',
   'The width on {windowStart} is roughly the width now.',
   'There’s no drama in the band. The width just holds.',
 ];
@@ -520,7 +535,7 @@ const WINDOW = [
   'The books show {daysWord} study days, {first} to {last}.',
 ];
 const WINDOW_SINGLE = [
-  'The file holds one study day, {first}. Most of the data arrived on ordinary boards.',
+  'This file has one study day, {first}. Most of the data arrived on ordinary boards.',
   'The study amounts to a single study day, {first}, plus every board that happened to carry one.',
 ];
 
@@ -619,7 +634,7 @@ function _closerPool(state, resolution) {
 // date, deliberately still. The header already names the feature, so
 // these use {unitShort} ("per pair", not "per wormhole pair"). Today's
 // live data parks FOUR zero-band studies at once, so that pool carries
-// the most variants — the same-screen dedup needs the headroom.
+// the most variants, the same-screen dedup needs the headroom.
 const LEDGER_ZERO = [
   '{Label} cost between 0% and about {hi}% per {unitShort}. Closed {closedDate}.',
   '{Label} barely registered: somewhere between 0% and about {hi}% per {unitShort}. Closed {closedDate}.',
@@ -634,7 +649,7 @@ const LEDGER_POS = [
   '{Label} carried a real cost, about {pct}% per {unitShort}. Closed {closedDate}.',
 ];
 // Parked = the model moved on with the question still ambiguous (the
-// band straddles zero), so these lines use the honest straddling form —
+// band straddles zero), so these lines use the honest straddling form,
 // never a bare signed point estimate, which could put a fake negative
 // on the ledger.
 const LEDGER_PARKED = [
@@ -643,7 +658,7 @@ const LEDGER_PARKED = [
   '{Label} never picked a side: 0% to about {hi}% per {unitShort}. Parked {closedDate}.',
 ];
 // A drifted (reopened) study must not misattribute the CURRENT value to
-// the close — its line cites both figures against {refDate}, the actual
+// the close, its line cites both figures against {refDate}, the actual
 // reference fit's date (the last live fit at the close, or the era
 // start for a study parked before the era began; driftSinceClose picks
 // it, so date and figure always agree).
@@ -655,19 +670,19 @@ const LEDGER_NEG = [
   '{Label} came back as a small refund, about {pctAbs}% per {unitShort} in your favor. Closed {closedDate}.',
 ];
 
-// The queue: what the model wants data on next — never a claim about
+// The queue: what the model wants data on next, never a claim about
 // today's board. A closed target can still top the coverage list (the
 // board mix keeps starved features fed); those get their own honest
 // phrasing.
 const QUEUE_OPEN = [
   'Next up is {label}. I have only {nBoardsWord} {boardsNoun} so far, and I want more.',
-  'Next on the wish list is {label}. The file holds {nBoardsWord} {boardsNoun}, and thin files bother me.',
+  'Next on the wish list is {label}. That file has {nBoardsWord} {boardsNoun}, and thin files bother me.',
   'I want more {label} boards. {NBoardsWord} is not a sample size, it’s an anecdote.',
   'The thin file next in line is {label}, at {nBoardsWord} {boardsNoun}.',
 ];
 const QUEUE_CLOSED = [
   'The {label} file is closed, but only {nBoardsWord} {boardsNoun} on record, so the mix keeps feeding it anyway.',
-  'Even a closed file gets boards: the {label} file holds {nBoardsWord}, and balance matters.',
+  'Even a closed file gets boards: the {label} file has {nBoardsWord}, and balance matters.',
   'Closed or not, the {label} file is thin at {nBoardsWord} {boardsNoun}, so boards still come its way.',
 ];
 
@@ -703,7 +718,7 @@ const LOG_FLAT = [
   'The range held, and the new {runsNoun} went into the file.',
 ];
 // Runs landed but this feature had no range on record for the night
-// (its first appearance in the fit, or a malformed row) — say only what
+// (its first appearance in the fit, or a malformed row), say only what
 // is true, never "the range didn't blink" about a range that wasn't
 // measured.
 const LOG_RUNS_PLAIN = [
@@ -730,8 +745,8 @@ const LOG_REJECTED = [
   'Convergence was bad and nothing updated. The previous model stays in place.',
 ];
 const LOG_QUIET = [
-  'No new runs arrived. The file sits where it was.',
-  'Nobody fed the model. The page stays blank.',
+  'No new runs arrived. The file is where I left it.',
+  'No one played, so I have nothing new to write.',
   'Zero runs landed. Even instruments get days off.',
   'The night came up blank. The numbers hold.',
 ];
@@ -840,7 +855,7 @@ function _renderBeat(beat, state, study, facts, seed, ctx) {
       if (!canonical) return null;
       const band = bandClass(estimateSummary(study));
       // The canonical ruled sentence is always variant 0. Rotation only
-      // happens on the two CLEAN band shapes; an ambiguous band and a
+      // happens on the two CLEAN band classes; an ambiguous band and a
       // whole-band refund each keep their one honest form (the rotated
       // pools cite {pct}, which for a straddling band could put a fake
       // negative or an unearned confidence on the card).
@@ -850,7 +865,7 @@ function _renderBeat(beat, state, study, facts, seed, ctx) {
     }
     case 'band': {
       const kind = facts.verdictKind;
-      // Variant 0 is the classifyVerdict sentence itself — the shared
+      // Variant 0 is the classifyVerdict sentence itself, the shared
       // canonical honesty copy stays live and single-sourced.
       const canonical = typeof study?.verdict?.copy === 'string' ? [study.verdict.copy] : [];
       if (kind === 'settling') return pickLine([...canonical, ...BAND_SETTLING], `${seed}|band`, facts);
@@ -862,8 +877,8 @@ function _renderBeat(beat, state, study, facts, seed, ctx) {
       const arc = _arcFor(study.feature);
       const res = resolutionFor(study);
       const key = res === 'out' ? 'out' : bandClass(estimateSummary(study));
-      // A bespoke file missing a line for this band shape falls back to
-      // ITS OWN honest 'out' line — never to the generic "my note was a
+      // A bespoke file missing a line for this band class falls back to
+      // ITS OWN honest 'out' line, never to the generic "my note was a
       // question mark", which would fabricate what the note said.
       const line = arc[key] || arc.out || ARC_GENERIC[key] || ARC_GENERIC.out;
       return line && _renderable(line, facts) ? tpl(line, facts) : null;
@@ -921,7 +936,7 @@ export function composeEntry(study, ctx = {}, session = newSession()) {
   const closer = pickLine(_closerPool(state, resolutionFor(study)), `${seed}|closer`, facts, session.lines);
   if (closer) parts.push(closer);
   // arcSpoken tells the card whether the entry already speaks the
-  // written hunch ("I wrote that…") — the separate hypothesis epigraph
+  // written hunch ("I wrote that…"), the separate hypothesis epigraph
   // hides then, so the file's premise is never printed twice in a row.
   return { state, skeleton: `${state}:${skel.idx}`, text: parts.join(' '), facts, arcSpoken };
 }
@@ -933,7 +948,7 @@ export function composeEntry(study, ctx = {}, session = newSession()) {
 export function conclusionLine(study, state, session = newSession()) {
   const facts = buildFacts(study);
   // A reopened study's current estimate must not read as the closed
-  // finding — its line cites the parked figure AND the current one.
+  // finding, its line cites the parked figure AND the current one.
   if (state === 'reopened') {
     const line = pickLine(LEDGER_REOPENED, `${study.feature}|ledger`, facts, session.lines);
     if (line) return line;
@@ -950,7 +965,7 @@ export function conclusionLine(study, state, session = newSession()) {
 /**
  * The queue line: the most board-starved named feature on the coverage
  * list, excluding the active target. "What I want data on next" framing
- * only — never a claim about today's board.
+ * only, never a claim about today's board.
  */
 export function queueLine(coverageTargets, activeFeature, studies) {
   const list = Array.isArray(coverageTargets) ? coverageTargets : [];
@@ -979,11 +994,11 @@ export function queueLine(coverageTargets, activeFeature, studies) {
 // mix shifts day to day and card to card without ever disagreeing with
 // the data: every figure type draws only what the derivations already
 // prove, and captions explain each one in plain words.
-//   sd-trend      — the uncertainty sparkline (the original figure)
-//   estimate-band — the estimate itself over the live era, with the
+//   sd-trend     , the uncertainty sparkline (the original figure)
+//   estimate-band, the estimate itself over the live era, with the
 //                   ±1 SD band shaded (live fits only: retrodicted
 //                   means echo their priors and never feed a claim)
-//   band-strip    — the CURRENT estimate as one labeled range bar
+//   band-strip   , the CURRENT estimate as one labeled range bar
 // Roughly a third of cards sketch a second, different figure. sd-trend
 // also rotates its point shape; 'none' (a bare line with hover-only
 // points) is excluded whenever the series carries retrodicted points,
@@ -994,7 +1009,7 @@ const DOT_SHAPES = ['circle', 'square', 'diamond', 'tick'];
 
 // Captions are framing copy about the figure (third person allowed,
 // like the sparkline caption always was); each pool rotates with the
-// same seed discipline as the prose. No digits — a caption explains,
+// same seed discipline as the prose. No digits, a caption explains,
 // the figure carries the numbers.
 const FIGURE_CAPTIONS = {
   'sd-trend': [
@@ -1070,7 +1085,7 @@ function _sdFor(row, feature) {
 export function labLog(history, feature, { max = MAX_LOG_ENTRIES } = {}) {
   const epoch = SCALE_EPOCHS[SCALE_EPOCHS.length - 1];
   const all = dedupeHistory(history);
-  // "First assignment" is a claim about the WHOLE history — a feature
+  // "First assignment" is a claim about the WHOLE history, a feature
   // studied since April must not read as new just because the log's
   // number diffs are windowed to the live era.
   const firstTargeted = all.find(r => r.target === feature)?.date ?? null;
@@ -1105,7 +1120,7 @@ export function labLog(history, feature, { max = MAX_LOG_ENTRIES } = {}) {
       const move = classifySdDelta(_sdFor(prev, feature), _sdFor(cur, feature), 2);
       if (move.kind === 'invalid') {
         // No range on record for this feature that night (its first
-        // appearance in the fit) — claim only the runs, never a
+        // appearance in the fit), claim only the runs, never a
         // "didn't blink" about a range that wasn't measured.
         parts.push(pickLine(LOG_RUNS_PLAIN, `${seed}|runs`, facts));
       } else {
@@ -1133,11 +1148,11 @@ export function labLog(history, feature, { max = MAX_LOG_ENTRIES } = {}) {
  *  - queue:  the coverage line
  *  - table:  the full parameter table (every named feature)
  * `meta` is the experimentTarget.json object (may be null offline; the
- * latest refit row's target stands in — same pipeline, one run behind
+ * latest refit row's target stands in, same pipeline, one run behind
  * at worst).
  */
 // The active experiment: the live target when it has a plain name, else
-// the latest refit row's target (derivable from shipped data alone —
+// the latest refit row's target (derivable from shipped data alone,
 // the logged-out report page passes meta = null and lands one nightly
 // run behind at worst). Shared by the in-app planner and journalReport
 // so the two surfaces resolve "active" identically.
@@ -1149,7 +1164,7 @@ export function activeFeatureFrom(history, meta = null) {
   return null;
 }
 
-// The modal's intro line — framing copy about Greg (third person by the
+// The modal's intro line, framing copy about Greg (third person by the
 // voice ruling), rotated by the latest refit date so the door itself
 // doesn't go stale.
 const INTROS = [

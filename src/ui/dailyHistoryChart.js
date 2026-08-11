@@ -1,4 +1,4 @@
-// Daily history timeline — SVG chart of the signed-in user's past daily
+// Daily history timeline, SVG chart of the signed-in user's past daily
 // completions, one dot per day, y = seconds off Greg's par. Rendered under
 // the leaderboard table so players can see their personal trajectory without
 // needing a separate "stats" screen.
@@ -11,10 +11,10 @@ import { getLocalDateString, addCalendarDays } from '../logic/seededRandom.js';
 const DAYS_BACK = 30;
 
 // The chart's day columns, oldest → newest, ending at `today`. Pure ET-date
-// string arithmetic — the caller passes getLocalDateString() so the slots
+// string arithmetic, the caller passes getLocalDateString() so the slots
 // share the app's ET anchor. The old slot walk used the BROWSER-local clock
 // (new Date + setDate), so a player west of ET finishing after midnight ET
-// had their newest dot dated outside every slot — invisible until the next
+// had their newest dot dated outside every slot, invisible until the next
 // browser-day (2026-07-11 audit). Exported for the node suite.
 export function chartDateSlots(today, daysBack) {
   const out = [];
@@ -22,7 +22,7 @@ export function chartDateSlots(today, daysBack) {
   return out;
 }
 
-// Layout — expressed in viewBox units, not pixels. The real rendered size is
+// Layout, expressed in viewBox units, not pixels. The real rendered size is
 // controlled by the container's width via preserveAspectRatio. Aspect is
 // ~1.5:1 (taller than a typical dashboard chart) so that when the SVG
 // shrinks to fit a ~350px mobile viewport, text and dots stay readable
@@ -36,10 +36,10 @@ const PAD_BOTTOM = 48;
 
 // Clamp the y-range so a single extreme outlier (e.g. a brand-new player's
 // first attempt took 5 minutes) doesn't compress every other dot to a hair.
-// The axis still labels the outlier's numeric value — we just bound the
+// The axis still labels the outlier's numeric value, we just bound the
 // plotted y coordinate.
-const MIN_Y_SPAN_HALF = 10;   // seconds — axis covers at least ±10s
-const MAX_Y_SPAN_HALF = 90;   // seconds — axis covers at most ±90s
+const MIN_Y_SPAN_HALF = 10;   // seconds, axis covers at least ±10s
+const MAX_Y_SPAN_HALF = 90;   // seconds, axis covers at most ±90s
 
 /**
  * Build an SVG element visualising `entries`. Empty state if entries is [].
@@ -64,7 +64,7 @@ export function renderDailyHistoryChart(entries, opts = {}) {
   // (today-anchored) from left to right; days without entries just don't
   // draw dots. `date` is the day the run was PLAYED (archive replays are
   // attributed to their play day, never back-dated to the board's date). A
-  // day can hold SEVERAL dots — a live daily plus archive replays all count.
+  // day can hold SEVERAL dots, a live daily plus archive replays all count.
   // Replays sort first so the live play draws last (on top) when they overlap.
   const byDate = new Map();
   for (const e of entries) {
@@ -77,13 +77,13 @@ export function renderDailyHistoryChart(entries, opts = {}) {
 
   // Build the array of N daily slots, newest-on-right, anchored to the ET
   // clock like every other daily surface. If today doesn't have an entry we
-  // still reserve a slot for it — the user might complete today's daily
+  // still reserve a slot for it, the user might complete today's daily
   // later and come back to this chart.
   const today = getLocalDateString();
   const slots = chartDateSlots(today, daysBack)
     .map((dateStr) => ({ date: dateStr, entries: byDate.get(dateStr) || [] }));
 
-  // y-axis domain — symmetric around 0, clamped.
+  // y-axis domain, symmetric around 0, clamped.
   let maxAbsDelta = MIN_Y_SPAN_HALF;
   for (const s of slots) {
     for (const e of s.entries) {
@@ -138,7 +138,7 @@ export function renderDailyHistoryChart(entries, opts = {}) {
     svg.appendChild(label);
   }
 
-  // x-axis date ticks — spaced so roughly 4-5 labels fit across the width
+  // x-axis date ticks, spaced so roughly 4-5 labels fit across the width
   // without collision at the default font. First tick left-anchored, last
   // tick right-anchored, middle ticks centered. The last position is
   // always "today"; intermediate ticks within ~half an interval of the end
@@ -162,8 +162,12 @@ export function renderDailyHistoryChart(entries, opts = {}) {
     svg.appendChild(label);
   }
 
-  // Dots — one per play, stacked in the play-day's column (a live daily and
-  // any replays that day each get their own dot). Colour by over/under/even.
+  // Dots, one per play, stacked in the play-day's column (a live daily and
+  // any replays that day each get their own dot). Color by over/under/even.
+  // Radius eases down with the window so a year view reads as a band
+  // rather than a smear of overlapping circles (the pill filter can ask
+  // for up to 365 days on the same width).
+  const dotR = slots.length > 180 ? 3 : slots.length > 75 ? 5 : slots.length > 45 ? 7 : 9;
   for (let i = 0; i < slots.length; i++) {
     const s = slots[i];
     const x = xFor(i);
@@ -176,7 +180,7 @@ export function renderDailyHistoryChart(entries, opts = {}) {
       const dot = document.createElementNS(svgNS, 'circle');
       dot.setAttribute('cx', x);
       dot.setAttribute('cy', y);
-      dot.setAttribute('r', 9);
+      dot.setAttribute('r', dotR);
       dot.setAttribute('class', cls);
       // Native SVG <title> renders a browser tooltip on hover with no extra JS.
       const title = document.createElementNS(svgNS, 'title');

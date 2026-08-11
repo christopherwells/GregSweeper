@@ -269,24 +269,33 @@ test('estimateSummary converts log coefficients to plain percentages with a ±1 
   assert.equal(estimateSummary({ latest: null }), null, 'no era fits → no estimate, never a fabricated one');
 });
 
-test('estimateLine: one sentence, whole percents, never a fake negative (copy ruling 2026-07-12)', () => {
-  // Liar cells today: mean 0.0015 ± 0.0019 → the band dips below zero.
-  // The zero-band form is ONE sentence — the old "might add… or nothing
-  // at all. Probably no more than…" hedge stack read as fake.
-  // The bound is spoken as the number 0%, never "nothing" (ruling
-  // 2026-07-12, second pass).
-  const tiny = estimateLine({ unit: 'liar cell', latest: { date: '2026-07-12', mean: 0.0015, sd: 0.0019 } });
-  assert.equal(tiny, 'Each liar cell adds somewhere between 0% and about 0.3% to your time.');
+test('estimateLine: one sentence, whole percents, never a fake negative (copy ruling 2026-07-12; per-ten scaling 2026-08-11)', () => {
+  // Liar cells today: mean 0.0015 ± 0.0019, a per-unit effect deep in
+  // decimal territory. His 2026-08-11 ruling: speak per TEN tiles there
+  // ("less decimally... for every 10 tiles of that in a puzzle"), so the
+  // subject goes plural and the numbers scale as exp(10x), the model's
+  // own prediction for ten more units. The zero-band form stays ONE
+  // sentence and the bound is spoken as the number 0%, never "nothing"
+  // (ruling 2026-07-12, second pass).
+  const tiny = estimateLine({ unit: 'liar cell', feature: 'liarCellCount', latest: { date: '2026-07-12', mean: 0.0015, sd: 0.0019 } });
+  assert.equal(tiny, 'Ten liar cells add somewhere between 0% and about 3% to your time.');
   assert.ok(!/-\d/.test(tiny), `no negative percentages on a player surface: "${tiny}"`);
-  // A clearly-positive band: whole percents, exactly one hedge word.
-  const solid = estimateLine({ unit: 'compass cell', latest: { date: '2026-07-12', mean: 0.0329, sd: 0.0189 } });
+  assert.ok(!/\d\.\d/.test(tiny), `the per-ten scale exists to retire decimals: "${tiny}"`);
+  // A clearly-positive band OVER the 3% per-unit bar keeps the classic
+  // per-unit voice: whole percents, exactly one hedge word.
+  const solid = estimateLine({ unit: 'compass cell', feature: 'compassCellCount', latest: { date: '2026-07-12', mean: 0.0329, sd: 0.0189 } });
   assert.equal(solid, 'Each compass cell adds about 3% to your time, likely between 1% and 5%.');
   // A whole-band refund (no live example yet) flags itself for re-check
-  // instead of rendering a minus sign.
-  const refund = estimateLine({ unit: 'open area', latest: { date: '2026-07-12', mean: -0.02, sd: 0.005 } });
-  assert.match(refund, /give a little time back, about 2%/);
+  // instead of rendering a minus sign. mean -0.02 is under the scale bar,
+  // so it speaks per ten as well: exp(-0.2) is an 18% refund.
+  const refund = estimateLine({ unit: 'open area', feature: 'zeroClusterCount', latest: { date: '2026-07-12', mean: -0.02, sd: 0.005 } });
+  assert.match(refund, /^Ten open areas seem to give a little time back, about 18%/);
   assert.ok(!/-\d/.test(refund), `no minus signs on a player surface: "${refund}"`);
-  for (const line of [tiny, solid, refund]) {
+  // Digit shares NEVER scale: their unit is already a composite ("extra
+  // three in ten clues"), and ten of those is not a board quantity.
+  const digit = estimateLine({ unit: 'extra three in ten clues', feature: 'clueShare3', latest: { date: '2026-07-12', mean: 0.0015, sd: 0.0005 } });
+  assert.match(digit, /^Each extra three in ten clues adds/);
+  for (const line of [tiny, solid, refund, digit]) {
     assert.ok(!line.includes('—'), `em-dash in estimate line: "${line}"`);
   }
   assert.equal(estimateLine({ unit: 'compass cell', latest: null }), null);

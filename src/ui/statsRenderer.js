@@ -9,7 +9,7 @@ import { predictPar } from '../logic/dailyFeatures.js';
 import { ratioDisplaySeconds, ratioDisplayPercent } from '../logic/handicaps.js';
 import { rankAdjusted } from '../logic/leaderboardViews.js';
 import {
-  lineChart, barChart, heatBars, densityChart,
+  lineChart, barChart, heatBars, densityChart, valueGradient01,
 } from './charts.js';
 import { renderDailyHistoryChart } from './dailyHistoryChart.js';
 
@@ -62,13 +62,13 @@ export function renderDailyStatsTab(data) {
   const { history, metaByDate, scoresByDate, uid, ratio = 1, bombSeconds = 0, refPar = 60, handicapProvisional, handicaps = null } = data;
 
   // Chronology is by the day the run was PLAYED (playedDate), not the board's
-  // date key — an archive replay of an old board is a play that happened
+  // date key, an archive replay of an old board is a play that happened
   // today, and splicing it into the past corrupts the career/rolling averages
   // and back-dates dots on the history chart.
   const sorted = [...(history || [])].sort((a, b) =>
     (a.playedDate || a.date).localeCompare(b.playedDate || b.date));
 
-  // Enrich each play with features, par, delta, and bombHits lookup — all
+  // Enrich each play with features, par, delta, and bombHits lookup, all
   // joined on the BOARD's date (h.date), preserved as boardDate below. The
   // outgoing `date` is the played day, so every chart plots plays when they
   // happened.
@@ -124,7 +124,7 @@ export function renderDailyStatsTab(data) {
 function renderHeadlineCards(plays, ratio, refPar, handicapProvisional) {
   // Two-tier headline: show a real handicap whenever we have one (refit ratio
   // OR provisional from >= 2 plays); fall back to a "tracking" message for
-  // brand-new players. The ratio is a RATING vs Greg — a stable seconds
+  // brand-new players. The ratio is a RATING vs Greg, a stable seconds
   // magnitude (at a standard board) plus a percent, same form as the leaderboard
   // chip. POSITIVE = faster/better than Greg (k < 1), negative = slower.
   const hcSeconds = ratioDisplaySeconds(ratio, refPar);
@@ -160,7 +160,7 @@ function renderHeadlineCards(plays, ratio, refPar, handicapProvisional) {
     : '--';
   setText('stat-daily-best-time', bestTime);
 
-  // Strike rate cards — one for lifetime, one for the last 7 days to match
+  // Strike rate cards, one for lifetime, one for the last 7 days to match
   // the chart's trend line (fixing the "55% headline but chart endpoint
   // shows 25%" confusion).
   const totalStrikes = plays.reduce((s, p) => s + p.bombHits, 0);
@@ -185,7 +185,7 @@ function renderHandicapTrajectory(plays) {
   // Two series on the same y-axis: cumulative mean of deltaGlobal (your
   // career-long handicap trajectory) and last-10-plays rolling mean
   // (your recent form). The GAP between them reads as "am I trending
-  // better or worse than my career average?" — rolling BELOW cumulative
+  // better or worse than my career average?", rolling BELOW cumulative
   // means you've been improving lately; ABOVE means regressing.
   const ROLLING_WINDOW = 10;
   let cumSum = 0;
@@ -226,12 +226,12 @@ function renderHandicapTrajectory(plays) {
 // given kind of reasoning. Boards contribute to multiple bars
 // simultaneously (a board needing process-of-elimination almost
 // always also needed the simpler patterns), so the bars are
-// overlapping rather than mutually exclusive — same convention as the
+// overlapping rather than mutually exclusive, same convention as the
 // modifier heatmap. Sorted by signed effect so reasoning kinds you
 // handle better than expected sit on the left, ones that cost you
 // extra time sit on the right.
 //
-// passAMoves is intentionally excluded — it's on every board, so its
+// passAMoves is intentionally excluded, it's on every board, so its
 // bar would equal your overall mean (no signal). disjunctiveMoves is
 // excluded because it's structurally identical to "liar boards"
 // (every disjunctive move comes from a liar cell), and the modifier
@@ -358,7 +358,7 @@ function renderDeltaDistribution(plays) {
   const under = deltas.filter(d => d < -0.5).length;
 
   // Median delta: when the mean (handicap) is higher than the median,
-  // the distribution is right-skewed — typical days are better than the
+  // the distribution is right-skewed, typical days are better than the
   // mean suggests, but a few bad days drag the average up. Surfacing
   // both numbers makes that skew visible.
   const sorted = [...deltas].sort((a, b) => a - b);
@@ -382,7 +382,7 @@ function renderDeltaDistribution(plays) {
     thresholdLine: 0,
     thresholdLabel: 'par',
     meanLine: mean,
-    // Mean line is drawn but unlabeled — labeling it collides with the
+    // Mean line is drawn but unlabeled, labeling it collides with the
     // x-axis tick when the mean falls near the midpoint of the data range.
     // The "Days over / under par" cards and the Handicap headline above
     // make the mean self-evident from context.
@@ -393,7 +393,7 @@ function renderDeltaDistribution(plays) {
 
 // ── Chart: Percentile trend ───────────────────────────
 // Two modes, toggleable in place. Adjusted (the DEFAULT) divides each
-// player's best time by their SHIPPED handicap ratio before ranking — the
+// player's best time by their SHIPPED handicap ratio before ranking, the
 // same rankAdjusted math as the leaderboard's Adjusted view, so the chart
 // answers "who beat their own par by more" (unrated players rank at raw
 // time, k=1). Raw ranks wall-clock times. The mode persists for the session.
@@ -478,17 +478,54 @@ function _renderPercentileTrendChart() {
         : 'Rank among the field over time',
       yDomain: [0, 100],
       yFormat: v => v + 'th',
-      // High percentile = good. Low = bad.
-      dotClassForValue: v => v >= 70 ? 'chart-dot-good' : v <= 30 ? 'chart-dot-bad' : 'chart-dot-even',
-      lineClass: 'chart-line chart-line-rank',
+      // Dots only, colored on a continuous 0-100 gradient (his ask,
+      // 2026-08-11: no line between the rank-vs-field dots, and a more
+      // interesting ramp than the old three-band traffic light). The
+      // viridis ramp runs dark purple (0th) to bright yellow (100th), so
+      // height and color say the same thing and a good week visibly
+      // brightens.
+      noLine: true,
+      dotFill: v => valueGradient01(v / 100),
     }));
   }
   replaceContent('chart-percentile-trend', wrap);
 }
 
 // ── Chart: Daily history (moved from leaderboard) ─────
+// Windowed by a time-pill row (his ask, 2026-08-11), 60 days the default.
+// The fetch already pulls a year (statsModal passes 365 days of history),
+// so a pill click is a pure re-render; the window persists for the
+// session, same as the percentile chart's mode.
+const HISTORY_WINDOWS = [[30, '30d'], [60, '60d'], [90, '90d'], [365, '1y']];
+let _histDays = 60;
+let _histCtx = null;
 
 function renderHistoryChart(plays) {
+  _histCtx = plays;
+  _renderHistoryChartInner();
+}
+
+function _histToggle() {
+  const row = document.createElement('div');
+  row.className = 'chart-toggle';
+  for (const [days, label] of HISTORY_WINDOWS) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'chart-toggle-btn' + (_histDays === days ? ' active' : '');
+    btn.setAttribute('aria-pressed', _histDays === days ? 'true' : 'false');
+    btn.textContent = label;
+    btn.addEventListener('click', () => {
+      if (_histDays === days) return;
+      _histDays = days;
+      _renderHistoryChartInner();
+    });
+    row.appendChild(btn);
+  }
+  return row;
+}
+
+function _renderHistoryChartInner() {
+  const plays = _histCtx || [];
   const entries = plays.map(p => ({
     date: p.date,               // the played day (see renderDailyStatsTab)
     boardDate: p.boardDate,     // the replayed board, for the tooltip
@@ -497,6 +534,8 @@ function renderHistoryChart(plays) {
     par: p.personalPar != null ? p.personalPar : p.globalPar || 0,
     delta: p.deltaPersonal != null ? p.deltaPersonal : (p.deltaGlobal || 0),
   }));
-  const svg = renderDailyHistoryChart(entries);
-  replaceContent('chart-daily-history', svg);
+  const wrap = document.createElement('div');
+  wrap.appendChild(_histToggle());
+  wrap.appendChild(renderDailyHistoryChart(entries, { daysBack: _histDays }));
+  replaceContent('chart-daily-history', wrap);
 }
