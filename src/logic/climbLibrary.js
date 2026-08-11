@@ -35,12 +35,13 @@ export function levelHasLibrary(level) {
   return level >= CLIMB_LIBRARY_FROM && level <= CLIMB_LIBRARY_TO;
 }
 
-// The ENDLESS library (2026-08-11) covers everything past the crown: ~1,000
-// pre-generated boards above the 400s par floor, sharded into pages so a
-// level past 250 fetches one small index and one page, never the whole
-// thousand. There are no per-level bins out here (the zone's whole job is
-// variety), so the deal is a random unseen board from the entire library
-// under ONE GLOBAL seen-cycle (his ladder-bin rule at library scale).
+// The ENDLESS library (2026-08-11) covers everything past the crown:
+// hundreds of pre-generated boards above the 400s par floor (500 at launch,
+// his sizing ruling; append-only after), sharded into pages so a level past
+// 250 fetches one small index and one page, never the whole library. There
+// are no per-level bins out here (the zone's whole job is variety), so the
+// deal is a random unseen board from the entire library under ONE GLOBAL
+// seen-cycle (his ladder-bin rule at library scale).
 export function levelHasEndlessLibrary(level) {
   return level > CLIMB_LIBRARY_TO;
 }

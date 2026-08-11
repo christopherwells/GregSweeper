@@ -280,7 +280,12 @@ function candidate(spec, seed) {
 // board lives in carries no meaning — the deal is uniform over unseen
 // boards across the whole library (weighted by each page's unseen count),
 // so page composition cannot bias what a player meets.
-const ENDLESS_TARGET_BOARDS = 1000;
+// 500 AT LAUNCH, his ruling 2026-08-11: "Maybe we start with 500. No one is
+// going to get to lvl 750 in the near future." Five hundred boards is five
+// hundred deals before the global cycle can repeat one, and the library is
+// append-only by design, so growing it later is a --endless run, not a
+// project.
+const ENDLESS_TARGET_BOARDS = 500;
 const ENDLESS_PAGE_SIZE = 16;          // ~150-250KB per page at endless payload sizes
 const ENDLESS_FACE_CAP = 2;            // dims/mines/stack variety, the ladder's own bar
 const ENDLESS_GL = [70, 100, 120];     // the hard end of the intensity dial
@@ -309,12 +314,20 @@ const ENDLESS_VISIT_BUDGET_MS = 75_000;
 const ENDLESS_LANE_BAILS = 4;
 const ENDLESS_LANE_REST_ROUNDS = 12;   // rounds a bailed lane sits out (escalates per bail)
 const ENDLESS_LANE_BAILS_CAP = 5;      // escalation ceiling, so every rest expires in-horizon
-// Per-shape cell ceilings for the endless draws. Rhombille's certification
-// cost is superlinear in cells (the 72-cell practice-board lesson), and at
-// 135 cells a single strict draw measured 48 SECONDS — one visit of those
-// eats three minutes for one board. 120 cells measures ~5s a draw, which a
-// 75s visit holds comfortably.
-const ENDLESS_MAX_CELLS = { rhombille: 120 };
+// Per-shape cell bounds for the endless draws, each one MEASURED. Ceilings:
+// rhombille's certification cost is superlinear in cells (the 72-cell
+// practice-board lesson), and at 135 cells a single strict draw measured 48
+// SECONDS — one visit of those eats three minutes for one board, while 120
+// cells measures ~5s a draw; deltoidal's pricing is the dearest per cell of
+// any lattice, so its 108-126-cell patches blow past the 600s ceiling on
+// every draw (126 cells prices ~1665s at daily density). Floors: the same
+// two shapes from the other side — rhombille below ~100 cells cannot reach
+// the 400s floor at all (plain tops near 193s, pairs near 350), and
+// deltoidal's 48-54-cell patches sit under it at every legal density. A
+// draw outside the corridor is not unlucky, it is impossible, and the first
+// shard runs spent 97% of their visits proving that over and over.
+const ENDLESS_MAX_CELLS = { rhombille: 120, deltoidal: 90 };
+const ENDLESS_MIN_CELLS = { rhombille: 100, deltoidal: 66 };
 const ENDLESS_CACHE = new URL('./data/endless-build-cache.json', import.meta.url);
 // A --shape run gets its OWN cache file, which is what makes the seven
 // shapes safely PARALLEL: specFace is shape-prefixed and the draw seeds are
@@ -385,13 +398,14 @@ function endlessDimsLegal(shape, a, b) {
 function endlessDims(shape, priced) {
   const ceil = endlessParCeiling(shape);
   const cellCap = ENDLESS_MAX_CELLS[shape] ?? Infinity;
+  const cellMin = ENDLESS_MIN_CELLS[shape] ?? 0;
   const seen = new Set();
   const out = [];
   for (const e of priced) {
     if (e.shape !== shape) continue;
     if (e.par < ENDLESS_PAR_FLOOR / 4 || e.par > ceil) continue;
     if (e.genMs != null && e.genMs > 2500) continue;
-    if (e.cells > cellCap) continue;
+    if (e.cells > cellCap || e.cells < cellMin) continue;
     // LATTICE dims first: price-map tiling entries carry BOTH the lattice
     // M/N and the storage container's rows/cols, and reading the container
     // first hands boardFitsPhone garbage (an 8x9 CONTAINER for a 72-cell
@@ -408,7 +422,7 @@ function endlessDims(shape, priced) {
   // price map was built for the LADDER's needs and its coverage thins out
   // exactly where the endless window lives (4.8.8's map dims stop at 98
   // cells while its 128-cell patches are the ones that price mid-window).
-  const patches = legalPatches().filter((p) => p.shape === shape && p.cells <= cellCap)
+  const patches = legalPatches().filter((p) => p.shape === shape && p.cells <= cellCap && p.cells >= cellMin)
     .map((p) => ({ a: p.M ?? p.rows, b: p.N ?? p.cols, cells: p.cells }))
     .filter((p) => endlessDimsLegal(shape, p.a, p.b))
     .filter((p) => !seen.has(`${p.a}x${p.b}`))
@@ -437,6 +451,7 @@ function endlessCacheSpecs(specCache, shape, set) {
     if ([...e.gimmicks].sort().join('+') !== setKey) continue;
     if ((e.medPar || 0) < ENDLESS_PAR_FLOOR * 0.75 || e.medPar > ceil * 1.15) continue;
     if (e.cells > (ENDLESS_MAX_CELLS[shape] ?? Infinity)) continue;
+    if (e.cells < (ENDLESS_MIN_CELLS[shape] ?? 0)) continue;
     if (!endlessDimsLegal(shape, e.a, e.b)) continue;
     out.push({ a: e.a, b: e.b, cells: e.cells, mines: e.mines, gl: e.gl });
   }

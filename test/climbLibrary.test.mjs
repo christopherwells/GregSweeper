@@ -129,12 +129,13 @@ test('reserve boards genuinely fit nowhere', () => {
 
 // ── The ENDLESS bins (2026-08-11): the same contract past the crown ─────
 //
-// ~1,000 pre-generated boards for L251+, dealt randomly under one global
-// seen-cycle (his rule: a board cannot repeat until every other board has
-// been served). One window bound, the 400s par floor; per-shape ceilings
-// are build-time admission, deliberately NOT asserted here, because a
-// refit that re-prices a board over its ceiling has made it harder, which
-// the zone welcomes ("there's no max").
+// ~500 pre-generated boards at launch (his ruling: "start with 500", the
+// library appends) for L251+, dealt randomly under one global seen-cycle
+// (his rule: a board cannot repeat until every other board has been
+// served). One window bound, the 400s par floor; per-shape ceilings are
+// build-time admission, deliberately NOT asserted here, because a refit
+// that re-prices a board over its ceiling has made it harder, which the
+// zone welcomes ("there's no max").
 
 test('the endless library is real, sharded, and its index tells the truth', () => {
   assert.ok(endlessIndex.pages === endlessPages.length, 'index page count matches the files');
@@ -142,9 +143,9 @@ test('the endless library is real, sharded, and its index tells the truth', () =
   assert.deepEqual(endlessIndex.counts, endlessPages.map((p) => p.boards.length),
     'per-page counts drive the deal\'s page weighting and must match the pages');
   assert.equal(endlessIndex.boards, endlessBoards.length, 'the index total matches the boards');
-  assert.ok(endlessBoards.length >= 600,
-    `${endlessBoards.length} endless boards is far under the ~1,000 target; `
-    + 'append supply with: node scripts/build-climb-library.mjs --endless');
+  assert.ok(endlessBoards.length >= 350,
+    `${endlessBoards.length} endless boards is far under the ~500 launch target `
+    + '(his 2026-08-11 ruling); append supply with: node scripts/build-climb-library.mjs --endless');
   const seeds = new Set(endlessBoards.map((b) => b.seed));
   assert.equal(seeds.size, endlessBoards.length, 'every endless board has a unique seed');
 });

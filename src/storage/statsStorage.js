@@ -39,10 +39,10 @@ export function setClimbSeen(level, seeds) {
 }
 
 // The ENDLESS library's seen-cycle is GLOBAL (one map for the whole
-// thousand-board library, keyed by page so the deal can weigh pages
-// without fetching them), not per-level: past the crown a level has no bin
-// of its own and his cycle rule applies to the library entire. Same
-// practice gate as the ladder's (the caller checks isLevelPractice).
+// library, keyed by page so the deal can weigh pages without fetching
+// them), not per-level: past the crown a level has no bin of its own and
+// his cycle rule applies to the library entire. Same practice gate as the
+// ladder's (the caller checks isLevelPractice).
 const ENDLESS_SEEN_KEY = 'minesweeper_climb_endless_seen';
 
 export function getEndlessSeen() {
