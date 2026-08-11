@@ -300,8 +300,15 @@ const endlessBestOf = (shape) => ENDLESS_BEST_OF[shape] ?? 6;
 const ENDLESS_GEN_ATTEMPTS = 80;
 const ENDLESS_STRICT_RETRIES = 1;
 const ENDLESS_VISIT_BUDGET_MS = 75_000;
-const ENDLESS_LANE_BAILS = 2;          // consecutive empty visits before a lane rests
-const ENDLESS_LANE_REST_ROUNDS = 12;   // rounds a bailed lane sits out
+// FOUR consecutive empty visits before a lane rests, not two: a lane with a
+// narrow-but-real corridor (4.8.8's whole window is one) misses twice in a
+// row CONSTANTLY, and at two the rest machinery treated every low-yield
+// lane as a dead one — the first 4.8.8 shard retired itself at 6 of 143
+// with its corridor proven to exist. Misses are cheap since the aimless-
+// visit abandon; the rests only need to starve the truly infeasible lanes.
+const ENDLESS_LANE_BAILS = 4;
+const ENDLESS_LANE_REST_ROUNDS = 12;   // rounds a bailed lane sits out (escalates per bail)
+const ENDLESS_LANE_BAILS_CAP = 5;      // escalation ceiling, so every rest expires in-horizon
 // Per-shape cell ceilings for the endless draws. Rhombille's certification
 // cost is superlinear in cells (the 72-cell practice-board lesson), and at
 // 135 cells a single strict draw measured 48 SECONDS — one visit of those
@@ -309,6 +316,14 @@ const ENDLESS_LANE_REST_ROUNDS = 12;   // rounds a bailed lane sits out
 // 75s visit holds comfortably.
 const ENDLESS_MAX_CELLS = { rhombille: 120 };
 const ENDLESS_CACHE = new URL('./data/endless-build-cache.json', import.meta.url);
+// A --shape run gets its OWN cache file, which is what makes the seven
+// shapes safely PARALLEL: specFace is shape-prefixed and the draw seeds are
+// shape-namespaced, so seven processes share no state at all, and a
+// 16-core box builds the library in the wall clock of its dearest shape
+// instead of the sum of all seven. --emit-only merges the caches.
+const endlessCacheFile = (shape) => (shape
+  ? new URL(`./data/endless-build-cache-${shape}.json`, import.meta.url)
+  : ENDLESS_CACHE);
 const ENDLESS_INDEX = new URL('endless-index.json', OUT_DIR);
 const endlessPageFile = (page) => new URL(`endless-${String(page).padStart(3, '0')}.json`, OUT_DIR);
 
@@ -389,14 +404,19 @@ function endlessDims(shape, priced) {
     seen.add(k);
     out.push({ a, b, cells: e.cells });
   }
-  if (out.length >= 3) return out.sort((x, y) => x.cells - y.cells);
+  // ALWAYS top up with the largest legal patches the map does not name: the
+  // price map was built for the LADDER's needs and its coverage thins out
+  // exactly where the endless window lives (4.8.8's map dims stop at 98
+  // cells while its 128-cell patches are the ones that price mid-window).
   const patches = legalPatches().filter((p) => p.shape === shape && p.cells <= cellCap)
     .map((p) => ({ a: p.M ?? p.rows, b: p.N ?? p.cols, cells: p.cells }))
     .filter((p) => endlessDimsLegal(shape, p.a, p.b))
+    .filter((p) => !seen.has(`${p.a}x${p.b}`))
     .sort((x, y) => y.cells - x.cells);
+  const topUp = Math.max(3, 7 - out.length);
   // Ascending by cells ALWAYS — the heavy lane's top-half slice reads this
   // order, and a mixed-order list would quietly hand it small boards.
-  return out.concat(patches.slice(0, 6 - out.length)).sort((x, y) => x.cells - y.cells);
+  return out.concat(patches.slice(0, topUp)).sort((x, y) => x.cells - y.cells);
 }
 
 /**
@@ -470,12 +490,15 @@ function loadJsonMaybe(url) {
 }
 
 /**
- * Emit pages from a full keep list: deal round-robin over shapes (each
- * shape's boards in generation order), then cut the sequence into pages.
- * Round-robin so any PREFIX of the page set is shape-balanced — the same
- * budget-cut-lands-uniformly property the visits themselves keep.
+ * Emit pages. Fresh build: deal the keeps round-robin over shapes (each
+ * shape's boards in generation order), then cut the sequence into pages —
+ * round-robin so any PREFIX of the page set is shape-balanced, the same
+ * budget-cut-lands-uniformly property the visits themselves keep. Append:
+ * the existing pages are FROZEN (re-dealing them would move boards between
+ * pages and quietly desync every player's page-keyed seen map); new keeps
+ * become NEW pages after them, and only the index is rewritten.
  */
-function emitEndlessPages(keeps, dry) {
+function emitEndlessPages(existingPages, keeps, dry) {
   const byShape = new Map();
   for (const c of keeps) {
     if (!byShape.has(c.spec.shape)) byShape.set(c.spec.shape, []);
@@ -486,24 +509,28 @@ function emitEndlessPages(keeps, dry) {
   while (queues.some((q) => q.length)) {
     for (const q of queues) if (q.length) sequence.push(q.shift());
   }
-  const pages = [];
+  const newPages = [];
   for (let i = 0; i < sequence.length; i += ENDLESS_PAGE_SIZE) {
-    pages.push(sequence.slice(i, i + ENDLESS_PAGE_SIZE));
+    newPages.push(sequence.slice(i, i + ENDLESS_PAGE_SIZE));
   }
   const fp = modelFingerprint();
+  const counts = existingPages.map((p) => p.boards.length)
+    .concat(newPages.map((p) => p.length));
+  const total = counts.reduce((a, b) => a + b, 0);
   if (!dry) {
-    pages.forEach((boards, k) => {
+    newPages.forEach((boards, i) => {
+      const k = existingPages.length + i;
       writeFileSync(endlessPageFile(k), JSON.stringify({ page: k, parModel: fp, boards }));
     });
     writeFileSync(ENDLESS_INDEX, JSON.stringify({
       parModel: fp,
       parFloor: ENDLESS_PAR_FLOOR,
-      boards: sequence.length,
-      pages: pages.length,
-      counts: pages.map((p) => p.length),
+      boards: total,
+      pages: counts.length,
+      counts,
     }));
   }
-  return { pages: pages.length, boards: sequence.length };
+  return { pages: counts.length, boards: total };
 }
 
 /**
@@ -548,11 +575,12 @@ function runEndlessBuild({ dry, minutes, onlyShape, target }) {
   // so an interrupted run replays its keeps for free and continues the
   // sequence. The cache stores the KEPT board (payload included); misses
   // store null and are never re-run.
-  const progress = loadJsonMaybe(ENDLESS_CACHE) || { visits: {} };
+  const cacheUrl = endlessCacheFile(onlyShape);
+  const progress = loadJsonMaybe(cacheUrl) || { visits: {} };
   let lastSave = Date.now();
   const saveProgress = (force) => {
     if (!force && Date.now() - lastSave < 60_000) return;
-    writeFileSync(ENDLESS_CACHE, JSON.stringify(progress));
+    writeFileSync(cacheUrl, JSON.stringify(progress));
     lastSave = Date.now();
   };
 
@@ -583,17 +611,20 @@ function runEndlessBuild({ dry, minutes, onlyShape, target }) {
   };
 
   // The exit conditions, in order: target met; wall clock spent; every shape
-  // at quota; or a full rest-cycle of rounds in which nothing ran (a single
-  // inactive ROUND is normal — rests are per (shape, lane) and expire — so
-  // only a whole cycle of them means the material is exhausted).
+  // at quota; or a long idle spin with every lane at its escalation ceiling.
+  // Idle rounds cost nothing (no visit runs), so the horizon is sized to
+  // outlast the LONGEST possible rest rather than to feel proportionate —
+  // the first cut broke at 65 idle rounds, before a third-bail rest could
+  // even expire, and read a resting shard as an exhausted one.
   const HARD_ROUND_CAP = 40_000;
+  const IDLE_HORIZON = ENDLESS_LANE_REST_ROUNDS * ENDLESS_LANE_BAILS_CAP * LANE_COUNT * 2;
   let inactiveRounds = 0;
   outer:
   for (let round = 0; round < HARD_ROUND_CAP; round++) {
     if (keeps.length >= wanted) break;
     if (shapes.every((s) => keptByShape.get(s) >= perShapeTarget)) break;
-    if (inactiveRounds > LANE_COUNT * (ENDLESS_LANE_REST_ROUNDS + 1)) {
-      console.log('every lane is resting or exhausted; stopping short of target');
+    if (inactiveRounds > IDLE_HORIZON) {
+      console.log('every lane sat at its escalation ceiling through a full horizon; stopping short of target');
       break;
     }
     if (round > 0 && round % 5 === 0 && inactiveRounds === 0) {
@@ -631,6 +662,8 @@ function runEndlessBuild({ dry, minutes, onlyShape, target }) {
         // one face, so a full face means K boards built to reject K boards.
         if (spec && (faceCount.get(specFace(spec)) || 0) < ENDLESS_FACE_CAP) {
           let best = null;
+          let under = 0, over = 0;
+          const ceiling = endlessParCeiling(shape);
           for (let k = 0; k < endlessBestOf(shape); k++) {
             if (Date.now() - visitT0 > ENDLESS_VISIT_BUDGET_MS) break;
             let c = null;
@@ -640,7 +673,17 @@ function runEndlessBuild({ dry, minutes, onlyShape, target }) {
             try { c = candidate(spec, `climb:endless:${shape}:${setKey}:${v}:${k}`); }
             catch (err) { console.log(`  ${shape} ${setKey} v${v}: ${err.message}`); break; }
             built++;
-            if (!c || !accept(shape, c)) continue;
+            if (c && c.par < ENDLESS_PAR_FLOOR) under++;
+            if (c && c.par > ceiling) over++;
+            if (!c || !accept(shape, c)) {
+              // ABANDON AN AIMLESS VISIT: par varies maybe 20% between draws
+              // of one spec, so two misses on the SAME side of the window
+              // mean the spec is aimed off, not unlucky, and the remaining
+              // draws are the single biggest waste in the whole run (a miss
+              // visit used to cost its full best-of-K).
+              if (!best && (under >= 2 || over >= 2)) break;
+              continue;
+            }
             if (!best || c.hard > best.hard) best = c;
           }
           kept = best;
@@ -655,15 +698,16 @@ function runEndlessBuild({ dry, minutes, onlyShape, target }) {
         faceCount.set(kept.face, (faceCount.get(kept.face) || 0) + 1);
         keptByShape.set(shape, keptByShape.get(shape) + 1);
         laneEmpty.set(laneKey, 0);
+        // A keep clears the lane's whole escalation: a producing lane is
+        // low-yield, never infeasible, and the escalation exists only for
+        // the lanes that have NEVER produced (plain rhombille cannot price
+        // at 400s on any board).
+        laneBails.delete(laneKey);
       } else {
         const n = (laneEmpty.get(laneKey) || 0) + 1;
         laneEmpty.set(laneKey, n);
         if (n >= ENDLESS_LANE_BAILS) {
-          // ESCALATING rest: a lane that keeps coming back empty is not
-          // unlucky, it is infeasible (plain rhombille cannot price at 400s
-          // on any board), and each bail doubles its next rest so the wall
-          // clock drains toward the lanes that produce.
-          const bails = (laneBails.get(laneKey) || 0) + 1;
+          const bails = Math.min(ENDLESS_LANE_BAILS_CAP, (laneBails.get(laneKey) || 0) + 1);
           laneBails.set(laneKey, bails);
           laneRest.set(laneKey, round + ENDLESS_LANE_REST_ROUNDS * bails);
           laneEmpty.set(laneKey, 0);
@@ -703,9 +747,88 @@ function runEndlessBuild({ dry, minutes, onlyShape, target }) {
   console.log(`\nendless build kept ${keeps.length} (${replayed} replayed from the resume cache), built ${built} candidates in ${((Date.now() - t0) / 60000).toFixed(1)}m`);
   console.log(`  par med ${Math.round(med(keeps, 'par'))}s  hard med ${med(keeps, 'hard')}  4-5 stacks ${heavies}  [${shapeLine}]`);
 
-  const all = existing.concat(keeps);
-  const out = emitEndlessPages(all, dry);
+  // A --shape run only writes its cache: the pages are emitted ONCE, by
+  // --emit-only, after every parallel shard has finished, so two shards can
+  // never interleave partial page sets.
+  if (onlyShape) {
+    console.log(`shard cache written; emit the merged pages with: node scripts/build-climb-library.mjs --endless --emit-only`);
+    return;
+  }
+  const out = emitEndlessPages(existingIndex ? endlessExistingPages() : [], keeps, dry);
   console.log(`${dry ? '[dry-run] would write' : 'wrote'} ${out.pages} pages, ${out.boards} boards, index at ${ENDLESS_INDEX.pathname.split('/').pop()}`);
+}
+
+/** The existing endless pages, structure intact (for append-mode emits). */
+function endlessExistingPages() {
+  const idx = loadJsonMaybe(ENDLESS_INDEX);
+  if (!idx) return [];
+  const out = [];
+  for (let k = 0; k < idx.pages; k++) {
+    const page = loadJsonMaybe(endlessPageFile(k));
+    if (page) out.push(page);
+  }
+  return out;
+}
+
+/**
+ * Merge every shard cache (and the shared single-process cache, if one
+ * exists) into the sharded pages. The accept rules are the build's own:
+ * inside the par window, the library-wide face cap, never a seed the pages
+ * already hold. Keeps stay in per-shape generation order and the emitter
+ * interleaves shapes, so a truncated merge is still balanced.
+ */
+function runEndlessEmitOnly({ dry, target }) {
+  const existingPages = endlessExistingPages();
+  const existing = existingPages.flatMap((p) => p.boards);
+  const existingSeeds = new Set(existing.map((b) => b.seed));
+  const faceCount = new Map();
+  for (const b of existing) faceCount.set(b.face, (faceCount.get(b.face) || 0) + 1);
+
+  const keeps = [];
+  const perShape = new Map();
+  for (const shape of ENDLESS_SHAPES) {
+    const caches = [loadJsonMaybe(endlessCacheFile(shape)), loadJsonMaybe(ENDLESS_CACHE)];
+    let n = 0;
+    for (const cache of caches) {
+      if (!cache || !cache.visits) continue;
+      for (const [key, kept] of Object.entries(cache.visits)) {
+        if (!kept || !key.startsWith(`${shape}|`)) continue;
+        if (existingSeeds.has(kept.seed)) continue;
+        if (kept.par < ENDLESS_PAR_FLOOR || kept.par > endlessParCeiling(shape)) continue;
+        if ((faceCount.get(kept.face) || 0) >= ENDLESS_FACE_CAP) continue;
+        existingSeeds.add(kept.seed);
+        faceCount.set(kept.face, (faceCount.get(kept.face) || 0) + 1);
+        keeps.push(kept);
+        n++;
+      }
+    }
+    perShape.set(shape, n);
+  }
+  const wanted = (target ?? ENDLESS_TARGET_BOARDS) - existing.length;
+  // Trim OVER-target balanced: round-robin over shapes, exactly the
+  // emitter's own deal, so the cut lands evenly rather than on whichever
+  // shape happened to be gathered last.
+  let final = keeps;
+  if (keeps.length > wanted && wanted > 0) {
+    const byShape = new Map();
+    for (const c of keeps) {
+      if (!byShape.has(c.spec.shape)) byShape.set(c.spec.shape, []);
+      byShape.get(c.spec.shape).push(c);
+    }
+    const queues = [...byShape.values()];
+    final = [];
+    while (final.length < wanted && queues.some((q) => q.length)) {
+      for (const q of queues) {
+        if (final.length >= wanted) break;
+        if (q.length) final.push(q.shift());
+      }
+    }
+  }
+  const heavies = final.filter((c) => (c.spec.gimmicks || []).length >= 4).length;
+  console.log(`emit-only: ${final.length} boards from the shard caches (${existing.length} already paged, ${heavies} heavy stacks)`
+    + ` [${[...perShape].map(([s, n]) => `${s} ${n}`).join('  ')}]`);
+  const out = emitEndlessPages(existingPages, final, dry);
+  console.log(`${dry ? '[dry-run] would write' : 'wrote'} ${out.pages} pages, ${out.boards} boards`);
 }
 
 export { parFloor, parWindowTop, hardFloor, minBoardsFor, legalPatches, GIMMICK_SETS, candidate, hardOf,
@@ -729,12 +852,16 @@ if ((process.argv[1] || '').endsWith('build-climb-library.mjs')) {
   })();
 
   if (args.includes('--endless')) {
-    runEndlessBuild({
-      dry,
-      minutes: Number(argOf('--minutes', 300)),
-      onlyShape: argOf('--shape'),
-      target: argOf('--target') ? Number(argOf('--target')) : null,
-    });
+    if (args.includes('--emit-only')) {
+      runEndlessEmitOnly({ dry, target: argOf('--target') ? Number(argOf('--target')) : null });
+    } else {
+      runEndlessBuild({
+        dry,
+        minutes: Number(argOf('--minutes', 300)),
+        onlyShape: argOf('--shape'),
+        target: argOf('--target') ? Number(argOf('--target')) : null,
+      });
+    }
     process.exit(0);
   }
 
