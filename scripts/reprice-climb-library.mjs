@@ -27,11 +27,20 @@
 // then the nearest window center. What remains is the deficit manifest,
 // written beside the library for the top-up tool and printed for the
 // refit log.
+//
+// The ENDLESS bins (2026-08-11) join the same night under their own, single
+// window bound: a board belongs to them exactly while its par sits at or
+// above the 400s floor. Boards flow BOTH ways: an endless board a refit
+// prices under 400s tries the ladder levels like any mover, and a ladder
+// board that outgrew every window lands in the endless pages instead of
+// reserve. Ladder levels get first refusal on every mover because they
+// carry minimums and windows; endless has neither.
 
 import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
 import {
   parFloor, parWindowTop, hardFloor, minBoardsFor,
   intakeRules, boardAllowedAtLevel, PAR_FLOOR_SHAPE_RELIEF, OUT_DIR,
+  ENDLESS_PAR_FLOOR, ENDLESS_FACE_CAP, ENDLESS_INDEX,
 } from './build-climb-library.mjs';
 import { deserializeBoard } from '../src/firebase/dailyBoardSync.js';
 import { isBoardSolvable } from '../src/logic/boardSolver.js';
@@ -58,8 +67,22 @@ const levels = files.map((f) => {
 const reserve = existsSync(RESERVE_URL)
   ? JSON.parse(readFileSync(RESERVE_URL, 'utf8')).boards
   : [];
-const totalIn = levels.reduce((a, L) => a + L.json.boards.length, 0) + reserve.length;
-console.log(`${levels.length} level files + ${reserve.length} reserve boards = ${totalIn} boards`);
+
+// The ENDLESS bins re-bin on the same night (2026-08-11). Their one window
+// bound is the 400s par floor — there are no per-level windows past the
+// crown, and each shape's ceiling is a BUILD-time admission rule, not a
+// membership bound a refit can evict a board over. Tolerant of absence so
+// the tool still runs on a checkout that predates the endless library.
+const endlessPages = readdirSync(OUT_DIR)
+  .filter((f) => /^endless-\d+\.json$/.test(f))
+  .sort()
+  .map((f) => ({ file: f, json: JSON.parse(readFileSync(new URL(f, OUT_DIR), 'utf8')) }));
+const hasEndless = endlessPages.length > 0;
+const endlessBoardCount = () => endlessPages.reduce((a, p) => a + p.json.boards.length, 0);
+
+const totalIn = levels.reduce((a, L) => a + L.json.boards.length, 0) + reserve.length
+  + endlessBoardCount();
+console.log(`${levels.length} level files + ${endlessPages.length} endless pages (${endlessBoardCount()} boards) + ${reserve.length} reserve = ${totalIn} boards`);
 
 // ── Backfill features where absent, then re-price every board ───────────
 let backfilled = 0;
@@ -82,10 +105,12 @@ function ensureFeatures(b, where) {
   }
 }
 for (const L of levels) for (const b of L.json.boards) ensureFeatures(b, `L${L.level}`);
+for (const P of endlessPages) for (const b of P.json.boards) ensureFeatures(b, P.file);
 for (const b of reserve) ensureFeatures(b, 'reserve');
 if (backfilled) console.log(`backfilled ${backfilled} feature vectors in ${Math.round((Date.now() - t0) / 1000)}s`);
 
 for (const L of levels) for (const b of L.json.boards) b.par = predictPar(b.features);
+for (const P of endlessPages) for (const b of P.json.boards) b.par = predictPar(b.features);
 for (const b of reserve) b.par = predictPar(b.features);
 
 // ── Stability pass: in-window boards stay; the rest go homeless ─────────
@@ -100,36 +125,64 @@ for (const L of levels) {
   movedOut += leave.length;
   homeless.push(...leave);
 }
-console.log(`re-priced: ${movedOut} boards left their window, ${homeless.length - movedOut} were in reserve`);
+let endlessOut = 0;
+for (const P of endlessPages) {
+  const stay = [], leave = [];
+  for (const b of P.json.boards) {
+    (b.par >= ENDLESS_PAR_FLOOR ? stay : leave).push(b);
+  }
+  P.json.boards = stay;
+  endlessOut += leave.length;
+  homeless.push(...leave);
+}
+console.log(`re-priced: ${movedOut} ladder boards left their window, ${endlessOut} endless boards fell under the ${ENDLESS_PAR_FLOOR}s floor, ${homeless.length - movedOut - endlessOut} were in reserve`);
 
 // ── Placement: hardest first, neediest level first ──────────────────────
 const faceCount = (L, face) => L.json.boards.filter((b) => b.face === face).length;
+const endlessFaceCount = (face) => endlessPages.reduce(
+  (a, P) => a + P.json.boards.filter((b) => b.face === face).length, 0);
 homeless.sort((a, b) => b.hard - a.hard);
 let placed = 0;
+let placedEndless = 0;
 const stillHomeless = [];
 for (const b of homeless) {
   const eligible = levels.filter((L) => b.par >= L.lo && b.par <= L.hi
     && boardAllowedAtLevel(b, L.rules)
     && faceCount(L, b.face) < FACE_CAP);
-  if (!eligible.length) { stillHomeless.push(b); continue; }
-  eligible.sort((A, B) => {
-    const defA = Math.max(0, A.min - A.json.boards.length);
-    const defB = Math.max(0, B.min - B.json.boards.length);
-    if (defA !== defB) return defB - defA;
-    const hardA = b.hard >= A.hardMin ? 0 : 1;
-    const hardB = b.hard >= B.hardMin ? 0 : 1;
-    if (hardA !== hardB) return hardA - hardB;
-    const cA = Math.abs(b.par - (A.lo + A.hi) / 2);
-    const cB = Math.abs(b.par - (B.lo + B.hi) / 2);
-    return cA - cB;
-  });
-  eligible[0].json.boards.push(b);
-  placed++;
+  if (eligible.length) {
+    eligible.sort((A, B) => {
+      const defA = Math.max(0, A.min - A.json.boards.length);
+      const defB = Math.max(0, B.min - B.json.boards.length);
+      if (defA !== defB) return defB - defA;
+      const hardA = b.hard >= A.hardMin ? 0 : 1;
+      const hardB = b.hard >= B.hardMin ? 0 : 1;
+      if (hardA !== hardB) return hardA - hardB;
+      const cA = Math.abs(b.par - (A.lo + A.hi) / 2);
+      const cB = Math.abs(b.par - (B.lo + B.hi) / 2);
+      return cA - cB;
+    });
+    eligible[0].json.boards.push(b);
+    placed++;
+    continue;
+  }
+  // No ladder level takes it: the ENDLESS bins are the catch-all above
+  // their floor (a 750s board that outgrew L250's window is exactly what
+  // the zone wants). Ladder levels get first refusal because they carry
+  // minimums and windows; endless has neither. Into the smallest page, so
+  // page sizes stay even for the fetch.
+  if (hasEndless && b.par >= ENDLESS_PAR_FLOOR && endlessFaceCount(b.face) < ENDLESS_FACE_CAP) {
+    const smallest = endlessPages.reduce((m, P) => (P.json.boards.length < m.json.boards.length ? P : m));
+    smallest.json.boards.push(b);
+    placedEndless++;
+    continue;
+  }
+  stillHomeless.push(b);
 }
-console.log(`re-binned ${placed}; ${stillHomeless.length} to reserve`);
+console.log(`re-binned ${placed} to ladder levels, ${placedEndless} to endless pages; ${stillHomeless.length} to reserve`);
 
 // ── Conservation, vintage, write ─────────────────────────────────────────
-const totalOut = levels.reduce((a, L) => a + L.json.boards.length, 0) + stillHomeless.length;
+const totalOut = levels.reduce((a, L) => a + L.json.boards.length, 0)
+  + endlessBoardCount() + stillHomeless.length;
 if (totalOut !== totalIn) {
   throw new Error(`board conservation violated: ${totalIn} in, ${totalOut} out`);
 }
@@ -146,11 +199,26 @@ if (!DRY) {
     for (const b of L.json.boards) delete b.parModel; // one vintage story: the file's
     writeFileSync(new URL(L.file, OUT_DIR), JSON.stringify(L.json));
   }
+  for (const P of endlessPages) {
+    P.json.parModel = fp;
+    for (const b of P.json.boards) delete b.parModel;
+    writeFileSync(new URL(P.file, OUT_DIR), JSON.stringify(P.json));
+  }
+  if (hasEndless) {
+    writeFileSync(ENDLESS_INDEX, JSON.stringify({
+      parModel: fp,
+      parFloor: ENDLESS_PAR_FLOOR,
+      boards: endlessBoardCount(),
+      pages: endlessPages.length,
+      counts: endlessPages.map((P) => P.json.boards.length),
+    }));
+  }
   writeFileSync(RESERVE_URL, JSON.stringify({ parModel: fp, boards: stillHomeless }));
   writeFileSync(DEFICITS_URL, JSON.stringify({ parModel: fp, deficits }));
 }
 
 console.log(`${DRY ? '[dry-run] ' : ''}library re-priced under ${fp};`
+  + `${hasEndless ? ` endless holds ${endlessBoardCount()};` : ''}`
   + ` ${deficits.length} levels under their minimum`
   + (deficits.length ? ` (worst: ${deficits.slice(0, 8).map((d) => `L${d.level} ${d.have}/${d.need}`).join(', ')}${deficits.length > 8 ? ', ...' : ''})` : ''));
 if (deficits.length) {

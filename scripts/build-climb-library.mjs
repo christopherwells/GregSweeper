@@ -36,7 +36,9 @@ import { serializeBoard } from '../src/firebase/dailyBoardSync.js';
 import { TILING_SAFE_GIMMICKS } from '../src/logic/tilingGenerator.js';
 import {
   CHALLENGE_MAX_LEVEL, CHALLENGE_BLOCK_SIZE, CLIMB_MIN_PAR_SECONDS, specFace,
+  endlessParCeiling,
 } from '../src/logic/challenge250.js';
+import { BOARD_WIDTH_CAP } from '../src/logic/difficulty.js';
 import {
   LIB_SHAPE_INTROS, LIB_MOD_INTROS, intakeRules, boardAllowedAtLevel,
 } from '../src/logic/climbLibrary.js';
@@ -91,8 +93,12 @@ const PAR_FLOOR_TOP = 420;
 // I'd even drop it to 400 for lots of room"): the room is the range above
 // the floor, and 400 widens it so the thousand-board pool can hold even
 // shape and modifier coverage while every board still runs longer than
-// almost anything on the ladder. Consumed by the endless build when it
-// lands; recorded now so the ruling is not re-derived.
+// almost anything on the ladder. The one WINDOW bound the endless library
+// has: there are no per-level windows past the crown, so a board belongs to
+// the endless bins exactly while its par sits at or above this. Each
+// shape's own par CEILING (endlessParCeiling) is honored at BUILD time as
+// an admission rule — the room above the floor is where variety lives, and
+// a ceiling is not a membership bound a refit can evict a board over.
 export const ENDLESS_PAR_FLOOR = 400;
 
 // The hardness ramp, which is what carries difficulty once time stops. Levels
@@ -249,9 +255,602 @@ function candidate(spec, seed) {
 }
 
 
+// ── THE ENDLESS LIBRARY (L251+, his rulings 2026-08-10/11) ─────────────
+//
+// ~1,000 pre-generated boards for the endless zone: par floor 400s
+// (ENDLESS_PAR_FLOOR) with each shape's own ceiling honored, EVEN COVERAGE
+// across all seven shapes and the modifier arities with the heavy 4-5
+// stacks included, dealt randomly under a global seen-cycle. Pre-generating
+// is also what restores Classic to the zone: runtime generation could not
+// clear both the price floor and the admission budget (his 2026-08-10
+// parking ruling was explicitly out-until-pre-gen), and a dealt board pays
+// its generation cost offline where the budget is minutes, not milliseconds.
+//
+// THE FOUR REPRESENTATION LESSONS APPLY VERBATIM (see the search script's
+// header): visits interleave SHAPE-MINOR; modifier sets are grouped into
+// ARITY LANES that rotate evenly rather than by set count (84 triples would
+// otherwise eat the budget); the EMITTER deals pages round-robin over
+// shapes so any prefix of the page set — and any interrupted build — is
+// balanced; and the per-shape quota is the SEARCH's constraint, never a
+// hope about its output.
+//
+// Storage is SHARDED: endless-NNN.json pages of ENDLESS_PAGE_SIZE boards
+// plus endless-index.json carrying per-page counts, so a level past 250
+// fetches one small index and one page, never a thousand boards. The page a
+// board lives in carries no meaning — the deal is uniform over unseen
+// boards across the whole library (weighted by each page's unseen count),
+// so page composition cannot bias what a player meets.
+// 500 AT LAUNCH, his ruling 2026-08-11: "Maybe we start with 500. No one is
+// going to get to lvl 750 in the near future." Five hundred boards is five
+// hundred deals before the global cycle can repeat one, and the library is
+// append-only by design, so growing it later is a --endless run, not a
+// project.
+const ENDLESS_TARGET_BOARDS = 500;
+const ENDLESS_PAGE_SIZE = 16;          // ~150-250KB per page at endless payload sizes
+const ENDLESS_FACE_CAP = 2;            // dims/mines/stack variety, the ladder's own bar
+const ENDLESS_GL = [70, 100, 120];     // the hard end of the intensity dial
+const ENDLESS_DENSITIES = [0.24, 0.28, 0.32, 0.36];
+// Best-of-N hardness selection, the library's whole reason to exist. Sized
+// per shape because a rhombille candidate costs seconds where a rect one
+// costs a fraction of one, and an even N would spend most of the wall clock
+// proving the dearest shapes' soft draws.
+const ENDLESS_BEST_OF = { rhombille: 4, deltoidal: 4, cairo: 5 };
+const endlessBestOf = (shape) => ENDLESS_BEST_OF[shape] ?? 6;
+// Bounds, the L91-freeze lessons: every spec carries genAttempts /
+// strictRetries so an infeasible corner costs attempts rather than salts of
+// full certification; a (shape, lane) visit is wall-clocked; and a lane
+// that came back empty twice RESTS rather than re-burning its budget every
+// round (plain rhombille cannot reach 400s at all — its plain boards top
+// out near 193s — and without the rest that lane re-fails forever).
+const ENDLESS_GEN_ATTEMPTS = 80;
+const ENDLESS_STRICT_RETRIES = 1;
+const ENDLESS_VISIT_BUDGET_MS = 75_000;
+// FOUR consecutive empty visits before a lane rests, not two: a lane with a
+// narrow-but-real corridor (4.8.8's whole window is one) misses twice in a
+// row CONSTANTLY, and at two the rest machinery treated every low-yield
+// lane as a dead one — the first 4.8.8 shard retired itself at 6 of 143
+// with its corridor proven to exist. Misses are cheap since the aimless-
+// visit abandon; the rests only need to starve the truly infeasible lanes.
+const ENDLESS_LANE_BAILS = 4;
+const ENDLESS_LANE_REST_ROUNDS = 12;   // rounds a bailed lane sits out (escalates per bail)
+const ENDLESS_LANE_BAILS_CAP = 5;      // escalation ceiling, so every rest expires in-horizon
+// Per-shape cell bounds for the endless draws, each one MEASURED. Ceilings:
+// rhombille's certification cost is superlinear in cells (the 72-cell
+// practice-board lesson), and at 135 cells a single strict draw measured 48
+// SECONDS — one visit of those eats three minutes for one board, while 120
+// cells measures ~5s a draw; deltoidal's pricing is the dearest per cell of
+// any lattice, so its 108-126-cell patches blow past the 600s ceiling on
+// every draw (126 cells prices ~1665s at daily density). Floors: the same
+// two shapes from the other side — rhombille below ~100 cells cannot reach
+// the 400s floor at all (plain tops near 193s, pairs near 350), and
+// deltoidal's 48-54-cell patches sit under it at every legal density. A
+// draw outside the corridor is not unlucky, it is impossible, and the first
+// shard runs spent 97% of their visits proving that over and over.
+const ENDLESS_MAX_CELLS = { rhombille: 120, deltoidal: 90 };
+const ENDLESS_MIN_CELLS = { rhombille: 100, deltoidal: 66 };
+const ENDLESS_CACHE = new URL('./data/endless-build-cache.json', import.meta.url);
+// A --shape run gets its OWN cache file, which is what makes the seven
+// shapes safely PARALLEL: specFace is shape-prefixed and the draw seeds are
+// shape-namespaced, so seven processes share no state at all, and a
+// 16-core box builds the library in the wall clock of its dearest shape
+// instead of the sum of all seven. --emit-only merges the caches.
+const endlessCacheFile = (shape) => (shape
+  ? new URL(`./data/endless-build-cache-${shape}.json`, import.meta.url)
+  : ENDLESS_CACHE);
+const ENDLESS_INDEX = new URL('endless-index.json', OUT_DIR);
+const endlessPageFile = (page) => new URL(`endless-${String(page).padStart(3, '0')}.json`, OUT_DIR);
+
+const ENDLESS_SHAPES = ['rect', ...TILING_TYPES];
+
+/**
+ * The modifier-set LANES a shape's visits rotate through: plain, singles,
+ * pairs, triples, heavy. One lane per arity class so each gets an even
+ * fifth of the visits — counting sets instead would hand the triples 65%
+ * of everything (the arity-balance lesson). Triples are sub-sampled on a
+ * per-shape offset so their union across the seven shapes still covers all
+ * 84; the heavy lane is the authored HEAVY_SETS (4-5 stacks), which the
+ * blind arity enumeration cannot produce and his ruling names explicitly.
+ */
+function endlessLanes(shapeIndex) {
+  const g = TILING_SAFE_GIMMICKS.slice();
+  const singles = g.map((x) => [x]);
+  const pairs = [];
+  const triples = [];
+  for (let i = 0; i < g.length; i++) {
+    for (let j = i + 1; j < g.length; j++) {
+      pairs.push([g[i], g[j]]);
+      for (let k = j + 1; k < g.length; k++) triples.push([g[i], g[j], g[k]]);
+    }
+  }
+  const step = shapeIndex * 12;
+  return [
+    [[]],
+    singles,
+    pairs,
+    Array.from({ length: 36 }, (_, i) => triples[(step + i) % triples.length]),
+    HEAVY_SETS,
+  ];
+}
+
+// FNV-1a, the repo's standing deterministic pick (a resumed build must
+// re-draw the identical candidate sequence or the resume cache is fiction).
+function fnv(str) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h >>> 0;
+}
+
+/** Rect legality reads the SHIPPED width cap (the emit-legality lesson). */
+function endlessDimsLegal(shape, a, b) {
+  if (shape === 'rect') return b <= BOARD_WIDTH_CAP && a <= 20 && a >= 5 && b >= 5;
+  try { return boardFitsPhone(shape, a, b) && containerIsStorable(buildTiling(shape, a, b).total); } catch { return false; }
+}
+
+/**
+ * The DIMS a shape's endless draws sample, price-map-informed: patches
+ * whose PLAIN price sits between a quarter of the floor (heavy stacks
+ * multiply par — Octagons runs 243s plain and 597-637s under a 4-stack, so
+ * a plain-price filter at the floor itself would empty the very shapes the
+ * stacks exist to carry) and the shape's ceiling. Where the map is thin the
+ * largest legal patches stand in: par scales with cells, and 400s+ lives on
+ * the big end of every shape's range.
+ */
+function endlessDims(shape, priced) {
+  const ceil = endlessParCeiling(shape);
+  const cellCap = ENDLESS_MAX_CELLS[shape] ?? Infinity;
+  const cellMin = ENDLESS_MIN_CELLS[shape] ?? 0;
+  const seen = new Set();
+  const out = [];
+  for (const e of priced) {
+    if (e.shape !== shape) continue;
+    if (e.par < ENDLESS_PAR_FLOOR / 4 || e.par > ceil) continue;
+    if (e.genMs != null && e.genMs > 2500) continue;
+    if (e.cells > cellCap || e.cells < cellMin) continue;
+    // LATTICE dims first: price-map tiling entries carry BOTH the lattice
+    // M/N and the storage container's rows/cols, and reading the container
+    // first hands boardFitsPhone garbage (an 8x9 CONTAINER for a 72-cell
+    // Kites patch is not a legal 8x9 Kites lattice). This emptied three
+    // shapes' dims lists entirely, which is why the first run starved them.
+    const a = e.M ?? e.rows, b = e.N ?? e.cols;
+    if (!endlessDimsLegal(shape, a, b)) continue;
+    const k = `${a}x${b}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push({ a, b, cells: e.cells });
+  }
+  // ALWAYS top up with the largest legal patches the map does not name: the
+  // price map was built for the LADDER's needs and its coverage thins out
+  // exactly where the endless window lives (4.8.8's map dims stop at 98
+  // cells while its 128-cell patches are the ones that price mid-window).
+  const patches = legalPatches().filter((p) => p.shape === shape && p.cells <= cellCap && p.cells >= cellMin)
+    .map((p) => ({ a: p.M ?? p.rows, b: p.N ?? p.cols, cells: p.cells }))
+    .filter((p) => endlessDimsLegal(shape, p.a, p.b))
+    .filter((p) => !seen.has(`${p.a}x${p.b}`))
+    .sort((x, y) => y.cells - x.cells);
+  const topUp = Math.max(3, 7 - out.length);
+  // Ascending by cells ALWAYS — the heavy lane's top-half slice reads this
+  // order, and a mixed-order list would quietly hand it small boards.
+  return out.concat(patches.slice(0, topUp)).sort((x, y) => x.cells - y.cells);
+}
+
+/**
+ * Cache-informed spec options for one (shape, set) stratum: the spec search
+ * has measured tens of thousands of faces, and where it already knows a
+ * (dims, mines) that prices near the endless window, drawing there first
+ * saves the acceptance gate most of its misses. Generously banded — the
+ * cache's prices may be a model behind — because the measured accept is
+ * what admits, never the cache.
+ */
+function endlessCacheSpecs(specCache, shape, set) {
+  if (!specCache) return [];
+  const setKey = [...set].sort().join('+');
+  const ceil = endlessParCeiling(shape);
+  const out = [];
+  for (const e of Object.values(specCache)) {
+    if (!e.ok || e.shape !== shape) continue;
+    if ([...e.gimmicks].sort().join('+') !== setKey) continue;
+    if ((e.medPar || 0) < ENDLESS_PAR_FLOOR * 0.75 || e.medPar > ceil * 1.15) continue;
+    if (e.cells > (ENDLESS_MAX_CELLS[shape] ?? Infinity)) continue;
+    if (e.cells < (ENDLESS_MIN_CELLS[shape] ?? 0)) continue;
+    if (!endlessDimsLegal(shape, e.a, e.b)) continue;
+    out.push({ a: e.a, b: e.b, cells: e.cells, mines: e.mines, gl: e.gl });
+  }
+  return out.sort((x, y) => x.cells - y.cells);
+}
+
+/** One visit's spec, deterministic from (shape, setKey, visit). */
+function drawEndlessSpec(shape, set, visit, cacheSpecs, dims) {
+  const setKey = [...set].sort().join('+');
+  const key = `endless|${shape}|${setKey}|${visit}`;
+  let a, b, cells, mines, gl;
+  // Alternate cache-informed and fresh draws so a stratum with cache
+  // coverage still explores past what the sweep happened to measure.
+  const fromCache = cacheSpecs.length && (visit % 2 === 0 || !dims.length);
+  if (fromCache) {
+    const e = cacheSpecs[fnv(key) % cacheSpecs.length];
+    ({ a, b, cells, mines } = e);
+    gl = e.gl || ENDLESS_GL[fnv(`${key}|g`) % ENDLESS_GL.length];
+  } else {
+    if (!dims.length) return null;
+    // THE HEAVY LANE AIMS HIGH: 4-5 stacks clear strict load-bearing on
+    // big, dense boards and almost nowhere else (the REP pass's lesson —
+    // Octagons runs 597-637s under a 4-stack at density 0.36 on its largest
+    // patches, against a 243s plain maximum; probed here: rect 156c 4-stack
+    // 5/6 certified, hex 88c 6/6). A uniform draw spends most heavy visits
+    // under the par floor, so arity 4+ takes the top half of the dims list
+    // and the top densities.
+    const pool = set.length >= 4 ? dims.slice(Math.floor(dims.length / 2)) : dims;
+    const d = pool[fnv(key) % pool.length];
+    ({ a, b, cells } = d);
+    const densCap = shape === 'rect' ? 0.42 : Math.min(REP_DENSITY_CAP[shape] ?? 0.38, 0.38);
+    let options = ENDLESS_DENSITIES.filter((x) => x <= densCap);
+    if (set.length >= 4 && options.length > 2) options = options.slice(-2);
+    const dens = options[fnv(`${key}|d`) % options.length];
+    mines = Math.round(cells * dens);
+    if (mines < 4) return null;
+    gl = ENDLESS_GL[fnv(`${key}|g`) % ENDLESS_GL.length];
+  }
+  const spec = shape === 'rect'
+    ? { shape: 'rect', rows: a, cols: b, cells, mines, gimmicks: [...set] }
+    : { shape, M: a, N: b, cells, mines, gimmicks: [...set], constructive: true };
+  if (set.length) spec.gimmickLevel = gl;
+  if (shape === 'rect' && set.includes('walls')) spec.wallSegments = cells >= 100 ? 3 : 2;
+  spec.genAttempts = ENDLESS_GEN_ATTEMPTS;
+  spec.strictRetries = ENDLESS_STRICT_RETRIES;
+  return spec;
+}
+
+function loadJsonMaybe(url) {
+  try { return JSON.parse(readFileSync(url, 'utf8')); } catch { return null; }
+}
+
+/**
+ * Emit pages. Fresh build: deal the keeps round-robin over shapes (each
+ * shape's boards in generation order), then cut the sequence into pages —
+ * round-robin so any PREFIX of the page set is shape-balanced, the same
+ * budget-cut-lands-uniformly property the visits themselves keep. Append:
+ * the existing pages are FROZEN (re-dealing them would move boards between
+ * pages and quietly desync every player's page-keyed seen map); new keeps
+ * become NEW pages after them, and only the index is rewritten.
+ */
+function emitEndlessPages(existingPages, keeps, dry) {
+  const byShape = new Map();
+  for (const c of keeps) {
+    if (!byShape.has(c.spec.shape)) byShape.set(c.spec.shape, []);
+    byShape.get(c.spec.shape).push(c);
+  }
+  const queues = [...byShape.values()];
+  const sequence = [];
+  while (queues.some((q) => q.length)) {
+    for (const q of queues) if (q.length) sequence.push(q.shift());
+  }
+  const newPages = [];
+  for (let i = 0; i < sequence.length; i += ENDLESS_PAGE_SIZE) {
+    newPages.push(sequence.slice(i, i + ENDLESS_PAGE_SIZE));
+  }
+  const fp = modelFingerprint();
+  const counts = existingPages.map((p) => p.boards.length)
+    .concat(newPages.map((p) => p.length));
+  const total = counts.reduce((a, b) => a + b, 0);
+  if (!dry) {
+    newPages.forEach((boards, i) => {
+      const k = existingPages.length + i;
+      writeFileSync(endlessPageFile(k), JSON.stringify({ page: k, parModel: fp, boards }));
+    });
+    writeFileSync(ENDLESS_INDEX, JSON.stringify({
+      parModel: fp,
+      parFloor: ENDLESS_PAR_FLOOR,
+      boards: total,
+      pages: counts.length,
+      counts,
+    }));
+  }
+  return { pages: counts.length, boards: total };
+}
+
+/**
+ * The endless build. Fresh (no index yet): generate the full target and
+ * emit the sharded pages. Append (--shape, or an index already present):
+ * the existing pages are FROZEN HISTORY (the library's append-only rule);
+ * new boards land in new pages after them, deduped against the whole
+ * standing set, and the reprice pass rebalances later if it wants to.
+ */
+function runEndlessBuild({ dry, minutes, onlyShape, target }) {
+  const existingIndex = loadJsonMaybe(ENDLESS_INDEX);
+  const existing = [];
+  if (existingIndex) {
+    for (let k = 0; k < existingIndex.pages; k++) {
+      const page = loadJsonMaybe(endlessPageFile(k));
+      if (page) existing.push(...page.boards);
+    }
+    // An append against a stale-priced library would dedupe and quota
+    // against numbers the model no longer stands behind.
+    if (existingIndex.parModel !== modelFingerprint()) {
+      console.error(`endless index is priced under ${existingIndex.parModel}, the model is ${modelFingerprint()}.`);
+      console.error('Run: node scripts/reprice-climb-library.mjs   before appending.');
+      process.exit(1);
+    }
+  }
+
+  const shapes = onlyShape ? [onlyShape] : ENDLESS_SHAPES;
+  if (onlyShape && !ENDLESS_SHAPES.includes(onlyShape)) {
+    console.error(`--shape must be one of ${ENDLESS_SHAPES.join(', ')}`);
+    process.exit(1);
+  }
+  const wanted = target ?? (onlyShape ? 60 : Math.max(0, ENDLESS_TARGET_BOARDS - existing.length));
+  if (!wanted) { console.log(`endless library already holds ${existing.length} boards`); return; }
+
+  const specCache = loadJsonMaybe(new URL('./data/spec-search-cache.json', import.meta.url));
+  const mapFile = new URL('./data/climb-price-map.json', import.meta.url);
+  const priced = (loadJsonMaybe(mapFile) || { entries: [] }).entries;
+  console.log(`endless build: target ${wanted} boards over ${shapes.join(', ')}`
+    + ` (${existing.length} already in the library${specCache ? `, spec cache ${Object.keys(specCache).length} faces` : ', NO spec cache'})`);
+
+  // Resume state: every completed visit's verdict, keyed deterministically,
+  // so an interrupted run replays its keeps for free and continues the
+  // sequence. The cache stores the KEPT board (payload included); misses
+  // store null and are never re-run.
+  const cacheUrl = endlessCacheFile(onlyShape);
+  const progress = loadJsonMaybe(cacheUrl) || { visits: {} };
+  let lastSave = Date.now();
+  const saveProgress = (force) => {
+    if (!force && Date.now() - lastSave < 60_000) return;
+    writeFileSync(cacheUrl, JSON.stringify(progress));
+    lastSave = Date.now();
+  };
+
+  const lanes = shapes.map((_, i) => endlessLanes(ENDLESS_SHAPES.indexOf(shapes[i])));
+  const dimsByShape = new Map(shapes.map((s) => [s, endlessDims(s, priced)]));
+  const cacheSpecMemo = new Map();
+  const faceCount = new Map();
+  const existingSeeds = new Set(existing.map((b) => b.seed));
+  for (const b of existing) faceCount.set(b.face, (faceCount.get(b.face) || 0) + 1);
+
+  const keeps = [];
+  const keptByShape = new Map(shapes.map((s) => [s, 0]));
+  const perShapeTarget = Math.ceil(wanted / shapes.length);
+  const laneEmpty = new Map();   // `${shape}|${lane}` -> consecutive empty visits
+  const laneRest = new Map();    // `${shape}|${lane}` -> round it may run again
+  const laneBails = new Map();   // `${shape}|${lane}` -> times it has rested
+  const visitN = new Map();      // `${shape}|${lane}` -> visits taken
+  const LANE_COUNT = 5;
+  const t0 = Date.now();
+  const budgetMs = minutes * 60_000;
+  let built = 0, replayed = 0;
+
+  const accept = (shape, c) => {
+    if (!c) return false;
+    if (c.par < ENDLESS_PAR_FLOOR || c.par > endlessParCeiling(shape)) return false;
+    if ((faceCount.get(c.face) || 0) >= ENDLESS_FACE_CAP) return false;
+    return true;
+  };
+
+  // The exit conditions, in order: target met; wall clock spent; every shape
+  // at quota; or a long idle spin with every lane at its escalation ceiling.
+  // Idle rounds cost nothing (no visit runs), so the horizon is sized to
+  // outlast the LONGEST possible rest rather than to feel proportionate —
+  // the first cut broke at 65 idle rounds, before a third-bail rest could
+  // even expire, and read a resting shard as an exhausted one.
+  const HARD_ROUND_CAP = 40_000;
+  const IDLE_HORIZON = ENDLESS_LANE_REST_ROUNDS * ENDLESS_LANE_BAILS_CAP * LANE_COUNT * 2;
+  let inactiveRounds = 0;
+  outer:
+  for (let round = 0; round < HARD_ROUND_CAP; round++) {
+    if (keeps.length >= wanted) break;
+    if (shapes.every((s) => keptByShape.get(s) >= perShapeTarget)) break;
+    if (inactiveRounds > IDLE_HORIZON) {
+      console.log('every lane sat at its escalation ceiling through a full horizon; stopping short of target');
+      break;
+    }
+    if (round > 0 && round % 5 === 0 && inactiveRounds === 0) {
+      const shapeLine = shapes.map((s) => `${s} ${keptByShape.get(s)}`).join('  ');
+      console.log(`round ${round}: kept ${keeps.length}/${wanted}  built ${built}  ${((Date.now() - t0) / 60000).toFixed(1)}m  [${shapeLine}]`);
+    }
+    // One visit of one (shape, lane) stratum. Returns true when it RAN
+    // (found a runnable lane), whatever the outcome.
+    const runVisit = (si, shape, laneIdx) => {
+      const laneKey = `${shape}|${laneIdx}`;
+      if ((laneRest.get(laneKey) || 0) > round) return false;
+      const lane = lanes[si][laneIdx];
+      const set = lane[Math.floor(round / LANE_COUNT) % lane.length];
+
+      const v = visitN.get(laneKey) || 0;
+      visitN.set(laneKey, v + 1);
+      const setKey = [...set].sort().join('+');
+      const visitKey = `${shape}|${setKey}|${v}`;
+
+      let kept = null;
+      let alreadyBanked = false;
+      if (visitKey in progress.visits) {
+        kept = progress.visits[visitKey];
+        replayed++;
+        // A cached keep that already made it into the EMITTED pages must not
+        // land twice: it is counted with `existing`, not with this run's.
+        if (kept && existingSeeds.has(kept.seed)) alreadyBanked = true;
+        else if (kept && !accept(shape, kept)) kept = null;  // face filled meanwhile, or floor moved
+      } else {
+        const memoKey = `${shape}|${setKey}`;
+        if (!cacheSpecMemo.has(memoKey)) cacheSpecMemo.set(memoKey, endlessCacheSpecs(specCache, shape, set));
+        const spec = drawEndlessSpec(shape, set, v, cacheSpecMemo.get(memoKey), dimsByShape.get(shape));
+        const visitT0 = Date.now();
+        // The face gate runs BEFORE generation: a visit's K draws all share
+        // one face, so a full face means K boards built to reject K boards.
+        if (spec && (faceCount.get(specFace(spec)) || 0) < ENDLESS_FACE_CAP) {
+          let best = null;
+          let under = 0, over = 0;
+          const ceiling = endlessParCeiling(shape);
+          for (let k = 0; k < endlessBestOf(shape); k++) {
+            if (Date.now() - visitT0 > ENDLESS_VISIT_BUDGET_MS) break;
+            let c = null;
+            // candidate() can THROW (serializeBoard refuses an unstorable
+            // container), and an hours-long run must treat one bad spec as
+            // a miss, never as its own death.
+            try { c = candidate(spec, `climb:endless:${shape}:${setKey}:${v}:${k}`); }
+            catch (err) { console.log(`  ${shape} ${setKey} v${v}: ${err.message}`); break; }
+            built++;
+            if (c && c.par < ENDLESS_PAR_FLOOR) under++;
+            if (c && c.par > ceiling) over++;
+            if (!c || !accept(shape, c)) {
+              // ABANDON AN AIMLESS VISIT: par varies maybe 20% between draws
+              // of one spec, so two misses on the SAME side of the window
+              // mean the spec is aimed off, not unlucky, and the remaining
+              // draws are the single biggest waste in the whole run (a miss
+              // visit used to cost its full best-of-K).
+              if (!best && (under >= 2 || over >= 2)) break;
+              continue;
+            }
+            if (!best || c.hard > best.hard) best = c;
+          }
+          kept = best;
+        }
+        progress.visits[visitKey] = kept;
+        saveProgress(false);
+      }
+
+      if (alreadyBanked) return true;
+      if (kept) {
+        keeps.push(kept);
+        faceCount.set(kept.face, (faceCount.get(kept.face) || 0) + 1);
+        keptByShape.set(shape, keptByShape.get(shape) + 1);
+        laneEmpty.set(laneKey, 0);
+        // A keep clears the lane's whole escalation: a producing lane is
+        // low-yield, never infeasible, and the escalation exists only for
+        // the lanes that have NEVER produced (plain rhombille cannot price
+        // at 400s on any board).
+        laneBails.delete(laneKey);
+      } else {
+        const n = (laneEmpty.get(laneKey) || 0) + 1;
+        laneEmpty.set(laneKey, n);
+        if (n >= ENDLESS_LANE_BAILS) {
+          const bails = Math.min(ENDLESS_LANE_BAILS_CAP, (laneBails.get(laneKey) || 0) + 1);
+          laneBails.set(laneKey, bails);
+          laneRest.set(laneKey, round + ENDLESS_LANE_REST_ROUNDS * bails);
+          laneEmpty.set(laneKey, 0);
+        }
+      }
+      return true;
+    };
+
+    let anyActive = false;
+    const leader = Math.max(1, ...shapes.map((s) => keptByShape.get(s)));
+    for (let si = 0; si < shapes.length; si++) {
+      const shape = shapes[si];
+      if (keeps.length >= wanted) break outer;
+      if (Date.now() - t0 > budgetMs) { console.log('wall-clock budget reached'); break outer; }
+      if (keptByShape.get(shape) >= perShapeTarget) continue;
+      const laneIdx = round % LANE_COUNT;
+      if (runVisit(si, shape, laneIdx)) anyActive = true;
+      // CATCH-UP: a shape far behind the leader takes a second visit on the
+      // NEXT lane in its rotation, so even coverage is pursued by the loop
+      // rather than hoped for at the end. The dear shapes (rhombille,
+      // deltoidal, 4.8.8's narrow par corridor) fall behind at equal visit
+      // counts — measured 50 rounds in: floret 24, 4.8.8 and rhombille 0.
+      // Deterministic under resume: keptByShape replays from the cache.
+      if (keptByShape.get(shape) < leader * 0.6
+        && keptByShape.get(shape) < perShapeTarget
+        && Date.now() - t0 <= budgetMs) {
+        if (runVisit(si, shape, (laneIdx + 1) % LANE_COUNT)) anyActive = true;
+      }
+    }
+    inactiveRounds = anyActive ? 0 : inactiveRounds + 1;
+  }
+  saveProgress(true);
+
+  const med = (a, k) => (a.length ? [...a].map((x) => x[k]).sort((x, y) => x - y)[Math.floor(a.length / 2)] : 0);
+  const shapeLine = shapes.map((s) => `${s} ${keptByShape.get(s)}`).join('  ');
+  const heavies = keeps.filter((c) => (c.spec.gimmicks || []).length >= 4).length;
+  console.log(`\nendless build kept ${keeps.length} (${replayed} replayed from the resume cache), built ${built} candidates in ${((Date.now() - t0) / 60000).toFixed(1)}m`);
+  console.log(`  par med ${Math.round(med(keeps, 'par'))}s  hard med ${med(keeps, 'hard')}  4-5 stacks ${heavies}  [${shapeLine}]`);
+
+  // A --shape run only writes its cache: the pages are emitted ONCE, by
+  // --emit-only, after every parallel shard has finished, so two shards can
+  // never interleave partial page sets.
+  if (onlyShape) {
+    console.log(`shard cache written; emit the merged pages with: node scripts/build-climb-library.mjs --endless --emit-only`);
+    return;
+  }
+  const out = emitEndlessPages(existingIndex ? endlessExistingPages() : [], keeps, dry);
+  console.log(`${dry ? '[dry-run] would write' : 'wrote'} ${out.pages} pages, ${out.boards} boards, index at ${ENDLESS_INDEX.pathname.split('/').pop()}`);
+}
+
+/** The existing endless pages, structure intact (for append-mode emits). */
+function endlessExistingPages() {
+  const idx = loadJsonMaybe(ENDLESS_INDEX);
+  if (!idx) return [];
+  const out = [];
+  for (let k = 0; k < idx.pages; k++) {
+    const page = loadJsonMaybe(endlessPageFile(k));
+    if (page) out.push(page);
+  }
+  return out;
+}
+
+/**
+ * Merge every shard cache (and the shared single-process cache, if one
+ * exists) into the sharded pages. The accept rules are the build's own:
+ * inside the par window, the library-wide face cap, never a seed the pages
+ * already hold. Keeps stay in per-shape generation order and the emitter
+ * interleaves shapes, so a truncated merge is still balanced.
+ */
+function runEndlessEmitOnly({ dry, target }) {
+  const existingPages = endlessExistingPages();
+  const existing = existingPages.flatMap((p) => p.boards);
+  const existingSeeds = new Set(existing.map((b) => b.seed));
+  const faceCount = new Map();
+  for (const b of existing) faceCount.set(b.face, (faceCount.get(b.face) || 0) + 1);
+
+  const keeps = [];
+  const perShape = new Map();
+  for (const shape of ENDLESS_SHAPES) {
+    const caches = [loadJsonMaybe(endlessCacheFile(shape)), loadJsonMaybe(ENDLESS_CACHE)];
+    let n = 0;
+    for (const cache of caches) {
+      if (!cache || !cache.visits) continue;
+      for (const [key, kept] of Object.entries(cache.visits)) {
+        if (!kept || !key.startsWith(`${shape}|`)) continue;
+        if (existingSeeds.has(kept.seed)) continue;
+        if (kept.par < ENDLESS_PAR_FLOOR || kept.par > endlessParCeiling(shape)) continue;
+        if ((faceCount.get(kept.face) || 0) >= ENDLESS_FACE_CAP) continue;
+        existingSeeds.add(kept.seed);
+        faceCount.set(kept.face, (faceCount.get(kept.face) || 0) + 1);
+        keeps.push(kept);
+        n++;
+      }
+    }
+    perShape.set(shape, n);
+  }
+  const wanted = (target ?? ENDLESS_TARGET_BOARDS) - existing.length;
+  // Trim OVER-target balanced: round-robin over shapes, exactly the
+  // emitter's own deal, so the cut lands evenly rather than on whichever
+  // shape happened to be gathered last.
+  let final = keeps;
+  if (keeps.length > wanted && wanted > 0) {
+    const byShape = new Map();
+    for (const c of keeps) {
+      if (!byShape.has(c.spec.shape)) byShape.set(c.spec.shape, []);
+      byShape.get(c.spec.shape).push(c);
+    }
+    const queues = [...byShape.values()];
+    final = [];
+    while (final.length < wanted && queues.some((q) => q.length)) {
+      for (const q of queues) {
+        if (final.length >= wanted) break;
+        if (q.length) final.push(q.shift());
+      }
+    }
+  }
+  const heavies = final.filter((c) => (c.spec.gimmicks || []).length >= 4).length;
+  console.log(`emit-only: ${final.length} boards from the shard caches (${existing.length} already paged, ${heavies} heavy stacks)`
+    + ` [${[...perShape].map(([s, n]) => `${s} ${n}`).join('  ')}]`);
+  const out = emitEndlessPages(existingPages, final, dry);
+  console.log(`${dry ? '[dry-run] would write' : 'wrote'} ${out.pages} pages, ${out.boards} boards`);
+}
+
 export { parFloor, parWindowTop, hardFloor, minBoardsFor, legalPatches, GIMMICK_SETS, candidate, hardOf,
   MIN_PAR, MIN_WORK, CANDIDATES_PER_KEEP, OUT_DIR,
-  LIB_SHAPE_INTROS, LIB_MOD_INTROS, intakeRules, boardAllowedAtLevel, PAR_FLOOR_SHAPE_RELIEF };
+  LIB_SHAPE_INTROS, LIB_MOD_INTROS, intakeRules, boardAllowedAtLevel, PAR_FLOOR_SHAPE_RELIEF,
+  ENDLESS_PAGE_SIZE, ENDLESS_FACE_CAP, ENDLESS_INDEX, endlessPageFile,
+  endlessLanes, endlessDims, endlessCacheSpecs, drawEndlessSpec };
 
 // ── CLI ────────────────────────────────────────────────────────────────
 // Guarded so the module can be IMPORTED for its helpers without running the
@@ -259,6 +858,7 @@ export { parFloor, parWindowTop, hardFloor, minBoardsFor, legalPatches, GIMMICK_
 if ((process.argv[1] || '').endsWith('build-climb-library.mjs')) {
   const args = process.argv.slice(2);
   const dry = args.includes('--dry-run');
+  const argOf = (n, d = null) => { const i = args.indexOf(n); return i >= 0 && i + 1 < args.length ? args[i + 1] : d; };
   const range = (() => {
     const i = args.indexOf('--levels');
     if (i < 0) return null;
@@ -266,8 +866,22 @@ if ((process.argv[1] || '').endsWith('build-climb-library.mjs')) {
     return { from: a, to: b || a };
   })();
 
+  if (args.includes('--endless')) {
+    if (args.includes('--emit-only')) {
+      runEndlessEmitOnly({ dry, target: argOf('--target') ? Number(argOf('--target')) : null });
+    } else {
+      runEndlessBuild({
+        dry,
+        minutes: Number(argOf('--minutes', 300)),
+        onlyShape: argOf('--shape'),
+        target: argOf('--target') ? Number(argOf('--target')) : null,
+      });
+    }
+    process.exit(0);
+  }
+
   if (!range) {
-    console.error('usage: --levels A-B [--dry-run]   (--all / --endless land next)');
+    console.error('usage: --levels A-B [--dry-run]   |   --endless [--minutes N] [--shape s] [--target N] [--dry-run]');
     process.exit(1);
   }
 

@@ -50,3 +50,47 @@ test('the board= practice override deals the exact bin index', async ({ page }) 
   const mineText = await page.locator('#mine-counter').textContent();
   expect(Math.abs(parseInt(mineText, 10))).toBe(wanted.mines);
 });
+
+// ── The endless library (levels past the crown, 2026-08-11) ─────────────
+
+const endlessIndex = JSON.parse(readFileSync(new URL(
+  '../../scripts/data/climb-library/endless-index.json', import.meta.url), 'utf8'));
+
+test('an endless level deals a pre-generated board end to end', async ({ page }) => {
+  const errors = [];
+  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+  page.on('pageerror', (e) => errors.push(String(e)));
+
+  await prepareInteractionSpec(page);
+  await page.goto('/?isTest=1&level=251');
+  await page.waitForSelector('#boot-overlay', { state: 'detached', timeout: 30_000 });
+  await page.waitForSelector('#board .cell', { timeout: 30_000 });
+
+  // A random unseen deal, so the assertion is the frozen-mode contract, not
+  // identity: the marked opener and the Certified chip (the deal
+  // re-certified from the stored opener at the point of play).
+  await expect(page.locator('#board .cell.suggested-start')).toHaveCount(1);
+  await expect(page.locator('#cert-chip')).toBeVisible();
+  expect(errors, `console errors: ${errors.join(' | ')}`).toHaveLength(0);
+});
+
+test('the endless board= override resolves a deterministic global index', async ({ page }) => {
+  // Global index 5 through the committed index's counts: the page that
+  // holds it plus the offset inside it, the same resolution the deal runs.
+  const GLOBAL = 5;
+  let k = GLOBAL, pageNo = 0;
+  while (k >= endlessIndex.counts[pageNo]) { k -= endlessIndex.counts[pageNo]; pageNo++; }
+  const pageJson = JSON.parse(readFileSync(new URL(
+    `../../scripts/data/climb-library/endless-${String(pageNo).padStart(3, '0')}.json`,
+    import.meta.url), 'utf8'));
+  const wanted = pageJson.boards[k].spec;
+
+  await prepareInteractionSpec(page);
+  await page.goto(`/?isTest=1&level=300&board=${GLOBAL}`);
+  await page.waitForSelector('#boot-overlay', { state: 'detached', timeout: 30_000 });
+  await page.waitForSelector('#board .cell', { timeout: 30_000 });
+
+  await expect(page.locator('#board .cell')).toHaveCount(wanted.cells);
+  const mineText = await page.locator('#mine-counter').textContent();
+  expect(Math.abs(parseInt(mineText, 10))).toBe(wanted.mines);
+});

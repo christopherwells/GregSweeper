@@ -37,6 +37,22 @@ export function setClimbSeen(level, seeds) {
   map[String(level)] = Array.isArray(seeds) ? seeds : [];
   safeSetJSON(CLIMB_SEEN_KEY, map);
 }
+
+// The ENDLESS library's seen-cycle is GLOBAL (one map for the whole
+// library, keyed by page so the deal can weigh pages without fetching
+// them), not per-level: past the crown a level has no bin of its own and
+// his cycle rule applies to the library entire. Same practice gate as the
+// ladder's (the caller checks isLevelPractice).
+const ENDLESS_SEEN_KEY = 'minesweeper_climb_endless_seen';
+
+export function getEndlessSeen() {
+  const map = safeGetJSON(ENDLESS_SEEN_KEY, {});
+  return map && typeof map === 'object' && !Array.isArray(map) ? map : {};
+}
+
+export function setEndlessSeen(map) {
+  safeSetJSON(ENDLESS_SEEN_KEY, map && typeof map === 'object' ? map : {});
+}
 const THEME_KEY = 'minesweeper_theme';
 
 // ── Local daily residuals (provisional handicap source) ──────────
