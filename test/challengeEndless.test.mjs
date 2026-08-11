@@ -74,7 +74,7 @@ test('every pool entry is a legal ladder spec at or above the summit', () => {
   }
 });
 
-test('the pool carries all seven board shapes', () => {
+test('the pool carries every tiling; Classic is parked out by ruling', () => {
   // "Mixed board lengths" is his wording, and a pool missing a shape would
   // quietly retire it from the back half of the game. Three shapes needed a
   // per-shape allowance to get here, each for a measured reason:
@@ -94,12 +94,22 @@ test('the pool carries all seven board shapes', () => {
   //     its top decile is enough to earn that. See
   //     ENDLESS_PPC_FLOOR_BY_SHAPE.
   //
-  // Every shape must be present. This is the assertion his ruling turns into
-  // a hard requirement rather than a preference.
+  // CLASSIC left on 2026-08-10, and its absence is a finding, not an
+  // oversight. The 2026-08-09 refit moved the equations, the harden that
+  // followed dropped every rect entry, and a 23-candidate slate spanning
+  // every modifier class measured the squeeze as real: pricing over the 3.6
+  // floor needs density at or above 0.42, and rect generation at that
+  // density never kept worst-of-60 under its 700ms budget (best miss: 13x12
+  // locked+worm, ppc 4.17, worst 748ms). He ruled Classic out of the live
+  // pool rather than granting a generation allowance, until the
+  // pre-generated endless library lands and makes runtime generation cost
+  // moot. When it does, restore rect and flip this pin back to all seven.
   const shapes = new Set(ENDLESS_SPECS.map((s) => s.shape));
-  for (const t of ['rect', ...TILING_TYPES]) {
+  for (const t of TILING_TYPES) {
     assert.ok(shapes.has(t), `the endless pool has no ${t} entry`);
   }
+  assert.ok(!shapes.has('rect'),
+    'rect re-entered the endless pool; that is his flip to make (see the 2026-08-10 ruling above)');
 });
 
 test('the per-shape allowances are the ruled ones, and apply only where ruled', () => {
@@ -279,19 +289,26 @@ test('GOLDEN: the first endless block is fixed', () => {
   // re-pricing is what let it write, and a smaller pool deals a different
   // five. Deltoidal keeps five endless entries, so the seven-shape rule still
   // holds — it is simply priced as an easier lattice than it was.
+  // Moved again later on 2026-08-10 by the full re-harden after the same
+  // night's refit landed on this branch: 27 of 47 entries survive the
+  // worst-of-60 measurement under the new equations, and every rect entry
+  // left on the generation-tail bar. He ruled Classic out of the live pool
+  // until the pre-generated endless lands (see the shape test above); a
+  // 20-entry-smaller pool deals a different five.
   assert.deepEqual(got, [
-    'floret:84c:29m:[locked+sonar]',
-    '4.8.8:98c:33m:[mirror]',
-    'cairo:112c:30m:[liar+wormhole+mirror]',
+    'floret:72c:27m:[locked+mirror+sonar]',
     'hex:104c:38m:[liar+mirror+sonar]',
-    'deltoidal:72c:19m:[locked+sonar+worm]',
+    'cairo:112c:24m:[liar+sonar+compass]',
+    'floret:108c:32m:[walls+liar]',
+    '4.8.8:98c:37m:[]',
   ]);
 
 
 });
 
 test('a block mixes its board shapes rather than repeating one', () => {
-  // His ruling: mixed board lengths. The pool carries all seven shapes, very
+  // His ruling: mixed board lengths. The pool carries all six tilings
+  // (Classic is parked out until the pre-generated endless), very
   // unevenly — rhombille reaches the admission floor on two boards where
   // cairo, floret and deltoidal reach it on sixteen each — so this is a real
   // bar rather than a formality. It is met by the DECK (proportional fair

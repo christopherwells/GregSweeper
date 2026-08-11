@@ -1,4 +1,4 @@
-// THE LADDER'S RULINGS, as constants and predicates — the par ceilings, the
+// THE LADDER'S RULINGS, as constants and predicates: the par ceilings, the
 // generation caps, the endless admission floor, and the two dedupe keys.
 //
 // Split out of challenge250.js because the tools that BUILD the pool have to
@@ -6,15 +6,53 @@
 // it assembles the whole ladder at module load and throws when the pool is
 // empty, so the search script importing it could never run before the pool
 // existed. That is a genuine cycle, not an inconvenience, and this is the cut
-// that removes it — rules here, table there, both leaves importing nothing.
+// that removes it, rules here, table there, both leaves importing nothing.
 //
 // challenge250.js re-exports every name below, so nothing that reads the
 // ladder needs to know this file exists.
 
+// ── The Climb's floor ──────────────────────────────────────────────────
+//
+// His ruling 2026-08-10, after playing the ladder and clearing a level in one
+// click: a Climb level runs longer than two minutes, and "I don't want the
+// climb to be immediately done puzzles."
+//
+// THE TWO-MINUTE FLOOR IS A TARGET, NOT YET A GATE, and the distinction is
+// measured rather than cautious. A face's par is its stored ppc times its
+// cells, so filtering the pool on it costs nothing to compute, but the pool
+// cannot survive the filter: rectangles carrying only the opener's modifiers
+// drop from 51 faces to 16, which is the material the ladder must live on
+// before any lattice has debuted, and the assignment exhausts at L44.
+//
+// So this constant is what the next SEARCH is built to satisfy, and the
+// ladder starts enforcing it the day the pool can meet it. Wiring it in
+// early would either exhaust the assignment or force the introduction
+// schedule to route around a pool shortage, which is the one thing the braid
+// is documented never to do.
+export const CLIMB_MIN_PAR_SECONDS = 120;
+
+// What CAN be enforced against today's pool: a per-DRAW floor on decisions,
+// checked by the builder's accept gate exactly as the opener blocks' floor is.
+//
+// FIVE, because five is what the current specs can actually produce. Measured
+// over 25 draws on the six weakest levels, the pass rate is 40-92% at a floor
+// of 5 and 0-16% at 8, and a spec that fails almost every draw does not make
+// harder boards, it fails to generate. This does not deliver two minutes: a
+// five-decision hex board is still around 25 seconds. What it does deliver is
+// that no Climb level is ever over on the opening click, which is the defect
+// he hit (L29 cleared outright on 13% of draws, L26 on 5%).
+export const CLIMB_MIN_DEDUCTIONS = 5;
+
 // ── Par ceilings ───────────────────────────────────────────────────────
 
 // The authored ladder's absolute ceiling: eight minutes. Difficulty is
-// par-per-cell, never raw par — no giant boards just to inflate the clock.
+// par-per-cell, never raw par, no giant boards just to inflate the clock.
+//
+// His 2026-08-10 ruling lifts this ("the board can go 20 minutes of work, if
+// needed, there's no max"), but raising the constant alone buys nothing: the
+// SEARCH filtered at 95% of it, so the pool contains no board priced above
+// 667s to draw. Raising it is part of the hardness search, not of this floor
+// fix, and the number stays where the current pool was built to.
 export const PAR_CEILING_SECONDS = 480;
 
 // The endless zone lifts it to TEN minutes (his ruling 2026-08-04, answering
@@ -36,7 +74,7 @@ export const ENDLESS_PAR_CEILING_SECONDS = 600;
 // 3D Cubes is deliberately NOT here: its qualifying boards already price
 // 222-464s, comfortably under. Its blocker is generation TIME, which is a
 // different ruling and lives in the cap table below. The two allowances are
-// not interchangeable — raising Cubes' ceiling would do nothing for it, and
+// not interchangeable: raising Cubes' ceiling would do nothing for it, and
 // raising the other two's cap would do nothing for them.
 export const ENDLESS_PAR_CEILING_BY_SHAPE = Object.freeze({
   rect: 720,
@@ -61,7 +99,7 @@ export const GEN_CAP_MS = 2000;
 // The distinction is the whole point, and reading the cap as a hard bar on the
 // WORST of a sample gets it backwards. Generation time is heavy-tailed: over
 // 971 shipped specs the median is 23ms and the 99th percentile 1149ms, so the
-// specs that occasionally spike are otherwise among the fastest in the pool —
+// specs that occasionally spike are otherwise among the fastest in the pool, 
 // the ones that were failing a worst-of-N bar have medians of 48 to 447ms.
 // Judging them on their tail alone threw away boards nobody would ever
 // experience as slow, and it does not converge either, because dropping the
@@ -117,7 +155,7 @@ export function endlessGenCap(shape) {
 // so worst-of-a-few-seeds badly under-estimates worst-of-ten: two entries
 // admitted at ~1000-1500ms measured 2207ms and 2327ms on the validator's own
 // seeds, roughly 1.5-2.3x their admitted figure, and each re-emit surfaced a
-// fresh one — the loop was never going to converge by removing them one at a
+// fresh one: the loop was never going to converge by removing them one at a
 // time. 35% gives about 3x headroom against that observed tail.
 //
 // It costs almost nothing, which is why it is the right knob. Measured over
@@ -137,7 +175,7 @@ export function endlessGenBudget(shape) {
 
 // The pool's ADMISSION floor, distinct from the T12 summit the zone opens at.
 // His ruling 2026-08-04: drop it to 3.5 so more boards fit. The two numbers
-// do different jobs — the summit says where the zone starts, the floor says
+// do different jobs: the summit says where the zone starts, the floor says
 // which boards may sit in the pool it draws from.
 export const ENDLESS_PPC_FLOOR = 3.5;
 
@@ -148,15 +186,15 @@ export const ENDLESS_PPC_FLOOR = 3.5;
 //
 // The reasoning behind accepting a softer floor is his too: these rates are
 // provisional. Every shape looks dear while nobody knows its tricks, and the
-// par model is fit on play that is still learning them — Classic priced far
+// par model is fit on play that is still learning them: Classic priced far
 // harder early on than it does now. When cairo's per-cell rate rises on real
 // data this entry should shrink toward the shared floor and eventually go.
 export const ENDLESS_PPC_FLOOR_BY_SHAPE = Object.freeze({
   cairo: 2.5,
   // 3D Cubes joined on 2026-08-08 for exactly cairo's reason, and it is the
   // clearest case of it. Over 2,486 measured rhombille specs the whole shape
-  // reaches ppc 3.58 at its very best — one board, and one that does not hold
-  // its price at ten seeds — against a shared floor of 3.5. So on the shared
+  // reaches ppc 3.58 at its very best, one board, and one that does not hold
+  // its price at ten seeds, against a shared floor of 3.5. So on the shared
   // floor the zone has NO 3D Cubes at all, which his ruling forbids. Its 90th
   // percentile is 2.17 and its 95th is 2.40; 2.2 is the top decile, the same
   // bar cairo's entry was set at.
@@ -164,7 +202,7 @@ export const ENDLESS_PPC_FLOOR_BY_SHAPE = Object.freeze({
   // The wall sight-line fix (#269) is part of why: severing corner links
   // makes the certifier work harder, which lands hardest on the one lattice
   // with no Pass B at all. Its two previous endless entries are among what
-  // that change put over the generation cap — and hand-removing them was
+  // that change put over the generation cap, and hand-removing them was
   // never the answer, because they were the shape's whole representation.
   //
   // Same provisional reading as cairo's: these rates are fit on play that is
@@ -175,7 +213,7 @@ export const ENDLESS_PPC_FLOOR_BY_SHAPE = Object.freeze({
   // shape being under-priced while players learn it. Rect's constraints simply
   // conflict: it prices so gently that reaching 3.5 s/cell takes 130-156
   // cells, and BOARD_WIDTH_CAP holds it to 12 columns, so every board that
-  // clears the shared floor is big, dense and stacked — which is exactly what
+  // clears the shared floor is big, dense and stacked, which is exactly what
   // makes the certifier work hardest.
   //
   // Measured over 8,753 rect specs (the cache was swept again specifically to
@@ -188,7 +226,7 @@ export const ENDLESS_PPC_FLOOR_BY_SHAPE = Object.freeze({
   // five are fine: their medians are 241-447ms and only their tails reach past
   // two seconds. Classic reaches the SHARED floor, so an entry here would do
   // nothing but let easier Classic boards into the endless zone than the
-  // summit intends. Left as prose rather than a number on purpose — this is
+  // summit intends. Left as prose rather than a number on purpose: this is
   // the one shape whose absence from the zone is a measurement artifact.
 });
 
@@ -200,14 +238,14 @@ export function endlessPpcFloor(shape) {
 // ── The two dedupe keys ────────────────────────────────────────────────
 
 /**
- * THE FACE: what a player can actually tell apart — shape, dimensions, mine
+ * THE FACE: what a player can actually tell apart: shape, dimensions, mine
  * count, modifier set. Uniqueness on the ladder is judged on this and never
  * on specFingerprint.
  *
  * The difference is not academic. The fingerprint separates `gimmickLevel`,
  * `wallSegments` and the deduction caps, none of which a player can see, and
  * measured on the old authored table it reported 130 distinct specs where
- * there were only 109 distinct BOARDS — so a ladder deduped on fingerprints
+ * there were only 109 distinct BOARDS, so a ladder deduped on fingerprints
  * still repeated 21 of them, which is what he hit at L65-70. Worse,
  * gimmickLevel is not even a stable property of a level: L63 (gl63) and L64
  * (gl64) both produced mirror intensity 2 across 300 draws, and post-intro
@@ -224,7 +262,7 @@ export function specFace(spec) {
 /**
  * The VALIDATOR's key: two levels sharing a fingerprint draw from the same
  * board distribution, so each distinct distribution is proven once. Finer
- * than specFace by exactly the dials a player cannot see — which is right for
+ * than specFace by exactly the dials a player cannot see, which is right for
  * proving and wrong for deduping.
  */
 export function specFingerprint(spec) {
