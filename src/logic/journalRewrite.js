@@ -127,28 +127,51 @@ export function rewriteViolations(text, sourceText, facts) {
     ...impreciseVerbViolations(text),
     ...playerClaimViolations(text),
     ...hedgeViolations(text),
-    // No invented numbers: every digit run must trace to a fact.
+    // Belt: no digit without a fact behind it (the composed source
+    // guarantees source digits ⊆ facts, so this can only fire on a
+    // tampered artifact whose sourceText was forged along with it).
     ...digitViolations(text, facts),
   );
 
-  // No dropped numbers: the entry's content IS its numbers, so every
-  // digit run in the source must survive into the rewrite.
+  // The rewrite's digit SET equals the source's, both directions. No
+  // dropped numbers (the entry's content IS its numbers), and no
+  // imported ones either: fact-object values the notes never cited are
+  // NOT material, and given them, a model built "the range has not
+  // moved since the first data point on April 27" out of the study-day
+  // fields, digit-honest against the facts and false against the entry
+  // (the 2026-08-11 compass draft).
   const kept = new Set(digitRuns(text));
-  for (const run of new Set(digitRuns(sourceText))) {
+  const sourceRuns = new Set(digitRuns(sourceText));
+  for (const run of sourceRuns) {
     if (!kept.has(run)) out.push(`source digit "${run}" was dropped`);
+  }
+  for (const run of kept) {
+    if (!sourceRuns.has(run)) out.push(`digit "${run}" is not in the notes`);
   }
 
   // No added inference. Every fabrication the 2026-08-11 bake-off
   // produced was the model stitching CONCLUSIONS between faithful
   // sentences ("which supports my suspicion", "indicating a steady
-  // no", "held this cost consistently"), which no per-fact rail can
-  // see. Mechanically: an inference marker may appear in the rewrite
-  // only where the notes themselves use it, so a source that says
-  // "because" keeps its because and a rewrite can never introduce one.
+  // no", "held this cost consistently", and, once the section rows
+  // joined, "I opted for the latter", an agency flip: the DATA picked
+  // that door), which no per-fact rail can see. Mechanically: an
+  // inference marker may appear in the rewrite only where the notes
+  // themselves use it, so a source that says "because" keeps its
+  // because and a rewrite can never introduce one.
   for (const marker of INFERENCE_MARKERS) {
     if (marker.test(text) && !marker.test(sourceText)) {
       out.push(`added inference ("${String(text.match(marker)?.[0])}") the notes do not state`);
     }
+  }
+
+  // No jargon: the model feature key is not prose and never renders on
+  // a player surface. The prompt withholds it; this rail is the
+  // backstop (it leaked verbatim, "the wormholePairCount numbers", the
+  // first time the fact object included it).
+  if (facts && typeof facts.feature === 'string' && facts.feature.length > 0
+    && text.toLowerCase().includes(facts.feature.toLowerCase())
+    && (typeof facts.label !== 'string' || facts.feature.toLowerCase() !== facts.label.toLowerCase())) {
+    out.push(`raw feature key "${facts.feature}" in prose`);
   }
   return out;
 }
@@ -156,12 +179,22 @@ export function rewriteViolations(text, sourceText, facts) {
 // Word-boundary, stem-tolerant forms of the inference vocabulary a
 // rewrite may not introduce. prove/proves/proved/proving is written out
 // so "provide" stays legal; "mean(s) that" is phrase-bound so "which
-// means" and "this means" are both caught.
+// means" and "this means" are both caught. The "I opted/chose/decided"
+// family is the agency flip: the notes credit the data with every
+// verdict, and a first-person choice the notes never made reassigns it
+// to Greg.
 const INFERENCE_MARKERS = [
   /\bsupport\w*/i, /\bconfirm\w*/i, /\bindicat\w*/i, /\bimpl(?:y|ies|ied|ying)\b/i,
   /\bsuggest\w*/i, /\bprov(?:e|es|ed|ing)\b/i, /\brefut\w*/i, /\bcontradict\w*/i,
   /\bconsistent\w*/i, /\bdemonstrat\w*/i, /\bbecause\b/i, /\btherefore\b/i,
   /\bmeans? that\b/i, /\bwhich means\b/i, /\bthis means\b/i,
+  /\bI opted\b/i, /\bI chose\b/i, /\bI decided\b/i, /\bI concluded\b/i, /\bI lean(?:ed)?\b/i,
+  // Explanation glue: four straight mystery-entry drafts fused "one
+  // study day" with "the data arrived on ordinary boards" into a causal
+  // claim the notes never make ("meaning the estimate is based on a
+  // single aimed study day"). The pools never use either phrase, so the
+  // source-conditional ban costs faithful drafts nothing.
+  /\bmeaning\b/i, /\bbased on\b/i,
 ];
 
 /** The artifact's record for one feature, or null. Total on junk. */
@@ -280,9 +313,10 @@ export function buildRewriteArtifact({ date, entries, extra = {} }) {
 const PROMPT_RULES = [
   'Write ONE paragraph of plain text. No headings, no lists, no markdown, no quotation marks around the whole answer.',
   'Actually rewrite. Do not copy the notes sentence for sentence, and do not just splice them with commas or semicolons. Reorder the ideas into a story: what I asked, what the data read, where the estimate stands, what I make of it. Tie sentences together with connectives (so, but, and, after, which, that answer).',
-  'Keep every number, percent sign, and date from the notes exactly as written. Do not add, drop, round, or recompute any number.',
+  'Keep every number, percent sign, and date from the notes exactly as written. Do not add, drop, round, or recompute any number, and use ONLY the numbers and dates the notes use.',
   'State nothing the notes do not state. No new claims, no new dates, no new events, no mechanisms the notes do not give.',
-  'Draw no new conclusions. Never say the data support, confirm, contradict, or refute the hypothesis unless the notes say so themselves; connect sentences without adding logic between them.',
+  'Draw no new conclusions. Never say the data support, confirm, contradict, or refute the hypothesis unless the notes say so themselves; connect sentences without adding logic between them. Any verdict belongs to the data, never to a choice the writer made.',
+  'Keep every number attached to what the notes attach it to. Do not tie an estimate to a date, a day, or an event unless the notes tie them in the same sentence, and do not explain one fact with another: two facts the notes state side by side stay side by side.',
   'First person only. The writer never refers to himself by name or in the third person.',
   'Never use the em dash or the en dash. Use commas, periods, or parentheses instead.',
   'At most one hedging word (like "likely" or "seems") per sentence.',
@@ -313,7 +347,15 @@ export function buildRewritePrompt({ entryText, facts, label }) {
     + '\n\nReturn only the rewritten paragraph.';
   const lines = [];
   if (label) lines.push(`Study: ${label}`);
-  lines.push(`Fact object (every number in your paragraph must appear among these values): ${JSON.stringify(facts)}`);
+  // NO fact object in the prompt. It was offered at first as a
+  // checking aid, and every fabrication it enabled outweighed it: the
+  // raw feature key rendered verbatim ("the wormholePairCount
+  // numbers"), and unused fact dates kept surfacing as invented
+  // chronology ("since the first data point on April 27"). Under the
+  // digit-set rail the notes are the ONLY legitimate number surface,
+  // so the model reads exactly what it may cite and nothing else.
+  // `facts` stays in the signature for the validator's use downstream.
+  void facts;
   lines.push(`The notes to rewrite:\n${entryText}`);
   return { system, user: lines.join('\n\n') };
 }

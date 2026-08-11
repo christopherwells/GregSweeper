@@ -129,12 +129,25 @@ test('validator: each rail rejects, and names its reason', () => {
     ['added indication', `${base} The range narrowed, indicating a steady no.`, /added inference/],
     ['added consistency claim', `${base} The cost stayed consistent across the window.`, /added inference/],
     ['added causal glue', `${base} The range narrowed because the boards agreed.`, /added inference/],
+    // The agency flip (a real 2026-08-11 output: "I opted for the
+    // latter" about a door the DATA picked).
+    ['agency flip', `${base} I opted for the second door.`, /added inference/],
+    // The jargon leak (a real output: "the wormholePairCount numbers").
+    ['raw feature key', `${base} The ${facts.feature} numbers moved.`, /raw feature key/],
   ];
   for (const [name, text, re] of cases) {
     const v = rewriteViolations(text, src, facts);
     assert.ok(v.length > 0, `${name}: expected a violation`);
     assert.ok(v.some(x => re.test(x)), `${name}: expected ${re}, got: ${v.join(' | ')}`);
   }
+
+  // Imported fact digit: a value that exists in the FACT OBJECT but not
+  // in the notes is still a fabrication (the 2026-08-11 compass draft
+  // built a date span out of the study-day fields).
+  const vImported = rewriteViolations(`${base} The file opened on Apr 27.`, src,
+    { ...facts, importedDate: 'Apr 27' });
+  assert.ok(vImported.some(x => /digit "27" is not in the notes/.test(x)),
+    `expected the imported-digit rail, got: ${vImported.join(' | ')}`);
 
   // Dropped source digit: strip one number the source states.
   const firstDigit = (src.match(/\d+(?:\.\d+)?/g) || [])[0];
@@ -310,12 +323,21 @@ test('buildRewritePrompt: facts, source, and the verb rulings reach the model; t
   assert.equal(typeof prompt.system, 'string');
   assert.equal(typeof prompt.user, 'string');
   assert.ok(prompt.user.includes(entry.text), 'the source beats are the material');
-  assert.ok(prompt.user.includes(JSON.stringify(entry.facts)), 'the fact object rides along');
+  // REGRESSION: the fact object is NOT prompt material — offered as a
+  // checking aid, its unused values kept re-surfacing as invented
+  // chronology (the compass drafts imported Apr 27/Jul 29 from the
+  // study-day fields on every attempt). The notes are the only number
+  // surface the model sees.
+  assert.ok(!prompt.user.includes('sourceHash') && !prompt.user.includes('"unit"'),
+    'no fact object in the prompt');
   // REGRESSION: the hypothesis is NOT material — offered as context, the
   // bake-off drafts recast it as a conclusion the data had reached
   // ("supports my suspicion..."), the exact fabrication class the
   // inference rail exists for. Starve the temptation at the source.
   assert.ok(!prompt.user.includes(study.hypothesis), 'the hypothesis stays out of the prompt');
+  // REGRESSION: the raw feature key is withheld too — handed the fact
+  // object whole, the model rendered "the wormholePairCount numbers".
+  assert.ok(!prompt.user.includes(study.feature), 'the raw feature key stays out of the prompt');
   // The rulings are stated: dashes, data-plural, players, today's board.
   assert.match(prompt.system, /em dash/i);
   assert.match(prompt.system, /data show/i);

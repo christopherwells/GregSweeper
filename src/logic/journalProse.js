@@ -539,8 +539,11 @@ const WINDOW = [
   'The study ran {daysWord} study days, {first} to {last}.',
   'The books show {daysWord} study days, {first} to {last}.',
 ];
+// The contrast is spelled out ("anyway"): the old juxtaposition read
+// as if the data arrived ON the study day, and the nightly rewrite
+// model fused the two sentences into exactly that claim twice.
 const WINDOW_SINGLE = [
-  'This file has one study day, {first}. Most of the data arrived on ordinary boards.',
+  'This file has only one aimed study day, {first}. Most of the data arrived on ordinary boards anyway.',
   'The study amounts to a single study day, {first}, plus every board that happened to carry one.',
 ];
 
