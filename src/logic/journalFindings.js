@@ -298,7 +298,7 @@ export function classifyVerdict(study) {
   return {
     kind: 'open',
     deltaPct: delta.deltaPct,
-    copy: 'There’s no verdict yet. The numbers have barely budged. More boards will settle it.',
+    copy: 'There’s no verdict yet. The numbers have barely moved. More boards will settle it.',
   };
 }
 

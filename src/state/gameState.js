@@ -332,7 +332,7 @@ export const ENCOURAGEMENT_LINES = [
   'One more.',
   'Tomorrow\'s daily is a fresh board.',
   'That one was a thinker.',
-  'Sometimes the numbers lie. Try again.',
+  'Not every number plays fair. Try again.',
   'Shake it off. Next board\'s yours.',
   'Close. Pull at the corner next time.',
   'Mines hide. You find. Eventually.',
