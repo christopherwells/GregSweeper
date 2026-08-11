@@ -23,7 +23,7 @@ const FEATURE_NAMES = {
   wormholePairCount: 'wormholes',
   wallEdgeCount: 'walls',
   wormLoad: 'worm tiles',
-  zeroClusterCount: 'open areas',
+  zeroClusterCount: 'blank patches',
   searchMoves: 'search reasoning',
   patternMoves: 'pattern reasoning',
   totalMines: 'mine density',
@@ -40,7 +40,7 @@ const FEATURE_NAMES = {
   clueShare2: 'twos',
   clueShare3: 'threes',
   clueShare4: 'fours',
-  clueShare5plus: 'high numbers',
+  clueShare5plus: 'fives and up',
 };
 
 export function featureName(feature) {
@@ -61,7 +61,7 @@ const FEATURE_HYPOTHESIS = {
   wormholePairCount: 'Wormhole numbers count two places at once. Splitting one number across the board should slow the reading down.',
   wallEdgeCount: 'Walls cut neighbors apart, so every number near one means less than it looks. Small effect or large? Not sure yet.',
   wormLoad: 'A worm covers numbers you have already read, then moves on. Nothing is lost, only delayed. I suspect good memory makes it nearly free.',
-  zeroClusterCount: 'Big open areas clear themselves. More of them should mean faster boards. The question is how much faster.',
+  zeroClusterCount: 'Big blank patches clear themselves. More of them should mean faster boards. The question is how much faster.',
   searchMoves: 'Some deductions need real search, not pattern reading. Those moves should be the expensive ones.',
   patternMoves: 'Pattern reads are practiced moves. They should cost seconds, not tens of seconds.',
   totalMines: 'More mines, more flags, more careful steps. The steady cost of density is the backbone of the model.',

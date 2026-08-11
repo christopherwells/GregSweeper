@@ -71,7 +71,7 @@ const FEATURE_UNITS = {
   mysteryCellCount: 'mystery cell',
   wormholePairCount: 'wormhole pair',
   wallEdgeCount: 'wall',
-  zeroClusterCount: 'open area',
+  zeroClusterCount: 'blank patch',
   searchMoves: 'search deduction',
   patternMoves: 'pattern read',
   totalMines: 'mine',
@@ -81,12 +81,13 @@ const FEATURE_UNITS = {
   // digit shares below, it never takes the x10 (his question 2026-08-11:
   // worms had no basis at all because the unit was never named).
   wormLoad: 'hundred worm moves',
-  // Digit shares are fit ×10 (one unit = one more clue-in-ten of that digit),
-  // so the per-unit estimate reads as "each extra N in ten clues adds X%".
-  clueShare2: 'extra two in ten clues',
-  clueShare3: 'extra three in ten clues',
-  clueShare4: 'extra four in ten clues',
-  clueShare5plus: 'extra high number in ten clues',
+  // Digit shares are fit ×10 (one unit = one more N among each ten revealed
+  // numbers). "Numbers" is the game's own word for what a player reads on
+  // the board; "clues" was solver jargon (his note, 2026-08-11).
+  clueShare2: 'extra two in ten numbers',
+  clueShare3: 'extra three in ten numbers',
+  clueShare4: 'extra four in ten numbers',
+  clueShare5plus: 'extra five-or-higher in ten numbers',
 };
 
 export function featureUnit(feature) {
@@ -316,7 +317,7 @@ export function classifyVerdict(study) {
 // and which compounds rather than multiplying (ten of a strong feature
 // reads large, and that is the model's honest claim, not an error).
 // The one exemption is the digit shares, whose unit is already the
-// composite "one extra N in ten clues"; ten of those is not a quantity
+// composite "one extra N in ten numbers"; ten of those is not a quantity
 // a board can hold.
 const COMPOSITE_UNIT_FEATURES = new Set(['wormLoad']);
 export function featureScaleOf(feature) {

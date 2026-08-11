@@ -132,7 +132,7 @@ function pickLine(pool, seed, facts, usedSet = null) {
 // grades the band against the hypothesis:
 //   cost    , the file predicts a real positive cost
 //   zero    , the file predicts almost no cost (mirrors' "Should")
-//   faster  , the file predicts a time refund (open areas)
+//   faster  , the file predicts a time refund (blank patches)
 //   size    , the file asks how big; any clean answer settles it
 //   fork    , the file offers two outcomes; either clean band answers
 //   question, a mechanism question no band sign can settle (compass)
@@ -188,10 +188,10 @@ const ARCS = {
   },
   zeroClusterCount: {
     lean: 'faster',
-    neg: 'I wrote that open areas should pay time back. They do.',
-    zero: 'I wrote that open areas should pay time back. The refund is close to 0%.',
-    pos: 'I wrote that open areas should pay time back. The ledger disagrees with the sign, which is worth losing sleep over.',
-    out: 'The refund per open area is still an open entry.',
+    neg: 'I wrote that blank patches should pay time back. They do.',
+    zero: 'I wrote that blank patches should pay time back. The refund is close to 0%.',
+    pos: 'I wrote that blank patches should pay time back. The ledger disagrees with the sign, which is worth losing sleep over.',
+    out: 'The refund per blank patch is still an open entry.',
   },
   searchMoves: {
     lean: 'cost',
@@ -244,7 +244,7 @@ const ARCS = {
     lean: 'zero',
     pos: 'I wrote that a high number is nearly all mines and resolves fast, so it should barely cost. The range reads higher than that, and I want far more of these boards before I trust it.',
     zero: 'I wrote that a high number is nearly all mines and resolves fast. The data agree, and the cost lands at a rounding error.',
-    out: 'The high numbers are rare, so their cost is slow to pin down. The file stays open while I gather them.',
+    out: 'The fives and up are rare, so their cost is slow to pin down. The file stays open while I gather them.',
   },
 };
 
