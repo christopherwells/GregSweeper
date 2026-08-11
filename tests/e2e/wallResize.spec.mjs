@@ -25,7 +25,7 @@
 // constrained at 420px.
 
 import { test, expect } from '@playwright/test';
-import { challengeSpecForLevel, CHALLENGE_MAX_LEVEL } from '../../src/logic/challenge250.js';
+import { readFileSync, readdirSync } from 'node:fs';
 import { prepareInteractionSpec, settleAnimations } from './helpers.mjs';
 
 test.use({ viewport: { width: 900, height: 950 } });
@@ -90,21 +90,27 @@ test('REGRESSION: wall overlays track their cells through a viewport resize', as
     // No first-encounter modifier popup over the board mid-spec.
     try { localStorage.setItem('minesweeper_modifier_popup_disabled', 'true'); } catch {}
   });
-  // DERIVED, not hardcoded. This spec was pinned to L36 because the authored
-  // table put walls there; the ladder draws from a pool now, so the level is
-  // found by asking which one is a rectangle carrying walls. The biggest such
-  // board is preferred — a resize has more to get wrong on a wide one.
+  // DERIVED, not hardcoded, and from the LIBRARY now: ?level= deals from
+  // the level's pre-generated bin, so the braid's spec says nothing about
+  // the board on screen. The venue is the biggest walled rectangle in the
+  // committed library, pinned to its exact bin index via the &board=
+  // practice override so the deal is deterministic per run. (This spec was
+  // pinned to L36 by the authored table once, then re-derived from the
+  // pool; each move of the ladder's source moves the derivation with it.)
   const wallLevel = (() => {
+    const dir = new URL('../../scripts/data/climb-library/', import.meta.url);
     let best = null;
-    for (let lv = 1; lv <= CHALLENGE_MAX_LEVEL; lv++) {
-      const s = challengeSpecForLevel(lv);
-      if (s.shape !== 'rect' || !s.gimmicks.includes('walls')) continue;
-      if (!best || s.cells > best.cells) best = { lv, cells: s.cells };
+    for (const f of readdirSync(dir).filter((x) => /^level-\d+\.json$/.test(x))) {
+      const j = JSON.parse(readFileSync(new URL(f, dir), 'utf8'));
+      j.boards.forEach((b, i) => {
+        if (b.spec.shape !== 'rect' || !b.spec.gimmicks.includes('walls')) return;
+        if (!best || b.spec.cells > best.cells) best = { lv: j.level, board: i, cells: b.spec.cells };
+      });
     }
     return best;
   })();
-  expect(wallLevel, 'the ladder carries no rectangular walls board').not.toBeNull();
-  await page.goto(`/?isTest=1&level=${wallLevel.lv}`);
+  expect(wallLevel, 'the library carries no rectangular walls board').not.toBeNull();
+  await page.goto(`/?isTest=1&level=${wallLevel.lv}&board=${wallLevel.board}`);
   await page.waitForSelector('#boot-overlay', { state: 'detached', timeout: 20_000 });
   await page.waitForSelector('#board .cell', { timeout: 20_000 });
 

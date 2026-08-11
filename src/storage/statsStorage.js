@@ -17,6 +17,26 @@ const DAILY_PAR_KEY_PREFIX = 'minesweeper_daily_par_';
 const DAILY_MOVES_KEY_PREFIX = 'minesweeper_daily_moves_';
 const DAILY_FEATURES_KEY_PREFIX = 'minesweeper_daily_features_';
 const DAILY_RESIDUALS_KEY = 'minesweeper_daily_residuals';
+
+// ── Climb library seen-tracking ─────────────────────────
+// His cycle rule: a dealt board is marked seen; once every board in a
+// level's bin has been seen, the cycle resets and the bin is fresh again.
+// One JSON map { level: [seed, ...] }, local-only like the modifier
+// seen-set. Practice runs (?level=, the shared-localStorage lesson) never
+// write here; the gate is the caller's (climbDeal checks isLevelPractice).
+const CLIMB_SEEN_KEY = 'minesweeper_climb_seen';
+
+export function getClimbSeen(level) {
+  const map = safeGetJSON(CLIMB_SEEN_KEY, {});
+  const arr = map[String(level)];
+  return Array.isArray(arr) ? arr : [];
+}
+
+export function setClimbSeen(level, seeds) {
+  const map = safeGetJSON(CLIMB_SEEN_KEY, {});
+  map[String(level)] = Array.isArray(seeds) ? seeds : [];
+  safeSetJSON(CLIMB_SEEN_KEY, map);
+}
 const THEME_KEY = 'minesweeper_theme';
 
 // ── Local daily residuals (provisional handicap source) ──────────
@@ -33,7 +53,7 @@ const RESIDUAL_HISTORY_CAP = 50;
 export function appendDailyResidual({ date, time, par, bombHits = 0, bombPenalty = 0 }) {
   if (!date || typeof time !== 'number' || typeof par !== 'number' || par <= 0) return;
   const existing = safeGetJSON(DAILY_RESIDUALS_KEY, []);
-  // De-duplicate by date — if the same daily is played and re-submitted
+  // De-duplicate by date, if the same daily is played and re-submitted
   // (rare), overwrite the prior entry rather than letting two rows for
   // the same date both feed the mean.
   const filtered = existing.filter(e => e && e.date !== date);
@@ -44,7 +64,7 @@ export function appendDailyResidual({ date, time, par, bombHits = 0, bombPenalty
   //     the estimator subtracts BOMB_PENALTY_BASE × bombHits.
   //   - legacy +10s/re-fog mechanic (bombPenalty 0, bombHits > 0): the
   //     estimator subtracts the fitted secPerBombHit × bombHits.
-  // Older entries lack both fields — consumers default them to 0.
+  // Older entries lack both fields, consumers default them to 0.
   filtered.push({ date, time, par, bombHits: bombHits || 0, bombPenalty: bombPenalty || 0 });
   // Keep only the most recent RESIDUAL_HISTORY_CAP entries; sort by
   // date ascending so slicing from the end keeps the newest plays.
@@ -67,7 +87,7 @@ export function loadDailyResiduals() {
 // ── Greg's Gym technique counts ──────────────────────────────────
 // How many times the player has PERFORMED each named technique in the
 // gym (the deducibility gate guarantees every count is a real worked
-// deduction, never a guess). Local-only by design — the gym never
+// deduction, never a guess). Local-only by design, the gym never
 // touches scores, the par pipeline, or Firebase. Keyed by the
 // patternNames classifier name ('count', '1-1', '1-2', '1-2-1',
 // '1-2-2-1'). Read by the Field Notebook.
@@ -102,7 +122,7 @@ export function loadDailyPar(dateStr) {
 
 /**
  * Remove per-date daily keys (par / moves / features) older than
- * `keepDays`. These accumulate one trio per played date forever —
+ * `keepDays`. These accumulate one trio per played date forever,
  * a daily-habit player banks ~1 MB/year of feature JSON, and the
  * eventual quota failure downgrades storage to the silent in-memory
  * fallback. Nothing reads entries this old: residuals are capped at 50
@@ -119,7 +139,7 @@ export function pruneOldDailyKeys(keepDays = 60) {
     for (const key of safeKeys(prefix)) {
       const dateStr = key.slice(prefix.length);
       const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(dateStr);
-      if (!m) continue; // unknown suffix shape — leave it alone
+      if (!m) continue; // unknown suffix shape, leave it alone
       const ms = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
       if (Number.isFinite(ms) && ms < cutoffMs) {
         safeRemove(key);
@@ -157,7 +177,7 @@ const DEFAULT_STATS = {
   dailiesCompleted: 0,
   puristWins: 0,
   gimmickWins: 0,
-  // Skill-feat counters (2026-06-10 achievements rebuild) — incremented
+  // Skill-feat counters (2026-06-10 achievements rebuild), incremented
   // by saveGameResult from winLossHandler's honestly-detected feats.
   flaglessWins: 0,
   efficientWins: 0,
@@ -248,7 +268,7 @@ export function getModeKey(gameMode) {
 
 // Resolve the per-mode stats block for a UI surface. The 'normal' → 'challenge'
 // key mapping lives ONLY in getModeKey; a caller that hand-rolls the key can
-// silently read the wrong node — the Challenge stats tab read
+// silently read the wrong node, the Challenge stats tab read
 // stats.modeStats.normal (always undefined) and fell back to the all-modes
 // aggregate for months (2026-07-10 audit). Returns null when the mode has no
 // block yet so callers keep their own fallback semantics.
@@ -269,11 +289,11 @@ export function saveGameResult(won, time, level, { isDaily = false, isArchive = 
   _lastMoltEvent = null;
 
   // A ?level= playtest run (test builds only) records NOTHING: no games
-  // played, no streaks, no bestTimes, and above all no maxLevelReached —
+  // played, no streaks, no bestTimes, and above all no maxLevelReached,
   // the checkpoint ladder must never unlock from a practice jump.
   if (isLevelPractice) return stats;
 
-  // Update global stats (chaos mode is tracked per-mode only — skip global streak/bestTimes/purist)
+  // Update global stats (chaos mode is tracked per-mode only, skip global streak/bestTimes/purist)
   const isChaos = modeKey === 'chaos';
   stats.totalGames++;
   if (won) {
@@ -296,7 +316,7 @@ export function saveGameResult(won, time, level, { isDaily = false, isArchive = 
       if (hadGimmicks) {
         stats.gimmickWins = (stats.gimmickWins || 0) + 1;
       }
-      // Skill feats — booleans computed by the win handler from the
+      // Skill feats, booleans computed by the win handler from the
       // click timeline + the board's certified solve.
       if (skillFeats.flagless) stats.flaglessWins = (stats.flaglessWins || 0) + 1;
       if (skillFeats.efficient) stats.efficientWins = (stats.efficientWins || 0) + 1;
@@ -320,7 +340,7 @@ export function saveGameResult(won, time, level, { isDaily = false, isArchive = 
 
   // Update per-mode stats. Archive replays AND practice dailies (?seed=) are
   // EXCLUDED here: both count as a generic win in the global stats above (so
-  // achievements still fire) but must never touch any daily-mode counter —
+  // achievements still fire) but must never touch any daily-mode counter,
   // the daily-date streak, molt bank, completion totals, and daily win totals
   // all live in this block, and the daily-streak sub-block keys on modeKey,
   // not the isDaily flag. Without the isPractice guard a ?seed= win ran the
@@ -344,7 +364,7 @@ export function saveGameResult(won, time, level, { isDaily = false, isArchive = 
       }
       // Daily-specific: consecutive-day streak with molt-day insurance. All
       // the earn / spend / reset math lives in the shared pure module so the
-      // completion path, the app-load notice, and the push script agree.
+      // completion path, the app-load notice, and the push script are kept consistent.
       if (modeKey === 'daily') {
         modeStats.dailiesCompleted = (modeStats.dailiesCompleted || 0) + 1;
         // Use the puzzle's seed date (not current date) to avoid midnight-crossing bugs
@@ -484,8 +504,8 @@ const CHECKPOINT_KEY = 'minesweeper_checkpoints';
 
 // Checkpoints are keyed by the same 'normal' → 'challenge' mapping every other
 // per-mode store uses (getModeKey, gameStateKey). They were NOT: the
-// level-advance handler wrote `saveCheckpoint(state.gameMode, …)` — i.e.
-// 'normal' — while the fresh-start reader and the C250 reset both used
+// level-advance handler wrote `saveCheckpoint(state.gameMode, …)`, i.e.
+// 'normal', while the fresh-start reader and the C250 reset both used
 // 'challenge', so the ladder kept TWO entries for one number and the reset
 // only ever cleared one of them. The pre-C250 checkpoint sat in the other one
 // untouched (issue #239). Normalizing here is what makes it one number again;
@@ -527,7 +547,7 @@ export function loadGameState(mode) {
   if (mode) {
     return getJSON(gameStateKey(mode));
   }
-  // No mode specified — try legacy key and migrate
+  // No mode specified, try legacy key and migrate
   const legacy = getJSON(LEGACY_GAME_STATE_KEY);
   if (legacy) {
     const m = legacy.gameMode || 'normal';
@@ -575,8 +595,8 @@ export function invalidateStatsCache() {
 // ── Daily Completion Tracking ────────────────────────
 const DAILY_COMPLETED_KEY = 'minesweeper_daily_completed_date';
 // WHICH board that completion was for. The date alone cannot answer the
-// question the daily-card lock actually asks — "has this account finished
-// TODAY'S CANONICAL board?" — because a client that missed the canonical and
+// question the daily-card lock actually asks, "has this account finished
+// TODAY'S CANONICAL board?", because a client that missed the canonical and
 // generated locally completes a different board on the same date. Until
 // 2026-08-07 the only record of which board was played lived in the cloud
 // score row, and the submit guard (#252) stopped writing that row for exactly
@@ -587,7 +607,7 @@ const DAILY_COMPLETED_SEED_KEY = 'minesweeper_daily_completed_seed';
 // "This device completed a board today, but not the day's board." Set when the
 // boot gate proves divergence; read by applyCloudProgress, which would
 // otherwise re-lock the card from the cloud's `lastDailyDate` within
-// milliseconds — the divergent play still counts for the streak by design, so
+// milliseconds, the divergent play still counts for the streak by design, so
 // the cloud legitimately says "played today" while the canonical sits unplayed.
 const DAILY_REPLAY_UNLOCK_KEY = 'minesweeper_daily_replay_unlocked';
 
@@ -603,7 +623,7 @@ export function isDailyCompleted(dateStr) {
 /**
  * What this device remembers about today's daily: the date it recorded a
  * completion for, and the board seed that completion was on. A null `seed` is
- * a completion recorded before seeds were tracked — UNKNOWN, not "canonical".
+ * a completion recorded before seeds were tracked, UNKNOWN, not "canonical".
  */
 export function getDailyCompletionRecord() {
   return {
@@ -618,7 +638,7 @@ export function getDailyCompletionRecord() {
  * board is still unplayed and the player is not on the board.
  *
  * The unlock has to be STICKY. Clearing the completed date alone lasts
- * milliseconds — applyCloudProgress re-derives the lock from the cloud's
+ * milliseconds, applyCloudProgress re-derives the lock from the cloud's
  * `lastDailyDate`, and the progress listener re-applies the cloud on every
  * write under users/{uid} (a lastSeen beacon is enough). The divergent play
  * deliberately still counts for the streak, so the cloud is right to say
@@ -631,7 +651,7 @@ export function unlockDailyReplay(dateStr) {
   safeRemove(DAILY_COMPLETED_SEED_KEY);
   safeSet(DAILY_REPLAY_UNLOCK_KEY, dateStr);
   // The cached par / moves / features describe the board that was played, and
-  // it was the wrong one — leaving them would print a stale par on the Daily
+  // it was the wrong one, leaving them would print a stale par on the Daily
   // card and hand parResolve a feature vector for a layout the player is about
   // to stop playing. Dropped here rather than at each call site so the boot
   // gate and the at-submit unlock cannot disagree about what a replay resets.
@@ -646,7 +666,7 @@ export function isDailyReplayUnlocked(dateStr) {
 
 /**
  * @param {string} dateStr    the board's date (state.dailySeed)
- * @param {string|null} seed  the effective rngSeed of the board completed —
+ * @param {string|null} seed  the effective rngSeed of the board completed,
  *                            `${date}:trialN` on experiment days, the bare
  *                            date otherwise. Recorded so a later boot can tell
  *                            whether this account has finished the day's real
@@ -657,7 +677,7 @@ export function markDailyCompleted(dateStr, seed = null) {
   safeSet(DAILY_COMPLETED_KEY, dateStr);
   if (seed) safeSet(DAILY_COMPLETED_SEED_KEY, seed);
   else safeRemove(DAILY_COMPLETED_SEED_KEY);
-  // A completion supersedes any standing replay unlock — including the one
+  // A completion supersedes any standing replay unlock, including the one
   // that granted this very replay.
   safeRemove(DAILY_REPLAY_UNLOCK_KEY);
 }
@@ -709,7 +729,7 @@ export function getDailyStreak() {
  * this device has no daily history to report.
  *
  * The molt bank and last-use ride WITH the streak and its date because a
- * cross-device merge adopts them as one unit — a bank paired with the other
+ * cross-device merge adopts them as one unit, a bank paired with the other
  * side's streak is the incoherent state applyCloudProgress exists to prevent.
  * Stored values, not the lapse-adjusted read of getDailyStreak: a lapse is a
  * view, and writing it would make it permanent for every device.
@@ -730,12 +750,12 @@ export function getDailyCloudSnapshot() {
 
 // ── Week streak ───────────────────────────────────────
 // The weekly's counterpart to the daily streak: one completion banks the
-// week, and consecutive banked weeks are the streak (his rule, 2026-08-05 —
+// week, and consecutive banked weeks are the streak (his rule, 2026-08-05,
 // "only need to play one of the weekly"). No molt days: a week is already
 // seven chances at one board, so there is nothing for insurance to insure.
 //
 // It lives in a TOP-LEVEL stats field rather than in modeStats.weekly, which
-// does not exist — createDefaultModeStats has never had a weekly block, and
+// does not exist, createDefaultModeStats has never had a weekly block, and
 // adding one would silently start routing every weekly completion through
 // saveGameResult's per-mode counters, which is a different change than this.
 // One object so the (streak, best, lastWeek) trio is always read and written
@@ -762,7 +782,7 @@ export function getWeekStreak(currentWeek = getWeekStart()) {
 }
 
 /**
- * The STORED week-streak trio, exactly as the cloud node carries it — the
+ * The STORED week-streak trio, exactly as the cloud node carries it, the
  * payload shape `saveProgress({ weekStreak })` expects, defined once so the
  * completion path and the self-heal cannot send different shapes.
  *
@@ -775,7 +795,7 @@ export function getWeekStreakRecord() {
 }
 
 /**
- * Bank a weekly completion. Idempotent within a week — later days of a week
+ * Bank a weekly completion. Idempotent within a week, later days of a week
  * already banked leave everything where it is, which is what makes "one of the
  * seven" the rule rather than "the first of the seven".
  *
@@ -797,7 +817,7 @@ export function recordWeeklyCompletion(weekStart) {
  *
  * UPWARD-ONLY, exactly like reconcileStreakFromHistory: it raises a streak the
  * counter never knew about and never lowers one, because a short derived run
- * is not proof of a break — a failed write leaves a hole in the history, while
+ * is not proof of a break, a failed write leaves a hole in the history, while
  * a genuine break is handled at play time by applyWeekContinuation.
  *
  * This is what the feature shipped WITHOUT, and the omission was immediate:
@@ -808,7 +828,7 @@ export function recordWeeklyCompletion(weekStart) {
  * ONE ASYMMETRY, stated rather than hidden, and scoped to what it can defend.
  * Going forward a week is banked by COMPLETING the weekly; this backfill
  * counts a week the player ATTEMPTED, because `weeklyAttempts` is the only
- * per-week record that exists for every player — the completion record lives
+ * per-week record that exists for every player, the completion record is
  * on the weekly leaderboard, which a player without a name never reaches, and
  * which grows with every player rather than with this player's weeks. So a
  * PAST week that was opened and abandoned can count. That errs generous on
@@ -911,12 +931,12 @@ export function backfillMoltDays() {
 // Everyone replays from L1 (his ruling: no memento of the old 120 climb).
 // One-time and epoch-guarded, so it runs safely every boot: once the stats
 // carry CHALLENGE_250_EPOCH it never fires again. What resets is
-// PROGRESSION — max level, the checkpoint ladder, per-level best times
+// PROGRESSION, max level, the checkpoint ladder, per-level best times
 // (the old level numbers name different boards now), and the challenge
 // power-up inventory (wipe to zero; earns are tier-scaled from here).
 // Career counters (wins, losses, streaks, feats) survive: they are
 // history, not position. The first-encounter modifier seen-set is
-// deliberately untouched — popups do NOT re-show after the reset.
+// deliberately untouched, popups do NOT re-show after the reset.
 // Cross-device: applyCloudProgress only adopts maxCheckpoint/powerUps
 // from a cloud snapshot carrying THIS epoch, so a stale device's
 // pre-reset values can never resurrect the climb (the moltDay
@@ -931,7 +951,7 @@ export function applyChallenge250Reset() {
   // player who had already met walls should not be re-taught them. That was
   // wrong, and the symptom was immediate: the ladder was rebuilt from level 1
   // for everyone, walls now debut at L6 and liar at L11, and a returning
-  // player met both with no card at all — an opener that reads as broken
+  // player met both with no card at all, an opener that reads as broken
   // rather than as familiar (his report, 2026-08-04).
   //
   // A separate marker is what lets this reach players whose progression reset
@@ -969,7 +989,7 @@ export function applyChallenge250Reset() {
   // The pre-reset ARTIFACTS, on their own marker for the same reason the cards
   // have one: this has to reach players whose progression reset already ran.
   // It runs AFTER the progression reset above, because the position it judges
-  // a save against is the post-reset one — comparing against the old ladder's
+  // a save against is the post-reset one, comparing against the old ladder's
   // maxLevelReached would find every stale save perfectly in order.
   //
   // The reset wiped the stats and the checkpoint, but a challenge game left in
@@ -982,7 +1002,7 @@ export function applyChallenge250Reset() {
   //
   // Dropping the save destroys nothing legitimate: challengeSaveIsCurrent is
   // the same gate the resume now applies, so this only removes what would be
-  // refused anyway — clearing the artifact rather than leaving it sitting in
+  // refused anyway, clearing the artifact rather than leaving it sitting in
   // the slot un-resumable.
   if (stats.challengeArtifactEpoch !== CHALLENGE_250_EPOCH) {
     const savedChallenge = getJSON(gameStateKey('normal'));
@@ -1020,7 +1040,7 @@ export function consumeMoltCelebrate() {
 
 // Length of the maximal run of consecutive ET dates ending at the most
 // recent completed date, computed from the authoritative completed-date
-// set (users/{uid}/dailyHistory). Pure date math — no storage access.
+// set (users/{uid}/dailyHistory). Pure date math, no storage access.
 // `dates` is an array of 'YYYY-MM-DD' strings; order/dupes don't matter.
 export function computeStreakFromHistory(dates) {
   if (!Array.isArray(dates) || dates.length === 0) return { streak: 0, lastDate: null };
@@ -1033,7 +1053,7 @@ export function computeStreakFromHistory(dates) {
       (new Date(sorted[i] + 'T00:00:00') - new Date(sorted[i - 1] + 'T00:00:00')) / 86400000
     );
     if (diff === 1) streak++;
-    else break; // gap (or dup, already de-duped) — run ends here
+    else break; // gap (or dup, already de-duped), run ends here
   }
   return { streak, lastDate };
 }
@@ -1042,7 +1062,7 @@ export function computeStreakFromHistory(dates) {
 // completion history. UPWARD-ONLY: raises the stored streak when the
 // history implies a longer run than the local counter knows about (an
 // offline day that synced late, or a cross-device / uid-split play the
-// counter missed). Never LOWERS — a shorter derived run isn't proof of a
+// counter missed). Never LOWERS, a shorter derived run isn't proof of a
 // real break, because history can have holes from failed offline writes;
 // genuine breaks are handled at play time by saveGameResult's reset-on-gap.
 // This is the self-heal that recovers a streak corrupted by connectivity.
@@ -1101,7 +1121,7 @@ export function setPlayerName(name) {
 
 // Reset the daily-streak portion of local stats so the next applyCloudProgress
 // call adopts the cloud values verbatim instead of treating local as "newer".
-// Used when the user explicitly switches accounts on this device — the local
+// Used when the user explicitly switches accounts on this device, the local
 // daily plays belonged to the device's now-abandoned anonymous uid, not the
 // account we're switching to.
 //
@@ -1118,7 +1138,7 @@ export function resetDailyStatsForAccountSwitch() {
   }
   setJSON(STATS_KEY, stats);
   _statsCache = stats;
-  // Drop the per-date local caches keyed off the abandoned uid's plays —
+  // Drop the per-date local caches keyed off the abandoned uid's plays,
   // the new account may have different par / move counts on the same date.
   // The completion's board seed and any replay unlock describe the abandoned
   // account's play, so they go with it; leaving the unlock behind would
@@ -1134,7 +1154,7 @@ export function resetDailyStatsForAccountSwitch() {
 // init where local might have unflushed plays).
 //
 // When `opts.overwrite` is true (used by the real-time listener path
-// where cloud IS the authoritative state — any write to users/{uid}
+// where cloud IS the authoritative state, any write to users/{uid}
 // just landed), values are adopted verbatim including downgrades.
 // Otherwise an admin-side correction or a partner-device reset would
 // be silently rejected by the max-merge.
@@ -1145,7 +1165,7 @@ export function applyCloudProgress({ maxCheckpoint, dailyStreak, bestDailyStreak
 
   // Challenge progression adopts ONLY from the `challenge250` node (epoch
   // + maxCheckpoint + the challenge power-up pool, written atomically by
-  // post-reset clients — see saveProgress). The legacy top-level
+  // post-reset clients, see saveProgress). The legacy top-level
   // `maxCheckpoint` and `powerUps.challenge` fields are pre-reset history
   // by definition: old clients keep writing them, and adopting one on
   // EITHER merge path (the overwrite listener re-applies the cloud on
@@ -1174,7 +1194,7 @@ export function applyCloudProgress({ maxCheckpoint, dailyStreak, bestDailyStreak
   //   overwrite=true  (listener path): adopt cloud verbatim regardless of date
   //   overwrite=false (initial-load):
   //     - cloud date > local date → adopt cloud's streak + bank + date verbatim
-  //       (even if the streak went DOWN — player broke it on another device).
+  //       (even if the streak went DOWN, player broke it on another device).
   //     - cloud date === local date → defensively take the higher streak, and
   //       its bank with it.
   //     - cloud date < local date → keep local; cloud is stale.
@@ -1185,7 +1205,7 @@ export function applyCloudProgress({ maxCheckpoint, dailyStreak, bestDailyStreak
     if (!stats.modeStats) stats.modeStats = {};
     if (!stats.modeStats.daily) stats.modeStats.daily = {};
     const daily = stats.modeStats.daily;
-    // Adopt cloud's molt fields as a unit — but ONLY when the cloud actually
+    // Adopt cloud's molt fields as a unit, but ONLY when the cloud actually
     // carries molt state. A missing node, or the bare default {banked:0, no
     // lastUse}, is the pre-molt shape every LEGACY account holds: it is absence
     // of information, NOT an authoritative 0. Treating it as a real 0 (the
@@ -1237,7 +1257,7 @@ export function applyCloudProgress({ maxCheckpoint, dailyStreak, bestDailyStreak
   //     same week → keep the longer; cloud older → keep local.
   // `best` is a high-water mark, so it maxes except under overwrite.
   // A cloud node with no `lastWeek` says nothing about position and is
-  // ignored — absence of information is not an authoritative zero (the molt
+  // ignored, absence of information is not an authoritative zero (the molt
   // legacy-preserve lesson one field over).
   const cloudWeek = (weekStreak && typeof weekStreak === 'object') ? weekStreak : null;
   if (cloudWeek) {
@@ -1279,7 +1299,7 @@ export function applyCloudProgress({ maxCheckpoint, dailyStreak, bestDailyStreak
   // The CHALLENGE pool comes exclusively from the epoch-gated challenge250
   // node (c250 above); the legacy powerUps node's challenge key is
   // pre-reset history and is dropped on the floor here. Non-challenge
-  // pools (chaos) still ride the legacy node — the reset never touches
+  // pools (chaos) still ride the legacy node, the reset never touches
   // them.
   const cloudChallengePU = c250 && c250.powerUps && typeof c250.powerUps === 'object' ? c250.powerUps : null;
   const legacyPU = (powerUps && typeof powerUps === 'object') ? { ...powerUps } : null;
@@ -1292,7 +1312,7 @@ export function applyCloudProgress({ maxCheckpoint, dailyStreak, bestDailyStreak
     if (overwrite || !local) {
       // Mode-scoped verbatim: each pool the cloud actually SPEAKS for
       // replaces the local pool wholesale (so an admin zeroing sticks),
-      // but a pool the cloud never mentions stays local — absence is
+      // but a pool the cloud never mentions stays local, absence is
       // absence of information, not an authoritative empty (the moltDay
       // legacy-preserve rule; without this, any listener snapshot from a
       // device that had not synced its pools yet wiped local inventory).
@@ -1326,14 +1346,14 @@ export function applyCloudProgress({ maxCheckpoint, dailyStreak, bestDailyStreak
   // Keep DAILY_COMPLETED_KEY in sync with cloud's lastDailyDate so
   // multi-device users don't get prompted to "play today's daily" on
   // device B after device A already submitted. The two keys serve
-  // different gates — stats.modeStats.daily.lastDailyCompletedDate
+  // different gates, stats.modeStats.daily.lastDailyCompletedDate
   // drives the streak math; DAILY_COMPLETED_KEY drives the daily-card
-  // "completed" lock — but they should always agree on whether today
+  // "completed" lock, but they should always agree on whether today
   // is done.
   //
   // `lastDailyDate` answers "played a daily today", which is the STREAK fact.
   // It cannot answer "finished today's canonical", which is what the lock
-  // actually gates — and those came apart the moment a divergent board could
+  // actually gates, and those came apart the moment a divergent board could
   // count for the streak while its score was refused. So a proven-divergent
   // completion on this device outranks the cloud's coarser date here. Without
   // this deferral the boot gate's unlock is undone on the next write to

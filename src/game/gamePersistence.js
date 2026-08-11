@@ -29,7 +29,7 @@ export function persistGameState() {
   // A run that does not OWN this mode's slot never writes to it. Archive
   // replays share the daily / weekly slot, and ?level= + coastline practice
   // runs share the challenge slot, so persisting one would clobber the real
-  // in-progress game (and a past-date save fails resume anyway —
+  // in-progress game (and a past-date save fails resume anyway,
   // resumeEligibility anchors both to the live ET clock). Those lanes are
   // always re-launched from the calendar / list. The matching CLEAR guard
   // lives at the win and loss ends; ownsSaveSlot is the one question.
@@ -50,7 +50,7 @@ export function persistGameState() {
       // The STORED compass ray (explicit-topology boards): on a tiling the
       // ray is a geometry question the neighbor graph cannot answer, so it
       // is computed once at generation and stamped, and BOTH the displayed
-      // number and the certifier read it back through compassRayCells —
+      // number and the certifier read it back through compassRayCells,
       // which returns [] for a cell without one. Dropping it here was the
       // CELL_FIELDS defect (issue #189) replayed on the save: the resume's
       // recomputeDisplayedMines silently turned every tiling compass number
@@ -65,7 +65,7 @@ export function persistGameState() {
       liarOffset: typeof c.liarOffset === 'number' ? c.liarOffset : undefined,
       inLiarZone: c.inLiarZone || false,
       // The Lens points back at the marked start when a player walks
-      // off the certified path into a proof-free state — losing this
+      // off the certified path into a proof-free state, losing this
       // on resume would misfire its error branch on resumed dailies.
       suggestedStart: c.suggestedStart || false,
       row: c.row, col: c.col,
@@ -83,7 +83,7 @@ export function persistGameState() {
     // them so the nightly refit can EXCLUDE hinted plays from the par fit.
     // Before 2026-07-10 the snapshot dropped them, so a resumed daily that
     // had used the Lens submitted as an unhinted play and contaminated the
-    // model — the exact corruption the instrumentation exists to prevent.
+    // model, the exact corruption the instrumentation exists to prevent.
     // Purist-achievement flag: without it a resumed game that had already
     // used a power-up counted as a purist win on completion.
     usedPowerUps: state.usedPowerUps || false,
@@ -119,26 +119,26 @@ export function persistGameState() {
       eggC: w.eggC,
       lastDir: w.lastDir ? { dr: w.lastDir.dr, dc: w.lastDir.dc } : null,
     })),
-    // The hatch log must survive a resume — a resumed daily's submission
+    // The hatch log must survive a resume, a resumed daily's submission
     // reports the realized worm dose, same contract as bombHitEvents.
     wormEvents: state.wormEvents || [],
     wallEdges: state.board._wallEdges ? Array.from(state.board._wallEdges) : [],
     // An explicit topology (Coastline tiling boards) rides the save the same
     // way wallEdges does, and for the same reason: the snapshot is JSON, and
     // JSON.stringify drops properties stamped on the board ARRAY. Without
-    // this a tiling game saved and resumed comes back RECTANGULAR mid-play —
+    // this a tiling game saved and resumed comes back RECTANGULAR mid-play,
     // the board silently changes shape under the player, and the adjacency it
     // was certified under is gone. Null on every ordinary board, which is
     // every board shipped today.
     //
-    // The GEOMETRY rides alongside (issue #189 — the Phase-1 bug re-opened
+    // The GEOMETRY rides alongside (issue #189, the Phase-1 bug re-opened
     // through the half of the contract added later): _cellPos is the
     // renderer's own test for "is this a tiling board", _tiling is what
     // applyWallsTiling / the outline memo rebuild from, and _tilingWalls is
     // the severed-edge list the wall overlay draws (a tiling board does not
     // use _wallEdges). Same field set the canonical payload carries; the
     // save stores _cellPos VERBATIM, so cairo/deltoidal keep their compass
-    // ray anchors (ax/ay) — the canonical path's documented residual does
+    // ray anchors (ax/ay), the canonical path's documented residual does
     // not apply here. All null/absent on every rectangular board.
     cellNeighbors: state.board._cellNeighbors || null,
     cellPos: state.board._cellPos || null,
@@ -153,7 +153,7 @@ export function persistGameState() {
 
 // The context every resume decision is judged against. All resume-eligibility
 // rules (date anchors, seed-identity fingerprints, canonical divergence,
-// corrupt cells) live in resumeEligibility.js — pure and node-tested — and
+// corrupt cells) live in resumeEligibility.js, pure and node-tested, and
 // this is the one place their inputs are gathered. It anchors to the CLOCK,
 // not to live state: a session that survived midnight ET still carries
 // yesterday's dailySeed in state, and trusting it is how yesterday's
@@ -171,11 +171,11 @@ function resumeContext(slot) {
     canonicalDate: state.canonicalDailyBoard?.date || null,
     canonicalRngSeed: state.canonicalDailyBoard?.raw?.rngSeed || null,
     // The weekly's counterpart. The gate stashes this board exactly as it does
-    // the daily's, so the check costs nothing extra — it was simply never wired.
+    // the daily's, so the check costs nothing extra, it was simply never wired.
     canonicalWeek: state.canonicalWeeklyBoard?.weekStart || null,
     canonicalWeeklyRngSeed: state.canonicalWeeklyBoard?.raw?.rngSeed || null,
     // A challenge save above maxLevelReached + 1 is a position this
-    // progression cannot hold — the pre-C250 save the epoch reset never
+    // progression cannot hold, the pre-C250 save the epoch reset never
     // reached (issue #239).
     maxLevelReached: loadStats().modeStats?.challenge?.maxLevelReached || 1,
   };
@@ -225,7 +225,17 @@ export function tryResumeGame(mode) {
   state.challengeBoardSeed = gs.challengeBoardSeed || null;
   state.challengePar = typeof gs.challengePar === 'number' ? gs.challengePar : 0;
   if (state.gameMode === 'normal') {
-    state.challengeSpec = challengeSpecForLevel(gs.currentLevel || 1);
+    // Re-derive the spec, but the SHAPE comes from the saved board itself:
+    // a library deal is usually a different lattice than the braid's spec
+    // for that slot, and the two consumers of challengeSpec.shape (the
+    // pre-level card's shape line, the shape-intro gate) must describe the
+    // board being resumed. The save's own `tiling` descriptor is the
+    // board's shape (null on a rectangle), so no board-restore ordering
+    // is involved.
+    const braid = challengeSpecForLevel(gs.currentLevel || 1);
+    state.challengeSpec = gs.tiling && gs.tiling.type
+      ? { ...braid, shape: gs.tiling.type }
+      : (gs.cellNeighbors ? braid : { ...braid, shape: 'rect' });
   }
   // Restore the no-guess certificate so the Certified chip survives a
   // resume (updateActiveGimmickBar below re-renders it). Saves from
@@ -276,8 +286,8 @@ export function tryResumeGame(mode) {
   }
 
   // Restore an explicit topology before anything reads the board. Every
-  // adjacency question downstream — the flood, the chord, the mine counters,
-  // the certifier — resolves through this, so it has to be in place first.
+  // adjacency question downstream, the flood, the chord, the mine counters,
+  // the certifier, resolves through this, so it has to be in place first.
   // isSaveResumable already refused a save whose topology failed validation,
   // so this cannot silently stamp a corrupt one.
   if (gs.cellNeighbors) {
@@ -285,7 +295,7 @@ export function tryResumeGame(mode) {
     // The geometry restores with the graph (issue #189): _cellPos routes the
     // renderer onto the tiling layout path, _tiling feeds the outline memo and
     // the wall wireframe rebuild, and _tilingWalls is the drawn severed-edge
-    // list — always an ARRAY on a tiling board (two consumers branch on its
+    // list, always an ARRAY on a tiling board (two consumers branch on its
     // length), mirroring deserializeBoard. isSaveResumable refused any save
     // claiming a topology without cellPos + tiling, so these reads are safe.
     state.board._cellPos = gs.cellPos;
@@ -295,7 +305,7 @@ export function tryResumeGame(mode) {
 
   // Restore the certification-contract flag (boardSolver reads it as its
   // gating default). Saves from before reveal gating lack the field and
-  // resume ungated — correct, their boards were certified ungated.
+  // resume ungated, correct, their boards were certified ungated.
   if (gs.gatedCert) {
     state.board._gatedCert = true;
   }

@@ -105,6 +105,7 @@ export function switchMode(mode) {
   // Likewise never a ?level= playtest (that flag is set only by the
   // test-build deep link) — a real challenge entered afterward must record.
   state.isLevelPractice = false;
+  state.climbBoardIndex = null;
   // Never carry a ?coastline= tiling practice into a real mode either.
   clearCoastlinePractice();
   updateModeUI(mode);
@@ -189,6 +190,7 @@ export function launchWeeklyArchive(weekStart, raw) {
   state.weeklySeed = weekStart;
   state._weeklyArchiveRaw = { weekStart, raw };
   state.isLevelPractice = false;
+  state.climbBoardIndex = null;
   clearCoastlinePractice();
   updateModeUI('weekly');
   newGame();

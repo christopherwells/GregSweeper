@@ -27,7 +27,8 @@ import { resolveCruxDate, streakBearingDates } from './logic/archiveEligibility.
 import { challengeSaveIsCurrent } from './logic/resumeEligibility.js';
 import { persistGameState, tryResumeGame, canResumeMode } from './game/gamePersistence.js';
 import { MAX_TIMED_LEVEL, CHAOS_UNLOCK_LEVEL } from './logic/difficulty.js';
-import { CHALLENGE_MAX_LEVEL, CHALLENGE_BLOCK_SIZE, MOD_INTRO_BLOCKS, SHAPE_INTRO_BLOCKS } from './logic/challenge250.js';
+import { CHALLENGE_MAX_LEVEL, CHALLENGE_BLOCK_SIZE } from './logic/challenge250.js';
+import { LIB_MOD_INTROS, LIB_SHAPE_INTROS } from './logic/climbLibrary.js';
 import { loadHandicaps } from './logic/handicaps.js';
 import {
   loadStats, saveTheme, loadTheme, resetStats,
@@ -817,12 +818,16 @@ for (const tab of $$('.timed-tab')) {
 const GIMMICK_LABELS = (() => {
   const labels = {};
   const defs = getGimmickDefs();
-  for (const [block, key] of Object.entries(MOD_INTRO_BLOCKS)) {
+  // The LIBRARY's schedule, not the braid's: from the day the runtime deals
+  // from the library, its intro blocks are the ones a player experiences,
+  // and a label naming the braid's would point at the wrong block for the
+  // three modifiers the sonar-forward cycle moved.
+  for (const [block, key] of Object.entries(LIB_MOD_INTROS)) {
     const def = defs[key];
     if (!def) continue;
     labels[(block - 1) * CHALLENGE_BLOCK_SIZE + 1] = { key, icon: def.icon, name: def.name };
   }
-  for (const [block, type] of Object.entries(SHAPE_INTRO_BLOCKS)) {
+  for (const [block, type] of Object.entries(LIB_SHAPE_INTROS)) {
     labels[(block - 1) * CHALLENGE_BLOCK_SIZE + 1] = { key: null, icon: '', name: tilingLabel(type) };
   }
   return labels;
@@ -898,8 +903,11 @@ function showCheckpointSelector() {
         // This entry path bypasses switchMode, so clear the playtest flags
         // here too, a real checkpoint start must record progression, and must
         // not inherit a ?coastline= tiling practice (which would route newGame
-        // into the tiling branch and record a challenge run on a test board).
+        // into the tiling branch and record a challenge run on a test board)
+        // or a ?level=&board= pinned bin index (which would deal the same
+        // library board on every level of the run).
         state.isLevelPractice = false;
+        state.climbBoardIndex = null;
         clearCoastlinePractice();
         state.currentLevel = cp;
         newGame();
@@ -1285,7 +1293,7 @@ $('#btn-signin-google')?.addEventListener('click', async () => {
   } else if (result.status === 'error') {
     showToast(`Sign-in failed: ${result.message || 'unknown error'}`);
   }
-  // cancelled / popup-closed → silent
+  // canceled / popup-closed → silent
 });
 
 // Email link sign-in button, reveals the email input form. Send button
@@ -1472,7 +1480,7 @@ subscribeToUidChanges(async ({ uid, isInitial }) => {
     // Re-publish this device's current leaderboard name under the NEW uid so
     // the switched-in account's rows resolve to the player's live name via the
     // playerNames join. The name is LOCAL (not part of the abandoned per-uid
-    // data), so it carries across the switch; without this the new uid's
+    // data), so it survives the switch; without this the new uid's
     // playerNames node stays empty and its past rows fall back to their frozen
     // stored names, breaking the "a name change shows on every record"
     // guarantee on exactly the cross-device link path this feature targets.
@@ -2137,7 +2145,7 @@ async function init() {
   // three dailies on their phone won't reset their provisional handicap
   // when they first open the PWA on their laptop. Save-scumming via a
   // uid reset legitimately resets the cache (new uid = no history to
-  // backfill), which is the intended behaviour for that gesture.
+  // backfill), which is the intended behavior for that gesture.
   initAnonymousAuth().then(async () => {
     const uid = getUid();
     if (!uid) return;
@@ -2171,6 +2179,14 @@ async function init() {
   // No upper clamp: the endless zone is a real part of the ladder and has to
   // be reachable for playtesting like any other stretch of it.
   const deepLinkLevel = (isTestEnvironment() && _levelParam >= 1) ? _levelParam : 0;
+  // ?level=N&board=I picks bin index I from the level's library file
+  // instead of rolling the seen-cycle: the deterministic venue the e2e
+  // debut specs need, since a random deal would hand them a different
+  // lattice per run. Rides the same derivation gate as ?level= itself and
+  // is read only on the practice lane (climbDeal checks isLevelPractice).
+  const _boardParam = parseInt(urlParams.get('board') || '', 10);
+  const deepLinkBoard = (deepLinkLevel > 0 && Number.isInteger(_boardParam) && _boardParam >= 0)
+    ? _boardParam : null;
   // ?coastline=, test-environment-only tiling board (Project Coastline
   // Phase 2). Gated exactly like ?level=, so it is UNREACHABLE in production
   // no matter which of the six lattices the link names; the player-facing
@@ -2346,6 +2362,7 @@ async function init() {
     state.gameMode = 'normal';
     updateModeUI('normal');
     state.isLevelPractice = true;
+    state.climbBoardIndex = deepLinkBoard;
     state.currentLevel = deepLinkLevel;
     hideTitleScreen();
     await newGame();

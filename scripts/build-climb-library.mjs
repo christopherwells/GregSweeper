@@ -37,6 +37,9 @@ import { TILING_SAFE_GIMMICKS } from '../src/logic/tilingGenerator.js';
 import {
   CHALLENGE_MAX_LEVEL, CHALLENGE_BLOCK_SIZE, CLIMB_MIN_PAR_SECONDS, specFace,
 } from '../src/logic/challenge250.js';
+import {
+  LIB_SHAPE_INTROS, LIB_MOD_INTROS, intakeRules, boardAllowedAtLevel,
+} from '../src/logic/climbLibrary.js';
 import { modelFingerprint } from '../src/logic/parModelFingerprint.js';
 
 const OUT_DIR = new URL('./data/climb-library/', import.meta.url);
@@ -51,16 +54,12 @@ const OUT_DIR = new URL('./data/climb-library/', import.meta.url);
 // first-lattice slot because it is the gentlest introduction to new
 // adjacency; what moves is the modifier that makes it testable.
 //
-// The shipped challenge250.js schedule keeps running the live pool ladder
-// until the runtime is wired to the library; from that day this table is
-// the one source and the checkpoint labels read from the manifest.
-const LIB_SHAPE_INTROS = {
-  7: 'hex', 8: '4.8.8', 10: 'cairo', 12: 'rhombille', 14: 'floret', 16: 'deltoidal',
-};
-const LIB_MOD_INTROS = {
-  2: 'walls', 3: 'liar', 4: 'mystery', 6: 'sonar', 9: 'wormhole',
-  11: 'mirror', 13: 'locked', 15: 'compass', 17: 'worm',
-};
+// The runtime deals from the library since 2026-08-11: these tables (now
+// in src/logic/climbLibrary.js, re-exported here) are the one source, and
+// the checkpoint labels read them. The braid's derived tables describe
+// only the drawn fallback path.
+// LIB_SHAPE_INTROS / LIB_MOD_INTROS moved to src/logic/climbLibrary.js
+// (the runtime deals under the same schedule; scripts re-export below).
 
 // ── His rulings, as numbers ────────────────────────────────────────────
 // "longer than 2 minutes each", "the board can go 20 minutes of work, if
@@ -249,42 +248,6 @@ function candidate(spec, seed) {
   };
 }
 
-/**
- * What a level may take in, derived from its number and its file's own
- * `intro` field. The ONE copy of the schedule-legality rule: the top-up and
- * the reprice re-binner both place boards through this, so they can never
- * disagree with the build about where a shape or modifier is allowed.
- */
-function intakeRules(level, intro) {
-  const block = Math.floor((level - 1) / CHALLENGE_BLOCK_SIZE) + 1;
-  const shapesIn = new Set(['rect']);
-  for (const [b, sh] of Object.entries(LIB_SHAPE_INTROS)) {
-    if (Number(b) <= block) shapesIn.add(sh);
-  }
-  const modsIn = new Set();
-  for (const [b, g] of Object.entries(LIB_MOD_INTROS)) {
-    if (Number(b) <= block) modsIn.add(g);
-  }
-  const isModIntro = intro != null && Object.values(LIB_MOD_INTROS).includes(intro);
-  return {
-    block,
-    shapesIn,
-    modsIn,
-    // A shape-debut level is single-shape by ruling; a modifier-debut level
-    // takes any introduced shape but every stack must carry the debut mod.
-    shapeDebut: intro != null && !isModIntro ? intro : null,
-    requiredMod: isModIntro ? intro : null,
-  };
-}
-
-/** May this board sit at this level? Window is the caller's business. */
-function boardAllowedAtLevel(board, rules) {
-  const { shape, gimmicks } = board.spec;
-  if (rules.shapeDebut && shape !== rules.shapeDebut) return false;
-  if (!rules.shapesIn.has(shape)) return false;
-  if (rules.requiredMod && !(gimmicks || []).includes(rules.requiredMod)) return false;
-  return (gimmicks || []).every((g) => rules.modsIn.has(g));
-}
 
 export { parFloor, parWindowTop, hardFloor, minBoardsFor, legalPatches, GIMMICK_SETS, candidate, hardOf,
   MIN_PAR, MIN_WORK, CANDIDATES_PER_KEEP, OUT_DIR,
