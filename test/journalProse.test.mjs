@@ -469,9 +469,12 @@ test('conclusionLine: past-tense finding anchored to its close date', () => {
   });
   const line = conclusionLine(wormholes, 'closed-lost', newSession());
   assert.match(line, /^Wormholes |^The wormholes /);
-  // The header names the feature, so the unit is short: "per pair",
-  // never "per wormhole pair" (Christopher's spec example).
-  assert.match(line, /0\.3% per pair/);
+  // The header names the feature, so the unit is short: "per ten pairs",
+  // never "per ten wormhole pairs" (Christopher's spec example, carried
+  // through the 2026-08-11 per-ten scaling: a 0.15% per-pair effect now
+  // speaks as its whole-percent per-ten form).
+  assert.match(line, /3% per ten pairs/);
+  assert.ok(!/\d\.\d% per ten pairs/.test(line), `the per-ten scale exists to retire decimals: "${line}"`);
   assert.match(line, /Closed May 30\.$/);
   assertProseRails(line, 'ledger');
 

@@ -2,7 +2,7 @@
 // function returns a single <svg> element the caller can append to the DOM.
 //
 // Shared conventions across charts:
-//   - viewBox is 600 × 400 by default (aspect ~1.5:1) — same as the
+//   - viewBox is 600 × 400 by default (aspect ~1.5:1), same as the
 //     history chart so all stats-panel charts render at a consistent
 //     size when the panel width changes.
 //   - User units. Text sizes (~22 units) render readably even when the
@@ -10,7 +10,7 @@
 //   - Grid is light, zero-line is prominent, colors come from CSS classes
 //     so themes can override.
 //
-// All charts degrade gracefully on empty/sparse input — they return an
+// All charts degrade gracefully on empty/sparse input, they return an
 // empty-state <div> when there's nothing to draw.
 
 const NS = 'http://www.w3.org/2000/svg';
@@ -51,7 +51,7 @@ function makeSvg(ariaLabel) {
 
 // Greedy word-wrap. Splits a label on whitespace and packs words into
 // lines of up to `maxChars` characters. Used for SVG <text> labels that
-// would otherwise clip off the chart edge — SVG text doesn't wrap on
+// would otherwise clip off the chart edge, SVG text doesn't wrap on
 // its own, so the caller stacks the resulting lines as <tspan>s.
 function wrapLabel(label, maxChars) {
   if (!label || label.length <= maxChars) return [label || ''];
@@ -72,7 +72,7 @@ function wrapLabel(label, maxChars) {
   return lines;
 }
 
-// Nice axis tick step — returns a step value that divides `range` into 4-7 ticks.
+// Nice axis tick step, returns a step value that divides `range` into 4-7 ticks.
 function niceStep(range) {
   if (range <= 1) return 0.2;
   if (range <= 2.5) return 0.5;
@@ -137,12 +137,37 @@ function drawXTicks(svg, layout, xValues, xToPx, opts = {}) {
 // ── Line chart ──────────────────────────────────────────────────
 //
 // points: [{x: string or index, y: number, label?: string}]
+// Continuous 0..1 gradient for value-colored dots, viridis anchors: the
+// perceptually uniform ramp R plots with by default, so it reads as a
+// measurement scale rather than a traffic light, stays colorblind-safe,
+// and is legible on both light and dark themes (its ends are dark purple
+// and bright yellow, neither of which any theme uses as a surface).
+const VIRIDIS = [
+  [0.00, 0x44, 0x01, 0x54],
+  [0.25, 0x3b, 0x52, 0x8b],
+  [0.50, 0x21, 0x91, 0x8c],
+  [0.75, 0x5e, 0xc9, 0x62],
+  [1.00, 0xfd, 0xe7, 0x25],
+];
+export function valueGradient01(t) {
+  const x = Math.max(0, Math.min(1, Number.isFinite(t) ? t : 0));
+  let lo = VIRIDIS[0], hi = VIRIDIS[VIRIDIS.length - 1];
+  for (let i = 0; i < VIRIDIS.length - 1; i++) {
+    if (x >= VIRIDIS[i][0] && x <= VIRIDIS[i + 1][0]) { lo = VIRIDIS[i]; hi = VIRIDIS[i + 1]; break; }
+  }
+  const f = hi[0] === lo[0] ? 0 : (x - lo[0]) / (hi[0] - lo[0]);
+  const ch = (i) => Math.round(lo[i] + (hi[i] - lo[i]) * f);
+  return `rgb(${ch(1)}, ${ch(2)}, ${ch(3)})`;
+}
+
 // opts: {
 //   ariaLabel, yLabel,
 //   yDomain? (auto if omitted),
 //   yFormat? (function),
 //   lineClass? (CSS class for the connecting path),
+//   noLine? (true skips the connecting path entirely),
 //   dotClassForValue? (fn: value -> class),
+//   dotFill? (fn: value -> CSS color; wins over class fills via inline style),
 //   thresholdLine? (y value for a reference horizontal, e.g. 0)
 // }
 export function lineChart(points, opts = {}) {
@@ -219,8 +244,10 @@ export function lineChart(points, opts = {}) {
     }
   }
 
-  // Primary connecting path
-  if (points.length > 1) {
+  // Primary connecting path (opts.noLine drops it: a dot field can read as
+  // a distribution over time, and a line through it invents an order story
+  // the dots do not tell).
+  if (points.length > 1 && !opts.noLine) {
     const d = points
       .map((p, i) => `${i === 0 ? 'M' : 'L'}${xToPx(i)},${yToPx(p.y)}`)
       .join(' ');
@@ -231,13 +258,19 @@ export function lineChart(points, opts = {}) {
     }));
   }
 
-  // Primary dots
+  // Primary dots. Radius eases down as the series gets dense, so a long
+  // history reads as a band instead of a smear of overlapping circles.
+  const dotR = points.length > 90 ? 4 : points.length > 45 ? 5.5 : 7;
   for (let i = 0; i < points.length; i++) {
     const p = points[i];
     const cls = 'chart-dot ' + (opts.dotClassForValue ? opts.dotClassForValue(p.y) : '');
     const dot = el('circle', {
-      cx: xToPx(i), cy: yToPx(p.y), r: 7, class: cls.trim(),
+      cx: xToPx(i), cy: yToPx(p.y), r: dotR, class: cls.trim(),
     });
+    // Inline style, not a presentation attribute: CSS class fills would win
+    // over an attribute, and the whole point of dotFill is a continuous
+    // per-value color no class list can enumerate.
+    if (opts.dotFill) dot.style.fill = opts.dotFill(p.y);
     const title = el('title', {});
     title.textContent = p.label || `${p.x}: ${p.y}`;
     dot.appendChild(title);
@@ -437,7 +470,7 @@ export function barChart(labels, values, opts = {}) {
 // Silverman's rule of thumb: h = 1.06 σ n^(-1/5). Renders as a filled
 // curve with an optional vertical threshold line (e.g. par = 0).
 //
-// values: number[] — the samples
+// values: number[], the samples
 // opts: {
 //   ariaLabel,
 //   xFormat? (number -> string for axis labels),
@@ -457,7 +490,7 @@ export function densityChart(values, opts = {}) {
   const mean = values.reduce((s, v) => s + v, 0) / n;
   const variance = values.reduce((s, v) => s + (v - mean) ** 2, 0) / Math.max(1, n - 1);
   const sd = Math.sqrt(variance) || 1;
-  // Silverman's rule of thumb — robust for small samples and easy to reason
+  // Silverman's rule of thumb, robust for small samples and easy to reason
   // about. Floor keeps the curve readable when variance is tiny.
   const bandwidth = Math.max(1, 1.06 * sd * Math.pow(n, -1 / 5));
 
@@ -474,7 +507,7 @@ export function densityChart(values, opts = {}) {
       const z = (x - v) / bandwidth;
       acc += Math.exp(-0.5 * z * z);
     }
-    // Constant normaliser — not needed for display shape, but keeps
+    // Constant normalizer, not needed for display shape, but keeps
     // peak height comparable across populations.
     return acc / (n * bandwidth * Math.sqrt(2 * Math.PI));
   };
@@ -491,7 +524,7 @@ export function densityChart(values, opts = {}) {
   const xToPx = x => layout.padLeft + plotW * ((x - xMin) / (xMax - xMin));
   const yToPx = y => layout.padTop + plotH * (1 - y / (yMax * 1.1));
 
-  // Y grid — omit y-axis labels since the numeric density value is not
+  // Y grid, omit y-axis labels since the numeric density value is not
   // the reader's target ("how often this delta" reads more intuitively
   // from bar height alone).
   drawYAxis(svg, layout, [0, yMax * 1.1], yToPx, {
@@ -561,7 +594,7 @@ export function densityChart(values, opts = {}) {
     fill: 'none',
   }));
 
-  // X tick labels — use nice round values near min, mean, and max.
+  // X tick labels, use nice round values near min, mean, and max.
   const ticks = [xMin, (xMin + xMax) / 2, xMax].map(v => Math.round(v));
   const uniqueTicks = [...new Set(ticks)].sort((a, b) => a - b);
   for (const t of uniqueTicks) {
@@ -654,7 +687,7 @@ export function boxChart(boxes, opts = {}) {
 // Layout: fixed left column for category label, fixed right column for
 // value text, bars live in the middle with a vertical zero line. Bars
 // extend left for negative values and right for positive, but the value
-// text always sits in the same far-right column — so collisions between
+// text always sits in the same far-right column, so collisions between
 // bar and value label are impossible even on very short bars.
 export function heatBars(items, opts = {}) {
   if (!items || items.length === 0) {

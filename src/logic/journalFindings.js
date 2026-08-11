@@ -1,14 +1,14 @@
-// ── Greg's Journal — findings derived from the refit history ──────────
+// ── Greg's Journal, findings derived from the refit history ──────────
 // Pure functions over the shipped modelHistory.json (one row per nightly
 // Bayesian refit) and experimentTarget.json (the live mission). No DOM,
-// no Firebase, no network — node-testable.
+// no Firebase, no network, node-testable.
 //
 // A STUDY is a per-feature longitudinal track. The rows whose `target`
 // is that feature mark the days Greg deliberately sent boards carrying
 // it (the study days); the feature's posterior mean/sd rides along in
 // EVERY row's `candidates` table, so the uncertainty trajectory is read
 // from all rows, not just study days. Grouping by contiguous target
-// runs would be meaningless — the refit never repeats a target within
+// runs would be meaningless, the refit never repeats a target within
 // three days, so nearly every run has length one.
 //
 // Honesty rules (the same contract as gregVoice.js):
@@ -19,13 +19,13 @@
 //    (sonar reads 0.67 → 0.02 across the flip on ONE new score). Every
 //    trajectory, verdict, and estimate therefore reads ONE consistent
 //    log-scale series: rows on/after SCALE_EPOCH contribute their live
-//    `candidates`; earlier rows contribute ONLY `candidatesLog` — the
+//    `candidates`; earlier rows contribute ONLY `candidatesLog`, the
 //    sequential backfit's retrodiction (today's model refit on just the
 //    data each date had; scripts/backfit-model-history.R). A pre-epoch
 //    row's original `candidates` is seconds-scale provenance and never
 //    enters a trajectory. Retrodicted points carry `retro: true`; the
 //    sparkline draws them dimmer and its hover tooltip says
-//    "re-measured" (the standalone caption was cut 2026-07-12 —
+//    "re-measured" (the standalone caption was cut 2026-07-12,
 //    disclosure copy that raises questions it doesn't answer).
 //  - Retrodicted points are CHART HISTORY, never verdict inputs: a
 //    sparse early feature's posterior mostly echoes its prior (sonar's
@@ -36,7 +36,7 @@
 //  - A study with fewer than two live-era fits gets an 'early'
 //    verdict, never a number.
 //  - A studied feature the voice layer has no plain name for is never
-//    rendered under its code name — buildJournal separates those out
+//    rendered under its code name, buildJournal separates those out
 //    so the UI can count them honestly without jargon.
 
 import { featureName, featureHypothesis, classifySdDelta } from './gregVoice.js';
@@ -53,7 +53,7 @@ export const VERDICT_THRESHOLD_PCT = 15;
 
 // Resting: the model has moved on. A study rests when the refit hasn't
 // targeted it for this many days AND its posterior CV sits in the
-// bottom half of the latest fit's uncertainty ordering — the literal
+// bottom half of the latest fit's uncertainty ordering, the literal
 // mechanism by which the nightly target chooser spends boards elsewhere
 // (the primary target is the top-CV feature). Both halves matter: an
 // untargeted feature with HIGH remaining uncertainty isn't resting,
@@ -117,7 +117,7 @@ function daysBetween(a, b) {
 // The row's log-scale candidates table for the unified series. Rows in
 // the current era carry it natively as `candidates`; pre-epoch rows
 // contribute ONLY their `candidatesLog` retrodiction (null when the
-// backfit skipped that date) — their original seconds-scale
+// backfit skipped that date), their original seconds-scale
 // `candidates` must never be read into a trajectory.
 function _logScaleTable(row, epoch) {
   if (row.date >= epoch) return { table: row.candidates, retro: false };
@@ -127,7 +127,7 @@ function _logScaleTable(row, epoch) {
 // One usable row per date, chronological. Some dates carry several
 // refits (re-runs, the migration day had four); the LAST row for a date
 // is the latest, matching how the file is appended. Rows without a date
-// or a candidates table carry nothing a finding can cite — dropped.
+// or a candidates table are useless to a finding, dropped.
 export function dedupeHistory(history) {
   if (!Array.isArray(history)) return [];
   const byDate = new Map();
@@ -141,8 +141,8 @@ export function dedupeHistory(history) {
 function _buildStudy(feature, rows, epoch, latestContext) {
   const studyDays = rows.filter(r => r.target === feature);
 
-  // The unified log-scale uncertainty trajectory — the feature's entry
-  // on every row that carries a log-scale table for it (live candidates
+  // The unified log-scale uncertainty trajectory, the feature's entry
+  // on every row holding a log-scale table for it (live candidates
   // in the current era, candidatesLog retrodictions before it).
   const trajectory = [];
   for (const row of rows) {
@@ -197,7 +197,7 @@ function _latestContext(rows) {
 
 // Every feature the refit has ever deliberately targeted, each as a
 // full longitudinal study, in first-targeted order. Includes unnamed
-// features — buildJournal decides what is renderable.
+// features, buildJournal decides what is renderable.
 export function deriveStudies(history) {
   const rows = dedupeHistory(history);
   if (rows.length === 0) return [];
@@ -232,17 +232,17 @@ export function deriveStudyForFeature(history, feature) {
 // a date with little usable signal, the fit's posterior mostly echoes
 // its prior, so a first-to-last comparison spanning retrodictions would
 // narrate a prior artifact as a finding. The kinds:
-//   settling — the estimate tightened past the threshold (the study is working)
-//   widened  — more data brought MORE spread (a finding, published like any other)
-//   resting  — untargeted for weeks AND low on the latest fit's CV ordering;
+//   settling, the estimate tightened past the threshold (the study is working)
+//   widened , more data brought MORE spread (a finding, published like any other)
+//   resting , untargeted for weeks AND low on the latest fit's CV ordering;
 //              the experiment is deliberately spending its boards elsewhere.
 //              Never shown over a widened study (a widening picture is not
 //              "sure enough"), and carries no number.
-//   open     — moved less than the threshold either way
-//   early    — fewer than two live-era fits; no number, ever
+//   open    , moved less than the threshold either way
+//   early   , fewer than two live-era fits; no number, ever
 // The copy is Greg's first person, plain register, no em-dashes
 // (Christopher's voice ruling, 2026-07-12). It never names the feature
-// (the card header does) and never claims the MECHANISM was confirmed —
+// (the card header does) and never claims the MECHANISM was confirmed,
 // narrowing proves the estimate is settling, not that Greg's hunch
 // about why was right. The settling verdict names its window's REAL
 // start date (the first live-era fit) so it can never be misread
@@ -299,27 +299,61 @@ export function classifyVerdict(study) {
 // The current fitted effect as plain percentages: the model is
 // log-scale in the current era (that is what SCALE_EPOCHS marks), so a
 // coefficient is a log-multiplier and exp(coef) − 1 is "percent added
-// per unit". lo/hi are the ±1 SD band — the give-or-take the card must
+// per unit". lo/hi are the ±1 SD band, the give-or-take the card must
 // always show alongside the point estimate. Null when the study has no
 // era fits yet.
+// PER-TEN-TILES SCALING (his ask, 2026-08-11: "make it less decimally...
+// perhaps for every 10 tiles of that in a puzzle"). A per-cell coefficient
+// lives in decimal territory ("about 0.3% per sonar cell"), so when one
+// unit's effect is under SCALE_UP_BELOW_PCT the whole estimate speaks per
+// TEN units instead. Exact on the log scale, never approximated: the
+// model's own prediction for ten more units is exp(10 x coef), which is
+// what a reader would check it against in R. Digit shares never scale
+// (their unit is already "one extra N in ten clues", and ten of those is
+// not a quantity a board can hold).
+const SCALE_UP_BELOW_PCT = 3;
+
+function estimateScale(study) {
+  const latest = study?.latest;
+  if (!latest) return 1;
+  if (String(study?.feature || '').startsWith('clueShare')) return 1;
+  const perUnit = Math.abs((Math.exp(latest.mean) - 1) * 100);
+  return perUnit < SCALE_UP_BELOW_PCT ? 10 : 1;
+}
+
+// All FEATURE_UNITS nouns pluralize regularly (cell, pair, wall, area,
+// deduction, read, mine), so the phrase is "ten " + unit + "s".
+function pluralUnit(unit) {
+  return `${unit}s`;
+}
+
+/** The display unit phrase, scale included: "sonar cell" or "ten sonar cells". */
+export function estimateUnit(study) {
+  const unit = study?.unit;
+  if (!unit) return null;
+  return estimateScale(study) === 10 ? `ten ${pluralUnit(unit)}` : unit;
+}
+
 export function estimateSummary(study) {
   const latest = study?.latest;
   if (!latest) return null;
-  const pct = (x) => (Math.exp(x) - 1) * 100;
+  const scale = estimateScale(study);
+  const pct = (x) => (Math.exp(x * scale) - 1) * 100;
   return {
     pct: pct(latest.mean),
     lo: pct(latest.mean - latest.sd),
     hi: pct(latest.mean + latest.sd),
     asOf: latest.date,
+    scale,
   };
 }
 
 // Percent formatting for player surfaces (Christopher's ruling,
-// 2026-07-12): whole percents — tenths on five players' data are false
-// precision — except below 1%, where a whole number would read as
+// 2026-07-12): whole percents, tenths on five players' data are false
+// precision, except below 1%, where a whole number would read as
 // exactly zero or exactly one; there a single decimal survives ("about
 // 0.3%"). A positive value that would still render "0.0" floors at
-// "0.1" — "about 0.1%" stays honest where "0%" would claim a certainty
+// "0.1", "about 0.1%" stays honest where "0%" would claim a certainty
 // the fit doesn't have.
 export function fmtPct(x) {
   if (typeof x !== 'number' || !Number.isFinite(x)) return null;
@@ -331,7 +365,7 @@ export function fmtPct(x) {
 
 // The estimate as ONE plain sentence (Greg's plain register, no
 // em-dashes, at most one hedge word). When the ±1 SD band dips to or
-// below zero the honest reading is "between 0% and about X%" — tiny
+// below zero the honest reading is "between 0% and about X%", tiny
 // effects (liar cells today) must never render as a fake negative, the
 // old two-sentence hedge stack read as fake, and the bound is spoken
 // as the number 0%, never "nothing" (Christopher's ruling, 2026-07-12).
@@ -340,27 +374,33 @@ export function estimateLine(study) {
   const est = estimateSummary(study);
   const unit = study?.unit;
   if (!est || !unit) return null;
+  // At scale ten the subject is a quantity ("ten sonar cells"), so the
+  // verbs go plural; at scale one it stays the classic "each sonar cell".
+  const ten = est.scale === 10;
+  const subj = ten ? `Ten ${pluralUnit(unit)}` : `Each ${unit}`;
+  const add = ten ? 'add' : 'adds';
+  const seem = ten ? 'seem' : 'seems';
   if (est.hi <= 0) {
     // A whole band below zero (no live example yet): the honest claim
     // is a small time refund, flagged as one Greg is re-checking.
-    return `Each ${unit} seems to give a little time back, about ${fmtPct(Math.abs(est.pct))}%. I’m double-checking that.`;
+    return `${subj} ${seem} to give a little time back, about ${fmtPct(Math.abs(est.pct))}%. I’m double-checking that.`;
   }
   if (est.lo <= 0) {
-    return `Each ${unit} adds somewhere between 0% and about ${fmtPct(est.hi)}% to your time.`;
+    return `${subj} ${add} somewhere between 0% and about ${fmtPct(est.hi)}% to your time.`;
   }
   const loStr = fmtPct(est.lo);
   const hiStr = fmtPct(est.hi);
   if (loStr === hiStr) {
-    // Both band ends round to the same figure (mine density today) —
+    // Both band ends round to the same figure (mine density today),
     // "likely between 6% and 6%" is not a sentence.
-    return `Each ${unit} adds about ${fmtPct(est.pct)}% to your time, and the band barely strays from that.`;
+    return `${subj} ${add} about ${fmtPct(est.pct)}% to your time, and the band barely strays from that.`;
   }
-  return `Each ${unit} adds about ${fmtPct(est.pct)}% to your time, likely between ${loStr}% and ${hiStr}%.`;
+  return `${subj} ${add} about ${fmtPct(est.pct)}% to your time, likely between ${loStr}% and ${hiStr}%.`;
 }
 
 // The full-ledger table: every NAMED feature in the latest fit's
 // candidates as a compact effect + range row, sorted by effect size.
-// This is the "full parameter picture" behind the notebook's one link —
+// This is the "full parameter picture" behind the notebook's one link,
 // never-targeted features (board size, mine density) appear here even
 // though no study exists for them. A band straddling zero shows a
 // floor of 0% (same no-fake-negatives rule as estimateLine); the
@@ -373,9 +413,9 @@ export function parameterTable(history) {
   // (reachable when a stale cached history ends before the epoch).
   const epoch = currentEpoch();
   const liveRows = rows.filter(r => r.date >= epoch);
-  // Walk BACK to the most recent row that carries a real fit. A
+  // Walk BACK to the most recent row holding a real fit. A
   // diagnostics-rejected refit appends a thin fallback row with an EMPTY
-  // candidates list (method seed-residuals — the safety gate keeping the
+  // candidates list (method seed-residuals, the safety gate keeping the
   // previous model), and because dedupeHistory keeps the LAST row per date,
   // one rejected re-run can shadow the same day's good fit. Reading that row
   // blanked the whole parameter ledger the first night it happened
@@ -434,7 +474,7 @@ export function buildJournal(history, experimentMeta) {
   return {
     studies: named,
     unnamedCount,
-    // The live study — null when the target is unnamed (no jargon on a
+    // The live study, null when the target is unnamed (no jargon on a
     // player surface) or when no target is loaded.
     open: openTarget && openLabel
       ? {
@@ -458,7 +498,7 @@ export function buildJournal(history, experimentMeta) {
 // Resolve a shareable finding id (the feature key) to its study. Only
 // NAMED features are shareable; anything else is null, so a mistyped or
 // unknown id falls back gracefully. A named feature the refit has never
-// targeted still resolves (via deriveStudyForFeature) — the active card
+// targeted still resolves (via deriveStudyForFeature), the active card
 // can be exactly that study on a fresh target's first day, and its
 // Share button must not dead-end on the recipient.
 export function findingById(history, id) {
