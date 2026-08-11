@@ -26,11 +26,11 @@ const UNKNOWN = 255;
 //   - liar: display is true count ± 1, so it's one of two values, not a single number
 //     (the disjunctive constraint is emitted separately in buildLiarConstraints)
 // Mirror cells display the partner's count for visual deception; a player who
-// recognises the pair can mentally un-swap and reason with the cell's TRUE
+// recognizes the pair can mentally un-swap and reason with the cell's TRUE
 // adjacency (cell.adjacentMines).
 //
 // `stripGimmicks` (Set<string>) lets callers ask "what could the player solve
-// without info from these gimmick types?" — used by the load-bearing check
+// without info from these gimmick types?", used by the load-bearing check
 // in candidate selection. When mirror is stripped the player loses the un-
 // swap deduction and the cell becomes UNKNOWN.
 function getPlayerVisibleCount(cell, stripGimmicks) {
@@ -43,7 +43,7 @@ function getPlayerVisibleCount(cell, stripGimmicks) {
 // True when this cell contributes a "value is X-1 OR X+1" constraint to the
 // solver (plain liar, possibly stacked with locked). Liar combined with a
 // base-value or display-blocking gimmick produces too tangled a deduction
-// path to model precisely — those cells contribute nothing.
+// path to model precisely, those cells contribute nothing.
 //
 // When 'liar' is in `stripGimmicks`, no liar disjunctive constraints fire at
 // all (the load-bearing test for liar).
@@ -56,7 +56,7 @@ function isPureLiar(cell, stripGimmicks) {
 
 /**
  * Check if a Minesweeper board is solvable without guessing.
- * Works on a simulation — does NOT mutate the original board.
+ * Works on a simulation, does NOT mutate the original board.
  *
  * @param {Array<Array<Object>>} board  - 2D array of cell objects
  * @param {number} rows                 - board height
@@ -83,13 +83,13 @@ function isPureLiar(cell, stripGimmicks) {
 export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighborCache, options) {
   // Optional: callers can pass `{ stripGimmicks: ['liar', 'mirror', ...] }`
   // to ask "could the board be solved if these gimmick types contributed
-  // nothing?" — the basis of the load-bearing filter in candidate selection.
+  // nothing?", the basis of the load-bearing filter in candidate selection.
   const stripGimmicks = options && options.stripGimmicks
     ? (options.stripGimmicks instanceof Set ? options.stripGimmicks : new Set(options.stripGimmicks))
     : null;
 
   // Reveal gating: sonar / compass / wormhole constraints are available
-  // only once their number is on screen — the origin cell revealed (for
+  // only once their number is on screen, the origin cell revealed (for
   // wormhole: either endpoint, both display the pair sum). Without the
   // gate the certifier can rely on a clue the player cannot SEE yet (a
   // fogged gimmick cell displays nothing), weakening the no-guess
@@ -97,7 +97,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
   // contract flag (`board._gatedCert`, stamped by createEmptyBoard and
   // carried through canonical payloads and game saves), so historical
   // boards certified ungated keep their original contract and newly
-  // generated boards are certified gated — on every solver surface,
+  // generated boards are certified gated, on every solver surface,
   // automatically. `options.gateGimmickOrigins` overrides for
   // measurement tooling.
   const gateGimmickOrigins = options && options.gateGimmickOrigins !== undefined
@@ -155,7 +155,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
     }
   }
 
-  // Count total non-mine cells — our target for "all revealed"
+  // Count total non-mine cells, our target for "all revealed"
   let totalSafe = 0;
   for (let i = 0; i < rows * cols; i++) {
     if (!isMine[i]) totalSafe++;
@@ -166,7 +166,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
   const neighborCache = preNeighborCache || buildNeighborCache(board, rows, cols);
 
   // Pre-compute static gimmick constraints (sonar / compass / wormhole).
-  // stripGimmicks suppresses the constraint for the named types — used to
+  // stripGimmicks suppresses the constraint for the named types, used to
   // detect whether a gimmick is load-bearing on this board.
   const gimmickConstraints = buildStaticGimmickConstraints(board, rows, cols, neighborCache, stripGimmicks);
 
@@ -218,31 +218,31 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
   // is the primary feature driving predicted par time. `totalClicks` = 1 (first
   // click) + sum of the five buckets below.
   let passAMoves = 0;            // trivial propagation (count == flags / unknowns)
-  let canonicalSubsetMoves = 0;  // Pass B subset where the larger constraint is small (<=3 unknowns) — local 1-1 / 1-2 / 1-1-1 shapes
-  let genericSubsetMoves = 0;    // Pass B subset over a larger constraint — non-local, slower
+  let canonicalSubsetMoves = 0;  // Pass B subset where the larger constraint is small (<=3 unknowns), local 1-1 / 1-2 / 1-1-1 shapes
+  let genericSubsetMoves = 0;    // Pass B subset over a larger constraint, non-local, slower
   let advancedLogicMoves = 0;    // Pass C tank / gauss over exact constraints
   let disjunctiveMoves = 0;      // Pass C where liar disjunctive constraints were in play
 
   // Highest technique level the board required (hoisted so buildResult can read it):
   //   0 = simple propagation only (Pass A)
   //   1 = subset / superset analysis (Pass B)
-  //   2 = advanced solver — tank / gauss (Pass C)
+  //   2 = advanced solver, tank / gauss (Pass C)
   //   3 = required liar disjunctive reasoning to make a deduction
   let techniqueLevel = 0;
 
   // Opt-in deduction trace ({ trace: true }): one entry per deduced
-  // reveal — { cell, tier, sources } where sources are the origin cells
+  // reveal, { cell, tier, sources } where sources are the origin cells
   // of the constraints that PROVED the deduction (Pass A: the one
   // constraint; Pass B: the subset pair; Pass C: the whole union-find
   // component, which is the honest minimal explanation for enumeration).
-  // Collection only — behavior, counters, and ordering are unchanged.
+  // Collection only, behavior, counters, and ordering are unchanged.
   // Off in generation retry loops (they call without the option).
   // Invariant on solvable boards: trace.length + 1 === totalClicks.
   const trace = options && options.trace ? [] : null;
 
   // Opt-in pre-crux snapshot ({ captureCruxState: true }): a copy of the
   // sim grid (0 hidden / 1 revealed / 2 flagged) taken the instant before
-  // the FIRST tier>=1 reveal — the exact state a player faces at the
+  // the FIRST tier>=1 reveal, the exact state a player faces at the
   // board's crux. cruxExtract uses it to materialize the daily teaser
   // without re-implementing the flood/unlock logic. Like trace, this is
   // collection-only and off in generation hot loops.
@@ -283,7 +283,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
     sim[i] = 2; // flagged
   }
 
-  // Step 1: Simulate first click — reveal safeRow, safeCol and flood-fill zeros
+  // Step 1: Simulate first click, reveal safeRow, safeCol and flood-fill zeros
   totalClicks++;
   revealQueue.push(idx(safeRow, safeCol));
   while (revealQueue.length > 0) {
@@ -351,7 +351,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
         }
       }
 
-      // Rule 2: All mines accounted for — remaining unknowns are safe
+      // Rule 2: All mines accounted for, remaining unknowns are safe
       if (remaining === 0 && unknowns > 0) {
         for (const ni of nbrs) {
           // Still-locked cells stay unknowns: provably safe but
@@ -378,14 +378,14 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
 
     // ── Pass B: Subset / superset constraint analysis ──
     // Subset arithmetic only works with single-value (exact) constraints, so
-    // we skip Pass B for liar — its disjunctive constraints feed Pass C only.
+    // we skip Pass B for liar, its disjunctive constraints feed Pass C only.
     // Sonar / compass / wormhole are exact constraints over larger cell sets
     // and DO participate in subset analysis here.
     const baseConstraints = buildConstraints(sim, adjCount, neighborCache, rows * cols);
     const gimmickRuntime = buildGimmickRuntimeConstraints(gimmickConstraints, sim, gateGimmickOrigins);
     const constraints = [...baseConstraints, ...gimmickRuntime];
 
-    // Pre-build sets once per pass — avoids O(n) Array.includes / new Set() per pair
+    // Pre-build sets once per pass, avoids O(n) Array.includes / new Set() per pair
     const constraintSets = constraints.map(c => new Set(c.unknowns));
 
     let subsetProgress = false;
@@ -424,8 +424,8 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
 
         if (diffMines === 0 && diff.length > 0) {
           // Classify by the size of the LARGER constraint (cB.unknowns.length).
-          // <= 3 captures canonical 1-1, 1-2, and most 1-1-1 shapes — moves an
-          // experienced player recognises instantly. Larger constraints require
+          // <= 3 captures canonical 1-1, 1-2, and most 1-1-1 shapes, moves an
+          // experienced player recognizes instantly. Larger constraints require
           // real scanning and are grouped under "generic subset".
           const isCanonical = cB.unknowns.length <= 3;
           for (const di of diff) {
@@ -517,7 +517,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
     if (revealedCount === totalSafe) return buildResult(true, 0);
     if (advancedProgress || unlockedAfterC) continue;
 
-    // No progress from any layer — board requires guessing
+    // No progress from any layer, board requires guessing
     break;
   }
 
@@ -527,7 +527,7 @@ export function isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighbor
 // The player-facing certificate summary of a solver check: how long the
 // proven chain is (totalClicks = entry click + deductions) and the
 // hardest technique it needed. Returns null unless the check actually
-// certified a full clear — a certificate must never overclaim, so a
+// certified a full clear, a certificate must never overclaim, so a
 // failed or partial check produces NO stamp rather than a hedged one.
 // (The acceptance condition mirrors the generation loops: solvable, or
 // zero unknowns remaining.)
@@ -542,12 +542,12 @@ export function certificateFromCheck(check) {
 // re-runs the solver: if the board is still solvable without that gimmick's
 // info, the gimmick was decorative on this board.
 //
-//   - mystery: removes info by definition, can't be load-bearing — skipped.
+//   - mystery: removes info by definition, can't be load-bearing, skipped.
 //   - walls: changes adjacency topology, cell numbers were computed WITH walls;
 //     stripping would break the board's number coherence. Always structural.
 //   - locked: changes reveal order, not deductions. Always structural.
 //   - pressurePlate: challenge L71+ and chaos. It adds a real-time
-//     deadline, not a deduction constraint — the load-bearing question
+//     deadline, not a deduction constraint, the load-bearing question
 //     doesn't apply. mineShift: chaos-only.
 // Exported so a caller can tell in advance whether findDecorativeGimmicks has
 // anything to say about a board: it runs a BASELINE solve before testing
@@ -559,12 +559,12 @@ export const TESTABLE_GIMMICK_TYPES = ['sonar', 'compass', 'wormhole', 'liar', '
 // A gimmick "contributes" to the solve if stripping it does any of:
 //   1. Makes the board unsolvable (strict load-bearing).
 //   2. Forces a higher technique level (the player would have to reason
-//      harder without the gimmick — e.g. Pass C tank/gauss instead of
+//      harder without the gimmick, e.g. Pass C tank/gauss instead of
 //      Pass A).
 //   3. Adds a meaningful number of clicks the player would have to make
 //      manually because the gimmick no longer shortcuts the deduction
 //      chain. Threshold of 2 because saving exactly 1 click is often
-//      incidental — the same cell would have been deduced moments later
+//      incidental, the same cell would have been deduced moments later
 //      via a neighbor anyway.
 // If none of those three hold, the gimmick was decorative on this board.
 const SHORTCUT_CLICK_THRESHOLD = 2;
@@ -581,11 +581,11 @@ function _gimmickContributes(withCheck, strippedCheck) {
 // load-bearing filter, but returns the honest TIER instead of a boolean,
 // so the receipt copy can never overclaim ("required" is only said when
 // stripping the gimmick literally leaves the board unsolvable):
-//   required   — without it, no solution
-//   technique  — it lowers the reasoning class the board demands
-//   shortcut   — it saves >= SHORTCUT_CLICK_THRESHOLD clicks
-//   decorative — a free hint this time (relax-valve boards ship these)
-//   structural — walls/locked/mystery: the question doesn't apply
+//   required   - without it, no solution
+//   technique  - it lowers the reasoning class the board asks for
+//   shortcut   - it saves >= SHORTCUT_CLICK_THRESHOLD clicks
+//   decorative, a free hint this time (relax-valve boards ship these)
+//   structural, walls/locked/mystery: the question doesn't apply
 export function gradeGimmickContribution(board, rows, cols, safeRow, safeCol, type) {
   if (!TESTABLE_GIMMICK_TYPES.includes(type)) return { tier: 'structural' };
   const nbrCache = buildNeighborCache(board, rows, cols);
@@ -604,21 +604,21 @@ export function gradeGimmickContribution(board, rows, cols, safeRow, safeCol, ty
 //
 // The par model's gimmick features are raw cell counts, and force-injection
 // holds those nearly constant (every compass daily ships exactly 3 compass
-// cells) — so within a gimmick type, the count carries no difficulty signal
+// cells), so within a gimmick type, the count carries no difficulty signal
 // at all. Meanwhile the strip-and-resolve analysis above already computes the
-// counterfactual that DOES vary — what the board would cost without the
-// gimmick — and throws it away after the accept/reject decision. These
+// counterfactual that DOES vary, what the board would cost without the
+// gimmick, and throws it away after the accept/reject decision. These
 // features keep it: per testable type, was the gimmick REQUIRED (board
 // unsolvable without its information), and if not, how many deduction clicks
 // did it SAVE. Measured 2026-07-30 across all shipped compass dailies: the
 // one 7-click-shortcut board was the fastest day on record vs par (0.39×)
-// while required-grade boards dominate the slow tail — the axis exists and
+// while required-grade boards dominate the slow tail, the axis exists and
 // no stored feature could see it (audit under issue-era notes; Christopher's
 // hypothesis).
 //
 // clicksSaved is UNDEFINED on a required board (the stripped solve never
-// finishes), so it is reported 0 there and the Required flag carries that
-// case — a fit must read the pair jointly, never clicksSaved alone. There is
+// finishes), so it is reported 0 there and the Required flag covers that
+// case, a fit must read the pair jointly, never clicksSaved alone. There is
 // deliberately no technique-delta output (Christopher's ruling, 2026-07-30).
 //
 // These keys feed dailyMeta + the R refit's SECONDARY contribution fit only
@@ -634,7 +634,7 @@ export const CONTRIBUTION_FEATURE_KEYS = Object.freeze(
  * certified solve. Always returns ALL keys (zeros for absent types), so the
  * feature vector's shape is stable.
  *
- * Cost: one baseline solve plus one strip-solve per testable type present —
+ * Cost: one baseline solve plus one strip-solve per testable type present,
  * the same bill the load-bearing filter already pays per accepted board.
  *
  * @param {Array<Array<Object>>} board
@@ -659,7 +659,7 @@ export function computeContributionFeatures(board, rows, cols, safeRow, safeCol,
   const nbrCache = preNeighborCache || buildNeighborCache(board, rows, cols);
   const withCheck = isBoardSolvable(board, rows, cols, safeRow, safeCol, nbrCache);
   if (!withCheck.solvable && withCheck.remainingUnknowns > 0) {
-    // Unsolvable baseline — the caller should never hand us one (every
+    // Unsolvable baseline, the caller should never hand us one (every
     // shipped board certifies), and comparing strips against it would
     // report noise as measurement. All-zeros is the honest null.
     return out;
@@ -678,7 +678,7 @@ export function computeContributionFeatures(board, rows, cols, safeRow, safeCol,
 }
 
 /**
- * Returns the subset of activeGimmicks that are decorative on this board —
+ * Returns the subset of activeGimmicks that are decorative on this board,
  * i.e. stripping them changes nothing meaningful (board still solvable at
  * the same technique level with similar click count). A gimmick that
  * SHORTCUTS the solve (lets the player skip ≥2 clicks or use easier
@@ -704,11 +704,11 @@ export function findDecorativeGimmicks(board, rows, cols, safeRow, safeCol, acti
   const decorative = [];
   if (!Array.isArray(activeGimmicks) || activeGimmicks.length === 0) return decorative;
   // Baseline: the with-gimmicks solve. We compare each strip-test against
-  // this — if technique level rises or clicks rise meaningfully, the
+  // this, if technique level rises or clicks rise meaningfully, the
   // gimmick contributed. If neither, the gimmick was decoration.
   const withCheck = isBoardSolvable(board, rows, cols, safeRow, safeCol, preNeighborCache);
   if (!withCheck.solvable && withCheck.remainingUnknowns > 0) {
-    // Caller should have verified solvability already — bail rather than
+    // Caller should have verified solvability already, bail rather than
     // report misleading results on an unsolvable board.
     return decorative;
   }
@@ -772,7 +772,7 @@ export function buildStaticGimmickConstraints(board, rows, cols, neighborCache, 
       const cell = board[r][c];
       if (cell.isMine || cell.displayedMines == null) continue;
       // A mystery ("?") or pressure-plate (timer) cell REPLACES its number
-      // on screen, so the player can never read it — it must never become a
+      // on screen, so the player can never read it, it must never become a
       // certifier constraint, or we would certify a board using information
       // the player does not have (a no-guess hole). Today the stacking rules
       // keep mystery off base-value gimmicks, so displayedMines is undefined
@@ -783,7 +783,7 @@ export function buildStaticGimmickConstraints(board, rows, cols, neighborCache, 
       // Liar stacks freely on base-value gimmicks (gimmicks.js stacking
       // rules), and displayedMines then INCLUDES the ±1 lie. Emitting
       // that as an exact constraint would let the certifier deduce from
-      // a false premise — isPureLiar's contract says liar-stacked
+      // a false premise, isPureLiar's contract says liar-stacked
       // gimmick cells contribute nothing, and that must hold here too.
       if (cell.isLiar) continue;
 
@@ -823,8 +823,8 @@ export function buildStaticGimmickConstraints(board, rows, cols, neighborCache, 
   return out;
 }
 
-// A sonar / compass / wormhole constraint is on screen — usable by the
-// player — only when its number is visible: the origin cell is revealed,
+// A sonar / compass / wormhole constraint is on screen, usable by the
+// player, only when its number is visible: the origin cell is revealed,
 // or, for wormhole (both endpoints display the pair sum), either endpoint
 // is. Locked gimmick cells pass through naturally: once unlocked and
 // revealed, sim[origin] === 1.
@@ -850,14 +850,14 @@ function buildGimmickRuntimeConstraints(staticConstraints, sim, gateOrigins) {
     }
     if (unknownSet.length === 0) continue;
     const remaining = gc.expected - flagged;
-    if (remaining < 0 || remaining > unknownSet.length) continue; // infeasible — Pass A check will catch
+    if (remaining < 0 || remaining > unknownSet.length) continue; // infeasible, Pass A check will catch
     unknownSet.sort((a, b) => a - b);
     cs.push({ unknowns: unknownSet, allowedMines: [remaining], origin: gc.origin });
   }
   return cs;
 }
 
-// Liar cells contribute "true count is display - 1 OR display + 1" — a
+// Liar cells contribute "true count is display - 1 OR display + 1", a
 // disjunctive constraint with two allowed mine counts. Values that are
 // already infeasible given the current flagged count are filtered out;
 // if both become infeasible the constraint is a contradiction (caller's
@@ -913,7 +913,7 @@ export function buildBoardConstraints(board, opts = {}) {
   const idx = (r, c) => r * cols + c;
   const totalCells = rows * cols;
 
-  // Build simulation state from actual board — gimmick-aware (matches isBoardSolvable)
+  // Build simulation state from actual board, gimmick-aware (matches isBoardSolvable)
   const sim = new Uint8Array(totalCells);
   const adjCount = new Uint8Array(totalCells);
   const liarBase = new Int8Array(totalCells).fill(-1);
@@ -923,7 +923,7 @@ export function buildBoardConstraints(board, opts = {}) {
       const i = idx(r, c);
       const cell = board[r][c];
       // A revealed MINE (a daily/weekly strike cell, or a loss-cascade
-      // reveal) is a KNOWN MINE, not a revealed-safe cell — model it
+      // reveal) is a KNOWN MINE, not a revealed-safe cell, model it
       // like a confirmed flag (sim=2) so neighboring numbers count it.
       // Modeling it as sim=1 (zero mine contribution) poisons every
       // adjacent constraint: after one strike the engine would assert
@@ -958,12 +958,12 @@ export function buildBoardConstraints(board, opts = {}) {
 // or null if the situation was a genuine 50/50.
 
 // Analyze the live player-visible board state and return EVERYTHING that
-// is provably deducible right now — the full safe + mine frontier, each
+// is provably deducible right now, the full safe + mine frontier, each
 // deduction carrying its proving region (constraint origin cells), plus a
 // contradiction signal.
 //
 // `respectFlags: false` runs flags-blind: player flags are treated as
-// plain unknowns. This matters because flags are CLAIMS, not facts — a
+// plain unknowns. This matters because flags are CLAIMS, not facts, a
 // single wrong flag can poison the constraint system into certifying a
 // mine as "provably safe" or stamping "genuine 50/50" on a deducible
 // position. Every player-facing verdict (receipts, lens) must come from
@@ -975,7 +975,7 @@ export function buildBoardConstraints(board, opts = {}) {
 //   mines: Array<{row, col, tier, sources: Array<{row, col}>}>,
 //   contradiction: boolean,
 // }}  tier 0 = a single constraint pins it; tier 2 = needed the joint
-//     constraint solve (sources = the whole component — the honest
+//     constraint solve (sources = the whole component, the honest
 //     minimal explanation for enumeration); tier 3 = its component
 //     carried a liar disjunction.
 export function findDeducibleFrontier(board, opts = {}) {
@@ -1031,7 +1031,7 @@ export function findDeducibleFrontier(board, opts = {}) {
   // deduction fell through to the joint solve and surfaced as a
   // whole-component tier-2 answer ("all 6 highlighted clues at once"),
   // which is technically true but pedagogically useless for a plain
-  // 1-1 — the player should be pointed at exactly the two clues that
+  // 1-1, the player should be pointed at exactly the two clues that
   // settle it. Exact constraints only, same as the solver's Pass B.
   const exact = [...constraints, ...gimmickCs].filter(c => c.allowedMines.length === 1);
   for (let a = 0; a < exact.length; a++) {
@@ -1096,7 +1096,7 @@ export function findNextSafeMove(board) {
 // wrong when the flags-blind run proves that cell safe; the
 // flags-respecting run's contradiction flag additionally says "some flag
 // is wrong" even when it can't be localized. The most common true cause
-// of a stuck player is a wrong flag placed minutes earlier — this is the
+// of a stuck player is a wrong flag placed minutes earlier, this is the
 // honest version of "are you stuck?".
 export function detectWrongFlags(board) {
   const blind = findDeducibleFrontier(board, { respectFlags: false });
@@ -1159,7 +1159,7 @@ export function estimatePlateMovesToDisarm(board, plateRow, plateCol) {
   // shared definition, so neither can drift from the live game.
   const nbrCache = buildNeighborCache(board, rows, cols);
 
-  // Identify the safe neighbors we need revealed — the same set the live
+  // Identify the safe neighbors we need revealed, the same set the in-game
   // checkPlateDisarmed polls, so the countdown is priced for the actual job.
   const targets = new Set();
   for (const ni of plateDisarmCells(board, rows, cols, plateRow, plateCol)) {
@@ -1199,7 +1199,7 @@ export function estimatePlateMovesToDisarm(board, plateRow, plateCol) {
       //   - liar's value is {display-1, display+1}; the bounds differ
       //     by 2, so no Pass-A rule can fire on it alone (the multi-
       //     constraint solver in solveConstraints/tankSolve DOES use the
-      //     disjunctive constraint via buildLiarConstraints — we just
+      //     disjunctive constraint via buildLiarConstraints, we just
       //     can't use it here without that machinery).
       // Mirror cells use cell.adjacentMines directly: a smart player
       // decodes the swap and reasons with the true count.
@@ -1263,7 +1263,7 @@ export function estimatePlateMovesToDisarm(board, plateRow, plateCol) {
 
   // Targets this Pass-A-only estimator could NOT resolve need subset /
   // tank reasoning. They are returned in `unsolved` and priced by
-  // plateSeconds() at the par model's tier rate — the old flat
+  // plateSeconds() at the par model's tier rate, the old flat
   // "+2 steps each" fudge systematically under-timed exactly the
   // plates that need the hardest thinking (the contract gap).
   return { moves: totalMoves, steps: totalSteps, unsolved: remaining.size };
@@ -1296,7 +1296,7 @@ export function revealAllMines(board) {
 
 // NOTE (2026-07-19): this has NO callers anywhere in the repo, and routing it
 // through the topology deliberately changed its semantics from wall-BLIND to
-// wall-aware. That resolves a real disagreement — chordReveal has always
+// wall-aware. That resolves a real disagreement, chordReveal has always
 // counted its own adjacent flags wall-aware, so the two would have disagreed
 // on any walled board had this ever been wired up. Flagged for deletion.
 export function countAdjacentFlags(board, row, col, preNeighborCache) {
@@ -1317,16 +1317,16 @@ export function chordReveal(board, row, col) {
 
   // Can't chord ON a cell whose displayed number isn't its OWN adjacent-mine
   // count. Liar (true ±1) and mystery (hidden) were already covered; the
-  // base-value gimmicks show something unrelated to the 8 neighbors — sonar a
+  // base-value gimmicks show something unrelated to the 8 neighbors, sonar a
   // region count, compass a directional count, wormhole/mirror the PARTNER
-  // cell's count — so chording them reveals the neighbors against a number
+  // cell's count, so chording them reveals the neighbors against a number
   // that doesn't describe them and pops a mine. This is exactly the
   // base-value set recomputeDisplayedMines (gimmicks.js) treats specially.
   if (cell.isLiar || cell.isMystery || cell.isSonar || cell.isCompass || cell.isWormhole || cell.mirrorPair) return [];
 
   // Count adjacent flags (through the board's topology, so wall-severed
-  // neighbors are excluded). Strike cells —
-  // mines the player previously hit in daily/weekly — count as flags
+  // neighbors are excluded). Strike cells,
+  // mines the player previously hit in daily/weekly, count as flags
   // too: the player has visually confirmed the mine is there, the
   // bomb-hit handler leaves the cell as `isMine: true` so adjacent
   // numbers don't drop, and the strike marker functions as a flag for
@@ -1376,15 +1376,15 @@ export function chordReveal(board, row, col) {
 // every unflagged neighbor after the first mine, so two wrong flags around a
 // satisfied number expose BOTH real mines in one gesture. The consumer used
 // to process only the first (find + un-reveal), leaving every further mine
-// permanently revealed with no strike, no penalty, and no bombHits increment
-// — free intel that also undercounted the daily anti-cheat fraction
+// permanently revealed with no strike, no penalty, and no bombHits increment,
+// free intel that also undercounted the daily anti-cheat fraction
 // (2026-07-10 audit). This helper un-reveals EVERY mine in the revealed set
 // and returns the first as the one that drives the lifeline / loss flow
 // (whose handler re-reveals it as needed). The others go back under the fog
 // exactly as if they had never been touched.
 //
 // CHALLENGE/TIMED/CHAOS ONLY since 2026-07-12: daily/weekly no longer
-// re-fog — every chord-exposed mine there is charged as its own strike
+// re-fog, every chord-exposed mine there is charged as its own strike
 // (handleDailyBombHit's batch), so the intel is paid for rather than
 // hidden. This helper remains the no-free-intel rule where a revealed
 // mine means death instead of a priced strike.

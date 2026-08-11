@@ -31,7 +31,7 @@ export function updatePowerUpBar() {
 
     btn.querySelector('.powerup-count').textContent = count;
 
-    // Lifeline is passive — show count but not clickable, hide when 0
+    // Lifeline is passive, show count but not clickable, hide when 0
     if (type === 'lifeline') {
       btn.disabled = true;
       btn.classList.add('powerup-passive');

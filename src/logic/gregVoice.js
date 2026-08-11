@@ -55,7 +55,7 @@ const FEATURE_HYPOTHESIS = {
   lockedCellCount: 'Locked cells make you wait for information you would normally have. Waiting should cost time. The boards will tell me how much.',
   sonarCellCount: 'A sonar reading covers a wide area but names no cell. I suspect it helps less than it looks like it should.',
   compassCellCount: 'A compass points at danger without counting it. I can’t yet tell whether players read it fast or stop to puzzle over it.',
-  mirrorPairCount: 'Mirrored numbers lie about location, not amount. Players who spot the pair should lose almost no time. Should.',
+  mirrorPairCount: 'A mirrored number shows its partner’s count, not its own. Players who spot the pair should lose almost no time. Should.',
   liarCellCount: 'A liar is off by one, and one wrong number can poison a whole corner. Or players just route around it. The data decide.',
   mysteryCellCount: 'A mystery cell hides its number entirely. Missing information has a price; I’m measuring it.',
   wormholePairCount: 'Wormhole numbers count two places at once. Splitting one number across the board should slow the reading down.',

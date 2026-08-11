@@ -1,7 +1,7 @@
 // Device-capability probes for gating GPU-heavy frills.
 //
 // The per-frame theme particle effects (themeEffects.js) are cheap on a real
-// GPU but stutter badly when the browser composites in SOFTWARE — integrated
+// GPU but stutter badly when the browser composites in SOFTWARE, integrated
 // setups, a remote/VM session, or a GPU-driver fallback (which can hit even a
 // strong card: a player on an RTX 2080 Ti whose Chrome had dropped to the
 // "Microsoft Basic Render Driver" saw every modal and animation chug). We'd
@@ -9,7 +9,7 @@
 // feel broken. The theme keeps its colors, sprites, and static backdrop.
 
 // Pure: does this WebGL UNMASKED_RENDERER string name a software rasterizer?
-// Conservative by design — an empty/unknown string (some browsers block the
+// Conservative by design, an empty/unknown string (some browsers block the
 // debug extension for privacy) returns false, so we only disable effects when
 // we are SURE the renderer is software, never on a mere absence of info.
 export function isSoftwareRenderer(rendererString) {
@@ -19,9 +19,9 @@ export function isSoftwareRenderer(rendererString) {
 // Review/debug override: force the live particle effects ON even when the
 // renderer probes software. Set once with `?fx=1` (persists in localStorage so
 // it survives in-app navigation) and clear with `?fx=0`. Off by default, so it
-// never affects ordinary players — it exists so the effects can be reviewed on
+// never affects ordinary players, it exists so the effects can be reviewed on
 // a machine whose Chrome has dropped to software compositing (where the gate
-// would otherwise hide them). Reduced-motion is still always respected.
+// would otherwise suppress them). Reduced-motion is still always respected.
 const FORCE_KEY = 'minesweeper_force_effects';
 export function forceEffectsEnabled() {
   try {

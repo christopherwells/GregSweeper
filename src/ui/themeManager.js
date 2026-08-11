@@ -5,7 +5,7 @@ import { applyThemeEffects } from './themeEffects.js';
 // ── Lazy Theme CSS Loading ────────────────────────────
 // classic + dark are eagerly loaded in index.html.
 // All other themes are loaded on-demand here. Returns a Promise that
-// resolves once the stylesheet has actually APPLIED (link.onload) — a
+// resolves once the stylesheet has actually APPLIED (link.onload), a
 // caller that needs to measure the new theme's live geometry (the
 // board-refit in applyThemeLive reads --grid-gap) must wait on it, or it
 // measures the OLD theme's values. Resolves immediately for eager /
@@ -21,7 +21,7 @@ export function loadThemeCSS(themeName) {
   link.rel = 'stylesheet';
   // In live theme-preview mode (localhost + ?previewthemes=1) the service worker
   // is bypassed and the goal is to always see the freshest CSS, so cache-bust
-  // the href — otherwise the browser serves a stale cached theme file and new
+  // the href, otherwise the browser serves a stale cached theme file and new
   // token edits (e.g. a theme's --cell-gap-seal) silently don't apply. In
   // production the SW + CACHE_NAME handle versioning, so no buster is added.
   const preview = /[?&]previewthemes=1\b/.test(location.search) &&
@@ -41,25 +41,25 @@ export function loadThemeCSS(themeName) {
 // Dying in normal mode resets current level to 1 but keeps unlocks.
 //
 // THE LADDER RULE: classic + dark are free at level 0; the other 24
-// themes unlock one per checkpoint — every 5 challenge levels, L5
-// through L120 — ordered by IN-YOUR-FACE-NESS. Quiet print-and-paper
+// themes unlock one per checkpoint, every 5 challenge levels, L5
+// through L120, ordered by IN-YOUR-FACE-NESS. Quiet print-and-paper
 // worlds come first so new players have classic-feeling boards; the
 // loud, animated, high-saturation worlds are late-game rewards. When
 // adding or cutting a theme, keep the levels exactly the multiples of
 // 5 with no gaps or doubles, and place it by visual intensity (color
-// saturation + ambient motion + background busyness), not by age —
+// saturation + ambient motion + background busyness), not by age,
 // test/themeUnlockLadder.test.mjs enforces the structure. Entries are
 // listed in unlock order; the Collection grid renders in this order.
 //
 // (2026-06 catalog trim note: cut themes live in git history; restoring
 // one means restoring its CSS file + entries here, in THEME_EFFECTS,
 // and in the confetti palette, bringing it up to the objects+moments
-// contract, AND giving it a ladder slot — which bumps everything after
+// contract, AND giving it a ladder slot, which bumps everything after
 // it.)
 export const THEME_UNLOCKS = {
   classic:          { levelRequired: 0,   displayName: 'Classic',        mine: '💣', flag: '🚩', smiley: '😊', smileyWin: '😎', smileyLoss: '😵' },
   dark:             { levelRequired: 0,   displayName: 'Dark',           mine: '💣', flag: '🚩', smiley: '😊', smileyWin: '😎', smileyLoss: '😵' },
-  // Quiet print & paper — muted palettes, little or no ambient motion.
+  // Quiet print & paper, muted palettes, little or no ambient motion.
   editorial:        { levelRequired: 25,  displayName: 'Editorial',      mine: '⬛', flag: '✒️', strikeCell: '💢', smiley: '📰', smileyWin: '🎩', smileyLoss: '☕' },
   sumie:            { levelRequired: 30,  displayName: 'Sumi-e',         mine: '⚫', flag: '🖌️', strikeCell: '💢', smiley: '🎴', smileyWin: '🌸', smileyLoss: '🌑' },
   blueprint:        { levelRequired: 40,  displayName: 'Blueprint',      mine: '🔩', flag: '📍', strikeCell: '⚠️', smiley: '📐', smileyWin: '✏️', smileyLoss: '❌' },
@@ -67,19 +67,19 @@ export const THEME_UNLOCKS = {
   origami:          { levelRequired: 60,  displayName: 'Origami',        mine: '🕊️', flag: '🔖', strikeCell: '🗯️', smiley: '🦢', smileyWin: '🎏', smileyLoss: '🗯️' },
   chalkboard:       { levelRequired: 70,  displayName: 'Chalkboard',     mine: '☠️', flag: '⚑', strikeCell: '💨', smiley: '✏️', smileyWin: '💯', smileyLoss: '💨' },
   noir:             { levelRequired: 80,  displayName: 'Noir',           mine: '🎱', flag: '🔍', strikeCell: '🩸', smiley: '🕵️', smileyWin: '🥃', smileyLoss: '🚬' },
-  // Gentle nature — soft color, slow ambient drift.
+  // Gentle nature, soft color, slow ambient drift.
   ocean:            { levelRequired: 90,  displayName: 'Ocean',          mine: '🐡', flag: '⚓', strikeCell: '🌊', smiley: '🐟', smileyWin: '🐬', smileyLoss: '🫧' },
   forest:           { levelRequired: 100, displayName: 'Forest',         mine: '🌰', flag: '🐿️', strikeCell: '🌳', smiley: '🌲', smileyWin: '🦉', smileyLoss: '🪵' },
   sakura:           { levelRequired: 110, displayName: 'Sakura',         mine: '🎴', flag: '🏮', strikeCell: '🌸', smiley: '🌸', smileyWin: '🎎', smileyLoss: '🍂' },
   apothecary:       { levelRequired: 120, displayName: 'Apothecary',     mine: '🧪', flag: '🗝️', strikeCell: '☠️', smiley: '⚗️', smileyWin: '✨', smileyLoss: '💀' },
   splitflap:        { levelRequired: 130, displayName: 'Split-Flap',     mine: '🧳', flag: '🏷️', strikeCell: '💥', smiley: '🛫', smileyWin: '🛬', smileyLoss: '⛔' },
-  // Rich light — saturated color and glow, steady motion.
+  // Rich light, saturated color and glow, steady motion.
   stainedglass:     { levelRequired: 140, displayName: 'Stained Glass',  mine: '🕯️', flag: '⚜️', strikeCell: '🔥', smiley: '⛪', smileyWin: '😇', smileyLoss: '💀' },
   aurora:           { levelRequired: 150, displayName: 'Aurora',         mine: '❄️', flag: '🌌', strikeCell: '🌨️', smiley: '🌀', smileyWin: '🌈', smileyLoss: '🌫️' },
   galaxy:           { levelRequired: 160, displayName: 'Galaxy',         mine: '☄️', flag: '🛸', strikeCell: '💫', smiley: '🪐', smileyWin: '🌟', smileyLoss: '🌑' },
   candy:            { levelRequired: 170, displayName: 'Candy',          mine: '🍬', flag: '🍭', strikeCell: '💥', smiley: '🧁', smileyWin: '🎂', smileyLoss: '🍩' },
-  // Loud — high contrast, busy ambient animation, maximum saturation.
-  // (Nest is the gentle exception in this band — it inherited comic's L85 slot.)
+  // Loud, high contrast, busy ambient animation, maximum saturation.
+  // (Nest is the gentle exception in this band, it inherited comic's L85 slot.)
   nest:             { levelRequired: 180, displayName: 'Nest',           mine: '🥚', flag: '🪶', strikeCell: '🍳', smiley: '🪺', smileyWin: '🐥', smileyLoss: '🪹' },
   circuitboard:     { levelRequired: 190, displayName: 'Circuit Board',  mine: '🐛', flag: '🔧', strikeCell: '⚡', smiley: '🤖', smileyWin: '💡', smileyLoss: '🔥' },
   matrix:           { levelRequired: 200, displayName: 'Matrix',         mine: '🟢', flag: '🔴', strikeCell: '❌', smiley: '👁️', smileyWin: '🔓', smileyLoss: '🔒' },
@@ -207,7 +207,7 @@ export function updateThemeColor() {
 // Chaos forces its own theme for the duration of a run. Entering stashes the
 // player's current theme; leaving restores it. The stash + restore live HERE,
 // not in main.js, so game modules (modeManager) can restore on exit without
-// importing the entry orchestrator — importing main.js auto-runs init() at
+// importing the entry orchestrator, importing main.js auto-runs init() at
 // module load, which booted the whole app on any headless import.
 let _previousChaosTheme = null;
 

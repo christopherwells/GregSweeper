@@ -3,7 +3,7 @@
 // player's skill edge scales with how much board there is to solve, so a
 // ratio (k < 1 = you finish in a fraction of Greg's time, k > 1 = you take
 // longer) behaves correctly on tiny and huge boards alike. The old additive
-// seconds handicap broke on small boards — a -57s offset is nonsense against
+// seconds handicap broke on small boards, a -57s offset is nonsense against
 // a 3s par (see the "Proportional handicap" plan).
 //
 //   personalPar = globalPar × k  (+ your additive bomb-seconds cost)
@@ -11,16 +11,16 @@
 //
 // A seconds MAGNITUDE is still shown for intuition (a RATING vs Greg), derived
 // from the ratio at a REFERENCE par: displaySeconds = (1 - k) × refPar.
-// POSITIVE = faster/better than Greg, negative = slower — so a fast player reads
+// POSITIVE = faster/better than Greg, negative = slower, so a fast player reads
 // "+10s / +12%" and a slower one "−47s / −58%", stable across boards.
 //
 // Data source: src/logic/handicaps.json, refreshed daily by the "Refit
 // Greg-par" GitHub Action. The ratio file is tagged `format: "logratio-v1"`;
 // a legacy additive file (no format tag) is treated as UNRATED (k=1) for
-// everyone — the client must never read additive seconds as ratios
+// everyone, the client must never read additive seconds as ratios
 // (+55s would become k=55). No Firebase round-trip at runtime.
 
-// WIDE sanity bound on the ratio — rejects a degenerate/garbage value only,
+// WIDE sanity bound on the ratio, rejects a degenerate/garbage value only,
 // never shapes a real player. The regularizers are partial pooling (the R fit)
 // and shrinkage-toward-1 (the provisional estimate below), which leave a
 // well-sampled player on their true k however extreme; clamping a confidently
@@ -71,7 +71,7 @@ function applyLoaded(data) {
 }
 
 /**
- * Fetch the handicaps file. Cached after first call. Safe to call early —
+ * Fetch the handicaps file. Cached after first call. Safe to call early,
  * a missing file falls back to unrated (every lookup returns k=1). Resolves
  * to the ratio map (uid -> k), which is what rankAdjusted consumes.
  */
@@ -146,7 +146,7 @@ export function getHandicapPercent(uid) {
 /**
  * The {k, bombSeconds} decomposition from the ratio file, or null when the
  * refit hasn't emitted it (legacy file, missing uid, or load not complete).
- * Callers must treat null as "no itemization available" — never fabricate.
+ * Callers must treat null as "no itemization available", never fabricate.
  */
 export function getHandicapDetails(uid) {
   if (!_details || !uid) return null;
@@ -165,11 +165,11 @@ const PROVISIONAL_SHRINK_TAU = 3;
 
 /**
  * Provisional ratio from the player's own history when handicaps.json has no
- * entry yet. k is the GEOMETRIC mean of time/par (exp(mean(log ratio)) — the
+ * entry yet. k is the GEOMETRIC mean of time/par (exp(mean(log ratio)), the
  * arithmetic mean of ratios is biased high, Jensen), shrunk toward 1 and
  * clamped. Each pair: `{ time, predictedPar }`. Returns { k, n, provisional }
  * or null below MIN_PAIRS. Bombs ride in the ratio implicitly (a player who
- * bombs is slower, so their time/par is higher) — the clean/bomb split only
+ * bombs is slower, so their time/par is higher), the clean/bomb split only
  * comes from the R fit, never fabricated client-side.
  */
 export function estimateHandicapDetails(pairs) {

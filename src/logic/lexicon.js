@@ -2,11 +2,11 @@
 // The generator writes the curriculum: each lesson board is REQUIRED to
 // contain the target deduction class and NOTHING harder, verified by the
 // five-bucket solver classification, and for the named-shape lessons by
-// the shared geometry detector (patternNames.js) — the SAME classifier
+// the shared geometry detector (patternNames.js), the SAME classifier
 // the gym coaching and the receipts use, so a lesson can never teach a
 // shape the receipts cannot recognize. Measured yield
 // (scripts/measure-lexicon-yield.mjs, 2026-06-15): countingBasics 1-in-3,
-// subset11 1-in-4, subset12 1-in-21 (~9ms/board — 2s are rarer than 1s on
+// subset11 1-in-4, subset12 1-in-21 (~9ms/board, 2s are rarer than 1s on
 // a sparse board, but a 400-attempt budget never gets close to
 // exhausting), oneTwoOne 1-in-5, oneTwoTwoOne 1-in-12 (~30-44ms/board, the
 // geometry check runs per candidate), oneThreeOneCorner 1-in-6 (~13ms).
@@ -15,7 +15,7 @@
 // The teaching mechanic is the deducibility CLICK-GATE (lexiconUI.js):
 // a click on a cell that is not currently provably safe bounces and the
 // proving region of an available deduction pulses. The player physically
-// cannot luck through a lesson — the epiphany is structural, and the
+// cannot luck through a lesson, the epiphany is structural, and the
 // pattern is NAMED only after they perform it.
 
 import { isBoardSolvable, findDeducibleFrontier } from './boardSolver.js';
@@ -36,7 +36,7 @@ export const LESSON_ORDER = ['countingBasics', 'subset11', 'subset12', 'holes', 
 // (name / blurb / rule / naming) is the single source of truth the
 // lesson cards, the Notebook, and the completion line all read.
 export const LESSONS = {
-  // Tier 0 — a single number settles a square. This is the skill the 1-2
+  // Tier 0, a single number settles a square. This is the skill the 1-2
   // pattern is built on, and the home of the flag-reduction beat (a known
   // mine drops a number's count).
   countingBasics: {
@@ -52,7 +52,7 @@ export const LESSONS = {
       && r.passAMoves >= 3,
   },
 
-  // Tier 1 — two EQUAL numbers looking at the same squares. The mine that
+  // Tier 1, two EQUAL numbers looking at the same squares. The mine that
   // satisfies the first satisfies the second too, so the second's far
   // square is safe. The bucket gate (a canonical subset, nothing harder)
   // is shared with the 1-2; requiresPattern splits them by the two clue
@@ -76,14 +76,14 @@ export const LESSONS = {
       && r.techniqueLevel === 1,
   },
 
-  // Tier 1 — two numbers off by one. The bigger number's extra mine can
+  // Tier 1, two numbers off by one. The bigger number's extra mine can
   // only sit in the square the smaller one cannot see; the smaller one's
   // far square is safe.
   subset12: {
     id: 'subset12',
     name: 'The 1-2 pattern',
     blurb: 'A 1 beside a 2.',
-    rule: 'When two numbers look at the same squares, the smaller one\'s mines fit inside the squares they share. The square only the bigger number sees holds its extra mine, and the square only the smaller number sees is safe.',
+    rule: 'When two numbers look at the same squares, the smaller one\'s mines fit inside the squares they share. The extra mine sits in the square only the bigger number sees, and the square only the smaller number sees is safe.',
     naming: 'That was a 1-2: the 2 needs one mine more than the 1, so it sits in the square only the 2 can see, and the 1\'s far square is safe.',
     rows: 6, cols: 6, mines: 6,
     requiresPattern: '1-2',
@@ -98,11 +98,11 @@ export const LESSONS = {
       && r.techniqueLevel === 1,
   },
 
-  // The iconic 1-2-1 — a RECOGNITION lesson, not a forced one. A 1-2-1
+  // The iconic 1-2-1, a RECOGNITION lesson, not a forced one. A 1-2-1
   // ALWAYS decomposes: its two outer mines are each a plain 1-2 (the 1 is a
   // subset of the 2), so a flagging player flags those and the middle counts
   // out. It can never be REQUIRED the way holes or the 1-3-1 corner are
-  // (proven impossible 2026-06-16) — it IS just a pair of 1-2s. So the gate
+  // (proven impossible 2026-06-16), it IS just a pair of 1-2s. So the gate
   // is "needs real subset reasoning (techniqueLevel >= 1, not pure counting)
   // + a 1-2-1 is on the solving path" (lessonShowsPattern, requireShape off),
   // and the coaching celebrates spotting the shape as a unit.
@@ -123,7 +123,7 @@ export const LESSONS = {
       && r.techniqueLevel <= 2,
   },
 
-  // The 1-2-2-1 — also a RECOGNITION lesson, for the same reason as the
+  // The 1-2-2-1, also a RECOGNITION lesson, for the same reason as the
   // 1-2-1: it decomposes into 1-2s plus counting, so it can't be forced.
   // Gate: needs subset reasoning + the shape is on the solving path.
   oneTwoTwoOne: {
@@ -146,7 +146,7 @@ export const LESSONS = {
 
   // Advanced: the 1-3-1 corner. A 3 at the bend of an L with a 1 on each
   // arm sees five squares; the two 1s force the third mine into the
-  // square only the 3 can see. The 1-2 idea bent around a corner — a
+  // square only the 3 can see. The 1-2 idea bent around a corner, a
   // genuine tier-2 read, geometry-defined like the line patterns.
   oneThreeOneCorner: {
     id: 'oneThreeOneCorner',
@@ -168,7 +168,7 @@ export const LESSONS = {
   // Holes and triangles are the 1-1/1-2 OVERLAP read in a boxed-pocket
   // shape: a clue boxed to a small pocket pins its mine count, and a wider
   // clue sharing the pocket clears every other square it touches. Same
-  // logic as subset11/subset12, but the wider clue is GENERIC (>=4 cells —
+  // logic as subset11/subset12, but the wider clue is GENERIC (>=4 cells,
   // the cell cluster the canonical lessons cap out before), so these clear
   // several squares at once. A 2-cell pocket is a hole; a 3-cell a
   // triangle (classifyPattern names them by the boxed clue's size).
@@ -206,7 +206,7 @@ export const LESSONS = {
       && r.techniqueLevel <= 1,
   },
 
-  // Advanced: the 2-2-2 corner is a tier-2 multi-clue read — a corner 2
+  // Advanced: the 2-2-2 corner is a tier-2 multi-clue read, a corner 2
   // whose two flanking 2s each force a mine into their own squares,
   // accounting for both of the corner 2's mines and freeing its last
   // square. Allows tier 2 (it needs the joint reasoning); no liar.
@@ -232,7 +232,7 @@ const MAX_GENERATION_ATTEMPTS = 400; // yield ~1-in-3 for the bucket lessons
 
 // Will the lesson's named shape actually be PERFORMABLE during real play?
 // Admission models the gym the way it is played: ONE cell at a time, not a
-// whole frontier wave. This matters because some shapes are transient — a
+// whole frontier wave. This matters because some shapes are transient, a
 // hole/triangle is a clue boxed to a pocket sitting inside a WIDER clue, and
 // the instant a player reveals one of that wider clue's other neighbors it
 // drops below four hidden cells and dissolves into a plain 1-1 pair. A
@@ -243,7 +243,7 @@ const MAX_GENERATION_ATTEMPTS = 400; // yield ~1-in-3 for the bucket lessons
 // at each step, if the target shape is the TOP read of any provable cell, the
 // player could perform it right now → admit; otherwise make a single move and
 // look again, letting fragile structures dissolve exactly as they would in
-// play. A board admits only if the shape survives to a moment a player can
+// play. A board is admitted only if the shape survives to a moment a player can
 // actually do it. The reveal state is snapshotted and restored, so the board
 // handed back to the gym still starts at the opening. Exported so the yield
 // script and tests measure the same thing.
@@ -265,7 +265,7 @@ export function lessonShowsPattern(lessonBoard, patternName) {
     if (f.safe.length === 0) break;
     // Make exactly ONE move (flood from a single safe cell, like one click),
     // then re-look. One at a time so revealing a neighbor can collapse a
-    // pocket before the player reaches it — the whole point of the faithful
+    // pocket before the player reaches it, the whole point of the faithful
     // model.
     const s = f.safe[0];
     const queue = [[s.row, s.col]];
@@ -289,9 +289,9 @@ export function lessonShowsPattern(lessonBoard, patternName) {
   return found;
 }
 
-// Does the board REQUIRE the shape, not merely show it? The lighter
+// Does the board REQUIRE the pattern, not merely show it? The lighter
 // "appears on a path" check (lessonShowsPattern) admitted boards where the
-// shape was a cameo off the critical path — measured, 44% of Holes boards,
+// shape was a cameo off the critical path, measured, 44% of Holes boards,
 // 77% of Triangles, 60-78% of the corner shapes were finishable WITHOUT
 // ever performing the shape (the player solves around it by counting and
 // simple pairs, and never sees the lesson's technique). This gate models
@@ -299,7 +299,7 @@ export function lessonShowsPattern(lessonBoard, patternName) {
 // EXCEPT ones whose top read is the target shape. If that play completes the
 // board, the shape was avoidable → reject. If it stalls at a state whose only
 // remaining progress is a target-shape cell (a safe reveal, or a forced mine
-// flag — triangles often resolve as a forced mine), the player is forced to
+// flag, triangles often resolve as a forced mine), the player is forced to
 // perform the shape → admit. Used for the GEOMETRY shapes (hole / triangle /
 // 1-2-1 / 1-2-2-1 / 1-3-1 / 2-2-2), whose recognizers read the board, not the
 // frontier's chosen sources. NOT used for the bare 1-1/1-2 pair lessons: their
@@ -307,20 +307,20 @@ export function lessonShowsPattern(lessonBoard, patternName) {
 // the yield script and tests measure exactly what generation enforces.
 export function lessonRequiresShape(lessonBoard, shapeNames) {
   const { board, rows, cols } = lessonBoard;
-  // Snapshot BOTH revealed and flagged state — this sim flags proven mines.
+  // Snapshot BOTH revealed and flagged state, this sim flags proven mines.
   const snapRevealed = board.map(row => row.map(c => c.isRevealed));
   const snapFlagged = board.map(row => row.map(c => c.isFlagged));
   const R = SHAPE_RANK[shapeNames[0]];
   const nc = buildNeighborCache(board, rows, cols);
   // SOUND, flags-AWARE, CHEAPEST-read classification (see proofClassify.js): a
   // cell counts as the target only when the target shape is the SIMPLEST thing
-  // that provably forces it — nothing easier works. The old gate read the
+  // that provably forces it, nothing easier works. The old gate read the
   // ungated geometry namer FLAGS-BLIND, so a cell a real player flags-then-
   // counts looked like a subset shape, and boards solvable by pure counting
   // were wrongly admitted as "requires the shape" (holes/triangles/1-2-1/
   // 1-2-2-1/2-2-2 all leaked counting-solvable boards, 2026-06-15). Richest-
-  // read (classifyByProof) over-corrected the other way — a count cell with
-  // incidental shape geometry got named the shape — so the gate must rank the
+  // read (classifyByProof) over-corrected the other way, a count cell with
+  // incidental shape geometry got named the shape, so the gate must rank the
   // CHEAPEST proof and treat "cheapest == the lesson's shape" as the target.
   const flood = (r, c) => {
     const queue = [[r, c]];
@@ -349,8 +349,8 @@ export function lessonRequiresShape(lessonBoard, shapeNames) {
     const rank = (d, kind) => simplestGatingRank(board, { ...d, kind }, { rows, cols, neighborCache: nc, universe, respectFlags: true });
     // Avoidable = solvable by something SIMPLER than the shape (rank < R). Flag
     // avoidable mines (a flagging player does, and it surfaces the counting
-    // reads); reveal avoidable safes. Shape-rank cells — including a 1-3-1's
-    // forced-mine corner (rank 7, only the 1-3-1 proves it) — are left
+    // reads); reveal avoidable safes. Shape-rank cells, including a 1-3-1's
+    // forced-mine corner (rank 7, only the 1-3-1 proves it), are left
     // untouched so they can't be "avoided" by flagging.
     const avoidMines = f.mines.filter(m => !board[m.row][m.col].isFlagged && rank(m, 'mine') < R);
     const avoidSafes = f.safe.filter(s => !board[s.row][s.col].isRevealed && rank(s, 'safe') < R);
@@ -434,7 +434,7 @@ export function applyLessonOpening(lessonBoard) {
   return revealed;
 }
 
-/** True when every non-mine cell is revealed — the lesson is complete. */
+/** True when every non-mine cell is revealed, the lesson is complete. */
 export function lessonComplete(lessonBoard) {
   const { board } = lessonBoard;
   for (const row of board) {

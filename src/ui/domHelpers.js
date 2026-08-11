@@ -5,7 +5,7 @@ export const $$ = (sel) => document.querySelectorAll(sel);
 
 // Canonical HTML escaper for player-controlled strings interpolated
 // into innerHTML (leaderboard names, account emails, …). The single
-// source of truth — this used to exist as three private copies
+// source of truth, this used to exist as three private copies
 // (main.js ×2, winLossHandler.js ×1), which is one forgotten import
 // away from an XSS. Escapes quotes too, so the result is safe in
 // attribute position as well as text position; the old detached-div

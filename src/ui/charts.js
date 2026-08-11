@@ -259,7 +259,7 @@ export function lineChart(points, opts = {}) {
       const last = secondary[secondary.length - 1];
       // Label on the side AWAY from the curve's recent run, so a rising
       // tail gets the label underneath and a falling one gets it on top,
-      // and the text never sits on its own line.
+      // and the text never lands on its own line.
       const recent = secondary.slice(-6, -1);
       const recentMean = recent.length
         ? recent.reduce((a, q) => a + q.y, 0) / recent.length
@@ -742,7 +742,7 @@ export function boxChart(boxes, opts = {}) {
 // Layout: fixed left column for category label, fixed right column for
 // value text, bars live in the middle with a vertical zero line. Bars
 // extend left for negative values and right for positive, but the value
-// text always sits in the same far-right column, so collisions between
+// text always stays in the same far-right column, so collisions between
 // bar and value label are impossible even on very short bars.
 export function heatBars(items, opts = {}) {
   if (!items || items.length === 0) {

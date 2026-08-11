@@ -37,7 +37,7 @@ export function plateSeconds(est) {
 // 44pt tap target. With width=12 and the existing --cell-size of 28px on
 // mobile (≤480px viewport), a board fits 12 × 28 = 336 px plus gaps inside
 // the 390 px iPhone portrait viewport without scrolling. Rows are NOT
-// capped — taller boards (weekly samples up to 14 rows) are allowed because
+// capped, taller boards (weekly samples up to 14 rows) are allowed because
 // the renderer fits cells to BOTH width and height, shrinking the cell so the
 // whole board stays inside the 70vh scroll wrapper (_fitCellSize in
 // boardRenderer.js). Mines are rescaled to preserve density.
@@ -61,7 +61,7 @@ export function applyWidthCap(rows, cols, mines) {
 // The block between PAR_MODEL:START and PAR_MODEL:END is OVERWRITTEN
 // AUTOMATICALLY every day at 10am ET by the "Refit Greg-par" GitHub Action
 // (.github/workflows/refit-par-model.yml). Do not edit by hand between the
-// markers — your changes will be lost on the next scheduled refit.
+// markers, your changes will be lost on the next scheduled refit.
 // To tune by hand, disable the workflow first or edit the R script in
 // scripts/refit-par-model.R.
 // PAR_MODEL:START
@@ -89,8 +89,8 @@ export const PAR_MODEL = {
 // PAR_MODEL:END
 
 // Quick play has its OWN equation (Christopher, 2026-06-12): timed
-// rows exist only when someone WINS — losses die on a mine and never
-// report — so the sample is win-censored and cannot be pooled with
+// rows exist only when someone WINS, losses die on a mine and never
+// report, so the sample is win-censored and cannot be pooled with
 // the (effectively uncensored) daily completions. PAR_MODEL_TIMED is
 // therefore "par for a WINNING quick-play run": fitted by the nightly
 // refit on handicap-adjusted timed wins with priors centered on the
@@ -127,7 +127,7 @@ export const PAR_MODEL_TIMED = {
 // 2026-08-01: "we might just want different par equations for each shape...
 // priors can be informed by the square tilings"). One FULL coefficient set
 // per non-rectangular tiling, keyed by the exact TILING_TYPES strings from
-// src/logic/tilingGeometry.js — the registry lockstep is pinned by
+// src/logic/tilingGeometry.js, the registry lockstep is pinned by
 // test/tilingParModelContract.test.mjs rather than an import, because this
 // module sits in the typecheck gate's curated set and must stay leaf-light.
 // ('6.6.6' is a deep-link alias for 'hex' and deliberately NOT a key here;
@@ -135,17 +135,17 @@ export const PAR_MODEL_TIMED = {
 //
 // This replaces the six secPerShape* intercept offsets, which asserted a
 // lattice can only shift par by a constant. The nightly R refit fits ONE
-// joint model — the base features plus, per shape, a 0/1 indicator (the old
+// joint model, the base features plus, per shape, a 0/1 indicator (the old
 // offset relocated as that shape's intercept deviation) and a SIGNED
 // shape-by-feature interaction deviation per coefficient, with the player
-// random intercept shared so handicaps stay jointly estimated — then ships
+// random intercept shared so handicaps stay jointly estimated, then ships
 // each block here as base + deviations. Since 2026-08-03 the core
 // deviations (intercept, per-cell, per-mine, per shape) are LAB-SEEDED from
 // the completed Par Lab battery (Christopher's ruling; the fit is
 // scripts/fit-parlab-priors.qmd, its posteriors frozen in
 // scripts/data/parlab-prior-centers.json): each ships its lab center until
-// live tiling rows exist, then the fitted posterior — under a
-// normal(lab mean, 2 x lab sd) prior — takes over continuously. Negative
+// live tiling rows exist, then the fitted posterior, under a
+// normal(lab mean, 2 x lab sd) prior, takes over continuously. Negative
 // composed coefficients are expected (a lattice can price a feature BELOW
 // the square rate; hex charges less per cell, more per mine). Unseeded
 // terms, including every gimmick-by-shape cell (his n=1
@@ -157,7 +157,7 @@ export const PAR_MODEL_TIMED = {
 // PAR_MODEL_SHAPES:START
 export const PAR_MODEL_SHAPES = {
   // Last refit: 2026-08-10 | composed: PAR_MODEL base + per-shape deviations
-  // Deviations: fitted posterior where live rows exist; the Par Lab center
+  // Deviations: fitted posterior on shapes with live rows; the Par Lab center
   // (scripts/data/parlab-prior-centers.json, the 2026-08-03 seeding ruling)
   // where none do; 0 for unseeded terms until 20 nonzero fit rows
   // (NEW_FEATURE_DATA_THRESHOLD) earn them.
@@ -288,12 +288,12 @@ export const BOMB_PENALTY_BASE = 3;
 // legitimately. (Was a steeper × n ramp; softened 2026-06-16.)
 //
 // NOTE the closed form, because a backfilled row needs it: penalty − infoValue
-// is exactly this ramped base, so Σ over n strikes = 3n + 0.75n(n−1) — a pure
+// is exactly this ramped base, so Σ over n strikes = 3n + 0.75n(n−1), a pure
 // function of the strike COUNT, with no per-strike detail required.
 export const BOMB_PENALTY_RAMP = 0.5;
 
 // Anti-cheat: a player who finds most of the board's mines by stepping on them
-// isn't playing — they're probing the layout by popping mines (daily / weekly
+// isn't playing, they're probing the layout by popping mines (daily / weekly
 // have no game-over, so nothing stops them). Such a run is never leaderboarded
 // (and so never feeds the par fit). Pure + exported so the submission gate and
 // tests share one definition.
@@ -307,9 +307,9 @@ export const BOMB_PENALTY_RAMP = 0.5;
 // ordinary bad day on the dearest lattice we ship, and was refused.
 //
 // So two independent statements, either of which is damning at any board size:
-//   1. FAR more mistakes than a bad day  — over half the mines AND over a
+//   1. FAR more mistakes than a bad day  - over half the mines AND over a
 //      floor, since half of a 6-mine board is 3 and that proves nothing.
-//   2. You EXCAVATED the board           — essentially every mine found by
+//   2. You EXCAVATED the board           - essentially every mine found by
 //      detonation. This is the arm that covers small boards, where the floor
 //      alone can exceed the mine count and leave the gate inert.
 //
@@ -317,8 +317,8 @@ export const BOMB_PENALTY_RAMP = 0.5;
 // daily, archive and weekly): the worst genuine run on record is 25% of the
 // mines, the three real probing episodes are 81%, 100% and 100%, and the two
 // populations never come near each other. Loosening to these numbers changes
-// ZERO historical verdicts — the same four readings are refused before and
-// after — so the par fit is byte-identical and only future runs are affected.
+// ZERO historical verdicts, the same four readings are refused before and
+// after, so the par fit is byte-identical and only future runs are affected.
 //
 // The observed 25% is CENSORED by this very gate (a refused run was never
 // written, so the true right tail of honest play is unobservable), which is why
@@ -335,18 +335,18 @@ export function isBombHitCheat(bombHits, totalMines) {
 
 // Daily board dimension ranges (seeded RNG picks within these)
 export const DAILY_MIN_SIZE = 8;
-export const DAILY_SIZE_RANGE = 5;   // 8–12
+export const DAILY_SIZE_RANGE = 5;   // 8-12
 export const DAILY_MIN_DENSITY = 0.14;
-export const DAILY_DENSITY_RANGE = 0.16; // 14%–30%
+export const DAILY_DENSITY_RANGE = 0.16; // 14%, 30%
 
-// Weekly board dimensions — same density range as daily but a wider
+// Weekly board dimensions, same density range as daily but a wider
 // size band, since the player gets 7 attempts on the same board and
 // we want some weeks to feel chunky. The 14×14 cap matches challenge
 // L120's max so we don't introduce new size territory.
 export const WEEKLY_MIN_SIZE = 8;
-export const WEEKLY_SIZE_RANGE = 7;  // 8–14
+export const WEEKLY_SIZE_RANGE = 7;  // 8-14
 
-// Quick Play (internally "timed") — mobile-friendly sizes, count UP (no countdown)
+// Quick Play (internally "timed"), mobile-friendly sizes, count UP (no countdown)
 const TIMED_LEVELS = [
   { rows: 9,  cols: 9,  mines: 10,  label: 'Beginner' },     // 12.3%
   { rows: 11, cols: 11, mines: 25,  label: 'Intermediate' },  // 20.7%
@@ -354,7 +354,7 @@ const TIMED_LEVELS = [
   { rows: 14, cols: 14, mines: 55,  label: 'Extreme' },       // 28.1%
 ];
 
-// Speed ratings — thresholds in seconds per difficulty
+// Speed ratings, thresholds in seconds per difficulty
 const SPEED_THRESHOLDS = [
   { diamond: 30, gold: 60, silver: 120 },
   { diamond: 60, gold: 120, silver: 240 },
@@ -391,7 +391,7 @@ export function getChaosDifficulty(round) {
 }
 
 // Chaos unlocks at L100 (his ruling 2026-08-04). It was 50 on the old
-// 120-level ladder — 42% of the climb — and 50 on a 250-level ladder
+// 120-level ladder, 42% of the climb, and 50 on a 250-level ladder
 // would hand Chaos over at 20%, far earlier in the journey than it used
 // to arrive.
 export const CHAOS_UNLOCK_LEVEL = 100;

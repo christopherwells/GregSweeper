@@ -18,7 +18,7 @@ export function hashString(str) {
 
 // Daily date string (YYYY-MM-DD) anchored to America/New_York. Every
 // player worldwide gets the same daily puzzle for any given ET date,
-// regardless of their machine's timezone — a player in Tokyo who loads
+// regardless of their machine's timezone, a player in Tokyo who loads
 // at 9am JST sees the puzzle for the previous ET date if it's still
 // before midnight ET, and rolls over to the new puzzle when ET does.
 // Anchoring globally is the only way to keep "everyone on the same

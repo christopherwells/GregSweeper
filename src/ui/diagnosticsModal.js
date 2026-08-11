@@ -1,4 +1,4 @@
-// Diagnostics modal — ground-truth snapshot of what this device sees.
+// Diagnostics modal, ground-truth snapshot of what this device sees.
 // Opened from Settings → Show Diagnostics. Renders the signed-in uid,
 // Firebase connectivity, Firebase-vs-client join counts, loaded PAR_MODEL
 // coefficients, loaded handicaps.json metadata, and the app version. Gives
@@ -32,7 +32,7 @@ export async function openDiagnosticsModal(currentVersion) {
 
 async function collectSnapshot(currentVersion) {
   // Anonymous auth may still be in flight the first time the user lands
-  // here — give it one retry before giving up.
+  // here, give it one retry before giving up.
   let uid = getUid();
   if (!uid) {
     await new Promise(r => setTimeout(r, UID_RETRY_MS));
@@ -75,7 +75,7 @@ async function collectSnapshot(currentVersion) {
   // that failed to upload and are awaiting retry) and the local residual
   // cache ({date, time, par} per completed daily). These are the ONLY
   // copies of a completion that never reached Firebase, so the
-  // diagnostics Copy button must carry them — that is how a player's
+  // diagnostics Copy button must include them, that is how a player's
   // lost days get recovered (Sebas's June 8/9, for example) without
   // attaching a debugger to their phone.
   let pendingDaily = null;
@@ -121,7 +121,7 @@ async function collectSnapshot(currentVersion) {
 function renderSnapshot(body, snap) {
   body.innerHTML = '';
 
-  // UID headline — biggest, selectable so Chris/Kate can tap to copy.
+  // UID headline, biggest, selectable so Chris/Kate can tap to copy.
   body.appendChild(row({
     label: 'Your UID',
     value: snap.uid || '(not signed in yet)',
@@ -136,7 +136,7 @@ function renderSnapshot(body, snap) {
   }));
 
   // Sign-in identity. Surfacing this here lets the user verify a "my
-  // streak didn't follow my device" report at a glance — if the same
+  // streak didn't follow my device" report at a glance, if the same
   // email shows on both devices, the linking worked.
   const authValue = snap.auth.signedIn
     ? `${snap.auth.provider}${snap.auth.email ? ' · ' + snap.auth.email : ''}`
@@ -196,7 +196,7 @@ function renderSnapshot(body, snap) {
   const mapEntries = Object.entries(snap.handicapsMap);
   if (mapEntries.length > 0) {
     // handicaps.json values are multiplicative RATIOS k (logratio-v1), not
-    // seconds — the old "+1.05s" rendering was a leftover from the additive
+    // seconds, the old "+1.05s" rendering was a leftover from the additive
     // model (2026-07-11 audit).
     const mapValue = mapEntries
       .map(([u, v]) => `${u === snap.uid ? '★ ' : '  '}${u.slice(0, 12)}… k=${typeof v === 'number' ? v.toFixed(3) : v}`)
@@ -209,7 +209,7 @@ function renderSnapshot(body, snap) {
     }));
   }
 
-  // PAR_MODEL — compact table. Format small coefficients with more decimals
+  // PAR_MODEL, compact table. Format small coefficients with more decimals
   // so secPerCell = 0.02 doesn't round-trip through `0.02.toString()` and
   // look like "0.02" while secPerDisjunctiveMove = 10 renders as "10"; a
   // uniform 3-decimal format makes the whole column read cleanly.

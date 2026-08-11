@@ -67,7 +67,7 @@ let _lastInputTime = 0;
 // tracked in its own seen-set, deliberately NOT the modifier seen-set,
 // and deliberately NOT suppressed by the "skip all modifier explainers"
 // preference: a player who has opted out of modifier cards has said
-// nothing about board shapes, and a hexagonal board arriving unannounced
+// nothing about the board's shape, and a hexagonal board arriving unannounced
 // is a bigger surprise than any modifier.
 const SHAPE_SEEN_KEY = 'minesweeper_seen_shapes';
 
@@ -101,7 +101,7 @@ function markShapeSeen(type) {
     const seen = (raw && !Array.isArray(raw) && typeof raw === 'object') ? raw : {};
     seen[type] = shapeCardRevision(type);
     localStorage.setItem(SHAPE_SEEN_KEY, JSON.stringify(seen));
-  } catch { /* private browsing, the card simply shows again */ }
+  } catch { /* private browsing, the card shows again */ }
 }
 
 function showShapeIntro(type) {
@@ -119,7 +119,7 @@ function showShapeIntro(type) {
   // Reading a card is not play, so the clock stops for it, the same
   // contract showGimmickIntros has always had. This card did NOT: it was
   // paused only when a modifier card happened to fire on the same board,
-  // and that one only fires when the board carries a modifier the player
+  // and that one only fires when the board includes a modifier the player
   // has not seen. So a shape debut whose modifiers are already familiar
   // ran the clock while they read, as did every shape card for anyone who
   // turned modifier explainers off (that toggle deliberately does not
@@ -238,7 +238,7 @@ function showGimmickIntros(gimmickDefs, recapDefs = []) {
     }
   });
 
-  // "Skip all modifier explainers" is a global kill switch. Hide it for
+  // "Skip all modifier explainers" is a global kill switch, kept hidden for
   // the whole first-ever run (the one the primer shows in) so a brand
   // new player can't disable every future explainer before understanding
   // what a Modifier even is. It returns to normal on later encounters.
@@ -300,7 +300,7 @@ function revealLinkedCell(revealed, link) {
 // un-awaited by switchMode, so two overlapping runs are reachable in
 // real play (double-tap a mode card during a slow fetch, or smiley spam
 // during the daily cold start). Without the guard, the SLOWER run's
-// post-await phase resumes after the faster run's board is live and
+// post-await phase resumes after the faster run's board is on screen and
 // clobbers it: cleanSolverArtifacts(state.board) wipes isRevealed on
 // every cell (a phantom re-fog) and status resets to idle mid-game.
 // Each run takes a generation ticket; after every await it checks the
@@ -327,7 +327,7 @@ function mineIsStrike() {
 // the level, and the win card still up because newGame's tail never ran.
 // The status is what makes the husk unsavable ('aborted' is refused by both
 // persistGameState and revealCell), clearGameState drops anything already
-// on disk, and the title screen takes the player off the stale board. The
+// on disk, and the player lands back on the title screen, off the stale board. The
 // placeholder board itself stays: the resize/overlay handlers walk it, and
 // a null there would trade a save bug for a crash.
 export function abortModeStart(mode, message) {
@@ -358,7 +358,7 @@ export async function newGame() {
   let diff;
   if (state.gameMode === 'chaos') {
     diff = getChaosDifficulty(state.chaosRound || 1);
-    // Chaos rolls its own board shape per round (chaosShape.js). The plan is
+    // Chaos rolls its own shape per round (chaosShape.js). The plan is
     // resolved HERE, before the placeholder board exists, because the player
     // clicks a lattice cell to start the round: the topology has to be on
     // screen before the first click, and the mines go into it afterwards.
@@ -429,7 +429,7 @@ export async function newGame() {
     state.isArchivePlay = false;
     state._archiveRaw = null;
   } else if (!state.isDailyPractice && !state.isArchivePlay) {
-    // Archive replays carry a caller-set PAST date in state.dailySeed
+    // An archive replay arrives with a caller-set PAST date in state.dailySeed
     // (launched from the calendar). Only a live daily derives today's date.
     state.dailySeed = getLocalDateString();
   }
@@ -491,11 +491,11 @@ export async function newGame() {
       }
     } else {
       const seed = state.coastlineSeed || 'coastline-1';
-      // Per-tiling board shape and mine count. Six lattices need six different
+      // Per-tiling board dimensions and mine count. Six lattices need six different
       // answers: a honeycomb cell is one shape and one size where a 4.8.8's cell
       // count is inflated by its small interstitial squares, and the four Laves
       // lattices need a density that puts them on the constructive placer at all.
-      // The table and the measurements behind every number live in coastlineLink,
+      // The table and the measurements behind every number are in coastlineLink,
       // beside the parser that produced the type.
       const tilingType = state.coastlineType || DEFAULT_TILING;
       const dims = coastlineBoardFor(tilingType);
@@ -827,7 +827,7 @@ export async function newGame() {
       //     the "Daily strips gimmicks if unsolvable" contract). Logged so a
       //     persistent failure shows up in the console for triage.
       // Capped (vs the prior unbounded loop) so a degenerate seed can't hang
-      // the page waiting for solvability that will never come.
+      // the page in a solvability wait that never ends.
       const LOAD_BEARING_BUDGET = 25;
       const MAX_DAILY_ATTEMPTS = 100;
       let solvedDaily = false;
@@ -906,15 +906,15 @@ export async function newGame() {
     state.firstClick = false;
     state.status = 'idle';
 
-    // The certified opener. A canonical board carries it from deserializeBoard
-    //, the ONE definition shared with the Node consumers (nightly sweep,
+    // The certified opener. On a canonical board it comes from deserializeBoard,
+    // the ONE definition shared with the Node consumers (nightly sweep,
     // repair, backfill): the stored firstClick on a tiling, the container
     // center on every rectangle. Re-deriving floor(rows/2), floor(cols/2)
     // here anchored the solve on an unrelated container slot of a tiling
     // canonical (measured: 12 of 18 round-trips diverge, all 12 stall at
     // click 1, par off by up to 22%, issue #195), so features/par/moves
     // came off a failed solve with no error anywhere. A locally generated
-    // tiling board carries its builder's opener for the same reason; a
+    // tiling board keeps its builder's opener for the same reason; a
     // locally generated rectangle was generated around the container center
     // above, which stays its opener.
     const dailyOpener = reconstructed
@@ -1483,7 +1483,7 @@ export function revealCell(row, col) {
 
     // Timed mode: compute features + par for THIS board (same PAR_MODEL
     // as daily, timed boards are gimmick-free, so the gimmick terms are
-    // simply zero). Powers the par-relative rating on the win modal and
+    // zero). Powers the par-relative rating on the win modal and
     // the timed/{pushId} submission that will eventually feed the fit.
     if (state.gameMode === 'timed') {
       try {
@@ -1569,7 +1569,7 @@ export function revealCell(row, col) {
     }
 
     // Shape card FIRST, before any modifier card: the shape is the frame
-    // every modifier on the board sits inside, so meeting the lattice
+    // around every modifier on the board, so meeting the lattice
     // before its modifiers is the order that reads.
     if (state.gameMode === 'normal' && state.challengeSpec
         && state.challengeSpec.shape !== 'rect' && !hasSeenShape(state.challengeSpec.shape)) {
@@ -1773,7 +1773,7 @@ function startPressurePlateTimer(cell) {
       return;
     }
     // Identity guard (issue #192): this interval must only ever act on the
-    // board its cell belongs to. If the live board no longer holds THIS
+    // board its cell belongs to. If the live board no longer contains THIS
     // cell object at these coords, a mode switch resumed a different
     // game, a new board replaced this one, the plate is an orphan and
     // self-destructs instead of detonating someone else's game. The

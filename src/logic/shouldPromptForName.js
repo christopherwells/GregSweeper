@@ -27,7 +27,7 @@ const GATED_MODES = new Set(['daily', 'weekly', 'timed']);
 /**
  * @param {Object} args
  * @param {string} args.mode        state.gameMode
- * @param {string} args.savedName   getPlayerName() — '' when unset
+ * @param {string} args.savedName   getPlayerName(), '' when unset
  * @param {boolean} [args.isArchive] state.isArchivePlay
  * @param {boolean} [args.isPractice] state.isDailyPractice
  * @returns {boolean} true when the player must be prompted for a name first

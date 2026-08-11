@@ -1,7 +1,7 @@
 // Multi-tier achievement system
 // Each achievement category has 5 tiers: bronze → silver → gold → emerald → diamond
 // One drawn medal per tier. Platinum was dropped (2026-06-23) so the
-// ladder matches the five-medal set — no more star emoji fallback.
+// ladder matches the five-medal set, no more star emoji fallback.
 
 const TIER_NAMES = ['bronze', 'silver', 'gold', 'emerald', 'diamond'];
 const TIER_ICONS = {
@@ -20,8 +20,8 @@ const TIER_COLORS = {
 };
 
 // Two groups, rendered as separate sections:
-//   'feat'     — engine-certified skill (the identity: what you DID)
-//   'progress' — accumulation and bests
+//   'feat'     - engine-certified skill (the identity: what you DID)
+//   'progress', accumulation and bests
 const CATEGORIES = [
   {
     id: 'wins',
@@ -53,7 +53,7 @@ const CATEGORIES = [
     // Read the DURABLE per-level best-time map, not recentGames: the recent
     // list is a rolling window (50 games), so a diamond-pace win silently
     // DEMOTED the medal once it scrolled out (tiers recompute, no stored
-    // unlock state) — and the window includes chaos rounds, which must earn
+    // unlock state), and the window includes chaos rounds, which must earn
     // nothing. bestTimes records every non-chaos win forever.
     getValue: (s) => {
       const times = Object.values(s.bestTimes || {});
@@ -74,7 +74,7 @@ const CATEGORIES = [
   },
   // ── Skill feats (2026-06-10 rebuild) ────────────────
   // Honestly detectable from the click timeline + the board's CERTIFIED
-  // solve — never heuristics. "Survivor" (total wins, duplicate of
+  // solve, never heuristics. "Survivor" (total wins, duplicate of
   // Victory) and "Dedicated" (total games, pure attendance) were cut to
   // make room: an achievement should certify something the player DID,
   // not how long they've been around.
@@ -140,7 +140,7 @@ const CATEGORIES = [
     // Re-based on the Challenge 250 ladder (his build note: bronze early,
     // diamond reaching into the endless zone). The tiers land on the
     // ladder's own landmarks: the opener capstone L25 (the door to the
-    // shapes), the L100 and L200 milestones, the L250 crown, and 300 —
+    // shapes), the L100 and L200 milestones, the L250 crown, and 300,
     // fifty levels PAST the crown, so diamond can only be earned in the
     // endless zone. Medals recompute from maxLevelReached, which the
     // progression reset zeroes, so everyone re-earns them on the new

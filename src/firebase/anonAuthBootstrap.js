@@ -9,21 +9,21 @@
  * The previous implementation triggered the anonymous sign-in on a 5-second
  * TIMEOUT instead: on a slow boot (cold start, slow CDN delivery of the
  * Firebase SDK, sluggish IndexedDB) the timeout fired BEFORE the saved
- * session had surfaced, and signInAnonymously then REPLACED the persisted —
- * often linked — account with a brand-new anonymous one. That is the
+ * session had surfaced, and signInAnonymously then REPLACED the persisted,
+ * often linked, account with a brand-new anonymous one. That is the
  * intermittent "I get signed out for no reason" bug, and the source of the
  * duplicate-leaderboard-row fallout (a stray anonymous uid submitting its
  * own daily score in parallel to the player's real account).
  *
  * This wires the auth listener, signs in anonymously ONLY from the
  * authoritative first null fire, and returns after bounded waits whose sole
- * job is to UNBLOCK boot — they never sign in. A slow persistence read can
- * therefore no longer clobber the saved session: the real uid simply
+ * job is to UNBLOCK boot, they never sign in. A slow persistence read can
+ * therefore no longer clobber the saved session: the real uid still
  * arrives a moment later via the same listener (boot consumes the uid
  * reactively).
  *
  * Dependencies are injected so this is unit-testable without the Firebase
- * SDK or a browser. The listener is intentionally never detached — it is
+ * SDK or a browser. The listener is intentionally never detached, it is
  * THE session-long auth listener that drives every later uid change.
  *
  * @param {object} deps
@@ -57,7 +57,7 @@ export async function bootstrapAnonymousAuth({
 
   subscribe((snap) => {
     // Per-fire side effects (real impl updates _uid / cloud listener / etc.)
-    // run on EVERY fire — this is the session-long auth listener.
+    // run on EVERY fire, this is the session-long auth listener.
     try { onAuthFire(snap); }
     catch (err) { onError('auth-fire handler error: ' + (err && err.message)); }
 
@@ -91,7 +91,7 @@ export async function bootstrapAnonymousAuth({
   await Promise.race([firstFire, delay(firstFireTimeoutMs)]);
   result.timedOut = !firstFireDone;
 
-  // Bounded wait for a uid to settle — covers the anonymous sign-in kicked
+  // Bounded wait for a uid to settle, covers the anonymous sign-in kicked
   // above on a fresh device. Again only a boot-unblock cap.
   await Promise.race([settled, delay(settleTimeoutMs)]);
 

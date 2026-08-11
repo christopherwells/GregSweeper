@@ -1712,8 +1712,8 @@ $('#gameover-done').addEventListener('click', () => {
 
 // Daily-win opt-in CTA. Click → enable push notifications with the
 // player's preferred hour (default 9am ET). Picked here because the
-// player has just completed a daily and the dopamine moment is fresh
-//, the same toggle in Settings converts at a fraction of this rate.
+// player has just completed a daily and the dopamine moment is fresh;
+// the same toggle in Settings converts at a fraction of this rate.
 $('#gameover-remind-tomorrow').addEventListener('click', async () => {
   const btn = $('#gameover-remind-tomorrow');
   if (!btn || btn.disabled) return;
@@ -2528,7 +2528,7 @@ function expireRolledOverGame() {
   return true;
 }
 
-// Pause timer + persist when app loses focus; resume when visible
+// Pause timer + persist when focus leaves the app; resume when visible
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') {
     if (state.status === 'playing') pauseTimer();

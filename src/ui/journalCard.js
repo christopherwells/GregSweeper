@@ -1,17 +1,17 @@
-// ── Journal card — the shared study-card builder ──────────────────────
+// ── Journal card, the shared study-card builder ──────────────────────
 // One DOM builder for a study's deep card (header + hypothesis + the
 // composed notebook entry + sparkline + optional lab log + meta line +
 // share), used by BOTH the in-app journal modal (journalView) and the
 // logged-out ?report= page (journalReport) so the two surfaces can
 // never drift apart. The prose arrives pre-composed from
-// src/logic/journalProse.js — this module only lays it out.
+// src/logic/journalProse.js, this module only lays it out.
 
 import { formatShortDate } from '../logic/journalFindings.js';
 import { planStudyFigures } from '../logic/journalProse.js';
 import { renderStudyFigure } from './journalFigure.js';
 import { PROD_SITE_BASE } from '../config.js';
 
-// Chip labels for the verdict kinds — single-sourced here so the modal
+// Chip labels for the verdict kinds, single-sourced here so the modal
 // cards, the ledger rows, and the share page can never disagree on a
 // name.
 export const VERDICT_CHIPS = {
@@ -33,7 +33,7 @@ export function capitalize(s) {
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 }
 
-// Share (or copy) a finding's public link — the same Web Share /
+// Share (or copy) a finding's public link, the same Web Share /
 // clipboard flow as the crux challenge button, with the hardcoded prod
 // base so a link copied from /test/ still points at the public site.
 // Returns 'shared' | 'dismissed' | 'copied' | 'failed'; callers own the
@@ -50,7 +50,7 @@ export async function shareFindingLink(study) {
       await navigator.share(shareData);
       return 'shared';
     } catch {
-      return 'dismissed'; // user closed the sheet — stay quiet
+      return 'dismissed'; // user closed the sheet, stay quiet
     }
   }
   try {
@@ -58,7 +58,7 @@ export async function shareFindingLink(study) {
       await navigator.clipboard.writeText(url);
       return 'copied';
     }
-  } catch { /* clipboard unavailable — fall through */ }
+  } catch { /* clipboard unavailable, fall through */ }
   return 'failed';
 }
 
@@ -80,7 +80,7 @@ export function makeShareButton(study, className, onFallback) {
 
 function _metaLine(study) {
   // A fresh target can reach the active card before its first stamped
-  // study day exists — "Studied 0 days" under "Now studying" would read
+  // study day exists, "Studied 0 days" under "Now studying" would read
   // as a contradiction.
   if (!study.studyDayCount) {
     return el('p', 'journal-card-meta', 'No study days on the books yet');
@@ -96,13 +96,13 @@ function _metaLine(study) {
 }
 
 // The journal-level meta line ("Greg re-checks the numbers every night ·
-// N solves from M players · last updated D") — one builder for the
+// N solves from M players · last updated D"), one builder for the
 // in-app modal footer and the report page so the two surfaces can never
 // state different meta facts. `meta` is buildJournal's meta object.
 export function metaSummaryLine(meta, className = 'journal-meta') {
   const bits = ['Greg re-checks the numbers every night'];
   // "solves", mode-neutral: n_scores counts the daily fit's rows (daily
-  // completions + weekly firsts) — NOT the Timed mode, whose
+  // completions + weekly firsts), NOT the Timed mode, whose
   // win-censored runs feed a separate model and are excluded here.
   if (meta?.totalRuns != null && meta?.nPlayers != null) {
     bits.push(`${meta.totalRuns} solves from ${meta.nPlayers} players`);
@@ -114,10 +114,10 @@ export function metaSummaryLine(meta, className = 'journal-meta') {
 /**
  * Build a study's deep card. `entry` is the composeEntry result (may be
  * null for a bare card). Options:
- *   head        — render the label + chip header (default true)
- *   title       — override the header text (e.g. "Now studying: compass")
- *   log         — labLog entries to render as the dated lab log
- *   onShareFallback — enables the share button; receives (outcome, btn)
+ *   head        - render the label + chip header (default true)
+ *   title       - override the header text (e.g. "Now studying: compass")
+ *   log         - labLog entries to render as the dated lab log
+ *   onShareFallback, enables the share button; receives (outcome, btn)
  */
 export function buildStudyCard(study, entry, opts = {}) {
   const card = el('article', `journal-card${opts.className ? ` ${opts.className}` : ''}`);
@@ -131,7 +131,7 @@ export function buildStudyCard(study, entry, opts = {}) {
 
   // The italic hypothesis epigraph renders only when the composed entry
   // does NOT already carry the hunch through its arc beat ("I wrote
-  // that…") — otherwise the card would print the premise twice in a row.
+  // that…"), otherwise the card would print the premise twice in a row.
   if (study.hypothesis && !entry?.arcSpoken) {
     card.appendChild(el('p', 'journal-hypothesis', study.hypothesis));
   }

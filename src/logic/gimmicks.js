@@ -41,7 +41,7 @@ export function clearGimmickProperties(cell) {
 // diagram. All three are player copy, so all three take ZERO em-dashes and no
 // en-dashes.
 //
-// Every sentence here must be true on EVERY board shape. That is not a style
+// Every sentence here must be true on EVERY shape. That is not a style
 // preference: the Challenge 250 venue rule debuts six of the nine modifiers
 // on a tiling (locked and worm on the Honeycomb, wormhole and compass on
 // Octagons, mirror on 3D Cubes, sonar on Paving Stones), so a rectangular
@@ -63,7 +63,7 @@ const GIMMICK_DEFS = {
     intro: 11, name: 'Walls', icon: '🧱',
     desc: 'Walls sit between two cells and stop each one counting the other.',
     longDesc: 'A wall is a thick line along the boundary between two cells. Numbers on either side of it never count mines across it, so treat a wall like the edge of the board: it splits the board into sections you work through separately.',
-    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed" style="border-right:3px solid #8B7355">1</div><div class="ge-cell revealed" style="border-left:3px solid #8B7355">0</div><div class="ge-cell revealed">0</div><div class="ge-cell revealed" style="border-right:3px solid #8B7355">1</div><div class="ge-cell revealed" style="border-left:3px solid #8B7355">0</div><div class="ge-cell revealed">0</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">0</div></div><div class="ge-caption">Thick borders are walls. Numbers ignore neighbors across them</div>',
+    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed" style="border-right:3px solid #8B7355">1</div><div class="ge-cell revealed" style="border-left:3px solid #8B7355">0</div><div class="ge-cell revealed">0</div><div class="ge-cell revealed" style="border-right:3px solid #8B7355">1</div><div class="ge-cell revealed" style="border-left:3px solid #8B7355">0</div><div class="ge-cell revealed">0</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">0</div></div><div class="ge-caption">Thick borders are walls. Numbers never count across them</div>',
   },
   liar: {
     intro: 21, name: 'Liar Cells', icon: '🤥',
@@ -104,19 +104,19 @@ const GIMMICK_DEFS = {
   pressurePlate: {
     intro: 71, name: 'Pressure Plates', icon: '🔴',
     desc: 'Some cells start a countdown when revealed. Reveal all their safe neighbors before time runs out!',
-    longDesc: 'Pressure plate cells show their number like normal, but a countdown timer starts when revealed. You must reveal every non-mine neighbor before time runs out or the plate detonates. Solve the area around the plate fast!',
+    longDesc: 'Pressure plate cells show their number as normal, but a countdown timer starts when revealed. You must reveal every non-mine neighbor before time runs out or the plate detonates. Solve the area around the plate fast!',
     exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-pressure" style="box-shadow:inset 0 0 6px rgba(255,50,50,0.5)">2<img class="ge-piece" src="assets/sprites/mod-pressure.svg" alt=""></div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">0</div></div><div class="ge-caption">Reveal all safe cells around the plate before the timer runs out!</div>',
   },
   sonar: {
     intro: 81, name: 'Sonar', icon: '📡',
     desc: 'Sonar cells count every mine within two steps of them, not just their immediate neighbors.',
-    longDesc: 'A sonar cell reaches two steps out in every direction, so it covers far more ground than an ordinary number and its count runs higher. On a Classic board that is the 5x5 block around it, and on the other board shapes it is every cell you can get to in two moves. Tap a revealed sonar cell to light up exactly which cells it counts.',
+    longDesc: 'A sonar cell reaches two steps out in every direction, so it covers far more ground than an ordinary number and its count runs higher. On a Classic board that is the 5x5 block around it, and on the other shapes it is every cell you can get to in two moves. Tap a revealed sonar cell to light up exactly which cells it counts.',
     exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-sonar" style="color:#26c6da;font-weight:900"><img class="ge-piece" src="assets/sprites/mod-sonar.svg" alt="">5</div><div class="ge-cell revealed">2</div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">0</div><div class="ge-cell unrevealed"></div></div><div class="ge-caption">On a Classic board that is the 5\u00d75 block: this "5" counts 5 mines inside it</div>',
   },
   compass: {
     intro: 91, name: 'Compass', icon: '🧭',
     desc: 'Cells with an arrow count every mine in a straight line the way they point, out to the edge of the board.',
-    longDesc: 'A compass cell shows an arrow and a number. The number counts every mine along the straight line the arrow points down, out to the edge of the board, and nothing off that line. On a Classic board it has four directions, along the rows and columns. On the other board shapes it has six or eight, some of them running at an angle. Tap a revealed compass cell to light up the line it counts.',
+    longDesc: 'A compass cell shows an arrow and a number. The number counts every mine along the straight line the arrow points down, out to the edge of the board, and nothing off that line. On a Classic board it has four directions, along the rows and columns. On the other shapes it has six or eight, some of them running at an angle. Tap a revealed compass cell to light up the line it counts.',
     exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(5,32px)"><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-compass" style="color:#ffa726;font-weight:900">3\u2190</div><div class="ge-cell revealed">2</div><div class="ge-cell unrevealed"></div></div><div class="ge-caption">"3\u2190" = 3 mines to the left in this row</div>',
   },
   // Sprite-only modifier: no `icon` emoji field, by design. Every icon
@@ -125,7 +125,7 @@ const GIMMICK_DEFS = {
   worm: {
     intro: 101, name: 'Worm Tiles',
     desc: 'Some cells hide a worm egg. Revealing one hatches a worm that crawls over your numbers.',
-    longDesc: 'A few safe cells hold a buried worm egg. Revealing one hatches a worm that crawls across your revealed cells, one step at a time onto a cell it shares an edge with, hiding the numbers it sits on as it goes. It prefers open ground and shies away from big numbers. It can\'t hurt you and it never changes the board, so remember what you read or wait for it to move along.',
+    longDesc: 'A few safe cells hold a buried worm egg. Revealing one hatches a worm that crawls across your revealed cells, one step at a time onto a cell it shares an edge with, covering the numbers it sits on as it goes. It prefers open ground and shies away from big numbers. It can\'t hurt you and it never changes the board, so remember what you read or wait for it to move along.',
     exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-worm-covered">2<span class="ge-worm-seg"></span></div><div class="ge-cell revealed ge-worm-covered">1<span class="ge-worm-seg ge-worm-head"></span></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div></div><div class="ge-caption">The worm hides numbers as it crawls. They come back when it moves on</div>',
   },
 };
@@ -157,7 +157,7 @@ export function setModifierPopupDisabled(disabled) {
 
 // ── Daily gimmick selection (seeded, ~35% of days) ─────
 // `forcedGimmick`, when provided and member of DAILY_SAFE_GIMMICKS,
-// guarantees that gimmick is the primary on every seed — used by the
+// guarantees that gimmick is the primary on every seed, used by the
 // adaptive-experiment path so the candidate-seed loop competes on
 // target-cell count rather than presence.
 //
@@ -167,7 +167,7 @@ export function setModifierPopupDisabled(disabled) {
 // undersampled feature, and adding a random second gimmick would
 // muddy the signal we're trying to fill in.
 //
-// Default double-gimmick rate is 10% (down from the original 20%) —
+// Default double-gimmick rate is 10% (down from the original 20%),
 // the coverage missions absorb most of the "make boards more varied"
 // goal, so we don't need natural double-gimmick days to do as much
 // of the work, and lower noise = cleaner per-feature deltas.
@@ -200,11 +200,11 @@ export function getDailyGimmick(dailySeed, createRNG, forcedGimmick = null, sing
 }
 
 // Weekly puzzle: 2 or 3 modifiers stacked. Same daily-safe pool, picked
-// without replacement so we never duplicate. Originally 2–4 but four
+// without replacement so we never duplicate. Originally 2-4 but four
 // stacked modifiers is technically solvable (the solver verifies it)
-// but humanly miserable — recognising disjunctive liar constraints
+// but humanly miserable, recognizing disjunctive liar constraints
 // while tracking compass arrows and wormhole partners and wall-aware
-// adjacency in the same play makes the board feel unsolvable even
+// adjacency in the same play makes the board read as unsolvable even
 // when it isn't. Capping at 3 is the playable ceiling.
 export function getWeeklyGimmicks(weeklySeed, createRNG) {
   const rng = createRNG(weeklySeed + '-weekly-gimmicks');
@@ -219,7 +219,7 @@ export function getWeeklyGimmicks(weeklySeed, createRNG) {
   return picked;
 }
 
-// (getGimmicksForLevel — the old ladder's per-level modifier lottery — was
+// (getGimmicksForLevel, the old ladder's per-level modifier lottery, was
 // retired with the sawtooth: Challenge 250 specs AUTHOR their modifier
 // sets in challenge250.js, and no board on the ladder rolls a random
 // secondary. GIMMICK_DEFS[].intro survives as getIntensity's ramp anchor
@@ -236,8 +236,8 @@ export function getChaosGimmicks(count, rng = Math.random) {
 // ── Gimmick intensity (count of affected cells) ────────
 
 // The intensity ramp's ceiling, FROZEN at the old 120-level ladder's top.
-// getIntensity's whole scale — the per-type intro positions above and this
-// cap — is the UNIT the Challenge 250 spec tables author their
+// getIntensity's whole scale, the per-type intro positions above and this
+// cap, is the UNIT the Challenge 250 spec tables author their
 // `gimmickLevel` dial in (11..120, "old-ladder levels"): the proven Paving
 // T12 spec was measured at level 115 on exactly this scale, and every
 // authored ladder spec was validated against it. Re-anchoring this to the
@@ -330,7 +330,7 @@ export function applyGimmicks(board, level, activeGimmicks, rng = Math.random) {
       case 'walls':
         // If walls are already on the board (challenge mode pre-applies
         // them so the constructive generator can build a wall-aware mine
-        // layout), don't re-roll them — the new random walls would
+        // layout), don't re-roll them, the new random walls would
         // invalidate the solver-verified board. Just keep the existing set.
         if (board._wallEdges && board._wallEdges.size > 0) {
           applied.walls = Array.from(board._wallEdges);
@@ -371,7 +371,7 @@ export function applyGimmicks(board, level, activeGimmicks, rng = Math.random) {
     }
   }
 
-  // Single source of truth for displayed numbers — runs after every gimmick
+  // Single source of truth for displayed numbers, runs after every gimmick
   // has marked its cells, so liar offsets stack correctly on top of
   // wormhole/mirror/sonar/compass base values.
   recomputeDisplayedMines(board);
@@ -380,14 +380,14 @@ export function applyGimmicks(board, level, activeGimmicks, rng = Math.random) {
 }
 
 // True if a cell already owns the base displayed number (i.e. any other
-// base-value gimmick must not be placed on it). Liar is NOT in this list —
+// base-value gimmick must not be placed on it). Liar is NOT in this list,
 // liar stacks on top of a base value via its offset.
 function hasBaseValueGimmick(cell) {
   return cell.isWormhole || !!cell.mirrorPair || cell.isSonar || cell.isCompass;
 }
 
 // True if the cell's displayed value is replaced by something other than a
-// mine-count number — stacking a base-value gimmick on top would be wasted.
+// mine-count number, stacking a base-value gimmick on top would be wasted.
 // Locked cells are intentionally NOT included here: the lock is a temporary
 // gate, and once unlocked the cell displays whatever the base/liar layers
 // dictate. That lets locked stack with wormhole/mirror/sonar/compass/liar.
@@ -421,8 +421,8 @@ function applyMystery(board, rows, cols, count, rng) {
 }
 
 // ── Worm Tiles: eggs that hatch crawling worms on reveal ──
-// Eggs go on PLAIN numbered safe cells only — no mine, no other gimmick on
-// the cell — so the post-hatch cell shows an ordinary number and the solver
+// Eggs go on PLAIN numbered safe cells only, no mine, no other gimmick on
+// the cell, so the post-hatch cell shows an ordinary number and the solver
 // stays worm-blind. Runs LAST in ORDER, so every other gimmick's flags are
 // already set when the filter runs. Hidden eggs render as normal cells (a
 // telegraphed safe-only egg would leak "this cell is safe").
@@ -453,14 +453,14 @@ function applyLocked(board, rows, cols, count, rng) {
   // Filter candidates whose unlock path is reachable. A locked cell
   // unlocks once all its non-mine wall-accessible neighbors are revealed.
   // If walls fully isolate a cell from any safe neighbor (mines only, or
-  // every safe neighbor lives behind a wall), the cell can never unlock —
+  // every safe neighbor lives behind a wall), the cell can never unlock,
   // dead end for the player. Pre-filter out those placements so the
   // generator never ships an undeadlockable locked cell.
   //
   // Walls are applied before locked in ORDER, so the cache is final here.
   // buildNeighborCache walks dr/dc in the same order the hand-rolled loop
   // did, so candidates land in the same sequence and the seeded shuffle
-  // consumes the RNG identically — same board, same seed, as before.
+  // consumes the RNG identically, same board, same seed, as before.
   const nbrs = buildNeighborCache(board, rows, cols);
   const explicitTopology = !!board._cellNeighbors;
   const candidates = [];
@@ -494,11 +494,11 @@ function applyLocked(board, rows, cols, count, rng) {
 
 export function applyLiar(board, rows, cols, count, rng) {
   // Liar runs LAST in applyGimmicks (stacking rules), so no cell is isLiar
-  // yet — running the recompute here fills every cell's PRE-LIE display
+  // yet, running the recompute here fills every cell's PRE-LIE display
   // value (sonar/compass region counts, wormhole pair sums, mirror swaps),
   // exactly the base the final recompute will stack the offset on. The old
-  // hand-rolled base closure read cell.sonarCount / cell.compassCount —
-  // fields ONLY recomputeDisplayedMines populates — so the base-≥2 guard
+  // hand-rolled base closure read cell.sonarCount / cell.compassCount,
+  // fields ONLY recomputeDisplayedMines populates, so the base-≥2 guard
   // below silently evaluated raw adjacentMines for sonar/compass cells. A
   // compass with a 0-mine ray but ≥2 adjacent mines then took offset −1 and
   // clamped to displayed 0 = the TRUE value: a liar that tells the truth,
@@ -511,7 +511,7 @@ export function applyLiar(board, rows, cols, count, rng) {
     for (let c = 0; c < cols; c++) {
       const cell = board[r][c];
       if (cell.isMine) continue;
-      // Liar cannot share a cell with anything that hides the number.
+      // Liar cannot share a cell with anything that masks the number.
       if (hasDisplayBlockingGimmick(cell)) continue;
       // Need base >= 2 so that offset -1 still leaves a positive number.
       if (baseValue(cell) < 2) continue;
@@ -537,10 +537,10 @@ export function applyLiar(board, rows, cols, count, rng) {
 // This gives players a visual cue about which area has unreliable numbers.
 
 export function computeLiarZone(board, rows, cols) {
-  // On a TILING the container's (row, col) is pure storage — it says nothing
-  // about what a cell touches — so a coordinate walk marks cells that are not
-  // the liar's neighbours and misses ones that are. Follow the board's own
-  // neighbour graph instead (walls there are simply absent edges).
+  // On a TILING the container's (row, col) is pure storage, it says nothing
+  // about what a cell touches, so a coordinate walk marks cells that are not
+  // the liar's neighbors and misses ones that are. Follow the board's own
+  // neighbor graph instead (walls there are just absent edges).
   if (board._cellNeighbors) {
     const cache = buildNeighborCache(board, rows, cols);
     const total = rows * cols;
@@ -553,7 +553,7 @@ export function computeLiarZone(board, rows, cols) {
     return;
   }
 
-  // Rectangular boards keep the literal 8-neighbourhood walk VERBATIM. It is
+  // Rectangular boards keep the literal 8-neighborhood walk VERBATIM. It is
   // deliberately wall-BLIND: the zone is a spatial cue ("numbers around here are
   // unreliable"), not an adjacency claim, and a liar's tint has always spilled
   // across a wall. Routing this through the wall-aware buildNeighborCache would
@@ -578,10 +578,10 @@ export function computeLiarZone(board, rows, cols) {
 // ── Walls: edges between adjacent cells ──────────────
 
 // Walls on a TILING (Coastline Phase 2): a wall SEVERS an edge from the
-// neighbor graph — both directions, so symmetry holds — in contiguous "reef"
+// neighbor graph, both directions, so symmetry holds, in contiguous "reef"
 // chains that snake between cells. The certifier and recalcAllAdjacency then see
 // a graph with fewer edges and need NO wall logic at all: a severed link is
-// simply absent (the memory's "walls baked into the neighbor list"), with none
+// just absent (the memory's "walls baked into the neighbor list"), with none
 // of the rectangular diagonal ambiguity and no "r,c-r,c" string contract. The
 // removed pairs ride a render-only board._tilingWalls so the renderer can draw a
 // bar on each shared edge. Isolation is all-or-nothing, like the rectangular
@@ -598,24 +598,24 @@ export function computeLiarZone(board, rows, cols) {
 // another, two that would have to curve around the wall do not.
 //
 // What it replaces. Corner-inclusive adjacency makes cells meeting at a single
-// VERTEX neighbours, but buildWireframe emits an edge only for a pair sharing
+// VERTEX neighbors, but buildWireframe emits an edge only for a pair sharing
 // TWO vertices, so severing wireframe edges left every corner contact intact
 // and a wall drawn through the corner still counted mines across itself.
-// Measured over 12 walled boards per shape beforehand: EVERY board on all four
+// Measured over 12 walled boards for each shape beforehand: EVERY board on all four
 // Laves tilings was affected, 464 see-through corner links, 165 of them feeding
 // a wrong clue (rhombille worst at 77). The certifier reads the same adjacency,
 // so those boards certified as no-guess and were self-consistent while being
 // unsolvable for a person reasoning from the wall in front of them, which is
 // the worst shape this class of bug takes.
 //
-// One rule covers both kinds of neighbour, which is why it is written this way
-// rather than as a special case bolted onto edge severing: an edge neighbour's
+// One rule covers both kinds of neighbor, which is why it is written this way
+// rather than as a special case bolted onto edge severing: an edge neighbor's
 // sight line crosses its own shared boundary, so a wall there blocks it by the
-// same test, and the previous behaviour falls out instead of being preserved
+// same test, and the previous behavior falls out instead of being preserved
 // by hand.
 //
 // 4.8.8 and the honeycomb are untouched, structurally rather than luckily: both
-// are trivalent, so they have no vertex-only pairs, and their edge neighbours
+// are trivalent, so they have no vertex-only pairs, and their edge neighbors
 // sever exactly as before. Verified byte-identical.
 
 const _SIGHT_EPS = 1e-9;
@@ -645,11 +645,11 @@ function _segmentsCross(p1, p2, q1, q2) {
 }
 
 /**
- * Neighbour links whose sight line a set of walled edges crosses.
+ * Neighbor links whose sight line a set of walled edges crosses.
  *
  * @param {object} tiling            the built tiling
  * @param {Array}  edges             buildWireframe edges
- * @param {Array<number[]>} adjacency the FULL (unwalled) neighbour lists
+ * @param {Array<number[]>} adjacency the FULL (unwalled) neighbor lists
  * @param {Iterable<number>} walledEdgeIdx indices into `edges`
  * @returns {Array<[number, number]>} cell pairs to sever
  */
@@ -679,10 +679,10 @@ export function sightLineCuts(tiling, edges, adjacency, walledEdgeIdx) {
 function applyWallsTiling(board, rows, cols, segmentCount, rng) {
   const total = rows * cols;
   // The wireframe gives every cell-boundary edge tagged with the two cells it
-  // separates, so a wall is a CONTINUOUS run of edges sharing vertices — the
+  // separates, so a wall is a CONTINUOUS run of edges sharing vertices, the
   // bars connect end to end, and each sits on the TRUE shared boundary
   // (including the 45° octagon/square edges).
-  // Rebuild the SAME tiling the board was generated on — the wireframe (and so
+  // Rebuild the SAME tiling the board was generated on, the wireframe (and so
   // every wall segment) is geometry-specific, and a 4.8.8 wireframe over a
   // honeycomb would draw walls on edges that do not exist.
   const tiling = buildTiling(board._tiling.type, board._tiling.M, board._tiling.N);
@@ -704,10 +704,10 @@ function applyWallsTiling(board, rows, cols, segmentCount, rng) {
       out[a] = out[a].filter(x => x !== b);
       out[b] = out[b].filter(x => x !== a);
     };
-    // ONE test for both kinds of neighbour. An edge neighbour's sight line
+    // ONE test for both kinds of neighbor. An edge neighbor's sight line
     // crosses its own shared boundary, so a wall on that boundary blocks it by
     // the same rule that blocks a corner contact, and the old edge-severing
-    // behaviour falls out rather than being kept by hand.
+    // behavior falls out rather than being kept by hand.
     for (const pair of sightLineCuts(tiling, edges, full, walledEdgeIdx)) drop(pair[0], pair[1]);
     return out;
   };
@@ -784,7 +784,7 @@ function applyWallsTiling(board, rows, cols, segmentCount, rng) {
     board._tilingWalls = [];
   }
   // Numbers must reflect the reduced topology (a mine across a severed edge no
-  // longer counts) — recalcAllAdjacency reads the board's own neighbor list.
+  // longer counts), recalcAllAdjacency reads the board's own neighbor list.
   recalcAllAdjacency(board);
   return board._tilingWalls.map(w => `${Math.min(w.a, w.b)}-${Math.max(w.a, w.b)}`);
 }
@@ -826,13 +826,13 @@ export function applyWalls(board, rows, cols, segmentCount, rng) {
 
       let key = null;
       if (horiz) {
-        // Edge between (r, c) and (r+1, c) — horizontal wall at this column
+        // Edge between (r, c) and (r+1, c), horizontal wall at this column
         if (r >= 0 && r < rows - 1 && c >= 0 && c < cols) {
           key = wallKey(r, c, r + 1, c);
         }
         c += dir; // extend along columns
       } else {
-        // Edge between (r, c) and (r, c+1) — vertical wall at this row
+        // Edge between (r, c) and (r, c+1), vertical wall at this row
         if (r >= 0 && r < rows && c >= 0 && c < cols - 1) {
           key = wallKey(r, c, r, c + 1);
         }
@@ -849,10 +849,10 @@ export function applyWalls(board, rows, cols, segmentCount, rng) {
     }
   }
 
-  // Verify walls don't create isolated regions — every cell must be
+  // Verify walls don't create isolated regions, every cell must be
   // reachable from every other cell through wall-respecting paths.
   // If walls partition the board, clear ALL walls (the isolation check
-  // below is all-or-nothing — it does not retry with fewer segments).
+  // below is all-or-nothing, it does not retry with fewer segments).
   board._wallEdges = wallEdges;
   if (wallEdges.size > 0) {
     const visited = new Set();
@@ -890,8 +890,8 @@ export function applyWalls(board, rows, cols, segmentCount, rng) {
   // ALWAYS recalculate adjacency. Even when walls were cleared by the
   // isolation check above, the board's adjacency may already reflect a
   // PRIOR set of walls (from a constructive-generator call or an earlier
-  // applyWalls). Skipping the recalc here leaves stale wall-aware counts
-  // — cells would show fewer mines than actually surround them, and
+  // applyWalls). Skipping the recalc here leaves stale wall-aware counts:
+  // cells would show fewer mines than actually surround them, and
   // chord would refuse to fire because counts don't match flags.
   recalcAllAdjacency(board);
 
@@ -931,23 +931,23 @@ function applyWormholes(board, rows, cols, pairCount, rng) {
   shuffle(candidates, rng);
 
   // Pair separation is TWO rules, split by topology (the computeLiarZone
-  // pattern). The rule exists to keep a pair's endpoints apart — an adjacent
+  // pattern). The rule exists to keep a pair's endpoints apart, an adjacent
   // pair's sum is trivially decomposable.
   //
   // On a RECTANGLE it is container Manhattan distance, kept VERBATIM in the
   // else-branch below: pair placement consumes the shared RNG stream, so any
-  // change to that branch moves every shipped canonical board that carries a
+  // change to that branch moves every shipped canonical board with a
   // wormhole.
   //
   // On an EXPLICIT topology (a tiling) the container's (row, col) is pure
-  // storage — two cells "3 apart" by container arithmetic can be direct
-  // lattice neighbors — so the separation is GRAPH distance over the board's
+  // storage, two cells "3 apart" by container arithmetic can be direct
+  // lattice neighbors, so the separation is GRAPH distance over the board's
   // own neighbor lists: the partner must sit outside the 2-step ball of the
   // first endpoint, i.e. at graph distance >= 3. There is deliberately no
-  // small-board relaxation like the rectangle's Manhattan-2 tier: distance 2
+  // small-board analog of the rectangle's Manhattan-2 tier: distance 2
   // on a graph means a shared neighbor, and buildStaticGimmickConstraints
   // skips a pair whose neighborhoods overlap, so a distance-2 pair would
-  // display a sum the certifier can never use — decorative by construction.
+  // display a sum the certifier can never use, decorative by construction.
   // Distance >= 3 makes the union constraint always emit. The smallest
   // shipped tiling board is 63 cells (COASTLINE_BOARDS), so the cramped
   // boards the rectangle tier exists for do not arise here.
@@ -1078,8 +1078,8 @@ export const MINESHIFT_MAX_MOVERS = 5;
  * The shifter is the one interval whose cadence used to be remembered in a
  * MODULE variable rather than derived from the game it belongs to, so it
  * outlived its own board: leaving a Chaos round through the title screen
- * paused the interval but kept the memory, and the next `resumeTimer` — a tab
- * return, an unlocked phone, a dismissed bomb popup — restarted it against
+ * paused the interval but kept the memory, and the next `resumeTimer`, a tab
+ * return, an unlocked phone, a dismissed bomb popup, restarted it against
  * whatever game had been loaded since. On a resumed Daily that meant mines
  * relocating inside a CANONICAL board mid-play: the certificate voided, the
  * numbers rewritten, and a submitted score whose stored feature vector
@@ -1116,7 +1116,7 @@ export function mineShiftIsActive(gameState) {
  * `buildWormCrawlTopology` is the one builder for "which cells may something
  * crawl between": side-sharing neighbors on a tiling, null on a rectangle
  * (whose orthogonal walk it leaves alone). Sharing it with the worm is the
- * point — two crawl rules would be two chances to disagree about what a step
+ * point, two crawl rules would be two chances to disagree about what a step
  * is, and the worm's is the one that has been played.
  *
  * How MANY move is the difficulty dial: `count` comes from the modifier's
@@ -1226,7 +1226,7 @@ function applyPressurePlates(board, rows, cols, count, rng) {
   for (let i = 0; i < Math.min(maxPlates, candidates.length); i++) {
     const cell = candidates[i].cell;
     cell.isPressurePlate = true;
-    cell.plateTimer = 15; // placeholder — dynamic timer computed at reveal time
+    cell.plateTimer = 15; // placeholder, dynamic timer computed at reveal time
     applied.push({ row: cell.row, col: cell.col });
   }
   return applied;
@@ -1275,19 +1275,19 @@ const COMPASS_DIRS = [
 //
 // dx/dy are geometric (dx = +col, dy = +row). The ray itself is computed from
 // cell POSITIONS and stored on the cell, so display and certifier read the same
-// list — see computeCompassRay / compassRayCells.
+// list, see computeCompassRay / compassRayCells.
 
 // sin 60 degrees in pitch units. This IS a honeycomb's row spacing (HEX_ROW_H)
 // and it is also the long leg of every 30/60 degree lattice axis on the Laves
-// tilings, so both six-direction tables below take it from one constant rather
+// tilings, so both six-direction tables below read it from one constant rather
 // than each spelling sqrt(3)/2 for itself.
 const SIN_60 = HEX_ROW_H;
 
-// Eight directions — four axes, four diagonals — for the two lattices whose
+// Eight directions, four axes, four diagonals, for the two lattices whose
 // compass-bearing points sit on a SQUARE grid: the 4.8.8 (the orthogonal octagon
 // axes plus the diagonals, which alternate octagon and square) and cairo (whose
 // ray anchors are the midpoints of the underlying square lattice's edges, so
-// they sit on a 45-degree-rotated square lattice of their own — its diagonals
+// they sit on a 45-degree-rotated square lattice of their own, its diagonals
 // score 100.0% and its axes about 88%).
 const COMPASS_DIRS_8 = [
   { arrow: '←', dx: -1, dy: 0 },
@@ -1306,7 +1306,7 @@ const COMPASS_DIRS_8 = [
 //
 // There is deliberately no due-north or due-south ray here, and the reason is
 // NOT the one this comment used to give ("no column of centers runs vertically"
-// — that is simply false; in odd-r offset rows i and i+2 share cx, so the column
+// which is just false; in odd-r offset rows i and i+2 share cx, so the column
 // exists and a vertical ray reaches something from 77 of 121 origins). The real
 // reason is that the column runs along the shared VERTICAL EDGES of the row
 // between: only about 66% of the drawn line lies inside counted cells and not
@@ -1321,14 +1321,14 @@ const COMPASS_DIRS_60 = [
   { arrow: '↘', dx: 0.5, dy: SIN_60 },
 ];
 
-// The same three axes turned 30 degrees — 30/90/150 and their opposites — for
+// The same three axes turned 30 degrees, 30/90/150 and their opposites, for
 // floret and deltoidal. The exact complement of COMPASS_DIRS_60: this set has a
 // true due-north/south and no due-east/west.
 //
 // Which of the two a lattice takes is fixed by its builder's ROTATIONAL PHASE,
 // and picking wrong is the silent failure here: the rejected set still returns
 // rays (mean length 1.3 to 2.8 on the fixture patches) rather than nothing, so
-// it reads as plausible on review. test/tilingCompass.test.mjs is the guard — it
+// it reads as plausible on review. test/tilingCompass.test.mjs is the guard, it
 // re-measures both candidate sets against the builders' actual output.
 //
 // Deltoidal reaches this quality only from the ray ANCHOR that tilingGeometry
@@ -1347,7 +1347,7 @@ const COMPASS_DIRS_30 = [
 ];
 
 // The set each lattice may point along, keyed by the tiling's own type. Exported
-// so the guard test measures THIS table rather than a copy of it — a second copy
+// so the guard test measures THIS table rather than a copy of it, a second copy
 // is precisely the drift the guard exists to catch.
 export const COMPASS_DIRS_BY_TILING = {
   '4.8.8': COMPASS_DIRS_8,
@@ -1374,8 +1374,8 @@ function applyCompass(board, rows, cols, count, rng) {
   for (let i = 0; i < Math.min(count, candidates.length); i++) {
     const cell = candidates[i];
     if (tiling) {
-      // Pick a geometric direction whose ray is non-trivial (>= 2 cells) —
-      // else the longest available — and store the precomputed ray. The cell's
+      // Pick a geometric direction whose ray is non-trivial (>= 2 cells),
+      // else the longest available, and store the precomputed ray. The cell's
       // number then counts mines along exactly this stored list.
       const idx = cell.row * cols + cell.col;
       // Direction set follows the LATTICE, not the container: which straight
@@ -1426,9 +1426,9 @@ export function isLockedCell(board, row, col, neighborCache) {
 
   // Reads the board's topology, so a locked cell on a tiling polls the cells
   // it actually touches. This must agree with the certifier's own unlock model
-  // (canUnlock in boardSolver.js, which has always read the neighbor cache) —
+  // (canUnlock in boardSolver.js, which has always read the neighbor cache),
   // if the two disagree, the solver certifies an unlock order the live game
-  // will not perform. A severed wall edge is simply absent from the list,
+  // will not perform. A severed wall edge is just absent from the list,
   // which is the same "treat as satisfied" the coordinate walk spelled out.
   //
   // Pass a cache when calling in a loop; bare it derives the whole board's
@@ -1441,25 +1441,25 @@ export function isLockedCell(board, row, col, neighborCache) {
     if (!neighbor.isRevealed && !neighbor.isMine && !neighbor.isLocked) return true; // Still locked
   }
 
-  return false; // All safe neighbors revealed — unlocked!
+  return false; // All safe neighbors revealed, unlocked!
 }
 
 // ── First-encounter popup tracking ─────────────────────
 
 // A card is "seen" at a REVISION, not merely seen. His ruling (2026-08-04):
 // anytime a card is changed, it should be marked as not seen. A player who
-// learned the old sonar card — the one promising "a 5x5 area centered on the
-// cell" — has NOT seen the card that replaced it, and telling them they have
+// learned the old sonar card, the one promising "a 5x5 area centered on the
+// cell", has NOT seen the card that replaced it, and telling them they have
 // is how a correction fails to reach the people who most need it.
 //
 // The revision is DERIVED from the card's own content rather than declared,
 // so it cannot be forgotten: editing a word of `desc`, `longDesc` or the
-// example markup moves the hash and the card teaches again on the next board
+// example markup moves the hash and the card shows again on the next board
 // carrying it. A declared version number is a version number somebody
 // eventually forgets to bump during a copy edit.
 //
 // Stored shape is {gimmick: revision}. The old shape was a flat array of
-// names, read as "seen at an unknown revision" — which re-shows each card
+// names, read as "seen at an unknown revision", which re-shows each card
 // once. That is the honest reading rather than a lossy one: an array entry
 // genuinely does not record WHICH version of the card was read.
 
@@ -1491,7 +1491,7 @@ export function markGimmickSeen(gimmick) {
 }
 
 /**
- * Forget every first-encounter card, so the next board carrying a modifier
+ * Forget every first-encounter card, so the next board with a modifier
  * teaches it again.
  *
  * Called once by the Challenge 250 epoch migration. The cards ARE the
@@ -1574,7 +1574,7 @@ export function recomputeDisplayedMines(board) {
       } else if (cell.isSonar || cell.isCompass || cell.isWormhole || cell.mirrorPair) {
         cell.displayedMines = base;
       } else {
-        cell.displayedMines = undefined; // plain number cell — render uses adjacentMines
+        cell.displayedMines = undefined; // plain number cell, render uses adjacentMines
       }
     }
   }

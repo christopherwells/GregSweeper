@@ -1,4 +1,4 @@
-// Banded per-date daily configs for tiling days (Par Bands, Phase 2 —
+// Banded per-date daily configs for tiling days (Par Bands, Phase 2,
 // Christopher's chipped follow-up to the 2026-08-02 band ruling and the
 // 2026-08-03 Par Lab prior fit).
 //
@@ -7,18 +7,18 @@
 // to weight: it is single-candidate by design (the client fallback must
 // replay selection deterministically, and ten rhombille generations is
 // minutes of phone CPU), and its config was a FIXED per-shape entry in
-// COASTLINE_BOARDS — which is how deltoidal's daily priced ~285 s against
+// COASTLINE_BOARDS, which is how deltoidal's daily priced ~285 s against
 // the 240 s band ceiling. This module is the inversion the fit was built
 // for: each lattice's lab-seeded equation (PAR_MODEL_SHAPES), turned into a
 // per-date DRAW over a table of proven configs, weighted by the same
 // closeness kernel the rectangular lottery uses, against the same
 // date-seeded target par.
 //
-// How a config is priced — the load-bearing design decision: each entry
+// How a config is priced, the load-bearing design decision: each entry
 // freezes the MEDIAN FEATURE VECTOR of its offline generation probes
 // (scripts/calibrate-tiling-band-configs.mjs), not a par number. Pricing
 // happens at draw time through the live predictPar, which dispatches to the
-// shape's own PAR_MODEL_SHAPES block — so when the nightly refit updates a
+// shape's own PAR_MODEL_SHAPES block, so when the nightly refit updates a
 // lattice's equation from live tiling scores (the seeded deviations take
 // live data continuously), config selection re-prices itself the same
 // night, with no re-calibration commit. A frozen par would go quietly stale
@@ -33,22 +33,22 @@
 // that median (layout luck) and rides above it by the mission modifier's
 // term (most tiling days force-inject one gimmick). Both effects are small
 // against the kernel's width (sigma 0.35 keeps ~61% weight at 1.42x off),
-// and the rectangular path accepts the same class of slack — its pool
+// and the rectangular path accepts the same class of slack, its pool
 // usually tops out ~100-140 s against hard targets. Reach limits are real
 // too: deltoidal's cheapest proven config prices ~70 s, so a 30 s easy-day
 // target on a deltoidal day ships the closest board the lattice HAS, via
-// the kernel fallback — the band is a constraint, not a coverage promise
+// the kernel fallback, the band is a constraint, not a coverage promise
 // (the same reading as the rectangular pool's ~32 s floor).
 //
 // Every entry is generation-PROVEN offline before it ships (the
 // validate-parlab-battery pattern): plain probes for the feature medians,
 // plus every tiling-safe gimmick singly and one stacked pair, all required
 // to certify. Entries below the constructive threshold on a Laves lattice
-// carry `constructive: true` (rejection sampling is weak exactly there —
-// floret 7/12 at 0.208, deltoidal 8/12 at 0.181 — while the constructive
+// carry `constructive: true` (rejection sampling is weak exactly there,
+// floret 7/12 at 0.208, deltoidal 8/12 at 0.181, while the constructive
 // placer goes 30/30); generateTilingBoard's forceConstructive opt-in routes
 // them. Rhombille needs no flag: its proven floor (0.23) is already above
-// the threshold. One entry per shape is `fallback: true` — the
+// the threshold. One entry for each shape is `fallback: true`, the
 // generation-robust in-band retry if the drawn entry's generation exhausts
 // on a live date seed (deterministic, so every client retries identically),
 // before the existing rectangle fallback.
@@ -67,7 +67,7 @@ import { predictPar } from './dailyFeatures.js';
 // lottery draws from `${date}:shapeConfig`, disjoint from every existing
 // consumer of the date seed (`:shape`, `:shapeMission`, `:parTarget`,
 // `:missionDraw`, `:trialN`, `-gimmick`, `:worm:`, `:tiling:`). The target
-// par itself comes from drawDailyTargetPar's own `:parTarget` stream — the
+// par itself comes from drawDailyTargetPar's own `:parTarget` stream, the
 // SAME stream the rectangular path reads, deliberately: a date has ONE
 // target par regardless of which shape its daily drew.
 const CONFIG_NAMESPACE = ':shapeConfig';
@@ -94,7 +94,7 @@ const WEEKLY_CONFIG_NAMESPACE = ':weeklyShapeConfig';
 // equations); entries chosen to span each lattice's reachable slice of the
 // daily band [20, 240] with interior margin (~30-215 s at freeze), log-spaced
 // so the kernel always has a near neighbor. Re-run the calibrator after any
-// refit that moves a shape equation materially — the pricing test going red
+// refit that moves a shape equation materially, the pricing test going red
 // is the designed alarm for an entry drifting out of the band.
 /** @type {Record<string, BandEntry[]>} */
 export const TILING_BAND_CONFIGS = {
@@ -109,7 +109,7 @@ export const TILING_BAND_CONFIGS = {
     // The table's dearest entry, and the ONE violation of the 2026-08-06 phone
     // cap that a transpose could not fix: the old 8x9 was 9 pitch units wide
     // against the 4.8.8's cap of 7.77, and its own transpose is square. So it
-    // is re-picked rather than turned — taller and slightly larger at the same
+    // is re-picked rather than turned, taller and slightly larger at the same
     // par, which the cap allows because height is the looser budget. Density
     // falls to 0.187, still routed constructive: rejection sampling gets less
     // reliable as the patch grows, and this is the largest 4.8.8 the table
@@ -127,7 +127,7 @@ export const TILING_BAND_CONFIGS = {
     { id: 'h110d28', M: 11, N: 10, mines: 31, features: { cellCount: 110, totalMines: 31, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 4.5 } }, // ~218s
   ],
   // Cairo prices by SIZE alone (its fitted per-mine deviation cancels the
-  // base rate — the lab's "difficulty lives in the large corner" finding), so
+  // base rate, the lab's "difficulty lives in the large corner" finding), so
   // the ladder is its four storable size rungs, with mine-count variants at
   // three of them: same par, different totalMines, which is exactly the
   // within-shape variation the live fit needs to keep the per-mine deviation
@@ -139,14 +139,14 @@ export const TILING_BAND_CONFIGS = {
     { id: 'c60d23', M: 6, N: 6, mines: 14, fallback: true, features: { cellCount: 60, totalMines: 14, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } }, // ~65s
     // The two 110-cell entries (9x7, ~237s and ~220s) were REMOVED 2026-08-07.
     // The nightly refit moved cairo's equation and took them to 279s and 269s,
-    // past the 240s ceiling — and they had never been provable anyway, since 9x7
+    // past the 240s ceiling, and they had never been provable anyway, since 9x7
     // was absent from the calibrator's candidate grid (exactly the "committed
     // but never proven" hazard that grid's own comment warns about).
     //
     // Nothing can be promoted in their place, and the reason is arithmetic
     // rather than taste. Cairo cells = 2MN - M - N, and of those totals only
     // 40, 45, 49, 60, 84, 110 and 112 are BOTH canonical-storable and legal
-    // under the phone fit — every value between 84 and 110 is either prime
+    // under the phone fit, every value between 84 and 110 is either prime
     // (97, 103) or has no factorization with both container dims in [5, 30]
     // (93, 94). Both 110 and 112 price past the ceiling at ANY density,
     // because cairo's fitted per-mine deviation cancels the base rate (110
@@ -155,7 +155,7 @@ export const TILING_BAND_CONFIGS = {
     // ribbon MIN_WIDTH_USE was added to reject on this very date.
     //
     // So cairo's reach is now [54s, 140s] in three size rungs. Harder targets
-    // ship the 140s entry through the kernel — the documented "the band is a
+    // ship the 140s entry through the kernel, the documented "the band is a
     // constraint, not a coverage promise" degradation, the same shape as
     // deltoidal's 63s floor at the other end.
     { id: 'c84d18', M: 7, N: 7, mines: 15, constructive: true, features: { cellCount: 84, totalMines: 15, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } }, // ~123s
@@ -176,7 +176,7 @@ export const TILING_BAND_CONFIGS = {
     { id: 'r60d28', M: 4, N: 5, mines: 17, features: { cellCount: 60, totalMines: 17, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } },     // ~88s
     { id: 'r72d28', M: 6, N: 4, mines: 20, features: { cellCount: 72, totalMines: 20, canonicalSubsetMoves: 0, genericSubsetMoves: 0, advancedLogicMoves: 0, zeroClusterCount: 2 } },     // ~113s
   ],
-  // Deltoidal's cheapest proven config prices ~63 s — the lattice cannot
+  // Deltoidal's cheapest proven config prices ~63 s, the lattice cannot
   // reach the easy hill's lower half, so sub-63 targets ship the 63 s entry
   // via the kernel (documented reach limit). Its old fixed config (72 cells,
   // 18 mines, ~285 s) is exactly what this table exists to retire.
@@ -201,8 +201,8 @@ export function bandEntryFeatures(type, entry) {
 }
 
 /**
- * Price an entry through the LIVE per-shape equation. This is the number the
- * band lottery weighs — the median plain-board par of the config at today's
+ * Price an entry at the LIVE per-shape equation. This is the number the
+ * band lottery weighs, the median plain-board par of the config at today's
  * shipped coefficients.
  * @param {string} type
  * @param {BandEntry} entry
@@ -221,7 +221,7 @@ export function priceBandEntry(type, entry) {
  * and the raw kernel ranks by closeness alone. The draw is a weighted
  * lottery (P proportional to weight) rather than an argmax, for the same
  * reason the daily mission winner is (2026-07-30): an argmax is a
- * monoculture — nearby targets always ship the identical config — while a
+ * monoculture, nearby targets always ship the identical config, while a
  * lottery samples the whole in-band table, which is also what varies
  * cellCount/totalMines across a shape's live rows (the collinearity the
  * fixed configs could never break, and the reason live data can keep
@@ -253,11 +253,11 @@ export function pickBandedEntry(rng, prices, targetPar, band = DAILY_PAR_BAND) {
  * The generation attempts for a tiling day's config, in order: the banded
  * draw first, then (when different) the shape's designated fallback entry.
  * Every step is deterministic from the date string, so the precompute, the
- * client fallback, and parResolve run the identical attempt list — the
+ * client fallback, and parResolve run the identical attempt list, the
  * missionSlots lesson applied to configs.
  *
  * A missing/invalid date (defensive; no production caller does this) yields
- * the fallback entry alone rather than a throw — a deterministic degenerate,
+ * the fallback entry alone rather than a throw, a deterministic degenerate,
  * never a divergence.
  *
  * @param {string} type a TILING_TYPES entry
@@ -279,7 +279,7 @@ export function tilingConfigAttempts(type, dateString) {
 }
 
 /**
- * The banded config a tiling daily plays on a date — the drawn entry itself
+ * The banded config a tiling daily plays on a date, the drawn entry itself
  * (its generation-failure retry is tilingConfigAttempts' second element).
  * @param {string} type
  * @param {string} dateString
@@ -294,8 +294,8 @@ export function drawDailyTilingConfig(type, dateString) {
  * The weekly analogue: the same generation-proven tables, drawn against the
  * WEEKLY par band and the week's own target.
  *
- * There is no weekly shape ROTATION — a tiling weekly happens only when one
- * is deliberately built (the v1.10 launch week) — but when one is, its config
+ * There is no weekly shape ROTATION, a tiling weekly happens only when one
+ * is deliberately built (the v1.10 launch week), but when one is, its config
  * has to be chosen against the band the weekly actually lives in ([60, 360]s
  * against the daily's [20, 240]s), or a week-long board would be priced for a
  * daily.
@@ -307,7 +307,7 @@ export function drawDailyTilingConfig(type, dateString) {
  *
  * Reach is the honest limit here. The tables were calibrated to the DAILY
  * band and top out around 218s (Honeycomb), so a weekly target above that
- * ships the table's hardest in-band entry — the same "the band is a
+ * ships the table's hardest in-band entry, the same "the band is a
  * constraint, not a coverage target" reading the daily side documents.
  *
  * @param {string} type a TILING_TYPES entry

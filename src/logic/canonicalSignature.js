@@ -1,4 +1,4 @@
-// Canonical-board signatures — the trust-model close for issue #114.
+// Canonical-board signatures, the trust-model close for issue #114.
 //
 // The canonical paths (dailyBoard/{date}, weeklyBoard/{weekStart}) are
 // write-once but writable by ANY authenticated client (that openness is what
@@ -6,20 +6,20 @@
 // everyone else converges on). Signatures make the trust explicit instead of
 // implicit: the generation pipeline signs every canonical it writes with a
 // private key held only in GitHub Actions, and clients verify against the
-// public key below BEFORE playing. A forged or tampered board cannot carry a
-// valid signature, and — unlike a client-side re-solve — verification can
+// public key below BEFORE playing. A forged or tampered board cannot have a
+// valid signature, and, unlike a client-side re-solve, verification can
 // never false-alarm on a legitimate board (no solver, no code-version drift).
 //
 // TRUST POLICY (assessCanonicalTrust), per fetched canonical:
 //   1. Key date before SIGNATURE_EPOCH        -> trusted (grandfathered:
 //      every canonical written before signatures shipped is unsigned).
 //   2. Carries a `sig`                        -> trusted IFF it verifies.
-//      An INVALID signature is affirmative tamper evidence — rejected even
+//      An INVALID signature is affirmative tamper evidence, rejected even
 //      if everything else looks right.
 //   3. Unsigned at/after the epoch            -> trusted IFF `writtenAt`
 //      falls inside the board's own play window (the daily's own ET date;
 //      the weekly's Monday..Sunday). That is exactly the first-client
-//      fallback shape — a client writing TODAY's board ON the day — and it
+//      fallback shape, a client writing TODAY's board ON the day, and it
 //      is trustworthy because the rules validate writtenAt === now (server
 //      stamp) and the path is write-once: a pre-poisoned future board
 //      necessarily carries a writtenAt BEFORE its window and is rejected.
@@ -32,7 +32,7 @@
 // there yet on older mobile). Signature = raw r||s, base64. The private key
 // lives ONLY in the CANONICAL_SIGNING_KEY GitHub Actions secret (base64
 // PKCS8). Rotation is ADDITIVE: generate a new pair, replace the secret, and
-// prepend the new SPKI to PUBLIC_KEYS — verification tries every listed key,
+// prepend the new SPKI to PUBLIC_KEYS, verification tries every listed key,
 // so boards signed under the old key keep verifying and SIGNATURE_EPOCH
 // never moves.
 
@@ -41,7 +41,7 @@
 // signed before this date arrived.
 export const SIGNATURE_EPOCH = '2026-07-06';
 
-// SPKI, base64. Newest first — verification tries each (rotation support).
+// SPKI, base64. Newest first, verification tries each (rotation support).
 // Pairs with the CANONICAL_SIGNING_KEY Actions secret generated 2026-07-05.
 export const PUBLIC_KEYS = [
   'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAECdIHhZM0o+G308fOxQB+m9dUnFh2GHJ1koKh50aV0KqOPlfeipwXM5mDQxri1fr0wxoHX6qr7Dqa0jXzn342wQ==',
@@ -70,12 +70,12 @@ function _bytesToB64(bytes) {
  * path deletes that child rather than storing it.
  *
  * This is a storage fact, not a preference, and it is why signing has to know
- * about it — see canonicalStringify.
+ * about it, see canonicalStringify.
  */
 function _droppedByFirebase(v) {
   if (v === null || v === undefined) return true;
-  // A non-finite number has no JSON form — JSON.stringify renders NaN and
-  // ±Infinity as `null`, and Firebase drops nulls — so it reproduces #143
+  // A non-finite number has no JSON form, JSON.stringify renders NaN and
+  // ±Infinity as `null`, and Firebase drops nulls, so it reproduces #143
   // exactly. The two writer paths do not even agree on it: the JS SDK rejects
   // a non-finite outright while a REST PUT silently sends `null`, which is why
   // signing refuses one rather than quietly signing around it.
@@ -121,12 +121,12 @@ function _normalizeForStorage(v) {
  * storage for every field, present and future, rather than relying on each
  * new field remembering to be omitted-when-empty (issue #143).
  *
- * Deliberately TOTAL — never throws. The client verifier runs this on payloads
+ * Deliberately TOTAL, never throws. The client verifier runs this on payloads
  * fetched from the network, and gateCanonicalTrust fails OPEN on an exception,
  * so a throw here would TRUST a malformed board. The one shape this cannot
  * model (an empty value at an ARRAY-ELEMENT position, which RTDB turns into a
- * sparse object rather than a shorter array) is caught at signing time instead
- * — see unstorableShapeReason.
+ * sparse object rather than a shorter array) is caught at signing time instead;
+ * see unstorableShapeReason.
  *
  * @param {Object} payload the canonical node
  * @returns {string}
@@ -145,7 +145,7 @@ export function canonicalStringify(payload) {
  * stores an array as an object with numeric keys, so dropping element `i`
  * leaves a HOLE, and the node reads back as a sparse object rather than a
  * shorter array. `deserializeBoard` would reject that outright, and no
- * normalization can paper over a shape change. So a writer that builds one has
+ * normalization can absorb a shape change. So a writer that builds one has
  * a bug, and must hear about it loudly at signing time rather than write a
  * canonical nobody can load.
  *
@@ -157,11 +157,11 @@ export function unstorableShapeReason(payload) {
 
   // A non-finite number anywhere. Normalization treats it as dropped, which is
   // faithful to what storage does to it, but a NaN in a canonical is always a
-  // generator bug — silently signing around it would hide the bug and hand
+  // generator bug, silently signing around it would bury the bug and hand
   // every client a board missing a field it expects.
   const scanNonFinite = (v, path) => {
     if (typeof v === 'number' && !Number.isFinite(v)) {
-      return `${path} is ${String(v)} — Firebase cannot store a non-finite number`;
+      return `${path} is ${String(v)}, and Firebase cannot store a non-finite number`;
     }
     if (Array.isArray(v)) {
       for (let i = 0; i < v.length; i++) {
@@ -185,7 +185,7 @@ export function unstorableShapeReason(payload) {
     if (Array.isArray(v)) {
       for (let i = 0; i < v.length; i++) {
         if (_droppedByFirebase(v[i])) {
-          return `${path}[${i}] is empty/null — Firebase drops it and returns the array as a `
+          return `${path}[${i}] is empty/null, and Firebase drops it and returns the array as a `
             + 'sparse object, so this payload cannot round-trip';
         }
         const r = walk(v[i], `${path}[${i}]`);
@@ -206,7 +206,7 @@ export function unstorableShapeReason(payload) {
 
 /**
  * Sign a canonical payload. SERVER-SIDE ONLY (precompute / regenerate /
- * bootstrap scripts) — the private key never exists client-side.
+ * bootstrap scripts), the private key never exists client-side.
  *
  * @param {Object} payload the canonical node (sig/writtenAt ignored)
  * @param {string} privateKeyPkcs8B64 base64 PKCS8 (the Actions secret)
@@ -250,7 +250,7 @@ export async function verifyCanonicalPayloadSig(payload, publicKeys = PUBLIC_KEY
       if (await crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, key, sigBytes, data)) {
         return true;
       }
-    } catch { /* malformed key/sig for this candidate — try the next */ }
+    } catch { /* malformed key/sig for this candidate, try the next */ }
   }
   return false;
 }
@@ -292,7 +292,7 @@ export async function assessCanonicalTrust(raw, key, kind, etOfMs, publicKeys = 
       ? { trusted: true, reason: 'valid signature' }
       : { trusted: false, reason: 'INVALID signature' };
   }
-  // Unsigned post-epoch: only the first-client fallback shape is trusted —
+  // Unsigned post-epoch: only the first-client fallback shape is trusted,
   // written inside its own play window. writtenAt is rules-validated as a
   // server timestamp on a write-once path, so it cannot be forged or aged.
   const writtenDay = etOfMs && typeof raw.writtenAt === 'number' ? etOfMs(raw.writtenAt) : null;
@@ -307,12 +307,12 @@ export async function assessCanonicalTrust(raw, key, kind, etOfMs, publicKeys = 
 /**
  * Server-side helper for the writer scripts (precompute / regenerate /
  * bootstrap): the base64 PKCS8 private key from the CANONICAL_SIGNING_KEY
- * env (the GitHub Actions secret). THROWS when missing — a pipeline that
+ * env (the GitHub Actions secret). THROWS when missing, a pipeline that
  * cannot sign must fail loudly rather than write an unsigned post-epoch
  * canonical that every client will reject.
  */
 export function requireSigningKey() {
   const k = ((typeof process !== 'undefined' && process.env && process.env.CANONICAL_SIGNING_KEY) || '').trim();
-  if (!k) throw new Error('CANONICAL_SIGNING_KEY not set — refusing to write an unsigned canonical');
+  if (!k) throw new Error('CANONICAL_SIGNING_KEY not set, refusing to write an unsigned canonical');
   return k;
 }

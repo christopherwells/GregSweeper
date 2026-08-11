@@ -8,14 +8,14 @@ import { renderWormOverlays } from '../ui/wormRenderer.js';
 import { playWormBurrow, playWormHatch } from '../audio/sounds.js';
 
 // ── Timer ──────────────────────────────────────────────
-// The displayed value comes from gameState.getDisplayTime() — the
+// The displayed value comes from gameState.getDisplayTime(), the
 // penalty-inclusive single source of truth shared with headerRenderer's
 // updateHeader, so the two timer writers can never disagree.
 
 export function updateTimerDisplay() {
   const display = getDisplayTime();
   timerEl.textContent = String(display).padStart(3, '0');
-  // No urgency classes — timed mode counts up
+  // No urgency classes, timed mode counts up
   timerEl.classList.remove('timer-critical', 'timer-warning');
   // The Challenge 250 pace bar rides the same tick (it tracks the same
   // clock); it self-hides outside challenge.
@@ -42,7 +42,7 @@ function _pauseForIdle() {
 
 // Called from main.js's document-level pointer/key listeners. Refreshes
 // the idle clock and, if we WERE paused, unpauses and dismisses the
-// overlay. Safe to call on every interaction — cheap.
+// overlay. Safe to call on every interaction, cheap.
 export function recordInteraction() {
   state.lastInteractionTime = Date.now();
   if (state.idlePaused) {
@@ -75,14 +75,14 @@ export function startTimer() {
     updateTimerDisplay();
     // Idle-pause check after the elapsedTime bump so we don't pause
     // mid-tick before incrementing. The threshold is intentionally
-    // generous (60s, IDLE_PAUSE_MS) — short enough that AFK doesn't
+    // generous (60s, IDLE_PAUSE_MS), short enough that AFK doesn't
     // bleed seconds but long enough that hard thinking on a sticky
     // board doesn't false-trigger.
     if (state.lastInteractionTime && Date.now() - state.lastInteractionTime > IDLE_PAUSE_MS) {
       _pauseForIdle();
       return; // pauseTimer already cleared the interval; don't run the pulse
     }
-    // Timer tick pulse (no forced reflow — use class toggle)
+    // Timer tick pulse (no forced reflow, use class toggle)
     if (!tickActive) {
       tickActive = true;
       timerEl.classList.add('timer-tick');
@@ -100,12 +100,12 @@ export function stopTimer() {
     state.timerId = null;
   }
   // Compute precise elapsed time in tenths of a second. Three cases:
-  // 1. Timer running normally — _preciseStartTime set; combine with any
+  // 1. Timer running normally, _preciseStartTime set; combine with any
   //    accumulated pause history.
-  // 2. Timer was paused at stop (idle-pause or visibility hide) —
+  // 2. Timer was paused at stop (idle-pause or visibility hide),
   //    _preciseStartTime is null but _preciseAccumulated still has the
   //    real elapsed up to the pause. Commit that.
-  // 3. Already stopped — both null/zero; preserve the previous
+  // 3. Already stopped, both null/zero; preserve the previous
   //    preciseTime so a defensive double-stopTimer call doesn't blow
   //    away the winning time.
   // The bomb penalty (daily/weekly) lives outside the wall-clock
@@ -127,7 +127,7 @@ export function stopTimer() {
   timerEl.classList.remove('timer-critical', 'timer-warning');
   stopMineShift();
   stopWormCrawl();
-  // stopTimer only runs at true teardown (win/loss/newGame/expiry — pauses
+  // stopTimer only runs at true teardown (win/loss/newGame/expiry, pauses
   // go through pauseTimer), so live worms end here and the overlay clears
   // before receipts paint the board. Hatch events are finalized FIRST
   // (exact realized moves need the live worms' movesLeft) so the score
@@ -166,12 +166,12 @@ export function pauseTimer() {
 export function resumeTimer() {
   if (state.status !== 'playing') return;
   // A blocking popup owns the pause. Don't let visibilitychange / idle
-  // interaction restart the clock behind it — the popup clears this
+  // interaction restart the clock behind it, the popup clears this
   // flag itself right before its own resumeTimer call.
   if (state.modalPaused) return;
   // The game surface being off screen IS the "player left the board"
   // condition (issue #197): showTitleScreen pauses the clock, and this gate
-  // is what keeps it paused — the document-level interaction listeners call
+  // is what keeps it paused, the document-level interaction listeners call
   // recordInteraction on any title-screen tap and visibilitychange fires on
   // any tab return, and either would silently restart the hidden game's
   // clock (title-screen minutes then rode the auto-persist into the save
@@ -181,7 +181,7 @@ export function resumeTimer() {
   // resume-from-save sites call startTimer directly, which this never
   // gates. The status guard above cannot carry this: status stays
   // 'playing' behind the title screen (persistGameState only saves
-  // playing/idle games, so flipping it would drop the Home-path save —
+  // playing/idle games, so flipping it would drop the Home-path save,
   // the wider status question is deferred in #197).
   const app = document.getElementById('app');
   if (app && app.classList && app.classList.contains('hidden')) return;
@@ -193,7 +193,7 @@ export function resumeTimer() {
   // Restart mine shift only if the LIVE game is a Chaos board that rolled it.
   // The cadence rides game state (state.mineShiftPlan), so it dies with the
   // game that set it, and mineShiftIsActive re-asks the board rather than
-  // trusting the plan — either check alone would have closed issue #238, and
+  // trusting the plan, either check alone would have closed issue #238, and
   // together they mean no future caller can re-open it by remembering a
   // cadence somewhere else. See mineShiftIsActive in gimmicks.js.
   const shiftPlan = state.mineShiftPlan;
@@ -201,7 +201,7 @@ export function resumeTimer() {
     startMineShift(shiftPlan.interval, shiftPlan.count);
   }
   // Restart the worm heartbeat if any worms are alive (state.worms is the
-  // presence signal — no stored interval needed, the cadence is per-worm)
+  // presence signal, no stored interval needed, the cadence is per-worm)
   if (!state.wormTimerId && state.worms && state.worms.length > 0) {
     startWormCrawl();
   }
@@ -217,9 +217,9 @@ export function startMineShift(intervalSeconds, moverCount = 1) {
   if (state.mineShiftTimerId) return;
   state.mineShiftTimerId = setInterval(() => {
     // Status alone was the old guard, and status is 'playing' for whatever
-    // game is loaded — including one this modifier was never on.
+    // game is loaded, including one this modifier was never on.
     if (state.status !== 'playing' || !mineShiftIsActive(state)) return;
-    // Mines crawl the same graph the worm does — side-sharing on a tiling,
+    // Mines crawl the same graph the worm does, side-sharing on a tiling,
     // orthogonal on a rectangle (where this returns null and the rectangular
     // walk stands). Rebuilt per tick rather than cached because the topology
     // builder memoises per board, so this is a map lookup after the first.
@@ -261,7 +261,7 @@ export function startWormCrawl() {
   if (!state.worms || state.worms.length === 0) return;
   state.wormTimerId = setInterval(() => {
     // modalPaused: a blocking popup (modifier intro, strike verdict) owns
-    // the pause — the game clock stops, so worm clocks stop with it.
+    // the pause, the game clock stops, so worm clocks stop with it.
     if (state.status !== 'playing' || state.modalPaused) return;
     // Walkable cells report their TRUE adjacent-mine count (the worm smells
     // actual mines, not liar-displayed values); null = not walkable. The
@@ -274,7 +274,7 @@ export function startWormCrawl() {
     };
     // On a tiling the worm walks the SIDE-SHARING graph with geometric
     // momentum (Christopher's ruling, 2026-08-03: worms cross sides, never
-    // corners — buildWormCrawlTopology in logic/worms.js is the one
+    // corners, buildWormCrawlTopology in logic/worms.js is the one
     // builder). Null on an ordinary rectangular board, where stepWorm
     // keeps its dr/dc walk verbatim.
     const topology = buildWormCrawlTopology(state.board, state.rows, state.cols);
@@ -305,7 +305,7 @@ export function hatchWormEggs(revealedCells) {
   if (!revealedCells || revealedCells.length === 0) return;
   // Challenge 250 boards hatch on the DRAW's seed (state.challengeBoardSeed)
   // so the live worm traits match the wormLoad the builder priced into the
-  // level's par — the same seed-identity contract the daily fit relies on.
+  // level's par, the same seed-identity contract the daily fit relies on.
   // The bare-level fallback survives for pre-engine saves restored mid-game.
   const seedIdentity = state.dailyRngSeed || state.weeklyRngSeed
     || state.challengeBoardSeed || `L${state.currentLevel}`;
@@ -314,7 +314,7 @@ export function hatchWormEggs(revealedCells) {
     if (!cell || !cell.isWormEgg || cell.isMine || !cell.isRevealed) continue;
     state.worms.push(hatchWorm(cell.row, cell.col, seedIdentity));
     // Instrumentation: WHEN the worm appeared decides how much of its
-    // scheduled load a run actually experiences — the refit fits on the
+    // scheduled load a run actually experiences, the refit fits on the
     // realized dose, never the schedule (see wormHatchEvent in worms.js).
     state.wormEvents.push(wormHatchEvent(state.elapsedTime, cell.row, cell.col, seedIdentity));
     hatched++;

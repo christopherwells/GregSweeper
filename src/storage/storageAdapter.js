@@ -45,7 +45,7 @@ export function safeGet(key) {
       return localStorage.getItem(key);
     }
   } catch {
-    // localStorage threw at runtime — switch to fallback
+    // localStorage threw at runtime, switch to fallback
     _storage = 'memory';
     _fallbackActive = true;
   }
@@ -62,10 +62,10 @@ export function safeSet(key, value) {
       return;
     }
   } catch {
-    // QuotaExceededError or SecurityError — switch to fallback
+    // QuotaExceededError or SecurityError, switch to fallback
     _storage = 'memory';
     _fallbackActive = true;
-    console.warn(`localStorage write failed for "${key}" — using in-memory fallback`);
+    console.warn(`localStorage write failed for "${key}", using in-memory fallback`);
   }
   _memoryStore.set(key, String(value));
 }
@@ -87,7 +87,7 @@ export function safeRemove(key) {
 }
 
 /**
- * JSON helpers — mirrors the getJSON/setJSON pattern but through the adapter.
+ * JSON helpers, mirrors the getJSON/setJSON pattern but through the adapter.
  */
 export function safeGetJSON(key, fallback = null) {
   try {
@@ -147,7 +147,7 @@ const PERSIST_RESULT_KEY = 'gregsweeper_persist_granted';
  * IndexedDB / cache content the way it would for a casual visitor.
  *
  * - Chrome desktop: typically grants automatically once the user has
- *   "engaged" with the site (bookmark, install, repeat visits) — the
+ *   "engaged" with the site (bookmark, install, repeat visits), the
  *   API reliably returns true without showing a prompt in those cases.
  *   When engagement is too low it returns false silently; no permission
  *   popup the way push/notifications would. (R4 research, 2026-05-09.)
@@ -161,7 +161,7 @@ const PERSIST_RESULT_KEY = 'gregsweeper_persist_granted';
  * Safe to call at boot. The result lands in localStorage so the
  * Diagnostics modal can surface it without re-running the API.
  *
- * Idempotent — calling repeatedly is harmless. We still re-call rather
+ * Idempotent, calling repeatedly is harmless. We still re-call rather
  * than caching, because a previously-rejected request may succeed
  * later once the user passes engagement heuristics.
  */

@@ -52,7 +52,7 @@ export const SCALE_EPOCHS = ['2026-07-02'];
 export const VERDICT_THRESHOLD_PCT = 15;
 
 // Resting: the model has moved on. A study rests when the refit hasn't
-// targeted it for this many days AND its posterior CV sits in the
+// targeted it for this many days AND its posterior CV is in the
 // bottom half of the latest fit's uncertainty ordering, the literal
 // mechanism by which the nightly target chooser spends boards elsewhere
 // (the primary target is the top-CV feature). Both halves matter: an
@@ -298,7 +298,7 @@ export function classifyVerdict(study) {
   return {
     kind: 'open',
     deltaPct: delta.deltaPct,
-    copy: 'There’s no verdict yet. The numbers have barely budged. More boards will settle it.',
+    copy: 'There’s no verdict yet. The numbers have barely moved. More boards will settle it.',
   };
 }
 
@@ -318,7 +318,7 @@ export function classifyVerdict(study) {
 // reads large, and that is the model's honest claim, not an error).
 // The one exemption is the digit shares, whose unit is already the
 // composite "one extra N in ten numbers"; ten of those is not a quantity
-// a board can hold.
+// a board can contain.
 const COMPOSITE_UNIT_FEATURES = new Set(['wormLoad']);
 export function featureScaleOf(feature) {
   const f = String(feature || '');

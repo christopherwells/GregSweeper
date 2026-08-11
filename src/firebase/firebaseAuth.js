@@ -3,7 +3,7 @@
  *
  * Anonymous accounts (the default for every fresh visit) can be UPGRADED
  * to a permanent identity (Google, email link) via linkWithPopup /
- * linkWithCredential. After upgrade the uid stays the same — all
+ * linkWithCredential. After upgrade the uid stays the same, all
  * existing users/{uid}/* data and leaderboard rows carry over.
  *
  * On a second device the credential is already attached to the first
@@ -11,7 +11,7 @@
  * The onCredentialConflict callback asks the user to confirm, then
  * signInWithCredential SWITCHES this device's session to the existing
  * uid. The data the second device's old anonymous uid had is abandoned
- * by design (V1 scope — no cross-uid merge).
+ * by design (V1 scope, no cross-uid merge).
  *
  * Auth state changes are broadcast via subscribeAuthState(). The progress
  * + push modules listen and reload / re-subscribe under the new uid so
@@ -75,7 +75,7 @@ function _snapshotUser(user) {
  * as the subscribeAuthState callback. Use this for Settings UI render
  * paths that need the state right now, not for one-time async fetches.
  *
- * Safe to call before Firebase is initialized — returns the anonymous-
+ * Safe to call before Firebase is initialized, returns the anonymous-
  * placeholder shape until the real state lands.
  */
 export function getAuthState() {
@@ -119,7 +119,7 @@ function _ensureNativeAuthListener() {
 /**
  * Subscribe to auth-state changes. Callback gets the same shape as
  * getAuthState(). Returns an unsubscribe function. Safe to call before
- * Firebase is initialized — the listener attaches once Firebase is
+ * Firebase is initialized, the listener attaches once Firebase is
  * ready.
  */
 export function subscribeAuthState(callback) {
@@ -150,8 +150,8 @@ async function _clearCurrentDevicePushSubscription() {
  * Best-effort cleanup of the abandoned anonymous Auth record on the
  * "switch to existing account" path. Anonymous accounts have no
  * recent-auth requirement and `currentUser.delete()` removes the record
- * from Firebase Auth. The database data under that uid is NOT cascaded
- * — that stays orphaned (acceptable for V1).
+ * from Firebase Auth. The database data under that uid is NOT cascaded;
+ * it stays orphaned (acceptable for V1).
  */
 async function _deleteCurrentAnonymousAuthRecord() {
   try {
@@ -160,7 +160,7 @@ async function _deleteCurrentAnonymousAuthRecord() {
     if (!user || !user.isAnonymous) return;
     await user.delete();
   } catch (err) {
-    // Non-fatal — Auth record will sit unused but the credential switch
+    // Non-fatal, the Auth record stays unused but the credential switch
     // below still succeeds.
     console.warn('delete anonymous auth record failed:', err && err.message);
   }
@@ -176,10 +176,10 @@ async function _deleteCurrentAnonymousAuthRecord() {
  * switch happens silently.
  *
  * Returns `{ status, providerLabel, email, message }` where status is:
- *   'linked'    — anonymous account upgraded, uid unchanged
- *   'switched'  — credential already existed, this device now uses that uid
- *   'cancelled' — user closed the popup or declined the conflict prompt
- *   'error'     — anything else (see message)
+ *   'linked'    - anonymous account upgraded, uid unchanged
+ *   'switched'  - credential already existed, this device now uses that uid
+ *   'canceled'  - user closed the popup or declined the conflict prompt
+ *   'error'     - anything else (see message)
  */
 export async function linkWithGoogle({ onCredentialConflict } = {}) {
   if (typeof firebase === 'undefined' || !firebase.auth) {
@@ -190,12 +190,12 @@ export async function linkWithGoogle({ onCredentialConflict } = {}) {
   if (!current) {
     // In a test environment a fresh context stays signed out FOREVER (the
     // boot mint is gated), so "has not resolved yet" would be a permanent
-    // lie there — say what is actually true.
+    // lie there, say what is actually true.
     return {
       status: 'error',
       message: isTestEnvironment()
-        ? 'Test builds never create accounts — sign in on the production site instead'
-        : 'No active user — anonymous auth has not resolved yet',
+        ? 'Test builds never create accounts. Sign in on the production site instead'
+        : 'No active user. Anonymous auth has not resolved yet',
     };
   }
 
@@ -211,14 +211,14 @@ export async function linkWithGoogle({ onCredentialConflict } = {}) {
     };
   } catch (err) {
     if (err && (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request')) {
-      return { status: 'cancelled' };
+      return { status: 'canceled' };
     }
     if (err && err.code === 'auth/credential-already-in-use') {
       const cred = err.credential;
       const proceed = onCredentialConflict
         ? await onCredentialConflict({ providerLabel: 'Google', email: err.email || null })
         : true;
-      if (!proceed) return { status: 'cancelled' };
+      if (!proceed) return { status: 'canceled' };
 
       await _clearCurrentDevicePushSubscription();
       await _deleteCurrentAnonymousAuthRecord();
@@ -284,20 +284,20 @@ export async function sendEmailLink(email) {
  * sent it). Resolve to a string to proceed, falsy to abort.
  *
  * Returns `{ status }` where status is one of:
- *   'noop'             — URL is not an email-link return URL
- *   'linked'           — anonymous account upgraded
- *   'switched'         — switched to existing account
- *   'needs-email'      — couldn't get the email; nothing happened
- *   'already-signed-in'— a non-anonymous session was already active
- *   'cancelled'        — user declined the conflict prompt
- *   'error'            — see message
+ *   'noop'             - URL is not an email-link return URL
+ *   'linked'           - anonymous account upgraded
+ *   'switched'         - switched to existing account
+ *   'needs-email'      - couldn't get the email; nothing happened
+ *   'already-signed-in' - a non-anonymous session was already active
+ *   'canceled'         - user declined the conflict prompt
+ *   'error'            - see message
  */
 export async function tryCompleteEmailLink({ onCredentialConflict, promptForEmail } = {}) {
   if (typeof firebase === 'undefined' || !firebase.auth) return { status: 'noop' };
   const auth = firebase.auth();
   if (!auth.isSignInWithEmailLink(window.location.href)) return { status: 'noop' };
 
-  // Already signed in via a non-anonymous provider — bare URL stripping
+  // Already signed in via a non-anonymous provider, bare URL stripping
   // is enough; don't re-link.
   const existing = auth.currentUser;
   if (existing && !existing.isAnonymous) {
@@ -340,7 +340,7 @@ export async function tryCompleteEmailLink({ onCredentialConflict, promptForEmai
       if (!proceed) {
         try { localStorage.removeItem(LS_PENDING_EMAIL); } catch {}
         _stripEmailLinkQuery();
-        return { status: 'cancelled' };
+        return { status: 'canceled' };
       }
       await _clearCurrentDevicePushSubscription();
       await _deleteCurrentAnonymousAuthRecord();
@@ -372,7 +372,7 @@ function _stripEmailLinkQuery() {
     const search = url.searchParams.toString();
     window.history.replaceState(null, '', url.pathname + (search ? '?' + search : '') + url.hash);
   } catch {
-    // Best-effort — leaving query params on a fresh page load is cosmetic only.
+    // Best-effort, leaving query params on a fresh page load is cosmetic only.
   }
 }
 
@@ -389,7 +389,7 @@ export async function signOut() {
   try {
     await _clearCurrentDevicePushSubscription();
     await firebase.auth().signOut();
-    // Test environments never mint Auth users — same contract as the
+    // Test environments never mint Auth users, same contract as the
     // boot-time bootstrap gate in firebaseProgress.js. The session just
     // stays signed out (all test-env writes are gated anyway).
     if (isTestEnvironment()) return null;

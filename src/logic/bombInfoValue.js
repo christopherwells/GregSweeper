@@ -6,14 +6,14 @@
 // Approach (boards-from-scratch): run isBoardSolvable twice on the same
 // board.
 //   Run A: prior strikes are pre-flagged. The strike under evaluation is
-//          NOT pre-flagged — the solver still has to identify it.
+//          NOT pre-flagged, the solver still has to identify it.
 //   Run B: prior strikes AND the strike under evaluation are pre-flagged.
 // Move-type counts drop in B by however much deduction the strike was
 // anchoring. Weighting each drop by PAR_MODEL coefs converts that to
-// par-seconds — the "info-value" we charge as the penalty.
+// par-seconds, the "info-value" we charge as the penalty.
 //
 // The solver only reads structural board fields (isMine, adjacency,
-// gimmick fields) — it ignores the live isRevealed/isFlagged state — so
+// gimmick fields), it ignores the live isRevealed/isFlagged state, so
 // the player's current progress doesn't enter the calculation. The
 // info-value is a property of the board + the cell, not of the player's
 // run. That's a deliberate V1 simplification; refining to a
@@ -39,7 +39,7 @@ import { predictPar } from './dailyFeatures.js';
 //     presence (absorbed into secPerLiarCell).
 //
 // Exported for the unit test that pins each coef name to a live
-// PAR_MODEL key — the original four-name mapping silently zeroed every
+// PAR_MODEL key, the original four-name mapping silently zeroed every
 // info-value for the hours between PR #32 and this fix because nothing
 // checked the names against the model.
 export const POOLED_TERMS = [
@@ -100,16 +100,16 @@ export function computeBombInfoValue(board, rows, cols, safeRow, safeCol, strike
   // Loud failure beats a silent zero: a missing coefficient means the
   // PAR_MODEL names drifted (the exact regression the POOLED_TERMS guard
   // caught). The caller (handleDailyBombHit) catches, warns, and charges
-  // the base penalty, so the player is never stranded — but the break is
+  // the base penalty, so the player is never stranded, but the break is
   // visible instead of quietly pricing at 0.
   for (const term of POOLED_TERMS) {
     if (typeof PAR_MODEL[term.coef] !== 'number') {
-      throw new Error(`PAR_MODEL is missing coefficient "${term.coef}" — bomb pricing is de-wired`);
+      throw new Error(`PAR_MODEL is missing coefficient "${term.coef}", bomb pricing is de-wired`);
     }
   }
 
   // Price the info-value as the PAR DIFFERENCE the mine's information makes:
-  // par(with the moves it anchored) − par(without them). Scale-agnostic —
+  // par(with the moves it anchored) − par(without them). Scale-agnostic,
   // under the additive model this equals Σ pooledDelta × coef (the original
   // formula, since every board-shape term cancels and the intercept drops
   // out); under the log model it is the correct MARGINAL seconds at the

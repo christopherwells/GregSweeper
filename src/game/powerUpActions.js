@@ -15,7 +15,7 @@ import {
   playPowerUp, playShieldBreak, playXRay, playLifelineSave, playMagnet,
 } from '../audio/sounds.js';
 
-// Forward declaration — set by winLossHandler to avoid circular import
+// Forward declaration, set by winLossHandler to avoid circular import
 let _handleWin = null;
 export function setHandleWin(fn) { _handleWin = fn; }
 
@@ -86,7 +86,7 @@ export function useShield() {
   updatePowerUpBar();
 }
 
-// ── Lifeline (passive — called from gameActions on mine hit) ──
+// ── Lifeline (passive, called from gameActions on mine hit) ──
 export function tryLifeline(row, col) {
   if (!state.powerUps.lifeline || state.powerUps.lifeline <= 0) return false;
 
@@ -128,7 +128,7 @@ export function tryLifeline(row, col) {
 export function activateScan() {
   if (state.powerUps.scanRowCol <= 0 || state.status === 'won' || state.status === 'lost') return;
   playPowerUp();
-  // usedPowerUps is stamped where the charge is SPENT (performScan) — arming
+  // usedPowerUps is stamped where the charge is SPENT (performScan), arming
   // and disarming the mode without using it must not strip the purist feat
   // (2026-07-11 audit; same for magnet and x-ray below).
   state.scanMode = !state.scanMode;
@@ -143,7 +143,7 @@ export function performScan(row, col) {
   saveModePowerUps(state.gameMode, state.powerUps);
   saveProgress({ powerUps: loadPowerUps() });
 
-  // Tiling boards: a container row/column is storage, not geometry — the
+  // Tiling boards: a container row/column is storage, not geometry, the
   // scan sweeps the true horizontal and vertical LINES through the target
   // instead (his correction, 2026-08-03: "Scan should move in some
   // reasonable way horizontally and vertically, not a blob"). scanLines
@@ -332,7 +332,7 @@ export function performXRay(row, col) {
   saveProgress({ powerUps: loadPowerUps() });
 
   // The logic returns the AREA it read (5×5 on a rectangle, the depth-2
-  // ball on a tiling) so the highlight can never drift from the effect —
+  // ball on a tiling) so the highlight can never drift from the effect,
   // the old inline ±2 loop here was a second copy of the geometry.
   const { mines, area } = xRayScan(state.board, row, col);
 
@@ -372,7 +372,7 @@ export function performXRay(row, col) {
 }
 
 // ── Award Power-Ups ──────────────────────────────────
-// `count` comes from the caller's policy — on the Challenge 250 ladder
+// `count` comes from the caller's policy, on the Challenge 250 ladder
 // that is the tier-scaled powerUpAwardCount (expected tier/6 per win),
 // which replaced both the old flat two-per-win and the separate 30%
 // lifeline roll (lifeline is one of the six types).

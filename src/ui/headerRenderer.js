@@ -66,7 +66,7 @@ export function updateProgressBar() {
 
 // Persistent reminder of which modifiers are active in this game.
 // Renders icon chips into #active-gimmick-bar. Hidden when no gimmicks
-// are active or in chaos mode (chaos has its own bar) — the Certified
+// are active or in chaos mode (chaos has its own bar), the Certified
 // chip lives in #game-info-bar precisely so gimmick-free boards never
 // pay a row for it. The chip is toggled here because every call site
 // that settles gimmicks (newGame, first-click generation, resume) is
@@ -91,7 +91,7 @@ export function updateActiveGimmickBar() {
     if (!def) return '';
     const tooltip = (def.name + ': ' + (def.desc || '')).replace(/"/g, '&quot;');
     // data-gimmick drives the tap-to-explain toast below. The title
-    // attr only serves desktop hover — touch devices never see it,
+    // attr only serves desktop hover, touch devices never see it,
     // which left phone players with unexplainable icons mid-game.
     const iconHtml = gimmickSpriteImgHTML(g, 'sprite-gimmick', def.name) || def.icon || '';
     return '<span class="active-gimmick-icon" role="button" tabindex="0" data-gimmick="' + g + '" title="' + tooltip + '">' + iconHtml + '</span>';
@@ -102,7 +102,7 @@ export function updateActiveGimmickBar() {
 // ── Certificate modal ─────────────────────────────────
 // Opened from the ✓ Certified chip (and the Chaos "No guarantees"
 // chip). One plain-language paragraph plus the board facts the solver
-// actually proved — the copy can never outrun the certificate.
+// actually proved, the copy can never outrun the certificate.
 const CERT_TIER_LINES = {
   low: 'Counting the clues is enough to walk the whole chain.',
   enumerate: 'Some steps take case-by-case thinking: trying the possibilities until only one survives.',
@@ -154,14 +154,14 @@ for (const chipId of ['cert-chip', 'chaos-no-cert-chip']) {
 // Tap (or Enter on a focused chip) → toast the modifier's name + rule.
 // Touch devices have no hover, so without this the bar's icons are
 // undecipherable once the first-encounter popup has been dismissed.
-// Delegated once on the container — survives every innerHTML rebuild.
+// Delegated once on the container, survives every innerHTML rebuild.
 function _explainGimmickChip(target) {
   const chip = target && target.closest ? target.closest('.active-gimmick-icon[data-gimmick]') : null;
   if (!chip) return;
   const def = getGimmickDef(chip.dataset.gimmick);
   if (!def) return;
   import('./toastManager.js').then(m => {
-    // Sprite-only modifiers (worm) have no icon field — name-only prefix
+    // Sprite-only modifiers (worm) have no icon field, name-only prefix
     const prefix = def.icon ? `${def.icon} ` : '';
     m.showToast(`${prefix}${def.name}: ${def.desc || ''}`, 4500);
   });
@@ -178,7 +178,7 @@ if (_gimmickIconsEl) {
 }
 
 // The "N left" count: safe cells still to reveal, minus the ones a lock
-// currently bars. Only locked SAFE cells subtract — a locked MINE is
+// currently bars. Only locked SAFE cells subtract, a locked MINE is
 // already excluded via totalMines, and double-subtracting it made the
 // counter read low on locked boards (2026-07-11 audit). Exported pure so
 // the node suite can pin it.
@@ -225,7 +225,7 @@ export function updateStreakDisplay() {
 
 /**
  * The LCD mine counter's value: total mines minus flags minus STRIKE cells.
- * A strike is a free flag — the mine is confirmed and stays revealed — so it
+ * A strike is a free flag, the mine is confirmed and stays revealed, so it
  * must account exactly like one, or the counter stops working as an endgame
  * mine-counting clue. Strikes are counted from the BOARD, not from the
  * per-mode bombHits counters this used to read behind a daily/weekly gate:
@@ -235,7 +235,7 @@ export function updateStreakDisplay() {
  * (Christopher's report, 2026-08-02). The board is the one source every
  * strike surface shares, and isStrike rides the save, so a restored game
  * counts right too. chainRevealMines also stamps isStrike, but only during
- * the challenge/timed LOSS cascade — the counter has no caller after a loss,
+ * the challenge/timed LOSS cascade, the counter has no caller after a loss,
  * so the scan deliberately doesn't special-case it.
  *
  * @param {Array<Array<{isStrike?: boolean}>>} board
@@ -275,7 +275,7 @@ export function updateHeader() {
     const dayLbl = state.weeklyDay != null ? dayLabels[state.weeklyDay] : '';
     const flagIcon = uiSpriteImgHTML('uiFlagChecked', 'lcd-icon');
     if (state.isWeeklyArchive) {
-      // A past-weekly replay has no day of the week to be on — it belongs to a
+      // A past-weekly replay has no day of the week to be on, it belongs to a
       // week that is over. Naming that week is what keeps the header from
       // reading as this week's attempt, which is the one thing the archive
       // must never be mistaken for.
@@ -331,7 +331,7 @@ export function updateHeader() {
     : 'smiley';
   applyIcon(resetBtn, smileyKey, getThemeEmoji(smileyKey), { sizeClass: 'sprite-smiley' });
 
-  // Daily/Weekly are canonical single-puzzle modes — no board reset. Keep
+  // Daily/Weekly are canonical single-puzzle modes, no board reset. Keep
   // the smiley as a status face but strip its interactivity.
   resetBtn.disabled = state.gameMode === 'daily' || state.gameMode === 'weekly';
 }
@@ -365,7 +365,7 @@ export function updateStreakBorder() {
 }
 
 // ── Flag Mode Toggle + Lens (header icon buttons) ─────
-// The toggle and the Stuck? button flank the smiley in the LCD row —
+// The toggle and the Stuck? button flank the smiley in the LCD row,
 // the dedicated flag-mode-bar row was removed to give phones the
 // vertical space. Same visibility semantics the bar had: shown on all
 // devices during gameplay (touch has no right-click for flagging, and
@@ -395,11 +395,11 @@ export function updateFlagModeBar() {
 }
 
 // Internal: the timer section of updateHeader. Renders the SAME value as
-// timerManager's updateTimerDisplay — both read gameState.getDisplayTime,
+// timerManager's updateTimerDisplay, both read gameState.getDisplayTime,
 // the penalty-inclusive single source of truth (ui can't import from
 // game/, so the shared derivation lives in the state leaf). An inlined
 // bare-elapsedTime copy here used to overwrite the penalized display on
-// every updateHeader call — each reveal, flag, and bomb-popup close — so
+// every updateHeader call, each reveal, flag, and bomb-popup close, so
 // the daily/weekly clock flashed between penalized and raw time until the
 // next tick (fixed 2026-07-04).
 function updateTimerDisplayInHeader() {
@@ -412,7 +412,7 @@ function updateTimerDisplayInHeader() {
 // ── Challenge 250 pace bar ─────────────────────────────
 // The expected-time cue: personalPar for the drawn board (handicap-
 // adjusted), with a quiet track that fills as the timer runs and then
-// stops. Challenge only — every other mode either has its own par
+// stops. Challenge only, every other mode either has its own par
 // surface (daily/weekly/timed report against par at the END, which is
 // where those comparisons belong) or none at all. Nothing here gates or
 // records: challenge has no submission path.

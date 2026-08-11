@@ -28,7 +28,7 @@ export function prettyDate(dateStr) {
   return `${mo} ${parseInt(parts[2], 10)}, ${parts[0]}`;
 }
 
-// Greg's yesterday note — once per session, computed from the shipped
+// Greg's yesterday note, once per session, computed from the shipped
 // modelHistory.json (no network). The voice budget is a hard rule: one
 // Greg line on this surface, rendered the first time the modal opens.
 let _gregNoteRendered = false;
@@ -47,7 +47,7 @@ async function _renderGregYesterdayNote() {
       el.textContent = note;
       el.classList.remove('hidden');
     }
-  } catch { /* no note — the leaderboard renders fine without it */ }
+  } catch { /* no note, the leaderboard renders fine without it */ }
 }
 
 // Rank cell: the four drawn medals for the four top ranks (diamond,
@@ -154,10 +154,10 @@ function _setActiveLeaderboardTab(tab) {
 }
 
 // Leaderboard state: scope (daily/weekly) x view (scores/adjusted/
-// friends). Adjusted is the DEFAULT view and works under both scopes —
+// friends). Adjusted is the DEFAULT view and works under both scopes,
 // the handicap k is a dimensionless ratio, so weekly best-times divide
 // by it the same way daily times do (the fit is daily-anchored, so a
-// weekly ranking leans on the ratio generalizing across board sizes).
+// weekly ranking rests on the ratio generalizing across board sizes).
 let _lbScope = 'daily';
 let _lbView = 'adjusted';
 
@@ -305,7 +305,7 @@ async function _renderAdjustedView() {
   ranked.forEach((entry, i) => {
     const tr = document.createElement('tr');
     if (myUid && entry.uid === myUid) tr.classList.add('lb-row-mine');
-    // HC chip: the ratio shown as a RATING vs Greg — a stable seconds magnitude
+    // HC chip: the ratio shown as a RATING vs Greg, a stable seconds magnitude
     // (at a standard board) AND a percent. POSITIVE = faster/better than Greg
     // (k < 1), negative = slower (k > 1).
     let hcChip;
@@ -332,7 +332,7 @@ async function _renderAdjustedView() {
 // ── Friends view ─────────────────────────────────────
 // Panel (code + add + list) above a scores table filtered to
 // friends ∪ me for the current scope. All I/O via firebaseFriends.js
-// (lazy import — modal-only module).
+// (lazy import, modal-only module).
 let _friendsCodeTimer = null;
 
 function _friendsStatus(msg, isError = false) {
@@ -353,7 +353,7 @@ function _startCodeCountdown(createdAtLocal) {
     if (ms <= 0) {
       clearInterval(_friendsCodeTimer);
       _friendsCodeTimer = null;
-      el.textContent = 'Code expired — get a new one.';
+      el.textContent = 'Code expired. Get a new one.';
       $('#friends-my-code').textContent = '······';
       $('#friends-new-code').textContent = 'Get code';
       return;
@@ -383,10 +383,10 @@ async function _renderFriendsView() {
   if (list === null) {
     listEl.innerHTML = '<p class="friends-empty">Friends need a connection.</p>';
   } else if (list.length === 0) {
-    listEl.innerHTML = '<p class="friends-empty">No friends yet — share your code or paste theirs.</p>';
+    listEl.innerHTML = '<p class="friends-empty">No friends yet. Share your code or paste theirs.</p>';
   } else {
     // Show each friend's LIVE name (playerNames join by uid), not the copy
-    // frozen into the friend entry when they were added — so a friend who
+    // frozen into the friend entry when they were added, so a friend who
     // renamed shows their new name here too.
     const names = await fetchPlayerNames();
     for (const f of list) {
@@ -446,7 +446,7 @@ $('#friends-new-code')?.addEventListener('click', async () => {
     _startCodeCountdown(entry.createdAtLocal);
   } catch (err) {
     _friendsStatus(err && err.message === 'offline'
-      ? 'Codes need a connection.' : 'Could not get a code — try again.', true);
+      ? 'Codes need a connection.' : 'Could not get a code. Try again.', true);
   }
 });
 $('#friends-add-btn')?.addEventListener('click', async () => {
@@ -461,15 +461,15 @@ $('#friends-add-btn')?.addEventListener('click', async () => {
   } catch (err) {
     const msgs = {
       invalid: 'That does not look like a code (6 letters and numbers).',
-      expired: 'Code expired or not found — ask for a fresh one.',
+      expired: 'Code expired or not found. Ask for a fresh one.',
       self: 'That is your own code.',
       offline: 'Adding friends needs a connection.',
     };
-    _friendsStatus(msgs[err && err.reason] || 'Could not add — try again.', true);
+    _friendsStatus(msgs[err && err.reason] || 'Could not add. Try again.', true);
   }
 });
 // Remove buttons are created per-render: delegate. First tap arms the
-// button ("Sure?"), second tap removes — both sides unlink.
+// button ("Sure?"), second tap removes, both sides unlink.
 $('#friends-list')?.addEventListener('click', async (e) => {
   const btn = e.target.closest('.friends-remove');
   if (!btn) return;
@@ -485,6 +485,6 @@ $('#friends-list')?.addEventListener('click', async (e) => {
     _friendsStatus('Removed.');
     await _renderFriendsView();
   } catch {
-    _friendsStatus('Could not remove — try again.', true);
+    _friendsStatus('Could not remove. Try again.', true);
   }
 });

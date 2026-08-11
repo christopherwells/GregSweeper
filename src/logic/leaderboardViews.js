@@ -1,15 +1,15 @@
-// Leaderboard view logic — pure (no DOM, no Firebase) so the
+// Leaderboard view logic, pure (no DOM, no Firebase) so the
 // regression suite can pin ranking math and the friend-write shapes.
 // main.js renders these; firebaseFriends.js sends the update objects.
 
 // Handicap-adjusted ranking. rows: [{uid, name, time, ...}].
 // handicapMap: uid -> k (a MULTIPLICATIVE ratio), as either a Map OR the
-// plain object loadHandicaps()/getHandicapRatioMap() resolves — the SHIPPED
+// plain object loadHandicaps()/getHandicapRatioMap() resolves, the SHIPPED
 // fit, identical for every viewer (client-side provisional handicaps are
 // self-only estimates, never applied to other players). k > 1 = typically
 // slower than Greg, k < 1 = faster.
 //
-//   adjusted = time / k  — a Greg-equivalent time. Playing exactly to your
+//   adjusted = time / k  - a Greg-equivalent time. Playing exactly to your
 //   own ratio lands you at par regardless of k, so the ranking is by
 //   FRACTIONAL performance vs your own par (the leveling property the old
 //   additive `time - seconds` form lacked, and the reason a 1.2s run by a
@@ -54,10 +54,10 @@ export function filterToFriends(rows, friendUids, myUid) {
 
 // Multi-location update payloads for the MUTUAL friendship writes.
 // Path shapes and field sets are pinned by test/leaderboardViews.test.mjs
-// against firebase-rules.json's `$other: validate false` — a drifted
+// against firebase-rules.json's `$other: validate false`, a drifted
 // field fails CI before it can fail at the rules layer in prod.
 // `ts` is the caller-supplied timestamp sentinel
-// (firebase.database.ServerValue.TIMESTAMP — never Date.now(), the
+// (firebase.database.ServerValue.TIMESTAMP, never Date.now(), the
 // rules validate addedAt === now).
 export function buildFriendAddUpdate(myUid, myName, theirUid, theirName, ts) {
   if (!myUid || !theirUid) throw new Error('missing uid');

@@ -1,10 +1,10 @@
-// Remote error reporting — captures uncaught errors and unhandled promise
+// Remote error reporting, captures uncaught errors and unhandled promise
 // rejections, writes them to Firebase under errors/{uid}/{timestamp}.
 //
 // Why: with two active users on opposite platforms (Christopher on
 // Windows desktop, Kate on iOS PWA), regressions surface as written bug
 // reports days later. A captured stack trace beats "the daily was weird
-// yesterday" by a wide margin. Writes are owner-readable only — the
+// yesterday" by a wide margin. Writes are owner-readable only, the
 // project owner reads via Firebase Console.
 //
 // Rate-limited so an error in a tight loop can't flood Firebase. Drops
@@ -101,7 +101,7 @@ function _flushBuffer() {
 function _enqueue(payload) {
   if (_sessionWriteCount >= MAX_ERRORS_PER_SESSION) return;
   if (_writeOne(payload)) return;
-  // Auth not ready yet — buffer for the periodic flush. Cap the buffer
+  // Auth not ready yet, buffer for the periodic flush. Cap the buffer
   // so a flood during initialization can't grow unbounded.
   if (_buffer.length < MAX_BUFFER) _buffer.push(payload);
   // Restart the periodic flush if it had cleared after a previous drain.
@@ -122,7 +122,7 @@ function _enqueue(payload) {
 }
 
 /**
- * Attach window-level error listeners. Safe to call multiple times —
+ * Attach window-level error listeners. Safe to call multiple times,
  * subsequent calls are no-ops. Pass the current cache version so written
  * errors carry the build that produced them.
  *
@@ -155,7 +155,7 @@ export function initErrorReporter(opts) {
   });
 
   // Periodic flush handles the auth-not-yet-ready case. Cleared once
-  // the cap is hit OR the buffer has fully drained — without the empty-
+  // the cap is hit OR the buffer has fully drained, without the empty-
   // buffer clear, a single buffered boot-time error would leave the
   // interval ticking every second for the entire session even after
   // its work is done.
@@ -183,7 +183,7 @@ export function setErrorReporterCodeVersion(v) {
 }
 
 /**
- * Test-only helper — fire a synthetic error through the reporter so a
+ * Test-only helper, fire a synthetic error through the reporter so a
  * Firebase round-trip can be verified manually. Exposed on window when
  * `?debug=1` is enabled.
  */
@@ -195,7 +195,7 @@ export function reportTestError(label) {
 }
 
 /**
- * Report a HANDLED error — one a catch block recovered from but that
+ * Report a HANDLED error, one a catch block recovered from but that
  * still indicates something broke (a dropped score submission, a failed
  * canonical-board fetch, a push-token refresh that died). These never
  * reach the window listeners precisely because they were caught, which

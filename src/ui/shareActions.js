@@ -23,7 +23,7 @@ export function generateShareCard() {
   const time = state.elapsedTime;
   // The card describes the PLAYED board, so it reads the live state
   // rather than re-deriving from a level table (the Challenge 250 ladder
-  // has no level→dims function — a level is a spec, and the board on
+  // has no level→dims function, a level is a spec, and the board on
   // screen is its draw). Timed keeps its table read for the tab label.
   const diff = state.gameMode === 'timed'
     ? getTimedDifficulty(level)
@@ -41,8 +41,8 @@ export function generateShareCard() {
   if (mode === 'daily') {
     // Wordle-style card, built by the pure (node-tested) dailyShareLines:
     // HARD CEILING of five content lines plus the crux-challenge URL. The
-    // date is the BOARD's (state.dailySeed) — the same anchor as the score
-    // submission — so a finish just past midnight ET or an archive replay
+    // date is the BOARD's (state.dailySeed), the same anchor as the score
+    // submission, so a finish just past midnight ET or an archive replay
     // never stamps the wrong day on the card.
     const defs = getGimmickDefs();
     const icons = (state.activeGimmicks || [])
@@ -69,7 +69,7 @@ export function generateShareCard() {
   }
 
   if (mode === 'weekly') {
-    // Weekly has no challenge level — state.currentLevel is whatever the
+    // Weekly has no challenge level, state.currentLevel is whatever the
     // last challenge run left behind, so the generic card below stamped
     // that level's label and DIMENSIONS on the weekly board. Describe the
     // board actually played instead.
@@ -98,7 +98,7 @@ export function handleShare() {
   const text = generateShareCard();
   const file = getLastShareFile();
   // Web Share Level 2: share the rendered card IMAGE plus the caption.
-  // Must stay inside the click gesture — no await before navigator.share.
+  // Must stay inside the click gesture, no await before navigator.share.
   if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
     navigator.share({ files: [file], text }).catch((e) => {
       if (e && e.name === 'AbortError') return; // user dismissed the sheet

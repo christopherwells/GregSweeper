@@ -7,14 +7,14 @@
 //
 // A LEAF module: it imports nothing, so the renderer (a UI module), the board
 // generator (which also pulls the solver), and the Phase 1 test fixture can all
-// depend on it without dragging each other's dependencies along — the same
+// depend on it without dragging each other's dependencies along, the same
 // reason adjacency.js is a leaf. Promoted from test/fixtures/tiling488.mjs.
 //
 // It answers two separable questions about a tiling, kept apart on purpose (see
 // adjacency.js's topology contract):
-//   - TOPOLOGY: `buildTiling488(...).adj` — the certifier's geometry-free
+//   - TOPOLOGY: `buildTiling488(...).adj`, the certifier's geometry-free
 //     adjacency, byte-identical to the Phase 1 fixture so the gate stays green.
-//   - GEOMETRY: `.cellPos` + the shape constants — per-cell center and outline,
+//   - GEOMETRY: `.cellPos` + the shape constants, per-cell center and outline,
 //     read ONLY by the renderer (and later the compass ray + worm momentum),
 //     never by the certifier.
 
@@ -26,7 +26,7 @@
 // tiles the gap exactly because its corner reaches the octagon vertex for any
 // cut (verified in the tests). A *regular* octagon is (1 - 1/(1+√2))/2 ≈ 0.293,
 // but that leaves the squares too small to hold a number + a gimmick sprite, so
-// this is tuned UP for legibility — the octagons and squares read as closer in
+// this is tuned UP for legibility, the octagons and squares read as closer in
 // size (Christopher's call: "the octagons need to be smaller and the squares
 // bigger", and again on 2026-07-28: "make the squares and octagons more even").
 //
@@ -47,7 +47,7 @@
 // diagonals: the octagon has become a rounded diamond and the board reads as a
 // diamond lattice rather than a 4.8.8. At 0.5 the interstitial square collapses
 // to a point, diagonal octagons finally touch, and the tiling degenerates into a
-// rotated square grid — which is also the one value that would break the
+// rotated square grid, which is also the one value that would break the
 // corner-inclusive adjacency no-op the two Archimedean tilings rely on.
 //
 // Nothing downstream hardcodes this. Adjacency is cut-INDEPENDENT (measured: the
@@ -92,7 +92,7 @@ export const HEXAGON_CLIP_PATH = 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 
  * Build the 4.8.8 topology + geometry over an M×N lattice of octagons.
  *
  * 4.8.8 is the truncated square tiling: regular octagons on a square lattice
- * with a small square filling each interstice. Vertex configuration 4.8.8 — one
+ * with a small square filling each interstice. Vertex configuration 4.8.8, one
  * square and two octagons meet at every vertex, which is why two diagonally
  * placed octagons do NOT touch (a square sits between them). Valence is not even
  * constant: it runs 3, 4, 5 and 8.
@@ -102,7 +102,7 @@ export const HEXAGON_CLIP_PATH = 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 
  *   square  (i, j) -> M*N + i * (N-1) + j        for 0 <= i < M-1, 0 <= j < N-1
  * where square (i, j) is bounded by octagons (i,j), (i,j+1), (i+1,j), (i+1,j+1).
  *
- * The adjacency construction is IDENTICAL to the Phase 1 fixture — do not change
+ * The adjacency construction is IDENTICAL to the Phase 1 fixture, do not change
  * it, or test/tilingCertification.test.mjs (the arc's gate) will move.
  *
  * @returns {{total:number, nOct:number, nSq:number, adj:Array<number[]>,
@@ -155,7 +155,7 @@ export function buildTiling488(M, N) {
     }
   }
 
-  // Per-cell POLYGON vertices, over one deduped global vertex list — so two
+  // Per-cell POLYGON vertices, over one deduped global vertex list, so two
   // adjacent cells share the exact two vertex indices of the edge between them.
   // This is what lets a wall sit on the TRUE shared boundary (including the 45°
   // octagon/square edges) and lets continuous walls be built by walking the
@@ -209,7 +209,7 @@ export function buildTiling488(M, N) {
  * Every cell is one shape and one size, and valence is a constant 6 in the
  * interior (fewer than the square grid's 8, and with NO diagonals: a hexagon's
  * six neighbors are all edge-neighbors, so the corner-touch ambiguity of square
- * minesweeper is simply absent). The board array stays pure STORAGE exactly as
+ * minesweeper is just absent). The board array stays pure STORAGE exactly as
  * for 4.8.8 (see containerFor / the Board Topology contract): adjacency is the
  * returned `adj`, geometry is `cellPos`, and only the flat index i*N+j matters.
  *
@@ -288,7 +288,7 @@ export function buildHexTiling(M, N) {
 // ── Laves tilings (Coastline #3-#6) ────────────────────────────────────────
 //
 // cairo [3².4.3.4], floret [3⁴.6], rhombille [3.6.3.6] and deltoidal
-// trihexagonal [3.4.6.4]. Each is isohedral — ONE cell shape at one size — so
+// trihexagonal [3.4.6.4]. Each is isohedral, ONE cell shape at one size, so
 // every interior cell reasons about an identical neighborhood, and unlike the
 // two Archimedean tilings above there are no diagonals to disambiguate and no
 // second cell size to keep legible.
@@ -299,7 +299,7 @@ export function buildHexTiling(M, N) {
 // 1. CORNER-INCLUSIVE ADJACENCY. Cells touching at a single VERTEX are
 //    neighbors, exactly as diagonal cells are on a square grid (Christopher's
 //    rule, 2026-07-27: "corners are adjacent in mine counts"). On 4.8.8 and on
-//    the honeycomb this rule is a strict NO-OP — both are trivalent, so at every
+//    the honeycomb this rule is a strict NO-OP, both are trivalent, so at every
 //    vertex the incident cells already share edges and there is nothing for it
 //    to add (measured: zero vertex-only pairs on either, at every patch size and
 //    every value of OCT_CUT short of the degenerate 0.5). On these four it is
@@ -313,8 +313,8 @@ export function buildHexTiling(M, N) {
 // A consequence worth stating because it looks like an omission: buildWireframe
 // only ever emits an edge for a pair that shares exactly TWO vertices, so a
 // corner-only link has no wireframe edge and no wall can sever it. That is
-// right — a wall is a line drawn along a shared boundary, and two cells meeting
-// at a point have none — but it does mean walls cut a strict subset of the
+// right, a wall is a line drawn along a shared boundary, and two cells meeting
+// at a point have none, but it does mean walls cut a strict subset of the
 // adjacency graph here, where on the shipped two the two graphs coincide.
 
 /**
@@ -325,7 +325,7 @@ export function buildHexTiling(M, N) {
  * key is a bet that no coordinate ever lands near a half-step. Losing that bet
  * does not throw: it splits one corner into two vertices, which DROPS the
  * adjacency the cells had through it, so the board certifies against a
- * neighborhood the player is never shown — the one failure the no-guess contract
+ * neighborhood the player is never shown, the one failure the no-guess contract
  * cannot absorb.
  *
  * The bet is not lost today, but the margin narrows exactly where it matters.
@@ -377,7 +377,7 @@ function assembleTiling(type, M, N, raw, scale) {
   // READING ORDER: ascending centroid y, ties by centroid x. Taken in the
   // builder's own lattice units and BEFORE normalization, so the order is a
   // property of the lattice and cannot move if `scale` is ever retuned. This is
-  // load-bearing rather than cosmetic — a frozen certification fixture's mine
+  // load-bearing rather than cosmetic, a frozen certification fixture's mine
   // list is a list of INDICES, and it means nothing except against this order.
   const centroid = raw.cellVerts.map(cv => {
     let x = 0, y = 0;
@@ -425,7 +425,7 @@ function assembleTiling(type, M, N, raw, scale) {
   // The opener: the cell nearest the patch's own center of mass. A patch with a
   // mirror symmetry can tie two cells EXACTLY (deltoidal at M=3,N=4 ties cells
   // 31 and 39 across its center), and because the centroids come from exact
-  // lattice integers the tie is bitwise rather than float noise — so it has to
+  // lattice integers the tie is bitwise rather than float noise, so it has to
   // be broken here instead of being handed to whichever distance happens to
   // round a hair smaller. The later cell in reading order wins, which is what
   // the frozen gate fixtures were found against.
@@ -441,8 +441,8 @@ function assembleTiling(type, M, N, raw, scale) {
   // NORMALIZE to pitch units: translate the patch's bounding box to the origin
   // (the renderer places every cell at unit × pitch from the board's own origin,
   // exactly as the 4.8.8 spans [0,N] × [0,M]), then scale so the cell's
-  // INSCRIBED DIAMETER is one pitch unit. That is already the hexagon's rule —
-  // HEX_R = 1/√3 makes a hex one pitch flat-to-flat and one pitch inscribed — so
+  // INSCRIBED DIAMETER is one pitch unit. That is already the hexagon's rule,
+  // HEX_R = 1/√3 makes a hex one pitch flat-to-flat and one pitch inscribed, so
   // a number sized at half the pitch reads the same on every one of these
   // tilings, and their cell areas land within 25% of the hexagon's. The 4.8.8
   // deliberately keeps its own tuning: OCT_CUT 0.37 cuts the octagon's inscribed
@@ -485,7 +485,7 @@ const CAIRO_SCALE = (3 + Math.sqrt(3)) / 6;             // 1 / (3 − √3), ins
  * Build the Cairo pentagonal tiling, Laves [3².4.3.4], over an M×N lattice.
  *
  * The degree-4 vertices sit on a square lattice of spacing √3, and exactly ONE
- * pentagon spans each lattice EDGE — M(N−1) horizontal plus (M−1)N vertical, so
+ * pentagon spans each lattice EDGE, M(N−1) horizontal plus (M−1)N vertical, so
  * 2MN − M − N cells. The pinwheel handedness alternates with site parity (the
  * p4g symmetry); getting that alternation wrong looks fine cell by cell and
  * makes the pentagons overlap.
@@ -505,7 +505,7 @@ export function buildCairoTiling(M, N) {
   // usable ones: measured from them, every direction keeps less of its drawn ray
   // inside the cells it counts (53.9% on the diagonals, 64.1% on the axes) than
   // the hex directions that were REJECTED at 66.3%. The pentagon's two
-  // LATTICE-SITE vertices do sit on a clean 45°-rotated square lattice, so the
+  // LATTICE-SITE vertices do fall on a clean 45°-rotated square lattice, so the
   // ray is taken from the midpoint of its long diagonal instead: 100.0% on the
   // diagonals and 87.9% on the axes, against the shipped 4.8.8 axes' 90.4%.
   // Splitting anchor from drawn center costs nothing, measured with the ray taken
@@ -579,7 +579,7 @@ const rotate60 = ([p, q]) => [-q, p + q];
  * dedupe a rounding decision it must not have to make.
  *
  * The tiling is chiral, and its rosette phase decides which direction set the
- * compass can use (here 30/90/150 and their opposites) — a 30° re-derivation
+ * compass can use (here 30/90/150 and their opposites), a 30° re-derivation
  * would swap the clean set for 0/60/120 and the wrong choice reads as plausible
  * rather than empty, so the direction set must be derived from what this builder
  * actually emits.
@@ -590,7 +590,7 @@ const rotate60 = ([p, q]) => [-q, p + q];
  * opposite triangular wedges, which no other tiling here does and which reads as
  * a broken board rather than a lattice. L2 drifts x by exactly L1/3 per row, so
  * subtracting round(n/3)·L1 pulls every row back into column and bounds the
- * remaining stagger at ±L1/3 — the same shape of fix as the honeycomb's half-hex
+ * remaining stagger at ±L1/3, the same shape of fix as the honeycomb's half-hex
  * row offset, and like it a change of WHICH lattice points are used, not of the
  * lattice. The cells stay congruent, the adjacency rule is untouched, and the
  * compass phase is unaffected because whole-L1 translations are lattice
@@ -604,7 +604,7 @@ export function buildFloretTiling(M, N) {
 
   // Enumerate a GENEROUS patch as integer lattice data only. Nothing is
   // registered in the vertex list yet, because the crop below decides which
-  // cells exist and assembleTiling normalizes against the whole vertex list —
+  // cells exist and assembleTiling normalizes against the whole vertex list,
   // registering first would leave orphan vertices inflating wUnits/hUnits.
   const rosettes = [];
   for (let m = -FLORET_PAD; m < M + FLORET_PAD; m++) {
@@ -637,16 +637,16 @@ export function buildFloretTiling(M, N) {
 
   // CROP TO A RECTANGLE, AT CELL GRANULARITY. The rosette lattice is a
   // triangular lattice whose L1 sits 10.89° off the horizontal, and no choice of
-  // basis squares that up — so a patch counted in whole ROSETTES is a sheared
+  // basis squares that up, so a patch counted in whole ROSETTES is a sheared
   // parallelogram no matter how its rows are seated, and it leaves the board box
   // badly under-filled (measured 67.4% against 80-94% for the other five, with
   // two large empty wedges before the rows were re-seated at all).
   //
   // Selecting CELLS rather than rosettes is what fixes it: the boundary then
   // steps by one pentagon instead of by a six-cell rosette, so it can follow a
-  // rectangle closely. A rosette on the edge simply contributes the petals that
+  // rectangle closely. A rosette on the edge just contributes the petals that
   // fall inside. This is a change of WHICH lattice cells are used, never of the
-  // lattice — so every cell stays congruent, adjacency is still read off shared
+  // lattice, so every cell stays congruent, adjacency is still read off shared
   // vertices, and above all the lattice's ORIENTATION is untouched, which is
   // what keeps the measured compass direction set (30/90/150 and opposites)
   // valid. Rotating the tiling to square it up would have invalidated that.
@@ -663,7 +663,7 @@ export function buildFloretTiling(M, N) {
 
   // WHICH rectangle? Every cell has the same area, so the selection that fills
   // its board box best is exactly the one whose polygons land in the SMALLEST
-  // box — no sampling needed, just the bounding area. Sweeping the aspect and
+  // box, no sampling needed, just the bounding area. Sweeping the aspect and
   // keeping the tightest is what makes this adapt to any (M, N) instead of
   // baking in a ratio that happened to suit one board (measured on the 3×4
   // practice patch: the patch's own aspect fills 76.4%, a square crop 73.5%,
@@ -705,7 +705,7 @@ export function buildFloretTiling(M, N) {
 
 // Pointy-top hexagons of circumradius 1 in offset rows (odd rows shifted right
 // by half a hex) are the substrate BOTH rhombille and deltoidal subdivide. Every
-// point either builder needs — hex center, hex vertex, edge midpoint — has x a
+// point either builder needs, hex center, hex vertex, edge midpoint, has x a
 // multiple of √3/4 and y a multiple of 1/4, so the integer pair (B, C) with
 // x = B√3/4 and y = C/4 addresses it exactly.
 const hexLavesSite = (i, j) => [4 * j + 2 * (i % 2), 6 * i];
@@ -721,13 +721,13 @@ const RHOMBILLE_SCALE = 2 / Math.sqrt(3);               // inscribed diameter ->
  *
  * The rhombus is centrally symmetric, so its incircle center, its centroid and
  * its bounding-box center are all the same point and there is no compass anchor
- * to split off — the six directions 0/60/120 and their opposites work straight
+ * to split off, the six directions 0/60/120 and their opposites work straight
  * off the drawn center, at hex quality (100% of the drawn ray inside counted
  * cells, mean length 4.45 to 5.89).
  *
  * It is also the densest of these lattices to reason on: interior valence 10,
  * against the rectangle's 8. Two consequences that are properties of the
- * tiling rather than of this builder — a rhombille clue can read 9 or 10, and
+ * tiling rather than of this builder, a rhombille clue can read 9 or 10, and
  * Pass B is structurally almost dead here (its subset pairs rarely resolve, so
  * its ladder runs Pass A straight to Pass C).
  *
@@ -774,8 +774,8 @@ const DELTOIDAL_SCALE = (3 + Math.sqrt(3)) / 3;         // 2 / (3 − √3), ins
  * lattice: each hexagon cut into six congruent kites (center, edge midpoint,
  * vertex, next edge midpoint), 6MN cells.
  *
- * Richest of the four to solve — 62% of constructively generated certified
- * boards reach techniqueLevel 2, against 6% on rhombille — and its interior
+ * Richest of the four to solve, 62% of constructively generated certified
+ * boards reach techniqueLevel 2, against 6% on rhombille, and its interior
  * valence of 9 also carries clues above the classic ceiling of 8.
  *
  * @returns the same descriptor shape as buildTiling488 / buildHexTiling.
@@ -787,7 +787,7 @@ export function buildDeltoidalTiling(M, N) {
 
   // RAY ANCHOR, and the one number here that is a coincidence rather than a
   // choice. Sweeping the anchor radius from 0.30 to 0.866 puts EVERY value below
-  // the shipped bar except exactly 1/2 — including the vertex centroid (0.625)
+  // the shipped bar except exactly 1/2, including the vertex centroid (0.625)
   // and the incircle center (0.634), whose best direction keeps 67.2% of its
   // drawn ray inside counted cells, under the 66.3% that got hex's 30/90/150
   // rejected. At radius 1/2, the kite's long-diagonal midpoint, the same
@@ -824,7 +824,7 @@ export function buildDeltoidalTiling(M, N) {
 }
 
 /**
- * Every tiling the dispatcher builds, canonical names only — `'6.6.6'` is
+ * Every tiling the dispatcher builds, canonical names only, `'6.6.6'` is
  * accepted as an alias for `'hex'` but is not a separate tiling. Single-sourced
  * here so the deep-link parser and any per-type table can be checked against the
  * builders rather than against a hand-copied list.
@@ -848,8 +848,8 @@ const TILING_BUILDERS = {
  *
  * An unrecognized type falls through to the shipped 4.8.8 rather than throwing,
  * which is the contract the generator's own `type = '4.8.8'` default relies on.
- * With six types that fallback is a real hazard — a typo produces a 4.8.8 with
- * no error anywhere — so callers that take a type from OUTSIDE the code (the
+ * With six types that fallback is a real hazard, a typo produces a 4.8.8 with
+ * no error anywhere, so callers that take a type from OUTSIDE the code (the
  * `?coastline=` token parser is the only one) must validate against
  * TILING_TYPES before they get here.
  */
@@ -861,7 +861,7 @@ export function buildTiling(type, M, N) {
  * A cell's own box and clip-path, derived from that cell's polygon.
  *
  * The renderer picks a clip-path per SHAPE NAME today, which holds only while
- * every cell of a shape is identical up to TRANSLATION — true of the octagon,
+ * every cell of a shape is identical up to TRANSLATION, true of the octagon,
  * the interstitial diamond and the hexagon, false of all four Laves tilings,
  * whose one cell shape appears in several rotations (cairo 4, floret 6,
  * rhombille 3, deltoidal 6). Box size does not identify the rotation either:
@@ -872,8 +872,8 @@ export function buildTiling(type, M, N) {
  * So derive both from the vertices: the box is their tight axis-aligned bounding
  * box in PITCH units, and the clip-path is each vertex as a percentage of that
  * box in the polygon's own order. This is not a new rule for the shipped shapes,
- * it is the rule their three hand-inlined branches are cases of — SQ_BOX_FRAC IS
- * the diamond's bbox width and HEX_BOX_H IS the hexagon's bbox height — and it
+ * it is the rule their three hand-inlined branches are cases of, SQ_BOX_FRAC IS
+ * the diamond's bbox width and HEX_BOX_H IS the hexagon's bbox height, and it
  * reproduces all three to 0 percentage points across every cell of a full board,
  * and to 0 differing pixels over 711,000 in a headless-Chromium comparison.
  *
@@ -886,7 +886,7 @@ export function buildTiling(type, M, N) {
  * @param {Array<{x:number,y:number}>} verts the tiling's deduped vertex list
  * @param {number[]} cellVertIndices one cell's entry of the tiling's `cellVerts`
  * @returns {{left:number, top:number, width:number, height:number, clipPath:string}}
- *   left/top/width/height in PITCH units — multiply by the live pitch for px.
+ *   left/top/width/height in PITCH units, multiply by the live pitch for px.
  */
 export function cellOutline(verts, cellVertIndices) {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -955,8 +955,8 @@ export function buildWireframe(tiling) {
 }
 
 /**
- * A rows×cols container that EXACTLY holds `total` cells — every slot is a real
- * cell, so `cellCount = rows*cols` stays an honest feature — as near-square as
+ * A rows×cols container that EXACTLY holds `total` cells, every slot is a real
+ * cell, so `cellCount = rows*cols` stays an honest feature, as near-square as
  * total's factors allow. The container is pure STORAGE: a cell's (row, col) says
  * nothing about what it touches (adjacency is _cellNeighbors) or where it is
  * drawn (geometry is _cellPos). Only the flat index r*cols+c matters, and that
@@ -988,8 +988,8 @@ export const CANONICAL_MAX_DIM = 30;
  * about `total`'s FACTORS, not about the tiling: a PRIME cell count forces
  * `1 × total`, and the rules require every dimension in
  * [CANONICAL_MIN_DIM, CANONICAL_MAX_DIM]. A 4.8.8 at M=8, N=8 is
- * 2·8·8−8−8+1 = 113 cells — prime — so it ships as 1×113 and the write is
- * rejected wholesale. Nothing about the board is wrong; it simply cannot be a
+ * 2·8·8−8−8+1 = 113 cells, prime, so it ships as 1×113 and the write is
+ * rejected wholesale. Nothing about the board is wrong; it just cannot be a
  * daily, and without this check the only symptom is a canonical that never
  * appears.
  *
@@ -1013,11 +1013,11 @@ export function containerIsStorable(total) {
  * the straight line out of the origin in direction (dx, dy), ordered outward.
  *
  * A compass is a geometry question ("which way"), which a neighbor graph can't
- * answer — so the ray is computed HERE, from cell positions, once at generation,
+ * answer, so the ray is computed HERE, from cell positions, once at generation,
  * and stored on the cell. The certifier and the display then both read the
  * stored ray (compassRayCells returns it on an explicit topology) and can never
  * disagree. Positions are exact half/integer lattice values, so the colinearity
- * cross-product is exact — no float slop.
+ * cross-product is exact, no float slop.
  *
  * On the 4.8.8 lattice positions are exact half/integer values so the colinearity
  * cross-product is exactly zero; on a hexagonal lattice the row spacing is
@@ -1040,7 +1040,7 @@ export function containerIsStorable(total) {
  * The anchor must be CLOSED FORM, never a numerical search. A pattern-search
  * incircle carries around 1.5e-9 of error, which is larger than the EPS below,
  * and measuring deltoidal that way silently destroyed 4 of its 6 direction
- * families — the rays came back short and plausible rather than empty, which is
+ * families, the rays came back short and plausible rather than empty, which is
  * exactly the failure a review does not catch.
  *
  * @param {Array<{cx:number,cy:number,ax?:number,ay?:number}>} cellPos

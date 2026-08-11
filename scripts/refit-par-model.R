@@ -2721,7 +2721,7 @@ new_src <- patch_js_markers(new_src, "// TIMED_PAR_MODEL:START",
 shapes_header <- c(
   sprintf("Last refit: %s | composed: PAR_MODEL base + per-shape deviations",
           Sys.Date()),
-  "Deviations: fitted posterior where live rows exist; the Par Lab center",
+  "Deviations: fitted posterior on shapes with live rows; the Par Lab center",
   "(scripts/data/parlab-prior-centers.json, the 2026-08-03 seeding ruling)",
   sprintf("where none do; 0 for unseeded terms until %d nonzero fit rows",
           NEW_FEATURE_DATA_THRESHOLD),

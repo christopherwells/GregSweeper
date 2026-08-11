@@ -99,8 +99,8 @@ function _notifyUidChange(uid, previousUid, isInitial) {
 
 /**
  * Subscribe to real-time cloud updates of `users/{currentUid}/*`. The
- * callback fires with the snapshot value every time the subtree changes
- *, both for writes from THIS device (own writes echo back) and writes
+ * callback fires with the snapshot value every time the subtree changes,
+ * both for writes from THIS device (own writes echo back) and writes
  * from OTHER devices signed into the same account. Returns an
  * unsubscribe function.
  */

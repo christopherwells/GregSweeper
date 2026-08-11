@@ -16,7 +16,7 @@ let db = null;
 
 // playerNames/{uid} → name join cache. Every leaderboard resolves each row's
 // DISPLAY name by uid (resolveDisplayName), so a name change in Settings shows
-// on every past record instantly — the row's own stored name is only a
+// on every past record instantly, the row's own stored name is only a
 // fallback for rows with no uid (join-at-read; see the Settings/name-gate
 // publishPlayerName writers). Cached briefly so rapid leaderboard tab-switches
 // don't re-read the whole node each time.
@@ -26,7 +26,7 @@ const PLAYER_NAMES_TTL_MS = 60000;
 
 // Client-side rate limiting: one clock PER submission path. A single shared
 // clock let a timed (Quick Play) win suppress a daily/weekly_first submission
-// landing within the cooldown window (issue #89) — the paths look independent
+// landing within the cooldown window (issue #89), the paths look independent
 // to the player, so one must never burn the other's clock.
 const _lastSubmitByKind = { daily: 0, archive: 0, timed: 0 };
 const SUBMIT_COOLDOWN_MS = 30000; // 30 seconds between submissions per path
@@ -41,7 +41,7 @@ export function _stampSubmitCooldown(kind, now = Date.now()) {
 
 // Pure identity re-stamp for queued submissions (issue #132), exported for
 // tests. The uid frozen at enqueue time is replaced with the uid the device
-// is signed in as at FLUSH time — after an account-link switch the old uid
+// is signed in as at FLUSH time, after an account-link switch the old uid
 // fails the `uid === auth.uid` write rule forever, so identity must resolve
 // at flush, not at enqueue.
 export function restampPendingEntry(entry, uid) {
@@ -63,15 +63,15 @@ export function restampPendingWeeklyEntry(entry, uid) {
 // rehosted copy of the site works against this database from any origin
 // (anonymous auth is not gated by authorized domains). App Check tokens
 // attest that traffic comes from the real app. Activation only ATTACHES
-// tokens — nothing is rejected until enforcement is turned on in the
+// tokens, nothing is rejected until enforcement is turned on in the
 // console, and enforcement must wait until stale service-worker clients
-// (which lack this code) have cycled onto a build that carries it.
+// (which lack this code) have cycled onto a build that includes it.
 const APP_CHECK_SITE_KEY = '6Lc6jUctAAAAACH5c0o-uBd5P88EBebd3mKUyeXU';
 const APP_CHECK_PROVIDER = 'enterprise';
 
 // Score validation bounds
-const MIN_VALID_TIME = 5;    // seconds — anything faster is impossible
-const MAX_VALID_TIME = 3600; // seconds — 1 hour cap
+const MIN_VALID_TIME = 5;    // seconds, anything faster is impossible
+const MAX_VALID_TIME = 3600; // seconds, 1 hour cap
 
 // Retry queue for failed submissions. When a submit fails (offline,
 // auth-race, transient Firebase error, or post-rules-deploy rejection on
@@ -81,11 +81,11 @@ const PENDING_KEY = 'minesweeper_pending_daily_submissions';
 const PENDING_WEEKLY_KEY = 'minesweeper_pending_weekly_submissions';
 const PENDING_MAX_ENTRIES = 10;                   // Drop oldest beyond this
 // 14 days / 6 attempts (was 7 / 3). flushPending* only runs while online,
-// so attempts increment only on real online tries — but on persistently
+// so attempts increment only on real online tries, but on persistently
 // bad service a player can burn several boots before reconnecting. The
 // wider window is what lets a score queued on flaky service still recover
 // when the player finally gets signal days later, instead of aging out.
-const PENDING_MAX_AGE_MS = 14 * 24 * 3600 * 1000; // 14 days — older entries are stale
+const PENDING_MAX_AGE_MS = 14 * 24 * 3600 * 1000; // 14 days, older entries are stale
 const PENDING_MAX_ATTEMPTS = 6;                   // Give up after N flushes per entry
 
 function _queueFailedSubmission(dateString, name, time, bombHits, extras) {
@@ -115,7 +115,7 @@ export async function initFirebase() {
   try {
     // Check if Firebase SDK is available (loaded via CDN)
     if (typeof firebase === 'undefined' || !firebase.initializeApp) {
-      console.log('Firebase SDK not loaded — leaderboard will be local-only');
+      console.log('Firebase SDK not loaded, leaderboard will be local-only');
       return;
     }
 
@@ -148,7 +148,7 @@ export async function initFirebase() {
       ]);
     } catch (connErr) {
       console.warn('Firebase connected but database may be unreachable:', connErr.message);
-      // Still mark as ready — individual operations have their own timeouts
+      // Still mark as ready, individual operations have their own timeouts
     }
 
     firebaseReady = true;
@@ -157,7 +157,7 @@ export async function initFirebase() {
     flushPendingSubmissions().catch(err => reportCaughtError('flush-pending-daily', err));
     flushPendingWeeklySubmissions().catch(err => reportCaughtError('flush-pending-weekly', err));
   } catch (err) {
-    console.warn('Firebase init failed — using local leaderboard:', err.message);
+    console.warn('Firebase init failed, using local leaderboard:', err.message);
     if (err.message?.includes('permission')) {
       console.warn('Hint: Check Firebase Realtime Database Security Rules in the Firebase Console.');
       console.warn('For testing, set rules to: { ".read": true, ".write": true }');
@@ -174,7 +174,7 @@ export async function initFirebase() {
  * allowlist, and their traffic must not count against the production
  * verified/unverified metrics that gate the enforcement decision.
  * (When enforcement ships, local dev switches to the App Check debug
- * provider with a debug token — not needed in monitor mode.)
+ * provider with a debug token, not needed in monitor mode.)
  */
 function activateAppCheck() {
   if (!APP_CHECK_SITE_KEY) return;
@@ -188,7 +188,7 @@ function activateAppCheck() {
       : APP_CHECK_SITE_KEY; // string key = reCAPTCHA v3 provider (compat shorthand)
     firebase.appCheck().activate(provider, /* isTokenAutoRefreshEnabled */ true);
   } catch (err) {
-    // Activation failure must never take down the leaderboard init —
+    // Activation failure must never take down the leaderboard init,
     // in monitor mode an unattested client still works.
     reportCaughtError('app-check-activate', err);
   }
@@ -214,7 +214,7 @@ export function isFirebaseOnline() {
  * @param {number} time Completion time in seconds
  * @param {number} bombHits Number of bomb hits (daily mode strikes)
  * @param {Object} [extras]
- * @param {string} [extras.uid] Stable anonymous uid for per-user analyses
+ * @param {string} [extras.uid] Stable anonymous uid for per-user analysis
  * @param {number} [extras.par] Predicted par at play time (for R diagnostics)
  * @param {Object} [extras.features] Board feature vector for dailyMeta upsert
  * @returns {Promise<boolean>} true if submitted successfully
@@ -230,7 +230,7 @@ async function _doSubmitOnlineScore(dateString, name, time, bombHits, extras) {
   if (!isFirebaseOnline()) return false;
 
   if (typeof time !== 'number' || time < MIN_VALID_TIME || time > MAX_VALID_TIME) {
-    console.warn(`Score rejected — time ${time}s is outside valid range (${MIN_VALID_TIME}–${MAX_VALID_TIME}s)`);
+    console.warn(`Score rejected: time ${time}s is outside valid range (${MIN_VALID_TIME}-${MAX_VALID_TIME}s)`);
     return false;
   }
 
@@ -265,7 +265,7 @@ async function _doSubmitOnlineScore(dateString, name, time, bombHits, extras) {
       }
     }
     // Lens invocations: [{ t, kind }] with kind 'flag-warning' | 'region'.
-    // Worm hatch log: [{ t, r, c, len, life, pace, moves, tEnd? }] — one
+    // Worm hatch log: [{ t, r, c, len, life, pace, moves, tEnd? }], one
     // per hatched egg, traits embedded (the refit never reimplements the
     // seeded RNG), `moves` = exact realized move count. The refit fits on
     // the REALIZED worm dose (Σ len × moves / 100), because the scheduled
@@ -284,29 +284,29 @@ async function _doSubmitOnlineScore(dateString, name, time, bombHits, extras) {
     }
 
     // Two questions stand between this run and a leaderboard row, and the
-    // answers live in the pure logic/submitGate.js so they can be TESTED rather
+    // answers are in the pure logic/submitGate.js so they can be TESTED rather
     // than grepped (the guard shipped 2026-08-07 with 22 source-scan assertions
     // and no execution of its own logic):
     //
-    //   DEDUPE — one row per (player, board). Matching is per BOARD, not per
+    //   DEDUPE, one row per (player, board). Matching is per BOARD, not per
     //   uid (scoreRowMatch.js), so a practice (?seed=) row can never block the
     //   real daily and a player with a divergent historical row can still land
     //   their canonical replay.
     //
-    //   DIVERGENCE — a score set on a board that was not the day's canonical
+    //   DIVERGENCE, a score set on a board that was not the day's canonical
     //   never reaches the leaderboard. Their client missed the canonical and
     //   generated locally, which the precompute horizon makes near-certain
     //   rather than unlucky: the board is written up to seven days ahead and
     //   the nightly refit rewrites the experiment target underneath it, so a
     //   client re-deriving picks from a differently-sized candidate pool. One
     //   player's 2026-08-06 row sat on `:trial6` against a `:trial13`
-    //   canonical. The DAY still counts — the caller writes dailyHistory
+    //   canonical. The DAY still counts, the caller writes dailyHistory
     //   regardless, which is what streaks read; only the leaderboard, which
     //   compares people on one board, refuses it.
     //
     // Both reads feed ONE pure decision (logic/submitGate.js). Each is
-    // independently try/caught so an outage on either surfaces as `null` —
-    // "unavailable", never "mismatch" — and the gate falls open. That is the
+    // independently try/caught so an outage on either surfaces as `null`,
+    // "unavailable", never "mismatch", and the gate falls open. That is the
     // property that matters: dropping real scores whenever Firebase hiccups
     // would be far worse than the bad row either guard prevents.
     const playedSeed = typeof extras.rngSeed === 'string' ? extras.rngSeed : dateString;
@@ -314,12 +314,12 @@ async function _doSubmitOnlineScore(dateString, name, time, bombHits, extras) {
     if (extras.uid) {
       try {
         existingRows = (await db.ref(`daily/${dateString}`).once('value')).val();
-      } catch { /* read failed — nothing blocks the push */ }
+      } catch { /* read failed, nothing blocks the push */ }
     }
     let canonicalSeed = null;
     try {
       canonicalSeed = (await db.ref(canonicalSeedPath(dateString)).once('value')).val();
-    } catch { /* read failed — proceed with the push */ }
+    } catch { /* read failed, proceed with the push */ }
 
     const { verdict } = planScoreSubmission({
       rows: existingRows, uid: extras.uid || null,
@@ -335,7 +335,7 @@ async function _doSubmitOnlineScore(dateString, name, time, bombHits, extras) {
     // client already uploaded it for today).
     if (extras.features && typeof extras.features === 'object') {
       // PERMISSION_DENIED is the EXPECTED write-once rejection when another
-      // client already wrote today's meta — only unexpected failures report.
+      // client already wrote today's meta, only unexpected failures report.
       upsertDailyMeta(dateString, extras.features).catch(err => {
         const msg = String((err && err.code) || (err && err.message) || '');
         if (!/permission[ _]?denied/i.test(msg)) reportCaughtError('daily-meta-upsert', err);
@@ -356,13 +356,13 @@ export async function submitOnlineScore(dateString, name, time, bombHits = 0, ex
   if (isTestEnvironment()) return false;
   // Anti-cheat: a run that found most of the board's mines by stepping on them
   // was probing the layout, not playing (see isBombHitCheat for the two arms
-  // and why a bare fraction was not enough) — never leaderboard it, and never
+  // and why a bare fraction was not enough), never leaderboard it, and never
   // queue it for retry. Returns 'cheat' (not false) so the wrapper's
   // failure-queue path is skipped. The caller still records the DAY.
   // Daily/weekly_first only; gimmick-free
   // modes pass totalMines too but bombHits is 0, so this never trips.
   if (isBombHitCheat(bombHits, extras.totalMines)) return 'cheat';
-  // Offline / Firebase not ready — queue and retry on next successful boot
+  // Offline / Firebase not ready, queue and retry on next successful boot
   if (!isFirebaseOnline()) {
     _queueFailedSubmission(dateString, name, time, bombHits, extras);
     return false;
@@ -375,13 +375,13 @@ export async function submitOnlineScore(dateString, name, time, bombHits = 0, ex
   // instead of double-rowing.
   const now = Date.now();
   if (!_submitCooldownOk('daily', now)) {
-    console.warn('Score submission rate-limited — queued for retry');
+    console.warn('Score submission rate-limited, queued for retry');
     _queueFailedSubmission(dateString, name, time, bombHits, extras);
     return false;
   }
 
-  // Three-way outcome: true (pushed), false (failed — queued for retry),
-  // 'duplicate' (this account already has a row for this exact board —
+  // Three-way outcome: true (pushed), false (failed, queued for retry),
+  // 'duplicate' (this account already has a row for this exact board,
   // definitive, not queued, no cooldown burned).
   const ok = await _doSubmitOnlineScore(dateString, name, time, bombHits, extras);
   if (ok === true) {
@@ -448,7 +448,7 @@ export function buildArchivePayload(date, name, time, bombHits, extras = {}, tim
  * Submit an archive replay of a PAST daily to `dailyArchive/{date}/{pushId}`.
  *
  * Separate from `daily/` by design: the live day-of leaderboard never shows
- * replay rows (an old cached client reading `daily/` simply never sees them),
+ * replay rows (an old cached client reading `daily/` never sees them),
  * so the leaderboard stays day-of by construction. These rows feed the
  * par-model fit as nuisance-corrected data: the R refit binds them with an
  * `archive = 1` marker and an `archivePlay` fixed effect that absorbs any
@@ -468,7 +468,7 @@ export function buildArchivePayload(date, name, time, bombHits, extras = {}, tim
  */
 export async function submitArchiveScore(date, name, time, bombHits = 0, extras = {}) {
   if (isTestEnvironment()) return false;
-  // Anti-cheat: same probing guard as the live daily — a mine-popping run
+  // Anti-cheat: same probing guard as the live daily, a mine-popping run
   // never feeds the par fit either (dailyArchive rows are nuisance-corrected
   // fit data).
   if (isBombHitCheat(bombHits, extras.totalMines)) return false;
@@ -512,7 +512,7 @@ export async function submitArchiveScore(date, name, time, bombHits = 0, extras 
  * no per-date meta bucket to join against). These rows are fit-data
  * first, leaderboard later: the R refit starts using them via a
  * modeTimed effect once >= 20 rows exist (same threshold pattern as new
- * feature coefficients). Fire-and-forget — no retry queue; timed runs
+ * feature coefficients). Fire-and-forget, no retry queue; timed runs
  * are frequent and a lost row is statistically replaceable.
  *
  * @param {string} name Player name
@@ -554,12 +554,12 @@ export async function submitTimedScore(name, time, level, extras = {}) {
 
 /**
  * Resubmit any queued failed score writes. Called by initFirebase() on every
- * successful boot. Bypasses SUBMIT_COOLDOWN_MS — queue entries are legitimate
+ * successful boot. Bypasses SUBMIT_COOLDOWN_MS, queue entries are legitimate
  * prior submissions, not user spam. Drops entries older than PENDING_MAX_AGE_MS
  * or that have hit PENDING_MAX_ATTEMPTS.
  */
 export async function flushPendingSubmissions() {
-  // Never write prod scores from a test session — the pending queue lives in
+  // Never write prod scores from a test session, the pending queue lives in
   // localStorage, shared across the master/test github.io origin, so a score
   // queued on master must not flush while the test build is open.
   if (isTestEnvironment()) return;
@@ -583,7 +583,7 @@ export async function flushPendingSubmissions() {
   try {
     const { getUid } = await import('./firebaseProgress.js');
     currentUid = getUid();
-  } catch { /* progress module unavailable — treat as auth-not-settled */ }
+  } catch { /* progress module unavailable, treat as auth-not-settled */ }
   if (!currentUid) return;
 
   const stillPending = [];
@@ -603,7 +603,7 @@ export async function flushPendingSubmissions() {
     );
     // 'duplicate' resolves the entry too: the score is already on the
     // board (the original push landed, or another device submitted
-    // while this one was offline) — retrying would only re-read.
+    // while this one was offline), retrying would only re-read.
     if (ok) flushed++;
     else stillPending.push(entry);
   }
@@ -637,7 +637,7 @@ export async function submitWeeklyScore(weekStart, uid, name, bestTime, dayTimes
   // Test branch: don't write to the production weekly leaderboard.
   if (isTestEnvironment()) return false;
   // Anti-cheat: if THIS attempt found most of the board's mines by stepping on
-  // them, skip recording it — the day-time writes are additive, so
+  // them, skip recording it, the day-time writes are additive, so
   // skipping leaves prior honest days on the row untouched while the probing
   // attempt never lands.
   if (isBombHitCheat(extras.attemptBombHits, extras.totalMines)) return false;
@@ -646,7 +646,7 @@ export async function submitWeeklyScore(weekStart, uid, name, bestTime, dayTimes
     console.warn(`Weekly bestTime ${bestTime}s outside valid range`);
     return false;
   }
-  // Offline — durably queue and retry on the next online boot (mirrors the
+  // Offline, durably queue and retry on the next online boot (mirrors the
   // daily path). Previously a flaky connection here dropped the weekly
   // score permanently with no retry, which is how Kate's weekly attempts
   // could vanish on bad service.
@@ -655,7 +655,7 @@ export async function submitWeeklyScore(weekStart, uid, name, bestTime, dayTimes
     return false;
   }
   const ok = await _doSubmitWeeklyScore(weekStart, uid, name, bestTime, dayTimes, extras);
-  // 'divergent' is a RESOLVED outcome, not a failure to retry: the board was
+  // 'divergent' is a RESOLVED outcome, never queued for retry: the board was
   // wrong and will still be wrong on the next flush, so queuing it would retry
   // forever. Only a falsy result (a real write failure) goes back in the queue.
   if (!ok) _queueFailedWeeklySubmission(weekStart, uid, name, bestTime, dayTimes, extras);
@@ -694,7 +694,7 @@ async function _doSubmitWeeklyScore(weekStart, uid, name, bestTime, dayTimes, ex
     // leaderboard is ONE board, so a divergent row is not a slower time on the
     // same puzzle, it is an incomparable time on a different one. The seed goes
     // ONTO the row in the same breath, because until now a weekly row recorded
-    // nothing about which board produced it — divergence was not merely
+    // nothing about which board produced it, divergence was not merely
     // unguarded, it was undetectable afterward.
     //
     // The node is weeklyBoard/{weekStart}, NOT canonicalSeedPath(weekStart):
@@ -702,7 +702,7 @@ async function _doSubmitWeeklyScore(weekStart, uid, name, bestTime, dayTimes, ex
     // a `_weekly_first` fit row to the weekly board). Here the bucket is
     // already known to be weekly, so the path is direct.
     //
-    // Fails OPEN exactly like the daily's — an unreadable canonical is
+    // Fails OPEN exactly like the daily's, an unreadable canonical is
     // "unavailable", never "mismatch". Reusing planScoreSubmission keeps that
     // rule in one place; rows: null because a weekly row is keyed by uid, so
     // there is no duplicate-row concept for it to test.
@@ -711,7 +711,7 @@ async function _doSubmitWeeklyScore(weekStart, uid, name, bestTime, dayTimes, ex
       let canonicalSeed = null;
       try {
         canonicalSeed = (await db.ref(`weeklyBoard/${weekStart}/rngSeed`).once('value')).val();
-      } catch { /* read failed — proceed with the write */ }
+      } catch { /* read failed, proceed with the write */ }
       const { verdict } = planScoreSubmission({
         rows: null, uid: null, bucketKey: weekStart, playedSeed, canonicalSeed,
       });
@@ -745,7 +745,7 @@ async function _doSubmitWeeklyScore(weekStart, uid, name, bestTime, dayTimes, ex
       }).catch(err => reportCaughtError('weekly-besttime-transaction', err));
       return true;
     } catch {
-      // First write for this player+week — node doesn't exist yet, so
+      // First write for this player+week, node doesn't exist yet, so
       // update() failed the hasChildren rule. set() is safe here because
       // there's no prior data to clobber.
       const payload = {
@@ -774,7 +774,7 @@ function _queueFailedWeeklySubmission(weekStart, uid, name, bestTime, dayTimes, 
     const existingIdx = pending.findIndex(e => e && e.weekStart === weekStart && e.uid === uid);
     if (existingIdx >= 0) {
       // Merge today's day into the existing queued entry so both days
-      // reach Firebase on flush — with additive writes each day is
+      // reach Firebase on flush, with additive writes each day is
       // independent.
       const existing = pending[existingIdx];
       existing.dayTimes = { ...existing.dayTimes, ...(dayTimes || {}) };
@@ -808,7 +808,7 @@ function _queueFailedWeeklySubmission(weekStart, uid, name, bestTime, dayTimes, 
  * rules as the daily queue.
  */
 export async function flushPendingWeeklySubmissions() {
-  // Test-session guard (see flushPendingSubmissions). The weekly path
+  // Test-session gate (see flushPendingSubmissions). The weekly path
   // writes per-day data additively, but a stray test-session flush
   // would still pollute the player's live weekly row.
   if (isTestEnvironment()) return;
@@ -829,7 +829,7 @@ export async function flushPendingWeeklySubmissions() {
   try {
     const { getUid } = await import('./firebaseProgress.js');
     currentUid = getUid();
-  } catch { /* progress module unavailable — treat as auth-not-settled */ }
+  } catch { /* progress module unavailable, treat as auth-not-settled */ }
   if (!currentUid) return;
 
   const stillPending = [];
@@ -881,7 +881,7 @@ export async function fetchWeeklyLeaderboard(weekStart) {
         // Find which day produced the best time so we can report the
         // strikes from that specific play. If bestTime appears on
         // multiple days (rare, players matching their own time), the
-        // first match wins — fine for the leaderboard column.
+        // first match wins, fine for the leaderboard column.
         let bestDay = null;
         for (const [k, t] of Object.entries(dayTimes)) {
           if (Math.abs(t - v.bestTime) < 0.05) { bestDay = Number(k); break; }
@@ -938,9 +938,9 @@ async function upsertDailyMeta(dateString, features) {
  * Fetch the current user's daily history, most-recently-PLAYED-first, limited
  * to `daysBack` recent entries. Returns an array of
  * `{ date, time, archive, playedDate }` or null if Firebase is offline.
- * `date` is the BOARD's date (the row key — join dailyMeta/par against this);
+ * `date` is the BOARD's date (the row key, join dailyMeta/par against this);
  * `playedDate` is the ET day the run actually happened (equal to `date` for
- * live rows; the submittedAt day for archive replays — see
+ * live rows; the submittedAt day for archive replays, see
  * attributePlayedDate). Time-series surfaces must place plays by playedDate,
  * or an archive replay back-dates today's performance into the past. Par and
  * delta are computed at render time against the current PAR_MODEL + dailyMeta
@@ -980,7 +980,7 @@ export async function fetchUserDailyHistory(uid, daysBack = 30) {
 }
 
 /**
- * Fetch the full daily score tree — a map of `{ date: [{uid, name, time, bombHits, ...}, ...] }`.
+ * Fetch the full daily score tree, a map of `{ date: [{uid, name, time, bombHits, ...}, ...] }`.
  * Flattens each date's pushId-keyed object into a plain array. Used by
  * the stats page's percentile-trend chart to rank the signed-in user
  * against the full field on each date. World-readable.
@@ -1019,7 +1019,7 @@ export async function fetchAllDailyScores() {
 }
 
 /**
- * Fetch the full dailyMeta tree — a map of `{ date: features }`. Used by
+ * Fetch the full dailyMeta tree, a map of `{ date: features }`. Used by
  * the history chart to compute each historical entry's par on the fly
  * against the current PAR_MODEL. World-readable, no auth needed.
  * Returns null on error.
@@ -1047,7 +1047,7 @@ export async function fetchAllDailyMeta() {
 
 // NOTE: Client-side validation is not sufficient for security.
 // Firebase Security Rules should be configured to enforce:
-//   - Time range validation (5–3600 seconds)
+//   - Time range validation (5-3600 seconds)
 //   - Rate limiting per user/IP
 //   - Name length and content sanitization
 //   - Date string format validation
@@ -1057,7 +1057,7 @@ export async function fetchAllDailyMeta() {
  * Fetch the playerNames/{uid} → name map (world-readable). Cached for
  * PLAYER_NAMES_TTL_MS so a burst of leaderboard renders shares one read.
  * Returns {} (never null) so callers can look up with a fallback
- * unconditionally. Reads the whole node — fine at this community's scale (~tens
+ * unconditionally. Reads the whole node, fine at this community's scale (~tens
  * of bytes/player); if it ever grows large, switch to per-uid reads for only
  * the uids present in the rendered leaderboard.
  */

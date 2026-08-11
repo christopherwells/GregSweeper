@@ -2,19 +2,19 @@
 // Turns a deduction from findDeducibleFrontier ({row, col, tier,
 // sources}) into a sentence a first-week player can follow. The
 // substrate knows WHICH constraints prove a square; this module says
-// WHY in plain words — no "provable", no "frontier", no "enumeration".
+// WHY in plain words, no "provable", no "frontier", no "enumeration".
 //
 // Two styles:
-//   'full'     — post-loss / post-strike surfaces, where naming the
+//   'full'     - post-loss / post-strike surfaces, where naming the
 //                answer is fine: "The 3 beside it already touches 3
 //                known mines, so this square had to be clear."
-//   'socratic' — the mid-game Lens, which must show WHERE to look but
+//   'socratic', the mid-game Lens, which must show WHERE to look but
 //                never resolve it: "One of the highlighted numbers
-//                already touches all its mines — what does that say
+//                already touches all its mines, what does that say
 //                about its other neighbors?"
 //
 // Honesty constraint: explanations are computed the same flags-blind
-// way the frontier is — "known mines" means revealed mines (strike
+// way the frontier is, "known mines" means revealed mines (strike
 // cells), never player flags, so the sentence can't inherit a wrong
 // flag's lie.
 
@@ -26,7 +26,7 @@ import { classifyPattern } from './patternNames.js';
 const NAMED_SHAPES = new Set(['1-1', '1-2', '1-2-1', '1-2-2-1', '1-3-1']);
 
 // The number the player sees on a revealed cell (liar/mirror display
-// included — the explanation should reference what's on screen).
+// included, the explanation should reference what's on screen).
 function visibleNumber(cell) {
   return cell.displayedMines != null ? cell.displayedMines : cell.adjacentMines;
 }
@@ -55,7 +55,7 @@ function originView(board, rows, cols, origin, neighborCache) {
 
 /**
  * Explain one deduction in plain words.
- * @param {Array} board live board
+ * @param {Array} board the in-play board
  * @param {Object} ded  { row, col, tier, sources } from findDeducibleFrontier
  * @param {Object} opts { style: 'full' | 'socratic', kind: 'safe' | 'mine' }
  * @returns {string|null} a sentence, or null if no honest sentence applies
@@ -69,7 +69,7 @@ export function explainDeduction(board, ded, opts = {}) {
   const neighborCache = buildNeighborCache(board, rows, cols);
 
   // The board's own confession may name the shape ("that is the 1-2-1
-  // pattern") — but only in the full style (the Socratic Lens must never
+  // pattern"), but only in the full style (the Socratic Lens must never
   // resolve), and only when the geometry detector actually confirms a
   // player-known shape on the board, so the copy can never overclaim.
   const shape = style === 'full'
@@ -126,7 +126,7 @@ export function explainDeduction(board, ded, opts = {}) {
       return `No single clue cracks this. Try mine layouts that satisfy ALL ${k} highlighted clues at once.`;
     }
     // "Every layout", not "only one layout": the enumeration proves the
-    // square is invariant across ALL satisfying layouts — usually several
+    // square is invariant across ALL satisfying layouts, usually several
     // exist. Claiming uniqueness overclaimed on a proof surface (same
     // phrasing contract as the tier-3 liar copy below).
     return kind === 'safe'

@@ -1,7 +1,7 @@
 // Hate-speech filter for leaderboard display names.
 //
 // SCOPE: slurs only (racial, ethnic, homophobic, transphobic,
-// misogynistic). NOT general profanity — "HellRaiser" and the name
+// misogynistic). NOT general profanity, "HellRaiser" and the name
 // "Dick" are fine; an actual slur is not. This keeps false positives
 // near zero, which matters because the display name field is short and
 // we'd rather miss a clever evasion (the server-side obscenity sweep
@@ -16,7 +16,7 @@
 // Normalized base forms of slurs. Each entry is already lowercased with
 // no separators, so the normalizer below maps an incoming name into the
 // same space before substring-matching. Kept deliberately to
-// unambiguous hate-speech terms — do NOT add general profanity here.
+// unambiguous hate-speech terms, do NOT add general profanity here.
 // The list is intentionally a separate, clearly-labeled data module so
 // the matching logic stays readable.
 import { HATE_SPEECH_TERMS_CLIENT_SAFE } from './hateSpeechTerms.js';
@@ -48,7 +48,7 @@ export function normalizeForMatch(name) {
 
 /**
  * Return true if the name contains a hate-speech term after
- * normalization. Substring match — for short display names the
+ * normalization. Substring match, for short display names the
  * Scunthorpe risk on this curated slur-only list is acceptable
  * (these terms rarely appear inside innocent words).
  */

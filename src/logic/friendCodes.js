@@ -1,8 +1,8 @@
-// Friend codes — pure logic (no DOM, no Firebase) so the regression
+// Friend codes, pure logic (no DOM, no Firebase) so the regression
 // suite can pin it. The Firebase I/O lives in firebaseFriends.js.
 //
 // A friend code is a 6-character token from an unambiguous alphabet
-// (no 0/O, no 1/I/L — codes get read off projectors and phone screens).
+// (no 0/O, no 1/I/L, codes get read off projectors and phone screens).
 // Codes live 15 minutes, server-enforced: the firebase-rules.json read
 // gate hides codes older than CODE_TTL_MS, so an expired code is
 // unreadable regardless of the client clock. test/friendCodes.test.mjs
@@ -10,7 +10,7 @@
 
 export const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 export const CODE_LENGTH = 6;
-export const CODE_TTL_MS = 900000; // 15 min — mirrored in the rules read gate
+export const CODE_TTL_MS = 900000; // 15 min, mirrored in the rules read gate
 // Single source of truth for what a code looks like; the rules carry
 // the same pattern as $code.matches(/^[A-Z2-9]{6}$/).
 export const CODE_REGEX = /^[A-Z2-9]{6}$/;
@@ -39,7 +39,7 @@ export function isCodeFresh(createdAt, now) {
   return createdAt > now - CODE_TTL_MS;
 }
 
-// Remaining life in ms (0 when expired) — drives the countdown label.
+// Remaining life in ms (0 when expired), drives the countdown label.
 export function codeMsRemaining(createdAt, now) {
   if (!isCodeFresh(createdAt, now)) return 0;
   return createdAt + CODE_TTL_MS - now;

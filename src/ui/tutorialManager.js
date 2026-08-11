@@ -1,5 +1,5 @@
 // Interactive Tutorial
-// Guided 5x5 mini-board that teaches minesweeper basics:
+// Guided 5x5 mini-board covering minesweeper basics:
 // 1. Tap to reveal  2. Numbers explained  3. Flag  4. Chord  5. Win
 
 import { playReveal, playFlag, playWin } from '../audio/sounds.js';
@@ -11,7 +11,7 @@ import { generateBoard, cleanSolverArtifacts } from '../logic/boardGenerator.js'
 const ROWS = 5;
 const COLS = 5;
 // Mine #1 sits in the top-left board corner so it is boxed in by three
-// 1s whose ONLY shared hidden cell is that corner — an unambiguous
+// 1s whose ONLY shared hidden cell is that corner, an unambiguous
 // "inside corner" deduction for a beginner. Mine #2 at (3,3) is pinned
 // the same way by a single adjacent 1.
 const MINES = [[0,0], [3,3]];
@@ -427,7 +427,7 @@ export function startWarmup(onComplete) {
 }
 
 function wuPlaceMines(safeR, safeC) {
-  // The warm-up is the newcomer's FIRST real board — the one player the
+  // The warm-up is the newcomer's FIRST real board, the one player the
   // no-guess promise most needs to be true for. Use the certified
   // generator (solver-verified, first-click-safe 3x3 by construction)
   // instead of raw random placement, which routinely produces classic

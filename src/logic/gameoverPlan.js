@@ -12,12 +12,12 @@
 // The fix is structural: every render path starts by applying a COMPLETE
 // visibility map over the full element registry, then unhides only its own
 // data-dependent sections (par line, record, achievements, ...). A section
-// can no longer be forgotten, because the plan must decide every element —
+// can no longer be forgotten, because the plan must cover every element,
 // the test suite fails if a plan and the registry ever disagree.
 //
 // Two kinds of visibility:
 //   - STATIC (decided by outcome + mode alone): encoded here as `true`.
-//   - DATA-DEPENDENT (needs game data — par > 0, new record, unlocks...):
+//   - DATA-DEPENDENT (needs game data, par > 0, new record, unlocks...):
 //     always `false` here; the handler unhides after populating content.
 
 // Every optional element inside #gameover-overlay. Adding a section to the

@@ -7,7 +7,7 @@
 //   - The date on the card is the BOARD's date (state.dailySeed), never the
 //     wall clock. The submit paths were always anchored this way ("a finish
 //     at 12:00:01 AM lands on the board's own leaderboard"), but the share
-//     card stamped getLocalDateString() — wrong for a finish just past
+//     card stamped getLocalDateString(), wrong for a finish just past
 //     midnight ET and for every archive replay of a past board
 //     (2026-07-10 audit).
 //   - The five-line ceiling + single link line.
@@ -47,7 +47,7 @@ export function dailyShareLines({ mineEmoji, dateStr, time, par, gimmickIcons, c
   }
 
   // Modifier icons + the hardest step the board required, in plain words
-  // (the certified tier — never more than the solver proved).
+  // (the certified tier, never more than the solver proved).
   const stepPhrase = certTier >= 3 ? 'hardest step: liar logic'
     : certTier === 2 ? 'hardest step: region logic'
     : certTier === 1 ? 'hardest step: clue-comparison'

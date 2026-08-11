@@ -1,15 +1,15 @@
 // ── Advanced Constraint Solver for Minesweeper ────────────────
 // Two-layer solver that goes beyond simple rule + subset analysis.
-// Layer 1: Tank Solver — partition-based brute-force enumeration
+// Layer 1: Tank Solver, partition-based brute-force enumeration
 //          for small connected components (≤20 unknowns).
-// Layer 2: Gaussian Elimination — integer row-reduction for
+// Layer 2: Gaussian Elimination, integer row-reduction for
 //          larger components, extracting forced variables.
 //
 // Constraint format: { unknowns: cellIdx[], allowedMines: number[], origin? }
 // The mine count among `unknowns` must equal one of the `allowedMines`
 // values. Single-element = exact constraint (normal cell). Multi-element
 // = disjunctive (liar: { display-1, display+1 }). `origin` (optional) is
-// the cell index that produced the constraint — provenance for the
+// the cell index that produced the constraint, provenance for the
 // deduction trace, the Socratic lens, and per-deduction disjunctive
 // attribution. Constraints without an origin solve identically; they just
 // contribute nothing to a group's explanation.
@@ -20,16 +20,16 @@ const TANK_LIMIT = 20; // max unknowns per component for enumeration (2^20 ≈ 1
  * Given a set of constraints over binary (0/1) unknowns, determine which
  * cells are provably mines or provably safe across ALL satisfying assignments.
  *
- * Besides the flat mines/safe sets the result carries provenance:
+ * Besides the flat mines/safe sets the result includes provenance:
  *   groups[g]   = { unknowns, hasDisjunctive, origins } per independent
  *                 union-find component (origins = source cells of its
- *                 constraints — the honest "where the proof lives" region).
+ *                 constraints, the honest "where the proof lives" region).
  *   cellGroup   = Map cellIdx → g for every solved cell, so a caller can
  *                 attribute each deduction to ITS component instead of
  *                 batch-flagging the whole round (the old disjunctiveMoves
  *                 inflation on liar boards).
  *   contradiction = true when a tank component admits ZERO satisfying
- *                 assignments — on live player state this means at least
+ *                 assignments, on live player state this means at least
  *                 one flag is provably wrong.
  *
  * @param {Array<{unknowns: number[], allowedMines: number[], origin?: number}>} constraints
@@ -122,7 +122,7 @@ function findComponents(constraints) {
 // are mine in ALL solutions and which are safe in ALL solutions.
 
 // Returns true when at least one satisfying assignment exists (false =
-// the component's constraints are contradictory — on live player state
+// the component's constraints are contradictory, on live player state
 // that means a wrong flag poisoned the system).
 function tankSolve(unknowns, constraints, result) {
   const n = unknowns.length;
@@ -196,7 +196,7 @@ function popcount(x) {
 // certifier and every player-facing verdict built on it.
 //
 // The old version rounded float coefficients with Math.round before
-// pattern-matching rows — a fractional entry like 0.5 (which 0/1
+// pattern-matching rows, a fractional value such as 0.5 (which 0/1
 // systems legitimately produce under elimination) was read as 1, and
 // the row then "proved" cells that nothing proved. Found 2026-06-10 as
 // 17/360 monotonicity violations in the reveal-gating probe (boards
@@ -205,8 +205,8 @@ function popcount(x) {
 
 // A row only yields deductions when every coefficient and the RHS sit
 // within SNAP_EPS of an integer. True fractional values arising in 0/1
-// systems are ratios of small minors (1/2, 1/3, 2/3, ...) — never
-// closer to an integer than ~1/1000 in components this size — while
+// systems are ratios of small minors (1/2, 1/3, 2/3, ...), never
+// closer to an integer than ~1/1000 in components this size, while
 // float noise on genuinely-integer entries stays orders of magnitude
 // below this. Rows that fail the snap are SKIPPED, never rounded.
 const SNAP_EPS = 1e-6;
@@ -261,7 +261,7 @@ function gaussSolve(unknowns, constraints, result) {
   //   min achievable = Σ negative c_i  (positives at 0, negatives at 1)
   // b == max forces every positive-coefficient var to 1 (mine) and every
   // negative-coefficient var to 0 (safe); b == min is the mirror image.
-  // This is the standard sound bound rule — it subsumes the old
+  // This is the standard sound bound rule, it subsumes the old
   // single-variable / all-(+1) / all-(−1) special cases.
   for (let r = 0; r < m; r++) {
     const vars = [];

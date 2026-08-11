@@ -1,19 +1,19 @@
 // Resolve the effective RNG seed for a weekly puzzle by trying 10
 // candidate seeds and picking the winner with a BANDED argmax: gimmick
 // count (primary) + advanced-logic-moves tiebreaker, weighted by how close
-// the candidate's par sits to the week's target par (parBand.js —
+// the candidate's par sits to the week's target par (parBand.js,
 // Christopher's ruling 2026-08-02: weeklies land between 60s and 360s,
 // skewed lightly toward the easy end with occasional hard weeks).
 // Candidates pricing outside the band are excluded outright unless the
 // whole slate is outside, in which case the nearest board wins. Before the
 // band, this argmax took the hardest stack available every week (shipped
-// median 121s, tail to 251s); the stack stays 2–4 forced, the band just
+// median 121s, tail to 251s); the stack stays 2-4 forced, the band just
 // decides among stacks.
 //
 // This function is the ONE copy of the weekly selection rule:
 // scripts/precompute-weekly-board.mjs calls it directly and rebuilds the
 // winning candidate, rather than keeping the private contest copy it used
-// to carry — the weekly half of the same mirror-pair drift class the daily
+// to carry, the weekly half of the same mirror-pair drift class the daily
 // side closed when the slot arithmetic drifted (see selectMissionWinner's
 // history). The same dimension derivation and gimmick-application order as
 // daily, just with the weekly pool and score.
@@ -51,8 +51,8 @@ export function selectWeeklyRngSeed(weekStart) {
     const board = generateBoard(rows, cols, mines, fr, fc, bRng);
     cleanSolverArtifacts(board);
 
-    // Always 2–4 gimmicks for weekly. Same first-attempt-only gimmick
-    // application as daily's selectDailyRngSeed — if a candidate is
+    // Always 2-4 gimmicks for weekly. Same first-attempt-only gimmick
+    // application as daily's selectDailyRngSeed, if a candidate is
     // unsolvable on first pass, skip it; rare with a 14×14 board.
     const gimmicks = getWeeklyGimmicks(seed, createDailyRNG);
     if (gimmicks.length > 0) {
@@ -76,7 +76,7 @@ export function selectWeeklyRngSeed(weekStart) {
   }
 
   // Fallback to the bare weekStart if every candidate was unsolvable
-  // on first pass — extremely rare with a forced 2–4 gimmick pool.
+  // on first pass, extremely rare with a forced 2-4 gimmick pool.
   if (cands.length === 0) return weekStart;
   const idx = bandedArgmax(cands, drawWeeklyTargetPar(weekStart), WEEKLY_PAR_BAND);
   return idx >= 0 ? cands[idx].seed : weekStart;

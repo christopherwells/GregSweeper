@@ -12,7 +12,7 @@
 // snapshot in (state._weeklyPriorTimesAtWin); the fallback derivation here
 // excludes the current time defensively.
 //
-// Pure module — node-tested in test/weeklyAttemptSummary.test.mjs.
+// Pure module, node-tested in test/weeklyAttemptSummary.test.mjs.
 
 /**
  * @param {object} args

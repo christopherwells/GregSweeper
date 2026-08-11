@@ -2,14 +2,14 @@
 // object sets.
 //
 // Tier 1 sprites render only when the resolved emoji equals the
-// canonical default for that key (Classic/Dark themes). Emoji packs —
-// the old per-player override layer — were cut with the 2026-06-12
+// canonical default for that key (Classic/Dark themes). Emoji packs,
+// the old per-player override layer, were cut with the 2026-06-12
 // Collection declutter, so the theme is the only source of object
 // emoji now; the equality checks below remain as the identity
 // contract between getThemeEmoji and THEME_UNLOCKS.
 //
 // THEME_SPRITES (below) are each world's objects drawn in its material
-// language — the editorial ink blot, the sumi-e hanko stroke, the
+// language, the editorial ink blot, the sumi-e hanko stroke, the
 // blueprint drafted bomb. A theme sprite renders only when the resolved
 // emoji equals THAT THEME's own object emoji; undrawn themes fall back
 // to their emoji untouched. Ship world by world.
@@ -25,7 +25,7 @@ const SPRITES = {
   smileyLoss: { defaultEmoji: '😵', url: 'assets/sprites/loss.png' },
   strike:     { defaultEmoji: '💥', url: 'assets/sprites/strike.png' },
   // The "bomb you actually hit." Triggered by the same canonical mine emoji
-  // as the regular mine sprite — on Classic/Default we swap to strike.png so
+  // as the regular mine sprite, on Classic/Default we swap to strike.png so
   // the exploded bomb stands out from the other revealed mines. On themed
   // alternates (e.g. Ocean's blowfish), the themed mine emoji renders verbatim.
   strikeCell: { defaultEmoji: '💣', url: 'assets/sprites/strike.png' },
@@ -62,7 +62,7 @@ const SPRITES = {
   // ── Wave B achievement category icons (2026-06-23) ──
   // Each achievement has its own drawn identity. Several share a glyph
   // with a mode card (📅 daily, ⛏️ challenge, ⏱️ timed), so these render
-  // by category id (achievementSpriteImgHTML), never by emoji — the
+  // by category id (achievementSpriteImgHTML), never by emoji, the
   // defaultEmoji here is the registry fallback, not the lookup key.
   achWins:             { defaultEmoji: '🏆', url: 'assets/sprites/ach-wins.svg' },
   achStreak:           { defaultEmoji: '🔥', url: 'assets/sprites/ach-streak.svg' },
@@ -80,7 +80,7 @@ const SPRITES = {
 
   // ── Wave C chrome icons (2026-06-24) ──
   // Theme-agnostic UI affordances, rendered BY KEY (uiSpriteImgHTML /
-  // uiSpriteUrl), never by emoji — several share a glyph with content
+  // uiSpriteUrl), never by emoji, several share a glyph with content
   // icons (🏆 leaderboard vs Victory, ❓ help vs mystery), so no
   // defaultEmoji here. Drawn in one house style; see ICON-STYLE-GUIDE.md.
   uiHome:        { url: 'assets/sprites/ui-home.svg' },
@@ -147,7 +147,7 @@ const SPRITES = {
 };
 
 // Retain Image refs until each one fires onload/onerror so the browser
-// can't GC-cancel a pending fetch (rare, but defensive — and pinning
+// can't GC-cancel a pending fetch (rare, but defensive, and pinning
 // during the early load is cheap, the array clears as fetches resolve).
 const _preloadCache = [];
 
@@ -261,7 +261,7 @@ export function applyIcon(el, key, resolvedEmoji, { extraClass = '', sizeClass =
 // Medal emoji -> drawn medal sprite. The five ranks ARE the full tier
 // ladder (platinum was dropped 2026-06-23), so every tier icon now
 // resolves to a medal. Returns null for any non-tier emoji. TEXT
-// surfaces (share strings) must stay emoji — callers choose by simply
+// surfaces (share strings) must stay emoji, callers choose by
 // not using this.
 const MEDAL_BY_EMOJI = { '🥉': 'medalBronze', '🥈': 'medalSilver', '🥇': 'medalGold', '💎': 'medalDiamond', '💚': 'medalEmerald' };
 export function medalImgForEmoji(emoji, sizeClass = 'sprite-rank', alt = '') {
@@ -310,7 +310,7 @@ export function gimmickSpriteImgHTML(gimmickKey, sizeClass = 'sprite-gimmick', a
   return spriteKey ? spriteImgHTML(spriteKey, sizeClass, alt) : null;
 }
 
-// Raw sprite URL for a gimmick key — used by the canvas share-card
+// Raw sprite URL for a gimmick key, used by the canvas share-card
 // renderer (drawImage needs a URL, not HTML).
 export function gimmickSpriteUrl(gimmickKey) {
   const spriteKey = GIMMICK_SPRITE_KEYS[gimmickKey];
@@ -328,7 +328,7 @@ export function applyGimmickIcon(el, gimmickKey, fallbackEmoji) {
 
 // ── Achievement category icon sprites (Wave B) ───────────
 // Keyed by the achievement category id (achievements.js CATEGORIES),
-// not by emoji — several categories share a glyph with a mode card, so
+// not by emoji, several categories share a glyph with a mode card, so
 // the id is the only unambiguous handle. Theme-agnostic chrome.
 const ACHIEVEMENT_SPRITE_KEYS = {
   wins: 'achWins', streak: 'achStreak', speed: 'achSpeed', daily: 'achDaily',

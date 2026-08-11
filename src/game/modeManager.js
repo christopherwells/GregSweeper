@@ -48,7 +48,7 @@ export function updateModeUI(mode) {
   }
 
   // Power-ups hidden in chaos and weekly. Weekly is a time-trial against
-  // a fixed board — letting players cheese with power-ups on later
+  // a fixed board, letting players cheese with power-ups on later
   // attempts would defeat the bestTime leaderboard.
   if (powerUpBar) {
     if (mode === 'chaos' || mode === 'weekly') {
@@ -77,7 +77,7 @@ export function switchMode(mode) {
 
   // The outgoing game's pressure-plate intervals must die here (issue
   // #192): their deadline is raw wall-clock and their only self-check is
-  // `state.status !== 'playing'` — which a successful tryResumeGame below
+  // `state.status !== 'playing'`, which a successful tryResumeGame below
   // sets right back to 'playing', so an orphaned plate would keep counting
   // through the mode switch and detonate handleLoss on the RESUMED game
   // (a daily has no loss state at all). The resumed game's own plates are
@@ -103,7 +103,7 @@ export function switchMode(mode) {
   state.isWeeklyArchive = false;
   state._weeklyArchiveRaw = null;
   // Likewise never a ?level= playtest (that flag is set only by the
-  // test-build deep link) — a real challenge entered afterward must record.
+  // test-build deep link), a real challenge entered afterward must record.
   state.isLevelPractice = false;
   state.climbBoardIndex = null;
   // Never carry a ?coastline= tiling practice into a real mode either.
@@ -168,7 +168,7 @@ export function launchDailyArchive(date, raw) {
 }
 
 /**
- * Launch a replay of a PAST weekly — the weekly's counterpart to
+ * Launch a replay of a PAST weekly, the weekly's counterpart to
  * launchDailyArchive, and deliberately its mirror image rather than a variant
  * of switchMode('weekly'): that path resumes this week's in-progress attempt,
  * which is exactly what a past week must not touch.

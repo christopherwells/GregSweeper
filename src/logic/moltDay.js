@@ -7,9 +7,9 @@
 // taking a day to shelter while it molts.
 //
 // Pure module: no DOM, no Firebase, no clock. Callers pass the dates in. This
-// is the single source of truth for all three consumers — the completion path
+// is the single source of truth for all three consumers, the completion path
 // (statsStorage.saveGameResult), the app-load provisional notice (the title
-// daily card in main.js), and the push script (send-push.mjs) — so the bank
+// daily card in main.js), and the push script (send-push.mjs), so the bank
 // math can never disagree between them.
 
 // Bank one molt day for every run of this many consecutive completions.
@@ -29,7 +29,7 @@ function dayDiff(from, to) {
 
 // `date` plus `n` calendar days, formatted 'YYYY-MM-DD'. Parses and formats in
 // the same local basis as dayDiff, so it never crosses into UTC; setDate is
-// DST-safe (it adjusts the wall clock to keep the calendar day correct).
+// DST-safe (it adjusts the wall clock to keep the calendar date right).
 function addDays(date, n) {
   const d = new Date(date + 'T00:00:00');
   d.setDate(d.getDate() + n);
@@ -39,7 +39,7 @@ function addDays(date, n) {
   return `${y}-${m}-${day}`;
 }
 
-// The ET dates strictly between `from` and `to` — the days that were missed and
+// The ET dates strictly between `from` and `to`, the days that were missed and
 // are now covered by spent molt days.
 function missedDatesBetween(from, to) {
   const out = [];

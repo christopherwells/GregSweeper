@@ -3,8 +3,8 @@
 // enableNotifications (src/firebase/firebasePush.js) resolves to a STRING
 // contract: 'success' | 'denied' | 'ios-needs-install' | 'no-key' |
 // 'unsupported' | 'token-null' | 'token-error' | 'error'. The win-modal CTA
-// used to test `result === true || result === 'ok'` — two values the
-// contract never returns — so even a fully successful enable fell through
+// used to test `result === true || result === 'ok'`, two values the
+// contract never returns, so even a fully successful enable fell through
 // to the "Try again" branch and the best conversion moment in the app
 // always looked like a failure (2026-07-10 audit). The Settings toggle
 // compared against 'success' correctly; this helper is now the one mapping

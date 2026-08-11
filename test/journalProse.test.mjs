@@ -290,7 +290,7 @@ test('digit-share studies render clean prose and support revalidation (PR D)', (
       { date: '2026-08-02', mean: 0.2605, sd: 0.0465, retro: false },
     ],
     verdict: { kind: 'open', deltaPct: null,
-      copy: 'There’s no verdict yet. The numbers have barely budged. More boards will settle it.' },
+      copy: 'There’s no verdict yet. The numbers have barely moved. More boards will settle it.' },
   });
   assert.equal(bandClass(estimateSummary(threes)), 'pos', 'the ~30% cost is a clean positive band');
   const entry = composeEntry(threes, { activeFeature: 'clueShare3' }, newSession());
@@ -314,7 +314,7 @@ test('digit-share studies render clean prose and support revalidation (PR D)', (
       { date: '2026-08-02', mean: 0.0016, sd: 0.0021, retro: false },
     ],
     verdict: { kind: 'open', deltaPct: null,
-      copy: 'There’s no verdict yet. The numbers have barely budged. More boards will settle it.' },
+      copy: 'There’s no verdict yet. The numbers have barely moved. More boards will settle it.' },
   });
   assert.equal(bandClass(estimateSummary(highs)), 'zero');
   const highEntry = composeEntry(highs, { activeFeature: 'clueShare5plus' }, newSession());

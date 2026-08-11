@@ -1,13 +1,13 @@
 // ── The Receipt: post-loss proof surfaces ──────────────
 // When a game ends (loss, or post-strike inspection), the engine opens
 // its books: the full deducible frontier is painted on the board, and
-// the player can tap ANY unrevealed cell to ask "was this knowable?" —
+// the player can tap ANY unrevealed cell to ask "was this knowable?",
 // the answer pulses the constraint region that proves it. Everything
 // here reads the FLAGS-BLIND frontier (player flags are claims, not
 // facts; one wrong flag must never make the receipt lie).
 //
 // Voice rule: receipts describe the BOARD's proof ("this was provably
-// safe — the proof lived here"), never narrate the player's reasoning.
+// safe, the proof lived here"), never narrate the player's reasoning.
 
 import { state } from '../state/gameState.js';
 import { boardEl } from './domHelpers.js';

@@ -1,6 +1,6 @@
 // ── Named technique detector (shared source of truth) ──────────
 // Classifies a deduction into a named Minesweeper pattern the way a
-// player names it ("that was a 1-2-1"), from the board GEOMETRY — not
+// player names it ("that was a 1-2-1"), from the board GEOMETRY, not
 // from the solver's tier buckets, which are geometry-blind (the same
 // visual 1-2-1 can resolve at tier 1 or tier 2 depending on the flanking
 // clues). Both Greg's Gym (lesson admission + coaching) and the
@@ -15,7 +15,7 @@
 // board state in which the pattern's target cells are still hidden
 // (mid-play in the gym; the pre-crux reconstruction in receipts). On a
 // fully revealed board the recognizers find nothing and the tier-based
-// fallback is used — which is correct, since there is nothing left to
+// fallback is used, which is correct, since there is nothing left to
 // name.
 
 import { buildNeighborCache } from './boardSolver.js';
@@ -45,7 +45,7 @@ function hiddenNeighbors(board, cols, neighborCache, i) {
 }
 
 // A single revealed clue that already has a KNOWN mine (a revealed /
-// strike mine) among its neighbors — the "a flag drops the count" beat.
+// strike mine) among its neighbors, the "a flag drops the count" beat.
 // Distinct from plain counting only in that the count is already reduced.
 function hasKnownMineNeighbor(board, cols, neighborCache, i) {
   for (const ni of neighborCache[i]) {
@@ -64,7 +64,7 @@ const AXES = [[0, 1], [1, 0], [1, 1], [1, -1]];
 // cell among the front. This is the structural signature of the wall /
 // edge 1-2-1 and 1-2-2-1 families. An incidental 1,2,1 digit run in open
 // field (hidden cells on both sides of the line) fails the one-side test
-// and is not named — which is the honesty guarantee.
+// and is not named, which is the honesty guarantee.
 function matchesClueLine(board, rows, cols, neighborCache, targetIdx, values, out) {
   const need = values.length;
   for (let r = 0; r < rows; r++) {
@@ -141,7 +141,7 @@ export function isOneTwoTwoOne(board, rows, cols, neighborCache, targetIdx, out)
 // mine, so the single square only the 3 can see is forced to be a MINE,
 // and each 1's far square (only it can see) is SAFE. It is the 1-2 logic
 // bent around a corner: a modified 1-2 where the bigger clue is a 3
-// seeing five cells. `kind` selects which role the target plays — the
+// seeing five cells. `kind` selects which role the target plays, the
 // corner is the mine, the two outers are the safe squares.
 export function isOneThreeOneCorner(board, rows, cols, neighborCache, targetIdx, kind, out) {
   const nc = neighborCache || buildNeighborCache(board, rows, cols);
@@ -189,7 +189,7 @@ export function isOneThreeOneCorner(board, rows, cols, neighborCache, targetIdx,
 // Hole / triangle: the 1-1/1-2 OVERLAP read in a boxed-pocket shape. A
 // revealed clue is BOXED so its only hidden neighbors are a pocket of
 // exactly k cells (k=2 hole, k=3 triangle); a WIDER revealed clue (>=4
-// hidden — the cell cluster the canonical 1-1/1-2 lessons never reach)
+// hidden, the cell cluster the canonical 1-1/1-2 lessons never reach)
 // shares that pocket, so once the boxed clue pins the pocket's mines, the
 // wider clue's extra cells are all forced. We SCAN the board for this
 // structure rather than read the frontier's chosen sources: the frontier
@@ -203,9 +203,9 @@ function matchesPocket(board, rows, cols, neighborCache, targetIdx, k, out) {
   const at = (i) => board[Math.floor(i / cols)][i % cols];
   const total = rows * cols;
   // Mines already KNOWN adjacent to a clue: a marked (flagged) mine, or a
-  // revealed / strike mine. A clue's EFFECTIVE value is its face value minus
+  // revealed / strike mine. A clue's EFFECTIVE value is its shown value minus
   // these. A "3 with a marked mine beside it" effectively needs 2 more mines
-  // among its hidden cells — this is what lets triangles (and holes) carry
+  // among its hidden cells, this is what lets triangles (and holes) carry
   // LARGER NUMBERS while their pocket stays ambiguous.
   const knownMines = (i) => {
     let n = 0;
@@ -216,10 +216,10 @@ function matchesPocket(board, rows, cols, neighborCache, targetIdx, k, out) {
     if (!isPlainClue(at(i))) continue;
     const P = hiddenNeighbors(board, cols, neighborCache, i);
     if (P.length !== k) continue;            // boxed to exactly the pocket
-    // A genuine hole/triangle: the boxed clue's pocket is AMBIGUOUS — its
+    // A genuine hole/triangle: the boxed clue's pocket is AMBIGUOUS, its
     // EFFECTIVE value is LESS than its k cells, so a mine is in there but you
     // don't know which (that ambiguity IS the hole/triangle). effective ===
-    // k would mean the pocket is ALL mines (unambiguous) — a plain reduction,
+    // k would mean the pocket is ALL mines (unambiguous), a plain reduction,
     // NOT a hole; that false match is exactly what slipped non-holes through.
     const boxEff = vis(at(i)) - knownMines(i);
     if (!(boxEff >= 1 && boxEff < k)) continue;
@@ -257,12 +257,12 @@ export function isTriangle(board, rows, cols, neighborCache, targetIdx, out) {
 // <= B) sharing at least one hidden square. Writing each clue's hidden set
 // as shared + its own exclusive cells, subtracting the clues gives
 // mines(exclB) - mines(exclA) = valB - valA. When valB - valA === |exclB|,
-// every exclB cell is a mine and every exclA cell is SAFE — the classic
+// every exclB cell is a mine and every exclA cell is SAFE, the classic
 // reading "the square only the smaller clue sees is safe; the square only
 // the bigger sees is a mine." (1-1 is the equal-value case: exclB empty, B's
 // hidden a subset of A's, so A's exclusive square is safe.) Returns the
 // sorted [lo, hi] clue digits when the target is the forced cell (safe in
-// exclA, or mine in exclB), else null. This reads the real overlap — the old
+// exclA, or mine in exclB), else null. This reads the real overlap, the old
 // source-based pair naming was shadow-prone (a 1-2 board's freed square got
 // attributed to a 1-1 elsewhere), and a subset-only model misses the 1-2's
 // safe square entirely. Exported so the require-gate and tests share it.
@@ -347,7 +347,7 @@ export function isTwoTwoTwoCorner(board, rows, cols, neighborCache, targetIdx, o
 
 /**
  * Classify one deduction into a named pattern.
- * @param {Array} board live board (target cells still hidden)
+ * @param {Array} board the in-play board (target cells still hidden)
  * @param {Object} ded  { row, col, tier, sources:[{row,col}], kind? } from
  *                       findDeducibleFrontier, or a trace entry mapped to it
  * @param {Object} opts { rows?, cols?, neighborCache? }
@@ -367,7 +367,7 @@ export function classifyPattern(board, ded, opts = {}) {
   const kind = ded.kind === 'mine' ? 'mine' : 'safe';
   const targetIdx = ded.row * cols + ded.col;
 
-  // Tier 0: a single clue settles it — counting, or flag-reduction when
+  // Tier 0: a single clue settles it, counting, or flag-reduction when
   // that clue's count has already been dropped by a known mine.
   if (tier === 0) {
     const src = ded.sources && ded.sources[0];
@@ -380,19 +380,19 @@ export function classifyPattern(board, ded, opts = {}) {
     return { name: 'count', family: 'count' };
   }
 
-  // On an explicit topology (a tiling — Coastline) the shape recognizers below
+  // On an explicit topology (a tiling, Coastline) the shape recognizers below
   // are rectangular geometry: the collinear 1-2-1 / 1-2-2-1 and the L-bend
   // 1-3-1 read (r+dr, c+dc) through a container whose indices carry no spatial
   // meaning, and even the topology-sound overlap names ('1-1', '1-2', hole,
   // triangle) describe a square-grid shape a tiling player never sees. So a
-  // tiling board names only the honest tier — a two-clue 'pair' or an
-  // enumeration 'region' — never a specific shape. Receipts and the crux fire
+  // tiling board names only the honest tier, a two-clue 'pair' or an
+  // enumeration 'region', never a specific shape. Receipts and the crux fire
   // on any board; the Gym (which requires these shapes) is square-only.
   if (board._cellNeighbors) {
     return { name: tier === 1 ? 'pair' : 'region', family: null };
   }
 
-  // Named line geometry takes priority — it is the player's vocabulary
+  // Named line geometry takes priority, it is the player's vocabulary
   // and the honest source of truth (the shape is literally on the board),
   // regardless of which tier the engine used to resolve it. Check the
   // longer shape first so a 1-2-2-1 is never mislabeled a 1-2-1.
@@ -416,7 +416,7 @@ export function classifyPattern(board, ded, opts = {}) {
     if (kind === 'safe' && isTwoTwoTwoCorner(board, rows, cols, neighborCache, targetIdx)) {
       return { name: '2-2-2', family: 'enumeration' };
     }
-    // The bare 1-1 / 1-2 overlap, by geometry — surfaces reliably where the
+    // The bare 1-1 / 1-2 overlap, by geometry, surfaces reliably where the
     // source-based naming below was shadow-prone. A 2-2 / 3-2 etc. returns
     // 'pair' carrying the basic family it disguises.
     const op = matchesOverlapPair(board, rows, cols, neighborCache, targetIdx, kind);

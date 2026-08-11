@@ -92,7 +92,7 @@ test('verdict branches: settling / widened / open at the ±15% era bar', () => {
 
   const open = mk(0.020, 0.0195); // ~2%, inside the bar
   assert.equal(open.kind, 'open');
-  assert.match(open.copy, /barely budged/);
+  assert.match(open.copy, /barely moved/);
 
   // Voice ruling (2026-07-12): player copy is Greg's first person with
   // zero em-dashes.

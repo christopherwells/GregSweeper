@@ -7,8 +7,8 @@ import { $, $$ } from './domHelpers.js';
 // (display:none transitions, dialog::backdrop quirks) while still
 // giving keyboard users the right behavior.
 //
-// Per-modal state so multiple modals can coexist (rare — hideAllModals
-// closes everything together — but the WeakMap keeps it safe even if
+// Per-modal state so multiple modals can coexist (rare, hideAllModals
+// closes everything together, but the WeakMap keeps it safe even if
 // the call patterns change).
 
 const FOCUSABLE_SELECTOR = [
@@ -40,7 +40,7 @@ function _attachTrap(modal) {
     if (e.key !== 'Tab') return;
     const focusables = _focusableIn(modal);
     if (focusables.length === 0) {
-      // No focusable in the modal — block Tab so focus can't escape.
+      // No focusable in the modal, block Tab so focus can't escape.
       e.preventDefault();
       return;
     }
@@ -58,7 +58,7 @@ function _attachTrap(modal) {
   modal.addEventListener('keydown', handler);
   _trapState.set(modal, { restoreTarget, handler });
   // Move focus to the first focusable so keyboard users land inside the
-  // modal immediately. If there isn't one (rare — informational modals
+  // modal immediately. If there isn't one (rare, informational modals
   // with no buttons) we focus the modal container itself so Escape and
   // Tab still register against it rather than against the page below.
   const focusables = _focusableIn(modal);
@@ -77,7 +77,7 @@ function _detachTrap(modal) {
   _trapState.delete(modal);
   // Restore focus to wherever the user was when the modal opened.
   // Skip if the previous element no longer exists in the DOM (modal
-  // open across a board re-render, etc.) — focus would error otherwise.
+  // open across a board re-render, etc.), focus would error otherwise.
   const r = state.restoreTarget;
   if (r && typeof r.focus === 'function' && document.body.contains(r)) {
     try { r.focus(); } catch {}

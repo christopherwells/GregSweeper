@@ -6,7 +6,7 @@ const _toastQueue = [];
 let _toastActive = false;
 
 // `icon` (optional) is a SPRITES key (e.g. 'uiSuccess'). When given, a
-// drawn sprite leads the message — the message stays a TEXT NODE (never
+// drawn sprite leads the message, the message stays a TEXT NODE (never
 // innerHTML), so a dynamic message can't inject markup.
 export function showToast(message, duration = 2000, icon = null) {
   _toastQueue.push({ message, duration, icon });

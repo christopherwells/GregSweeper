@@ -1,8 +1,8 @@
 // Adaptive experimental design for the daily model refit.
 //
 // EVERY daily picks, among CANDIDATE_COUNT candidate seeds, ONE
-// candidate to ship. Each candidate is built around a "mission" — a
-// specific feature target that candidate is trying to maximise:
+// candidate to ship. Each candidate is built around a "mission", a
+// specific feature target that candidate is trying to maximize:
 //
 //   slot 0:    PRIMARY mission. Force-injects the high-CV target's
 //              gimmick (chosen by the R refit). Allowed to roll a
@@ -10,19 +10,19 @@
 //   slots 1-9: COVERAGE missions. Each force-injects a different
 //              undersampled gimmick from the ranked coverage_targets
 //              list (also produced by the R refit). Single-gimmick
-//              only — no second-roll. Slots cycle through the list
+//              only, no second-roll. Slots cycle through the list
 //              if it's shorter than 9 entries.
 //
 // Each candidate's score is `min(target_count, COUNT_CAP) * deficit_weight`.
 // The cap (= 5; defined in selectDailyRngSeed.js and the precompute script)
 // stops wallEdgeCount (10-30 edges per board) from dwarfing the cell-based
-// gimmicks (3-5 cells max) — without it, walls' coverage slot wins nearly
+// gimmicks (3-5 cells max), without it, walls' coverage slot wins nearly
 // every selection because its raw count is several times anyone else's.
 // Slot 0's weight is fixed low (PRIMARY_WEIGHT). Coverage slots use the
-// deficit weight from the ranked list — heavier for the most undersampled
+// deficit weight from the ranked list, heavier for the most undersampled
 // features. The day's winner is DRAWN from the scored candidates by a
 // date-seeded weighted lottery (selectMissionWinner), so a score is a
-// mission's frequency, not a fixed rank — see that function for why the
+// mission's frequency, not a fixed rank, see that function for why the
 // argmax this replaced served a monoculture.
 //
 // Constraints this module respects:
@@ -33,8 +33,8 @@
 //   run for a day, we keep using the previously-loaded target.
 // - Fallback if the JSON can't be fetched at all: DEFAULT_TARGET
 //   (currently advancedLogicMoves) and an empty coverage_targets list,
-//   in which case ALL slots fall back to the primary target — same
-//   behaviour as the pre-multi-objective design.
+//   in which case ALL slots fall back to the primary target, same
+//   behavior as the pre-multi-objective design.
 
 import { createDailyRNG } from './seededRandom.js';
 import { bandWeightsFor } from './parBand.js';
@@ -51,16 +51,16 @@ const DEFAULT_TARGET = 'advancedLogicMoves';
 // day. Each candidate runs the full generate + gimmicks + solve pipeline,
 // so cost scales linearly. 10 empirically produces a visible bias without
 // a jarring first-load delay (~500-800 ms). Now that every daily is an
-// improvement day, this cost is paid on every cold daily load — if it
-// becomes user-visible, lower to 5–7.
+// improvement day, this cost is paid on every cold daily load, if it
+// becomes user-visible, lower to 5-7.
 export const CANDIDATE_COUNT = 10;
 
 // Map experiment-target feature names to the gimmick name that produces
 // them. When the target maps to a gimmick, the candidate-seed loop
 // force-injects that gimmick into every candidate's gimmick list so the
-// 10-way max competes on cell COUNT rather than mere PRESENCE — without
+// 10-way max competes on cell COUNT rather than mere PRESENCE, without
 // this, the natural 6.6% per-seed inclusion rate means ~50% of dailies
-// have zero of the target across all 10 candidates and the maximisation
+// have zero of the target across all 10 candidates and the maximization
 // is meaningless. Targets not in this map (move-type counts, structural
 // features) fall through to the natural gimmick lottery.
 const TARGET_TO_GIMMICK = {
@@ -131,7 +131,7 @@ export function loadExperimentTarget() {
 }
 
 /**
- * Current target feature name. Synchronous — returns DEFAULT_TARGET if
+ * Current target feature name. Synchronous, returns DEFAULT_TARGET if
  * loadExperimentTarget hasn't completed yet. Use this inside the daily
  * generation flow; call loadExperimentTarget() at app startup to warm
  * the cache.
@@ -141,7 +141,7 @@ export function getCurrentTarget() {
 }
 
 /**
- * Return the metadata object from experimentTarget.json — useful for the
+ * Return the metadata object from experimentTarget.json, useful for the
  * diagnostics modal to surface "why is today's daily unusual?".
  */
 export function getExperimentMeta() {
@@ -150,7 +150,7 @@ export function getExperimentMeta() {
 
 /**
  * Return the feature name to bias toward for this date's daily. Every
- * daily is now an improvement day — the R refit guarantees no target
+ * daily is now an improvement day, the R refit guarantees no target
  * repeats within 3 days, so variety is preserved without skipping
  * generations on the client. dateString is unused now (kept for API
  * compatibility and future per-date overrides).
@@ -162,7 +162,7 @@ export function getExperimentTarget(dateString) {
 
 /**
  * Build the Nth candidate seed string for a given date.
- * `${dateString}:trial${n}` — a deterministic namespace that varies the
+ * `${dateString}:trial${n}`, a deterministic namespace that varies the
  * RNG stream while keeping the dateString as a parsable prefix (so
  * anything that inspects the seed can still recover the date).
  */
@@ -229,7 +229,7 @@ export function getCoverageTargets() {
 // one two SDs above. An earlier cut scored `sign × residual`, chasing whichever
 // tail the fit judged thinner; that is worse on two counts. It throws away half
 // the reachable boards for no gain in precision, and sampling only one side
-// would extrapolate structure — which matters here specifically, because the
+// would extrapolate structure, which matters here specifically, because the
 // clue-ambiguity hypothesis predicts an inverted U in the digit response, and a
 // one-tailed design is exactly what would hide a curve.
 
@@ -252,7 +252,7 @@ export const DECORRELATION_SLOTS = 10;
 
 /**
  * Validate a raw `decorrelation_mission` from experimentTarget.json. Returns a
- * normalized mission spec, or null if anything about it is unusable — a
+ * normalized mission spec, or null if anything about it is unusable, a
  * malformed mission must degrade to "no decorrelation today", never to a
  * NaN score that silently wins or loses every candidate.
  *
@@ -285,7 +285,7 @@ export function getDecorrelationMission() {
 }
 
 /**
- * How far a candidate board sits OFF the fitted line, in residual standard
+ * How far a candidate board lands OFF the fitted line, in residual standard
  * deviations. SIGNED: positive means the feature runs higher than the
  * confounder predicts, negative means lower. Both are equally useful
  * observations, so scoring takes the magnitude (see missionCandidateScore);
@@ -340,7 +340,7 @@ export function getMissionForSeed(rngSeed) {
  *   sampling rate of features ranked lower in the deficit list).
  * If the coverage list is empty (legacy experimentTarget.json) every
  * slot falls back to primary, recovering the pre-multi-objective
- * behaviour where all 10 candidates compete on the same target.
+ * behavior where all 10 candidates compete on the same target.
  */
 export function getMissionForSlot(slotIndex) {
   return resolveMissionForSlot(
@@ -352,7 +352,7 @@ export function getMissionForSlot(slotIndex) {
  * Saturating cap on a mission's raw score input. wallEdgeCount runs 10-30
  * edges per board while cell-based gimmicks cap out at ~3-5 cells, so an
  * uncapped `count × weight` lets walls dominate every selection; saturating
- * here makes the weight (how badly the design wants this mission) the actual
+ * here makes the weight (how badly the mission is needed) the actual
  * driver. Decorrelation shares the cap so an outlier board cannot buy an
  * unbounded score with one freak residual.
  *
@@ -368,8 +368,8 @@ export const COUNT_CAP = 5;
  * Returns null when the candidate cannot be scored on this mission, which the
  * caller must treat as "skip", not as zero.
  *
- * Both selection paths — the client's selectDailyRngSeed and the Node
- * precompute's selectBestCandidate — call THIS function. They previously
+ * Both selection paths, the client's selectDailyRngSeed and the Node
+ * precompute's selectBestCandidate, call THIS function. They previously
  * carried the scoring expression twice; the slot arithmetic having already
  * drifted once across exactly that mirror pair, the scoring rule is single
  * sourced from the start.
@@ -387,19 +387,19 @@ export function missionCandidateScore(mission, features) {
     // line breaks the correlation exactly as well as one two SDs above, so
     // both tails compete and the furthest-off board wins. A board sitting ON
     // the line scores ~0 and loses to any coverage slot with a count, which
-    // is the right outcome — on a day nothing reaches a corner, the board is
+    // is the right outcome, on a day nothing reaches a corner, the board is
     // better spent on coverage.
     return Math.min(Math.abs(z), COUNT_CAP) * mission.deficitWeight;
   }
   // Observational targets are measured on every board and must never be
-  // maximized — see OBSERVATIONAL_TARGETS. Scoring them 0 preserves exactly
-  // the behaviour that held before the clue shares became computable here.
+  // maximized, see OBSERVATIONAL_TARGETS. Scoring them 0 preserves exactly
+  // the behavior that held before the clue shares became computable here.
   const count = isObservationalTarget(mission.target) ? 0 : (features[mission.target] || 0);
   return Math.min(count, COUNT_CAP) * mission.deficitWeight;
 }
 
 /**
- * Pick the day's winning candidate from the scored slots — a date-seeded
+ * Pick the day's winning candidate from the scored slots, a date-seeded
  * WEIGHTED LOTTERY, not an argmax.
  *
  * The argmax this replaced was a monoculture machine: coverage deficit
@@ -411,7 +411,7 @@ export function missionCandidateScore(mission, features) {
  * 0.143 ≈ 0.71 against every other slot's ceiling of ~0.36. This is the
  * same lesson as PR F1's weight tuning, from the other side: a weight sets
  * who wins a contest, never how often a mission runs. Sampling ∝ score IS
- * the frequency mechanism — the most undersampled gimmick is still the most
+ * the frequency mechanism, the most undersampled gimmick is still the most
  * likely daily, but never the only one, and the mix self-corrects nightly
  * as the refit moves the weights.
  *
@@ -428,7 +428,7 @@ export function missionCandidateScore(mission, features) {
  *
  * Determinism: one rng stream seeded from the date (`:missionDraw`
  * namespace, disjoint from the `:trialN` candidate seeds), consumed by at
- * most one draw — every client and the precompute resolve the same winner
+ * most one draw, every client and the precompute resolve the same winner
  * for the same date and pool. Both selection paths (selectDailyRngSeed.js
  * and scripts/daily-board-pipeline.mjs) call THIS function; the winner-pick
  * used to exist as two argmax copies, the same mirror-pair shape whose slot
@@ -436,18 +436,18 @@ export function missionCandidateScore(mission, features) {
  *
  * Par banding (Christopher's ruling 2026-08-02, see parBand.js): when the
  * caller passes `bandCtx = { targetPar, band }`, each NON-decorrelation
- * entry's score is multiplied by its band weight — 0 outside the band, a
- * log-scale closeness kernel to the day's target inside it — before the
+ * entry's score is multiplied by its band weight, 0 outside the band, a
+ * log-scale closeness kernel to the day's target inside it, before the
  * draw, so the lottery keeps deciding WHICH mission a board studies while
- * the band decides how LONG the board runs (measured shift in mission-win
+ * the band sets how LONG the board runs (measured shift in mission-win
  * shares ≤ ~4 points). Three composition rules are load-bearing:
  * - Decorrelation supremacy is checked on RAW scores, before any band
  *   weight. Its R-derived weight is calibrated to "tie the strongest
  *   coverage" under exactly that contest, and a decorrelation winner is
  *   exempt from the band (those rare days chase a residual corner).
- * - An all-zero-score pool draws ∝ band weight instead of uniformly — no
- *   mission signal, so the band alone decides.
- * - Entries without a finite `par` weigh 0; if NO entry carries one the
+ * - An all-zero-score pool draws ∝ band weight instead of uniformly, no
+ *   mission signal, so the band alone settles it.
+ * - Entries without a finite `par` weigh 0; if NO entry has one the
  *   whole band step disengages and the legacy draw runs verbatim.
  *
  * @param {Array<{score: number, mission: Object, par?: number}>} entries
@@ -471,7 +471,7 @@ export function selectMissionWinner(entries, dateString, bandCtx = null) {
 
   // Ordinary days: weighted draw over the non-decorrelation slots. A
   // decorrelation slot that did NOT take the top score stays out of the
-  // draw — it wins outright at depth or not at all, per its calibration.
+  // draw, it wins outright at depth or not at all, per its calibration.
   const drawPool = pool.filter(e => e.mission?.type !== 'decorrelation');
   if (drawPool.length === 0) return top;
   const rng = createDailyRNG(`${dateString}:missionDraw`);
@@ -511,33 +511,33 @@ export function selectMissionWinner(entries, dateString, bandCtx = null) {
 }
 
 /**
- * The mission for a TILING day (Project Coastline shape rotation), where the
- * day has ONE candidate instead of the rectangular 10-way contest — the
+ * The mission for a TILING day (the Coastline shape rotation), where the
+ * day has ONE candidate instead of the rectangular 10-way contest, the
  * client fallback must replay selection deterministically, and generating a
  * contest's worth of rhombille boards on a phone is minutes, not milliseconds.
  *
  * With no candidate features to score, the rectangular lottery's
  * `min(count, CAP) × weight` collapses to its weight term: a date-seeded
  * weighted draw (P ∝ deficit weight) over the slots whose mission maps to a
- * FORCE-INJECTABLE gimmick — the primary when its target is a gimmick, plus
+ * FORCE-INJECTABLE gimmick, the primary when its target is a gimmick, plus
  * every coverage entry. That keeps the same self-correcting property the
  * rectangular lottery has (the most undersampled gimmick is the likeliest
  * tiling daily, never the only one, and the mix follows the refit's weights
  * nightly) without needing boards to exist before the draw.
  *
  * Excluded, deliberately:
- *  - DECORRELATION missions: they SELECT rather than construct — a residual
+ *  - DECORRELATION missions: they SELECT rather than construct, a residual
  *    can only be chased across a candidate pool, and a tiling day has a pool
- *    of one. On a tiling day the decorrelation mission simply does not run
+ *    of one. On a tiling day the decorrelation mission does not run
  *    (its 7-day cadence anchor only advances on a night that ships one, and
  *    its live targets are digit shares the fit reads from RECTANGULAR rows
- *    anyway — see the digit frame's rectangles-only filter).
+ *    anyway, see the digit frame's rectangles-only filter).
  *  - OBSERVATIONAL targets: measured on every board, never maximized; with
  *    nothing to force there is nothing for this draw to pick.
  *
- * Returns { slot, mission } — slot feeds candidateSeed so the effective seed
+ * Returns { slot, mission }, slot feeds candidateSeed so the effective seed
  * keeps the same `${date}:trialN` form as a rectangle day and anything
- * inspecting a seed recovers the mission through the same arithmetic — or
+ * inspecting a seed recovers the mission through the same arithmetic, or
  * null when no slot qualifies (observational primary + empty coverage list),
  * in which case the caller uses the plain dateString seed and the natural
  * gimmick lottery, exactly like the rectangular plain-dateString fallback.
@@ -567,7 +567,7 @@ export function selectTilingMission(dateString, target, coverage) {
   const rng = createDailyRNG(`${dateString}:shapeMission`);
   const total = entries.reduce((s, e) => s + e.weight, 0);
   if (total <= 0) {
-    // No usable weights carries no signal — draw uniformly, like
+    // No usable weights carries no signal, draw uniformly, like
     // selectMissionWinner's all-zero pool.
     return entries[Math.min(entries.length - 1, Math.floor(rng() * entries.length))];
   }
@@ -596,7 +596,7 @@ export function resolveCandidateCount(coverage, decorrelation) {
   // Validate rather than test truthiness: `{}` and a half-filled mission are
   // both truthy, and resolveMissionForSlot rejects them. If this function
   // trusted them the loop would evaluate a block of extra slots that resolve
-  // to null — wasted work on an ordinary day, and the two functions would
+  // to null, wasted work on an ordinary day, and the two functions would
   // disagree about whether a mission is live.
   if (!normalizeDecorrelationMission(decorrelation)) return CANDIDATE_COUNT;
   const list = Array.isArray(coverage) ? coverage : [];
@@ -611,20 +611,20 @@ export function getCandidateCount() {
 }
 
 /**
- * The mission fields a canonical board payload carries, as a plain object to
+ * The mission fields of a canonical board payload, as a plain object to
  * merge in after serializeBoard (which is a strict whitelist and will not
  * carry them for you).
  *
  * ONE definition, because there are TWO canonical writers: the Node precompute
  * and the client's local-generation fallback in gameActions.js. A board written
  * by either must be describable by the same Field Note, and the stamped mission
- * is the ONLY drift-proof record of why a board exists — boards are generated
+ * is the ONLY drift-proof record of why a board exists, boards are generated
  * up to 7 days ahead and the nightly refit reorders the coverage list, so
  * re-deriving the mission from the seed's slot index against the current file
  * names the wrong study.
  *
  * A decorrelation day adds `missionType` and `missionConfounder` so the note
- * can say what the board pulls apart instead of mislabelling it a plain study
+ * can say what the board separates instead of mislabeling it a plain study
  * of the feature. Both are whitelisted in firebase-rules.json's dailyBoard
  * block; that block ends in `$other: false`, so an un-whitelisted child would
  * make the WHOLE canonical write fail validation and drop silently.
@@ -634,7 +634,7 @@ export function getCandidateCount() {
  */
 /**
  * One-word label for a mission, for the precompute logs. Reads the mission's
- * own discriminator: labelling by `isPrimary` alone printed a decorrelation
+ * own discriminator: labeling by `isPrimary` alone printed a decorrelation
  * winner as "COVERAGE", and the Actions log is one of the artifacts used to
  * reconstruct why a historical board exists.
  *
@@ -666,7 +666,7 @@ export function missionStamp(mission) {
  * coverage). This is the ONE source of truth: the client selection path
  * reaches it through getMissionForSlot (which supplies the fetch-cached
  * target/coverage) and the Node precompute pipeline calls it directly with
- * its own file-read spec. They used to carry separate copies and DRIFTED —
+ * its own file-read spec. They used to carry separate copies and DRIFTED,
  * the pipeline wrapped (`(slotIndex - 1) % coverage.length`) where the
  * client returned null, so with a coverage list shorter than 9 the
  * precompute evaluated slots 8-9 as duplicates of coverage[0]/[1] and could
@@ -683,7 +683,7 @@ export function missionStamp(mission) {
  *   the top-deficit features DOUBLE slots, silently halving the sampling rate
  *   of everything ranked below them.)
  * An empty coverage list collapses the non-decorrelation slots to primary,
- * recovering the pre-multi-objective behaviour.
+ * recovering the pre-multi-objective behavior.
  *
  * With no decorrelation mission this is byte-identical to the pre-F1 function,
  * which is the whole back-compat story: an experimentTarget.json without the
@@ -711,7 +711,7 @@ export function resolveMissionForSlot(slotIndex, target, coverage, decorrelation
   if (decor) {
     return {
       // The target IS the confounded feature, so getTargetGimmickName finds no
-      // gimmick to force (correct — there is none) and the mission stays
+      // gimmick to force (correct, there is none) and the mission stays
       // nameable by the Field Note.
       target:        decor.feature,
       deficitWeight: decor.weight,

@@ -1,7 +1,7 @@
-// ── Journal heatmap — "where the mines went off" ──────────────────────
+// ── Journal heatmap, "where the mines went off" ──────────────────────
 // The notebook's one population exhibit: a past daily board drawn as a
 // grid, each square shaded by how many players detonated a mine on it.
-// Every decision that could fabricate a claim lives in the pure
+// Every decision that could fabricate a claim is in the pure
 // src/logic/boardHeatmap.js and is node-tested there. This module only
 // fetches and draws what that layer approves.
 //
@@ -46,7 +46,7 @@ async function _completedDates() {
   if (!uid) return null;
   const history = await fetchUserDailyHistory(uid, 400);
   if (!Array.isArray(history)) return null;
-  // Keyed by BOARD date (entry.date), not the played date — the heatmap
+  // Keyed by BOARD date (entry.date), not the played date, the heatmap
   // is about the board, and an archive replay of it counts as solved.
   return new Set(history.map(h => h.date));
 }

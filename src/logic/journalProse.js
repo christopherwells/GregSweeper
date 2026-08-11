@@ -225,12 +225,12 @@ const ARCS = {
   clueShare2: {
     lean: 'zero',
     pos: 'I wrote that a two should read almost as fast as a one. The range puts it a little above that, and I cannot yet split the twos from the boards they sit on.',
-    zero: 'I wrote that a two should read almost as fast as a one. The boards let that stand, give or take a rounding error.',
+    zero: 'I wrote that a two should read almost as fast as a one. The data let that stand, give or take a rounding error.',
     out: 'Whether a two costs more than a one is the whole question here. The boards have not answered it yet.',
   },
   clueShare3: {
     lean: 'cost',
-    pos: 'I predicted that boards leaning on threes would cost more than their size alone, and they do. Whether it is the threes doing the work or the harder boards they ride on, I cannot yet say.',
+    pos: 'I predicted that boards heavy with threes would cost more than their size alone, and they do. Whether it is the threes doing the work or the harder boards they ride on, I cannot yet say.',
     zero: 'I predicted that threes would cost more than size alone. The ledger read the charge back as a rounding error.',
     out: 'The threes might cost real time, or barely any. That question is still open.',
   },
@@ -296,7 +296,7 @@ export function resolutionFor(study) {
     case 'cost': return band === 'pos' ? 'sided' : 'against';
     case 'zero': return band === 'zero' ? 'sided' : band === 'pos' ? 'against' : 'out';
     // A faster-lean's zero band (lo <= 0, tiny top) can hide a real
-    // refund below its floor, only a whole-band refund sides with the
+    // refund below its floor, only a whole-band refund supports the
     // hypothesis, only a proven cost contradicts it.
     case 'faster': return band === 'neg' ? 'sided' : band === 'pos' ? 'against' : 'out';
     case 'size': return 'answered';
@@ -452,7 +452,7 @@ const OPENERS = {
     'The {label} file is parked, not finished.',
     'I set the {label} file down on {closedDate}.',
     '{Label} rests while the boards go where the doubt is.',
-    'The {label} file can sit for now.',
+    'The {label} file can stay shut for now.',
     'Nothing urgent is left in the {label} numbers, so they rest.',
   ],
   reopened: [
@@ -524,7 +524,7 @@ const BAND_OPEN = [
   'The range has not moved.',
   'Night after night, the width stays the same.',
   'The width on {windowStart} is roughly the width now.',
-  'There’s no drama in the band. The width just holds.',
+  'There’s no drama in the band. The width has not moved.',
 ];
 
 // "Study days" wording is load-bearing: a study day is a day the
@@ -598,7 +598,7 @@ const CLOSERS = {
   'closed-lost': [
     'A hunch that dies cleanly teaches more than one that limps along.',
     'The notebook keeps the losses. They’re what make the wins worth reading.',
-    'I wanted an effect. I got an answer. The answer outranks the want.',
+    'I wanted an effect. I got an answer. The answer outranks the wanting.',
     'The data owe me nothing. That’s what makes it worth asking.',
   ],
   resting: [
@@ -661,7 +661,7 @@ const LEDGER_PARKED = [
 // the close, its line cites both figures against {refDate}, the actual
 // reference fit's date (the last live fit at the close, or the era
 // start for a study parked before the era began; driftSinceClose picks
-// it, so date and figure always agree).
+// it, so date and figure always match).
 const LEDGER_REOPENED = [
   'On {refDate} the parked {label} file read about {refPct}% per {unitShort}. It reads {nowPct}% now. I’m watching it.',
   'The parked {label} file has moved: about {refPct}% per {unitShort} on {refDate}, about {nowPct}% now. I’m watching it.',
@@ -748,7 +748,7 @@ const LOG_QUIET = [
   'No new runs arrived. The file is where I left it.',
   'No one played, so I have nothing new to write.',
   'Zero runs landed. Even instruments get days off.',
-  'No runs arrived tonight. The numbers hold.',
+  'No runs arrived tonight. The numbers are where I left them.',
 ];
 
 // Every pool line, for the guard tests (em-dash, hedge, first-person,
@@ -926,7 +926,7 @@ export function composeEntry(study, ctx = {}, session = newSession()) {
       parts.push(s);
       // arcSpoken = the entry QUOTES the written hunch, not merely that
       // an arc beat rendered: many 'out' arc lines carry no hypothesis
-      // content, and hiding the epigraph for those would leave the card
+      // content, and dropping the epigraph for those would leave the card
       // with no premise at all.
       if (beat === 'arc' && /(I wrote|my note|I predicted|I suspected|The Should)/i.test(s)) {
         arcSpoken = true;
@@ -935,7 +935,7 @@ export function composeEntry(study, ctx = {}, session = newSession()) {
   }
   const closer = pickLine(_closerPool(state, resolutionFor(study)), `${seed}|closer`, facts, session.lines);
   if (closer) parts.push(closer);
-  // arcSpoken tells the card whether the entry already speaks the
+  // arcSpoken tells the card whether the entry already quotes the
   // written hunch ("I wrote that…"), the separate hypothesis epigraph
   // hides then, so the file's premise is never printed twice in a row.
   return { state, skeleton: `${state}:${skel.idx}`, text: parts.join(' '), facts, arcSpoken };
@@ -1010,7 +1010,7 @@ const DOT_SHAPES = ['circle', 'square', 'diamond', 'tick'];
 // Captions are framing copy about the figure (third person allowed,
 // like the sparkline caption always was); each pool rotates with the
 // same seed discipline as the prose. No digits, a caption explains,
-// the figure carries the numbers.
+// the figure shows the numbers.
 const FIGURE_CAPTIONS = {
   'sd-trend': [
     'This line tracks Greg’s uncertainty, night by night. A falling line means he’s homing in.',

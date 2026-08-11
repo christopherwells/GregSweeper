@@ -9,7 +9,7 @@
 // afterward.
 //
 // This module is intentionally dependency-light (only storageAdapter) so
-// the board-sync modules can import it without a circular dependency —
+// the board-sync modules can import it without a circular dependency,
 // the prefetch helpers that DO need loadDailyBoard/loadWeeklyBoard live
 // in those modules, not here.
 
@@ -49,7 +49,7 @@ export function getCachedDailyBoard(date) {
 
 export function cacheDailyBoard(date, raw) {
   if (typeof date !== 'string' || !date || !_isValidBoard(raw)) return;
-  try { safeSetJSON(DAILY_PREFIX + date, raw); } catch { /* quota / private — best-effort */ }
+  try { safeSetJSON(DAILY_PREFIX + date, raw); } catch { /* quota / private, best-effort */ }
 }
 
 export function getCachedWeeklyBoard(weekStart) {
@@ -79,7 +79,7 @@ export function pruneOldCachedBoards(today, currentWeek) {
     // mid-session) the boards are written into the Map, the scan finds nothing
     // there, and the one thing keeping this cache bounded never runs on the
     // one backend that has no eviction of its own. statsStorage's
-    // pruneOldDailyKeys — the same sweep over the sibling key family — has
+    // pruneOldDailyKeys, the same sweep over the sibling key family, has
     // always gone through safeKeys; this was the odd one out.
     for (const k of safeKeys(DAILY_PREFIX)) {
       if (!keepDaily.has(k.slice(DAILY_PREFIX.length))) safeRemove(k);

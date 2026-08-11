@@ -1,7 +1,7 @@
 // Canvas share-card renderer (Wave D). Draws the win result as a square
 // PNG using the REAL sprites (mine.png, the themed Greg, the modifier
 // icons) and the active theme's colors, so the shared image looks like
-// the world the player actually played. Emoji-free by construction —
+// the world the player actually played. Emoji-free by construction,
 // the whole reason this supersedes the plain-text share card.
 //
 // Split in two so the drawing is testable with mock data:
@@ -17,7 +17,7 @@ import { getGimmickDefs } from '../logic/gimmicks.js';
 // Portrait card (2026-06-25 redesign). A tall card uses more of a phone's
 // vertical screen and lets the board + text stack full-width instead of
 // cramming side-by-side, so everything reads larger when shared. Laid out
-// on a 1080x1440 (3:4) grid, EXPORTED at 540 wide — the width a phone chat
+// on a 1080x1440 (3:4) grid, EXPORTED at 540 wide, the width a phone chat
 // shows at full size (a real-phone test found wider images overflow the
 // bubble); the height follows the ratio.
 const LAYOUT_W = 1080;
@@ -38,7 +38,7 @@ function loadImage(url) {
 }
 
 // Resolve a CSS value (incl. var()) to a #hex by letting the browser compute it
-// on a throwaway element — getPropertyValue returns custom-property values with
+// on a throwaway element, getPropertyValue returns custom-property values with
 // var() intact. Returns hex (the palette helpers need hex, not rgb()); falls
 // back when the computed value isn't a plain rgb() (e.g. a color-mix() default).
 function resolveCssColor(value, fallback) {
@@ -106,7 +106,7 @@ export function buildShareData(state) {
     modifiers,
     certified: !!state.boardCertificate,
     // Weekly strikes live in their own state field (same split as the win
-    // modal's strikesInfo) — reading dailyBombHits here dropped the "N mine
+    // modal's strikesInfo), reading dailyBombHits here dropped the "N mine
     // hits" line from every weekly card.
     bombHits: (mode === 'weekly' ? state.weeklyBombHits : state.dailyBombHits) || 0,
     colors: {
@@ -202,10 +202,10 @@ function drawSpaced(g, text, cx, y, spacing) {
 
 // ── Theme background evocation (option B) ─────────────────
 // Each effect-bearing world gets a soft color wash + a scatter of its
-// signature static particles, so the shared card feels like the theme the
-// player played — a still echo of src/ui/themeEffects.js, drawn on canvas.
+// signature static particles, so the shared card reads as the theme the
+// player played, a still echo of src/ui/themeEffects.js, drawn on canvas.
 // Particles sit behind the board + text (the opaque board covers the center,
-// so they read in the margins). Classic / dark register nothing — bare by
+// so they read in the margins). Classic / dark register nothing, bare by
 // design, like their live boards.
 const _rn = (a, b) => a + Math.random() * (b - a);
 const _pk = (a) => a[Math.floor(Math.random() * a.length)];
@@ -438,7 +438,7 @@ const SHARE_FX = {
   },
   supernova: (g, W, H) => {
     // Deep-space blue-black base (the theme board reads warm), then aurora-style
-    // ribbons in nebula blues/violets + stars — no random rings (Christopher:
+    // ribbons in nebula blues/violets + stars, no random rings (Christopher:
     // more aurora, supernova colors, fewer circles).
     const bg = g.createLinearGradient(0, 0, 0, H);
     bg.addColorStop(0, 'rgba(6,10,32,0.93)'); bg.addColorStop(0.5, 'rgba(12,18,52,0.9)'); bg.addColorStop(1, 'rgba(4,8,26,0.95)');
@@ -460,7 +460,7 @@ const SHARE_FX = {
     fxScatter(g, W, H, 4, (x, y) => fxHLine(g, 0, y, W, _pk(['rgba(0,255,136,0.4)', 'rgba(255,0,110,0.4)'])));
   },
   synthwave: (g, W, H) => {
-    // A warm sunset (vs neon's cool electric grid) — the sun + warm sky are the
+    // A warm sunset (vs neon's cool electric grid), the sun + warm sky are the
     // differentiator (Christopher: make synthwave and neon more unique).
     const sg = g.createLinearGradient(0, 0, 0, H);
     sg.addColorStop(0, 'rgba(95,25,125,0.15)'); sg.addColorStop(0.42, 'rgba(255,70,150,0.14)'); sg.addColorStop(0.64, 'rgba(255,140,70,0.13)'); sg.addColorStop(1, 'rgba(60,20,90,0.17)');
@@ -551,7 +551,7 @@ const SHARE_FX = {
   editorial: (g, W, H) => {
     // An actual newspaper page: four justified text columns with column rules,
     // headline decks atop the outer columns, a masthead rule, and section
-    // labels — the NYT/online-paper structure rather than loose lines.
+    // labels, the NYT/online-paper structure rather than loose lines.
     const ink = (a) => `rgba(26,26,26,${a})`;
     const cols = 4, colW = W / cols;
     g.strokeStyle = ink(0.16); g.lineWidth = 1.5;
@@ -592,7 +592,7 @@ const SHARE_FX = {
   },
 };
 
-// Overlay pass — drawn ON TOP of the board + text (faint), for effects that
+// Overlay pass, drawn ON TOP of the board + text (faint), for effects that
 // fall across the whole scene rather than sitting behind it. Noir's venetian
 // blind light rakes the entire card, board included.
 const SHARE_FX_OVERLAY = {
@@ -786,7 +786,7 @@ export async function renderShareCardBlob(data) {
 
 // The most-recently prepared share File, kept module-side so the share
 // handler (a separate module) can grab it synchronously inside the
-// click's activation window — Web Share rejects files attached after an
+// click's activation window, Web Share rejects files attached after an
 // await yields the gesture.
 let _lastFile = null;
 export function getLastShareFile() {

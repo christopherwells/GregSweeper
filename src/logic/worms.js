@@ -7,12 +7,12 @@
 // The contract that keeps this daily-safe: worms delay information, they
 // never destroy it. The board data (egg positions, numbers, mines) is static
 // and canonical; only the render-time overlay moves. The solver is entirely
-// worm-blind — boardSolver never reads `isWormEgg` — so certification, the
+// worm-blind, boardSolver never reads `isWormEgg`, so certification, the
 // Lens, receipts, and the load-bearing filter are untouched.
 //
 // Determinism split: worm LENGTH, lifetime, tone, and pace are derived from
 // the board's seed identity (same daily/weekly board ⇒ same traits for every
-// player), and the move CADENCE is fixed per worm (base clock × pace — his
+// player), and the move CADENCE is fixed per worm (base clock × pace, his
 // set-pace ruling, 2026-08-03); only the walk DIRECTION is luck, so stepWorm
 // takes an injectable rng.
 //
@@ -30,12 +30,12 @@ import { SQ_BOX_FRAC, buildTiling, buildWireframe } from './tilingGeometry.js';
 export const WORM_MIN_LEN = 2;
 export const WORM_MAX_LEN = 5;
 // Hard cap on eggs per board (intensity clamp, like mirror/wormhole's
-// Math.min(intensity, 3)) — keeps same-day walk-luck spread small on
+// Math.min(intensity, 3)), keeps same-day walk-luck spread small on
 // instrumented modes.
 export const WORM_MAX_PER_BOARD = 3;
 // A worm burrows after its own move budget (boxed-in turns still count,
 // so a stranded worm can't squat forever). Each EGG gets its own roll in
-// [30, 80], seeded from the board identity + the egg's cell — one worm
+// [30, 80], seeded from the board identity + the egg's cell, one worm
 // can feel like it's around forever while another is a short cameo, but
 // every player on a canonical board sees the same budgets (Christopher's
 // ruling: per-worm variety, zero cross-player variability). Worms hatch
@@ -44,10 +44,10 @@ export const WORM_MAX_PER_BOARD = 3;
 export const WORM_LIFETIME_MIN_MOVES = 30;
 export const WORM_LIFETIME_MAX_MOVES = 80;
 // Each worm moves at a SET cadence: one fixed delay per move, the base
-// clock scaled by the worm's PACE trait — a per-egg roll in [0.8, 1.3]
+// clock scaled by the worm's PACE trait, a per-egg roll in [0.8, 1.3]
 // (seeded like length/lifetime/tone, so every player sees the same fast
 // and slow worms). His ruling 2026-08-03: "the worms moving at a set
-// pace, but their pace can vary as it has before" — the old per-move
+// pace, but their pace can vary as it has before", the old per-move
 // 0.5-3s roll is gone; a quick worm ticks every 1.4s, a slow one every
 // ~2.3s, metronome-steady. The base is the old roll's mean, so the
 // average crawl speed (and wormLoad's exposure math) is unchanged.
@@ -58,19 +58,19 @@ export const WORM_PACE_MAX = 1.3;
 // WORM_NUMBER_AVERSION^adjacentMines, so open ground (0) is favored and
 // every extra adjacent mine multiplies the cell's chance down. Light by
 // design (Christopher's spec): a 0 vs a 4 is roughly a four-to-one
-// preference, never a rule — the walk stays luck, just luck with a nose.
+// preference, never a rule, the walk stays luck, just luck with a nose.
 export const WORM_NUMBER_AVERSION = 0.7;
 // Momentum: about half the worm's steps first try to CONTINUE its last
 // heading when the cell straight ahead is walkable; only then does the
 // aversion roulette pick. A pure roulette walk backtracks so much its net
-// travel grows like the square root of its moves — worms paced in place
+// travel grows like the square root of its moves, worms paced in place
 // (Christopher's report). The correlated walk actually tours the board.
 export const WORM_PERSIST_PROB = 0.5;
 // Backtracking (stepping straight back the way it came) is strongly
 // downweighted in the roulette: the reverse candidate keeps a twentieth
 // of its weight, which lands near a 5% reversal chance in a corridor and
 // under 2% in open field (Christopher's spec). A dead end is the
-// exception — when reverse is the only walkable option the worm takes it
+// exception, when reverse is the only walkable option the worm takes it
 // rather than freezing.
 export const WORM_BACKTRACK_WEIGHT = 0.05;
 
@@ -94,7 +94,7 @@ export function wormLifetimeFor(seedIdentity, r, c) {
 // Deterministic per-EGG color tone in [0, 1): 0 = the theme's dark
 // endpoint (brown on the base design), 1 = the light endpoint (cream).
 // Same seeding family as length/lifetime, so a board's brood shows the
-// same mix of siblings to every player. Purely cosmetic — the walk, the
+// same mix of siblings to every player. Purely cosmetic, the walk, the
 // solver, and the par model never read it.
 export function wormToneFor(seedIdentity, r, c) {
   return createDailyRNG(`${seedIdentity}:wormtone:${r}:${c}`)();
@@ -102,7 +102,7 @@ export function wormToneFor(seedIdentity, r, c) {
 
 // Deterministic per-EGG pace factor in [WORM_PACE_MIN, WORM_PACE_MAX].
 // Multiplies every move delay: below 1 is a quick worm, above 1 a slow
-// one. NOT cosmetic — a slower worm parks on numbers longer and lives
+// one. NOT cosmetic, a slower worm parks on numbers longer and lives
 // longer in wall-clock, which is why wormLoadFor weights by it.
 export function wormPaceFor(seedIdentity, r, c) {
   const rng = createDailyRNG(`${seedIdentity}:wormpace:${r}:${c}`);
@@ -124,12 +124,12 @@ export function mixHex(a, b, t) {
 }
 
 // The par-model exposure measure: pace-weighted segment-moves the board's
-// eggs are pre-programmed to spend — Σ per-egg (length × lifetime × pace)
-// — in HUNDREDS (so the value runs ~0.5-15, the same range as the other
+// eggs are pre-programmed to spend, Σ per-egg (length × lifetime × pace),
+// in HUNDREDS (so the value runs ~0.5-15, the same range as the other
 // count features, and its log-multiplier coefficient lands in the family's
 // scale). Pace belongs in the measure: a slow worm covers numbers longer
-// per move AND lives longer in wall-clock. Fully structural — derived from
-// egg positions + the seed identity, no runtime randomness — so
+// per move AND lives longer in wall-clock. Fully structural, derived from
+// egg positions + the seed identity, no runtime randomness, so
 // dailyMeta's wormLoad is a verify-sweep hard-fail key.
 export const WORM_LOAD_SCALE = 100;
 export function wormLoadFor(eggs, seedIdentity) {
@@ -149,7 +149,7 @@ function moveDelay(pace = 1) {
 }
 
 // Hatch a worm at the just-revealed egg cell. Spawns fully coiled (every
-// segment on the egg cell) so a lone revealed cell in fog can't strand it —
+// segment on the egg cell) so a lone revealed cell in fog can't strand it,
 // it unspools as it finds revealed neighbors to crawl onto.
 export function hatchWorm(r, c, seedIdentity) {
   const length = wormLengthFor(seedIdentity, r, c);
@@ -161,7 +161,7 @@ export function hatchWorm(r, c, seedIdentity) {
     movesLeft: wormLifetimeFor(seedIdentity, r, c),
     tone: wormToneFor(seedIdentity, r, c),
     pace,
-    // Egg identity — the join key between a live worm and its hatch event
+    // Egg identity, the join key between a live worm and its hatch event
     // (one egg per cell, so the pair is unique per board)
     eggR: r,
     eggC: c,
@@ -171,7 +171,7 @@ export function hatchWorm(r, c, seedIdentity) {
 
 // ── Worm hatch events (par-model instrumentation) ──────
 // Scheduled wormLoad is the board's MAXIMUM dose; the realized dose
-// depends on WHEN each egg hatched relative to the finish — a worm
+// depends on WHEN each egg hatched relative to the finish, a worm
 // opened seconds before the win obscures almost nothing, and that gap is
 // systematic (fast solvers realize less), which would attenuate the
 // fitted coefficient (Christopher's call, 2026-07-17). So every hatch is
@@ -180,7 +180,7 @@ export function hatchWorm(r, c, seedIdentity) {
 // t/tEnd are wall-clock elapsed seconds (pause-excluded); traits are
 // embedded so the R refit never reimplements the seeded RNG; `moves` is
 // the EXACT realized move count (life at burrow, life - movesLeft for a
-// worm still alive at game end) — no average-pace estimate needed.
+// worm still alive at game end), no average-pace estimate needed.
 // Realized load for a row = Σ len × moves / WORM_LOAD_SCALE.
 
 export function wormHatchEvent(t, r, c, seedIdentity) {
@@ -206,7 +206,7 @@ export function markWormBurrowed(events, worm, tEnd) {
 
 // Finalize at teardown (stopTimer, BEFORE live worms are cleared): worms
 // still alive get their exact realized moves; an event with neither a
-// burrow stamp nor a matching live worm (state loss — should not happen)
+// burrow stamp nor a matching live worm (state loss, should not happen)
 // conservatively counts its full budget. Returns a completed copy.
 export function finalizeWormEvents(events, liveWorms) {
   if (!Array.isArray(events)) return [];
@@ -221,7 +221,7 @@ export function finalizeWormEvents(events, liveWorms) {
   });
 }
 
-// Rebuild live worms from a persisted snapshot (segments + movesLeft only —
+// Rebuild live worms from a persisted snapshot (segments + movesLeft only,
 // move clocks reset on resume, the lenient direction, same as plate timers).
 export function rehydrateWorms(saved) {
   if (!Array.isArray(saved)) return [];
@@ -256,22 +256,22 @@ export function rehydrateWorms(saved) {
 // classic tiling." The board's `_cellNeighbors` is CORNER-INCLUSIVE on the
 // four Laves lattices (cells meeting at a single vertex are neighbors, the
 // mine-count rule), but a worm is a physical crawler: its steps use the
-// side-sharing graph — the same pairs `buildWireframe` draws seams and
-// walls on — so a Cubes rhombus has 4 exits, not 10. Implemented as the
+// side-sharing graph, the same pairs `buildWireframe` draws seams and
+// walls on, so a Cubes rhombus has 4 exits, not 10. Implemented as the
 // INTERSECTION of the wireframe's pair graph with the live
 // `_cellNeighbors`: the wireframe supplies the geometry (which pairs share
 // an edge), the live adjacency supplies the walls (a severed link is
 // absent from it), so a walled-off side stays uncrossable. On the two
-// trivalent tilings (4.8.8, honeycomb) every neighbor IS a side neighbor —
-// zero vertex-only pairs — so this is a proven no-op there, and rectangles
+// trivalent tilings (4.8.8, honeycomb) every neighbor IS a side neighbor,
+// zero vertex-only pairs, so this is a proven no-op there, and rectangles
 // never reach it (stepWorm's dr/dc walk is already side-only).
 //
 // The side lists are rebuilt from the board's own `_tiling` descriptor
-// (`buildTiling` is pure and reproduces the geometry exactly — the same
+// (`buildTiling` is pure and reproduces the geometry exactly, the same
 // rebuild the renderer uses for clip-paths and applyWallsTiling for the
 // wall wireframe) and memoized per board object. The crawl graph is
-// mechanical, not certificational — the solver is worm-blind — so
-// re-deriving it carries none of the stored-contract risk that made
+// mechanical, not certificational, the solver is worm-blind, so
+// re-deriving it has none of the stored-contract risk that made
 // `cellNeighbors` frozen bytes.
 const _crawlListsMemo = new WeakMap();
 
@@ -297,11 +297,11 @@ function _sideCrawlLists(board) {
 
 /**
  * The topology object tickWorms/stepWorm crawl on, for the board as it
- * stands — side-sharing neighbors on a tiling, null on a rectangle (whose
+ * stands, side-sharing neighbors on a tiling, null on a rectangle (whose
  * dr/dc walk is untouched). The one builder, so the heartbeat and the
  * tests can never disagree about what a worm may cross.
  *
- * @param {Array} board  the live board (rows of cells, with `_cellNeighbors`,
+ * @param {Array} board  the in-play board (rows of cells, with `_cellNeighbors`,
  *                       `_cellPos`, `_tiling` stamped when it is a tiling)
  * @param {number} rows
  * @param {number} cols
@@ -320,20 +320,20 @@ export function buildWormCrawlTopology(board, rows, cols) {
 const ORTHO = [[-1, 0], [1, 0], [0, -1], [0, 1]];
 
 // One crawl step: with WORM_PERSIST_PROB the head first tries to continue
-// its last heading (momentum); otherwise — or when the way ahead is not
-// walkable — an orthogonal REVEALED neighbor is chosen by mine-aversion
+// its last heading (momentum); otherwise, or when the way ahead is not
+// walkable, an orthogonal REVEALED neighbor is chosen by mine-aversion
 // weighting. Self-overlap is fine (the worm may double back over its own
 // body); the body follows snake-style. No revealed neighbor ⇒ the worm
 // stays put but the move still counts, so a boxed-in worm still burrows
 // on schedule (its heading survives the wait).
 // `numberAt(r, c)` returns the cell's adjacent-mine count when the worm may
-// stand there (revealed), else null — including out of bounds.
+// stand there (revealed), else null, including out of bounds.
 export function stepWorm(worm, numberAt, rng = Math.random, topology = null) {
   const head = worm.segments[0];
 
   // On a tiling the worm walks the neighbor GRAPH (an octagon touches 4 octagons
   // and 4 squares, a square touches 4 octagons), and "heading" is a geometric
-  // direction rather than a dr/dc step — see _stepWormTiling. The rectangular
+  // direction rather than a dr/dc step, see _stepWormTiling. The rectangular
   // path below is untouched, so seeded square-board worms never move.
   if (topology) return _stepWormTiling(worm, head, numberAt, rng, topology);
 
@@ -355,7 +355,7 @@ export function stepWorm(worm, numberAt, rng = Math.random, topology = null) {
       const n = numberAt(nr, nc);
       if (n === null || n === undefined) continue;
       let weight = Math.pow(WORM_NUMBER_AVERSION, n);
-      // Reversing the heading is a near-wasted move — suppress it hard.
+      // Reversing the heading is a near-wasted move, suppress it hard.
       // When it's the ONLY option the roulette still lands on it (its
       // tiny weight is the whole total), so dead ends resolve naturally.
       if (worm.lastDir && dr === -worm.lastDir.dr && dc === -worm.lastDir.dc) {
@@ -389,7 +389,7 @@ export function stepWorm(worm, numberAt, rng = Math.random, topology = null) {
 }
 
 // One crawl step on a TILING (Coastline Phase 2). Candidates are the head's
-// REVEALED graph neighbors; momentum is geometric — with WORM_PERSIST_PROB the
+// REVEALED graph neighbors; momentum is geometric, with WORM_PERSIST_PROB the
 // worm continues toward the neighbor best aligned with its last heading (a unit
 // vector in position space), and the mine-aversion roulette otherwise picks,
 // with the neighbor pointing most backward downweighted (the graph equivalent
@@ -490,15 +490,15 @@ export function wormCoveredCells(worms) {
  *
  * This is a LOOK decision with one governing property: consecutive segments
  * must very nearly touch, or the worm stops reading as a body and becomes a row
- * of beads sliding independently. On the square grid that falls out for free —
+ * of beads sliding independently. On the square grid that falls out for free,
  * a segment is the cell rect and cells sit one grid-gap apart (measured 0.95 of
- * the step) — so a tiling has to reproduce the same ratio deliberately.
+ * the step), so a tiling has to reproduce the same ratio deliberately.
  *
  * A tiling additionally needs every segment the SAME size, or it would pulse as
  * the worm crawls between cells of different sizes. On 4.8.8 that means
  * clamping to the small interstitial square. A honeycomb has exactly one cell
  * size and therefore needs no clamp: a hexagon's inscribed circle is one full
- * pitch across, which is also the distance to each of its six neighbours, so a
+ * pitch across, which is also the distance to each of its six neighbors, so a
  * hex segment sized to the pitch fills its cell AND leaves consecutive segments
  * tangent. Clamping hexagons to the 4.8.8 square instead drew them at 0.78 of
  * the step, an 11px gap at a 50px pitch.
@@ -527,19 +527,19 @@ export function wormSegmentSize(pitch, tilingType) {
   return pitch;
 }
 
-// Per-cell offsets from the cell BOX's centre to its VISUAL centre, in
+// Per-cell offsets from the cell BOX's center to its VISUAL center, in
 // PITCH UNITS. Zero on every centrally symmetric cell (hexagon, octagon,
-// interstitial diamond, rhombille rhombus — box centre and drawn centre
+// interstitial diamond, rhombille rhombus, box center and drawn center
 // coincide), nonzero on the asymmetric Laves cells: a floret pentagon's
-// incircle centre sits ~0.25 of a pitch off its bounding-box centre and a
+// incircle center sits ~0.25 of a pitch off its bounding-box center and a
 // deltoidal kite's ~0.21 (the same asymmetry _anchorPadding corrects for
-// the NUMBER). Without this the worm segment centres on the box and reads
-// off-centre and oversized on petals/kites (his report, 2026-08-03) —
-// centred on the visual centre, the pitch-sized segment is exactly the
+// the NUMBER). Without this the worm segment centers on the box and reads
+// off-center and oversized on petals/kites (his report, 2026-08-03),
+// centered on the visual center, the pitch-sized segment is exactly the
 // cell's inscribed circle, "the hexagonish area around the number".
 // Rebuilt from the board's own _tiling descriptor (pure, the renderer's
 // rebuild pattern) and memoized per board; null on rectangles and hex/4.8.8
-// paths that carry no descriptor.
+// paths with no descriptor.
 const _centerOffsetsMemo = new WeakMap();
 
 export function wormCellCenterUnitOffsets(board) {
@@ -571,8 +571,8 @@ export function wormOverlayLayout(worms, cellRect, uniformSize = null, centerOff
       // On a tiling the cells differ in size (octagons vs the small squares), so
       // a per-cell segment would grow and shrink as the worm crawls. A uniform
       // size (constrained to the smallest shape) keeps every worm circle the
-      // same, centered in whatever cell it sits on — at the cell's VISUAL
-      // centre when the caller supplies per-cell offsets (asymmetric cells).
+      // same, centered in whatever cell it sits on, at the cell's VISUAL
+      // center when the caller supplies per-cell offsets (asymmetric cells).
       if (uniformSize != null) {
         const off = centerOffsetPx ? centerOffsetPx(seg.r, seg.c) : null;
         left = rect.left + (rect.width - uniformSize) / 2 + (off ? off.dx : 0);

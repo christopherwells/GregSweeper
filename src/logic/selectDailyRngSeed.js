@@ -6,7 +6,7 @@
 // high-CV target's gimmick, allowed to roll a second gimmick at the
 // natural ~10% rate), a block of COVERAGE missions (each force-injects
 // a different undersampled gimmick from the ranked coverage_targets
-// list, single-gimmick only), and — on days the refit emits one — a
+// list, single-gimmick only), and, on days the refit emits one, a
 // block of DECORRELATION missions past the coverage list, which chase
 // the residual of a confounded feature against its confounder rather
 // than any feature's level.
@@ -19,7 +19,7 @@
 // exactly that pair is why all three now delegate.
 //
 // The winner is drawn by a date-seeded weighted lottery over the scored
-// slots (P ∝ score), not an argmax — deficit weights set each mission's
+// slots (P ∝ score), not an argmax, deficit weights set each mission's
 // FREQUENCY, so the most undersampled gimmick is the likeliest daily but
 // never a monoculture (the argmax served worm 10 of 12 days straight,
 // 2026-07-30). Decorrelation slots keep argmax supremacy; see
@@ -66,7 +66,7 @@ export function selectDailyRngSeed(dateString) {
     const forcedGimmick = getTargetGimmickName(mission.target);
     const seed = candidateSeed(dateString, i);
 
-    // Derive dimensions from the first three RNG calls — matches the
+    // Derive dimensions from the first three RNG calls, matches the
     // gameActions.js `state.rows/cols/totalMines` block exactly.
     const dRng = createDailyRNG(seed);
     const rows = DAILY_MIN_SIZE + Math.floor(dRng() * DAILY_SIZE_RANGE);
@@ -84,7 +84,7 @@ export function selectDailyRngSeed(dateString) {
     // First-attempt gimmick pass only. Candidates that need retries to
     // become solvable are rare; skipping them here is simpler than
     // reproducing the retry loop, and a skipped candidate just means one
-    // fewer competitor — the remaining slots still produce a valid
+    // fewer competitor, the remaining slots still produce a valid
     // winner.
     const gimmicks = getDailyGimmick(seed, createDailyRNG, forcedGimmick, mission.singleOnly);
     if (gimmicks.length > 0) {
@@ -110,10 +110,10 @@ export function selectDailyRngSeed(dateString) {
   }
 
   // Date-seeded weighted lottery over the scored slots (decorrelation
-  // keeps argmax supremacy), banded toward the day's target par — see
+  // keeps argmax supremacy), banded toward the day's target par, see
   // selectMissionWinner and parBand.js. If every candidate was unsolvable
   // on first-pass gimmicks (extremely rare), fall back to the plain
-  // dateString — the main generation path has its own retry loop that'll
+  // dateString, the main generation path has its own retry loop that'll
   // sort it out.
   const winner = selectMissionWinner(scored, dateString, {
     targetPar: drawDailyTargetPar(dateString), band: DAILY_PAR_BAND,

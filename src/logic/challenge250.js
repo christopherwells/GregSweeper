@@ -6,7 +6,7 @@
 // no-guess layout of the spec with the marked Start-here opener (no
 // memorize-through). This module is the PURE spec table: it imports
 // nothing, so UI surfaces and tests can read the ladder without touching
-// the solver. The builder that turns a spec into a certified board lives
+// the solver. The builder that turns a spec into a certified board is
 // in challenge250Builder.js; the offline proof that every authored spec
 // generates inside the rulings lives in
 // scripts/validate-challenge250-specs.mjs.
@@ -133,7 +133,7 @@ export const TIER_PPC = {
 //
 // That asymmetry was right for the authored table and is wrong here. There, a
 // spec was hand-tuned to hit a TIER TARGET and being a little hard was
-// preferable to being a little easy, so the band leaned that way. Now the
+// preferable to being a little easy, so the band was tilted that way. Now the
 // band is centered on the spec's OWN measured price, and the only thing it can
 // be testing is whether that stored price still describes the spec, for
 // which a lean in either direction is just a bias in when it fires. Measured,
@@ -168,7 +168,7 @@ const R = (rows, cols, mines, gimmicks = [], opts = {}) =>
 // Intensity dials, in old-ladder units (see header). INTRO_RAMP[g] gives a
 // gentle 1,1,2,2,3 intensity ramp across a mod-intro block's five levels.
 // Only the three OPENER modifiers keep a hand-written ramp; every later
-// introduction is drawn from the pool, which carries its own measured dial.
+// introduction is drawn from the pool, which includes its own measured dial.
 const INTRO_RAMP = {
   walls: [11, 12, 13, 14, 16],
   liar: [21, 22, 23, 24, 26],
@@ -507,7 +507,7 @@ export function endlessSpecForLevel(level) {
 // AND NOTHING EVER REPEATS. Uniqueness is judged on specFace: the shape,
 // dimensions, mine count and modifier set a player can actually tell apart, 
 // never on specFingerprint, which separates dials nobody can see. The
-// authored table this replaces carried 109 distinct boards across 250 levels
+// authored table this replaces contained 109 distinct boards across 250 levels
 // and repeated its worst spec eight times, which is what he hit at L65-70.
 
 export const BRAID_START_LEVEL = 26;
@@ -613,7 +613,7 @@ function assignBraid(pool, openerFaces) {
   const out = [];
   const recent = [];
 
-  // Only boards whose shape AND every modifier have already been introduced.
+  // Only boards with an already-introduced shape and only introduced modifiers.
   const known = (e) => shapesIn.has(e.shape) && e.gimmicks.every((g) => modsIn.has(g));
 
   const pickOne = (level, eligible) => {

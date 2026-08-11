@@ -1,5 +1,5 @@
 /**
- * Theme Effects Engine — spawns dynamic DOM particles and ambient visuals per theme.
+ * Theme Effects Engine, spawns dynamic DOM particles and ambient visuals per theme.
  * Called by themeManager when theme changes. Each theme registers an effect function
  * that creates/manages its own visual elements inside the board container.
  */
@@ -68,7 +68,7 @@ export function applyThemeEffects(themeName) {
 /** Play the ambient effect behind the title-screen content, for themes that opt
  *  into TITLE_SCENE_THEMES (the sky worlds). Mounts ONLY while the title screen
  *  is actually on screen, and is torn down by clearTitleSceneEffects when the
- *  player leaves it — so particles never accumulate in a hidden host. Called
+ *  player leaves it, so particles never accumulate in a hidden host. Called
  *  from showTitleScreen + the theme-apply path in main.js. */
 export function applyTitleSceneEffects(themeName) {
   clearTitleSceneEffects();
@@ -77,7 +77,7 @@ export function applyTitleSceneEffects(themeName) {
   if (!host || host.classList.contains('hidden')) return;
   // Solid cards + content lift apply whenever a theme dresses its title screen,
   // INCLUDING a static CSS backdrop (e.g. editorial's newspaper columns). So
-  // this class is NOT gated by the particle gate below — otherwise a static
+  // this class is NOT gated by the particle gate below, otherwise a static
   // background would bleed through translucent cards on a software-compositing
   // browser (where the per-frame particles are off).
   host.classList.add('has-title-sky');
@@ -189,7 +189,7 @@ function injectStyles() {
     }
     .fx-particle { z-index: 2; }
     .fx-ambient { z-index: 0; }
-    /* On the title screen the sky sits BEHIND the cards (lifted to z-index 1 in
+    /* On the title screen the sky is BEHIND the cards (lifted to z-index 1 in
        the theme CSS), not between board cells. */
     .theme-fx-titlescene { z-index: 0; }
 
@@ -243,7 +243,7 @@ function injectStyles() {
     }
 
     /* Caustic light-net: the layer drifts diagonally while its cell
-       pattern breathes — two of these at different scales/directions
+       pattern breathes, two of these at different scales/directions
        interfere into the wiggly light-on-sand look. */
     @keyframes fxCaustic {
       0%   { background-position: 0px 0px; transform: rotate(var(--fx-rot, 0deg)) scale(1); }
@@ -388,7 +388,7 @@ function risingParticle(container, opts) {
 // open-ocean fog). Sepia engraving idiom: a horned dragon head with an open
 // toothy jaw + a cream eye, a frilled neck, two scaled coils breaching a wavy
 // waterline, and a webbed tail. Authored in scripts/gen-serpent.mjs and copied
-// verbatim from its `--print` output — edit the drawing THERE, not here. The
+// verbatim from its `--print` output, edit the drawing THERE, not here. The
 // dorsal frill is computed along the body curve (a connected comb on each
 // breaching coil), so it can't be hand-edited sanely in this string.
 const SERPENT_SVG =
@@ -412,9 +412,9 @@ const SERPENT_SVG =
 
 const THEME_EFFECTS = {
 
-  // Ocean: water caustics — two cellular light-nets drifting over each
+  // Ocean: water caustics, two cellular light-nets drifting over each
   // other at different speeds, the wiggly pattern sunlight makes on sand
-  // under moving waves — plus proper bubbles rising the full board with
+  // under moving waves, plus proper bubbles rising the full board with
   // a glassy highlight ring.
   ocean: (container) => {
     injectStyles();
@@ -461,7 +461,7 @@ const THEME_EFFECTS = {
   // Forest (L9): drifting leaves (the visible headline) + glowing fireflies
   forest: (container) => {
     injectStyles();
-    // falling leaves — clearly readable motion, drifting + tumbling down
+    // falling leaves, clearly readable motion, drifting + tumbling down
     const leafCleanup = particleLoop(container, (c) => {
       // Vector leaf: a pointed-oval (two round corners) with a center
       // vein, in autumn-to-green hues. No emoji glyphs.
@@ -544,8 +544,8 @@ const THEME_EFFECTS = {
   stainedglass: (container) => {
     injectStyles();
     // The sun behind the window: three soft beams raking down through
-    // the panes, swaying very slowly. THE identity moment — light
-    // through colored glass — visible at a glance, gentle over minutes.
+    // the panes, swaying very slowly. THE identity moment, light
+    // through colored glass, visible at a glance, gentle over minutes.
     const beams = document.createElement('div');
     Object.assign(beams.style, {
       position: 'absolute', inset: '-25% -10%', pointerEvents: 'none', zIndex: '0',
@@ -569,7 +569,7 @@ const THEME_EFFECTS = {
       return spawn(c, { style: {
         left: rand(5, 95) + '%', top: rand(5, 95) + '%',
         width: s + 'px', height: s + 'px',
-        // Diamond via clip-path, not transform:rotate — fxTwinkle's
+        // Diamond via clip-path, not transform:rotate, fxTwinkle's
         // keyframes own the transform channel (scale) and would clobber
         // an inline rotation.
         clipPath: 'polygon(50% 0, 100% 50%, 50% 100%, 0 50%)',
@@ -594,7 +594,7 @@ const THEME_EFFECTS = {
       [{ opacity: 0.85 }, { opacity: 1 }, { opacity: 0.72 }, { opacity: 0.96 }, { opacity: 0.8 }],
       { duration: 1700, iterations: Infinity, easing: 'ease-in-out' }
     );
-    // Dust hanging in the candlelight — slow lateral drift, soft and
+    // Dust hanging in the candlelight, slow lateral drift, soft and
     // round, NOT rising embers (the old fast rise read as fire flecks).
     const moteCleanup = particleLoop(container, (c) => {
       const s = rand(2.5, 5);
@@ -610,7 +610,7 @@ const THEME_EFFECTS = {
     return () => { glow.remove(); moteCleanup(); };
   },
 
-  // Split-Flap: the departures board UPDATES — every few seconds a row
+  // Split-Flap: the departures board UPDATES, every few seconds a row
   // of flap-glints ripples across the board left to right (the wave a
   // real Solari board makes when a flight changes), over the quiet
   // sparse clacks in between.
@@ -815,9 +815,9 @@ const THEME_EFFECTS = {
       const dist = rand(220, 400);         // streak length
       const el = spawn(c, { style: {
         // Originate anywhere across the board (and a little off the top/left
-        // edge) so the streaks aren't bunched into one corner — they all drift
+        // edge) so the streaks aren't bunched into one corner, they all drift
         // down-right, so a left/top-biased spawn made them only ever appear in
-        // the top-right after travelling. Full-spread spawn covers the board.
+        // the top-right after traveling. Full-spread spawn covers the board.
         left: rand(-12, 85) + '%', top: rand(-8, 82) + '%',
         width: rand(38, 70) + 'px', height: '2px', borderRadius: '2px',
         // bright head on the RIGHT (= leading edge), trail fading behind it
@@ -841,7 +841,7 @@ const THEME_EFFECTS = {
     const FS = 14; // column character size / pitch
     return particleLoop(container, (c) => {
       // Hard cap concurrent columns. This used to be uncapped at a 70-180ms
-      // spawn rate, which steady-stated at ~40 columns — each a separately
+      // spawn rate, which steady-stated at ~40 columns, each a separately
       // composited maskImage + textShadow layer animating every frame. On a
       // large, high-DPI desktop board that tanked the frame rate (fine on a
       // small phone board). Capped + slower spawn + no per-column mask keeps
@@ -865,7 +865,7 @@ const THEME_EFFECTS = {
           // No maskImage: the column instead fades to nothing via the fxFall
           // opacity keyframe (--fx-opacity → --fx-opacity-end), which costs
           // nothing extra to composite. Trades the per-character tail for a
-          // whole-column fade — still reads as falling code.
+          // whole-column fade, still reads as falling code.
           animation: `fxFall ${dur}s linear forwards`,
           '--fx-x0': '0px', '--fx-y0': (-len * FS) + 'px',
           '--fx-x1': '0px', '--fx-y1': (boardH * 0.5) + 'px',
@@ -985,13 +985,13 @@ const THEME_EFFECTS = {
 
   // ── Wave 2: the six quiet concept worlds (2026-06-10) ──────────
   // Christopher's bar: "worlds apart, not reskins ... excellent
-  // animations and less emojis." Every particle below is DRAWN — a
-  // styled div with gradients / clip-paths / dash patterns — never an
+  // animations and less emojis." Every particle below is DRAWN, a
+  // styled div with gradients / clip-paths / dash patterns, never an
   // emoji glyph. Counts stay modest, sizes visible (the Forest-spore
   // lesson), and each theme's motion comes from its own craft idiom.
 
   // Editorial (L5): the page typesets itself. Nothing falls and nothing
-  // flies on a newspaper — the first cut (falling flecks + a sweeping
+  // flies on a newspaper, the first cut (falling flecks + a sweeping
   // rule) read as dust and an airplane contrail (Christopher,
   // 2026-06-10). Now short lines of "type" fade in AT REST like a
   // galley being composed, with small ink specks blinking like setting
@@ -1023,8 +1023,8 @@ const THEME_EFFECTS = {
   },
 
   // Sumi-e (L10): ink motes bloom on the paper and feather away; a
-  // long brush wisp occasionally floats across. Rarely, a seal-red mote
-  // — the artist's stamp.
+  // long brush wisp occasionally floats across. Rarely, a seal-red mote,
+  // the artist's stamp.
   sumie: (container) => {
     injectStyles();
     const moteCleanup = particleLoop(container, (c) => {
@@ -1051,8 +1051,8 @@ const THEME_EFFECTS = {
     return () => { moteCleanup(); wispCleanup(); };
   },
 
-  // Blueprint (L15): drafting ticks — small cyan crosses register on
-  // the sheet like compass pricks; a dashed measure line sweeps through
+  // Blueprint (L15): drafting ticks, small cyan crosses register on
+  // the sheet the way compass pricks do; a dashed measure line sweeps through
   // on the slow cycle.
   blueprint: (container) => {
     injectStyles();
@@ -1068,14 +1068,14 @@ const THEME_EFFECTS = {
         '--fx-opacity': '0.8',
       }});
     }, () => rand(550, 1250));
-    // (The sweeping dashed measure lines were cut 2026-06-11 — moving
+    // (The sweeping dashed measure lines were cut 2026-06-11, moving
     // dashes read as noise on the drafted sheet. Register ticks only.)
     return tickCleanup;
   },
 
-  // Cartography (L20): "here be monsters" — a drawn sea serpent SURFACES in an
+  // Cartography (L20): "here be monsters", a drawn sea serpent SURFACES in an
   // open-ocean patch of the chart, holds a beat, then submerges; another pops up
-  // elsewhere. (Replaced the sounding-ring dots 2026-06-29 — Christopher wanted
+  // elsewhere. (Replaced the sounding-ring dots 2026-06-29, Christopher wanted
   // the serpents to be the thing that pops in and out, not random dots.) The
   // effect layer renders over the fog but UNDER revealed cells, so a serpent
   // only shows through uncleared ocean; the zones below keep it off the centered
@@ -1104,21 +1104,21 @@ const THEME_EFFECTS = {
           width: w + 'px', height: (w * 44 / 82) + 'px',
           transformOrigin: 'center bottom',
           animation: `fxSurface ${rand(5.5, 7.5)}s ease-in-out forwards`,
-          '--fx-opacity': '0.4', // faint — a ghost surfacing, not a foreground sticker
+          '--fx-opacity': '0.4', // faint, a ghost surfacing, not a foreground sticker
         },
       });
     }, () => rand(3800, 7200));
     return () => { cleanup(); };
   },
 
-  // Origami (L25): folded paper birds — pastel clip-path triangles
+  // Origami (L25): folded paper birds, pastel clip-path triangles
   // glide down with the slow rotation of drifting paper.
   origami: (container) => {
     injectStyles();
     return particleLoop(container, (c) => {
       const s = rand(10, 17);
       const hue = pick(['209,74,74', '74,138,192', '90,160,90', '224,144,58', '154,106,192']);
-      // Travel must be in PIXELS of the board, not % — fxFall feeds
+      // Travel must be in PIXELS of the board, not %, fxFall feeds
       // translate(), where % is relative to the PARTICLE's own ~14px
       // box, so '105%' meant triangles died ~15px down (inside the
       // first cell on an expert board).
@@ -1141,7 +1141,7 @@ const THEME_EFFECTS = {
     }, () => rand(800, 1700));
   },
 
-  // Nest (L85): the open sky — slow soft white clouds drift across, and gulls
+  // Nest (L85): the open sky, slow soft white clouds drift across, and gulls
   // cross both ways, sometimes singly and sometimes in a little flock of 3-5.
   nest: (container) => {
     injectStyles();
@@ -1154,7 +1154,7 @@ const THEME_EFFECTS = {
       gull(`%3Cpath d='M2 9 Q7 4 11 8 M22 9 Q17 4 13 8' ${SL}/%3E%3Cellipse cx='12' cy='8' rx='1.6' ry='1' fill='%23394a5c'/%3E`),
       gull(`%3Cpath d='M2 8 Q5 9 8 6 Q11 3 12 8 Q13 3 16 6 Q19 9 22 8' ${SL}/%3E`),
     ];
-    // Five cloud silhouettes — puffy, small, long stratus, tall cumulus, wispy —
+    // Five cloud silhouettes, puffy, small, long stratus, tall cumulus, wispy,
     // so the sky never repeats the same shape. Each carries its aspect (ar) so it
     // scales without distortion.
     const cloud = (b, ar, inner) => ({ uri: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='${b}'%3E%3Cg fill='%23ffffff'%3E${inner}%3C/g%3E%3C/svg%3E")`, ar });

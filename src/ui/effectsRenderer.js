@@ -46,12 +46,12 @@ export function showGreenFlash() {
 // non-flagged mine pops in turn, swaps from mine.png to strike.png via
 // cell.isStrike, and triggers an explosion sound every 3rd mine. The
 // initial blast from handleLoss covers i=0; cascade sounds start at i=3.
-// Correctly-flagged mines stay revealed but are NOT in the cascade —
+// Correctly-flagged mines stay revealed but are NOT in the cascade,
 // they keep mine.png + their green outline.
 const CASCADE_STEP_MS = 120;
 const CASCADE_SOUND_AT = 3;
 // 1 s breathing room after the last bomb pops before the gameover
-// modal slides in. Was 300 ms — too tight; the player barely registered
+// modal slides in. Was 300 ms, too tight; the player barely registered
 // the last explosion before the modal covered everything.
 const CASCADE_SETTLE_MS = 1000;
 
@@ -60,7 +60,7 @@ export function chainRevealMines(hitRow, hitCol) {
   // Identity of the board this cascade belongs to. The staggered timeouts
   // below can outlive the game: a restart during the cascade window (the R
   // key works before the modal is up) swaps state.board, and an unguarded
-  // timeout then stamps isStrike onto the NEW game's cells — a phantom
+  // timeout then stamps isStrike onto the NEW game's cells, a phantom
   // strike that renders on reveal and counts as a flag for chording
   // (2026-07-11 audit). Every deferred step checks the board is still ours.
   const boardAtStart = state.board;
@@ -92,7 +92,7 @@ export function chainRevealMines(hitRow, hitCol) {
   );
 
   // Reduced-motion preference suppresses the SCALE/POP keyframe but
-  // does NOT collapse the staggered timing or the per-3rd-mine sounds —
+  // does NOT collapse the staggered timing or the per-3rd-mine sounds,
   // the user reported "bombs aren't making multiple noises and the
   // modal comes up too soon," which is exactly what happens if the
   // entire cascade gets short-circuited under prefers-reduced-motion.
@@ -125,7 +125,7 @@ export function chainRevealMines(hitRow, hitCol) {
     }, i * CASCADE_STEP_MS);
   }
 
-  // Promise resolves 1 s AFTER the last bomb fires — last bomb
+  // Promise resolves 1 s AFTER the last bomb fires, last bomb
   // pops at (cascade.length - 1) * CASCADE_STEP_MS, then we wait
   // CASCADE_SETTLE_MS before resolving. handleLoss awaits this before
   // showing the modal so the player sees the chain land before being
@@ -138,7 +138,7 @@ export function chainRevealMines(hitRow, hitCol) {
 
 // ── Celebration Effects ─────────────────────────────────
 
-// Lightweight transition effect — used by the "Next Level" button on
+// Lightweight transition effect, used by the "Next Level" button on
 // the gameover modal to acknowledge advancement without claiming the
 // new level is won. Was the original showCelebration before the
 // board-win VICTORY ceremony was bolted on top of it.
@@ -148,10 +148,10 @@ export function showCelebration() {
   showConfettiBurst(0.5, 0.4, 60);
 }
 
-// Full "you beat the board" ceremony — VICTORY! overlay, triple
+// Full "you beat the board" ceremony, VICTORY! overlay, triple
 // confetti, green flash. Called by handleWin only. Kept separate from
 // showCelebration so the next-level transition doesn't inherit the
-// VICTORY text — it should only show when the player actually wins
+// VICTORY text, it should only show when the player actually wins
 // the board, not when they tap to advance.
 export function showVictoryCelebration() {
   showGreenFlash();
@@ -162,7 +162,7 @@ export function showVictoryCelebration() {
   setTimeout(() => showConfettiBurst(0.7, 0.5, 35), 550);
 }
 
-// VICTORY! overlay — large gold text that bounces in over the board for
+// VICTORY! overlay, large gold text that bounces in over the board for
 // ~700 ms then fades out. Built inline so the boot overlay's loading
 // path doesn't need to know about it.
 export function showVictoryOverlay() {
@@ -184,11 +184,11 @@ export function showVictoryOverlay() {
 // #particle-canvas. Every showConfettiBurst call pushes its particles in;
 // the loop clears the canvas once per frame, draws the whole pool, and
 // tears down only when EVERY particle is dead. Before this, each call ran
-// its own loop whose every frame cleared the full canvas — and since the
+// its own loop whose every frame cleared the full canvas, and since the
 // victory ceremony fires three staggered bursts (0/250/550 ms), overlap
 // was the NORM, not the edge case: earlier bursts were erased every frame
 // (only the newest showed), the canvas width-reset zeroed the bitmap
-// mid-flight, and the first loop to finish hid the shared canvas under
+// mid-flight, and the first loop to finish buried the shared canvas under
 // the bursts still flying (2026-07-11 audit).
 const _confettiPool = [];
 let _confettiLoopRunning = false;
@@ -197,7 +197,7 @@ let _confettiLoopRunning = false;
 const themeColors = {
     classic: ['#ff4444', '#4488ff', '#44cc44', '#ffdd44', '#ff44ff', '#ffd700'],
     dark: ['#e94560', '#53a8ff', '#00d4aa', '#ffd93d', '#c084fc', '#ff6b6b'],
-    // New concept worlds — win-confetti palettes drawn from each theme's own ink.
+    // New concept worlds, win-confetti palettes drawn from each theme's own ink.
     editorial: ['#1a1a1a', '#c0392b', '#2c3e8f', '#b8a948', '#7a7266', '#3a3a3a'],
     sumie: ['#2a2a2a', '#b03020', '#6a6a6a', '#a0341f', '#3a3a3a', '#c44a32'],
     blueprint: ['#5ad0ff', '#a0e0ff', '#3a90c0', '#ffffff', '#1a5a8a', '#7ae0ff'],
@@ -216,7 +216,7 @@ const themeColors = {
     aurora: ['#00e5a0', '#00bcd4', '#b388ff', '#69f0ae', '#00e5ff', '#a7ffeb'],
     galaxy: ['#ea80fc', '#d050ff', '#82b1ff', '#ff80ab', '#b9f6ca', '#ce93d8'],
     forest: ['#4a8a3a', '#7ec87e', '#d4a843', '#c4a265', '#8bc34a', '#ffd700'],
-    // (was keyed 'cherry-blossom' — sakura's pre-rename identity; the
+    // (was keyed 'cherry-blossom', sakura's pre-rename identity; the
     // palette never fired because state.theme is 'sakura'.)
     sakura: ['#ff91a4', '#ffb6c1', '#f8c8dc', '#f48fb1', '#ce93d8', '#a8e6cf'],
     matrix: ['#00ff00', '#33cc33', '#66ff66', '#00cc00', '#99ff99', '#00ff88'],
@@ -252,7 +252,7 @@ export function buildBurstParticles(count, width, height, originX, originY, colo
 }
 
 // Pure: advance every particle one frame. Returns true while ANY particle
-// in the pool is still alive — the single loop's stop condition, so a
+// in the pool is still alive, the single loop's stop condition, so a
 // burst added mid-flight keeps the loop (and the canvas) alive until the
 // LAST burst finishes. Exported for the node test.
 export function stepParticles(pool) {
@@ -273,7 +273,7 @@ export function stepParticles(pool) {
 export function showConfettiBurst(originX, originY, count, opts = {}) {
   const canvas = particleCanvas;
   const ctx = canvas.getContext('2d');
-  // Size the canvas only when nothing is mid-flight — assigning
+  // Size the canvas only when nothing is mid-flight, assigning
   // width/height zeroes the bitmap, which wiped in-flight bursts.
   if (!_confettiLoopRunning) {
     const rect = boardEl.getBoundingClientRect();
@@ -327,7 +327,7 @@ export function showConfettiBurst(originX, originY, count, opts = {}) {
   requestAnimationFrame(animate);
 }
 
-// One-shot themed detonation burst at a board cell — the "explosion moment" on
+// One-shot themed detonation burst at a board cell, the "explosion moment" on
 // a mine hit. Same particle engine as the confetti, retuned to blast OUTWARD
 // (no upward loft), fly faster, and decay quicker so it reads as a detonation
 // rather than a celebration. Colors come from the same per-theme palette, so
@@ -339,8 +339,8 @@ export function showExplosionBurst(originX, originY, count = 36) {
     upwardBias: 0,     // radial, not lofted
     speedBase: 4,
     speedVar: 9,
-    gravityBase: 0.05, // light — debris flies out and fades in place
-    decayBase: 0.014,  // quick — a blast, not a slow drift down
+    gravityBase: 0.05, // light, debris flies out and fades in place
+    decayBase: 0.014,  // quick, a blast, not a slow drift down
     spread: 10,
   });
 }

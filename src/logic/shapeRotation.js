@@ -1,4 +1,4 @@
-// Daily shape rotation (Project Coastline — the reachability step).
+// Daily shape rotation (Project Coastline, the reachability step).
 //
 // This module owns the ONE question "what shape is this date's daily?" and the
 // ONE way a tiling daily board gets built, for every consumer at once: the
@@ -17,18 +17,18 @@
 // every board already played keeps its shape.
 //
 // The draw (Christopher's ruling, settled): 50% square, 50% one of the six
-// tilings uniformly. Deterministic from the date string alone — no target
-// file, no candidate scoring — so every client, the precompute, and the
+// tilings uniformly. Deterministic from the date string alone, no target
+// file, no candidate scoring, so every client, the precompute, and the
 // nightly sweep resolve the same shape for a date without fetching anything.
 //
 // Tiling days are SINGLE-CANDIDATE, unlike a rectangular daily's 10-way
 // mission-seed contest. Two reasons, both structural: the client fallback must
 // replay selection deterministically when Firebase is unreachable, and a
-// contest means generating every candidate — ten rhombille generations is
+// contest means generating every candidate, ten rhombille generations is
 // minutes of phone CPU (rhombille's certifier leans on Pass C enumeration for
 // every board; worst measured single board 2.4 s). The day's mission is
 // instead drawn by weight over the gimmick-bearing slots (selectTilingMission
-// in experimentDesign.js — the analog of the rectangular score lottery, with
+// in experimentDesign.js, the analog of the rectangular score lottery, with
 // the count term it cannot have) and force-injected onto the one seed.
 
 import { createDailyRNG } from './seededRandom.js';
@@ -71,8 +71,8 @@ const SHAPE_NAMESPACE = ':shape';
  * The shape of a date's daily under the rotation: null for a rectangle
  * (always, while the rotation is off), else a TILING_TYPES entry.
  *
- * Pure and clock-free. The gate compares date STRINGS — YYYY-MM-DD compares
- * correctly as text, and every caller already holds the ET date string —
+ * Pure and clock-free. The gate compares date STRINGS, YYYY-MM-DD compares
+ * correctly as text, and every caller already holds the ET date string,
  * and anything that is not a plausible date returns null, so a practice
  * custom seed (?seed=abc) can never draw a shape even if it reaches here.
  *
@@ -99,14 +99,14 @@ export function resolveDailyShape(dateString, rotationStart = TILING_ROTATION_ST
 // playtest one, or for the e2e journey spec) still needs a door that does not
 // exist in production. It was the only way to see a lattice daily at all
 // while the rotation was dark, and it survives the flip unchanged.
-// main.js sets this from the ?dailyShape= URL param UNDER isTestEnvironment()
-// — the same derivation-site gate as ?level= and ?coastline= — and the
+// main.js sets this from the ?dailyShape= URL param UNDER isTestEnvironment(),
+// the same derivation-site gate as ?level= and ?coastline=, and the
 // override then applies ONLY to practice-lane dailies (state.isDailyPractice),
 // which record nothing. Two independent reasons that scoping is load-bearing:
 //
 //  - /test/ shares the origin's localStorage with production, so an overridden
 //    daily that recorded would mark the REAL date completed with a board that
-//    is not the canonical — blocking that day's real play and polluting
+//    is not the canonical, blocking that day's real play and polluting
 //    streak/stats (the exact class the ?level= practice gate exists for).
 //  - A live daily must never diverge from its canonical; an override that
 //    could touch the live lane would be a self-inflicted #114.
@@ -146,7 +146,7 @@ export function getDailyShapeOverride() {
  * priced ~285 s against the 240 s band ceiling; the draw picks from each
  * lattice's table of generation-proven configs, weighted by closeness to
  * the date's target par at the LIVE per-shape equation. Still deterministic
- * from the date string alone — the draw replaced the "no roll to disagree
+ * from the date string alone, the draw replaced the "no roll to disagree
  * on" rationale with a seeded roll every consumer replays identically,
  * which is the same determinism the shape draw above already relies on.
  * (COASTLINE_BOARDS itself remains what it always was: the ?coastline=
@@ -161,24 +161,24 @@ export function dailyTilingConfig(type, dateString) {
 }
 
 /**
- * Build the canonical-candidate board for a tiling daily — the single entry
+ * Build the canonical-candidate board for a tiling daily, the single entry
  * point every tiling-day producer calls.
  *
  * Mission: drawn by selectTilingMission (weight-proportional, date-seeded,
  * gimmick-bearing slots only). When no slot qualifies (observational primary
  * + empty coverage list), the day falls back to the plain dateString seed and
- * the natural gimmick lottery under the primary mission's banner — the same
+ * the natural gimmick lottery under the primary mission's banner, the same
  * convention the rectangular path's plain-dateString fallback uses.
  *
  * The gimmick roll is getDailyGimmick verbatim (same seed convention as a
  * rectangle day), then filtered to TILING_SAFE_GIMMICKS. That filter is
  * belt-and-suspenders: test/shapeRotation.test.mjs pins TILING_SAFE ⊇
- * DAILY_SAFE, so today it drops nothing — but if a future daily-safe gimmick
+ * DAILY_SAFE, so today it drops nothing, but if a future daily-safe gimmick
  * ships without a tiling story, the guard test fails loudly in CI while this
  * filter keeps every client deterministic (all of them drop the same entry)
  * instead of shipping a mission the tiling cannot honor.
  *
- * Config: the banded draw (tilingConfigAttempts), tried in order — the drawn
+ * Config: the banded draw (tilingConfigAttempts), tried in order, the drawn
  * entry first, then the shape's designated in-band fallback entry if the
  * draw's generation exhausts on this date's seed. Both attempts are
  * deterministic, so every caller walks the identical list and lands on the
@@ -186,10 +186,10 @@ export function dailyTilingConfig(type, dateString) {
  *
  * Returns null when every config attempt exhausts without a certified
  * board. That outcome is DETERMINISTIC (same seed, same code, same
- * result), so every caller falls back to the rectangular path in agreement —
+ * result), so every caller falls back to the rectangular path in agreement,
  * the precompute and a fallback client cannot split.
  *
- * @param {string} dateString YYYY-MM-DD (ET) — also the RNG seed anchor
+ * @param {string} dateString YYYY-MM-DD (ET), also the RNG seed anchor
  * @param {string} type a TILING_TYPES entry
  * @param {{target: string, coverage_targets: Array}} spec the experiment spec
  *   (the pipeline's file read, or the client's fetch-cached getters)
@@ -247,10 +247,10 @@ export function buildTilingDailyBoard(dateString, type, spec) {
  * getWeeklyGimmicks on the weekStart seed (2 or 3, without replacement), so a
  * tiling weekly is as layered as a square one. What it changes: the config is
  * drawn against the WEEKLY par band, and the board is generated and certified
- * by the tiling generator from the lattice's own centre cell.
+ * by the tiling generator from the lattice's own center cell.
  *
  * Deterministic from the weekStart alone, including the null it returns when
- * every config attempt exhausts — so any two producers agree, including on
+ * every config attempt exhausts, so any two producers agree, including on
  * failure.
  *
  * @param {string} weekStart YYYY-MM-DD (the ET Monday)
