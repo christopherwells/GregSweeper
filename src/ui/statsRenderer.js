@@ -17,6 +17,19 @@ import { renderDailyHistoryChart } from './dailyHistoryChart.js';
 
 const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+// 1st/2nd/3rd/…: the percentile axis only ever labels multiples of
+// twenty, but the average can land anywhere, and "42th" is not a word.
+function ordinal(n) {
+  const v = Math.abs(n) % 100;
+  if (v >= 11 && v <= 13) return `${n}th`;
+  switch (Math.abs(n) % 10) {
+    case 1: return `${n}st`;
+    case 2: return `${n}nd`;
+    case 3: return `${n}rd`;
+    default: return `${n}th`;
+  }
+}
+
 function shortDate(dateStr) {
   const parts = dateStr.split('-');
   if (parts.length !== 3) return dateStr;
@@ -178,8 +191,8 @@ function renderHeadlineCards(plays, ratio, refPar, handicapProvisional) {
 // ── Shared time-window pills (his ask, 2026-08-11: "All the dot graphs
 // should have those 30/60/90/1y pills") ────────────────────────────────
 // One factory, one window vocabulary; each dot chart keeps its own
-// session-persistent selection, 60 days the default. Series that carry
-// history in their math (the career average, the rolling means) are
+// session-persistent selection, 60 days the default. Series whose math
+// depends on history (the career average, the rolling means) are
 // computed over ALL plays and the window only decides which points draw,
 // so "career avg" keeps meaning career at every window.
 const TIME_WINDOWS = [[30, '30d'], [60, '60d'], [90, '90d'], [365, '1y']];
@@ -550,7 +563,7 @@ function _renderPercentileTrendChart() {
         ? 'Rank among the field over time, handicap-adjusted'
         : 'Rank among the field over time',
       yDomain: [0, 100],
-      yFormat: v => v + 'th',
+      yFormat: v => ordinal(v),
       // Dots only, colored on a continuous 0-100 gradient (his ask,
       // 2026-08-11: no line between the rank-vs-field dots, and a more
       // interesting ramp than the old three-band traffic light). The
@@ -559,6 +572,11 @@ function _renderPercentileTrendChart() {
       // brightens.
       noLine: true,
       dotFill: v => valueGradient01(v / 100),
+      // The window's average rank as a dashed reference (his ask,
+      // 2026-08-11), so a scatter of days still answers "where do I
+      // usually land".
+      meanLine: true,
+      meanFormat: v => `avg ${ordinal(Math.round(v))}`,
     }));
   }
   replaceContent('chart-percentile-trend', wrap);

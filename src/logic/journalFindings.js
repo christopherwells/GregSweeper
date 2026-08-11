@@ -76,6 +76,11 @@ const FEATURE_UNITS = {
   patternMoves: 'pattern read',
   totalMines: 'mine',
   cellCount: 'cell',
+  // One wormLoad point is exactly one hundred worm segment-moves
+  // (WORM_LOAD_SCALE), so the unit is the composite phrase and, like the
+  // digit shares below, it never takes the x10 (his question 2026-08-11:
+  // worms had no basis at all because the unit was never named).
+  wormLoad: 'hundred worm moves',
   // Digit shares are fit ×10 (one unit = one more clue-in-ten of that digit),
   // so the per-unit estimate reads as "each extra N in ten clues adds X%".
   clueShare2: 'extra two in ten clues',
@@ -313,8 +318,11 @@ export function classifyVerdict(study) {
 // The one exemption is the digit shares, whose unit is already the
 // composite "one extra N in ten clues"; ten of those is not a quantity
 // a board can hold.
+const COMPOSITE_UNIT_FEATURES = new Set(['wormLoad']);
 export function featureScaleOf(feature) {
-  return String(feature || '').startsWith('clueShare') ? 1 : 10;
+  const f = String(feature || '');
+  if (f.startsWith('clueShare') || COMPOSITE_UNIT_FEATURES.has(f)) return 1;
+  return 10;
 }
 
 function estimateScale(study) {
@@ -444,7 +452,11 @@ export function parameterTable(history) {
     const hi = (Math.exp((c.mean + c.sd) * scale) - 1) * 100;
     const row = {
       feature: c.feature, label, pctValue: pct,
-      per: unit ? (scale === 10 ? `per ten ${unit}s` : `per ${unit}`) : null,
+      // The ten-tile basis is the default and the table note states it
+      // once; a per-row line appears only where the basis DIFFERS (the
+      // clue mixes, worm moves), his 2026-08-11 note that repeating
+      // "per ten X" under every label reads as noise.
+      per: scale === 10 || !unit ? null : `per ${unit}`,
     };
     if (hi <= 0) {
       row.effect = `saves ${fmtPct(Math.abs(pct))}%`;

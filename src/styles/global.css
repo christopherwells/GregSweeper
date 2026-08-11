@@ -3251,6 +3251,12 @@ html:not([data-colorblind="true"]) #board.fx-on .cell.revealed:not(.sonar-cell):
   fill: none;
   stroke-linejoin: round;
 }
+.chart-meanline-label {
+  font-size: 20px;
+  font-family: inherit;
+  fill: var(--color-golden, #f9a825);
+  opacity: 0.9;
+}
 .chart-meanline {
   stroke: #f9a825;
   stroke-width: 2;
@@ -4217,6 +4223,12 @@ details[open] > .journal-ledger-summary::after { transform: rotate(225deg); }
   border-bottom: 1px solid var(--color-border, #333);
 }
 .journal-table tr:last-child td { border-bottom: none; }
+.journal-active-note {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  opacity: 0.8;
+  margin: 6px 4px 14px;
+}
 .journal-table-per {
   font-size: 0.78em;
   color: var(--color-text-secondary);

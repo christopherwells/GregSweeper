@@ -61,7 +61,7 @@ function _fullLedger(table) {
   }
   details.appendChild(tbl);
   details.appendChild(el('p', 'journal-table-note',
-    'Each row shows what ten more of the feature would add to a solve, with the band the model would bet on. The clue mixes stay per one extra clue-in-ten. Greg re-fits these every night.'));
+    'Each row shows what ten more of the feature would add to a solve, with the band the model would bet on. Rows that measure differently say their own basis under the name. Greg re-fits these every night.'));
   return details;
 }
 
@@ -110,6 +110,13 @@ export async function renderJournalModal() {
       log: screen.active.log,
       onShareFallback: _shareFeedback,
     }));
+    // Boards precompute nights ahead, so the daily card's field note and
+    // this study routinely name different questions; saying so here is
+    // what keeps that from reading as a contradiction (his question,
+    // 2026-08-11: a worm-tiles study while the daily said threes vs
+    // mine density).
+    body.appendChild(el('p', 'journal-active-note',
+      'Boards are built nights ahead, so today’s puzzle may serve an earlier question than the one Greg is on now.'));
   }
 
   if (screen.queue) {
