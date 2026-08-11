@@ -48,6 +48,8 @@ jobs:
           node-version: '22'
       - uses: ./.github/actions/journal-llm
       - name: Run the rewrite script against the local server
+        env:
+          JOURNAL_REWRITE_MODEL: qwen2.5-7b-instruct-q4km-local
         run: |
           node scripts/rewrite-journal-entry.mjs --out /tmp/journal-rewrite-verify.json
           if [ -f /tmp/journal-rewrite-verify.json ]; then

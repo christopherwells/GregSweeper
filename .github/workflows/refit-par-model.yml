@@ -206,6 +206,10 @@ jobs:
         if: steps.journalllm.outcome == 'success'
         continue-on-error: true
         timeout-minutes: 15
+        env:
+          # Provenance only: the local server ignores the id, the
+          # artifact records it.
+          JOURNAL_REWRITE_MODEL: qwen2.5-7b-instruct-q4km-local
         run: |
           rc=0
           node scripts/rewrite-journal-entry.mjs || rc=$?

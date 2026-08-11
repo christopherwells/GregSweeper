@@ -121,8 +121,32 @@ export function rewriteViolations(text, sourceText, facts) {
   for (const run of new Set(digitRuns(sourceText))) {
     if (!kept.has(run)) out.push(`source digit "${run}" was dropped`);
   }
+
+  // No added inference. Every fabrication the 2026-08-11 bake-off
+  // produced was the model stitching CONCLUSIONS between faithful
+  // sentences ("which supports my suspicion", "indicating a steady
+  // no", "held this cost consistently"), which no per-fact rail can
+  // see. Mechanically: an inference marker may appear in the rewrite
+  // only where the notes themselves use it, so a source that says
+  // "because" keeps its because and a rewrite can never introduce one.
+  for (const marker of INFERENCE_MARKERS) {
+    if (marker.test(text) && !marker.test(sourceText)) {
+      out.push(`added inference ("${String(text.match(marker)?.[0])}") the notes do not state`);
+    }
+  }
   return out;
 }
+
+// Word-boundary, stem-tolerant forms of the inference vocabulary a
+// rewrite may not introduce. prove/proves/proved/proving is written out
+// so "provide" stays legal; "mean(s) that" is phrase-bound so "which
+// means" and "this means" are both caught.
+const INFERENCE_MARKERS = [
+  /\bsupport\w*/i, /\bconfirm\w*/i, /\bindicat\w*/i, /\bimpl(?:y|ies|ied|ying)\b/i,
+  /\bsuggest\w*/i, /\bprov(?:e|es|ed|ing)\b/i, /\brefut\w*/i, /\bcontradict\w*/i,
+  /\bconsistent\w*/i, /\bdemonstrat\w*/i, /\bbecause\b/i, /\btherefore\b/i,
+  /\bmeans? that\b/i, /\bwhich means\b/i, /\bthis means\b/i,
+];
 
 /**
  * Swap a shipped rewrite into a composed entry, or return the entry
@@ -178,6 +202,7 @@ const PROMPT_RULES = [
   'Actually rewrite. Do not copy the notes sentence for sentence, and do not just splice them with commas or semicolons. Reorder the ideas into a story: what I asked, what the data read, where the estimate stands, what I make of it. Tie sentences together with connectives (so, but, and, after, which, that answer).',
   'Keep every number, percent sign, and date from the notes exactly as written. Do not add, drop, round, or recompute any number.',
   'State nothing the notes do not state. No new claims, no new dates, no new events, no mechanisms the notes do not give.',
+  'Draw no new conclusions. Never say the data support, confirm, contradict, or refute the hypothesis unless the notes say so themselves; connect sentences without adding logic between them.',
   'First person only. The writer never refers to himself by name or in the third person.',
   'Never use the em dash or the en dash. Use commas, periods, or parentheses instead.',
   'At most one hedging word (like "likely" or "seems") per sentence.',
@@ -190,7 +215,13 @@ const PROMPT_RULES = [
   'Keep the paragraph about the same length as the notes.',
 ];
 
-export function buildRewritePrompt({ entryText, facts, label, hypothesis }) {
+// The hypothesis is DELIBERATELY not offered as material: when it was,
+// the bake-off drafts recast it as a conclusion the data had reached
+// ("which supports my suspicion that good memory makes it nearly
+// free", about a study whose band showed a real cost), and a
+// hypothesis absorbed into the paragraph also dodges the epigraph's
+// arcSpoken duplication rule. The notes alone are the material.
+export function buildRewritePrompt({ entryText, facts, label }) {
   const system = 'You edit the field notebook of Greg, a fictional green-crab field scientist who '
     + 'measures what makes minesweeper boards hard. He writes in plain first person, dry and '
     + 'precise, a working scientist’s register. You will receive his shorthand notes for one '
@@ -202,7 +233,6 @@ export function buildRewritePrompt({ entryText, facts, label, hypothesis }) {
     + '\n\nReturn only the rewritten paragraph.';
   const lines = [];
   if (label) lines.push(`Study: ${label}`);
-  if (hypothesis) lines.push(`The written hypothesis on file: ${hypothesis}`);
   lines.push(`Fact object (every number in your paragraph must appear among these values): ${JSON.stringify(facts)}`);
   lines.push(`The notes to rewrite:\n${entryText}`);
   return { system, user: lines.join('\n\n') };

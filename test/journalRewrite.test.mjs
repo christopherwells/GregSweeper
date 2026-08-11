@@ -123,6 +123,13 @@ test('validator: each rail rejects, and names its reason', () => {
     ['nothing-as-number', `${base} The cost is almost nothing.`, /0%, not "nothing"/],
     ['imprecise verb', `${base} The estimate wandered.`, /imprecise verb/],
     ['template hole', `${base} The {label} file stays open.`, /unresolved template hole/],
+    // The inference rail (2026-08-11 bake-off): a rewrite may not add
+    // conclusions the notes never drew. Each of these is a real
+    // fabrication class a local model produced.
+    ['added support-claim', `${base} That supports my hunch.`, /added inference/],
+    ['added indication', `${base} The range narrowed, indicating a steady no.`, /added inference/],
+    ['added consistency claim', `${base} The cost stayed consistent across the window.`, /added inference/],
+    ['added causal glue', `${base} The range narrowed because the boards agreed.`, /added inference/],
   ];
   for (const [name, text, re] of cases) {
     const v = rewriteViolations(text, src, facts);
@@ -147,6 +154,16 @@ test('validator: each rail rejects, and names its reason', () => {
   assert.deepEqual(rewriteViolations('', src, facts), ['empty output']);
   assert.deepEqual(rewriteViolations(null, src, facts), ['empty output']);
   assert.deepEqual(rewriteViolations(base, '', facts), ['no source entry']);
+
+  // The inference rail is SOURCE-CONDITIONAL: notes that state a
+  // "because" keep their because (the IDLE pool really uses one), so
+  // the same sentence is legal when the source says it and a violation
+  // when only the rewrite does.
+  const withBecause = `${src} I set it down because the file was thin.`;
+  assert.deepEqual(rewriteViolations(withBecause, withBecause, facts), [],
+    'a source-stated inference marker stays legal');
+  assert.ok(rewriteViolations(withBecause, src, facts).some(x => /added inference/.test(x)),
+    'the same marker without a source is rejected');
 });
 
 test('normalizeModelOutput: fences, wrapping quotes, and newlines collapse; inner content survives', () => {
@@ -218,23 +235,28 @@ test('applyJournalRewrite: every mismatch falls back to the beats unchanged', ()
 
 // ── The prompt ────────────────────────────────────────────────────────
 
-test('buildRewritePrompt: facts, source, hypothesis, and the verb rulings all reach the model', () => {
+test('buildRewritePrompt: facts, source, and the verb rulings reach the model; the hypothesis does not', () => {
   const study = mkStudy({ hypothesis: 'A sonar reading covers a wide area but names no cell.' });
   const entry = entryFor(study);
   const prompt = buildRewritePrompt({
-    entryText: entry.text, facts: entry.facts, label: study.label, hypothesis: study.hypothesis,
+    entryText: entry.text, facts: entry.facts, label: study.label,
   });
   assert.equal(typeof prompt.system, 'string');
   assert.equal(typeof prompt.user, 'string');
   assert.ok(prompt.user.includes(entry.text), 'the source beats are the material');
   assert.ok(prompt.user.includes(JSON.stringify(entry.facts)), 'the fact object rides along');
-  assert.ok(prompt.user.includes(study.hypothesis), 'the written hypothesis is context');
+  // REGRESSION: the hypothesis is NOT material — offered as context, the
+  // bake-off drafts recast it as a conclusion the data had reached
+  // ("supports my suspicion..."), the exact fabrication class the
+  // inference rail exists for. Starve the temptation at the source.
+  assert.ok(!prompt.user.includes(study.hypothesis), 'the hypothesis stays out of the prompt');
   // The rulings are stated: dashes, data-plural, players, today's board.
   assert.match(prompt.system, /em dash/i);
   assert.match(prompt.system, /data show/i);
   assert.match(prompt.system, /players/i);
   assert.match(prompt.system, /today’s board/i);
   assert.match(prompt.system, /study day/);
+  assert.match(prompt.system, /no new conclusions/i);
   // The prompt itself obeys the dash rule it states.
   assert.deepEqual(dashViolations(prompt.system + prompt.user), []);
 });

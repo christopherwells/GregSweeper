@@ -68,11 +68,12 @@ const ROOT = join(__dirname, '..');
 const API_URL = process.env.JOURNAL_REWRITE_URL || 'http://127.0.0.1:8085/v1/chat/completions';
 const MODEL = process.env.JOURNAL_REWRITE_MODEL || 'journal-local';
 const TOKEN = process.env.JOURNAL_REWRITE_TOKEN || null;
-// Sampling freedom. Small local models rewrite timidly when sampled
-// cold (measured: Phi-4-mini at 0.3 returned the source nearly
-// verbatim), and the validator, not the temperature, is what protects
-// the facts, so the default leans warm.
-const TEMPERATURE = Number(process.env.JOURNAL_REWRITE_TEMP || 0.7);
+// Sampling freedom, measured on the 2026-08-11 bake-off: cold (0.3)
+// made small models copy the notes nearly verbatim, hot (0.7) made
+// them stitch conclusions the notes never drew, and the middle kept
+// the rewrite real while staying faithful. The validator, not the
+// temperature, protects the facts either way.
+const TEMPERATURE = Number(process.env.JOURNAL_REWRITE_TEMP || 0.4);
 const LOCAL_SERVER = /^https?:\/\/(127\.0\.0\.1|localhost)[:/]/.test(API_URL);
 // A 4-vCPU runner generates a paragraph from a 4-8B model in one to two
 // minutes; the bound is for a hung socket, not a slow token.
@@ -175,7 +176,6 @@ async function main() {
     entryText: entry.text,
     facts: entry.facts,
     label: study.label,
-    hypothesis: study.hypothesis,
   });
   if (DRY_RUN) {
     console.log('--dry-run: prompt follows, no API call.\n');
