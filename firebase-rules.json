@@ -539,6 +539,21 @@
             }
           }
         },
+        "weeklyCompletions": {
+          "$weekStart": {
+            ".write": "auth != null && auth.uid === $uid && !data.exists()",
+            ".validate": "$weekStart.matches(/^\\d{4}-\\d{2}-\\d{2}$/) && newData.hasChildren(['timestamp'])",
+            "timestamp": {
+              ".validate": "newData.val() === now"
+            },
+            "backfilled": {
+              ".validate": "newData.val() === true"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
         "pushSubscription": {
           ".validate": "newData.hasChildren(['token']) || newData.val() === null",
           "token": {

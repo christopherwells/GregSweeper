@@ -14,11 +14,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  FIRST_ARCHIVE_WEEK, addWeeks, weeksBetween,
+  FIRST_ARCHIVE_WEEK, WEEKLY_COMPLETIONS_EPOCH, addWeeks, weeksBetween,
   isArchivableWeek, weekArchiveState, pastWeekStarts,
   weekStartLabel, weekRangeLabel,
   applyWeekContinuation, isWeekStreakAlive, projectWeekContinuation, liveWeekStreak,
-  weekStreakFromHistory, streakBearingWeeks,
+  weekStreakFromHistory, streakBearingWeeks, bankableWeeks,
 } from '../src/logic/weeklyProgress.js';
 
 // ── Week arithmetic ──────────────────────────────────────────────────────
@@ -219,4 +219,59 @@ test('streakBearingWeeks fails CLOSED without a current week', () => {
   assert.deepEqual(streakBearingWeeks(played, null), []);
   assert.deepEqual(streakBearingWeeks(played, 'not-a-week'), []);
   assert.deepEqual(streakBearingWeeks(null, '2026-08-10'), []);
+});
+
+// ── Which records may bank a week (the completion record) ────────────────
+// weeklyAttempts proves a week was OPENED (written on the first click);
+// weeklyCompletions proves it was FINISHED (written at the win). The
+// completions record only exists from WEEKLY_COMPLETIONS_EPOCH, so the
+// derivation splits there, a stated boundary rather than a silent change:
+// before it, attempts keep their documented generosity; from it on, an
+// attempt alone banks nothing.
+
+test('the epoch is a frozen Monday anchor at the record\'s ship week', () => {
+  assert.equal(WEEKLY_COMPLETIONS_EPOCH, '2026-08-10');
+  const [y, m, d] = WEEKLY_COMPLETIONS_EPOCH.split('-').map(Number);
+  assert.equal(new Date(y, m - 1, d, 12).getDay(), 1, 'a weekStart is always a Monday');
+});
+
+test('bankableWeeks: attempts bank only before the epoch, completions bank throughout', () => {
+  const attempted = ['2026-07-27', '2026-08-03', '2026-08-17'];
+  const completed = ['2026-08-24'];
+  assert.deepEqual(
+    bankableWeeks({ attempted, completed, currentWeek: '2026-08-31' }).sort(),
+    ['2026-07-27', '2026-08-03', '2026-08-24'],
+    'the post-epoch attempted-and-abandoned week (2026-08-17) banks nothing');
+});
+
+test('REGRESSION: a post-epoch week opened and abandoned does not bank once it is history', () => {
+  // Issue #254 stopped the LIVE week from banking on an attempt; the epoch
+  // stops the same abandoned attempt from banking after the week rolls over,
+  // which the attempts record alone could never distinguish from a win.
+  assert.deepEqual(bankableWeeks({ attempted: ['2026-08-17'], completed: [], currentWeek: '2026-08-31' }), []);
+  // The pre-epoch generosity is unchanged, and documented in bankableWeeks.
+  assert.deepEqual(bankableWeeks({ attempted: ['2026-08-03'], completed: [], currentWeek: '2026-08-31' }), ['2026-08-03']);
+});
+
+test('a run crossing the epoch derives whole', () => {
+  const attempted = ['2026-07-27', '2026-08-03'];
+  const completed = ['2026-08-10', '2026-08-17'];
+  const run = weekStreakFromHistory(bankableWeeks({ attempted, completed, currentWeek: '2026-08-24' }));
+  assert.deepEqual(run, { streak: 4, lastWeek: '2026-08-17' });
+});
+
+test('bankableWeeks fails CLOSED without a current week and drops the live week from BOTH sources', () => {
+  assert.deepEqual(bankableWeeks({ attempted: ['2026-08-03'], completed: ['2026-08-10'] }), []);
+  assert.deepEqual(bankableWeeks({ attempted: ['2026-08-03'], completed: ['2026-08-10'], currentWeek: 'junk' }), []);
+  // A completed CURRENT week is the play path's job, not the heal's.
+  assert.deepEqual(bankableWeeks({ attempted: ['2026-08-17'], completed: ['2026-08-17'], currentWeek: '2026-08-17' }), []);
+});
+
+test('either source may be null; the other still counts, deduped', () => {
+  assert.deepEqual(bankableWeeks({ attempted: null, completed: ['2026-08-10'], currentWeek: '2026-08-24' }), ['2026-08-10']);
+  assert.deepEqual(bankableWeeks({ attempted: ['2026-08-03'], completed: null, currentWeek: '2026-08-24' }), ['2026-08-03']);
+  // A pre-epoch week both attempted and backfill-completed appears once, and
+  // a backfilled pre-epoch completion needs no attempt beside it.
+  assert.deepEqual(bankableWeeks({ attempted: ['2026-08-03'], completed: ['2026-08-03'], currentWeek: '2026-08-24' }), ['2026-08-03']);
+  assert.deepEqual(bankableWeeks({ attempted: null, completed: ['2026-06-01'], currentWeek: '2026-08-24' }), ['2026-06-01']);
 });

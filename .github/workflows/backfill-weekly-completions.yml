@@ -1,0 +1,40 @@
+name: Backfill weekly completions
+
+# Seed users/{uid}/weeklyCompletions/{weekStart} from the weekly leaderboard
+# rows, the per-player completion evidence of the pre-record era: a
+# weekly/{weekStart}/{uid} row is written only on a win, so each one proves
+# its player finished that week's board. The win path writes the record
+# itself from WEEKLY_COMPLETIONS_EPOCH on; this recovers everything named
+# players earned before that.
+#
+# Service-account auth, because users/* is owner-scoped for both the
+# existence reads and the writes. Idempotent and client-record-safe: an
+# existing entry is skipped, never overwritten, so re-running (the way to
+# catch completions made on stale clients) can never replace a live
+# first-completion stamp with a backfill stamp.
+#
+#   gh workflow run backfill-weekly-completions.yml -f dryRun=true
+
+on:
+  workflow_dispatch:
+    inputs:
+      dryRun:
+        description: 'Dry run (plan + print, write nothing)'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Backfill
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node scripts/backfill-weekly-completions.mjs ${{ github.event.inputs.dryRun == 'true' && '--dry-run' || '' }}

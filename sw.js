@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gregsweeper-v1.10.32';
+const CACHE_NAME = 'gregsweeper-v1.10.33';
 const ASSETS = [
   './',
   './index.html',
@@ -39,7 +39,7 @@ const ASSETS = [
   './src/logic/gimmicks.js',
   './src/logic/nameFilter.js',
   './src/logic/hateSpeechTerms.js',
-  // Stats-tab + diagnostics modules are dynamic-imported on demand — no
+  // Stats-tab + diagnostics modules are dynamic-imported on demand, no
   // need to pre-cache at install time. Runtime fetch handler caches them
   // on first use so offline access still works once the user has opened
   // those surfaces once. (Skill Trainer was removed 2026-05-13.)
@@ -79,7 +79,7 @@ const ASSETS = [
   './src/firebase/waitForFirebase.js',
   './src/firebase/parLabSync.js',
   './src/firebase/firebasePush.js',
-  // Hard static imports of main.js / the firebase modules — without
+  // Hard static imports of main.js / the firebase modules, without
   // these, a first-visit install that goes offline before its first
   // online page load fails to boot (runtime caching only covers files
   // that have been fetched once).
@@ -95,8 +95,8 @@ const ASSETS = [
   './src/logic/friendCodes.js',
   './src/firebase/firebaseFriends.js',
   // The rest of main.js's static import closure (issue #191). ASSETS is
-  // the only cache content guaranteed to survive a CACHE_NAME bump —
-  // activate deletes every other cache — so EVERY hard static import of
+  // the only cache content guaranteed to survive a CACHE_NAME bump,
+  // activate deletes every other cache, so EVERY hard static import of
   // main.js must be here or the app cannot boot offline right after a
   // deploy. This list had drifted 29 modules behind (the whole 2026-07-10
   // main.js split plus every pure-logic helper added since);
@@ -179,7 +179,7 @@ const ASSETS = [
   './assets/sprites/medal-silver.svg',
   './assets/sprites/medal-bronze.svg',
   './assets/sprites/medal-emerald.svg',
-  // Modifier (gimmick) icons — the 11 modifier types
+  // Modifier (gimmick) icons, the 11 modifier types
   './assets/sprites/mod-walls.svg',
   './assets/sprites/mod-liar.svg',
   './assets/sprites/mod-mystery.svg',
@@ -191,7 +191,7 @@ const ASSETS = [
   './assets/sprites/mod-sonar.svg',
   './assets/sprites/mod-compass.svg',
   './assets/sprites/mod-worm.svg',
-  // Achievement category icons (Wave B) — the 13 achievements
+  // Achievement category icons (Wave B), the 13 achievements
   './assets/sprites/ach-wins.svg',
   './assets/sprites/ach-streak.svg',
   './assets/sprites/ach-speed.svg',
@@ -246,7 +246,7 @@ const ASSETS = [
   './assets/sprites/ui-cursor.svg',
   './assets/sprites/ui-chord.svg',
   './assets/sprites/ui-modifier.svg',
-  // Per-theme object sets (batch 1) — each world's mine/flag/strike in
+  // Per-theme object sets (batch 1), each world's mine/flag/strike in
   // its own material language.
   './assets/sprites/themes/editorial-mine.svg',
   './assets/sprites/themes/editorial-flag.svg',
@@ -385,7 +385,7 @@ self.addEventListener('activate', (event) => {
       caches.keys().then((keys) =>
         Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
       ),
-      // Broadcast our cache name to every client window so the page knows
+      // Broadcast our cache name to every client window so main.js can stamp
       // exactly which build is serving it. Used for forensic provenance
       // (`codeVersion` field on canonical board writes) and for runtime
       // diagnostics. Stops the bug where the page hardcoded a stale
@@ -420,7 +420,7 @@ self.addEventListener('message', (event) => {
 // ── Push notifications ─────────────────────────────────
 // Inbound push from FCM. Payload schema (set by scripts/send-push.mjs):
 //   v1 (current): { v: "1", title, body, tag?, deepLink? }
-// The `v` field is a permanent contract — a push delivered today might
+// The `v` field is a permanent contract, a push delivered today might
 // be processed by a SW that's days or weeks old. When `v` increments
 // to 2+, this handler keeps reading v1 fields exactly as it does today,
 // so old SWs still render notifications safely. New SWs get a v2+
@@ -442,12 +442,12 @@ self.addEventListener('push', (event) => {
   const deepLink = raw?.data?.deepLink || raw?.deepLink || raw?.fcmOptions?.link || './?mode=daily';
   // Schema-version awareness. Absence is treated as v1 (legacy pushes
   // from before the version field shipped). A version this SW doesn't
-  // recognise gets logged so we can see staleness rates after a future
-  // schema bump. The fields above are v1 — if a future v2 adds new
+  // recognize gets logged so we can see staleness rates after a future
+  // schema bump. The fields above are v1, if a future v2 adds new
   // fields, add a branch here.
   const schemaVersion = raw?.data?.v || raw?.v || '1';
   if (!PUSH_SCHEMA_KNOWN_VERSIONS.includes(schemaVersion)) {
-    console.warn(`[push] unknown schema version: ${schemaVersion} — treating as v1`);
+    console.warn(`[push] unknown schema version: ${schemaVersion}, treating as v1`);
   }
   event.waitUntil(
     self.registration.showNotification(title, {
@@ -485,7 +485,7 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return;
 
   // Cache-first for static assets (sprites, icons, loading splash).
-  // These are versioned by CACHE_NAME — when CACHE_NAME bumps on
+  // These are versioned by CACHE_NAME, when CACHE_NAME bumps on
   // deploy, install pre-caches the new bytes and the old cache is
   // deleted in activate. So serving from cache is always fresh-as-of-
   // deploy, and we skip a network roundtrip per image. Without this,
@@ -496,7 +496,7 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       caches.match(event.request, { ignoreSearch: true }).then((cached) => {
         if (cached) return cached;
-        // Cache miss (rare — install pre-caches everything in ASSETS).
+        // Cache miss (rare, install pre-caches everything in ASSETS).
         // Fall through to network; cache the response for next time.
         return fetch(event.request).then((response) => {
           if (response.ok) {
@@ -527,7 +527,7 @@ self.addEventListener('fetch', (event) => {
         return response;
       })
       .catch(async () => {
-        // Network failed — fall back to cache for offline play.
+        // Network failed, fall back to cache for offline play.
         const cached = await caches.match(event.request, { ignoreSearch: true });
         if (cached) return cached;
         // Navigation request with no cache hit (e.g. user navigates to a
@@ -540,10 +540,10 @@ self.addEventListener('fetch', (event) => {
           const shell = await caches.match('./index.html');
           if (shell) return shell;
         }
-        // Last resort — return a minimal offline response so at least
+        // Last resort, return a minimal offline response so at least
         // the request resolves rather than producing an unhandled
         // network error in the page.
-        return new Response('Offline — please reconnect to load this resource.', {
+        return new Response('Offline. Please reconnect to load this resource.', {
           status: 503,
           statusText: 'Service Unavailable',
           headers: { 'Content-Type': 'text/plain; charset=utf-8' },

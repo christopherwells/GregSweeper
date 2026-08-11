@@ -14,7 +14,7 @@ import { stopTimer, pauseTimer, resumeTimer, updateTimerDisplay } from './timerM
 import { awardPowerUps } from './powerUpActions.js';
 import { setHandleWin } from './powerUpActions.js';
 import { findNextSafeMove, gradeGimmickContribution, checkWin } from '../logic/boardSolver.js';
-// Leaf module (imports nothing): the tiling-centre fallback in
+// Leaf module (imports nothing): the tiling-center fallback in
 // liveBoardOpener re-derives a local-gen tiling board's opener from its
 // own _tiling descriptor.
 import { buildTiling } from '../logic/tilingGeometry.js';
@@ -40,8 +40,8 @@ import { checkThemeUnlocks, showThemeUnlockToasts } from '../ui/themeManager.js'
 import { submitOnlineScore, submitArchiveScore, submitTimedScore, submitWeeklyScore, fetchWeeklyLeaderboard } from '../firebase/firebaseLeaderboard.js';
 
 // (HTML escaping for the weekly leaderboard rows now comes from
-// ui/domHelpers.js's escapeHtml — single source of truth.)
-import { saveProgress, saveDailyHistoryEntry, fetchDailyHistoryEntry, getUid, markWeeklyDayAttempted } from '../firebase/firebaseProgress.js';
+// ui/domHelpers.js's escapeHtml, single source of truth.)
+import { saveProgress, saveDailyHistoryEntry, fetchDailyHistoryEntry, getUid, markWeeklyDayAttempted, markWeeklyCompleted } from '../firebase/firebaseProgress.js';
 import { deserializeBoard } from '../firebase/dailyBoardSync.js';
 import { archiveSubmitPlan, CRUX_VIEWED_KEY_PREFIX } from '../logic/archiveEligibility.js';
 import { gameoverModalPlan } from '../logic/gameoverPlan.js';
@@ -63,9 +63,9 @@ import { getLocalDateString } from '../logic/seededRandom.js';
 //
 // ENABLED 2026-08-04 (his call: "get the weeklies in to the par model"). It
 // shipped false in v1.6 as a deliberate hold while the weekly's rules were
-// still moving — gimmick count, bomb handling and the end screen all changed
+// still moving, gimmick count, bomb handling and the end screen all changed
 // after launch, and half-baked inputs would have dragged the coefficients.
-// The rules have been stable for two months; the flag simply outlived its
+// The rules have been stable for two months; the flag outlived its
 // reason, and fourteen weeks of real completions went unrecorded because of
 // it. The history is recoverable and was recovered separately
 // (scripts/backfill-weekly-fit-rows.mjs).
@@ -74,7 +74,7 @@ const WEEKLY_FIT_DATA_ENABLED = true;
 // End a game by dropping ITS OWN save, never someone else's. An archive
 // replay and a ?level= / coastline practice run borrow a live mode's name and
 // share its storage key without owning it, so ending one must leave that key
-// alone — the mirror of persistGameState's guard, which is the half that was
+// alone, the mirror of persistGameState's guard, which is the half that was
 // there. Unguarded, winning a past daily deleted the real daily in progress
 // (issue #247). These lanes never persist, so there is nothing of their own
 // to clean up and skipping the clear leaves nothing behind.
@@ -161,9 +161,9 @@ function _renderWinModalHistoryDots(todayDate) {
   const byDate = new Map();
   for (const r of residuals) byDate.set(r.date, r);
   // Walk the last 7 ET dates ending at today (or the play's date if it
-  // differs from today — e.g., a late-night submit just after midnight).
+  // differs from today, e.g., a late-night submit just after midnight).
   const dots = [];
-  // Fallback anchors to the ET clock like every other daily surface — the
+  // Fallback anchors to the ET clock like every other daily surface, the
   // UTC ISO date is a different calendar day from 8pm ET onward.
   const baseDate = todayDate || getLocalDateString();
   const [by, bm, bd] = baseDate.split('-').map(Number);
@@ -190,37 +190,37 @@ function _renderWinModalHistoryDots(todayDate) {
 // ── The live board's certified opener ──────────────────
 // The anchor the play path solved from, as a flat index (issue #201, the
 // #195 class). A canonical daily/weekly board's opener comes from
-// deserializeBoard — the ONE definition: stored firstClick on a tiling,
-// container centre on every rectangle — read back here from the same raw
+// deserializeBoard, the ONE definition: stored firstClick on a tiling,
+// container center on every rectangle, read back here from the same raw
 // payload newGame consumed (the today-stash, the weekly stash, or the
 // archive stash). The win receipt and the bomb strike pricing below used
 // to re-derive floor(rows/2), floor(cols/2), which on a tiling canonical
 // is an unrelated container slot where the solve stalls at click 1: the
 // receipt would confess a breather on a board with a real crux, and every
-// strike's info-value — which rides into the SUBMITTED time — would come
+// strike's info-value, which rides into the SUBMITTED time, would come
 // off the failed solve. A RECTANGULAR board with no matching canonical
 // (local-gen fallback, practice ?seed=, challenge/timed) was generated
-// around the container centre, which stays its opener — and a rectangular
-// canonical stores no firstClick, so deserializeBoard returns the centre
+// around the container center, which stays its opener, and a rectangular
+// canonical stores no firstClick, so deserializeBoard returns the center
 // there too: byte-identical on every rectangular board either way. A
 // TILING board with no canonical (the shape rotation's local-gen fallback,
 // or a ?dailyShape= practice run) re-derives its opener from its own
-// _tiling descriptor below — buildTiling's centerIndex is exact integer
+// _tiling descriptor below, buildTiling's centerIndex is exact integer
 // lattice arithmetic and is what generateTilingBoard anchored this very
 // board on, so within a session (and across its saves, which restore
 // _tiling) the derivation reproduces the generation anchor exactly.
 export function liveBoardOpener() {
-  const centre = Math.floor(state.rows / 2) * state.cols + Math.floor(state.cols / 2);
-  const tilingCentre = () => {
+  const center = Math.floor(state.rows / 2) * state.cols + Math.floor(state.cols / 2);
+  const tilingCenter = () => {
     const t = state.board && state.board._tiling;
-    if (!t || !t.type) return centre;
+    if (!t || !t.type) return center;
     try {
       return buildTiling(t.type, t.M, t.N).centerIndex;
-    } catch { return centre; }
+    } catch { return center; }
   };
   let raw = null;
   if (state.gameMode === 'daily' && !state.isDailyPractice) {
-    // Archive replays carry a PAST date; the calendar's fetch lives in the
+    // An archive replay is dated in the PAST; the calendar's fetch lives in the
     // archive stash and must never be confused with the today-stash.
     raw = state.isArchivePlay
       ? (state._archiveRaw && state._archiveRaw.date === state.dailySeed
@@ -231,20 +231,20 @@ export function liveBoardOpener() {
     raw = state.canonicalWeeklyBoard && state.canonicalWeeklyBoard.weekStart === state.weeklySeed
       ? state.canonicalWeeklyBoard.raw : null;
   }
-  if (!raw) return tilingCentre();
+  if (!raw) return tilingCenter();
   try {
     const d = deserializeBoard(raw);
     // The stash can outlive a failed adoption (deserialize threw in newGame
     // and local generation took over): only trust an opener that describes
     // the container actually in play.
     if (d.rows === state.rows && d.cols === state.cols) return d.firstClick;
-  } catch { /* corrupt canonical — the play path fell back to local gen too */ }
-  return tilingCentre();
+  } catch { /* corrupt canonical, the play path fell back to local gen too */ }
+  return tilingCenter();
 }
 
 // ── Win receipt: the board's confession ────────────────
-// One line on the daily/weekly win modal naming (a) the board's crux —
-// the first deduction trivial propagation couldn't reach — and (b) the
+// One line on the daily/weekly win modal naming (a) the board's crux,
+// the first deduction trivial propagation couldn't reach, and (b) the
 // modifier's CERTIFIED contribution, graded by the same strip-and-
 // resolve analysis the generator used to admit the board. Voice rule:
 // these are statements about the BOARD's proof, never about how the
@@ -256,7 +256,7 @@ const TIER_PHRASE = {
   3: 'seeing through the liar',
 };
 
-// Exported for the headless call-test (canonicalOpenerResiduals) — the
+// Exported for the headless call-test (canonicalOpenerResiduals), the
 // receipt's false-breather claim is only observable through the render.
 export function _renderWinReceipt() {
   const el = $('#gameover-receipt');
@@ -265,14 +265,14 @@ export function _renderWinReceipt() {
   el.onclick = null;
   const board = state.board;
   const rows = state.rows, cols = state.cols;
-  // The certified opener, never the container centre (issue #201): a
-  // centre-anchored solve stalls on a tiling canonical, extractCrux
+  // The certified opener, never the container center (issue #201): a
+  // center-anchored solve stalls on a tiling canonical, extractCrux
   // returns null, and the receipt calls a real crux board a breather.
   const opener = liveBoardOpener();
   const fr = Math.floor(opener / cols), fc = opener % cols;
   setTimeout(() => {
     try {
-      // The solver simulates in its own arrays — live revealed state is
+      // The solver simulates in its own arrays, live revealed state is
       // untouched (and cleanSolverArtifacts must NOT run here: it would
       // wipe cell.isRevealed on the live, fully-revealed board).
       // extractCrux is the SAME crux finder the daily teaser uses, so the
@@ -282,7 +282,7 @@ export function _renderWinReceipt() {
       let cruxJump = null;
       if (crux) {
         // Coordinates mean nothing to a player; take them THERE instead.
-        // Tapping the line hides the modal, pulses the crux square and
+        // Tapping the line closes the modal, pulses the crux square and
         // the clues that prove it, then brings the modal back.
         parts.push(`Hardest step: the first square that took ${TIER_PHRASE[crux.tier] || 'real thought'} (tap to see it)`);
         cruxJump = { cell: crux.cell, sources: crux.sources };
@@ -340,7 +340,7 @@ export function _renderWinReceipt() {
  * date it submits a dailyArchive fit row (when the date is at or after the
  * fit epoch) and writes the dailyHistory row. A replay (history present)
  * records nothing. Streak, daily-completed, and the residual cache are never
- * touched here — those are gated off upstream by isArchivePlay.
+ * touched here, those are gated off upstream by isArchivePlay.
  *
  * @param {string} dateStr   YYYY-MM-DD of the replayed board
  * @param {string} name      player handle
@@ -361,14 +361,14 @@ export async function submitArchiveCompletion(dateStr, name, scoreTime) {
   const plan = archiveSubmitPlan(dateStr, historyStatus);
   if (!plan.submitFit && !plan.writeHistory) {
     showToast(historyStatus === 'unknown'
-      ? "Couldn't reach the server — this run wasn't recorded."
+      ? "Couldn't reach the server, so this run wasn't recorded."
       : 'Your first run on this day is already recorded.');
     return;
   }
   if (plan.submitFit) {
     let cruxViewed = false;
     try { cruxViewed = localStorage.getItem(CRUX_VIEWED_KEY_PREFIX + dateStr) === '1'; }
-    catch { /* storage unavailable — treat as not viewed */ }
+    catch { /* storage unavailable, treat as not viewed */ }
     await submitArchiveScore(dateStr, name, scoreTime, state.dailyBombHits || 0, {
       uid: getUid(),
       par: state.dailyPar,
@@ -393,7 +393,7 @@ export async function submitArchiveCompletion(dateStr, name, scoreTime) {
 // Apply a gameoverModalPlan: one complete show/hide pass over every optional
 // section of the shared #gameover-overlay, so no render path can leak a
 // previous game's content (the stale-weekly-leaderboard / missing-retry
-// class — see gameoverPlan.js). Handlers unhide their data-dependent
+// class, see gameoverPlan.js). Handlers unhide their data-dependent
 // sections AFTER this baseline.
 function _applyGameoverPlan(plan) {
   for (const [id, visible] of Object.entries(plan)) {
@@ -437,16 +437,16 @@ export async function handleWin() {
   const isDaily = state.gameMode === 'daily';
   const isWeekly = state.gameMode === 'weekly';
   // Practice daily (URL ?seed=custom) plays like a daily but must not touch
-  // stats, streak, completion flags, or personal history — it exists for
+  // stats, streak, completion flags, or personal history, it exists for
   // replaying after today's real daily has already been won. Weekly is its
-  // own world entirely — see the dedicated weekly branch below.
+  // own world entirely, see the dedicated weekly branch below.
   // Archive replay: a PAST daily relaunched from the calendar. It looks like
   // a daily (board, par, features) but must never touch streak, completion,
   // or the residual cache, and it submits to dailyArchive/ instead of daily/.
   // It DOES earn one fit row on first completion (the submit block below).
   const isArchivePlay = isDaily && !!state.isArchivePlay;
   const isRealDaily = isDaily && !state.isDailyPractice && !isArchivePlay;
-  // Skill feats — honestly detectable from the click timeline + the board's
+  // Skill feats, honestly detectable from the click timeline + the board's
   // certified solve (flagless / efficient / search / liar), never heuristics;
   // chaos earns nothing. The certifiedClicks invariant and the feature/mode
   // gating live in (and are node-tested at) src/logic/skillFeatDetection.js.
@@ -469,20 +469,20 @@ export async function handleWin() {
   let moltNote = '';
   if (moltEvent) {
     if (moltEvent.coveredDates && moltEvent.coveredDates.length > 0) {
-      // A cover saved the streak — a quiet inline confirmation here.
+      // A cover saved the streak, a quiet inline confirmation here.
       moltNote = `<span class="molt-note">${uiSpriteImgHTML('uiMolt', 'molt-inline')} Molt day covered ${_coveredPhrase(moltEvent.coveredDates)}. Streak intact at ${moltEvent.streakKept}.</span><br>`;
     } else if (moltEvent.earned && isRealDaily) {
-      // Earning one is a milestone — flag the celebratory popup + the crab
+      // Earning one is a milestone, flag the celebratory popup + the crab
       // placement animation that play when the player lands back on the title.
       flagMoltCelebrate();
     }
   }
 
   // Skip power-up awarding for chaos AND weekly. Weekly is a pure
-  // time-trial against a fixed board — power-ups would let later-week
+  // time-trial against a fixed board, power-ups would let later-week
   // attempts cheese the leaderboard against earlier days. On the
   // Challenge 250 ladder the award COUNT is banded by level (his ruling:
-  // 1 through L100, 2 through L250, 3 in the endless zone) — a
+  // 1 through L100, 2 through L250, 3 in the endless zone), a
   // guaranteed award per win, not a probability.
   let earnedPowerUp = null;
   if (state.gameMode !== 'chaos' && state.gameMode !== 'weekly' && !state.isLevelPractice) {
@@ -499,7 +499,7 @@ export async function handleWin() {
   }
 
   // Sync progress to cloud (fire-and-forget). Never from a ?level=
-  // playtest run — its wins are not progression.
+  // playtest run, its wins are not progression.
   if (state.gameMode === 'normal' && !state.isLevelPractice) {
     saveProgress({ maxCheckpoint: stats.maxLevelReached || state.currentLevel });
   }
@@ -517,7 +517,7 @@ export async function handleWin() {
 
   // Mark daily as completed so it cannot be replayed today. The board's
   // effective seed rides along, because the lock's real question is "has this
-  // account finished TODAY'S board" and the date alone cannot answer it — a
+  // account finished TODAY'S board" and the date alone cannot answer it, a
   // client that missed the canonical completes a different board on the same
   // date. Same expression the score row uses (buildDailyScoreExtras), so the
   // local record and the submitted row can never name different boards.
@@ -532,17 +532,25 @@ export async function handleWin() {
   // first-encounter timing data.
   // A past-weekly replay is walled off from the whole block below: no attempt
   // marked, no leaderboard row, no fit row, no streak. It is the weekly's
-  // version of an archive daily, and the same rule applies — the week it
+  // version of an archive daily, and the same rule applies, the week it
   // belongs to is over, and its record is already written.
   if (isWeekly && !state.isWeeklyArchive && state.weeklySeed != null && state.weeklyDay != null) {
-    // The week streak: one completion banks the week (his rule — "only need to
+    // The week streak: one completion banks the week (his rule, "only need to
     // play one of the weekly"), so this is idempotent across the week's seven
-    // attempts and the later ones simply land on the week already banked.
-    recordWeeklyCompletion(state.weeklySeed);
+    // attempts and the later ones land on the week already banked.
+    const banked = recordWeeklyCompletion(state.weeklySeed);
     // Read the payload back rather than re-shaping the return value: the
     // self-heal in main.js pushes the same node, and one definition of the
     // shape is what keeps the two writers from disagreeing (issue #248).
     saveProgress({ weekStreak: getWeekStreakRecord() });
+    // The per-week completion record, the fact the trio above compresses
+    // away. `extended` is true exactly when this completion newly banked the
+    // week (a later completion of an already-banked week returns false), so
+    // the node is written once per week and keeps its first-completion
+    // stamp. Feeds the Past Weeklies 'done' marks and the post-epoch half of
+    // the week-streak self-heal; internally test-gated like the attempt
+    // marker below.
+    if (banked.extended) markWeeklyCompleted(state.weeklySeed);
 
     // Snapshot the prior-times BEFORE we mutate state.weeklyDayTimes,
     // so the modal-render code below can compute "1st attempt" vs
@@ -556,13 +564,13 @@ export async function handleWin() {
     // marking so the weekly can be replayed indefinitely for testing.
     // markWeeklyDayAttempted is already a no-op on test (Firebase
     // guard), but the in-memory cachedWeeklyDayAttempts set would
-    // still gate the player out within the session — bypass that too.
+    // still gate the player out within the session, bypass that too.
     if (!isTestEnvironment()) {
       markWeeklyDayAttempted(state.weeklySeed, state.weeklyDay);
       // Keep the local attempt cache in sync. Without this, every gate that
       // reads state.cachedWeeklyDayAttempts (title-screen weekly card, mode-card
       // click handler, deep-link router, reset-button gate) sees the stale
-      // pre-win value until the player reloads — which means smashing the
+      // pre-win value until the player reloads, which means smashing the
       // smiley or revisiting the title spawns another attempt for the same day.
       if (!state.cachedWeeklyDayAttempts) state.cachedWeeklyDayAttempts = {};
       state.cachedWeeklyDayAttempts[state.weeklyDay] = true;
@@ -598,7 +606,7 @@ export async function handleWin() {
         }
       ).then((ok) => {
         // The board was not the week's canonical, so it cannot be compared
-        // against anyone else's — a week's whole leaderboard is one board. The
+        // against anyone else's, a week's whole leaderboard is one board. The
         // attempt still counted and the week streak is already banked above;
         // only the comparison is refused, which is the daily's split exactly.
         if (ok === 'divergent') {
@@ -607,7 +615,7 @@ export async function handleWin() {
       }).catch(err => reportCaughtError('weekly-score-submit', err));
 
       if (isFirstAttemptThisWeek && WEEKLY_FIT_DATA_ENABLED) {
-        // Honest first encounter — qualifies for par-model fit data.
+        // Honest first encounter, qualifies for par-model fit data.
         // Reuses submitOnlineScore so we land in the same daily/* and
         // dailyMeta/* tables the R refit already reads, with a unique
         // key suffix so it joins as its own row.
@@ -636,7 +644,7 @@ export async function handleWin() {
   }
 
   // Persist power-ups after win (award changes them). Skip for chaos
-  // and weekly — neither mode uses power-ups so the saved counts would
+  // and weekly, neither mode uses power-ups so the saved counts would
   // just be empty objects bouncing around localStorage. Skip for Par Lab
   // runs too: they play on a deliberately EMPTY inventory (gameActions
   // zeroes it), and persisting those zeros under the 'normal' key would
@@ -689,7 +697,7 @@ export async function handleWin() {
   const parEl = $('#gameover-par');
 
   // Timed mode: show speed rating + par-relative delta, and feed the run
-  // into the fit pipeline (timed/{pushId} — the modeTimed effect
+  // into the fit pipeline (timed/{pushId}, the modeTimed effect
   // activates in the R refit once >= 20 rows exist).
   if (state.gameMode === 'timed') {
     const precise = state.preciseTime || state.elapsedTime;
@@ -718,7 +726,7 @@ export async function handleWin() {
     // Daily: show precise time + par comparison
     const precise = state.preciseTime || state.elapsedTime;
     gameoverTime.innerHTML = `Time: ${precise.toFixed(1)}s${strikesInfo}`;
-    // The streak suffix implies "this counts toward your streak" — true for a
+    // The streak suffix implies "this counts toward your streak", true for a
     // live daily, false for an archive replay (archive never touches the
     // streak), so suppress it on archive to avoid the wrong implication.
     if (!isArchivePlay) {
@@ -730,11 +738,11 @@ export async function handleWin() {
     // Greg's Time = global par from the current PAR_MODEL applied to today's
     // board features. Personal par = Greg's + your handicap (your typical
     // over/under across recent dailies). When a handicap is known we show
-    // both numbers and the primary delta is measured against YOUR par —
+    // both numbers and the primary delta is measured against YOUR par,
     // that's the one that tells you whether you had a good or bad day
     // relative to your own skill.
     // Par only meaningful in regular daily mode. Weekly doesn't carry
-    // a par (same board across the week — par would be a moving target
+    // a par (same board across the week, par would be a moving target
     // anyway since the player learns the board). Without this gate,
     // state.dailyPar can leak from a previous in-session daily play and
     // render here.
@@ -792,8 +800,8 @@ export async function handleWin() {
       // Simplified par line (2026-07): the personal par + how the player did
       // against it, on ONE line. The old Lab File decomposition ("Greg's Time X
       // + your pace + bomb habit = Your par Y") and the per-feature breakdown
-      // chips below it were cut to keep the daily card to one screen — the full
-      // model still lives in Stats. deltaShort drops the redundant "your par"
+      // chips below it were cut to keep the daily card to one screen, the full
+      // model is still in Stats. deltaShort drops the redundant "your par"
       // suffix since the label already carries it.
       if (useHandicap) {
         parEl.innerHTML = moltNote + parPrimer +
@@ -801,7 +809,7 @@ export async function handleWin() {
           'Your par ' + personalPar.toFixed(1) + 's · ' +
           '<span class="' + parClass + '">' + deltaShort + '</span>';
       } else {
-        // No handicap yet — surface a small hint about what would
+        // No handicap yet, surface a small hint about what would
         // unlock one so a brand-new player (1 daily complete) doesn't
         // think the system is just ignoring them.
         const needHint = showOneMoreHint
@@ -814,7 +822,7 @@ export async function handleWin() {
       }
       parEl.classList.remove('hidden');
 
-      // 7-dot history strip — at-a-glance look at the player's recent
+      // 7-dot history strip, at-a-glance look at the player's recent
       // trajectory. Also held back until they have a few dailies under
       // their belt; one or two dots says nothing. Reads localStorage
       // residuals (just-appended above) so it's instant and offline.
@@ -824,7 +832,7 @@ export async function handleWin() {
     }
   } else if (state.gameMode === 'weekly' && state.isWeeklyArchive) {
     // A past-weekly replay has no attempts, no best-of-week and no row, so it
-    // gets none of the weekly summary below — that whole card is about a week
+    // gets none of the weekly summary below, that whole card is about a week
     // still in progress. It says what it is and shows the time.
     const precise = state.preciseTime || state.elapsedTime;
     gameoverTime.innerHTML = `Time: ${precise.toFixed(1)}s${strikesInfo}`;
@@ -840,7 +848,7 @@ export async function handleWin() {
     gameoverTime.innerHTML = `Time: ${precise.toFixed(1)}s${strikesInfo}`;
 
     // Summarize this attempt from the prior-times snapshot captured BEFORE the
-    // weekly win block mutated state.weeklyDayTimes — else a 1st attempt would
+    // weekly win block mutated state.weeklyDayTimes, else a 1st attempt would
     // report as a 2nd. The DOM template below consumes the result; the
     // attempts-count and best math are pinned in weeklyAttemptSummary.
     const {
@@ -864,7 +872,7 @@ export async function handleWin() {
       `;
       parEl.classList.remove('hidden');
 
-      // Fetch and render the leaderboard inline. Fire-and-forget — the
+      // Fetch and render the leaderboard inline. Fire-and-forget, the
       // gameover modal renders immediately with a "Loading…" placeholder
       // and replaces it once Firebase responds. Keeps the modal snappy
       // even on slow networks; if the fetch fails the placeholder just
@@ -996,7 +1004,7 @@ export async function handleWin() {
     const savedName = getPlayerName();
     if (isArchivePlay) {
       // Archive replay: record only with a saved name, through the
-      // first-completion-only path — never the daily/ submitters. Archive is
+      // first-completion-only path, never the daily/ submitters. Archive is
       // excluded from the name gate (a later-game feature), so a nameless
       // archive run still just nudges toward Settings.
       if (savedName) {
@@ -1009,28 +1017,28 @@ export async function handleWin() {
       }
     } else if (savedName) {
       // Auto-submit with the saved name. The name gate at the top of handleWin
-      // guarantees a real daily has one, so this is the only submit path now —
+      // guarantees a real daily has one, so this is the only submit path now,
       // the old dismissible inline form (and its main.js handler) is gone.
       // Anchor to the puzzle's seed, not the current local date (same as
-      // the manual-submit path in main.js) — finishing at 12:00:01 AM
+      // the manual-submit path in main.js), finishing at 12:00:01 AM
       // would otherwise post yesterday's board onto today's leaderboard.
       const dateStr = state.dailySeed || getLocalDateString();
       const scoreTime = Math.round((state.preciseTime || state.elapsedTime) * 10) / 10;
       addDailyLeaderboardEntry(dateStr, savedName, scoreTime);
       // CRITICAL: this auto-submit path (used whenever the player has a
       // saved name) MUST stay in sync with the manual-submit path in
-      // main.js. Both need to include bombHitEvents and rngSeed —
+      // main.js. Both need to include bombHitEvents and rngSeed,
       // missing either of those fields drops the experimental-design
       // and bomb-adjusted-model data streams silently.
       submitOnlineScore(dateStr, savedName, scoreTime, state.dailyBombHits || 0,
         buildDailyScoreExtras(state, dateStr, getUid())).then((ok) => {
         // Show the REAL outcome. Previously this toasted success
         // unconditionally, so an offline player thought their score
-        // uploaded when it had only been queued — that's how Kate
+        // uploaded when it had only been queued, that's how Kate
         // believed she'd posted scores that never reached the board.
         // 'duplicate' = this account already has a row for this exact
         // board (another device finished first, or a queued retry had
-        // already landed) — first completion wins, so the personal-
+        // already landed), first completion wins, so the personal-
         // history entry is skipped too rather than overwriting the
         // first device's time.
         if (ok === 'duplicate') {
@@ -1041,7 +1049,7 @@ export async function handleWin() {
           // and out of the par fit. The DAY still counts: the history entry
           // below is what streaks read, which is why this branch writes it
           // where 'duplicate' deliberately does not ('cheat' now writes it too,
-          // for the same reason — see that branch).
+          // for the same reason, see that branch).
           //
           // And the real board is still unplayed, so give it back rather than
           // locking the day on a run that could not be ranked. Immediately,
@@ -1050,14 +1058,14 @@ export async function handleWin() {
           // applyCloudProgress re-locking the card from the cloud's
           // lastDailyDate (which the streak write above has just set to today).
           unlockDailyReplay(dateStr);
-          showToast('That board wasn\'t today\'s, so it can\'t be ranked. Your streak counts — play today\'s real board to get on the leaderboard.', 6000, 'uiWarning');
+          showToast('That board wasn\'t today\'s, so it can\'t be ranked. Your streak counts. Play today\'s real board to get on the leaderboard.', 6000, 'uiWarning');
           if (!state.isDailyPractice) {
             saveDailyHistoryEntry(dateStr, { time: scoreTime });
           }
         } else if (ok === 'cheat') {
           // Probing run (see isBombHitCheat): kept off the leaderboard and out
           // of the par fit. The DAY still counts, exactly as the 'divergent'
-          // branch above rules — the streak is a record of showing up, not a
+          // branch above rules, the streak is a record of showing up, not a
           // competitive claim, and dailyHistory never feeds the fit, so writing
           // it costs no data hygiene. Withholding it is what made the 2026-08-09
           // false positive expensive: Kate lost the leaderboard row AND the dot
@@ -1070,7 +1078,7 @@ export async function handleWin() {
         } else {
           showToast(ok ? 'Score submitted!' : 'Saved. Uploads when you reconnect', 2000, ok ? 'uiSuccess' : 'uiCloud');
           // Per-user daily-history timeline feeds the leaderboard-modal
-          // chart. Skip for practice dailies — they play on a custom seed
+          // chart. Skip for practice dailies, they play on a custom seed
           // and don't belong on the player's regular history timeline.
           // Durable: queues to localStorage and re-sends on reconnect if
           // the write fails.
@@ -1091,9 +1099,9 @@ export async function handleWin() {
   }
 
   // (Share button + crux-challenge visibility come from the plan: share on
-  // every win, crux only for daily/weekly — other modes have no crux.)
+  // every win, crux only for daily/weekly, other modes have no crux.)
 
-  // Daily-win opt-in CTA — shown on daily/weekly wins ONLY when push
+  // Daily-win opt-in CTA, shown on daily/weekly wins ONLY when push
   // notifications are currently disabled. Best single moment to convert
   // a one-off player into a returning one. Hidden by the plan baseline;
   // the show path checks notification prefs asynchronously and unhides.
@@ -1107,14 +1115,14 @@ export async function handleWin() {
           if (!prefs?.enabled) remindBtn.classList.remove('hidden');
         } catch {
           // If push module fails to load (offline, missing SDK), leave
-          // the button hidden — the prompt wouldn't work anyway.
+          // the button hidden, the prompt wouldn't work anyway.
         }
       })();
     }
   }
 
   // (Play Again / Done visibility comes from the plan: retry everywhere
-  // except daily/weekly, Done only there — the canonical single-puzzle
+  // except daily/weekly, Done only there, the canonical single-puzzle
   // modes can't be replayed today.)
 
   // Clear saved game state on win
@@ -1122,7 +1130,7 @@ export async function handleWin() {
 
   // Delay the modal so the VICTORY! overlay (3.6 s total) has a chance
   // to play before the modal covers it. 2 s lands the modal after the
-  // VICTORY bounce has settled into its hold phase — confetti still
+  // VICTORY bounce has settled into its hold phase, confetti still
   // visible behind, win chime audible, but the modal arrives in time
   // for the Play Again button to be useful before the user moves on.
   setTimeout(() => showModal('gameover-overlay'), 2000);
@@ -1130,14 +1138,14 @@ export async function handleWin() {
   updateStreakBorder();
 
   // Par Lab (test-only): record the result and hand the session flow to the
-  // lab HUD. Lazy import — the module never loads outside a lab run.
+  // lab HUD. Lazy import, the module never loads outside a lab run.
   if (state.parLab) {
     import('../ui/parLabUI.js').then((m) => m.onParLabResult(true)).catch(() => {});
   }
 }
 
 // Register handleWin with powerUpActions to break circular dependency
-// Wrapped so the injected reference carries the labeled rejection path —
+// Wrapped so the injected reference includes the labeled rejection path:
 // handleWin is async (name gate) and powerUpActions fires it without await.
 setHandleWin(() => handleWin().catch(err => reportCaughtError('handle-win', err)));
 
@@ -1147,7 +1155,7 @@ export function handleLoss(mineRow, mineCol) {
   state.status = 'lost';
   stopTimer();
   announceGame('Game over. Hit a mine.');
-  // Baseline visibility for every optional modal section — this is what
+  // Baseline visibility for every optional modal section, this is what
   // clears a previous win's par line / weekly leaderboard / history dots
   // out of the shared overlay (they were never reset on the loss paths).
   _applyGameoverPlan(gameoverModalPlan('loss', state.gameMode));
@@ -1172,7 +1180,7 @@ export function handleLoss(mineRow, mineCol) {
     }
   }
 
-  // The loss receipt: the FULL deducible frontier (flags-blind — a wrong
+  // The loss receipt: the FULL deducible frontier (flags-blind, a wrong
   // flag must never make the verdict lie), painted on the board for the
   // explore view's tap-to-interrogate. The first frontier cell keeps the
   // legacy one-cell NEXT MOVE chip.
@@ -1199,7 +1207,7 @@ export function handleLoss(mineRow, mineCol) {
   haptic([100, 40, 100, 40, 200]);
   saveGameResult(false, state.elapsedTime, state.currentLevel, { gameMode: state.gameMode, isLevelPractice: !!state.isLevelPractice });
 
-  // Power-ups persist on loss within same mode — except Par Lab runs, whose
+  // Power-ups persist on loss within same mode, except Par Lab runs, whose
   // deliberately-zeroed inventory must never overwrite the real one.
   if (!state.parLab) {
     saveModePowerUps(state.gameMode, state.powerUps);
@@ -1232,7 +1240,7 @@ export function handleLoss(mineRow, mineCol) {
 
   if (state.gameMode === 'chaos') {
     const boardsCleared = (state.chaosRound || 1) - 1;
-    // chaosTotalTime accumulates precise floats — format for display or the
+    // chaosTotalTime accumulates precise floats, format for display or the
     // headline can read "45.10000000000001s total".
     const totalTime = ((state.chaosTotalTime || 0) + state.elapsedTime).toFixed(1);
     gameoverTitle.textContent = 'Run Over!';
@@ -1284,10 +1292,10 @@ export function handleLoss(mineRow, mineCol) {
   gameoverTime.classList.add('stats-cascade');
   gameoverTime.style.animationDelay = '0.1s';
   setTimeout(() => gameoverTime.classList.remove('stats-cascade'), 500);
-  // (Win-only sections — record, next-level, share, crux, done, unlocks,
-  // receipt, share preview — are hidden by the plan applied at the top.)
+  // (Win-only sections, record, next-level, share, crux, done, unlocks,
+  // receipt, share preview, are hidden by the plan applied at the top.)
 
-  // Post-death verdict — honest counts from the flags-blind frontier.
+  // Post-death verdict, honest counts from the flags-blind frontier.
   // "Genuine 50/50" is now a TRUSTWORTHY claim: the old one-cell check
   // trusted player flags, so a wrong flag could stamp 50/50 on a fully
   // deducible position. Tap any cell in the explore view to see its
@@ -1301,7 +1309,7 @@ export function handleLoss(mineRow, mineCol) {
     if (n > 0) {
       analysisText.textContent = `${flagNote}${n} square${n !== 1 ? 's' : ''} could still be worked out safely. Tap any square to see how`;
     } else if (state.gameMode === 'chaos') {
-      analysisText.textContent = `${flagNote}Chaos boards carry no guarantees. Out here, sometimes there is no safe move`;
+      analysisText.textContent = `${flagNote}No guarantees in Chaos. Out here, sometimes there is no safe move`;
     } else {
       // An empty frontier at death on a certified board never means a
       // forced 50/50: if the player had only ever clicked knowable
@@ -1390,8 +1398,8 @@ export function handleTimedLoss() {
 // mine instead costs a deterministic info-value penalty + a small base.
 //   penalty = max(0, infoValue) + BOMB_PENALTY_BASE
 // where info-value is computed by computeBombInfoValue (src/logic/
-// bombInfoValue.js) by running the solver twice — once without this
-// mine pre-flagged, once with — and weighting the difference in move-
+// bombInfoValue.js) by running the solver twice, once without this
+// mine pre-flagged, once with, and weighting the difference in move-
 // type counts by PAR_MODEL coefficients. A mine the solver was about
 // to nail anyway scores ~0; a mine anchoring a Pass-C deduction can
 // score 20+. The base keeps every bomb-pop slightly punishing so it's
@@ -1409,7 +1417,7 @@ export function handleDailyBombHit(mineRow, mineCol, extraMines = []) {
   const isWeekly = state.gameMode === 'weekly';
 
   // The batch: the primary mine plus any further mines the same gesture
-  // exposed (a chord across two wrong flags — 2026-07-11, per-mine
+  // exposed (a chord across two wrong flags, 2026-07-11, per-mine
   // charging). Every mine in the batch is priced, logged, and marked in
   // ONE pass so the pause/popup/explainer machinery (which is not
   // re-entrant) runs exactly once per gesture.
@@ -1421,7 +1429,7 @@ export function handleDailyBombHit(mineRow, mineCol, extraMines = []) {
     }
   }
 
-  // Prior strikes on this attempt — pre-flagged in the info-value
+  // Prior strikes on this attempt, pre-flagged in the info-value
   // computation so each returned value is the MARGINAL info-value of
   // that hit given every hit before it, not the cumulative value.
   const priorEvents = (isWeekly ? state.weeklyBombHitEvents : state.dailyBombHitEvents) || [];
@@ -1436,7 +1444,7 @@ export function handleDailyBombHit(mineRow, mineCol, extraMines = []) {
   pauseTimer();
   state.modalPaused = true;
 
-  // The strike verdict — computed from the board state the player SAW
+  // The strike verdict, computed from the board state the player SAW
   // (before any strike cell is marked below), flags-blind so a wrong
   // flag can't make the receipt lie. Three honest answers: the mine was
   // provable / safe moves existed elsewhere / genuinely at the frontier.
@@ -1450,18 +1458,18 @@ export function handleDailyBombHit(mineRow, mineCol, extraMines = []) {
 
   // Price + log + mark each mine in the batch. computeBombInfoValue reads
   // only structural board fields (never isRevealed/isStrike), so marking
-  // earlier mines in the loop cannot perturb later pricing — the marginal
+  // earlier mines in the loop cannot perturb later pricing, the marginal
   // chain runs entirely through priorStrikes. Ramped base per strike: the
   // n-th strike's base is BOMB_PENALTY_BASE × (1 + BOMB_PENALTY_RAMP ×
-  // (n-1)) — 1st +3s, 2nd +4.5s, 3rd +6s … so casual mine-popping is
+  // (n-1)), 1st +3s, 2nd +4.5s, 3rd +6s … so casual mine-popping is
   // discouraged without clobbering a legit multi-hit day (the >30%
   // anti-cheat handles brute-forcers). The info-value term (the
   // par-seconds each struck mine was anchoring) rides on top, unchanged.
   // Anchor the pricing solves on the certified opener, never the container
-  // centre (issue #201): on a tiling canonical the centre solve stalls at
+  // center (issue #201): on a tiling canonical the center solve stalls at
   // click 1, both info-value runs count nothing, and every strike would be
-  // priced off the failed solve — a wrong number riding into the submitted
-  // time. On every rectangular board the opener IS the centre, so pricing
+  // priced off the failed solve, a wrong number riding into the submitted
+  // time. On every rectangular board the opener IS the center, so pricing
   // is byte-identical there (pinned with a rectangle control).
   const opener = liveBoardOpener();
   const fr = Math.floor(opener / state.cols);
@@ -1469,7 +1477,7 @@ export function handleDailyBombHit(mineRow, mineCol, extraMines = []) {
   const priorStrikes = priorEvents.map(e => ({ row: e.row, col: e.col }));
   // Daily, weekly, and Par Lab strikes all route here; the board's feature
   // vector sets the par baseline the info-value is priced against under the
-  // log-scale model — a lab board's own features live in coastlineFeatures.
+  // log-scale model, a lab board's own features live in coastlineFeatures.
   const boardFeatures = state.weeklyFeatures || state.dailyFeatures || state.coastlineFeatures || null;
   let totalPenalty = 0;
   let firstInfoValueRounded = 0;
@@ -1511,7 +1519,7 @@ export function handleDailyBombHit(mineRow, mineCol, extraMines = []) {
 
     // Mark the hit cell as a strike. NO re-fog: every other revealed cell
     // stays revealed. The mine is preserved (we never call defuseMine):
-    //   (a) Adjacent numbers don't drop — a "3" next to the strike stays
+    //   (a) Adjacent numbers don't drop, a "3" next to the strike stays
     //       a "3" because the mine is still there.
     //   (b) Strike counts as a flag for chordReveal (sums isFlagged ||
     //       isStrike), so chording around it works.
@@ -1542,7 +1550,7 @@ export function handleDailyBombHit(mineRow, mineCol, extraMines = []) {
   haptic([80, 30, 60]);
 
   // Update the displayed time NOW so the new total reads on screen
-  // before any popup appears — without this the player sees the old
+  // before any popup appears, without this the player sees the old
   // time during the popup and a jump when it closes, which reads as
   // "the clock ran while I was reading" even though it was paused.
   updateTimerDisplay();
@@ -1552,7 +1560,7 @@ export function handleDailyBombHit(mineRow, mineCol, extraMines = []) {
     updateAllCells();
     updateHeader();
     // A chord can clear the board's last safe cells in the same gesture
-    // that struck its mines — after the strikes are priced there may be
+    // that struck its mines, after the strikes are priced there may be
     // no player action left to run win detection, so check here instead
     // of leaving the attempt stuck at 100% revealed.
     if (checkWin(state.board)) {
@@ -1582,7 +1590,7 @@ export function handleDailyBombHit(mineRow, mineCol, extraMines = []) {
     }
     if (modal && okBtn) {
       // Cleanup must run no matter how the modal closes (button or
-      // Escape) — observe the 'hidden' class transition.
+      // Escape), observe the 'hidden' class transition.
       let done = false;
       let obs = null;
       const finishOnce = () => {
@@ -1601,10 +1609,10 @@ export function handleDailyBombHit(mineRow, mineCol, extraMines = []) {
       showModal('bombhit-explainer');
       return;
     }
-    // Modal element missing — fall through to the transient popup.
+    // Modal element missing, fall through to the transient popup.
   }
 
-  // Subsequent hits: brief centred popup showing the penalty breakdown
+  // Subsequent hits: brief centered popup showing the penalty breakdown
   // so the cost reads as principled, not arbitrary.
   const popup = document.createElement('div');
   popup.className = 'daily-bomb-popup';
