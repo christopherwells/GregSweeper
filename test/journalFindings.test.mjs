@@ -312,23 +312,34 @@ test('parameterTable: every named feature from the latest fit, no fake negatives
       cand('compassCellCount', 0.0329, 0.0189),
       cand('liarCellCount', 0.0015, 0.0019),   // band straddles zero
       cand('totalMines', 0.0581, 0.0038),
+      cand('wormLoad', 0.0157, 0.008),         // composite unit, unscaled
+      cand('clueShare3', 0.03, 0.01),          // composite unit, unscaled
       cand('fragmentationRatio', 0.02, 0.01),  // unnamed — never rendered
       { feature: 'broken', mean: 0.1 },        // no sd — dropped
     ]),
   ];
   const table = parameterTable(history);
   assert.deepEqual(table.map(r => r.feature),
-    ['totalMines', 'compassCellCount', 'liarCellCount'], 'named only, sorted by effect');
+    ['totalMines', 'compassCellCount', 'clueShare3', 'wormLoad', 'liarCellCount'],
+    'named only, sorted by effect');
+  const worm = table.find(r => r.feature === 'wormLoad');
+  assert.equal(worm.per, 'per hundred worm moves', 'a composite unit states its basis');
+  assert.equal(worm.effect, '+2%'); // exp(0.0157) - 1, UNscaled: the unit is already 100 moves
+  const threes = table.find(r => r.feature === 'clueShare3');
+  assert.equal(threes.per, 'per extra three in ten clues');
   const liar = table.find(r => r.feature === 'liarCellCount');
   // Per-ten like every estimate surface (his 2026-08-11 report: the
   // ledger gave no indication of the basis): exp(0.015) − 1 = 1.51%.
   assert.equal(liar.effect, '+2%');
   assert.equal(liar.range, '0% to 3%', 'straddling band floors at 0, never a minus');
-  assert.equal(liar.per, 'per ten liar cells', 'the row states its basis');
+  // The ten-tile basis is the table's stated default now (his 2026-08-11
+  // note that repeating it under every label reads as noise); a row says
+  // its own basis only when it measures differently.
+  assert.equal(liar.per, null, 'default-basis rows say nothing');
   const compass = table.find(r => r.feature === 'compassCellCount');
   assert.equal(compass.effect, '+39%');
   assert.equal(compass.range, '15% to 68%');
-  assert.equal(compass.per, 'per ten compass cells');
+  assert.equal(compass.per, null);
   // Whole-band-negative renders as time saved, still without minus signs.
   const negTable = parameterTable([
     row('2026-07-12', 'zeroClusterCount', [cand('zeroClusterCount', -0.02, 0.001)]),

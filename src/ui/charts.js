@@ -247,6 +247,29 @@ export function lineChart(points, opts = {}) {
     }
   }
 
+  // Optional mean reference (opts.meanLine): a dashed horizontal at the
+  // average of the plotted primary values, labeled at the right edge.
+  // Drawn before the dots so the points stay readable over it.
+  if (opts.meanLine && primaryYs.length > 0) {
+    const mean = primaryYs.reduce((a, b) => a + b, 0) / primaryYs.length;
+    if (mean >= yMin && mean <= yMax) {
+      const y = yToPx(mean);
+      svg.appendChild(el('line', {
+        x1: layout.padLeft, y1: y, x2: VB_W - layout.padRight, y2: y,
+        class: 'chart-meanline',
+      }));
+      const lbl = el('text', {
+        x: VB_W - layout.padRight, y: y - 8,
+        'text-anchor': 'end',
+        // Its own class only: chart-axis-label's fill wins the cascade and
+        // paints the label a different color than its own line.
+        class: 'chart-meanline-label',
+      });
+      lbl.textContent = opts.meanFormat ? opts.meanFormat(mean) : `avg ${Math.round(mean)}`;
+      svg.appendChild(lbl);
+    }
+  }
+
   // Primary connecting path (opts.noLine drops it: a dot field can read as
   // a distribution over time, and a line through it invents an order story
   // the dots do not tell).
