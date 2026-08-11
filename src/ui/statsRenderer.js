@@ -515,9 +515,8 @@ function _renderPercentileTrendChart() {
     return;
   }
   const adjusted = _pctMode === 'adjusted';
-  const cutoff = windowCutoff(_pctDays);
   const points = [];
-  for (const p of plays.filter(pp => (pp.date || '') >= cutoff)) {
+  for (const p of plays) {
     // Rank against the BOARD's field (archive replays have no daily/ row for
     // themselves, so they naturally drop out via the mine-check below).
     const dayScores = scoresByDate[p.boardDate || p.date] || [];
@@ -546,19 +545,41 @@ function _renderPercentileTrendChart() {
     const othersBelowMe = allVals.filter(t => t > mine).length;
     const percentile = Math.round(100 * othersBelowMe / (allVals.length - 1));
     points.push({
+      d: p.date,
       x: shortDate(p.date),
       y: percentile,
       label: `${p.date}: ${percentile}th percentile of ${allVals.length} players${adjusted ? ' (adjusted)' : ''}`,
     });
   }
 
+  // Rolling ten-play average (his refinement, 2026-08-11: a running
+  // average like the handicap chart's, with the latest value still
+  // reported at the line's end). Computed over the FULL series before
+  // the window slices the view, so the curve carries real history at
+  // the left edge of any window.
+  const AVG_WINDOW = 10;
+  const rolling = points.map((pt, i) => {
+    const lo = Math.max(0, i - AVG_WINDOW + 1);
+    const slice = points.slice(lo, i + 1);
+    const mean = slice.reduce((a, q) => a + q.y, 0) / slice.length;
+    return {
+      d: pt.d,
+      x: pt.x,
+      y: Math.round(mean),
+      label: `${pt.d}: last ${slice.length} plays average ${ordinal(Math.round(mean))} percentile`,
+    };
+  });
+  const cutoff = windowCutoff(_pctDays);
+  const pointsWin = points.filter(pt => pt.d >= cutoff);
+  const rollingWin = rolling.filter(pt => pt.d >= cutoff);
+
   const wrap = document.createElement('div');
   wrap.appendChild(_pctToggle());
   wrap.appendChild(windowToggle(_pctDays, (d) => { _pctDays = d; _renderPercentileTrendChart(); }));
-  if (points.length === 0) {
+  if (pointsWin.length === 0) {
     wrap.appendChild(emptyDiv('Populates when 2+ players have uid-tagged scores on the same day. If you played further back, widen the window above.'));
   } else {
-    wrap.appendChild(lineChart(points, {
+    wrap.appendChild(lineChart(pointsWin, {
       ariaLabel: adjusted
         ? 'Rank among the field over time, handicap-adjusted'
         : 'Rank among the field over time',
@@ -572,11 +593,13 @@ function _renderPercentileTrendChart() {
       // brightens.
       noLine: true,
       dotFill: v => valueGradient01(v / 100),
-      // The window's average rank as a dashed reference (his ask,
-      // 2026-08-11), so a scatter of days still answers "where do I
-      // usually land".
-      meanLine: true,
-      meanFormat: v => `avg ${ordinal(Math.round(v))}`,
+      // The running ten-play average rides as the golden dashed curve
+      // (his refinement over the flat mean), latest value labeled at
+      // the line's end.
+      secondary: rollingWin,
+      secondaryDots: false,
+      secondaryLineClass: 'chart-line chart-meanline',
+      secondaryEndLabel: v => `avg ${ordinal(Math.round(v))}`,
     }));
   }
   replaceContent('chart-percentile-trend', wrap);

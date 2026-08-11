@@ -283,7 +283,7 @@ test('narrativeState: all nine states are reachable from data', () => {
 // fit (clueShare3 ~ +30% tight; clueShare5plus ~ 0% wide).
 test('digit-share studies render clean prose and support revalidation (PR D)', () => {
   const threes = mkStudy({
-    feature: 'clueShare3', label: 'threes', unit: 'extra three in ten clues',
+    feature: 'clueShare3', label: 'threes', unit: 'extra three in ten numbers',
     latest: { date: '2026-08-02', mean: 0.2605, sd: 0.0465 },
     trajectory: [
       { date: '2026-07-17', mean: 0.28, sd: 0.055, retro: false },
@@ -296,7 +296,7 @@ test('digit-share studies render clean prose and support revalidation (PR D)', (
   const entry = composeEntry(threes, { activeFeature: 'clueShare3' }, newSession());
   assertProseRails(entry.text, 'clueShare3 entry');
   assertDigitsDerivable(entry.text, entry.facts, 'clueShare3 entry');
-  assert.ok(/extra three in ten clues/.test(entry.text), 'the digit unit reaches the estimate line');
+  assert.ok(/extra three in ten numbers/.test(entry.text), 'the digit unit reaches the estimate line');
 
   // The revalidation stamp promotes the active digit study to its own state.
   const reval = composeEntry(threes, { activeFeature: 'clueShare3', revalidation: true }, newSession());
@@ -307,7 +307,7 @@ test('digit-share studies render clean prose and support revalidation (PR D)', (
   // clueShare5plus — the near-zero, sparse tail: a clean zero band renders
   // the honest "between 0% and about X%" reading, never a floored negative.
   const highs = mkStudy({
-    feature: 'clueShare5plus', label: 'high numbers', unit: 'extra high number in ten clues',
+    feature: 'clueShare5plus', label: 'high numbers', unit: 'extra high number in ten numbers',
     latest: { date: '2026-08-02', mean: 0.0016, sd: 0.0021 },
     trajectory: [
       { date: '2026-07-17', mean: 0.002, sd: 0.0025, retro: false },

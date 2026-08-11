@@ -297,8 +297,8 @@ test('estimateLine: one sentence, whole percents, never a fake negative (copy ru
   assert.ok(!/-\d/.test(refund), `no minus signs on a player surface: "${refund}"`);
   // Digit shares NEVER scale: their unit is already a composite ("extra
   // three in ten clues"), and ten of those is not a board quantity.
-  const digit = estimateLine({ unit: 'extra three in ten clues', feature: 'clueShare3', latest: { date: '2026-07-12', mean: 0.0015, sd: 0.0005 } });
-  assert.match(digit, /^Each extra three in ten clues adds/);
+  const digit = estimateLine({ unit: 'extra three in ten numbers', feature: 'clueShare3', latest: { date: '2026-07-12', mean: 0.0015, sd: 0.0005 } });
+  assert.match(digit, /^Each extra three in ten numbers adds/);
   for (const line of [tiny, solid, refund, digit]) {
     assert.ok(!line.includes('—'), `em-dash in estimate line: "${line}"`);
   }
@@ -326,7 +326,7 @@ test('parameterTable: every named feature from the latest fit, no fake negatives
   assert.equal(worm.per, 'per hundred worm moves', 'a composite unit states its basis');
   assert.equal(worm.effect, '+2%'); // exp(0.0157) - 1, UNscaled: the unit is already 100 moves
   const threes = table.find(r => r.feature === 'clueShare3');
-  assert.equal(threes.per, 'per extra three in ten clues');
+  assert.equal(threes.per, 'per extra three in ten numbers');
   const liar = table.find(r => r.feature === 'liarCellCount');
   // Per-ten like every estimate surface (his 2026-08-11 report: the
   // ledger gave no indication of the basis): exp(0.015) − 1 = 1.51%.

@@ -50,10 +50,10 @@ function _fullLedger(table) {
   for (const r of table) {
     const tr = el('tr');
     const featureCell = el('td', null, r.label);
-    // The basis reads on the row itself ("per ten liar cells"), his
-    // 2026-08-11 report that the ledger gave no indication of the
-    // ten-tile basis the estimate lines speak in.
-    if (r.per) featureCell.appendChild(el('div', 'journal-table-per', r.per));
+    // The basis reads INLINE after the name (his 2026-08-11 note: a
+    // second row per feature wastes height), only on the rows whose
+    // basis differs from the table's stated ten-tile default.
+    if (r.per) featureCell.appendChild(el('span', 'journal-table-per', ` · ${r.per}`));
     tr.appendChild(featureCell);
     tr.appendChild(el('td', null, r.effect));
     tr.appendChild(el('td', null, r.range));

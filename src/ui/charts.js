@@ -223,6 +223,11 @@ export function lineChart(points, opts = {}) {
     }));
   }
 
+  // Optional label at the LAST secondary point (the rolling-average
+  // convention: the curve tells the story, the end label reports where
+  // it stands now).
+  const secondaryEndLabel = typeof opts.secondaryEndLabel === 'function' ? opts.secondaryEndLabel : null;
+
   // Secondary series FIRST so the primary renders on top (primary is
   // the main signal the user reads; secondary is supporting context).
   if (secondary && secondary.length > 1) {
@@ -234,16 +239,40 @@ export function lineChart(points, opts = {}) {
       class: opts.secondaryLineClass || 'chart-line chart-line-secondary',
       fill: 'none',
     }));
-    for (let i = 0; i < secondary.length; i++) {
-      const p = secondary[i];
-      const dot = el('circle', {
-        cx: xToPx(i), cy: yToPx(p.y), r: 4,
-        class: 'chart-dot chart-dot-secondary',
+    // opts.secondaryDots: false renders the series as a pure curve, for
+    // charts where per-point markers would clutter against the primary
+    // dots (the rank chart's rolling average).
+    if (opts.secondaryDots !== false) {
+      for (let i = 0; i < secondary.length; i++) {
+        const p = secondary[i];
+        const dot = el('circle', {
+          cx: xToPx(i), cy: yToPx(p.y), r: 4,
+          class: 'chart-dot chart-dot-secondary',
+        });
+        const title = el('title', {});
+        title.textContent = p.label || `${p.x}: ${p.y}`;
+        dot.appendChild(title);
+        svg.appendChild(dot);
+      }
+    }
+    if (secondaryEndLabel && secondary.length > 0) {
+      const last = secondary[secondary.length - 1];
+      // Label on the side AWAY from the curve's recent run, so a rising
+      // tail gets the label underneath and a falling one gets it on top,
+      // and the text never sits on its own line.
+      const recent = secondary.slice(-6, -1);
+      const recentMean = recent.length
+        ? recent.reduce((a, q) => a + q.y, 0) / recent.length
+        : last.y;
+      const below = last.y >= recentMean;
+      const lbl = el('text', {
+        x: VB_W - layout.padRight,
+        y: yToPx(last.y) + (below ? 30 : -18),
+        'text-anchor': 'end',
+        class: 'chart-meanline-label',
       });
-      const title = el('title', {});
-      title.textContent = p.label || `${p.x}: ${p.y}`;
-      dot.appendChild(title);
-      svg.appendChild(dot);
+      lbl.textContent = secondaryEndLabel(last.y);
+      svg.appendChild(lbl);
     }
   }
 
