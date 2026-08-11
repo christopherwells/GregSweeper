@@ -276,6 +276,14 @@ if ((process.argv[1] || '').endsWith('build-climb-library.mjs')) {
   }
   const priced = JSON.parse(readFileSync(which, 'utf8')).entries;
   const allPatches = legalPatches();
+  // BAIL MEMORY. A shape that spent its full wall-clock budget failing to
+  // reach a level's floor cannot reach the next level's either: floors move
+  // by about a second per level while the shape's supply gap spans tens of
+  // seconds. Without this, rhombille and Kites re-burned 60s EACH on level
+  // after level through the sparse mid-ladder, about two hours of certain
+  // failure over the run. Five levels later the window has moved enough to
+  // be worth asking again.
+  const bailSkip = new Map();
   console.log(`price map: ${priced.length} priced specs`
     + `${which === fastFile ? ' (FAST map: rhombille and deltoidal missing)' : ''}`);
   if (!existsSync(OUT_DIR)) mkdirSync(OUT_DIR, { recursive: true });
@@ -380,6 +388,7 @@ if ((process.argv[1] || '').endsWith('build-climb-library.mjs')) {
       const missing = [...shapesIn].filter((sh) =>
         !kept.some((c) => c.spec.shape === sh && c.par >= floorPar));
       for (const sh of missing) {
+        if ((bailSkip.get(sh) || 0) > level) continue;
         const nearFloor = priced
           .filter((e) => e.shape === sh && e.par >= floorPar * 0.45 && e.par <= floorPar * 1.05)
           .filter((e) => e.genMs == null || e.genMs <= 2500)
@@ -419,7 +428,8 @@ if ((process.argv[1] || '').endsWith('build-climb-library.mjs')) {
           if (bailed) break;
         }
         if (bailed) {
-          console.log(`  L${level}: rep pass for ${sh} bailed at ${REP_SHAPE_BUDGET_MS}ms`);
+          bailSkip.set(sh, level + 5);
+          console.log(`  L${level}: rep pass for ${sh} bailed at ${REP_SHAPE_BUDGET_MS}ms, skipping it until L${level + 5}`);
         }
       }
     }
