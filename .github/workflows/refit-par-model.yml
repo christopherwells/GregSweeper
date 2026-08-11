@@ -171,18 +171,63 @@ jobs:
         continue-on-error: true
         run: node scripts/topup-climb-library.mjs --fill --minutes 20
 
+      # ── Greg's Journal, the nightly rewrite (his ask, 2026-08-11) ──
+      # composeEntry's pooled beats are honest but read stitched; once a
+      # night the active study's entry is rewritten into ONE coherent
+      # paragraph and shipped as DATA (src/logic/journalRewrite.json) in
+      # this same commit. Clients render the paragraph only when it
+      # hashes to the exact entry they compose themselves AND it
+      # re-clears the shared writing rails client-side, so a stale
+      # artifact, a skipped night, or a rejected draft falls back to the
+      # beat assembly byte for byte. The journal is never blocked on
+      # this step.
+      #
+      # THE MODEL RUNS ON THIS RUNNER. The original plan was GitHub
+      # Models on the workflow's own GITHUB_TOKEN; that product was
+      # fully retired on 2026-07-30 (verified live 2026-08-11: the
+      # endpoint answers 410 with a retirement notice), and every hosted
+      # successor needs a new vendor, a new secret, or a Copilot seat
+      # this account does not hold. So llama.cpp's OpenAI-compatible
+      # llama-server runs a pinned open-weight model on localhost: no
+      # vendor, no key, no permissions change, and the weights ride the
+      # Actions cache beside the R packages. The pin (versions, sha256s)
+      # lives ONCE in .github/actions/journal-llm, which
+      # verify-journal-llm.yml re-proves on a real runner whenever it
+      # changes. Swapping to a hosted provider instead is the three
+      # JOURNAL_REWRITE_* env values documented in
+      # scripts/rewrite-journal-entry.mjs, no code change.
+      - name: Serve the journal-rewrite model
+        id: journalllm
+        continue-on-error: true
+        uses: ./.github/actions/journal-llm
+
+      - name: Rewrite the journal entry into one paragraph
+        id: journalrewrite
+        if: steps.journalllm.outcome == 'success'
+        continue-on-error: true
+        timeout-minutes: 15
+        env:
+          # Provenance only: the local server ignores the id, the
+          # artifact records it.
+          JOURNAL_REWRITE_MODEL: qwen2.5-7b-instruct-q4km-local
+        run: |
+          rc=0
+          node scripts/rewrite-journal-entry.mjs || rc=$?
+          pkill llama-server || true
+          exit "$rc"
+
       - name: Commit and push if anything changed
         id: commit
         run: |
-          if git diff --quiet src/logic/difficulty.js src/logic/handicaps.json src/logic/experimentTarget.json src/logic/modelHistory.json src/logic/challengePool.js scripts/data/climb-library; then
-            echo "No model, handicap, experiment-target, history, ladder-price, or library changes — nothing to commit."
+          if git diff --quiet src/logic/difficulty.js src/logic/handicaps.json src/logic/experimentTarget.json src/logic/modelHistory.json src/logic/journalRewrite.json src/logic/challengePool.js scripts/data/climb-library; then
+            echo "No model, handicap, experiment-target, history, journal-rewrite, ladder-price, or library changes — nothing to commit."
             echo "pushed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git config user.name  "Christopher Wells"
           git config user.email "c.wells@bowdoin.edu"
-          git add src/logic/difficulty.js src/logic/handicaps.json src/logic/experimentTarget.json src/logic/modelHistory.json src/logic/challengePool.js scripts/data/climb-library
-          git commit -m "refit PAR_MODEL, handicaps, experiment target, and ladder prices — $(date -u +%Y-%m-%d)"
+          git add src/logic/difficulty.js src/logic/handicaps.json src/logic/experimentTarget.json src/logic/modelHistory.json src/logic/journalRewrite.json src/logic/challengePool.js scripts/data/climb-library
+          git commit -m "refit PAR_MODEL, handicaps, experiment target, ladder prices, and the journal rewrite — $(date -u +%Y-%m-%d)"
           # A plain push LOSES THE WHOLE NIGHT'S FIT if a human pushed to main
           # while Stan was sampling. That is not hypothetical: the 2026-08-03
           # refit fit cleanly (4 files, 315 insertions) and then died on
@@ -228,6 +273,21 @@ jobs:
           echo "will name it on the next PR."
           echo "Remedy: node scripts/reprice-climb-library.mjs"
           echo "        node scripts/topup-climb-library.mjs --fill"
+          exit 1
+
+      # A quality miss (draft failed validation, entry too short) exits 0
+      # inside the script — the beat assembly standing in IS the designed
+      # fallback. This tail fires only on MACHINERY breakage: the server
+      # never got healthy, the inputs were unreadable, or the script
+      # crashed. The journal still renders its beats meanwhile.
+      - name: Fail the run if the journal-rewrite machinery broke
+        if: steps.journalllm.outcome == 'failure' || steps.journalrewrite.outcome == 'failure'
+        run: |
+          echo "::error::The journal rewrite step broke (machinery, not draft quality)."
+          echo "The model, handicaps, ladder and library committed normally; the journal"
+          echo "falls back to the beat assembly, so nothing is blocked or dishonest."
+          echo "Remedy: dispatch verify-journal-llm.yml to reproduce the LLM path alone,"
+          echo "        and run node scripts/rewrite-journal-entry.mjs --dry-run locally."
           exit 1
 
       - name: Notify on failure

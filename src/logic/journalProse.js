@@ -50,6 +50,7 @@
 
 import { featureName, classifySdDelta } from './gregVoice.js';
 import { hashString } from './seededRandom.js';
+import { QUOTE_FRAME } from './proseRails.js';
 import {
   SCALE_EPOCHS, dedupeHistory, deriveStudyForFeature, buildJournal,
   estimateSummary, estimateLine, estimateUnit, formatShortDate, fmtPct, parameterTable,
@@ -927,8 +928,10 @@ export function composeEntry(study, ctx = {}, session = newSession()) {
       // arcSpoken = the entry QUOTES the written hunch, not merely that
       // an arc beat rendered: many 'out' arc lines carry no hypothesis
       // content, and dropping the epigraph for those would leave the card
-      // with no premise at all.
-      if (beat === 'arc' && /(I wrote|my note|I predicted|I suspected|The Should)/i.test(s)) {
+      // with no premise at all. QUOTE_FRAME is the shared rails module's
+      // one copy of the quote-frame test (the player-claim rail and the
+      // rewrite's arcSpoken re-detection read the same regex).
+      if (beat === 'arc' && QUOTE_FRAME.test(s)) {
         arcSpoken = true;
       }
     }

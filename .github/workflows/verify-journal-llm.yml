@@ -1,0 +1,61 @@
+name: Verify journal-rewrite LLM
+
+# Proves the journal rewrite's LOCAL MODEL path on a real runner without
+# touching a nightly: the pinned llama.cpp build starts, the pinned
+# model loads, and the actual rewrite script gets a completion through
+# the actual validator. Runs on demand, and automatically on any push or
+# PR that changes the LLM setup (the composite action, the script, the
+# validator, or this file), so a model swap is proven before the refit
+# meets it at 23:17 UTC. The pull_request trigger is what makes the
+# proof PRE-merge: a brand-new or edited workflow on a topic branch
+# never registers for push events until it reaches the default branch,
+# but pull_request runs it from the PR head. Writes nothing anywhere:
+# the artifact lands in the runner's /tmp and the log is the
+# deliverable.
+
+on:
+  workflow_dispatch: {}
+  push:
+    paths:
+      - '.github/actions/journal-llm/**'
+      - '.github/workflows/verify-journal-llm.yml'
+      - 'scripts/rewrite-journal-entry.mjs'
+      - 'src/logic/journalRewrite.js'
+      - 'src/logic/proseRails.js'
+  pull_request:
+    paths:
+      - '.github/actions/journal-llm/**'
+      - '.github/workflows/verify-journal-llm.yml'
+      - 'scripts/rewrite-journal-entry.mjs'
+      - 'src/logic/journalRewrite.js'
+      - 'src/logic/proseRails.js'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-journal-llm-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: ./.github/actions/journal-llm
+      - name: Run the rewrite script against the local server
+        env:
+          JOURNAL_REWRITE_MODEL: qwen2.5-7b-instruct-q4km-local
+        run: |
+          node scripts/rewrite-journal-entry.mjs --out /tmp/journal-rewrite-verify.json
+          if [ -f /tmp/journal-rewrite-verify.json ]; then
+            echo "--- accepted artifact ---"
+            cat /tmp/journal-rewrite-verify.json
+          else
+            echo "No artifact tonight (short entry or rejected drafts) — the run above says which; the machinery itself held."
+          fi
+          pkill llama-server || true

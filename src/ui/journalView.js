@@ -14,6 +14,7 @@
 
 import { $ } from './domHelpers.js';
 import { planJournalScreen } from '../logic/journalProse.js';
+import { applyJournalRewrite, REWRITE_ARTIFACT_PATH } from '../logic/journalRewrite.js';
 import { loadExperimentTarget, getExperimentMeta } from '../logic/experimentDesign.js';
 import { buildStudyCard, chipFor, el, metaSummaryLine } from './journalCard.js';
 import { showToast } from './toastManager.js';
@@ -75,9 +76,13 @@ export async function renderJournalModal() {
   body.appendChild(el('p', 'journal-loading', 'Reading Greg’s notes…'));
 
   let history = null;
+  let rewrite = null;
   try {
-    [history] = await Promise.all([
+    // The rewrite artifact is optional polish: its fetch failure must
+    // never take the notes down with it, hence the per-fetch catch.
+    [history, rewrite] = await Promise.all([
       fetch('./src/logic/modelHistory.json').then(r => (r.ok ? r.json() : null)),
+      fetch(`./${REWRITE_ARTIFACT_PATH}`).then(r => (r.ok ? r.json() : null)).catch(() => null),
       loadExperimentTarget(),
     ]);
   } catch { /* handled below, the empty state renders */ }
@@ -104,7 +109,14 @@ export async function renderJournalModal() {
   // today's board includes it: boards generate days ahead under earlier
   // targets (the 2026-06-10 field-note drift class).
   if (screen.active) {
-    body.appendChild(buildStudyCard(screen.active.study, screen.active.entry, {
+    // The nightly AI rewrite replaces the beat-assembled entry ONLY
+    // when the shipped artifact hashes to the exact entry this client
+    // just composed and re-clears the honesty rails; otherwise the
+    // beats render byte for byte (journalRewrite.js owns the guards).
+    const activeEntry = applyJournalRewrite(
+      screen.active.entry, rewrite, screen.active.study.feature,
+    );
+    body.appendChild(buildStudyCard(screen.active.study, activeEntry, {
       className: 'journal-open',
       title: `Now studying: ${screen.active.study.label}`,
       log: screen.active.log,
