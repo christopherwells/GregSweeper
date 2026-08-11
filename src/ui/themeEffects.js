@@ -189,7 +189,7 @@ function injectStyles() {
     }
     .fx-particle { z-index: 2; }
     .fx-ambient { z-index: 0; }
-    /* On the title screen the sky sits BEHIND the cards (lifted to z-index 1 in
+    /* On the title screen the sky is BEHIND the cards (lifted to z-index 1 in
        the theme CSS), not between board cells. */
     .theme-fx-titlescene { z-index: 0; }
 
@@ -243,7 +243,7 @@ function injectStyles() {
     }
 
     /* Caustic light-net: the layer drifts diagonally while its cell
-       pattern breathes — two of these at different scales/directions
+       pattern breathes, two of these at different scales/directions
        interfere into the wiggly light-on-sand look. */
     @keyframes fxCaustic {
       0%   { background-position: 0px 0px; transform: rotate(var(--fx-rot, 0deg)) scale(1); }

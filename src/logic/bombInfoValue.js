@@ -104,7 +104,7 @@ export function computeBombInfoValue(board, rows, cols, safeRow, safeCol, strike
   // visible instead of quietly pricing at 0.
   for (const term of POOLED_TERMS) {
     if (typeof PAR_MODEL[term.coef] !== 'number') {
-      throw new Error(`PAR_MODEL is missing coefficient "${term.coef}" — bomb pricing is de-wired`);
+      throw new Error(`PAR_MODEL is missing coefficient "${term.coef}", bomb pricing is de-wired`);
     }
   }
 

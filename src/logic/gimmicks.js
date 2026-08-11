@@ -63,7 +63,7 @@ const GIMMICK_DEFS = {
     intro: 11, name: 'Walls', icon: '🧱',
     desc: 'Walls sit between two cells and stop each one counting the other.',
     longDesc: 'A wall is a thick line along the boundary between two cells. Numbers on either side of it never count mines across it, so treat a wall like the edge of the board: it splits the board into sections you work through separately.',
-    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed" style="border-right:3px solid #8B7355">1</div><div class="ge-cell revealed" style="border-left:3px solid #8B7355">0</div><div class="ge-cell revealed">0</div><div class="ge-cell revealed" style="border-right:3px solid #8B7355">1</div><div class="ge-cell revealed" style="border-left:3px solid #8B7355">0</div><div class="ge-cell revealed">0</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">0</div></div><div class="ge-caption">Thick borders are walls. Numbers ignore neighbors across them</div>',
+    exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed" style="border-right:3px solid #8B7355">1</div><div class="ge-cell revealed" style="border-left:3px solid #8B7355">0</div><div class="ge-cell revealed">0</div><div class="ge-cell revealed" style="border-right:3px solid #8B7355">1</div><div class="ge-cell revealed" style="border-left:3px solid #8B7355">0</div><div class="ge-cell revealed">0</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">0</div></div><div class="ge-caption">Thick borders are walls. Numbers never count across them</div>',
   },
   liar: {
     intro: 21, name: 'Liar Cells', icon: '🤥',
@@ -104,19 +104,19 @@ const GIMMICK_DEFS = {
   pressurePlate: {
     intro: 71, name: 'Pressure Plates', icon: '🔴',
     desc: 'Some cells start a countdown when revealed. Reveal all their safe neighbors before time runs out!',
-    longDesc: 'Pressure plate cells show their number like normal, but a countdown timer starts when revealed. You must reveal every non-mine neighbor before time runs out or the plate detonates. Solve the area around the plate fast!',
+    longDesc: 'Pressure plate cells show their number as normal, but a countdown timer starts when revealed. You must reveal every non-mine neighbor before time runs out or the plate detonates. Solve the area around the plate fast!',
     exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-pressure" style="box-shadow:inset 0 0 6px rgba(255,50,50,0.5)">2<img class="ge-piece" src="assets/sprites/mod-pressure.svg" alt=""></div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">0</div></div><div class="ge-caption">Reveal all safe cells around the plate before the timer runs out!</div>',
   },
   sonar: {
     intro: 81, name: 'Sonar', icon: '📡',
     desc: 'Sonar cells count every mine within two steps of them, not just their immediate neighbors.',
-    longDesc: 'A sonar cell reaches two steps out in every direction, so it covers far more ground than an ordinary number and its count runs higher. On a Classic board that is the 5x5 block around it, and on the other board shapes it is every cell you can get to in two moves. Tap a revealed sonar cell to light up exactly which cells it counts.',
+    longDesc: 'A sonar cell reaches two steps out in every direction, so it covers far more ground than an ordinary number and its count runs higher. On a Classic board that is the 5x5 block around it, and on the other shapes it is every cell you can get to in two moves. Tap a revealed sonar cell to light up exactly which cells it counts.',
     exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-sonar" style="color:#26c6da;font-weight:900"><img class="ge-piece" src="assets/sprites/mod-sonar.svg" alt="">5</div><div class="ge-cell revealed">2</div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">0</div><div class="ge-cell unrevealed"></div></div><div class="ge-caption">On a Classic board that is the 5\u00d75 block: this "5" counts 5 mines inside it</div>',
   },
   compass: {
     intro: 91, name: 'Compass', icon: '🧭',
     desc: 'Cells with an arrow count every mine in a straight line the way they point, out to the edge of the board.',
-    longDesc: 'A compass cell shows an arrow and a number. The number counts every mine along the straight line the arrow points down, out to the edge of the board, and nothing off that line. On a Classic board it has four directions, along the rows and columns. On the other board shapes it has six or eight, some of them running at an angle. Tap a revealed compass cell to light up the line it counts.',
+    longDesc: 'A compass cell shows an arrow and a number. The number counts every mine along the straight line the arrow points down, out to the edge of the board, and nothing off that line. On a Classic board it has four directions, along the rows and columns. On the other shapes it has six or eight, some of them running at an angle. Tap a revealed compass cell to light up the line it counts.',
     exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(5,32px)"><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-compass" style="color:#ffa726;font-weight:900">3\u2190</div><div class="ge-cell revealed">2</div><div class="ge-cell unrevealed"></div></div><div class="ge-caption">"3\u2190" = 3 mines to the left in this row</div>',
   },
   // Sprite-only modifier: no `icon` emoji field, by design. Every icon
@@ -125,7 +125,7 @@ const GIMMICK_DEFS = {
   worm: {
     intro: 101, name: 'Worm Tiles',
     desc: 'Some cells hide a worm egg. Revealing one hatches a worm that crawls over your numbers.',
-    longDesc: 'A few safe cells hold a buried worm egg. Revealing one hatches a worm that crawls across your revealed cells, one step at a time onto a cell it shares an edge with, hiding the numbers it sits on as it goes. It prefers open ground and shies away from big numbers. It can\'t hurt you and it never changes the board, so remember what you read or wait for it to move along.',
+    longDesc: 'A few safe cells hold a buried worm egg. Revealing one hatches a worm that crawls across your revealed cells, one step at a time onto a cell it shares an edge with, covering the numbers it sits on as it goes. It prefers open ground and shies away from big numbers. It can\'t hurt you and it never changes the board, so remember what you read or wait for it to move along.',
     exampleHtml: '<div class="gimmick-example-grid" style="grid-template-columns:repeat(3,32px)"><div class="ge-cell revealed">1</div><div class="ge-cell revealed ge-worm-covered">2<span class="ge-worm-seg"></span></div><div class="ge-cell revealed ge-worm-covered">1<span class="ge-worm-seg ge-worm-head"></span></div><div class="ge-cell revealed">1</div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div><div class="ge-cell revealed">0</div><div class="ge-cell revealed">1</div><div class="ge-cell unrevealed"></div></div><div class="ge-caption">The worm hides numbers as it crawls. They come back when it moves on</div>',
   },
 };

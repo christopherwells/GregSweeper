@@ -83,7 +83,7 @@ export const LESSONS = {
     id: 'subset12',
     name: 'The 1-2 pattern',
     blurb: 'A 1 beside a 2.',
-    rule: 'When two numbers look at the same squares, the smaller one\'s mines fit inside the squares they share. The square only the bigger number sees holds its extra mine, and the square only the smaller number sees is safe.',
+    rule: 'When two numbers look at the same squares, the smaller one\'s mines fit inside the squares they share. The extra mine sits in the square only the bigger number sees, and the square only the smaller number sees is safe.',
     naming: 'That was a 1-2: the 2 needs one mine more than the 1, so it sits in the square only the 2 can see, and the 1\'s far square is safe.',
     rows: 6, cols: 6, mines: 6,
     requiresPattern: '1-2',

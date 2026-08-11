@@ -178,7 +178,7 @@ async function _deleteCurrentAnonymousAuthRecord() {
  * Returns `{ status, providerLabel, email, message }` where status is:
  *   'linked'    - anonymous account upgraded, uid unchanged
  *   'switched'  - credential already existed, this device now uses that uid
- *   'cancelled', user closed the popup or declined the conflict prompt
+ *   'canceled'  - user closed the popup or declined the conflict prompt
  *   'error'     - anything else (see message)
  */
 export async function linkWithGoogle({ onCredentialConflict } = {}) {
@@ -194,8 +194,8 @@ export async function linkWithGoogle({ onCredentialConflict } = {}) {
     return {
       status: 'error',
       message: isTestEnvironment()
-        ? 'Test builds never create accounts — sign in on the production site instead'
-        : 'No active user — anonymous auth has not resolved yet',
+        ? 'Test builds never create accounts. Sign in on the production site instead'
+        : 'No active user. Anonymous auth has not resolved yet',
     };
   }
 
@@ -211,14 +211,14 @@ export async function linkWithGoogle({ onCredentialConflict } = {}) {
     };
   } catch (err) {
     if (err && (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request')) {
-      return { status: 'cancelled' };
+      return { status: 'canceled' };
     }
     if (err && err.code === 'auth/credential-already-in-use') {
       const cred = err.credential;
       const proceed = onCredentialConflict
         ? await onCredentialConflict({ providerLabel: 'Google', email: err.email || null })
         : true;
-      if (!proceed) return { status: 'cancelled' };
+      if (!proceed) return { status: 'canceled' };
 
       await _clearCurrentDevicePushSubscription();
       await _deleteCurrentAnonymousAuthRecord();
@@ -288,8 +288,8 @@ export async function sendEmailLink(email) {
  *   'linked'           - anonymous account upgraded
  *   'switched'         - switched to existing account
  *   'needs-email'      - couldn't get the email; nothing happened
- *   'already-signed-in', a non-anonymous session was already active
- *   'cancelled'        - user declined the conflict prompt
+ *   'already-signed-in' - a non-anonymous session was already active
+ *   'canceled'         - user declined the conflict prompt
  *   'error'            - see message
  */
 export async function tryCompleteEmailLink({ onCredentialConflict, promptForEmail } = {}) {
@@ -340,7 +340,7 @@ export async function tryCompleteEmailLink({ onCredentialConflict, promptForEmai
       if (!proceed) {
         try { localStorage.removeItem(LS_PENDING_EMAIL); } catch {}
         _stripEmailLinkQuery();
-        return { status: 'cancelled' };
+        return { status: 'canceled' };
       }
       await _clearCurrentDevicePushSubscription();
       await _deleteCurrentAnonymousAuthRecord();

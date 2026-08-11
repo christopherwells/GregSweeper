@@ -161,7 +161,7 @@ export function unstorableShapeReason(payload) {
   // every client a board missing a field it expects.
   const scanNonFinite = (v, path) => {
     if (typeof v === 'number' && !Number.isFinite(v)) {
-      return `${path} is ${String(v)} — Firebase cannot store a non-finite number`;
+      return `${path} is ${String(v)}, and Firebase cannot store a non-finite number`;
     }
     if (Array.isArray(v)) {
       for (let i = 0; i < v.length; i++) {
@@ -185,7 +185,7 @@ export function unstorableShapeReason(payload) {
     if (Array.isArray(v)) {
       for (let i = 0; i < v.length; i++) {
         if (_droppedByFirebase(v[i])) {
-          return `${path}[${i}] is empty/null — Firebase drops it and returns the array as a `
+          return `${path}[${i}] is empty/null, and Firebase drops it and returns the array as a `
             + 'sparse object, so this payload cannot round-trip';
         }
         const r = walk(v[i], `${path}[${i}]`);
@@ -313,6 +313,6 @@ export async function assessCanonicalTrust(raw, key, kind, etOfMs, publicKeys = 
  */
 export function requireSigningKey() {
   const k = ((typeof process !== 'undefined' && process.env && process.env.CANONICAL_SIGNING_KEY) || '').trim();
-  if (!k) throw new Error('CANONICAL_SIGNING_KEY not set — refusing to write an unsigned canonical');
+  if (!k) throw new Error('CANONICAL_SIGNING_KEY not set, refusing to write an unsigned canonical');
   return k;
 }

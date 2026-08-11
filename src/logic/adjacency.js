@@ -376,7 +376,7 @@ function validateCellNeighbors(rows, cols, neighbors) {
   for (let i = 0; i < total; i++) {
     for (const n of copy[i]) {
       if (!copy[n].includes(i)) {
-        throw new Error(`cellNeighbors: adjacency is not symmetric — ${i} lists ${n}, but ${n} does not list ${i}`);
+        throw new Error(`cellNeighbors: adjacency is not symmetric: ${i} lists ${n}, but ${n} does not list ${i}`);
       }
     }
   }

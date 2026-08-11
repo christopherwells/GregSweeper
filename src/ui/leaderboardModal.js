@@ -353,7 +353,7 @@ function _startCodeCountdown(createdAtLocal) {
     if (ms <= 0) {
       clearInterval(_friendsCodeTimer);
       _friendsCodeTimer = null;
-      el.textContent = 'Code expired — get a new one.';
+      el.textContent = 'Code expired. Get a new one.';
       $('#friends-my-code').textContent = '······';
       $('#friends-new-code').textContent = 'Get code';
       return;
@@ -383,7 +383,7 @@ async function _renderFriendsView() {
   if (list === null) {
     listEl.innerHTML = '<p class="friends-empty">Friends need a connection.</p>';
   } else if (list.length === 0) {
-    listEl.innerHTML = '<p class="friends-empty">No friends yet — share your code or paste theirs.</p>';
+    listEl.innerHTML = '<p class="friends-empty">No friends yet. Share your code or paste theirs.</p>';
   } else {
     // Show each friend's LIVE name (playerNames join by uid), not the copy
     // frozen into the friend entry when they were added, so a friend who
@@ -446,7 +446,7 @@ $('#friends-new-code')?.addEventListener('click', async () => {
     _startCodeCountdown(entry.createdAtLocal);
   } catch (err) {
     _friendsStatus(err && err.message === 'offline'
-      ? 'Codes need a connection.' : 'Could not get a code — try again.', true);
+      ? 'Codes need a connection.' : 'Could not get a code. Try again.', true);
   }
 });
 $('#friends-add-btn')?.addEventListener('click', async () => {
@@ -461,11 +461,11 @@ $('#friends-add-btn')?.addEventListener('click', async () => {
   } catch (err) {
     const msgs = {
       invalid: 'That does not look like a code (6 letters and numbers).',
-      expired: 'Code expired or not found — ask for a fresh one.',
+      expired: 'Code expired or not found. Ask for a fresh one.',
       self: 'That is your own code.',
       offline: 'Adding friends needs a connection.',
     };
-    _friendsStatus(msgs[err && err.reason] || 'Could not add — try again.', true);
+    _friendsStatus(msgs[err && err.reason] || 'Could not add. Try again.', true);
   }
 });
 // Remove buttons are created per-render: delegate. First tap arms the
@@ -485,6 +485,6 @@ $('#friends-list')?.addEventListener('click', async (e) => {
     _friendsStatus('Removed.');
     await _renderFriendsView();
   } catch {
-    _friendsStatus('Could not remove — try again.', true);
+    _friendsStatus('Could not remove. Try again.', true);
   }
 });

@@ -204,7 +204,7 @@ function buildScene(gimmick, T, hub, dims) {
           { cell: hub, text: '2<span class="ge-worm-seg ge-worm-head"></span>', kind: 'worm' },
           { cell: tail, text: '1<span class="ge-worm-seg"></span>', kind: 'worm' },
         ],
-        caption: 'The worm hides the numbers it sits on. They come back when it moves along.',
+        caption: 'The worm covers the numbers it sits on. They come back when it moves along.',
       };
     }
     case 'liar':

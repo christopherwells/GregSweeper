@@ -118,7 +118,7 @@ function renderHud() {
     line.textContent = `Par Lab · battery complete · ${prog.total}/${prog.total} boards${syncNote}`;
     status.textContent = synced === rows.length
       ? 'Every row is on the server. Thank you, Greg thanks you too.'
-      : 'Some rows are still queued — they upload next visit, or use Copy results.';
+      : 'Some rows are still queued. They upload next visit, or use Copy results.';
     nextBtn.classList.add('hidden');
     skipBtn.classList.add('hidden');
     return;
@@ -129,7 +129,7 @@ function renderHud() {
 
   if (!lab.recorded) {
     status.textContent = lab.attempt > 0
-      ? `Fresh layout, attempt ${lab.attempt + 1} — the lost board is logged; this one starts clean.`
+      ? `Fresh layout, attempt ${lab.attempt + 1}. The lost board is logged; this one starts clean.`
       : 'Play it through. The result records itself.';
     nextBtn.classList.add('hidden');
     skipBtn.classList.remove('hidden');
@@ -179,12 +179,12 @@ async function _skip() {
 
 function _copy() {
   const json = exportParLab(loadRows());
-  const done = () => showToast('Par Lab results copied — paste them into the analysis.', 3000);
+  const done = () => showToast('Par Lab results copied. Paste them into the analysis.', 3000);
   if (navigator.clipboard?.writeText) {
-    navigator.clipboard.writeText(json).then(done, () => showToast('Copy failed — clipboard blocked.', 3000));
+    navigator.clipboard.writeText(json).then(done, () => showToast('Copy failed, clipboard blocked.', 3000));
   } else {
     console.log('parlab export:', json);
-    showToast('Clipboard unavailable — results printed to the console.', 4000);
+    showToast('Clipboard unavailable, results printed to the console.', 4000);
   }
 }
 
@@ -198,12 +198,12 @@ function _copy() {
 export function performParLabRedo(idOrSeq) {
   const result = redoParLabBoard(loadRows(), idOrSeq);
   if (!result) {
-    showToast(`Nothing to redo for board ${idOrSeq} — no resolved run found.`, 4000);
+    showToast(`Nothing to redo for board ${idOrSeq}, no resolved run found.`, 4000);
     return false;
   }
   saveRows(result.rows);
   flushUnsynced();
-  showToast(`Board ${result.spec.seq} (${result.spec.id}) voided — it will re-issue with a fresh layout.`, 5000);
+  showToast(`Board ${result.spec.seq} (${result.spec.id}) voided. It will re-issue with a fresh layout.`, 5000);
   return true;
 }
 

@@ -115,7 +115,7 @@ export async function initFirebase() {
   try {
     // Check if Firebase SDK is available (loaded via CDN)
     if (typeof firebase === 'undefined' || !firebase.initializeApp) {
-      console.log('Firebase SDK not loaded — leaderboard will be local-only');
+      console.log('Firebase SDK not loaded, leaderboard will be local-only');
       return;
     }
 
@@ -157,7 +157,7 @@ export async function initFirebase() {
     flushPendingSubmissions().catch(err => reportCaughtError('flush-pending-daily', err));
     flushPendingWeeklySubmissions().catch(err => reportCaughtError('flush-pending-weekly', err));
   } catch (err) {
-    console.warn('Firebase init failed — using local leaderboard:', err.message);
+    console.warn('Firebase init failed, using local leaderboard:', err.message);
     if (err.message?.includes('permission')) {
       console.warn('Hint: Check Firebase Realtime Database Security Rules in the Firebase Console.');
       console.warn('For testing, set rules to: { ".read": true, ".write": true }');
@@ -230,7 +230,7 @@ async function _doSubmitOnlineScore(dateString, name, time, bombHits, extras) {
   if (!isFirebaseOnline()) return false;
 
   if (typeof time !== 'number' || time < MIN_VALID_TIME || time > MAX_VALID_TIME) {
-    console.warn(`Score rejected — time ${time}s is outside valid range (${MIN_VALID_TIME}–${MAX_VALID_TIME}s)`);
+    console.warn(`Score rejected: time ${time}s is outside valid range (${MIN_VALID_TIME}-${MAX_VALID_TIME}s)`);
     return false;
   }
 
@@ -375,7 +375,7 @@ export async function submitOnlineScore(dateString, name, time, bombHits = 0, ex
   // instead of double-rowing.
   const now = Date.now();
   if (!_submitCooldownOk('daily', now)) {
-    console.warn('Score submission rate-limited — queued for retry');
+    console.warn('Score submission rate-limited, queued for retry');
     _queueFailedSubmission(dateString, name, time, bombHits, extras);
     return false;
   }

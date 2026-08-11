@@ -65,7 +65,7 @@ export function safeSet(key, value) {
     // QuotaExceededError or SecurityError, switch to fallback
     _storage = 'memory';
     _fallbackActive = true;
-    console.warn(`localStorage write failed for "${key}" — using in-memory fallback`);
+    console.warn(`localStorage write failed for "${key}", using in-memory fallback`);
   }
   _memoryStore.set(key, String(value));
 }
