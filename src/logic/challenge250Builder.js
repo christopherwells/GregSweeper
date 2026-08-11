@@ -160,7 +160,15 @@ function buildRectSpec(spec, seed) {
 
 function buildTilingSpec(spec, seed) {
   const gimmicks = spec.gimmicks || [];
-  for (let salt = 0; salt < TILING_STRICT_RETRIES; salt++) {
+  // Optional per-spec generation bounds, for OFFLINE callers only (the Climb
+  // library's targeted pass). An infeasible spec is not an error, it is a
+  // certain failure that costs 600 attempts times 3 salts at full solver
+  // price before returning null, which on a large rhombille patch is hours
+  // of wall clock for one candidate. The play path and the pool never set
+  // these, so their draws are byte-identical to before.
+  const salts = spec.strictRetries || TILING_STRICT_RETRIES;
+  const attempts = spec.genAttempts || undefined;
+  for (let salt = 0; salt < salts; salt++) {
     const res = generateTilingBoard({
       type: spec.shape, M: spec.M, N: spec.N, mines: spec.mines,
       seed: salt === 0 ? seed : `${seed}:s${salt}`,
@@ -168,6 +176,7 @@ function buildTilingSpec(spec, seed) {
       gimmickLevel: spec.gimmickLevel || 1,
       loadBearingBudget: Infinity,
       forceConstructive: spec.constructive === true,
+      ...(attempts ? { maxAttempts: attempts } : {}),
     });
     if (!res) continue;
     // Strict load-bearing on the OUTCOME: with an infinite budget the only

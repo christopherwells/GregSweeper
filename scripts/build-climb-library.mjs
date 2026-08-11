@@ -138,6 +138,18 @@ const HEAVY_SETS = [
 ];
 const REP_TRIES_PER_SHAPE = 36;
 
+// Where the targeted pass may NOT push density, and the bounds that keep an
+// infeasible corner cheap. Rhombille no-guess boards effectively stop
+// existing past ~0.30 (0/12 by sampling at 0.211; the production range is
+// 0.23-0.28), so asking for 0.32-0.36 there is not hard, it is impossible,
+// and before these bounds one such candidate cost 600 attempts times 3
+// salts of full Pass-C certification on a 135-cell patch. The pass now runs
+// 80 attempts, one salt, and gives up on a shape after a minute of wall
+// clock, logging the bail rather than absorbing it.
+const REP_DENSITY_CAP = { rhombille: 0.28 };
+const REP_GEN_ATTEMPTS = 80;
+const REP_SHAPE_BUDGET_MS = 60000;
+
 // ── The two floors a board must clear ──────────────────────────────────
 const MIN_WORK = 8;   // decisions. Offline the specs are big, so this is easy.
 
@@ -268,9 +280,20 @@ if ((process.argv[1] || '').endsWith('build-climb-library.mjs')) {
     + `${which === fastFile ? ' (FAST map: rhombille and deltoidal missing)' : ''}`);
   if (!existsSync(OUT_DIR)) mkdirSync(OUT_DIR, { recursive: true });
 
+  const force = args.includes('--force');
   for (let level = range.from; level <= range.to; level++) {
     const floorPar = parFloor(level);
     if (floorPar == null) { console.log(`L${level}: authored opener, skipped`); continue; }
+    // RESUME BY DEFAULT: the library is append-only and the seeds are
+    // deterministic, so an existing file is the same file a rebuild would
+    // write. Skipping it is what makes recovery from an interrupted run
+    // cost nothing. --force regenerates (a refit that moves the par model
+    // is the reason to).
+    const outFile = new URL(`level-${String(level).padStart(3, '0')}.json`, OUT_DIR);
+    if (!dry && !force && existsSync(outFile)) {
+      console.log(`L${String(level).padStart(3)} exists, resumed past`);
+      continue;
+    }
     const topPar = parWindowTop(level);
     const want = minBoardsFor(level);
 
@@ -313,6 +336,11 @@ if ((process.argv[1] || '').endsWith('build-climb-library.mjs')) {
     const pool = priced
       .filter((e) => (debutShape ? e.shape === debutShape : shapesIn.has(e.shape)))
       .filter((e) => e.par >= floorPar * 0.5 && e.par <= topPar * 1.1)
+      // Plain generation at seconds per draw means gimmicked builds at
+      // multiples of that; one such spec in the rotation turns a level into
+      // minutes. The 120-135 cell rhombille patches are the whole class.
+      // Their SMALLER siblings stay in, so the shape itself does not thin.
+      .filter((e) => e.genMs == null || e.genMs <= 2500)
       .map((e) => ({
         shape: e.shape, rows: e.rows, cols: e.cols, M: e.M, N: e.N,
         cells: e.cells, mines: e.mines, gimmicks: [], constructive: true,
@@ -352,21 +380,33 @@ if ((process.argv[1] || '').endsWith('build-climb-library.mjs')) {
       const missing = [...shapesIn].filter((sh) =>
         !kept.some((c) => c.spec.shape === sh && c.par >= floorPar));
       for (const sh of missing) {
-        const tops = allPatches.filter((q) => q.shape === sh)
+        const nearFloor = priced
+          .filter((e) => e.shape === sh && e.par >= floorPar * 0.45 && e.par <= floorPar * 1.05)
+          .filter((e) => e.genMs == null || e.genMs <= 2500)
+          .sort((a, b) => Math.abs(a.par - floorPar * 0.8) - Math.abs(b.par - floorPar * 0.8))
+          .slice(0, 3)
+          .map((e) => ({ shape: e.shape, rows: e.rows, cols: e.cols, M: e.M, N: e.N, cells: e.cells }));
+        const tops = nearFloor.length ? nearFloor : allPatches.filter((q) => q.shape === sh)
           .sort((a, b) => b.cells - a.cells).slice(0, 3);
         const heavy = HEAVY_SETS.map((g) => g.filter((m) => modsIn.has(m)))
           .filter((g) => g.length >= 2);
         let tries = 0;
+        const shapeT0 = Date.now();
+        let bailed = false;
+        const densCap = REP_DENSITY_CAP[sh] ?? 0.36;
         for (const q of tops) {
           for (const dens of [0.28, 0.32, 0.36]) {
+            if (dens > densCap) continue;
             for (const g of heavy) {
               if (tries >= REP_TRIES_PER_SHAPE) break;
+              if (Date.now() - shapeT0 > REP_SHAPE_BUDGET_MS) { bailed = true; break; }
               const mines = Math.round(q.cells * dens);
               if (mines < 4 || mines > q.cells * 0.42) continue;
               tries++;
               const c = candidate(
                 { shape: q.shape, rows: q.rows, cols: q.cols, M: q.M, N: q.N,
-                  cells: q.cells, mines, gimmicks: g, gimmickLevel: 110, constructive: true },
+                  cells: q.cells, mines, gimmicks: g, gimmickLevel: 110, constructive: true,
+                  genAttempts: REP_GEN_ATTEMPTS, strictRetries: 1 },
                 `climb:L${level}:rep:${sh}:${dens}:${g.join('.')}`);
               if (!c) continue;
               const n = seenFace.get(c.face) || 0;
@@ -374,7 +414,12 @@ if ((process.argv[1] || '').endsWith('build-climb-library.mjs')) {
               seenFace.set(c.face, n + 1);
               kept.push(c);
             }
+            if (bailed) break;
           }
+          if (bailed) break;
+        }
+        if (bailed) {
+          console.log(`  L${level}: rep pass for ${sh} bailed at ${REP_SHAPE_BUDGET_MS}ms`);
         }
       }
     }
@@ -446,8 +491,7 @@ if ((process.argv[1] || '').endsWith('build-climb-library.mjs')) {
 
     if (!dry && chosen.length) {
       const block = Math.floor((level - 1) / CHALLENGE_BLOCK_SIZE) + 1;
-      const file = new URL(`level-${String(level).padStart(3, '0')}.json`, OUT_DIR);
-      writeFileSync(file, JSON.stringify({
+      writeFileSync(outFile, JSON.stringify({
         level, block, parFloor: Math.round(floorPar), parWindowTop: Math.round(topPar),
         intro: debutShape || debutMod || null,
         parModel: modelFingerprint(),
