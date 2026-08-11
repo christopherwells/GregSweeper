@@ -1,8 +1,8 @@
 // ── Greg's Gym (player-facing name; module keeps its original
-// "lexicon" filename) — a multi-lesson curriculum behind the
+// "lexicon" filename), a multi-lesson curriculum behind the
 // deducibility click-gate. A lesson board where clicking a square the
 // clues can't yet settle does nothing except point at the clues that
-// hold the next step. The player cannot luck through — completing a
+// hold the next step. The player cannot luck through, completing a
 // drill means performing the technique, and the pattern is named only
 // when they perform it. Flags are gated the same way: you can only flag a
 // square the clues can settle as a MINE, so a flag is a worked deduction
@@ -11,7 +11,7 @@
 // The overlay holds three views: a lesson-select screen, the drill, and
 // Greg's Field Notebook (the technique reference + your gym counts).
 // Pattern naming comes from the shared patternNames.classifyPattern, the
-// SAME classifier the receipts and Lens use — the gym can never name a
+// SAME classifier the receipts and Lens use, the gym can never name a
 // shape the rest of the game cannot. Dynamically imported from the
 // title-screen card; never touches game state, scores, or the par
 // pipeline.
@@ -34,12 +34,12 @@ let _coachTimer = null;
 let _lpTimer = null;   // long-press flag timer (touch)
 let _lpFired = false;  // swallow the click that follows a long-press
 let _flagMode = false; // tap-to-flag mode (the reliable touch path; long-press still works)
-// Per-board coaching state: the first cheer of a board carries the
+// Per-board coaching state: the first cheer of a board includes the
 // recognition tip; later ones get short rotating affirmations.
 let _firstTipPending = true;
 let _flagTipShown = false;
 let _chordTipShown = false;
-// Which technique names the player has performed THIS board — the
+// Which technique names the player has performed THIS board, the
 // "again" affirmations only fire on a repeat within the same board.
 let _namesUsed = new Set();
 
@@ -101,7 +101,7 @@ const PATTERN_SHAPE_NAMES = new Set(['1-1', '1-2', '1-2-1', '1-2-2-1', '1-3-1', 
 
 // Notebook sketches: a tiny board picture per technique. Chars: digit = a
 // revealed number, M = mine, S = a square the pattern proves safe, . = a
-// plain hidden square. The rule text carries the precise reasoning.
+// plain hidden square. The rule text gives the precise reasoning.
 const SKETCHES = {
   countingBasics: ['1S', 'MS'],
   subset11: ['11.', 'M.S'],
@@ -198,7 +198,7 @@ function _buildOverlay() {
     e.preventDefault();
     // On touch, a long-press fires BOTH the timer below AND this native
     // contextmenu event for the same press. Without a guard the second
-    // _tryFlag toggles the just-placed flag right back off — the praise
+    // _tryFlag toggles the just-placed flag right back off, the praise
     // shows but the flag vanishes (the exact Android bug). If the timer
     // already flagged this press, ignore the contextmenu; otherwise
     // (desktop right-click, or a contextmenu that beat the timer) flag once
@@ -280,7 +280,7 @@ function _startLesson(id) {
 
 // The coach line: a single slot under the board that updates IN PLACE.
 // Toasts queue globally and display serially, so under quick play a note
-// would arrive seconds after the move it praises — exactly wrong for
+// would arrive seconds after the move it praises, exactly wrong for
 // in-the-moment coaching. One line, instantly replaced, right where the
 // player is already looking.
 function _coach(message, ms = 3200, icon = null) {
@@ -313,7 +313,7 @@ function _coach(message, ms = 3200, icon = null) {
 
 function _nextBoard() {
   if (!_lesson) { _showView('select'); return; }
-  // Seed by session progression — deterministic enough to debug, varied
+  // Seed by session progression, deterministic enough to debug, varied
   // enough to feel fresh. (No Date/random in the seed: the count varies it.)
   _boardsDone++;
   _firstTipPending = true;
@@ -413,7 +413,7 @@ function _finishMove(opened) {
 // The gate teaches on FAILURE (Socratic bounce); these notes teach on
 // SUCCESS, naming the technique the player just performed. Pacing rules
 // so it never becomes noise: named shapes earn a cheer every time (the
-// first per board carrying the recognition tip); proven-mine flags get
+// first on each board includes the recognition tip); proven-mine flags get
 // their reasoning once per board, then a nod; trivial counting reveals
 // are voiced only in the counting lesson, where they ARE the technique.
 function _celebrate(ded, kind, precomputedCls) {
@@ -425,18 +425,18 @@ function _celebrate(ded, kind, precomputedCls) {
 
   // The Counting lesson frames every safe reveal as counting: its tier-0
   // boards route through subsets flags-blind, but the player's process
-  // (flag the forced mines, then clear what those numbers satisfy) IS
+  // (mark the forced mines, then clear what those numbers satisfy) IS
   // counting. Mine flags fall through to the flag-reduction beat below.
   if (_lesson.id === 'countingBasics' && kind === 'safe') { _cheerShape('count'); return; }
 
-  // A recognized shape — for a safe reveal OR a proven-mine flag (the
-  // 1-3-1's key move is FLAGGING the forced corner) — earns its cheer and
+  // A recognized shape, for a safe reveal OR a proven-mine flag (the
+  // 1-3-1's key move is FLAGGING the forced corner), earns its cheer and
   // is recorded.
   if (PATTERN_SHAPE_NAMES.has(name)) { _cheerShape(name); return; }
 
   // A bigger pair (2-2, 3-2, ...) is a 1-1 or 1-2 wearing bigger numbers.
   // Nod to it so the player learns to see the basic pattern through the
-  // larger digits — sometimes a 1-1 or 1-2 is just a little hidden.
+  // larger digits, sometimes a 1-1 or 1-2 is just a little hidden.
   if (name === 'pair' && (cls.family === '1-1' || cls.family === '1-2')) { _nodPair(ded, cls.family); return; }
 
   // A proven-mine flag with no named shape: the reasoning, once per board.
@@ -491,7 +491,7 @@ function _clueDigits(ded) {
 
 // A bigger pair is a basic pattern in disguise: nod to it (recorded under
 // the family) so the player learns to read past the larger digits. The
-// first of each family on a board carries the why; repeats get a short
+// first of each family on a board includes the why; repeats get a short
 // nod. Lighter than a full lesson cheer, and it never consumes the
 // first-tip slot the lesson's own pattern is owed.
 function _nodPair(ded, family) {
@@ -543,7 +543,7 @@ function _tryFlag(row, col) {
     return;
   }
   const ded = frontier.mines.find(m => m.row === row && m.col === col);
-  // Classify BEFORE the flag lands — flagging removes the square from its
+  // Classify BEFORE the flag lands, flagging removes the square from its
   // clues' hidden sets and dissolves the shape (the 1-3-1's forced corner
   // would otherwise read as a bare tier-2 region once flagged).
   const moveCls = ded
@@ -603,7 +603,7 @@ function _onCellClick(e) {
   // through the same gate as long-press, so a tap on a non-mine still bounces
   // and teaches rather than sticking a guess.
   if (_flagMode) { _tryFlag(row, col); return; }
-  // A tap on a flagged square unflags it (flags never block proof — the
+  // A tap on a flagged square unflags it (flags never block proof, the
   // gate below recomputes from the clues alone).
   if (cell.isFlagged) { cell.isFlagged = false; playUnflag(); _render(); return; }
 
@@ -639,7 +639,7 @@ function _onCellClick(e) {
 }
 
 // Chord on an open number. Gym flags are gate-proven mines, so a number
-// whose flags match it has PROVEN its remaining neighbors safe — the
+// whose flags match it has PROVEN its remaining neighbors safe, the
 // chord is the physical shortcut for exactly the deduction the gym
 // teaches, and it can never hit a mine here.
 function _tryChord(row, col) {

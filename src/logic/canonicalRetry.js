@@ -26,7 +26,7 @@ export const CANONICAL_RETRIES = 2;
 export const CANONICAL_RETRY_DELAY_MS = 500;
 /**
  * Wall-clock budget, checked BEFORE starting an attempt rather than raced
- * against one in flight — cutting off a read that was about to land would
+ * against one in flight, cutting off a read that was about to land would
  * defeat the retry's whole purpose, which is to avoid a divergent board.
  *
  * It bounds the loop at "the budget, plus at most one fetch timeout". With a
@@ -45,7 +45,7 @@ export function canonicalRetryDelay(attempt) {
  * Should the gate spend another read?
  *
  * ONLY an unread result is worth retrying. An absent one is the server
- * answering definitively — the date has no board, and asking again in half a
+ * answering definitively, the date has no board, and asking again in half a
  * second cannot change that, so the old loop spent its whole budget on the one
  * case guaranteed not to benefit. An untrusted one is the same shape of waste:
  * a tampered or unverifiable payload returns the same bytes next time, and the

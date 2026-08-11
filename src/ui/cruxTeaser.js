@@ -1,12 +1,12 @@
 // ── The crux teaser: yesterday's hardest step, as a share card ──
 // A standalone view reached by ?crux=YYYY-MM-DD (default: yesterday ET).
-// Works logged-out, and the teaser itself writes nothing — though the
+// Works logged-out, and the teaser itself writes nothing, though the
 // route is not fully write-free: the shared boot path in main.js runs
 // before the ?crux= branch, so a prod visitor still gets an anonymous
-// session and a users/{uid}/lastSeen stamp (deliberate — a share-page
+// session and a users/{uid}/lastSeen stamp (deliberate, a share-page
 // visitor is a prospective player; see CLAUDE.md's Crux Teaser section).
 // It shows a precomputed "find the safe square" mini-puzzle of a past
-// daily's crux — the first step plain counting could not reach — then
+// daily's crux, the first step plain counting could not reach, then
 // points the visitor at today's board.
 //
 // The puzzle and its sentence come from cruxes/{date}, materialized by
@@ -26,7 +26,7 @@ import { PROD_SITE_BASE } from '../config.js';
 
 // Rebuild a plain board (numbers + walls, no mine layout) from a crux
 // payload, so findDeducibleFrontier can recompute EVERYTHING the shown
-// clues force — every safe square and every mine. The teaser shows the
+// clues force, every safe square and every mine. The teaser shows the
 // player the full reach of the proof, not a single answer.
 function _boardFromPayload(payload) {
   const board = [];
@@ -70,7 +70,7 @@ function _ctaHref() {
 // Draw the board's walls over the mini grid: a bar in the gap of each
 // walled edge, midway between the two cells (the same idea as the game's
 // renderWallOverlays, adapted to the teaser's own grid). Without this the
-// numbers — which are computed wall-aware — wouldn't reconcile with what
+// numbers, which are computed wall-aware, wouldn't reconcile with what
 // the player can count. Cells must already be laid out: reading
 // offsetWidth forces the layout this needs.
 function _renderMiniWalls(boardEl, walls, cols) {
@@ -122,8 +122,8 @@ export async function showCruxTeaser(date) {
   // No crux node has two honest causes: the board was a BREATHER (every
   // square fell to plain counting, so there's no harder step to show), or
   // its crux just couldn't be cropped to a mini (the rare liar case). Tell
-  // them apart by solving the canonical here — extractCrux === null means
-  // breather — so a breather day reads as intentional, not broken. (A
+  // them apart by solving the canonical here, extractCrux === null means
+  // breather, so a breather day reads as intentional, not broken. (A
   // crux that exists but didn't crop keeps the plain fallback; we never
   // call such a board a breather.)
   let breather = false;
@@ -131,17 +131,17 @@ export async function showCruxTeaser(date) {
     try {
       const raw = await loadDailyBoard(date);
       if (raw) {
-        // Solve from the certified opener the payload carries — with no
-        // anchor extractCrux defaults to the container centre, which on a
+        // Solve from the certified opener the payload carries, with no
+        // anchor extractCrux defaults to the container center, which on a
         // tiling canonical is an unrelated slot where the solve stalls and
         // the date reads as a breather it never was (issue #201, the #195
         // class). A rectangular canonical stores no firstClick, so
-        // deserializeBoard returns the centre there — byte-identical.
+        // deserializeBoard returns the center there, byte-identical.
         const { board, rows, cols, firstClick } = deserializeBoard(raw);
         breather = extractCrux(board, rows, cols,
           Math.floor(firstClick / cols), firstClick % cols) === null;
       }
-    } catch { /* leave breather false — the generic fallback still fits */ }
+    } catch { /* leave breather false, the generic fallback still fits */ }
   }
   renderCruxTeaser(date, payload, breather);
 }
@@ -162,7 +162,7 @@ const TIER_PHRASE = {
 export function renderCruxTeaser(date, payload, breather = false) {
   // Viewing a date's crux marks it: a later archive replay of THIS date
   // is dropped from the par fit (a previewed answer changes the time).
-  try { safeSet(CRUX_VIEWED_KEY_PREFIX + date, '1'); } catch { /* storage off — fine */ }
+  try { safeSet(CRUX_VIEWED_KEY_PREFIX + date, '1'); } catch { /* storage off, fine */ }
 
   const titleScreen = document.getElementById('title-screen');
   const app = document.getElementById('app');
@@ -193,7 +193,7 @@ export function renderCruxTeaser(date, payload, breather = false) {
 
   // Recompute the FULL reach of the proof from the shown numbers: every
   // square the clues force safe, and every forced mine. This is the whole
-  // pitch — not "find the one safe cell" (a real position has many), but
+  // pitch, not "find the one safe cell" (a real position has many), but
   // "look how much is provable without a single guess".
   const board = _boardFromPayload(payload);
   const frontier = findDeducibleFrontier(board, { respectFlags: false });
@@ -203,7 +203,7 @@ export function renderCruxTeaser(date, payload, breather = false) {
   const totalSafe = safeKeys.size;
   const totalMines = mineKeys.size;
   // The hardest single deduction the SHOWN puzzle needs (board-level, not
-  // about any one square) — replaces the old per-cell "this square" line,
+  // about any one square), replaces the old per-cell "this square" line,
   // which had no referent once the teaser stopped featuring one answer.
   const tiers = [...frontier.safe, ...frontier.mines].map(x => x.tier);
   const maxTier = tiers.length ? Math.max(...tiers) : 0;
@@ -242,7 +242,7 @@ export function renderCruxTeaser(date, payload, breather = false) {
   const revealAllBtn = document.getElementById('crux-reveal-all');
   const copyBtn = document.getElementById('crux-copy-link');
 
-  // Anyone viewing a crux can re-share it — the prod link for THIS date, so
+  // Anyone viewing a crux can re-share it, the prod link for THIS date, so
   // a link copied from /test/ still points at the public page.
   if (copyBtn) copyBtn.addEventListener('click', () => {
     const link = `${PROD_SITE_BASE}?crux=${date}`;
@@ -266,7 +266,7 @@ export function renderCruxTeaser(date, payload, breather = false) {
         div.classList.add('revealed');
         if (n > 0) { div.textContent = String(n); div.dataset.num = String(n); }
       } else {
-        // 'crux-fog', not 'hidden' — the global .hidden is display:none.
+        // 'crux-fog', not 'hidden', the global .hidden is display:none.
         div.classList.add('crux-fog');
         div.setAttribute('role', 'button');
         div.tabIndex = 0;

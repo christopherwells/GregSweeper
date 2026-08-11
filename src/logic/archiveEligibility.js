@@ -3,19 +3,19 @@
 //
 // Two independent gates live here so the client and the test suite read the
 // same rules from one place:
-//   1. isArchivableDate  — is this date offered in the archive at all?
-//   2. archiveSubmitPlan — what does a completion do (fit row? history row?)
+//   1. isArchivableDate  - is this date offered in the archive at all?
+//   2. archiveSubmitPlan, what does a completion do (fit row? history row?)
 //
 // Pure module: no DOM, no Firebase, no clock. Callers pass the dates in.
 // YYYY-MM-DD strings compare correctly with < and >= because they are
 // fixed-width and zero-padded, so no Date parsing is needed.
 
-// The first ET date the archive offers — the app's launch (2026-03-06, v0.1).
+// The first ET date the archive offers, the app's launch (2026-03-06, v0.1).
 // Canonical storage only began 2026-04-27; the launch..04-26 boards were
 // regenerated from each date's seed with the current pipeline and written by
 // scripts/backfill-old-dailies.mjs. Those are fresh no-guess dailies stamped
 // with old dates, NOT recreations of the per-device boards originally played
-// (unrecoverable — never stored), and they're all below ARCHIVE_FIT_EPOCH so
+// (unrecoverable, never stored), and they're all below ARCHIVE_FIT_EPOCH so
 // they never feed the par fit. See the Daily Archive section of CLAUDE.md.
 export const FIRST_ARCHIVE_DATE = '2026-03-06';
 
@@ -65,20 +65,20 @@ export function isArchivableDate(date, today, firstDate = FIRST_ARCHIVE_DATE) {
 /**
  * What the archive calendar should do with one day cell.
  *
- *   'playable'    — offered, tap to play
- *   'done'        — offered but already finished, so it shows its completion
+ *   'playable'    - offered, tap to play
+ *   'done'        - offered but already finished, so it shows its completion
  *                   mark and is NOT tappable. A daily is a one-off: once you
  *                   have finished a board there is nothing left to find on it,
  *                   and re-running it records nothing anyway (archiveSubmitPlan
  *                   is first-completion-only). The calendar keeps showing it so
  *                   the month reads as a completion map (Christopher, 2026-07-18).
- *   'today'       — the live Daily's job, never the archive's
- *   'unavailable' — outside the archive window
+ *   'today'       - the live Daily's job, never the archive's
+ *   'unavailable', outside the archive window
  *
  * `completed` may be a Set, an array, or null. NULL MEANS UNKNOWN, not empty:
  * a signed-out player or a failed history read cannot be told which boards they
  * have finished, and blocking the whole calendar on a flaky read would be worse
- * than letting a replay through. Fail OPEN here deliberately — the data is
+ * than letting a replay through. Fail OPEN here deliberately, the data are
  * protected either way, because archiveSubmitPlan already fails CLOSED on an
  * unknown history and records nothing.
  *
@@ -101,9 +101,9 @@ export function archiveDayState(date, today, completed = null, firstDate = FIRST
  * Decide what an archive completion for `date` does, given whether the player
  * already has a dailyHistory row for it.
  *
- *   submitFit    — push a dailyArchive/{date} row for the par fit. Gated on
+ *   submitFit    - push a dailyArchive/{date} row for the par fit. Gated on
  *                  the epoch so pre-history dates can never double-count.
- *   writeHistory — write users/{uid}/dailyHistory/{date}. This is both the
+ *   writeHistory, write users/{uid}/dailyHistory/{date}. This is both the
  *                  first-completion dedup key (a present row means "already
  *                  played, this is a replay") and the source the delta chart
  *                  reads, so an archived board slots into the chart with no
@@ -116,7 +116,7 @@ export function archiveDayState(date, today, completed = null, firstDate = FIRST
  * a replay mis-read as fresh would double-feed the par fit (push-keyed
  * dailyArchive rows don't overwrite) and overwrite the first-completion chart
  * row. Record nothing and let a later healthy completion pick it up.
- * (REGRESSION: archive dedup fail-open — a failed/early read returned null and
+ * (REGRESSION: archive dedup fail-open, a failed/early read returned null and
  * was treated as "no prior completion", so a flaky read on a replay double-fed
  * the fit.)
  *
@@ -136,7 +136,7 @@ export function archiveSubmitPlan(date, historyStatus, epoch = ARCHIVE_FIT_EPOCH
 }
 
 /**
- * Resolve the `?crux=` share-route date with a spoiler + range guard. The route
+ * Resolve the `?crux=` share-route date with a spoiler + range check. The route
  * shows a PAST daily's crux, so today and later are REFUSED (never spoil the
  * live board) and anything before the first canonical is out of range; both
  * fall back to yesterday. An empty / non-date param ('' or '1') also defaults
@@ -158,7 +158,7 @@ export function resolveCruxDate(cruxParam, todayET, yesterdayET, firstDate = FIR
  * Filter a loadDailyHistory() result down to the dates the streak may derive
  * from. Archive replays write dailyHistory rows too (the calendar's completed
  * marks and the delta chart need them), but they carry `archive: true` and
- * must be invisible to the streak reconciler — otherwise replaying a past gap
+ * must be invisible to the streak reconciler, otherwise replaying a past gap
  * day retroactively splices the run together and inflates the streak and the
  * monotonic bestDailyStreak (issue #113).
  *
@@ -177,9 +177,9 @@ export function streakBearingDates(entries) {
  * keyed by the BOARD's date (the dedup key and the calendar mark), but the
  * time-series surfaces (history chart, career-vs-rolling averages) must place
  * a play on the day it was actually PLAYED:
- *  - a LIVE row belongs to its board date — the run happened on that ET day
+ *  - a LIVE row belongs to its board date, the run happened on that ET day
  *    even when the write itself flushed from the retry queue days later;
- *  - an ARCHIVE replay belongs to the ET day of its submittedAt — plotting it
+ *  - an ARCHIVE replay belongs to the ET day of its submittedAt, plotting it
  *    at the board's date back-dates today's performance into the past and
  *    corrupts the rolling/career averages.
  *

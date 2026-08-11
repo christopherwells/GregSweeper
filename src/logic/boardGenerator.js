@@ -31,7 +31,7 @@ function removeMineIncremental(board, r, c, neighborCache) {
     const nc = ni - nr * cols;
     if (!board[nr][nc].isMine) board[nr][nc].adjacentMines--;
   }
-  // Now (r, c) is no longer a mine — compute its own adjacency from scratch
+  // Now (r, c) is no longer a mine, compute its own adjacency from scratch
   board[r][c].isMine = false;
   let count = 0;
   for (const ni of neighborCache[idx]) {
@@ -62,8 +62,8 @@ export function createEmptyBoard(rows, cols) {
   // Reveal-gated certification contract: every board created by this
   // code certifies with sonar / compass / wormhole constraints gated on
   // their origin cell being revealed (boardSolver reads this flag as its
-  // default). The flag TRAVELS WITH THE BOARD — serialized into canonical
-  // payloads and game saves — so historical boards certified ungated
+  // default). The flag TRAVELS WITH THE BOARD, serialized into canonical
+  // payloads and game saves, so historical boards certified ungated
   // (no flag) keep their original contract on every solver surface.
   board._gatedCert = true;
   return board;
@@ -251,7 +251,7 @@ export function generateConstructive(rows, cols, targetMines, excludeRow, exclud
   // CACHE, and the (row, col) loops below are pure container sweeps that visit
   // every cell exactly once on any shape. `topo` (Project Coastline) supplies
   // the three that are not, and its absence is the rectangular behavior
-  // verbatim — same code, same order, same RNG draws, so a square board is
+  // verbatim, same code, same order, same RNG draws, so a square board is
   // byte-identical to before.
   //
   //  1. ADJACENCY. The rectangular path synthesizes a wall-aware
@@ -262,7 +262,7 @@ export function generateConstructive(rows, cols, targetMines, excludeRow, exclud
   //     around the first click, which on a tiling is a set of cells that are
   //     mostly not even adjacent to the opener (the container is storage, not
   //     geometry). A tiling passes the opener plus its true graph neighbors.
-  //  3. BOARD CONSTRUCTION. A tiling board carries `_cellNeighbors` /
+  //  3. BOARD CONSTRUCTION. A tiling board includes `_cellNeighbors` /
   //     `_cellPos` / `_tiling`, which must be stamped before anything reads it.
   const neighborCache = topo
     ? topo.neighborCache
@@ -303,7 +303,7 @@ export function generateConstructive(rows, cols, targetMines, excludeRow, exclud
     let backtrackBudget = 8; // max times we'll remove+retry existing mines
 
     while (minesPlaced < targetMines) {
-      // Ran out of candidates to try — reshuffle the non-mine cells
+      // Ran out of candidates to try, reshuffle the non-mine cells
       if (candidateIdx >= candidates.length) {
         // Rebuild candidate list from current non-mine, non-safe-zone cells
         candidates.length = 0;
@@ -327,11 +327,11 @@ export function generateConstructive(rows, cols, targetMines, excludeRow, exclud
 
       if (board[mr][mc].isMine) continue;
 
-      // Place mine tentatively (incremental — only updates 8 neighbors)
+      // Place mine tentatively (incremental, only updates 8 neighbors)
       placeMineIncremental(board, mr, mc, neighborCache);
       minesPlaced++;
 
-      // Check solvability — but only do the full check periodically for performance
+      // Check solvability, but only do the full check periodically for performance
       // For the first ~60% of mines, skip most checks (they almost always pass)
       const checkThreshold = targetMines * 0.55;
       if (minesPlaced <= checkThreshold && minesPlaced % 3 !== 0) {
@@ -347,7 +347,7 @@ export function generateConstructive(rows, cols, targetMines, excludeRow, exclud
         continue; // Valid placement
       }
 
-      // Unsolvable — undo (incremental — only updates 8 neighbors)
+      // Unsolvable, undo (incremental, only updates 8 neighbors)
       removeMineIncremental(board, mr, mc, neighborCache);
       minesPlaced--;
       consecutiveFails++;
@@ -381,7 +381,7 @@ export function generateConstructive(rows, cols, targetMines, excludeRow, exclud
     }
 
     if (minesPlaced === targetMines) {
-      // Incremental updates kept adjacency consistent — no full recompute needed
+      // Incremental updates kept adjacency consistent, no full recompute needed
       const finalCheck = isBoardSolvable(board, rows, cols, excludeRow, excludeCol, neighborCache);
       cleanSolverArtifacts(board);
       if (finalCheck.solvable || finalCheck.remainingUnknowns === 0) {
@@ -414,7 +414,7 @@ export function generateBoard(rows, cols, mines, excludeRow, excludeCol, rng, op
           // Carry the walls: redistributeMines recalculates adjacency and
           // the acceptance solve below verifies THIS clone, so a wall-less
           // copy would (a) rewrite every number non-wall-aware and (b)
-          // certify a board other than the one shipped — the caller
+          // certify a board other than the one shipped, the caller
           // re-attaches the walls afterwards, but the numbers stay stale
           // (applyGimmicks keeps pre-applied walls without a recalc) and
           // the certifier can then "prove" cells the real topology doesn't.
@@ -431,7 +431,7 @@ export function generateBoard(rows, cols, mines, excludeRow, excludeCol, rng, op
           if (after.solvable || after.remainingUnknowns === 0) {
             return clone; // Redistributed version is still solvable
           }
-          // Redistribution broke it — return original constructive board
+          // Redistribution broke it, return original constructive board
         }
         return constructiveBoard;
       }
@@ -439,7 +439,7 @@ export function generateBoard(rows, cols, mines, excludeRow, excludeCol, rng, op
   }
 
   // Fallback: rejection sampling for low density boards. Every board built
-  // here carries the caller's walls BEFORE any adjacency pass — recalc /
+  // here carries the caller's walls BEFORE any adjacency pass, recalc /
   // redistribute / swap all read board._wallEdges, and the acceptance solve
   // must certify the board the player actually gets (this path also runs
   // when the constructive generator exhausts its tries on a walls level).
@@ -529,7 +529,7 @@ export function cleanSolverArtifacts(board) {
 // breaking the no-guessing contract. May place fewer than `targetCount` if
 // every remaining candidate would break the board. Returns the placed cells.
 // (Extracted verbatim from gameActions' first-click flow so the Challenge
-// 250 builder and the live challenge path share the one implementation —
+// 250 builder and the live challenge path share the one implementation,
 // random mystery on a dense board burns whole base layouts per miss, which
 // is what blew the ladder validator's 2-second cap before this was shared.)
 export function placeMysteryConstructive(board, rows, cols, targetCount, rng, fr, fc) {
@@ -539,7 +539,7 @@ export function placeMysteryConstructive(board, rows, cols, targetCount, rng, fr
     for (let c = 0; c < cols; c++) {
       const cell = board[r][c];
       if (cell.isMine || cell.adjacentMines === 0) continue;
-      // Mystery is exclusive with all other gimmicks — skip cells that
+      // Mystery is exclusive with all other gimmicks, skip cells that
       // already carry one. Match applyMystery's spec.
       if (cell.isLiar || cell.isLocked || cell.isWormhole || cell.isSonar
           || cell.isCompass || cell.mirrorPair || cell.isPressurePlate) continue;

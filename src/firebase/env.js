@@ -2,7 +2,7 @@
 //
 // Returns true on the test deployment, false on production. Used by
 // every Firebase WRITE entry point to short-circuit before touching
-// production data. Reads pass through unchanged — leaderboards,
+// production data. Reads pass through unchanged, leaderboards,
 // dailyMeta, and the canonical daily/weekly boards still display so
 // the test branch plays a full game, just without persisting anything.
 //
@@ -16,7 +16,7 @@ export function isTestEnvironment() {
   if (typeof location === 'undefined') return false;
   // Cloudflare Pages preview (legacy path).
   if (location.hostname.endsWith('.pages.dev')) return true;
-  // GH Pages subdirectory deploy — test branch publishes at
+  // GH Pages subdirectory deploy, test branch publishes at
   // /<repo>/test/. Master root never has a `test` path segment, so
   // checking for it as a discrete segment is unambiguous.
   if (location.pathname.split('/').includes('test')) return true;

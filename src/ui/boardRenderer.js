@@ -18,7 +18,7 @@ function _cellBound(name, fallback) {
 }
 
 // Vertical space the board may fill before it has to scroll. Mirrors
-// #board-scroll-wrapper's `max-height: 70vh` in global.css — read the resolved
+// #board-scroll-wrapper's `max-height: 70vh` in global.css, read the resolved
 // pixel value so the two never drift, falling back to 0.70·innerHeight when the
 // computed value isn't expressed in px.
 function _boardHeightBudget() {
@@ -36,7 +36,7 @@ function _boardHeightBudget() {
 // state.rows down the board's vertical budget, clamped to [min, maxCap].
 // Fitting by width alone overflows tall, narrow boards: weekly samples rows up
 // to 14 but caps cols at 12, so a 14×8 board sized to its width gets cells big
-// enough to push the board past the 70vh scroll wrapper, hiding the lower rows
+// enough to push the board past the 70vh scroll wrapper, with the lower rows out of view
 // (the "too zoomed in, can't see where to play" report). The height term keeps
 // the whole board on screen. `widthBudget` is already net of board border+pad.
 function _fitCellSize(widthBudget, gap, maxCap) {
@@ -48,7 +48,7 @@ function _fitCellSize(widthBudget, gap, maxCap) {
 }
 
 // A board declares a non-rectangular topology by carrying per-cell GEOMETRY
-// (_cellPos) — Project Coastline's tiling boards. The renderer keys off the
+// (_cellPos), Project Coastline's tiling boards. The renderer keys off the
 // board itself, NOT the game mode, so the same layout path serves a test board
 // today and daily/weekly/challenge tiling boards later.
 function _isTiling() {
@@ -69,7 +69,7 @@ function _fitTilingPitch(widthBudget, heightBudget, maxCap) {
 
 // The live pitch in px. JS owns --cell-size at runtime (resizeCells /
 // adjustCellSize set it), so every tiling surface that converts unit coords to
-// pixels reads it through here rather than keeping its own copy — the cell
+// pixels reads it through here rather than keeping its own copy, the cell
 // layout and the wall overlay have to agree on it exactly or the bars land off
 // their edges.
 function _pitch() {
@@ -100,7 +100,7 @@ export function resizeCells() {
     const pitch = _fitTilingPitch(availableWidth, heightBudget, _cellBound('--cell-max-size', 50));
     document.documentElement.style.setProperty('--cell-size', `${pitch}px`);
     // A tiling cell's position/size is INLINE px computed from the pitch, so a
-    // new pitch means nothing until the cells are re-laid — the rectangular
+    // new pitch means nothing until the cells are re-laid, the rectangular
     // board gets this free because its cells read var(--cell-size) through the
     // grid. Without this the board kept its old geometry through every resize
     // and phone rotation while its container changed size around it.
@@ -120,7 +120,7 @@ export function renderBoard() {
     _renderTilingBoard();
   } else {
     // Rectangular CSS grid. Reset any tiling inline layout a prior game set
-    // (the surface swaps between board shapes within one session).
+    // (the surface swaps between shapes within one session).
     boardEl.classList.remove('tiling-board');
     document.getElementById('tiling-seams')?.remove();
     boardEl.style.display = '';
@@ -162,50 +162,50 @@ export function renderBoard() {
   // `boardEl.innerHTML = ''` above destroyed the prior ambient-effects layer
   // (.theme-fx lives inside #board). Re-apply it so animations persist across
   // board rebuilds (new game / next level / resume) instead of vanishing until
-  // the next theme switch — and so the previous particle loops get torn down
+  // the next theme switch, and so the previous particle loops get torn down
   // rather than firing forever into a detached node.
   applyThemeEffects(document.documentElement.getAttribute('data-theme') || 'classic');
 
   // The rebuild also destroyed any live sonar/compass region highlight, which
   // must only die by clearGimmickRegion (mid-game rebuilds: resume, theme
   // switch). Re-deriving through showGimmickRegion rather than repainting the
-  // cached set is deliberate — it re-checks the cell against the CURRENT board,
+  // cached set is deliberate, it re-checks the cell against the CURRENT board,
   // so a highlight carried from a PREVIOUS game (its cell no longer a revealed
   // sonar/compass) clears itself instead of lighting a region nobody asked for.
   if (_regionShown) showGimmickRegion(_regionShown.row, _regionShown.col);
 }
 
 // ── Tiling layout ────────────────────────────────────
-// A non-rectangular tiling board: cells stay DOM <div>s in flat-index order —
+// A non-rectangular tiling board: cells stay DOM <div>s in flat-index order,
 // so updateCell, getCellElement, setFocusedCell, the click handler
 // (dataset.row/col), and the rect-reading overlays (worms, the start-here
-// label) all keep working unchanged — but they are POSITIONED absolutely from
+// label) all keep working unchanged, but they are POSITIONED absolutely from
 // their unit-pitch geometry and shaped with a clip-path instead of flowing in a
 // CSS grid of uniform squares. All per-cell layout is INLINE style, which
 // survives updateCell's className rebuilds.
 
-// Every cell's own box and clip-path, in PITCH UNITS — the pitch-independent
+// Every cell's own box and clip-path, in PITCH UNITS, the pitch-independent
 // half of the layout, so a resize only has to multiply.
 //
 // This used to be a per-SHAPE constant plus a hand-inlined box, which holds only
 // while every cell of a shape is identical up to TRANSLATION: true of the 4.8.8
 // octagon and interstitial diamond and of the hexagon, false of all four Laves
 // tilings, whose single cell shape appears in several ROTATIONS (cairo 4, floret
-// 6, rhombille 3, deltoidal 6). Box size does not identify the rotation either —
+// 6, rhombille 3, deltoidal 6). Box size does not identify the rotation either,
 // rhombille's 0° and 60° rhombi share a 1 × 1.732 box and need different
-// clip-paths — so anything keyed on the shape name or the box dimensions
+// clip-paths, so anything keyed on the shape name or the box dimensions
 // mis-shapes half the board without erroring. cellOutline derives both from the
 // cell's own polygon, which is the rule those three branches were hand-inlined
 // cases of (SQ_BOX_FRAC IS the diamond's bbox width, HEX_BOX_H IS the hexagon's
 // bbox height). Verified in Chromium against the branch it replaced: every cell
 // of a 4.8.8 and of a honeycomb, plain and modifier-laden, keeps a byte-identical
 // inline style string AND computed clip-path / box / font-size. The octagon's
-// string does differ before the browser sees it — octagonClipPath() mixed
-// toFixed(3) with bare 0%/100% literals — but Chromium normalizes 37.000% to 37%,
+// string does differ before the browser sees it, octagonClipPath() mixed
+// toFixed(3) with bare 0%/100% literals, but Chromium normalizes 37.000% to 37%,
 // so nothing that can read a clip-path can tell.
 //
-// The polygons do not ride the board — the canonical payload carries cellPos and
-// the {type, M, N} descriptor, not the vertex list — so they are rebuilt through
+// The polygons do not ride the board, the canonical payload carries cellPos and
+// the {type, M, N} descriptor, not the vertex list, so they are rebuilt through
 // buildTiling, exactly as applyWallsTiling rebuilds the wall wireframe. One
 // memo slot is enough: a single board is on screen at a time, and this is asked
 // again on every resize.
@@ -226,7 +226,7 @@ function _tilingOutlines(tiling) {
 // and whose number is half of THAT.
 //
 // For the hexagon and the four Laves tilings half a pitch is exactly half the
-// INSCRIBED-CIRCLE diameter — the largest circle the cell can hold, which is
+// INSCRIBED-CIRCLE diameter, the largest circle the cell can hold, which is
 // what tilingGeometry normalizes each of them to, and the right measure for
 // "will a digit plus a modifier watermark fit". The 4.8.8 is not on that rule
 // and deliberately stays off it: OCT_CUT cuts well past the regular-octagon
@@ -250,7 +250,7 @@ const ANCHOR_EPS = 1e-6; // px
 // Move a cell's CONTENT (the number, the sprite, the modifier watermark) off the
 // box center by (dx, dy) px. `.cell` centers its content with flex, so a
 // one-sided pad shifts it by half the pad; box-sizing is border-box globally, so
-// the border box — and with it the clip-path — does not move at all.
+// the border box, and with it the clip-path, does not move at all.
 function _anchorPadding(dx, dy) {
   if (Math.abs(dx) < ANCHOR_EPS && Math.abs(dy) < ANCHOR_EPS) return '';
   const top = dy > 0 ? 2 * dy : 0, bottom = dy < 0 ? -2 * dy : 0;
@@ -276,7 +276,7 @@ export function layoutTilingCells() {
   const total = state.rows * state.cols;
   for (let i = 0; i < total; i++) {
     const cellEl = boardEl.children[i];
-    // #board also holds the .theme-fx layer, which is appended after the cells.
+    // #board also contains the .theme-fx layer, which is appended after the cells.
     if (!cellEl || !cellEl.classList || !cellEl.classList.contains('cell')) continue;
     const pos = board._cellPos[i];
     const box = outlines[i];
@@ -295,8 +295,8 @@ export function layoutTilingCells() {
     cellEl.style.height = h + 'px';
     cellEl.style.clipPath = box.clipPath;
     cellEl.style.fontSize = ((pos.shape === 'sq' ? FONT_UNITS_SQ : FONT_UNITS) * P) + 'px';
-    // The number is drawn at the cell's own VISUAL center — cellPos.cx/cy, the
-    // incircle center — never at the box center, and never at the compass RAY
+    // The number is drawn at the cell's own VISUAL center, cellPos.cx/cy, the
+    // incircle center, never at the box center, and never at the compass RAY
     // ANCHOR (cellPos.ax/ay), which is a different point on cairo and deltoidal
     // on purpose. The two centers coincide on every centrally symmetric cell
     // (both shipped tilings, and rhombille) and separate on the asymmetric ones:
@@ -351,13 +351,13 @@ function _renderTilingBoard() {
 
 // ── Tiling seam overlay ──────────────────────────────
 // The clip-paths tile EXACTLY, so two neighboring cells share a mathematical
-// edge with no gap — and nothing draws it. On a rectangle the CSS grid's
+// edge with no gap, and nothing draws it. On a rectangle the CSS grid's
 // --grid-gap shows --color-border between cells; a tiling had no equivalent,
 // and the cost is real legibility, worst on the Laves lattices: a floret
 // rosette's six petals read as ONE solid hexagon, and a revealed region is
 // an undivided sheet whose numbers cannot be attributed to their cells
 // (Christopher's report, 2026-08-02, off Par Lab board 25). Neither a border
-// nor an outline can fix it — both follow the BOX and are clipped away
+// nor an outline can fix it, both follow the BOX and are clipped away
 // except where the polygon touches it (the keyboard-focus lesson).
 //
 // So the seams are DRAWN, from the same wireframe applyWallsTiling severs
@@ -367,7 +367,7 @@ function _renderTilingBoard() {
 // rescales it for free with no re-render hook, and vector-effect:
 // non-scaling-stroke keeps the line width in screen pixels at every pitch.
 // Color and width are theme tokens (--tiling-seam-color defaulting to the
-// theme's own --color-border — the same color a rectangle's gaps show — and
+// theme's own --color-border, the same color a rectangle's gaps show, and
 // --tiling-seam-width). z-index 2: above cell bodies (including the .fx-on
 // lift) so the seam reads across REVEALED regions too, below walls (3) and
 // worms (4), so a wall still dominates the edge it sits on.
@@ -415,7 +415,7 @@ export function renderWallOverlays() {
   if (oldOverlay) oldOverlay.remove();
 
   // Tiling boards sever graph edges (board._tilingWalls, flat index pairs)
-  // instead of the rectangular "r,c-r,c" edge set — draw a bar across the shared
+  // instead of the rectangular "r,c-r,c" edge set, draw a bar across the shared
   // boundary of each severed pair rather than a horizontal/vertical grid line.
   if (state.board?._tilingWalls && state.board._tilingWalls.length > 0) {
     _renderTilingWalls(board);
@@ -504,7 +504,7 @@ export function renderWallOverlays() {
 // instead, taking its WIDTH as the pitch and its rect center as unit cellPos[0].
 // Both assumptions are properties of the shipped two rather than of a tiling:
 // cell 0's box is one pitch wide on 4.8.8 and hex, but 1.366 on cairo and
-// deltoidal, 1.155 on floret and a full 2.000 on rhombille — so every wall would
+// deltoidal, 1.155 on floret and a full 2.000 on rhombille, so every wall would
 // be scaled by up to DOUBLE and land nowhere near its edge. And a cell's rect
 // center IS its cellPos only
 // while the cell is centrally symmetric, which the Laves kite and pentagons are
@@ -544,13 +544,13 @@ function _renderTilingWalls(boardParent) {
 
 export function getThemeEmoji(type) {
   // Theme-owned objects only. Emoji packs (the old per-player override
-  // layer) were cut with the Collection declutter — the theme IS the
+  // layer) were cut with the Collection declutter, the theme IS the
   // object identity now, which also means theme sprites always match.
   const currentTheme = document.documentElement.getAttribute('data-theme') || 'classic';
   const themeInfo = THEME_UNLOCKS[currentTheme];
   // "Classic mines & flags" setting: a player who likes the themed worlds
   // but not the recolored objects pins the mine, flag, and exploded-mine
-  // (strike) back to the canonical glyphs — these resolve to the original
+  // (strike) back to the canonical glyphs, these resolve to the original
   // mine.png / flag.png / strike.png sprites on every theme. Numbers,
   // backgrounds, and Greg (smiley) stay themed.
   const classicObjects = document.documentElement.getAttribute('data-classic-objects') === 'true';
@@ -609,7 +609,7 @@ export function updateCell(r, c) {
       // Strike cell renders for two distinct mechanics:
       //   1. Daily/weekly bomb-hit (cell.isMine flipped to false in
       //      handleDailyBombHit, isStrike marks the defused spot).
-      //   2. Challenge/timed game-over cascade — every non-flagged mine
+      //   2. Challenge/timed game-over cascade, every non-flagged mine
       //      gets isStrike via chainRevealMines.
       // In case 2 the hit mine needs to stand out from the rest of the
       // cascade so the player can see which mine ended the game. The
@@ -653,7 +653,7 @@ export function updateCell(r, c) {
             // Side-by-side sprite + number overran the small clipped cell, so
             // OVERLAP them: the sonar symbol as a centered watermark, the number
             // bold on top. Both the identity (the symbol) and the count survive,
-            // and the combined footprint fits the clip — no new colors needed.
+            // and the combined footprint fits the clip, no new colors needed.
             cellEl.classList.add('sonar-tiling');
             cellEl.innerHTML = uiSpriteImgHTML('modSonar', 'sonar-bg')
               + `<span class="sonar-num">${displayNum}</span>`;
@@ -720,7 +720,7 @@ export function updateCell(r, c) {
     // not just the one NEXT MOVE chip.
     if (cell.frontierSafe) cellEl.classList.add('frontier-safe');
     // Frozen-board suggested start cell (daily / weekly / coastline /
-    // Challenge 250 ladder — every mode that certifies from a marked
+    // Challenge 250 ladder, every mode that certifies from a marked
     // opener; shows while the board is fresh or re-fogged)
     if (cell.suggestedStart && (state.gameMode === 'daily' || state.gameMode === 'weekly'
         || state.gameMode === 'normal' || state.coastlinePractice) &&
@@ -729,7 +729,7 @@ export function updateCell(r, c) {
     }
   }
   // Wall overlays rendered separately by renderWallOverlays()
-  // An active sonar/compass region highlight survives this rebuild — every
+  // An active sonar/compass region highlight survives this rebuild, every
   // branch above assigns className wholesale, which is what used to strip the
   // highlight from a cell the moment it was flagged.
   _reapplyRegionClasses(cellEl, r * state.cols + c);
@@ -770,20 +770,20 @@ function _placeLabel(cellEl, id, text, className, position = "above") {
   // tracks its cell through page scroll, the inner #board-scroll-wrapper
   // scroll (zoomed Quick Play boards), and resizes. The old
   // position:fixed captured viewport coords ONCE and nothing repositioned
-  // on scroll — a phone player who scrolled before their first daily
+  // on scroll, a phone player who scrolled before their first daily
   // click saw "Start here" (the certified no-guess entry marker) hovering
-  // over the WRONG cell. The historical reason for fixed — a
-  // non-positioned ancestor made board-relative math drift ~130 px — is
+  // over the WRONG cell. The historical reason for fixed, a
+  // non-positioned ancestor made board-relative math drift ~130 px, is
   // gone: #board itself is position:relative, and the label is absolute
   // within it (absolutely-positioned grid children take no grid slot, so
-  // boardEl.children cell indexing is unaffected — labels append last).
+  // boardEl.children cell indexing is unaffected, labels append last).
   const cellRect = cellEl.getBoundingClientRect();
   const boardRect = boardEl.getBoundingClientRect();
   const cx = cellRect.left - boardRect.left + cellRect.width / 2;
   const cellTop = cellRect.top - boardRect.top;
   label.style.left = cx + "px";
   // #board is overflow:hidden, so an "above" label on a top-row cell
-  // would be clipped — center those on the cell instead.
+  // would be clipped, center those on the cell instead.
   const fitsAbove = cellTop >= 20;
   if (position === "on" || !fitsAbove) {
     label.style.top = (cellTop + cellRect.height / 2) + "px";
@@ -805,10 +805,10 @@ function updateStartHereLabel() {
   document.getElementById("start-here-label")?.remove();
   document.getElementById("next-move-label")?.remove();
 
-  // "Start here" — pre-first-click marker for the certified opener. Shows
+  // "Start here", pre-first-click marker for the certified opener. Shows
   // on daily, coastline practice, and the Challenge 250 ladder (every
   // fresh-frozen board whose certificate runs from the marked cell) while
-  // the board is fresh. Weekly keeps its historical no-label behavior —
+  // the board is fresh. Weekly keeps its historical no-label behavior,
   // the cell class alone marks it there.
   if ((state.gameMode === "daily" || state.gameMode === "normal" || state.coastlinePractice) &&
       (state.status === "idle" || (state.status === "playing" && state.revealedCount <= 1))) {
@@ -816,7 +816,7 @@ function updateStartHereLabel() {
     if (startCell) _placeLabel(startCell, "start-here-label", "Start here", "start-here-label");
   }
 
-  // Post-loss "NEXT MOVE" — the solver-suggested safe cell that would
+  // Post-loss "NEXT MOVE", the solver-suggested safe cell that would
   // have been the right click instead of the mine. Fires on any mode
   // that sets cell.suggestedMove (challenge + timed; handleLoss sets
   // it before the cascade reveals). Positioned ON the cell (centered)
@@ -837,11 +837,11 @@ export function updateCells(cells) {
 
 // ── Sonar / compass region reveal ────────────────────
 // A sonar or compass number counts mines over a REGION the player can't always
-// eyeball — a 5×5 block on a square grid, an irregular graph blob on a tiling.
+// eyeball, a 5×5 block on a square grid, an irregular graph blob on a tiling.
 // Hovering (desktop) or tapping (mobile) the cell lights up exactly the cells
 // its number counts. Single-sourced from adjacency.js (sonarScanCells /
 // compassRayCells), so the highlight shows precisely what the certifier proved
-// from — it hands over the AREA, never which cells hold the mines.
+// from, it hands over the AREA, never which cells hold the mines.
 
 /**
  * Flat indices of the cells a revealed sonar/compass cell's number counts, or
@@ -879,7 +879,7 @@ export function showGimmickRegion(row, col) {
   _regionShown = { row, col };
   // Membership is CACHED so updateCell can restore the class in O(1). The
   // classes live on cell elements, and every targeted re-render rebuilds
-  // className wholesale — so before this cache existed, flagging a cell inside
+  // className wholesale, so before this cache existed, flagging a cell inside
   // a pinned region quietly stripped the highlight from exactly the cell the
   // player was counting (the flag-counting use is the point of pinning;
   // Christopher's report, 2026-08-01). The highlight must outlive every
@@ -929,7 +929,7 @@ export function adjustCellSize() {
     document.documentElement.style.setProperty('--cell-size', pitch + 'px');
     return;
   }
-  // Read the LIVE gap like resizeCells does — themes override --grid-gap
+  // Read the LIVE gap like resizeCells does, themes override --grid-gap
   // (candy 3px, matrix 1px), and the old hardcoded 2 oversized the fit by
   // (cols-1)px per extra gap pixel.
   const gap = parseFloat(getComputedStyle(boardEl).gap) || 2;

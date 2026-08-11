@@ -7,7 +7,7 @@
 // newcomer gate and the ±0.5s delta thresholds are node-tested instead of
 // living inside a 100-line modal builder.
 //
-// Pure module — node-tested in test/parDisplayDecision.test.mjs.
+// Pure module, node-tested in test/parDisplayDecision.test.mjs.
 
 import { estimateHandicapDetails } from './handicaps.js';
 
@@ -86,7 +86,7 @@ export function resolveParDisplay({ precise, dailyPar, refitRatio, refitBombSeco
     ? 'Your par (provisional, ' + provisional.n + ' plays): '
     : 'Your par: ';
 
-  // "1 more daily and your personal par appears" — shown only in the
+  // "1 more daily and your personal par appears", shown only in the
   // no-handicap branch, when the player has exactly one residual.
   const showOneMoreHint = safeResiduals.length === 1;
 

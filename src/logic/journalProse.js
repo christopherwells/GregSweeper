@@ -296,7 +296,7 @@ export function resolutionFor(study) {
     case 'cost': return band === 'pos' ? 'sided' : 'against';
     case 'zero': return band === 'zero' ? 'sided' : band === 'pos' ? 'against' : 'out';
     // A faster-lean's zero band (lo <= 0, tiny top) can hide a real
-    // refund below its floor, only a whole-band refund sides with the
+    // refund below its floor, only a whole-band refund supports the
     // hypothesis, only a proven cost contradicts it.
     case 'faster': return band === 'neg' ? 'sided' : band === 'pos' ? 'against' : 'out';
     case 'size': return 'answered';
@@ -661,7 +661,7 @@ const LEDGER_PARKED = [
 // the close, its line cites both figures against {refDate}, the actual
 // reference fit's date (the last live fit at the close, or the era
 // start for a study parked before the era began; driftSinceClose picks
-// it, so date and figure always agree).
+// it, so date and figure always match).
 const LEDGER_REOPENED = [
   'On {refDate} the parked {label} file read about {refPct}% per {unitShort}. It reads {nowPct}% now. I’m watching it.',
   'The parked {label} file has moved: about {refPct}% per {unitShort} on {refDate}, about {nowPct}% now. I’m watching it.',
@@ -926,7 +926,7 @@ export function composeEntry(study, ctx = {}, session = newSession()) {
       parts.push(s);
       // arcSpoken = the entry QUOTES the written hunch, not merely that
       // an arc beat rendered: many 'out' arc lines carry no hypothesis
-      // content, and hiding the epigraph for those would leave the card
+      // content, and dropping the epigraph for those would leave the card
       // with no premise at all.
       if (beat === 'arc' && /(I wrote|my note|I predicted|I suspected|The Should)/i.test(s)) {
         arcSpoken = true;
@@ -935,7 +935,7 @@ export function composeEntry(study, ctx = {}, session = newSession()) {
   }
   const closer = pickLine(_closerPool(state, resolutionFor(study)), `${seed}|closer`, facts, session.lines);
   if (closer) parts.push(closer);
-  // arcSpoken tells the card whether the entry already speaks the
+  // arcSpoken tells the card whether the entry already quotes the
   // written hunch ("I wrote that…"), the separate hypothesis epigraph
   // hides then, so the file's premise is never printed twice in a row.
   return { state, skeleton: `${state}:${skel.idx}`, text: parts.join(' '), facts, arcSpoken };
@@ -1010,7 +1010,7 @@ const DOT_SHAPES = ['circle', 'square', 'diamond', 'tick'];
 // Captions are framing copy about the figure (third person allowed,
 // like the sparkline caption always was); each pool rotates with the
 // same seed discipline as the prose. No digits, a caption explains,
-// the figure carries the numbers.
+// the figure shows the numbers.
 const FIGURE_CAPTIONS = {
   'sd-trend': [
     'This line tracks Greg’s uncertainty, night by night. A falling line means he’s homing in.',

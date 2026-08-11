@@ -3,8 +3,8 @@
 // The interactive half of src/logic/parLab.js: a fixed strip above the game
 // showing battery progress and the current board's spec, plus the controls
 // that drive the session (next board / skip / copy results). The board
-// itself plays through the ordinary coastline-practice machinery — frozen,
-// certified, isLevelPractice, records nothing to real progression — with
+// itself plays through the ordinary coastline-practice machinery, frozen,
+// certified, isLevelPractice, records nothing to real progression, with
 // gameActions reading `state.parLabSpec` for the per-board config.
 //
 // Recording is LOCAL (localStorage, namespaced) and exports as JSON from the
@@ -31,7 +31,7 @@ const STORE_KEY = 'gregsweeper_parlab_v1';
 // ── Firebase outbox flush ────────────────────────────────────────────────
 // The local log is the source of truth AND the outbox: any row without an
 // fbKey has not landed on the parLab/ node yet. Flushed opportunistically
-// on every lab entry and result — a failed push (offline, no auth session,
+// on every lab entry and result, a failed push (offline, no auth session,
 // rules not yet live) just stays queued for the next flush. Sequential and
 // single-flight so two triggers can't double-push the same rows.
 let _flushing = false;
@@ -65,7 +65,7 @@ function loadRows() {
 }
 
 function saveRows(rows) {
-  try { safeSet(STORE_KEY, JSON.stringify({ rows })); } catch { /* storage full/blocked — the HUD still shows the session */ }
+  try { safeSet(STORE_KEY, JSON.stringify({ rows })); } catch { /* storage full/blocked, the HUD still shows the session */ }
 }
 
 function specLabel(spec) {
@@ -190,7 +190,7 @@ function _copy() {
 
 /**
  * Void a played board and re-issue it with a fresh layout (main.js
- * ?parlabRedo= branch — the escape hatch for a contaminated row, e.g. a
+ * ?parlabRedo= branch, the escape hatch for a contaminated row, e.g. a
  * deliberately mine-popped run). Accepts the board's battery number or its
  * id. The voiding syncs as an 'invalid' tombstone; the analysis drops the
  * original server row on sight of it.
@@ -231,7 +231,7 @@ export function onParLabResult(won) {
   if (!lab?.spec) return;
   const rows = loadRows();
   // The DAILY time convention (his report, 2026-08-02: strike penalties
-  // must count against the time): preciseTime is what stopTimer committed —
+  // must count against the time): preciseTime is what stopTimer committed,
   // wall clock WITH the strike penalties folded in, the same number a
   // daily submits and the win modal shows. penaltySec rides alongside so
   // the fit can subtract back to pure play time.
@@ -261,8 +261,8 @@ export function onParLabResult(won) {
   lab.lastPenalty = penaltySec;
   lab.lastPar = state.coastlinePar > 0 ? Math.round(state.coastlinePar) : 0;
   // The challenge modal's Next Level button is meaningless here (a lab board
-  // has no level to advance to) — hide it for this render; the HUD owns the
-  // session flow. Play Again stays: replaying a seen layout is allowed for
+  // has no level to advance to), so it is hidden for this render; the HUD owns the
+  // session flow. Play Again stays: replaying a seen layout is fine for
   // fun, and the recording guard keeps it out of the data.
   document.getElementById('gameover-nextlevel')?.classList.add('hidden');
   renderHud();

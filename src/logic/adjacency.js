@@ -4,12 +4,12 @@
 // "which cells neighbor this one?" through this module. That used to be four
 // separate implementations (buildNeighborCache in boardSolver,
 // countAdjacentMines in gimmicks, plus inline 8-neighbor loops in the flood,
-// the chord, and the zero-cluster BFS), which is how they drifted apart — see
+// the chord, and the zero-cluster BFS), which is how they drifted apart, see
 // the mine-carries-no-number incident in CLAUDE.md, where a stale count
 // serialized into a canonical board.
 //
 // Sonar's and compass's regions live here too (sonarScanCells /
-// compassRayCells) — not because they are adjacency, but because BOTH the
+// compassRayCells), not because they are adjacency, but because BOTH the
 // display layer and the certifier need the identical answer and used to keep
 // hand-copied copies of it.
 //
@@ -34,9 +34,9 @@
 //      on demand from `rows`, `cols`, and `board._wallEdges`.
 //
 //   2. Explicitly, via `board._cellNeighbors`: a per-cell edge list stamped by
-//      defineCellNeighbors(). When present it IS the topology, full stop —
+//      defineCellNeighbors(). When present it IS the topology, full stop,
 //      rows/cols degrade to pure container indexing and walls do not enter,
-//      because a severed link is simply absent from the list.
+//      because a severed link is just absent from the list.
 //
 // Form 2 is what lets the no-guess certifier run on a non-rectangular board
 // (Archimedean tilings, Project Coastline) without the certifier learning any
@@ -60,7 +60,7 @@
  */
 
 /**
- * The cell at a flat index. Pure container indexing — says nothing about what
+ * The cell at a flat index. Pure container indexing, says nothing about what
  * that cell touches, which is the whole point of keeping the two ideas apart.
  *
  * @param {Board} board
@@ -83,13 +83,13 @@ export function cellAt(board, cols, i) {
  * On a rectangle this is the plain 8-neighborhood and is deliberately NOT
  * wall-aware, preserved verbatim: a plate demands every coordinate neighbor,
  * walls or not. That is a real asymmetry with the estimator's DEDUCTION and
- * CASCADE loops, which do respect walls — but it is coherent rather than a
+ * CASCADE loops, which do respect walls, but it is coherent rather than a
  * bug. The plate states what must end up revealed; walls constrain the
  * reasoning and the flood that get you there. A cell severed by a wall is
  * still reachable from its own side, so the demand stays satisfiable.
  *
  * On an explicit topology the distinction dissolves, since a severed link is
- * simply absent from the edge list, and the plate reads the cells it actually
+ * just absent from the edge list, and the plate reads the cells it actually
  * touches.
  *
  * @param {Board} board
@@ -115,7 +115,7 @@ export function plateDisarmCells(board, rows, cols, r, c) {
 }
 
 /**
- * The cells a SONAR reading covers — everything within two steps.
+ * The cells a SONAR reading covers, everything within two steps.
  *
  * ONE definition, consumed by both the display layer (recomputeDisplayedMines
  * in gimmicks.js) and the certifier (buildStaticGimmickConstraints in
@@ -123,7 +123,7 @@ export function plateDisarmCells(board, rows, cols, r, c) {
  * ever drift the certifier proves a deduction from a number the board does not
  * display, which is a no-guess hole that no test would notice.
  *
- * On an EXPLICIT topology, "within two steps" is graph distance — a breadth-
+ * On an EXPLICIT topology, "within two steps" is graph distance, a breadth-
  * first walk of depth 2. That is the honest generalization: on an unwalled
  * rectangular board the depth-2 closure of the 8-neighborhood is EXACTLY the
  * 5×5 block, so the graph reading and the geometric one already agree wherever
@@ -133,7 +133,7 @@ export function plateDisarmCells(board, rows, cols, r, c) {
  * severing only the inner ring, preserved verbatim. That is not the same as
  * graph distance once walls exist (the outer ring reaches through a wall the
  * inner ring is blocked by), so routing rectangular boards through the graph
- * reading would change a shipped, documented mechanic — the help text promises
+ * reading would change a shipped, documented mechanic, the help text says
  * "a 5×5 area". The inner-ring-only wall rule looks more like an accident than
  * a principle, but it is the accident players have been solving against, and
  * changing it is Christopher's call, not a refactor's side effect.
@@ -183,21 +183,21 @@ export function sonarScanCells(board, rows, cols, r, c) {
 }
 
 /**
- * The cells a COMPASS ray crosses — straight out from the cell until the edge.
+ * The cells a COMPASS ray crosses, straight out from the cell until the edge.
  *
  * Same single-definition contract as sonarScanCells: display and certifier read
  * this one function or they can disagree.
  *
  * A compass ray is NOT a topological property. Sonar asks "how far", which a
- * graph answers; a compass asks "which way", which it cannot — direction needs
- * an embedding the neighbor list does not carry. So on an explicit topology the
+ * graph answers; a compass asks "which way", which it cannot, direction needs
+ * an embedding the neighbor list does not contain. So on an explicit topology the
  * ray is NOT walked here: it was computed from cell POSITIONS at generation
  * (computeCompassRay in tilingGeometry.js, Coastline Phase 2) and stored on the
  * cell as `compassRay`, and this returns that stored list. Display
  * (recomputeDisplayedMines) and the certifier (buildStaticGimmickConstraints)
  * both read it, so they can never disagree about a region computed from geometry
  * neither of them can see. Before Phase 2 this THREW rather than walk (r+dr,c+dc)
- * through a container whose indices mean nothing spatially — a walk that would
+ * through a container whose indices mean nothing spatially, a walk that would
  * have returned a plausible number describing no region on the board.
  *
  * @param {Board} board
@@ -234,7 +234,7 @@ export function compassRayCells(board, rows, cols, r, c, dir) {
  * array of every canonical `dailyBoard`/`weeklyBoard` payload (inside the
  * signed bytes), in the `walls` array of every `cruxes/{date}` payload, and in
  * every in-flight game save. Changing the format silently un-walls every board
- * already written — hasWallBetween would build a key the stored Set does not
+ * already written, hasWallBetween would build a key the stored Set does not
  * contain and find nothing, which reads as "no wall" rather than as an error.
  */
 export function wallKey(r1, c1, r2, c2) {
@@ -255,7 +255,7 @@ export function hasWallBetween(wallEdges, r1, c1, r2, c2) {
   }
 
   // Diagonal move: check the 4 edges of the 2×2 square the diagonal passes through.
-  // Blocked if ANY pair of adjacent edges both exist — forming an L-corner
+  // Blocked if ANY pair of adjacent edges both exist, forming an L-corner
   // or a continuous wall segment across the diagonal's path.
   //
   // Example: two adjacent horizontal walls block a diagonal through them:
@@ -263,7 +263,7 @@ export function hasWallBetween(wallEdges, r1, c1, r2, c2) {
   //   -- --         X cannot see Y diagonally (continuous barrier)
   //   B  Y  G       but A can see G (only one wall on that side)
   //
-  // NOTE: this rule is irreducibly rectangular — it presumes a diagonal step
+  // NOTE: this rule is irreducibly rectangular, it presumes a diagonal step
   // crosses exactly one 2×2 block bounded by exactly four orthogonal edges.
   // That is precisely why walls are baked INTO the neighbor list rather than
   // consulted alongside it: on a non-rectangular topology there are no
@@ -285,16 +285,16 @@ export function hasWallBetween(wallEdges, r1, c1, r2, c2) {
  *
  * Returns `board._cellNeighbors` verbatim when the board declares an explicit
  * topology; otherwise derives the rectangular 8-neighborhood, minus wall-severed
- * edges. Depends only on dimensions, walls, and topology — never on mine
- * positions — which is why generateConstructive can build one cache from a
+ * edges. Depends only on dimensions, walls, and topology, never on mine
+ * positions, which is why generateConstructive can build one cache from a
  * synthetic `{_wallEdges}` object and reuse it across every placement restart.
  *
  * @param {Board} board
  * @param {number} rows
  * @param {number} cols
  * @param {{ignoreWalls?: boolean}} [options]
- *   ignoreWalls — derive the plain 8-neighborhood, ignoring `board._wallEdges`.
- *   Only meaningful for an implicit rectangular topology; a board carrying an
+ *   ignoreWalls, derive the plain 8-neighborhood, ignoring `board._wallEdges`.
+ *   Only meaningful for an implicit rectangular topology; a board with an
  *   explicit `_cellNeighbors` has already resolved its walls into the edge
  *   list, so there is nothing left to ignore and the flag is a no-op.
  * @returns {Array<number[]>}
@@ -328,7 +328,7 @@ export function buildNeighborCache(board, rows, cols, options) {
 /**
  * Validate an explicit topology, returning a defensive copy.
  *
- * The validation is the point. A malformed edge list does not crash — it
+ * The validation is the point. A malformed edge list does not crash, it
  * quietly certifies a board nobody can actually solve, because the solver
  * trusts its neighbor lists absolutely. The invariant that matters most is
  * SYMMETRY: if A counts a mine at B, then B's own clue must count back toward
@@ -386,7 +386,7 @@ function validateCellNeighbors(rows, cols, neighbors) {
 
 /**
  * Boolean form, for callers deciding whether to TRUST a topology that arrived
- * from outside the process — a game save, a stored payload. A save whose
+ * from outside the process, a game save, a stored payload. A save whose
  * topology is truncated or corrupt must be dropped, not resumed: restoring it
  * would hand the player a board whose adjacency disagrees with the one it was
  * certified under, which is the no-guess promise breaking silently.

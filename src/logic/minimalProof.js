@@ -1,19 +1,19 @@
 // ── Minimal-proof extraction ─────────────────────────────────
 // For each cell the solver can deduce, find the SMALLEST set of
 // clue-constraints that forces it. The proof is read off the constraint
-// system the board solver already builds (buildBoardConstraints) — NOT a
+// system the board solver already builds (buildBoardConstraints), NOT a
 // board-template scan. Two properties hold by construction:
 //
-//   • SOUND   — if a subset S forces cell C (C is invariant across every
+//   • SOUND   - if a subset S forces cell C (C is invariant across every
 //     assignment satisfying S), then C is genuinely forced on the full
 //     board. Monotonicity: adding the rest of the board's constraints only
 //     REMOVES satisfying assignments, so an invariant over S's solutions is
 //     invariant over the (smaller) full solution set.
-//   • COMPLETE — every cell findDeducibleFrontier proves has SOME minimal
+//   • COMPLETE, every cell findDeducibleFrontier proves has SOME minimal
 //     proof; when no subset of ≤ MAX_NAMED_CLUES clues forces it, that is an
 //     honest 'region' (a genuine enumeration deduction), never a guess.
 //
-// Nothing here assigns a human NAME — the proof's size and shape are what
+// Nothing here assigns a human NAME, the proof's size and shape are what
 // the pattern classifier consumes. This module only answers "what is the
 // smallest set of clues that proves this square, and what are they?"
 
@@ -96,7 +96,7 @@ function* combinations(pool, k) {
 
 // Constraints connected to cellIdx through shared cells, gathered up to
 // `hops` hops. A size-s forcing subset is connected through the cell and
-// spans ≤ s-1 hops, so MAX_NAMED_CLUES-1 hops contains every named proof —
+// spans ≤ s-1 hops, so MAX_NAMED_CLUES-1 hops contains every named proof,
 // this keeps the subset search local and bounded even when the live
 // component is the whole frontier.
 function candidatePool(universe, cellIdx, hops) {
@@ -150,8 +150,8 @@ export function minimalProofForCell(universe, cellIdx, kind, maxClues = MAX_NAME
   return { size: Infinity, candidates: [], region: true };
 }
 
-// The universe of clue-constraints for the current board state — numbered
-// cells, liar disjunctions, and visible gimmick constraints — each carrying
+// The universe of clue-constraints for the current board state, numbered
+// cells, liar disjunctions, and visible gimmick constraints, each carrying
 // its `origin` cell. This is exactly the constraint set the solver's joint
 // pass consumes, so a minimal proof can only ever cite clues the solver
 // itself used.

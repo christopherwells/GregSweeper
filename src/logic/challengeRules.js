@@ -176,7 +176,7 @@ export function endlessGenBudget(shape) {
 // The pool's ADMISSION floor, distinct from the T12 summit the zone opens at.
 // His ruling 2026-08-04: drop it to 3.5 so more boards fit. The two numbers
 // do different jobs: the summit says where the zone starts, the floor says
-// which boards may sit in the pool it draws from.
+// which boards may enter the pool it draws from.
 export const ENDLESS_PPC_FLOOR = 3.5;
 
 // Per-shape floor, where a lattice cannot reach the shared one on a board a
@@ -210,7 +210,7 @@ export const ENDLESS_PPC_FLOOR_BY_SHAPE = Object.freeze({
   // data this entry should shrink toward the shared floor and eventually go.
   rhombille: 2.2,
   // CLASSIC joined on 2026-08-10, and it is the one case that is not about a
-  // shape being under-priced while players learn it. Rect's constraints simply
+  // shape being under-priced while players learn it. Rect's constraints just
   // conflict: it prices so gently that reaching 3.5 s/cell takes 130-156
   // cells, and BOARD_WIDTH_CAP holds it to 12 columns, so every board that
   // clears the shared floor is big, dense and stacked, which is exactly what

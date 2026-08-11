@@ -127,7 +127,7 @@ export function persistGameState() {
     // way wallEdges does, and for the same reason: the snapshot is JSON, and
     // JSON.stringify drops properties stamped on the board ARRAY. Without
     // this a tiling game saved and resumed comes back RECTANGULAR mid-play,
-    // the board silently changes shape under the player, and the adjacency it
+    // the board's shape silently changes under the player, and the adjacency it
     // was certified under is gone. Null on every ordinary board, which is
     // every board shipped today.
     //
@@ -171,7 +171,7 @@ function resumeContext(slot) {
     canonicalDate: state.canonicalDailyBoard?.date || null,
     canonicalRngSeed: state.canonicalDailyBoard?.raw?.rngSeed || null,
     // The weekly's counterpart. The gate stashes this board exactly as it does
-    // the daily's, so the check costs nothing extra, it was simply never wired.
+    // the daily's, so the check costs nothing extra, it was just never wired.
     canonicalWeek: state.canonicalWeeklyBoard?.weekStart || null,
     canonicalWeeklyRngSeed: state.canonicalWeeklyBoard?.raw?.rngSeed || null,
     // A challenge save above maxLevelReached + 1 is a position this

@@ -43,7 +43,7 @@ export const state = {
   clickTimeline: [],
   // Lens invocations this game: { t: elapsedSeconds, kind } with kind =
   // 'flag-warning' | 'region'. Submitted with daily scores so the
-  // nightly par fit can EXCLUDE hinted plays — hints change completion
+  // nightly par fit can EXCLUDE hinted plays, hints change completion
   // times, and an uninstrumented hint system would quietly corrupt the
   // model the whole game stands on.
   // The no-guess certificate for the CURRENT board: { clicks, tier }.
@@ -52,8 +52,8 @@ export const state = {
   // (0/1 counting and subsets, 2 case-by-case enumeration, 3 liar
   // reasoning). Stamped from the bestStart full-solve check on daily /
   // weekly and from the accepted generation check on challenge / timed.
-  // Null in chaos and on any board the solver did not certify — the
-  // Certified chip simply doesn't render rather than overclaim.
+  // Null in chaos and on any board the solver did not certify, the
+  // Certified chip just doesn't render rather than overclaim.
   boardCertificate: null,
   // Timed mode: par + feature vector for the CURRENT board, computed at
   // generation from the same PAR_MODEL as daily (timed boards are
@@ -61,15 +61,15 @@ export const state = {
   // rating on the timed win modal and the timed/{pushId} submission.
   timedPar: 0,
   timedFeatures: null,
-  dailyPar: 0,       // predicted time in seconds — predictPar(dailyFeatures)
+  dailyPar: 0,       // predicted time in seconds, predictPar(dailyFeatures)
   dailyMoves: 0,     // solver totalClicks for pace calculation
-  dailyFeatures: null, // full feature vector from computeDailyFeatures — used for par breakdown, Firebase meta upload, and the R refit training set
+  dailyFeatures: null, // full feature vector from computeDailyFeatures, used for par breakdown, Firebase meta upload, and the R refit training set
   isDailyPractice: false, // set when the URL carries ?seed=<custom>: play a custom-seed board but skip streak/completion/history side effects. Submissions still go to Firebase (under the custom seed path) so the session still tags a uid.
   isArchivePlay: false, // set when a PAST daily is replayed from the calendar: keeps the caller-set date, requires the canonical (no local-gen), never touches streak/completion, never persists, and submits to dailyArchive/ instead of daily/. See archiveEligibility.js + the Daily Archive section of CLAUDE.md.
-  _archiveRaw: null, // { date, raw } — the past board the calendar fetched, handed to newGame so it doesn't refetch or pollute canonicalDailyBoard (today's stash).
+  _archiveRaw: null, // { date, raw }, the past board the calendar fetched, handed to newGame so it doesn't refetch or pollute canonicalDailyBoard (today's stash).
   // The weekly's counterpart: a PAST week's canonical replayed from the "Past
   // weeklies" list. Keeps the caller-set weekStart, requires the canonical (no
-  // local-gen — a regenerated past week would be a board nobody played),
+  // local-gen, a regenerated past week would be a board nobody played),
   // consumes no daily attempt, never persists, and records nothing: no
   // leaderboard row, no first-attempt fit row, no week streak. The week it
   // belongs to is over and its record is already written.
@@ -88,7 +88,7 @@ export const state = {
   showParticles: false,
   theme: 'classic',
   hitMine: null,  // {row, col} of the mine that killed you
-  zoomLevel: 100,  // percentage (50–200)
+  zoomLevel: 100,  // percentage (50-200)
   checkpoint: 1,   // last checkpoint level (every 5 levels)
   flagMode: false, // flag-mode toggle for mobile
   dirtyCells: new Set(), // track changed cells for targeted updates
@@ -99,13 +99,13 @@ export const state = {
   mineShiftTimerId: null,
   // The shifter's cadence {interval, count} for THIS board. Game state rather
   // than a module variable in timerManager, so the restart memory dies with
-  // the game that rolled the modifier — a paused Chaos round used to leave its
+  // the game that rolled the modifier, a paused Chaos round used to leave its
   // cadence behind and resume it on whatever game was loaded next, including a
   // canonical Daily (issue #238).
   mineShiftPlan: null,
   worms: [],             // live hatched worms [{segments, movesLeft, nextMoveMs}]
   wormTimerId: null,     // worm-crawl heartbeat interval id
-  wormEvents: [],        // hatch log [{t, r, c, len, life, pace, moves, tEnd?}] — submitted with scores
+  wormEvents: [],        // hatch log [{t, r, c, len, life, pace, moves, tEnd?}], submitted with scores
   // Test-build ?level= playtest runs: no stats, no progression, no
   // challenge save slot, no power-up earns (/test/ shares this origin's
   // localStorage with prod, so a playtest jump must never pollute it)
@@ -117,7 +117,7 @@ export const state = {
   // Project Coastline (test-only, ?coastline=1): a frozen Archimedean-tiling
   // board played as an isLevelPractice run (records nothing). The flag routes
   // newGame's generation + revealCell's frozen first-click path onto the tiling
-  // without introducing a new gameMode. UNREACHABLE in production — the deep
+  // without introducing a new gameMode. UNREACHABLE in production, the deep
   // link is isTestEnvironment()-gated (mirrors ?level=).
   coastlinePractice: false,
   coastlineSeed: null,   // seed for the tiling board (stable across reloads)
@@ -126,13 +126,13 @@ export const state = {
   // Feature vector + par for the tiling board. Nothing submits them (a
   // coastline run records nothing); they exist so the par chain is exercised
   // and visible on a non-rectangular board. Kept in their OWN slots rather
-  // than borrowing timedFeatures/timedPar, which carry a submission contract.
+  // than borrowing timedFeatures/timedPar, which come with a submission contract.
   coastlineFeatures: null,
   coastlinePar: 0,
 
   // Challenge 250 (the authored ladder). The level's spec re-derives from
   // currentLevel (challengeSpecForLevel) so it is never persisted; the
-  // board SEED is the draw's identity — worm traits and the features'
+  // board SEED is the draw's identity, worm traits and the features'
   // wormLoad both key on it, so it must ride the save with the board.
   // Par/features are display + validation aids (challenge never submits
   // to the par fit).
@@ -160,13 +160,13 @@ export const state = {
   // populated via postMessage handshake. Used as forensic provenance
   // when writing canonical boards. Null until the SW responds.
   //
-  // canonicalDailyBoard: { date, raw } — the canonical board for today
+  // canonicalDailyBoard: { date, raw }, the canonical board for today
   // pre-fetched at boot. newGame() uses this verbatim instead of doing
   // its own loadDailyBoard call, so by construction every device on
   // the same ET date plays the same layout. Null when offline or when
   // today's canonical hasn't been written yet (first visitor of the day).
   //
-  // canonicalWeeklyBoard: { weekStart, raw } — same idea but for the
+  // canonicalWeeklyBoard: { weekStart, raw }, same idea but for the
   // weekly puzzle. One canonical board per ET week (Monday → Sunday),
   // pre-fetched at boot so the Weekly card opens without a round-trip.
   //
@@ -180,11 +180,11 @@ export const state = {
 
   // ── Weekly mode (per-attempt) ───────────────────────
   // The weekly puzzle is one board per ET week, with up to 7 attempts
-  // (one per day Mon–Sun). All players see the same board for the
+  // (one per day Mon, Sun). All players see the same board for the
   // whole week; the leaderboard records each player's best time and
   // a per-day map. The first attempt a player makes on the week's
   // board doubles as par-model fit data (honest first encounter); days
-  // 2–7 are speedruns and stay out of the fit.
+  // 2-7 are speedruns and stay out of the fit.
   weeklySeed: null,                // 'YYYY-MM-DD' Monday in ET
   weeklyDay: null,                 // 0..6, which day's attempt is in progress
   weeklyRngSeed: null,             // canonical's resolved seed (e.g. '2026-05-04:trial1')
@@ -209,7 +209,7 @@ export const state = {
   // True while a blocking popup (modifier intro, bomb-hit explainer)
   // has paused the timer. Resume paths (visibilitychange, idle
   // interaction) must NOT restart the clock while this is set, or the
-  // timer ticks behind the modal — e.g. tab away during the bomb-hit
+  // timer ticks behind the modal, e.g. tab away during the bomb-hit
   // explainer and back resumes it mid-read. Cleared only when the popup
   // itself closes and explicitly resumes.
   modalPaused: false,
@@ -218,7 +218,7 @@ export const state = {
 // Record one player action on the click timeline. t mirrors the
 // bombHitEvents convention (clean wall-clock seconds, 1 decimal).
 // Capped: drop-oldest beyond 2000 entries so a pathological session
-// can't bloat the auto-persisted save — a full 14x14 game is ~200-400
+// can't bloat the auto-persisted save, a full 14x14 game is ~200-400
 // actions, so the cap never bites in real play.
 const CLICK_TIMELINE_CAP = 2000;
 export function recordPlayerAction(action, row, col) {
@@ -262,8 +262,8 @@ export function clearCoastlinePractice() {
 }
 
 // True when a board's modifiers were resolved during PRE-generation
-// (daily/weekly canonical boards, coastline tiling boards, and — since the
-// Challenge 250 engine — challenge ladder boards, whose specs author their
+// (daily/weekly canonical boards, coastline tiling boards, and, since the
+// Challenge 250 engine, challenge ladder boards, whose specs author their
 // modifiers and whose layouts are drawn frozen at newGame) rather than on
 // the first click (timed / chaos). newGame's per-game reset must NOT wipe
 // activeGimmicks for these, or the active-modifier bar renders empty on a
@@ -277,14 +277,14 @@ export function modifiersPreResolved(gameMode, coastlinePractice) {
 // Three lanes borrow another mode's name without owning its slot: an archive
 // daily and a past-weekly replay run as 'daily' / 'weekly', and a ?level= or
 // coastline practice run as 'normal'. Each shares the live mode's storage key,
-// so neither may write to it — and, the half that was missing, neither may
+// so neither may write to it, and, the half that was missing, neither may
 // CLEAR it. handleWin ended with an unguarded clearGameState(state.gameMode),
 // so winning a past daily deleted the in-progress real daily: the player's
 // reveals went, and the board came back with a zeroed clock in the one mode
 // where a manual restart is deliberately impossible (issue #247).
 //
-// Pure over the three flags so both ends of the slot — persistGameState and
-// the win/loss clears — ask one question and cannot drift apart again.
+// Pure over the three flags so both ends of the slot, persistGameState and
+// the win/loss clears, ask one question and cannot drift apart again.
 export function ownsSaveSlot(s) {
   const run = s || {};
   return !run.isArchivePlay && !run.isWeeklyArchive && !run.isLevelPractice;
@@ -294,7 +294,7 @@ export function ownsSaveSlot(s) {
 // attempt, derived from the per-hit event log. Single source of truth so
 // the live timer, the final precise time, and the score submission all
 // agree. Derived from events (not a separate accumulator) so it survives
-// the daily auto-save/restore for free — the events are persisted.
+// the daily auto-save/restore for free, the events are persisted.
 // Only one mode's events are populated at a time; summing both is safe.
 export function getActiveBombPenaltyTotal() {
   let sum = 0;
@@ -313,7 +313,7 @@ export function getActiveBombPenaltyTotal() {
 // bomb penalty is held separately in the hit-event log and added here, so
 // the displayed time jumps by the penalty on a hit without mutating the
 // wall-clock counter (which would double-count on auto-save/restore).
-// Lives here — not in timerManager — because EVERY writer of the timer
+// Lives here, not in timerManager, because EVERY writer of the timer
 // display (timerManager's tick, headerRenderer's updateHeader) must render
 // this same value: an inlined bare-elapsedTime copy in headerRenderer used
 // to overwrite the penalized display on every reveal, flashing the clock
@@ -323,7 +323,7 @@ export function getDisplayTime() {
 }
 
 // ── Encouragement Lines ────────────────────────────────
-// Shown on loss screens. Unified pool — was three near-identical
+// Shown on loss screens. Unified pool, was three near-identical
 // variants ("you got this", "almost had it") plus a couple of weird
 // outliers ("the board fears your return"). Pool below favors honest
 // over chipper; "the right cell was a 50-50, you guessed wrong" reads

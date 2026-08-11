@@ -4,29 +4,29 @@
 // prior-centered at ZERO, and live daily data identifies those deviations
 // SLOWLY (one tiling daily per ~2 days post-flip, split six ways) and
 // PARTIALLY: the shape rotation ships FIXED per-shape configs, so within a
-// shape the live rows carry a CONSTANT cellCount and totalMines — their
+// shape the live rows carry a CONSTANT cellCount and totalMines, their
 // deviation columns are exactly collinear with the shape's intercept
 // deviation, and no amount of daily data can separate them. This lab is the
 // instrument for what the live instrument structurally cannot measure, plus a
 // head start on what it measures slowly.
 //
-// THE BATTERY (82 boards after the two mid-battery revisions below — the
+// THE BATTERY (82 boards after the two mid-battery revisions below, the
 // chunk-9/10 recalibration at 55/105 and the board-66 trim; originally 105
-// in 21 chunks of 5 — each block earning its place):
+// in 21 chunks of 5, each block earning its place):
 //
 //   1. WARM-UPS (18; the opening chunks, `warmup: true`): THREE consecutive
 //      plain boards per tiling at its daily config, easiest lattice first.
 //      A first-ever cairo board measures novelty, not the lattice, and
-//      acclimation builds fastest on same-shape repetition — so each shape's
+//      acclimation builds fastest on same-shape repetition, so each shape's
 //      warm-ups run back to back (Christopher's call, 2026-08-02) instead of
 //      interleaving. Three points per shape also give the offline fit a
 //      per-shape learning slope to CHECK (did the curve flatten?) rather
 //      than assume. Excluded from the estimates either way.
 //   2. PLAIN SIZE x DENSITY GRID (54): originally 3 sizes x 3 densities per
 //      tiling; redistributed at the chunk-9/10 recalibration checkpoint
-//      (2026-08-03, his call — see GRID_PLAN) to 6 boards on each pinned
+//      (2026-08-03, his call, see GRID_PLAN) to 6 boards on each pinned
 //      lattice (hex, 4.8.8, rhombille) and 12 on each noisy one (cairo,
-//      floret, deltoidal). This is the block only the lab can supply — it
+//      floret, deltoidal). This is the block only the lab can supply, it
 //      breaks the size/density-vs-intercept collinearity above, so the
 //      cellCount and totalMines deviations get real priors instead of
 //      frozen zeros. It also feeds the intercept and the reasoning-tier
@@ -40,27 +40,27 @@
 //   4. MODIFIER SINGLES (10 after the board-66 trim; originally 24): per
 //      tiling, single-modifier boards at the daily config, allocated by
 //      MECHANISM rather than evenly (see MODIFIER_PLAN): the gimmicks whose information REGION is a function
-//      of the lattice — sonar (depth-2 graph ball, area ~ valence²),
+//      of the lattice, sonar (depth-2 graph ball, area ~ valence²),
 //      compass (three different direction families across the six
 //      lattices), wormhole (pair-sum ceiling 20 on rhombille), worm (crawls
-//      the neighbor graph) — get 3-4 boards spread across the lattices
+//      the neighbor graph), get 3-4 boards spread across the lattices
 //      where the mechanism diverges most, because "does sonar cost
 //      differently on a valence-10 lattice?" is a real question with a
 //      plausible yes. The mechanically shape-neutral five (mystery, liar,
-//      mirror, locked, walls — their information effect does not scale
+//      mirror, locked, walls, their information effect does not scale
 //      with valence) get 2 each, enough for a POOLED tilings-vs-square
 //      prior. Per-shape × per-gimmick cells (54 of them) are unpowerable
 //      at this scale and unnecessary: the offline fit estimates pooled
 //      gimmick shifts plus per-shape terms only where the mechanism block
-//      supplies real replication. Contrast comes from the model jointly —
-//      every modifier board sits at its shape's daily config, next to the
+//      supplies real replication. Contrast comes from the model jointly,
+//      every modifier board is at its shape's daily config, next to the
 //      grid's mid-size plains and the warm-up baselines at that config.
 //
 // CHUNK CONTRACT (the "fill gaps as we go" workflow): boards are identified
 // by stable `id`s and progress is a log of per-id results, so any UNPLAYED
-// board can be redesigned freely — swap specs, reorder, retune densities —
+// board can be redesigned freely, swap specs, reorder, retune densities,
 // without corrupting progress. After any chunk, export the results
-// (the HUD's copy button), look at where the uncertainty still lives, and
+// (the HUD's copy button), look at where the uncertainty remains, and
 // revise the remaining chunks in this file. Played ids are frozen history.
 //
 // Ordering is deterministic and interleaved (shapes rotate board to board)
@@ -68,7 +68,7 @@
 // lattice happens to come last.
 //
 // RECORDING: localStorage is the source of truth and every row also SYNCS
-// to the world-readable `parLab/` Firebase path (parLabSync.js — the one
+// to the world-readable `parLab/` Firebase path (parLabSync.js, the one
 // deliberate exception to "test builds never write Firebase", because this
 // dataset is the product, not pollution), so the analysis can fetch results
 // without a manual handoff. The local log doubles as the outbox: rows carry
@@ -78,20 +78,20 @@
 //
 // MINES ARE DAILY-STYLE STRIKES (Christopher's ruling, 2026-08-02): the lab
 // parameterizes the DAILY par model, so a lab mine costs what a daily mine
-// costs — revealed strike marker, info-value + ramped base logged to the
+// costs, revealed strike marker, info-value + ramped base logged to the
 // hit-event log, play continues, never game over. A loss-on-mine lab would
 // measure a more cautious solve than the model's own response frame.
 //
-// TIME CONVENTION — the daily's, verbatim: `timeSec` is the final
+// TIME CONVENTION, the daily's, verbatim: `timeSec` is the final
 // penalty-INCLUSIVE time (state.preciseTime, the same number a daily
-// submits and the win modal shows — stopTimer folds the strike penalties
+// submits and the win modal shows, stopTimer folds the strike penalties
 // in), `penaltySec` is the total folded penalty, and `bombHitEvents`
 // carries the per-hit breakdown. The offline fit recovers
 // pure_time = timeSec − penaltySec (equivalently − Σ event penalties),
 // exactly the recipe the nightly refit applies to daily rows, and applies
 // the same >30% mine-detonation probe filter (bombHits vs mines are both
 // on the row). Rows recorded before 2026-08-02's fix lack `penaltySec`
-// and carry a PURE-wall-clock integer timeSec instead — for those,
+// and carry a PURE-wall-clock integer timeSec instead, for those,
 // pure_time = timeSec with no subtraction (they are all warm-ups; the
 // field's presence is the discriminator).
 //
@@ -102,7 +102,7 @@
 // VOIDED (deliberate mine-popping, an interrupted run, any contaminated
 // row) goes through redoParLabBoard: its resolving rows flip to 'invalid'
 // locally, an 'invalid' TOMBSTONE row syncs to the server (the original
-// synced row is append-only and cannot be edited — the analysis voids any
+// synced row is append-only and cannot be edited, the analysis voids any
 // (uid, id, attempt) that has an invalid row), and the board re-issues at
 // the next attempt number, which is a FRESH layout.
 
@@ -135,7 +135,7 @@ const SIZES = {
 // Density grids. The open lattices reach down to the daily band's floor;
 // the Laves lattices sit low at 0.18 with seeds VALIDATED offline
 // (generation is deterministic, so a spec that generated once in the
-// validator generates forever on-device) — EXCEPT rhombille, whose low
+// validator generates forever on-device), EXCEPT rhombille, whose low
 // point is its own CONSTRUCTIVE floor: sparse no-guess rhombille boards are
 // effectively unfindable by sampling (0/12 whole-generation runs at 0.211,
 // and the validator reproduced the dead zone at 0.18), so below ~0.22 the
@@ -161,14 +161,14 @@ const SEED_SALTS = {
 };
 
 // Per-shape play order through its own plain-grid queue. Codes are
-// `<size>-<densityIndex>` with an optional `r` suffix for a REPLICATE — the
+// `<size>-<densityIndex>` with an optional `r` suffix for a REPLICATE, the
 // same size x density cell under a fresh id, hence a fresh deterministic
 // layout (parLabSeed keys on the id).
 //
 // THE CHUNK-9/10 RECALIBRATION (Christopher's call, 2026-08-03, at 55/105
-// boards): hex, 4.8.8, and rhombille came back PINNED — log-spreads x/1.4
+// boards): hex, 4.8.8, and rhombille came back PINNED, log-spreads x/1.4
 // or tighter across their six played grid boards, gentle-or-flat size
-// slopes — so their remaining three grid boards each (M-0, S-2, L-2) would
+// slopes, so their remaining three grid boards each (M-0, S-2, L-2) would
 // have spent nine boards confirming what the fit already holds. Those nine
 // slots moved to the three noisy lattices, each noisy for a different
 // reason: cairo's uncertainty is concentrated in its LARGE corner (size
@@ -182,13 +182,13 @@ const SEED_SALTS = {
 // stabilizing, I'd rather test other regions or just have less work to
 // do"). What the audit found and the trim keeps/cuts:
 // - cairo's slope came back TIGHT (M 1.47 sd 0.08 over n3, L 3.06 sd 0.19)
-//   — the three L replicates became redundant and are gone; the 0.28-density
+//   - the three L replicates became redundant and are gone; the 0.28-density
 //   corners (S-2, L-2) stay, they are the unexplored dimension.
-// - floret's inverted slope is real (L calm at 1.30 sd 0.10) — its L boards
+// - floret's inverted slope is real (L calm at 1.30 sd 0.10), its L boards
 //   are gone; S-1r stays to adjudicate the 1.78-vs-2.99 small-cell split,
 //   M-0 completes the mid density row.
 // - deltoidal's SMALL cell is the wildest number in the battery (sd 1.26,
-//   0.74 vs 4.42) — S-1r and S-2 attack it; M-0 and L-2 complete density
+//   0.74 vs 4.42), S-1r and S-2 attack it; M-0 and L-2 complete density
 //   rows on the steepest lattice; only L-1r was redundant.
 const GRID_PLAN = {
   hex:       ['M-1', 'S-0', 'L-1', 'M-2', 'S-1', 'L-0'],
@@ -223,28 +223,28 @@ const RECT_ANCHORS = [
 // confounds with its intercept more than another's.
 // TRIMMED at board 66 to the mechanism core (played singles stay frozen:
 // hex-sonar, 4.8.8-compass, 4.8.8-wormhole, rhombille-sonar). Kept: the
-// sonar valence arc's top (deltoidal, 9 — with hex 6 and rhombille 10
+// sonar valence arc's top (deltoidal, 9, with hex 6 and rhombille 10
 // already played), one compass block per remaining direction family (hex
 // 60°, floret 30°), wormhole's sum-20 ceiling (rhombille), and two
-// neutrality spot-checks on hard lattices (floret-liar — on floret rather
+// neutrality spot-checks on hard lattices (floret-liar, on floret rather
 // than deltoidal so the queue lengths keep the tail interleaved, and
-// deltoidal already hosts the sonar single — plus rhombille-locked). Cut:
-// every WORM single — his side-only crawl ruling
+// deltoidal already hosts the sonar single, plus rhombille-locked). Cut:
+// every WORM single, his side-only crawl ruling
 // (worms cross sides, never corners; see challenge-250 design) changes the
 // mechanic they would measure, so worm timing data waits for the new crawl
 // to ship rather than recording the outgoing one. Also cut: the remaining
 // shape-neutral pairs (mystery/mirror/walls and the low-valence sonar and
-// mid wormhole cells) — pooled gimmick shifts identify from live tiling
+// mid wormhole cells), pooled gimmick shifts identify from live tiling
 // dailies eventually, unlike the size/density slopes only this lab can
 // supply.
 // THE WORM ADDENDUM (his call at battery completion, 2026-08-03: "check
 // the worm and how it slows different games down"): the worm singles cut
-// at board 66 return now that the mechanics they measure have SHIPPED —
+// at board 66 return now that the mechanics they measure have SHIPPED,
 // the side-only crawl (#217: a worm crosses sides, never corners) and the
 // set pace (#218: fixed cadence x pace trait). Four boards across the
 // crawl-graph extremes: hex (six equal exits, the purest crawl), cairo
 // (five-sided pentagons), rhombille (4-exit crawl on the valence-10
-// lattice — every covered number is load-bearing for the no-Pass-B
+// lattice, every covered number is load-bearing for the no-Pass-B
 // enumeration), and floret (the rotated pinwheel + the lattice whose
 // centering fix just landed). wormEvents ride each row, so the fit gets
 // realized doses, not just schedules.
@@ -264,7 +264,7 @@ const mineCountFor = (total, density) => Math.max(5, Math.round(total * density)
 function buildBattery() {
   const boards = [];
 
-  // 1. Warm-ups: three CONSECUTIVE boards per shape at its daily config —
+  // 1. Warm-ups: three CONSECUTIVE boards for each shape at its daily config,
   // same-shape runs, easiest lattice first, so acclimation actually builds
   // before the next lattice arrives.
   for (const shape of SHAPES) {
@@ -279,7 +279,7 @@ function buildBattery() {
   }
 
   // 2+4. Per-shape queues: the plain grid in GRID_PLAN order (6 boards on
-  // the pinned lattices, 12 on the noisy three — see the recalibration
+  // the pinned lattices, 12 on the noisy three, see the recalibration
   // note above), then the shape's 4 modifier boards at its daily config.
   const queues = SHAPES.map((shape, si) => {
     const q = [];
@@ -344,7 +344,7 @@ function buildBattery() {
 export const PAR_LAB_BATTERY = buildBattery();
 export const PAR_LAB_CHUNK_SIZE = 5;
 
-// ── Board building (the ONE builder — client and validator both call it) ──
+// ── Board building (the ONE builder, client and validator both call it) ──
 
 /**
  * The deterministic seed for a board attempt. Attempt 0 is the designed
@@ -358,9 +358,9 @@ export function parLabSeed(spec, attempt = 0) {
 }
 
 /**
- * Build a lab board from its spec: certified, frozen, opener marked — the
+ * Build a lab board from its spec: certified, frozen, opener marked, the
  * same contract as a coastline practice board. Rect specs mirror the daily
- * local-gen recipe (generate around the container centre, certify, retry on
+ * local-gen recipe (generate around the container center, certify, retry on
  * a deterministic seed ladder); tiling specs are generateTilingBoard
  * verbatim. Single-sourced so scripts/validate-parlab-battery.mjs proves
  * offline exactly what the client will build on-device.
@@ -408,7 +408,7 @@ export function buildParLabBoard(spec, attempt = 0) {
 /**
  * A board is RESOLVED once it has a win or a skip row that has not been
  * voided; losses leave it open (fresh-seed retry), and an 'invalid' row for
- * the same (id, attempt) voids the win/skip it tombstones — the board
+ * the same (id, attempt) voids the win/skip it tombstones, the board
  * re-issues at the next attempt.
  */
 export function resolvedIds(rows) {
@@ -438,7 +438,7 @@ export function nextParLabBoard(rows, battery = PAR_LAB_BATTERY) {
 /**
  * How many layout-SEEING attempts this id already has. Wins, losses, and
  * invalidated rows all count (each saw its layout, so the next issue must
- * be a fresh seed); skips do not — but tombstones and their voided rows
+ * be a fresh seed); skips do not, but tombstones and their voided rows
  * share an attempt number, so the pairs collapse to one sighting.
  */
 export function attemptCountFor(rows, id) {
@@ -461,7 +461,7 @@ export function labProgress(rows, battery = PAR_LAB_BATTERY) {
  * Shape one result row. The features/par arguments are the run's own
  * computed values (state.coastlineFeatures / state.coastlinePar); wormEvents
  * ride along so realized worm exposure survives for the two worm boards.
- * `seq` is the global play counter — the offline fit's session-effect axis.
+ * `seq` is the global play counter, the offline fit's session-effect axis.
  */
 export function buildParLabRow(spec, attempt, result, {
   timeSec = 0, penaltySec = 0, features = null, par = 0, wormEvents = null, seq = 0,
@@ -476,8 +476,8 @@ export function buildParLabRow(spec, attempt, result, {
     gimmicks: Array.isArray(spec.gimmicks) ? [...spec.gimmicks] : [],
     warmup: spec.warmup === true,
     result,
-    // The daily convention: penalty-INCLUSIVE final time (state.preciseTime
-    // — what stopTimer committed and the win modal shows). penaltySec below
+    // The daily convention: penalty-INCLUSIVE final time (state.preciseTime,
+    // what stopTimer committed and the win modal shows). penaltySec below
     // is what the fit subtracts back out; see the header.
     timeSec,
     seq,
@@ -499,7 +499,7 @@ export function buildParLabRow(spec, attempt, result, {
 /**
  * Append with an idempotence guard: one measurement per (id, attempt).
  * A replay of an already-recorded attempt (the gameover modal's own Play
- * Again regenerates the same seed) must not produce a second row — the
+ * Again regenerates the same seed) must not produce a second row, the
  * second solve of a seen layout is not a measurement, and an INVALIDATED
  * attempt stays spent for the same reason. Skips and tombstones bypass
  * the guard: neither claims to measure anything.
@@ -516,14 +516,14 @@ export function appendParLabRow(rows, row) {
 }
 
 /**
- * VOID a played board so it re-issues with a fresh layout — the escape
+ * VOID a played board so it re-issues with a fresh layout, the escape
  * hatch for a contaminated row (deliberate mine-popping, an interrupted
  * sitting, a run the player wants stricken). Resolving rows (win/skip)
- * for the id flip to 'invalid' IN PLACE (they keep their fbKey — the
+ * for the id flip to 'invalid' IN PLACE (they keep their fbKey, the
  * synced originals are append-only and stay on the server), and one
  * 'invalid' TOMBSTONE row per voided attempt is appended WITHOUT an
  * fbKey, so the sync flush publishes the voiding: the analysis drops any
- * (uid, id, attempt) that carries an invalid row. attemptCountFor counts
+ * (uid, id, attempt) with an invalid row. attemptCountFor counts
  * the voided attempt as seen, so the re-issue draws the next seed.
  *
  * @param {Array} rows the stored log

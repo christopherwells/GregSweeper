@@ -27,7 +27,7 @@ import { prettyDate, RANK_MEDALS } from './leaderboardModal.js';
 // candidate CVs) from src/logic/modelHistory.json. Tab button is hidden
 // at boot in index.html and only unhidden when getUid() === OWNER_UID,
 // so other players never see the tab. The JSON file itself ships with
-// the rest of the static assets — privacy-by-obscurity, not Firebase
+// the rest of the static assets, privacy-by-obscurity, not Firebase
 // rules. Worth revisiting if the user base grows past ~10.
 const OWNER_UID = '5Ht9d2io0ugU1NGsjdJmZvkJi382';
 const MODEL_HISTORY_PATH = './src/logic/modelHistory.json';
@@ -59,7 +59,7 @@ export async function updateStatsDisplay() {
   populateQuickPlayPanel();
   populateWeeklyPanel();
 
-  // Resolve uid + populate Model tab in parallel with the daily panel —
+  // Resolve uid + populate Model tab in parallel with the daily panel,
   // the auth wait shouldn't gate the visible part of the modal.
   await Promise.all([
     populateDailyPanel(),
@@ -105,7 +105,7 @@ async function populateWeeklyPanel() {
       bestEl.textContent = myRow.bestTime.toFixed(1) + 's';
       attemptsEl.textContent = (myRow.attemptsUsed || 0) + '/7';
       const rank = entries.indexOf(myRow) + 1;
-      // Medal for the four top ranks — the leaderboard's rank language.
+      // Medal for the four top ranks, the leaderboard's rank language.
       rankEl.innerHTML = rank <= RANK_MEDALS.length
         ? `${spriteImgHTML(RANK_MEDALS[rank - 1], 'sprite-rank', `#${rank}`)} of ${entries.length}`
         : `#${rank} of ${entries.length}`;
@@ -141,7 +141,7 @@ async function populateWeeklyPanel() {
       chartEl.appendChild(svg);
     }
 
-    // Past weeks table — last 4 finished weeks before this one, in the
+    // Past weeks table, last 4 finished weeks before this one, in the
     // leaderboard's row language with medal cells for top-4 finishes.
     if (pastEl && pastEmptyEl) {
       const past = await collectPastWeeklyBests(uid, 4);
@@ -172,7 +172,7 @@ async function populateWeeklyPanel() {
 async function collectPastWeeklyBests(uid, count) {
   if (!uid) return [];
   // Build the list of weekStart strings first, then fetch all weeks in
-  // parallel. Each fetchWeeklyLeaderboard is independent — running them
+  // parallel. Each fetchWeeklyLeaderboard is independent, running them
   // sequentially burns ~4 round-trips on the network for the 4-week
   // case. Promise.all cuts that to ~1 round-trip's worth of latency.
   const today = new Date(`${getLocalDateString()}T00:00:00-05:00`);
@@ -234,7 +234,7 @@ function renderChartEmpty(id, message) {
 }
 
 // Populate the owner-only Model tab. Skipped entirely for non-owner
-// uids (gated in updateStatsDisplay) — non-owners never even fetch
+// uids (gated in updateStatsDisplay), non-owners never even fetch
 // modelHistory.json.
 async function populateModelPanel() {
   // Reset to placeholders while fetching, in case a previous open's
@@ -338,7 +338,7 @@ async function populateModelPanel() {
   }
 
   // ── Tables ────────────────────────────────────────────
-  // History trend table — monospace so columns line up.
+  // History trend table, monospace so columns line up.
   const headerLine  = 'date         meth   N    RMSE     bias      target';
   const dividerLine = '----         ----   --   ----     ----      ------';
   const dataLines = recent.map(r => {
@@ -356,7 +356,7 @@ async function populateModelPanel() {
     [headerLine, dividerLine, ...dataLines].join('\n');
 
   // Candidate CVs from the latest fit. seed-residuals fallback rows have
-  // no posterior, so candidates is an empty array — show that explicitly
+  // no posterior, so candidates is an empty array, show that explicitly
   // rather than a blank table.
   if (Array.isArray(latest.candidates) && latest.candidates.length > 0) {
     const cvLines = ['feature                    mean       sd        cv'];
@@ -379,7 +379,7 @@ function populateChallengePanel() {
   const stats = loadStats();
   // statsForMode owns the gameMode → modeStats key mapping ('normal' lives
   // under 'challenge'). The old literal `modeStats?.normal` was always
-  // undefined, so this panel silently showed the ALL-MODES aggregate —
+  // undefined, so this panel silently showed the ALL-MODES aggregate,
   // every daily/weekly/timed/chaos game inflated "Played" and the win rate
   // (2026-07-10 audit). The `|| stats` fallback survives only for a
   // pre-modeStats legacy save.
@@ -525,13 +525,13 @@ async function populateDailyPanel() {
     bombSeconds,
     refPar: getRefPar(),
     handicapProvisional,
-    // The full shipped ratio map — the percentile chart's Adjusted mode
+    // The full shipped ratio map, the percentile chart's Adjusted mode
     // ranks the whole field by time/k, same as the leaderboard view.
     handicaps: handicapsMap || null,
   });
 }
 
-// Tab switcher — bound once at module load.
+// Tab switcher, bound once at module load.
 for (const btn of $$('.stats-tab')) {
   btn.addEventListener('click', () => setActiveStatsTab(btn.dataset.tab));
 }

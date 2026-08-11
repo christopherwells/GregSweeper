@@ -70,7 +70,7 @@ export function intakeRules(level, intro) {
   };
 }
 
-/** May this board sit at this level? Window is the caller's business. */
+/** May this board belong at this level? Window is the caller's business. */
 export function boardAllowedAtLevel(board, rules) {
   const { shape, gimmicks } = board.spec;
   if (rules.shapeDebut && shape !== rules.shapeDebut) return false;

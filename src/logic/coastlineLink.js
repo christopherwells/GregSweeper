@@ -27,7 +27,7 @@ export const DEFAULT_TILING = '4.8.8';
 // by name the day its builder lands (the label and the board below are real
 // per-tiling decisions and stay hand-written, with the test asserting each
 // covers the whole list). The rest are aliases: the lattice shorthands plus
-// the PLAYER-FACING names (space-free forms — a URL token can't carry a
+// the PLAYER-FACING names (space-free forms, a URL token can't carry a
 // space), so a link can say what a player would say. Tokens are matched
 // lowercased, and none collides with a modifier name, which is what lets one
 // string carry either.
@@ -47,13 +47,13 @@ const TILING_TOKENS = {
 };
 
 // The PLAYER-FACING name of each shape (Christopher's ruling, 2026-08-02: a
-// lay person should know what they mean — "4.8.8" and "deltoidal" are
+// lay person should know what they mean, "4.8.8" and "deltoidal" are
 // internal identifiers, not names). The name is what the eye sees: the
 // octagon-and-square bathroom floor, a honeycomb, Cairo's street paving,
 // pentagon petals in six-flower rosettes, the tumbling-blocks illusion of
 // stacked 3D cubes, plain kites. The rectangular grid is "Classic" wherever
 // a shape name is needed beside these. Internal type strings NEVER change
-// with the display names — they are stored contracts (canonical
+// with the display names, they are stored contracts (canonical
 // `tiling.type`, `features.tilingType`, PAR_MODEL_SHAPES keys, lab rows,
 // seed strings), and renaming them would be the wallEdges-format
 // silent-breakage class.
@@ -73,7 +73,7 @@ export const CLASSIC_SHAPE_LABEL = 'Classic';
 /**
  * Resolve a raw shape token (deep-link value, test override) to an internal
  * tiling type, honoring the player-facing aliases above. Returns null for
- * anything unrecognized — callers must treat that as "not a tiling", never
+ * anything unrecognized, callers must treat that as "not a tiling", never
  * guess.
  *
  * @param {string|null} token
@@ -130,7 +130,7 @@ export const COASTLINE_BOARDS = {
 };
 
 /**
- * Parse the raw `?coastline=` value into the shape to build and the modifiers
+ * Parse the raw `?coastline=` value into the tiling to build and the modifiers
  * to place on it.
  *
  * Accepted forms, all case-insensitive:

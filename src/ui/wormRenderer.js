@@ -8,7 +8,7 @@
 //
 // Segment elements are REUSED across ticks (keyed by worm object identity)
 // so the CSS left/top transition tweens the crawl; a rebuild-per-tick would
-// teleport. pointer-events stays none — a covered cell is fully clickable
+// teleport. pointer-events stays none, a covered cell is fully clickable
 // and chordable, the worm only delays what you can read.
 //
 // One canonical worm design for every theme (theme variants are a later
@@ -22,16 +22,16 @@ const BURROW_ANIM_MS = 400;
 const HATCH_ANIM_MS = 500;
 
 // Per-worm coloring: each worm's tone (0..1, seeded per egg) interpolates
-// between the theme's two endpoint tokens — brown to cream on the base
+// between the theme's two endpoint tokens, brown to cream on the base
 // design. A theme recolors its whole brood by overriding just the
 // endpoints (--worm-tone-dark / --worm-tone-light); shading derives from
 // the mixed base, so every tone self-shades consistently. Mixed in JS
 // (not CSS color-mix): a var-dependent color-mix that an older engine
-// rejects computes to NO background at all — an invisible worm — while
+// rejects computes to NO background at all, an invisible worm, while
 // this degrades to the stylesheet's static fallback gradient.
 const TONE_DARK_FALLBACK = '#8f5b38';
 const TONE_LIGHT_FALLBACK = '#eedcbc';
-const SHADE_ANCHOR = '#4a2c18'; // deep soil brown — shading stays warm
+const SHADE_ANCHOR = '#4a2c18'; // deep soil brown, shading stays warm
 
 function _toneEndpoints() {
   const cs = getComputedStyle(document.documentElement);
@@ -56,7 +56,7 @@ function _paintWorm(els, tone, endpoints) {
 }
 
 // worm object -> its segment divs, in segment order. Worm objects are
-// stable identities across ticks (mutated in place), so the map holds
+// stable identities across ticks (mutated in place), so an entry stays
 // until a worm burrows (removed with a fade) or the game tears down.
 const _wormEls = new Map();
 
@@ -91,7 +91,7 @@ export function renderWormOverlays() {
     board.appendChild(overlay);
   }
 
-  // Cell rect relative to the board parent — same math as renderWallOverlays
+  // Cell rect relative to the board parent, same math as renderWallOverlays
   const boardRect = boardEl.getBoundingClientRect();
   const boardX = boardEl.offsetLeft;
   const boardY = boardEl.offsetTop;
@@ -130,7 +130,7 @@ export function renderWormOverlays() {
   }
 
   // Position every segment from the pure layout. The segment DIAMETER is a
-  // tested decision in worms.js (wormSegmentSize) — its governing property is
+  // tested decision in worms.js (wormSegmentSize), its governing property is
   // that consecutive segments nearly touch, so the worm reads as a body rather
   // than a row of beads sliding.
   let uniformSize = null;
@@ -139,7 +139,7 @@ export function renderWormOverlays() {
     const P = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cell-size')) || 40;
     uniformSize = wormSegmentSize(P, state.board._tiling?.type || null);
     // Asymmetric cells (floret pentagons, deltoidal kites) draw their number
-    // at the incircle centre, not the box centre — segments follow the same
+    // at the incircle center, not the box center, segments follow the same
     // point so the worm sits ON the number, not beside it.
     const offs = wormCellCenterUnitOffsets(state.board);
     if (offs) {

@@ -27,7 +27,7 @@ import { isTestEnvironment } from './env.js';
 import { reportCaughtError } from '../diagnostics/errorReporter.js';
 
 // VAPID public key from Firebase Console → Project Settings → Cloud
-// Messaging → Web Push certificates. Public — safe to ship in client.
+// Messaging → Web Push certificates. Public, safe to ship in client.
 // FCM uses this to derive the per-subscriber endpoint when the page
 // calls messaging.getToken({vapidKey}).
 const VAPID_PUBLIC_KEY = 'BOuXy2fkaqrNc2KnGgLaMVKo1hJ3z9UeP7S1vU1RO_fLYmzdX1jmyC1GSSiUxW_JiXSnqvUFmGfJaeeRd0KTeZw';
@@ -35,7 +35,7 @@ const VAPID_PUBLIC_KEY = 'BOuXy2fkaqrNc2KnGgLaMVKo1hJ3z9UeP7S1vU1RO_fLYmzdX1jmyC
 const PERMISSION_HINT_KEY = 'gregsweeper_push_permission_hinted';
 
 function _isIOS() {
-  // iPadOS 13+ ships a Mac user agent — the only reliable tell is the
+  // iPadOS 13+ ships a Mac user agent, the only reliable tell is the
   // combination of Macintosh + touch capability (Macs proper don't
   // have touchscreens). Plain iPad/iPhone/iPod still works for the
   // older path.
@@ -63,12 +63,12 @@ export function getPushPermission() {
 
 /**
  * Subscribe to push notifications. Returns one of:
- *   'success' — permission granted, token registered, prefs saved
- *   'no-key' — VAPID public key not configured (deploy-time setup needed)
- *   'denied' — browser permission denied (user must change in OS settings)
- *   'unsupported' — browser/PWA doesn't support Web Push
- *   'ios-needs-install' — iOS Safari without home-screen install
- *   'error' — anything else; details in console.warn
+ *   'success', permission granted, token registered, prefs saved
+ *   'no-key', VAPID public key not configured (deploy-time setup needed)
+ *   'denied', browser permission denied (user must change in OS settings)
+ *   'unsupported', browser/PWA doesn't support Web Push
+ *   'ios-needs-install', iOS Safari without home-screen install
+ *   'error', anything else; details in console.warn
  */
 export async function enableNotifications({ hourLocal = 9, dailyReminder = true, streakWarning = false } = {}) {
   // Test branch: never register a push subscription. Otherwise the
@@ -98,7 +98,7 @@ export async function enableNotifications({ hourLocal = 9, dailyReminder = true,
   // healthy. If we wait for getToken before writing prefs and FCM
   // happens to be flaky (token tombstoned, SW updating, network
   // blip), the toggle silently unchecks when the user re-opens
-  // settings — even though the user explicitly asked for it on.
+  // settings, even though the user explicitly asked for it on.
   try {
     await db.ref(`users/${uid}/notificationPrefs`).set({
       enabled: true,
@@ -112,7 +112,7 @@ export async function enableNotifications({ hourLocal = 9, dailyReminder = true,
   }
 
   // Now try to mint a token + write the subscription. If this leg
-  // fails the user is still considered "enabled" — refreshTokenIfStale
+  // fails the user is still considered "enabled", refreshTokenIfStale
   // on the next app load will retry getToken and persist a fresh
   // subscription. Until then the cron just skips us (no token to send
   // to), so the worst case is a couple of missed notifications, not a
@@ -121,13 +121,13 @@ export async function enableNotifications({ hourLocal = 9, dailyReminder = true,
     const messaging = firebase.messaging();
     const reg = await navigator.serviceWorker.ready;
     // Reset both layers before minting a fresh token:
-    //   (a) browser pushManager.unsubscribe() — kills the actual push
+    //   (a) browser pushManager.unsubscribe(), kills the actual push
     //       subscription. messaging.getToken reuses an existing live
     //       subscription if one is present, so an OS/browser-level
     //       dead subscription persists across deleteToken cycles. The
     //       new FCM token then points at a dead endpoint and FCM 404s
     //       on send with "UNREGISTERED" the moment we try to deliver.
-    //   (b) messaging.deleteToken() — clears FCM's IndexedDB cache so
+    //   (b) messaging.deleteToken(), clears FCM's IndexedDB cache so
     //       getToken doesn't short-circuit to the cached token before
     //       checking subscription state.
     // Both must run for getToken to actually create a new subscription
@@ -296,7 +296,7 @@ export { _isIOS as isIOS, _isInstalledPWA as isInstalledPWA };
 // notificationPrefs.enabled === true, mint a fresh token on this device
 // and write it under the new uid so the player's pushes follow them.
 // If the destination uid doesn't have notifications enabled, leave them
-// off — the player can opt in via Settings if they want.
+// off, the player can opt in via Settings if they want.
 
 let _pushAuthListenerInit = false;
 

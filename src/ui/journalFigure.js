@@ -1,17 +1,17 @@
-// ── Journal figures — the notebook's hand-drawn charts ────────────────
+// ── Journal figures, the notebook's hand-drawn charts ────────────────
 // Three figure types, all hand-rolled SVG like dailyHistoryChart.js (no
 // library, viewBox scaling, theme CSS classes, native <title> tooltips),
 // each drawing only what the pure derivations already prove:
-//   sd-trend      — posterior SD over time, normalized to the live
+//   sd-trend      - posterior SD over time, normalized to the live
 //                   era's first fit (the original sparkline); point
 //                   shape rotates per card (circle/square/diamond/tick,
 //                   or a bare line with hover-only points)
-//   estimate-band — the estimate itself over the LIVE era, with the
+//   estimate-band, the estimate itself over the LIVE era, with the
 //                   ±1 SD band shaded (retrodicted means echo their
 //                   priors, so they never enter this figure)
-//   band-strip    — the CURRENT estimate as one labeled range bar
+//   band-strip    - the CURRENT estimate as one labeled range bar
 // Which figures a card gets (and the dot shape, and the caption) is
-// planned deterministically in journalProse.planStudyFigures — this
+// planned deterministically in journalProse.planStudyFigures, this
 // module only draws the spec it is handed.
 
 import { estimateSummary, formatShortDate, fmtPct } from '../logic/journalFindings.js';
@@ -56,7 +56,7 @@ function _titled(node, text) {
 
 // One data point in the requested shape. 'none' returns an invisible
 // hover target so the per-fit tooltips survive a bare-line figure (the
-// planner never picks 'none' for a series with retro points — the
+// planner never picks 'none' for a series with retro points, the
 // dimmed visible dot IS the retro disclosure).
 function _point(x, y, r, cls, shape) {
   let node;
@@ -91,7 +91,7 @@ function _point(x, y, r, cls, shape) {
 
 // ── sd-trend ──────────────────────────────────────────────────────────
 // The 100% baseline anchors on the first LIVE fit (the current model
-// era's start) — the same anchor the verdict sentence uses. Retrodicted
+// era's start), the same anchor the verdict sentence uses. Retrodicted
 // points draw relative to it: anchoring on the series' first point
 // would let a sparse retrodiction (a posterior still hugging its prior,
 // e.g. sonar's tiny April sd) become the baseline and read every later
@@ -104,7 +104,7 @@ function _sdTrend(study, spec) {
   if (!(base > 0)) return null;
   const pts = t.map(p => ({ date: p.date, rel: (p.sd / base) * 100, retro: p.retro === true }));
   const hasRetro = pts.some(p => p.retro);
-  // Belt and braces: a bare line may not hide the retro disclosure.
+  // Belt and braces: a bare line may not omit the retro disclosure.
   const shape = hasRetro && spec?.dotShape === 'none' ? 'circle' : (spec?.dotShape || 'circle');
 
   // y-domain: cover the data and always include the 100% baseline, with
@@ -124,7 +124,7 @@ function _sdTrend(study, spec) {
   const svg = _svg(VB_H,
     `Uncertainty trend across ${pts.length} nightly fits, relative to the current model's first fit`);
 
-  // The 100% baseline — where the current model era began. Above it =
+  // The 100% baseline, where the current model era began. Above it =
   // wider than that anchor, below = tighter.
   const baseline = document.createElementNS(svgNS, 'line');
   baseline.setAttribute('x1', PAD_X);
@@ -147,7 +147,7 @@ function _sdTrend(study, spec) {
   const dotR = pts.length > 40 ? 3 : 5.5;
   for (let i = 0; i < pts.length; i++) {
     // Retrodicted fits (the pre-epoch backfit) render dimmer than live
-    // nightly fits, and their tooltip says "re-measured" — the only
+    // nightly fits, and their tooltip says "re-measured", the only
     // retro disclosure left after the standalone caption was cut.
     const cls = pts[i].retro ? 'jf-dot jf-dot-retro' : 'jf-dot';
     const node = _point(xFor(i), yFor(pts[i].rel), i === pts.length - 1 ? 8 : dotR, cls, shape);
@@ -170,7 +170,7 @@ function _sdTrend(study, spec) {
 }
 
 // ── estimate-band ─────────────────────────────────────────────────────
-// The effect estimate over the live era, in plain percent space, with
+// The live-era effect estimate, in plain percent space, with
 // the ±1 SD band shaded. The band may honestly dip below the zero line
 // (that IS the uncertainty); the tooltips speak the straddling form
 // ("0% to X%") so no fake-negative sentence ships.
@@ -228,7 +228,7 @@ function _estimateBand(study) {
     const p = pts[i];
     const node = _point(xFor(i), yFor(p.mid), i === pts.length - 1 ? 8 : dotR, 'jf-dot', 'circle');
     // "about 0%" for a slightly-negative point estimate is fair
-    // rounding language; the band phrase carries the straddle honestly.
+    // rounding language; the band phrase states the straddle honestly.
     const midStr = fmtPct(Math.max(0, p.mid));
     const bandStr = p.lo <= 0
       ? `0% to ${fmtPct(p.hi)}%`
@@ -253,7 +253,7 @@ function _estimateBand(study) {
 // ── band-strip ────────────────────────────────────────────────────────
 // The current estimate as one labeled range bar: 0% on the left, the
 // ±1 SD band shaded, a marker at the point estimate. The most
-// lay-readable of the three — the whole claim on a single line.
+// lay-readable of the three, the whole claim on a single line.
 function _bandStrip(study) {
   const est = estimateSummary(study);
   if (!est || !(est.hi > 0)) return null;

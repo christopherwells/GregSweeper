@@ -1,9 +1,9 @@
 // Coverage manifest for the emoji-to-sprite migration.
 // Every emoji glyph that appears in the app's UI belongs to exactly one
 // of three buckets:
-//   SPRITE   — replaced by a drawn SVG via the spriteLoader system
-//   PLAIN    — intentionally kept as emoji (plain-text contexts, numbers, etc.)
-//   DEFERRED — not yet drawn; tracked so we know what's left
+//   SPRITE   - replaced by a drawn SVG via the spriteLoader system
+//   PLAIN    - intentionally kept as emoji (plain-text contexts, numbers, etc.)
+//   DEFERRED, not yet drawn; tracked so we know what's left
 //
 // The CI test (test/iconCoverage.test.mjs) validates that every SPRITE
 // entry has a matching file on disk and a SPRITES registry entry in
@@ -72,7 +72,7 @@ export const ICON_STATUS = {
   '⚙️': 'sprite',   // settings gear
   '📊': 'sprite',   // stats / progress
   '🎨': 'sprite',   // collection (nav)
-  '🎁': 'sprite',   // collection (sheet — unified to one icon)
+  '🎁': 'sprite',   // collection (sheet, unified to one icon)
   '🔊': 'sprite',   // sound on
   '🔇': 'sprite',   // muted
   '▶️': 'sprite',   // replay / resume
@@ -99,16 +99,16 @@ export const ICON_STATUS = {
   // ── Plain-text / intentional emoji ──
   // What's LEFT after the Wave E squish: the share-card caption (kept by
   // design), code comments, and data/onerror fallbacks. Every player-facing
-  // render surface is now drawn — the literals below are caption text,
+  // render surface is now drawn, the literals below are caption text,
   // comments, or registry fallbacks, not visible chrome.
-  '🔥': 'plain',    // streak fire — share-card caption text + achievement data def (UI draws achStreak)
-  '🦀': 'plain',    // molt crab — share caption text (UI draws uiMolt)
+  '🔥': 'plain',    // streak fire, share-card caption text + achievement data def (UI draws achStreak)
+  '🦀': 'plain',    // molt crab, share caption text (UI draws uiMolt)
   '✓':  'plain',    // certified chip (text, not emoji)
-  '❤️': 'plain',    // lifeline — onerror fallback (UI draws the powLifeline life-ring)
+  '❤️': 'plain',    // lifeline, onerror fallback (UI draws the powLifeline life-ring)
   '🟢': 'plain',    // pace dot (share caption)
   '⚪': 'plain',    // pace dot (share caption)
   '↔️': 'plain',    // sync direction (code comment)
-  '↖': 'plain',    // compass diagonal arrows — text drawn on a tiling compass
+  '↖': 'plain',    // compass diagonal arrows, text drawn on a tiling compass
   '↗': 'plain',    // cell (Coastline Phase 2); the cardinal ←→↑↓ aren't
   '↙': 'plain',    // Extended_Pictographic, but these diagonals are
   '↘': 'plain',

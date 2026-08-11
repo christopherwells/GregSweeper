@@ -5,17 +5,17 @@
 // read the crux from HERE, so the two can never disagree about which
 // square it is or how hard it was.
 //
-//   extractCrux()      — the crux identity: which square, what tier, the
+//   extractCrux()      - the crux identity: which square, what tier, the
 //                        proving clues, plain-language sentences, and the
 //                        pre-crux board snapshot. Used by the win receipt.
-//   materializeCrux()  — a self-contained mini-puzzle that re-proves the
+//   materializeCrux()  - a self-contained mini-puzzle that re-proves the
 //                        crux from a cropped, consistency-rebuilt region.
 //                        The cruxes/{date} payload the precompute writes.
-//   cruxPayloadFromBoard() — extract + materialize in one call (pipelines).
+//   cruxPayloadFromBoard(), extract + materialize in one call (pipelines).
 //
 // Voice: these describe the BOARD's proof, never the player's reasoning.
 // All trace entries are SAFE reveals (mines are flagged, never traced),
-// so the crux is always a safe deduction — kind is always 'safe'.
+// so the crux is always a safe deduction, kind is always 'safe'.
 
 import { isBoardSolvable, buildNeighborCache, findDeducibleFrontier } from './boardSolver.js';
 import { explainDeduction } from './proofExplainer.js';
@@ -24,7 +24,7 @@ const rc = (i, cols) => ({ row: Math.floor(i / cols), col: i % cols });
 
 // Mirror gimmicks.js wallKey: an orthogonal-edge key with the smaller
 // endpoint written first. Kept inline so this module stays decoupled from
-// the walls implementation — only the string format is shared. Used to
+// the walls implementation, only the string format is shared. Used to
 // remap in-crop wall edges into mini coordinates.
 function wallKey(r1, c1, r2, c2) {
   if (r1 < r2 || (r1 === r2 && c1 < c2)) return `${r1},${c1}-${r2},${c2}`;
@@ -90,13 +90,13 @@ export function extractCrux(board, rows, cols, firstRow, firstCol) {
 // Build and re-verify one cropped mini-board at a fixed crop window.
 // Returns the teaser geometry ({ rows, cols, cells, answer, sources }) or
 // null if the answer is not provably safe (at tier >= 1) from the crop
-// alone — the caller widens the ring and retries.
+// alone, the caller widens the ring and retries.
 //
 // The mini is plain minesweeper (gimmicks stripped) with walls carried
 // over. Every revealed number is RECOMPUTED to count the mines actually
 // shown inside the crop, so the real in-crop layout satisfies all of
 // them: findDeducibleFrontier on a satisfiable system can never prove a
-// false square. (Gimmick-entangled cruxes simply fail re-verification and
+// false square. (Gimmick-entangled cruxes fail re-verification and
 // the date gets no teaser.)
 function _buildMini(board, rows, cols, sim, isMine, wallEdges, r0, c0, R, C, answer, sources) {
   const inCrop = (r, c) => r >= r0 && r < r0 + R && c >= c0 && c < c0 + C;
@@ -108,8 +108,8 @@ function _buildMini(board, rows, cols, sim, isMine, wallEdges, r0, c0, R, C, ans
       const r = r0 + mr, c = c0 + mc;
       const i = r * cols + c;
       const isAnswer = r === answer.row && c === answer.col;
-      // Pre-crux revealed, with the answer forced back to fog (the player
-      // deduces it). Flagged mines (sim===2) stay hidden — the teaser is
+      // Pre-crux revealed, with the answer put back to fog (the player
+      // deduces it). Flagged mines (sim===2) stay hidden, the teaser is
       // flags-blind, like every player-facing verdict.
       row[mc] = {
         row: mr,
@@ -172,7 +172,7 @@ function _buildMini(board, rows, cols, sim, isMine, wallEdges, r0, c0, R, C, ans
   }
 
   // Re-verify: the answer must be provably safe from this region alone,
-  // flags-blind, and NOT by a single clue (tier >= 1) — a one-clue answer
+  // flags-blind, and NOT by a single clue (tier >= 1), a one-clue answer
   // would undersell the crux and clash with the sentence. (findDeducible-
   // Frontier speaks {row,col}; the payload speaks {r,c} like cells/sources.)
   const ansR = answer.row - r0, ansC = answer.col - c0;
@@ -189,7 +189,7 @@ function _buildMini(board, rows, cols, sim, isMine, wallEdges, r0, c0, R, C, ans
     }
   }
   // Source clues, remapped. These are the crux's proving clues from the
-  // full-board solve, so highlighting them matches the sentence's wording.
+  // full solve, so highlighting them matches the sentence's wording.
   const srcMini = sources
     .map(p => ({ r: p.row - r0, c: p.col - c0 }))
     .filter(p => p.r >= 0 && p.r < R && p.c >= 0 && p.c < C);
@@ -220,12 +220,12 @@ function _buildMini(board, rows, cols, sim, isMine, wallEdges, r0, c0, R, C, ans
  */
 export function materializeCrux(board, rows, cols, crux) {
   // A tiling board (explicit topology) has no crux teaser: the whole
-  // materialization below is a RECTANGULAR crop — a (row, col) window plus a
-  // widening ring — and on a tiling those coordinates are container storage,
+  // materialization below is a RECTANGULAR crop, a (row, col) window plus a
+  // widening ring, and on a tiling those coordinates are container storage,
   // not geometry, so the "cropped" mini would pair numbers with an adjacency
   // the teaser page (a plain rectangular mini-grid) cannot represent. The
-  // finder above (extractCrux) still works on a tiling — the win receipt
-  // uses it — but the share-page payload is rectangle-only until the teaser
+  // finder above (extractCrux) still works on a tiling, the win receipt
+  // uses it, but the share-page payload is rectangle-only until the teaser
   // learns to render a lattice. Returning null ships no teaser for the date,
   // which every consumer (precompute, regenerate, ?crux= route) already
   // handles as the breather/no-teaser case.

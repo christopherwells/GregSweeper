@@ -1,14 +1,14 @@
-// ── Board heatmap — the pure layer ────────────────────────────────────
+// ── Board heatmap, the pure layer ────────────────────────────────────
 // "Where the mines went off": how often each cell of a past daily board
 // was detonated, summed across everyone who solved it. Two jobs live
 // here, both pure so both are node-testable:
 //
-//   1. AGGREGATION (`aggregateBombHits`) — the rollup script's whole
+//   1. AGGREGATION (`aggregateBombHits`), the rollup script's whole
 //      decision layer. `bombHitEvents[].{row,col}` on the score rows is
 //      the ONLY per-cell signal a client ever submits (clickTimeline is
 //      local-only and hintEvents carry no coordinates), so this is the
 //      one place the population map can come from.
-//   2. THE HONESTY GATE (`selectHeatmapDate` / `heatmapCopy`) — with a
+//   2. THE HONESTY GATE (`selectHeatmapDate` / `heatmapCopy`), with a
 //      small player base a per-cell count of 1 is one person's bad
 //      afternoon, not a population signal. Painting it as one would
 //      break the same no-fabrication rule the rest of the Journal runs
@@ -160,7 +160,7 @@ export function maxCellCount(cells) {
 }
 
 // The band edges as player-facing percentages, for the legend's scale
-// bar. The legend states the real numbers rather than "fewer / more" —
+// bar. The legend states the real numbers rather than "fewer / more",
 // a shade nobody can convert back into a quantity is decoration.
 export function heatBandLabels() {
   return HEAT_BANDS.map(edge => `${Math.round(edge * 100)}%`);

@@ -7,21 +7,21 @@
 // here as a pure, node-tested function; main.js keeps the Firebase read and the
 // localStorage/markDailyCompleted side effects.
 //
-// Pure module — node-tested in test/startupReconcilePlan.test.mjs.
+// Pure module, node-tested in test/startupReconcilePlan.test.mjs.
 
 import { findRowByUid, findRowForBoard } from './scoreRowMatch.js';
 
 /**
  * Decide what boot reconciliation should do for today's daily.
  *
- *   'clearLocal'       — local flag is SET but this account has NOT finished the
+ *   'clearLocal'       - local flag is SET but this account has NOT finished the
  *                        day's canonical board, so the real board is still
  *                        unplayed and they are not on the leaderboard. Clear the
  *                        completion flag + cached par/moves so they can play it.
  *                        Three ways to establish that, in order of strength:
  *
  *                        (a) The LOCAL record names a different board. Strongest
- *                            and cheapest — no cloud row need exist, which
+ *                            and cheapest, no cloud row need exist, which
  *                            matters because since the submit guard (#252) one
  *                            never does: a divergent score is refused, so the
  *                            row the old cloud-only check read is precisely the
@@ -35,15 +35,15 @@ import { findRowByUid, findRowForBoard } from './scoreRowMatch.js';
  *                            seed tracking AND the account has no row at all for
  *                            today. See `vintageUnlock` below.
  *
- *                        Otherwise a missing row trusts the local flag — an
+ *                        Otherwise a missing row trusts the local flag, an
  *                        earlier version cleared on missing-score and let raced
  *                        lookups unlock replays.
- *   'adoptCompletion'  — local flag is UNSET but a row matching the canonical's
+ *   'adoptCompletion'  - local flag is UNSET but a row matching the canonical's
  *                        effective seed exists: this account already finished
  *                        today's board on another device. Adopt it. Adoption
- *                        requires an explicit seed match — a divergent row must
+ *                        requires an explicit seed match, a divergent row must
  *                        NOT lock the player out of the canonical.
- *   'noop'             — local and cloud agree (or there's nothing to act on).
+ *   'noop'             - local and cloud agree (or there's nothing to act on).
  *
  * Note the asymmetry: the clear branch keys off the account's FIRST row
  * regardless of seed (findRowByUid) and only fires on a positively-divergent

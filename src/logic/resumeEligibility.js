@@ -2,7 +2,7 @@
 //
 // Daily and weekly games are DATE-ANCHORED: a daily belongs to one ET
 // date, a weekly attempt to one (weekStart, dayIndex) pair. Crossing
-// midnight ET forfeits an unfinished attempt — the player gets the new
+// midnight ET forfeits an unfinished attempt, the player gets the new
 // day's puzzle, never a resurrected stale one. These helpers are the
 // single source of truth for "is this game still current?", used by
 // tryResumeGame (persisted saves) and the visibility-wake check in
@@ -10,10 +10,10 @@
 // tab or suspended PWA).
 //
 // Everything here anchors to CLOCK values passed in via ctx, never to
-// live state fields like state.dailySeed: a session that survived
+// live state such as state.dailySeed: a session that survived
 // midnight still carries yesterday's date in state, and trusting it is
 // how yesterday's unfinished daily once resurrected as "today's"
-// puzzle. Pure functions — node-tested in test/resumeEligibility.test.mjs.
+// puzzle. Pure functions, node-tested in test/resumeEligibility.test.mjs.
 
 import { isValidCellNeighbors } from './adjacency.js';
 
@@ -32,7 +32,7 @@ import { isValidCellNeighbors } from './adjacency.js';
  * wiped stats, checkpoints and power-ups but the in-progress save is a
  * separate storage family it never reached, so a pre-reset game sat in the
  * slot at its old-ladder level and the very same init that ran the reset
- * resumed it — the checkpoint modal offering "Resume Game · Level 100" to a
+ * resumed it, the checkpoint modal offering "Resume Game · Level 100" to a
  * player the reset had just put back at Level 1. Winning it re-stamped
  * `maxLevelReached` and pushed it into the epoch-matched cloud node, which
  * every device then adopts and no later reset can undo (issue #239).
@@ -84,7 +84,7 @@ export function isSaveResumable(gs, ctx) {
   if (ctx.mode && gs.gameMode !== ctx.mode) return false;
 
   if (gs.gameMode === 'daily') {
-    // A daily save without its full seed identity is unverifiable — it
+    // A daily save without its full seed identity is unverifiable, it
     // can't be checked against today's date or the canonical board, so
     // it must never resume. Saves like this exist in the wild: the
     // pre-fix Daily card handler nulled the live seeds before
@@ -103,7 +103,7 @@ export function isSaveResumable(gs, ctx) {
     // player whose previous load lost a Firebase race (and silently
     // fell through to local generation) would keep playing the wrong
     // board on every return visit until they manually cleared their
-    // cache. Kate hit exactly this scenario on 2026-05-06 — saved
+    // cache. Kate hit exactly this scenario on 2026-05-06, saved
     // trial3 in her browser even though canonical was trial5.
     if (ctx.canonicalRngSeed
         && ctx.canonicalDate === gs.dailySeed
@@ -125,7 +125,7 @@ export function isSaveResumable(gs, ctx) {
     // The weekly branch required weeklyRngSeed only to be TRUTHY, which proves
     // the save came from the weekly path and nothing about WHICH board it came
     // from. So a save generated locally against a missed canonical resumed
-    // happily on every return visit — the Kate-on-trial3 scenario the daily
+    // happily on every return visit, the Kate-on-trial3 scenario the daily
     // check exists to stop, on the mode where it costs more: a weekly attempt
     // is one of seven, committed on first click, and the whole week's
     // leaderboard is one board.
@@ -142,7 +142,7 @@ export function isSaveResumable(gs, ctx) {
 
   // Cells corrupted by the v1.5.19 canonical-board deserializer bug
   // (cells without row/col) make an unplayable board where reveal
-  // cascades never visually update — reject so newGame() refetches
+  // cascades never visually update, reject so newGame() refetches
   // with the fixed deserializer.
   if (Array.isArray(gs.board) && gs.board[0] && gs.board[0][0]) {
     const c0 = gs.board[0][0];
@@ -150,7 +150,7 @@ export function isSaveResumable(gs, ctx) {
   }
 
   // A save carrying an explicit topology (a Coastline tiling board) is only
-  // resumable if that topology still validates — right length, in range,
+  // resumable if that topology still validates, right length, in range,
   // symmetric. A truncated or corrupt edge list would restore a board whose
   // adjacency disagrees with the one it was certified under, which breaks the
   // no-guess promise silently rather than loudly. Drop it and let newGame()
@@ -164,7 +164,7 @@ export function isSaveResumable(gs, ctx) {
     // "is this a tiling board", so the hexagons would come back as a
     // rectangular CSS grid whose hit-testing is not the board. A pre-fix save
     // (topology only) is refused rather than half-restored; no such save can
-    // exist in the wild — coastline runs never persist — so this rejects
+    // exist in the wild, coastline runs never persist, so this rejects
     // corruption, not history.
     if (!Array.isArray(gs.cellPos) || gs.cellPos.length !== gs.rows * gs.cols) {
       return false;
@@ -182,22 +182,22 @@ export function isSaveResumable(gs, ctx) {
 /**
  * What tapping the Weekly card (or following a `?mode=weekly` link) should do.
  *
- *   'fresh'   — no attempt used today, start this day's attempt
- *   'resume'  — today's attempt is already committed and its board is still
+ *   'fresh'   - no attempt used today, start this day's attempt
+ *   'resume'  - today's attempt is already committed and its board is still
  *               open, so reopen it
- *   'blocked' — today's attempt is spent and finished; come back tomorrow
+ *   'blocked', today's attempt is spent and finished; come back tomorrow
  *
  * The gate used to collapse the last two: the attempt is committed on the
  * FIRST CLICK (so a mine-hit-then-restart cannot buy a second one), and the
  * card refused entry on that same marker before `switchMode('weekly')` could
  * run. Since that is the only production door into weekly mode, the resume
- * branch behind it was unreachable — one Home tap mid-attempt and the board
+ * branch behind it was unreachable, one Home tap mid-attempt and the board
  * was gone for good, with the day's cloud-recorded attempt spent on a puzzle
  * the player never finished (issue #246). Refusing a SECOND attempt is the
  * rule; resuming the first is not a second attempt.
  *
  * A finished attempt reports `resumable: false` because winning clears the
- * slot — the same signal every other mode uses to stop re-offering a game it
+ * slot, the same signal every other mode uses to stop re-offering a game it
  * has already ended.
  *
  * @param {{attempted?: boolean, resumable?: boolean}} [ctx]
@@ -211,7 +211,7 @@ export function weeklyEntryPlan(ctx) {
 
 /**
  * Decide whether a LIVE (in-memory) game has expired because its date
- * anchor no longer matches the ET clock — i.e. the session slept
+ * anchor no longer matches the ET clock, i.e. the session slept
  * through midnight. Only daily (non-practice) and weekly games are
  * date-anchored; challenge, timed, and chaos sessions never expire.
  * Only resumable statuses can expire: a finished game is history, not
@@ -247,7 +247,7 @@ export function isLiveGameExpired(live, clock) {
  * re-derived afterward. A tab or installed PWA left open across the
  * Sunday→Monday boundary therefore keeps the PREVIOUS week's attempts
  * in memory, so the Weekly card reports "Done N/7" and the play gate
- * refuses a fresh attempt on a week that has in fact reset — the weekly
+ * refuses a fresh attempt on a week that has in fact reset, the weekly
  * "didn't reset" symptom. Returns true when the cache must be reloaded
  * for `liveWeek`. A null/empty liveWeek (date helper unavailable) is
  * never treated as a rollover.

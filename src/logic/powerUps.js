@@ -11,15 +11,15 @@ import { buildTiling } from './tilingGeometry.js';
 // On an explicit topology the container's rows/cols are pure storage, so a
 // rectangular blast shape lands on scattered, geometrically meaningless
 // cells (his petals report, 2026-08-03: "the sonar and scan for petals
-// doesn't look right" — Scan was sweeping a container row/column). The
-// ports follow the MINE-INFORMATION adjacency — corner-inclusive, the same
+// doesn't look right", Scan was sweeping a container row/column). The
+// ports follow the MINE-INFORMATION adjacency, corner-inclusive, the same
 // `sonarScanCells` the sonar modifier displays and the certifier proves
-// from — because these are information tools: Scan and X-Ray read the
+// from, because these are information tools: Scan and X-Ray read the
 // depth-2 ball, Magnet extracts over the depth-1 neighborhood. Only the
 // worm (a physical crawler) is side-only. Rectangular boards keep their
 // row+column / 5×5 / 3×3 shapes verbatim.
 
-// The depth-2 ball around (row, col), INCLUDING the target cell itself —
+// The depth-2 ball around (row, col), INCLUDING the target cell itself,
 // the aimed cell counts, exactly as the rectangular shapes include their
 // center. Flat indices, target first.
 function ballArea2(board, rows, cols, row, col) {
@@ -28,13 +28,13 @@ function ballArea2(board, rows, cols, row, col) {
 
 /**
  * Scan on an explicit topology: the tiling counterpart of scanRowCol.
- * Scan's identity is the CROSSING SWEEP — "move in some reasonable way
+ * Scan's identity is the CROSSING SWEEP, "move in some reasonable way
  * horizontally and vertically, not a blob" (his correction, 2026-08-03,
- * rejecting the first-cut depth-2 ball) — so the region is the horizontal
+ * rejecting the first-cut depth-2 ball), so the region is the horizontal
  * and vertical LINES through the target's center: every cell whose polygon
  * the line passes through. Cells are convex, so "the horizontal line
  * y = cy0 crosses this cell" is exactly "the cell's vertex y-range spans
- * cy0" — an exact, parameter-free test that reproduces the rectangular
+ * cy0", an exact, parameter-free test that reproduces the rectangular
  * row/column when applied to unit squares. STRICT spanning (not ≤) so a
  * line grazing a vertex tip does not drag a neighboring row in (on the
  * 4.8.8, the line through a diamond's center touches the adjacent
@@ -78,7 +78,7 @@ export function findSafeCell(board) {
   // every Reveal Safe use is a worked example the player could have
   // reasoned to, instead of an oracle read of the true mine layout.
   // Falls back to the old random safe pick only when nothing is
-  // deducible — a genuine frontier, where the oracle IS the power-up's
+  // deducible, a genuine frontier, where the oracle IS the power-up's
   // legitimate value.
   try {
     const frontier = findDeducibleFrontier(board, { respectFlags: false });
@@ -135,7 +135,7 @@ export function shieldDefuse(board, row, col) {
   recomputeDisplayedMines(board);
 }
 
-// Recalculate adjacency counts around a cell whose mine was just removed —
+// Recalculate adjacency counts around a cell whose mine was just removed,
 // the scoped version of recalcAllAdjacency, used after a single-cell defuse so
 // we don't walk the whole board. Shares gimmicks.countAdjacentMines, so it can
 // never drift from the full recompute (walls block adjacency; a mine carries
@@ -148,7 +148,7 @@ export function shieldDefuse(board, row, col) {
 // plateDisarmCells precedent), not from a container walk.
 //
 // It used to walk the container 3x3, which IS the neighborhood on a rectangle
-// and is not one on a tiling, where (row, col) is pure storage — measured, a
+// and is not one on a tiling, where (row, col) is pure storage, measured, a
 // shield break there left 2 to 8 cells still counting a mine that is off the
 // board, on every lattice but the honeycomb, whose own escape rate is 38.5%
 // of cells and so was luck rather than safety.
@@ -175,7 +175,7 @@ export function magnetPull(board, centerRow, centerCol) {
 
   // The magnet's reach: the 3x3 block on a rectangle, the depth-1 graph
   // neighborhood (target + its neighbors, corner-inclusive) on an explicit
-  // topology — the sonar-precedent port, one step instead of two because
+  // topology, the sonar-precedent port, one step instead of two because
   // extraction is the strongest effect in the kit.
   const reach = [];
   if (board._cellNeighbors) {
@@ -201,7 +201,7 @@ export function magnetPull(board, centerRow, centerCol) {
   }
 
   // An empty pull is a clean no-op (pinned in test/magnetExtract.test.mjs):
-  // no extraction, no highlight — the same contract on every board shape.
+  // no extraction, no highlight, the same contract on every shape.
   if (minesInArea.length === 0) return { extractedMines: [], affectedArea: [] };
 
     // EXTRACTION, not relocation (redesigned 2026-06-11): the magnet
@@ -232,7 +232,7 @@ export function magnetPull(board, centerRow, centerCol) {
 // ── X-Ray Power-Up ────────────────────────────────────
 
 /**
- * X-Ray: mine positions in the effect area around (row, col) — the 5×5
+ * X-Ray: mine positions in the effect area around (row, col), the 5×5
  * block on a rectangle, the depth-2 ball on an explicit topology. Returns
  * the AREA alongside the mines so the action layer highlights exactly what
  * the logic read (its old inline ±2 loop was a second copy of this

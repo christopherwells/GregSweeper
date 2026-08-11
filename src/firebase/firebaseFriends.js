@@ -1,17 +1,17 @@
 /**
- * Friends system — Firebase I/O.
+ * Friends system, Firebase I/O.
  *
  * Thin wrapper over the pure logic in src/logic/friendCodes.js and
  * src/logic/leaderboardViews.js (the regression suite pins those; this
  * file is only plumbing).
  *
  * Model (see firebase-rules.json):
- *  - friendCodes/{CODE} = { uid, name, createdAt } — ephemeral, 15-min
+ *  - friendCodes/{CODE} = { uid, name, createdAt }, ephemeral, 15-min
  *    life enforced SERVER-SIDE by the rules read gate (expired codes
  *    are unreadable). Multi-use within the window, deliberately: one
  *    code on a classroom projector serves the whole class. Creation is
  *    create-only-if-absent (no hijacking a live code).
- *  - users/{uid}/friends/{friendUid} = { name, addedAt } — MUTUAL:
+ *  - users/{uid}/friends/{friendUid} = { name, addedAt }, MUTUAL:
  *    redeeming writes both sides in one multi-location update. The
  *    rules let a stranger write/delete only the entry keyed by their
  *    own uid. Lists are readable by their owner only.
@@ -29,7 +29,7 @@ import {
 } from '../logic/leaderboardViews.js';
 
 // Re-show a still-valid code (with countdown) when the tab reopens.
-// createdAtLocal is the local clock at creation — display only; the
+// createdAtLocal is the local clock at creation, display only; the
 // rules gate expiry on the SERVER timestamp.
 const MY_CODE_KEY = 'minesweeper_friend_code';
 
@@ -39,7 +39,7 @@ function db() {
 
 // waitForFirebaseReady THROWS on timeout (its callers in the board-sync
 // modules wrap it), but every function in this file documents an OFFLINE
-// contract instead — fetchFriends returns null, the actions throw an error
+// contract instead, fetchFriends returns null, the actions throw an error
 // whose .reason/.message is 'offline' so the UI shows "needs a connection"
 // rather than a generic failure. Before 2026-07-10 the raw throw leaked
 // through: opening the Friends tab with Firebase unreachable rejected out
@@ -90,7 +90,7 @@ export async function createFriendCode() {
       const entry = { code, createdAtLocal: Date.now() };
       safeSetJSON(MY_CODE_KEY, entry);
       return entry;
-    } catch { /* collision or transient — retry with a fresh code */ }
+    } catch { /* collision or transient, retry with a fresh code */ }
   }
   throw new Error('could not allocate a code');
 }
@@ -100,7 +100,7 @@ export async function regenerateFriendCode() {
   const cached = safeGetJSON(MY_CODE_KEY, null);
   safeSetJSON(MY_CODE_KEY, null);
   // Best-effort cleanup of the old code (rules allow deleting existing
-  // codes); ignore failures — the read gate expires it regardless.
+  // codes); ignore failures, the read gate expires it regardless.
   if (cached && cached.code) {
     db().ref('friendCodes/' + cached.code).remove().catch(() => {});
   }
@@ -124,7 +124,7 @@ export async function redeemFriendCode(input) {
   try {
     snap = await db().ref('friendCodes/' + code).once('value');
   } catch {
-    // Rules deny reads of expired codes — indistinguishable from absent.
+    // Rules deny reads of expired codes, indistinguishable from absent.
     const e = new Error('expired'); e.reason = 'expired'; throw e;
   }
   const entry = snap && snap.val();
@@ -160,7 +160,7 @@ export async function fetchFriends() {
   }
 }
 
-/** Unfriend — unlinks BOTH sides. */
+/** Unfriend, unlinks BOTH sides. */
 export async function removeFriend(theirUid) {
   const ready = await _readyOrNull();
   const myUid = getUid();

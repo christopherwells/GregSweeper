@@ -1,10 +1,10 @@
-// Expected time for a Challenge 250 level — the display layer's pure half
+// Expected time for a Challenge 250 level, the display layer's pure half
 // (Christopher's ruling: "expected time is DISPLAYED, handicap-adjusted",
 // as a pre-level card plus a quiet in-game bar that fills as the timer
 // runs; "go go go, but no real punishment").
 //
-// The number shown is personalPar — Greg's par for THIS drawn board scaled
-// by the player's own multiplicative handicap — not a target the game
+// The number shown is personalPar, Greg's par for THIS drawn board scaled
+// by the player's own multiplicative handicap, not a target the game
 // enforces. Nothing here gates, penalizes, or records: challenge stays out
 // of the par fit entirely (no submission path), so this is a pace cue and
 // nothing more.
@@ -24,8 +24,8 @@ export function formatExpected(seconds) {
 /**
  * The pace bar's state at a moment in a run.
  *
- * `fill` is elapsed/expected CLAMPED to 1: the bar fills and then simply
- * stays full. That clamp IS the no-punishment rule — an overrun has
+ * `fill` is elapsed/expected CLAMPED to 1: the bar fills and then
+ * stays full. That clamp IS the no-punishment rule, an overrun has
  * nothing left to show, so a slow solve never turns the bar into a
  * scolding meter, and `over` lets the caller style the full state calmly
  * rather than as a failure.

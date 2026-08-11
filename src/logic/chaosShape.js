@@ -1,7 +1,7 @@
-// Chaos board shapes.
+// Chaos board-shape selection.
 //
 // Chaos is the one mode outside the no-guess contract, and the one that says
-// so on its own chip. Giving it the seven board shapes is therefore RENDERER
+// so on its own chip. Giving it the seven shapes is therefore RENDERER
 // REACH: nothing about certification changes, because chaos's modifiers
 // already void the base board's certificate the moment they apply.
 //
@@ -9,9 +9,9 @@
 //
 //  1. THE SHAPE IS ROLLED, not scheduled. The daily draws its shape from the
 //     date so every player agrees; the ladder authors its shape per block so
-//     difficulty is designed. Chaos has neither obligation — it is a private,
+//     difficulty is designed. Chaos has neither obligation, it is a private,
 //     unrecorded run whose whole premise is that you do not know what is
-//     coming — so the roll is per round off the session's own rng.
+//     coming, so the roll is per round off the session's own rng.
 //
 //  2. THE SIZE IS TRANSLATED, not authored. getChaosDifficulty ramps a
 //     rectangle's side length and density by round, and a lattice has no
@@ -26,7 +26,7 @@ import { TILING_TYPES } from './tilingGeometry.js';
 import { fittingDims } from './boardFit.js';
 
 // How often a chaos round is a lattice rather than a square. Half, matching
-// the daily rotation's ruled split — chaos should feel like the rest of the
+// the daily rotation's ruled split, chaos should feel like the rest of the
 // game got stranger, not like a different game.
 export const CHAOS_TILING_PROB = 0.5;
 
@@ -97,7 +97,7 @@ export function chaosTilingDims(type, targetCells) {
   // and a step in M moves it 2.37 tall, so its "square" 4x4 patch renders half
   // again as wide as it is tall. boardFit measures the extents themselves, and
   // rejects outright anything whose cells would land under the tap floor
-  // (2026-08-06 — chaos was reaching an M=5, N=5 floret of 150 cells that drew
+  // (2026-08-06, chaos was reaching an M=5, N=5 floret of 150 cells that drew
   // at 20px a cell and overflowed its container on a small phone).
   const best = fittingDims(type, want, {
     minCells: 24,
@@ -141,7 +141,7 @@ export function chaosTilingPlan(rectDiff, shape) {
   const density = rectDiff.mines / targetCells;
   const mines = Math.max(2, Math.min(Math.round(dims.cells * density), dims.cells - 10));
   // Below the constructive threshold, tiling rejection sampling has a real
-  // per-seed miss rate — the same finding the daily band configs carry — and
+  // per-seed miss rate, the same finding the daily band tables record, and
   // a miss here is a failed first click rather than a slow one.
   const constructive = mines / dims.cells < 0.22;
   return { type: shape, M: dims.M, N: dims.N, cells: dims.cells, mines, constructive };

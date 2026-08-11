@@ -1,4 +1,4 @@
-// Shape intro cards — the first-encounter explainer for each board shape
+// Shape intro cards, the first-encounter explainer for each lattice
 // on the Challenge 250 ladder (his ruling 2026-08-04: "I want a card for
 // them and the symbol can be one repeated pattern of that version").
 //
@@ -21,7 +21,7 @@ import { tilingLabel } from './coastlineLink.js';
 // The patch is built from a lattice big enough that the cell we pick
 // from it has a COMPLETE ring of neighbors (an edge cell would draw a
 // lopsided motif). What gets drawn is a small selection out of it, not
-// the whole thing — see shapePatchSVG.
+// the whole thing, see shapePatchSVG.
 const PATCH_DIMS = {
   hex: { M: 5, N: 5 },
   '4.8.8': { M: 4, N: 4 },
@@ -34,7 +34,7 @@ const PATCH_DIMS = {
 // Per-shape copy: ONE description, no flavor line (his ruling
 // 2026-08-04, "only the description is necessary, not the italics
 // flavor"). The card answers the single question a player actually has
-// on arrival — what counts as next to what — because that is the only
+// on arrival, what counts as next to what, because that is the only
 // rule the shape changes. A second, softer sentence was either restating
 // the first or reaching for a characterization to fill the slot, which
 // is how the deltoidal card ended up calling itself "rich".
@@ -68,7 +68,7 @@ export const SHAPE_INTRO_TYPES = Object.freeze(TILING_TYPES.slice());
  *
  * The unit is one cell plus everything it touches. That is the smallest
  * patch that still tessellates visibly, and it is also exactly what the
- * card is ABOUT — the card's one job is to answer "what counts as next to
+ * card is ABOUT, the card's one job is to answer "what counts as next to
  * what", so the symbol should be a picture of one cell's neighborhood
  * rather than a swatch of wallpaper. On the honeycomb it comes out as the
  * seven-cell flower; on the richer lattices it is correspondingly larger,
@@ -87,9 +87,9 @@ export function shapePatchSVG(type, size = 96) {
   const T = buildTiling(type, dims.M, dims.N);
 
   // One cell plus its neighbors. The hub is the HIGHEST-VALENCE cell
-  // nearest the patch centre, which matters only on a mixed-cell lattice
-  // and matters a lot there: the 4.8.8's centre cell happens to be a
-  // small interstitial square, so taking the centre outright drew a
+  // nearest the patch center, which matters only on a mixed-cell lattice
+  // and matters a lot there: the 4.8.8's center cell happens to be a
+  // small interstitial square, so taking the center outright drew a
   // four-petal diamond that showed none of the octagon-and-square
   // interlock the card describes. Highest valence picks the dominant
   // cell (the octagon), and on the five uniform lattices it changes

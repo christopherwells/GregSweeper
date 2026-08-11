@@ -6,12 +6,12 @@
 // committed; otherwise it resolves immediately. Committing routes through
 // setPlayerName (so the name fills Settings and is asked once) and
 // publishPlayerName (so it lands in the world-readable playerNames node the
-// leaderboards join against — see firebaseProgress.publishPlayerName).
+// leaderboards join against, see firebaseProgress.publishPlayerName).
 //
 // The modal is deliberately NOT dismissible: it has no close button, and
 // main.js excludes #name-capture-modal from the global backdrop-click and
 // Escape close handlers (like #gameover-overlay). The only exit is a valid
-// name — that is the whole point of the gate.
+// name, that is the whole point of the gate.
 
 import { $ } from './domHelpers.js';
 import { showModal, hideModal } from './modalManager.js';
@@ -36,7 +36,7 @@ export function ensureLeaderboardName(mode, { isArchive = false, isPractice = fa
     const input = $('#name-capture-input');
     const saveBtn = $('#name-capture-save');
     // Fail OPEN if the markup is missing: a broken modal must never trap the
-    // player on their victory. They simply play on without a name (the same
+    // player on their victory. They just play on without a name (the same
     // as the pre-gate behavior).
     if (!modal || !input || !saveBtn) { resolve(getPlayerName()); return; }
 

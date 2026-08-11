@@ -3,8 +3,8 @@
 // WHY IT EXISTS. The challenge pool's prices are derived from the par model,
 // and the model is REFIT NIGHTLY and pushed to main unattended. So "the pool's
 // prices disagree with what the model says today" has two completely different
-// meanings — the pool is broken, or the pool is simply older than the last
-// refit — and without recording which model a price came from there is no way
+// meanings, the pool is broken, or the pool is just older than the last
+// refit, and without recording which model a price came from there is no way
 // to tell them apart.
 //
 // That is not a theoretical distinction. It failed CI within hours of the
@@ -15,7 +15,7 @@
 // merges, which is a different message and a different remedy.
 //
 // It covers PAR_MODEL and PAR_MODEL_SHAPES together, because a tiling entry's
-// price comes from its shape block and a rectangle's from the base model —
+// price comes from its shape block and a rectangle's from the base model,
 // a fingerprint over only one of them would call a pool fresh when half of it
 // had gone stale. PAR_MODEL_TIMED is deliberately excluded: quick play is
 // rectangles-only and nothing in the ladder prices through it.

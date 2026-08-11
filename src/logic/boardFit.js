@@ -29,7 +29,7 @@
 // cell class may go down to MIN_TAP_MINORITY. On the five isohedral tilings
 // there is only one cell class and both reduce to the majority floor. The split
 // exists for the 4.8.8, whose two cell sizes differ by 38% and whose diamonds
-// are ~45% of the board — a single floor there either lets the diamonds shrink
+// are ~45% of the board, a single floor there either lets the diamonds shrink
 // to 21px (majority-only) or costs the shape its presence in the end game
 // (28px on the diamond removes Octagons from the ladder above L50 and from the
 // endless pool entirely). 24px on the minority is the middle he chose.
@@ -39,7 +39,7 @@
 // <= 25.5px or >= 28.5px, nothing in between. Honeycomb's worst board (which he
 // reports as fine) sits at 29.9 and Octagons' at 28.6; Paving Stones' worst
 // (which he reports as too wide) sits at 23.0. So any floor in [26, 28] sorts
-// the shipped boards identically — the bar is not balanced on a knife edge, and
+// the shipped boards identically, the bar is not balanced on a knife edge, and
 // it is calibrated to his own verdicts rather than to a guideline. For scale,
 // the rectangular game's own floor is --cell-min-size 18px, but that is a
 // last-resort clamp for Expert Quick Play, which has zoom controls as its
@@ -47,7 +47,7 @@
 //
 // WHAT CONSTRAINING COSTS: nothing in difficulty. The largest legal board of
 // every shape still prices far past the 240s daily band ceiling, so each
-// lattice keeps its full reach — the violating configs were not big, they were
+// lattice keeps its full reach, the violating configs were not big, they were
 // sideways, and most are fixed by swapping M and N at an identical cell count.
 //
 // This module is the ONE definition. Authored tables (TILING_BAND_CONFIGS,
@@ -82,7 +82,7 @@ export const MIN_TAP_MINORITY = 24;
 // MEASURED in headless Chromium (four viewports, 320-430), reproduced exactly
 // by these two formulas:
 //   #app is width:95% with 10px of horizontal padding a side on phones, and
-//   #board carries a 2px border plus 2px padding a side.
+//   #board has a 2px border plus 2px padding a side.
 // Verified: 320 -> 276, 360 -> 314, 390 -> 343, 430 -> 381.
 const APP_WIDTH_FRACTION = 0.95;
 const APP_PADDING_X = 20;   // 10px a side, the <=480px media query
@@ -111,8 +111,8 @@ export function heightBudget(viewportHeight = FIT_REFERENCE.height) {
 }
 
 // MEASURED in headless Chromium: the fixed furniture stacked around the board
-// inside #app — game header and info bar above, bottom nav below — comes to
-// ~168px, and #app is vertically centred in the viewport.
+// inside #app, game header and info bar above, bottom nav below, comes to
+// ~168px, and #app is vertically centered in the viewport.
 const APP_CHROME_Y = 168;
 // A phone browser's own URL bar and bottom toolbar. A board sized against a
 // standalone PWA viewport can overflow once these are showing, because `vh`
@@ -159,7 +159,7 @@ const RATIO_PATCH = 5;
 const _ratioMemo = new Map();
 
 /**
- * The inscribed diameter of a cell, as a multiple of the pitch — what a player
+ * The inscribed diameter of a cell, as a multiple of the pitch, what a player
  * can be sure of hitting. Returns the MEDIAN over the patch (the majority cell
  * class) and the MIN (the smallest class present).
  *
@@ -228,7 +228,7 @@ const FIT_EPSILON = 1e-9;
  *
  * Christopher, 2026-08-07, on the Paving Stones blocks: "too long for the
  * screen but definitely could've been wider." Measured, that board was
- * 204 x 510px on a 360px phone — 65% of the width used and 10% past the
+ * 204 x 510px on a 360px phone, 65% of the width used and 10% past the
  * comfortable height. The first pass at the phone cap turned Paving Stones'
  * 4x10 letterbox into a 10x4 ribbon, which fixed the tap size (23px -> 37px)
  * and broke the proportion in the other direction, because a cap on the
@@ -248,7 +248,7 @@ const MIN_WIDTH_USE = 0.75;
  *
  * A board can pass (1) trivially by being small in one axis, which is how a
  * 2.5:1 ribbon shipped. Conditions (2) and (3) are the same defect seen from
- * its two ends — too tall, and needlessly narrow.
+ * its two ends, too tall, and needlessly narrow.
  *
  * @param {string} type
  * @param {number} M
@@ -275,13 +275,13 @@ export function boardFitsPhone(type, M, N, viewport = FIT_REFERENCE) {
   return tiling.wUnits * pitch >= w * MIN_WIDTH_USE - FIT_EPSILON;
 }
 
-// The comfortable height is an ESTIMATE — measured app chrome plus an assumed
-// browser-UI allowance — so it is not a figure to enforce to the pixel. A board
+// The comfortable height is an ESTIMATE, measured app chrome plus an assumed
+// browser-UI allowance, so it is not a figure to enforce to the pixel. A board
 // a hair over is not what anyone is complaining about; one 10% over is.
 const HEIGHT_SLACK_PX = 12;
 
 /**
- * The tap diameter (px) a board would actually deliver at a viewport — the
+ * The tap diameter (px) a board would actually deliver at a viewport, the
  * majority cell's, and the smallest class's. Diagnostic: the audit and the
  * tests report these so a failure says how far off it is, not merely that it
  * failed.
@@ -307,7 +307,7 @@ export function tapSizeAt(type, M, N, viewport = FIT_REFERENCE) {
 
 // How far from the best available cell count a patch may sit and still be
 // considered, so that a slightly-off count with visibly bigger cells can win.
-// In cells, matching the units the old chaos search scored in — its comment
+// In cells, matching the units the old chaos search scored in, its comment
 // noted the 4.8.8's squarer 72-cell patch sat "only eight cells further" from a
 // 64 target than the 63-cell ribbon that beat it.
 const CELL_SLACK = 8;
@@ -349,7 +349,7 @@ export function fittingDims(type, targetCells, opts = {}) {
 
   const cap = maxExtentUnits(type, viewport);
   const w = widthBudget(viewport.width ?? FIT_REFERENCE.width);
-  // The chooser works to the comfortable height, not the renderer's 70vh — see
+  // The chooser works to the comfortable height, not the renderer's 70vh, see
   // comfortHeightBudget. A patch is still legal up to the cap; this only stops
   // the search from PREFERRING one that fills the scroll wrapper edge to edge.
   const h = comfortHeightBudget(viewport.height ?? FIT_REFERENCE.height);

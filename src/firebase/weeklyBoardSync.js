@@ -1,7 +1,7 @@
 // Canonical weekly board sync. One board per ET week (Monday → Sunday)
 // keyed by the Monday's YYYY-MM-DD. Mirrors dailyBoardSync's correctness
-// contract — write-once at the rules layer, deserializer fills in
-// false/missing fields so consuming code sees a fully-shaped cell — but
+// contract, write-once at the rules layer, deserializer fills in
+// false/missing fields so consuming code sees a fully-shaped cell, but
 // re-uses dailyBoardSync's serializeBoard/deserializeBoard since the
 // per-cell structure is identical.
 
@@ -30,7 +30,7 @@ export async function loadWeeklyBoard(weekStart) {
 }
 
 /**
- * loadWeeklyBoard, plus WHY it produced what it did — the weekly half of the
+ * loadWeeklyBoard, plus WHY it produced what it did, the weekly half of the
  * pair described on loadDailyBoardResult (issue #255). The weekly's stake in
  * the distinction is the larger one: its local-generation fallback WRITES the
  * board it built to the write-once node, so the first client to give up on a
@@ -53,7 +53,7 @@ export async function loadWeeklyBoardResult(weekStart) {
     db = await waitForFirebaseReady();
   } catch (err) {
     console.warn('loadWeeklyBoard:', err.message);
-    // offline — the cached canonical is the best truth available
+    // offline, the cached canonical is the best truth available
     const board = await gateCanonicalTrust(cached, weekStart, 'weekly');
     return { board, reason: canonicalReadReason({ board, reached: false }) };
   }
@@ -94,7 +94,7 @@ export async function prefetchUpcomingWeeklyBoards(currentWeek) {
 
 /**
  * Write the canonical weekly board for a week. Write-once at the rules
- * layer — duplicate writes silently no-op. Returns true on success,
+ * layer, duplicate writes silently no-op. Returns true on success,
  * false on any failure.
  *
  * @param {string} weekStart Monday's YYYY-MM-DD in ET

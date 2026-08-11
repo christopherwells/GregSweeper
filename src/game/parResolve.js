@@ -1,6 +1,6 @@
 // ── On-demand par resolution ──────────────────────────
 // Extracted from main.js (2026-07-10 split). Shared by the leaderboard
-// modal and the title screen's Daily-card par badge — both can need par
+// modal and the title screen's Daily-card par badge, both can need par
 // BEFORE the player has generated today's board.
 
 import { state } from '../state/gameState.js';
@@ -34,15 +34,15 @@ export async function computeDailyParForDate(dateStr, ignoreInMemory = false) {
     if (!dailyMoves && featuresForPar.totalClicks) dailyMoves = featuresForPar.totalClicks;
   }
   if (dailyPar === 0) {
-    // Compute par on-demand. Try the canonical board on Firebase first
-    // — every player today plays that exact layout, so par must come
+    // Compute par on-demand. Try the canonical board on Firebase first:
+    // every player today plays that exact layout, so par must come
     // from solving IT, not whatever the local generator would produce.
     // Falls back to local generation only when Firebase has nothing
     // (very first player of a new date OR offline).
     try {
       let pBoard, pRows, pCols, pMines, activeGimmicks;
       let parResult;
-      let pSeed; // effective RNG seed — wormLoad derives from it
+      let pSeed; // effective RNG seed, wormLoad derives from it
 
       const canonicalRaw = await loadDailyBoard(dateStr).catch(err => { reportCaughtError('par-canonical-fetch', err); return null; });
       if (canonicalRaw) {
@@ -53,9 +53,9 @@ export async function computeDailyParForDate(dateStr, ignoreInMemory = false) {
         pMines = r.totalMines;
         activeGimmicks = r.activeGimmicks || [];
         pSeed = r.rngSeed || dateStr;
-        // Solve from the certified opener deserializeBoard returns — the ONE
-        // definition (stored firstClick on a tiling, container centre on a
-        // rectangle). The container-centre formula that lived here anchored a
+        // Solve from the certified opener deserializeBoard returns, the ONE
+        // definition (stored firstClick on a tiling, container center on a
+        // rectangle). The container-center formula that lived here anchored a
         // tiling canonical's par on an unrelated container slot, where the
         // solve stalls at click 1 and par quietly comes out wrong (issue #195).
         const pFixedR = Math.floor(r.firstClick / pCols), pFixedC = r.firstClick % pCols;
@@ -66,7 +66,7 @@ export async function computeDailyParForDate(dateStr, ignoreInMemory = false) {
         // canonical, par must come from the SAME single-candidate tiling
         // build the play path would run (the shared builder that
         // scripts/daily-board-pipeline.mjs and gameActions.js call), never
-        // from the rectangular regeneration below — that would quote a par
+        // from the rectangular regeneration below, that would quote a par
         // for a board nobody will play. Dark in production while
         // TILING_ROTATION_START is unset. The test-env ?dailyShape=
         // override is deliberately NOT consulted here: this resolver quotes
@@ -91,7 +91,7 @@ export async function computeDailyParForDate(dateStr, ignoreInMemory = false) {
           // so the computed par matches what the player will actually see
           // when they start today's daily (especially on adaptive-experiment
           // days). Also the deterministic fallback for a tiling day whose
-          // generation exhausts — the play path falls back identically.
+          // generation exhausts, the play path falls back identically.
           const rngSeed = selectDailyRngSeed(dateStr);
           pSeed = rngSeed;
           const dimRng = createDailyRNG(rngSeed);

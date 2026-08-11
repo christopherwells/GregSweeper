@@ -3,13 +3,13 @@
 // Two questions stand between a finished run and a leaderboard row, and both
 // were answered inline inside _doSubmitOnlineScore's try block:
 //
-//   1. DEDUPE — does this account already have a row for this exact board?
+//   1. DEDUPE, does this account already have a row for this exact board?
 //      (another device finished first, or a queued retry actually landed)
-//   2. DIVERGENCE — was this board the day's canonical at all?
+//   2. DIVERGENCE, was this board the day's canonical at all?
 //
 // They live here because a decision buried in an async Firebase call is a
 // decision nobody can test. The guard that shipped 2026-08-07 was pinned by 22
-// SOURCE-SCAN assertions — they prove the string `return 'divergent'` sits near
+// SOURCE-SCAN assertions, they prove the string `return 'divergent'` sits near
 // a read of the canonical seed, and prove nothing whatever about what the guard
 // decides. This module is the same logic where a test can hand it inputs and
 // read the verdict.
@@ -17,11 +17,11 @@
 // BOTH READS FAIL OPEN, and that is the load-bearing property. A flaky read
 // must never eat a real score: the cost of a missed duplicate is a second row,
 // and the cost of a missed divergence is one bad row the nightly sweep will
-// report — while the cost of failing CLOSED is silently dropping scores every
+// report, while the cost of failing CLOSED is silently dropping scores every
 // time Firebase hiccups. Unavailable is expressed as `null`, never as a
 // mismatch, so the caller cannot accidentally turn an outage into a refusal.
 //
-// Pure module — node-tested in test/submitGate.test.mjs.
+// Pure module, node-tested in test/submitGate.test.mjs.
 
 import { findRowForBoard } from './scoreRowMatch.js';
 
@@ -34,18 +34,18 @@ import { findRowForBoard } from './scoreRowMatch.js';
  *
  * @param {object} args
  * @param {object|null} args.rows          the bucket's existing rows, or null when
- *                                         there are none OR the read failed —
+ *                                         there are none OR the read failed,
  *                                         both mean "nothing blocks this push"
  * @param {string|null} args.uid           the player's Firebase uid; without one
  *                                         there is no account to dedupe against
  * @param {string} args.bucketKey          the row bucket's key (a date, or
- *                                         `{weekStart}_weekly_first`) — rows omit
+ *                                         `{weekStart}_weekly_first`), rows omit
  *                                         rngSeed when it equals this, so it is
  *                                         what reconstructs their effective seed
  * @param {string} args.playedSeed         the effective seed of the board played
  * @param {string|null} args.canonicalSeed the canonical board's seed, or null when
  *                                         it could not be read. NULL IS NOT A
- *                                         MISMATCH — see the fail-open note above.
+ *                                         MISMATCH, see the fail-open note above.
  * @returns {{ verdict: SubmitVerdict }}
  */
 export function planScoreSubmission({ rows, uid, bucketKey, playedSeed, canonicalSeed }) {
@@ -69,7 +69,7 @@ export function planScoreSubmission({ rows, uid, bucketKey, playedSeed, canonica
  * `{weekStart}_weekly_first` row describes the WEEKLY board, which lives at
  * `weeklyBoard/{weekStart}`. The daily node has no such child, so the read
  * returned null, `typeof null !== 'string'`, and the check was skipped
- * entirely — the guard silently no-opped on every weekly fit row ever
+ * entirely, the guard silently no-opped on every weekly fit row ever
  * submitted. Deriving the path from the key is what stops that recurring.
  *
  * @param {string} bucketKey  'YYYY-MM-DD' or 'YYYY-MM-DD_weekly_first'

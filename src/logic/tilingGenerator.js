@@ -3,7 +3,7 @@
 // Builds a certified no-guess board on a tiling topology. The pure topology +
 // geometry live in the leaf module tilingGeometry.js (which the renderer and
 // the Phase 1 fixture also import, without pulling the solver); this module is
-// the SOLVER-using half — it exists to place mines and prove the board.
+// the SOLVER-using half, it exists to place mines and prove the board.
 //
 // Nothing here is per-tiling: the type is a string it hands to buildTiling and
 // stamps into the RNG seeds, so the six shipped lattices (two Archimedean,
@@ -30,7 +30,7 @@ import { buildTiling, buildTiling488, containerFor } from './tilingGeometry.js';
 // geometric momentum (stepWorm's tiling branch); walls SEVER edges from the
 // graph (applyWallsTiling), so the certifier sees a smaller graph and needs no
 // wall logic; wormhole (2026-08-01, the last daily-safe holdout) separates its
-// pair by GRAPH distance on an explicit topology (applyWormholes — container
+// pair by GRAPH distance on an explicit topology (applyWormholes, container
 // Manhattan meant nothing on a lattice, so a "separated" pair could land on
 // two direct neighbors), while its certifier side needed nothing: the union
 // constraint is built from the neighbor cache and reveal-gated on either
@@ -43,7 +43,7 @@ import { buildTiling, buildTiling488, containerFor } from './tilingGeometry.js';
 // only when the shipped certifier cleared it), and every modifier appeared in
 // the `applied` payload on every lattice, so none of them silently placed
 // nothing. Wormhole cleared the same gate when it joined: 30 seeds x six
-// lattices, alone plus wormhole+walls and wormhole+mystery — 540/540 certified
+// lattices, alone plus wormhole+walls and wormhole+mystery, 540/540 certified
 // with wormhole present, every pair at graph distance >= 3, one certifier
 // constraint per pair, and decorative rates of 4-28% with the load-bearing
 // budget off falling to 0% with it on.
@@ -75,7 +75,7 @@ export const CONSTRUCTIVE_DENSITY_THRESHOLD = 0.22;
 // forever, so the bar is a preference with a bound, never a hard gate.
 export const TILING_LOAD_BEARING_BUDGET = 25;
 
-// Gimmick re-rolls per certified BASE before the base itself is rebuilt —
+// Gimmick re-rolls per certified BASE before the base itself is rebuilt,
 // the rectangular challenge path's own amortization (it re-rolls up to 25
 // times per base board), ported here after the 2026-08-03 profile of the
 // stacked-Cubes generation cells: 99-100% of generation time is
@@ -91,7 +91,7 @@ export const TILING_GIMMICK_REROLLS = 25;
 export { buildTiling, buildTiling488, containerFor };
 
 /**
- * Generate a certified no-guess tiling board by seeded search — the same way the
+ * Generate a certified no-guess tiling board by seeded search, the same way the
  * Phase 1 fixture was found, and the same way a rectangular daily is accepted:
  * try seeded mine layouts, keep the first the SHIPPED certifier clears with no
  * guesses from the fixed center-cell opener.
@@ -114,7 +114,7 @@ export { buildTiling, buildTiling488, containerFor };
  *          even below CONSTRUCTIVE_DENSITY_THRESHOLD. The four Laves lattices
  *          are weak on rejection sampling exactly BELOW the threshold (floret
  *          7/12 certified at density 0.208, deltoidal 8/12 at 0.181), while
- *          the same boards go 30/30 constructively — so a sub-threshold Laves
+ *          the same boards go 30/30 constructively, so a sub-threshold Laves
  *          config that must generate on arbitrary date seeds (the banded
  *          daily config tables in tilingBandConfigs.js) opts in here. Default
  *          false keeps every existing caller byte-identical.
@@ -174,7 +174,7 @@ export function generateTilingBoard({
   };
 
   // Above this density, random layouts almost never certify and the search has
-  // to CONSTRUCT instead — mirroring generateBoard's own `density > 0.22 ||
+  // to CONSTRUCT instead, mirroring generateBoard's own `density > 0.22 ||
   // hasGimmicks` rule, which is why a rectangle ships at 30% density and a
   // tiling did not. Measured on 4.8.8 before this path existed: per-layout
   // certification falls to ~0.7% at density 0.22 and to zero in 363,000
@@ -187,7 +187,7 @@ export function generateTilingBoard({
   const hasTestableGimmick = gimmicks.some((g) => TESTABLE_GIMMICK_TYPES.includes(g));
   const topo = { neighborCache: T.adj, excluded, makeBoard };
 
-  // Rebuild a pristine board carrying a known mine layout — the cheap half of
+  // Rebuild a pristine board around a known mine layout, the cheap half of
   // an attempt. The EXPENSIVE half is finding the layout (the constructive
   // placer runs the solver in its placement loop), which is why the re-roll
   // loop below reuses one layout across gimmick placements instead of paying
@@ -240,11 +240,11 @@ export function generateTilingBoard({
       // Re-rolls after the first get a fresh pristine board on the SAME mine
       // layout. Roll 0 uses the constructed board itself with the legacy
       // gimmick seed string, so any (seed, config) whose first roll certified
-      // under the pre-reroll search produces the byte-identical board here —
+      // under the pre-reroll search produces the byte-identical board here,
       // the change only reaches outcomes the old loop paid extra bases for.
       const b = roll === 0 ? board : boardFromMines(baseMines);
 
-      // Apply gimmicks (if any) on the pre-numbered board — applyGimmicks reads
+      // Apply gimmicks (if any) on the pre-numbered board, applyGimmicks reads
       // the board's own topology (_cellNeighbors) for placement and recomputes
       // displayed numbers through it, so sonar/mirror/liar etc. certify against
       // exactly what the player sees.
@@ -263,7 +263,7 @@ export function generateTilingBoard({
 
       const certified = check.solvable && check.remainingUnknowns === 0;
       if (certified) {
-        // MODIFIER LOAD-BEARING FILTER — the same bar the daily play path holds
+        // MODIFIER LOAD-BEARING FILTER, the same bar the daily play path holds
         // rectangular boards to, which a tiling was never asked to clear. A
         // modifier is decorative on this layout when stripping its information
         // leaves the board solvable at the same difficulty; shipping one is a
@@ -288,8 +288,8 @@ export function generateTilingBoard({
         // the requirement drops so generation cannot spin forever, and a
         // certified-but-decorative board is still kept as `best` so exhaustion
         // returns a real board rather than null. We never trade the no-guess
-        // contract for this — only the modifier-means-something one.
-        // Only worth asking when a modifier on this board is actually testable —
+        // contract for this, only the modifier-means-something one.
+        // Only worth asking when a modifier on this board is actually testable,
         // the filter opens with a baseline solve, so a walls/locked/mystery/worm
         // board would pay a second full solve per attempt to be told what the
         // exemption list already says.

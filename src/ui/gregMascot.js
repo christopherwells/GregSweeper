@@ -1,4 +1,4 @@
-// Animated title-screen Greg mascot — theme-aware.
+// Animated title-screen Greg mascot, theme-aware.
 //
 // Classic/dark (and any not-yet-hooked theme) get the inline crab below. A
 // theme whose Greg art has been marked up with the animation hooks
@@ -7,10 +7,10 @@
 // empty flash); a hooked theme's Greg is swapped in once fetched.
 //
 // The animation contract a hooked Greg SVG must satisfy:
-//   .greg-eyes-open    — the open eyes (shown by default)
-//   .greg-eyes-closed  — the closed-eye arcs (display:none by default)
-//   .greg-smile-open   — the open/grin mouth (shown by default)
-//   .greg-smile-closed — the closed/content mouth (display:none by default)
+//   .greg-eyes-open    - the open eyes (shown by default)
+//   .greg-eyes-closed  - the closed-eye arcs (display:none by default)
+//   .greg-smile-open   - the open/grin mouth (shown by default)
+//   .greg-smile-closed, the closed/content mouth (display:none by default)
 // The loop toggles visibility only, so each theme styles its own eyes + mouth
 // (ink reserve, beak, etc.) and the one rig animates them all.
 //

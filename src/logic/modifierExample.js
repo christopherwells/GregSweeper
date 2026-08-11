@@ -1,4 +1,4 @@
-// Modifier example diagrams drawn on the board shape the player is actually
+// Modifier example diagrams drawn on the lattice the player is actually
 // looking at.
 //
 // Every modifier card in GIMMICK_DEFS ships an `exampleHtml` built out of a
@@ -17,12 +17,12 @@
 // so nothing here can drift from the mechanic it illustrates.
 //
 // Chaos-only modifiers (mineShift, pressure plates) are here too, since Chaos
-// gained the board shapes: a modifier that can appear on a lattice needs a
+// gained the shapes: a modifier that can appear on a lattice needs a
 // card that shows one.
 //
 // RECTANGULAR BOARDS ARE UNTOUCHED. `modifierExampleHTML` returns null for a
 // board with no tiling, and the caller falls back to the shipped
-// `exampleHtml` verbatim — so the Classic debuts (walls, liar, mystery) and
+// `exampleHtml` verbatim, so the Classic debuts (walls, liar, mystery) and
 // the Modifiers help tab render exactly the markup they always have.
 //
 // Pure: builds markup strings, reads no DOM. The geometry is therefore
@@ -52,7 +52,7 @@ const PATCH_DIMS = {
 const DRAW_LIMIT = 22;
 const DRAW_LIMIT_REGION = 34;
 
-/** The lattice's dominant cell nearest the patch centre. */
+/** The lattice's dominant cell nearest the patch center. */
 function pickHub(T) {
   const maxValence = Math.max(...T.adj.map((a) => a.length));
   const c = T.cellPos[T.centerIndex];
