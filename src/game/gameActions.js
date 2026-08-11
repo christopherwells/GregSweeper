@@ -63,7 +63,7 @@ let _lastInputTime = 0;
 // ── Gimmick Intro Popup ───────────────────────────────
 
 // First-encounter SHAPE card (Challenge 250). Shown once per shape ever,
-// tracked in its own seen-set — deliberately NOT the modifier seen-set,
+// tracked in its own seen-set, deliberately NOT the modifier seen-set,
 // and deliberately NOT suppressed by the "skip all modifier explainers"
 // preference: a player who has opted out of modifier cards has said
 // nothing about board shapes, and a hexagonal board arriving unannounced
@@ -73,7 +73,7 @@ const SHAPE_SEEN_KEY = 'minesweeper_seen_shapes';
 // Shape cards follow the modifier cards' rule (his 2026-08-04 ruling): a card
 // is seen at a REVISION, so editing its copy re-teaches it. The revision is
 // derived from the card's own text and its drawn patch, which means a builder
-// retune that changes the motif re-shows the card too — correct, since the
+// retune that changes the motif re-shows the card too, correct, since the
 // symbol is the part of that card doing most of the explaining.
 function shapeCardRevision(type) {
   const card = shapeIntroCard(type);
@@ -100,7 +100,7 @@ function markShapeSeen(type) {
     const seen = (raw && !Array.isArray(raw) && typeof raw === 'object') ? raw : {};
     seen[type] = shapeCardRevision(type);
     localStorage.setItem(SHAPE_SEEN_KEY, JSON.stringify(seen));
-  } catch { /* private browsing — the card simply shows again */ }
+  } catch { /* private browsing, the card simply shows again */ }
 }
 
 function showShapeIntro(type) {
@@ -115,7 +115,7 @@ function showShapeIntro(type) {
   nameEl.textContent = card.title;
   descEl.textContent = card.neighbors;
 
-  // Reading a card is not play, so the clock stops for it — the same
+  // Reading a card is not play, so the clock stops for it, the same
   // contract showGimmickIntros has always had. This card did NOT: it was
   // paused only when a modifier card happened to fire on the same board,
   // and that one only fires when the board carries a modifier the player
@@ -124,8 +124,8 @@ function showShapeIntro(type) {
   // turned modifier explainers off (that toggle deliberately does not
   // suppress shape cards).
   //
-  // The two cards can be open at once — this one shows first and paints on
-  // top, with the modifier card underneath — so closing this one must not
+  // The two cards can be open at once, this one shows first and paints on
+  // top, with the modifier card underneath, so closing this one must not
   // resume a clock the card behind it still needs stopped. The modifier
   // card's own closeIntro owns the resume whenever it is up.
   const close = () => {
@@ -189,7 +189,7 @@ function showGimmickIntros(gimmickDefs, recapDefs = []) {
       recap: true,
       iconKey: 'uiPuzzle',
       name: 'Also on this board',
-      // Sprite-only modifiers (worm) have no icon field — name-only entry
+      // Sprite-only modifiers (worm) have no icon field, name-only entry
       body: recapDefs.map(d => (d.icon ? `${d.icon} ${d.name}` : d.name)).join(' · '),
       exampleHtml: '',
     });
@@ -238,7 +238,7 @@ function showGimmickIntros(gimmickDefs, recapDefs = []) {
   });
 
   // "Skip all modifier explainers" is a global kill switch. Hide it for
-  // the whole first-ever run (the run that carries the primer) so a brand
+  // the whole first-ever run (the one the primer shows in) so a brand
   // new player can't disable every future explainer before understanding
   // what a Modifier even is. It returns to normal on later encounters.
   if (dismissBtn) {
@@ -276,7 +276,7 @@ function revealWormholePairs(revealed) {
 }
 
 // placeMysteryConstructive moved to boardGenerator.js (shared with the
-// Challenge 250 builder) — imported above, behavior unchanged.
+// Challenge 250 builder), imported above, behavior unchanged.
 
 function revealLinkedCell(revealed, link) {
   const pair = state.board[link.row]?.[link.col];
@@ -296,7 +296,7 @@ function revealLinkedCell(revealed, link) {
 
 // Re-entrancy guard for newGame. newGame is async (daily/weekly await
 // canonical-board fetches, up to 8s on a cold connection) and is fired
-// un-awaited by switchMode — so two overlapping runs are reachable in
+// un-awaited by switchMode, so two overlapping runs are reachable in
 // real play (double-tap a mode card during a slow fetch, or smiley spam
 // during the daily cold start). Without the guard, the SLOWER run's
 // post-await phase resumes after the faster run's board is live and
@@ -306,7 +306,7 @@ function revealLinkedCell(revealed, link) {
 // ticket and abandons itself if a newer run has started.
 let _newGameGeneration = 0;
 
-// Mines are STRIKES — priced by info-value, marked, play continues — in the
+// Mines are STRIKES, priced by info-value, marked, play continues, in the
 // canonical modes AND in Par Lab runs; everywhere else a mine is a loss.
 // The lab parameterizes the DAILY par model, so its mines must cost what
 // daily mines cost (Christopher's ruling, 2026-08-02): a loss-on-mine lab
@@ -316,6 +316,24 @@ let _newGameGeneration = 0;
 // strike-vs-refog split) so they can never disagree about what a mine is.
 function mineIsStrike() {
   return state.gameMode === 'daily' || state.gameMode === 'weekly' || !!state.parLab;
+}
+
+// One abort contract for every mode newGame can give up on (issue #285).
+// The daily branch spelled this out inline and the challenge branch bailed
+// with a bare return, which left an 'idle' placeholder persistGameState
+// WOULD write (pagehide calls it unconditionally), firstClick still true so
+// the next click ran the plain first-click generator on a board that is not
+// the level, and the win card still up because newGame's tail never ran.
+// The status is what makes the husk unsavable ('aborted' is refused by both
+// persistGameState and revealCell), clearGameState drops anything already
+// on disk, and the title screen takes the player off the stale board. The
+// placeholder board itself stays: the resize/overlay handlers walk it, and
+// a null there would trade a save bug for a crash.
+export function abortModeStart(mode, message) {
+  state.status = 'aborted';
+  clearGameState(mode);
+  import('../ui/toastManager.js').then(m => m.showToast(message, 5000, 'uiWarning'));
+  import('../ui/titleScreen.js').then(m => m.showTitleScreen?.());
 }
 
 export async function newGame() {
@@ -353,8 +371,8 @@ export async function newGame() {
   } else {
     // Challenge 250: the level's authored spec owns the dimensions (the
     // sawtooth's getDifficultyForLevel is gone). A tiling spec's container
-    // is an exact factorization of its cell count — the same containerFor
-    // the builder itself uses — so the placeholder board that renders
+    // is an exact factorization of its cell count, the same containerFor
+    // the builder itself uses, so the placeholder board that renders
     // while the draw runs already has the final shape. The coastline
     // branch below overwrites these for its own practice boards.
     const spec = challengeSpecForLevel(state.currentLevel);
@@ -387,7 +405,7 @@ export async function newGame() {
   state.revealedCount = 0;
   state.elapsedTime = 0;
   state.modalPaused = false; // fresh game must never inherit a stale modal-pause
-  state.timeLimit = 0; // Timed mode now counts up — no countdown
+  state.timeLimit = 0; // Timed mode now counts up, no countdown
   state.shieldActive = false;
   state.scanMode = false;
   state.xrayMode = false;
@@ -401,7 +419,7 @@ export async function newGame() {
   // from whoever called newGame: a live session that crossed midnight
   // still carries yesterday's date in state.dailySeed, and the old
   // keep-if-set logic would regenerate yesterday's board as "today's".
-  // Practice (?seed= deep link) is the one caller-owned seed — it sets
+  // Practice (?seed= deep link) is the one caller-owned seed, it sets
   // isDailyPractice before newGame runs.
   if (state.gameMode !== 'daily') {
     state.dailySeed = null;
@@ -456,18 +474,18 @@ export async function newGame() {
   // daily/weekly rather than on first click. gameMode stays 'normal' +
   // isLevelPractice so nothing records; state.coastlinePractice routes the
   // frozen first-click path in revealCell. The whole surface is unreachable in
-  // production — the ?coastline=1 deep link is isTestEnvironment()-gated.
+  // production, the ?coastline=1 deep link is isTestEnvironment()-gated.
   if (state.coastlinePractice) {
     let res;
     if (state.parLabSpec) {
-      // Par Lab (test-only): the battery board's own spec — shape, lattice
-      // dims, mines, modifiers, deterministic per-attempt seed — built by
+      // Par Lab (test-only): the battery board's own spec, shape, lattice
+      // dims, mines, modifiers, deterministic per-attempt seed, built by
       // the ONE builder the offline validator proves (buildParLabBoard).
       // Rect specs route through the daily-recipe rect generator inside it;
       // everything downstream of `res` is shared with the coastline path.
       res = buildParLabBoard(state.parLabSpec, state.parLabAttempt || 0);
       if (!res) {
-        import('../ui/toastManager.js').then(m => m.showToast('Could not generate the lab board — skip it and tell Christopher.'));
+        import('../ui/toastManager.js').then(m => m.showToast('Could not generate the lab board, skip it and tell Christopher.'));
         return;
       }
     } else {
@@ -507,8 +525,8 @@ export async function newGame() {
     state.board[oRow][oCol].suggestedStart = true;
     setDailySuggestedCell({ r: oRow, c: oCol });
 
-    // Features + par for the tiling board. Nothing submits these — a coastline
-    // run is isLevelPractice and records nothing — but computing them here is
+    // Features + par for the tiling board. Nothing submits these, a coastline
+    // run is isLevelPractice and records nothing, but computing them here is
     // what makes the par chain PROVABLE on a non-rectangular board rather than
     // merely intended: computeDailyFeatures reads the board's own topology for
     // wall edges and zero clusters and derives `tilingType` from `_tiling`, so
@@ -531,14 +549,14 @@ export async function newGame() {
   // Challenge 250: a FROZEN certified board drawn from the level's authored
   // spec (challengeSpecForLevel), generated HERE like daily/weekly rather
   // than on first click. Every attempt draws a fresh layout (death and
-  // retry included — the play seed carries per-draw entropy, so no
+  // retry included, the play seed carries per-draw entropy, so no
   // memorize-through and no two players grinding the same L37 board). The
   // builder enforces the ladder rulings per draw: certified from the fixed
   // opener, STRICT load-bearing, the opener blocks' deduction floor.
   if (state.gameMode === 'normal' && !state.coastlinePractice) {
     const spec = challengeSpecForLevel(state.currentLevel);
     state.challengeSpec = spec;
-    // Let the placeholder board paint before the CPU-bound draw — a summit
+    // Let the placeholder board paint before the CPU-bound draw, a summit
     // spec can cost over a second on desktop, several on a phone, and a
     // synchronous build would freeze the frame mid-transition.
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -555,8 +573,13 @@ export async function newGame() {
     if (!res) {
       // Validator-proven specs make this near-unreachable; if it happens,
       // say so rather than shipping an uncertified or decorative board.
+      // The bare return this used to be left every hazard the daily abort
+      // exists to close (issue #285): an 'idle' placeholder persistGameState
+      // WOULD write, firstClick still true so the next click ran the plain
+      // first-click generator on a board that is not the level, and the win
+      // card still up because newGame's hideAllModals never ran.
       reportCaughtError('challenge-board-build', new Error(`L${spec.level} draw exhausted`));
-      import('../ui/toastManager.js').then(m => m.showToast('Could not build this level’s board. Try again.'));
+      abortModeStart(state.gameMode, 'Could not build this level’s board. Try again.');
       return;
     }
 
@@ -616,7 +639,7 @@ export async function newGame() {
         }
         if (canonicalRaw) reconstructed = deserializeBoard(canonicalRaw);
       } catch (err) {
-        // Malformed payload or fetch error — fall through to local
+        // Malformed payload or fetch error, fall through to local
         // generation. We don't want a corrupt canonical to brick the
         // daily for everyone.
         console.warn('canonical board load/deserialize failed, regenerating:', err.message);
@@ -629,7 +652,7 @@ export async function newGame() {
     // calendar only offers dates whose canonical exists, so reaching here
     // means a fetch failed between the calendar's probe and this generation.
     if (state.isArchivePlay && !reconstructed) {
-      console.warn('archive: canonical missing for', state.dailySeed, '— aborting');
+      console.warn('archive: canonical missing for', state.dailySeed, 'aborting');
       state.isArchivePlay = false;
       state._archiveRaw = null;
       import('../ui/toastManager.js').then(m => m.showToast('That day’s board could not be loaded.'));
@@ -646,7 +669,7 @@ export async function newGame() {
     // refit rewrites that file underneath it, so a client re-deriving the
     // day's board picks from a differently-sized candidate pool. Measured on
     // this very date: the canonical is `2026-08-07:trial5` and a client
-    // re-deriving got `2026-08-07:trial3` — a different layout. The player
+    // re-deriving got `2026-08-07:trial3`, a different layout. The player
     // then solves a board nobody else is playing and the score is refused at
     // submit, which is a worse experience than being told to reconnect.
     //
@@ -658,27 +681,16 @@ export async function newGame() {
     // offline player who has opened the app recently still gets the real
     // board from cache. What is gone is inventing one.
     if (!reconstructed && !state.isDailyPractice) {
-      console.warn('daily: canonical unavailable for', state.dailySeed, '— refusing to generate locally');
+      console.warn('daily: canonical unavailable for', state.dailySeed, 'refusing to generate locally');
       reportCaughtError('daily-canonical-unavailable', new Error(`no canonical for ${state.dailySeed}`));
-      // Abandon the slot rather than leaving a persistable husk in it. newGame
-      // has already installed an empty placeholder board and stamped gameMode
-      // 'daily' + today's seed; status is 'idle', which persistGameState DOES
-      // write, and pagehide/beforeunload call it unconditionally. Without this
-      // the aborted attempt can be saved and then resumed as today's daily — a
-      // mine-free board with today's identity on it. The placeholder board is
-      // left in place — the resize/overlay handlers walk it, and a null there
-      // would trade a save bug for a crash — so the status is what makes the
-      // husk unsavable and clearGameState drops anything already on disk.
-      state.status = 'aborted';
-      clearGameState('daily');
-      import('../ui/toastManager.js').then(m => m.showToast(
-        'Could not load today\'s board. Check your connection and try again.', 5000, 'uiWarning'));
-      import('../ui/titleScreen.js').then(m => m.showTitleScreen?.());
+      // Abandon the slot rather than leaving a persistable husk in it (see
+      // abortModeStart for the full contract).
+      abortModeStart('daily', 'Could not load today\'s board. Check your connection and try again.');
       return;
     }
 
     // Shape rotation (Project Coastline). Resolved only when the board has
-    // to be generated HERE — a fetched canonical already IS its shape, and
+    // to be generated HERE, a fetched canonical already IS its shape, and
     // the archive path never reaches local generation (it aborts above).
     // The live lane asks the date-seeded draw (null for every date while
     // TILING_ROTATION_START is unset, so this whole branch is dark in
@@ -699,14 +711,14 @@ export async function newGame() {
         } catch (err) {
           // A throw here would be deterministic too (same seed, same code on
           // every client), so the rectangular fallback still keeps all
-          // clients in agreement — but it is a generator bug, so say so.
+          // clients in agreement, but it is a generator bug, so say so.
           tilingBuilt = null;
           reportCaughtError('tiling-daily-build', err);
         }
         // A null is deterministic (same seed, same code, same outcome on
         // every client), so falling back to the rectangular path below keeps
-        // all clients in agreement — nobody splits.
-        if (!tilingBuilt) console.warn('tiling daily generation failed for', state.dailySeed, '— falling back to rectangular');
+        // all clients in agreement, nobody splits.
+        if (!tilingBuilt) console.warn('tiling daily generation failed for', state.dailySeed, 'falling back to rectangular');
       }
     }
 
@@ -722,7 +734,7 @@ export async function newGame() {
       // Single-candidate tiling day: the shared builder already ran the
       // mission draw, the gimmick roll, certified generation, and the
       // load-bearing filter. Mirror of the pipeline's tiling branch in
-      // scripts/daily-board-pipeline.mjs — same function, same seed, same
+      // scripts/daily-board-pipeline.mjs, same function, same seed, same
       // board, byte for byte.
       state.dailyRngSeed = tilingBuilt.rngSeed;
       state.rows = tilingBuilt.rows;
@@ -738,7 +750,7 @@ export async function newGame() {
           totalMines: state.totalMines, rngSeed: state.dailyRngSeed,
           activeGimmicks: state.activeGimmicks,
           codeVersion: state.codeVersion || 'unknown',
-          // The tiling's own certified opener — the container centre is an
+          // The tiling's own certified opener, the container center is an
           // unrelated slot here (issue #195).
           firstClick: tilingBuilt.firstClick,
         });
@@ -747,7 +759,7 @@ export async function newGame() {
           .catch(err => reportCaughtError('daily-board-save', err));
       }
     } else {
-      // Fall through to local generation (this is the existing path —
+      // Fall through to local generation (this is the existing path,
       // we'll write the result back to Firebase below). Resolve effective
       // seed via the candidate-selection helper.
       state.dailyRngSeed = selectDailyRngSeed(state.dailySeed);
@@ -772,7 +784,7 @@ export async function newGame() {
       // single-gimmick constraint for coverage slots) the selection
       // routine evaluated against. Without this, the play board would
       // get a force-injected primary gimmick even when a coverage slot
-      // won — and the picked board would no longer be the picked board.
+      // won, and the picked board would no longer be the picked board.
       const dailyMission = getMissionForSeed(state.dailyRngSeed);
       const forcedDailyGimmick = getTargetGimmickName(dailyMission.target);
       const dailyGimmicks = getDailyGimmick(
@@ -816,10 +828,10 @@ export async function newGame() {
         break;
       }
       if (!solvedDaily) {
-        // Strip modifiers and generate a plain board — but VERIFY it.
+        // Strip modifiers and generate a plain board, but VERIFY it.
         // generateBoard's terminal fallback returns its best-effort
         // (possibly unsolvable) board, and this path writes to Firebase
-        // as the canonical board for every player on this date — the one
+        // as the canonical board for every player on this date, the one
         // place an unverified ship would break the no-guess contract for
         // everyone at once. Gimmick-free boards at daily density certify
         // within a try or two; the bound only prevents a hang.
@@ -844,7 +856,7 @@ export async function newGame() {
       // server reject duplicates silently; if someone else just wrote
       // first we keep playing our local board (rare race; if it happens
       // the two boards likely match anyway because clients on the same
-      // code+target produce the same seed). Fire-and-forget — no need
+      // code+target produce the same seed). Fire-and-forget, no need
       // to block rendering on the round-trip.
       if (wantCanonical) {
         const fallbackPayload = serializeBoard({
@@ -869,15 +881,15 @@ export async function newGame() {
     state.status = 'idle';
 
     // The certified opener. A canonical board carries it from deserializeBoard
-    // — the ONE definition shared with the Node consumers (nightly sweep,
+    //, the ONE definition shared with the Node consumers (nightly sweep,
     // repair, backfill): the stored firstClick on a tiling, the container
-    // centre on every rectangle. Re-deriving floor(rows/2), floor(cols/2)
+    // center on every rectangle. Re-deriving floor(rows/2), floor(cols/2)
     // here anchored the solve on an unrelated container slot of a tiling
     // canonical (measured: 12 of 18 round-trips diverge, all 12 stall at
-    // click 1, par off by up to 22% — issue #195), so features/par/moves
+    // click 1, par off by up to 22%, issue #195), so features/par/moves
     // came off a failed solve with no error anywhere. A locally generated
     // tiling board carries its builder's opener for the same reason; a
-    // locally generated rectangle was generated around the container centre
+    // locally generated rectangle was generated around the container center
     // above, which stays its opener.
     const dailyOpener = reconstructed
       ? reconstructed.firstClick
@@ -933,7 +945,7 @@ export async function newGame() {
     cleanSolverArtifacts(state.board);
     // The Certified chip's claim is "solvable without guessing from the
     // marked start", so the certificate is the marked start's OWN full
-    // solve — not the center check above, which feeds features/par. A
+    // solve, not the center check above, which feeds features/par. A
     // board with no full-solve anchor stamps nothing (chip absent).
     state.boardCertificate = certificateFromCheck(bestStartCheck);
     state.revealedCount = 0;
@@ -945,7 +957,7 @@ export async function newGame() {
 
   // Weekly mode: same canonical-board pattern as daily, but using
   // weeklyBoard/{weekStart} for the whole-week board, getWeeklyGimmicks
-  // for the 2–4 stacked modifier pool, and selectWeeklyRngSeed for
+  // for the 2-4 stacked modifier pool, and selectWeeklyRngSeed for
   // candidate scoring (gimmick count + advanced-logic-moves tiebreaker).
   // Reset weekly per-attempt fields so the bomb-hit handler tracks
   // this attempt cleanly.
@@ -1022,7 +1034,7 @@ export async function newGame() {
       state.activeGimmicks = weeklyGimmicks.length > 0 ? weeklyGimmicks : [];
 
       // Same capped + tiered retry as the daily loop above. Weekly stacks
-      // 2–4 modifiers so load-bearing has more types to cover; the relax
+      // 2-4 modifiers so load-bearing has more types to cover; the relax
       // tier exists for the rare case where the seed can't satisfy all of
       // them simultaneously.
       const LOAD_BEARING_BUDGET_W = 25;
@@ -1078,7 +1090,7 @@ export async function newGame() {
       //
       // What changes is that the write's ANSWER is now read. Write-once means a
       // rejected write is not a no-op to be shrugged at, it is the server
-      // saying a canonical already exists — which is the one thing this branch
+      // saying a canonical already exists, which is the one thing this branch
       // could not previously find out, and the whole of the weekly divergence
       // hole. A client whose reads failed would generate its own board, write
       // it into the void, and then PLAY it: a board nobody else is on, one of
@@ -1088,8 +1100,8 @@ export async function newGame() {
       // the canonical. The write failing means either a canonical is already
       // there or we cannot reach the server, and one more read separates those.
       // A board that comes back is played instead of ours. Nothing coming back
-      // leaves us where this code has always been — offline, or on a test build
-      // whose writes are gated — and playing our own deterministic board is
+      // leaves us where this code has always been, offline, or on a test build
+      // whose writes are gated, and playing our own deterministic board is
       // still the best available answer there.
       const wrote = await saveWeeklyBoard(state.weeklySeed, serializeBoard({
         board: state.board, rows: state.rows, cols: state.cols,
@@ -1134,7 +1146,7 @@ export async function newGame() {
 
     // Same certified-opener contract as the daily branch above (issue #195):
     // a canonical board's opener comes from deserializeBoard, a locally
-    // generated one keeps the container centre it was generated around.
+    // generated one keeps the container center it was generated around.
     const weeklyOpener = reconstructed
       ? reconstructed.firstClick
       : Math.floor(state.rows / 2) * state.cols + Math.floor(state.cols / 2);
@@ -1145,7 +1157,7 @@ export async function newGame() {
     // first-attempt fit-data submit in winLossHandler. Weekly doesn't
     // ship a par to the player (no PAR_MODEL training on memorized
     // boards), but we still need the feature vector so the FIRST
-    // attempt of the week — which IS an honest first encounter — can
+    // attempt of the week, which IS an honest first encounter, can
     // contribute to the next R refit via the daily/{weekStart}_weekly_first
     // synthetic-daily path.
     const wcheck = isBoardSolvable(state.board, state.rows, state.cols, fixedRow, fixedCol);
@@ -1296,7 +1308,7 @@ export async function newGame() {
   // Show level info toast on new game (except first load). On the
   // Challenge 250 ladder this IS the pre-level card: it names the shape
   // and carries the expected time (personalPar for the board just drawn,
-  // handicap-adjusted) — a pace cue, never a target the game enforces.
+  // handicap-adjusted), a pace cue, never a target the game enforces.
   if (state._initialized && state.gameMode === 'chaos') {
     const chaosRound = state.chaosRound || 1;
     showLevelInfoToast(chaosRound, diff, 'Round ' + chaosRound);
@@ -1326,7 +1338,7 @@ export function revealCell(row, col) {
   if (state.status === 'won' || state.status === 'lost') return;
   // 'aborted' = newGame gave up before it had a real board (today's canonical
   // was unreachable). The empty placeholder is still on screen for the frame or
-  // two before the title screen swaps in, and it has no mines — so a click that
+  // two before the title screen swaps in, and it has no mines, so a click that
   // landed here would cascade the whole grid and satisfy the win check against
   // a stale totalMines. Nothing is playable in this state.
   if (state.status === 'aborted') return;
@@ -1366,11 +1378,11 @@ export function revealCell(row, col) {
     return;
   }
 
-  // Past every intercept — this click is a real reveal action. Recorded
+  // Past every intercept, this click is a real reveal action. Recorded
   // BEFORE processing so a bomb hit still logs the click that caused it.
   recordPlayerAction('r', row, col);
 
-  // First click — generate board (timed and chaos only). Challenge 250,
+  // First click, generate board (timed and chaos only). Challenge 250,
   // daily, weekly, and coastline boards are FROZEN at newGame (their
   // branches set firstClick = false), so this branch never sees them.
   if (state.firstClick) {
@@ -1384,7 +1396,7 @@ export function revealCell(row, col) {
     if (state.gameMode === 'chaos' && state.chaosTiling) {
       // A chaos lattice round. generateTilingBoard certifies from an opener
       // like the rectangular loop does, and openerIndex is what lets that
-      // opener be the player's ACTUAL click rather than the patch centre.
+      // opener be the player's ACTUAL click rather than the patch center.
       // A null means every attempt exhausted; the round falls back to a
       // rectangle rather than refusing the click, which is the one outcome
       // a player must never see.
@@ -1398,8 +1410,8 @@ export function revealCell(row, col) {
       if (res) {
         state.board = res.board;
         acceptedCheck = res.check;
-        // The generator places min(mines, placeable) — the opener and its
-        // neighbours are excluded — so the round's requested count is a
+        // The generator places min(mines, placeable), the opener and its
+        // neighbors are excluded, so the round's requested count is a
         // ceiling, not a promise. The LCD counter is board-derived and the
         // win check counts safe cells, so state must agree with the board
         // rather than with the plan.
@@ -1425,7 +1437,7 @@ export function revealCell(row, col) {
 
     // Flags placed before the first click sat on the PLACEHOLDER board
     // (createEmptyBoard renders plain fog until this click generates the
-    // real layout), and generateBoard returns fresh cell objects — those
+    // real layout), and generateBoard returns fresh cell objects, those
     // flags are gone. The counter must die with them or the mine counter
     // reads totalMines - N for the whole game; the full-cell re-render
     // clears any stale flag icons off the replaced cells (chaos re-renders
@@ -1433,7 +1445,7 @@ export function revealCell(row, col) {
     state.flagCount = 0;
     updateAllCells();
 
-    // Stamp the no-guess certificate from the accepted check — the
+    // Stamp the no-guess certificate from the accepted check, the
     // contract here runs from the player's ACTUAL first click. Chaos is
     // excluded: its modifiers are applied AFTER this loop without
     // re-verification, so the base-board check certifies nothing about
@@ -1444,7 +1456,7 @@ export function revealCell(row, col) {
     }
 
     // Timed mode: compute features + par for THIS board (same PAR_MODEL
-    // as daily — timed boards are gimmick-free, so the gimmick terms are
+    // as daily, timed boards are gimmick-free, so the gimmick terms are
     // simply zero). Powers the par-relative rating on the win modal and
     // the timed/{pushId} submission that will eventually feed the fit.
     if (state.gameMode === 'timed') {
@@ -1506,19 +1518,19 @@ export function revealCell(row, col) {
     // and the submitted features always describe the board that was
     // actually played. The marked start cell is the certified safe entry;
     // a first click that ignores it and lands on a mine is on the player,
-    // by design (decided 2026-06-12) — on daily/weekly it falls through
+    // by design (decided 2026-06-12), on daily/weekly it falls through
     // to the bomb-hit strike path below, on the challenge ladder it is a
-    // classic loss (lifelines apply, never strikes — the C250 ruling).
+    // classic loss (lifelines apply, never strikes, the C250 ruling).
     state.status = 'playing';
     startTimer();
 
     // Weekly: commit the attempt on first click. Without this, a player
-    // could hit a mine (which doesn't end the game — just adds 10s and
-    // re-fogs), smash the smiley, and get a fresh attempt for today —
+    // could hit a mine (which doesn't end the game, just adds 10s and
+    // re-fogs), smash the smiley, and get a fresh attempt for today,
     // bypassing the bomb-time-penalty mechanic. Marking on first click
     // means the slot is consumed the moment the player commits to a
     // play, regardless of whether they reset, hit bombs, or finish.
-    // Idempotent — re-marking the same day is a no-op on Firebase.
+    // Idempotent, re-marking the same day is a no-op on Firebase.
     // A past-weekly replay consumes no attempt: weeklyDay is null on one, so
     // this is already unreachable there, but the flag says so explicitly
     // rather than resting on that.
@@ -1542,11 +1554,11 @@ export function revealCell(row, col) {
     // Modifier intro: full card only for modifiers the player hasn't met
     // yet (mark them seen), and a single compact recap line for ones they
     // already know. No popup at all when everything on the board is
-    // already familiar — the persistent active-modifier bar already
+    // already familiar, the persistent active-modifier bar already
     // reminds them. The recap line is daily/weekly-only: on the ladder a
     // known modifier appears level after level, and a recap on every one
     // of them would be noise (the old challenge engine never recapped
-    // either — first encounters only).
+    // either, first encounters only).
     if (state.activeGimmicks.length > 0 && !isModifierPopupDisabled()) {
       const recapWanted = state.gameMode === 'daily' || state.gameMode === 'weekly';
       const unseenDefs = [];
@@ -1598,7 +1610,7 @@ export function revealCell(row, col) {
       updateAllCells();
       updateHeader();
       updatePowerUpBar();
-      // handleWin is async (name gate) — label the rejection path so a
+      // handleWin is async (name gate), label the rejection path so a
       // failure lands in errors/{uid} with a stable site tag instead of
       // an anonymous unhandledrejection.
       if (checkWin(state.board)) handleWin().catch(err => reportCaughtError('handle-win', err));
@@ -1608,7 +1620,7 @@ export function revealCell(row, col) {
     if (tryLifeline(row, col)) return;
     // Daily / weekly: bomb hit re-fogs and adds 10s instead of ending.
     // Without weekly here, a bomb hit drops the player to the loss
-    // screen mid-attempt — and weekly forfeits that day's slot.
+    // screen mid-attempt, and weekly forfeits that day's slot.
     if (mineIsStrike()) {
       handleDailyBombHit(row, col);
       return;
@@ -1683,14 +1695,14 @@ export function rearmPlateTimers() {
 
 // Teardown for every path that LEAVES the board without starting a new
 // game (issue #192): showTitleScreen (Home button) and switchMode both
-// call this, because neither changes state.status — the tick's own
+// call this, because neither changes state.status, the tick's own
 // `status !== 'playing'` guard never fires on those paths, and the
 // deadline is raw wall-clock, so an orphaned plate detonated on the
 // title screen (loss recorded, save cleared, the explaining modal
 // unrenderable inside the hidden #app) or mid-way through whatever game
 // was loaded next. Also the safety net for winLossHandler's
 // handleDailyBombHit refog path. Re-arming on resume is
-// rearmPlateTimers' job, with a fresh countdown — the lenient direction.
+// rearmPlateTimers' job, with a fresh countdown, the lenient direction.
 export function clearAllPlateTimers() {
   for (const id of activePlates.values()) clearInterval(id);
   activePlates.clear();
@@ -1736,8 +1748,8 @@ function startPressurePlateTimer(cell) {
     }
     // Identity guard (issue #192): this interval must only ever act on the
     // board its cell belongs to. If the live board no longer holds THIS
-    // cell object at these coords — a mode switch resumed a different
-    // game, a new board replaced this one — the plate is an orphan and
+    // cell object at these coords, a mode switch resumed a different
+    // game, a new board replaced this one, the plate is an orphan and
     // self-destructs instead of detonating someone else's game. The
     // teardown calls in newGame/switchMode/showTitleScreen should make
     // this unreachable; it exists so no future caller has to remember.
@@ -1853,7 +1865,7 @@ export function handleChordReveal(row, col) {
   if (state.inputLocked) return;
   // Strike cells are defused-bomb markers, not numbered safe cells.
   // Chord-revealing from them can cascade into a neighboring
-  // unrevealed mine and fire another handleDailyBombHit — the
+  // unrevealed mine and fire another handleDailyBombHit, the
   // "click an already-exploded mine for more penalty" footgun.
   // The re-fog after each bomb hit already keeps mines hidden, but
   // a stale chord-tap on a strike cell while a neighbor's still
@@ -1871,9 +1883,9 @@ export function handleChordReveal(row, col) {
   state.revealedCount += result.revealed.filter(c => !c.isMine).length;
 
   // A chord can expose MORE than one mine (two wrong flags around a
-  // satisfied number — chordReveal keeps revealing past the first mine).
+  // satisfied number, chordReveal keeps revealing past the first mine).
   // Daily/weekly charge EVERY exposed mine as its own strike (the intel is
-  // real, so the price is too — each stays revealed as a strike marker and
+  // real, so the price is too, each stays revealed as a strike marker and
   // gets its own marginal info-value + ramped base). Challenge/timed/chaos
   // keep the re-fog: one lifeline/loss on the first mine, the rest go back
   // under the fog so a survived chord never grants free intel (the
@@ -1952,7 +1964,7 @@ export function handleChordReveal(row, col) {
     // Challenge/timed/chaos: every chord-exposed mine was un-revealed
     // above; only the primary proceeds through the lifeline/loss flow.
     if (tryLifeline(primaryMine.row, primaryMine.col)) {
-      // Lifeline saved — continue playing
+      // Lifeline saved, continue playing
     } else {
       primaryMine.isRevealed = true;
       handleLoss(primaryMine.row, primaryMine.col);
