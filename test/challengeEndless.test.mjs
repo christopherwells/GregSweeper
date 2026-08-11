@@ -74,7 +74,7 @@ test('every pool entry is a legal ladder spec at or above the summit', () => {
   }
 });
 
-test('the pool carries every tiling; Classic is parked out by ruling', () => {
+test('the pool carries all SEVEN shapes, Classic restored with the pre-generated endless', () => {
   // "Mixed board lengths" is his wording, and a pool missing a shape would
   // quietly retire it from the back half of the game. Three shapes needed a
   // per-shape allowance to get here, each for a measured reason:
@@ -94,22 +94,23 @@ test('the pool carries every tiling; Classic is parked out by ruling', () => {
   //     its top decile is enough to earn that. See
   //     ENDLESS_PPC_FLOOR_BY_SHAPE.
   //
-  // CLASSIC left on 2026-08-10, and its absence is a finding, not an
-  // oversight. The 2026-08-09 refit moved the equations, the harden that
-  // followed dropped every rect entry, and a 23-candidate slate spanning
-  // every modifier class measured the squeeze as real: pricing over the 3.6
-  // floor needs density at or above 0.42, and rect generation at that
-  // density never kept worst-of-60 under its 700ms budget (best miss: 13x12
-  // locked+worm, ppc 4.17, worst 748ms). He ruled Classic out of the live
-  // pool rather than granting a generation allowance, until the
-  // pre-generated endless library lands and makes runtime generation cost
-  // moot. When it does, restore rect and flip this pin back to all seven.
+  // CLASSIC left on 2026-08-10 (the re-harden after that night's refit
+  // dropped every rect entry on a worst-of-60 generation bar) and RETURNED
+  // on 2026-08-11 with the pre-generated endless library — the exact
+  // condition his parking ruling named. Two things changed, and the second
+  // is the honest one: the endless play path deals pre-generated boards, so
+  // runtime generation is only the fallback; and the harden was aligned
+  // with the NORM reading of the generation cap (34bb136, already applied
+  // by the validator and documented in challengeRules.js as the reading
+  // whose absence was the mistake), under which six rect entries qualify on
+  // medians of 165-523ms with no allowance granted. This pin is the flip
+  // the 2026-08-10 comment said to make: all seven, deliberately.
   const shapes = new Set(ENDLESS_SPECS.map((s) => s.shape));
   for (const t of TILING_TYPES) {
     assert.ok(shapes.has(t), `the endless pool has no ${t} entry`);
   }
-  assert.ok(!shapes.has('rect'),
-    'rect re-entered the endless pool; that is his flip to make (see the 2026-08-10 ruling above)');
+  assert.ok(shapes.has('rect'),
+    'Classic left the endless pool again; if a refit dropped it, re-harden rect candidates (see challengePool.js\'s restore note)');
 });
 
 test('the per-shape allowances are the ruled ones, and apply only where ruled', () => {
@@ -295,12 +296,16 @@ test('GOLDEN: the first endless block is fixed', () => {
   // left on the generation-tail bar. He ruled Classic out of the live pool
   // until the pre-generated endless lands (see the shape test above); a
   // 20-entry-smaller pool deals a different five.
+  // Moved on 2026-08-11 by Classic's restore: the pre-generated endless
+  // landed and six rect entries re-entered under the norm-read harden (see
+  // the shape test above), so the deck grew a rect queue and the fair
+  // scheduler deals one into the first block.
   assert.deepEqual(got, [
     'floret:72c:27m:[locked+mirror+sonar]',
     'hex:104c:38m:[liar+mirror+sonar]',
+    'rect:156c:60m:[liar+mirror+walls]',
     'cairo:112c:24m:[liar+sonar+compass]',
     'floret:108c:32m:[walls+liar]',
-    '4.8.8:98c:37m:[]',
   ]);
 
 
