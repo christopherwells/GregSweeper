@@ -190,53 +190,26 @@ jobs:
       # this account does not hold. So llama.cpp's OpenAI-compatible
       # llama-server runs a pinned open-weight model on localhost: no
       # vendor, no key, no permissions change, and the weights ride the
-      # Actions cache beside the R packages. Swapping to a hosted
-      # provider later is the three JOURNAL_REWRITE_* env values
-      # documented in scripts/rewrite-journal-entry.mjs, no code change.
-      - name: Cache the journal-rewrite model
-        id: llm-cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.journal-llm
-          key: journal-llm-b10361-microsoft_Phi-4-mini-instruct-Q4_K_M
-
-      # Both downloads are sha256-PINNED: a moved release asset or a
-      # swapped model file fails here rather than quietly changing what
-      # writes Greg's public notebook.
-      - name: Fetch llama.cpp and the model if the cache missed
-        if: steps.llm-cache.outputs.cache-hit != 'true'
-        run: |
-          set -euo pipefail
-          mkdir -p ~/.journal-llm && cd ~/.journal-llm
-          curl -fsSL -o llama.tar.gz \
-            "https://github.com/ggml-org/llama.cpp/releases/download/b10361/llama-b10361-bin-ubuntu-x64.tar.gz"
-          echo "7809d66f8f48ca1887036b3ff10689b990462153a6fc5ada0246bd3dccfad5ac  llama.tar.gz" | sha256sum -c -
-          tar -xzf llama.tar.gz && rm llama.tar.gz
-          curl -fsSL -o model.gguf \
-            "https://huggingface.co/bartowski/microsoft_Phi-4-mini-instruct-GGUF/resolve/main/microsoft_Phi-4-mini-instruct-Q4_K_M.gguf"
-          echo "01999f17c39cc3074afae5e9c539bc82d45f2dd7faa3917c66cbef76fce8c0c2  model.gguf" | sha256sum -c -
+      # Actions cache beside the R packages. The pin (versions, sha256s)
+      # lives ONCE in .github/actions/journal-llm, which
+      # verify-journal-llm.yml re-proves on a real runner whenever it
+      # changes. Swapping to a hosted provider instead is the three
+      # JOURNAL_REWRITE_* env values documented in
+      # scripts/rewrite-journal-entry.mjs, no code change.
+      - name: Serve the journal-rewrite model
+        id: journalllm
+        continue-on-error: true
+        uses: ./.github/actions/journal-llm
 
       - name: Rewrite the journal entry into one paragraph
         id: journalrewrite
+        if: steps.journalllm.outcome == 'success'
         continue-on-error: true
         timeout-minutes: 15
         run: |
-          cd ~/.journal-llm/llama-b10361
-          ./llama-server -m ~/.journal-llm/model.gguf --port 8085 -c 4096 \
-            -t "$(nproc)" --alias journal-local > ~/.journal-llm/server.log 2>&1 &
-          SERVER_PID=$!
-          # /health answers 503 while the weights load, 200 when ready.
-          if ! curl -fsS --retry 40 --retry-delay 3 --retry-all-errors \
-              http://127.0.0.1:8085/health > /dev/null; then
-            echo "::error::llama-server never became healthy"
-            tail -50 ~/.journal-llm/server.log
-            kill "$SERVER_PID" 2>/dev/null || true
-            exit 1
-          fi
-          cd "$GITHUB_WORKSPACE"
           rc=0
           node scripts/rewrite-journal-entry.mjs || rc=$?
-          kill "$SERVER_PID" 2>/dev/null || true
+          pkill llama-server || true
           exit "$rc"
 
       - name: Commit and push if anything changed
@@ -304,13 +277,13 @@ jobs:
       # never got healthy, the inputs were unreadable, or the script
       # crashed. The journal still renders its beats meanwhile.
       - name: Fail the run if the journal-rewrite machinery broke
-        if: steps.journalrewrite.outcome == 'failure'
+        if: steps.journalllm.outcome == 'failure' || steps.journalrewrite.outcome == 'failure'
         run: |
           echo "::error::The journal rewrite step broke (machinery, not draft quality)."
           echo "The model, handicaps, ladder and library committed normally; the journal"
           echo "falls back to the beat assembly, so nothing is blocked or dishonest."
-          echo "Remedy: read the step log above, then locally:"
-          echo "        node scripts/rewrite-journal-entry.mjs --dry-run"
+          echo "Remedy: dispatch verify-journal-llm.yml to reproduce the LLM path alone,"
+          echo "        and run node scripts/rewrite-journal-entry.mjs --dry-run locally."
           exit 1
 
       - name: Notify on failure

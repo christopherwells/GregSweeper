@@ -1,0 +1,53 @@
+name: Serve the journal-rewrite model
+description: >
+  Cache-or-fetch the pinned llama.cpp build and the pinned open-weight
+  model, start llama-server on 127.0.0.1:8085, and wait until it is
+  healthy. The ONE copy of the model pin: the nightly refit workflow and
+  verify-journal-llm.yml both consume this action, so a model swap is
+  edited here once and the verify workflow re-proves it automatically.
+  The server keeps running after this action returns (background
+  processes survive across steps in a job); callers run the rewrite
+  script against it and may pkill llama-server when done, or let the
+  job's end reap it.
+
+runs:
+  using: composite
+  steps:
+    - name: Cache llama.cpp and the model
+      id: llm-cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.journal-llm
+        key: journal-llm-b10361-microsoft_Phi-4-mini-instruct-Q4_K_M
+
+    # Both downloads are sha256-PINNED: a moved release asset or a
+    # swapped model file fails here rather than quietly changing what
+    # writes Greg's public notebook.
+    - name: Fetch llama.cpp and the model if the cache missed
+      if: steps.llm-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        mkdir -p ~/.journal-llm && cd ~/.journal-llm
+        curl -fsSL -o llama.tar.gz \
+          "https://github.com/ggml-org/llama.cpp/releases/download/b10361/llama-b10361-bin-ubuntu-x64.tar.gz"
+        echo "7809d66f8f48ca1887036b3ff10689b990462153a6fc5ada0246bd3dccfad5ac  llama.tar.gz" | sha256sum -c -
+        tar -xzf llama.tar.gz && rm llama.tar.gz
+        curl -fsSL -o model.gguf \
+          "https://huggingface.co/bartowski/microsoft_Phi-4-mini-instruct-GGUF/resolve/main/microsoft_Phi-4-mini-instruct-Q4_K_M.gguf"
+        echo "01999f17c39cc3074afae5e9c539bc82d45f2dd7faa3917c66cbef76fce8c0c2  model.gguf" | sha256sum -c -
+
+    - name: Start llama-server and wait for health
+      shell: bash
+      run: |
+        set -euo pipefail
+        cd ~/.journal-llm/llama-b10361
+        nohup ./llama-server -m ~/.journal-llm/model.gguf --port 8085 -c 4096 \
+          -t "$(nproc)" --alias journal-local > ~/.journal-llm/server.log 2>&1 &
+        # /health answers 503 while the weights load, 200 when ready.
+        if ! curl -fsS --retry 40 --retry-delay 3 --retry-all-errors \
+            http://127.0.0.1:8085/health > /dev/null; then
+          echo "::error::llama-server never became healthy"
+          tail -50 ~/.journal-llm/server.log
+          exit 1
+        fi
