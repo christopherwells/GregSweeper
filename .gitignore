@@ -36,5 +36,8 @@ scripts/fit-parlab-priors_files/
 # ships; this is scratch, and the repo is served by GitHub Pages, so a
 # multi-megabyte derived file here is deployed weight for nothing.
 scripts/data/spec-search-cache.json
+# The endless build's resume state, same reasoning: the PAGES it emits
+# (scripts/data/climb-library/endless-*.json) are the artifact that ships.
+scripts/data/endless-build-cache.json
 scripts/intercept-sensitivity.html
 scripts/intercept-sensitivity_files/
