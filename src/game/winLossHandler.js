@@ -41,7 +41,7 @@ import { submitOnlineScore, submitArchiveScore, submitTimedScore, submitWeeklySc
 
 // (HTML escaping for the weekly leaderboard rows now comes from
 // ui/domHelpers.js's escapeHtml, single source of truth.)
-import { saveProgress, saveDailyHistoryEntry, fetchDailyHistoryEntry, getUid, markWeeklyDayAttempted } from '../firebase/firebaseProgress.js';
+import { saveProgress, saveDailyHistoryEntry, fetchDailyHistoryEntry, getUid, markWeeklyDayAttempted, markWeeklyCompleted } from '../firebase/firebaseProgress.js';
 import { deserializeBoard } from '../firebase/dailyBoardSync.js';
 import { archiveSubmitPlan, CRUX_VIEWED_KEY_PREFIX } from '../logic/archiveEligibility.js';
 import { gameoverModalPlan } from '../logic/gameoverPlan.js';
@@ -538,11 +538,19 @@ export async function handleWin() {
     // The week streak: one completion banks the week (his rule, "only need to
     // play one of the weekly"), so this is idempotent across the week's seven
     // attempts and the later ones land on the week already banked.
-    recordWeeklyCompletion(state.weeklySeed);
+    const banked = recordWeeklyCompletion(state.weeklySeed);
     // Read the payload back rather than re-shaping the return value: the
     // self-heal in main.js pushes the same node, and one definition of the
     // shape is what keeps the two writers from disagreeing (issue #248).
     saveProgress({ weekStreak: getWeekStreakRecord() });
+    // The per-week completion record, the fact the trio above compresses
+    // away. `extended` is true exactly when this completion newly banked the
+    // week (a later completion of an already-banked week returns false), so
+    // the node is written once per week and keeps its first-completion
+    // stamp. Feeds the Past Weeklies 'done' marks and the post-epoch half of
+    // the week-streak self-heal; internally test-gated like the attempt
+    // marker below.
+    if (banked.extended) markWeeklyCompleted(state.weeklySeed);
 
     // Snapshot the prior-times BEFORE we mutate state.weeklyDayTimes,
     // so the modal-render code below can compute "1st attempt" vs

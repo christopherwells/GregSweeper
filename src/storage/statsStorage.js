@@ -3,7 +3,7 @@ import { getLocalDateString, getWeekStart } from '../logic/seededRandom.js';
 import { applyStreakContinuation, projectContinuation, isStreakAlive, backfillGrant, MOLT_CAP } from '../logic/moltDay.js';
 import {
   applyWeekContinuation, liveWeekStreak, projectWeekContinuation,
-  weekStreakFromHistory, streakBearingWeeks,
+  weekStreakFromHistory, bankableWeeks,
 } from '../logic/weeklyProgress.js';
 import { CHALLENGE_250_EPOCH } from '../logic/challenge250.js';
 import { clearSeenGimmicks } from '../logic/gimmicks.js';
@@ -813,7 +813,8 @@ export function recordWeeklyCompletion(weekStart) {
 
 /**
  * Reconcile the stored week streak against the weeks the player has actually
- * played (`users/{uid}/weeklyAttempts`, their own cloud-synced record).
+ * played, from their own cloud-synced per-week records: `weeklyAttempts`
+ * (attemptedWeeks) and `weeklyCompletions` (completedWeeks).
  *
  * UPWARD-ONLY, exactly like reconcileStreakFromHistory: it raises a streak the
  * counter never knew about and never lowers one, because a short derived run
@@ -825,28 +826,24 @@ export function recordWeeklyCompletion(weekStart) {
  * never missed a weekly that they have no streak, with fourteen weeks of their
  * own history sitting in the account (his report, 2026-08-05).
  *
- * ONE ASYMMETRY, stated rather than hidden, and scoped to what it can defend.
- * Going forward a week is banked by COMPLETING the weekly; this backfill
- * counts a week the player ATTEMPTED, because `weeklyAttempts` is the only
- * per-week record that exists for every player, the completion record is
- * on the weekly leaderboard, which a player without a name never reaches, and
- * which grows with every player rather than with this player's weeks. So a
- * PAST week that was opened and abandoned can count. That errs generous on
- * history the player cannot replay, which is the same direction the daily's
- * upward-only self-heal errs.
+ * WHICH weeks may bank is bankableWeeks' question, and the boundary is stated
+ * there in full: before WEEKLY_COMPLETIONS_EPOCH an ATTEMPT still banks its
+ * week (the only per-week record of that era, deliberately generous on
+ * history the player cannot replay), and from the epoch on only a COMPLETION
+ * does, so an opened-and-abandoned week no longer counts once the completion
+ * record covers its era. The CURRENT week is excluded from BOTH sources: the
+ * player can still earn it honestly before Sunday, and this runs on every
+ * boot, so counting it banked a week for one click, spliced it onto a genuine
+ * run, and raised the monotonic `best` beyond recovery (issue #254).
  *
- * The CURRENT week is excluded (`streakBearingWeeks`) and is not covered by
- * that reasoning: the player can still earn it honestly before Sunday, and
- * this runs on every boot, so counting it banked a week for one click, spliced
- * it onto a genuine run, and raised the monotonic `best` beyond recovery
- * (issue #254).
- *
- * @param {string[]} weekStarts weeks the player has opened, from fetchPlayedWeeks
+ * @param {string[]|null} attemptedWeeks weeks opened, from fetchPlayedWeeks
  * @param {string} currentWeek this week's Monday anchor
+ * @param {string[]|null} completedWeeks weeks finished, from fetchCompletedWeeks
  * @returns {boolean} true when anything moved
  */
-export function reconcileWeekStreakFromHistory(weekStarts, currentWeek = getWeekStart()) {
-  const { streak, lastWeek } = weekStreakFromHistory(streakBearingWeeks(weekStarts, currentWeek));
+export function reconcileWeekStreakFromHistory(attemptedWeeks, currentWeek = getWeekStart(), completedWeeks = null) {
+  const { streak, lastWeek } = weekStreakFromHistory(
+    bankableWeeks({ attempted: attemptedWeeks, completed: completedWeeks, currentWeek }));
   if (!lastWeek || streak <= 0) return false;
   const stats = loadStats();
   const rec = readWeekStreak(stats);

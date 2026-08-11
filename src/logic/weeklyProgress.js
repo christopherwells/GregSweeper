@@ -24,6 +24,16 @@
 // past week from its seed would produce a board nobody ever played.
 export const FIRST_ARCHIVE_WEEK = '2026-05-04';
 
+// The first Monday whose week ran under the per-week COMPLETION record
+// (`users/{uid}/weeklyCompletions/{weekStart}`, written at the win). Weeks
+// before it have only the ATTEMPTS record, which is written on the first
+// click and so proves a week was opened, never that it was finished. The
+// constant is FROZEN in both directions: moving it earlier claims completion
+// records for weeks that never wrote any, and moving it later re-admits the
+// abandoned-attempt banking issue #254 closed. See bankableWeeks for the
+// policy split it anchors.
+export const WEEKLY_COMPLETIONS_EPOCH = '2026-08-10';
+
 /** Add (or subtract) whole weeks to a Monday weekStart string. */
 export function addWeeks(weekStart, delta) {
   const [y, m, d] = String(weekStart).split('-').map(Number);
@@ -91,24 +101,33 @@ export function isArchivableWeek(weekStart, currentWeek, firstWeek = FIRST_ARCHI
  * What the past-weeklies list should do with one row.
  *
  *   'playable'    - offered, tap to replay
- *   'done'        - offered but already played; shows its mark and is not
+ *   'done'        - offered but already COMPLETED; shows its mark and is not
  *                   tappable, exactly as a finished daily is. The week's board
  *                   is one board: once you have cleared it there is nothing
  *                   left to find, and a replay records nothing anyway.
  *   'current'     - this week, which the live Weekly card owns
- *   'unavailable', outside the window
+ *   'unavailable' - outside the window
  *
- * `played` may be a Set, an array, or null. NULL MEANS UNKNOWN, not empty,
+ * `completed` is the set of weeks the player has FINISHED, from
+ * fetchCompletedWeeks reading `users/{uid}/weeklyCompletions`. It is
+ * deliberately NOT the attempts record: an attempt is written on the first
+ * click, so marking 'done' from attempts locked out every week that was
+ * opened and abandoned, a board the player never cleared and might well want
+ * back (issue #254's sibling annoyance). Weeks completed before the record
+ * existed rely on the leaderboard backfill; a completion with no record
+ * anywhere reads playable, which fails OPEN like everything else here and
+ * costs only a pointless replay that records nothing.
+ *
+ * `completed` may be a Set, an array, or null. NULL MEANS UNKNOWN, not empty,
  * the daily calendar's rule and for the same reason: a signed-out player or a
- * failed read cannot be told what they have finished, and failing OPEN here
- * costs nothing because an archive replay records nothing either way.
+ * failed read cannot be told what they have finished.
  */
-export function weekArchiveState(weekStart, currentWeek, played = null, firstWeek = FIRST_ARCHIVE_WEEK) {
+export function weekArchiveState(weekStart, currentWeek, completed = null, firstWeek = FIRST_ARCHIVE_WEEK) {
   if (!isWeekString(weekStart) || !isWeekString(currentWeek)) return 'unavailable';
   if (weekStart === currentWeek) return 'current';
   if (!isArchivableWeek(weekStart, currentWeek, firstWeek)) return 'unavailable';
-  if (!played) return 'playable';
-  const has = played instanceof Set ? played.has(weekStart) : played.includes(weekStart);
+  if (!completed) return 'playable';
+  const has = completed instanceof Set ? completed.has(weekStart) : completed.includes(weekStart);
   return has ? 'done' : 'playable';
 }
 
@@ -200,23 +219,15 @@ export function applyWeekContinuation(prev, week) {
  * @returns {{streak: number, lastWeek: string|null}}
  */
 /**
- * Filter a fetchPlayedWeeks() result down to the weeks the streak may derive
- * from, the weekly counterpart of streakBearingDates, and it exists for a
- * near-identical reason.
- *
- * `weeklyAttempts` is written on the FIRST CLICK, so it records weeks OPENED,
- * while a week is banked by COMPLETING the weekly. For a past week the
- * backfill accepts that gap deliberately: attempts are the only per-week
- * record every player has, and erring generous on history the player can no
- * longer replay is the same direction the daily's upward-only self-heal errs.
- *
- * The CURRENT week is different in the way that matters. It is not history,
- * the player can still earn it honestly before Sunday, and the reconcile runs
- * on every boot, so opening this week's board and abandoning it banked the
- * week, spliced it onto a genuine run (measured: a real 2-week run read 3),
- * and raised the monotonic `best`, which nothing can lower again (issue #254).
- * Anything dated after the current week is dropped for the same reason plus
- * one more: it cannot be a completion, only a clock disagreement.
+ * Filter a list of weeks down to the ones a streak may derive from: valid
+ * Monday anchors strictly BEFORE the current week, the weekly counterpart of
+ * streakBearingDates. The live week is not history, the player can still earn
+ * it honestly before Sunday, and the reconcile runs on every boot, so counting
+ * it banked a week for one click, spliced it onto a genuine run (measured: a
+ * real 2-week run read 3), and raised the monotonic `best`, which nothing can
+ * lower again (issue #254). Anything dated after the current week is dropped
+ * for the same reason plus one more: it cannot be a completion, only a clock
+ * disagreement.
  *
  * `currentWeek` is required and the filter fails CLOSED without it, in keeping
  * with this module's no-clock rule: not knowing what "now" is means not being
@@ -224,13 +235,51 @@ export function applyWeekContinuation(prev, week) {
  * silently restore the defect. An empty result leaves the stored record
  * alone, since the reconcile treats it as nothing to derive.
  *
- * @param {string[]|null} weekStarts Monday anchors from fetchPlayedWeeks
+ * This is the mechanical half. WHICH records may bank a week (attempts vs
+ * completions, split at WEEKLY_COMPLETIONS_EPOCH) is bankableWeeks' question,
+ * and both of its sources pass through here.
+ *
+ * @param {string[]|null} weekStarts Monday anchors
  * @param {string} currentWeek this week's Monday anchor
  * @returns {string[]} the weeks a streak may count
  */
 export function streakBearingWeeks(weekStarts, currentWeek) {
   if (!Array.isArray(weekStarts) || !isWeekString(currentWeek)) return [];
   return weekStarts.filter((w) => isWeekString(w) && w < currentWeek);
+}
+
+/**
+ * The weeks the streak reconcile may bank, merged from the two per-week
+ * records with the boundary stated rather than implied.
+ *
+ * `attempted` (users/{uid}/weeklyAttempts) is written on the FIRST CLICK, so
+ * it proves a week was opened, never that it was finished. `completed`
+ * (users/{uid}/weeklyCompletions) is written at the win and is the record the
+ * streak actually means, but it only exists from WEEKLY_COMPLETIONS_EPOCH on.
+ *
+ * So the split. BEFORE the epoch, an attempt still banks its week: attempts
+ * are the only per-week record every player has for that era (the completion
+ * evidence is on the weekly leaderboard, which a player without a name never
+ * reached), and erring generous on history the player can no longer replay
+ * errs the same direction the daily's upward-only self-heal does. FROM the
+ * epoch on, an attempt alone banks nothing: the completions record is written
+ * for every finished week, so its absence next to an attempt means the board
+ * was opened and walked away from, exactly the state issue #254 stopped the
+ * live week from banking.
+ *
+ * Both sources pass through streakBearingWeeks, so the live-week exclusion
+ * and the fail-closed no-currentWeek contract cover completions exactly as
+ * they always covered attempts. Either source may be null (signed out, or its
+ * read failed); the other still counts, since the two reads are independent.
+ *
+ * @param {{attempted?: string[]|null, completed?: string[]|null,
+ *          currentWeek: string, epoch?: string}} args
+ * @returns {string[]} deduped weeks the streak may count
+ */
+export function bankableWeeks({ attempted = null, completed = null, currentWeek, epoch = WEEKLY_COMPLETIONS_EPOCH } = {}) {
+  const preEpochAttempts = streakBearingWeeks(attempted, currentWeek).filter((w) => w < epoch);
+  const completions = streakBearingWeeks(completed, currentWeek);
+  return [...new Set([...preEpochAttempts, ...completions])];
 }
 
 export function weekStreakFromHistory(weekStarts) {

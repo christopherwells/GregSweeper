@@ -47,6 +47,7 @@ let _hasInitialized = false;
 let _pendingSave = null;
 let _pendingHistory = null;
 let _pendingWeeklyAttempts = null;
+let _pendingWeeklyCompletions = null;
 // The player's leaderboard name to publish to playerNames/{uid}, coalesced
 // when auth hasn't settled (boot window). Unlike the other pendings, the name
 // is a person-level fact, not uid-scoped, so on a uid SWITCH main.js
@@ -158,6 +159,13 @@ function _flushPendingWrites() {
       markWeeklyDayAttempted(weekStart, Number(day));
     }
   }
+  if (_pendingWeeklyCompletions) {
+    const queued = _pendingWeeklyCompletions;
+    _pendingWeeklyCompletions = null;
+    for (const weekStart of Object.keys(queued)) {
+      markWeeklyCompleted(weekStart);
+    }
+  }
   if (_pendingPlayerName) {
     const nm = _pendingPlayerName;
     _pendingPlayerName = null;
@@ -188,6 +196,7 @@ function _handleAuthChange(snap) {
     _pendingSave = null;
     _pendingHistory = null;
     _pendingWeeklyAttempts = null;
+    _pendingWeeklyCompletions = null;
     _detachCloudListener();
     return;
   }
@@ -210,6 +219,7 @@ function _handleAuthChange(snap) {
     _pendingSave = null;
     _pendingHistory = null;
     _pendingWeeklyAttempts = null;
+    _pendingWeeklyCompletions = null;
     _pendingPlayerName = null;
   }
 
@@ -632,6 +642,36 @@ export async function fetchPlayedWeeks() {
 }
 
 /**
+ * Every week the player has COMPLETED, from `users/{uid}/weeklyCompletions`,
+ * the win-path record markWeeklyCompleted writes (plus the leaderboard
+ * backfill for weeks finished before the record existed). The Past Weeklies
+ * list marks 'done' from this, never from attempts, and the week-streak
+ * self-heal banks post-epoch weeks from it (see bankableWeeks in
+ * weeklyProgress.js).
+ *
+ * Returns null when unavailable (signed out, offline, read failed), which
+ * means UNKNOWN rather than "completed nothing", mirroring fetchPlayedWeeks.
+ *
+ * @returns {Promise<string[]|null>}
+ */
+export async function fetchCompletedWeeks() {
+  if (!_ready || !_uid) return null;
+  try {
+    const snap = await Promise.race([
+      _db.ref(`users/${_uid}/weeklyCompletions`).once('value'),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), FIREBASE_TIMEOUT_MS)),
+    ]);
+    if (!snap.exists()) return [];
+    const out = [];
+    snap.forEach((child) => { if (child.key) out.push(child.key); });
+    return out;
+  } catch (err) {
+    console.warn('fetchCompletedWeeks failed:', err.message);
+    return null;
+  }
+}
+
+/**
  * Record that the player completed today's weekly attempt. Writes
  * `users/{uid}/weeklyAttempts/{weekStart}/dayAttempts/{day}` with a
  * server-side timestamp. Queues into _pendingWeeklyAttempts when auth
@@ -666,6 +706,38 @@ export function markWeeklyDayAttempted(weekStart, day) {
   _db.ref(`users/${_uid}/weeklyAttempts/${weekStart}/dayAttempts/${day}`).set(payload).catch(err => {
     console.warn('Weekly attempt save failed:', err.message);
   });
+}
+
+/**
+ * Record that the player COMPLETED this week's weekly, the per-week record
+ * the week streak actually means (weeklyAttempts, written on the first
+ * click, only proves the board was opened). Writes
+ * `users/{uid}/weeklyCompletions/{weekStart}` once per week: the caller
+ * gates on the streak continuation's `extended` flag, and the rule is
+ * write-once besides, so the stamp stays the week's FIRST completion.
+ *
+ * A dropped write here never costs the streak itself: the `weekStreak` trio
+ * is written at the same win and the self-heal is upward-only. It costs the
+ * week's Past Weeklies mark and one heal input, both recoverable for a
+ * named player by re-running the leaderboard backfill
+ * (scripts/backfill-weekly-completions.mjs).
+ */
+export function markWeeklyCompleted(weekStart) {
+  if (typeof weekStart !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(weekStart)) return;
+  // Test branch: a test session's completions are not real progression.
+  if (isTestEnvironment()) return;
+
+  if (!_ready || !_uid) {
+    if (!_pendingWeeklyCompletions) _pendingWeeklyCompletions = {};
+    _pendingWeeklyCompletions[weekStart] = true;
+    return;
+  }
+
+  _db.ref(`users/${_uid}/weeklyCompletions/${weekStart}`)
+    .set({ timestamp: _serverTimestamp() })
+    .catch(err => {
+      console.warn('Weekly completion save failed:', err.message);
+    });
 }
 
 // ── Local-storage backup of weekly attempts ────────────

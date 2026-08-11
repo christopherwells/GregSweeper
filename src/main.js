@@ -53,7 +53,7 @@ import {
   getAchievementState, getTotalScore, getAllTierNames, getTierColor,
 } from './logic/achievements.js';
 import { initFirebase } from './firebase/firebaseLeaderboard.js';
-import { initAnonymousAuth, loadProgress, saveProgress, loadDailyHistory, fetchPlayedWeeks, getUid, loadWeeklyAttempts, loadLocalWeeklyAttempts, replaceLocalWeeklyAttempts, pruneStaleLocalWeeklyAttempts, subscribeToUidChanges, subscribeToCloudProgressUpdates, reportClientSeen, publishPlayerName } from './firebase/firebaseProgress.js';
+import { initAnonymousAuth, loadProgress, saveProgress, loadDailyHistory, fetchPlayedWeeks, fetchCompletedWeeks, getUid, loadWeeklyAttempts, loadLocalWeeklyAttempts, replaceLocalWeeklyAttempts, pruneStaleLocalWeeklyAttempts, subscribeToUidChanges, subscribeToCloudProgressUpdates, reportClientSeen, publishPlayerName } from './firebase/firebaseProgress.js';
 import { getAuthState, subscribeAuthState, linkWithGoogle, sendEmailLink, tryCompleteEmailLink, signOut as authSignOut } from './firebase/firebaseAuth.js';
 import { isTestEnvironment } from './firebase/env.js';
 import { getLocalDateString, getWeekStart, getWeekDayIndex, addCalendarDays } from './logic/seededRandom.js';
@@ -1435,14 +1435,17 @@ async function _reconcileDailyStreak() {
 }
 
 // The weekly's counterpart: raise the week streak to the run the player's own
-// weeklyAttempts record implies. Same upward-only self-heal, same reason, a
-// counter that starts counting when it ships knows nothing about the fourteen
-// weeks already in the account. One owner-scoped read.
+// per-week records imply. Same upward-only self-heal, same reason, a counter
+// that starts counting when it ships knows nothing about the fourteen weeks
+// already in the account. Two owner-scoped reads, in parallel: attempts bank
+// pre-epoch weeks and completions bank post-epoch ones (bankableWeeks in
+// weeklyProgress.js states the boundary in full). Either read may fail
+// independently; the other still heals what it can prove.
 async function _reconcileWeekStreak() {
   try {
-    const weeks = await fetchPlayedWeeks();
-    if (!weeks) return;
-    if (reconcileWeekStreakFromHistory(weeks)) {
+    const [attempted, completed] = await Promise.all([fetchPlayedWeeks(), fetchCompletedWeeks()]);
+    if (!attempted && !completed) return;
+    if (reconcileWeekStreakFromHistory(attempted, getWeekStart(), completed)) {
       // Same reason as the daily's push above (issue #248), and the weekly is
       // where it actually bit: nothing but a completion writes this node, so
       // for the very players the backfill exists for, a long history, no

@@ -596,20 +596,25 @@ if (_dailyCardEl) {
 // mostly-empty cells with one row that matters. Each row is a week; a tap
 // probes that week's canonical and hands it to launchWeeklyArchive.
 //
-// Which weeks the player has already cleared comes from the weekly leaderboard
-// itself, a `weekly/{weekStart}/{uid}` row exists only for a week they
-// finished at least one attempt of, so it is the same fact the streak counts,
-// read from the one place both devices already share. Unknown history (signed
-// out, or a failed read) leaves the marks off and every week playable: the
-// pure gate fails open there, which costs nothing because a replay records
-// nothing either way.
-let _weeklyPlayed = null;   // Set<weekStart> | null (null = unknown)
+// Which weeks the player has already cleared comes from fetchCompletedWeeks
+// reading the player's OWN `users/{uid}/weeklyCompletions` keys, the record
+// the win path writes, never from `weeklyAttempts`: an attempt is written on
+// the first click, so marking 'done' from attempts locked out every week that
+// was opened and abandoned, a board the player never actually cleared (the
+// per-week completion record exists to tell those apart; weeks finished
+// before it existed are covered by the leaderboard backfill). Not the shared
+// `weekly/` leaderboard either, which has no uid index, grows with every
+// player, and never sees a nameless player's completions. Unknown history
+// (signed out, or a failed read) leaves the marks off and every week
+// playable: the pure gate fails open there, which costs nothing because a
+// replay records nothing either way.
+let _weeklyCompleted = null;   // Set<weekStart> | null (null = unknown)
 
 async function openWeeklyArchiveList() {
   try {
-    const { fetchPlayedWeeks } = await import('../firebase/firebaseProgress.js');
-    const weeks = await fetchPlayedWeeks();
-    if (Array.isArray(weeks)) _weeklyPlayed = new Set(weeks);
+    const { fetchCompletedWeeks } = await import('../firebase/firebaseProgress.js');
+    const weeks = await fetchCompletedWeeks();
+    if (Array.isArray(weeks)) _weeklyCompleted = new Set(weeks);
   } catch { /* keep whatever marks we had */ }
   showModalFromTitle('weekly-archive-modal');
   renderWeeklyArchiveList();
@@ -622,7 +627,7 @@ function renderWeeklyArchiveList() {
   const weeks = pastWeekStarts(thisWeek);
   let html = '';
   for (const w of weeks) {
-    const rowState = weekArchiveState(w, thisWeek, _weeklyPlayed);
+    const rowState = weekArchiveState(w, thisWeek, _weeklyCompleted);
     const label = weekRangeLabel(w);
     if (rowState === 'playable') {
       html += `<button type="button" class="weekly-archive-row playable" data-week="${w}">`
@@ -649,8 +654,8 @@ if (_weeklyArchiveListEl) _weeklyArchiveListEl.addEventListener('click', async (
   const week = row.dataset.week;
   if (!week) return;
   // Re-derive the gate rather than trusting the rendered class: the list is
-  // painted once per open while the played-set refreshes on each one.
-  if (weekArchiveState(week, getWeekStart(), _weeklyPlayed) !== 'playable') {
+  // painted once per open while the completed-set refreshes on each one.
+  if (weekArchiveState(week, getWeekStart(), _weeklyCompleted) !== 'playable') {
     renderWeeklyArchiveList();
     return;
   }
