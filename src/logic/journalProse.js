@@ -388,9 +388,13 @@ export function buildFacts(study, ctx = {}) {
     unit: estimateUnit(study) ?? study?.unit ?? null,
     // "per pair", not "per wormhole pair", for lines whose header
     // already names the feature (the conclusions ledger). Scaled the same
-    // way: "per ten pairs" when the estimate is quoted per ten.
+    // way: "per ten pairs" when the estimate is quoted per ten. A
+    // scale-1 unit is one of the composite phrases ("hundred worm
+    // moves", "extra four in ten numbers") and keeps its WHOLE phrase:
+    // its last word alone rendered "per numbers" the day the sections
+    // put a digit share on screen.
     unitShort: study?.unit
-      ? (est?.scale === 10 ? `ten ${study.unit.split(' ').pop()}s` : study.unit.split(' ').pop())
+      ? (est?.scale === 10 ? `ten ${study.unit.split(' ').pop()}s` : study.unit)
       : null,
     days,
     daysWord: days > 0 ? countWord(days) : null,
@@ -566,12 +570,16 @@ const GRIND_CLOSERS_SIDED = [
   'You’d think I’d enjoy being right. Mostly I keep checking.',
   'The estimate settled. The reason didn’t.',
   'At some point stubborn becomes settled. This one isn’t there yet.',
+  'The same reading came back again tonight.',
+  'A result this steady still gets re-checked here.',
 ];
 const GRIND_CLOSERS_OTHER = [
   'The estimate settled. The reason didn’t.',
   'Consistency isn’t proof, but it does pay the rent.',
   'The same answer came back again, and I’m listening.',
   'A steady no is still information.',
+  'The reading stayed put, and I wrote it down again.',
+  'The number reads the same, and the file stays open a while longer.',
 ];
 const CLOSERS = {
   'active-unresolved': [
@@ -631,6 +639,57 @@ function _closerPool(state, resolution) {
   return CLOSERS[state] || [];
 }
 
+// Status one-liners for the ongoing sections (his three-bucket reframe,
+// 2026-08-11: "Collecting data" / "Need to revisit" / "Closed for
+// now"). PRESENT tense, the counterpart of the conclusions ledger's
+// deliberately-still past tense: these rows are alive, and their
+// numbers move with every fit. Same rails, same {unitShort} idiom,
+// same same-screen dedup through session.lines. The ambiguous band
+// shares the zero pool's straddling form, the no-fake-negatives rule.
+const COLLECTING_EARLY = [
+  'The {label} file is new, and numbers come after boards.',
+  'The {label} file barely has ink in it yet.',
+  '{Label} just opened, and there is nothing to report yet.',
+  'Boards for {label} are only starting to arrive.',
+];
+// Present tense exposes subject-verb number in a way the ledger's past
+// tense never did ("mirrors cost" reads fine, "mirrors costs" does
+// not), so every present-tense line anchors on an invariant singular
+// (the file, the range, the read, the charge) rather than the label.
+const COLLECTING_SETTLING = [
+  'The {label} file is closing in: the range has narrowed {deltaPct}% since {windowStart}.',
+  'The {label} range has come down {deltaPct}% since {windowStart}, and boards keep landing.',
+  'The {label} estimate has narrowed {deltaPct}% since {windowStart}.',
+];
+const COLLECTING_POS = [
+  'The {label} file reads about {pct}% per {unitShort} so far, and it stays open.',
+  'The {label} charge runs about {pct}% per {unitShort} while the boards keep coming.',
+  'So far the {label} charge comes to about {pct}% per {unitShort}, and I keep measuring.',
+  'The running read on {label} is about {pct}% per {unitShort}.',
+  'The {label} estimate is holding near {pct}% per {unitShort}; I want more boards before I close it.',
+];
+const COLLECTING_ZERO = [
+  'The {label} file reads between 0% and about {hi}% per {unitShort} so far.',
+  'The {label} range still runs 0% to about {hi}% per {unitShort}.',
+  'The {label} file has not picked a side yet: 0% to about {hi}% per {unitShort}.',
+  'So far the {label} range lands between 0% and about {hi}% per {unitShort}.',
+  'The {label} numbers still read 0% to about {hi}% per {unitShort}.',
+];
+const COLLECTING_NEG = [
+  'The {label} file reads as a small refund so far, about {pctAbs}% per {unitShort} back.',
+  'So far the {label} effect gives about {pctAbs}% per {unitShort} back.',
+];
+const COLLECTING_OPEN = [
+  'The {label} file stays open while boards come in.',
+  'I am still collecting on {label}.',
+];
+const REVISIT_WIDENED = [
+  '{Label} widened {deltaPct}% since {windowStart}, and I want another pass at it.',
+  'The {label} range grew {deltaPct}% since {windowStart}; that file needs another look.',
+  'More plays made {label} less certain, {deltaPct}% wider since {windowStart}.',
+  '{Label} moved the wrong way: {deltaPct}% more spread since {windowStart}.',
+];
+
 // Conclusions-ledger one-liners: past tense, anchored to the close
 // date, deliberately still. The header already names the feature, so
 // these use {unitShort} ("per pair", not "per wormhole pair"). Today's
@@ -653,9 +712,13 @@ const LEDGER_POS = [
 // band straddles zero), so these lines use the honest straddling form,
 // never a bare signed point estimate, which could put a fake negative
 // on the ledger.
+// Anchored on "the file" for subject-verb number: "mirrors still
+// reads" broke agreement the day a plural-label study parked (the
+// present-tense anchor rule above, applied to the two ledger lines
+// written in the present tense).
 const LEDGER_PARKED = [
-  '{Label} still reads between 0% and about {hi}% per {unitShort}. Parked {closedDate}.',
-  '{Label} sits somewhere between 0% and about {hi}% per {unitShort}, steady enough to set down. Parked {closedDate}.',
+  'The {label} file still reads between 0% and about {hi}% per {unitShort}. Parked {closedDate}.',
+  'The {label} range reads 0% to about {hi}% per {unitShort}, steady enough to set down. Parked {closedDate}.',
   '{Label} never picked a side: 0% to about {hi}% per {unitShort}. Parked {closedDate}.',
 ];
 // A drifted (reopened) study must not misattribute the CURRENT value to
@@ -765,6 +828,8 @@ export function allProseLines() {
     ...WINDOW, ...WINDOW_SINGLE, ...IDLE, ...DRIFT, ...EARLY_NOTE,
     ...GRIND_CLOSERS_SIDED, ...GRIND_CLOSERS_OTHER,
     ...Object.values(CLOSERS).flat(),
+    ...COLLECTING_EARLY, ...COLLECTING_SETTLING, ...COLLECTING_POS,
+    ...COLLECTING_ZERO, ...COLLECTING_NEG, ...COLLECTING_OPEN, ...REVISIT_WIDENED,
     ...LEDGER_ZERO, ...LEDGER_POS, ...LEDGER_PARKED, ...LEDGER_REOPENED, ...LEDGER_NEG,
     ...QUEUE_OPEN, ...QUEUE_CLOSED,
     ...LOG_TIGHTENED, ...LOG_WIDENED, ...LOG_FLAT, ...LOG_RUNS_PLAIN,
@@ -782,16 +847,25 @@ const SKELETONS = {
     ['opener', 'chooser', 'estimate', 'band', 'arc'],
     ['opener', 'arc', 'estimate', 'band'],
     ['opener', 'estimate', 'arc', 'band'],
+    ['opener', 'estimate', 'band', 'arc'],
   ],
+  // The three-section reframe (2026-08-11) puts several same-state
+  // entries on one screen at once (real data: four grind studies, three
+  // widened), so the crowd-prone states carry extra orderings; the
+  // collision rule needs at least as many variants as visible
+  // same-state entries.
   grind: [
     ['opener', 'estimate', 'band', 'arc'],
     ['opener', 'arc', 'estimate', 'band'],
     ['opener', 'band', 'estimate', 'arc'],
+    ['opener', 'estimate', 'arc', 'band'],
+    ['opener', 'arc', 'band', 'estimate'],
   ],
   anomaly: [
     ['opener', 'band', 'estimate', 'arc'],
     ['opener', 'arc', 'band', 'estimate'],
     ['opener', 'estimate', 'band', 'arc'],
+    ['opener', 'band', 'arc', 'estimate'],
   ],
   'closed-won': [
     ['opener', 'window', 'arc', 'estimate', 'idle'],
@@ -807,6 +881,7 @@ const SKELETONS = {
     ['opener', 'estimate', 'idle'],
     ['opener', 'idle', 'estimate', 'arc'],
     ['opener', 'arc', 'estimate'],
+    ['opener', 'estimate', 'arc', 'idle'],
   ],
   reopened: [
     ['opener', 'drift', 'estimate'],
@@ -963,6 +1038,26 @@ export function conclusionLine(study, state, session = newSession()) {
   else if (band === 'pos') pool = LEDGER_POS;
   else pool = LEDGER_PARKED;
   return pickLine(pool, `${study.feature}|ledger`, facts, session.lines);
+}
+
+/**
+ * The status one-liner for an ONGOING section row (Collecting data /
+ * Need to revisit). Reopened rows keep the ledger's own watching line
+ * (conclusionLine routes it); this handles widened rows and every
+ * collecting state, band-aware so an ambiguous band can never quote a
+ * bare point estimate.
+ */
+export function statusLine(study, state, session = newSession()) {
+  const facts = buildFacts(study);
+  const seed = `${study.feature}|status`;
+  if (state === 'anomaly') return pickLine(REVISIT_WIDENED, seed, facts, session.lines);
+  if (state === 'early') return pickLine(COLLECTING_EARLY, seed, facts, session.lines);
+  if (facts.verdictKind === 'settling') return pickLine(COLLECTING_SETTLING, seed, facts, session.lines);
+  const band = bandClass(estimateSummary(study));
+  if (band === 'pos') return pickLine(COLLECTING_POS, seed, facts, session.lines);
+  if (band === 'neg') return pickLine(COLLECTING_NEG, seed, facts, session.lines);
+  if (band === 'zero' || band === 'ambiguous') return pickLine(COLLECTING_ZERO, seed, facts, session.lines);
+  return pickLine(COLLECTING_OPEN, seed, facts, session.lines);
 }
 
 /**
@@ -1145,15 +1240,28 @@ export function labLog(history, feature, { max = MAX_LOG_ENTRIES } = {}) {
 
 /**
  * Everything the notebook surfaces render, composed in one pass with a
- * shared session (the collision rule holds across the whole screen):
- *  - active: the live experiment's deep card (entry + lab log)
- *  - ledger: closed studies as one-liners with pre-composed expansions
- *  - queue:  the coverage line
- *  - table:  the full parameter table (every named feature)
+ * shared session (the collision rule holds across the whole screen).
+ * The three-bucket reframe (his spec, 2026-08-11) gives every named
+ * study a home instead of the old active-or-invisible split:
+ *  - active:     the live experiment's deep card (entry + lab log),
+ *                the hero of the Collecting section
+ *  - collecting: every other ONGOING study (grind / unresolved /
+ *                settling / early) as one-liner rows with pre-composed
+ *                expansions, most recently studied first
+ *  - revisit:    the files where something moved the wrong way,
+ *                reopened (a parked number drifted) first, then
+ *                widened, capped at REVISIT_CAP; the overflow keeps a
+ *                home (widened rejoin collecting, they are still
+ *                taking data; reopened rejoin closed, they are still
+ *                parked) so no rendered study ever vanishes
+ *  - closed:     resting-verdict studies, the conclusions ledger
+ *  - queue:      the coverage line
+ *  - table:      the full parameter table (every named feature)
  * `meta` is the experimentTarget.json object (may be null offline; the
  * latest refit row's target stands in, same pipeline, one run behind
  * at worst).
  */
+export const REVISIT_CAP = 3;
 // The active experiment: the live target when it has a plain name, else
 // the latest refit row's target (derivable from shipped data alone,
 // the logged-out report page passes meta = null and lands one nightly
@@ -1204,18 +1312,50 @@ export function planJournalScreen(history, meta = null) {
     }
   }
 
-  const ledger = journal.studies
-    .filter(s => s.feature !== activeFeature && s.verdict.kind === 'resting')
-    .sort((a, b) => (b.lastStudied || '').localeCompare(a.lastStudied || ''))
-    .map(s => {
-      const entry = composeEntry(s, ctx, session);
-      return { study: s, state: entry.state, line: conclusionLine(s, entry.state, session), entry };
-    });
+  // Bucket every named study except the hero by its narrative state.
+  // States are decided BEFORE any entry is composed, so the cap's
+  // spillover cannot depend on session state, and rows are then
+  // composed in render order (collecting, revisit, closed), which is
+  // what keeps the server's composition byte-identical to every
+  // client's.
+  const byRecent = (a, b) => (b.study.lastStudied || '').localeCompare(a.study.lastStudied || '');
+  const stated = journal.studies
+    .filter(s => s.feature !== activeFeature)
+    .map(s => ({ study: s, state: narrativeState(s, ctx) }));
+  const reopened = stated.filter(x => x.state === 'reopened').sort(byRecent);
+  const widened = stated.filter(x => x.state === 'anomaly').sort(byRecent);
+  const closedStates = new Set(['resting', 'closed-won', 'closed-lost']);
+  const closedRaw = stated.filter(x => closedStates.has(x.state));
+  const collectingRaw = stated.filter(x => !closedStates.has(x.state) && x.state !== 'reopened' && x.state !== 'anomaly');
+
+  const flagged = [...reopened, ...widened];
+  const revisitRaw = flagged.slice(0, REVISIT_CAP);
+  for (const x of flagged.slice(REVISIT_CAP)) {
+    (x.state === 'reopened' ? closedRaw : collectingRaw).push(x);
+  }
+  collectingRaw.sort(byRecent);
+  closedRaw.sort(byRecent);
+
+  const composeRow = (x, line) => {
+    const entry = composeEntry(x.study, ctx, session);
+    return { study: x.study, state: x.state, line, entry };
+  };
+  // Reopened rows keep the ledger's own two-figure watching line
+  // (conclusionLine routes it); widened and collecting rows speak the
+  // present-tense status pools (a widened row spilled into collecting
+  // keeps its widened line, statusLine routes on the state).
+  const collecting = collectingRaw.map(x => composeRow(x, statusLine(x.study, x.state, session)));
+  const revisit = revisitRaw.map(x => composeRow(x, x.state === 'reopened'
+    ? conclusionLine(x.study, x.state, session)
+    : statusLine(x.study, x.state, session)));
+  const closed = closedRaw.map(x => composeRow(x, conclusionLine(x.study, x.state, session)));
 
   return {
     intro,
     active,
-    ledger,
+    collecting,
+    revisit,
+    closed,
     queue: queueLine(meta?.coverage_targets, activeFeature, journal.studies),
     table: parameterTable(history),
     unnamedCount: journal.unnamedCount,

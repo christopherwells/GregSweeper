@@ -3,17 +3,22 @@
 //   node scripts/rewrite-journal-entry.mjs [--dry-run] [--fixture <file>] [--out <path>]
 //
 // Runs in the refit workflow AFTER the R fit and the library steps and
-// BEFORE the commit step, so the polished paragraph lands in the same
-// nightly commit as the model that produced the entry it rewrites. It
-// composes the active study's entry from the working tree's
+// BEFORE the commit step, so the polished paragraphs land in the same
+// nightly commit as the model that produced the entries they rewrite.
+// It composes the whole journal screen from the working tree's
 // modelHistory.json + experimentTarget.json (the exact planJournalScreen
-// path the client runs), sends the beats plus the fact object to a
-// chat-completions endpoint, validates the draft against the shared
-// writing rails (src/logic/proseRails.js via journalRewrite.js), and
-// writes src/logic/journalRewrite.json. Clients render that paragraph
-// verbatim only when its sourceHash matches the entry they themselves
-// composed, so a stale or absent artifact means the beat assembly
-// renders instead; nothing is ever blocked on this script.
+// path the client runs), and for EVERY rendered entry, the active hero
+// and each section row's expansion, either keeps the previous
+// artifact's paragraph (source unchanged, no completion spent) or
+// sends the beats plus the fact object to a chat-completions endpoint,
+// validates the draft against the shared writing rails
+// (src/logic/proseRails.js via journalRewrite.js), and folds it into
+// src/logic/journalRewrite.json, a per-feature map capped at
+// REWRITE_NIGHTLY_CAP new completions a night (overflow converges the
+// following nights). Clients render a paragraph verbatim only when its
+// sourceHash matches the entry they themselves composed, so a stale or
+// absent record means the beat assembly renders instead; nothing is
+// ever blocked on this script.
 //
 // THE PROVIDER IS AN ENV VAR, because the original plan's provider is
 // gone: GitHub Models (free inference on the workflow's own
@@ -49,17 +54,19 @@
 //            reddens the run with the remedy named, the reprice
 //            pattern.
 //
-// --dry-run composes and prints the prompt without calling the API.
-// --fixture <file> reads the "model output" from a local text file, so
-// the whole write path can run offline (the send-push.mjs idiom).
+// --dry-run composes, prints the work plan and the first prompt, and
+// calls nothing. --fixture <file> reads ONE "model output" from a local
+// text file and applies it to the first pending entry, so the whole
+// write path can run offline (the send-push.mjs idiom).
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { planJournalScreen } from '../src/logic/journalProse.js';
 import {
-  MIN_SOURCE_CHARS, REWRITE_ARTIFACT_PATH,
-  buildRewriteArtifact, buildRewritePrompt, normalizeModelOutput, rewriteViolations,
+  REWRITE_ARTIFACT_PATH,
+  buildRewriteArtifact, buildRewriteEntry, buildRewritePrompt,
+  normalizeModelOutput, planRewriteWork, rewriteViolations,
 } from '../src/logic/journalRewrite.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -153,61 +160,34 @@ async function fetchCompletion(messages) {
   return null;
 }
 
-async function main() {
-  const history = readRepoJson('src/logic/modelHistory.json');
-  const meta = readRepoJson('src/logic/experimentTarget.json');
-
-  const screen = planJournalScreen(history, meta);
-  if (!screen?.active?.entry?.text) {
-    console.log('No active study entry tonight; nothing to rewrite. The journal renders as usual.');
-    return;
-  }
-  const { study, entry } = screen.active;
-  const date = screen.meta?.lastRefitDate ?? null;
-  console.log(`Active study: ${study.feature} (${study.label ?? 'unnamed'}), entry ${entry.text.length} chars, latest fit ${date}`);
-  console.log(`Source beats:\n  ${entry.text}`);
-
-  if (entry.text.length < MIN_SOURCE_CHARS) {
-    console.log(`Entry is under ${MIN_SOURCE_CHARS} chars; short entries read fine unrewritten. Skipping tonight.`);
-    return;
-  }
-
+// One entry through the draft-and-revise loop. Returns the accepted
+// paragraph, null when both drafts failed validation, or the sentinel
+// 'stop' when the provider is out for the night (transport gave up),
+// so the caller ships what it has instead of burning the whole cap on
+// a dead endpoint.
+async function rewriteOne(target) {
   const prompt = buildRewritePrompt({
-    entryText: entry.text,
-    facts: entry.facts,
-    label: study.label,
+    entryText: target.entry.text,
+    facts: target.entry.facts,
+    label: target.entry.facts?.label ?? null,
   });
-  if (DRY_RUN) {
-    console.log('--dry-run: prompt follows, no API call.\n');
-    console.log(`[system]\n${prompt.system}\n`);
-    console.log(`[user]\n${prompt.user}`);
-    return;
-  }
-
   const messages = [
     { role: 'system', content: prompt.system },
     { role: 'user', content: prompt.user },
   ];
-  let paragraph = null;
-  for (let draft = 1; draft <= MAX_DRAFTS && paragraph === null; draft++) {
+  for (let draft = 1; draft <= MAX_DRAFTS; draft++) {
     let raw;
     if (FIXTURE) {
       raw = readFileSync(FIXTURE, 'utf8');
     } else {
       raw = await fetchCompletion(messages);
-      if (raw === null) {
-        console.log('No completion tonight; the beat assembly stands.');
-        return;
-      }
+      if (raw === null) return 'stop';
     }
     const candidate = normalizeModelOutput(raw);
-    const violations = rewriteViolations(candidate, entry.text, entry.facts);
-    if (violations.length === 0) {
-      paragraph = candidate;
-      break;
-    }
-    console.log(`Draft ${draft} failed validation:\n  ${violations.join('\n  ')}`);
-    if (FIXTURE) return; // a fixture gets one shot; rejection is the test's answer
+    const violations = rewriteViolations(candidate, target.entry.text, target.entry.facts);
+    if (violations.length === 0) return candidate;
+    console.log(`  draft ${draft} failed validation:\n    ${violations.join('\n    ')}`);
+    if (FIXTURE) return null; // a fixture gets one shot; rejection is the test's answer
     messages.push(
       { role: 'assistant', content: candidate },
       {
@@ -218,21 +198,82 @@ async function main() {
       },
     );
   }
-  if (paragraph === null) {
-    console.log(`No draft cleared the validator in ${MAX_DRAFTS} tries; the beat assembly stands tonight.`);
+  return null;
+}
+
+async function main() {
+  const history = readRepoJson('src/logic/modelHistory.json');
+  const meta = readRepoJson('src/logic/experimentTarget.json');
+
+  const screen = planJournalScreen(history, meta);
+  if (!screen) {
+    console.log('No journal screen composes tonight; nothing to rewrite.');
+    return;
+  }
+  const date = screen.meta?.lastRefitDate ?? null;
+
+  let oldArtifact = null;
+  try {
+    oldArtifact = JSON.parse(readFileSync(OUT_PATH, 'utf8'));
+  } catch { /* first run, or a fresh --out: everything is todo */ }
+
+  const plan = planRewriteWork(screen, oldArtifact);
+  const keptCount = Object.keys(plan.keep).length;
+  console.log(`Latest fit ${date}. Entries: ${keptCount} kept from the last artifact, `
+    + `${plan.todo.length} to rewrite, ${plan.skippedShort} too short, ${plan.deferred} deferred past the cap.`);
+
+  if (DRY_RUN) {
+    for (const t of plan.todo) console.log(`  todo: ${t.feature} (${t.entry.text.length} chars)`);
+    if (plan.todo.length > 0) {
+      const prompt = buildRewritePrompt({
+        entryText: plan.todo[0].entry.text,
+        facts: plan.todo[0].entry.facts,
+        label: plan.todo[0].entry.facts?.label ?? null,
+      });
+      console.log('--dry-run: first prompt follows, no API call.\n');
+      console.log(`[system]\n${prompt.system}\n`);
+      console.log(`[user]\n${prompt.user}`);
+    }
     return;
   }
 
+  const entries = { ...plan.keep };
+  let accepted = 0;
+  let rejected = 0;
+  for (const t of plan.todo) {
+    console.log(`--- ${t.feature} (${t.entry.text.length} chars) ---`);
+    console.log(`  source: ${t.entry.text}`);
+    const result = await rewriteOne(t);
+    if (result === 'stop') {
+      console.log('Provider is out for the night; shipping what was accepted so far.');
+      break;
+    }
+    if (result === null) {
+      rejected++;
+      if (FIXTURE) {
+        console.log('Fixture draft rejected; nothing written.');
+        return;
+      }
+      continue;
+    }
+    entries[t.feature] = buildRewriteEntry(t.entry.text, result);
+    accepted++;
+    console.log(`  accepted (${result.length} chars): ${result}`);
+    if (FIXTURE) break; // one fixture, one entry: the write path is under test, not a batch
+  }
+
+  if (Object.keys(entries).length === 0) {
+    console.log('No paragraphs to ship tonight; the beat assembly stands everywhere.');
+    return;
+  }
   const artifact = buildRewriteArtifact({
-    feature: study.feature,
     date,
-    entryText: entry.text,
-    paragraph,
+    entries,
     extra: { model: FIXTURE ? 'fixture' : MODEL, generatedAt: new Date().toISOString() },
   });
   writeFileSync(OUT_PATH, `${JSON.stringify(artifact, null, 2)}\n`);
-  console.log(`Accepted paragraph (${paragraph.length} chars):\n  ${paragraph}`);
-  console.log(`Wrote ${OUT_PATH}`);
+  console.log(`Wrote ${OUT_PATH}: ${Object.keys(entries).length} entries `
+    + `(${accepted} new, ${keptCount} kept, ${rejected} rejected).`);
 }
 
 main().catch(err => {

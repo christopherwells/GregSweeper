@@ -516,7 +516,72 @@ test('REGRESSION: a live-era return to a long-studied feature never claims a fir
 
 // ── The whole screen ──────────────────────────────────────────────────
 
-test('planJournalScreen: active card, ledger, queue, and table from one fixture', () => {
+test('section routing: reopened and widened fill revisit, the cap spills honestly, liners obey rails', () => {
+  // Six engineered studies: one reopened (parked mean drifted past its
+  // sd) and three widened (sd grew past the verdict threshold), so the
+  // cap-3 revisit section overflows on this fixture exactly as it does
+  // on the 2026-08-11 real data; plus one settling and one early.
+  // Every fixture feature is NAMED (buildJournal drops unnamed ones)
+  // and every study must be targeted by some row to exist at all; the
+  // early study joins the fit and takes the last row's target slot, so
+  // its trajectory holds a single point.
+  const mk = { r: 'lockedCellCount', w1: 'wormholePairCount', w2: 'mirrorPairCount', w3: 'wallEdgeCount', s: 'sonarCellCount', e: 'liarCellCount' };
+  const candsAt = (i) => [
+    // reopened: flat tight sd, mean steps far outside it after the close.
+    cand(mk.r, i < 3 ? 0.030 : 0.045, 0.004),
+    // three widened: sd grows 50%.
+    cand(mk.w1, 0.02, 0.010 * (1 + 0.5 * (i / 4))),
+    cand(mk.w2, 0.02, 0.012 * (1 + 0.5 * (i / 4))),
+    cand(mk.w3, 0.02, 0.014 * (1 + 0.5 * (i / 4))),
+    // settling: sd falls 30%.
+    cand(mk.s, 0.04, 0.020 * (1 - 0.3 * (i / 4))),
+    // early joins the fit on the last night only.
+    ...(i === 4 ? [cand(mk.e, 0.01, 0.02)] : []),
+  ].map(c => ({ ...c, cv: c.sd / Math.abs(c.mean) }));
+  const history = [
+    row('2026-07-02', mk.r, candsAt(0), { n_scores: 100 }),
+    row('2026-07-06', mk.w1, candsAt(1), { n_scores: 110 }),
+    row('2026-07-10', mk.w2, candsAt(2), { n_scores: 120 }),
+    row('2026-07-14', mk.w3, candsAt(3), { n_scores: 130 }),
+    row('2026-08-02', mk.e, candsAt(4), { n_scores: 140 }),
+  ];
+  const screen = planJournalScreen(history, { target: mk.s });
+
+  assert.equal(screen.active.study.feature, mk.s);
+  const revisitFeats = screen.revisit.map(x => x.study.feature);
+  assert.equal(screen.revisit.length, 3, 'the revisit cap holds');
+  assert.equal(revisitFeats[0], mk.r, 'reopened outranks widened');
+  assert.deepEqual(revisitFeats.slice(1), [mk.w3, mk.w2], 'then widened, newest study first');
+  // The overflow widened study keeps a home in collecting, with its
+  // widened line intact.
+  const spilled = screen.collecting.find(x => x.study.feature === mk.w1);
+  assert.ok(spilled, 'the spilled widened study lands in collecting');
+  assert.equal(spilled.state, 'anomaly');
+  assert.match(spilled.line, /wider|another|spread|widened/i);
+  // Early study rows exist and say so without numbers.
+  const early = screen.collecting.find(x => x.study.feature === mk.e);
+  assert.ok(early && early.state === 'early', 'the early study has a collecting row');
+  assert.ok(!/\d/.test(early.line), `an early liner never states a number: "${early.line}"`);
+  // Every liner and entry clears the rails, digits included, and no
+  // liner template repeats on the one screen.
+  const rows = [...screen.collecting, ...screen.revisit, ...screen.closed];
+  for (const x of rows) {
+    assertProseRails(x.line, `${x.study.feature} liner`);
+    assertDigitsDerivable(x.line, buildFacts(x.study), `${x.study.feature} liner`);
+    assertProseRails(x.entry.text, `${x.study.feature} entry`);
+    assertDigitsDerivable(x.entry.text, x.entry.facts, `${x.study.feature} entry`);
+  }
+  assert.equal(new Set(rows.map(x => x.line)).size, rows.length, 'liner collision on one screen');
+  // Same-screen collision holds across every composed entry, hero
+  // included, even with four same-state entries on screen.
+  const entries = [screen.active.entry, ...rows.map(x => x.entry)];
+  const closers = entries.map(e => e.text.split(/(?<=\.)\s+/).pop());
+  assert.equal(new Set(closers).size, closers.length, `closer collision: ${closers.join(' / ')}`);
+  assert.equal(new Set(entries.map(e => e.skeleton)).size, entries.length,
+    `skeleton collision: ${entries.map(e => e.skeleton).join(' / ')}`);
+});
+
+test('planJournalScreen: active card, sections, queue, and table from one fixture', () => {
   const f = {
     compass: 'compassCellCount', sonar: 'sonarCellCount', worm: 'wormholePairCount', liar: 'liarCellCount',
   };
@@ -548,21 +613,27 @@ test('planJournalScreen: active card, ledger, queue, and table from one fixture'
   assert.ok(screen.active.log.length > 0, 'the active card carries a lab log');
 
   // Wormholes and liar cells are idle 30+ days with bottom-half CV →
-  // resting verdicts → the conclusions ledger, newest close first.
-  assert.deepEqual(screen.ledger.map(l => l.study.feature), [f.liar, f.worm]);
-  assert.equal(screen.ledger[0].state, 'closed-won');
-  assert.equal(screen.ledger[1].state, 'closed-lost');
-  for (const l of screen.ledger) {
+  // resting verdicts → Closed for now, newest close first; sonar stays
+  // ongoing and gets a Collecting row with a present-tense liner.
+  assert.deepEqual(screen.closed.map(l => l.study.feature), [f.liar, f.worm]);
+  assert.equal(screen.closed[0].state, 'closed-won');
+  assert.equal(screen.closed[1].state, 'closed-lost');
+  for (const l of screen.closed) {
     assert.ok(l.line, `${l.study.feature} has a ledger line`);
     assert.match(l.line, /Closed|Parked/);
   }
+  assert.deepEqual(screen.collecting.map(l => l.study.feature), [f.sonar]);
+  assert.ok(!/Closed|Parked/.test(screen.collecting[0].line),
+    `a collecting liner never reads as closed: "${screen.collecting[0].line}"`);
+  assert.deepEqual(screen.revisit, [], 'nothing drifted or widened in this fixture');
 
   assert.equal(screen.queue.feature, f.worm);
   assert.deepEqual(screen.table.map(r => r.feature),
     [f.sonar, f.compass, f.worm, f.liar], 'table sorted by effect size');
 
   // The collision rule holds across the screen: every closer distinct.
-  const entries = [screen.active.entry, ...screen.ledger.map(l => l.entry)];
+  const entries = [screen.active.entry,
+    ...screen.collecting.map(l => l.entry), ...screen.closed.map(l => l.entry)];
   const closers = entries.map(e => e.text.split(/(?<=\.)\s+/).pop());
   assert.equal(new Set(closers).size, closers.length, `closer collision: ${closers.join(' / ')}`);
 
@@ -587,30 +658,46 @@ test('smoke: the real modelHistory.json composes a clean screen (structural inva
   assert.ok(screen.active.log.length > 0, 'the lab log has entries');
   assert.ok(screen.table.length >= 8, `table rows: ${screen.table.length}`);
 
+  const rows = [...screen.collecting, ...screen.revisit, ...screen.closed];
   const texts = [
     screen.active.entry.text,
     ...screen.active.log.map(e => e.text),
-    ...screen.ledger.flatMap(l => [l.line, l.entry.text]),
+    ...rows.flatMap(l => [l.line, l.entry.text]),
     ...(screen.queue ? [screen.queue.text] : []),
   ];
   assert.ok(texts.length >= 3);
   for (const t of texts) assertProseRails(t, 'real-data');
   assertDigitsDerivable(screen.active.entry.text, screen.active.entry.facts, 'real active entry');
   for (const e of screen.active.log) assertDigitsDerivable(e.text, e.facts, `real log ${e.date}`);
-  for (const l of screen.ledger) {
+  for (const l of rows) {
     assertDigitsDerivable(l.entry.text, l.entry.facts, `real ${l.study.feature}`);
-    assert.ok(['closed-won', 'closed-lost', 'resting', 'reopened'].includes(l.state), l.state);
+    assertDigitsDerivable(l.line, buildFacts(l.study), `real liner ${l.study.feature}`);
   }
   if (screen.queue) assertDigitsDerivable(screen.queue.text, screen.queue.facts, 'real queue');
 
-  // Ledger is sorted by close date, newest first.
-  const closes = screen.ledger.map(l => l.study.lastStudied || '');
+  // The sections PARTITION the named studies: the hero plus every row,
+  // no study lost, none doubled, and the cap holds.
+  const all = [screen.active.study.feature, ...rows.map(l => l.study.feature)];
+  assert.equal(new Set(all).size, all.length, 'a study rendered twice');
+  assert.ok(screen.revisit.length <= 3, 'the revisit cap holds on real data');
+  for (const l of screen.revisit) {
+    assert.ok(['reopened', 'anomaly'].includes(l.state), `${l.study.feature} in revisit as ${l.state}`);
+  }
+  for (const l of screen.closed) {
+    assert.ok(['closed-won', 'closed-lost', 'resting', 'reopened'].includes(l.state), l.state);
+  }
+
+  // Closed is sorted by close date, newest first.
+  const closes = screen.closed.map(l => l.study.lastStudied || '');
   assert.deepEqual(closes, [...closes].sort().reverse());
 
   // Determinism end to end.
   const again = planJournalScreen(real, meta);
   assert.equal(again.active.entry.text, screen.active.entry.text);
-  assert.deepEqual(again.ledger.map(l => l.line), screen.ledger.map(l => l.line));
+  assert.deepEqual(
+    [...again.collecting, ...again.revisit, ...again.closed].map(l => l.line),
+    rows.map(l => l.line),
+  );
 
   // Table renders no minus signs and no unresolved holes.
   for (const r of screen.table) {
