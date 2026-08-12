@@ -334,6 +334,34 @@ test('the search cache stores what it needs to be re-priced', () => {
     'the emit no longer notices that it is choosing from stale prices');
 });
 
+test('REGRESSION: the search acceptance carries the Climb deduction floor (issue #286)', () => {
+  // The braid stamps minDeductions on every level it assigns, and the pool
+  // search never did, so it admitted faces whose certified boards are too
+  // short a quarter of the time or worse: the validator refused draws on 16
+  // assigned braid levels (2026-08-12; four of them were issue #286's own).
+  // The fix has two halves and each can regress alone. Measurement: every
+  // spec the search builds must carry the floor, or a face that cannot hold
+  // five decisions earns an ok verdict again. Emission: entries measured
+  // BEFORE the floor keep pre-floor verdicts in the resumable cache, so the
+  // emitters must consult clearsDeductionFloor or a stale cache re-admits
+  // the same class on the next re-emit.
+  //
+  // Source-scanned for the same reason the cache test above is: the cache is
+  // gitignored local state and real generation cannot run in CI (the
+  // validator owns that proof, by hand). This pins the code that enforces
+  // the acceptance, which is the only way the defect comes back.
+  const src = fs.readFileSync(
+    path.join(__dirname, '..', 'scripts', 'search-endless-specs.mjs'), 'utf8');
+
+  assert.match(src, /base\.minDeductions = CLIMB_MIN_DEDUCTIONS/,
+    'makeSpec no longer stamps the floor, so the pool is measured under a different acceptance than the ladder applies');
+  assert.match(src, /floor: CLIMB_MIN_DEDUCTIONS/,
+    'the cache no longer records which acceptance a verdict was measured under');
+  const emits = [...src.matchAll(/\.filter\(clearsDeductionFloor\)/g)];
+  assert.ok(emits.length >= 2,
+    'the emitters no longer screen pre-floor cache entries (emitPool and admissible must both consult clearsDeductionFloor)');
+});
+
 test('the refit cron stays ahead of the precompute it feeds', () => {
   // The whole point of the refit's schedule is that a night's board is
   // generated under the model fit that same night. MEASURED, and this is why
