@@ -382,8 +382,8 @@
 
   <!-- Journal report (?report=<feature> share route): a standalone view
        of one finding from Greg's Journal. Filled by src/ui/journalReport.js
-       (lazy-loaded from the route branch in main.js); sibling of #app like
-       #crux-teaser so it renders while #app is hidden. -->
+       (lazy-loaded from the route branch in main.js); a sibling of #app, the
+       same as #crux-teaser, so it renders while #app is hidden. -->
   <div id="journal-report" class="journal-report hidden"></div>
 
   <div id="app" class="hidden">
@@ -621,7 +621,7 @@
         <h2 id="name-capture-title">Nice solve!</h2>
         <p class="name-capture-sub">Pick a handle for the leaderboard. You can change it anytime in Settings.</p>
         <input id="name-capture-input" type="text" placeholder="Your handle" maxlength="20" class="name-capture-input" autocomplete="off" aria-describedby="name-capture-hint">
-        <p id="name-capture-hint" class="name-capture-hint">Shown on the public leaderboard — a handle, not your real name.</p>
+        <p id="name-capture-hint" class="name-capture-hint">Shown on the public leaderboard: a handle, not your real name.</p>
         <button id="name-capture-save" class="action-btn primary">Save &amp; continue</button>
       </div>
     </div>
@@ -735,7 +735,7 @@
             <p>Reveal every safe square without hitting a mine. Each number counts the mines in the squares touching it, corners included. Blank squares touch no mines at all; the numbers are your clues.</p>
           </div>
           <div class="help-section">
-            <h3>Board shapes</h3>
+            <h3>Shapes</h3>
             <p>Not every board is a square grid. Alongside <strong>Classic</strong> there are six others: <strong>Octagons</strong>, <strong>Honeycomb</strong>, <strong>Paving Stones</strong>, <strong>Petals</strong>, <strong>3D Cubes</strong> and <strong>Kites</strong>. About half of all dailies use one, and The Climb works through every one of them.</p>
             <p>The rules do not change. The only thing a shape changes is which cells count as neighbors, and the first time you meet a shape a card shows you one cell with everything it touches. Cells that meet at just a corner are neighbors too, exactly as diagonals are on a Classic board.</p>
           </div>
@@ -762,11 +762,11 @@
         <div id="help-panel-modes" class="help-panel hidden">
           <div class="help-section">
             <h3>Modes</h3>
-            <p><strong>Daily:</strong> one puzzle a day, the same board for everyone, online leaderboard and streaks. The board shape varies day to day.</p>
+            <p><strong>Daily:</strong> one puzzle a day, the same board for everyone, online leaderboard and streaks. The shape varies day to day.</p>
             <p><strong>Weekly:</strong> one puzzle for the whole week, one try a day, your best time counts</p>
-            <p><strong>The Climb:</strong> 250 levels in blocks of five, working through all seven board shapes and introducing the modifiers one at a time, with power-ups and a checkpoint every five levels</p>
+            <p><strong>The Climb:</strong> 250 levels in blocks of five, working through all seven shapes and introducing the modifiers one at a time, with power-ups and a checkpoint every five levels</p>
             <p><strong>Challenge:</strong> build a run of one to ten boards, choosing the shapes, modifiers, length and mine count yourself, then race your own clock through them</p>
-            <p><strong>Greg&rsquo;s Gym:</strong> short practice boards that teach one deduction pattern at a time. A square only opens when the clues prove it is safe, so you cannot luck through.</p>
+            <p><strong>Greg&rsquo;s Gym:</strong> short practice boards, one deduction pattern at a time. A square only opens when the clues prove it is safe, so you cannot luck through.</p>
             <p><strong>Chaos:</strong> fast rounds of random modifiers (unlocks at Climb Level 100). The one mode OUTSIDE the no-guess guarantee: boards are not verified solvable, and mines can move.</p>
           </div>
         </div>
@@ -892,7 +892,7 @@
       </div>
       <div class="modal-body meet-greg-body">
         <img class="meet-greg-img" src="assets/sprites/idle.png" alt="Greg, a green crab holding a clipboard" draggable="false">
-        <p>The game now lives at <strong>gregsweeper.com</strong> — you're in the right place.</p>
+        <p>GregSweeper is now at <strong>gregsweeper.com</strong>, so you're in the right place.</p>
         <p>Played before on the old address? A signed-in account keeps your streak and stats synced across devices. Sign in any time from <strong>Settings</strong>.</p>
       </div>
     </div>
@@ -1227,7 +1227,7 @@
             <code id="settings-uid-display" style="margin-left:6px;padding:1px 6px;background:var(--color-cell-hidden);border-radius:4px;cursor:pointer;" title="Click to copy full ID">…</code>
           </div>
           <button id="btn-delete-my-data" class="reset-profile-btn" style="margin-top:8px;"><img class="ui-icon-label" src="assets/sprites/ui-delete.svg" alt="" draggable="false" onerror="this.replaceWith('🌐')">Delete my data (server-side)</button>
-          <p class="reset-hint">Removes your leaderboard rows, weekly best-times, and progress under your anonymous ID from Firebase. Opens a pre-filled email, and your data is scrubbed within 30 days.</p>
+          <p class="reset-hint">Removes your leaderboard rows, weekly best-times, and progress under your anonymous ID from Firebase. Opens a pre-filled email, and your data are scrubbed within 30 days.</p>
         </div>
         </div>
         <div id="settings-panel-about" class="settings-panel hidden">
@@ -1294,7 +1294,7 @@
         <div class="whatsnew-entry">
           <h3>v1.10 &middot; August 4, 2026</h3>
           <ul>
-            <li><strong>The board changes shape</strong>: About half the dailies now use one of six new shapes: Octagons, Honeycomb, Paving Stones, Petals, 3D Cubes and Kites. Still no guessing, ever. The first time you meet a shape, a card shows you what counts as a neighbor.</li>
+            <li><strong>Six new shapes</strong>: About half the dailies now use one of six new shapes: Octagons, Honeycomb, Paving Stones, Petals, 3D Cubes and Kites. Still no guessing, ever. The first time you meet a shape, a card shows you what counts as a neighbor.</li>
             <li><strong>The Climb is 250 levels</strong>: A new ladder through all seven shapes, introducing the modifiers one at a time. Every attempt draws a fresh board, so there is nothing to memorize, and each level shows the time it should take you. Checkpoints every five levels. Everyone starts again at Level 1.</li>
             <li><strong>Power-ups every win</strong>: One through Level 100, two after that.</li>
           </ul>
